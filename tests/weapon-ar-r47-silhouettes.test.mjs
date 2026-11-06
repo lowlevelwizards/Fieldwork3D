@@ -48,24 +48,24 @@ test('R4.7 forward assist is one continuous, shallow extruded face',()=>{
   const assist=part(g,'receiver').filter(x=>x.userData.arForwardAssist);
   assert.equal(assist.length,1,id+' one solid face');
   assert.equal(assist[0].geometry.type,'ExtrudeGeometry');
-  assert.ok(close(assist[0].position.z,1.91));
+  assert.ok(close(assist[0].position.z,1.50));
+  assert.ok(close(assist[0].rotation.y,.16));
   const b=new THREE.Box3().setFromObject(assist[0]);
-  assert.ok(b.max.x-b.min.x>2.3&&b.max.z-b.min.z<.30);
+  assert.ok(b.max.x-b.min.x>2.5&&b.max.z>2.2);
+  assert.ok(b.max.z-b.min.z>.6,'raised rear angle has meaningful Z depth');
   assert.ok(b.max.x<-.65,'assist ends behind the ejection port');
   assert.ok(art(g,'ar-port'),'port still visible');
   clearWeaponSilhouette(g);
  }
 });
 test('R4.7 polymer seams never create bright horizontal crosshatches',()=>{
- for(const [id,mark] of [['ar-m16a2','poly-ribs'],['ar-car15','car-ribs']]){
-  const {g}=model(id),plane=art(g,mark);
-  assert.ok(plane,id+' has ribbed poly');
-  const image=plane.material.map.image,[w,h]=[image.width,image.height];
-  assert.ok(w>=24&&h>=8);
-  const data=image.data,alpha=(x,y)=>data[(y*w+x)*4+3];
-  assert.equal(alpha(5,Math.floor(h/2)),0,
-   'no bright longitudinal seam between rib bands');
-  assert.ok(alpha(3,Math.floor(h/2))>0,'rib bands retained');
+ for(const [id,expected] of [['ar-m16a2',7],['ar-car15',5],['ar-colt733',4]]){
+  const {g}=model(id),rib=g.children.find(x=>x.userData.arPolymerRibs);
+  assert.ok(rib instanceof THREE.InstancedMesh,id+' real molded ring ribs');
+  assert.equal(rib.userData.arRibBandCount,expected);
+  assert.equal(rib.count,expected*8,'eight faceted band segments');
+  assert.ok(!art(g,'poly-ribs')&&!art(g,'car-ribs'),
+   'old flat stripe overlays removed');
   clearWeaponSilhouette(g);
  }
  const mk=model('ar-mk12mod0');
@@ -83,7 +83,7 @@ test('R4.7 curved metal STANAGs are still uniform, with delayed lower sweep',()=
  const m4=model('ar-m4a1'),mk=model('ar-mk18');
  assert.equal(part(m4.g,'magazine').length,3);
  assert.ok(part(m4.g,'magazine').slice(1).every(x=>x.material===AR_STANAG_RIB));
- assert.equal(part(mk.g,'magazine').length,4);
+ assert.equal(part(mk.g,'magazine').length,2);
  assert.ok(bounds(mk.g,'magazine').max.z-bounds(mk.g,'magazine').min.z<2,
   'polymer bevel remains shallow and does not overinflate sideways');
  assert.ok(part(mk.g,'magazine').some(x=>x.material===AR_MUTED_FDE));

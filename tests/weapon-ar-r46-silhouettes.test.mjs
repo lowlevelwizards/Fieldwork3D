@@ -34,7 +34,7 @@ const meshes=(g,slot)=>g.children.filter(x=>x.name.startsWith('family-'+slot+'-'
 test('R4.6 shared visual ID contract and authored stock contact geometry',()=>{
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ar').length,8);
  assert.equal(FAMILY_PRESETS.length,17);
- assert.equal(Object.keys(FAMILY_PARTS).length,92);
+ assert.equal(Object.keys(FAMILY_PARTS).length,93);
  const a=model('ar-m16a1'),b=model('ar-m16a2');
  assert.ok(close(a.a.stockX,-13.74)&&close(b.a.stockX,-14.30));
  assert.ok(box(a.g,'stock').min.x> -14.1,'A1 is 20% shorter in stock section');
@@ -63,7 +63,7 @@ test('R4.6 curved STANAG widths are normal to shared centerline',()=>{
  assert.equal(arMagazinePolyBaseplate(arMagazineCurve('poly')).length,4);
 });
 test('R4.6 metal magazines use two thick actual ribs; polymer no fake side panel',()=>{
- for(const [id,expected] of [['ar-m16a1',3],['ar-m4a1',3],['ar-mk18',4]]){
+ for(const [id,expected] of [['ar-m16a1',3],['ar-m4a1',3],['ar-mk18',2]]){
   const {g}=model(id),mg=meshes(g,'magazine');
   assert.equal(mg.length,expected,id+' low-cost magazine geometry');
   if(id!=='ar-mk18')assert.equal(mg[0].material,AR_STANAG_METAL,
@@ -87,7 +87,8 @@ test('R4.6 receiver controls are seated and both stock and grips present',()=>{
   'charging handle should be a seated substantial bar');
  const assist=parts.find(x=>x.userData.arForwardAssist);
  assert.ok(assist&&assist.geometry.type==='ExtrudeGeometry'&&
-  close(assist.position.z,1.91),'one solid, shallow forward-assist profile');
+  close(assist.position.z,1.50)&&
+  assist.rotation.y>.12,'one solid, shallow forward-assist profile');
  const port=g.children.find(x=>x.name==='family-art-ar-port');
  assert.ok(port&&close(port.geometry.parameters.width,3.28),'port larger');
  clearWeaponSilhouette(g);
@@ -111,15 +112,20 @@ test('R4.6 top rails are identical instanced segments on 4 faces',()=>{
 });
 test('R4.6 A1 vents and round ribs distinct; PRI tube stays unrailed',()=>{
  for(const [id,kind] of [
-  ['ar-m16a1','a1-vents'],['ar-m16a2','poly-ribs'],
-  ['ar-car15','car-ribs'],['ar-mk12mod0','pri-vents']]){
+  ['ar-m16a1','a1-vents'],['ar-mk12mod0','pri-vents']]){
   const {g}=model(id);
-  assert.ok(g.children.some(x=>x.name==='family-art-'+kind),id+' style mark');
+  assert.ok(g.children.some(x=>x.name==='family-art-'+kind));
   if(id==='ar-mk12mod0'){
    assert.ok(g.children.some(x=>x.geometry.type==='CylinderGeometry'&&
-    x.geometry.parameters.radialSegments===6),'six-sided PRI tube');
+    x.geometry.parameters.radialSegments===6));
    assert.equal(g.children.filter(x=>x.userData.arRailFourSided).length,0);
   }
+  clearWeaponSilhouette(g);
+ }
+ for(const [id,count] of [['ar-m16a2',7],['ar-car15',5]]){
+  const {g}=model(id);
+  const ribs=g.children.find(x=>x.userData.arPolymerRibs);
+  assert.equal(ribs?.userData.arRibBandCount,count,id+' physical ribs');
   clearWeaponSilhouette(g);
  }
 });

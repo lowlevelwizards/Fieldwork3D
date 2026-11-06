@@ -27,7 +27,7 @@ export const AR_BARREL_ART:Readonly<Record<string,ARBarrelArt>>={
  'ar-145-gov':{nominalInches:14.5,profile:'government',sight:'a2',
   muzzleX:18.4,sightX:13.17,lengthScale:.91,barrelHeight:1.38,barrelDepth:1.5},
  'ar-733-115':{nominalInches:11.5,profile:'service',sight:'a2',
-  muzzleX:16.6,sightX:12.90,lengthScale:.88,barrelHeight:1.27,barrelDepth:1.5},
+  muzzleX:16.6,sightX:12.15,lengthScale:.88,barrelHeight:1.27,barrelDepth:1.5},
  'ar-103':{nominalInches:10.3,profile:'cqb',sight:'compact',
   muzzleX:15.8,sightX:null,lengthScale:.85,barrelHeight:1.45,barrelDepth:1.75}
 };

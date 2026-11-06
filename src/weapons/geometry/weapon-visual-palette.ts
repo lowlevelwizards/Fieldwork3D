@@ -6,6 +6,8 @@ const finish=(color:number,roughness=.84)=>
  new THREE.MeshStandardMaterial({color,roughness,metalness:.05,flatShading:true});
 export const AR_BLACK_METAL=finish(0x414a44,.76);
 export const AR_BLACK_POLYMER=finish(0x343e37,.9);
+/** Matte, very low relief molded ribs, not high-contrast glowing decals. */
+export const AR_POLYMER_RIB=finish(0x2c3630,.98);
 /** Slightly lightened stamped steel STANAG; PMAG remains black polymer. */
 export const AR_STANAG_METAL=finish(0x687369,.87);
 /** Muted contour rib, light enough to avoid black jagged barcode marks. */

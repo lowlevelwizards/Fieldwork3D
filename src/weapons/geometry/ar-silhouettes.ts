@@ -4,8 +4,9 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
-import {AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE} from './weapon-visual-palette.ts';
-import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate,arMagazinePolyLowerFacet} from './ar-magazine-profiles.ts';
+import {AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE,AR_POLYMER_RIB} from './weapon-visual-palette.ts';
+import {addARFacetedForearm,addARPolymerRibs} from './ar-handguard-profiles.ts';
+import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate,addARPolymerMagazineBody} from './ar-magazine-profiles.ts';
 import {addARRailSegments} from './ar-rail-profiles.ts';
 import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
@@ -28,13 +29,17 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   addProfileFrame(root,slot,parts[slot],index[slot]++,outer,inner,depth,material[finish]);
 
  // Upper: flat/retro identities differ chiefly in the visible TOP silhouette.
- p('receiver',[[-6.35,-.9],[-6.35,1.25],[-5.4,1.75],[3.6,1.75],
-  [3.85,.55],[3.65,-.9]],3.5,0);
+ // Broad receiver upper retains its mass, but receives a single heavy
+ // lower bevel rather than presenting as a perfect rectangular slab.
+ p('receiver',[[-6.35,-.52],[-6.35,1.25],[-5.4,1.75],[3.6,1.75],
+  [3.85,.55],[3.47,-.81],[2.55,-1.08],[-4.70,-1.08]],3.5,0);
  // R4.7: one articulated lower receiver, not an uninterrupted horizontal
  // slab. The two angled underside changes frame the grip and magwell.
- p('receiver',[[-5.55,-.98],[-4.68,-1.47],[-3.08,-2.24],
-  [-1.16,-2.24],[-.60,-1.92],[1.82,-2.22],
-  [2.35,-1.98],[3.45,-.84],[-5.55,-.84]],3.0,1);
+ // A stepped lower shell, with a short concave grip root and a clearly
+ // angled magwell shoulder. Keep few deliberate corners rather than ribs.
+ p('receiver',[[-5.56,-.93],[-4.76,-1.32],[-3.31,-2.18],
+  [-1.74,-2.20],[-1.13,-1.75],[-.35,-1.82],
+  [1.74,-2.20],[2.39,-1.91],[3.38,-.86]],3.0,1);
  // A distinct, tapered LOWER magwell makes the magazine part of the receiver,
  // not an object attached to the back of the fore-end.
  const m=AR_VISUAL_ANATOMY;
@@ -68,14 +73,23 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   m.portWidthX,m.portHeightY);
  // R4.6: the charging handle is a substantial, seated rear shelf.
  b('receiver',-5.92,1.59,0,1.68,.80,3.90,0);
- // A single square-ended raised oblique FACE. R4.6's rotated cuboid partly
- // intersected the body and rasterized as dotted fragments. This flat
- // four-point wedge is deliberately offset beyond the receiver's side face.
- // Front (+X) stays immediately behind the ejection-port rear edge.
+ // R4.8: a chunky square-ended assist, seated at its forward end and
+ // canted OUTWARD at its rear. Rotating a deeper SOLID wedge around the
+ // receiver's side yields dimensionality without the R4.6 dotted z-fight.
+ // It is farther rearward than R4.7 and intentionally oversized for 128px.
  const assist=addOutline(root,'receiver',parts.receiver,index.receiver++,
-  [[-3.16,.86],[-.77,.30],[-.86,-.12],[-3.25,.44]],.27,material[1]);
- assist.position.z=1.91;
+  [[-4.08,.94],[-1.39,.31],[-1.54,-.32],[-4.23,.30]],.51,material[1]);
+ assist.rotation.y=.16;
+ assist.position.z=1.50;
  assist.userData.arForwardAssist=true;
+ // Later receiver generations have one symbolic brass-deflector shoulder,
+ // intentionally omitted from the cleaner early A1/retro uppers.
+ if(parts.receiver==='ar-a2'||parts.receiver==='ar-flat'){
+  const deflector=addOutline(root,'receiver',parts.receiver,index.receiver++,
+   [[-1.17,.98],[-.66,.91],[-.43,.45],[-1.03,.40]],.38,material[0]);
+  deflector.position.z=1.88;
+  deflector.userData.arShellDeflector=true;
+ }
 
  // Fixed M16 stocks: one long triangular wedge, no rectangular belly.
  if(parts.stock==='ar-fixed'||parts.stock==='ar-fixed-a2'){
@@ -133,24 +147,17 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const magStyle=mag==='ar-mag20'?'20':mag==='ar-magpoly'?'poly':'30';
  const curve=arMagazineCurve(magStyle,m.magwellCenterX,m.magazineTopY,
   m.magazineWidthX,m.magazineDepthZ);
- p('magazine',arMagazineOutline(curve),m.magazineDepthZ,
-  magStyle==='poly'?1:3);
+ if(magStyle==='poly')
+  addARPolymerMagazineBody(root,'magazine',mag,index.magazine++,
+   curve,material[1]);
+ else p('magazine',arMagazineOutline(curve),m.magazineDepthZ,3);
  for(const outline of arMagazineRibOutlines(curve)){
   const rib=addOutline(root,'magazine',mag,index.magazine++,
    outline,m.magazineDepthZ+.075,AR_STANAG_RIB);
   rib.castShadow=false;rib.receiveShadow=false;
  }
  if(magStyle==='poly'){
-  // One quiet molded lower bevel on EACH side, not a square applied panel.
-  const polyFacet=arMagazinePolyLowerFacet(curve);
-  for(const side of [-1,1]){
-   const bevel=addOutline(root,'magazine',mag,index.magazine++,
-    polyFacet,.13,material[0]);
-   // Keep the shallow facet inside the established slim-Z contract.
-   bevel.position.z=side*(m.magazineDepthZ/2-.015);
-   bevel.castShadow=false;bevel.receiveShadow=false;
-  }
-  // The substantial tan lower plate remains tangent to the curved toe.
+  // The tapered solid and substantial tan toe replace disconnected overlays.
   addOutline(root,'magazine',mag,index.magazine++,
    arMagazinePolyBaseplate(curve),m.magazineDepthZ+.12,AR_MUTED_FDE);
  }
@@ -171,7 +178,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const short=['ar-compact-rail','ar-risii'].includes(guard);
  const retro=guard==='ar-car15-ribbed'||guard==='ar-733-ribbed';
  const end=guard==='ar-pri-tube'?15.70:
-  guard==='ar-risii'?13.38:long?14.1:
+  guard==='ar-risii'?13.38:guard==='ar-733-ribbed'?11.05:long?14.1:
   retro?11.8:short?15.05:12.2;
  const start=3.55; // deliberate slight overlap with receiver upper
  const isFreefloat=guard==='ar-risii'||guard==='ar-compact-rail';
@@ -190,6 +197,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    start,end,1.82,material[1]);
   tube.position.y=AR_VISUAL_AXIS_Y;
   gb(start+.35,0,0,.70,3.25,3.75,0);
+  // Distinct front retaining collar, visible in orthographic and 3/4.
+  gb(end-.29,0,0,.51,3.22,3.68,0);
   // Mk12 Mod 0 keeps the six-sided PRI tube and its continuous bridge.
   gb((start+end)/2,2.06,0,end-start,.56,2.8,0);
   gb(2.65,2.06,0,3.85,.52,2.6,0);
@@ -199,51 +208,47 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    {startX:start+.48,endX:end-.30,count:5,topY:2.87},material[0]);
   gm('pri-vents',(start+end)/2,.27,1.90,end-start-1.7,.77);
  }else if(guard==='ar-triangle'){
-  // Two deliberately angled facets instead of a featureless slab.
-  gh([[start,1.47],[start+.64,1.75],
-   [end-1.05,1.08],[end,.60],[end,-.88],
-   [end-1.05,-1.15],[start,-1.72]],3.62,1);
-  gh([[start,-.73],[end-.82,-.68],[end-1.05,-1.15],
-   [start,-1.72]],3.75,0);
-  // Broad dark upper vents only; no tiny front-face pinholes.
-  gm('a1-vents',(start+end)/2,1.08,1.94,end-start-1.55,1.14);
+  // Genuine angular YZ facets: the old extrusion had a wide FLAT side face.
+  // One pointed crown and large lower plane do more than tiny surface marks.
+  addARFacetedForearm(root,'handguard',guard,index.handguard++,
+   start,end,AR_VISUAL_AXIS_Y,'a1-triangle',material[1]);
+  // Large matte upper vents are symbolic recessed apertures.
+  gm('a1-vents',(start+end)/2,1.15,1.86,end-start-1.65,1.18);
  }else if(guard==='ar-round'||guard==='ar-carbine'||retro){
-  gh(retro?
-   [[start,1.26],[start+.88,1.48],[end-.5,1.45],
-    [end,-.75],[end-.55,-1.46],[start+.35,-1.53]]:
-   [[start,1.42],[start+.75,1.77],[end-.75,1.69],
-    [end,-.78],[end-.65,-1.71],[start+.45,-1.76]],
-   retro?3.15:3.85,1);
-  if(retro)gb(start+.32,.04,0,.53,2.88,3.32,0);
-  // No horizontal highlight seam. Dark transverse ribbing should stand on
-  // its own as polymer texture rather than create a glowing crosshatch.
-  gm(retro?'car-ribs':'poly-ribs',(start+end)/2,.10,
-   retro?1.68:2.03,end-start-1.8,2.24);
+  // Octagonal physical plastic body plus one INSTANCED ring-band mesh,
+  // not a box decorated with thin crosshatching.
+  addARFacetedForearm(root,'handguard',guard,index.handguard++,
+   start,end,AR_VISUAL_AXIS_Y,'ribbed-round',material[1],retro);
+  if(retro)gb(start+.28,.04,0,.46,2.72,3.15,0);
+  addARPolymerRibs(root,'handguard',guard,index.handguard++,
+   start,end,AR_VISUAL_AXIS_Y,retro,AR_POLYMER_RIB,
+   guard==='ar-733-ribbed'?4:undefined);
  }else{
   const ris=guard==='ar-risii';
   const covered=guard==='ar-compact-rail';
   const span=end-start,center=(start+end)/2;
   // Stepped cross-section of authentic quad furniture.
   gh(ris?
-   [[start,-1.50],[start,1.28],[start+.45,1.51],
-    [end-.70,1.51],[end,.66],[end,-1.16],[end-.63,-1.58]]:
+   [[start,-1.26],[start,1.28],[start+.45,1.51],
+    [end-.70,1.51],[end,.66],[end,-.99],[end-.63,-1.33]]:
    [[start,-1.55],[start,1.49],
     [end-.60,1.49],[end,.90],[end,-1.48]],
    ris?3.72:3.17,ris?2:1);
   // Underlying rail spines — continuous, but the teeth are one instanced mesh.
   gb(center,1.87,0,span,.62,3.16,0);
-  gb(center,-1.83,0,span-.70,.48,2.43,0);
+  gb(center,ris?-1.65:-1.83,0,span-.70,.48,2.43,0);
   // Bury the side spine just inside the outer teeth, leaving tangible
   // negative-space steps without inflating the entire handguard silhouette.
   for(const side of [-1,1])
-   gb(center,.07,side*2.01,span-1.2,.53,.31,0);
+   gb(center,.07,side*2.01,span-1.2,.60,.40,0);
   addARRailSegments(root,'handguard',parts.handguard,index.handguard++,
    {startX:start,endX:end,count:guard==='ar-m5-rail'?5:4,
-    topY:2.84,bottomY:-1.65,sideZ:2.44,sideY:.59,
+    topY:2.84,bottomY:ris?-1.47:-1.65,sideZ:2.39,sideY:.59,
     coverSides:covered},material[0]);
   // A single understated front cap makes the rail read as an attached
   // fore-end rather than a row of free-floating toy blocks.
-  gb(end-.13,.04,0,.27,2.80,ris?3.35:3.15,0);
+  gb(end-.13,ris?.14:.04,0,.27,ris?2.55:2.80,
+   ris?3.35:3.15,0);
   if(covered){
    // Cover occupies its own rail section; no side teeth underneath.
    for(const side of [-1,1])gb(center,.10,side*2.39,
@@ -299,8 +304,10 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   };
   if(barrelArt.profile==='spr'){
    // Distinctive long SPR collar and two-stage precision brake.
-   b('barrel',tip-1.48,AR_VISUAL_AXIS_Y,0,.58,2.02,2.05,1);
-   b('barrel',tip-.57,AR_VISUAL_AXIS_Y,0,1.14,1.70,1.85,0);
+   b('barrel',tip-1.45,AR_VISUAL_AXIS_Y,0,.78,2.05,2.07,1);
+   b('barrel',tip-.70,AR_VISUAL_AXIS_Y,0,1.40,1.72,1.87,0);
+   addWeaponPixelMarkPair(root,'ar-spr-ports',tip-.63,
+    AR_VISUAL_AXIS_Y,1.01,.90,.59);
   }else if(barrelArt.profile==='cqb'){
    // Keep 10.3-inch Mk18's tiny but visible exposed nose OUT of RIS II.
    birdcage(1.30,1.95,2.02);

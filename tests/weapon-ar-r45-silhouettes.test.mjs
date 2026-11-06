@@ -71,7 +71,7 @@ test('R4.5 receiver loses rear block and trigger-guard bar, gains handle and ass
   close(x.position.y,1.59)&&x.geometry.parameters.depth>=3.9),
   'low horizontal rear charging handle');
  assert.ok(receiver.some(x=>x.userData.arForwardAssist&&
-  x.geometry.type==='ExtrudeGeometry'&&x.position.z>1.8),
+  x.geometry.type==='ExtrudeGeometry'&&x.rotation.y>.12),
   'single shallow angled forward assist, no dotted box');
  assert.equal(boxes.filter(x=>close(x.position.x,-5.7)&&
   x.geometry.parameters.height>3).length,0,'old tall rear lump removed');
@@ -88,7 +88,7 @@ test('R4.6 constant-width STANAG art has metal ribs but no PMAG panel',()=>{
   assert.ok(mag.max.x-mag.min.x>=3.3,id+' broad side profile');
   assert.ok(mag.max.z-mag.min.z<=2.18,id+' slim Z');
   const meshes=group.children.filter(x=>x.name.startsWith('family-magazine-'));
-  assert.equal(meshes.length,id==='ar-mk18'?4:3,
+  assert.equal(meshes.length,id==='ar-mk18'?2:3,
    id+' has body plus stamped geometry or molded toe');
   assert.equal(group.children.filter(x=>x.name==='family-art-ar-poly-panel').length,0,
    'no fake side panel on the poly mag');
@@ -99,10 +99,15 @@ test('R4.6 constant-width STANAG art has metal ribs but no PMAG panel',()=>{
 });
 test('R4.6 plastic ribs and four-sided instanced rails remain visually distinct',()=>{
  for(const [id,mark] of [
-  ['ar-m16a1','a1-vents'],['ar-m16a2','poly-ribs'],
-  ['ar-car15','car-ribs'],['ar-mk12mod0','pri-vents']]){
+  ['ar-m16a1','a1-vents'],['ar-mk12mod0','pri-vents']]){
   const {group}=model(id);
-  assert.ok(has(group,mark),id+' proper restrained surface art');
+  assert.ok(has(group,mark),id+' keeps essential dark openings');
+  clearWeaponSilhouette(group);
+ }
+ for(const [id,count] of [['ar-m16a2',7],['ar-car15',5],['ar-colt733',4]]){
+  const {group}=model(id);
+  const ribs=group.children.find(x=>x.userData.arPolymerRibs);
+  assert.equal(ribs?.userData.arRibBandCount,count,id+' real molded ribs');
   clearWeaponSilhouette(group);
  }
  for(const id of ['ar-m16a4','ar-m4a1','ar-mk18']){

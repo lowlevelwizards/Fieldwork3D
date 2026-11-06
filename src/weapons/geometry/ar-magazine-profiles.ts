@@ -2,6 +2,8 @@
  * construction as the successful AK silhouette family.
  * All lengths are WEAPON-LOCAL game art, not physical magazine specifications.
  */
+import * as THREE from 'three';
+import type {SlotName} from './profile-primitives.ts';
 export type Point2=readonly [number,number];
 export type ARMagazineStyle='20'|'30'|'poly';
 export type ARMagazineCurve={
@@ -74,4 +76,33 @@ export function arMagazinePolyLowerFacet(c:ARMagazineCurve):Point2[]{
   [b.x+b.nx*c.width*.44,b.y+b.ny*c.width*.44],
   [a.x+a.nx*c.width*.39,a.y+a.ny*c.width*.39]
  ];
+}
+
+/** One faceted, slightly tapered three-dimensional polymer magazine body.
+ * XY centerline and width stay identical to the metal STANAG; only Z depth
+ * narrows toward the toe. This replaces floating applied side panels.
+ */
+export function addARPolymerMagazineBody(root:THREE.Group,slot:SlotName,
+ id:string,index:number,c:ARMagazineCurve,material:THREE.Material){
+ const outline=arMagazineOutline(c),shape=new THREE.Shape();
+ const [first,...rest]=outline;
+ shape.moveTo(first[0],first[1]);
+ for(const [x,y] of rest)shape.lineTo(x,y);
+ shape.closePath();
+ const geometry=new THREE.ExtrudeGeometry(shape,{
+  depth:c.depth,steps:1,bevelEnabled:false,curveSegments:1
+ });
+ geometry.translate(0,0,-c.depth/2);
+ const positions=geometry.getAttribute('position');
+ for(let i=0;i<positions.count;i++){
+  const t=Math.max(0,Math.min(1,
+   (c.topY-positions.getY(i))/c.length));
+  positions.setZ(i,positions.getZ(i)*(1-.14*Math.pow(t,1.4)));
+ }
+ positions.needsUpdate=true;geometry.computeVertexNormals();
+ const mesh=new THREE.Mesh(geometry,material);
+ mesh.name='family-'+slot+'-'+id+'-'+index;
+ mesh.userData.arPolymerTaper=true;
+ mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
+ return mesh;
 }
