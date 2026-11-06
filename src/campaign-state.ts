@@ -15,7 +15,7 @@ import {progressOperator,type OperatorPerformance,type SkillGains} from './campa
 import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from './equipment-presets.ts';
 import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 import {clampFlashUse} from './equipment-supply.ts';
-import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
+import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,WEAPON_ATTACHMENT_SLOTS,
  selectWeaponFamilyPreset,setConfiguredFamilyPart,sameWeaponConfiguration,
  type WeaponConfiguration,type WeaponAttachmentSlot}
