@@ -5,7 +5,7 @@ import {activateSite} from '../src/breach-core.ts';
 import {generateSite} from '../src/breach-site.ts';
 import {newSession,team,enemies,availableDeployments,selectDeployment}
   from '../src/breach-game.ts';
-import {captureMissionStart,siteForMissionRestart}
+import {captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam}
   from '../src/breach-mission-restart.ts';
 
 test('RESTART preserves resolved site, enemy setup, rules and deployment',()=>{
@@ -13,6 +13,7 @@ test('RESTART preserves resolved site, enemy setup, rules and deployment',()=>{
   const site=generateSite(12,'small');
   const original=newSession(1,12,'exterior-known','small','intel',site);
   original.lightingMode='night';
+  team(original)[0].magazine=7; // an actual pre-GO kit choice
   const alternate=availableDeployments(original).find(o=>o.id!=='FRONT');
   const entryId=alternate?.id??'FRONT';
   if(entryId!=='FRONT')assert.equal(selectDeployment(original,entryId),true);
@@ -27,6 +28,7 @@ test('RESTART preserves resolved site, enemy setup, rules and deployment',()=>{
   original.site.enemies[0].x+=51;
   original.doors[0].open=true;
   original.operators[0].health=0;
+  team(original)[0].magazine=0;
   original.started=true;
   original.missionType='capture';
   original.intel.mode='full-view';
@@ -35,6 +37,7 @@ test('RESTART preserves resolved site, enemy setup, rules and deployment',()=>{
   const repeated=newSession(start.variant,start.seed,start.intelMode,
     start.scale,start.missionType,restoredSite);
   repeated.lightingMode=start.lightingMode;
+  restoreMissionStartingTeam(repeated,start);
   if(start.entryId!=='FRONT')
    assert.equal(selectDeployment(repeated,start.entryId),true);
   assert.deepEqual(repeated.site,expectedSite);
@@ -44,6 +47,8 @@ test('RESTART preserves resolved site, enemy setup, rules and deployment',()=>{
   assert.equal(repeated.intel.mode,'exterior-known');
   assert.equal(repeated.lightingMode,'night');
   assert.deepEqual(team(repeated).map(a=>a.p),expectedFriendly);
+  assert.equal(team(repeated)[0].magazine,7);
+  assert.equal(team(repeated)[0].health,4);
   assert.deepEqual(enemies(repeated).map(a=>({
    id:a.id,p:a.p,heading:a.heading,health:a.health,weapon:a.weapon
   })),expectedHostiles);
