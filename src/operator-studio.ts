@@ -3,6 +3,10 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {inspectOperatorLighting,formatOperatorLightingReport}
+ from './operator-lighting-inspector.ts';
+import {applyStudioSelfShadowAtlases}
+ from './operator-gear-lightmap-atlas.ts';
 import {OperatorStudioLighting} from './operator-studio-lighting.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
@@ -123,6 +127,35 @@ const scene=new THREE.Scene();
 scene.background=new THREE.Color(0xc4c7bd);
 // R5 Studio shadows are isolated from the shared thumbnail scene.
 const studioLighting=new OperatorStudioLighting(scene,renderer,location.search);
+const lightingInspectorOutput=(()=>{
+ if(params.get('operatorLightingDebug')!=='1')return null;
+ stage.style.position='relative';
+ const panel=document.createElement('section');
+ panel.style.cssText='position:absolute;left:8px;top:8px;z-index:8;'+
+  'max-width:280px;max-height:56%;overflow:auto;padding:8px;'+
+  'color:#edf0e5;background:rgba(14,31,27,.94);border:1px solid #76887b;'+
+  'border-radius:7px;font:11px/1.35 monospace;';
+ const toggle=document.createElement('input');
+ toggle.type='checkbox';toggle.checked=studioLighting.diagnostics.shadowEnabled;
+ toggle.disabled=studioLighting.mode==='legacy';
+ const label=document.createElement('label');
+ label.style.cssText='display:flex;align-items:center;gap:5px;';
+ label.append(toggle,'Live directional shadows');
+ toggle.addEventListener('change',()=>{
+  studioLighting.setLiveShadows(toggle.checked);renderScene();
+ });
+ const refresh=document.createElement('button');
+ refresh.textContent='Rebuild shadow';
+ refresh.style.cssText='margin:6px 0;padding:4px 8px;'+
+  'background:#385449;color:white;border:1px solid #98aaa0;';
+ refresh.addEventListener('click',()=>{
+  studioLighting.invalidateGeometry();renderScene();
+ });
+ const output=document.createElement('pre');
+ output.style.cssText='margin:6px 0 0;white-space:pre-wrap;';
+ panel.append(label,refresh,output);stage.append(panel);
+ return output;
+})();
 const floor=new THREE.GridHelper(160,16,0x9fa69d,0xb1b6ae);
 floor.position.y=-.2;scene.add(floor);
 const camera=new THREE.OrthographicCamera(-22,22,30,-30,.1,600);
@@ -192,6 +225,12 @@ function renderScene(){
  canvas.dataset.drawCalls=String(renderer.info.render.calls);
  canvas.dataset.operatorLighting=studioLighting.mode;
  canvas.dataset.shadowMapSize=String(studioLighting.shadowSize);
+ if(lightingInspectorOutput){
+  const report=inspectOperatorLighting(rig?.root??null);
+  lightingInspectorOutput.textContent=formatOperatorLightingReport(report)+
+   '\nDraw calls: '+renderer.info.render.calls+
+   '\nLive shadow: '+(studioLighting.diagnostics.shadowEnabled?'on':'off');
+ }
 }
 controls.addEventListener('change',renderScene);
 new ResizeObserver(resize).observe(stage);
@@ -312,6 +351,11 @@ function posePreview(){
   unarmedPreview:true,equipment:inspectKit(reference?.kit??p.loadout),
   wardrobe:inspectWardrobe(reference?.wardrobe??previewWardrobe())
  },0);
+ if(params.get('operatorLightingAtlas')==='1'){
+  const atlasResult=applyStudioSelfShadowAtlases(rig.root);
+  canvas.dataset.operatorAtlasBytes=String(atlasResult.bytes);
+  canvas.dataset.operatorAtlasCount=String(atlasResult.atlases);
+ }
  studioLighting.invalidateGeometry();
  renderScene();
 }

@@ -113,7 +113,8 @@ export function bakeGearContactAO(group:THREE.Group):number{
   return {mesh,local,normalMatrix:new THREE.Matrix3().getNormalMatrix(local),
    box,center:box.getCenter(new THREE.Vector3()),partId};
  });
- const p=new THREE.Vector3(),n=new THREE.Vector3();
+ const p=new THREE.Vector3(),n=new THREE.Vector3(),
+  rayOrigin=new THREE.Vector3();
  let touched=0;
  for(const part of parts){
   if(Array.isArray(part.mesh.material))continue;
@@ -163,7 +164,7 @@ export function bakeGearContactAO(group:THREE.Group):number{
    // Bake cast shadows ON the base panel under projecting pockets and
    // straps. Three rays create a cheap fixed-light soft penumbra; never
    // sample this from a light or raycaster during gameplay.
-   const rayOrigin=p.clone().addScaledVector(n,.05);
+   rayOrigin.copy(p).addScaledVector(n,.05);
    let ownHits=0,externalHits=0;
    for(const light of KEY_RAYS){
     if(n.dot(light)<.035)continue;

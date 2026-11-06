@@ -57,3 +57,60 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 ## Still pending
 - Full attachment-zone relationship graph, arm/armpit and thigh dynamic
   receiving policies, high-resolution UV atlas proof and device screenshots.
+
+## R5.3-B semantic inter-assembly shadow graph (2026-11-06)
+- Assign explicit receiver roles for armor, rig, uniform, shirt, backpack.
+- Distinguish caster types for each overlapping outfit; reject invalid pairs.
+- Preserve unmerged per-part roles, and exclude invisible caster alternatives.
+- Each physical pairing has tuned proximity radius, contact/cast strength and reach.
+- Preserve legacy untyped callers and R4 bake tests; colors/UV remain untouched.
+- Remove the remaining per-mesh vertical darkening inside directional cast,
+  leaving operator-height-lighting solely responsible for the lower gradient.
+- Test invalid receiver rejection, rear-pack contact, restored baseline,
+  hidden alternate geometry and unchanged camouflage swatches.
+
+## R5.2-B retain per-piece grayscale lighting masks through iOS geometry batching
+- Merge outputs now retain CPU-only Uint8 self/external occlusion channels,
+  indexed/non-indexed vertex remapping, and per-part span metadata.
+- No additional GPU attributes, shader work, materials, meshes or draw calls.
+- Missing mask inputs allocate nothing; UVs and grayscale vertex-color AO remain unchanged.
+- Focused tests enforce byte-perfect mapping for mixed indexed/flat meshes.
+- True UV1 lightmap atlas GPU delivery remains a later visual experiment.
+
+## R5.6-A opt-in Studio lighting diagnostic (2026-11-06)
+- `?operatorLightingDebug=1` draws a small developer-only overlay.
+- Report visible unique geometries, draw calls, logical part spans,
+  and shaded sample coverage/max/mean per CPU self/contact/cast mask.
+- A live directional-shadow toggle and shadow rebuild control allow fast A/B.
+- No effect on normal Studio UI or gameplay, no GPU readback or extra draw calls.
+- CPU mask inspector ignores hidden alternate kits and duplicate shared geometries.
+- This is a diagnostic foundation; full per-layer compositing controls follow
+  after the shader/lightmap atlas visual experiment.
+
+## R5.3-C allocation-free geometry contact bake
+- Remove per-vertex/per-caster temporary arrays from cross-gear contact.
+- Move shadow-axis iteration data to a shared constant.
+- Reuse vector scratch space in each fitted assembly's self AO bake.
+- Preserve identical proximity/contact math, strength and geometry bounds.
+- Focused tests compare the single-box loop against the legacy API across
+  hundreds of positions, face normals, and three contact radii.
+
+## R5.2-C experimental UV1 self-lightmap atlas (debug opt-in ONLY)
+- `?operatorLightingAtlas=1` generates one native MeshStandardMaterial AO texture
+  per currently selected merged material bucket when same-part subpieces exist.
+- Exact 16px per-face texel sampling of semantic pouch body/flap volumes,
+  with separate `uv1` and unchanged original camouflage `uv` and byte AO.
+- Native aoMap uses a restrained .25 strength while the older self vertex
+  shading remains present; NOT enabled by default due double-shading risk.
+- One single-channel R8 texture, no new meshes, with 8 MiB studio debug cap
+  and cleanup on material dispose; outfit color/maps synchronize with clones.
+- This is a Studio A/B prototype, not a production-approved replacement;
+  promote only after removing duplicate self AO and mobile performance review.
+
+## R5.2-D actual browser atlas proof gate
+- Add a narrow conditional R5 Studio smoke step to the *existing* mobile
+  Studio workflow: compile WebGL UV1/AO, preview OCP Infantry reference and
+  assert at least one atlas, under 8 MiB, no shader errors or blank capture.
+- Screenshot captured to the existing `operator-studio-captures` artifact.
+- Uses the same installed Playwright browser, no new independent workflow.
+- Atlas remains debug-only; visual approval still required before default use.
