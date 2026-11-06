@@ -3,16 +3,20 @@
  * This is real-time capture, not frame-accurate offline Studio Export.
  */
 export const QUICK_VIDEO_SECONDS=20;
+/** Canvas capture encoders need more than an instantaneous terminal frame. */
+export const MIN_VIDEO_WALL_MS=1800;
 
 export function replayVideoMime(
   supports:(mime:string)=>boolean
 ):string|null{
+  // Prefer WebM in Chromium: advertised MP4 support may still produce
+  // an empty blob for short canvas captures. Safari uses MP4 fallback.
   for(const mime of [
-    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
-    'video/mp4',
-    'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
-    'video/webm'
+    'video/webm;codecs=vp9,opus',
+    'video/webm',
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4'
   ])if(supports(mime))return mime;
   return null;
 }
@@ -28,6 +32,9 @@ export class ReplayQuickVideo{
   private stopping=false;
   private since=0;
   private mime='';
+  private startedWall=0;
+  private endOfFilm=false;
+  private capturedFrames=0;
   private readonly onComplete:(file:Blob,mime:string)=>void;
   private readonly onError:(reason:string)=>void;
   constructor(onComplete:(file:Blob,mime:string)=>void,
@@ -36,6 +43,7 @@ export class ReplayQuickVideo{
     this.onError=onError;
   }
   get active(){return !!this.recorder&&!this.stopping;}
+  get pendingEnd(){return this.endOfFilm;}
   start(time:number,viewport:{width:number;height:number},
     audioStream:MediaStream|null=null):boolean{
     if(this.recorder||typeof MediaRecorder==='undefined')return false;
@@ -58,6 +66,8 @@ export class ReplayQuickVideo{
       this.canvas=video;this.ctx=ctx;
       this.recorder=recorder;this.parts=[];this.stopping=false;
       this.since=time;this.mime=mime;
+      this.startedWall=performance.now();this.endOfFilm=false;
+      this.capturedFrames=0;
       recorder.ondataavailable=event=>{
         if(event.data.size)this.parts.push(event.data);
       };
@@ -72,7 +82,7 @@ export class ReplayQuickVideo{
         if(blob.size)this.onComplete(blob,mimeOut);
         else this.onError('EMPTY VIDEO RECORDING');
       };
-      recorder.start(1000);
+      recorder.start(500);
       return true;
     }catch{
       this.cleanup();return false;
@@ -94,7 +104,17 @@ export class ReplayQuickVideo{
     ctx.fillStyle='#12201fbd';ctx.fillRect(18,14,272,36);
     ctx.fillStyle='#e4d8c0';ctx.font='600 18px monospace';
     ctx.fillText('FIELDWORK  ·  REPLAY',28,39);
-    if(time-this.since>=QUICK_VIDEO_SECONDS)this.stop();
+    this.capturedFrames++;
+    if(time-this.since>=QUICK_VIDEO_SECONDS)this.finishAtEnd();
+    if(this.endOfFilm&&this.capturedFrames>=2&&
+      performance.now()-this.startedWall>=MIN_VIDEO_WALL_MS)this.stop();
+  }
+  /** Hold the last battlefield frame while the browser encoder receives
+   * enough real-time frames to finalize even a 0.3s terminal replay.
+   * This does not lengthen or change the authoritative mission recording.
+   */
+  finishAtEnd():void{
+    if(this.recorder)this.endOfFilm=true;
   }
   stop():void{
     if(!this.recorder||this.stopping)return;
@@ -108,6 +128,7 @@ export class ReplayQuickVideo{
   }
   private cleanup():void{
     for(const track of this.stream?.getTracks()??[])track.stop();
+    this.endOfFilm=false;this.capturedFrames=0;
     this.recorder=null;this.stream=null;this.canvas=null;this.ctx=null;
     this.parts=[];this.stopping=false;
   }
