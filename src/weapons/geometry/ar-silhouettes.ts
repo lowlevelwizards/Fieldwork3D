@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
 import {AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE} from './weapon-visual-palette.ts';
-import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate} from './ar-magazine-profiles.ts';
+import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate,arMagazinePolyLowerFacet} from './ar-magazine-profiles.ts';
 import {addARRailSegments} from './ar-rail-profiles.ts';
 import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
@@ -102,12 +102,15 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    // Simplified M4 shell: full-length FLAT comb, short flat rear
    // heel and one bold diagonal joining its forward collar.
    [[rear,1.47],[front,1.47],[front,-.75],
-    [rear+2.0,-4.55],[rear+.28,-4.55],[rear,-4.13]]:
+    [rear+2.0,-4.17],[rear+.30,-4.17],[rear,-3.82]]:
    // Early sliding Fiberlite shape is simpler and visually lighter.
    // Retro CAR: single thick shape; the lower diagonal reads as a shadow.
    [[rear,.72],[front,.67],[front,-1.24],
     [rear+1.35,-2.40],[rear,-1.98]],
    compact?3.35:m4?3.25:3.0,compact?2:1);
+  if(!compact&&!m4)
+   // One thick flat Fiberlite buttpad, same on CAR-15 and Colt 733.
+   b('stock',rear+.06,-.62,0,.25,2.56,3.04,0);
  }
 
  // Pistol grips share the same root, but the modern shape has a fuller heel.
@@ -138,7 +141,15 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   rib.castShadow=false;rib.receiveShadow=false;
  }
  if(magStyle==='poly'){
-  // Substantial near-tan bottom cap follows the same tangent and toe angle.
+  // One quiet molded lower bevel on EACH side, not a square applied panel.
+  const polyFacet=arMagazinePolyLowerFacet(curve);
+  for(const side of [-1,1]){
+   const bevel=addOutline(root,'magazine',mag,index.magazine++,
+    polyFacet,.13,material[0]);
+   bevel.position.z=side*(m.magazineDepthZ/2+.05);
+   bevel.castShadow=false;bevel.receiveShadow=false;
+  }
+  // The substantial tan lower plate remains tangent to the curved toe.
   addOutline(root,'magazine',mag,index.magazine++,
    arMagazinePolyBaseplate(curve),m.magazineDepthZ+.12,AR_MUTED_FDE);
  }
