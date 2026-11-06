@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 export type WeaponMark='ar-port'|'ak-selector'|'ris-panel';
 const dimensions:Record<WeaponMark,readonly [number,number]>={
- 'ar-port':[16,8],'ak-selector':[16,8],'ris-panel':[32,8]
+ 'ar-port':[16,12],'ak-selector':[16,8],'ris-panel':[32,8]
 };
 const shared=new Map<WeaponMark,THREE.MeshBasicMaterial>();
 function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
@@ -18,8 +18,11 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   data[n]=rgb[0];data[n+1]=rgb[1];data[n+2]=rgb[2];data[n+3]=210;
  };
  if(mark==='ar-port'){
-  for(let y=2;y<=5;y++)for(let x=2;x<=13;x++)pixel(x,y);
-  for(let x=2;x<=13;x++)pixel(x,1,true);
+  // A tall receiver-side rectangle with one illuminated upper seam.
+  // Previously only its hairline highlight was legible on a phone.
+  for(let y=2;y<=9;y++)for(let x=2;x<=13;x++)pixel(x,y);
+  for(let x=2;x<=13;x++)pixel(x,2,true);
+  for(let x=3;x<=12;x++)pixel(x,9,true);
  }else if(mark==='ak-selector'){
   for(let y=2;y<=5;y++)for(let x=2;x<=5;x++)pixel(x,y,true);
   for(let x=6;x<=13;x++)pixel(x,3+Math.floor((x-6)/4));
