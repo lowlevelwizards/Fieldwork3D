@@ -8,7 +8,7 @@ import {AK_WARM_RESIN,AK_WOOD_AMBER,AK_WOOD_RED,
  AK_PLUM_POLYMER,AK_MAG_RIB} from './weapon-visual-palette.ts';
 import {AK_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
-import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
+import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
 import {akMagazineCurve,akMagazineOutline,akMagazineRibOutlines}
  from './ak-magazine-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './ak-barrel-profiles.ts';
@@ -97,7 +97,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
 
  // Two small exterior clues: a selector toward the rear and an ejection
  // mark above the magazine. Never confuse these with gameplay anatomy.
- addWeaponPixelMark(root,'ak-selector',-.86,-.39,1.98,3.20,.96);
+ // Slightly rearward, taller selector: one substantial stamped lever.
+ addWeaponPixelMark(root,'ak-selector',-1.40,-.35,1.98,3.36,1.20);
  // Classic AKM/74/RPK covers: three broad silver bands across the TOP,
  // set into its surface. Do not apply to modern smooth or hinged 74U roofs.
  if(parts.receiver==='akm'||parts.receiver==='ak74'||rpk){
@@ -115,10 +116,10 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }
  addWeaponPixelMark(root,'ak-port',m.portX,m.portY,1.98,
   m.portWidthX,m.portHeightY);
- // One open concave U: trigger guard reads as negative space, not hardware.
- p('receiver',[[-2.96,-2.04],[-2.65,-2.04],
-  [-2.65,-2.53],[-1.03,-2.53],[-1.03,-2.04],
-  [-.73,-2.04],[-.73,-2.83],[-2.96,-2.83]],1.65,1);
+ // Quiet lower receiver construction: two rivets and one broad stamped
+ // relief, authored as ONE texture per side. No added trigger guard.
+ addWeaponPixelMarkPair(root,'ak-receiver-stamp',
+  -1.08,-1.55,1.98,8.4,.60);
 
  // Stock types are visually disparate; the skeletal type MUST stay hollow.
  const stock=parts.stock;
@@ -200,8 +201,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const grip=parts.grip,gripWood=grip.startsWith('ak-grip-wood'),
  resin=grip==='ak-grip-bakelite';
  // Rake remains distinct from the AR, but its slimmer root sits at the rear.
- p('grip',shiftProfile([[-3.35,-1.65],[-.8,-1.65],[-1.1,-5.65],
-  [-2.25,-6.1],[-3.55,-5.7]],m.gripShiftX),
+ p('grip',shiftProfile([[-3.18,-1.65],[-.96,-1.65],[-1.18,-5.65],
+  [-2.22,-6.10],[-3.39,-5.7]],m.gripShiftX),
   m.gripDepthZ,gripWood||resin?2:1);
 
  // The 3D sides narrow along Z; their side-view curve remains broad.
@@ -242,6 +243,11 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [[start,-1.29],[start+.75,.97],[end-.7,.99],
     [end,-.22],[end-.5,-1.46],[start+.45,-1.46]],3.48,
    woodGuard?2:1);
+ // A short rearward lower furniture heel seats into the receiver's
+ // bottom-front cheek. It is a material-matched shape, not a metal spacer.
+ p('handguard',[[start+.40,-1.34],[start+1.33,-1.45],
+  [start+1.28,-1.91],[start+.67,-2.00],
+  [start+.29,-1.80]],3.40,woodGuard?2:1);
  // Two clean lengths of furniture; the receiver encloses the rear joint.
  // The former tall metal collar created a floating grey slab and is REMOVED.
  // Keep the thin horizontal opening between upper and lower wood/polymer.
