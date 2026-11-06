@@ -39,9 +39,17 @@ test('eight difficult loadouts prefer valid physical two-handed ready',()=>{
    armor:poseClearanceEnvelope(armor,rig,top),nominalYaw:0,
    onDiagnostics:stats=>console.log('POSE-V2-REJECTIONS',id,armor,JSON.stringify(stats))});
   const mode=solution?.mode??'unresolved';
+  const elbows=solution?.arms.map((arm,i)=>({
+   drop:Number((shoulders[i].y-arm.joint.y).toFixed(2)),
+   flare:Number(((i===0?-1:1)*(arm.joint.z-shoulders[i].z)).toFixed(2)),
+   forward:Number((arm.joint.x-shoulders[i].x).toFixed(2)),
+   flex:Number((arm.angle*180/Math.PI).toFixed(1))
+  }));
   console.log('POSE-V2',id,armor,rig,top,mode,
    'hard',solution?.penetration??'none',
    'soft',solution?.softContact??'none',
+   'elbows',JSON.stringify(elbows),
+   'stock',solution?.fit.stock.toArray().map(n=>n.toFixed(2)).join(',')??'N/A',
    'candidates',solution?.candidates??0);
   if(solution?.status!=='clear'||!solution.fit.twoHanded){
    failed.push(id+'/'+armor+': '+mode);
