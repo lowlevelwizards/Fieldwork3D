@@ -167,7 +167,8 @@ export function authoredCollarShadowBoxes(model:THREE.Group,
  const inverse=new THREE.Matrix4().copy(chest.matrixWorld).invert();
  const boxes:ShadowBox[]=[];
  model.traverse(child=>{
-  if(!(child instanceof THREE.Mesh)||!child.userData.armorCollarPiece)return;
+  if(!(child instanceof THREE.Mesh)||!child.visible||
+   !child.userData.armorCollarPiece)return;
   const geometry=child.geometry;
   if(!geometry.boundingBox)geometry.computeBoundingBox();
   if(!geometry.boundingBox)return;
