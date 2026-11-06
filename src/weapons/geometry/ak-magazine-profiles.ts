@@ -14,7 +14,7 @@ export function akMagazineCurve(style:AKMagazineStyle,
  const dimensions={
   '762':{length:6.05,sweep:2.65,power:1.50},
   '545':{length:5.55,sweep:1.44,power:1.48},
-  'rpk45':{length:7.50,sweep:2.28,power:1.55}
+  'rpk45':{length:8.25,sweep:2.52,power:1.55}
  } as const;
  return {style,topX,topY,width,depth,...dimensions[style]};
 }
@@ -45,8 +45,8 @@ export function akMagazineOutline(c:AKMagazineCurve):Pt[]{
 export function akMagazineRibOutlines(c:AKMagazineCurve):Pt[][]{
  if(c.style!=='762')return [];
  return [-.17,.17].map(offset=>{
-  const ts=[.18,.4,.62,.84];
-  const half=.105;
+  const ts=[.055,.32,.58,.90];
+  const half=.205;
   const left:Pt[]=[],right:Pt[]=[];
   for(const t of ts){
    const p=akMagazineSample(c,t);
