@@ -1210,6 +1210,9 @@ jobs:
       - name: Briefing blur layering — focused CSS stack guard
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/breach-briefing-blur-layer-') }}
         run: node --test tests/briefing-shield-layering.test.mjs
+      - name: HK factory model browser visible and selectable
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/hk-g3-factory-browser-') }}
+        run: node --experimental-strip-types --test tests/weapon-hk-browser.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

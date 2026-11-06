@@ -859,7 +859,7 @@ function renderOperationsBoard(){
   // Legacy WeaponId remains internal simulation/persistence compatibility.
   const modelHint=document.createElement('small');
   modelHint.className='fw-weapon-section-label';
-  modelHint.textContent='SELECT AN AR / AK VARIANT · FACTORY MODEL + PARTS';
+  modelHint.textContent='SELECT AN AR / AK / HK VARIANT · FACTORY MODEL + PARTS';
   loadout.field('weapon').append(modelHint);
   const activePreset=member.weaponConfiguration.build?
    matchingFamilyPreset(member.weaponConfiguration.build):undefined;
