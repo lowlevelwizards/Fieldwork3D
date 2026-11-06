@@ -51,3 +51,42 @@ export function addHKFacetedForearm(
  mesh.castShadow=true;mesh.receiveShadow=true;
  root.add(mesh);return mesh;
 }
+
+/** M16A1-style handguard openings, widened and drawn on actual flat sides.
+ * Four simple dark quads per side, batched into just two meshes total.
+ * They are art-only recesses, not physical cavities.
+ */
+const HK_VENT_MATERIAL=new THREE.MeshBasicMaterial({
+ color:0x121a16,side:THREE.DoubleSide,depthWrite:false,
+ polygonOffset:true,polygonOffsetFactor:-1
+});
+export function addHKHandguardOpenings(root:THREE.Group,
+ start:number,end:number,early:boolean):THREE.Mesh[]{
+ const rz=early?1.50:1.55;
+ const xs=[0,1,2,3].map(i=>THREE.MathUtils.lerp(
+  start+1.42,end-3.46,i/3));
+ const width=early?1.04:1.10;
+ const height=early?.86:.73;
+ const result:THREE.Mesh[]=[];
+ for(const side of [1,-1]){
+  const z=side*(rz+.018),vertices:number[]=[],indices:number[]=[];
+  for(const x of xs){
+   const y=-.22,first=vertices.length/3;
+   vertices.push(
+    x-width/2,y-height/2,z,x+width/2,y-height/2,z,
+    x+width/2,y+height/2,z,x-width/2,y+height/2,z);
+   indices.push(first,first+1,first+2,first,first+2,first+3);
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+  geo.setIndex(indices);geo.computeVertexNormals();
+  const mesh=new THREE.Mesh(geo,HK_VENT_MATERIAL);
+  mesh.name='family-art-hk-handguard-openings';
+  mesh.userData.weaponPixelArt=true;
+  mesh.userData.hkVentSide=side;mesh.userData.hkVentCount=xs.length;
+  mesh.userData.hkFaceAligned=true;
+  mesh.castShadow=false;mesh.receiveShadow=false;mesh.renderOrder=3;
+  root.add(mesh);result.push(mesh);
+ }
+ return result;
+}
