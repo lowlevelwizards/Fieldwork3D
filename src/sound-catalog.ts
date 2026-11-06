@@ -40,13 +40,13 @@ boot|Generic boot step;tile|Tile step;wood_floor|Wood floor step;concrete|Concre
  {group:'equipment',family:'mechanism',live:'reload,flash_throw',items:`
 reload|Reload cycle;mag_out|Magazine out;mag_in|Magazine seat;bolt_release|Bolt release;charging_handle|Charging handle;safety|Safety selector;dry_fire|Dry trigger;empty_click|Empty magazine click;weapon_raise|Weapon raise;weapon_lower|Weapon lower;weapon_swap|Weapon swap;flash_throw|Flashbang throw;flash_pin|Flash pin;flash_bounce|Flash bounce;radio_click|Radio PTT;radio_static|Radio static;med_kit|Medical kit;bandage|Bandage wrap;plate_impact|Armor strike;kit_pickup|Pick up equipment;rig_buckle|Buckle;zipper|Zipper;holster|Holster;flashlight_click|Weapon light switch;mag_drop|Dropped magazine;case_drop|Casing bounce
 `},
- {group:'weapons',family:'shot',live:'smg,carbine,rifle,shotgun',items:`
+ {group:'weapons',family:'shot',live:'smg,carbine,rifle,shotgun,smg_suppressed,carbine_suppressed,rifle_suppressed,shotgun_suppressed',items:`
 smg|SMG shot;carbine|Carbine shot;rifle|Rifle shot;shotgun|Shotgun blast;smg_suppressed|Suppressed SMG;carbine_suppressed|Suppressed carbine;rifle_suppressed|Suppressed rifle;shotgun_suppressed|Suppressed shotgun;pistol|Pistol shot;pistol_suppressed|Suppressed pistol;burst|Short burst;automatic|Automatic fire;distant_fire|Distant gunfire;indoor_tail|Indoor gunfire tail;outdoor_tail|Outdoor gunfire tail;ricochet|Ricochet;bullet_whiz|Bullet flyby;subsonic|Subsonic shot;shotgun_pump|Shotgun pump;bolt_cycle|Rifle bolt;mech_cycle|Action cycling;muzzle_pop|Muzzle pop
 `},
  {group:'impacts',family:'impact',live:'body_hit',items:`
 body_hit|Audible close impact;concrete|Concrete bullet impact;brick|Brick chip;drywall|Drywall impact;plaster|Plaster crumble;wood|Wood splinter;metal|Metal strike;glass|Glass hit;glass_break|Glass shatter;car_glass|Vehicle glass;tile|Tile break;dirt|Dirt strike;water|Water splash;armor|Ballistic armor impact;furniture|Furniture hit;debris|Falling debris;ricochet|Metal ricochet;bullet_thud|Low-frequency bullet impact
 `},
- {group:'doors',family:'door',live:'open,kick_resisted,forced_open,kick',items:`
+ {group:'doors',family:'door',live:'open,close,kick_resisted,forced_open,kick',items:`
 open|Door open;close|Door close;creak|Door creak;handle|Handle turn;latch|Latch;unlock|Unlock;lock|Lock;hinge|Hinge squeak;kick|Door kick;kick_resisted|Failed door kick;forced_open|Force door open;battering_ram|Ram strike;breach_charge|Breaching charge;wood_break|Door wood fracture;metal_door|Heavy metal door;double_door|Double doors;glass_door|Glass door;window_open|Open window;window_break|Break window;wedge|Door wedge;door_bump|Body pushes door;door_slam|Door slam
 `},
  {group:'combat',family:'impact',live:'flash,hit,flash_out',items:`
