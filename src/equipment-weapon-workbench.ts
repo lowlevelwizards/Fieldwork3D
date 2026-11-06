@@ -14,6 +14,9 @@ import {workbenchVisualAnchors}
  from './weapons/geometry/weapon-visual-anchors.ts';
 import {weaponVisualLayout}
  from './weapons/geometry/weapon-visual-layout.ts';
+import {workbenchFitDistance}
+ from './weapons/geometry/weapon-workbench-camera-fit.ts';
+export type WeaponWorkbenchViewState={yaw:number;pitch:number;distance:number;in2D:boolean};
 
 export class WeaponWorkbenchPreview{
  private renderer:THREE.WebGLRenderer|null=null;
@@ -50,6 +53,7 @@ export class WeaponWorkbenchPreview{
  private yaw=.15;
  private pitch=.17;
  private distance=51;
+ private autoFitPending=true;
  private visibleMounts:WorkbenchMount[]=[];
  private dragDistance=0;
  private pinchDistance=0;
@@ -167,6 +171,7 @@ export class WeaponWorkbenchPreview{
   // Match the same longitudinal scale already used by the actual operator rig.
   const layout=weaponVisualLayout(config);
   this.model.scale.x=layout.longitudinalScale;
+  this.autoFitPending=true;
   this.mode=config.build?'body':'attachments';
   this.active=config.build?'body-receiver':'optic';
   this.rebuildMounts();
@@ -175,6 +180,18 @@ export class WeaponWorkbenchPreview{
   this.choiceSubtitle.textContent='Tap a white dot on the weapon to see replacement options.';
   this.choiceGrid.replaceChildren();
   this.setActiveSlot(this.active,false);
+ }
+ getViewState():WeaponWorkbenchViewState|null{
+  if(this.autoFitPending)return null;
+  return {yaw:this.yaw,pitch:this.pitch,distance:this.distance,in2D:this.in2D};
+ }
+ restoreViewState(view:WeaponWorkbenchViewState){
+  if(!Number.isFinite(view.distance)||view.distance<=0)return;
+  this.yaw=view.yaw;this.pitch=view.pitch;
+  this.distance=THREE.MathUtils.clamp(view.distance,27,120);
+  this.autoFitPending=false;
+  if(this.renderer&&this.in2D!==view.in2D)this.switchView();
+  this.draw();
  }
  private clearMounts(){
   for(const button of this.socketButtons.values())button.remove();
@@ -373,6 +390,7 @@ export class WeaponWorkbenchPreview{
  private wheel=(e:WheelEvent)=>{
   e.preventDefault();
   this.hideDotsDuringInspection();
+  this.autoFitPending=false;
   this.distance=Math.max(27,Math.min(120,this.distance+e.deltaY*.08));
   this.draw();
   this.finishInspection();
@@ -453,6 +471,13 @@ export class WeaponWorkbenchPreview{
   const w=this.canvasHost.clientWidth,h=this.canvasHost.clientHeight;
   if(w<2||h<2)return;
   this.model.rotation.set(this.in2D?0:this.pitch,this.in2D?0:this.yaw,0);
+  if(this.autoFitPending){
+   this.model.rotation.set(0,0,0);
+   this.model.updateMatrixWorld(true);
+   const bounds=new THREE.Box3().setFromObject(this.model);
+   this.distance=workbenchFitDistance(bounds,w,h);
+   this.autoFitPending=false;
+  }
   this.camera.aspect=w/h;this.camera.updateProjectionMatrix();
   const centerX=weaponVisualLayout(this.config).workbenchCenterX;
   this.camera.position.set(centerX,16,this.distance);
