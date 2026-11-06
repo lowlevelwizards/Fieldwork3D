@@ -21,6 +21,7 @@ import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
 import type {FamilyPartSlot} from './equipment-weapon-families.ts';
+import {issueWeaponPreset,starterWeaponPreset,resolveIssuedOrLegacy} from './breach-weapon-issue.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
 import {recordWeaponRounds,serviceSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
@@ -91,9 +92,10 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
   pointShooting:'Close Quarters Instinct',longRange:'Patient Marksman',
   precision:'Careful Aim',recoilControl:'Steady Hands',
   composure:'Calm Under Pressure',handling:'Fast Hands'};
- const weapon=WEAPONS[i%WEAPONS.length];
- const capacity={carbine:12,smg:24,rifle:10,shotgun:6}[weapon];
- const reserve={carbine:36,smg:72,rifle:30,shotgun:24}[weapon];
+ const issue=issueWeaponPreset(['ar-m4a1','ak-ak105','ar-m16a4','ak-ak74m'][i%4]);
+ const weapon=issue.weapon;
+ const capacity=COMBAT_WEAPONS[weapon].capacity;
+ const reserve=COMBAT_WEAPONS[weapon].reserve;
  return {id,callsign:id.toUpperCase(),background:['Patrol','Reconnaissance','Security','Emergency Response'][i%4],
   appearanceSeed:hash(seed+i+83),wardrobe:initialWardrobe(),
   skills:values(hash(seed+i*313),'skill'),
@@ -106,7 +108,7 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
    loadedMagazineId:id+'/'+weapon+'/loaded',
    loadout:initialEquipmentLoadout(weapon),
    medicalSupplies:kitMedicalSupplies(initialEquipmentLoadout(weapon)),
-   weaponConfiguration:initialWeaponConfiguration(weapon),
+   weaponConfiguration:issue.weaponConfiguration,
    armorCondition:initialArmorIntegrity(initialEquipmentLoadout(weapon))};
 }
 export function createContracts(seed:number,day:number,existing:readonly Contract[]=[],pressure:Record<string,number>={}):Contract[]{
@@ -149,7 +151,9 @@ export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):C
    recoveryDays:old.recovery,weapon:old.weapon,
     loadout:initialEquipmentLoadout(old.weapon),
     medicalSupplies:kitMedicalSupplies(initialEquipmentLoadout(old.weapon)),
-    weaponConfiguration:readWeaponConfiguration(old.weaponConfiguration,old.weapon),
+    weaponConfiguration:resolveIssuedOrLegacy(
+      readWeaponConfiguration(old.weaponConfiguration,old.weapon),old.weapon,
+      starterWeaponPreset(operator.id)),
     magazine:old.magazine,
    reserve:old.reserve,shotsFired:old.fired,
    magazines:readPersistentMagazines(operator.id,old.weapon,old.reserve,
@@ -199,8 +203,9 @@ export function readCampaign(raw:string|null):CampaignState|null{
    wardrobe:readWardrobe((o as {wardrobe?:unknown}).wardrobe),
    medicalSupplies:normalizedMedicalSupplies((o as {medicalSupplies?:unknown}).medicalSupplies,
     kitMedicalSupplies(readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon))),
-    weaponConfiguration:readWeaponConfiguration(
-     (o as {weaponConfiguration?:unknown}).weaponConfiguration,o.weapon),
+    weaponConfiguration:resolveIssuedOrLegacy(readWeaponConfiguration(
+     (o as {weaponConfiguration?:unknown}).weaponConfiguration,o.weapon),o.weapon,
+     starterWeaponPreset(o.id)),
    armorCondition:normalizedArmorCondition((o as {armorCondition?:unknown}).armorCondition,
     readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon)),
    trait:typeof o.trait==='string'?o.trait:'Experienced Operator',
