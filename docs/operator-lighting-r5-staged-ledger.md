@@ -68,3 +68,11 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
   leaving operator-height-lighting solely responsible for the lower gradient.
 - Test invalid receiver rejection, rear-pack contact, restored baseline,
   hidden alternate geometry and unchanged camouflage swatches.
+
+## R5.2-B retain per-piece grayscale lighting masks through iOS geometry batching
+- Merge outputs now retain CPU-only Uint8 self/external occlusion channels,
+  indexed/non-indexed vertex remapping, and per-part span metadata.
+- No additional GPU attributes, shader work, materials, meshes or draw calls.
+- Missing mask inputs allocate nothing; UVs and grayscale vertex-color AO remain unchanged.
+- Focused tests enforce byte-perfect mapping for mixed indexed/flat meshes.
+- True UV1 lightmap atlas GPU delivery remains a later visual experiment.

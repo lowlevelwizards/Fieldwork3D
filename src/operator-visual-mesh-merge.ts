@@ -8,6 +8,61 @@ import {bakeGearGeometryAO,bakeGearContactAO} from './operator-baked-gear-ao.ts'
 import {rememberUnmergedShadowVolumes} from './operator-baked-gear-cast.ts';
 import {refineStaticReceiver} from './operator-gear-shadow-receivers.ts';
 
+export const OPERATOR_LIGHTING_MASK_KEYS=[
+ 'fieldworkSelfOcclusionMask','fieldworkExternalOcclusionMask'
+] as const;
+export type LightingPieceSpan={partId:string;role:string;start:number;count:number};
+/** The renderer merges identical-material geometry into one draw call. UserData
+ * does NOT survive mergeGeometries(), so retain each logical piece's baked
+ * grayscale channels in vertex-order CPU arrays for atlas work/inspection.
+ * When an indexed mesh becomes non-indexed, duplicate its mask using the
+ * actual index buffer: never trust the original vertex order.
+ */
+export function transferLightingMasksToMerge(
+ output:THREE.BufferGeometry,
+ originals:readonly THREE.Mesh[],
+ transformed:readonly THREE.BufferGeometry[]
+):void{
+ const count=output.getAttribute('position')?.count??0;
+ if(!count||originals.length!==transformed.length)return;
+ const partSpans:LightingPieceSpan[]=[];
+ let cursor=0;
+ for(let i=0;i<originals.length;i++){
+  const mesh=originals[i];
+  const vertices=transformed[i].getAttribute('position')?.count??0;
+  partSpans.push({
+   partId:String(mesh.userData.fieldworkShadowPartId??
+    mesh.name??'piece-'+i),
+   role:String(mesh.userData.fieldworkShadowRole??'surface'),
+   start:cursor,count:vertices
+  });
+  cursor+=vertices;
+ }
+ if(cursor!==count)return;
+ // Pure CPU metadata. No new vertex attributes, samplers or draw calls.
+ output.userData.fieldworkLightingPartSpans=partSpans;
+ for(const key of OPERATOR_LIGHTING_MASK_KEYS){
+  if(!originals.some(mesh=>
+   mesh.geometry.userData[key] instanceof Uint8Array))continue;
+  const result=new Uint8Array(count);
+  let offset=0;
+  for(let i=0;i<originals.length;i++){
+   const geo=originals[i].geometry;
+   const sourceMask=geo.userData[key] as Uint8Array|undefined;
+   const originalCount=geo.getAttribute('position')?.count??0;
+   const newCount=transformed[i].getAttribute('position')?.count??0;
+   if(sourceMask?.length===originalCount){
+    if(newCount===originalCount)
+     result.set(sourceMask,offset);
+    else if(geo.index?.count===newCount)
+     for(let j=0;j<newCount;j++)
+      result[offset+j]=sourceMask[geo.index.getX(j)];
+   }
+   offset+=newCount;
+  }
+  output.userData[key]=result;
+ }
+}
 export function consolidateVisualGroup(group:THREE.Group):void{
  // Only the large, STATIC armor/rig receiver families need extra sampling.
  // Never subdivide animated garment limbs or unsupported accessories.
@@ -45,6 +100,7 @@ export function consolidateVisualGroup(group:THREE.Group):void{
    return flat;
   });
   const combined=mergeGeometries(geometryParts,false);
+  if(combined)transferLightingMasksToMerge(combined,meshes,geometryParts);
   for(const source of geometryParts)source.dispose();
   if(!combined)continue;
   for(const part of meshes){
