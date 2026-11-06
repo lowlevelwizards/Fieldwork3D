@@ -41,11 +41,24 @@ try{
    {id:'acu-shirt',label:'ACU'},
    {id:'combat-shirt',label:'combat-shirt'}
   ];
+  let previousScreenshot=null;
   for(const {id,label} of examples){
+   // The material tab hides the item grid. Explicitly return to ITEM
+   // before choosing each real garment; otherwise every screenshot
+   // silently captures the same BDU top and falsely "checks" three styles.
+   await page.locator('[data-studio-step="items"]').click();
    const item=page.locator('[data-appearance-item="'+id+'"]');
-   if(await item.isVisible())await item.click();
+   await item.waitFor({state:'visible',timeout:10000});
+   if(await item.isDisabled())throw Error(id+' unavailable in Studio');
+   await item.click();
+   await page.waitForFunction(()=>
+    document.querySelector('[data-studio-step="materials"]')?.getAttribute('aria-pressed')==='true',
+    null,{timeout:10000});
    await page.waitForTimeout(280);
    const shot=await page.locator('#studioCanvas').screenshot();
+   if(previousScreenshot&&Buffer.compare(previousScreenshot,shot)===0)
+    throw Error(id+': preview image unchanged from previous distinct top');
+   previousScreenshot=shot;
    await page.screenshot({path:'operator-lightmap-clothes-only/'+id+'.png'});
    // Actual WebGL pixels, not DOM geometry or a passing draw-call count.
    const result=await page.evaluate(async encoded=>{
