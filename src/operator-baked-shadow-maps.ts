@@ -115,7 +115,7 @@ export function mapSkinReceiverAtlas(geometry:THREE.BoxGeometry):void{
  if(geometry.userData.fieldworkSkinShadowUV)return;
  const uv=geometry.getAttribute('uv'),pos=geometry.getAttribute('position');
  const ranges=boxFaceVertexRanges(geometry);
- const {width=w,height=h,depth=d}=geometry.parameters;
+ const {width:w,height:h,depth:d}=geometry.parameters;
  for(let face=0;face<6;face++){
   const col=face%COLS,row=Math.floor(face/COLS);
   const {start,count}=ranges[face];
