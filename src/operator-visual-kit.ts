@@ -11,6 +11,8 @@ import {HAIR_STYLE_IDS,HAIR_TONES,seededHairStyle,seededHairTone}
 import type {CarryLocation} from './equipment-carry-placement.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
+import {enableBakedGearAO} from './operator-baked-gear-ao.ts';
+import {bakeCastOnGear} from './operator-baked-gear-cast.ts';
 import {fitRigCoveredPockets} from './operator-rig-pocket-fit.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {effectiveD2FabricMode} from './operator-head-accessory-catalog.ts';
@@ -40,6 +42,7 @@ type VisualMaterials={cloth:Material;vest:Material;trousers:Material;
  headArmor:Material;dark:Material;skin:Material;steel:Material};
 type Limb={upper:THREE.Mesh;lower:THREE.Mesh;shoe?:THREE.Mesh};
 export type OperatorVisualKit={
+ visualChest:THREE.Group;
  wardrobeHead:WardrobeHeadLayers;wardrobeBody:WardrobeBodyLayers;
  identityVisuals:IdentityVisuals;
  wardrobeGear:WardrobeGearLayers;accessories:WardrobeAccessoryVisuals;
@@ -77,6 +80,8 @@ export function createOperatorVisualKit(
  canonicalHead?:THREE.Group,lazyAccessories=false):OperatorVisualKit{
  const {cloth,vest,trousers,packFabric,gearFabric,headCloth,
   headArmor,dark,skin,steel}=m;
+ // Cloth and uniforms RECEIVE baked armor/strap shadows, not just the kit.
+ enableBakedGearAO(cloth);enableBakedGearAO(trousers);
  const trim=new THREE.MeshStandardMaterial({color:0x777d6d,roughness:.94,flatShading:true});
  const seam=new THREE.MeshStandardMaterial({color:0x303b36,roughness:.95,flatShading:true});
  const hairMaterial=new THREE.MeshStandardMaterial({color:0x302d29,roughness:1,flatShading:true});
@@ -267,7 +272,7 @@ export function createOperatorVisualKit(
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
   plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
- return {wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,
+ return {visualChest:chest,wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,
   helmet,cap,hair,jacket,lightShirt,
   softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
@@ -498,4 +503,21 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
    object.visible=false;
  });
 
+ // A true fixed-light ray bake between independently modeled pieces.
+ // The key includes only geometry/cut choices, never the camouflage swatch.
+ // applyOperatorVisualKit is called on appearance changes, not per frame.
+ const armor=v.wardrobeGear.armor[looks.armorStyle],
+  rig=v.wardrobeGear.rig[looks.rigStyle],
+  pack=v.wardrobeGear.pack[looks.packStyle];
+ const lightingKey=[looks.top,looks.armorStyle,looks.rigStyle,looks.packStyle,
+  wardrobe?.sleeveState??'unrolled'].join('/');
+ const packs=[pack,v.fieldPack,v.dayPack]
+  .filter((g):g is THREE.Group=>!!g&&g.visible);
+ if(armor)bakeCastOnGear(armor,rig?[rig]:[],v.visualChest,'armor:'+lightingKey);
+ if(rig)bakeCastOnGear(rig,armor?[armor]:[],v.visualChest,'rig:'+lightingKey);
+ if(clothTorso)bakeCastOnGear(clothTorso,
+  [...(armor?[armor]:[]),...(rig?[rig]:[]),...packs],
+  v.visualChest,'shirt:'+lightingKey);
+ for(const selectedPack of packs)bakeCastOnGear(selectedPack,
+  armor?[armor]:[],v.visualChest,'pack:'+lightingKey);
 }

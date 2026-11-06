@@ -42,6 +42,8 @@ import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-mat
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {garmentBoxUV,wardrobeFabricCamoTexture} from './operator-fabric-camo-materials.ts';
 import {enableBakedGearAO} from './operator-baked-gear-ao.ts';
+import {mapSkinReceiverAtlas,headwearCastShadowAtlas,collarCastShadowAtlas,
+ authoredCollarShadowBoxes} from './operator-baked-shadow-maps.ts';
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
 import {rigSignature,armorSignature,rigColorAssembly,validRigSolid,validArmorSolid}
  from './operator-rig-authenticity-policy.ts';
@@ -161,6 +163,8 @@ export type OperatorRig={
   headArmorMaterial:THREE.MeshStandardMaterial;
   gearMaterial:THREE.MeshStandardMaterial;
   skinMaterial:THREE.MeshStandardMaterial;bootMaterial:THREE.MeshStandardMaterial;
+  faceSkinMaterial:THREE.MeshStandardMaterial;
+  neckSkinMaterial:THREE.MeshStandardMaterial;
   baseCloth:THREE.Color;baseVest:THREE.Color;helmetBadge:THREE.Mesh;
   appearanceSeed:number;
   dispose:()=>void;
@@ -275,8 +279,16 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   for(const mesh of [...rigPouches,beltPouch,medicalPouch,
     radioUnit,flashCanister,utilityTool])mesh.visible=false;
   head.position.y=10;
-  block(head,0,-3,0,3.6,4,3.8,skin);
-  block(head,0,3,0,8,8,8,skin);
+  // Faces and necks are real receiving surfaces for projected hat/collar
+  // shadows, independent of the skin tint shared by arms and hands.
+  const faceSkin=skin.clone(),neckSkin=skin.clone();
+  const neckMesh=block(head,0,-3,0,3.6,4,3.8,neckSkin);
+  const faceMesh=block(head,0,3,0,8,8,8,faceSkin);
+  mapSkinReceiverAtlas(neckMesh.geometry as THREE.BoxGeometry);
+  mapSkinReceiverAtlas(faceMesh.geometry as THREE.BoxGeometry);
+  faceSkin.map=headwearCastShadowAtlas('bare');
+  neckSkin.map=collarCastShadowAtlas('base-layer',[]);
+  faceSkin.needsUpdate=true;neckSkin.needsUpdate=true;
   const helmetShell=[block(head,0,6,0,9.4,3.5,9.4,vest),
     block(head,4,3,0,2,2.7,8,vest)];
   const capBill=block(head,5.3,5.7,0,5,1.25,8,cloth);
@@ -372,7 +384,8 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     clothMaterial:cloth,vestMaterial:vest,trouserMaterial:trousers,
     packMaterial:packFabric,gearMaterial:gearFabric,
     headClothMaterial:headCloth,headArmorMaterial:headArmor,
-    skinMaterial:skin,bootMaterial:boot,baseCloth:cloth.color.clone(),
+    skinMaterial:skin,faceSkinMaterial:faceSkin,neckSkinMaterial:neckSkin,
+    bootMaterial:boot,baseCloth:cloth.color.clone(),
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
     magazineInserted,magazineHand,medicalItem,weaponBody,droppedWeaponBody,
@@ -449,9 +462,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // exact seeded complexion. Updating each pose also keeps preview edits,
   // replay/seek and reversible downed desaturation consistent.
   const complexion=p.wardrobe?.skinTone??seededSkinTone(identity);
-  const skinBaseline=r.colors.get(r.skinMaterial);
-  if(skinBaseline)skinBaseline.set(SKIN_TONES[complexion].hex);
-  else r.colors.set(r.skinMaterial,new THREE.Color(SKIN_TONES[complexion].hex));
+  for(const skinMaterial of [r.skinMaterial,r.faceSkinMaterial,
+    r.neckSkinMaterial]){
+   const baseline=r.colors.get(skinMaterial);
+   if(baseline)baseline.set(SKIN_TONES[complexion].hex);
+   else r.colors.set(skinMaterial,new THREE.Color(SKIN_TONES[complexion].hex));
+  }
   // Kit presentation reuses the live rig without altering shot transforms.
   const gear=p.equipment?.slots;
   // Legacy rectangles are retained for compatibility but superseded by
@@ -770,6 +786,23 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(clothing.top==='smock-jacket'&&!hasAuthoredTop&&
      !p.wardrobe?.fabricSolids?.top)
     r.colors.set(r.clothMaterial,new THREE.Color(finish.smock));
+  // Directional shadows are traced once from the actual hat and jacket
+  // volumes into tiny receiver atlases; color changes reuse cached bakes.
+  const headShadow=headwearCastShadowAtlas(clothing.headwear);
+  if(r.faceSkinMaterial.map!==headShadow){
+   r.faceSkinMaterial.map=headShadow;r.faceSkinMaterial.needsUpdate=true;
+  }
+  const collarGroup=(clothing.top==='bdu-shirt'||clothing.top==='acu-shirt')?
+   r.visualKit.fieldBlouses[clothing.top].torso:
+   (clothing.top==='combat-shirt'||clothing.top==='smock-jacket'||
+    clothing.top==='gorka-jacket')?
+    r.visualKit.newUpper.cuts[clothing.top].torso:null;
+  const collarShadow=collarCastShadowAtlas(
+   clothing.top+'|'+clothing.armorStyle,
+   collarGroup?authoredCollarShadowBoxes(collarGroup,r.chest):[]);
+  if(r.neckSkinMaterial.map!==collarShadow){
+   r.neckSkinMaterial.map=collarShadow;r.neckSkinMaterial.needsUpdate=true;
+  }
   for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
    const selected=id===clothing.headwear;
    const modelId=(id==='high-cut-rails'?'high-cut':id) as HeadSilhouetteId;

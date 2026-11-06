@@ -5,11 +5,13 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {bakeGearGeometryAO,bakeGearContactAO} from './operator-baked-gear-ao.ts';
+import {rememberUnmergedShadowVolumes} from './operator-baked-gear-cast.ts';
 
 export function consolidateVisualGroup(group:THREE.Group):void{
  // Bake actual neighboring-volume contact before authored panels and pouch
  // flaps are merged. One-time CPU work only; no per-frame AO traversal.
  bakeGearContactAO(group);
+ rememberUnmergedShadowVolumes(group);
  const buckets=new Map<THREE.Material,THREE.Mesh[]>();
  for(const item of group.children){
   // Preserve per-mesh attribute parity in the existing iOS draw-call merge.
