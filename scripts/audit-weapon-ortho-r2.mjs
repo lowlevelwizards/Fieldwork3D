@@ -63,6 +63,11 @@ for(const preset of FAMILY_PRESETS){
  const model=buildWeaponSilhouette(preset.weapon,steel,dark,cfg);
  const scale=resolveWeaponAssembly(cfg).lengthScale;
  const box=new THREE.Box3().setFromObject(model);
+ model.updateMatrixWorld(true);
+ const realBox=new THREE.Box3().setFromObject(model);
+ const artWidth=(realBox.max.x-realBox.min.x)*scale;
+ const artHeight=realBox.max.y-realBox.min.y;
+ const artDepth=realBox.max.z-realBox.min.z;
  const meshes=model.children.length;
  const triangles=model.children.reduce((sum,o)=>{
   if(!(o instanceof THREE.Mesh))return sum;
