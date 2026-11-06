@@ -47,11 +47,15 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [3.7,-2.05]]:
   [[-6.55,-2.05],[-6.45,1.05],[-5.45,1.15],[3.9,1.1],
    [4.15,-2.05]],3.85,0);
+ // Cover is a slightly narrower stamped shell; its shallow rear rake
+ // meets the lower receiver cleanly. Its long front nose seats beneath
+ // the rear-sight block and slightly INTO the rear upper furniture.
  p('receiver',compact?
-  [[-5.45,1.1],[-4.93,2.37],[1.45,2.4],[3.36,1.92],[4.25,1.10]]:
-  [[-6.32,1.1],[-5.62,2.34],[1.95,2.38],[3.45,2.17],
-   [4.93,1.53],[5.10,1.12]],
-  3.5,1);
+  [[-5.48,1.1],[-4.80,2.34],[1.64,2.43],
+   [3.50,2.05],[4.34,1.10]]:
+  [[-6.38,1.10],[-5.56,2.30],[1.94,2.36],
+   [3.36,2.27],[4.98,1.54],[5.28,1.10]],
+  3.12,1);
  // The old rear-side metal slab was read as a second ejection port.
  // Keep the receiver face clean; actual details are authored below.
  // A short angled seating region, not an AR-style external magwell.
@@ -65,20 +69,24 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  p('receiver',[[3.25,-1.06],[4.13,-1.06],
   [4.14,-2.05],[3.25,-2.05]],3.55,0);
  if(compact){
-  // AKS-74U hinged dust cover with a LOW, squat rear-sight hump.
-  // Avoid the previous tall, flat slab that read as a holographic optic.
-  p('receiver',[[-5.12,2.2],[-4.56,2.68],[-1.42,2.77],
-   [-.7,2.28]],2.25,1);
-  p('receiver',[[-4.53,2.64],[-4.24,3.19],[-3.42,3.19],
-   [-3.18,2.72]],1.45,0);
+  // The 74U rear sight belongs to the hinged cover; the two protective
+  // ears must be separate, with actual air between them in side/3D views.
+  // Move their assembly forward; never model one oversized rear hump.
+  p('receiver',[[-4.83,2.26],[-4.32,2.63],[-1.18,2.69],
+   [-.82,2.30]],2.12,1);
+  const ears:readonly Outline[]=[
+   [[-2.75,2.50],[-2.55,3.09],[-2.15,3.09],[-2.00,2.52]],
+   [[-1.92,2.52],[-1.75,3.08],[-1.35,3.08],[-1.20,2.53]]
+  ];
+  for(const [i,outline] of ears.entries()){
+   const ear=p('receiver',outline,.67,0);
+   ear.position.z=i===0?-.94:.94;
+  }
  }else{
-  // True AK sight block belongs at the FORWARD edge of the dust cover.
-  // An intentionally low stepped outline, not a rear-mounted holo-looking box.
-  // The rear sight rests on the forward cover termination and the
-  // lower saddle overlaps the upper handguard's rear quarter.
-  // Shallow, broad rear sight ramp seated directly at the dust-cover nose.
-  p('receiver',[[2.88,2.17],[3.16,2.72],[3.58,2.86],
-   [4.18,2.82],[4.53,2.35],[4.80,2.17]],2.0,0);
+  // Low rear-sight leaf shares the cover silhouette, rather than sitting
+  // on top as a detached cap. Its broad base is buried in the stamped roof.
+  p('receiver',[[2.70,1.86],[2.94,2.58],[3.37,2.68],
+   [3.76,2.59],[4.10,1.86]],2.0,0);
  }
 
  // Two small exterior clues: a selector toward the rear and an ejection
