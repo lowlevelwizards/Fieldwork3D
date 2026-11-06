@@ -198,12 +198,12 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Distinct lower cheek on wooden rifles, straightforward block on polymers.
  p('handguard',rpk?
    [[start,-1.35],[start+.65,.96],[end-.75,1.01],
-    [end,-.12],[end-.9,-1.79],[start+.9,-1.79]]:
+    [end,-.12],[end-.9,-1.68],[start+.9,-1.68]]:
    woodGuard?
    [[start,-1.27],[start+.7,.97],[end-.9,1.01],
-    [end,-.18],[end-.85,-1.59],[start+1.0,-1.59]]:
+    [end,-.18],[end-.85,-1.48],[start+1.0,-1.48]]:
    [[start,-1.29],[start+.75,.97],[end-.7,.99],
-    [end,-.22],[end-.5,-1.57],[start+.45,-1.57]],3.85,
+    [end,-.22],[end-.5,-1.46],[start+.45,-1.46]],3.85,
    woodGuard?2:1);
  // Two clean lengths of furniture; the receiver encloses the rear joint.
  // The former tall metal collar created a floating grey slab and is REMOVED.
@@ -211,8 +211,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Taller, shorter upper half with a deliberate narrow horizontal seam.
  // The front of the cover terminates into its rear third; no vertical slab.
  const upperRear=compact?start+1.0:start+1.08;
- p('handguard',[[upperRear,1.33],[upperRear+.78,2.59],
-   [end-1.2,2.55],[end-.6,1.33]],2.9,woodGuard?2:1);
+ p('handguard',[[upperRear,1.25],[upperRear+.78,2.73],
+   [end-1.2,2.66],[end-.6,1.25]],2.9,woodGuard?2:1);
  if(rail)b('handguard',(upperRear+.9+end)/2,2.88,0,
   end-upperRear-1.2,.48,3.0,0);
 
