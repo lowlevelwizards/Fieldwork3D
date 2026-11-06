@@ -185,7 +185,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const short=['ar-compact-rail','ar-risii'].includes(guard);
  const retro=guard==='ar-car15-ribbed'||guard==='ar-733-ribbed';
  const end=guard==='ar-pri-tube'?15.70:
-  guard==='ar-risii'?13.38:long?14.1:
+  guard==='ar-risii'?13.38:guard==='ar-733-ribbed'?11.05:long?14.1:
   retro?11.8:short?15.05:12.2;
  const start=3.55; // deliberate slight overlap with receiver upper
  const isFreefloat=guard==='ar-risii'||guard==='ar-compact-rail';
@@ -223,35 +223,37 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // Octagonal physical plastic body plus one INSTANCED ring-band mesh,
   // not a box decorated with thin crosshatching.
   addARFacetedForearm(root,'handguard',guard,index.handguard++,
-   start,end,AR_VISUAL_AXIS_Y,'ribbed-round',material[1]);
+   start,end,AR_VISUAL_AXIS_Y,'ribbed-round',material[1],retro);
   if(retro)gb(start+.28,.04,0,.46,2.72,3.15,0);
   addARPolymerRibs(root,'handguard',guard,index.handguard++,
-   start,end,AR_VISUAL_AXIS_Y,retro,AR_POLYMER_RIB);
+   start,end,AR_VISUAL_AXIS_Y,retro,AR_POLYMER_RIB,
+   guard==='ar-733-ribbed'?4:undefined);
  }else{
   const ris=guard==='ar-risii';
   const covered=guard==='ar-compact-rail';
   const span=end-start,center=(start+end)/2;
   // Stepped cross-section of authentic quad furniture.
   gh(ris?
-   [[start,-1.50],[start,1.28],[start+.45,1.51],
-    [end-.70,1.51],[end,.66],[end,-1.16],[end-.63,-1.58]]:
+   [[start,-1.26],[start,1.28],[start+.45,1.51],
+    [end-.70,1.51],[end,.66],[end,-.99],[end-.63,-1.33]]:
    [[start,-1.55],[start,1.49],
     [end-.60,1.49],[end,.90],[end,-1.48]],
    ris?3.72:3.17,ris?2:1);
   // Underlying rail spines — continuous, but the teeth are one instanced mesh.
   gb(center,1.87,0,span,.62,3.16,0);
-  gb(center,-1.83,0,span-.70,.48,2.43,0);
+  gb(center,ris?-1.65:-1.83,0,span-.70,.48,2.43,0);
   // Bury the side spine just inside the outer teeth, leaving tangible
   // negative-space steps without inflating the entire handguard silhouette.
   for(const side of [-1,1])
-   gb(center,.07,side*2.01,span-1.2,.53,.31,0);
+   gb(center,.07,side*2.01,span-1.2,.60,.40,0);
   addARRailSegments(root,'handguard',parts.handguard,index.handguard++,
    {startX:start,endX:end,count:guard==='ar-m5-rail'?5:4,
-    topY:2.84,bottomY:-1.65,sideZ:2.44,sideY:.59,
+    topY:2.84,bottomY:ris?-1.47:-1.65,sideZ:2.39,sideY:.59,
     coverSides:covered},material[0]);
   // A single understated front cap makes the rail read as an attached
   // fore-end rather than a row of free-floating toy blocks.
-  gb(end-.13,.04,0,.27,2.80,ris?3.35:3.15,0);
+  gb(end-.13,ris?.14:.04,0,.27,ris?2.55:2.80,
+   ris?3.35:3.15,0);
   if(covered){
    // Cover occupies its own rail section; no side teeth underneath.
    for(const side of [-1,1])gb(center,.10,side*2.39,
