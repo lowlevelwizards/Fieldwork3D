@@ -5,6 +5,8 @@ import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
 import {AK_WARM_RESIN} from './weapon-visual-palette.ts';
+import {AK_VISUAL_ANATOMY,shiftProfile}
+ from './weapon-receiver-anatomy.ts';
 
 export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
@@ -33,7 +35,12 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [[-5.8,1.1],[-5.2,2.25],[1.6,2.3],[3.0,1.8],[3.25,1.05]],
   3.5,1);
  b('receiver',-4.25,-.05,2.05,2.8,1.15,.5,1);
- b('receiver',1.65,-1.2,0,4.0,1.1,3.25,0);
+ // A short angled seating region, not an AR-style external magwell.
+ const m=AK_VISUAL_ANATOMY;
+ p('receiver',[[m.magwellCenterX-1.2,m.magwellTopY],
+   [m.magwellCenterX+1.2,m.magwellTopY],
+   [m.magwellCenterX+.9,m.magwellBottomY],
+   [m.magwellCenterX-1.05,m.magwellBottomY]],3.3,0);
  if(compact){
   // Characteristically raised rear/cover area of a compact AK.
   p('receiver',[[-5,2.2],[-4.65,3.55],[-1.6,3.6],[-1,2.28]],2.25,1);
@@ -64,9 +71,9 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Grips are deliberately raked, with one body prism and no modeled stippling.
  const grip=parts.grip,gripWood=grip==='ak-grip-wood',
  resin=grip==='ak-grip-bakelite';
- p('grip',[[-3.4,-1.65],[-.5,-1.65],[-1.0,-5.65],
-  [-2.25,-6.1],[-3.7,-5.7]],grip==='ak-grip-poly'?3.4:2.9,
-  gripWood||resin?2:1);
+ p('grip',shiftProfile([[-3.4,-1.65],[-.5,-1.65],[-1.0,-5.65],
+  [-2.25,-6.1],[-3.7,-5.7]],m.gripShiftX),
+  grip==='ak-grip-poly'?3.4:2.9,gripWood||resin?2:1);
 
  // Recognisable AK magazine curve must be in exterior contour, not block steps.
  const mag=parts.magazine,heavy=mag==='ak-mag762'||mag==='ak-mag762poly';
