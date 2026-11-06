@@ -52,7 +52,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }
 
  // A single textured side mark replaces tiny modeled receiver hardware.
- addWeaponPixelMark(root,'ar-port',.25,.45,1.81,2.45,.9);
+ // Receiver-side mark is taller, directly OVER the magazine insertion.
+ addWeaponPixelMark(root,'ar-port',m.portX,m.portY,1.82,
+  m.portWidthX,m.portHeightY);
 
  // Stock: fixed triangular stock versus open shoulder / sliding-carbine outline.
  if(parts.stock==='ar-fixed'){
@@ -123,9 +125,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   const ris=guard==='ar-risii';
   // Single squared shell and its raised rail, rather than stacked strips.
   p('handguard',ris?
-   [[start,-1.55],[start,1.28],[start+.5,1.46],
-    [start+.9,1.62],[end-1.25,1.62],[end-.75,1.28],
-    [end,.92],[end,-1.36],[end-.95,-1.62]]:
+   [[start,-1.54],[start,1.28],[start+.5,1.46],
+    [start+.9,1.62],[end-1.35,1.62],[end-.8,1.25],
+    [end,.92],[end,-1.28],[end-1.0,-1.64]]:
    [[start,-1.65],[start,1.55],
     [end-.55,1.55],[end,1.05],[end,-1.4]],
    ris?4.6:4.0,ris?2:1);
@@ -143,7 +145,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  if(!short){
   // Oversized A-frame front sight: genuine open V negative space.
   // Wide squat A-frame silhouette; a visible V gap, not a needle-like spike.
-  line('barrel',[16.12,.35],[16.83,2.72],.40,1.8,0);
-  line('barrel',[17.54,.35],[16.83,2.72],.40,1.8,0);
+  line('barrel',[16.24,.35],[16.83,2.72],.34,1.8,0);
+  line('barrel',[17.42,.35],[16.83,2.72],.34,1.8,0);
  }else b('barrel',19.06,0,0,.88,1.75,1.9,1);
 }
