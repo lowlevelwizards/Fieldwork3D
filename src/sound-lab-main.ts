@@ -26,7 +26,7 @@ let context:AudioContext|null=null;
 let active:AudioBufferSourceNode|null=null,sequence=0;
 let waveFrame=0;
 const sliderDefs:[
- keyof SoundSettings,string,number,number,number,string
+ Exclude<keyof SoundSettings,'refinement'>,string,number,number,number,string
 ][]=[
  ['gain','OUTPUT LEVEL',0,1,.01,'%'],
  ['pitch','PITCH / BODY',45,2400,1,'Hz'],
