@@ -37,18 +37,23 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [m.magwellCenterX-1.60,m.magwellBottomY]],3.25,1);
  const carry=['ar-a1','ar-a2','ar-retro'].includes(parts.receiver);
  if(carry){
-  const heavy=parts.receiver==='ar-a2';
-  // Open carry handle: a real gap between posts, never a solid cap block.
-  line('receiver',[-4.35,1.8],[-4.35,3.7],heavy?1.25:.85,2.15,0);
-  // The CAR nose leg leans BACK at the top (the opposite of R3.2).
-  // A small bridge overhang ahead of that leg is intentional.
-  if(parts.receiver==='ar-retro')
-   line('receiver',[2.25,1.8],[1.55,3.7],.86,2.05,0);
-  else line('receiver',[1.55,1.8],[1.55,3.7],.9,2.05,0);
-  b('receiver',-1.15,3.7,0,7.3,.82,2.05,0);
-  if(heavy)b('receiver',-4.35,2.4,0,1.6,.95,2.4,1);
+  const a2=parts.receiver==='ar-a2';
+  const retro=parts.receiver==='ar-retro';
+  // R4.2: two heavy posts and one flush bridge, all connected. A1/A2 share
+  // their forward angle. The earlier top bar overhung the post by ~0.95 units.
+  line('receiver',[-4.35,1.76],[-4.30,3.7],a2?1.05:.9,2.15,0);
+  // Preserve R3.3 CAR-15 slant direction, with the upper end rearward.
+  if(retro)line('receiver',[2.25,1.8],[1.55,3.7],.86,2.05,0);
+  else line('receiver',[1.80,1.8],[1.55,3.7],.9,2.05,0);
+  // End directly over the front support: never an unsupported forward lip.
+  b('receiver',-1.40,3.74,0,5.95,.76,2.05,0);
+  if(a2){
+   // One meaningful rear sight wedge rather than several knobs.
+   p('receiver',[[-5.05,2.04],[-4.96,3.72],
+    [-3.93,3.74],[-3.45,2.80],[-3.45,2.04]],2.35,1);
+  }
  }else{
-  // One continuous low top plane; the extra rear nub did not read at game scale.
+  // Low flat-top without a permanently molded carry handle.
   b('receiver',-1.5,2.05,0,8.3,.65,2.65,1);
  }
 
@@ -57,22 +62,25 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  addWeaponPixelMark(root,'ar-port',m.portX,m.portY,1.82,
   m.portWidthX,m.portHeightY);
 
- // Stock: fixed triangular stock versus open shoulder / sliding-carbine outline.
- if(parts.stock==='ar-fixed'){
-  // One five-sided classic rifle wedge, including its rear plate.
-  // Rearward X extension ONLY, with less Z thickness than R3.2.
-  p('stock',[[-15.15,.65],[-6.05,.7],[-6.05,-1.7],
-   [-9.0,-3.1],[-15.15,-2.4]],3.35,1);
+ // Fixed M16 stocks: one long triangular wedge, no rectangular belly.
+ if(parts.stock==='ar-fixed'||parts.stock==='ar-fixed-a2'){
+  const a2=parts.stock==='ar-fixed-a2';
+  const back=a2?-16.35:-15.65;
+  p('stock',[[back,.75],[-6.12,.78],[-6.02,-.67],
+   [back+.15,a2?-3.20:-3.05]],3.18,1);
+  b('stock',back+.04,-1.17,0,.24,a2?3.96:3.79,3.20,0);
  }else{
   const compact=parts.stock==='ar-compact';
-  const rear=compact?-13.85:-14.45;
-  // Hold the forward joint constant while extending the rear in X.
-  // Never enlarge stock Z to simulate a longer silhouette.
-  const front=compact?-8.4:-8.6;
+  const m4=parts.stock==='ar-stock-m4';
+  const rear=compact?-13.85:m4?-14.25:-14.45;
+  const front=compact?-8.4:m4?-8.48:-8.6;
   b('stock',-7.65,.05,0,4.2,1.45,1.9,0);
-  p('stock',[[rear,.65],[rear+1.2,.95],[front,.55],
-   [front,-1.7],[rear+1.05,-2.65],[rear,-2.12]],
-   compact?3.35:3.25,compact?2:1);
+  p('stock',m4?
+   [[rear,.82],[rear+1.08,1.02],[front,.60],
+    [front,-1.46],[rear+1.45,-2.85],[rear,-2.35]]:
+   [[rear,.65],[rear+1.2,.95],[front,.55],
+    [front,-1.7],[rear+1.05,-2.65],[rear,-2.12]],
+   compact?3.35:m4?3.25:3.0,compact?2:1);
  }
 
  // Pistol grips share the same root, but the modern shape has a fuller heel.
