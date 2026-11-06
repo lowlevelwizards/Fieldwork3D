@@ -6,7 +6,7 @@ import {SOUND_CATALOG,SOUND_GROUPS,SOUND_BY_ID,SOUND_VARIANTS,
  from './sound-catalog.ts';
 import {renderSound,playDesignedSound,encodeSoundWav,downloadSound,
  packageSoundZip} from './sound-synth.ts';
-import {FOCUS_SOUNDS,FOCUS_SOUND_IDS,FOCUS_BY_ID,FOCUS_DIRECTIONS,
+import {FOCUS_SOUND_IDS,FOCUS_BY_ID,FOCUS_DIRECTIONS,
  DIRECTION_METHODS} from './sound-focus.ts';
 
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
