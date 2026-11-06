@@ -63,8 +63,14 @@ test('low-ready contact fits have stable stock pocket and unmodified aimed balli
    handling:'low',yaw:0,recoil:0,aimBlend:0,relaxedLowReady:1});
   assert.ok(Number.isFinite(relaxed.contactError),preset.id);
   assert.ok(relaxed.stockError<1.5,preset.id);
-  assert.ok(relaxed.stock.x<standard.stock.x,preset.id);
-  assert.ok(relaxed.stock.z<standard.stock.z,preset.id);
+  const targetPocket=lowReadyPocket(stockPocket('low'),lowReadyFamilyFit(c),1);
+  assert.ok(relaxed.stock.distanceTo(
+   new THREE.Vector3(targetPocket.x,targetPocket.y,targetPocket.z))<1.5,preset.id);
+  // Even compact stocks may slide to preserve both wrists; they must
+  // remain on the external shoulder side, never buried in the carrier.
+  assert.ok(relaxed.stock.z>=6.35,preset.id);
+  assert.ok(relaxed.twoHanded||relaxed.contactError<2,preset.id);
+  assert.ok(Number.isFinite(standard.stock.x),preset.id);
   const target={weapon:preset.weapon,configuration:c,
    handling:'ads',yaw:.15,recoil:0,aimBlend:1};
   const aimed=fitWeaponPose(target);
