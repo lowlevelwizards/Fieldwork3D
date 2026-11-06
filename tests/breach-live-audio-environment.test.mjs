@@ -6,6 +6,7 @@ import {defaultSoundPack,resolvePlayableSoundSettings,
 import {renderSound} from '../src/sound-synth.ts';
 import {acousticResponseForCue} from '../src/breach-audio-environment.ts';
 import {renderAcousticResponse} from '../src/sound-room-filter.ts';
+import {ReplaySoundTimeline,replayDoorSoundId} from '../src/breach-replay-audio.ts';
 
 const site=(width,height,purpose='office')=>({
  rooms:[{id:'r1',x:0,y:0,w:width,h:height,
@@ -94,4 +95,16 @@ test('procedural reflections are deterministic, louder-room tail lasts longer wi
   assert.ok(out.length>dry.length);
   assert.ok(out.every(v=>Number.isFinite(v)&&Math.abs(v)<=1));
  }
+});
+
+test('replay retains actual door outcome and uses kick, close or opening cue',()=>{
+ const timeline=new ReplaySoundTimeline([],[
+  {id:1,t:.3,kind:'door',text:'DOOR-1 FORCED OPEN',p:{x:5,y:6}},
+  {id:2,t:.6,kind:'door',text:'DOOR-2 CLOSING',p:{x:7,y:8}},
+  {id:3,t:.9,kind:'door',text:'DOOR-3 OPENED',p:{x:9,y:10}}
+ ]);
+ assert.equal(timeline.events.length,3);
+ assert.deepEqual(timeline.events.map(e=>replayDoorSoundId(e.description)),
+  ['doors.kick','doors.close','doors.open']);
+ assert.deepEqual(timeline.events[0].p,{x:5,y:6});
 });
