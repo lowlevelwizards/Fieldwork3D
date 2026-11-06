@@ -20,6 +20,7 @@ import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {entryDoorState} from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
+import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
 import {encounterReactionDelay,perceptualReadiness,
   encounterReactionPhase} from './breach-encounter-readiness.ts';
@@ -289,6 +290,8 @@ export type Session=Omit<TacticalState,'operators'> & {
   battleEvents:BattleEvent[];nextBattleId:number;
   executionEvents:ExecutionEvent[];nextExecutionId:number;
   missionType:'clear'|'intel'|'rescue'|'hold'|'capture';holdTime:number;
+  /** Opt-in narrative artifact, not used by simulation or AI. */
+  operationDossier?:OperationDossierV1;
   rescue:RescueEscort|null;
   captureTarget:string|null;captureSecured:boolean;
   intelCarrierId:string|null;};

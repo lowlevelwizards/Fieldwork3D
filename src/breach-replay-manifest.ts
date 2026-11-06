@@ -4,6 +4,7 @@
  */
 import type {Session} from './breach-game.ts';
 import type {Site} from './breach-site.ts';
+import type {OperationDossierV1} from './briefing/briefing-types.ts';
 
 export type ReplayActorIdentity={
   id:string;name:string;side:'blue'|'red';
@@ -20,6 +21,7 @@ export type ReplayManifest={
   lightingMode:Session['lightingMode'];
   missionType:Session['missionType'];
   site:Site|null;
+  dossier?:OperationDossierV1;
   actors:ReplayActorIdentity[];
 };
 
@@ -29,6 +31,7 @@ export function captureReplayManifest(s:Session,
     schemaVersion:2,variant:s.variant,
     intelMode:s.intel.mode,lightingMode:s.lightingMode,
     missionType:s.missionType,
+    dossier:s.operationDossier?structuredClone(s.operationDossier):undefined,
     // Static map geometry does not change during authoring. Reuse its
     // immutable initial copy when finalizing the manifest on first GO.
     site:preservedSite!==undefined?preservedSite:

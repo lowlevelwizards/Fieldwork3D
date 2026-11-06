@@ -36,6 +36,8 @@ import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
 import type {Site} from './breach-site.ts';
 import {captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam,
   type MissionStartSnapshot} from './breach-mission-restart.ts';
+import {compileMissionFacts} from './briefing/mission-facts.ts';
+import {createOperationDossier} from './briefing/briefing-composer.ts';
 import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
  from './quick-play-generation.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
@@ -175,6 +177,8 @@ const ui={
   briefingPanel:el<HTMLElement>('briefingPanel'),
   briefingTitle:el<HTMLElement>('briefingTitle'),
   briefingBody:el<HTMLElement>('briefingBody'),
+  briefingSituationBlock:el<HTMLElement>('briefingSituationBlock'),
+  briefingSituation:el<HTMLElement>('briefingSituation'),
   briefingCondition:el<HTMLElement>('briefingCondition'),
   briefingExtraction:el<HTMLElement>('briefingExtraction'),
   briefingSite:el<HTMLElement>('briefingSite'),
@@ -277,6 +281,17 @@ const randomSiteSeed=()=>{
   return bytes[0]||((Date.now()^Math.floor(Math.random()*1e9))>>>0);
 };
 const startupParams=new URLSearchParams(location.search);
+// Narrative trial is opt-in; ordinary Quick Play/Campaign remains unchanged.
+const briefingPreviewEnabled=startupParams.get('briefingV2')==='1';
+function buildPreviewDossier(session:Session,risk?:1|2|3){
+  if(!briefingPreviewEnabled||!session.site)return undefined;
+  try{return createOperationDossier(compileMissionFacts(session,{contractRisk:risk}));}
+  catch(error){
+    // Narrative validation must never prevent a valid tactical mission loading.
+    console.warn('[Briefing preview] Falling back to static contract',error);
+    return undefined;
+  }
+}
 // E5-B controlled field preview. Ordinary Quick Play/Campaign is unchanged
 // until rescue/ballistics/mobile acceptance and deliberate public enablement.
 const civilianPreview=startupParams.get('civilians')==='1';
@@ -471,6 +486,7 @@ state.lightingMode=selectedLightingMode;
 applyRequestedCondition(state);
 applyRosterIdentity(state,persistentRoster);
 applyCampaignSkills();
+state.operationDossier=buildPreviewDossier(state);
 let recorder=new MissionRecorder();recorder.capture(state,true);
 const deploymentButton=document.createElement('button');
 deploymentButton.type='button';deploymentButton.id='deploymentChoice';
@@ -505,6 +521,7 @@ deploymentButton.addEventListener('click',()=>{
  const next=ids[(ids.indexOf(selectedEntry)+1)%ids.length];
  if(selectDeployment(state,next)){
   selectedEntry=next;
+  if(state.operationDossier)state.operationDossier.identity.entryId=next;
   missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
   recorder=new MissionRecorder();recorder.capture(state,true);
   refreshDeployment();
@@ -2115,12 +2132,18 @@ function updateHud(){
   recordCompletedOperation();
   refreshDeployment();
   const brief=operationBriefing(state);
-  ui.briefingTitle.textContent=brief.code+' / '+brief.name;
+  const dossier=briefingPreviewEnabled?state.operationDossier:undefined;
+  ui.briefingTitle.textContent=dossier?
+    dossier.identity.title+' / '+brief.name:brief.code+' / '+brief.name;
   ui.briefingBody.textContent=brief.objective;
+  ui.briefingSituationBlock.hidden=!dossier;
+  ui.briefingSituation.textContent=dossier?
+    dossier.incident.lead+' '+dossier.incident.context:'';
   ui.briefingCondition.textContent=brief.condition;
   ui.briefingExtraction.textContent=brief.extraction;
   ui.briefingSite.textContent=brief.building+' · '+brief.layout;
-  ui.briefingIntel.textContent=brief.notes;
+  ui.briefingIntel.textContent=dossier?
+    dossier.claims.map(c=>c.text).join(' '):brief.notes;
   ui.briefingRoster.textContent=brief.squad+' OPERATORS · '+
     team(state).map(a=>a.name).join(' · ');
   if(state.phase!=='planning'){
@@ -3825,8 +3848,11 @@ function enterReplay(){
   const recordedSite=recorder.manifest?.site;
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
     finishedSession.intel.mode,finishedSession.site?.scale??'standard',
-    undefined,recordedSite?structuredClone(recordedSite):undefined);
+    recorder.manifest?.missionType,
+    recordedSite?structuredClone(recordedSite):undefined);
   state.lightingMode=recorder.manifest?.lightingMode??finishedSession.lightingMode;
+  state.operationDossier=recorder.manifest?.dossier?
+    structuredClone(recorder.manifest.dossier):undefined;
   applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
   applyReplayActorIdentity(state,recorder.manifest);
@@ -4010,6 +4036,10 @@ function reset(next=state.variant,siteSeed?:number,
   applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
   applyCampaignSkills();
+  // One resolved story per mission; restart restores the saved artifact.
+  state.operationDossier=restartStart?.dossier?
+    structuredClone(restartStart.dossier):
+    buildPreviewDossier(state,encounterRisk);
   missionStart=captureMissionStart(state,requestedSiteScale);
   flashDoorId=null;
   if(!deferScene)stage?.applySite(state.site??null);

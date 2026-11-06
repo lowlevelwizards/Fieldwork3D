@@ -8,6 +8,7 @@ import type {MissionTruth} from './briefing/briefing-types.ts';
 
 export type LabGenerationRequest={
   id:number;seed:number;scale:SiteScale;mission:OperationKind;intel:IntelMode;
+  useIncidentIntent?:boolean;requestedIncidentId?:string;
 };
 export type LabGenerationResponse=
   |{id:number;kind:'done';truth:MissionTruth}
@@ -19,7 +20,8 @@ const scope=self as unknown as{
 scope.onmessage=({data:request})=>{
   try{
     const site=generateSite(request.seed,request.scale,undefined,
-      {mission:request.mission});
+      {mission:request.mission,enableIncidentIntent:request.useIncidentIntent,
+        incidentId:request.requestedIncidentId});
     const session=newSession(0,request.seed,request.intel,request.scale,
       request.mission,site);
     scope.postMessage({id:request.id,kind:'done',truth:compileMissionFacts(session)});

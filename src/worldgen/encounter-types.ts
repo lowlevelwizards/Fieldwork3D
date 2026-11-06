@@ -23,6 +23,9 @@ export type EncounterContext = {
   premise?:EncounterPremise;
   /** Developer opt-in until B5–B8 are physically and visually integrated. */
   enableCivilians?:boolean;
+  /** Experimental B5: only set by the Briefing Lab. */
+  enableIncidentIntent?:boolean;
+  incidentId?:string;
 };
 export type EncounterActorSpec = {
   id:string;groupId:string;role:EncounterRole;activity:EncounterActivity;
@@ -51,6 +54,8 @@ export type EncounterPlan = {
   version:1;seed:number;building:BuildingArchetype;scale:SiteScale;
   premise:EncounterPremise;profile?:EncounterProfile;
   mission:OperationKind;risk:1|2|3;
+  /** The selected intent may still be rejected by post-generation eligibility. */
+  incidentIntentId?:string;
   expectedOccupancy:number;hostileBudget:number;
   groups:EncounterGroup[];actors:EncounterActorSpec[];
   /** Additive version-one extension. Absent on legacy saved encounters. */

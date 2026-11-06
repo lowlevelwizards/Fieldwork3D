@@ -28,6 +28,7 @@ export function compileMissionFacts(
     hostileCount:actors.length,armedProfileCount:weapons,
     activeCivilianCount:s.civilians.filter(a=>!a.rescueTarget).length,
     rescueTargetPresent:hasRescue,captureTargetPresent:hasCapture,
-    objective:operationBrief(s.missionType),entryId:opts.entryId??'FRONT'
+    objective:operationBrief(s.missionType),entryId:opts.entryId??'FRONT',
+    encounterIncidentId:encounter?.incidentIntentId??null
   };
 }

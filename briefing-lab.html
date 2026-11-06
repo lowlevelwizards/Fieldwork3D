@@ -30,6 +30,8 @@
     </select></label>
     <label>Site seed<input id="siteSeed" type="number" min="1" max="4294967295" value="177" inputmode="numeric"/></label>
   </div>
+  <label class="steering-toggle"><input type="checkbox" id="steerEncounter"/>
+    EXPERIMENTAL · Let incident choice influence the next encounter</label>
   <button id="generateSite" class="primary" type="button">GENERATE REAL SITE</button>
   <div class="separator"></div>
   <h2>BRIEFING VARIABLES</h2>
@@ -49,6 +51,7 @@
     <button id="rerollIncident" type="button">REROLL INCIDENT</button>
     <button id="rerollWording" type="button">REROLL WORDING</button>
   </div>
+  <button id="rebuildEncounter" type="button">REBUILD SITE USING SELECTED INCIDENT</button>
   <div class="button-row">
     <button id="copyText" type="button">COPY BRIEFING</button>
     <button id="exportDossier" type="button">EXPORT JSON</button>

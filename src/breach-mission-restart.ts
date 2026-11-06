@@ -7,6 +7,7 @@
  */
 import type {Session,TeamActor} from './breach-game.ts';
 import type {Site,SiteScale} from './breach-site.ts';
+import type {OperationDossierV1} from './briefing/briefing-types.ts';
 
 export type MissionStartSnapshot={
   variant:number;
@@ -18,6 +19,7 @@ export type MissionStartSnapshot={
   scale:SiteScale;
   entryId:string;
   squad:TeamActor[];
+  dossier?:OperationDossierV1;
 };
 
 export function captureMissionStart(session:Session,
@@ -31,6 +33,7 @@ export function captureMissionStart(session:Session,
     lightingMode:session.lightingMode,
     scale:session.site?.scale??fallbackScale,
     entryId,
+    dossier:session.operationDossier?structuredClone(session.operationDossier):undefined,
     // Capture real starting kit, health, stance, identities and insertion.
     // Planned orders are deliberately discarded during restoration.
     squad:session.operators.filter(a=>a.side==='blue').map(a=>structuredClone(a)),
