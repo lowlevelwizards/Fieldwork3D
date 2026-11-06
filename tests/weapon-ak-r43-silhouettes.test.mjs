@@ -44,7 +44,7 @@ function rangeY(mesh){
 }
 test('AK R4.3 retains nine recipes, authoritative contacts and compact mesh budget',()=>{
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ak').length,9);
- assert.equal(Object.keys(FAMILY_PARTS).length,91);
+ assert.equal(Object.keys(FAMILY_PARTS).length,92);
  for(const id of ids){
   const {group,config}=model(id);
   const body=new THREE.Box3().setFromObject(group);
@@ -147,7 +147,8 @@ test('AK R4.3b 7.62 magazine ribs are exactly two curved low-relief strokes',()=
   const ribs=group.children.filter(m=>
    m.name.startsWith('family-magazine-'+preset.parts.magazine+'-')&&
    !m.name.endsWith('-0'));
-  assert.equal(ribs.length,2,id+' magazine must have two ribs');
+  assert.equal(ribs.length,id==='ak-ak103'?0:2,
+   id+' steel-only stamped magazine ribs');
   assert.ok(bounds(group,'magazine').max.z-bounds(group,'magazine').min.z<=2.35);
   clearWeaponSilhouette(group);
  }
