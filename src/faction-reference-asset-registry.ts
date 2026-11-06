@@ -5,6 +5,7 @@
 import type {FactionReference,ReferenceGap} from './faction-reference-catalog.ts';
 import {identityMarking} from './operator-identity-markings.ts';
 import {policeVisorFit} from './operator-police-visor-policy.ts';
+import {referenceWeaponChoice} from './faction-reference-weapons.ts';
 export const referenceHasIdentity=(ref:FactionReference):boolean=>
  Object.entries(ref.markings??{}).some(([slot,id])=>{
   const mark=identityMarking(id);
@@ -19,6 +20,13 @@ export type ReferenceGapFidelity='exact'|'approximate'|'missing';
 export function referenceGapFidelity(ref:FactionReference,gap:ReferenceGap):
  ReferenceGapFidelity{
  switch(gap.id){
+  case 'ar-family':case 'ak-family':{
+   const issued=referenceWeaponChoice(ref.id);
+   if(issued.fidelity==='proxy')return 'missing';
+   if((gap.id==='ar-family'&&issued.preset.family!=='ar')||
+      (gap.id==='ak-family'&&issued.preset.family!=='ak'))return 'missing';
+   return issued.fidelity==='exact'?'exact':'approximate';
+  }
  case 'unit-insignia':return referenceHasIdentity(ref)?'exact':'missing';
  case 'police-marking':
   return ['label-police','label-swat'].includes(ref.markings?.chest??'')?
