@@ -61,7 +61,7 @@ try{
     'Portrait replay dock obscures battlefield: '+JSON.stringify(compact));
   check(compact.markerCount<=Math.ceil(compact.markWidth/7)+1,
     'Event rail still has overlapping unclustered markers');
-  check(compact.dock.top>innerHeight*.54,
+  check(compact.dock.top>compact.viewport.height*.54,
     'Compact replay dock should stay near screen bottom');
 
   await page.locator('#replayMore').click();
