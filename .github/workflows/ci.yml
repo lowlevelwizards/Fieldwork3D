@@ -864,6 +864,15 @@ jobs:
           node --experimental-strip-types --test \
             tests/faction-reference.test.mjs \
             tests/ux-r2-studio-flow.test.mjs
+      - name: Lighting R3 — crisp short-range shadows and safe mobile geometry
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/baked-lighting-crisp-contact-r3-') }}
+        run: |
+          node --experimental-strip-types --test --test-concurrency=1 \
+            tests/operator-baked-lighting-crisp.test.mjs \
+            tests/operator-baked-shadow-lighting.test.mjs \
+            tests/operator-baked-gear-ao.test.mjs \
+            tests/operator-baked-metric-limb-regression.test.mjs \
+            tests/faction-reference.test.mjs
       - name: Baked lightmaps — unit-height IK garments and real cast shadows
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/operator-lightmaps-metric-') }}
         run: |
