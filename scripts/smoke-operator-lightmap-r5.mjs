@@ -100,5 +100,88 @@ try{
     toonErrors.join('; '));
    console.log('R5 three-band toon phone proof passed');
   }finally{await toon.close();}
+  // R5.6-B repeatable 390px reference photo matrix. View buttons always
+  // produce a new real WebGL screenshot; no synthetic lightmask render.
+  // The two experimental modes remain isolated from the default suite.
+  const references=[
+   ['ocp','OCP Infantry'],['ucp','UCP Era'],
+   ['marpat','Desert MARPAT'],['aor1','AOR1'],
+   ['tropentarn','Tropentarn'],['gorka','Gorka/SS-Leto']
+  ];
+  const records=[];
+  const captures=new Set();
+  const {createHash}=await import('node:crypto');
+  for(const mode of [
+   {id:'smooth',query:'',refs:references,views:['front','side','back','fit']},
+   {id:'atlas',query:'?operatorLightingAtlas=1',
+    refs:references.filter(r=>r[0]==='ocp'||r[0]==='ucp'),
+    views:['front','side']},
+   {id:'toon2',query:'?operatorLightingToon=2',
+    refs:references.filter(r=>r[0]==='ucp'||r[0]==='gorka'),
+    views:['front','side']},
+   {id:'toon3',query:'?operatorLightingToon=3',
+    refs:references.filter(r=>r[0]==='ucp'||r[0]==='gorka'),
+    views:['front','side']}
+  ]){
+   const viewer=await browser.newPage({
+    viewport:{width:390,height:844},deviceScaleFactor:1.5,
+    isMobile:true,hasTouch:true
+   });
+   try{
+    const errs=[];
+    viewer.on('pageerror',e=>errs.push(e.message));
+    viewer.on('console',m=>{
+     if(m.type()==='error'&&/WebGLProgram|shader error|INVALID_OPERATION/i.test(m.text()))
+      errs.push(m.text());
+    });
+    await viewer.goto(origin+'/operator-studio.html'+mode.query,
+     {waitUntil:'domcontentloaded'});
+    await viewer.waitForFunction(()=>
+     document.getElementById('studioCanvas')?.dataset.ready==='true',
+     null,{timeout:30000});
+    await viewer.getByRole('button',{name:'REFERENCES',exact:true}).click();
+    for(const [slug,search] of mode.refs){
+     await viewer.locator('.reference-search').fill(search);
+     const entry=viewer.locator('.reference-card').first();
+     await entry.click();
+     for(const view of mode.views){
+      await viewer.locator('[data-studio-view="'+view+'"]').click();
+      const filename='operator-studio-captures/r5-'+mode.id+
+       '-'+slug+'-'+view+'.png';
+      const bytes=await viewer.locator('#studioCanvas').screenshot({
+       path:filename
+      });
+      if(bytes.byteLength<3000)
+       throw Error(mode.id+' '+slug+' '+view+': blank WebGL capture');
+      const hash=createHash('sha256').update(bytes).digest('hex');
+      captures.add(hash);
+      const metrics=await viewer.locator('#studioCanvas').evaluate(el=>({
+       drawCalls:Number(el.dataset.drawCalls),
+       atlasCount:Number(el.dataset.operatorAtlasCount||0),
+       atlasBytes:Number(el.dataset.operatorAtlasBytes||0),
+       toonMeshes:Number(el.dataset.operatorToonMeshes||0)
+      }));
+      if(metrics.drawCalls<1)throw Error('Missing draw calls '+filename);
+      if(mode.id==='atlas'&&metrics.atlasCount<1)
+       throw Error('Expected atlas lighting '+filename);
+      if(mode.id.startsWith('toon')&&metrics.toonMeshes<1)
+       throw Error('Expected toon materials '+filename);
+      records.push({mode:mode.id,outfit:slug,view,bytes:bytes.byteLength,
+       hash:hash.slice(0,16),...metrics});
+     }
+    }
+    if(errs.length)throw Error(mode.id+' WebGL errors '+errs.join('; '));
+   }finally{await viewer.close();}
+  }
+  if(records.length!==36||captures.size<24)
+   throw Error('R5 lighting visual matrix lacks unique views: '+
+    records.length+'/'+captures.size);
+  const {writeFile}=await import('node:fs/promises');
+  await writeFile('operator-studio-captures/r5-visual-matrix.json',
+   JSON.stringify({width:390,height:844,
+    note:'Chromium mobile viewport, not physical iPhone calibration',
+    captures:records},null,2));
+  console.log('R5 36-view mobile WebGL visual matrix passed; '+
+   'all 6 outfits and experimental shading modes captured.');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

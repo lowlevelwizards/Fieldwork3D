@@ -163,3 +163,13 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 - Explicitly invalidate paused world shadow map when caster set changes.
 - Drive three pose-cavity material uniforms at appropriate quality strength.
 - No actor-specific lights, meshes, shadow passes or CPU bake work.
+
+## R5.6-B mobile screenshot / draw-call matrix
+- Existing Studio smoke now records six kit references at front, side,
+  back and fit with identical 390x844 viewport; 24 canonical captures.
+- Additional 12 representative light/dark samples of isolated UV1 atlas,
+  two-band and three-band cel shading, with shader error detection.
+- Record per-image draws, UV1 atlas count/bytes and toon mesh count in
+  a JSON visual report; require nonblank captures and different camera views.
+- Browser/mobile emulation is not a substitute for physical iPhone
+  calibration; no claim of physical-device approval from automated passes.
