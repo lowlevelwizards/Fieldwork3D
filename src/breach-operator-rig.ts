@@ -63,6 +63,7 @@ import {createOperatorEquipmentDetails,updateOperatorEquipmentDetails,
  type OperatorEquipmentDetails} from './operator-equipment-details.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
+import {weaponPresentationSockets} from './breach-weapon-presentation.ts';
 import {resolveWeaponAssembly,sameWeaponConfiguration,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponGrips,handlingPose,clampReach,
@@ -131,6 +132,7 @@ export type OperatorRig={
   hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
+  detachedMagazine:THREE.Group;
   medicalItem:THREE.Mesh;
   weaponBody:THREE.Group;droppedWeaponBody:THREE.Group;
   weaponAccessories:THREE.Group;droppedAccessories:THREE.Group;
@@ -349,6 +351,9 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   const magazineInserted=block(weapon,3,-4,0,2.7,6,2.5,boot);
   const magazineHand=block(chest,0,0,0,2.7,6,2.5,boot);
   magazineHand.visible=false;
+  const detachedMagazine=new THREE.Group();
+  detachedMagazine.name='detached-authored-magazine';
+  detachedMagazine.visible=false;chest.add(detachedMagazine);
   const medicalItem=block(chest,0,0,0,2.3,1.45,2.1,vest);
   const careMark=new THREE.MeshStandardMaterial({
     color:0x9e7767,roughness:1,flatShading:true});
@@ -394,7 +399,8 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     bootMaterial:boot,baseCloth:cloth.color.clone(),
     baseVest:vest.color.clone(),helmetBadge,appearanceSeed:0,
     personality:operatorMotionTraits(id),
-    magazineInserted,magazineHand,medicalItem,weaponBody,droppedWeaponBody,
+    magazineInserted,magazineHand,detachedMagazine,
+    medicalItem,weaponBody,droppedWeaponBody,
     weaponAccessories,droppedAccessories,weaponLensMaterial,slingStraps,
     weaponLightLens:null,droppedLightLens:null,
     visualWeapon:'carbine',visualWeaponConfiguration:undefined,
@@ -1133,13 +1139,24 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // A weapon/platform or immutable attachment configuration changed.
     // Keep the live and dropped silhouette exactly in sync.
     for(const group of [r.weaponBody,r.droppedWeaponBody,
-      r.weaponAccessories,r.droppedAccessories])clearWeaponSilhouette(group);
+      r.weaponAccessories,r.droppedAccessories,r.detachedMagazine])
+      clearWeaponSilhouette(group);
     const models=[
       [r.weaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config)],
       [r.droppedWeaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config)]
     ] as const;
     for(const [dest,model] of models)
       while(model.children.length)dest.add(model.children[0]);
+    // Detachable geometry is copied from precisely the same named AR/AK
+    // magazine slot. No extra placeholder or alternate silhouette exists.
+    const magazineSocket=weaponPresentationSockets(p.weapon,config).magazine;
+    for(const mesh of r.weaponBody.children){
+      if(!(mesh instanceof THREE.Mesh)||!mesh.name.startsWith('family-magazine-'))
+        continue;
+      const copy=mesh.clone();copy.geometry=mesh.geometry.clone();
+      copy.position.x-=magazineSocket.x;copy.position.y-=magazineSocket.y;
+      r.detachedMagazine.add(copy);
+    }
     if(config){
       for(const dest of [r.weaponAccessories,r.droppedAccessories]){
         const model=buildWeaponAccessories(config,r.weaponSteel,r.weaponDark,
@@ -1212,11 +1229,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     clamp(1-p.reload/p.reloadDuration,0,1):0;
   const reloadMode=p.reloadMode??(p.weapon==='shotgun'?'shells':'emergency');
   const magazinePhase=reloadPhase(reloadProgress,reloadMode);
-  r.magazineInserted.visible=p.weapon!=='shotgun'&&
-    !(p.reloadRemoved&&!p.reloadInserted)&&
+  const authoredMagazine=r.detachedMagazine.children.length>0;
+  const mountedMagazine=!(p.reloadRemoved&&!p.reloadInserted)&&
     (!reloadActive||reloadProgress<.29||reloadProgress>=.82);
-  r.magazineHand.visible=reloadActive&&
+  // The authored family magazine and old fallback are mutually exclusive.
+  r.magazineInserted.visible=!authoredMagazine&&p.weapon!=='shotgun'&&
+    mountedMagazine;
+  for(const mesh of r.weaponBody.children)
+    if(mesh.name.startsWith('family-magazine-'))mesh.visible=mountedMagazine;
+  r.magazineHand.visible=!authoredMagazine&&reloadActive&&
     magazinePhase!=='reach'&&magazinePhase!=='settle';
+  r.detachedMagazine.visible=authoredMagazine&&reloadActive&&
+    !mountedMagazine&&magazinePhase!=='settle'&&!p.down&&!p.surrender;
   r.magazineHand.scale.set(
     p.weapon==='shotgun'?.48:1,p.weapon==='shotgun'?.55:1,1);
   const throwAge=p.seconds-p.lastThrowAt;
@@ -1379,6 +1403,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.magazineHand.position.copy(r.arms[0].hand.position);
     r.magazineHand.rotation.copy(r.arms[0].hand.rotation);
   }
+  if(r.detachedMagazine.visible){
+    // Meshes are magazine-feed-socket relative; the lips follow the
+    // solved support wrist and return to their gun mount at insertion.
+    r.detachedMagazine.position.copy(r.arms[0].hand.position);
+    r.detachedMagazine.rotation.copy(fit.rotation);
+    r.detachedMagazine.scale.set(data.lengthScale,1,1);
+  }
   // The pose system is the final writer for actor tilts and reactions.
   // The scene controls XY world placement only, not anatomy or weapon pose.
   if(p.flashActive&&!p.down){
@@ -1453,6 +1484,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(p.unarmedPreview){
     r.weapon.visible=false;r.droppedGun.visible=false;
     r.magazineHand.visible=false;r.magazineInserted.visible=false;
+    r.detachedMagazine.visible=false;
     for(const sling of r.slingStraps)sling.visible=false;
   }
   // Shader uniforms follow the existing IK without CPU ray tracing.
