@@ -24,7 +24,8 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  const mission=context.mission??missions[(site.seed>>>0)%missions.length];
  const resolved={...context,mission};
  const premise:EncounterPremise=chooseEncounterPremise(site,resolved);
- const profile=chooseEncounterProfile(premise,seed,mission);
+ const profile=chooseEncounterProfile(premise,seed,mission,
+   context.enableIncidentIntent?context.incidentId:undefined);
  const target=chooseHostileBudget(site,resolved,premise);
  const anchors=site.enemies;
  // All anchors were checked by the architectural circulation audit.
@@ -61,6 +62,7 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  const plan:EncounterPlan={
   version:1,seed,building:site.archetype??'house',
   scale:site.scale??'standard',premise,profile,mission,
+  incidentIntentId:context.enableIncidentIntent?context.incidentId:undefined,
   risk:context.risk??1,
   expectedOccupancy:site.identity?.capacity??actors.length,hostileBudget:target,
   groups:placement.groups.map(g=>({...g,

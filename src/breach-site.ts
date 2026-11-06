@@ -11,6 +11,7 @@ import {buildingIdentity} from './worldgen/building-identity.ts';
 import {measureSiteCompleteness,shouldTryAnotherLayout,preferCompleteCandidate} from './worldgen/site-completeness.ts';
 import {repairDoorwayClutter} from './worldgen/doorway-clutter-repair.ts';
 import {attachEncounterPlan} from './worldgen/encounter-director.ts';
+import {chooseGenerationIncidentIntent} from './briefing/incident-intent.ts';
 import {describeSiteTopology,preferTopologyCandidate,
  shouldSampleTopologyAlternative} from './worldgen/topology-diversity.ts';
 import type {EncounterContext,EncounterPlan} from './worldgen/encounter-types.ts';
@@ -84,6 +85,13 @@ export function generateSite(seed:number,scale:SiteScale='standard',
  // Keep one semantic building identity and a reproducible sequence of
  // massing variants when a furniture arrangement blocks the critical route.
  const subtype=buildingIdentity(kind,seed,scale,0).subtype;
+ // An optional intent stays fixed across all geometry retries.
+ const mission=encounterContext.mission??
+   (['clear','intel','rescue','hold','capture'] as const)[(seed>>>0)%5];
+ const contextWithIntent:EncounterContext=encounterContext.enableIncidentIntent?
+   {...encounterContext,incidentId:chooseGenerationIncidentIntent(
+     seed,kind,mission,encounterContext.incidentId)??undefined}:
+   {...encounterContext,incidentId:undefined};
  let best:Site|undefined;
  let bestGrade:ReturnType<typeof measureSiteCompleteness>|undefined;
  let firstSuccess=-1;
@@ -106,7 +114,7 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    // fixtures are never deleted to manufacture a route.
    const furnished=applyArchetype(orientArchitecturalSite(geometry,seed),seed);
    const accessible=repairDoorwayClutter(furnished).site;
-   const candidate=attachEncounterPlan(accessible,encounterContext);
+   const candidate=attachEncounterPlan(accessible,contextWithIntent);
    onProgress?.('scoring',attempt);
    const grade=measureSiteCompleteness(candidate);
    if(!bestGrade||preferCompleteCandidate(grade,bestGrade)||

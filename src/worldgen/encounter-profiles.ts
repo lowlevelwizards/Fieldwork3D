@@ -8,7 +8,7 @@ import {encounterRng} from './encounter-rng.ts';
 const profiles:readonly EncounterProfile[]=[
  'quiet-approach','scattered','clustered','active','prepared'];
 export function chooseEncounterProfile(premise:EncounterPremise,
- seed:number,mission?:OperationKind):EncounterProfile{
+ seed:number,mission?:OperationKind,incidentId?:string):EncounterProfile{
  const weights:Record<EncounterProfile,number>={
   'quiet-approach':2.3,scattered:4,clustered:1.8,active:2.1,prepared:1.3
  };
@@ -34,7 +34,14 @@ export function chooseEncounterProfile(premise:EncounterPremise,
   case 'hold':
    weights.prepared+=5;weights.clustered+=1;break;
  }
- let roll=encounterRng(seed,19)()*
+ if(incidentId==='warrant-service'){
+   weights.prepared+=3;weights.clustered+=1;
+ }else if(incidentId==='missing-person'){
+   weights.active+=2;weights.clustered+=1;
+ }else if(incidentId==='evidence-seizure'){
+   weights['quiet-approach']+=3;weights.scattered+=1;
+ }
+ let roll=encounterRng(seed,19)()
   profiles.reduce((n,key)=>n+weights[key],0);
  for(const p of profiles){roll-=weights[p];if(roll<=0)return p;}
  return profiles.at(-1)!;

@@ -40,7 +40,8 @@ function composeText(
 export function createOperationDossier(
   truth:MissionTruth,opts:DossierOptions={}
 ):OperationDossierV1{
-  const incident=selectIncident(truth,opts);
+  const incident=selectIncident(truth,{...opts,
+    forceIncidentId:opts.forceIncidentId??truth.encounterIncidentId??undefined});
   const narrativeSeed=mixBriefingSeed(truth.seed,(opts.narrativeSalt??0)^0x4b54a129);
   const rand=briefingRng(narrativeSeed);
   const lead=incident.leads[Math.floor(rand()*incident.leads.length)];

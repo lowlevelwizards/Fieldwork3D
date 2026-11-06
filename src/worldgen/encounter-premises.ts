@@ -3,6 +3,7 @@
 import type {Site} from '../breach-site.ts';
 import type {EncounterContext,EncounterPremise} from './encounter-types.ts';
 import {encounterRng} from './encounter-rng.ts';
+import {INCIDENTS} from '../briefing/incident-catalog.ts';
 const options:readonly EncounterPremise[]=[
  'routine','after-hours','hideout','guarded','disturbance',
  'defensive','vacant','incident'
@@ -30,6 +31,12 @@ export function chooseEncounterPremise(site:Site,context:EncounterContext={}):En
  if(mission==='rescue'){w.incident+=5;w.disturbance+=2;}
  if(mission==='hold'){w.defensive+=5;w.guarded+=2;}
  if(mission==='intel'){w.hideout+=2;w['after-hours']+=1;}
+ if(context.enableIncidentIntent&&context.incidentId){
+   const intent=INCIDENTS.find(i=>i.id===context.incidentId);
+   if(intent?.premises?.length)
+     for(const key of options)
+       w[key]*=intent.premises.includes(key)?3:.2;
+ }
  if(risk===2){w.guarded+=1.5;w.hideout+=1;}
  if(risk===3){w.defensive+=5;w.guarded+=4;w.hideout+=2;w.routine*=.65;}
  const total=options.reduce((sum,key)=>sum+Math.max(.01,w[key]),0);

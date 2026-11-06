@@ -31,6 +31,8 @@ export type MissionTruth={
   captureTargetPresent:boolean;
   objective:OperationBrief;
   entryId:string;
+  /** Present only on opt-in steering builds. */
+  encounterIncidentId?:string|null;
 };
 export type IntelClaim={
   id:string;
