@@ -14,13 +14,17 @@ import {headwearCuboidVolumes,type HeadSilhouetteId} from './operator-headwear-s
 import {boxFaceVertexRanges} from './rendering/pixel-materials.ts';
 
 export type ShadowBox={min:THREE.Vector3;max:THREE.Vector3};
-const CELL=32,COLS=4,ROWS=2;
+// Small, crisp cast boundaries at mobile zoom; 64px per low-poly face.
+const CELL=64,COLS=4,ROWS=2;
+// A tightly clustered directional key: avoid the enormous soft 4-ray
+// penumbra on blocky heads. Still enough variation for mild antialiasing.
 const lightRays=[
- new THREE.Vector3(.57,.80,.16).normalize(),
- new THREE.Vector3(.47,.86,-.12).normalize(),
- new THREE.Vector3(.66,.74,.04).normalize(),
- new THREE.Vector3(.52,.82,-.22).normalize()
+ new THREE.Vector3(.46,.88,.07).normalize(),
+ new THREE.Vector3(.43,.90,.03).normalize(),
+ new THREE.Vector3(.47,.88,.04).normalize()
 ] as const;
+const RECEIVER_SHADOW_REACH=2.55;
+export const RECEIVER_SHADOW_MIN=.64;
 export const BAKED_LIGHT_DIRECTION=lightRays[0];
 export const BAKED_SHADOW_ATLAS_BYTES=COLS*ROWS*CELL*CELL*4;
 const cache=new Map<string,THREE.DataTexture>();
@@ -46,19 +50,21 @@ export function shadowRayBox(origin:THREE.Vector3,direction:THREE.Vector3,
  return far>EPS?near:null;
 }
 function pointShade(point:THREE.Vector3,normal:THREE.Vector3,
- boxes:readonly ShadowBox[],floor=.40):number{
+ boxes:readonly ShadowBox[]):number{
  let hits=0;
- const origin=point.clone().addScaledVector(normal,.09);
+ const origin=point.clone().addScaledVector(normal,.075);
  for(const ray of lightRays){
   if(normal.dot(ray)<-.12)continue;
   for(const box of boxes){
-   if(shadowRayBox(origin,ray,box,16)!==null){hits++;break;}
+   // Occluders more than 2.55 local units away are NOT contact shadows.
+   // That explicitly prevents helmet brims from washing the entire face.
+   if(shadowRayBox(origin,ray,box,RECEIVER_SHADOW_REACH)!==null){
+    hits++;break;
+   }
   }
  }
  const occlusion=hits/lightRays.length;
- // One-direction miniature studio shadow, with several offset rays for
- // a low-resolution soft penumbra. Avoid pitch-black camouflage or skin.
- return Math.max(floor,1-.59*occlusion);
+ return Math.max(RECEIVER_SHADOW_MIN,1-.34*occlusion);
 }
 export function bakeReceiverShadowAtlas(
  key:string,center:THREE.Vector3,size:THREE.Vector3,
@@ -90,8 +96,9 @@ export function bakeReceiverShadowAtlas(
    }
    const shade=pointShade(p,n,boxes);
    const low=1-sv; // lower receiver pixels are slightly darker, by design.
-   const value=Math.max(.39,shade*(1-bodyGradient*low)*
-    (f===3?.84:1));
+   // Contact shadows remain distinct from the soft overall depth grade.
+   const value=Math.max(RECEIVER_SHADOW_MIN,
+    shade*(1-bodyGradient*low)*(f===3?.94:1));
    const byte=Math.round(value*255);
    const index=((row*CELL+v)*width+col*CELL+u)*4;
    pixels[index]=byte;pixels[index+1]=byte;
@@ -101,8 +108,8 @@ export function bakeReceiverShadowAtlas(
  const texture=new THREE.DataTexture(pixels,width,height,THREE.RGBAFormat);
  texture.name='Fieldwork baked receiver light / '+key;
  texture.colorSpace=THREE.LinearSRGBColorSpace;
- texture.magFilter=THREE.LinearFilter;
- texture.minFilter=THREE.LinearMipmapLinearFilter;
+ texture.magFilter=THREE.NearestFilter;
+ texture.minFilter=THREE.NearestMipmapNearestFilter;
  texture.generateMipmaps=true;
  texture.wrapS=texture.wrapT=THREE.ClampToEdgeWrapping;
  texture.needsUpdate=true;
@@ -154,7 +161,7 @@ export function headwearCastShadowAtlas(headwear:string):THREE.DataTexture{
   boxes=[{min:new THREE.Vector3(front-2.0,5.64,-3.85),
    max:new THREE.Vector3(front+2.0,6.24,3.85)}];
  }
- return bakeReceiverShadowAtlas(key,headCenter,headSize,boxes,.025);
+ return bakeReceiverShadowAtlas(key,headCenter,headSize,boxes,.012);
 }
 /** Collect only the real sewn collar pieces, not the entire jacket bounds.
  * Those pieces are already preserved outside rigid mesh merging for fit tests.
@@ -182,7 +189,7 @@ const neckSize=new THREE.Vector3(3.6,4,3.8),neckCenter=new THREE.Vector3(0,7,0);
 export function collarCastShadowAtlas(top:string,collars:readonly ShadowBox[]){
  // Version and garment style, not camo color or operator id, own each bake.
  // Caller supplies the authored collar pieces in chest coordinates.
- return bakeReceiverShadowAtlas('neck:'+top,neckCenter,neckSize,collars,.13);
+ return bakeReceiverShadowAtlas('neck:'+top,neckCenter,neckSize,collars,.035);
 }
 export function shadowAtlasCacheSize(){return cache.size;}
 /** For deterministic tests: sample the front-face pixel at given local Y/Z. */
