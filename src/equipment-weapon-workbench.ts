@@ -22,6 +22,11 @@ export class WeaponWorkbenchPreview{
  private readonly sideCamera=new THREE.OrthographicCamera(-35,35,24,-24,.1,300);
  private readonly model=new THREE.Group();
  private readonly pointerPositions=new Map<number,{x:number;y:number}>();
+ private readonly pointerOrigins=new Map<number,{x:number;y:number}>();
+ private gestureActive=false;
+ private socketTapConsumed=false;
+ private dotsRestoreTimer:ReturnType<typeof setTimeout>|null=null;
+ private readonly reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false;
  private readonly steel=new THREE.MeshStandardMaterial({color:0x707875,roughness:.78,flatShading:true});
  private readonly dark=new THREE.MeshStandardMaterial({color:0x303a38,roughness:.84,flatShading:true});
  private readonly host:HTMLElement;
@@ -95,7 +100,8 @@ export class WeaponWorkbenchPreview{
   this.leader=document.createElementNS('http://www.w3.org/2000/svg','svg');
   this.leader.setAttribute('aria-hidden','true');
   this.leader.style.cssText='position:absolute;inset:0;width:100%;height:100%;'+
-   'z-index:2;overflow:visible;pointer-events:none';
+   'z-index:2;overflow:visible;pointer-events:none;opacity:1;'+
+   'transition:opacity .28s ease';
   this.leaderPath=document.createElementNS('http://www.w3.org/2000/svg','path');
   this.leaderPath.setAttribute('fill','none');
   this.leaderPath.setAttribute('stroke','#f4f9f0');
@@ -197,7 +203,8 @@ export class WeaponWorkbenchPreview{
    button.style.cssText='position:absolute;z-index:3;transform:translate(-50%,-50%);'+
     'width:44px;height:44px;padding:0;display:flex;align-items:center;'+
     'justify-content:center;border:0;background:transparent;'+
-    'touch-action:manipulation;cursor:pointer;overflow:visible';
+    'touch-action:manipulation;cursor:pointer;overflow:visible;opacity:1;'+
+    'transition:opacity .28s ease';
    const dot=document.createElement('span');
    dot.className='weapon-workbench-dot';
    dot.setAttribute('aria-hidden','true');
@@ -208,6 +215,7 @@ export class WeaponWorkbenchPreview{
    button.append(dot);
    button.addEventListener('click',e=>{
     e.preventDefault();e.stopPropagation();
+    if(this.gestureActive||this.socketTapConsumed)return;
     this.setActiveSlot(anchor.slot);this.onSelect(anchor.slot);
    });
    this.socketButtons.set(anchor.slot,button);
@@ -287,41 +295,87 @@ export class WeaponWorkbenchPreview{
    this.choiceSubtitle.textContent='No compatible replacement options';
   }
  }
+ private setSocketDotsVisible(visible:boolean,fast=false){
+  const duration=this.reducedMotion?0:fast?100:280;
+  for(const button of this.socketButtons.values()){
+   button.style.transitionDuration=duration+'ms';
+   button.style.opacity=visible?'1':'0';
+   button.style.pointerEvents=visible?'auto':'none';
+  }
+  this.leader.style.transitionDuration=duration+'ms';
+  this.leader.style.opacity=visible?'1':'0';
+ }
+ private hideDotsDuringInspection(){
+  if(this.dotsRestoreTimer!==null){
+   clearTimeout(this.dotsRestoreTimer);this.dotsRestoreTimer=null;
+  }
+  if(!this.gestureActive){
+   this.gestureActive=true;this.setSocketDotsVisible(false,true);
+  }
+ }
+ private finishInspection(){
+  if(this.pointerPositions.size>0)return;
+  this.gestureActive=false;
+  if(this.dotsRestoreTimer!==null)clearTimeout(this.dotsRestoreTimer);
+  this.dotsRestoreTimer=setTimeout(()=>{
+   this.dotsRestoreTimer=null;
+   this.setSocketDotsVisible(true);
+  },this.reducedMotion?0:180);
+ }
  private down=(e:PointerEvent)=>{
-  // Socket labels are real touch buttons: never steal their pointer capture.
-  if(e.target instanceof Element&&e.target.closest('button.weapon-workbench-socket'))return;
+  const onSocket=e.target instanceof Element&&
+   Boolean(e.target.closest('button.weapon-workbench-socket'));
   this.pointerPositions.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(this.pointerPositions.size===1)this.dragDistance=0;
-  if(this.pointerPositions.size===2)this.pinchDistance=0;
-  try{this.canvasHost.setPointerCapture(e.pointerId);}catch{/* optional */}
+  this.pointerOrigins.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(this.pointerPositions.size===1){
+   this.dragDistance=0;this.socketTapConsumed=false;
+  }
+  if(this.pointerPositions.size===2){
+   this.pinchDistance=0;
+   this.socketTapConsumed=true;this.hideDotsDuringInspection();
+  }
+  // Let an untouched socket receive its click; capture once an actual drag starts.
+  if(!onSocket)try{this.canvasHost.setPointerCapture(e.pointerId);}catch{/* optional */}
  };
  private move=(e:PointerEvent)=>{
   const previous=this.pointerPositions.get(e.pointerId);
   if(!previous)return;
   const dx=e.clientX-previous.x,dy=e.clientY-previous.y;
   this.pointerPositions.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  const origin=this.pointerOrigins.get(e.pointerId);
+  const moved=origin?Math.hypot(e.clientX-origin.x,e.clientY-origin.y):0;
   if(this.pointerPositions.size===2){
    const [a,b]=[...this.pointerPositions.values()];
    const d=Math.hypot(a.x-b.x,a.y-b.y);
-   if(this.pinchDistance>0)this.distance=Math.max(46,Math.min(120,
-    this.distance*this.pinchDistance/d));
+   if(this.pinchDistance>0&&d>1)
+    this.distance=Math.max(27,Math.min(120,this.distance*this.pinchDistance/d));
    this.pinchDistance=d;this.dragDistance=30;
+   this.hideDotsDuringInspection();
   }else if(this.pointerPositions.size===1&&!this.in2D){
-   this.dragDistance+=Math.hypot(dx,dy);
-   this.yaw+=dx*.010;this.pitch=Math.max(-.55,Math.min(.8,this.pitch+dy*.008));
+   if(moved>6){
+    this.socketTapConsumed=true;
+    this.hideDotsDuringInspection();
+    try{this.canvasHost.setPointerCapture(e.pointerId);}catch{/* optional */}
+    this.dragDistance+=Math.hypot(dx,dy);
+    this.yaw+=dx*.010;this.pitch=Math.max(-.55,Math.min(.8,this.pitch+dy*.008));
+   }
   }
   this.draw();
  };
  private up=(e:PointerEvent)=>{
   if(!this.pointerPositions.has(e.pointerId))return;
   this.pointerPositions.delete(e.pointerId);
+  this.pointerOrigins.delete(e.pointerId);
   if(this.pointerPositions.size<2)this.pinchDistance=0;
   try{this.canvasHost.releasePointerCapture(e.pointerId);}catch{/* optional */}
+  this.finishInspection();
  };
  private wheel=(e:WheelEvent)=>{
   e.preventDefault();
-  this.distance=Math.max(46,Math.min(120,this.distance+e.deltaY*.08));
+  this.hideDotsDuringInspection();
+  this.distance=Math.max(27,Math.min(120,this.distance+e.deltaY*.08));
   this.draw();
+  this.finishInspection();
  };
  /** Manual 2D does not destroy WebGL; returning to 3D restores the
   * original orbit view. A real context failure remains in fixed 2D only.
@@ -452,7 +506,8 @@ export class WeaponWorkbenchPreview{
   this.canvasHost.removeEventListener('pointerup',this.up);
   this.canvasHost.removeEventListener('pointercancel',this.up);
   this.canvasHost.removeEventListener('wheel',this.wheel);
-  this.pointerPositions.clear();
+  this.pointerPositions.clear();this.pointerOrigins.clear();
+  if(this.dotsRestoreTimer!==null)clearTimeout(this.dotsRestoreTimer);
   this.clearMounts();
   clearWeaponSilhouette(this.model);
   this.steel.dispose();this.dark.dispose();
