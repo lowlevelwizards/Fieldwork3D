@@ -15,7 +15,7 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const index:Record<SlotName,number>={stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0};
  const p=(slot:SlotName,outline:Outline,depth:number,finish:0|1|2=1)=>
   addOutline(root,slot,parts[slot],index[slot]++,outline,depth,
-   finish===2&&(parts[slot]==='ak-grip-bakelite'||parts[slot]==='ak-mag545')?
+   finish===2&&(parts[slot]==='ak-grip-bakelite'||parts[slot]==='ak-mag545'||parts[slot]==='ak-rpk-mag45')?
     AK_WARM_RESIN:material[finish]);
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number,
   finish:0|1|2=1)=>addCuboid(root,slot,parts[slot],index[slot]++,
@@ -25,6 +25,7 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   addBar(root,slot,parts[slot],index[slot]++,start,end,width,depth,material[finish]);
 
  const compact=parts.receiver==='akcompact';
+ const rpk=parts.receiver==='ak-rpk74';
  // Sloping stamped-look receiver and stepped roof. Core shared when authentic.
  p('receiver',compact?
   [[-5.5,-1.25],[-5.45,1.05],[-4.9,1.15],[3.45,1.1],
@@ -64,6 +65,10 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   line('stock',[-5.25,-1.35],[-13.0,-2.5],1.0,1.05,0);
   line('stock',[-5.25,-1.3],[-9.45,.15],.75,1.05,0);
   b('stock',-13.5,-1,0,1.05,3.65,2.5,1);
+ }else if(stock==='ak-rpk-clubfoot'){
+  // A single chunky wedge with the iconic low clubfoot heel, not extra Z bulk.
+  p('stock',[[-15.85,.62],[-9.0,.95],[-6.2,-.45],
+   [-9.8,-3.0],[-12.5,-3.95],[-15.85,-3.65]],3.4,2);
  }else if(stock==='ak-triangle-full'){
   // Full-length AKS-74: deliberately larger open triangle than the krink.
   line('stock',[-5.4,.65],[-14.3,.6],.95,1.2,0);
@@ -100,11 +105,17 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Keep the characteristic 7.62 lower swing larger than the 5.45 curve.
  const mag=parts.magazine,heavy=mag==='ak-mag762'||mag==='ak-mag762poly';
  const resinMag=mag==='ak-mag545';
- const finish:0|1|2=resinMag?2:heavy&&mag==='ak-mag762'?0:1;
+ const extended=mag==='ak-rpk-mag45';
+ const finish:0|1|2=resinMag||extended?2:heavy&&mag==='ak-mag762'?0:1;
  const top=m.magazineTopY;
  const magLeft=m.magwellCenterX-m.magazineWidthX/2;
  const magRight=m.magwellCenterX+m.magazineWidthX/2;
- if(heavy)
+ if(extended)
+  p('magazine',[[magLeft,top],[magRight,top],
+   [magRight+.28,-5.1],[magRight+1.45,-8.78],
+   [magLeft+1.65,-9.0],[magLeft+.38,-5.25]],
+   m.magazineDepthZ,finish);
+ else if(heavy)
   p('magazine',[[magLeft,top],[magRight,top],
    [magRight+.42,-4.35],[magRight+2.50,-7.45],
    [magLeft+2.15,-7.75],[magLeft+.55,-5.05]],
@@ -118,12 +129,15 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const guard=parts.handguard;
  const short=guard==='ak-wood-short'||guard==='ak-poly-short';
  const mid=guard==='ak-poly-mid';
- const end=short?11.45:mid?13.5:15.1;
+ const end=short?11.45:mid?13.5:rpk?14.2:15.1;
  const start=short?3.55:4.0;
- const woodGuard=guard==='ak-wood-long'||guard==='ak-wood-short';
+ const woodGuard=guard==='ak-wood-long'||guard==='ak-wood-short'||guard==='ak-rpk-wood';
  const rail=guard==='ak-rail-long';
  // Distinct lower cheek on wooden rifles, straightforward block on polymers.
- p('handguard',woodGuard?
+ p('handguard',rpk?
+   [[start,-1.48],[start+.65,1.05],[end-.75,1.15],
+    [end,.04],[end-.9,-2.13],[start+.9,-2.13]]:
+   woodGuard?
    [[start,-1.35],[start+.7,1.02],[end-.9,1.1],
     [end,-.1],[end-.85,-1.84],[start+1.0,-1.84]]:
    [[start,-1.35],[start+.75,1.05],[end-.7,1.05],
@@ -139,8 +153,9 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
 
  // Distinct high front sight and the compact's visually large final device.
  const tip=19.5;
- const barrelStart=short?11.2:mid?13.35:14.9;
- b('barrel',(barrelStart+tip)/2,0,0,tip-barrelStart,1.23,1.5,0);
+ const barrelStart=short?11.2:mid?13.35:rpk?13.95:14.9;
+ b('barrel',(barrelStart+tip)/2,0,0,tip-barrelStart,
+  rpk?1.62:1.23,rpk?1.85:1.5,0);
  if(short){
   // A much denser compact nose; no long pencil barrel sticking out.
   p('barrel',[[14.8,-.98],[18.85,-1.3],[19.5,-1.0],
@@ -152,5 +167,11 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [17.6,.2]],1.9,0);
   b('barrel',18.6,0,0,1.8,parts.receiver==='akm'?1.75:2.4,
    parts.receiver==='akm'?1.85:2.45,1);
+  if(rpk){
+   // Folded bipod as three symbolic shapes, no simulated mechanisms.
+   line('barrel',[14.5,-.65],[17.6,-1.75],.54,1.25,0);
+   line('barrel',[15.3,-.55],[18.0,-1.42],.43,1.25,0);
+   b('barrel',17.85,-1.65,0,.75,.45,1.45,1);
+  }
  }
 }
