@@ -4,6 +4,8 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
+import {AR_VISUAL_ANATOMY,shiftProfile}
+ from './weapon-receiver-anatomy.ts';
 
 export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
@@ -24,6 +26,13 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  p('receiver',[[-5.55,-1.1],[-2.1,-2.15],[2.2,-2.15],
   [3.45,-.85],[-5.55,-.85]],3.0,1);
  b('receiver',-5.7,-.2,0,1.1,3.5,3.6,1);
+ // A distinct, tapered LOWER magwell makes the magazine part of the receiver,
+ // not an object attached to the back of the fore-end.
+ const m=AR_VISUAL_ANATOMY;
+ p('receiver',[[m.magwellCenterX-1.2,m.magwellTopY],
+   [m.magwellCenterX+1.25,m.magwellTopY],
+   [m.magwellCenterX+1.0,m.magwellBottomY],
+   [m.magwellCenterX-1.0,m.magwellBottomY]],3.2,1);
  const carry=['ar-a1','ar-a2','ar-retro'].includes(parts.receiver);
  if(carry){
   const heavy=parts.receiver==='ar-a2';
@@ -55,10 +64,10 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
 
  // Pistol grips share the same root, but the modern shape has a fuller heel.
  const modern=parts.grip==='ar-grip-poly';
- p('grip',modern?
+ p('grip',shiftProfile(modern?
   [[-2.2,-1.7],[.6,-1.7],[.45,-5.25],[-.45,-5.85],[-2.7,-5.65]]:
   [[-2.0,-1.7],[.4,-1.7],[-.2,-5.75],[-2.45,-5.7]],
-  modern?3.25:2.95,1);
+  m.gripShiftX),modern?3.25:2.95,1);
 
  // The magazine profile uses one actually tapered/curved outline, not a pile of boxes.
  const mag=parts.magazine;
