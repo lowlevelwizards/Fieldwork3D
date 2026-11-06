@@ -1641,6 +1641,18 @@ html,body{font-family:var(--fw-font-menu)}
   font:700 12px var(--ui-font)}
 .favorite-mission-entry button:disabled{opacity:.35}
 
+/* Replay R3: compact chapter navigation in Events, never in the transport dock. */
+.replay-chapter-tools{display:grid;grid-template-columns:1fr 1.1fr 1fr;
+  gap:4px;margin-bottom:5px;flex:none}
+.replay-chapter-tools button{min-height:34px;min-width:0;
+  border:1px solid #657e70;border-radius:5px;background:#30483e;
+  color:#e8e5d5;font:700 10px var(--ui-font)}
+.replay-chapter-list{display:flex;gap:4px;overflow-x:auto;
+  overscroll-behavior-x:contain;padding:2px 0 7px;flex:none}
+.replay-chapter-item{white-space:nowrap;flex:none;min-height:32px;
+  border:1px solid #617869;background:#283b35;border-radius:5px;
+  padding:5px 9px;color:#d6decf;font:600 10px var(--ui-font)}
+.replay-chapter-item[data-kind="bookmark"]{border-color:#b69e74;color:#e7cc98}
 
 /* BRIEFING V3 — one intentional mission card, not a vertically scrolling report.
    Both modes use this component. Secondary intel can scroll on short viewports;

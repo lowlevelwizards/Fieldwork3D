@@ -125,6 +125,14 @@ try{
     'R3 contextual shot inspector missing from Events drawer');
   check(await page.locator('#replayShotInspector').isHidden(),
     'Shot inspector must stay hidden when nothing was selected');
+  check(await page.locator('#replayBookmark').isVisible(),
+    'R3 bookmark action must live inside the Events drawer');
+  check(await page.locator('#replayPrevChapter').isVisible()&&
+    await page.locator('#replayNextChapter').isVisible(),
+    'R3 event-grounded chapter navigation missing');
+  await page.locator('#replayBookmark').click();
+  check((await page.locator('#replayChapterList .replay-chapter-item').count())>=2,
+    'R3 bookmark/chapter list failed to update');
   check(!feed.feedHidden&&feed.visibleGroups.length===0&&
     feed.activeTabs.join()==='events',
     'Events tab must take over the drawer without showing the tool grid');
