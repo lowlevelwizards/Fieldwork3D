@@ -143,7 +143,8 @@ export function packageSoundZip(files:{name:string;data:Uint8Array}[]){
  return result;
 }
 export type PlayOptions={level?:number;pan?:number;
- output?:AudioNode|null;rate?:number};
+ output?:AudioNode|null;rate?:number;
+ onSource?:(source:AudioBufferSourceNode)=>void;}
 const bufferCache=new WeakMap<AudioContext,Map<string,AudioBuffer>>();
 /** No autoplay: caller must unlock AudioContext on a user gesture. */
 export function playDesignedSound(ctx:AudioContext,id:string,
@@ -190,7 +191,8 @@ export function playPackSound(ctx:AudioContext,id:string,
  if(!choice?.enabled||saved.master<=0)return true;
  const settings=resolveSoundSettings(saved,id);
  if(!settings)return true;
- playDesignedSound(ctx,id,{...settings,
+ const source=playDesignedSound(ctx,id,{...settings,
   gain:settings.gain*saved.master},options);
+ if(source)options.onSource?.(source);
  return true;
 }
