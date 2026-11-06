@@ -9,6 +9,8 @@ import {AK_WARM_RESIN,AK_WOOD_AMBER,AK_WOOD_RED,
 import {AK_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
+import {akMagazineCurve,akMagazineOutline,akMagazineRibOutlines}
+ from './ak-magazine-profiles.ts';
 
 export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
@@ -127,40 +129,18 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // The 3D sides narrow along Z; their side-view curve remains broad.
  // Keep the characteristic 7.62 lower swing larger than the 5.45 curve.
  const mag=parts.magazine,heavy=mag.startsWith('ak-mag762');
- const resinMag=mag==='ak-mag545'||mag==='ak-mag762-resin';
  const extended=mag.startsWith('ak-rpk-mag45');
+ const resinMag=mag==='ak-mag545'||mag==='ak-mag762-resin';
  const finish:0|1|2=resinMag||extended?2:heavy&&mag==='ak-mag762'?0:1;
- const top=m.magazineTopY;
- const magLeft=m.magwellCenterX-m.magazineWidthX/2;
- const magRight=m.magwellCenterX+m.magazineWidthX/2;
- if(extended)
-  p('magazine',[[magLeft,top],[magRight,top],
-   [magRight+.28,-5.2],[magRight+1.72,-8.55],
-   [magLeft+1.15,-9.45],[magLeft+.32,-5.25]],
-   m.magazineDepthZ,finish);
- else if(heavy)
-  p('magazine',[[magLeft,top],[magRight,top],
-   [magRight+.42,-4.35],[magRight+2.84,-7.05],
-   [magLeft+2.1,-8.15],[magLeft+.55,-5.05]],
-   m.magazineDepthZ,finish);
- else
-  p('magazine',[[magLeft,top],[magRight,top],
-   [magRight+.2,-4.6],[magRight+1.56,-6.88],
-   [magLeft+1.18,-7.76],[magLeft+.36,-4.95]],
-   m.magazineDepthZ,finish);
-
- if(heavy){
-  // Three broad relief strokes follow the 7.62 magazine's forward sweep.
-  // One restrained low-poly bar per stroke; they read on both sides,
-  // are part of the magazine slot and stay within its depth contract.
-  const ribs=[
-   [[-.16,-3.18],[1.32,-6.50]],
-   [[.82,-3.19],[2.38,-6.46]],
-   [[1.77,-3.16],[3.40,-6.37]]
-  ] as const;
-  for(const [from,to] of ribs)
-   addBar(root,'magazine',mag,index.magazine++,from,to,
-    .13,m.magazineDepthZ+.10,AK_MAG_RIB);
+ const style=heavy?'762':extended?'rpk45':'545';
+ const curve=akMagazineCurve(style,m.magwellCenterX,m.magazineTopY,
+  m.magazineWidthX,m.magazineDepthZ);
+ p('magazine',akMagazineOutline(curve),m.magazineDepthZ,finish);
+ for(const outline of akMagazineRibOutlines(curve)){
+  // Two contour-following embossed strokes, no cast shadows or thin z-noise.
+  const rib=addOutline(root,'magazine',mag,index.magazine++,
+   outline,m.magazineDepthZ+.08,AK_MAG_RIB);
+  rib.castShadow=false;rib.receiveShadow=false;
  }
 
  const guard=parts.handguard;
