@@ -31,7 +31,8 @@ export type CoupledInput={
 const direction=(from:THREE.Vector3,point:[number,number,number])=>
  new THREE.Vector3(point[0]-from.x,point[1]-from.y,point[2]-from.z);
 const pointer=(v:THREE.Vector3):RiflePoint=>({x:v.x,y:v.y,z:v.z});
-const EPS=.12;
+// Sub-pixel allowance for faceted sleeve/strap seam contact.
+const EPS=.13;
 /** Fixed candidate ordering and scalar ranking: no randomness or frame state.
  * A candidate is admissible only if the actual two-bone sleeves are clear.
  */
