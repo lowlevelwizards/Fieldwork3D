@@ -8,6 +8,7 @@ import {SOUND_BY_ID,readSoundPack,resolvePlayableSoundSettings,
 import {renderFocusedSound} from './sound-focus-audio.ts';
 import {renderRefinedSound} from './sound-refine-audio.ts';
 import {renderCompoundSound} from './sound-compound-audio.ts';
+import {renderAcousticResponse,type AcousticResponse} from './sound-room-filter.ts';
 const rate=22050;
 const TAU=Math.PI*2;
 function hash(value:string){
@@ -151,20 +152,23 @@ export function packageSoundZip(files:{name:string;data:Uint8Array}[]){
  return result;
 }
 export type PlayOptions={level?:number;pan?:number;
- output?:AudioNode|null;rate?:number;
+ output?:AudioNode|null;rate?:number;acoustics?:AcousticResponse|null;
  onSource?:(source:AudioBufferSourceNode)=>void;}
 const bufferCache=new WeakMap<AudioContext,Map<string,AudioBuffer>>();
 /** No autoplay: caller must unlock AudioContext on a user gesture. */
 export function playDesignedSound(ctx:AudioContext,id:string,
  settings:SoundSettings,options:PlayOptions={}):AudioBufferSourceNode|null{
  if(ctx.state!=='running')return null;
- const key=id+'|'+Object.values(settings).join(',');
+ const key=id+'|'+Object.values(settings).join(',')+
+  '|room='+(options.acoustics?.key??'dry');
  let cache=bufferCache.get(ctx);
  if(!cache){cache=new Map();bufferCache.set(ctx,cache);}
  let buffer=cache.get(key);
  if(!buffer){
-  const pcm=renderSound(id,settings,ctx.sampleRate);
-  if(!pcm.length)return null;
+  const dry=renderSound(id,settings,ctx.sampleRate);
+  if(!dry.length)return null;
+  const pcm=options.acoustics?renderAcousticResponse(dry,ctx.sampleRate,
+   options.acoustics):dry;
   buffer=ctx.createBuffer(1,pcm.length,ctx.sampleRate);
   buffer.getChannelData(0).set(pcm);
   if(cache.size>=64)cache.delete(cache.keys().next().value!);
