@@ -224,6 +224,7 @@ const ui={
   replayFollow:el<HTMLButtonElement>('replayFollow'),
   replayAnalysis:el<HTMLButtonElement>('replayAnalysis'),
   replayPlans:el<HTMLButtonElement>('replayPlans'),
+  replayPlanVersion:el<HTMLButtonElement>('replayPlanVersion'),
   replayNames:el<HTMLButtonElement>('replayNames'),
   replayEventText:el<HTMLOutputElement>('replayEventText'),
   replayClock:el<HTMLOutputElement>('replayClock'),
@@ -542,6 +543,7 @@ let replayPresentation:ReplayPresentation|null=null;
 let replayOmniscient=true,finishedSession:Session|null=null;
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
 let replayPlanScope:'all'|'selected'|'none'='selected';
+let replayPlanVersion:'active'|'original'='active';
 let replayNameTags=true;
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
@@ -2546,15 +2548,22 @@ function drawExecutionProblem(a:TeamActor,projected:boolean){
   draw.fillText('!',at.x,at.y+.25);
   draw.restore();
 }
+/** Authored historical orders, not recomputed motor navigation. */
+function replayPlanFor(a:TeamActor){
+  const initial=replaying&&replayPlanVersion==='original'?
+    recorder.plans.initial(a.id):null;
+  return {nodes:initial?.nodes??a.plan,
+    origin:initial?.origin??a.p};
+}
 function paths(){
   for(const a of team(state)){
-    if(a.health<=0)continue;
+    if(a.health<=0&&(!replaying||replayPlanVersion!=='original'))continue;
     if(replaying&&(replayPlanScope==='none'||
       replayPlanScope==='selected'&&a.id!==selected))continue;
     const c=colorFor(a.id);
-    const plan=a.plan;
+    const {nodes:plan,origin}=replayPlanFor(a);
     const activeTarget=activeWatchTarget(a);
-    if(activeTarget)drawActiveWatchMarker(a.p,
+    if(activeTarget&&(!replaying||replayPlanVersion==='active'))drawActiveWatchMarker(a.p,
       a.id===selected&&selectedActiveWatch&&draggingNode?
         draggingNode:activeTarget,c,a.id===selected,a.name);
     const visual=orderVisualScopes(plan,{
@@ -2562,8 +2571,8 @@ function paths(){
       posture:a.posture,fire:a.firePolicy
     });
     if(plan.length){
-      draw.beginPath();draw.moveTo(a.p.x,a.p.y);
-      let from=a.p;
+      draw.beginPath();draw.moveTo(origin.x,origin.y);
+      let from=origin;
       for(const node of plan){
         if(node.kind==='move'||node.kind==='door'){
           const course=displayRouteCache.get(from,node.p,state.intel,state.phase==='planning').points;
@@ -2686,7 +2695,7 @@ function paths(){
         draw.save();
         draw.strokeStyle=c;draw.lineWidth=3.2;
         draw.setLineDash([4,3]);draw.beginPath();
-        const first=a.plan[i-1]?.p??a.p;
+        const first=plan[i-1]?.p??origin;
         draw.moveTo(first.x,first.y);
         for(const step of n.arc)draw.lineTo(step.x,step.y);
         draw.stroke();draw.setLineDash([]);
@@ -2748,23 +2757,24 @@ function renderProjectedPlans(){
   draw.setTransform(dpr,0,0,dpr,0,0);
   draw.clearRect(0,0,cssW,cssH);
   for(const a of team(state)){
-    if(a.health<=0)continue;
+    if(a.health<=0&&(!replaying||replayPlanVersion!=='original'))continue;
     if(replaying&&(replayPlanScope==='none'||
       replayPlanScope==='selected'&&a.id!==selected))continue;
+    const {nodes:plan,origin}=replayPlanFor(a);
     const color=colorFor(a.id);
     const activeTarget=activeWatchTarget(a);
-    if(activeTarget)drawActiveWatchMarker(
+    if(activeTarget&&(!replaying||replayPlanVersion==='active'))drawActiveWatchMarker(
       worldToScreen(a.p,8),
       worldToScreen(a.id===selected&&selectedActiveWatch&&draggingNode?
         draggingNode:activeTarget,12),
       color,a.id===selected,a.name);
-    let previous=a.p;
-    const visual=orderVisualScopes(a.plan,{
+    let previous=origin;
+    const visual=orderVisualScopes(plan,{
       watch:a.aimInstruction?.mode==='track',pace:a.pace,
       posture:a.posture,fire:a.firePolicy
     });
     let visualIndex=0;
-    for(const n of a.plan){
+    for(const n of plan){
       const semantics=visual[visualIndex++];
       const cachedRoute=n.kind==='move'||n.kind==='door'?
         displayRouteCache.get(previous,n.p,state.intel,state.phase==='planning'):null;
@@ -2799,7 +2809,7 @@ function renderProjectedPlans(){
         invalidDrag?'#df8070':selectedNow?'#ecd29f':color);
       circle(point.x,point.y,3,'#233b39');
       draw.fillStyle='#142829';draw.font='700 12px "Saira Condensed",sans-serif';
-      draw.textAlign='center';draw.fillText(String(a.plan.indexOf(n)+1),
+      draw.textAlign='center';draw.fillText(String(plan.indexOf(n)+1),
         point.x,point.y+3);
       if(n.facing!==undefined){
         const aim=worldToScreen({x:n.p.x+Math.cos(n.facing)*38,
@@ -3508,6 +3518,7 @@ function updateReplayHud(){
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
   ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
   ui.replayPlans.textContent='PLANS '+replayPlanScope.toUpperCase();
+  ui.replayPlanVersion.textContent='PLAN '+replayPlanVersion.toUpperCase();
   ui.replayNames.textContent=replayNameTags?'NAMES ON':'NAMES OFF';
   ui.replayPlans.setAttribute('aria-pressed',String(replayPlanScope!=='none'));
   ui.replayNames.setAttribute('aria-pressed',String(replayNameTags));
@@ -3539,7 +3550,7 @@ function enterReplay(){
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
-  replayPlanScope='selected';replayNameTags=true;
+  replayPlanScope='selected';replayPlanVersion='active';replayNameTags=true;
   rebuildReplayEventIndex();
   ui.replayFeed.hidden=true;ui.replayFeedFilter.hidden=true;
   ui.replayFeedInfo.hidden=true;
@@ -3642,6 +3653,10 @@ ui.replayPlans.addEventListener('click',()=>{
 });
 ui.replayNames.addEventListener('click',()=>{
   replayNameTags=!replayNameTags;updateReplayHud();
+});
+ui.replayPlanVersion.addEventListener('click',()=>{
+  replayPlanVersion=replayPlanVersion==='active'?'original':'active';
+  updateReplayHud();
 });
 ui.replayExit.addEventListener('click',exitReplay);
 function reset(next=state.variant,siteSeed?:number,
