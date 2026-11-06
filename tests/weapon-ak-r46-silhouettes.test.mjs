@@ -27,7 +27,7 @@ const release=(...all)=>all.forEach(x=>clearWeaponSilhouette(x.group));
 
 test('R4.6 clean receiver and one recognizable open trigger guard on all nine',()=>{
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ak').length,9);
- assert.equal(Object.keys(FAMILY_PARTS).length,92);
+ assert.equal(Object.keys(FAMILY_PARTS).length,93);
  for(const id of ids){
   const m=build(id),r=slot(m.group,'receiver');
   assert.ok(r.length>=6,id+' receiver keeps essential faces');
