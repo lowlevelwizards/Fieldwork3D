@@ -168,14 +168,28 @@ export function bakeCastOnGear(
  const sources=cas.map(input=>input instanceof THREE.Object3D?
   {root:input,role:'generic' as const}:input)
   .filter(x=>x.root!==receiver&&x.root.visible);
+ const bakeKey=key+'|'+receiverRole+'|'+
+  sources.map(x=>x.role).join(',');
+ // No shadow volume collection, world-matrix updates or mask allocation
+ // when every eligible receiver already holds this exact appearance bake.
+ let pending=false;
+ receiver.traverse(object=>{
+  if(pending||!(object instanceof THREE.Mesh)||!object.visible||
+    Array.isArray(object.material)||
+    object.material.userData.fieldworkBakedEquipmentAO!==true)return;
+  const geo=object.geometry;
+  const positions=geo.getAttribute('position'),
+   normals=geo.getAttribute('normal');
+  if(positions&&normals&&positions.count===normals.count&&
+    geo.userData.fieldworkCrossLightKey!==bakeKey)pending=true;
+ });
+ if(!pending)return {key,changed:0,vertices:0};
  const boxes:EligibleVolume[]=sources.flatMap(source=>{
   const rule=shadowContactRule(receiverRole,source.role);
   if(!rule)return [];
   return collectCastVolumeRecords(source.root,chest)
    .map(volume=>({...volume,rule}));
  });
- const bakeKey=key+'|'+receiverRole+'|'+
-  sources.map(x=>x.role).join(',');
  chest.updateWorldMatrix(true,true);
  const inverse=chest.matrixWorld.clone().invert();
  let changed=0,vertices=0;
@@ -199,11 +213,29 @@ export function bakeCastOnGear(
    baseline=new Uint8Array(array);geometry.userData.fieldworkCrossLightBase=baseline;
   }
   array.set(baseline);
-  const contactMask=new Uint8Array(coords.count);
-  const castMask=new Uint8Array(coords.count);
+  const storedContact=geometry.userData.fieldworkInterContactMask as
+   Uint8Array|undefined;
+  const storedCast=geometry.userData.fieldworkDirectionalCastMask as
+   Uint8Array|undefined;
+  const contactMask=storedContact instanceof Uint8Array&&
+   storedContact.length===coords.count?storedContact:new Uint8Array(coords.count);
+  const castMask=storedCast instanceof Uint8Array&&
+   storedCast.length===coords.count?storedCast:new Uint8Array(coords.count);
   object.updateWorldMatrix(true,false);
   const toChest=inverse.clone().multiply(object.matrixWorld);
   const normalMatrix=new THREE.Matrix3().getNormalMatrix(toChest);
+  if(!geometry.boundingBox)geometry.computeBoundingBox();
+  // A finite ray can only reach boxes within castReach + normal offset.
+  // Compute this once per receiving mesh, never for every vertex/ray.
+  const receiverBounds=geometry.boundingBox!.clone().applyMatrix4(toChest);
+  const relevantBoxes=boxes.filter(volume=>{
+   const reach=Math.max(volume.rule.castReach,
+    volume.rule.contactRadius)+.076;
+   const b=volume.box,a=receiverBounds;
+   return a.min.x<=b.max.x+reach&&a.max.x>=b.min.x-reach&&
+    a.min.y<=b.max.y+reach&&a.max.y>=b.min.y-reach&&
+    a.min.z<=b.max.z+reach&&a.max.z>=b.min.z-reach;
+  });
   for(let i=0;i<coords.count;i++){
    position.fromBufferAttribute(coords,i).applyMatrix4(toChest);
    normal.fromBufferAttribute(normals,i).applyMatrix3(normalMatrix).normalize();
@@ -213,7 +245,7 @@ export function bakeCastOnGear(
    for(const ray of rays){
     if(normal.dot(ray)<.02)continue;
     let strongest=0;
-    for(const volume of boxes){
+    for(const volume of relevantBoxes){
      const t=rayEntryDistance(origin,ray,volume.box,
       volume.rule.castReach);
      if(t===null)continue;
@@ -227,7 +259,7 @@ export function bakeCastOnGear(
    }
    const directionalShadow=castTotal/rays.length;
    let nearContact=0;
-   for(const volume of boxes){
+   for(const volume of relevantBoxes){
     const raw=crossEquipmentContactBox(position,normal,volume.box,
      volume.rule.contactRadius);
     nearContact=Math.max(nearContact,

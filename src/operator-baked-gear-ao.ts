@@ -101,7 +101,9 @@ export function bakeGearContactAO(group:THREE.Group):number{
   node instanceof THREE.Mesh&&!Array.isArray(node.material)&&
   !!node.geometry.getAttribute('position')&&
   node.geometry.getAttribute('position').count>0);
- if(candidates.length<2)return 0;
+ if(candidates.length<2||candidates.every(mesh=>
+  mesh.geometry.userData.fieldworkContactAO===true||
+  (mesh.material as THREE.Material).userData[AO_FLAG]!==true))return 0;
  // This happens only during geometry construction / a change of fitted top.
  group.updateWorldMatrix(true,true);
  const inverse=new THREE.Matrix4().copy(group.matrixWorld).invert();
@@ -122,6 +124,19 @@ export function bakeGearContactAO(group:THREE.Group):number{
   if(material.userData[AO_FLAG]!==true)continue;
   const geo=part.mesh.geometry;
   if(geo.userData.fieldworkContactAO===true)continue;
+  // Conservative per-piece broad phase. A 1.85-unit key ray starts .05
+  // units above the surface; anything beyond 1.901 units from the
+  // receiver AABB cannot contribute either a cast or a contact shadow.
+  // This preserves identical pixels but avoids inspecting remote pouches
+  // for every sample of a dense receiver.
+  const reach=1.901,a=part.box;
+  const neighbors=parts.filter(other=>{
+   if(other===part)return false;
+   const b=other.box;
+   return a.min.x<=b.max.x+reach&&a.max.x>=b.min.x-reach&&
+    a.min.y<=b.max.y+reach&&a.max.y>=b.min.y-reach&&
+    a.min.z<=b.max.z+reach&&a.max.z>=b.min.z-reach;
+  });
   bakeGearGeometryAO(geo,material);
   const attr=geo.getAttribute('color'),positions=geo.getAttribute('position'),
    normals=geo.getAttribute('normal');
@@ -143,7 +158,7 @@ export function bakeGearContactAO(group:THREE.Group):number{
    p.fromBufferAttribute(positions,i).applyMatrix4(part.local);
    n.fromBufferAttribute(normals,i).applyMatrix3(part.normalMatrix).normalize();
    let selfOcclusion=0,externalOcclusion=0;
-   for(const neighbor of parts){
+   for(const neighbor of neighbors){
     if(neighbor===part)continue;
     const box=neighbor.box;
     // Broad phase: no interaction beyond this actual contact radius.
@@ -175,7 +190,7 @@ export function bakeGearContactAO(group:THREE.Group):number{
    for(const light of KEY_RAYS){
     if(n.dot(light)<.035)continue;
     let own=false,external=false;
-    for(const neighbor of parts){
+    for(const neighbor of neighbors){
      if(neighbor===part||!castRayBox(rayOrigin,light,neighbor.box))
       continue;
      if(neighbor.partId===part.partId)own=true;
