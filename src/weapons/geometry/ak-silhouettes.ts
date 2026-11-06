@@ -124,7 +124,7 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    m.magazineDepthZ,finish);
  else if(heavy)
   p('magazine',[[magLeft,top],[magRight,top],
-   [magRight+.42,-4.35],[magRight+2.55,-7.05],
+   [magRight+.42,-4.35],[magRight+2.84,-7.05],
    [magLeft+2.1,-8.15],[magLeft+.55,-5.05]],
    m.magazineDepthZ,finish);
  else
