@@ -228,7 +228,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const gas=art.gasBlockX;
  // The slant compensator begins farther forward than the long 5.45 brake;
  // position its single sight tower flush against the custom slant body.
- const sight=(parts.receiver==='akm'||parts.receiver==='ak103')?
+ const sight=(parts.receiver==='akm'||
+  (parts.receiver==='ak103'&&parts.barrel!=='ak-103-factory'))?
   tip-2.48:art.frontSightX;
  const metalDepth=rpk?1.86:1.48;
  b('barrel',(front-.24+tip)/2,0,0,tip-front+.24,
