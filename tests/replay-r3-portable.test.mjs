@@ -18,7 +18,9 @@ test('compressed portable recording round-trips historical film and motion',asyn
   const back=await importPortableReplay(blob);
   const restored=restoreReplayArchive(back);
   assert.equal(restored.duration,rec.duration);
-  assert.deepEqual(restored.manifest.site.rooms,rec.manifest.site.rooms);
+  // JSON omits optional fields with undefined values; resolved geometry stays exact.
+  assert.deepEqual(restored.manifest.site.rooms,
+    JSON.parse(JSON.stringify(rec.manifest.site.rooms)));
   assert.deepEqual(restored.frames.map(f=>f.actors[0].p),
     rec.frames.map(f=>f.actors[0].p));
   assert.equal(restored.motion.toArchive().actors.length,
