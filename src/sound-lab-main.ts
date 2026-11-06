@@ -637,34 +637,46 @@ document.addEventListener('keydown',event=>{
   renderEditor();void preview(v);
  }else if(event.key==='Escape'){stopAudio();}
 });
-function switchView(view:'refine'|'focus'|'all'){
- if((refineMode?'refine':focusMode?'focus':'all')===view)return;
- stopAudio();refineMode=view==='refine';focusMode=view!=='all';
+function switchView(view:'compound'|'refine'|'focus'|'all'){
+ if((compoundMode?'compound':refineMode?'refine':focusMode?'focus':'all')===view)return;
+ stopAudio();
+ compoundMode=view==='compound';refineMode=view==='refine';
+ focusMode=view!=='all';
  group='all';status='all';search='';
  ui.search.value='';ui.filter.value='all';
- selected=refineMode?REFINEMENT_SOUND_IDS[0]:
+ selected=compoundMode?COMPOUND_SOUND_IDS[0]:
+  refineMode?REFINEMENT_SOUND_IDS[0]:
   focusMode?FOCUS_SOUND_IDS[0]:SOUND_CATALOG[0].id;
- variant=refineMode?(currentChoice().refinement?.choice??'A'):currentChoice().choice;
+ variant=compoundMode?(currentChoice().compound?.choice??'A'):
+  refineMode?(currentChoice().refinement?.choice??'A'):currentChoice().choice;
+ $('compoundView').setAttribute('aria-pressed',String(compoundMode));
  $('refineView').setAttribute('aria-pressed',String(refineMode));
  $('focusView').setAttribute('aria-pressed',String(view==='focus'));
  $('allView').setAttribute('aria-pressed',String(view==='all'));
- $('roundLabel').textContent=refineMode?'WAVE 02A / REFINEMENT + LAYERING':
+ $('roundLabel').textContent=compoundMode?'WAVE 03 / TACTILE COMPOUND SOUNDS':
+  refineMode?'WAVE 02A / REFINEMENT + LAYERING':
   focusMode?'WAVE 01 / FOUNDATIONAL SOUNDS':'ARCHIVE / ALL SOUND OPPORTUNITIES';
- $('roundHelp').textContent=refineMode?
-  '10 representative sounds · 6 related, layered sketches each. Your Wave 01 pick is the reference. Shortlist and choose one refinement.':
+ $('roundHelp').textContent=compoundMode?
+  '10 chosen sounds · 6 physical micro-sequences each. Keep your Wave 02 baseline, compare compound layers, shortlist and choose.':
+  refineMode?
+   '10 representative sounds · 6 related, layered sketches each. Your Wave 01 pick is the reference. Shortlist and choose one refinement.':
   focusMode?
-   '16 high-impact sounds. Eight contrasting sketches each. Listen, shortlist and choose. Your choices here become Wave 02 reference sounds.':
-   'The larger 256-cue catalog stays intact for later rounds. Both listening rounds are separate.';
- $('libraryHeading').textContent=refineMode?'01 / NEXT 10 SOUNDS TO REFINE':
+   '16 high-impact sounds · 8 contrasting sketches each. Your choices here become Wave 02 reference sounds.':
+   'The larger 256-cue catalog stays intact for future rounds. All listening-round choices are preserved separately.';
+ $('libraryHeading').textContent=compoundMode?'01 / TEN SOUNDS TO COMPOUND':
+  refineMode?'01 / NEXT 10 SOUNDS TO REFINE':
   focusMode?'01 / FIRST 16 SOUNDS':'01 / FULL CUE LIBRARY';
  document.body.classList.toggle('focus-round',focusMode);
  document.body.classList.toggle('refine-round',refineMode);
+ document.body.classList.toggle('compound-round',compoundMode);
  renderAll();
- note(refineMode?'WAVE 02 · LISTEN TO YOUR ORIGINAL, THEN THE LAYERED REFINEMENTS':
+ note(compoundMode?'WAVE 03 · HEAR WAVE 02 FIRST, THEN AUDITION THE PHYSICAL STORIES':
+  refineMode?'WAVE 02 · YOUR ORIGINAL WAVE 01 CHOICES ARE PRESERVED':
   focusMode?'WAVE 01 · YOUR ORIGINAL CHOICES ARE PRESERVED':'FULL SOUND LIBRARY');
 }
+$('compoundView').addEventListener('click',()=>switchView('compound'));
 $('refineView').addEventListener('click',()=>switchView('refine'));
 $('focusView').addEventListener('click',()=>switchView('focus'));
 $('allView').addEventListener('click',()=>switchView('all'));
-document.body.classList.add('focus-round','refine-round');
+document.body.classList.add('focus-round','compound-round');
 renderAll();
