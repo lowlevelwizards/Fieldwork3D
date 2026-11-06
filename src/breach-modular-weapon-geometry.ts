@@ -11,13 +11,15 @@ import {AR_BLACK_METAL,AR_BLACK_POLYMER,AR_MUTED_FDE,
  AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD}
  from './weapons/geometry/weapon-visual-palette.ts';
 export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
- steel:THREE.Material,dark:THREE.Material):THREE.Group{
+ steel:THREE.Material,dark:THREE.Material,
+ showFactoryMuzzle=true):THREE.Group{
  // Visual finishes are consistent across Quick Play, Campaign and the
  // operator rig, regardless of their legacy material argument palette.
  void steel;void dark;
  const root=new THREE.Group();
  if(build.family==='ar')
-  addARFamily(root,build,AR_BLACK_METAL,AR_BLACK_POLYMER,AR_MUTED_FDE);
+  addARFamily(root,build,AR_BLACK_METAL,AR_BLACK_POLYMER,
+   AR_MUTED_FDE,showFactoryMuzzle);
  else addAKFamily(root,build,AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD);
  return root;
 }

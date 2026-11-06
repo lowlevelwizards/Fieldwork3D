@@ -13,7 +13,8 @@ import {AR_VISUAL_ANATOMY,shiftProfile}
 import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
 
 export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
- steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
+ steel:THREE.Material,dark:THREE.Material,wood:THREE.Material,
+ showFactoryMuzzle=true){
  const parts=build.parts,material=[steel,dark,wood,AR_STANAG_METAL] as const;
  const barrelArt=AR_BARREL_ART[parts.barrel];
  if(!barrelArt)throw new Error('Unknown AR art barrel: '+parts.barrel);
@@ -228,12 +229,12 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  b('barrel',(barrelStart+tip)/2,AR_VISUAL_AXIS_Y,0,tip-barrelStart,
   barrelArt.barrelHeight,barrelArt.barrelDepth,0);
  if(sight!==null&&(barrelArt.sight==='a1'||barrelArt.sight==='a2')){
-  // R4.5: a right vertical FRONT (towards muzzle), one boldly sloped REAR.
-  // The tower roof aligns with the canonical carry-handle / rear-sight line.
-  frame('barrel',[[sight-1.20,.83],[sight+.83,.83],
-    [sight+.83,4.02],[sight-.34,4.02]],
-   [[sight-.56,1.34],[sight+.02,3.26],
-    [sight+.40,3.26],[sight+.40,1.34]],1.47);
+  // Tall bold A-frame: a perfectly vertical FRONT face and a 56-degree
+  // diagonal rear face. The guard roof is NOT the actual sighting datum.
+  frame('barrel',[[sight-2.45,.70],[sight+1.02,.70],
+    [sight+1.02,4.10],[sight-.18,4.10]],
+   [[sight-1.18,1.27],[sight-.03,3.27],
+    [sight+.54,3.27],[sight+.54,1.27]],1.50);
  }else if(sight!==null){
   // Simplified flip-up Mk12 front sight, on the raised barrel center.
   b('barrel',sight,1.36,0,.92,.54,1.4,1);
@@ -245,27 +246,35 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   if(tip-(sight??tip)>1.2)
    b('barrel',tip-1.05,AR_VISUAL_AXIS_Y,0,1.18,barrelArt.barrelHeight+.18,1.52,0);
  }
- // A few iconic muzzle masses; the muzzle tip X remains authoritative.
- // USGI birdcages get TWO wide black slots, not a fully machined cylinder.
- const birdcage=(length:number,height:number,depth:number)=>{
-  b('barrel',tip-length/2,AR_VISUAL_AXIS_Y,0,length,height,depth,0);
-  addWeaponPixelMarkPair(root,'ar-birdcage',tip-length*.47,AR_VISUAL_AXIS_Y,
-   depth/2+.07,length*.70,height*.62);
- };
- if(barrelArt.profile==='spr'){
-  b('barrel',tip-1.34,AR_VISUAL_AXIS_Y,0,.66,1.91,1.94,1);
-  b('barrel',tip-.46,AR_VISUAL_AXIS_Y,0,.90,1.73,1.82,1);
- }else if(barrelArt.profile==='cqb'){
-  birdcage(1.05,1.92,2.00);
-  b('barrel',tip-.18,AR_VISUAL_AXIS_Y,0,.34,2.02,2.05,0);
- }else if(parts.barrel==='ar-145'){
-  birdcage(1.07,1.35,1.48);
- }else if(parts.barrel==='ar-20'){
-  birdcage(1.02,1.36,1.54);
- }else{
-  // A2-family birdcage on the 733, M4A1, M16A2 and M16A4.
-  birdcage(1.24,1.77,1.87);
-  b('barrel',tip-1.11,AR_VISUAL_AXIS_Y,0,.24,1.92,1.94,1);
+ // Factory silhouette is hidden when an external muzzle device REPLACES it.
+ // Shot/mount X is still the existing configured authoritative tip.
+ if(showFactoryMuzzle){
+  const birdcage=(length:number,height:number,depth:number)=>{
+   b('barrel',tip-length/2,AR_VISUAL_AXIS_Y,0,length,height,depth,0);
+   // Two deliberately long slots parallel to the bore, never vertical dots.
+   addWeaponPixelMarkPair(root,'ar-birdcage',tip-length/2,AR_VISUAL_AXIS_Y,
+    depth/2+.085,length*.77,height*.72);
+  };
+  if(barrelArt.profile==='spr'){
+   // Mk12 Mod 0 specialist brake/collar, not a universal birdcage.
+   b('barrel',tip-1.34,AR_VISUAL_AXIS_Y,0,.66,1.91,1.94,1);
+   b('barrel',tip-.46,AR_VISUAL_AXIS_Y,0,.90,1.73,1.82,1);
+  }else if(barrelArt.profile==='cqb'){
+   // Keep 10.3-inch Mk18's tiny but visible exposed nose OUT of RIS II.
+   birdcage(1.30,1.95,2.02);
+   b('barrel',tip-1.22,AR_VISUAL_AXIS_Y,0,.20,2.08,2.08,1);
+  }else if(parts.barrel==='ar-145'){
+   birdcage(2.04,1.44,1.57);
+  }else if(parts.barrel==='ar-20'){
+   // Lighter pencil-barrel era A1 hider.
+   birdcage(1.94,1.40,1.56);
+  }else if(parts.barrel==='ar-733-115'){
+   birdcage(1.78,1.69,1.80);
+  }else{
+   // Shared enlarged A2-family USGI hider.
+   birdcage(2.30,1.83,1.91);
+   b('barrel',tip-2.17,AR_VISUAL_AXIS_Y,0,.26,1.95,1.96,1);
+  }
  }
 
 }

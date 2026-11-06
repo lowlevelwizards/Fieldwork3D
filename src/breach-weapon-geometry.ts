@@ -110,7 +110,8 @@ export function buildWeaponSilhouette(id:WeaponId,
  config?:WeaponConfiguration):THREE.Group{
  const familyBuild=config?.weapon===id?
   readWeaponFamilyBuild(config.build,id):undefined;
- if(familyBuild)return buildModularWeaponSilhouette(familyBuild,steel,dark);
+ if(familyBuild)return buildModularWeaponSilhouette(familyBuild,steel,dark,
+  !config||config.slots.muzzle==='muzzle-bare');
  const g=new THREE.Group();
  const stockX=config&&config.weapon===id?resolveWeaponAssembly(config).stockX:-13.5;
  for(const [baseX,y,z,baseW,h,d,mat] of PARTS[id]){

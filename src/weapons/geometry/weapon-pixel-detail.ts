@@ -78,9 +78,10 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
    for(let y=1;y<7;y++)for(let dx=0;dx<2;dx++)
     pixel(x+dx,y,false,true);
  }else if(mark==='ar-birdcage'){
-  for(const x of [5,10])
-   for(let dx=0;dx<2;dx++)for(let y=1;y<=6;y++)
-    pixel(x+dx,y,false,true);
+  // Longitudinal side slots, visually parallel to the barrel axis.
+  for(const y of [1,5])
+   for(let dy=0;dy<2;dy++)for(let x=2;x<14;x++)
+    pixel(x,y+dy,false,true);
  }else if(mark==='pri-vents'){
   for(const x of [3,7,11])for(let y=3;y<=5;y++)pixel(x,y);
   for(let x=3;x<=13;x++)pixel(x,2,true);
