@@ -12,12 +12,15 @@ export function armorArmIntrusion(shoulder:ArmPoint,elbow:ArmPoint,
    const z=a.z+(b.z-a.z)*t;
    // Arms may start at their shoulder socket inside the shoulder pad.
    // Penalize sleeves passing through the CENTRAL front plate volume.
-   if(x>-5.3&&x<front&&y>-7&&y<6.7&&Math.abs(z)<7.2)
-    depth+=Math.min(front-x,4.5)*(7.2-Math.abs(z))*.14;
+   // Give the sleeve finite thickness. Earlier only the mathematical
+   // centerline was checked, so a blocky forearm still pierced the plate.
+   const outer=8-Math.abs(z);
+   if(x>-5.3&&x<front+.75&&y>-7.4&&y<7.1&&outer>0)
+    depth+=Math.min(front+.75-x,5)*outer*.19;
   }
  };
- segment(shoulder,elbow,[.45,.68,.90]);
- segment(elbow,wrist,[.12,.34,.56,.78]);
+ segment(shoulder,elbow,[.35,.52,.69,.86]);
+ segment(elbow,wrist,[.12,.27,.44,.61,.78,.92]);
  return depth;
 }
 export function armorElbowPole(shoulder:ArmPoint,side:-1|1,
