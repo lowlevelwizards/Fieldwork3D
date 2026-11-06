@@ -136,7 +136,7 @@ export function defaultSoundPack():SoundPack{
 }
 export function clampSoundSettings(input:unknown,base:SoundSettings):SoundSettings{
  const obj=input&&typeof input==='object'?input as Record<string,unknown>:{};
- const field=(key:Exclude<keyof SoundSettings,'refinement'>,min:number,max:number)=>{
+ const field=(key:Exclude<keyof SoundSettings,'refinement'|'compound'>,min:number,max:number)=>{
   const v=obj[key];return typeof v==='number'&&Number.isFinite(v)?
    Math.max(min,Math.min(max,v)):base[key];
  };
