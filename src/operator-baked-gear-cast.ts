@@ -95,10 +95,11 @@ export function collectCastVolumes(root:THREE.Object3D,
 /** Fixed-key contact ray depth, evaluated only during the outfit bake.
  * Crisp directly beneath attachments; no long black carrier-wide shadows.
  */
+const SHADOW_AXES=['x','y','z'] as const;
 function rayEntryDistance(p:THREE.Vector3,dir:THREE.Vector3,
  box:THREE.Box3,maxDist=3.25):number|null{
  let near=0,far=maxDist;
- for(const axis of ['x','y','z'] as const){
+ for(const axis of SHADOW_AXES){
   const d=dir[axis],o=p[axis];
   if(Math.abs(d)<1e-6){
    if(o<box.min[axis]||o>box.max[axis])return null;
@@ -118,31 +119,39 @@ function rayEntryDistance(p:THREE.Vector3,dir:THREE.Vector3,
  */
 export const CROSS_CONTACT_RADIUS=1.15;
 export const CROSS_CONTACT_STRENGTH=.42;
+/** Allocation-free single-box contact evaluation for tight bake loops.
+ * The public multi-box helper remains API-compatible with earlier tests.
+ */
+export function crossEquipmentContactBox(
+ point:THREE.Vector3,normal:THREE.Vector3,
+ box:THREE.Box3,radius=CROSS_CONTACT_RADIUS
+):number{
+ const dx=Math.max(box.min.x-point.x,0,point.x-box.max.x);
+ const dy=Math.max(box.min.y-point.y,0,point.y-box.max.y);
+ const dz=Math.max(box.min.z-point.z,0,point.z-box.max.z);
+ const d2=dx*dx+dy*dy+dz*dz;
+ if(d2>=radius*radius)return 0;
+ const cx=(box.min.x+box.max.x)*.5-point.x;
+ const cy=(box.min.y+box.max.y)*.5-point.y;
+ const cz=(box.min.z+box.max.z)*.5-point.z;
+ const toward=normal.x*cx+normal.y*cy+normal.z*cz;
+ if(toward<=.025)return 0;
+ const length=Math.hypot(cx,cy,cz);
+ const facing=length>.001?toward/length:0;
+ if(facing<.15)return 0;
+ const distance=Math.sqrt(d2);
+ const q=THREE.MathUtils.clamp((distance-.15)/
+  Math.max(.001,radius-.15),0,1);
+ return (1-q*q*(3-2*q))*(.38+.62*facing);
+}
 export function crossEquipmentContact(
  point:THREE.Vector3,normal:THREE.Vector3,boxes:readonly THREE.Box3[],
  radius=CROSS_CONTACT_RADIUS
 ):number{
  let strongest=0;
- for(const box of boxes){
-  const dx=Math.max(box.min.x-point.x,0,point.x-box.max.x);
-  const dy=Math.max(box.min.y-point.y,0,point.y-box.max.y);
-  const dz=Math.max(box.min.z-point.z,0,point.z-box.max.z);
-  const d2=dx*dx+dy*dy+dz*dz;
-  if(d2>=radius*radius)continue;
-  const cx=(box.min.x+box.max.x)*.5-point.x;
-  const cy=(box.min.y+box.max.y)*.5-point.y;
-  const cz=(box.min.z+box.max.z)*.5-point.z;
-  const toward=normal.x*cx+normal.y*cy+normal.z*cz;
-  if(toward<=.025)continue;
-  const length=Math.hypot(cx,cy,cz);
-  const facing=length>.001?toward/length:0;
-  if(facing<.15)continue;
-  const distance=Math.sqrt(d2);
-  const q=THREE.MathUtils.clamp((distance-.15)/
-   Math.max(.001,radius-.15),0,1);
-  const falloff=1-q*q*(3-2*q);
-  strongest=Math.max(strongest,falloff*(.38+.62*facing));
- }
+ for(const box of boxes)
+  strongest=Math.max(strongest,
+   crossEquipmentContactBox(point,normal,box,radius));
  return strongest;
 }
 export type GearLightingBake={key:string;changed:number;vertices:number};
@@ -219,7 +228,7 @@ export function bakeCastOnGear(
    const directionalShadow=castTotal/rays.length;
    let nearContact=0;
    for(const volume of boxes){
-    const raw=crossEquipmentContact(position,normal,[volume.box],
+    const raw=crossEquipmentContactBox(position,normal,volume.box,
      volume.rule.contactRadius);
     nearContact=Math.max(nearContact,
      volume.rule.contactStrength*raw);

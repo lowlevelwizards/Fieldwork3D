@@ -86,3 +86,11 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 - CPU mask inspector ignores hidden alternate kits and duplicate shared geometries.
 - This is a diagnostic foundation; full per-layer compositing controls follow
   after the shader/lightmap atlas visual experiment.
+
+## R5.3-C allocation-free geometry contact bake
+- Remove per-vertex/per-caster temporary arrays from cross-gear contact.
+- Move shadow-axis iteration data to a shared constant.
+- Reuse vector scratch space in each fitted assembly's self AO bake.
+- Preserve identical proximity/contact math, strength and geometry bounds.
+- Focused tests compare the single-box loop against the legacy API across
+  hundreds of positions, face normals, and three contact radii.
