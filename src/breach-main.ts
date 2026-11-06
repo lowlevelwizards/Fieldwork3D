@@ -84,6 +84,7 @@ import {serializeReplayReport} from './breach-replay-export-json.ts';
 import {ReplaySoundTimeline,replayDoorSoundId} from './breach-replay-audio.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {sampleReplayGhosts} from './breach-replay-ghosts.ts';
+import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -267,6 +268,7 @@ const ui={
   replayNames:el<HTMLButtonElement>('replayNames'),
   replayTraces:el<HTMLButtonElement>('replayTraces'),
   replayGhosts:el<HTMLButtonElement>('replayGhosts'),
+  replayTrails:el<HTMLButtonElement>('replayTrails'),
   replayExportJson:el<HTMLButtonElement>('replayExportJson'),
   replayExportVideo:el<HTMLButtonElement>('replayExportVideo'),
   replayEventText:el<HTMLOutputElement>('replayEventText'),
@@ -636,6 +638,8 @@ let replayPlanVersion:'active'|'original'='active';
 let replayNameTags=true;
 let replayTraceMode:'off'|'recent'|'selected'='off';
 let replayGhostMode:'off'|'selected'|'squad'='off';
+let replayTrailMode:'off'|'recent'|'full'='off';
+let replayMovementHistory:ReplayMovementHistory|null=null;
 let selectedReplayShotId:number|null=null;
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
@@ -2979,6 +2983,26 @@ function renderReplayBallistics(projected:boolean):void{
   draw.restore();
 }
 /** Ghost sprites are intentionally abstract and share the operator palette. */
+/** Replay R3: independent actual route history, never authored waypoint geometry. */
+function renderReplayMovementHistory(projected:boolean):void{
+  if(!replaying||replayTrailMode==='off'||!replayMovementHistory)return;
+  draw.save();
+  draw.globalAlpha=.58;draw.lineWidth=2.15;
+  draw.setLineDash([]);
+  for(const a of team(state)){
+    const trail=replayMovementHistory.segment(a.id,replayTime,
+      replayTrailMode==='recent'?15:Infinity,350);
+    if(trail.length<2)continue;
+    draw.strokeStyle=colorFor(a.id);
+    draw.beginPath();
+    for(let i=0;i<trail.length;i++){
+      const p=projected?worldToScreen(trail[i].p,2):trail[i].p;
+      if(i===0)draw.moveTo(p.x,p.y);else draw.lineTo(p.x,p.y);
+    }
+    draw.stroke();
+  }
+  draw.restore();
+}
 function renderReplayGhosts(projected:boolean):void{
   if(!replaying||replayGhostMode==='off')return;
   const ids=new Set(replayGhostMode==='selected'?[selected]:
@@ -3286,6 +3310,7 @@ function renderProjectedPlans(){
     draw.fillStyle='#e8d5a6';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillText(state.mission.toUpperCase(),target.x,target.y-23);
   }
+  renderReplayMovementHistory(true);
   renderReplayGhosts(true);
   renderReplayBallistics(true);
   for(const a of team(state))drawExecutionProblem(a,true);
@@ -3583,7 +3608,7 @@ function render(){
   draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
   terrain();furniture();renderGroundMarks();renderLightingMood2D();renderWeaponLights2D();
   architecture();fog();missionMarkers();
-  paths();
+  paths();renderReplayMovementHistory(false);
   for(const a of state.civilians)civilianSprite(a);
   for(const a of state.operators)sprite(a);
   for(const a of team(state))drawExecutionProblem(a,false);
@@ -3940,6 +3965,7 @@ function updateReplayHud(){
   ui.replayNames.textContent=replayNameTags?'NAMES ON':'NAMES OFF';
   ui.replayTraces.textContent='TRACES '+replayTraceMode.toUpperCase();
   ui.replayGhosts.textContent='GHOSTS '+replayGhostMode.toUpperCase();
+  ui.replayTrails.textContent='ACTUAL PATH '+replayTrailMode.toUpperCase();
   ui.replayPlans.setAttribute('aria-pressed',String(replayPlanScope!=='none'));
   ui.replayNames.setAttribute('aria-pressed',String(replayNameTags));
   const event=replayEventIndex?.latest(replayTime+.14);
@@ -3976,8 +4002,11 @@ function enterReplay(){
   replayCameraMode='free';replayDirectorCues=[];
   replayPlanScope='selected';replayPlanVersion='active';
   replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
+  replayTrailMode='off';
   closeReplayShotInspector();
   rebuildReplayEventIndex();
+  replayMovementHistory=new ReplayMovementHistory(recorder.frames,
+    team(finishedSession).map(a=>a.id));
   replaySoundTimeline=new ReplaySoundTimeline(recorder.ballistics.shots,
     recorder.events);
   unlockAudio();
@@ -4005,7 +4034,7 @@ function exitReplay(){
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   closeReplayShotInspector();
-  replaySoundTimeline=null;stopReplaySounds();
+  replaySoundTimeline=null;replayMovementHistory=null;stopReplaySounds();
   ui.replayFeed.replaceChildren();
   showReplayToolTab(null);
   document.body.classList.remove('replaying');
@@ -4135,6 +4164,11 @@ ui.replayTraces.addEventListener('click',()=>{
 ui.replayGhosts.addEventListener('click',()=>{
   replayGhostMode=replayGhostMode==='off'?'selected':
     replayGhostMode==='selected'?'squad':'off';
+  updateReplayHud();
+});
+ui.replayTrails.addEventListener('click',()=>{
+  replayTrailMode=replayTrailMode==='off'?'recent':
+    replayTrailMode==='recent'?'full':'off';
   updateReplayHud();
 });
 ui.replayExportVideo.addEventListener('click',()=>{
