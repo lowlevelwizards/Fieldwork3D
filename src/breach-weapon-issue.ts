@@ -2,7 +2,7 @@
  * compatibility layer until the separate weapon-stat migration. Never
  * manufacture a variant by changing the simulation class alone. */
 import {familyPreset,type WeaponFamilyPreset} from './equipment-weapon-families.ts';
-import {initialWeaponConfiguration,selectWeaponFamilyPreset,
+import {initialWeaponConfiguration,readWeaponConfiguration,selectWeaponFamilyPreset,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import type {WeaponId} from './breach-combat.ts';
 
@@ -34,6 +34,6 @@ export function resolveIssuedOrLegacy(config:WeaponConfiguration|undefined,
  // Select a genuine same-class silhouette rather than leave a placeholder.
  const issue=preferred.weapon===weapon?preferred:
   issueWeaponPreset(weapon==='rifle'?'ar-m16a2':'ar-m4a1');
- return {...issue.weaponConfiguration,slots:{...issue.weaponConfiguration.slots,
-  ...(config?.slots??{})}};
+ return readWeaponConfiguration({...issue.weaponConfiguration,
+  slots:{...issue.weaponConfiguration.slots,...(config?.slots??{})}},weapon);
 }
