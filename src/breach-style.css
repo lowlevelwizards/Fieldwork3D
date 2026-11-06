@@ -1402,3 +1402,23 @@ html,body{font-family:var(--fw-font-menu)}
  touch-action:manipulation}
 #quickPlayCancel[hidden]{display:none}
 @media(max-width:450px){.quick-play-progress-card{padding:11px}}
+
+/* Replay R2: compact, readable event feed with fixed DOM window. */
+.replay-feed-tools{display:flex;align-items:center;gap:6px;margin-top:5px}
+.replay-feed-tools button,.replay-feed-tools select{
+  font:600 11px var(--ui-font);color:#e3e5d9;background:#293e38;
+  border:1px solid #718879;border-radius:5px;padding:7px 9px;min-height:36px
+}
+.replay-feed-tools button{flex:1;text-align:left}
+.replay-feed-tools select{max-width:50%}
+.replay-feed-list{max-height:min(24dvh,260px);overflow-y:auto;
+  overscroll-behavior:contain;display:flex;flex-direction:column;gap:3px}
+.replay-feed-list[hidden],.replay-feed-tools select[hidden],
+.replay-feed-info[hidden]{display:none}
+.replay-feed-item{font:500 11px/1.35 var(--ui-font);text-align:left;
+  border:1px solid #405850;background:#1c302b;color:#dce1d8;
+  border-radius:4px;min-height:34px;padding:6px 8px}
+.replay-feed-item.selected{border-color:#c4ad81;background:#33423a}
+.replay-feed-item[data-kind="wound"],.replay-feed-item[data-kind="down"]{
+  border-left:3px solid #be806f}
+.replay-feed-info{font:10px var(--ui-mono);color:#acb6ac}

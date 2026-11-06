@@ -60,6 +60,9 @@ import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
 import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
+import {stepReplaySample,stepReplayPresentation,formatReplayTime}
+  from './breach-replay-transport.ts';
+import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-index.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -207,6 +210,10 @@ const ui={
   replayBack:el<HTMLButtonElement>('replayBack'),
   replayForward:el<HTMLButtonElement>('replayForward'),
   replaySpeed:el<HTMLButtonElement>('replaySpeed'),
+  replayPrevFrame:el<HTMLButtonElement>('replayPrevFrame'),
+  replayNextFrame:el<HTMLButtonElement>('replayNextFrame'),
+  replayPrevSample:el<HTMLButtonElement>('replayPrevSample'),
+  replayNextSample:el<HTMLButtonElement>('replayNextSample'),
   replaySeek:el<HTMLInputElement>('replaySeek'),
   replayMarks:el<HTMLElement>('replayMarks'),
   replaySight:el<HTMLButtonElement>('replaySight'),
@@ -216,8 +223,15 @@ const ui={
   replayNextEvent:el<HTMLButtonElement>('replayNextEvent'),
   replayFollow:el<HTMLButtonElement>('replayFollow'),
   replayAnalysis:el<HTMLButtonElement>('replayAnalysis'),
+  replayPlans:el<HTMLButtonElement>('replayPlans'),
+  replayPlanVersion:el<HTMLButtonElement>('replayPlanVersion'),
+  replayNames:el<HTMLButtonElement>('replayNames'),
   replayEventText:el<HTMLOutputElement>('replayEventText'),
   replayClock:el<HTMLOutputElement>('replayClock'),
+  replayFeedToggle:el<HTMLButtonElement>('replayFeedToggle'),
+  replayFeedFilter:el<HTMLSelectElement>('replayFeedFilter'),
+  replayFeed:el<HTMLElement>('replayFeed'),
+  replayFeedInfo:el<HTMLOutputElement>('replayFeedInfo'),
   rookAmmo:el<HTMLElement>('rookAmmo'),mossAmmo:el<HTMLElement>('mossAmmo'),
   ashAmmo:el<HTMLElement>('ashAmmo'),valeAmmo:el<HTMLElement>('valeAmmo'),
 };
@@ -524,9 +538,13 @@ function recordCompletedOperation(){
   catch{/* Private mode may reject local storage. Game still works. */}
 }
 let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
+let replayEventIndex:ReplayEventIndex|null=null;
 let replayPresentation:ReplayPresentation|null=null;
 let replayOmniscient=true,finishedSession:Session|null=null;
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
+let replayPlanScope:'all'|'selected'|'none'='selected';
+let replayPlanVersion:'active'|'original'='active';
+let replayNameTags=true;
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
@@ -2530,13 +2548,22 @@ function drawExecutionProblem(a:TeamActor,projected:boolean){
   draw.fillText('!',at.x,at.y+.25);
   draw.restore();
 }
+/** Authored historical orders, not recomputed motor navigation. */
+function replayPlanFor(a:TeamActor){
+  const initial=replaying&&replayPlanVersion==='original'?
+    recorder.plans.initial(a.id):null;
+  return {nodes:initial?.nodes??a.plan,
+    origin:initial?.origin??a.p};
+}
 function paths(){
   for(const a of team(state)){
-    if(a.health<=0)continue;
+    if(a.health<=0&&(!replaying||replayPlanVersion!=='original'))continue;
+    if(replaying&&(replayPlanScope==='none'||
+      replayPlanScope==='selected'&&a.id!==selected))continue;
     const c=colorFor(a.id);
-    const plan=a.plan;
+    const {nodes:plan,origin}=replayPlanFor(a);
     const activeTarget=activeWatchTarget(a);
-    if(activeTarget)drawActiveWatchMarker(a.p,
+    if(activeTarget&&(!replaying||replayPlanVersion==='active'))drawActiveWatchMarker(a.p,
       a.id===selected&&selectedActiveWatch&&draggingNode?
         draggingNode:activeTarget,c,a.id===selected,a.name);
     const visual=orderVisualScopes(plan,{
@@ -2544,8 +2571,8 @@ function paths(){
       posture:a.posture,fire:a.firePolicy
     });
     if(plan.length){
-      draw.beginPath();draw.moveTo(a.p.x,a.p.y);
-      let from=a.p;
+      draw.beginPath();draw.moveTo(origin.x,origin.y);
+      let from=origin;
       for(const node of plan){
         if(node.kind==='move'||node.kind==='door'){
           const course=displayRouteCache.get(from,node.p,state.intel,state.phase==='planning').points;
@@ -2668,7 +2695,7 @@ function paths(){
         draw.save();
         draw.strokeStyle=c;draw.lineWidth=3.2;
         draw.setLineDash([4,3]);draw.beginPath();
-        const first=a.plan[i-1]?.p??a.p;
+        const first=plan[i-1]?.p??origin;
         draw.moveTo(first.x,first.y);
         for(const step of n.arc)draw.lineTo(step.x,step.y);
         draw.stroke();draw.setLineDash([]);
@@ -2730,21 +2757,24 @@ function renderProjectedPlans(){
   draw.setTransform(dpr,0,0,dpr,0,0);
   draw.clearRect(0,0,cssW,cssH);
   for(const a of team(state)){
-    if(a.health<=0)continue;
+    if(a.health<=0&&(!replaying||replayPlanVersion!=='original'))continue;
+    if(replaying&&(replayPlanScope==='none'||
+      replayPlanScope==='selected'&&a.id!==selected))continue;
+    const {nodes:plan,origin}=replayPlanFor(a);
     const color=colorFor(a.id);
     const activeTarget=activeWatchTarget(a);
-    if(activeTarget)drawActiveWatchMarker(
+    if(activeTarget&&(!replaying||replayPlanVersion==='active'))drawActiveWatchMarker(
       worldToScreen(a.p,8),
       worldToScreen(a.id===selected&&selectedActiveWatch&&draggingNode?
         draggingNode:activeTarget,12),
       color,a.id===selected,a.name);
-    let previous=a.p;
-    const visual=orderVisualScopes(a.plan,{
+    let previous=origin;
+    const visual=orderVisualScopes(plan,{
       watch:a.aimInstruction?.mode==='track',pace:a.pace,
       posture:a.posture,fire:a.firePolicy
     });
     let visualIndex=0;
-    for(const n of a.plan){
+    for(const n of plan){
       const semantics=visual[visualIndex++];
       const cachedRoute=n.kind==='move'||n.kind==='door'?
         displayRouteCache.get(previous,n.p,state.intel,state.phase==='planning'):null;
@@ -2779,7 +2809,7 @@ function renderProjectedPlans(){
         invalidDrag?'#df8070':selectedNow?'#ecd29f':color);
       circle(point.x,point.y,3,'#233b39');
       draw.fillStyle='#142829';draw.font='700 12px "Saira Condensed",sans-serif';
-      draw.textAlign='center';draw.fillText(String(a.plan.indexOf(n)+1),
+      draw.textAlign='center';draw.fillText(String(plan.indexOf(n)+1),
         point.x,point.y+3);
       if(n.facing!==undefined){
         const aim=worldToScreen({x:n.p.x+Math.cos(n.facing)*38,
@@ -2886,8 +2916,8 @@ function renderProjectedPlans(){
     ][squadIndex]??{x:0,y:-9}:{x:0,y:-9};
     draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillStyle=color;
-    if(a.id===selected||a.injuryStage>0||replayFollow&&
-      replayFollowId===a.id)
+    if(!replaying&&(a.id===selected||a.injuryStage>0||replayFollow&&
+      replayFollowId===a.id))
       draw.fillText(a.name,pawn.x+labelSpread.x,pawn.y+labelSpread.y);
     if(a.id===selected){
       draw.strokeStyle='#e9d6b1';draw.lineWidth=2.1;
@@ -2906,11 +2936,22 @@ function renderProjectedPlans(){
       draw.arc(target.x,target.y,20,0,Math.PI*2);draw.stroke();draw.restore();
     }
   }
+  // Recorded operator labels are independent of route visibility.
+  if(replaying&&replayNameTags)for(const member of team(state)){
+    const pawn=worldToScreen(member.p,32);
+    draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
+    draw.fillStyle=colorFor(member.id);
+    draw.fillText(member.name,pawn.x,pawn.y-23);
+  }
   // Screen-space icons stay readable regardless of ortho pitch or zoom.
   for(const hostile of enemies(state)){
     if(replaying?!replayActorVisible(state,hostile,replayOmniscient):
       !liveVisibility(state,hostile.p))continue;
     const ground=worldToScreen(hostile.p,1);
+    if(replaying&&replayNameTags){
+      draw.textAlign='center';draw.font='700 11px "Saira Condensed",sans-serif';
+      draw.fillStyle='#e2a18b';draw.fillText(hostile.name,ground.x,ground.y-23);
+    }
     if(hostile.health<=0){
       // The actual grounded body and restrained blood mark communicate DOWN.
       draw.fillStyle='rgba(125,48,43,.52)';draw.beginPath();
@@ -3132,7 +3173,8 @@ function sprite(a:TeamActor){
   }
   if(friendly){
     draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
-    draw.fillStyle=c;draw.fillText(a.name,a.p.x,a.p.y-21);
+    draw.fillStyle=c;
+    if(!replaying||replayNameTags)draw.fillText(a.name,a.p.x,a.p.y-21);
     if(a.aimInstruction?.mode==='track'&&a.pace!=='run'){
       draw.fillStyle='#f0cd96';draw.font='700 11px "Saira Condensed",sans-serif';
       draw.fillText('PIE ACTIVE',a.p.x,a.p.y-33);
@@ -3146,6 +3188,11 @@ function sprite(a:TeamActor){
   }else{
     draw.strokeStyle='#f0c5a4';draw.lineWidth=1.4;
     draw.strokeRect(a.p.x-12,a.p.y-12,24,24);
+    if(replaying&&replayNameTags){
+      draw.textAlign='center';draw.fillStyle='#e2a18b';
+      draw.font='700 11px "Saira Condensed",sans-serif';
+      draw.fillText(a.name,a.p.x,a.p.y-22);
+    }
   }
 }
 function contacts(){
@@ -3390,13 +3437,70 @@ function seekReplay(t:number){
   replayTime=Math.max(0,Math.min(recorder.duration,t));
   applyReplayFrameAt(replayTime);updateReplayHud();
 }
+/** Replay event feed and navigation share the same disclosure boundary. */
+function replayEventKnown(e:ReplayIndexedEvent):boolean{
+  if(replayOmniscient||e.kind==='objective')return true;
+  if(team(state).some(a=>a.id===e.actor))return true;
+  const frame=recorder.at(e.t);
+  if(!frame)return false;
+  if(frame.knowledge)return !!e.actor&&
+    frame.knowledge.visibleActorIds.includes(e.actor);
+  // Older recordings lack recorded visibility. Keep the guarded prior fallback.
+  const p=e.p;
+  return !!p&&(frame.seenGround.includes(
+    Math.floor(p.x/40)+','+Math.floor(p.y/40))||
+    frame.seenGround.includes(
+      'fine:'+Math.floor(p.x/20)+','+Math.floor(p.y/20)));
+}
+function rebuildReplayEventIndex():void{
+  replayEventIndex=new ReplayEventIndex(recorder.events,
+    recorder.executionEvents,e=>replayEventKnown(e));
+}
+const replayFeedKinds:Record<string,readonly string[]>={
+  all:[],
+  combat:['shot','impact','wound','down','flash','surrender'],
+  orders:['started','blocked','resumed','completed','door','reload','interaction'],
+  contacts:['intel'],
+  objectives:['objective']
+};
+function renderReplayEventFeed():void{
+  if(ui.replayFeed.hidden||!replayEventIndex)return;
+  const allowed=replayFeedKinds[ui.replayFeedFilter.value]??[];
+  const events=replayEventIndex.all.filter(e=>
+    !allowed.length||allowed.includes(e.kind));
+  let lo=0,hi=events.length;
+  while(lo<hi){
+    const mid=(lo+hi)>>>1;
+    if(events[mid].t<replayTime)lo=mid+1;else hi=mid;
+  }
+  const end=Math.min(events.length,Math.max(80,lo+40));
+  const start=Math.max(0,end-80);
+  const fragment=document.createDocumentFragment();
+  for(const event of events.slice(start,end)){
+    const button=document.createElement('button');
+    button.type='button';button.className='replay-feed-item';
+    button.dataset.kind=event.kind;
+    button.textContent=formatReplayTime(event.t)+' · '+
+      event.kind.toUpperCase()+' · '+event.text;
+    button.addEventListener('click',()=>{
+      replayPlaying=false;seekReplay(event.t);
+      for(const selected of ui.replayFeed.querySelectorAll('.selected'))
+        selected.classList.remove('selected');
+      button.classList.add('selected');
+    });
+    fragment.append(button);
+  }
+  ui.replayFeed.replaceChildren(fragment);
+  ui.replayFeedInfo.textContent=events.length+
+    ' KNOWN EVENTS · SHOWING '+(events.length?start+1:0)+'–'+end;
+}
 function updateReplayHud(){
-  ui.replaySeek.value=String(recorder.duration?
-    Math.round(1000*replayTime/recorder.duration):0);
-  ui.replayClock.textContent=clockText(replayTime)+' / '+
-    clockText(recorder.duration)+(recorder.completeness.complete?'':' · PARTIAL');
+  ui.replaySeek.value=String(Math.round(replayTime*60));
+  ui.replayClock.textContent=formatReplayTime(replayTime)+' / '+
+    formatReplayTime(recorder.duration)+
+    (recorder.completeness.complete?'':' · PARTIAL');
   ui.replaySeek.setAttribute('aria-valuetext',
-    clockText(replayTime)+' of '+clockText(recorder.duration));
+    formatReplayTime(replayTime)+' of '+formatReplayTime(recorder.duration));
   ui.replayPlay.dataset.caption=replayPlaying?'PAUSE':'PLAY';
   const playbackIcon=replayPlaying?'pause':'replayPlay';
   if(ui.replayPlay.dataset.mode!==playbackIcon){
@@ -3413,10 +3517,12 @@ function updateReplayHud(){
   ui.replayView.textContent=viewMode.toUpperCase();
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
   ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
-  const execution=recorder.executionEvents.filter(e=>
-    e.kind==='blocked'||e.kind==='resumed'||e.kind==='completed');
-  const event=[...recorder.events,...execution]
-    .filter(e=>e.t<=replayTime+.14).sort((a,b)=>a.t-b.t).at(-1);
+  ui.replayPlans.textContent='PLANS '+replayPlanScope.toUpperCase();
+  ui.replayPlanVersion.textContent='PLAN '+replayPlanVersion.toUpperCase();
+  ui.replayNames.textContent=replayNameTags?'NAMES ON':'NAMES OFF';
+  ui.replayPlans.setAttribute('aria-pressed',String(replayPlanScope!=='none'));
+  ui.replayNames.setAttribute('aria-pressed',String(replayNameTags));
+  const event=replayEventIndex?.latest(replayTime+.14);
   ui.replayEventText.textContent=event&&replayTime-event.t<4.5?
     clockText(event.t)+' · '+event.text:'';
 }
@@ -3424,24 +3530,9 @@ function renderReplayEventMarkers(){
   ui.replayMarks.replaceChildren();
   const duration=recorder.duration;
   if(duration<=0)return;
-  const friendlyIds=new Set(team(state).map(a=>a.id));
-  let lastShot=-Infinity,count=0;
-  const significant=recorder.executionEvents.filter(e=>
-    e.kind==='blocked'||e.kind==='resumed'||e.kind==='completed');
-  for(const event of [...recorder.events,...significant].sort((a,b)=>a.t-b.t)){
+  let count=0;
+  for(const event of replayEventIndex?.markers??[]){
     if(count>=85)break;
-    if(event.kind==='shot'){
-      if(event.t-lastShot<3)continue;
-      lastShot=event.t;
-    }
-    const frame=recorder.at(event.t);
-    const knownPoint=!!event.p&&!!frame&&(
-      frame.seenGround.includes(Math.floor(event.p.x/40)+','+
-        Math.floor(event.p.y/40))||
-      frame.seenGround.includes('fine:'+Math.floor(event.p.x/20)+','+
-        Math.floor(event.p.y/20)));
-    if(!replayOmniscient&&!friendlyIds.has(event.actor??'')&&!knownPoint)
-      continue;
     const marker=document.createElement('button');
     marker.type='button';
     marker.className='replay-mark replay-mark-'+event.kind;
@@ -3459,6 +3550,11 @@ function enterReplay(){
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
+  replayPlanScope='selected';replayPlanVersion='active';replayNameTags=true;
+  rebuildReplayEventIndex();
+  ui.replayFeed.hidden=true;ui.replayFeedFilter.hidden=true;
+  ui.replayFeedInfo.hidden=true;
+  ui.replayFeedToggle.setAttribute('aria-expanded','false');
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
   const recordedSite=recorder.manifest?.site;
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
@@ -3471,11 +3567,14 @@ function enterReplay(){
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
+  ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
   renderReplayEventMarkers();seekReplay(0);updateHud();
 }
 function exitReplay(){
   if(!replaying)return;
   replaying=false;replayPlaying=false;replayPresentation=null;
+  replayEventIndex=null;
+  ui.replayFeed.replaceChildren();ui.replayFeed.hidden=true;
   document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   if(finishedSession)state=finishedSession;
@@ -3490,32 +3589,48 @@ ui.replayPlay.addEventListener('click',()=>{
 });
 ui.replayBack.addEventListener('click',()=>seekReplay(replayTime-10));
 ui.replayForward.addEventListener('click',()=>seekReplay(replayTime+10));
+const stepReplay=(kind:'sample'|'frame',direction:-1|1)=>{
+  replayPlaying=false;
+  seekReplay(kind==='sample'?
+    stepReplaySample(recorder.frames,replayTime,direction):
+    stepReplayPresentation(replayTime,recorder.duration,direction));
+};
+ui.replayPrevFrame.addEventListener('click',()=>stepReplay('frame',-1));
+ui.replayNextFrame.addEventListener('click',()=>stepReplay('frame',1));
+ui.replayPrevSample.addEventListener('click',()=>stepReplay('sample',-1));
+ui.replayNextSample.addEventListener('click',()=>stepReplay('sample',1));
 ui.replayMore.addEventListener('click',()=>{
   ui.replayExtra.hidden=!ui.replayExtra.hidden;
   ui.replayMore.setAttribute('aria-expanded',String(!ui.replayExtra.hidden));
 });
+ui.replayFeedToggle.addEventListener('click',()=>{
+  const open=ui.replayFeed.hidden;
+  ui.replayFeed.hidden=!open;ui.replayFeedFilter.hidden=!open;
+  ui.replayFeedInfo.hidden=!open;
+  ui.replayFeedToggle.setAttribute('aria-expanded',String(open));
+  if(open)renderReplayEventFeed();
+});
+ui.replayFeedFilter.addEventListener('change',renderReplayEventFeed);
 ui.replaySpeed.addEventListener('click',()=>{
-  replayRate=({0.5:1,1:2,2:4,4:0.5} as Record<number,number>)[replayRate]??1;
+  replayRate=({0.25:0.5,0.5:0.75,0.75:1,1:1.5,1.5:2,2:4,4:0.25} as Record<number,number>)[replayRate]??1;
   updateReplayHud();
 });
 ui.replaySeek.addEventListener('input',()=>{
   replayPlaying=false;
-  seekReplay(Number(ui.replaySeek.value)/1000*recorder.duration);
+  seekReplay(Number(ui.replaySeek.value)/60);
 });
 ui.replaySight.addEventListener('click',()=>{
   replayOmniscient=!replayOmniscient;fogStamp=-1;
-  renderReplayEventMarkers();updateReplayHud();
+  rebuildReplayEventIndex();
+  renderReplayEventMarkers();renderReplayEventFeed();updateReplayHud();
 });
 ui.replayView.addEventListener('click',()=>{
   cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
   updateReplayHud();
 });
 const jumpReplayEvent=(forward:boolean)=>{
-  const events=[...recorder.events.filter(e=>e.kind!=='shot'),
-    ...recorder.executionEvents.filter(e=>e.kind==='blocked'||
-      e.kind==='resumed'||e.kind==='completed')].sort((a,b)=>a.t-b.t);
-  const item=forward?events.find(e=>e.t>replayTime+.15):
-    events.slice().reverse().find(e=>e.t<replayTime-.15);
+  const item=forward?replayEventIndex?.next(replayTime):
+    replayEventIndex?.previous(replayTime);
   if(item){replayPlaying=false;seekReplay(item.t);}
 };
 ui.replayPrevEvent.addEventListener('click',()=>jumpReplayEvent(false));
@@ -3531,11 +3646,24 @@ ui.replayFollow.addEventListener('click',()=>{
 ui.replayAnalysis.addEventListener('click',()=>{
   replayAnalysis=!replayAnalysis;updateReplayHud();
 });
+ui.replayPlans.addEventListener('click',()=>{
+  replayPlanScope=replayPlanScope==='selected'?'all':
+    replayPlanScope==='all'?'none':'selected';
+  updateReplayHud();
+});
+ui.replayNames.addEventListener('click',()=>{
+  replayNameTags=!replayNameTags;updateReplayHud();
+});
+ui.replayPlanVersion.addEventListener('click',()=>{
+  replayPlanVersion=replayPlanVersion==='active'?'original':'active';
+  updateReplayHud();
+});
 ui.replayExit.addEventListener('click',exitReplay);
 function reset(next=state.variant,siteSeed?:number,
  missionOverride?:Session['missionType'],prebuiltSite?:Site,
  encounterRisk?:1|2|3,deferScene=false){
   replaying=false;replayPlaying=false;finishedSession=null;
+  replayEventIndex=null;
   operationsBoard.hidden=true;
   hideWeaponChooser();
   flashMode=false;document.body.classList.remove('replaying');
@@ -4128,8 +4256,13 @@ window.addEventListener('keydown',e=>{
   if(replaying){
     if(e.code==='Space'&&!e.repeat){e.preventDefault();replayPlaying=!replayPlaying;}
     if(e.code==='Escape')exitReplay();
-    if(e.code==='ArrowLeft')seekReplay(replayTime-5);
-    if(e.code==='ArrowRight')seekReplay(replayTime+5);
+    if(e.code==='ArrowLeft'||e.code==='ArrowRight'){
+      e.preventDefault();
+      const direction:-1|1=e.code==='ArrowLeft'?-1:1;
+      if(e.ctrlKey||e.metaKey)jumpReplayEvent(direction>0);
+      else if(e.shiftKey){replayPlaying=false;seekReplay(replayTime+direction);}
+      else stepReplay('frame',direction);
+    }
     return;
   }
   if(e.code==='Space'&&!e.repeat){

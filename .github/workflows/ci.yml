@@ -1125,6 +1125,8 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/replay-r2-recording.test.mjs \
+            tests/replay-r2-transport.test.mjs \
+            tests/replay-r2-event-index.test.mjs \
             tests/breach-p7-replay-sharing.test.mjs \
             tests/gameplay-g4d-replay-validity.test.mjs \
             tests/civilian-b8-replay.test.mjs
