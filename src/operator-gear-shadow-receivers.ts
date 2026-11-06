@@ -32,7 +32,10 @@ export function refineStaticShadowGeometry(
  const indices=geometry.index?.array;
  const triangles=(indices?indices.length:pos.count)/3;
  const plans:number[]=[];
- let count=0,changed=false;
+ // Reserve ALL original triangles before adding any lighting samples.
+ // A late unrefined triangle is not allowed to exceed the vertex cap.
+ let count=triangles*3,changed=false;
+ if(count>=budget)return geometry;
  for(let t=0;t<triangles;t++){
   const ia=indices?indices[t*3]:t*3,
    ib=indices?indices[t*3+1]:t*3+1,
@@ -49,8 +52,10 @@ export function refineStaticShadowGeometry(
   const receiver=area>2.2&&(Math.abs(nx)>.35||ny>.40);
   let n=receiver?Math.min(MAX_STEPS,Math.max(1,Math.ceil(
    Math.max(ab,ac,bc)/step))):1;
-  if(count+3*n*n>budget)n=1; // deterministic hard cap, no partial mesh.
-  plans.push(n);count+=3*n*n;if(n>1)changed=true;
+  const extra=3*(n*n-1);
+  if(count+extra>budget)n=1; // preserve total cap including future faces.
+  else count+=extra;
+  plans.push(n);if(n>1)changed=true;
  }
  if(!changed)return geometry;
  const data=new Map<string,number[]>();
@@ -110,22 +115,28 @@ export function refineStaticShadowGeometry(
 export function refineStaticReceiver(
  root:THREE.Object3D,budget=STATIC_RECEIVER_VERTEX_BUDGET
 ):ReceiverBakeSummary{
- let before=0,after=0,refined=0,remaining=budget;
+ const meshes:THREE.Mesh[]=[];
  root.traverse(o=>{
   if(!(o instanceof THREE.Mesh)||!o.visible||
    Array.isArray(o.material)||!o.material.userData.fieldworkBakedEquipmentAO||
    o instanceof THREE.SkinnedMesh||o.userData.ikLimb)return;
-  const old=o.geometry,positions=old.getAttribute('position');
-  if(!positions||!positions.count)return;
-  before+=positions.count;
-  if(remaining>positions.count){
-   const g=refineStaticShadowGeometry(old,remaining);
-   if(g!==old){
-    o.geometry=g;old.dispose();refined++;
-   }
-  }
-  const used=o.geometry.getAttribute('position').count;
-  after+=used;remaining=Math.max(0,remaining-used);
+  if(o.geometry.getAttribute('position')?.count)meshes.push(o);
  });
+ const before=meshes.reduce((total,mesh)=>
+  total+mesh.geometry.getAttribute('position').count,0);
+ let after=before,refined=0;
+ // Never use one mesh's allowance to consume another mesh's mandatory
+ // original vertices, even when some boxes are extremely small.
+ let extraAllowance=Math.max(0,budget-before);
+ for(const mesh of meshes){
+  if(!extraAllowance)break;
+  const old=mesh.geometry,base=old.getAttribute('position').count;
+  const g=refineStaticShadowGeometry(old,base+extraAllowance);
+  if(g===old)continue;
+  const newCount=g.getAttribute('position').count;
+  extraAllowance-=newCount-base;
+  after+=newCount-base;
+  mesh.geometry=g;old.dispose();refined++;
+ }
  return {before,after,refined};
 }
