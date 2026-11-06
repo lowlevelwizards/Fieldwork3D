@@ -85,6 +85,7 @@ import {ReplaySoundTimeline,replayDoorSoundId} from './breach-replay-audio.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {sampleReplayGhosts} from './breach-replay-ghosts.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
+import {makeReplayLoop,advanceReplayLoop} from './breach-replay-loop.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -252,6 +253,9 @@ const ui={
   replayNextFrame:el<HTMLButtonElement>('replayNextFrame'),
   replayPrevSample:el<HTMLButtonElement>('replayPrevSample'),
   replayNextSample:el<HTMLButtonElement>('replayNextSample'),
+  replayLoopIn:el<HTMLButtonElement>('replayLoopIn'),
+  replayLoopOut:el<HTMLButtonElement>('replayLoopOut'),
+  replayLoopToggle:el<HTMLButtonElement>('replayLoopToggle'),
   replaySeek:el<HTMLInputElement>('replaySeek'),
   replayMarks:el<HTMLElement>('replayMarks'),
   replaySight:el<HTMLButtonElement>('replaySight'),
@@ -640,6 +644,8 @@ let replayTraceMode:'off'|'recent'|'selected'='off';
 let replayGhostMode:'off'|'selected'|'squad'='off';
 let replayTrailMode:'off'|'recent'|'full'='off';
 let replayMovementHistory:ReplayMovementHistory|null=null;
+let replayLoopIn:number|null=null,replayLoopOut:number|null=null;
+let replayLoopEnabled=false;
 let selectedReplayShotId:number|null=null;
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
@@ -3943,6 +3949,16 @@ function updateReplayHud(){
     ui.replayPlay.title=replayPlaying?'Pause replay':'Play replay';
   }
   ui.replaySpeed.textContent=replayRate+'×';
+  const loop=makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration);
+  ui.replayLoopIn.textContent=replayLoopIn===null?'SET LOOP IN':
+    'IN '+formatReplayTime(replayLoopIn);
+  ui.replayLoopOut.textContent=replayLoopOut===null?'SET LOOP OUT':
+    'OUT '+formatReplayTime(replayLoopOut);
+  ui.replayLoopToggle.textContent=replayLoopEnabled?'LOOP ON':'LOOP OFF';
+  ui.replayLoopToggle.disabled=!loop||replayQuickVideo.active;
+  ui.replayLoopIn.disabled=replayQuickVideo.active;
+  ui.replayLoopOut.disabled=replayQuickVideo.active;
+  ui.replayLoopToggle.setAttribute('aria-pressed',String(replayLoopEnabled));
   ui.replayExportVideo.textContent=replayQuickVideo.active?'STOP VIDEO':'VIDEO 20S';
   ui.replaySpeed.disabled=replayQuickVideo.active;
   ui.replaySound.textContent=replaySoundEnabled?'SOUND ON':'SOUND OFF';
@@ -4003,6 +4019,7 @@ function enterReplay(){
   replayPlanScope='selected';replayPlanVersion='active';
   replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
   replayTrailMode='off';
+  replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
   closeReplayShotInspector();
   rebuildReplayEventIndex();
   replayMovementHistory=new ReplayMovementHistory(recorder.frames,
@@ -4035,6 +4052,7 @@ function exitReplay(){
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   closeReplayShotInspector();
   replaySoundTimeline=null;replayMovementHistory=null;stopReplaySounds();
+  replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
   ui.replayFeed.replaceChildren();
   showReplayToolTab(null);
   document.body.classList.remove('replaying');
@@ -4063,6 +4081,24 @@ ui.replayPrevFrame.addEventListener('click',()=>stepReplay('frame',-1));
 ui.replayNextFrame.addEventListener('click',()=>stepReplay('frame',1));
 ui.replayPrevSample.addEventListener('click',()=>stepReplay('sample',-1));
 ui.replayNextSample.addEventListener('click',()=>stepReplay('sample',1));
+ui.replayLoopIn.addEventListener('click',()=>{
+  replayLoopIn=replayTime;
+  if(replayLoopOut!==null&&replayLoopOut-replayLoopIn<.35)
+    replayLoopOut=null;
+  replayLoopEnabled=false;updateReplayHud();
+});
+ui.replayLoopOut.addEventListener('click',()=>{
+  if(replayLoopIn===null)replayLoopIn=0;
+  const proposal=makeReplayLoop(replayLoopIn,replayTime,recorder.duration);
+  if(!proposal){
+    showUiHelp('LOOP OUT MUST BE AT LEAST 0.35S AFTER IN',3300);return;
+  }
+  replayLoopOut=proposal.end;replayLoopEnabled=true;updateReplayHud();
+});
+ui.replayLoopToggle.addEventListener('click',()=>{
+  if(!makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration))return;
+  replayLoopEnabled=!replayLoopEnabled;updateReplayHud();
+});
 ui.replayMore.addEventListener('click',()=>{
   showReplayToolTab(replayToolTab&&replayToolTab!=='events'?
     null:replayLastToolTab);
@@ -4180,6 +4216,7 @@ ui.replayExportVideo.addEventListener('click',()=>{
     audio.createMediaStreamDestination():null;
   if(replayTime>=recorder.duration-.2)seekReplay(0);
   replayRate=1;
+  replayLoopEnabled=false;replayLoopIn=null;replayLoopOut=null;
   const started=replayQuickVideo.start(replayTime,
     {width:cssW,height:cssH},videoAudioDestination?.stream??null);
   if(!started){
@@ -5438,10 +5475,15 @@ function tick(now:number){
   }else{accum=0;previousRenderActors=null;}
   if(replaying&&replayPlaying){
     const previousReplayTime=replayTime;
-    replayTime=Math.min(recorder.duration,replayTime+dt*replayRate);
+    const loop=replayLoopEnabled?
+      makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration):null;
+    const step=advanceReplayLoop(replayTime,dt*replayRate,
+      loop,recorder.duration);
+    replayTime=step.time;
     applyReplayFrameAt(replayTime);
-    playReplayAudioBetween(previousReplayTime,replayTime);
-    if(replayTime>=recorder.duration)replayPlaying=false;
+    if(step.wrapped)stopReplaySounds();
+    else playReplayAudioBetween(previousReplayTime,replayTime);
+    if(!loop&&replayTime>=recorder.duration)replayPlaying=false;
   }
   if(replaying)advanceReplayCamera(dt);
   // 079: shot IDs are monotonic, unlike the short-lived shot array length.

@@ -1160,6 +1160,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/replay-r3-movement-history.test.mjs \
+            tests/replay-r3-loop.test.mjs \
             tests/replay-r2-recording.test.mjs \
             tests/gameplay-g4d-replay-validity.test.mjs
       - name: Replay R3 — camera, forensic shot selection and retained tactical events
