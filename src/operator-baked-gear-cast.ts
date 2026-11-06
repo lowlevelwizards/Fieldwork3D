@@ -139,7 +139,7 @@ export function bakeCastOnGear(
    const lower=THREE.MathUtils.clamp((7-position.y)/18,0,1);
    const light=(1-.52*occlusion)*(1-.12*lower);
    const before=baseline[i*3]/255;
-   const value=Math.round(255*Math.max(.44,before*light));
+   const value=Math.round(255*Math.max(.54,before*light));
    if(value<array[i*3]){affected=true;changed++;}
    array[i*3]=value;array[i*3+1]=value;array[i*3+2]=value;
    vertices++;
