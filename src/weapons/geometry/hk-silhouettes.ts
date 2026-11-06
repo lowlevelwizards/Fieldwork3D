@@ -77,15 +77,16 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // The simple straight box silhouette beats tiny pale stamped stripes.
 
  // HK slim fore-end: one faceted YZ body. Never an AK upper/lower split.
- const guardMat=parts.handguard==='hk-g3-wood-vented'?wood:HK_OLIVE_POLYMER;
+ const woodGuard=parts.handguard==='hk-g3-wood-vented';
+ const guardMat=woodGuard?wood:HK_OLIVE_POLYMER;
  // A real 8-sided broad-face tube with only a gentle taper at the nose:
  // single mesh, no fragile decorative sleeves or extended tropical furniture.
  addHKFacetedForearm(root,parts.handguard,ids.handguard++,
-  art.handguardStartX,art.handguardEndX,early,guardMat);
+  art.handguardStartX,art.handguardEndX,woodGuard,guardMat);
  b('handguard',4.23,-.15,0,.37,2.76,3.02,'steel');
  // Four big, face-aligned vents per side instead of a tiny dot strip.
  // No separate front lip to float beneath the tapered fore-end.
- addHKHandguardOpenings(root,art.handguardStartX,art.handguardEndX,early);
+ addHKHandguardOpenings(root,art.handguardStartX,art.handguardEndX,woodGuard);
 
  // Cocking tube sits above and slightly intersects the handguard roof.
  const tube=addFacetedTube(root,'receiver',parts.receiver,ids.receiver++,
@@ -140,15 +141,17 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // One solid silhouette per rear sight: no separate base/knobs.
  // Low early folding blade versus a broader, squat G3A3 diopter turret.
  if(early){
-  p('receiver',[[-4.34,1.73],[-4.34,2.08],
+  const rear=p('receiver',[[-4.34,1.73],[-4.34,2.08],
    [-4.04,2.08],[-3.89,2.88],[-3.49,2.88],
    [-3.29,2.11],[-2.96,2.11],[-2.96,1.72]],
   1.44,'steel');
+  rear.userData.hkRearSight='early-leaf';
  }else{
-  p('receiver',[[-4.48,1.73],[-4.48,2.30],
+  const rear=p('receiver',[[-4.48,1.73],[-4.48,2.30],
    [-4.12,2.32],[-4.06,2.94],
    [-3.70,3.17],[-3.24,3.17],
    [-2.92,2.87],[-2.90,1.73]],
   1.82,'steel');
+  rear.userData.hkRearSight='diopter-drum';
  }
 }
