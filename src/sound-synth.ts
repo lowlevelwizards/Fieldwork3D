@@ -158,7 +158,7 @@ export function playDesignedSound(ctx:AudioContext,id:string,
   const pcm=renderSound(id,settings,ctx.sampleRate);
   if(!pcm.length)return null;
   buffer=ctx.createBuffer(1,pcm.length,ctx.sampleRate);
-  buffer.copyToChannel(pcm,0);
+  buffer.getChannelData(0).set(pcm);
   if(cache.size>=64)cache.delete(cache.keys().next().value!);
   cache.set(key,buffer);
  }
