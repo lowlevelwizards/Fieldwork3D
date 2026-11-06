@@ -78,11 +78,13 @@ test('R6 cross-assembly caster culling preserves color, directional and contact 
  const geo=b.face.geometry;
  const savedContact=geo.userData.fieldworkInterContactMask;
  const savedCast=geo.userData.fieldworkDirectionalCastMask;
+ const originalUpdate=b.source.updateWorldMatrix;
  b.source.updateWorldMatrix=()=>{
   throw new Error('cached cross-lighting must not traverse caster volumes');
  };
  assert.equal(bakeCastOnGear(b.receiver,[b.source],b.chest,
   'same-style').vertices,0);
+ b.source.updateWorldMatrix=originalUpdate;
  // Changing the outfit key recomposes from neutral, reusing CPU buffers.
  const before=Array.from(geo.getAttribute('color').array);
  bakeCastOnGear(b.receiver,[],b.chest,'clear-style');
