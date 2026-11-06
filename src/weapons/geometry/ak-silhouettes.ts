@@ -75,17 +75,18 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [-2.25,-6.1],[-3.7,-5.7]],m.gripShiftX),
   grip==='ak-grip-poly'?3.4:2.9,gripWood||resin?2:1);
 
- // Recognisable AK magazine curve must be in exterior contour, not block steps.
+ // A narrow receiver insertion point and broad caricatured lower swing.
+ // 7.62 profiles retain a stronger banana bend than 5.45 profiles.
  const mag=parts.magazine,heavy=mag==='ak-mag762'||mag==='ak-mag762poly';
  const resinMag=mag==='ak-mag545';
  const finish:0|1|2=resinMag?2:heavy&&mag==='ak-mag762'?0:1;
- // One thick prism, with only one or two deliberate changes in direction.
+ const top=m.magazineTopY;
  if(heavy)
-  p('magazine',[[2.15,-1.65],[5.9,-1.65],[6.65,-4.5],
-   [8.95,-7.5],[5.65,-8.05],[3.35,-5.15]],3.45,finish);
+  p('magazine',[[.05,top],[2.07,top],[2.44,-4.42],
+   [4.05,-7.45],[2.0,-7.75],[.68,-5.08]],3.05,finish);
  else
-  p('magazine',[[2.15,-1.65],[5.8,-1.65],[5.95,-4.55],
-   [7.15,-7.4],[4.45,-7.6],[3.3,-5.1]],3.5,finish);
+  p('magazine',[[.06,top],[2.04,top],[2.24,-4.62],
+   [2.95,-7.25],[1.0,-7.47],[.45,-4.95]],3.1,finish);
 
  const guard=parts.handguard;
  const short=guard==='ak-wood-short'||guard==='ak-poly-short';
