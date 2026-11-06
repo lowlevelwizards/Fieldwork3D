@@ -76,19 +76,23 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [[-1.95,-1.65],[.25,-1.65],[-.25,-5.75],[-2.20,-5.7]],
   m.gripShiftX),m.gripDepthZ,1);
 
- // Thin, unmistakable STANAG shapes; an understated bottom kick is the
- // only change of direction. All variants enter the same receiver magwell.
+ // IMPORTANT: Side ELEVATION uses X/Y. The requested thinness is Z,
+ // not an X-squashed stick. Restore broad magazine contour, narrow its depth.
  const mag=parts.magazine;
  const magTop=m.magazineTopY;
+ const magLeft=m.magwellCenterX-m.magazineWidthX/2;
+ const magRight=m.magwellCenterX+m.magazineWidthX/2;
  if(mag==='ar-mag20')
-  p('magazine',[[.12,magTop],[2.0,magTop],[2.08,-6.22],
-   [.18,-6.22]],2.7,0);
+  p('magazine',[[magLeft,magTop],[magRight,magTop],
+   [magRight+.12,-6.22],[magLeft+.12,-6.22]],m.magazineDepthZ,0);
  else if(mag==='ar-magpoly')
-  p('magazine',[[.08,magTop],[2.13,magTop],[2.25,-4.65],
-   [2.72,-7.15],[.65,-7.3],[.28,-4.7]],3.15,1);
+  p('magazine',[[magLeft,magTop],[magRight,magTop],
+   [magRight+.12,-4.75],[magRight+.55,-7.2],
+   [magLeft+.65,-7.3],[magLeft+.12,-4.72]],m.magazineDepthZ+.12,1);
  else
-  p('magazine',[[.1,magTop],[2.05,magTop],[2.17,-4.7],
-   [2.62,-7.35],[.7,-7.45],[.24,-4.72]],2.8,0);
+  p('magazine',[[magLeft,magTop],[magRight,magTop],
+   [magRight+.1,-4.78],[magRight+.48,-7.35],
+   [magLeft+.6,-7.45],[magLeft+.12,-4.72]],m.magazineDepthZ,0);
 
  // Four outside envelopes: triangular ribless, rounded, slim retro, heavy rail.
  const guard=parts.handguard;
