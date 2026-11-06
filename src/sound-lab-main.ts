@@ -196,7 +196,7 @@ function renderVariants(){
  }
  ui.variants.replaceChildren(frag);
 }
-function displayValue(field:keyof SoundSettings,value:number,unit:string){
+function displayValue(value:number,unit:string){
  return unit==='%'?Math.round(value*100)+'%':
   unit==='Hz'?Math.round(value)+'Hz':value.toFixed(2)+'s';
 }
@@ -207,7 +207,7 @@ function renderSliders(){
   const heading=document.createElement('div');heading.className='slider-name';
   const name=document.createElement('span');name.textContent=label;
   const out=document.createElement('output');out.dataset.value=key;
-  out.textContent=displayValue(key,settings()[key],unit);
+  out.textContent=displayValue(settings()[key],unit);
   heading.append(name,out);
   const input=document.createElement('input');
   input.type='range';input.dataset.setting=key;input.min=String(min);
@@ -293,7 +293,7 @@ async function exportZip(){
   for(let i=0;i<enabled.length;i++){
    const entry=enabled[i],choice=pack.choices[entry.id];
    const sound=resolveSoundSettings(pack,entry.id,choice.choice)!;
-   const pcm=renderSound(entry.id,{...sound,gain:sound.gain*pack.master});
+   const pcm=renderSound(entry.id,sound).map(v=>v*sound.gain*pack.master*.4);
    files.push({name:'wavs/'+entry.id+'.wav',data:encodeSoundWav(pcm)});
    if(i%10===0){
     note('RENDERING '+(i+1)+' / '+enabled.length+' APPROVED/ENABLED CUES');
@@ -342,7 +342,7 @@ ui.sliders.addEventListener('input',event=>{
  const def=sliderDefs.find(v=>v[0]===key)!;
  const output=ui.sliders.querySelector<HTMLOutputElement>(
   'output[data-value="'+key+'"]');
- if(output)output.textContent=displayValue(key,value,def[5]);
+ if(output)output.textContent=displayValue(value,def[5]);
 });
 ui.search.addEventListener('input',()=>{search=ui.search.value.toLowerCase().trim();
  if(search)group='all';renderGroups();renderList();});
@@ -368,8 +368,7 @@ $('resetVariant').addEventListener('click',()=>{
  persist();renderEditor();note('RESET '+variant+' TO ITS ORIGINAL SOUND');
 });
 $('exportCue').addEventListener('click',()=>{
- const pcm=renderSound(selected,{...settings(),
-  gain:settings().gain*pack.master});
+ const pcm=renderSound(selected,settings()).map(v=>v*settings().gain*pack.master*.4);
  downloadSound([encodeSoundWav(pcm).buffer as ArrayBuffer],
   'fieldwork-'+selected+'-'+variant+'.wav','audio/wav');
  note('EXPORTED '+current().label.toUpperCase()+' · '+variant+' WAV');
