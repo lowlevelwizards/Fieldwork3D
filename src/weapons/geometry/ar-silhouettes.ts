@@ -6,6 +6,7 @@ import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
+import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 
 export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
@@ -46,6 +47,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // One continuous low top plane; the extra rear nub did not read at game scale.
   b('receiver',-1.5,2.05,0,8.3,.65,2.65,1);
  }
+
+ // A single textured side mark replaces tiny modeled receiver hardware.
+ addWeaponPixelMark(root,'ar-port',.25,.45,1.81,2.45,.9);
 
  // Stock: fixed triangular stock versus open shoulder / sliding-carbine outline.
  if(parts.stock==='ar-fixed'){
@@ -116,6 +120,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    ris?4.6:4.0,ris?2:1);
   b('handguard',(start+end)/2,1.86,0,end-start,.64,
    ris?4.15:3.7,ris?2:0);
+  if(ris)addWeaponPixelMark(root,'ris-panel',(start+end)/2,.2,2.34,
+   end-start-1.65,1.16);
  }
 
  // All variants share the authoritative X=19.5 tip: only visual profile varies.
