@@ -10,6 +10,8 @@ import type {ExecutionEvent} from './breach-execution-events.ts';
 import {copyMedicalCondition,newMedicalCondition} from './breach-medical-wounds.ts';
 import {normalizedMedicalSupplies,kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
+import {captureReplayKnowledge,applyReplayKnowledge,type ReplayKnowledge}
+  from './breach-replay-visibility.ts';
 import {shareUnchangedReplayFrame,type ReplaySharingStats}
   from './breach-replay-sharing.ts';
 import type {TraverseOpportunity} from './breach-mantle.ts';
@@ -61,6 +63,8 @@ export type ReplayFrame={
   rescue:{p:Pt;following:string|null}|null;objective:Pt;
   seenGround:string[];intel:ReturnType<typeof intelSnapshot>;
   known:[string,{p:Pt;at:number;status:'seen'|'heard'}][];
+  /** Optional for pre-R2 recordings. Historical sightings are authoritative. */
+  knowledge?:ReplayKnowledge;
 };
 const position=(p:Pt):Pt=>({x:p.x,y:p.y});
 const traversalCopy=(op:TraverseOpportunity|null):TraverseOpportunity|null=>
@@ -69,7 +73,8 @@ const traversalCopy=(op:TraverseOpportunity|null):TraverseOpportunity|null=>
 const shotCopy=(shot:ShotEvent):ShotEvent=>({...shot,
   start:position(shot.start),end:position(shot.end)});
 export function snapshot(s:Session,seenGround?:string[],
-  unchangedWorld?:Pick<ReplayFrame,'windows'|'coverState'>):ReplayFrame{
+  unchangedWorld?:Pick<ReplayFrame,'windows'|'coverState'>,
+  previouslyDiscovered:ReadonlySet<string>=new Set()):ReplayFrame{
   return {
     t:s.seconds,phase:s.phase,mission:s.mission,
     actors:s.operators.map(a=>({id:a.id,p:position(a.p),
@@ -152,6 +157,7 @@ export function snapshot(s:Session,seenGround?:string[],
     seenGround:seenGround??[...s.seenGround],intel:intelSnapshot(s.intel),
     known:[...s.known].map(([id,c])=>[id,
       {p:position(c.p),at:c.at,status:c.status}]),
+    knowledge:captureReplayKnowledge(s,previouslyDiscovered),
   };
 }
 export class MissionRecorder{
@@ -160,6 +166,7 @@ export class MissionRecorder{
   readonly executionEvents:ExecutionEvent[]=[];
   private lastEventId=0;
   private lastExecutionEventId=0;
+  private readonly discoveredBodies=new Set<string>();
   readonly motion=new ReplayMotionRecorder();
   /** Optional benchmark counters only; gameplay never reads these. */
   readonly sharingStats:ReplaySharingStats={
@@ -185,7 +192,12 @@ export class MissionRecorder{
     const last=this.frames.at(-1);
     if(!force&&last&&s.seconds-last.t<.049)return;
     if(last&&Math.abs(last.t-s.seconds)<1e-6){
-      if(force)this.frames[this.frames.length-1]=snapshot(s);
+      if(force){
+        const sample=snapshot(s,undefined,undefined,this.discoveredBodies);
+        for(const id of sample.knowledge?.discoveredBodyIds??[])
+          this.discoveredBodies.add(id);
+        this.frames[this.frames.length-1]=sample;
+      }
       return;
     }
     // Bound mobile memory to ten minutes of sampled playback.
@@ -194,7 +206,9 @@ export class MissionRecorder{
       last.seenGround:undefined;
     const unchangedWorld=last&&last.objectRevision===s.objectRevision?
       last:undefined;
-    const frame=snapshot(s,remembered,unchangedWorld);
+    const frame=snapshot(s,remembered,unchangedWorld,this.discoveredBodies);
+    for(const id of frame.knowledge?.discoveredBodyIds??[])
+      this.discoveredBodies.add(id);
     for(const actor of frame.actors)
       actor.travelYaw=this.motion.direction(actor.id);
     // Explored ground only grows. Reuse identical history instead of
@@ -294,6 +308,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
     replayGroundFrames.set(s,f.seenGround);
   }
   s.seconds=f.t;
+  applyReplayKnowledge(s,f.knowledge);
   // Playback is not a live game phase. It can neither edit plans nor simulate.
   s.phase='running';s.mission=f.mission;
   for(const copy of f.actors){

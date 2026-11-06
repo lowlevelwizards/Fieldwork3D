@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import {createCivilianRig,updateCivilianRig,type CivilianRig}
  from './breach-civilian-visuals.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
+import {replayActorVisible} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
@@ -1812,8 +1813,7 @@ export class TacticalScene3D{
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
     for(const actor of s.operators){
-      const visible=omniscient||actor.side==='blue'||
-        (actor.health>0?isSeen(s,actor):liveVisibility(s,actor.p));
+      const visible=replayActorVisible(s,actor,omniscient);
       // Spawn full 3D rigs only when needed. Enemy AI, LOS and simulation
       // always exist; hidden actors incur no model construction on mobile.
       if(!visible&&!this.actors.has(actor.id))continue;

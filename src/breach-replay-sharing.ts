@@ -42,7 +42,7 @@ function sameValue(a:unknown,b:unknown):boolean{
 
 const shareableFields=[
   'doors','shots','casings','dropped','impactMarks','grenades',
-  'flashBursts','intel','known','rescue','objective'
+  'flashBursts','intel','known','rescue','objective','knowledge'
 ] as const satisfies readonly (keyof ReplayFrame)[];
 
 export type ReplaySharingStats={

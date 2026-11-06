@@ -60,6 +60,7 @@ import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
 import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
+import {replayActorVisible} from './breach-replay-visibility.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
 
@@ -2905,7 +2906,8 @@ function renderProjectedPlans(){
   }
   // Screen-space icons stay readable regardless of ortho pitch or zoom.
   for(const hostile of enemies(state)){
-    if(!liveVisibility(state,hostile.p))continue;
+    if(replaying?!replayActorVisible(state,hostile,replayOmniscient):
+      !liveVisibility(state,hostile.p))continue;
     const ground=worldToScreen(hostile.p,1);
     if(hostile.health<=0){
       // The actual grounded body and restrained blood mark communicate DOWN.
@@ -3058,7 +3060,8 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
 }
 function sprite(a:TeamActor){
   if(a.side==='red'&&!(replaying&&replayOmniscient)){
-    const visible=a.health>0?isSeen(state,a):liveVisibility(state,a.p);
+    const visible=replaying?replayActorVisible(state,a,false):
+      a.health>0?isSeen(state,a):liveVisibility(state,a.p);
     if(!visible){
       const memory=lastKnown(state,a.id);
       if(memory&&a.health>0&&state.seconds-memory.at<25){
@@ -3231,7 +3234,8 @@ function renderWeaponLights2D(){
  }
  draw.save();draw.fillStyle='rgba(183,240,205,.12)';
  for(const actor of active){
-  if(actor.side==='red'&&!replayOmniscient&&!isSeen(state,actor))continue;
+  if(actor.side==='red'&&!replayActorVisible(state,actor,
+      replaying&&replayOmniscient))continue;
   const previous=beam2DHistory.get(actor.id);
   const yaw=actor.weaponYaw;
   if(!previous||previous.tick!==tick||!sameWeaponConfiguration(previous.config,actor.weaponConfiguration)||
