@@ -565,6 +565,7 @@ const replayQuickVideo=new ReplayQuickVideo(
     showUiHelp('REPLAY VIDEO EXPORTED',3000);
   },
   reason=>{
+    console.warn('[Replay Video]',reason);
     videoAudioDestination=null;
     ui.replayExportVideo.textContent='VIDEO 20S';
     showUiHelp(reason,3600);
