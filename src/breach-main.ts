@@ -63,6 +63,7 @@ import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import {stepReplaySample,stepReplayPresentation,formatReplayTime}
   from './breach-replay-transport.ts';
 import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-index.ts';
+import {clusterReplayTimeline} from './breach-replay-timeline-markers.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import {serializeReplayReport} from './breach-replay-export-json.ts';
 import {ReplaySoundTimeline} from './breach-replay-audio.ts';
@@ -3698,29 +3699,12 @@ function renderReplayEventMarkers():void{
   if(duration<=0)return;
   const width=ui.replayMarks.clientWidth||ui.replaySeek.clientWidth||320;
   const bins=Math.max(16,Math.floor(width/7));
-  const rank=(kind:string)=>kind==='down'?5:kind==='wound'?4:
-    kind==='flash'?3:kind==='door'?2:kind==='shot'?1:0;
-  const clusters=new Map<number,{
-    kind:string;time:number;count:number;priority:number;
-  }>();
-  for(const event of replayEventIndex?.markers??[]){
-    const index=Math.min(bins-1,Math.max(0,
-      Math.floor(event.t/duration*bins)));
-    const existing=clusters.get(index),priority=rank(event.kind);
-    if(!existing){
-      clusters.set(index,{kind:event.kind,time:event.t,count:1,priority});
-    }else{
-      existing.count++;
-      if(priority>existing.priority){
-        existing.kind=event.kind;existing.priority=priority;
-      }
-    }
-  }
+  const clusters=clusterReplayTimeline(replayEventIndex?.markers??[],duration,width);
   const fragment=document.createDocumentFragment();
-  for(const [index,cluster] of clusters){
+  for(const cluster of clusters){
     const marker=document.createElement('span');
     marker.className='replay-mark replay-mark-'+cluster.kind;
-    marker.style.left=((index+.5)/bins*100).toFixed(3)+'%';
+    marker.style.left=((cluster.index+.5)/bins*100).toFixed(3)+'%';
     marker.dataset.cluster=String(cluster.count>1);
     marker.title=cluster.count+' event'+(cluster.count===1?'':'s')+
       ' near '+clockText(cluster.time);

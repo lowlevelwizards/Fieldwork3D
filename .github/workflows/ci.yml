@@ -1153,6 +1153,7 @@ jobs:
             tests/replay-r2-ballistics.test.mjs \
             tests/replay-r2-json-report.test.mjs \
             tests/replay-r2-ghosts.test.mjs \
+            tests/replay-r2-timeline-markers.test.mjs \
             tests/replay-r2-audio.test.mjs \
             tests/replay-r2-video.test.mjs \
             tests/breach-p7-replay-sharing.test.mjs \
