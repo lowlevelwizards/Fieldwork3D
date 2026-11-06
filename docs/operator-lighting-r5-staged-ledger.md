@@ -106,3 +106,11 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
   and cleanup on material dispose; outfit color/maps synchronize with clones.
 - This is a Studio A/B prototype, not a production-approved replacement;
   promote only after removing duplicate self AO and mobile performance review.
+
+## R5.2-D actual browser atlas proof gate
+- Add a narrow conditional R5 Studio smoke step to the *existing* mobile
+  Studio workflow: compile WebGL UV1/AO, preview OCP Infantry reference and
+  assert at least one atlas, under 8 MiB, no shader errors or blank capture.
+- Screenshot captured to the existing `operator-studio-captures` artifact.
+- Uses the same installed Playwright browser, no new independent workflow.
+- Atlas remains debug-only; visual approval still required before default use.
