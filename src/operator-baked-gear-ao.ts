@@ -41,9 +41,9 @@ export function bakeGearGeometryAO(
   const lower=1-THREE.MathUtils.clamp(
    (positions.getY(i)-bounds.min.y)/height,0,1);
   const shade=THREE.MathUtils.clamp(
-   .985+.015*Math.max(0,ny)-.155*Math.max(0,-ny)
-   -.036*Math.abs(nz)-.022*Math.max(0,-nx)
-   -.135*lower,BAKED_GEAR_AO_MIN,1);
+   .985+.015*Math.max(0,ny)-.105*Math.max(0,-ny)
+   -.028*Math.abs(nz)-.018*Math.max(0,-nx)
+   -.055*lower,BAKED_GEAR_AO_MIN,1);
   const byte=Math.round(shade*255);
   bytes[i*3]=byte;bytes[i*3+1]=byte;bytes[i*3+2]=byte;
  }
@@ -68,7 +68,7 @@ export function bakeGearGeometryAO(
  * the occluder's 3D bounding slab.
  */
 function castRayBox(p:THREE.Vector3,dir:THREE.Vector3,
- box:THREE.Box3,maxDist=12):boolean{
+ box:THREE.Box3,maxDist=1.85):boolean{
  let near=0,far=maxDist;
  for(const axis of ['x','y','z'] as const){
   const d=dir[axis],o=p[axis];
@@ -81,16 +81,17 @@ function castRayBox(p:THREE.Vector3,dir:THREE.Vector3,
   far=Math.min(far,Math.max(low,high));
   if(near>far)return false;
  }
- return far>.045;
+ return near>.035&&far>.045;
 }
 const KEY_RAYS=[
- new THREE.Vector3(.57,.80,.16).normalize(),
- new THREE.Vector3(.47,.86,-.12).normalize(),
- new THREE.Vector3(.66,.74,.04).normalize()
+ new THREE.Vector3(.46,.88,.07).normalize(),
+ new THREE.Vector3(.43,.90,.03).normalize(),
+ new THREE.Vector3(.47,.88,.04).normalize()
 ] as const;
-export const GEAR_CONTACT_AO_RADIUS=2.40;
-export const GEAR_CONTACT_AO_STRENGTH=.38;
-export const GEAR_CONTACT_AO_FLOOR=.54;
+// Narrow seams, not a diffuse two-and-a-half-unit shadow halo.
+export const GEAR_CONTACT_AO_RADIUS=.95;
+export const GEAR_CONTACT_AO_STRENGTH=.36;
+export const GEAR_CONTACT_AO_FLOOR=.62;
 type ContactPart={
  mesh:THREE.Mesh;local:THREE.Matrix4;normalMatrix:THREE.Matrix3;
  box:THREE.Box3;center:THREE.Vector3;
@@ -155,7 +156,7 @@ export function bakeGearContactAO(group:THREE.Group):number{
    // Bake cast shadows ON the base panel under projecting pockets and
    // straps. Three rays create a cheap fixed-light soft penumbra; never
    // sample this from a light or raycaster during gameplay.
-   const rayOrigin=p.clone().addScaledVector(n,.075);
+   const rayOrigin=p.clone().addScaledVector(n,.05);
    let castHits=0;
    for(const light of KEY_RAYS){
     if(n.dot(light)<.035)continue;
@@ -165,7 +166,7 @@ export function bakeGearContactAO(group:THREE.Group):number{
     }
    }
    const cast=castHits/KEY_RAYS.length;
-   const shadow=Math.max(occlusion,.55*cast);
+   const shadow=Math.max(occlusion,.35*cast);
    if(shadow<.012)continue;
    const old=pixels[i*3]/255;
    const gray=Math.round(255*Math.max(GEAR_CONTACT_AO_FLOOR,
