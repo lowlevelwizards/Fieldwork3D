@@ -76,6 +76,7 @@ let poseFitPreset='ar-m4a1',poseFitArmor='plate-jpc';
 let poseFitRig='no-rig',poseFitTop='bdu-shirt';
 let poseFitOutput:HTMLOutputElement|null=null;
 if(poseFitMode){
+ document.body.classList.add('pose-fit-mode');
  const panel=document.createElement('details');
  panel.id='poseFitPanel';
  panel.open=true;panel.setAttribute('aria-label','Pose Fit Inspector');
@@ -1047,7 +1048,8 @@ const cameraHalfHeight=36;
 let projectionZoom=Number.NaN;
 function refreshVisibleWindow(){
  const headerBottom=document.querySelector('header')?.getBoundingClientRect().bottom??90;
- const editorTop=document.querySelector('main')?.getBoundingClientRect().top??
+ const editorTop=poseFitMode?window.innerHeight*.83:
+  document.querySelector('main')?.getBoundingClientRect().top??
   window.innerHeight*.55;
  const overlayBottom=document.getElementById('modelAxisLegend')?.
   getBoundingClientRect().bottom??0;
@@ -1696,14 +1698,21 @@ function draw(){
   canvas.dataset.promotion=gaitReference.value==='candidate'?'lab-only':'none';
   if(poseFitMode&&poseFitOutput){
    const report=rig.root.userData.lowReadyPoseReport as
-    {status:string;penetration:number|null;candidates:number}|null;
+    {status:string;penetration:number|null;candidates:number;
+     weapon?:string;armor?:string;rig?:string;top?:string}|null;
    poseFitOutput.textContent=report?
     'STATUS '+report.status.toUpperCase()+
+    '\nRENDERED '+(report.weapon??'?')+' / '+(report.armor??'?')+
+    ' / '+(report.rig??'?')+
     '\nPENETRATION '+(report.penetration?.toFixed(3)??'N/A')+
     '\nGRIP '+rig.gripError.toFixed(3)+
     '\nSTOCK '+rig.stockError.toFixed(3)+
     '\nCANDIDATES '+report.candidates:'NO STATIC FAMILY SOLVE';
    canvas.dataset.lowReadyFit=report?.status??'not-applicable';
+   canvas.dataset.poseFitArmor=report?.armor??'';
+   canvas.dataset.poseFitRig=report?.rig??'';
+   canvas.dataset.poseFitTop=report?.top??'';
+   canvas.dataset.poseFitWeapon=poseFitPreset;
   }
   canvas.dataset.gripError=rig.gripError.toFixed(4);
   canvas.dataset.eyeError=rig.eyeError.toFixed(3);
