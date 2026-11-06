@@ -59,7 +59,7 @@ export function fitStudioKeyShadow(
   [bounds.max.x,bounds.max.y,bounds.min.z],[bounds.max.x,bounds.max.y,bounds.max.z]
  ];
  for(const c of corners){
-  const point=new THREE.Vector3(...c).sub(eye).applyMatrix4(view);
+  const point=new THREE.Vector3(c[0],c[1],c[2]).sub(eye).applyMatrix4(view);
   min.min(point);max.max(point);
  }
  const camera=light.shadow.camera as THREE.OrthographicCamera;
@@ -77,9 +77,11 @@ export class OperatorStudioLighting{
  readonly fill:THREE.DirectionalLight;
  readonly mode:StudioShadowMode;
  private dirty=true;
+ private readonly renderer:THREE.WebGLRenderer;
  readonly shadowSize:512|1024;
- constructor(scene:THREE.Scene,private renderer:THREE.WebGLRenderer,
+ constructor(scene:THREE.Scene,renderer:THREE.WebGLRenderer,
   search:string){
+  this.renderer=renderer;
   this.mode=studioShadowMode(search);
   this.shadowSize=studioShadowSize(search);
   const legacy=this.mode==='legacy';
