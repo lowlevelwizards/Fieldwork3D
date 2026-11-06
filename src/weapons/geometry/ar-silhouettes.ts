@@ -126,7 +126,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  if(magPoly){
   // Polymer/Pmag: substantial tan plate follows the body sweep.
   const plate=b('magazine',m.magwellCenterX+.38,-7.39,0,
-   m.magazineWidthX+.26,.48,m.magazineDepthZ+.23,2);
+   m.magazineWidthX+.26,.48,m.magazineDepthZ+.12,2);
   plate.rotation.z=.10;
  }
  const marks=addWeaponPixelMarkPair(root,mag20?'ar-mag-stamp20':
