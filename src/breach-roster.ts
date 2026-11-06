@@ -13,7 +13,7 @@ import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {issuedWedges} from './equipment-entry-tools.ts';
-import {initialWeaponConfiguration,readWeaponConfiguration,changeWeaponPlatform,
+import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,selectWeaponFamilyPreset,setConfiguredFamilyPart,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
