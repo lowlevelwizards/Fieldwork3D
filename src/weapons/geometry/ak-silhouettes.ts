@@ -43,13 +43,14 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const rpk=parts.receiver==='ak-rpk74';
  // Sloping stamped-look receiver and stepped roof. Core shared when authentic.
  p('receiver',compact?
-  [[-5.5,-1.25],[-5.45,1.05],[-4.9,1.15],[3.45,1.1],
-   [3.7,-1.05],[-3.05,-2.05]]:
-  [[-6.55,-1.25],[-6.45,1.05],[-5.45,1.15],[3.9,1.1],
-   [4.15,-1.05],[-3.15,-2.05]],3.85,0);
+  [[-5.5,-2.05],[-5.45,1.05],[-4.9,1.15],[3.45,1.1],
+   [3.7,-2.05]]:
+  [[-6.55,-2.05],[-6.45,1.05],[-5.45,1.15],[3.9,1.1],
+   [4.15,-2.05]],3.85,0);
  p('receiver',compact?
-  [[-5.2,1.1],[-4.65,2.35],[1.3,2.4],[2.7,1.75],[2.9,1.05]]:
-  [[-5.8,1.1],[-5.2,2.25],[1.6,2.3],[3.0,1.8],[3.25,1.05]],
+  [[-5.45,1.1],[-4.93,2.37],[1.45,2.4],[3.36,1.92],[4.25,1.10]]:
+  [[-6.32,1.1],[-5.62,2.34],[1.95,2.38],[3.45,2.17],
+   [4.93,1.53],[5.10,1.12]],
   3.5,1);
  b('receiver',-4.25,-.05,2.05,2.8,1.15,.5,1);
  // A short angled seating region, not an AR-style external magwell.
@@ -68,13 +69,19 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }else{
   // True AK sight block belongs at the FORWARD edge of the dust cover.
   // An intentionally low stepped outline, not a rear-mounted holo-looking box.
-  p('receiver',[[2.45,2.12],[2.7,2.92],[3.14,3.04],
-   [3.72,2.98],[4.06,2.32],[4.22,2.12]],2.0,0);
+  // The rear sight rests on the forward cover termination and the
+  // lower saddle overlaps the upper handguard's rear quarter.
+  p('receiver',[[2.94,2.17],[3.16,2.93],[3.58,3.10],
+   [4.10,3.04],[4.45,2.37],[4.76,2.17]],2.0,0);
  }
 
  // Two small exterior clues: a selector toward the rear and an ejection
  // mark above the magazine. Never confuse these with gameplay anatomy.
- addWeaponPixelMark(root,'ak-selector',-1.9,.45,1.98,2.35,1.05);
+ addWeaponPixelMark(root,'ak-selector',-.97,-.39,1.98,2.95,.96);
+ // Classic stamped covers carry coarse ribs. 74M/100-series smooth
+ // covers and the hinged 74U cover deliberately stay clean.
+ if(parts.receiver==='akm'||parts.receiver==='ak74'||rpk)
+  addWeaponPixelMark(root,'ak-cover-ribs',-2.05,1.91,1.92,4.2,.80);
  addWeaponPixelMark(root,'ak-port',m.portX,m.portY,1.98,
   m.portWidthX,m.portHeightY);
 
@@ -168,21 +175,24 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const rail=guard==='ak-rail-long';
  // Distinct lower cheek on wooden rifles, straightforward block on polymers.
  p('handguard',rpk?
-   [[start,-1.48],[start+.65,1.05],[end-.75,1.15],
-    [end,.04],[end-.9,-2.13],[start+.9,-2.13]]:
+   [[start,-1.35],[start+.65,.96],[end-.75,1.01],
+    [end,-.12],[end-.9,-1.79],[start+.9,-1.79]]:
    woodGuard?
-   [[start,-1.35],[start+.7,1.02],[end-.9,1.1],
-    [end,-.1],[end-.85,-1.84],[start+1.0,-1.84]]:
-   [[start,-1.35],[start+.75,1.05],[end-.7,1.05],
-    [end,-.2],[end-.5,-1.75],[start+.45,-1.75]],3.85,
+   [[start,-1.27],[start+.7,.97],[end-.9,1.01],
+    [end,-.18],[end-.85,-1.59],[start+1.0,-1.59]]:
+   [[start,-1.29],[start+.75,.97],[end-.7,.99],
+    [end,-.22],[end-.5,-1.57],[start+.45,-1.57]],3.85,
    woodGuard?2:1);
  // Two clean lengths of furniture; the receiver encloses the rear joint.
  // The former tall metal collar created a floating grey slab and is REMOVED.
  // Keep the thin horizontal opening between upper and lower wood/polymer.
- p('handguard',[[start,1.33],[start+.65,2.28],
-   [end-1.35,2.25],[end-.6,1.33]],2.9,woodGuard?2:1);
- if(rail)b('handguard',(start+.9+end)/2,2.6,0,
-  end-start-1.2,.6,3.0,0);
+ // Taller, shorter upper half with a deliberate narrow horizontal seam.
+ // The front of the cover terminates into its rear third; no vertical slab.
+ const upperRear=compact?start+1.0:start+1.08;
+ p('handguard',[[upperRear,1.33],[upperRear+.78,2.59],
+   [end-1.2,2.55],[end-.6,1.33]],2.9,woodGuard?2:1);
+ if(rail)b('handguard',(upperRear+.9+end)/2,2.88,0,
+  end-upperRear-1.2,.48,3.0,0);
 
  // The front end is authored by barrel ID, not by receiver or a randomly
  // selected compatible furniture finish. All metal joints stay contiguous.
