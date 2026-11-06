@@ -450,7 +450,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.appearanceSeed??0,p.equipment??null,p.wardrobe??null,
     p.magazineCarryLocations??null,p.medicalCarryLocation??null,
     p.utilityCarryLocation??null,p.faceStyle??null,
-    p.flashCharges??null,p.treatmentActive??null
+    p.flashCharges??null,p.treatmentActive??null,
+    p.weaponConfiguration?.build?.parts.magazine??null
   ]);
   r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
   const previousAppearance=appearanceState.get(r);
@@ -556,7 +557,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       (p.flashCharges===undefined||p.flashCharges>0));
   for(const glove of r.gloveCovers)glove.visible=gear?.hands==='hands-gloves';
   applyOperatorVisualKit(r.visualKit,gear,identity,
-    p.magazineCarryLocations,p.faceStyle,p.wardrobe);
+    p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration);
+  r.colors.set(r.visualKit.carriedMagazineMaterial,
+    r.visualKit.carriedMagazineMaterial.color.clone());
   // D2-R4A: accessory swatches are applied by the reusable visual kit.
   // Sync its recolorable materials into the authoritative color ledger before
   // final pose restoration/desaturation (which otherwise erases Studio edits).
