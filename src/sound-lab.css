@@ -90,3 +90,35 @@ input[type=range]{accent-color:#b7dabb;width:100%;height:25px;cursor:pointer}
 .variant-grid.explore .variant .actions{display:flex;flex-direction:column;gap:5px}
 .variant-grid.explore .variant .actions button{width:100%;min-height:33px;font-size:12px}
 }
+
+/* Wave 02A: listening comparison is primary, tuning is deliberately secondary. */
+.profile-hint{color:#d4e6c9!important;font:600 12px "Saira Condensed",sans-serif;letter-spacing:.05em}
+.baseline-panel{border:1px solid #678374;border-radius:6px;background:#263934;
+ display:flex;justify-content:space-between;align-items:center;gap:14px;
+ padding:12px 16px;margin:2px 0 15px}
+.baseline-panel[hidden],.advanced[hidden]{display:none!important}
+.baseline-panel strong{font:700 14px "Saira Condensed",sans-serif;letter-spacing:.13em;color:#b6e0bb}
+.baseline-panel p{font-size:12px;color:#d0dcd0;margin:4px 0 0}
+.baseline-panel button{background:#44624f;color:#eef4e8;border-color:#94ae99;min-width:150px}
+.refine-round .variant-grid.explore{grid-template-columns:repeat(3,minmax(0,1fr))}
+.refine-round .variant-grid.explore .variant{min-height:228px}
+.refine-round .variant-grid.explore .variant h3 small{font-size:13px}
+.refine-round .variant-grid.explore .variant p{margin-bottom:10px}
+.layer-tags{display:flex;flex-wrap:wrap;gap:3px;margin:0 0 11px}
+.layer-tags span{padding:1px 5px;border-radius:3px;border:1px solid #546963;
+ background:#1a3032;color:#c7dacb;text-transform:uppercase;font:600 10px "Saira Condensed",sans-serif;letter-spacing:.045em}
+.refine-round .variant.active{outline:1px solid #b8dab2}
+.refine-round .variant.shortlisted{border-color:#d2b27c}
+.refine-round .variant button:disabled{opacity:.45}
+.refine-round .transport button{min-width:128px}
+@media(max-width:960px){.refine-round .variant-grid.explore{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:540px){
+ .round-toggle{flex-wrap:wrap}
+ .round-toggle button{flex:1;min-width:80px;padding:8px 8px}
+ .baseline-panel{flex-direction:column;align-items:stretch;padding:10px 12px}
+ .baseline-panel button{min-width:0}
+ .refine-round .variant-grid.explore{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .refine-round .variant-grid.explore .variant{min-height:252px}
+ .refine-round .variant-grid.explore .variant h3 small{font-size:12px}
+ .refine-round .transport button{min-width:100px}
+}
