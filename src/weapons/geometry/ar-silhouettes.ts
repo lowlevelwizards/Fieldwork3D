@@ -32,7 +32,6 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [3.85,.55],[3.65,-.9]],3.5,0);
  p('receiver',[[-5.55,-1.1],[-2.1,-2.15],[2.2,-2.15],
   [3.45,-.85],[-5.55,-.85]],3.0,1);
- b('receiver',-5.7,-.2,0,1.1,3.5,3.6,1);
  // A distinct, tapered LOWER magwell makes the magazine part of the receiver,
  // not an object attached to the back of the fore-end.
  const m=AR_VISUAL_ANATOMY;
@@ -61,8 +60,11 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Receiver-side mark is taller, directly OVER the magazine insertion.
  addWeaponPixelMark(root,'ar-port',m.portX,m.portY,1.82,
   m.portWidthX,m.portHeightY);
- // Deliberate trigger-guard lower edge; the space above it stays transparent.
- line('receiver',[-2.57,-2.64],[-.58,-2.58],.25,1.9,0);
+ // One heavy but quiet charging-handle bar; no protruding rear block.
+ b('receiver',-6.35,1.82,0,1.44,.39,3.95,0);
+ // Inset angled forward-assist marker sits BEHIND the ejection port.
+ const assist=b('receiver',-1.34,.64,1.83,.47,.78,.18,1);
+ assist.rotation.z=-.34;
 
  // Fixed M16 stocks: one long triangular wedge, no rectangular belly.
  if(parts.stock==='ar-fixed'||parts.stock==='ar-fixed-a2'){
@@ -96,8 +98,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // The grip belongs to the BACK of the lower receiver. Its upper end
  // vanishes into the receiver, and it remains slimmer in both X and Z.
  p('grip',shiftProfile(modern?
-  [[-2.1,-1.60],[.35,-1.65],[-.38,-5.20],[-1.13,-5.86],[-2.92,-5.65]]:
-  [[-1.95,-1.60],[.25,-1.65],[-.60,-5.66],[-2.92,-5.72]],
+  [[-2.10,-1.63],[.35,-1.65],[-.73,-5.24],[-1.79,-5.85],[-3.36,-5.68]]:
+  [[-1.95,-1.62],[.25,-1.65],[-1.16,-5.71],[-3.25,-5.71]],
   m.gripShiftX),m.gripDepthZ,1);
 
  // IMPORTANT: Side ELEVATION uses X/Y. The requested thinness is Z,

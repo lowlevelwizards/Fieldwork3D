@@ -221,8 +221,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   familyBarrel?.length==='mid'?.86:
   familyBarrel?.length==='short'?.73:p.lengthScale);
  const stockX=build?(FAMILY_PARTS[build.parts.stock].stockX??p.stockX):p.stockX;
- const primaryX=build?(build.family==='ar'?0:-1.35):p.primaryX;
- const primaryY=build?-2.7:p.primaryY;
+ const primaryX=build?(build.family==='ar'?-3.63:-1.35):p.primaryX;
+ const primaryY=build?(build.family==='ar'?-3.15:-2.7):p.primaryY;
  const supportX=build?(familyHandguard?.length==='long'?8.5:
   familyHandguard?.length==='mid'?7.4:6.1):p.supportX;
  const resolved:ResolvedWeaponAssembly={weapon:config.weapon,configuration:config,lengthScale,
