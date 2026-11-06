@@ -91,9 +91,17 @@ export function canIsolateSelfShadow(geometry:THREE.BufferGeometry):boolean{
  });
 }
 export function isolateStudioSelfShadow(geometry:THREE.BufferGeometry):number{
- if(geometry.userData.fieldworkAtlasSelfIsolated||!canIsolateSelfShadow(geometry))
-  return 0;
+ if(!canIsolateSelfShadow(geometry))return 0;
  const attribute=geometry.getAttribute('color') as THREE.BufferAttribute;
+ // Another wardrobe/contact/height bake may legitimately rewrite these
+ // SAME vertex colors. Recompose from that new version, never retain a
+ // stale self-shadow correction from the previous outfit.
+ if(geometry.userData.fieldworkAtlasSelfIsolated){
+  if(geometry.userData.fieldworkAtlasColorVersion===attribute.version)
+   return 0;
+  delete geometry.userData.fieldworkAtlasSelfIsolated;
+  delete geometry.userData.fieldworkAtlasPreIsolationColors;
+ }
  const values=attribute.array as Uint8Array;
  const self=geometry.userData.fieldworkSelfOcclusionMask as Uint8Array;
  const external=geometry.userData.fieldworkExternalOcclusionMask as Uint8Array;
@@ -118,6 +126,7 @@ export function isolateStudioSelfShadow(geometry:THREE.BufferGeometry):number{
  geometry.userData.fieldworkAtlasPreIsolationColors=original;
  geometry.userData.fieldworkAtlasSelfIsolated=true;
  if(corrected)attribute.needsUpdate=true;
+ geometry.userData.fieldworkAtlasColorVersion=attribute.version;
  return corrected;
 }
 /** Undo opt-in self-only correction if the experiment is disabled. */
@@ -132,6 +141,7 @@ export function restoreStudioSelfShadow(geometry:THREE.BufferGeometry):boolean{
  attr.needsUpdate=true;
  delete geometry.userData.fieldworkAtlasPreIsolationColors;
  delete geometry.userData.fieldworkAtlasSelfIsolated;
+ delete geometry.userData.fieldworkAtlasColorVersion;
  return true;
 }
 export type StudioAtlasResult={atlases:number;bytes:number;shadedTexels:number};
@@ -246,9 +256,17 @@ export function applyStudioSelfShadowAtlases(root:THREE.Object3D):StudioAtlasRes
    const original=child.userData.fieldworkAtlasOriginal;
    if(original){
     if(child.userData.fieldworkAtlasGeometry===geometry){
+     // A new clothing/rig combination may have updated the vertex AO
+     // while retaining this mesh. Re-isolate ONLY if color.version moved.
+     isolateStudioSelfShadow(geometry);
      syncPreviewMaterial(child);continue;
     }
     // Geometry was refitted/rebuilt. Release its stale experimental map.
+    const oldGeometry=child.userData.fieldworkAtlasGeometry;
+    if(oldGeometry instanceof THREE.BufferGeometry){
+     restoreStudioSelfShadow(oldGeometry);
+     oldGeometry.deleteAttribute('uv1');
+    }
     if(child.material instanceof THREE.MeshStandardMaterial){
      child.material.dispose();
      child.material=original as THREE.MeshStandardMaterial;

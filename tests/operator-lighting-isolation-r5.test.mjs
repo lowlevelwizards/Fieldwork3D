@@ -53,3 +53,26 @@ test('R5.2-E correction refuses missing or mismatched mask provenance',()=>{
  assert.deepEqual(Array.from(g.getAttribute('color').array),before);
  g.dispose();
 });
+
+test('R5.2-F retained UV1 geometry re-isolates after wardrobe rebake',()=>{
+ const g=fixture();
+ const colors=g.getAttribute('color');
+ const base=Array.from(colors.array);
+ assert.ok(isolateStudioSelfShadow(g)>0);
+ const isolated=Array.from(colors.array);
+ // Same geometry, new clothing bake: the renderer updates the color
+ // attribute but leaves the old atlas geometry/material in place.
+ (colors.array).set(Uint8Array.from(base,v=>Math.max(0,v-12)));
+ colors.needsUpdate=true;
+ assert.ok(isolateStudioSelfShadow(g)>0,
+  'new color version gets a fresh self-shadow correction');
+ const after=Array.from(colors.array);
+ assert.ok(after[0]<isolated[0],
+  'new darker garment baseline preserved after re-isolation');
+ assert.equal(isolateStudioSelfShadow(g),0,
+  'unchanged pose cannot accumulate corrections');
+ assert.equal(restoreStudioSelfShadow(g),true);
+ assert.deepEqual(Array.from(colors.array),
+  base.map(v=>Math.max(0,v-12)));
+ g.dispose();
+});

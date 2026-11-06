@@ -182,3 +182,11 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 - Built-in renderer texture/geometry counts sampled alongside draw calls
   in the 36-view Studio comparison manifest; do not label CPU timings GPU.
 - No graphics setting or mission gameplay behavior changed by lab option.
+
+## R5.2-F stale-atlas and repeated outfit rebake safety
+- Track the 8-bit color attribute version after self-shadow isolation.
+- Reapply isolation only when an independent wardrobe/contact/height
+  bake legitimately overwrites the same geometry's vertex colors.
+- Restore old geometry and clear UV1 when a fitted mesh is replaced.
+- No per-pose shadow correction and no cumulatively brightened clothing.
+- Exact latest-source rollback is covered by focused tests.
