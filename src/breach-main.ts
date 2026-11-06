@@ -62,6 +62,7 @@ import {parseOperationHistory,addOperationRecord,
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import {stepReplaySample,stepReplayPresentation,formatReplayTime}
   from './breach-replay-transport.ts';
+import {ReplayEventIndex} from './breach-replay-event-index.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -530,6 +531,7 @@ function recordCompletedOperation(){
   catch{/* Private mode may reject local storage. Game still works. */}
 }
 let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
+let replayEventIndex:ReplayEventIndex|null=null;
 let replayPresentation:ReplayPresentation|null=null;
 let replayOmniscient=true,finishedSession:Session|null=null;
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
@@ -3419,10 +3421,7 @@ function updateReplayHud(){
   ui.replayView.textContent=viewMode.toUpperCase();
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
   ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
-  const execution=recorder.executionEvents.filter(e=>
-    e.kind==='blocked'||e.kind==='resumed'||e.kind==='completed');
-  const event=[...recorder.events,...execution]
-    .filter(e=>e.t<=replayTime+.14).sort((a,b)=>a.t-b.t).at(-1);
+  const event=replayEventIndex?.latest(replayTime+.14);
   ui.replayEventText.textContent=event&&replayTime-event.t<4.5?
     clockText(event.t)+' · '+event.text:'';
 }
@@ -3432,9 +3431,7 @@ function renderReplayEventMarkers(){
   if(duration<=0)return;
   const friendlyIds=new Set(team(state).map(a=>a.id));
   let lastShot=-Infinity,count=0;
-  const significant=recorder.executionEvents.filter(e=>
-    e.kind==='blocked'||e.kind==='resumed'||e.kind==='completed');
-  for(const event of [...recorder.events,...significant].sort((a,b)=>a.t-b.t)){
+  for(const event of replayEventIndex?.markers??[]){
     if(count>=85)break;
     if(event.kind==='shot'){
       if(event.t-lastShot<3)continue;
@@ -3465,6 +3462,7 @@ function enterReplay(){
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
+  replayEventIndex=new ReplayEventIndex(recorder.events,recorder.executionEvents);
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
   const recordedSite=recorder.manifest?.site;
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
@@ -3483,6 +3481,7 @@ function enterReplay(){
 function exitReplay(){
   if(!replaying)return;
   replaying=false;replayPlaying=false;replayPresentation=null;
+  replayEventIndex=null;
   document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   if(finishedSession)state=finishedSession;
@@ -3528,11 +3527,8 @@ ui.replayView.addEventListener('click',()=>{
   updateReplayHud();
 });
 const jumpReplayEvent=(forward:boolean)=>{
-  const events=[...recorder.events.filter(e=>e.kind!=='shot'),
-    ...recorder.executionEvents.filter(e=>e.kind==='blocked'||
-      e.kind==='resumed'||e.kind==='completed')].sort((a,b)=>a.t-b.t);
-  const item=forward?events.find(e=>e.t>replayTime+.15):
-    events.slice().reverse().find(e=>e.t<replayTime-.15);
+  const item=forward?replayEventIndex?.next(replayTime):
+    replayEventIndex?.previous(replayTime);
   if(item){replayPlaying=false;seekReplay(item.t);}
 };
 ui.replayPrevEvent.addEventListener('click',()=>jumpReplayEvent(false));
@@ -3553,6 +3549,7 @@ function reset(next=state.variant,siteSeed?:number,
  missionOverride?:Session['missionType'],prebuiltSite?:Site,
  encounterRisk?:1|2|3,deferScene=false){
   replaying=false;replayPlaying=false;finishedSession=null;
+  replayEventIndex=null;
   operationsBoard.hidden=true;
   hideWeaponChooser();
   flashMode=false;document.body.classList.remove('replaying');
