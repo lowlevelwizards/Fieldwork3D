@@ -3623,7 +3623,7 @@ function playReplayAudioBetween(start:number,end:number):void{
     if(event.kind==='gunshot'){
       const cue=weaponAudioCue(event.weapon??'carbine',event.suppressed);
       if(!playApprovedCue('weapons.'+(event.weapon??'carbine')+
-        (event.suppressed?'_suppressed':''),level,pan,true,1/rateScale,p)){
+        (event.suppressed?'_suppressed':''),level,pan,true,1/rateScale,p??undefined)){
         playTone(cue.crackHz,cue.crackSeconds*rateScale,true,level,pan,true);
         playTone(cue.bodyHz,cue.bodySeconds*rateScale,false,
           level*cue.bodyLevel,pan,true);
@@ -3638,7 +3638,7 @@ function playReplayAudioBetween(start:number,end:number):void{
         reload:'equipment.reload',interaction:'',surrender:'people.surrender'
       }[event.kind];
       if(!soundId||!playApprovedCue(soundId,Math.min(level,.7),
-        pan,true,1/rateScale,p))
+        pan,true,1/rateScale,p??undefined))
         playTone(hz,length*rateScale,event.kind==='flash',
           Math.min(level,.7),pan,true);
     }
