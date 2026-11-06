@@ -78,11 +78,16 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   const rear=compact?-13.85:m4?-14.25:-14.45;
   const front=compact?-8.4:m4?-8.48:-8.6;
   b('stock',-7.65,.05,0,4.2,1.45,1.9,0);
-  p('stock',m4?
+  p('stock',compact?
+   // A thick compact SOPMOD-like cheek shape, without Z inflation.
+   [[rear,.95],[rear+1.12,1.17],[front,.78],
+    [front,-1.58],[rear+1.1,-3.03],[rear,-2.42]]:
+   m4?
    [[rear,.82],[rear+1.08,1.02],[front,.60],
     [front,-1.46],[rear+1.45,-2.85],[rear,-2.35]]:
-   [[rear,.65],[rear+1.2,.95],[front,.55],
-    [front,-1.7],[rear+1.05,-2.65],[rear,-2.12]],
+   // Early sliding Fiberlite shape is simpler and visually lighter.
+   [[rear,.55],[rear+1.14,.82],[front,.46],
+    [front,-1.54],[rear+1.02,-2.47],[rear,-2.02]],
    compact?3.35:m4?3.25:3.0,compact?2:1);
  }
 
