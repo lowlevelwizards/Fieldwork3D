@@ -145,8 +145,8 @@ export function previewOperatorLightingLayers(
   const pixels=attr.array as Uint8Array;
   let baseline=originals.get(geometry);
   // Independent clothing re-bake changed the color version.
-  if(!baseline||baseline.appliedVersion!==attr.version){
-   baseline={colors:new Uint8Array(pixels),appliedVersion:attr.version};
+  if(!baseline||baseline.appliedVersion!==(attr as THREE.BufferAttribute).version){
+   baseline={colors:new Uint8Array(pixels),appliedVersion:(attr as THREE.BufferAttribute).version};
    originals.set(geometry,baseline);
   }
   const source=baseline.colors;
@@ -178,7 +178,7 @@ export function previewOperatorLightingLayers(
    }
   }
   attr.needsUpdate=true;
-  baseline.appliedVersion=attr.version;
+  baseline.appliedVersion=(attr as THREE.BufferAttribute).version;
   modified++;
  });
  return modified;
