@@ -114,3 +114,15 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 - Screenshot captured to the existing `operator-studio-captures` artifact.
 - Uses the same installed Playwright browser, no new independent workflow.
 - Atlas remains debug-only; visual approval still required before default use.
+
+## R5.2-E atlas self-shadow replacement / double-darkening isolation
+- Preserve grayscale per-vertex base and composed contact values before
+  rigid mesh consolidation, including mixed indexed/non-indexed remapping.
+- In Studio atlas mode ONLY, remove the baked self contribution using the
+  recorded source/output ratio. Preserve external contact, root-height
+  gradient, camouflage UVs and cross-equipment shadow.
+- Native UV1 AO intensity .85 (replaces, does not augment, isolated self).
+- Idempotent correction and explicit restoration API. Default Studio and
+  tactical lighting completely unchanged.
+- Reject atlas if the required base/composed masks are unavailable; no
+  approximate reverse-calculation of already-clamped colors.

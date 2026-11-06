@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import {shadowRayBox} from './operator-baked-shadow-maps.ts';
 import {crossEquipmentContactBox} from './operator-baked-gear-cast.ts';
+import {GEAR_CONTACT_AO_FLOOR} from './operator-baked-gear-ao.ts';
 
 const CELL=16,PAD=1,MAX_BYTES=8*1024*1024;
 const RAYS=[
@@ -71,6 +72,68 @@ function facePoint(box:THREE.Box3,face:number,u:number,v:number,
 const sameBounds=(a:THREE.Box3,b:THREE.Box3)=>(
  a.min.distanceToSquared(b.min)+a.max.distanceToSquared(b.max)<.04
 );
+/** Correct ONLY duplicated self-occlusion, in an isolated Studio geometry.
+ * Source masks are immutable CPU metadata collected before mesh batching.
+ * Existing cross-equipment contact, indirect lighting and global gradient
+ * stay in the final vertex colors. No geometric/UV/camouflage modification.
+ */
+export function canIsolateSelfShadow(geometry:THREE.BufferGeometry):boolean{
+ const colors=geometry.getAttribute('color');
+ if(!colors||colors.itemSize!==3||
+    !(colors.array instanceof Uint8Array)||!colors.normalized)return false;
+ const count=colors.count;
+ return [
+  'fieldworkSelfOcclusionMask','fieldworkExternalOcclusionMask',
+  'fieldworkContactBaseTone','fieldworkContactComposedTone'
+ ].every(key=>{
+  const samples=geometry.userData[key];
+  return samples instanceof Uint8Array&&samples.length===count;
+ });
+}
+export function isolateStudioSelfShadow(geometry:THREE.BufferGeometry):number{
+ if(geometry.userData.fieldworkAtlasSelfIsolated||!canIsolateSelfShadow(geometry))
+  return 0;
+ const attribute=geometry.getAttribute('color') as THREE.BufferAttribute;
+ const values=attribute.array as Uint8Array;
+ const self=geometry.userData.fieldworkSelfOcclusionMask as Uint8Array;
+ const external=geometry.userData.fieldworkExternalOcclusionMask as Uint8Array;
+ const base=geometry.userData.fieldworkContactBaseTone as Uint8Array;
+ const composed=geometry.userData.fieldworkContactComposedTone as Uint8Array;
+ const original=new Uint8Array(values);
+ let corrected=0;
+ for(let i=0;i<attribute.count;i++){
+  // If external contact already dominates, the existing vertex color
+  // contains no extra self-shadow; make no change.
+  if(self[i]<=external[i]||base[i]===0||composed[i]===0)continue;
+  const withoutSelf=Math.round(255*Math.max(GEAR_CONTACT_AO_FLOOR,
+   base[i]/255*(1-external[i]/255)));
+  if(withoutSelf<=composed[i])continue;
+  const factor=Math.min(1.8,withoutSelf/composed[i]);
+  for(let channel=0;channel<3;channel++){
+   const idx=i*3+channel;
+   values[idx]=Math.min(255,Math.round(original[idx]*factor));
+  }
+  corrected++;
+ }
+ geometry.userData.fieldworkAtlasPreIsolationColors=original;
+ geometry.userData.fieldworkAtlasSelfIsolated=true;
+ if(corrected)attribute.needsUpdate=true;
+ return corrected;
+}
+/** Undo opt-in self-only correction if the experiment is disabled. */
+export function restoreStudioSelfShadow(geometry:THREE.BufferGeometry):boolean{
+ const original=geometry.userData.fieldworkAtlasPreIsolationColors;
+ if(!geometry.userData.fieldworkAtlasSelfIsolated||
+    !(original instanceof Uint8Array))return false;
+ const attr=geometry.getAttribute('color');
+ if(!attr||!(attr.array instanceof Uint8Array)||
+   attr.array.length!==original.length)return false;
+ (attr.array as Uint8Array).set(original);
+ attr.needsUpdate=true;
+ delete geometry.userData.fieldworkAtlasPreIsolationColors;
+ delete geometry.userData.fieldworkAtlasSelfIsolated;
+ return true;
+}
 export type StudioAtlasResult={atlases:number;bytes:number;shadedTexels:number};
 /** Build one atlas for ONE already-merged material bucket. For each
  * logical part/face: fully independent self occlusion, no other parts.
@@ -196,17 +259,22 @@ export function applyStudioSelfShadowAtlases(root:THREE.Object3D):StudioAtlasRes
     child.material.aoMap)return;
    const spans=geometry.userData.fieldworkLightingPartSpans as
     Span[]|undefined;
-   if(!spans)return;
+   // Refuse an atlas if its vertex-space self contribution can't be
+   // removed without touching external contact or clothing brightness.
+   if(!spans||!canIsolateSelfShadow(geometry))continue;
    const atlas=bakeStudioSelfShadowAtlas(geometry,spans,volumes);
    if(!atlas)continue;
    if(residentBytes+atlas.bytes>MAX_BYTES){
     geometry.deleteAttribute('uv1');atlas.texture.dispose();continue;
    }
+   // The native UV1 atlas now REPLACES the baked per-vertex self shadow.
+   // Preserve the already-composed external contact and height gradient.
+   isolateStudioSelfShadow(geometry);
    const source=child.material,clone=source.clone() as PreviewMaterial;
    clone.aoMap=atlas.texture;
-   // This is an exploratory *incremental* self-lighting pass. Existing
-   // baked vertex AO is retained, so keep this extra channel restrained.
-   clone.aoMapIntensity=.25;
+   // Full-strength replacement for isolated self lighting. The atlas
+   // is STILL opt-in until real mobile visual comparisons approve it.
+   clone.aoMapIntensity=.85;
    clone.needsUpdate=true;
    residentBytes+=atlas.bytes;
    clone.addEventListener('dispose',()=>{

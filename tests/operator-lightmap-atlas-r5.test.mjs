@@ -46,7 +46,9 @@ test('R5.2-C atlas uses native UV1 and never overwrites camouflage or creates dr
  assert.equal(map.channel,1);
  assert.equal(map.colorSpace,THREE.NoColorSpace);
  assert.ok(Array.from(map.image.data).some(v=>v<255));
- assert.equal(mesh.material.aoMapIntensity,.25);
+ assert.equal(mesh.material.aoMapIntensity,.85);
+ assert.equal(g.userData.fieldworkAtlasSelfIsolated,true);
+ assert.ok(g.userData.fieldworkAtlasPreIsolationColors instanceof Uint8Array);
  const second=applyStudioSelfShadowAtlases(root);
  assert.equal(second.atlases,0,'one-time atlas bake');
  assert.equal(studioAtlasResidentBytes(),initialResident+result.bytes);
