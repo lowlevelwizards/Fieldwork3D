@@ -8,7 +8,7 @@ import {AK_WARM_RESIN,AK_WOOD_AMBER,AK_WOOD_RED,
  AK_PLUM_POLYMER,AK_MAG_RIB} from './weapon-visual-palette.ts';
 import {AK_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
-import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
+import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
 import {akMagazineCurve,akMagazineOutline,akMagazineRibOutlines}
  from './ak-magazine-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './ak-barrel-profiles.ts';
@@ -52,7 +52,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [[-6.32,1.1],[-5.62,2.34],[1.95,2.38],[3.45,2.17],
    [4.93,1.53],[5.10,1.12]],
   3.5,1);
- b('receiver',-4.25,-.05,2.05,2.8,1.15,.5,1);
+ // The old rear-side metal slab was read as a second ejection port.
+ // Keep the receiver face clean; actual details are authored below.
  // A short angled seating region, not an AR-style external magwell.
  const m=AK_VISUAL_ANATOMY;
  p('receiver',[[m.magwellCenterX-1.75,m.magwellTopY],
@@ -75,19 +76,24 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // An intentionally low stepped outline, not a rear-mounted holo-looking box.
   // The rear sight rests on the forward cover termination and the
   // lower saddle overlaps the upper handguard's rear quarter.
-  p('receiver',[[2.94,2.17],[3.16,2.93],[3.58,3.10],
-   [4.10,3.04],[4.45,2.37],[4.76,2.17]],2.0,0);
+  // Shallow, broad rear sight ramp seated directly at the dust-cover nose.
+  p('receiver',[[2.88,2.17],[3.16,2.72],[3.58,2.86],
+   [4.18,2.82],[4.53,2.35],[4.80,2.17]],2.0,0);
  }
 
  // Two small exterior clues: a selector toward the rear and an ejection
  // mark above the magazine. Never confuse these with gameplay anatomy.
- addWeaponPixelMark(root,'ak-selector',-.97,-.39,1.98,2.95,.96);
+ addWeaponPixelMark(root,'ak-selector',-.86,-.39,1.98,3.20,.96);
  // Classic stamped covers carry coarse ribs. 74M/100-series smooth
  // covers and the hinged 74U cover deliberately stay clean.
  if(parts.receiver==='akm'||parts.receiver==='ak74'||rpk)
-  addWeaponPixelMark(root,'ak-cover-ribs',-2.05,1.91,1.92,4.2,.80);
+  addWeaponPixelMarkPair(root,'ak-cover-ribs',-2.05,1.91,1.79,4.2,.80);
  addWeaponPixelMark(root,'ak-port',m.portX,m.portY,1.98,
   m.portWidthX,m.portHeightY);
+ // One open concave U: trigger guard reads as negative space, not hardware.
+ p('receiver',[[-2.96,-2.04],[-2.65,-2.04],
+  [-2.65,-2.53],[-1.03,-2.53],[-1.03,-2.04],
+  [-.73,-2.04],[-.73,-2.83],[-2.96,-2.83]],1.65,1);
 
  // Stock types are visually disparate; the skeletal type MUST stay hollow.
  const stock=parts.stock;
@@ -203,7 +209,7 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [[start,-1.27],[start+.7,.97],[end-.9,1.01],
     [end,-.18],[end-.85,-1.48],[start+1.0,-1.48]]:
    [[start,-1.29],[start+.75,.97],[end-.7,.99],
-    [end,-.22],[end-.5,-1.46],[start+.45,-1.46]],3.85,
+    [end,-.22],[end-.5,-1.46],[start+.45,-1.46]],3.48,
    woodGuard?2:1);
  // Two clean lengths of furniture; the receiver encloses the rear joint.
  // The former tall metal collar created a floating grey slab and is REMOVED.
