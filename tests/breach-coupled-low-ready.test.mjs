@@ -93,10 +93,14 @@ test('real clothing and armor matrix can produce visible, nonpenetrating holds',
  let solved=0;
  for(const [id,armor,rig,top] of entries){
   const {p,config}=build(id);
+  let least={right:999,left:999,receiver:999,depth:999};
   const solution=solveCoupledLowReady({weapon:p.weapon,configuration:config,
-   shoulders,armor:poseClearanceEnvelope(armor,rig,top),nominalYaw:0});
+   shoulders,armor:poseClearanceEnvelope(armor,rig,top),nominalYaw:0,
+   onCandidate:v=>{for(const k of Object.keys(least))
+     least[k]=Math.min(least[k],v[k]);}});
   console.log('POSE-MATRIX',id,armor,rig,top,solution?.status??'UNRESOLVED',
-   solution?.penetration??'N/A',solution?.candidates??0);
+   solution?.penetration??'N/A',solution?.candidates??0,
+   'minCollisions',JSON.stringify(least));
   if(solution)solved++;
  }
  assert.ok(solved>=3,'At least three representative armored configurations must avoid clipping');
