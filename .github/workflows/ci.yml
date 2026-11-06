@@ -1192,7 +1192,7 @@ jobs:
         run: node --experimental-strip-types --test tests/briefing-default-live.test.mjs tests/briefing-dossier-persistence.test.mjs tests/mission-restart-snapshot.test.mjs tests/briefing-composer.test.mjs
       - name: Briefing R4 — incident variety and after-action integrity
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-briefings-variety-debrief-') }}
-        run: node --experimental-strip-types --test tests/briefing-content-coverage.test.mjs tests/briefing-incident.test.mjs tests/briefing-composer.test.mjs tests/briefing-default-live.test.mjs
+        run: node --experimental-strip-types --test tests/briefing-content-coverage.test.mjs tests/briefing-incident.test.mjs tests/briefing-composer.test.mjs tests/briefing-default-live.test.mjs tests/briefing-after-action.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

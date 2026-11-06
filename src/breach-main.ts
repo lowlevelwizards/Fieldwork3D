@@ -38,6 +38,7 @@ import {captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam,
   type MissionStartSnapshot} from './breach-mission-restart.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
+import {sessionIntelligenceReview} from './briefing/briefing-after-action.ts';
 import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
  from './quick-play-generation.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
@@ -218,6 +219,8 @@ const ui={
   contact:el<HTMLButtonElement>('contact'),
   debrief:el<HTMLElement>('debrief'),
   debriefTitle:el<HTMLElement>('debriefTitle'),
+  debriefIntelBlock:el<HTMLElement>('debriefIntelBlock'),
+  debriefIntelText:el<HTMLElement>('debriefIntelText'),
   debriefGrade:el<HTMLElement>('debriefGrade'),
   debriefSurvivors:el<HTMLElement>('debriefSurvivors'),
   debriefAccuracy:el<HTMLElement>('debriefAccuracy'),
@@ -2281,6 +2284,9 @@ function updateHud(){
   ui.next.textContent=campaignMode==='mission'?'RETURN TO BASE':'NEXT ARRANGEMENT';
   ui.retry.disabled=campaignMode==='mission';
   if(!ui.debrief.hidden){
+    ui.debriefIntelBlock.hidden=!state.operationDossier;
+    ui.debriefIntelText.textContent=state.operationDossier?
+      sessionIntelligenceReview(state):'';
     const stats=debrief(state);
     ui.debriefTitle.textContent=state.phase==='won'?'OPERATION COMPLETE':'MISSION FAILED';
     ui.debriefGrade.textContent=stats.grade+' · '+stats.score;
