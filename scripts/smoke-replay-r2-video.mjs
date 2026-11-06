@@ -63,14 +63,8 @@ try{
   await page.waitForFunction(()=>
     document.querySelector('#replayExportVideo')?.textContent==='STOP VIDEO',
     null,{timeout:12000});
-  await page.waitForTimeout(900);
-  const stillRecording=await page.evaluate(()=>
-    document.querySelector('#replayExportVideo')?.textContent==='STOP VIDEO');
-  if(stillRecording)await page.evaluate(()=>{
-    const trigger=document.querySelector('#replayExportVideo');
-    if(!(trigger instanceof HTMLButtonElement))throw Error('Missing stop button');
-    trigger.click();
-  });
+  // The deterministic smoke mission is intentionally short. Let the
+  // compositor hold its terminal frame until the encoder flushes naturally.
   let download;
   try{download=await downloadPromise;}
   catch(error){
