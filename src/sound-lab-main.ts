@@ -1,21 +1,25 @@
 /** Sound Lab controller: UI is detached from simulation and uses its shared
  * sound pack; previews always require a deliberate user gesture. */
 import {SOUND_CATALOG,SOUND_GROUPS,SOUND_BY_ID,SOUND_VARIANTS,
- defaultSoundSettings,resolveSoundSettings,readSoundPack,saveSoundPack,
+ defaultSoundSettings,resolveSoundSettings,resolvePlayableSoundSettings,
+ readSoundPack,saveSoundPack,
  normalizeSoundPack,type SoundEntry,type SoundSettings,type Variant}
  from './sound-catalog.ts';
 import {renderSound,playDesignedSound,encodeSoundWav,downloadSound,
  packageSoundZip} from './sound-synth.ts';
 import {FOCUS_SOUND_IDS,FOCUS_BY_ID,FOCUS_DIRECTIONS,
  DIRECTION_METHODS} from './sound-focus.ts';
+import {REFINEMENT_SOUND_IDS,REFINEMENT_BY_ID,REFINEMENT_DIRECTIONS,
+ REFINEMENT_RECIPES,type RefinementDirection} from './sound-refine.ts';
 
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 let pack=readSoundPack();
-let selected=FOCUS_SOUND_IDS[0];
-let focusMode=true;
-let variant:Variant=pack.choices[selected].choice;
+let selected=REFINEMENT_SOUND_IDS[0];
+let focusMode=true,refineMode=true;
+let variant:Variant=pack.choices[selected].refinement?.choice??'A';
 let group='all',status='all',search='';
 function availableVariants(id=selected):readonly Variant[]{
+ if(refineMode&&REFINEMENT_BY_ID.has(id))return REFINEMENT_DIRECTIONS;
  return FOCUS_BY_ID.has(id)?FOCUS_DIRECTIONS:SOUND_VARIANTS.slice(0,3);
 }
 let context:AudioContext|null=null;
@@ -51,6 +55,13 @@ function currentChoice(){return pack.choices[selected];}
 function settings(v:Variant=variant){
  return resolveSoundSettings(pack,selected,v)??defaultSoundSettings(current(),v);
 }
+function baselineSettings(){
+ return resolveSoundSettings(pack,selected,currentChoice().choice)!;
+}
+function auditionSettings(v:Variant=variant){
+ if(!refineMode)return settings(v);
+ return {...baselineSettings(),refinement:REFINEMENT_DIRECTIONS.indexOf(v as RefinementDirection)};
+}
 function note(text:string){ui.feedback.textContent=text;}
 function persist(){if(!saveSoundPack(pack))
  note('LOCAL STORAGE UNAVAILABLE · EXPORT JSON TO KEEP YOUR WORK');}
@@ -68,23 +79,27 @@ async function audioContext(){
 async function preview(v:Variant=variant){
  stopAudio();const token=sequence;
  const ctx=await audioContext();if(!ctx||token!==sequence)return;
- active=playDesignedSound(ctx,selected,{...settings(v),
-  gain:settings(v).gain*pack.master});
- note('AUDITIONING '+current().label.toUpperCase()+' · VARIANT '+v);
+ const sound=auditionSettings(v);
+ active=playDesignedSound(ctx,selected,{...sound,
+  gain:sound.gain*pack.master});
+ note('AUDITIONING '+current().label.toUpperCase()+' · '+(refineMode?'REFINEMENT ':'VARIANT ')+v);
 }
 async function compare(all=false){
  stopAudio();const token=sequence;
  const ctx=await audioContext();if(!ctx||sequence!==token)return;
  const soundId=selected;
- const list=focusMode?(all?FOCUS_DIRECTIONS:
+ const list=refineMode?(all?REFINEMENT_DIRECTIONS:
+   (currentChoice().refinement?.shortlist?.length?currentChoice().refinement!.shortlist!:[])):
+  focusMode?(all?FOCUS_DIRECTIONS:
    (currentChoice().shortlist?.length?currentChoice().shortlist!:[])):
    availableVariants();
  if(!list.length){note('SHORTLIST A FEW IDEAS FIRST · TAP ☆ SHORTLIST UNDER THE SOUNDS YOU LIKE');return;}
  for(const v of list){
   if(token!==sequence||selected!==soundId)return;
   note('LISTENING · '+soundId.toUpperCase()+' · DIRECTION '+v);
+  const sound=auditionSettings(v);
   const source=playDesignedSound(ctx,soundId,{
-    ...settings(v),gain:settings(v).gain*pack.master});
+    ...sound,gain:sound.gain*pack.master});
   if(!source)break;
   active=source;
   await new Promise<void>(resolve=>{
@@ -96,13 +111,55 @@ async function compare(all=false){
  }
  if(token===sequence){active=null;note('COMPARISON FINISHED · CHOOSE THE DIRECTION YOU WANT TO DEVELOP');}
 }
+async function previewOriginal(){
+ stopAudio();const token=sequence;
+ const ctx=await audioContext();if(!ctx||token!==sequence)return;
+ const sound=baselineSettings();
+ active=playDesignedSound(ctx,selected,{...sound,gain:sound.gain*pack.master});
+ note('YOUR WAVE 01 REFERENCE · '+current().label.toUpperCase()+' · '+currentChoice().choice);
+}
+async function compareOriginal(){
+ if(!refineMode)return;
+ stopAudio();const token=sequence;
+ const ctx=await audioContext();if(!ctx||token!==sequence)return;
+ const soundId=selected;
+ for(const [label,sound] of [
+   ['ORIGINAL',baselineSettings()],
+   ['REFINED '+variant,auditionSettings()]
+ ] as const){
+  if(token!==sequence||soundId!==selected)return;
+  note('A/B LEVEL-MATCHED · '+soundId.toUpperCase()+' · '+label);
+  const source=playDesignedSound(ctx,soundId,{...sound,gain:sound.gain*pack.master});
+  if(!source)break;active=source;
+  await new Promise<void>(resolve=>{
+   const cleanup=source.onended;
+   source.onended=(event)=>{cleanup?.call(source,event);resolve();};
+  });
+  if(token!==sequence)return;
+  await new Promise<void>(resolve=>setTimeout(resolve,180));
+ }
+ if(token===sequence)note('A/B COMPLETE · YOUR ORIGINAL REMAINS AVAILABLE');
+}
 function selectCue(id:string){
  if(!SOUND_BY_ID.has(id))return;
- stopAudio();selected=id;variant=currentChoice().choice;
+ stopAudio();selected=id;variant=refineMode?
+  (currentChoice().refinement?.choice??'A'):currentChoice().choice;
  renderList();renderEditor();
 }
 function markChoice(v:Variant){
- const s=currentChoice();s.choice=v;s.enabled=true;s.reviewed=true;
+ const s=currentChoice();
+ if(refineMode){
+  if(!s.explored){note('FIRST CHOOSE A WAVE 01 REFERENCE SOUND FOR THIS CUE');return;}
+  s.refinement??={};
+  s.refinement.choice=v as RefinementDirection;
+  s.refinement.approved=true;
+  s.enabled=true;
+  variant=v;persist();renderAll();
+  note('WAVE 02 APPROVED · '+current().label.toUpperCase()+' · '+v+' · WAVE 01 PRESERVED');
+  return;
+ }
+ if(s.choice!==v&&s.refinement?.approved)s.refinement.approved=false;
+ s.choice=v;s.enabled=true;s.reviewed=true;
  if(FOCUS_BY_ID.has(selected))s.explored=true;
  variant=v;persist();renderAll();
  note('APPROVED '+current().label.toUpperCase()+' · VARIANT '+v);
