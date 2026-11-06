@@ -3603,7 +3603,7 @@ function playReplayAudioBetween(start:number,end:number):void{
     if(event.kind==='gunshot'){
       const cue=weaponAudioCue(event.weapon??'carbine',event.suppressed);
       if(!playApprovedCue('weapons.'+(event.weapon??'carbine')+
-        (event.suppressed?'_suppressed':''),level,pan,true,1/rateScale)){
+        (event.suppressed?'_suppressed':''),level,pan,true,1/rateScale,p)){
         playTone(cue.crackHz,cue.crackSeconds*rateScale,true,level,pan,true);
         playTone(cue.bodyHz,cue.bodySeconds*rateScale,false,
           level*cue.bodyLevel,pan,true);
@@ -3618,7 +3618,7 @@ function playReplayAudioBetween(start:number,end:number):void{
         reload:'equipment.reload',interaction:'',surrender:'people.surrender'
       }[event.kind];
       if(!soundId||!playApprovedCue(soundId,Math.min(level,.7),
-        pan,true,1/rateScale))
+        pan,true,1/rateScale,p))
         playTone(hz,length*rateScale,event.kind==='flash',
           Math.min(level,.7),pan,true);
     }
@@ -3631,7 +3631,8 @@ function playReplayAudioBetween(start:number,end:number):void{
       36,state.doors,WALLS):.2;
     if(level<.025)continue;
     const pan=listener?(touch.position.x-listener.x)/210:0;
-    if(!playApprovedCue('movement.boot',level*.13,pan,true,1/rateScale))
+    if(!playApprovedCue('movement.boot',level*.13,pan,true,1/rateScale,
+      touch.position))
       playTone(touch.foot===0?62:67,.055*rateScale,true,
         level*.12,pan,true);
   }
@@ -5169,7 +5170,7 @@ function tick(now:number){
       firingActor?.weaponConfiguration?.slots.muzzle==='muzzle-suppressor');
     if(!playApprovedCue('weapons.'+weapon+
       (firingActor?.weaponConfiguration?.slots.muzzle==='muzzle-suppressor'?
-      '_suppressed':''),level,pan)){
+      '_suppressed':''),level,pan,false,1,shot.start)){
       playTone(cue.crackHz,cue.crackSeconds,true,level,pan);
       playTone(cue.bodyHz,cue.bodySeconds,false,level*cue.bodyLevel,pan);
     }
@@ -5180,7 +5181,7 @@ function tick(now:number){
     if(shot.hit&&audibleImpact(shotVisibility(state,shot).impact,
         impactLevel))
       if(!playApprovedCue('impacts.body_hit',
-        level*Math.max(.22,impactLevel),pan))
+        level*Math.max(.22,impactLevel),pan,false,1,shot.end))
         playTone(shot.down?75:225,shot.down?.25:.10,
           shot.down,level*Math.max(.22,impactLevel),pan);
   }
@@ -5198,13 +5199,17 @@ function tick(now:number){
           36,state.doors,WALLS):.24;
         if(level<.025)continue;
         const pan=listener?(touch.position.x-listener.x)/210:0;
-        if(!playApprovedCue('movement.boot',level*.13,pan))
+        if(!playApprovedCue('movement.boot',level*.13,pan,false,1,
+           touch.position))
           playTone(touch.foot===0?62:67,.055,true,level*.12,pan);
       }
     }
   }
   lastFootstepSoundTime=state.seconds;
   const event=state.events.at(-1)??'';
+  // Event origin is used only for audio; never as newly revealed intel.
+  const eventSource=!replaying&&event!==lastEventAudio?
+   liveEventAudioPosition(event):undefined;
   if(!replaying&&event!==lastEventAudio&&
       (event.includes('OPENED')||event.includes('CLOSING')))
     {if(!playApprovedCue(event.includes('CLOSING')?'doors.close':'doors.open'))
