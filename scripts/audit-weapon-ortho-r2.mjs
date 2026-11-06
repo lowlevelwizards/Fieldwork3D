@@ -29,7 +29,7 @@ function panel(group,view,scale){
  const polys=[];
  group.updateMatrixWorld(true);
  group.traverse(o=>{
-  if(!(o instanceof THREE.Mesh))return;
+  if(!(o instanceof THREE.Mesh)||o.userData.weaponPixelArt)return;
   const geo=o.geometry,pos=geo.getAttribute('position'),idx=geo.getIndex();
   const n=idx?idx.count:pos.count;
   const col=o.material===dark?'#7e9185':
