@@ -56,3 +56,21 @@ test('authored plans persist through frame restoration and same-tick edits',()=>
   assert.ok(frame);applyReplayFrame(playback,frame);
   assert.equal(playback.operators.find(a=>a.id===friendly.id)?.plan[0].p.x,140);
 });
+
+test('manifest retains a resolved site and actor identity; recording limit is explicit',()=>{
+  const live=newSession(0,3411);
+  const recorder=new MissionRecorder();recorder.capture(live,true);
+  const manifest=recorder.manifest;
+  assert.ok(manifest?.site);
+  assert.equal(manifest.schemaVersion,2);
+  assert.equal(manifest.site.seed,live.site.seed);
+  assert.deepEqual(manifest.actors.map(a=>a.id),live.operators.map(a=>a.id));
+  const originalName=manifest.actors[0].name;
+  live.operators[0].name='TEMPORARY';
+  assert.equal(manifest.actors[0].name,originalName);
+  recorder.frames.length=12000;
+  live.seconds=601;recorder.capture(live);
+  assert.equal(recorder.completeness.complete,false);
+  assert.equal(recorder.completeness.reason,'memory frame limit');
+  assert.ok(recorder.completeness.truncatedAt!==null);
+});

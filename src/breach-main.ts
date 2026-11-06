@@ -61,6 +61,7 @@ import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
+import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
 
@@ -3393,7 +3394,7 @@ function updateReplayHud(){
   ui.replaySeek.value=String(recorder.duration?
     Math.round(1000*replayTime/recorder.duration):0);
   ui.replayClock.textContent=clockText(replayTime)+' / '+
-    clockText(recorder.duration);
+    clockText(recorder.duration)+(recorder.completeness.complete?'':' · PARTIAL');
   ui.replaySeek.setAttribute('aria-valuetext',
     clockText(replayTime)+' of '+clockText(recorder.duration));
   ui.replayPlay.dataset.caption=replayPlaying?'PAUSE':'PLAY';
@@ -3459,11 +3460,14 @@ function enterReplay(){
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
+  const recordedSite=recorder.manifest?.site;
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
-    finishedSession.intel.mode,finishedSession.site?.scale??'standard');
-  state.lightingMode=finishedSession.lightingMode;
+    finishedSession.intel.mode,finishedSession.site?.scale??'standard',
+    undefined,recordedSite?structuredClone(recordedSite):undefined);
+  state.lightingMode=recorder.manifest?.lightingMode??finishedSession.lightingMode;
   applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
+  applyReplayActorIdentity(state,recorder.manifest);
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
