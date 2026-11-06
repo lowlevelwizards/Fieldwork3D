@@ -3,7 +3,7 @@
  */
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
-import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
+import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName}
  from './profile-primitives.ts';
 import {HK_OLIVE_POLYMER,HK_MAG_METAL}
  from './weapon-visual-palette.ts';
@@ -34,32 +34,45 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  p('receiver',[[-6.50,-1.43],[-6.50,1.05],[-5.75,1.85],
    [3.50,1.85],[4.55,1.20],[4.55,-1.36],[3.70,-1.71],
    [-5.65,-1.71]],3.52);
- p('receiver',[[-5.80,-1.28],[-5.20,-2.45],[-3.45,-2.72],
-   [-1.55,-2.67],[-.42,-2.32],[2.52,-2.48],
+ // One low, stepped HK trigger housing: its outline must not imitate an
+ // AR's visually split upper/lower nor the AK's projecting dust cover.
+ p('receiver',[[-5.80,-1.28],[-5.34,-2.10],[-4.73,-2.23],
+   [-4.38,-2.55],[-3.32,-2.61],[-2.95,-2.41],
+   [-.80,-2.42],[-.42,-2.32],[2.52,-2.48],
    [3.95,-1.48]],3.18,'dark');
- // Integrated angular magazine housing; top of magazine is buried in it.
- p('receiver',[[-.58,-2.08],[3.32,-2.08],[3.35,-3.07],
-   [-.32,-3.07]],3.35);
+ // Integrated angular magazine housing; the magazine top stays fully seated.
+ p('receiver',[[-.58,-2.08],[3.32,-2.08],[3.39,-2.93],
+   [3.13,-3.13],[-.29,-3.13],[-.50,-2.91]],3.35);
+ // A single real negative-space trigger guard, not a delicate wire loop.
+ // It overlaps grip/lower and magwell; the lower strip remains continuous.
+ addProfileFrame(root,'receiver',parts.receiver,ids.receiver++,
+  [[-3.09,-2.36],[-.33,-2.36],[-.37,-3.72],
+   [-1.08,-4.00],[-2.47,-4.00],[-3.16,-3.52]],
+  [[-2.40,-2.89],[-2.28,-3.47],[-1.10,-3.47],[-.83,-2.89]],
+  1.12,dark);
 
  // Early and polymer buttstocks are both confident single solid shapes.
  const rear=early?-15.15:-15.30;
  p('stock',early?[
-  [rear,1.22],[-10.85,1.22],[-6.24,.65],[-6.18,-1.46],
-  [-9.22,-2.43],[-13.86,-3.32],[rear,-2.88]
+  [rear,1.22],[-11.18,1.25],[-10.77,1.16],
+  [-6.25,.67],[-6.18,-1.46],[-9.13,-2.49],
+  [-13.76,-3.29],[rear,-2.87]
  ]:[
-  [rear,1.12],[-10.90,1.10],[-6.23,.68],[-6.15,-1.44],
-  [-9.55,-2.30],[-14.75,-3.04],[rear,-2.85]
+  [rear,1.12],[-11.03,1.13],[-10.61,1.06],
+  [-6.23,.69],[-6.15,-1.44],[-9.52,-2.33],
+  [-14.73,-3.04],[rear,-2.85]
  ],3.12,early?'wood':'olive');
  // Rear pad is seated within the stock envelope, not protruding into camera fit.
  b('stock',rear+.21,-.90,0,.42,4.28,3.30,'dark');
 
  // Simple HK grip, shorter and chunkier than literal scale reference.
- p('grip',[[-4.88,-2.31],[-2.50,-2.31],[-2.15,-5.86],
-   [-2.66,-6.83],[-4.40,-6.70],[-5.05,-3.40]],2.16,'dark');
+ p('grip',[[-4.88,-2.31],[-2.48,-2.31],[-2.23,-5.82],
+   [-2.70,-6.81],[-4.42,-6.68],[-5.06,-3.40]],2.16,'dark');
 
  // Straight, full-power 20-round box magazine; slight rearward heel bias.
  p('magazine',HK_MAG20_OUTLINE,2.08,'mag');
- b('magazine',1.20,-7.70,0,3.62,.25,2.20,'steel');
+ // Dark integral heel: no disconnected bright bar across the underside.
+ b('magazine',1.20,-7.69,0,3.36,.20,2.15,'dark');
 
  // HK slim fore-end: one faceted YZ body. Never an AK upper/lower split.
  const guardMat=parts.handguard==='hk-g3-wood-vented'?wood:HK_OLIVE_POLYMER;
