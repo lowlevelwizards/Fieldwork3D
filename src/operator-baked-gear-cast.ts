@@ -217,10 +217,10 @@ export function bakeCastOnGear(
    Uint8Array|undefined;
   const storedCast=geometry.userData.fieldworkDirectionalCastMask as
    Uint8Array|undefined;
-  const contactMask=storedContact?.length===coords.count?
-   storedContact:new Uint8Array(coords.count);
-  const castMask=storedCast?.length===coords.count?
-   storedCast:new Uint8Array(coords.count);
+  const contactMask=storedContact instanceof Uint8Array&&
+   storedContact.length===coords.count?storedContact:new Uint8Array(coords.count);
+  const castMask=storedCast instanceof Uint8Array&&
+   storedCast.length===coords.count?storedCast:new Uint8Array(coords.count);
   object.updateWorldMatrix(true,false);
   const toChest=inverse.clone().multiply(object.matrixWorld);
   const normalMatrix=new THREE.Matrix3().getNormalMatrix(toChest);
