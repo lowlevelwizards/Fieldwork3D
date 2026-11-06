@@ -44,6 +44,8 @@ on:
       - 'src/breach-coupled-low-ready.ts'
       - 'src/breach-weapon-contact-zones.ts'
       - 'src/breach-pose-clearance-envelope.ts'
+      - 'src/breach-low-ready-anatomy.ts'
+      - 'src/breach-low-ready-archetypes.ts'
       - '.github/workflows/operator-armor-rig-visual.yml'
   workflow_dispatch:
 permissions:
@@ -84,10 +86,10 @@ jobs:
       - name: Phone Operator Lab appearance cards and playback navigation
         run: node scripts/smoke-armor-r1-ui.mjs
       - name: Coupled AR/AK low-ready mobile Pose Fit screenshots
-        if: ${{ startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-') }}
+        if: ${{ (startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-') || startsWith(github.head_ref, 'feature/breach-low-ready-pose-v2-')) }}
         run: node scripts/capture-breach-pose-fit.mjs
       - uses: actions/upload-artifact@v4
-        if: always() && startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-')
+        if: always() && (startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-') || startsWith(github.head_ref, 'feature/breach-low-ready-pose-v2-'))
         with:
           name: breach-pose-fit-phone-views
           path: breach-pose-fit-captures/

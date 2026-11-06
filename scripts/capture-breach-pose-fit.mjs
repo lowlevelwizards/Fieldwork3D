@@ -31,13 +31,20 @@ try{
   const pickers=page.locator('#poseFitPanel select');
   if(await pickers.count()!==4)throw Error('Pose Fit controls missing');
   await mkdir('breach-pose-fit-captures',{recursive:true});
+  // Eight intentionally difficult but plausible outfits. A one-handed
+  // fallback is a FAILURE here, even if it reports numerical clearance.
   const fixtures=[
-   {id:'ar-m4a1',armor:'plate-jpc',rig:'no-rig',top:'bdu-shirt',required:'clear'},
-   {id:'ar-m16a4',armor:'plate-standard',rig:'full-chest',top:'acu-shirt'},
-   {id:'ak-akm',armor:'plate-standard',rig:'chicom-rig',top:'bdu-shirt'},
-   {id:'ak-aks74u',armor:'plate-jpc',rig:'no-rig',top:'smock-jacket'}
+   {id:'ar-m4a1',armor:'plate-slick',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ar-m4a1',armor:'soft-flak',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ar-m4a1',armor:'plate-legacy',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ar-m4a1',armor:'plate-heavy',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ak-aks74u',armor:'plate-slick',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ak-aks74u',armor:'soft-flak',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ak-rpk74',armor:'soft-flak',rig:'full-chest',top:'smock-jacket',required:'clear'},
+   {id:'ak-akm',armor:'plate-legacy',rig:'full-chest',top:'smock-jacket',required:'clear'}
   ];
   const panel=page.locator('#poseFitPanel');
+  const errorsInFits=[];
   for(const f of fixtures){
    await panel.evaluate(node=>{node.open=true;});
    for(const [i,value] of [f.id,f.armor,f.rig,f.top].entries())
@@ -51,11 +58,17 @@ try{
      ['clear','guard-fallback'].includes(data?.lowReadyFit??'');
    },f,{timeout:14000});
    const status=await page.locator('#preview').getAttribute('data-low-ready-fit');
+   const yaw=Number(await page.locator('#preview').getAttribute('data-pose-fit-yaw'));
+   if(!Number.isFinite(yaw)||Math.abs(yaw)>.04)
+    throw Error('Pose Fit inspection frame must be canonical, yaw='+yaw);
+   const mode=await page.locator('#preview').getAttribute('data-low-ready-mode');
+   if(status==='clear'&&mode==='one-hand-guard')
+    throw Error('Incorrect two-hand success status for '+f.id);
    if(f.required&&status!==f.required)
-    throw Error('Expected '+f.id+' clear two-hand pose, got '+status);
+    errorsInFits.push(f.id+'/'+f.armor+': '+status);
    // The inspector must not obscure the chest and arms in the screenshot.
    await panel.evaluate(node=>{node.open=false;});
-   for(const view of ['front','side','iso']){
+   for(const view of ['front','side','iso','top']){
     await page.evaluate(v=>{
      const b=document.querySelector('button[data-view="'+v+'"]');
      if(!b)throw Error('No camera '+v);
@@ -69,5 +82,7 @@ try{
    console.log('POSE-FIT PHONE',f.id,f.armor,f.rig,f.top,status);
   }
   if(errors.length)throw Error(errors.join('; '));
+  if(errorsInFits.length)throw Error(
+   'Full eight-kit mobile two-hand gate: '+errorsInFits.join('; '));
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

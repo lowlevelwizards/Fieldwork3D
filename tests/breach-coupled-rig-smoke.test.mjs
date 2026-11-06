@@ -7,7 +7,7 @@ import {initialWardrobe} from '../src/operator-wardrobe-data.ts';
 import {FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../src/equipment-weapon-assemblies.ts';
-import {poseClearanceEnvelope,armArmorPenetration}
+import {poseClearanceEnvelope,evaluateSleeveArmorContact}
  from '../src/breach-pose-clearance-envelope.ts';
 
 function rigPose(r,id,armor,rigStyle,top,seconds=0){
@@ -37,18 +37,22 @@ function actualArmDepth(arm,envelope){
   .applyQuaternion(arm.upper.quaternion);
  const shoulder=arm.upper.position.clone().sub(axis),
   elbow=arm.upper.position.clone().add(axis);
- return armArmorPenetration(shoulder,elbow,arm.hand.position,envelope);
+ return evaluateSleeveArmorContact(shoulder,elbow,arm.hand.position,
+  envelope,1.65);
 }
 test('real rig consumes the SAME approved M4 arm solution it rendered',()=>{
  const rig=createOperatorRig('rook','blue',true);
  const pose=rigPose(rig,'ar-m4a1','plate-jpc','no-rig','bdu-shirt');
  const report=rig.root.userData.lowReadyPoseReport;
  assert.ok(report,'coupled fitter must be used in a stationary Studio pose');
+ assert.deepEqual(report.fittingShoulders,
+  [[1,4,-7],[1,4,7]],
+  'Modular low-ready uses the shared physical shoulder frame');
  assert.equal(report.status,'clear');
  assert.ok(report.penetration<=.13);
  const envelope=poseClearanceEnvelope('plate-jpc','no-rig','bdu-shirt');
  for(const arm of rig.arms)
-  assert.ok(actualArmDepth(arm,envelope)<=.13+1e-4);
+  assert.equal(actualArmDepth(arm,envelope).valid,true);
  const before=rig.arms.map(arm=>arm.hand.position.toArray());
  poseOperator(rig,{...pose,seconds:.55},0);
  assert.deepEqual(rig.arms.map(arm=>arm.hand.position.toArray()),before);
@@ -66,7 +70,7 @@ test('bulky faction rigs use a declared non-clipping guard fallback',()=>{
  assert.ok(report.penetration<=.13);
  const envelope=poseClearanceEnvelope('plate-standard','chicom-rig','bdu-shirt');
  for(const arm of rig.arms)
-  assert.ok(actualArmDepth(arm,envelope)<=.13+1e-4);
+  assert.equal(actualArmDepth(arm,envelope).valid,true);
  poseOperator(rig,{...pose,seconds:1.0,reload:1,reloadDuration:2},0);
  assert.equal(rig.root.userData.lowReadyPoseReport,null);
  rig.dispose();

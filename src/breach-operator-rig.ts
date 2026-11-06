@@ -17,6 +17,8 @@ import {lowReadyFamilyFit,lowReadyElbowPole}
 import {solveCoupledLowReady,type CoupledLowReadySolution}
  from './breach-coupled-low-ready.ts';
 import {poseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
+import {interpolateWeaponCarry,lowReadyBlendPhase}
+ from './breach-low-ready-transition.ts';
 import {createOperatorPoseScratch,type OperatorPoseScratch}
   from './breach-operator-pose-scratch.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -75,7 +77,7 @@ import {weaponPresentationSockets} from './breach-weapon-presentation.ts';
 import {resolveWeaponAssembly,sameWeaponConfiguration,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponGrips,handlingPose,clampReach,
-  fitWeaponPose,type Handling,type HandlingIntent}
+  fitWeaponPose,type WeaponFit,type Handling,type HandlingIntent}
   from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
   ankleLink:THREE.Mesh;
@@ -450,6 +452,19 @@ const poseMath=new WeakMap<OperatorRig,OperatorPoseScratch>();
  * shoulder/yaw frame. No pose candidate search runs on every rendered frame. */
 const coupledIdleCache=new WeakMap<OperatorRig,{
  key:string;solution:CoupledLowReadySolution|null}>();
+/** Identical equipment and pose frames share a fitted solution. Limit
+ * memory and avoid repeating a large cold search for every enemy/preview.
+ * Solutions are only read/copied by the rig, never mutated in place. */
+const sharedCoupledPoseCache=new Map<string,CoupledLowReadySolution|null>();
+const MAX_SHARED_COUPLED_POSES=80;
+type CarryBlendState={
+ lastCoupled:boolean;lastFit:WeaponFit|null;lastWeapon:WeaponId|null;
+ from:WeaponFit|null;fromBends:[THREE.Vector3,THREE.Vector3]|null;
+ started:number;duration:number;lastSeconds:number;
+};
+/** Visual-only state for live transitions. Deterministic replay never
+ * consumes a previous, unrecorded render frame. */
+const carryBlendStates=new WeakMap<OperatorRig,CarryBlendState>();
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   let scratch=poseMath.get(r);
   if(!scratch){scratch=createOperatorPoseScratch();poseMath.set(r,scratch);}
@@ -1216,10 +1231,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const shoulderFor=(i:number)=>{
     const sign=i===0?-1:1;
     const base=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
-    return P(base.x+poseWeight*(i===0?
+    // A modular rifle's approved low-ready shoulders are the *actual*
+    // anatomical joints. The explicit Lab pose formerly shifted both
+    // shoulders .42 units downward, invalidating the physical pose that
+    // gameplay already used. Other handling modes retain their profiles.
+    const shoulderWeight=handling==='low'&&
+      !!p.weaponConfiguration?.build?0:poseWeight;
+    return P(base.x+shoulderWeight*(i===0?
       profile.supportShoulderForward:profile.firingShoulderForward),
-      base.y+poseWeight*profile.shoulderLift,
-      base.z-sign*poseWeight*profile.shoulderInward);
+      base.y+shoulderWeight*profile.shoulderLift,
+      base.z-sign*shoulderWeight*profile.shoulderInward);
   };
   // The coupled solution is deliberately restricted to relaxed, stationary,
   // two-handed AR/AK presentation. Combat aim and shot-time geometry remain
@@ -1236,26 +1257,45 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   let coupled:CoupledLowReadySolution|null=null;
   if(eligible&&coupledConfig){
     const look=resolvedWardrobe(p.wardrobe,p.equipment);
+    const shoulders:[THREE.Vector3,THREE.Vector3]=[
+      shoulderFor(0),shoulderFor(1)];
     const key=JSON.stringify([p.weapon,coupledConfig.build,coupledConfig.slots,
       look.top,look.armorStyle,look.rigStyle,poseWeight,
-      Math.round(relativeYaw*40)/40]);
+      Number(relativeYaw.toFixed(4)),
+      shoulders.map(v=>v.toArray().map(n=>Number(n.toFixed(3))))]);
     const cache=coupledIdleCache.get(r);
     if(cache?.key===key)coupled=cache.solution;
     else{
-      coupled=solveCoupledLowReady({weapon:p.weapon,configuration:coupledConfig,
-        armor:poseClearanceEnvelope(look.armorStyle,look.rigStyle,look.top),
-        shoulders:[shoulderFor(0),shoulderFor(1)],
-        nominalYaw:relativeYaw});
+      if(sharedCoupledPoseCache.has(key))
+        coupled=sharedCoupledPoseCache.get(key)??null;
+      else{
+        coupled=solveCoupledLowReady({weapon:p.weapon,
+          configuration:coupledConfig,
+          armor:poseClearanceEnvelope(look.armorStyle,look.rigStyle,look.top),
+          shoulders,nominalYaw:relativeYaw});
+        sharedCoupledPoseCache.set(key,coupled);
+        if(sharedCoupledPoseCache.size>MAX_SHARED_COUPLED_POSES){
+          const oldest=sharedCoupledPoseCache.keys().next().value;
+          if(oldest!==undefined)sharedCoupledPoseCache.delete(oldest);
+        }
+      }
       coupledIdleCache.set(r,{key,solution:coupled});
     }
     r.root.userData.lowReadyPoseReport={
-      status:coupled?.status??'unresolved',weapon:p.weapon,
+      status:coupled?.status??'unresolved',
+      mode:coupled?.mode??'unresolved',weapon:p.weapon,
+      fittingYaw:relativeYaw,
+      fittingShoulders:[shoulderFor(0).toArray(),shoulderFor(1).toArray()],
       armor:look.armorStyle,rig:look.rigStyle,top:look.top,
       penetration:coupled?.penetration??null,
+      softContact:coupled?.softContact??null,
+      poseQuality:coupled?.quality??null,
+      elbowLeft:coupled?.arms[0].joint.toArray()??null,
+      elbowRight:coupled?.arms[1].joint.toArray()??null,
       supportFraction:coupled?.supportFraction??null,
       candidates:coupled?.candidates??0};
   }else r.root.userData.lowReadyPoseReport=null;
-  const fit=coupled?.fit??fitWeaponPose({weapon:p.weapon,handling,
+  let fit=coupled?.fit??fitWeaponPose({weapon:p.weapon,handling,
     configuration:p.weaponConfiguration,
     yaw:relativeYaw,
     recoil,clearanceRetraction:p.clearanceRetraction,
@@ -1267,6 +1307,43 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     blendFrom:activeTransition?.from,
     blendAlpha:activeTransition?.alpha,
     blendSnapshot:activeTransition?.fromWeapon});
+  let carryTransitionActive=false,carryTransitionAlpha=1;
+  let carryTransitionBends:[THREE.Vector3,THREE.Vector3]|null=null;
+  if(!p.deterministic&&!p.down&&!p.surrender){
+    let bridge=carryBlendStates.get(r);
+    if(!bridge){
+      bridge={lastCoupled:!!coupled,lastFit:null,lastWeapon:null,
+        from:null,fromBends:null,started:p.seconds,duration:.25,
+        lastSeconds:p.seconds};
+      carryBlendStates.set(r,bridge);
+    }
+    if(p.seconds<bridge.lastSeconds-.01||
+       p.seconds-bridge.lastSeconds>1.2||
+       bridge.lastWeapon!==null&&bridge.lastWeapon!==p.weapon){
+      bridge.from=null;bridge.fromBends=null;
+      bridge.lastFit=null;bridge.lastCoupled=!!coupled;
+    }
+    if(bridge.lastFit&&bridge.lastCoupled!==!!coupled){
+      bridge.from=bridge.lastFit;
+      bridge.fromBends=[r.arms[0].bend.clone(),r.arms[1].bend.clone()];
+      bridge.started=p.seconds;
+      bridge.duration=coupled?.34:.22;
+    }
+    bridge.lastCoupled=!!coupled;
+    bridge.lastWeapon=p.weapon;
+    bridge.lastSeconds=p.seconds;
+    if(bridge.from){
+      const alpha=(p.seconds-bridge.started)/bridge.duration;
+      if(alpha>=1){bridge.from=null;bridge.fromBends=null;}
+      else{
+        carryTransitionActive=true;
+        carryTransitionAlpha=lowReadyBlendPhase(alpha);
+        carryTransitionBends=bridge.fromBends;
+        fit=interpolateWeaponCarry(bridge.from,fit,alpha);
+      }
+    }
+    bridge.lastFit=fit;
+  }
   r.gripError=fit.contactError;
   r.stockError=fit.stockError;
   // Contact coordinates and visible weapon use one rigid transform.
@@ -1428,7 +1505,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // The coupled fitting solver already chose BOTH elbows and the exact
     // physical wrist contacts in one collision-checked candidate.
     // Do not re-run per-arm IK and accidentally undo its armor clearance.
-    if(coupled&&!p.unarmedPreview){
+    if(coupled&&!carryTransitionActive&&!p.unarmedPreview){
       const joint=coupled.arms[i];
       r.elbowSpread[i]=Math.max(0,sign*(joint.joint.z-shoulder.z));
       arm.bend.copy(joint.bendPlane);arm.outOfReach=false;
@@ -1465,6 +1542,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const wanted=neutralArms?neutralMannequinElbowPole(sign as -1|1):
       familyPole?P(familyPole.x,familyPole.y,familyPole.z):
       P(corridor.x,corridor.y,corridor.z).sub(shoulder);
+    if(carryTransitionActive&&carryTransitionBends){
+      const destination=coupled?coupled.arms[i].bendPlane:wanted;
+      wanted.copy(carryTransitionBends[i])
+        .lerp(destination,carryTransitionAlpha).normalize();
+    }
     let solved=solveTwoBone(shoulder,wrist,10,10,
       wanted,ARM_LIMITS,neutralArms?undefined:arm.bend,scratch.arms[i]);
     if(!neutralArms&&!p.down&&!p.surrender){

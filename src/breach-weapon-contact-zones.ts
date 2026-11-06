@@ -40,8 +40,11 @@ export function riflePoseContacts(
  const far=Math.max(start+1.4,end-(hk?1.80:ar?1.36:1.17));
  const y=hk?-1.39:ar?AR_VISUAL_AXIS_Y-1.40:-1.40;
  return {family:b.family,scale:a.lengthScale,
-  stock:{x:a.stockX,y:0,z:0},primary:{x:a.primaryX,y:a.primaryY,z:1.8},
-  support:{near:{x:near,y,z:-1.55},far:{x:far,y,z:-1.55},
+  stock:{x:a.stockX,y:0,z:0},primary:{x:a.primaryX,y:a.primaryY,z:2.24},
+  // Grip targets are HAND CENTERS, not bare receiver surface points:
+  // the real 3.9-unit-deep hand must wrap the actual fore-end, with its
+  // inner palm touching it rather than its center buried inside the steel.
+  support:{near:{x:near,y,z:-2.68},far:{x:far,y,z:-2.68},
    preferredFraction:hk?.22:ar?.14:.09}};
 }
 export function supportContactAt(r:RifleContactRange,t:number):RiflePoint{
