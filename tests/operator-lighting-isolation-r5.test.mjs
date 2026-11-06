@@ -18,7 +18,7 @@ const fixture=()=>{
    b/255*(1-Math.max(self[i],external[i])/255))));
  const factor=.90; // mimic global height and other material shading
  g.setAttribute('color',new THREE.Uint8BufferAttribute(
-  Uint8Array.from(composed.flatMap(v=>{
+  Uint8Array.from(Array.from(composed).flatMap(v=>{
    const byte=Math.round(v*factor);return [byte,byte,byte];
   })),3,true));
  g.userData.fieldworkSelfOcclusionMask=self;
