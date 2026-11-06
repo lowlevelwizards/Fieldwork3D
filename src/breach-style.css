@@ -1590,3 +1590,7 @@ html,body{font-family:var(--fw-font-menu)}
   .replay-utility #replayFeedToggle,.replay-utility #replayMore{min-height:29px!important}
   .replay-drawer{max-height:min(39dvh,210px,calc(100dvh - 155px))}
 }
+
+/* Briefing R3: confidence-tagged intelligence stays legible on phone. */
+.fw-mission-dossier #briefingIntel{white-space:pre-line;line-height:1.55}
+.fw-mission-dossier #briefingSituation{line-height:1.6}

@@ -20,7 +20,7 @@ scope.onmessage=({data:req})=>{
         phase==='furnishing'?'Placing furniture and surfaces':
         'Checking routes and site quality',
         'Layout candidate '+(attempt+1)+' / 6');
-    });
+    },{enableIncidentIntent:true});
     progress(70,'Finalizing site and encounter',
       site.rooms.length+' rooms · '+site.doors.length+
       ' doors · '+site.enemies.length+' contacts');
