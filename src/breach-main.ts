@@ -65,6 +65,7 @@ import {stepReplaySample,stepReplayPresentation,formatReplayTime}
 import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-index.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import {serializeReplayReport} from './breach-replay-export-json.ts';
+import {sampleReplayGhosts} from './breach-replay-ghosts.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -229,6 +230,7 @@ const ui={
   replayPlanVersion:el<HTMLButtonElement>('replayPlanVersion'),
   replayNames:el<HTMLButtonElement>('replayNames'),
   replayTraces:el<HTMLButtonElement>('replayTraces'),
+  replayGhosts:el<HTMLButtonElement>('replayGhosts'),
   replayExportJson:el<HTMLButtonElement>('replayExportJson'),
   replayEventText:el<HTMLOutputElement>('replayEventText'),
   replayClock:el<HTMLOutputElement>('replayClock'),
@@ -550,6 +552,7 @@ let replayPlanScope:'all'|'selected'|'none'='selected';
 let replayPlanVersion:'active'|'original'='active';
 let replayNameTags=true;
 let replayTraceMode:'off'|'recent'|'selected'='off';
+let replayGhostMode:'off'|'selected'|'squad'='off';
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
@@ -2788,6 +2791,27 @@ function renderReplayBallistics(projected:boolean):void{
   }
   draw.restore();
 }
+/** Ghost sprites are intentionally abstract and share the operator palette. */
+function renderReplayGhosts(projected:boolean):void{
+  if(!replaying||replayGhostMode==='off')return;
+  const ids=new Set(replayGhostMode==='selected'?[selected]:
+    team(state).map(a=>a.id));
+  const ghosts=sampleReplayGhosts(recorder,replayTime,ids);
+  draw.save();draw.lineWidth=1.5;
+  for(const ghost of ghosts){
+    const p=projected?worldToScreen(ghost.p,20):ghost.p;
+    draw.save();
+    draw.translate(p.x,p.y);draw.rotate(ghost.heading);
+    draw.globalAlpha=.34/(1+ghost.ageSeconds*.28);
+    draw.strokeStyle=colorFor(ghost.actorId);
+    draw.fillStyle=colorFor(ghost.actorId);
+    // Simple body-and-weapon symbol; never creates another expensive rig.
+    draw.strokeRect(-7,-5,14,10);
+    draw.fillRect(4,-2,8,4);
+    draw.restore();
+  }
+  draw.restore();
+}
 function renderProjectedPlans(){
   if(!stage)return;
   // Compare exact camera matrices; active zoom/orbit easing invalidates
@@ -3075,6 +3099,7 @@ function renderProjectedPlans(){
     draw.fillStyle='#e8d5a6';draw.font='700 12px "Saira Condensed",sans-serif';
     draw.fillText(state.mission.toUpperCase(),target.x,target.y-23);
   }
+  renderReplayGhosts(true);
   renderReplayBallistics(true);
   for(const a of team(state))drawExecutionProblem(a,true);
 }
@@ -3375,7 +3400,7 @@ function render(){
   for(const a of state.civilians)civilianSprite(a);
   for(const a of state.operators)sprite(a);
   for(const a of team(state))drawExecutionProblem(a,false);
-  contacts();renderReplayBallistics(false);endMessage();
+  contacts();renderReplayGhosts(false);renderReplayBallistics(false);endMessage();
   draw.strokeStyle='#d4dac64f';draw.lineWidth=2;
   draw.strokeRect(0,0,W,H);
   draw.restore();
@@ -3561,6 +3586,7 @@ function updateReplayHud(){
   ui.replayPlanVersion.textContent='PLAN '+replayPlanVersion.toUpperCase();
   ui.replayNames.textContent=replayNameTags?'NAMES ON':'NAMES OFF';
   ui.replayTraces.textContent='TRACES '+replayTraceMode.toUpperCase();
+  ui.replayGhosts.textContent='GHOSTS '+replayGhostMode.toUpperCase();
   ui.replayPlans.setAttribute('aria-pressed',String(replayPlanScope!=='none'));
   ui.replayNames.setAttribute('aria-pressed',String(replayNameTags));
   const event=replayEventIndex?.latest(replayTime+.14);
@@ -3592,7 +3618,7 @@ function enterReplay(){
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   replayPlanScope='selected';replayPlanVersion='active';
-  replayNameTags=true;replayTraceMode='off';
+  replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
   rebuildReplayEventIndex();
   ui.replayFeed.hidden=true;ui.replayFeedFilter.hidden=true;
   ui.replayFeedInfo.hidden=true;
@@ -3703,6 +3729,11 @@ ui.replayPlanVersion.addEventListener('click',()=>{
 ui.replayTraces.addEventListener('click',()=>{
   replayTraceMode=replayTraceMode==='off'?'recent':
     replayTraceMode==='recent'?'selected':'off';
+  updateReplayHud();
+});
+ui.replayGhosts.addEventListener('click',()=>{
+  replayGhostMode=replayGhostMode==='off'?'selected':
+    replayGhostMode==='selected'?'squad':'off';
   updateReplayHud();
 });
 ui.replayExportJson.addEventListener('click',()=>{
