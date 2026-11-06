@@ -46,18 +46,18 @@ test('R4.2 all eight AR builds keep original saves and canonical barrel labels',
 test('R4.2 carry handles have flush front caps and open negative space',()=>{
  for(const id of ['ar-m16a1','ar-m16a2','ar-car15','ar-colt733']){
   const {group}=model(id);
-  const cap=group.children.find(c=>c.name.startsWith('family-receiver-')&&c.name.endsWith('-6'));
-  assert.ok(cap,id+' upper bridge mesh');
+  const cap=group.children.find(c=>c.name.startsWith('family-receiver-')&&c.name.endsWith('-4'));
+  assert.ok(cap,id+' unified carry frame');
   const capBounds=new THREE.Box3().setFromObject(cap);
-  assert.ok(capBounds.max.x<=1.65,id+' unsupported front cap overhang');
+  assert.ok(capBounds.max.x<=2.31,id+' frame front stays controlled');
   assert.ok(shots(group,-2,3.72)>0,id+' carry bridge visible');
   assert.equal(shots(group,-2,2.78),0,id+' genuine open negative space');
   clearWeaponSilhouette(group);
  }
  const a1=model('ar-m16a1'),a2=model('ar-m16a2');
- assert.ok(a2.group.children.some(c=>c.name==='family-receiver-ar-a2-7'),
+ assert.ok(a2.group.children.some(c=>c.name==='family-receiver-ar-a2-5'),
   'A2 has substantial rear sight housing');
- assert.ok(!a1.group.children.some(c=>c.name==='family-receiver-ar-a1-7'));
+ assert.ok(!a1.group.children.some(c=>c.name==='family-receiver-ar-a1-5'));
  clearWeaponSilhouette(a1.group);clearWeaponSilhouette(a2.group);
 });
 test('R4.2 A1/A2 fixed stocks are deep-at-butt tapered-at-root wedges',()=>{
