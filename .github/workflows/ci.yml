@@ -1170,6 +1170,15 @@ jobs:
             tests/replay-r3-loop.test.mjs \
             tests/replay-r2-recording.test.mjs \
             tests/gameplay-g4d-replay-validity.test.mjs
+      - name: Replay R3 — durable archive and library contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r3-library-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r3-archive.test.mjs \
+            tests/replay-r3-library.test.mjs \
+            tests/replay-r2-recording.test.mjs \
+            tests/replay-r2-ballistics.test.mjs \
+            tests/breach-p7-replay-sharing.test.mjs
       - name: Replay R3 — chapters, bookmarks, intel and checkpoint preflight
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r3-chapters-') }}
         run: |
