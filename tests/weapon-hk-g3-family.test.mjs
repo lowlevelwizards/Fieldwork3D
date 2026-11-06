@@ -67,12 +67,16 @@ test('R2 HK miniature anatomy stays long, slim and deliberately connected',()=>{
  const art=HK_BARREL_ART['hk-g3-service'];
  assert.equal(art.muzzleX,22.4);
  assert.equal(art.frontSightX,17.4);
+ assert.equal(art.lengthScale,.95);
+ assert.equal(art.handguardStartX,4.05);
+ assert.equal(art.handguardEndX,14.05);
  assert.equal(HK_MAG20_OUTLINE.length,6,'one chamfered box magazine contour');
  for(const id of ids){
   const {cfg,g}=geometry(id);
   const guard=g.children.filter(c=>c.name.startsWith('family-handguard-'));
   const forearm=guard.find(c=>c.geometry.type==='BufferGeometry');
   assert.ok(forearm,id+' custom tapered 8-sided fore-end');
+  assert.ok(Math.abs(part(g,'receiver').max.z-1.76)<.04,'G3 receiver matches AR-width miniature language');
   assert.equal(forearm.geometry.getAttribute('position').count,144);
   const sight=g.children.find(c=>c.geometry.type==='TorusGeometry');
   assert.ok(sight,'one open faceted front hood');

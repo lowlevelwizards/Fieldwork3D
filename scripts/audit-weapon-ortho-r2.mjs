@@ -68,7 +68,14 @@ function panel(group,view,scale){
   polys.join('')+'</svg></div>';
 }
 let body='',totalMeshes=0,totalTriangles=0;
-for(const preset of FAMILY_PRESETS){
+// Put the canonical M16, AK and HK silhouettes together at the start so
+// their shape language is immediately comparable at identical game scale.
+const lineupIds=['ar-m16a1','ar-m16a2','ak-akm','ak-ak74m','hk-g3','hk-g3a3'];
+const ordered=[...FAMILY_PRESETS].sort((a,b)=>{
+ const ai=lineupIds.indexOf(a.id),bi=lineupIds.indexOf(b.id);
+ return (ai<0?999:ai)-(bi<0?999:bi);
+});
+for(const preset of ordered){
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(preset.weapon),preset.id);
  const model=buildWeaponSilhouette(preset.weapon,steel,dark,cfg);
  const scale=resolveWeaponAssembly(cfg).lengthScale;
@@ -111,7 +118,7 @@ const html='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
  '</style></head><body><header><h1>FIELDWORK / WEAPON ORTHO R2</h1>'+
  '<p>Generated from actual geometry, not separate art. Fixed orthographic views;'+
  ' same game scale across presets. Exterior-only comparative silhouettes.</p>'+
- '<p>11 presets · '+totalMeshes+' visible meshes · '+
+ '<p>'+FAMILY_PRESETS.length+' presets · '+totalMeshes+' visible meshes · '+
  Math.round(totalTriangles)+' triangles · no firearm mechanisms</p></header>'+
  body+'</body></html>';
 const target=process.argv[2]??'reports/weapon-ortho-r2.html';

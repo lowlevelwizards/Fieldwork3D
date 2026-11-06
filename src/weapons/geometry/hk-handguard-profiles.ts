@@ -17,7 +17,7 @@ export function addHKFacetedForearm(
  const rings:Ring[]=[
   {x:start,ry,rz},
   {x:end-2.53,ry,rz},
-  {x:end,ry:ry*(early?.89:.91),rz:rz*(early?.89:.91)}
+  {x:end,ry:ry*(early?0.89:0.91),rz:rz*(early?0.89:0.91)}
  ];
  const centerY=-.18;
  const point=(ring:Ring,i:number):[number,number,number]=>{
