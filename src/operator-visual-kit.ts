@@ -13,6 +13,8 @@ import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {enableBakedGearAO} from './operator-baked-gear-ao.ts';
 import {bakeCastOnGear} from './operator-baked-gear-cast.ts';
+import {refineStaticReceiver,BASE_TORSO_VERTEX_BUDGET} from './operator-gear-shadow-receivers.ts';
+const STATIC_SHIRT_RECEIVER_BUDGET=3300;
 import {fitRigCoveredPockets} from './operator-rig-pocket-fit.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {effectiveD2FabricMode} from './operator-head-accessory-catalog.ts';
@@ -43,6 +45,8 @@ type VisualMaterials={cloth:Material;vest:Material;trousers:Material;
 type Limb={upper:THREE.Mesh;lower:THREE.Mesh;shoe?:THREE.Mesh};
 export type OperatorVisualKit={
  visualChest:THREE.Group;
+ /** Actual underlying uniform shell, not only decorative blouse pieces. */
+ baseTorso:THREE.Mesh;
  wardrobeHead:WardrobeHeadLayers;wardrobeBody:WardrobeBodyLayers;
  identityVisuals:IdentityVisuals;
  wardrobeGear:WardrobeGearLayers;accessories:WardrobeAccessoryVisuals;
@@ -76,7 +80,7 @@ const part=(parent:THREE.Object3D,m:THREE.Material,
 const bundle=(parent:THREE.Object3D)=>{const g=new THREE.Group();parent.add(g);return g;};
 export function createOperatorVisualKit(
  chest:THREE.Group,hip:THREE.Group,head:THREE.Group,pack:THREE.Mesh,
- legs:readonly Limb[],arms:readonly Limb[],m:VisualMaterials,
+ baseTorso:THREE.Mesh,legs:readonly Limb[],arms:readonly Limb[],m:VisualMaterials,
  canonicalHead?:THREE.Group,lazyAccessories=false):OperatorVisualKit{
  const {cloth,vest,trousers,packFabric,gearFabric,headCloth,
   headArmor,dark,skin,steel}=m;
@@ -272,7 +276,7 @@ export function createOperatorVisualKit(
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
   plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
- return {visualChest:chest,wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,
+ return {visualChest:chest,baseTorso,wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,
   helmet,cap,hair,jacket,lightShirt,
   softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
@@ -509,15 +513,24 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const armor=v.wardrobeGear.armor[looks.armorStyle],
   rig=v.wardrobeGear.rig[looks.rigStyle],
   pack=v.wardrobeGear.pack[looks.packStyle];
+ // Invalidate no pose, IK transform or UV. The stable base fabric mesh is
+ // refined once to let armor/rig edges cast actual local shadows onto it.
+ refineStaticReceiver(v.baseTorso,BASE_TORSO_VERTEX_BUDGET);
+ if(clothTorso)refineStaticReceiver(clothTorso,STATIC_SHIRT_RECEIVER_BUDGET);
  const lightingKey=[looks.top,looks.armorStyle,looks.rigStyle,looks.packStyle,
   wardrobe?.sleeveState??'unrolled'].join('/');
  const packs=[pack,v.fieldPack,v.dayPack]
   .filter((g):g is THREE.Group=>!!g&&g.visible);
  if(armor)bakeCastOnGear(armor,rig?[rig]:[],v.visualChest,'armor:'+lightingKey);
  if(rig)bakeCastOnGear(rig,armor?[armor]:[],v.visualChest,'rig:'+lightingKey);
- if(clothTorso)bakeCastOnGear(clothTorso,
-  [...(armor?[armor]:[]),...(rig?[rig]:[]),...packs],
-  v.visualChest,'shirt:'+lightingKey);
+ // Previously only decorative collar/pocket groups received the shadows,
+ // while the real uniform shell remained completely flat.
+ const clothCasters=[...(armor?.visible?[armor]:[]),
+  ...(rig?.visible?[rig]:[]),...packs];
+ bakeCastOnGear(v.baseTorso,clothCasters,
+  v.visualChest,'base-uniform:'+lightingKey);
+ if(clothTorso)bakeCastOnGear(clothTorso,clothCasters,
+  v.visualChest,'blouse-details:'+lightingKey);
  for(const selectedPack of packs)bakeCastOnGear(selectedPack,
   armor?[armor]:[],v.visualChest,'pack:'+lightingKey);
 }

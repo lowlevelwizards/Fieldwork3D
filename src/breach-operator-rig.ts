@@ -361,7 +361,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   utilityTool.geometry=new THREE.BufferGeometry();
   flashCanister.geometry.dispose();
   flashCanister.geometry=new THREE.CylinderGeometry(1.25,1.25,5.8,8);
-  const visualKit=createOperatorVisualKit(chest,hip,head,pack,feet,arms,
+  const visualKit=createOperatorVisualKit(chest,hip,head,pack,baseTorso,feet,arms,
     {cloth,vest,trousers,packFabric,gearFabric,headCloth,headArmor,
       dark:boot,skin,steel},headCanonicalFrame,lazyAccessories);
   // Stage 3A reference nodes only: attached after existing geometry is built.
