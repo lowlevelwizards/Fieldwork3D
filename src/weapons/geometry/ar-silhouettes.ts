@@ -216,10 +216,25 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   if(tip-(sight??tip)>1.2)
    b('barrel',tip-1.05,0,0,1.18,barrelArt.barrelHeight+.18,1.52,0);
  }
+ // Factory muzzle profiles live INSIDE the authoritative barrel-tip envelope.
+ // Optional equipment muzzle extensions begin at tip; no fake shot offset.
  if(barrelArt.profile==='spr'){
-  b('barrel',tip-.72,0,0,1.40,1.68,1.82,1);
+  // Mod 0: long brake + separate heavy collar.
+  b('barrel',tip-1.34,0,0,.66,1.91,1.94,1);
+  b('barrel',tip-.46,0,0,.90,1.73,1.82,1);
  }else if(barrelArt.profile==='cqb'){
-  // Only a small visible muzzle cap survives past the RIS II.
-  b('barrel',tip-.39,0,0,.78,1.7,1.94,1);
+  // Mk18: short, stout suppressor-compatible muzzle profile.
+  b('barrel',tip-.45,0,0,.86,1.88,2.00,1);
+  b('barrel',tip-.12,0,0,.24,2.02,2.06,0);
+ }else if(parts.barrel==='ar-145'){
+  // CAR-era slim flash hider: lighter and longer than the 733.
+  b('barrel',tip-.45,0,0,.88,1.28,1.47,1);
+ }else if(parts.barrel==='ar-733-115'){
+  b('barrel',tip-.35,0,0,.68,1.57,1.70,1);
+ }else{
+  // A1 pencil hider / A2-family compensator. Distinction stays restrained.
+  const a1=parts.barrel==='ar-20';
+  b('barrel',tip-(a1?.34:.40),0,0,a1?.66:.78,
+   a1?1.27:1.66,a1?1.44:1.80,1);
  }
 }
