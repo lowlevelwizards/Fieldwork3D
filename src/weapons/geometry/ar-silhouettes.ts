@@ -28,13 +28,17 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   addProfileFrame(root,slot,parts[slot],index[slot]++,outer,inner,depth,material[finish]);
 
  // Upper: flat/retro identities differ chiefly in the visible TOP silhouette.
- p('receiver',[[-6.35,-.9],[-6.35,1.25],[-5.4,1.75],[3.6,1.75],
-  [3.85,.55],[3.65,-.9]],3.5,0);
+ // Broad receiver upper retains its mass, but receives a single heavy
+ // lower bevel rather than presenting as a perfect rectangular slab.
+ p('receiver',[[-6.35,-.52],[-6.35,1.25],[-5.4,1.75],[3.6,1.75],
+  [3.85,.55],[3.47,-.81],[2.55,-1.08],[-4.70,-1.08]],3.5,0);
  // R4.7: one articulated lower receiver, not an uninterrupted horizontal
  // slab. The two angled underside changes frame the grip and magwell.
- p('receiver',[[-5.55,-.98],[-4.68,-1.47],[-3.08,-2.24],
-  [-1.16,-2.24],[-.60,-1.92],[1.82,-2.22],
-  [2.35,-1.98],[3.45,-.84],[-5.55,-.84]],3.0,1);
+ // A stepped lower shell, with a short concave grip root and a clearly
+ // angled magwell shoulder. Keep few deliberate corners rather than ribs.
+ p('receiver',[[-5.56,-.93],[-4.76,-1.32],[-3.31,-2.18],
+  [-1.74,-2.20],[-1.13,-1.75],[-.35,-1.82],
+  [1.74,-2.20],[2.39,-1.91],[3.38,-.86]],3.0,1);
  // A distinct, tapered LOWER magwell makes the magazine part of the receiver,
  // not an object attached to the back of the fore-end.
  const m=AR_VISUAL_ANATOMY;
@@ -68,14 +72,23 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   m.portWidthX,m.portHeightY);
  // R4.6: the charging handle is a substantial, seated rear shelf.
  b('receiver',-5.92,1.59,0,1.68,.80,3.90,0);
- // A single square-ended raised oblique FACE. R4.6's rotated cuboid partly
- // intersected the body and rasterized as dotted fragments. This flat
- // four-point wedge is deliberately offset beyond the receiver's side face.
- // Front (+X) stays immediately behind the ejection-port rear edge.
+ // R4.8: a chunky square-ended assist, seated at its forward end and
+ // canted OUTWARD at its rear. Rotating a deeper SOLID wedge around the
+ // receiver's side yields dimensionality without the R4.6 dotted z-fight.
+ // It is farther rearward than R4.7 and intentionally oversized for 128px.
  const assist=addOutline(root,'receiver',parts.receiver,index.receiver++,
-  [[-3.16,.86],[-.77,.30],[-.86,-.12],[-3.25,.44]],.27,material[1]);
- assist.position.z=1.91;
+  [[-4.08,.94],[-1.39,.31],[-1.54,-.32],[-4.23,.30]],.51,material[1]);
+ assist.rotation.y=.16;
+ assist.position.z=1.50;
  assist.userData.arForwardAssist=true;
+ // Later receiver generations have one symbolic brass-deflector shoulder,
+ // intentionally omitted from the cleaner early A1/retro uppers.
+ if(parts.receiver==='ar-a2'||parts.receiver==='ar-flat'){
+  const deflector=addOutline(root,'receiver',parts.receiver,index.receiver++,
+   [[-1.17,.98],[-.66,.91],[-.43,.45],[-1.03,.40]],.38,material[0]);
+  deflector.position.z=1.88;
+  deflector.userData.arShellDeflector=true;
+ }
 
  // Fixed M16 stocks: one long triangular wedge, no rectangular belly.
  if(parts.stock==='ar-fixed'||parts.stock==='ar-fixed-a2'){
