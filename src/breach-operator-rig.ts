@@ -246,8 +246,9 @@ export function createOperatorRig(id:string,side:'blue'|'red',
    for(const material of [cloth,trousers,vest,packFabric,gearFabric])
     material.userData.fieldworkFabric=true;
    // Fixed grayscale AO uses existing textile shaders and textures.
-   for(const kitMaterial of [vest,packFabric,gearFabric,headCloth,headArmor])
-    enableBakedGearAO(kitMaterial);
+   for(const kitMaterial of [
+     cloth,trousers,vest,packFabric,gearFabric,headCloth,headArmor
+    ])enableBakedGearAO(kitMaterial);
   hip.position.y=20.2;
   block(hip,0,0,0,8,5,12,trousers);
   chest.position.y=26;
