@@ -158,9 +158,6 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }
 
  const guard=parts.handguard;
- const short=guard.startsWith('ak-wood-short')||
-  guard==='ak-poly-short'||guard==='ak-poly-plum-short';
- const mid=guard==='ak-poly-mid'||guard==='ak-poly-plum-mid';
  // On full rifles the fore-end stops well before the forward sight/gas tube.
  const art=akBarrelArt(parts.barrel)??AK_BARREL_ART['ak-long'];
  const end=art.handguardFrontX;
