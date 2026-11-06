@@ -71,7 +71,9 @@ test('R4.4 handguard families retain individual character and short Mk18 muzzle 
   const {g}=model(id);
   assert.ok(mark==='rail-teeth'?
    g.children.some(x=>x.userData.arRailTeeth&&x.name.startsWith('family-handguard-')):
-   g.children.some(x=>x.name==='family-art-'+mark),id+' distinct art');
+   (mark==='poly-ribs'?
+    g.children.some(x=>x.userData.arPolymerRibs):
+    g.children.some(x=>x.name==='family-art-'+mark)),id+' distinct art');
   if(id==='ar-mk12mod0')
    assert.ok(g.children.some(x=>x.geometry.type==='CylinderGeometry'&&
     x.geometry.parameters.radialSegments===6),'Mk12 Mod 0 PRI tube');
@@ -87,7 +89,7 @@ test('R4.6 STANAG contour ribs replace mirrored sticker art',()=>{
  for(const id of ['ar-m16a1','ar-colt733','ar-mk18']){
   const {g}=model(id),magazine=g.children.filter(x=>x.name.startsWith('family-magazine-'));
   const decals=g.children.filter(x=>x.userData.weaponPixelArt);
-  assert.equal(magazine.length,id==='ar-mk18'?4:3,
+  assert.equal(magazine.length,id==='ar-mk18'?2:3,
    id+' body plus two metal stamps or polymer toe');
   assert.equal(decals.filter(x=>x.name.startsWith('family-art-ar-mag-')||
    x.name==='family-art-ar-poly-panel').length,0,
