@@ -165,7 +165,7 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const art=akBarrelArt(parts.barrel)??AK_BARREL_ART['ak-long'];
  const end=art.handguardFrontX;
  // Seat the lower and upper furniture 0.55+ units INSIDE the receiver front.
- const start=compact?3.30:3.50;
+ const start=compact?3.05:3.50;
  const woodGuard=guard.startsWith('ak-wood-long')||
   guard.startsWith('ak-wood-short')||guard.startsWith('ak-rpk-wood');
  const rail=guard==='ak-rail-long';
