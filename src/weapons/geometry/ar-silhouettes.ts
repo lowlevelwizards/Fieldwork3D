@@ -175,8 +175,6 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   x:number,y:number,z:number,w:number,h:number)=>
   addWeaponPixelMarkPair(root,mark,x,y+AR_VISUAL_AXIS_Y,z,w,h);
  const guard=parts.handguard;
- const long=['ar-triangle','ar-round','ar-m5-rail','ar-pri-tube'].includes(guard);
- const short=['ar-compact-rail','ar-risii'].includes(guard);
  const retro=guard==='ar-car15-ribbed'||guard==='ar-733-ribbed';
  const end=arHandguardEnd(guard);
  const start=AR_HANDGUARD_START; // shared with actual grip envelope
