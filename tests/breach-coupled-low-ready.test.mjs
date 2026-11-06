@@ -93,14 +93,22 @@ test('real clothing and armor matrix can produce visible, nonpenetrating holds',
  let solved=0;
  for(const [id,armor,rig,top] of entries){
   const {p,config}=build(id);
-  let least={right:999,left:999,receiver:999,depth:999};
+  let least={right:999,left:999,receiver:999,depth:999},bestLeft=null;
+  const envelope=poseClearanceEnvelope(armor,rig,top);
   const solution=solveCoupledLowReady({weapon:p.weapon,configuration:config,
-   shoulders,armor:poseClearanceEnvelope(armor,rig,top),nominalYaw:0,
-   onCandidate:v=>{for(const k of Object.keys(least))
-     least[k]=Math.min(least[k],v[k]);}});
+   shoulders,armor:envelope,nominalYaw:0,
+   onCandidate:v=>{
+    for(const k of Object.keys(least))least[k]=Math.min(least[k],v[k]);
+    if(!bestLeft||v.left<bestLeft.left)bestLeft=v;
+   }});
+  const volumes=bestLeft?envelope.boxes.map(box=>[box.label,
+   armArmorPenetration({x:1,y:4,z:-7},bestLeft.leftJoint,
+    bestLeft.leftWrist,{...envelope,boxes:[box]})]):[];
   console.log('POSE-MATRIX',id,armor,rig,top,solution?.status??'UNRESOLVED',
    solution?.penetration??'N/A',solution?.candidates??0,
-   'minCollisions',JSON.stringify(least));
+   'minCollisions',JSON.stringify(least),'bestSupport',JSON.stringify({
+    joint:bestLeft?.leftJoint,wrist:bestLeft?.leftWrist,
+    stock:bestLeft?.stock,volumes}));
   if(solution)solved++;
  }
  assert.ok(solved>=3,'At least three representative armored configurations must avoid clipping');
