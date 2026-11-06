@@ -66,29 +66,32 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   line('stock',[-5.25,-1.3],[-9.45,.15],.75,1.05,0);
   b('stock',-13.5,-1,0,1.05,3.65,2.5,1);
  }else if(stock==='ak-rpk-clubfoot'){
-  // A single chunky wedge with the iconic low clubfoot heel, not extra Z bulk.
-  p('stock',[[-15.85,.62],[-9.0,.95],[-6.2,-.45],
-   [-9.8,-3.0],[-12.5,-3.95],[-15.85,-3.65]],3.4,2);
+  // RPK-specific broad butt, tucked wrist, and exaggerated low clubfoot heel.
+  p('stock',[[-15.85,.7],[-10.6,.8],[-6.15,-.42],
+   [-6.3,-1.25],[-10.4,-2.02],[-11.25,-3.6],
+   [-13.4,-4.15],[-15.85,-3.7]],3.35,2);
  }else if(stock==='ak-triangle-full'){
-  // Full-length AKS-74: deliberately larger open triangle than the krink.
-  line('stock',[-5.4,.65],[-14.3,.6],.95,1.2,0);
-  line('stock',[-5.3,-1.38],[-14.3,-2.55],.92,1.2,0);
-  line('stock',[-5.3,-1.38],[-10.4,.1],.72,1.1,0);
-  b('stock',-14.65,-1,0,1.05,3.65,2.25,1);
+  // AKS-74: an unmistakable open SIDE-folding triangle, never AKMS rails.
+  line('stock',[-5.42,.62],[-14.1,.62],.92,1.15,0);
+  line('stock',[-5.42,.58],[-14.1,-2.65],.88,1.1,0);
+  line('stock',[-5.48,-1.15],[-9.0,-.72],.66,1.05,0);
+  b('stock',-14.46,-1.05,0,.9,3.62,2.18,1);
  }else if(stock==='ak-underfolder'){
-  // Two clean parallel rails, NOT the triangular AKS stock.
-  line('stock',[-5.6,.38],[-14.15,.6],.77,1.18,0);
-  line('stock',[-5.6,-1.35],[-14.15,-1.58],.77,1.18,0);
-  b('stock',-14.55,-.55,0,.85,3.1,1.85,0);
-  b('stock',-5.65,-.4,0,1.0,2.25,1.65,1);
+  // AKMS: the top strut stays almost level; the lower fork drops rearward.
+  // The skinny turned buttplate reads differently from the AKS-74 triangle.
+  line('stock',[-5.55,.48],[-14.12,.35],.65,1.1,0);
+  line('stock',[-5.58,-1.15],[-13.96,-2.16],.66,1.1,0);
+  b('stock',-14.4,-.95,0,.72,3.24,1.65,0);
+  b('stock',-5.72,-.28,0,1.05,2.0,1.6,1);
  }else if(stock==='ak-sidefold'){
-  // One fat five-sided silhouette, not a pointed plank with floating hinge.
-  p('stock',[[-14.35,.7],[-8.3,.95],[-6.0,.35],
-   [-6.25,-1.5],[-9.6,-2.85],[-14.35,-2.15]],3.4,1);
+  // Reuse the strongest AK-74M polymer cheek/heel profile across 100-series.
+  p('stock',[[-14.4,.78],[-9.1,.93],[-6.12,.28],
+   [-6.32,-1.42],[-9.75,-2.85],[-14.4,-2.30]],3.35,1);
  }else{
   const isWood=stock==='ak-wood'||stock==='ak-wood74';
-  p('stock',[[-15.3,.65],[-8.9,.95],[-6.25,-.5],
-   [-10.55,-3.3],[-15.3,-2.45]],3.35,isWood?2:1);
+  // Classic AK fixed stock: horizontal comb, stepped wrist and full butt.
+  p('stock',[[-15.35,.68],[-10.25,.78],[-6.12,-.48],
+   [-6.4,-1.18],[-11.5,-3.18],[-15.35,-2.92]],3.35,isWood?2:1);
   if(stock==='ak-wood74')
    b('stock',-10.7,-1,1.97,2.0,.65,.18,1);
  }
@@ -112,24 +115,25 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const magRight=m.magwellCenterX+m.magazineWidthX/2;
  if(extended)
   p('magazine',[[magLeft,top],[magRight,top],
-   [magRight+.28,-5.1],[magRight+1.45,-8.78],
-   [magLeft+1.65,-9.0],[magLeft+.38,-5.25]],
+   [magRight+.28,-5.2],[magRight+1.72,-8.55],
+   [magLeft+1.15,-9.45],[magLeft+.32,-5.25]],
    m.magazineDepthZ,finish);
  else if(heavy)
   p('magazine',[[magLeft,top],[magRight,top],
-   [magRight+.42,-4.35],[magRight+2.50,-7.45],
-   [magLeft+2.15,-7.75],[magLeft+.55,-5.05]],
+   [magRight+.42,-4.35],[magRight+2.55,-7.05],
+   [magLeft+2.1,-8.15],[magLeft+.55,-5.05]],
    m.magazineDepthZ,finish);
  else
   p('magazine',[[magLeft,top],[magRight,top],
-   [magRight+.20,-4.6],[magRight+1.40,-7.25],
-   [magLeft+1.45,-7.47],[magLeft+.38,-4.95]],
+   [magRight+.2,-4.6],[magRight+1.56,-6.88],
+   [magLeft+1.18,-7.76],[magLeft+.36,-4.95]],
    m.magazineDepthZ,finish);
 
  const guard=parts.handguard;
  const short=guard==='ak-wood-short'||guard==='ak-poly-short';
  const mid=guard==='ak-poly-mid';
- const end=short?11.45:mid?13.5:rpk?14.2:15.1;
+ // On full rifles the fore-end stops well before the forward sight/gas tube.
+ const end=short?11.45:mid?12.3:rpk?13.35:12.45;
  const start=short?3.55:4.0;
  const woodGuard=guard==='ak-wood-long'||guard==='ak-wood-short'||guard==='ak-rpk-wood';
  const rail=guard==='ak-rail-long';
