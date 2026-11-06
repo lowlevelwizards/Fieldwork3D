@@ -25,7 +25,11 @@ import {studioUsesClothesOnly,studioUsesVisibleFace} from './operator-studio-pre
 import {studioCameraFocusForWardrobe,studioFocusEasing,clampStudioCameraZoom,
  STUDIO_FULL_FIT,STUDIO_MIN_ZOOM,STUDIO_MAX_ZOOM}
  from './operator-studio-camera-focus.ts';
-import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
+import {createOperatorRig,poseOperator,type OperatorRig,type OperatorPose} from './breach-operator-rig.ts';
+import {studioArmedIdleAt} from './operator-studio-armed-idle.ts';
+import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
+import type {WeaponId} from './breach-combat.ts';
+import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {OperatorAppearanceGrid,APPEARANCE_GROUP_LABELS} from './operator-appearance-grid.ts';
 import {FactionReferenceBrowser} from './faction-reference-browser.ts';
 import {resolveFactionReference,referenceLookForKit} from './faction-reference-resolver.ts';
@@ -71,7 +75,8 @@ import './operator-appearance-grid.css';
 
 type StudioMode='quick'|'campaign';
 type StudioPerson={id:string;callsign:string;appearanceSeed:number;
- loadout:EquipmentLoadout;wardrobe:WardrobeOptions};
+ loadout:EquipmentLoadout;wardrobe:WardrobeOptions;
+ weapon?:WeaponId;weaponConfiguration?:WeaponConfiguration};
 type StudioInit={type:'fw-studio-init';mode:StudioMode;
  selected:string;members:StudioPerson[];readonly:boolean};
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -89,8 +94,10 @@ let advancedFabricColorsOpen=false;
 const openCamoLibraries=new Set<string>();
 let advancedPouchOpen=false;
 let clothesOnly=true;
+let showWeapon=false;
 let referenceOpen=false;
 let previousClothesOnly=true;
+let previousShowWeapon=false;
 let comparingSaved=false;
 let saveInFlight=false;
 let studioPresets:StudioPreset[]=[];
@@ -111,6 +118,7 @@ const workflowButtons=Array.from(document.querySelectorAll<HTMLButtonElement>(
 const applyButton=$<HTMLButtonElement>('studioApply');
 const modelSelector=$<HTMLSelectElement>('studioOperator');
 const gearToggle=$<HTMLButtonElement>('studioGearToggle');
+const weaponToggle=$<HTMLButtonElement>('studioWeaponToggle');
 const undoButton=$<HTMLButtonElement>('studioUndo');
 const categories=$<HTMLElement>('studioCategories');
 const subcategories=$<HTMLElement>('studioSubcategories');
@@ -233,16 +241,16 @@ const referenceBrowser=new FactionReferenceBrowser(
  });
 function openReferenceBrowser(){
  if(referenceOpen)return;
- previousClothesOnly=clothesOnly;
+ previousClothesOnly=clothesOnly;previousShowWeapon=showWeapon;
  identityMode=false;
- referenceOpen=true;clothesOnly=false;syncGearToggle();
+ referenceOpen=true;clothesOnly=false;showWeapon=true;syncGearToggle();
  referenceBrowser.show(readOnly);
  refresh();
 }
 function closeReferenceBrowser(){
  if(!referenceOpen)return;
  referenceOpen=false;referenceBrowser.hide();
- clothesOnly=previousClothesOnly;syncGearToggle();
+ clothesOnly=previousClothesOnly;showWeapon=previousShowWeapon;syncGearToggle();
  refresh();
 }
 function resize(){
@@ -369,11 +377,61 @@ function inspectWardrobe(wardrobe:WardrobeOptions):WardrobeOptions{
 function syncGearToggle(){
  gearToggle.setAttribute('aria-pressed',String(clothesOnly));
  gearToggle.textContent=clothesOnly?'CLOTHES ONLY':'SHOWING GEAR';
+ weaponToggle.disabled=clothesOnly;
+ weaponToggle.setAttribute('aria-pressed',String(!clothesOnly&&showWeapon));
+ weaponToggle.textContent=!clothesOnly&&showWeapon?'WEAPON VISIBLE':'SHOW WEAPON';
 }
 gearToggle.addEventListener('click',()=>{
  clothesOnly=!clothesOnly;syncGearToggle();posePreview();
 });
+weaponToggle.addEventListener('click',()=>{
+ if(clothesOnly)return;
+ showWeapon=!showWeapon;syncGearToggle();posePreview();
+});
 syncGearToggle();
+/** Animate only an armed, visible preview; cap expensive pose/shadow rendering
+ * at 24 fps and suspend in background tabs or hidden embedded Studio. */
+let armedPose:OperatorPose|null=null;
+let armedFrame=0,armedStarted=0,armedLastDraw=0;
+let previewInViewport=true;
+function armedPreviewEnabled(){
+ return !clothesOnly&&showWeapon&&!!armedPose&&!!rig&&
+  !!member()&&!document.hidden&&previewInViewport;
+}
+function tickArmedPreview(now:number){
+ armedFrame=0;
+ if(!armedPreviewEnabled())return;
+ if(now-armedLastDraw>=1000/24){
+  const elapsed=Math.max(0,(now-armedStarted)/1000);
+  const idle=studioArmedIdleAt(elapsed,member()?.appearanceSeed??0);
+  poseOperator(rig!,{...armedPose!,seconds:elapsed,...idle},
+   Math.min(.1,(now-armedLastDraw)/1000));
+  // Tiny head glance/breath offset AFTER the reusable combat IK solved.
+  // Both are reset on the next pose, so nothing accumulates.
+  rig!.head.rotation.y+=idle.glance;
+  rig!.chest.position.y+=idle.breathe;
+  armedLastDraw=now;
+  renderScene();
+ }
+ armedFrame=requestAnimationFrame(tickArmedPreview);
+}
+function syncArmedPreview(){
+ if(armedPreviewEnabled()){
+  if(!armedFrame){
+   if(!armedStarted)armedStarted=performance.now();
+   armedLastDraw=performance.now();
+   armedFrame=requestAnimationFrame(tickArmedPreview);
+  }
+ }else{
+  if(armedFrame)cancelAnimationFrame(armedFrame);
+  armedFrame=0;armedStarted=0;
+ }
+}
+document.addEventListener('visibilitychange',syncArmedPreview);
+new IntersectionObserver(entries=>{
+ previewInViewport=!!entries[0]?.isIntersecting;
+ syncArmedPreview();
+}).observe(stage);
 function posePreview(){
  const p=member();if(!p)return;
  // Restore exact unmodified colors before the wardrobe refresh; otherwise
@@ -385,15 +443,24 @@ function posePreview(){
   rig=createOperatorRig(p.id,'blue');
   scene.add(rig.root);
  }
- poseOperator(rig,{
+ const issue=issueWeaponPreset(starterWeaponPreset(p.id));
+ const configuration=reference?.weapon.weaponConfiguration??
+  p.weaponConfiguration??issue.weaponConfiguration;
+ const weapon=reference?.weapon.weapon??p.weapon??configuration.weapon;
+ const armed=!clothesOnly&&showWeapon;
+ armedPose={
   x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
-  posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,
+  posture:'stand',injury:0,weapon,reload:0,reloadDuration:0,
   lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,
   aiming:false,firing:false,turning:0,deterministic:true,
+  handlingOverride:armed?'low':undefined,
   faceStyle:studioUsesVisibleFace(activeCategory)?'quiet':'blank',
-  unarmedPreview:true,equipment:inspectKit(reference?.kit??p.loadout),
-  wardrobe:inspectWardrobe(reference?.wardrobe??previewWardrobe())
- },0);
+  unarmedPreview:!armed,weaponConfiguration:configuration,
+  equipment:inspectKit(reference?.kit??p.loadout),
+  wardrobe:inspectWardrobe(reference?.wardrobe??previewWardrobe()),
+  appearanceSeed:p.appearanceSeed
+ };
+ poseOperator(rig,armedPose,0);
  if(params.get('operatorLightingAtlas')==='1'){
   // Do not combine unapproved material experiments: atlas has priority.
   const atlasResult=applyStudioSelfShadowAtlases(rig.root);
@@ -411,6 +478,7 @@ function posePreview(){
   previewOperatorLightingLayers(rig.root,diagnosticLayers);
  studioLighting.invalidateGeometry();
  renderScene();
+ syncArmedPreview();
 }
 function canEquip(slot:WardrobeSlot,id:string){
  const p=member();
@@ -1426,18 +1494,21 @@ if(embedded){
    start({mode,selected,readonly:!!campaign.activeContractId,
     members:campaign.operators.filter(x=>x.status!=='retired'&&x.status!=='lost')
      .map(x=>({id:x.id,callsign:x.callsign,appearanceSeed:x.appearanceSeed,
-       wardrobe:readWardrobe(x.wardrobe),loadout:x.loadout}))});
+       wardrobe:readWardrobe(x.wardrobe),loadout:x.loadout,
+       weapon:x.weapon,weaponConfiguration:x.weaponConfiguration}))});
   }else{
    const roster=freshQuickPlayRoster(readRoster(
     localStorage.getItem('fieldwork3d.quickplay-cosmetics.v1')));
    start({mode:'quick',selected,readonly:false,
     members:roster.members.map(x=>({id:x.id,callsign:x.callsign,
-     appearanceSeed:x.appearanceSeed,wardrobe:x.wardrobe,loadout:x.loadout}))});
+     appearanceSeed:x.appearanceSeed,wardrobe:x.wardrobe,loadout:x.loadout,
+     weapon:x.weapon,weaponConfiguration:x.weaponConfiguration}))});
   }
  }catch{
   const roster=initialRoster();
   start({mode:'quick',selected:'rook',readonly:false,
    members:roster.members.map(x=>({id:x.id,callsign:x.callsign,
-    appearanceSeed:x.appearanceSeed,wardrobe:x.wardrobe,loadout:x.loadout}))});
+    appearanceSeed:x.appearanceSeed,wardrobe:x.wardrobe,loadout:x.loadout,
+     weapon:x.weapon,weaponConfiguration:x.weaponConfiguration}))});
  }
 }
