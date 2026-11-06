@@ -75,6 +75,8 @@ import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import {captureReplayArchive,restoreReplayArchive} from './breach-replay-archive.ts';
+import {exportPortableReplay,importPortableReplay,REPLAY_FILE_SUFFIX}
+  from './breach-replay-portable.ts';
 import {listSavedReplays,saveReplayArchive,loadSavedReplay,
   deleteSavedReplay,setSavedReplayFavorite,
   getSavedReplayBookmarks,saveReplayBookmarks}
@@ -281,6 +283,8 @@ const ui={
   replayLibraryList:el<HTMLElement>('replayLibraryList'),
   replayLibraryStatus:el<HTMLOutputElement>('replayLibraryStatus'),
   closeReplayLibrary:el<HTMLButtonElement>('closeReplayLibrary'),
+  replayImportButton:el<HTMLButtonElement>('replayImportButton'),
+  replayImportInput:el<HTMLInputElement>('replayImportInput'),
   favoriteMission:el<HTMLButtonElement>('favoriteMission'),
   favoriteMissionsList:el<HTMLElement>('favoriteMissionsList'),
   replayPanel:el<HTMLElement>('replayPanel'),
@@ -4311,6 +4315,9 @@ async function renderSavedReplayLibrary():Promise<void>{
         }catch(error){replayLibraryFailure(error);}
         finally{replayLibraryBusy=false;}
       });
+      const exportFile=document.createElement('button');exportFile.type='button';
+      exportFile.textContent='EXPORT';exportFile.title='Download full replay file';
+      exportFile.addEventListener('click',()=>{void exportSavedReplayFile(item.id);});
       const remove=document.createElement('button');remove.type='button';
       remove.textContent='DELETE';
       remove.setAttribute('aria-label','Delete replay '+item.siteName);
@@ -4327,7 +4334,7 @@ async function renderSavedReplayLibrary():Promise<void>{
         }catch(error){replayLibraryFailure(error);}
         finally{replayLibraryBusy=false;}
       });
-      row.append(information,watch,favorite,remove);
+      row.append(information,watch,favorite,exportFile,remove);
       fragment.append(row);
     }
     ui.replayLibraryList.replaceChildren(fragment);
@@ -4346,6 +4353,46 @@ function replayLibraryFailure(error:unknown):void{
     error.message:'REPLAY STORAGE FAILED';
   showUiHelp('REPLAY LIBRARY UNAVAILABLE · CHECK DEVICE STORAGE',3400);
 }
+/** Portable file actions are always explicit, on-demand and bounded. */
+async function exportSavedReplayFile(id:string):Promise<void>{
+  if(replayLibraryBusy)return;
+  replayLibraryBusy=true;
+  try{
+    const archive=await loadSavedReplay(id);
+    const marks=await getSavedReplayBookmarks(id);
+    const blob=await exportPortableReplay({...archive,bookmarks:marks});
+    const url=URL.createObjectURL(blob);
+    const anchor=document.createElement('a');
+    anchor.href=url;anchor.download=id+REPLAY_FILE_SUFFIX;
+    document.body.append(anchor);anchor.click();anchor.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),12000);
+    ui.replayLibraryStatus.textContent='FULL REPLAY FILE EXPORTED';
+  }catch(error){replayLibraryFailure(error);}
+  finally{replayLibraryBusy=false;}
+}
+async function importSavedReplayFile(file:File):Promise<void>{
+  if(replayLibraryBusy)return;
+  replayLibraryBusy=true;
+  ui.replayLibraryStatus.textContent='VALIDATING REPLAY FILE…';
+  try{
+    const archive=await importPortableReplay(file);
+    // Import never silently overwrites an existing recording with the same ID.
+    const id='replay-import-'+Date.now().toString(36)+'-'+
+      Math.random().toString(36).slice(2,9);
+    await saveReplayArchive({...archive,id,createdAt:Date.now()});
+    await renderSavedReplayLibrary();
+    showUiHelp('COMPLETE REPLAY IMPORTED TO DEVICE',3100);
+  }catch(error){replayLibraryFailure(error);}
+  finally{replayLibraryBusy=false;}
+}
+ui.replayImportButton.addEventListener('click',()=>{
+  if(!replayLibraryBusy)ui.replayImportInput.click();
+});
+ui.replayImportInput.addEventListener('change',()=>{
+  const file=ui.replayImportInput.files?.[0];
+  ui.replayImportInput.value='';
+  if(file)void importSavedReplayFile(file);
+});
 async function saveCurrentReplay():Promise<void>{
   if(replayLibraryBusy||recorder.frames.length<2)return;
   replayLibraryBusy=true;
