@@ -106,6 +106,24 @@ test('real operator base uniform receives shadow bake and IK limb bounds remain 
    'no doubled physical torso/IK lengths');
   assert.ok(body.geometry.getAttribute('position').count>100,
    'real uniform is now a high-precision shadow receiver');
+  // Not just connected/segmented: a REAL dressed operator must have
+  // measurable occlusion on the torso under an actual equipped carrier.
+  const bodyBase=body.geometry.userData.fieldworkCrossLightBase,
+   bodyLit=body.geometry.getAttribute('color')?.array;
+  assert.ok(bodyBase instanceof Uint8Array&&bodyLit instanceof Uint8Array,
+   'uniform must have neutral grayscale shadow data');
+  const torsoShaded=bodyBase.filter((v,i)=>i%3===0&&bodyLit[i]<v-7).length;
+  assert.ok(torsoShaded>2,'equipped vest must actually cast onto uniform');
+  const carrier=rig.visualKit.wardrobeGear.armor['plate-standard'];
+  let carrierShaded=0;
+  carrier.traverse(o=>{
+   if(!(o instanceof THREE.Mesh))return;
+   const b=o.geometry.userData.fieldworkCrossLightBase,
+    lit=o.geometry.getAttribute('color')?.array;
+   if(b instanceof Uint8Array&&lit instanceof Uint8Array)
+    carrierShaded+=b.filter((v,i)=>i%3===0&&lit[i]<v-7).length;
+  });
+  assert.ok(carrierShaded>2,'equipped rig must actually shade its carrier');
   for(const arm of rig.arms)
    assert.ok(bounds(arm.upper.geometry).y<1.05,
     'one-unit animated limb stays one unit high');
