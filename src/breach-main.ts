@@ -187,6 +187,10 @@ const ui={
   siteSettings:el<HTMLElement>('siteSettings'),
   replayMore:el<HTMLButtonElement>('replayMore'),
   replayExtra:el<HTMLElement>('replayExtra'),
+  replayDrawer:el<HTMLElement>('replayDrawer'),
+  replayDrawerClose:el<HTMLButtonElement>('replayDrawerClose'),
+  replayTabs:el<HTMLElement>('replayTabs'),
+  replayFeedPanel:el<HTMLElement>('replayFeedPanel'),
   viewIso:el<HTMLButtonElement>('viewIso'),
   viewTop:el<HTMLButtonElement>('viewTop'),
   view2d:el<HTMLButtonElement>('view2d'),
@@ -3625,6 +3629,28 @@ function renderReplayEventFeed():void{
   ui.replayFeedInfo.textContent=events.length+
     ' KNOWN EVENTS · SHOWING '+(events.length?start+1:0)+'–'+end;
 }
+/** One tool surface at a time; never let advanced controls grow the dock. */
+type ReplayToolTab='view'|'layers'|'precision'|'export'|'events';
+let replayToolTab:ReplayToolTab|null=null;
+let replayLastToolTab:ReplayToolTab='view';
+function showReplayToolTab(tab:ReplayToolTab|null):void{
+  replayToolTab=tab;
+  const open=tab!==null,events=tab==='events';
+  if(tab&&!events)replayLastToolTab=tab;
+  ui.replayDrawer.hidden=!open;
+  ui.replayExtra.hidden=!open||events;
+  ui.replayFeedPanel.hidden=!events;
+  ui.replayFeed.hidden=!events;
+  ui.replayFeedFilter.hidden=!events;
+  ui.replayFeedInfo.hidden=!events;
+  ui.replayMore.setAttribute('aria-expanded',String(open&&!events));
+  ui.replayFeedToggle.setAttribute('aria-expanded',String(events));
+  for(const group of ui.replayExtra.querySelectorAll<HTMLElement>('[data-replay-group]'))
+    group.hidden=group.dataset.replayGroup!==tab;
+  for(const button of ui.replayTabs.querySelectorAll<HTMLButtonElement>('[data-replay-tab]'))
+    button.setAttribute('aria-selected',String(button.dataset.replayTab===tab));
+  if(events)renderReplayEventFeed();
+}
 function updateReplayHud(){
   ui.replaySeek.value=String(Math.round(replayTime*60));
   ui.replayClock.textContent=formatReplayTime(replayTime)+' / '+
@@ -3663,24 +3689,44 @@ function updateReplayHud(){
   ui.replayEventText.textContent=event&&replayTime-event.t<4.5?
     clockText(event.t)+' · '+event.text:'';
 }
-function renderReplayEventMarkers(){
+/** Display compact clusters, not dozens of overlapping tap targets.
+ * The scrubber and event navigation remain the accessible interactions.
+ */
+function renderReplayEventMarkers():void{
   ui.replayMarks.replaceChildren();
   const duration=recorder.duration;
   if(duration<=0)return;
-  let count=0;
+  const width=ui.replayMarks.clientWidth||ui.replaySeek.clientWidth||320;
+  const bins=Math.max(16,Math.floor(width/7));
+  const rank=(kind:string)=>kind==='down'?5:kind==='wound'?4:
+    kind==='flash'?3:kind==='door'?2:kind==='shot'?1:0;
+  const clusters=new Map<number,{
+    kind:string;time:number;count:number;priority:number;
+  }>();
   for(const event of replayEventIndex?.markers??[]){
-    if(count>=85)break;
-    const marker=document.createElement('button');
-    marker.type='button';
-    marker.className='replay-mark replay-mark-'+event.kind;
-    marker.style.left=(event.t/duration*100).toFixed(3)+'%';
-    marker.title=clockText(event.t)+' · '+event.text;
-    marker.setAttribute('aria-label',marker.title);
-    marker.addEventListener('click',()=>{
-      replayPlaying=false;seekReplay(event.t);
-    });
-    ui.replayMarks.append(marker);count++;
+    const index=Math.min(bins-1,Math.max(0,
+      Math.floor(event.t/duration*bins)));
+    const existing=clusters.get(index),priority=rank(event.kind);
+    if(!existing){
+      clusters.set(index,{kind:event.kind,time:event.t,count:1,priority});
+    }else{
+      existing.count++;
+      if(priority>existing.priority){
+        existing.kind=event.kind;existing.priority=priority;
+      }
+    }
   }
+  const fragment=document.createDocumentFragment();
+  for(const [index,cluster] of clusters){
+    const marker=document.createElement('span');
+    marker.className='replay-mark replay-mark-'+cluster.kind;
+    marker.style.left=((index+.5)/bins*100).toFixed(3)+'%';
+    marker.dataset.cluster=String(cluster.count>1);
+    marker.title=cluster.count+' event'+(cluster.count===1?'':'s')+
+      ' near '+clockText(cluster.time);
+    fragment.append(marker);
+  }
+  ui.replayMarks.append(fragment);
 }
 function enterReplay(){
   if(replaying||recorder.frames.length<2)return;
@@ -3693,10 +3739,7 @@ function enterReplay(){
   replaySoundTimeline=new ReplaySoundTimeline(recorder.ballistics.shots,
     recorder.events);
   unlockAudio();
-  ui.replayFeed.hidden=true;ui.replayFeedFilter.hidden=true;
-  ui.replayFeedInfo.hidden=true;
-  ui.replayFeedToggle.setAttribute('aria-expanded','false');
-  ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
+  showReplayToolTab(null);
   const recordedSite=recorder.manifest?.site;
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
     finishedSession.intel.mode,finishedSession.site?.scale??'standard',
@@ -3717,7 +3760,8 @@ function exitReplay(){
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;
   replaySoundTimeline=null;stopReplaySounds();
-  ui.replayFeed.replaceChildren();ui.replayFeed.hidden=true;
+  ui.replayFeed.replaceChildren();
+  showReplayToolTab(null);
   document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   if(finishedSession)state=finishedSession;
@@ -3745,16 +3789,19 @@ ui.replayNextFrame.addEventListener('click',()=>stepReplay('frame',1));
 ui.replayPrevSample.addEventListener('click',()=>stepReplay('sample',-1));
 ui.replayNextSample.addEventListener('click',()=>stepReplay('sample',1));
 ui.replayMore.addEventListener('click',()=>{
-  ui.replayExtra.hidden=!ui.replayExtra.hidden;
-  ui.replayMore.setAttribute('aria-expanded',String(!ui.replayExtra.hidden));
+  showReplayToolTab(replayToolTab&&replayToolTab!=='events'?
+    null:replayLastToolTab);
 });
 ui.replayFeedToggle.addEventListener('click',()=>{
-  const open=ui.replayFeed.hidden;
-  ui.replayFeed.hidden=!open;ui.replayFeedFilter.hidden=!open;
-  ui.replayFeedInfo.hidden=!open;
-  ui.replayFeedToggle.setAttribute('aria-expanded',String(open));
-  if(open)renderReplayEventFeed();
+  showReplayToolTab(replayToolTab==='events'?null:'events');
 });
+ui.replayDrawerClose.addEventListener('click',()=>showReplayToolTab(null));
+for(const button of ui.replayTabs.querySelectorAll<HTMLButtonElement>('[data-replay-tab]')){
+  button.addEventListener('click',()=>{
+    const tab=button.dataset.replayTab as ReplayToolTab;
+    showReplayToolTab(tab);
+  });
+}
 ui.replayFeedFilter.addEventListener('change',renderReplayEventFeed);
 ui.replaySound.addEventListener('click',()=>{
   replaySoundEnabled=!replaySoundEnabled;
@@ -4457,7 +4504,10 @@ window.addEventListener('keydown',e=>{
   if(document.querySelector('.fw-confirm-backdrop'))return;
   if(replaying){
     if(e.code==='Space'&&!e.repeat){e.preventDefault();replayPlaying=!replayPlaying;}
-    if(e.code==='Escape')exitReplay();
+    if(e.code==='Escape'){
+    if(replayToolTab!==null)showReplayToolTab(null);
+    else exitReplay();
+  }
     if(e.code==='ArrowLeft'||e.code==='ArrowRight'){
       e.preventDefault();
       const direction:-1|1=e.code==='ArrowLeft'?-1:1;
