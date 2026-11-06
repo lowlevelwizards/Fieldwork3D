@@ -691,6 +691,7 @@ let replayEventIndex:ReplayEventIndex|null=null;
 let replaySoundTimeline:ReplaySoundTimeline|null=null;
 let replayChapters:ReplayChapter[]=[];
 let replayBookmarks:ReplayBookmark[]=[];
+let replayBookmarkCounter=0;
 let replaySoundEnabled=true;
 const replayQuickVideo=new ReplayQuickVideo(
   (blob,mime)=>{
@@ -4117,7 +4118,7 @@ function enterReplay(){
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   replayCameraMode='free';replayDirectorCues=[];
-  replayBookmarks=[];
+  replayBookmarks=[];replayBookmarkCounter=0;
   replayPlanScope='selected';replayPlanVersion='active';
   replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
   replayTrailMode='off';
@@ -4246,9 +4247,9 @@ ui.replayNextChapter.addEventListener('click',()=>{
   if(chapter){replayPlaying=false;seekReplay(chapter.t);}
 });
 ui.replayBookmark.addEventListener('click',()=>{
-  const id='bookmark-'+(replayBookmarks.length+1);
+  const id='bookmark-'+(++replayBookmarkCounter);
   replayBookmarks=addReplayBookmark(replayBookmarks,replayTime,recorder.duration,
-    id,'MARK '+String(replayBookmarks.length+1).padStart(2,'0'));
+    id,'MARK '+String(replayBookmarkCounter).padStart(2,'0'));
   renderReplayChapters();
   showUiHelp('BOOKMARK ADDED · THIS REPLAY SESSION',2500);
 });
