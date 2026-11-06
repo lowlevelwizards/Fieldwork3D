@@ -24,3 +24,15 @@ test('one index preserves event order and supports binary navigation',()=>{
     'dense shots cluster visually without deleting event evidence');
   assert.equal(index.all.filter(e=>e.kind==='shot').length,2);
 });
+
+test('team-intel filtering removes concealed events from HUD navigation',()=>{
+  const battle=[
+    {id:1,t:1,kind:'shot',actor:'guard0',text:'SECRET'},
+    {id:2,t:2,kind:'door',actor:'rook',text:'KNOWN'}
+  ];
+  const visible=new ReplayEventIndex(battle,[],e=>e.actor==='rook');
+  assert.equal(visible.all.length,1);
+  assert.equal(visible.latest(3)?.text,'KNOWN');
+  assert.equal(visible.next(0)?.text,'KNOWN');
+  assert.equal(visible.markers.length,1);
+});

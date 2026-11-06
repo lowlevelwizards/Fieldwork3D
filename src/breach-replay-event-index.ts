@@ -15,7 +15,8 @@ export class ReplayEventIndex{
   readonly all:readonly ReplayIndexedEvent[];
   readonly navigation:readonly ReplayIndexedEvent[];
   readonly markers:readonly ReplayIndexedEvent[];
-  constructor(battle:readonly BattleEvent[],execution:readonly ExecutionEvent[]){
+  constructor(battle:readonly BattleEvent[],execution:readonly ExecutionEvent[],
+    allow?:(event:ReplayIndexedEvent)=>boolean){
     const records:ReplayIndexedEvent[]=[
       ...battle.map((e,i)=>({
         key:'battle:'+e.id,source:'battle' as const,
@@ -28,10 +29,11 @@ export class ReplayEventIndex{
       }))
     ];
     records.sort((a,b)=>a.t-b.t||a.order-b.order);
-    this.all=records;
-    this.navigation=records.filter(e=>e.kind!=='shot');
+    const displayed=allow?records.filter(allow):records;
+    this.all=displayed;
+    this.navigation=displayed.filter(e=>e.kind!=='shot');
     let lastShot=-Infinity;
-    this.markers=records.filter(e=>{
+    this.markers=displayed.filter(e=>{
       if(e.kind!=='shot')return true;
       if(e.t-lastShot<3)return false;
       lastShot=e.t;return true;

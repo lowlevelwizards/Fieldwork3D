@@ -62,7 +62,7 @@ import {parseOperationHistory,addOperationRecord,
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
 import {stepReplaySample,stepReplayPresentation,formatReplayTime}
   from './breach-replay-transport.ts';
-import {ReplayEventIndex} from './breach-replay-event-index.ts';
+import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-index.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -225,6 +225,10 @@ const ui={
   replayAnalysis:el<HTMLButtonElement>('replayAnalysis'),
   replayEventText:el<HTMLOutputElement>('replayEventText'),
   replayClock:el<HTMLOutputElement>('replayClock'),
+  replayFeedToggle:el<HTMLButtonElement>('replayFeedToggle'),
+  replayFeedFilter:el<HTMLSelectElement>('replayFeedFilter'),
+  replayFeed:el<HTMLElement>('replayFeed'),
+  replayFeedInfo:el<HTMLOutputElement>('replayFeedInfo'),
   rookAmmo:el<HTMLElement>('rookAmmo'),mossAmmo:el<HTMLElement>('mossAmmo'),
   ashAmmo:el<HTMLElement>('ashAmmo'),valeAmmo:el<HTMLElement>('valeAmmo'),
 };
@@ -3398,6 +3402,63 @@ function seekReplay(t:number){
   replayTime=Math.max(0,Math.min(recorder.duration,t));
   applyReplayFrameAt(replayTime);updateReplayHud();
 }
+/** Replay event feed and navigation share the same disclosure boundary. */
+function replayEventKnown(e:ReplayIndexedEvent):boolean{
+  if(replayOmniscient||e.kind==='objective')return true;
+  if(team(state).some(a=>a.id===e.actor))return true;
+  const frame=recorder.at(e.t);
+  if(!frame)return false;
+  if(frame.knowledge)return !!e.actor&&
+    frame.knowledge.visibleActorIds.includes(e.actor);
+  // Older recordings lack recorded visibility. Keep the guarded prior fallback.
+  const p=e.p;
+  return !!p&&(frame.seenGround.includes(
+    Math.floor(p.x/40)+','+Math.floor(p.y/40))||
+    frame.seenGround.includes(
+      'fine:'+Math.floor(p.x/20)+','+Math.floor(p.y/20)));
+}
+function rebuildReplayEventIndex():void{
+  replayEventIndex=new ReplayEventIndex(recorder.events,
+    recorder.executionEvents,e=>replayEventKnown(e));
+}
+const replayFeedKinds:Record<string,readonly string[]>={
+  all:[],
+  combat:['shot','impact','wound','down','flash','surrender'],
+  orders:['started','blocked','resumed','completed','door','reload','interaction'],
+  contacts:['intel'],
+  objectives:['objective']
+};
+function renderReplayEventFeed():void{
+  if(ui.replayFeed.hidden||!replayEventIndex)return;
+  const allowed=replayFeedKinds[ui.replayFeedFilter.value]??[];
+  const events=replayEventIndex.all.filter(e=>
+    !allowed.length||allowed.includes(e.kind));
+  let lo=0,hi=events.length;
+  while(lo<hi){
+    const mid=(lo+hi)>>>1;
+    if(events[mid].t<replayTime)lo=mid+1;else hi=mid;
+  }
+  const end=Math.min(events.length,Math.max(80,lo+40));
+  const start=Math.max(0,end-80);
+  const fragment=document.createDocumentFragment();
+  for(const event of events.slice(start,end)){
+    const button=document.createElement('button');
+    button.type='button';button.className='replay-feed-item';
+    button.dataset.kind=event.kind;
+    button.textContent=formatReplayTime(event.t)+' · '+
+      event.kind.toUpperCase()+' · '+event.text;
+    button.addEventListener('click',()=>{
+      replayPlaying=false;seekReplay(event.t);
+      for(const selected of ui.replayFeed.querySelectorAll('.selected'))
+        selected.classList.remove('selected');
+      button.classList.add('selected');
+    });
+    fragment.append(button);
+  }
+  ui.replayFeed.replaceChildren(fragment);
+  ui.replayFeedInfo.textContent=events.length+
+    ' KNOWN EVENTS · SHOWING '+(events.length?start+1:0)+'–'+end;
+}
 function updateReplayHud(){
   ui.replaySeek.value=String(Math.round(replayTime*60));
   ui.replayClock.textContent=formatReplayTime(replayTime)+' / '+
@@ -3429,22 +3490,9 @@ function renderReplayEventMarkers(){
   ui.replayMarks.replaceChildren();
   const duration=recorder.duration;
   if(duration<=0)return;
-  const friendlyIds=new Set(team(state).map(a=>a.id));
-  let lastShot=-Infinity,count=0;
+  let count=0;
   for(const event of replayEventIndex?.markers??[]){
     if(count>=85)break;
-    if(event.kind==='shot'){
-      if(event.t-lastShot<3)continue;
-      lastShot=event.t;
-    }
-    const frame=recorder.at(event.t);
-    const knownPoint=!!event.p&&!!frame&&(
-      frame.seenGround.includes(Math.floor(event.p.x/40)+','+
-        Math.floor(event.p.y/40))||
-      frame.seenGround.includes('fine:'+Math.floor(event.p.x/20)+','+
-        Math.floor(event.p.y/20)));
-    if(!replayOmniscient&&!friendlyIds.has(event.actor??'')&&!knownPoint)
-      continue;
     const marker=document.createElement('button');
     marker.type='button';
     marker.className='replay-mark replay-mark-'+event.kind;
@@ -3462,7 +3510,10 @@ function enterReplay(){
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
-  replayEventIndex=new ReplayEventIndex(recorder.events,recorder.executionEvents);
+  rebuildReplayEventIndex();
+  ui.replayFeed.hidden=true;ui.replayFeedFilter.hidden=true;
+  ui.replayFeedInfo.hidden=true;
+  ui.replayFeedToggle.setAttribute('aria-expanded','false');
   ui.replayExtra.hidden=true;ui.replayMore.setAttribute('aria-expanded','false');
   const recordedSite=recorder.manifest?.site;
   state=newSession(finishedSession.variant,finishedSession.site?.seed,
@@ -3482,6 +3533,7 @@ function exitReplay(){
   if(!replaying)return;
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;
+  ui.replayFeed.replaceChildren();ui.replayFeed.hidden=true;
   document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   if(finishedSession)state=finishedSession;
@@ -3510,6 +3562,14 @@ ui.replayMore.addEventListener('click',()=>{
   ui.replayExtra.hidden=!ui.replayExtra.hidden;
   ui.replayMore.setAttribute('aria-expanded',String(!ui.replayExtra.hidden));
 });
+ui.replayFeedToggle.addEventListener('click',()=>{
+  const open=ui.replayFeed.hidden;
+  ui.replayFeed.hidden=!open;ui.replayFeedFilter.hidden=!open;
+  ui.replayFeedInfo.hidden=!open;
+  ui.replayFeedToggle.setAttribute('aria-expanded',String(open));
+  if(open)renderReplayEventFeed();
+});
+ui.replayFeedFilter.addEventListener('change',renderReplayEventFeed);
 ui.replaySpeed.addEventListener('click',()=>{
   replayRate=({0.25:0.5,0.5:0.75,0.75:1,1:1.5,1.5:2,2:4,4:0.25} as Record<number,number>)[replayRate]??1;
   updateReplayHud();
@@ -3520,7 +3580,8 @@ ui.replaySeek.addEventListener('input',()=>{
 });
 ui.replaySight.addEventListener('click',()=>{
   replayOmniscient=!replayOmniscient;fogStamp=-1;
-  renderReplayEventMarkers();updateReplayHud();
+  rebuildReplayEventIndex();
+  renderReplayEventMarkers();renderReplayEventFeed();updateReplayHud();
 });
 ui.replayView.addEventListener('click',()=>{
   cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
