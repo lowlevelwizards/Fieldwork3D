@@ -24,12 +24,12 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const compact=parts.receiver==='akcompact';
  // Sloping stamped-look receiver and stepped roof. Core shared when authentic.
  p('receiver',compact?
-  [[-5.85,-1.25],[-5.75,1.05],[-4.95,1.15],[3.65,1.1],
-   [3.9,-1.05],[-3.05,-2.05]]:
+  [[-5.5,-1.25],[-5.45,1.05],[-4.9,1.15],[3.45,1.1],
+   [3.7,-1.05],[-3.05,-2.05]]:
   [[-6.55,-1.25],[-6.45,1.05],[-5.45,1.15],[3.9,1.1],
    [4.15,-1.05],[-3.15,-2.05]],3.85,0);
  p('receiver',compact?
-  [[-5.35,1.1],[-4.9,2.35],[1.5,2.4],[2.85,1.75],[3.05,1.05]]:
+  [[-5.2,1.1],[-4.65,2.35],[1.3,2.4],[2.7,1.75],[2.9,1.05]]:
   [[-5.8,1.1],[-5.2,2.25],[1.6,2.3],[3.0,1.8],[3.25,1.05]],
   3.5,1);
  b('receiver',-4.25,-.05,2.05,2.8,1.15,.5,1);
@@ -45,14 +45,14 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const stock=parts.stock;
  if(stock==='ak-skeleton'){
   // Preserve the successful open profile, only thicken the connecting bars.
-  line('stock',[-5.65,.65],[-12.3,.55],.95,1.05,0);
-  line('stock',[-5.65,-1.35],[-12.3,-2.5],.95,1.05,0);
-  line('stock',[-5.75,-1.3],[-9.45,.15],.72,1.05,0);
+  line('stock',[-5.25,.65],[-12.3,.55],1.0,1.05,0);
+  line('stock',[-5.25,-1.35],[-12.3,-2.5],1.0,1.05,0);
+  line('stock',[-5.25,-1.3],[-9.45,.15],.75,1.05,0);
   b('stock',-12.8,-1,0,1.05,3.65,2.5,1);
  }else if(stock==='ak-sidefold'){
   // One fat five-sided silhouette, not a pointed plank with floating hinge.
-  p('stock',[[-12.7,.55],[-8.65,.8],[-6.15,.45],
-   [-6.25,-1.6],[-10.15,-2.85],[-12.7,-2.35]],3.75,1);
+  p('stock',[[-12.25,.7],[-8.3,.95],[-6.0,.35],
+   [-6.25,-1.5],[-9.6,-2.9],[-12.25,-2.15]],4.1,1);
  }else{
   const isWood=stock==='ak-wood'||stock==='ak-wood74';
   p('stock',[[-13.5,.65],[-8.9,.95],[-6.25,-.5],
