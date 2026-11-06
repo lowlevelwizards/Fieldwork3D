@@ -20,8 +20,10 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
  const pixel=(x:number,y:number,light=false,strong=false)=>{
   if(x<0||y<0||x>=w||y>=h)return;
   const n=(y*w+x)*4;
-  const rgb=strong?[9,13,12]:light?[88,99,88]:[24,31,27];
-  data[n]=rgb[0];data[n+1]=rgb[1];data[n+2]=rgb[2];data[n+3]=strong?255:232;
+  const rgb=mark==='ak-cover-ribs'?[41,48,39]:
+   strong?[9,13,12]:light?[74,85,77]:[24,31,27];
+  data[n]=rgb[0];data[n+1]=rgb[1];data[n+2]=rgb[2];
+  data[n+3]=mark==='ak-cover-ribs'?214:strong?255:232;
  };
  if(mark==='ar-port'){
   // A tall receiver-side rectangle with one illuminated upper seam.
@@ -34,8 +36,9 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   for(let y=3;y<=9;y++)for(let x=3;x<=12;x++)pixel(x,y);
   for(let x=3;x<=12;x++)pixel(x,3,true);
  }else if(mark==='ak-selector'){
-  for(let y=2;y<=5;y++)for(let x=2;x<=5;x++)pixel(x,y,true);
-  for(let x=6;x<=13;x++)pixel(x,3+Math.floor((x-6)/4));
+  // One dark lever with a subtle pivot, not a floating white square.
+  for(let y=2;y<=4;y++)for(let x=2;x<=4;x++)pixel(x,y);
+  for(let x=4;x<=14;x++)pixel(x,3+Math.floor((x-4)/6));
  }else if(mark==='ak-cover-ribs'){
   // Broad, spaced pressed cover grooves, never tiny scattered surface noise.
   for(const start of [3,10,17])
