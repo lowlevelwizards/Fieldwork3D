@@ -1622,3 +1622,21 @@ html,body{font-family:var(--fw-font-menu)}
   font:700 10px var(--ui-font)
 }
 .replay-inspector-actions button:disabled{opacity:.36}
+
+/* Replay R3 saved mission list: compact and distinct from the live HUD. */
+.saved-missions{margin-top:14px;padding-top:11px;border-top:1px solid #587064}
+.saved-missions h3{margin:0 0 8px;font:700 14px var(--ui-display);letter-spacing:.06em}
+.favorite-missions-list{display:flex;flex-direction:column;gap:5px;max-height:220px;
+  overflow-y:auto;overscroll-behavior:contain}
+.favorite-empty{font:500 11px/1.4 var(--ui-font);color:#a4b5a8;margin:4px 2px}
+.favorite-mission-entry{display:grid;grid-template-columns:minmax(0,1fr) 58px 36px;
+  gap:5px;align-items:center;padding:6px;border:1px solid #627768;
+  background:#263932;border-radius:5px}
+.favorite-mission-name{display:flex;flex-direction:column;min-width:0;gap:2px}
+.favorite-mission-name strong{font:700 12px/1.2 var(--ui-font);
+  color:#e5e3d1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.favorite-mission-name span{font:500 10px var(--ui-font);color:#aebcad}
+.favorite-mission-entry button{min-height:37px;min-width:0;border-radius:5px;
+  background:#3d5646;color:#f0e8d9;border:1px solid #78907e;
+  font:700 12px var(--ui-font)}
+.favorite-mission-entry button:disabled{opacity:.35}

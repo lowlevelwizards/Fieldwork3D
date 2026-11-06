@@ -36,6 +36,8 @@ import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
 import type {Site} from './breach-site.ts';
 import {captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam,
   type MissionStartSnapshot} from './breach-mission-restart.ts';
+import {readFavoriteMissions,addFavoriteMission,removeFavoriteMission,
+  writeFavoriteMissions,type FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
 import {sessionIntelligenceReview} from './briefing/briefing-after-action.ts';
@@ -241,6 +243,8 @@ const ui={
   debriefStats:el<HTMLElement>('debriefStats'),
   retry:el<HTMLButtonElement>('retry'),next:el<HTMLButtonElement>('next'),
   watchReplay:el<HTMLButtonElement>('watchReplay'),
+  favoriteMission:el<HTMLButtonElement>('favoriteMission'),
+  favoriteMissionsList:el<HTMLElement>('favoriteMissionsList'),
   replayPanel:el<HTMLElement>('replayPanel'),
   replayPlay:el<HTMLButtonElement>('replayPlay'),
   replayBack:el<HTMLButtonElement>('replayBack'),
@@ -522,6 +526,74 @@ let deployOptions:ReturnType<typeof availableDeployments>=[];
 let selectedEntry='FRONT';
 let missionStart:MissionStartSnapshot=captureMissionStart(
  state,requestedSiteScale,selectedEntry);
+const FAVORITE_MISSIONS_STORAGE='fieldwork3d.favorite-missions.v1';
+let activeFavoriteId:string|null=null;
+function favoriteMissions():FavoriteMission[]{
+  try{return readFavoriteMissions(localStorage.getItem(FAVORITE_MISSIONS_STORAGE));}
+  catch{return [];}
+}
+function persistFavoriteMissions(history:FavoriteMission[]):boolean{
+  try{
+    localStorage.setItem(FAVORITE_MISSIONS_STORAGE,writeFavoriteMissions(history));
+    return true;
+  }catch{return false;}
+}
+function restoreFavoriteMission(saved:FavoriteMission):void{
+  if(campaignMode==='mission'){
+    showUiHelp('FAVORITES PLAY AS QUICK PLAY PRACTICE',3400);return;
+  }
+  const start=structuredClone(saved.start);
+  campaignMode='quick';
+  reset(start.variant,start.seed,start.missionType,
+    siteForMissionRestart(start),undefined,false,start);
+  restoreMissionStartingTeam(state,start);
+  selectedEntry='FRONT';
+  if(start.entryId!=='FRONT'){
+    if(selectDeployment(state,start.entryId))selectedEntry=start.entryId;
+    else console.warn('[Favorite mission] Saved entry no longer valid',start.entryId);
+  }
+  missionStart=start;activeFavoriteId=saved.id;
+  recorder=new MissionRecorder();recorder.capture(state,true);
+  closeMissionSettings(false);
+  layout();updateHud();
+  showUiHelp('FAVORITE LOADED · ORIGINAL MISSION SETUP',3800);
+}
+function renderFavoriteMissions():void{
+  const list=ui.favoriteMissionsList;
+  const entries=favoriteMissions().slice().reverse();
+  const fragment=document.createDocumentFragment();
+  if(!entries.length){
+    const empty=document.createElement('p');empty.className='favorite-empty';
+    empty.textContent='Favorite an operation from its debrief to play it again later.';
+    fragment.append(empty);
+  }
+  for(const saved of entries){
+    const row=document.createElement('div');row.className='favorite-mission-entry';
+    row.setAttribute('role','listitem');
+    const info=document.createElement('div');info.className='favorite-mission-name';
+    const title=document.createElement('strong');title.textContent=saved.label;
+    const caption=document.createElement('span');
+    caption.textContent=saved.start.missionType.toUpperCase()+
+      ' · '+(saved.start.site?.scale??'standard').toUpperCase();
+    info.append(title,caption);
+    const play=document.createElement('button');play.type='button';
+    play.textContent='PLAY';play.disabled=campaignMode==='mission';
+    play.title='Start an independent Quick Play rematch';
+    play.addEventListener('click',()=>restoreFavoriteMission(saved));
+    const remove=document.createElement('button');remove.type='button';
+    remove.textContent='×';remove.setAttribute('aria-label',
+      'Delete favorite '+saved.label);
+    remove.addEventListener('click',()=>{
+      if(!persistFavoriteMissions(removeFavoriteMission(favoriteMissions(),saved.id))){
+        showUiHelp('COULD NOT UPDATE FAVORITES',2900);return;
+      }
+      if(activeFavoriteId===saved.id)activeFavoriteId=null;
+      renderFavoriteMissions();updateHud();
+    });
+    row.append(info,play,remove);fragment.append(row);
+  }
+  list.replaceChildren(fragment);
+}
 function refreshDeployment(){
  if(deploymentState!==state){
   deploymentState=state;selectedEntry='FRONT';
@@ -2308,6 +2380,9 @@ function updateHud(){
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
   ui.debrief.hidden=replaying||(state.phase!=='won'&&state.phase!=='lost');
+  ui.favoriteMission.disabled=!state.site;
+  ui.favoriteMission.textContent=activeFavoriteId?
+    '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
   ui.next.textContent=campaignMode==='mission'?'RETURN TO BASE':'NEXT ARRANGEMENT';
   ui.retry.disabled=campaignMode==='mission';
   if(!ui.debrief.hidden){
@@ -4016,6 +4091,27 @@ function exitReplay(){
   updateHud();
 }
 ui.watchReplay.addEventListener('click',enterReplay);
+ui.favoriteMission.addEventListener('click',()=>{
+  if(!state.site)return;
+  const favorites=favoriteMissions();
+  if(activeFavoriteId&&favorites.some(item=>item.id===activeFavoriteId)){
+    showUiHelp('MISSION ALREADY IN FAVORITES',2700);return;
+  }
+  const id='favorite-'+Date.now().toString(36)+'-'+
+    Math.random().toString(36).slice(2,9);
+  const label=state.site.name+' · '+state.missionType.toUpperCase();
+  try{
+    if(!persistFavoriteMissions(addFavoriteMission(
+      favorites,missionStart,id,label,Date.now())))
+      throw Error('Storage unavailable');
+    activeFavoriteId=id;
+    renderFavoriteMissions();updateHud();
+    showUiHelp('MISSION SAVED TO FAVORITES',3200);
+  }catch(error){
+    console.warn('[Favorite mission]',error);
+    showUiHelp('COULD NOT SAVE FAVORITE · CHECK LOCAL STORAGE',3500);
+  }
+});
 ui.replayPlay.addEventListener('click',()=>{
   if(replayTime>=recorder.duration)seekReplay(0);
   replayPlaying=!replayPlaying;
@@ -4183,6 +4279,7 @@ function reset(next=state.variant,siteSeed?:number,
  encounterRisk?:1|2|3,deferScene=false,
  restartStart?:MissionStartSnapshot){
   replaying=false;replayPlaying=false;finishedSession=null;
+  activeFavoriteId=null;
   replayEventIndex=null;
   operationsBoard.hidden=true;
   hideWeaponChooser();
@@ -5271,6 +5368,7 @@ function selectMissionSettingsTab(tab:string){
  if(title)title.textContent=tab==='environment'?'ENVIRONMENT':
   tab==='preferences'?'PREFERENCES':'MISSION';
 }
+renderFavoriteMissions();
 for(const button of missionSettingsTabs)button.addEventListener('click',()=>{
  selectMissionSettingsTab(button.dataset.siteTab??'mission');
 });
