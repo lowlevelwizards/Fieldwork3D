@@ -1719,7 +1719,7 @@ function draw(){
    const report=rig.root.userData.lowReadyPoseReport as
     {status:string;mode?:string;penetration:number|null;
      softContact?:number|null;poseQuality?:number|null;
-     fittingYaw?:number;
+     fittingYaw?:number;torsoAssistYaw?:number;
      candidates:number;weapon?:string;armor?:string;
      rig?:string;top?:string}|null;
    poseFitOutput.textContent=report?
@@ -1732,10 +1732,16 @@ function draw(){
     '\nQUALITY '+(report.poseQuality?.toFixed(2)??'N/A')+
     '\nGRIP '+rig.gripError.toFixed(3)+
     '\nSTOCK '+rig.stockError.toFixed(3)+
-    '\nCANDIDATES '+report.candidates:'NO STATIC FAMILY SOLVE';
+    '\nCANDIDATES '+report.candidates+
+    '\nTORSO ASSIST '+(report.torsoAssistYaw??0).toFixed(3):
+    'NO STATIC FAMILY SOLVE';
    canvas.dataset.lowReadyFit=report?.status??'not-applicable';
    canvas.dataset.lowReadyMode=report?.mode??'unresolved';
-   canvas.dataset.poseFitYaw=String(report?.fittingYaw??'');
+   // Camera review stays canonical even when chest-local weapon yaw changes.
+   canvas.dataset.poseFitYaw=String(
+    (report?.fittingYaw??0)+(report?.torsoAssistYaw??0));
+   canvas.dataset.poseFitWeaponYaw=String(report?.fittingYaw??'');
+   canvas.dataset.torsoAssistYaw=String(report?.torsoAssistYaw??0);
    canvas.dataset.poseFitArmor=report?.armor??'';
    canvas.dataset.poseFitRig=report?.rig??'';
    canvas.dataset.poseFitTop=report?.top??'';
