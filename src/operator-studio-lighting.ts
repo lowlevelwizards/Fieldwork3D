@@ -77,6 +77,7 @@ export class OperatorStudioLighting{
  readonly fill:THREE.DirectionalLight;
  readonly mode:StudioShadowMode;
  private dirty=true;
+ private liveEnabled:boolean;
  private readonly renderer:THREE.WebGLRenderer;
  readonly shadowSize:512|1024;
  constructor(scene:THREE.Scene,renderer:THREE.WebGLRenderer,
@@ -85,25 +86,33 @@ export class OperatorStudioLighting{
   this.mode=studioShadowMode(search);
   this.shadowSize=studioShadowSize(search);
   const legacy=this.mode==='legacy';
+  this.liveEnabled=!legacy;
   this.hemisphere=new THREE.HemisphereLight(0xffffff,0x798a7f,
    legacy?2.0:1.20);
   this.key=new THREE.DirectionalLight(0xfff2d6,legacy?2.8:2.35);
   this.fill=new THREE.DirectionalLight(0xaec5c2,legacy?1.0:.45);
   this.fill.position.set(-35,23,30);
   this.key.position.copy(STUDIO_KEY_DIRECTION).multiplyScalar(100);
-  this.key.castShadow=!legacy;
+  this.key.castShadow=this.liveEnabled;
   this.key.shadow.mapSize.set(this.shadowSize,this.shadowSize);
   this.key.shadow.bias=-.0001;
   this.key.shadow.normalBias=.02;
   this.key.shadow.radius=1;
-  this.renderer.shadowMap.enabled=!legacy;
+  this.renderer.shadowMap.enabled=this.liveEnabled;
   this.renderer.shadowMap.autoUpdate=false;
   this.renderer.shadowMap.type=THREE.BasicShadowMap;
   scene.add(this.hemisphere,this.key,this.fill,this.key.target);
  }
  invalidateGeometry(){this.dirty=true;}
+ setLiveShadows(enabled:boolean){
+  if(this.mode==='legacy')return;
+  this.liveEnabled=enabled;
+  this.key.castShadow=enabled;
+  this.renderer.shadowMap.enabled=enabled;
+  this.invalidateGeometry();
+ }
  beforeRender(operator:THREE.Object3D|null){
-  if(!operator||this.mode==='legacy'||!this.dirty)return;
+  if(!operator||!this.liveEnabled||!this.dirty)return;
   if(fitStudioKeyShadow(this.key,operator)){
    this.renderer.shadowMap.needsUpdate=true;
    this.dirty=false;
@@ -111,6 +120,6 @@ export class OperatorStudioLighting{
  }
  get diagnostics(){
   return {mode:this.mode,shadowSize:this.shadowSize,
-   shadowEnabled:this.key.castShadow,dirty:this.dirty};
+   shadowEnabled:this.liveEnabled,dirty:this.dirty};
  }
 }

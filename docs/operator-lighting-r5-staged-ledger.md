@@ -76,3 +76,13 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 - Missing mask inputs allocate nothing; UVs and grayscale vertex-color AO remain unchanged.
 - Focused tests enforce byte-perfect mapping for mixed indexed/flat meshes.
 - True UV1 lightmap atlas GPU delivery remains a later visual experiment.
+
+## R5.6-A opt-in Studio lighting diagnostic (2026-11-06)
+- `?operatorLightingDebug=1` draws a small developer-only overlay.
+- Report visible unique geometries, draw calls, logical part spans,
+  and shaded sample coverage/max/mean per CPU self/contact/cast mask.
+- A live directional-shadow toggle and shadow rebuild control allow fast A/B.
+- No effect on normal Studio UI or gameplay, no GPU readback or extra draw calls.
+- CPU mask inspector ignores hidden alternate kits and duplicate shared geometries.
+- This is a diagnostic foundation; full per-layer compositing controls follow
+  after the shader/lightmap atlas visual experiment.
