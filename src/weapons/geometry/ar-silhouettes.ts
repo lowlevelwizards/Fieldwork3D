@@ -180,7 +180,11 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // Mk12 Mod 0 keeps the six-sided PRI tube and its continuous bridge.
   gb((start+end)/2,2.06,0,end-start,.56,2.8,0);
   gb(2.65,2.06,0,3.85,.52,2.6,0);
-  gm('pri-vents',(start+end)/2,.18,1.90,end-start-1.7,.83);
+  // The Mk12's long continuous A.R.M.S.-style bridge finally has a handful
+  // of strong teeth; do not turn the PRI tube into a quad-rail.
+  addARRailSegments(root,'handguard',parts.handguard,index.handguard++,
+   {startX:start+.48,endX:end-.30,count:5,topY:2.87},material[0]);
+  gm('pri-vents',(start+end)/2,.27,1.90,end-start-1.7,.77);
  }else if(guard==='ar-triangle'){
   // Two deliberately angled facets instead of a featureless slab.
   gh([[start,1.47],[start+.64,1.75],
@@ -188,7 +192,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [end-1.05,-1.15],[start,-1.72]],3.62,1);
   gh([[start,-.73],[end-.82,-.68],[end-1.05,-1.15],
    [start,-1.72]],3.75,0);
-  gm('a1-vents',(start+end)/2,.91,1.93,end-start-1.68,1.02);
+  // Broad dark upper vents only; no tiny front-face pinholes.
+  gm('a1-vents',(start+end)/2,1.08,1.94,end-start-1.55,1.14);
  }else if(guard==='ar-round'||guard==='ar-carbine'||retro){
   gh(retro?
    [[start,1.26],[start+.88,1.48],[end-.5,1.45],
@@ -197,8 +202,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
     [end,-.78],[end-.65,-1.71],[start+.45,-1.76]],
    retro?3.15:3.85,1);
   if(retro)gb(start+.32,.04,0,.53,2.88,3.32,0);
-  // Plastic bands wrap the broad visible face; one subdued seam, not a grid.
-  gm(retro?'car-ribs':'poly-ribs',(start+end)/2,.1,
+  // No horizontal highlight seam. Dark transverse ribbing should stand on
+  // its own as polymer texture rather than create a glowing crosshatch.
+  gm(retro?'car-ribs':'poly-ribs',(start+end)/2,.10,
    retro?1.68:2.03,end-start-1.8,2.24);
  }else{
   const ris=guard==='ar-risii';
@@ -214,12 +220,17 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // Underlying rail spines — continuous, but the teeth are one instanced mesh.
   gb(center,1.87,0,span,.62,3.16,0);
   gb(center,-1.83,0,span-.70,.48,2.43,0);
+  // Bury the side spine just inside the outer teeth, leaving tangible
+  // negative-space steps without inflating the entire handguard silhouette.
   for(const side of [-1,1])
-   gb(center,.07,side*2.05,span-1.2,.58,.42,0);
+   gb(center,.07,side*2.01,span-1.2,.53,.31,0);
   addARRailSegments(root,'handguard',parts.handguard,index.handguard++,
    {startX:start,endX:end,count:guard==='ar-m5-rail'?5:4,
-    topY:2.84,bottomY:-1.65,sideZ:2.34,sideY:.59,
+    topY:2.84,bottomY:-1.65,sideZ:2.44,sideY:.59,
     coverSides:covered},material[0]);
+  // A single understated front cap makes the rail read as an attached
+  // fore-end rather than a row of free-floating toy blocks.
+  gb(end-.13,.04,0,.27,2.80,ris?3.35:3.15,0);
   if(covered){
    // Cover occupies its own rail section; no side teeth underneath.
    for(const side of [-1,1])gb(center,.10,side*2.39,
