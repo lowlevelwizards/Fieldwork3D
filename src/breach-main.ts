@@ -4539,7 +4539,8 @@ ui.play.addEventListener('click',()=>{
   }else{
     looking=false;
     if(state.phase==='planning'){
-      missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
+      if(!state.started)
+        missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
       recorder.capture(state,true);
     }
     toggling(state);updateHud();
@@ -4586,7 +4587,8 @@ window.addEventListener('keydown',e=>{
       if(!returnAfterCampaignMission())reset();
     }else{
       if(state.phase==='planning'){
-        missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
+        if(!state.started)
+          missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
         recorder.capture(state,true);
       }
       toggling(state);
