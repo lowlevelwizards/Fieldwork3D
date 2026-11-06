@@ -81,8 +81,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   p('receiver',[[-4.83,2.26],[-4.32,2.63],[-1.18,2.69],
    [-.82,2.30]],2.12,1);
   const ears:readonly Outline[]=[
-   [[-2.75,2.50],[-2.55,3.09],[-2.15,3.09],[-2.00,2.52]],
-   [[-1.92,2.52],[-1.75,3.08],[-1.35,3.08],[-1.20,2.53]]
+   [[-2.75,2.50],[-2.55,3.15],[-2.15,3.15],[-2.00,2.52]],
+   [[-1.92,2.52],[-1.75,3.15],[-1.35,3.15],[-1.20,2.53]]
   ];
   for(const [i,outline] of ears.entries()){
    const ear=p('receiver',outline,.67,0);
@@ -136,7 +136,7 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // down its wall. Retain the deep clubfoot behind the narrower stock neck.
   p('stock',[[-15.85,.69],[-10.6,.88],[-6.22,1.01],
    [-6.38,-1.48],[-9.96,-1.99],[-11.48,-3.43],
-   [-13.75,-3.90],[-15.85,-3.42]],3.06,2);
+   [-13.75,-4.06],[-15.85,-3.42]],3.06,2);
  }else if(stock==='ak-triangle-full'){
   // Standard AKS-74 side-folding TRIANGLE: strong top rail, single lower
   // diagonal, open center, clean skinny butt. It must not read as an AKMS.
