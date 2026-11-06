@@ -22,7 +22,8 @@ test('R3: objectives, success, extraction stay authoritative',()=>{
  assert.match(main,/ui\.briefingBody\.textContent=brief\.objective/);
  assert.match(main,/ui\.briefingCondition\.textContent=brief\.condition/);
  assert.match(main,/ui\.briefingExtraction\.textContent=brief\.extraction/);
- assert.match(main,/dossier\.claims\.map\(c=>/);
+ assert.match(main,/createBriefingCardModel\(state\.missionType,brief,dossier\)/);
+ assert.match(main,/renderBriefingReports\(ui\.briefingIntel,model\.reports\.threat\)/);
 });
 test('R3: real enabled encounter produces a mission-consistent dossier',()=>{
  try{
