@@ -190,7 +190,9 @@ export function resupplyRoster(roster:RosterState,id?:string):RosterState{
 export function equipRoster(roster:RosterState,id:string,weapon:WeaponId):RosterState{
  return {version:1,members:roster.members.map(m=>m.id===id?{
    ...m,weapon,loadout:syncPrimaryWeapon(m.loadout,weapon),
-    weaponConfiguration:changeWeaponPlatform(m.weaponConfiguration,weapon),
+    weaponConfiguration:resolveIssuedOrLegacy(
+      changeWeaponPlatform(m.weaponConfiguration,weapon),weapon,
+      starterWeaponPreset(m.id)),
    magazine:WEAPONS[weapon].capacity,reserve:WEAPONS[weapon].reserve,
    magazines:weapon==='shotgun'?[]:
     magazineKit(m.id,weapon,WEAPONS[weapon].reserve,WEAPONS[weapon].capacity),
