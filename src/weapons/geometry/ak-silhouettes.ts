@@ -44,8 +44,12 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [m.magwellCenterX+1.50,m.magwellBottomY],
    [m.magwellCenterX-1.30,m.magwellBottomY]],3.25,0);
  if(compact){
-  // Characteristically raised rear/cover area of a compact AK.
-  p('receiver',[[-5,2.2],[-4.65,3.55],[-1.6,3.6],[-1,2.28]],2.25,1);
+  // AKS-74U hinged dust cover with a LOW, squat rear-sight hump.
+  // Avoid the previous tall, flat slab that read as a holographic optic.
+  p('receiver',[[-5.12,2.2],[-4.56,2.68],[-1.42,2.77],
+   [-.7,2.28]],2.25,1);
+  p('receiver',[[-4.53,2.64],[-4.24,3.19],[-3.42,3.19],
+   [-3.18,2.72]],1.45,0);
  }else{
   b('receiver',-3.9,2.52,0,1.15,.58,2.0,0);
  }
@@ -155,27 +159,45 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  if(rail)b('handguard',(start+.9+end)/2,2.6,0,
   end-start-1.2,.6,3.0,0);
 
- // Distinct high front sight and the compact's visually large final device.
+ // The muzzle contact stays fixed at 19.5 for every existing gameplay build.
+ // Different exposed barrel lengths come from furniture and sight landmarks.
  const tip=19.5;
- const barrelStart=short?11.2:mid?13.35:rpk?13.95:14.9;
- b('barrel',(barrelStart+tip)/2,0,0,tip-barrelStart,
-  rpk?1.62:1.23,rpk?1.85:1.5,0);
+ const barrelStart=short?11.2:mid?12.1:rpk?13.08:12.2;
+ const barrelEnd=short?tip:18.5;
+ b('barrel',(barrelStart+barrelEnd)/2,0,0,barrelEnd-barrelStart,
+  rpk?1.43:1.15,rpk?1.8:1.5,0);
  if(short){
-  // A much denser compact nose; no long pencil barrel sticking out.
-  p('barrel',[[14.8,-.98],[18.85,-1.3],[19.5,-1.0],
-   [19.5,1.18],[18.85,1.37],[14.8,1.05]],2.85,1);
+  // Keep the AKS-74U's large, recognizable booster and compact front sight.
+  p('barrel',[[14.8,-.98],[18.85,-1.3],[tip,-1.0],
+   [tip,1.18],[18.85,1.37],[14.8,1.05]],2.85,1);
   p('barrel',[[12.05,.25],[12.95,2.85],[13.85,2.85],
    [14.1,.25]],1.75,0);
  }else{
-  p('barrel',[[16.5,.2],[16.75,3.35],[17.5,3.45],
-   [17.6,.2]],1.9,0);
-  b('barrel',18.6,0,0,1.8,parts.receiver==='akm'?1.75:2.4,
-   parts.receiver==='akm'?1.85:2.45,1);
-  if(rpk){
-   // Folded bipod as three symbolic shapes, no simulated mechanisms.
-   line('barrel',[14.5,-.65],[17.6,-1.75],.54,1.25,0);
-   line('barrel',[15.3,-.55],[18.0,-1.42],.43,1.25,0);
-   b('barrel',17.85,-1.65,0,.75,.45,1.45,1);
+  const sight=rpk?17.35:16.0;
+  p('barrel',[[sight,.28],[sight+.22,2.94],
+   [sight+1.03,2.98],[sight+1.18,.28]],1.85,0);
+  if(parts.receiver==='akm'||parts.receiver==='ak103'){
+   // Short, diagonal AKM-type tip; AK-103 is a requested custom visual.
+   p('barrel',[[18.3,-.6],[tip,-.6],[19.25,.28],
+    [18.9,.75],[18.3,.67]],2.08,1);
+  }else if(rpk){
+   // The RPK-74 gets a slender, long-barrel nose instead of a giant brake.
+   p('barrel',[[18.3,-.53],[tip,-.53],[tip,.53],
+    [18.3,.53]],1.65,1);
+   // Folded bipod is a silhouette landmark, not a working mechanism.
+   line('barrel',[14.2,-.65],[17.45,-1.77],.54,1.25,0);
+   line('barrel',[15.0,-.55],[17.8,-1.42],.43,1.25,0);
+   b('barrel',17.76,-1.65,0,.72,.45,1.45,1);
+  }else if(parts.receiver==='ak105'){
+   // AK-105 short 100-series brake: 74-family outline, less front length.
+   p('barrel',[[17.76,-.95],[19.2,-.95],[tip,-.73],
+    [tip,.75],[19.2,.95],[17.76,.95]],2.28,1);
+   b('barrel',17.78,0,0,.25,2.14,2.36,0);
+  }else{
+   // AK-74 and AK-74M signature long, thick cylindrical brake.
+   p('barrel',[[17.18,-1.08],[19.26,-1.08],[tip,-.88],
+    [tip,.9],[19.26,1.08],[17.18,1.08]],2.45,1);
+   b('barrel',17.19,0,0,.32,2.28,2.5,0);
   }
  }
 }
