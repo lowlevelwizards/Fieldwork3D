@@ -26,7 +26,7 @@ export const AK_BARREL_ART:Readonly<Record<string,AKBarrelArt>>={
  'ak-rpk-long':{
   id:'ak-rpk-long',lengthScale:.94,handguardFrontX:13.0,
   gasTubeBeginX:12.15,gasBlockX:15.7,
-  frontSightX:21.35,muzzleX:24.7,muzzleStyle:'rpk'
+  frontSightX:22.98,muzzleX:24.7,muzzleStyle:'rpk'
  }
 };
 export function akBarrelArt(id:string):AKBarrelArt|undefined{

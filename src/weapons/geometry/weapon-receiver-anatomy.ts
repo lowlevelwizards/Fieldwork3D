@@ -31,7 +31,7 @@ export const AK_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
  gripShiftX:-2.05,gripDepthZ:2.45,
  magwellCenterX:.95,magazineWidthX:3.05,magazineDepthZ:2.2,
  magazineTopY:-2.1,magwellTopY:-1.16,magwellBottomY:-2.6,
- portX:.95,portY:.62,portWidthX:2.5,portHeightY:1.12
+ portX:.95,portY:.15,portWidthX:3.18,portHeightY:1.24
 };
 /** Position a pre-authored polygon without changing its iconic contour. */
 export function shiftProfile(points:readonly (readonly [number,number])[],

@@ -3,10 +3,10 @@
  * Art-only overlays have no cast shadow and never affect weapon handling.
  */
 import * as THREE from 'three';
-export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'a1-vents'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage';
+export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'a1-vents'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage';
 const dimensions:Record<WeaponMark,readonly [number,number]>={
  'ar-port':[16,12],'ak-port':[16,12],
- 'ak-selector':[16,8],'ris-panel':[32,8],'pri-vents':[16,8],
+ 'ak-selector':[16,8],'ak-cover-ribs':[24,8],'ris-panel':[32,8],'pri-vents':[16,8],
  'poly-ribs':[32,10],'car-ribs':[24,10],'a1-vents':[32,10],
  'm5-panel':[32,8],'ras-panel':[32,8],
  'ar-mag-stamp20':[16,16],'ar-mag-stamp30':[16,24],
@@ -35,6 +35,11 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
  }else if(mark==='ak-selector'){
   for(let y=2;y<=5;y++)for(let x=2;x<=5;x++)pixel(x,y,true);
   for(let x=6;x<=13;x++)pixel(x,3+Math.floor((x-6)/4));
+ }else if(mark==='ak-cover-ribs'){
+  // Broad, spaced pressed cover grooves, never tiny scattered surface noise.
+  for(const start of [3,10,17])
+   for(let y=1;y<7;y++)for(let x=start;x<start+2;x++)
+    pixel(x,y,false,true);
  }else if(mark==='poly-ribs'||mark==='car-ribs'){
   const ribX=mark==='poly-ribs'?[3,7,11,15,19,23,27]:
    [3,7,11,15,19];
