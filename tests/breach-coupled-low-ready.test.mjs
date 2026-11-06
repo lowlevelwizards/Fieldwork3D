@@ -81,3 +81,23 @@ test('at least one representative M4 and AK simple kit finds a clear two-hand st
  }
  assert.ok(clear>=1,'At least one approved physical pose is required before integration');
 });
+
+test('real clothing and armor matrix can produce visible, nonpenetrating holds',()=>{
+ const entries=[
+  ['ar-m4a1','plate-jpc','no-rig','bdu-shirt'],
+  ['ar-m16a4','plate-standard','full-chest','acu-shirt'],
+  ['ak-akm','plate-standard','chicom-rig','bdu-shirt'],
+  ['ak-ak105','plate-heavy','no-rig','combat-shirt'],
+  ['ak-aks74u','plate-jpc','no-rig','smock-jacket']
+ ];
+ let solved=0;
+ for(const [id,armor,rig,top] of entries){
+  const {p,config}=build(id);
+  const solution=solveCoupledLowReady({weapon:p.weapon,configuration:config,
+   shoulders,armor:poseClearanceEnvelope(armor,rig,top),nominalYaw:0});
+  console.log('POSE-MATRIX',id,armor,rig,top,solution?.status??'UNRESOLVED',
+   solution?.penetration??'N/A',solution?.candidates??0);
+  if(solution)solved++;
+ }
+ assert.ok(solved>=3,'At least three representative armored configurations must avoid clipping');
+});
