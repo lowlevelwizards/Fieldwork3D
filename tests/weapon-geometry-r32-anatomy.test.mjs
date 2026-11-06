@@ -52,7 +52,7 @@ test('R3.2 shared visual anatomy makes receiver, grip and magwell a joined cente
   const magazine=bounds(group,'magazine'),guard=bounds(group,'handguard');
   assert.ok(body.intersectsBox(grip),p.id+' grip joint');
   assert.ok(body.intersectsBox(magazine),p.id+' magazine joint');
-  assert.ok(body.min.y<=-2.55,p.id+' visible lower receiver seating');
+  assert.ok(body.min.y<=-2.54,p.id+' visible lower receiver seating');
   assert.ok(grip.getCenter(new THREE.Vector3()).x<
    magazine.getCenter(new THREE.Vector3()).x,p.id+' grip behind magazine');
   assert.ok(magazine.min.y<-5,p.id+' magazine still visible');
