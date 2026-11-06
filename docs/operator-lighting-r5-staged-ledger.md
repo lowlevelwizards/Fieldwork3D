@@ -190,3 +190,13 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 - Restore old geometry and clear UV1 when a fitted mesh is replaced.
 - No per-pose shadow correction and no cumulatively brightened clothing.
 - Exact latest-source rollback is covered by focused tests.
+
+## R5.6-D independent Studio lighting layer inspector
+- Debug overlay now independently enables/disables self AO, external gear
+  AO, proximity contact, baked directional casts and height shading.
+- Keep one byte-exact original vertex buffer per visible geometry in a
+  WeakMap; recomposition never multiplies a previous debug result.
+- Restore untouched colors before every appearance re-bake and on Reset.
+- Disabled-channel preview is a visual diagnostic where occlusion passes
+  overlap; the unmodified baked result remains the production authority.
+- No new materials, geometry, GPU attributes or gameplay work.

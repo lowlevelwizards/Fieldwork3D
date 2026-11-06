@@ -2,6 +2,7 @@
  * textures or geometry mutations. Called ONLY by the opt-in Studio overlay.
  */
 import * as THREE from 'three';
+import {operatorHeightBrightness} from './operator-height-lighting.ts';
 export type LightingChannel='self'|'external'|'contact'|'directional';
 export type LightingChannelStats={
  samples:number;shadowed:number;max:number;mean:number
@@ -79,4 +80,104 @@ export function formatOperatorLightingReport(r:OperatorLightingReport):string{
    ', mean '+s.mean.toFixed(1));
  }
  return lines.join('\n');
+}
+
+/** Debug-only layer isolation preview. The source geometry is retained
+ * byte-for-byte in a WeakMap, with precise restoration on reset and before
+ * each wardrobe rebuild. Real lighting remains the authority outside debug.
+ * Separate passes can overlap, so layer removal is an ARTISTIC DIAGNOSTIC,
+ * not a reconstructed physical irradiance solution.
+ */
+export type LightingDiagnosticLayers={
+ self:boolean;external:boolean;contact:boolean;
+ directional:boolean;height:boolean
+};
+export const DEFAULT_LIGHTING_LAYERS:Readonly<LightingDiagnosticLayers>={
+ self:true,external:true,contact:true,directional:true,height:true
+};
+type PreviewBaseline={colors:Uint8Array;appliedVersion:number};
+const originals=new WeakMap<THREE.BufferGeometry,PreviewBaseline>();
+const previewChannels=['self','external','contact','directional'] as const;
+const inverse=new THREE.Matrix4(),transform=new THREE.Matrix4(),
+ point=new THREE.Vector3();
+const isDefault=(layers:LightingDiagnosticLayers)=>
+ Object.keys(DEFAULT_LIGHTING_LAYERS).every(k=>
+  layers[k as keyof LightingDiagnosticLayers]);
+export function restoreOperatorLightingPreview(root:THREE.Object3D|null):number{
+ if(!root)return 0;
+ const visited=new Set<THREE.BufferGeometry>();
+ let restored=0;
+ root.traverseVisible(node=>{
+  if(!(node instanceof THREE.Mesh)||visited.has(node.geometry))return;
+  const geometry=node.geometry as THREE.BufferGeometry;
+  visited.add(geometry);
+  const base=originals.get(geometry);
+  const attr=geometry.getAttribute('color');
+  if(!base||!attr||!(attr.array instanceof Uint8Array)||
+    attr.array.length!==base.colors.length)return;
+  (attr.array as Uint8Array).set(base.colors);
+  attr.needsUpdate=true;
+  originals.delete(geometry);
+  restored++;
+ });
+ return restored;
+}
+export function previewOperatorLightingLayers(
+ root:THREE.Object3D|null,layers:LightingDiagnosticLayers
+):number{
+ if(!root)return 0;
+ if(isDefault(layers))return restoreOperatorLightingPreview(root);
+ root.updateWorldMatrix(true,true);
+ inverse.copy(root.matrixWorld).invert();
+ const visited=new Set<THREE.BufferGeometry>();
+ let modified=0;
+ root.traverseVisible(node=>{
+  if(!(node instanceof THREE.Mesh))return;
+  const geometry=node.geometry as THREE.BufferGeometry;
+  if(visited.has(geometry))return;
+  visited.add(geometry);
+  const attr=geometry.getAttribute('color');
+  if(!attr||attr.itemSize!==3||!attr.normalized||
+   !(attr.array instanceof Uint8Array))return;
+  const count=attr.count;
+  const pixels=attr.array as Uint8Array;
+  let baseline=originals.get(geometry);
+  // Independent clothing re-bake changed the color version.
+  if(!baseline||baseline.appliedVersion!==attr.version){
+   baseline={colors:new Uint8Array(pixels),appliedVersion:attr.version};
+   originals.set(geometry,baseline);
+  }
+  const source=baseline.colors;
+  const masks=previewChannels.map(k=>{
+   const value=geometry.userData[FIELDS[k]];
+   return value instanceof Uint8Array&&value.length===count?value:null;
+  });
+  const position=geometry.getAttribute('position');
+  if(!position||position.count!==count)return;
+  transform.copy(inverse).multiply(node.matrixWorld);
+  for(let i=0;i<count;i++){
+   let full=0,selected=0;
+   for(let k=0;k<masks.length;k++){
+    const occlusion=(masks[k]?.[i]??0)/255;
+    full=Math.max(full,occlusion);
+    if(layers[previewChannels[k]])selected=Math.max(selected,occlusion);
+   }
+   // Only disabling a truly contributing channel can brighten a sample.
+   const gain=full>selected?
+    Math.min(2,(1-selected)/Math.max(.2,1-full)):1;
+   let heightGain=1;
+   if(!layers.height){
+    point.fromBufferAttribute(position,i).applyMatrix4(transform);
+    heightGain=1/operatorHeightBrightness(point.y);
+   }
+   for(let c=0;c<3;c++){
+    const n=i*3+c;
+    pixels[n]=Math.min(255,Math.round(source[n]*gain*heightGain));
+   }
+  }
+  attr.needsUpdate=true;
+  baseline.appliedVersion=attr.version;
+  modified++;
+ });
+ return modified;
 }
