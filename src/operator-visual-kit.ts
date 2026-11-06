@@ -43,6 +43,8 @@ type VisualMaterials={cloth:Material;vest:Material;trousers:Material;
 type Limb={upper:THREE.Mesh;lower:THREE.Mesh;shoe?:THREE.Mesh};
 export type OperatorVisualKit={
  visualChest:THREE.Group;
+ /** Actual underlying uniform shell, not only decorative blouse pieces. */
+ baseTorso:THREE.Mesh;
  wardrobeHead:WardrobeHeadLayers;wardrobeBody:WardrobeBodyLayers;
  identityVisuals:IdentityVisuals;
  wardrobeGear:WardrobeGearLayers;accessories:WardrobeAccessoryVisuals;
@@ -76,7 +78,7 @@ const part=(parent:THREE.Object3D,m:THREE.Material,
 const bundle=(parent:THREE.Object3D)=>{const g=new THREE.Group();parent.add(g);return g;};
 export function createOperatorVisualKit(
  chest:THREE.Group,hip:THREE.Group,head:THREE.Group,pack:THREE.Mesh,
- legs:readonly Limb[],arms:readonly Limb[],m:VisualMaterials,
+ baseTorso:THREE.Mesh,legs:readonly Limb[],arms:readonly Limb[],m:VisualMaterials,
  canonicalHead?:THREE.Group,lazyAccessories=false):OperatorVisualKit{
  const {cloth,vest,trousers,packFabric,gearFabric,headCloth,
   headArmor,dark,skin,steel}=m;
@@ -272,7 +274,7 @@ export function createOperatorVisualKit(
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
   plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
- return {visualChest:chest,wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,
+ return {visualChest:chest,baseTorso,wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,
   helmet,cap,hair,jacket,lightShirt,
   softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
@@ -515,9 +517,14 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   .filter((g):g is THREE.Group=>!!g&&g.visible);
  if(armor)bakeCastOnGear(armor,rig?[rig]:[],v.visualChest,'armor:'+lightingKey);
  if(rig)bakeCastOnGear(rig,armor?[armor]:[],v.visualChest,'rig:'+lightingKey);
- if(clothTorso)bakeCastOnGear(clothTorso,
-  [...(armor?[armor]:[]),...(rig?[rig]:[]),...packs],
-  v.visualChest,'shirt:'+lightingKey);
+ // Previously only decorative collar/pocket groups received the shadows,
+ // while the real uniform shell remained completely flat.
+ const clothCasters=[...(armor?.visible?[armor]:[]),
+  ...(rig?.visible?[rig]:[]),...packs];
+ bakeCastOnGear(v.baseTorso,clothCasters,
+  v.visualChest,'base-uniform:'+lightingKey);
+ if(clothTorso)bakeCastOnGear(clothTorso,clothCasters,
+  v.visualChest,'blouse-details:'+lightingKey);
  for(const selectedPack of packs)bakeCastOnGear(selectedPack,
   armor?[armor]:[],v.visualChest,'pack:'+lightingKey);
 }
