@@ -340,7 +340,8 @@ function sendStudioInit(){
   type:'fw-studio-init',mode:studioMode,selected:studioSelected,
   members:people.map(p=>({
    id:p.id,callsign:p.callsign,appearanceSeed:p.appearanceSeed,
-   loadout:p.loadout,wardrobe:p.wardrobe
+   loadout:p.loadout,wardrobe:p.wardrobe,
+   weapon:p.weapon,weaponConfiguration:p.weaponConfiguration
   })),
   readonly:studioMode==='campaign'?!!campaign?.activeContractId:
    state.phase!=='planning'||replaying
