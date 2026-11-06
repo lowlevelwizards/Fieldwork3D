@@ -39,9 +39,12 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   const heavy=parts.receiver==='ar-a2';
   // Open carry handle: a real gap between posts, never a solid cap block.
   line('receiver',[-4.35,1.8],[-4.35,3.7],heavy?1.25:.85,2.15,0);
-  // Extended bridge, with a forward-slanting nose leg for the retro CAR.
-  line('receiver',[1.45,1.8],[2.05,3.7],.86,2.05,0);
-  b('receiver',-1.24,3.7,0,7.15,.82,2.05,0);
+  // The CAR nose leg leans BACK at the top (the opposite of R3.2).
+  // A small bridge overhang ahead of that leg is intentional.
+  if(parts.receiver==='ar-retro')
+   line('receiver',[2.25,1.8],[1.55,3.7],.86,2.05,0);
+  else line('receiver',[1.55,1.8],[1.55,3.7],.9,2.05,0);
+  b('receiver',-1.15,3.7,0,7.3,.82,2.05,0);
   if(heavy)b('receiver',-4.35,2.4,0,1.6,.95,2.4,1);
  }else{
   // One continuous low top plane; the extra rear nub did not read at game scale.
@@ -54,17 +57,19 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Stock: fixed triangular stock versus open shoulder / sliding-carbine outline.
  if(parts.stock==='ar-fixed'){
   // One five-sided classic rifle wedge, including its rear plate.
-  p('stock',[[-14.0,.65],[-6.05,.7],[-6.05,-1.7],
-   [-9.0,-3.1],[-14.0,-2.4]],3.8,1);
+  // Rearward X extension ONLY, with less Z thickness than R3.2.
+  p('stock',[[-15.15,.65],[-6.05,.7],[-6.05,-1.7],
+   [-9.0,-3.1],[-15.15,-2.4]],3.35,1);
  }else{
   const compact=parts.stock==='ar-compact';
-  const rear=compact?-12.4:-13.0;
-  // The stock body, not the telescoping connector, owns the silhouette.
-  // Keep a short, visibly embedded bridge with intentional overlap at both ends.
-  b('stock',-7.25,.05,0,3.6,1.45,1.9,0);
-  p('stock',[[rear,.65],[rear+1.25,.95],[rear+4.2,.55],
-   [rear+4.2,-1.7],[rear+1.0,-2.9],[rear,-2.15]],
-   compact?4.0:3.75,compact?2:1);
+  const rear=compact?-13.85:-14.45;
+  // Hold the forward joint constant while extending the rear in X.
+  // Never enlarge stock Z to simulate a longer silhouette.
+  const front=compact?-8.4:-8.6;
+  b('stock',-7.65,.05,0,4.2,1.45,1.9,0);
+  p('stock',[[rear,.65],[rear+1.2,.95],[front,.55],
+   [front,-1.7],[rear+1.05,-2.65],[rear,-2.12]],
+   compact?3.35:3.25,compact?2:1);
  }
 
  // Pistol grips share the same root, but the modern shape has a fuller heel.
