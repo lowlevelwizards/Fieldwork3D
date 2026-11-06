@@ -31,7 +31,8 @@ try{
     document.querySelector('#phase')?.textContent==='PLANNING'&&
     !!document.querySelector('#breach3dCanvas'),null,{timeout:60000});
   await page.locator('#play').click();
-  await page.waitForTimeout(850);
+  // Give the recorder an actual multi-second operation before entering film.
+  await page.waitForTimeout(2600);
   await page.evaluate(()=>{
     const trigger=document.querySelector('#watchReplay');
     if(!(trigger instanceof HTMLButtonElement))throw Error('Missing replay entry');
@@ -46,6 +47,9 @@ try{
   }));
   if(!support.recorder||!support.stream)
     throw Error('Chromium smoke lacks browser MediaRecorder/captureStream');
+  // Subscribe BEFORE starting. Short replay films can auto-stop and
+  // download before an arbitrary sleep or a manual STOP click.
+  const downloadPromise=page.waitForEvent('download',{timeout:20000});
   await page.evaluate(()=>{
     const trigger=document.querySelector('#replayExportVideo');
     if(!(trigger instanceof HTMLButtonElement))throw Error('Missing video button');
@@ -54,9 +58,10 @@ try{
   await page.waitForFunction(()=>
     document.querySelector('#replayExportVideo')?.textContent==='STOP VIDEO',
     null,{timeout:12000});
-  await page.waitForTimeout(1850);
-  const downloadPromise=page.waitForEvent('download',{timeout:20000});
-  await page.evaluate(()=>{
+  await page.waitForTimeout(900);
+  const stillRecording=await page.evaluate(()=>
+    document.querySelector('#replayExportVideo')?.textContent==='STOP VIDEO');
+  if(stillRecording)await page.evaluate(()=>{
     const trigger=document.querySelector('#replayExportVideo');
     if(!(trigger instanceof HTMLButtonElement))throw Error('Missing stop button');
     trigger.click();
