@@ -34,7 +34,7 @@ import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
  rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
 import type {Site} from './breach-site.ts';
-import {captureMissionStart,siteForMissionRestart,
+import {captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam,
   type MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
  from './quick-play-generation.ts';
@@ -3983,9 +3983,12 @@ function reset(next=state.variant,siteSeed?:number,
  * It must never regenerate a different layout or use next-site preferences.
  */
 function restartMission():void{
- const start=missionStart;
+ // Before first GO, preserve any last-minute kit/entry changes, not orders.
+ const start=state.started?missionStart:
+   captureMissionStart(state,requestedSiteScale,selectedEntry);
  reset(start.variant,start.seed,start.missionType,
    siteForMissionRestart(start),undefined,false,start);
+ restoreMissionStartingTeam(state,start);
  if(start.entryId!=='FRONT'){
   if(selectDeployment(state,start.entryId))selectedEntry=start.entryId;
   else console.warn('[Restart mission] Original entry no longer valid',start.entryId);
