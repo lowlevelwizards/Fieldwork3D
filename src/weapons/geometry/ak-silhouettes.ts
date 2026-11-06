@@ -4,13 +4,16 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
+import {AK_WARM_RESIN} from './weapon-visual-palette.ts';
 
 export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
  const parts=build.parts,material=[steel,dark,wood] as const;
  const index:Record<SlotName,number>={stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0};
  const p=(slot:SlotName,outline:Outline,depth:number,finish:0|1|2=1)=>
-  addOutline(root,slot,parts[slot],index[slot]++,outline,depth,material[finish]);
+  addOutline(root,slot,parts[slot],index[slot]++,outline,depth,
+   finish===2&&(parts[slot]==='ak-grip-bakelite'||parts[slot]==='ak-mag545')?
+    AK_WARM_RESIN:material[finish]);
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number,
   finish:0|1|2=1)=>addCuboid(root,slot,parts[slot],index[slot]++,
    x,y,z,w,h,d,material[finish]);
@@ -20,10 +23,15 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
 
  const compact=parts.receiver==='akcompact';
  // Sloping stamped-look receiver and stepped roof. Core shared when authentic.
- p('receiver',[[-6.55,-1.25],[-6.45,1.05],[-5.45,1.15],[3.9,1.1],
-  [4.15,-1.05],[-3.15,-2.05]],3.65,0);
- p('receiver',[[-5.8,1.1],[-5.2,2.25],[1.6,2.3],[3.0,1.8],
-  [3.25,1.05]],3.4,1);
+ p('receiver',compact?
+  [[-5.85,-1.25],[-5.75,1.05],[-4.95,1.15],[3.65,1.1],
+   [3.9,-1.05],[-3.05,-2.05]]:
+  [[-6.55,-1.25],[-6.45,1.05],[-5.45,1.15],[3.9,1.1],
+   [4.15,-1.05],[-3.15,-2.05]],3.85,0);
+ p('receiver',compact?
+  [[-5.35,1.1],[-4.9,2.35],[1.5,2.4],[2.85,1.75],[3.05,1.05]]:
+  [[-5.8,1.1],[-5.2,2.25],[1.6,2.3],[3.0,1.8],[3.25,1.05]],
+  3.5,1);
  b('receiver',-4.25,-.05,2.05,2.8,1.15,.5,1);
  b('receiver',1.65,-1.2,0,4.0,1.1,3.25,0);
  if(compact){
@@ -36,22 +44,21 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Stock types are visually disparate; the skeletal type MUST stay hollow.
  const stock=parts.stock;
  if(stock==='ak-skeleton'){
-  line('stock',[-6.45,.65],[-12.25,.55],.78,.9,0);
-  line('stock',[-6.45,-1.35],[-12.25,-2.5],.78,.9,0);
-  line('stock',[-6.4,-1.3],[-9.45,.15],.57,.9,0);
+  // Preserve the successful open profile, only thicken the connecting bars.
+  line('stock',[-5.65,.65],[-12.3,.55],.95,1.05,0);
+  line('stock',[-5.65,-1.35],[-12.3,-2.5],.95,1.05,0);
+  line('stock',[-5.75,-1.3],[-9.45,.15],.72,1.05,0);
   b('stock',-12.8,-1,0,1.05,3.65,2.5,1);
  }else if(stock==='ak-sidefold'){
-  p('stock',[[-13.0,-1.65],[-13.0,.45],[-7.05,1.05],[-6.35,-1.25],
-   [-10.7,-2.8]],3.25,1);
-  b('stock',-13.05,-1,0,.8,3.65,3.65,1);
-  b('stock',-7.85,.75,1.5,1.5,.44,.45,0);
+  // One fat five-sided silhouette, not a pointed plank with floating hinge.
+  p('stock',[[-12.7,.55],[-8.65,.8],[-6.15,.45],
+   [-6.25,-1.6],[-10.15,-2.85],[-12.7,-2.35]],3.75,1);
  }else{
   const isWood=stock==='ak-wood'||stock==='ak-wood74';
-  p('stock',[[-13.5,-1.65],[-13.35,.4],[-7.55,1.1],
-   [-6.35,-.85],[-10.5,-3.3]],3.4,isWood?2:1);
-  b('stock',-13.25,-.75,0,.65,4.0,3.55,1);
+  p('stock',[[-13.5,.65],[-8.9,.95],[-6.25,-.5],
+   [-10.55,-3.35],[-13.5,-2.45]],3.95,isWood?2:1);
   if(stock==='ak-wood74')
-   b('stock',-10.7,-.95,1.75,2.45,.8,.15,1);
+   b('stock',-10.7,-1,1.97,2.0,.65,.18,1);
  }
 
  // Grips are deliberately raked, with one body prism and no modeled stippling.
