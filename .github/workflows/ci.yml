@@ -1162,6 +1162,14 @@ jobs:
             tests/replay-r3-mission-favorites.test.mjs \
             tests/mission-restart-snapshot.test.mjs \
             tests/replay-r2-recording.test.mjs
+      - name: Replay R3 — actual movement history and bounded A/B looping
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r3-plan-reality-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r3-movement-history.test.mjs \
+            tests/replay-r3-loop.test.mjs \
+            tests/replay-r2-recording.test.mjs \
+            tests/gameplay-g4d-replay-validity.test.mjs
       - name: Replay R3 — camera, forensic shot selection and retained tactical events
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r3-') }}
         run: |
