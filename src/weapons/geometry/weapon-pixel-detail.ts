@@ -3,10 +3,11 @@
  * Art-only overlays have no cast shadow and never affect weapon handling.
  */
 import * as THREE from 'three';
-export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'a1-vents'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage'|'rail-cover-stripes'|'ar-spr-ports';
+export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ak-receiver-stamp'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'a1-vents'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage'|'rail-cover-stripes'|'ar-spr-ports';
 const dimensions:Record<WeaponMark,readonly [number,number]>={
  'ar-port':[16,12],'ak-port':[16,12],
- 'ak-selector':[16,8],'ak-cover-ribs':[24,8],'ris-panel':[32,8],'pri-vents':[16,8],
+ 'ak-selector':[16,8],'ak-cover-ribs':[24,8],
+ 'ak-receiver-stamp':[32,8],'ris-panel':[32,8],'pri-vents':[16,8],
  'poly-ribs':[32,10],'car-ribs':[24,10],'a1-vents':[32,10],
  'm5-panel':[32,8],'ras-panel':[32,8],
  'ar-mag-stamp20':[16,16],'ar-mag-stamp30':[16,24],
@@ -38,6 +39,13 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   // One dark lever with a subtle pivot, not a floating white square.
   for(let y=2;y<=4;y++)for(let x=2;x<=4;x++)pixel(x,y);
   for(let x=4;x<=14;x++)pixel(x,3+Math.floor((x-4)/6));
+ }else if(mark==='ak-receiver-stamp'){
+  // Two small low-contrast trunnion rivets and one stamped flat.
+  // All three live BELOW the port and selector; no dotted receiver noise.
+  for(const x of [3,27])
+   for(let y=3;y<=4;y++)for(let dx=0;dx<2;dx++)
+    pixel(x+dx,y);
+  for(let x=12;x<=20;x++)pixel(x,5);
  }else if(mark==='ak-cover-ribs'){
   // Broad, spaced pressed cover grooves, never tiny scattered surface noise.
   for(const start of [3,10,17])
