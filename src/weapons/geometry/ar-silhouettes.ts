@@ -38,8 +38,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   const heavy=parts.receiver==='ar-a2';
   // Open carry handle: a real gap between posts, never a solid cap block.
   line('receiver',[-4.35,1.8],[-4.35,3.7],heavy?1.25:.85,2.15,0);
-  line('receiver',[1.15,1.8],[1.15,3.7],.9,2.05,0);
-  b('receiver',-1.6,3.7,0,6.1,.82,2.05,0);
+  // Extended bridge, with a forward-slanting nose leg for the retro CAR.
+  line('receiver',[1.45,1.8],[2.05,3.7],.86,2.05,0);
+  b('receiver',-1.24,3.7,0,7.15,.82,2.05,0);
   if(heavy)b('receiver',-4.35,2.4,0,1.6,.95,2.4,1);
  }else{
   // One continuous low top plane; the extra rear nub did not read at game scale.
@@ -49,16 +50,16 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Stock: fixed triangular stock versus open shoulder / sliding-carbine outline.
  if(parts.stock==='ar-fixed'){
   // One five-sided classic rifle wedge, including its rear plate.
-  p('stock',[[-13.5,.65],[-6.05,.7],[-6.05,-1.7],
-   [-9.0,-3.1],[-13.5,-2.4]],3.8,1);
+  p('stock',[[-14.0,.65],[-6.05,.7],[-6.05,-1.7],
+   [-9.0,-3.1],[-14.0,-2.4]],3.8,1);
  }else{
   const compact=parts.stock==='ar-compact';
-  const rear=compact?-11.7:-12.3;
+  const rear=compact?-12.4:-13.0;
   // The stock body, not the telescoping connector, owns the silhouette.
   // Keep a short, visibly embedded bridge with intentional overlap at both ends.
   b('stock',-7.25,.05,0,3.6,1.45,1.9,0);
-  p('stock',[[rear,.65],[rear+1.25,.95],[rear+3.7,.55],
-   [rear+3.7,-1.7],[rear+1.0,-2.9],[rear,-2.15]],
+  p('stock',[[rear,.65],[rear+1.25,.95],[rear+4.2,.55],
+   [rear+4.2,-1.7],[rear+1.0,-2.9],[rear,-2.15]],
    compact?4.0:3.75,compact?2:1);
  }
 
@@ -124,7 +125,7 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  if(!short){
   // Oversized A-frame front sight: genuine open V negative space.
   // Wide squat A-frame silhouette; a visible V gap, not a needle-like spike.
-  line('barrel',[15.55,.35],[16.85,2.72],.57,1.8,0);
-  line('barrel',[18.15,.35],[16.85,2.72],.57,1.8,0);
+  line('barrel',[16.12,.35],[16.83,2.72],.40,1.8,0);
+  line('barrel',[17.54,.35],[16.83,2.72],.40,1.8,0);
  }else b('barrel',19.06,0,0,.88,1.75,1.9,1);
 }
