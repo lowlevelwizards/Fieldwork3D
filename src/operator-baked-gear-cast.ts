@@ -12,9 +12,9 @@ import * as THREE from 'three';
 import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 type BoxRecord={min:[number,number,number];max:[number,number,number]};
 const frontRays=[
- new THREE.Vector3(.58,.79,.15).normalize(),
- new THREE.Vector3(.44,.88,-.13).normalize(),
- new THREE.Vector3(.69,.71,.08).normalize()
+ new THREE.Vector3(.46,.88,.07).normalize(),
+ new THREE.Vector3(.43,.90,.03).normalize(),
+ new THREE.Vector3(.47,.88,.04).normalize()
 ] as const;
 const rearRays=frontRays.map(r=>new THREE.Vector3(-r.x,r.y,r.z));
 const toRecord=(box:THREE.Box3):BoxRecord=>({
@@ -71,7 +71,7 @@ export function collectCastVolumes(root:THREE.Object3D,
 }
 function rayHits(p:THREE.Vector3,dir:THREE.Vector3,
  box:THREE.Box3):boolean{
- let near=0,far=15;
+ let near=0,far=2.75;
  for(const axis of ['x','y','z'] as const){
   const d=dir[axis],o=p[axis];
   if(Math.abs(d)<1e-6){
@@ -83,7 +83,7 @@ function rayHits(p:THREE.Vector3,dir:THREE.Vector3,
    if(near>far)return false;
   }
  }
- return far>.045;
+ return near>.035&&far>.045;
 }
 export type GearLightingBake={key:string;changed:number;vertices:number};
 /** Bake separately for different receiver groups, using all of their
@@ -134,11 +134,12 @@ export function bakeCastOnGear(
    }
    const occlusion=hits/rays.length;
    // Strong, but avoid chalky whites and completely black kit shadows.
-   // Global chest-relative Y adds a subtle MINIATURE top->bottom grad.
+   // A restrained miniature gradient supports the tiny cast edges; it
+   // must never create broad dark fields across whole chest panels.
    const lower=THREE.MathUtils.clamp((7-position.y)/18,0,1);
-   const light=(1-.52*occlusion)*(1-.12*lower);
+   const light=(1-.36*occlusion)*(1-.045*lower);
    const before=baseline[i*3]/255;
-   const value=Math.round(255*Math.max(.54,before*light));
+   const value=Math.round(255*Math.max(.62,before*light));
    if(value<array[i*3])changed++;
    array[i*3]=value;array[i*3+1]=value;array[i*3+2]=value;
    vertices++;
