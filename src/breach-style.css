@@ -1600,3 +1600,25 @@ html,body{font-family:var(--fw-font-menu)}
 
 /* Allow factual Campaign continuity to read as a separate Situation paragraph. */
 .fw-mission-dossier #briefingSituation{white-space:pre-line}
+
+/* Replay R3: contextual forensics stays inside the existing capped Events drawer. */
+.replay-shot-inspector{
+  flex:none;border:1px solid #a39370;border-radius:7px;
+  background:#253e38;margin:0 0 8px;padding:8px;
+}
+.replay-shot-inspector[hidden]{display:none!important}
+.replay-inspector-head{display:flex;justify-content:space-between;align-items:center}
+.replay-inspector-head strong{font:700 12px var(--ui-display);color:#e8d1a0}
+.replay-inspector-head button{
+  border:1px solid #667f73;border-radius:5px;color:#ddd6c5;
+  background:#283e38;min-width:30px;min-height:30px
+}
+.replay-inspector-details{display:block;white-space:pre-line;margin:5px 0 9px;
+  font:500 11px/1.55 var(--ui-font);color:#dfe5da}
+.replay-inspector-actions{display:grid;grid-template-columns:1fr 1.2fr 1fr;gap:5px}
+.replay-inspector-actions button{
+  min-height:36px;min-width:0;padding:5px 2px;border-radius:4px;
+  background:#40594b;border:1px solid #7a9181;color:#ede7d9;
+  font:700 10px var(--ui-font)
+}
+.replay-inspector-actions button:disabled{opacity:.36}

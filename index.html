@@ -207,6 +207,8 @@
           <button id="replayView" type="button">ISO</button>
           <button id="replaySight" type="button">TEAM SIGHT</button>
           <button id="replayFollow" type="button">FOLLOW</button>
+          <button id="replaySquad" type="button" aria-pressed="false">FOLLOW SQUAD</button>
+          <button id="replayDirector" type="button" aria-pressed="false">DIRECTOR OFF</button>
           <button id="replayNames" type="button" aria-label="Replay name tags">NAMES ON</button>
         </div>
       </section>
@@ -242,6 +244,18 @@
       </section>
     </div>
     <section id="replayFeedPanel" class="replay-feed-panel" hidden>
+      <section id="replayShotInspector" class="replay-shot-inspector" hidden aria-label="Shot investigation">
+        <div class="replay-inspector-head">
+          <strong id="replayShotTitle">SHOT INSPECTOR</strong>
+          <button id="replayShotClose" type="button" aria-label="Close shot inspector">×</button>
+        </div>
+        <output id="replayShotDetails" class="replay-inspector-details"></output>
+        <div class="replay-inspector-actions">
+          <button id="replayShotPrev" type="button">PREV SHOT</button>
+          <button id="replayShotFocus" type="button">FOCUS IMPACT</button>
+          <button id="replayShotNext" type="button">NEXT SHOT</button>
+        </div>
+      </section>
       <div class="replay-feed-tools">
         <label for="replayFeedFilter">SHOW</label>
         <select id="replayFeedFilter" aria-label="Filter mission events" hidden>

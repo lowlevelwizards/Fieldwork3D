@@ -216,9 +216,11 @@ export class MissionRecorder{
       this.executionEvents.push({...e,p:position(e.p)});
       this.lastExecutionEventId=e.id;
     }
-    // Bounded replay metadata independent of existing 20Hz film frames.
-    if(this.executionEvents.length>900)
-      this.executionEvents.splice(0,this.executionEvents.length-900);
+    // R3: execution transitions are authoritative tactical history. Do not
+    // silently delete the oldest 900 entries: Plan-vs-Reality, chapter
+    // navigation, and eventual archive export require the complete timeline.
+    // Any future bounded storage must spill older events to replay chunks,
+    // never erase them without marking the recording incomplete.
     const last=this.frames.at(-1);
     if(!force&&last&&s.seconds-last.t<.049)return;
     if(last&&Math.abs(last.t-s.seconds)<1e-6){

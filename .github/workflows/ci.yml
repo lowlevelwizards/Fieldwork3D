@@ -1155,6 +1155,16 @@ jobs:
             tests/equipment-19-01-weapon-assemblies.test.mjs \
             tests/weapon-workbench-mobile-sockets.test.mjs
           node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs /tmp/weapon-ortho-r33.html
+      - name: Replay R3 — camera, forensic shot selection and retained tactical events
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r3-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r3-director.test.mjs \
+            tests/replay-r3-shot-inspector.test.mjs \
+            tests/replay-r2-recording.test.mjs \
+            tests/replay-r2-ballistics.test.mjs \
+            tests/replay-r2-event-index.test.mjs \
+            tests/gameplay-g4d-replay-validity.test.mjs
       - name: Replay R2 — historical visibility, plan revisions and legacy replay contracts
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r2-') }}
         run: |
