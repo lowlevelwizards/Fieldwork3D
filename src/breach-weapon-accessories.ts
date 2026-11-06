@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
+import {AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
 const block=(root:THREE.Group,x:number,y:number,z:number,
  w:number,h:number,d:number,m:THREE.Material)=>{
  const mesh=new THREE.Mesh(mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d),m);
@@ -30,13 +31,14 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
   block(g,optic.mountX-.42,6.51,0,1.32,.96,1.63,steel);
  }
  const muzzle=parts.muzzle;
+ const muzzleY=raw.build?.family==='ar'?AR_VISUAL_AXIS_Y:0;
  const ext=muzzle.muzzleExtension??0;
  if(ext>0){
   const radius=muzzle.id==='muzzle-suppressor'?2.65:2.05;
-  block(g,muzzle.mountX+ext/2,0,0,ext,radius,radius,
+  block(g,muzzle.mountX+ext/2,muzzleY,0,ext,radius,radius,
    muzzle.id==='muzzle-suppressor'?dark:steel);
   if(muzzle.id==='muzzle-brake'){
-   block(g,muzzle.mountX+ext*.68,0,0,.32,2.4,2.7,dark);
+   block(g,muzzle.mountX+ext*.68,muzzleY,0,.32,2.4,2.7,dark);
   }
  }
  if(parts.foregrip.id==='foregrip-handstop')

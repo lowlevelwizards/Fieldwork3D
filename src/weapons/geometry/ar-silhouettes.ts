@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
 import {AR_STANAG_METAL} from './weapon-visual-palette.ts';
-import {AR_BARREL_ART} from './ar-barrel-profiles.ts';
+import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
@@ -197,45 +197,45 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // A short retro barrel can have a fixed A-frame; the handguard is irrelevant.
  const tip=barrelArt.muzzleX,sight=barrelArt.sightX;
  const barrelStart=Math.min(end-.7,(sight??tip)-1.35);
- b('barrel',(barrelStart+tip)/2,0,0,tip-barrelStart,
+ b('barrel',(barrelStart+tip)/2,AR_VISUAL_AXIS_Y,0,tip-barrelStart,
   barrelArt.barrelHeight,barrelArt.barrelDepth,0);
  if(sight!==null&&(barrelArt.sight==='a1'||barrelArt.sight==='a2')){
-  // Broad near-right-triangle A-frame, one mesh and one clean cavity.
-  const heavy=barrelArt.sight==='a2';
-  frame('barrel',[[sight-.93,.32],[sight+.97,.32],
-    [sight+.17,heavy?2.84:2.72],[sight-.54,heavy?2.84:2.72]],
-   [[sight-.51,.76],[sight-.38,2.10],
-    [sight-.06,2.10],[sight+.42,.76]],heavy?1.92:1.78);
+  // R4.5: a right vertical FRONT (towards muzzle), one boldly sloped REAR.
+  // The tower roof aligns with the canonical carry-handle / rear-sight line.
+  frame('barrel',[[sight-1.20,.83],[sight+.83,.83],
+    [sight+.83,4.02],[sight-.34,4.02]],
+   [[sight-.56,1.34],[sight+.02,3.26],
+    [sight+.40,3.26],[sight+.40,1.34]],1.47);
  }else if(sight!==null){
-  // One compact folding SPR front sight, resting on the exposed barrel.
-  b('barrel',sight,.84,0,.92,.54,1.4,1);
-  p('barrel',[[sight-.27,1.1],[sight+.35,1.1],
-   [sight+.24,1.85],[sight-.12,1.85]],1.4,0);
+  // Simplified flip-up Mk12 front sight, on the raised barrel center.
+  b('barrel',sight,1.36,0,.92,.54,1.4,1);
+  p('barrel',[[sight-.27,1.62],[sight+.35,1.62],
+   [sight+.24,2.37],[sight-.12,2.37]],1.4,0);
  }
  if(barrelArt.profile==='government'||barrelArt.profile==='service'){
   // One oversized government step, not small machining details.
   if(tip-(sight??tip)>1.2)
-   b('barrel',tip-1.05,0,0,1.18,barrelArt.barrelHeight+.18,1.52,0);
+   b('barrel',tip-1.05,AR_VISUAL_AXIS_Y,0,1.18,barrelArt.barrelHeight+.18,1.52,0);
  }
  // Factory muzzle profiles live INSIDE the authoritative barrel-tip envelope.
  // Optional equipment muzzle extensions begin at tip; no fake shot offset.
  if(barrelArt.profile==='spr'){
   // Mod 0: long brake + separate heavy collar.
-  b('barrel',tip-1.34,0,0,.66,1.91,1.94,1);
-  b('barrel',tip-.46,0,0,.90,1.73,1.82,1);
+  b('barrel',tip-1.34,AR_VISUAL_AXIS_Y,0,.66,1.91,1.94,1);
+  b('barrel',tip-.46,AR_VISUAL_AXIS_Y,0,.90,1.73,1.82,1);
  }else if(barrelArt.profile==='cqb'){
   // Mk18: short, stout suppressor-compatible muzzle profile.
-  b('barrel',tip-.45,0,0,.86,1.88,2.00,1);
-  b('barrel',tip-.12,0,0,.24,2.02,2.06,0);
+  b('barrel',tip-.45,AR_VISUAL_AXIS_Y,0,.86,1.88,2.00,1);
+  b('barrel',tip-.12,AR_VISUAL_AXIS_Y,0,.24,2.02,2.06,0);
  }else if(parts.barrel==='ar-145'){
   // CAR-era slim flash hider: lighter and longer than the 733.
   b('barrel',tip-.45,0,0,.88,1.28,1.47,1);
  }else if(parts.barrel==='ar-733-115'){
-  b('barrel',tip-.35,0,0,.68,1.57,1.70,1);
+  b('barrel',tip-.35,AR_VISUAL_AXIS_Y,0,.68,1.57,1.70,1);
  }else{
   // A1 pencil hider / A2-family compensator. Distinction stays restrained.
   const a1=parts.barrel==='ar-20';
-  b('barrel',tip-(a1?.34:.40),0,0,a1?.66:.78,
+  b('barrel',tip-(a1?.34:.40),AR_VISUAL_AXIS_Y,0,a1?.66:.78,
    a1?1.27:1.66,a1?1.44:1.80,1);
  }
 }
