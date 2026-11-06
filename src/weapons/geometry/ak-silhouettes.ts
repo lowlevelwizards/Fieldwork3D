@@ -59,6 +59,10 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [m.magwellCenterX+1.70,m.magwellTopY],
    [m.magwellCenterX+1.50,m.magwellBottomY],
    [m.magwellCenterX-1.30,m.magwellBottomY]],3.25,0);
+ // The short front trunnion cheek meets the shallower lower furniture
+ // without resurrecting the previous tall, free-standing metal spacer.
+ p('receiver',[[3.25,-1.06],[4.13,-1.06],
+  [4.14,-2.05],[3.25,-2.05]],3.55,0);
  if(compact){
   // AKS-74U hinged dust cover with a LOW, squat rear-sight hump.
   // Avoid the previous tall, flat slab that read as a holographic optic.
@@ -215,22 +219,26 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // The front end is authored by barrel ID, not by receiver or a randomly
  // selected compatible furniture finish. All metal joints stay contiguous.
  const tip=art.muzzleX,front=art.handguardFrontX;
- const gas=art.gasBlockX,sight=art.frontSightX;
+ const gas=art.gasBlockX;
+ // The slant compensator begins farther forward than the long 5.45 brake;
+ // position its single sight tower flush against the custom slant body.
+ const sight=(parts.receiver==='akm'||parts.receiver==='ak103')?
+  tip-2.48:art.frontSightX;
  const metalDepth=rpk?1.86:1.48;
  b('barrel',(front-.24+tip)/2,0,0,tip-front+.24,
   rpk?1.42:1.12,metalDepth,0);
  // Exposed upper gas-tube silhouette: one strong parallel line above barrel.
- const tubeBegin=Math.max(front-.45,art.gasTubeBeginX);
- const tubeEnd=gas+.20;
+ const tubeBegin=Math.max(front-1.02,art.gasTubeBeginX-1.02);
+ const tubeEnd=gas+.10;
  if(tubeEnd>tubeBegin)
-  b('barrel',(tubeBegin+tubeEnd)/2,1.07,0,
-   tubeEnd-tubeBegin,.66,1.45,0);
- // The gas block connects upper tube DOWN into the main barrel.
- // On the RPK the real gas system is still above, and the extra visible
- // underside is a barrel/bipod support rather than a false reversed gas tube.
- p('barrel',[[gas-.54,.52],[gas-.46,1.98],
-  [gas+.20,2.08],[gas+.57,1.35],[gas+.57,-.52],
-  [gas-.41,-.52]],1.88,0);
+  b('barrel',(tubeBegin+tubeEnd)/2,1.50,0,
+   tubeEnd-tubeBegin,.92,1.46,0);
+ // One thick oblique descending GAS BLOCK (not a second tall sight).
+ // Start above the barrel from the upper handguard's middle height and
+ // run downward to connect with the single horizontal main barrel.
+ p('barrel',[[gas-.78,1.14],[gas+.02,1.99],
+  [gas+.48,1.55],[gas+1.04,.35],[gas+.71,-.53],
+  [gas+.11,-.53],[gas-.37,.85]],1.82,0);
  if(art.muzzleStyle==='booster'){
   // Compact AKS-74U front tower and conspicuous squat muzzle booster.
   p('barrel',[[sight-.47,.34],[sight-.25,2.69],
@@ -246,9 +254,13 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    // The gas block above stays anatomically recognizable.
    p('barrel',[[tip-1.00,-.56],[tip,-.56],
     [tip,.56],[tip-1.00,.56]],1.60,1);
-   b('barrel',18.55,-.78,0,4.7,.38,1.35,0);
-   line('barrel',[17.1,-.65],[20.25,-1.82],.51,1.17,0);
-   b('barrel',20.37,-1.75,0,.66,.42,1.37,1);
+   // One chunky, straight, folded bipod bar PARALLEL under the long barrel,
+   // attached near its front and continuing to the lower furniture lip.
+   const rearBipod=front+.42,frontBipod=tip-2.32;
+   b('barrel',(rearBipod+frontBipod)/2,-1.13,0,
+    frontBipod-rearBipod,.85,1.48,0);
+   b('barrel',frontBipod,-.95,0,.72,1.43,1.70,0);
+   b('barrel',rearBipod,-.95,0,.62,1.35,1.58,1);
   }else if(art.muzzleStyle==='carbine'){
    // Short stout 100-series carbine hider, not an unchanged rifle brake.
    p('barrel',[[tip-1.45,-.98],[tip-.22,-1.09],
@@ -258,9 +270,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   }else if(parts.receiver==='akm'||parts.receiver==='ak103'){
    // Oversized game-art slant: a major diagonal TERMINAL face.
    // AK-103 slant is intentionally a non-factory custom appearance.
-   p('barrel',[[tip-1.75,-.68],[tip-.55,-.78],
-    [tip,.05],[tip-.35,1.14],
-    [tip-1.75,.94]],2.20,1);
+   p('barrel',[[tip-1.80,-.76],[tip,-.76],
+    [tip-1.18,1.16],[tip-1.80,1.03]],2.28,1);
   }else{
    // 20% longer AK-74-family cylindrical compensator.
    p('barrel',[[tip-2.83,-1.08],[tip-.20,-1.08],
