@@ -28,16 +28,16 @@ export const SOUND_GROUPS=[
 ] as const;
 type RawGroup={group:string;family:SoundFamily;items:string;live?:string};
 const data:RawGroup[]=[
- {group:'ui',family:'ui',live:'select,confirm,go,pause,warning',items:`
+ {group:'ui',family:'ui',live:'select,confirm,go,pause,warning,cancel',items:`
 select|Select operator;confirm|Confirm command;go|GO / execute;pause|Pause;warning|Warning;cancel|Cancel;back|Back;toggle|Toggle;tab|Switch tab;open_sheet|Open panel;close_sheet|Close panel;hover|Hover / focus;slider|Slider tick;error|Invalid action;success|Success;notification|Notification;save|Save;delete|Delete;undo|Undo;redo|Redo;zoom|Camera zoom;camera|Camera reset;intel|Intel mode;timer|Countdown tick
 `},
- {group:'orders',family:'ui',items:`
+ {group:'orders',family:'ui',live:'waypoint,look,watch,wait,sync,stance,undo,redo',items:`
 waypoint|Add waypoint;move_node|Move waypoint;remove_node|Remove waypoint;route_draw|Draw route;look|Look direction;watch|Watch angle;release_watch|Release watch;wait|Wait order;sync|Sync order;stack|Stack ready;engage|Engage policy;return_fire|Return fire;suppress|Suppress;hold_fire|Hold fire;stance|Posture change;run|Run order;walk|Walk order;order_accepted|Order accepted;order_failed|Order rejected
 `},
  {group:'movement',family:'step',live:'boot',items:`
 boot|Generic boot step;tile|Tile step;wood_floor|Wood floor step;concrete|Concrete step;carpet|Carpet step;metal_floor|Metal grating step;gravel|Gravel step;dirt|Dirt step;mud|Mud step;water_shallow|Shallow water step;glass_shards|Glass crunch;stairs|Stair step;sprint|Sprint step;crouch|Crouched footfall;shuffle|Shuffle / stack;turn|Pivot step;stop|Hard stop;land|Landing;vault|Vault / mantle;climb|Climb;gear_rattle|Running gear rattle;cloth|Clothing rustle;armor_shift|Armor shift;breath|Breathing
 `},
- {group:'equipment',family:'mechanism',live:'reload,flash_throw',items:`
+ {group:'equipment',family:'mechanism',live:'reload,flash_throw,flashlight_click',items:`
 reload|Reload cycle;mag_out|Magazine out;mag_in|Magazine seat;bolt_release|Bolt release;charging_handle|Charging handle;safety|Safety selector;dry_fire|Dry trigger;empty_click|Empty magazine click;weapon_raise|Weapon raise;weapon_lower|Weapon lower;weapon_swap|Weapon swap;flash_throw|Flashbang throw;flash_pin|Flash pin;flash_bounce|Flash bounce;radio_click|Radio PTT;radio_static|Radio static;med_kit|Medical kit;bandage|Bandage wrap;plate_impact|Armor strike;kit_pickup|Pick up equipment;rig_buckle|Buckle;zipper|Zipper;holster|Holster;flashlight_click|Weapon light switch;mag_drop|Dropped magazine;case_drop|Casing bounce
 `},
  {group:'weapons',family:'shot',live:'smg,carbine,rifle,shotgun,smg_suppressed,carbine_suppressed,rifle_suppressed,shotgun_suppressed',items:`
@@ -49,7 +49,7 @@ body_hit|Audible close impact;concrete|Concrete bullet impact;brick|Brick chip;d
  {group:'doors',family:'door',live:'open,close,kick_resisted,forced_open,kick',items:`
 open|Door open;close|Door close;creak|Door creak;handle|Handle turn;latch|Latch;unlock|Unlock;lock|Lock;hinge|Hinge squeak;kick|Door kick;kick_resisted|Failed door kick;forced_open|Force door open;battering_ram|Ram strike;breach_charge|Breaching charge;wood_break|Door wood fracture;metal_door|Heavy metal door;double_door|Double doors;glass_door|Glass door;window_open|Open window;window_break|Break window;wedge|Door wedge;door_bump|Body pushes door;door_slam|Door slam
 `},
- {group:'combat',family:'impact',live:'flash,hit,flash_out',items:`
+ {group:'combat',family:'impact',live:'flash',items:`
 flash|Flashbang detonation;flash_out|Flashbang thrown;hit|Visible impact;injured|Injury grunt;heavy_wound|Heavy wound;incapacitated|Incapacitated;death|Death fall;melee|Melee shove;buttstroke|Weapon butt strike;stagger|Stagger;knockback|Knockback;body_fall|Body falls;helmet_hit|Helmet impact;suppression|Suppression near miss;stun|Stun reaction;recover|Recovery;casualty_drag|Drag casualty;revive|Medical intervention;blood_drop|Blood drip;spent_casing|Casing scatter
 `},
  {group:'people',family:'voice',live:'surrender',items:`
