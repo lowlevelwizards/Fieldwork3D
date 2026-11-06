@@ -58,12 +58,12 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   b('stock',-12.8,-1,0,1.05,3.65,2.5,1);
  }else if(stock==='ak-sidefold'){
   // One fat five-sided silhouette, not a pointed plank with floating hinge.
-  p('stock',[[-12.25,.7],[-8.3,.95],[-6.0,.35],
-   [-6.25,-1.5],[-9.6,-2.9],[-12.25,-2.15]],4.1,1);
+  p('stock',[[-13.0,.7],[-8.3,.95],[-6.0,.35],
+   [-6.25,-1.5],[-9.6,-2.9],[-13.0,-2.15]],4.1,1);
  }else{
   const isWood=stock==='ak-wood'||stock==='ak-wood74';
-  p('stock',[[-13.5,.65],[-8.9,.95],[-6.25,-.5],
-   [-10.55,-3.35],[-13.5,-2.45]],3.95,isWood?2:1);
+  p('stock',[[-14.1,.65],[-8.9,.95],[-6.25,-.5],
+   [-10.55,-3.35],[-14.1,-2.45]],3.95,isWood?2:1);
   if(stock==='ak-wood74')
    b('stock',-10.7,-1,1.97,2.0,.65,.18,1);
  }
