@@ -3,6 +3,7 @@
  * Legacy carbine/rifle classes continue to own firing, inventory and magazines.
  */
 import type {WeaponId} from './breach-combat.ts';
+import {AR_BARREL_ART} from './weapons/geometry/ar-barrel-profiles.ts';
 
 export const FAMILY_PART_SLOTS=['stock','receiver','grip','magazine',
  'handguard','barrel'] as const;
@@ -14,6 +15,8 @@ export type WeaponFamilyPart={
  id:string;name:string;family:WeaponFamily;slot:FamilyPartSlot;
  receivers?:readonly string[];feed?:Feed;length?:FamilyLength;
  role?:'carbine'|'rifle'|'both';stockX?:number;
+ /** Canonical factory display only; gameplay ballistics are class-owned. */
+ nominalInches?:number;
 };
 export type WeaponFamilyBuild={family:WeaponFamily;
  parts:Record<FamilyPartSlot,string>};
@@ -80,11 +83,13 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ak-wood-short':add('ak-wood-short','Compact wood handguard','ak','handguard',{receivers:['akcompact'],length:'short'}),
  'ak-poly-short':add('ak-poly-short','Compact polymer handguard','ak','handguard',{receivers:['akcompact'],length:'short'}),
  'ak-poly-mid':add('ak-poly-mid','Carbine polymer handguard','ak','handguard',{receivers:['ak105'],length:'mid'}),
- 'ar-20':add('ar-20','Full-length rifle barrel','ar','barrel',{receivers:['ar-a1','ar-a2','ar-flat'],length:'long',role:'rifle'}),
- 'ar-spr18':add('ar-spr18','Mk 12 SPR front-end silhouette','ar','barrel',{receivers:['ar-flat'],length:'long',role:'rifle'}),
- 'ar-145':add('ar-145','Carbine barrel','ar','barrel',{receivers:['ar-retro','ar-flat'],length:'mid',role:'carbine'}),
- 'ar-103':add('ar-103','Compact carbine barrel','ar','barrel',{receivers:['ar-flat'],length:'short',role:'carbine'}),
- 'ar-733-115':add('ar-733-115','Colt 733 compact front with A-frame','ar','barrel',{receivers:['ar-retro'],length:'short',role:'carbine'}),
+ 'ar-20':add('ar-20','20\" A1 pencil barrel','ar','barrel',{receivers:['ar-a1','ar-a2','ar-flat'],length:'long',role:'rifle',nominalInches:AR_BARREL_ART['ar-20'].nominalInches}),
+ 'ar-20-service':add('ar-20-service','20\" A2/A4 service barrel','ar','barrel',{receivers:['ar-a2','ar-flat'],length:'long',role:'rifle',nominalInches:AR_BARREL_ART['ar-20-service'].nominalInches}),
+ 'ar-spr18':add('ar-spr18','18" Mk 12 precision barrel','ar','barrel',{receivers:['ar-flat'],length:'long',role:'rifle',nominalInches:AR_BARREL_ART['ar-spr18'].nominalInches}),
+ 'ar-145':add('ar-145','14.5\" retro pencil barrel','ar','barrel',{receivers:['ar-retro','ar-flat'],length:'mid',role:'carbine',nominalInches:AR_BARREL_ART['ar-145'].nominalInches}),
+ 'ar-145-gov':add('ar-145-gov','14.5\" M4 government barrel','ar','barrel',{receivers:['ar-flat'],length:'mid',role:'carbine',nominalInches:AR_BARREL_ART['ar-145-gov'].nominalInches}),
+ 'ar-103':add('ar-103','10.3" CQB barrel','ar','barrel',{receivers:['ar-flat'],length:'short',role:'carbine',nominalInches:AR_BARREL_ART['ar-103'].nominalInches}),
+ 'ar-733-115':add('ar-733-115','11.5" Colt Commando barrel','ar','barrel',{receivers:['ar-retro'],length:'short',role:'carbine',nominalInches:AR_BARREL_ART['ar-733-115'].nominalInches}),
  'ak-long':add('ak-long','Full-length AK barrel','ak','barrel',{receivers:['akm','ak74','ak74m','ak103'],length:'long',role:'rifle'}),
  'ak-rpk-long':add('ak-rpk-long','RPK-74 heavy front and folded bipod','ak','barrel',{receivers:['ak-rpk74'],length:'long',role:'rifle'}),
  'ak-mid':add('ak-mid','AK carbine barrel','ak','barrel',{receivers:['ak105'],length:'mid',role:'carbine'}),
@@ -97,12 +102,12 @@ const p=(id:string,name:string,weapon:'carbine'|'rifle',family:WeaponFamily,
 });
 export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('ar-m16a1','M16A1','rifle','ar','ar-a1','ar-fixed','ar-grip-classic','ar-mag20','ar-triangle','ar-20'),
- p('ar-m16a2','M16A2','rifle','ar','ar-a2','ar-fixed-a2','ar-grip-a2','ar-mag30','ar-round','ar-20'),
- p('ar-m16a4','M16A4','rifle','ar','ar-flat','ar-fixed-a2','ar-grip-a2','ar-mag30','ar-m5-rail','ar-20'),
+ p('ar-m16a2','M16A2','rifle','ar','ar-a2','ar-fixed-a2','ar-grip-a2','ar-mag30','ar-round','ar-20-service'),
+ p('ar-m16a4','M16A4','rifle','ar','ar-flat','ar-fixed-a2','ar-grip-a2','ar-mag30','ar-m5-rail','ar-20-service'),
  p('ar-mk12mod0','Mk 12 Mod 0','rifle','ar','ar-flat','ar-fixed','ar-grip-a2','ar-mag20','ar-pri-tube','ar-spr18'),
  p('ar-car15','CAR-15','carbine','ar','ar-retro','ar-car','ar-grip-classic','ar-mag20','ar-car15-ribbed','ar-145'),
  p('ar-colt733','Colt 733 Commando','carbine','ar','ar-retro','ar-car','ar-grip-a2','ar-mag30','ar-733-ribbed','ar-733-115'),
- p('ar-m4a1','M4A1','carbine','ar','ar-flat','ar-stock-m4','ar-grip-a2','ar-mag30','ar-quad','ar-145'),
+ p('ar-m4a1','M4A1','carbine','ar','ar-flat','ar-stock-m4','ar-grip-a2','ar-mag30','ar-quad','ar-145-gov'),
  p('ar-mk18','Mk 18','carbine','ar','ar-flat','ar-compact','ar-grip-poly','ar-magpoly','ar-risii','ar-103'),
  p('ak-akm','AKM','rifle','ak','akm','ak-wood','ak-grip-bakelite','ak-mag762','ak-wood-long','ak-long'),
  p('ak-akms','AKMS','rifle','ak','akm','ak-underfolder','ak-grip-bakelite','ak-mag762','ak-wood-long','ak-long'),

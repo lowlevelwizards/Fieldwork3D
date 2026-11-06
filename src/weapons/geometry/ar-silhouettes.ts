@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
 import {AR_STANAG_METAL} from './weapon-visual-palette.ts';
+import {AR_BARREL_ART} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
@@ -12,6 +13,8 @@ import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
  const parts=build.parts,material=[steel,dark,wood,AR_STANAG_METAL] as const;
+ const barrelArt=AR_BARREL_ART[parts.barrel];
+ if(!barrelArt)throw new Error('Unknown AR art barrel: '+parts.barrel);
  const index:Record<SlotName,number>={stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0};
  const p=(slot:SlotName,outline:Outline,depth:number,finish:0|1|2|3=1)=>
   addOutline(root,slot,parts[slot],index[slot]++,outline,depth,material[finish]);
@@ -115,7 +118,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const long=['ar-triangle','ar-round','ar-m5-rail','ar-pri-tube'].includes(guard);
  const short=['ar-compact-rail','ar-risii'].includes(guard);
  const commando=guard==='ar-733-ribbed';
- const end=guard==='ar-pri-tube'?14.8:long?15.25:short?15.95:commando?12.9:13.9;
+ const end=guard==='ar-pri-tube'?15.70:long?14.1:
+  guard==='ar-car15-ribbed'||commando?11.8:
+  short?15.05:12.2;
  // A slight deliberate overlap avoids the visible receiver/guard seam.
  const start=3.55;
  if(guard==='ar-pri-tube'){
@@ -158,19 +163,32 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    (start+end)/2,.15,2.04,end-start-2.3,.84);
  }
 
- // All variants share the authoritative X=19.5 tip: only visual profile varies.
- const barrelEnd=19.5;
- const noseStart=parts.barrel==='ar-733-115'?12.75:
-  parts.barrel==='ar-spr18'?14.55:short?15.7:long?15.1:13.7;
- b('barrel',(noseStart+barrelEnd)/2,0,0,barrelEnd-noseStart,1.25,1.4,0);
- // Old-style raised front sight, absent on compact modern rail silhouette.
- if(!short&&parts.barrel!=='ar-spr18'){
-  // Oversized A-frame front sight: genuine open V negative space.
-  // Wide squat A-frame silhouette; a visible V gap, not a needle-like spike.
-  line('barrel',[16.24,.35],[16.83,2.72],.34,1.8,0);
-  line('barrel',[17.42,.35],[16.83,2.72],.34,1.8,0);
- }else if(parts.barrel==='ar-spr18'){
-  b('barrel',16.25,.92,0,1.2,.5,1.45,1);
-  b('barrel',18.93,0,0,1.14,1.62,1.85,1);
- }else b('barrel',19.06,0,0,.88,1.75,1.9,1);
+ // The barrel is the only authority for its own muzzle and front-sight X.
+ // A short retro barrel can have a fixed A-frame; the handguard is irrelevant.
+ const tip=barrelArt.muzzleX,sight=barrelArt.sightX;
+ const barrelStart=Math.min(end-.7,(sight??tip)-1.35);
+ b('barrel',(barrelStart+tip)/2,0,0,tip-barrelStart,
+  barrelArt.barrelHeight,barrelArt.barrelDepth,0);
+ if(sight!==null&&(barrelArt.sight==='a1'||barrelArt.sight==='a2')){
+  const width=barrelArt.sight==='a2'?.38:.32;
+  // Deliberately open A frame, not a solid triangular slab.
+  line('barrel',[sight-.58,.36],[sight,2.72],width,1.75,0);
+  line('barrel',[sight+.58,.36],[sight,2.72],width,1.75,0);
+ }else if(sight!==null){
+  // One compact folding SPR front sight, resting on the exposed barrel.
+  b('barrel',sight,.84,0,.92,.54,1.4,1);
+  p('barrel',[[sight-.27,1.1],[sight+.35,1.1],
+   [sight+.24,1.85],[sight-.12,1.85]],1.4,0);
+ }
+ if(barrelArt.profile==='government'||barrelArt.profile==='service'){
+  // One oversized government step, not small machining details.
+  if(tip-(sight??tip)>1.2)
+   b('barrel',tip-1.05,0,0,1.18,barrelArt.barrelHeight+.18,1.52,0);
+ }
+ if(barrelArt.profile==='spr'){
+  b('barrel',tip-.72,0,0,1.40,1.68,1.82,1);
+ }else if(barrelArt.profile==='cqb'){
+  // Only a small visible muzzle cap survives past the RIS II.
+  b('barrel',tip-.39,0,0,.78,1.7,1.94,1);
+ }
 }
