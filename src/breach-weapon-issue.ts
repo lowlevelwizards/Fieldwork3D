@@ -29,8 +29,11 @@ export function resolveIssuedOrLegacy(config:WeaponConfiguration|undefined,
  weapon:WeaponId,presetId:string):WeaponConfiguration{
  if(config?.build||weapon==='smg'||weapon==='shotgun')
   return config??initialWeaponConfiguration(weapon);
- const issue=issueWeaponPreset(presetId);
- if(issue.weapon!==weapon)return config??initialWeaponConfiguration(weapon);
+ const preferred=issueWeaponPreset(presetId);
+ // A saved generic rifle/carbine can differ from this operator's new default.
+ // Select a genuine same-class silhouette rather than leave a placeholder.
+ const issue=preferred.weapon===weapon?preferred:
+  issueWeaponPreset(weapon==='rifle'?'ar-m16a2':'ar-m4a1');
  return {...issue.weaponConfiguration,slots:{...issue.weaponConfiguration.slots,
   ...(config?.slots??{})}};
 }
