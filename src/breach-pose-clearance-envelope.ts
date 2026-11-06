@@ -75,6 +75,6 @@ export function segmentArmorPenetration(a:RiflePoint,b:RiflePoint,
 }
 export function armArmorPenetration(shoulder:RiflePoint,elbow:RiflePoint,
  wrist:RiflePoint,env:PoseClearanceEnvelope):number{
- return Math.max(segmentArmorPenetration(shoulder,elbow,env,1.85,.30),
+ return Math.max(segmentArmorPenetration(shoulder,elbow,env,1.85,.52),
   segmentArmorPenetration(elbow,wrist,env,1.6,0));
 }
