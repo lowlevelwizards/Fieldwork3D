@@ -154,7 +154,7 @@
   </div>
   <div class="replay-timeline">
     <div id="replayMarks" class="replay-marks" aria-label="Mission event markers"></div>
-    <input id="replaySeek" type="range" min="0" max="1000" value="0" aria-label="Seek through mission"/>
+    <input id="replaySeek" type="range" min="0" max="1" step="1" value="0" aria-label="Seek through mission by visual frame"/>
   </div>
   <div class="replay-actions">
     <button id="replayPrevEvent" type="button" title="Previous significant event" aria-label="Previous significant event" data-caption="EVENT −">|◀</button>
@@ -164,6 +164,10 @@
     <button id="replayNextEvent" type="button" title="Next significant event" aria-label="Next significant event" data-caption="EVENT +">▶|</button>
   </div><div id="replayExtra" class="replay-extra" hidden>
     <button id="replaySpeed" type="button">1×</button>
+    <button id="replayPrevFrame" type="button" title="Previous interpolated 60 FPS frame" aria-label="Previous visual frame">− FRAME</button>
+    <button id="replayNextFrame" type="button" title="Next interpolated 60 FPS frame" aria-label="Next visual frame">+ FRAME</button>
+    <button id="replayPrevSample" type="button" title="Previous recorded 20 Hz sample" aria-label="Previous recorded sample">− SAMPLE</button>
+    <button id="replayNextSample" type="button" title="Next recorded 20 Hz sample" aria-label="Next recorded sample">+ SAMPLE</button>
     <button id="replaySight" type="button">FULL VIEW</button>
     <button id="replayView" type="button">ISO</button>
     <button id="replayFollow" type="button">FOLLOW</button>

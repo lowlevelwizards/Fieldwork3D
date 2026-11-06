@@ -60,6 +60,8 @@ import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
 import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
+import {stepReplaySample,stepReplayPresentation,formatReplayTime}
+  from './breach-replay-transport.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -207,6 +209,10 @@ const ui={
   replayBack:el<HTMLButtonElement>('replayBack'),
   replayForward:el<HTMLButtonElement>('replayForward'),
   replaySpeed:el<HTMLButtonElement>('replaySpeed'),
+  replayPrevFrame:el<HTMLButtonElement>('replayPrevFrame'),
+  replayNextFrame:el<HTMLButtonElement>('replayNextFrame'),
+  replayPrevSample:el<HTMLButtonElement>('replayPrevSample'),
+  replayNextSample:el<HTMLButtonElement>('replayNextSample'),
   replaySeek:el<HTMLInputElement>('replaySeek'),
   replayMarks:el<HTMLElement>('replayMarks'),
   replaySight:el<HTMLButtonElement>('replaySight'),
@@ -3391,12 +3397,12 @@ function seekReplay(t:number){
   applyReplayFrameAt(replayTime);updateReplayHud();
 }
 function updateReplayHud(){
-  ui.replaySeek.value=String(recorder.duration?
-    Math.round(1000*replayTime/recorder.duration):0);
-  ui.replayClock.textContent=clockText(replayTime)+' / '+
-    clockText(recorder.duration)+(recorder.completeness.complete?'':' · PARTIAL');
+  ui.replaySeek.value=String(Math.round(replayTime*60));
+  ui.replayClock.textContent=formatReplayTime(replayTime)+' / '+
+    formatReplayTime(recorder.duration)+
+    (recorder.completeness.complete?'':' · PARTIAL');
   ui.replaySeek.setAttribute('aria-valuetext',
-    clockText(replayTime)+' of '+clockText(recorder.duration));
+    formatReplayTime(replayTime)+' of '+formatReplayTime(recorder.duration));
   ui.replayPlay.dataset.caption=replayPlaying?'PAUSE':'PLAY';
   const playbackIcon=replayPlaying?'pause':'replayPlay';
   if(ui.replayPlay.dataset.mode!==playbackIcon){
@@ -3471,6 +3477,7 @@ function enterReplay(){
   stage?.applySite(state.site??null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
+  ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
   renderReplayEventMarkers();seekReplay(0);updateHud();
 }
 function exitReplay(){
@@ -3490,17 +3497,27 @@ ui.replayPlay.addEventListener('click',()=>{
 });
 ui.replayBack.addEventListener('click',()=>seekReplay(replayTime-10));
 ui.replayForward.addEventListener('click',()=>seekReplay(replayTime+10));
+const stepReplay=(kind:'sample'|'frame',direction:-1|1)=>{
+  replayPlaying=false;
+  seekReplay(kind==='sample'?
+    stepReplaySample(recorder.frames,replayTime,direction):
+    stepReplayPresentation(replayTime,recorder.duration,direction));
+};
+ui.replayPrevFrame.addEventListener('click',()=>stepReplay('frame',-1));
+ui.replayNextFrame.addEventListener('click',()=>stepReplay('frame',1));
+ui.replayPrevSample.addEventListener('click',()=>stepReplay('sample',-1));
+ui.replayNextSample.addEventListener('click',()=>stepReplay('sample',1));
 ui.replayMore.addEventListener('click',()=>{
   ui.replayExtra.hidden=!ui.replayExtra.hidden;
   ui.replayMore.setAttribute('aria-expanded',String(!ui.replayExtra.hidden));
 });
 ui.replaySpeed.addEventListener('click',()=>{
-  replayRate=({0.5:1,1:2,2:4,4:0.5} as Record<number,number>)[replayRate]??1;
+  replayRate=({0.25:0.5,0.5:0.75,0.75:1,1:1.5,1.5:2,2:4,4:0.25} as Record<number,number>)[replayRate]??1;
   updateReplayHud();
 });
 ui.replaySeek.addEventListener('input',()=>{
   replayPlaying=false;
-  seekReplay(Number(ui.replaySeek.value)/1000*recorder.duration);
+  seekReplay(Number(ui.replaySeek.value)/60);
 });
 ui.replaySight.addEventListener('click',()=>{
   replayOmniscient=!replayOmniscient;fogStamp=-1;
@@ -4128,8 +4145,13 @@ window.addEventListener('keydown',e=>{
   if(replaying){
     if(e.code==='Space'&&!e.repeat){e.preventDefault();replayPlaying=!replayPlaying;}
     if(e.code==='Escape')exitReplay();
-    if(e.code==='ArrowLeft')seekReplay(replayTime-5);
-    if(e.code==='ArrowRight')seekReplay(replayTime+5);
+    if(e.code==='ArrowLeft'||e.code==='ArrowRight'){
+      e.preventDefault();
+      const direction:-1|1=e.code==='ArrowLeft'?-1:1;
+      if(e.ctrlKey||e.metaKey)jumpReplayEvent(direction>0);
+      else if(e.shiftKey){replayPlaying=false;seekReplay(replayTime+direction);}
+      else stepReplay('frame',direction);
+    }
     return;
   }
   if(e.code==='Space'&&!e.repeat){
