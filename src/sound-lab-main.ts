@@ -343,7 +343,7 @@ function renderWave(){
  if(!ctx)return;
  const w=canvas.width,h=canvas.height;
  ctx.clearRect(0,0,w,h);ctx.fillStyle='#0d191c';ctx.fillRect(0,0,w,h);
- const pcm=renderSound(selected,settings(),11025);
+ const pcm=renderSound(selected,auditionSettings(),11025);
  if(!pcm.length)return;
  ctx.strokeStyle='#243e40';ctx.lineWidth=1;
  for(let x=0;x<w;x+=60){ctx.beginPath();ctx.moveTo(x,0);
@@ -359,7 +359,7 @@ function renderWave(){
  }
  ctx.stroke();
  ctx.fillStyle='#8ca69f';ctx.font='12px sans-serif';
- ctx.fillText('ORIGINAL PROCEDURAL WAVEFORM / '+variant,12,19);
+ ctx.fillText((refineMode?'LAYERED REFINEMENT':'WAVE 01')+' / '+variant,12,19);
 }
 function scheduleWave(){
  cancelAnimationFrame(waveFrame);waveFrame=requestAnimationFrame(renderWave);
@@ -369,14 +369,26 @@ function renderEditor(){
  ui.eyebrow.textContent='SOUND / '+entry.id.toUpperCase();
  ui.name.textContent=entry.label;
  const focus=FOCUS_BY_ID.get(entry.id);
- ui.description.textContent=focus?focus.why+' · Listen broadly; shortlist first, choose later.':entry.description;
- $('auditionHeading').textContent=focus?'02 / EIGHT SOUND IDEAS':'02 / A·B·C AUDITION';
- $('compareHint').textContent=focus?'LISTEN · SHORTLIST · CHOOSE':'LISTEN · CHOOSE';
+ const refinement=refineMode?REFINEMENT_BY_ID.get(entry.id):null;
+ ui.description.textContent=refinement?
+  refinement.intent+(choice.explored?'':' · Choose your Wave 01 reference first.'):
+  focus?focus.why+' · Listen broadly; shortlist first, choose later.':entry.description;
+ $('auditionHeading').textContent=refineMode?'02 / SIX REFINEMENTS OF YOUR ORIGINAL':
+  focus?'02 / EIGHT SOUND IDEAS':'02 / A·B·C AUDITION';
+ $('compareHint').textContent=refineMode?'KEEP ORIGINAL · TEST LAYERS · CHOOSE':
+  focus?'LISTEN · SHORTLIST · CHOOSE':'LISTEN · CHOOSE';
  $('compare').textContent=focus?'▶ PLAY SHORTLIST':'▶ PLAY A → B → C';
  ($<HTMLButtonElement>('compareAll')).hidden=!focus;
+ ($<HTMLButtonElement>('compareAll')).textContent=refineMode?'▶ PLAY ALL 6':'▶ PLAY ALL 8';
+ ($<HTMLButtonElement>('compareBase')).hidden=!refineMode;
+ ($<HTMLElement>('baselinePanel')).hidden=!refineMode;
+ ($<HTMLDetailsElement>('advancedTune')).hidden=refineMode;
+ $('baselineLabel').textContent=refineMode?
+  'Original '+choice.choice+' · '+(choice.explored?'Your approved Wave 01 pick.':'Not yet approved. Open Wave 01 to choose.')+
+  ' · Every refinement is built from this sound.':'';
  ui.cueStatus.textContent=entry.status==='live'?'GAMEPLAY CONNECTED':'PROPOSED / LAB ONLY';
  ui.cueStatus.className='status'+(entry.status==='live'?' live':'');
- ui.editing.textContent='EDITING '+variant;
+ ui.editing.textContent='EDITING '+(refineMode?currentChoice().choice:variant);
  ui.enabled.checked=choice.enabled;
  ui.favorite.setAttribute('aria-pressed',String(!!choice.favorite));
  ui.favorite.textContent=choice.favorite?'★ FAVORITED':'☆ FAVORITE';
@@ -388,9 +400,11 @@ function renderAll(){
  stats();renderGroups();renderList();renderEditor();
 }
 function nextUnreviewed(){
- const candidates=focusMode?FOCUS_SOUND_IDS.map(id=>SOUND_BY_ID.get(id)!):SOUND_CATALOG;
+ const candidates=refineMode?REFINEMENT_SOUND_IDS.map(id=>SOUND_BY_ID.get(id)!):
+  focusMode?FOCUS_SOUND_IDS.map(id=>SOUND_BY_ID.get(id)!):SOUND_CATALOG;
  const visible=candidates.filter(e=>
-  !(focusMode?pack.choices[e.id].explored:pack.choices[e.id].reviewed)&&e.id!==selected);
+  !(refineMode?pack.choices[e.id].refinement?.approved:
+   focusMode?pack.choices[e.id].explored:pack.choices[e.id].reviewed)&&e.id!==selected);
  if(!visible.length){note('ALL CUES REVIEWED · YOUR PACK IS READY TO EXPORT');return;}
  const index=candidates.findIndex(e=>e.id===selected);
  const next=[...visible].sort((a,b)=>
@@ -402,6 +416,7 @@ function nextUnreviewed(){
 }
 function updateSetting(key:keyof SoundSettings,value:number){
  const choice=currentChoice();
+ if(choice.refinement?.approved)choice.refinement.approved=false;
  choice.edits??={};
  choice.edits[variant]={...settings(),[key]:value};
  persist();scheduleWave();
@@ -419,8 +434,8 @@ async function exportZip(){
    data:new TextEncoder().encode(JSON.stringify(pack,null,2))});
   const enabled=SOUND_CATALOG.filter(e=>pack.choices[e.id].enabled);
   for(let i=0;i<enabled.length;i++){
-   const entry=enabled[i],choice=pack.choices[entry.id];
-   const sound=resolveSoundSettings(pack,entry.id,choice.choice)!;
+   const entry=enabled[i];
+   const sound=resolvePlayableSoundSettings(pack,entry.id)!;
    const pcm=renderSound(entry.id,sound).map(v=>v*sound.gain*pack.master*.4);
    files.push({name:'wavs/'+entry.id+'.wav',data:encodeSoundWav(pcm)});
    if(i%10===0){
@@ -440,7 +455,8 @@ async function importJson(file:File){
   const raw=JSON.parse(await file.text()) as {version?:unknown};
   if(raw.version!==1)throw Error('Expected a version 1 sound pack');
   stopAudio();pack=normalizeSoundPack(raw);persist();
-  variant=currentChoice().choice;renderAll();
+  variant=refineMode?(currentChoice().refinement?.choice??'A'):
+   currentChoice().choice;renderAll();
   note('PACK IMPORTED · '+file.name+' · LIVE CUES UPDATED');
  }catch(error){note('IMPORT FAILED · '+String(error));}
  ui.importFile.value='';
@@ -461,10 +477,20 @@ ui.variants.addEventListener('click',event=>{
   variant=v;renderEditor();void preview(v);}
  if(node.dataset.choose)markChoice(node.dataset.choose as Variant);
  if(node.dataset.shortlist){const v=node.dataset.shortlist as Variant;
-  const c=currentChoice();c.shortlist??=[];
-  c.shortlist=c.shortlist.includes(v)?c.shortlist.filter(x=>x!==v):[...c.shortlist,v];
+  const c=currentChoice();
+  let saved=false;
+  if(refineMode){
+   c.refinement??={};const list=c.refinement.shortlist??[];
+   c.refinement.shortlist=list.includes(v as RefinementDirection)?
+    list.filter(x=>x!==v):[...list,v as RefinementDirection];
+   saved=c.refinement.shortlist.includes(v as RefinementDirection);
+  }else{
+   c.shortlist??=[];
+   c.shortlist=c.shortlist.includes(v)?c.shortlist.filter(x=>x!==v):[...c.shortlist,v];
+   saved=c.shortlist.includes(v);
+  }
   persist();renderVariants();
-  note(c.shortlist.includes(v)?'SHORTLISTED DIRECTION '+v:'REMOVED DIRECTION '+v+' FROM SHORTLIST');
+  note(saved?'SHORTLISTED DIRECTION '+v:'REMOVED DIRECTION '+v+' FROM SHORTLIST');
  }
 });
 ui.sliders.addEventListener('input',event=>{
@@ -497,15 +523,18 @@ $('next').addEventListener('click',nextUnreviewed);
 $('stop').addEventListener('click',()=>{stopAudio();note('STOPPED');});
 $('compare').addEventListener('click',()=>void compare(false));
 $('compareAll').addEventListener('click',()=>void compare(true));
+$('playBaseline').addEventListener('click',()=>void previewOriginal());
+$('compareBase').addEventListener('click',()=>void compareOriginal());
 $('resetVariant').addEventListener('click',()=>{
  const choice=currentChoice();
  if(choice.edits){delete choice.edits[variant];}
  persist();renderEditor();note('RESET '+variant+' TO ITS ORIGINAL SOUND');
 });
 $('exportCue').addEventListener('click',()=>{
- const pcm=renderSound(selected,settings()).map(v=>v*settings().gain*pack.master*.4);
+ const sound=auditionSettings();
+ const pcm=renderSound(selected,sound).map(v=>v*sound.gain*pack.master*.4);
  downloadSound([encodeSoundWav(pcm).buffer as ArrayBuffer],
-  'fieldwork-'+selected+'-'+variant+'.wav','audio/wav');
+  'fieldwork-'+selected+'-'+(refineMode?'wave2-':'')+variant+'.wav','audio/wav');
  note('EXPORTED '+current().label.toUpperCase()+' · '+variant+' WAV');
 });
 $('exportJson').addEventListener('click',downloadJson);
@@ -526,24 +555,34 @@ document.addEventListener('keydown',event=>{
   renderEditor();void preview(v);
  }else if(event.key==='Escape'){stopAudio();}
 });
-function switchView(focus:boolean){
- if(focus===focusMode)return;
- stopAudio();focusMode=focus;group='all';status='all';search='';
+function switchView(view:'refine'|'focus'|'all'){
+ if((refineMode?'refine':focusMode?'focus':'all')===view)return;
+ stopAudio();refineMode=view==='refine';focusMode=view!=='all';
+ group='all';status='all';search='';
  ui.search.value='';ui.filter.value='all';
- selected=focus?FOCUS_SOUND_IDS[0]:SOUND_CATALOG[0].id;
- variant=currentChoice().choice;
- $('focusView').setAttribute('aria-pressed',String(focus));
- $('allView').setAttribute('aria-pressed',String(!focus));
- $('roundLabel').textContent=focus?'WAVE 01 / FOUNDATIONAL SOUNDS':'ARCHIVE / ALL SOUND OPPORTUNITIES';
- $('roundHelp').textContent=focus?
-  '16 high-impact sounds. Eight contrasting sketches each. Listen, shortlist and choose; fine-tune later.':
-  'The larger 256-cue catalog is still here for later rounds. First-round sounds retain all eight exploratory directions.';
- $('libraryHeading').textContent=focus?'01 / FIRST 16 SOUNDS':'01 / FULL CUE LIBRARY';
- document.body.classList.toggle('focus-round',focus);
+ selected=refineMode?REFINEMENT_SOUND_IDS[0]:
+  focusMode?FOCUS_SOUND_IDS[0]:SOUND_CATALOG[0].id;
+ variant=refineMode?(currentChoice().refinement?.choice??'A'):currentChoice().choice;
+ $('refineView').setAttribute('aria-pressed',String(refineMode));
+ $('focusView').setAttribute('aria-pressed',String(view==='focus'));
+ $('allView').setAttribute('aria-pressed',String(view==='all'));
+ $('roundLabel').textContent=refineMode?'WAVE 02A / REFINEMENT + LAYERING':
+  focusMode?'WAVE 01 / FOUNDATIONAL SOUNDS':'ARCHIVE / ALL SOUND OPPORTUNITIES';
+ $('roundHelp').textContent=refineMode?
+  '10 representative sounds · 6 related, layered sketches each. Your Wave 01 pick is the reference. Shortlist and choose one refinement.':
+  focusMode?
+   '16 high-impact sounds. Eight contrasting sketches each. Listen, shortlist and choose. Your choices here become Wave 02 reference sounds.':
+   'The larger 256-cue catalog stays intact for later rounds. Both listening rounds are separate.';
+ $('libraryHeading').textContent=refineMode?'01 / NEXT 10 SOUNDS TO REFINE':
+  focusMode?'01 / FIRST 16 SOUNDS':'01 / FULL CUE LIBRARY';
+ document.body.classList.toggle('focus-round',focusMode);
+ document.body.classList.toggle('refine-round',refineMode);
  renderAll();
- note(focus?'FIRST LISTENING ROUND · 16 SOUNDS':'FULL SOUND LIBRARY · FUTURE CUES REMAIN AUDITION-ONLY');
+ note(refineMode?'WAVE 02 · LISTEN TO YOUR ORIGINAL, THEN THE LAYERED REFINEMENTS':
+  focusMode?'WAVE 01 · YOUR ORIGINAL CHOICES ARE PRESERVED':'FULL SOUND LIBRARY');
 }
-$('focusView').addEventListener('click',()=>switchView(true));
-$('allView').addEventListener('click',()=>switchView(false));
-document.body.classList.add('focus-round');
+$('refineView').addEventListener('click',()=>switchView('refine'));
+$('focusView').addEventListener('click',()=>switchView('focus'));
+$('allView').addEventListener('click',()=>switchView('all'));
+document.body.classList.add('focus-round','refine-round');
 renderAll();
