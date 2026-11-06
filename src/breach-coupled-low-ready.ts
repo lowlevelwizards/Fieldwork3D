@@ -25,7 +25,8 @@ export type CoupledInput={
  weapon:WeaponId;configuration:WeaponConfiguration;
  shoulders:[THREE.Vector3,THREE.Vector3];
  armor:PoseClearanceEnvelope;nominalYaw:number;
- onCandidate?:(sample:{right:number;left:number;receiver:number;depth:number})=>void;
+ onCandidate?:(sample:{right:number;left:number;receiver:number;depth:number;
+  leftJoint:RiflePoint;leftWrist:RiflePoint;stock:RiflePoint})=>void;
 };
 const direction=(from:THREE.Vector3,point:[number,number,number])=>
  new THREE.Vector3(point[0]-from.x,point[1]-from.y,point[2]-from.z);
@@ -107,7 +108,9 @@ export function solveCoupledLowReady(input:CoupledInput):
     if(!leftBest)continue;
     const depth=Math.max(rightCost/100,leftCost/100,receiverDepth);
     input.onCandidate?.({right:rightCost/100,left:leftCost/100,
-     receiver:receiverDepth,depth});
+     receiver:receiverDepth,depth,
+     leftJoint:pointer(leftBest.joint),leftWrist:pointer(leftBest.effector),
+     stock:pointer(stock)});
     // Stock and hands are constrained by the same *rigid* transform.
     // Only naturalness differentiates admissible candidates.
     const style=Math.abs(yawOffset-.42)*1.6+Math.abs(pitch+.27)*1.1+
