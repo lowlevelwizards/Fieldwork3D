@@ -70,8 +70,9 @@ export function relaxedArmShapeCost(
 function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
  side:-1|1,env:PoseClearanceEnvelope,softScale:number,
  previous?:THREE.Vector3):SolvedArm|null{
- // First sort by anatomy. Only a small subset receives the more costly
- // oriented-box collision test; this runs on equipment/pose changes only.
+ // Evaluate every anatomically valid candidate when heavy gear is present:
+ // culling after the eight prettiest elbow directions falsely made flak
+ // wearers incapable of holding a rifle. The search is still pose-cached.
  const anatomical:{pose:LimbSolution;score:number}[]=[];
  for(const pole of elbowCircle(shoulder,wrist)){
   const limb=solveTwoBone(shoulder,wrist,10,10,pole,ARM_LIMITS);
@@ -85,7 +86,7 @@ function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
  }
  anatomical.sort((a,b)=>a.score-b.score);
  let best:SolvedArm|null=null,bestQuality=Infinity;
- for(const candidate of anatomical.slice(0,8)){
+ for(const candidate of anatomical){
   const contact=evaluateSleeveArmorContact(shoulder,
    candidate.pose.joint,candidate.pose.effector,env,softScale);
   if(!contact.valid)continue;
@@ -127,6 +128,8 @@ export function solveCoupledLowReady(input:CoupledInput):
   pocket.y+reference.stock.y,
   pocket.z+reference.stock.z);
  let count=0;
+ const rigidOnly={...input.armor,
+  boxes:input.armor.boxes.filter(b=>b.material==='rigid')};
  const rejects={primaryReach:0,receiverRigid:0,
   rightAnatomyOrArmor:0,leftReach:0,leftAnatomyOrArmor:0,
   pairAnatomy:0,accepted:0};
@@ -164,8 +167,6 @@ export function solveCoupledLowReady(input:CoupledInput):
     if(primary.distanceTo(rightShoulder)>19.55){rejects.primaryReach++;continue;}
     const receiverA=origin.clone().add(transform({x:-5,y:0,z:0}));
     const receiverB=origin.clone().add(transform({x:4,y:0,z:0}));
-    const rigidOnly={...input.armor,
-     boxes:input.armor.boxes.filter(b=>b.material==='rigid')};
     const receiverDepth=segmentArmorPenetration(ptr(receiverA),
      ptr(receiverB),rigidOnly,1.06,.18);
     if(receiverDepth>.12){rejects.receiverRigid++;continue;}
