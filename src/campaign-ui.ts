@@ -186,7 +186,8 @@ export class CampaignScreen{
    weaponPick.setAttribute('aria-label','Select weapon for '+p.callsign);
    for(const weapon of ['carbine','smg','rifle','shotgun'] as const){
     const opt=node('option','',weapon.toUpperCase()+' · '+c.inventory.weapons[weapon]+' SPARE');
-    opt.value=weapon;opt.disabled=weapon!==p.weapon&&c.inventory.weapons[weapon]<1;
+    opt.value=weapon;opt.disabled=(weapon!==p.weapon&&c.inventory.weapons[weapon]<1)||
+     ((weapon==='smg'||weapon==='shotgun')&&weapon!==p.weapon);
     weaponPick.append(opt);
    }
    weaponPick.value=p.weapon;weaponPick.disabled=!!c.activeContractId;
@@ -228,9 +229,9 @@ export class CampaignScreen{
   logistics.append(purchases);
   const inventory=node('div','campaign-armory');
   inventory.append(node('h2','','FIELD ARMORY'));
-  for(const weapon of ['carbine','smg','rifle','shotgun'] as const){
+  for(const weapon of ['carbine','rifle'] as const){
    const stock=c.inventory.weapons[weapon],price=WEAPON_PRICES[weapon];
-   const buy=button('BUY '+weapon.toUpperCase()+' · '+price+' CR · '+stock+' STOCK',
+   const buy=button('BUY AR / AK '+weapon.toUpperCase()+' PLATFORM · '+price+' CR · '+stock+' STOCK',
     ()=>this.handlers.buyWeapon(weapon));
    buy.disabled=c.funds<price||!!c.activeContractId;
    inventory.append(buy);
@@ -559,7 +560,8 @@ export class CampaignScreen{
       (weapon===person.weapon?' · EQUIPPED':
       ' · '+c.inventory.weapons[weapon]+' AVAILABLE'));
      option.value='primary-'+weapon;
-     option.disabled=weapon!==person.weapon&&c.inventory.weapons[weapon]<1;
+     option.disabled=(weapon!==person.weapon&&c.inventory.weapons[weapon]<1)||
+       ((weapon==='smg'||weapon==='shotgun')&&weapon!==person.weapon);
      select.append(option);
     }
     select.value='primary-'+person.weapon;
