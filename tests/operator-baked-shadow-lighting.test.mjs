@@ -25,8 +25,8 @@ test('boonie and helmet brims cast actual shadows ON the front head receiver',()
  const clear=headwearCastShadowAtlas('bare');
  const boonie=headwearCastShadowAtlas('boonie');
  const helmet=headwearCastShadowAtlas('pasgt');
- assert.equal(boonie.image.width,128);
- assert.equal(boonie.image.height,64);
+ assert.equal(boonie.image.width,256);
+ assert.equal(boonie.image.height,128);
  assert.equal(boonie.image.data.byteLength,BAKED_SHADOW_ATLAS_BYTES);
  assert.equal(boonie.colorSpace,THREE.LinearSRGBColorSpace);
  const clearEye=frontShadowSample(clear,3.4);
@@ -35,6 +35,14 @@ test('boonie and helmet brims cast actual shadows ON the front head receiver',()
  assert.ok(clearEye>.95,'bare face should have no brim shadow');
  assert.ok(boonieEye<clearEye-.22,'brim must visibly shade forehead/eyes');
  assert.ok(helmetEye<clearEye-.11,'helmet rim must visibly shade upper face');
+ // The lower face is not inside the brim contact zone. Old broad ray
+ // visibility produced a muddy half-face gradient; this keeps a clean cheek.
+ const lowerFace=frontShadowSample(boonie,1.2);
+ const lowerBare=frontShadowSample(clear,1.2);
+ assert.ok(lowerFace>=lowerBare-.08,
+  'a boonie must not cast a huge shadow down across the cheeks');
+ assert.equal(boonie.magFilter,THREE.NearestFilter);
+ assert.equal(boonie.minFilter,THREE.NearestMipmapNearestFilter);
  const before=shadowAtlasCacheSize();
  assert.equal(headwearCastShadowAtlas('boonie'),boonie);
  assert.equal(shadowAtlasCacheSize(),before,'a style swaps camo without a rebake');
@@ -99,7 +107,9 @@ test('top-to-bottom darkening is independent of color and no new shadow meshes',
    Math.abs(pos.getZ(i))<.001);
  const top=face(4),bottom=face(-4);
  assert.notEqual(top,undefined);assert.notEqual(bottom,undefined);
- assert.ok(attr.getX(top)>attr.getX(bottom)+.08);
+ assert.ok(attr.getX(top)>attr.getX(bottom)+.035);
+ assert.ok(attr.getX(top)-attr.getX(bottom)<.09,
+  'the vertical grade supports the gear; it must not wash out entire panels');
  const orig=Array.from(attr.array);
  mat.color.setHex(0x777768);
  bakeGearGeometryAO(geo,mat);
