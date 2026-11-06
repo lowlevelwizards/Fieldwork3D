@@ -6,6 +6,7 @@ import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName} from './profile-primitives.ts';
 import {AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE} from './weapon-visual-palette.ts';
 import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,arMagazinePolyBaseplate} from './ar-magazine-profiles.ts';
+import {addARRailSegments} from './ar-rail-profiles.ts';
 import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
@@ -51,7 +52,10 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   }
  }else{
   // Low flat-top without a permanently molded carry handle.
-  b('receiver',-1.5,2.05,0,8.3,.65,2.65,1);
+  // Same rail elevation and tooth language on all flat-top uppers.
+  b('receiver',-1.5,2.28,0,8.3,.78,2.65,1);
+  addARRailSegments(root,'receiver',parts.receiver,index.receiver++,
+   {startX:-5.3,endX:2.3,count:3,topY:2.84},material[0]);
  }
 
  // A single textured side mark replaces tiny modeled receiver hardware.
@@ -150,26 +154,34 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const end=guard==='ar-pri-tube'?15.70:long?14.1:
   retro?11.8:guard==='ar-risii'?14.2:short?15.05:12.2;
  const start=3.55; // deliberate slight overlap with receiver upper
- if(guard!=='ar-pri-tube')
-  gh([[start-.36,1.55],[start+.46,1.37],[start+.46,-1.16],
-   [start-.36,-1.38]],4.06,0);
+ const isFreefloat=guard==='ar-risii'||guard==='ar-compact-rail';
+ if(guard!=='ar-pri-tube'){
+  if(isFreefloat)
+   // Broad squared mounting collar, NOT a spring delta ring on RIS II.
+   gh([[start-.51,1.55],[start+.52,1.48],
+    [start+.52,-1.55],[start-.51,-1.65]],4.10,0);
+  else
+   // Slightly lowered and enlarged conventional delta-ring trapezoid.
+   gh([[start-.48,1.55],[start+.63,1.39],
+    [start+.63,-1.65],[start-.48,-1.76]],4.12,0);
+ }
  if(guard==='ar-pri-tube'){
   const tube=addFacetedTube(root,'handguard',parts.handguard,index.handguard++,
    start,end,1.82,material[1]);
   tube.position.y=AR_VISUAL_AXIS_Y;
   gb(start+.35,0,0,.70,3.25,3.75,0);
-  // Preserve the Mod 0 elevated bridge over the six-sided PRI tube.
+  // Mk12 Mod 0 keeps the six-sided PRI tube and its continuous bridge.
   gb((start+end)/2,2.06,0,end-start,.56,2.8,0);
   gb(2.65,2.06,0,3.85,.52,2.6,0);
   gm('pri-vents',(start+end)/2,.18,1.90,end-start-1.7,.83);
  }else if(guard==='ar-triangle'){
-  gh([[start,1.45],[start+.55,1.74],
-   [end-1.10,1.08],[end,.58],[end,-.9],
-   [end-1.0,-1.16],[start,-1.73]],3.65,1);
-  // Broad lower bevel and dark, physically plausible upper vent marks.
-  gh([[start,-.96],[end-.85,-.82],
-   [end-1.0,-1.16],[start,-1.73]],3.76,0);
-  gm('a1-vents',(start+end)/2,.91,1.91,end-start-1.82,.79);
+  // Two deliberately angled facets instead of a featureless slab.
+  gh([[start,1.47],[start+.64,1.75],
+   [end-1.05,1.08],[end,.60],[end,-.88],
+   [end-1.05,-1.15],[start,-1.72]],3.62,1);
+  gh([[start,-.73],[end-.82,-.68],[end-1.05,-1.15],
+   [start,-1.72]],3.75,0);
+  gm('a1-vents',(start+end)/2,.91,1.93,end-start-1.68,1.02);
  }else if(guard==='ar-round'||guard==='ar-carbine'||retro){
   gh(retro?
    [[start,1.26],[start+.88,1.48],[end-.5,1.45],
@@ -178,38 +190,35 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
     [end,-.78],[end-.65,-1.71],[start+.45,-1.76]],
    retro?3.15:3.85,1);
   if(retro)gb(start+.32,.04,0,.53,2.88,3.32,0);
-  // Rounded stock plastic: full-depth circumferential bands with one long
-  // horizontal mold seam; NOT rail teeth or ventilation windows.
+  // Plastic bands wrap the broad visible face; one subdued seam, not a grid.
   gm(retro?'car-ribs':'poly-ribs',(start+end)/2,.1,
-   retro?1.66:2.00,end-start-1.9,2.28);
+   retro?1.68:2.03,end-start-1.8,2.24);
  }else{
   const ris=guard==='ar-risii';
-  const covered=!ris;
+  const covered=guard==='ar-compact-rail';
   const span=end-start,center=(start+end)/2;
-  // Step the cross section at top, side and bottom instead of a solid box.
+  // Stepped cross-section of authentic quad furniture.
   gh(ris?
    [[start,-1.50],[start,1.28],[start+.45,1.51],
     [end-.70,1.51],[end,.66],[end,-1.16],[end-.63,-1.58]]:
    [[start,-1.55],[start,1.49],
     [end-.60,1.49],[end,.90],[end,-1.48]],
    ris?3.72:3.17,ris?2:1);
-  gb(center,1.87,0,span,.62,ris?3.42:3.12,0);
-  gb(center,-1.83,0,span-.70,.48,ris?2.48:2.27,0);
+  // Underlying rail spines — continuous, but the teeth are one instanced mesh.
+  gb(center,1.87,0,span,.62,3.16,0);
+  gb(center,-1.83,0,span-.70,.48,2.43,0);
   for(const side of [-1,1])
-   gb(center,.07,side*(ris?2.07:1.77),span-1.20,.58,.42,0);
-  if(covered)
-   for(const side of [-1,1])
-    gb(center,.14,side*2.035,span-2.1,1.0,.19,1);
-  // Three or four large physical rail blocks. Any further precision
-  // belongs in the nearest-neighbor texture rather than more triangles.
-  const teeth=guard==='ar-m5-rail'?4:3;
-  for(let i=0;i<teeth;i++){
-   const x=start+1.34+i*(span-2.68)/(teeth-1);
-   gb(x,2.31,0,.59,.31,ris?3.16:2.85,0);
+   gb(center,.07,side*2.05,span-1.2,.58,.42,0);
+  addARRailSegments(root,'handguard',parts.handguard,index.handguard++,
+   {startX:start,endX:end,count:guard==='ar-m5-rail'?5:4,
+    topY:2.84,bottomY:-1.65,sideZ:2.34,sideY:.59,
+    coverSides:covered},material[0]);
+  if(covered){
+   // Cover occupies its own rail section; no side teeth underneath.
+   for(const side of [-1,1])gb(center,.10,side*2.39,
+    span-1.95,1.07,.28,1);
+   gm('rail-cover-stripes',center,.62,2.56,span-2.1,.84);
   }
-  gm(guard==='ar-m5-rail'?'m5-panel':
-   guard==='ar-quad'?'ras-panel':'ris-panel',center,.14,
-   ris?2.31:2.155,span-2.1,ris?.94:.83);
  }
 
  // The barrel is the only authority for its own muzzle and front-sight X.
