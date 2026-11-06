@@ -12,9 +12,9 @@ const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 export const LOW_READY_ANATOMY={
  upperLength:10,lowerLength:10,
  minElbowFlex:.31,maxElbowFlex:2.42,
- maximumFlare:4.8,
+ maximumFlare:5.5,
  /** Downward elbows cannot rise into the shoulder plane. */
- minimumDrop:2.55,
+ minimumDrop:.35,
  /** No arm may cross deeply over the sternum while reaching. */
  maximumInwardCross:6.1,
  preferredFiringDrop:5.7,preferredSupportDrop:5.2,
