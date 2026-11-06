@@ -475,7 +475,9 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
  if(c.activeContractId||!WEAPONS.includes(weapon))return c;
  const m=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!m||m.weapon===weapon||c.inventory.weapons[weapon]<1)return c;
- const targetConfig=changeWeaponPlatform(m.weaponConfiguration,weapon);
+ const targetConfig=resolveIssuedOrLegacy(
+  changeWeaponPlatform(m.weaponConfiguration,weapon),weapon,
+  starterWeaponPreset(m.id));
  const attachments=returnAttachments(c.inventory.attachments,
   m.weaponConfiguration,targetConfig);
  return reconcileCampaignWeaponOwnership({...c,inventory:{...c.inventory,attachments,weapons:{
@@ -486,7 +488,7 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
   operators:c.operators.map(o=>o.id===id?{...o,weapon,magazine:0,reserve:0,
     magazines:[],loadedMagazineId:o.id+'/'+weapon+'/loaded',
     loadout:syncPrimaryWeapon(o.loadout,weapon),
-    weaponConfiguration:changeWeaponPlatform(o.weaponConfiguration,weapon)}:o)});
+    weaponConfiguration:targetConfig}:o)});
 }
 
 /** Retirement is player-directed, never inferred from an ambiguous downed state. */
