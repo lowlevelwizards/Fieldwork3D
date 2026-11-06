@@ -84,6 +84,8 @@ test('R4.7 curved metal STANAGs are still uniform, with delayed lower sweep',()=
  assert.equal(part(m4.g,'magazine').length,3);
  assert.ok(part(m4.g,'magazine').slice(1).every(x=>x.material===AR_STANAG_RIB));
  assert.equal(part(mk.g,'magazine').length,4);
+ assert.ok(bounds(mk.g,'magazine').max.z-bounds(mk.g,'magazine').min.z<2,
+  'polymer bevel remains shallow and does not overinflate sideways');
  assert.ok(part(mk.g,'magazine').some(x=>x.material===AR_MUTED_FDE));
  assert.equal(gatherOldPolyArt(mk.g),0,'no resurrected square panel');
  clearWeaponSilhouette(m4.g);clearWeaponSilhouette(mk.g);

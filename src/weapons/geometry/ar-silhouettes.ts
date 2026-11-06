@@ -146,7 +146,8 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   for(const side of [-1,1]){
    const bevel=addOutline(root,'magazine',mag,index.magazine++,
     polyFacet,.13,material[0]);
-   bevel.position.z=side*(m.magazineDepthZ/2+.05);
+   // Keep the shallow facet inside the established slim-Z contract.
+   bevel.position.z=side*(m.magazineDepthZ/2-.015);
    bevel.castShadow=false;bevel.receiveShadow=false;
   }
   // The substantial tan lower plate remains tangent to the curved toe.
