@@ -281,14 +281,15 @@ const randomSiteSeed=()=>{
   return bytes[0]||((Date.now()^Math.floor(Math.random()*1e9))>>>0);
 };
 const startupParams=new URLSearchParams(location.search);
-// Narrative trial is opt-in; ordinary Quick Play/Campaign remains unchanged.
-const briefingPreviewEnabled=startupParams.get('briefingV2')==='1';
+// The procedural dossier is the standard briefing; ?briefingV2=0 is an
+// optional troubleshooting escape hatch, never a mission rule change.
+const briefingPreviewEnabled=startupParams.get('briefingV2')!=='0';
 function buildPreviewDossier(session:Session,risk?:1|2|3){
   if(!briefingPreviewEnabled||!session.site)return undefined;
   try{return createOperationDossier(compileMissionFacts(session,{contractRisk:risk}));}
   catch(error){
     // Narrative validation must never prevent a valid tactical mission loading.
-    console.warn('[Briefing preview] Falling back to static contract',error);
+    console.warn('[Briefing] Safe static contract fallback',error);
     return undefined;
   }
 }
@@ -481,7 +482,7 @@ function applyCampaignSkills(){
 // The front menu needs no procedural site. Generate exactly once when a mode starts.
 let state:Session=newSession(0,legacyStudy||campaignMode==='menu'?undefined:initialSiteSeed,
   selectedIntelMode,requestedSiteScale,undefined,undefined,
-  {enableCivilians:civilianPreview});
+  {enableCivilians:civilianPreview,enableIncidentIntent:true});
 state.lightingMode=selectedLightingMode;
 applyRequestedCondition(state);
 applyRosterIdentity(state,persistentRoster);
@@ -2141,9 +2142,15 @@ function updateHud(){
     dossier.incident.lead+' '+dossier.incident.context:'';
   ui.briefingCondition.textContent=brief.condition;
   ui.briefingExtraction.textContent=brief.extraction;
-  ui.briefingSite.textContent=brief.building+' · '+brief.layout;
+  const contract=campaignMode==='mission'&&campaign?.activeContractId?
+    campaign.contracts.find(c=>c.id===campaign!.activeContractId):undefined;
+  ui.briefingSite.textContent=brief.building+' · '+brief.layout+
+    (contract?'\n'+contract.region.toUpperCase()+
+      ' · '+['','LOW','MODERATE','HIGH'][contract.risk]+
+      ' RISK · '+contract.title.toUpperCase():'');
   ui.briefingIntel.textContent=dossier?
-    dossier.claims.map(c=>c.text).join(' '):brief.notes;
+    dossier.claims.map(c=>'['+c.source.toUpperCase()+' · '+
+      c.confidence.toUpperCase()+'] '+c.text).join('\n\n'):brief.notes;
   ui.briefingRoster.textContent=brief.squad+' OPERATORS · '+
     team(state).map(a=>a.name).join(' · ');
   if(state.phase!=='planning'){
@@ -4029,7 +4036,8 @@ function reset(next=state.variant,siteSeed?:number,
   state=newSession(next,legacyStudy?undefined:
     siteSeed??randomSiteSeed(),restartStart?.intelMode??selectedIntelMode,
     restartStart?.scale??requestedSiteScale,missionOverride,
-    prebuiltSite,{risk:encounterRisk,enableCivilians:civilianPreview});
+    prebuiltSite,{risk:encounterRisk,enableCivilians:civilianPreview,
+   enableIncidentIntent:true});
   executionNoticeFeed.reset();
   state.lightingMode=restartStart?.lightingMode??selectedLightingMode;
   if(campaignMode==='quick')persistentRoster=freshQuickPlayRoster(persistentRoster);
@@ -4246,7 +4254,10 @@ async function launchQuickPlay(){
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
       if(id===quickPlayRun&&!quickPlayBusy&&
          quickPlayPanel.dataset.state==='ready')
-        quickPlayPanel.hidden=true;
+        {
+          quickPlayPanel.hidden=true;
+          showMissionBriefing();
+        }
     }));
   }catch(error){
     if(id!==quickPlayRun)return;
@@ -4376,6 +4387,7 @@ function deployCampaignContract(){
  ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
  reset(0,job.seed,job.kind,undefined,job.risk);
  campaignScreen.hide();
+ showMissionBriefing();
 }
 function returnAfterCampaignMission(){
  if(campaignMode==='mission'&&(state.phase==='won'||state.phase==='lost')){
@@ -5102,14 +5114,17 @@ ui.cameraFit.addEventListener('click',()=>{
   closeMissionSettings();
   updateContext();
 });
-ui.briefingToggle.addEventListener('click',()=>{
-  if(state.phase!=='planning'||replaying)return;
+function showMissionBriefing(){
+  if(state.phase!=='planning'||replaying||!state.site)return;
+  // Opening from either mode is safe; never reroll the incident on display.
+  updateHud();
   collapseTacticalSheets('briefing');
   ui.briefingPanel.hidden=false;
   ui.briefingToggle.setAttribute('aria-expanded','true');
   tacticalSheetNavigation.sync();tacticalSheetNavigation.focusFirst();
   updateContext();
-});
+}
+ui.briefingToggle.addEventListener('click',showMissionBriefing);
 ui.briefingClose.addEventListener('click',()=>{
   ui.briefingPanel.hidden=true;
   ui.briefingToggle.setAttribute('aria-expanded','false');
