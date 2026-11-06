@@ -165,27 +165,38 @@ function markChoice(v:Variant){
  note('APPROVED '+current().label.toUpperCase()+' · VARIANT '+v);
 }
 function stats(){
- const entries=focusMode?FOCUS_SOUND_IDS:SOUND_CATALOG.map(e=>e.id);
+ const entries=refineMode?REFINEMENT_SOUND_IDS:focusMode?FOCUS_SOUND_IDS:SOUND_CATALOG.map(e=>e.id);
  const choices=entries.map(id=>pack.choices[id]);
- const done=choices.filter(c=>focusMode?c.explored:c.reviewed).length;
+ const done=choices.filter(c=>refineMode?c.refinement?.approved:focusMode?c.explored:c.reviewed).length;
  ui.total.textContent=String(entries.length);
  ui.reviewed.textContent=String(done);
  ui.enabledCount.textContent=String(choices.filter(c=>c.enabled).length);
  ui.live.textContent=String(entries.filter(id=>SOUND_BY_ID.get(id)?.status==='live').length);
  ui.fill.style.width=(100*done/entries.length).toFixed(1)+'%';
- $('totalLabel').textContent=focusMode?'IN THIS ROUND':'CUE OPPORTUNITIES';
- $('reviewLabel').textContent=focusMode?'DIRECTIONS CHOSEN':'REVIEWED';
+ $('totalLabel').textContent=refineMode?'REFINEMENT STUDIES':focusMode?'IN THIS ROUND':'CUE OPPORTUNITIES';
+ $('reviewLabel').textContent=refineMode?'REFINEMENTS CHOSEN':focusMode?'DIRECTIONS CHOSEN':'REVIEWED';
+ const counts=new Map<string,number>();
+ for(const id of FOCUS_SOUND_IDS){const c=pack.choices[id];if(c.explored)
+  counts.set(c.choice,(counts.get(c.choice)??0)+1);}
+ const ranked=[...counts].sort((a,b)=>b[1]-a[1]);
+ $('profileHint').textContent=refineMode?(ranked.length?
+  'YOUR WAVE 01 SIGNALS · '+ranked.map(([v,n])=>v+' ×'+n).join(' · ')+
+  ' · THIS ROUND TESTS WHAT YOU LIKE INSIDE THOSE CHARACTERS':
+  'IMPORT YOUR WAVE 01 JSON ABOVE TO BRING IN YOUR ORIGINAL CHOICES'):
+  '';
  ui.master.value=String(Math.round(pack.master*100));
  ui.masterValue.textContent=Math.round(pack.master*100)+'%';
 }
 function matches(entry:SoundEntry){
  const choice=pack.choices[entry.id];
+ if(refineMode&&!REFINEMENT_BY_ID.has(entry.id))return false;
  if(focusMode&&!FOCUS_BY_ID.has(entry.id))return false;
  if(group!=='all'&&entry.group!==group)return false;
  if(search&&!((entry.label+' '+entry.id+' '+entry.family).toLowerCase().includes(search)))
   return false;
- if(status==='unreviewed'&&choice.reviewed)return false;
- if(status==='reviewed'&&!choice.reviewed)return false;
+ const reviewed=refineMode?!!choice.refinement?.approved:focusMode?!!choice.explored:!!choice.reviewed;
+ if(status==='unreviewed'&&reviewed)return false;
+ if(status==='reviewed'&&!reviewed)return false;
  if(status==='enabled'&&!choice.enabled)return false;
  if(status==='favorite'&&!choice.favorite)return false;
  if(status==='live'&&entry.status!=='live')return false;
@@ -211,16 +222,18 @@ function renderGroups(){
 }
 function renderList(){
  const frag=document.createDocumentFragment();
- const candidates=focusMode?FOCUS_SOUND_IDS.map(id=>SOUND_BY_ID.get(id)!):SOUND_CATALOG;
+ const candidates=refineMode?REFINEMENT_SOUND_IDS.map(id=>SOUND_BY_ID.get(id)!):
+  focusMode?FOCUS_SOUND_IDS.map(id=>SOUND_BY_ID.get(id)!):SOUND_CATALOG;
  const visible=candidates.filter(matches);
  for(const entry of visible){
-  const choice=pack.choices[entry.id],reviewed=focusMode?choice.explored:choice.reviewed;
+  const choice=pack.choices[entry.id],reviewed=refineMode?
+   choice.refinement?.approved:focusMode?choice.explored:choice.reviewed;
   const button=document.createElement('button');
   button.type='button';button.className='cue'+(selected===entry.id?' selected':'');
   button.dataset.cue=entry.id;
   button.setAttribute('aria-current',String(selected===entry.id));
   if(focusMode){const rank=document.createElement('span');rank.className='rank';
-   rank.textContent=String(FOCUS_SOUND_IDS.indexOf(entry.id)+1).padStart(2,'0');
+   rank.textContent=String((refineMode?REFINEMENT_SOUND_IDS:FOCUS_SOUND_IDS).indexOf(entry.id)+1).padStart(2,'0');
    button.append(rank);}
   const dot=document.createElement('i');
   dot.className='dot'+(reviewed?' reviewed':
@@ -230,12 +243,12 @@ function renderList(){
   const label=document.createElement('strong');label.textContent=entry.label;
   const sub=document.createElement('small');
   sub.textContent=(entry.status==='live'?'GAME HOOK':'CANDIDATE')+
-   (reviewed?' · CHOSEN':' · TO EXPLORE')+
+   (reviewed?' · CHOSEN':refineMode?' · TO REFINE':' · TO EXPLORE')+
    (choice.favorite?' · ★':'')+
    (!choice.enabled?' · MUTED':'');
   txt.append(label,sub);
   const tag=document.createElement('span');tag.className='variant-tag';
-  tag.textContent=choice.choice;
+  tag.textContent=refineMode?'R2 '+(choice.refinement?.approved?choice.refinement.choice:'—'):choice.choice;
   button.append(dot,txt,tag);frag.append(button);
  }
  if(!visible.length){
