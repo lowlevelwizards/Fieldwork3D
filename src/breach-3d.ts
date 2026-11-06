@@ -4,6 +4,9 @@ import {createCivilianRig,updateCivilianRig,type CivilianRig}
  from './breach-civilian-visuals.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
+import {projectedOperatorHeightPx,operatorShadowDetail,
+ applyOperatorShadowLod,cavityQualityForDetail}
+ from './operator-shadow-quality.ts';
 import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
 import {roomPixelSurface,zonePixelSurface,wallPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
 import {wearFinish} from './rendering/wear-finish.ts';
@@ -123,6 +126,7 @@ export class TacticalScene3D{
       staticBatch:this.staticBatches.stats(),
       shadowRefreshes:this.shadowUpdates.refreshes,
       shadowReuses:this.shadowUpdates.reuses,
+      shadowLodTransitions:this.shadowLodTransitions,
       fogMemoryPaints:this.fogMemoryPaints,
       fogSightPaints:this.fogSightPaints};
   }
@@ -136,6 +140,7 @@ export class TacticalScene3D{
   private root=new THREE.Group();
   private readonly staticBatches=new StaticSceneBatches();
   private readonly shadowUpdates=new ShadowUpdateController();
+  private shadowLodTransitions=0;
   private fogUnknown:THREE.InstancedMesh;
   private fogExplored:THREE.InstancedMesh;
   private fogCanvas!:HTMLCanvasElement;
@@ -1907,6 +1912,12 @@ export class TacticalScene3D{
         positions.needsUpdate=true;object.beamLast={x:bx,y:by,yaw:angle,tick};
        }
       }
+      // The quality tier is selected from screen pixels, not absolute world
+      // distance. No new directional light or actor-specific shadow map.
+      const px=projectedOperatorHeightPx(this.camera,this.height);
+      const shadowDetail=operatorShadowDetail(px,this.quality.mode);
+      object.physical.root.userData.fieldworkCavityQuality=
+        cavityQualityForDetail(shadowDetail);
       // Shared, bounded inventory projection for both visible containers.
       const carried=actor.equipment?
        carryPlacementLedger(actor.equipment,actor.spareMagazines):[];
@@ -1985,6 +1996,14 @@ export class TacticalScene3D{
             dx*Math.cos(actor.heading)+dy*Math.sin(actor.heading)>18;
         })
       },dt);
+      // Rebuild caster choices only on projected-size/wardrobe tier changes.
+      // A paused scene is explicitly invalidated when casters change.
+      const shadowLod=applyOperatorShadowLod(
+       object.physical.root,shadowDetail);
+      if(shadowLod.casterChanges){
+       this.shadowUpdates.invalidate();
+       this.shadowLodTransitions++;
+      }
       object.root.updateMatrixWorld(true);
       for(let i=0;i<2;i++){
         const shadow=object.contactShadows[i];

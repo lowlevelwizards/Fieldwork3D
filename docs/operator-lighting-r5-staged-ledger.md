@@ -152,3 +152,14 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
   crouch/stride modulate a subtle upper-thigh garment overlap.
 - Material map, hue and native vertex AO stay authoritative; no IK changes.
 - LOD scalar supported by the rig for later tactical quality policy.
+
+## R5.5-B mobile tactical shadow quality LOD
+- Use projected character pixels and existing graphics preset, not
+  expensive per-frame world-distance checks, to choose high/medium/distant.
+- Retain the ONE existing scene shadow map and shadow scheduler.
+- Medium/distant omit tiny cast volumes; their precomputed AO stays lit.
+- Track original mesh.castShadow and restore it when zooming closer.
+- Caster traversal only on changed LOD tier or appearance key.
+- Explicitly invalidate paused world shadow map when caster set changes.
+- Drive three pose-cavity material uniforms at appropriate quality strength.
+- No actor-specific lights, meshes, shadow passes or CPU bake work.

@@ -446,6 +446,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.utilityCarryLocation??null,p.faceStyle??null,
     p.flashCharges??null,p.treatmentActive??null
   ]);
+  r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
   const previousAppearance=appearanceState.get(r);
   const appearanceChanged=previousAppearance?.key!==appearanceKey;
   if(appearanceChanged){
