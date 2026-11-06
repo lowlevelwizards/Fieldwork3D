@@ -36,6 +36,7 @@ import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey} from './breach-reload-motion.ts';
+import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
@@ -1414,22 +1415,32 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.droppedGun.visible=(p.down||p.surrender)&&downProgress>=.30;
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
-  let reaching=false,releaseLeft=false,releaseRight=false;
+    const handOwners=resolvePoseContactOwners({
+    surrender:p.surrender,down:p.down,downProgress,
+    treatmentActive,reloadActive,reloadProgress,reloadMode,
+    throwActive,pushActive:bash.active&&p.bashRole==='push',
+    woundedGuard:!p.down&&p.injury>0&&p.hitRegion!=='leg'&&
+      !p.aiming&&!p.firing&&p.hitAge!==undefined&&
+      p.hitAge>=0&&p.hitAge<1.1,doorActive
+  });
+  const releaseLeft=handOwners.left!=='weapon';
+  const releaseRight=handOwners.right!=='weapon';
+  let reaching=false;
   r.medicalItem.visible=treatmentActive;
   let fullDoorContact:THREE.Vector3|null=null;
   if(p.surrender){
     // Deliberate visible surrender: discard the gun, kneel and raise both
     // hands overhead. Unlike an incapacitated actor this is not a fall.
-    releaseLeft=true;releaseRight=true;
+    
     const raised=smooth(downProgress/.60);
     leftGrip.set(-1,3+15*raised,-7);
     rightGrip.set(-1,3+15*raised,7);
   }else if(p.down){
     // Support hand gives way first, then the firing hand releases.
-    releaseLeft=downProgress>.16;releaseRight=downProgress>.53;
+    
     leftGrip.set(-3,-7,-8);rightGrip.set(-2,-8,8);
   }else if(treatmentActive){
-    releaseLeft=true;releaseRight=true;reaching=true;
+    reaching=true;
     const target=p.treatmentPoint??{x:p.x+Math.cos(p.heading)*12,
       y:p.z+Math.sin(p.heading)*12};
     const local=P(target.x-p.x,12-r.chest.position.y,target.y-p.z);
@@ -1441,36 +1452,36 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     leftGrip.copy(left);rightGrip.copy(right);
     r.medicalItem.position.copy(left);
   }else if(reloadActive){
-    releaseLeft=true;
+    
     const sockets=weaponPresentationSockets(p.weapon,p.weaponConfiguration);
     const hand=reloadHandKey(reloadProgress,reloadMode,
       data.supportX,data.supportY,data.primaryX,
       sockets.magazinePart?sockets.magazine:undefined);
     leftGrip.set(hand.x,hand.y,hand.z);
   }else if(throwActive){
-    releaseLeft=true;
+    
     const t=Math.sin(Math.PI*clamp(throwAge/.7,0,1));
     leftGrip.set(data.supportX+8*t,4+7*t,-7);
   }else if(p.surrender){
-    releaseLeft=true;
+    
     const raised=smooth(downProgress/.60);
     leftGrip.set(-1,3+15*raised,-6);
     rightGrip.set(-1,3+15*raised,6);
   }else if(bash.active&&p.bashRole==='push'){
     // A short forearm/shoulder extension separates the opponent, while
     // the primary hand keeps the gun from flailing through the torso.
-    releaseLeft=true;
+    
     leftGrip.set(data.supportX+bash.reach*2,-4,-6);
   }else if(!p.down&&p.injury>0&&
     p.hitRegion!=='leg'&&!p.aiming&&!p.firing&&
     p.hitAge!==undefined&&p.hitAge>=0&&p.hitAge<1.1){
     // Only release the support grip to guard a fresh injury when the
     // operator is not actively aiming or already using that hand.
-    releaseLeft=true;
+    
     const progress=Math.sin(Math.PI*clamp(p.hitAge/1.1,0,1));
     leftGrip.set(3+progress*2,-5,-5);
   }else if(doorActive&&p.doorPoint){
-    releaseLeft=true;reaching=true;
+    reaching=true;
     const local=P(p.doorPoint.x-p.x,19-r.chest.position.y,
       p.doorPoint.y-p.z);
     local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
