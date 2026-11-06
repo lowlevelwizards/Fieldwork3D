@@ -12,7 +12,7 @@ const clamp=(v:number)=>Math.max(0,Math.min(1,v));
 export function akMagazineCurve(style:AKMagazineStyle,
  topX=.95,topY=-2.1,width=3.05,depth=2.2):AKMagazineCurve{
  const dimensions={
-  '762':{length:5.85,sweep:2.30,power:1.55},
+  '762':{length:6.05,sweep:2.65,power:1.50},
   '545':{length:5.55,sweep:1.44,power:1.48},
   'rpk45':{length:7.50,sweep:2.28,power:1.55}
  } as const;
