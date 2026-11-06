@@ -78,28 +78,49 @@ export function addARA1SurfaceVents(root:THREE.Group,from:number,to:number,
  const result:THREE.Mesh[]=[];
  for(const side of [1,-1] as const){
   const points:number[]=[],indices:number[]=[];
+  // These are the EXACT vertex rings used by addARFacetedForearm.
+  // The left/negative side is intentionally not assumed to mirror the
+  // right: the legacy yz() polygon has subtly asymmetric rear facets.
+  const thetaA=side===1?Math.PI/4:7*Math.PI/4;
+  const thetaB=side===1?Math.PI/2:6*Math.PI/4;
+  const vertex=(section:ARForearmSection,theta:number)=>{
+   const [y,z]=yz(theta,'a1-triangle',section.ry,section.rz);
+   return new THREE.Vector3(section.x,axisY+y,z);
+  };
+  const a=vertex(rear,thetaA),b=vertex(rear,thetaB);
+  const c=vertex(mid,thetaA),d=vertex(mid,thetaB);
+  const normal=new THREE.Vector3();
   const surface=(x:number,u:number)=>{
    const t=THREE.MathUtils.clamp((x-rear.x)/deltaX,0,1);
-   const ry=THREE.MathUtils.lerp(rear.ry,mid.ry,t);
-   const rz=THREE.MathUtils.lerp(rear.rz,mid.rz,t);
-   // The actual ring faces are 45–90 degrees (upper side facets).
-   const [ya,za]=yz(Math.PI/4,'a1-triangle',ry,rz);
-   const [yb,zb]=yz(Math.PI/2,'a1-triangle',ry,rz);
-   const [dyadx,dzadx]=yz(Math.PI/4,'a1-triangle',
-    (mid.ry-rear.ry)/deltaX,(mid.rz-rear.rz)/deltaX);
-   const [dybdx,dzbdx]=yz(Math.PI/2,'a1-triangle',
-    (mid.ry-rear.ry)/deltaX,(mid.rz-rear.rz)/deltaX);
-   const tangentX=new THREE.Vector3(1,
-    THREE.MathUtils.lerp(dyadx,dybdx,u),
-    side*THREE.MathUtils.lerp(dzadx,dzbdx,u));
-   const tangentU=new THREE.Vector3(0,yb-ya,side*(zb-za));
-   const normal=new THREE.Vector3();
-   if(side===1)normal.crossVectors(tangentU,tangentX);
-   else normal.crossVectors(tangentX,tangentU);
-   normal.normalize();
-   return new THREE.Vector3(x,axisY+THREE.MathUtils.lerp(ya,yb,u),
-    side*THREE.MathUtils.lerp(za,zb,u))
-    .addScaledVector(normal,A1_VENT_OFFSET);
+   const point=new THREE.Vector3();
+   let tri:THREE.Triangle;
+   if(side===1){
+    // Actual indexed faces are [rear A, rear B, mid A] and
+    // [rear B, mid B, mid A]; the diagonal is t+u=1.
+    if(t+u<=1){
+     point.copy(a).multiplyScalar(1-t-u).addScaledVector(b,u)
+      .addScaledVector(c,t);
+     tri=new THREE.Triangle(a,b,c);
+    }else{
+     point.copy(d).multiplyScalar(t+u-1).addScaledVector(b,1-t)
+      .addScaledVector(c,1-u);
+     tri=new THREE.Triangle(b,d,c);
+    }
+   }else{
+    // Reverse winding: indexed left facets have diagonal u=t.
+    if(u>=t){
+     point.copy(a).multiplyScalar(1-u).addScaledVector(b,u-t)
+      .addScaledVector(d,t);
+     tri=new THREE.Triangle(b,a,d);
+    }else{
+     point.copy(a).multiplyScalar(1-t).addScaledVector(c,t-u)
+      .addScaledVector(d,u);
+     tri=new THREE.Triangle(a,d,c);
+    }
+   }
+   tri.getNormal(normal);
+   if(normal.z*side<0)normal.negate();
+   return point.addScaledVector(normal,A1_VENT_OFFSET);
   };
   for(let i=0;i<A1_VENT_COUNT;i++){
    const x=THREE.MathUtils.lerp(from+1.52,to-1.86,
