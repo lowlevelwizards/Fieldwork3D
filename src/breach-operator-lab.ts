@@ -1529,7 +1529,18 @@ function draw(){
      armorStyle:poseFitArmor,rigStyle:poseFitRig,top:poseFitTop}}:
    wardrobeOptions;
   const currentKit=syncPrimaryWeapon(labKit,currentWeapon);
-  const currentCarry=previewCarry(currentKit,currentWeapon);
+  const poseFitArmorSlot=poseFitArmor==='armor-bare'?'armor-none':
+   poseFitArmor.startsWith('soft-')?'armor-soft':'armor-carrier';
+  const poseFitRigSlot=poseFitRig==='no-rig'?'rig-none':
+   ['chest-placard','micro-rig','light-rig','chicom-rig','bandolier']
+    .includes(poseFitRig)?'rig-light':'rig-full';
+  // A Wardrobe look cannot magically override the physically equipped
+  // armor/rig. Pose Fit must install the matching real equipment slots;
+  // otherwise all selected heavy configurations silently normalize away.
+  const poseFitKit=poseFitMode?
+   setEquipmentChoice(setEquipmentChoice(currentKit,'armor',
+     poseFitArmorSlot),'rig',poseFitRigSlot):currentKit;
+  const currentCarry=previewCarry(poseFitKit,currentWeapon);
   if(!comparing)poseOperator(rig,{x:motion.x,z:motion.z,heading:motion.heading,
     travelYaw:motion.travelYaw,seconds:clock,stride:clock*40,
     velocity:poseFitMode?0:motion.speed,
@@ -1560,7 +1571,7 @@ function draw(){
     replayFeet:feet,pelvisYaw:state.pelvisYaw,
     hybridSupport:gaitReference.value==='candidate',
     deterministic:true,shotHeading:motion.heading,
-     equipment:currentKit,appearanceSeed:labPalette,wardrobe:poseFitWardrobe,
+     equipment:poseFitKit,appearanceSeed:labPalette,wardrobe:poseFitWardrobe,
      faceStyle:choose<HTMLSelectElement>('faceTreatment').value as
        'blank'|'quiet'|'graphic',
      magazineCarryLocations:currentCarry.filter(p=>p.kind==='magazine')
