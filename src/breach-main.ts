@@ -2284,9 +2284,7 @@ function syncBriefingCard():void{
  renderBriefingReports(ui.briefingSiteReports,model.reports.site);
  renderBriefingReports(ui.briefingCaseReports,model.reports.case);
 }
-let currentBriefingTab:BriefingTab='threat';
 function setBriefingIntelTab(tab:BriefingTab):void{
- currentBriefingTab=tab;
  for(const control of ui.briefingPanel.querySelectorAll<HTMLButtonElement>(
    '[data-briefing-tab]'))
   control.setAttribute('aria-pressed',String(control.dataset.briefingTab===tab));
@@ -2354,6 +2352,7 @@ function updateHud(){
   }
   recordCompletedOperation();
   refreshDeployment();
+  const brief=operationBriefing(state);
   syncBriefingCard();
   if(state.phase!=='planning'){
     ui.briefingPanel.hidden=true;operationsBoard.hidden=true;
