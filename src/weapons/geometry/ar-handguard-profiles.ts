@@ -11,10 +11,13 @@ function yz(angle:number,profile:ARForearmProfile,ry:number,rz:number){
  if(profile==='a1-triangle'&&a>0)b*=.85;
  return [a*ry,b*rz] as const;
 }
-export function addARFacetedForearm(root:THREE.Group,slot:SlotName,id:string,
- index:number,from:number,to:number,axisY:number,
- profile:ARForearmProfile,material:THREE.Material,small=false){
- const sections=[
+type ARForearmSection={x:number;ry:number;rz:number};
+/** Shared shape section definition; both the model and its vents use it.
+ * Never author a second approximate A1 side plane at a guessed Z.
+ */
+function forearmSections(from:number,to:number,profile:ARForearmProfile,
+ small=false):ARForearmSection[]{
+ return [
   {x:from,ry:profile==='a1-triangle'?1.73:small?1.47:1.72,
    rz:profile==='a1-triangle'?1.88:small?1.57:1.88},
   {x:to-.67,ry:profile==='a1-triangle'?1.31:small?1.44:1.65,
@@ -22,6 +25,11 @@ export function addARFacetedForearm(root:THREE.Group,slot:SlotName,id:string,
   {x:to,ry:profile==='a1-triangle'?1.02:small?1.18:1.35,
    rz:profile==='a1-triangle'?1.48:small?1.27:1.54}
  ];
+}
+export function addARFacetedForearm(root:THREE.Group,slot:SlotName,id:string,
+ index:number,from:number,to:number,axisY:number,
+ profile:ARForearmProfile,material:THREE.Material,small=false){
+ const sections=forearmSections(from,to,profile,small);
  const vertices:number[]=[],indices:number[]=[];
  for(const s of sections)for(let j=0;j<rings;j++){
   const [y,z]=yz(j*Math.PI*2/rings,profile,s.ry,s.rz);
@@ -51,6 +59,96 @@ export function addARFacetedForearm(root:THREE.Group,slot:SlotName,id:string,
  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
  return mesh;
 }
+/** Four broad dark vents on EACH actual sloped A1 face.
+ * Builds the quads directly from the same section/ring math as the body,
+ * rather than putting a flat XY sticker at an arbitrary Z. A 0.018-unit
+ * along-normal bias prevents z-fighting without a visibly floating card.
+ */
+const A1_VENT_OFFSET=.018;
+const A1_VENT_COUNT=4;
+const A1_VENT_MATERIAL=new THREE.MeshBasicMaterial({
+ color:0x101814,side:THREE.DoubleSide,depthTest:true,depthWrite:false,
+ polygonOffset:true,polygonOffsetFactor:-1
+});
+export function addARA1SurfaceVents(root:THREE.Group,from:number,to:number,
+ axisY:number){
+ const sections=forearmSections(from,to,'a1-triangle');
+ const [rear,mid]=sections;
+ const deltaX=mid.x-rear.x;
+ const result:THREE.Mesh[]=[];
+ for(const side of [1,-1] as const){
+  const points:number[]=[],indices:number[]=[];
+  // These are the EXACT vertex rings used by addARFacetedForearm.
+  // The left/negative side is intentionally not assumed to mirror the
+  // right: the legacy yz() polygon has subtly asymmetric rear facets.
+  const thetaA=side===1?Math.PI/4:7*Math.PI/4;
+  const thetaB=side===1?Math.PI/2:6*Math.PI/4;
+  const vertex=(section:ARForearmSection,theta:number)=>{
+   const [y,z]=yz(theta,'a1-triangle',section.ry,section.rz);
+   return new THREE.Vector3(section.x,axisY+y,z);
+  };
+  const a=vertex(rear,thetaA),b=vertex(rear,thetaB);
+  const c=vertex(mid,thetaA),d=vertex(mid,thetaB);
+  const normal=new THREE.Vector3();
+  const surface=(x:number,u:number)=>{
+   const t=THREE.MathUtils.clamp((x-rear.x)/deltaX,0,1);
+   const point=new THREE.Vector3();
+   let tri:THREE.Triangle;
+   if(side===1){
+    // Actual indexed faces are [rear A, rear B, mid A] and
+    // [rear B, mid B, mid A]; the diagonal is t+u=1.
+    if(t+u<=1){
+     point.copy(a).multiplyScalar(1-t-u).addScaledVector(b,u)
+      .addScaledVector(c,t);
+     tri=new THREE.Triangle(a,b,c);
+    }else{
+     point.copy(d).multiplyScalar(t+u-1).addScaledVector(b,1-t)
+      .addScaledVector(c,1-u);
+     tri=new THREE.Triangle(b,d,c);
+    }
+   }else{
+    // Reverse winding: indexed left facets have diagonal u=t.
+    if(u>=t){
+     point.copy(a).multiplyScalar(1-u).addScaledVector(b,u-t)
+      .addScaledVector(d,t);
+     tri=new THREE.Triangle(b,a,d);
+    }else{
+     point.copy(a).multiplyScalar(1-t).addScaledVector(c,t-u)
+      .addScaledVector(d,u);
+     tri=new THREE.Triangle(a,d,c);
+    }
+   }
+   tri.getNormal(normal);
+   if(normal.z*side<0)normal.negate();
+   return point.addScaledVector(normal,A1_VENT_OFFSET);
+  };
+  for(let i=0;i<A1_VENT_COUNT;i++){
+   const x=THREE.MathUtils.lerp(from+1.52,to-1.86,
+    i/(A1_VENT_COUNT-1));
+   const width=1.15,uTop=.18,uBottom=.77;
+   const base=points.length/3;
+   for(const v of [
+    surface(x-width/2,uTop),surface(x+width/2,uTop),
+    surface(x+width/2,uBottom),surface(x-width/2,uBottom)
+   ])points.push(v.x,v.y,v.z);
+   indices.push(base,base+1,base+2,base,base+2,base+3);
+  }
+  const geom=new THREE.BufferGeometry();
+  geom.setAttribute('position',new THREE.Float32BufferAttribute(points,3));
+  geom.setIndex(indices);geom.computeVertexNormals();
+  const mesh=new THREE.Mesh(geom,A1_VENT_MATERIAL);
+  mesh.name='family-art-a1-vents';
+  mesh.userData.weaponPixelArt=true;
+  mesh.userData.arA1FaceAligned=true;
+  mesh.userData.arVentSide=side;
+  mesh.userData.arVentCount=A1_VENT_COUNT;
+  mesh.userData.arVentSurfaceOffset=A1_VENT_OFFSET;
+  mesh.renderOrder=3;mesh.castShadow=false;mesh.receiveShadow=false;
+  root.add(mesh);result.push(mesh);
+ }
+ return result;
+}
+
 /** One instanced mesh for all rib bands. Every band follows the octagonal
  * body in 3D; unlike flat pixel stripes it creates real face-to-face relief.
  */
