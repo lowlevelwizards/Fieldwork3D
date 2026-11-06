@@ -108,8 +108,9 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
   const ris=guard==='ar-risii';
   // Single squared shell and its raised rail, rather than stacked strips.
   p('handguard',ris?
-   [[start,-1.65],[start,1.45],[start+.65,1.68],
-    [end-.6,1.68],[end,1.08],[end,-1.43]]:
+   [[start,-1.55],[start,1.28],[start+.5,1.46],
+    [start+.9,1.62],[end-1.25,1.62],[end-.75,1.28],
+    [end,.92],[end,-1.36],[end-.95,-1.62]]:
    [[start,-1.65],[start,1.55],
     [end-.55,1.55],[end,1.05],[end,-1.4]],
    ris?4.6:4.0,ris?2:1);
