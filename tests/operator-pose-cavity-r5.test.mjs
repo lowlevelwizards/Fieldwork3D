@@ -25,6 +25,8 @@ test('R5.5 per-rig shader uniforms change, UV and IK bounds do not',()=>{
  assert.notEqual(body.material,source);
  assert.notEqual(a.material,b.material);
  const arm={upper:new THREE.Mesh(new THREE.BoxGeometry(1,1,1),source)};
+ // Identity quaternion points +Y and represents an already raised limb.
+ arm.upper.quaternion.setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI);
  updateOperatorPoseCavity(state,[arm,arm],[0,0],'stand',0,false);
  const before=state.torso.value.x;
  arm.upper.quaternion.setFromAxisAngle(new THREE.Vector3(0,0,1),-1.6);
