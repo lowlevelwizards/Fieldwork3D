@@ -56,18 +56,19 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const stock=parts.stock;
  if(stock==='ak-skeleton'){
   // Preserve the successful open profile, only thicken the connecting bars.
-  line('stock',[-5.25,.65],[-12.3,.55],1.0,1.05,0);
-  line('stock',[-5.25,-1.35],[-12.3,-2.5],1.0,1.05,0);
+  // Preserve the 74U's successful open skeleton; only extend its rear frame.
+  line('stock',[-5.25,.65],[-13.0,.55],1.0,1.05,0);
+  line('stock',[-5.25,-1.35],[-13.0,-2.5],1.0,1.05,0);
   line('stock',[-5.25,-1.3],[-9.45,.15],.75,1.05,0);
-  b('stock',-12.8,-1,0,1.05,3.65,2.5,1);
+  b('stock',-13.5,-1,0,1.05,3.65,2.5,1);
  }else if(stock==='ak-sidefold'){
   // One fat five-sided silhouette, not a pointed plank with floating hinge.
-  p('stock',[[-13.0,.7],[-8.3,.95],[-6.0,.35],
-   [-6.25,-1.5],[-9.6,-2.9],[-13.0,-2.15]],4.1,1);
+  p('stock',[[-14.35,.7],[-8.3,.95],[-6.0,.35],
+   [-6.25,-1.5],[-9.6,-2.85],[-14.35,-2.15]],3.4,1);
  }else{
   const isWood=stock==='ak-wood'||stock==='ak-wood74';
-  p('stock',[[-14.1,.65],[-8.9,.95],[-6.25,-.5],
-   [-10.55,-3.35],[-14.1,-2.45]],3.95,isWood?2:1);
+  p('stock',[[-15.3,.65],[-8.9,.95],[-6.25,-.5],
+   [-10.55,-3.3],[-15.3,-2.45]],3.35,isWood?2:1);
   if(stock==='ak-wood74')
    b('stock',-10.7,-1,1.97,2.0,.65,.18,1);
  }
