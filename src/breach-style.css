@@ -1597,3 +1597,6 @@ html,body{font-family:var(--fw-font-menu)}
 
 /* R4: readable intelligence reconciliation beneath the after-action scorecard. */
 .fw-after-action-detail #debriefIntelText{white-space:pre-line;line-height:1.65}
+
+/* Allow factual Campaign continuity to read as a separate Situation paragraph. */
+.fw-mission-dossier #briefingSituation{white-space:pre-line}
