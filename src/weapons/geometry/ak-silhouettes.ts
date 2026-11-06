@@ -38,10 +38,10 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  b('receiver',-4.25,-.05,2.05,2.8,1.15,.5,1);
  // A short angled seating region, not an AR-style external magwell.
  const m=AK_VISUAL_ANATOMY;
- p('receiver',[[m.magwellCenterX-1.2,m.magwellTopY],
-   [m.magwellCenterX+1.2,m.magwellTopY],
-   [m.magwellCenterX+.9,m.magwellBottomY],
-   [m.magwellCenterX-1.05,m.magwellBottomY]],3.3,0);
+ p('receiver',[[m.magwellCenterX-1.75,m.magwellTopY],
+   [m.magwellCenterX+1.70,m.magwellTopY],
+   [m.magwellCenterX+1.50,m.magwellBottomY],
+   [m.magwellCenterX-1.30,m.magwellBottomY]],3.25,0);
  if(compact){
   // Characteristically raised rear/cover area of a compact AK.
   p('receiver',[[-5,2.2],[-4.65,3.55],[-1.6,3.6],[-1,2.28]],2.25,1);
@@ -49,25 +49,29 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   b('receiver',-3.9,2.52,0,1.15,.58,2.0,0);
  }
 
- // One deliberately exaggerated pixel-art selector: no extra 3D levers.
- addWeaponPixelMark(root,'ak-selector',-1.6,.42,1.98,2.5,1.05);
+ // Two small exterior clues: a selector toward the rear and an ejection
+ // mark above the magazine. Never confuse these with gameplay anatomy.
+ addWeaponPixelMark(root,'ak-selector',-1.9,.45,1.98,2.35,1.05);
+ addWeaponPixelMark(root,'ak-port',m.portX,m.portY,1.98,
+  m.portWidthX,m.portHeightY);
 
  // Stock types are visually disparate; the skeletal type MUST stay hollow.
  const stock=parts.stock;
  if(stock==='ak-skeleton'){
   // Preserve the successful open profile, only thicken the connecting bars.
-  line('stock',[-5.25,.65],[-12.3,.55],1.0,1.05,0);
-  line('stock',[-5.25,-1.35],[-12.3,-2.5],1.0,1.05,0);
+  // Preserve the 74U's successful open skeleton; only extend its rear frame.
+  line('stock',[-5.25,.65],[-13.0,.55],1.0,1.05,0);
+  line('stock',[-5.25,-1.35],[-13.0,-2.5],1.0,1.05,0);
   line('stock',[-5.25,-1.3],[-9.45,.15],.75,1.05,0);
-  b('stock',-12.8,-1,0,1.05,3.65,2.5,1);
+  b('stock',-13.5,-1,0,1.05,3.65,2.5,1);
  }else if(stock==='ak-sidefold'){
   // One fat five-sided silhouette, not a pointed plank with floating hinge.
-  p('stock',[[-13.0,.7],[-8.3,.95],[-6.0,.35],
-   [-6.25,-1.5],[-9.6,-2.9],[-13.0,-2.15]],4.1,1);
+  p('stock',[[-14.35,.7],[-8.3,.95],[-6.0,.35],
+   [-6.25,-1.5],[-9.6,-2.85],[-14.35,-2.15]],3.4,1);
  }else{
   const isWood=stock==='ak-wood'||stock==='ak-wood74';
-  p('stock',[[-14.1,.65],[-8.9,.95],[-6.25,-.5],
-   [-10.55,-3.35],[-14.1,-2.45]],3.95,isWood?2:1);
+  p('stock',[[-15.3,.65],[-8.9,.95],[-6.25,-.5],
+   [-10.55,-3.3],[-15.3,-2.45]],3.35,isWood?2:1);
   if(stock==='ak-wood74')
    b('stock',-10.7,-1,1.97,2.0,.65,.18,1);
  }
@@ -75,22 +79,29 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Grips are deliberately raked, with one body prism and no modeled stippling.
  const grip=parts.grip,gripWood=grip==='ak-grip-wood',
  resin=grip==='ak-grip-bakelite';
- p('grip',shiftProfile([[-3.4,-1.65],[-.5,-1.65],[-1.0,-5.65],
-  [-2.25,-6.1],[-3.7,-5.7]],m.gripShiftX),
-  grip==='ak-grip-poly'?3.4:2.9,gripWood||resin?2:1);
+ // Rake remains distinct from the AR, but its slimmer root sits at the rear.
+ p('grip',shiftProfile([[-3.35,-1.65],[-.8,-1.65],[-1.1,-5.65],
+  [-2.25,-6.1],[-3.55,-5.7]],m.gripShiftX),
+  m.gripDepthZ,gripWood||resin?2:1);
 
- // A narrow receiver insertion point and broad caricatured lower swing.
- // 7.62 profiles retain a stronger banana bend than 5.45 profiles.
+ // The 3D sides narrow along Z; their side-view curve remains broad.
+ // Keep the characteristic 7.62 lower swing larger than the 5.45 curve.
  const mag=parts.magazine,heavy=mag==='ak-mag762'||mag==='ak-mag762poly';
  const resinMag=mag==='ak-mag545';
  const finish:0|1|2=resinMag?2:heavy&&mag==='ak-mag762'?0:1;
  const top=m.magazineTopY;
+ const magLeft=m.magwellCenterX-m.magazineWidthX/2;
+ const magRight=m.magwellCenterX+m.magazineWidthX/2;
  if(heavy)
-  p('magazine',[[.05,top],[2.07,top],[2.44,-4.42],
-   [4.05,-7.45],[2.0,-7.75],[.68,-5.08]],3.05,finish);
+  p('magazine',[[magLeft,top],[magRight,top],
+   [magRight+.42,-4.35],[magRight+2.50,-7.45],
+   [magLeft+2.15,-7.75],[magLeft+.55,-5.05]],
+   m.magazineDepthZ,finish);
  else
-  p('magazine',[[.06,top],[2.04,top],[2.24,-4.62],
-   [2.95,-7.25],[1.0,-7.47],[.45,-4.95]],3.1,finish);
+  p('magazine',[[magLeft,top],[magRight,top],
+   [magRight+.20,-4.6],[magRight+1.40,-7.25],
+   [magLeft+1.45,-7.47],[magLeft+.38,-4.95]],
+   m.magazineDepthZ,finish);
 
  const guard=parts.handguard;
  const short=guard==='ak-wood-short'||guard==='ak-poly-short';
