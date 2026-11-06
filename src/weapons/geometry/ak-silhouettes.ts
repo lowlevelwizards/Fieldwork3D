@@ -4,7 +4,8 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
-import {AK_WARM_RESIN} from './weapon-visual-palette.ts';
+import {AK_WARM_RESIN,AK_WOOD_AMBER,AK_WOOD_RED,
+ AK_PLUM_POLYMER,AK_MAG_RIB} from './weapon-visual-palette.ts';
 import {AK_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
@@ -13,10 +14,21 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
  const parts=build.parts,material=[steel,dark,wood] as const;
  const index:Record<SlotName,number>={stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0};
+ // Finish changes never change geometry, ammunition, sockets, or gameplay.
+ // Part IDs already persist through the established equipment editor.
+ const partMaterial=(slot:SlotName,finish:0|1|2)=>{
+  const id=parts[slot];
+  if(id.endsWith('-amber'))return AK_WOOD_AMBER;
+  if(id.endsWith('-red'))return AK_WOOD_RED;
+  if(id.endsWith('-plum')||id.startsWith('ak-poly-plum-'))
+   return AK_PLUM_POLYMER;
+  if(id==='ak-grip-bakelite'||id==='ak-mag545'||
+   id==='ak-rpk-mag45'||id==='ak-mag762-resin')return AK_WARM_RESIN;
+  return material[finish];
+ };
  const p=(slot:SlotName,outline:Outline,depth:number,finish:0|1|2=1)=>
   addOutline(root,slot,parts[slot],index[slot]++,outline,depth,
-   finish===2&&(parts[slot]==='ak-grip-bakelite'||parts[slot]==='ak-mag545'||parts[slot]==='ak-rpk-mag45')?
-    AK_WARM_RESIN:material[finish]);
+   partMaterial(slot,finish));
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number,
   finish:0|1|2=1)=>addCuboid(root,slot,parts[slot],index[slot]++,
    x,y,z,w,h,d,material[finish]);
@@ -69,7 +81,7 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   line('stock',[-5.25,-1.35],[-13.0,-2.5],1.0,1.05,0);
   line('stock',[-5.25,-1.3],[-9.45,.15],.75,1.05,0);
   b('stock',-13.5,-1,0,1.05,3.65,2.5,1);
- }else if(stock==='ak-rpk-clubfoot'){
+ }else if(stock.startsWith('ak-rpk-clubfoot')){
   // RPK-specific broad butt, tucked wrist, and exaggerated low clubfoot heel.
   p('stock',[[-15.85,.7],[-10.6,.8],[-6.15,-.42],
    [-6.3,-1.25],[-10.4,-2.02],[-11.25,-3.6],
@@ -87,21 +99,22 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   line('stock',[-5.58,-1.15],[-13.96,-2.16],.66,1.1,0);
   b('stock',-14.4,-.95,0,.72,3.24,1.65,0);
   b('stock',-5.72,-.28,0,1.05,2.0,1.6,1);
- }else if(stock==='ak-sidefold'){
+ }else if(stock==='ak-sidefold'||stock==='ak-sidefold-plum'){
   // Reuse the strongest AK-74M polymer cheek/heel profile across 100-series.
   p('stock',[[-14.4,.78],[-9.1,.93],[-6.12,.28],
    [-6.32,-1.42],[-9.75,-2.85],[-14.4,-2.30]],3.35,1);
  }else{
-  const isWood=stock==='ak-wood'||stock==='ak-wood74';
+  const isWood=stock.startsWith('ak-wood')&&
+   !stock.endsWith('-plum');
   // Classic AK fixed stock: horizontal comb, stepped wrist and full butt.
   p('stock',[[-15.35,.68],[-10.25,.78],[-6.12,-.48],
    [-6.4,-1.18],[-11.5,-3.18],[-15.35,-2.92]],3.35,isWood?2:1);
-  if(stock==='ak-wood74')
+  if(stock.startsWith('ak-wood74'))
    b('stock',-10.7,-1,1.97,2.0,.65,.18,1);
  }
 
  // Grips are deliberately raked, with one body prism and no modeled stippling.
- const grip=parts.grip,gripWood=grip==='ak-grip-wood',
+ const grip=parts.grip,gripWood=grip.startsWith('ak-grip-wood'),
  resin=grip==='ak-grip-bakelite';
  // Rake remains distinct from the AR, but its slimmer root sits at the rear.
  p('grip',shiftProfile([[-3.35,-1.65],[-.8,-1.65],[-1.1,-5.65],
@@ -110,9 +123,9 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
 
  // The 3D sides narrow along Z; their side-view curve remains broad.
  // Keep the characteristic 7.62 lower swing larger than the 5.45 curve.
- const mag=parts.magazine,heavy=mag==='ak-mag762'||mag==='ak-mag762poly';
- const resinMag=mag==='ak-mag545';
- const extended=mag==='ak-rpk-mag45';
+ const mag=parts.magazine,heavy=mag.startsWith('ak-mag762');
+ const resinMag=mag==='ak-mag545'||mag==='ak-mag762-resin';
+ const extended=mag.startsWith('ak-rpk-mag45');
  const finish:0|1|2=resinMag||extended?2:heavy&&mag==='ak-mag762'?0:1;
  const top=m.magazineTopY;
  const magLeft=m.magwellCenterX-m.magazineWidthX/2;
@@ -133,13 +146,29 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [magLeft+1.18,-7.76],[magLeft+.36,-4.95]],
    m.magazineDepthZ,finish);
 
+ if(heavy){
+  // Three broad relief strokes follow the 7.62 magazine's forward sweep.
+  // One restrained low-poly bar per stroke; they read on both sides,
+  // are part of the magazine slot and stay within its depth contract.
+  const ribs=[
+   [[-.16,-3.18],[1.32,-6.50]],
+   [[.82,-3.19],[2.38,-6.46]],
+   [[1.77,-3.16],[3.40,-6.37]]
+  ] as const;
+  for(const [from,to] of ribs)
+   addBar(root,'magazine',mag,index.magazine++,from,to,
+    .13,m.magazineDepthZ+.10,AK_MAG_RIB);
+ }
+
  const guard=parts.handguard;
- const short=guard==='ak-wood-short'||guard==='ak-poly-short';
- const mid=guard==='ak-poly-mid';
+ const short=guard.startsWith('ak-wood-short')||
+  guard==='ak-poly-short'||guard==='ak-poly-plum-short';
+ const mid=guard==='ak-poly-mid'||guard==='ak-poly-plum-mid';
  // On full rifles the fore-end stops well before the forward sight/gas tube.
  const end=short?11.45:mid?12.3:rpk?13.35:12.45;
  const start=short?3.55:4.0;
- const woodGuard=guard==='ak-wood-long'||guard==='ak-wood-short'||guard==='ak-rpk-wood';
+ const woodGuard=guard.startsWith('ak-wood-long')||
+  guard.startsWith('ak-wood-short')||guard.startsWith('ak-rpk-wood');
  const rail=guard==='ak-rail-long';
  // Distinct lower cheek on wooden rifles, straightforward block on polymers.
  p('handguard',rpk?
