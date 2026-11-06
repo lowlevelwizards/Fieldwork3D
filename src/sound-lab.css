@@ -54,3 +54,39 @@ input[type=range]{accent-color:#b7dabb;width:100%;height:25px;cursor:pointer}
 @media(max-width:880px){.workspace{grid-template-columns:1fr}.catalog{max-height:none;min-height:0;border-right:0;border-bottom:1px solid var(--edge)}.groups{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}.groups button{white-space:nowrap}.cue-list{max-height:255px;overflow:auto}.masthead{align-items:center}.editor{padding:16px}.editor-top{min-height:0}.topbar{padding:12px}}
 @media(max-width:540px){.shell{padding:10px}.masthead{flex-direction:column;gap:10px}.masthead h1{font-size:43px}.return{font-size:12px}.metrics{justify-content:space-between;width:100%;gap:8px}.metrics strong{font-size:23px}.metrics small{font-size:9px}.exportbar{width:100%}.exportbar button{flex:1;min-width:94px;padding:8px 4px}.variant-grid{gap:5px}.variant{padding:9px 7px}.variant h3{font-size:27px}.variant h3 small{font-size:10px;margin-left:2px}.variant .actions{grid-template-columns:1fr}.variant p{font-size:10px;min-height:43px}.sliders{grid-template-columns:1fr}.editor-top{flex-direction:column;gap:7px}.section-heading span+span{font-size:9px}.editor-actions #markReviewed{margin-left:0}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* Wave 01: listen and choose; keep a complete archive accessible but secondary. */
+.round-intro{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:14px 18px;background:#1d3131;border:1px solid #476560;border-top:0}
+.round-intro strong{color:#ddedcb;font:700 16px "Saira Condensed",sans-serif;letter-spacing:.10em}
+.round-intro p{color:#bbcbc4;margin:3px 0 0;max-width:850px;font-size:12px}
+.round-toggle{display:flex;gap:5px;flex-shrink:0}.round-toggle button{padding:8px 14px;font-size:13px;white-space:nowrap}
+.round-toggle button[aria-pressed=true]{background:#b9d8bb;border-color:#b9d8bb;color:#10201e}
+.focus-round .groups{display:none}
+.focus-round .catalog{max-height:calc(100dvh - 325px)}
+.cue .rank{font:700 19px/1 "Saira Condensed",sans-serif;color:#aec9bc;min-width:23px}
+.variant-grid.explore{grid-template-columns:repeat(4,minmax(0,1fr))}
+.variant-grid.explore .variant{padding:13px;display:flex;flex-direction:column;min-height:175px}
+.variant-grid.explore .variant h3{font-size:30px;display:flex;align-items:baseline;gap:6px}
+.variant-grid.explore .variant h3 small{font-size:14px;color:#e4eee5;line-height:1.15}
+.variant-grid.explore .variant p{flex:1;min-height:0;margin:5px 0 12px}
+.variant-grid.explore .variant .actions{grid-template-columns:1fr 1fr}
+.variant-grid.explore .variant .choose{grid-column:1/-1}
+.variant.shortlisted{border-color:#c7a77a}
+.variant .shortlist[aria-pressed=true]{background:#5d4934;color:#fbe0af;border-color:#bf9b67}
+.variant-grid.explore .variant.active{background:#2c463f;outline:1px solid #abcab2}
+.advanced{margin-bottom:14px;border-bottom:1px solid #3b5350;padding-bottom:12px}
+.advanced summary{cursor:pointer;font:700 14px "Saira Condensed",sans-serif;color:#b9d8bb;letter-spacing:.12em;padding:2px 0 12px;list-style-position:inside}
+.advanced summary span{float:right;color:#adc1b5;font-size:12px}
+.advanced>p{font-size:12px;color:#afbfba;margin:0 0 10px}
+.transport button[hidden]{display:none}
+@media(max-width:1220px){.variant-grid.explore{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:880px){.focus-round .catalog{max-height:none}.round-intro{align-items:flex-start}}
+@media(max-width:540px){.round-intro{flex-direction:column;gap:10px;padding:12px}.round-toggle{width:100%}.round-toggle button{flex:1}
+.variant-grid.explore{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.variant-grid.explore .variant{padding:10px 8px;min-height:210px}
+.variant-grid.explore .variant h3{font-size:25px;flex-direction:column;gap:1px}
+.variant-grid.explore .variant h3 small{font-size:12px;margin:0}
+.variant-grid.explore .variant p{font-size:10px}
+.variant-grid.explore .variant .actions{display:flex;flex-direction:column;gap:5px}
+.variant-grid.explore .variant .actions button{width:100%;min-height:33px;font-size:12px}
+}

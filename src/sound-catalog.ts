@@ -5,19 +5,20 @@
  */
 export type SoundFamily='ui'|'cloth'|'step'|'metal'|'mechanism'|'door'|'impact'|
   'shot'|'blast'|'voice'|'ambient'|'glass'|'wood'|'water'|'electronic';
-export type Variant='A'|'B'|'C';
+import {FOCUS_BY_ID} from './sound-focus.ts';
+export type Variant='A'|'B'|'C'|'D'|'E'|'F'|'G'|'H';
 export type SoundEntry={id:string;label:string;group:string;family:SoundFamily;
   status:'live'|'planned';description:string};
 export type SoundSettings={
   gain:number;pitch:number;length:number;noise:number;punch:number;
-  brightness:number;tail:number;room:number;
+  brightness:number;tail:number;room:number;concept:number;
 };
 export type SoundChoice={enabled:boolean;choice:Variant;
-  reviewed?:boolean;favorite?:boolean;
+  reviewed?:boolean;favorite?:boolean;explored?:boolean;shortlist?:Variant[];
   edits?:Partial<Record<Variant,SoundSettings>>};
 export type SoundPack={version:1;master:number;choices:Record<string,SoundChoice>};
 export const SOUND_STORAGE_KEY='fieldwork3d.soundlab.pack.v1';
-export const SOUND_VARIANTS=['A','B','C'] as const;
+export const SOUND_VARIANTS=['A','B','C','D','E','F','G','H'] as const;
 export const SOUND_GROUPS=[
  ['ui','Interface & HUD'],['orders','Planning & commands'],
  ['movement','Movement & clothing'],['equipment','Weapons & equipment'],
@@ -116,7 +117,8 @@ export function defaultSoundSettings(entry:SoundEntry,variant:Variant):SoundSett
   length:Math.max(.035,Math.min(3.8,duration*v.l*(1+d))),
   noise:Math.min(1,noise*v.n),punch,
   brightness:Math.min(1,brightness*v.b),
-  tail:v.t,room:v.r
+  tail:v.t,room:v.r,
+  concept:FOCUS_BY_ID.has(entry.id)?SOUND_VARIANTS.indexOf(variant):-1
  };
 }
 export function defaultSoundPack():SoundPack{
@@ -132,7 +134,7 @@ export function clampSoundSettings(input:unknown,base:SoundSettings):SoundSettin
  return {gain:field('gain',0,1),pitch:field('pitch',45,2400),
   length:field('length',.035,3.8),noise:field('noise',0,1),
   punch:field('punch',0,1),brightness:field('brightness',0,1),
-  tail:field('tail',0,1),room:field('room',0,1)};
+  tail:field('tail',0,1),room:field('room',0,1),concept:base.concept};
 }
 export function normalizeSoundPack(value:unknown):SoundPack{
  const defaults=defaultSoundPack();
@@ -151,10 +153,16 @@ export function normalizeSoundPack(value:unknown):SoundPack{
   if(typeof choice.enabled==='boolean')target.enabled=choice.enabled;
   if(typeof (choice as {reviewed?:unknown}).reviewed==='boolean')
     target.reviewed=(choice as {reviewed:boolean}).reviewed;
+  if(typeof (choice as {explored?:unknown}).explored==='boolean')
+    target.explored=(choice as {explored:boolean}).explored;
   if(typeof (choice as {favorite?:unknown}).favorite==='boolean')
     target.favorite=(choice as {favorite:boolean}).favorite;
-  if(SOUND_VARIANTS.includes(choice.choice as Variant))
+  const variants=FOCUS_BY_ID.has(entry.id)?SOUND_VARIANTS:SOUND_VARIANTS.slice(0,3);
+  if(variants.includes(choice.choice as Variant))
    target.choice=choice.choice as Variant;
+  const shortlisted=(choice as {shortlist?:unknown}).shortlist;
+  if(Array.isArray(shortlisted))target.shortlist=[...new Set(shortlisted.filter(
+   (v):v is Variant=>typeof v==='string'&&variants.includes(v as Variant)))].slice(0,8);
   if(choice.edits&&typeof choice.edits==='object'){
    const edits=choice.edits as Record<string,unknown>;
    target.edits={};
@@ -168,8 +176,8 @@ export function normalizeSoundPack(value:unknown):SoundPack{
 export function resolveSoundSettings(pack:SoundPack,id:string,variant?:Variant){
  const entry=SOUND_BY_ID.get(id);if(!entry)return null;
  const selected=variant??pack.choices[id]?.choice??'B';
- return pack.choices[id]?.edits?.[selected]??
-   defaultSoundSettings(entry,selected);
+ return {...defaultSoundSettings(entry,selected),
+  ...(pack.choices[id]?.edits?.[selected]??{})};
 }
 export function readSoundPack():SoundPack{
  try{const value=localStorage.getItem(SOUND_STORAGE_KEY);
