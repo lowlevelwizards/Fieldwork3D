@@ -3,6 +3,10 @@
 #tacticalSheetShield{position:fixed;inset:0;z-index:78;
  background:rgba(5,16,13,.69);touch-action:manipulation;backdrop-filter:blur(2px)}
 #tacticalSheetShield[hidden]{display:none!important}
+/* The blur shield is BEHIND the mission dossier. Other major sheets already
+ * sit above z=78; the briefing was mistakenly left at legacy z=8.
+ * A shield above its own dialog blurs and dims all of the text and controls. */
+.briefing-panel.fw-mission-dossier{z-index:95}
 body[data-tactical-sheet="settings"] .tactical-hud,
 body[data-tactical-sheet="squad"] .tactical-hud,
 body[data-tactical-sheet="briefing"] .tactical-hud{
