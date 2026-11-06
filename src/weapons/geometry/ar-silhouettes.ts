@@ -86,14 +86,20 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  }else if(guard==='ar-round'||guard==='ar-carbine'||
    guard==='ar-car15-ribbed'){
   const retro=guard==='ar-car15-ribbed';
-  p('handguard',[[start,1.35],[start+.8,1.7],[end-.7,1.6],
-   [end,-.9],[end-.6,-1.65],[start+.5,-1.65]],
+  p('handguard',retro?
+   [[start,1.25],[start+1.0,1.52],[end-.65,1.37],
+    [end,-.75],[end-.55,-1.42],[start+.4,-1.55]]:
+   [[start,1.35],[start+.8,1.7],[end-.7,1.6],
+    [end,-.9],[end-.6,-1.65],[start+.5,-1.65]],
    retro?3.15:3.85,1);
  }else{
   const ris=guard==='ar-risii';
   // Single squared shell and its raised rail, rather than stacked strips.
-  p('handguard',[[start,-1.65],[start,1.55],
-   [end-.55,1.55],[end,1.05],[end,-1.4]],
+  p('handguard',ris?
+   [[start,-1.65],[start,1.45],[start+.65,1.68],
+    [end-.6,1.68],[end,1.08],[end,-1.43]]:
+   [[start,-1.65],[start,1.55],
+    [end-.55,1.55],[end,1.05],[end,-1.4]],
    ris?4.6:4.0,ris?2:1);
   b('handguard',(start+end)/2,1.86,0,end-start,.64,
    ris?4.15:3.7,ris?2:0);
