@@ -10,6 +10,8 @@ import type {ExecutionEvent} from './breach-execution-events.ts';
 import {copyMedicalCondition,newMedicalCondition} from './breach-medical-wounds.ts';
 import {normalizedMedicalSupplies,kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
+import {ReplayPlanRecorder} from './breach-replay-plans.ts';
+import {copyNodes,type PlanNode} from './breach-plan.ts';
 import {captureReplayKnowledge,applyReplayKnowledge,type ReplayKnowledge}
   from './breach-replay-visibility.ts';
 import {shareUnchangedReplayFrame,type ReplaySharingStats}
@@ -36,6 +38,8 @@ export type ActorFrame=Pick<TeamActor,
   'traversalRetreating'>;
 export type ReplayActorFrame=ActorFrame & {
  travelYaw?:number;intentKind?:string;awarenessCount?:number;
+ /** Authored remaining orders at this historical sample. */
+ plan?:PlanNode[];
 };
 /** Immutable neutral film sample. Missing on old saved films. */
 export type CivilianFrame=Pick<CivilianActor,
@@ -78,6 +82,7 @@ export function snapshot(s:Session,seenGround?:string[],
   return {
     t:s.seconds,phase:s.phase,mission:s.mission,
     actors:s.operators.map(a=>({id:a.id,p:position(a.p),
+      plan:copyNodes(a.plan),
       heading:a.heading,health:a.health,velocity:a.velocity,
       squeeze:a.squeeze,squeezeYaw:a.squeezeYaw,squeezeTime:a.squeezeTime,
       traversal:traversalCopy(a.traversal),
@@ -168,11 +173,15 @@ export class MissionRecorder{
   private lastExecutionEventId=0;
   private readonly discoveredBodies=new Set<string>();
   readonly motion=new ReplayMotionRecorder();
+  readonly plans=new ReplayPlanRecorder();
+  /** Paused edits do not create redundant world frames. */
+  capturePlanning(s:Session):void{this.plans.capture(s);}
   /** Optional benchmark counters only; gameplay never reads these. */
   readonly sharingStats:ReplaySharingStats={
     sharedActors:0,sharedFields:0,fullKeyframes:0
   };
   capture(s:Session,force=false):void{
+    this.plans.capture(s);
     if(this.frames.length>=12000)return;
     // This runs at 60Hz even though the outcome film is only 20Hz.
     // Recording step starts here avoids tying animation to render FPS.
@@ -321,7 +330,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       medical:copy.medical?copyMedicalCondition(copy.medical):newMedicalCondition(),
       medicalSupplies:normalizedMedicalSupplies(copy.medicalSupplies,
        kitMedicalSupplies(a.equipment)),
-      plan:[],nav:[]});
+      plan:copyNodes(copy.plan??[]),nav:[]});
   }
   // Rewind the real civilian state, not only the old rescue marker. No
   // AI tick is executed while scrubbing; old films simply have no neutrals.

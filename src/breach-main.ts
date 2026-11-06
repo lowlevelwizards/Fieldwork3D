@@ -1924,6 +1924,7 @@ function medicalCandidate(id:string){
  }).sort((x,y)=>distance(a.p,x.p)-distance(a.p,y.p))[0]??null;
 }
 function updateHud(){
+  if(!replaying&&state.phase==='planning')recorder.capturePlanning(state);
   const identity=currentSiteIdentity(state.site,campaignMode==='quick');
   if(siteIdentityOutput.textContent!==identity.text)
     siteIdentityOutput.textContent=identity.text;
