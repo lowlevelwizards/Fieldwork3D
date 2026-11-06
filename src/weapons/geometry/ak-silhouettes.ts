@@ -242,9 +242,18 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // One thick oblique descending GAS BLOCK (not a second tall sight).
  // Start above the barrel from the upper handguard's middle height and
  // run downward to connect with the single horizontal main barrel.
- p('barrel',[[gas-.78,1.14],[gas+.02,1.99],
-  [gas+.48,1.55],[gas+1.04,.35],[gas+.71,-.53],
-  [gas+.11,-.53],[gas-.37,.85]],1.82,0);
+ const gasOutline:Outline=compact?
+  // Short guns combine gas block and sight: avoid two towering posts.
+  [[gas-.68,1.12],[gas-.16,1.89],[gas+.30,1.80],
+   [gas+.68,.30],[gas+.58,-.53],[gas+.03,-.53]]: 
+  parts.receiver==='akm'||parts.receiver==='ak103'?
+  // AKM family: recognizably sloped block descending toward barrel.
+  [[gas-.78,1.18],[gas-.18,2.00],[gas+.36,1.87],
+   [gas+1.01,.40],[gas+.66,-.53],[gas+.08,-.53],[gas-.35,.88]]:
+  // 74/100-series/RPK: more upright top, shallower descending face.
+  [[gas-.64,1.14],[gas-.47,2.09],[gas+.19,2.12],
+   [gas+.62,.52],[gas+.60,-.53],[gas-.12,-.53]];
+ p('barrel',gasOutline,1.82,0);
  if(art.muzzleStyle==='booster'){
   // Compact AKS-74U front tower and conspicuous squat muzzle booster.
   p('barrel',[[sight-.47,.34],[sight-.25,2.69],
@@ -273,17 +282,18 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
     [tip,-.79],[tip,.77],[tip-.22,1.05],
     [tip-1.45,1.00]],2.32,1);
    b('barrel',tip-1.36,0,0,.28,2.20,2.40,0);
-  }else if(parts.receiver==='akm'||parts.receiver==='ak103'){
-   // Oversized game-art slant: a major diagonal TERMINAL face.
-   // AK-103 slant is intentionally a non-factory custom appearance.
-   p('barrel',[[tip-1.80,-.76],[tip,-.76],
-    [tip-1.18,1.16],[tip-1.80,1.03]],2.28,1);
+  }else if(parts.receiver==='akm'||
+   (parts.receiver==='ak103'&&parts.barrel!=='ak-103-factory')){
+   // AKM-style oversized but RECTANGULAR slant device. The terminal
+   // face slopes diagonally; never terminate the full body in one spike.
+   p('barrel',[[tip-1.78,-.83],[tip,-.83],
+    [tip-.69,.88],[tip-1.78,.88]],2.25,1);
   }else{
    // 20% longer AK-74-family cylindrical compensator.
-   p('barrel',[[tip-2.83,-1.08],[tip-.20,-1.08],
-    [tip,-.84],[tip,.86],[tip-.22,1.07],
-    [tip-2.83,1.07]],2.40,1);
-   b('barrel',tip-2.71,0,0,.29,2.30,2.51,0);
+   p('barrel',[[tip-2.83,-.99],[tip-.20,-.99],
+    [tip,-.83],[tip,.84],[tip-.22,.99],
+    [tip-2.83,.99]],2.40,1);
+   b('barrel',tip-2.71,0,0,.29,2.06,2.46,0);
   }
  }
 }
