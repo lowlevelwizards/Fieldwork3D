@@ -7,17 +7,25 @@ export const QUICK_VIDEO_SECONDS=20;
 export const MIN_VIDEO_WALL_MS=1800;
 
 export function replayVideoMime(
-  supports:(mime:string)=>boolean
+  supports:(mime:string)=>boolean,
+  hasAudio=false
 ):string|null{
-  // Prefer WebM in Chromium: advertised MP4 support may still produce
-  // an empty blob for short canvas captures. Safari uses MP4 fallback.
-  for(const mime of [
+  // A video-only stream must not require an absent Opus/AAC audio track.
+  // WebM first on Chromium, MP4 fallback for Safari/WebKit.
+  const choices=hasAudio?[
     'video/webm;codecs=vp8,opus',
     'video/webm;codecs=vp9,opus',
     'video/webm',
     'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
     'video/mp4'
-  ])if(supports(mime))return mime;
+  ]:[
+    'video/webm;codecs=vp8',
+    'video/webm;codecs=vp9',
+    'video/webm',
+    'video/mp4;codecs=avc1.42E01E',
+    'video/mp4'
+  ];
+  for(const mime of choices)if(supports(mime))return mime;
   return null;
 }
 export function replayVideoSize(width:number,height:number){
@@ -32,6 +40,7 @@ export class ReplayQuickVideo{
   private stopping=false;
   private since=0;
   private mime='';
+  private debugSummary='';
   private startedWall=0;
   private endOfFilm=false;
   private capturedFrames=0;
@@ -47,7 +56,8 @@ export class ReplayQuickVideo{
   start(time:number,viewport:{width:number;height:number},
     audioStream:MediaStream|null=null):boolean{
     if(this.recorder||typeof MediaRecorder==='undefined')return false;
-    const mime=replayVideoMime(type=>MediaRecorder.isTypeSupported(type));
+    const mime=replayVideoMime(type=>MediaRecorder.isTypeSupported(type),
+      !!audioStream?.getAudioTracks().length);
     if(!mime)return false;
     try{
       const video=document.createElement('canvas');
@@ -80,7 +90,8 @@ export class ReplayQuickVideo{
         const mimeOut=this.mime;
         this.cleanup();
         if(blob.size)this.onComplete(blob,mimeOut);
-        else this.onError('EMPTY VIDEO RECORDING');
+        else this.onError('EMPTY VIDEO RECORDING — '+
+          this.debugSummary);
       };
       recorder.start(500);
       return true;
@@ -105,6 +116,14 @@ export class ReplayQuickVideo{
     ctx.fillStyle='#e4d8c0';ctx.font='600 18px monospace';
     ctx.fillText('FIELDWORK  ·  REPLAY',28,39);
     this.capturedFrames++;
+    this.debugSummary='frames='+this.capturedFrames+
+      ' wallMs='+Math.round(performance.now()-this.startedWall)+
+      ' mime='+this.mime+' videoTracks='+
+      (this.stream?.getVideoTracks().length??0);
+    // A changing timestamp ensures a frame becomes visible to canvas capture.
+    ctx.fillStyle='#b6bfae';ctx.font='500 14px monospace';
+    ctx.fillText('CAP '+((performance.now()-this.startedWall)/1000).toFixed(2),
+      28,64);
     if(time-this.since>=QUICK_VIDEO_SECONDS)this.finishAtEnd();
     if(this.endOfFilm&&this.capturedFrames>=2&&
       performance.now()-this.startedWall>=MIN_VIDEO_WALL_MS)this.stop();
@@ -120,7 +139,10 @@ export class ReplayQuickVideo{
     if(!this.recorder||this.stopping)return;
     this.stopping=true;
     try{
-      if(this.recorder.state==='recording')this.recorder.stop();
+      if(this.recorder.state==='recording'){
+        try{this.recorder.requestData();}catch{/* Optional flush. */}
+        this.recorder.stop();
+      }
       else this.cleanup();
     }catch{
       this.onError('COULD NOT FINALIZE VIDEO');this.cleanup();
