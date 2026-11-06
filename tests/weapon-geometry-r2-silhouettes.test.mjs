@@ -29,15 +29,15 @@ const hits=(model,x,y)=>{
  return ray.intersectObjects(model.group.children,true).length;
 };
 
-test('R2: 66 visual part definitions, 17 curated IDs and correct landmark furniture',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,66);
+test('R2: 90 visual part definitions, 17 curated IDs and correct landmark furniture',()=>{
+ assert.equal(Object.keys(FAMILY_PARTS).length,90);
  assert.equal(FAMILY_PRESETS.length,17);
  const byId=Object.fromEntries(FAMILY_PRESETS.map(p=>[p.id,p]));
  assert.equal(byId['ar-m16a4'].parts.handguard,'ar-m5-rail');
  assert.equal(byId['ar-car15'].parts.handguard,'ar-car15-ribbed');
  assert.equal(byId['ar-m4a1'].parts.handguard,'ar-quad');
  assert.equal(byId['ar-mk18'].parts.handguard,'ar-risii');
- assert.equal(byId['ak-ak74'].parts.stock,'ak-wood74');
+ assert.equal(byId['ak-ak74'].parts.stock,'ak-wood74-amber');
  assert.equal(familyAccessoryAllowed({
   family:'ar',parts:{...byId['ar-mk18'].parts}},'foregrip','foregrip-vertical'),true);
 });
