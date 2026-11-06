@@ -5,6 +5,7 @@
  * This module does not depend on Three.js, rendering or DOM state.
  */
 import type {WeaponId} from './breach-combat.ts';
+import {arBarrelArt} from './weapons/geometry/ar-barrel-profiles.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {FAMILY_PARTS,FAMILY_PART_SLOTS,familyPreset,initialWeaponFamilyBuild,
  readWeaponFamilyBuild,setWeaponFamilyPart as changeFamilyPart,
@@ -195,22 +196,27 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  if(cached)return cached;
  const config=readWeaponConfiguration(raw,raw.weapon);
  const p=WEAPON_PLATFORMS[config.weapon];
+ const build=config.build;
+ const art=build?.family==='ar'?arBarrelArt(build.parts.barrel):undefined;
  const mounted={} as Record<WeaponAttachmentSlot,WeaponAttachment>;
  let mass=p.baseMassKg,weighted=p.baseMassKg*p.baseBalanceX;
  let inertia=p.baseMassKg*(18*18/12+p.baseBalanceX*p.baseBalanceX);
  for(const slot of WEAPON_ATTACHMENT_SLOTS){
-  const part=WEAPON_ATTACHMENTS[config.slots[slot]];
+  const original=WEAPON_ATTACHMENTS[config.slots[slot]];
+  // Re-anchor visual muzzle accessories to the same shot-time barrel tip.
+  const part=slot==='muzzle'&&art?
+   {...original,mountX:art.muzzleX,massX:original.massX+art.muzzleX-19.5}:
+   original;
   mounted[slot]=part;
   mass+=part.massKg;weighted+=part.massKg*part.massX;
   inertia+=part.massKg*part.massX*part.massX;
  }
  const balance=weighted/mass;
- const build=config.build;
  const familyBarrel=build?FAMILY_PARTS[build.parts.barrel]:undefined;
  const familyHandguard=build?FAMILY_PARTS[build.parts.handguard]:undefined;
- const lengthScale=familyBarrel?.length==='long'?.94:
+ const lengthScale=art?.lengthScale??(familyBarrel?.length==='long'?.94:
   familyBarrel?.length==='mid'?.86:
-  familyBarrel?.length==='short'?.73:p.lengthScale;
+  familyBarrel?.length==='short'?.73:p.lengthScale);
  const stockX=build?(FAMILY_PARTS[build.parts.stock].stockX??p.stockX):p.stockX;
  const primaryX=build?(build.family==='ar'?0:-1.35):p.primaryX;
  const primaryY=build?-2.7:p.primaryY;
@@ -218,7 +224,7 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   familyHandguard?.length==='mid'?7.4:6.1):p.supportX;
  const resolved:ResolvedWeaponAssembly={weapon:config.weapon,configuration:config,lengthScale,
   massKg:mass,balanceX:balance,rotationalInertia:Math.max(1,inertia),
-  muzzleX:p.muzzleX+(mounted.muzzle.muzzleExtension??0),
+  muzzleX:(art?.muzzleX??p.muzzleX)+(mounted.muzzle.muzzleExtension??0),
   stockX:stockX+(build?0:(mounted.stock.stockShift??0)),
   primaryX,primaryY,
   supportX:supportX+(mounted.foregrip.supportShift??0),

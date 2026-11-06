@@ -33,8 +33,8 @@ const rayHits=(group,x,y)=>{
   new THREE.Vector3(0,0,-1));
  return caster.intersectObjects(group.children,true).length>0;
 };
-test('R3.1: 62 parts and 17 presets retain combat muzzle and geometry budget',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,62);
+test('R3.1: 66 parts and 17 presets retain combat muzzle and geometry budget',()=>{
+ assert.equal(Object.keys(FAMILY_PARTS).length,66);
  assert.equal(FAMILY_PRESETS.length,17);
  for(const p of FAMILY_PRESETS){
   const {config,group}=assembly(p.id);
@@ -72,9 +72,10 @@ test('R3.1: shortened Mk18 and AKS-74U still have open silhouette identifiers',(
 });
 test('R3.1: AR front sight is a squat open A rather than solid tall spike',()=>{
  const m=assembly('ar-m4a1');
- assert.equal(rayHits(m.group,16.85,1.25),false,'A-frame internal gap');
- assert.ok(rayHits(m.group,16.50,1.4),'left narrowed A-frame leg');
- assert.ok(rayHits(m.group,17.16,1.4),'right narrowed A-frame leg');
+ // M4A1 A-frame now uses the canonical 14.0 sight landmark.
+ assert.equal(rayHits(m.group,14.0,1.4),false,'A-frame internal gap');
+ assert.ok(rayHits(m.group,13.68,1.4),'left narrowed A-frame leg');
+ assert.ok(rayHits(m.group,14.32,1.4),'right narrowed A-frame leg');
  assert.ok(box(m.group,'barrel').max.y<3.25,'sight height reduced');
  clearWeaponSilhouette(m.group);
 });

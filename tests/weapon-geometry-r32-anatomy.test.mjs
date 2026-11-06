@@ -33,8 +33,8 @@ const hits=(group,x,y)=>{
  return ray.intersectObjects(group.children.filter(o=>!o.userData.weaponPixelArt),true)
   .length>0;
 };
-test('R3.2/R4 retains 62 part IDs, all 17 presets and authoritative muzzle',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,62);
+test('R3.2/R4 retains 66 part IDs, all 17 presets and authoritative muzzle',()=>{
+ assert.equal(Object.keys(FAMILY_PARTS).length,66);
  assert.equal(FAMILY_PRESETS.length,17);
  for(const p of FAMILY_PRESETS){
   const {config,group}=assembled(p.id);
@@ -87,9 +87,9 @@ test('R3.2/3.3 magazines preserve side contour and reduce lateral Z depth',()=>{
 test('R3.2 preserves the AKS-74U open stock and slimmer AR front sight',()=>{
  const u=assembled('ak-aks74u'),m=assembled('ar-m4a1');
  assert.equal(hits(u.group,-9.65,-1.05),false,'AKS stock remains skeletal');
- assert.ok(hits(m.group,16.50,1.4),'narrow A-frame left');
- assert.ok(hits(m.group,17.16,1.4),'narrow A-frame right');
- assert.equal(hits(m.group,16.83,1.4),false,'A-frame negative space survives');
+ assert.ok(hits(m.group,13.68,1.4),'narrow A-frame left');
+ assert.ok(hits(m.group,14.32,1.4),'narrow A-frame right');
+ assert.equal(hits(m.group,14.0,1.4),false,'A-frame negative space survives');
  assert.ok(bounds(m.group,'barrel').max.y<3.25,'sight remains squat');
  clearWeaponSilhouette(u.group);clearWeaponSilhouette(m.group);
 });
