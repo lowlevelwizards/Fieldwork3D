@@ -59,7 +59,7 @@ import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide} from './b
 import {spatialSurfaceState,shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {heardIntensity} from './breach-acoustics.ts';
 import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
-import {readSoundPack,SOUND_STORAGE_KEY} from './sound-catalog.ts';
+import {defaultSoundPack,readSoundPack,SOUND_STORAGE_KEY} from './sound-catalog.ts';
 import {playPackSound} from './sound-synth.ts';
 import {withFieldworkLiveMix} from './breach-live-sound-pack.ts';
 import {acousticResponseForCue} from './breach-audio-environment.ts';
@@ -1219,10 +1219,10 @@ try{
  roomAudioEnabled=localStorage.getItem(ROOM_AUDIO_PREF)!=='off';
 }catch{/* Private browsing still auditions the mix with safe defaults. */}
 let approvedSoundPack=liveMixEnabled?
-  withFieldworkLiveMix(readSoundPack()):readSoundPack();
+  withFieldworkLiveMix(readSoundPack()):defaultSoundPack();
 function refreshSoundPack(){
  const base=readSoundPack();
- approvedSoundPack=liveMixEnabled?withFieldworkLiveMix(base):base;
+ approvedSoundPack=liveMixEnabled?withFieldworkLiveMix(base):defaultSoundPack();
 }
 window.addEventListener('storage',event=>{
  if(event.key===LIVE_MIX_PREF){
@@ -5100,7 +5100,7 @@ liveMixToggle.addEventListener('click',()=>{
  try{localStorage.setItem(LIVE_MIX_PREF,liveMixEnabled?'on':'off');}
  catch{/* Optional preference persistence. */}
  updateAudioLabButtons();
- showUiHelp(liveMixEnabled?'APPROVED SOUND LAB MIX ACTIVE':'SOUND LAB MIX OFF · YOUR ORIGINAL PACK ACTIVE',2400);
+ showUiHelp(liveMixEnabled?'APPROVED SOUND LAB MIX ACTIVE':'TEST MIX OFF · ORIGINAL GAME AUDIO ACTIVE',2400);
 });
 roomAudioToggle.addEventListener('click',()=>{
  roomAudioEnabled=!roomAudioEnabled;
