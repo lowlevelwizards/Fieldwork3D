@@ -7,7 +7,7 @@ import {AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './weapons/geometry/ak-barrel-profiles.ts';
 export type RiflePoint={x:number;y:number;z:number};
 export type RifleContactRange={near:RiflePoint;far:RiflePoint;preferredFraction:number};
-export type RiflePoseContacts={family:'ar'|'ak';stock:RiflePoint;
+export type RiflePoseContacts={family:'ar'|'ak'|'hk';stock:RiflePoint;
  primary:RiflePoint;support:RifleContactRange;scale:number};
 export const AR_HANDGUARD_START=3.55;
 export function arHandguardEnd(id:string):number{
@@ -22,21 +22,21 @@ export function riflePoseContacts(
  id:WeaponId,config?:WeaponConfiguration):RiflePoseContacts|null{
  if(!config||config.weapon!==id||!config.build)return null;
  const b=config.build;
- if(b.family!=='ar'&&b.family!=='ak')return null;
- const a=resolveWeaponAssembly(config),ar=b.family==='ar';
- const start=ar?AR_HANDGUARD_START:akHandguardStart(b.parts.receiver);
- const end=ar?arHandguardEnd(b.parts.handguard):
+ if(b.family!=='ar'&&b.family!=='ak'&&b.family!=='hk')return null;
+ const a=resolveWeaponAssembly(config),ar=b.family==='ar',hk=b.family==='hk';
+ const start=hk?4.05:ar?AR_HANDGUARD_START:akHandguardStart(b.parts.receiver);
+ const end=hk?14.05:ar?arHandguardEnd(b.parts.handguard):
   (akBarrelArt(b.parts.barrel)??AK_BARREL_ART['ak-long']).handguardFrontX;
  // The *physical* lower receiver/magwell joint is a supported hold.
  // Restricting the hand to farther-forward furniture forced near-full
  // extension and made a comfortably bent elbow impossible.
- const near=ar?2.02:1.86;
- const far=Math.max(start+1.4,end-(ar?1.36:1.17));
- const y=ar?AR_VISUAL_AXIS_Y-1.40:-1.40;
+ const near=hk?2.30:ar?2.02:1.86;
+ const far=Math.max(start+1.4,end-(hk?1.80:ar?1.36:1.17));
+ const y=hk?-1.39:ar?AR_VISUAL_AXIS_Y-1.40:-1.40;
  return {family:b.family,scale:a.lengthScale,
   stock:{x:a.stockX,y:0,z:0},primary:{x:a.primaryX,y:a.primaryY,z:1.8},
   support:{near:{x:near,y,z:-1.55},far:{x:far,y,z:-1.55},
-   preferredFraction:ar?.14:.09}};
+   preferredFraction:hk?.22:ar?.14:.09}};
 }
 export function supportContactAt(r:RifleContactRange,t:number):RiflePoint{
  const f=Math.min(1,Math.max(0,t));

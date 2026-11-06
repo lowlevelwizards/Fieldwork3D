@@ -4,9 +4,13 @@ import {arMagazineCurve,arMagazineOutline}
  from './weapons/geometry/ar-magazine-profiles.ts';
 import {akMagazineCurve,akMagazineOutline}
  from './weapons/geometry/ak-magazine-profiles.ts';
-export type CarriedMagProfile={family:'ar'|'ak';length:number;material:number};
+import {HK_MAG20_OUTLINE,HK_MAG20_CENTER_X,HK_MAG20_TOP_Y,HK_MAG20_LENGTH}
+ from './weapons/geometry/hk-magazine-profiles.ts';
+export type CarriedMagProfile={family:'ar'|'ak'|'hk';length:number;material:number};
 export function carriedMagazineProfile(part:string|null|undefined):CarriedMagProfile|null{
  if(!part)return null;
+ if(part==='hk-g3-mag20')
+  return {family:'hk',length:HK_MAG20_LENGTH,material:0x5e6960};
  if(part.startsWith('ar-mag'))
   return {family:'ar',length:part==='ar-mag20'?4.1:5.3,
    material:part==='ar-magpoly'?0x343e37:0x687369};
@@ -24,6 +28,18 @@ export function carriedMagazineProfile(part:string|null|undefined):CarriedMagPro
 export function carriedMagazineGeometry(part:string):THREE.BufferGeometry|null{
  const profile=carriedMagazineProfile(part);
  if(!profile)return null;
+ if(profile.family==='hk'){
+  const shape=new THREE.Shape();
+  shape.moveTo(HK_MAG20_OUTLINE[0][0],HK_MAG20_OUTLINE[0][1]);
+  for(const [x,y] of HK_MAG20_OUTLINE.slice(1))shape.lineTo(x,y);
+  shape.closePath();
+  const geometry=new THREE.ExtrudeGeometry(shape,{depth:2.08,steps:1,
+   bevelEnabled:false,curveSegments:1});
+  geometry.translate(-HK_MAG20_CENTER_X,
+   -HK_MAG20_TOP_Y+HK_MAG20_LENGTH*.5,-1.04);
+  geometry.scale(.62,.82,.73);geometry.rotateY(Math.PI/2);
+  return geometry;
+ }
  const ar=profile.family==='ar';
  const curve=ar?
   arMagazineCurve(part==='ar-mag20'?'20':part==='ar-magpoly'?'poly':'30'):

@@ -8,6 +8,8 @@ import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
 import {HK_OLIVE_POLYMER,HK_MAG_METAL}
  from './weapon-visual-palette.ts';
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
+import {HK_MAG20_OUTLINE} from './hk-magazine-profiles.ts';
+import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
 
 export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material,
@@ -18,15 +20,15 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
- const material=(slot:SlotName,finish:'steel'|'dark'|'wood'|'olive'|'mag')=>
+ const material=(finish:'steel'|'dark'|'wood'|'olive'|'mag')=>
   finish==='steel'?steel:finish==='wood'?wood:
   finish==='olive'?HK_OLIVE_POLYMER:finish==='mag'?HK_MAG_METAL:dark;
  const p=(slot:SlotName,points:Outline,depth:number,
   finish:'steel'|'dark'|'wood'|'olive'|'mag'='steel')=>
-  addOutline(root,slot,parts[slot],ids[slot]++,points,depth,material(slot,finish));
+  addOutline(root,slot,parts[slot],ids[slot]++,points,depth,material(finish));
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number,
   finish:'steel'|'dark'|'wood'|'olive'|'mag'='steel')=>
-  addCuboid(root,slot,parts[slot],ids[slot]++,x,y,z,w,h,d,material(slot,finish));
+  addCuboid(root,slot,parts[slot],ids[slot]++,x,y,z,w,h,d,material(finish));
 
  // Stamped HK receiver and connected trigger housing: deliberately no AR split.
  p('receiver',[[-6.50,-1.43],[-6.50,1.05],[-5.75,1.85],
@@ -56,8 +58,7 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [-2.66,-6.83],[-4.40,-6.70],[-5.05,-3.40]],2.16,'dark');
 
  // Straight, full-power 20-round box magazine; slight rearward heel bias.
- p('magazine',[[-.22,-2.70],[3.32,-2.70],
-   [3.06,-7.78],[-.66,-7.78]],2.08,'mag');
+ p('magazine',HK_MAG20_OUTLINE,2.08,'mag');
  b('magazine',1.20,-7.70,0,3.62,.25,2.20,'steel');
 
  // HK slim fore-end: one faceted YZ body. Never an AK upper/lower split.
@@ -91,6 +92,12 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  hood.name='family-barrel-'+parts.barrel+'-'+ids.barrel++;
  hood.castShadow=true;hood.receiveShadow=true;root.add(hood);
 
+ // Low-relief receiver markings are seated on the true exterior side faces.
+ addWeaponPixelMark(root,'hk-port',.40,.27,1.775,3.20,1.05);
+ const selector=addWeaponPixelMark(root,'hk-selector',-3.48,-.67,-1.777,2.05,.60);
+ selector.rotation.y=Math.PI;
+ const vent=parts.handguard==='hk-g3-wood-vented'?'hk-wood-vents':'hk-poly-vents';
+ addWeaponPixelMarkPair(root,vent,9.25,-.18,1.424,7.1,.70);
  // Early flip-up leaf versus distinctive chunky later rotary sight drum.
  b('receiver',-3.68,1.95,0,2.0,.53,2.45);
  if(early){
