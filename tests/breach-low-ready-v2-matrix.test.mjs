@@ -27,7 +27,8 @@ test('eight difficult loadouts prefer valid physical two-handed ready',()=>{
    initialWeaponConfiguration(preset.weapon),id);
   const solution=solveCoupledLowReady({weapon:preset.weapon,
    configuration:cfg,shoulders,
-   armor:poseClearanceEnvelope(armor,rig,top),nominalYaw:0});
+   armor:poseClearanceEnvelope(armor,rig,top),nominalYaw:0,
+   onDiagnostics:stats=>console.log('POSE-V2-REJECTIONS',id,armor,JSON.stringify(stats))});
   const mode=solution?.mode??'unresolved';
   console.log('POSE-V2',id,armor,rig,top,mode,
    'hard',solution?.penetration??'none',

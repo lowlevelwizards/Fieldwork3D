@@ -33,6 +33,7 @@ export type CoupledInput={
  armor:PoseClearanceEnvelope;nominalYaw:number;
  /** Optional explicit replay-recorded prior bend (never implicit frame state). */
  previousBends?:readonly [THREE.Vector3,THREE.Vector3];
+ onDiagnostics?:(stats:Record<string,number>)=>void;
  onCandidate?:(sample:{right:number;left:number;receiver:number;depth:number;
   leftJoint:RiflePoint;leftWrist:RiflePoint;stock:RiflePoint})=>void;
 };
@@ -126,6 +127,9 @@ export function solveCoupledLowReady(input:CoupledInput):
   pocket.y+reference.stock.y,
   pocket.z+reference.stock.z);
  let count=0;
+ const rejects={primaryReach:0,receiverRigid:0,
+  rightAnatomyOrArmor:0,leftReach:0,leftAnatomyOrArmor:0,
+  pairAnatomy:0,accepted:0};
  let bestGuard:CoupledLowReadySolution|null=null,guardQuality=Infinity;
  const guardArm=hangingGuard(input);
  const searchOrder:readonly [LowReadyPass,LowReadyPoseMode][]=[
@@ -157,33 +161,34 @@ export function solveCoupledLowReady(input:CoupledInput):
      new THREE.Vector3(offsetX,offsetY,offsetZ));
     const origin=stock.clone().sub(stockLocal);
     const primary=origin.clone().add(primaryLocal);
-    if(primary.distanceTo(rightShoulder)>19.55)continue;
+    if(primary.distanceTo(rightShoulder)>19.55){rejects.primaryReach++;continue;}
     const receiverA=origin.clone().add(transform({x:-5,y:0,z:0}));
     const receiverB=origin.clone().add(transform({x:4,y:0,z:0}));
     const rigidOnly={...input.armor,
      boxes:input.armor.boxes.filter(b=>b.material==='rigid')};
     const receiverDepth=segmentArmorPenetration(ptr(receiverA),
      ptr(receiverB),rigidOnly,1.06,.18);
-    if(receiverDepth>.12)continue;
+    if(receiverDepth>.12){rejects.receiverRigid++;continue;}
     const right=selectArm(rightShoulder,primary,1,input.armor,
      budget.softScale,input.previousBends?.[1]);
-    if(!right)continue;
+    if(!right){rejects.rightAnatomyOrArmor++;continue;}
     const rightDepth=right.contact.hardDepth;
     for(const fraction of budget.contactFractions){
      count++;
      const f=clamp((fraction+reference.supportFraction)*.5,0,1);
      const support=origin.clone().add(
       transform(supportContactAt(contacts.support,f)));
-     if(support.distanceTo(leftShoulder)>19.55)continue;
+     if(support.distanceTo(leftShoulder)>19.55){rejects.leftReach++;continue;}
      const left=selectArm(leftShoulder,support,-1,input.armor,
       budget.softScale,input.previousBends?.[0]);
-     if(!left)continue;
+     if(!left){rejects.leftAnatomyOrArmor++;continue;}
      const geometry=assessLowReadyPair(
       [leftShoulder,rightShoulder],
       [left.pose.joint,right.pose.joint],
       [left.pose.effector,right.pose.effector],
       [left.pose.angle,right.pose.angle]);
-     if(!geometry.valid)continue;
+     if(!geometry.valid){rejects.pairAnatomy++;continue;}
+     rejects.accepted++;
      const hardDepth=Math.max(left.contact.hardDepth,
       right.contact.hardDepth,receiverDepth);
      const softDepth=Math.max(left.contact.softDepth,
@@ -231,7 +236,8 @@ export function solveCoupledLowReady(input:CoupledInput):
     }
    }
   }
-  if(winning)return {...winning,candidates:count};
+  if(winning){input.onDiagnostics?.(rejects);return {...winning,candidates:count};}
  }
+ input.onDiagnostics?.(rejects);
  return bestGuard?{...bestGuard,candidates:count}:null;
 }
