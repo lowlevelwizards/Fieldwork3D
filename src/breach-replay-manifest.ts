@@ -23,12 +23,16 @@ export type ReplayManifest={
   actors:ReplayActorIdentity[];
 };
 
-export function captureReplayManifest(s:Session):ReplayManifest{
+export function captureReplayManifest(s:Session,
+  preservedSite?:Site|null):ReplayManifest{
   return {
     schemaVersion:2,variant:s.variant,
     intelMode:s.intel.mode,lightingMode:s.lightingMode,
     missionType:s.missionType,
-    site:s.site?structuredClone(s.site):null,
+    // Static map geometry does not change during authoring. Reuse its
+    // immutable initial copy when finalizing the manifest on first GO.
+    site:preservedSite!==undefined?preservedSite:
+      s.site?structuredClone(s.site):null,
     actors:s.operators.map(a=>({
       id:a.id,name:a.name,side:a.side,
       appearanceSeed:a.appearanceSeed,weapon:a.weapon,

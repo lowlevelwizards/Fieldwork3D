@@ -74,3 +74,15 @@ test('manifest retains a resolved site and actor identity; recording limit is ex
   assert.equal(recorder.completeness.reason,'memory frame limit');
   assert.ok(recorder.completeness.truncatedAt!==null);
 });
+
+test('forced GO snapshot preserves exact initial route before first sampled tick',()=>{
+  const live=newSession(0);
+  const actor=live.operators.find(a=>a.side==='blue');
+  assert.ok(actor);
+  const rec=new MissionRecorder();rec.capture(live,true);
+  actor.plan=[{id:19,kind:'move',p:{x:280,y:420}}];
+  rec.capture(live,true);
+  assert.equal(rec.frames.length,1,'same-timestamp update replaces first film frame');
+  assert.equal(rec.frames[0].actors.find(a=>a.id===actor.id)?.plan[0]?.id,19);
+  assert.equal(rec.plans.initial(actor.id)?.nodes[0]?.id,19);
+});

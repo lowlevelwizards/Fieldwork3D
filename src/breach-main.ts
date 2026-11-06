@@ -4099,7 +4099,11 @@ ui.play.addEventListener('click',()=>{
   unlockAudio();uiClickTone(state.phase==='running'?'pause':'go');
   if(state.phase==='won'||state.phase==='lost'){
    if(!returnAfterCampaignMission())reset();
-  }else{looking=false;toggling(state);updateHud();}
+  }else{
+    looking=false;
+    if(state.phase==='planning')recorder.capture(state,true);
+    toggling(state);updateHud();
+  }
 });
 ui.restart.addEventListener('click',async()=>{
   if(campaignMode==='mission'||replaying)return;
@@ -4132,7 +4136,11 @@ window.addEventListener('keydown',e=>{
     e.preventDefault();unlockAudio();
     if(state.phase==='won'||state.phase==='lost'){
       if(!returnAfterCampaignMission())reset();
-    }else toggling(state);updateHud();
+    }else{
+      if(state.phase==='planning')recorder.capture(state,true);
+      toggling(state);
+    }
+    updateHud();
   }
   if(e.code==='Digit1')selectUnit('rook');
   if(e.code==='Digit2')selectUnit('moss');

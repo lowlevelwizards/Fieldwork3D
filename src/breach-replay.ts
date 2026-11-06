@@ -191,7 +191,7 @@ export class MissionRecorder{
     // The mission may receive new appearance/kit settings before first GO.
     // Finalize the one-time manifest on the first executed simulation tick.
     if(!this.manifest||(!this.manifestLocked&&s.started))
-      this.manifest=captureReplayManifest(s);
+      this.manifest=captureReplayManifest(s,this.manifest?.site);
     if(s.started)this.manifestLocked=true;
     if(this.frames.length>=12000){
       if(this.completeness.complete){
