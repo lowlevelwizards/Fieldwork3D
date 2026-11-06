@@ -9,8 +9,9 @@ export type ReplayChunkBoundary={
 };
 export class ReplayFrameChunkIndex<T extends {t:number}>{
   readonly chunks:readonly ReplayChunkBoundary[];
-  constructor(private readonly frames:readonly T[],
-    chunkSize=REPLAY_CHUNK_FRAMES){
+  private readonly frames:readonly T[];
+  constructor(frames:readonly T[],chunkSize=REPLAY_CHUNK_FRAMES){
+    this.frames=frames;
     if(!Number.isSafeInteger(chunkSize)||chunkSize<1)
       throw Error('Invalid replay chunk size');
     const entries:ReplayChunkBoundary[]=[];
@@ -59,19 +60,27 @@ export class ReplayFrameChunkIndex<T extends {t:number}>{
 }
 export type ReplaySharingFootprint={
   frames:number;uniqueActorArrays:number;uniqueWorldArrays:number;
-  actorArrayReuse:number;worldArrayReuse:number
+  actorArrayReuse:number;worldArrayReuse:number;
+  uniqueActorRecords:number;sharedActorRecords:number
 };
 /** Object-reference counts, NOT misleading estimated heap bytes. */
 export function replaySharingFootprint(
-  frames:readonly {actors:object;doors:object}[]
+  frames:readonly {actors:readonly object[];doors:object}[]
 ):ReplaySharingFootprint{
   const actorRefs=new WeakSet<object>(),worldRefs=new WeakSet<object>();
-  let uniqueActorArrays=0,uniqueWorldArrays=0;
+  const records=new WeakSet<object>();
+  let uniqueActorArrays=0,uniqueWorldArrays=0,uniqueActorRecords=0;
+  let actorRecordCount=0;
   for(const f of frames){
     if(!actorRefs.has(f.actors)){actorRefs.add(f.actors);uniqueActorArrays++;}
     if(!worldRefs.has(f.doors)){worldRefs.add(f.doors);uniqueWorldArrays++;}
+    for(const actor of f.actors){
+      actorRecordCount++;
+      if(!records.has(actor)){records.add(actor);uniqueActorRecords++;}
+    }
   }
   return {frames:frames.length,uniqueActorArrays,uniqueWorldArrays,
     actorArrayReuse:frames.length-uniqueActorArrays,
-    worldArrayReuse:frames.length-uniqueWorldArrays};
+    worldArrayReuse:frames.length-uniqueWorldArrays,
+    uniqueActorRecords,sharedActorRecords:actorRecordCount-uniqueActorRecords};
 }
