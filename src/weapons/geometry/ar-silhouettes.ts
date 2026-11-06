@@ -104,13 +104,20 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
 
  // Four outside envelopes: triangular ribless, rounded, slim retro, heavy rail.
  const guard=parts.handguard;
- const long=['ar-triangle','ar-round','ar-m5-rail'].includes(guard);
+ const long=['ar-triangle','ar-round','ar-m5-rail','ar-pri-tube'].includes(guard);
  const short=['ar-compact-rail','ar-risii'].includes(guard);
  const commando=guard==='ar-733-ribbed';
- const end=long?15.25:short?15.95:commando?12.9:13.9;
+ const end=guard==='ar-pri-tube'?14.8:long?15.25:short?15.95:commando?12.9:13.9;
  // A slight deliberate overlap avoids the visible receiver/guard seam.
  const start=3.55;
- if(guard==='ar-triangle'){
+ if(guard==='ar-pri-tube'){
+  // Long faceted PRI tube with one continuous rail and a connected rear bridge.
+  p('handguard',[[start,-1.5],[start,1.25],[start+.7,1.62],
+   [end-.8,1.62],[end,1.0],[end,-1.25],[end-.8,-1.65]],3.5,1);
+  b('handguard',(start+end)/2,1.94,0,end-start,.62,2.8,0);
+  b('handguard',2.6,1.91,0,3.6,.48,2.45,0);
+  addWeaponPixelMark(root,'pri-vents',(start+end)/2,.1,1.88,end-start-2.0,.9);
+ }else if(guard==='ar-triangle'){
   // One long block with an iconic triangular taper, no tiny rail strips.
   // A1's thick rear triangular mass narrows to the distinctive long fore-end.
   p('handguard',[[start,1.55],[start+.9,1.77],[end-.6,1.07],
@@ -146,13 +153,16 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // All variants share the authoritative X=19.5 tip: only visual profile varies.
  const barrelEnd=19.5;
  const noseStart=parts.barrel==='ar-733-115'?12.75:
-  short?15.7:long?15.1:13.7;
+  parts.barrel==='ar-spr18'?14.55:short?15.7:long?15.1:13.7;
  b('barrel',(noseStart+barrelEnd)/2,0,0,barrelEnd-noseStart,1.25,1.4,0);
  // Old-style raised front sight, absent on compact modern rail silhouette.
- if(!short){
+ if(!short&&parts.barrel!=='ar-spr18'){
   // Oversized A-frame front sight: genuine open V negative space.
   // Wide squat A-frame silhouette; a visible V gap, not a needle-like spike.
   line('barrel',[16.24,.35],[16.83,2.72],.34,1.8,0);
   line('barrel',[17.42,.35],[16.83,2.72],.34,1.8,0);
+ }else if(parts.barrel==='ar-spr18'){
+  b('barrel',16.25,.92,0,1.2,.5,1.45,1);
+  b('barrel',18.93,0,0,1.14,1.62,1.85,1);
  }else b('barrel',19.06,0,0,.88,1.75,1.9,1);
 }
