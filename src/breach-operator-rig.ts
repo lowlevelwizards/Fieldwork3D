@@ -1224,9 +1224,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // The coupled solution is deliberately restricted to relaxed, stationary,
   // two-handed AR/AK presentation. Combat aim and shot-time geometry remain
   // on the existing authoritative pose path.
-  const config=p.weaponConfiguration?.weapon===p.weapon?
+  const coupledConfig=p.weaponConfiguration?.weapon===p.weapon?
     p.weaponConfiguration:undefined;
-  const eligible=!!config?.build&&handling==='low'&&
+  const eligible=!!coupledConfig?.build&&handling==='low'&&
     p.posture==='stand'&&physicalSpeed<.45&&
     Math.abs(p.turning)<.28&&!p.down&&!p.surrender&&!p.firing&&
     !p.aiming&&(p.aimBlend??0)<.02&&p.reload<=0&&
@@ -1234,15 +1234,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.seconds-p.lastDoorAt>1.2&&p.seconds-p.lastThrowAt>.85&&
     (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
   let coupled:CoupledLowReadySolution|null=null;
-  if(eligible&&config){
+  if(eligible&&coupledConfig){
     const look=resolvedWardrobe(p.wardrobe,p.equipment);
-    const key=JSON.stringify([p.weapon,config.build,config.slots,
+    const key=JSON.stringify([p.weapon,coupledConfig.build,coupledConfig.slots,
       look.top,look.armorStyle,look.rigStyle,poseWeight,
       Math.round(relativeYaw*40)/40]);
     const cache=coupledIdleCache.get(r);
     if(cache?.key===key)coupled=cache.solution;
     else{
-      coupled=solveCoupledLowReady({weapon:p.weapon,configuration:config,
+      coupled=solveCoupledLowReady({weapon:p.weapon,configuration:coupledConfig,
         armor:poseClearanceEnvelope(look.armorStyle,look.rigStyle,look.top),
         shoulders:[shoulderFor(0),shoulderFor(1)],
         nominalYaw:relativeYaw});
