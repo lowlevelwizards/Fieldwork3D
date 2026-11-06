@@ -93,22 +93,35 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [-6.3,-1.25],[-10.4,-2.02],[-11.25,-3.6],
    [-13.4,-4.15],[-15.85,-3.7]],3.35,2);
  }else if(stock==='ak-triangle-full'){
-  // AKS-74: an unmistakable open SIDE-folding triangle, never AKMS rails.
+  // Standard AKS-74 side-folding TRIANGLE: strong top rail, single lower
+  // diagonal, open center, clean skinny butt. It must not read as an AKMS.
+  line('stock',[-5.90,.62],[-14.15,.52],.89,1.18,0);
+  line('stock',[-5.90,.55],[-14.12,-2.58],.90,1.16,0);
+  b('stock',-14.48,-1.07,0,.86,3.64,2.10,1);
+  b('stock',-5.90,-.15,0,.88,2.18,1.95,0);
+ }else if(stock==='ak-triangle-padded'){
+  // Preserve the prior braced AKS-74 art as a separate custom padded option.
   line('stock',[-5.42,.62],[-14.1,.62],.92,1.15,0);
   line('stock',[-5.42,.58],[-14.1,-2.65],.88,1.1,0);
   line('stock',[-5.48,-1.15],[-9.0,-.72],.66,1.05,0);
-  b('stock',-14.46,-1.05,0,.9,3.62,2.18,1);
+  b('stock',-14.58,-1.05,0,1.25,3.90,2.60,1);
  }else if(stock==='ak-underfolder'){
-  // AKMS: the top strut stays almost level; the lower fork drops rearward.
-  // The skinny turned buttplate reads differently from the AKS-74 triangle.
-  line('stock',[-5.55,.48],[-14.12,.35],.65,1.1,0);
-  line('stock',[-5.58,-1.15],[-13.96,-2.16],.66,1.1,0);
-  b('stock',-14.4,-.95,0,.72,3.24,1.65,0);
-  b('stock',-5.72,-.28,0,1.05,2.0,1.6,1);
+  // New true two-SIDED underfolder: two distinct rails on opposite Z sides,
+  // a lowered rear hinge and slender bridging butt plate.
+  for(const side of [-1,1]){
+   const z=side*.73;
+   const top=line('stock',[-6.10,-.33],[-14.38,-.24],
+    .68,.82,0);top.position.z=z;
+   const lower=line('stock',[-6.12,-1.44],[-14.36,-2.00],
+    .66,.82,0);lower.position.z=z;
+  }
+  b('stock',-14.62,-1.06,0,.86,3.25,2.52,0);
+  b('stock',-6.08,-.97,0,1.15,1.98,2.50,0);
  }else if(stock==='ak-sidefold'||stock==='ak-sidefold-plum'){
   // Reuse the strongest AK-74M polymer cheek/heel profile across 100-series.
   p('stock',[[-14.4,.78],[-9.1,.93],[-6.12,.28],
    [-6.32,-1.42],[-9.75,-2.85],[-14.4,-2.30]],3.35,1);
+  b('stock',-6.29,-.20,0,.68,1.85,2.70,0);
  }else{
   const isWood=stock.startsWith('ak-wood')&&
    !stock.endsWith('-plum');
