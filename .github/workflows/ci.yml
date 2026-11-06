@@ -1115,6 +1115,14 @@ jobs:
             tests/equipment-19-01-weapon-assemblies.test.mjs \
             tests/weapon-workbench-mobile-sockets.test.mjs
           node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs /tmp/weapon-ortho-r33.html
+      - name: Replay R2 — historical visibility, plan revisions and legacy replay contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r2-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r2-recording.test.mjs \
+            tests/breach-p7-replay-sharing.test.mjs \
+            tests/breach-089-096.test.mjs \
+            tests/civilian-b8-replay.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
