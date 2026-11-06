@@ -72,7 +72,7 @@ import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-in
 import {clusterReplayTimeline} from './breach-replay-timeline-markers.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import {serializeReplayReport} from './breach-replay-export-json.ts';
-import {ReplaySoundTimeline} from './breach-replay-audio.ts';
+import {ReplaySoundTimeline,replayDoorSoundId} from './breach-replay-audio.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {sampleReplayGhosts} from './breach-replay-ghosts.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
@@ -3634,7 +3634,7 @@ function playReplayAudioBetween(start:number,end:number):void{
         reload:[280,.09],interaction:[210,.12],
         surrender:[210,.22]} as const;
       const [hz,length]=tones[event.kind];
-      const soundId={door:'doors.open',flash:'combat.flash',
+      const soundId={door:replayDoorSoundId(event.description),flash:'combat.flash',
         reload:'equipment.reload',interaction:'',surrender:'people.surrender'
       }[event.kind];
       if(!soundId||!playApprovedCue(soundId,Math.min(level,.7),
