@@ -13,6 +13,7 @@ export type SoundSettings={
   brightness:number;tail:number;room:number;
 };
 export type SoundChoice={enabled:boolean;choice:Variant;
+  reviewed?:boolean;favorite?:boolean;
   edits?:Partial<Record<Variant,SoundSettings>>};
 export type SoundPack={version:1;master:number;choices:Record<string,SoundChoice>};
 export const SOUND_STORAGE_KEY='fieldwork3d.soundlab.pack.v1';
@@ -148,6 +149,10 @@ export function normalizeSoundPack(value:unknown):SoundPack{
   const choice=raw as {enabled?:unknown;choice?:unknown;edits?:unknown};
   const target=defaults.choices[entry.id];
   if(typeof choice.enabled==='boolean')target.enabled=choice.enabled;
+  if(typeof (choice as {reviewed?:unknown}).reviewed==='boolean')
+    target.reviewed=(choice as {reviewed:boolean}).reviewed;
+  if(typeof (choice as {favorite?:unknown}).favorite==='boolean')
+    target.favorite=(choice as {favorite:boolean}).favorite;
   if(SOUND_VARIANTS.includes(choice.choice as Variant))
    target.choice=choice.choice as Variant;
   if(choice.edits&&typeof choice.edits==='object'){
