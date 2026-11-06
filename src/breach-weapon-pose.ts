@@ -5,6 +5,7 @@ import {WEAPON_PLATFORMS,resolveWeaponAssembly,
 import * as THREE from 'three';
 import {stockPocket,anchorGap} from './breach-anatomy.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
+import {lowReadyFamilyFit,lowReadyPocket} from './breach-low-ready-family-fit.ts';
 export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
@@ -16,12 +17,17 @@ export const GRIPS:Record<WeaponId,WeaponGrip>=Object.fromEntries(
    primaryX:p.primaryX,primaryY:p.primaryY,
    supportX:p.supportX,supportY:p.supportY}];
  })) as Record<WeaponId,WeaponGrip>;
-export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration):WeaponGrip=>{
+export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
+ handling?:Handling,relaxedWeight=0):WeaponGrip=>{
  if(!configuration||configuration.weapon!==id)return GRIPS[id];
  const a=resolveWeaponAssembly(configuration);
+ // The low-ready grip is presentation-only, not a shot-time muzzle change.
+ const low=handling==='low'?lowReadyFamilyFit(configuration):null;
+ const w=clamp(relaxedWeight,0,1);
  return {lengthScale:a.lengthScale,stockX:a.stockX,
   primaryX:a.primaryX,primaryY:a.primaryY,
-  supportX:a.supportX,supportY:a.supportY};
+  supportX:low?Math.max(low.minSupportX,a.supportX-low.supportBack*w):a.supportX,
+  supportY:a.supportY-(low?.supportDown??0)*w};
 };
 export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage'|'squeeze';
 /** Pure context-based handling selection shared with shot-time geometry.
@@ -79,6 +85,8 @@ export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
   swayYaw?:number;swayPitch?:number;
   /** Underarm pull-back for a physically blocked muzzle. */
   clearanceRetraction?:number;
+  /** Visual-only low-ready blend; never set by shot-time muzzle code. */
+  relaxedLowReady?:number;
   blendFrom?:Handling;blendAlpha?:number;
   blendSnapshot?:{origin:THREE.Vector3;rotation:THREE.Euler}};
 /** Rigid contact fit in chest-local space. The candidate search uses scalar
@@ -97,7 +105,8 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     const q=new THREE.Quaternion().setFromEuler(from.rotation);
     q.slerp(new THREE.Quaternion().setFromEuler(to.rotation),t);
     const rotation=new THREE.Euler().setFromQuaternion(q,'XYZ');
-    const data=weaponGrips(input.weapon,input.configuration);
+    const data=weaponGrips(input.weapon,input.configuration,
+      input.handling,input.relaxedLowReady);
     const point=(x:number,y:number,z:number)=>new THREE.Vector3(
       x*data.lengthScale,y,z).applyEuler(rotation).add(origin);
     const stock=point(data.stockX,0,0);
@@ -111,11 +120,16 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       contactError:Math.max(0,right-LIMIT)+Math.max(0,left-LIMIT),
       stockError:anchorGap(stock,stockPocket(input.handling))};
   }
-  const data=weaponGrips(input.weapon,input.configuration),scale=data.lengthScale;
+  const data=weaponGrips(input.weapon,input.configuration,
+     input.handling,input.relaxedLowReady),scale=data.lengthScale;
+   const relaxed=input.handling==='low'?
+     lowReadyFamilyFit(input.configuration):null;
+   const relaxedWeight=clamp(input.relaxedLowReady??0,0,1);
   // Preserve the physical barrel's requested yaw even if the pelvis/chest
   // lag behind during a pivot. Clamping here made visible guns aim sideways
   // while simulation ballistics continued toward the actual target.
-  const requestedYaw=input.yaw+(input.swayYaw??0);
+  const requestedYaw=input.yaw+(input.swayYaw??0)+
+     (relaxed?.carryYaw??0)*relaxedWeight;
   const yaw=Math.atan2(Math.sin(requestedYaw),Math.cos(requestedYaw));
   const recoilX=clamp(input.recoil,0,5);
   const recoilY=Math.min(1.1,Math.max(0,input.recoil)*.2);
@@ -147,9 +161,11 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     // Buttplate is the authority. Search only around an EXTERNAL shoulder
     // contact, never around the old in-chest receiver midpoint. Keep tiny
     // yaw variations to preserve the authoritative shot heading.
-    const normalPocket=stockPocket(mode);
-    const shoulderPocket=input.aimBlend===undefined||mode==='short'?
-      normalPocket:{
+    const normalPocket=lowReadyPocket(stockPocket(mode),relaxed,
+      mode==='low'?relaxedWeight:0);
+    // Low-ready must use its own stock pocket even when live aimBlend=0.
+    const shoulderPocket=input.aimBlend===undefined||mode==='short'||
+      mode==='low'?normalPocket:{
         x:stockPocket('ready').x+
           (stockPocket('ads').x-stockPocket('ready').x)*blendAim,
         y:stockPocket('ready').y+
@@ -212,8 +228,9 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   // independent hand or stock teleportation occurs.
   // Compare the physical buttstock against a stable operator anatomy point,
   // not a reference synthesized from the stock itself (always zero).
-  const pocket=input.aimBlend===undefined||input.handling==='short'?
-    stockPocket(input.handling):{
+  const pocket=input.aimBlend===undefined||input.handling==='short'||
+    input.handling==='low'?
+    lowReadyPocket(stockPocket(input.handling),relaxed,relaxedWeight):{
       x:stockPocket('ready').x+
         (stockPocket('ads').x-stockPocket('ready').x)*
         clamp(input.aimBlend,0,1),
