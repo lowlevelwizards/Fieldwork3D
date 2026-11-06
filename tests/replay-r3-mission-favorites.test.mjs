@@ -14,7 +14,10 @@ test('favorite retains exact resolved site and deployment across JSON storage',(
   const restored=readFavoriteMissions(writeFavoriteMissions(favorites));
   assert.equal(restored.length,1);
   assert.equal(restored[0].start.site.seed,s.site.seed);
-  assert.deepEqual(restored[0].start.site.rooms,s.site.rooms);
+  // JSON omits optional properties whose in-memory value is undefined.
+  // Compare canonical serialized geometry, including positions and topology.
+  assert.deepEqual(restored[0].start.site.rooms,
+    JSON.parse(JSON.stringify(s.site.rooms)));
   assert.deepEqual(restored[0].start.squad.map(x=>x.id),
     s.operators.filter(x=>x.side==='blue').map(x=>x.id));
   const next=newSession(restored[0].start.variant,restored[0].start.seed,
