@@ -16,7 +16,7 @@
   <div class="brand">
    <div class="overline">FIELDWORK <span>/</span> AUDIO SYSTEMS · WORKBENCH 01</div>
    <h1>SOUND LAB <span>///</span></h1>
-   <p>Refine the sounds you liked. Keep the originals for comparison.</p>
+   <p>A third pass: hear real-feeling actions, not just isolated sound effects.</p>
   </div>
   <a class="return" href="./index.html">← RETURN TO TACTICAL</a>
  </header>
@@ -35,11 +35,11 @@
   </div>
  </div>
  <div class="progress"><div id="progressFill"></div></div>
- <div class="round-intro"><div><strong id="roundLabel">WAVE 02A / REFINEMENT + LAYERING</strong><p id="roundHelp">10 representative sounds · 6 closer variations each · original Wave 01 picks preserved. Listen to the base, compare refinements, shortlist, choose.</p><p id="profileHint" class="profile-hint"></p></div><div class="round-toggle"><button id="refineView" type="button" aria-pressed="true">WAVE 02</button><button id="focusView" type="button" aria-pressed="false">WAVE 01</button><button id="allView" type="button" aria-pressed="false">ALL SOUNDS</button></div></div>
+ <div class="round-intro"><div><strong id="roundLabel">WAVE 03 / TACTILE COMPOUND SOUNDS</strong><p id="roundHelp">Ten selected sounds · six physical micro-sequences each. Your approved Wave 02 sounds are the starting point.</p><p id="profileHint" class="profile-hint"></p></div><div class="round-toggle"><button id="compoundView" type="button" aria-pressed="true">WAVE 03</button><button id="refineView" type="button" aria-pressed="false">WAVE 02</button><button id="focusView" type="button" aria-pressed="false">WAVE 01</button><button id="allView" type="button" aria-pressed="false">ALL SOUNDS</button></div></div>
  <div class="workspace">
   <aside class="catalog" aria-label="Sound catalog">
    <div class="catalog-head">
-    <strong id="libraryHeading">01 / NEXT 10 SOUNDS TO REFINE</strong>
+    <strong id="libraryHeading">01 / TEN SOUNDS TO COMPOUND</strong>
     <input id="search" type="search" placeholder="Find a sound…" aria-label="Search sound catalog"/>
    </div>
    <div class="filters">
@@ -67,16 +67,16 @@
     <span id="cueStatus" class="status">CANDIDATE</span>
    </div>
    <div class="audition">
-    <div class="section-heading"><span id="auditionHeading">02 / SIX CLOSER DIRECTIONS</span><span id="compareHint">BASE → EXPLORE → SHORTLIST → CHOOSE</span></div>
+    <div class="section-heading"><span id="auditionHeading">02 / SIX PHYSICAL MICRO-STORIES</span><span id="compareHint">WAVE 02 REFERENCE · COMPOUND · CHOOSE</span></div>
     <div class="baseline-panel" id="baselinePanel">
-      <div><strong>YOUR WAVE 01 REFERENCE</strong><p id="baselineLabel">Choose your original sound first</p></div>
-      <button id="playBaseline" type="button">▶ HEAR ORIGINAL</button>
+      <div><strong id="baselineTitle">YOUR WAVE 02 REFERENCE</strong><p id="baselineLabel">Choose your original sound first</p></div>
+      <div class="baseline-actions"><button id="playBaseline" type="button">▶ HEAR WAVE 02</button><button id="playWaveOne" type="button">▶ HEAR WAVE 01</button></div>
     </div>
     <div id="variantGrid" class="variant-grid"></div>
     <div class="transport">
      <button type="button" id="compare">▶ PLAY SHORTLIST</button>
      <button type="button" id="compareAll">▶ PLAY ALL 6</button>
-     <button type="button" id="compareBase">▶ ORIGINAL vs SELECTED</button>
+     <button type="button" id="compareBase">▶ REFERENCE vs SELECTED</button>
      <button type="button" id="stop">■ STOP</button>
      <button type="button" id="next">NEXT UNREVIEWED →</button>
     </div>
@@ -96,7 +96,7 @@
    </div>
    <div class="lab-footer">
     <strong>BEHAVIOR</strong>
-    <p>Wave 02 adds procedural attack, body, surface, mechanism and room stems to your Wave 01 choice. These are listening studies, not recorded Foley. Wave 01 remains intact; a Wave 02 choice affects the live game only after you explicitly approve it. Your picks and shortlists autosave in this browser. Proposed cues are for auditioning until their real gameplay triggers are implemented. Nothing here changes enemy hearing, fog of war, physics or replay evidence.</p>
+    <p>Wave 03 uses your approved Wave 02 sound as the base, then adds separate physical action, material, movement and settling stems. These are original procedural sound sketches, not recorded Foley. Waves 01 and 02 remain intact. Wave 03 only affects gameplay after explicit approval. Your picks and shortlists autosave in this browser. Proposed cues are for auditioning until their real gameplay triggers are implemented. Nothing here changes enemy hearing, fog of war, physics or replay evidence.</p>
     <label for="master">MASTER LEVEL <output id="masterValue">70%</output></label>
     <input id="master" type="range" min="0" max="100" value="70"/>
    </div>
