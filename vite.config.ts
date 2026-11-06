@@ -19,6 +19,7 @@ export default defineConfig({
       mapLab: 'map-lab.html',
       physicalityLab: 'physicality-lab.html',
       assetLab: 'asset-lab.html',
+      soundLab: 'sound-lab.html',
     } },
   },
 });

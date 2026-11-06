@@ -1171,6 +1171,9 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-enemy-kits-armed-studio-') }}
         run: |
           node --experimental-strip-types --test tests/breach-weapon-issue-faction-studio.test.mjs tests/lw-roster.test.mjs tests/campaign-01.test.mjs tests/faction-reference.test.mjs tests/equipment-09-armor.test.mjs
+      - name: Sound Lab — focused catalog, synthesis, WAV and ZIP validation
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-sound-lab-') }}
+        run: node --experimental-strip-types --test tests/sound-lab.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
