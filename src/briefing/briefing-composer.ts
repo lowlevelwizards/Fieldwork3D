@@ -1,5 +1,5 @@
 /** B4: Three authored report structures around ONE validated scenario. */
-import type {MissionTruth,OperationDossierV1,ReportQuality,NarrativeStyle,IntelClaim} from './briefing-types.ts';
+import type {MissionTruth,OperationDossierV1,ReportQuality,NarrativeStyle} from './briefing-types.ts';
 import {briefingRng,mixBriefingSeed} from './briefing-seed.ts';
 import {selectIncident,type IncidentSelection} from './incident-director.ts';
 import {intelligenceClaims} from './intelligence-director.ts';

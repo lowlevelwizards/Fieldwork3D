@@ -76,11 +76,6 @@ function renderDossier(){
       ' · '+dossier.claims.length+' REPORTS';
   }catch(e){showError(e instanceof Error?e.message:String(e));}
 }
-function randomSeed():number{
-  const bytes=new Uint32Array(1);
-  crypto.getRandomValues(bytes);
-  return bytes[0]||1;
-}
 function generateSite(){
   ++requestId;
   currentWorker?.terminate();
