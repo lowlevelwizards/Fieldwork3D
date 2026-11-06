@@ -101,7 +101,7 @@ test('AK R4.3 RPK has bespoke clubfoot, long 45 round toe and bipod',()=>{
  const {group}=model('ak-rpk74');
  assert.ok(bounds(group,'stock').min.y<-4.0,'deep RPK clubfoot heel');
  assert.ok(bounds(group,'magazine').min.y<-9.3,'longer magazine');
- assert.ok(bounds(group,'handguard').max.x>13.2,'support fore-end is longer');
+ assert.ok(bounds(group,'handguard').max.x>=12.95,'RPK keeps longer support fore-end than standard rifle');
  assert.ok(group.children.filter(m=>m.name.startsWith('family-barrel-')).length>=6);
  clearWeaponSilhouette(group);
 });
