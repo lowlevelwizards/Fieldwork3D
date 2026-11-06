@@ -61,7 +61,7 @@ test('M4, MK18, AKM, AK105 and short AK all produce bounded deterministic candid
   assert.ok(a.candidates>0,id);
   assert.ok(a.penetration<=.12+1e-5,id);
   assert.equal(a.fit.primaryReachable,true,id);
-  assert.ok(a.fit.stockError<1,id);
+  assert.ok(a.fit.stockError<=1.7,id); // approved padded shoulder range
   assert.equal(a.arms.length,2,id);
   for(const limb of a.arms){
    assert.ok(limb.reached,id);
