@@ -13,6 +13,7 @@ import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {enableBakedGearAO} from './operator-baked-gear-ao.ts';
 import {bakeCastOnGear} from './operator-baked-gear-cast.ts';
+import {applyOperatorHeightLighting} from './operator-height-lighting.ts';
 import {refineStaticReceiver,BASE_TORSO_VERTEX_BUDGET} from './operator-gear-shadow-receivers.ts';
 const STATIC_SHIRT_RECEIVER_BUDGET=3300;
 import {fitRigCoveredPockets} from './operator-rig-pocket-fit.ts';
@@ -533,4 +534,10 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   v.visualChest,'blouse-details:'+lightingKey);
  for(const selectedPack of packs)bakeCastOnGear(selectedPack,
   armor?[armor]:[],v.visualChest,'pack:'+lightingKey);
+ // All visible garments/armor/arms/legs share one continuous top-to-bottom
+ // gradient. The complete root is above the legacy frame containing chest.
+ const root=v.visualChest.parent?.parent;
+ if(root)applyOperatorHeightLighting(root,[
+  lightingKey,looks.trousers,looks.footwear,looks.headwear
+ ].join('/'));
 }
