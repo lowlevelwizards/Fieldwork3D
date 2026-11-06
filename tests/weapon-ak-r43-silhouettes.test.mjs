@@ -123,3 +123,36 @@ test('AK R4.3 AKS-74U has shallow cover-mounted irons, not a tall optic silhouet
   'low rear sight protrudes only slightly over the dust cover');
  clearWeaponSilhouette(group);
 });
+
+test('AK R4.3b exposes 24 compatible finish variants with safe saved body choices',()=>{
+ const families=Object.values(FAMILY_PARTS);
+ const variants=families.filter(p=>p.family==='ak'&&
+  (/-(amber|red|plum)$/.test(p.id)||p.id.startsWith('ak-poly-plum-')||
+   p.id==='ak-mag762-resin'));
+ assert.equal(variants.length,24,'finish options must be explicit and selectable');
+ for(const item of variants){
+  assert.ok(['stock','grip','magazine','handguard'].includes(item.slot));
+  assert.ok(FAMILY_PRESETS.some(p=>p.family==='ak'&&
+   (item.receivers?.includes(p.parts.receiver)||
+    (!item.receivers&&FAMILY_PARTS[p.parts.receiver].feed===item.feed))),
+   item.id+' must be usable in a stock model');
+ }
+ const factory=FAMILY_PRESETS.find(p=>p.id==='ak-ak74');
+ assert.equal(factory.parts.stock,'ak-wood74-amber');
+ assert.equal(factory.parts.handguard,'ak-wood-long-amber');
+});
+test('AK R4.3b 7.62 magazine ribs are exactly three dark low-relief strokes',()=>{
+ for(const id of ['ak-akm','ak-akms','ak-ak103']){
+  const {group,preset}=model(id);
+  const ribs=group.children.filter(m=>
+   m.name.startsWith('family-magazine-'+preset.parts.magazine+'-')&&
+   !m.name.endsWith('-0'));
+  assert.equal(ribs.length,3,id+' magazine must have three ribs');
+  assert.ok(bounds(group,'magazine').max.z-bounds(group,'magazine').min.z<=2.35);
+  clearWeaponSilhouette(group);
+ }
+ const {group}=model('ak-ak74');
+ assert.equal(group.children.filter(m=>m.name.startsWith('family-magazine-')).length,1,
+  '5.45 magazine should not inherit 7.62 detail ribs');
+ clearWeaponSilhouette(group);
+});
