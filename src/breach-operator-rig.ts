@@ -1302,8 +1302,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.medicalItem.position.copy(left);
   }else if(reloadActive){
     releaseLeft=true;
+    const sockets=weaponPresentationSockets(p.weapon,p.weaponConfiguration);
     const hand=reloadHandKey(reloadProgress,reloadMode,
-      data.supportX,data.supportY,data.primaryX);
+      data.supportX,data.supportY,data.primaryX,
+      sockets.magazinePart?sockets.magazine:undefined);
     leftGrip.set(hand.x,hand.y,hand.z);
   }else if(throwActive){
     releaseLeft=true;

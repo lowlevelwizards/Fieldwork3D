@@ -12,6 +12,7 @@ import {carriedMagazineGeometry,carriedMagazineProfile}
 import {armorArmIntrusion,armorElbowPole}
  from '../src/breach-arm-armor-clearance.ts';
 import {idleLifeAt} from '../src/breach-idle-life.ts';
+import {reloadHandKey} from '../src/breach-reload-motion.ts';
 
 test('all modular AR/AK variants own exactly one named magazine set and real grip sockets',()=>{
  const steel=new THREE.MeshStandardMaterial(),dark=new THREE.MeshStandardMaterial();
@@ -61,6 +62,17 @@ test('armor scoring detects forearm-through-plate and offers outboard elbow targ
   assert.equal(Math.sign(pole.z),sign);
   assert.ok(pole.x>0);
  }
+});
+
+test('magazine reload wrist meets exact authored feed socket at removal and insertion',()=>{
+ const target={x:.95,y:-2.1};
+ for(const p of [.30,.82]){
+  const hand=reloadHandKey(p,'emergency',8,-1.65,-4.65,target);
+  assert.ok(Math.abs(hand.x-target.x)<.001);
+  assert.ok(Math.abs(hand.y-(target.y-1.2))<.001);
+ }
+ const legacy=reloadHandKey(.30,'emergency',8,-1.65,-4.65);
+ assert.notEqual(legacy.x,target.x);
 });
 
 test('shared breathing is deterministic, idles in pause, and gates during action',()=>{
