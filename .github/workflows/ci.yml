@@ -1000,6 +1000,14 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-workbench-dot-callouts-') }}
         run: |
           node --experimental-strip-types --test tests/weapon-workbench-r2-dot-2d.test.mjs tests/weapon-workbench-mobile-sockets.test.mjs tests/equipment-19-06-quickplay-editor.test.mjs
+      - name: Weapon Geometry R2 — shape grammar, silhouettes and family contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-geometry-r2-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/weapon-geometry-r2-silhouettes.test.mjs \
+            tests/weapon-families-01.test.mjs \
+            tests/equipment-19-01-weapon-assemblies.test.mjs \
+            tests/equipment-19-02-weapon-silhouettes.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
