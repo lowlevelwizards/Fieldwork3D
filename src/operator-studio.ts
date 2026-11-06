@@ -3,6 +3,7 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {OperatorStudioLighting} from './operator-studio-lighting.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
 import {M1956_VARIANTS,type M1956Variant} from './operator-m1956-policy.ts';
@@ -120,11 +121,8 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
 renderer.setClearColor(0xc4c7bd);
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0xc4c7bd);
-scene.add(new THREE.HemisphereLight(0xffffff,0x798a7f,2.0));
-const key=new THREE.DirectionalLight(0xfff2d6,2.8);
-key.position.set(25,65,-40);scene.add(key);
-const fill=new THREE.DirectionalLight(0xaec5c2,1.0);
-fill.position.set(-35,23,30);scene.add(fill);
+// R5 Studio shadows are isolated from the shared thumbnail scene.
+const studioLighting=new OperatorStudioLighting(scene,renderer,location.search);
 const floor=new THREE.GridHelper(160,16,0x9fa69d,0xb1b6ae);
 floor.position.y=-.2;scene.add(floor);
 const camera=new THREE.OrthographicCamera(-22,22,30,-30,.1,600);
@@ -188,9 +186,12 @@ function resize(){
  renderScene();
 }
 function renderScene(){
+ studioLighting.beforeRender(rig?.root??null);
  renderer.setRenderTarget(null);renderer.render(scene,camera);
  canvas.dataset.ready='true';
  canvas.dataset.drawCalls=String(renderer.info.render.calls);
+ canvas.dataset.operatorLighting=studioLighting.mode;
+ canvas.dataset.shadowMapSize=String(studioLighting.shadowSize);
 }
 controls.addEventListener('change',renderScene);
 new ResizeObserver(resize).observe(stage);
@@ -311,6 +312,7 @@ function posePreview(){
   unarmedPreview:true,equipment:inspectKit(reference?.kit??p.loadout),
   wardrobe:inspectWardrobe(reference?.wardrobe??previewWardrobe())
  },0);
+ studioLighting.invalidateGeometry();
  renderScene();
 }
 function canEquip(slot:WardrobeSlot,id:string){
