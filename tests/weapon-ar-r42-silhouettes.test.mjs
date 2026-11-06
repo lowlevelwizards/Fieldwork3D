@@ -57,7 +57,10 @@ test('R4.2 carry handles have flush front caps and open negative space',()=>{
  const a1=model('ar-m16a1'),a2=model('ar-m16a2');
  assert.ok(a2.group.children.some(c=>c.name==='family-receiver-ar-a2-5'),
   'A2 has substantial rear sight housing');
- assert.ok(!a1.group.children.some(c=>c.name==='family-receiver-ar-a1-5'));
+ const a1Guard=a1.group.children.find(c=>c.name==='family-receiver-ar-a1-5');
+ assert.ok(a1Guard,'A1 trigger guard survives frame rebuild');
+ assert.ok(new THREE.Box3().setFromObject(a1Guard).max.y<0,
+  'A1 has no large A2 rear sight housing');
  clearWeaponSilhouette(a1.group);clearWeaponSilhouette(a2.group);
 });
 test('R4.2 A1/A2 fixed stocks are deep-at-butt tapered-at-root wedges',()=>{
