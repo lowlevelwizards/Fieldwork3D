@@ -74,6 +74,10 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  p('magazine',HK_MAG20_OUTLINE,2.08,'mag');
  // Dark integral heel: no disconnected bright bar across the underside.
  b('magazine',1.20,-7.69,0,3.36,.20,2.15,'dark');
+ // Two extremely restrained imprinted strokes, flush to the broad steel
+ // side faces, not separately casting light or making a ribbed AK magazine.
+ addWeaponPixelMarkPair(root,'hk-mag-stamp20',1.27,-5.20,
+  1.052,2.66,3.24);
 
  // HK slim fore-end: one faceted YZ body. Never an AK upper/lower split.
  const guardMat=parts.handguard==='hk-g3-wood-vented'?wood:HK_OLIVE_POLYMER;
