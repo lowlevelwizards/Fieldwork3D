@@ -25,33 +25,32 @@ const slot=(g,s)=>g.children.filter(m=>m.name.startsWith('family-'+s+'-'));
 const box=m=>new THREE.Box3().setFromObject(m);
 const release=(...all)=>all.forEach(x=>clearWeaponSilhouette(x.group));
 
-test('R4.6 clean receiver and one recognizable open trigger guard on all nine',()=>{
+test('R4.7 clean receiver and no protruding trigger guard on all nine',()=>{
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ak').length,9);
  assert.equal(Object.keys(FAMILY_PARTS).length,93);
  for(const id of ids){
   const m=build(id),r=slot(m.group,'receiver');
-  assert.ok(r.length>=6,id+' receiver keeps essential faces');
+  assert.ok(r.length>=5,id+' receiver keeps essential faces');
   // Former giant side panel is not a displaced 2.8x1.15 cuboid.
   assert.ok(!r.some(mesh=>mesh.geometry.type==='BoxGeometry'&&
    Math.abs(mesh.geometry.parameters.width-2.8)<.01));
-  assert.ok(r.some(mesh=>{
-   const a=mesh.geometry.getAttribute('position');
-   return box(mesh).min.y<-2.7&&box(mesh).max.y>-2.2&&
-    box(mesh).max.x<-.5;
-  }),id+' open trigger guard');
+  assert.ok(!r.some(mesh=>box(mesh).min.y<-2.7&&
+   box(mesh).max.x<-.5),id+' no hanging trigger guard');
   assert.ok(m.group.children.length<=28,id+' phone geometry budget');
   release(m);
  }
 });
 
-test('R4.6 classic ribs are paired, modern smooth, and AK-74U stays distinct',()=>{
+test('R4.7 classic ribs span the top, modern covers stay smooth',()=>{
  for(const id of ids){
   const m=build(id),ribs=m.group.children.filter(x=>
    x.name==='family-art-ak-cover-ribs');
   const expected=['ak-akm','ak-akms','ak-ak74','ak-aks74','ak-rpk74'].includes(id);
-  assert.equal(ribs.length,expected?2:0,id+' receiver variant rib policy');
+  assert.equal(ribs.length,expected?1:0,id+' receiver variant rib policy');
   if(expected){
-   assert.ok(ribs.some(x=>x.position.z>0)&&ribs.some(x=>x.position.z<0));
+   assert.ok(ribs[0].isInstancedMesh&&ribs[0].count===3,
+    id+' three stamped ribs across top');
+   assert.ok(box(ribs[0]).max.z-box(ribs[0]).min.z>3.0);
   }
   release(m);
  }
