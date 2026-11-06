@@ -131,7 +131,7 @@ async function previewOriginal(){
  active=playDesignedSound(ctx,selected,{...sound,gain:sound.gain*pack.master});
  note('YOUR '+(compoundMode?'WAVE 02':'WAVE 01')+
   ' REFERENCE · '+current().label.toUpperCase());
-});
+}
 async function previewWaveOne(){
  if(!compoundMode)return;
  stopAudio();const token=sequence;
