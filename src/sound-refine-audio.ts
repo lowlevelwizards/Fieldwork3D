@@ -4,7 +4,6 @@
  */
 import type {SoundSettings} from './sound-catalog.ts';
 import {renderFocusedSound} from './sound-focus-audio.ts';
-import {REFINEMENT_DIRECTIONS} from './sound-refine.ts';
 const TAU=Math.PI*2;
 type Profile={attack:number;body:number;material:number;
  mechanical:readonly number[];air:number;room:number;weight:number};
@@ -45,10 +44,8 @@ export function renderRefinedSound(id:string,s:SoundSettings,sampleRate=22050){
  const [core,atk,body,texture,action,space]=MIX[index];
  let seed=hash(id+'|refine|'+index),low=0,mid=0;
  const duration=Math.max(.055,s.length);
- let phaseBody=0,phaseAttack=0,phaseMaterial=0,prev=0;
+ let phaseBody=0,phaseAttack=0,phaseMaterial=0;
  const tonalScale=Math.min(1.2,Math.max(.6,s.pitch/180));
- const decay=(t:number,start:number,length:number)=>
-  t<start?0:Math.exp(-(t-start)/Math.max(.002,length));
  const envelope=(t:number,start:number,length:number)=>{
   if(t<start)return 0;
   const elapsed=t-start;
@@ -103,11 +100,9 @@ export function renderRefinedSound(id:string,s:SoundSettings,sampleRate=22050){
   if(i<base.length)referenceEnergy+=wave*wave;
   mixEnergy+=candidate*candidate;
   peak=Math.max(peak,Math.abs(candidate));
-  prev=candidate;
  }
  // Perceptual A/B needs approximately matched loudness; do not let extra
  // layers win just by getting louder. Bound normalization and peak.
- void prev;
  const referenceRms=Math.sqrt(referenceEnergy/Math.max(1,base.length));
  const candidateRms=Math.sqrt(mixEnergy/Math.max(1,out.length));
  const boost=Math.max(.55,Math.min(1.6,
@@ -116,4 +111,3 @@ export function renderRefinedSound(id:string,s:SoundSettings,sampleRate=22050){
  for(let i=0;i<out.length;i++)out[i]*=level;
  return out;
 }
-export function refinementModes(){return REFINEMENT_DIRECTIONS.length;}
