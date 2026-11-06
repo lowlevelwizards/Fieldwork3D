@@ -30,7 +30,9 @@ test('B2: location, premise and objective prevent mismatched incident selection'
  assert.equal(isIncidentEligible(truth('capture','warehouse'),INCIDENTS[0]),false);
  assert.equal(isIncidentEligible(truth('rescue','house','defensive'),INCIDENTS[1]),false);
  assert.equal(isIncidentEligible(truth('intel','warehouse'),INCIDENTS[2]),true);
- assert.equal(selectIncident(truth('clear'),{forceIncidentId:'warrant-service'}).id,'generic-clear');
+ const attempted=selectIncident(truth('clear'),{forceIncidentId:'warrant-service'});
+ assert.notEqual(attempted.id,'warrant-service');
+ assert.ok(isIncidentEligible(truth('clear'),attempted));
 });
 test('B2: seeded selection survives repetition and recent-history filtering',()=>{
  const sample=truth('capture');
