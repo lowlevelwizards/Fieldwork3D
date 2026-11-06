@@ -22,7 +22,7 @@ const bound=(group,slot)=>{
  const b=partVisualBounds(group,slot);
  assert.ok(b,'missing '+slot);return b;
 };
-test('R4 catalog is exactly 17 unique recipes and 91 reusable parts',()=>{
+test('R4 catalog is exactly 17 unique recipes and 92 reusable parts',()=>{
  assert.equal(FAMILY_PRESETS.length,17);
  assert.equal(Object.keys(FAMILY_PARTS).length,92);
  assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,17);
