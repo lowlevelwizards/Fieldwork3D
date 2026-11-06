@@ -13,7 +13,7 @@ export type ReplaySoundEvent={
   id:string;t:number;kind:ReplaySoundKind;
   actorId:string|null;p:Pt|null;
   weapon:WeaponId|null;suppressed:boolean;
-  hit:boolean;down:boolean;
+  hit:boolean;down:boolean;description?:string;
 };
 export class ReplaySoundTimeline{
   readonly events:readonly ReplaySoundEvent[];
@@ -34,7 +34,7 @@ export class ReplaySoundTimeline{
       entries.push({
         id:'battle:'+e.id,t:e.t,kind:e.kind,
         actorId:e.actor??null,p:e.p?{...e.p}:null,
-        weapon:null,suppressed:false,hit:false,down:false
+        weapon:null,suppressed:false,hit:false,down:false,description:e.text
       });
     }
     entries.sort((a,b)=>a.t-b.t||a.id.localeCompare(b.id));
@@ -56,4 +56,14 @@ export class ReplaySoundTimeline{
       result.push(a[i]);
     return result;
   }
+}
+
+/** Replays retain the actual recorded door interaction, not just "door".
+ * This never invents an event: it only selects the correct existing cue. */
+export function replayDoorSoundId(description=''):string{
+ if(description.includes('KICK RESISTED')||
+    description.includes('FORCED OPEN')||
+    description.includes('KICKED'))return 'doors.kick';
+ if(description.includes('CLOSING'))return 'doors.close';
+ return 'doors.open';
 }

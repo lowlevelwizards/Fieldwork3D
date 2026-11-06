@@ -59,8 +59,10 @@ import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide} from './b
 import {spatialSurfaceState,shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {heardIntensity} from './breach-acoustics.ts';
 import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
-import {readSoundPack,SOUND_STORAGE_KEY} from './sound-catalog.ts';
+import {defaultSoundPack,readSoundPack,SOUND_STORAGE_KEY} from './sound-catalog.ts';
 import {playPackSound} from './sound-synth.ts';
+import {withFieldworkLiveMix} from './breach-live-sound-pack.ts';
+import {acousticResponseForCue} from './breach-audio-environment.ts';
 import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
 import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
@@ -70,7 +72,7 @@ import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-in
 import {clusterReplayTimeline} from './breach-replay-timeline-markers.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import {serializeReplayReport} from './breach-replay-export-json.ts';
-import {ReplaySoundTimeline} from './breach-replay-audio.ts';
+import {ReplaySoundTimeline,replayDoorSoundId} from './breach-replay-audio.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {sampleReplayGhosts} from './breach-replay-ghosts.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
@@ -1209,9 +1211,24 @@ let fogSession:Session|null=null;
 let fogIntelMode='';let fogSeenRevision=-1;
 let audio:AudioContext|null=null;
 let videoAudioDestination:MediaStreamAudioDestinationNode|null=null;
-let approvedSoundPack=readSoundPack();
+const LIVE_MIX_PREF='fieldwork3d.sound.live-mix';
+const ROOM_AUDIO_PREF='fieldwork3d.sound.room-acoustics';
+let liveMixEnabled=true,roomAudioEnabled=true;
+try{
+ liveMixEnabled=localStorage.getItem(LIVE_MIX_PREF)!=='off';
+ roomAudioEnabled=localStorage.getItem(ROOM_AUDIO_PREF)!=='off';
+}catch{/* Private browsing still auditions the mix with safe defaults. */}
+let approvedSoundPack=liveMixEnabled?
+  withFieldworkLiveMix(readSoundPack()):defaultSoundPack();
+function refreshSoundPack(){
+ const base=readSoundPack();
+ approvedSoundPack=liveMixEnabled?withFieldworkLiveMix(base):defaultSoundPack();
+}
 window.addEventListener('storage',event=>{
-  if(event.key===SOUND_STORAGE_KEY)approvedSoundPack=readSoundPack();
+ if(event.key===LIVE_MIX_PREF){
+  liveMixEnabled=event.newValue!=='off';refreshSoundPack();
+ }else if(event.key===ROOM_AUDIO_PREF)roomAudioEnabled=event.newValue!=='off';
+ else if(event.key===SOUND_STORAGE_KEY)refreshSoundPack();
 });
 const replaySoundNodes=new Set<OscillatorNode>();
 const replaySoundBuffers=new Set<AudioBufferSourceNode>();
@@ -1258,10 +1275,16 @@ const playTone=(frequency:number,decay:number,noise=false,
  * Replay sources remain cancellable on pause / seek / export.
  */
 function playApprovedCue(id:string,level=1,pan=0,replayCue=false,
- rate=1):boolean{
+ rate=1,sourcePosition?:Pt):boolean{
  if(!audio)return false;
+ // Pure room presentation. Source geometry is read once per emitted event.
+ // AI hearing and replay evidence are deliberately unaffected.
+ const listener=uid(selected)?.p;
+ const acoustics=roomAudioEnabled&&sourcePosition?
+  acousticResponseForCue(state.site??undefined,sourcePosition,id,
+   listener,state.doors,WALLS):null;
  return playPackSound(audio,id,{
-  level,pan,rate,output:replayCue?videoAudioDestination:null,
+  level,pan,rate,acoustics,output:replayCue?videoAudioDestination:null,
   onSource:replayCue?(source)=>{
     replaySoundBuffers.add(source);
     const previous=source.onended;
@@ -1273,6 +1296,26 @@ function playApprovedCue(id:string,level=1,pan=0,replayCue=false,
  },approvedSoundPack);
 }
 /** Human-command sounds are event-driven; no movement tick ever emits them. */
+function liveEventAudioPosition(event:string):Pt|undefined{
+ const door=state.doors.find(d=>event.startsWith(d.id+' '));
+ if(door)return doorCenter(door);
+ if(event.includes('FLASH DETONATED'))return state.flashBursts.at(-1)?.p;
+ const actor=state.operators.find(a=>event.startsWith(a.name+' '));
+ return actor?.p??uid(selected)?.p;
+}
+/** Playback loudness and stereo position follow the real event origin.
+ * No new AI/detection events and no HUD disclosure of hidden source positions. */
+function playLiveEventCue(id:string,source?:Pt,scale=1):boolean{
+ const listener=uid(selected)?.p;
+ if(!source||!listener)return playApprovedCue(id,scale,0,false,1,source);
+ const radius=id==='combat.flash'?420:
+  id.startsWith('doors.')?265:
+  id.startsWith('equipment.')?145:190;
+ const level=heardIntensity(source,listener,radius,state.doors,WALLS);
+ if(level<.025)return true;
+ return playApprovedCue(id,Math.max(.02,level*scale),clamp(
+  (source.x-listener.x)/210,-1,1),false,1,source);
+}
 function playOrderCue(id:string){
  if(!uiSoundEnabled)return;
  unlockAudio();playApprovedCue(id,.25);
@@ -3580,7 +3623,7 @@ function playReplayAudioBetween(start:number,end:number):void{
     if(event.kind==='gunshot'){
       const cue=weaponAudioCue(event.weapon??'carbine',event.suppressed);
       if(!playApprovedCue('weapons.'+(event.weapon??'carbine')+
-        (event.suppressed?'_suppressed':''),level,pan,true,1/rateScale)){
+        (event.suppressed?'_suppressed':''),level,pan,true,1/rateScale,p??undefined)){
         playTone(cue.crackHz,cue.crackSeconds*rateScale,true,level,pan,true);
         playTone(cue.bodyHz,cue.bodySeconds*rateScale,false,
           level*cue.bodyLevel,pan,true);
@@ -3591,11 +3634,11 @@ function playReplayAudioBetween(start:number,end:number):void{
         reload:[280,.09],interaction:[210,.12],
         surrender:[210,.22]} as const;
       const [hz,length]=tones[event.kind];
-      const soundId={door:'doors.open',flash:'combat.flash',
+      const soundId={door:replayDoorSoundId(event.description),flash:'combat.flash',
         reload:'equipment.reload',interaction:'',surrender:'people.surrender'
       }[event.kind];
       if(!soundId||!playApprovedCue(soundId,Math.min(level,.7),
-        pan,true,1/rateScale))
+        pan,true,1/rateScale,p??undefined))
         playTone(hz,length*rateScale,event.kind==='flash',
           Math.min(level,.7),pan,true);
     }
@@ -3608,7 +3651,8 @@ function playReplayAudioBetween(start:number,end:number):void{
       36,state.doors,WALLS):.2;
     if(level<.025)continue;
     const pan=listener?(touch.position.x-listener.x)/210:0;
-    if(!playApprovedCue('movement.boot',level*.13,pan,true,1/rateScale))
+    if(!playApprovedCue('movement.boot',level*.13,pan,true,1/rateScale,
+      touch.position))
       playTone(touch.foot===0?62:67,.055*rateScale,true,
         level*.12,pan,true);
   }
@@ -5042,6 +5086,29 @@ ui.briefingClose.addEventListener('click',()=>{
   tacticalSheetNavigation.sync();
   updateContext();
 });
+const liveMixToggle=el<HTMLButtonElement>('liveMixToggle');
+const roomAudioToggle=el<HTMLButtonElement>('roomAudioToggle');
+function updateAudioLabButtons(){
+ liveMixToggle.textContent=liveMixEnabled?'TEST MIX ON':'TEST MIX OFF';
+ liveMixToggle.setAttribute('aria-pressed',String(liveMixEnabled));
+ roomAudioToggle.textContent=roomAudioEnabled?'ROOM ACOUSTICS ON':'ROOM ACOUSTICS OFF';
+ roomAudioToggle.setAttribute('aria-pressed',String(roomAudioEnabled));
+}
+updateAudioLabButtons();
+liveMixToggle.addEventListener('click',()=>{
+ liveMixEnabled=!liveMixEnabled;refreshSoundPack();
+ try{localStorage.setItem(LIVE_MIX_PREF,liveMixEnabled?'on':'off');}
+ catch{/* Optional preference persistence. */}
+ updateAudioLabButtons();
+ showUiHelp(liveMixEnabled?'APPROVED SOUND LAB MIX ACTIVE':'TEST MIX OFF · ORIGINAL GAME AUDIO ACTIVE',2400);
+});
+roomAudioToggle.addEventListener('click',()=>{
+ roomAudioEnabled=!roomAudioEnabled;
+ try{localStorage.setItem(ROOM_AUDIO_PREF,roomAudioEnabled?'on':'off');}
+ catch{/* Optional preference persistence. */}
+ updateAudioLabButtons();
+ showUiHelp(roomAudioEnabled?'ROOM ACOUSTICS ENABLED':'ROOM ACOUSTICS OFF · DRY SOURCE AUDIO',2400);
+});
 ui.uiSoundToggle.textContent=uiSoundEnabled?'UI SOUND ON':'UI SOUND OFF';
 ui.uiSoundToggle.setAttribute('aria-pressed',String(uiSoundEnabled));
 ui.uiSoundToggle.addEventListener('click',()=>{
@@ -5146,7 +5213,7 @@ function tick(now:number){
       firingActor?.weaponConfiguration?.slots.muzzle==='muzzle-suppressor');
     if(!playApprovedCue('weapons.'+weapon+
       (firingActor?.weaponConfiguration?.slots.muzzle==='muzzle-suppressor'?
-      '_suppressed':''),level,pan)){
+      '_suppressed':''),level,pan,false,1,shot.start)){
       playTone(cue.crackHz,cue.crackSeconds,true,level,pan);
       playTone(cue.bodyHz,cue.bodySeconds,false,level*cue.bodyLevel,pan);
     }
@@ -5157,7 +5224,7 @@ function tick(now:number){
     if(shot.hit&&audibleImpact(shotVisibility(state,shot).impact,
         impactLevel))
       if(!playApprovedCue('impacts.body_hit',
-        level*Math.max(.22,impactLevel),pan))
+        level*Math.max(.22,impactLevel),pan,false,1,shot.end))
         playTone(shot.down?75:225,shot.down?.25:.10,
           shot.down,level*Math.max(.22,impactLevel),pan);
   }
@@ -5175,31 +5242,42 @@ function tick(now:number){
           36,state.doors,WALLS):.24;
         if(level<.025)continue;
         const pan=listener?(touch.position.x-listener.x)/210:0;
-        if(!playApprovedCue('movement.boot',level*.13,pan))
+        if(!playApprovedCue('movement.boot',level*.13,pan,false,1,
+           touch.position))
           playTone(touch.foot===0?62:67,.055,true,level*.12,pan);
       }
     }
   }
   lastFootstepSoundTime=state.seconds;
   const event=state.events.at(-1)??'';
+  // Event origin is used only for audio; never as newly revealed intel.
+  const eventSource=!replaying&&event!==lastEventAudio?
+   liveEventAudioPosition(event):undefined;
   if(!replaying&&event!==lastEventAudio&&
       (event.includes('OPENED')||event.includes('CLOSING')))
-    {if(!playApprovedCue(event.includes('CLOSING')?'doors.close':'doors.open'))
+    {if(!playLiveEventCue(event.includes('CLOSING')?'doors.close':'doors.open',
+      eventSource))
       playTone(160,.16);}
-  if(!replaying&&event!==lastEventAudio&&event.includes('KICK RESISTED'))
-    {if(!playApprovedCue('doors.kick_resisted'))playTone(115,.15,true);}
-  if(!replaying&&event!==lastEventAudio&&event.includes('FORCED OPEN'))
-    {if(!playApprovedCue('doors.forced_open'))playTone(80,.24,true);}
+  if(!replaying&&event!==lastEventAudio&&event.includes('KICK RESISTED')){
+    // Every real kick should play the approved kick sound, with its own
+    // secondary latch/body outcome at reduced level.
+    if(!playLiveEventCue('doors.kick',eventSource))playTone(90,.25,true);
+    playLiveEventCue('doors.kick_resisted',eventSource,.30);
+  }
+  if(!replaying&&event!==lastEventAudio&&event.includes('FORCED OPEN')){
+    if(!playLiveEventCue('doors.kick',eventSource))playTone(90,.25,true);
+    playLiveEventCue('doors.forced_open',eventSource,.33);
+  }
   if(!replaying&&event!==lastEventAudio&&event.includes('KICKED'))
-    {if(!playApprovedCue('doors.kick'))playTone(90,.25,true);}
+    {if(!playLiveEventCue('doors.kick',eventSource))playTone(90,.25,true);}
   if(!replaying&&event!==lastEventAudio&&event.includes('FLASH DETONATED'))
-    {if(!playApprovedCue('combat.flash'))playTone(1350,.65,true);}
+    {if(!playLiveEventCue('combat.flash',eventSource))playTone(1350,.65,true);}
   if(!replaying&&event!==lastEventAudio&&event.includes('RELOADED'))
-    {if(!playApprovedCue('equipment.reload'))playTone(280,.09);}
+    {if(!playLiveEventCue('equipment.reload',eventSource))playTone(280,.09);}
   if(!replaying&&event!==lastEventAudio&&event.includes('FLASH OUT'))
-    {if(!playApprovedCue('equipment.flash_throw'))playTone(420,.07);}
+    {if(!playLiveEventCue('equipment.flash_throw',eventSource))playTone(420,.07);}
   if(!replaying&&event!==lastEventAudio&&event.includes('SURRENDERED'))
-    {if(!playApprovedCue('people.surrender'))playTone(210,.22);}
+    {if(!playLiveEventCue('people.surrender',eventSource))playTone(210,.22);}
   lastEventAudio=event;
   // Execution's full HUD reconciliation is DOM-heavy; explicit commands
   // still call updateHud() immediately, while live status refreshes ~5.5Hz.
