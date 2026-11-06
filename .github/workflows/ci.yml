@@ -1186,7 +1186,7 @@ jobs:
         run: node --experimental-strip-types --test tests/briefing-incident.test.mjs tests/briefing-composer.test.mjs tests/briefing-mission-facts.test.mjs
       - name: Briefing B5 — opt-in encounter steering, baseline and dossier gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-briefing-incident-steering-v2-') }}
-        run: node --experimental-strip-types --test tests/briefing-incident-steering.test.mjs tests/briefing-composer.test.mjs tests/gameplay-g4-mission-profiles.test.mjs
+        run: node --experimental-strip-types --test tests/briefing-incident-steering.test.mjs tests/briefing-incident-site.test.mjs tests/briefing-composer.test.mjs tests/gameplay-g4-mission-profiles.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
