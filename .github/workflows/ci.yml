@@ -1173,7 +1173,7 @@ jobs:
           node --experimental-strip-types --test tests/breach-weapon-issue-faction-studio.test.mjs tests/lw-roster.test.mjs tests/campaign-01.test.mjs tests/faction-reference.test.mjs tests/equipment-09-armor.test.mjs
       - name: Sound Lab — focused catalog, synthesis, WAV and ZIP validation
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-sound-lab-') }}
-        run: node --experimental-strip-types --test tests/sound-lab.test.mjs tests/sound-lab-focus.test.mjs tests/sound-lab-refine.test.mjs
+        run: node --experimental-strip-types --test tests/sound-lab.test.mjs tests/sound-lab-focus.test.mjs tests/sound-lab-refine.test.mjs tests/sound-lab-compound.test.mjs
       - name: Exact mission restart — site, setup and insertion critical gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/breach-repeat-mission-') }}
         run: node --experimental-strip-types --test tests/mission-restart-snapshot.test.mjs tests/mission-deployment-r2.test.mjs
