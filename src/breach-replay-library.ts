@@ -188,8 +188,10 @@ export async function saveReplayBookmarks(
       throw Error('Saved replay not found');
     }
     const safe=normalizeReplayBookmarks(bookmarks,meta.duration);
-    if(safe.length!==bookmarks.length)
+    if(safe.length!==bookmarks.length){
+      tx.abort();try{await done;}catch{}
       throw Error('Replay bookmarks are invalid or exceed the limit');
+    }
     index.put({...meta,bookmarks:safe});
     await done;
   }finally{db.close();}
