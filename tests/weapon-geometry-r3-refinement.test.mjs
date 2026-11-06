@@ -29,9 +29,9 @@ const slotBox=(g,slot)=>{
 };
 const overlap=(a,b)=>(Math.min(a.max,b.max)-Math.max(a.min,b.min));
 
-test('R3: retains all 51 family IDs, 11 presets and physical muzzle invariants',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,51);
- assert.equal(FAMILY_PRESETS.length,11);
+test('R3: retains all 62 family IDs, 11 presets and physical muzzle invariants',()=>{
+ assert.equal(Object.keys(FAMILY_PARTS).length,62);
+ assert.equal(FAMILY_PRESETS.length,17);
  for(const preset of FAMILY_PRESETS){
   const {config,group}=model(preset.id);
   const extent=new THREE.Box3().setFromObject(group);
