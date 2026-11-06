@@ -44,3 +44,16 @@ Base: `0cf8a9f1737b1327cbb15c11b4f30e718cd73b98`
 - Focused tests check self-only, external-only, idempotence, and metadata.
 - **Remaining R5.2:** atlas-backed high-resolution per-part shadow maps
   and all-gear semantic tagging; this foundation is not that complete feature.
+
+## R5.3-A cross-assembly directional + proximity masks (implemented)
+- Single overhead light for every receiver; remove mirrored fake rear sun.
+- Add true short-range proximity contact behind carriers/packs and on torso,
+  with .15–1.15-unit falloff and surface-facing rejection.
+- Independent grayscale directional-cast and cross-contact CPU masks.
+- Compose via maximum occlusion, retaining color and UV data unchanged.
+- Focused tests cover rear backpack, invalid frontal contact,
+  masks and repeated bake idempotence.
+
+## Still pending
+- Full attachment-zone relationship graph, arm/armpit and thigh dynamic
+  receiving policies, high-resolution UV atlas proof and device screenshots.

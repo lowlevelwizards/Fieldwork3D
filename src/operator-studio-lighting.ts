@@ -4,12 +4,12 @@
  */
 import * as THREE from 'three';
 
-export type StudioShadowMode='legacy'|'hybrid'|'live';
+export type StudioShadowMode='legacy'|'hybrid';
 export const STUDIO_KEY_DIRECTION=new THREE.Vector3(.46,.88,.07).normalize();
 export const STUDIO_SHADOW_PAD=3;
 export function studioShadowMode(search:string):StudioShadowMode{
  const value=new URLSearchParams(search).get('operatorLighting');
- return value==='legacy'||value==='live'?value:'hybrid';
+ return value==='legacy'?'legacy':'hybrid';
 }
 export function studioShadowSize(search:string):512|1024{
  return new URLSearchParams(search).get('operatorShadowSize')==='512'?512:1024;

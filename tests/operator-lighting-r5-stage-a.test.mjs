@@ -7,7 +7,8 @@ import {studioShadowMode,studioShadowSize,STUDIO_KEY_DIRECTION,
 test('R5 studio shadow modes retain reversible R4 baseline',()=>{
  assert.equal(studioShadowMode(''), 'hybrid');
  assert.equal(studioShadowMode('?operatorLighting=legacy'),'legacy');
- assert.equal(studioShadowMode('?operatorLighting=live'),'live');
+ assert.equal(studioShadowMode('?operatorLighting=live'),'hybrid',
+  'live-only requires disabling independent bake masks, not implemented');
  assert.equal(studioShadowSize('?operatorShadowSize=512'),512);
  assert.equal(studioShadowSize('?operatorShadowSize=invalid'),1024);
  assert.ok(STUDIO_KEY_DIRECTION.y>.85);
