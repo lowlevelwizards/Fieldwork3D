@@ -13,14 +13,14 @@ function yz(angle:number,profile:ARForearmProfile,ry:number,rz:number){
 }
 export function addARFacetedForearm(root:THREE.Group,slot:SlotName,id:string,
  index:number,from:number,to:number,axisY:number,
- profile:ARForearmProfile,material:THREE.Material){
+ profile:ARForearmProfile,material:THREE.Material,small=false){
  const sections=[
-  {x:from,ry:profile==='a1-triangle'?1.73:1.72,
-   rz:profile==='a1-triangle'?1.88:1.88},
-  {x:to-.67,ry:profile==='a1-triangle'?1.31:1.65,
-   rz:profile==='a1-triangle'?1.66:1.83},
-  {x:to,ry:profile==='a1-triangle'?1.02:1.35,
-   rz:profile==='a1-triangle'?1.48:1.54}
+  {x:from,ry:profile==='a1-triangle'?1.73:small?1.47:1.72,
+   rz:profile==='a1-triangle'?1.88:small?1.57:1.88},
+  {x:to-.67,ry:profile==='a1-triangle'?1.31:small?1.44:1.65,
+   rz:profile==='a1-triangle'?1.66:small?1.52:1.83},
+  {x:to,ry:profile==='a1-triangle'?1.02:small?1.18:1.35,
+   rz:profile==='a1-triangle'?1.48:small?1.27:1.54}
  ];
  const vertices:number[]=[],indices:number[]=[];
  for(const s of sections)for(let j=0;j<rings;j++){
@@ -56,8 +56,8 @@ export function addARFacetedForearm(root:THREE.Group,slot:SlotName,id:string,
  */
 export function addARPolymerRibs(root:THREE.Group,slot:SlotName,id:string,
  index:number,start:number,end:number,axisY:number,
- retro:boolean,material:THREE.Material){
- const count=retro?5:7,depth=retro?1.54:1.88;
+ retro:boolean,material:THREE.Material,explicitCount?:number){
+ const count=explicitCount??(retro?5:7),depth=retro?1.54:1.88;
  const thickness=.12,width=.25;
  const mats:{x:number;y:number;z:number;rotation:number;span:number}[]=[];
  for(let i=0;i<count;i++){
