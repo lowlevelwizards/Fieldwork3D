@@ -22,6 +22,8 @@ test('R5.5-B reduces only original casters and restores on zoom',()=>{
  const body=new THREE.Mesh(new THREE.BoxGeometry(10,15,12),material);
  const buckle=new THREE.Mesh(new THREE.BoxGeometry(.5,.5,.5),material);
  const hidden=new THREE.Mesh(new THREE.BoxGeometry(9,10,10),material);
+ body.castShadow=true;
+ buckle.castShadow=true;
  hidden.castShadow=false;
  root.add(body,buckle,hidden);
  const before=Array.from(body.geometry.getAttribute('position').array);
