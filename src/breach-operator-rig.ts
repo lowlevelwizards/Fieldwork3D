@@ -973,6 +973,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.chest.rotation.y=p.deterministic?turn.chestYaw:
     approach(r.chest.rotation.y,turn.chestYaw,
       p.aiming?7.5:5.8,dt);
+  const idleLife=idleLifeAt(p.idleLifeSeconds??p.seconds,
+    p.appearanceSeed??0,{speed:physicalSpeed,aiming:p.aiming||
+      (p.aimBlend??0)>.16,firing:p.firing,reloading:p.reload>0,
+      down:p.down,surrender:p.surrender,interacting:!!p.treatmentActive||
+      p.traversalProgress!==undefined&&p.traversalProgress>0});
   r.head.rotation.y=p.deterministic?turn.headYaw:
     approach(r.head.rotation.y,turn.headYaw,10.0,dt);
   // Seeded micro-glance does not change weapon yaw or shot-time aim.
@@ -990,11 +995,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     weaponWeight:p.weapon==='shotgun'?1.30:
       p.weapon==='rifle'?1.19:p.weapon==='smg'?.83:1,
     position:{x:p.x,y:p.z}});
-  const idleLife=idleLifeAt(p.idleLifeSeconds??p.seconds,
-    p.appearanceSeed??0,{speed:physicalSpeed,aiming:p.aiming||
-      (p.aimBlend??0)>.16,firing:p.firing,reloading:p.reload>0,
-      down:p.down,surrender:p.surrender,interacting:!!p.treatmentActive||
-      p.traversalProgress!==undefined&&p.traversalProgress>0});
   // Pack follows the torso with restrained inertia, not separate timing.
   const packMotion=packInertia(p.acceleration??0,motion.torsoSide);
   r.pack.position.set(-8.2,0,
