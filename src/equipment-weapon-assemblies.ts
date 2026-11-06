@@ -6,6 +6,7 @@
  */
 import type {WeaponId} from './breach-combat.ts';
 import {arBarrelArt} from './weapons/geometry/ar-barrel-profiles.ts';
+import {akBarrelArt} from './weapons/geometry/ak-barrel-profiles.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {FAMILY_PARTS,FAMILY_PART_SLOTS,familyPreset,initialWeaponFamilyBuild,
  readWeaponFamilyBuild,setWeaponFamilyPart as changeFamilyPart,
@@ -197,13 +198,15 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  const config=readWeaponConfiguration(raw,raw.weapon);
  const p=WEAPON_PLATFORMS[config.weapon];
  const build=config.build;
- const art=build?.family==='ar'?arBarrelArt(build.parts.barrel):undefined;
+ const art=build?.family==='ar'?arBarrelArt(build.parts.barrel):
+  build?.family==='ak'?akBarrelArt(build.parts.barrel):undefined;
  const mounted={} as Record<WeaponAttachmentSlot,WeaponAttachment>;
  let mass=p.baseMassKg,weighted=p.baseMassKg*p.baseBalanceX;
  let inertia=p.baseMassKg*(18*18/12+p.baseBalanceX*p.baseBalanceX);
  for(const slot of WEAPON_ATTACHMENT_SLOTS){
   const original=WEAPON_ATTACHMENTS[config.slots[slot]];
-  // Re-anchor visual muzzle accessories to the same shot-time barrel tip.
+  // All authored AR/AK barrels re-anchor optional muzzle accessories and
+  // share the authoritative shot-time tip with the visible barrel.
   const part=slot==='muzzle'&&art?
    {...original,mountX:art.muzzleX,massX:original.massX+art.muzzleX-19.5}:
    original;
