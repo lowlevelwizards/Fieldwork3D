@@ -1008,6 +1008,7 @@ jobs:
             tests/weapon-families-01.test.mjs \
             tests/equipment-19-01-weapon-assemblies.test.mjs \
             tests/equipment-19-02-weapon-silhouettes.test.mjs
+          node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs /tmp/weapon-ortho-r2.html
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
