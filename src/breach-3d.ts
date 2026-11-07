@@ -1906,9 +1906,7 @@ export class TacticalScene3D{
         speed:actor.velocity
       });
       const friendlyAhead=teammateAheadForHandling(
-        actor.p,actor.heading,
-        s.operators.filter(other=>other!==actor&&other.health>0&&
-          other.side===actor.side).map(other=>other.p));
+        actor.p,actor.heading,s.operators,actor);
       // Physical contact is queried from the actual interpolated barrel,
       // never from a long ray projected along the feet/body heading.
       const clearance=weaponClearance({
