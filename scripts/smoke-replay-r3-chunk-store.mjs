@@ -346,6 +346,100 @@ try{
     replaced.pendingRace,
     'Chunk transaction, replacement or race guard broken: '+
     JSON.stringify(replaced));
+  // G5b2: unknown-length persisted recording is intentionally interrupted
+  // after one chunk, then reopened and published after a complete sidecar.
+  const streamPartial=await page.evaluate(async()=>{
+    const storage=await import('/src/breach-replay-chunk-store.ts');
+    const {loadSavedReplay}=await import('/src/breach-replay-library.ts');
+    const archive=await loadSavedReplay('g3-browser-001');
+    const draft=await storage.beginStreamingReplayV2(
+      'g5-stream-001',archive.createdAt,{chunkFrames:3});
+    await storage.appendStreamingReplayChunkV2(draft.generation,0,
+      archive.frames.slice(0,3));
+    let earlyRejected=false;
+    try{await storage.commitStreamingReplayV2(draft.generation,{
+      ...archive,id:'g5-stream-001',frames:undefined
+    });}catch(e){earlyRejected=String(e).includes('incomplete');}
+    const published=await storage.getPublishedChunkedReplayV2('g5-stream-001');
+    const pending=await storage.listInterruptedStreamingReplaysV2();
+    return {generation:draft.generation,earlyRejected,
+      hidden:published===null,pending:pending.find(x=>
+        x.generation===draft.generation)};
+  });
+  check(streamPartial.earlyRejected&&streamPartial.hidden&&
+    streamPartial.pending?.writtenFrames===3&&
+    streamPartial.pending?.sealed===false,
+    'Streaming draft was prematurely published: '+
+    JSON.stringify(streamPartial));
+  await page.reload({waitUntil:'domcontentloaded'});
+  const streamed=await page.evaluate(async()=>{
+    const storage=await import('/src/breach-replay-chunk-store.ts');
+    const {loadSavedReplay}=await import('/src/breach-replay-library.ts');
+    const archive=await loadSavedReplay('g3-browser-001');
+    const {frames,...base}=archive;
+    const sidecar={...base,id:'g5-stream-001'};
+    const drafts=await storage.listInterruptedStreamingReplaysV2();
+    const draft=drafts.find(x=>x.id===sidecar.id);
+    if(!draft||draft.writtenFrames!==3)
+      throw Error('Stream draft missing after browser reload');
+    await storage.appendStreamingReplayChunkV2(draft.generation,1,
+      frames.slice(3,6));
+    await storage.appendStreamingReplayChunkV2(draft.generation,2,
+      frames.slice(6,8),true);
+    let badRejected=false;
+    try{await storage.commitStreamingReplayV2(draft.generation,{
+      ...sidecar,personalGround:[{at:99999,observerId:'rook',
+        keys:['fine:0,0']}]
+    });}catch(e){badRejected=String(e).includes('invalid');}
+    const unreleased=await storage.getPublishedChunkedReplayV2(sidecar.id);
+    const published=await storage.commitStreamingReplayV2(
+      draft.generation,sidecar);
+    const reopened=await storage.openChunkedReplayV2(sidecar.id);
+    const span=await reopened.window.surrounding(.25);
+    const left=span?.previous?.t,right=span?.next?.t;
+    const remaining=await storage.listInterruptedStreamingReplaysV2();
+    // A new version that fails/is explicitly discarded must not delete
+    // or corrupt the already published historical evidence.
+    const replacement=await storage.beginStreamingReplayV2(sidecar.id,
+      sidecar.createdAt,{replace:true,chunkFrames:3});
+    await storage.appendStreamingReplayChunkV2(
+      replacement.generation,0,frames.slice(0,3));
+    const beforeDiscard=await storage.getPublishedChunkedReplayV2(sidecar.id);
+    const discarded=await storage.discardStreamingReplayV2(
+      replacement.generation);
+    const afterDiscard=await storage.getPublishedChunkedReplayV2(sidecar.id);
+    // An exact multiple of the chunk length seals without inventing a
+    // zero-frame final chunk, and is then readable by the same G4 reader.
+    const fullId='g5-stream-full-001';
+    const full=await storage.beginStreamingReplayV2(
+      fullId,sidecar.createdAt,{chunkFrames:3});
+    await storage.appendStreamingReplayChunkV2(
+      full.generation,0,frames.slice(0,3));
+    await storage.appendStreamingReplayChunkV2(
+      full.generation,1,frames.slice(3,6));
+    const sealed=await storage.sealStreamingReplayV2(full.generation);
+    const fullPublished=await storage.commitStreamingReplayV2(
+      full.generation,{...sidecar,id:fullId});
+    const fullReader=await storage.openChunkedReplayV2(fullId);
+    return {badRejected,unreleased:unreleased===null,
+      count:published.frameCount,complete:published.storageComplete,
+      generation:published.generation,from:left,to:right,
+      cache:reopened.window.residentCount,remaining:remaining.length,
+      keptBefore:beforeDiscard?.generation===published.generation,
+      discarded,keptAfter:afterDiscard?.generation===published.generation,
+      fullSealed:sealed.sealed,fullCount:fullPublished.frameCount,
+      fullWindow:fullReader.window.totalFrames,
+      legacyFrames:archive.frames.length};
+  });
+  check(streamed.badRejected&&streamed.unreleased&&
+    streamed.count===8&&streamed.complete&&
+    streamed.from<.25&&streamed.to>.25&&streamed.cache<=3&&
+    streamed.remaining===0&&streamed.keptBefore&&
+    streamed.discarded&&streamed.keptAfter&&
+    streamed.fullSealed&&streamed.fullCount===6&&
+    streamed.fullWindow===6&&streamed.legacyFrames===8,
+    'G5b2 IndexedDB stream durability, finalization or recovery broken: '+
+    JSON.stringify(streamed));
   const corruption=await page.evaluate(async()=>{
     const storage=await import('/src/breach-replay-chunk-store.ts');
     const {loadSavedReplay}=await import('/src/breach-replay-library.ts');
@@ -372,7 +466,7 @@ try{
     'Corrupt V2 chunk must fail closed without damaging legacy replay: '+
     JSON.stringify(corruption));
   check(!errors.length,'Browser page errors: '+errors.join(' | '));
-  console.log('Replay G3 real IndexedDB transactions PASS',JSON.stringify({
+  console.log('Replay G3/G4d/G5b2 real IndexedDB transactions PASS',JSON.stringify({
     staged:staged.frameCount,restored:completed.count,
     boundarySeek:completed.sample,
     replacement:replaced,corruption
