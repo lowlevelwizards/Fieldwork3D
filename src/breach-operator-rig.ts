@@ -1529,6 +1529,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     candidates:number;elbowDrop:number;outwardFlare:number;
     hardDepth:number;quality:number;
     reachError:number;violations:string[];
+    evaluations:number;softScale:number;
   }>=[];
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
@@ -1614,7 +1615,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         hardDepth:dynamic.report.hardDepth,
         quality:dynamic.report.quality,
         reachError:Math.max(0,desired.distanceTo(shoulder)-19.92),
-        violations:[...dynamic.report.reasons]});
+        violations:[...dynamic.report.reasons],
+        evaluations:dynamic.evaluations,softScale:dynamic.softScale});
       if(dynamic.solution){
         solved=dynamic.solution;dynamicAccepted=true;
       }

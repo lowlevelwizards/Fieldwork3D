@@ -9,7 +9,7 @@ import {solveTwoBone,ARM_LIMITS,type LimbSolution} from './breach-ik.ts';
 import {armorElbowPole} from './breach-arm-armor-clearance.ts';
 import {evaluateArmConstraint,type PoseConstraintMode,
  type ArmConstraintReport} from './breach-pose-v3-constraints.ts';
-import type {PoseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
+import {LOW_READY_CONTACT_LIMITS,type PoseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
 
 export interface DynamicArmRequest {
  shoulder:THREE.Vector3;
@@ -26,6 +26,8 @@ export type DynamicArmFit={
  solution:LimbSolution|null;
  report:ArmConstraintReport;
  candidates:number;
+ evaluations:number;
+ softScale:number;
  reason:'valid'|'out-of-reach'|'no-clearance';
 };
 export const MAX_DYNAMIC_ARM_CANDIDATES=6;
@@ -40,25 +42,34 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
    return new THREE.Vector3(p.x,p.y,p.z);
   })
  ];
- let best:LimbSolution|null=null,bestReport:ArmConstraintReport|null=null;
- let firstReport:ArmConstraintReport|null=null;
- let count=0;
- for(const pole of poles){
-  count++;
-  const pose=solveTwoBone(shoulder,wrist,10,10,pole,ARM_LIMITS,
-    referenceBend);
-  const report=evaluateArmConstraint({shoulder,arm:pose,side,
-    envelope,mode,referenceBend});
-  if(!firstReport)firstReport=report;
-  if(!report.valid)continue;
-  if(bestReport===null||report.quality<bestReport.quality-1e-6){
-   best=pose;bestReport=report;
+ // Generate each IK joint exactly once. Increase permissible SOFT contact
+ // only through the established standard/compressed/deep budgets. A rigid
+ // torso or plate never gets an increased penetration allowance.
+ const candidates=poles.map(pole=>solveTwoBone(shoulder,wrist,10,10,
+  pole,ARM_LIMITS,referenceBend));
+ const budgets=mode==='aim'?[1,1.35]:
+  [1,1.35,LOW_READY_CONTACT_LIMITS.maximumSoftScale];
+ let evaluations=0,firstReport:ArmConstraintReport|null=null;
+ for(const softScale of budgets){
+  let best:LimbSolution|null=null,bestReport:ArmConstraintReport|null=null;
+  for(const pose of candidates){
+   evaluations++;
+   const report=evaluateArmConstraint({shoulder,arm:pose,side,
+     envelope,mode,referenceBend,softScale});
+   if(!firstReport)firstReport=report;
+   if(!report.valid)continue;
+   if(!bestReport||report.quality<bestReport.quality-1e-6){
+    best=pose;bestReport=report;
+   }
   }
+  // The first tier with a valid result wins; attractive but heavily
+  // compressed poses cannot displace a standard low-contact solution.
+  if(best&&bestReport)return {status:'clear',solution:best,
+   report:bestReport,candidates:candidates.length,evaluations,
+   softScale,reason:'valid'};
  }
- if(best&&bestReport)return {status:'clear',solution:best,
-  report:bestReport,candidates:count,reason:'valid'};
  return {status:'unresolved',solution:null,report:firstReport!,
-  candidates:count,
+  candidates:candidates.length,evaluations,softScale:budgets.at(-1)!,
   reason:wrist.distanceTo(shoulder)>19.92?
    'out-of-reach':'no-clearance'};
 }

@@ -16,6 +16,8 @@ export type ArmConstraintInput={
  arm:LimbSolution;side:-1|1;
  envelope:PoseClearanceEnvelope;
  mode:PoseConstraintMode;
+ /** Scale only structured/soft contact, never rigid material. */
+ softScale?:number;
  /** Previous bend, supplied ONLY from an explicit/recorded action snapshot. */
  referenceBend?:THREE.Vector3;
 };
@@ -49,7 +51,7 @@ export function evaluateArmConstraint(p:ArmConstraintInput):ArmConstraintReport{
  // A real rectangular sleeve tests against fitted hard/soft equipment.
  // This is shared by idle/ADS/reload/interaction; no hidden shrinking.
  const contact=evaluateSleeveArmorContact(
-  shoulder,joint,effector,envelope);
+  shoulder,joint,effector,envelope,p.softScale??1);
  if(!contact.valid)reasons.push('equipment-contact');
  const bendContinuity=p.referenceBend?
   Math.max(0,1-arm.bendPlane.dot(p.referenceBend))*.16:0;

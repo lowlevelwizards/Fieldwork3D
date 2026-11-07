@@ -18,6 +18,8 @@ test('V3 dynamic arms choose valid downward elbow without moving the wrist',()=>
  assert.ok(a.report.elbowDrop>0);
  assert.ok(a.solution.effector.distanceTo(input.wrist)<.00001);
  assert.equal(a.candidates,MAX_DYNAMIC_ARM_CANDIDATES);
+ assert.ok(a.evaluations<=MAX_DYNAMIC_ARM_CANDIDATES*3);
+ assert.equal(a.softScale,1,'empty envelope needs no compression');
  const b=solveV3DynamicArm(input);
  assert.ok(a.solution.joint.distanceTo(b.solution.joint)<1e-9,
   'fixed inputs produce identical elbow joints');
@@ -35,6 +37,8 @@ test('V3 rejects rigid penetration even if a candidate looks attractive',()=>{
  assert.equal(r.status,'unresolved');
  assert.equal(r.solution,null);
  assert.equal(r.reason,'no-clearance');
+ assert.ok(r.evaluations<=MAX_DYNAMIC_ARM_CANDIDATES*3);
+ assert.ok(r.softScale<=1.65,'rigid collisions cannot bypass hard limits');
 });
 test('V3 preview evaluates real ADS pose without changing weapon aim',()=>{
  const config=selectWeaponFamilyPreset(
