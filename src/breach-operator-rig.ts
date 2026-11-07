@@ -153,7 +153,7 @@ export type OperatorPose={
   aimBlend?:number;recoil?:number;shotHeading?:number;
   hitFade?:number;hitAge?:number;downProgress?:number;flashActive?:boolean;
   hitRegion?:WoundRegion;hitYaw?:number;hitSeverity?:number;
-  downPose?:FallPose;
+  downPose?:FallPose;downClearance?:number;
   appearanceSeed?:number;
   faceStyle?:'blank'|'quiet'|'graphic';
   /** Only used in the Wardrobe Lab; never propagated to battle actors. */
@@ -1179,7 +1179,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.hitYaw??p.heading,p.heading,
     p.hitAge===undefined?100:p.hitAge,p.hitSeverity??1);
   const injuryTilt=p.injury===2?.16:p.injury===1?.05:0;
-  const collapse=fallAngles(p.downPose??'forward',downProgress);
+  const collapse=fallAngles(p.downPose??'forward',downProgress,p.downClearance??1);
   const impactPulse=Math.sin(Math.PI*downProgress);
   const vaultPhase=Math.max(0,Math.min(1,p.traversalProgress??0));
   const vaultTuck=vaultPhase>0&&vaultPhase<1?
