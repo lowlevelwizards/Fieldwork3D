@@ -96,6 +96,8 @@ try{
     'Tactical wall transparency leaked into Bodycam');
   check(chest.fov===95&&finite(chest.position)&&finite(chest.direction),
     'Invalid first-person camera projection');
+  check(chest.direction[1]<-.10,
+    'Chest camera must angle slightly downward to show floor and hands');
   const chestShot=await browserFrame(page,'chest-portrait');
 
   const helmet=await activate('helmet');
@@ -110,6 +112,8 @@ try{
   check(helmet.position[1]<41.5,
     'Helmet camera intersects the 42-unit interior ceiling: '+
     JSON.stringify(helmet.position));
+  check(helmet.direction[1]<-.06,
+    'Helmet camera must look below the roofline, not into ceiling');
   check(helmet.maskRestored&&helmet.transparentWalls===0,
     'Helmet view left owner meshes hidden or walls translucent');
   const helmetShot=await browserFrame(page,'helmet-portrait');
