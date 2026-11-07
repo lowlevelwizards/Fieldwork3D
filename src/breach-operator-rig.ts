@@ -1605,7 +1605,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       key:coordinatedKey,result
     });
     r.root.userData.poseV3CoordinatedReport={
-      cached:cacheHit,
+      cached:cacheHit===true,
       status:result.status,yaw:result.yaw,leanX:result.leanX,
       candidates:result.candidates,
       validCandidates:result.validCandidates,
