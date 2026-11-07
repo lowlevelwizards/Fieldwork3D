@@ -7,7 +7,7 @@ import {captureReplayArchive,replayArchiveIsValid,restoreReplayArchive}
 import {recordedObserverCanSee} from '../src/breach-replay-visibility.ts';
 
 test('new operator-sight evidence round-trips, old film remains readable',()=>{
-  const s=newSession(0);
+  const s=newSession(0,3411);
   const rec=new MissionRecorder();
   rec.capture(s,true);s.seconds=.05;rec.capture(s);
   const archive=captureReplayArchive(rec,'operator-sight',12345);
@@ -25,7 +25,7 @@ test('new operator-sight evidence round-trips, old film remains readable',()=>{
   assert.equal(recordedObserverCanSee(old.frames[0].knowledge,key,'guard'),null);
 });
 test('malformed optional observation evidence cannot enter saved replay',()=>{
-  const s=newSession(0),rec=new MissionRecorder();
+  const s=newSession(0,3411),rec=new MissionRecorder();
   rec.capture(s,true);s.seconds=.05;rec.capture(s);
   const archive=captureReplayArchive(rec,'replay-bounds',12345);
   const invalid=structuredClone(archive);
