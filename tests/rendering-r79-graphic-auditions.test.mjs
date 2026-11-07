@@ -138,7 +138,7 @@ test('R7.12 A/B modes preserve safe no-AA/hard-shadow/off-bake fallback',()=>{
  assert.equal(standard.canvasAA,true);
  assert.equal(standard.pixelRatio,1.5);
  assert.equal(standard.shadowFilter,'soft');
- assert.equal(standard.shadowSize,1024);
+ assert.equal(standard.shadowSize,2048);
  assert.equal(standard.shadowBias,'stable');
  const off=requestedStudioRenderQuality(
   '?studioAA=off&studioPixelRatio=2&studioShadowFilter=hard&'+
