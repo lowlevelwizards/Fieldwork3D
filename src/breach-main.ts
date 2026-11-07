@@ -5020,10 +5020,10 @@ async function renderSavedReplayLibrary():Promise<void>{
         (item.complete?'':' · PARTIAL');
       information.append(name,details);
       const watch=document.createElement('button');watch.type='button';
-      watch.textContent='WATCH';watch.title='Open saved recording';
+      watch.textContent='WATCH';watch.className='replay-library-watch';watch.title='Open saved recording';
       watch.addEventListener('click',()=>{void playSavedReplay(item.id);});
       const favorite=document.createElement('button');favorite.type='button';
-      favorite.textContent=item.favorite?'★':'☆';
+      favorite.textContent=item.favorite?'★':'☆';favorite.className='replay-library-favorite';
       favorite.setAttribute('aria-label',
         (item.favorite?'Unfavorite ':'Favorite ')+item.siteName);
       favorite.setAttribute('aria-pressed',String(item.favorite));
