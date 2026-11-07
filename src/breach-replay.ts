@@ -82,7 +82,8 @@ const shotCopy=(shot:ShotEvent):ShotEvent=>({...shot,
   start:position(shot.start),end:position(shot.end)});
 export function snapshot(s:Session,seenGround?:string[],
   unchangedWorld?:Pick<ReplayFrame,'windows'|'coverState'>,
-  previouslyDiscovered:ReadonlySet<string>=new Set()):ReplayFrame{
+  previouslyDiscovered:ReadonlySet<string>=new Set(),
+  observerBodies:Map<string,Set<string>>=new Map()):ReplayFrame{
   return {
     t:s.seconds,phase:s.phase,mission:s.mission,
     actors:s.operators.map(a=>({id:a.id,p:position(a.p),
@@ -166,7 +167,7 @@ export function snapshot(s:Session,seenGround?:string[],
     seenGround:seenGround??[...s.seenGround],intel:intelSnapshot(s.intel),
     known:[...s.known].map(([id,c])=>[id,
       {p:position(c.p),at:c.at,status:c.status}]),
-    knowledge:captureReplayKnowledge(s,previouslyDiscovered),
+    knowledge:captureReplayKnowledge(s,previouslyDiscovered,observerBodies),
   };
 }
 export class MissionRecorder{
@@ -180,6 +181,7 @@ export class MissionRecorder{
   private lastEventId=0;
   private lastExecutionEventId=0;
   private readonly discoveredBodies=new Set<string>();
+  private readonly discoveredByObserver=new Map<string,Set<string>>();
   readonly motion=new ReplayMotionRecorder();
   readonly plans=new ReplayPlanRecorder();
   readonly ballistics=new ReplayBallisticsRecorder();
@@ -236,7 +238,8 @@ export class MissionRecorder{
     if(!force&&last&&s.seconds-last.t<.049)return;
     if(last&&Math.abs(last.t-s.seconds)<1e-6){
       if(force){
-        const sample=snapshot(s,undefined,undefined,this.discoveredBodies);
+        const sample=snapshot(s,undefined,undefined,this.discoveredBodies,
+          this.discoveredByObserver);
         for(const id of sample.knowledge?.discoveredBodyIds??[])
           this.discoveredBodies.add(id);
         this.frames[this.frames.length-1]=sample;
@@ -248,7 +251,8 @@ export class MissionRecorder{
       last.seenGround:undefined;
     const unchangedWorld=last&&last.objectRevision===s.objectRevision?
       last:undefined;
-    const frame=snapshot(s,remembered,unchangedWorld,this.discoveredBodies);
+    const frame=snapshot(s,remembered,unchangedWorld,this.discoveredBodies,
+      this.discoveredByObserver);
     for(const id of frame.knowledge?.discoveredBodyIds??[])
       this.discoveredBodies.add(id);
     for(const actor of frame.actors)
