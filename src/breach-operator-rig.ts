@@ -383,6 +383,21 @@ export function createOperatorRig(id:string,side:'blue'|'red',
       bend:new THREE.Vector3(5,-2,sideSign*7),outOfReach:false});
     void sideSign;
   }
+  // R7.11 Studio-only form-shading masks. Mark skeletal anchors instead of
+  // guessing Y thresholds: trousers/thighs and sleeves attached to the bone
+  // inherit the exclusion, while shins, hands/gloves and boots opt back in.
+  // These annotations never change animation transforms or combat materials.
+  for(const foot of feet){
+    foot.upper.userData.fieldworkStudioHeightRole='exclude';
+    foot.lower.userData.fieldworkStudioHeightRole='include';
+    foot.shoe.userData.fieldworkStudioHeightRole='include';
+    foot.ankleLink.userData.fieldworkStudioHeightRole='include';
+  }
+  for(const arm of arms){
+    arm.upper.userData.fieldworkStudioHeightRole='exclude';
+    arm.lower.userData.fieldworkStudioHeightRole='exclude';
+    arm.hand.userData.fieldworkStudioHeightRole='include';
+  }
   weapon.position.set(8,-5,0);
   // Real weapon-specific silhouettes, using the same receiver-local grip and
   // muzzle axes as the fixed-step shot-time solver. Built only on weapon swap.
