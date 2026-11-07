@@ -37,7 +37,7 @@ import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,
-  initialOpeningYieldCandidate,pressDoorOnBodyAttempt,
+  initialOpeningYieldCandidate,pressDoorOnBodyAttempt,doorSwingBlocked,
   autoDoorAtBodyContact,canAutoOpenEnRoute} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
@@ -2744,9 +2744,20 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         a.velocity=0;a.waitRemaining=0;a.actionTimer+=dt;
         // A genuinely blocked entry is not silently abandoned. Alert once,
         // retain editable orders, and never force the squad through geometry.
-        if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5)
+        if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5){
+          // A stuck hinge is physically observable when the operator tries
+          // to enter. Report the blockage without revealing the identity or
+          // position of any undiscovered prop behind the door. This is an
+          // explanation, never permission to bypass the leaf or alter orders.
+          const stalledSwing=!!doorway&&doorway.open&&
+            (doorway.openFraction??0)<.98&&
+            doorSwingBlocked(doorway,
+              Math.min(1,(doorway.openFraction??0)+.07),[]);
           notify(s,a.name+' ENTRY WAIT · '+
-            (gate==='missing'?'DOOR MISSING':'DOOR NOT CLEAR'));
+            (gate==='missing'?'DOOR MISSING':
+             stalledSwing?'DOOR SWING OBSTRUCTED · CHECK ENTRY':
+             'DOOR NOT CLEAR'));
+        }
         return;
       }
       a.actionTimer=0;
