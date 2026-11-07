@@ -21,6 +21,10 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Helmet H1 — modular shell, cover, setup and legacy wardrobe gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h1-') }}
+        run: |
+          node --experimental-strip-types --test tests/helmet-h1-*.test.mjs
       - name: Production release preflight — Pages queue and live build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
         env:

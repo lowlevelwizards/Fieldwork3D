@@ -32,6 +32,10 @@ export const HEADWEAR_ALLOWED_SOLIDS:Readonly<Record<HeadSilhouetteId,readonly H
  beanie:['black','navy','charcoal','olive-drab','coyote-brown','desert-tan','winter-white'],
  ach:['olive-drab','foliage-green','desert-tan','coyote-brown','black','navy'],
  'high-cut':['ranger-green','black','desert-tan','coyote-brown','urban-gray'],
+ 'mich-2001':['olive-drab','black','desert-tan','ranger-green'],
+ 'mich-2002':['olive-drab','black','desert-tan','ranger-green'],
+ 'fast-sf':['ranger-green','black','desert-tan','coyote-brown','urban-gray'],
+ 'fast-xp-mid':['ranger-green','black','desert-tan','coyote-brown','urban-gray'],
  pasgt:['olive-drab','desert-tan','coyote-brown','black','navy'],
  'soviet-steel':['soviet-4bo','postwar-green'],
  'm1-steel':['olive-drab','postwar-green','desert-tan'],
@@ -41,6 +45,8 @@ export const HEADWEAR_ALLOWED_SOLIDS:Readonly<Record<HeadSilhouetteId,readonly H
 export const HEADWEAR_DEFAULT_SOLIDS:Readonly<Record<HeadSilhouetteId,HeadwearSolidColorId>>={
  'patrol-cap':'olive-drab',boonie:'olive-drab',beanie:'black',beret:'black',
  ach:'olive-drab','high-cut':'ranger-green',pasgt:'olive-drab',
+ 'mich-2001':'olive-drab','mich-2002':'olive-drab',
+ 'fast-sf':'ranger-green','fast-xp-mid':'ranger-green',
  'soviet-steel':'soviet-4bo','m1-steel':'olive-drab',
  'ddr-m56':'urban-gray','police-helmet':'black'
 };
