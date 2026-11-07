@@ -1580,7 +1580,7 @@ jobs:
       - name: Arsenal R16a — physical magazine identities and persistence safety
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-r16-magazine-identity-') }}
         run: |
-          node --experimental-strip-types --test tests/arsenal-r16-magazine-identities.test.mjs tests/arsenal-v2-assembly.test.mjs tests/equipment-19-04-weapon-persistence.test.mjs tests/equipment-27-01-campaign-ownership.test.mjs tests/replay-r2-recording.test.mjs
+          node --experimental-strip-types --test tests/arsenal-r16-magazine-identities.test.mjs tests/arsenal-r16-migration-quote.test.mjs tests/equipment-15-persistent-magazines.test.mjs tests/equipment-16-quickplay-magazines.test.mjs tests/arsenal-v2-assembly.test.mjs tests/equipment-19-04-weapon-persistence.test.mjs tests/equipment-27-01-campaign-ownership.test.mjs tests/replay-r2-recording.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
