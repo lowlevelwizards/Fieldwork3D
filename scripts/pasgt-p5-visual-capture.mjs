@@ -75,7 +75,25 @@ try{
   await page.locator('.material-group').filter({hasText:'PASGT CLOTH COVER'})
    .locator('select').selectOption('none');
   await capture('11-bare-band-side','side');
+  await page.locator('.material-group').filter({hasText:'PASGT CLOTH COVER'})
+   .locator('select').selectOption('fitted');
+  await page.locator('#studioWorkflow [data-studio-step="details"]').click();
+  const conceal=page.locator('.material-group').filter({hasText:'PASGT CONCEALMENT'})
+   .locator('select');
+  await conceal.selectOption('none');
+  await capture('12-slits-front','front');
+  await capture('13-slits-side','side');
+  await conceal.selectOption('foliage');
+  await capture('14-foliage-front','front');
+  await capture('15-foliage-side','side');
+  await conceal.selectOption('scrim');
+  await capture('16-scrim-front','front');
+  await capture('17-scrim-side','side');
+  await conceal.selectOption('net');
+  await capture('18-net-front','front');
+  await capture('19-net-side','side');
+  await capture('20-net-back','back');
   if(errors.length)throw Error('PASGT visual probe page errors: '+errors.join('; '));
-  console.log('PASGT actual WebGL captures: 11 variants, camera and shell fit verified');
+  console.log('PASGT actual WebGL captures: 20 cover, band and field-dress angles verified');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
