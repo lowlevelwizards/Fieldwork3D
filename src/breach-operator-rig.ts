@@ -7,15 +7,12 @@ import {canonicalRootOrientation,LEGACY_FRAME_YAW,
   createCanonicalAttachment} from './operator-axis-convention.ts';
 import {neutralMannequinHipRise,neutralMannequinWrist,
  neutralMannequinElbowPole} from './operator-mannequin-pose.ts';
-import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
-  intersectsTorso} from './breach-ik.ts';
-import {armorArmIntrusion,armorElbowPole}
- from './breach-arm-armor-clearance.ts';
+import {alignSegment,solveTwoBone,LEG_LIMITS} from './breach-ik.ts';
 import {idleLifeAt} from './breach-idle-life.ts';
 import {lowReadyFamilyFit,lowReadyElbowPole}
  from './breach-low-ready-family-fit.ts';
 import type {CoupledLowReadySolution} from './breach-coupled-low-ready.ts';
-import {poseClearanceEnvelope,evaluateSleeveArmorContact} from './breach-pose-clearance-envelope.ts';
+import {poseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
 import {interpolateWeaponCarry,lowReadyBlendPhase}
  from './breach-low-ready-transition.ts';
 import {createOperatorPoseScratch,type OperatorPoseScratch}
@@ -43,9 +40,8 @@ import {choreographV4ReloadWeapon,reloadMechanismFor,
 import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
 import {directOperatorPose} from './breach-pose-director.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
-import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
 import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,
- cachedSupportUpperBody} from './breach-unified-upper-body.ts';
+ cachedSupportUpperBody,solveUnifiedFallbackArm} from './breach-unified-upper-body.ts';
 import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import type {HandlingProfile} from './breach-handling-profiles.ts';
@@ -1893,26 +1889,26 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         wanted.copy(fromPole.lerp(wanted,
           lowReadyBlendPhase(activeTransition.alpha)));
     }
-    let solved=solveTwoBone(shoulder,wrist,10,10,
-      wanted,ARM_LIMITS,neutralArms?undefined:arm.bend,scratch.arms[i]);
-    let dynamicAccepted=false;
-    if(sourceArm&&dynamicEnvelope&&activeTransition&&
-       activeTransition.alpha<1&&solved.reached){
-      // A continuous two-bone solution can retain the source elbow
-      // without a new candidate search, but never ignore armor contact.
-      dynamicAccepted=evaluateSleeveArmorContact(shoulder,
-        solved.joint,solved.effector,dynamicEnvelope).valid;
-    }
-    if(!dynamicAccepted&&dynamicEnvelope&&!neutralArms&&
-       !p.down&&!p.surrender&&!p.firing){
-      const mode=reloadActive?'reload':p.aiming||handling==='ads'?
-        'aim':reaching||throwActive?'interaction':'carry';
-      const dynamic=solveV3DynamicArm({
-        shoulder,wrist:desired,side:sign as -1|1,mode,
-        envelope:dynamicEnvelope,preferredPole:wanted,
-        allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
-         !p.poseV3StrictContact
-      });
+    const armFit=solveUnifiedFallbackArm({
+      shoulder,wrist,desired,preferredPole:wanted,
+      previousBend:arm.bend,side:sign as -1|1,
+      neutral:neutralArms,down:p.down,surrender:p.surrender,
+      firing:p.firing,
+      sourceContinuity:!!sourceArm&&!!activeTransition&&
+        activeTransition.alpha<1,
+      envelope:dynamicEnvelope,
+      mode:reloadActive?'reload':p.aiming||handling==='ads'?
+        'aim':reaching||throwActive?'interaction':'carry',
+      allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
+        !p.poseV3StrictContact,
+      curatedSupport:!!curatedSupport,familyLow,
+      legacyFront:p.equipment?.slots.armor==='armor-carrier'?9.8:
+        p.equipment?.slots.armor==='armor-soft'?8.8:7.1,
+      scratch,armIndex:i as 0|1
+    });
+    const solved=armFit.solution;
+    if(armFit.dynamic){
+      const dynamic=armFit.dynamic;
       v3DynamicReports.push({side:i===0?'support':'firing',
         status:dynamic.status,reason:dynamic.reason,
         candidates:dynamic.candidates,
@@ -1923,37 +1919,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         reachError:Math.max(0,desired.distanceTo(shoulder)-19.92),
         violations:[...dynamic.report.reasons],
         evaluations:dynamic.evaluations,softScale:dynamic.softScale});
-      if(dynamic.solution){
-        solved=dynamic.solution;dynamicAccepted=true;
-      }
-    }
-    if(!dynamicAccepted&&!neutralArms&&!p.down&&!p.surrender){
-      // Front-plate clearance must score BOTH sleeve segments. Avoiding just
-      // the elbow point was letting the forearm pass straight through armor.
-      const front=p.equipment?.slots.armor==='armor-carrier'?9.8:
-        p.equipment?.slots.armor==='armor-soft'?8.8:7.1;
-      const score=(candidate:typeof solved)=>armorArmIntrusion(
-        shoulder,candidate.joint,candidate.effector,front)+
-        (intersectsTorso(candidate.joint,.25)?2.5:0);
-      let bestScore=score(solved);
-      if(bestScore>.04){
-        // Prefer a relaxed, downward/outboard AK-specific bend before the
-        // generic plate avoidance candidate. Both retain the real wrist grip.
-        const pole0=curatedSupport?
-          lowReadyElbowPole(shoulder,familyLow,1):
-          armorElbowPole(shoulder,sign as -1|1,0);
-        const retry=solveTwoBone(shoulder,wrist,10,10,
-          P(pole0.x,pole0.y,pole0.z),ARM_LIMITS,arm.bend,
-          scratch.armRetry[i]);
-        const retryScore=score(retry);
-        if(retryScore+.015<bestScore){solved=retry;bestScore=retryScore;}
-        const pole1=armorElbowPole(shoulder,sign as -1|1,1);
-        const alternate=solveTwoBone(shoulder,wrist,10,10,
-          P(pole1.x,pole1.y,pole1.z),ARM_LIMITS,arm.bend,
-          scratch.armFallback[i]);
-        const alternateScore=score(alternate);
-        if(alternateScore+.015<bestScore){solved=alternate;bestScore=alternateScore;}
-      }
     }
     r.elbowSpread[i]=Math.max(0,
       sign*(solved.joint.z-shoulder.z));

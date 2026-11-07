@@ -5,6 +5,19 @@
  * equipment state. No quantized continuous aiming and no render history.
  */
 import * as THREE from 'three';
+import {solveTwoBone,ARM_LIMITS,intersectsTorso,
+ type LimbSolution} from './breach-ik.ts';
+import {armorArmIntrusion,armorElbowPole}
+ from './breach-arm-armor-clearance.ts';
+import {lowReadyFamilyFit,lowReadyElbowPole}
+ from './breach-low-ready-family-fit.ts';
+import {evaluateSleeveArmorContact}
+ from './breach-pose-clearance-envelope.ts';
+import {solveV3DynamicArm,type DynamicArmFit}
+ from './breach-pose-v3-dynamic-arm.ts';
+import type {OperatorPoseScratch} from './breach-operator-pose-scratch.ts';
+import type {PoseConstraintMode} from './breach-pose-v3-constraints.ts';
+
 import type {WeaponId} from './breach-combat.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import type {PoseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
@@ -98,4 +111,79 @@ export function cachedSupportUpperBody(rig:object,p:SupportGripRequest):
  const result=chooseV3SupportGrip(p);
  perRigSupport.set(rig,{key,result});
  return {result,cached:false,source:'fresh'};
+}
+
+/** One fallback arm solver. It first retains the interpolated pole where
+ * valid, then tries finite equipment-aware candidates. The historical
+ * simple armor retry is a last-resort compatibility strategy, never a
+ * second renderer writer. This keeps the current silhouettes until the
+ * full OBB replacement's visual-parity gate passes.
+ */
+export type FallbackArmRequest={
+ shoulder:THREE.Vector3;wrist:THREE.Vector3;desired:THREE.Vector3;
+ preferredPole:THREE.Vector3;previousBend:THREE.Vector3;
+ side:-1|1;neutral:boolean;down:boolean;surrender:boolean;
+ firing:boolean;sourceContinuity:boolean;
+ envelope:PoseClearanceEnvelope|null;
+ mode:PoseConstraintMode;allowVisualOverlap:boolean;
+ curatedSupport:boolean;
+ familyLow:ReturnType<typeof lowReadyFamilyFit>;
+ /** Existing last-resort front approximation; not simulation physics. */
+ legacyFront:number;
+ scratch:OperatorPoseScratch;
+ armIndex:0|1;
+};
+export type FallbackArmResult={
+ solution:LimbSolution;dynamic:DynamicArmFit|null;
+ used:'authored'|'dynamic'|'legacy'|'generic'
+};
+export function solveUnifiedFallbackArm(req:FallbackArmRequest):
+ FallbackArmResult{
+ const {shoulder,wrist,desired,preferredPole,previousBend,
+   side,envelope,scratch,armIndex}=req;
+ let solved=solveTwoBone(shoulder,wrist,10,10,preferredPole,
+   ARM_LIMITS,req.neutral?undefined:previousBend,
+   scratch.arms[armIndex]);
+ let dynamicAccepted=false;
+ if(req.sourceContinuity&&envelope&&solved.reached){
+   dynamicAccepted=evaluateSleeveArmorContact(shoulder,
+     solved.joint,solved.effector,envelope).valid;
+ }
+ if(dynamicAccepted)
+   return {solution:solved,dynamic:null,used:'authored'};
+ let dynamic:DynamicArmFit|null=null;
+ if(envelope&&!req.neutral&&!req.down&&!req.surrender&&!req.firing){
+   dynamic=solveV3DynamicArm({
+     shoulder,wrist:desired,side,mode:req.mode,
+     envelope,preferredPole,allowVisualOverlap:req.allowVisualOverlap
+   });
+   if(dynamic.solution)
+     return {solution:dynamic.solution,dynamic,used:'dynamic'};
+ }
+ if(!req.neutral&&!req.down&&!req.surrender){
+   const score=(candidate:LimbSolution)=>armorArmIntrusion(
+     shoulder,candidate.joint,candidate.effector,req.legacyFront)+
+     (intersectsTorso(candidate.joint,.25)?2.5:0);
+   let bestScore=score(solved);
+   if(bestScore>.04){
+     const pole0=req.curatedSupport&&req.familyLow?
+       lowReadyElbowPole(shoulder,req.familyLow,1):
+       armorElbowPole(shoulder,side,0);
+     const retry=solveTwoBone(shoulder,wrist,10,10,
+       new THREE.Vector3(pole0.x,pole0.y,pole0.z),
+       ARM_LIMITS,previousBend,scratch.armRetry[armIndex]);
+     const retryScore=score(retry);
+     if(retryScore+.015<bestScore){solved=retry;bestScore=retryScore;}
+     const pole1=armorElbowPole(shoulder,side,1);
+     const alternate=solveTwoBone(shoulder,wrist,10,10,
+       new THREE.Vector3(pole1.x,pole1.y,pole1.z),
+       ARM_LIMITS,previousBend,scratch.armFallback[armIndex]);
+     const alternateScore=score(alternate);
+     if(alternateScore+.015<bestScore){
+       solved=alternate;bestScore=alternateScore;
+     }
+     return {solution:solved,dynamic,used:'legacy'};
+   }
+ }
+ return {solution:solved,dynamic,used:'generic'};
 }
