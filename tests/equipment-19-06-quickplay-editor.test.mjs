@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initialRoster,configureRosterWeapon,readRoster,applyRosterIdentity}
  from '../src/breach-roster.ts';
-import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly}
+import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
+ weaponAttachmentAllowed}
  from '../src/equipment-weapon-assemblies.ts';
 import {newSession} from '../src/breach-game.ts';
 import {muzzleAtShot} from '../src/breach-muzzle.ts';
@@ -12,7 +13,7 @@ test('19.06 every Quick Play selector offers compatible choices and respects slo
  for(const m of roster.members){
   for(const slot of WEAPON_ATTACHMENT_SLOTS){
    const available=Object.values(WEAPON_ATTACHMENTS).filter(part=>
-    part.slot===slot&&part.compatible.includes(m.weapon));
+    part.slot===slot&&weaponAttachmentAllowed(m.weaponConfiguration,slot,part.id));
    assert.ok(available.length>=1);
    for(const item of available){
     const chosen=configureRosterWeapon(roster,m.id,slot,item.id);

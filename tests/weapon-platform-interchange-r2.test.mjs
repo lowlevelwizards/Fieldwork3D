@@ -3,6 +3,14 @@ import assert from 'node:assert/strict';
 import {FAMILY_PRESETS,initialWeaponFamilyBuild,proposeFamilyPartChange,
  validFamilyBuild,FAMILY_PART_SLOTS,matchingFamilyPreset}
  from '../src/equipment-weapon-families.ts';
+import * as THREE from 'three';
+import {initialWeaponConfiguration,selectWeaponFamilyPreset,setWeaponAttachment,
+ readWeaponConfiguration,resolveWeaponAssembly}
+ from '../src/equipment-weapon-assemblies.ts';
+import {buildWeaponSilhouette,clearWeaponSilhouette}
+ from '../src/breach-weapon-geometry.ts';
+import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
+import {attachmentPrice} from '../src/equipment-weapon-inventory.ts';
 test('every factory checkpoint validates with the shared part rules',()=>{
  for(const p of FAMILY_PRESETS){
   const b=initialWeaponFamilyBuild(p.id);
@@ -54,4 +62,46 @@ test('MP5 slim handguard preserves standard receiver and rejects SD',()=>{
  assert.deepEqual(n.replacements.map(x=>x.slot),['handguard']);
  const sd=initialWeaponFamilyBuild('hk-mp5sd3');
  assert.equal(proposeFamilyPartChange(sd,'smg','handguard','hk-mp5-slim').valid,false);
+});
+test('HK claw rail and actual sight coexist with legacy save and stock IDs',()=>{
+ const base=selectWeaponFamilyPreset(initialWeaponConfiguration('smg'),'hk-mp5a3');
+ const mounted=setWeaponAttachment(base,'opticMount','optic-hk-claw');
+ assert.equal(mounted.slots.opticMount,'optic-hk-claw');
+ const scoped=setWeaponAttachment(mounted,'optic','optic-reflex');
+ assert.equal(scoped.slots.optic,'optic-reflex');
+ assert.equal(scoped.slots.opticMount,'optic-hk-claw');
+ assert.equal(attachmentPrice('optic-hk-claw'),110);
+ assert.deepEqual(readWeaponConfiguration(JSON.parse(JSON.stringify(scoped)),'smg'),scoped);
+ const gun=buildWeaponSilhouette('smg',new THREE.MeshBasicMaterial(),
+  new THREE.MeshBasicMaterial(),scoped);
+ assert.equal(gun.children.filter(x=>x.userData.hkClawMount).length,8);
+ const accessory=buildWeaponAccessories(scoped,new THREE.MeshBasicMaterial(),
+  new THREE.MeshBasicMaterial());
+ assert.ok(accessory.children.length>=3);
+ const top=gun.children.find(x=>x.userData.hkClawMount==='rail');
+ const baseY=new THREE.Box3().setFromObject(top).max.y;
+ assert.ok(new THREE.Box3().setFromObject(accessory).min.y>baseY-.2,
+  'optic must be seated above actual rail');
+ clearWeaponSilhouette(gun);
+ accessory.traverse(x=>{if(x.geometry)x.geometry.dispose()});
+ const without=setWeaponAttachment(scoped,'opticMount','optic-mount-none');
+ assert.equal(without.slots.optic,'optic-irons');
+ const legacy=readWeaponConfiguration({...base,slots:{
+  ...base.slots,opticMount:undefined,optic:'optic-hk-claw'
+ }},'smg');
+ assert.equal(legacy.slots.opticMount,'optic-hk-claw');
+ assert.equal(legacy.slots.optic,'optic-irons');
+});
+test('AR integrated top and AK rail remain compatible under shared mounting rules',()=>{
+ const ar=selectWeaponFamilyPreset(initialWeaponConfiguration('carbine'),'ar-m4a1');
+ const arOptic=setWeaponAttachment(ar,'optic','optic-reflex');
+ assert.equal(arOptic.slots.optic,'optic-reflex');
+ assert.equal(arOptic.slots.opticMount,'optic-mount-none');
+ const ak=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'ak-ak74m');
+ assert.equal(setWeaponAttachment(ak,'optic','optic-reflex'),ak);
+ const fixed=proposeFamilyPartChange(ak.build,'rifle','handguard','ak-rail-long');
+ assert.equal(fixed.valid,true);
+ const withRail=readWeaponConfiguration({...ak,build:fixed.build},'rifle');
+ assert.equal(setWeaponAttachment(withRail,'optic','optic-reflex').slots.optic,
+  'optic-reflex');
 });
