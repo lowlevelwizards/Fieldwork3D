@@ -6433,7 +6433,10 @@ function tick(now:number){
           state.seconds-(1-Math.min(1,accum*60))/60:
           state.seconds),state.operators.map(a=>a.id)):null,
       replaying?replayDisclosure():null,
-      replaying?replayDoorHistory:null);
+      replaying?replayDoorHistory:null,
+      replaying&&replayContactObserverId?
+        replayPersonalGroundHistory?.at(replayTime,replayContactObserverId)??null:
+        null);
   const overlayBegin=perfOverlay?performance.now():0;
   render();
   if(replaying&&replayQuickVideo.active){
