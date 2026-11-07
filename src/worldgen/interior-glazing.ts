@@ -65,7 +65,9 @@ export function addInteriorGlazing(site:Site,seed:number):Site{
   windows.push({id:cut.aperture.id,x:candidate.middle.x,y:candidate.middle.y,
    width,vertical:Math.abs(candidate.wall.a.x-candidate.wall.b.x)<1,
    style:['garage','warehouse','utility'].includes(kind)?'industrial':'picture',
-   interior:true,sillHeight,headHeight:sillHeight===0?39:37});
+   // After the taller architecture pass, real opening heads must also
+   // clear tucked operators during a window climb; glass is still physical.
+   interior:true,sillHeight,headHeight:sillHeight===0?51:49});
   cover.push({x:candidate.middle.x,y:candidate.middle.y,
    w:Math.abs(candidate.wall.a.x-candidate.wall.b.x)<1?10:width,
    h:Math.abs(candidate.wall.a.x-candidate.wall.b.x)<1?width:10,
