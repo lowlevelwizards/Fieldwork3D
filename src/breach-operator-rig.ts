@@ -493,6 +493,13 @@ type CarryBlendState={
  * consumes a previous, unrecorded render frame. */
 const carryBlendStates=new WeakMap<OperatorRig,CarryBlendState>();
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
+  // Reconstruct source visibility from the authoritative inventory for
+  // EVERY timestamp. A previous render must never make a pickup socket
+  // disappear when replay seeks to the same or an earlier frame.
+  const previouslyHiddenV4=r.root.userData.reloadV4HiddenSource as
+    THREE.Mesh|undefined;
+  if(previouslyHiddenV4)previouslyHiddenV4.visible=true;
+  r.root.userData.reloadV4HiddenSource=null;
   let scratch=poseMath.get(r);
   if(!scratch){scratch=createOperatorPoseScratch();poseMath.set(r,scratch);}
   if(dt<0||r.lastTime>p.seconds+.03||p.seconds-r.lastTime>1.2){
@@ -1621,8 +1628,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       r.magazineHand.visible=false;
       r.detachedMagazine.visible=false;
     }
-    if(!v4SelectedPouchVisible(v3ReloadProgress))
+    if(!v4SelectedPouchVisible(v3ReloadProgress)){
       v4Magazine.visible=false;
+      r.root.userData.reloadV4HiddenSource=v4Magazine;
+    }
   }
   r.magazineHand.scale.set(
     p.weapon==='shotgun'?.48:1,p.weapon==='shotgun'?.55:1,1);
