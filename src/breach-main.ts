@@ -1,3 +1,4 @@
+import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {
   W,H,activeWorldBounds,WALLS,COVER,GRID,doorCenter,doorLeafSegment,activateSite,
   type Pt,type Segment,
@@ -4033,8 +4034,11 @@ function renderWeaponLights2D(){
 function renderGroundMarks(){
   for(const mark of state.impactMarks){
     if(!(replaying&&replayOmniscient)&&!liveVisibility(state,mark.p))continue;
+    const radius=mark.surface==='blood'?
+      confinedGroundRadius(mark.p,4,state.site?.walls??WALLS):2.5;
+    if(radius<.5)continue;
     draw.globalAlpha=Math.max(.18,.78-mark.age*.023);
-    circle(mark.p.x,mark.p.y,mark.surface==='blood'?4:2.5,
+    circle(mark.p.x,mark.p.y,radius,
       mark.surface==='blood'?'#914a44':
       mark.surface==='wood'?'#42332a':
       mark.surface==='stone'?'#363936':
