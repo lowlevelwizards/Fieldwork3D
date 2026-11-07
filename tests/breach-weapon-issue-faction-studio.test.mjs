@@ -51,7 +51,7 @@ test('encounter role maps to consistent visual issue and actual protection',()=>
  const boosted=enemyKitForEncounter({role:'occupant',weaponProfile:'prepared'},1937,0);
  assert.equal(boosted.equipment.slots.armor,'armor-soft');
 });
-test('starter rosters and new campaigns use concrete weapon families, old SMGs persist',()=>{
+test('starter rosters and new campaigns always resolve to concrete weapon families',()=>{
  const roster=initialRoster();
  for(const member of roster.members){
   assert.ok(member.weaponConfiguration.build,member.id);
@@ -66,7 +66,9 @@ test('starter rosters and new campaigns use concrete weapon families, old SMGs p
   assert.equal(operator.weapon,operator.weaponConfiguration.weapon);
  }
  const retired=initialWeaponConfiguration('smg');
- assert.deepEqual(resolveIssuedOrLegacy(retired,'smg','ar-m4a1'),retired);
+ const modern=resolveIssuedOrLegacy(retired,'smg','ar-m4a1');
+ assert.equal(modern.weapon,'smg');
+ assert.equal(modern.build?.parts.receiver,'hk-mp5-standard');
  const saved=initialWeaponConfiguration('rifle');
  assert.ok(resolveIssuedOrLegacy(saved,'rifle','ar-m16a2').build);
 });
