@@ -15,9 +15,16 @@ export function groundDistanceToSegment(p:Pt,wall:Pick<Segment,'a'|'b'>):number{
 export function confinedGroundRadius(p:Pt,radius:number,
  walls:readonly Pick<Segment,'a'|'b'>[],wallHalfWidth=4.5):number{
  let safe=Math.max(0,radius);
+ const shell=wallHalfWidth+.5;
  for(const wall of walls){
-  safe=Math.min(safe,Math.max(0,
-   groundDistanceToSegment(p,wall)-wallHalfWidth-.5));
+  // Broad phase: most room walls are nowhere near a 4-unit stain.
+  // Avoid expensive sqrt/distance math on all but local walls.
+  const reach=safe+shell;
+  if(p.x<Math.min(wall.a.x,wall.b.x)-reach||
+     p.x>Math.max(wall.a.x,wall.b.x)+reach||
+     p.y<Math.min(wall.a.y,wall.b.y)-reach||
+     p.y>Math.max(wall.a.y,wall.b.y)+reach)continue;
+  safe=Math.min(safe,Math.max(0,groundDistanceToSegment(p,wall)-shell));
   if(safe===0)break;
  }
  return safe;
