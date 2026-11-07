@@ -14,8 +14,7 @@ import {armorArmIntrusion,armorElbowPole}
 import {idleLifeAt} from './breach-idle-life.ts';
 import {lowReadyFamilyFit,lowReadyElbowPole}
  from './breach-low-ready-family-fit.ts';
-import {solveCoupledLowReady,type CoupledLowReadySolution}
- from './breach-coupled-low-ready.ts';
+import type {CoupledLowReadySolution} from './breach-coupled-low-ready.ts';
 import {poseClearanceEnvelope,evaluateSleeveArmorContact} from './breach-pose-clearance-envelope.ts';
 import {interpolateWeaponCarry,lowReadyBlendPhase}
  from './breach-low-ready-transition.ts';
@@ -45,8 +44,9 @@ import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
 import {directOperatorPose} from './breach-pose-director.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
-import {chooseV3SupportGrip} from './breach-pose-v3-support-grip.ts';
-import {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
+import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,
+ cachedSupportUpperBody} from './breach-unified-upper-body.ts';
+import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
@@ -522,15 +522,6 @@ const appearanceState=new WeakMap<OperatorRig,{
  key:string;downed:boolean;outfit:ReturnType<typeof resolvedWardrobe>
 }>();
 const poseMath=new WeakMap<OperatorRig,OperatorPoseScratch>();
-/** Results are keyed by visible equipment, authored weapon, and the actual
- * shoulder/yaw frame. No pose candidate search runs on every rendered frame. */
-const coupledIdleCache=new WeakMap<OperatorRig,{
- key:string;solution:CoupledLowReadySolution|null}>();
-/** Identical equipment and pose frames share a fitted solution. Limit
- * memory and avoid repeating a large cold search for every enemy/preview.
- * Solutions are only read/copied by the rig, never mutated in place. */
-const sharedCoupledPoseCache=new Map<string,CoupledLowReadySolution|null>();
-const MAX_SHARED_COUPLED_POSES=80;
 type CarryBlendState={
  lastCoupled:boolean;lastFit:WeaponFit|null;lastWeapon:WeaponId|null;
  from:WeaponFit|null;fromBends:[THREE.Vector3,THREE.Vector3]|null;
@@ -545,13 +536,6 @@ const carryBlendStates=new WeakMap<OperatorRig,CarryBlendState>();
  * Keep the base turn state separate and reset it on seek/spawn discontinuities.
  */
 const baseTurnAngles=new WeakMap<OperatorRig,{chest:number;head:number}>();
-/** One exact coordinated result per actor. Do not quantize aim or torso
- * angles: a rounded cache key can turn continuous motion into discrete pops.
- * The pure solver's local-space result is reusable only for identical inputs.
- */
-const coordinatedPoseCache=new WeakMap<OperatorRig,{
-  key:string;result:ReturnType<typeof solveV3CoordinatedPose>
-}>();
 
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Reconstruct source visibility from the authoritative inventory for
@@ -1414,32 +1398,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       // Offset chest yaw and subtract it from chest-local weapon yaw:
       // the physical shoulder axes and weapon/hand contacts stay coherent.
       const localYaw=relativeYaw-assistYaw;
-      const key=JSON.stringify([p.weapon,coupledConfig.build,
-        coupledConfig.slots,look.top,look.armorStyle,look.rigStyle,
-        poseWeight,Number(localYaw.toFixed(4)),
-        // Never reuse a forgiving result in the strict audit (or vice
-        // versa) when the same model and outfit are scrubbed in place.
-        !!p.poseV3Preview&&!p.poseV3StrictContact,
-        shoulders.map(v=>v.toArray().map(n=>Number(n.toFixed(3))))]);
-      const cache=coupledIdleCache.get(r);
-      if(cache?.key===key)return cache.solution;
-      let result:CoupledLowReadySolution|null;
-      if(sharedCoupledPoseCache.has(key))
-        result=sharedCoupledPoseCache.get(key)??null;
-      else{
-        result=solveCoupledLowReady({weapon:p.weapon,
-          configuration:coupledConfig,
-          armor:poseEnvelope!,
-          shoulders,nominalYaw:localYaw,
-          allowVisualOverlap:!!p.poseV3Preview&&!p.poseV3StrictContact});
-        sharedCoupledPoseCache.set(key,result);
-        if(sharedCoupledPoseCache.size>MAX_SHARED_COUPLED_POSES){
-          const oldest=sharedCoupledPoseCache.keys().next().value;
-          if(oldest!==undefined)sharedCoupledPoseCache.delete(oldest);
-        }
-      }
-      if(assistYaw===0)coupledIdleCache.set(r,{key,solution:result});
-      return result;
+      return cachedCoupledUpperBody(r,{
+        weapon:p.weapon,configuration:coupledConfig,
+        envelope:poseEnvelope!,shoulders,localYaw,poseWeight,
+        allowVisualOverlap:!!p.poseV3Preview&&!p.poseV3StrictContact
+      },assistYaw===0).result;
     };
     // Only the explicit Lab query may audition body/weapon coupling.
     // Normal gameplay, replay and authoritative aim retain original yaw.
@@ -1506,18 +1469,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Do not apply to shot-time ballistics or alter an approved coupled pose.
   if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
      !p.firing&&!p.down&&!p.surrender&&p.reload<=0){
-    const choice=chooseV3SupportGrip({
+    const supportSearch=cachedSupportUpperBody(r,{
       weapon:p.weapon,configuration:coupledConfig,fit,
       shoulder:shoulderFor(0),firingShoulder:shoulderFor(1),
       envelope:poseEnvelope!,
       mode:p.reload>0?'reload':p.aiming||handling==='ads'?
         'aim':'carry'
     });
+    const choice=supportSearch.result;
     fit=choice.fit;
     r.root.userData.poseV3SupportGrip={
       selected:choice.selected,fraction:choice.fraction,
       quality:choice.quality,candidates:choice.candidates,
-      reason:choice.reason
+      cached:supportSearch.cached,reason:choice.reason
     };
   }else r.root.userData.poseV3SupportGrip=null;
   // V3 Stage 6b: rotate the *chest* a few degrees and counter-rotate the
@@ -1592,28 +1556,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       !p.poseV3StrictContact;
     const allowVisualOverlap=!!p.poseV3Preview&&!p.firing&&
       !p.poseV3StrictContact;
-    // Exact-input, single-entry memo: unchanged pause/idle samples incur
-    // no repeated sleeve OBB candidate search. Any continuous pose change,
-    // outfit, assembly, action contact or constraint invalidates the result.
-    const coordinatedKey=JSON.stringify([
-      p.weapon,coupledConfig,outfit.armorStyle,outfit.rigStyle,outfit.top,
-      fit.origin.toArray(),fit.rotation.toArray(),
-      fit.stock.toArray(),fit.primary.toArray(),fit.support.toArray(),
-      shoulders.map(v=>v.toArray()),r.chest.rotation.toArray(),
-      releasedTarget?.toArray()??null,constraintMode,
-      allowReloadOverlap,allowVisualOverlap
-    ]);
-    const cached=coordinatedPoseCache.get(r);
-    const cacheHit=cached?.key===coordinatedKey;
-    const result=cacheHit?cached!.result:solveV3CoordinatedPose({
+    // Both expensive fitting strategies are owned by one coordinated
+    // authority; the pose renderer only consumes the selected result.
+    const solve=cachedCoordinatedUpperBody(r,{
       fit,weapon:p.weapon,configuration:coupledConfig,shoulders,
       chestRotation:r.chest.rotation,envelope,mode:constraintMode,
       releasedSupportTarget:releasedTarget,
       allowReloadOverlap,allowVisualOverlap
     });
-    if(!cacheHit)coordinatedPoseCache.set(r,{
-      key:coordinatedKey,result
-    });
+    const result=solve.result;
+    const cacheHit=solve.cached;
     r.root.userData.poseV3CoordinatedReport={
       cached:cacheHit===true,
       status:result.status,yaw:result.yaw,leanX:result.leanX,
