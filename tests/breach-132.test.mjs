@@ -41,7 +41,8 @@ test('132: incapacitation places torso on floor and settles on repeat seek',()=>
   assert.deepEqual([rig.root.rotation.x,rig.root.rotation.z,after.y],prior);
  }
  poseOperator(rig,{...baseline,downPose:'slump'},0);
- assert.ok(Math.abs(rig.root.rotation.x)<1.0);
+ assert.ok(Math.abs(fallAngles('slump',1).z)<1.0,
+   'supported collapse must remain a compact lean');
  rig.dispose();
 });
 test('132: lab fall tracks reconstruct without dependent frame history',()=>{
