@@ -6,6 +6,8 @@
 import type {WeaponId} from './breach-combat.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import type {ReloadMode} from './breach-magazines.ts';
+import type {WeaponFit} from './breach-weapon-pose.ts';
+import * as THREE from 'three';
 
 export type ReloadMechanism='ar-bolt-catch'|'ak-rocking'|
  'hk-roller'|'shell-tube'|'legacy';
@@ -91,4 +93,31 @@ export function reloadWeaponPresentationTarget(
  const p=ART[mechanism];
  return {yaw:p.yaw*k,pitch:p.pitch*k,roll:p.roll*k,
   forward:p.forward*k,up:p.up*k,side:p.side*k};
+}
+
+/** B25: the firearm itself enters an authored, mechanism-specific reload
+ * presentation. Only the opt-in Lab renderer calls this. Every contact
+ * point uses ONE rigid transform; no independent hand/stock teleport.
+ */
+export function choreographV4ReloadWeapon(
+ fit:WeaponFit,mode:ReloadMode,progress:number,mechanism:ReloadMechanism
+):{fit:WeaponFit;cue:ReloadAnimationCue}{
+ const cue=reloadAnimationCue(mechanism,mode,progress);
+ const p=reloadWeaponPresentationTarget(mechanism,mode,progress);
+ if(p.yaw===0&&p.pitch===0&&p.roll===0&&
+    p.forward===0&&p.up===0&&p.side===0)return {fit,cue};
+ const X=new THREE.Vector3(1,0,0),Y=new THREE.Vector3(0,1,0),
+  Z=new THREE.Vector3(0,0,1);
+ const spin=new THREE.Quaternion().setFromAxisAngle(Y,p.yaw)
+  .multiply(new THREE.Quaternion().setFromAxisAngle(Z,p.pitch))
+  .multiply(new THREE.Quaternion().setFromAxisAngle(X,p.roll));
+ const shift=new THREE.Vector3(p.forward,p.up,p.side);
+ const around=(v:THREE.Vector3)=>v.clone().sub(fit.stock)
+  .applyQuaternion(spin).add(fit.stock).add(shift);
+ const rotation=new THREE.Euler().setFromQuaternion(
+  spin.clone().multiply(new THREE.Quaternion()
+   .setFromEuler(fit.rotation)),'XYZ');
+ return {fit:{...fit,origin:around(fit.origin),rotation,
+   stock:fit.stock.clone().add(shift),
+   primary:around(fit.primary),support:around(fit.support)},cue};
 }
