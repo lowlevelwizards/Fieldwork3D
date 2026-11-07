@@ -7,6 +7,7 @@ import {ARMOR_PROFILES,RIG_FRONT_PROFILES} from './operator-armor-rig-silhouette
 import {rigContactFrame} from './operator-rig-contact-frame.ts';
 import {ARMOR_PROPORTIONS} from './operator-armor-proportions.ts';
 import {armorSideLayout} from './operator-armor-side-layout.ts';
+import {LOW_READY_CONTACT_LIMITS,poseContactBudget} from './breach-pose-contact-policy.ts';
 import {ARMOR_PANEL_DEPTHS} from './operator-uniform-fit-envelope.ts';
 import type {RiflePoint} from './breach-weapon-contact-zones.ts';
 export type ContactMaterial='rigid'|'structured'|'soft';
@@ -146,12 +147,7 @@ export function armArmorPenetration(shoulder:RiflePoint,elbow:RiflePoint,
 // AABBs (15-axis separating-axis test). Broad-phase legacy capsule helpers
 // above remain for old callers. The rig's real garments are 3.9 x 4.0 upper,
 // 3.4 x 3.5 lower; no global narrowing/hidden sleeve geometry is permitted.
-export const LOW_READY_CONTACT_LIMITS={
- rigid:.12,structured:.34,soft:.56,
- /** Extreme compression is capped even in the deep carry archetype. */
- maximumSoftScale:1.65,
- proximalUpperSeam:.16
-} as const;
+export {LOW_READY_CONTACT_LIMITS} from './breach-pose-contact-policy.ts';
 export type SleeveContactResult={
  valid:boolean;hardDepth:number;softDepth:number;quality:number;
  contacts:readonly {label:PoseBox['label'];material:ContactMaterial;
@@ -231,17 +227,8 @@ export function evaluateSleeveArmorContact(
   const lower=sleeveBoxPenetration(elbow,wrist,3.4,3.5,volume);
   const depth=Math.max(upper,lower);
   if(depth<=0)continue;
-  const baseline=LOW_READY_CONTACT_LIMITS[volume.material];
-  const allowed=volume.material==='rigid'?baseline:baseline*scale;
-  // The outer sleeve is sewn beneath a thick flak/legacy shoulder-wrap.
-  // That proximal UPPER ARM interface is an attachment seam, not an
-  // obstacle spanning all the way through the arm. A forearm crossing
-  // that side wrap is still checked to the original tight budget.
-  const shoulderWrap=volume.label==='side-armor'&&
-   (env.armor==='soft-flak'||env.armor==='plate-legacy'||
-    env.armor==='soft-vest');
-  const upperAllowed=shoulderWrap?Math.max(allowed,
-   env.armor==='plate-legacy'?2.72:2.50):allowed;
+  const {upper:upperAllowed,lower:allowed}=
+   poseContactBudget(volume,env,scale);
   if(volume.material==='rigid')hardDepth=Math.max(hardDepth,depth);
   else softDepth=Math.max(softDepth,depth);
   if(upper>upperAllowed+.001||lower>allowed+.001)valid=false;
