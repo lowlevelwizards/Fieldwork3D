@@ -146,8 +146,7 @@ export async function appendReplayChunkV2(
     const tx=db.transaction([DRAFTS,CHUNKS],'readwrite');
     const done=completed(tx);
     const drafts=tx.objectStore(DRAFTS);
-    const draft=await req(drafts.get(generation)
-      as IDBRequest<ReplayChunkDraft|undefined>);
+    const draft=await req<ReplayChunkDraft|undefined>(drafts.get(generation));
     if(!draft)throw Error('Replay draft not found');
     const expectedIndex=draft.boundaries.length;
     const expectedCount=Math.min(draft.chunkFrames,
@@ -184,16 +183,14 @@ export async function commitChunkedReplayV2(
     const tx=db.transaction([DRAFTS,CHUNKS,PUBLISHED],'readwrite');
     const done=completed(tx);
     const drafts=tx.objectStore(DRAFTS);
-    const draft=await req(drafts.get(generation)
-      as IDBRequest<ReplayChunkDraft|undefined>);
+    const draft=await req<ReplayChunkDraft|undefined>(drafts.get(generation));
     if(!draft)throw Error('Replay draft not found');
     if(draft.writtenFrames!==draft.frameCount||
       draft.boundaries.length!==
         Math.ceil(draft.frameCount/draft.chunkFrames))
       throw Error('Cannot publish an incomplete replay recording');
     const published=tx.objectStore(PUBLISHED);
-    const previous=await req(published.get(draft.id)
-      as IDBRequest<ReplayChunkPublished|undefined>);
+    const previous=await req<ReplayChunkPublished|undefined>(published.get(draft.id));
     if((previous?.generation??null)!==draft.previousGeneration)
       throw Error('Replay was replaced during this staged write');
     const release:ReplayChunkPublished={
@@ -221,8 +218,7 @@ export async function discardChunkedReplayDraftV2(
   try{
     const tx=db.transaction([DRAFTS,CHUNKS],'readwrite');
     const done=completed(tx);
-    const draft=await req(tx.objectStore(DRAFTS).get(generation)
-      as IDBRequest<ReplayChunkDraft|undefined>);
+    const draft=await req<ReplayChunkDraft|undefined>(tx.objectStore(DRAFTS).get(generation));
     if(!draft){await done;return false;}
     for(const b of draft.boundaries)
       tx.objectStore(CHUNKS).delete([generation,b.index]);
@@ -256,8 +252,7 @@ export async function getPublishedChunkedReplayV2(
   try{
     const tx=db.transaction(PUBLISHED,'readonly');
     const done=completed(tx);
-    const release=await req(tx.objectStore(PUBLISHED).get(id)
-      as IDBRequest<ReplayChunkPublished|undefined>);
+    const release=await req<ReplayChunkPublished|undefined>(tx.objectStore(PUBLISHED).get(id));
     await done;
     return release??null;
   }finally{db.close();}
@@ -267,9 +262,8 @@ Promise<readonly ReplayFrame[]>{
   const db=await open();
   try{
     const tx=db.transaction(CHUNKS,'readonly'),done=completed(tx);
-    const data=await req(tx.objectStore(CHUNKS).get([generation,index])
-      as IDBRequest<{generation:string;index:number;
-        frames:ReplayFrame[]}|undefined>);
+    const data=await req<{generation:string;index:number;frames:ReplayFrame[]}|undefined>(
+      tx.objectStore(CHUNKS).get([generation,index]));
     await done;
     if(!data||data.index!==index||data.generation!==generation||
       !Array.isArray(data.frames)||
