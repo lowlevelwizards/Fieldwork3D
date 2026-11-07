@@ -93,7 +93,34 @@ try{
   await capture('18-net-front','front');
   await capture('19-net-side','side');
   await capture('20-net-back','back');
+  // Record the tiny rear cat-eyes and a single true three-quarter orbit.
+  // This catches visually wrong face-strap silhouettes, diagonal net
+  // crossings, and fabric seams that front/side orthographic views miss.
+  await conceal.selectOption('none');
+  await capture('21-elastic-cat-eyes-back','back');
+  const orbit=async()=>{
+   await page.locator('[data-studio-view="front"]').click();
+   const bounds=await page.locator('#studioCanvas').boundingBox();
+   if(!bounds)throw Error('PASGT orbit capture canvas missing');
+   const x=bounds.x+bounds.width*.52,y=bounds.y+bounds.height*.48;
+   await page.mouse.move(x,y);
+   await page.mouse.down();
+   await page.mouse.move(x-128,y-50,{steps:10});
+   await page.mouse.up();
+   await page.waitForTimeout(260);
+  };
+  await orbit();
+  await stage.screenshot({path:'pasgt-p5-captures/22-m81-three-quarter.png'});
+  await conceal.selectOption('foliage');
+  await page.waitForTimeout(250);
+  await stage.screenshot({path:'pasgt-p5-captures/23-foliage-three-quarter.png'});
+  await conceal.selectOption('scrim');
+  await page.waitForTimeout(250);
+  await stage.screenshot({path:'pasgt-p5-captures/24-scrim-three-quarter.png'});
+  await conceal.selectOption('net');
+  await page.waitForTimeout(250);
+  await stage.screenshot({path:'pasgt-p5-captures/25-net-three-quarter.png'});
   if(errors.length)throw Error('PASGT visual probe page errors: '+errors.join('; '));
-  console.log('PASGT actual WebGL captures: 20 cover, band and field-dress angles verified');
+  console.log('PASGT WebGL captures: 25 cover, band, retention and field dress viewpoints');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

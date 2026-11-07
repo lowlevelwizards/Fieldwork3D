@@ -359,7 +359,7 @@ export function createPasgtRetentionGeometry():THREE.BufferGeometry{
  */
 export function createPasgtCatEyesGeometry(covered:boolean):THREE.BufferGeometry{
  const back=PASGT_RING_SAMPLES.find(s=>s.side==='rear')!;
- const z=pasgtRingPoint(back,'ramp')[2]+(covered?.15:.12);
+ const z=pasgtRingPoint(back,'ramp')[2]+(covered?.15:-.005);
  const data:number[]=[];
  for(const x of [-2.10,2.10]){
   const a=[x-.62,5.70,z],b=[x+.62,5.70,z],
