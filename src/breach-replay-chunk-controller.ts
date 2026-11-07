@@ -100,7 +100,7 @@ export class ReplayChunkPlaybackController{
     this.busyToken=request;
     try{
       const result=await this.bridge.seek(target);
-      if(this.mode==='closed')return this.result('closed');
+      if(this.status==='closed')return this.result('closed');
       if(request!==this.serial)return this.result('superseded');
       if(result.status!=='ready')
         return this.result(result.status==='closed'?'closed':'superseded');
@@ -140,14 +140,14 @@ export class ReplayChunkPlaybackController{
       // cursor may be ahead of the displayed time. Seek back, silently.
       if(this.syncRequired){
         const aligned=await this.bridge.seek(this.clock);
-        if(request!==this.serial||this.mode==='closed')
+        if(request!==this.serial||this.status==='closed')
           return this.result('superseded');
         if(aligned.status!=='ready')
           throw Error('Could not resynchronize replay history');
         this.syncRequired=false;
       }
       const result=await this.bridge.advance(dt,this.rateValue);
-      if(request!==this.serial||this.mode==='closed')
+      if(request!==this.serial||this.status==='closed')
         return this.result('superseded');
       if(result.status!=='ready')
         return this.result(result.status==='closed'?'closed':'superseded');
