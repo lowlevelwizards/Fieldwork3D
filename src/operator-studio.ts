@@ -14,8 +14,8 @@ import {applyOperatorStudioToon,requestedOperatorToonBands}
 import {OperatorStudioLighting} from './operator-studio-lighting.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
-import {readPasgtDetails,PASGT_BANDS,PASGT_CONSTRUCTIONS,PASGT_CONCEALMENTS}
- from './operator-pasgt-cover-policy.ts';
+import {readPasgtDetails,resolvePasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
+ pasgtConcealmentRequiresSlits} from './operator-pasgt-cover-policy.ts';
 import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup,
  HELMET_COVER_OPTIONS,HELMET_RAIL_OPTIONS,HELMET_SHROUD_OPTIONS,
  HELMET_NVG_OPTIONS,HELMET_SCRIM_OPTIONS,HELMET_RETENTION_OPTIONS,
@@ -533,7 +533,7 @@ function undo(){
  say('RESTORED PREVIOUS APPEARANCE');refresh();
 }
 undoButton.addEventListener('click',undo);
-const MATERIAL_LABELS=/^(SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|PASGT SHELL COLOR|PASGT CLOTH COVER|PASGT COVER PATTERN|COVER CONSTRUCTION|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
+const MATERIAL_LABELS=/^(SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|PASGT SHELL COLOR|PASGT CLOTH COVER|PASGT COVER PATTERN|FOLIAGE SLITS|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
 function studioSectionKind(node:HTMLElement):'materials'|'details'{
  return node.dataset.studioStep==='materials'?'materials':'details';
 }
@@ -1048,14 +1048,18 @@ function renderMaterials(){
    addSelect(coverRow,[['none','NO COVER'],['fitted','COVER']] as const,
     state.setup.cover==='none'?'none':'fitted',id=>updateCover(id==='fitted'));
    if(state.setup.cover!=='none'){
-    const audition=row('COVER CONSTRUCTION · AUDITION',
-     'Compare restrained foliage slits against wider stitched loops; keep only the stronger look.');
-    for(const id of PASGT_CONSTRUCTIONS)
-     audition.append(makeButton(
-      id==='slits'?'A · FIELD FOLIAGE SLITS':'B · SEWN FOLIAGE LOOPS',
-      details.construction===id,()=>changeWardrobe({...current(),
+    const effective=resolvePasgtDetails(w.pasgtDetails,w.helmetSetup);
+    const slitRow=row('FOLIAGE SLITS',
+     'Simple fabric cuts for leaves or scrim, not protruding sewn loops.');
+    if(pasgtConcealmentRequiresSlits(details.concealment)){
+     slitRow.append(makeButton('ON · REQUIRED BY '+details.concealment.toUpperCase(),
+      true,()=>{}));
+    }else{
+     addSelect(slitRow,[['off','NO SLITS'],['on','FOLIAGE SLITS']] as const,
+      effective.slits?'on':'off',v=>changeWardrobe({...current(),
        pasgtDetails:{...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
-        construction:id}})));
+        slits:v==='on'}}));
+    }
     if(prints.length){
      const printRow=row('PASGT COVER PATTERN',
       'Printed textile only. The helmet shell keeps its own solid color.');
@@ -1067,18 +1071,20 @@ function renderMaterials(){
     }
    }
    const bandRow=row('PASGT HELMET BAND',
-    'Three different external arrangements, not tiny buckle variations.');
+    'One chunky elastic retaining band above the brow, continued across the upper nape.');
    addSelect(bandRow,PASGT_BANDS.map(id=>[
-    id,id==='none'?'NONE':id==='standard'?'STANDARD HORIZONTAL':'CROSSED WEBBING'] as const),
+    id,id==='none'?'NONE':'CHUNKY ELASTIC BAND'] as const),
     details.band,id=>changeWardrobe({...current(),pasgtDetails:{
      ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
      band:id as typeof details.band}}));
-   const concealRow=row('PASGT CONCEALMENT',
-    'Choose one strong silhouette treatment rather than stacking garnish.');
-   addSelect(concealRow,PASGT_CONCEALMENTS.map(id=>[id,id.toUpperCase()] as const),
-    details.concealment,id=>changeWardrobe({...current(),pasgtDetails:{
-     ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
-     concealment:id as typeof details.concealment}}));
+   if(state.setup.cover!=='none'){
+    const concealRow=row('PASGT CONCEALMENT',
+     'Foliage and scrim automatically reveal the required foliage slits.');
+    addSelect(concealRow,PASGT_CONCEALMENTS.map(id=>[id,id.toUpperCase()] as const),
+     details.concealment,id=>changeWardrobe({...current(),pasgtDetails:{
+      ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
+      concealment:id as typeof details.concealment}}));
+   }
   }
   if(item==='police-helmet'){
    const pos=row('POLICE PROTECTIVE VISOR',
