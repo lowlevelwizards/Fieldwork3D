@@ -959,42 +959,52 @@ export class TacticalScene3D{
         const middle=door.kind==='sliding'?0:(invert?-1:1)*length/2;
         if(style==='mesh-gate'){
           const frameMaterial=this.solid(0x586665,.8,'industrial-steel');
-          for(const sign of [-1,1])this.box(leaf,middle+sign*(length/2-2),18,0,3,35,3,frameMaterial,false);
-          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,3,3,frameMaterial,false);
+          for(const sign of [-1,1])this.box(leaf,middle+sign*(length/2-2),
+            DOOR_LEAF_VISUAL_HEIGHT/2,0,3,DOOR_LEAF_VISUAL_HEIGHT,3,
+            frameMaterial,false);
+          for(const y of [3,DOOR_LEAF_VISUAL_HEIGHT-3])this.box(leaf,middle,y,0,length-4,3,3,frameMaterial,false);
           for(let x=-length/2+7;x<length/2-3;x+=9)
-            this.box(leaf,middle+x,18,0,1,28,1,frameMaterial,false);
-          for(const y of [11,21,31])this.box(leaf,middle,y,0,length-6,1,1,frameMaterial,false);
+            this.box(leaf,middle+x,DOOR_LEAF_VISUAL_HEIGHT/2,0,
+              1,DOOR_LEAF_VISUAL_HEIGHT-6,1,frameMaterial,false);
+          for(const y of [11,25,39])this.box(leaf,middle,y,0,length-6,1,1,frameMaterial,false);
         }else if(style==='french'||style==='screen'){
           for(const sign of [-1,1])
-            this.box(leaf,middle+sign*(length/2-3),18,0,
-              3.2,34,profile.leafThickness,metal,false);
-          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,
+            this.box(leaf,middle+sign*(length/2-3),
+              DOOR_LEAF_VISUAL_HEIGHT/2,0,
+              3.2,DOOR_LEAF_VISUAL_HEIGHT,profile.leafThickness,metal,false);
+          for(const y of [3,DOOR_LEAF_VISUAL_HEIGHT-3])this.box(leaf,middle,y,0,length-4,
               3.4,profile.leafThickness,metal,false);
           if(style==='french'){
-            const pane=this.box(leaf,middle,18,0,length-8,29,1,doorGlass,false);
+            const pane=this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
+              length-8,DOOR_LEAF_VISUAL_HEIGHT-8,1,doorGlass,false);
             pane.castShadow=false;glassPane=pane;
-            for(const y of [12,24])this.box(leaf,middle,y,0,length-5,2,3,metal,false);
-            this.box(leaf,middle,18,0,2,30,3,metal,false);
+            for(const y of [15,32])this.box(leaf,middle,y,0,length-5,2,3,metal,false);
+            this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,2,
+              DOOR_LEAF_VISUAL_HEIGHT-7,3,metal,false);
           }else{
             for(let x=-length/2+5;x<length/2-2;x+=7)
-              this.box(leaf,middle+x,18,0,.9,29,1,metal,false);
+              this.box(leaf,middle+x,DOOR_LEAF_VISUAL_HEIGHT/2,0,.9,
+                DOOR_LEAF_VISUAL_HEIGHT-8,1,metal,false);
           }
         }else if(style==='glazed'){
-          const pane=this.box(leaf,middle,18,0,length-8,29,1,doorGlass,false);
+          const pane=this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
+              length-8,DOOR_LEAF_VISUAL_HEIGHT-8,1,doorGlass,false);
           pane.castShadow=false;glassPane=pane;
           for(const sign of [-1,1])
-            this.box(leaf,middle+sign*(length/2-3),18,0,
-              3.2,34,profile.leafThickness,metal,false);
-          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,
+            this.box(leaf,middle+sign*(length/2-3),
+              DOOR_LEAF_VISUAL_HEIGHT/2,0,
+              3.2,DOOR_LEAF_VISUAL_HEIGHT,profile.leafThickness,metal,false);
+          for(const y of [3,DOOR_LEAF_VISUAL_HEIGHT-3])this.box(leaf,middle,y,0,length-4,
               3.8,profile.leafThickness,metal,false);
-          this.box(leaf,middle,18,0,length-5,2.3,3,metal,false);
+          this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
+            length-5,2.3,3,metal,false);
         }else this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
           length-4,DOOR_LEAF_VISUAL_HEIGHT,
           profile.leafThickness,panel);
         if(style==='wood'){
           // Quiet manufactured two-panel door joinery; no floorboard motif.
           const inset=this.solid(theme.door,.9,'painted-wood');
-          for(const y of [12,26]){
+          for(const y of [12,26,40]){
             this.box(leaf,middle,y,
               profile.leafThickness/2+.16,length*.64,10,.7,inset,false);
             for(const sx of [-1,1])
@@ -1015,17 +1025,20 @@ export class TacticalScene3D{
             this.box(leaf,middle,y,2.5,length*.78,2.2,1.2,metal,false);
         }
         if(style==='louvered'){
-          for(let y=7;y<31;y+=4)this.box(leaf,middle,y,3,length*.77,1.2,1.4,metal,false);
+          for(let y=7;y<DOOR_LEAF_VISUAL_HEIGHT-4;y+=4)this.box(leaf,middle,y,3,length*.77,1.2,1.4,metal,false);
         }
         if(style==='barn'){
           for(const x of [-length*.31,length*.31])
-            this.box(leaf,middle+x,18,3,2.5,29,3,metal,false);
-          this.box(leaf,middle,18,3,length*.84,3,2,metal,false);
+            this.box(leaf,middle+x,DOOR_LEAF_VISUAL_HEIGHT/2,3,2.5,
+              DOOR_LEAF_VISUAL_HEIGHT-8,3,metal,false);
+          this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,3,
+            length*.84,3,2,metal,false);
         }
         if(style==='fire')this.box(leaf,middle,17,4,length*.66,2.5,3.5,metal,false);
         if(style==='reinforced')
           for(const x of [-length*.30,length*.30])
-            this.box(leaf,middle+x,17,2.5,2,30,1.4,metal,false);
+            this.box(leaf,middle+x,DOOR_LEAF_VISUAL_HEIGHT/2,2.5,2,
+              DOOR_LEAF_VISUAL_HEIGHT-7,1.4,metal,false);
         if(style==='exit'){
           const bar=this.solid(0xc5ad88);
           this.box(leaf,middle,18,3.6,length*.75,2.2,3.2,bar,false);
@@ -1036,7 +1049,7 @@ export class TacticalScene3D{
       for(const mark of marksOn('door',doorIndex)){
         const middle=(door.hinge==='b'?-1:1)*length/2;
         this.addSurfaceWear(leaf,mark,middle+(mark.u-.5)*(length-8),
-          7+mark.v*24,profile.leafThickness/2+.27,
+          7+mark.v*(DOOR_LEAF_VISUAL_HEIGHT-14),profile.leafThickness/2+.27,
           door.style==='wood'?'door-wood':'painted-metal');
       }
       const halo=door.kind==='sliding'?new THREE.Group():doorSweepArc(door,length);
