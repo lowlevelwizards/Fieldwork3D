@@ -238,6 +238,56 @@ export function probeWindowCrossing(from:Pt,to:Pt,world:CrossingWorld,
  // No ambiguous automatic choice across multiple apertures.
  return valid.length===1?valid[0]:null;
 }
+/**
+ * Find a traversable window PORTAL rather than demanding that the direct
+ * actor-to-goal segment pass exactly through the glass. Only an accessible
+ * approach, a verified timed climb and a reachable exit form a shortcut.
+ * The caller supplies its own known-world or physical-world route search.
+ */
+export type WindowPortalRoute={
+ crossing:TraverseOpportunity;approachPath:Pt[];exitPath:Pt[];
+ duration:number;
+};
+export function probeWindowPortalRoute(from:Pt,to:Pt,world:CrossingWorld,
+ route:(start:Pt,end:Pt)=>Pt[],fit:TraverseFitness={},
+ speed=53):WindowPortalRoute|null{
+ if(fit.injury===3||!world.windows?.length)return null;
+ let best:WindowPortalRoute|null=null;
+ for(const window of world.windows){
+  if(!canClimbWindow(window))continue;
+  const normal=window.vertical?{x:1,y:0}:{x:0,y:1};
+  const a=(from.x-window.x)*normal.x+(from.y-window.y)*normal.y;
+  const b=(to.x-window.x)*normal.x+(to.y-window.y)*normal.y;
+  if(a*b>=0||Math.abs(a)<1||Math.abs(b)<1)continue;
+  const obstacle=world.cover.find(o=>
+    (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
+    Math.hypot(o.x-window.x,o.y-window.y)<1);
+  if(!obstacle)continue;
+  const side=a>0?1:-1;
+  const thickness=window.vertical?obstacle.w:obstacle.h;
+  const offset=thickness/2+OPERATOR_RADIUS+4;
+  const approach={x:window.x+normal.x*side*offset,
+    y:window.y+normal.y*side*offset};
+  const landing={x:window.x-normal.x*side*offset,
+    y:window.y-normal.y*side*offset};
+  // Reuse the exact existing crossing validator. Never waive a wall,
+  // closed pane, cover collider, teammate or landing clearance.
+  const crossing=probeWindowCrossing(approach,landing,
+    {...world,windows:[window]},fit);
+  if(!crossing)continue;
+  const before=route(from,approach),after=route(landing,to);
+  if((distance(from,approach)>3&&!before.length)||
+     (distance(landing,to)>3&&!after.length))continue;
+  const length=traversalRouteLength(from,before)+
+    traversalRouteLength(landing,after);
+  const duration=length/Math.max(15,speed)+crossing.duration;
+  if(!best||duration<best.duration)best={
+    crossing:{...crossing,from:{...from},destination:{...to}},
+    approachPath:before.length?before:[approach],
+    exitPath:after,duration};
+ }
+ return best;
+}
 /** Shared shape/clearance contract for an openable or broken pane.
  * Bars, boards, overhead glazing and narrow/high apertures aren't shortcuts.
  */
