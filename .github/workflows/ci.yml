@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 # Each updated PR supersedes its own obsolete CI run; manual audits are independent.
 # The AO suffix isolates this focused release from a superseded, stuck broad
 # AO test run. Other PRs retain their existing concurrency grouping.
@@ -20,6 +21,11 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Production release preflight — Pages queue and live build
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       - name: Squad Flow A — partial stride, real-door motor and autonomy gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
         run: |
