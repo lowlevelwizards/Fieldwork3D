@@ -70,7 +70,7 @@ import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {sampleBodycamSocket,applyBodycamCamera,
   type BodycamSetting} from './breach-replay-bodycam.ts';
 import type {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
-import {personalDecorVisible}
+import {personalDecorVisible,personalCoverVisible}
   from './breach-replay-personal-visibility.ts';
 import {interpolatedActor,type RenderFrame}
   from './breach-frame-interpolation.ts';
@@ -1755,10 +1755,9 @@ export class TacticalScene3D{
         item.index,omniscient)!=='unknown';
       // Physically blocking structural WALLS never disappear in a POV.
       // Only decorative/cover meshes use recorded personal ground memory.
-      item.obj.visible=bodycamAudition&&item.kind==='cover'?
-        personalDecorVisible(squadKnown,true,personalGroundEvidence,
-          {x:COVER[item.index]?.x??NaN,y:COVER[item.index]?.y??NaN}):
-        squadKnown;
+      item.obj.visible=item.kind==='cover'?
+        personalCoverVisible(squadKnown,bodycamAudition,personalGroundEvidence,
+          s.coverState[item.index]??null):squadKnown;
     }
     // Unlike the room's floor, decorative props must be individually
     // seen (or remembered at their own position) before they are rendered.

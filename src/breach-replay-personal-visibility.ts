@@ -25,3 +25,17 @@ export function personalDecorVisible(
 ):boolean{
   return bodycamActive?personalGroundEvidenceAt(discovered,p):squadKnown;
 }
+
+/** A pushed fixture's CURRENT recorded coordinates are the evidence key.
+ * Never reveal it from a cell occupied in a different moment, nor from
+ * the authored layout or a remembered teammate discovery.
+ */
+export function personalCoverVisible(
+  squadKnown:boolean,bodycamActive:boolean,
+  discovered:ReadonlySet<string>|null|undefined,
+  recordedPosition:Pt|null|undefined
+):boolean{
+  if(!bodycamActive)return squadKnown;
+  return !!recordedPosition&&
+    personalGroundEvidenceAt(discovered,recordedPosition);
+}
