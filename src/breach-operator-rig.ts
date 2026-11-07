@@ -48,9 +48,10 @@ import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,
  cachedSupportUpperBody} from './breach-unified-upper-body.ts';
 import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
-import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
-import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
-  from './breach-handling-transition.ts';
+import type {HandlingProfile} from './breach-handling-profiles.ts';
+import type {HandlingTransition} from './breach-handling-transition.ts';
+import {sampleHandlingTransition,sampleCarryTransition}
+ from './breach-pose-transition-director.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
@@ -522,14 +523,6 @@ const appearanceState=new WeakMap<OperatorRig,{
  key:string;downed:boolean;outfit:ReturnType<typeof resolvedWardrobe>
 }>();
 const poseMath=new WeakMap<OperatorRig,OperatorPoseScratch>();
-type CarryBlendState={
- lastCoupled:boolean;lastFit:WeaponFit|null;lastWeapon:WeaponId|null;
- from:WeaponFit|null;fromBends:[THREE.Vector3,THREE.Vector3]|null;
- started:number;duration:number;lastSeconds:number;
-};
-/** Visual-only state for live transitions. Deterministic replay never
- * consumes a previous, unrecorded render frame. */
-const carryBlendStates=new WeakMap<OperatorRig,CarryBlendState>();
 /** Unmodified turn targets are the ONLY history used for live yaw smoothing.
  * The rendered chest/head also receive procedural and fitting offsets, so
  * smoothing from their final Euler angles feeds those offsets back every frame.
@@ -1047,34 +1040,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   });
   const {treatmentActive,reloadActive,reloadProgress,reloadMode,
     throwAge,throwActive,doorAge,doorActive,handOwners}=actionState;
-  const passiveBlend=!p.deterministic&&!p.handlingOverride&&
-    !p.aiming&&!p.firing&&!p.down&&!p.surrender;
-  if(!p.handlingOverride&&handling!==r.lastHandling){
-    if(passiveBlend&&r.lastHandling){
-      r.autoHandling={from:r.lastHandling,to:handling,alpha:0,
-        at:p.seconds,
-        fromProfile:r.handlingProfile??handlingProfile(r.lastHandling,p.weapon),
-        fromWeapon:{origin:r.weapon.position.clone(),
-          rotation:r.weapon.rotation.clone()}};
-    }else r.autoHandling=null;
-    r.lastHandling=handling;r.lastHandlingAt=p.seconds;
-  }
-  const auto=r.autoHandling&&passiveBlend?{
-    ...r.autoHandling,alpha:smoothHandling(
-      (p.seconds-r.autoHandling.at)/.24)}:undefined;
-  if(!passiveBlend)r.autoHandling=null;
-  if(auto&&auto.alpha>=1)r.autoHandling=null;
-  const activeTransition=p.handlingTransition??auto;
-  // Lab stance-to-stance switching must solve the authored destination
-  // before blending. Live/replay and action tracks retain existing authority.
-  const authoredLabSwitch=!!p.poseV3Preview&&
-    !!p.handlingTransition?.authoredFrom&&!!p.handlingOverride&&
-    !p.down&&!p.surrender&&p.reload<=0;
-  const profile=activeTransition?
-    blendedHandlingProfile(activeTransition.from,
-      activeTransition.to,activeTransition.alpha,p.weapon,
-      activeTransition.fromProfile):
-    handlingProfile(handling,p.weapon);
+  // The transition director is the sole owner of handling history and
+  // interpolation; the rig remains only the final pose renderer.
+  const {active:activeTransition,authoredLabSwitch,profile}=
+    sampleHandlingTransition(r,p,handling);
   // Explicit laboratory stances can shift the chest/weight. Live combat
   // retains the authoritative shot-time muzzle/chest transform until the
   // equivalent shot-time balance transform is integrated.
@@ -1602,43 +1571,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       coupled=null;coordinatedDynamic=null;
     }
   }
-  let carryTransitionActive=false,carryTransitionAlpha=1;
-  let carryTransitionBends:[THREE.Vector3,THREE.Vector3]|null=null;
-  if(!p.deterministic&&!p.down&&!p.surrender){
-    let bridge=carryBlendStates.get(r);
-    if(!bridge){
-      bridge={lastCoupled:!!coupled,lastFit:null,lastWeapon:null,
-        from:null,fromBends:null,started:p.seconds,duration:.25,
-        lastSeconds:p.seconds};
-      carryBlendStates.set(r,bridge);
-    }
-    if(p.seconds<bridge.lastSeconds-.01||
-       p.seconds-bridge.lastSeconds>1.2||
-       bridge.lastWeapon!==null&&bridge.lastWeapon!==p.weapon){
-      bridge.from=null;bridge.fromBends=null;
-      bridge.lastFit=null;bridge.lastCoupled=!!coupled;
-    }
-    if(bridge.lastFit&&bridge.lastCoupled!==!!coupled){
-      bridge.from=bridge.lastFit;
-      bridge.fromBends=[r.arms[0].bend.clone(),r.arms[1].bend.clone()];
-      bridge.started=p.seconds;
-      bridge.duration=coupled?.34:.22;
-    }
-    bridge.lastCoupled=!!coupled;
-    bridge.lastWeapon=p.weapon;
-    bridge.lastSeconds=p.seconds;
-    if(bridge.from){
-      const alpha=(p.seconds-bridge.started)/bridge.duration;
-      if(alpha>=1){bridge.from=null;bridge.fromBends=null;}
-      else{
-        carryTransitionActive=true;
-        carryTransitionAlpha=lowReadyBlendPhase(alpha);
-        carryTransitionBends=bridge.fromBends;
-        fit=interpolateWeaponCarry(bridge.from,fit,alpha);
-      }
-    }
-    bridge.lastFit=fit;
-  }
+  const carryTransition=sampleCarryTransition(r,p,fit,!!coupled);
+  fit=carryTransition.fit;
+  const carryTransitionActive=carryTransition.active;
+  const carryTransitionAlpha=carryTransition.alpha;
+  const carryTransitionBends=carryTransition.bends;
   r.gripError=fit.contactError;
   r.stockError=fit.stockError;
   // Contact coordinates and visible weapon use one rigid transform.
