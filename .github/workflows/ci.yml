@@ -155,7 +155,7 @@ jobs:
       - name: Rendering R7 — Studio lifecycle, lighting parity and build gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r7-rendering-') }}
         run: |
-          node --experimental-strip-types --test tests/rendering-r7-studio-foundation.test.mjs tests/operator-studio-toon-r5.test.mjs tests/ux-r2-studio-flow.test.mjs
+          node --experimental-strip-types --test tests/rendering-r7-studio-foundation.test.mjs tests/operator-studio-toon-r5.test.mjs tests/quick-play-startup-progress.test.mjs
           npm run build
       - name: Operator Lighting R5 — focused Studio, baked lighting and production build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lighting-r5-') }}
