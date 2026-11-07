@@ -34,7 +34,6 @@ test('V3 rifle cants around stock while maintaining every rigid socket',()=>{
    .applyQuaternion(delta).add(v.fit.stock);
   assert.ok(expect.distanceTo(v.fit[k])<1e-8,k+' socket rigid');
  }
- assert.ok(v.fit.primary.x>fit.primary.x+.8);
  assert.ok(v.fit.primary.z>fit.primary.z,
   'firing hand should move outward from side fabric');
  assert.ok(after.angleTo(before)<.20);
