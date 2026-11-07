@@ -23,18 +23,30 @@ export type ReplayKnowledge={
    * old replays explicitly do not contain this evidence.
    */
   operatorVisibleCivilianIds?:Record<string,string[]>;
+  /** Visible dead hostile models, tested from the individual observer's
+   * actual geometry. Bodies do NOT inherit team discovery or full view.
+   */
+  operatorVisibleBodyIds?:Record<string,string[]>;
+  /** Persistent per-observer discovered IDs. Historical knowledge only:
+   * this must not reveal a corpse's later position or state off-screen.
+   */
+  operatorDiscoveredBodyIds?:Record<string,string[]>;
 };
 
 const playbackKnowledge=new WeakMap<Session,ReplayKnowledge|null>();
 
 export function captureReplayKnowledge(
-  s:Session,previouslyDiscovered:ReadonlySet<string>=new Set()
+  s:Session,previouslyDiscovered:ReadonlySet<string>=new Set(),
+  observerBodies:Map<string,Set<string>>=new Map()
 ):ReplayKnowledge{
   const visibleActorIds:string[]=[];
   const visibleCivilianIds:string[]=[];
   const discovered=new Set(previouslyDiscovered);
   const operatorVisibleActorIds:Record<string,string[]>={};
   const operatorVisibleCivilianIds:Record<string,string[]>={};
+  const operatorVisibleBodyIds:Record<string,string[]>={};
+  const operatorDiscoveredBodyIds:Record<string,string[]>={};
+  const bodies=s.operators.filter(a=>a.side!=='blue'&&a.health<=0);
   const blue=s.operators.filter(a=>a.side==='blue');
   const livingHostiles=s.operators.filter(a=>
     a.side!=='blue'&&a.health>0);
@@ -45,6 +57,14 @@ export function captureReplayKnowledge(
     operatorVisibleCivilianIds[observer.id]=observer.health>0?
       s.civilians.filter(c=>observerPointVisible(s,observer,c.p))
         .map(c=>c.id):[];
+    const visibleBodies=observer.health>0?
+      bodies.filter(body=>observerPointVisible(s,observer,body.p))
+        .map(body=>body.id):[];
+    operatorVisibleBodyIds[observer.id]=visibleBodies;
+    let discovered=observerBodies.get(observer.id);
+    if(!discovered){discovered=new Set();observerBodies.set(observer.id,discovered);}
+    for(const id of visibleBodies)discovered.add(id);
+    operatorDiscoveredBodyIds[observer.id]=[...discovered];
   }
   for(const a of s.operators){
     const visible=a.side==='blue'||(a.health>0?
@@ -56,7 +76,7 @@ export function captureReplayKnowledge(
     if(liveVisibility(s,c.p))visibleCivilianIds.push(c.id);
   return {visibleActorIds,visibleCivilianIds,
     discoveredBodyIds:[...discovered],operatorVisibleActorIds,
-    operatorVisibleCivilianIds};
+    operatorVisibleCivilianIds,operatorVisibleBodyIds,operatorDiscoveredBodyIds};
 }
 
 export function applyReplayKnowledge(s:Session,
@@ -88,7 +108,9 @@ export function replayActorDisclosed(
   if(policy.mode==='full'||a.side==='blue')return true;
   const sample=recordedReplayKnowledge(s);
   if(policy.mode==='operator')
-    return recordedObserverCanSee(sample,policy.observerId,a.id)===true;
+    return a.health<=0?
+      recordedObserverCanSeeBody(sample,policy.observerId,a.id)===true:
+      recordedObserverCanSee(sample,policy.observerId,a.id)===true;
   if(sample)return sample.visibleActorIds.includes(a.id);
   return a.health>0?isSeen(s,a):liveVisibility(s,a.p);
 }
@@ -137,4 +159,27 @@ export function recordedObserverCanSeeCivilian(
   if(!byObserver||!Object.prototype.hasOwnProperty.call(byObserver,observerId))
     return null;
   return byObserver[observerId].includes(civilianId);
+}
+
+/** The visible corpse is exact current evidence, not remembered future truth.
+ * A separately recorded discovery can survive loss of line-of-sight, but
+ * replayActorDisclosed deliberately does not show its current location.
+ */
+export function recordedObserverCanSeeBody(
+  knowledge:ReplayKnowledge|null|undefined,
+  observerId:string,bodyId:string
+):boolean|null{
+  const visible=knowledge?.operatorVisibleBodyIds;
+  if(!visible||!Object.prototype.hasOwnProperty.call(visible,observerId))
+    return null;
+  return visible[observerId].includes(bodyId);
+}
+export function recordedObserverDiscoveredBody(
+  knowledge:ReplayKnowledge|null|undefined,
+  observerId:string,bodyId:string
+):boolean|null{
+  const discovered=knowledge?.operatorDiscoveredBodyIds;
+  if(!discovered||!Object.prototype.hasOwnProperty.call(discovered,observerId))
+    return null;
+  return discovered[observerId].includes(bodyId);
 }
