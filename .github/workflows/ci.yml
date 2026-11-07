@@ -1569,6 +1569,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-r12-classic-fallback-') }}
         run: |
           node --experimental-strip-types --test tests/arsenal-r12-classic-fallback.test.mjs tests/arsenal-v2-game-integration.test.mjs tests/equipment-19-09-campaign-armory.test.mjs tests/equipment-19-06-quickplay-editor.test.mjs tests/equipment-27-01-campaign-ownership.test.mjs
+      - name: Arsenal R13 — factory model changes, saved recipes and ownership
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-r13-model-switch-') }}
+        run: |
+          node --experimental-strip-types --test tests/arsenal-r13-factory-recipes.test.mjs tests/arsenal-r13-model-picker.test.mjs tests/arsenal-r9-recipe-loading.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-campaign-adapter.test.mjs tests/arsenal-v2-quickplay-adapter.test.mjs tests/equipment-27-01-campaign-ownership.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
