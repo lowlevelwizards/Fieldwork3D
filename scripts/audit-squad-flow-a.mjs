@@ -12,10 +12,11 @@ const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const scenarios=[
  {name:'standard-open',left:290,right:332,open:true},
  {name:'standard-closed',left:290,right:332,open:false},
+ {name:'compact-open',left:290,right:332,open:true,compact:true},
  {name:'narrow-open',left:292,right:330,open:true},
  {name:'paired-open',left:282,right:340,open:true,paired:true},
  {name:'near-jamb-cover',left:290,right:332,open:true,
-  cover:[{x:350,y:294,w:20,h:20}]}
+  cover:[{x:322,y:295,w:18,h:22}]}
 ];
 function makeSite(c){
  const middle=(c.left+c.right)/2;
@@ -33,7 +34,9 @@ function makeSite(c){
   walls:[{a:point(90,260),b:point(c.left,260)},
    {a:point(c.right,260),b:point(550,260)}],
   doors,cover:c.cover??[],entrance:point(middle,260),
-  spawn:[point(300,200),point(308,173),point(316,146),point(325,119)],
+  spawn:c.compact?
+   [point(310,198),point(310,180),point(310,162),point(310,144)]:
+   [point(300,200),point(308,173),point(316,146),point(325,119)],
   enemies:[],windows:[],objective:point(520,450),
   extract:point(520,460),
   bounds:{minX:0,minY:0,maxX:640,maxY:500}
@@ -53,7 +56,7 @@ function audit(c){
   const passageWaitTicks=Array(4).fill(0);
   const movementTicks=Array(4).fill(0);
   const maxBlocked=Array(4).fill(0);
-  let finite=true,minFriendlyGap=Infinity;
+  let finite=true,minFriendlyGap=Infinity,closePairTicks=0;
   toggling(s);
   for(let tick=0;tick<1080;tick++){
    const previous=actors.map(a=>({...a.p}));
@@ -67,8 +70,11 @@ function audit(c){
     if(crossings[i]===null&&a.p.y>278)crossings[i]=s.seconds;
     if(arrivals[i]===null&&distance(a.p,goals[i])<16)
      arrivals[i]=s.seconds;
-    for(let j=i+1;j<4;j++)
-     minFriendlyGap=Math.min(minFriendlyGap,distance(a.p,actors[j].p));
+    for(let j=i+1;j<4;j++){
+     const separation=distance(a.p,actors[j].p);
+     minFriendlyGap=Math.min(minFriendlyGap,separation);
+     if(separation<14)closePairTicks++;
+    }
    }
    if(arrivals.every(t=>t!==null))break;
   }
@@ -82,6 +88,7 @@ function audit(c){
    passageWaitSeconds:passageWaitTicks.map(t=>+(t/30).toFixed(3)),
    movementTicks,maxBlockedSeconds:maxBlocked.map(t=>+t.toFixed(3)),
    minFriendlyGap:+minFriendlyGap.toFixed(2),
+   closePairTicks,
    authoredOrderIdsPreserved:actors.every((a,i)=>
     a.plan.every(n=>authored[i].includes(n.id))),
    finalPositions:actors.map(a=>({id:a.id,p:a.p,remaining:a.plan.length}))
