@@ -47,3 +47,11 @@ test('AR and AK share same validator; incompatible swaps are atomic',()=>{
   assert.deepEqual(n.replacements,[]);
  }
 });
+test('MP5 slim handguard preserves standard receiver and rejects SD',()=>{
+ const a=initialWeaponFamilyBuild('hk-mp5a3');
+ const n=proposeFamilyPartChange(a,'smg','handguard','hk-mp5-slim');
+ assert.equal(n.valid,true);assert.equal(n.build.parts.receiver,a.parts.receiver);
+ assert.deepEqual(n.replacements.map(x=>x.slot),['handguard']);
+ const sd=initialWeaponFamilyBuild('hk-mp5sd3');
+ assert.equal(proposeFamilyPartChange(sd,'smg','handguard','hk-mp5-slim').valid,false);
+});

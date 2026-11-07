@@ -12,7 +12,7 @@ import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
 import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- familyAccessoryAllowed,weaponAttachmentAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
+ weaponAttachmentAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
 import {FAMILY_PART_SLOTS,FAMILY_PARTS,
  compatibleFamilyPart,matchingFamilyPreset,proposeFamilyPartChange,type FamilyPartSlot}
  from './equipment-weapon-families.ts';

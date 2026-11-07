@@ -12,7 +12,8 @@ import {HK_DARK_POLYMER,HK9_MAG_METAL,HK_SD_SUPPRESSOR_METAL,
  HK_MUZZLE_METAL} from './weapon-visual-palette.ts';
 import {mp5MagazineOutline,mp5MagazineHeelOutline,MP5_MAG_DEPTH}
  from './hk-mp5-magazine-profiles.ts';
-import {addMP5TropicalForearm,addMP5SDShroud,addMP5TriRail}
+import {addMP5TropicalForearm,addMP5SDShroud,addMP5TriRail,
+ addMP5SlimForearm}
  from './hk-mp5-handguard-profiles.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 import {addHKTriggerSelector} from './hk-trigger-selector.ts';
@@ -124,6 +125,9 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
    art.handguardStartX,art.handguardEndX,HK_DARK_POLYMER);
  }else if(parts.handguard==='hk-mp5-trirail'){
   addMP5TriRail(root,parts.handguard,ids.handguard++,
+   art.handguardStartX,art.handguardEndX,HK_DARK_POLYMER);
+ }else if(parts.handguard==='hk-mp5-slim'){
+  addMP5SlimForearm(root,parts.handguard,ids.handguard++,
    art.handguardStartX,art.handguardEndX,HK_DARK_POLYMER);
  }else{
   addMP5TropicalForearm(root,parts.handguard,ids.handguard++,

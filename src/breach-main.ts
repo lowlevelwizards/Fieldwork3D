@@ -137,7 +137,7 @@ import {validateStudioAppearanceEdits,applyStudioRosterEdits,
  applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- sameWeaponConfiguration,familyAccessoryAllowed,weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
+ sameWeaponConfiguration,weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
 import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,familyPreset,proposeFamilyPartChange,type FamilyPartSlot} from './equipment-weapon-families.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {newCampaign,readCampaign,acceptContract,resolveOperation,
