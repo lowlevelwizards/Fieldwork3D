@@ -73,6 +73,11 @@ test('retarget-ready to short stock follows directly interpolated gun, no interm
       'gun',previous.gun.distanceTo(f.gun),
       'hands',previous.hands.map((h,i)=>h.distanceTo(f.hands[i])),
       'elbows',previous.elbows.map((h,i)=>h.distanceTo(f.elbows[i])));
+    if(step>=62)console.log('ENDPOINT_DIAG',step,
+      'elbowRight',f.elbows[1].toArray(),
+      'paired',r.root.userData.poseV3CoordinatedReport,
+      'target',r.root.userData.transitionJointTargets?.[1],
+      'dynamic',r.root.userData.poseV3DynamicReport?.[1]);
     maxJump=Math.max(maxJump,d);
    }
    const expected=interpolateWeaponCarry(source.fit,
