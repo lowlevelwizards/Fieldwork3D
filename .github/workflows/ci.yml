@@ -174,6 +174,16 @@ jobs:
           node --experimental-strip-types --test tests/weapon-arsenal-r4.test.mjs tests/weapon-families-01.test.mjs tests/weapon-geometry-r2-silhouettes.test.mjs tests/weapon-geometry-r3-refinement.test.mjs tests/weapon-geometry-r31-polish.test.mjs tests/weapon-geometry-r32-anatomy.test.mjs tests/weapon-geometry-r33-axes.test.mjs
           node --experimental-strip-types --test tests/equipment-19-01-weapon-assemblies.test.mjs tests/equipment-19-08-campaign-attachment-stock.test.mjs tests/equipment-19-09-campaign-armory.test.mjs tests/weapon-workbench-mobile-sockets.test.mjs
           npm run build
+      - name: Rendering R7.9 — live Pages release preflight
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r79-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: Rendering R7.9 — all-surface graphic lighting and production build
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r79-') }}
+        run: |
+          node --experimental-strip-types --test tests/rendering-r79-graphic-auditions.test.mjs tests/rendering-r7-toon-composition.test.mjs tests/rendering-r7-light-lab.test.mjs tests/rendering-r7-thumbnail-async.test.mjs tests/operator-studio-toon-r5.test.mjs tests/operator-pose-cavity-r5.test.mjs
+          npm run build
       - name: Rendering R7.5–R7.7 — release preflight and live Pages build gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r7-stylized-') }}
         env:
