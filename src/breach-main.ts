@@ -3882,6 +3882,14 @@ function renderGroundMarks(){
  }
 function render(){
   if(stage&&viewMode!=='plan2d'){
+    if(stage.isReplayBodycamActive()){
+      // Bodycam footage is a clean perspective, not an X-ray tactical HUD.
+      // Keep accessible replay transport as DOM, clear only projected plans,
+      // floating names, objective circles and selection rings.
+      draw.setTransform(dpr,0,0,dpr,0,0);
+      draw.clearRect(0,0,cssW,cssH);
+      return;
+    }
     renderProjectedPlans();return;
   }
   draw.setTransform(dpr,0,0,dpr,0,0);
@@ -4519,6 +4527,7 @@ function enterReplay(){
   applyRosterIdentity(state,persistentRoster);
   applyReplayActorIdentity(state,recorder.manifest);
   stage?.applySite(state.site??null);
+  stage?.setReplayBodycam(null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
   ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
@@ -4527,6 +4536,7 @@ function enterReplay(){
 function exitReplay(){
   if(!replaying)return;
   if(replayQuickVideo.active)replayQuickVideo.stop();
+  stage?.setReplayBodycam(null);
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   replayChapters=[];replayBookmarks=[];
@@ -4889,6 +4899,55 @@ ui.replaySight.addEventListener('click',()=>{
   renderReplayEventMarkers();renderReplayEventFeed();
   refreshReplayShotInspector();updateReplayHud();
 });
+/** Only Vite DEVELOPMENT + explicit QA query can access this hook.
+ * Production builds strip it; normal replay has NO Bodycam button yet.
+ * Browser smoke uses historical replay disclosure, never simulated LOS.
+ */
+if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
+  type BodycamQa={
+    activate:(mount:'chest'|'helmet')=>boolean;
+    seek:(time:number)=>boolean;
+    stop:()=>void;
+    diagnostic:()=>ReturnType<TacticalScene3D['inspectReplayBodycamQa']>|null;
+  };
+  const qa:BodycamQa={
+    activate(mount){
+      if(!replaying||!stage||viewMode==='plan2d')return false;
+      const observer=team(state)[0];
+      if(!observer||!recorder.frames[0]?.knowledge?.operatorVisibleActorIds?.[observer.id])
+        return false;
+      replayContactObserverId=observer.id;
+      replayOmniscient=false;
+      replayGroundLensOn=false;
+      replayPlaying=false;
+      replayCameraMode='free';
+      selected=observer.id;
+      replayFollowId=observer.id;
+      cameraMode('iso');
+      stage.setReplayBodycam({actorId:observer.id,mount,
+        stabilization:'balanced',fov:95});
+      seekReplay(Math.min(.1,recorder.duration));
+      updateReplayHud();
+      return true;
+    },
+    seek(time){
+      if(!replaying||!Number.isFinite(time))return false;
+      replayPlaying=false;
+      seekReplay(Math.max(0,Math.min(time,recorder.duration)));
+      return true;
+    },
+    stop(){
+      stage?.setReplayBodycam(null);
+      replayContactObserverId=null;
+      replayOmniscient=false;
+      fogStamp=-1;
+      if(replaying)updateReplayHud();
+    },
+    diagnostic:()=>stage?.inspectReplayBodycamQa()??null
+  };
+  (window as typeof window&{__fieldworkBodycamQa?:BodycamQa})
+    .__fieldworkBodycamQa=qa;
+}
 ui.replayContactLens.addEventListener('click',()=>{
   if(!replayHasContactEvidence)return;
   const known=recorder.frames.find(f=>
@@ -6379,7 +6438,10 @@ function tick(now:number){
           state.seconds-(1-Math.min(1,accum*60))/60:
           state.seconds),state.operators.map(a=>a.id)):null,
       replaying?replayDisclosure():null,
-      replaying?replayDoorHistory:null);
+      replaying?replayDoorHistory:null,
+      replaying&&replayContactObserverId?
+        replayPersonalGroundHistory?.at(replayTime,replayContactObserverId)??null:
+        null);
   const overlayBegin=perfOverlay?performance.now():0;
   render();
   if(replaying&&replayQuickVideo.active){
