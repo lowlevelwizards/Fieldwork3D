@@ -19,7 +19,8 @@ const FORWARD=new THREE.Vector3(1,0,0);
 export const bodycamFieldOfView=(fov:number)=>
   Number.isFinite(fov)?THREE.MathUtils.clamp(fov,70,110):95;
 export function sampleBodycamSocket(
-  socket:THREE.Object3D,stabilization:BodycamStabilization
+  socket:THREE.Object3D,stabilization:BodycamStabilization,
+  downwardCant=0
 ):BodycamSample{
   socket.updateWorldMatrix(true,false);
   const position=new THREE.Vector3().setFromMatrixPosition(socket.matrixWorld);
@@ -36,7 +37,16 @@ export function sampleBodycamSocket(
   const up=naturalUp.lerp(levelUp,weight);
   up.addScaledVector(forward,-up.dot(forward));
   if(up.lengthSq()<.001)up.copy(levelUp);
-  return {position,forward,up:up.normalize()};
+  up.normalize();
+  // Body-mounted cameras are normally canted slightly toward hands and
+  // doorway thresholds. Pitch follows the actual posed chest/head frame;
+  // never turn toward a hidden enemy or a future incident.
+  const cant=Number.isFinite(downwardCant)?
+    THREE.MathUtils.clamp(downwardCant,0,.35):0;
+  if(cant<=0)return {position,forward,up};
+  const aimed=forward.clone().addScaledVector(up,-Math.tan(cant)).normalize();
+  const frameUp=up.clone().addScaledVector(aimed,-up.dot(aimed)).normalize();
+  return {position,forward:aimed,up:frameUp};
 }
 export function applyBodycamCamera(
   camera:THREE.PerspectiveCamera,sample:BodycamSample,
