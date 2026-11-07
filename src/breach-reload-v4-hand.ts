@@ -13,16 +13,17 @@ export function choreographV4ReloadHand(
 ):ReloadChoreographyResult{
  const legacy=choreographV3ReloadHand(input);
  const cue=reloadAnimationCue(mechanism,input.mode,input.progress);
- // On an EMPTY M4 reload, the support palm briefly presses the bolt catch
- // after the replacement magazine is seated. Retention reloads skip this.
- if(cue.gesture==='ar-bolt-release'&&
-   cue.gestureWeight>0&&input.magazineSocket){
-  const {x,y}=input.magazineSocket;
-  const boltCatch=new THREE.Vector3(
-   (x-1.10)*input.lengthScale,y+2.75,-2.85)
+ // A single receiver-authored point drives each family. AK crosses to
+ // the operating handle; HK reaches the left cocking tube to lock and
+ // gives it its short, sharp slap after the magazine seats. AR presses
+ // the bolt catch. Retention never invents an empty-reload gesture.
+ if(cue.gesture!=='none'&&cue.gestureWeight>0&&input.reloadControl){
+  const {x,y,z}=input.reloadControl;
+  const control=new THREE.Vector3(x*input.lengthScale,y,z)
    .applyEuler(input.fit.rotation).add(input.fit.origin);
   return {...legacy,target:legacy.target.clone().lerp(
-   boltCatch,cue.gestureWeight),segment:'return'};
+   control,cue.gestureWeight),
+   segment:cue.gesture==='hk-cock-lock'?'release':'return'};
  }
  return legacy;
 }

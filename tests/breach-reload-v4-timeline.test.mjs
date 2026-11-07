@@ -6,6 +6,8 @@ import {FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
 import * as THREE from 'three';
 import {choreographV4ReloadHand}
  from '../src/breach-reload-v4-hand.ts';
+import {weaponPresentationSockets}
+ from '../src/breach-weapon-presentation.ts';
 import {reloadAnimationCue,reloadMechanismFor,
  reloadWeaponPresentationTarget,choreographV4ReloadWeapon}
  from '../src/breach-reload-performance.ts';
@@ -95,7 +97,8 @@ test('B25 M4 bolt catch hand gesture occurs after insert only on empty reload',(
   contactError:0,stockError:0};
  const base={fit,lengthScale:1,progress:.88,mode:'emergency',
   family:'ar',supportX:12,supportY:-3,primaryX:3,
-  magazineSocket:{x:1,y:-2.15}};
+  magazineSocket:{x:1,y:-2.15},
+  reloadControl:{x:-.1,y:.6,z:-2.85}};
  const gesture=choreographV4ReloadHand(base,'ar-bolt-catch');
  const noBolt=choreographV4ReloadHand({...base,mode:'retention'},
   'ar-bolt-catch');
@@ -108,5 +111,35 @@ test('B25 M4 bolt catch hand gesture occurs after insert only on empty reload',(
   const b=choreographV4ReloadHand({...base,progress},'legacy');
   assert.ok(a.target.distanceTo(b.target)<1e-10,
    'magazine insertion socket stays authored '+progress);
+ }
+});
+
+test('B26/B27 AK handle and HK signature lock/slap use real family sockets',()=>{
+ const V=(x,y,z)=>new THREE.Vector3(x,y,z);
+ const fit={origin:V(2,-1,3),rotation:new THREE.Euler(),
+  stock:V(-9,2,7),primary:V(3,-2,8),support:V(12,-3,-4),
+  twoHanded:true,primaryReachable:true,handling:'low',
+  contactError:0,stockError:0};
+ for(const [preset,weapon,mechanism,mode,at,expectGesture] of [
+  ['ak-akm','rifle','ak-rocking','emergency',.88,'ak-operating-handle'],
+  ['hk-mp5a3','smg','hk-roller','emergency',.14,'hk-cock-lock'],
+  ['hk-mp5a3','smg','hk-roller','emergency',.88,'hk-slap'],
+  ['hk-g3a3','rifle','hk-roller','emergency',.88,'hk-slap'],
+  ['hk-hk53a3','carbine','hk-roller','emergency',.88,'hk-slap']
+ ]){
+  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(weapon),preset);
+  const s=weaponPresentationSockets(weapon,cfg);
+  const input={fit,lengthScale:s.lengthScale,progress:at,mode,
+   family:cfg.build?.family,supportX:12,supportY:-3,primaryX:3,
+   magazineSocket:s.magazine,reloadControl:s.reloadControl};
+  assert.ok(s.reloadControl&&Object.values(s.reloadControl).every(Number.isFinite));
+  assert.equal(reloadAnimationCue(mechanism,mode,at).gesture,expectGesture);
+  const hand=choreographV4ReloadHand(input,mechanism);
+  const silent=choreographV4ReloadHand({...input,mode:'retention'},mechanism);
+  assert.ok(hand.target.distanceTo(silent.target)>.15,
+   preset+'/' +expectGesture+' should be distinct');
+  const repeat=choreographV4ReloadHand(input,mechanism);
+  assert.ok(hand.target.distanceTo(repeat.target)<1e-12,
+   'gesture is pure replay-time');
  }
 });

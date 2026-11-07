@@ -33,6 +33,8 @@ export type ReloadChoreographyRequest={
  fit:WeaponFit;lengthScale:number;progress:number;mode:ReloadMode;
  supportX:number;supportY:number;primaryX:number;
  magazineSocket?:{x:number;y:number};
+ /** Family-authored bolt catch / operating handle / HK cocking handle. */
+ reloadControl?:{x:number;y:number;z:number};
  /** Only modular rifle previews opt into a family-specific magazine approach. */
  family?:'ar'|'ak'|'hk';
  /** Lab audition only. Default uses the proven B14 hand track. */

@@ -1446,7 +1446,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       supportX:data.supportX,supportY:data.supportY,
       primaryX:data.primaryX,clearanceFront:envelope.front,
       magazineSocket:activeReloadSocket?.magazinePart?
-        activeReloadSocket.magazine:undefined}:null;
+        activeReloadSocket.magazine:undefined,
+      reloadControl:activeReloadSocket?.reloadControl}:null;
     const releasedTarget=releaseInputs?(
       p.poseV4ReloadPreview?
         choreographV4ReloadHand(releaseInputs,
@@ -1648,7 +1649,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       corridor:v3ReloadCorridor,magazinePalm:v3MagazinePalm,
       supportX:data.supportX,supportY:data.supportY,
       primaryX:data.primaryX,clearanceFront:v3ReloadClearanceFront,
-      magazineSocket:sockets.magazinePart?sockets.magazine:undefined
+      magazineSocket:sockets.magazinePart?sockets.magazine:undefined,
+      reloadControl:sockets.reloadControl
     };
     reloadHandChest=p.poseV3Preview?
       (p.poseV4ReloadPreview?
