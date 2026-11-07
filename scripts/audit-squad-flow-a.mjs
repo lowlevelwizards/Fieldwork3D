@@ -116,5 +116,18 @@ function audit(c){
 const results=scenarios.map(audit);
 console.log(JSON.stringify({kind:'four-person real-motor diagnostic',
  note:'Observation is not a real-device or frame-rate validation.',results},null,2));
-if(results.some(r=>!r.finite||!r.authoredOrderIdsPreserved))
+// Required authoring and physical traversal contracts; visual closeness
+// near clutter remains diagnostic pending a real-phone acceptance review.
+const problems=results.filter(r=>!r.finite||!r.crossed||!r.arrived||
+ !r.authoredOrderIdsPreserved||
+ r.maxBlockedSeconds.some(seconds=>seconds>8)||
+ // This batch specifically fixes early approach compression. Guard that
+ // measured improvement without converting soft friendly passing into
+ // an arbitrary global hard-body rule.
+ (['standard-closed','compact-open'].includes(r.case)&&
+  r.closeZones.approach>0));
+if(problems.length){
+ console.error('Squad Flow A critical regression:',
+  problems.map(r=>r.case).join(', '));
  process.exitCode=1;
+}
