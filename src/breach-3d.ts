@@ -44,6 +44,8 @@ import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,doorLeafSegment,activeSite,
   type Pt,type Door,type Segment} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
+import {handlingIntentForMovement,teammateAheadForHandling}
+  from './breach-handling-context.ts';
 import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter,LIGHT_BEAM_SAMPLES}
  from './equipment-weapon-light-beam.ts';
@@ -1891,6 +1893,22 @@ export class TacticalScene3D{
         s.operators.find(o=>o.id===actor.targetId):null;
       const threatRange=threat?Math.hypot(threat.p.x-actor.p.x,
         threat.p.y-actor.p.y):null;
+      // Tactical weapon readiness is presentation-only. Derive intent from
+      // existing authored orders rather than mutating the movement plan.
+      // Replays use the same pure rule on their recorded actor state.
+      const handlingIntent=handlingIntentForMovement({
+        order:actor.plan[0],running:actor.pace==='run',
+        squeezing:actor.squeeze,traversing:!!actor.traversal,
+        reloading:actor.reload>0,treating:!!actor.treatmentActive,
+        hasContact:!!threat&&threat.health>0,
+        hasAuthoredWatch:!!actor.aimInstruction&&
+          actor.aimInstruction.source!=='stack',
+        speed:actor.velocity
+      });
+      const friendlyAhead=teammateAheadForHandling(
+        actor.p,actor.heading,
+        s.operators.filter(other=>other!==actor&&other.health>0&&
+          other.side===actor.side).map(other=>other.p));
       // Physical contact is queried from the actual interpolated barrel,
       // never from a long ray projected along the feet/body heading.
       const clearance=weaponClearance({
@@ -1995,12 +2013,7 @@ export class TacticalScene3D{
         turning:actor.turning,firing:!!firing&&!actor.traversal,
         aimBlend:actor.aim,recoil:actor.recoil*6,
         shotHeading:drawActor.weaponYaw,hitAge,hitFade,downProgress,
-        handlingIntent:actor.squeeze?'squeeze':
-          actor.pace==='run'?'run':
-          actor.plan[0]?.kind==='pie'?'pie':
-          actor.plan[0]?.kind==='door'?'door':
-          actor.aimInstruction?'look':
-          actor.targetId?'engage':actor.velocity>10?'move':'hold',
+        handlingIntent,
         threatRange,
         obstruction:clearance.obstruction,
         clearanceRetraction:clearance.retraction,
@@ -2008,12 +2021,7 @@ export class TacticalScene3D{
         hitRegion:actor.lastHitRegion,hitYaw:actor.lastHitYaw,
         hitSeverity:actor.lastHitSeverity,downPose:actor.downPose,
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
-        friendlyNear:s.operators.some(other=>{
-          if(other===actor||other.side!==actor.side||other.health<=0)return false;
-          const dx=other.p.x-actor.p.x,dy=other.p.y-actor.p.y;
-          return Math.hypot(dx,dy)<48&&
-            dx*Math.cos(actor.heading)+dy*Math.sin(actor.heading)>18;
-        })
+        friendlyNear:friendlyAhead
       },dt);
       // Rebuild caster choices only on projected-size/wardrobe tier changes.
       // A paused scene is explicitly invalidated when casters change.
