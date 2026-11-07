@@ -70,6 +70,16 @@ export function poseContactBudget(volume:PoseBox,env:PoseClearanceEnvelope,
     upper=Math.max(base,.90);lower=Math.max(base,1.02);
    }
    break;
+  case 'rig-backing':
+   // Thin flexible cotton/nylon, not a monolithic rigid chest box.
+   upper=Math.max(base,.98);lower=Math.max(base,1.20);
+   break;
+  case 'rig-pouch':
+   upper=Math.max(base,1.15);lower=Math.max(base,1.30);
+   break;
+  case 'rig-shelf':
+   upper=Math.max(base,.90);lower=Math.max(base,1.03);
+   break;
  }
  return {upper,lower};
 }

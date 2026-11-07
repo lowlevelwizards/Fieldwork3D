@@ -13,7 +13,8 @@ import type {RiflePoint} from './breach-weapon-contact-zones.ts';
 export type ContactMaterial='rigid'|'structured'|'soft';
 export type PoseContactRegion='torso-core'|'torso-upper'|
  'front-lower'|'front-taper'|'front-insert'|'side-flank'|'side-front-return'|
- 'side-rear-return'|'side-insert'|'chest-rig';
+ 'side-rear-return'|'side-insert'|'chest-rig'|
+ 'rig-backing'|'rig-pouch'|'rig-shelf';
 export type PoseBox={label:'torso'|'front-armor'|'side-armor'|'side-plate'|'chest-rig';
  material:ContactMaterial;min:RiflePoint;max:RiflePoint;
  /** Optional for compatibility with authored synthetic collision tests. */
@@ -124,9 +125,40 @@ export function poseClearanceEnvelope(armor:string,rig:string,top:string):
   const f=rigContactFrame(a,top,r);
   const visibleFront=Math.max(f.front.x+1.1,
    Math.min(f.front.x+3,(RIG_FRONT_PROFILES[r]?.front??8.5)+f.rigShiftX));
-  boxes.push(box('chest-rig',
-   {x:f.front.x-.1,y:f.front.y-3.9,z:-4.6},
-   {x:visibleFront,y:f.front.y+3.9,z:4.6},'soft','chest-rig'));
+  if(r==='full-chest'){
+   // The modeled full-chest rig is a thin continuous textile bib with
+   // FOUR separate lower pouches and two thin admin shelves. The old
+   // single rectangle mistakenly filled the whole space from the body
+   // to the pouch fronts, making the flexible cloth a solid cuboid.
+   // Match authored rig geometry in operator-armor-rig-silhouettes.ts.
+   const shift=f.rigShiftX;
+   const pad=.09;
+   boxes.push(box('chest-rig',
+    {x:8.39+shift-.39-pad,y:-6.55-pad,z:-6.125-pad},
+    {x:8.39+shift+.39+pad,y:3.10+pad,z:6.125+pad},
+    'soft','rig-backing'));
+   for(const z of [-4.60,-1.5,1.5,4.60]){
+    // Cuboid pouch bodies; folded flap is small and pliable, not plate.
+    boxes.push(box('chest-rig',
+     {x:8.65+shift-.585-pad,y:-3.23-2.25-pad,z:z-1.375-pad},
+     {x:8.65+shift+.585+.20,y:-3.23+2.25+pad,z:z+1.375+pad},
+     'soft','rig-pouch'));
+   }
+   boxes.push(box('chest-rig',
+    {x:8.56+shift-.225-pad,y:1.40-.825-pad,z:-4.41-pad},
+    {x:8.56+shift+.225+pad,y:1.40+.825+pad,z:4.41+pad},
+    'soft','rig-shelf'));
+   boxes.push(box('chest-rig',
+    {x:8.69+shift-.16-pad,y:.25-.37-pad,z:-4.825-pad},
+    {x:8.69+shift+.16+pad,y:.25+.37+pad,z:4.825+pad},
+    'soft','rig-shelf'));
+  }else{
+   // Unrefined legacy rigs retain their conservative aggregate bounds.
+   boxes.push(box('chest-rig',
+    {x:f.front.x-.1,y:f.front.y-3.9,z:-4.6},
+    {x:visibleFront,y:f.front.y+3.9,z:4.6},
+    'soft','chest-rig'));
+  }
  }
  const result={armor:a,rig:r,top:fit.top,front,boxes:Object.freeze(boxes)};
  cache.set(key,result);return result;

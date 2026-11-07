@@ -83,3 +83,22 @@ test('B9: torso shoulder seam is localized; plate/forearm collision unchanged',(
  assert.ok(center.hardDepth>LOW_READY_CONTACT_LIMITS.rigid);
  assert.equal(LOW_READY_CONTACT_LIMITS.rigid,.12);
 });
+
+test('B10: full-chest rig proxies follow real thin bib and four pouches',()=>{
+ const e=poseClearanceEnvelope('plate-heavy','full-chest','smock-jacket');
+ const backing=e.boxes.filter(v=>v.region==='rig-backing');
+ const pouches=e.boxes.filter(v=>v.region==='rig-pouch');
+ const shelves=e.boxes.filter(v=>v.region==='rig-shelf');
+ assert.equal(backing.length,1);
+ assert.equal(pouches.length,4);
+ assert.equal(shelves.length,2);
+ assert.ok(backing[0].max.x-backing[0].min.x<1.1,
+  'cloth bib must not fill empty space between torso and pouches');
+ assert.ok(pouches.every(v=>v.material==='soft'));
+ assert.ok(pouches.every(v=>v.max.z-v.min.z<3.3));
+ const zcenters=pouches.map(v=>(v.min.z+v.max.z)/2);
+ assert.deepEqual(zcenters,[-4.60,-1.5,1.5,4.60]);
+ // Protective plate and torso remain distinct rigid volumes.
+ assert.ok(e.boxes.some(v=>v.region==='front-insert'&&v.material==='rigid'));
+ assert.ok(e.boxes.some(v=>v.region==='torso-core'&&v.material==='rigid'));
+});
