@@ -20,6 +20,11 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Squad Flow A — partial stride, real-door motor and autonomy gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
+        run: |
+          node --experimental-strip-types --test tests/squad-flow-a1.test.mjs tests/doorway-convoy-flow.test.mjs tests/dnav-r7-squad-intelligence.test.mjs tests/doorway-right-of-way-session.test.mjs tests/tactical-integration-11-traffic-autonomy.test.mjs
+          node --experimental-strip-types scripts/audit-squad-flow-a.mjs
       - name: AR / AK low-ready shoulder and forearm critical gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-low-ready-ar-ak-armor-fit-') }}
         run: |
