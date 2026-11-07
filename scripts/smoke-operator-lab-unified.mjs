@@ -77,6 +77,35 @@ try{
   if(!await page.locator('#poseWeapon').isVisible()||
     await page.locator('#poseWeapon').inputValue()!=='ar-m4a1')
    throw Error('Legacy Pose Fit URL no longer routes to unified Poses');
+  // Arsenal R10: exact saved assembly in the actual iPhone-size WebGL rig.
+  await page.evaluate(async()=>{
+   const {initialWeaponConfiguration,selectWeaponFamilyPreset}=
+    await import('/src/equipment-weapon-assemblies.ts');
+   const {arsenalRecipeFromLegacy}=await import('/src/arsenal/recipes.ts');
+   const base=selectWeaponFamilyPreset(initialWeaponConfiguration('smg'),'hk-mp5a3');
+   const recipe=arsenalRecipeFromLegacy(base);
+   if(!recipe)throw Error('Missing MP5 reference');
+   recipe.parts.stock='hk-mp5-fixed-stock';
+   localStorage.setItem('fieldwork3d.arsenal-recipes.v1',JSON.stringify({
+    version:1,builds:[{id:'arsenal-1',name:'Saved MP5 Fixed',recipe}]
+   }));
+  });
+  await page.goto(origin+'/operator-lab.html?tab=poses',
+   {waitUntil:'domcontentloaded'});
+  await ready(page);
+  await page.locator('#poseSavedWeapon').selectOption('arsenal-1');
+  await page.waitForFunction(()=>{
+   const d=document.getElementById('preview')?.dataset;
+   return d?.poseFitSavedWeapon==='arsenal-1'&&
+    d?.poseFitWeaponReceiver==='hk-mp5-standard'&&
+    d?.poseFitWeaponStock==='hk-mp5-fixed-stock';
+  },null,{timeout:15000});
+  await page.screenshot({path:out+'/saved-mp5-fixed-poses-iphone.png'});
+  await page.locator('#poseWeapon').selectOption('ar-m4a1');
+  await page.waitForFunction(()=>{
+   const d=document.getElementById('preview')?.dataset;
+   return d?.poseFitSavedWeapon===''&&d?.poseFitWeapon==='ar-m4a1';
+  },null,{timeout:15000});
   await page.close();
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
