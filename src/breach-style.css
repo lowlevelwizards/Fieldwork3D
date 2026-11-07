@@ -2029,3 +2029,24 @@ html,body{font-family:var(--fw-font-menu)}
   .replay-quick-controls select{min-height:29px}
   .replay-drawer{max-height:min(42dvh,235px,calc(100dvh - 170px))}
 }
+
+
+/* Replay UX V2 Stage 2 — comfortably spaced interactive event markers. */
+.replay-mark{display:block;position:absolute;top:-5px;z-index:3;
+  width:22px;height:27px;min-height:0;padding:0;margin:0;
+  border:0;border-radius:3px;background:transparent!important;
+  box-shadow:none;opacity:1;pointer-events:auto;cursor:pointer;
+  --marker-color:#a1b5a6}
+.replay-mark::before{content:"";display:block;width:3px;height:11px;
+  position:absolute;left:calc(50% - 1.5px);top:7px;border-radius:2px;
+  background:var(--marker-color)}
+.replay-mark[data-cluster="true"]{width:22px;height:27px;top:-5px}
+.replay-mark[data-cluster="true"]::before{width:5px;height:13px;
+  left:calc(50% - 2.5px);top:6px}
+.replay-mark-door{--marker-color:#a1b5a6}
+.replay-mark-hit,.replay-mark-down,.replay-mark-wound{
+  --marker-color:#d58b78}
+.replay-mark-flash{--marker-color:#e2c78f}
+.replay-mark:focus-visible{outline:2px solid #f0dcad;outline-offset:1px}
+.replay-cluster-menu strong{display:block;padding:4px 7px 8px;
+  color:#e9d2a3;font:700 11px var(--ui-font)}
