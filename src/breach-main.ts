@@ -804,6 +804,7 @@ let replayGroundLensOn=false;
 let replayBodycamOn=false;
 let replayBodycamMount:'chest'|'helmet'='chest';
 let replayBodycamObservers:string[]=[];
+let replayBodycamGroundObservers=new Set<string>();
 function stopReplayBodycam():void{
   replayBodycamOn=false;
   stage?.setReplayBodycam(null);
@@ -4486,7 +4487,7 @@ function updateReplayHud(){
   if(replayBodycamOn&&replayContactObserverId)
     ui.replayBodycamStatus.textContent=bodycamDisclosureLabel(
       replayContactObserverId,replayBodycamMount,
-      bodycamHasPersonalGround(recorder.personalGround,replayContactObserverId));
+      replayBodycamGroundObservers.has(replayContactObserverId));
   ui.replayGroundLens.textContent=replayGroundLensOn?
     'GROUND: PERSONAL':'GROUND: OFF';
   ui.replayGroundLens.setAttribute('aria-pressed',
@@ -4542,7 +4543,7 @@ function enterReplay(){
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayContactObserverId=null;
   replayBodycamOn=false;replayBodycamMount='chest';
-  replayBodycamObservers=[];
+  replayBodycamObservers=[];replayBodycamGroundObservers.clear();
   replayHasContactEvidence=recorder.frames.some(f=>
     !!f.knowledge?.operatorVisibleActorIds&&
     Object.keys(f.knowledge.operatorVisibleActorIds).length>0);
@@ -4585,6 +4586,8 @@ function enterReplay(){
   replayBodycamObservers=bodycamEligibleObserverIds(
     recorder.frames.find(f=>!!f.knowledge?.operatorVisibleActorIds)?.knowledge,
     team(state).map(a=>a.id));
+  replayBodycamGroundObservers=new Set(replayBodycamObservers.filter(id=>
+    bodycamHasPersonalGround(recorder.personalGround,id)));
   stage?.applySite(state.site??null);
   stage?.setReplayBodycam(null);
   document.body.classList.add('replaying');
@@ -4596,6 +4599,7 @@ function exitReplay(){
   if(!replaying)return;
   if(replayQuickVideo.active)replayQuickVideo.stop();
   stopReplayBodycam();replayBodycamObservers=[];
+  replayBodycamGroundObservers.clear();
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   replayChapters=[];replayBookmarks=[];
