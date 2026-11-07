@@ -4582,7 +4582,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
   }));
   if(replayCameraMode==='director'){
     const target=cinematicReplayShot(replayTime,actors,
-      state.site?.rooms??[],state.walls,replayDirectorCues,
+      state.site?.rooms??[],state.site?.walls??[],replayDirectorCues,
       cssW/Math.max(1,cssH),stage.view.yaw);
     if(!target)return;
     const current={focus:stage.view.focus,zoom:stage.view.zoom,
