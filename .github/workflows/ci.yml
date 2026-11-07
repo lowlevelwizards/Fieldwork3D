@@ -20,6 +20,11 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Squad Entry B — real-door entry gates, squad planning and convoy
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-entry-b-') }}
+        run: |
+          node --experimental-strip-types --test tests/tactical-integration-10-entry-gate.test.mjs tests/tactical-integration-04-squad-planning.test.mjs tests/breach-149.test.mjs tests/squad-flow-a1.test.mjs tests/doorway-convoy-flow.test.mjs
+          node --experimental-strip-types scripts/audit-squad-flow-a.mjs
       - name: Squad Flow A — partial stride, real-door motor and autonomy gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
         run: |
