@@ -271,10 +271,13 @@ function resize(){
  camera.updateProjectionMatrix();
  renderScene();
 }
+let studioSuspended=false;
 function renderScene(){
+ if(studioSuspended)return;
  studioLighting.beforeRender(rig?.root??null);
  renderer.setRenderTarget(null);renderer.render(scene,camera);
- canvas.dataset.ready='true';
+ // Never report readiness for a bare/empty canvas.
+ canvas.dataset.ready=rig?.root.visible?'true':'false';
  canvas.dataset.drawCalls=String(renderer.info.render.calls);
  // Built-in renderer accounting only: counts, NOT GPU timing estimates.
  canvas.dataset.rendererGeometries=String(renderer.info.memory.geometries);
@@ -403,7 +406,7 @@ let armedPose:OperatorPose|null=null;
 let armedFrame=0,armedStarted=0,armedLastDraw=0;
 let previewInViewport=true;
 function armedPreviewEnabled(){
- return !clothesOnly&&showWeapon&&!!armedPose&&!!rig&&
+ return !studioSuspended&&!clothesOnly&&showWeapon&&!!armedPose&&!!rig&&
   !!member()&&!document.hidden&&previewInViewport;
 }
 function tickArmedPreview(now:number){
@@ -441,6 +444,7 @@ new IntersectionObserver(entries=>{
 }).observe(stage);
 function posePreview(){
  const p=member();if(!p)return;
+ const previewStart=performance.now();
  // Restore exact unmodified colors before the wardrobe refresh; otherwise
  // a previously disabled debug layer would contaminate the next bake.
  if(lightingInspectorOutput&&rig)restoreOperatorLightingPreview(rig.root);
@@ -491,6 +495,8 @@ function posePreview(){
   previewOperatorLightingLayers(rig.root,diagnosticLayers);
  studioLighting.invalidateGeometry();
  renderScene();
+ canvas.dataset.operatorPreviewMs=
+  String(Math.round((performance.now()-previewStart)*10)/10);
  syncArmedPreview();
 }
 function canEquip(slot:WardrobeSlot,id:string){
@@ -1512,6 +1518,8 @@ function populate(){
  modelSelector.value=selected;refresh();
 }
 function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];readonly:boolean}){
+ studioSuspended=false;
+ thumbBrowser.setSuspended(false);
  identityMode=false;referenceOpen=false;referenceBrowser.hide();
  mode=data.mode;selected=data.selected;readOnly=data.readonly;
  comparingSaved=false;saveInFlight=false;
@@ -1592,7 +1600,11 @@ if(embedded){
  window.addEventListener('message',event=>{
   if(event.origin!==location.origin||event.source!==window.parent)return;
   const data=event.data as StudioInit|{type:string;id?:string;ok?:boolean};
-  if(data?.type==='fw-studio-init'){
+  if(data?.type==='fw-studio-suspend'){
+   studioSuspended=true;
+   thumbBrowser.setSuspended(true);
+   syncArmedPreview();
+  }else if(data?.type==='fw-studio-init'){
    const init=data as StudioInit;
    start({mode:init.mode,selected:init.selected,
     members:init.members,readonly:init.readonly});
