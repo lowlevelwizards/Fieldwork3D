@@ -89,6 +89,15 @@ try{
   }
   check(await page.locator('#replayEventText').isVisible(),
     'The bottom action feed must stay visible on mobile');
+  if(await page.locator('#replayDirectSight option[value="operator"]')
+      .evaluate(el=>!el.disabled)){
+    await page.locator('#replayDirectSight').selectOption('operator');
+    check(await page.locator('#replayContactNote').isVisible(),
+      'Direct Operator Sight must expose recorded personal-contact boundaries');
+    await page.locator('#replayDirectSight').selectOption('team');
+    check(await page.locator('#replayContactNote').isHidden(),
+      'Returning to Team Sight must exit personal-contact lens');
+  }
   await page.locator('#replayDirectTracers').click();
   check(await page.locator('#replayDirectTracers').getAttribute('aria-pressed')==='true',
     'Direct tracer toggle did not activate');
