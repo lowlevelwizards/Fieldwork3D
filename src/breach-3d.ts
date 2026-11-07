@@ -67,6 +67,8 @@ import {exteriorKnownFogRects,fogUvAt} from './breach-fog-domain.ts';
 import {fogFingerprint,fogMemoryFingerprint} from './breach-fog-cache.ts';
 import {wallOccludesFriendly,transitionWallOpacity} from './breach-camera-occlusion.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
+import {sampleBodycamSocket,applyBodycamCamera,
+  type BodycamSetting} from './breach-replay-bodycam.ts';
 import type {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
 import {interpolatedActor,type RenderFrame}
   from './breach-frame-interpolation.ts';
@@ -136,6 +138,9 @@ export class TacticalScene3D{
   readonly renderer:THREE.WebGLRenderer;
   readonly scene=new THREE.Scene();
   readonly camera=new THREE.OrthographicCamera(-320,320,370,-370,.1,2800);
+  /** Replay-only perspective camera; default rendering stays orthographic. */
+  readonly bodycamCamera=new THREE.PerspectiveCamera(95,1,.8,2800);
+  private replayBodycam:BodycamSetting|null=null;
   readonly view:ViewState={mode:'iso',yaw:Math.PI/4,zoom:1.25,
     pitch:55*Math.PI/180,
     focus:{x:W/2,y:H/2}};
@@ -1437,7 +1442,14 @@ export class TacticalScene3D{
     this.shadowUpdates.invalidate();
     this.updateCamera(1);
   }
+  /** Audition-only until interior occlusion, owner meshes and personal fog
+   * have passed their visual checks. The shipped View menu never calls this.
+   */
+  setReplayBodycam(setting:BodycamSetting|null):void{
+    this.replayBodycam=setting?{...setting}:null;
+  }
   setMode(mode:ViewMode){
+    if(mode==='plan2d')this.replayBodycam=null;
     this.view.mode=mode;
     if(mode==='top')this.view.pitch=Math.PI/2;
     else if(mode==='iso')this.view.pitch=55*Math.PI/180;
@@ -2334,7 +2346,24 @@ export class TacticalScene3D{
     });
     if(this.shadowUpdates.shouldRefresh(dynamicShadows,shadowSignature))
       this.renderer.shadowMap.needsUpdate=true;
-    this.renderer.render(this.scene,this.camera);
+    // Read from the already posed historical rig. No additional animation
+    // tick, physics, awareness query or mutable replay state is introduced.
+    // The QA bodycam is never active without explicit personal disclosure.
+    let camera:THREE.Camera=this.camera;
+    if(this.replayBodycam&&replayDisclosurePolicy?.mode==='operator'&&
+      replayDisclosurePolicy.observerId===this.replayBodycam.actorId){
+      const rig=this.actors.get(this.replayBodycam.actorId)?.physical;
+      if(rig?.root.visible){
+        const socket=this.replayBodycam.mount==='helmet'?
+          rig.bodycamHelmet:rig.bodycamChest;
+        const sample=sampleBodycamSocket(
+          socket,this.replayBodycam.stabilization);
+        applyBodycamCamera(this.bodycamCamera,sample,
+          this.replayBodycam.fov,this.width/this.height);
+        camera=this.bodycamCamera;
+      }
+    }
+    this.renderer.render(this.scene,camera);
     // Effects geometry is released before rebuilding the next frame; pooled
     // material instances are reused for every shot to reduce phone GC work.
   }
