@@ -150,11 +150,37 @@ export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
  const padded=route(from,to,p=>canStand(p,COMFORT_RADIUS));
  if(padded.length&&routeSwept(from,padded,physical))
    return smoothTraversalRoute(from,padded,physical);
+ // At a furniture corner a diagonal micro-step may be unsafe even when
+ // coarse 4-unit collision samples pass. Favor a short SIDE step before
+ // moving ahead: it lets the full shoulders clear the prop without an
+ // artificial short-stock / squeeze transition. Fine sweep only the small
+ // number of local proposals, not the whole A* grid each tick.
+ const fineSweep=(a:Pt,b:Pt)=>{
+   if(!physical(a,b))return false;
+   const steps=Math.max(1,Math.ceil(Math.hypot(b.x-a.x,b.y-a.y)/1.25));
+   for(let i=1;i<=steps;i++){
+     const t=i/steps;
+     if(!canStand({x:a.x+(b.x-a.x)*t,
+       y:a.y+(b.y-a.y)*t},OPERATOR_RADIUS))return false;
+   }
+   return true;
+ };
+ const travel=Math.atan2(to.y-from.y,to.x-from.x);
+ const side={x:-Math.sin(travel),y:Math.cos(travel)};
+ for(const offset of [8,12,18,26]){
+   for(const sign of [1,-1]){
+     const lateral={x:from.x+side.x*offset*sign,
+       y:from.y+side.y*offset*sign};
+     if(canStand(lateral,OPERATOR_RADIUS)&&
+        fineSweep(from,lateral)&&fineSweep(lateral,to))
+       return [lateral,{...to}];
+   }
+ }
  const relief=localDetour(from,to,doors,[]);
- if(!relief||!physical(from,relief))return [];
- if(physical(relief,to))return [relief,{...to}];
+ if(!relief||!fineSweep(from,relief))return [];
+ if(fineSweep(relief,to))return [relief,{...to}];
  const tail=route(relief,to,p=>canStand(p,OPERATOR_RADIUS));
- if(!tail.length||!routeSwept(relief,tail,physical))return [];
+ if(!tail.length||!routeSwept(relief,tail,fineSweep))return [];
  return [relief,...smoothTraversalRoute(relief,tail,physical)];
 }
 /** At a grazing prop edge, the coarse A* start cell can be blocked even
