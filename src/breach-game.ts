@@ -3005,7 +3005,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // an unusable short-stock muzzle. Try the same small backstep available
   // to blue BEFORE normal cover doctrine decides to hold fire forever.
   if(visible.length&&a.velocity<10&&a.magazine>0&&
-     a.encounterReactionUntil<=s.seconds&&
+     (a.encounterReactionUntil??0)<=s.seconds&&
      a.alert!=='retreat'&&!a.fireRetreatTarget){
     const target=visible[0],yaw=angle(a.p,target.p);
     if(Math.abs(angleDifference(a.heading,yaw))<.90){
