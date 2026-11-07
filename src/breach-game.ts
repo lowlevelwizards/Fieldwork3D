@@ -194,6 +194,8 @@ export type TeamActor=Operator & {
   contact:Pt|null;heard:Pt|null;
   alertUntil:number;waitRemaining:number;syncReady:string|null;
   actionTimer:number;blockedTime:number;lastNavRepairAt:number;priorP:Pt;pieIndex:number;
+  /** Independent comfort-probe cooldown; failed probes must not starve recovery. */
+  lastNormalLaneProbeAt:number;
   recoveryAttempts:number;retryRouteAt:number;routeGoalKey:string;
   /** Rate-limit physical clutter nudges and scene rebuilds. */
   lastAutoShoveAt:number;
@@ -357,7 +359,8 @@ const withActions=(a:Operator):TeamActor=>({
   reloadRemoved:false,reloadInserted:false,reloadFromRounds:0,
   reloadTargetRounds:0,reloadSelectedMagazineId:null,
   alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
-  blockedTime:0,lastNavRepairAt:-10,priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
+  blockedTime:0,lastNavRepairAt:-10,lastNormalLaneProbeAt:-10,
+  priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
   recoveryAttempts:0,retryRouteAt:0,routeGoalKey:'',
   lastAutoShoveAt:-100,
   squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
@@ -1982,6 +1985,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const goalKey=Math.round(p.x*2)+':'+Math.round(p.y*2);
   if(a.routeGoalKey!==goalKey){
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
+    a.lastNormalLaneProbeAt=-10;
   }
   if(!a.nav.length){
     // A hinge from an earlier state can leave the operator embedded in its
@@ -2190,8 +2194,10 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // transient motor navigation; the player-authored waypoint stays put.
   // Rate-limit this *physical-world* search to avoid A* churn every tick.
   if(!normalClear&&!blocking&&!closed&&!a.traversalPending&&
-     s.seconds-a.lastNavRepairAt>.50){
-    a.lastNavRepairAt=s.seconds;
+     s.seconds-a.lastNormalLaneProbeAt>.50){
+    // Failed normal-lane probes must not reset the unrelated world-truth
+    // recovery timer; that system requires an uninterrupted stall interval.
+    a.lastNormalLaneProbeAt=s.seconds;
     const fullLane=recoverNormalLane(a.p,p,s.doors);
     if(fullLane.length&&d(fullLane[0],next)>6&&
        d(fullLane[0],a.p)>3&&
