@@ -171,7 +171,7 @@ export function openArsenalWorkbench(
    option.className='arsenal-wb-option';
    option.dataset.fit=feedback.state;
    option.setAttribute('aria-pressed',String(equipped));
-   if(!proposal.valid)option.setAttribute('aria-disabled','true');
+   // This button explains a restriction; it is not a disabled control.
    option.title=part.detail;
    const name=document.createElement('strong');name.textContent=part.name;
    const status=document.createElement('small');status.textContent=feedback.label;
