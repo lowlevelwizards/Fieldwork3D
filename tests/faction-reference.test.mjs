@@ -5,6 +5,10 @@ import {auditFactionReferences} from '../src/faction-reference-audit.ts';
 import {resolveFactionReference,referenceLookForKit} from '../src/faction-reference-resolver.ts';
 import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
 import {initialWardrobe,wardrobeConflicts} from '../src/operator-wardrobe-data.ts';
+import {referenceGapFidelity} from '../src/faction-reference-asset-registry.ts';
+import {identityMarking,referenceIdentity} from '../src/operator-identity-markings.ts';
+import {markingBitmap} from '../src/operator-identity-marking-art.ts';
+import {referenceWeaponChoice} from '../src/faction-reference-weapons.ts';
 
 test('forty unique, dated, auditable faction visual references',()=>{
  const audit=auditFactionReferences();
@@ -103,4 +107,47 @@ test('the right existing legacy armor and mismatched period webbing survive',()=
  const police=get('us-swat-2015');
  assert.equal(police.wardrobe.headwearCamo,undefined);
  assert.equal(police.wardrobe.fabricCamo?.gear,undefined);
+});
+
+test('reversed US Army flag has a right-hand canton, with conservative historical default',()=>{
+ const normal=markingBitmap('flag-us');
+ const forward=markingBitmap('flag-us-reversed');
+ assert.ok(normal&&forward);
+ const pixel=(bitmap,x,y)=>Array.from(bitmap.pixels.slice((y*bitmap.width+x)*4,(y*bitmap.width+x)*4+3));
+ assert.deepEqual(pixel(normal,1,1),pixel(forward,22,1));
+ assert.notDeepEqual(pixel(normal,1,1),pixel(forward,1,1));
+ assert.deepEqual(referenceIdentity('United States',2015,'military'),{rightShoulder:'flag-us-reversed'});
+ assert.deepEqual(referenceIdentity('United States',1991,'military'),{});
+ for(const id of ['us-army-ucp-2010','us-army-ocp-2019']){
+  const ref=factionReference(id);
+  assert.equal(ref.markings.rightShoulder,'flag-us-reversed');
+  assert.equal(referenceGapFidelity(ref,ref.gaps.find(g=>g.id==='unit-insignia')),'approximate');
+ }
+});
+test('OMON agency label is not an English POLICE panel',()=>{
+ const ref=factionReference('russian-omon-2002');
+ assert.equal(ref.markings.chest,'label-omon');
+ assert.equal(identityMarking(ref.markings.chest)?.graphic,'omon');
+ assert.ok(markingBitmap(ref.markings.chest));
+ assert.equal(referenceGapFidelity(ref,ref.gaps.find(g=>g.id==='police-marking')),'exact');
+});
+test('current catalog uses available era-fitting weapons and modeled PASGT field dress',()=>{
+ const canadian=referenceWeaponChoice('canada-cadpat-tw-2012');
+ assert.equal(canadian.presetId,'ar-c7a2-proxy');
+ assert.equal(canadian.preset.parts.stock,'ar-stock-m4');
+ assert.equal(canadian.preset.parts.barrel,'ar-20-service');
+ assert.equal(canadian.fidelity,'representative');
+ assert.equal(referenceWeaponChoice('us-army-erdl-1970').presetId,'ar-car15');
+ assert.equal(referenceWeaponChoice('russian-omon-2002').presetId,'ak-aks74u');
+ const british=resolveFactionReference('british-dpm-1995');
+ assert.equal(british.wardrobe.styles.headwear,'pasgt');
+ assert.equal(british.wardrobe.pasgtDetails?.concealment,'scrim');
+ const us=resolveFactionReference('us-army-m81-1990');
+ assert.equal(us.wardrobe.pasgtDetails?.band,'elastic');
+ assert.equal(us.wardrobe.pasgtDetails?.slits,true);
+ for(const id of ['bundeswehr-flecktarn-2000','bundeswehr-tropentarn-2010']){
+  const r=resolveFactionReference(id);
+  assert.equal(r.wardrobe.markings?.leftShoulder,'flag-germany');
+  assert.equal(r.wardrobe.markings?.rightShoulder,'flag-germany');
+ }
 });
