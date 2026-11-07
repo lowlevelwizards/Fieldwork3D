@@ -150,3 +150,48 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
   pairCounts,acceptedPairs,contactBlocks,contactExcess,
   posePairExamples,examples}));
 });
+
+/** B16: small, real-rig time sweep, not synthetic endpoint-only testing.
+ * Its output identifies which fitted hard material still blocks each phase;
+ * the actual joint fallback remains UNRESOLVED, never silently accepted.
+ */
+test('B16 M4A1/AKM magazine corridor is deterministic and physically audited',()=>{
+ const frames=[];
+ for(const fixture of fixtures.slice(0,2)){
+  const base=assemble(fixture);
+  const rig=createOperatorRig('v3-corridor-'+fixture.id,'blue',true);
+  try{
+   for(const progress of [.14,.26,.40,.53,.70,.78,.92]){
+    const pose={...base,poseV3Preview:true,seconds:3,
+     reload:1.8*(1-progress),reloadDuration:1.8};
+    poseOperator(rig,pose,0);
+    const pair=rig.root.userData.poseV3CoordinatedReport;
+    const arms=rig.root.userData.poseV3DynamicReport;
+    assert.ok(pair&&arms?.length===2,fixture.id+'/'+progress);
+    const summarize=(arm,side)=>{
+     const blockers=Object.entries(pair.rejects.contactExcess??{})
+      .filter(([k])=>k.startsWith(side+':')&&k.endsWith(':rigid'))
+      .sort((a,b)=>b[1].max-a[1].max).slice(0,3)
+      .map(([region,v])=>({region,
+       max:Number(v.max.toFixed(3)),count:v.count}));
+     return {status:arm.status,reason:arm.reason,
+      reach:Number(arm.reachError.toFixed(3)),
+      hard:Number(arm.hardDepth.toFixed(3)),blockers};
+    };
+    frames.push({kit:fixture.id,progress,status:pair.status,
+     firing:summarize(arms[1],'firing'),
+     support:summarize(arms[0],'support'),
+     pairRejections:{
+      firing:pair.rejects.primaryClearance+pair.rejects.primaryReach,
+      support:pair.rejects.supportClearance+pair.rejects.supportReach
+     }});
+    for(const arm of arms){
+     assert.ok(Number.isFinite(arm.hardDepth));
+     assert.ok(Number.isFinite(arm.reachError));
+     assert.ok(arm.candidates<=MAX_DYNAMIC_ARM_CANDIDATES);
+    }
+   }
+  }finally{rig.dispose();}
+ }
+ console.log('POSE-V3-RELOAD-CORRIDOR',JSON.stringify(frames));
+});
