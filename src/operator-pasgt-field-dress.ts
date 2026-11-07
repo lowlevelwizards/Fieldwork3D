@@ -18,9 +18,9 @@ export function pasgtConcealmentPalette(camo:HeadwearCamoId|undefined):PasgtPale
  return 'woodland';
 }
 const PALETTES:Record<PasgtPalette,readonly [number,number,number]>={
- woodland:[0x536341,0x778054,0x98906b],
- desert:[0x8a7752,0xb09c70,0x948a6d],
- urban:[0x62675b,0x838379,0x9c9683]
+ woodland:[0x526541,0x748054,0x95846a],
+ desert:[0x968064,0xc0a77b,0x9e8b6c],
+ urban:[0x62685f,0x848980,0x9a988e]
 };
 const material=(hex:number,side:THREE.Side=THREE.FrontSide)=>
  new THREE.MeshStandardMaterial({color:hex,roughness:1,flatShading:true,side});
@@ -57,15 +57,52 @@ function shapeGeometry(points:readonly (readonly [number,number])[]):THREE.Shape
  }
  shape.closePath();return new THREE.ShapeGeometry(shape);
 }
-const LEAF_SHAPE=shapeGeometry([
- [-.12,0],[.12,.12],[.13,.41],[.55,.65],[.33,.79],
- [.53,1.10],[.08,1.58],[-.35,1.18],[-.22,.93],[-.51,.62],
- [-.19,.40]
-]);
-const SCRIM_SHAPE=shapeGeometry([
- [-.24,.12],[.24,.12],[.23,-.54],[.42,-1.31],[.35,-1.80],
- [.09,-2.30],[-.29,-2.13],[-.18,-1.30],[-.33,-.75]
-]);
+/** Three visually different large pixel-art leaf silhouettes. Root at
+ * (0,0) always enters a real cloth buttonhole; broad edges and flat faces
+ * read clearly at normal gameplay distance. No tiny branch meshes.
+ */
+export const PASGT_LEAF_SHAPES:readonly THREE.ShapeGeometry[]=[
+ shapeGeometry([
+  [-.13,-.08],[.16,0],[.34,.37],[.67,.68],[.43,.94],
+  [.59,1.30],[.22,1.87],[.01,2.23],[-.26,1.66],
+  [-.57,1.46],[-.40,1.08],[-.62,.81],[-.24,.40]
+ ]),
+ shapeGeometry([
+  [-.12,-.08],[.12,0],[.25,.49],[.42,.85],[.19,1.25],
+  [.29,1.69],[.02,2.41],[-.20,1.63],[-.29,1.21],
+  [-.48,.83],[-.26,.56]
+ ]),
+ shapeGeometry([
+  [-.12,-.08],[.19,0],[.30,.47],[.85,.88],[.66,1.16],
+  [.33,1.04],[.47,1.56],[.18,1.90],[-.05,1.62],
+  [-.29,2.04],[-.54,1.68],[-.29,1.19],[-.78,1.30],
+  [-.91,1.04],[-.40,.65]
+ ])
+];
+/** Four triangles of broad, two-panel fabric with one angular fold,
+ * rather than one needle-like dangling contour.
+ * All strips are prebuilt; no per-frame cloth simulation.
+ */
+export function createPasgtScrimRibbonGeometry(style:number):THREE.BufferGeometry{
+ const widths=[.79,.88,.71],lengths=[1.75,2.10,1.91];
+ const w=widths[style%widths.length],
+  length=lengths[style%lengths.length];
+ const halfway=length*.42,lower=length-halfway;
+ const a=[-w/2,.12,-.055],b=[w/2,.12,-.055];
+ const c=[w*.45,-halfway,.18],d=[-w*.55,-halfway,.18];
+ const e=[-w*.49,-halfway-lower,.53],f=[w*.38,-halfway-lower,.53];
+ const vertices:number[]=[];
+ const tri=(p:readonly number[],q:readonly number[],r:readonly number[])=>
+  vertices.push(...p,...q,...r);
+ tri(a,b,c);tri(a,c,d);
+ tri(d,c,f);tri(d,f,e);
+ const g=new THREE.BufferGeometry();
+ g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+ g.computeVertexNormals();g.computeBoundingBox();
+ g.userData.pasgtFoldedScrim=true;
+ g.userData.pasgtSegmentCount=2;
+ return g;
+}
 const CARD_ANCHORS=['front-left','right-forward','right-aft',
  'rear-right','left-aft','left-forward'] as const;
 const TILTS=[-.21,.17,-.10,.24,-.18,.13] as const;
@@ -171,10 +208,12 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
   bandMesh.visible=covered;band.add(bandMesh);
  }
  for(let i=0;i<CARD_ANCHORS.length;i++){
-  placedCard(foliage,i,leafMaterials[i%3],LEAF_SHAPE,
-   'pasgt-simple-pixel-leaf',.05);
-  placedCard(scrim,i,scrimMaterials[i%3],SCRIM_SHAPE,
-   'pasgt-long-drooping-scrim',-.05);
+  placedCard(foliage,i,leafMaterials[i%3],
+   PASGT_LEAF_SHAPES[i%PASGT_LEAF_SHAPES.length],
+   'pasgt-iconic-forked-leaf',-.10);
+  placedCard(scrim,i,scrimMaterials[i%3],
+   createPasgtScrimRibbonGeometry(i),
+   'pasgt-broad-folded-cloth-strip',-.09);
  }
  const netMat=material(0x636e53,THREE.DoubleSide);
  const netMesh=new THREE.Mesh(createPasgtNetGeometry(),netMat);
