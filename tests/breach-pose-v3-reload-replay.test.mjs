@@ -88,3 +88,28 @@ test('V3 canceled reload returns to normal ADS without retained body offsets',()
   }finally{fromReload.dispose();direct.dispose();}
  }
 });
+
+test('V3 reload begins from the physically solved low-ready rifle, not generic pose',()=>{
+ for(const f of fixtures){
+  const state=base(f);
+  const idle=createOperatorRig('idle-seed-'+f.id,'blue',true);
+  const reload=createOperatorRig('reload-seed-'+f.id,'blue',true);
+  try{
+   poseOperator(idle,{...state,reload:0,seconds:2},0);
+   poseOperator(reload,{...state,reload:1.8,seconds:2},0);
+   const stationary=idle.root.userData.lowReadyPoseReport;
+   const seeded=reload.root.userData.lowReadyPoseReport;
+   assert.equal(stationary?.status,'clear',f.id+'/idle');
+   assert.equal(seeded?.status,'clear',f.id+'/reload-seed');
+   // The support hand is free during reload; only the firearm's rigid
+   // stock/primary/socket fit is inherited from the approved idle pose.
+   assert.ok(reload.root.userData.poseV3CoordinatedReport,
+    f.id+'/active action solver still runs');
+   const a=snapshot(idle),b=snapshot(reload);
+   assert.ok(a.gun.distanceTo(b.gun)<.15,
+    f.id+'/start-of-reload firearm must not teleport');
+   assert.ok(a.gunQ.angleTo(b.gunQ)<.012,
+    f.id+'/start-of-reload receiver must not snap');
+  }finally{idle.dispose();reload.dispose();}
+ }
+});

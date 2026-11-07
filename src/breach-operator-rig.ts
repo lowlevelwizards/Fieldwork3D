@@ -1256,14 +1256,23 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // on the existing authoritative pose path.
   const coupledConfig=p.weaponConfiguration?.weapon===p.weapon?
     p.weaponConfiguration:undefined;
+  // A reload starts from an already validated stationary two-handed
+  // low-ready rifle hold. On the V3 Lab preview ONLY, seed the reload
+  // weapon with that fit instead of abruptly switching to legacy IK.
+  // Do not use the coupled idle *arm* solution during the active reload:
+  // the magazine hand is released and needs independent action IK.
+  const previewReloadSeed=p.poseV3Preview===true&&
+    p.reload>0&&p.reloadDuration>0;
   const eligible=!!coupledConfig?.build&&handling==='low'&&
     p.posture==='stand'&&physicalSpeed<.45&&
     Math.abs(p.turning)<.28&&!p.down&&!p.surrender&&!p.firing&&
-    !p.aiming&&(p.aimBlend??0)<.02&&p.reload<=0&&
+    !p.aiming&&(p.aimBlend??0)<.02&&
+    (p.reload<=0||previewReloadSeed)&&
     !p.treatmentActive&&!activeTransition&&
     p.seconds-p.lastDoorAt>1.2&&p.seconds-p.lastThrowAt>.85&&
     (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
   let coupled:CoupledLowReadySolution|null=null;
+  let reloadSeed:CoupledLowReadySolution|null=null;
   if(eligible&&coupledConfig){
     const look=resolvedWardrobe(p.wardrobe,p.equipment);
     const shoulders:[THREE.Vector3,THREE.Vector3]=[
@@ -1317,8 +1326,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       elbowRight:coupled?.arms[1].joint.toArray()??null,
       supportFraction:coupled?.supportFraction??null,
       candidates:coupled?.candidates??0};
+    if(previewReloadSeed){
+      // Preserve actual firearm contacts, but never keep the static
+      // support elbow during the released-hand reload animation.
+      reloadSeed=coupled;coupled=null;
+    }
   }else r.root.userData.lowReadyPoseReport=null;
-  let fit=coupled?.fit??fitWeaponPose({weapon:p.weapon,handling,
+  let fit=reloadSeed?.fit??coupled?.fit??fitWeaponPose({weapon:p.weapon,handling,
     configuration:p.weaponConfiguration,
     yaw:relativeYaw,
     recoil,clearanceRetraction:p.clearanceRetraction,
