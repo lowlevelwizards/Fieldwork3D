@@ -90,6 +90,7 @@ import {buildReplayDirectorCues,replayCameraTarget,easeReplayCamera,
   type ReplayCameraMode,type ReplayDirectorCue}
   from './breach-replay-director.ts';
 import {clusterReplayTimeline,replayTimelineBins} from './breach-replay-timeline-markers.ts';
+import {replayFeedPosition} from './breach-replay-feed-window.ts';
 import {toggleReplaySurface,resolvedReplayCamera,isReplaySpeed,
   type ReplaySurface,type ReplayCameraChoice,type ReplayPerspective}
   from './breach-replay-ui-state.ts';
@@ -374,6 +375,8 @@ const ui={
   replayExportVideo:el<HTMLButtonElement>('replayExportVideo'),
   replayEventText:el<HTMLOutputElement>('replayEventText'),
   replayClock:el<HTMLOutputElement>('replayClock'),
+  replayStatusChip:el<HTMLOutputElement>('replayStatusChip'),
+  replayFeedFollow:el<HTMLButtonElement>('replayFeedFollow'),
   replayFeedToggle:el<HTMLButtonElement>('replayFeedToggle'),
   replayFeedFilter:el<HTMLSelectElement>('replayFeedFilter'),
   replayFeed:el<HTMLElement>('replayFeed'),
@@ -4253,7 +4256,9 @@ function seekReplay(t:number){
   if(replayQuickVideo.active)replayQuickVideo.stop();
   stopReplaySounds();
   replayTime=Math.max(0,Math.min(recorder.duration,t));
-  applyReplayFrameAt(replayTime);advanceReplayCamera(0,true);updateReplayHud();
+  applyReplayFrameAt(replayTime);advanceReplayCamera(0,true);
+  if(!ui.replayFeed.hidden)renderReplayEventFeed();
+  updateReplayHud();
 }
 /** Replay event feed and navigation share the same disclosure boundary. */
 function replayEventKnown(e:ReplayIndexedEvent):boolean{
@@ -4315,6 +4320,7 @@ function selectReplayShot(shot:RecordedShot):void{
   replayTraceMode='recent';
   replayPlaying=false;seekReplay(shot.recordedAt);
   showReplayToolTab('events');
+  setReplayMomentsView('highlights');
   refreshReplayShotInspector();
 }
 function focusReplayShot():void{
@@ -4557,24 +4563,28 @@ const replayFeedKinds:Record<string,readonly string[]>={
   contacts:['intel'],
   objectives:['objective']
 };
+let replayFeedEvents:readonly ReplayIndexedEvent[]=[];
+let replayFeedRangeStart=0,replayFeedRangeEnd=0;
+let replayFeedActiveKey:string|null=null;
+let replayFeedFollowing=false;
+function scrollReplayFeedSelection():void{
+  ui.replayFeed.querySelector<HTMLElement>('.selected')?.
+    scrollIntoView({block:'nearest'});
+}
 function renderReplayEventFeed():void{
   if(ui.replayFeed.hidden||!replayEventIndex)return;
   const allowed=replayFeedKinds[ui.replayFeedFilter.value]??[];
-  const events=replayEventIndex.all.filter(e=>
-    !allowed.length||allowed.includes(e.kind));
-  let lo=0,hi=events.length;
-  while(lo<hi){
-    const mid=(lo+hi)>>>1;
-    if(events[mid].t<replayTime)lo=mid+1;else hi=mid;
-  }
-  const end=Math.min(events.length,Math.max(80,lo+40));
-  const start=Math.max(0,end-80);
+  replayFeedEvents=replayEventIndex.all.filter(event=>
+    !allowed.length||allowed.includes(event.kind));
+  const position=replayFeedPosition(replayFeedEvents,replayTime);
+  replayFeedRangeStart=position.start;replayFeedRangeEnd=position.end;
+  replayFeedActiveKey=replayFeedEvents[position.focusIndex]?.key??null;
   const fragment=document.createDocumentFragment();
-  for(const event of events.slice(start,end)){
+  for(const event of replayFeedEvents.slice(position.start,position.end)){
     const button=document.createElement('button');
     button.type='button';button.className='replay-feed-item';
-    button.dataset.kind=event.kind;
-    button.dataset.eventKey=event.key;
+    button.dataset.kind=event.kind;button.dataset.eventKey=event.key;
+    button.classList.toggle('selected',event.key===replayFeedActiveKey);
     button.textContent=formatReplayTime(event.t)+' · '+
       event.kind.toUpperCase()+' · '+event.text;
     button.addEventListener('click',()=>{
@@ -4585,15 +4595,29 @@ function renderReplayEventFeed():void{
           historicalShotVisible(s));
         if(shot)selectReplayShot(shot);
       }
-      for(const selected of ui.replayFeed.querySelectorAll('.selected'))
-        selected.classList.remove('selected');
-      button.classList.add('selected');
     });
     fragment.append(button);
   }
   ui.replayFeed.replaceChildren(fragment);
-  ui.replayFeedInfo.textContent=events.length+
-    ' KNOWN EVENTS · SHOWING '+(events.length?start+1:0)+'–'+end;
+  ui.replayFeedInfo.textContent=replayFeedEvents.length+
+    ' KNOWN EVENTS · SHOWING '+(replayFeedEvents.length?position.start+1:0)+
+    '–'+position.end;
+  if(replayFeedFollowing)scrollReplayFeedSelection();
+}
+function syncReplayEventFeed():void{
+  if(ui.replayFeed.hidden||!replayEventIndex)return;
+  const position=replayFeedPosition(replayFeedEvents,replayTime);
+  const key=replayFeedEvents[position.focusIndex]?.key??null;
+  if(replayFeedFollowing&&position.focusIndex>=0&&
+     (position.focusIndex<replayFeedRangeStart||
+      position.focusIndex>=replayFeedRangeEnd)){
+    renderReplayEventFeed();return;
+  }
+  if(key===replayFeedActiveKey)return;
+  replayFeedActiveKey=key;
+  for(const button of ui.replayFeed.querySelectorAll<HTMLButtonElement>('[data-event-key]'))
+    button.classList.toggle('selected',button.dataset.eventKey===key);
+  if(replayFeedFollowing)scrollReplayFeedSelection();
 }
 /** One tool surface at a time; never let advanced controls grow the dock. */
 type ReplayToolTab='view'|'layers'|'precision'|'export'|'events';
@@ -4771,6 +4795,13 @@ function updateReplayHud(){
   const event=replayEventIndex?.latest(replayTime+.14);
   ui.replayEventText.textContent=event&&replayTime-event.t<4.5?
     clockText(event.t)+' · '+event.text:'';
+  const status=replayQuickVideo.active?'● RECORDING':
+    replayIncidentPlayback?.loop?'INCIDENT LOOP':
+    replayIncidentPlayback?'WATCHING MOMENT':
+    replayLoopEnabled?'A/B LOOP':'';
+  ui.replayStatusChip.textContent=status;
+  ui.replayStatusChip.hidden=!status;
+  syncReplayEventFeed();
 }
 /** Display compact clusters, not dozens of overlapping tap targets.
  * The scrubber and event navigation remain the accessible interactions.
@@ -4862,6 +4893,9 @@ function enterReplay(){
   replayTrailMode='off';
   replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
   replayPreset='clean';replayMomentsView='highlights';
+  replayFeedFollowing=false;replayFeedActiveKey=null;
+  ui.replayFeedFollow.setAttribute('aria-pressed','false');
+  ui.replayFeedFollow.textContent='FOLLOW TIME OFF';
   closeReplayShotInspector();
   rebuildReplayEventIndex();
   replayMovementHistory=new ReplayMovementHistory(recorder.frames,
@@ -5245,6 +5279,12 @@ for(const button of ui.replayTabs.querySelectorAll<HTMLButtonElement>('[data-rep
   });
 }
 ui.replayFeedFilter.addEventListener('change',renderReplayEventFeed);
+ui.replayFeedFollow.addEventListener('click',()=>{
+  replayFeedFollowing=!replayFeedFollowing;
+  ui.replayFeedFollow.setAttribute('aria-pressed',String(replayFeedFollowing));
+  ui.replayFeedFollow.textContent=replayFeedFollowing?'FOLLOW TIME ON':'FOLLOW TIME OFF';
+  if(replayFeedFollowing)renderReplayEventFeed();
+});
 ui.replayIncidentWatch.addEventListener('click',()=>startReplayIncident(false));
 ui.replayIncidentLoop.addEventListener('click',()=>startReplayIncident(true));
 ui.replayIncidentClose.addEventListener('click',()=>{
