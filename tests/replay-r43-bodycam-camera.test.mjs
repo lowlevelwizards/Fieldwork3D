@@ -71,6 +71,8 @@ test('actual operator rig exposes invisible chest and helmet anchors',()=>{
   const helmet=sampleBodycamSocket(rig.bodycamHelmet,'balanced');
   assert.ok(helmet.position.y>chest.position.y,
     'Helmet mount must sit above the chest camera');
+  assert.ok(helmet.position.y<41,
+    'Helmet camera must stay below the standard interior roof underside');
   assert.ok(chest.position.y>15,
     'Camera must be attached to torso, not ground/root origin');
 });
