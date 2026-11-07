@@ -71,20 +71,26 @@ test('a closed hinged leaf can release an embedded operator without ghosting',()
  }finally{activateSite(null);}
 });
 
-test('HERE stroke with valid middle and invalid final destination is atomic',()=>{
+test('HERE stroke with valid middle and invalid final clips at first known boundary in one undo',()=>{
  const s=newSession(0,undefined,'full-view','standard','hold',level);
  try{
   const a=team(s)[0];
   assert.ok(planMove(s,a.id,{x:185,y:140}));
   assert.ok(planMove(s,a.id,{x:224,y:169}));
   const before=JSON.parse(JSON.stringify(a.plan)),oldNext=s.nextId;
+  const outcome={clipped:false,endpoint:{...a.p}};
   assert.equal(planMoveStroke(s,a.id,
-    [{x:146,y:148},{x:182,y:176},{x:-35,y:-60}],false,true),false);
+    [{x:146,y:148},{x:182,y:176},{x:-35,y:-60}],false,true,outcome),true);
+  assert.equal(outcome.clipped,true);
+  assert.ok(a.plan.at(-1).p.x>=13&&a.plan.at(-1).p.y>=20);
+  assert.ok(a.plan.at(-1).p.x<182&&a.plan.at(-1).p.y<176);
+  assert.deepEqual(outcome.endpoint,a.plan.at(-1).p);
+  assert.ok(s.nextId>oldNext,'accepted shortened route has real waypoints');
+  const shortened=JSON.parse(JSON.stringify(a.plan));
+  assert.ok(undoPlan(s,a.id),'the whole gesture is one undo');
   assert.deepEqual(JSON.parse(JSON.stringify(a.plan)),before);
-  assert.equal(s.nextId,oldNext,'rejected gesture must not spend order IDs');
-  assert.equal(undoPlan(s,a.id),true,'previous real edit remains undoable');
-  assert.ok(redoPlan(s,a.id),'previous real edit remains redoable');
-  assert.deepEqual(JSON.parse(JSON.stringify(a.plan)),before);
+  assert.ok(redoPlan(s,a.id),'redo restores only the safe prefix');
+  assert.deepEqual(JSON.parse(JSON.stringify(a.plan)),shortened);
  }finally{activateSite(null);}
 });
 
