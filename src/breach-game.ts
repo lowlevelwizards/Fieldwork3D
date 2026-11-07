@@ -18,7 +18,7 @@ import {
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
-import {entryDoorState} from './breach-entry-coordination.ts';
+import {entryDoorState,entryClearanceForLook} from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
@@ -1156,6 +1156,12 @@ export function planSquadEntry(s:Session,doorId:string){
     if(arrival?.kind!=='move'||
        !planAim(s,a.id,'fixed',slot.look,arrival.id,'look'))
       return rollback();
+    // Only this authored template may start facing the selected sector
+    // during the same MOVE, once its real body clears the door plane.
+    // Manual LOOK/MOVE plans never gain this marker automatically.
+    const assigned=a.plan.find(n=>n.id===arrival.id);
+    if(!assigned)return rollback();
+    assigned.entryDoorId=doorId;
   }
   // Collapse the many internal authoring steps into ONE undo entry per
   // participant. A single UNDO/REDO of any unchanged squad entry restores
@@ -2664,7 +2670,16 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     const held=!running&&visibleThreat?angle(a.p,visibleThreat.p):
       running&&a.aimInstruction?.mode==='track'?null:aimHeading(a);
     if(held!==null)rotate(a,held,dt);
-    else if(n.kind==='move'&&n.moveMode==='strafe')
+    else if(!running&&n.kind==='move'&&n.entryDoorId&&
+      n.aimMode==='fixed'&&n.facing!==undefined&&
+      entryClearanceForLook(s.doors.find(door=>door.id===n.entryDoorId),
+        a.p,n.p)){
+      // Face the player's generated clearing sector WHILE moving to its
+      // destination. No stop/waypoint/teleport and no combat override.
+      // The normal arrival handler below commits the persistent fixed
+      // LOOK; manual orders and prior WATCH still take precedence.
+      rotate(a,n.facing,dt);
+    }else if(n.kind==='move'&&n.moveMode==='strafe')
       rotate(a,n.facing??a.heading,dt);
     else if(a.nav.length)
       rotate(a,angle(a.p,a.nav[0]),dt);
