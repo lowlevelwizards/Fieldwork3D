@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {applyStudioGraphicLighting,restoreStudioGraphicLighting,
  disposeStudioGraphicLighting,updateStudioCelRamp,
- ensureStudioPieceGradient,studioPieceGradientEligible,
+ ensureStudioPieceGradient,ensureStudioRimBounds,
+ studioPieceGradientEligible,
  injectStudioCelEdgeAA,requestedStudioGraphicDiagnostics}
  from '../src/operator-studio-graphic-lighting.ts';
 import {studioContourEligible}
@@ -43,6 +44,12 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  assert.equal(root.children.length,3,'no new top-level silhouette hull');
  assert.equal(weapon.children.length,1,'receiver does not grow duplicate hull');
  assert.equal(receiver.userData.fieldworkStudioContourMesh,undefined);
+ const rimMin=receiver.geometry.getAttribute('fieldworkRimBoundsMin');
+ const rimMax=receiver.geometry.getAttribute('fieldworkRimBoundsMax');
+ assert.ok(rimMin&&rimMax,'rim uses original mesh bounding-box attributes');
+ assert.equal(rimMin.count,receiver.geometry.getAttribute('position').count);
+ assert.equal(ensureStudioRimBounds(receiver.geometry),true);
+ assert.equal(receiver.geometry.getAttribute('fieldworkRimBoundsMin'),rimMin);
  assert.equal(uniform.material,fabric,'matte fabric remains unchanged');
  const mock=shader();
  receiver.material.onBeforeCompile(mock,null);
@@ -54,6 +61,10 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  assert.doesNotMatch(mock.fragmentShader,/outgoingLight\+=vec3\(\.96,\.88,\.74\)/);
  assert.match(mock.fragmentShader,/fieldworkRimStrength/);
  assert.match(mock.fragmentShader,/fwidth\(fwGrazing\)/);
+ assert.match(mock.fragmentShader,/fwSecond=fwBoundDist/);
+ assert.match(mock.fragmentShader,/fwGeometricEdge/);
+ assert.match(mock.fragmentShader,/fwEdge\*=fwGeometricEdge/);
+ assert.match(mock.vertexShader,/attribute vec3 fieldworkRimBoundsMin/);
  assert.doesNotMatch(mock.vertexShader,/transformed \+= normalize\(normal\)/);
  assert.doesNotMatch(mock.fragmentShader,/fwPattern|fwCells/);
  const uniformRef=mock.uniforms.fieldworkRimStrength;
