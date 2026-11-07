@@ -278,7 +278,7 @@ export class OperatorAppearanceGrid{
   // Three.js declares the readback as a generic TypedArray. The supplied
   // Uint8Array is the authoritative byte destination for every pixel.
   let readback:Promise<unknown>|null=null;
-  const started=performance.now();
+  let readbackStart=0;
   try{
    rig.root.userData.fieldworkHeightProfile=
     requestedOperatorGradient(window.location.search);
@@ -322,6 +322,7 @@ export class OperatorAppearanceGrid{
    this.renderer.setClearColor(STUDIO_INSPECTION_BACKGROUND,1);
    this.renderer.clear(true,true,true);
    this.renderer.render(this.scene,this.camera);
+   readbackStart=performance.now();
    // Stage the GPU -> CPU readback before restoring renderer state, but
    // do NOT await while the shared WebGL context is left on our FBO.
    if(new URLSearchParams(window.location.search).get('thumbnailReadback')!== 'sync'&&
@@ -353,7 +354,7 @@ export class OperatorAppearanceGrid{
    if(!readback)return;
    await readback;
    this.grid.dataset.lastReadbackMs=
-    String(Math.round((performance.now()-started)*10)/10);
+    String(Math.round((performance.now()-readbackStart)*10)/10);
    // A slow device may change category/kit before a GPU fence resolves.
    // Never paint an obsolete card, nor begin another render while pending.
    if(token!==this.token||this.suspended||!this.grid.isConnected||
