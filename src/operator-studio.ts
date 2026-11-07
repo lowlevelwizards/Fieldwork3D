@@ -245,10 +245,27 @@ const labGradient=$<HTMLSelectElement>('studioLightGradient');
 const labShadow=$<HTMLSelectElement>('studioLightShadow');
 const labCelLow=$<HTMLInputElement>('studioCelLow');
 const labRimAmount=$<HTMLInputElement>('studioRimAmount');
+const labRimWidth=$<HTMLInputElement>('studioRimWidth');
+const labRimCoverage=$<HTMLInputElement>('studioRimCoverage');
+const labRimFabric=$<HTMLInputElement>('studioRimFabric');
+const labRimSkin=$<HTMLInputElement>('studioRimSkin');
+const labLightAzimuth=$<HTMLInputElement>('studioLightAzimuth');
+const labRimMask=$<HTMLSelectElement>('studioRimMask');
 const labCelLowWrap=$<HTMLElement>('studioCelLowWrap');
 const labRimAmountWrap=$<HTMLElement>('studioRimAmountWrap');
+const labRimWidthWrap=$<HTMLElement>('studioRimWidthWrap');
+const labRimCoverageWrap=$<HTMLElement>('studioRimCoverageWrap');
+const labRimFabricWrap=$<HTMLElement>('studioRimFabricWrap');
+const labRimSkinWrap=$<HTMLElement>('studioRimSkinWrap');
+const labLightAzimuthWrap=$<HTMLElement>('studioLightAzimuthWrap');
+const labRimMaskWrap=$<HTMLElement>('studioRimMaskWrap');
 const labCelLowValue=$<HTMLOutputElement>('studioCelLowValue');
 const labRimAmountValue=$<HTMLOutputElement>('studioRimAmountValue');
+const labRimWidthValue=$<HTMLOutputElement>('studioRimWidthValue');
+const labRimCoverageValue=$<HTMLOutputElement>('studioRimCoverageValue');
+const labRimFabricValue=$<HTMLOutputElement>('studioRimFabricValue');
+const labRimSkinValue=$<HTMLOutputElement>('studioRimSkinValue');
+const labLightAzimuthValue=$<HTMLOutputElement>('studioLightAzimuthValue');
 const labWeapon=$<HTMLButtonElement>('studioLightShowWeapon');
 const labCompare=$<HTMLButtonElement>('studioLightCompare');
 const labReset=$<HTMLButtonElement>('studioLightReset');
@@ -262,16 +279,31 @@ function syncLightingLabControls(){
  labShadow.value=lightLabSettings.shadow;
  labCelLow.value=String(lightLabSettings.celLow);
  labRimAmount.value=String(lightLabSettings.rimAmount);
+ labRimWidth.value=String(lightLabSettings.rimWidth);
+ labRimCoverage.value=String(lightLabSettings.rimCoverage);
+ labRimFabric.value=String(lightLabSettings.rimFabricOpacity);
+ labRimSkin.value=String(lightLabSettings.rimSkinOpacity);
+ labLightAzimuth.value=String(lightLabSettings.lightAzimuth);
+ labRimMask.value=lightLabSettings.rimDebugMask?'on':'off';
  labCelLowValue.textContent=Math.round(lightLabSettings.celLow*100)+'%';
  labRimAmountValue.textContent=Math.round(lightLabSettings.rimAmount*100)+'%';
+ labRimWidthValue.textContent=Math.round(lightLabSettings.rimWidth*100)+'%';
+ labRimCoverageValue.textContent=Math.round(lightLabSettings.rimCoverage*100)+'%';
+ labRimFabricValue.textContent=Math.round(lightLabSettings.rimFabricOpacity*100)+'%';
+ labRimSkinValue.textContent=Math.round(lightLabSettings.rimSkinOpacity*100)+'%';
+ labLightAzimuthValue.textContent=lightLabSettings.lightAzimuth+'°';
  labCel.disabled=atlasPrecedence;
  labRim.disabled=atlasPrecedence;
  const celOn=lightLabSettings.toon===2&&!atlasPrecedence;
  const rimOn=lightLabSettings.rim==='dual'&&!atlasPrecedence;
  labCelLow.disabled=!celOn;
  labRimAmount.disabled=!rimOn;
+ for(const input of [labRimWidth,labRimCoverage,labRimFabric,labRimSkin,labLightAzimuth,labRimMask])
+  input.disabled=!rimOn;
  labCelLowWrap.hidden=!celOn;
  labRimAmountWrap.hidden=!rimOn;
+ for(const row of [labRimWidthWrap,labRimCoverageWrap,labRimFabricWrap,
+   labRimSkinWrap,labLightAzimuthWrap,labRimMaskWrap])row.hidden=!rimOn;
  labWeapon.setAttribute('aria-pressed',String(!clothesOnly&&showWeapon));
  labCompare.setAttribute('aria-pressed',String(lightLabCompareOriginal));
  labCompare.textContent=lightLabCompareOriginal?'RETURN TO EXPERIMENT':
@@ -288,6 +320,7 @@ function applyLightingLab(){
  const live=liveLightLabSettings();
  syncLightingLabControls();
  studioLighting.setShadowColor(live.shadow);
+ studioLighting.setKeyAngle(live.lightAzimuth);
  thumbBrowser.setLightingSettings(live);
  posePreview();
 }
@@ -300,21 +333,38 @@ function readLightingLabControls(){
   shadow:labShadow.value as StudioLightLabSettings['shadow'],
   celLow:Number(labCelLow.value),
   rimAmount:Number(labRimAmount.value),
+  rimWidth:Number(labRimWidth.value),
+  rimCoverage:Number(labRimCoverage.value),
+  rimFabricOpacity:Number(labRimFabric.value),
+  rimSkinOpacity:Number(labRimSkin.value),
+  lightAzimuth:Number(labLightAzimuth.value),
+  rimDebugMask:labRimMask.value==='on',
   celProfile:'graphic',allSurfaces:true
  };
  lightLabCompareOriginal=false;
  applyLightingLab();
 }
-for(const input of [labCel,labRim,labGradient,labShadow])
+for(const input of [labCel,labRim,labGradient,labShadow,labRimMask])
  input.addEventListener('change',readLightingLabControls);
 // A single visible, native mobile range control per active feature.
 let lightSliderFrame=0;
 const readSlider=()=>{
  const celLow=Number(labCelLow.value);
  const rimAmount=Number(labRimAmount.value);
+ const rimWidth=Number(labRimWidth.value);
+ const rimCoverage=Number(labRimCoverage.value);
+ const rimFabricOpacity=Number(labRimFabric.value);
+ const rimSkinOpacity=Number(labRimSkin.value);
+ const lightAzimuth=Number(labLightAzimuth.value);
+ labRimWidthValue.textContent=Math.round(rimWidth*100)+'%';
+ labRimCoverageValue.textContent=Math.round(rimCoverage*100)+'%';
+ labRimFabricValue.textContent=Math.round(rimFabricOpacity*100)+'%';
+ labRimSkinValue.textContent=Math.round(rimSkinOpacity*100)+'%';
+ labLightAzimuthValue.textContent=lightAzimuth+'°';
  labCelLowValue.textContent=Math.round(celLow*100)+'%';
  labRimAmountValue.textContent=Math.round(rimAmount*100)+'%';
- lightLabSettings={...lightLabSettings,celLow,rimAmount};
+ lightLabSettings={...lightLabSettings,celLow,rimAmount,rimWidth,rimCoverage,
+  rimFabricOpacity,rimSkinOpacity,lightAzimuth};
  lightLabCompareOriginal=false;
  if(!lightSliderFrame){
   lightSliderFrame=requestAnimationFrame(()=>{
@@ -323,7 +373,8 @@ const readSlider=()=>{
   });
  }
 };
-for(const slider of [labCelLow,labRimAmount]){
+for(const slider of [labCelLow,labRimAmount,labRimWidth,labRimCoverage,
+ labRimFabric,labRimSkin,labLightAzimuth]){
  slider.addEventListener('input',readSlider);
  slider.addEventListener('change',readSlider);
 }
