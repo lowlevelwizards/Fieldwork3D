@@ -156,6 +156,29 @@ function tooCloseToLeader(actor:PassageActor,others:readonly PassageActor[],
  }
  return false;
 }
+/** Only the *soft* follower-spacing proposal looks farther back than
+ * the real threshold lease. A rear operator should begin forming a queue
+ * before two shoulder capsules visually overlap near the door. This does
+ * not reserve or open a door: crossingDoor and passageWait retain their
+ * existing shorter acquisition range.
+ */
+const approachingQueue=(actor:PassageActor,door:Door):boolean=>{
+ if(!actor.active||actor.health<=0||!actor.goal)return false;
+ if(distance(actor.p,doorCenter(door))>116)return false;
+ const from=side(actor.p,door),destination=side(actor.goal,door);
+ if(from*destination>=0)return false;
+ const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
+ const width=Math.hypot(dx,dy)||1;
+ const across=((actor.p.x-door.a.x)*dx+
+   (actor.p.y-door.a.y)*dy)/width;
+ return across>=-OPERATOR_RADIUS-8&&
+   across<=width+OPERATOR_RADIUS+8;
+};
+const isFollowerCandidate=(a:PassageActor,cluster:readonly Door[],
+ all:readonly Door[]):boolean=>
+ seeksPassage(a,cluster,all)||
+ cluster.some(door=>approachingQueue(a,door));
+
 /** A0/A1: preserve partial forward travel when a full fixed-tick step
  * would collapse a same-direction convoy gap. Returning a shorter proposed
  * step is not a movement commit: the existing passage lease, geometry sweep,
@@ -177,13 +200,13 @@ export function passageFollowerStep(actor:PassageActor,doors:readonly Door[],
   const key=cluster.map(d=>d.id).join('+');
   if(seen.has(key))continue;
   seen.add(key);
-  if(!seeksPassage(actor,cluster,doors))continue;
+  if(!isFollowerCandidate(actor,cluster,doors))continue;
   const relevant=actors.filter(a=>
    a.id!==actor.id&&a.active&&a.health>0&&
    (!actor.side||!a.side||a.side===actor.side)&&
    (a.blockedTime<1.5||insidePassage(a,cluster)||
     cluster.some(d=>inDoorway(a,d)))&&
-   seeksPassage(a,cluster,doors));
+   isFollowerCandidate(a,cluster,doors));
   for(const aperture of cluster){
    const heading=travelSign(actor,aperture);
    if(!heading)continue;
