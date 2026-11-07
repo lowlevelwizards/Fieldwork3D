@@ -62,6 +62,10 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/squad-flow-a1.test.mjs tests/physicality-friendly-traffic.test.mjs tests/doorway-convoy-flow.test.mjs tests/dnav-r7-squad-intelligence.test.mjs tests/doorway-right-of-way-session.test.mjs tests/tactical-integration-11-traffic-autonomy.test.mjs
           node --experimental-strip-types scripts/audit-squad-flow-a.mjs
+      - name: Breach authored stance / stock geometry critical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-stock-contact-authored-transitions-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-authored-transition-critical.test.mjs tests/breach-stock-contact-surface.test.mjs tests/breach-low-ready-transition-v2.test.mjs tests/breach-pose-v3-coordinated.test.mjs
       - name: AR / AK low-ready shoulder and forearm critical gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-low-ready-ar-ak-armor-fit-') }}
         run: |
