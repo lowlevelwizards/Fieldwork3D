@@ -1197,6 +1197,14 @@ jobs:
             tests/equipment-19-01-weapon-assemblies.test.mjs \
             tests/weapon-workbench-mobile-sockets.test.mjs
           node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs /tmp/weapon-ortho-r33.html
+      - name: Replay R4.3b — Bodycam eligibility and safe replay modes
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r43b-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r43b-bodycam-controls.test.mjs \
+            tests/replay-r43-bodycam-camera.test.mjs \
+            tests/replay-r43-personal-visibility.test.mjs \
+            tests/replay-r42c-door-knowledge.test.mjs
       - name: Replay R4.3 — body-mounted perspective camera geometry
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r43-') }}
         run: |
