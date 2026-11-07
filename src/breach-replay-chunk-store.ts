@@ -342,7 +342,7 @@ export async function beginStreamingReplayV2(
   options:{replace?:boolean;chunkFrames?:number}={}
 ):Promise<ReplayStreamProgress>{
   if(typeof id!=='string'||id.length<1||id.length>128||
-    !/^[\\w-]+$/.test(id)||!Number.isFinite(createdAt))
+    !/^[A-Za-z0-9_-]+$/.test(id)||!Number.isFinite(createdAt))
     throw Error('Invalid long-film recording identity');
   const chunkFrames=options.chunkFrames??REPLAY_CHUNK_FRAMES;
   if(!Number.isSafeInteger(chunkFrames)||chunkFrames<2||
