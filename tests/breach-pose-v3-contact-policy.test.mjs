@@ -25,11 +25,16 @@ test('A2: side carrier contact is flexible but separate hard insert stays rigid'
 test('A2: shoulder-wrap allowance never propagates to forearm or plate',()=>{
  const legacy=poseClearanceEnvelope('plate-legacy','full-chest','smock-jacket');
  const soft=poseContactBudget(byRegion('side-flank','soft'),legacy,1);
- assert.equal(soft.upper,2.72);
+ assert.equal(soft.upper,2.88);
  assert.ok(soft.lower<=1.35);
  const front=poseContactBudget(byRegion('front-lower','soft'),legacy,1);
  assert.ok(front.upper<soft.upper);
  assert.ok(front.lower<soft.lower);
+ const returnJoint=poseContactBudget(
+  byRegion('side-front-return','soft'),legacy,1);
+ assert.equal(returnJoint.upper,1.23);
+ assert.equal(poseContactBudget(
+  byRegion('side-insert','rigid'),legacy,10).upper,.12);
 });
 test('A2: regional contact budget never increases without a known region',()=>{
  const unspecified=poseContactBudget(byRegion(undefined,'soft'),env,10);
