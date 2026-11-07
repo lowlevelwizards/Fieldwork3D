@@ -1537,7 +1537,7 @@ jobs:
       - name: Arsenal V2 Stage 6 — saved recipe persistence and critical editing regression
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-v2-saved-builds') }}
         run: |
-          node --experimental-strip-types --test tests/arsenal-v2-saved-builds.test.mjs tests/arsenal-v2-saved-ui.test.mjs tests/arsenal-v2-campaign-adapter.test.mjs tests/arsenal-v2-catalog.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-editing-ui.test.mjs tests/equipment-19-04-weapon-persistence.test.mjs
+          node --experimental-strip-types --test tests/arsenal-v2-saved-builds.test.mjs tests/arsenal-v2-saved-ui.test.mjs tests/arsenal-v2-campaign-adapter.test.mjs tests/arsenal-v2-quickplay-adapter.test.mjs tests/arsenal-v2-catalog.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-editing-ui.test.mjs tests/equipment-19-04-weapon-persistence.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
