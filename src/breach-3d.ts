@@ -1,3 +1,4 @@
+import {groundMarkOccludedFromCamera} from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
 import {createCivilianRig,updateCivilianRig,type CivilianRig}
@@ -188,6 +189,7 @@ export class TacticalScene3D{
   private impactDecalMesh:THREE.InstancedMesh|null=null;
   private impactDecalMatrix=new THREE.Object3D();
   private impactDecalColor=new THREE.Color();
+  private groundMarkTowardCamera=new THREE.Vector3();
   private casingMesh:THREE.InstancedMesh|null=null;
   private casingIds:number[]=[];
   private casingMatrix=new THREE.Object3D();
@@ -2303,10 +2305,15 @@ export class TacticalScene3D{
       this.effects.add(this.impactDecalMesh);
     }
     const markDraw=this.impactDecalMesh;
+    // The intentionally translucent wall cutaway never reveals stains
+    // that are physically on the far side of a full-height wall.
+    this.camera.getWorldDirection(this.groundMarkTowardCamera).negate();
     let markCount=0;
     for(const mark of s.impactMarks){
       if(replayDisclosurePolicy?.mode==='operator')continue;
       if(!omniscient&&!liveVisibility(s,mark.p))continue;
+      if(groundMarkOccludedFromCamera(mark.p,this.groundMarkTowardCamera,
+          s.site?.walls??WALLS))continue;
       if(markCount>=IMPACT_MARK_LIMIT)break;
       const dark=mark.surface==='blood'?0x763c38:
         mark.surface==='wood'?0x3a2920:
