@@ -74,7 +74,7 @@ export const identityMarkingChoices=(slot:MarkingSlot,year?:number)=>
 export function referenceIdentity(country:string,year:number,organization:string):IdentityMarkings{
  if(organization==='police')return {chest:'label-police'};
  const flagByCountry:Record<string,string>={
-  'United States':year>=2004?'flag-us-reversed':'flag-us','United Kingdom':'flag-uk','Germany':'flag-germany',
+  'United States':year>=2004?'flag-us-reversed':'','United Kingdom':'flag-uk','Germany':'flag-germany',
   'Ukraine':'flag-ukraine','Poland':'flag-poland','France':'flag-france',
   'Italy':'flag-italy','Russia':'flag-russia','Indonesia':'flag-indonesia',
   'Belgium':'flag-belgium','Sweden':'flag-sweden','Finland':'flag-finland',
@@ -84,6 +84,7 @@ export function referenceIdentity(country:string,year:number,organization:string
   'South Africa':'flag-south-africa','East Germany':'flag-east-germany'
  };
  const id=flagByCountry[country],m=identityMarking(id);
- // Keep historically uncertain reference kits unmarked rather than invent issue.
+ // Generic fallback: the US Army right-arm flag became universal in 2004;
+ // before then it depended on operation and unit. No automatic 1990s flag.
  return m&&year>=m.from&&year<=m.to?{rightShoulder:id}:{};
 }
