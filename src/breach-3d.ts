@@ -61,6 +61,7 @@ import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {muzzleFlashCue,impactPulse} from './breach-combat-cues.ts';
 import {sampleThrow} from './breach-flash.ts';
+import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET} from './breach-door-proportions.ts';
 import {paintFogMask,paintFogMemory,paintFogVisibility,occupiedFogRooms,
   FOG_WIDTH,FOG_HEIGHT,maskSize,type FogDiagnostic}
@@ -2121,6 +2122,7 @@ export class TacticalScene3D{
         clearanceBlocked:clearance.blocked,
         hitRegion:actor.lastHitRegion,hitYaw:actor.lastHitYaw,
         hitSeverity:actor.lastHitSeverity,downPose:actor.downPose,
+        downClearance:actor.downClearance,
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
         friendlyNear:friendlyAhead
       },dt);
@@ -2280,10 +2282,13 @@ export class TacticalScene3D{
         mark.surface==='wood'?0x3a2920:
         mark.surface==='stone'?0x38332c:
         mark.surface==='metal'?0x202b2e:0x514e42;
+      const groundRadius=mark.surface==='blood'?
+        confinedGroundRadius(mark.p,4,s.site?.walls??WALLS):2.3;
+      if(groundRadius<.5)continue; // never bleed into a solid wall
       this.impactDecalMatrix.position.set(mark.p.x,
         mark.surface==='blood'?.85:(mark.height??1),mark.p.y);
       this.impactDecalMatrix.rotation.set(-Math.PI/2,0,0);
-      this.impactDecalMatrix.scale.setScalar(mark.surface==='blood'?4:2.3);
+      this.impactDecalMatrix.scale.setScalar(groundRadius);
       this.impactDecalMatrix.updateMatrix();
       markDraw.setMatrixAt(markCount,this.impactDecalMatrix.matrix);
       this.impactDecalColor.setHex(dark).multiplyScalar(
