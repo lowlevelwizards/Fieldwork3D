@@ -76,7 +76,7 @@ test('HK33 and HK53 bodies, two ribs and heel share one curved magazine',()=>{
   assert.equal(ribs.length,2,id+' two longitudinal ribs');
   assert.equal(heel.length,1,id+' one angled heel');
   assert.equal(body[0].material,HK556_MAG_METAL);
-  assert.ok(ribs.every(x=>x.material===AK_MAG_RIB&&!x.castShadow));
+  assert.ok(ribs.every(x=>x.material===HK556_MAG_RIB&&!x.castShadow));
   const bodyZ=new THREE.Box3().setFromObject(body[0]);
   for(const rib of ribs){
    const ribZ=new THREE.Box3().setFromObject(rib);
@@ -86,7 +86,7 @@ test('HK33 and HK53 bodies, two ribs and heel share one curved magazine',()=>{
   const magId=config.build.parts.magazine;
   const carried=carriedMagazineProfile(magId);
   assert.equal(carried.length,HK556_MAG_LENGTHS[magId]);
-  assert.equal(carried.material,0x515b53,'carried metal matches rifle');
+  assert.equal(carried.material,HK556_MAG_METAL.color.getHex(),'carried metal matches rifle');
   const geometry=carriedMagazineGeometry(magId);
   assert.ok(geometry.getAttribute('position').count>0);
   geometry.dispose();

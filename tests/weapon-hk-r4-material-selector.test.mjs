@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import {FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset} from '../src/equipment-weapon-assemblies.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
+import {carriedMagazineProfile} from '../src/operator-carried-magazines.ts';
 import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_OLIVE_POLYMER,HK_WOOD,
  HK_MAG_METAL,HK556_MAG_METAL,HK9_MAG_METAL,HK556_MAG_RIB,
  HK_SD_SUPPRESSOR_METAL,HK_MUZZLE_METAL} from '../src/weapons/geometry/weapon-visual-palette.ts';
@@ -75,6 +76,8 @@ test('every HK part uses its intended black/olive/wood/steel family finish',()=>
   const expected=p.weapon==='smg'?HK9_MAG_METAL:
    p.id==='hk-hk33a2'||p.id==='hk-hk53a3'?HK556_MAG_METAL:HK_MAG_METAL;
   assert.equal(mag[0].material,expected,p.id+' dark steel magazine');
+  assert.equal(carriedMagazineProfile(p.parts.magazine)?.material,
+   expected.color.getHex(),p.id+' carried magazine shares current finish');
   if(p.weapon==='smg'||p.id.startsWith('hk-hk'))
    assert.equal(receiver[1].material,HK_DARK_POLYMER,p.id+' polymer lower');
   const flash=g.children.filter(x=>x.userData.hkFactoryFlashHider);
