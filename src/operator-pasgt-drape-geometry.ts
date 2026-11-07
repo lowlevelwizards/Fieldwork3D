@@ -5,7 +5,16 @@
 import * as THREE from 'three';
 import {headwearCuboidVolumes} from './operator-headwear-silhouettes.ts';
 
-export const PASGT_ATLAS_WIDTH=256;
+/** Three separate 160-pixel physical cloth panels within one texture.
+ * The open gutters avoid bilinear/mipmap bleed across a sewn boundary.
+ * Every panel retains the SAME 7 px per world unit as garments.
+ */
+export const PASGT_ATLAS_WIDTH=512;
+export type PasgtFabricPanel='left'|'top'|'right';
+export const PASGT_PANEL_CENTER_U:Readonly<Record<PasgtFabricPanel,number>>={
+ left:84,top:256,right:428
+};
+export const PASGT_FABRIC_PANELS=['left','top','right'] as const;
 export const PASGT_ATLAS_HEIGHT=256;
 export const PASGT_CAMO_SCALE=1; // shared metric fabric prints, no additional PASGT scaling
 export const PASGT_TOP_SEAM_OFFSETS=[-2.6,2.6] as const;
@@ -51,7 +60,7 @@ function sideHem(z:number):number{
  const t=clamp((z+1.65)/.81);
  return FRONT_BOTTOM+(SIDE_BOTTOM-FRONT_BOTTOM)*t;
 }
-const frontXs=[-X,-2.65,0,2.65,X];
+const frontXs=[-X,...PASGT_TOP_SEAM_OFFSETS.slice(0,1),0,...PASGT_TOP_SEAM_OFFSETS.slice(1),X];
 const sideZs=[FRONT,-3.4,-1.7,-1.45,-1.20,-.96,-.78,.50,2.70,4.3,REAR];
 const panels:readonly (readonly Omit<PasgtRingSample,'distance'>[])[]=[
  frontXs.map(x=>({side:'front' as const,x,z:FRONT,bottomY:FRONT_BOTTOM})),
@@ -122,11 +131,18 @@ export function pasgtFabricCoordinate(sample:PasgtRingSample,ring:PasgtRing):
  * cloth texel density across top, brow bridge and lower protective skirt.
  */
 export const PASGT_UV_TEXELS_PER_UNIT=7;
-export const pasgtAtlasUv=(coord:readonly [number,number]):
- readonly [number,number]=>[
- (128+PASGT_UV_TEXELS_PER_UNIT*coord[0]+.5)/PASGT_ATLAS_WIDTH,
+/** Every sewn fabric panel uses its own disjoint atlas island.
+ * Offsets in color sampling come from distinct cut pieces, not a
+ * dishonest change in pattern scale. All three have identical texel pitch.
+ */
+export const pasgtAtlasUv=(coord:readonly [number,number],
+ panel:PasgtFabricPanel='top'):readonly [number,number]=>[
+ (PASGT_PANEL_CENTER_U[panel]+PASGT_UV_TEXELS_PER_UNIT*coord[0]+.5)/PASGT_ATLAS_WIDTH,
  (128+PASGT_UV_TEXELS_PER_UNIT*coord[1]+.5)/PASGT_ATLAS_HEIGHT
 ];
+export const pasgtPanelAtX=(x:number):PasgtFabricPanel=>
+ x<PASGT_TOP_SEAM_OFFSETS[0]?'left':
+ x>PASGT_TOP_SEAM_OFFSETS[1]?'right':'top';
 export function createPasgtDrapedGeometry(hemOnly=false):THREE.BufferGeometry{
  const positions:number[]=[],uvs:number[]=[];
  const push=(p:readonly number[],uv:readonly number[])=>{
@@ -142,12 +158,22 @@ export function createPasgtDrapedGeometry(hemOnly=false):THREE.BufferGeometry{
   tri(a,b,c,ua,ub,uc);tri(a,c,d,ua,uc,ud);
  };
  if(!hemOnly){
-  const a=[-X,PASGT_COVER_TOP_Y,FRONT],b=[X,PASGT_COVER_TOP_Y,FRONT],
-   c=[X,PASGT_COVER_TOP_Y,REAR],d=[-X,PASGT_COVER_TOP_Y,REAR];
-  tri(a,c,b,pasgtAtlasUv([a[0],a[2]]),pasgtAtlasUv([c[0],c[2]]),
-   pasgtAtlasUv([b[0],b[2]]));
-  tri(a,d,c,pasgtAtlasUv([a[0],a[2]]),pasgtAtlasUv([d[0],d[2]]),
-   pasgtAtlasUv([c[0],c[2]]));
+  // Three real UV islands: left, top and right crown cloth panels.
+  // The same physical edge vertices are duplicated on the seam,
+  // producing a visible print break without cracks or extra surfaces.
+  const edges=[-X,...PASGT_TOP_SEAM_OFFSETS,X];
+  for(let i=0;i<3;i++){
+   const panel=PASGT_FABRIC_PANELS[i];
+   const x0=edges[i],x1=edges[i+1];
+   const a:[number,number,number]=[x0,PASGT_COVER_TOP_Y,FRONT],
+    b:[number,number,number]=[x1,PASGT_COVER_TOP_Y,FRONT],
+    c:[number,number,number]=[x1,PASGT_COVER_TOP_Y,REAR],
+    d:[number,number,number]=[x0,PASGT_COVER_TOP_Y,REAR];
+   tri(a,c,b,pasgtAtlasUv([x0,FRONT],panel),
+    pasgtAtlasUv([x1,REAR],panel),pasgtAtlasUv([x1,FRONT],panel));
+   tri(a,d,c,pasgtAtlasUv([x0,FRONT],panel),
+    pasgtAtlasUv([x0,REAR],panel),pasgtAtlasUv([x1,REAR],panel));
+  }
  }
  const pairs:readonly [PasgtRing,PasgtRing][]=
   hemOnly?[['ramp','hem']]:
@@ -168,20 +194,26 @@ export function createPasgtDrapedGeometry(hemOnly=false):THREE.BufferGeometry{
       return [p[0]+n[0],p[1]+(raised?.14:0),p[2]+n[2]];
      };
      const p0=make(a,true),p1=make(b,true),p2=make(b,false),p3=make(a,false);
+     const fabricPanel=a.side==='left'?'left':a.side==='right'?'right':
+      pasgtPanelAtX((a.x+b.x)/2);
      quad(p0,p1,p2,p3,
-      pasgtAtlasUv(pasgtFabricCoordinate(a,'hem')),
-      pasgtAtlasUv(pasgtFabricCoordinate(b,'hem')),
-      pasgtAtlasUv(pasgtFabricCoordinate(b,'hem')),
-      pasgtAtlasUv(pasgtFabricCoordinate(a,'hem')));
+      pasgtAtlasUv(pasgtFabricCoordinate(a,'hem'),fabricPanel),
+      pasgtAtlasUv(pasgtFabricCoordinate(b,'hem'),fabricPanel),
+      pasgtAtlasUv(pasgtFabricCoordinate(b,'hem'),fabricPanel),
+      pasgtAtlasUv(pasgtFabricCoordinate(a,'hem'),fabricPanel));
      continue;
     }
     const p0=pasgtRingPoint(a,up),p1=pasgtRingPoint(b,up),
      p2=pasgtRingPoint(b,down),p3=pasgtRingPoint(a,down);
+    // Each side belongs to its own cloth cut. The front and rear
+    // apron bridge all three panels and split precisely at the seams.
+    const fabricPanel=a.side==='left'?'left':a.side==='right'?'right':
+     pasgtPanelAtX((a.x+b.x)/2);
     quad(p0,p1,p2,p3,
-     pasgtAtlasUv(pasgtFabricCoordinate(a,up)),
-     pasgtAtlasUv(pasgtFabricCoordinate(b,up)),
-     pasgtAtlasUv(pasgtFabricCoordinate(b,down)),
-     pasgtAtlasUv(pasgtFabricCoordinate(a,down)));
+     pasgtAtlasUv(pasgtFabricCoordinate(a,up),fabricPanel),
+     pasgtAtlasUv(pasgtFabricCoordinate(b,up),fabricPanel),
+     pasgtAtlasUv(pasgtFabricCoordinate(b,down),fabricPanel),
+     pasgtAtlasUv(pasgtFabricCoordinate(a,down),fabricPanel));
    }
   }
  }
@@ -194,8 +226,9 @@ export function createPasgtDrapedGeometry(hemOnly=false):THREE.BufferGeometry{
  g.userData.pasgtPanelCount=hemOnly?
   panels.reduce((n,p)=>n+p.length-1,0):
   1+3*panels.reduce((n,p)=>n+p.length-1,0);
- g.userData.pasgtUvLayout='common-unfolded-crown-side-fabric';
+ g.userData.pasgtUvLayout='three-sewn-cuts-independent-islands';
  g.userData.topSeams=[...PASGT_TOP_SEAM_OFFSETS];
+ g.userData.printPanels=[...PASGT_FABRIC_PANELS];
  g.userData.printScale=PASGT_CAMO_SCALE;
  return g;
 }

@@ -30,7 +30,7 @@ test('print is denser and physically consistent between top and sides',()=>{
  assert.ok(PASGT_RING_CIRCUMFERENCE>35&&PASGT_RING_CIRCUMFERENCE<47);
  const tex=pasgtCoverTexture('m81-woodland','operator',1);
  assert.equal(tex.channel,1);
- assert.equal(tex.image.width,256);
+ assert.equal(tex.image.width,512);
  assert.equal(tex.image.height,256);
  const left=Math.round(30+5*(PASGT_TOP_SEAM_OFFSETS[0]+5.275));
  const right=Math.round(30+5*(PASGT_TOP_SEAM_OFFSETS[1]+5.275));
