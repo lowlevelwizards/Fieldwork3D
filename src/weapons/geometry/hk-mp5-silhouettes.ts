@@ -8,12 +8,13 @@ import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
  from './profile-primitives.ts';
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {MP5_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
-import {HK_DARK_POLYMER,HK556_MAG_METAL} from './weapon-visual-palette.ts';
+import {HK_DARK_POLYMER,HK9_MAG_METAL} from './weapon-visual-palette.ts';
 import {mp5MagazineOutline,mp5MagazineHeelOutline,MP5_MAG_DEPTH}
  from './hk-mp5-magazine-profiles.ts';
 import {addMP5TropicalForearm,addMP5SDShroud}
  from './hk-mp5-handguard-profiles.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
+import {addHKTriggerSelector} from './hk-trigger-selector.ts';
 
 const MP5_RECEIVERS=['hk-mp5-standard','hk-mp5sd-integral',
  'hk-mp5k-stockless'] as const;
@@ -58,6 +59,18 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
  if(isK){
   const cap=b('stock',-6.30,-.25,0,.70,3.18,3.22,dark);
   cap.userData.hkMP5StocklessCap=true;
+ }else if(parts.stock==='hk-mp5-fixed-stock'){
+  // A2 and SD2 share the extended retractable stock's shoulder landmark.
+  // One heavy solid polymer shell; no added screws, vents or buttstock rails.
+  const rear=-13.05,start=rear+.43;
+  const fixed=p('stock',[
+   [start,1.07],[-11.39,1.19],[-10.79,1.14],
+   [-6.08,.80],[-6.01,-1.35],[-9.35,-2.37],
+   [start,-2.68]
+  ],3.18,HK_DARK_POLYMER);
+  fixed.userData.hkMP5FixedStock=true;
+  const pad=b('stock',rear+.27,-.80,0,.54,3.99,3.54,dark);
+  pad.userData.hkMP5FixedButtpad=true;
  }else{
   const rear=-13.05;
   for(const z of [-1.10,1.10]){
@@ -76,7 +89,7 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
  // Smooth, thin, graceful 9mm curved-ribbon mag. NO AK stamped ribs.
  if(parts.magazine!=='hk9-mag30')
   throw new Error('MP5 magazine must use the HK9 feed');
- const mag=p('magazine',mp5MagazineOutline(),MP5_MAG_DEPTH,HK556_MAG_METAL);
+ const mag=p('magazine',mp5MagazineOutline(),MP5_MAG_DEPTH,HK9_MAG_METAL);
  mag.userData.hkMP5SmoothMagazine=true;
  const heel=p('magazine',mp5MagazineHeelOutline(),
   MP5_MAG_DEPTH+.07,dark);
@@ -166,9 +179,7 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
  const port=addWeaponPixelMark(root,'hk-port',a.portX,a.portY,
   1.532,a.portWidthX,a.portHeightY);
  port.userData.hkEjectionPort=true;
- const selector=addWeaponPixelMark(root,'hk-selector',-3.53,-.67,
-  -1.532,2.03,.60);
- selector.rotation.y=Math.PI;
+ addHKTriggerSelector(root,'pictogram',1.545,1.475);
  const sightGeo=new THREE.CylinderGeometry(1.12,1.12,1.40,6);
  const sight=new THREE.Mesh(sightGeo,steel);
  sight.position.set(-3.55,2.43,0);

@@ -15,6 +15,7 @@ import {addHK556Family} from './hk-556-silhouettes.ts';
 import {addHKMP5Family} from './hk-mp5-silhouettes.ts';
 import {HK_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
+import {addHKTriggerSelector} from './hk-trigger-selector.ts';
 
 export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material,
@@ -174,8 +175,7 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const port=addWeaponPixelMark(root,'hk-port',anatomy.portX,
   anatomy.portY,1.775,anatomy.portWidthX,anatomy.portHeightY);
  port.userData.hkEjectionPort=true;
- const selector=addWeaponPixelMark(root,'hk-selector',-3.48,-.67,-1.777,2.05,.60);
- selector.rotation.y=Math.PI;
+ addHKTriggerSelector(root,'sef',1.78,1.59);
  
  // One solid silhouette per rear sight: no separate base/knobs.
  // Low early folding blade versus a broader, squat G3A3 diopter turret.

@@ -32,5 +32,7 @@ export const HK_WOOD=finish(0x95714a,.95);
 export const HK_MAG_METAL=finish(0x5e6960,.88);
 /** Darker HK33/HK53 stamped steel: G3's established 7.62 finish is unchanged. */
 export const HK556_MAG_METAL=finish(0x515b53,.90);
+/** Dark blued MP5 steel stands out against the warmer HK receiver. */
+export const HK9_MAG_METAL=finish(0x373f3b,.92);
 /** Ribbon ribs deliberately reuse the AK's proven stamped-metal finish. */
 export const HK556_MAG_RIB=AK_MAG_RIB;
