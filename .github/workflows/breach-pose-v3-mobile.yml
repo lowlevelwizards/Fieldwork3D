@@ -1,6 +1,8 @@
 name: Breach Pose V3 — Focused Mobile Visuals
 on:
   pull_request:
+    # Heavy screenshot review is a release-checkpoint gate, not every draft push.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'src/breach-operator-rig.ts'
       - 'src/breach-operator-lab.ts'
@@ -16,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   visual:
-    if: ${{ startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') }}
+    if: ${{ startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') && !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
