@@ -39,6 +39,7 @@ import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
 import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
+import {chooseV3SupportGrip} from './breach-pose-v3-support-grip.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
@@ -1326,6 +1327,27 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     blendFrom:activeTransition?.from,
     blendAlpha:activeTransition?.alpha,
     blendSnapshot:activeTransition?.fromWeapon});
+  // Lab-only: a family rifle may be gripped farther back on its *actual*
+  // handguard/magwell. This is a contact change, never a muzzle transform.
+  // Do not apply to shot-time ballistics or alter an approved coupled pose.
+  if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
+     !p.firing&&!p.down&&!p.surrender){
+    const look=resolvedWardrobe(p.wardrobe,p.equipment);
+    const choice=chooseV3SupportGrip({
+      weapon:p.weapon,configuration:coupledConfig,fit,
+      shoulder:shoulderFor(0),firingShoulder:shoulderFor(1),
+      envelope:poseClearanceEnvelope(
+        look.armorStyle,look.rigStyle,look.top),
+      mode:p.reload>0?'reload':p.aiming||handling==='ads'?
+        'aim':'carry'
+    });
+    fit=choice.fit;
+    r.root.userData.poseV3SupportGrip={
+      selected:choice.selected,fraction:choice.fraction,
+      quality:choice.quality,candidates:choice.candidates,
+      reason:choice.reason
+    };
+  }else r.root.userData.poseV3SupportGrip=null;
   let carryTransitionActive=false,carryTransitionAlpha=1;
   let carryTransitionBends:[THREE.Vector3,THREE.Vector3]|null=null;
   if(!p.deterministic&&!p.down&&!p.surrender){
