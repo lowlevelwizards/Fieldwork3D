@@ -2114,3 +2114,34 @@ html,body{font-family:var(--fw-font-menu)}
   .replay-actor-controls label{flex-basis:100%}
   .replay-actor-controls select{min-width:100px}
 }
+
+
+/* Replay UX V2 Stage 5 — readable saved-recording cards, no five-button squeeze. */
+.replay-library-row{display:grid;grid-template-columns:minmax(0,1fr) 48px 70px;
+  gap:6px;padding:9px}
+.replay-library-item-info{grid-column:1/-1;min-width:0}
+.replay-library-item-info strong{font-size:13px}
+.replay-library-item-info span{font-size:11px}
+.replay-library-row .replay-library-watch{grid-column:1;min-height:44px;
+  background:#9e936c;color:#172723;border-color:#ddc18b;font-size:12px}
+.replay-library-row .replay-library-favorite{grid-column:2;min-width:44px;
+  min-height:44px;font-size:18px}
+.replay-library-actions{grid-column:3;min-width:0;align-self:start}
+.replay-library-actions>summary{display:flex;min-height:44px;align-items:center;
+  justify-content:center;list-style:none;border-radius:5px;
+  border:1px solid #708b79;background:#3e5749;color:#f1e7d1;
+  font:700 11px var(--ui-font);cursor:pointer}
+.replay-library-actions>summary::-webkit-details-marker{display:none}
+.replay-library-actions>summary:focus-visible{outline:2px solid #e2c38b}
+.replay-library-actions[open]{grid-column:1/-1}
+.replay-library-actions[open]>summary{min-height:36px}
+.replay-library-actions-list{display:grid;grid-template-columns:1fr 1fr;gap:7px;
+  padding-top:7px}
+.replay-library-row .replay-library-actions-list button{min-height:44px;
+  font-size:11px}
+@media(max-width:430px){
+  .replay-library-row{grid-template-columns:minmax(0,1fr) 44px 68px;
+    padding:8px}
+  .replay-library-row .replay-library-watch,
+  .replay-library-row .replay-library-favorite{min-height:44px}
+}
