@@ -228,7 +228,7 @@ if(process.env.POSE_V3_CORRIDOR_AUDITION==='1')test('B17 compare compact vs outb
 /** Only two expensive physically useful cases remain in the fast CI.
  * The full 7x3 B17 audition is opt-in for future path experiments.
  */
-test('B17 compact AKM visual corridor versus strict canonical rejection',()=>{
+test('B17 compact AKM visual fit and strict canonical physical validity',()=>{
  const f=fixtures[1],base=assemble(f);
  const selected=createOperatorRig('v3-ak-compact','blue',true);
  const canonical=createOperatorRig('v3-ak-original','blue',true);
@@ -243,8 +243,16 @@ test('B17 compact AKM visual corridor versus strict canonical rejection',()=>{
     poseV3ReloadCorridor:'canonical'},0);
    assert.equal(selected.root.userData.poseV3CoordinatedReport?.status,
     'clear','visual AKM compact '+progress);
-   assert.equal(canonical.root.userData.poseV3CoordinatedReport?.status,
-    'unresolved','strict canonical should keep rigid rejection '+progress);
+   const strict=canonical.root.userData.poseV3CoordinatedReport;
+   // The new sewn-armhole proxy may now make the old canonical arc
+   // ACTUALLY clear. Reject forbidden overlaps, not improvements.
+   assert.ok(['clear','unresolved'].includes(strict?.status),
+    'strict status '+progress);
+   if(strict?.status==='clear'){
+    assert.ok(strict.reports?.every(r=>r.strictContactValid===true&&
+      r.relaxedContact===false),
+     'strict canonical must have no forbidden contact '+progress);
+   }
    assert.ok(selected.root.userData.poseV3DynamicReport
     .every(arm=>arm.status==='clear'));
   }

@@ -85,7 +85,11 @@ test('representative legacy, flak, heavy low-ready solves are measured',()=>{
   const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(p.weapon),id);
   const r=solveCoupledLowReady({weapon:p.weapon,configuration:cfg,
    shoulders,armor:poseClearanceEnvelope(armor,'no-rig','bdu-shirt'),
-   nominalYaw:0,allowVisualOverlap:true});
+   nominalYaw:0,allowVisualOverlap:true,
+   onDiagnostics:stats=>{
+    if(armor==='plate-heavy'&&id==='ar-m16a1')
+     console.log('M16-HEAVY-REJECTIONS',JSON.stringify(stats));
+   }});
   const elbow=r?.arms[1].joint;
   const flare=elbow?(elbow.z-shoulders[1].z):null;
   const drop=elbow?(shoulders[1].y-elbow.y):null;
