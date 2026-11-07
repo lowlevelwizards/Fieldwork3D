@@ -287,3 +287,21 @@
 @media(prefers-reduced-motion:reduce){
  .campaign-shell details{scroll-behavior:auto}
 }
+
+/* R11: the Arsenal is a first-class main-menu destination. */
+.campaign-entry-actions .campaign-entry-arsenal{display:block;box-sizing:border-box;
+ min-height:52px;margin:0;border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm);background:var(--fw-panel-raised);
+ color:var(--fw-text);font:700 14px var(--fw-font-menu);
+ padding:14px;text-align:center;text-decoration:none;touch-action:manipulation}
+.campaign-entry-actions .campaign-entry-arsenal:focus-visible{
+ outline:3px solid #e8cd86;outline-offset:2px}
+
+/* R12: advanced direct controls remain accessible but do not compete with Arsenal. */
+.campaign-legacy-weapons{border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm);margin:12px 0;padding:10px;background:var(--fw-panel-deep)}
+.campaign-legacy-weapons>summary{cursor:pointer;min-height:44px;display:flex;
+ align-items:center;font:700 12px var(--fw-font-menu);
+ letter-spacing:.04em;color:var(--fw-text-muted)}
+.campaign-legacy-weapons[open]>summary{color:var(--fw-text)}
+.campaign-legacy-weapons .campaign-weapon-attachments{margin-top:9px}

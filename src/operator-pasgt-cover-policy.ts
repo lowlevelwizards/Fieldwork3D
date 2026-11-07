@@ -35,8 +35,13 @@ export function readPasgtDetails(value:unknown,legacyHelmetSetup?:unknown):Pasgt
 }
 /** Derive (never rewrite) effective cover behavior so disabling foliage or
  * scrim restores the user's previous no-slits preference. */
-export function resolvePasgtDetails(value:unknown,legacyHelmetSetup?:unknown):
- PasgtDetails{
+export function resolvePasgtDetails(value:unknown,legacyHelmetSetup?:unknown,
+ covered=true):PasgtDetails{
  const d=readPasgtDetails(value,legacyHelmetSetup);
- return {...d,slits:d.slits||pasgtConcealmentRequiresSlits(d.concealment)};
+ return {...d,
+  slits:d.slits||pasgtConcealmentRequiresSlits(d.concealment),
+  // The net is tied to the retaining band when a cover is worn.
+  // Saved manual band preference remains untouched and is restored
+  // when net is deselected or the cover is removed.
+  band:covered&&d.concealment==='net'?'elastic':d.band};
 }

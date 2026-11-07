@@ -473,7 +473,16 @@ let studioMode:'quick'|'campaign'='quick';
 let studioSelected='rook';
 let studioOverlay:HTMLDivElement|null=null;
 let studioFrame:HTMLIFrameElement|null=null;
+/** Keep one warm Studio context for short returns; release it after a bounded
+ * hidden interval to avoid retaining two WebGL contexts indefinitely on iOS.
+ * The iframe never owns tactical simulation or authoritative roster state. */
+const STUDIO_WARM_RETAIN_MS=60_000;
+let studioReady=false,studioOpenEpoch=0,studioInitSentEpoch=-1;
+let studioReleaseTimer:ReturnType<typeof setTimeout>|null=null;
 function sendStudioInit(){
+ if(!studioOverlay||studioOverlay.hidden||
+    studioInitSentEpoch===studioOpenEpoch)return;
+ studioInitSentEpoch=studioOpenEpoch;
  if(!studioFrame?.contentWindow)return;
  const people=studioMode==='campaign'?
   campaign?.operators.filter(o=>o.status!=='retired'&&o.status!=='lost')??[]:
@@ -490,8 +499,16 @@ function sendStudioInit(){
  },location.origin);
 }
 function closeOperatorStudio(){
- if(studioOverlay)studioOverlay.hidden=true;
- if(studioFrame)studioFrame.src='about:blank';
+ if(!studioOverlay||studioOverlay.hidden)return;
+ studioOverlay.hidden=true;
+ studioFrame?.contentWindow?.postMessage({type:'fw-studio-suspend'},location.origin);
+ if(studioReleaseTimer!==null)clearTimeout(studioReleaseTimer);
+ studioReleaseTimer=setTimeout(()=>{
+  studioReleaseTimer=null;
+  if(!studioOverlay?.hidden||!studioFrame)return;
+  studioFrame.src='about:blank';
+  studioReady=false;studioInitSentEpoch=-1;
+ },STUDIO_WARM_RETAIN_MS);
 }
 function openOperatorStudio(id?:string,requestedMode?:'quick'|'campaign'){
  studioMode=requestedMode??(campaignMode==='home'||campaignMode==='mission'?
@@ -503,14 +520,26 @@ function openOperatorStudio(id?:string,requestedMode?:'quick'|'campaign'){
   studioFrame=document.createElement('iframe');
   studioFrame.title='Fieldwork Operator Studio';
   studioOverlay.append(studioFrame);document.body.append(studioOverlay);
+  studioFrame.onload=()=>{
+   if(studioOverlay&&!studioOverlay.hidden)sendStudioInit();
+  };
  }
  studioSelected=id??(studioMode==='campaign'?campaign?.operators[0]?.id:'rook')??'rook';
+ if(studioReleaseTimer!==null){
+  clearTimeout(studioReleaseTimer);studioReleaseTimer=null;
+ }
+ studioOpenEpoch++;
  studioOverlay.hidden=false;
  const url=new URL('./operator-studio.html',location.href);
  url.searchParams.set('embedded','1');url.searchParams.set('mode',studioMode);
  url.searchParams.set('operator',studioSelected);
- studioFrame!.src=url.href;
- studioFrame!.onload=sendStudioInit;
+ // A hidden frame still owns the already compiled rig and GPU resources.
+ // Send fresh authoritative roster/readonly state rather than navigate it.
+ if(!studioFrame!.getAttribute('src')||
+    studioFrame!.getAttribute('src')==='about:blank'){
+  studioReady=false;
+  studioFrame!.src=url.href;
+ }else if(studioReady)sendStudioInit();
 }
 document.getElementById('openOperatorStudio')?.addEventListener('click',()=>
  openOperatorStudio(selected,'quick'));
@@ -519,7 +548,9 @@ window.addEventListener('message',event=>{
     event.origin!==location.origin||!event.data||typeof event.data!=='object')return;
  const msg=event.data as {type?:string;id?:unknown;
   wardrobe?:unknown;entries?:unknown};
- if(msg.type==='fw-studio-ready'){sendStudioInit();return;}
+ if(msg.type==='fw-studio-ready'){
+  studioReady=true;sendStudioInit();return;
+ }
  if(msg.type==='fw-studio-close'){closeOperatorStudio();return;}
  const batch=msg.type==='fw-studio-commit-batch';
  if(!batch&&msg.type!=='fw-studio-commit')return;
@@ -969,6 +1000,8 @@ let expandedQuickOperator:string|null=null;
 let expandedQuickKit:string|null=null;
 let expandedQuickLoadoutGroup:QuickLoadoutGroup='weapon';
 let expandedQuickWeapon:string|null=null;
+/** Keep the intentional classic fallback open across part/weapon rerenders. */
+const expandedClassicWeaponControls=new Set<string>();
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
 const selectedQuickWeaponSockets=new Map<string,WorkbenchSocket>();
@@ -979,6 +1012,47 @@ function rememberQuickWorkbenchView(){
   resetQuickWorkbenchViews.has(quickWorkbenchId))return;
  const pose=quickWorkbench.getViewState();
  if(pose)savedQuickWorkbenchViews.set(quickWorkbenchId,pose);
+}
+/** Full Arsenal editor uses the same pure draft and resolver as the standalone gallery.
+ * Quick Play commits remain in the transient roster; weapon/kit progress is not saved.
+ */
+async function openQuickArsenal(id:string){
+ if(state.phase!=='planning'||replaying||campaignMode!=='quick')return;
+ const member=persistentRoster.members.find(m=>m.id===id);
+ if(!member)return;
+ try{
+  const [{arsenalRecipeFromLegacy},{openArsenalWorkbench},
+   {applyQuickPlayArsenalEdit,quoteQuickPlayArsenalEdit}]=await Promise.all([
+    import('./arsenal/recipes.ts'),import('./arsenal/workbench-screen.ts'),
+    import('./arsenal/quickplay-adapter.ts')]);
+  if(state.phase!=='planning'||replaying||campaignMode!=='quick')return;
+  const current=persistentRoster.members.find(m=>m.id===id);
+  const recipe=current&&arsenalRecipeFromLegacy(current.weaponConfiguration);
+  if(!current||!recipe){showUiHelp('THIS WEAPON USES THE LEGACY LOADOUT EDITOR',3000);return;}
+  openArsenalWorkbench({id:'equipped-quick-'+id,name:current.callsign,recipe},undefined,{
+   mode:'quick',applyLabel:'APPLY TO OPERATOR',
+   quote:r=>{
+    const result=quoteQuickPlayArsenalEdit(persistentRoster,id,r);
+    return {...result,canCommit:result.valid};
+   },
+   onApply:nextRecipe=>{
+    if(state.phase!=='planning'||replaying||campaignMode!=='quick')
+     return {ok:false,message:'Equipment changes are only available before deployment'};
+    const next=applyQuickPlayArsenalEdit(persistentRoster,id,nextRecipe);
+    if(next===persistentRoster&&
+     !persistentRoster.members.some(m=>m.id===id))
+     return {ok:false,message:'Operator is unavailable'};
+    persistentRoster=next;
+    applyRosterIdentity(state,persistentRoster);
+    expandedQuickKit=id;expandedQuickWeapon=id;
+    expandedQuickLoadoutGroup='weapon';
+    renderOperationsBoard();updateHud();
+    return {ok:true};
+   }
+  });
+ }catch{
+  showUiHelp('ARSENAL UNAVAILABLE · EXISTING LOADOUT EDITOR STILL WORKS',4000);
+ }
 }
 function renderOperationsBoard(){
  const priorScroll=operationsBoard.scrollTop;
@@ -1082,12 +1156,28 @@ function renderOperationsBoard(){
   const loadout=buildQuickLoadoutGroups(kit,expandedQuickLoadoutGroup,group=>{
    expandedQuickLoadoutGroup=group;
   });
-  // The modular factory chooser below is the actual weapon selection UI.
-  // Legacy WeaponId remains internal simulation/persistence compatibility.
+  // Arsenal is the primary builder. Direct factory and socket controls remain
+  // behind one accessible fallback for class-only or unsupported weapons.
   const modelHint=document.createElement('small');
   modelHint.className='fw-weapon-section-label';
-  modelHint.textContent='SELECT PLATFORM · FACTORY CHECKPOINTS + CUSTOM PARTS';
+  modelHint.textContent='WEAPON · ARSENAL';
   loadout.field('weapon').append(modelHint);
+  const arsenalAction=document.createElement('button');arsenalAction.type='button';
+  arsenalAction.className='fw-button fw-arsenal-open';
+  arsenalAction.textContent='OPEN ARSENAL · FULL WORKBENCH';
+  arsenalAction.disabled=state.phase!=='planning'||replaying||
+   !member.weaponConfiguration.build;
+  arsenalAction.addEventListener('click',()=>{void openQuickArsenal(member.id);});
+  loadout.field('weapon').append(arsenalAction);
+  const legacyControls=document.createElement('details');
+  legacyControls.className='fw-legacy-weapon-controls';
+  legacyControls.open=!member.weaponConfiguration.build||
+   expandedClassicWeaponControls.has(member.id);
+  const legacyTitle=document.createElement('summary');
+  legacyTitle.textContent='ADVANCED · CLASSIC WEAPON CONTROLS';
+  const legacyNote=document.createElement('p');legacyNote.className='fw-weapon-helper';
+  legacyNote.textContent='Direct factory and socket options for unsupported builds or troubleshooting.';
+  legacyControls.append(legacyTitle,legacyNote);
   const activePreset=member.weaponConfiguration.build?
    matchingFamilyPreset(member.weaponConfiguration.build):undefined;
   const factoryLabel=document.createElement('strong');
@@ -1112,7 +1202,7 @@ function renderOperationsBoard(){
     expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
    }
   });
-  loadout.field('weapon').append(factoryLabel,factoryBrowser);
+  legacyControls.append(factoryLabel,factoryBrowser);
   const resupply=document.createElement('button');resupply.type='button';
   resupply.className='fw-squad-resupply';resupply.textContent='RESUPPLY';
   resupply.addEventListener('click',()=>{
@@ -1178,7 +1268,7 @@ function renderOperationsBoard(){
    quickWorkbench?.showSocketChoices(slot,select);
   };
   const syncWorkbench=()=>{
-   const active=kit.open&&loadout.group.weapon.open&&weaponEditor.open;
+   const active=kit.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open;
    if(!active){if(quickWorkbenchId===member.id){
     rememberQuickWorkbenchView();
     quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
@@ -1197,6 +1287,11 @@ function renderOperationsBoard(){
    if(saved&&socketRows.has(saved))showSocket(saved);
    else quickWorkbench.setActiveSlot(initialSocket,false);
   };
+  legacyControls.addEventListener('toggle',()=>{
+   if(legacyControls.open)expandedClassicWeaponControls.add(member.id);
+   else expandedClassicWeaponControls.delete(member.id);
+   syncWorkbench();
+  });
   weaponEditor.addEventListener('toggle',()=>{
    if(weaponEditor.open)expandedQuickWeapon=member.id;
    else if(expandedQuickWeapon===member.id)expandedQuickWeapon=null;
@@ -1293,7 +1388,8 @@ function renderOperationsBoard(){
   const diag=document.createElement('details');diag.className='fw-loadout-diagnostics';
   const diagTitle=document.createElement('summary');diagTitle.textContent='WEAPON MEASUREMENTS';
   diag.append(diagTitle,properties);weaponEditor.append(diag);
-  loadout.field('weapon').append(weaponEditor);
+  legacyControls.append(weaponEditor);
+  loadout.field('weapon').append(legacyControls);
   const carrying=carryCapacityReport(member.loadout,member.magazines);
   const carryItems=carrying.placements.filter(p=>p.kind!=='magazine');
   if(carryItems.length){
@@ -1348,7 +1444,7 @@ function renderOperationsBoard(){
   card.append(kit);operationsBoard.append(card);
   // A newly opened details subtree can report zero width on iOS until
   // it is attached and laid out. Initialize after paint, not only on toggle.
-  if(kit.open&&loadout.group.weapon.open&&weaponEditor.open)
+  if(kit.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open)
    requestAnimationFrame(()=>{if(kit.isConnected)syncWorkbench();});
  }
  const hint=document.createElement('p');
@@ -5521,6 +5617,26 @@ async function launchQuickPlay(){
     const hudStart=performance.now();
     layout();updateHud();
     const hudMs=Math.round(performance.now()-hudStart);
+    // Shader preparation can use KHR_parallel_shader_compile on capable
+    // browsers. It does not pre-render the game or upload the whole wardrobe.
+    // Keep an A/B opt-out: ?gpuWarmup=0 allows identical-seed comparisons.
+    let shaderPreparationMs=0;
+    if(stage&&viewMode!=='plan2d'&&
+       new URLSearchParams(location.search).get('gpuWarmup')!=='0'){
+      quickPlayCheckpoint(96,'Preparing GPU programs',
+        'Warming visible materials before the first 3D draw');
+      await allowQuickPlayPaint();
+      if(id!==quickPlayRun)return;
+      const shaderStart=performance.now();
+      try{
+        await stage.renderer.compileAsync(stage.scene,stage.camera);
+      }catch(error){
+        // A failed async warmup must never prevent the ordinary first frame.
+        console.warn('[Quick Play shader preparation fallback]',error);
+      }
+      shaderPreparationMs=Math.round(performance.now()-shaderStart);
+      if(id!==quickPlayRun)return;
+    }
     // The first WebGL render is the last major synchronous initialization
     // step (costume materials, visibility, fog, shadow atlas and shaders).
     // Keep the loading mask up while it runs and measure its real duration.
@@ -5551,7 +5667,8 @@ async function launchQuickPlay(){
       (firstFrameMs/1000).toFixed(1)+'s';
     console.info('[Quick Play startup]',{
       seed,scale,generationMs:generated.generationMs,sessionMs,sceneMs,
-      operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs
+      operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs,
+      shaderPreparationMs
     });
     // Now that an actual complete frame exists behind the overlay, allow
     // live RAF updates. Never declare READY before the render has returned.
@@ -5585,6 +5702,42 @@ campaignBackButton.type='button';campaignBackButton.id='campaignReturnButton';
 campaignBackButton.textContent='OPERATIONS ROOM';
 campaignBackButton.setAttribute('aria-label','Return to campaign operations room');
 ui.siteSettings.append(campaignBackButton);
+/** Campaign Arsenal drafts are always re-quoted against live ownership and credits.
+ * The existing editor remains usable until the new UI completes its cutover.
+ */
+async function openCampaignArsenal(id:string){
+ if(!campaign||campaign.activeContractId)return;
+ try{
+  const [{arsenalRecipeFromLegacy},{openArsenalWorkbench},
+   {quoteCampaignArsenalEdit,commitCampaignArsenalEdit}]=await Promise.all([
+    import('./arsenal/recipes.ts'),import('./arsenal/workbench-screen.ts'),
+    import('./arsenal/campaign-adapter.ts')]);
+  const member=campaign?.operators.find(o=>o.id===id&&o.status!=='retired'&&o.status!=='lost');
+  if(!campaign||campaign.activeContractId||!member)return;
+  const recipe=arsenalRecipeFromLegacy(member.weaponConfiguration);
+  if(!recipe){showUiHelp('THIS WEAPON USES THE LEGACY ARMORY',3000);return;}
+  openArsenalWorkbench({id:'equipped-campaign-'+id,name:member.callsign,recipe},undefined,{
+   mode:'campaign',applyLabel:'EQUIP WEAPON',
+   quote:r=>campaign?quoteCampaignArsenalEdit(campaign,id,r):
+    {valid:false,canCommit:false,reason:'Campaign unavailable'},
+   onApply:r=>{
+    if(!campaign)return {ok:false,message:'Campaign unavailable'};
+    const before=campaign;
+    const result=commitCampaignArsenalEdit(before,id,r);
+    if(!result.quote.canCommit)
+     return {ok:false,message:result.quote.reason??'Cannot equip this build'};
+    if(result.state===before)return {ok:true};
+    campaign=result.state;
+    if(!saveCampaign()){
+     campaign=before;return {ok:false,message:'Could not save Campaign. No equipment was changed.'};
+    }
+    showCampaignHome();return {ok:true};
+   }
+  });
+ }catch{
+  showUiHelp('ARSENAL UNAVAILABLE · EXISTING ARMORY STILL WORKS',4000);
+ }
+}
 const campaignScreen=new CampaignScreen({
  newCampaign:async()=>{
   if(campaign&&!await confirmFieldworkAction({
@@ -5662,6 +5815,7 @@ const campaignScreen=new CampaignScreen({
   campaign=setCampaignWardrobe(campaign,id,look);
   saveCampaign();showCampaignHome();}},
  openStudio:(id)=>openOperatorStudio(id,'campaign'),
+ openArsenal:(id)=>{void openCampaignArsenal(id);},
  exportSave:()=>{
   if(!campaign)return;
   const blob=new Blob([exportCampaign(campaign)],{type:'application/json'});
@@ -6678,7 +6832,11 @@ function tick(now:number){
     updateHud();if(replaying)updateReplayHud();hudAt=now;
   }
   const perfRenderStart=perfOverlay?performance.now():0;
-  if(stage&&viewMode!=='plan2d')
+  // The Studio is an opaque full-screen view. Skip only hidden rendering,
+  // never fixed-step gameplay or authoritative replay/simulation state.
+  const studioOccludesTactical=!!studioOverlay&&!studioOverlay.hidden&&
+   !replayQuickVideo.active;
+  if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
     stage.update(state,selected,dt,doorFocusId,
       replaying&&replayOmniscient,replaying?replayPresentation:null,
       !replaying&&state.phase==='running'&&previousRenderActors?
@@ -6695,7 +6853,7 @@ function tick(now:number){
         null,
       replaying?replayWindowHistory:null);
   const overlayBegin=perfOverlay?performance.now():0;
-  render();
+  if(!studioOccludesTactical)render();
   if(replaying&&replayQuickVideo.active){
     replayQuickVideo.drawFrame(
       stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayTime,
@@ -6716,7 +6874,7 @@ function tick(now:number){
         actor.lastBlocker==='furniture'?'OBSTRUCTED':actor.lastBlocker);
     }
   }
-  if(feedbackDraw){
+  if(feedbackDraw&&!studioOccludesTactical){
     feedbackDraw.setTransform(dpr,0,0,dpr,0,0);
     feedbackDraw.clearRect(0,0,cssW,cssH);
     const actor=uid(selected);

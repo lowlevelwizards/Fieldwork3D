@@ -32,6 +32,8 @@ import {createWardrobeBodyLayers,updateWardrobeBodyLayers,
  type WardrobeBodyLayers} from './operator-wardrobe-body-visuals.ts';
 import {createWardrobeGearLayers,updateWardrobeGearLayers,
  type WardrobeGearLayers} from './operator-wardrobe-gear-visuals.ts';
+import {sampleVisibleShoulderSurfaces,type ShoulderContactSource}
+ from './breach-shoulder-contact-surface.ts';
 import {armorMountedMagazineSocket}
  from './operator-armor-attachment-frame.ts';
 import {carriedMagazineGeometry,carriedMagazineProfile}
@@ -380,6 +382,33 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   usingWardrobe?looks.rigStyle:'no-rig',
   looks.beltStyle,looks.packStyle,looks.top,
   wardrobe?.aliceLoad??'standard',wardrobe?.m1956Variant??'late');
+ // Record ONLY candidate surfaces for later shoulder/buttplate fitting.
+ // The fit is rebuilt on a wardrobe change, not on an animation tick.
+ // No stock, joint, ballistics or collision state is mutated here.
+ if(usingWardrobe){
+  const garment=looks.top==='bdu-shirt'||looks.top==='acu-shirt'?
+    v.fieldBlouses[looks.top].torso:
+    looks.top==='combat-shirt'||looks.top==='smock-jacket'||
+      looks.top==='gorka-jacket'?
+      v.newUpper.cuts[looks.top].torso:v.baseTorso;
+  const sources:ShoulderContactSource[]=[
+    {id:'garment:'+looks.top,layer:'garment',material:'soft',
+      object:garment}
+  ];
+  const armor=v.wardrobeGear.armor[looks.armorStyle]
+    ?.getObjectByName('uniform-fitted-connectors');
+  if(armor)sources.push({id:'armor:'+looks.armorStyle,
+    layer:'armor-shoulder',material:'structured',object:armor});
+  const harness=v.wardrobeGear.rig[looks.rigStyle]
+    ?.getObjectByName('uniform-fitted-rig-harness');
+  if(harness)sources.push({id:'rig:'+looks.rigStyle,
+    layer:'rig-shoulder',material:'soft',object:harness});
+  v.visualChest.userData.shoulderSurfaceCandidates={
+    key:[looks.top,looks.armorStyle,looks.rigStyle].join('|'),
+    left:sampleVisibleShoulderSurfaces(v.visualChest,sources,-1),
+    right:sampleVisibleShoulderSurfaces(v.visualChest,sources,1)
+  };
+ }else v.visualChest.userData.shoulderSurfaceCandidates=null;
  updateWardrobeAccessories(v.accessories,
   wardrobe?.accessories??initialWardrobeAccessories());
  updateIdentityVisuals(v.identityVisuals,wardrobe?.markings,
@@ -569,5 +598,5 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const root=v.visualChest.parent?.parent;
  if(root)applyOperatorHeightLighting(root,[
   lightingKey,looks.trousers,looks.footwear,looks.headwear
- ].join('/'));
+ ].join('/'),root.userData.fieldworkHeightProfile??'current');
 }

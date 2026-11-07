@@ -1,0 +1,85 @@
+/** Arsenal 2.0: short UI labels only. Never change persisted IDs or authored material meshes.
+ * Differently finished legacy parts stay distinct until a separately reviewed finish pass.
+ */
+import type {WeaponFamilyPart} from '../equipment-weapon-families.ts';
+import type {WeaponAttachment} from '../equipment-weapon-assemblies.ts';
+
+const PART_LABELS:Readonly<Record<string,string>>={
+ 'ar-a1':'A1 Carry Handle','ar-a2':'A2 Carry Handle','ar-retro':'Retro Carbine',
+ 'ar-flat':'Flat Top','akm':'AKM','ak74':'AK-74','ak74m':'AK-74M',
+ 'ak103':'AK-103','ak105':'AK-105','ak-rpk74':'RPK-74','akcompact':'AKS-74U',
+ 'hk-g3-early':'G3 Early','hk-g3-drum':'G3 Diopter',
+ 'hk33-556-rifle':'HK33','hk53-556-compact':'HK53',
+ 'hk-mp5-standard':'MP5','hk-mp5sd-integral':'MP5SD','hk-mp5k-stockless':'MP5K',
+ 'ar-fixed':'A1 Fixed','ar-fixed-a2':'A2 Fixed','ar-car':'CAR Collapsible',
+ 'ar-stock-m4':'M4 Collapsible','ar-compact':'Compact Adjustable',
+ 'ak-wood':'Wood Fixed','ak-wood74':'AK-74 Wood','ak-poly':'Polymer Fixed',
+ 'ak-sidefold':'Polymer Folder','ak-skeleton':'Skeleton Folder',
+ 'ak-triangle-full':'Triangle Folder','ak-triangle-padded':'Padded Triangle',
+ 'ak-underfolder':'AKMS Underfolder','ak-rpk-clubfoot':'RPK Clubfoot',
+ 'ak-wood-amber':'Honey Birch','ak-wood-red':'Red Lacquer',
+ 'ak-wood74-amber':'AK-74 Honey Birch','ak-wood74-red':'AK-74 Red Lacquer',
+ 'ak-wood74-plum':'Plum Polymer','ak-sidefold-plum':'Plum Folder',
+ 'ak-rpk-clubfoot-amber':'Honey Clubfoot','ak-rpk-clubfoot-red':'Red Clubfoot',
+ 'hk-g3-wood-stock':'G3 Wood','hk-g3-poly-stock':'G3 Fixed',
+ 'hk-g3-retract-stock':'G3 Retractable',
+ 'hk33-fixed-stock':'HK33 Fixed · OD','hk33-fixed-stock-black':'HK33 Fixed · Black',
+ 'hk33-retract-stock':'A3 Retractable','hk53-retract-stock':'HK53 Retractable',
+ 'hk-mp5-retract-stock':'A3 Retractable','hk-mp5-fixed-stock':'A2 Fixed',
+ 'hk-mp5k-pdw-stock':'PDW Folder','hk-mp5k-cap':'End Cap',
+ 'ar-grip-classic':'Classic','ar-grip-a2':'A2',
+ 'ar-grip-poly':'Polymer','ar-grip-poly-fde':'Polymer · FDE',
+ 'ak-grip-wood':'Wood','ak-grip-bakelite':'Resin','ak-grip-poly':'Polymer',
+ 'ak-grip-wood-amber':'Honey Birch','ak-grip-wood-red':'Red Lacquer',
+ 'ak-grip-poly-plum':'Plum Polymer','hk-g3-grip':'HK Contoured',
+ 'ar-mag20':'20-Round Steel','ar-mag30':'30-Round Steel',
+ 'ar-magpoly':'Polymer','ak-mag762':'7.62 Steel','ak-mag762poly':'7.62 Polymer',
+ 'ak-mag545':'5.45 Resin','ak-mag545poly':'5.45 Polymer',
+ 'ak-rpk-mag45':'45-Round','ak-mag762-resin':'7.62 Red Resin',
+ 'ak-mag762poly-plum':'7.62 Plum','ak-mag545-plum':'5.45 Plum',
+ 'ak-rpk-mag45-plum':'45-Round Plum','hk-g3-mag20':'20-Round',
+ 'hk556-mag30':'30-Round','hk556-mag25':'25-Round',
+ 'hk9-mag30':'30-Round',
+ 'ar-triangle':'Triangular','ar-round':'Round','ar-carbine':'Carbine Polymer',
+ 'ar-car15-ribbed':'CAR-15 Ribbed','ar-733-ribbed':'733 Ribbed',
+ 'ar-quad':'Quad Rail','ar-m5-rail':'M5 Rail','ar-pri-tube':'PRI Tube',
+ 'ar-risii':'RIS II','ar-compact-rail':'Compact Rail',
+ 'ak-wood-long':'Wood','ak-rpk-wood':'RPK Wood','ak-poly-long':'Polymer',
+ 'ak-rail-long':'Railed','ak-wood-short':'Compact Wood',
+ 'ak-poly-short':'Compact Polymer','ak-poly-mid':'Carbine Polymer',
+ 'ak-wood-long-amber':'Honey Birch','ak-wood-long-red':'Red Lacquer',
+ 'ak-wood-short-amber':'Compact Honey Birch','ak-wood-short-red':'Compact Red Lacquer',
+ 'ak-rpk-wood-amber':'RPK Honey Birch','ak-rpk-wood-red':'RPK Red Lacquer',
+ 'ak-poly-plum-long':'Plum Polymer','ak-poly-plum-mid':'Carbine Plum',
+ 'ak-poly-plum-short':'Compact Plum',
+ 'hk-g3-wood-vented':'Vented Wood','hk-g3-poly-slim':'G3 Slim',
+ 'hk33-poly-slim':'Slim · OD','hk33-poly-slim-black':'Slim · Black',
+ 'hk53-poly-short':'Compact · OD','hk53-poly-short-black':'Compact · Black',
+ 'hk-mp5-tropical':'Tropical','hk-mp5-slim':'Slim',
+ 'hk-mp5-trirail':'Tri-Rail','hk-mp5sd-shroud':'SD Shroud',
+ 'hk-mp5k-vertical':'K Vertical',
+ 'ar-20':'20" Pencil','ar-20-service':'20" Service',
+ 'ar-spr18':'18" SPR','ar-145':'14.5" Pencil',
+ 'ar-145-gov':'14.5" Government','ar-103':'10.3" CQB',
+ 'ar-733-115':'11.5" Commando',
+ 'hk-g3-service':'G3 Service','hk33-service':'HK33 Service',
+ 'hk53-short':'HK53 Short','hk-mp5-standard-barrel':'MP5 Standard',
+ 'hk-mp5sd-integrated':'SD Integrated','hk-mp5k-short':'MP5K Short',
+ 'ak-long':'AK Long','ak-103-factory':'103 Factory',
+ 'ak-rpk-long':'RPK Heavy','ak-mid':'AK Carbine','ak-short':'AK Compact',
+ 'optic-mount-none':'No Mount','optic-irons':'Iron Sights',
+ 'optic-reflex':'Reflex','optic-magnified':'Magnified',
+ 'optic-hk-claw':'Claw Mount','muzzle-bare':'Bare',
+ 'muzzle-hider':'Flash Hider','muzzle-brake':'Brake',
+ 'muzzle-suppressor':'Suppressor','foregrip-none':'None',
+ 'foregrip-handstop':'Handstop','foregrip-vertical':'Vertical',
+ 'light-none':'None','light-compact':'Compact Light',
+ 'sling-none':'None','sling-two-point':'Two-Point'
+};
+/** UI label is deliberately separate from full reference description. */
+export function arsenalPartName(part:WeaponFamilyPart|WeaponAttachment):string{
+ return PART_LABELS[part.id]??part.name;
+}
+export function arsenalPartDetail(part:WeaponFamilyPart|WeaponAttachment):string{
+ return part.name;
+}

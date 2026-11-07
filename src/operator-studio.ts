@@ -3,6 +3,7 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {requestedOperatorGradient} from './operator-height-lighting.ts';
 import {inspectOperatorLighting,formatOperatorLightingReport,
  previewOperatorLightingLayers,restoreOperatorLightingPreview,
  DEFAULT_LIGHTING_LAYERS,type LightingDiagnosticLayers}
@@ -11,7 +12,8 @@ import {applyStudioSelfShadowAtlases}
  from './operator-gear-lightmap-atlas.ts';
 import {applyOperatorStudioToon,requestedOperatorToonBands}
  from './operator-studio-toon-lighting.ts';
-import {OperatorStudioLighting} from './operator-studio-lighting.ts';
+import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
+ from './operator-studio-lighting.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
 import {readPasgtDetails,resolvePasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
@@ -142,9 +144,9 @@ const modeLabel=$<HTMLElement>('studioModeLabel');
 const studioRoot=$<HTMLElement>('studioRoot');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'low-power'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
-renderer.setClearColor(0xc4c7bd);
+renderer.setClearColor(STUDIO_INSPECTION_BACKGROUND);
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0xc4c7bd);
+scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
 // R5 Studio shadows are isolated from the shared thumbnail scene.
 const studioLighting=new OperatorStudioLighting(scene,renderer,location.search);
 const diagnosticLayers:LightingDiagnosticLayers={...DEFAULT_LIGHTING_LAYERS};
@@ -271,10 +273,13 @@ function resize(){
  camera.updateProjectionMatrix();
  renderScene();
 }
+let studioSuspended=false;
 function renderScene(){
+ if(studioSuspended)return;
  studioLighting.beforeRender(rig?.root??null);
  renderer.setRenderTarget(null);renderer.render(scene,camera);
- canvas.dataset.ready='true';
+ // Never report readiness for a bare/empty canvas.
+ canvas.dataset.ready=rig?.root.visible?'true':'false';
  canvas.dataset.drawCalls=String(renderer.info.render.calls);
  // Built-in renderer accounting only: counts, NOT GPU timing estimates.
  canvas.dataset.rendererGeometries=String(renderer.info.memory.geometries);
@@ -403,7 +408,7 @@ let armedPose:OperatorPose|null=null;
 let armedFrame=0,armedStarted=0,armedLastDraw=0;
 let previewInViewport=true;
 function armedPreviewEnabled(){
- return !clothesOnly&&showWeapon&&!!armedPose&&!!rig&&
+ return !studioSuspended&&!clothesOnly&&showWeapon&&!!armedPose&&!!rig&&
   !!member()&&!document.hidden&&previewInViewport;
 }
 function tickArmedPreview(now:number){
@@ -441,6 +446,7 @@ new IntersectionObserver(entries=>{
 }).observe(stage);
 function posePreview(){
  const p=member();if(!p)return;
+ const previewStart=performance.now();
  // Restore exact unmodified colors before the wardrobe refresh; otherwise
  // a previously disabled debug layer would contaminate the next bake.
  if(lightingInspectorOutput&&rig)restoreOperatorLightingPreview(rig.root);
@@ -450,6 +456,9 @@ function posePreview(){
   rig=createOperatorRig(p.id,'blue');
   scene.add(rig.root);
  }
+ // R7 is an opt-in visual audition; the profile is a root-local bake input,
+ // not persistent wardrobe data or an extra per-frame GPU effect.
+ rig.root.userData.fieldworkHeightProfile=requestedOperatorGradient(location.search);
  const issue=issueWeaponPreset(starterWeaponPreset(p.id));
  const configuration=reference?.weapon.weaponConfiguration??
   p.weaponConfiguration??issue.weaponConfiguration;
@@ -491,6 +500,8 @@ function posePreview(){
   previewOperatorLightingLayers(rig.root,diagnosticLayers);
  studioLighting.invalidateGeometry();
  renderScene();
+ canvas.dataset.operatorPreviewMs=
+  String(Math.round((performance.now()-previewStart)*10)/10);
  syncArmedPreview();
 }
 function canEquip(slot:WardrobeSlot,id:string){
@@ -1073,14 +1084,19 @@ function renderMaterials(){
    }
    const bandRow=row('PASGT HELMET BAND',
     'A broad, surface-fitted elastic strip above the brow and around the rear skirt.');
-   addSelect(bandRow,PASGT_BANDS.map(id=>[
+   const netForcesBand=state.setup.cover!=='none'&&details.concealment==='net';
+   if(netForcesBand){
+    const explanation=document.createElement('small');
+    explanation.textContent='ON · REQUIRED TO SECURE NET';
+    bandRow.append(explanation);
+   }else addSelect(bandRow,PASGT_BANDS.map(id=>[
     id,id==='none'?'NONE':'ELASTIC BAND'] as const),
     details.band,id=>changeWardrobe({...current(),pasgtDetails:{
      ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
      band:id as typeof details.band}}));
    if(state.setup.cover!=='none'){
     const concealRow=row('PASGT CONCEALMENT',
-     'Foliage and scrim automatically reveal the required foliage slits.');
+     'Foliage and scrim require slits; net automatically secures under the elastic band.');
     addSelect(concealRow,PASGT_CONCEALMENTS.map(id=>[id,id.toUpperCase()] as const),
      details.concealment,id=>changeWardrobe({...current(),pasgtDetails:{
       ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
@@ -1512,6 +1528,8 @@ function populate(){
  modelSelector.value=selected;refresh();
 }
 function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];readonly:boolean}){
+ studioSuspended=false;
+ thumbBrowser.setSuspended(false);
  identityMode=false;referenceOpen=false;referenceBrowser.hide();
  mode=data.mode;selected=data.selected;readOnly=data.readonly;
  comparingSaved=false;saveInFlight=false;
@@ -1592,7 +1610,11 @@ if(embedded){
  window.addEventListener('message',event=>{
   if(event.origin!==location.origin||event.source!==window.parent)return;
   const data=event.data as StudioInit|{type:string;id?:string;ok?:boolean};
-  if(data?.type==='fw-studio-init'){
+  if(data?.type==='fw-studio-suspend'){
+   studioSuspended=true;
+   thumbBrowser.setSuspended(true);
+   syncArmedPreview();
+  }else if(data?.type==='fw-studio-init'){
    const init=data as StudioInit;
    start({mode:init.mode,selected:init.selected,
     members:init.members,readonly:init.readonly});

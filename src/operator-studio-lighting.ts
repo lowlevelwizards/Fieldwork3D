@@ -5,6 +5,35 @@
 import * as THREE from 'three';
 
 export type StudioShadowMode='legacy'|'hybrid';
+/** Shared presentation constants: full-size operator and all appearance cards
+ * must not independently select backgrounds or key/fill light values. */
+export const STUDIO_INSPECTION_BACKGROUND=0xc4c7bd;
+export const STUDIO_INSPECTION_LIGHT={
+ sky:0xffffff,ground:0x798a7f,
+ key:0xfff2d6,fill:0xaec5c2,
+ keyIntensity:2.35,fillIntensity:.45,hemiIntensity:1.20,
+ legacyKeyIntensity:2.8,legacyFillIntensity:1.0,
+ legacyHemiIntensity:2.0
+} as const;
+/** R7 experimental colored shadow-side fill: no extra shadow pass, no
+ * changes to the neutral baked contact/occlusion masks. Disabled by default.
+ * The actual scene shadow map remains the single source of cast occlusion. */
+export type StudioShadowColor='neutral'|'steel'|'slate'|'plum'|'dusk';
+const STUDIO_SHADOW_PALETTES:Record<StudioShadowColor,
+ {ground:number;fill:number}>={
+ neutral:{ground:STUDIO_INSPECTION_LIGHT.ground,fill:STUDIO_INSPECTION_LIGHT.fill},
+ steel:{ground:0x65748f,fill:0x96adc6},
+ slate:{ground:0x58717c,fill:0x99bdc2},
+ plum:{ground:0x786786,fill:0xb8a7ca},
+ dusk:{ground:0x686986,fill:0x9b9fbf}
+};
+export function requestedStudioShadowColor(search:string):StudioShadowColor{
+ const v=new URLSearchParams(search).get('operatorShadowColor');
+ return v==='steel'||v==='slate'||v==='plum'||v==='dusk'?v:'neutral';
+}
+export function studioShadowFill(search:string){
+ return STUDIO_SHADOW_PALETTES[requestedStudioShadowColor(search)];
+}
 export const STUDIO_KEY_DIRECTION=new THREE.Vector3(.46,.88,.07).normalize();
 export const STUDIO_SHADOW_PAD=3;
 export function studioShadowMode(search:string):StudioShadowMode{
@@ -81,16 +110,20 @@ export class OperatorStudioLighting{
  private readonly renderer:THREE.WebGLRenderer;
  readonly shadowSize:512|1024;
  constructor(scene:THREE.Scene,renderer:THREE.WebGLRenderer,
-  search:string){
+  search:string,shadowSizeOverride?:512|1024){
   this.renderer=renderer;
   this.mode=studioShadowMode(search);
-  this.shadowSize=studioShadowSize(search);
+  this.shadowSize=shadowSizeOverride??studioShadowSize(search);
   const legacy=this.mode==='legacy';
   this.liveEnabled=!legacy;
-  this.hemisphere=new THREE.HemisphereLight(0xffffff,0x798a7f,
-   legacy?2.0:1.20);
-  this.key=new THREE.DirectionalLight(0xfff2d6,legacy?2.8:2.35);
-  this.fill=new THREE.DirectionalLight(0xaec5c2,legacy?1.0:.45);
+  const p=STUDIO_INSPECTION_LIGHT;
+  const shadowFill=studioShadowFill(search);
+  this.hemisphere=new THREE.HemisphereLight(p.sky,shadowFill.ground,
+   legacy?p.legacyHemiIntensity:p.hemiIntensity);
+  this.key=new THREE.DirectionalLight(p.key,
+   legacy?p.legacyKeyIntensity:p.keyIntensity);
+  this.fill=new THREE.DirectionalLight(shadowFill.fill,
+   legacy?p.legacyFillIntensity:p.fillIntensity);
   this.fill.position.set(-35,23,30);
   this.key.position.copy(STUDIO_KEY_DIRECTION).multiplyScalar(100);
   this.key.castShadow=this.liveEnabled;

@@ -6,6 +6,11 @@
  * accidentally return through an old selector. Category state is UI-only.
  */
 import * as THREE from 'three';
+import {requestedOperatorGradient} from './operator-height-lighting.ts';
+import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
+ from './operator-studio-lighting.ts';
+import {applyOperatorStudioToon,requestedOperatorToonBands}
+ from './operator-studio-toon-lighting.ts';
 import {THUMB_LINEAR_TO_SRGB} from './operator-thumbnail-color.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {appearanceThumbnailContext,appearanceThumbnailKey,
@@ -69,6 +74,8 @@ export class OperatorAppearanceGrid{
  private readonly pending=new Map<HTMLCanvasElement,Entry>();
  private readonly observer:IntersectionObserver|null;
  private scheduled=false;
+ /** Stop queued GPU thumbnail work when the Studio iframe is hidden. */
+ private suspended=false;
  private selected:WardrobeSlot='top';
  private token=0;
  private queue:Entry[]=[];
@@ -79,6 +86,7 @@ export class OperatorAppearanceGrid{
  private readonly liveContext:boolean;
  private previewIdentity='rook';
  private readonly renderer:THREE.WebGLRenderer;
+ private readonly lighting:OperatorStudioLighting;
  constructor(root:HTMLElement,renderer:THREE.WebGLRenderer,onSelect:OnSelect,
   canEquip?: (slot:WardrobeSlot,id:string)=>boolean,
   liveContext=false){
@@ -98,12 +106,11 @@ export class OperatorAppearanceGrid{
     if(this.queue.length)this.scheduleThumb();
    },{rootMargin:'240px 0px'});
   this.liveContext=liveContext;
-  this.scene.background=new THREE.Color(0x23352e);
-  this.scene.add(new THREE.AmbientLight(0xffffff,1.5));
-  const key=new THREE.DirectionalLight(0xffeed4,2.0);
-  key.position.set(22,66,-44);this.scene.add(key);
-  const fill=new THREE.DirectionalLight(0xa5bdc8,.8);
-  fill.position.set(-40,30,22);this.scene.add(fill);
+  // Exact same inspection lighting and backdrop as the full-size Studio.
+  // A smaller shadow map is visually sufficient for 160px cards.
+  this.scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
+  this.lighting=new OperatorStudioLighting(this.scene,this.renderer,
+   window.location.search,512);
   this.nav=document.createElement('div');this.nav.className='appearance-item-tabs';
   this.nav.setAttribute('role','tablist');
   this.nav.setAttribute('aria-label','Operator appearance item categories');
@@ -135,12 +142,18 @@ export class OperatorAppearanceGrid{
   this.selected=slot;
   if(!deferPaint)this.paint();
  }
+ setSuspended(suspended:boolean){
+  if(this.suspended===suspended)return;
+  this.suspended=suspended;
+  if(!suspended)this.scheduleThumb();
+ }
  private scheduleThumb(){
-  if(this.scheduled||!this.queue.length)return;
+  if(this.suspended||this.scheduled||!this.queue.length)return;
   this.scheduled=true;
   const token=this.token;
   requestAnimationFrame(()=>{
    this.scheduled=false;
+   if(this.suspended)return;
    if(this.token!==token){
     // A category change replaced the queue while a frame was pending.
     this.scheduleThumb();return;
@@ -254,6 +267,8 @@ export class OperatorAppearanceGrid{
   const oldAlpha=this.renderer.getClearAlpha();
   const oldSceneBackground=this.scene.background;
   try{
+   rig.root.userData.fieldworkHeightProfile=
+    requestedOperatorGradient(window.location.search);
    poseOperator(rig,{
     x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
     posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,
@@ -263,7 +278,11 @@ export class OperatorAppearanceGrid{
     unarmedPreview:true,equipment:kit,wardrobe:w
    },0);
    rig.root.position.set(0,0,0);
+   const toon=requestedOperatorToonBands(window.location.search);
+   if(toon)applyOperatorStudioToon(rig.root,toon);
    this.scene.add(rig.root);
+   this.lighting.invalidateGeometry();
+   this.lighting.beforeRender(rig.root);
    const clothingMode=w.d2FaceMode;
    const view=item.slot==='facewear'&&item.id==='shemagh'?
     (clothingMode==='head-wrap'?
@@ -281,31 +300,31 @@ export class OperatorAppearanceGrid{
    this.camera.lookAt(0,view.height,0);
    this.camera.updateProjectionMatrix();
    this.renderer.setRenderTarget(this.target);
-   // Pale industrial backdrop specifically for near-black protective masks.
-   // Clothing/armor thumbnails keep their established background and framing.
-   this.scene.background=new THREE.Color(item.slot==='facewear'?0x435448:0x23352e);
-   this.renderer.setClearColor(item.slot==='facewear'?0x435448:0x23352e,1);
+   // One neutral Studio background for every category, including facewear.
+   this.scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
+   this.renderer.setClearColor(STUDIO_INSPECTION_BACKGROUND,1);
    this.renderer.clear(true,true,true);
    this.renderer.render(this.scene,this.camera);
+   const readbackStart=performance.now();
    this.renderer.readRenderTargetPixels(this.target,0,0,THUMB_SIZE,
     THUMB_SIZE,this.pixels);
+   this.grid.dataset.lastReadbackMs=
+    String(Math.round((performance.now()-readbackStart)*10)/10);
    const context=canvas.getContext('2d');
    if(context){
     const image=context.createImageData(THUMB_SIZE,THUMB_SIZE);
     // WebGL framebuffer origin is bottom-left; Canvas is top-left.
     for(let y=0;y<THUMB_SIZE;y++){
      const from=(THUMB_SIZE-1-y)*THUMB_SIZE*4,to=y*THUMB_SIZE*4;
-     if(item.slot==='facewear'){
-      // Raw WebGLRenderTarget bytes are LINEAR; ImageData expects sRGB.
-      // The missing conversion made black masks and their background vanish.
-      for(let x=0;x<THUMB_SIZE;x++){
-       const src=from+x*4,dst=to+x*4;
-       image.data[dst]=THUMB_LINEAR_TO_SRGB[this.pixels[src]];
-       image.data[dst+1]=THUMB_LINEAR_TO_SRGB[this.pixels[src+1]];
-       image.data[dst+2]=THUMB_LINEAR_TO_SRGB[this.pixels[src+2]];
-       image.data[dst+3]=this.pixels[src+3];
-      }
-     }else image.data.set(this.pixels.subarray(from,from+THUMB_SIZE*4),to);
+     // Render target reads are linear; convert all materials equally to
+     // display sRGB instead of converting facewear alone.
+     for(let x=0;x<THUMB_SIZE;x++){
+      const src=from+x*4,dst=to+x*4;
+      image.data[dst]=THUMB_LINEAR_TO_SRGB[this.pixels[src]];
+      image.data[dst+1]=THUMB_LINEAR_TO_SRGB[this.pixels[src+1]];
+      image.data[dst+2]=THUMB_LINEAR_TO_SRGB[this.pixels[src+2]];
+      image.data[dst+3]=this.pixels[src+3];
+     }
     }
     context.putImageData(image,0,0);
     // Bounded thumbnail cache: only a couple of active categories retained.
