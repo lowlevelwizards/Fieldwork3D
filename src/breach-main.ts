@@ -179,6 +179,7 @@ import {paintFogMask,maskBounds,FOG_WIDTH,FOG_HEIGHT}
   from './breach-fog-mask.ts';
 import {paintReplayPersonalGround} from './breach-replay-ground-overlay.ts';
 import {PersonalGroundHistory} from './breach-replay-personal-ground.ts';
+import {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 
@@ -790,6 +791,7 @@ let replayOmniscient=true,finishedSession:Session|null=null;
 let replayContactObserverId:string|null=null;
 let replayHasContactEvidence=false;
 let replayOperatorSightIndex:ReplayOperatorSightIndex|null=null;
+let replayDoorHistory:ReplayDoorKnowledgeHistory|null=null;
 /** Optional recorded floor-discovery overlay, not a full actor POV. */
 let replayPersonalGroundHistory:PersonalGroundHistory|null=null;
 let replayGroundLensOn=false;
@@ -2825,9 +2827,15 @@ function architecture(){
   for(const door of state.doors){
     if(spatialSurfaceState(state,'door',door.id,replaying&&replayOmniscient)==='unknown')continue;
     const a=door.a,b=door.b,center=doorCenter(door);
-    const visuallyOpen=liveVisibility(state,center)?
-      (door.openFraction??(door.open?1:0)):
-      (state.intel.doorMemory.get(door.id)??0);
+    // Personal contact review consumes the last door state this operator
+    // actually witnessed. Never substitute today's door state after a rewind.
+    const personalDoor=replaying&&replayContactObserverId?
+      replayDoorHistory?.at(replayTime,replayContactObserverId,door.id):null;
+    const visuallyOpen=replaying&&replayContactObserverId?
+      (personalDoor?.openFraction??0):
+      liveVisibility(state,center)?
+        (door.openFraction??(door.open?1:0)):
+        (state.intel.doorMemory.get(door.id)??0);
     // Every known hinged door has a true-to-geometry swing preview
     // before selection, so an entry side can be chosen from the briefing.
     if(state.phase==='planning'&&door.kind!=='sliding'&&door.kind!=='shutter'){
@@ -2844,7 +2852,8 @@ function architecture(){
       }
       draw.stroke();draw.setLineDash([]);draw.restore();
     }
-    if(door.wedged){
+    if(replaying&&replayContactObserverId?
+      !!personalDoor?.wedged:door.wedged){
       circle(center.x,center.y,4.5,'#e8b36d');
       line({x:center.x-5,y:center.y+6},{x:center.x+5,y:center.y+6},'#33271b',2);
     }
@@ -4410,7 +4419,7 @@ function updateReplayHud(){
   ui.replayContactNote.hidden=!replayContactObserverId;
   ui.replayContactNote.textContent=replayGroundLensOn?
     'GOLD CELLS: INDIVIDUALLY OBSERVED FLOOR · WORLD OBJECTS STILL SQUAD STATE · 2D ONLY.':
-    'OPERATOR CONTACTS + CIVILIAN SIGHTINGS · MAP/OBJECTS REMAIN SQUAD KNOWLEDGE. SHOT PATHS HIDDEN.';
+    'PERSONAL CONTACTS / LAST-SEEN DOORS · MAP/PROPS REMAIN SQUAD KNOWLEDGE. SHOT PATHS HIDDEN.';
   ui.replayGroundLens.disabled=!replayContactObserverId||
     !replayPersonalGroundHistory;
   ui.replayGroundLens.textContent=replayGroundLensOn?
@@ -4470,6 +4479,8 @@ function enterReplay(){
     Object.keys(f.knowledge.operatorVisibleActorIds).length>0);
   replayOperatorSightIndex=replayHasContactEvidence?
     new ReplayOperatorSightIndex(recorder.frames):null;
+  replayDoorHistory=recorder.doorKnowledge.observations.length?
+    new ReplayDoorKnowledgeHistory(recorder.doorKnowledge.observations):null;
   replayPersonalGroundHistory=recorder.personalGround.length?
     new PersonalGroundHistory(recorder.personalGround):null;
   replayGroundLensOn=false;replayGroundCacheObserver=null;
@@ -4517,6 +4528,7 @@ function exitReplay(){
   replayIncidents=[];replayFeaturedIncidents=[];
   replayContactObserverId=null;replayHasContactEvidence=false;
   replayOperatorSightIndex=null;
+  replayDoorHistory=null;
   replayPersonalGroundHistory=null;replayGroundLensOn=false;
   replayGroundCacheObserver=null;replayGroundCacheCount=-1;
   replayGroundCacheSite=null;
@@ -6361,7 +6373,8 @@ function tick(now:number){
         state.phase==='running'?
           state.seconds-(1-Math.min(1,accum*60))/60:
           state.seconds),state.operators.map(a=>a.id)):null,
-      replaying?replayDisclosure():null);
+      replaying?replayDisclosure():null,
+      replaying?replayDoorHistory:null);
   const overlayBegin=perfOverlay?performance.now():0;
   render();
   if(replaying&&replayQuickVideo.active){
