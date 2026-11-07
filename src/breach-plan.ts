@@ -5,7 +5,10 @@ export type MoveMode='advance'|'strafe'|'sprint';
 export type FirePolicy='engage'|'hold'|'return'|'focus'|'suppress';
 /** Persistent world-facing instruction, independent of any movement route. */
 export type AimMode='free'|'fixed'|'track';
-export type AimInstruction={mode:AimMode;angle?:number;point?:Pt};
+/** Only auto-generated doorway-stack attention is superseded by the
+ * squad entry clear-sector handoff. User-authored WATCH is never tagged. */
+export type AimInstruction={mode:AimMode;angle?:number;point?:Pt;
+ source?:'stack'};
 export type PieSide='cw'|'ccw';
 export type DoorMethod='open'|'close'|'kick'|'hold';
 export type PlanNode={
@@ -20,6 +23,9 @@ export type PlanNode={
   patientId?:string;woundId?:number;
   transportMode?:'drag'|'carry';
   stackDoorId?:string;
+  /** The physical threshold for a generated squad-entry clearing handoff.
+   * Ordinary authored MOVE/LOOK orders intentionally omit this marker. */
+  entryDoorId?:string;
   firePolicyState?:FirePolicy;firePoint?:Pt;fireTargetId?:string;
 };
 export type PlanHistory={undo:PlanNode[][];redo:PlanNode[][]};
