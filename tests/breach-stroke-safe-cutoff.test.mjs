@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {activateSite} from '../src/breach-core.ts';
 import {intelPassable} from '../src/breach-intel.ts';
+import {SQUEEZE_RADIUS} from '../src/breach-navigation.ts';
 import {newSession,team,planWatch,planMove,planMoveStroke,undoPlan,redoPlan}
   from '../src/breach-game.ts';
 
@@ -27,10 +28,10 @@ test('wall contact clips at closest known safe point instead of rejecting the en
   assert.ok(planMoveStroke(s,a.id,[{x:150,y:120},{x:250,y:120}],
     false,true,out));
   assert.equal(out.clipped,true);
-  assert.ok(out.endpoint.x>=159&&out.endpoint.x<173,
+  assert.ok(out.endpoint.x>=164&&out.endpoint.x<178,
     'stop on the approach side, near wall clearance');
   assert.ok(Math.abs(out.endpoint.y-120)<1);
-  assert.ok(intelPassable(out.endpoint,s.intel,7));
+  assert.ok(intelPassable(out.endpoint,s.intel,SQUEEZE_RADIUS));
   assert.ok(a.plan.some(n=>n.kind==='move'&&n.p.x===150));
   assert.deepEqual(a.plan.at(-1).p,out.endpoint);
  }finally{activateSite(null);}
@@ -45,7 +46,7 @@ test('furniture contact clips near front face, not through/around the obstacle',
   assert.equal(out.clipped,true);
   assert.ok(out.endpoint.x>149&&out.endpoint.x<172,
     'the endpoint stays on the near side of the crate');
-  assert.ok(intelPassable(out.endpoint,s.intel,7));
+  assert.ok(intelPassable(out.endpoint,s.intel,SQUEEZE_RADIUS));
  }finally{activateSite(null);}
 });
 
