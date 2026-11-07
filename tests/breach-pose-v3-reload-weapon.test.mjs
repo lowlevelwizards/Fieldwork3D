@@ -15,21 +15,26 @@ test('V3 reload presentation is exactly neutral at start and finish',()=>{
    const v=choreographV3ReloadWeapon(fit,t,mode);
    assert.equal(v.fit,fit);
    assert.equal(v.weight,0);
+   assert.equal(v.forwardShift,0);
   }
  }
 });
 test('V3 rifle cants around stock while maintaining every rigid socket',()=>{
  const v=choreographV3ReloadWeapon(fit,.5,'emergency');
  assert.ok(v.weight>.99);
- assert.ok(v.fit.stock.distanceTo(fit.stock)<1e-12);
+ assert.ok(v.fit.stock.distanceTo(fit.stock)>1.3);
+ assert.ok(v.fit.stock.distanceTo(fit.stock)<1.5);
+ assert.ok(Math.abs(v.fit.stock.z-fit.stock.z)<1e-9,
+  'the rifle moves forward, not sideways into the armor');
  const before=new THREE.Quaternion().setFromEuler(fit.rotation);
  const after=new THREE.Quaternion().setFromEuler(v.fit.rotation);
  const delta=after.clone().multiply(before.clone().invert());
  for(const k of ['primary','support','origin']){
   const expect=fit[k].clone().sub(fit.stock)
-   .applyQuaternion(delta).add(fit.stock);
+   .applyQuaternion(delta).add(v.fit.stock);
   assert.ok(expect.distanceTo(v.fit[k])<1e-8,k+' socket rigid');
  }
+ assert.ok(v.fit.primary.x>fit.primary.x+.8);
  assert.ok(v.fit.primary.z>fit.primary.z,
   'firing hand should move outward from side fabric');
  assert.ok(after.angleTo(before)<.20);

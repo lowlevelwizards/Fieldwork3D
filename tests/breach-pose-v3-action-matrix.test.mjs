@@ -50,6 +50,7 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
  const pairCounts={clear:0,unresolved:0,primaryReach:0,
   primaryClearance:0,supportReach:0,supportClearance:0};
  const posePairExamples=[];
+ const acceptedPairs=[];
  const contactBlocks={},contactExcess={};
  for(const fixture of fixtures){
   const base=assemble(fixture);
@@ -91,6 +92,9 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
     const pair=candidate.root.userData.poseV3CoordinatedReport;
     if(pair){
      pairCounts[pair.status]++;
+     if(pair.status==='clear')
+      acceptedPairs.push({kit:fixture.id,action:name,yaw:pair.yaw,
+       leanX:pair.leanX,quality:pair.quality});
      for(const key of ['primaryReach','primaryClearance',
       'supportReach','supportClearance'])
       pairCounts[key]+=(pair.rejects?.[key]??0);
@@ -143,5 +147,6 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
  console.log('POSE-V3-ACTION-MATRIX',JSON.stringify({clear,unresolved,
   fixtures:fixtures.length,actions:scenarios.length,
   reasons:Object.fromEntries(reasons),violations:Object.fromEntries(violations),
-  pairCounts,contactBlocks,contactExcess,posePairExamples,examples}));
+  pairCounts,acceptedPairs,contactBlocks,contactExcess,
+  posePairExamples,examples}));
 });
