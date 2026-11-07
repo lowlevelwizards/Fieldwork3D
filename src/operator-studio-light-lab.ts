@@ -14,12 +14,14 @@ export type StudioLightLabSettings={
  toon:OperatorToonBands;rim:OperatorRimMode;
  gradient:OperatorHeightProfile;shadow:StudioShadowColor;
  celProfile:StudioCelProfile;celLow:number;celHigh:number;
+ /** 0–1 linear highlight blend; default subdued, exposed as Rim Amount. */
+ rimAmount:number;
  /** Audition the material on all opaque Standard surfaces, incl. firearms. */
  allSurfaces:boolean;
 };
 export const DEFAULT_STUDIO_LIGHT_LAB:Readonly<StudioLightLabSettings>={
  toon:0,rim:'off',gradient:'current',shadow:'neutral',
- celProfile:'classic',celLow:.66,celHigh:.84,allSurfaces:true
+ celProfile:'graphic',celLow:.70,celHigh:.84,rimAmount:.24,allSurfaces:true
 };
 function clampCutoff(value:string|null,defaultValue:number):number{
  const n=Number(value);
@@ -38,6 +40,7 @@ export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
   celProfile,
   celLow:clampCutoff(p.get('operatorCelLow'),DEFAULT_STUDIO_LIGHT_LAB.celLow),
   celHigh:clampCutoff(p.get('operatorCelHigh'),DEFAULT_STUDIO_LIGHT_LAB.celHigh),
+  rimAmount:Math.max(0,Math.min(1,Number(p.get('operatorRimAmount')??.24))),
   allSurfaces:p.get('operatorAllSurfaces')!=='0'};
 }
 export function effectiveStudioLightLab(
@@ -49,6 +52,8 @@ export function effectiveStudioLightLab(
  // Previous selective hard/pixel rims require cel. The new dual graphic
  // lighting is independent, so the smooth model can audition a rim too.
  return {...settings,celLow:low,celHigh:high,
+  rimAmount:Number.isFinite(settings.rimAmount)?
+   Math.max(0,Math.min(1,settings.rimAmount)):.24,
   rim:settings.toon===0&&settings.rim!=='dual'?'off':settings.rim};
 }
 export function studioLightLabLabel(s:StudioLightLabSettings):string{
