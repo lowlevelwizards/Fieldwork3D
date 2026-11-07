@@ -17,13 +17,14 @@ test('weapon browser exposes both G3 factory models under an HK tab',()=>{
   const selected=[];
   const outer=createWeaponPresetBrowser({onSelect:id=>selected.push(id)});
   const tabs=outer.children[2],grid=outer.children[3];
-  assert.deepEqual(tabs.children.map(c=>c.textContent),['AR · 8','AK · 9','HK · 2']);
-  const hk=tabs.children.find(c=>c.textContent==='HK · 2');
+  assert.deepEqual(tabs.children.map(c=>c.textContent),['AR · 8','AK · 9','HK · 8']);
+  const hk=tabs.children.find(c=>c.textContent==='HK · 8');
   hk.events.click();
-  assert.deepEqual(grid.children.map(c=>c.dataset.weaponPreset),['hk-g3','hk-g3a3']);
+  assert.deepEqual(grid.children.map(c=>c.dataset.weaponPreset),
+   FAMILY_PRESETS.filter(p=>p.family==='hk').map(p=>p.id));
   assert.equal(grid.children.every(c=>c.disabled===false),true);
   grid.children[1].events.click();
   assert.deepEqual(selected,['hk-g3a3']);
-  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='hk').length,2);
+  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='hk').length,8);
  }finally{globalThis.document=previous}
 });

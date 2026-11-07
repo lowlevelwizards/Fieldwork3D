@@ -53,6 +53,7 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {SKIN_TONES,seededSkinTone} from './operator-identity-palette.ts';
+import {isH1ModernHelmet,resolveHelmetSetup} from './operator-helmet-setup-policy.ts';
 import {headwearSolidHex} from './operator-headwear-colors.ts';
 import {resolvedHeadwearCamo,headwearCamoPlacement} from './operator-headwear-camo.ts';
 import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-materials.ts';
@@ -866,8 +867,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
    const selected=id===clothing.headwear;
    const modelId=(id==='high-cut-rails'?'high-cut':id) as HeadSilhouetteId;
-   const camo=selected&&p.wardrobe?.headwearCamo!=='splittertarn-31'?
+   const requestedCamo=selected&&p.wardrobe?.headwearCamo!=='splittertarn-31'?
      resolvedHeadwearCamo(modelId,p.wardrobe?.headwearCamo):null;
+   // Modern printed helmets carry actual cloth covers; preserve the
+   // independent shell material beneath them, as on main.
+   const fabricOnShell=isH1ModernHelmet(modelId)&&
+     resolveHelmetSetup(modelId,p.wardrobe?.helmetSetup,{
+      hasLegacyPrint:!!requestedCamo
+     }).setup.cover!=='none';
+   const camo=fabricOnShell?null:requestedCamo;
    const map=camo?headwearCamoTexture(modelId,camo,
      headwearCamoPlacement(r.camoIdentity,'headwear:'+modelId,camo,
       p.wardrobe?.headwearCamoRoll??0)):headwearDetailTexture(modelId);

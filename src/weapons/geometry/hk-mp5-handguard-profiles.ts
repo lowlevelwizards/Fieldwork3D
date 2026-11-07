@@ -1,0 +1,65 @@
+/** Big, quiet MP5 family fore-end forms. One shell, optional coarse SD bands.
+ * The MP5K grip is authored as part of its factory handguard in the main builder.
+ */
+import * as THREE from 'three';
+import {addFacetedTube} from './profile-primitives.ts';
+const sides:readonly (readonly [number,number])[]=[
+ [-1,-.64],[-1,.64],[-.66,1],[.66,1],
+ [1,.64],[1,-.64],[.66,-1],[-.66,-1]
+];
+export function addMP5TropicalForearm(root:THREE.Group,id:string,n:number,
+ start:number,end:number,compact:boolean,material:THREE.Material):THREE.Mesh{
+ const cy=-.18;
+ // The K stays as originally approved: one short, thick, slightly tapered
+ // solid. The A3 gets a gently swollen tropical profile, not decorative ribs.
+ // Only two extra cross-sections, all in ONE mesh with eight broad facets.
+ const rings=compact?[
+  {x:start,sy:1.32,sz:1.40},
+  {x:end-.32,sy:1.32,sz:1.40},
+  {x:end,sy:1.32*.94,sz:1.40*.94}
+ ]:[
+  {x:start,sy:1.32,sz:1.42},
+  {x:start+(end-start)*.36,sy:1.54,sz:1.68},
+  {x:start+(end-start)*.72,sy:1.51,sz:1.64},
+  {x:end,sy:1.30,sz:1.42}
+ ];
+ const vertex=(r:typeof rings[number],i:number)=>{
+  const [y,z]=sides[i];return [r.x,cy+y*r.sy,z*r.sz] as const;
+ };
+ const points:number[]=[];
+ const face=(a:readonly number[],b:readonly number[],c:readonly number[])=>
+  points.push(...a,...b,...c);
+ for(let r=0;r<rings.length-1;r++)for(let j=0;j<8;j++){
+  const k=(j+1)%8;
+  const a=vertex(rings[r],j),b=vertex(rings[r+1],j),
+   c=vertex(rings[r+1],k),d=vertex(rings[r],k);
+  face(a,b,c);face(a,c,d);
+ }
+ for(let j=0;j<8;j++){
+  const k=(j+1)%8;
+  face([start,cy,0],vertex(rings[0],j),vertex(rings[0],k));
+  face([end,cy,0],vertex(rings[rings.length-1],k),
+   vertex(rings[rings.length-1],j));
+ }
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute('position',new THREE.Float32BufferAttribute(points,3));
+ geo.computeVertexNormals();
+ const mesh=new THREE.Mesh(geo,material);
+ mesh.name='family-handguard-'+id+'-'+n;
+ mesh.castShadow=true;mesh.receiveShadow=true;
+ mesh.userData.hkMP5Forearm=compact?'k':'tropical';
+ root.add(mesh);return mesh;
+}
+export function addMP5SDShroud(root:THREE.Group,id:string,n:number,
+ start:number,end:number,material:THREE.Material):void{
+ // Broad faceted shroud with TWO large, same-material relief gestures.
+ // This removes the old dotted-looking dark seams and one whole draw call.
+ const body=addFacetedTube(root,'handguard',id,n,start,end,1.68,material);
+ body.position.y=-.18;
+ body.userData.hkMP5SDShroud=true;
+ for(const [i,x] of [start+1.45,start+4.45].entries()){
+  const band=addFacetedTube(root,'handguard',id,n+i+1,
+   x,x+.80,1.78,material);
+  band.position.y=-.18;band.userData.hkMP5SDBand=true;
+ }
+}

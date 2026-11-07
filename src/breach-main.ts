@@ -98,8 +98,18 @@ import {ReplaySoundTimeline,replayDoorSoundId} from './breach-replay-audio.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {sampleReplayGhosts} from './breach-replay-ghosts.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
-import {makeReplayLoop,advanceReplayLoop} from './breach-replay-loop.ts';
-import {replayActorVisible} from './breach-replay-visibility.ts';
+import {buildReplayExecutionInsights} from './breach-replay-debrief.ts';
+import {indexReplayIncidents,featuredReplayIncidents,type ReplayIncident}
+  from './breach-replay-incidents.ts';
+import {incidentPlaybackWindow,advanceIncidentPlayback}
+  from './breach-replay-incident-playback.ts';
+import {makeReplayLoop,advanceReplayLoop,type ReplayLoopRange}
+  from './breach-replay-loop.ts';
+import {replayActorDisclosed,replayCivilianDisclosed,type ReplayDisclosure}
+  from './breach-replay-visibility.ts';
+import {operatorContactEventKnown,operatorContactAvailable}
+  from './breach-replay-contact-lens.ts';
+import {ReplayOperatorSightIndex} from './breach-replay-operator-sight.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
@@ -165,7 +175,11 @@ import {TacticalFeedback} from './ui/tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './ui/contextual-teaching.ts';
 import {recoveryAdviceFor} from './ui/recovery-guidance.ts';
-import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
+import {paintFogMask,maskBounds,FOG_WIDTH,FOG_HEIGHT}
+  from './breach-fog-mask.ts';
+import {paintReplayPersonalGround} from './breach-replay-ground-overlay.ts';
+import {PersonalGroundHistory} from './breach-replay-personal-ground.ts';
+import {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 
@@ -243,6 +257,14 @@ const ui={
   replayNextChapter:el<HTMLButtonElement>('replayNextChapter'),
   replayBookmark:el<HTMLButtonElement>('replayBookmark'),
   replayChapterList:el<HTMLElement>('replayChapterList'),
+  replayDebriefInfo:el<HTMLOutputElement>('replayDebriefInfo'),
+  replayDebriefMoments:el<HTMLElement>('replayDebriefMoments'),
+  replayIncidentDetails:el<HTMLElement>('replayIncidentDetails'),
+  replayIncidentTitle:el<HTMLElement>('replayIncidentTitle'),
+  replayIncidentSummary:el<HTMLOutputElement>('replayIncidentSummary'),
+  replayIncidentWatch:el<HTMLButtonElement>('replayIncidentWatch'),
+  replayIncidentLoop:el<HTMLButtonElement>('replayIncidentLoop'),
+  replayIncidentClose:el<HTMLButtonElement>('replayIncidentClose'),
   replayShotInspector:el<HTMLElement>('replayShotInspector'),
   replayShotTitle:el<HTMLElement>('replayShotTitle'),
   replayShotDetails:el<HTMLOutputElement>('replayShotDetails'),
@@ -303,6 +325,10 @@ const ui={
   replaySeek:el<HTMLInputElement>('replaySeek'),
   replayMarks:el<HTMLElement>('replayMarks'),
   replaySight:el<HTMLButtonElement>('replaySight'),
+  replayContactLens:el<HTMLButtonElement>('replayContactLens'),
+  replayGroundLens:el<HTMLButtonElement>('replayGroundLens'),
+  replayContactNote:el<HTMLElement>('replayContactNote'),
+  replayObserverTransitions:el<HTMLElement>('replayObserverTransitions'),
   replayView:el<HTMLButtonElement>('replayView'),
   replayExit:el<HTMLButtonElement>('replayExit'),
   replayPrevEvent:el<HTMLButtonElement>('replayPrevEvent'),
@@ -726,6 +752,10 @@ let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
 let replayEventIndex:ReplayEventIndex|null=null;
 let replaySoundTimeline:ReplaySoundTimeline|null=null;
 let replayChapters:ReplayChapter[]=[];
+let replayIncidents:ReplayIncident[]=[];
+let replayFeaturedIncidents:ReplayIncident[]=[];
+let selectedReplayIncidentId:string|null=null;
+let replayIncidentPlayback:{range:ReplayLoopRange;loop:boolean}|null=null;
 let replayBookmarks:ReplayBookmark[]=[];
 let replayBookmarkCounter=0;
 let replaySoundEnabled=true;
@@ -755,6 +785,23 @@ let replayLibraryBusy=false;
 let replayLibraryRenderGeneration=0;
 let replayPresentation:ReplayPresentation|null=null;
 let replayOmniscient=true,finishedSession:Session|null=null;
+/** Contact lens filters recorded hostile models/events only; environment is
+ * still the shared team map until individual ground/door intel is recorded.
+ */
+let replayContactObserverId:string|null=null;
+let replayHasContactEvidence=false;
+let replayOperatorSightIndex:ReplayOperatorSightIndex|null=null;
+let replayDoorHistory:ReplayDoorKnowledgeHistory|null=null;
+/** Optional recorded floor-discovery overlay, not a full actor POV. */
+let replayPersonalGroundHistory:PersonalGroundHistory|null=null;
+let replayGroundLensOn=false;
+let replayGroundCacheObserver:string|null=null,replayGroundCacheCount=-1;
+let replayGroundCacheSite:Session['site']|null=null;
+function replayDisclosure():ReplayDisclosure{
+  return replayContactObserverId?
+    {mode:'operator',observerId:replayContactObserverId}:
+    replayOmniscient?{mode:'full'}:{mode:'squad'};
+}
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
 let replayCameraMode:ReplayCameraMode='free';
 let replayDirectorCues:ReplayDirectorCue[]=[];
@@ -1380,6 +1427,9 @@ const fogCanvas=document.createElement('canvas');
 fogCanvas.width=FOG_WIDTH;fogCanvas.height=FOG_HEIGHT;
 const fogContext=fogCanvas.getContext('2d');
 if(!fogContext)throw Error('Fog canvas unavailable');
+const replayGroundCanvas=document.createElement('canvas');
+const replayGroundContext=replayGroundCanvas.getContext('2d');
+if(!replayGroundContext)throw Error('Replay ground canvas unavailable');
 let fogStamp=-1;
 let fogSession:Session|null=null;
 let fogIntelMode='';let fogSeenRevision=-1;
@@ -1588,6 +1638,7 @@ function fitZoom(next:number,x=cssW/2,y=cssH/2){
 }
 function cameraMode(mode:ViewMode){
   viewMode=stage?mode:'plan2d';
+  if(replaying&&viewMode!=='plan2d')replayGroundLensOn=false;
   if(stage){stage.setMode(viewMode);stage.updateCamera(1);}
   for(const [m,button] of [['iso',ui.viewIso],
     ['top',ui.viewTop],['plan2d',ui.view2d]] as const){
@@ -2776,9 +2827,15 @@ function architecture(){
   for(const door of state.doors){
     if(spatialSurfaceState(state,'door',door.id,replaying&&replayOmniscient)==='unknown')continue;
     const a=door.a,b=door.b,center=doorCenter(door);
-    const visuallyOpen=liveVisibility(state,center)?
-      (door.openFraction??(door.open?1:0)):
-      (state.intel.doorMemory.get(door.id)??0);
+    // Personal contact review consumes the last door state this operator
+    // actually witnessed. Never substitute today's door state after a rewind.
+    const personalDoor=replaying&&replayContactObserverId?
+      replayDoorHistory?.at(replayTime,replayContactObserverId,door.id):null;
+    const visuallyOpen=replaying&&replayContactObserverId?
+      (personalDoor?.openFraction??0):
+      liveVisibility(state,center)?
+        (door.openFraction??(door.open?1:0)):
+        (state.intel.doorMemory.get(door.id)??0);
     // Every known hinged door has a true-to-geometry swing preview
     // before selection, so an entry side can be chosen from the briefing.
     if(state.phase==='planning'&&door.kind!=='sliding'&&door.kind!=='shutter'){
@@ -2795,7 +2852,8 @@ function architecture(){
       }
       draw.stroke();draw.setLineDash([]);draw.restore();
     }
-    if(door.wedged){
+    if(replaying&&replayContactObserverId?
+      !!personalDoor?.wedged:door.wedged){
       circle(center.x,center.y,4.5,'#e8b36d');
       line({x:center.x-5,y:center.y+6},{x:center.x+5,y:center.y+6},'#33271b',2);
     }
@@ -3132,6 +3190,9 @@ function paths(){
 }
 /** Bounded forensic overlay; complete shot evidence stays in recorder. */
 function historicalShotVisible(shot:RecordedShot):boolean{
+  // Shot endpoints and impacts reveal more than the confirmed observer's
+  // recorded contacts. Keep forensic trajectories in Team/Full modes only.
+  if(replayContactObserverId)return false;
   if(replayOmniscient||shot.side==='blue')return true;
   const frame=recorder.at(shot.recordedAt);
   return !!frame?.knowledge?.visibleActorIds.includes(shot.shooterId);
@@ -3408,7 +3469,7 @@ function renderProjectedPlans(){
   }
   // Screen-space icons stay readable regardless of ortho pitch or zoom.
   for(const hostile of enemies(state)){
-    if(replaying?!replayActorVisible(state,hostile,replayOmniscient):
+    if(replaying?!replayActorDisclosed(state,hostile,replayDisclosure()):
       !liveVisibility(state,hostile.p))continue;
     const ground=worldToScreen(hostile.p,1);
     if(replaying&&replayNameTags){
@@ -3473,6 +3534,7 @@ function renderProjectedPlans(){
   // by Three.js in 3D modes so depth testing never draws them over actors.
   // Unknown enemies stay unrendered; only grounded last-known reports show.
   for(const hostile of enemies(state)){
+    if(replaying&&replayContactObserverId)continue;
     if(isSeen(state,hostile)||hostile.health<=0)continue;
     const memory=lastKnown(state,hostile.id);
     if(!memory||state.seconds-memory.at>25)continue;
@@ -3503,6 +3565,28 @@ function renderProjectedPlans(){
   renderReplayGhosts(true);
   renderReplayBallistics(true);
   for(const a of team(state))drawExecutionProblem(a,true);
+}
+/** Gold denotes actual historically observed cells for the selected operator.
+ * Shared geometry/doors/people remain shared and are NEVER claimed as POV.
+ * Render only in the Floor Plan view; no speculative real-time raycasts.
+ */
+function renderReplayPersonalGround():void{
+  if(!replaying||!replayGroundLensOn||viewMode!=='plan2d'||
+    !replayContactObserverId||!replayPersonalGroundHistory)return;
+  const observed=replayPersonalGroundHistory.at(
+    replayTime,replayContactObserverId);
+  if(!observed)return;
+  if(replayGroundCacheObserver!==replayContactObserverId||
+     replayGroundCacheCount!==observed.size||
+     replayGroundCacheSite!==state.site){
+    paintReplayPersonalGround(replayGroundContext!,state.site,observed);
+    replayGroundCacheObserver=replayContactObserverId;
+    replayGroundCacheCount=observed.size;
+    replayGroundCacheSite=state.site;
+  }
+  const b=maskBounds(state.site);
+  draw.drawImage(replayGroundCanvas,b.minX,b.minY,
+    b.maxX-b.minX,b.maxY-b.minY);
 }
 function fog(){
   if(replaying&&replayOmniscient)return;
@@ -3536,7 +3620,11 @@ function missionMarkers(){
   draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
 }
 function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
-  if(!civilianPresentationVisible(c,replaying,replayOmniscient,
+  // Personal observation is not shared civilian intel. Old films omit the
+  // observer evidence and must fail closed, not re-evaluate future LOS.
+  if(replaying&&replayContactObserverId){
+    if(!replayCivilianDisclosed(state,c.id,replayDisclosure()))return;
+  }else if(!civilianPresentationVisible(c,replaying,replayOmniscient,
        liveVisibility(state,c.p)))return;
   const coats=['#766e62','#637d75','#82726b','#667985'];
   const trousers=['#454c4b','#61574d','#4e5664'];
@@ -3569,11 +3657,11 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
 }
 function sprite(a:TeamActor){
   if(a.side==='red'&&!(replaying&&replayOmniscient)){
-    const visible=replaying?replayActorVisible(state,a,false):
+    const visible=replaying?replayActorDisclosed(state,a,replayDisclosure()):
       a.health>0?isSeen(state,a):liveVisibility(state,a.p);
     if(!visible){
       const memory=lastKnown(state,a.id);
-      if(memory&&a.health>0&&state.seconds-memory.at<25){
+      if(!replayContactObserverId&&memory&&a.health>0&&state.seconds-memory.at<25){
         draw.fillStyle=memory.status==='heard'?'#e6bb828e':'#d19d837e';
         draw.font='700 16px "Saira Condensed",sans-serif';draw.textAlign='center';
         draw.fillText(memory.status==='heard'?'~':'?',memory.p.x,memory.p.y);
@@ -3691,6 +3779,9 @@ function contacts(){
     draw.globalAlpha=1;
   }
   for(const shot of state.shots){
+    // Shot geometry can expose an unconfirmed enemy position in a personal
+    // contact review; team-wide ballistic evidence is disabled in this mode.
+    if(replaying&&replayContactObserverId)continue;
     const visibility=replaying&&replayOmniscient?
       {trace:true,flash:true,impact:true}:shotVisibility(state,shot);
     const fade=contactFade(shot.age,.40);
@@ -3749,8 +3840,8 @@ function renderWeaponLights2D(){
  }
  draw.save();draw.fillStyle='rgba(183,240,205,.12)';
  for(const actor of active){
-  if(actor.side==='red'&&!replayActorVisible(state,actor,
-      replaying&&replayOmniscient))continue;
+  if(actor.side==='red'&&!replayActorDisclosed(state,actor,
+      replaying?replayDisclosure():{mode:'squad'}))continue;
   const previous=beam2DHistory.get(actor.id);
   const yaw=actor.weaponYaw;
   if(!previous||previous.tick!==tick||!sameWeaponConfiguration(previous.config,actor.weaponConfiguration)||
@@ -3796,7 +3887,7 @@ function render(){
   draw.translate(ox,oy);draw.scale(viewScale,viewScale);
   draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
   terrain();furniture();renderGroundMarks();renderLightingMood2D();renderWeaponLights2D();
-  architecture();fog();missionMarkers();
+  architecture();fog();renderReplayPersonalGround();missionMarkers();
   paths();renderReplayMovementHistory(false);
   for(const a of state.civilians)civilianSprite(a);
   for(const a of state.operators)sprite(a);
@@ -3954,6 +4045,8 @@ function applyReplayFrameAt(t:number){
   fogStamp=-1;
 }
 function seekReplay(t:number){
+  // Direct navigation deliberately exits a bounded incident film.
+  replayIncidentPlayback=null;
   if(replayQuickVideo.active)replayQuickVideo.stop();
   stopReplaySounds();
   replayTime=Math.max(0,Math.min(recorder.duration,t));
@@ -3961,6 +4054,11 @@ function seekReplay(t:number){
 }
 /** Replay event feed and navigation share the same disclosure boundary. */
 function replayEventKnown(e:ReplayIndexedEvent):boolean{
+  if(replayContactObserverId){
+    const recorded=recorder.at(e.t)?.knowledge??null;
+    return operatorContactEventKnown(e,recorded,replayContactObserverId,
+      new Set(team(state).map(a=>a.id)));
+  }
   if(replayOmniscient||e.kind==='objective')return true;
   if(team(state).some(a=>a.id===e.actor))return true;
   const frame=recorder.at(e.t);
@@ -4050,13 +4148,154 @@ function renderReplayChapters():void{
   }
   ui.replayChapterList.replaceChildren(fragment);
 }
+/** At most a short horizontal row: every item is a real, disclosed fact.
+ * Movement inspection enables existing planned/actual overlays without
+ * changing the recorded film or issuing any gameplay orders.
+ */
+function renderReplayIncidentFocus():void{
+  const incident=replayIncidents.find(i=>i.id===selectedReplayIncidentId);
+  ui.replayIncidentDetails.hidden=!incident;
+  if(!incident)return;
+  ui.replayIncidentTitle.textContent=formatReplayTime(incident.start)+' · '+
+    incident.label;
+  ui.replayIncidentSummary.textContent=incident.summary;
+}
+/** Sparse personal observation events are independent of team battle feed.
+ * Importantly a lost contact contains no guessed position or threat state.
+ */
+function renderObserverSightTransitions():void{
+  const observer=replayContactObserverId;
+  const mount=ui.replayObserverTransitions;
+  mount.hidden=!observer;
+  if(!observer){mount.replaceChildren();return;}
+  const transitions=replayOperatorSightIndex?.forObserver(observer)??[];
+  const fragment=document.createDocumentFragment();
+  if(!transitions.length){
+    const empty=document.createElement('span');
+    empty.className='replay-observer-empty';
+    empty.textContent='NO PERSONAL CONTACT TRANSITIONS RECORDED';
+    fragment.append(empty);
+  }
+  for(const event of transitions.slice(0,16)){
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='replay-debrief-moment';
+    button.dataset.kind=event.kind;
+    const time=document.createElement('span');
+    time.className='time';
+    time.textContent=formatReplayTime(event.t)+' · '+
+      (event.kind==='visible-at-start'?'ALREADY VISIBLE':
+        event.kind==='acquired'?'CONTACT ACQUIRED':'CONTACT LOST');
+    const target=document.createElement('span');
+    target.className='detail';target.textContent=event.targetId;
+    button.append(time,target);
+    button.title=event.targetId+' · '+event.kind;
+    button.addEventListener('click',()=>{
+      replayPlaying=false;selected=observer;replayFollowId=observer;
+      seekReplay(event.t);
+    });
+    fragment.append(button);
+  }
+  mount.replaceChildren(fragment);
+}
+function renderReplayDebrief():void{
+  const stalls=buildReplayExecutionInsights(recorder.executionEvents,
+    recorder.duration,5).filter(x=>
+      (!replayContactObserverId||x.actor===replayContactObserverId)&&
+      (x.end===null||(x.seconds??0)>=.75))
+    .slice(0,2);
+  const fragment=document.createDocumentFragment();
+  for(const incident of replayFeaturedIncidents){
+    const button=document.createElement('button');
+    button.type='button';button.className='replay-debrief-moment';
+    button.dataset.kind=incident.kind;
+    button.setAttribute('aria-pressed',
+      String(incident.id===selectedReplayIncidentId));
+    button.title=incident.label+' · '+incident.summary;
+    const stamp=document.createElement('span');
+    stamp.className='time';
+    stamp.textContent=formatReplayTime(incident.start)+' · '+incident.label;
+    const description=document.createElement('span');
+    description.className='detail';
+    description.textContent=incident.summary;
+    button.append(stamp,description);
+    button.addEventListener('click',()=>{
+      replayPlaying=false;
+      selectedReplayIncidentId=incident.id;
+      const friendly=incident.actorIds.find(id=>
+        team(state).some(a=>a.id===id));
+      if(friendly){selected=friendly;replayFollowId=friendly;}
+      if(incident.kind==='movement'){
+        replayAnalysis=true;replayPlanScope='selected';
+        replayPlanVersion='active';replayTrailMode='recent';
+      }
+      seekReplay(incident.start);
+      renderReplayDebrief();
+    });
+    fragment.append(button);
+  }
+  for(const stall of stalls.filter(x=>!replayFeaturedIncidents.some(i=>
+    i.kind==='movement'&&i.actorIds.includes(x.actor)&&
+    x.t>=i.start-.5&&x.t<=i.end+.5))){
+    const button=document.createElement('button');
+    button.type='button';button.className='replay-debrief-moment';
+    button.dataset.kind='movement';
+    button.title=stall.detail;
+    const stamp=document.createElement('span');
+    stamp.className='time';
+    stamp.textContent=formatReplayTime(stall.t)+' · ORDER INTERRUPTION';
+    const detail=document.createElement('span');
+    detail.className='detail';
+    detail.textContent=stall.detail+' · '+(stall.seconds===null?
+      'NO RECORDED RESOLUTION':stall.seconds.toFixed(1)+'S');
+    button.append(stamp,detail);
+    button.addEventListener('click',()=>{
+      replayPlaying=false;selectedReplayIncidentId=null;
+      if(team(state).some(a=>a.id===stall.actor)){
+        selected=stall.actor;replayFollowId=stall.actor;
+      }
+      replayAnalysis=true;replayPlanScope='selected';
+      replayPlanVersion='active';replayTrailMode='recent';
+      seekReplay(stall.t);renderReplayDebrief();
+    });
+    fragment.append(button);
+  }
+  ui.replayDebriefMoments.replaceChildren(fragment);
+  ui.replayDebriefInfo.textContent=replayFeaturedIncidents.length?
+    replayFeaturedIncidents.length+' KEY INCIDENTS':
+    'NO DISCLOSED INCIDENTS';
+  renderReplayIncidentFocus();
+  renderObserverSightTransitions();
+}
+function startReplayIncident(loop:boolean):void{
+  const incident=replayIncidents.find(i=>i.id===selectedReplayIncidentId);
+  if(!incident)return;
+  const range=incidentPlaybackWindow(incident,recorder.duration);
+  if(!range){
+    showUiHelp('INCIDENT TOO SHORT TO PLAY',2500);return;
+  }
+  replayPlaying=false;
+  seekReplay(range.start);
+  replayIncidentPlayback={range,loop};
+  // A/B and incident playback are mutually exclusive control surfaces.
+  replayLoopEnabled=false;
+  replayRate=1;replayPlaying=true;
+  unlockAudio();
+  showReplayToolTab(null);
+  updateReplayHud();
+}
 function rebuildReplayEventIndex():void{
   replayEventIndex=new ReplayEventIndex(recorder.events,
     recorder.executionEvents,e=>replayEventKnown(e));
   // Only disclosed historical events are eligible for the director.
   replayDirectorCues=buildReplayDirectorCues(replayEventIndex.all);
   replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
+  replayIncidents=indexReplayIncidents(replayEventIndex.all,recorder.duration);
+  replayFeaturedIncidents=featuredReplayIncidents(replayIncidents,5);
+  selectedReplayIncidentId=null;
+  replayIncidentPlayback=null;
   renderReplayChapters();
+  renderReplayDebrief();
 }
 /** R3 camera changes only presentation state, never the live simulation. */
 function advanceReplayCamera(dt:number,instant=false):void{
@@ -4171,6 +4410,22 @@ function updateReplayHud(){
   ui.replaySpeed.setAttribute('aria-label',
     'Playback speed '+replayRate+' times. Tap to select next speed');
   ui.replaySight.textContent=replayOmniscient?'FULL VIEW':'TEAM SIGHT';
+  ui.replayContactLens.disabled=!replayHasContactEvidence;
+  ui.replayContactLens.textContent=replayContactObserverId?
+    'CONTACTS: '+replayContactObserverId.toUpperCase():'CONTACTS: TEAM';
+  ui.replayContactLens.title=replayHasContactEvidence?
+    'Only confirmed enemy contacts and own activity; team map remains shared':
+    'This recording has no individual operator contact evidence';
+  ui.replayContactNote.hidden=!replayContactObserverId;
+  ui.replayContactNote.textContent=replayGroundLensOn?
+    'GOLD CELLS: INDIVIDUALLY OBSERVED FLOOR · WORLD OBJECTS STILL SQUAD STATE · 2D ONLY.':
+    'PERSONAL CONTACTS / LAST-SEEN DOORS · MAP/PROPS REMAIN SQUAD KNOWLEDGE. SHOT PATHS HIDDEN.';
+  ui.replayGroundLens.disabled=!replayContactObserverId||
+    !replayPersonalGroundHistory;
+  ui.replayGroundLens.textContent=replayGroundLensOn?
+    'GROUND: PERSONAL':'GROUND: OFF';
+  ui.replayGroundLens.setAttribute('aria-pressed',
+    String(replayGroundLensOn));
   ui.replayView.textContent=viewMode.toUpperCase();
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
   ui.replaySquad.textContent=replayCameraMode==='squad'?'SQUAD ON':'FOLLOW SQUAD';
@@ -4218,6 +4473,18 @@ function enterReplay(){
   if(replaying||recorder.frames.length<2)return;
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
+  replayContactObserverId=null;
+  replayHasContactEvidence=recorder.frames.some(f=>
+    !!f.knowledge?.operatorVisibleActorIds&&
+    Object.keys(f.knowledge.operatorVisibleActorIds).length>0);
+  replayOperatorSightIndex=replayHasContactEvidence?
+    new ReplayOperatorSightIndex(recorder.frames):null;
+  replayDoorHistory=recorder.doorKnowledge.observations.length?
+    new ReplayDoorKnowledgeHistory(recorder.doorKnowledge.observations):null;
+  replayPersonalGroundHistory=recorder.personalGround.length?
+    new PersonalGroundHistory(recorder.personalGround):null;
+  replayGroundLensOn=false;replayGroundCacheObserver=null;
+  replayGroundCacheCount=-1;replayGroundCacheSite=null;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   replayCameraMode='free';replayDirectorCues=[];
   replayBookmarks=[];replayBookmarkCounter=0;
@@ -4258,10 +4525,23 @@ function exitReplay(){
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   replayChapters=[];replayBookmarks=[];
+  replayIncidents=[];replayFeaturedIncidents=[];
+  replayContactObserverId=null;replayHasContactEvidence=false;
+  replayOperatorSightIndex=null;
+  replayDoorHistory=null;
+  replayPersonalGroundHistory=null;replayGroundLensOn=false;
+  replayGroundCacheObserver=null;replayGroundCacheCount=-1;
+  replayGroundCacheSite=null;
+  selectedReplayIncidentId=null;replayIncidentPlayback=null;
+  ui.replayIncidentDetails.hidden=true;
   closeReplayShotInspector();
   replaySoundTimeline=null;replayMovementHistory=null;stopReplaySounds();
   replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
   ui.replayFeed.replaceChildren();
+  ui.replayDebriefMoments.replaceChildren();
+  ui.replayObserverTransitions.replaceChildren();
+  ui.replayObserverTransitions.hidden=true;
+  ui.replayDebriefInfo.textContent='';
   showReplayToolTab(null);
   document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
@@ -4540,6 +4820,12 @@ for(const button of ui.replayTabs.querySelectorAll<HTMLButtonElement>('[data-rep
   });
 }
 ui.replayFeedFilter.addEventListener('change',renderReplayEventFeed);
+ui.replayIncidentWatch.addEventListener('click',()=>startReplayIncident(false));
+ui.replayIncidentLoop.addEventListener('click',()=>startReplayIncident(true));
+ui.replayIncidentClose.addEventListener('click',()=>{
+  replayIncidentPlayback=null;selectedReplayIncidentId=null;
+  renderReplayDebrief();
+});
 ui.replayPrevChapter.addEventListener('click',()=>{
   const chapter=adjacentReplayChapter(replayChapters,replayTime,false);
   if(chapter){replayPlaying=false;seekReplay(chapter.t);}
@@ -4591,10 +4877,42 @@ ui.replaySeek.addEventListener('input',()=>{
   seekReplay(Number(ui.replaySeek.value)/60);
 });
 ui.replaySight.addEventListener('click',()=>{
+  replayGroundLensOn=false;
+  replayContactObserverId=null;
   replayOmniscient=!replayOmniscient;fogStamp=-1;
   rebuildReplayEventIndex();
   renderReplayEventMarkers();renderReplayEventFeed();
   refreshReplayShotInspector();updateReplayHud();
+});
+ui.replayContactLens.addEventListener('click',()=>{
+  if(!replayHasContactEvidence)return;
+  const known=recorder.frames.find(f=>
+    !!f.knowledge?.operatorVisibleActorIds)?.knowledge;
+  const ids=team(state).map(a=>a.id).filter(id=>
+    operatorContactAvailable(known,id));
+  if(!ids.length)return;
+  const at=replayContactObserverId===null?-1:
+    ids.indexOf(replayContactObserverId);
+  replayContactObserverId=at>=ids.length-1?null:ids[at+1];
+  if(!replayContactObserverId)replayGroundLensOn=false;
+  if(replayContactObserverId){
+    replayOmniscient=false;
+    selected=replayContactObserverId;
+    replayFollowId=replayContactObserverId;
+    closeReplayShotInspector();
+  }
+  fogStamp=-1;
+  rebuildReplayEventIndex();
+  renderReplayEventMarkers();renderReplayEventFeed();
+  refreshReplayShotInspector();updateReplayHud();
+});
+ui.replayGroundLens.addEventListener('click',()=>{
+  if(!replayContactObserverId||!replayPersonalGroundHistory)return;
+  replayGroundLensOn=!replayGroundLensOn;
+  if(replayGroundLensOn&&viewMode!=='plan2d')cameraMode('plan2d');
+  replayGroundCacheObserver=null;
+  replayGroundCacheCount=-1;
+  updateReplayHud();
 });
 ui.replayView.addEventListener('click',()=>{
   cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
@@ -5936,14 +6254,26 @@ function tick(now:number){
   }else{accum=0;previousRenderActors=null;}
   if(replaying&&replayPlaying){
     const previousReplayTime=replayTime;
-    const loop=replayLoopEnabled?
-      makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration):null;
-    const step=advanceReplayLoop(replayTime,dt*replayRate,loop,recorder.duration);
-    replayTime=step.time;
-    applyReplayFrameAt(replayTime);
-    if(step.wrapped)stopReplaySounds();
-    else playReplayAudioBetween(previousReplayTime,replayTime);
-    if(!loop&&replayTime>=recorder.duration)replayPlaying=false;
+    if(replayIncidentPlayback){
+      const step=advanceIncidentPlayback(replayTime,dt*replayRate,
+        replayIncidentPlayback.range,replayIncidentPlayback.loop);
+      replayTime=step.time;
+      applyReplayFrameAt(replayTime);
+      if(step.wrapped)stopReplaySounds();
+      else playReplayAudioBetween(previousReplayTime,replayTime);
+      if(step.finished){
+        replayPlaying=false;replayIncidentPlayback=null;stopReplaySounds();
+      }
+    }else{
+      const loop=replayLoopEnabled?
+        makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration):null;
+      const step=advanceReplayLoop(replayTime,dt*replayRate,loop,recorder.duration);
+      replayTime=step.time;
+      applyReplayFrameAt(replayTime);
+      if(step.wrapped)stopReplaySounds();
+      else playReplayAudioBetween(previousReplayTime,replayTime);
+      if(!loop&&replayTime>=recorder.duration)replayPlaying=false;
+    }
   }
   if(replaying)advanceReplayCamera(dt);
   // 079: shot IDs are monotonic, unlike the short-lived shot array length.
@@ -6042,7 +6372,9 @@ function tick(now:number){
       !replaying?recorder.motion.presentation(Math.max(0,
         state.phase==='running'?
           state.seconds-(1-Math.min(1,accum*60))/60:
-          state.seconds),state.operators.map(a=>a.id)):null);
+          state.seconds),state.operators.map(a=>a.id)):null,
+      replaying?replayDisclosure():null,
+      replaying?replayDoorHistory:null);
   const overlayBegin=perfOverlay?performance.now():0;
   render();
   if(replaying&&replayQuickVideo.active){

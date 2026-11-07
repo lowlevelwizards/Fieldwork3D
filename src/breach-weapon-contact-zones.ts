@@ -36,16 +36,19 @@ export function riflePoseContacts(
  // The *physical* lower receiver/magwell joint is a supported hold.
  // Restricting the hand to farther-forward furniture forced near-full
  // extension and made a comfortably bent elbow impossible.
- const near=hk?2.30:ar?2.02:1.86;
- const far=Math.max(start+1.4,end-(hk?1.80:ar?1.36:1.17));
- const y=hk?-1.39:ar?AR_VISUAL_AXIS_Y-1.40:-1.40;
+ const mp5k=hk&&b.parts.receiver==='hk-mp5k-stockless';
+ const near=mp5k?3.70:hk?2.30:ar?2.02:1.86;
+ const hkCompact=hk&&b.parts.barrel==='hk53-short';
+ const far=mp5k?4.85:
+  Math.max(start+1.4,end-(hk?1.80:ar?1.36:1.17));
+ const y=mp5k?-4.20:hk?-1.39:ar?AR_VISUAL_AXIS_Y-1.40:-1.40;
  return {family:b.family,scale:a.lengthScale,
   stock:{x:a.stockX,y:0,z:0},primary:{x:a.primaryX,y:a.primaryY,z:2.24},
   // Grip targets are HAND CENTERS, not bare receiver surface points:
   // the real 3.9-unit-deep hand must wrap the actual fore-end, with its
   // inner palm touching it rather than its center buried inside the steel.
   support:{near:{x:near,y,z:-2.68},far:{x:far,y,z:-2.68},
-   preferredFraction:hk?.22:ar?.14:.09}};
+   preferredFraction:mp5k?.55:hk?(hkCompact?0.40:0.22):ar?.14:.09}};
 }
 export function supportContactAt(r:RifleContactRange,t:number):RiflePoint{
  const f=Math.min(1,Math.max(0,t));

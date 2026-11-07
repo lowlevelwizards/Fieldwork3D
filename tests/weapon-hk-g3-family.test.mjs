@@ -11,7 +11,10 @@ import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 import {partVisualBounds} from '../src/weapons/geometry/weapon-visual-anchors.ts';
 import {HK_BARREL_ART} from '../src/weapons/geometry/hk-barrel-profiles.ts';
-import {HK_MAG20_OUTLINE} from '../src/weapons/geometry/hk-magazine-profiles.ts';
+import {HK_MAG20_OUTLINE,HK_MAG20_CENTER_X}
+ from '../src/weapons/geometry/hk-magazine-profiles.ts';
+import {HK_VISUAL_ANATOMY}
+ from '../src/weapons/geometry/weapon-receiver-anatomy.ts';
 import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
 import {lowReadyFamilyFit} from '../src/breach-low-ready-family-fit.ts';
 import {weaponPresentationSockets} from '../src/breach-weapon-presentation.ts';
@@ -28,8 +31,8 @@ const geometry=id=>{
 };
 const part=(root,s)=>partVisualBounds(root,s);
 
-test('HK catalog has exactly two distinct factory rifles with stable saved builds',()=>{
- assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,2);
+test('HK preserves both original G3 factory rifles alongside the expanded ten-model catalog',()=>{
+ assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,10);
  for(const id of ids){
   const {cfg,g}=geometry(id);
   assert.equal(cfg.build?.family,'hk');
@@ -59,7 +62,7 @@ test('G3 silhouettes retain authored muzzle, seated furniture and miniature budg
   const [rear,front]=[
    g.children.filter(x=>x.name.startsWith('family-receiver-')),
    g.children.filter(x=>x.name.startsWith('family-barrel-'))];
-  assert.ok(rear.length>=7&&front.length>=3,id+' seated HK landmarks');
+  assert.ok(rear.length===6&&front.length>=3,id+' six purposeful HK receiver parts, no trigger guard');
   assert.equal(g.children.filter(x=>x.userData.hkRearSight).length,1,
    id+' exactly one simple rear sight');
   clearWeaponSilhouette(g);
@@ -115,12 +118,12 @@ test('R2 HK miniature anatomy stays long, slim and deliberately connected',()=>{
    'six strong sides rather than a fiddly circular ring');
   const port=g.children.find(c=>c.name==='family-art-hk-port');
   assert.ok(port);
-  assert.equal(port.geometry.parameters.width,4.35,'wider HK ejection opening');
+  assert.equal(port.geometry.parameters.width,4.00,'port sized for the magwell');
   assert.equal(port.material.map.image.width,24);
   const pixels=port.material.map.image.data;
   const boltPixels=[];
   for(let p=0;p<pixels.length/4;p++){
-   if(pixels[p*4]>85)boltPixels.push(p);
+   if(pixels[p*4]>=70)boltPixels.push(p);
   }
   assert.ok(boltPixels.length>=40,'one broad visible light bolt inset');
   const contacts=riflePoseContacts('rifle',cfg);
@@ -152,11 +155,182 @@ test('factory muzzle art hides for muzzle attachments, and faction references us
  const {cfg,g}=geometry('hk-g3a3');
  const modified=setWeaponAttachment(cfg,'muzzle','muzzle-suppressor');
  const group=buildWeaponSilhouette('rifle',mat,mat,modified);
- assert.ok(!group.children.some(x=>x.name.startsWith('family-barrel-')&&
-  x.geometry.type==='BoxGeometry'&&x.geometry.parameters?.width===1.10),
-  'the stock muzzle device is not drawn under the suppressor');
+ assert.ok(!group.children.some(x=>x.userData.hkFactoryFlashHider),
+  'the stock flash hider is removed under an optional suppressor');
  assert.equal(REFERENCE_WEAPONS['greek-lizard-1990'].presetId,'hk-g3a3');
  assert.equal(REFERENCE_WEAPONS['norwegian-m98-2005'].presetId,'hk-g3a3');
  assert.equal(REFERENCE_WEAPONS['norwegian-m98-2005'].fidelity,'representative');
  clearWeaponSilhouette(g);clearWeaponSilhouette(group);
+});
+
+test('R4: one non-coplanar buttplate per stock, preserving the rear landmark',()=>{
+ for(const id of ids){
+  const {cfg,g}=geometry(id),a=resolveWeaponAssembly(cfg);
+  const pad=g.children.find(x=>x.userData.hkButtpad);
+  const stock=g.children.find(x=>x.name===
+   'family-stock-'+cfg.build.parts.stock+'-0');
+  assert.ok(pad&&stock,id+' one seated buttpad and stock body');
+  assert.equal(g.children.filter(x=>x.userData.hkButtpad).length,1);
+  const rear=pad.position.x-pad.geometry.parameters.width/2;
+  assert.ok(Math.abs(rear-a.stockX)<1e-5,id+' outer stock X unchanged');
+  const shell=new THREE.Box3().setFromObject(stock);
+  const cover=new THREE.Box3().setFromObject(pad);
+  assert.ok(cover.min.x<shell.min.x,'pad is the actual rear-most component');
+  assert.ok(cover.max.x>shell.min.x+.02,'pad overlaps stock body');
+  assert.ok(cover.min.z<shell.min.z-.02 && cover.max.z>shell.max.z+.02,
+   'pad side faces stand clear of stock side faces, no Z fight');
+  clearWeaponSilhouette(g);
+ }
+});
+test('R4: vertical box magazine is centered in its magwell at top and heel',()=>{
+ const profile=HK_MAG20_OUTLINE;
+ assert.equal(profile.length,6,'one clean magazine mesh with two heel bevels');
+ const topCenter=(profile[0][0]+profile[1][0])/2;
+ const heelCenter=(profile[3][0]+profile[4][0])/2;
+ assert.ok(Math.abs(topCenter-HK_MAG20_CENTER_X)<1e-6);
+ assert.ok(Math.abs(heelCenter-topCenter)<1e-6);
+ assert.equal(profile[0][0],profile[5][0],'rear edge stays vertical');
+ assert.equal(profile[1][0],profile[2][0],'front edge stays vertical');
+ for(const id of ids){
+  const {cfg,g}=geometry(id);
+  const mag=g.children.find(x=>x.name==='family-magazine-'+cfg.build.parts.magazine+'-0');
+  const base=g.children.find(x=>x.name==='family-magazine-'+cfg.build.parts.magazine+'-1');
+  assert.ok(mag&&base);
+  assert.equal(base.position.x,HK_MAG20_CENTER_X,'baseplate seated on box');
+  assert.ok(base.geometry.parameters.width<=3.24,'no oversized projecting heel');
+  clearWeaponSilhouette(g);
+ }
+});
+test('R4: right-side port aligns with magazine; opposite side holds HK selector',()=>{
+ assert.equal(HK_VISUAL_ANATOMY.portX,HK_VISUAL_ANATOMY.magwellCenterX);
+ for(const id of ids){
+  const {cfg,g}=geometry(id);
+  const port=g.children.find(x=>x.userData.hkEjectionPort);
+  const selector=g.children.find(x=>x.name==='family-art-hk-selector'&&x.position.z<0);
+  assert.ok(port&&selector);
+  assert.equal(port.position.x,HK_VISUAL_ANATOMY.magwellCenterX);
+  assert.equal(port.position.y,HK_VISUAL_ANATOMY.portY);
+  assert.equal(port.geometry.parameters.width,HK_VISUAL_ANATOMY.portWidthX);
+  assert.ok(port.position.z>1.76 && selector.position.z<0,
+   'ejection opening right, selector on opposite side');
+  assert.ok(HK_VISUAL_ANATOMY.portY>.35 && HK_VISUAL_ANATOMY.portY<.75,
+   'ejection opening stays adjacent to barrel centerline');
+  const bolt=port.material.map.image.data;
+  assert.ok(bolt.length>0);
+  let bright=0;
+  for(let n=0;n<bolt.length;n+=4)
+   if(bolt[n]>=70)bright++;
+  assert.ok(bright>=40,'single broad bolt inset remains readable');
+  clearWeaponSilhouette(g);
+ }
+});
+test('R4: HK pistol-grip rake, one side cocking handle and distinct sights',()=>{
+ for(const id of ids){
+  const {cfg,g}=geometry(id),a=resolveWeaponAssembly(cfg);
+  const grip=g.children.find(x=>x.name===
+   'family-grip-'+cfg.build.parts.grip+'-0');
+  const gripBounds=new THREE.Box3().setFromObject(grip);
+  assert.ok(a.primaryX>gripBounds.min.x&&a.primaryX<gripBounds.max.x,
+   'hand socket remains within raked grip span');
+  const position=grip.geometry.getAttribute('position');
+  const low=[],high=[];
+  for(let i=0;i<position.count;i++){
+   const x=position.getX(i),y=position.getY(i);
+   if(y<-6.5)low.push(x);
+   if(y>-2.5&&y<-2.0)high.push(x);
+  }
+  assert.ok(low.length&&high.length);
+  // Extruded profiles contain repeated triangle vertices. Comparing their
+  // raw average biases toward tessellation instead of the authored contour.
+  const contourCenter=xs=>{
+   const unique=[...new Set(xs.map(x=>x.toFixed(3)))].map(Number);
+   return (Math.min(...unique)+Math.max(...unique))/2;
+  };
+  assert.ok(contourCenter(low)<contourCenter(high)-.25,
+   'authored grip heel has a clear rearward rake');
+  const handle=g.children.find(x=>x.userData.hkCockingHandle);
+  assert.ok(handle);
+  const hb=new THREE.Box3().setFromObject(handle);
+  assert.ok(hb.min.z< -1.95,'side cocking handle is visible beyond receiver');
+  assert.ok(hb.max.y<=2.56,'side handle does not become a second rear tower');
+  const rear=g.children.find(x=>x.userData.hkRearSight);
+  assert.ok(rear);
+  if(id==='hk-g3a3'){
+   assert.equal(rear.geometry.type,'CylinderGeometry');
+   assert.equal(rear.geometry.parameters.radialSegments,6);
+  }else assert.equal(rear.geometry.type,'ExtrudeGeometry');
+  clearWeaponSilhouette(g);
+ }
+});
+
+test('R5: scaled-up factory flash hider seats over a cut-back barrel with no coincident exterior',()=>{
+ for(const id of ids){
+  const {cfg,g}=geometry(id);
+  const art=HK_BARREL_ART['hk-g3-service'];
+  const barrel=g.children.find(x=>x.name.startsWith('family-barrel-')&&
+   x.geometry.type==='CylinderGeometry'&&x.geometry.parameters?.radialSegments===6);
+  const hider=g.children.find(x=>x.userData.hkFactoryFlashHider);
+  assert.ok(barrel&&hider,id+' factory muzzle parts');
+  assert.equal(g.children.filter(x=>x.userData.hkFactoryFlashHider).length,1);
+  assert.ok(Math.abs(hider.geometry.parameters.options.depth-1.92)<1e-6,'chunky hider depth');
+  const bareBox=new THREE.Box3().setFromObject(barrel);
+  const deviceBox=new THREE.Box3().setFromObject(hider);
+  assert.ok(Math.abs(deviceBox.max.x-art.muzzleX)<.0001,'unchanged muzzle end');
+  assert.ok(Math.abs(deviceBox.max.x-deviceBox.min.x-1.30)<.0001,'larger visible muzzle device');
+  const overlap=bareBox.max.x-deviceBox.min.x;
+  assert.ok(overlap>.12&&overlap<.18,'barrel embedded only .15 in device');
+  assert.ok(bareBox.max.x<deviceBox.max.x-1.0,
+   'barrel is trimmed instead of coplanar at the tip');
+  assert.ok(deviceBox.max.z>bareBox.max.z+.15
+   &&deviceBox.min.z<bareBox.min.z-.15,
+   'flash hider shell covers the barrel in depth');
+  const pad=g.children.find(x=>x.userData.hkButtpad);
+  assert.equal(pad.geometry.parameters.width,.56,'a noticeably thicker buttplate');
+  assert.equal(pad.geometry.parameters.depth,3.50,'a broad proud buttplate');
+  const stock=g.children.find(x=>x.name==='family-stock-'+cfg.build.parts.stock+'-0');
+  const stockBox=new THREE.Box3().setFromObject(stock);
+  const padBox=new THREE.Box3().setFromObject(pad);
+  assert.ok(padBox.min.x<stockBox.min.x);
+  assert.ok(padBox.max.x>stockBox.min.x+.08,'cap overlaps the stock .10');
+  assert.ok(padBox.min.z<stockBox.min.z-.18,'pad has clear noncoplanar sides');
+  clearWeaponSilhouette(g);
+ }
+});
+test('R5: no trigger-guard meshes and bolder single-piece HK rear sights',()=>{
+ for(const id of ids){
+  const {cfg,g}=geometry(id);
+  const receivers=g.children.filter(x=>x.name.startsWith('family-receiver-'));
+  assert.equal(receivers.length,6,'trigger guard frame removed, no replacement clutter');
+  const rear=g.children.find(x=>x.userData.hkRearSight);
+  assert.ok(rear);
+  if(id==='hk-g3a3'){
+   assert.equal(rear.geometry.type,'CylinderGeometry');
+   assert.ok(rear.geometry.parameters.radiusTop>=1.18);
+   assert.ok(rear.geometry.parameters.height>=1.48);
+   assert.equal(rear.geometry.parameters.radialSegments,6);
+  }else{
+   assert.equal(rear.geometry.type,'ExtrudeGeometry');
+   const bounds=new THREE.Box3().setFromObject(rear);
+   assert.ok(bounds.max.y>=3.03,'large readable early folding leaf');
+   assert.ok(bounds.max.x-bounds.min.x>=1.30,'bold but lower-profile early sight');
+  }
+  clearWeaponSilhouette(g);
+ }
+});
+test('R5: optional muzzle accessory replaces factory hider and retains bare-barrel anchor',()=>{
+ for(const id of ids){
+  const {cfg,g}=geometry(id);
+  const art=HK_BARREL_ART['hk-g3-service'];
+  const modified=setWeaponAttachment(cfg,'muzzle','muzzle-suppressor');
+  const other=buildWeaponSilhouette('rifle',mat,mat,modified);
+  assert.ok(!other.children.some(x=>x.userData.hkFactoryFlashHider));
+  const barrel=other.children.find(x=>x.name.startsWith('family-barrel-')
+   &&x.geometry.type==='CylinderGeometry'
+   &&x.geometry.parameters?.radialSegments===6);
+  assert.ok(barrel,'continuous underlying barrel on attachment variant');
+  const box=new THREE.Box3().setFromObject(barrel);
+  assert.ok(Math.abs(box.max.x-art.muzzleX)<.0001,
+   'barrel returns to original mount anchor when factory muzzle is hidden');
+  clearWeaponSilhouette(g);clearWeaponSilhouette(other);
+ }
 });

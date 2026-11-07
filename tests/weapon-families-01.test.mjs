@@ -12,8 +12,8 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset,
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 
-test('family 01: 19 distinct AR/AK/HK presets normalize and survive saves',()=>{
- assert.equal(FAMILY_PRESETS.length,19);
+test('family 01: all 27 AR/AK/HK presets normalize and survive saves',()=>{
+ assert.equal(FAMILY_PRESETS.length,27);
  assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,FAMILY_PRESETS.length);
  for(const preset of FAMILY_PRESETS){
   const build=initialWeaponFamilyBuild(preset.id);
