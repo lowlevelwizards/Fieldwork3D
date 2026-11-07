@@ -1990,6 +1990,10 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     return true;
   }
   a.passageWaitSeconds=0;a.passageStallReported=false;
+  // Rendered locomotion uses real progress, not the unconstrained desired
+  // speed. Prevent foot-skating when a convoy's available stride is short.
+  if(d(negotiatedMove,a.p)<d(move,a.p)-.001)
+    a.velocity=Math.min(a.velocity,d(negotiatedMove,a.p)/Math.max(dt,.0001));
   move=negotiatedMove;
   // Identify the leaf for closed-door authored handling; open hinged
   // leaves are pushed by the coupled swept-body solver below, not by
