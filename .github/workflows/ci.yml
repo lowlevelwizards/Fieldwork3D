@@ -1159,6 +1159,14 @@ jobs:
             tests/equipment-19-01-weapon-assemblies.test.mjs \
             tests/weapon-workbench-mobile-sockets.test.mjs
           node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs /tmp/weapon-ortho-r33.html
+      - name: Replay R4.2 — exact historical operator observation foundation
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r42-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r42-operator-sight.test.mjs \
+            tests/replay-r42-archive.test.mjs \
+            tests/replay-r2-recording.test.mjs \
+            tests/replay-r3-archive.test.mjs
       - name: Replay R4.1 — bounded incident indexing and Watch/Loop
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r41-') }}
         run: |
