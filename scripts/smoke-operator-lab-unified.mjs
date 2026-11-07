@@ -106,6 +106,37 @@ try{
    const d=document.getElementById('preview')?.dataset;
    return d?.poseFitSavedWeapon===''&&d?.poseFitWeapon==='ar-m4a1';
   },null,{timeout:15000});
+  // Arsenal R9 end-to-end: mobile gallery, saved build, compatible part
+  // change, load review and undo. No Campaign ownership writes are involved.
+  await page.goto(origin+'/arsenal.html',{waitUntil:'domcontentloaded'});
+  await page.getByRole('button',{name:'Select MP5A3'}).click();
+  await page.getByRole('button',{name:'OPEN WORKBENCH'}).click();
+  await page.locator('.arsenal-wb-screen').waitFor();
+  if(await page.locator('.arsenal-wb-viewport').getAttribute('data-webgl-unavailable'))
+   throw Error('Arsenal 3D viewport could not initialize');
+  await page.locator('.arsenal-wb-save').click();
+  await page.locator('.arsenal-wb-save-dialog input').fill('R9 Mobile MP5');
+  await page.locator('.arsenal-wb-save-dialog .arsenal-wb-accept').click();
+  await page.waitForFunction(()=>localStorage.getItem(
+   'fieldwork3d.arsenal-recipes.v1')?.includes('R9 Mobile MP5'));
+  await page.locator('.arsenal-wb-category').filter({hasText:'Furniture'}).click();
+  await page.locator('.arsenal-wb-subslot').filter({hasText:'Stock'}).click();
+  await page.locator('.arsenal-wb-option').filter({hasText:'A2 Fixed'}).click();
+  await page.waitForFunction(()=>document.querySelector(
+   '.arsenal-wb-current')?.textContent?.includes('A2 Fixed'));
+  await page.getByRole('button',{name:'LOAD BUILD'}).click();
+  await page.locator('.arsenal-wb-load-option').filter({hasText:'R9 Mobile MP5'}).click();
+  const review=await page.locator('.arsenal-wb-load-changes').textContent();
+  if(!review?.includes('stock')||!review.includes('A3 Retractable'))
+   throw Error('Saved recipe did not disclose the changed stock: '+review);
+  await page.locator('.arsenal-wb-load-dialog .arsenal-wb-accept').click();
+  await page.waitForFunction(()=>document.querySelector(
+   '.arsenal-wb-current')?.textContent?.includes('A3 Retractable'));
+  await page.screenshot({path:out+'/arsenal-saved-build-load-iphone.png'});
+  await page.locator('.arsenal-wb-actions button').filter({hasText:'UNDO'}).click();
+  await page.waitForFunction(()=>document.querySelector(
+   '.arsenal-wb-current')?.textContent?.includes('A2 Fixed'));
+  if(errors.length)throw Error('Arsenal runtime: '+errors.join('; '));
   await page.close();
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
