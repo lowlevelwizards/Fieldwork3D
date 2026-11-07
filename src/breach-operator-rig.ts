@@ -1302,7 +1302,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     relaxedLowReady,
     swayYaw:motion.weaponYaw*freeMotion,
     swayPitch:motion.weaponPitch*freeMotion,
+    // A stale simulation aim meter must not visually raise the barrel
+    // during a non-firing sprint, climb, reload or medical interaction.
+    // Shot-time geometry does not consume this visual-only carry rule,
+    // and the fire motor already prohibits ignition in these states.
     aimBlend:p.handlingOverride?undefined:
+      p.handlingIntent==='run'||p.handlingIntent==='traverse'||
+      p.handlingIntent==='reload'||p.handlingIntent==='treat'?0:
       p.aimBlend??(p.aiming?1:0),
     blendFrom:activeTransition?.from,
     blendAlpha:activeTransition?.alpha,
