@@ -285,6 +285,8 @@ function renderScene(){
  // Built-in renderer accounting only: counts, NOT GPU timing estimates.
  canvas.dataset.rendererGeometries=String(renderer.info.memory.geometries);
  canvas.dataset.rendererTextures=String(renderer.info.memory.textures);
+ // Program count is a diagnostic, not GPU frame-time measurement.
+ canvas.dataset.shaderPrograms=String(renderer.info.programs?.length??0);
  canvas.dataset.operatorLighting=studioLighting.mode;
  canvas.dataset.shadowMapSize=String(studioLighting.shadowSize);
  if(lightingInspectorOutput){
