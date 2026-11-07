@@ -58,3 +58,24 @@
   and phone GPU behavior. The new rim removes the previous extra hull
   draw calls, but MSAA/PCF may cost fill bandwidth: compare real devices
   before adopting tactics-wide defaults.
+
+## Actual diagnostic evidence and R7.12 follow-up
+Real 390px Chromium captures (Studio workflow artifact on PR #1057) isolate
+these contrasts at the SAME camera/model/camo/weapon:
+- `r712-aa-pcf.png`: face-under-helmet and upper carrier have fine
+  triangular sawtooth shadow boundaries.
+- `r712-no-live-shadow.png`: those particular sawteeth largely disappear;
+  the large shadowed face also brightens as expected.
+- `r712-no-baked-light.png`: the same teeth remain while baked contact
+  depth is reduced. The prominent screenshot artifact is primarily
+  **live directional shadow-map aliasing**, not baked contact/cast masks.
+- `r712-aa-off.png` confirms normal silhouette/diagonal stair steps,
+  separate from shadow teeth.
+
+Accordingly the second checkpoint evaluates `PCFSoftShadowMap` and an
+adjusted bias (`bias=0.00008`, `normalBias=0.042`) against the old
+`PCFShadowMap` / old bias, with 1024 and 2048 shadow-map sizes. Shader
+and map-size switches remain Studio-only and reversible in the expanded
+Render Quality / Shadow Diagnostics panel. The old 1024/hard/legacy
+combination remains available without changing shared runtime shadow bakes.
+Prioritize the best jaw/strap edge under real viewing and iPhone cost.
