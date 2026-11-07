@@ -14,7 +14,7 @@ test('crossed pixel-art foliage is premerged into one mesh per slit',()=>{
   assert.equal(PASGT_LEAF_CLUSTERS[i].userData.pasgtCrossedPixelLeaf,true);
  }
  const root=new THREE.Group(),v=createPasgtFieldDress(root);
- assert.equal(v.foliage.children.length,6);
+ assert.equal(v.foliage.children.length,10);
  for(const root of v.foliage.children)
   assert.equal(root.children.length,1,'one draw-call leaf cluster per slit');
 });

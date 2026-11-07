@@ -1753,9 +1753,19 @@ function draw(){
   // A dynamic action is not required to have a static low-ready solution.
   const staticReport=rig.root.userData.lowReadyPoseReport as
    {status?:string;penetration?:number;softContact?:number;
-    candidates?:number}|null;
+    candidates?:number;elbowRight?:number[]|null;
+    fittingShoulders?:number[][];torsoAssistYaw?:number}|null;
   const actionReport=rig.root.userData.poseV3CoordinatedReport as
    {status?:string;relaxedContact?:boolean;validCandidates?:number}|null;
+  const firingShoulder=staticReport?.fittingShoulders?.[1];
+  const firingElbow=staticReport?.elbowRight;
+  const firingDrop=firingShoulder&&firingElbow?
+    firingShoulder[1]-firingElbow[1]:null;
+  const firingFlare=firingShoulder&&firingElbow?
+    firingElbow[2]-firingShoulder[2]:null;
+  canvas.dataset.firingElbowDrop=firingDrop===null?'':firingDrop.toFixed(3);
+  canvas.dataset.firingElbowFlare=firingFlare===null?'':firingFlare.toFixed(3);
+  canvas.dataset.torsoAssistYaw=String(staticReport?.torsoAssistYaw??0);
   const info=document.getElementById('poseInspectorReport');
   if(info){
    const look=resolvedWardrobe(wardrobeOptions,currentKit);
@@ -1771,6 +1781,8 @@ function draw(){
     '\\nARMOR '+look.armorStyle+' · RIG '+look.rigStyle+
     '\\nGRIP '+rig.gripError.toFixed(2)+
     ' · STOCK '+rig.stockError.toFixed(2)+
+    (firingDrop===null?'':'\\nFIRING ELBOW · DROP '+
+     firingDrop.toFixed(2)+' / FLARE '+firingFlare!.toFixed(2))+
     '\\nJoint markers and contacts: DIAGNOSTICS tab.';
   }
   canvas.dataset.poseFitWeapon=poseWeaponPreset;

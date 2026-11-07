@@ -64,13 +64,19 @@ export function evaluateArmConstraint(p:ArmConstraintInput):ArmConstraintReport{
   (mode==='carry'||mode==='aim'||mode==='reload');
  const reloadContact=reloadVisualContact(contact,
   visual||mode==='reload'&&p.allowReloadOverlap===true,
-  mode==='reload'?'reload':mode==='aim'?'aim':'carry');
+  mode==='reload'?'reload':mode==='aim'?'aim':'carry',
+  side===1?'firing':'support');
  if(!reloadContact.valid)reasons.push('equipment-contact');
  const bendContinuity=p.referenceBend?
   Math.max(0,1-arm.bendPlane.dot(p.referenceBend))*.16:0;
+ const firing=side===1&&(mode==='carry'||mode==='aim');
+ const idealDrop=firing?preferredDrop[mode]+(mode==='carry'?.85:.45):
+  preferredDrop[mode];
+ const idealFlare=firing?Math.max(.55,preferredFlare[mode]-.90):
+  preferredFlare[mode];
  const quality=
-  Math.abs(drop-preferredDrop[mode])*.24+
-  Math.max(0,flare-preferredFlare[mode])*.56+
+  Math.abs(drop-idealDrop)*.24+
+  Math.max(0,flare-idealFlare)*(firing?.73:.56)+
   Math.max(0,-flare-1.2)*.22+
   Math.max(0,-drop)*.48+
   Math.max(0,arm.angle-2.0)*.25+

@@ -40,9 +40,9 @@ export function createPasgtCoverLayers(parent:THREE.Group):PasgtCoverLayers{
 }
 export function updatePasgtCoverLayers(v:PasgtCoverLayers,covered:boolean,
  details:PasgtDetails,camo:HeadwearCamoId|undefined,
- identity:string,roll=0):void{
+ identity:string,roll=0,allowRetention=true):void{
  v.cover.visible=covered;v.hem.visible=covered;
- updatePasgtFieldDress(v.field,covered,details,camo);
+ updatePasgtFieldDress(v.field,covered,details,camo,allowRetention);
  // No texture rebind when the hidden cover is removed: keep the chosen
  // print for later restoration without extra GPU uploads.
  if(!covered){v.activePrint='';return;}

@@ -17,8 +17,8 @@ export const LOW_READY_ANATOMY={
  minimumDrop:.35,
  /** No arm may cross deeply over the sternum while reaching. */
  maximumInwardCross:6.1,
- preferredFiringDrop:5.7,preferredSupportDrop:5.2,
- preferredFiringFlare:1.6,preferredSupportFlare:1.9
+ preferredFiringDrop:6.55,preferredSupportDrop:5.2,
+ preferredFiringFlare:.65,preferredSupportFlare:1.9
 } as const;
 export function assessLowReadyArm(
  shoulder:THREE.Vector3,elbow:THREE.Vector3,wrist:THREE.Vector3,
@@ -44,7 +44,7 @@ export function assessLowReadyArm(
   LOW_READY_ANATOMY.preferredFiringFlare:
   LOW_READY_ANATOMY.preferredSupportFlare;
  const score=Math.abs(drop-preferredDrop)*.24+
-  Math.max(0,flare-preferredFlare)*.52+
+  Math.max(0,flare-preferredFlare)*(side===1?.72:.52)+
   Math.max(0,-flare-1.0)*.25+
   Math.max(0,elbow.x-shoulder.x-5.4)*.25+
   Math.abs(clamp(flexion,.31,2.42)-1.03)*.23+

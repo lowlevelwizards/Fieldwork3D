@@ -35,7 +35,7 @@ const material=(hex:number,side:THREE.Side=THREE.FrontSide)=>
 const hidden=(parent:THREE.Group,name:string)=>{
  const g=new THREE.Group();g.name=name;g.visible=false;parent.add(g);return g;
 };
-/** Single near-coplanar eight-cut marking mesh, not protruding cubes.
+/** Twelve bold cover-conforming fabric cuts, not protruding cubes.
  * The long axis follows local fabric tangent and each mark is above the
  * elastic rather than under it.
  */
@@ -47,8 +47,10 @@ export function createPasgtSlitGeometry():THREE.BufferGeometry{
  };
  const add=(v:readonly number[])=>p.push(v[0],v[1],v[2]);
  for(const a of PASGT_SLIT_ANCHORS){
-  const a0=point(a,-.53,.07),a1=point(a,.53,.07);
-  const a2=point(a,.53,-.07),a3=point(a,-.53,-.07);
+  // Oversized slit marks remain a single, near-coplanar two-triangle
+  // mark each. Scale and positioning do the work, never box geometry.
+  const a0=point(a,-.83,.155),a1=point(a,.83,.155);
+  const a2=point(a,.83,-.155),a3=point(a,-.83,-.155);
   for(const v of [a0,a1,a2,a0,a2,a3])add(v);
  }
  const g=new THREE.BufferGeometry();
@@ -70,40 +72,53 @@ function shapeGeometry(points:readonly (readonly [number,number])[]):THREE.Shape
  * read clearly at normal gameplay distance. No tiny branch meshes.
  */
 export const PASGT_LEAF_SHAPES:readonly THREE.ShapeGeometry[]=[
+ // Broad, blunt iconic leaf masses; no long needle points.
  shapeGeometry([
-  [-.13,-.08],[.16,0],[.34,.37],[.67,.68],[.43,.94],
-  [.59,1.30],[.22,1.87],[.01,2.23],[-.26,1.66],
-  [-.57,1.46],[-.40,1.08],[-.62,.81],[-.24,.40]
+  [-.28,-.12],[.28,-.12],[.40,.25],[.83,.49],
+  [.65,.83],[.98,1.07],[.55,1.28],[.57,1.70],
+  [.22,1.96],[-.20,1.91],[-.53,1.65],[-.56,1.29],
+  [-.98,1.13],[-.72,.84],[-.85,.48],[-.34,.27]
  ]),
  shapeGeometry([
-  [-.12,-.08],[.12,0],[.25,.49],[.42,.85],[.19,1.25],
-  [.29,1.69],[.02,2.41],[-.20,1.63],[-.29,1.21],
-  [-.48,.83],[-.26,.56]
+  [-.27,-.12],[.30,-.12],[.37,.21],[.82,.50],
+  [.67,.89],[.98,1.13],[.53,1.35],[.63,1.72],
+  [.27,2.08],[-.13,2.08],[-.55,1.69],[-.44,1.35],
+  [-.95,1.12],[-.70,.84],[-.80,.53],[-.36,.21]
  ]),
  shapeGeometry([
-  [-.12,-.08],[.19,0],[.30,.47],[.85,.88],[.66,1.16],
-  [.33,1.04],[.47,1.56],[.18,1.90],[-.05,1.62],
-  [-.29,2.04],[-.54,1.68],[-.29,1.19],[-.78,1.30],
-  [-.91,1.04],[-.40,.65]
+  [-.31,-.12],[.28,-.12],[.43,.34],[.97,.63],
+  [.78,1.00],[1.08,1.35],[.59,1.49],[.48,1.91],
+  [.13,2.21],[-.33,1.99],[-.59,1.61],[-.99,1.45],
+  [-.83,1.08],[-1.05,.73],[-.42,.37]
  ])
 ];
-/** Two crossed planar cards make a single recognizable foliage cluster
- * from more than one camera angle, at the cost of only ONE draw call per
- * root. No curved leaves, tiny stems or independent mini-branch pieces.
+/** Three big, graphic leaf cards in ONE premerged cluster per slit.
+ * A tall leaf, a lateral leaf and a purposely drooping leaf establish
+ * asymmetry and visible downward angles without tiny botanical geometry.
+ * Leaf bunches are authored and seeded by slot order, never per-frame.
  */
 export const PASGT_LEAF_CLUSTERS:readonly THREE.BufferGeometry[]=
  PASGT_LEAF_SHAPES.map((shape,i)=>{
-  const front=shape.index?shape.toNonIndexed():shape.clone();
-  const crossed=shape.index?shape.toNonIndexed():shape.clone();
-  crossed.applyMatrix4(new THREE.Matrix4()
-   .makeTranslation(i%2?.20:-.20,.13,.035)
-   .multiply(new THREE.Matrix4().makeRotationY(i%2?.60:-.60))
-   .multiply(new THREE.Matrix4().makeScale(.82,.91,.82)));
-  const merged=mergeGeometries([front,crossed],false);
-  front.dispose();crossed.dispose();
-  if(!merged)throw Error('unable to merge PASGT crossed leaf cards');
+  const make=()=>shape.index?shape.toNonIndexed():shape.clone();
+  const tall=make(),swept=make(),drooped=make();
+  tall.applyMatrix4(new THREE.Matrix4().makeRotationY(i%2?.15:-.15)
+   .multiply(new THREE.Matrix4().makeScale(1.27,1.22,1.27)));
+  swept.applyMatrix4(new THREE.Matrix4()
+   .makeTranslation(i%2?.28:-.28,.10,.08)
+   .multiply(new THREE.Matrix4().makeRotationY(i%2?.72:-.72))
+   .multiply(new THREE.Matrix4().makeRotationZ(i%2?-.67:.67))
+   .multiply(new THREE.Matrix4().makeScale(.98,1.21,.98)));
+  drooped.applyMatrix4(new THREE.Matrix4()
+   .makeTranslation(i%2?.18:-.18,.06,.16)
+   .multiply(new THREE.Matrix4().makeRotationY(i%2?-.44:.44))
+   .multiply(new THREE.Matrix4().makeRotationZ(i%2?2.03:-2.03))
+   .multiply(new THREE.Matrix4().makeScale(1.05,1.12,1.05)));
+  const merged=mergeGeometries([tall,swept,drooped],false);
+  tall.dispose();swept.dispose();drooped.dispose();
+  if(!merged)throw Error('unable to merge iconic PASGT foliage bunch');
   merged.computeBoundingBox();
   merged.userData.pasgtCrossedPixelLeaf=true;
+  merged.userData.pasgtBunchCardCount=3;
   return merged;
  });
 /** Four triangles of broad, two-panel fabric with one angular fold,
@@ -111,13 +126,16 @@ export const PASGT_LEAF_CLUSTERS:readonly THREE.BufferGeometry[]=
  * All strips are prebuilt; no per-frame cloth simulation.
  */
 export function createPasgtScrimRibbonGeometry(style:number):THREE.BufferGeometry{
- const widths=[1.04,1.17,.95],lengths=[1.75,2.10,1.91];
+ const widths=[1.52,1.79,1.39,1.88],
+  lengths=[3.35,2.72,3.65,3.04];
  const w=widths[style%widths.length],
   length=lengths[style%lengths.length];
- const halfway=length*.42,lower=length-halfway;
+ const halfway=length*.46,lower=length-halfway;
  const a=[-w/2,.12,-.055],b=[w/2,.12,-.055];
- const c=[w*.45,-halfway,.18],d=[-w*.55,-halfway,.18];
- const e=[-w*.49,-halfway-lower,.53],f=[w*.38,-halfway-lower,.53];
+ const c=[w*.45,-halfway,.30],d=[-w*.55,-halfway,.30];
+ // Deliberately twist the second broad face to read from side as fabric,
+ // not an edge-on needle. Still one fold and two quad segments.
+ const e=[-w*.54,-halfway-lower,.61],f=[w*.40,-halfway-lower,1.31];
  const vertices:number[]=[];
  const tri=(p:readonly number[],q:readonly number[],r:readonly number[])=>
   vertices.push(...p,...q,...r);
@@ -130,9 +148,18 @@ export function createPasgtScrimRibbonGeometry(style:number):THREE.BufferGeometr
  g.userData.pasgtSegmentCount=2;
  return g;
 }
-const CARD_ANCHORS=['front-left','right-forward','right-aft',
- 'rear-right','left-aft','left-forward'] as const;
-const TILTS=[-.21,.17,-.10,.24,-.18,.13] as const;
+/** Ten curated clusters and strips, two clean unused slits.
+ * The extra crown mounts let foliage break the miniature silhouette,
+ * while a few lower side mounts let scrim drape over the brow and nape.
+ */
+const CARD_ANCHORS=[
+ 'front-left','crown-front-left','crown-front-right',
+ 'right-forward','right-aft','crown-rear-right',
+ 'rear-right','crown-rear-left','left-aft','left-forward'
+] as const;
+const TILTS=[-.52,.48,-.43,-.63,.42,.58,-.35,-.43,.40,-.54] as const;
+const CARD_SCALES=[1.26,1.45,1.34,1.50,1.36,
+ 1.43,1.26,1.38,1.35,1.43] as const;
 function placedCard(parent:THREE.Group,index:number,mat:THREE.Material,
  geometry:THREE.BufferGeometry,name:string,offsetY=0):void{
  const anchor=PASGT_SLIT_ANCHORS.find(s=>s.id===CARD_ANCHORS[index]);
@@ -152,11 +179,12 @@ function placedCard(parent:THREE.Group,index:number,mat:THREE.Material,
  const normal=right.clone().cross(up).normalize();
  const basis=new THREE.Matrix4().makeBasis(right,up,normal);
  mount.quaternion.setFromRotationMatrix(basis);
- mount.rotateZ(TILTS[index]);mount.rotateX(leaf?.17:-.10);
+ mount.rotateZ(TILTS[index]);mount.rotateX(leaf?.21:-.33);
+ if(!leaf)mount.rotateY(index%2?.34:-.34);
  // Keep the mount root exactly at its slit and offset only card geometry.
  const card=new THREE.Mesh(geometry,mat);
  if(leaf){
-  const size=[1.16,1.36,1.07,1.27,1.38,1.14][index];
+  const size=CARD_SCALES[index];
   card.scale.setScalar(size);
   card.position.z=.07;
  }
@@ -216,11 +244,19 @@ function netDrape(edge:NetEdge):readonly (readonly number[])[]{
   else v[2]+=along*distance;
   return v;
  };
- const shoulder=shift(pasgtRingPoint(s,'shoulder'),.18);
- const ramp=shift(pasgtRingPoint(s,'ramp'),.59);
+ const shoulder=shift(pasgtRingPoint(s,'shoulder'),.10);
+ const ramp=shift(pasgtRingPoint(s,'ramp'),.12);
  const hem=pasgtRingPoint(s,'hem');
- const lowerUnshifted=ramp.map((v,i)=>.73*v+.27*hem[i]);
- const lower=shift(lowerUnshifted,.97);
+ // Net is gathered into the elastic height instead of dangling down
+ // as a set of unsupported external poles.
+ const t=Math.max(0,Math.min(1,(ramp[1]-5.43)/(ramp[1]-hem[1])));
+ const lowerUnshifted=ramp.map((v,i)=>v*(1-t)+hem[i]*t);
+ const lower=shift(lowerUnshifted,1.65);
+ // Tuck the final portion beneath the fabric band so it reads as held,
+ // rather than as six wires standing on top of a rim.
+ const outwardContact=new THREE.Vector3(outward[0],outward[1],outward[2]).multiplyScalar(.09);
+ lower[0]-=outwardContact.x;
+ lower[2]-=outwardContact.z;
  // The fabric net wraps off the crown and diagonally across the shoulder.
  // Terminate at the retaining-band level instead of making long vertical
  // roof-trellis supports that hang into the nape/ear gap.
@@ -255,12 +291,22 @@ function appendNetRibbon(out:number[],
 }
 export function createPasgtNetGeometry():THREE.BufferGeometry{
  const coordinates:number[]=[];
- const slopes=[-.64,.64] as const;
- for(const slope of slopes)for(const shift of [-4,0,4]){
+ // Three large openings in each diagonal direction. Slightly irregular
+ // separation and two broad angling decisions prevent a rigid roof grid.
+ const slopes=[-.69,.74] as const;
+ for(const slope of slopes)for(const shift of [-3.9,.24,3.73]){
   const [a,b]=clippedNetLine(slope,shift);
   const start=netDrape(a),end=netDrape(b);
-  const path=[...start,...[...end].reverse()];
-  appendNetRibbon(coordinates,path,.25);
+  const center1:[number,number,number]=[
+   (2*a.x+b.x)/3+.26*Math.sign(slope),
+   PASGT_COVER_TOP_Y+.085,
+   (2*a.z+b.z)/3-.23];
+  const center2:[number,number,number]=[
+   (a.x+2*b.x)/3-.16*Math.sign(slope),
+   PASGT_COVER_TOP_Y+.085,
+   (a.z+2*b.z)/3+.19];
+  const path=[...start,center1,center2,...[...end].reverse()];
+  appendNetRibbon(coordinates,path,.31);
  }
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(coordinates,3));
@@ -268,18 +314,75 @@ export function createPasgtNetGeometry():THREE.BufferGeometry{
  g.userData.pasgtNetFullDrape=true;
  g.userData.pasgtNetCordCount=6;
  g.userData.pasgtNetPattern='sparse-diamond';
+ g.userData.pasgtNetCoverContact=true;
+ g.userData.pasgtNetTuckedUnderBand=true;
+ return g;
+}
+/** Oversized two-point retention. Three graphic shapes, no hardware.
+ * The low cheek/chin straps make the helmet look worn, but remain hidden
+ * when bulky facewear would produce broken overlaps.
+ */
+export function createPasgtRetentionGeometry():THREE.BufferGeometry{
+ const data:number[]=[];
+ const vec=(p:readonly number[])=>new THREE.Vector3(p[0],p[1],p[2]);
+ const put=(p:THREE.Vector3)=>data.push(p.x,p.y,p.z);
+ for(const sign of [-1,1] as const){
+  const path=[
+   vec([sign*4.99,3.30,-1.12]),
+   vec([sign*4.22,1.32,-4.23]),
+   vec([sign*2.34,-.13,-4.31])
+  ];
+  const normal=new THREE.Vector3(sign*.68,0,-.74);
+  for(let i=0;i<path.length-1;i++){
+   const p=path[i],q=path[i+1];
+   const tangent=q.clone().sub(p).normalize();
+   const across=new THREE.Vector3().crossVectors(normal,tangent)
+    .normalize().multiplyScalar(.39);
+   const a=p.clone().add(across),b=p.clone().sub(across),
+    c=q.clone().sub(across),d=q.clone().add(across);
+   for(const pt of [a,b,c,a,c,d])put(pt);
+  }
+ }
+ const pad=[
+  vec([-2.34,-.46,-4.34]),vec([2.34,-.46,-4.34]),
+  vec([2.34,.15,-4.34]),vec([-2.34,.15,-4.34])
+ ];
+ for(const i of [0,1,2,0,2,3])put(pad[i]);
+ const g=new THREE.BufferGeometry();
+ g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
+ g.computeVertexNormals();g.computeBoundingBox();
+ g.userData.pasgtSimpleTwoPointRetention=true;
+ return g;
+}
+/** Two broad rear cat-eye marks live on the existing elastic profile.
+ * They're printed-looking flat strips: no tiny buckle or separate control.
+ */
+export function createPasgtCatEyesGeometry(covered:boolean):THREE.BufferGeometry{
+ const back=PASGT_RING_SAMPLES.find(s=>s.side==='rear')!;
+ const z=pasgtRingPoint(back,'ramp')[2]+(covered?.15:-.005);
+ const data:number[]=[];
+ for(const x of [-2.10,2.10]){
+  const a=[x-.62,5.70,z],b=[x+.62,5.70,z],
+   c=[x+.62,5.34,z],d=[x-.62,5.34,z];
+  for(const p of [a,b,c,a,c,d])data.push(...p);
+ }
+ const g=new THREE.BufferGeometry();
+ g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
+ g.computeVertexNormals();g.computeBoundingBox();
+ g.userData.pasgtRearCatEyes=2;
  return g;
 }
 export type PasgtFieldDressLayers={
- slits:THREE.Group;band:THREE.Group;
+ slits:THREE.Group;band:THREE.Group;retention:THREE.Group;
  foliage:THREE.Group;scrim:THREE.Group;net:THREE.Group;
  leafMaterials:readonly THREE.MeshStandardMaterial[];
  scrimMaterials:readonly THREE.MeshStandardMaterial[];
  palette:PasgtPalette|null;
 };
 export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
- const slits=hidden(parent,'pasgt-eight-buttonholes');
+ const slits=hidden(parent,'pasgt-twelve-bold-buttonholes');
  const band=hidden(parent,'pasgt-one-chunky-elastic');
+ const retention=hidden(parent,'pasgt-two-point-retention');
  const foliage=hidden(parent,'pasgt-leaves-from-buttonholes');
  const scrim=hidden(parent,'pasgt-fabric-strips-from-buttonholes');
  const net=hidden(parent,'pasgt-full-shell-overnet');
@@ -291,14 +394,19 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  // The cuts share the cover's true normal/tangent frames. One flat mesh,
  // rather than eight black boxes and a second shadow-receiving surface.
  const slitMesh=new THREE.Mesh(createPasgtSlitGeometry(),slitMat);
- slitMesh.name='pasgt-eight-panel-tangent-buttonholes';
+ slitMesh.name='pasgt-twelve-panel-tangent-buttonholes';
  slitMesh.castShadow=false;slitMesh.receiveShadow=false;
  slits.add(slitMesh);
  for(const covered of [true,false]){
   const bandMesh=new THREE.Mesh(createPasgtBandGeometry(covered),bandMat);
   bandMesh.name=covered?'pasgt-covered-fit-elastic':'pasgt-bare-fit-elastic';
   bandMesh.castShadow=true;bandMesh.receiveShadow=false;
-  bandMesh.visible=covered;band.add(bandMesh);
+  bandMesh.visible=covered;
+  const marks=new THREE.Mesh(createPasgtCatEyesGeometry(covered),
+   material(0xbfb28e,THREE.DoubleSide));
+  marks.name='pasgt-two-rear-cat-eye-tabs';
+  marks.castShadow=false;marks.receiveShadow=false;
+  bandMesh.add(marks);band.add(bandMesh);
  }
  for(let i=0;i<CARD_ANCHORS.length;i++){
   placedCard(foliage,i,leafMaterials[i%3],
@@ -308,15 +416,21 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
    createPasgtScrimRibbonGeometry(i),
    'pasgt-broad-folded-cloth-strip',-.09);
  }
- const netMat=material(0x636e53,THREE.DoubleSide);
+ const strap=new THREE.Mesh(createPasgtRetentionGeometry(),
+  material(0x58644e,THREE.DoubleSide));
+ strap.name='pasgt-chunky-two-point-retention';
+ strap.castShadow=true;strap.receiveShadow=false;
+ retention.add(strap);
+ const netMat=material(0x78816a,THREE.DoubleSide);
  const netMesh=new THREE.Mesh(createPasgtNetGeometry(),netMat);
  netMesh.name='pasgt-front-crown-side-rear-net';netMesh.castShadow=true;
  netMesh.receiveShadow=false;net.add(netMesh);
- return {slits,band,foliage,scrim,net,
+ return {slits,band,retention,foliage,scrim,net,
   leafMaterials,scrimMaterials,palette:null};
 }
 export function updatePasgtFieldDress(v:PasgtFieldDressLayers,
- covered:boolean,details:PasgtDetails,camo:HeadwearCamoId|undefined):void{
+ covered:boolean,details:PasgtDetails,camo:HeadwearCamoId|undefined,
+ allowRetention=true):void{
  const effective=resolvePasgtDetails(details);
  v.slits.visible=covered&&effective.slits;
  v.band.visible=effective.band==='elastic'; // can be worn over the bare shell
@@ -327,6 +441,7 @@ export function updatePasgtFieldDress(v:PasgtFieldDressLayers,
  v.foliage.visible=covered&&effective.concealment==='foliage';
  v.scrim.visible=covered&&effective.concealment==='scrim';
  v.net.visible=covered&&effective.concealment==='net';
+ v.retention.visible=allowRetention;
  const palette=pasgtConcealmentPalette(camo);
  if(v.palette!==palette){
   const colors=PALETTES[palette];

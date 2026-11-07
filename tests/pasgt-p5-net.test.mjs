@@ -7,7 +7,8 @@ test('net uses sparse opposing diagonal diamond strands, not orthogonal roof rai
  assert.equal(g.userData.pasgtNetCordCount,6);
  assert.ok(g.getAttribute('position').count>80);
  assert.ok(g.boundingBox.max.y>8.85);
- assert.ok(g.boundingBox.min.y<5.0);
+ assert.ok(g.boundingBox.min.y<5.55);
+ assert.ok(g.boundingBox.min.y>5.18);
  assert.ok(g.boundingBox.min.x<-5);
  assert.ok(g.boundingBox.max.x>5);
  assert.ok(g.boundingBox.min.z<-6);

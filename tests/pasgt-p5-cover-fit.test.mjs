@@ -14,7 +14,7 @@ test('P5-A leaves source PASGT shell as approved and narrows the ear hem drop',(
  assert.ok(high.bottomY>4&&low.bottomY<2.1);
  assert.ok(Math.abs(high.z-low.z)<1);
  const head=createPasgtDrapedGeometry();
- assert.equal(head.userData.pasgtUvLayout,'common-unfolded-crown-side-fabric');
+ assert.equal(head.userData.pasgtUvLayout,'three-sewn-cuts-independent-islands');
  assert.equal(head.getAttribute('uv1').count,head.getAttribute('position').count);
  assert.ok(head.boundingBox.max.y>8.85);
  const hem=createPasgtDrapedGeometry(true);

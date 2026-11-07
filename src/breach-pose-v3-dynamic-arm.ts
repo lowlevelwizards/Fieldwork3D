@@ -55,10 +55,13 @@ function ringPoles(shoulder:THREE.Vector3,wrist:THREE.Vector3){
 }
 export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
  const {shoulder,wrist,side,mode,envelope,referenceBend}=req;
+ const firingTuck=side===1&&(mode==='carry'||mode==='aim');
  const seedPoles=[
   req.preferredPole.clone(),
-  new THREE.Vector3(3,-9,side*1.5),
-  new THREE.Vector3(6,-8,side*2.0),
+  firingTuck?new THREE.Vector3(3,-10.5,.45):
+   new THREE.Vector3(3,-9,side*1.5),
+  firingTuck?new THREE.Vector3(5.5,-9,.85):
+   new THREE.Vector3(6,-8,side*2.0),
   ...([0,1,2] as const).map(v=>{
    const p=armorElbowPole(shoulder,side,v);
    return new THREE.Vector3(p.x,p.y,p.z);
@@ -90,7 +93,7 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
     const visual=req.allowVisualOverlap&&
       (mode==='carry'||mode==='aim');
     const hardCutoff=req.allowReloadOverlap&&mode==='reload'?2.65:
-      visual?1.90:LOW_READY_CONTACT_LIMITS.rigid;
+      visual?(side===1?2.30:1.90):LOW_READY_CONTACT_LIMITS.rigid;
     if(report.hardDepth>hardCutoff+.001||
        !pose.reached)permanentlyBlocked.add(pose);
     if(!report.valid){
