@@ -39,6 +39,10 @@ import {sleeveStateOptions} from './operator-wardrobe-data.ts';
 import {FAMILY_PRESETS} from './equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from './equipment-weapon-assemblies.ts';
+import {POSE_ARMOR_OPTIONS,POSE_RIG_OPTIONS,POSE_UNIFORM_OPTIONS,
+ POSE_ANIMATIONS,posePreset,poseWeaponType,defaultPoseWeapon,
+ poseArmorEquipment,poseRigEquipment}
+ from './operator-lab-pose-browser.ts';
 import {uniformCutCamoChoices,type UniformCompareCut}
  from './operator-uniform-cut-eligibility.ts';
 import {uniformCompareKit,uniformCompareWardrobe,UNIFORM_COMPARE_LABELS,
@@ -70,75 +74,12 @@ import {initialWardrobe,readWardrobe,resolvedWardrobe,wardrobeConflicts,
 let labKit:EquipmentLoadout=bareLabEquipment();
 let labPalette=1;
 let wardrobeOptions:WardrobeOptions=initialWardrobe();
-/** URL opt-in development inspector, not a second character renderer. */
-const poseFitMode=new URLSearchParams(location.search).get('poseFit')==='1';
-// The Operator Lab now uses the same posing as the live tactical game.
+// Pose Fit is a normal Operator Lab category. The legacy ?poseFit=1
+// link routes to that category; it no longer freezes or overlays the model.
 const poseFlags=new URLSearchParams(location.search);
 const poseV4ReloadPreview=poseFlags.get('poseV4')!=='0';
-const poseV3Preview=poseV4ReloadPreview||
- poseFlags.get('poseV3')==='1';
-/** Use the actual action clock while preserving the Pose Fit weapon/armor. */
-const poseV3Action=poseFitMode&&poseV3Preview&&
- (poseV4ReloadPreview||
-  new URLSearchParams(location.search).get('poseV3Action')==='1');
-const poseFitStatic=poseFitMode&&!poseV3Action;
-let poseFitPreset='ar-m4a1',poseFitArmor='plate-jpc';
-let poseFitRig='no-rig',poseFitTop='bdu-shirt';
-let poseFitOutput:HTMLOutputElement|null=null;
-if(poseFitMode){
- document.body.classList.add('pose-fit-mode');
- const panel=document.createElement('details');
- panel.id='poseFitPanel';
- panel.open=true;panel.setAttribute('aria-label','Pose Fit Inspector');
- panel.style.cssText='position:fixed;z-index:9;top:calc(env(safe-area-inset-top) + 65px);'+
-  'right:8px;width:min(290px,calc(100vw - 16px));'+
-  'max-height:42dvh;overflow-y:auto;padding:9px;border:1px solid #c8ac72;'+
-  'border-radius:8px;background:#20352ff0;color:#e8e6da;'+
-  'touch-action:pan-y;font:11px monospace';
- const heading=document.createElement('summary');
- heading.textContent='POSE FIT · AR / AK';heading.style.cursor='pointer';
- panel.append(heading);
- const picker=(label:string,options:readonly (readonly [string,string])[],
-  current:string,set:(value:string)=>void)=>{
-  const field=document.createElement('label');
-  field.style.cssText='display:grid;gap:3px;margin-top:7px';
-  field.textContent=label;
-  const select=document.createElement('select');select.style.width='100%';
-  for(const [id,title] of options){
-   const opt=document.createElement('option');
-   opt.value=id;opt.textContent=title;select.add(opt);
-  }
-  select.value=current;select.addEventListener('change',()=>{
-   set(select.value);draw();
-  });
-  field.append(select);panel.append(field);
- };
- picker('Weapon',FAMILY_PRESETS.map(p=>[p.id,p.name] as const),
-  poseFitPreset,x=>{poseFitPreset=x});
- picker('Armor',[['armor-bare','Bare'],['plate-slick','Slick'],
-  ['plate-jpc','JPC'],['plate-standard','Standard'],['plate-heavy','Heavy'],
-  ['plate-legacy','Legacy'],['soft-flak','Flak']],poseFitArmor,
-  x=>{poseFitArmor=x});
- picker('Rig',[['no-rig','None'],['chest-placard','Placard'],
-  ['full-chest','Full Chest'],['chicom-rig','Chicom'],
-  ['sadf-webbing','SADF']],poseFitRig,x=>{poseFitRig=x});
- picker('Uniform',[['bdu-shirt','BDU'],['acu-shirt','ACU'],
-  ['combat-shirt','Combat'],['smock-jacket','Smock']],
-  poseFitTop,x=>{poseFitTop=x});
- poseFitOutput=document.createElement('output');
- poseFitOutput.style.cssText='display:block;margin:8px 0;white-space:pre-wrap';
- panel.append(poseFitOutput);
- const copy=document.createElement('button');copy.textContent='COPY POSE REPORT';
- copy.type='button';copy.addEventListener('click',()=>{
-  const info={preset:poseFitPreset,armor:poseFitArmor,rig:poseFitRig,
-   top:poseFitTop,status:rig?.root.userData.lowReadyPoseReport,
-   leftHand:rig?.arms[0].hand.position.toArray(),
-   rightHand:rig?.arms[1].hand.position.toArray(),
-   stock:rig?.weapon.position.toArray(),camera:camera.position.toArray()};
-  void navigator.clipboard?.writeText(JSON.stringify(info,null,2));
- });
- panel.append(copy);document.body.append(panel);
-}
+const poseV3Preview=poseV4ReloadPreview||poseFlags.get('poseV3')==='1';
+let poseWeaponPreset='none';
 let appearanceGrid:OperatorAppearanceGrid|null=null;
 /** One-step Lab-only undo: snapshot display choices, never owned inventory. */
 type AppearanceSnapshot={kit:EquipmentLoadout;wardrobe:WardrobeOptions;
@@ -215,7 +156,23 @@ function previewCarry(kit:EquipmentLoadout,weapon:WeaponId){
 function syncKit(){
  for(const select of kitSelects)
   select.value=labKit.slots[select.dataset.kitSlot as LoadoutSlot];
- syncWardrobe();
+ syncWardrobe();syncPosePickers();
+}
+/** Same wardrobe/kit as Appearance; never a duplicate "fit costume". */
+function syncPosePickers(){
+ const current=(document.getElementById('weapon') as HTMLSelectElement).value;
+ if(poseWeaponType(poseWeaponPreset)!==current)
+  poseWeaponPreset=defaultPoseWeapon(current);
+ const model=document.getElementById('poseWeapon') as HTMLSelectElement;
+ if(model?.options.length)model.value=poseWeaponPreset;
+ const look=resolvedWardrobe(wardrobeOptions,labKit);
+ for(const [id,value] of [
+  ['poseArmor',look.armorStyle],['poseRig',look.rigStyle],
+  ['poseUniform',look.top]
+ ] as const){
+  const element=document.getElementById(id) as HTMLSelectElement;
+  if(element?.options.length)element.value=value;
+ }
 }
 const recipeSelect=document.getElementById('wardrobeRecipe') as HTMLSelectElement;
 for(const recipe of WARDROBE_RECIPES){
@@ -738,11 +695,69 @@ function updateMagazineState(){
   'Preview locations use the real equipment carrying ledger.';
 }
 weapon.addEventListener('change',()=>{
+ poseWeaponPreset=defaultPoseWeapon(weapon.value);
  if(weapon.value!=='none')
   labKit=syncPrimaryWeapon(labKit,weapon.value as WeaponId);
- updateMagazineState();
+ updateMagazineState();syncPosePickers();
 });
 updateMagazineState();
+/** One responsive Poses category—weapon, armor, rig, uniform and track.
+ * Full weapon catalog, not generic CARBINE/SMG/RIFLE placeholders.
+ */
+const poseWeaponSelect=choose<HTMLSelectElement>('poseWeapon');
+const poseArmorSelect=choose<HTMLSelectElement>('poseArmor');
+const poseRigSelect=choose<HTMLSelectElement>('poseRig');
+const poseUniformSelect=choose<HTMLSelectElement>('poseUniform');
+const poseAnimationSelect=choose<HTMLSelectElement>('poseAnimation');
+poseWeaponSelect.add(new Option('No Weapon','none'));
+poseWeaponSelect.add(new Option('Shotgun','shotgun'));
+for(const [family,label] of [
+ ['ar','AR / M4 / M16'],['ak','AK'],['hk','HK / MP5 / G3']
+] as const){
+ const group=document.createElement('optgroup');group.label=label;
+ for(const preset of FAMILY_PRESETS.filter(p=>p.family===family))
+  group.append(new Option(preset.name,preset.id));
+ poseWeaponSelect.append(group);
+}
+const addOptions=(target:HTMLSelectElement,
+ options:readonly (readonly [string,string])[])=>{
+ for(const [id,title] of options)target.add(new Option(title,id));
+};
+addOptions(poseArmorSelect,POSE_ARMOR_OPTIONS);
+addOptions(poseRigSelect,POSE_RIG_OPTIONS);
+addOptions(poseUniformSelect,POSE_UNIFORM_OPTIONS);
+const animationGroups=new Map<string,HTMLOptGroupElement>();
+for(const animation of POSE_ANIMATIONS){
+ let group=animationGroups.get(animation.group);
+ if(!group){group=document.createElement('optgroup');
+  group.label=animation.group;animationGroups.set(animation.group,group);
+  poseAnimationSelect.append(group);
+ }
+ group.append(new Option(animation.label,animation.id));
+}
+poseWeaponSelect.addEventListener('change',()=>{
+ checkpointAppearance();poseWeaponPreset=poseWeaponSelect.value;
+ const next=poseWeaponType(poseWeaponPreset);
+ weapon.value=next;
+ if(next!=='none')labKit=syncPrimaryWeapon(labKit,next);
+ updateMagazineState();syncKit();draw();
+});
+for(const [element,slot] of [
+ [poseArmorSelect,'armorStyle'],[poseRigSelect,'rigStyle'],
+ [poseUniformSelect,'top']
+] as const){
+ element.addEventListener('change',()=>{
+  checkpointAppearance();
+  wardrobeOptions={...wardrobeOptions,styles:{
+   ...wardrobeOptions.styles,[slot]:element.value}};
+  if(slot==='armorStyle')labKit=setEquipmentChoice(labKit,'armor',
+    poseArmorEquipment(element.value));
+  if(slot==='rigStyle')labKit=setEquipmentChoice(labKit,'rig',
+    poseRigEquipment(element.value));
+  syncKit();draw();
+ });
+}
+syncPosePickers();
 choose<HTMLButtonElement>('unequipAll').addEventListener('click',()=>{
  checkpointAppearance();const empty=unequipLabAppearance();
  labKit=empty.kit;wardrobeOptions=empty.wardrobe;
@@ -1058,8 +1073,7 @@ const cameraHalfHeight=36;
 let projectionZoom=Number.NaN;
 function refreshVisibleWindow(){
  const headerBottom=document.querySelector('header')?.getBoundingClientRect().bottom??90;
- const editorTop=poseFitMode?window.innerHeight*.83:
-  document.querySelector('main')?.getBoundingClientRect().top??
+ const editorTop=document.querySelector('main')?.getBoundingClientRect().top??
   window.innerHeight*.55;
  const overlayBottom=document.getElementById('modelAxisLegend')?.
   getBoundingClientRect().bottom??0;
@@ -1162,6 +1176,7 @@ function chooseTrack(next:LabTrack){
     fit();
   }
   track=next;cache=newTrackCache(next);clock=0;playing=true;
+  poseAnimationSelect.value=next;
   if(gaitComparing){historicalGait=null;hybridGait=null;ensureGaitCompare();}
   for(const b of document.querySelectorAll<HTMLButtonElement>('[data-pose]'))
     b.setAttribute('aria-pressed',String(b.dataset.pose===next));
@@ -1169,6 +1184,15 @@ function chooseTrack(next:LabTrack){
 }
 document.querySelectorAll<HTMLButtonElement>('[data-pose]').forEach(button=>
   button.addEventListener('click',()=>chooseTrack(button.dataset.pose as LabTrack)));
+poseAnimationSelect.addEventListener('change',()=>{
+ chooseTrack(poseAnimationSelect.value as LabTrack);draw();
+});
+for(const [id,direction] of [['poseFrameBack',-1],['poseFrameNext',1]] as const)
+ choose<HTMLButtonElement>(id).addEventListener('click',()=>{
+  playing=false;playPause.textContent='PLAY';
+  clock=Math.max(0,Math.min(TRACK_DURATION,clock+direction/60));
+  draw();
+ });
 document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach(button=>
   button.addEventListener('click',()=>fit(button.dataset.view)));
 choose<HTMLButtonElement>('resetCamera').addEventListener('click',()=>fit());
