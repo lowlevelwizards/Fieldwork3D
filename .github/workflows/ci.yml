@@ -1304,6 +1304,7 @@ jobs:
             tests/replay-r3-chunk-transport.test.mjs \
             tests/replay-r3-frame-sampling.test.mjs \
             tests/replay-r3-chunk-scene.test.mjs \
+            tests/replay-r3-chunk-controller.test.mjs \
             tests/replay-r2-recording.test.mjs \
             tests/breach-p7-replay-sharing.test.mjs
       - name: Replay R3 — portable full-film files and bookmark persistence
