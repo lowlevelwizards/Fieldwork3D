@@ -49,10 +49,17 @@ try{
    const state=await page.locator('#preview').evaluate(c=>({
     weapon:c.dataset.poseFitWeapon,armor:c.dataset.poseFitArmor,
     rig:c.dataset.poseFitRig,fit:c.dataset.lowReadyFit,
+    firingDrop:c.dataset.firingElbowDrop,
+    firingFlare:c.dataset.firingElbowFlare,
+    torsoAssist:c.dataset.torsoAssistYaw,
     drawCalls:c.dataset.drawCalls,
     report:document.getElementById('poseInspectorReport')?.textContent
    }));
    evidence.push({label,...state});
+   if(label==='m16a1-heavy'&&
+     (!Number.isFinite(Number(state.firingDrop))||
+       Number(state.firingDrop)<2.5))
+    throw Error('Heavy M16 firing elbow remains winged: '+JSON.stringify(state));
    await page.screenshot({path:'operator-armhole-captures/'+label+'-front.png'});
    await page.locator('.pose-workspace button[data-view="side"]').click();
    await page.screenshot({path:'operator-armhole-captures/'+label+'-side.png'});
