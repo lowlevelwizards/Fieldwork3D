@@ -1068,7 +1068,9 @@ let labSwitch:null|{from:Handling;to:Handling;
   fromWeapon:{origin:THREE.Vector3;rotation:THREE.Euler};
   fromProfile:NonNullable<OperatorRig['handlingProfile']>;
   authoredFrom?:WeaponFit;
-  authoredChest?:{position:THREE.Vector3;rotation:THREE.Euler}}=null;
+  authoredChest?:{position:THREE.Vector3;rotation:THREE.Euler};
+  authoredArms?:readonly {shoulder:THREE.Vector3;elbow:THREE.Vector3;
+    wrist:THREE.Vector3;bend:THREE.Vector3}[]}=null;
 let rig:OperatorRig|null=null,track:LabTrack='idle';
 const gaitReference=choose<HTMLSelectElement>('gaitReference');
 let cache:LabMotionCache|LabHistoricalMotionCache|LabDistanceMotionCache=new LabMotionCache(track);
@@ -1191,7 +1193,15 @@ function chooseTrack(next:LabTrack){
       }:undefined,
       authoredChest:presented?{
         position:rig.chest.position.clone(),rotation:rig.chest.rotation.clone()
-      }:undefined};
+      }:undefined,
+      authoredArms:presented?rig.arms.map(arm=>{
+        // Each segment is centered between its endpoints. Recover the
+        // *rendered* shoulder/elbow/wrist, not last frame's named preset.
+        const wrist=arm.hand.position.clone();
+        const elbow=arm.lower.position.clone().multiplyScalar(2).sub(wrist);
+        const shoulder=arm.upper.position.clone().multiplyScalar(2).sub(elbow);
+        return {shoulder,elbow,wrist,bend:arm.bend.clone()};
+      }):undefined};
   }else labSwitch=null;
   if(comparing){
     comparing=false;
@@ -1574,7 +1584,8 @@ function draw(){
       fromProfile:labSwitch.fromProfile,
       fromWeapon:labSwitch.fromWeapon,
       authoredFrom:labSwitch.authoredFrom,
-      authoredChest:labSwitch.authoredChest}:undefined;
+      authoredChest:labSwitch.authoredChest,
+      authoredArms:labSwitch.authoredArms}:undefined;
   const transition=direct??scripted;
   if(labSwitch&&alpha>=1)labSwitch=null;
   const selectedHandling=transition?.to??previewHandling[track];
