@@ -2099,9 +2099,19 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       a.priorP=old;a.p=glide;
       // Footwork and motion cues follow resolved, not rejected movement.
       a.velocity=d(old,glide)/Math.max(dt,.0001);
-      // Point the body along its real sliding movement, not at the
-      // obstructed grid waypoint. Explicit WATCH remains authoritative.
-      if(a.aimInstruction?.mode!=='track')
+      // Ordinary wall-gliding faces the actual slide, not the obstructed
+      // grid waypoint. A generated squad entry that has already achieved
+      // full shoulder clearance is different: its authored clearing sector
+      // should keep rotating while the circular full-body sweep glides.
+      // Do not relax geometry, squeeze turning, or explicit WATCH priority.
+      const entry=a.plan[0];
+      const clearedEntryLook=!a.squeeze&&entry?.kind==='move'&&
+        !!entry.entryDoorId&&entry.aimMode==='fixed'&&
+        entry.facing!==undefined&&
+        entryClearanceForLook(
+          s.doors.find(door=>door.id===entry.entryDoorId),
+          glide,entry.p);
+      if(a.aimInstruction?.mode!=='track'&&!clearedEntryLook)
         a.heading=angle(old,glide);
       a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
       a.recoveryAttempts=0;
