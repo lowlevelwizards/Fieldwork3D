@@ -60,7 +60,7 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
   cap.userData.hkMP5StocklessCap=true;
  }else{
   const rear=-13.05;
-  for(const [i,z] of [-1.10,1.10].entries()){
+  for(const z of [-1.10,1.10]){
    const rail=b('stock',(-12.53-5.90)/2,.34,z,
     -5.90+12.53,.50,.50,steel);
    rail.userData.hkMP5RetractRail=true;
