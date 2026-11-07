@@ -81,6 +81,26 @@ try{
     const release=await storage.commitChunkedReplayV2(generation);
     const opened=await storage.openChunkedReplayV2('g3-browser-001');
     const sample=await opened.window.surrounding(.25);
+    // G4b — open a real V2 publication through the async transport.
+    // No full-frame reconstruction and no live MissionRecorder required.
+    const {openReplayChunkTransportV2}=await import(
+      '/src/breach-replay-chunk-transport.ts');
+    const playback=await openReplayChunkTransportV2('g3-browser-001');
+    const firstSeek=await playback.seek(.25);
+    const forward=await playback.advance(.2,1);
+    const rewind=await playback.advance(.1,-1);
+    const transport={
+      firstStatus:firstSeek.status,
+      firstAlpha:firstSeek.sample?.alpha,
+      forwardAt:forward.sample?.t,
+      rewindAt:rewind.sample?.t,
+      lastPrevious:rewind.sample?.previous.t,
+      lastNext:rewind.sample?.next.t,
+      resident:playback.residentChunks,
+      recordingComplete:playback.recordingComplete
+    };
+    playback.close();
+    transport.closed=playback.status==='closed';
     const v1=await loadSavedReplay('g3-browser-001');
     const pendingAfter=await storage.listInterruptedChunkedReplaysV2();
     return {generation:release.generation,
@@ -90,6 +110,7 @@ try{
       sample:{previous:sample?.previous.t,next:sample?.next.t,
         alpha:sample?.alpha},
       resident:opened.window.residentCount,
+      transport,
       v1Count:v1.frames.length,
       pending:pendingAfter.length};
   });
@@ -102,6 +123,16 @@ try{
     completed.sample.next>.25&&completed.resident<=3,
     'Lazy chunk reading disagrees with historical frames: '+
     JSON.stringify(completed));
+  check(completed.transport.firstStatus==='ready'&&
+    Math.abs(completed.transport.firstAlpha-.5)<1e-8&&
+    Math.abs(completed.transport.forwardAt-.45)<1e-8&&
+    Math.abs(completed.transport.rewindAt-.35)<1e-8&&
+    completed.transport.lastPrevious<.35&&
+    completed.transport.lastNext>.35&&
+    completed.transport.resident<=3&&
+    completed.transport.recordingComplete&&completed.transport.closed,
+    'G4 async playback was not faithful after browser reload: '+
+    JSON.stringify(completed.transport));
   const replaced=await page.evaluate(async()=>{
     const storage=await import('/src/breach-replay-chunk-store.ts');
     const {loadSavedReplay}=await import('/src/breach-replay-library.ts');

@@ -4,6 +4,8 @@ on:
     paths:
       - 'src/breach-replay-chunk-store.ts'
       - 'src/breach-replay-chunks.ts'
+      - 'src/breach-replay-chunk-transport.ts'
+      - 'tests/replay-r3-chunk-transport.test.mjs'
       - 'tests/replay-r3-chunk-store.test.mjs'
       - 'tests/replay-r3-chunks.test.mjs'
       - 'scripts/smoke-replay-r3-chunk-store.mjs'
