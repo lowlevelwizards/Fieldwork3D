@@ -10,6 +10,7 @@ on:
       - 'src/breach-reload-motion.ts'
       - 'scripts/capture-breach-pose-fit.mjs'
       - 'scripts/capture-breach-pose-v3-dynamic.mjs'
+      - 'scripts/capture-short-stock-transition-phone.mjs'
       - '.github/workflows/breach-pose-v3-mobile.yml'
 permissions:
   contents: read
@@ -18,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   visual:
-    if: ${{ (startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') || startsWith(github.head_ref, 'refactor/uop-pose-director')) && !github.event.pull_request.draft }}
+    if: ${{ (startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') || startsWith(github.head_ref, 'refactor/uop-pose-director') || startsWith(github.head_ref, 'fix/pose-continuity-short-stock')) && !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
@@ -35,6 +36,9 @@ jobs:
         run: POSE_V3=1 node scripts/capture-breach-pose-fit.mjs
       - name: ADS and reload action-time dynamic pose evidence
         run: node scripts/capture-breach-pose-v3-dynamic.mjs
+      - name: Short-stock phone silhouettes and interrupted ADS retarget
+        if: ${{ startsWith(github.head_ref, 'fix/pose-continuity-short-stock') }}
+        run: node scripts/capture-short-stock-transition-phone.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -42,4 +46,5 @@ jobs:
           path: |
             breach-pose-fit-captures/
             breach-pose-v3-dynamic-captures/
+            breach-shortstock-phone-captures/
           if-no-files-found: warn

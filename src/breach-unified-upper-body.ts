@@ -124,6 +124,7 @@ export type FallbackArmRequest={
  preferredPole:THREE.Vector3;previousBend:THREE.Vector3;
  side:-1|1;neutral:boolean;down:boolean;surrender:boolean;
  firing:boolean;sourceContinuity:boolean;
+ transitionPhase?:number;
  envelope:PoseClearanceEnvelope|null;
  mode:PoseConstraintMode;allowVisualOverlap:boolean;
  curatedSupport:boolean;
@@ -144,6 +145,40 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
  let solved=solveTwoBone(shoulder,wrist,10,10,preferredPole,
    ARM_LIMITS,req.neutral?undefined:previousBend,
    scratch.arms[armIndex]);
+ // Lab-only authored retargets must not snap between discrete
+ // finite candidate families halfway through a pose. Use one smooth pole
+ // throughout the blend, with a bounded, continuous outboard correction
+ // for hard/soft gear contact. Never lerp elbow positions (which would
+ // stretch 10+10 anatomy); re-solve full IK at each sampled timestamp.
+ // The correction fades to zero at the destination, which is solved by
+ // the settled coordinated/paired arm authority. Strict contact audit
+ // still evaluates the original discrete admissibility policy below.
+ if(req.sourceContinuity&&req.allowVisualOverlap&&envelope&&solved.reached){
+   const phase=Math.max(0,Math.min(1,req.transitionPhase??.5));
+   const envelopeWeight=Math.sin(Math.PI*phase);
+   const pole=preferredPole.clone().normalize();
+   for(let iter=0;iter<3;iter++){
+     const report=evaluateSleeveArmorContact(
+       shoulder,solved.joint,solved.effector,envelope);
+     let rigid=0,soft=0;
+     for(const contact of report.contacts){
+       const exceed=Math.max(contact.upperExcess,contact.lowerExcess);
+       if(contact.material==='rigid')rigid=Math.max(rigid,exceed);
+       else soft=Math.max(soft,exceed);
+     }
+     // Each correction is proportional to actual penetration, with no
+     // discontinuous "if valid, switch pose family" branch.
+     const correction=Math.min(1.7,rigid*.45+soft*.16)*envelopeWeight;
+     if(correction<=1e-6)continue;
+     pole.x+=correction*.27;
+     pole.y-=correction*.20;
+     pole.z+=side*correction;
+     pole.normalize();
+     solved=solveTwoBone(shoulder,wrist,10,10,pole,ARM_LIMITS,
+       previousBend,scratch.arms[armIndex]);
+   }
+   return {solution:solved,dynamic:null,used:'authored'};
+ }
  let dynamicAccepted=false;
  if(req.sourceContinuity&&envelope&&solved.reached){
    dynamicAccepted=evaluateSleeveArmorContact(shoulder,
@@ -155,7 +190,11 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
  if(envelope&&!req.neutral&&!req.down&&!req.surrender&&!req.firing){
    dynamic=solveV3DynamicArm({
      shoulder,wrist:desired,side,mode:req.mode,
-     envelope,preferredPole,allowVisualOverlap:req.allowVisualOverlap
+     envelope,preferredPole,
+     // During interruption, prefer the existing visible elbow among
+     // equally valid OBB candidates; never infer a new random pole.
+     referenceBend:req.sourceContinuity?req.previousBend:undefined,
+     allowVisualOverlap:req.allowVisualOverlap
    });
    if(dynamic.solution)
      return {solution:dynamic.solution,dynamic,used:'dynamic'};
@@ -186,4 +225,39 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
    }
  }
  return {solution:solved,dynamic,used:'generic'};
+}
+
+/** Smooth a bend direction ON the 10+10 arm's shoulder-to-wrist circle.
+ * An elbow coordinate is only a POLE HINT, never a rendered joint. The
+ * two-bone solver below still owns exact bone lengths and wrist contact.
+ * For opposite elbow hemispheres, prefer a downward/outboard sweep to
+ * winding through the torso or passing through a straight-arm singularity.
+ * Pure and time-sampled: no dependence on previous rendered frames.
+ */
+export function continuousElbowPole(shoulder:THREE.Vector3,
+ wrist:THREE.Vector3,fromJoint:THREE.Vector3,toJoint:THREE.Vector3,
+ side:-1|1,alpha:number):THREE.Vector3{
+ const axis=wrist.clone().sub(shoulder).normalize();
+ if(axis.lengthSq()<1e-8)axis.set(1,0,0);
+ const flatten=(joint:THREE.Vector3)=>{
+   const v=joint.clone().sub(shoulder);
+   v.addScaledVector(axis,-v.dot(axis));
+   if(v.lengthSq()<1e-8){
+     v.set(0,-1,side);
+     v.addScaledVector(axis,-v.dot(axis));
+   }
+   return v.normalize();
+ };
+ const from=flatten(fromJoint),to=flatten(toJoint);
+ const cross=new THREE.Vector3().crossVectors(from,to);
+ let angle=Math.atan2(axis.dot(cross),from.dot(to));
+ const alternate=angle>=0?angle-2*Math.PI:angle+2*Math.PI;
+ if(Math.abs(angle)>Math.PI*.75){
+   const score=(a:number)=>{
+     const mid=from.clone().applyAxisAngle(axis,a*.5);
+     return -mid.y+side*mid.z*.8;
+   };
+   if(score(alternate)>score(angle)+.0001)angle=alternate;
+ }
+ return from.applyAxisAngle(axis,angle*Math.max(0,Math.min(1,alpha)));
 }

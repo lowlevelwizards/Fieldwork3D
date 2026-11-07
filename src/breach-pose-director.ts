@@ -71,7 +71,7 @@ export function planUpperBodyStrategy(p:OperatorPose,
    !p.firing&&!p.down&&!p.surrender&&p.reload<=0;
  const coordinatedEligible=!!p.poseV3Preview&&c.hasModularBuild&&
    !p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
-   !c.interactionWindow&&!c.activeTransition;
+   !c.interactionWindow&&(!c.activeTransition||c.authoredLabSwitch);
  return {previewReloadSeed,coupledEligible,supportEligible,
    coordinatedEligible,envelopeRequired:coupledEligible||!!p.poseV3Preview};
 }

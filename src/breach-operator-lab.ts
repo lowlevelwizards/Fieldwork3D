@@ -1246,8 +1246,10 @@ function chooseTrack(next:LabTrack){
     // Only stationary weapon stances use the authored-to-authored path.
     // The source is the exact currently displayed partial pose, not a
     // nominal previous handling mode or an outdated default.
-    const presented=LAB_HANDLING[track]?
-      rig.root.userData.presentedWeaponFit as WeaponFit|undefined:undefined;
+    // Retarget from the EXACT on-screen weapon even when the previous
+    // category had an active scripted blend or was interrupted.
+    const presented=rig.root.userData.presentedWeaponFit as
+      WeaponFit|undefined;
     labSwitch={from:previous,to:target,since:performance.now()/1000,
       duration:delta,fromWeapon:{
         origin:rig.weapon.position.clone(),

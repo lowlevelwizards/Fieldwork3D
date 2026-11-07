@@ -27,6 +27,7 @@ export function blendedHandlingProfile(from:Handling,to:Handling,
 }
 export function timedHandling(from:Handling,to:Handling,
  seconds:number,start:number,duration:number):HandlingTransition{
- return {from,to,alpha:smoothHandling((seconds-start)/
-   Math.max(.0001,duration))};
+ // Return the raw phase; profile, gun and IK each ease once.
+ return {from,to,alpha:Math.max(0,Math.min(1,(seconds-start)/
+   Math.max(.0001,duration)))};
 }

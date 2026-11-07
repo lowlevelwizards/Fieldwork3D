@@ -336,12 +336,6 @@ jobs:
       - name: 'Traversal foundation: squeeze, step-over and clutter contact'
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-traversal-') }}
         run: node --experimental-strip-types --test tests/breach-traversal-foundation.test.mjs tests/physicality-door-aware-routing.test.mjs tests/physicality-friendly-traffic.test.mjs tests/doorway-right-of-way-session.test.mjs
-      - name: Normal-lane priority — comfortable body routes and squeeze regressions
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/breach-normal-lane-priority-') || startsWith(github.head_ref, 'fix/watch-preserve-here-path-')) }}
-        run: node --experimental-strip-types --test tests/breach-normal-lane-priority.test.mjs tests/breach-190a.test.mjs tests/breach-wall-glide-here-window.test.mjs tests/breach-here-watch-continuity.test.mjs
-      - name: HERE route redraw — WATCH persistence and atomic undo
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/watch-preserve-here-path-') }}
-        run: node --experimental-strip-types --test tests/breach-here-watch-continuity.test.mjs tests/breach-stroke-safe-cutoff.test.mjs tests/breach-active-watch-marker.test.mjs tests/breach-wall-glide-here-window.test.mjs tests/tactical-integration-12-smoothness.test.mjs
       - name: Focused active WATCH marker lifecycle and mobile editing
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'ux/watch-active-marker-') }}
         run: node --experimental-strip-types --test tests/breach-active-watch-marker.test.mjs
@@ -1684,6 +1678,16 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/two-sided-muzzle-recovery-friendly-fire-lane') }}
         run: |
           node --experimental-strip-types --test tests/breach-two-sided-fire-recovery.test.mjs tests/breach-window-blood-reactivity.test.mjs tests/breach-clearing-fire-c.test.mjs tests/breach-179.test.mjs
+      - name: Smooth pose transitions and right-side short-stock critical regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/pose-continuity-short-stock') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-short-stock-outboard.test.mjs tests/breach-stance-continuity.test.mjs tests/breach-authored-transition-critical.test.mjs tests/breach-pose-strategy.test.mjs tests/breach-pose-transition-director.test.mjs tests/breach-120.test.mjs tests/breach-171.test.mjs tests/breach-179.test.mjs
+      - name: Normal-lane priority — comfortable body routes and squeeze regressions
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/breach-normal-lane-priority-') || startsWith(github.head_ref, 'fix/watch-preserve-here-path-')) }}
+        run: node --experimental-strip-types --test tests/breach-normal-lane-priority.test.mjs tests/breach-190a.test.mjs tests/breach-wall-glide-here-window.test.mjs tests/breach-here-watch-continuity.test.mjs
+      - name: HERE route redraw — WATCH persistence and atomic undo
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/watch-preserve-here-path-') }}
+        run: node --experimental-strip-types --test tests/breach-here-watch-continuity.test.mjs tests/breach-stroke-safe-cutoff.test.mjs tests/breach-active-watch-marker.test.mjs tests/breach-wall-glide-here-window.test.mjs tests/tactical-integration-12-smoothness.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
