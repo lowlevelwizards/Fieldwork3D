@@ -32,8 +32,11 @@ export function choreographV3ReloadWeapon(
   .multiply(new THREE.Quaternion().setFromAxisAngle(Z,pitch));
  const around=(point:THREE.Vector3)=>point.clone()
   .sub(fit.stock).applyQuaternion(delta).add(fit.stock);
+ // Never mutate 'delta': the same pure rotation maps every contact
+ // point while the composed quaternion only determines rifle orientation.
  const rotation=new THREE.Euler().setFromQuaternion(
-  delta.multiply(new THREE.Quaternion().setFromEuler(fit.rotation)),'XYZ');
+  delta.clone().multiply(new THREE.Quaternion().setFromEuler(
+   fit.rotation)),'XYZ');
  const newFit={...fit,origin:around(fit.origin),rotation,
   // Buttplate itself is not displaced by the reload manipulation.
   stock:fit.stock.clone(),primary:around(fit.primary),
