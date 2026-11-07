@@ -1,4 +1,5 @@
-import {incomingHitFacing,chooseMuzzleRecoveryStep} from './breach-combat-reactions.ts';
+import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
+ from './breach-combat-reactions.ts';
 /**
  * Fieldwork Breach 053–062: authoritative, fixed-step tactical session.
  * Author intent is editable PlanNode[]; motor navigation is transient.
@@ -2966,6 +2967,18 @@ function firingPosition(a:TeamActor,target:TeamActor,s:Session):Pt|null{
 }
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
   if(a.health<=0||a.surrendered)return;
+  // The same local clearance motor is available to red and blue, but
+  // never outranks a defensive withdrawal or interrupts a timed traversal.
+  if(a.fireRetreatTarget){
+    const goal=a.fireRetreatTarget;
+    if(a.alert==='retreat'||s.seconds>a.fireRetreatUntil||
+       d(a.p,goal)<3||!sweptBodyClear(a.p,goal,s.doors)){
+      a.fireRetreatTarget=null;a.nav=[];
+    }else{
+      approach(a,goal,dt,s,.64);
+      return;
+    }
+  }
   if(!a.watch)a.watch=watchPoint(a.p,s.doors);
   const visible=team(s).filter(b=>inSight(a,b,s));
   // First acquisition is a real visual observation; seeing the same actor
@@ -2987,6 +3000,25 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.encounterReactionStartedAt=s.seconds;
     a.encounterReactionUntil=s.seconds+encounterReactionDelay(
       a.encounterReadiness??'attentive',a.id);
+  }
+  // A guard on the other side of a window can have confirmed sight but
+  // an unusable short-stock muzzle. Try the same small backstep available
+  // to blue BEFORE normal cover doctrine decides to hold fire forever.
+  if(visible.length&&a.velocity<10&&a.magazine>0&&
+     (a.encounterReactionUntil??0)<=s.seconds&&
+     a.alert!=='retreat'&&!a.fireRetreatTarget){
+    const target=visible[0],yaw=angle(a.p,target.p);
+    if(Math.abs(angleDifference(a.heading,yaw))<.90){
+      const check=weaponClearance({
+        x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:yaw,
+        weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+        aim:a.aim,posture:a.posture,velocity:0,recoil:a.recoil,
+        threatRange:d(a.p,target.p)
+      },s.doors);
+      if(check.blocked&&
+         (check.blocker==='wall'||check.blocker==='cover')&&
+         requestClearFireStep(s,a,target,'muzzle'))return;
+    }
   }
   // Every unheard event is considered once. Multiple same-tick sounds survive.
   let strongest:ReturnType<typeof interpretSound>=null;
@@ -3642,6 +3674,64 @@ function civilianShotWithheld(s:Session,a:TeamActor):void{
    a.lastLaneWarnAt=s.seconds;
  }
 }
+/** Request one tiny *physical* firing-lane recovery, preserving tactical
+ * plans, gaze/watch orders and fire policy. Both sides can solve short-stock
+ * obstruction. Blue may also sidestep an allied line of fire.
+ */
+function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
+ kind:'muzzle'|'friendly'):boolean{
+ if(!inSight(a,target,s)||a.health<=0||a.velocity>=10||
+   a.fireRetreatTarget||s.seconds-a.lastFireRetreatAt<1.9||
+   a.traversal||a.traversalPending||a.squeeze||a.carryingId||
+   a.treatmentActive||a.reload>0||a.flashUntil>s.seconds||
+   a.pace==='run'||a.plan[0]?.moveMode==='sprint'||
+   a.plan[0]?.kind==='treat'||a.plan[0]?.kind==='evacuate'||
+   a.plan[0]?.kind==='tool'||a.plan[0]?.kind==='flash'||
+   a.side==='red'&&(a.alert==='retreat'||a.combatChoice==='withdraw')||
+   a.side==='blue'&&(a.firePolicy==='hold'||
+     a.firePolicy==='suppress'||
+     a.firePolicy==='return'&&a.suppression<.10&&
+       s.seconds-a.lastHitAt>3))return false;
+ if(kind==='friendly'&&a.side!=='blue')return false;
+ const n=a.plan[0];
+ if(a.side==='blue'&&n&&n.kind!=='move'&&n.kind!=='look'&&
+   n.kind!=='wait')return false;
+ const friends=s.operators.filter(other=>other!==a&&other.health>0&&
+   other.side===a.side).map(other=>other.p);
+ // Recovery must never rely on moving another body to open the lane.
+ const people=[
+   ...s.operators.filter(other=>other!==a&&other.health>0).map(o=>o.p),
+   ...s.civilians.filter(c=>c.health>0).map(c=>c.p)
+ ];
+ const aimYaw=angle(a.p,target.p),range=d(a.p,target.p);
+ const clearBody=(candidate:Pt)=>
+   sweptBodyClear(a.p,candidate,s.doors)&&
+   people.every(p=>pointToSegment(p,{a:a.p,b:candidate})>=20);
+ const legalShot=(candidate:Pt)=>{
+   const clearance=weaponClearance({
+     x:candidate.x,z:candidate.y,heading:a.heading,weaponYaw:aimYaw,
+     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+     aim:a.aim,posture:a.posture,velocity:0,recoil:a.recoil,
+     threatRange:range
+   },s.doors);
+   if(clearance.blocked)return false;
+   const from={x:clearance.muzzle.x,y:clearance.muzzle.z};
+   const height=aimHeight(target.posture==='crouch');
+   if(observedCivilianFireLane(s,a,from,clearance.muzzle.y,
+     target.p,height))return false;
+   return assessFireLane(from,clearance.muzzle.y,target.p,height,
+      COVER,WALLS,s.doors,friends).blocker==='clear';
+ };
+ const next=kind==='friendly'?
+   chooseFriendlyLaneStep(a.p,aimYaw,clearBody,legalShot):
+   chooseMuzzleRecoveryStep(a.p,aimYaw,clearBody,legalShot);
+ if(!next)return false;
+ a.fireRetreatTarget=next;
+ a.fireRetreatUntil=s.seconds+1.25;
+ a.lastFireRetreatAt=s.seconds;
+ a.nav=[];a.retryRouteAt=0;
+ return true;
+}
 /** Suppression is an authored area instruction: deliberate misses consume
  * real ammunition and can unsettle defenders, but never inflict an
  * omniscient hit on an unseen actor. */
@@ -3820,6 +3910,21 @@ function fire(s:Session,a:TeamActor,dt:number){
     a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*profile.turnSpeed*mods.turn);
     return;
   }
+  // The target selector deliberately keeps tracking a lone visible target
+  // even if their current firing lane is obstructed. That is correct
+  // targeting behavior, but friendly sidestep must run *after* selection,
+  // rather than only in the (often unreachable) no-target branch.
+  if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget){
+    const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
+    const muzzleHeight=a.posture==='crouch'?18:26;
+    const targetHeight=aimHeight(target.posture==='crouch');
+    const lane=assessFireLane(a.p,muzzleHeight,target.p,targetHeight,
+      COVER,WALLS,s.doors,friends);
+    if(lane.blocker==='friendly'&&!observedCivilianFireLane(
+       s,a,a.p,muzzleHeight,target.p,targetHeight)){
+      if(requestClearFireStep(s,a,target,'friendly'))return;
+    }
+  }
   if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;
     a.stability=Math.min(a.stability,.65);}
   // After a real flank hit, orient toward the attack before reacquiring an
@@ -3862,37 +3967,8 @@ function fire(s:Session,a:TeamActor,dt:number){
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors);
   if(sightClearance.blocked){
     a.lastFireBlock=sightClearance.blocker;
-    // A known, visible hostile and a blocked local muzzle justify a tiny
-    // backward recovery. Neither the enemy's unseen position nor a hidden
-    // route is used, and shots still require the full existing safety gate.
-    const n=a.plan[0];
-    if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget&&
-       s.seconds-a.lastFireRetreatAt>1.65&&
-       (sightClearance.blocker==='wall'||sightClearance.blocker==='cover')&&
-       (!n||n.kind==='move'||n.kind==='look'||n.kind==='wait')&&
-       !a.carryingId&&!a.traversalPending&&!a.squeeze){
-      const friends=s.operators.filter(o=>o!==a&&o.health>0&&
-        o.side===a.side).map(o=>o.p);
-      const point=chooseMuzzleRecoveryStep(a.p,desiredYaw,
-        candidate=>sweptBodyClear(a.p,candidate,s.doors)&&
-          !friends.some(friend=>d(candidate,friend)<21),
-        candidate=>{
-          const test=weaponClearance({x:candidate.x,z:candidate.y,
-            heading:a.heading,weaponYaw:desiredYaw,weapon:a.weapon,
-            weaponConfiguration:a.weaponConfiguration,aim:a.aim,
-            posture:a.posture,velocity:0,recoil:0,threatRange:range},s.doors);
-          if(test.blocked)return false;
-          return assessFireLane({x:test.muzzle.x,y:test.muzzle.z},
-            test.muzzle.y,target.p,aimHeight(target.posture==='crouch'),
-            COVER,WALLS,s.doors,friends).blocker==='clear';
-        });
-      if(point){
-        a.fireRetreatTarget=point;
-        a.fireRetreatUntil=s.seconds+1.15;
-        a.lastFireRetreatAt=s.seconds;
-        a.nav=[];
-      }
-    }
+    if(sightClearance.blocker==='wall'||sightClearance.blocker==='cover')
+      requestClearFireStep(s,a,target,'muzzle');
     return;
   }
   const sightMuzzle=sightClearance.muzzle;
@@ -3907,6 +3983,10 @@ function fire(s:Session,a:TeamActor,dt:number){
     sightMuzzle.y,target.p,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
   a.lastFireBlock=lane.blocker;
+  if(lane.blocker==='friendly'){
+    requestClearFireStep(s,a,target,'friendly');
+    return; // never force a shot through an allied body
+  }
   const laneTrace=strikeSurface(
     {x:sightMuzzle.x,y:sightMuzzle.z},target.p,s,
     sightMuzzle.y,aimHeight(target.posture==='crouch'),
