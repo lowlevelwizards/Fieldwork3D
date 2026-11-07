@@ -36,6 +36,7 @@ import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
+import {choreographV3ReloadHand} from './breach-pose-v3-reload-choreography.ts';
 import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
@@ -1332,7 +1333,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // handguard/magwell. This is a contact change, never a muzzle transform.
   // Do not apply to shot-time ballistics or alter an approved coupled pose.
   if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
-     !p.firing&&!p.down&&!p.surrender){
+     !p.firing&&!p.down&&!p.surrender&&p.reload<=0){
     const look=resolvedWardrobe(p.wardrobe,p.equipment);
     const choice=chooseV3SupportGrip({
       weapon:p.weapon,configuration:coupledConfig,fit,
@@ -1372,13 +1373,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const outfit=resolvedWardrobe(p.wardrobe,p.equipment);
     const activeReloadSocket=v3ReloadActive?
       weaponPresentationSockets(p.weapon,p.weaponConfiguration):null;
-    const releasedTarget=v3ReloadActive?reloadHandChestTarget({
+    const releasedTarget=v3ReloadActive?choreographV3ReloadHand({
       fit,lengthScale:data.lengthScale,
       progress:v3ReloadProgress,mode:v3ReloadMode,
       supportX:data.supportX,supportY:data.supportY,
       primaryX:data.primaryX,
       magazineSocket:activeReloadSocket?.magazinePart?
-        activeReloadSocket.magazine:undefined}):undefined;
+        activeReloadSocket.magazine:undefined}).target:undefined;
     const result=solveV3CoordinatedPose({
       fit,weapon:p.weapon,configuration:coupledConfig,
       shoulders:[shoulderFor(0),shoulderFor(1)],
@@ -1566,12 +1567,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       data.supportX,data.supportY,data.primaryX,
       sockets.magazinePart?sockets.magazine:undefined);
     leftGrip.set(hand.x,hand.y,hand.z);
-    reloadHandChest=reloadHandChestTarget({
-      fit,lengthScale:data.lengthScale,progress:reloadProgress,
-      mode:reloadMode,supportX:data.supportX,supportY:data.supportY,
-      primaryX:data.primaryX,
-      magazineSocket:sockets.magazinePart?sockets.magazine:undefined
-    });
+    reloadHandChest=p.poseV3Preview?
+      choreographV3ReloadHand({
+        fit,lengthScale:data.lengthScale,progress:reloadProgress,
+        mode:reloadMode,supportX:data.supportX,supportY:data.supportY,
+        primaryX:data.primaryX,
+        magazineSocket:sockets.magazinePart?sockets.magazine:undefined
+      }).target:
+      reloadHandChestTarget({
+        fit,lengthScale:data.lengthScale,progress:reloadProgress,
+        mode:reloadMode,supportX:data.supportX,supportY:data.supportY,
+        primaryX:data.primaryX,
+        magazineSocket:sockets.magazinePart?sockets.magazine:undefined
+      });
   }else if(throwActive){
     
     const t=Math.sin(Math.PI*clamp(throwAge/.7,0,1));

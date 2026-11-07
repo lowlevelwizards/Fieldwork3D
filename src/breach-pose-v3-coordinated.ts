@@ -156,9 +156,12 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
      support.distanceTo(fit.support)*.09;
    if(score>=best-1e-8)continue;
    best=score;
-   const newFit={...fit,support,
-     // A released support hand is not a firearm attachment.
-     twoHanded:req.releasedSupportTarget?false:true,
+   const newFit={...fit,
+     // The magazine hand is NOT a gun grip during reload. Preserve the
+     // actual support-grip socket on the rifle; joint.effector owns the
+     // free hand/magazine destination independently.
+     support:req.releasedSupportTarget?fit.support:support,
+     twoHanded:!req.releasedSupportTarget,
      primaryReachable:true,contactError:0};
    winning={status:'clear',fit:newFit,yaw,leanX,rejects,
     arms:[left.solution,right.solution],
