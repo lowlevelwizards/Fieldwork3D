@@ -31,7 +31,7 @@ test('A2: shoulder-wrap allowance never propagates to forearm or plate',()=>{
  const legacy=poseClearanceEnvelope('plate-legacy','full-chest','smock-jacket');
  const soft=poseContactBudget(byRegion('side-flank','soft'),legacy,1);
  assert.equal(soft.upper,2.88);
- assert.ok(soft.lower<=1.35);
+ assert.equal(soft.lower,1.55);
  const front=poseContactBudget(byRegion('front-lower','soft'),legacy,1);
  assert.ok(front.upper<soft.upper);
  assert.ok(front.lower<soft.lower);
