@@ -1072,7 +1072,7 @@ function renderMaterials(){
     }
    }
    const bandRow=row('PASGT HELMET BAND',
-    'One chunky elastic retaining band above the brow, continued across the upper nape.');
+    'A broad, surface-fitted elastic strip above the brow and around the rear skirt.');
    addSelect(bandRow,PASGT_BANDS.map(id=>[
     id,id==='none'?'NONE':'ELASTIC BAND'] as const),
     details.band,id=>changeWardrobe({...current(),pasgtDetails:{
