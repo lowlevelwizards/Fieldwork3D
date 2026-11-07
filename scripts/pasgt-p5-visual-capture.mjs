@@ -65,13 +65,13 @@ try{
   await capture('06-m81-front','front');
   await capture('07-m81-side','side');
   await capture('08-m81-back','back');
-  await page.locator('[data-studio-step="details"]').click();
+  await page.locator('#studioWorkflow [data-studio-step="details"]').click();
   const band=page.locator('.material-group').filter({hasText:'PASGT HELMET BAND'})
    .locator('select');
   await band.selectOption('elastic');
   await capture('09-m81-band-front','front');
   await capture('10-m81-band-side','side');
-  await page.locator('[data-studio-step="materials"]').click();
+  await page.locator('#studioWorkflow [data-studio-step="materials"]').click();
   await page.locator('.material-group').filter({hasText:'PASGT CLOTH COVER'})
    .locator('select').selectOption('none');
   await capture('11-bare-band-side','side');
