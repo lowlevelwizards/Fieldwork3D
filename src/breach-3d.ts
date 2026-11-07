@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import {createCivilianRig,updateCivilianRig,type CivilianRig}
  from './breach-civilian-visuals.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
-import {replayActorVisible,replayActorDisclosed,type ReplayDisclosure}
-  from './breach-replay-visibility.ts';
+import {replayActorVisible,replayActorDisclosed,replayCivilianDisclosed,
+  type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
@@ -1798,9 +1798,11 @@ export class TacticalScene3D{
       this.scene.remove(rig.root);this.civilianRigs.delete(id);
     }
     for(const civil of s.civilians){
-      const visible=civilianPresentationVisible(civil,
-        civil.replayVisible!==undefined,omniscient,
-        liveVisibility(s,civil.p));
+      const visible=replayDisclosurePolicy?.mode==='operator'?
+        replayCivilianDisclosed(s,civil.id,replayDisclosurePolicy):
+        civilianPresentationVisible(civil,
+          civil.replayVisible!==undefined,omniscient,
+          liveVisibility(s,civil.p));
       let rig=this.civilianRigs.get(civil.id);
       if(!visible&&!rig)continue;
       if(!rig){
