@@ -64,12 +64,13 @@
 <label>RIM HIGHLIGHT
 <select id="studioLightRim" aria-label="Graphic rim highlight">
 <option value="off">Off</option>
-<option value="dual">Warm + white · controlled</option>
+<option value="dual">Metal, weapons + bare helmets</option>
 </select></label>
 <label>HEIGHT SHADING
 <select id="studioLightGradient" aria-label="Gradient on every solid item">
 <option value="current">Original</option>
-<option value="piece">Each item · blue/violet</option>
+<option value="piece">Each item · soft grayscale</option>
+<option value="piece-rose">Each item · dusty gray-rose</option>
 </select></label>
 <label>SHADOW-SIDE FILL
 <select id="studioLightShadow" aria-label="Shadow-side fill color">
@@ -82,8 +83,8 @@
 <output id="studioCelLowValue" for="studioCelLow">70%</output>
 <input id="studioCelLow" type="range" min="0.35" max="0.90" step="0.01" value="0.70" aria-label="Two-band cel shadow cutoff"/></label>
 <label id="studioRimAmountWrap" class="studio-light-slider">RIM AMOUNT
-<output id="studioRimAmountValue" for="studioRimAmount">24%</output>
-<input id="studioRimAmount" type="range" min="0" max="1" step="0.01" value="0.24" aria-label="Rim light intensity"/></label>
+<output id="studioRimAmountValue" for="studioRimAmount">10%</output>
+<input id="studioRimAmount" type="range" min="0" max="0.20" step="0.01" value="0.10" aria-label="Rim light intensity"/></label>
 </div>
 <div class="studio-light-lab-actions">
 <button id="studioLightShowWeapon" type="button">PREVIEW WITH WEAPON</button>
@@ -93,7 +94,7 @@
 <button id="studioLightReset" type="button">RESET LIGHTING</button>
 </div>
 <output id="studioLightLabStatus" aria-live="polite">Adjust a setting to update the operator immediately.</output>
-<small>Preview only · not saved. Every opaque pouch, rig piece, plate, helmet and firearm part gets its own top-light/bottom-violet gradient. Transparent optics remain unchanged. Use PREVIEW WITH WEAPON to inspect gun parts.</small>
+<small>Preview only · not saved. Gentle lower-edge form shading affects gear, shins, boots and hands but leaves arms and thighs untouched. The contour rim is only on metal, weapons and uncovered helmet shells; it no longer makes clothing shiny.</small>
 </div>
 </details>
 <div class="studio-pinned-categories" role="group" aria-label="Persistent body part navigation">

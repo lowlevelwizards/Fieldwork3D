@@ -21,7 +21,7 @@ export type StudioLightLabSettings={
 };
 export const DEFAULT_STUDIO_LIGHT_LAB:Readonly<StudioLightLabSettings>={
  toon:0,rim:'off',gradient:'current',shadow:'neutral',
- celProfile:'graphic',celLow:.70,celHigh:.84,rimAmount:.24,allSurfaces:true
+ celProfile:'graphic',celLow:.70,celHigh:.84,rimAmount:.10,allSurfaces:true
 };
 function clampCutoff(value:string|null,defaultValue:number):number{
  const n=Number(value);
@@ -39,16 +39,17 @@ export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
  const gradient=requestedOperatorGradient(search);
  const shadow=requestedStudioShadowColor(search);
  const amount=p.get('operatorRimAmount');
- const n=amount===null ? .24 : Number(amount);
+ const n=amount===null ? .10 : Number(amount);
  return {
   toon:toon?2:0,
   rim:rim==='off'?'off':'dual',
-  gradient:gradient==='current'?'current':'piece',
+  gradient:gradient==='current'?'current':
+   gradient==='piece-rose'?'piece-rose':'piece',
   shadow:shadow==='neutral'?'neutral':'plum-plus',
   celProfile:'graphic',
   celLow:clampCutoff(p.get('operatorCelLow'),.70),
   celHigh:.84,
-  rimAmount:Number.isFinite(n)?Math.max(0,Math.min(1,n)):.24,
+  rimAmount:Number.isFinite(n)?Math.max(0,Math.min(.20,n)):.10,
   allSurfaces:true
  };
 }
@@ -62,7 +63,7 @@ export function effectiveStudioLightLab(
  // lighting is independent, so the smooth model can audition a rim too.
  return {...settings,celLow:low,celHigh:high,
   rimAmount:Number.isFinite(settings.rimAmount)?
-   Math.max(0,Math.min(1,settings.rimAmount)):.24,
+   Math.max(0,Math.min(.20,settings.rimAmount)):.10,
   rim:settings.toon===0&&settings.rim!=='dual'?'off':settings.rim};
 }
 export function studioLightLabLabel(s:StudioLightLabSettings):string{

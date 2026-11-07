@@ -21,7 +21,7 @@ test('R7.10 previous art links normalize into the actual compact selections',()=
  assert.equal(state.shadow,'plum-plus');
  assert.equal(state.celProfile,'graphic');
  assert.equal(state.celLow,.70);
- assert.equal(state.rimAmount,.24);
+ assert.equal(state.rimAmount,.10);
  assert.deepEqual(effectiveStudioLightLab(state,true),DEFAULT_STUDIO_LIGHT_LAB);
  assert.deepEqual(effectiveStudioLightLab(state,false),state);
 });
@@ -32,8 +32,8 @@ test('R7.10 two-band threshold and independent graphic rim amount are bounded',(
  assert.equal(q.rimAmount,.12);
  assert.equal(effectiveStudioLightLab({...q,toon:0}).rim,'dual');
  const constrained=effectiveStudioLightLab({...q,rimAmount:2});
- assert.equal(constrained.rimAmount,1);
- assert.equal(studioLightLabFromQuery('?operatorRimAmount=not-a-number').rimAmount,.24);
+ assert.equal(constrained.rimAmount,.20);
+ assert.equal(studioLightLabFromQuery('?operatorRimAmount=not-a-number').rimAmount,.10);
 });
 test('R7.10 Lighting Lab presents only usable user-selected choices',()=>{
  const html=read('operator-studio.html');
@@ -45,7 +45,9 @@ test('R7.10 Lighting Lab presents only usable user-selected choices',()=>{
  for(const removed of ['studioCelHigh','studioCelProfile','studioLightScope'])
   assert.doesNotMatch(html,new RegExp('id="'+removed+'"'));
  assert.match(html,/2-band · very graphic/);
- assert.match(html,/Each item · blue\/violet/);
+ assert.match(html,/Each item · soft grayscale/);
+ assert.match(html,/Each item · dusty gray-rose/);
+ assert.match(html,/Metal, weapons \+ bare helmets/);
  assert.match(html,/Saturated plum/);
  assert.match(html,/PREVIEW WITH WEAPON/);
  const ts=read('src/operator-studio.ts');

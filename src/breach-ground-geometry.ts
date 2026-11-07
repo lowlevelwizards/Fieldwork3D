@@ -62,3 +62,31 @@ export function wallSafeFall(p:Pt,heading:number,preferred:FallPose,
  }
  return {pose:winner,space};
 }
+
+/** A translucent camera cutaway is NOT permission to X-ray blood on the
+ * floor behind a solid wall. Orthographic ground rays are parallel: travel
+ * from a mark toward the camera until the ray rises above wall height.
+ * Doorway and window gaps already exist in the authoritative wall segments.
+ */
+export function groundMarkOccludedFromCamera(
+ mark:Pt,towardCamera:Readonly<{x:number;y:number;z:number}>,
+ walls:readonly Pick<Segment,'a'|'b'>[],wallHeight=56,groundY=.85
+):boolean{
+ if(towardCamera.y<=.001||wallHeight<=groundY)return false;
+ const scale=(wallHeight-groundY)/towardCamera.y;
+ const dx=towardCamera.x*scale,dy=towardCamera.z*scale;
+ const near=dx*dx+dy*dy;
+ if(near<.01)return false; // straight overhead
+ for(const wall of walls){
+  const sx=wall.b.x-wall.a.x,sy=wall.b.y-wall.a.y;
+  const denominator=dx*sy-dy*sx;
+  if(Math.abs(denominator)<1e-7)continue;
+  const wx=wall.a.x-mark.x,wy=wall.a.y-mark.y;
+  const along=(wx*sy-wy*sx)/denominator;
+  const across=(wx*dy-wy*dx)/denominator;
+  // Avoid self-occlusion at contact, require the solid segment to lie
+  // strictly between camera and stain (not outside a cut window aperture).
+  if(along>.001&&along<1&&across>=0&&across<=1)return true;
+ }
+ return false;
+}

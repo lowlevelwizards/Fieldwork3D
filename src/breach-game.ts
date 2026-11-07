@@ -1,3 +1,4 @@
+import {incomingHitFacing,chooseMuzzleRecoveryStep} from './breach-combat-reactions.ts';
 /**
  * Fieldwork Breach 053–062: authoritative, fixed-step tactical session.
  * Author intent is editable PlanNode[]; motor navigation is transient.
@@ -111,8 +112,8 @@ import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
   from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
-import {probeObstacleCrossing,probeWindowCrossing,
-  canOpenWindowForClimb,preferTraversal,sampleTraversal,
+import {probeObstacleCrossing,probeWindowCrossing,probeWindowPortalRoute,
+  canOpenWindowForClimb,preferTraversal,sampleTraversal,traversalRouteLength,
   traversalStepClear,type TraverseOpportunity}
   from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
@@ -229,6 +230,8 @@ export type TeamActor=Operator & {
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
   lastBashAt:number;lastBashRole:'push'|'receive'|null;
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
+  /** Transient, collision-checked gun-clearance recovery; not a PlanNode. */
+  fireRetreatTarget:Pt|null;fireRetreatUntil:number;lastFireRetreatAt:number;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   appearanceSeed:number;equipment?:EquipmentLoadout;
   wardrobe?:WardrobeOptions;
@@ -374,6 +377,7 @@ const withActions=(a:Operator):TeamActor=>({
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
   lastBashAt:-100,lastBashRole:null,
   lastLaneWarnAt:-100,lastFireBlock:'clear',
+  fireRetreatTarget:null,fireRetreatUntil:0,lastFireRetreatAt:-100,
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},appearanceSeed:0,
   weaponLightOn:false,
   armorIntegrity:0,helmetIntegrity:0,flashCharges:2,
@@ -594,33 +598,39 @@ export const canEdit=(s:Session)=>s.phase==='planning';
  * validation runs again at execution; hidden furniture isn't exposed by
  * an unexplained path preview or a shortcut through a closed window.
  */
-function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
- const visible=s.coverState.filter((_,i)=>s.intel.cover.has(i));
- const world={
-   cover:visible,walls:WALLS.filter((_,i)=>s.intel.walls.has(i)),
-   doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
-   // Planning is allowed to expect the operator to OPEN a known standard
-   // sash on arrival, not reject the entire move because it starts closed.
-   // Nothing hidden becomes eligible; the authoritative motor rechecks it.
-   windows:s.windows.filter(w=>s.intel.cover.has(s.coverState.findIndex(o=>
-      (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
-      Math.hypot(o.x-w.x,o.y-w.y)<1))).map(w=>
-        canOpenWindowForClimb(w)?{...w,open:true}:w),
-   canStand:(at:Pt)=>intelPassable(at,s.intel)
+function knownWindowWorld(s:Session){
+ const cover=s.coverState.filter((_,i)=>s.intel.cover.has(i));
+ return {
+  cover,walls:WALLS.filter((_,i)=>s.intel.walls.has(i)),
+  doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
+  windows:s.windows.filter(w=>s.intel.cover.has(s.coverState.findIndex(o=>
+    (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
+    Math.hypot(o.x-w.x,o.y-w.y)<1))).map(w=>
+      canOpenWindowForClimb(w)?{...w,open:true}:w),
+  canStand:(at:Pt)=>intelPassable(at,s.intel)
  };
- const ordinaryCrossing=probeObstacleCrossing(from,to,world);
- if(ordinaryCrossing)return true;
- const windowCrossing=probeWindowCrossing(from,to,world);
- if(!windowCrossing)return false;
- // A crossable pane alone is not a route. Both feet-on-ground connectors
- // must also be reachable under the player's known world geometry.
- return !!routeWithSqueezeIntel(s.intel,from,windowCrossing.approach).length&&
-   !!routeWithSqueezeIntel(s.intel,windowCrossing.landing,to).length;
+}
+/** Preview only known, reachable window portals; never infer hidden rooms. */
+export function plannedWindowRoute(s:Session,from:Pt,to:Pt,
+ ordinary:readonly Pt[]=routeWithSqueezeIntel(s.intel,from,to)):Pt[]|null{
+ const world=knownWindowWorld(s);
+ if(!world.windows.length)return null;
+ const portal=probeWindowPortalRoute(from,to,world,
+   (a,b)=>routeWithSqueezeIntel(s.intel,a,b));
+ if(!portal||ordinary.length&&portal.duration+.12>=
+   traversalRouteLength(from,ordinary)/53)return null;
+ return [...portal.approachPath,portal.crossing.landing,...portal.exitPath];
+}
+function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
+ const world=knownWindowWorld(s);
+ return !!probeObstacleCrossing(from,to,world)||
+   !!probeWindowPortalRoute(from,to,world,
+     (a,b)=>routeWithSqueezeIntel(s.intel,a,b));
 }
 const legalMoveRoute=(s:Session,from:Pt,to:Pt):Pt[]=>{
  const ordinary=routeWithSqueezeIntel(s.intel,from,to);
- return ordinary.length?ordinary:
-   knownTraversal(s,from,to)?[to]:[];
+ return plannedWindowRoute(s,from,to,ordinary)??(
+   ordinary.length?ordinary:knownTraversal(s,from,to)?[to]:[]);
 };
 
 export const finalPoint=(a:TeamActor)=>lastPoint(a.p,a.plan);
@@ -1770,19 +1780,22 @@ const traversalFitness=(a:TeamActor)=>({
 function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
  const world=traversalWorld(s,a);
  const fit=traversalFitness(a);
- const op=probeObstacleCrossing(a.p,goal,world,fit)||
-   probeWindowCrossing(a.p,goal,{
-     ...world,
-     windows:world.windows.map(w=>
-       canOpenWindowForClimb(w)?{...w,open:true}:w)
-   },fit);
- if(!op||!s.intel.cover.has(op.obstacleIndex))return null;
- if(op.windowId&&!routeWithSqueezeWorld(op.landing,goal,s.doors).length)
-   return null;
  const ordinary=routeWithSqueezeIntel(s.intel,a.p,goal);
- if(!preferTraversal(a.p,goal,op,ordinary))return null;
+ const portal=probeWindowPortalRoute(a.p,goal,{
+   ...world,
+   windows:world.windows.map(w=>
+     canOpenWindowForClimb(w)?{...w,open:true}:w)
+ },(from,to)=>routeWithSqueezeWorld(from,to,s.doors),fit);
+ if(portal&&s.intel.cover.has(portal.crossing.obstacleIndex)&&
+     (!ordinary.length||portal.duration+.12<
+      traversalRouteLength(a.p,ordinary)/53))
+   return {op:portal.crossing,approachPath:portal.approachPath};
+ const op=probeObstacleCrossing(a.p,goal,world,fit);
+ if(!op||!s.intel.cover.has(op.obstacleIndex)||
+    !preferTraversal(a.p,goal,op,ordinary))return null;
  const approachPath=routeWithSqueezeWorld(a.p,op.approach,s.doors);
- return approachPath.length?{op,approachPath}:null;
+ return approachPath.length?{op,approachPath}:
+   d(a.p,op.approach)<3?{op,approachPath:[op.approach]}:null;
 }
 function tickTraversal(a:TeamActor,s:Session,dt:number):boolean{
  const op=a.traversal;
@@ -1864,8 +1877,11 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       }
     }
     const world=traversalWorld(s,a),fit=traversalFitness(a);
-    const validated=probeObstacleCrossing(a.p,p,world,fit)||
-      probeWindowCrossing(a.p,p,world,fit);
+    // Validate the LOCAL aperture, not the distant waypoint.
+    // Window probes intentionally reject spans greater than 180 units.
+    const validated=planned.windowId?
+      probeWindowCrossing(a.p,planned.landing,world,fit):
+      probeObstacleCrossing(a.p,p,world,fit);
     if(validated&&validated.obstacleIndex===planned.obstacleIndex&&
        d(validated.landing,planned.landing)<5&&
        d(validated.approach,a.p)<4){
@@ -2319,6 +2335,18 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // An airborne crossing must reach a verified landing before combat pause,
   // waypoint completion, or fresh orders can resume.
   if(a.traversal){tickTraversal(a,s,dt);return;}
+  // A short, validated muzzle-clearance step never edits the player's plan.
+  // Complete or expire it before resuming the original waypoint motor.
+  if(a.fireRetreatTarget){
+    const goal=a.fireRetreatTarget;
+    if(s.seconds>a.fireRetreatUntil||d(a.p,goal)<3||
+       !sweptBodyClear(a.p,goal,s.doors)){
+      a.fireRetreatTarget=null;a.nav=[];
+    }else{
+      approach(a,goal,dt,s,.64);
+      return;
+    }
+  }
   // A confirmed visible threat can temporarily interrupt authored attention.
   // This is reactive execution only; it never modifies the player's plan.
   const visibleThreat=enemies(s).filter(e=>e.health>0&&inSight(a,e,s))
@@ -3794,6 +3822,16 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;
     a.stability=Math.min(a.stability,.65);}
+  // After a real flank hit, orient toward the attack before reacquiring an
+  // unrelated old contact. A now-visible hostile in that sector still wins
+  // through the normal target selector on the following ticks.
+  const hitFacing=a.side==='blue'?
+    incomingHitFacing(a.heading,a.lastHitYaw,s.seconds-a.lastHitAt):null;
+  if(hitFacing!==null&&s.seconds-a.lastHitAt<.85&&
+     Math.abs(angleDifference(hitFacing,angle(a.p,target.p)))>.75){
+    a.weaponYaw=approachAngle(a.weaponYaw,hitFacing,dt*profile.turnSpeed*mods.turn);
+    return;
+  }
   const moving=a.velocity>10;
   const weapon=WEAPONS[a.weapon];
   const range=d(a.p,target.p);
@@ -3824,6 +3862,37 @@ function fire(s:Session,a:TeamActor,dt:number){
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors);
   if(sightClearance.blocked){
     a.lastFireBlock=sightClearance.blocker;
+    // A known, visible hostile and a blocked local muzzle justify a tiny
+    // backward recovery. Neither the enemy's unseen position nor a hidden
+    // route is used, and shots still require the full existing safety gate.
+    const n=a.plan[0];
+    if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget&&
+       s.seconds-a.lastFireRetreatAt>1.65&&
+       (sightClearance.blocker==='wall'||sightClearance.blocker==='cover')&&
+       (!n||n.kind==='move'||n.kind==='look'||n.kind==='wait')&&
+       !a.carryingId&&!a.traversalPending&&!a.squeeze){
+      const friends=s.operators.filter(o=>o!==a&&o.health>0&&
+        o.side===a.side).map(o=>o.p);
+      const point=chooseMuzzleRecoveryStep(a.p,desiredYaw,
+        candidate=>sweptBodyClear(a.p,candidate,s.doors)&&
+          !friends.some(friend=>d(candidate,friend)<21),
+        candidate=>{
+          const test=weaponClearance({x:candidate.x,z:candidate.y,
+            heading:a.heading,weaponYaw:desiredYaw,weapon:a.weapon,
+            weaponConfiguration:a.weaponConfiguration,aim:a.aim,
+            posture:a.posture,velocity:0,recoil:0,threatRange:range},s.doors);
+          if(test.blocked)return false;
+          return assessFireLane({x:test.muzzle.x,y:test.muzzle.z},
+            test.muzzle.y,target.p,aimHeight(target.posture==='crouch'),
+            COVER,WALLS,s.doors,friends).blocker==='clear';
+        });
+      if(point){
+        a.fireRetreatTarget=point;
+        a.fireRetreatUntil=s.seconds+1.15;
+        a.lastFireRetreatAt=s.seconds;
+        a.nav=[];
+      }
+    }
     return;
   }
   const sightMuzzle=sightClearance.muzzle;
@@ -4450,8 +4519,22 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     a.suppression=Math.max(0,a.suppression-h*.17);
     a.priorP=clone(a.p);
     if(a.health<=0)continue;
-    if(a.side==='blue')runOrders(s,a,h);
-    else enemyDecisions(s,a,h);
+    if(a.side==='blue'){
+      runOrders(s,a,h);
+      // Incoming *actual hits* provide coarse directional evidence even
+      // before the flanking shooter enters the operator's vision cone.
+      // A brief gaze override never removes a WATCH or changes a MOVE.
+      const hitDirection=incomingHitFacing(a.heading,a.lastHitYaw,
+        s.seconds-a.lastHitAt,{
+          busy:!!a.traversal||!!a.squeeze||!!a.carryingId||
+            a.pace==='run'||a.treatmentActive||
+            a.plan[0]?.kind==='treat'
+        });
+      // Orders may rotate toward their authored gaze earlier this tick.
+      // Reaction uses a stronger one-second turn so opposing turn rates
+      // cannot cancel each other and leave the operator facing away.
+      if(hitDirection!==null)rotate(a,hitDirection,h*1.85);
+    }else enemyDecisions(s,a,h);
     if(probe)mark('operator-'+a.id);
   }
   mark('actor-loop');
