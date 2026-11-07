@@ -3,7 +3,9 @@
  */
 import * as THREE from 'three';
 import {
- PASGT_SLIT_ANCHORS,createPasgtBandGeometry
+ PASGT_SLIT_ANCHORS,createPasgtBandGeometry,
+ PASGT_RING_SAMPLES,PASGT_COVER_TOP_Y,pasgtRingPoint,
+ type PasgtRingSample
 } from './operator-pasgt-drape-geometry.ts';
 import {resolvePasgtDetails,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
@@ -129,52 +131,100 @@ function placedCard(parent:THREE.Group,index:number,mat:THREE.Material,
  card.name=name;card.castShadow=true;card.receiveShadow=false;
  mount.add(card);parent.add(mount);
 }
-const pathRibbon=(polyline:readonly (readonly [number,number,number])[],
- width:number,axis:'x'|'z'):THREE.BufferGeometry=>{
- const positions:number[]=[];
- const push=(p:readonly number[])=>positions.push(p[0],p[1],p[2]);
- for(let i=0;i<polyline.length-1;i++){
-  const a=polyline[i],b=polyline[i+1];
-  const coord=axis==='x'?0:2;
-  const leftA=[...a],rightA=[...a],leftB=[...b],rightB=[...b];
-  leftA[coord]-=width/2;rightA[coord]+=width/2;
-  leftB[coord]-=width/2;rightB[coord]+=width/2;
-  push(leftA);push(rightA);push(rightB);
-  push(leftA);push(rightB);push(leftB);
+/** P5-F — six sparse, diagonal strands, clipped to the real crown rectangle,
+ * then draped over the shoulder and partially down the front/ear/nape.
+ * Opposing directions form diamonds, not a 3x3 square basket.
+ */
+const crownX=Math.abs(PASGT_RING_SAMPLES.find(s=>s.side==='front')!.x);
+const crownFront=PASGT_RING_SAMPLES.find(s=>s.side==='front')!.z;
+const crownRear=PASGT_RING_SAMPLES.find(s=>s.side==='rear')!.z;
+type NetEdge={x:number;z:number;side:'front'|'rear'|'left'|'right'};
+function clippedNetLine(slope:number,shift:number):readonly [NetEdge,NetEdge]{
+ const candidates:NetEdge[]=[];
+ for(const z of [crownFront,crownRear]){
+  const x=slope*z+shift;
+  if(x>=-crownX-.0001&&x<=crownX+.0001)
+   candidates.push({x,z,side:z===crownFront?'front':'rear'});
  }
- const g=new THREE.BufferGeometry();
- g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
- g.computeVertexNormals();g.computeBoundingBox();
- return g;
-};
-export function createPasgtNetGeometry():THREE.BufferGeometry{
- const combined:number[]=[];
- const append=(polyline:readonly (readonly [number,number,number])[],
-  axis:'x'|'z')=>{
-  const g=pathRibbon(polyline,.28,axis),a=g.getAttribute('position');
-  for(let i=0;i<a.count;i++)combined.push(a.getX(i),a.getY(i),a.getZ(i));
-  g.dispose();
+ for(const x of [-crownX,crownX]){
+  const z=(x-shift)/slope;
+  if(z>=crownFront-.0001&&z<=crownRear+.0001)
+   candidates.push({x,z,side:x<0?'left':'right'});
+ }
+ candidates.sort((a,b)=>a.z-b.z);
+ const unique=candidates.filter((a,i)=>!candidates.slice(0,i).some(b=>
+  Math.hypot(b.x-a.x,b.z-a.z)<.001));
+ if(unique.length<2)throw Error('PASGT diamond strand did not reach rim');
+ return [unique[0],unique.at(-1)!];
+}
+function sampleOnEdge(edge:NetEdge):PasgtRingSample{
+ const sample=PASGT_RING_SAMPLES.filter(s=>s.side===edge.side);
+ const axis=edge.side==='left'||edge.side==='right'?'z':'x';
+ const near=[...sample].sort((a,b)=>
+  Math.abs(a[axis]-edge[axis])-Math.abs(b[axis]-edge[axis]));
+ const a=near[0],b=near[1]??near[0];
+ const t=Math.abs(a[axis]-b[axis])<.001?0:
+  Math.max(0,Math.min(1,(edge[axis]-a[axis])/(b[axis]-a[axis])));
+ return {
+  side:edge.side,x:edge.x,z:edge.z,
+  bottomY:a.bottomY+(b.bottomY-a.bottomY)*t,distance:0
  };
- // Three lengthwise cords wrap down over front brow and rear skirt.
- for(const x of [-3.4,0,3.4])append([
-  [x,4.63,-6.57],[x,6.24,-6.58],[x,9.01,-5.16],
-  [x,9.01,0],[x,9.01,5.18],[x,6.30,5.95],
-  [x,2.91,5.96]
- ],'x');
- // Cross-cords continue down both side walls, stopping above the actual
- // temple/ear hem (front side has a higher bottom edge).
- for(const z of [-3.30,0,3.30]){
-  const bottom=z< -1.5?4.53:2.48;
-  append([
-   [-5.55,bottom,z],[-5.55,6.22,z],[-5.32,9.06,z],
-   [0,9.06,z],[5.32,9.06,z],[5.55,6.22,z],[5.55,bottom,z]
-  ],'z');
+}
+function netDrape(edge:NetEdge):readonly (readonly number[])[]{
+ const s=sampleOnEdge(edge);
+ const outward=s.side==='front'?[0,0,-1]:
+  s.side==='rear'?[0,0,1]:
+  s.side==='right'?[1,0,0]:[-1,0,0];
+ const push=(p:readonly number[])=>p.map((n,i)=>n+outward[i]*.10);
+ const shoulder=push(pasgtRingPoint(s,'shoulder'));
+ const ramp=push(pasgtRingPoint(s,'ramp'));
+ const hem=push(pasgtRingPoint(s,'hem'));
+ return [
+  ramp.map((v,i)=>.42*v+.58*hem[i]),
+  ramp,shoulder,
+  [edge.x,PASGT_COVER_TOP_Y+.09,edge.z]
+ ];
+}
+/** Each segment has a narrow quad aligned with its local cloth surface.
+ * The across-tangent vector is computed in 3D, so cords remain flat at
+ * slopes and do not become thick vertical ladder supports.
+ */
+function appendNetRibbon(out:number[],
+ path:readonly (readonly number[])[],width=.22):void{
+ const vec=(p:readonly number[])=>new THREE.Vector3(p[0],p[1],p[2]);
+ const add=(p:THREE.Vector3)=>out.push(p.x,p.y,p.z);
+ for(let i=0;i<path.length-1;i++){
+  const p=vec(path[i]),q=vec(path[i+1]);
+  const tangent=q.clone().sub(p).normalize();
+  const middle=p.clone().add(q).multiplyScalar(.5);
+  const normal=(middle.y>PASGT_COVER_TOP_Y-.15&&
+   p.y>PASGT_COVER_TOP_Y-.15&&q.y>PASGT_COVER_TOP_Y-.15)?
+   new THREE.Vector3(0,1,0):
+   Math.abs(middle.x)>crownX-.1?new THREE.Vector3(Math.sign(middle.x),0,0):
+   new THREE.Vector3(0,0,middle.z<0?-1:1);
+  const across=new THREE.Vector3().crossVectors(normal,tangent).normalize()
+   .multiplyScalar(width/2);
+  const a=p.clone().sub(across),b=p.clone().add(across),
+   c=q.clone().add(across),d=q.clone().sub(across);
+  for(const v of [a,b,c,a,c,d])add(v);
+ }
+}
+export function createPasgtNetGeometry():THREE.BufferGeometry{
+ const coordinates:number[]=[];
+ const slopes=[-.64,.64] as const;
+ for(const slope of slopes)for(const shift of [-4,0,4]){
+  const [a,b]=clippedNetLine(slope,shift);
+  const start=netDrape(a),end=netDrape(b);
+  const path=[...start,
+   ...[...end].reverse().slice(1)];
+  appendNetRibbon(coordinates,path,.19);
  }
  const g=new THREE.BufferGeometry();
- g.setAttribute('position',new THREE.Float32BufferAttribute(combined,3));
+ g.setAttribute('position',new THREE.Float32BufferAttribute(coordinates,3));
  g.computeVertexNormals();g.computeBoundingBox();
  g.userData.pasgtNetFullDrape=true;
  g.userData.pasgtNetCordCount=6;
+ g.userData.pasgtNetPattern='sparse-diamond';
  return g;
 }
 export type PasgtFieldDressLayers={
