@@ -849,6 +849,8 @@ const replayQuickVideo=new ReplayQuickVideo(
 );
 let savedReplayPreviousRecorder:MissionRecorder|null=null;
 let activeSavedReplayId:string|null=null;
+const savedRecordingIds=new WeakMap<MissionRecorder,string>();
+let replayEntrySource:'debrief'|'library'='debrief';
 let replayLibraryBusy=false;
 let replayLibraryRenderGeneration=0;
 let replayPresentation:ReplayPresentation|null=null;
@@ -2739,6 +2741,9 @@ function updateHud(){
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
   ui.debrief.hidden=replaying||(state.phase!=='won'&&state.phase!=='lost');
+  const replayIsSaved=!!savedRecordingIds.get(recorder);
+  ui.saveReplayDebrief.disabled=replayLibraryBusy||replayIsSaved;
+  ui.saveReplayDebrief.textContent=replayIsSaved?'REPLAY SAVED':'SAVE REPLAY';
   ui.saveReplayDebrief.disabled=recorder.frames.length<2||replayLibraryBusy;
   ui.favoriteMission.disabled=!state.site;
   ui.favoriteMission.textContent=activeFavoriteId?
@@ -4807,6 +4812,9 @@ function updateReplayHud(){
     button.setAttribute('aria-pressed',String(button.dataset.replayPreset===replayPreset));
   ui.replayPresetStatus.textContent=replayPreset==='custom'?'CUSTOM SETTINGS':'';
   ui.replayShareToggle.textContent=replayQuickVideo.active?'■ STOP VIDEO':'SAVE / SHARE';
+  const replaySaved=!!(activeSavedReplayId||savedRecordingIds.get(recorder));
+  ui.replaySaveArchive.disabled=replayLibraryBusy||replaySaved;
+  ui.replaySaveArchive.textContent=replaySaved?'SAVED TO LIBRARY':'SAVE REPLAY';
   ui.replayShareToggle.setAttribute('aria-label',replayQuickVideo.active?
     'Stop replay video recording':'Open replay save and share');
   ui.replayPrevEvent.disabled=!replayEventIndex?.previous(replayTime);
@@ -4996,6 +5004,9 @@ function exitReplay(){
   activeSavedReplayId=null;
   stage?.applySite(state.site??null);
   updateHud();
+  if(replayEntrySource==='library'){
+    replayEntrySource='debrief';showSavedReplayLibrary();
+  }
 }
 /** Replay Library: load metadata only until a recording is selected.
  * No campaign result, equipment persistence, or live session is modified.
@@ -5022,11 +5033,12 @@ async function renderSavedReplayLibrary():Promise<void>{
         (item.complete?'':' · PARTIAL');
       information.append(name,details);
       const watch=document.createElement('button');watch.type='button';
-      watch.textContent='WATCH';watch.title='Open saved recording';
+      watch.textContent='WATCH';watch.className='replay-library-watch';watch.title='Open saved recording';
       watch.addEventListener('click',()=>{void playSavedReplay(item.id);});
       const favorite=document.createElement('button');favorite.type='button';
-      favorite.textContent=item.favorite?'★':'☆';
-      favorite.setAttribute('aria-label',item.favorite?'Unfavorite replay':'Favorite replay');
+      favorite.textContent=item.favorite?'★':'☆';favorite.className='replay-library-favorite';
+      favorite.setAttribute('aria-label',
+        (item.favorite?'Unfavorite ':'Favorite ')+item.siteName);
       favorite.setAttribute('aria-pressed',String(item.favorite));
       favorite.addEventListener('click',async()=>{
         if(replayLibraryBusy)return;
@@ -5056,7 +5068,19 @@ async function renderSavedReplayLibrary():Promise<void>{
         }catch(error){replayLibraryFailure(error);}
         finally{replayLibraryBusy=false;}
       });
-      row.append(information,watch,favorite,exportFile,remove);
+      const more=document.createElement('details');
+      more.className='replay-library-actions';
+      const summary=document.createElement('summary');
+      summary.textContent='MORE';
+      summary.setAttribute('aria-label','More actions for '+item.siteName);
+      const secondary=document.createElement('div');
+      secondary.className='replay-library-actions-list';
+      secondary.append(exportFile,remove);
+      more.append(summary,secondary);
+      more.addEventListener('toggle',()=>{
+        if(!more.open){remove.dataset.confirm='';remove.textContent='DELETE';}
+      });
+      row.append(information,watch,favorite,more);
       fragment.append(row);
     }
     ui.replayLibraryList.replaceChildren(fragment);
@@ -5117,6 +5141,9 @@ ui.replayImportInput.addEventListener('change',()=>{
 });
 async function saveCurrentReplay():Promise<void>{
   if(replayLibraryBusy||recorder.frames.length<2)return;
+  if(activeSavedReplayId||savedRecordingIds.has(recorder)){
+    showUiHelp('REPLAY ALREADY SAVED TO LIBRARY',2800);return;
+  }
   replayLibraryBusy=true;
   ui.saveReplayDebrief.disabled=true;ui.replaySaveArchive.disabled=true;
   try{
@@ -5124,13 +5151,20 @@ async function saveCurrentReplay():Promise<void>{
       Math.random().toString(36).slice(2,9);
     const archive=captureReplayArchive(recorder,id,Date.now());
     await saveReplayArchive(archive);
+    savedRecordingIds.set(recorder,id);
+    if(replaying)activeSavedReplayId=id;
     if(replayBookmarks.length)await saveReplayBookmarks(id,replayBookmarks);
     showUiHelp('FULL REPLAY SAVED TO DEVICE LIBRARY',3400);
     if(!ui.replayLibraryDialog.hidden)await renderSavedReplayLibrary();
   }catch(error){replayLibraryFailure(error);}
   finally{
     replayLibraryBusy=false;
-    ui.saveReplayDebrief.disabled=false;ui.replaySaveArchive.disabled=false;
+    const saved=!!(activeSavedReplayId||savedRecordingIds.get(recorder));
+    ui.saveReplayDebrief.disabled=saved;ui.replaySaveArchive.disabled=saved;
+    if(saved){
+      ui.saveReplayDebrief.textContent='REPLAY SAVED';
+      ui.replaySaveArchive.textContent='SAVED TO LIBRARY';
+    }
   }
 }
 async function playSavedReplay(id:string):Promise<void>{
@@ -5146,7 +5180,7 @@ async function playSavedReplay(id:string):Promise<void>{
     recorder=stored;
     hideSavedReplayLibrary();
     closeMissionSettings(false);
-    enterReplay();
+    replayEntrySource='library';enterReplay();
     if(replaying){
       activeSavedReplayId=id;
       replayBookmarks=savedMarks;
@@ -5190,7 +5224,9 @@ ui.replayLibraryBackdrop.addEventListener('click',hideSavedReplayLibrary);
 ui.saveReplayDebrief.addEventListener('click',()=>{void saveCurrentReplay();});
 ui.replaySaveArchive.addEventListener('click',()=>{void saveCurrentReplay();});
 
-ui.watchReplay.addEventListener('click',enterReplay);
+ui.watchReplay.addEventListener('click',()=>{
+  replayEntrySource='debrief';enterReplay();
+});
 ui.favoriteMission.addEventListener('click',()=>{
   if(!state.site)return;
   const favorites=favoriteMissions();

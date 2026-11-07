@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   library-smoke:
-    if: ${{ startsWith(github.head_ref, 'feature/replay-r3-library-') || startsWith(github.head_ref, 'feature/replay-r3-portable-') }}
+    if: ${{ startsWith(github.head_ref, 'feature/replay-r3-library-') || startsWith(github.head_ref, 'feature/replay-r3-portable-') || startsWith(github.head_ref, 'feature/replay-ux-v2-release-c-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 11
     steps:
