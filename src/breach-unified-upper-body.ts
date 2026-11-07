@@ -226,3 +226,38 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
  }
  return {solution:solved,dynamic,used:'generic'};
 }
+
+/** Smooth a bend direction ON the 10+10 arm's shoulder-to-wrist circle.
+ * An elbow coordinate is only a POLE HINT, never a rendered joint. The
+ * two-bone solver below still owns exact bone lengths and wrist contact.
+ * For opposite elbow hemispheres, prefer a downward/outboard sweep to
+ * winding through the torso or passing through a straight-arm singularity.
+ * Pure and time-sampled: no dependence on previous rendered frames.
+ */
+export function continuousElbowPole(shoulder:THREE.Vector3,
+ wrist:THREE.Vector3,fromJoint:THREE.Vector3,toJoint:THREE.Vector3,
+ side:-1|1,alpha:number):THREE.Vector3{
+ const axis=wrist.clone().sub(shoulder).normalize();
+ if(axis.lengthSq()<1e-8)axis.set(1,0,0);
+ const flatten=(joint:THREE.Vector3)=>{
+   const v=joint.clone().sub(shoulder);
+   v.addScaledVector(axis,-v.dot(axis));
+   if(v.lengthSq()<1e-8){
+     v.set(0,-1,side);
+     v.addScaledVector(axis,-v.dot(axis));
+   }
+   return v.normalize();
+ };
+ const from=flatten(fromJoint),to=flatten(toJoint);
+ const cross=new THREE.Vector3().crossVectors(from,to);
+ let angle=Math.atan2(axis.dot(cross),from.dot(to));
+ const alternate=angle>=0?angle-2*Math.PI:angle+2*Math.PI;
+ if(Math.abs(angle)>Math.PI*.75){
+   const score=(a:number)=>{
+     const mid=from.clone().applyAxisAngle(axis,a*.5);
+     return -mid.y+side*mid.z*.8;
+   };
+   if(score(alternate)>score(angle)+.0001)angle=alternate;
+ }
+ return from.applyAxisAngle(axis,angle*Math.max(0,Math.min(1,alpha)));
+}

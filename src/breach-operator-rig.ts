@@ -41,7 +41,8 @@ import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
 import {directOperatorPose,planUpperBodyStrategy} from './breach-pose-director.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,
- cachedSupportUpperBody,solveUnifiedFallbackArm} from './breach-unified-upper-body.ts';
+ cachedSupportUpperBody,solveUnifiedFallbackArm,
+ continuousElbowPole} from './breach-unified-upper-body.ts';
 import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import type {HandlingProfile} from './breach-handling-profiles.ts';
@@ -1886,14 +1887,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       // One direct, contact-constrained arc from the displayed elbow
       // toward the actual destination solver's preferred bend. There
       // is no intermediate 'ready' elbow, nor a new elbow at completion.
-      const fromPole=sourceArm.elbow.clone().sub(sourceArm.shoulder);
-      const endPole=destinationArms?.[i]?.bendPlane??wanted;
-      if(fromPole.lengthSq()>.01){
-        const t=lowReadyBlendPhase(activeTransition.alpha);
-        const next=fromPole.normalize().lerp(
-          endPole.clone().normalize(),t);
-        if(next.lengthSq()>.000001)wanted.copy(next.normalize());
-      }
+      const toJoint=destinationArms?.[i]?.joint??
+        shoulder.clone().add(wanted);
+      wanted.copy(continuousElbowPole(shoulder,wrist,
+        sourceArm.elbow,toJoint,sign as -1|1,
+        lowReadyBlendPhase(activeTransition.alpha)));
     }
     const armFit=solveUnifiedFallbackArm({
       shoulder,wrist,desired,preferredPole:wanted,
