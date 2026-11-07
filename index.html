@@ -336,6 +336,18 @@
         <div id="replayDebriefMoments" class="replay-debrief-moments"
           aria-label="Jump to important recorded moments"></div>
       </section>
+      <section id="replayIncidentDetails" class="replay-incident-focus" hidden
+        aria-label="Selected replay incident">
+        <div class="replay-incident-copy">
+          <strong id="replayIncidentTitle">SELECTED INCIDENT</strong>
+          <output id="replayIncidentSummary"></output>
+        </div>
+        <div class="replay-incident-actions">
+          <button id="replayIncidentWatch" type="button">WATCH</button>
+          <button id="replayIncidentLoop" type="button">LOOP</button>
+          <button id="replayIncidentClose" type="button" aria-label="Clear selected incident">×</button>
+        </div>
+      </section>
       <div class="replay-chapter-tools">
         <button id="replayPrevChapter" type="button">◀ CHAPTER</button>
         <button id="replayBookmark" type="button">+ BOOKMARK</button>

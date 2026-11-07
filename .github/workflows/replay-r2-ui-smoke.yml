@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   replay-ui:
-    if: ${{ startsWith(github.head_ref, 'feature/replay-r2-mobile-ui-') || startsWith(github.head_ref, 'feature/replay-r3-') }}
+    if: ${{ startsWith(github.head_ref, 'feature/replay-r2-mobile-ui-') || startsWith(github.head_ref, 'feature/replay-r3-') || startsWith(github.head_ref, 'feature/replay-r41-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
