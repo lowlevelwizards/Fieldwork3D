@@ -96,3 +96,17 @@ export function choreographV3ReloadHand(
    t<.75?'transport':t<.90?'mount':'return'
  };
 }
+
+/** Magazine presentation only: AK front-lug engagement then a short rock-in.
+ * The cloned magazine rotates around its actual feed-lip/hand origin, never
+ * around the receiver. Socket contact and weapon assembly stay untouched.
+ * No rotation on mounted/reacquired frames or on shell-loading weapons.
+ */
+export function v3MagazineRockAngle(progress:number,mode:ReloadMode,
+ family?:'ar'|'ak'|'hk'):number{
+ if(mode==='shells'||family!=='ak')return 0;
+ const t=clamp(progress);
+ return .14*
+  (t<=.61?0:Math.min(1,Math.max(0,(t-.61)/.14)))*
+  (1-Math.min(1,Math.max(0,(t-.75)/.07)));
+}
