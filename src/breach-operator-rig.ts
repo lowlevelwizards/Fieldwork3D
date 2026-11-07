@@ -1404,6 +1404,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const releasedTarget=v3ReloadActive?choreographV3ReloadHand({
       fit,lengthScale:data.lengthScale,
       progress:v3ReloadProgress,mode:v3ReloadMode,
+      family:coupledConfig.build.family,
       supportX:data.supportX,supportY:data.supportY,
       primaryX:data.primaryX,clearanceFront:envelope.front,
       magazineSocket:activeReloadSocket?.magazinePart?
@@ -1597,7 +1598,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     reloadHandChest=p.poseV3Preview?
       choreographV3ReloadHand({
         fit,lengthScale:data.lengthScale,progress:reloadProgress,
-        mode:reloadMode,supportX:data.supportX,supportY:data.supportY,
+        mode:reloadMode,family:coupledConfig?.build?.family,
+        supportX:data.supportX,supportY:data.supportY,
         primaryX:data.primaryX,
         clearanceFront:v3ReloadClearanceFront,
         magazineSocket:sockets.magazinePart?sockets.magazine:undefined
