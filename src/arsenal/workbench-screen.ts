@@ -22,6 +22,8 @@ import {ARSENAL_PLATFORMS,type ArsenalPlatformId} from './catalog.ts';
 import {arsenalFactoryChoices} from './factory-recipes.ts';
 import {arsenalFitFeedback} from './fit-feedback.ts';
 import {arsenalApplyMessage,type ArsenalApplyQuote} from './apply-guidance.ts';
+import {arsenalFinishFamily,arsenalFinishOption,arsenalPhysicalPartId}
+ from './finishes.ts';
 import './arsenal.css';
 /** Game context is an explicit commit callback; the Workbench owns no inventory. */
 export interface ArsenalWorkbenchApplyContext{
@@ -102,6 +104,13 @@ export function openArsenalWorkbench(
  const panelTitle=document.createElement('h3');
  const slotRow=document.createElement('div');slotRow.className='arsenal-wb-slots';
  const activeLabel=document.createElement('p');activeLabel.className='arsenal-wb-current';
+ const finishSection=document.createElement('section');
+ finishSection.className='arsenal-wb-finish-section';finishSection.hidden=true;
+ const finishHeading=document.createElement('strong');finishHeading.textContent='FINISH / MATERIAL';
+ const finishOptions=document.createElement('div');finishOptions.className='arsenal-wb-finish-options';
+ const finishHelp=document.createElement('p');finishHelp.className='arsenal-wb-finish-help';
+ finishHelp.hidden=true;finishHelp.setAttribute('role','status');
+ finishSection.append(finishHeading,finishOptions,finishHelp);
  const optionsHeader=document.createElement('div');optionsHeader.className='arsenal-wb-options-head';
  const optionsLabel=document.createElement('strong');optionsLabel.textContent='COMPATIBLE PARTS';
  const showAll=document.createElement('button');showAll.type='button';showAll.className='arsenal-wb-show-all';
@@ -121,7 +130,7 @@ export function openArsenalWorkbench(
   'Edits are a reversible preview. No equipment is purchased or equipped here.';
  const applyQuote=document.createElement('p');applyQuote.className='arsenal-wb-apply-quote';
  applyQuote.setAttribute('role','status');
- panel.append(panelTitle,slotRow,activeLabel,optionsHeader,fitExplanation,choiceList,
+ panel.append(panelTitle,slotRow,activeLabel,finishSection,optionsHeader,fitExplanation,choiceList,
   pendingHost,applyQuote,hint);
  main.append(viewportHost,nav,panel);
  overlay.append(head,main);document.body.append(overlay);
@@ -156,6 +165,38 @@ export function openArsenalWorkbench(
   cancel.addEventListener('click',()=>{pending=null;renderPending();});
   buttons.append(confirm,cancel);box.append(label,desc,buttons);pendingHost.append(box);
  }
+ function renderFinishes(){
+  finishOptions.replaceChildren();finishHelp.hidden=true;finishHelp.textContent='';
+  const current=currentPartId(activeSlot);
+  const family=arsenalFinishFamily(current);
+  finishSection.hidden=!family||family.slot!==activeSlot;
+  if(!family||family.slot!==activeSlot)return;
+  for(const item of family.options){
+   const proposal=proposeArsenalPartChange(draft.working,activeSlot,item.partId);
+   const selected=item.partId===current;
+   const choice=document.createElement('button');choice.type='button';
+   choice.className='arsenal-wb-finish-choice';
+   choice.setAttribute('aria-pressed',String(selected));
+   choice.dataset.fit=selected?'equipped':proposal.valid?'fits':'incompatible';
+   const swatch=document.createElement('span');swatch.className='arsenal-wb-finish-swatch';
+   swatch.style.backgroundColor='#'+item.hex;
+   const label=document.createElement('span');label.textContent=item.label;
+   choice.append(swatch,label);
+   choice.addEventListener('click',()=>{
+    if(selected)return;
+    if(!proposal.valid){
+     finishHelp.hidden=false;
+     finishHelp.textContent=item.label+' · '+arsenalFitFeedback(proposal).explanation;
+     return;
+    }
+    finishHelp.hidden=true;pending=null;
+    if(proposal.requiresConfirmation){pending=proposal;renderPending();return;}
+    draft=commitArsenalProposal(draft,proposal);
+    viewer.setRecipe(draft.working);renderSelection();
+   });
+   finishOptions.append(choice);
+  }
+ }
  function renderChoices(){
   choiceList.replaceChildren();
   const receiver=FAMILY_PARTS[draft.working.parts.receiver];
@@ -163,8 +204,10 @@ export function openArsenalWorkbench(
   for(const part of arsenalPartsForSlot(activeSlot)){
    if(part.kind==='family'&&FAMILY_PARTS[part.id]?.family!==receiver.family)
     continue;
+   // Only one choice per silhouette. Finish-only part IDs live in swatches.
+   if(arsenalPhysicalPartId(part.id)!==part.id)continue;
    const proposal=proposeArsenalPartChange(draft.working,activeSlot,part.id);
-   const equipped=currentPartId(activeSlot)===part.id;
+   const equipped=arsenalPhysicalPartId(currentPartId(activeSlot))===part.id;
    if(!equipped&&!proposal.valid&&!showIncompatible)continue;
    const feedback=arsenalFitFeedback(proposal,equipped);
    const option=document.createElement('button');option.type='button';
@@ -173,7 +216,8 @@ export function openArsenalWorkbench(
    option.setAttribute('aria-pressed',String(equipped));
    // This button explains a restriction; it is not a disabled control.
    option.title=part.detail;
-   const name=document.createElement('strong');name.textContent=part.name;
+   const name=document.createElement('strong');
+   name.textContent=arsenalFinishFamily(part.id)?.name??part.name;
    const status=document.createElement('small');status.textContent=feedback.label;
    option.append(name,status);
    option.addEventListener('click',()=>{
@@ -228,8 +272,11 @@ export function openArsenalWorkbench(
     activeSlot=slot;pending=null;renderSelection();
    });slotRow.append(button);
   }
-  activeLabel.textContent='CURRENT · '+
-   (arsenalPart(currentPartId(activeSlot))?.name??currentPartId(activeSlot));
+  const current=currentPartId(activeSlot),family=arsenalFinishFamily(current);
+  activeLabel.textContent='CURRENT · '+(family?
+   family.name+' · '+(arsenalFinishOption(current)?.label??'Standard'):
+   (arsenalPart(current)?.name??current));
+  renderFinishes();
   title.textContent=arsenalReferenceIdentity(draft.working).name;
   dirtyStatus.textContent=arsenalDraftDirty(draft)?'UNSAVED CHANGES':
    savedId?'SAVED BUILD':'FACTORY CONFIGURATION';
