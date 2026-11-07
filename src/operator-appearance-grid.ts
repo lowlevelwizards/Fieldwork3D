@@ -275,7 +275,9 @@ export class OperatorAppearanceGrid{
   const oldClear=this.renderer.getClearColor(new THREE.Color()).clone();
   const oldAlpha=this.renderer.getClearAlpha();
   const oldSceneBackground=this.scene.background;
-  let readback:Promise<Uint8Array>|null=null;
+  // Three.js declares the readback as a generic TypedArray. The supplied
+  // Uint8Array is the authoritative byte destination for every pixel.
+  let readback:Promise<unknown>|null=null;
   const started=performance.now();
   try{
    rig.root.userData.fieldworkHeightProfile=
