@@ -241,8 +241,16 @@ function netDrape(edge:NetEdge):readonly (readonly number[])[]{
  const shoulder=shift(pasgtRingPoint(s,'shoulder'),.18);
  const ramp=shift(pasgtRingPoint(s,'ramp'),.59);
  const hem=pasgtRingPoint(s,'hem');
- const lowerUnshifted=ramp.map((v,i)=>.73*v+.27*hem[i]);
- const lower=shift(lowerUnshifted,.97);
+ // Net is gathered into the elastic height instead of dangling down
+ // as a set of unsupported external poles.
+ const t=Math.max(0,Math.min(1,(ramp[1]-5.43)/(ramp[1]-hem[1])));
+ const lowerUnshifted=ramp.map((v,i)=>v*(1-t)+hem[i]*t);
+ const lower=shift(lowerUnshifted,.91);
+ // Tuck the final portion beneath the fabric band so it reads as held,
+ // rather than as six wires standing on top of a rim.
+ const outwardContact=new THREE.Vector3(...outward).multiplyScalar(.09);
+ lower[0]-=outwardContact.x;
+ lower[2]-=outwardContact.z;
  // The fabric net wraps off the crown and diagonally across the shoulder.
  // Terminate at the retaining-band level instead of making long vertical
  // roof-trellis supports that hang into the nape/ear gap.
@@ -277,12 +285,22 @@ function appendNetRibbon(out:number[],
 }
 export function createPasgtNetGeometry():THREE.BufferGeometry{
  const coordinates:number[]=[];
- const slopes=[-.64,.64] as const;
- for(const slope of slopes)for(const shift of [-4,0,4]){
+ // Three large openings in each diagonal direction. Slightly irregular
+ // separation and two broad angling decisions prevent a rigid roof grid.
+ const slopes=[-.69,.74] as const;
+ for(const slope of slopes)for(const shift of [-3.9,.24,3.73]){
   const [a,b]=clippedNetLine(slope,shift);
   const start=netDrape(a),end=netDrape(b);
-  const path=[...start,...[...end].reverse()];
-  appendNetRibbon(coordinates,path,.25);
+  const center1:[number,number,number]=[
+   (2*a.x+b.x)/3+.26*Math.sign(slope),
+   PASGT_COVER_TOP_Y+.085,
+   (2*a.z+b.z)/3-.23];
+  const center2:[number,number,number]=[
+   (a.x+2*b.x)/3-.16*Math.sign(slope),
+   PASGT_COVER_TOP_Y+.085,
+   (a.z+2*b.z)/3+.19];
+  const path=[...start,center1,center2,...[...end].reverse()];
+  appendNetRibbon(coordinates,path,.27);
  }
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(coordinates,3));
@@ -290,6 +308,8 @@ export function createPasgtNetGeometry():THREE.BufferGeometry{
  g.userData.pasgtNetFullDrape=true;
  g.userData.pasgtNetCordCount=6;
  g.userData.pasgtNetPattern='sparse-diamond';
+ g.userData.pasgtNetCoverContact=true;
+ g.userData.pasgtNetTuckedUnderBand=true;
  return g;
 }
 /** Oversized two-point retention. Three graphic shapes, no hardware.
