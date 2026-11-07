@@ -285,13 +285,17 @@ function applyLightingLab(){
  posePreview();
 }
 function readLightingLabControls(){
+ // The third band must remain wider than the shadow band. Clamp and mirror
+ // both visible slider values, so the displayed cutoffs match the GPU ramp.
+ const celLow=Math.min(.88,Number(labCelLow.value));
+ const celHigh=Math.max(celLow+.06,Math.min(.97,Number(labCelHigh.value)));
  lightLabSettings={
   toon:Number(labCel.value) as StudioLightLabSettings['toon'],
   rim:labRim.value as StudioLightLabSettings['rim'],
   gradient:labGradient.value as StudioLightLabSettings['gradient'],
   shadow:labShadow.value as StudioLightLabSettings['shadow'],
   celProfile:labCelProfile.value as StudioLightLabSettings['celProfile'],
-  celLow:Number(labCelLow.value),celHigh:Number(labCelHigh.value),
+  celLow,celHigh,
   allSurfaces:labScope.value==='all'
  };
  lightLabCompareOriginal=false;
