@@ -148,4 +148,5 @@ export function buildWeaponSilhouette(id:WeaponId,
 export function clearWeaponSilhouette(g:THREE.Group){
  g.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
  g.clear();
+ g.userData.visibleStockContact=null;
 }

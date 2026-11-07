@@ -16,6 +16,8 @@ test('Lab snapshots the rendered stance and does not re-enter generic mid-transi
  assert.match(rig,/blendFrom:authoredLabSwitch\?undefined/);
  assert.match(rig,/fit=interpolateWeaponCarry\(activeTransition\.authoredFrom,fit,phase\)/);
  assert.match(rig,/if\(sourceArm&&activeTransition!\.alpha<=0\)/);
+ assert.match(rig,/dest\.userData\.visibleStockContact/);
+ assert.match(lab,/stockArtResidual/);
 });
 test('authored weapon interpolation has exact source and destination endpoints',()=>{
  const a=fitWeaponPose({weapon:'carbine',handling:'ready',yaw:0,recoil:0});

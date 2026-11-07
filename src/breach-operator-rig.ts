@@ -1265,8 +1265,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       [r.weaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config)],
       [r.droppedWeaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config)]
     ] as const;
-    for(const [dest,model] of models)
+    for(const [dest,model] of models){
+      // Preserve the read-only visible buttplate descriptor when transferring
+      // the prebuilt mesh children into the reusable weapon rig.
+      dest.userData.visibleStockContact=
+        model.userData.visibleStockContact??null;
       while(model.children.length)dest.add(model.children[0]);
+    }
     // Detachable geometry is copied from precisely the same named AR/AK
     // magazine slot. No extra placeholder or alternate silhouette exists.
     const magazineSocket=weaponPresentationSockets(p.weapon,config).magazine;

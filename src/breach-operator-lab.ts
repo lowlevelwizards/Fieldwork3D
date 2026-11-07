@@ -1796,6 +1796,16 @@ function draw(){
   canvas.dataset.firingElbowDrop=firingDrop===null?'':firingDrop.toFixed(3);
   canvas.dataset.firingElbowFlare=firingFlare===null?'':firingFlare.toFixed(3);
   canvas.dataset.torsoAssistYaw=String(staticReport?.torsoAssistYaw??0);
+  const stockArt=rig.weaponBody.userData.visibleStockContact as {
+    rearX:number;visualMinusAuthority:number;source:string}|null;
+  const shoulderSamples=rig.chest.userData.shoulderSurfaceCandidates as
+   {right?:readonly unknown[];left?:readonly unknown[]}|null;
+  // STOCK REF is the old socket deviation, NOT actual equipment contact.
+  // Real contact validity will come from the future stock-seat solver.
+  canvas.dataset.stockArtResidual=stockArt?
+    stockArt.visualMinusAuthority.toFixed(3):'';
+  canvas.dataset.shoulderSurfaceCandidates=String(
+    shoulderSamples?.right?.length??0);
   const info=document.getElementById('poseInspectorReport');
   if(info){
    const look=resolvedWardrobe(wardrobeOptions,currentKit);
@@ -1810,7 +1820,11 @@ function draw(){
     label+' · '+currentWeapon+
     '\\nARMOR '+look.armorStyle+' · RIG '+look.rigStyle+
     '\\nGRIP '+rig.gripError.toFixed(2)+
-    ' · STOCK '+rig.stockError.toFixed(2)+
+    ' · STOCK REF '+rig.stockError.toFixed(2)+
+    (stockArt?'\\nBUTTPLATE X '+stockArt.rearX.toFixed(2)+
+      ' · ART/DATUM Δ '+stockArt.visualMinusAuthority.toFixed(2):'')+
+    '\\nSHOULDER TRIANGLES '+(shoulderSamples?.right?.length??0)+
+      ' (CANDIDATES, NOT SEATED)' +
     (firingDrop===null?'':'\\nFIRING ELBOW · DROP '+
      firingDrop.toFixed(2)+' / FLARE '+firingFlare!.toFixed(2))+
     '\\nJoint markers and contacts: DIAGNOSTICS tab.';
