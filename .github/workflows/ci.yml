@@ -1683,7 +1683,7 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/breach-short-stock-outboard.test.mjs tests/breach-stance-continuity.test.mjs tests/breach-authored-transition-critical.test.mjs tests/breach-pose-strategy.test.mjs tests/breach-pose-transition-director.test.mjs tests/breach-120.test.mjs tests/breach-171.test.mjs tests/breach-179.test.mjs
       - name: Normal-lane priority — comfortable body routes and squeeze regressions
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/breach-normal-lane-priority-') || startsWith(github.head_ref, 'fix/watch-preserve-here-path-')) }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/breach-normal-lane-priority-') || startsWith(github.head_ref, 'fix/watch-preserve-here-path-') || startsWith(github.head_ref, 'fix/breach-normal-lane-recovery-timer-')) }}
         run: node --experimental-strip-types --test tests/breach-normal-lane-priority.test.mjs tests/breach-190a.test.mjs tests/breach-wall-glide-here-window.test.mjs tests/breach-here-watch-continuity.test.mjs
       - name: HERE route redraw — WATCH persistence and atomic undo
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/watch-preserve-here-path-') }}
