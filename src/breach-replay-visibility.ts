@@ -58,15 +58,34 @@ export function recordedReplayKnowledge(s:Session):ReplayKnowledge|null{
   return playbackKnowledge.get(s)??null;
 }
 
-/** Shared live/replay visibility contract for both Floor Plan and 3D.
- * Old films without evidence retain the previous guarded live fallback.
+/** R4.2 disclosure policy shared by replay layers and future Bodycam.
+ * Historical operator mode fails closed on legacy/no-evidence recordings.
+ * Squad and full preserve the pre-R4.2 semantics.
  */
-export function replayActorVisible(
-  s:Session,a:TeamActor,omniscient=false):boolean{
-  if(omniscient||a.side==='blue')return true;
+export type ReplayDisclosure=
+  |{mode:'full'}
+  |{mode:'squad'}
+  |{mode:'operator';observerId:string};
+export function replayOperatorSightAvailable(
+  s:Session,observerId:string
+):boolean{
+  const observed=recordedReplayKnowledge(s)?.operatorVisibleActorIds;
+  return !!observed&&Object.prototype.hasOwnProperty.call(observed,observerId);
+}
+export function replayActorDisclosed(
+  s:Session,a:TeamActor,policy:ReplayDisclosure
+):boolean{
+  if(policy.mode==='full'||a.side==='blue')return true;
   const sample=recordedReplayKnowledge(s);
+  if(policy.mode==='operator')
+    return recordedObserverCanSee(sample,policy.observerId,a.id)===true;
   if(sample)return sample.visibleActorIds.includes(a.id);
   return a.health>0?isSeen(s,a):liveVisibility(s,a.p);
+}
+/** Existing callers keep their exact legacy boolean contract. */
+export function replayActorVisible(
+  s:Session,a:TeamActor,omniscient=false):boolean{
+  return replayActorDisclosed(s,a,omniscient?{mode:'full'}:{mode:'squad'});
 }
 
 export function replayBodyDiscovered(s:Session,id:string):boolean{
