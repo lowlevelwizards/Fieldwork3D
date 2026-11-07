@@ -20,6 +20,8 @@ export interface DynamicArmRequest {
  preferredPole:THREE.Vector3;
  /** Non-deterministic continuity is permitted only as a weak preference. */
  referenceBend?:THREE.Vector3;
+ /** B24b V4 preview only; normal V3 and gameplay remain strict. */
+ allowReloadOverlap?:boolean;
 }
 export type DynamicArmFit={
  status:'clear'|'unresolved';
@@ -80,9 +82,12 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
     if(permanentlyBlocked.has(pose))continue;
     evaluations++;
     const report=evaluateArmConstraint({shoulder,arm:pose,side,
-      envelope,mode,referenceBend,softScale});
+      envelope,mode,referenceBend,softScale,
+      allowReloadOverlap:req.allowReloadOverlap});
     if(!firstReport)firstReport=report;
-    if(report.hardDepth>LOW_READY_CONTACT_LIMITS.rigid+.001||
+    const hardCutoff=req.allowReloadOverlap&&mode==='reload'?
+      2.65:LOW_READY_CONTACT_LIMITS.rigid;
+    if(report.hardDepth>hardCutoff+.001||
        !pose.reached)permanentlyBlocked.add(pose);
     if(!report.valid){
      const penalty=(pose.reached?0:12)+
@@ -109,7 +114,8 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
  if(outOfReach){
   const pose=solveTwoBone(shoulder,wrist,10,10,seedPoles[0],ARM_LIMITS);
   const report=evaluateArmConstraint({shoulder,arm:pose,side,
-   envelope,mode,softScale:1});
+   envelope,mode,softScale:1,
+   allowReloadOverlap:req.allowReloadOverlap});
   return {status:'unresolved',solution:null,report,
    candidates:1,evaluations:1,softScale:1,reason:'out-of-reach'};
  }

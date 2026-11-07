@@ -8,6 +8,7 @@ import {evaluateSleeveArmorContact,type PoseClearanceEnvelope,
  type SleeveContactResult}
  from './breach-pose-clearance-envelope.ts';
 import {ARM_LIMITS,type LimbSolution} from './breach-ik.ts';
+import {reloadVisualContact} from './breach-reload-visual-contact.ts';
 
 export type PoseConstraintMode='carry'|'aim'|'reload'|'interaction';
 export type PoseConstraintReason='non-finite'|'unreachable'|'bone-length'|
@@ -21,12 +22,15 @@ export type ArmConstraintInput={
  softScale?:number;
  /** Previous bend, supplied ONLY from an explicit/recorded action snapshot. */
  referenceBend?:THREE.Vector3;
+ /** V4 preview ONLY, never for firing/carry/other interactions. */
+ allowReloadOverlap?:boolean;
 };
 export type ArmConstraintReport={
  valid:boolean;reasons:PoseConstraintReason[];
  hardDepth:number;softDepth:number;
  elbowDrop:number;outwardFlare:number;
  quality:number;contactValid:boolean;
+ strictContactValid:boolean;relaxedContact:boolean;
  contacts:SleeveContactResult['contacts'];
 };
 const preferredDrop:Record<PoseConstraintMode,number>={
@@ -54,7 +58,9 @@ export function evaluateArmConstraint(p:ArmConstraintInput):ArmConstraintReport{
  // This is shared by idle/ADS/reload/interaction; no hidden shrinking.
  const contact=evaluateSleeveArmorContact(
   shoulder,joint,effector,envelope,p.softScale??1);
- if(!contact.valid)reasons.push('equipment-contact');
+ const reloadContact=reloadVisualContact(contact,
+   mode==='reload'&&p.allowReloadOverlap===true);
+ if(!reloadContact.valid)reasons.push('equipment-contact');
  const bendContinuity=p.referenceBend?
   Math.max(0,1-arm.bendPlane.dot(p.referenceBend))*.16:0;
  const quality=
@@ -67,7 +73,10 @@ export function evaluateArmConstraint(p:ArmConstraintInput):ArmConstraintReport{
  return {valid:reasons.length===0,reasons,
   hardDepth:contact.hardDepth,softDepth:contact.softDepth,
   elbowDrop:drop,outwardFlare:flare,quality,
-  contactValid:contact.valid,contacts:contact.contacts};
+  contactValid:reloadContact.valid,
+  strictContactValid:contact.valid,
+  relaxedContact:reloadContact.valid&&!contact.valid,
+  contacts:contact.contacts};
 }
 /** Physical validity always outranks beauty. A failed pose cannot win just
  * because it happens to look less winged; candidates must first be valid.

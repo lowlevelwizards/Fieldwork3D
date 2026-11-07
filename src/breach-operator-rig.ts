@@ -38,6 +38,9 @@ import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
 import {choreographV3ReloadHand,v3MagazineRockAngle,v3MagazineBodyGrip,type V3ReloadCorridorProfile,type V3MagazinePalm} from './breach-pose-v3-reload-choreography.ts';
 import {choreographV3ReloadWeapon,type V3ReloadHold} from './breach-pose-v3-reload-weapon.ts';
+import {choreographV4ReloadWeapon,reloadMechanismFor}
+ from './breach-reload-performance.ts';
+import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
 import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
@@ -96,6 +99,8 @@ type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
 export type OperatorPose={
   /** Opt-in LAB-only V3 torso fit audition; never set by gameplay. */
   poseV3Preview?:boolean;
+  /** B24b reload-action visual tolerance, opt-in Lab only. */
+  poseV4ReloadPreview?:boolean;
   /** Opt-in Lab reload corridor comparison; never read by game simulation. */
   poseV3ReloadCorridor?:V3ReloadCorridorProfile;
   /** B19 fixed-profile offline handling audition; only read in V3 Lab. */
@@ -875,8 +880,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
      resolveHelmetSetup(modelId,p.wardrobe?.helmetSetup,{
       hasLegacyPrint:!!requestedCamo
      }).setup.cover!=='none';
-   // A PASGT never prints its camouflage directly on Kevlar. When the
-   // cover is removed, the separately selected hard-shell solid is visible.
+   // A PASGT never prints camouflage directly on the Kevlar shell.
+   // With its cloth cover removed, the independent hard-shell solid shows.
    const camo=modelId==='pasgt'||fabricOnShell?null:requestedCamo;
    const map=camo?headwearCamoTexture(modelId,camo,
      headwearCamoPlacement(r.camoIdentity,'headwear:'+modelId,camo,
@@ -1363,11 +1368,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Small, deterministic rifle manipulation is permissible in the Lab
   // only while reloading: never alters shot-time muzzle or live aiming.
   // It pivots about the seated stock so the firing wrist can clear gear.
+  r.root.userData.reloadV4Cue=null;
   if(p.poseV3Preview&&p.reload>0&&p.reloadDuration>0&&
      !p.firing&&!p.down&&!p.surrender&&coupledConfig?.build){
-    fit=choreographV3ReloadWeapon(fit,
-      clamp(1-p.reload/p.reloadDuration,0,1),
-      p.reloadMode??(p.weapon==='shotgun'?'shells':'emergency'),
+    const t=clamp(1-p.reload/p.reloadDuration,0,1);
+    const mode=p.reloadMode??(p.weapon==='shotgun'?'shells':'emergency');
+    if(p.poseV4ReloadPreview){
+      const presentation=choreographV4ReloadWeapon(fit,mode,t,
+        reloadMechanismFor(p.weapon,coupledConfig));
+      fit=presentation.fit;
+      r.root.userData.reloadV4Cue=presentation.cue;
+    }else fit=choreographV3ReloadWeapon(fit,t,mode,
       p.poseV3ReloadHold??'baseline').fit;
   }
   // Lab-only: a family rifle may be gripped farther back on its *actual*
@@ -1429,7 +1440,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const envelope=poseClearanceEnvelope(
       outfit.armorStyle,outfit.rigStyle,outfit.top);
     if(v3ReloadActive)v3ReloadClearanceFront=envelope.front;
-    const releasedTarget=v3ReloadActive?choreographV3ReloadHand({
+    const releaseInputs=v3ReloadActive?{
       fit,lengthScale:data.lengthScale,
       progress:v3ReloadProgress,mode:v3ReloadMode,
       family:coupledConfig.build.family,corridor:v3ReloadCorridor,
@@ -1437,7 +1448,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       supportX:data.supportX,supportY:data.supportY,
       primaryX:data.primaryX,clearanceFront:envelope.front,
       magazineSocket:activeReloadSocket?.magazinePart?
-        activeReloadSocket.magazine:undefined}).target:undefined;
+        activeReloadSocket.magazine:undefined,
+      reloadControl:activeReloadSocket?.reloadControl}:null;
+    const releasedTarget=releaseInputs?(
+      p.poseV4ReloadPreview?
+        choreographV4ReloadHand(releaseInputs,
+          reloadMechanismFor(p.weapon,coupledConfig)):
+        choreographV3ReloadHand(releaseInputs)).target:undefined;
     const result=solveV3CoordinatedPose({
       fit,weapon:p.weapon,configuration:coupledConfig,
       shoulders:[shoulderFor(0),shoulderFor(1)],
@@ -1445,14 +1462,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       envelope,
       mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
         'aim':'carry',
-      releasedSupportTarget:releasedTarget
+      releasedSupportTarget:releasedTarget,
+      allowReloadOverlap:!!p.poseV4ReloadPreview&&v3ReloadActive
     });
     r.root.userData.poseV3CoordinatedReport={
       status:result.status,yaw:result.yaw,leanX:result.leanX,
       candidates:result.candidates,
       validCandidates:result.validCandidates,
       rejects:{...result.rejects},
-      quality:result.quality
+      quality:result.quality,
+      relaxedContact:!!result.reports?.some(report=>report.relaxedContact),
+      strictContactValid:result.reports?.every(report=>
+        report.strictContactValid)??false
     };
     if(result.status==='clear'&&result.arms){
       coordinatedDynamic=result;
@@ -1624,16 +1645,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       data.supportX,data.supportY,data.primaryX,
       sockets.magazinePart?sockets.magazine:undefined);
     leftGrip.set(hand.x,hand.y,hand.z);
+    const renderReloadInputs={
+      fit,lengthScale:data.lengthScale,progress:reloadProgress,
+      mode:reloadMode,family:coupledConfig?.build?.family,
+      corridor:v3ReloadCorridor,magazinePalm:v3MagazinePalm,
+      supportX:data.supportX,supportY:data.supportY,
+      primaryX:data.primaryX,clearanceFront:v3ReloadClearanceFront,
+      magazineSocket:sockets.magazinePart?sockets.magazine:undefined,
+      reloadControl:sockets.reloadControl
+    };
     reloadHandChest=p.poseV3Preview?
-      choreographV3ReloadHand({
-        fit,lengthScale:data.lengthScale,progress:reloadProgress,
-        mode:reloadMode,family:coupledConfig?.build?.family,
-        corridor:v3ReloadCorridor,magazinePalm:v3MagazinePalm,
-        supportX:data.supportX,supportY:data.supportY,
-        primaryX:data.primaryX,
-        clearanceFront:v3ReloadClearanceFront,
-        magazineSocket:sockets.magazinePart?sockets.magazine:undefined
-      }).target:
+      (p.poseV4ReloadPreview?
+       choreographV4ReloadHand(renderReloadInputs,
+        reloadMechanismFor(p.weapon,coupledConfig)):
+       choreographV3ReloadHand(renderReloadInputs)).target:
       reloadHandChestTarget({
         fit,lengthScale:data.lengthScale,progress:reloadProgress,
         mode:reloadMode,supportX:data.supportX,supportY:data.supportY,

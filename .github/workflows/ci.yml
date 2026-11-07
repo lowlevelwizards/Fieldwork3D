@@ -62,6 +62,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-low-ready-pose-v2-') }}
         run: |
           node --experimental-strip-types --test tests/breach-low-ready-anatomy-v2.test.mjs tests/breach-low-ready-clearance-v2.test.mjs tests/breach-low-ready-v2-matrix.test.mjs tests/breach-low-ready-transition-v2.test.mjs tests/breach-low-ready-transition-rig-v2.test.mjs tests/breach-coupled-rig-smoke.test.mjs
+      - name: Breach reload V4 — family timing and preview safety
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-reload-v4-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-reload-v4-timeline.test.mjs tests/breach-reload-v4-clearance.test.mjs tests/breach-reload-v4-rig.test.mjs tests/breach-pose-v3-reload-weapon.test.mjs tests/breach-pose-v3-reload-replay.test.mjs tests/breach-pose-v3-coordinated.test.mjs tests/breach-pose-v3-constraints.test.mjs tests/breach-pose-v3-action-matrix.test.mjs
       - name: Unified Pose V3 — baseline, contact and transition critical gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') }}
         run: |
