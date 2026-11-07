@@ -7,6 +7,7 @@ import {REFERENCE_GEAR_PROFILES,type ReferenceGearAppearance} from './faction-re
 import type {GarmentSolidId} from './operator-garment-color-policy.ts';
 import type {HeadwearSolidColorId} from './operator-headwear-colors.ts';
 import type {IdentityMarkings} from './operator-identity-markings.ts';
+import type {PasgtDetails} from './operator-pasgt-cover-policy.ts';
 import type {LoadoutSlot} from './equipment-loadouts.ts';
 import type {WardrobeSlot,SleeveState,TrouserHem,WardrobeOptions} from './operator-wardrobe-data.ts';
 
@@ -21,6 +22,7 @@ export type FactionReference={
  styles?:Partial<Record<WardrobeSlot,string>>;
  kit?:Partial<Record<LoadoutSlot,string>>;
  headwearColor?:HeadwearSolidColorId;beretDrape?:'left'|'right';
+ pasgtDetails?:PasgtDetails;
  m1956Variant?:WardrobeOptions['m1956Variant'];
  m56Details?:WardrobeOptions['m56Details'];m56Net?:WardrobeOptions['m56Net'];
  policeVisorPosition?:WardrobeOptions['policeVisorPosition'];
@@ -35,7 +37,9 @@ export type FactionReference={
 };
 const gap=(id:string,label:string,importance:ReferenceGap['importance']='significant'):ReferenceGap=>
  ({id,label,importance});
-const patch=gap('unit-insignia','National, unit and service identification','defining');
+// Unit-specific badges remain a small detail; flags and generic labels only
+// establish national/agency identity, not provenance of a particular unit.
+const patch=gap('unit-insignia','Specific period-correct unit/service badge','minor');
 const weapon=(id:string,label:string)=>gap(id,label);
 export const FACTION_REFERENCES:readonly FactionReference[]=([
  {id:'usmc-woodland-2005',name:'US Marine Corps · Woodland',country:'United States',
@@ -50,7 +54,9 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  organization:'military',environment:'woodland',era:{start:1995,end:2015,label:'1990s–2010s'},
  summary:'Flecktarn field uniform with substantial conventional load carriage.',
  baseRecipeId:'bdu-field',uniformCamo:'flecktarn',
+ markings:{leftShoulder:'flag-germany',rightShoulder:'flag-germany'},
  styles:{headwear:'pasgt',rigStyle:'field-webbing'},gearSolid:'olive-drab',
+ pasgtDetails:{slits:true,band:'elastic',concealment:'none'},
  weaponFamily:'HK G36',gaps:[patch,weapon('g36-family','G36-family service rifle'),gap('bundeswehr-helmet','German helmet profile')],
  sourceNotes:'General service silhouette, not a specific battalion or deployed theater.'},
  {id:'russian-emr-2015',name:'Russian Army · EMR',country:'Russia',
@@ -66,6 +72,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  summary:'Woodland DPM windproof smock and field webbing.',
  baseRecipeId:'windproof-smock',uniformCamo:'woodland-dpm',
  kit:{head:'head-helmet'},styles:{headwear:'pasgt',rigStyle:'field-webbing'},gearSolid:'olive-drab',
+ pasgtDetails:{slits:true,band:'none',concealment:'scrim'},
  weaponFamily:'L85 / SA80',gaps:[patch,weapon('sa80-family','L85/SA80 rifle'),gap('helmet-mk6','British Mk6-style helmet')],
  sourceNotes:'PLCE-style webbing is an approximation of period British field kit.'},
  {id:'nva-strichtarn-1980',name:'East German NVA · Strichtarn',country:'East Germany',
@@ -130,7 +137,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  summary:'Six-color desert fatigues, PASGT protection and old-generation webbing.',
  baseRecipeId:'bdu-field',uniformCamo:'six-color-desert',
  kit:{rig:'rig-full'},styles:{headwear:'pasgt',armorStyle:'soft-flak',rigStyle:'alice-lc2'},
- gearSolid:'olive-drab',weaponFamily:'M16A2',
+ gearSolid:'olive-drab',pasgtDetails:{slits:true,band:'elastic',concealment:'none'},weaponFamily:'M16A2',
  gaps:[patch,weapon('ar-family','M16A2 service rifle'),gap('alice-webbing','ALICE-pattern load-bearing system')],
  sourceNotes:'Period approximation; clothing, helmet covers and armor varied by deployment.'},
 
@@ -138,28 +145,30 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  environment:'mixed',era:{start:2015,end:2026,label:'2015–2020s'},
  summary:'Scorpion W2 operational camouflage and modern issued armor.',
  baseRecipeId:'acu-patrol',uniformCamo:'scorpion-w2',gearSolid:'coyote',
- markings:{rightShoulder:'flag-us'},weaponFamily:'M4 / M4A1',
+ markings:{rightShoulder:'flag-us-reversed'},weaponFamily:'M4 / M4A1',
  gaps:[patch,weapon('ar-family','M4-family service carbine'),gap('iotv-armor','IOTV armor silhouette')],
  sourceNotes:'Broad OCP infantry reference, not an exact unit-issued packing list.'},
  {id:'us-army-ucp-2010',name:'US Army · UCP Era',country:'United States',organization:'military',
  environment:'mixed',era:{start:2005,end:2019,label:'2005–2019'},
  summary:'Universal Camouflage Pattern utility uniform with foliage-era protection.',
  baseRecipeId:'ucp-era',uniformCamo:'ucp',gearSolid:'olive-drab',
- markings:{rightShoulder:'flag-us'},weaponFamily:'M4 / M16A4',
+ markings:{rightShoulder:'flag-us-reversed'},weaponFamily:'M4 / M16A4',
  gaps:[patch,weapon('ar-family','M4/M16-family service rifle'),gap('iotv-armor','IOTV armor silhouette')],
  sourceNotes:'Representative UCP-era field appearance; actual gear often foliage green.'},
  {id:'us-army-m81-1990',name:'US Army · Woodland BDU',country:'United States',organization:'military',
  environment:'woodland',era:{start:1982,end:2005,label:'1980s–early 2000s'},
  summary:'M81 field uniform, PASGT equipment and legacy load carriage.',
  baseRecipeId:'bdu-field',uniformCamo:'m81-woodland',gearSolid:'olive-drab',
- kit:{rig:'rig-full'},styles:{headwear:'pasgt',rigStyle:'alice-lc2'},weaponFamily:'M16A2',
+ kit:{rig:'rig-full'},styles:{headwear:'pasgt',rigStyle:'alice-lc2'},
+ pasgtDetails:{slits:true,band:'elastic',concealment:'none'},weaponFamily:'M16A2',
  gaps:[patch,weapon('ar-family','M16A2 service rifle'),gap('alice-webbing','ALICE field webbing')],
  sourceNotes:'Representative late Cold War woodland kit, not a single unit.'},
  {id:'us-army-dcu-2003',name:'US Army · Iraq 2003',country:'United States',organization:'military',
  environment:'desert',era:{start:2002,end:2006,label:'2002–2006'},
  summary:'Three-color desert field uniform with transitional ballistic protection.',
  baseRecipeId:'desert-field',uniformCamo:'three-color-desert',
- styles:{armorStyle:'soft-flak',headwear:'pasgt'},gearSolid:'khaki',weaponFamily:'M16A4 / M4',
+ styles:{armorStyle:'soft-flak',headwear:'pasgt'},gearSolid:'khaki',
+ pasgtDetails:{slits:true,band:'none',concealment:'none'},weaponFamily:'M16A4 / M4',
  gaps:[patch,weapon('ar-family','M16/M4-family rifle'),gap('otv-armor','Interceptor OTV armor','defining')],
  sourceNotes:'Approximation of early-2000s desert issue; covers and vest types varied.'},
  {id:'us-army-erdl-1970',name:'US Reconnaissance · ERDL',country:'United States',
@@ -194,6 +203,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  organization:'military',environment:'desert',era:{start:2002,end:2020,label:'2000s–2010s'},
  summary:'Arid Tropentarn field clothing and tan protective kit.',
  baseRecipeId:'bdu-field',uniformCamo:'desert-tropentarn',gearSolid:'khaki',weaponFamily:'HK G36',
+ markings:{leftShoulder:'flag-germany',rightShoulder:'flag-germany'},
  styles:{armorStyle:'soft-flak'},
  gaps:[patch,weapon('g36-family','G36 service rifle'),gap('bundeswehr-helmet','German helmet profile')],
  sourceNotes:'Generic deployed arid appearance; armor and garments changed across rotations.'},
@@ -259,7 +269,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  baseRecipeId:'police-entry',uniformCamo:'urban-kamysh',gearSolid:'black',
  styles:{top:'bdu-shirt',trousers:'bdu-trousers',headwear:'police-helmet'},
  policeVisorPosition:'lowered',policeVisorTint:'clear',
- policeVisorFrame:'standard',headwearColor:'black',markings:{chest:'label-police'},weaponFamily:'AK / MP5 equivalents',
+ policeVisorFrame:'standard',headwearColor:'black',markings:{chest:'label-omon'},weaponFamily:'AK / compact AK',
  gaps:[patch,weapon('ak-family','AK-family rifle'),gap('visor-police','Visored law-enforcement helmet','defining')],
  sourceNotes:'Generic visored protective police helmet is a representative approximation, not a confirmed period OMON model.'},
  {id:'russian-gorka-leto-2010',name:'Russian Reconnaissance · Gorka/SS-Leto',country:'Russia',
@@ -289,7 +299,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  {id:'canada-cadpat-tw-2012',name:'Canadian Army · CADPAT TW',country:'Canada',
  organization:'military',environment:'woodland',era:{start:1997,end:2026,label:'2000s–transition'},
  summary:'Temperate CADPAT digital camouflage with subdued field equipment.',
- baseRecipeId:'acu-patrol',uniformCamo:'cadpat-tw',gearSolid:'olive-drab',weaponFamily:'C7 / C8',
+ baseRecipeId:'acu-patrol',uniformCamo:'cadpat-tw',gearSolid:'olive-drab',weaponFamily:'C7A2 / C8',
  gaps:[patch,weapon('ar-family','Canadian C7/C8 service rifle'),gap('canada-helmet','Canadian helmet covers and profile')],
  sourceNotes:'CADPAT TW historical and transitional reference; CADPAT MT is separate.'},
  {id:'korean-granite-2023',name:'Republic of Korea Army · Granite B',country:'South Korea',

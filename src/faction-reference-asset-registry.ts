@@ -27,9 +27,10 @@ export function referenceGapFidelity(ref:FactionReference,gap:ReferenceGap):
       (gap.id==='ak-family'&&issued.preset.family!=='ak'))return 'missing';
    return issued.fidelity==='exact'?'exact':'approximate';
   }
- case 'unit-insignia':return referenceHasIdentity(ref)?'exact':'missing';
+ // A national flag or generic service panel does not establish an exact unit badge.
+ case 'unit-insignia':return referenceHasIdentity(ref)?'approximate':'missing';
  case 'police-marking':
-  return ['label-police','label-swat'].includes(ref.markings?.chest??'')?
+  return ['label-police','label-swat','label-omon'].includes(ref.markings?.chest??'')?
    'exact':'missing';
  case 'ukraine-identification':
   return ref.markings?.rightShoulder==='flag-ukraine'?'exact':'missing';

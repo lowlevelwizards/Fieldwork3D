@@ -39,7 +39,7 @@ export function markingBitmap(id:string):MarkingBitmap|null{
  if(label){
   fill(P.k);
   const letters:Record<string,string[]>={
-   A:['0110','1001','1111','1001','1001'],C:['0111','1000','1000','1000','0111'],
+   A:['0110','1001','1111','1001','1001'],M:['10001','11011','10101','10001','10001'],N:['1001','1101','1011','1001','1001'],C:['0111','1000','1000','1000','0111'],
    E:['1111','1000','1110','1000','1111'],I:['111','010','010','010','111'],
    L:['1000','1000','1000','1000','1111'],O:['0110','1001','1001','1001','0110'],
    P:['1110','1001','1110','1000','1000'],R:['1110','1001','1110','1010','1001'],
@@ -56,10 +56,11 @@ export function markingBitmap(id:string):MarkingBitmap|null{
    left+=glyphWidth(ch)+1;
   }
  }else switch(mark.graphic){
- case 'us':{
+ case 'us':case 'us-reverse':{
   for(let i=0;i<13;i++)rect(0,Math.floor(i*16/13),24,Math.floor((i+1)*16/13),i%2?P.w:P.r);
-  rect(0,0,11,9,P.d);
-  for(let y=1;y<9;y+=2)for(let x=1+(y%3);x<11;x+=3)put(x,y,P.w);
+  const canton=mark.graphic==='us-reverse'?13:0;
+  rect(canton,0,canton+11,9,P.d);
+  for(let y=1;y<9;y+=2)for(let x=canton+1+(y%3);x<canton+11;x+=3)put(x,y,P.w);
   break;}
  case 'uk':{
   fill(P.d);
