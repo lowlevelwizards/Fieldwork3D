@@ -62,10 +62,10 @@ try{
      s.operatorGradient==='piece'&&s.operatorShadowColor==='plum-plus'&&
      Number(s.operatorWeaponMeshes)>0&&
      document.getElementById('studioCelLowValue')?.textContent==='71%'&&
-     document.getElementById('studioRimAmountValue')?.textContent==='25%';
+     document.getElementById('studioRimAmountValue')?.textContent==='11%';
    },null,{timeout:35000});
    const img=await page.locator('#studioCanvas').screenshot({
-    path:'operator-studio-captures/r710-graphic-two-band-pieces-weapon-phone.png'
+    path:'operator-studio-captures/r711-subtle-metal-contour-gray-pieces-weapon-phone.png'
    });
    if(img.byteLength<3000)throw Error('Blank R7.10 WebGL frame');
    await page.locator('#studioLightCompare').click();
@@ -80,7 +80,7 @@ try{
     return s?.operatorToonBands==='2'&&s.operatorRimMode==='dual'&&
      s.operatorGradient==='piece'&&s.operatorShadowColor==='plum-plus';
    },null,{timeout:35000});
-   if(await cel.inputValue()!=='0.71'||await rim.inputValue()!=='0.25')
+   if(await cel.inputValue()!=='0.71'||await rim.inputValue()!=='0.11')
     throw Error('Compare Original lost tuned slider amounts');
    await page.locator('#studioLightReset').click();
    await page.waitForFunction(()=>{
@@ -91,7 +91,7 @@ try{
    if(await cel.isVisible()||await rim.isVisible())
     throw Error('Reset must hide inactive cutoff/rim controls');
    if(errors.length)throw Error('R7.10 WebGL errors: '+errors.join('; '));
-   console.log('R7.10 live cel/rim native sliders, per-piece gradient, weapon and Compare Original passed');
+   console.log('R7.11 live native rim 10-11%, selective weapons and grayscale per-piece studio passed');
   }finally{await page.close();}
  }finally{await browser.close();}
 }finally{
