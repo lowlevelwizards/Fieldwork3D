@@ -103,6 +103,8 @@ type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
 export type OperatorPose={
   /** V3 whole-arm fitting; enabled by the live tactical renderer. */
   poseV3Preview?:boolean;
+  /** Diagnostic-only: compare against the original strict contact budget. */
+  poseV3StrictContact?:boolean;
   /** V4 rifle, hand, magazine and controls; enabled for live reloads. */
   poseV4ReloadPreview?:boolean;
   /** Opt-in Lab reload corridor comparison; never read by game simulation. */
@@ -1348,7 +1350,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
           armor:poseClearanceEnvelope(
             look.armorStyle,look.rigStyle,look.top),
           shoulders,nominalYaw:localYaw,
-          allowVisualOverlap:!!p.poseV3Preview});
+          allowVisualOverlap:!!p.poseV3Preview&&!p.poseV3StrictContact});
         sharedCoupledPoseCache.set(key,result);
         if(sharedCoupledPoseCache.size>MAX_SHARED_COUPLED_POSES){
           const oldest=sharedCoupledPoseCache.keys().next().value;
@@ -1517,8 +1519,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
         'aim':'carry',
       releasedSupportTarget:releasedTarget,
-      allowReloadOverlap:!!p.poseV4ReloadPreview&&v3ReloadActive,
-      allowVisualOverlap:!!p.poseV3Preview&&!p.firing
+      allowReloadOverlap:!!p.poseV4ReloadPreview&&v3ReloadActive&&
+       !p.poseV3StrictContact,
+      allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
+       !p.poseV3StrictContact
     });
     r.root.userData.poseV3CoordinatedReport={
       status:result.status,yaw:result.yaw,leanX:result.leanX,
@@ -1898,7 +1902,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       const dynamic=solveV3DynamicArm({
         shoulder,wrist:desired,side:sign as -1|1,mode,
         envelope:dynamicEnvelope,preferredPole:wanted,
-        allowVisualOverlap:!!p.poseV3Preview&&!p.firing
+        allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
+         !p.poseV3StrictContact
       });
       v3DynamicReports.push({side:i===0?'support':'firing',
         status:dynamic.status,reason:dynamic.reason,

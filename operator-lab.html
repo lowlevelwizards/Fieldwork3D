@@ -241,6 +241,8 @@ main[data-lab-active="poses"]>[data-lab-group]:not([data-lab-group="poses"]):not
 .pose-quick-controls button{flex:0 0 auto;min-height:38px}
 #poseInspector{border:1px solid #718b7e;border-radius:6px;background:#20362d;padding:6px 8px}
 #poseInspector summary{color:#dcca9a;font-weight:700;cursor:pointer}
+#poseInspector .pose-strict-label{display:flex;align-items:center;gap:8px;padding:7px 2px}
+#poseInspector .pose-strict-label input{width:17px;height:17px;accent-color:#c8ac72}
 #poseInspectorReport{display:block;white-space:pre-wrap;padding:6px 0;font:12px/1.45 "Saira Condensed",monospace;color:#dbe6d8}
 #poseWorkspaceHint{color:#b9c7bd;font:11px/1.4 "Work Sans",sans-serif}
 main[data-lab-active="poses"] #weapon{display:none}
@@ -291,7 +293,10 @@ main[data-lab-active="poses"] #weapon{display:none}
   <button type="button" id="poseFrameNext">+1 FRAME</button>
  </div>
  <small id="poseWorkspaceHint">Any weapon and loadout · Every animation · Play, scrub, orbit or step through frames. Same model as Appearance.</small>
- <details id="poseInspector"><summary>POSE REPORT</summary><output id="poseInspectorReport" aria-live="polite"></output></details>
+ <details id="poseInspector"><summary>POSE REPORT</summary>
+  <label class="pose-strict-label"><input type="checkbox" id="poseStrictContact"/> STRICT CONTACT AUDIT</label>
+  <output id="poseInspectorReport" aria-live="polite"></output>
+ </details>
 </section>
 <div class="row lab-transport" data-lab-group="transport" role="group" aria-label="Preview playback controls">
 <button id="playPause" type="button">PAUSE</button>

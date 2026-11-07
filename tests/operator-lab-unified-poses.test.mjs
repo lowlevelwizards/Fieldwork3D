@@ -35,7 +35,7 @@ test('One regular Operator Lab replaces the floating Pose Fit-only inspector',()
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
  for(const id of ['poseWeapon','poseArmor','poseRig','poseUniform',
-   'poseAnimation','poseInspectorReport'])
+   'poseAnimation','poseInspectorReport','poseStrictContact'])
   assert.ok(html.includes('id="'+id+'"'),id);
  assert.match(html,/data-lab-tab="poses"/);
  assert.doesNotMatch(html,/body\.pose-fit-mode main|id="poseFitPanel"/);

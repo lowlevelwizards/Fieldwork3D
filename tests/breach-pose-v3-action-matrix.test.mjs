@@ -234,7 +234,10 @@ test('B17 legacy AKM selects measured compact path without inflating validity',(
  const canonical=createOperatorRig('v3-ak-original','blue',true);
  try{
   for(const progress of [.40,.53]){
+   // This historical B17 comparison tests strictly measured geometry,
+   // not the new intentionally forgiving presentation defaults.
    const pose={...base,seconds:3,poseV3Preview:true,
+    poseV3StrictContact:true,
     reload:1.8*(1-progress),reloadDuration:1.8};
    poseOperator(selected,pose,0);
    poseOperator(canonical,{...pose,

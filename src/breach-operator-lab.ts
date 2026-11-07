@@ -709,6 +709,8 @@ const poseArmorSelect=choose<HTMLSelectElement>('poseArmor');
 const poseRigSelect=choose<HTMLSelectElement>('poseRig');
 const poseUniformSelect=choose<HTMLSelectElement>('poseUniform');
 const poseAnimationSelect=choose<HTMLSelectElement>('poseAnimation');
+const poseStrictContact=choose<HTMLInputElement>('poseStrictContact');
+poseStrictContact.addEventListener('change',()=>draw());
 poseWeaponSelect.add(new Option('No Weapon','none'));
 poseWeaponSelect.add(new Option('Shotgun','shotgun'));
 for(const [family,label] of [
@@ -1592,6 +1594,7 @@ function draw(){
     aimBlend:motion.aim,
     handlingOverride:selectedHandling,
     poseV3Preview,poseV4ReloadPreview,
+    poseV3StrictContact:poseStrictContact.checked,
     handlingTransition:transition,
     replayFeet:feet,
     pelvisYaw:state.pelvisYaw,
@@ -1754,7 +1757,8 @@ function draw(){
     staticReport?'LOW READY · '+(
       staticReport.status==='clear'?'CLEAR':'FALLBACK'):
       'TRACK · '+track.replaceAll('-',' ').toUpperCase();
-   info.textContent=label+' · '+currentWeapon+
+   info.textContent=(poseStrictContact.checked?'STRICT · ':'VISUAL · ')+
+    label+' · '+currentWeapon+
     '\\nARMOR '+look.armorStyle+' · RIG '+look.rigStyle+
     '\\nGRIP '+rig.gripError.toFixed(2)+
     ' · STOCK '+rig.stockError.toFixed(2)+
