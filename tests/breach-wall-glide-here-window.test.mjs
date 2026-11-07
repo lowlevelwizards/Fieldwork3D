@@ -109,14 +109,18 @@ test('HERE-origin drag replaces the entire route in one undo/redo gesture',()=>{
   assert.equal(a.plan.length,3);
  }finally{activateSite(null);}
 });
-test('HERE replacement rejection never destroys existing orders',()=>{
+test('HERE replacement clips at known world bounds and keeps undo intact',()=>{
  const s=newSession(0,undefined,'full-view','standard','hold',stage);
  try{
   const a=team(s)[0];
   assert.ok(planMove(s,a.id,{x:180,y:180}));
-  const before=structuredClone(a.plan);
-  assert.equal(planMoveStroke(s,a.id,[{x:-60,y:-60}],false,true),false);
-  assert.deepEqual(a.plan,before);
+  const before=JSON.parse(JSON.stringify(a.plan));
+  const outcome={clipped:false,endpoint:{...a.p}};
+  assert.equal(planMoveStroke(s,a.id,[{x:-60,y:-60}],false,true,outcome),true);
+  assert.equal(outcome.clipped,true);
+  assert.ok(outcome.endpoint.x>=13&&outcome.endpoint.y>=20);
+  assert.ok(undoPlan(s,a.id));
+  assert.deepEqual(JSON.parse(JSON.stringify(a.plan)),before);
  }finally{activateSite(null);}
 });
 test('the touch gesture uses HERE replacement, not route-append',()=>{
