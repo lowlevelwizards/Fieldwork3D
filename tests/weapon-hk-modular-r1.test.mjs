@@ -11,6 +11,7 @@ import {initialWeaponConfiguration,readWeaponConfiguration,
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 import {stocklessMP5K} from '../src/breach-weapon-pose.ts';
+import {attachmentPrice,catalogStockIds} from '../src/equipment-weapon-inventory.ts';
 import {lowReadyArchetype} from '../src/breach-low-ready-archetypes.ts';
 import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
 
@@ -101,4 +102,9 @@ test('receiver swaps obey weapon class, feed and front-end compatibility gates',
  assert.equal(compatibleFamilyPart('hk53-556-compact','stock','hk33-retract-stock','carbine'),false);
  assert.equal(setConfiguredFamilyPart(preset('hk-hk33a3'),'receiver','hk-mp5-standard').build.parts.receiver,
   'hk33-556-rifle','rifle may not silently become SMG');
+});
+
+test('HK claw rail participates in existing finite Campaign attachment stock',()=>{
+ assert.equal(attachmentPrice('optic-hk-claw'),110);
+ assert.ok(catalogStockIds.includes('optic-hk-claw'));
 });
