@@ -9,7 +9,8 @@ import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
 import {CampaignKitPreview} from './equipment-preview.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
-import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
+import {WeaponWorkbenchPreview,type WeaponWorkbenchViewState}
+ from './equipment-weapon-workbench.ts';
 import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  weaponAttachmentAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
@@ -70,10 +71,21 @@ export class CampaignScreen{
  private lastArmoryRenderedId:string|null=null;
  private activeKitGroup:QuickLoadoutGroup='weapon';
  private readonly operatorViewAngles=new Map<string,number>();
+ /** Keep orbit/zoom only across small cosmetic swaps; refit a new core. */
+ private readonly weaponWorkbenchViews=new Map<string,{
+  core:string;view:WeaponWorkbenchViewState
+ }>();
+ private workbenchCore:string|null=null;
  private disposePreview(){
   if(this.preview&&this.lastArmoryRenderedId)
    this.operatorViewAngles.set(this.lastArmoryRenderedId,this.preview.getAzimuth());
   this.preview?.dispose();this.preview=null;
+  if(this.workbench&&this.lastArmoryRenderedId&&this.workbenchCore){
+   const view=this.workbench.getViewState();
+   if(view)this.weaponWorkbenchViews.set(this.lastArmoryRenderedId,{
+    core:this.workbenchCore,view
+   });
+  }
   this.workbench?.dispose();this.workbench=null;}
  constructor(handlers:CampaignHandlers){
   this.handlers=handlers;
@@ -749,6 +761,11 @@ export class CampaignScreen{
     // Campaign purchase confirmation and stock rules on the select handler.
     this.workbench?.showSocketChoices(socket,select);
    });
+   const core=person.weapon+'|'+(person.weaponConfiguration.build?.parts.receiver??'legacy')+
+    '|'+(person.weaponConfiguration.build?.parts.barrel??'none');
+   this.workbenchCore=core;
+   const savedView=this.weaponWorkbenchViews.get(id);
+   if(savedView?.core===core)this.workbench.restoreViewState(savedView.view);
    const remembered=this.selectedWorkbenchSocket;
    const savedSelect=remembered?.startsWith('body-')?
     familySelectors.get(remembered.slice(5) as FamilyPartSlot):
