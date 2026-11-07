@@ -65,3 +65,17 @@ test('B2: larger forearm fabric clearance cannot affect a real side plate',()=>{
   assert.deepEqual(poseContactBudget(x,heavy,99),{upper:.12,lower:.12});
  }
 });
+
+test('B10b: flak shoulder seam may compress without relaxing torso',()=>{
+ const flak=poseClearanceEnvelope('soft-flak','full-chest','smock-jacket');
+ const flank=flak.boxes.find(x=>x.region==='side-flank'&&x.material==='soft');
+ const front=flak.boxes.find(x=>x.region==='side-front-return'&&x.material==='soft');
+ assert.ok(flank&&front);
+ const wrap=poseContactBudget(flank,flak,1);
+ const returnSeam=poseContactBudget(front,flak,1);
+ assert.equal(wrap.upper,2.85);
+ assert.equal(returnSeam.upper,1.45);
+ assert.equal(wrap.lower,1.55);
+ for(const hard of flak.boxes.filter(x=>x.material==='rigid'))
+  assert.deepEqual(poseContactBudget(hard,flak,99),{upper:.12,lower:.12});
+});

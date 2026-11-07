@@ -31,13 +31,15 @@ export function poseContactBudget(volume:PoseBox,env:PoseClearanceEnvelope,
    // Never grant that allowance to a front plate, forearm or rear return.
    if(volume.material==='soft'&&['soft-flak','soft-vest',
       'plate-legacy'].includes(env.armor))
-    upper=Math.max(upper,env.armor==='plate-legacy'?2.88:2.50);
+    upper=Math.max(upper,env.armor==='plate-legacy'?2.88:
+      env.armor==='soft-flak'?2.85:2.50);
    break;
   case 'side-front-return':
    if(volume.material==='structured'){
     upper=Math.max(base,.62);lower=Math.max(base,1.52);
    }else{
-    upper=Math.max(base,1.23);lower=Math.max(base,1.45);
+    upper=Math.max(base,env.armor==='soft-flak'?1.45:1.23);
+    lower=Math.max(base,1.45);
    }
    break;
   case 'side-rear-return':
