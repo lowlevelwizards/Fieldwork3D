@@ -141,6 +141,8 @@ export class TacticalScene3D{
   /** Replay-only perspective camera; default rendering stays orthographic. */
   readonly bodycamCamera=new THREE.PerspectiveCamera(95,1,.8,2800);
   private replayBodycam:BodycamSetting|null=null;
+  private bodycamLastQa:{active:boolean;owner:string|null;masked:number;
+    maskRestored:boolean}|null=null;
   readonly view:ViewState={mode:'iso',yaw:Math.PI/4,zoom:1.25,
     pitch:55*Math.PI/180,
     focus:{x:W/2,y:H/2}};
@@ -1447,6 +1449,27 @@ export class TacticalScene3D{
    */
   setReplayBodycam(setting:BodycamSetting|null):void{
     this.replayBodycam=setting?{...setting}:null;
+    if(!setting)this.bodycamLastQa=null;
+  }
+  /** Read-only debug information for Vite dev Bodycam smoke; not a UI API. */
+  inspectReplayBodycamQa(){
+    const cam=this.bodycamCamera;
+    return {
+      active:this.bodycamLastQa?.active??false,
+      owner:this.bodycamLastQa?.owner??null,
+      masked:this.bodycamLastQa?.masked??0,
+      maskRestored:this.bodycamLastQa?.maskRestored??true,
+      fov:cam.fov,aspect:cam.aspect,
+      position:cam.position.toArray(),
+      direction:cam.getWorldDirection(new THREE.Vector3()).toArray(),
+      knownRoofs:[...this.roofGroups.values()].filter(r=>r.visible).length,
+      transparentWalls:this.walls.filter(w=>
+        (w.mesh.material as THREE.MeshStandardMaterial).transparent).length,
+      fogUnknown:this.fogUnknown.visible,
+      fogExplored:this.fogExplored.visible,
+      fogSheet:this.smoothFog.visible,
+      sceneChildren:this.scene.children.length
+    };
   }
   setMode(mode:ViewMode){
     if(mode==='plan2d')this.replayBodycam=null;
@@ -2395,6 +2418,12 @@ export class TacticalScene3D{
     try{this.renderer.render(this.scene,camera);}
     finally{
       for(const [mesh,visible] of masked)mesh.visible=visible;
+      this.bodycamLastQa={
+        active:camera===this.bodycamCamera,
+        owner:camera===this.bodycamCamera?this.replayBodycam?.actorId??null:null,
+        masked:masked.length,
+        maskRestored:masked.every(([mesh,visible])=>mesh.visible===visible)
+      };
     }
     // Effects geometry is released before rebuilding the next frame; pooled
     // material instances are reused for every shot to reduce phone GC work.
