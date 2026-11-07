@@ -6,6 +6,10 @@ import {createPasgtFieldDress,createPasgtSlitGeometry} from '../src/operator-pas
 test('PASGT slit positions are surface-derived and clear the band',()=>{
  assert.equal(PASGT_SLIT_ANCHORS.length,8);
  assert.equal(new Set(PASGT_SLIT_ANCHORS.map(a=>a.id)).size,8);
+ assert.ok(PASGT_SLIT_ANCHORS.filter(s=>s.position[1]>7.1).length>=5,
+  'upper fabric slits support foliage that breaks crown silhouette');
+ assert.ok(PASGT_SLIT_ANCHORS.some(s=>s.position[1]<6.6),
+  'lower side slits support hanging field cloth');
  for(const slit of PASGT_SLIT_ANCHORS){
   assert.ok(slit.position[1]>6.3,'slot '+slit.id+' clear band at 5.90');
   const right=new THREE.Vector3(...slit.right),

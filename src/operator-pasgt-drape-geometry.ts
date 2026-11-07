@@ -213,8 +213,11 @@ function pasgtSlitOnCloth(
   bottomY:side==='front'?FRONT_BOTTOM:
    side==='rear'?REAR_BOTTOM:sideHem(along),distance:0
  };
- const lo=new THREE.Vector3(...pasgtRingPoint(sample,'ramp'));
- const hi=new THREE.Vector3(...pasgtRingPoint(sample,'shoulder'));
+ const shoulder=new THREE.Vector3(...pasgtRingPoint(sample,'shoulder'));
+ const lo=atY>shoulder.y?shoulder:
+  new THREE.Vector3(...pasgtRingPoint(sample,'ramp'));
+ const hi=atY>shoulder.y?
+  new THREE.Vector3(...pasgtRingPoint(sample,'top')):shoulder;
  const t=clamp((atY-lo.y)/(hi.y-lo.y));
  const up=hi.clone().sub(lo).normalize();
  const right=side==='front'?new THREE.Vector3(-1,0,0):
@@ -237,14 +240,14 @@ function pasgtSlitOnCloth(
  };
 }
 export const PASGT_SLIT_ANCHORS:readonly PasgtSlitAnchor[]=[
- pasgtSlitOnCloth('front-left','front',-3.38),
- pasgtSlitOnCloth('front-right','front',3.38),
- pasgtSlitOnCloth('right-forward','right',-3.10),
- pasgtSlitOnCloth('right-aft','right',2.45),
- pasgtSlitOnCloth('rear-right','rear',3.25),
- pasgtSlitOnCloth('rear-left','rear',-3.25),
- pasgtSlitOnCloth('left-aft','left',2.45),
- pasgtSlitOnCloth('left-forward','left',-3.10)
+ pasgtSlitOnCloth('front-left','front',-3.38,7.42),
+ pasgtSlitOnCloth('front-right','front',3.38,7.42),
+ pasgtSlitOnCloth('right-forward','right',-3.10,7.25),
+ pasgtSlitOnCloth('right-aft','right',2.45,6.45),
+ pasgtSlitOnCloth('rear-right','rear',3.25,7.15),
+ pasgtSlitOnCloth('rear-left','rear',-3.25,7.15),
+ pasgtSlitOnCloth('left-aft','left',2.45,6.45),
+ pasgtSlitOnCloth('left-forward','left',-3.10,7.25)
 ];
 /** PASGT P5-C: one vertically readable, near-flush strip. Its upper and
  * lower edges lie on the UPRIGHT brim/side/nape surfaces, not the wide
