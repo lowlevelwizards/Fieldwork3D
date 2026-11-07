@@ -101,10 +101,14 @@ try{
    'operatorGradient=piece&operatorShadowColor=plum-plus&'+
    'studioDiagnostics=1';
   const comparisons=[
-   ['aa-pcf',{}],
+   ['aa-soft',{}],
    ['aa-off',{'studioAA':'off'}],
    ['pixel-ratio-2',{'studioPixelRatio':'2'}],
    ['hard-shadow',{'studioShadowFilter':'hard'}],
+   ['pcf-standard',{'studioShadowFilter':'pcf'}],
+   ['soft-fine',{'studioShadowSize':'2048'}],
+   ['pcf-fine',{'studioShadowFilter':'pcf','studioShadowSize':'2048'}],
+   ['soft-legacy-bias',{'studioShadowBias':'legacy'}],
    ['no-live-shadow',{'studioLiveShadows':'off'}],
    ['no-baked-light',{'studioBakedLighting':'off'}],
    ['no-cel-aa',{'studioCelAA':'off'}]
