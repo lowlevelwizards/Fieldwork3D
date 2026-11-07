@@ -94,19 +94,23 @@ test('HERE stroke with valid middle and invalid final clips at first known bound
  }finally{activateSite(null);}
 });
 
-test('appended stroke never silently stops at an earlier waypoint',()=>{
+test('appended stroke clamps to known bounds; later clean drag still reaches its endpoint',()=>{
  const s=newSession(0,undefined,'full-view','standard','hold',level);
  try{
   const a=team(s)[0];
   assert.ok(planMove(s,a.id,{x:160,y:120}));
   const before=JSON.parse(JSON.stringify(a.plan));
+  const outcome={clipped:false,endpoint:{...a.p}};
   assert.equal(planMoveStroke(s,a.id,
-    [{x:192,y:130},{x:235,y:146},{x:-30,y:400}],false,false),false);
+    [{x:192,y:130},{x:235,y:146},{x:-30,y:400}],false,false,outcome),true);
+  assert.equal(outcome.clipped,true);
+  assert.ok(outcome.endpoint.x>=13&&outcome.endpoint.y<320);
+  assert.ok(undoPlan(s,a.id));
   assert.deepEqual(JSON.parse(JSON.stringify(a.plan)),before);
   assert.ok(planMoveStroke(s,a.id,
     [{x:191,y:132},{x:234,y:149}],false,false));
   assert.ok(a.plan.at(-1).p.x>230,
-    'valid release position must remain the actual authored destination');
+    'a clear stroke still ends exactly where the finger released');
   assert.ok(undoPlan(s,a.id),'one gesture should undo together');
   assert.deepEqual(JSON.parse(JSON.stringify(a.plan)),before);
  }finally{activateSite(null);}
