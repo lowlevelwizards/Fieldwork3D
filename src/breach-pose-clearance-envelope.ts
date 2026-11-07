@@ -151,7 +151,7 @@ export {LOW_READY_CONTACT_LIMITS} from './breach-pose-contact-policy.ts';
 export type SleeveContactResult={
  valid:boolean;hardDepth:number;softDepth:number;quality:number;
  contacts:readonly {label:PoseBox['label'];material:ContactMaterial;
-  depth:number;allowed:number;
+  depth:number;allowed:number;region?:PoseContactRegion;
   upperDepth:number;lowerDepth:number;
   upperAllowed:number;lowerAllowed:number;
   upperExcess:number;lowerExcess:number;
@@ -237,6 +237,7 @@ export function evaluateSleeveArmorContact(
    Math.max(0,lower-allowed*.18)/Math.max(.1,allowed);
   quality+=excess*(.5+(volume.material==='rigid'?3:0));
   contacts.push({label:volume.label,material:volume.material,
+   region:volume.region,
    depth,allowed:Math.max(allowed,upperAllowed),
    upperDepth:upper,lowerDepth:lower,
    upperAllowed,lowerAllowed:allowed,

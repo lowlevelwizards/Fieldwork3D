@@ -109,6 +109,22 @@ function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
    stats['minimum'+name+'Ratio']=Math.min(
     stats['minimum'+name+'Ratio']??Infinity,worst);
   }
+  if(stats&&!contact.valid){
+   // Only when explicitly requested (e.g., Lab/CI audit). Do not
+   // allocate or tally contact regions in normal pose solving.
+   for(const c of contact.contacts){
+    if(c.upperExcess>.001){
+     const k=(isSupport?'left':'right')+'-upper-'+
+       (c.region??c.label)+'-'+c.material;
+     stats[k]=(stats[k]??0)+1;
+    }
+    if(c.lowerExcess>.001){
+     const k=(isSupport?'left':'right')+'-lower-'+
+       (c.region??c.label)+'-'+c.material;
+     stats[k]=(stats[k]??0)+1;
+    }
+   }
+  }
   if(!contact.valid)continue;
   const quality=candidate.score+contact.quality*.09;
   if(quality<bestQuality){
