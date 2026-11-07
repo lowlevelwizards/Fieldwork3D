@@ -125,3 +125,38 @@ button{cursor:pointer}
  .arsenal-wb-panel{flex:none;padding:12px}
  .arsenal-wb-hint{font-size:12px}
 }
+
+/* Stage 5: one unified replacement list shared by physical parts and accessories. */
+.arsenal-wb-dirty{display:block;font:600 10px var(--fw-font-action);
+ letter-spacing:.06em;color:var(--fw-text-muted);margin-top:3px}
+.arsenal-wb-panel{overflow-y:auto;max-height:min(69dvh,720px)}
+.arsenal-wb-options-head{display:flex;justify-content:space-between;align-items:center;
+ gap:10px;font:700 11px var(--fw-font-action);color:var(--fw-text-muted)}
+.arsenal-wb-show-all{min-height:36px;padding:7px 10px;border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm);background:var(--fw-panel-deep);color:var(--fw-text);
+ font:700 11px var(--fw-font-action)}
+.arsenal-wb-option-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.arsenal-wb-option{min-height:60px;display:flex;flex-direction:column;justify-content:center;
+ gap:4px;padding:9px 11px;background:var(--fw-panel-deep);color:var(--fw-text);
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);text-align:left;
+ font:600 12px var(--fw-font-action);min-width:0}
+.arsenal-wb-option strong{font-size:13px;line-height:1.2;overflow-wrap:anywhere}
+.arsenal-wb-option small{font-size:10px;color:var(--fw-text-muted);line-height:1.3}
+.arsenal-wb-option[aria-pressed="true"]{border-color:var(--fw-sage);background:var(--fw-control-active)}
+.arsenal-wb-option:disabled{opacity:.62;cursor:not-allowed}
+.arsenal-wb-option:focus-visible,.arsenal-wb-show-all:focus-visible,
+.arsenal-wb-accept:focus-visible{outline:2px solid var(--fw-focus);outline-offset:2px}
+.arsenal-wb-pending{display:flex;flex-direction:column;gap:8px;padding:11px;
+ border:1px solid var(--fw-brass);border-radius:var(--fw-radius-sm);
+ background:var(--fw-panel-deep)}
+.arsenal-wb-pending strong{font:700 14px var(--fw-font-menu)}
+.arsenal-wb-pending p{margin:0;font:500 12px/1.5 var(--fw-font-action)}
+.arsenal-wb-pending-actions{display:flex;gap:7px;flex-wrap:wrap}
+.arsenal-wb-accept{min-height:44px;padding:9px 13px;border:1px solid var(--fw-sage);
+ background:var(--fw-sage);color:var(--fw-bg);border-radius:var(--fw-radius-sm);
+ font:700 12px var(--fw-font-action)}
+@media(max-width:760px){
+ .arsenal-wb-panel{overflow:visible;max-height:none}
+ .arsenal-wb-option-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .arsenal-wb-head .arsenal-wb-actions{flex-wrap:wrap;justify-content:flex-end}
+}
