@@ -35,7 +35,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lighting-r5-') }}
         run: node scripts/smoke-operator-lightmap-r5.mjs
       - name: PASGT P5/P6 actual WebGL material / fit captures
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/pasgt-p5-') || startsWith(github.head_ref, 'feature/pasgt-p6-')) }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/pasgt-p5-') || startsWith(github.head_ref, 'feature/pasgt-p6-') || startsWith(github.head_ref, 'feature/pasgt-p7-') || startsWith(github.head_ref, 'feature/pasgt-p7-')) }}
         run: node scripts/pasgt-p5-visual-capture.mjs
       - uses: actions/upload-artifact@v4
         if: always()
