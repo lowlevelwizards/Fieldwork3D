@@ -6,7 +6,8 @@ import * as THREE from 'three';
 import {stockPocket} from './breach-anatomy.ts';
 import {neutralMannequinWrist} from './operator-mannequin-pose.ts';
 import {solveTwoBone,ARM_LIMITS,type LimbSolution} from './breach-ik.ts';
-import {assessLowReadyArm,assessLowReadyPair} from './breach-low-ready-anatomy.ts';
+import {assessLowReadyArm,assessLowReadyPair,LOW_READY_ANATOMY}
+ from './breach-low-ready-anatomy.ts';
 import {lowReadyArchetype,LOW_READY_PASSES,type LowReadyPass}
  from './breach-low-ready-archetypes.ts';
 import {riflePoseContacts,supportContactAt,
@@ -67,8 +68,12 @@ export function relaxedArmShapeCost(
  shoulder:THREE.Vector3,joint:THREE.Vector3,side:-1|1):number{
  const drop=shoulder.y-joint.y,flare=side*(joint.z-shoulder.z);
  if(drop<.35||flare>5.5)return Infinity;
- return Math.abs(drop-(side===1?5.7:5.2))*.24+
-  Math.max(0,flare-(side===1?1.6:1.9))*.52;
+ return Math.abs(drop-(side===1?
+   LOW_READY_ANATOMY.preferredFiringDrop:
+   LOW_READY_ANATOMY.preferredSupportDrop))*.24+
+  Math.max(0,flare-(side===1?
+   LOW_READY_ANATOMY.preferredFiringFlare:
+   LOW_READY_ANATOMY.preferredSupportFlare))*(side===1?.72:.52);
 }
 function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
  side:-1|1,env:PoseClearanceEnvelope,softScale:number,
