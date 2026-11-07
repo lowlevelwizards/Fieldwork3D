@@ -14,6 +14,8 @@ import {applyOperatorStudioToon,requestedOperatorToonBands}
 import {OperatorStudioLighting} from './operator-studio-lighting.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
+import {readPasgtDetails,PASGT_BANDS,PASGT_CONSTRUCTIONS,PASGT_CONCEALMENTS}
+ from './operator-pasgt-cover-policy.ts';
 import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup,
  HELMET_COVER_OPTIONS,HELMET_RAIL_OPTIONS,HELMET_SHROUD_OPTIONS,
  HELMET_NVG_OPTIONS,HELMET_SCRIM_OPTIONS,HELMET_RETENTION_OPTIONS,
@@ -958,7 +960,7 @@ function renderMaterials(){
   row('HEADWEAR APPEARANCE',
    'All approved hats and helmets are selectable. Appearance does not alter head protection or inventory; the equipped kit controls those.');
   const helmetShell=item==='high-cut-rails'?'high-cut':item;
-  if(isH1ModernHelmet(helmetShell)){
+  if(isH1ModernHelmet(helmetShell)&&helmetShell!=='pasgt'){
    const presets=helmetPresetChoices(helmetShell);
    if(presets.length){
     const quick=row('QUICK HELMET SETUPS','Reference-led modular cosmetics; each setup keeps the equipped protection unchanged.');
@@ -1011,19 +1013,70 @@ function renderMaterials(){
   }
   const solids=headwearColorChoices(item==='high-cut-rails'?'high-cut':item);
   const prints=headwearCamoChoices(item);
-  const group=row('HEADGEAR FINISH','Select an appropriate solid shell/fabric or approved cover print.');
+  const group=row('HEADGEAR FINISH',item==='pasgt'?
+   'Painted composite shell finish — remains selected underneath the cover.':
+   'Select an appropriate solid shell/fabric or approved cover print.');
   if(solids.length){
    const grid=document.createElement('div');grid.className='solid-swatches';
    for(const id of sortHeadwearSolids(solids,w.headwearColor)){
     const info=HEADWEAR_SOLID_COLORS[id];
-    const b=makeButton(info.label,!w.headwearCamo&&
+    const b=makeButton(info.label,(item==='pasgt'||!w.headwearCamo)&&
      (w.headwearColor??solids[0])===id,()=>changeWardrobe({
-      ...current(),headwearColor:id,headwearCamo:undefined}));
+      ...current(),headwearColor:id,
+      // PASGT shell paint and textile cover print are independent channels.
+      headwearCamo:item==='pasgt'?current().headwearCamo:undefined}));
     b.className='swatch';const chip=document.createElement('span');
     chip.className='swatch-chip';
     chip.style.backgroundColor='#'+info.hex.toString(16).padStart(6,'0');
     b.prepend(chip);grid.append(b);
    }group.append(grid);
+  }
+  if(item==='pasgt'){
+   const state=resolveHelmetSetup('pasgt',w.helmetSetup,{
+    hasLegacyPrint:!!w.headwearCamo
+   });
+   const details=readPasgtDetails(w.pasgtDetails,w.helmetSetup);
+   const updateCover=(covered:boolean)=>changeWardrobe({
+    ...current(),helmetSetup:readHelmetSetup({
+     ...current().helmetSetup,cover:covered?'fitted':'none',
+     presetOrigin:undefined
+    })
+   });
+   const coverRow=row('PASGT CLOTH COVER',
+    'One fitted cover. NO COVER exposes painted composite, never camouflaged shell.');
+   addSelect(coverRow,[['none','NO COVER'],['fitted','COVER']] as const,
+    state.setup.cover==='none'?'none':'fitted',id=>updateCover(id==='fitted'));
+   if(state.setup.cover!=='none'){
+    const audition=row('COVER CONSTRUCTION · AUDITION',
+     'Compare restrained foliage slits against wider stitched loops; keep only the stronger look.');
+    addSelect(audition,PASGT_CONSTRUCTIONS.map(id=>[
+     id,id==='slits'?'FIELD FOLIAGE SLITS':'SEWN FOLIAGE LOOPS'] as const),
+     details.construction,id=>changeWardrobe({...current(),
+      pasgtDetails:{...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
+       construction:id as typeof details.construction}}));
+    if(prints.length){
+     const printRow=row('PASGT COVER PATTERN',
+      'Printed textile only. The helmet shell keeps its own solid color.');
+     addCamoSwatches(printRow,prints,w.headwearCamo??null,id=>
+      changeWardrobe({...current(),headwearCamo:id,
+       headwearCamoRoll:w.headwearCamo===id?
+        nextHeadwearCamoRoll(w.headwearCamoRoll):0}),
+      'pasgt-cover',w.fabricCamo?.top??null);
+    }
+   }
+   const bandRow=row('PASGT HELMET BAND',
+    'Three different external arrangements, not tiny buckle variations.');
+   addSelect(bandRow,PASGT_BANDS.map(id=>[
+    id,id==='none'?'NONE':id==='standard'?'STANDARD HORIZONTAL':'CROSSED WEBBING'] as const),
+    details.band,id=>changeWardrobe({...current(),pasgtDetails:{
+     ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
+     band:id as typeof details.band}}));
+   const concealRow=row('PASGT CONCEALMENT',
+    'Choose one strong silhouette treatment rather than stacking garnish.');
+   addSelect(concealRow,PASGT_CONCEALMENTS.map(id=>[id,id.toUpperCase()] as const),
+    details.concealment,id=>changeWardrobe({...current(),pasgtDetails:{
+     ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
+     concealment:id as typeof details.concealment}}));
   }
   if(item==='police-helmet'){
    const pos=row('POLICE PROTECTIVE VISOR',
@@ -1090,7 +1143,7 @@ function renderMaterials(){
     w.beretDrape??'right',value=>changeWardrobe({...current(),
      beretDrape:value as 'left'|'right'}));
   }
-  if(prints.length){
+  if(prints.length&&item!=='pasgt'){
    const printRow=row('COMPATIBLE HEADGEAR PRINTS');
    addCamoSwatches(printRow,prints,w.headwearCamo??null,id=>
     changeWardrobe({...current(),headwearCamo:id,
