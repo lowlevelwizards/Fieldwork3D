@@ -104,6 +104,8 @@ export type OperatorPose={
   poseV3StrictContact?:boolean;
   /** V4 rifle, hand, magazine and controls; enabled for live reloads. */
   poseV4ReloadPreview?:boolean;
+  /** False in live gameplay: skip Lab-only debug arrays and snapshots. */
+  poseDiagnostics?:boolean;
   /** Opt-in Lab reload corridor comparison; never read by game simulation. */
   poseV3ReloadCorridor?:V3ReloadCorridorProfile;
   /** B19 fixed-profile offline handling audition; only read in V3 Lab. */
@@ -527,6 +529,7 @@ const poseMath=new WeakMap<OperatorRig,OperatorPoseScratch>();
 const baseTurnAngles=new WeakMap<OperatorRig,{chest:number;head:number}>();
 
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
+  const diagnosticsEnabled=p.poseDiagnostics!==false;
   // Reconstruct source visibility from the authoritative inventory for
   // EVERY timestamp. A previous render must never make a pickup socket
   // disappear when replay seeks to the same or an earlier frame.
@@ -1373,7 +1376,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     coupled=selected?.solution??null;
     const torsoAssistYaw=selected?.yaw??0;
     if(previewAssist)r.chest.rotation.y+=torsoAssistYaw;
-    r.root.userData.lowReadyPoseReport={
+    r.root.userData.lowReadyPoseReport=diagnosticsEnabled?{
       status:coupled?.status??'unresolved',
       mode:coupled?.mode??'unresolved',weapon:p.weapon,
       fittingYaw:relativeYaw-torsoAssistYaw,torsoAssistYaw,
@@ -1385,7 +1388,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       elbowLeft:coupled?.arms[0].joint.toArray()??null,
       elbowRight:coupled?.arms[1].joint.toArray()??null,
       supportFraction:coupled?.supportFraction??null,
-      candidates:coupled?.candidates??0};
+      candidates:coupled?.candidates??0}:null;
     if(previewReloadSeed){
       // Preserve actual firearm contacts, but never keep the static
       // support elbow during the released-hand reload animation.
@@ -1437,11 +1440,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     });
     const choice=supportSearch.result;
     fit=choice.fit;
-    r.root.userData.poseV3SupportGrip={
+    r.root.userData.poseV3SupportGrip=diagnosticsEnabled?{
       selected:choice.selected,fraction:choice.fraction,
       quality:choice.quality,candidates:choice.candidates,
       cached:supportSearch.cached,reason:choice.reason
-    };
+    }:null;
   }else r.root.userData.poseV3SupportGrip=null;
   // V3 Stage 6b: rotate the *chest* a few degrees and counter-rotate the
   // rigid weapon into its new local frame. World muzzle, stock, firing grip
@@ -1522,7 +1525,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     });
     const result=solve.result;
     const cacheHit=solve.cached;
-    r.root.userData.poseV3CoordinatedReport={
+    r.root.userData.poseV3CoordinatedReport=diagnosticsEnabled?{
       cached:cacheHit===true,
       status:result.status,yaw:result.yaw,leanX:result.leanX,
       candidates:result.candidates,
@@ -1532,7 +1535,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       relaxedContact:!!result.reports?.some(report=>report.relaxedContact),
       strictContactValid:result.reports?.every(report=>
         report.strictContactValid)??false
-    };
+    }:null;
     if(result.status==='clear'&&result.arms){
       coordinatedDynamic=result;
       fit=result.fit;
@@ -1571,7 +1574,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.droppedGun.scale.set(data.lengthScale,1,1);
   r.weapon.rotation.copy(fit.rotation);
   r.weapon.position.copy(fit.origin);
-  if(p.poseV3Preview){
+  if(p.poseV3Preview&&diagnosticsEnabled){
     // Snapshot the actual rendered rigid weapon, including any active
     // partially blended stance. The next Lab tap can retarget from here.
     r.root.userData.presentedWeaponFit={
@@ -1779,7 +1782,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     hardDepth:number;quality:number;
     reachError:number;violations:string[];
     evaluations:number;softScale:number;
-  }>=[];
+  }>|null=diagnosticsEnabled?[]:null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulder=shoulderFor(i);
@@ -1832,7 +1835,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
       if(!coupled&&coordinatedDynamic?.arms){
         const report=coordinatedDynamic.reports![i];
-        v3DynamicReports.push({
+        v3DynamicReports?.push({
           side:i===0?'support':'firing',status:'clear',reason:'valid',
           candidates:6,elbowDrop:report.elbowDrop,
           outwardFlare:report.outwardFlare,
@@ -1901,7 +1904,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const solved=armFit.solution;
     if(armFit.dynamic){
       const dynamic=armFit.dynamic;
-      v3DynamicReports.push({side:i===0?'support':'firing',
+      v3DynamicReports?.push({side:i===0?'support':'firing',
         status:dynamic.status,reason:dynamic.reason,
         candidates:dynamic.candidates,
         elbowDrop:dynamic.report.elbowDrop,
@@ -1927,7 +1930,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     arm.hand.rotation.set(0,p.unarmedPreview||p.surrender?0:
       clamp(fit.rotation.y,-1,1),0);
   }
-  r.root.userData.poseV3DynamicReport=p.poseV3Preview?
+  r.root.userData.poseV3DynamicReport=p.poseV3Preview&&diagnosticsEnabled?
     v3DynamicReports:null;
   // AK rock-in is local to the detached magazine and the gripping palm.
   // No mounted mesh, ballistic transform or gameplay magazine state changes.

@@ -2086,6 +2086,7 @@ export class TacticalScene3D{
       // Shared, bounded inventory projection for both visible containers.
       const carried=actor.equipment?
        carryPlacementLedger(actor.equipment,actor.spareMagazines):[];
+      const carriedMagazines=carried.filter(p=>p.kind==='magazine');
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.traversal?0:actor.velocity,
@@ -2098,8 +2099,9 @@ export class TacticalScene3D{
         // B30: live and replay use the new posing by default.
         // This changes rendered anatomy only, not fixed-step ammo/shot.
         poseV3Preview:true,poseV4ReloadPreview:true,
-        magazineCarryLocations:carried.filter(p=>p.kind==='magazine').map(p=>p.location),
-        magazineCarryItems:carried.filter(p=>p.kind==='magazine'),
+        poseDiagnostics:false,
+        magazineCarryLocations:carriedMagazines.map(p=>p.location),
+        magazineCarryItems:carriedMagazines,
         reloadSelectedMagazineId:actor.reloadSelectedMagazineId,
         medicalCarryLocation:carried.find(p=>p.kind==='medical')?.location,
         utilityCarryLocation:carried.find(p=>p.kind==='utility')?.location,
