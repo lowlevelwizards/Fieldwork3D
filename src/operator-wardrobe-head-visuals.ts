@@ -10,6 +10,10 @@ import type {M56Options} from './operator-ddr-m56-policy.ts';
 import {createM1HelmetCoverLayers,updateM1HelmetCoverLayers,
  type M1HelmetCoverLayers} from './operator-helmet-cover-visuals.ts';
 import type {HelmetCoverConfig} from './operator-helmet-cover-policy.ts';
+import {createModernHelmetCoverLayers,updateModernHelmetCoverLayers,
+ type ModernHelmetCoverLayers} from './operator-helmet-cover-geometry.ts';
+import {resolveHelmetSetup,isH1ModernHelmet,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
+import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
@@ -44,6 +48,7 @@ export type WardrobeHeadLayers={
  m1Cover?:M1HelmetCoverLayers;
  m56Extras?:M56Extras;
  policeVisor?:PoliceVisorLayers;
+ modernCovers:Record<string,ModernHelmetCoverLayers>;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -66,6 +71,10 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  let m1Cover:M1HelmetCoverLayers|undefined;
  let m56Extras:M56Extras|undefined;
  let policeVisor:PoliceVisorLayers|undefined;
+ const modernCovers:Record<string,ModernHelmetCoverLayers>={};
+ const addModernCover=(model:THREE.Group,id:string,shell:string)=>{
+  modernCovers[id]=createModernHelmetCoverLayers(model,shell);
+ };
  // A dedicated face textile material ensures color edits never recolor helmets,
  // uniform sleeves, straps or unrelated body pieces.
  const faceFabric=cloth instanceof THREE.MeshStandardMaterial?
@@ -132,7 +141,10 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // their older multi-cube placeholders with the same canonical, unified
  // silhouette system as the approved ACH and high-cut.
  for(const id of ['boonie','beanie','pasgt','soviet-steel'] as const)
-  headModel(id,true,cap=>cap.add(createHeadwearSilhouette(id,detail(id))));
+  headModel(id,true,cap=>{
+   cap.add(createHeadwearSilhouette(id,detail(id)));
+   if(id==='pasgt')addModernCover(cap,id,id);
+  });
  headModel('police-helmet',true,model=>{
   model.add(createHeadwearSilhouette('police-helmet',detail('police-helmet')));
   policeVisor=createPoliceVisor(model);
@@ -160,14 +172,24 @@ export function createWardrobeHeadLayers(head:THREE.Group,
    if(rail)cube(model,dark,2.0,8.52,0,1.4,.4,2.0);
   });
  };
- headModel('ach',true,model=>model.add(createHeadwearSilhouette('ach',detail('ach'))));
- headModel('high-cut',true,model=>model.add(
-  createHeadwearSilhouette('high-cut',detail('high-cut'))));
+ headModel('ach',true,model=>{
+  model.add(createHeadwearSilhouette('ach',detail('ach')));
+  addModernCover(model,'ach','ach');
+ });
+ headModel('high-cut',true,model=>{
+  model.add(createHeadwearSilhouette('high-cut',detail('high-cut')));
+  addModernCover(model,'high-cut','high-cut');
+ });
  // Rails inherit the approved shell without inventing a new silhouette.
- headModel('high-cut-rails',true,model=>model.add(
-  createHeadwearSilhouette('high-cut',detail('high-cut','high-cut-rails'))));
+ headModel('high-cut-rails',true,model=>{
+  model.add(createHeadwearSilhouette('high-cut',detail('high-cut','high-cut-rails')));
+  addModernCover(model,'high-cut-rails','high-cut');
+ });
  for(const id of ['mich-2001','mich-2002','fast-sf','fast-xp-mid'] as const)
-  headModel(id,true,model=>model.add(createHeadwearSilhouette(id,detail(id))));
+  headModel(id,true,model=>{
+   model.add(createHeadwearSilhouette(id,detail(id)));
+   addModernCover(model,id,id);
+  });
  helmet('skate-helmet',9.65,2,false);
  helmet('bump-helmet',9.1,2,true);
  // D2-A1: fitted canonical -Z fabric shells with real skin-revealing apertures.
@@ -236,14 +258,17 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  const layers:WardrobeHeadLayers={headwear,facewear,eyewear,headset,headwearMaterials,
   faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
   eyewearStrap,maskRubber,deferredEyewear,deferredHeadwear,
-  deferredFacewear,deferredHeadset,twoHoleMouthCover,m1Cover,m56Extras,policeVisor};
+  deferredFacewear,deferredHeadset,twoHoleMouthCover,m1Cover,m56Extras,policeVisor,
+  modernCovers};
  layersRef=layers;return layers;
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  headwear:string,facewear:string,eyewear:string,headset:string,
  d2FaceMode?:string,faceSolid?:D2FaceSolid,d2Eye?:D2AccessoryOptions,
  maskColor?:D2MaskSolid,beretDrape:'left'|'right'='right',
- helmetCover?:HelmetCoverConfig&M56Options&PoliceVisorOptions,camoIdentity='',coverRoll=0){
+ helmetCover?:HelmetCoverConfig&M56Options&PoliceVisorOptions&{
+  helmetSetup?:HelmetSetupV1;headwearCamo?:HeadwearCamoId;
+ },camoIdentity='',coverRoll=0){
  // Update the already allocated material; do not recreate meshes or geometry.
  layers.faceFabric.color.setHex(faceSolid?
   D2_FACE_SOLID_COLORS[faceSolid].hex:layers.faceFabricDefaultHex);
@@ -265,6 +290,16 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  // Only the worn accessories are built on battlefield rigs. Studio and
  // operator labs remain eager; switching a style builds it just once.
  layers.deferredHeadwear[assembly.headwear]?.();
+ const shell=assembly.headwear==='high-cut-rails'?'high-cut':assembly.headwear;
+ const modern=layers.modernCovers[assembly.headwear];
+ if(modern&&isH1ModernHelmet(shell)){
+  const effective=resolveHelmetSetup(shell,helmetCover?.helmetSetup,{
+   hasLegacyPrint:!!helmetCover?.headwearCamo,
+   headset:assembly.headset,eyewear:assembly.eyewear,facewear
+  });
+  updateModernHelmetCoverLayers(modern,shell,effective.setup,
+   helmetCover?.headwearCamo,camoIdentity,coverRoll);
+ }
  if(layers.m1Cover)updateM1HelmetCoverLayers(layers.m1Cover,
   assembly.headwear==='m1-steel'?helmetCover:undefined,camoIdentity,coverRoll);
  if(layers.m56Extras)updateM56Extras(layers.m56Extras,

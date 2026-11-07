@@ -3,6 +3,7 @@
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {readHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {isPoliceVisorPosition,isPoliceVisorTint,isPoliceVisorFrame,type PoliceVisorOptions} from './operator-police-visor-policy.ts';
 import {isM56Details,isM56Net,type M56Options} from './operator-ddr-m56-policy.ts';
 import {isM1956Variant,type M1956Variant} from './operator-m1956-policy.ts';
@@ -165,6 +166,8 @@ export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shir
 export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
  trousers==='acu-trousers'||trousers==='gorka-trousers'?TROUSER_HEMS:['unbloused'] as const;
 export type WardrobeOptions=HelmetCoverConfig&{
+ /** Optional additive H1 modern modular helmet configuration. */
+ helmetSetup?:HelmetSetupV1;
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  /** East German helmet details are appearance-only. */
  m56Details?:M56Options['m56Details'];m56Net?:M56Options['m56Net'];
@@ -306,6 +309,8 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isAliceLc2Load(v.aliceLoad))result.aliceLoad=v.aliceLoad;
  if(isM1956Variant(v.m1956Variant))result.m1956Variant=v.m1956Variant;
  Object.assign(result,readHelmetCoverConfig(v));
+ if(v.helmetSetup&&typeof v.helmetSetup==='object')
+  result.helmetSetup=readHelmetSetup(v.helmetSetup);
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
   result.headwearCamoRoll=v.headwearCamoRoll;
