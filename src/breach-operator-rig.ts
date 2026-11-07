@@ -1338,6 +1338,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       const key=JSON.stringify([p.weapon,coupledConfig.build,
         coupledConfig.slots,look.top,look.armorStyle,look.rigStyle,
         poseWeight,Number(localYaw.toFixed(4)),
+        // Never reuse a forgiving result in the strict audit (or vice
+        // versa) when the same model and outfit are scrubbed in place.
+        !!p.poseV3Preview&&!p.poseV3StrictContact,
         shoulders.map(v=>v.toArray().map(n=>Number(n.toFixed(3))))]);
       const cache=coupledIdleCache.get(r);
       if(cache?.key===key)return cache.solution;
