@@ -168,7 +168,7 @@ jobs:
       - name: Rendering R7.5–R7.6 — shader composition and focused production build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r7-stylized-') }}
         run: |
-          node --experimental-strip-types --test tests/rendering-r7-toon-composition.test.mjs tests/operator-studio-toon-r5.test.mjs tests/operator-pose-cavity-r5.test.mjs tests/rendering-r7-stylized-auditions.test.mjs
+          node --experimental-strip-types --test tests/rendering-r7-toon-composition.test.mjs tests/rendering-r7-thumbnail-async.test.mjs tests/operator-studio-thumbnail-pipeline-perf.test.mjs tests/operator-studio-toon-r5.test.mjs tests/operator-pose-cavity-r5.test.mjs tests/rendering-r7-stylized-auditions.test.mjs
           npm run build
       - name: Rendering R7 — production release preflight
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r7-rendering-') }}
