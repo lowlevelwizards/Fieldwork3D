@@ -98,9 +98,13 @@ import {ReplaySoundTimeline,replayDoorSoundId} from './breach-replay-audio.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {sampleReplayGhosts} from './breach-replay-ghosts.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
-import {buildReplayDebrief,buildReplayExecutionInsights}
-  from './breach-replay-debrief.ts';
-import {makeReplayLoop,advanceReplayLoop} from './breach-replay-loop.ts';
+import {buildReplayExecutionInsights} from './breach-replay-debrief.ts';
+import {indexReplayIncidents,featuredReplayIncidents,type ReplayIncident}
+  from './breach-replay-incidents.ts';
+import {incidentPlaybackWindow,advanceIncidentPlayback}
+  from './breach-replay-incident-playback.ts';
+import {makeReplayLoop,advanceReplayLoop,type ReplayLoopRange}
+  from './breach-replay-loop.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -247,6 +251,12 @@ const ui={
   replayChapterList:el<HTMLElement>('replayChapterList'),
   replayDebriefInfo:el<HTMLOutputElement>('replayDebriefInfo'),
   replayDebriefMoments:el<HTMLElement>('replayDebriefMoments'),
+  replayIncidentDetails:el<HTMLElement>('replayIncidentDetails'),
+  replayIncidentTitle:el<HTMLElement>('replayIncidentTitle'),
+  replayIncidentSummary:el<HTMLOutputElement>('replayIncidentSummary'),
+  replayIncidentWatch:el<HTMLButtonElement>('replayIncidentWatch'),
+  replayIncidentLoop:el<HTMLButtonElement>('replayIncidentLoop'),
+  replayIncidentClose:el<HTMLButtonElement>('replayIncidentClose'),
   replayShotInspector:el<HTMLElement>('replayShotInspector'),
   replayShotTitle:el<HTMLElement>('replayShotTitle'),
   replayShotDetails:el<HTMLOutputElement>('replayShotDetails'),
@@ -730,6 +740,10 @@ let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
 let replayEventIndex:ReplayEventIndex|null=null;
 let replaySoundTimeline:ReplaySoundTimeline|null=null;
 let replayChapters:ReplayChapter[]=[];
+let replayIncidents:ReplayIncident[]=[];
+let replayFeaturedIncidents:ReplayIncident[]=[];
+let selectedReplayIncidentId:string|null=null;
+let replayIncidentPlayback:{range:ReplayLoopRange;loop:boolean}|null=null;
 let replayBookmarks:ReplayBookmark[]=[];
 let replayBookmarkCounter=0;
 let replaySoundEnabled=true;
@@ -3958,6 +3972,8 @@ function applyReplayFrameAt(t:number){
   fogStamp=-1;
 }
 function seekReplay(t:number){
+  // Direct navigation deliberately exits a bounded incident film.
+  replayIncidentPlayback=null;
   if(replayQuickVideo.active)replayQuickVideo.stop();
   stopReplaySounds();
   replayTime=Math.max(0,Math.min(recorder.duration,t));
@@ -4058,59 +4074,96 @@ function renderReplayChapters():void{
  * Movement inspection enables existing planned/actual overlays without
  * changing the recorded film or issuing any gameplay orders.
  */
+function renderReplayIncidentFocus():void{
+  const incident=replayIncidents.find(i=>i.id===selectedReplayIncidentId);
+  ui.replayIncidentDetails.hidden=!incident;
+  if(!incident)return;
+  ui.replayIncidentTitle.textContent=formatReplayTime(incident.start)+' · '+
+    incident.label;
+  ui.replayIncidentSummary.textContent=incident.summary;
+}
 function renderReplayDebrief():void{
-  const moments=buildReplayDebrief(replayEventIndex?.all??[],
-    recorder.duration,5);
   const stalls=buildReplayExecutionInsights(recorder.executionEvents,
     recorder.duration,5).filter(x=>x.end===null||(x.seconds??0)>=.75)
     .slice(0,2);
   const fragment=document.createDocumentFragment();
-  const add=(t:number,kind:string,label:string,detail:string,
-    actor?:string,movement=false):void=>{
+  for(const incident of replayFeaturedIncidents){
     const button=document.createElement('button');
     button.type='button';button.className='replay-debrief-moment';
-    button.dataset.kind=movement?'movement':kind;
-    button.title=detail;
+    button.dataset.kind=incident.kind;
+    button.setAttribute('aria-pressed',
+      String(incident.id===selectedReplayIncidentId));
+    button.title=incident.label+' · '+incident.summary;
     const stamp=document.createElement('span');
     stamp.className='time';
-    stamp.textContent=formatReplayTime(t)+' · '+label;
+    stamp.textContent=formatReplayTime(incident.start)+' · '+incident.label;
     const description=document.createElement('span');
     description.className='detail';
-    description.textContent=detail;
+    description.textContent=incident.summary;
     button.append(stamp,description);
     button.addEventListener('click',()=>{
       replayPlaying=false;
-      if(actor&&team(state).some(a=>a.id===actor)){
-        selected=actor;replayFollowId=actor;
-      }
-      if(movement){
+      selectedReplayIncidentId=incident.id;
+      const friendly=incident.actorIds.find(id=>
+        team(state).some(a=>a.id===id));
+      if(friendly){selected=friendly;replayFollowId=friendly;}
+      if(incident.kind==='movement'){
         replayAnalysis=true;replayPlanScope='selected';
         replayPlanVersion='active';replayTrailMode='recent';
       }
-      seekReplay(t);
-      if(movement)showUiHelp(
-        'RECORDED INTERRUPTION · PLAN + ACTUAL TRAIL',2800);
+      seekReplay(incident.start);
+      renderReplayDebrief();
     });
     fragment.append(button);
-  };
-  const entries=[
-    ...moments.map(x=>({t:x.t,kind:x.kind,label:x.label,
-      detail:x.detail,actor:x.actor,movement:x.kind==='blocked'})),
-    ...stalls.filter(x=>!moments.some(m=>m.kind==='blocked'&&
-      m.actor===x.actor&&Math.abs(m.t-x.t)<.5)).map(x=>({
-      t:x.t,kind:x.kind,label:'ORDER INTERRUPTION',
-      detail:x.detail+' · '+(x.seconds===null?
-        'NO RESOLUTION RECORDED':x.seconds.toFixed(1)+'S UNTIL RESUMED'),
-      actor:x.actor,movement:true
-    }))
-  ].sort((a,b)=>a.t-b.t);
-  for(const item of entries)
-    add(item.t,item.kind,item.label,item.detail,item.actor,item.movement);
+  }
+  for(const stall of stalls.filter(x=>!replayFeaturedIncidents.some(i=>
+    i.kind==='movement'&&i.actorIds.includes(x.actor)&&
+    x.t>=i.start-.5&&x.t<=i.end+.5))){
+    const button=document.createElement('button');
+    button.type='button';button.className='replay-debrief-moment';
+    button.dataset.kind='movement';
+    button.title=stall.detail;
+    const stamp=document.createElement('span');
+    stamp.className='time';
+    stamp.textContent=formatReplayTime(stall.t)+' · ORDER INTERRUPTION';
+    const detail=document.createElement('span');
+    detail.className='detail';
+    detail.textContent=stall.detail+' · '+(stall.seconds===null?
+      'NO RECORDED RESOLUTION':stall.seconds.toFixed(1)+'S');
+    button.append(stamp,detail);
+    button.addEventListener('click',()=>{
+      replayPlaying=false;selectedReplayIncidentId=null;
+      if(team(state).some(a=>a.id===stall.actor)){
+        selected=stall.actor;replayFollowId=stall.actor;
+      }
+      replayAnalysis=true;replayPlanScope='selected';
+      replayPlanVersion='active';replayTrailMode='recent';
+      seekReplay(stall.t);renderReplayDebrief();
+    });
+    fragment.append(button);
+  }
   ui.replayDebriefMoments.replaceChildren(fragment);
-  ui.replayDebriefInfo.textContent=entries.length?
-    moments.length+' KEY MOMENTS'+(stalls.length?
-      ' · '+stalls.length+' MOVEMENT CHECKS':''):
-    'NO RECORDED HIGHLIGHTS';
+  ui.replayDebriefInfo.textContent=replayFeaturedIncidents.length?
+    replayFeaturedIncidents.length+' KEY INCIDENTS':
+    'NO DISCLOSED INCIDENTS';
+  renderReplayIncidentFocus();
+}
+function startReplayIncident(loop:boolean):void{
+  const incident=replayIncidents.find(i=>i.id===selectedReplayIncidentId);
+  if(!incident)return;
+  const range=incidentPlaybackWindow(incident,recorder.duration);
+  if(!range){
+    showUiHelp('INCIDENT TOO SHORT TO PLAY',2500);return;
+  }
+  replayPlaying=false;
+  seekReplay(range.start);
+  replayIncidentPlayback={range,loop};
+  // A/B and incident playback are mutually exclusive control surfaces.
+  replayLoopEnabled=false;
+  replayRate=1;replayPlaying=true;
+  unlockAudio();
+  showReplayToolTab(null);
+  updateReplayHud();
 }
 function rebuildReplayEventIndex():void{
   replayEventIndex=new ReplayEventIndex(recorder.events,
@@ -4118,6 +4171,10 @@ function rebuildReplayEventIndex():void{
   // Only disclosed historical events are eligible for the director.
   replayDirectorCues=buildReplayDirectorCues(replayEventIndex.all);
   replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
+  replayIncidents=indexReplayIncidents(replayEventIndex.all,recorder.duration);
+  replayFeaturedIncidents=featuredReplayIncidents(replayIncidents,5);
+  selectedReplayIncidentId=null;
+  replayIncidentPlayback=null;
   renderReplayChapters();
   renderReplayDebrief();
 }
@@ -4321,6 +4378,9 @@ function exitReplay(){
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   replayChapters=[];replayBookmarks=[];
+  replayIncidents=[];replayFeaturedIncidents=[];
+  selectedReplayIncidentId=null;replayIncidentPlayback=null;
+  ui.replayIncidentDetails.hidden=true;
   closeReplayShotInspector();
   replaySoundTimeline=null;replayMovementHistory=null;stopReplaySounds();
   replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
@@ -4605,6 +4665,12 @@ for(const button of ui.replayTabs.querySelectorAll<HTMLButtonElement>('[data-rep
   });
 }
 ui.replayFeedFilter.addEventListener('change',renderReplayEventFeed);
+ui.replayIncidentWatch.addEventListener('click',()=>startReplayIncident(false));
+ui.replayIncidentLoop.addEventListener('click',()=>startReplayIncident(true));
+ui.replayIncidentClose.addEventListener('click',()=>{
+  replayIncidentPlayback=null;selectedReplayIncidentId=null;
+  renderReplayDebrief();
+});
 ui.replayPrevChapter.addEventListener('click',()=>{
   const chapter=adjacentReplayChapter(replayChapters,replayTime,false);
   if(chapter){replayPlaying=false;seekReplay(chapter.t);}
@@ -6001,14 +6067,26 @@ function tick(now:number){
   }else{accum=0;previousRenderActors=null;}
   if(replaying&&replayPlaying){
     const previousReplayTime=replayTime;
-    const loop=replayLoopEnabled?
-      makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration):null;
-    const step=advanceReplayLoop(replayTime,dt*replayRate,loop,recorder.duration);
-    replayTime=step.time;
-    applyReplayFrameAt(replayTime);
-    if(step.wrapped)stopReplaySounds();
-    else playReplayAudioBetween(previousReplayTime,replayTime);
-    if(!loop&&replayTime>=recorder.duration)replayPlaying=false;
+    if(replayIncidentPlayback){
+      const step=advanceIncidentPlayback(replayTime,dt*replayRate,
+        replayIncidentPlayback.range,replayIncidentPlayback.loop);
+      replayTime=step.time;
+      applyReplayFrameAt(replayTime);
+      if(step.wrapped)stopReplaySounds();
+      else playReplayAudioBetween(previousReplayTime,replayTime);
+      if(step.finished){
+        replayPlaying=false;replayIncidentPlayback=null;stopReplaySounds();
+      }
+    }else{
+      const loop=replayLoopEnabled?
+        makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration):null;
+      const step=advanceReplayLoop(replayTime,dt*replayRate,loop,recorder.duration);
+      replayTime=step.time;
+      applyReplayFrameAt(replayTime);
+      if(step.wrapped)stopReplaySounds();
+      else playReplayAudioBetween(previousReplayTime,replayTime);
+      if(!loop&&replayTime>=recorder.duration)replayPlaying=false;
+    }
   }
   if(replaying)advanceReplayCamera(dt);
   // 079: shot IDs are monotonic, unlike the short-lived shot array length.
