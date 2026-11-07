@@ -11,8 +11,7 @@ import {studioLightLabFromQuery,type StudioLightLabSettings}
  from './operator-studio-light-lab.ts';
 import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
  from './operator-studio-lighting.ts';
-import {applyOperatorStudioToon,requestedOperatorToonBands,
- requestedOperatorRimMode,disposeOperatorStudioToon}
+import {applyOperatorStudioToon,disposeOperatorStudioToon}
  from './operator-studio-toon-lighting.ts';
 import {THUMB_LINEAR_TO_SRGB} from './operator-thumbnail-color.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
