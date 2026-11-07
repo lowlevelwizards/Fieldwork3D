@@ -25,7 +25,9 @@ export function operatorHeightBrightness(
  height:number,profile:OperatorHeightProfile='current'
 ):number{
  const h=THREE.MathUtils.clamp(height/OPERATOR_HEIGHT_REFERENCE,0,1);
- const stops=PROFILE_STOPS[profile];
+ // Preserve the previous single-argument callback API (e.g. array.map(fn)):
+ // Array.map passes its numeric index as argument two, not an art profile.
+ const stops=PROFILE_STOPS[profile]??PROFILE_STOPS.current;
  for(let i=1;i<stops.length;i++){
   const [x1,y1]=stops[i], [x0,y0]=stops[i-1];
   if(h>x1)continue;
