@@ -132,7 +132,7 @@ export function injectStudioGraphicLighting(
  const begin='#include <begin_vertex>',opaque='#include <opaque_fragment>';
  if(!shader.vertexShader.includes(begin)||!shader.fragmentShader.includes(opaque))
   return;
- const {rim,hard,gradient}=opts;
+ const {rim,gradient}=opts;
  const piece=gradient==='piece'||gradient==='piece-rose';
  const violet=hasViolet(gradient);
  if((rim==='off'||rim==='hard'||rim==='pixel')&&!violet&&!piece){
