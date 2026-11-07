@@ -56,7 +56,7 @@ function eligible(source:THREE.MeshStandardMaterial):boolean{
  // Standard Toon intentionally does not implement PBR reflection/normal
  // semantics; preserve those surfaces in their original Standard shader.
  if(source.normalMap||source.bumpMap||source.metalnessMap||
-    source.roughnessMap||source.envMap||source.transmission>0)return false;
+    source.roughnessMap||source.envMap)return false;
  // The existing pose cavity is a reviewed, compatible shared shader hook.
  // Any other onBeforeCompile is left completely untouched for safety.
  return source.userData.fieldworkPoseCavity==='torso'||
@@ -94,7 +94,8 @@ function copySurface(
  * it does not crawl as the camera moves.
  */
 export function injectOperatorRim(
- shader:THREE.Shader,mode:Exclude<OperatorRimMode,'off'>
+ shader:{vertexShader:string;fragmentShader:string},
+ mode:Exclude<OperatorRimMode,'off'>
 ):void{
  const key='#include <opaque_fragment>';
  if(!shader.fragmentShader.includes(key)||
