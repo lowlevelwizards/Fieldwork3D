@@ -58,6 +58,8 @@ function audit(c){
   const movementTicks=Array(4).fill(0);
   const maxBlocked=Array(4).fill(0);
   let finite=true,minFriendlyGap=Infinity,closePairTicks=0;
+  let worstPair=null,firstClosePair=null;
+  const closeZones={approach:0,threshold:0,interior:0,arrival:0};
   toggling(s);
   for(let tick=0;tick<1080;tick++){
    const previous=actors.map(a=>({...a.p}));
@@ -73,8 +75,23 @@ function audit(c){
      arrivals[i]=s.seconds;
     for(let j=i+1;j<4;j++){
      const separation=distance(a.p,actors[j].p);
-     minFriendlyGap=Math.min(minFriendlyGap,separation);
-     if(separation<14)closePairTicks++;
+     if(separation<minFriendlyGap){
+      minFriendlyGap=separation;
+      worstPair={time:+s.seconds.toFixed(3),ids:[a.id,actors[j].id],
+       points:[{...a.p},{...actors[j].p}],
+       distancesToGoals:[distance(a.p,goals[i]),distance(actors[j].p,goals[j])]};
+     }
+     if(separation<14){
+      closePairTicks++;
+      const y=(a.p.y+actors[j].p.y)/2;
+      const zone=y<241?'approach':y<286?'threshold':
+       (distance(a.p,goals[i])<24||distance(actors[j].p,goals[j])<24)?
+       'arrival':'interior';
+      closeZones[zone]++;
+      if(!firstClosePair)
+       firstClosePair={time:+s.seconds.toFixed(3),
+        ids:[a.id,actors[j].id],zone,points:[{...a.p},{...actors[j].p}]};
+     }
     }
    }
    if(arrivals.every(t=>t!==null))break;
@@ -89,7 +106,7 @@ function audit(c){
    passageWaitSeconds:passageWaitTicks.map(t=>+(t/30).toFixed(3)),
    movementTicks,maxBlockedSeconds:maxBlocked.map(t=>+t.toFixed(3)),
    minFriendlyGap:+minFriendlyGap.toFixed(2),
-   closePairTicks,
+   closePairTicks,closeZones,firstClosePair,worstPair,
    authoredOrderIdsPreserved:actors.every((a,i)=>
     a.plan.every(n=>authored[i].includes(n.id))),
    finalPositions:actors.map(a=>({id:a.id,p:a.p,remaining:a.plan.length}))
