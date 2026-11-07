@@ -346,6 +346,22 @@ export const PASGT_SLIT_ANCHORS:readonly PasgtSlitAnchor[]=[
  * lower edges lie on the UPRIGHT brim/side/nape surfaces, not the wide
  * diagonal shoulder. Two prebuilt profiles allow bare-shell and cover fit.
  */
+/** Shared actual band-surface frame. Net ties and elastic band use
+ * identical perimeter coordinates, even after a crown/cover reshape.
+ */
+export function pasgtBandSurfacePoint(s:PasgtRingSample,covered=true,
+ y=5.60):readonly [number,number,number]{
+ const sideWidth=covered?SIDE+.065:ear.x+ear.width/2+.055;
+ const frontZ=covered?PEAK_FRONT-.065:peak.z-peak.depth/2-.055;
+ const rearZ=covered?NAPE_REAR+.065:rear.z+rear.depth/2+.055;
+ const frontShift=frontZ-FRONT,rearShift=rearZ-REAR;
+ if(s.side==='front')return [s.x/X*sideWidth,y,frontZ];
+ if(s.side==='rear')return [s.x/X*sideWidth,y,rearZ];
+ const f=clamp((-3.4-s.z)/(-3.4-FRONT));
+ const b=clamp((s.z-4.3)/(REAR-4.3));
+ return [s.side==='right'?sideWidth:-sideWidth,y,
+  s.z+frontShift*f+rearShift*b];
+}
 export function createPasgtBandGeometry(covered=true):THREE.BufferGeometry{
  const positions:number[]=[],uvs:number[]=[];
  const push=(p:readonly number[],uv:readonly number[])=>{
@@ -355,18 +371,8 @@ export function createPasgtBandGeometry(covered=true):THREE.BufferGeometry{
   ua:readonly number[],ub:readonly number[],uc:readonly number[])=>{
   push(a,ua);push(b,ub);push(c,uc);
  };
- const sideWidth=covered?SIDE+.065:ear.x+ear.width/2+.055;
- const frontZ=covered?PEAK_FRONT-.065:peak.z-peak.depth/2-.055;
- const rearZ=covered?NAPE_REAR+.065:rear.z+rear.depth/2+.055;
- const frontShift=frontZ-FRONT,rearShift=rearZ-REAR;
- const project=(s:PasgtRingSample,y:number):readonly [number,number,number]=>{
-  if(s.side==='front')return [s.x/X*sideWidth,y,frontZ];
-  if(s.side==='rear')return [s.x/X*sideWidth,y,rearZ];
-  const f=clamp((-3.4-s.z)/(-3.4-FRONT));
-  const b=clamp((s.z-4.3)/(REAR-4.3));
-  return [s.side==='right'?sideWidth:-sideWidth,y,
-   s.z+frontShift*f+rearShift*b];
- };
+ const project=(s:PasgtRingSample,y:number)=>
+  pasgtBandSurfacePoint(s,covered,y);
  // 0.72 model-unit vertical width, ~0.065 unit protrusion from the
  // surrounding material. Keeping both Y levels on vertical faces prevents
  // another shelf / projecting roof, even for the covered brow.

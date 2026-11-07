@@ -6,6 +6,7 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {
  PASGT_SLIT_ANCHORS,createPasgtBandGeometry,
  PASGT_RING_SAMPLES,PASGT_COVER_TOP_Y,pasgtRingPoint,
+ pasgtBandSurfacePoint,
  pasgtSlitAtlasUv,PASGT_ATLAS_WIDTH,PASGT_ATLAS_HEIGHT,
  type PasgtRingSample
 } from './operator-pasgt-drape-geometry.ts';
@@ -281,17 +282,15 @@ function netDrape(edge:NetEdge):readonly (readonly number[])[]{
  };
  const shoulder=shift(pasgtRingPoint(s,'shoulder'),.10);
  const ramp=shift(pasgtRingPoint(s,'ramp'),.12);
- const hem=pasgtRingPoint(s,'hem');
- // Net is gathered into the elastic height instead of dangling down
- // as a set of unsupported external poles.
- const t=Math.max(0,Math.min(1,(ramp[1]-5.43)/(ramp[1]-hem[1])));
- const lowerUnshifted=ramp.map((v,i)=>v*(1-t)+hem[i]*t);
- const lower=shift(lowerUnshifted,.32);
- // Tuck the final portion beneath the fabric band so it reads as held,
- // rather than as six wires standing on top of a rim.
- const outwardContact=new THREE.Vector3(outward[0],outward[1],outward[2]).multiplyScalar(.09);
- lower[0]-=outwardContact.x;
- lower[2]-=outwardContact.z;
+ // Tie point sits *inside* the real fitted band mesh, rather than
+ // resting on the outer apron as a dangling free-end. All six net
+ // segments use the same perimeter projection as the elastic strip.
+ const contact=pasgtBandSurfacePoint(s,true,5.59);
+ const lower=[
+  contact[0]-outward[0]*.16,
+  contact[1],
+  contact[2]-outward[2]*.16
+ ];
  // The fabric net wraps off the crown and diagonally across the shoulder.
  // Terminate at the retaining-band level instead of making long vertical
  // roof-trellis supports that hang into the nape/ear gap.
