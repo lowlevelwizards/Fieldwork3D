@@ -497,6 +497,7 @@ function posePreview(){
    const result=applyOperatorStudioToon(rig.root,toon,
     requestedOperatorRimMode(location.search));
    canvas.dataset.operatorToonBands=String(toon);
+   canvas.dataset.operatorRimMode=requestedOperatorRimMode(location.search);
    canvas.dataset.operatorToonMeshes=String(result.meshes);
   }
  }
