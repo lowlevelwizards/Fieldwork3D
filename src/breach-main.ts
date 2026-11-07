@@ -4992,6 +4992,10 @@ if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
     seek:(time:number)=>boolean;
     stop:()=>void;
     diagnostic:()=>ReturnType<TacticalScene3D['inspectReplayBodycamQa']>|null;
+    /** Read-only candidate taps; browser must author with real pointer input. */
+    routeCandidates:()=>Array<{world:Pt;screen:Pt}>;
+    planned:()=>{actorId:string;path:Pt[]}|null;
+    motionSamples:()=>Array<{at:number;p:Pt;heading:number}>;
   };
   const qa:BodycamQa={
     activate(mount){
@@ -5026,7 +5030,39 @@ if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
       fogStamp=-1;
       if(replaying)updateReplayHud();
     },
-    diagnostic:()=>stage?.inspectReplayBodycamQa()??null
+    diagnostic:()=>stage?.inspectReplayBodycamQa()??null,
+    routeCandidates(){
+      if(replaying||!stage||state.phase!=='planning')return [];
+      const actor=team(state)[0];if(!actor)return [];
+      const result:Array<{world:Pt;screen:Pt}>=[];
+      for(const radius of [55,78,105,42])
+        for(const bearing of [0,-.6,.6,-1.15,1.15,2.1,-2.1]){
+          const angle=actor.heading+bearing;
+          const world={x:actor.p.x+Math.cos(angle)*radius,
+            y:actor.p.y+Math.sin(angle)*radius};
+          if(!intelPassable(world,state.intel,SQUEEZE_RADIUS))continue;
+          const screen=worldToScreen(world,0);
+          if(screen.x<35||screen.x>cssW-35||
+             screen.y<85||screen.y>cssH-200)continue;
+          if(team(state).some(a=>distance(
+             worldToScreen(a.p,24),screen)<38))continue;
+          result.push({world,screen});
+        }
+      return result;
+    },
+    planned(){
+      const actor=team(state)[0];
+      return actor?{actorId:actor.id,
+        path:actor.plan.filter(n=>n.kind==='move').map(n=>({...n.p}))}:null;
+    },
+    motionSamples(){
+      const id=team(state)[0]?.id;
+      if(!id)return [];
+      return recorder.frames.flatMap(f=>{
+        const actor=f.actors.find(a=>a.id===id);
+        return actor?[{at:f.t,p:{...actor.p},heading:actor.heading}]:[];
+      });
+    }
   };
   (window as typeof window&{__fieldworkBodycamQa?:BodycamQa})
     .__fieldworkBodycamQa=qa;
