@@ -1827,7 +1827,14 @@ function fitZoom(next:number,x=cssW/2,y=cssH/2){
 function cameraMode(mode:ViewMode){
   if(replaying&&replayBodycamOn&&mode!=='iso')stopReplayBodycam();
   viewMode=stage?mode:'plan2d';
-  if(replaying&&viewMode!=='plan2d')replayGroundLensOn=false;
+  if(replaying){
+    if(viewMode!=='plan2d')replayGroundLensOn=false;
+    // Resolve follow/director compatibility for every perspective-change path,
+    // including personal ground review and legacy advanced-view actions.
+    replayCameraMode=resolvedReplayCamera(replayCameraMode,
+      viewMode as ReplayPerspective,!!stage,replayBodycamOn);
+    replayFollow=replayCameraMode==='operator';
+  }
   if(stage){stage.setMode(viewMode);stage.updateCamera(1);}
   for(const [m,button] of [['iso',ui.viewIso],
     ['top',ui.viewTop],['plan2d',ui.view2d]] as const){
@@ -4819,7 +4826,7 @@ function updateReplayHud(){
   ui.replayDirector.setAttribute('aria-pressed',String(replayCameraMode==='director'));
   ui.replaySquad.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
   ui.replayDirector.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
-  ui.replayFollow.disabled=replayBodycamOn;
+  ui.replayFollow.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
   ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
   ui.replayPlans.textContent='PLANS '+replayPlanScope.toUpperCase();
   ui.replayPlanVersion.textContent='PLAN '+replayPlanVersion.toUpperCase();
