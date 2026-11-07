@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {PASGT_SLIT_ANCHORS} from '../src/operator-pasgt-drape-geometry.ts';
 import {createPasgtFieldDress,createPasgtSlitGeometry} from '../src/operator-pasgt-field-dress.ts';
 test('PASGT slit positions are surface-derived and clear the band',()=>{
- assert.equal(PASGT_SLIT_ANCHORS.length,8);
+ assert.equal(PASGT_SLIT_ANCHORS.length,12);
  assert.equal(new Set(PASGT_SLIT_ANCHORS.map(a=>a.id)).size,8);
  assert.ok(PASGT_SLIT_ANCHORS.filter(s=>s.position[1]>7.1).length>=5,
   'upper fabric slits support foliage that breaks crown silhouette');
@@ -21,8 +21,8 @@ test('PASGT slit positions are surface-derived and clear the band',()=>{
   assert.ok(normal.length()>0.98&&normal.length()<1.02);
  }
  const g=createPasgtSlitGeometry();
- assert.equal(g.userData.pasgtSlitCount,8);
- assert.equal(g.getAttribute('position').count,48);
+ assert.equal(g.userData.pasgtSlitCount,12);
+ assert.equal(g.getAttribute('position').count,72);
 });
 test('slits and attachments share consistent physical mount positions',()=>{
  const root=new THREE.Group(),v=createPasgtFieldDress(root);

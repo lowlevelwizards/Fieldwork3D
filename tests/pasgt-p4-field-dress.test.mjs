@@ -8,9 +8,9 @@ import {
 import {PASGT_SLIT_ANCHORS} from '../src/operator-pasgt-drape-geometry.ts';
 test('all PASGT leaf and scrim cards really attach to slit anchors',()=>{
  const root=new THREE.Group(),v=createPasgtFieldDress(root);
- assert.equal(PASGT_SLIT_ANCHORS.length,8);
- assert.equal(v.foliage.children.length,6);
- assert.equal(v.scrim.children.length,6);
+ assert.equal(PASGT_SLIT_ANCHORS.length,12);
+ assert.equal(v.foliage.children.length,10);
+ assert.equal(v.scrim.children.length,10);
  for(const g of [...v.foliage.children,...v.scrim.children]){
   assert.ok(PASGT_SLIT_ANCHORS.some(a=>
    a.position[0]===g.position.x&&a.position[2]===g.position.z));
