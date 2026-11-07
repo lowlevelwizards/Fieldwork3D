@@ -45,7 +45,7 @@ import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,
  continuousElbowPole} from './breach-unified-upper-body.ts';
 import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
-import type {HandlingProfile} from './breach-handling-profiles.ts';
+import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import type {HandlingTransition} from './breach-handling-transition.ts';
 import {sampleHandlingTransition,sampleCarryTransition}
  from './breach-pose-transition-director.ts';
@@ -1561,6 +1561,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // destination paired fit as the elbow-pole destination throughout
   // the blend, rather than swapping from generic IK to paired IK
   // on the final frame (the observed elbow snap).
+  // Snapshot the DIRECT destination fit before interpolating the
+  // presentation. An unresolved coordinated pose has no paired elbow:
+  // its real destination is the accepted dynamic/legacy fallback.
+  const authoredDestinationFit=fit;
   const authoredBridge=authoredLabSwitch&&
     !!activeTransition?.authoredFrom&&activeTransition.alpha<1;
   if(authoredBridge)
@@ -1897,8 +1901,48 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       // One direct, contact-constrained arc from the displayed elbow
       // toward the actual destination solver's preferred bend. There
       // is no intermediate 'ready' elbow, nor a new elbow at completion.
-      const toJoint=destinationArms?.[i]?.joint??
-        shoulder.clone().add(wanted);
+      let targetJoint=destinationArms?.[i]?.joint;
+      if(authoredBridge&&!targetJoint){
+        // The coordinated search can reject a heavy or close-quarters
+        // kit (notably SHORT). Compute the *same* finite fallback arm
+        // as the final settled frame and make that the transition's
+        // elbow destination. Never retarget to a guessed generic pole,
+        // then jump to the actual dynamic candidate at alpha=1.
+        const base=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
+        const endProfile=handlingProfile(handling,p.weapon);
+        const shoulderWeight=handling==='low'&&
+          !!p.weaponConfiguration?.build?0:poseWeight;
+        const targetShoulder=P(
+          base.x+shoulderWeight*(i===0?
+            endProfile.supportShoulderForward:
+            endProfile.firingShoulderForward),
+          base.y+shoulderWeight*endProfile.shoulderLift,
+          base.z-sign*shoulderWeight*endProfile.shoulderInward);
+        const endWrist=i===0?authoredDestinationFit.support:
+          authoredDestinationFit.primary;
+        const endCorridor=elbowCorridor(handling,sign as -1|1,endProfile);
+        const targetPole=P(endCorridor.x,endCorridor.y,endCorridor.z)
+          .sub(targetShoulder);
+        const settled=solveUnifiedFallbackArm({
+          shoulder:targetShoulder,
+          wrist:clampReach(targetShoulder,endWrist,19.92),
+          desired:endWrist,preferredPole:targetPole,
+          previousBend:P(3,-9,sign*.5),side:sign as -1|1,
+          neutral:false,down:false,surrender:false,firing:false,
+          sourceContinuity:false,envelope:dynamicEnvelope,
+          mode:handling==='ads'?'aim':'carry',
+          allowVisualOverlap:!!p.poseV3Preview&&
+            !p.poseV3StrictContact,
+          curatedSupport:false,familyLow,
+          legacyFront:p.equipment?.slots.armor==='armor-carrier'?9.8:
+            p.equipment?.slots.armor==='armor-soft'?8.8:7.1,
+          scratch,armIndex:i as 0|1
+        });
+        // Scratch results are reused by the current arm after this.
+        // Copy only the pure target coordinate.
+        targetJoint=settled.solution.joint.clone();
+      }
+      const toJoint=targetJoint??shoulder.clone().add(wanted);
       wanted.copy(continuousElbowPole(shoulder,wrist,
         sourceArm.elbow,toJoint,sign as -1|1,
         lowReadyBlendPhase(activeTransition.alpha)));
