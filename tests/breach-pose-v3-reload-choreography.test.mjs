@@ -110,3 +110,24 @@ test('B15 AK rock-in is bounded, exact at feed-lip contact and replay-stable',()
   assert.ok(Math.abs(b-a)<.0005,'smooth pivot boundary '+t);
  }
 });
+
+test('B18 alternative corridors keep exact mounting frames and smooth handoff',()=>{
+ for(const corridor of ['canonical','compact','outboard']){
+  for(const t of [0,.20,.30,.32,.75,.82,.90,1]){
+   const variant=choreographV3ReloadHand({...input,
+    family:'ak',corridor,progress:t}).target;
+   const baseline=choreographV3ReloadHand({...input,
+    family:'ak',corridor:'canonical',progress:t}).target;
+   assert.ok(variant.distanceTo(baseline)<1e-10,
+    corridor+'/exact magazine socket '+t);
+  }
+  for(const t of [.20,.32,.75,.82,.90]){
+   const a=choreographV3ReloadHand({...input,
+    family:'ak',corridor,progress:t-.000001}).target;
+   const b=choreographV3ReloadHand({...input,
+    family:'ak',corridor,progress:t+.000001}).target;
+   assert.ok(a.distanceTo(b)<.005,
+    corridor+'/continuous handoff '+t);
+  }
+ }
+});

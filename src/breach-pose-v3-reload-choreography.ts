@@ -97,12 +97,7 @@ export function choreographV3ReloadHand(
  // Choose one profile for a whole replayed action, not frame-to-frame.
  if(input.family&&input.mode!=='shells'&&
     input.corridor&&input.corridor!=='canonical'){
-  // Legacy AK magazine withdrawal starts its detour immediately rather
-  // than staying tight against the plate until the transit midpoint.
-  // Power >1 keeps endpoint velocity zero; sockets stay bit-exact.
-  const transit=input.corridor==='compact'&&t>.32&&t<.75?
-    Math.sin(Math.PI*clamp((t-.32)/.43))**1.2:
-    bump(t,.32,.75);
+  const transit=bump(t,.32,.75);
   const approach=bump(t,.12,.20);
   const insert=bump(t,.75,.82);
   const recovery=bump(t,.90,1);

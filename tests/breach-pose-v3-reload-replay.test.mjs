@@ -38,15 +38,21 @@ const snapshot=r=>{
  const spin=o=>o.getWorldQuaternion(new THREE.Quaternion());
  return {gun:point(r.weapon),gunQ:spin(r.weapon),
   left:point(r.arms[0].hand),right:point(r.arms[1].hand),
-  mag:r.detachedMagazine.visible?point(r.detachedMagazine):null};
+  leftQ:spin(r.arms[0].hand),rightQ:spin(r.arms[1].hand),
+  mag:r.detachedMagazine.visible?point(r.detachedMagazine):null,
+  magQ:r.detachedMagazine.visible?spin(r.detachedMagazine):null};
 };
 const equal=(a,b,label)=>{
  for(const k of ['gun','left','right']){
   assert.ok(a[k].distanceTo(b[k])<1e-6,label+'/'+k);
  }
- assert.ok(a.gunQ.angleTo(b.gunQ)<1e-6,label+'/gunQ');
+ for(const k of ['gunQ','leftQ','rightQ'])
+  assert.ok(a[k].angleTo(b[k])<1e-6,label+'/'+k);
  assert.equal(!!a.mag,!!b.mag,label+'/mag visibility');
- if(a.mag)assert.ok(a.mag.distanceTo(b.mag)<1e-6,label+'/mag');
+ if(a.mag){
+  assert.ok(a.mag.distanceTo(b.mag)<1e-6,label+'/mag');
+  assert.ok(a.magQ.angleTo(b.magQ)<1e-6,label+'/magQ');
+ }
 };
 test('V3 seek to reload phase reproduces the same weapon, hands and magazine',()=>{
  for(const fixture of fixtures){
@@ -54,7 +60,7 @@ test('V3 seek to reload phase reproduces the same weapon, hands and magazine',()
   const played=createOperatorRig(fixture.id,'blue',true);
   const sought=createOperatorRig(fixture.id,'blue',true);
   try{
-   for(const p of [.04,.2,.37,.61,.78,.92]){
+   for(const p of [.04,.2,.37,.40,.53,.61,.78,.92]){
     const pose={...state,seconds:2+2*p,reload:1.8*(1-p)};
     // Step through prior pose(s) on the same rig first. The second rig
     // starts directly at the sought timestamp without any motion history.
@@ -112,4 +118,21 @@ test('V3 reload begins from the physically solved low-ready rifle, not generic p
     f.id+'/start-of-reload receiver must not snap');
   }finally{idle.dispose();reload.dispose();}
  }
+});
+
+test('B18 four independently posed operators cannot contaminate replay state',()=>{
+ const rigs=[0,1,2,3].map(i=>createOperatorRig('v3-four-'+i,'blue',true));
+ const states=rigs.map((_,i)=>{
+  const f=fixtures[i%2];
+  const progress=[.4,.53,.78,.92][i];
+  return {...base(f),seconds:3.1+i*.2,
+   reload:1.8*(1-progress),reloadDuration:1.8};
+ });
+ try{
+  for(let i=0;i<4;i++)poseOperator(rigs[i],states[i],0);
+  const before=rigs.map(snapshot);
+  for(let i=3;i>=0;i--)poseOperator(rigs[i],states[i],0);
+  rigs.forEach((rig,i)=>equal(snapshot(rig),before[i],
+   'B18/four operators/'+i));
+ }finally{for(const rig of rigs)rig.dispose();}
 });
