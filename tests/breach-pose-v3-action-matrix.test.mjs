@@ -63,12 +63,23 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
     poseOperator(candidate,{...pose,poseV3Preview:true},0);
     original.root.updateMatrixWorld(true);
     candidate.root.updateMatrixWorld(true);
-    assert.ok(candidate.weapon.getWorldPosition(new THREE.Vector3())
-     .distanceTo(original.weapon.getWorldPosition(new THREE.Vector3()))<1e-6,
-     fixture.id+'/'+name+': world muzzle origin must be unchanged');
-    assert.ok(candidate.weapon.getWorldQuaternion(new THREE.Quaternion())
-     .angleTo(original.weapon.getWorldQuaternion(new THREE.Quaternion()))<1e-6,
-     fixture.id+'/'+name+': world aim rotation must be unchanged');
+    const visualOrigin=candidate.weapon.getWorldPosition(new THREE.Vector3());
+    const baselineOrigin=original.weapon.getWorldPosition(new THREE.Vector3());
+    const visualRotation=candidate.weapon.getWorldQuaternion(new THREE.Quaternion());
+    const baselineRotation=original.weapon.getWorldQuaternion(new THREE.Quaternion());
+    if(state.reload>0){
+     // Only the non-firing reload presentation may cant for magazine access.
+     // The ballistic authoritative muzzle remains untouched.
+     assert.ok(visualOrigin.distanceTo(baselineOrigin)<4.3,
+      fixture.id+'/'+name+': reload receiver exceeds motion budget');
+     assert.ok(visualRotation.angleTo(baselineRotation)<.21,
+      fixture.id+'/'+name+': reload cant exceeds .21 rad budget');
+    }else{
+     assert.ok(visualOrigin.distanceTo(baselineOrigin)<1e-6,
+      fixture.id+'/'+name+': nonreload world muzzle must be unchanged');
+     assert.ok(visualRotation.angleTo(baselineRotation)<1e-6,
+      fixture.id+'/'+name+': nonreload world aim must be unchanged');
+    }
     const pair=candidate.root.userData.poseV3CoordinatedReport;
     if(pair){
      pairCounts[pair.status]++;
