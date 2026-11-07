@@ -4,6 +4,9 @@ on:
     paths:
       - 'operator-studio.html'
       - 'src/operator-studio.ts'
+      - 'src/operator-studio-toon-lighting.ts'
+      - 'src/operator-visual-kit.ts'
+      - 'scripts/smoke-operator-r7-shader.mjs'
       - 'src/operator-studio.css'
       - 'src/operator-appearance-grid.ts'
       - 'src/operator-garment-color-policy.ts'
@@ -34,6 +37,9 @@ jobs:
       - name: R5 UV1 self-shadow atlas — actual mobile WebGL proof
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lighting-r5-') }}
         run: node scripts/smoke-operator-lightmap-r5.mjs
+      - name: Rendering R7 — opt-in cel, pose cavity and pixel rim WebGL smoke
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r7-stylized-') }}
+        run: node scripts/smoke-operator-r7-shader.mjs
       - name: PASGT P5/P6/P7 actual WebGL material / fit captures
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/pasgt-p5-') || startsWith(github.head_ref, 'feature/pasgt-p6-') || startsWith(github.head_ref, 'feature/pasgt-p7-')) }}
         run: node scripts/pasgt-p5-visual-capture.mjs
