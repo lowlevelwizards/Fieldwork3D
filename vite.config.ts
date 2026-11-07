@@ -13,6 +13,7 @@ export default defineConfig({
       world: 'world.html',
       study: 'study.html',
       breach: 'breach.html',
+      arsenal: 'arsenal.html',
       breachVisualLab: 'breach-visual-lab.html',
       operatorLab: 'operator-lab.html',
       operatorStudio: 'operator-studio.html',
