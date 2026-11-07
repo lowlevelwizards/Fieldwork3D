@@ -2172,3 +2172,13 @@ html,body{font-family:var(--fw-font-menu)}
     scroll-behavior:auto!important
   }
 }
+
+
+/* Replay UX V2 Stage 7 — compact, accessible panel header.
+ * Keep the close control usable in scrolling mobile drawers. */
+.replay-drawer-head{min-height:44px}
+.replay-drawer-head #replayDrawerClose{min-width:44px;min-height:44px}
+.replay-drawer-head strong{font-size:13px}
+.replay-panel .replay-utility button[aria-expanded="true"]{
+  border-color:#d6c493;color:#fff0cc
+}
