@@ -13,8 +13,11 @@ test('each observer discovers corpses independently without full-view shortcut',
   const blue=s.operators.filter(a=>a.side==='blue');
   const dead=s.operators.find(a=>a.side==='red');
   assert.ok(dead&&blue.length>=2);
-  dead.health=0;dead.p={...blue[0].p};
-  blue[1].p={x:blue[0].p.x+850,y:blue[0].p.y+850};
+  // A clear exterior test ray, not a zero-length observer/body vector
+  // (the optical slab test is allowed to reject that degenerate ray).
+  blue[0].p={x:-10000,y:-10000};blue[0].heading=0;
+  dead.health=0;dead.p={x:-9980,y:-10000};
+  blue[1].p={x:-9000,y:-9000};
   s.intel.mode='full-view';
   const rec=new MissionRecorder();
   rec.capture(s,true);
