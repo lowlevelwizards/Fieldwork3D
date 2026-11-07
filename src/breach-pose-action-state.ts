@@ -4,7 +4,7 @@
  * One call per pose evaluation, shared by legacy/V3/V4 rig branches.
  */
 import type {OperatorPose} from './breach-operator-rig.ts';
-import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
+import {resolvePoseContactOwners} from './breach-pose-contacts.ts';
 
 export type PoseActionSource=Pick<OperatorPose,
  'seconds'|'lastThrowAt'|'lastDoorAt'|'doorPoint'|'doorMethod'|
