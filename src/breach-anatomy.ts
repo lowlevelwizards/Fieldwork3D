@@ -19,7 +19,11 @@ export function stockPocket(mode:Handling):Anchor3{
     case 'high':return {x:1.15,y:5.6,z:6.61};
     case 'low':return {x:1.48,y:3.0,z:6.64};
     case 'ready':return {x:1.62,y:4.5,z:6.61};
-    case 'short':return {x:-2.15,y:-2.0,z:6.93};
+    // Short-stock: tuck the butt under the firing arm, OUTSIDE the right
+    // shoulder rather than centering the receiver against the sternum.
+    // +Z is the firing/right side in the legacy anatomical frame.
+    // The exact same rigid fit feeds live presentation and shot-time muzzle.
+    case 'short':return {x:-2.15,y:-2.0,z:9.35};
     case 'point':return {x:2.44,y:5.3,z:6.61};
     case 'ads':return {x:2.07,y:7.5,z:6.60};
   }
