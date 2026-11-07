@@ -108,3 +108,17 @@ test('A8: physically different approach lanes are not serialized',()=>{
  assert.deepEqual(passageFollowerStep(follow,[door],[follow,lead],wanted),
   wanted);
 });
+
+test('A10: destination-settling steer improves gap without canceling progress',async()=>{
+ const {friendlyPassingStep}=await import('../src/breach-friendly-traffic.ts');
+ const from=at(0,0),wanted=at(2,0),goal=at(14,0),peer=at(8,0);
+ const next=friendlyPassingStep(from,wanted,goal,[peer],()=>true);
+ assert.ok(d(next,peer)>d(wanted,peer)+.01,
+  'a free lateral alternative should help avoid converging destinations');
+ assert.ok(d(from,goal)-d(next,goal)>=.8,
+  'soft avoidance must retain substantial forward progress');
+ assert.ok(d(from,next)<=2.001,'never invent extra movement speed');
+ assert.deepEqual(peer,at(8,0));
+ assert.deepEqual(friendlyPassingStep(from,wanted,goal,[peer],
+  ()=>false),wanted,'unsafe sidesteps always fail open');
+});
