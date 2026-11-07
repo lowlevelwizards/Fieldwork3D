@@ -7,10 +7,14 @@ import {readFileSync} from 'node:fs';
 test('177: firing-side buttplate seats in padded upper pec, not outside arm',()=>{
  for(const mode of ['high','low','ready','point','ads','short']){
   const p=stockPocket(mode);
-  assert.ok(p.z>=6.35&&p.z<7.1);
+  if(mode==='short'){
+   // The short-stock butt is under the firing armpit, not planted into
+   // the normal upper-pec shoulder seat.
+   assert.ok(p.z>8.6&&p.z<10);
+  }else assert.ok(p.z>=6.35&&p.z<7.1);
   const fit=fitWeaponPose({weapon:'carbine',handling:mode,
    yaw:0,recoil:0});
-  assert.ok(fit.stock.z<(mode==='short'?7.4:7.1));
+  assert.ok(fit.stock.z<(mode==='short'?10.1:7.1));
   assert.ok(fit.stockError<3);
  }
  const src=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');

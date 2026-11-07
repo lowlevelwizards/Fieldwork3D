@@ -67,7 +67,14 @@ test('retarget-ready to short stock follows directly interpolated gun, no interm
    const alpha=step/64;
    const f=frame(r,'short',transition('ready','short',source,alpha),
     2+alpha*.32);
-   if(previous)maxJump=Math.max(maxJump,distance(previous,f));
+   if(previous){
+    const d=distance(previous,f);
+    if(d>3)console.log('READY_SHORT_JUMP',step,alpha,'total',d,
+      'gun',previous.gun.distanceTo(f.gun),
+      'hands',previous.hands.map((h,i)=>h.distanceTo(f.hands[i])),
+      'elbows',previous.elbows.map((h,i)=>h.distanceTo(f.elbows[i])));
+    maxJump=Math.max(maxJump,d);
+   }
    const expected=interpolateWeaponCarry(source.fit,
      fitWeaponPose({weapon:'carbine',configuration:config,
        handling:'short',yaw:0,recoil:0}),alpha);
@@ -99,7 +106,12 @@ test('interrupted stance transition begins from the displayed gun, hands and elb
   for(let i=1;i<=48;i++){
    const f=frame(r,'ads',transition('short','ads',second,i/48),
      2.13+i*.34/48);
-   maxJump=Math.max(maxJump,distance(f,previous));previous=f;
+   const d=distance(f,previous);
+   if(d>3)console.log('INTERRUPTED_JUMP',i,d,
+    'gun',previous.gun.distanceTo(f.gun),
+    'hands',previous.hands.map((h,j)=>h.distanceTo(f.hands[j])),
+    'elbows',previous.elbows.map((h,j)=>h.distanceTo(f.elbows[j])));
+   maxJump=Math.max(maxJump,d);previous=f;
   }
   assert.ok(maxJump<4.0,'interrupted elbow jump '+maxJump);
   assert.ok(distance(previous,frame(r,'ads',undefined,2.55))<.6);
