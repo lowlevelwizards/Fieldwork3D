@@ -1365,6 +1365,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // and the existing reload interaction path stay in the same positions.
   // This is a whole-pair solution, not two competing elbow corrections.
   let coordinatedDynamic:ReturnType<typeof solveV3CoordinatedPose>|null=null;
+  let v3ReloadClearanceFront:number|undefined;
   let v3LeanParentX=0,v3LeanParentY=0,v3LeanParentZ=0;
   const v3ReloadActive=p.reload>0&&p.reloadDuration>0;
   const v3ReloadProgress=v3ReloadActive?
@@ -1385,6 +1386,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       weaponPresentationSockets(p.weapon,p.weaponConfiguration):null;
     const envelope=poseClearanceEnvelope(
       outfit.armorStyle,outfit.rigStyle,outfit.top);
+    if(v3ReloadActive)v3ReloadClearanceFront=envelope.front;
     const releasedTarget=v3ReloadActive?choreographV3ReloadHand({
       fit,lengthScale:data.lengthScale,
       progress:v3ReloadProgress,mode:v3ReloadMode,
@@ -1583,10 +1585,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         fit,lengthScale:data.lengthScale,progress:reloadProgress,
         mode:reloadMode,supportX:data.supportX,supportY:data.supportY,
         primaryX:data.primaryX,
-        clearanceFront:poseClearanceEnvelope(
-          resolvedWardrobe(p.wardrobe,p.equipment).armorStyle,
-          resolvedWardrobe(p.wardrobe,p.equipment).rigStyle,
-          resolvedWardrobe(p.wardrobe,p.equipment).top).front,
+        clearanceFront:v3ReloadClearanceFront,
         magazineSocket:sockets.magazinePart?sockets.magazine:undefined
       }).target:
       reloadHandChestTarget({
