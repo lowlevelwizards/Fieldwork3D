@@ -230,17 +230,21 @@ button{font-family:"Work Sans",system-ui,sans-serif;font-weight:600;letter-spaci
  font-family:"Saira Condensed","Arial Narrow",sans-serif;font-variant-numeric:tabular-nums;
  font-feature-settings:"tnum" 1;
 }
-/* Pose Fit runs in the real operator lab, but keeps the *figure* visible. */
-body.pose-fit-mode main{display:none!important}
-@media(max-width:700px){
- #poseFitPanel{
-  top:auto!important;bottom:calc(env(safe-area-inset-bottom) + 8px)!important;
-  right:8px!important;left:8px!important;width:auto!important;
-  max-height:37dvh!important
- }
- #poseFitPanel:not([open]){max-height:48px!important}
- body.pose-fit-mode #modelAxisLegend{display:none!important}
-}
+/* One integrated pose/animation browser: never overlay the model. */
+main[data-lab-active="poses"]>[data-lab-group]:not([data-lab-group="poses"]):not([data-lab-group="transport"]){display:none}
+.pose-workspace{display:grid;gap:9px;min-width:0}
+.pose-select-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pose-select-grid label{min-width:0;display:grid;gap:4px;font-weight:700}
+.pose-select-grid select{width:100%;min-width:0;min-height:40px;font-size:13px}
+.pose-select-grid .pose-animation{grid-column:1/-1}
+.pose-quick-controls{display:flex;flex-wrap:nowrap;gap:5px;overflow-x:auto;touch-action:pan-x}
+.pose-quick-controls button{flex:0 0 auto;min-height:38px}
+#poseInspector{border:1px solid #718b7e;border-radius:6px;background:#20362d;padding:6px 8px}
+#poseInspector summary{color:#dcca9a;font-weight:700;cursor:pointer}
+#poseInspectorReport{display:block;white-space:pre-wrap;padding:6px 0;font:12px/1.45 "Saira Condensed",monospace;color:#dbe6d8}
+#poseWorkspaceHint{color:#b9c7bd;font:11px/1.4 "Work Sans",sans-serif}
+main[data-lab-active="poses"] #weapon{display:none}
+@media(min-width:700px){.pose-select-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 </style></head>
 <body><canvas id="preview"></canvas><div id="compareLabels" hidden></div>
 <div id="uniformCutLabels" hidden aria-hidden="true"><span id="blouseLabelA">A · CLASSIC FIELD</span><span id="blouseLabelB">B · MODERN UTILITY</span></div>
@@ -250,17 +254,18 @@ body.pose-fit-mode main{display:none!important}
   <a href="./operator-lab.html?retry=1">RETRY LAB</a>
   <a href="./index.html">BACK TO BATTLE</a>
 </aside>
-<header><strong>FIELDWORK / OPERATOR LAB <small>FIT LAB</small></strong><nav style="display:flex;gap:10px;align-items:center"><a href="./operator-lab.html?poseFit=1">POSE FIT</a><a href="./index.html">← BATTLE</a></nav></header>
+<header><strong>FIELDWORK / OPERATOR LAB</strong><nav style="display:flex;gap:10px;align-items:center"><a href="./operator-lab.html?tab=poses">POSES</a><a href="./index.html">← BATTLE</a></nav></header>
 <output id="diagnosticText" aria-live="off"></output>
 <output id="modelAxisLegend" aria-label="Operator model coordinate convention">
   MODEL AXES: FORWARD −Z · RIGHT +X · UP +Y
 </output>
 <main data-lab-active="appearance">
-<div class="row"><label>MODEL</label><select id="operator"><option value="rook">ROOK</option><option value="moss">MOSS</option><option value="ash">ASH</option><option value="vale">VALE</option><option value="hostile">HOSTILE</option></select>
+<div class="row" id="labBaseControls"><label>MODEL</label><select id="operator"><option value="rook">ROOK</option><option value="moss">MOSS</option><option value="ash">ASH</option><option value="vale">VALE</option><option value="hostile">HOSTILE</option></select>
 <select id="weapon"><option value="none" selected>NO WEAPON</option><option value="carbine">CARBINE</option><option value="smg">SMG</option><option value="rifle">RIFLE</option><option value="shotgun">SHOTGUN</option></select>
 <select id="injury"><option value="0">HEALTHY</option><option value="1">INJURED</option><option value="2">HEAVY</option><option value="3">DOWN</option></select></div>
 <nav class="lab-category-nav" aria-label="Operator lab workbench categories">
 <button type="button" data-lab-tab="appearance" aria-pressed="true">APPEARANCE</button>
+<button type="button" data-lab-tab="poses" aria-pressed="false">POSES</button>
 <button type="button" data-lab-tab="motion" aria-pressed="false">MOTION</button>
 <button type="button" data-lab-tab="ready" aria-pressed="false">READY</button>
 <button type="button" data-lab-tab="actions" aria-pressed="false">ACTIONS</button>
@@ -269,6 +274,25 @@ body.pose-fit-mode main{display:none!important}
 <button type="button" data-lab-tab="diagnostics" aria-pressed="false">DIAGNOSTICS</button>
 </nav>
 <output id="labCategoryHint" aria-live="polite">APPEARANCE · Dress and inspect the operator</output>
+<section class="pose-workspace" data-lab-group="poses" aria-label="Weapon, armor and animation preview">
+ <div class="pose-select-grid">
+  <label>WEAPON<select id="poseWeapon" aria-label="Weapon family and model"></select></label>
+  <label>ARMOR<select id="poseArmor" aria-label="Visible armor style"></select></label>
+  <label>RIG<select id="poseRig" aria-label="Visible chest rig"></select></label>
+  <label>UNIFORM<select id="poseUniform" aria-label="Uniform style"></select></label>
+  <label class="pose-animation">ANIMATION<select id="poseAnimation" aria-label="Every operator animation"></select></label>
+ </div>
+ <div class="pose-quick-controls">
+  <button type="button" data-view="front">FRONT</button>
+  <button type="button" data-view="side">SIDE</button>
+  <button type="button" data-view="iso">3/4</button>
+  <button type="button" data-view="game">GAME</button>
+  <button type="button" id="poseFrameBack">−1 FRAME</button>
+  <button type="button" id="poseFrameNext">+1 FRAME</button>
+ </div>
+ <small id="poseWorkspaceHint">Any weapon and loadout · Every animation · Play, scrub, orbit or step through frames. Same model as Appearance.</small>
+ <details id="poseInspector"><summary>POSE REPORT</summary><output id="poseInspectorReport" aria-live="polite"></output></details>
+</section>
 <div class="row lab-transport" data-lab-group="transport" role="group" aria-label="Preview playback controls">
 <button id="playPause" type="button">PAUSE</button>
 <input type="range" id="timeline" min="0" max="4000" step="1" value="0" aria-label="Motion timestamp"/>
@@ -501,6 +525,7 @@ These are display positions of actual carried items, not extra inventory.</p>
  const tabs=[...document.querySelectorAll('[data-lab-tab]')];
  const hint=document.getElementById('labCategoryHint');
  const descriptions={appearance:'APPEARANCE · Dress and inspect the operator',
+  poses:'POSES · Weapon, armor, rig and every animation',
   motion:'MOTION · Choose a walking, strafing or turning track',
   ready:'READY · Compare weapon handling and ready positions',
   actions:'ACTIONS · Preview interactions, falls and reloads',
@@ -515,6 +540,10 @@ These are display positions of actual carried items, not extra inventory.</p>
   if(hint)hint.textContent=descriptions[section]||section;
   main.scrollTop=0;
  }
+ const requested=new URLSearchParams(location.search);
+ const startTab=requested.get('poseFit')==='1'?'poses':requested.get('tab');
+ const initial=tabs.find(tab=>tab.getAttribute('data-lab-tab')===startTab);
+ if(initial)activate(initial);
  for(const tab of tabs){
   tab.addEventListener('click',()=>activate(tab));
   tab.addEventListener('keydown',event=>{
