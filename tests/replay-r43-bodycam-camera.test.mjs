@@ -60,6 +60,19 @@ test('camera stays finite in vertical downed-body posture',()=>{
   approx(sample.up.dot(sample.forward),0);
 });
 
+test('body-mounted downward cant is optical, deterministic and bounded',()=>{
+  const socket=new THREE.Object3D();socket.position.set(2,30,0);
+  const flat=sampleBodycamSocket(socket,'steady');
+  const angled=sampleBodycamSocket(socket,'steady',.16);
+  assert.ok(angled.forward.y<-.15,
+    'Downward bodycam angle should reveal more floor/door threshold');
+  approx(angled.forward.dot(angled.up),0);
+  approx(angled.position.distanceTo(flat.position),0);
+  const extreme=sampleBodycamSocket(socket,'steady',2);
+  assert.ok(extreme.forward.y>-.36,'Optical cant must be bounded');
+  approx(sampleBodycamSocket(socket,'steady',.16).forward.y,
+    angled.forward.y);
+});
 test('actual operator rig exposes invisible chest and helmet anchors',()=>{
   const rig=createOperatorRig('rook','blue',true);
   assert.equal(rig.bodycamChest.parent,rig.chest);
