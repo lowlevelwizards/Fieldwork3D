@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newSession,observerPointVisible} from '../src/breach-game.ts';
-import {captureReplayKnowledge,recordedObserverCanSeeCivilian}
+import {captureReplayKnowledge,recordedObserverCanSeeCivilian,
+  applyReplayKnowledge,replayCivilianDisclosed}
   from '../src/breach-replay-visibility.ts';
 import {MissionRecorder} from '../src/breach-replay.ts';
 import {captureReplayArchive,replayArchiveIsValid,restoreReplayArchive}
@@ -46,4 +47,27 @@ test('optional individual civilian evidence survives archive and rejects bad inp
   bad.frames[0].knowledge.operatorVisibleCivilianIds={
     rook:['invalid civilian identifier !']};
   assert.equal(replayArchiveIsValid(bad),false);
+});
+
+test('render disclosure isolates operator civilians while preserving squad/full',()=>{
+  const s=newSession(0,3411);
+  const known={
+    visibleActorIds:[],visibleCivilianIds:['c-a','c-b'],
+    discoveredBodyIds:[],operatorVisibleActorIds:{rook:[],moss:[]},
+    operatorVisibleCivilianIds:{rook:['c-a'],moss:['c-b']}
+  };
+  applyReplayKnowledge(s,known);
+  assert.equal(replayCivilianDisclosed(s,'c-a',
+    {mode:'operator',observerId:'rook'}),true);
+  assert.equal(replayCivilianDisclosed(s,'c-b',
+    {mode:'operator',observerId:'rook'}),false);
+  assert.equal(replayCivilianDisclosed(s,'c-b',
+    {mode:'operator',observerId:'moss'}),true);
+  assert.equal(replayCivilianDisclosed(s,'c-b',{mode:'squad'}),true);
+  assert.equal(replayCivilianDisclosed(s,'unknown',{mode:'full'}),true);
+  const legacy={...known,operatorVisibleCivilianIds:undefined};
+  applyReplayKnowledge(s,legacy);
+  assert.equal(replayCivilianDisclosed(s,'c-a',
+    {mode:'operator',observerId:'rook'}),false);
+  assert.equal(replayCivilianDisclosed(s,'c-a',{mode:'squad'}),true);
 });
