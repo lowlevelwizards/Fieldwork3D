@@ -40,11 +40,13 @@ test('net extends from crown to brow, ear/side and nape',()=>{
  const g=createPasgtNetGeometry();
  assert.equal(g.userData.pasgtNetCordCount,6);
  assert.ok(g.boundingBox.max.y>=9);
- assert.ok(g.boundingBox.min.y<5);
- assert.ok(g.boundingBox.min.z<-6.4);
- assert.ok(g.boundingBox.max.z>5.8);
- assert.ok(g.boundingBox.min.x<-5.4);
- assert.ok(g.boundingBox.max.x>5.4);
+ // P6 net terminates at the retaining band instead of long floating
+ // poles extending through and below the lower PASGT skirt.
+ assert.ok(g.boundingBox.min.y>5.18&&g.boundingBox.min.y<5.7);
+ assert.ok(g.boundingBox.min.z<-5.7);
+ assert.ok(g.boundingBox.max.z>5.5);
+ assert.ok(g.boundingBox.min.x<-5.0);
+ assert.ok(g.boundingBox.max.x>5.0);
 });
 test('concealment palettes are intentionally simple and consistent',()=>{
  assert.equal(pasgtConcealmentPalette('six-color-desert'),'desert');
