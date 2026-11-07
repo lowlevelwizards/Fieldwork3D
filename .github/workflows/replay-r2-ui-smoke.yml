@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   replay-ui:
-    if: ${{ startsWith(github.head_ref, 'feature/replay-r2-mobile-ui-') || startsWith(github.head_ref, 'feature/replay-r3-') || startsWith(github.head_ref, 'feature/replay-r41-') || startsWith(github.head_ref, 'feature/replay-r42-') || startsWith(github.head_ref, 'feature/replay-r42b-') || startsWith(github.head_ref, 'feature/replay-r42c-') }}
+    if: ${{ startsWith(github.head_ref, 'feature/replay-r2-mobile-ui-') || startsWith(github.head_ref, 'feature/replay-r3-') || startsWith(github.head_ref, 'feature/replay-r41-') || startsWith(github.head_ref, 'feature/replay-r42-') || startsWith(github.head_ref, 'feature/replay-r42b-') || startsWith(github.head_ref, 'feature/replay-r42c-') || startsWith(github.head_ref, 'feature/replay-ux-v2-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -25,5 +25,5 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: npx playwright install chromium
-      - name: Verify compact dock and exclusive mobile tool tabs
+      - name: Verify compact replay dock and contextual viewer surfaces
         run: node scripts/smoke-replay-r2-ui.mjs
