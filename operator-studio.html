@@ -94,7 +94,45 @@
 <button id="studioLightReset" type="button">RESET LIGHTING</button>
 </div>
 <output id="studioLightLabStatus" aria-live="polite">Adjust a setting to update the operator immediately.</output>
-<small>Preview only · not saved. Gentle lower-edge form shading affects gear, shins, boots and hands but leaves arms and thighs untouched. The contour rim is only on metal, weapons and uncovered helmet shells; it no longer makes clothing shiny.</small>
+<small>Preview only · not saved. A small highlight appears only on key-lit metal, weapons and bare helmet shells. It stays on the original surface and disappears on unlit faces; fabric remains matte.</small>
+<details id="studioRenderDiagnostics" class="studio-render-diagnostics">
+<summary>RENDER QUALITY / SHADOW DIAGNOSTICS <small>RELOADS PREVIEW</small></summary>
+<div class="studio-light-lab-grid">
+<label>EDGE SMOOTHING
+<select id="studioQualityAA" aria-label="Studio antialiasing">
+<option value="on">4× MSAA · smooth edges</option>
+<option value="off">Off · old pixel edges</option>
+</select></label>
+<label>PIXEL DENSITY
+<select id="studioQualityPixels" aria-label="Studio preview pixel ratio">
+<option value="1.5">1.5× · performance</option>
+<option value="2">2× · detail audit</option>
+</select></label>
+<label>LIVE SHADOW FILTER
+<select id="studioQualityShadowFilter" aria-label="Studio shadow map filtering">
+<option value="pcf">Filtered shadows · PCF</option>
+<option value="hard">Original hard shadows</option>
+</select></label>
+<label>LIVE DIRECTIONAL SHADOW
+<select id="studioQualityLiveShadows" aria-label="Live directional shadows">
+<option value="on">On</option>
+<option value="off">Off · isolate live shadow</option>
+</select></label>
+<label>BAKED VERTEX LIGHTING
+<select id="studioQualityBaked" aria-label="Baked vertex shading">
+<option value="on">On</option>
+<option value="off">Off · isolate baked mask</option>
+</select></label>
+<label>CEL BAND EDGE
+<select id="studioQualityCelAA" aria-label="Cel transition edge smoothing">
+<option value="on">1px antialiased edge</option>
+<option value="off">Hard edge · compare</option>
+</select></label>
+</div>
+<button id="studioLightingInspectorLink" type="button">OPEN LIGHTING LAYER INSPECTOR</button>
+<output id="studioQualityStatus">Compare the same operator with isolated shadow and edge options.</output>
+<small>These settings reload the preview. Apply or save any appearance edits first. They do not affect mission lighting.</small>
+</details>
 </div>
 </details>
 <div class="studio-pinned-categories" role="group" aria-label="Persistent body part navigation">
