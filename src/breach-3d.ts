@@ -149,6 +149,11 @@ export class TacticalScene3D{
   /** Replay-only perspective camera; default rendering stays orthographic. */
   readonly bodycamCamera=new THREE.PerspectiveCamera(95,1,.8,2800);
   private replayBodycam:BodycamSetting|null=null;
+  private replayXrayOn=false;
+  /** Presentation-only wall transparency: recorded sight still governs actors. */
+  setReplayXray(enabled:boolean):void{
+    this.replayXrayOn=enabled;
+  }
   private bodycamLastQa:{active:boolean;owner:string|null;masked:number;
     maskRestored:boolean;frame:number;at:number}|null=null;
   private renderFrameSerial=0;
@@ -1827,9 +1832,12 @@ export class TacticalScene3D{
     for(const wall of this.walls){
       const cut=!bodycamAudition&&this.view.mode==='iso'&&!!pawn&&wallOccludesFriendly(
         wall.segment,pawn,{x:fromCamera.x,y:fromCamera.z},maxCutDistance);
-      const opacity=bodycamAudition?1:
+      const naturalOpacity=bodycamAudition?1:
         transitionWallOpacity(this.wallFade.get(wall.mesh)??1,cut,dt);
-      this.wallFade.set(wall.mesh,opacity);
+      this.wallFade.set(wall.mesh,naturalOpacity);
+      // X-ray affects only architectural presentation, NEVER historical
+      // actor disclosure, contact evidence or the replay's authoritative fog.
+      const opacity=!bodycamAudition&&this.replayXrayOn?0.18:naturalOpacity;
       const translucent=opacity<.995;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
       if(material.transparent!==translucent){
