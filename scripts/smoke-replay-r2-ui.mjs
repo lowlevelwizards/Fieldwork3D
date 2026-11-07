@@ -166,11 +166,11 @@ try{
   check(await page.locator('#replaySquad').isVisible(),
     'R3 Squad follow must be accessible under View');
   await page.locator('#replayDirectDirector').click();
-  check((await page.locator('#replayDirector').getAttribute('aria-pressed'))==='true',
-    'Director button did not activate');
+  check((await page.locator('#replayDirectDirector').getAttribute('aria-pressed'))==='true',
+    'The visible Director toggle did not activate');
   await page.locator('#replaySquad').click();
-  check((await page.locator('#replayDirector').getAttribute('aria-pressed'))==='false',
-    'Squad mode must disable Director');
+  check((await page.locator('#replayDirectDirector').getAttribute('aria-pressed'))==='false',
+    'Squad mode must disable the visible Director control');
   check((await page.locator('#replaySquad').getAttribute('aria-pressed'))==='true',
     'Squad camera did not activate');
   check(await page.locator('#replayDirectTracers').isVisible(),
