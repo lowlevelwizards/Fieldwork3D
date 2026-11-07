@@ -89,6 +89,8 @@ import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-in
 import {buildReplayDirectorCues,replayCameraTarget,easeReplayCamera,
   type ReplayCameraMode,type ReplayDirectorCue}
   from './breach-replay-director.ts';
+import {cinematicReplayShot,easeCinematicReplayShot}
+  from './breach-replay-cinematic-director.ts';
 import {clusterReplayTimeline,replayTimelineBins} from './breach-replay-timeline-markers.ts';
 import {replayFeedPosition} from './breach-replay-feed-window.ts';
 import {toggleReplaySurface,resolvedReplayCamera,isReplaySpeed,
@@ -4575,8 +4577,23 @@ function rebuildReplayEventIndex():void{
 function advanceReplayCamera(dt:number,instant=false):void{
   if(!replaying||!stage||viewMode==='plan2d')return;
   const actors=state.operators.map(a=>({
-    id:a.id,p:a.p,side:a.side,health:a.health
+    id:a.id,p:a.p,side:a.side,health:a.health,heading:a.heading
   }));
+  if(replayCameraMode==='director'){
+    const target=cinematicReplayShot(replayTime,actors,
+      state.site?.rooms??[],state.walls,replayDirectorCues,
+      cssW/Math.max(1,cssH),stage.view.yaw);
+    if(!target)return;
+    const current={focus:stage.view.focus,zoom:stage.view.zoom,
+      yaw:stage.view.yaw,pitch:stage.view.pitch,roomId:null,
+      actorsFramed:target.actorsFramed,kind:target.kind} as const;
+    const shot=easeCinematicReplayShot(current,target,dt,instant);
+    stage.view.focus=shot.focus;
+    stage.view.zoom=shot.zoom;
+    stage.view.yaw=shot.yaw;
+    stage.view.pitch=shot.pitch;
+    return;
+  }
   const target=replayCameraTarget(replayCameraMode,replayTime,actors,
     replayFollowId,cssW/Math.max(1,cssH),replayDirectorCues);
   if(!target)return;
@@ -5543,7 +5560,7 @@ ui.replayDirectXray.addEventListener('click',()=>{
 });
 ui.replayDirectDirector.addEventListener('click',()=>{
   if(replayBodycamOn)stopReplayBodycam();
-  if(viewMode==='plan2d'&&stage)cameraMode('iso');
+  if(viewMode!=='iso'&&stage)cameraMode('iso');
   replayCameraMode=replayCameraMode==='director'?'free':'director';
   replayFollow=false;
   advanceReplayCamera(0,true);updateReplayHud();
