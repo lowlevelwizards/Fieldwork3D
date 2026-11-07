@@ -318,6 +318,36 @@ export async function stageExistingReplayAsChunksV2(
  * observer journals can also be kept without unbounded memory growth.
  */
 export const REPLAY_STREAM_MAX_FRAMES=48000;
+export const REPLAY_STREAM_MAX_CHUNKS=5000;
+
+/** Validate one on-disk immutable chunk without materializing the film.
+ * The previous boundary's last timestamp is a strict lower bound.
+ * This is repeated during final publication, not merely trusted from
+ * the draft's write-progress journal.
+ */
+export function validPersistedReplayChunk(
+  b:ReplayChunkBoundary,frames:readonly ReplayFrame[]|undefined,
+  priorTime:number
+):boolean{
+  if(!Number.isSafeInteger(b.index)||b.index<0||
+    !Number.isSafeInteger(b.first)||b.first<0||
+    !Number.isSafeInteger(b.endExclusive)||
+    b.endExclusive<=b.first||!Number.isFinite(b.fromTime)||
+    !Number.isFinite(b.toTime)||b.fromTime<=priorTime||
+    b.toTime<b.fromTime||!Array.isArray(frames)||
+    frames.length!==b.endExclusive-b.first)return false;
+  let last=priorTime;
+  for(const frame of frames){
+    if(!frame||!Number.isFinite(frame.t)||frame.t<=last||
+      !Array.isArray(frame.actors)||!Array.isArray(frame.doors)||
+      !Array.isArray(frame.seenGround)||
+      !frame.knowledge||typeof frame.knowledge!=='object')
+      return false;
+    last=frame.t;
+  }
+  return Math.abs(frames[0].t-b.fromTime)<1e-5&&
+    Math.abs(last-b.toTime)<1e-5;
+}
 export type ReplayStreamDraft={
   generation:string;id:string;createdAt:number;startedAt:number;
   previousGeneration:string|null;
@@ -387,6 +417,7 @@ export async function appendStreamingReplayChunkV2(
     const draft=await req<ReplayStreamDraft|undefined>(drafts.get(generation));
     if(!draft)throw Error('Stream draft not found');
     if(draft.sealed||index!==draft.boundaries.length||
+      index>=REPLAY_STREAM_MAX_CHUNKS||
       frames.length<1||frames.length>draft.chunkFrames||
       (!final&&frames.length!==draft.chunkFrames)||
       draft.writtenFrames+frames.length>REPLAY_STREAM_MAX_FRAMES||
@@ -427,10 +458,11 @@ export async function sealStreamingReplayV2(
     return streamInfo(next);
   }finally{db.close();}
 }
-/** The final evidence sidecar is validated against the true first and last
- * frames loaded from durable chunk rows, not untrusted caller timestamps.
- * All missing data, invalid personal journals and stale replacements fail
- * before the pointer becomes visible. The previous film survives failure.
+/** Final publication walks ALL recorded chunk rows inside the publication
+ * transaction; a corrupt/missing middle chunk cannot pass because the first
+ * and last exist. Only one bounded chunk is decoded at a time. Sidecar
+ * verification then uses the genuinely committed first/last frames.
+ * Failed validation leaves the draft inspectable and old film intact.
  */
 export async function commitStreamingReplayV2(
   generation:string,sidecar:Sidecar
@@ -444,12 +476,29 @@ export async function commitStreamingReplayV2(
     if(!draft||!draft.sealed||draft.writtenFrames<2||
       !draft.boundaries.length)
       throw Error('Cannot publish an incomplete replay stream');
-    const firstIndex=0,lastIndex=draft.boundaries.length-1;
-    const first=await req<{frames:ReplayFrame[]}|undefined>(
-      tx.objectStore(CHUNKS).get([generation,firstIndex]));
-    const last=await req<{frames:ReplayFrame[]}|undefined>(
-      tx.objectStore(CHUNKS).get([generation,lastIndex]));
-    const firstFrame=first?.frames?.[0],lastFrame=last?.frames?.at(-1);
+    if(draft.boundaries.length>REPLAY_STREAM_MAX_CHUNKS)
+      throw Error('Replay stream chunk catalog exceeds reader limit');
+    const chunkRows=tx.objectStore(CHUNKS);
+    let expectedFirst=0,previousTime=-Infinity;
+    let firstFrame:ReplayFrame|null=null,lastFrame:ReplayFrame|null=null;
+    for(const boundary of draft.boundaries){
+      if(boundary.first!==expectedFirst||
+        boundary.index!==draft.boundaries.indexOf(boundary))
+        throw Error('Replay stream has corrupt chunk boundaries');
+      const row=await req<{frames:ReplayFrame[]}|undefined>(
+        chunkRows.get([generation,boundary.index]));
+      if(!validPersistedReplayChunk(
+        boundary,row?.frames,previousTime))
+        throw Error('Replay stream has missing or corrupt chunk: '+
+          boundary.index);
+      if(firstFrame===null)firstFrame=row!.frames[0];
+      lastFrame=row!.frames[row!.frames.length-1];
+      expectedFirst=boundary.endExclusive;
+      previousTime=boundary.toTime;
+    }
+    if(expectedFirst!==draft.writtenFrames||
+      Math.abs(previousTime-(draft.lastTime??NaN))>1e-5)
+      throw Error('Replay stream journal does not match persisted chunks');
     if(!firstFrame||!lastFrame||!replayArchiveIsValid({
       ...sidecar,frames:[firstFrame,lastFrame]
     })||sidecar.id!==draft.id||

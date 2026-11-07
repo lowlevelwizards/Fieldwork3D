@@ -1331,6 +1331,7 @@ jobs:
             tests/replay-r3-chunk-event-index.test.mjs \
             tests/replay-r3-chunk-spool.test.mjs \
             tests/replay-r3-live-capture.test.mjs \
+            tests/replay-r3-stream-integrity.test.mjs \
             tests/replay-r2-recording.test.mjs \
             tests/breach-p7-replay-sharing.test.mjs
       - name: Replay R3 — portable full-film files and bookmark persistence

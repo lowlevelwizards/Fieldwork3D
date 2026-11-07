@@ -487,6 +487,56 @@ try{
     spooled.viewMatches&&spooled.unchangedLegacy,
     'G5b4 bounded producer→IDB→consumer integration broke: '+
     JSON.stringify(spooled));
+  // G5c3: delete an INTERMEDIATE chunk after the stream progress
+  // journal says it was committed. Final publication must refuse the film,
+  // keep the draft, and allow repair before a complete atomic publication.
+  const midIntegrity=await page.evaluate(async()=>{
+    const storage=await import('/src/breach-replay-chunk-store.ts');
+    const {loadSavedReplay}=await import('/src/breach-replay-library.ts');
+    const original=await loadSavedReplay('g3-browser-001');
+    const {frames,...base}=original,id='g5c-middle-corrupt-001';
+    const draft=await storage.beginStreamingReplayV2(id,base.createdAt,
+      {chunkFrames:3});
+    for(let i=0;i<3;i++){
+      await storage.appendStreamingReplayChunkV2(
+        draft.generation,i,frames.slice(i*3,i*3+3),i===2);
+    }
+    const db=await new Promise((resolve,reject)=>{
+      const request=indexedDB.open('fieldwork-breach-replay-chunks',2);
+      request.onsuccess=()=>resolve(request.result);
+      request.onerror=()=>reject(request.error);
+    });
+    const edit=(fn)=>new Promise((resolve,reject)=>{
+      const tx=db.transaction('chunks','readwrite');
+      tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);
+      tx.onabort=()=>reject(tx.error);
+      fn(tx.objectStore('chunks'));
+    });
+    await edit(store=>store.delete([draft.generation,1]));
+    let prevented=false;
+    try{await storage.commitStreamingReplayV2(draft.generation,
+      {...base,id});}
+    catch(e){prevented=/missing or corrupt chunk/.test(String(e));}
+    const invisible=await storage.getPublishedChunkedReplayV2(id);
+    const remains=(await storage.listInterruptedStreamingReplaysV2())
+      .some(x=>x.generation===draft.generation&&x.writtenFrames===8);
+    await edit(store=>store.add({generation:draft.generation,
+      index:1,frames:frames.slice(3,6)}));
+    db.close();
+    const repaired=await storage.commitStreamingReplayV2(draft.generation,
+      {...base,id});
+    const opened=await storage.openChunkedReplayV2(id);
+    const middle=await opened.window.surrounding(.45);
+    return {prevented,invisible:invisible===null,remains,
+      repaired:repaired.storageComplete,frames:opened.window.totalFrames,
+      middleTime:middle?.previous.t,cache:opened.window.residentCount};
+  });
+  check(midIntegrity.prevented&&midIntegrity.invisible&&
+    midIntegrity.remains&&midIntegrity.repaired&&
+    midIntegrity.frames===8&&
+    midIntegrity.middleTime<=.45&&midIntegrity.cache<=3,
+    'G5c3 missing intermediate chunk was published or not repairable: '+
+    JSON.stringify(midIntegrity));
   // G5c2: actual 60 Hz mission motor -> native MissionRecorder.capture
   // -> synchronous 20 Hz observer -> bounded spool -> atomic IndexedDB ->
   // published historical scene. No synthetic replacement of source samples.
