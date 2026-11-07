@@ -1164,6 +1164,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/replay-r42b-personal-ground.test.mjs \
+            tests/replay-r42b-ground-overlay.test.mjs \
             tests/replay-r42b-archive.test.mjs \
             tests/replay-r42-archive.test.mjs \
             tests/breach-ground-view-performance.test.mjs
