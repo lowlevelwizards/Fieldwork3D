@@ -79,6 +79,8 @@ let wardrobeOptions:WardrobeOptions=initialWardrobe();
 const poseFlags=new URLSearchParams(location.search);
 const poseV4ReloadPreview=poseFlags.get('poseV4')!=='0';
 const poseV3Preview=poseV4ReloadPreview||poseFlags.get('poseV3')==='1';
+const startingPoseTab=poseFlags.get('tab')==='poses'||
+ poseFlags.get('poseFit')==='1';
 let poseWeaponPreset='none';
 let appearanceGrid:OperatorAppearanceGrid|null=null;
 /** One-step Lab-only undo: snapshot display choices, never owned inventory. */
@@ -758,6 +760,13 @@ for(const [element,slot] of [
     poseRigEquipment(element.value));
   syncKit();draw();
  });
+}
+if(startingPoseTab&&weapon.value==='none'){
+ // Legacy Pose Fit bookmarks open directly on a useful M4A1 low-ready
+ // comparison rather than the unarmed wardrobe mannequin.
+ poseWeaponPreset='ar-m4a1';weapon.value='carbine';
+ labKit=syncPrimaryWeapon(labKit,'carbine');
+ updateMagazineState();
 }
 syncPosePickers();
 choose<HTMLButtonElement>('unequipAll').addEventListener('click',()=>{
@@ -1825,7 +1834,7 @@ function tick(now:number){
   }catch(error){showLabFailure(error);}
 }
 try{
-  build();resize();fit();chooseTrack('idle');
+  build();resize();fit();chooseTrack(startingPoseTab?'low-ready':'idle');
   // Render immediately rather than depending on a delayed first
   // requestAnimationFrame callback on a newly navigated mobile tab.
   draw();requestAnimationFrame(tick);
