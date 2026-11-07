@@ -36,3 +36,20 @@ export function handlingIntentForMovement(p:HandlingContext):HandlingIntent{
  if(p.order?.kind==='pie')return 'pie';
  return p.speed>10?'move':'hold';
 }
+
+/** Directional, near-body muzzle courtesy for passive visual stances.
+ * Uses torso heading rather than a stale destination; actual firing still
+ * calls assessFireLane from the authoritative shot-time muzzle.
+ */
+export function teammateAheadForHandling(
+ p:{x:number;y:number},heading:number,
+ others:readonly {x:number;y:number}[]):boolean{
+ const fx=Math.cos(heading),fy=Math.sin(heading);
+ for(const other of others){
+  const dx=other.x-p.x,dy=other.y-p.y;
+  const forward=dx*fx+dy*fy;
+  const across=Math.abs(dx*fy-dy*fx);
+  if(forward>=4&&forward<48&&across<20)return true;
+ }
+ return false;
+}
