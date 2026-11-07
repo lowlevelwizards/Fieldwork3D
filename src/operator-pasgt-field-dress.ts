@@ -173,7 +173,9 @@ export function pasgtDecorationDirection(
  const crown=anchor.id.startsWith('crown-');
  const outward=crown?
   new THREE.Vector3(anchor.position[0]*1.12,0,anchor.position[2]*.78).normalize():
-  new THREE.Vector3(...anchor.normal).normalize();
+  new THREE.Vector3(anchor.normal[0],0,anchor.normal[2]).normalize();
+ // Exterior direction is horizontal; raw sloping-cloth normals include a
+ // substantial upward Y that caused side foliage to point like saplings.
  // The leaf's *positive* Y points outward, with the main card no longer
  // rising almost vertically like a plant. Side/back mounts tilt down.
  // Scrim local geometry extends along *negative* Y; gravity wins.

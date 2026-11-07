@@ -446,11 +446,14 @@ function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId)
   for(let i=0;i<position.count;i++){
    const x=position.getX(i),y=position.getY(i),z=position.getZ(i);
    if(Math.abs(y-roof)>1e-5)continue;
-   if(Math.abs(x)<crown.width/2-.001||
-      Math.abs(z)<crown.depth/2-.001)continue;
+   // Contract the complete crown top perimeter, not only its four
+   // corner vertices: greedy-union may subdivide roof edges.
+   const atX=Math.abs(Math.abs(x)-crown.width/2)<.001;
+   const atZ=Math.abs(Math.abs(z)-crown.depth/2)<.001;
+   if(!atX&&!atZ)continue;
    position.setXYZ(i,
-    x-Math.sign(x)*PASGT_UPPER_CROWN_INSET,y,
-    z-Math.sign(z)*PASGT_UPPER_CROWN_INSET);
+    atX?x-Math.sign(x)*PASGT_UPPER_CROWN_INSET:x,y,
+    atZ?z-Math.sign(z)*PASGT_UPPER_CROWN_INSET:z);
   }
   position.needsUpdate=true;geometry.computeVertexNormals();
   geometry.computeBoundingBox();
