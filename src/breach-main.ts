@@ -4900,7 +4900,7 @@ function updateReplayHud(){
   const event=replayEventIndex?.latest(replayTime+.14);
   ui.replayEventText.textContent=event&&replayTime-event.t<6.5?
     formatReplayTime(event.t)+' · '+event.text:
-    replayTime<.5?'MISSION FILM · BEGINNING':
+    replayTime<.5?'TAP AN OPERATOR TO FOLLOW · PLAYBACK STARTING':
     'NO RECENT RECORDED ACTION';
   const status=replayQuickVideo.active?'● RECORDING':
     replayIncidentPlayback?.loop?'INCIDENT LOOP':
