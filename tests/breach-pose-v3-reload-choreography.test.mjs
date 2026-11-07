@@ -131,3 +131,25 @@ test('B18 alternative corridors keep exact mounting frames and smooth handoff',(
   }
  }
 });
+
+test('B22 magazine-body palm changes only the free hand, never the mounted socket',()=>{
+ for(const family of ['ar','ak','hk']){
+  for(const palm of ['upper-body','mid-body']){
+   for(const t of [0,1]){
+    const changed=choreographV3ReloadHand({...input,
+     family,magazinePalm:palm,progress:t}).target;
+    const old=choreographV3ReloadHand({...input,
+     family,magazinePalm:'legacy',progress:t}).target;
+    assert.ok(changed.distanceTo(old)<1e-10,family+'/'+palm+'/endpoint');
+   }
+   const variant=choreographV3ReloadHand({...input,
+    family,magazinePalm:palm,progress:.30}).target;
+   const old=choreographV3ReloadHand({...input,
+    family,magazinePalm:'legacy',progress:.30}).target;
+   assert.ok(variant.distanceTo(old)>1.0,family+'/'+palm+'/body grip');
+   const repeat=choreographV3ReloadHand({...input,
+    family,magazinePalm:palm,progress:.30}).target;
+   assert.ok(variant.distanceTo(repeat)<1e-12,'time pure');
+  }
+ }
+});

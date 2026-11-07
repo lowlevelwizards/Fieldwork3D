@@ -13,6 +13,22 @@ import type {WeaponFit} from './breach-weapon-pose.ts';
 import {reloadHandChestTarget} from './breach-reload-motion.ts';
 
 export type V3ReloadCorridorProfile='canonical'|'compact'|'outboard';
+/** Lab-only palm location on the actual magazine body, relative to
+ * its feed-lip socket. The gun's insertion socket never moves. */
+export type V3MagazinePalm='legacy'|'upper-body'|'mid-body';
+export function v3MagazineBodyGrip(
+ family:'ar'|'ak'|'hk'|undefined,palm:V3MagazinePalm
+):THREE.Vector3|null{
+ if(palm==='legacy'||!family)return null;
+ const mid=palm==='mid-body';
+ const y=mid?(family==='hk'?-3.65:-4.05):
+   (family==='hk'?-2.65:-2.85);
+ return new THREE.Vector3(family==='ak'?.32:0,y,
+  family==='hk'?-2.48:family==='ak'?-2.55:-2.4);
+}
+const smooth=(t:number)=>{
+ const x=Math.min(1,Math.max(0,t));return x*x*(3-2*x);
+};
 export type ReloadChoreographyRequest={
  fit:WeaponFit;lengthScale:number;progress:number;mode:ReloadMode;
  supportX:number;supportY:number;primaryX:number;
@@ -21,6 +37,8 @@ export type ReloadChoreographyRequest={
  family?:'ar'|'ak'|'hk';
  /** Lab audition only. Default uses the proven B14 hand track. */
  corridor?:V3ReloadCorridorProfile;
+ /** Deliberate free-hand magazine-body hold, V3 Lab preview only. */
+ magazinePalm?:V3MagazinePalm;
  /** Fitted near-side front armor surface, cached with equipment. */
  clearanceFront?:number;
 };
@@ -109,6 +127,22 @@ export function choreographV3ReloadHand(
   }else{
    // Wider magazine corridor for broad side inserts/plate carrier.
    target.x+=.20*weight;target.y+=.30*weight;target.z-=1.40*weight;
+  }
+ }
+ // A magazine is grasped on its BODY, not by its feed lips.
+ // Apply the difference between the existing near-lip palm and an
+ // authored body grip. Only a detached-magazine preview opts in.
+ // The true receiver mount remains in weaponPresentationSockets.
+ if(input.magazineSocket&&input.mode!=='shells'&&input.family){
+  const palm=v3MagazineBodyGrip(input.family,
+    input.magazinePalm??'legacy');
+  if(palm){
+   // B14 legacy local hand center sits 1.2 below / 1.7 to the side
+   // of the feed lips. Keep the same grip at action endpoints.
+   const delta=palm.sub(new THREE.Vector3(0,-1.2,-1.7));
+   delta.x*=input.lengthScale;
+   const weight=smooth(t/.20)*(1-smooth((t-.90)/.10));
+   target.add(delta.applyEuler(input.fit.rotation).multiplyScalar(weight));
   }
  }
  return {

@@ -36,14 +36,13 @@ import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
-import {choreographV3ReloadHand,v3MagazineRockAngle,type V3ReloadCorridorProfile} from './breach-pose-v3-reload-choreography.ts';
+import {choreographV3ReloadHand,v3MagazineRockAngle,v3MagazineBodyGrip,type V3ReloadCorridorProfile,type V3MagazinePalm} from './breach-pose-v3-reload-choreography.ts';
 import {choreographV3ReloadWeapon,type V3ReloadHold} from './breach-pose-v3-reload-weapon.ts';
 import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
 import {chooseV3SupportGrip} from './breach-pose-v3-support-grip.ts';
 import {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
-import {v3ScapulaOffset,type V3ScapulaPreset} from './breach-pose-v3-scapula.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
@@ -100,8 +99,8 @@ export type OperatorPose={
   poseV3ReloadCorridor?:V3ReloadCorridorProfile;
   /** B19 fixed-profile offline handling audition; only read in V3 Lab. */
   poseV3ReloadHold?:V3ReloadHold;
-  /** B21 small support-shoulder motion audition, V3 Lab preview only. */
-  poseV3Scapula?:V3ScapulaPreset;
+  /** B22 magazine-body grip, explicitly Lab-only and replay-time pure. */
+  poseV3MagazinePalm?:V3MagazinePalm;
   x:number;z:number;heading:number;velocity:number;seconds:number;
   stride:number;posture:'stand'|'crouch';injury:number;weapon:WeaponId;
   /** Authoritative travel direction; optional until motion sampling is wired. */
@@ -1389,7 +1388,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   let coordinatedDynamic:ReturnType<typeof solveV3CoordinatedPose>|null=null;
   let v3ReloadClearanceFront:number|undefined;
   let v3LeanParentX=0,v3LeanParentY=0,v3LeanParentZ=0;
-  let v3AcceptedScapula:THREE.Vector3|null=null;
   const v3ReloadActive=p.reload>0&&p.reloadDuration>0;
   const v3ReloadProgress=v3ReloadActive?
     clamp(1-p.reload/p.reloadDuration,0,1):0;
@@ -1401,6 +1399,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const legacyAkReload=p.poseV3Preview&&v3ReloadActive&&
     coupledConfig?.build?.family==='ak'&&
     resolvedWardrobe(p.wardrobe,p.equipment).armorStyle==='plate-legacy';
+  const v3MagazinePalm:V3MagazinePalm=p.poseV3Preview?
+    (p.poseV3MagazinePalm??'legacy'):'legacy';
   const v3ReloadCorridor:V3ReloadCorridorProfile=p.poseV3Preview?
     (p.poseV3ReloadCorridor??(legacyAkReload?'compact':'canonical')):
     'canonical';
@@ -1423,17 +1423,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       fit,lengthScale:data.lengthScale,
       progress:v3ReloadProgress,mode:v3ReloadMode,
       family:coupledConfig.build.family,corridor:v3ReloadCorridor,
+      magazinePalm:v3MagazinePalm,
       supportX:data.supportX,supportY:data.supportY,
       primaryX:data.primaryX,clearanceFront:envelope.front,
       magazineSocket:activeReloadSocket?.magazinePart?
         activeReloadSocket.magazine:undefined}).target:undefined;
-    const scapula=p.poseV3Preview&&v3ReloadActive&&p.poseV3Scapula?
-      v3ScapulaOffset(p.poseV3Scapula):null;
-    const supportShoulder=shoulderFor(0);
-    if(scapula)supportShoulder.add(scapula);
     const result=solveV3CoordinatedPose({
       fit,weapon:p.weapon,configuration:coupledConfig,
-      shoulders:[supportShoulder,shoulderFor(1)],
+      shoulders:[shoulderFor(0),shoulderFor(1)],
       chestRotation:r.chest.rotation,
       envelope,
       mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
@@ -1449,7 +1446,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     };
     if(result.status==='clear'&&result.arms){
       coordinatedDynamic=result;
-      v3AcceptedScapula=scapula;
       fit=result.fit;
       // No per-frame scratch allocation on the main render hot path.
       const offset=new THREE.Vector3(result.leanX,0,0)
@@ -1622,7 +1618,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       choreographV3ReloadHand({
         fit,lengthScale:data.lengthScale,progress:reloadProgress,
         mode:reloadMode,family:coupledConfig?.build?.family,
-        corridor:v3ReloadCorridor,
+        corridor:v3ReloadCorridor,magazinePalm:v3MagazinePalm,
         supportX:data.supportX,supportY:data.supportY,
         primaryX:data.primaryX,
         clearanceFront:v3ReloadClearanceFront,
@@ -1685,9 +1681,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulder=shoulderFor(i);
-    // Only a physically accepted pair owns the changed attachment; any
-    // unresolved audition keeps the original anatomical shoulder socket.
-    if(i===0&&v3AcceptedScapula)shoulder.add(v3AcceptedScapula);
     const grip=i===0?leftGrip:rightGrip;
     let desired:THREE.Vector3;
     if(p.down&&(i===0&&releaseLeft||i===1&&releaseRight)){
@@ -1863,6 +1856,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.detachedMagazine.rotation.copy(fit.rotation);
     if(v3MagazineRock)r.detachedMagazine.rotateZ(v3MagazineRock);
     r.detachedMagazine.scale.set(data.lengthScale,1,1);
+    // Detached magazine meshes are authored relative to FEED LIPS.
+    // The palm may now wrap the magazine BODY, several units below the
+    // lips. Keep the feed-lip origin rigidly offset from that real palm.
+    if(p.poseV3Preview&&v3ReloadActive&&coupledConfig?.build){
+      const palm=v3MagazineBodyGrip(coupledConfig.build.family,
+        v3MagazinePalm);
+      if(palm){
+        palm.x*=data.lengthScale;
+        palm.applyQuaternion(r.detachedMagazine.quaternion);
+        r.detachedMagazine.position.sub(palm);
+      }
+    }
   }
   // The pose system is the final writer for actor tilts and reactions.
   // The scene controls XY world placement only, not anatomy or weapon pose.
