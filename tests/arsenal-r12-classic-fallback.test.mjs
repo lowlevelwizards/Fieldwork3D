@@ -9,6 +9,7 @@ test('Campaign puts classic factory and socket options behind one fallback',()=>
  assert.match(code,/legacyControls\.append\(familyEditor\)/);
  assert.match(code,/legacyControls\.append\(attachments\)/);
  assert.match(code,/legacyControls\.open=true/);
+ assert.match(code,/this\.expandedClassicWeaponControls\.has\(id\)/);
  assert.match(code,/OPEN ARSENAL/);
 });
 test('Quick Play Arsenal remains primary while class-only weapons expose fallback',()=>{
@@ -17,7 +18,8 @@ test('Quick Play Arsenal remains primary while class-only weapons expose fallbac
  assert.match(code,/legacyControls\.open=!member\.weaponConfiguration\.build/);
  assert.match(code,/legacyControls\.append\(factoryLabel,factoryBrowser\)/);
  assert.match(code,/legacyControls\.append\(weaponEditor\)/);
- assert.match(code,/legacyControls\.addEventListener\('toggle',syncWorkbench\)/);
+ assert.match(code,/legacyControls\.addEventListener\('toggle'/);
+ assert.match(code,/expandedClassicWeaponControls\.add\(member\.id\)/);
  assert.match(code,/loadout\.group\.weapon\.open&&legacyControls\.open&&weaponEditor\.open/);
 });
 test('Magazine resupply and operators stay outside the classic fallback drawer',()=>{

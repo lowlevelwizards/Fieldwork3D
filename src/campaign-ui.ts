@@ -67,6 +67,8 @@ export class CampaignScreen{
  private preview:CampaignKitPreview|null=null;
  private workbench:WeaponWorkbenchPreview|null=null;
  private weaponView=false;
+ /** Temporary UI preference only; no Campaign save mutation. */
+ private readonly expandedClassicWeaponControls=new Set<string>();
  private selectedMount:WeaponAttachmentSlot='optic';
  private selectedWorkbenchSocket:WorkbenchSocket|null=null;
  private lastArmoryRenderedId:string|null=null;
@@ -613,7 +615,12 @@ export class CampaignScreen{
   const familyEditor=node('details','campaign-weapon-attachments');
   const build=person.weaponConfiguration.build;
   const legacyControls=node('details','campaign-legacy-weapons');
-  legacyControls.open=!build||this.weaponView;
+  legacyControls.open=!build||this.weaponView||
+   this.expandedClassicWeaponControls.has(id);
+  legacyControls.addEventListener('toggle',()=>{
+   if(legacyControls.open)this.expandedClassicWeaponControls.add(id);
+   else this.expandedClassicWeaponControls.delete(id);
+  });
   legacyControls.append(node('summary','','ADVANCED · CLASSIC WEAPON CONTROLS'),
    node('p','campaign-note',
     'Use OPEN ARSENAL to build modular weapons. These direct controls remain available for unsupported weapons and troubleshooting.'),

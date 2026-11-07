@@ -1565,6 +1565,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-v2-operator-recipes-r9-') }}
         run: |
           node --experimental-strip-types --test tests/arsenal-r9-recipe-loading.test.mjs tests/arsenal-r9-load-ui.test.mjs tests/arsenal-r10-operator-lab.test.mjs tests/arsenal-r10-replay-parity.test.mjs tests/arsenal-r11-camera-entry.test.mjs tests/operator-lab-unified-poses.test.mjs tests/replay-r2-recording.test.mjs tests/arsenal-v2-saved-builds.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-campaign-adapter.test.mjs tests/arsenal-v2-quickplay-adapter.test.mjs tests/arsenal-v2-game-integration.test.mjs tests/equipment-27-01-campaign-ownership.test.mjs tests/equipment-19-04-weapon-persistence.test.mjs
+      - name: Arsenal R12 — classic fallback and ownership critical regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-r12-classic-fallback-') }}
+        run: |
+          node --experimental-strip-types --test tests/arsenal-r12-classic-fallback.test.mjs tests/arsenal-v2-game-integration.test.mjs tests/equipment-19-09-campaign-armory.test.mjs tests/equipment-19-06-quickplay-editor.test.mjs tests/equipment-27-01-campaign-ownership.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

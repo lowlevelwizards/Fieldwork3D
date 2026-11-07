@@ -1000,6 +1000,8 @@ let expandedQuickOperator:string|null=null;
 let expandedQuickKit:string|null=null;
 let expandedQuickLoadoutGroup:QuickLoadoutGroup='weapon';
 let expandedQuickWeapon:string|null=null;
+/** Keep the intentional classic fallback open across part/weapon rerenders. */
+const expandedClassicWeaponControls=new Set<string>();
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
 const selectedQuickWeaponSockets=new Map<string,WorkbenchSocket>();
@@ -1169,7 +1171,8 @@ function renderOperationsBoard(){
   loadout.field('weapon').append(arsenalAction);
   const legacyControls=document.createElement('details');
   legacyControls.className='fw-legacy-weapon-controls';
-  legacyControls.open=!member.weaponConfiguration.build;
+  legacyControls.open=!member.weaponConfiguration.build||
+   expandedClassicWeaponControls.has(member.id);
   const legacyTitle=document.createElement('summary');
   legacyTitle.textContent='ADVANCED · CLASSIC WEAPON CONTROLS';
   const legacyNote=document.createElement('p');legacyNote.className='fw-weapon-helper';
@@ -1284,7 +1287,11 @@ function renderOperationsBoard(){
    if(saved&&socketRows.has(saved))showSocket(saved);
    else quickWorkbench.setActiveSlot(initialSocket,false);
   };
-  legacyControls.addEventListener('toggle',syncWorkbench);
+  legacyControls.addEventListener('toggle',()=>{
+   if(legacyControls.open)expandedClassicWeaponControls.add(member.id);
+   else expandedClassicWeaponControls.delete(member.id);
+   syncWorkbench();
+  });
   weaponEditor.addEventListener('toggle',()=>{
    if(weaponEditor.open)expandedQuickWeapon=member.id;
    else if(expandedQuickWeapon===member.id)expandedQuickWeapon=null;
