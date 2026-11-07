@@ -76,8 +76,8 @@ import {garmentSolidHex,isGarmentSolidId,resolvedCuffSolid,resolvedCombatKnitSol
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
 import type {CarryLocation,CarryPlacement} from './equipment-carry-placement.ts';
-import {selectedReloadPouchSlot,v4ReloadPouchReach,
- v4MagazineInHand,v4SelectedPouchVisible,v4AuthoredPouchAnchor}
+import {selectedReloadPouchSlot,v4MagazineInHand,
+ v4SelectedPouchVisible,v4AuthoredPouchAnchor}
  from './breach-reload-v4-magazine-handoff.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
  type OperatorVisualKit} from './operator-visual-kit.ts';
