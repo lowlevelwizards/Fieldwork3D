@@ -281,8 +281,12 @@ export class OperatorAppearanceGrid{
    },0);
    rig.root.position.set(0,0,0);
    const toon=requestedOperatorToonBands(window.location.search);
-   if(toon)applyOperatorStudioToon(rig.root,toon,
-    requestedOperatorRimMode(window.location.search));
+   if(toon){
+    applyOperatorStudioToon(rig.root,toon,
+     requestedOperatorRimMode(window.location.search));
+    this.grid.dataset.operatorRimMode=
+     requestedOperatorRimMode(window.location.search);
+   }
    this.scene.add(rig.root);
    this.lighting.invalidateGeometry();
    this.lighting.beforeRender(rig.root);
