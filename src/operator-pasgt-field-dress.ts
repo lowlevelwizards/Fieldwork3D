@@ -292,8 +292,62 @@ export function createPasgtNetGeometry():THREE.BufferGeometry{
  g.userData.pasgtNetPattern='sparse-diamond';
  return g;
 }
+/** Oversized two-point retention. Three graphic shapes, no hardware.
+ * The low cheek/chin straps make the helmet look worn, but remain hidden
+ * when bulky facewear would produce broken overlaps.
+ */
+export function createPasgtRetentionGeometry():THREE.BufferGeometry{
+ const data:number[]=[];
+ const vec=(p:readonly number[])=>new THREE.Vector3(p[0],p[1],p[2]);
+ const put=(p:THREE.Vector3)=>data.push(p.x,p.y,p.z);
+ for(const sign of [-1,1] as const){
+  const path=[
+   vec([sign*4.99,3.30,.42]),
+   vec([sign*4.36,1.15,-3.42]),
+   vec([sign*2.34,-.84,-4.28])
+  ];
+  const normal=new THREE.Vector3(sign*.68,0,-.74);
+  for(let i=0;i<path.length-1;i++){
+   const p=path[i],q=path[i+1];
+   const tangent=q.clone().sub(p).normalize();
+   const across=new THREE.Vector3().crossVectors(normal,tangent)
+    .normalize().multiplyScalar(.39);
+   const a=p.clone().add(across),b=p.clone().sub(across),
+    c=q.clone().sub(across),d=q.clone().add(across);
+   for(const pt of [a,b,c,a,c,d])put(pt);
+  }
+ }
+ const pad=[
+  vec([-2.34,-1.11,-4.30]),vec([2.34,-1.11,-4.30]),
+  vec([2.34,-.51,-4.30]),vec([-2.34,-.51,-4.30])
+ ];
+ for(const i of [0,1,2,0,2,3])put(pad[i]);
+ const g=new THREE.BufferGeometry();
+ g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
+ g.computeVertexNormals();g.computeBoundingBox();
+ g.userData.pasgtSimpleTwoPointRetention=true;
+ return g;
+}
+/** Two broad rear cat-eye marks live on the existing elastic profile.
+ * They're printed-looking flat strips: no tiny buckle or separate control.
+ */
+export function createPasgtCatEyesGeometry(covered:boolean):THREE.BufferGeometry{
+ const back=PASGT_RING_SAMPLES.find(s=>s.side==='rear')!;
+ const z=pasgtRingPoint(back,'ramp')[2]+(covered?.15:.12);
+ const data:number[]=[];
+ for(const x of [-2.10,2.10]){
+  const a=[x-.62,5.70,z],b=[x+.62,5.70,z],
+   c=[x+.62,5.34,z],d=[x-.62,5.34,z];
+  for(const p of [a,b,c,a,c,d])data.push(...p);
+ }
+ const g=new THREE.BufferGeometry();
+ g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
+ g.computeVertexNormals();g.computeBoundingBox();
+ g.userData.pasgtRearCatEyes=2;
+ return g;
+}
 export type PasgtFieldDressLayers={
- slits:THREE.Group;band:THREE.Group;
+ slits:THREE.Group;band:THREE.Group;retention:THREE.Group;
  foliage:THREE.Group;scrim:THREE.Group;net:THREE.Group;
  leafMaterials:readonly THREE.MeshStandardMaterial[];
  scrimMaterials:readonly THREE.MeshStandardMaterial[];
@@ -302,6 +356,7 @@ export type PasgtFieldDressLayers={
 export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  const slits=hidden(parent,'pasgt-twelve-bold-buttonholes');
  const band=hidden(parent,'pasgt-one-chunky-elastic');
+ const retention=hidden(parent,'pasgt-two-point-retention');
  const foliage=hidden(parent,'pasgt-leaves-from-buttonholes');
  const scrim=hidden(parent,'pasgt-fabric-strips-from-buttonholes');
  const net=hidden(parent,'pasgt-full-shell-overnet');
@@ -320,7 +375,12 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
   const bandMesh=new THREE.Mesh(createPasgtBandGeometry(covered),bandMat);
   bandMesh.name=covered?'pasgt-covered-fit-elastic':'pasgt-bare-fit-elastic';
   bandMesh.castShadow=true;bandMesh.receiveShadow=false;
-  bandMesh.visible=covered;band.add(bandMesh);
+  bandMesh.visible=covered;
+  const marks=new THREE.Mesh(createPasgtCatEyesGeometry(covered),
+   material(0xbfb28e,THREE.DoubleSide));
+  marks.name='pasgt-two-rear-cat-eye-tabs';
+  marks.castShadow=false;marks.receiveShadow=false;
+  bandMesh.add(marks);band.add(bandMesh);
  }
  for(let i=0;i<CARD_ANCHORS.length;i++){
   placedCard(foliage,i,leafMaterials[i%3],
@@ -330,15 +390,21 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
    createPasgtScrimRibbonGeometry(i),
    'pasgt-broad-folded-cloth-strip',-.09);
  }
+ const strap=new THREE.Mesh(createPasgtRetentionGeometry(),
+  material(0x58644e,THREE.DoubleSide));
+ strap.name='pasgt-chunky-two-point-retention';
+ strap.castShadow=true;strap.receiveShadow=false;
+ retention.add(strap);
  const netMat=material(0x636e53,THREE.DoubleSide);
  const netMesh=new THREE.Mesh(createPasgtNetGeometry(),netMat);
  netMesh.name='pasgt-front-crown-side-rear-net';netMesh.castShadow=true;
  netMesh.receiveShadow=false;net.add(netMesh);
- return {slits,band,foliage,scrim,net,
+ return {slits,band,retention,foliage,scrim,net,
   leafMaterials,scrimMaterials,palette:null};
 }
 export function updatePasgtFieldDress(v:PasgtFieldDressLayers,
- covered:boolean,details:PasgtDetails,camo:HeadwearCamoId|undefined):void{
+ covered:boolean,details:PasgtDetails,camo:HeadwearCamoId|undefined,
+ allowRetention=true):void{
  const effective=resolvePasgtDetails(details);
  v.slits.visible=covered&&effective.slits;
  v.band.visible=effective.band==='elastic'; // can be worn over the bare shell
@@ -349,6 +415,7 @@ export function updatePasgtFieldDress(v:PasgtFieldDressLayers,
  v.foliage.visible=covered&&effective.concealment==='foliage';
  v.scrim.visible=covered&&effective.concealment==='scrim';
  v.net.visible=covered&&effective.concealment==='net';
+ v.retention.visible=allowRetention;
  const palette=pasgtConcealmentPalette(camo);
  if(v.palette!==palette){
   const colors=PALETTES[palette];
