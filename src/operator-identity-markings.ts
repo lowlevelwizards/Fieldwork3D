@@ -10,10 +10,13 @@ export type MarkingRecord={id:string;label:string;kind:'flag'|'label'|'field-ban
  /** A simple known graphic; no fabricated organizational seals. */
  graphic:string};
 const shoulders=['leftShoulder','rightShoulder'] as const;
+const rightShoulder=['rightShoulder'] as const;
 const chest=['chest'] as const;
 const band=['armband'] as const;
 export const IDENTITY_MARKINGS:readonly MarkingRecord[]=[
- {id:'flag-us',label:'United States flag',kind:'flag',slots:shoulders,from:1777,to:2100,graphic:'us'},
+ {id:'flag-us',label:'United States flag · standard orientation',kind:'flag',slots:shoulders,from:1777,to:2100,graphic:'us'},
+ // Forward-facing canton on the right arm, established for universal Army BDU wear in 2004.
+ {id:'flag-us-reversed',label:'US Army flag · right shoulder, canton forward',kind:'flag',slots:rightShoulder,from:2004,to:2100,graphic:'us-reverse'},
  {id:'flag-uk',label:'United Kingdom flag',kind:'flag',slots:shoulders,from:1801,to:2100,graphic:'uk'},
  {id:'flag-germany',label:'German federal flag',kind:'flag',slots:shoulders,from:1949,to:2100,graphic:'de'},
  {id:'flag-ukraine',label:'Ukraine flag',kind:'flag',slots:shoulders,from:1992,to:2100,graphic:'ua'},
@@ -38,6 +41,8 @@ export const IDENTITY_MARKINGS:readonly MarkingRecord[]=[
  {id:'flag-east-germany',label:'East Germany state flag (1959–1990)',kind:'flag',slots:shoulders,from:1959,to:1990,graphic:'ddr'},
  {id:'label-police',label:'POLICE panel',kind:'label',slots:chest,from:1950,to:2100,graphic:'police'},
  {id:'label-swat',label:'SWAT panel',kind:'label',slots:chest,from:1970,to:2100,graphic:'swat'},
+ // OMON is written ОМОН in Cyrillic; its four glyph silhouettes match Latin OMON.
+ {id:'label-omon',label:'OMON / ОМОН police panel',kind:'label',slots:chest,from:1988,to:2100,graphic:'omon'},
  {id:'label-security',label:'SECURITY panel',kind:'label',slots:chest,from:1950,to:2100,graphic:'security'},
  {id:'band-blue',label:'Blue field identification',kind:'field-band',slots:band,from:1900,to:2100,graphic:'blue'},
  {id:'band-yellow',label:'Yellow field identification',kind:'field-band',slots:band,from:1900,to:2100,graphic:'yellow'}
@@ -69,7 +74,7 @@ export const identityMarkingChoices=(slot:MarkingSlot,year?:number)=>
 export function referenceIdentity(country:string,year:number,organization:string):IdentityMarkings{
  if(organization==='police')return {chest:'label-police'};
  const flagByCountry:Record<string,string>={
-  'United States':'flag-us','United Kingdom':'flag-uk','Germany':'flag-germany',
+  'United States':year>=2004?'flag-us-reversed':'flag-us','United Kingdom':'flag-uk','Germany':'flag-germany',
   'Ukraine':'flag-ukraine','Poland':'flag-poland','France':'flag-france',
   'Italy':'flag-italy','Russia':'flag-russia','Indonesia':'flag-indonesia',
   'Belgium':'flag-belgium','Sweden':'flag-sweden','Finland':'flag-finland',
