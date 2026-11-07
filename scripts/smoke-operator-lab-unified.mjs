@@ -178,6 +178,8 @@ try{
    throw Error('Workbench close did not restore gallery scrolling');
   // R15: a historical material choice should change its authored swatch
   // without duplicating the wooden stock silhouette in the physical grid.
+  // Saving a personal recipe intentionally leaves the gallery on Saved.
+  await page.locator('.arsenal-filter').filter({hasText:'All'}).click();
   await page.getByRole('button',{name:'Select AK-74',exact:true}).click();
   await page.getByRole('button',{name:'OPEN WORKBENCH'}).click();
   await page.locator('.arsenal-wb-category').filter({hasText:'Furniture'}).click();
