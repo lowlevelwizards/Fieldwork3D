@@ -11,7 +11,8 @@ import {applyStudioSelfShadowAtlases}
  from './operator-gear-lightmap-atlas.ts';
 import {applyOperatorStudioToon,requestedOperatorToonBands}
  from './operator-studio-toon-lighting.ts';
-import {OperatorStudioLighting} from './operator-studio-lighting.ts';
+import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
+ from './operator-studio-lighting.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
 import {readPasgtDetails,resolvePasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
@@ -142,9 +143,9 @@ const modeLabel=$<HTMLElement>('studioModeLabel');
 const studioRoot=$<HTMLElement>('studioRoot');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'low-power'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
-renderer.setClearColor(0xc4c7bd);
+renderer.setClearColor(STUDIO_INSPECTION_BACKGROUND);
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0xc4c7bd);
+scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
 // R5 Studio shadows are isolated from the shared thumbnail scene.
 const studioLighting=new OperatorStudioLighting(scene,renderer,location.search);
 const diagnosticLayers:LightingDiagnosticLayers={...DEFAULT_LIGHTING_LAYERS};
