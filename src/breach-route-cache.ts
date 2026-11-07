@@ -19,8 +19,10 @@ export class DisplayRouteCache{
   private cache=new Map<string,DisplayRoute>();
   readonly sizeLimit=180;
   invalidations=0;computations=0;
-  get(from:Pt,to:Pt,intel:IntelState,exactOrigin=false):DisplayRoute{
-    const known=intelRouteFingerprint(intel);
+  get(from:Pt,to:Pt,intel:IntelState,exactOrigin=false,
+    portalRoute?:(from:Pt,to:Pt,ordinary:readonly Pt[])=>Pt[]|null,
+    portalRevision=0):DisplayRoute{
+    const known=intelRouteFingerprint(intel)+'|portal:'+portalRevision;
     if(this.knownKey!==known){
       this.cache.clear();this.knownKey=known;this.invalidations++;
     }
@@ -35,7 +37,9 @@ export class DisplayRouteCache{
     const snapped={x:ox,y:oy};
     const normal=routeWithIntel(intel,snapped,to);
     const points=normal.length?normal:routeWithSqueezeIntel(intel,snapped,to);
-    const value={points,narrowOnly:!normal.length&&!!points.length};
+    const viaWindow=portalRoute?.(snapped,to,points);
+    const value={points:viaWindow??points,
+      narrowOnly:!viaWindow&&!normal.length&&!!points.length};
     if(this.cache.size>=this.sizeLimit)
       this.cache.delete(this.cache.keys().next().value!);
     this.cache.set(key,value);this.computations++;
