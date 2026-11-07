@@ -175,8 +175,42 @@ export function snapshot(s:Session,seenGround?:string[],
     knowledge:captureReplayKnowledge(s,previouslyDiscovered,observerBodies),
   };
 }
+/** One synchronous delivery at the exact authoritative 20 Hz capture site.
+ * Same-timestamp forced updates replace only the unsealed last frame.
+ */
+export type ReplayFrameCaptureNotice={
+  kind:'append'|'replace';frame:ReplayFrame;count:number
+};
 export class MissionRecorder{
   readonly frames:ReplayFrame[]=[];
+  private frameCaptureListener:((notice:ReplayFrameCaptureNotice)=>void)|null=null;
+  /** A listener failure must never interrupt the 60 Hz tactical simulation.
+   * It is exposed, never silently treated as a complete streamed film.
+   */
+  frameCaptureListenerError:string|null=null;
+  observeRecordedFrames(
+    listener:(notice:ReplayFrameCaptureNotice)=>void
+  ):()=>void{
+    if(this.frameCaptureListener)
+      throw Error('Only one live replay capture subscriber is supported');
+    if(typeof listener!=='function')
+      throw Error('Invalid live replay capture subscriber');
+    this.frameCaptureListener=listener;
+    return ()=>{
+      if(this.frameCaptureListener===listener)this.frameCaptureListener=null;
+    };
+  }
+  private deliverCapturedFrame(kind:'append'|'replace',
+    frame:ReplayFrame):void{
+    const listener=this.frameCaptureListener;
+    if(!listener)return;
+    try{listener({kind,frame,count:this.frames.length});}
+    catch(error){
+      this.frameCaptureListener=null;
+      this.frameCaptureListenerError=error instanceof Error?
+        error.message:String(error);
+    }
+  }
   readonly events:BattleEvent[]=[];
   readonly executionEvents:ExecutionEvent[]=[];
   /** Sparse personal ground reveals, captured at the actual sight tick.
@@ -255,6 +289,7 @@ export class MissionRecorder{
         for(const id of sample.knowledge?.discoveredBodyIds??[])
           this.discoveredBodies.add(id);
         this.frames[this.frames.length-1]=sample;
+        this.deliverCapturedFrame('replace',sample);
       }
       return;
     }
@@ -276,6 +311,7 @@ export class MissionRecorder{
     shareUnchangedReplayFrame(last,frame,this.frames.length,
       this.sharingStats);
     this.frames.push(frame);
+    this.deliverCapturedFrame('append',frame);
   }
   get duration(){return this.frames.at(-1)?.t??0;}
   surrounding(time:number):{previous:ReplayFrame;next:ReplayFrame;alpha:number}|null{
