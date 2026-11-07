@@ -65,6 +65,24 @@ test('R7.10 every independent piece—including pouches and weapons—gets its o
  assert.equal(plate.material,uniform);
  assert.ok(barrel.material instanceof THREE.MeshStandardMaterial);
 });
+test('R7.10 merged gear has one complete gradient per original pouch span',()=>{
+ const merged=new THREE.BufferGeometry();
+ merged.setAttribute('position',new THREE.Float32BufferAttribute([
+  0,0,0, 1,0,0, 0,3,0, 1,3,0,
+  4,30,0, 5,30,0, 4,34,0, 5,34,0
+ ],3));
+ merged.userData.fieldworkLightingPartSpans=[
+  {partId:'pouch-a',role:'fabric',start:0,count:4},
+  {partId:'pouch-b',role:'fabric',start:4,count:4}
+ ];
+ assert.equal(ensureStudioPieceGradient(merged),true);
+ const attr=merged.getAttribute('fieldworkPieceHeight');
+ assert.deepEqual(Array.from(attr.array),[0,0,1,1,0,0,1,1],
+  'Second pouch resets to its own bottom despite merged geometry');
+ assert.equal(ensureStudioPieceGradient(merged),true);
+ assert.equal(merged.getAttribute('fieldworkPieceHeight'),attr,
+  'Repeated UI changes must not allocate more vertex buffers');
+});
 test('R7.10 rim amount changes live without recompiling a shader variant',()=>{
  const rig=new THREE.Group(),material=new THREE.MeshStandardMaterial({
   color:0x767c65
