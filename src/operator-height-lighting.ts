@@ -8,7 +8,7 @@ export const OPERATOR_HEIGHT_REFERENCE=50;
 /** Smooth continuous piecewise gradient for an operator in rest-pose units.
  * Higher parts are brighter; no pouch, strap, boot or jacket restarts it.
  */
-export type OperatorHeightProfile='current'|'neutral'|'sculptural'|'strong'|'violet'|'violet-noir';
+export type OperatorHeightProfile='current'|'neutral'|'sculptural'|'strong'|'violet'|'violet-noir'|'piece';
 const PROFILE_STOPS:Record<OperatorHeightProfile,
  readonly (readonly [number,number])[]>={
  current:[[0,.82],[.20,.86],[.45,.92],[.70,.97],[1,1]],
@@ -16,12 +16,13 @@ const PROFILE_STOPS:Record<OperatorHeightProfile,
  sculptural:[[0,.78],[.20,.84],[.45,.91],[.70,.98],[1,1.03]],
  strong:[[0,.74],[.20,.81],[.45,.90],[.70,.99],[1,1.05]],
  violet:[[0,.60],[.20,.72],[.45,.85],[.70,.99],[1,1.07]],
- 'violet-noir':[[0,.43],[.20,.55],[.45,.73],[.70,.94],[1,1.10]]
+ 'violet-noir':[[0,.43],[.20,.55],[.45,.73],[.70,.94],[1,1.10]],
+ piece:[[0,1],[1,1]]
 };
 export function requestedOperatorGradient(search:string):OperatorHeightProfile{
  const profile=new URLSearchParams(search).get('operatorGradient');
  return profile==='neutral'||profile==='sculptural'||profile==='strong'||
-  profile==='violet'||profile==='violet-noir'?
+  profile==='violet'||profile==='violet-noir'||profile==='piece'?
   profile:'current';
 }
 export function operatorHeightBrightness(
