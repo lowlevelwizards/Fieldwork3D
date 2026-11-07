@@ -9,7 +9,8 @@ import * as THREE from 'three';
 import {requestedOperatorGradient} from './operator-height-lighting.ts';
 import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
  from './operator-studio-lighting.ts';
-import {applyOperatorStudioToon,requestedOperatorToonBands}
+import {applyOperatorStudioToon,requestedOperatorToonBands,
+ requestedOperatorRimMode,disposeOperatorStudioToon}
  from './operator-studio-toon-lighting.ts';
 import {THUMB_LINEAR_TO_SRGB} from './operator-thumbnail-color.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
@@ -250,6 +251,7 @@ export class OperatorAppearanceGrid{
   if(this.thumbnailRig&&this.rigIdentity===id)return this.thumbnailRig;
   if(this.thumbnailRig){
    this.scene.remove(this.thumbnailRig.root);
+   disposeOperatorStudioToon(this.thumbnailRig.root);
    this.thumbnailRig.dispose();
   }
   this.thumbnailRig=createOperatorRig(id,'blue');
@@ -279,7 +281,8 @@ export class OperatorAppearanceGrid{
    },0);
    rig.root.position.set(0,0,0);
    const toon=requestedOperatorToonBands(window.location.search);
-   if(toon)applyOperatorStudioToon(rig.root,toon);
+   if(toon)applyOperatorStudioToon(rig.root,toon,
+    requestedOperatorRimMode(window.location.search));
    this.scene.add(rig.root);
    this.lighting.invalidateGeometry();
    this.lighting.beforeRender(rig.root);
@@ -353,6 +356,7 @@ export class OperatorAppearanceGrid{
   this.observer?.disconnect();this.pending.clear();this.cards.clear();
   if(this.thumbnailRig){
    this.scene.remove(this.thumbnailRig.root);
+   disposeOperatorStudioToon(this.thumbnailRig.root);
    this.thumbnailRig.dispose();this.thumbnailRig=null;
   }
   this.target.dispose();
