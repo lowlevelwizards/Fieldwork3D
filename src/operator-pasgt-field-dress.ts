@@ -145,9 +145,12 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
    isSide?.13:1.13,.15,isSide?1.13:.13);
  });
  unite(slits,holes,slitMat,'pasgt-simple-eight-foliage-cuts');
- const bandMesh=new THREE.Mesh(createPasgtBandGeometry(),bandMat);
- bandMesh.name='pasgt-upper-brow-band';bandMesh.castShadow=true;
- bandMesh.receiveShadow=false;band.add(bandMesh);
+ for(const covered of [true,false]){
+  const bandMesh=new THREE.Mesh(createPasgtBandGeometry(covered),bandMat);
+  bandMesh.name=covered?'pasgt-covered-fit-elastic':'pasgt-bare-fit-elastic';
+  bandMesh.castShadow=true;bandMesh.receiveShadow=false;
+  bandMesh.visible=covered;band.add(bandMesh);
+ }
  for(let i=0;i<CARD_ANCHORS.length;i++){
   placedCard(foliage,i,leafMaterials[i%3],LEAF_SHAPE,
    'pasgt-simple-pixel-leaf',.05);
@@ -167,6 +170,10 @@ export function updatePasgtFieldDress(v:PasgtFieldDressLayers,
  const effective=resolvePasgtDetails(details);
  v.slits.visible=covered&&effective.slits;
  v.band.visible=effective.band==='elastic'; // can be worn over the bare shell
+ // Both contours are prebuilt once. Never place a single halfway-floating
+ // band between hard shell and cloth cover.
+ for(const mesh of v.band.children)mesh.visible=
+  mesh.name===(covered?'pasgt-covered-fit-elastic':'pasgt-bare-fit-elastic');
  v.foliage.visible=covered&&effective.concealment==='foliage';
  v.scrim.visible=covered&&effective.concealment==='scrim';
  v.net.visible=covered&&effective.concealment==='net';
