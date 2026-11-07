@@ -98,6 +98,19 @@ export function replayActorVisible(
   return replayActorDisclosed(s,a,omniscient?{mode:'full'}:{mode:'squad'});
 }
 
+/** Shared civilian disclosure: personal mode is strictly recorded and
+ * fails closed for old films. This never calls live LOS in playback.
+ */
+export function replayCivilianDisclosed(
+  s:Session,civilianId:string,policy:ReplayDisclosure
+):boolean{
+  if(policy.mode==='full')return true;
+  const knowledge=recordedReplayKnowledge(s);
+  if(policy.mode==='operator')
+    return recordedObserverCanSeeCivilian(knowledge,
+      policy.observerId,civilianId)===true;
+  return knowledge?.visibleCivilianIds.includes(civilianId)??false;
+}
 export function replayBodyDiscovered(s:Session,id:string):boolean{
   return recordedReplayKnowledge(s)?.discoveredBodyIds.includes(id)??false;
 }
