@@ -42,7 +42,7 @@ import {choreographV4ReloadWeapon,reloadMechanismFor,
  v4ReloadControlPose}
  from './breach-reload-performance.ts';
 import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
-import {resolveOperatorActionState} from './breach-pose-action-state.ts';
+import {directOperatorPose} from './breach-pose-director.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
 import {chooseV3SupportGrip} from './breach-pose-v3-support-grip.ts';
@@ -91,7 +91,7 @@ import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
 import {weaponPresentationSockets} from './breach-weapon-presentation.ts';
 import {resolveWeaponAssembly,sameWeaponConfiguration,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
-import {weaponGrips,handlingPose,clampReach,
+import {weaponGrips,clampReach,
   fitWeaponPose,type WeaponFit,type Handling,type HandlingIntent}
   from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
@@ -1032,20 +1032,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     kickMotion(kickAge):null;
   const bash=contactReaction(p.seconds-(p.lastBashAt??-100),
     p.bashRole??null,!!p.blocked);
-  // All V3/V4 action windows and hand ownership are one pure decision.
-  const actionState=resolveOperatorActionState(
-    p,downProgress,bash.active&&p.bashRole==='push');
+  // One pure director owns the visual handling choice and action targets.
+  // Explicit previous-handling inputs preserve existing passive hysteresis.
+  const {handling,action:actionState}=directOperatorPose(p,{
+    moving,downProgress,pushActive:bash.active&&p.bashRole==='push',
+    receivingBash:bash.active&&p.bashRole==='receive',
+    previousHandling:r.lastHandling??undefined,
+    previousHandlingAt:r.lastHandlingAt
+  });
   const {treatmentActive,reloadActive,reloadProgress,reloadMode,
     throwAge,throwActive,doorAge,doorActive,handOwners}=actionState;
-  const handling=p.treatmentActive?'low':p.handlingOverride??handlingPose({
-    aim:p.aimBlend??(p.aiming?1:0),moving,
-    obstruction:!!p.obstruction||
-      (bash.active&&p.bashRole==='receive'),
-    friendlyNear:!!p.friendlyNear,
-    intent:p.handlingIntent,threatRange:p.threatRange,weapon:p.weapon,
-    previous:p.deterministic?undefined:r.lastHandling??undefined,
-    heldFor:p.seconds-r.lastHandlingAt
-  });
   const passiveBlend=!p.deterministic&&!p.handlingOverride&&
     !p.aiming&&!p.firing&&!p.down&&!p.surrender;
   if(!p.handlingOverride&&handling!==r.lastHandling){
