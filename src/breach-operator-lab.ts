@@ -72,10 +72,13 @@ let labPalette=1;
 let wardrobeOptions:WardrobeOptions=initialWardrobe();
 /** URL opt-in development inspector, not a second character renderer. */
 const poseFitMode=new URLSearchParams(location.search).get('poseFit')==='1';
-const poseV3Preview=new URLSearchParams(location.search).get('poseV3')==='1';
+const poseV4ReloadPreview=new URLSearchParams(location.search).get('poseV4')==='1';
+const poseV3Preview=poseV4ReloadPreview||
+ new URLSearchParams(location.search).get('poseV3')==='1';
 /** Use the actual action clock while preserving the Pose Fit weapon/armor. */
 const poseV3Action=poseFitMode&&poseV3Preview&&
- new URLSearchParams(location.search).get('poseV3Action')==='1';
+ (poseV4ReloadPreview||
+  new URLSearchParams(location.search).get('poseV3Action')==='1');
 const poseFitStatic=poseFitMode&&!poseV3Action;
 let poseFitPreset='ar-m4a1',poseFitArmor='plate-jpc';
 let poseFitRig='no-rig',poseFitTop='bdu-shirt';
@@ -1575,7 +1578,7 @@ function draw(){
     firing:false,turning:poseFitMode?0:motion.turning,
     aimBlend:poseFitStatic?0:motion.aim,
     handlingOverride:poseFitStatic?'low':selectedHandling,
-    poseV3Preview,
+    poseV3Preview,poseV4ReloadPreview,
     handlingTransition:poseFitMode?undefined:transition,
     replayFeet:poseFitMode?undefined:feet,
     pelvisYaw:poseFitMode?0:state.pelvisYaw,
@@ -1758,6 +1761,7 @@ function draw(){
   canvas.dataset.poseV3DynamicReport=JSON.stringify(
     rig.root.userData.poseV3DynamicReport??[]);
   canvas.dataset.poseV3Preview=String(poseV3Preview);
+  canvas.dataset.poseV4ReloadPreview=String(poseV4ReloadPreview);
   canvas.dataset.gripError=rig.gripError.toFixed(4);
   canvas.dataset.eyeError=rig.eyeError.toFixed(3);
   canvas.dataset.ankleGap=Math.max(...rig.legGap).toFixed(3);
