@@ -32,7 +32,9 @@ test('UOP transition director samples passive handling by time, not frames',()=>
  const repeated=sampleHandlingTransition(r,pose(5.12),'ready');
  assert.ok(halfway.active.alpha>.49&&halfway.active.alpha<.51);
  assert.equal(repeated.active.alpha,halfway.active.alpha);
- assert.equal(sampleHandlingTransition(r,pose(5.25),'ready').active,undefined);
+ const complete=sampleHandlingTransition(r,pose(5.25),'ready');
+ assert.equal(complete.active?.alpha,1);
+ assert.equal(sampleHandlingTransition(r,pose(5.26),'ready').active,undefined);
  assert.equal(sampleHandlingTransition(r,
    pose(5.3,{deterministic:true}),'ready').active,undefined);
 });
