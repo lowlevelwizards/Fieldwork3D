@@ -82,14 +82,28 @@ export function ensureStudioPieceGradient(geometry:THREE.BufferGeometry):boolean
  if(!position||position.itemSize<3)return false;
  const existing=geometry.getAttribute('fieldworkPieceHeight');
  if(existing&&existing.count===position.count)return true;
- if(!geometry.boundingBox)geometry.computeBoundingBox();
- const bounds=geometry.boundingBox;
- if(!bounds||bounds.isEmpty())return false;
- const range=bounds.max.y-bounds.min.y;
+ // consolidateVisualGroup retains these spans in vertex order. Use their
+ // bounds to preserve one gradient PER ORIGINAL POUCH/PANEL even if all share
+ // one material and are merged into a single iOS-friendly draw call.
+ const spans=geometry.userData.fieldworkLightingPartSpans as
+  Array<{start:number;count:number}>|undefined;
+ const valid=Array.isArray(spans)&&spans.length>0&&
+  spans.every(part=>Number.isInteger(part.start)&&
+   Number.isInteger(part.count)&&part.count>0&&part.start>=0&&
+   part.start+part.count<=position.count);
+ const ranges=valid?spans!:[{start:0,count:position.count}];
  const values=new Float32Array(position.count);
- for(let i=0;i<position.count;i++)
-  values[i]=range>0.001?
-   THREE.MathUtils.clamp((position.getY(i)-bounds.min.y)/range,0,1):.5;
+ for(const span of ranges){
+  let low=Infinity,high=-Infinity;
+  for(let i=span.start;i<span.start+span.count;i++){
+   const y=position.getY(i);
+   low=Math.min(low,y);high=Math.max(high,y);
+  }
+  const height=high-low;
+  for(let i=span.start;i<span.start+span.count;i++)
+   values[i]=height>0.001?
+    THREE.MathUtils.clamp((position.getY(i)-low)/height,0,1):.5;
+ }
  geometry.setAttribute('fieldworkPieceHeight',
   new THREE.BufferAttribute(values,1));
  return true;
