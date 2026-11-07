@@ -52,7 +52,7 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   // The front edge tucks directly into the magwell, not a floating black hook.
   [[-3.12,-2.40],[-.55,-2.40],[-.55,-3.69],
    [-1.17,-3.95],[-3.12,-3.80]],
-  [[-2.62,-2.86],[-.98,-2.86],[-1.13,-3.40],[-2.48,-3.40]],
+  [[-2.48,-2.86],[-2.62,-3.40],[-1.13,-3.40],[-.98,-2.86]],
   1.12,dark);
 
  // Early and polymer buttstocks are both confident single solid shapes.
