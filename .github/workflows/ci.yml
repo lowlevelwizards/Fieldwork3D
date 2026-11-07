@@ -25,6 +25,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h1-') }}
         run: |
           node --experimental-strip-types --test tests/helmet-h1-*.test.mjs
+      - name: PASGT P1/P2 — cover UV, field dress, legacy setup and rendering smoke
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-cover-refinement-') }}
+        run: |
+          node --experimental-strip-types --test tests/pasgt-p1-policy.test.mjs tests/pasgt-p2-cover-visuals.test.mjs tests/helmet-h1-config.test.mjs tests/helmet-h1-presets.test.mjs tests/helmet-h1-integration.test.mjs
       - name: Production release preflight — Pages queue and live build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
         env:
