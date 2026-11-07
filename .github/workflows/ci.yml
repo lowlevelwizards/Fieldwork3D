@@ -1650,6 +1650,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/blood-occlusion-window-route-threat-recovery') }}
         run: |
           node --experimental-strip-types --test tests/breach-window-blood-reactivity.test.mjs tests/breach-interior-window-motor.test.mjs tests/breach-wall-confinement.test.mjs tests/breach-mantle-contract.test.mjs tests/breach-wall-glide-here-window.test.mjs tests/lw-windows.test.mjs tests/architecture-02-interior-glazing.test.mjs tests/breach-clearing-fire-c.test.mjs tests/breach-179.test.mjs tests/replay-r2-recording.test.mjs
+      - name: Both-side short-stock and friendly sidestep — critical regression gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/two-sided-muzzle-recovery-friendly-fire-lane') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-two-sided-fire-recovery.test.mjs tests/breach-window-blood-reactivity.test.mjs tests/breach-clearing-fire-c.test.mjs tests/breach-179.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
