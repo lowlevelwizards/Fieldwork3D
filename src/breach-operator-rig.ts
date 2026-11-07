@@ -1354,7 +1354,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // and the existing reload interaction path stay in the same positions.
   // This is a whole-pair solution, not two competing elbow corrections.
   let coordinatedDynamic:ReturnType<typeof solveV3CoordinatedPose>|null=null;
-  let v3LeanParentX=0,v3LeanParentZ=0;
+  let v3LeanParentX=0,v3LeanParentY=0,v3LeanParentZ=0;
   const v3ReloadActive=p.reload>0&&p.reloadDuration>0;
   const v3ReloadProgress=v3ReloadActive?
     clamp(1-p.reload/p.reloadDuration,0,1):0;
@@ -1382,6 +1382,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const result=solveV3CoordinatedPose({
       fit,weapon:p.weapon,configuration:coupledConfig,
       shoulders:[shoulderFor(0),shoulderFor(1)],
+      chestRotation:r.chest.rotation,
       envelope:poseClearanceEnvelope(
         outfit.armorStyle,outfit.rigStyle,outfit.top),
       mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
@@ -1399,8 +1400,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       coordinatedDynamic=result;
       fit=result.fit;
       // No per-frame scratch allocation on the main render hot path.
-      v3LeanParentX=result.leanX*Math.cos(r.chest.rotation.y);
-      v3LeanParentZ=-result.leanX*Math.sin(r.chest.rotation.y);
+      const offset=new THREE.Vector3(result.leanX,0,0)
+        .applyQuaternion(new THREE.Quaternion().setFromEuler(
+          r.chest.rotation));
+      v3LeanParentX=offset.x;
+      v3LeanParentY=offset.y;
+      v3LeanParentZ=offset.z;
       // Existing body rotation is set afresh from pose time on every call.
       // Apply exactly one deterministic delta, not frame-history easing.
       r.chest.rotation.y+=result.yaw;
@@ -1510,6 +1515,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Body-assisted V3 preview keeps the firearm world-fixed by applying
   // the matching parent-space chest lean after the usual door/bashing reset.
   r.chest.position.x=bash.reach*.18+v3LeanParentX;
+  r.chest.position.y+=v3LeanParentY;
   r.chest.position.z+=v3LeanParentZ;
   r.reachRequest=null;
   r.weapon.visible=(!p.down&&!p.surrender)||downProgress<.30;

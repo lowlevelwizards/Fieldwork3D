@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {weaponFitInTurnedChest,solveV3CoordinatedPose,V3_TORSO_YAWS,V3_TORSO_LEANS}
+import {weaponFitInTurnedChest,contactInAssistedChest,
+ solveV3CoordinatedPose,V3_TORSO_YAWS,V3_TORSO_LEANS}
  from '../src/breach-pose-v3-coordinated.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../src/equipment-weapon-assemblies.ts';
@@ -27,6 +28,31 @@ test('V3 counterrotated weapon preserves exact world origin and orientation',()=
     .distanceTo(fit[key])<1e-8,key+'/'+yaw+'/'+lean);
   const world=chassis.multiply(new THREE.Quaternion().setFromEuler(r.rotation));
   assert.ok(world.angleTo(originalQ)<1e-7,'world barrel orientation');
+ }
+});
+test('V3 compensated rifle remains world-fixed under pitched and rolled chest',()=>{
+ const baseChest=new THREE.Euler(.13,.38,-.10,'XYZ');
+ const prior=new THREE.Quaternion().setFromEuler(baseChest);
+ const priorGun=new THREE.Quaternion().setFromEuler(fit.rotation);
+ for(const yaw of [-.16,0,.12])for(const lean of [0,.75,1.35]){
+  const changed=weaponFitInTurnedChest(fit,yaw,lean,baseChest);
+  const afterChest=new THREE.Quaternion().setFromEuler(new THREE.Euler(
+   baseChest.x,baseChest.y+yaw,baseChest.z,'XYZ'));
+  const shift=V(lean,0,0).applyQuaternion(prior);
+  const beforeOrigin=fit.origin.clone().applyQuaternion(prior);
+  const afterOrigin=changed.origin.clone()
+   .applyQuaternion(afterChest).add(shift);
+  assert.ok(afterOrigin.distanceTo(beforeOrigin)<1e-7,
+   'world origin preserved with 3D chest rotation');
+  const oldReloadHand=V(8,-4,-5);
+  const translated=contactInAssistedChest(oldReloadHand,yaw,lean,baseChest);
+  const newWorld=translated.applyQuaternion(afterChest).add(shift);
+  assert.ok(newWorld.distanceTo(oldReloadHand
+   .applyQuaternion(prior))<1e-7,'released reload hand world target');
+  const beforeQ=prior.clone().multiply(priorGun);
+  const afterQ=afterChest.clone().multiply(
+   new THREE.Quaternion().setFromEuler(changed.rotation));
+  assert.ok(afterQ.angleTo(beforeQ)<1e-7,'world gun orientation');
  }
 });
 test('V3 coupled clear pose retains true wrist contact and bounded yaw',()=>{

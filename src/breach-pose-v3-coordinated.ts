@@ -15,7 +15,6 @@ import {riflePoseContacts,supportContactAt}
  from './breach-weapon-contact-zones.ts';
 import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
 
-const Y=new THREE.Vector3(0,1,0);
 export const V3_TORSO_YAWS=Object.freeze([0,-.08,.08,-.16,.16] as const);
 /** Parent-local chest-forward translation; no stretching of shoulder joints. */
 export const V3_TORSO_LEANS=Object.freeze([0,.7,1.35] as const);
@@ -24,6 +23,8 @@ export type CoordinatedRequest={
  fit:WeaponFit;weapon:WeaponId;configuration:WeaponConfiguration;
  shoulders:readonly [THREE.Vector3,THREE.Vector3];
  envelope:PoseClearanceEnvelope;mode:PoseConstraintMode;
+ /** Source-of-truth current chest orientation including pitch/roll. */
+ chestRotation?:THREE.Euler;
  /** A released support palm follows its real interaction path, not furniture. */
  releasedSupportTarget?:THREE.Vector3;
 };
@@ -45,12 +46,28 @@ export type CoordinatedResult={
  validCandidates:number;
  quality:number|null;
 };
+/** Transform a hand interaction target into an assisted chest frame.
+ * This is the same rigid transformation used for the weapon itself.
+ */
+export function contactInAssistedChest(v:THREE.Vector3,
+ yaw:number,leanX=0,baseRotation=new THREE.Euler()):THREE.Vector3{
+ const before=new THREE.Quaternion().setFromEuler(baseRotation);
+ const after=new THREE.Quaternion().setFromEuler(new THREE.Euler(
+  baseRotation.x,baseRotation.y+yaw,baseRotation.z,baseRotation.order));
+ const relative=after.invert().multiply(before);
+ return v.clone().sub(new THREE.Vector3(leanX,0,0))
+  .applyQuaternion(relative);
+}
 export function weaponFitInTurnedChest(
- fit:WeaponFit,yaw:number,leanX=0):WeaponFit{
- const reverse=new THREE.Quaternion().setFromAxisAngle(Y,-yaw);
+ fit:WeaponFit,yaw:number,leanX=0,baseRotation=new THREE.Euler()):WeaponFit{
+ // Euler XYZ contains pitch/roll as well as yaw. Simply subtracting yaw
+ // from the rifle does NOT counter the real chest rotation under lean.
+ // Qrelative = inverse(QnewChest) * QoldChest is the exact rigid mapping.
+ const before=new THREE.Quaternion().setFromEuler(baseRotation);
+ const after=new THREE.Quaternion().setFromEuler(new THREE.Euler(
+  baseRotation.x,baseRotation.y+yaw,baseRotation.z,baseRotation.order));
+ const reverse=after.invert().multiply(before);
  const lean=new THREE.Vector3(leanX,0,0);
- // A chest-forward shift is canceled in its original local axes before
- // applying the inverse yaw. Both operations preserve every world socket.
  const rotate=(v:THREE.Vector3)=>v.clone().sub(lean).applyQuaternion(reverse);
  const q=reverse.clone().multiply(
   new THREE.Quaternion().setFromEuler(fit.rotation));
@@ -77,7 +94,7 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
   for(const yaw of yaws){
   // Transform all geometry in the new chest frame. Chest rotation+lean and
   // countertransformed rifle cancel in world; no ballistic path changes.
-  const fit=weaponFitInTurnedChest(original,yaw,leanX);
+  const fit=weaponFitInTurnedChest(original,yaw,leanX,req.chestRotation);
   const right=solveV3DynamicArm({shoulder:req.shoulders[1],
    wrist:fit.primary,side:1,mode:req.mode,envelope:req.envelope,
    preferredPole:new THREE.Vector3(3,-9,1.5)});
@@ -92,8 +109,8 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
   for(const fraction of options){
    candidates++;
    let support=req.releasedSupportTarget?
-    req.releasedSupportTarget.clone().sub(new THREE.Vector3(leanX,0,0))
-      .applyAxisAngle(Y,-yaw):
+    contactInAssistedChest(req.releasedSupportTarget,yaw,leanX,
+      req.chestRotation):
     fit.support.clone();
    if(fraction!==null&&contacts){
     const local=supportContactAt(contacts.support,fraction);
