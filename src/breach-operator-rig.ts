@@ -16,7 +16,7 @@ import {lowReadyFamilyFit,lowReadyElbowPole}
  from './breach-low-ready-family-fit.ts';
 import {solveCoupledLowReady,type CoupledLowReadySolution}
  from './breach-coupled-low-ready.ts';
-import {poseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
+import {poseClearanceEnvelope,evaluateSleeveArmorContact} from './breach-pose-clearance-envelope.ts';
 import {interpolateWeaponCarry,lowReadyBlendPhase}
  from './breach-low-ready-transition.ts';
 import {createOperatorPoseScratch,type OperatorPoseScratch}
@@ -1033,6 +1033,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(!passiveBlend)r.autoHandling=null;
   if(auto&&auto.alpha>=1)r.autoHandling=null;
   const activeTransition=p.handlingTransition??auto;
+  // Lab stance-to-stance switching must solve the authored destination
+  // before blending. Live/replay and action tracks retain existing authority.
+  const authoredLabSwitch=!!p.poseV3Preview&&
+    !!p.handlingTransition?.authoredFrom&&!!p.handlingOverride&&
+    !p.down&&!p.surrender&&p.reload<=0;
   const profile=activeTransition?
     blendedHandlingProfile(activeTransition.from,
       activeTransition.to,activeTransition.alpha,p.weapon,
@@ -1260,8 +1265,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       [r.weaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config)],
       [r.droppedWeaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config)]
     ] as const;
-    for(const [dest,model] of models)
+    for(const [dest,model] of models){
+      // Preserve the read-only visible buttplate descriptor when transferring
+      // the prebuilt mesh children into the reusable weapon rig.
+      dest.userData.visibleStockContact=
+        model.userData.visibleStockContact??null;
       while(model.children.length)dest.add(model.children[0]);
+    }
     // Detachable geometry is copied from precisely the same named AR/AK
     // magazine slot. No extra placeholder or alternate silhouette exists.
     const magazineSocket=weaponPresentationSockets(p.weapon,config).magazine;
@@ -1300,10 +1310,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // gameplay already used. Other handling modes retain their profiles.
     const shoulderWeight=handling==='low'&&
       !!p.weaponConfiguration?.build?0:poseWeight;
-    return P(base.x+shoulderWeight*(i===0?
+    const target=P(base.x+shoulderWeight*(i===0?
       profile.supportShoulderForward:profile.firingShoulderForward),
       base.y+shoulderWeight*profile.shoulderLift,
       base.z-sign*shoulderWeight*profile.shoulderInward);
+    // Existing modular low ready uses fixed anatomical anchors. Blend
+    // *from the rendered old shoulder* when the Lab enters that mode,
+    // otherwise the first frame can still pop despite a smooth gun.
+    const source=authoredLabSwitch?activeTransition?.authoredArms?.[i]:null;
+    return source?source.shoulder.clone().lerp(
+      target,lowReadyBlendPhase(activeTransition!.alpha)):target;
   };
   // The coupled solution is deliberately restricted to relaxed, stationary,
   // two-handed AR/AK presentation. Combat aim and shot-time geometry remain
@@ -1322,7 +1338,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     Math.abs(p.turning)<.28&&!p.down&&!p.surrender&&!p.firing&&
     !p.aiming&&(p.aimBlend??0)<.02&&
     (p.reload<=0||previewReloadSeed)&&
-    !p.treatmentActive&&!activeTransition&&
+    !p.treatmentActive&&(!activeTransition||authoredLabSwitch)&&
     p.seconds-p.lastDoorAt>1.2&&p.seconds-p.lastThrowAt>.85&&
     (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
   let coupled:CoupledLowReadySolution|null=null;
@@ -1400,9 +1416,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     swayPitch:motion.weaponPitch*freeMotion,
     aimBlend:p.handlingOverride?undefined:
       p.aimBlend??(p.aiming?1:0),
-    blendFrom:activeTransition?.from,
-    blendAlpha:activeTransition?.alpha,
-    blendSnapshot:activeTransition?.fromWeapon});
+    blendFrom:authoredLabSwitch?undefined:activeTransition?.from,
+    blendAlpha:authoredLabSwitch?undefined:activeTransition?.alpha,
+    blendSnapshot:authoredLabSwitch?undefined:activeTransition?.fromWeapon});
   // Small, deterministic rifle manipulation is permissible in the Lab
   // only while reloading: never alters shot-time muzzle or live aiming.
   // It pivots about the seated stock so the firing wrist can clear gear.
@@ -1553,6 +1569,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       r.chest.rotation.y+=result.yaw;
     }
   }else r.root.userData.poseV3CoordinatedReport=null;
+  // For a Lab switch, the destination solver above retains full authority:
+  // in particular, low-ready must not fall back to the generic fitter.
+  // Interpolate the rigid weapon once from the *visible* previous fit.
+  // During the bridge, normal clearance-aware IK follows both hand sockets.
+  if(authoredLabSwitch&&activeTransition?.authoredFrom){
+    const phase=clamp(activeTransition.alpha,0,1);
+    if(phase<1){
+      fit=interpolateWeaponCarry(activeTransition.authoredFrom,fit,phase);
+      coupled=null;coordinatedDynamic=null;
+    }
+  }
   let carryTransitionActive=false,carryTransitionAlpha=1;
   let carryTransitionBends:[THREE.Vector3,THREE.Vector3]|null=null;
   if(!p.deterministic&&!p.down&&!p.surrender){
@@ -1597,6 +1624,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.droppedGun.scale.set(data.lengthScale,1,1);
   r.weapon.rotation.copy(fit.rotation);
   r.weapon.position.copy(fit.origin);
+  if(p.poseV3Preview){
+    // Snapshot the actual rendered rigid weapon, including any active
+    // partially blended stance. The next Lab tap can retarget from here.
+    r.root.userData.presentedWeaponFit={
+      ...fit,origin:fit.origin.clone(),rotation:fit.rotation.clone(),
+      stock:fit.stock.clone(),primary:fit.primary.clone(),
+      support:fit.support.clone()
+    } as WeaponFit;
+  }else r.root.userData.presentedWeaponFit=null;
   // B29: visible HK lock/slap, AK handle rack and AR bolt-catch press.
   // Physically attached to the weapon, driven only by the action clock.
   // It never modifies fit, recoil, muzzle, shot state or inventory.
@@ -1690,6 +1726,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.chest.position.x=bash.reach*.18+v3LeanParentX;
   r.chest.position.y+=v3LeanParentY;
   r.chest.position.z+=v3LeanParentZ;
+  if(authoredLabSwitch&&activeTransition?.authoredChest){
+    const phase=lowReadyBlendPhase(activeTransition.alpha);
+    if(phase<1){
+      const from=activeTransition.authoredChest;
+      const q0=new THREE.Quaternion().setFromEuler(from.rotation);
+      const q1=new THREE.Quaternion().setFromEuler(r.chest.rotation);
+      r.chest.rotation.setFromQuaternion(q0.slerp(q1,phase),'XYZ');
+      r.chest.position.lerpVectors(from.position,r.chest.position,phase);
+    }
+  }
   r.reachRequest=null;
   r.weapon.visible=(!p.down&&!p.surrender)||downProgress<.30;
   r.droppedGun.visible=(p.down||p.surrender)&&downProgress>=.30;
@@ -1811,6 +1857,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulder=shoulderFor(i);
+    const sourceArm=authoredLabSwitch?
+      activeTransition?.authoredArms?.[i]:undefined;
     const grip=i===0?leftGrip:rightGrip;
     let desired:THREE.Vector3;
     if(p.down&&(i===0&&releaseLeft||i===1&&releaseRight)){
@@ -1827,6 +1875,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       desired=grip.clone().multiply(P(data.lengthScale,1,1))
         .applyEuler(fit.rotation).add(fit.origin);
       if(i===0&&reloadHandChest)desired.copy(reloadHandChest);
+    }
+    // At phase zero reproduce the *exact* displayed source anatomy.
+    // Subsequent frames are resolved from a continuous source elbow pole.
+    if(sourceArm&&activeTransition!.alpha<=0){
+      r.elbowSpread[i]=Math.max(0,
+        sign*(sourceArm.elbow.z-shoulder.z));
+      arm.bend.copy(sourceArm.bend);arm.outOfReach=false;
+      alignSegment(arm.upper,shoulder,sourceArm.elbow,scratch.sides[i]);
+      alignSegment(arm.lower,sourceArm.elbow,sourceArm.wrist,
+        scratch.sides[i]);
+      arm.hand.position.copy(sourceArm.wrist);
+      arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
+      continue;
     }
     // The coupled fitting solver already chose BOTH elbows and the exact
     // physical wrist contacts in one collision-checked candidate.
@@ -1896,11 +1957,24 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       wanted.copy(carryTransitionBends[i])
         .lerp(destination,carryTransitionAlpha).normalize();
     }
+    if(sourceArm&&activeTransition){
+      const fromPole=sourceArm.elbow.clone().sub(sourceArm.shoulder);
+      if(fromPole.lengthSq()>.01)
+        wanted.copy(fromPole.lerp(wanted,
+          lowReadyBlendPhase(activeTransition.alpha)));
+    }
     let solved=solveTwoBone(shoulder,wrist,10,10,
       wanted,ARM_LIMITS,neutralArms?undefined:arm.bend,scratch.arms[i]);
     let dynamicAccepted=false;
-    if(dynamicEnvelope&&!neutralArms&&!p.down&&!p.surrender&&
-       !p.firing){
+    if(sourceArm&&dynamicEnvelope&&activeTransition&&
+       activeTransition.alpha<1&&solved.reached){
+      // A continuous two-bone solution can retain the source elbow
+      // without a new candidate search, but never ignore armor contact.
+      dynamicAccepted=evaluateSleeveArmorContact(shoulder,
+        solved.joint,solved.effector,dynamicEnvelope).valid;
+    }
+    if(!dynamicAccepted&&dynamicEnvelope&&!neutralArms&&
+       !p.down&&!p.surrender&&!p.firing){
       const mode=reloadActive?'reload':p.aiming||handling==='ads'?
         'aim':reaching||throwActive?'interaction':'carry';
       const dynamic=solveV3DynamicArm({

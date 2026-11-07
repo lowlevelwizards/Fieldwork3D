@@ -7,6 +7,8 @@ import type {WeaponId} from './breach-combat.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {readWeaponFamilyBuild} from './equipment-weapon-families.ts';
 import {buildModularWeaponSilhouette} from './breach-modular-weapon-geometry.ts';
+import {measureVisibleStockContact}
+ from './breach-stock-contact-surface.ts';
 import {addHKClawRail,addHKRailVerticalGrip} from './weapons/geometry/hk-rail-accessories.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 type Part=readonly [number,number,number,number,number,number,0|1];
@@ -118,6 +120,9 @@ export function buildWeaponSilhouette(id:WeaponId,
    addHKClawRail(root);
   if(familyBuild.parts.handguard==='hk-mp5-trirail'&&
    config?.slots.foregrip==='foregrip-vertical')addHKRailVerticalGrip(root);
+  // Read-only art datum. Build-time only, never a second shot socket.
+  root.userData.visibleStockContact=config?
+    measureVisibleStockContact(root,config):null;
   return root;
  }
  const g=new THREE.Group();
@@ -143,4 +148,5 @@ export function buildWeaponSilhouette(id:WeaponId,
 export function clearWeaponSilhouette(g:THREE.Group){
  g.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
  g.clear();
+ g.userData.visibleStockContact=null;
 }

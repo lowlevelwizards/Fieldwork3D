@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator,type OperatorRig}
   from './breach-operator-rig.ts';
-import {weaponGrips,type Handling} from './breach-weapon-pose.ts';
+import {weaponGrips,type Handling,type WeaponFit} from './breach-weapon-pose.ts';
 import {stockPocket,elbowCorridor} from './breach-anatomy.ts';
 import {HANDLING_PROFILES} from './breach-handling-profiles.ts';
 import {weaponTruth,footTruth,legReachTruth} from './breach-animation-diagnostics.ts';
@@ -1066,7 +1066,11 @@ const LAB_HANDLING:Partial<Record<LabTrack,Handling>>={
 let labSwitch:null|{from:Handling;to:Handling;
   since:number;duration:number;
   fromWeapon:{origin:THREE.Vector3;rotation:THREE.Euler};
-  fromProfile:NonNullable<OperatorRig['handlingProfile']>}=null;
+  fromProfile:NonNullable<OperatorRig['handlingProfile']>;
+  authoredFrom?:WeaponFit;
+  authoredChest?:{position:THREE.Vector3;rotation:THREE.Euler};
+  authoredArms?:readonly {shoulder:THREE.Vector3;elbow:THREE.Vector3;
+    wrist:THREE.Vector3;bend:THREE.Vector3}[]}=null;
 let rig:OperatorRig|null=null,track:LabTrack='idle';
 const gaitReference=choose<HTMLSelectElement>('gaitReference');
 let cache:LabMotionCache|LabHistoricalMotionCache|LabDistanceMotionCache=new LabMotionCache(track);
@@ -1172,11 +1176,32 @@ function chooseTrack(next:LabTrack){
     const previous=LAB_HANDLING[track]??labSwitch?.to??'ready';
     const delta=(target==='ads'||previous==='ads')?.32:
       (target==='short'||previous==='short')?.30:.24;
+    // Only stationary weapon stances use the authored-to-authored path.
+    // The source is the exact currently displayed partial pose, not a
+    // nominal previous handling mode or an outdated default.
+    const presented=LAB_HANDLING[track]?
+      rig.root.userData.presentedWeaponFit as WeaponFit|undefined:undefined;
     labSwitch={from:previous,to:target,since:performance.now()/1000,
       duration:delta,fromWeapon:{
         origin:rig.weapon.position.clone(),
         rotation:rig.weapon.rotation.clone()},
-      fromProfile:{...(rig.handlingProfile??HANDLING_PROFILES[previous])}};
+      fromProfile:{...(rig.handlingProfile??HANDLING_PROFILES[previous])},
+      authoredFrom:presented?{
+        ...presented,origin:presented.origin.clone(),
+        rotation:presented.rotation.clone(),stock:presented.stock.clone(),
+        primary:presented.primary.clone(),support:presented.support.clone()
+      }:undefined,
+      authoredChest:presented?{
+        position:rig.chest.position.clone(),rotation:rig.chest.rotation.clone()
+      }:undefined,
+      authoredArms:presented?rig.arms.map(arm=>{
+        // Each segment is centered between its endpoints. Recover the
+        // *rendered* shoulder/elbow/wrist, not last frame's named preset.
+        const wrist=arm.hand.position.clone();
+        const elbow=arm.lower.position.clone().multiplyScalar(2).sub(wrist);
+        const shoulder=arm.upper.position.clone().multiplyScalar(2).sub(elbow);
+        return {shoulder,elbow,wrist,bend:arm.bend.clone()};
+      }):undefined};
   }else labSwitch=null;
   if(comparing){
     comparing=false;
@@ -1550,12 +1575,17 @@ function draw(){
     track==='ready-to-ads'?timedHandling('ready','ads',clock,.55,1.15):
     track==='ads-to-low'?timedHandling('ads','low',clock,.55,1.15):
     undefined;
-  const alpha=labSwitch?smoothHandling(
-    (performance.now()/1000-labSwitch.since)/labSwitch.duration):1;
+  // Carry one *linear* phase. The presentation solver applies smoothing
+  // exactly once to weapon, profile and body; double easing caused drift.
+  const alpha=labSwitch?Math.max(0,Math.min(1,
+    (performance.now()/1000-labSwitch.since)/labSwitch.duration)):1;
   const direct:HandlingTransition|undefined=labSwitch?
     {from:labSwitch.from,to:labSwitch.to,alpha,
       fromProfile:labSwitch.fromProfile,
-      fromWeapon:labSwitch.fromWeapon}:undefined;
+      fromWeapon:labSwitch.fromWeapon,
+      authoredFrom:labSwitch.authoredFrom,
+      authoredChest:labSwitch.authoredChest,
+      authoredArms:labSwitch.authoredArms}:undefined;
   const transition=direct??scripted;
   if(labSwitch&&alpha>=1)labSwitch=null;
   const selectedHandling=transition?.to??previewHandling[track];
@@ -1766,6 +1796,16 @@ function draw(){
   canvas.dataset.firingElbowDrop=firingDrop===null?'':firingDrop.toFixed(3);
   canvas.dataset.firingElbowFlare=firingFlare===null?'':firingFlare.toFixed(3);
   canvas.dataset.torsoAssistYaw=String(staticReport?.torsoAssistYaw??0);
+  const stockArt=rig.weaponBody.userData.visibleStockContact as {
+    rearX:number;visualMinusAuthority:number;source:string}|null;
+  const shoulderSamples=rig.chest.userData.shoulderSurfaceCandidates as
+   {right?:readonly unknown[];left?:readonly unknown[]}|null;
+  // STOCK REF is the old socket deviation, NOT actual equipment contact.
+  // Real contact validity will come from the future stock-seat solver.
+  canvas.dataset.stockArtResidual=stockArt?
+    stockArt.visualMinusAuthority.toFixed(3):'';
+  canvas.dataset.shoulderSurfaceCandidates=String(
+    shoulderSamples?.right?.length??0);
   const info=document.getElementById('poseInspectorReport');
   if(info){
    const look=resolvedWardrobe(wardrobeOptions,currentKit);
@@ -1780,7 +1820,11 @@ function draw(){
     label+' · '+currentWeapon+
     '\\nARMOR '+look.armorStyle+' · RIG '+look.rigStyle+
     '\\nGRIP '+rig.gripError.toFixed(2)+
-    ' · STOCK '+rig.stockError.toFixed(2)+
+    ' · STOCK REF '+rig.stockError.toFixed(2)+
+    (stockArt?'\\nBUTTPLATE X '+stockArt.rearX.toFixed(2)+
+      ' · ART/DATUM Δ '+stockArt.visualMinusAuthority.toFixed(2):'')+
+    '\\nSHOULDER TRIANGLES '+(shoulderSamples?.right?.length??0)+
+      ' (CANDIDATES, NOT SEATED)' +
     (firingDrop===null?'':'\\nFIRING ELBOW · DROP '+
      firingDrop.toFixed(2)+' / FLARE '+firingFlare!.toFixed(2))+
     '\\nJoint markers and contacts: DIAGNOSTICS tab.';
