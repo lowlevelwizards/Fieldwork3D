@@ -7,7 +7,7 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   operationBriefing,availableDeployments,selectDeployment,
-  planMove,planMoveStroke,planNearbyInteraction,
+  planMove,planMoveStroke,plannedWindowRoute,planNearbyInteraction,
   planCivilianInteraction,planAim,planWatch,
   retargetActiveWatch,removeActiveWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
@@ -3468,7 +3468,9 @@ function renderProjectedPlans(){
     for(const n of plan){
       const semantics=visual[visualIndex++];
       const cachedRoute=n.kind==='move'||n.kind==='door'?
-        displayRouteCache.get(previous,n.p,state.intel,state.phase==='planning'):null;
+        displayRouteCache.get(previous,n.p,state.intel,state.phase==='planning',
+          (from,to,ordinary)=>plannedWindowRoute(state,from,to,ordinary),
+          state.objectRevision):null;
       const steps=n.kind==='pie'?n.arc??[]:cachedRoute?.points??[];
       if(steps.length){
         draw.beginPath();
