@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import type {OperatorRig,OperatorPose} from './breach-operator-rig.ts';
 import type {Handling,WeaponFit} from './breach-weapon-pose.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
-import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
+import {blendedHandlingProfile,type HandlingTransition}
  from './breach-handling-transition.ts';
 import {interpolateWeaponCarry,lowReadyBlendPhase}
  from './breach-low-ready-transition.ts';
@@ -18,12 +18,18 @@ export type HandlingSample={
 };
 export function sampleHandlingTransition(
  r:OperatorRig,p:OperatorPose,handling:Handling):HandlingSample{
+ // Active aim and ordinary firing still need a visual transition.
+ // Shot-time muzzle and projectile headings remain simulation-owned.
  const passiveBlend=!p.deterministic&&!p.handlingOverride&&
-   !p.aiming&&!p.firing&&!p.down&&!p.surrender;
+   !p.down&&!p.surrender;
  if(!p.handlingOverride&&handling!==r.lastHandling){
    if(passiveBlend&&r.lastHandling){
      r.autoHandling={from:r.lastHandling,to:handling,alpha:0,
        at:p.seconds,
+       // Physically blocked short stock responds quickly, but is no
+       // longer a one-frame elbow teleport. Urgent aim also stays sharp.
+       duration:handling==='short'||r.lastHandling==='short'?.15:
+         p.aiming||p.firing?.18:.26,
        fromProfile:r.handlingProfile??handlingProfile(r.lastHandling,p.weapon),
        fromWeapon:{origin:r.weapon.position.clone(),
          rotation:r.weapon.rotation.clone()}};
@@ -31,8 +37,10 @@ export function sampleHandlingTransition(
    r.lastHandling=handling;r.lastHandlingAt=p.seconds;
  }
  const auto=r.autoHandling&&passiveBlend?{
-   ...r.autoHandling,alpha:smoothHandling(
-     (p.seconds-r.autoHandling.at)/.24)}:undefined;
+   // Keep a LINEAR time phase; each presentation channel applies the
+   // same ease once, avoiding unintentional double-smooth pauses.
+   ...r.autoHandling,alpha:Math.max(0,Math.min(1,
+     (p.seconds-r.autoHandling.at)/(r.autoHandling.duration??.26)))}:undefined;
  if(!passiveBlend)r.autoHandling=null;
  if(auto&&auto.alpha>=1)r.autoHandling=null;
  const active=p.handlingTransition??auto;

@@ -203,7 +203,7 @@ export type OperatorRig={
   gripError:number;stockError:number;eyeError:number;
   handlingProfile:HandlingProfile|null;
   lastHandling:Handling|null;lastHandlingAt:number;
-  autoHandling:(HandlingTransition&{at:number})|null;
+  autoHandling:(HandlingTransition&{at:number;duration?:number})|null;
   elbowSpread:[number,number];legGap:[number,number];
   colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
   clothMaterial:THREE.MeshStandardMaterial;vestMaterial:THREE.MeshStandardMaterial;
@@ -1409,7 +1409,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       p.handlingIntent==='reload'||p.handlingIntent==='treat'?0:
       p.aimBlend??(p.aiming?1:0),
     blendFrom:authoredLabSwitch?undefined:activeTransition?.from,
-    blendAlpha:authoredLabSwitch?undefined:activeTransition?.alpha,
+    blendAlpha:authoredLabSwitch?undefined:activeTransition?
+      lowReadyBlendPhase(activeTransition.alpha):undefined,
     blendSnapshot:authoredLabSwitch?undefined:activeTransition?.fromWeapon});
   // Small, deterministic rifle manipulation is permissible in the Lab
   // only while reloading: never alters shot-time muzzle or live aiming.
@@ -1555,13 +1556,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // in particular, low-ready must not fall back to the generic fitter.
   // Interpolate the rigid weapon once from the *visible* previous fit.
   // During the bridge, normal clearance-aware IK follows both hand sockets.
-  if(authoredLabSwitch&&activeTransition?.authoredFrom){
-    const phase=clamp(activeTransition.alpha,0,1);
-    if(phase<1){
-      fit=interpolateWeaponCarry(activeTransition.authoredFrom,fit,phase);
-      coupled=null;coordinatedDynamic=null;
-    }
-  }
+  // Retarget directly from the last displayed weapon; keep the
+  // destination paired fit as the elbow-pole destination throughout
+  // the blend, rather than swapping from generic IK to paired IK
+  // on the final frame (the observed elbow snap).
+  const authoredBridge=authoredLabSwitch&&
+    !!activeTransition?.authoredFrom&&activeTransition.alpha<1;
+  if(authoredBridge)
+    fit=interpolateWeaponCarry(activeTransition!.authoredFrom!,fit,
+      activeTransition!.alpha);
   const carryTransition=sampleCarryTransition(r,p,fit,!!coupled);
   fit=carryTransition.fit;
   const carryTransitionActive=carryTransition.active;
@@ -1822,8 +1825,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Coupled low-ready wins first (as before), followed by coordinated
     // V3 arms. Only when neither owns the pair does generic IK run.
     // No second IK pass may undo a validated elbow/armor solution.
-    const pairedArms=!carryTransitionActive&&!p.unarmedPreview?
-      coupled?.arms??coordinatedDynamic?.arms??null:null;
+    const destinationArms=coupled?.arms??coordinatedDynamic?.arms??null;
+    const pairedArms=!carryTransitionActive&&!authoredBridge&&
+      !p.unarmedPreview?destinationArms:null;
     if(pairedArms){
       const limb=pairedArms[i];
       r.elbowSpread[i]=Math.max(0,sign*(limb.joint.z-shoulder.z));
@@ -1879,10 +1883,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         .lerp(destination,carryTransitionAlpha).normalize();
     }
     if(sourceArm&&activeTransition){
+      // One direct, contact-constrained arc from the displayed elbow
+      // toward the actual destination solver's preferred bend. There
+      // is no intermediate 'ready' elbow, nor a new elbow at completion.
       const fromPole=sourceArm.elbow.clone().sub(sourceArm.shoulder);
-      if(fromPole.lengthSq()>.01)
-        wanted.copy(fromPole.lerp(wanted,
-          lowReadyBlendPhase(activeTransition.alpha)));
+      const endPole=destinationArms?.[i]?.bendPlane??wanted;
+      if(fromPole.lengthSq()>.01){
+        const t=lowReadyBlendPhase(activeTransition.alpha);
+        const next=fromPole.normalize().lerp(
+          endPole.clone().normalize(),t);
+        if(next.lengthSq()>.000001)wanted.copy(next.normalize());
+      }
     }
     const armFit=solveUnifiedFallbackArm({
       shoulder,wrist,desired,preferredPole:wanted,
