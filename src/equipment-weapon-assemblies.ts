@@ -20,7 +20,7 @@ export const WEAPON_ATTACHMENT_SLOTS:readonly WeaponAttachmentSlot[]=
  ['opticMount','optic','muzzle','foregrip','stock','light','sling'];
 export type WeaponConfiguration={
  version:1;weapon:WeaponId;slots:Record<WeaponAttachmentSlot,string>;
- /** Optional visual family. Old four-class saves keep their legacy models. */
+ /** Authored visual family. Missing builds resolve to a real current family. */
  build?:WeaponFamilyBuild;
 };
 export type WeaponAttachment={

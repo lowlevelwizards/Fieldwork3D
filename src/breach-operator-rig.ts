@@ -153,7 +153,7 @@ export type OperatorPose={
   aimBlend?:number;recoil?:number;shotHeading?:number;
   hitFade?:number;hitAge?:number;downProgress?:number;flashActive?:boolean;
   hitRegion?:WoundRegion;hitYaw?:number;hitSeverity?:number;
-  downPose?:FallPose;
+  downPose?:FallPose;downClearance?:number;
   appearanceSeed?:number;
   faceStyle?:'blank'|'quiet'|'graphic';
   /** Only used in the Wardrobe Lab; never propagated to battle actors. */
@@ -184,7 +184,7 @@ export type OperatorRig={
   weaponLightLens:THREE.Object3D|null;droppedLightLens:THREE.Object3D|null;
   weaponLensMaterial:THREE.MeshStandardMaterial;
   slingStraps:THREE.Mesh[];
-  visualWeapon:WeaponId;visualWeaponConfiguration?:WeaponConfiguration;
+  visualWeapon:WeaponId|null;visualWeaponConfiguration?:WeaponConfiguration;
   weaponSteel:THREE.Material;weaponDark:THREE.Material;
   pack:THREE.Mesh;helmetShell:THREE.Mesh[];
   armorPanels:THREE.Mesh[];capBill:THREE.Mesh;
@@ -386,8 +386,10 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   weapon.position.set(8,-5,0);
   // Real weapon-specific silhouettes, using the same receiver-local grip and
   // muzzle axes as the fixed-step shot-time solver. Built only on weapon swap.
-  const weaponBody=buildWeaponSilhouette('carbine',steel,boot);
-  const droppedWeaponBody=buildWeaponSilhouette('carbine',steel,boot);
+  // Do not briefly spawn obsolete/default gun geometry; the first pose
+  // builds the actual equipped platform once for held and dropped copies.
+  const weaponBody=new THREE.Group();
+  const droppedWeaponBody=new THREE.Group();
   const weaponAccessories=new THREE.Group(),droppedAccessories=new THREE.Group();
   const weaponLensMaterial=mat(0xb7e6df);
   weaponLensMaterial.emissive.setHex(0x7fdac9);
@@ -470,7 +472,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     medicalItem,weaponBody,droppedWeaponBody,
     weaponAccessories,droppedAccessories,weaponLensMaterial,slingStraps,
     weaponLightLens:null,droppedLightLens:null,
-    visualWeapon:'carbine',visualWeaponConfiguration:undefined,
+    visualWeapon:null,visualWeaponConfiguration:undefined,
     weaponSteel:steel,weaponDark:boot,
     lastTime:-1,lastPose:null,
     footsteps:createFootstepScheduler(),reachRequest:null,
@@ -1177,7 +1179,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.hitYaw??p.heading,p.heading,
     p.hitAge===undefined?100:p.hitAge,p.hitSeverity??1);
   const injuryTilt=p.injury===2?.16:p.injury===1?.05:0;
-  const collapse=fallAngles(p.downPose??'forward',downProgress);
+  const collapse=fallAngles(p.downPose??'forward',downProgress,p.downClearance??1);
   const impactPulse=Math.sin(Math.PI*downProgress);
   const vaultPhase=Math.max(0,Math.min(1,p.traversalProgress??0));
   const vaultTuck=vaultPhase>0&&vaultPhase<1?

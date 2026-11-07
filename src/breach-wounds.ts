@@ -18,14 +18,16 @@ export function chooseFall(heading:number,shotYaw:number,
   if(front<-.55)return 'back';
   return side>0?'right':'left';
 }
-export function fallAngles(pose:FallPose,progress:number){
+/** Correct legacy +X forward / +Z right axis. Restricted space produces
+ * a low folded collapse instead of a full rigid-body sweep through a wall. */
+export function fallAngles(pose:FallPose,progress:number,space=1){
  const t=Math.max(0,Math.min(1,progress));
- const eased=t*t*(3-2*t);
- const x=pose==='forward'?-1.52:
-   pose==='back'?1.52:pose==='slump'?-.72:0;
- const z=pose==='left'?1.49:pose==='right'?-1.49:0;
- return {x:x*eased,z:z*eased,
-   y:pose==='slump'?-1.5*eased:3.9*eased};
+ const eased=t*t*(3-2*t),clear=Math.max(0,Math.min(1,space));
+ const x=pose==='left'?-1.49:pose==='right'?1.49:0;
+ const z=pose==='forward'?-1.52:pose==='back'?1.52:
+  pose==='slump'?-.72:0;
+ return {x:x*eased*clear,z:z*eased*clear,
+  y:(pose==='slump'?-1.5:3.9)*eased-16*(1-clear)*eased};
 }
 export function hitStagger(region:WoundRegion,hitYaw:number,
   heading:number,age:number,severity:number){

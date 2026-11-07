@@ -75,10 +75,11 @@ test('156: simple closed-door flash is not allowed through wall',()=>{
   assert.equal(validateThrow(from,target,s.doors,['FRONT']).valid,true);
 });
 test('156: target cancellation and flash are accessible from contextual planning',()=>{
-  for(const file of ['../index.html','../breach.html']){
-    const html=readFileSync(new URL(file,import.meta.url),'utf8');
-    assert.match(html,/id="cancelTarget"/);
-  }
+  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  assert.match(html,/id="cancelTarget"/);
+  const redirect=readFileSync(new URL('../breach.html',import.meta.url),'utf8');
+  assert.match(redirect,/index\.html/,
+    'secondary entry should redirect to canonical tactical UI');
   const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
   assert.match(main,/case 'ctxFlash'/);
   assert.match(main,/cancelTargeting/);

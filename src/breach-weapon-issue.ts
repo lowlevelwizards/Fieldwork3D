@@ -1,4 +1,4 @@
-/** Concrete AR/AK presentation issue. Legacy WeaponId remains the firing/ammo
+/** Concrete AR/AK/HK presentation issue. Internal WeaponId remains the firing/ammo
  * compatibility layer until the separate weapon-stat migration. Never
  * manufacture a variant by changing the simulation class alone. */
 import {familyPreset,type WeaponFamilyPreset} from './equipment-weapon-families.ts';
@@ -23,13 +23,13 @@ export function issueWeaponPreset(presetId:string):IssuedWeapon{
 export function starterWeaponPreset(id:string):string{
  return STARTER_WEAPON_PRESETS[id as keyof typeof STARTER_WEAPON_PRESETS]??'ar-m4a1';
 }
-/** Never erase an intentional saved family build or its accessories. Only
- * missing class-only configurations receive a present-day authored model. */
+/** Always present an authored in-game family model for class-only equipment.
+ * Preserve existing attachment selections on the compatible platform. */
 export function resolveIssuedOrLegacy(config:WeaponConfiguration|undefined,
  weapon:WeaponId,presetId:string):WeaponConfiguration{
- if(config?.build||weapon==='smg'||weapon==='shotgun')
+ if(config?.build||weapon==='shotgun')
   return config??initialWeaponConfiguration(weapon);
- const preferred=issueWeaponPreset(presetId);
+ const preferred=issueWeaponPreset(weapon==='smg'?'hk-mp5a3':presetId);
  // A saved generic rifle/carbine can differ from this operator's new default.
  // Select a genuine same-class silhouette rather than leave a placeholder.
  const issue=preferred.weapon===weapon?preferred:

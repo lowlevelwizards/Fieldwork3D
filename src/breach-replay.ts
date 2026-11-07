@@ -35,7 +35,7 @@ export type ActorFrame=Pick<TeamActor,
   'reloadDuration'|'reloadRemoved'|'reloadInserted'|
   'reloadFromRounds'|'reloadTargetRounds'|'reloadSelectedMagazineId'|
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
-  'lastHitSeverity'|'downPose'|'flashUntil'|'suppression'|
+  'lastHitSeverity'|'downPose'|'downClearance'|'flashUntil'|'suppression'|
   'wedgeRemaining'|'carryingId'|'carriedById'|
   'lastTreatmentAt'|'lastTreatmentTargetId'|'treatmentActive'|'treatmentProgress'|
   'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|'aimInstruction'|
@@ -112,10 +112,10 @@ export function snapshot(s:Session,seenGround?:string[],
       lastHitAt:a.lastHitAt,lastDownAt:a.lastDownAt,
       lastHitRegion:a.lastHitRegion,lastHitYaw:a.lastHitYaw,
       lastHitSeverity:a.lastHitSeverity,downPose:a.downPose,
+       downClearance:a.downClearance,
       flashUntil:a.flashUntil,suppression:a.suppression,
       weapon:a.weapon,weaponConfiguration:a.weaponConfiguration?
-        {version:1,weapon:a.weaponConfiguration.weapon,
-          slots:{...a.weaponConfiguration.slots}}:undefined,
+        structuredClone(a.weaponConfiguration):undefined,
        injuryStage:a.injuryStage,medical:copyMedicalCondition(a.medical),
        medicalSupplies:{...a.medicalSupplies},
        lastTreatmentAt:a.lastTreatmentAt,

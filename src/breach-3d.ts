@@ -61,7 +61,9 @@ import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {muzzleFlashCue,impactPulse} from './breach-combat-cues.ts';
 import {sampleThrow} from './breach-flash.ts';
-import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET} from './breach-door-proportions.ts';
+import {confinedGroundRadius} from './breach-ground-geometry.ts';
+import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET,
+  WALL_VISUAL_HEIGHT,DOOR_CLEAR_VISUAL_HEIGHT,DOOR_LEAF_VISUAL_HEIGHT} from './breach-door-proportions.ts';
 import {paintFogMask,paintFogMemory,paintFogVisibility,occupiedFogRooms,
   FOG_WIDTH,FOG_HEIGHT,maskSize,type FogDiagnostic}
   from './breach-fog-mask.ts';
@@ -625,19 +627,19 @@ export class TacticalScene3D{
         structure.kind==='porch-roof'?0x86755d:0x727c76,.83,'wood');
       const roofMat=new THREE.MeshBasicMaterial({color:0x8b917e,transparent:true,
         opacity:.16,depthWrite:false,side:THREE.DoubleSide});
-      const roof=this.box(this.root,structure.x,41,structure.y,
+      const roof=this.box(this.root,structure.x,WALL_VISUAL_HEIGHT+1,structure.y,
         structure.w,1.2,structure.h,roofMat,false);
       roof.castShadow=false;roof.receiveShadow=false;
-      this.box(this.root,structure.x,39.5,structure.y-structure.h/2,
+      this.box(this.root,structure.x,WALL_VISUAL_HEIGHT-.5,structure.y-structure.h/2,
         structure.w,2.5,2.5,frame,false);
-      this.box(this.root,structure.x,39.5,structure.y+structure.h/2,
+      this.box(this.root,structure.x,WALL_VISUAL_HEIGHT-.5,structure.y+structure.h/2,
         structure.w,2.5,2.5,frame,false);
-      this.box(this.root,structure.x-structure.w/2,39.5,structure.y,
+      this.box(this.root,structure.x-structure.w/2,WALL_VISUAL_HEIGHT-.5,structure.y,
         2.5,2.5,structure.h,frame,false);
-      this.box(this.root,structure.x+structure.w/2,39.5,structure.y,
+      this.box(this.root,structure.x+structure.w/2,WALL_VISUAL_HEIGHT-.5,structure.y,
         2.5,2.5,structure.h,frame,false);
       for(const f of [-.26,.26])
-        this.box(this.root,structure.x+structure.w*f,40,structure.y,
+        this.box(this.root,structure.x+structure.w*f,WALL_VISUAL_HEIGHT,structure.y,
           2,1.8,structure.h,frame,false);
     }
     // Fixed architectural window overhangs are tied to physical glass spans.
@@ -648,17 +650,17 @@ export class TacticalScene3D{
       depthWrite:false,side:THREE.DoubleSide});
     const awningEdge=this.solid(0x5f6e6a,.83,'painted-metal');
     for(const awning of planFacadeAwnings(site)){
-      const roof=this.box(this.root,awning.x,35.5,awning.y,
+      const roof=this.box(this.root,awning.x,DOOR_CLEAR_VISUAL_HEIGHT+2.5,awning.y,
         awning.w,1.5,awning.h,awningRoof,false);
       roof.castShadow=false;roof.receiveShadow=false;
       const vertical=awning.w<awning.h;
       const edgeOffset=vertical?awning.w/2:awning.h/2;
       if(vertical){
         for(const x of [awning.x-edgeOffset,awning.x+edgeOffset])
-          this.box(this.root,x,34.8,awning.y,2,2.2,awning.h,awningEdge,false);
+          this.box(this.root,x,DOOR_CLEAR_VISUAL_HEIGHT+1.8,awning.y,2,2.2,awning.h,awningEdge,false);
       }else{
         for(const y of [awning.y-edgeOffset,awning.y+edgeOffset])
-          this.box(this.root,awning.x,34.8,y,awning.w,2.2,2,awningEdge,false);
+          this.box(this.root,awning.x,DOOR_CLEAR_VISUAL_HEIGHT+1.8,y,awning.w,2.2,2,awningEdge,false);
       }
     }
     const surfaceColor:Record<SurfaceKind,number>={
@@ -817,7 +819,7 @@ export class TacticalScene3D{
       const roof=new THREE.Group();
       roof.visible=false;this.root.add(roof);
       this.roofGroups.set(room.id,roof);
-      this.box(roof,room.x+room.w/2,43,room.y+room.h/2,
+      this.box(roof,room.x+room.w/2,WALL_VISUAL_HEIGHT+3,room.y+room.h/2,
         Math.max(12,room.w+2),2,Math.max(12,room.h+2),
         this.roofMaterial,false).receiveShadow=false;
     }
@@ -833,7 +835,8 @@ export class TacticalScene3D{
       const angle=-Math.atan2(b.y-a.y,b.x-a.x);
       const individualWall=wallMat.clone();
       this.wallMaterials.add(individualWall);
-      const body=this.box(group,x,20,z,len,40,9,individualWall);
+      const body=this.box(group,x,WALL_VISUAL_HEIGHT/2,z,
+        len,WALL_VISUAL_HEIGHT,9,individualWall);
       body.rotation.y=angle;
       // Whole-wall weathering follows the actual structural wall mesh.
       // Both faces share one deterministic texture, while a single instance
@@ -852,13 +855,13 @@ export class TacticalScene3D{
         body.userData.patinaMaterial=material;
         // A single mesh carries front and rear patina. Unlike two separate
         // transparent planes this submits one WebGL draw for each wall.
-        const wearMesh=new THREE.Mesh(doubleSidedWallWear(len,39.6),material);
+        const wearMesh=new THREE.Mesh(doubleSidedWallWear(len,WALL_VISUAL_HEIGHT-.4),material);
         wearMesh.castShadow=false;wearMesh.receiveShadow=false;
         body.add(wearMesh);
       }
       this.walls.push({mesh:body,mid:{x,y:z},segment:wall});
       for(const mark of marksOn('wall',index))
-        this.addSurfaceWear(body,mark,(mark.u-.5)*len,(mark.v-.5)*32,
+        this.addSurfaceWear(body,mark,(mark.u-.5)*len,(mark.v-.5)*(WALL_VISUAL_HEIGHT-8),
           mark.face==='back'?-4.6:4.6,wallPixelSurface(site.archetype));
       const individualFoot=skirting.clone();
        this.wallMaterials.add(individualFoot);
@@ -867,7 +870,8 @@ export class TacticalScene3D{
        this.walls.push({mesh:foot,mid:{x,y:z},segment:wall});
       const individualCap=capMat.clone();
       this.wallMaterials.add(individualCap);
-      const cap=this.box(group,x,40.3,z,len,2,11,individualCap,false);
+      const cap=this.box(group,x,WALL_VISUAL_HEIGHT+.3,z,len,2,11,
+         individualCap,false);
       cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z},segment:wall});
     }
     const archMaterial=this.solid(theme.trim);
@@ -876,8 +880,10 @@ export class TacticalScene3D{
       const p={x:(opening.a.x+opening.b.x)/2,y:(opening.a.y+opening.b.y)/2};
       const group=new THREE.Group();group.position.set(p.x,0,p.y);
       group.rotation.y=Math.abs(opening.a.x-opening.b.x)<1?-Math.PI/2:0;
-      for(const side of [-1,1])this.box(group,side*width/2,19,0,4,38,10,archMaterial);
-      this.box(group,0,38,0,width+4,4,11,archMaterial);
+      for(const side of [-1,1])this.box(group,side*width/2,DOOR_CLEAR_VISUAL_HEIGHT/2,0,
+        4,DOOR_CLEAR_VISUAL_HEIGHT,10,archMaterial);
+      this.box(group,0,DOOR_CLEAR_VISUAL_HEIGHT+2,0,
+        width+4,4,11,archMaterial);
       if(opening.kind==='serving'){
         this.box(group,0,10,0,width,20,10,archMaterial);
         this.box(group,0,20.5,3,width+3,2,12,archMaterial,false);
@@ -905,17 +911,20 @@ export class TacticalScene3D{
       const jambSides=door.pairedWith?
         [door.hinge==='b'?1:-1]:[-1,1];
       for(const side of jambSides){
-        this.box(frame,side*jambX,18.5,0,
-          profile.jambWidth,37,profile.jambDepth,doorTrim);
+        this.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,0,
+          profile.jambWidth,DOOR_CLEAR_VISUAL_HEIGHT,profile.jambDepth,doorTrim);
         // Small face rebate keeps the chunky iconography without two
         // massive offset bars dominating the aperture.
-        this.box(frame,side*jambX,18.5,
-          profile.jambDepth/2+.35,profile.casingWidth,34,
+        this.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,
+          profile.jambDepth/2+.35,profile.casingWidth,
+          DOOR_CLEAR_VISUAL_HEIGHT-3,
           profile.casingDepth,doorTrim,false);
       }
-      this.box(frame,0,37.4,0,length+2*profile.jambWidth,
+      this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight/2,0,
+        length+2*profile.jambWidth,
         profile.headerHeight,profile.headerDepth,doorTrim);
-      this.box(frame,0,39.2,.45,length+2*profile.jambWidth+1,
+      this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.5,.45,
+        length+2*profile.jambWidth+1,
         1.1,profile.headerDepth+.8,doorTrim,false);
       const threshold=this.box(frame,0,.275,0,length,
         profile.thresholdHeight,profile.thresholdDepth,doorTrim,false);
@@ -925,20 +934,22 @@ export class TacticalScene3D{
       leaf.position.x=door.kind==='shutter'||door.kind==='sliding'?0:invert?length/2:-length/2;
       // Actual hinge barrels identify the swing side without requiring
       // a user to inspect a top-down arrow on every doorway.
-      if(door.kind!=='shutter'&&door.kind!=='sliding')for(const y of [7,18,29])
+      if(door.kind!=='shutter'&&door.kind!=='sliding')for(const y of [9,24,42])
         this.box(frame,invert?length/2:-length/2,y,0,
           profile.hingeDiameter,5.2,profile.hingeDepth,metal,false);
       root.add(leaf);
       if(door.kind==='shutter'){
-        for(let y=2;y<35;y+=5)
+        for(let y=2;y<DOOR_LEAF_VISUAL_HEIGHT;y+=5)
           this.box(leaf,0,y,0,length-3,4.7,4,metal,false);
-        this.box(frame,0,42,0,length+10,9,13,metal,false);
+        this.box(frame,0,WALL_VISUAL_HEIGHT,0,length+10,9,13,metal,false);
         for(const side of [-1,1])
-          this.box(frame,side*length*.49,20,2.1,2,38,4,metal,false); // shutter runners
+          this.box(frame,side*length*.49,WALL_VISUAL_HEIGHT/2,2.1,
+          2,WALL_VISUAL_HEIGHT-2,4,metal,false); // shutter runners
         this.box(leaf,0,4,2.5,length*.37,2,1.4,doorTrim,false); // lower pull
       }else{
         if(door.kind==='sliding'){
-          this.box(frame,0,39.5,1.6,length*2.1,3,6,metal,false);
+          this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+2,1.6,
+            length*2.1,3,6,metal,false);
           this.box(frame,0,1,1.6,length*2.1,1.3,4,metal,false);
         }
         const style=door.style??'wood';
@@ -948,41 +959,52 @@ export class TacticalScene3D{
         const middle=door.kind==='sliding'?0:(invert?-1:1)*length/2;
         if(style==='mesh-gate'){
           const frameMaterial=this.solid(0x586665,.8,'industrial-steel');
-          for(const sign of [-1,1])this.box(leaf,middle+sign*(length/2-2),18,0,3,35,3,frameMaterial,false);
-          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,3,3,frameMaterial,false);
+          for(const sign of [-1,1])this.box(leaf,middle+sign*(length/2-2),
+            DOOR_LEAF_VISUAL_HEIGHT/2,0,3,DOOR_LEAF_VISUAL_HEIGHT,3,
+            frameMaterial,false);
+          for(const y of [3,DOOR_LEAF_VISUAL_HEIGHT-3])this.box(leaf,middle,y,0,length-4,3,3,frameMaterial,false);
           for(let x=-length/2+7;x<length/2-3;x+=9)
-            this.box(leaf,middle+x,18,0,1,28,1,frameMaterial,false);
-          for(const y of [11,21,31])this.box(leaf,middle,y,0,length-6,1,1,frameMaterial,false);
+            this.box(leaf,middle+x,DOOR_LEAF_VISUAL_HEIGHT/2,0,
+              1,DOOR_LEAF_VISUAL_HEIGHT-6,1,frameMaterial,false);
+          for(const y of [11,25,39])this.box(leaf,middle,y,0,length-6,1,1,frameMaterial,false);
         }else if(style==='french'||style==='screen'){
           for(const sign of [-1,1])
-            this.box(leaf,middle+sign*(length/2-3),18,0,
-              3.2,34,profile.leafThickness,metal,false);
-          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,
+            this.box(leaf,middle+sign*(length/2-3),
+              DOOR_LEAF_VISUAL_HEIGHT/2,0,
+              3.2,DOOR_LEAF_VISUAL_HEIGHT,profile.leafThickness,metal,false);
+          for(const y of [3,DOOR_LEAF_VISUAL_HEIGHT-3])this.box(leaf,middle,y,0,length-4,
               3.4,profile.leafThickness,metal,false);
           if(style==='french'){
-            const pane=this.box(leaf,middle,18,0,length-8,29,1,doorGlass,false);
+            const pane=this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
+              length-8,DOOR_LEAF_VISUAL_HEIGHT-8,1,doorGlass,false);
             pane.castShadow=false;glassPane=pane;
-            for(const y of [12,24])this.box(leaf,middle,y,0,length-5,2,3,metal,false);
-            this.box(leaf,middle,18,0,2,30,3,metal,false);
+            for(const y of [15,32])this.box(leaf,middle,y,0,length-5,2,3,metal,false);
+            this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,2,
+              DOOR_LEAF_VISUAL_HEIGHT-7,3,metal,false);
           }else{
             for(let x=-length/2+5;x<length/2-2;x+=7)
-              this.box(leaf,middle+x,18,0,.9,29,1,metal,false);
+              this.box(leaf,middle+x,DOOR_LEAF_VISUAL_HEIGHT/2,0,.9,
+                DOOR_LEAF_VISUAL_HEIGHT-8,1,metal,false);
           }
         }else if(style==='glazed'){
-          const pane=this.box(leaf,middle,18,0,length-8,29,1,doorGlass,false);
+          const pane=this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
+              length-8,DOOR_LEAF_VISUAL_HEIGHT-8,1,doorGlass,false);
           pane.castShadow=false;glassPane=pane;
           for(const sign of [-1,1])
-            this.box(leaf,middle+sign*(length/2-3),18,0,
-              3.2,34,profile.leafThickness,metal,false);
-          for(const y of [3,34])this.box(leaf,middle,y,0,length-4,
+            this.box(leaf,middle+sign*(length/2-3),
+              DOOR_LEAF_VISUAL_HEIGHT/2,0,
+              3.2,DOOR_LEAF_VISUAL_HEIGHT,profile.leafThickness,metal,false);
+          for(const y of [3,DOOR_LEAF_VISUAL_HEIGHT-3])this.box(leaf,middle,y,0,length-4,
               3.8,profile.leafThickness,metal,false);
-          this.box(leaf,middle,18,0,length-5,2.3,3,metal,false);
-        }else this.box(leaf,middle,17,0,length-4,34,
+          this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
+            length-5,2.3,3,metal,false);
+        }else this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
+          length-4,DOOR_LEAF_VISUAL_HEIGHT,
           profile.leafThickness,panel);
         if(style==='wood'){
           // Quiet manufactured two-panel door joinery; no floorboard motif.
           const inset=this.solid(theme.door,.9,'painted-wood');
-          for(const y of [12,26]){
+          for(const y of [12,26,40]){
             this.box(leaf,middle,y,
               profile.leafThickness/2+.16,length*.64,10,.7,inset,false);
             for(const sx of [-1,1])
@@ -1003,17 +1025,20 @@ export class TacticalScene3D{
             this.box(leaf,middle,y,2.5,length*.78,2.2,1.2,metal,false);
         }
         if(style==='louvered'){
-          for(let y=7;y<31;y+=4)this.box(leaf,middle,y,3,length*.77,1.2,1.4,metal,false);
+          for(let y=7;y<DOOR_LEAF_VISUAL_HEIGHT-4;y+=4)this.box(leaf,middle,y,3,length*.77,1.2,1.4,metal,false);
         }
         if(style==='barn'){
           for(const x of [-length*.31,length*.31])
-            this.box(leaf,middle+x,18,3,2.5,29,3,metal,false);
-          this.box(leaf,middle,18,3,length*.84,3,2,metal,false);
+            this.box(leaf,middle+x,DOOR_LEAF_VISUAL_HEIGHT/2,3,2.5,
+              DOOR_LEAF_VISUAL_HEIGHT-8,3,metal,false);
+          this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,3,
+            length*.84,3,2,metal,false);
         }
         if(style==='fire')this.box(leaf,middle,17,4,length*.66,2.5,3.5,metal,false);
         if(style==='reinforced')
           for(const x of [-length*.30,length*.30])
-            this.box(leaf,middle+x,17,2.5,2,30,1.4,metal,false);
+            this.box(leaf,middle+x,DOOR_LEAF_VISUAL_HEIGHT/2,2.5,2,
+              DOOR_LEAF_VISUAL_HEIGHT-7,1.4,metal,false);
         if(style==='exit'){
           const bar=this.solid(0xc5ad88);
           this.box(leaf,middle,18,3.6,length*.75,2.2,3.2,bar,false);
@@ -1024,7 +1049,7 @@ export class TacticalScene3D{
       for(const mark of marksOn('door',doorIndex)){
         const middle=(door.hinge==='b'?-1:1)*length/2;
         this.addSurfaceWear(leaf,mark,middle+(mark.u-.5)*(length-8),
-          7+mark.v*24,profile.leafThickness/2+.27,
+          7+mark.v*(DOOR_LEAF_VISUAL_HEIGHT-14),profile.leafThickness/2+.27,
           door.style==='wood'?'door-wood':'painted-metal');
       }
       const halo=door.kind==='sliding'?new THREE.Group():doorSweepArc(door,length);
@@ -1097,8 +1122,9 @@ export class TacticalScene3D{
         style==='picture'?this.solid(0x627c79):doorTrim;
       if(baseTop>0)this.box(group,0,baseTop/2,0,opening.width,baseTop,9,wallMat);
       const actualTop=opening.headHeight??glassTop;
-      if(actualTop<40)this.box(group,0,(actualTop+40)/2,0,opening.width,
-        40-actualTop,9,wallMat);
+      if(actualTop<WALL_VISUAL_HEIGHT)this.box(group,0,
+        (actualTop+WALL_VISUAL_HEIGHT)/2,0,opening.width,
+        WALL_VISUAL_HEIGHT-actualTop,9,wallMat);
       if(baseTop>0)this.box(group,0,baseTop+.1,4,opening.width+3,2,12,trim,false); // sill projection
       const glass=this.box(group,0,baseTop+glassHeight/2,0,
         opening.width-3,glassHeight,1,paneMat,false);
@@ -1320,8 +1346,8 @@ export class TacticalScene3D{
       const p1=segment.a,p2=segment.b;
       const dx=p2.x-p1.x,dz=p2.y-p1.y;
       const len=Math.hypot(dx,dz);
-      const mesh=this.box(this.root,(p1.x+p2.x)/2,20,(p1.y+p2.y)/2,
-        len+3,40,9,this.solid(i===4?0x81877d:0xb4a991));
+      const mesh=this.box(this.root,(p1.x+p2.x)/2,WALL_VISUAL_HEIGHT/2,
+        (p1.y+p2.y)/2,len+3,WALL_VISUAL_HEIGHT,9,this.solid(i===4?0x81877d:0xb4a991));
       mesh.rotation.y=-Math.atan2(dz,dx);
       this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2},segment});
       // Dark skirting separates the wall footprint from similar floor values.
@@ -1330,7 +1356,8 @@ export class TacticalScene3D{
       skirting.rotation.y=mesh.rotation.y;
        this.walls.push({mesh:skirting,mid:{x:mesh.position.x,y:mesh.position.z},segment});
       // A dark, legible wall cap communicates height in either camera mode.
-      const cap=this.box(this.root,mesh.position.x,40,mesh.position.z,
+      const cap=this.box(this.root,mesh.position.x,WALL_VISUAL_HEIGHT+.3,
+        mesh.position.z,
         len+4,2,11,this.solid(0x51483a),false);cap.rotation.y=mesh.rotation.y;
       this.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z},segment});
     }
@@ -1353,22 +1380,26 @@ export class TacticalScene3D{
       const profile=doorProportions(door);
       const jambX=width/2+profile.jambWidth/2-DOOR_FRAME_INSET;
       for(const side of [-1,1]){
-        this.box(frame,side*jambX,18.5,0,
-          profile.jambWidth,37,profile.jambDepth,doorTrim);
-        this.box(frame,side*jambX,18.5,
-          profile.jambDepth/2+.35,profile.casingWidth,34,
+        this.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,0,
+          profile.jambWidth,DOOR_CLEAR_VISUAL_HEIGHT,profile.jambDepth,doorTrim);
+        this.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,
+          profile.jambDepth/2+.35,profile.casingWidth,
+          DOOR_CLEAR_VISUAL_HEIGHT-3,
           profile.casingDepth,doorTrim,false);
       }
-      this.box(frame,0,37.4,0,width+2*profile.jambWidth,
+      this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight/2,0,
+        width+2*profile.jambWidth,
         profile.headerHeight,profile.headerDepth,doorTrim);
-      this.box(frame,0,39.2,.45,width+2*profile.jambWidth+1,
+      this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.5,.45,
+        width+2*profile.jambWidth+1,
         1.1,profile.headerDepth+.8,doorTrim,false);
       const threshold=this.box(frame,0,.275,0,width,
         profile.thresholdHeight,profile.thresholdDepth,thresholdMat,false);
       const hinge=new THREE.Group();hinge.position.x=door.hinge==='b'?width/2:-width/2;
       group.add(hinge);
-      this.box(hinge,(door.hinge==='b'?-1:1)*width/2,17,0,
-        width-2*DOOR_PANEL_END_RECESS,34,profile.leafThickness,doorMat);
+      this.box(hinge,(door.hinge==='b'?-1:1)*width/2,
+        DOOR_LEAF_VISUAL_HEIGHT/2,0,
+        width-2*DOOR_PANEL_END_RECESS,DOOR_LEAF_VISUAL_HEIGHT,profile.leafThickness,doorMat);
       for(const side of [-1,1])
         this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,18,
           side*(profile.leafThickness/2+1),3,4,2,doorTrim,false);
@@ -2121,6 +2152,7 @@ export class TacticalScene3D{
         clearanceBlocked:clearance.blocked,
         hitRegion:actor.lastHitRegion,hitYaw:actor.lastHitYaw,
         hitSeverity:actor.lastHitSeverity,downPose:actor.downPose,
+        downClearance:actor.downClearance,
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
         friendlyNear:friendlyAhead
       },dt);
@@ -2280,10 +2312,13 @@ export class TacticalScene3D{
         mark.surface==='wood'?0x3a2920:
         mark.surface==='stone'?0x38332c:
         mark.surface==='metal'?0x202b2e:0x514e42;
+      const groundRadius=mark.surface==='blood'?
+        confinedGroundRadius(mark.p,4,s.site?.walls??WALLS):2.3;
+      if(groundRadius<.5)continue; // never bleed into a solid wall
       this.impactDecalMatrix.position.set(mark.p.x,
         mark.surface==='blood'?.85:(mark.height??1),mark.p.y);
       this.impactDecalMatrix.rotation.set(-Math.PI/2,0,0);
-      this.impactDecalMatrix.scale.setScalar(mark.surface==='blood'?4:2.3);
+      this.impactDecalMatrix.scale.setScalar(groundRadius);
       this.impactDecalMatrix.updateMatrix();
       markDraw.setMatrixAt(markCount,this.impactDecalMatrix.matrix);
       this.impactDecalColor.setHex(dark).multiplyScalar(

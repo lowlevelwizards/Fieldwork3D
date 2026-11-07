@@ -156,6 +156,7 @@ import {magazineKit,
 import {KICK_DURATION} from './breach-door-actions.ts';
 import {CASING_LIMIT,IMPACT_MARK_LIMIT,BLOOD_MARK_LIMIT,
   type EjectedCasing} from './breach-effects.ts';
+import {wallSafeFall} from './breach-ground-geometry.ts';
 import {chooseFall,hitRegion,type WoundRegion,type FallPose}
   from './breach-wounds.ts';
 import {newMedicalCondition,registerWound,advanceMedicalCondition,
@@ -212,7 +213,7 @@ export type TeamActor=Operator & {
   /** Simulation-timed cues, not new combat rules. */
   lastHitAt:number;lastDownAt:number;
   lastHitRegion:WoundRegion;lastHitYaw:number;
-  lastHitSeverity:number;downPose:FallPose;
+  lastHitSeverity:number;downPose:FallPose;downClearance:number;
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
@@ -364,7 +365,7 @@ const withActions=(a:Operator):TeamActor=>({
   executionLastStatus:null,
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
   lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
-  downPose:'forward',
+  downPose:'forward',downClearance:1,
   yieldTarget:null,yieldFor:null,yieldUntil:0,
   personality:'guard',morale:1,lastNoiseAt:-1,
   lastNoiseExaminedAt:-1,lastNoiseExaminedId:0,flashUntil:-1,
@@ -3978,7 +3979,8 @@ function fire(s:Session,a:TeamActor,dt:number){
       (target.p.y-w.a.y)*vy)/denominator,0,1);
     return d(target.p,{x:w.a.x+vx*t,y:w.a.y+vy*t})<12;
   });
-  const fall=chooseFall(target.heading,yaw,nearSolid||nearWall);
+  const fall=wallSafeFall(target.p,target.heading,
+    chooseFall(target.heading,yaw,nearSolid||nearWall),WALLS);
   s.shots.push({
     id:shotId,shooterId:a.id,
     targetId:civilianHit?.actor.id??target.id,
@@ -3986,7 +3988,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     shotYaw:yaw,mode,spread:cone,
     muzzleHeight:muzzle.y,firedAt:s.seconds,impactHeight,
     hitRegion:civilianHit?'torso':hit?region:undefined,
-    downPose:hit&&healthAfter<=0?fall:undefined,
+    downPose:hit&&healthAfter<=0?fall.pose:undefined,
     healthBefore,healthAfter,
     down:(hit||!!civilianHit)&&healthAfter<=0,
     surface:impact.surface,
@@ -4044,7 +4046,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     if(range>weapon.optimalRange)a.longHits++;
     if(target.health<=0){
       a.kills++;s.deaths++;target.lastDownAt=s.seconds;
-      target.downPose=fall;
+      target.downPose=fall.pose;target.downClearance=fall.space;
       target.plan=[];target.path=[];
       target.nav=[];target.velocity=0;
       notify(s,target.name+' DOWN');
@@ -4328,7 +4330,9 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     casualty.injuryStage=Math.min(3,casualty.injuryStage+loss);
     casualty.health=Math.max(0,4-casualty.injuryStage);
     if(casualty.health<=0){
-      casualty.lastDownAt=s.seconds;casualty.downPose='slump';
+      casualty.lastDownAt=s.seconds;
+      const fall=wallSafeFall(casualty.p,casualty.heading,'slump',WALLS);
+      casualty.downPose=fall.pose;casualty.downClearance=fall.space;
       casualty.plan=[];casualty.nav=[];casualty.path=[];casualty.velocity=0;
       notify(s,casualty.name+' DOWN — UNCONTROLLED BLEEDING');
       battleEvent(s,'down',casualty,casualty.p,casualty.name+' DOWN');
@@ -4434,7 +4438,9 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       }
       if(resolve==='surrender'){
         a.surrendered=true;a.health=0;a.injuryStage=3;
-        a.lastDownAt=s.seconds;a.downPose='slump';
+        a.lastDownAt=s.seconds;
+        const fall=wallSafeFall(a.p,a.heading,'slump',WALLS);
+        a.downPose=fall.pose;a.downClearance=fall.space;
         a.velocity=0;a.nav=[];a.plan=[];
         a.reload=0;a.reloadMode=null;
         notify(s,a.name+' SURRENDERED');
