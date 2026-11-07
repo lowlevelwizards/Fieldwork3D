@@ -20,13 +20,14 @@ const scenarios=[
 ];
 function makeSite(c){
  const middle=(c.left+c.right)/2;
- const door=(id,start,end,pairedWith)=>({
+ const door=(id,start,end,pairedWith,hinge='a',swing=-1)=>({
   id,a:point(start,260),b:point(end,260),
-  kind:'hinged',hinge:'a',swing:-1,open:c.open,
+  kind:'hinged',hinge,swing,open:c.open,
   openedAt:c.open?0:-1,pairedWith
  });
  const doors=c.paired?[
-  door('A',c.left,middle,'B'),door('B',middle,c.right,'A')
+  door('A',c.left,middle,'B','a',-1),
+  door('B',middle,c.right,'A','b',1)
  ]:[door('ENTRY',c.left,c.right,undefined)];
  return {
   seed:731,name:'SQUAD FLOW A0 / '+c.name,layout:'corridor',
