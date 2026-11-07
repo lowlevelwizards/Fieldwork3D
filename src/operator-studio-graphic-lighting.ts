@@ -145,6 +145,28 @@ function copyToon(target:THREE.MeshToonMaterial,source:Source):void{
  target.side=source.side;target.fog=source.fog;
  if(mapChanged)target.needsUpdate=true;
 }
+/** Sync wardrobe/weapon material mutations without replacing this composed
+ * shader or accumulating a new clone on every pose update. */
+function syncStandard(target:THREE.MeshStandardMaterial,source:Source):void{
+ const recompile=target.map!==source.map||target.aoMap!==source.aoMap||
+  target.alphaMap!==source.alphaMap||target.normalMap!==source.normalMap||
+  target.metalnessMap!==source.metalnessMap||target.roughnessMap!==source.roughnessMap||
+  target.vertexColors!==source.vertexColors;
+ target.color.copy(source.color);
+ target.map=source.map;target.vertexColors=source.vertexColors;
+ target.aoMap=source.aoMap;target.aoMapIntensity=source.aoMapIntensity;
+ target.lightMap=source.lightMap;target.lightMapIntensity=source.lightMapIntensity;
+ target.alphaMap=source.alphaMap;target.alphaTest=source.alphaTest;
+ target.normalMap=source.normalMap;target.bumpMap=source.bumpMap;
+ target.metalnessMap=source.metalnessMap;target.roughnessMap=source.roughnessMap;
+ target.metalness=source.metalness;target.roughness=source.roughness;
+ target.emissive.copy(source.emissive);
+ target.emissiveIntensity=source.emissiveIntensity;
+ target.emissiveMap=source.emissiveMap;
+ target.opacity=source.opacity;target.side=source.side;
+ target.depthWrite=source.depthWrite;target.depthTest=source.depthTest;
+ if(recompile)target.needsUpdate=true;
+}
 function canToon(m:Source):boolean{
  // Keep physically specialized materials and unsupported shader behavior on
  // the Standard shader, while still allowing warm/white rim and violet fade.
@@ -235,14 +257,7 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
    variants.set(role,entry);
   }else if(entry.material instanceof THREE.MeshToonMaterial)
    copyToon(entry.material,src);
-  else{
-   // Keep authored color, textures and material parameters current while
-   // retaining the one cached Standard shader instance per source/role.
-   entry.material.color.copy(src.color);
-   entry.material.map=src.map;
-   entry.material.emissive.copy(src.emissive);
-   entry.material.emissiveIntensity=src.emissiveIntensity;
-  }
+  else syncStandard(entry.material,src);
   node.userData.fieldworkStudioArtOriginal=src;
   node.material=entry.material;
   meshes++;
