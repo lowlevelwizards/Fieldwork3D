@@ -72,6 +72,11 @@ let labPalette=1;
 let wardrobeOptions:WardrobeOptions=initialWardrobe();
 /** URL opt-in development inspector, not a second character renderer. */
 const poseFitMode=new URLSearchParams(location.search).get('poseFit')==='1';
+const poseV3Preview=new URLSearchParams(location.search).get('poseV3')==='1';
+/** Use the actual action clock while preserving the Pose Fit weapon/armor. */
+const poseV3Action=poseFitMode&&poseV3Preview&&
+ new URLSearchParams(location.search).get('poseV3Action')==='1';
+const poseFitStatic=poseFitMode&&!poseV3Action;
 let poseFitPreset='ar-m4a1',poseFitArmor='plate-jpc';
 let poseFitRig='no-rig',poseFitTop='bdu-shirt';
 let poseFitOutput:HTMLOutputElement|null=null;
@@ -1546,15 +1551,15 @@ function draw(){
     heading:poseFitMode?0:motion.heading,
     travelYaw:poseFitMode?0:motion.travelYaw,
     seconds:clock,stride:poseFitMode?0:clock*40,
-    velocity:poseFitMode?0:motion.speed,
-    posture:poseFitMode?'stand':motion.posture,
+    velocity:poseFitStatic?0:motion.speed,
+    posture:poseFitStatic?'stand':motion.posture,
     gait:track==='run'?'run':track==='pie'?'pie':
       track==='squeeze'?'squeeze':'walk',
     injury:Math.max(motion.injury,Number(injury.value),
       track==='reload-wounded'?2:0),
     weapon:currentWeapon,weaponConfiguration:poseWeaponConfig,
     unarmedPreview:!poseFitMode&&weapon.value==='none',
-    reload:poseFitMode?0:motion.reload,reloadDuration:1.8,
+    reload:poseFitStatic?0:motion.reload,reloadDuration:1.8,
     reloadMode:track==='reload-retention'?'retention':
       track==='reload-shotgun'?'shells':'emergency',
     reloadRemoved:track==='reload-interrupt'&&clock>.53,
@@ -1566,10 +1571,11 @@ function draw(){
     doorPoint:track==='door'?{x:25.5,y:8}:undefined,
     lastThrowAt:poseFitMode?-100:motion.throwAt,
     down:!poseFitMode&&(motion.down||Number(injury.value)===3),
-    surrender:false,aiming:poseFitMode?false:motion.aim>.2,
+    surrender:false,aiming:poseFitStatic?false:motion.aim>.2,
     firing:false,turning:poseFitMode?0:motion.turning,
-    aimBlend:poseFitMode?0:motion.aim,
-    handlingOverride:poseFitMode?'low':selectedHandling,
+    aimBlend:poseFitStatic?0:motion.aim,
+    handlingOverride:poseFitStatic?'low':selectedHandling,
+    poseV3Preview,
     handlingTransition:poseFitMode?undefined:transition,
     replayFeet:poseFitMode?undefined:feet,
     pelvisYaw:poseFitMode?0:state.pelvisYaw,
@@ -1717,7 +1723,7 @@ function draw(){
    const report=rig.root.userData.lowReadyPoseReport as
     {status:string;mode?:string;penetration:number|null;
      softContact?:number|null;poseQuality?:number|null;
-     fittingYaw?:number;
+     fittingYaw?:number;torsoAssistYaw?:number;
      candidates:number;weapon?:string;armor?:string;
      rig?:string;top?:string}|null;
    poseFitOutput.textContent=report?
@@ -1730,15 +1736,28 @@ function draw(){
     '\nQUALITY '+(report.poseQuality?.toFixed(2)??'N/A')+
     '\nGRIP '+rig.gripError.toFixed(3)+
     '\nSTOCK '+rig.stockError.toFixed(3)+
-    '\nCANDIDATES '+report.candidates:'NO STATIC FAMILY SOLVE';
+    '\nCANDIDATES '+report.candidates+
+    '\nTORSO ASSIST '+(report.torsoAssistYaw??0).toFixed(3):
+    'NO STATIC FAMILY SOLVE';
    canvas.dataset.lowReadyFit=report?.status??'not-applicable';
    canvas.dataset.lowReadyMode=report?.mode??'unresolved';
-   canvas.dataset.poseFitYaw=String(report?.fittingYaw??'');
-   canvas.dataset.poseFitArmor=report?.armor??'';
-   canvas.dataset.poseFitRig=report?.rig??'';
-   canvas.dataset.poseFitTop=report?.top??'';
+   // Camera review stays canonical even when chest-local weapon yaw changes.
+   canvas.dataset.poseFitYaw=String(
+    (report?.fittingYaw??0)+(report?.torsoAssistYaw??0));
+   canvas.dataset.poseFitWeaponYaw=String(report?.fittingYaw??'');
+   canvas.dataset.torsoAssistYaw=String(report?.torsoAssistYaw??0);
+   // During an ACTION the stationary low-ready report is null; read the
+   // actual normalized equipment that the renderer just applied instead.
+   const actionLook=poseV3Action?
+     resolvedWardrobe(poseFitWardrobe,poseFitKit):null;
+   canvas.dataset.poseFitArmor=actionLook?.armorStyle??report?.armor??'';
+   canvas.dataset.poseFitRig=actionLook?.rigStyle??report?.rig??'';
+   canvas.dataset.poseFitTop=actionLook?.top??report?.top??'';
    canvas.dataset.poseFitWeapon=poseFitPreset;
   }
+  canvas.dataset.poseV3DynamicReport=JSON.stringify(
+    rig.root.userData.poseV3DynamicReport??[]);
+  canvas.dataset.poseV3Preview=String(poseV3Preview);
   canvas.dataset.gripError=rig.gripError.toFixed(4);
   canvas.dataset.eyeError=rig.eyeError.toFixed(3);
   canvas.dataset.ankleGap=Math.max(...rig.legGap).toFixed(3);
@@ -1790,7 +1809,7 @@ function tick(now:number){
   }catch(error){showLabFailure(error);}
 }
 try{
-  build();resize();fit();chooseTrack(poseFitMode?'low-ready':'idle');
+  build();resize();fit();chooseTrack(poseFitStatic?'low-ready':'idle');
   if(poseFitMode){playing=false;playPause.textContent='PLAY';}
   // Render immediately rather than depending on a delayed first
   // requestAnimationFrame callback on a newly navigated mobile tab.

@@ -52,6 +52,8 @@ permissions:
   contents: read
 jobs:
   armor-rig:
+    # Dedicated V3 visual job avoids slow general armor suite.
+    if: ${{ !startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -86,10 +88,15 @@ jobs:
       - name: Phone Operator Lab appearance cards and playback navigation
         run: node scripts/smoke-armor-r1-ui.mjs
       - name: Coupled AR/AK low-ready mobile Pose Fit screenshots
-        if: ${{ (startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-') || startsWith(github.head_ref, 'feature/breach-low-ready-pose-v2-')) }}
-        run: node scripts/capture-breach-pose-fit.mjs
+        if: ${{ (startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-') || (startsWith(github.head_ref, 'feature/breach-low-ready-pose-v2-') || startsWith(github.head_ref, 'feature/breach-unified-pose-v3-'))) }}
+        run: |
+          if [[ "$GITHUB_HEAD_REF" == feature/breach-unified-pose-v3-* ]]; then
+            POSE_V3=1 node scripts/capture-breach-pose-fit.mjs
+          else
+            node scripts/capture-breach-pose-fit.mjs
+          fi
       - uses: actions/upload-artifact@v4
-        if: always() && (startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-') || startsWith(github.head_ref, 'feature/breach-low-ready-pose-v2-'))
+        if: always() && (startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-') || (startsWith(github.head_ref, 'feature/breach-low-ready-pose-v2-') || startsWith(github.head_ref, 'feature/breach-unified-pose-v3-')))
         with:
           name: breach-pose-fit-phone-views
           path: breach-pose-fit-captures/

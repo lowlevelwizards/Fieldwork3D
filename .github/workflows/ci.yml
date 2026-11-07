@@ -58,6 +58,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-low-ready-pose-v2-') }}
         run: |
           node --experimental-strip-types --test tests/breach-low-ready-anatomy-v2.test.mjs tests/breach-low-ready-clearance-v2.test.mjs tests/breach-low-ready-v2-matrix.test.mjs tests/breach-low-ready-transition-v2.test.mjs tests/breach-low-ready-transition-rig-v2.test.mjs tests/breach-coupled-rig-smoke.test.mjs
+      - name: Unified Pose V3 — baseline, contact and transition critical gates
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-pose-v3-baseline.test.mjs tests/breach-pose-v3-contacts.test.mjs tests/breach-pose-v3-constraints.test.mjs tests/breach-pose-v3-reload.test.mjs tests/breach-pose-v3-reload-choreography.test.mjs tests/breach-pose-v3-reload-weapon.test.mjs tests/breach-pose-v3-reload-replay.test.mjs tests/breach-pose-v3-body-assist.test.mjs tests/breach-pose-v3-dynamic-arm.test.mjs tests/breach-pose-v3-support-grip.test.mjs tests/breach-pose-v3-coordinated.test.mjs tests/breach-pose-v3-action-matrix.test.mjs tests/breach-pose-v3-armor-proxies.test.mjs tests/breach-pose-v3-contact-policy.test.mjs tests/breach-low-ready-transition-rig-v2.test.mjs tests/breach-low-ready-v2-matrix.test.mjs
       - name: Breach magazine, socket and shared-idle critical gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-weapon-sockets-magazines-idle-') }}
         run: |

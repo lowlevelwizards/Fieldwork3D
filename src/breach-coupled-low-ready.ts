@@ -104,10 +104,42 @@ function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
     stats['minimum'+name+'Hard']??Infinity,contact.hardDepth);
    stats['minimum'+name+'Soft']=Math.min(
     stats['minimum'+name+'Soft']??Infinity,contact.softDepth);
+   // Upper/lower limbs have distinct legal allowances; a maximum
+   // combined depth / maximum allowance hides the actual obstruction.
    const worst=contact.contacts.reduce((m,c)=>Math.max(m,
-    c.depth/Math.max(.001,c.allowed)),0);
-   stats['minimum'+name+'Ratio']=Math.min(
-    stats['minimum'+name+'Ratio']??Infinity,worst);
+    c.upperDepth/Math.max(.001,c.upperAllowed),
+    c.lowerDepth/Math.max(.001,c.lowerAllowed)),0);
+   const ratioKey='minimum'+name+'Ratio';
+   if(worst<(stats[ratioKey]??Infinity)){
+    stats[ratioKey]=worst;
+    const prefix='nearest'+name+'-';
+    for(const k of Object.keys(stats))if(k.startsWith(prefix))
+      delete stats[k];
+    for(const c of contact.contacts){
+     if(c.upperExcess>.001)
+      stats[prefix+'upper-'+(c.region??c.label)]=
+       Math.round(c.upperExcess*1000)/1000;
+     if(c.lowerExcess>.001)
+      stats[prefix+'lower-'+(c.region??c.label)]=
+       Math.round(c.lowerExcess*1000)/1000;
+    }
+   }
+  }
+  if(stats&&!contact.valid){
+   // Only when explicitly requested (e.g., Lab/CI audit). Do not
+   // allocate or tally contact regions in normal pose solving.
+   for(const c of contact.contacts){
+    if(c.upperExcess>.001){
+     const k=(isSupport?'left':'right')+'-upper-'+
+       (c.region??c.label)+'-'+c.material;
+     stats[k]=(stats[k]??0)+1;
+    }
+    if(c.lowerExcess>.001){
+     const k=(isSupport?'left':'right')+'-lower-'+
+       (c.region??c.label)+'-'+c.material;
+     stats[k]=(stats[k]??0)+1;
+    }
+   }
   }
   if(!contact.valid)continue;
   const quality=candidate.score+contact.quality*.09;
