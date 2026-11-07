@@ -152,6 +152,10 @@ export class TacticalScene3D{
   private bodycamSmooth:BodycamSample|null=null;
   private lastBodycamSampleTime:number|null=null;
   private replayXrayOn=false;
+  private replayDirectorFocus:Pt|null=null;
+  setReplayDirectorFocus(p:Pt|null):void{
+    this.replayDirectorFocus=p?{...p}:null;
+  }
   /** Presentation-only wall transparency: recorded sight still governs actors. */
   setReplayXray(enabled:boolean):void{
     this.replayXrayOn=enabled;
@@ -1832,9 +1836,11 @@ export class TacticalScene3D{
         bodycamAudition,personalGroundEvidence,p);
       this.staticBatches.setVisible(detail.obj,detail.obj.visible);
     }
-    // Fade only physical walls obstructing the selected friendly from camera.
+    // Director cuts walls around its actual historical friendly focal group,
+    // rather than a potentially unrelated manually selected soldier.
     const fromCamera=this.camera.position.clone().sub(this.target);
-    const pawn=team(s).find(a=>a.id===selected&&a.health>0)?.p;
+    const pawn=this.replayDirectorFocus??
+      team(s).find(a=>a.id===selected&&a.health>0)?.p;
     const maxCutDistance=Math.max(40,Math.min(150,
       90/Math.tan(Math.max(.38,this.view.pitch))));
     for(const wall of this.walls){
