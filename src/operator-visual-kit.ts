@@ -387,7 +387,10 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  // No stock, joint, ballistics or collision state is mutated here.
  if(usingWardrobe){
   const garment=looks.top==='bdu-shirt'||looks.top==='acu-shirt'?
-    v.fieldBlouses[looks.top].torso:v.newUpper.cuts[looks.top].torso;
+    v.fieldBlouses[looks.top].torso:
+    looks.top==='combat-shirt'||looks.top==='smock-jacket'||
+      looks.top==='gorka-jacket'?
+      v.newUpper.cuts[looks.top].torso:v.baseTorso;
   const sources:ShoulderContactSource[]=[
     {id:'garment:'+looks.top,layer:'garment',material:'soft',
       object:garment}
