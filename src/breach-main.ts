@@ -4093,7 +4093,10 @@ function playReplayAudioBetween(start:number,end:number):void{
     const level=listener?heardIntensity(touch.position,listener,
       36,state.doors,WALLS):.2;
     if(level<.025)continue;
-    const pan=listener?(touch.position.x-listener.x)/210:0;
+    const pan=listener?
+      (replayBodycamOn&&listenerActor?
+        replayBodycamPan(touch.position,listenerActor):
+        (touch.position.x-listener.x)/210):0;
     if(!playApprovedCue('movement.boot',level*.20,pan,true,1/rateScale,
        touch.position,hashString(touch.id+'|'+touch.foot+'|'+touch.at.toFixed(3))))
       playTone(touch.foot===0?62:67,.055*rateScale,true,
@@ -6481,10 +6484,7 @@ function tick(now:number){
         const level=listener?heardIntensity(touch.position,listener,
           36,state.doors,WALLS):.24;
         if(level<.025)continue;
-        const pan=listener?
-      (replayBodycamOn&&listenerActor?
-        replayBodycamPan(touch.position,listenerActor):
-        (touch.position.x-listener.x)/210):0;
+        const pan=listener?(touch.position.x-listener.x)/210:0;
         if(!playApprovedCue('movement.boot',level*.20,pan,false,1,
            touch.position,hashString(touch.id+'|'+touch.foot+'|'+touch.at.toFixed(3))))
           playTone(touch.foot===0?62:67,.055,true,level*.12,pan);
