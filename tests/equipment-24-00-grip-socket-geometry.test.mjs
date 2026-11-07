@@ -15,15 +15,23 @@ const platforms={
 };
 const within=(x,y,part)=>Math.abs(x-part[0])<=part[3]/2+.25&&
  Math.abs(y-part[1])<=part[4]/2+1.2;
-test('24.00 both hand sockets actually touch modeled furniture on every platform',()=>{
- for(const [id,loc] of Object.entries(platforms)){
-  const parts=weaponSilhouetteParts(id);
+test('24.00 the dedicated shotgun retains its modeled grip and pump sockets',()=>{
+ const parts=weaponSilhouetteParts('shotgun');
+ const loc=platforms.shotgun,g=weaponGrips('shotgun');
+ assert.ok(within(g.primaryX,g.primaryY,parts[loc.pistol]));
+ assert.ok(within(g.supportX,g.supportY,parts[loc.guard]));
+ assert.ok(g.supportX>g.primaryX+4);
+ assert.ok(Math.abs(1.8-parts[loc.pistol][5]/2)<1);
+ assert.ok(Math.abs(-1.6+parts[loc.guard][5]/2)<1);
+});
+test('24.00 current modular weapons preserve two separate grip contacts',()=>{
+ for(const id of ['carbine','smg','rifle']){
+  assert.equal(weaponSilhouetteParts(id).length,0,
+   id+' must not load an obsolete placeholder firearm');
   const g=weaponGrips(id);
-  assert.ok(within(g.primaryX,g.primaryY,parts[loc.pistol]),id+' firing hand misses pistol grip');
-  assert.ok(within(g.supportX,g.supportY,parts[loc.guard]),id+' support hand misses handguard/pump');
-  assert.ok(g.supportX>g.primaryX+4,id+' hands overlap receiver');
-  assert.ok(Math.abs(1.8-parts[loc.pistol][5]/2)<1,id+' firing hand too far from grip side');
-  assert.ok(Math.abs(-1.6+parts[loc.guard][5]/2)<1,id+' support hand too far from guard');
+  assert.ok(Number.isFinite(g.primaryX)&&Number.isFinite(g.primaryY));
+  assert.ok(Number.isFinite(g.supportX)&&Number.isFinite(g.supportY));
+  assert.ok(g.supportX>g.primaryX+4,id+' grips would overlap');
  }
 });
 test('24.00 equipped vertical/handstop contacts sit on actual accessory volumes',()=>{
