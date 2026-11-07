@@ -85,8 +85,10 @@ function placedCard(parent:THREE.Group,index:number,mat:THREE.Material,
  mount.quaternion.setFromRotationMatrix(basis);
  mount.rotateZ(TILTS[index]);mount.rotateX(.18);
  // Roots begin inside their slit frame; local up is the fabric tangent.
- mount.translateY(offsetY);
+ // Shift the card locally, not the attachment group: its position must
+ // remain identical to the slit anchor for persistence/QA geometry probes.
  const card=new THREE.Mesh(geometry,mat);
+ card.position.y=offsetY;
  card.name=name;card.castShadow=true;card.receiveShadow=false;
  mount.add(card);parent.add(mount);
 }

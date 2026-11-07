@@ -221,6 +221,9 @@ function pasgtSlitOnCloth(
   side==='rear'?new THREE.Vector3(1,0,0):
   side==='right'?new THREE.Vector3(0,0,-1):
   new THREE.Vector3(0,0,1);
+ // Remove any along-strip component from the slope tangent, maintaining
+ // a proper orthogonal attachment frame even at corner transitions.
+ up.addScaledVector(right,-right.dot(up)).normalize();
  const normal=right.clone().cross(up).normalize();
  const pos=lo.lerp(hi,t).addScaledVector(normal,.085);
  return {
