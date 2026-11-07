@@ -331,3 +331,21 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .studio-light-lab-tuning .studio-light-slider input[type=range]:disabled{
  opacity:.45;cursor:default
 }
+
+/* R7.12 quality comparisons are opt-in and live in the existing scrollable
+ * editor, never floating over the 3D weapon or operator. */
+.studio-render-diagnostics{border-top:1px solid #688575;padding:5px 0 1px;
+ min-width:0}
+.studio-render-diagnostics>summary{min-height:42px;cursor:pointer;
+ display:flex;justify-content:space-between;align-items:center;
+ gap:7px;color:#dae5d3;font:800 12px "Saira Condensed",sans-serif;
+ letter-spacing:.04em;touch-action:manipulation}
+.studio-render-diagnostics>summary small{font:600 10px "Work Sans",sans-serif;
+ color:#c6c3a7;white-space:nowrap}
+.studio-render-diagnostics .studio-light-lab-grid{margin:7px 0}
+.studio-render-diagnostics button{min-height:43px;width:100%;margin:6px 0;
+ font-size:12px}
+#studioQualityStatus{display:block;font:600 11px/1.45 "Work Sans",sans-serif;
+ color:#d6d9c8;margin-bottom:7px}
+.studio-render-diagnostics>small{display:block;font:500 10px/1.5
+ "Work Sans",sans-serif;color:#bbcbbb}

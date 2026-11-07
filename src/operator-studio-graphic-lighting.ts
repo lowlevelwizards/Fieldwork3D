@@ -9,7 +9,7 @@ import type {StudioLightLabSettings,StudioCelProfile}
  from './operator-studio-light-lab.ts';
 import {operatorRimRole,injectOperatorRim}
  from './operator-studio-toon-lighting.ts';
-import {synchronizeStudioContours,disposeStudioContours}
+import {studioContourEligible}
  from './operator-studio-rim-contour.ts';
 
 type Source=THREE.MeshStandardMaterial;
@@ -73,6 +73,36 @@ export function studioArtRole(node:THREE.Object3D,source:Source):
   'hard':'warm';
 }
 const VARIANT_FLAG='fieldworkStudioArtOnly';
+/** Inspector switches are query-only, never saved to a character or campaign. */
+export type StudioGraphicDiagnostics={celAA:boolean;bakedVertexLighting:boolean};
+export function requestedStudioGraphicDiagnostics(search:string):StudioGraphicDiagnostics{
+ const p=new URLSearchParams(search);
+ return {celAA:p.get('studioCelAA')!=='off',
+  bakedVertexLighting:p.get('studioBakedLighting')!=='off'};
+}
+const diagnostics=()=>{
+ const search=typeof window==='undefined'?'':window.location.search;
+ return requestedStudioGraphicDiagnostics(search);
+};
+/** Toon irradiance is analytically blended only across the width of one
+ * screen pixel. No texture softening: intentional camo pixels stay crisp. */
+export function injectStudioCelEdgeAA(shader:{fragmentShader:string},
+ enabled:boolean):boolean{
+ if(!enabled)return false;
+ const needle='#include <gradientmap_pars_fragment>';
+ if(!shader.fragmentShader.includes(needle))return false;
+ shader.fragmentShader=shader.fragmentShader.replace(needle,`
+uniform float fieldworkCelCutoff;
+uniform float fieldworkCelShadowTone;
+vec3 getGradientIrradiance(vec3 surfaceNormal,vec3 lightDirection){
+ float coord=dot(surfaceNormal,lightDirection)*.5+.5;
+ float pixel=max(fwidth(coord)*.72,.0005);
+ return vec3(mix(fieldworkCelShadowTone,1.0,
+  smoothstep(fieldworkCelCutoff-pixel,fieldworkCelCutoff+pixel,coord)));
+}
+`);
+ return true;
+}
 const hasViolet=(profile:StudioLightLabSettings['gradient'])=>
  profile==='violet'||profile==='violet-noir';
 /** Nearest authored IK zone wins. Exclude arms and thighs, but permit the
@@ -127,15 +157,15 @@ export function ensureStudioPieceGradient(geometry:THREE.BufferGeometry):boolean
 export function injectStudioGraphicLighting(
  shader:{vertexShader:string;fragmentShader:string},
  opts:{rim:StudioLightLabSettings['rim'];hard:boolean;
- gradient:StudioLightLabSettings['gradient']}
+ gradient:StudioLightLabSettings['gradient'];litRim?:boolean}
 ):void{
  const begin='#include <begin_vertex>',opaque='#include <opaque_fragment>';
  if(!shader.vertexShader.includes(begin)||!shader.fragmentShader.includes(opaque))
   return;
- const {rim,gradient}=opts;
+ const {rim,gradient,litRim=false}=opts;
  const piece=gradient==='piece'||gradient==='piece-rose';
  const violet=hasViolet(gradient);
- if((rim==='off'||rim==='hard'||rim==='pixel')&&!violet&&!piece){
+ if(!litRim&&!violet&&!piece){
   if(rim==='hard'||rim==='pixel')injectOperatorRim(shader,rim);
   return;
  }
@@ -166,17 +196,42 @@ export function injectStudioGraphicLighting(
     'outgoingLight*vec3(.49,.46,.86)+vec3(.025,.015,.065),fwLower*.76')+
    ');\n';
  }
- if(rim==='dual'){
-  // R7.11 draws a selective expanded-backface contour for eligible shells,
-  // never projected pixel cells or shiny fragments on broad cloth surfaces.
- }else if(rim==='hard'||rim==='pixel'){
-  injectOperatorRim(shader,rim);
+ if(litRim){
+  // Light-aware third graphic band, ON the actual surface—not an expanded
+  // backface shell or a camera-facing glow. Key, camera angle and true
+  // directional shadow visibility must all agree before the glimmer appears.
+  effect+=`
+   vec3 fwNormal=normalize(normal);
+   vec3 fwView=normalize(vViewPosition);
+   vec3 fwKey=normalize((viewMatrix*vec4(.46,.88,.07,0.0)).xyz);
+   float fwGrazing=1.0-abs(dot(fwNormal,fwView));
+   float fwEdgeWidth=max(fwidth(fwGrazing)*.85,.006);
+   float fwEdge=smoothstep(.80-fwEdgeWidth,.80+fwEdgeWidth,fwGrazing);
+   float fwFacesKey=smoothstep(.27,.58,dot(fwNormal,fwKey));
+   float fwDirect=dot(reflectedLight.directDiffuse,vec3(.2126,.7152,.0722));
+   float fwReceivedLight=smoothstep(.12,.30,fwDirect);
+   float fwKeyShadow=1.0;
+   #ifdef USE_SHADOWMAP
+    fwKeyShadow=getShadowMask();
+   #endif
+   float fwLitBand=fwEdge*fwFacesKey*fwReceivedLight*fwKeyShadow;
+   outgoingLight+=vec3(.96,.88,.74)*fwLitBand*fieldworkRimStrength;
+  `;
  }
- const rimHeader='';
+ const rimHeader=litRim?'uniform float fieldworkRimStrength;\n':'';
  const pieceFrag=piece?'varying float vFWPieceHeight;\n':'';
  shader.fragmentShader=rimHeader+pieceFrag+
   'varying vec3 vFWArtLocal;\nvarying float vFWArtHeight;\n'+
   shader.fragmentShader.replace(opaque,effect+opaque);
+ // Three r180's MeshToon/Standard sources include shadowmap_pars_fragment
+ // but NOT the separate shadowmask_pars_fragment function. Adding this
+ // declaration AFTER the shadowmap structs prevents an undefined helper
+ // and ensures the rim is actually hidden by the key's cast shadow.
+ const shadowSource='#include <shadowmap_pars_fragment>';
+ if(litRim&&shader.fragmentShader.includes(shadowSource)&&
+    !shader.fragmentShader.includes('#include <shadowmask_pars_fragment>'))
+  shader.fragmentShader=shader.fragmentShader.replace(shadowSource,
+   shadowSource+'\n#include <shadowmask_pars_fragment>');
 }
 
 function copyToon(target:THREE.MeshToonMaterial,source:Source):void{
@@ -224,7 +279,8 @@ function canToon(m:Source):boolean{
   !m.metalnessMap&&!m.envMap;
 }
 function makeVariant(source:Source,config:StudioLightLabSettings,
- role:'hard'|'warm',useToon:boolean):Variant{
+ role:'hard'|'warm',useToon:boolean,litRim:boolean,
+ diag:StudioGraphicDiagnostics):Variant{
  let variant:Variant;
  if(useToon){
   variant=new THREE.MeshToonMaterial({
@@ -241,18 +297,38 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
     config.celProfile,config.celLow,config.celHigh)
   });
  }else variant=source.clone();
+ if(!diag.bakedVertexLighting)variant.vertexColors=false;
  variant.userData[VARIANT_FLAG]=true;
+ if(litRim)
+  variant.userData.fieldworkRimUniform={value:config.rimAmount};
+ if(useToon&&diag.celAA){
+  variant.userData.fieldworkCelUniforms={
+   cutoff:{value:config.celLow},
+   tone:{value:brightness[config.celProfile].shadow}
+  };
+ }
  const hook=source.onBeforeCompile;
  variant.onBeforeCompile=(shader,renderer)=>{
   if(hook!==THREE.Material.prototype.onBeforeCompile)
    hook.call(source,shader,renderer);
+  if(useToon&&diag.celAA&&injectStudioCelEdgeAA(shader,true)){
+   const uniforms=variant.userData.fieldworkCelUniforms as
+    {cutoff:{value:number};tone:{value:number}};
+   shader.uniforms.fieldworkCelCutoff=uniforms.cutoff;
+   shader.uniforms.fieldworkCelShadowTone=uniforms.tone;
+  }
+  if(litRim)
+   shader.uniforms.fieldworkRimStrength=
+    variant.userData.fieldworkRimUniform as {value:number};
   injectStudioGraphicLighting(shader,{
-   rim:config.rim,hard:role==='hard',gradient:config.gradient
+   rim:config.rim,hard:role==='hard',gradient:config.gradient,litRim
   });
  };
  variant.customProgramCacheKey=()=>[
   'fieldwork-r79',useToon?'toon'+config.toon:'standard',
-  config.rim,role,(hasViolet(config.gradient)||config.gradient==='piece')?
+  litRim?'lit-rim':'no-rim',diag.celAA?'cel-aa':'cel-hard',
+  diag.bakedVertexLighting?'baked-on':'baked-off',role,
+  (hasViolet(config.gradient)||config.gradient.startsWith('piece'))?
    config.gradient:'normal',
   source.customProgramCacheKey()
  ].join(':');
@@ -268,7 +344,6 @@ export function restoreStudioGraphicLighting(root:THREE.Object3D):void{
  });
 }
 export function disposeStudioGraphicLighting(root:THREE.Object3D):void{
- disposeStudioContours(root);
  restoreStudioGraphicLighting(root);
  const cache=root.userData.fieldworkStudioArtCache as Cache|undefined;
  if(cache)for(const variants of cache.values())
@@ -279,14 +354,15 @@ export function disposeStudioGraphicLighting(root:THREE.Object3D):void{
 export function applyStudioGraphicLighting(root:THREE.Object3D,
  config:StudioLightLabSettings
 ):{meshes:number;materials:number;weapons:number}{
- const shade=config.toon!==0||hasViolet(config.gradient)||
-  config.gradient==='piece'||config.gradient==='piece-rose';
  const rimOn=config.rim==='dual'&&config.rimAmount>0;
+ const shade=config.toon!==0||hasViolet(config.gradient)||
+  config.gradient==='piece'||config.gradient==='piece-rose'||rimOn||
+  !diagnostics().bakedVertexLighting;
  if(!shade){
   restoreStudioGraphicLighting(root);
-  const contour=synchronizeStudioContours(root,rimOn,config.rimAmount);
-  return {meshes:contour.meshes,materials:0,weapons:contour.weaponMeshes};
+  return {meshes:0,materials:0,weapons:0};
  }
+ const diag=diagnostics();
  restoreStudioGraphicLighting(root);
  let cache=root.userData.fieldworkStudioArtCache as Cache|undefined;
  if(!cache){cache=new Map();root.userData.fieldworkStudioArtCache=cache;}
@@ -304,23 +380,42 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
   const gradient=(config.gradient==='piece'||
    config.gradient==='piece-rose')&&!studioPieceGradientEligible(node)?
    'current':config.gradient;
+  const litRim=rimOn&&studioContourEligible(node,src);
+  // With rim-only preview, leave cloth/skin/soft gear on exact source
+  // materials. Avoid needless shader variants on unrelated mesh surfaces.
+  if(config.toon===0&&gradient==='current'&&!litRim&&
+     diag.bakedVertexLighting)return;
   if((gradient==='piece'||gradient==='piece-rose')&&
      !ensureStudioPieceGradient(node.geometry))return;
   active.add(src);
   const role=studioArtRole(node,src);
   const useToon=config.toon!==0&&canToon(src);
-  const key=[config.toon,gradient,role,
+  const key=[config.toon,gradient,role,litRim?'rim':'matte',
+   diag.celAA?'edge-aa':'hard-edge',
+   diag.bakedVertexLighting?'baked':'no-bake',
    useToon?'toon':'standard'].join(':');
   let variants=cache!.get(src);
   if(!variants){variants=new Map();cache!.set(src,variants);}
   let entry=variants.get(key);
   if(!entry){
    entry={signature:key,material:makeVariant(src,{...config,gradient},
-    role,useToon)};
+    role,useToon,litRim,diag)};
    variants.set(key,entry);
   }else if(entry.material instanceof THREE.MeshToonMaterial)
    copyToon(entry.material,src);
   else syncStandard(entry.material,src);
+  if(!diag.bakedVertexLighting)entry.material.vertexColors=false;
+  if(litRim){
+   const u=entry.material.userData.fieldworkRimUniform as
+    {value:number}|undefined;
+   if(u)u.value=config.rimAmount;
+  }
+  if(useToon&&diag.celAA){
+   const u=entry.material.userData.fieldworkCelUniforms as
+    {cutoff:{value:number};tone:{value:number}}|undefined;
+   if(u){u.cutoff.value=config.celLow;
+    u.tone.value=brightness[config.celProfile].shadow;}
+  }
   activeVariants.add(entry.material);
   node.userData.fieldworkStudioArtOriginal=src;
   node.material=entry.material;
@@ -340,7 +435,6 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
    }
   if(!variants.size)cache.delete(src);
  }
- const contour=synchronizeStudioContours(root,rimOn,config.rimAmount);
  let materials=0;for(const variants of cache.values())materials+=variants.size;
- return {meshes,materials,weapons:weapons+contour.weaponMeshes};
+ return {meshes,materials,weapons};
 }

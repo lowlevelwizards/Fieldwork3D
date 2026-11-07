@@ -3,6 +3,8 @@
  * operator key casts; camera-only navigation never invalidates the map.
  */
 import * as THREE from 'three';
+import {requestedStudioRenderQuality}
+ from './operator-studio-render-quality.ts';
 
 export type StudioShadowMode='legacy'|'hybrid';
 /** Shared presentation constants: full-size operator and all appearance cards
@@ -43,8 +45,10 @@ export function studioShadowMode(search:string):StudioShadowMode{
  const value=new URLSearchParams(search).get('operatorLighting');
  return value==='legacy'?'legacy':'hybrid';
 }
-export function studioShadowSize(search:string):512|1024{
- return new URLSearchParams(search).get('operatorShadowSize')==='512'?512:1024;
+export function studioShadowSize(search:string):512|1024|2048{
+ const value=new URLSearchParams(search).get('studioShadowSize')??
+  new URLSearchParams(search).get('operatorShadowSize');
+ return value==='1024'?1024:value==='512'?512:2048;
 }
 export function visibleOperatorBounds(root:THREE.Object3D):THREE.Box3|null{
  root.updateWorldMatrix(true,true);
@@ -111,14 +115,15 @@ export class OperatorStudioLighting{
  private dirty=true;
  private liveEnabled:boolean;
  private readonly renderer:THREE.WebGLRenderer;
- readonly shadowSize:512|1024;
+ readonly shadowSize:512|1024|2048;
  constructor(scene:THREE.Scene,renderer:THREE.WebGLRenderer,
-  search:string,shadowSizeOverride?:512|1024){
+  search:string,shadowSizeOverride?:512|1024|2048){
   this.renderer=renderer;
   this.mode=studioShadowMode(search);
   this.shadowSize=shadowSizeOverride??studioShadowSize(search);
   const legacy=this.mode==='legacy';
-  this.liveEnabled=!legacy;
+  const quality=requestedStudioRenderQuality(search);
+  this.liveEnabled=!legacy&&quality.liveShadows;
   const p=STUDIO_INSPECTION_LIGHT;
   const shadowFill=studioShadowFill(search);
   this.hemisphere=new THREE.HemisphereLight(p.sky,shadowFill.ground,
@@ -131,12 +136,14 @@ export class OperatorStudioLighting{
   this.key.position.copy(STUDIO_KEY_DIRECTION).multiplyScalar(100);
   this.key.castShadow=this.liveEnabled;
   this.key.shadow.mapSize.set(this.shadowSize,this.shadowSize);
-  this.key.shadow.bias=-.0001;
-  this.key.shadow.normalBias=.02;
+  this.key.shadow.bias=quality.shadowBias==='legacy'?-.0001:.00008;
+  this.key.shadow.normalBias=quality.shadowBias==='legacy'?.02:.042;
   this.key.shadow.radius=1;
   this.renderer.shadowMap.enabled=this.liveEnabled;
   this.renderer.shadowMap.autoUpdate=false;
-  this.renderer.shadowMap.type=THREE.BasicShadowMap;
+  this.renderer.shadowMap.type=quality.shadowFilter==='hard'?
+   THREE.BasicShadowMap:quality.shadowFilter==='soft'?
+   THREE.PCFSoftShadowMap:THREE.PCFShadowMap;
   scene.add(this.hemisphere,this.key,this.fill,this.key.target);
  }
  /** Retint only existing hemisphere ground + fill lights; never change

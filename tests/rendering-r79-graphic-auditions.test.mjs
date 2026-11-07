@@ -1,160 +1,168 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {
- applyStudioGraphicLighting,restoreStudioGraphicLighting,
+import {applyStudioGraphicLighting,restoreStudioGraphicLighting,
  disposeStudioGraphicLighting,updateStudioCelRamp,
- ensureStudioPieceGradient,studioPieceGradientEligible
-} from '../src/operator-studio-graphic-lighting.ts';
+ ensureStudioPieceGradient,studioPieceGradientEligible,
+ injectStudioCelEdgeAA,requestedStudioGraphicDiagnostics}
+ from '../src/operator-studio-graphic-lighting.ts';
 import {studioContourEligible}
  from '../src/operator-studio-rim-contour.ts';
+import {requestedStudioRenderQuality,studioQualityLink}
+ from '../src/operator-studio-render-quality.ts';
 import {DEFAULT_STUDIO_LIGHT_LAB,studioLightLabFromQuery,
  effectiveStudioLightLab} from '../src/operator-studio-light-lab.ts';
-import {createOperatorPoseCavity} from '../src/operator-pose-cavity-lighting.ts';
-const look=(settings={})=>({...DEFAULT_STUDIO_LIGHT_LAB,...settings});
+import {createOperatorPoseCavity}
+ from '../src/operator-pose-cavity-lighting.ts';
+const look=(options={})=>({...DEFAULT_STUDIO_LIGHT_LAB,...options});
 const shader=()=>({
  vertexShader:'#include <begin_vertex>',
- fragmentShader:'#include <color_fragment>\n'+
-  'vec3 outgoingLight=vec3(.5);\n#include <opaque_fragment>',
+ fragmentShader:'#include <gradientmap_pars_fragment>\n'+
+  '#include <color_fragment>\nvec3 outgoingLight=vec3(.5);\n'+
+  '#include <opaque_fragment>',
  uniforms:{}
 });
-const cube=(material=new THREE.MeshStandardMaterial({color:0x787c75}))=>
+const cube=(material=new THREE.MeshStandardMaterial({color:0x778177}))=>
  new THREE.Mesh(new THREE.BoxGeometry(3,4,3),material);
 
-test('R7.11 graphic cel keeps one shared texture at 70% and edits in place',()=>{
+test('R7.12 key-lit 10% rim is drawn on surfaces, never an expanded hull',()=>{
+ const root=new THREE.Group(),metal=new THREE.MeshStandardMaterial({metalness:.68});
+ const weapon=new THREE.Group();
+ weapon.userData.fieldworkWeaponPresentation=true;
+ const receiver=cube();weapon.add(receiver);
+ const buckle=cube(metal);
+ const fabric=new THREE.MeshStandardMaterial({color:0x837860});
+ fabric.userData.fieldworkFabric=true;
+ const uniform=cube(fabric);
+ root.add(weapon,buckle,uniform);
+ assert.equal(studioContourEligible(receiver,receiver.material),true);
+ assert.equal(studioContourEligible(buckle,metal),true);
+ assert.equal(studioContourEligible(uniform,fabric),false);
+ const render=applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.10}));
+ assert.equal(render.weapons,1);
+ assert.equal(root.children.length,3,'no new top-level silhouette hull');
+ assert.equal(weapon.children.length,1,'receiver does not grow duplicate hull');
+ assert.equal(receiver.userData.fieldworkStudioContourMesh,undefined);
+ assert.equal(uniform.material,fabric,'matte fabric remains unchanged');
+ const mock=shader();
+ receiver.material.onBeforeCompile(mock,null);
+ assert.match(mock.fragmentShader,/getShadowMask\(\)/);
+ assert.match(mock.fragmentShader,/fwFacesKey/);
+ assert.match(mock.fragmentShader,/fwReceivedLight/);
+ assert.match(mock.fragmentShader,/fieldworkRimStrength/);
+ assert.match(mock.fragmentShader,/fwidth\(fwGrazing\)/);
+ assert.doesNotMatch(mock.vertexShader,/transformed \+= normalize\(normal\)/);
+ assert.doesNotMatch(mock.fragmentShader,/fwPattern|fwCells/);
+ const uniformRef=mock.uniforms.fieldworkRimStrength;
+ assert.equal(uniformRef.value,.10);
+ const variant=receiver.material,programKey=variant.customProgramCacheKey();
+ applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.15}));
+ assert.equal(receiver.material,variant);
+ assert.equal(variant.customProgramCacheKey(),programKey);
+ assert.equal(uniformRef.value,.15);
+ restoreStudioGraphicLighting(root);
+ assert.ok(receiver.material instanceof THREE.MeshStandardMaterial);
+ disposeStudioGraphicLighting(root);
+});
+test('R7.12 bare helmet only, not fabric covers, glasses or skin',()=>{
+ const shell=new THREE.MeshStandardMaterial({color:0x34373a});
+ const cloth=new THREE.MeshStandardMaterial({color:0x988d77});
+ cloth.userData.fieldworkFabric=true;
+ const headwear=new THREE.Group();
+ const head=cube(shell),cover=cube(cloth);headwear.add(head,cover);
+ headwear.userData.fieldworkStudioBareShellMaterial=null;
+ assert.equal(studioContourEligible(head,shell),false);
+ headwear.userData.fieldworkStudioBareShellMaterial=shell;
+ assert.equal(studioContourEligible(head,shell),true);
+ assert.equal(studioContourEligible(cover,cloth),false);
+ const lenses=cube(new THREE.MeshStandardMaterial({transparent:true,opacity:.5}));
+ assert.equal(studioContourEligible(lenses,lenses.material),false);
+});
+test('R7.12 2-band cel uses fwidth screen-pixel transitions, not blurred camo',()=>{
+ const fragment=shader();
+ assert.equal(injectStudioCelEdgeAA(fragment,true),true);
+ assert.match(fragment.fragmentShader,/fwidth\(coord\)/);
+ assert.match(fragment.fragmentShader,/fieldworkCelCutoff/);
+ assert.match(fragment.fragmentShader,/getGradientIrradiance/);
+ assert.doesNotMatch(fragment.fragmentShader,/texture2D\( *gradientMap/);
+ const hard=shader();
+ assert.equal(injectStudioCelEdgeAA(hard,false),false);
+ assert.match(hard.fragmentShader,/#include <gradientmap_pars_fragment>/);
  const ramp=updateStudioCelRamp(2,'graphic',.70,.84);
- assert.equal(ramp.image.width,128);
  assert.equal(ramp.magFilter,THREE.NearestFilter);
  const first=Array.from(ramp.image.data);
  assert.equal(updateStudioCelRamp(2,'graphic',.78,.84),ramp);
  assert.notDeepEqual(Array.from(ramp.image.data),first);
 });
-test('R7.11 every merged pouch span still resets its own bottom',()=>{
+test('R7.12 preserve gradient on merged pouches and hands/shins only',()=>{
  const geometry=new THREE.BufferGeometry();
  geometry.setAttribute('position',new THREE.Float32BufferAttribute([
   0,0,0,1,0,0,0,3,0,1,3,0,
   4,30,0,5,30,0,4,34,0,5,34,0
  ],3));
  geometry.userData.fieldworkLightingPartSpans=[
-  {start:0,count:4,partId:'pouch-a'},
-  {start:4,count:4,partId:'pouch-b'}
+  {start:0,count:4},{start:4,count:4}
  ];
  assert.equal(ensureStudioPieceGradient(geometry),true);
  assert.deepEqual(Array.from(geometry.getAttribute('fieldworkPieceHeight').array),
   [0,0,1,1,0,0,1,1]);
- const original=geometry.getAttribute('fieldworkPieceHeight');
- assert.equal(ensureStudioPieceGradient(geometry),true);
- assert.equal(geometry.getAttribute('fieldworkPieceHeight'),original);
-});
-test('R7.11 thigh and arm exclusions do not spread to hands or shins',()=>{
- const root=new THREE.Group();
- const fabric=new THREE.MeshStandardMaterial({color:0x787c75});
- const upperLeg=cube(fabric),shin=cube(fabric);
- const arm=cube(fabric),hand=cube(fabric),glove=cube(fabric);
- const pouch=cube(fabric);
- upperLeg.userData.fieldworkStudioHeightRole='exclude';
- shin.userData.fieldworkStudioHeightRole='include';
+ const arm=new THREE.Group(),hand=cube(),thigh=cube(),shin=cube();
  arm.userData.fieldworkStudioHeightRole='exclude';
- hand.userData.fieldworkStudioHeightRole='include';
- arm.add(hand);hand.add(glove);
- root.add(upperLeg,shin,arm,pouch);
- assert.equal(studioPieceGradientEligible(upperLeg),false);
- assert.equal(studioPieceGradientEligible(shin),true);
- assert.equal(studioPieceGradientEligible(arm),false);
+ hand.userData.fieldworkStudioHeightRole='include';arm.add(hand);
+ thigh.userData.fieldworkStudioHeightRole='exclude';
+ shin.userData.fieldworkStudioHeightRole='include';
  assert.equal(studioPieceGradientEligible(hand),true);
- assert.equal(studioPieceGradientEligible(glove),true);
- const converted=applyStudioGraphicLighting(root,
-  look({toon:2,gradient:'piece',rim:'off'}));
- assert.equal(converted.meshes,6);
- assert.equal(upperLeg.geometry.getAttribute('fieldworkPieceHeight'),undefined);
- assert.equal(arm.geometry.getAttribute('fieldworkPieceHeight'),undefined);
- for(const node of [shin,hand,glove,pouch])
-  assert.ok(node.geometry.getAttribute('fieldworkPieceHeight'));
- const upperShader=shader();upperLeg.material.onBeforeCompile(upperShader,null);
- assert.doesNotMatch(upperShader.fragmentShader,/fwPieceLower/);
- const shinShader=shader();shin.material.onBeforeCompile(shinShader,null);
- assert.match(shinShader.fragmentShader,/fwPieceLower/);
- assert.match(shinShader.fragmentShader,/outgoingLight\*=1\.0-\.19/);
- assert.doesNotMatch(shinShader.fragmentShader,/vec3\(\.43,\.46,\.79\)/);
- disposeStudioGraphicLighting(root);
- assert.equal(upperLeg.material,fabric);
- assert.equal(hand.material,fabric);
+ assert.equal(studioPieceGradientEligible(thigh),false);
+ assert.equal(studioPieceGradientEligible(shin),true);
 });
-test('R7.11 optional gray-rose is weak and not a second plum wash',()=>{
- const root=new THREE.Group(),mesh=cube();root.add(mesh);
- applyStudioGraphicLighting(root,look({gradient:'piece-rose',toon:0}));
- const compiled=shader();mesh.material.onBeforeCompile(compiled,null);
- assert.match(compiled.fragmentShader,/fwPieceLower/);
- assert.match(compiled.fragmentShader,/vec3\(\.98,\.935,\.945\)/);
- assert.doesNotMatch(compiled.fragmentShader,/\.36,\.33,\.78/);
- disposeStudioGraphicLighting(root);
-});
-test('R7.11 true contours exclude cloth, soft pouches and covered helmets',()=>{
- const root=new THREE.Group();
- const fabric=new THREE.MeshStandardMaterial({color:0x827760});
- fabric.userData.fieldworkFabric=true;
- const metal=new THREE.MeshStandardMaterial({metalness:.6});
- const shell=new THREE.MeshStandardMaterial({color:0x42484a,roughness:.9});
- const cloth=cube(fabric),pouch=cube(fabric),knob=cube(metal);
- const weapon=new THREE.Group();weapon.userData.fieldworkWeaponPresentation=true;
- const receiver=cube();weapon.add(receiver);
- const coveredHelmet=new THREE.Group();
- coveredHelmet.userData.fieldworkStudioBareShellMaterial=null;
- const coveredShell=cube(shell);coveredHelmet.add(coveredShell);
- const bareHelmet=new THREE.Group();
- bareHelmet.userData.fieldworkStudioBareShellMaterial=shell;
- const bareShell=cube(shell),clothCover=cube(fabric);
- bareHelmet.add(bareShell,clothCover);
- root.add(cloth,pouch,knob,weapon,coveredHelmet,bareHelmet);
- assert.equal(studioContourEligible(cloth,fabric),false);
- assert.equal(studioContourEligible(pouch,fabric),false);
- assert.equal(studioContourEligible(knob,metal),true);
- assert.equal(studioContourEligible(receiver,receiver.material),true);
- assert.equal(studioContourEligible(coveredShell,shell),false);
- assert.equal(studioContourEligible(bareShell,shell),true);
- assert.equal(studioContourEligible(clothCover,fabric),false);
- const result=applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.10}));
- assert.equal(result.meshes,3,'only receiver, metal and bare helmet');
- for(const node of [cloth,pouch,coveredShell,clothCover])
-  assert.equal(node.userData.fieldworkStudioContourMesh,undefined);
- for(const node of [knob,receiver,bareShell])
-  assert.ok(node.userData.fieldworkStudioContourMesh);
- const contour=receiver.userData.fieldworkStudioContourMesh;
- assert.equal(contour.material.side,THREE.BackSide);
- assert.equal(contour.material.opacity,.10);
- assert.equal(contour.material.depthWrite,false);
- const live={vertexShader:'#include <begin_vertex>'};
- contour.material.onBeforeCompile(live,null);
- assert.match(live.vertexShader,/transformed \+= normalize\(normal\) \* 0\.32/);
- assert.doesNotMatch(live.vertexShader,/fwPattern|fwCells/);
- applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.15}));
- assert.equal(receiver.userData.fieldworkStudioContourMesh,contour);
- assert.equal(contour.material.opacity,.15,'rim strength is updated, no redraw');
- applyStudioGraphicLighting(root,look());
- assert.equal(receiver.userData.fieldworkStudioContourMesh,undefined);
- disposeStudioGraphicLighting(root);
-});
-test('R7.11 pose-cavity uniforms still compose with monochrome two-band cel',()=>{
+test('R7.12 pose-cavity shader still composes with cel and gray gradient',()=>{
  const root=new THREE.Group(),fabric=new THREE.MeshStandardMaterial({
   color:0x777766,vertexColors:true
  });
- const thighs=fabric.clone(),chest=cube(fabric),legs=[cube(thighs),cube(thighs)];
+ const legsMaterial=fabric.clone();
+ const chest=cube(fabric),legs=[cube(legsMaterial),cube(legsMaterial)];
  root.add(chest,...legs);
- const cavity=createOperatorPoseCavity(chest,legs,fabric,thighs);
+ const cavity=createOperatorPoseCavity(chest,legs,fabric,legsMaterial);
  cavity.torso.value.set(.23,.88);
- applyStudioGraphicLighting(root,look({toon:2,gradient:'piece'}));
- const compiled=shader();chest.material.onBeforeCompile(compiled,null);
+ applyStudioGraphicLighting(root,look({toon:2,gradient:'piece',rim:'off'}));
+ const compiled=shader();
+ chest.material.onBeforeCompile(compiled,null);
  assert.equal(compiled.uniforms.fieldworkCavity.value,cavity.torso.value);
  assert.match(compiled.fragmentShader,/diffuseColor\.rgb\*=1\.0-clamp\(cavity/);
+ assert.match(compiled.fragmentShader,/fwPieceLower/);
  disposeStudioGraphicLighting(root);
  assert.equal(chest.material,cavity.torso.material);
 });
-test('R7.11 default is unchanged and legacy blue URL resolves to grayscale',()=>{
- const old=studioLightLabFromQuery(
-  '?operatorLightingToon=3&operatorRim=pixel&operatorGradient=violet-noir&operatorShadowColor=steel');
- assert.deepEqual({toon:old.toon,rim:old.rim,gradient:old.gradient,shadow:old.shadow},
-  {toon:2,rim:'dual',gradient:'piece',shadow:'plum-plus'});
- assert.equal(old.rimAmount,.10);
- assert.deepEqual(effectiveStudioLightLab(old,true),DEFAULT_STUDIO_LIGHT_LAB);
+test('R7.12 A/B modes preserve safe no-AA/hard-shadow/off-bake fallback',()=>{
+ const standard=requestedStudioRenderQuality('',3);
+ assert.equal(standard.canvasAA,true);
+ assert.equal(standard.pixelRatio,1.5);
+ assert.equal(standard.shadowFilter,'soft');
+ assert.equal(standard.shadowSize,2048);
+ assert.equal(standard.shadowBias,'stable');
+ const off=requestedStudioRenderQuality(
+  '?studioAA=off&studioPixelRatio=2&studioShadowFilter=hard&'+
+  'studioLiveShadows=off&studioCelAA=off&studioBakedLighting=off',3);
+ assert.equal(off.canvasAA,false);
+ assert.equal(off.pixelRatio,2);
+ assert.equal(off.shadowFilter,'hard');
+ assert.equal(requestedStudioRenderQuality(
+  '?studioShadowSize=2048&studioShadowBias=legacy&studioShadowFilter=pcf',
+  3).shadowSize,2048);
+ assert.equal(off.liveShadows,false);
+ assert.deepEqual(requestedStudioGraphicDiagnostics(
+  '?studioCelAA=off&studioBakedLighting=off'),
+  {celAA:false,bakedVertexLighting:false});
+ const url=studioQualityLink('https://example.org/operator-studio.html?x=1',
+  {studioAA:'off',studioShadowFilter:'pcf'});
+ assert.match(url,/studioAA=off/);
+ assert.match(url,/x=1/);
+});
+test('R7.12 original Look restores with direct-light rim disabled',()=>{
+ const original=DEFAULT_STUDIO_LIGHT_LAB;
+ const q=studioLightLabFromQuery('?operatorLightingToon=2&operatorRim=dual'+
+  '&operatorRimAmount=0.10&operatorGradient=piece&operatorShadowColor=plum-plus');
+ assert.deepEqual(effectiveStudioLightLab(q,true),original);
+ assert.equal(q.rimAmount,.10);
  assert.equal(ensureStudioPieceGradient(new THREE.BufferGeometry()),false);
 });

@@ -93,6 +93,72 @@ try{
    if(errors.length)throw Error('R7.10 WebGL errors: '+errors.join('; '));
    console.log('R7.11 live native rim 10-11%, selective weapons and grayscale per-piece studio passed');
   }finally{await page.close();}
+  // R7.12: same pose/equipment/camera, independently isolate three classes
+  // of aliasing. These PNGs are an artifact for visual inspection, not a
+  // claim that a pixel difference alone establishes physical root cause.
+  const base='?operatorLightingToon=2&operatorCelLow=0.70&'+
+   'operatorRim=dual&operatorRimAmount=0.10&'+
+   'operatorGradient=piece&operatorShadowColor=plum-plus&'+
+   'studioDiagnostics=1';
+  const comparisons=[
+   ['aa-soft',{}],
+   ['soft-standard',{'studioShadowSize':'1024'}],
+   ['aa-off',{'studioAA':'off'}],
+   ['pixel-ratio-2',{'studioPixelRatio':'2'}],
+   ['hard-shadow',{'studioShadowFilter':'hard','studioShadowSize':'1024'}],
+   ['pcf-standard',{'studioShadowFilter':'pcf','studioShadowSize':'1024'}],
+   ['soft-fine',{'studioShadowSize':'2048'}],
+   ['pcf-fine',{'studioShadowFilter':'pcf','studioShadowSize':'2048'}],
+   ['soft-legacy-bias',{'studioShadowBias':'legacy','studioShadowSize':'1024'}],
+   ['no-live-shadow',{'studioLiveShadows':'off'}],
+   ['no-baked-light',{'studioBakedLighting':'off'}],
+   ['no-cel-aa',{'studioCelAA':'off'}]
+  ];
+  for(const [id,params] of comparisons){
+   const compare=await browser.newPage({
+    viewport:{width:390,height:844},deviceScaleFactor:2,
+    isMobile:true,hasTouch:true
+   });
+   const shaderErrors=[];
+   compare.on('pageerror',e=>shaderErrors.push(e.message));
+   compare.on('console',msg=>{
+    if(msg.type()==='error'&&
+       /WebGLProgram|shader error|INVALID_OPERATION|compile|linker/i.test(msg.text()))
+     shaderErrors.push(msg.text());
+   });
+   try{
+    const query=new URLSearchParams(base.slice(1));
+    for(const [key,value] of Object.entries(params))query.set(key,value);
+    await compare.goto(origin+'/operator-studio.html?'+query,{
+     waitUntil:'domcontentloaded'
+    });
+    await compare.waitForFunction(()=>
+     document.getElementById('studioCanvas')?.dataset.ready==='true',
+     null,{timeout:35000});
+    await compare.locator('#studioLightLab > summary').click();
+    await compare.locator('#studioLightShowWeapon').click();
+    await compare.waitForFunction(()=>
+     Number(document.getElementById('studioCanvas')?.dataset.operatorWeaponMeshes)>0,
+     null,{timeout:35000});
+    const data=await compare.locator('#studioCanvas').evaluate(el=>({...el.dataset}));
+    if(id==='aa-off'&&data.studioAA!=='false')
+     throw Error('A/B off must disable canvas MSAA');
+    if(id==='no-baked-light'&&data.studioBakedLighting!=='false')
+     throw Error('Baked vertex shading was not disabled in diagnostic');
+    if(id==='no-cel-aa'&&data.studioCelAA!=='false')
+     throw Error('Cel edge AA diagnostic was not disabled');
+    const png=await compare.locator('#studioCanvas').screenshot({
+     path:'operator-studio-captures/r712-'+id+'.png'
+    });
+    if(png.byteLength<3000||shaderErrors.length)
+     throw Error('R7.12 '+id+' invalid WebGL frame: '+shaderErrors.join('; '));
+    console.log('R7.12 diagnostic '+id+' OK; MSAA='+
+     data.studioAA+' DPR='+data.studioPixelRatio+
+     ' shaderPrograms='+data.shaderPrograms+
+     ' calls='+data.drawCalls);
+   }finally{await compare.close();}
+  }
+  console.log('R7.12 matched-view AA, PCF, baked/light and cel edge screenshots passed');
  }finally{await browser.close();}
 }finally{
  server.kill('SIGTERM');
