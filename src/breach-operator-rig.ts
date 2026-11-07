@@ -96,6 +96,8 @@ type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
 export type OperatorPose={
   /** Opt-in LAB-only V3 torso fit audition; never set by gameplay. */
   poseV3Preview?:boolean;
+  /** B24b reload-action visual tolerance, opt-in Lab only. */
+  poseV4ReloadPreview?:boolean;
   /** Opt-in Lab reload corridor comparison; never read by game simulation. */
   poseV3ReloadCorridor?:V3ReloadCorridorProfile;
   /** B19 fixed-profile offline handling audition; only read in V3 Lab. */
@@ -1443,14 +1445,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       envelope,
       mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
         'aim':'carry',
-      releasedSupportTarget:releasedTarget
+      releasedSupportTarget:releasedTarget,
+      allowReloadOverlap:!!p.poseV4ReloadPreview&&v3ReloadActive
     });
     r.root.userData.poseV3CoordinatedReport={
       status:result.status,yaw:result.yaw,leanX:result.leanX,
       candidates:result.candidates,
       validCandidates:result.validCandidates,
       rejects:{...result.rejects},
-      quality:result.quality
+      quality:result.quality,
+      relaxedContact:!!result.reports?.some(report=>report.relaxedContact),
+      strictContactValid:result.reports?.every(report=>
+        report.strictContactValid)??false
     };
     if(result.status==='clear'&&result.arms){
       coordinatedDynamic=result;
