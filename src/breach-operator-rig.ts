@@ -308,7 +308,10 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   chest.add(bodycamChest);
   const bodycamHelmet=new THREE.Object3D();
   bodycamHelmet.name='fieldwork-replay-bodycam-helmet';
-  bodycamHelmet.position.set(8.5,6.2,0);
+  // Brow-height mount stays clear of the standard 42-unit roof underside.
+  // The older top-of-helmet position sat inside the ceiling and obscured
+  // most of the first-person screen in actual iPhone screenshots.
+  bodycamHelmet.position.set(8.5,2.4,0);
   head.add(bodycamHelmet);
   // Faces and necks are real receiving surfaces for projected hat/collar
   // shadows, independent of the skin tint shared by arms and hands.
