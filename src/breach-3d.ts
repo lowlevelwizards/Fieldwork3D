@@ -2404,7 +2404,8 @@ export class TacticalScene3D{
         const socket=this.replayBodycam.mount==='helmet'?
           rig.bodycamHelmet:rig.bodycamChest;
         const sample=sampleBodycamSocket(
-          socket,this.replayBodycam.stabilization);
+          socket,this.replayBodycam.stabilization,
+          this.replayBodycam.mount==='chest'?.16:.11);
         applyBodycamCamera(this.bodycamCamera,sample,
           this.replayBodycam.fov,this.width/this.height);
         camera=this.bodycamCamera;
