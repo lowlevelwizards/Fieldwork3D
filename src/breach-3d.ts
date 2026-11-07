@@ -1449,7 +1449,9 @@ export class TacticalScene3D{
    */
   setReplayBodycam(setting:BodycamSetting|null):void{
     this.replayBodycam=setting?{...setting}:null;
-    if(!setting)this.bodycamLastQa=null;
+    // Every mount/lens change invalidates the previous frame's diagnostic:
+    // slow software WebGL must not report the old chest frame as helmet QA.
+    this.bodycamLastQa=null;
   }
   /** Read-only debug information for Vite dev Bodycam smoke; not a UI API. */
   inspectReplayBodycamQa(){
