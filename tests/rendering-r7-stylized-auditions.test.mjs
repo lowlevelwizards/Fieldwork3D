@@ -25,6 +25,9 @@ test('R7 gradient auditions are opt-in and root-relative',()=>{
  assert.equal(requestedOperatorGradient('?operatorGradient=bogus'),'current');
  assert.equal(operatorHeightBrightness(0,'neutral'),1);
  assert.equal(operatorHeightBrightness(50,'neutral'),1);
+ assert.deepEqual([0,25,50].map(operatorHeightBrightness),
+  [0,25,50].map(y=>operatorHeightBrightness(y,'current')),
+  'legacy callbacks with Array.map must not treat the index as a profile');
  assert.ok(operatorHeightBrightness(0,'sculptural')<
   operatorHeightBrightness(0,'current'));
  assert.ok(operatorHeightBrightness(50,'sculptural')>1);
