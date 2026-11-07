@@ -4,6 +4,11 @@
  * never expands the movement collision footprint.
  */
 import type {Door} from './breach-core.ts';
+/** Appearance only: clear headwear at doorways while retaining existing
+ * tactical footprint, line-of-sight and movement collision coordinates. */
+export const WALL_VISUAL_HEIGHT=56;
+export const DOOR_CLEAR_VISUAL_HEIGHT=51;
+export const DOOR_LEAF_VISUAL_HEIGHT=49;
 export const DOOR_PANEL_END_RECESS=2;
 /** Visual jambs overlap the slightly recessed leaf without narrowing the
  * authoritative physical doorway or changing operator collision. */
