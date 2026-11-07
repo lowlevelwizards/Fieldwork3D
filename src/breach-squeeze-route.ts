@@ -157,6 +157,36 @@ export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
  if(!tail.length||!routeSwept(relief,tail,physical))return [];
  return [relief,...smoothTraversalRoute(relief,tail,physical)];
 }
+/** At a grazing prop edge, the coarse A* start cell can be blocked even
+ * though the actor itself has a perfectly legal full-size sidestep. Search a
+ * few short, swept local escapes before authorizing a squeeze. Each recovery
+ * then rejoins a real normal-body route; no waypoint/goal is modified.
+ * Bounded to avoid route-search spikes in genuine narrow corridors. */
+export function recoverNormalLane(from:Pt,to:Pt,doors:Door[]):Pt[]{
+ const direct=routeWithNormalWorld(from,to,doors);
+ if(direct.length)return direct;
+ const dist=Math.hypot(to.x-from.x,to.y-from.y);
+ if(dist<12)return [];
+ const fx=(to.x-from.x)/dist,fy=(to.y-from.y)/dist;
+ const sx=-fy,sy=fx;
+ // Sideways first, then a modest retreat if the shoulder is at a corner.
+ // Maximum twelve route probes; direct sweep gates reject most immediately.
+ for(const lateral of [16,28,40]){
+   for(const back of [0,12]){
+     for(const sign of [1,-1]){
+       const escape={x:from.x+sx*lateral*sign-fx*back,
+         y:from.y+sy*lateral*sign-fy*back};
+       if(!sweptProfileClear(from,escape,doors,0,'normal'))continue;
+       const onward=routeWithNormalWorld(escape,to,doors);
+       if(!onward.length)continue;
+       if(Math.hypot(escape.x-from.x,escape.y-from.y)+
+          courseLength(escape,onward)>dist*1.75+40)continue;
+       return [escape,...onward];
+     }
+   }
+ }
+ return [];
+}
 export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
  // Open hinged leaves are pushable; ordinary motion must remain eligible.
  const normal=routeWithNormalWorld(from,to,doors);
