@@ -69,6 +69,8 @@ export class OperatorAppearanceGrid{
  private readonly pending=new Map<HTMLCanvasElement,Entry>();
  private readonly observer:IntersectionObserver|null;
  private scheduled=false;
+ /** Stop queued GPU thumbnail work when the Studio iframe is hidden. */
+ private suspended=false;
  private selected:WardrobeSlot='top';
  private token=0;
  private queue:Entry[]=[];
@@ -135,12 +137,18 @@ export class OperatorAppearanceGrid{
   this.selected=slot;
   if(!deferPaint)this.paint();
  }
+ setSuspended(suspended:boolean){
+  if(this.suspended===suspended)return;
+  this.suspended=suspended;
+  if(!suspended)this.scheduleThumb();
+ }
  private scheduleThumb(){
-  if(this.scheduled||!this.queue.length)return;
+  if(this.suspended||this.scheduled||!this.queue.length)return;
   this.scheduled=true;
   const token=this.token;
   requestAnimationFrame(()=>{
    this.scheduled=false;
+   if(this.suspended)return;
    if(this.token!==token){
     // A category change replaced the queue while a frame was pending.
     this.scheduleThumb();return;
@@ -287,8 +295,11 @@ export class OperatorAppearanceGrid{
    this.renderer.setClearColor(item.slot==='facewear'?0x435448:0x23352e,1);
    this.renderer.clear(true,true,true);
    this.renderer.render(this.scene,this.camera);
+   const readbackStart=performance.now();
    this.renderer.readRenderTargetPixels(this.target,0,0,THUMB_SIZE,
     THUMB_SIZE,this.pixels);
+   this.grid.dataset.lastReadbackMs=
+    String(Math.round((performance.now()-readbackStart)*10)/10);
    const context=canvas.getContext('2d');
    if(context){
     const image=context.createImageData(THUMB_SIZE,THUMB_SIZE);
