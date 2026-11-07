@@ -32,6 +32,37 @@ const courseLength=(from:Pt,points:readonly Pt[])=>{
  return length;
 };
 
+/** Extra breathing room is a preference, NEVER extra collision clearance.
+ * It keeps the operator off furniture edges, where the body may technically
+ * fit but the shoulders and gun would scrape or short-stock. */
+export const COMFORT_RADIUS=OPERATOR_RADIUS+5;
+const routeSwept=(from:Pt,path:readonly Pt[],
+ canTraverse:(a:Pt,b:Pt)=>boolean):boolean=>{
+ let previous=from;
+ for(const point of path){
+   if(!canTraverse(previous,point))return false;
+   previous=point;
+ }
+ return true;
+};
+/** No extra A* for a clear normal route. Only search a roomier lane when
+ * the ordinary route brushes known geometry; reject gross detours. */
+function preferRoomyPath(from:Pt,to:Pt,ordinary:Pt[],
+ canStand:(p:Pt,r:number)=>boolean,
+ canSweep:(a:Pt,b:Pt,r:number)=>boolean):Pt[]{
+ const normal=smoothTraversalRoute(from,ordinary,
+   (a,b)=>canSweep(a,b,OPERATOR_RADIUS));
+ if(!canStand(from,COMFORT_RADIUS)||!canStand(to,COMFORT_RADIUS)||
+    routeSwept(from,normal,(a,b)=>canSweep(a,b,COMFORT_RADIUS)))
+   return normal;
+ const roomy=route(from,to,p=>canStand(p,COMFORT_RADIUS));
+ if(!roomy.length||courseLength(from,roomy)>
+    courseLength(from,ordinary)*1.20+14)return normal;
+ const smoothed=smoothTraversalRoute(from,roomy,
+   (a,b)=>canSweep(a,b,COMFORT_RADIUS));
+ return routeSwept(from,smoothed,
+   (a,b)=>canSweep(a,b,COMFORT_RADIUS))?smoothed:normal;
+}
 /** Eliminate short grid zigzags only when the entire skipped body sweep
  * is lawful. Keep a tiny lookahead: this is motor smoothing, not a shortcut
  * through hidden geometry, a new authored waypoint, or a search expansion.
@@ -89,38 +120,35 @@ function narrowRoute(from:Pt,to:Pt,
 export function routeWithSqueezeIntel(intel:IntelState,from:Pt,to:Pt):Pt[]{
  const canStand=(p:Pt,r:number)=>intelPassable(p,intel,r);
  const standard=routeWithIntel(intel,from,to);
- // Prefer ordinary walking if it is nearly as direct, but do not walk
- // all the way around a room when the operator can squeeze straight through.
- const direct=directSqueeze(from,to,canStand);
- if(direct&&(!standard.length||
-   courseLength(from,standard)>Math.hypot(to.x-from.x,to.y-from.y)*1.22+10))
-   return [{...to}];
- return standard.length?
-   smoothTraversalRoute(from,standard,(a,b)=>intelSweep(a,b,canStand)):
+ // A normal-body path always wins, even when the narrow shortcut is
+ // shorter. Favor a few units of breathing room when it costs little.
+ if(standard.length)return preferRoomyPath(from,to,standard,canStand,
+   (a,b,r)=>intelSweep(a,b,canStand,r));
+ // Only a genuinely inaccessible normal route may ask for narrow shoulders.
+ return directSqueeze(from,to,canStand)?[{...to}]:
    narrowRoute(from,to,canStand);
 }
 /** Collision-truth replan after contact or a known obstruction.
  * Open door leaves use the same rule as the ordinary motor. */
-export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
- // A door being opened is an intentional, actionable obstruction; it must
- // remain routable so the motor can open it. A leaf already swung into a
- // walkway is different: a physical route needs to steer around the leaf.
- const canStand=(p:Pt,r:number)=>
-   passable(p,r)&&!doors.some(d=>d.open&&(d.openFraction??0)>=.72&&
-     pointToSegment(p,doorLeafSegment(d))<r+1);
+const worldCanStand=(doors:Door[])=>(p:Pt,r:number)=>
+  passable(p,r)&&!doors.some(d=>d.open&&(d.openFraction??0)>=.72&&
+    pointToSegment(p,doorLeafSegment(d))<r+1);
+/** For motor recovery: a true full-body detour, never a narrow fallback.
+ * Its result is transient navigation, not an authored path change. */
+export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
+ const canStand=worldCanStand(doors);
  const standard=route(from,to,p=>canStand(p,OPERATOR_RADIUS));
- if(standard.length){
-   // A grid path can still have a swept leaf collision near its origin.
-   let previous=from,valid=true;
-   for(const point of standard){
-     if(!sweptProfileClear(previous,point,doors,0,'normal')){
-       valid=false;break;
-     }
-     previous=point;
-   }
-   if(valid)return smoothTraversalRoute(from,standard,(a,b)=>
+ if(!standard.length||!routeSwept(from,standard,
+   (a,b)=>sweptProfileClear(a,b,doors,0,'normal')))return [];
+ return preferRoomyPath(from,to,standard,canStand,
+   (a,b,r)=>intelSweep(a,b,canStand,r)&&
      sweptProfileClear(a,b,doors,0,'normal'));
- }
+}
+export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
+ // Open hinged leaves are pushable; ordinary motion must remain eligible.
+ const normal=routeWithNormalWorld(from,to,doors);
+ if(normal.length)return normal;
+ const canStand=worldCanStand(doors);
  const narrow=narrowRoute(from,to,canStand);
  let previous=from;
  for(const point of narrow){
