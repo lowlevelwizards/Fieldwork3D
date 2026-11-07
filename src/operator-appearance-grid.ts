@@ -6,6 +6,7 @@
  * accidentally return through an old selector. Category state is UI-only.
  */
 import * as THREE from 'three';
+import {requestedOperatorGradient} from './operator-height-lighting.ts';
 import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
  from './operator-studio-lighting.ts';
 import {applyOperatorStudioToon,requestedOperatorToonBands}
@@ -266,6 +267,8 @@ export class OperatorAppearanceGrid{
   const oldAlpha=this.renderer.getClearAlpha();
   const oldSceneBackground=this.scene.background;
   try{
+   rig.root.userData.fieldworkHeightProfile=
+    requestedOperatorGradient(window.location.search);
    poseOperator(rig,{
     x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
     posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,
