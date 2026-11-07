@@ -89,7 +89,7 @@ import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-in
 import {buildReplayDirectorCues,replayCameraTarget,easeReplayCamera,
   type ReplayCameraMode,type ReplayDirectorCue}
   from './breach-replay-director.ts';
-import {clusterReplayTimeline} from './breach-replay-timeline-markers.ts';
+import {clusterReplayTimeline,replayTimelineBins} from './breach-replay-timeline-markers.ts';
 import {toggleReplaySurface,resolvedReplayCamera,isReplaySpeed,
   type ReplaySurface,type ReplayCameraChoice,type ReplayPerspective}
   from './breach-replay-ui-state.ts';
@@ -4782,7 +4782,7 @@ function renderReplayEventMarkers():void{
   const duration=recorder.duration;
   if(duration<=0)return;
   const width=ui.replayMarks.clientWidth||ui.replaySeek.clientWidth||320;
-  const bins=Math.max(16,Math.floor(Math.max(0,width)/7));
+  const bins=replayTimelineBins(width);
   const events=replayEventIndex?.markers??[];
   const clusters=clusterReplayTimeline(events,duration,width);
   const byBin=new Map<number,ReplayIndexedEvent[]>();
