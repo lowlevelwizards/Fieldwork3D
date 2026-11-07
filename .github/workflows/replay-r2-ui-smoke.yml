@@ -9,6 +9,7 @@ on:
       - '.github/workflows/replay-r2-ui-smoke.yml'
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: replay-r2-ui-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -22,6 +23,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Replay UX V2 — verify prior Pages release before checkpoint
+        if: ${{ startsWith(github.head_ref, 'feature/replay-ux-v2-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       - run: npm install --no-audit --no-fund
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: npx playwright install chromium
