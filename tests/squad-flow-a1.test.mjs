@@ -109,7 +109,7 @@ test('A8: physically different approach lanes are not serialized',()=>{
   wanted);
 });
 
-test('A10: destination-settling steer improves gap without canceling progress',async()=>{
+test('A13: legacy arrival steering retains forward progress and safe fallback',async()=>{
  const {friendlyPassingStep}=await import('../src/breach-friendly-traffic.ts');
  const from=at(0,0),wanted=at(2,0),goal=at(14,0),peer=at(8,0);
  const next=friendlyPassingStep(from,wanted,goal,[peer],()=>true);
