@@ -151,6 +151,31 @@ try{
   await page.locator('.arsenal-wb-actions button').filter({hasText:'UNDO'}).click();
   await page.waitForFunction(()=>document.querySelector('.arsenal-wb-current')?.
    textContent?.includes('A2 Fixed'));
+  // R14: iPhone primary actions stay within the screen and offer 44px targets.
+  const sizes=await page.locator('.arsenal-wb-primary-actions button:visible')
+   .evaluateAll(buttons=>buttons.map(b=>{
+    const r=b.getBoundingClientRect(),boundary=b.closest('.arsenal-wb-screen').getBoundingClientRect();
+    return {label:b.textContent,height:r.height,
+      contained:r.left>=boundary.left-1&&r.right<=boundary.right+1};
+   }));
+  if(sizes.length<3||sizes.some(s=>s.height<43||!s.contained))
+   throw Error('Mobile Arsenal actions overflow or miss touch target: '+JSON.stringify(sizes));
+  await page.locator('.arsenal-wb-show-all').click();
+  const incompatible=page.locator('.arsenal-wb-option[data-fit="incompatible"]').first();
+  if(!await incompatible.count())
+   throw Error('SHOW UNAVAILABLE did not expose blocked stock choices');
+  const beforeCurrent=await page.locator('.arsenal-wb-current').textContent();
+  await incompatible.click();
+  if(!await page.locator('.arsenal-wb-fit-inline').isVisible())
+   throw Error('Unavailable part has no on-device explanation');
+  if(await page.locator('.arsenal-wb-current').textContent()!==beforeCurrent)
+   throw Error('Inspecting unavailable stock unexpectedly changed the weapon');
+  await page.screenshot({path:out+'/arsenal-mobile-compatibility-iphone.png'});
+  page.once('dialog',dialog=>dialog.accept());
+  await page.getByRole('button',{name:'BACK TO ARSENAL'}).click();
+  if(await page.locator('.arsenal-wb-screen').count()||
+    await page.evaluate(()=>document.body.style.overflow==='hidden'))
+   throw Error('Workbench close did not restore gallery scrolling');
   if(errors.length)throw Error('Arsenal runtime: '+errors.join('; '));
   await page.close();
  }finally{await browser.close();}
