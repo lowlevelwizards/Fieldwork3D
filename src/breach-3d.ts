@@ -144,7 +144,8 @@ export class TacticalScene3D{
   readonly bodycamCamera=new THREE.PerspectiveCamera(95,1,.8,2800);
   private replayBodycam:BodycamSetting|null=null;
   private bodycamLastQa:{active:boolean;owner:string|null;masked:number;
-    maskRestored:boolean}|null=null;
+    maskRestored:boolean;frame:number;at:number}|null=null;
+  private renderFrameSerial=0;
   readonly view:ViewState={mode:'iso',yaw:Math.PI/4,zoom:1.25,
     pitch:55*Math.PI/180,
     focus:{x:W/2,y:H/2}};
@@ -1469,6 +1470,8 @@ export class TacticalScene3D{
       owner:this.bodycamLastQa?.owner??null,
       masked:this.bodycamLastQa?.masked??0,
       maskRestored:this.bodycamLastQa?.maskRestored??true,
+      frame:this.bodycamLastQa?.frame??-1,
+      at:this.bodycamLastQa?.at??null,
       fov:cam.fov,aspect:cam.aspect,
       position:cam.position.toArray(),
       direction:cam.getWorldDirection(new THREE.Vector3()).toArray(),
@@ -2445,7 +2448,8 @@ export class TacticalScene3D{
         active:camera===this.bodycamCamera,
         owner:camera===this.bodycamCamera?this.replayBodycam?.actorId??null:null,
         masked:masked.length,
-        maskRestored:masked.every(([mesh,visible])=>mesh.visible===visible)
+        maskRestored:masked.every(([mesh,visible])=>mesh.visible===visible),
+        frame:++this.renderFrameSerial,at:s.seconds
       };
     }
     // Effects geometry is released before rebuilding the next frame; pooled
