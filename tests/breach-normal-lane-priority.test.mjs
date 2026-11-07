@@ -119,3 +119,30 @@ test('ordinary actor travel beside known furniture does not enter squeeze',()=>{
   assert.ok(actor.p.x>280,'operator should pass the prop, not stall or detour forever');
  }finally{activateSite(null);}
 });
+
+test('motor replaces a grazing straight-line step with a full-body lane before squeezing',()=>{
+ const s=newSession(0,undefined,'full-view','standard','hold',{
+  ...site,cover:[{x:205,y:137,w:30,h:24,fixture:'desk'}]
+ });
+ try{
+  const actor=team(s).find(x=>x.id==='rook');
+  assert.ok(actor);
+  const goal=p(305,120);
+  assert.ok(planMove(s,actor.id,goal));
+  const oldOrder=JSON.stringify(actor.plan);
+  s.phase='running';
+  stepSession(s,1/60); // let the motor consume the first authored waypoint
+  actor.nav=[{...goal}]; // simulate a stale touch path grazing the prop
+  let squeezed=0,steered=false;
+  for(let i=0;i<370;i++){
+   stepSession(s,1/60);
+   if(actor.squeeze)squeezed++;
+   if(actor.nav.some(q=>Math.abs(q.y-120)>6))steered=true;
+  }
+  assert.ok(steered,'motor should choose a slightly offset normal-body lane');
+  assert.equal(squeezed,0,'no squeeze pose for a preventable prop graze');
+  assert.ok(actor.p.x>280,'operator completes the movement after sidestepping');
+  assert.ok(actor.completedOrders>=1,'authored movement order is still consumed');
+  assert.notEqual(oldOrder,'[]');
+ }finally{activateSite(null);}
+});
