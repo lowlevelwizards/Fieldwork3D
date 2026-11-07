@@ -108,6 +108,10 @@ export class CampaignScreen{
   actions.append(button('NEW CAMPAIGN',this.handlers.newCampaign,
     hasSave?'':'campaign-primary'));
   actions.append(button('QUICK PLAY · TACTICAL SANDBOX',this.handlers.quickPlay));
+  const arsenal=node('a','campaign-entry-arsenal','ARSENAL · WEAPON WORKBENCH');
+  arsenal.href='./arsenal.html';
+  arsenal.setAttribute('aria-label','Open the full-screen Arsenal weapon builder');
+  actions.append(arsenal);
   main.append(actions);
   main.append(node('p','campaign-note',
     'Quick Play has fresh health and equipment every round. Campaign progress stays separate.'));
