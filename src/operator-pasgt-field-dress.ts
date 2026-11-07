@@ -251,7 +251,7 @@ function netDrape(edge:NetEdge):readonly (readonly number[])[]{
  // as a set of unsupported external poles.
  const t=Math.max(0,Math.min(1,(ramp[1]-5.43)/(ramp[1]-hem[1])));
  const lowerUnshifted=ramp.map((v,i)=>v*(1-t)+hem[i]*t);
- const lower=shift(lowerUnshifted,1.65);
+ const lower=shift(lowerUnshifted,.32);
  // Tuck the final portion beneath the fabric band so it reads as held,
  // rather than as six wires standing on top of a rim.
  const outwardContact=new THREE.Vector3(outward[0],outward[1],outward[2]).multiplyScalar(.09);
@@ -431,7 +431,7 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
 export function updatePasgtFieldDress(v:PasgtFieldDressLayers,
  covered:boolean,details:PasgtDetails,camo:HeadwearCamoId|undefined,
  allowRetention=true):void{
- const effective=resolvePasgtDetails(details);
+ const effective=resolvePasgtDetails(details,undefined,covered);
  v.slits.visible=covered&&effective.slits;
  v.band.visible=effective.band==='elastic'; // can be worn over the bare shell
  // Both contours are prebuilt once. Never place a single halfway-floating

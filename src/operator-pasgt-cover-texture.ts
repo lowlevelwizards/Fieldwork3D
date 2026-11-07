@@ -25,7 +25,7 @@ export const pasgtCamoWorldPeriod=(id:HeadwearCamoId)=>
  */
 export const PASGT_PANEL_PRINT_PHASE:Readonly<Record<PasgtFabricPanel,
  readonly [number,number]>>={
- left:[9,-7],top:[0,0],right:[-8,11]
+ left:[13,-11],top:[0,0],right:[-12,15]
 };
 export const PASGT_SEAM_HALF_WIDTH_TEXELS=2;
 export function pasgtCoverTexture(camo:HeadwearCamoId|undefined,
@@ -81,7 +81,7 @@ export function pasgtCoverTexture(camo:HeadwearCamoId|undefined,
    // Exactly two physical seams: each is shaded only on its two
    // adjoining cloth cuts. Never paint a ghost seam on a remote panel.
    const at=slotX(panel,x);
-   for(let z=slotY(frontZ-1.33);z<=slotY(rearZ+1.33);z++){
+   for(let z=slotY(frontZ-1.55);z<=slotY(rearZ+1.55);z++){
     for(let dx=-PASGT_SEAM_HALF_WIDTH_TEXELS;
      dx<=PASGT_SEAM_HALF_WIDTH_TEXELS;dx++)
      tint(at+dx,z,Math.abs(dx)===2?.89:.75);

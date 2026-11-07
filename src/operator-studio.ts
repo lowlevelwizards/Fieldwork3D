@@ -1073,14 +1073,19 @@ function renderMaterials(){
    }
    const bandRow=row('PASGT HELMET BAND',
     'A broad, surface-fitted elastic strip above the brow and around the rear skirt.');
-   addSelect(bandRow,PASGT_BANDS.map(id=>[
+   const netForcesBand=state.setup.cover!=='none'&&details.concealment==='net';
+   if(netForcesBand){
+    const explanation=document.createElement('small');
+    explanation.textContent='ON · REQUIRED TO SECURE NET';
+    bandRow.append(explanation);
+   }else addSelect(bandRow,PASGT_BANDS.map(id=>[
     id,id==='none'?'NONE':'ELASTIC BAND'] as const),
     details.band,id=>changeWardrobe({...current(),pasgtDetails:{
      ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
      band:id as typeof details.band}}));
    if(state.setup.cover!=='none'){
     const concealRow=row('PASGT CONCEALMENT',
-     'Foliage and scrim automatically reveal the required foliage slits.');
+     'Foliage and scrim require slits; net automatically secures under the elastic band.');
     addSelect(concealRow,PASGT_CONCEALMENTS.map(id=>[id,id.toUpperCase()] as const),
      details.concealment,id=>changeWardrobe({...current(),pasgtDetails:{
       ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
