@@ -1164,6 +1164,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/replay-r42-operator-sight.test.mjs \
+            tests/replay-r42-contact-lens.test.mjs \
             tests/replay-r42-archive.test.mjs \
             tests/replay-r2-recording.test.mjs \
             tests/replay-r3-archive.test.mjs
