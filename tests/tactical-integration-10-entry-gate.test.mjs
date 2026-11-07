@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {entryDoorState} from '../src/breach-entry-coordination.ts';
+import {doorClear} from '../src/breach-door.ts';
 import {newSession,team,planSquadEntry,undoPlan,redoPlan,planWait,stepSession,toggling} from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
 
@@ -9,8 +10,13 @@ test('squad-entry followers wait for physically clear doors, not just elapsed ti
   open:false,openFraction:0,openedAt:-1};
  assert.equal(entryDoorState(undefined),'missing');
  assert.equal(entryDoorState(leaf),'pending');
- assert.equal(entryDoorState({...leaf,open:true,openFraction:.60}),'pending');
- assert.equal(entryDoorState({...leaf,open:true,openFraction:.72}),'ready');
+ // A hinge angle is not a reliable measure of actual body passage.
+ // Mirror the authoritative geometric clearance predicate rather than
+ // relying on an obsolete fixed openFraction=0.72 threshold.
+ for(const fraction of [.60,.72,1]){
+  const sample={...leaf,open:true,openFraction:fraction};
+  assert.equal(entryDoorState(sample),doorClear(sample)?'ready':'pending');
+ }
  assert.equal(entryDoorState({...leaf,open:true,openFraction:1}),'ready');
  assert.equal(entryDoorState({...leaf,open:false,openFraction:.90}),'pending');
 });
@@ -79,8 +85,18 @@ test('B1: generated gate is consumed on the first ready execution tick',()=>{
    });
    if(releasedAt.every(t=>t!==null))break;
   }
+  const report={
+   door:s.doors.map(d=>({id:d.id,open:d.open,fraction:d.openFraction,
+    clear:entryDoorState(d)})),
+   actors:units.map(a=>({id:a.id,p:a.p,pause:a.motorPause,
+    blocked:a.lastBlocker,blockedSeconds:a.blockedTime,ready:a.syncReady,
+    orders:a.plan.slice(0,5).map(n=>({id:n.id,kind:n.kind,door:n.doorId,
+     duration:n.duration})),nav:a.nav.length})),
+   readyAt,releasedAt,seconds:s.seconds
+  };
   assert.ok(readyAt.every(t=>t!==null),
-   'all followers must actually reach a ready, physical door gate');
+   'all followers must actually reach a ready physical door gate: '+
+   JSON.stringify(report));
   for(let i=0;i<3;i++)assert.ok(
    releasedAt[i]!==null&&releasedAt[i]-readyAt[i]<.09,
    'no extra timer after door clearance: '+JSON.stringify({readyAt,releasedAt}));
