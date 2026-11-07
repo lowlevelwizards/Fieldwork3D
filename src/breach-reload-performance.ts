@@ -121,3 +121,36 @@ export function choreographV4ReloadWeapon(
    stock:fit.stock.clone().add(shift),
    primary:around(fit.primary),support:around(fit.support)},cue};
 }
+
+/** B29 preview-only visible moving firearm controls (game-art geometry).
+ * Unlike the gesture cue, this retains the HK handle in its notch until
+ * magazine insertion, then releases it. No physical cycling of ammo.
+ */
+export type ReloadControlPose={
+ visible:boolean;travel:number;press:number;
+};
+export function v4ReloadControlPose(
+ mechanism:ReloadMechanism,mode:ReloadMode,progress:number
+):ReloadControlPose{
+ const t=clamp(progress),still={visible:false,travel:0,press:0};
+ if(mode!=='emergency')return still;
+ if(mechanism==='hk-roller'){
+  if(t<.075||t>=.96)return still;
+  const travel=t<.20?-2.15*ease((t-.075)/.125):
+    t<.82?-2.15:
+    t<.93?-2.15*(1-ease((t-.82)/.11)):0;
+  return {visible:true,travel,press:0};
+ }
+ if(mechanism==='ak-rocking'){
+  if(t<.82||t>=.96)return still;
+  const phase=ease((t-.82)/.14);
+  return {visible:true,travel:-1.45*Math.sin(phase*Math.PI),
+   press:0};
+ }
+ if(mechanism==='ar-bolt-catch'){
+  if(t<.82||t>=.96)return still;
+  const phase=ease((t-.82)/.14);
+  return {visible:true,travel:0,press:.72*Math.sin(phase*Math.PI)};
+ }
+ return still;
+}

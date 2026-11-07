@@ -8,11 +8,19 @@ import {choreographV3ReloadHand,
  from './breach-pose-v3-reload-choreography.ts';
 import {reloadAnimationCue,type ReloadMechanism}
  from './breach-reload-performance.ts';
+import {v4ReloadPouchReach} from './breach-reload-v4-magazine-handoff.ts';
 export function choreographV4ReloadHand(
  input:ReloadChoreographyRequest,mechanism:ReloadMechanism
 ):ReloadChoreographyResult{
  const legacy=choreographV3ReloadHand(input);
  const cue=reloadAnimationCue(mechanism,input.mode,input.progress);
+ // An actual occupied pouch becomes the rendezvous, not a nominal chest
+ // offset. Both IK and renderer receive this same deterministic target.
+ if(input.pickupTarget&&input.mode!=='shells'){
+  const w=v4ReloadPouchReach(input.progress);
+  if(w>0)return {...legacy,target:legacy.target.clone()
+    .lerp(input.pickupTarget,w),segment:'transport'};
+ }
  // A single receiver-authored point drives each family. AK crosses to
  // the operating handle; HK reaches the left cocking tube to lock and
  // gives it its short, sharp slap after the magazine seats. AR presses

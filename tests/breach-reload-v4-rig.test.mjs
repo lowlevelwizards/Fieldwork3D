@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createOperatorRig,poseOperator}
@@ -77,6 +78,69 @@ test('B25 three mechanism previews are deterministic and inherit real magazine s
  }
  console.log('RELOAD-V4-B25-MATRIX',JSON.stringify(results));
 });
+test('B28 the EXACT selected carried magazine leaves its visible rig cell',()=>{
+ const f=fixtures[0],rig=createOperatorRig('v4-b28-rig','blue',true);
+ const inventory=[
+  {id:'reserve-A',kind:'magazine',location:'rig'},
+  {id:'reserve-B',kind:'magazine',location:'rig'},
+  {id:'reserve-C',kind:'magazine',location:'belt'}];
+ try{
+  const base={...create(f,.53),magazineCarryItems:inventory,
+    magazineCarryLocations:inventory.map(i=>i.location),
+    reloadSelectedMagazineId:'reserve-B',poseV4ReloadPreview:true};
+  poseOperator(rig,base,0);
+  assert.equal(rig.root.userData.reloadV4MagazineSlot?.id,'reserve-B');
+  assert.equal(rig.root.userData.reloadV4MagazineSlot?.index,1);
+  assert.equal(rig.visualKit.magazines.rig[0].visible,true);
+  assert.equal(rig.visualKit.magazines.rig[1].visible,true,
+   'selected mag remains stowed until physical extraction');
+  assert.equal(rig.detachedMagazine.visible,false,
+   'the receiving wrist must be empty when reaching the pouch');
+  const before=snapshot(rig);
+  poseOperator(rig,base,0);
+  equal(before,snapshot(rig),'B28/resume same timestamp');
+  poseOperator(rig,{...base,reload:1.8*(1-.70)},0);
+  assert.equal(rig.visualKit.magazines.rig[0].visible,true,
+   'unselected magazine never disappears');
+  assert.equal(rig.visualKit.magazines.rig[1].visible,false,
+   'selected magazine moves from pouch to hand');
+  assert.equal(rig.detachedMagazine.visible,true,
+   'same magazine-family silhouette is held in hand');
+  const after=snapshot(rig);
+  poseOperator(rig,{...base,reload:1.8*(1-.70)},0);
+  equal(after,snapshot(rig),'B28/held seek');
+  poseOperator(rig,{...base,reload:1.8*(1-.53)},0);
+  assert.equal(rig.visualKit.magazines.rig[1].visible,true,
+   'rewind returns the magazine to the same rig cell');
+  assert.equal(rig.detachedMagazine.visible,false);
+  poseOperator(rig,{...base,reload:0},0);
+  assert.equal(rig.root.userData.reloadV4MagazineSlot,null,
+   'non-reloading pose has no pickup owner');
+ }finally{rig.dispose();}
+});
+test('B29 visible handle remains weapon-mounted through HK lock and slap',()=>{
+ const f=fixtures[2],rig=createOperatorRig('v4-hk-moving-handle','blue',true);
+ try{
+  const pose={...create(f,.53),poseV4ReloadPreview:true};
+  poseOperator(rig,pose,0);
+  assert.equal(rig.reloadControlMesh.visible,true);
+  const held=rig.reloadControlMesh.position.clone();
+  const first=snapshot(rig);
+  poseOperator(rig,pose,0);
+  equal(first,snapshot(rig),'B29/locked HK replay');
+  assert.ok(held.distanceTo(rig.reloadControlMesh.position)<1e-12);
+  poseOperator(rig,{...pose,reload:1.8*(1-.88)},0);
+  assert.equal(rig.reloadControlMesh.visible,true);
+  assert.ok(rig.reloadControlMesh.position.x>held.x,
+    'handle travels forward during the slap');
+  poseOperator(rig,{...pose,reload:0},0);
+  assert.equal(rig.reloadControlMesh.visible,false,
+    'idle rifle is not overlaid with an extra knob');
+  poseOperator(rig,{...pose,reloadMode:'retention'},0);
+  assert.equal(rig.reloadControlMesh.visible,false,
+    'retention reload does not invent a handle rack');
+ }finally{rig.dispose();}
+});
 test('B25 AR empty bolt press, retention bypass and neutral nonreload still work',()=>{
  const f=fixtures[0],rig=createOperatorRig('v4-m4-gestures','blue',true);
  try{
@@ -90,4 +154,18 @@ test('B25 AR empty bolt press, retention bypass and neutral nonreload still work
     poseV4ReloadPreview:true},0);
   assert.equal(rig.root.userData.reloadV4Cue,null);
  }finally{rig.dispose();}
+});
+
+test('B30 live renderer and replay use authored V4 without a debug query',()=>{
+ const game=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
+ const start=game.indexOf('poseOperator(object.physical,{');
+ assert.ok(start>0,'tactical 3D renderer must be present');
+ const args=game.slice(start,game.indexOf('},dt);',start)+7);
+ assert.match(args,/poseV3Preview:true,poseV4ReloadPreview:true/);
+ assert.match(args,/reloadSelectedMagazineId:actor\.reloadSelectedMagazineId/);
+ assert.match(args,/magazineCarryItems:carried\.filter/);
+ assert.match(args,/reloadRemoved:actor\.reloadRemoved/);
+ assert.match(args,/reloadInserted:actor\.reloadInserted/);
+ const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
+ assert.match(lab,/poseV4ReloadPreview=poseFlags\.get\('poseV4'\)!=='0'/);
 });

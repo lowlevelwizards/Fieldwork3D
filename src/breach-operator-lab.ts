@@ -72,9 +72,11 @@ let labPalette=1;
 let wardrobeOptions:WardrobeOptions=initialWardrobe();
 /** URL opt-in development inspector, not a second character renderer. */
 const poseFitMode=new URLSearchParams(location.search).get('poseFit')==='1';
-const poseV4ReloadPreview=new URLSearchParams(location.search).get('poseV4')==='1';
+// The Operator Lab now uses the same posing as the live tactical game.
+const poseFlags=new URLSearchParams(location.search);
+const poseV4ReloadPreview=poseFlags.get('poseV4')!=='0';
 const poseV3Preview=poseV4ReloadPreview||
- new URLSearchParams(location.search).get('poseV3')==='1';
+ poseFlags.get('poseV3')==='1';
 /** Use the actual action clock while preserving the Pose Fit weapon/armor. */
 const poseV3Action=poseFitMode&&poseV3Preview&&
  (poseV4ReloadPreview||
@@ -1589,6 +1591,8 @@ function draw(){
        'blank'|'quiet'|'graphic',
      magazineCarryLocations:currentCarry.filter(p=>p.kind==='magazine')
       .map(p=>p.location),
+     magazineCarryItems:currentCarry.filter(p=>p.kind==='magazine'),
+     reloadSelectedMagazineId:currentCarry.find(p=>p.kind==='magazine')?.id,
      medicalCarryLocation:currentCarry.find(p=>p.kind==='medical')?.location,
      utilityCarryLocation:currentCarry.find(p=>p.kind==='utility')?.location,
     downPose:track==='down-back'?'back':
