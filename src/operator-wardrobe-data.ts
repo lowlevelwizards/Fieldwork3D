@@ -50,6 +50,8 @@ add('headwear','soft',[
 add('headwear','ballistic',[
  ['soviet-steel','Steel helmet'],['pasgt','PASGT-style helmet'],
  ['ach','ACH / MICH-style helmet'],['high-cut','High-cut helmet'],
+ ['mich-2001','MICH 2001 high-cut'],['mich-2002','MICH 2002 gunfighter'],
+ ['fast-sf','FAST SF high-cut'],['fast-xp-mid','FAST XP mid-cut'],
  ['m1-steel','US M1 steel helmet'],['ddr-m56','East German M56 steel helmet'],
  ['police-helmet','Protective police helmet']
 ]);

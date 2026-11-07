@@ -166,6 +166,8 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // Rails inherit the approved shell without inventing a new silhouette.
  headModel('high-cut-rails',true,model=>model.add(
   createHeadwearSilhouette('high-cut',detail('high-cut','high-cut-rails'))));
+ for(const id of ['mich-2001','mich-2002','fast-sf','fast-xp-mid'] as const)
+  headModel(id,true,model=>model.add(createHeadwearSilhouette(id,detail(id))));
  helmet('skate-helmet',9.65,2,false);
  helmet('bump-helmet',9.1,2,true);
  // D2-A1: fitted canonical -Z fabric shells with real skin-revealing apertures.

@@ -21,7 +21,8 @@ export const HEADWEAR_ATLAS_PIXELS=64;
 export const HEADWEAR_REGION_PIXELS=32;
 export const HEADWEAR_MATERIAL_KIND:Readonly<Record<HeadSilhouetteId,HeadwearMaterialKind>>={
  'patrol-cap':'cotton','boonie':'cotton','beanie':'knit','beret':'cotton',
- 'ach':'composite','high-cut':'composite','pasgt':'composite','soviet-steel':'steel','m1-steel':'steel','ddr-m56':'steel','police-helmet':'composite'
+ 'ach':'composite','high-cut':'composite','mich-2001':'composite','mich-2002':'composite',
+ 'fast-sf':'composite','fast-xp-mid':'composite','pasgt':'composite','soviet-steel':'steel','m1-steel':'steel','ddr-m56':'steel','police-helmet':'composite'
 };
 /** Neutral surface-lighting finish independent of contextual color/camo. */
 export type HeadwearSurfaceProfile={
@@ -35,6 +36,10 @@ export const HEADWEAR_SURFACE_PROFILE:Readonly<Record<HeadSilhouetteId,HeadwearS
  'beret':{family:'woven-twill',roughness:.995,metalness:0},
  'ach':{family:'matte-composite',roughness:.92,metalness:0},
  'high-cut':{family:'matte-composite',roughness:.91,metalness:0},
+ 'mich-2001':{family:'matte-composite',roughness:.92,metalness:0},
+ 'mich-2002':{family:'matte-composite',roughness:.92,metalness:0},
+ 'fast-sf':{family:'matte-composite',roughness:.90,metalness:0},
+ 'fast-xp-mid':{family:'matte-composite',roughness:.90,metalness:0},
  'pasgt':{family:'matte-composite',roughness:.945,metalness:0},
  'soviet-steel':{family:'painted-steel',roughness:.77,metalness:.12},
  'm1-steel':{family:'painted-steel',roughness:.84,metalness:.09},
