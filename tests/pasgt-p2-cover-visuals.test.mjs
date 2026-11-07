@@ -2,48 +2,40 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {headwearCuboidVolumes} from '../src/operator-headwear-silhouettes.ts';
-import {pasgtCoverVolumes,pasgtHemVolumes,pasgtCoverTexture,createPasgtCoverLayers,
+import {pasgtCoverTexture,createPasgtCoverLayers,
  updatePasgtCoverLayers} from '../src/operator-pasgt-cover-visuals.ts';
-import {readPasgtDetails} from '../src/operator-pasgt-cover-policy.ts';
-test('PASGT underlying geometry is unchanged; textile stops above source rim',()=>{
- const shell=headwearCuboidVolumes('pasgt');
- const cloth=pasgtCoverVolumes();
- assert.equal(cloth.length,shell.length);
- cloth.forEach((c,i)=>{
-  assert.equal(c.name,'pasgt-textile-'+shell[i].name);
-  assert.ok(c.y-c.height/2>shell[i].y-shell[i].height/2+.19);
-  assert.ok(c.width>shell[i].width);
- });
- assert.equal(pasgtHemVolumes().length,4);
-});
-test('PASGT texture uses fabric color without shell tint or AO vertex darkening',()=>{
+test('P4 keeps original PASGT shell and renders its fabric separately',()=>{
+ const source=headwearCuboidVolumes('pasgt');
+ assert.equal(source[0].name,'pasgt-single-protective-crown');
  const root=new THREE.Group(),v=createPasgtCoverLayers(root);
+ assert.ok(root.children.length>=3);
  assert.equal(v.fabric.color.getHex(),0xffffff);
  assert.equal(v.fabric.vertexColors,false);
- const tex=pasgtCoverTexture('m81-woodland','identity-a',0);
- assert.equal(tex.channel,1);
- assert.equal(tex.image.width,128);
- assert.equal(tex.image.height,128);
- const body=v.cover.children.find(x=>x instanceof THREE.Mesh);
+ const body=v.cover.children[0];
+ assert.ok(body instanceof THREE.Mesh);
+ assert.ok(body.geometry.userData.pasgtDrapedFabric);
  assert.ok(body.geometry.getAttribute('uv1'));
  assert.equal(body.receiveShadow,false);
+ const tex=pasgtCoverTexture('m81-woodland','identity-a',0);
+ assert.equal(tex.channel,1);
+ assert.equal(tex.image.width,256);
+ assert.equal(tex.image.height,256);
 });
-test('PASGT fitted cover and field dress choices are actually mutually exclusive',()=>{
+test('PASGT cover OFF exposes solid shell, while band can remain',()=>{
  const root=new THREE.Group(),v=createPasgtCoverLayers(root);
- const defaults=readPasgtDetails({construction:'loops',band:'crossed',
-  concealment:'scrim'});
- updatePasgtCoverLayers(v,true,defaults,'m81-woodland','operator-a');
+ const details={slits:false,band:'elastic',concealment:'scrim'};
+ updatePasgtCoverLayers(v,true,details,'m81-woodland','operator-a');
  assert.equal(v.cover.visible,true);
- assert.equal(v.loops.visible,true);
- assert.equal(v.slits.visible,false);
- assert.equal(v.standardBand.visible,false);
- assert.equal(v.crossedBand.visible,true);
- assert.equal(v.scrim.visible,true);
- assert.equal(v.foliage.visible,false);
+ assert.equal(v.hem.visible,true);
+ assert.equal(v.field.slits.visible,true);
+ assert.equal(v.field.scrim.visible,true);
+ assert.equal(v.field.band.visible,true);
  assert.equal(v.activePrint,'m81-woodland');
- updatePasgtCoverLayers(v,false,defaults,'m81-woodland','operator-a');
+ updatePasgtCoverLayers(v,false,details,'m81-woodland','operator-a');
  assert.equal(v.cover.visible,false);
  assert.equal(v.hem.visible,false);
+ assert.equal(v.field.slits.visible,false);
+ assert.equal(v.field.scrim.visible,false);
+ assert.equal(v.field.band.visible,true);
  assert.equal(v.activePrint,'');
- assert.equal(v.crossedBand.visible,true);
 });
