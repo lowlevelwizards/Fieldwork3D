@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {selectedReloadPouchSlot,v4ReloadPickupPhase,
- v4ReloadPouchReach,v4MagazineInHand,v4SelectedPouchVisible}
- ,v4AuthoredPouchAnchor
+ v4ReloadPouchReach,v4MagazineInHand,v4SelectedPouchVisible,
+ v4AuthoredPouchAnchor}
  from '../src/breach-reload-v4-magazine-handoff.ts';
 import * as THREE from 'three';
 const item=(id,location,kind='magazine')=>({id,location,kind});
