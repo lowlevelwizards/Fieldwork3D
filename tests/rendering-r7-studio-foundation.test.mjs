@@ -56,3 +56,13 @@ test('R7 hidden Studio suspends optional GPU work without stopping simulation',(
  assert.match(grid,/if\(this\.suspended\)return/);
  assert.match(studio,/canvas\.dataset\.ready=rig\?\.root\.visible\?'true':'false'/);
 });
+
+test('R7 first-frame shader warmup preserves an ordinary-render fallback',()=>{
+ const main=source('src/breach-main.ts');
+ assert.match(main,/renderer\.compileAsync\(stage\.scene,stage\.camera\)/);
+ assert.match(main,/get\('gpuWarmup'\)!=='0'/);
+ assert.match(main,/Quick Play shader preparation fallback/);
+ assert.match(main,/shaderPreparationMs/);
+ assert.ok(main.indexOf('renderer.compileAsync(stage.scene,stage.camera)')<
+  main.indexOf("quickPlayCheckpoint(97,'Rendering first 3D frame'"));
+});
