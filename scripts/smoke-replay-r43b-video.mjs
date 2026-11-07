@@ -64,9 +64,9 @@ try{
         });
         if(player.videoWidth!==720||player.videoHeight!==1280)
           throw Error('Incorrect 720p portrait export dimensions');
-        await player.play();
-        await sleep(180);
-        player.pause();
+        // onloadeddata already decoded an actual frame. Calling play()
+        // here races a very short MediaRecorder clip ending on CI.
+        if(player.readyState<2)throw Error('No decoded video frame');
         const decoded=document.createElement('canvas');
         decoded.width=720;decoded.height=1280;
         const pixels=decoded.getContext('2d',{willReadFrequently:true});
