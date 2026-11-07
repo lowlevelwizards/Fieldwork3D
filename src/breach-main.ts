@@ -2741,6 +2741,9 @@ function updateHud(){
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
   ui.debrief.hidden=replaying||(state.phase!=='won'&&state.phase!=='lost');
+  const replayIsSaved=!!savedRecordingIds.get(recorder);
+  ui.saveReplayDebrief.disabled=replayLibraryBusy||replayIsSaved;
+  ui.saveReplayDebrief.textContent=replayIsSaved?'REPLAY SAVED':'SAVE REPLAY';
   ui.saveReplayDebrief.disabled=recorder.frames.length<2||replayLibraryBusy;
   ui.favoriteMission.disabled=!state.site;
   ui.favoriteMission.textContent=activeFavoriteId?
