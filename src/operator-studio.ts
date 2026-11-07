@@ -10,7 +10,8 @@ import {inspectOperatorLighting,formatOperatorLightingReport,
  from './operator-lighting-inspector.ts';
 import {applyStudioSelfShadowAtlases}
  from './operator-gear-lightmap-atlas.ts';
-import {applyOperatorStudioToon,requestedOperatorToonBands}
+import {applyOperatorStudioToon,requestedOperatorToonBands,
+ requestedOperatorRimMode,disposeOperatorStudioToon}
  from './operator-studio-toon-lighting.ts';
 import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
  from './operator-studio-lighting.ts';
@@ -452,7 +453,9 @@ function posePreview(){
  if(lightingInspectorOutput&&rig)restoreOperatorLightingPreview(rig.root);
  const reference=referenceOpen?resolveFactionReference(referenceBrowser.selectedId):null;
  if(!rig||rig.camoIdentity!==p.id){
-  if(rig){scene.remove(rig.root);rig.dispose();}
+  if(rig){
+   scene.remove(rig.root);disposeOperatorStudioToon(rig.root);rig.dispose();
+  }
   rig=createOperatorRig(p.id,'blue');
   scene.add(rig.root);
  }
@@ -491,7 +494,8 @@ function posePreview(){
  }else{
   const toon=requestedOperatorToonBands(location.search);
   if(toon){
-   const result=applyOperatorStudioToon(rig.root,toon);
+   const result=applyOperatorStudioToon(rig.root,toon,
+    requestedOperatorRimMode(location.search));
    canvas.dataset.operatorToonBands=String(toon);
    canvas.dataset.operatorToonMeshes=String(result.meshes);
   }
