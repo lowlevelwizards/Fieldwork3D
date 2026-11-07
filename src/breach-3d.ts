@@ -2051,6 +2051,9 @@ export class TacticalScene3D{
     const casingDraw=this.casingMesh;
     let casingCount=0,casingDirty=false;
     for(const brass of s.casings){
+      // Casing positions could reveal a shooter who was never confirmed
+      // by the selected observer. Contact review has no shot forensics.
+      if(replayDisclosurePolicy?.mode==='operator')continue;
       if(!omniscient&&!liveVisibility(s,{x:brass.x,y:brass.z}))continue;
       if(casingCount>=CASING_LIMIT)break;
       // Full ballistic + bounce motion ends comfortably before two seconds.
@@ -2081,6 +2084,7 @@ export class TacticalScene3D{
     for(let index=s.shots.length-1;index>=0;index--){
       if(visibleShots>=20)break;
       const shot=s.shots[index];
+      if(replayDisclosurePolicy?.mode==='operator')continue;
       const visibility=omniscient?
         {flash:true,trace:true,impact:true}:shotVisibility(s,shot);
       if(!visibility.flash&&!visibility.trace&&!visibility.impact)continue;
@@ -2160,6 +2164,7 @@ export class TacticalScene3D{
     const markDraw=this.impactDecalMesh;
     let markCount=0;
     for(const mark of s.impactMarks){
+      if(replayDisclosurePolicy?.mode==='operator')continue;
       if(!omniscient&&!liveVisibility(s,mark.p))continue;
       if(markCount>=IMPACT_MARK_LIMIT)break;
       const dark=mark.surface==='blood'?0x763c38:
