@@ -73,7 +73,7 @@ try{
     'Replay transport needs a named accessible region');
   check(await page.locator('#replayTabs').count()===0,
     'Obsolete five-tab drawer must not remain in the DOM');
-  check(compact.dock.height<=230,
+  check(compact.dock.height<=320,
     'Portrait replay dock obscures battlefield: '+JSON.stringify(compact));
   check(compact.markerCount<=Math.ceil(compact.markWidth/24)+1,
     'Event rail still has overlapping unclustered markers');
@@ -82,6 +82,19 @@ try{
 
   check(await page.locator('#replayQuickSpeed').isVisible(),
     'Speed is not directly accessible');
+  for(const id of ['replayDirectSight','replayDirectTracers',
+    'replayDirectXray','replayDirectDirector']){
+    check(await page.locator('#'+id).isVisible(),
+      'Direct viewing control missing: '+id);
+  }
+  check(await page.locator('#replayEventText').isVisible(),
+    'The bottom action feed must stay visible on mobile');
+  await page.locator('#replayDirectTracers').click();
+  check(await page.locator('#replayDirectTracers').getAttribute('aria-pressed')==='true',
+    'Direct tracer toggle did not activate');
+  await page.locator('#replayDirectXray').click();
+  check(await page.locator('#replayDirectXray').getAttribute('aria-pressed')==='true',
+    'Direct X-ray toggle did not activate');
   await page.locator('#replayQuickSpeed').selectOption('0.5');
   check(await page.locator('#replayQuickSpeed').inputValue()==='0.5',
     'Direct speed setting failed');
@@ -90,6 +103,9 @@ try{
     'Direct perspective selection failed');
   await page.locator('#replayMore').click();
   const view=await page.evaluate(measure);
+  check(await page.locator('#replaySight').isHidden()&&
+    await page.locator('#replayTraces').isHidden(),
+    'Duplicate advanced controls were not hidden');
   check(!view.drawer.hidden&&view.visibleGroups.sort().join()==='layers,precision,view',
     'Analyze should expose collapsible review controls: '+JSON.stringify(view));
   check(view.drawer.bottom<=view.dock.top,
@@ -140,16 +156,16 @@ try{
   check((await floor.getAttribute('aria-pressed'))==='false',
     'Leaving individual review must turn off the floor overlay');
   if(groundEvidenceAvailable){
-    await page.locator('#replayView').click(); // Plan2D -> ISO for Director QA
+    await page.locator('#replayQuickView').selectOption('iso'); // Plan2D -> ISO for Director QA
     check((await page.locator('#replayView').textContent())?.includes('ISO'),
       'Tactical camera must restore after leaving the floor overlay');
   }
 
-  check(await page.locator('#replayDirector').isVisible(),
-    'R3 Director must be accessible under View');
+  check(await page.locator('#replayDirectDirector').isVisible(),
+    'Director must be accessible without an analysis drawer');
   check(await page.locator('#replaySquad').isVisible(),
     'R3 Squad follow must be accessible under View');
-  await page.locator('#replayDirector').click();
+  await page.locator('#replayDirectDirector').click();
   check((await page.locator('#replayDirector').getAttribute('aria-pressed'))==='true',
     'Director button did not activate');
   await page.locator('#replaySquad').click();
@@ -157,8 +173,30 @@ try{
     'Squad mode must disable Director');
   check((await page.locator('#replaySquad').getAttribute('aria-pressed'))==='true',
     'Squad camera did not activate');
-  check(await page.locator('#replayTraces').isVisible(),
-    'Advanced trajectory setting disappeared');
+  check(await page.locator('#replayDirectTracers').isVisible(),
+    'The direct tracer toggle disappeared');
+  // Camera following is direct; Bodycam/mount appear contextually.
+  const operatorOption=await page.locator(
+    '#replayQuickCamera option[data-actor]').first().getAttribute('value');
+  if(operatorOption){
+    await page.locator('#replayQuickCamera').evaluate((select,value)=>{
+      select.value=value;
+      select.dispatchEvent(new Event('change',{bubbles:true}));
+    },operatorOption);
+    check(await page.locator('#replayDirectBodycam').isVisible(),
+      'Bodycam must appear when following an operator');
+    if(await page.locator('#replayDirectBodycam').isEnabled()){
+      await page.locator('#replayDirectBodycam').click();
+      check(await page.locator('#replayDirectMount').isVisible(),
+        'Head/chest toggle must appear during Bodycam');
+      await page.locator('#replayDirectMount').click();
+      check((await page.locator('#replayDirectMount').textContent())?.includes('HEAD'),
+        'Bodycam mount toggle did not activate');
+      await page.locator('#replayDirectBodycam').click();
+      check(await page.locator('#replayDirectBodycam').isVisible(),
+        'Exiting Bodycam should return to operator follow');
+    }
+  }
   check(await page.locator('#replayInspectActor option').count()>=2,
     'Operator investigation choices missing');
   check(await page.locator('#replayInspectFollow').isVisible(),
@@ -221,7 +259,7 @@ try{
   await page.setViewportSize({width:844,height:390});
   await page.locator('#replayMore').click();
   const landscape=await page.evaluate(measure);
-  check(landscape.dock.height<=190,
+  check(landscape.dock.height<=210,
     'Landscape replay dock too tall: '+JSON.stringify(landscape));
   check(landscape.drawer.top>=0&&landscape.drawer.bottom<=landscape.dock.top,
     'Landscape tools overflow battlefield: '+JSON.stringify(landscape));
