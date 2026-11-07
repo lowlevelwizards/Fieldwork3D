@@ -246,7 +246,7 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   stockX:stockX+(build?0:(mounted.stock.stockShift??0)),
   primaryX,primaryY,
   supportX:supportX+(mounted.foregrip.supportShift??0),
-  supportY:(mp5k?-3.65:
+  supportY:(mp5k?-4.20:
    mounted.foregrip.id==='foregrip-vertical'?-3.65:
    mounted.foregrip.id==='foregrip-handstop'?-2.3:
    build?.family==='hk'?-1.35:build?-1.65:p.supportY)+

@@ -37,11 +37,11 @@ export function riflePoseContacts(
  // Restricting the hand to farther-forward furniture forced near-full
  // extension and made a comfortably bent elbow impossible.
  const mp5k=hk&&b.parts.receiver==='hk-mp5k-stockless';
- const near=mp5k?3.45:hk?2.30:ar?2.02:1.86;
+ const near=mp5k?3.70:hk?2.30:ar?2.02:1.86;
  const hkCompact=hk&&b.parts.barrel==='hk53-short';
- const far=mp5k?4.40:
+ const far=mp5k?4.85:
   Math.max(start+1.4,end-(hk?1.80:ar?1.36:1.17));
- const y=mp5k?-3.65:hk?-1.39:ar?AR_VISUAL_AXIS_Y-1.40:-1.40;
+ const y=mp5k?-4.20:hk?-1.39:ar?AR_VISUAL_AXIS_Y-1.40:-1.40;
  return {family:b.family,scale:a.lengthScale,
   stock:{x:a.stockX,y:0,z:0},primary:{x:a.primaryX,y:a.primaryY,z:2.24},
   // Grip targets are HAND CENTERS, not bare receiver surface points:
