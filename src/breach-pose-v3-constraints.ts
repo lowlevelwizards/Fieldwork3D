@@ -22,8 +22,10 @@ export type ArmConstraintInput={
  softScale?:number;
  /** Previous bend, supplied ONLY from an explicit/recorded action snapshot. */
  referenceBend?:THREE.Vector3;
- /** V4 preview ONLY, never for firing/carry/other interactions. */
+ /** Original reload allowance, still isolated to reload mode. */
  allowReloadOverlap?:boolean;
+ /** Additional bounded gear compression, only for rendered poses. */
+ allowVisualOverlap?:boolean;
 };
 export type ArmConstraintReport={
  valid:boolean;reasons:PoseConstraintReason[];
@@ -58,8 +60,11 @@ export function evaluateArmConstraint(p:ArmConstraintInput):ArmConstraintReport{
  // This is shared by idle/ADS/reload/interaction; no hidden shrinking.
  const contact=evaluateSleeveArmorContact(
   shoulder,joint,effector,envelope,p.softScale??1);
+ const visual=p.allowVisualOverlap===true&&
+  (mode==='carry'||mode==='aim'||mode==='reload');
  const reloadContact=reloadVisualContact(contact,
-   mode==='reload'&&p.allowReloadOverlap===true);
+  visual||mode==='reload'&&p.allowReloadOverlap===true,
+  mode==='reload'?'reload':mode==='aim'?'aim':'carry');
  if(!reloadContact.valid)reasons.push('equipment-contact');
  const bendContinuity=p.referenceBend?
   Math.max(0,1-arm.bendPlane.dot(p.referenceBend))*.16:0;
