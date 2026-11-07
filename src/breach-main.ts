@@ -4638,6 +4638,25 @@ type ReplayToolTab='view'|'layers'|'precision'|'export'|'events';
 type ReplayPreset='clean'|'movement'|'combat'|'visibility'|'custom';
 let replayToolTab:ReplayToolTab|null=null;
 let replaySurface:ReplaySurface='none';
+let replaySurfaceOpener:HTMLButtonElement|null=null;
+let replayClusterOpener:HTMLButtonElement|null=null;
+function closeReplaySurface(restoreFocus=true):void{
+  const focusWasInside=ui.replayDrawer.contains(document.activeElement);
+  const opener=replaySurfaceOpener??ui.replayMore;
+  showReplayToolTab(null);
+  replaySurfaceOpener=null;
+  if(restoreFocus&&focusWasInside&&opener.isConnected)
+    opener.focus({preventScroll:true});
+}
+function closeReplayCluster(restoreFocus=true):void{
+  const focusWasInside=ui.replayClusterMenu.contains(document.activeElement);
+  ui.replayClusterMenu.hidden=true;
+  ui.replayClusterMenu.replaceChildren();
+  const opener=replayClusterOpener;
+  replayClusterOpener=null;
+  if(restoreFocus&&focusWasInside&&opener?.isConnected)
+    opener.focus({preventScroll:true});
+}
 let replayMomentsView:'highlights'|'events'='highlights';
 let replayPreset:ReplayPreset='clean';
 function setReplayMomentsView(view:'highlights'|'events'):void{
@@ -4671,9 +4690,12 @@ function showReplayToolTab(tab:ReplayToolTab|null):void{
       !analyze||group.dataset.replayGroup==='export';
   setReplayMomentsView(replayMomentsView);
 }
-function toggleReplayPanel(surface:Exclude<ReplaySurface,'none'>):void{
+function toggleReplayPanel(surface:Exclude<ReplaySurface,'none'>,
+  opener:HTMLButtonElement):void{
   const next=toggleReplaySurface(replaySurface,surface);
-  showReplayToolTab(next==='none'?null:next==='moments'?'events':
+  if(next==='none'){closeReplaySurface(false);return;}
+  replaySurfaceOpener=opener;
+  showReplayToolTab(next==='moments'?'events':
     next==='share'?'export':'layers');
 }
 function applyReplayPreset(next:Exclude<ReplayPreset,'custom'>):void{
@@ -4866,7 +4888,7 @@ function renderReplayEventMarkers():void{
       'Choose among '+members.length+' recorded events near '+
         formatReplayTime(cluster.time));
     marker.addEventListener('click',()=>{
-      ui.replayClusterMenu.replaceChildren();
+      closeReplayCluster(false);
       if(members.length===1){
         replayPlaying=false;seekReplay(members[0].t);return;
       }
@@ -4885,8 +4907,9 @@ function renderReplayEventMarkers():void{
         });
         ui.replayClusterMenu.append(choice);
       }
+      replayClusterOpener=marker;
       ui.replayClusterMenu.hidden=false;
-      ui.replayClusterMenu.querySelector('button')?.focus();
+      ui.replayClusterMenu.querySelector('button')?.focus({preventScroll:true});
     });
     fragment.append(marker);
   }
@@ -5283,10 +5306,11 @@ ui.replayLoopToggle.addEventListener('click',()=>{
   if(!makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration))return;
   replayLoopEnabled=!replayLoopEnabled;updateReplayHud();
 });
-ui.replayMore.addEventListener('click',()=>toggleReplayPanel('analyze'));
+ui.replayMore.addEventListener('click',()=>
+  toggleReplayPanel('analyze',ui.replayMore));
 ui.replayShareToggle.addEventListener('click',()=>{
   if(replayQuickVideo.active){ui.replayExportVideo.click();return;}
-  toggleReplayPanel('share');
+  toggleReplayPanel('share',ui.replayShareToggle);
 });
 ui.replayQuickSpeed.addEventListener('change',()=>{
   const rate=Number(ui.replayQuickSpeed.value);
@@ -5347,8 +5371,9 @@ for(const button of ui.replayPresets.querySelectorAll<HTMLButtonElement>('[data-
 for(const button of ui.replayFeedPanel.querySelectorAll<HTMLButtonElement>('[data-moments-view]'))
   button.addEventListener('click',()=>setReplayMomentsView(
     button.dataset.momentsView==='events'?'events':'highlights'));
-ui.replayFeedToggle.addEventListener('click',()=>toggleReplayPanel('moments'));
-ui.replayDrawerClose.addEventListener('click',()=>showReplayToolTab(null));
+ui.replayFeedToggle.addEventListener('click',()=>
+  toggleReplayPanel('moments',ui.replayFeedToggle));
+ui.replayDrawerClose.addEventListener('click',()=>closeReplaySurface());
 for(const button of ui.replayTabs.querySelectorAll<HTMLButtonElement>('[data-replay-tab]')){
   button.addEventListener('click',()=>{
     const tab=button.dataset.replayTab as ReplayToolTab;
@@ -6420,6 +6445,18 @@ window.addEventListener('keydown',e=>{
   // operates a dialog, or navigates Campaign / the front menu.
   if(e.isComposing||e.altKey||campaignMode==='menu'||campaignMode==='home')return;
   const target=e.target;
+  // Escape is handled before the usual input guard so a focused replay
+  // range/button can dismiss its panel; native select popups keep Escape.
+  if(replaying&&e.code==='Escape'&&
+     !(target instanceof HTMLSelectElement)&&
+     !(target instanceof HTMLElement&&target.closest(
+       '[role="dialog"],[role="alertdialog"],textarea,[contenteditable="true"]'))){
+    e.preventDefault();
+    if(!ui.replayClusterMenu.hidden)closeReplayCluster();
+    else if(replayToolTab!==null)closeReplaySurface();
+    else exitReplay();
+    return;
+  }
   if(target instanceof HTMLElement&&
     (target.isContentEditable||target.closest(
       'input,textarea,select,[contenteditable="true"],[role="dialog"],[role="alertdialog"]'
@@ -6432,14 +6469,8 @@ window.addEventListener('keydown',e=>{
       if(replayPlaying)unlockAudio();else stopReplaySounds();
       updateReplayHud();
     }
-    if(e.code==='Escape'){
-      if(!ui.replayClusterMenu.hidden){
-        ui.replayClusterMenu.hidden=true;
-        ui.replayClusterMenu.replaceChildren();
-      }else if(replayToolTab!==null)showReplayToolTab(null);
-      else exitReplay();
-    }
-    if(e.code==='ArrowLeft'||e.code==='ArrowRight'){
+    if((e.code==='ArrowLeft'||e.code==='ArrowRight')&&!(
+      target instanceof HTMLElement&&target.closest('button,summary,[role="button"]'))){
       e.preventDefault();
       const direction:-1|1=e.code==='ArrowLeft'?-1:1;
       if(e.ctrlKey||e.metaKey)jumpReplayEvent(direction>0);
