@@ -16,7 +16,9 @@ const smooth=(t:number)=>{const x=clamp(t);return x*x*(3-2*x)};
  * auditions. NEVER an exhaustive runtime optimizer or ballistic transform.
  */
 export type V3ReloadHold='baseline'|'forward'|'forward-low'|
- 'support-clear'|'stock-drop'|'counter-cant';
+ 'support-clear'|'stock-drop'|'counter-cant'|
+ 'support-lift'|'support-wide'|'support-high'|'support-close'|
+ 'support-long';
 const RELOAD_HOLDS:Record<V3ReloadHold,readonly [number,number,number,number,number]>={
  'baseline':[-.17,-.065,1.35,0,0],
  'forward':[-.15,-.055,2.25,0,0],
@@ -24,6 +26,11 @@ const RELOAD_HOLDS:Record<V3ReloadHold,readonly [number,number,number,number,num
  'support-clear':[-.12,-.045,1.70,.65,-.90],
  'stock-drop':[-.14,-.04,1.60,-.95,-.50],
  'counter-cant':[-.065,-.10,2.00,-.35,-.45],
+ 'support-lift':[-.11,-.04,1.70,1.05,-1.15],
+ 'support-wide':[-.10,-.04,1.65,.60,-1.60],
+ 'support-high':[-.085,-.05,1.40,1.45,-1.20],
+ 'support-close':[-.12,-.045,1.35,.85,-1.15],
+ 'support-long':[-.11,-.045,2.00,.95,-1.25],
 };
 export type ReloadWeaponPresentation={
  fit:WeaponFit;weight:number;yaw:number;pitch:number;

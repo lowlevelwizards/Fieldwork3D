@@ -40,7 +40,8 @@ test('V3 rifle cants around stock while maintaining every rigid socket',()=>{
 });
 test('B19 alternative rigid holds preserve weapon sockets and endpoint neutrality',()=>{
  for(const hold of ['baseline','forward','forward-low','support-clear',
-   'stock-drop','counter-cant']){
+   'stock-drop','counter-cant','support-lift','support-wide',
+   'support-high','support-close','support-long']){
   for(const t of [0,1]){
    const neutral=choreographV3ReloadWeapon(fit,t,'emergency',hold);
    assert.equal(neutral.fit,fit,hold+'/'+t);
