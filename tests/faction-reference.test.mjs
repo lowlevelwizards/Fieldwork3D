@@ -129,7 +129,7 @@ test('OMON agency label is not an English POLICE panel',()=>{
  assert.equal(ref.markings.chest,'label-omon');
  assert.equal(identityMarking(ref.markings.chest)?.graphic,'omon');
  assert.ok(markingBitmap(ref.markings.chest));
- assert.equal(referenceGapFidelity(ref,ref.gaps.find(g=>g.id==='police-marking')),'exact');
+ assert.equal(referenceGapFidelity(ref,{id:'police-marking'}),'exact');
 });
 test('current catalog uses available era-fitting weapons and modeled PASGT field dress',()=>{
  const canadian=referenceWeaponChoice('canada-cadpat-tw-2012');
