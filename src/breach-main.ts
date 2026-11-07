@@ -69,6 +69,7 @@ import {heardIntensity} from './breach-acoustics.ts';
 import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
 import {defaultSoundPack,readSoundPack,SOUND_STORAGE_KEY} from './sound-catalog.ts';
 import {playPackSound} from './sound-synth.ts';
+import {hashString} from './sound-live-tactility.ts';
 import {withFieldworkLiveMix} from './breach-live-sound-pack.ts';
 import {acousticResponseForCue} from './breach-audio-environment.ts';
 import {parseOperationHistory,addOperationRecord,
@@ -1468,6 +1469,7 @@ function stopReplaySounds():void{
 }
 let lastSoundShotId=0,lastEventAudio='';
 let lastFootstepSoundTime=0;
+let liveAudioVariationCounter=0;
 const playTone=(frequency:number,decay:number,noise=false,
   level=1,pan=0,replayCue=false)=>{
   try{
@@ -1499,7 +1501,7 @@ const playTone=(frequency:number,decay:number,noise=false,
  * Replay sources remain cancellable on pause / seek / export.
  */
 function playApprovedCue(id:string,level=1,pan=0,replayCue=false,
- rate=1,sourcePosition?:Pt):boolean{
+ rate=1,sourcePosition?:Pt,variationSeed?:number):boolean{
  if(!audio)return false;
  // Pure room presentation. Source geometry is read once per emitted event.
  // AI hearing and replay evidence are deliberately unaffected.
@@ -1508,7 +1510,9 @@ function playApprovedCue(id:string,level=1,pan=0,replayCue=false,
   acousticResponseForCue(state.site??undefined,sourcePosition,id,
    listener,state.doors,WALLS):null;
  return playPackSound(audio,id,{
-  level,pan,rate,acoustics,output:replayCue?videoAudioDestination:null,
+  level,pan,rate,acoustics,liveTactile:liveMixEnabled,
+  variationSeed:liveMixEnabled?(variationSeed??++liveAudioVariationCounter):undefined,
+  output:replayCue?videoAudioDestination:null,
   onSource:replayCue?(source)=>{
     replaySoundBuffers.add(source);
     const previous=source.onended;
@@ -4002,7 +4006,8 @@ function playReplayAudioBetween(start:number,end:number):void{
     if(event.kind==='gunshot'){
       const cue=weaponAudioCue(event.weapon??'carbine',event.suppressed);
       if(!playApprovedCue('weapons.'+(event.weapon??'carbine')+
-        (event.suppressed?'_suppressed':''),level,pan,true,1/rateScale,p??undefined)){
+        (event.suppressed?'_suppressed':''),level,pan,true,1/rateScale,
+         p??undefined,hashString(event.id))){
         playTone(cue.crackHz,cue.crackSeconds*rateScale,true,level,pan,true);
         playTone(cue.bodyHz,cue.bodySeconds*rateScale,false,
           level*cue.bodyLevel,pan,true);
@@ -4017,7 +4022,7 @@ function playReplayAudioBetween(start:number,end:number):void{
         reload:'equipment.reload',interaction:'',surrender:'people.surrender'
       }[event.kind];
       if(!soundId||!playApprovedCue(soundId,Math.min(level,.7),
-        pan,true,1/rateScale,p??undefined))
+        pan,true,1/rateScale,p??undefined,hashString(event.id)))
         playTone(hz,length*rateScale,event.kind==='flash',
           Math.min(level,.7),pan,true);
     }
@@ -4030,8 +4035,8 @@ function playReplayAudioBetween(start:number,end:number):void{
       36,state.doors,WALLS):.2;
     if(level<.025)continue;
     const pan=listener?(touch.position.x-listener.x)/210:0;
-    if(!playApprovedCue('movement.boot',level*.13,pan,true,1/rateScale,
-      touch.position))
+    if(!playApprovedCue('movement.boot',level*.20,pan,true,1/rateScale,
+       touch.position,hashString(touch.id+'|'+touch.foot+'|'+touch.at.toFixed(3))))
       playTone(touch.foot===0?62:67,.055*rateScale,true,
         level*.12,pan,true);
   }
@@ -6291,7 +6296,7 @@ function tick(now:number){
       firingActor?.weaponConfiguration?.slots.muzzle==='muzzle-suppressor');
     if(!playApprovedCue('weapons.'+weapon+
       (firingActor?.weaponConfiguration?.slots.muzzle==='muzzle-suppressor'?
-      '_suppressed':''),level,pan,false,1,shot.start)){
+      '_suppressed':''),level,pan,false,1,shot.start,shot.id)){
       playTone(cue.crackHz,cue.crackSeconds,true,level,pan);
       playTone(cue.bodyHz,cue.bodySeconds,false,level*cue.bodyLevel,pan);
     }
@@ -6302,7 +6307,7 @@ function tick(now:number){
     if(shot.hit&&audibleImpact(shotVisibility(state,shot).impact,
         impactLevel))
       if(!playApprovedCue('impacts.body_hit',
-        level*Math.max(.22,impactLevel),pan,false,1,shot.end))
+        level*Math.max(.22,impactLevel),pan,false,1,shot.end,shot.id+197))
         playTone(shot.down?75:225,shot.down?.25:.10,
           shot.down,level*Math.max(.22,impactLevel),pan);
   }
@@ -6320,8 +6325,8 @@ function tick(now:number){
           36,state.doors,WALLS):.24;
         if(level<.025)continue;
         const pan=listener?(touch.position.x-listener.x)/210:0;
-        if(!playApprovedCue('movement.boot',level*.13,pan,false,1,
-           touch.position))
+        if(!playApprovedCue('movement.boot',level*.20,pan,false,1,
+           touch.position,hashString(touch.id+'|'+touch.foot+'|'+touch.at.toFixed(3))))
           playTone(touch.foot===0?62:67,.055,true,level*.12,pan);
       }
     }

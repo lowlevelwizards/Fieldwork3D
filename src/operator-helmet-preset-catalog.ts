@@ -12,12 +12,6 @@ export type HelmetPreset={
  note:string;
 };
 export const HELMET_H1_PRESETS:readonly HelmetPreset[]=[
- {id:'pasgt-woodland',label:'PASGT · Woodland',shell:'pasgt',
-  setup:{cover:'fitted',band:'elastic',retention:'four-point'},print:'m81-woodland',
-  note:'Representative late-Cold-War woodland field setup'},
- {id:'pasgt-desert',label:'PASGT · Desert',shell:'pasgt',
-  setup:{cover:'fitted',retention:'four-point'},print:'three-color-desert',
-  note:'Representative early modern desert field setup'},
  {id:'ach-ucp',label:'ACH · UCP Utility',shell:'ach',
   setup:{cover:'fitted',shroud:'legacy',retention:'four-point'},print:'ucp',
   note:'UCP-era conventional infantry appearance'},

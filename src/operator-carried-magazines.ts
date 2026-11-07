@@ -11,15 +11,17 @@ import {HK556_MAG_CENTER_X,HK556_MAG_TOP_Y,HK556_MAG_LENGTHS,
  from './weapons/geometry/hk-556-magazine-profiles.ts';
 import {MP5_MAG_CENTER_X,MP5_MAG_TOP_Y,MP5_MAG_LENGTH,mp5MagazineOutline}
  from './weapons/geometry/hk-mp5-magazine-profiles.ts';
+import {HK_MAG_METAL,HK556_MAG_METAL,HK9_MAG_METAL}
+ from './weapons/geometry/weapon-visual-palette.ts';
 export type CarriedMagProfile={family:'ar'|'ak'|'hk';length:number;material:number};
 export function carriedMagazineProfile(part:string|null|undefined):CarriedMagProfile|null{
  if(!part)return null;
  if(part==='hk-g3-mag20')
-  return {family:'hk',length:HK_MAG20_LENGTH,material:0x5e6960};
+  return {family:'hk',length:HK_MAG20_LENGTH,material:HK_MAG_METAL.color.getHex()};
  if(part==='hk9-mag30')
-  return {family:'hk',length:MP5_MAG_LENGTH,material:0x515b53};
+  return {family:'hk',length:MP5_MAG_LENGTH,material:HK9_MAG_METAL.color.getHex()};
  if(part==='hk556-mag25'||part==='hk556-mag30')
-  return {family:'hk',length:HK556_MAG_LENGTHS[part],material:0x515b53};
+  return {family:'hk',length:HK556_MAG_LENGTHS[part],material:HK556_MAG_METAL.color.getHex()};
  if(part.startsWith('ar-mag'))
   return {family:'ar',length:part==='ar-mag20'?4.1:5.3,
    material:part==='ar-magpoly'?0x343e37:0x687369};

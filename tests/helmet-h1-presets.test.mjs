@@ -5,7 +5,7 @@ import {headwearCamoChoices} from '../src/operator-headwear-camo.ts';
 import {initialWardrobe,readWardrobe} from '../src/operator-wardrobe-data.ts';
 import {resolveHelmetSetup} from '../src/operator-helmet-setup-policy.ts';
 test('H1 shipped presets are complete and contain compatible modules',()=>{
- assert.equal(HELMET_H1_PRESETS.length,12);
+ assert.equal(HELMET_H1_PRESETS.length,10);
  for(const p of HELMET_H1_PRESETS){
   assert.ok(!p.print||headwearCamoChoices(p.shell).includes(p.print),p.id);
   const w=applyHelmetPreset(initialWardrobe(),p.shell,p.id);

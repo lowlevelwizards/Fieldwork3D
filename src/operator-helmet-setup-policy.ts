@@ -57,7 +57,7 @@ export const isH1ModernHelmet=(id:string):id is H1ModernHelmet=>
 type Capabilities={rails:HelmetSetupV1['rails'];shrouds:readonly HelmetSetupV1['shroud'][]};
 export const HELMET_CAPABILITIES:Readonly<Record<H1ModernHelmet,Capabilities>>={
  ach:{rails:'none',shrouds:['none','legacy','skeleton']},
- pasgt:{rails:'none',shrouds:['none','legacy']},
+ pasgt:{rails:'none',shrouds:['none']},
  'high-cut':{rails:'arc',shrouds:['none','skeleton','integrated']},
  'mich-2001':{rails:'none',shrouds:['none','legacy','skeleton']},
  'mich-2002':{rails:'none',shrouds:['none','legacy','skeleton']},
@@ -75,6 +75,16 @@ export function resolveHelmetSetup(shell:string,raw:unknown,context:{
  const cap=HELMET_CAPABILITIES[shell];
  // Printed old shells implicitly gain fitted cloth until explicitly overridden.
  if(raw===undefined&&context.hasLegacyPrint)s.cover='fitted';
+ // PASGT is a period full-coverage shell, not a modern tactical hardware
+ // platform. Sanitize old H1 setup values while retaining stored preferences.
+ if(shell==='pasgt'){
+  if(s.cover==='loose')s.cover='fitted';
+  s.rails='none';s.shroud='none';s.nvg='none';
+  s.headsetMount='auto';s.rearModule='none';s.light='none';
+  s.rearStrobe=false;s.band='none';s.scrim='none';
+  s.retention='four-point';
+  return {setup:s,suppressed};
+ }
  if(s.cover==='loose'&&['high-cut','fast-sf','fast-xp-mid'].includes(shell)){
   s.cover='fitted';suppressed.push('loose cover obscures hardware');
  }

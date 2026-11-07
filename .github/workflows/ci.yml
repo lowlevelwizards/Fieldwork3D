@@ -25,6 +25,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h1-') }}
         run: |
           node --experimental-strip-types --test tests/helmet-h1-*.test.mjs
+      - name: PASGT P1/P2 — cover UV, field dress, legacy setup and rendering smoke
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-cover-refinement-') }}
+        run: |
+          node --experimental-strip-types --test tests/pasgt-p1-policy.test.mjs tests/pasgt-p2-cover-visuals.test.mjs tests/helmet-h1-config.test.mjs tests/helmet-h1-presets.test.mjs tests/helmet-h1-integration.test.mjs
       - name: Production release preflight — Pages queue and live build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
         env:
@@ -1309,8 +1313,8 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/breach-weapon-issue-faction-studio.test.mjs tests/lw-roster.test.mjs tests/campaign-01.test.mjs tests/faction-reference.test.mjs tests/equipment-09-armor.test.mjs
       - name: Sound Lab — focused catalog, synthesis, WAV and ZIP validation
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/breach-sound-lab-') || startsWith(github.head_ref, 'feature/breach-live-audio-')) }}
-        run: node --experimental-strip-types --test tests/sound-lab.test.mjs tests/sound-lab-focus.test.mjs tests/sound-lab-refine.test.mjs tests/sound-lab-compound.test.mjs tests/breach-live-audio-environment.test.mjs
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/breach-sound-') || startsWith(github.head_ref, 'feature/breach-live-audio-')) }}
+        run: node --experimental-strip-types --test tests/sound-lab.test.mjs tests/sound-lab-focus.test.mjs tests/sound-lab-refine.test.mjs tests/sound-lab-compound.test.mjs tests/breach-live-audio-environment.test.mjs tests/breach-sound-tactile-variation.test.mjs
       - name: Exact mission restart — site, setup and insertion critical gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/breach-repeat-mission-') }}
         run: node --experimental-strip-types --test tests/mission-restart-snapshot.test.mjs tests/mission-deployment-r2.test.mjs
@@ -1455,6 +1459,20 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-mp5-selector-') }}
         run: |
           node --experimental-strip-types --test tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-mp5-r2-refinements.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-hk556-ribbon-finish.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: HK R4 — factory colors, selectors, muzzles and family safety
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-r4-material-selector-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk-r4-material-selector.test.mjs tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-mp5-r2-refinements.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-hk556-ribbon-finish.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: HK R4 — actual-color orthographic ten-factory review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-r4-material-selector-') }}
+        run: node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs reports/hk-r4-factory-colors.html --hk-only --material-colors
+      - name: HK R4 — upload actual-mesh material-color review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-r4-material-selector-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hk-r4-ten-factory-finish-review
+          path: reports/hk-r4-factory-colors.html
+          retention-days: 7
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
