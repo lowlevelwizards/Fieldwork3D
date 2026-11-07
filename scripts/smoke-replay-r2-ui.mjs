@@ -100,6 +100,9 @@ try{
     'Operator contacts did not select an individual observer');
   check(await page.locator('#replayContactNote').isVisible(),
     'The shared-map limitation must be visibly disclosed');
+  check(await page.locator('#replayObserverTransitions').evaluate(e=>
+    !e.hidden&&e.children.length>0),
+    'Operator contact timeline must be built from historical observation samples');
   await page.locator('#replaySight').click();
   check((await lens.textContent())?.includes('CONTACTS: TEAM'),
     'Team/Full View must exit individual contact lens');
