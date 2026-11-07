@@ -45,3 +45,24 @@ test('A1: chest center remains a real rigid obstacle after shoulder shaping',()=
  assert.equal(invalid.valid,false);
  assert.ok(invalid.hardDepth>LOW_READY_CONTACT_LIMITS.rigid);
 });
+
+test('A3: only the protective insert is rigid, not the outer sewn carrier',()=>{
+ for(const name of ['plate-jpc','plate-slick','plate-standard','plate-heavy']){
+  const e=poseClearanceEnvelope(name,'no-rig','smock-jacket');
+  const hard=e.boxes.filter(b=>b.region==='front-insert');
+  const bag=e.boxes.filter(b=>b.region==='front-lower'||b.region==='front-taper');
+  assert.equal(hard.length,1,name);
+  assert.equal(hard[0].material,'rigid',name);
+  assert.ok(bag.every(x=>x.material==='structured'),name);
+  assert.ok(hard[0].max.z<bag[0].max.z,
+   name+' insert must not fill compressible fabric edge');
+ }
+ const heavy=poseClearanceEnvelope('plate-heavy','no-rig','smock-jacket');
+ const p=heavy.boxes.find(v=>v.region==='front-insert');
+ assert.ok(p.max.x>p.min.x&&p.max.y>p.min.y);
+ const middle=evaluateSleeveArmorContact(
+  V(1,4,7),V(7,1,0),V(9,-3,0),heavy,10);
+ assert.equal(middle.valid,false,
+  'rigid plate core must still reject a crossing sleeve');
+ assert.ok(middle.hardDepth>LOW_READY_CONTACT_LIMITS.rigid);
+});

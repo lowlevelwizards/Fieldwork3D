@@ -12,7 +12,7 @@ import {ARMOR_PANEL_DEPTHS} from './operator-uniform-fit-envelope.ts';
 import type {RiflePoint} from './breach-weapon-contact-zones.ts';
 export type ContactMaterial='rigid'|'structured'|'soft';
 export type PoseContactRegion='torso-core'|'torso-upper'|
- 'front-lower'|'front-taper'|'side-flank'|'side-front-return'|
+ 'front-lower'|'front-taper'|'front-insert'|'side-flank'|'side-front-return'|
  'side-rear-return'|'side-insert'|'chest-rig';
 export type PoseBox={label:'torso'|'front-armor'|'side-armor'|'side-plate'|'chest-rig';
  material:ContactMaterial;min:RiflePoint;max:RiflePoint;
@@ -56,8 +56,10 @@ export function poseClearanceEnvelope(armor:string,rig:string,top:string):
   const yBreak=Math.max(lower+1.6,upper-2.25);
   const width=Math.max(2.7,spec.width*.5-.20);
   const topWidth=Math.max(1.1,spec.width*.5-spec.upperInset);
+  // The outer bag is compressible textile. Only the independent insert
+  // is genuinely hard; never model the whole fabric silhouette as plate.
   const material=a==='soft-flak'||a==='soft-vest'||
-    a==='plate-legacy'?'soft':'rigid';
+    a==='plate-legacy'?'soft':'structured';
   const panelInner=fit.front-(ARMOR_PANEL_DEPTHS[a]??1.2)-.12;
   const panelOuter=fit.front+.24;
   boxes.push(box('front-armor',
@@ -66,6 +68,18 @@ export function poseClearanceEnvelope(armor:string,rig:string,top:string):
   boxes.push(box('front-armor',
     {x:panelInner,y:yBreak,z:-topWidth},
     {x:panelOuter,y:upper,z:topWidth},material,'front-taper'));
+  if(spec.family==='slick'||spec.family==='skeleton'||
+     spec.family==='standard'||spec.family==='assault'){
+   // A hard ballistic insert nests INSIDE the wider sewn carrier.
+   // The actual modeled plate pouch may have protruding fabric,
+   // shoulder cutouts and straps beyond this insert.
+   const insertHalf=Math.max(2.65,
+    Math.min(4.05,spec.width*.5-1.10));
+   boxes.push(box('front-armor',
+    {x:panelInner+.08,y:Math.max(lower+.88,-4.15),z:-insertHalf},
+    {x:panelOuter-.24,y:Math.min(upper-.78,4.05),z:insertHalf},
+    'rigid','front-insert'));
+  }
   const bands=spec.sideStyle==='open_two_band'?
     [-2.45,1.05].map(y=>({y,height:spec.sideHeight})):
     [{y:spec.sideY,height:spec.sideHeight}];

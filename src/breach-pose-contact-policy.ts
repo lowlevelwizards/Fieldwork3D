@@ -45,12 +45,18 @@ export function poseContactBudget(volume:PoseBox,env:PoseClearanceEnvelope,
    }
    break;
   case 'front-taper':
+   if(volume.material==='structured'){
+    upper=Math.max(base,.74);lower=Math.max(base,.58);
+   }
    if(volume.material==='soft'){
     upper=Math.max(base,1.25);
     lower=Math.max(base,.92);
    }
    break;
   case 'front-lower':
+   if(volume.material==='structured'){
+    upper=Math.max(base,.62);lower=Math.max(base,.54);
+   }
    if(volume.material==='soft'){
     upper=Math.max(base,1.18);
     lower=Math.max(base,.75);
