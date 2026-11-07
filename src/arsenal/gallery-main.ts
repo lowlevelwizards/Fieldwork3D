@@ -7,6 +7,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../equipment-weapon-assemblies.ts';
 import {arsenalRecipeFromLegacy,type ArsenalRecipeV2} from './recipes.ts';
 import {ArsenalThumbnailer} from './thumbnailer.ts';
+import {openArsenalWorkbench} from './workbench-screen.ts';
 
 const root=document.getElementById('arsenalRoot');
 if(!root)throw new Error('Missing Arsenal root');
@@ -24,8 +25,14 @@ const heroCopy=document.createElement('div');heroCopy.className='arsenal-hero-co
 const heroPlatform=document.createElement('span');heroPlatform.className='arsenal-overline';
 const heroTitle=document.createElement('h2');
 const heroHint=document.createElement('p');heroHint.className='hint';
-heroHint.textContent='Factory configurations are starting points. The new modular Workbench will open here in the next stage.';
-heroCopy.append(heroPlatform,heroTitle,heroHint);
+heroHint.textContent='Explore real factory configurations in the full-screen Workbench.';
+const openWorkbench=document.createElement('button');openWorkbench.type='button';
+openWorkbench.className='arsenal-hero-open';openWorkbench.textContent='OPEN WORKBENCH';
+openWorkbench.addEventListener('click',()=>{
+ const ref=ARSENAL_REFERENCES.find(r=>r.id===selectedId);
+ if(ref)openArsenalWorkbench(ref);
+});
+heroCopy.append(heroPlatform,heroTitle,heroHint,openWorkbench);
 hero.append(heroMedia,heroCopy);
 const browser=document.createElement('section');browser.className='arsenal-browser';
 const controls=document.createElement('div');controls.className='arsenal-controls';
