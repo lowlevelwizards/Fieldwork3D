@@ -6,6 +6,7 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {
  PASGT_SLIT_ANCHORS,createPasgtBandGeometry,
  PASGT_RING_SAMPLES,PASGT_COVER_TOP_Y,pasgtRingPoint,
+ pasgtSlitAtlasUv,PASGT_ATLAS_WIDTH,PASGT_ATLAS_HEIGHT,
  type PasgtRingSample
 } from './operator-pasgt-drape-geometry.ts';
 import {resolvePasgtDetails,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
@@ -40,12 +41,14 @@ const hidden=(parent:THREE.Group,name:string)=>{
  * elastic rather than under it.
  */
 export function createPasgtSlitGeometry():THREE.BufferGeometry{
- const p:number[]=[];
+ const p:number[]=[],rgb:number[]=[];
  const point=(a:(typeof PASGT_SLIT_ANCHORS)[number],s:number,h:number)=>{
   const [x,y,z]=a.position,[rx,ry,rz]=a.right,[ux,uy,uz]=a.up;
   return [x+s*rx+h*ux,y+s*ry+h*uy,z+s*rz+h*uz];
  };
- const add=(v:readonly number[])=>p.push(v[0],v[1],v[2]);
+ const add=(v:readonly number[])=>{
+  p.push(v[0],v[1],v[2]);rgb.push(.45,.45,.45);
+ };
  for(const a of PASGT_SLIT_ANCHORS){
   // Oversized slit marks remain a single, near-coplanar two-triangle
   // mark each. Scale and positioning do the work, never box geometry.
@@ -55,6 +58,7 @@ export function createPasgtSlitGeometry():THREE.BufferGeometry{
  }
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));
+ g.setAttribute('color',new THREE.Float32BufferAttribute(rgb,3));
  g.computeVertexNormals();g.computeBoundingBox();
  g.userData.pasgtSlitCount=PASGT_SLIT_ANCHORS.length;
  g.userData.pasgtMountedOnCloth=true;
@@ -378,6 +382,7 @@ export type PasgtFieldDressLayers={
  leafMaterials:readonly THREE.MeshStandardMaterial[];
  scrimMaterials:readonly THREE.MeshStandardMaterial[];
  palette:PasgtPalette|null;
+ slitPrint:THREE.DataTexture|null;
 };
 export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  const slits=hidden(parent,'pasgt-twelve-bold-buttonholes');
@@ -386,7 +391,10 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  const foliage=hidden(parent,'pasgt-leaves-from-buttonholes');
  const scrim=hidden(parent,'pasgt-fabric-strips-from-buttonholes');
  const net=hidden(parent,'pasgt-full-shell-overnet');
- const slitMat=material(0x49513f,THREE.DoubleSide),bandMat=material(0x5a6650);
+ const slitMat=new THREE.MeshStandardMaterial({
+  color:0xffffff,vertexColors:true,roughness:1,
+  flatShading:true,side:THREE.DoubleSide
+ }),bandMat=material(0x5a6650);
  const leafMaterials=[material(0x536341,THREE.DoubleSide),
   material(0x778054,THREE.DoubleSide),material(0x98906b,THREE.DoubleSide)];
  const scrimMaterials=[material(0x536341,THREE.DoubleSide),
@@ -426,7 +434,31 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  netMesh.name='pasgt-front-crown-side-rear-net';netMesh.castShadow=true;
  netMesh.receiveShadow=false;net.add(netMesh);
  return {slits,band,retention,foliage,scrim,net,
-  leafMaterials,scrimMaterials,palette:null};
+  leafMaterials,scrimMaterials,palette:null,slitPrint:null};
+}
+/** Each flat buttonhole matches the RGB of its exact printed cover atlas.
+ * The geometry is fully opaque; recolor at print-change time only.
+ */
+export function updatePasgtSlitShading(v:PasgtFieldDressLayers,
+ texture:THREE.DataTexture):void{
+ if(v.slitPrint===texture)return;
+ const mesh=v.slits.children[0] as THREE.Mesh;
+ const colors=mesh.geometry.getAttribute('color') as THREE.BufferAttribute;
+ const pixels=texture.image.data as Uint8Array;
+ for(let i=0;i<PASGT_SLIT_ANCHORS.length;i++){
+  const uv=pasgtSlitAtlasUv(PASGT_SLIT_ANCHORS[i]);
+  const x=Math.max(0,Math.min(PASGT_ATLAS_WIDTH-1,
+   Math.round(uv[0]*PASGT_ATLAS_WIDTH-.5)));
+  const y=Math.max(0,Math.min(PASGT_ATLAS_HEIGHT-1,
+   Math.round(uv[1]*PASGT_ATLAS_HEIGHT-.5)));
+  const idx=(y*PASGT_ATLAS_WIDTH+x)*4;
+  if(pixels[idx+3]!==255)throw Error('PASGT slit sampled atlas gutter');
+  const tint=new THREE.Color().setRGB(
+   pixels[idx]/255,pixels[idx+1]/255,pixels[idx+2]/255,
+   THREE.SRGBColorSpace).multiplyScalar(.84);
+  for(let j=0;j<6;j++)colors.setXYZ(i*6+j,tint.r,tint.g,tint.b);
+ }
+ colors.needsUpdate=true;v.slitPrint=texture;
 }
 export function updatePasgtFieldDress(v:PasgtFieldDressLayers,
  covered:boolean,details:PasgtDetails,camo:HeadwearCamoId|undefined,

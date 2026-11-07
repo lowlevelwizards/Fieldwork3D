@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import {createPasgtDrapedGeometry} from './operator-pasgt-drape-geometry.ts';
 import {pasgtCoverTexture} from './operator-pasgt-cover-texture.ts';
 import {createPasgtFieldDress,updatePasgtFieldDress,
- type PasgtFieldDressLayers} from './operator-pasgt-field-dress.ts';
+ updatePasgtSlitShading,type PasgtFieldDressLayers} from './operator-pasgt-field-dress.ts';
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import type {PasgtDetails} from './operator-pasgt-cover-policy.ts';
 export {pasgtCoverTexture} from './operator-pasgt-cover-texture.ts';
@@ -48,5 +48,6 @@ export function updatePasgtCoverLayers(v:PasgtCoverLayers,covered:boolean,
  if(!covered){v.activePrint='';return;}
  const map=pasgtCoverTexture(camo,identity,roll);
  if(v.fabric.map!==map){v.fabric.map=map;v.fabric.needsUpdate=true;}
+ updatePasgtSlitShading(v.field,map);
  v.activePrint=camo??'solid';
 }

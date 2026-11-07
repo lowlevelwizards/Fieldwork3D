@@ -281,6 +281,50 @@ function pasgtCrownSlit(id:string,x:number,z:number):PasgtSlitAnchor{
   right:[1,0,0],up:[0,0,-1],normal:[0,1,0],
   yaw:0,pitch:0};
 }
+/** Sample the same UV atlas coordinates as the cloth beneath the slit.
+ * Twelve opaque buttonholes follow solid or printed material without
+ * transparent layers, altered UV scale, or per-frame texture generation.
+ */
+export function pasgtSlitAtlasUv(anchor:PasgtSlitAnchor):readonly [number,number]{
+ if(anchor.id.startsWith('crown-'))
+  return pasgtAtlasUv([anchor.position[0],anchor.position[2]],
+   pasgtPanelAtX(anchor.position[0]));
+ const side:Side=anchor.id.startsWith('front-')?'front':
+  anchor.id.startsWith('rear-')?'rear':
+  anchor.id.startsWith('right-')?'right':'left';
+ const axis=side==='left'||side==='right'?'z':'x';
+ const at=axis==='x'?anchor.position[0]:anchor.position[2];
+ const neighbors=PASGT_RING_SAMPLES.filter(s=>s.side===side)
+  .sort((a,b)=>a[axis]-b[axis]);
+ let lo=neighbors[0],hi=neighbors.at(-1)!;
+ for(let i=1;i<neighbors.length;i++)if(at<=neighbors[i][axis]){
+  lo=neighbors[i-1];hi=neighbors[i];break;
+ }
+ const span=hi[axis]-lo[axis];
+ const t=span>1e-6?clamp((at-lo[axis])/span):0;
+ const sample:PasgtRingSample={
+  side,x:side==='front'||side==='rear'?at:lo.x,
+  z:side==='left'||side==='right'?at:lo.z,
+  bottomY:lo.bottomY+(hi.bottomY-lo.bottomY)*t,distance:0
+ };
+ const rings:readonly PasgtRing[]=['top','shoulder','ramp','hem'];
+ let above:PasgtRing='ramp',below:PasgtRing='hem';
+ for(let i=1;i<rings.length;i++){
+  if(anchor.position[1]>=pasgtRingPoint(sample,rings[i])[1]){
+   above=rings[i-1];below=rings[i];break;
+  }
+ }
+ const y0=pasgtRingPoint(sample,above)[1],
+  y1=pasgtRingPoint(sample,below)[1];
+ const mix=clamp((y0-anchor.position[1])/(y0-y1));
+ const a=pasgtFabricCoordinate(sample,above),
+  b=pasgtFabricCoordinate(sample,below);
+ const panel:PasgtFabricPanel=side==='left'?'left':
+  side==='right'?'right':pasgtPanelAtX(sample.x);
+ return pasgtAtlasUv([
+  a[0]+(b[0]-a[0])*mix,a[1]+(b[1]-a[1])*mix
+ ],panel);
+}
 export const PASGT_SLIT_ANCHORS:readonly PasgtSlitAnchor[]=[
  pasgtSlitOnCloth('front-left','front',-3.38,7.42),
  pasgtSlitOnCloth('front-right','front',3.38,7.42),
