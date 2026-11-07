@@ -78,13 +78,13 @@ test('redraw does not overwrite an already-executed active WATCH',()=>{
  }finally{activateSite(null);}
 });
 
-test('explicit LOOK supersedes queued WATCH; invalid stroke never alters either',()=>{
+test('explicit LOOK supersedes queued WATCH; empty stroke never alters either',()=>{
  const s=session();
  try{
   const a=team(s)[0];
   assert.ok(planWatch(s,a.id,target,undefined,'here'));
   const before=structuredClone(a.plan),nextId=s.nextId;
-  assert.equal(planMoveStroke(s,a.id,[{x:-80,y:-80}],false,true),false);
+  assert.equal(planMoveStroke(s,a.id,[{...a.p}],false,true),false);
   assert.deepEqual(a.plan,before);
   assert.equal(s.nextId,nextId);
   assert.ok(planAim(s,a.id,'free',{x:225,y:220},undefined,'look','end'));
