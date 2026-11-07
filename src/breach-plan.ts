@@ -5,7 +5,10 @@ export type MoveMode='advance'|'strafe'|'sprint';
 export type FirePolicy='engage'|'hold'|'return'|'focus'|'suppress';
 /** Persistent world-facing instruction, independent of any movement route. */
 export type AimMode='free'|'fixed'|'track';
-/** Only auto-generated doorway-stack attention is superseded by the\n * squad entry clear-sector handoff. User-authored WATCH is never tagged. */\nexport type AimInstruction={mode:AimMode;angle?:number;point?:Pt;\n source?:'stack'};
+/** Only auto-generated doorway-stack attention is superseded by the
+ * squad entry clear-sector handoff. User-authored WATCH is never tagged. */
+export type AimInstruction={mode:AimMode;angle?:number;point?:Pt;
+ source?:'stack'};
 export type PieSide='cw'|'ccw';
 export type DoorMethod='open'|'close'|'kick'|'hold';
 export type PlanNode={
