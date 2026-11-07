@@ -33,6 +33,12 @@ export const HK_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
  magazineTopY:-2.70,magwellTopY:-2.08,magwellBottomY:-3.07,
  portX:1.55,portY:.55,portWidthX:4.00,portHeightY:1.15
 };
+export const HK556_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
+ gripShiftX:-4.20,gripDepthZ:2.16,
+ magwellCenterX:1.35,magazineWidthX:2.90,magazineDepthZ:1.90,
+ magazineTopY:-2.55,magwellTopY:-2.05,magwellBottomY:-3.00,
+ portX:1.35,portY:.55,portWidthX:3.60,portHeightY:1.07
+};
 export const AK_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
  gripShiftX:-2.05,gripDepthZ:2.19,
  magwellCenterX:.95,magazineWidthX:3.05,magazineDepthZ:2.2,

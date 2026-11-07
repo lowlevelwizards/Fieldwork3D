@@ -32,6 +32,7 @@ import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {microKeyAt} from './breach-fog-memory.ts';
 import {groundView,groundViewCandidate} from './breach-ground-view.ts';
+import {notePersonalGround} from './breach-replay-personal-ground.ts';
 import {assessFireLane,fireLaneReachable,type FireBlock} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
@@ -1711,10 +1712,13 @@ function observe(s:Session){
           if(!groundViewCandidate(sight,x,y))continue;
           const p={x,y};
           if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))continue;
-          s.seenGround.add('fine:'+col+','+row);
+          const fine='fine:'+col+','+row;
+          s.seenGround.add(fine);
+          notePersonalGround(s,blue.id,s.seconds,fine);
           // Keep legacy coarse memories for knownAt and existing intel UI.
-          s.seenGround.add(Math.floor(p.x/40)+','+
-            Math.floor(p.y/40));
+          const coarse=Math.floor(p.x/40)+','+Math.floor(p.y/40);
+          s.seenGround.add(coarse);
+          notePersonalGround(s,blue.id,s.seconds,coarse);
         }
       // Fine independent explored footprints: 10-unit samples capture the
       // visible margins of corners that 20-unit center samples missed.
@@ -1727,7 +1731,9 @@ function observe(s:Session){
         const x=col*10+5,y=row*10+5;
         if(!groundViewCandidate(sight,x,y))continue;
         if(!unobstructed(blue.p,{x,y},s,blue.posture==='crouch'))continue;
-        s.seenGround.add(microKeyAt(col,row));
+        const micro=microKeyAt(col,row);
+        s.seenGround.add(micro);
+        notePersonalGround(s,blue.id,s.seconds,micro);
       }
       if(s.seenGround.size!==beforeGroundSize)s.seenGroundRevision++;
     }

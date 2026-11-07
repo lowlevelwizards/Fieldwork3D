@@ -4,6 +4,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 # Each updated PR supersedes its own obsolete CI run; manual audits are independent.
 # The AO suffix isolates this focused release from a superseded, stuck broad
 # AO test run. Other PRs retain their existing concurrency grouping.
@@ -20,6 +21,16 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Production release preflight — Pages queue and live build
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: Squad Entry B — verify prior public release before merging
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-entry-b-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       - name: Squad Entry B — real-door entry gates, squad planning and convoy
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-entry-b-') }}
         run: |
@@ -1170,6 +1181,24 @@ jobs:
             tests/equipment-19-01-weapon-assemblies.test.mjs \
             tests/weapon-workbench-mobile-sockets.test.mjs
           node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs /tmp/weapon-ortho-r33.html
+      - name: Replay R4.2b — sparse personal ground evidence and archive
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r42b-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r42b-personal-ground.test.mjs \
+            tests/replay-r42b-ground-overlay.test.mjs \
+            tests/replay-r42b-archive.test.mjs \
+            tests/replay-r42-archive.test.mjs \
+            tests/breach-ground-view-performance.test.mjs
+      - name: Replay R4.2 — exact historical operator observation foundation
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r42-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r42-operator-sight.test.mjs \
+            tests/replay-r42-contact-lens.test.mjs \
+            tests/replay-r42-archive.test.mjs \
+            tests/replay-r2-recording.test.mjs \
+            tests/replay-r3-archive.test.mjs
       - name: Replay R4.1 — bounded incident indexing and Watch/Loop
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r41-') }}
         run: |
@@ -1344,6 +1373,34 @@ jobs:
         with:
           name: hk-g3-r5-orthographic-review
           path: reports/hk-g3-r5-ortho.html
+          retention-days: 7
+      - name: HK family expansion — targeted geometry, magazines, pose and legacy preservation
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3a4-hk33-hk53-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk-expansion.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/weapon-ar-r48-silhouettes.test.mjs tests/weapon-ak-r47-final-polish.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: HK family expansion — side, top and front actual-mesh comparison
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3a4-hk33-hk53-') }}
+        run: node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs reports/hk-expanded-ortho.html
+      - name: HK family expansion — upload mesh review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3a4-hk33-hk53-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hk-g3a4-hk33-hk53-orthographic-review
+          path: reports/hk-expanded-ortho.html
+          retention-days: 7
+      - name: HK 5.56 R2 — curved ribbon, OD/black factory, and AR/AK regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk556-ribbon-mag-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk556-ribbon-finish.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/weapon-ar-r48-silhouettes.test.mjs tests/weapon-ak-r47-final-polish.test.mjs
+      - name: HK 5.56 R2 — same-scale orthographic comparison
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk556-ribbon-mag-') }}
+        run: node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs reports/hk556-r2-ortho.html
+      - name: HK 5.56 R2 — upload actual mesh visual comparison
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk556-ribbon-mag-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hk556-ribbon-black-vs-od-orthographic-review
+          path: reports/hk556-r2-ortho.html
           retention-days: 7
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck

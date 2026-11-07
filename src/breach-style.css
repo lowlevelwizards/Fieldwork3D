@@ -1583,12 +1583,22 @@ html,body{font-family:var(--fw-font-menu)}
   border:1px solid #7d9c89;border-radius:5px;background:#345449;
   color:#f5e8ce;font:700 10px/1 var(--ui-font)}
 .replay-incident-actions #replayIncidentClose{min-width:29px;font-size:18px}
+.replay-observer-transitions{margin-top:5px;padding-top:5px;
+  border-top:1px dashed #566c5c}
+.replay-observer-transitions[hidden]{display:none!important}
+.replay-observer-transitions .replay-debrief-moment{
+  width:133px;min-height:38px;background:#283c37;border-color:#52695d}
+.replay-observer-transitions .replay-debrief-moment[data-kind="acquired"]{
+  border-color:#8ea78c}
 .replay-debrief-moment[aria-pressed="true"]{border-color:#e2bd7c;
   background:#485846}
 @media(max-width:360px){
   .replay-incident-focus{grid-template-columns:1fr;gap:5px}
   .replay-incident-actions button{flex:1}
 }
+.replay-contact-note{margin:4px 3px 0;font:600 10px/1.35 var(--ui-font);
+  letter-spacing:.015em;color:#d5bc8f;max-width:100%}
+.replay-contact-note[hidden]{display:none!important}
 .replay-feed-panel{display:flex;flex-direction:column;flex:1;min-height:0;padding:8px 2px 1px}
 .replay-feed-tools{
   display:flex;align-items:center;gap:6px;margin:0 0 8px;flex:none

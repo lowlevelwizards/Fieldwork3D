@@ -223,13 +223,16 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   familyBarrel?.length==='mid'?.86:
   familyBarrel?.length==='short'?.73:p.lengthScale);
  const stockX=build?(FAMILY_PARTS[build.parts.stock].stockX??p.stockX):p.stockX;
+ const hkArt=build?.family==='hk'?hkBarrelArt(build.parts.barrel):undefined;
  // Actual family pistol-grip silhouettes sit behind the receiver midpoint.
  // Earlier AK settings targeted empty space, putting the wrist in the plate.
  const primaryX=build?(build.family==='hk'?-4.20:
   build.family==='ar'?-4.80:-4.65):p.primaryX;
  const primaryY=build?(build.family==='hk'?-4.00:
   build.family==='ar'?-4.00:-4.10):p.primaryY;
- const supportX=build?.family==='hk'?7.75:
+ const hkSupportX=hkArt?Math.min(7.75,hkArt.handguardStartX+
+  .47*(hkArt.handguardEndX-hkArt.handguardStartX)):7.75;
+ const supportX=build?.family==='hk'?hkSupportX:
   build?(familyHandguard?.length==='long'?9.10:
   familyHandguard?.length==='mid'?7.70:6.50):p.supportX;
  const resolved:ResolvedWeaponAssembly={weapon:config.weapon,configuration:config,lengthScale,

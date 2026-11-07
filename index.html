@@ -285,11 +285,22 @@
         <div class="replay-control-grid">
           <button id="replayView" type="button">ISO</button>
           <button id="replaySight" type="button">TEAM SIGHT</button>
+          <button id="replayContactLens" type="button"
+            title="Review enemy contacts confirmed by one operator"
+            aria-label="Review individual operator contacts">CONTACTS: TEAM</button>
+          <button id="replayGroundLens" type="button" disabled
+            title="Highlight this operator's recorded terrain discoveries in Floor Plan"
+            aria-label="Toggle personal explored ground overlay"
+            aria-pressed="false">GROUND: OFF</button>
           <button id="replayFollow" type="button">FOLLOW</button>
           <button id="replaySquad" type="button" aria-pressed="false">FOLLOW SQUAD</button>
           <button id="replayDirector" type="button" aria-pressed="false">DIRECTOR OFF</button>
           <button id="replayNames" type="button" aria-label="Replay name tags">NAMES ON</button>
         </div>
+        <p id="replayContactNote" class="replay-contact-note" hidden>
+          OPERATOR CONTACTS ONLY · MAP AND ENVIRONMENT REMAIN SQUAD KNOWLEDGE.
+          FORENSIC SHOT PATHS HIDDEN.
+        </p>
       </section>
       <section class="replay-group" data-replay-group="layers" hidden>
         <p class="replay-group-intro">Tactical overlays</p>
@@ -335,6 +346,9 @@
         </div>
         <div id="replayDebriefMoments" class="replay-debrief-moments"
           aria-label="Jump to important recorded moments"></div>
+        <div id="replayObserverTransitions"
+          class="replay-debrief-moments replay-observer-transitions" hidden
+          aria-label="Historical individual contact acquisition and loss"></div>
       </section>
       <section id="replayIncidentDetails" class="replay-incident-focus" hidden
         aria-label="Selected replay incident">
