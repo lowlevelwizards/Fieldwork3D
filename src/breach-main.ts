@@ -4593,8 +4593,10 @@ function advanceReplayCamera(dt:number,instant=false):void{
     stage.view.zoom=shot.zoom;
     stage.view.yaw=shot.yaw;
     stage.view.pitch=shot.pitch;
+    stage.setReplayDirectorFocus(shot.focus);
     return;
   }
+  stage.setReplayDirectorFocus(null);
   const target=replayCameraTarget(replayCameraMode,replayTime,actors,
     replayFollowId,cssW/Math.max(1,cssH),replayDirectorCues);
   if(!target)return;
@@ -5050,6 +5052,7 @@ function exitReplay(){
   if(replayQuickVideo.active)replayQuickVideo.stop();
   stopReplayBodycam();replayBodycamObservers=[];
   replayXrayOn=false;stage?.setReplayXray(false);
+  stage?.setReplayDirectorFocus(null);
   replayBodycamGroundObservers.clear();
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
