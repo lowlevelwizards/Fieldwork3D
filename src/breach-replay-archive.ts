@@ -32,17 +32,22 @@ const allowed=(id:string)=>id.length>0&&id.length<=128&&/^[\w-]+$/.test(id);
 
 /** Optional per-observer evidence is validated without changing V1 archives. */
 function validObserverEvidence(frame:ReplayFrame):boolean{
-  const observed=frame.knowledge?.operatorVisibleActorIds;
-  if(observed===undefined)return true;
-  if(!observed||typeof observed!=='object'||Array.isArray(observed))
-    return false;
-  const keys=Object.keys(observed);
-  if(keys.length>12)return false;
-  for(const id of keys){
-    const targets=observed[id];
-    if(!allowed(id)||!Array.isArray(targets)||targets.length>128||
-      targets.some(target=>typeof target!=='string'||!allowed(target)))
+  const fields=[
+    frame.knowledge?.operatorVisibleActorIds,
+    frame.knowledge?.operatorVisibleCivilianIds
+  ];
+  for(const observed of fields){
+    if(observed===undefined)continue; // legitimate old recording
+    if(!observed||typeof observed!=='object'||Array.isArray(observed))
       return false;
+    const keys=Object.keys(observed);
+    if(keys.length>12)return false;
+    for(const id of keys){
+      const targets=observed[id];
+      if(!allowed(id)||!Array.isArray(targets)||targets.length>128||
+        targets.some(target=>typeof target!=='string'||!allowed(target)))
+        return false;
+    }
   }
   return true;
 }
