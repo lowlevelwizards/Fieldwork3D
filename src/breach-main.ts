@@ -3570,7 +3570,7 @@ function renderReplayPersonalGround():void{
   if(replayGroundCacheObserver!==replayContactObserverId||
      replayGroundCacheCount!==observed.size||
      replayGroundCacheSite!==state.site){
-    paintReplayPersonalGround(replayGroundContext,state.site,observed);
+    paintReplayPersonalGround(replayGroundContext!,state.site,observed);
     replayGroundCacheObserver=replayContactObserverId;
     replayGroundCacheCount=observed.size;
     replayGroundCacheSite=state.site;
