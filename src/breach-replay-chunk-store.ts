@@ -341,7 +341,8 @@ export function validPersistedReplayChunk(
     if(!frame||!Number.isFinite(frame.t)||frame.t<=last||
       !Array.isArray(frame.actors)||!Array.isArray(frame.doors)||
       !Array.isArray(frame.seenGround)||
-      !frame.knowledge||typeof frame.knowledge!=='object')
+      (frame.knowledge!==undefined&&
+        (!frame.knowledge||typeof frame.knowledge!=='object')))
       return false;
     last=frame.t;
   }
@@ -481,9 +482,9 @@ export async function commitStreamingReplayV2(
     const chunkRows=tx.objectStore(CHUNKS);
     let expectedFirst=0,previousTime=-Infinity;
     let firstFrame:ReplayFrame|null=null,lastFrame:ReplayFrame|null=null;
-    for(const boundary of draft.boundaries){
-      if(boundary.first!==expectedFirst||
-        boundary.index!==draft.boundaries.indexOf(boundary))
+    for(let i=0;i<draft.boundaries.length;i++){
+      const boundary=draft.boundaries[i];
+      if(boundary.first!==expectedFirst||boundary.index!==i)
         throw Error('Replay stream has corrupt chunk boundaries');
       const row=await req<{frames:ReplayFrame[]}|undefined>(
         chunkRows.get([generation,boundary.index]));
