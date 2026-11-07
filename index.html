@@ -246,6 +246,7 @@
   <div class="replay-head">
     <strong>REPLAY</strong>
     <div class="replay-head-right">
+      <output id="replayStatusChip" class="replay-status-chip" hidden aria-live="off"></output>
       <output id="replayClock">00:00.000 / 00:00.000</output>
       <button id="replayExit" type="button" aria-label="Exit replay" title="Exit replay">×</button>
     </div>
@@ -436,6 +437,8 @@
           <option value="contacts">CONTACTS</option>
           <option value="objectives">OBJECTIVES</option>
         </select>
+        <button id="replayFeedFollow" type="button" aria-pressed="false"
+          title="Keep the event list near the current playback position">FOLLOW TIME OFF</button>
         <output id="replayFeedInfo" class="replay-feed-info" hidden></output>
       </div>
       <div id="replayFeed" class="replay-feed-list" role="list" hidden></div>
