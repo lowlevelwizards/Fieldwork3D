@@ -1491,7 +1491,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Do not apply to shot-time ballistics or alter an approved coupled pose.
   if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
      !p.firing&&!p.down&&!p.surrender&&p.reload<=0){
-    const look=clothing;
     const choice=chooseV3SupportGrip({
       weapon:p.weapon,configuration:coupledConfig,fit,
       shoulder:shoulderFor(0),firingShoulder:shoulderFor(1),
