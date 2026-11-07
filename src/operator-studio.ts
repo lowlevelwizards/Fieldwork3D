@@ -3,6 +3,7 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {requestedOperatorGradient} from './operator-height-lighting.ts';
 import {inspectOperatorLighting,formatOperatorLightingReport,
  previewOperatorLightingLayers,restoreOperatorLightingPreview,
  DEFAULT_LIGHTING_LAYERS,type LightingDiagnosticLayers}
@@ -455,6 +456,9 @@ function posePreview(){
   rig=createOperatorRig(p.id,'blue');
   scene.add(rig.root);
  }
+ // R7 is an opt-in visual audition; the profile is a root-local bake input,
+ // not persistent wardrobe data or an extra per-frame GPU effect.
+ rig.root.userData.fieldworkHeightProfile=requestedOperatorGradient(location.search);
  const issue=issueWeaponPreset(starterWeaponPreset(p.id));
  const configuration=reference?.weapon.weaponConfiguration??
   p.weaponConfiguration??issue.weaponConfiguration;
