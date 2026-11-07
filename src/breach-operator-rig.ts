@@ -1354,15 +1354,26 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // and the existing reload interaction path stay in the same positions.
   // This is a whole-pair solution, not two competing elbow corrections.
   let coordinatedDynamic:ReturnType<typeof solveV3CoordinatedPose>|null=null;
+  const v3ReloadActive=p.reload>0&&p.reloadDuration>0;
+  const v3ReloadProgress=v3ReloadActive?
+    clamp(1-p.reload/p.reloadDuration,0,1):0;
+  const v3ReloadMode=p.v3ReloadMode??
+    (p.weapon==='shotgun'?'shells':'emergency');
+  const v3ThrowAge=p.seconds-p.lastThrowAt;
+  const v3DoorAge=p.seconds-p.lastDoorAt;
+  const v3Interacting=!!p.treatmentActive||
+    v3ThrowAge>=0&&v3ThrowAge<.70||
+    v3DoorAge>=0&&v3DoorAge<1.12&&
+      !!p.doorPoint&&p.doorMethod!=='kick';
   if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
      !p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
-     !treatmentActive&&!doorActive&&!throwActive&&!activeTransition){
+     !v3Interacting&&!activeTransition){
     const outfit=resolvedWardrobe(p.wardrobe,p.equipment);
-    const activeReloadSocket=reloadActive?
+    const activeReloadSocket=v3ReloadActive?
       weaponPresentationSockets(p.weapon,p.weaponConfiguration):null;
-    const releasedTarget=reloadActive?reloadHandChestTarget({
+    const releasedTarget=v3ReloadActive?reloadHandChestTarget({
       fit,lengthScale:data.lengthScale,
-      progress:reloadProgress,mode:reloadMode,
+      progress:v3ReloadProgress,mode:v3ReloadMode,
       supportX:data.supportX,supportY:data.supportY,
       primaryX:data.primaryX,
       magazineSocket:activeReloadSocket?.magazinePart?
@@ -1372,7 +1383,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       shoulders:[shoulderFor(0),shoulderFor(1)],
       envelope:poseClearanceEnvelope(
         outfit.armorStyle,outfit.rigStyle,outfit.top),
-      mode:reloadActive?'reload':p.aiming||handling==='ads'?
+      mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
         'aim':'carry',
       releasedSupportTarget:releasedTarget
     });
