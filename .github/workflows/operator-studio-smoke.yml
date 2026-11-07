@@ -28,9 +28,18 @@ jobs:
       - name: R5 UV1 self-shadow atlas — actual mobile WebGL proof
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lighting-r5-') }}
         run: node scripts/smoke-operator-lightmap-r5.mjs
+      - name: PASGT P5 actual WebGL material / fit captures
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-p5-') }}
+        run: node scripts/pasgt-p5-visual-capture.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: operator-studio-portrait
           path: operator-studio-captures/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-p5-') }}
+        with:
+          name: pasgt-p5-visual-proof
+          path: pasgt-p5-captures/
           if-no-files-found: ignore

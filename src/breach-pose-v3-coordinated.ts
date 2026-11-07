@@ -29,6 +29,7 @@ export type CoordinatedRequest={
  releasedSupportTarget?:THREE.Vector3;
  /** V4 animation-only overlap allowances; never use outside reloading. */
  allowReloadOverlap?:boolean;
+ allowVisualOverlap?:boolean;
 };
 export type CoordinatedRejections={
  primaryReach:number;primaryClearance:number;
@@ -120,7 +121,8 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
   const right=solveV3DynamicArm({shoulder:req.shoulders[1],
    wrist:fit.primary,side:1,mode:req.mode,envelope:req.envelope,
    preferredPole:new THREE.Vector3(3,-9,1.5),
-   allowReloadOverlap:req.allowReloadOverlap&&req.mode==='reload'});
+   allowReloadOverlap:req.allowReloadOverlap&&req.mode==='reload',
+   allowVisualOverlap:req.allowVisualOverlap});
   if(!right.solution){
    tally(right.report,'firing');
    rejects[right.reason==='out-of-reach'?'primaryReach':
@@ -147,7 +149,8 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
    const left=solveV3DynamicArm({shoulder:req.shoulders[0],
      wrist:support,side:-1,mode:req.mode,envelope:req.envelope,
      preferredPole:new THREE.Vector3(3,-9,-1.5),
-     allowReloadOverlap:req.allowReloadOverlap&&req.mode==='reload'});
+     allowReloadOverlap:req.allowReloadOverlap&&req.mode==='reload',
+     allowVisualOverlap:req.allowVisualOverlap});
    if(!left.solution){
     tally(left.report,'support');
     rejects[left.reason==='out-of-reach'?'supportReach':

@@ -86,3 +86,13 @@ export function addMP5TriRail(root:THREE.Group,id:string,index:number,
   tab.userData.hkMP5TriRailTooth=i;
  }
 }
+
+/** Early MP5 slim polymer: one straight narrow octagonal silhouette.
+ * No decorative ribs, fins, or individually modeled hardware. */
+export function addMP5SlimForearm(root:THREE.Group,id:string,n:number,
+ start:number,end:number,material:THREE.Material):THREE.Mesh{
+ const body=addFacetedTube(root,'handguard',id,n,start,end,1.20,material);
+ body.position.y=-.18;
+ body.userData.hkMP5SlimForearm=true;
+ return body;
+}

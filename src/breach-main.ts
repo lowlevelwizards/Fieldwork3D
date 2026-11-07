@@ -102,6 +102,8 @@ import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 import {buildReplayExecutionInsights} from './breach-replay-debrief.ts';
 import {indexReplayIncidents,featuredReplayIncidents,type ReplayIncident}
   from './breach-replay-incidents.ts';
+import {featuredReplaySquadEntries,type ReplaySquadEntryReview}
+  from './breach-replay-squad-entry.ts';
 import {incidentPlaybackWindow,advanceIncidentPlayback}
   from './breach-replay-incident-playback.ts';
 import {makeReplayLoop,advanceReplayLoop,type ReplayLoopRange}
@@ -142,8 +144,8 @@ import {validateStudioAppearanceEdits,applyStudioRosterEdits,
  applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- sameWeaponConfiguration,familyAccessoryAllowed} from './equipment-weapon-assemblies.ts';
-import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,familyPreset,type FamilyPartSlot} from './equipment-weapon-families.ts';
+ sameWeaponConfiguration,weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
+import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,familyPreset,proposeFamilyPartChange,type FamilyPartSlot} from './equipment-weapon-families.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {newCampaign,readCampaign,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,resupplyMedicalOperator,treatOperator,
@@ -265,6 +267,8 @@ const ui={
   replayChapterList:el<HTMLElement>('replayChapterList'),
   replayDebriefInfo:el<HTMLOutputElement>('replayDebriefInfo'),
   replayDebriefMoments:el<HTMLElement>('replayDebriefMoments'),
+  replaySquadEntryPanel:el<HTMLElement>('replaySquadEntryPanel'),
+  replaySquadEntryList:el<HTMLElement>('replaySquadEntryList'),
   replayIncidentDetails:el<HTMLElement>('replayIncidentDetails'),
   replayIncidentTitle:el<HTMLElement>('replayIncidentTitle'),
   replayIncidentSummary:el<HTMLOutputElement>('replayIncidentSummary'),
@@ -763,6 +767,8 @@ let replaySoundTimeline:ReplaySoundTimeline|null=null;
 let replayChapters:ReplayChapter[]=[];
 let replayIncidents:ReplayIncident[]=[];
 let replayFeaturedIncidents:ReplayIncident[]=[];
+let replaySquadEntries:ReplaySquadEntryReview[]=[];
+let selectedReplaySquadEntry:string|null=null;
 let selectedReplayIncidentId:string|null=null;
 let replayIncidentPlayback:{range:ReplayLoopRange;loop:boolean}|null=null;
 let replayBookmarks:ReplayBookmark[]=[];
@@ -1080,7 +1086,7 @@ function renderOperationsBoard(){
   // Legacy WeaponId remains internal simulation/persistence compatibility.
   const modelHint=document.createElement('small');
   modelHint.className='fw-weapon-section-label';
-  modelHint.textContent='SELECT AN AR / AK / HK VARIANT · FACTORY MODEL + PARTS';
+  modelHint.textContent='SELECT PLATFORM · FACTORY CHECKPOINTS + CUSTOM PARTS';
   loadout.field('weapon').append(modelHint);
   const activePreset=member.weaponConfiguration.build?
    matchingFamilyPreset(member.weaponConfiguration.build):undefined;
@@ -1199,7 +1205,7 @@ function renderOperationsBoard(){
   kit.addEventListener('toggle',syncWorkbench);
   loadout.group.weapon.addEventListener('toggle',syncWorkbench);
   const weaponTitle=document.createElement('summary');
-  weaponTitle.textContent='3D WEAPON WORKBENCH · TAP SOCKETS';
+  weaponTitle.textContent='WEAPON WORKBENCH · TAP PART TO EDIT';
   weaponEditor.append(weaponTitle,workbenchHost,socketPanel);
   for(const slot of WEAPON_ATTACHMENT_SLOTS){
    if(member.weaponConfiguration.build&&slot==='stock')continue;
@@ -1209,10 +1215,8 @@ function renderOperationsBoard(){
    const select=document.createElement('select');
    select.setAttribute('aria-label',slot+' attachment for '+member.callsign);
    for(const part of Object.values(WEAPON_ATTACHMENTS)){
-    if(part.slot!==slot||!part.compatible.includes(member.weapon)||
-     (member.weaponConfiguration.build&&
-      !familyAccessoryAllowed(member.weaponConfiguration.build,slot,part.id))||
-     (!member.weaponConfiguration.build&&part.id==='optic-hk-claw'))continue;
+    if(part.slot!==slot||!weaponAttachmentAllowed(
+     member.weaponConfiguration,slot,part.id))continue;
     const option=document.createElement('option');
     option.value=part.id;option.textContent=part.name;select.append(option);
    }
@@ -1250,8 +1254,23 @@ function renderOperationsBoard(){
    select.disabled=state.phase!=='planning'||replaying;
    select.addEventListener('focus',()=>quickWorkbenchId===member.id&&
     quickWorkbench?.setActiveSlot(socket));
-   select.addEventListener('change',()=>{
+   select.addEventListener('change',async()=>{
     if(state.phase!=='planning'||replaying)return;
+    const proposal=proposeFamilyPartChange(build,member.weapon,
+     slot as FamilyPartSlot,select.value);
+    if(!proposal.valid){select.value=build.parts[slot];return;}
+    const dependent=proposal.replacements.filter(x=>x.slot!==slot);
+    if(dependent.length){
+     if(!await confirmFieldworkAction({
+      title:'Replace incompatible parts?',
+      message:'Changing '+slot+' will also replace: '+
+       dependent.map(x=>FAMILY_PARTS[x.from]?.name+' → '+
+        FAMILY_PARTS[x.to]?.name).join('; '),
+      confirmLabel:'APPLY CHANGES'
+     })){select.value=build.parts[slot];return;}
+    }
+    if(slot==='receiver'||slot==='barrel')
+     resetQuickWorkbenchViews.add(member.id);
     persistentRoster=configureRosterWeaponBodyPart(persistentRoster,member.id,
      slot as FamilyPartSlot,select.value);
     saveRoster();applyRosterIdentity(state,persistentRoster);
@@ -4268,6 +4287,43 @@ function renderObserverSightTransitions():void{
   }
   mount.replaceChildren(fragment);
 }
+/** R4.4: only recorded friendly threshold crossing facts. No inferred
+ * breach timing, synchronized intent, or knowledge of unseen enemies.
+ */
+function renderReplaySquadEntries():void{
+  const host=ui.replaySquadEntryList;
+  const panel=ui.replaySquadEntryPanel;
+  panel.hidden=replaySquadEntries.length===0;
+  if(panel.hidden){host.replaceChildren();return;}
+  const fragment=document.createDocumentFragment();
+  for(const entry of replaySquadEntries){
+    const count=entry.crossings.filter(c=>c.crossedAt!==null).length;
+    const button=document.createElement('button');
+    button.type='button';button.className='replay-entry-review-item';
+    button.setAttribute('aria-pressed',
+      String(entry.doorId===selectedReplaySquadEntry));
+    const title=document.createElement('strong');
+    title.textContent=entry.doorId+' · '+count+'/'+entry.crossings.length+
+      ' CROSSED'+(entry.spreadSeconds===null?'': ' · '+
+      entry.spreadSeconds.toFixed(1)+'S SPREAD');
+    const details=document.createElement('small');
+    details.textContent=entry.crossings.map(c=>
+      c.actorId.toUpperCase()+' '+
+      (c.crossedAt===null?(c.alreadyBeyond?'ALREADY PAST':'NOT RECORDED'):
+        formatReplayTime(c.crossedAt))).join(' · ');
+    button.title='Measured crossings only · '+details.textContent;
+    button.append(title,details);
+    button.addEventListener('click',()=>{
+      if(entry.firstCrossingAt===null)return;
+      selectedReplaySquadEntry=entry.doorId;
+      replayPlaying=false;
+      seekReplay(Math.max(0,entry.firstCrossingAt-.6));
+      renderReplaySquadEntries();
+    });
+    fragment.append(button);
+  }
+  host.replaceChildren(fragment);
+}
 function renderReplayDebrief():void{
   const stalls=buildReplayExecutionInsights(recorder.executionEvents,
     recorder.duration,5).filter(x=>
@@ -4609,6 +4665,12 @@ function enterReplay(){
     bodycamHasPersonalGround(recorder.personalGround,id)));
   stage?.applySite(state.site??null);
   stage?.setReplayBodycam(null);
+  // One-time historical index; only recorded friendly coordinates and
+  // recorded door geometry, never current world positions or hidden AI.
+  replaySquadEntries=featuredReplaySquadEntries(recorder.frames,
+    team(state).map(a=>a.id),recorder.duration,3);
+  selectedReplaySquadEntry=null;
+  renderReplaySquadEntries();
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
   ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
@@ -4623,6 +4685,8 @@ function exitReplay(){
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   replayChapters=[];replayBookmarks=[];
   replayIncidents=[];replayFeaturedIncidents=[];
+  replaySquadEntries=[];selectedReplaySquadEntry=null;
+  renderReplaySquadEntries();
   replayContactObserverId=null;replayHasContactEvidence=false;
   replayOperatorSightIndex=null;
   replayDoorHistory=null;replayWindowHistory=null;

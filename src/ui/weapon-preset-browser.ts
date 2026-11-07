@@ -18,7 +18,7 @@ export function createWeaponPresetBrowser(options:{
  heading.style.cssText='cursor:pointer;padding:8px 0;min-height:36px;font-weight:700;color:#e6eada';
  outer.append(heading);
  const hint=document.createElement('p');hint.className='fw-weapon-helper';
- hint.textContent='FACTORY CHECKPOINTS · Start from a historical model, then swap compatible receiver, stock, magazine and front-end parts. Your custom combination stays yours. Changing weapon class still follows equipment rules.';
+ hint.textContent='Factory checkpoints are starting points, not separate guns. Edit parts directly in the workbench; compatible choices stay equipped when you change the core.';
  outer.append(hint);
  const tabs=document.createElement('div');tabs.style.cssText='display:flex;flex-wrap:wrap;gap:7px;margin:9px 0';
  const families=[...new Set(FAMILY_PRESETS.map(p=>p.family))]

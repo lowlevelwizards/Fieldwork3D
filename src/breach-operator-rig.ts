@@ -38,7 +38,8 @@ import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
 import {choreographV3ReloadHand,v3MagazineRockAngle,v3MagazineBodyGrip,type V3ReloadCorridorProfile,type V3MagazinePalm} from './breach-pose-v3-reload-choreography.ts';
 import {choreographV3ReloadWeapon,type V3ReloadHold} from './breach-pose-v3-reload-weapon.ts';
-import {choreographV4ReloadWeapon,reloadMechanismFor}
+import {choreographV4ReloadWeapon,reloadMechanismFor,
+ v4ReloadControlPose}
  from './breach-reload-performance.ts';
 import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
 import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
@@ -75,7 +76,10 @@ import {garmentSolidHex,isGarmentSolidId,resolvedCuffSolid,resolvedCombatKnitSol
  from './operator-garment-color-policy.ts';
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
-import type {CarryLocation} from './equipment-carry-placement.ts';
+import type {CarryLocation,CarryPlacement} from './equipment-carry-placement.ts';
+import {selectedReloadPouchSlot,v4MagazineInHand,
+ v4SelectedPouchVisible,v4AuthoredPouchAnchor}
+ from './breach-reload-v4-magazine-handoff.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
  type OperatorVisualKit} from './operator-visual-kit.ts';
 import {createGarmentFitAnchors,type GarmentFitAnchors}
@@ -97,9 +101,11 @@ type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
   bend:THREE.Vector3;outOfReach:boolean};
 export type OperatorPose={
-  /** Opt-in LAB-only V3 torso fit audition; never set by gameplay. */
+  /** V3 whole-arm fitting; enabled by the live tactical renderer. */
   poseV3Preview?:boolean;
-  /** B24b reload-action visual tolerance, opt-in Lab only. */
+  /** Diagnostic-only: compare against the original strict contact budget. */
+  poseV3StrictContact?:boolean;
+  /** V4 rifle, hand, magazine and controls; enabled for live reloads. */
   poseV4ReloadPreview?:boolean;
   /** Opt-in Lab reload corridor comparison; never read by game simulation. */
   poseV3ReloadCorridor?:V3ReloadCorridorProfile;
@@ -134,6 +140,9 @@ export type OperatorPose={
   equipment?:EquipmentLoadout;flashCharges?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
   magazineCarryLocations?:readonly CarryLocation[];
+  /** Simulation-owned IDs and actual stowage, used for V4 handoff ONLY. */
+  magazineCarryItems?:readonly Pick<CarryPlacement,'id'|'kind'|'location'>[];
+  reloadSelectedMagazineId?:string|null;
   weaponConfiguration?:WeaponConfiguration;
   weaponLightOn?:boolean;
   treatmentActive?:boolean;treatmentProgress?:number;
@@ -163,11 +172,12 @@ export type OperatorRig={
   /** Authoritative, old motor yaw; a tactical heading is never remapped. */
   legacyYaw:number;legacyPitch:number;legacyRoll:number;
   hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
-  /** Empty mount anchors; no extra render geometry, physics, or IK. */
   bodycamChest:THREE.Object3D;bodycamHelmet:THREE.Object3D;
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
   detachedMagazine:THREE.Group;
+  /** B29 mechanical silhouette, preview only; no shot/collision writes. */
+  reloadControlMesh:THREE.Mesh;
   medicalItem:THREE.Mesh;
   weaponBody:THREE.Group;droppedWeaponBody:THREE.Group;
   weaponAccessories:THREE.Group;droppedAccessories:THREE.Group;
@@ -271,6 +281,12 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   root.add(legacyFrame);
   legacyFrame.add(hip,chest,droppedGun);droppedGun.visible=false;
   chest.add(head,weapon);
+  const bodycamChest=new THREE.Object3D();
+  bodycamChest.name='fieldwork-replay-bodycam-chest';
+  bodycamChest.position.set(9.5,1.4,0);chest.add(bodycamChest);
+  const bodycamHelmet=new THREE.Object3D();
+  bodycamHelmet.name='fieldwork-replay-bodycam-helmet';
+  bodycamHelmet.position.set(8.5,2.4,0);head.add(bodycamHelmet);
   const headCanonicalFrame=createCanonicalAttachment(head);
   root.quaternion.copy(canonicalRootOrientation(0,0,0));
   const cloth=mat(side==='red'?0x936e5b:
@@ -320,19 +336,6 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   for(const mesh of [...rigPouches,beltPouch,medicalPouch,
     radioUnit,flashCanister,utilityTool])mesh.visible=false;
   head.position.y=10;
-  // Anatomical mount offsets use the legacy local +X-forward frame.
-  // Camera sampling happens AFTER the historical pose is reconstructed.
-  const bodycamChest=new THREE.Object3D();
-  bodycamChest.name='fieldwork-replay-bodycam-chest';
-  bodycamChest.position.set(9.5,1.4,0);
-  chest.add(bodycamChest);
-  const bodycamHelmet=new THREE.Object3D();
-  bodycamHelmet.name='fieldwork-replay-bodycam-helmet';
-  // Brow-height mount stays clear of the standard 42-unit roof underside.
-  // The older top-of-helmet position sat inside the ceiling and obscured
-  // most of the first-person screen in actual iPhone screenshots.
-  bodycamHelmet.position.set(8.5,2.4,0);
-  head.add(bodycamHelmet);
   // Faces and necks are real receiving surfaces for projected hat/collar
   // shadows, independent of the skin tint shared by arms and hands.
   const faceSkin=skin.clone(),neckSkin=skin.clone();
@@ -396,6 +399,12 @@ export function createOperatorRig(id:string,side:'blue'|'red',
    strap.castShadow=false;strap.receiveShadow=false;strap.visible=false;
    return strap;
   });
+  // Chunky symbolic control; x/y/z always come from real receiver socket.
+  // Keep distinct from the built weapon silhouette and any ballistic mesh.
+  const reloadControlMesh=block(weapon,0,0,0,1.55,1.20,1.50,steel);
+  reloadControlMesh.name='v4-moving-operating-handle';
+  reloadControlMesh.castShadow=false;
+  reloadControlMesh.visible=false;
   const magazineInserted=block(weapon,3,-4,0,2.7,6,2.5,boot);
   const magazineHand=block(chest,0,0,0,2.7,6,2.5,boot);
   magazineHand.visible=false;
@@ -435,9 +444,10 @@ export function createOperatorRig(id:string,side:'blue'|'red',
       colors.set(obj.material,obj.material.color.clone());
   });
   return {root,camoIdentity:id,legacyFrame,headCanonicalFrame,
-    bodycamChest,bodycamHelmet,
     legacyYaw:0,legacyPitch:0,legacyRoll:0,
     hip,chest,head,weapon,droppedGun,feet,arms,pack,
+    bodycamChest,bodycamHelmet,
+    reloadControlMesh,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
     medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,
     visualKit,equipmentDetails,colors,garmentFitAnchors,poseCavity,
@@ -503,6 +513,13 @@ type CarryBlendState={
  * consumes a previous, unrecorded render frame. */
 const carryBlendStates=new WeakMap<OperatorRig,CarryBlendState>();
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
+  // Reconstruct source visibility from the authoritative inventory for
+  // EVERY timestamp. A previous render must never make a pickup socket
+  // disappear when replay seeks to the same or an earlier frame.
+  const previouslyHiddenV4=r.root.userData.reloadV4HiddenSource as
+    THREE.Mesh|undefined;
+  if(previouslyHiddenV4)previouslyHiddenV4.visible=true;
+  r.root.userData.reloadV4HiddenSource=null;
   let scratch=poseMath.get(r);
   if(!scratch){scratch=createOperatorPoseScratch();poseMath.set(r,scratch);}
   if(dt<0||r.lastTime>p.seconds+.03||p.seconds-r.lastTime>1.2){
@@ -1321,6 +1338,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       const key=JSON.stringify([p.weapon,coupledConfig.build,
         coupledConfig.slots,look.top,look.armorStyle,look.rigStyle,
         poseWeight,Number(localYaw.toFixed(4)),
+        // Never reuse a forgiving result in the strict audit (or vice
+        // versa) when the same model and outfit are scrubbed in place.
+        !!p.poseV3Preview&&!p.poseV3StrictContact,
         shoulders.map(v=>v.toArray().map(n=>Number(n.toFixed(3))))]);
       const cache=coupledIdleCache.get(r);
       if(cache?.key===key)return cache.solution;
@@ -1332,7 +1352,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
           configuration:coupledConfig,
           armor:poseClearanceEnvelope(
             look.armorStyle,look.rigStyle,look.top),
-          shoulders,nominalYaw:localYaw});
+          shoulders,nominalYaw:localYaw,
+          allowVisualOverlap:!!p.poseV3Preview&&!p.poseV3StrictContact});
         sharedCoupledPoseCache.set(key,result);
         if(sharedCoupledPoseCache.size>MAX_SHARED_COUPLED_POSES){
           const oldest=sharedCoupledPoseCache.keys().next().value;
@@ -1430,6 +1451,27 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     clamp(1-p.reload/p.reloadDuration,0,1):0;
   const v3ReloadMode=p.reloadMode??
     (p.weapon==='shotgun'?'shells':'emergency');
+  // Look up the selected item in the existing inventory display, NOT a
+  // second fake ammo stack. The Lab can use its authored sample magazines.
+  const v4Carry=(p.magazineCarryItems??
+    p.magazineCarryLocations?.map((location,i)=>({
+      id:'v4-preview-'+i,kind:'magazine' as const,location
+    }))??[]);
+  const v4Slot=p.poseV4ReloadPreview&&v3ReloadActive&&
+    v3ReloadMode!=='shells'?
+    selectedReloadPouchSlot(v4Carry,p.reloadSelectedMagazineId,
+      !p.reloadSelectedMagazineId):null;
+  const v4Magazine=v4Slot?
+    r.visualKit.magazines[v4Slot.location][v4Slot.index]:undefined;
+  // The target is a real existing rig/belt/pocket magazine. No slot ->
+  // no fake retrieval and no missing magazine conjured in the hand.
+  // The authored magazine socket is fixed to gear/hip, not based on
+  // last-frame world matrices (which broke same-time replay seeks).
+  const v4PouchAnchor=v4Magazine?.visible?
+    v4AuthoredPouchAnchor(v4Magazine,r.chest,r.hip)??undefined:
+    undefined;
+  r.root.userData.reloadV4MagazineSlot=v4Magazine?.visible?
+    v4Slot:null;
   // B17 measured on the actual legacy-armored AKM: the compact outboard
   // magazine path clears more support-arm phases without extra solver probes.
   // Preserve the canonical route for all other kits, especially flak AKS74U.
@@ -1465,7 +1507,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       primaryX:data.primaryX,clearanceFront:envelope.front,
       magazineSocket:activeReloadSocket?.magazinePart?
         activeReloadSocket.magazine:undefined,
-      reloadControl:activeReloadSocket?.reloadControl}:null;
+      reloadControl:activeReloadSocket?.reloadControl,
+      pickupTarget:v4PouchAnchor}:null;
     const releasedTarget=releaseInputs?(
       p.poseV4ReloadPreview?
         choreographV4ReloadHand(releaseInputs,
@@ -1479,7 +1522,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
         'aim':'carry',
       releasedSupportTarget:releasedTarget,
-      allowReloadOverlap:!!p.poseV4ReloadPreview&&v3ReloadActive
+      allowReloadOverlap:!!p.poseV4ReloadPreview&&v3ReloadActive&&
+       !p.poseV3StrictContact,
+      allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
+       !p.poseV3StrictContact
     });
     r.root.userData.poseV3CoordinatedReport={
       status:result.status,yaw:result.yaw,leanX:result.leanX,
@@ -1550,6 +1596,23 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.droppedGun.scale.set(data.lengthScale,1,1);
   r.weapon.rotation.copy(fit.rotation);
   r.weapon.position.copy(fit.origin);
+  // B29: visible HK lock/slap, AK handle rack and AR bolt-catch press.
+  // Physically attached to the weapon, driven only by the action clock.
+  // It never modifies fit, recoil, muzzle, shot state or inventory.
+  const v4Control=p.poseV4ReloadPreview&&v3ReloadActive?
+    v4ReloadControlPose(reloadMechanismFor(p.weapon,coupledConfig),
+      v3ReloadMode,v3ReloadProgress):null;
+  r.reloadControlMesh.visible=!!v4Control?.visible&&
+    !p.down&&!p.surrender;
+  if(r.reloadControlMesh.visible&&v4Control){
+    const sock=weaponPresentationSockets(p.weapon,p.weaponConfiguration)
+      .reloadControl;
+    r.reloadControlMesh.position.set(sock.x+v4Control.travel,sock.y,
+      sock.z+v4Control.press);
+    const mech=reloadMechanismFor(p.weapon,coupledConfig);
+    r.reloadControlMesh.scale.set(mech==='ar-bolt-catch'?.73:1,
+      mech==='hk-roller'?1.15:1,mech==='ak-rocking'?.80:1);
+  }
   // On ADS, bring the eyes toward the actual sight line, keeping the
   // firearm fixed. Head-only accommodation cannot change shot ballistics.
   r.head.position.z=0;
@@ -1600,6 +1663,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     magazinePhase!=='reach'&&magazinePhase!=='settle';
   r.detachedMagazine.visible=authoredMagazine&&reloadActive&&
     !mountedMagazine&&magazinePhase!=='settle'&&!p.down&&!p.surrender;
+  if(p.poseV4ReloadPreview&&v3ReloadActive&&v4Magazine&&
+    v4PouchAnchor){
+    // Before pickup the identical magazine remains IN its visible pouch.
+    // During the rendezvous the wrist is empty; only after extraction
+    // does the new magazine become hand-owned. No duplicated magazine.
+    if(!v4MagazineInHand(v3ReloadProgress)){
+      r.magazineHand.visible=false;
+      r.detachedMagazine.visible=false;
+    }
+    if(!v4SelectedPouchVisible(v3ReloadProgress)){
+      v4Magazine.visible=false;
+      r.root.userData.reloadV4HiddenSource=v4Magazine;
+    }
+  }
   r.magazineHand.scale.set(
     p.weapon==='shotgun'?.48:1,p.weapon==='shotgun'?.55:1,1);
   const throwAge=p.seconds-p.lastThrowAt;
@@ -1668,7 +1745,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       supportX:data.supportX,supportY:data.supportY,
       primaryX:data.primaryX,clearanceFront:v3ReloadClearanceFront,
       magazineSocket:sockets.magazinePart?sockets.magazine:undefined,
-      reloadControl:sockets.reloadControl
+      reloadControl:sockets.reloadControl,
+      pickupTarget:v4PouchAnchor
     };
     reloadHandChest=p.poseV3Preview?
       (p.poseV4ReloadPreview?
@@ -1826,7 +1904,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         'aim':reaching||throwActive?'interaction':'carry';
       const dynamic=solveV3DynamicArm({
         shoulder,wrist:desired,side:sign as -1|1,mode,
-        envelope:dynamicEnvelope,preferredPole:wanted
+        envelope:dynamicEnvelope,preferredPole:wanted,
+        allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
+         !p.poseV3StrictContact
       });
       v3DynamicReports.push({side:i===0?'support':'firing',
         status:dynamic.status,reason:dynamic.reason,

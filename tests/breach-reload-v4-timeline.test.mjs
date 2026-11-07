@@ -9,7 +9,8 @@ import {choreographV4ReloadHand}
 import {weaponPresentationSockets}
  from '../src/breach-weapon-presentation.ts';
 import {reloadAnimationCue,reloadMechanismFor,
- reloadWeaponPresentationTarget,choreographV4ReloadWeapon}
+ reloadWeaponPresentationTarget,choreographV4ReloadWeapon,
+ v4ReloadControlPose}
  from '../src/breach-reload-performance.ts';
 
 test('B24 mechanism belongs to the receiver, not the HK brand name',()=>{
@@ -142,4 +143,30 @@ test('B26/B27 AK handle and HK signature lock/slap use real family sockets',()=>
   assert.ok(hand.target.distanceTo(repeat.target)<1e-12,
    'gesture is pure replay-time');
  }
+});
+
+test('B29 visible operating handles hold, cycle, and return by mechanism',()=>{
+ const still={visible:false,travel:0,press:0};
+ for(const mechanism of ['ar-bolt-catch','ak-rocking','hk-roller',
+  'legacy','shell-tube']){
+  for(const mode of ['emergency','retention','shells']){
+   for(const t of [0,1]){
+    assert.deepEqual(v4ReloadControlPose(mechanism,mode,t),still);
+   }
+   if(mode!=='emergency')assert.deepEqual(
+    v4ReloadControlPose(mechanism,mode,.88),still);
+  }
+ }
+ const hkLocked=v4ReloadControlPose('hk-roller','emergency',.53);
+ assert.equal(hkLocked.visible,true);
+ assert.ok(hkLocked.travel< -2);
+ const hkSlap=v4ReloadControlPose('hk-roller','emergency',.88);
+ assert.ok(hkSlap.travel>hkLocked.travel);
+ assert.ok(v4ReloadControlPose('ak-rocking','emergency',.88).travel<-.3);
+ assert.ok(v4ReloadControlPose('ar-bolt-catch','emergency',.88).press>.1);
+ for(const mechanism of ['ar-bolt-catch','ak-rocking','hk-roller'])
+  for(const t of [.075,.18,.53,.82,.88,.94,1])
+   assert.deepEqual(v4ReloadControlPose(mechanism,'emergency',t),
+    v4ReloadControlPose(mechanism,'emergency',t),
+    'control animation has no frame history');
 });

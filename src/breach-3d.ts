@@ -2046,7 +2046,12 @@ export class TacticalScene3D{
           actor.traversalElapsed/Math.max(.001,actor.traversal.duration):0,
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,wardrobe:actor.wardrobe,
+        // B30: live and replay use the new posing by default.
+        // This changes rendered anatomy only, not fixed-step ammo/shot.
+        poseV3Preview:true,poseV4ReloadPreview:true,
         magazineCarryLocations:carried.filter(p=>p.kind==='magazine').map(p=>p.location),
+        magazineCarryItems:carried.filter(p=>p.kind==='magazine'),
+        reloadSelectedMagazineId:actor.reloadSelectedMagazineId,
         medicalCarryLocation:carried.find(p=>p.kind==='medical')?.location,
         utilityCarryLocation:carried.find(p=>p.kind==='utility')?.location,
          weaponConfiguration:actor.weaponConfiguration,

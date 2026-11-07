@@ -228,21 +228,23 @@ if(process.env.POSE_V3_CORRIDOR_AUDITION==='1')test('B17 compare compact vs outb
 /** Only two expensive physically useful cases remain in the fast CI.
  * The full 7x3 B17 audition is opt-in for future path experiments.
  */
-test('B17 legacy AKM selects measured compact path without inflating validity',()=>{
+test('B17 compact AKM visual corridor versus strict canonical rejection',()=>{
  const f=fixtures[1],base=assemble(f);
  const selected=createOperatorRig('v3-ak-compact','blue',true);
  const canonical=createOperatorRig('v3-ak-original','blue',true);
  try{
   for(const progress of [.40,.53]){
+   // Active display allows bounded compression; the comparison rig
+   // explicitly audits the old strict collision rules.
    const pose={...base,seconds:3,poseV3Preview:true,
     reload:1.8*(1-progress),reloadDuration:1.8};
    poseOperator(selected,pose,0);
-   poseOperator(canonical,{...pose,
+   poseOperator(canonical,{...pose,poseV3StrictContact:true,
     poseV3ReloadCorridor:'canonical'},0);
    assert.equal(selected.root.userData.poseV3CoordinatedReport?.status,
-    'clear','legacy AKM compact '+progress);
+    'clear','visual AKM compact '+progress);
    assert.equal(canonical.root.userData.poseV3CoordinatedReport?.status,
-    'unresolved','do not inflate canonical validity '+progress);
+    'unresolved','strict canonical should keep rigid rejection '+progress);
    assert.ok(selected.root.userData.poseV3DynamicReport
     .every(arm=>arm.status==='clear'));
   }
