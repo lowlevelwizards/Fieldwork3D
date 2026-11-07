@@ -26,7 +26,7 @@ import {HK_BARREL_ART} from '../src/weapons/geometry/hk-barrel-profiles.ts';
 import {HK9_MAG_METAL,HK556_MAG_METAL}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 
-const ids=['hk-mp5a3','hk-mp5sd3','hk-mp5k','hk-mp5a2','hk-mp5sd2'];
+const ids=['hk-mp5a3','hk-mp5sd3','hk-mp5k','hk-mp5k-pdw','hk-mp5a2','hk-mp5sd2'];
 const metal=new THREE.MeshBasicMaterial(),dark=new THREE.MeshBasicMaterial();
 function create(id){
  const preset=FAMILY_PRESETS.find(p=>p.id===id);
@@ -37,10 +37,10 @@ function create(id){
  group.updateMatrixWorld(true);
  return {config,group};
 }
-test('five genuine SMG factory models, one 9mm feed, saved builds roundtrip',()=>{
- assert.equal(FAMILY_PRESETS.length,27);
- assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,10);
- assert.equal(FAMILY_PRESETS.filter(x=>x.weapon==='smg').length,5);
+test('six genuine SMG factory models, one 9mm feed, saved builds roundtrip',()=>{
+ assert.equal(FAMILY_PRESETS.length,29);
+ assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,12);
+ assert.equal(FAMILY_PRESETS.filter(x=>x.weapon==='smg').length,6);
  for(const id of ids){
   const {config,group}=create(id);
   assert.equal(config.weapon,'smg',id);
@@ -64,7 +64,8 @@ test('five genuine SMG factory models, one 9mm feed, saved builds roundtrip',()=
 test('three silhouette landmarks, no fake scaling or muzzle drift',()=>{
  const lengths=[['hk-mp5a3',-13.05,12.65],
   ['hk-mp5sd3',-13.05,16.60],['hk-mp5k',-6.65,6.05],
-  ['hk-mp5a2',-13.05,12.65],['hk-mp5sd2',-13.05,16.60]];
+  ['hk-mp5a2',-13.05,12.65],['hk-mp5sd2',-13.05,16.60],
+  ['hk-mp5k-pdw',-13.05,6.05]];
  for(const [id,rear,muzzle] of lengths){
   const {config,group}=create(id);
   const bounds=new THREE.Box3().setFromObject(group);

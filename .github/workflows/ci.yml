@@ -1469,6 +1469,20 @@ jobs:
           name: hk-r4-ten-factory-finish-review
           path: reports/hk-r4-factory-colors.html
           retention-days: 7
+      - name: HK modular R1 — stock/rail compatibility, factory saves and pose critical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-modular-parts-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk-modular-r1.test.mjs tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-mp5-r2-refinements.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-hk-r4-material-selector.test.mjs tests/weapon-hk556-ribbon-finish.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: HK modular R1 — same-scale factory geometry review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-modular-parts-') }}
+        run: node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs reports/hk-modular-r1-ortho.html --hk-only --material-colors
+      - name: HK modular R1 — upload actual-geometry review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-modular-parts-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hk-modular-r1-factory-orthographic
+          path: reports/hk-modular-r1-ortho.html
+          retention-days: 7
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

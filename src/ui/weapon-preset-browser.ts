@@ -13,12 +13,12 @@ export function createWeaponPresetBrowser(options:{
  outer.style.cssText='border:1px solid #658276;border-radius:9px;padding:9px;margin:10px 0;background:#1b3029';
  outer.open=!chosen;
  const heading=document.createElement('summary');
- heading.textContent='FACTORY MODELS · '+FAMILY_PRESETS.length+
+ heading.textContent='FACTORY CHECKPOINTS · '+FAMILY_PRESETS.length+
   (chosen?' · '+chosen.name.toUpperCase():' · SELECT MODEL');
  heading.style.cssText='cursor:pointer;padding:8px 0;min-height:36px;font-weight:700;color:#e6eada';
  outer.append(heading);
  const hint=document.createElement('p');hint.className='fw-weapon-helper';
- hint.textContent='Browse AR, AK and HK variants. Switching rifle/carbine class follows the current mode’s equipment rules.';
+ hint.textContent='FACTORY CHECKPOINTS · Start from a historical model, then swap compatible receiver, stock, magazine and front-end parts. Your custom combination stays yours. Changing weapon class still follows equipment rules.';
  outer.append(hint);
  const tabs=document.createElement('div');tabs.style.cssText='display:flex;flex-wrap:wrap;gap:7px;margin:9px 0';
  const families=[...new Set(FAMILY_PRESETS.map(p=>p.family))]

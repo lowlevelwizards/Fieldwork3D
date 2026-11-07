@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
+import {FAMILY_PRESETS,FAMILY_PARTS} from '../src/equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset} from '../src/equipment-weapon-assemblies.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 import {carriedMagazineProfile} from '../src/operator-carried-magazines.ts';
@@ -23,8 +23,8 @@ const pixel=(mark,x,y)=>{
  const n=(y*img.width+x)*4;
  return [...img.data.slice(n,n+4)];
 };
-test('HK R4 palette keeps ten authentic factory models and distinct materials',()=>{
- assert.equal(hk.length,10);
+test('HK R4 palette keeps twelve authentic factory models and distinct materials',()=>{
+ assert.equal(hk.length,12);
  for(const [m,hex] of [[HK_BLACK_METAL,0x3b4140],
   [HK_DARK_POLYMER,0x303433],[HK_OLIVE_POLYMER,0x60694e],
   [HK_WOOD,0x896947],[HK_MAG_METAL,0x505757],
@@ -74,7 +74,7 @@ test('every HK part uses its intended black/olive/wood/steel family finish',()=>
   }
   if(p.id==='hk-hk53a3')assert.equal(handguard[0].material,HK_DARK_POLYMER);
   const expected=p.weapon==='smg'?HK9_MAG_METAL:
-   p.id==='hk-hk33a2'||p.id==='hk-hk53a3'?HK556_MAG_METAL:HK_MAG_METAL;
+   FAMILY_PARTS[p.parts.magazine].feed==='hk556'?HK556_MAG_METAL:HK_MAG_METAL;
   assert.equal(mag[0].material,expected,p.id+' dark steel magazine');
   assert.equal(carriedMagazineProfile(p.parts.magazine)?.material,
    expected.color.getHex(),p.id+' carried magazine shares current finish');
