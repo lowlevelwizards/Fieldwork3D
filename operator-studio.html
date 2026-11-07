@@ -64,7 +64,7 @@
 <label>RIM HIGHLIGHT
 <select id="studioLightRim" aria-label="Graphic rim highlight">
 <option value="off">Off</option>
-<option value="dual">Metal, weapons + bare helmets</option>
+<option value="dual">Material glints · metal, fabric and skin</option>
 </select></label>
 <label>HEIGHT SHADING
 <select id="studioLightGradient" aria-label="Gradient on every solid item">
@@ -85,6 +85,26 @@
 <label id="studioRimAmountWrap" class="studio-light-slider">RIM OPACITY
 <output id="studioRimAmountValue" for="studioRimAmount">80%</output>
 <input id="studioRimAmount" type="range" min="0" max="1" step="0.01" value="0.80" aria-label="White rim opacity"/></label>
+<label id="studioRimWidthWrap" class="studio-light-slider">GLINT THICKNESS
+<output id="studioRimWidthValue" for="studioRimWidth">140%</output>
+<input id="studioRimWidth" type="range" min="0.5" max="2.5" step="0.05" value="1.4" aria-label="Glint thickness"/></label>
+<label id="studioRimCoverageWrap" class="studio-light-slider">SINGLE-EDGE COVERAGE
+<output id="studioRimCoverageValue" for="studioRimCoverage">30%</output>
+<input id="studioRimCoverage" type="range" min="0.1" max="0.8" step="0.05" value="0.3" aria-label="Glint length along one edge"/></label>
+<label id="studioRimFabricWrap" class="studio-light-slider">CLOTH CREAM OPACITY
+<output id="studioRimFabricValue" for="studioRimFabric">20%</output>
+<input id="studioRimFabric" type="range" min="0" max="0.5" step="0.01" value="0.20" aria-label="Fabric cream highlight opacity"/></label>
+<label id="studioRimSkinWrap" class="studio-light-slider">SKIN WARMTH OPACITY
+<output id="studioRimSkinValue" for="studioRimSkin">28%</output>
+<input id="studioRimSkin" type="range" min="0" max="0.6" step="0.01" value="0.28" aria-label="Skin warm highlight opacity"/></label>
+<label id="studioLightAzimuthWrap" class="studio-light-slider">KEY LIGHT ORBIT
+<output id="studioLightAzimuthValue" for="studioLightAzimuth">0°</output>
+<input id="studioLightAzimuth" type="range" min="-180" max="180" step="5" value="0" aria-label="Rotate studio key light"/></label>
+<label id="studioRimMaskWrap">GLINT MASK
+<select id="studioRimMask" aria-label="Highlight mask debug">
+<option value="off">Normal materials</option>
+<option value="on">Show eligible pixels</option>
+</select></label>
 </div>
 <div class="studio-light-lab-actions">
 <button id="studioLightShowWeapon" type="button">PREVIEW WITH WEAPON</button>
@@ -94,7 +114,7 @@
 <button id="studioLightReset" type="button">RESET LIGHTING</button>
 </div>
 <output id="studioLightLabStatus" aria-live="polite">Adjust a setting to update the operator immediately.</output>
-<small>Preview only · not saved. An opaque, near-white highlight appears on lit edges of metal, weapons and bare helmet shells. It stays on the original surface and disappears on unlit faces; fabric remains matte.</small>
+<small>Preview only · not saved. Localized near-white metal glints, low-opacity cream textile highlights, and warm skin edge lighting stay on the original surfaces. Rotate the key to inspect glints, or reveal their mask. Does not change mission lighting.</small>
 <details id="studioRenderDiagnostics" class="studio-render-diagnostics">
 <summary>RENDER QUALITY / SHADOW DIAGNOSTICS <small>RELOADS PREVIEW</small></summary>
 <div class="studio-light-lab-grid">
