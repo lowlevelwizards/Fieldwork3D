@@ -160,3 +160,33 @@ button{cursor:pointer}
  .arsenal-wb-option-list{grid-template-columns:repeat(2,minmax(0,1fr))}
  .arsenal-wb-head .arsenal-wb-actions{flex-wrap:wrap;justify-content:flex-end}
 }
+
+/* Stage 6 saved recipe management. Keep actions compact and secondary. */
+.arsenal-saved-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:6px}
+.arsenal-saved-actions[hidden],.arsenal-rename-box[hidden]{display:none}
+.arsenal-saved-actions button,.arsenal-rename-box button{min-height:40px;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ background:var(--fw-panel-deep);color:var(--fw-text);padding:8px 11px;
+ font:700 11px var(--fw-font-action)}
+.arsenal-rename-box{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.arsenal-rename-box input{flex:1;min-width:140px;background:var(--fw-panel-deep);
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ color:var(--fw-text);padding:9px;min-height:44px}
+.arsenal-saved-feedback,.arsenal-wb-save-feedback{color:var(--fw-text-muted);font-size:11px;margin:0}
+.arsenal-wb-save{background:var(--fw-sage);color:var(--fw-bg)}
+.arsenal-wb-save-dialog{max-width:min(420px,calc(100vw - 30px));width:100%;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-md);
+ padding:20px;background:var(--fw-panel);color:var(--fw-text)}
+.arsenal-wb-save-dialog::backdrop{background:#050c0bbf}
+.arsenal-wb-save-dialog h3{font:800 24px var(--fw-font-display);margin:0 0 15px}
+.arsenal-wb-save-dialog label{display:flex;flex-direction:column;gap:7px;font:700 12px var(--fw-font-action)}
+.arsenal-wb-save-dialog input{padding:11px 12px;color:var(--fw-text);
+ background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm);font:600 15px var(--fw-font-action)}
+.arsenal-wb-save-actions{display:flex;gap:8px;margin-top:18px}
+
+/* Stage 7b: single contextual Apply control, priced by the authoritative Campaign adapter. */
+.arsenal-wb-apply{background:var(--fw-sage);border-color:var(--fw-sage);color:var(--fw-bg)}
+.arsenal-wb-apply:disabled{opacity:.45;cursor:not-allowed}
+.arsenal-wb-apply-quote{font:650 12px var(--fw-font-action);
+ color:var(--fw-brass);margin:0}
