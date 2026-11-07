@@ -11,7 +11,7 @@ permissions:
   contents: read
 jobs:
   unified-poses-mobile:
-    if: ${{ startsWith(github.head_ref, 'feature/operator-lab-unified-poses-') }}
+    if: ${{ startsWith(github.head_ref, 'feature/operator-lab-unified-poses-') || startsWith(github.head_ref, 'feature/breach-stock-contact-authored-transitions-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:

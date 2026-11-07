@@ -13,6 +13,17 @@ const stockCount=(n:unknown)=>typeof n==='number'&&Number.isInteger(n)&&n>0?
 export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
  const existing=readSerializedWeapons(c.inventory.serializedWeapons);
  const used=new Set<string>();
+ // Existing active operators have first claim on their own matching serials.
+ // Reserve those claims before assigning any operator without a valid preferred
+ // gun; otherwise an earlier weapon swap can steal a later operator's gun.
+ const reserved=new Map<string,string>();
+ const claimed=new Set<string>();
+ for(const operator of c.operators){
+  if(!active(operator)||typeof operator.weaponSerialId!=='string')continue;
+  const weapon=existing.find(w=>w.id===operator.weaponSerialId&&
+   w.platform===operator.weapon&&!claimed.has(w.id));
+  if(weapon){reserved.set(operator.id,weapon.id);claimed.add(weapon.id);}
+ }
  const kept:SerializedWeapon[]=[];
  let sequence=0;
  const nextId=()=>{
@@ -23,14 +34,15 @@ export function reconcileCampaignWeaponOwnership(c:CampaignState):CampaignState{
  };
  const take=(platform:WeaponId,preferred?:string|null)=>{
   const match=existing.find(w=>w.platform===platform&&!used.has(w.id)&&
-    w.id===preferred)??existing.find(w=>w.platform===platform&&!used.has(w.id));
+    w.id===preferred)??existing.find(w=>w.platform===platform&&!used.has(w.id)&&
+    !claimed.has(w.id));
   const weapon=match??newSerializedWeapon(nextId(),platform,c.day);
   used.add(weapon.id);kept.push(weapon);
   return weapon.id;
  };
  const operators=c.operators.map(o=>{
   if(!active(o))return {...o,weaponSerialId:null};
-  return {...o,weaponSerialId:take(o.weapon,o.weaponSerialId)};
+  return {...o,weaponSerialId:take(o.weapon,reserved.get(o.id))};
  });
  const counts={carbine:0,smg:0,rifle:0,shotgun:0};
  for(const platform of PLATFORMS){

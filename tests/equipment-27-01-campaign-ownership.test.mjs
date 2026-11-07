@@ -12,6 +12,7 @@ test('27.01 new Campaign has four physical serials and no unowned guns',()=>{
 });
 test('27.01 purchase, swap and return preserve the exact serial',()=>{
  const c=newCampaign(42),old=c.operators[0].weaponSerialId;
+ const otherSerials=new Map(c.operators.slice(1).map(o=>[o.id,o.weaponSerialId]));
  const purchased=buyWeapon(c,'smg');
  assert.equal(purchased.inventory.weapons.smg,1);
  const swapped=equipCampaignWeapon(purchased,'rook','smg');
@@ -21,6 +22,9 @@ test('27.01 purchase, swap and return preserve the exact serial',()=>{
  assert.deepEqual(weaponOwnershipIssues(swapped),[]);
  const back=equipCampaignWeapon(swapped,'rook','carbine');
  assert.equal(back.operators[0].weaponSerialId,old);
+ for(const operator of back.operators.slice(1))
+  assert.equal(operator.weaponSerialId,otherSerials.get(operator.id),
+   'an earlier operator swap must not steal '+operator.id+'\'s gun');
  assert.deepEqual(weaponOwnershipIssues(back),[]);
 });
 test('27.01 pre-serial Campaign migrations are repeatable and conserve stock',()=>{
