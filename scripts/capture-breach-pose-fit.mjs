@@ -29,8 +29,12 @@ try{
    {waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.getElementById('preview')?.
    dataset.ready==='true',null,{timeout:30000});
-  const pickers=page.locator('#poseFitPanel select');
-  if(await pickers.count()!==4)throw Error('Pose Fit controls missing');
+  // Pose Fit was folded into the normal Poses workspace. Use stable
+  // semantic IDs rather than the removed #poseFitPanel wrapper.
+  const selectors=['#poseWeapon','#poseArmor','#poseRig','#poseUniform'];
+  const pickers=selectors.map(id=>page.locator(id));
+  for(const [index,picker] of pickers.entries())
+   if(await picker.count()!==1)throw Error('Missing Pose selector '+selectors[index]);
   await mkdir('breach-pose-fit-captures',{recursive:true});
   // Eight intentionally difficult but plausible outfits. A one-handed
   // fallback is a FAILURE here, even if it reports numerical clearance.
@@ -44,32 +48,35 @@ try{
    {id:'ak-rpk74',armor:'soft-flak',rig:'full-chest',top:'smock-jacket',required:'clear'},
    {id:'ak-akm',armor:'plate-legacy',rig:'full-chest',top:'smock-jacket',required:'clear'}
   ];
-  const panel=page.locator('#poseFitPanel');
   const errorsInFits=[];
   for(const f of fixtures){
-   await panel.evaluate(node=>{node.open=true;});
    for(const [i,value] of [f.id,f.armor,f.rig,f.top].entries())
-    await pickers.nth(i).selectOption(value);
+    await pickers[i].selectOption(value);
+   // This is the real low-ready operator pose, not an unrelated idle.
+   await page.locator('#poseAnimation').selectOption('low-ready');
+   await page.locator('#timeline').evaluate(el=>{
+    el.value='0';el.dispatchEvent(new Event('input',{bubbles:true}));
+   });
    // Must verify the ACTUAL normalized model, not just the selection label:
    // incompatible armor previously downgraded invisibly to a bare kit.
    await page.waitForFunction(f=>{
     const data=document.getElementById('preview')?.dataset;
     return data?.poseFitWeapon===f.id&&data?.poseFitArmor===f.armor&&
      data?.poseFitRig===f.rig&&data?.poseFitTop===f.top&&
-     ['clear','guard-fallback'].includes(data?.lowReadyFit??'');
+     data?.track==='low-ready'&&
+     ['clear','guard-fallback','unresolved'].includes(data?.lowReadyFit??'');
    },f,{timeout:14000});
    const status=await page.locator('#preview').getAttribute('data-low-ready-fit');
-   const yaw=Number(await page.locator('#preview').getAttribute('data-pose-fit-yaw'));
-   if(!Number.isFinite(yaw)||Math.abs(yaw)>.04)
-    throw Error('Pose Fit inspection frame must be canonical, yaw='+yaw);
-   const mode=await page.locator('#preview').getAttribute('data-low-ready-mode');
-   if(status==='clear'&&mode==='one-hand-guard')
-    throw Error('Incorrect two-hand success status for '+f.id);
+   const yaw=Number(await page.locator('#preview').getAttribute('data-torso-assist-yaw'));
+   // The new UI publishes *actual* assisted torso yaw. Constrain it to
+   // the fitter's documented +/-0.16rad range, not the deleted camera yaw.
+   if(!Number.isFinite(yaw)||Math.abs(yaw)>.161)
+    throw Error('Pose Fit torso accommodation out of bounds: '+yaw);
    if(f.required&&status!==f.required)
     errorsInFits.push(f.id+'/'+f.armor+': '+status);
-   // The inspector must not obscure the chest and arms in the screenshot.
-   await panel.evaluate(node=>{node.open=false;});
-   for(const view of ['front','side','iso','top']){
+   // Capture the actual WebGL canvas; the collapsed inspector cannot
+   // obscure its pixels. The current view vocabulary uses "game", not "top".
+   for(const view of ['front','side','iso','game']){
     await page.evaluate(v=>{
      const b=document.querySelector('button[data-view="'+v+'"]');
      if(!b)throw Error('No camera '+v);

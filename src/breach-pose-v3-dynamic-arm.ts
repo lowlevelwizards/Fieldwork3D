@@ -37,6 +37,10 @@ export type DynamicArmFit={
  * Never do an exhaustive 24-angle search on every operator frame. */
 export const MAX_DYNAMIC_ARM_CANDIDATES=12;
 const MINIMAL_CANDIDATES=6;
+// Candidate thresholds are constants, not fresh arrays in each arm solve.
+const AIM_SOFT_BUDGETS=Object.freeze([1,1.35] as const);
+const FLEX_SOFT_BUDGETS=Object.freeze(
+ [1,1.35,LOW_READY_CONTACT_LIMITS.maximumSoftScale] as const);
 function ringPoles(shoulder:THREE.Vector3,wrist:THREE.Vector3){
  const axis=wrist.clone().sub(shoulder).normalize();
  const ref=new THREE.Vector3(0,-1,0);
@@ -55,6 +59,18 @@ function ringPoles(shoulder:THREE.Vector3,wrist:THREE.Vector3){
 }
 export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
  const {shoulder,wrist,side,mode,envelope,referenceBend}=req;
+ // Unreachable wrists are common at doors and during contact hand-offs.
+ // Report the same single candidate, but do not build six elbow poles,
+ // geometrical offsets and soft-budget arrays first.
+ if(wrist.distanceTo(shoulder)>19.92){
+  const pose=solveTwoBone(shoulder,wrist,10,10,req.preferredPole,ARM_LIMITS);
+  const report=evaluateArmConstraint({shoulder,arm:pose,side,
+   envelope,mode,softScale:1,
+   allowReloadOverlap:req.allowReloadOverlap,
+   allowVisualOverlap:req.allowVisualOverlap});
+  return {status:'unresolved',solution:null,report,
+   candidates:1,evaluations:1,softScale:1,reason:'out-of-reach'};
+ }
  const firingTuck=side===1&&(mode==='carry'||mode==='aim');
  const seedPoles=[
   req.preferredPole.clone(),
@@ -67,8 +83,7 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
    return new THREE.Vector3(p.x,p.y,p.z);
   })
  ];
- const budgets=mode==='aim'?[1,1.35]:
-  [1,1.35,LOW_READY_CONTACT_LIMITS.maximumSoftScale];
+ const budgets=mode==='aim'?AIM_SOFT_BUDGETS:FLEX_SOFT_BUDGETS;
  let evaluations=0,firstReport:ArmConstraintReport|null=null;
  let bestInvalid:ArmConstraintReport|null=null,lowestFailure=Infinity;
  const evaluate=(poles:readonly THREE.Vector3[],baseCount:number):
@@ -115,18 +130,6 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
   }
   return null;
  };
- const outOfReach=wrist.distanceTo(shoulder)>19.92;
- // Avoid dozens of expensive box-intersection checks for a target that a
- // fixed-length arm mathematically cannot reach.
- if(outOfReach){
-  const pose=solveTwoBone(shoulder,wrist,10,10,seedPoles[0],ARM_LIMITS);
-  const report=evaluateArmConstraint({shoulder,arm:pose,side,
-   envelope,mode,softScale:1,
-   allowReloadOverlap:req.allowReloadOverlap,
-   allowVisualOverlap:req.allowVisualOverlap});
-  return {status:'unresolved',solution:null,report,
-   candidates:1,evaluations:1,softScale:1,reason:'out-of-reach'};
- }
  const found=evaluate(seedPoles,MINIMAL_CANDIDATES);
  if(found)return found;
  // Unusual armor and action targets may need an elbow bend plane that is

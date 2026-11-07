@@ -26,8 +26,13 @@ test('178: passive pose hysteresis avoids chattering but never blocks danger',()
 });
 test('178: live and shot-time barrel use same close-range selection criteria',()=>{
  const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
+ const director=readFileSync(new URL('../src/breach-pose-director.ts',import.meta.url),'utf8');
  const muzzle=readFileSync(new URL('../src/breach-muzzle.ts',import.meta.url),'utf8');
- assert.match(rig,/intent:p.handlingIntent,threatRange:p.threatRange/);
+ const transition=readFileSync(new URL('../src/breach-pose-transition-director.ts',import.meta.url),'utf8');
+ // Handling selection moved from the giant rig into the pure director.
+ // Test that the rig delegates rather than duplicating the same criteria.
+ assert.match(rig,/directOperatorPose\(p,/);
+ assert.match(director,/intent:p.handlingIntent,threatRange:p.threatRange/);
  assert.match(muzzle,/threatRange:p.threatRange,weapon:p.weapon/);
- assert.match(rig,/fromWeapon:\{origin:r.weapon.position.clone\(\)/);
+ assert.match(transition,/fromWeapon:\{origin:r.weapon.position.clone\(\)/);
 });

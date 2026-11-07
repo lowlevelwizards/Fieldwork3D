@@ -7,16 +7,12 @@ import {canonicalRootOrientation,LEGACY_FRAME_YAW,
   createCanonicalAttachment} from './operator-axis-convention.ts';
 import {neutralMannequinHipRise,neutralMannequinWrist,
  neutralMannequinElbowPole} from './operator-mannequin-pose.ts';
-import {alignSegment,solveTwoBone,ARM_LIMITS,LEG_LIMITS,
-  intersectsTorso} from './breach-ik.ts';
-import {armorArmIntrusion,armorElbowPole}
- from './breach-arm-armor-clearance.ts';
+import {alignSegment,solveTwoBone,LEG_LIMITS} from './breach-ik.ts';
 import {idleLifeAt} from './breach-idle-life.ts';
 import {lowReadyFamilyFit,lowReadyElbowPole}
  from './breach-low-ready-family-fit.ts';
-import {solveCoupledLowReady,type CoupledLowReadySolution}
- from './breach-coupled-low-ready.ts';
-import {poseClearanceEnvelope,evaluateSleeveArmorContact} from './breach-pose-clearance-envelope.ts';
+import type {CoupledLowReadySolution} from './breach-coupled-low-ready.ts';
+import {poseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
 import {interpolateWeaponCarry,lowReadyBlendPhase}
  from './breach-low-ready-transition.ts';
 import {createOperatorPoseScratch,type OperatorPoseScratch}
@@ -42,15 +38,16 @@ import {choreographV4ReloadWeapon,reloadMechanismFor,
  v4ReloadControlPose}
  from './breach-reload-performance.ts';
 import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
-import {resolveOperatorActionState} from './breach-pose-action-state.ts';
+import {directOperatorPose,planUpperBodyStrategy} from './breach-pose-director.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
-import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
-import {chooseV3SupportGrip} from './breach-pose-v3-support-grip.ts';
-import {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
+import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,
+ cachedSupportUpperBody,solveUnifiedFallbackArm} from './breach-unified-upper-body.ts';
+import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
-import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
-import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
-  from './breach-handling-transition.ts';
+import type {HandlingProfile} from './breach-handling-profiles.ts';
+import type {HandlingTransition} from './breach-handling-transition.ts';
+import {sampleHandlingTransition,sampleCarryTransition}
+ from './breach-pose-transition-director.ts';
 import {fallAngles,hitStagger,type FallPose,type WoundRegion}
   from './breach-wounds.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
@@ -91,7 +88,7 @@ import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
 import {weaponPresentationSockets} from './breach-weapon-presentation.ts';
 import {resolveWeaponAssembly,sameWeaponConfiguration,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
-import {weaponGrips,handlingPose,clampReach,
+import {weaponGrips,clampReach,
   fitWeaponPose,type WeaponFit,type Handling,type HandlingIntent}
   from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
@@ -107,6 +104,8 @@ export type OperatorPose={
   poseV3StrictContact?:boolean;
   /** V4 rifle, hand, magazine and controls; enabled for live reloads. */
   poseV4ReloadPreview?:boolean;
+  /** False in live gameplay: skip Lab-only debug arrays and snapshots. */
+  poseDiagnostics?:boolean;
   /** Opt-in Lab reload corridor comparison; never read by game simulation. */
   poseV3ReloadCorridor?:V3ReloadCorridorProfile;
   /** B19 fixed-profile offline handling audition; only read in V3 Lab. */
@@ -518,40 +517,19 @@ const DOWNED_TINT=new THREE.Color(0x555c57);
 /** Outfit, headwear and material maps are static between kit changes.
  * Keep a per-rig snapshot separate from motion/IK, which still runs on
  * every frame. Weak keys release disposed operator preview rigs. */
-const appearanceState=new WeakMap<OperatorRig,{key:string;downed:boolean}>();
+const appearanceState=new WeakMap<OperatorRig,{
+ key:string;downed:boolean;outfit:ReturnType<typeof resolvedWardrobe>
+}>();
 const poseMath=new WeakMap<OperatorRig,OperatorPoseScratch>();
-/** Results are keyed by visible equipment, authored weapon, and the actual
- * shoulder/yaw frame. No pose candidate search runs on every rendered frame. */
-const coupledIdleCache=new WeakMap<OperatorRig,{
- key:string;solution:CoupledLowReadySolution|null}>();
-/** Identical equipment and pose frames share a fitted solution. Limit
- * memory and avoid repeating a large cold search for every enemy/preview.
- * Solutions are only read/copied by the rig, never mutated in place. */
-const sharedCoupledPoseCache=new Map<string,CoupledLowReadySolution|null>();
-const MAX_SHARED_COUPLED_POSES=80;
-type CarryBlendState={
- lastCoupled:boolean;lastFit:WeaponFit|null;lastWeapon:WeaponId|null;
- from:WeaponFit|null;fromBends:[THREE.Vector3,THREE.Vector3]|null;
- started:number;duration:number;lastSeconds:number;
-};
-/** Visual-only state for live transitions. Deterministic replay never
- * consumes a previous, unrecorded render frame. */
-const carryBlendStates=new WeakMap<OperatorRig,CarryBlendState>();
 /** Unmodified turn targets are the ONLY history used for live yaw smoothing.
  * The rendered chest/head also receive procedural and fitting offsets, so
  * smoothing from their final Euler angles feeds those offsets back every frame.
  * Keep the base turn state separate and reset it on seek/spawn discontinuities.
  */
 const baseTurnAngles=new WeakMap<OperatorRig,{chest:number;head:number}>();
-/** One exact coordinated result per actor. Do not quantize aim or torso
- * angles: a rounded cache key can turn continuous motion into discrete pops.
- * The pure solver's local-space result is reusable only for identical inputs.
- */
-const coordinatedPoseCache=new WeakMap<OperatorRig,{
-  key:string;result:ReturnType<typeof solveV3CoordinatedPose>
-}>();
 
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
+  const diagnosticsEnabled=p.poseDiagnostics!==false;
   // Reconstruct source visibility from the authoritative inventory for
   // EVERY timestamp. A previous render must never make a pickup socket
   // disappear when replay seeks to the same or an earlier frame.
@@ -580,6 +558,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
   const previousAppearance=appearanceState.get(r);
   const appearanceChanged=previousAppearance?.key!==appearanceKey;
+  // Resolve once per appearance fingerprint, including in-place Studio edits.
+  // No repeated wardrobe normalization in coupled, coordinated or IK paths.
+  const clothing=appearanceChanged?
+    resolvedWardrobe(p.wardrobe,p.equipment):previousAppearance!.outfit;
   if(appearanceChanged){
   // Stable career-based presentation, never changing physical collision or IK.
   const identity=p.appearanceSeed??0;
@@ -694,7 +676,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   ])r.colors.set(material,material.color.clone());
   // Clothing coverage changes materials on existing articulated limbs only.
   // The bones, solved knee/elbow positions and planted feet stay identical.
-  const clothing=resolvedWardrobe(p.wardrobe,p.equipment);
   const sleeveState=p.wardrobe?.sleeveState??'unrolled';
   const bareForearm=clothing.top==='base-layer'||
     (sleeveState==='rolled'||sleeveState==='cuffed');
@@ -1000,7 +981,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(previousAppearance){
     previousAppearance.key=appearanceKey;
     previousAppearance.downed=downed;
-  }else appearanceState.set(r,{key:appearanceKey,downed});
+    previousAppearance.outfit=clothing;
+  }else appearanceState.set(r,{key:appearanceKey,downed,outfit:clothing});
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
   const buckle=p.down&&!p.surrender?smooth(downProgress/.48):0;
@@ -1047,48 +1029,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     kickMotion(kickAge):null;
   const bash=contactReaction(p.seconds-(p.lastBashAt??-100),
     p.bashRole??null,!!p.blocked);
-  // All V3/V4 action windows and hand ownership are one pure decision.
-  const actionState=resolveOperatorActionState(
-    p,downProgress,bash.active&&p.bashRole==='push');
+  // One pure director owns the visual handling choice and action targets.
+  // Explicit previous-handling inputs preserve existing passive hysteresis.
+  const {handling,action:actionState}=directOperatorPose(p,{
+    moving,downProgress,pushActive:bash.active&&p.bashRole==='push',
+    receivingBash:bash.active&&p.bashRole==='receive',
+    previousHandling:r.lastHandling??undefined,
+    previousHandlingAt:r.lastHandlingAt
+  });
   const {treatmentActive,reloadActive,reloadProgress,reloadMode,
     throwAge,throwActive,doorAge,doorActive,handOwners}=actionState;
-  const handling=p.treatmentActive?'low':p.handlingOverride??handlingPose({
-    aim:p.aimBlend??(p.aiming?1:0),moving,
-    obstruction:!!p.obstruction||
-      (bash.active&&p.bashRole==='receive'),
-    friendlyNear:!!p.friendlyNear,
-    intent:p.handlingIntent,threatRange:p.threatRange,weapon:p.weapon,
-    previous:p.deterministic?undefined:r.lastHandling??undefined,
-    heldFor:p.seconds-r.lastHandlingAt
-  });
-  const passiveBlend=!p.deterministic&&!p.handlingOverride&&
-    !p.aiming&&!p.firing&&!p.down&&!p.surrender;
-  if(!p.handlingOverride&&handling!==r.lastHandling){
-    if(passiveBlend&&r.lastHandling){
-      r.autoHandling={from:r.lastHandling,to:handling,alpha:0,
-        at:p.seconds,
-        fromProfile:r.handlingProfile??handlingProfile(r.lastHandling,p.weapon),
-        fromWeapon:{origin:r.weapon.position.clone(),
-          rotation:r.weapon.rotation.clone()}};
-    }else r.autoHandling=null;
-    r.lastHandling=handling;r.lastHandlingAt=p.seconds;
-  }
-  const auto=r.autoHandling&&passiveBlend?{
-    ...r.autoHandling,alpha:smoothHandling(
-      (p.seconds-r.autoHandling.at)/.24)}:undefined;
-  if(!passiveBlend)r.autoHandling=null;
-  if(auto&&auto.alpha>=1)r.autoHandling=null;
-  const activeTransition=p.handlingTransition??auto;
-  // Lab stance-to-stance switching must solve the authored destination
-  // before blending. Live/replay and action tracks retain existing authority.
-  const authoredLabSwitch=!!p.poseV3Preview&&
-    !!p.handlingTransition?.authoredFrom&&!!p.handlingOverride&&
-    !p.down&&!p.surrender&&p.reload<=0;
-  const profile=activeTransition?
-    blendedHandlingProfile(activeTransition.from,
-      activeTransition.to,activeTransition.alpha,p.weapon,
-      activeTransition.fromProfile):
-    handlingProfile(handling,p.weapon);
+  // The transition director is the sole owner of handling history and
+  // interpolation; the rig remains only the final pose renderer.
+  const {active:activeTransition,authoredLabSwitch,profile}=
+    sampleHandlingTransition(r,p,handling);
   // Explicit laboratory stances can shift the chest/weight. Live combat
   // retains the authoritative shot-time muzzle/chest transform until the
   // equivalent shot-time balance transform is integrated.
@@ -1389,53 +1343,29 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // weapon with that fit instead of abruptly switching to legacy IK.
   // Do not use the coupled idle *arm* solution during the active reload:
   // the magazine hand is released and needs independent action IK.
-  const previewReloadSeed=p.poseV3Preview===true&&
-    p.reload>0&&p.reloadDuration>0;
-  const eligible=!!coupledConfig?.build&&handling==='low'&&
-    p.posture==='stand'&&physicalSpeed<.45&&
-    Math.abs(p.turning)<.28&&!p.down&&!p.surrender&&!p.firing&&
-    !p.aiming&&(p.aimBlend??0)<.02&&
-    (p.reload<=0||previewReloadSeed)&&
-    !p.treatmentActive&&(!activeTransition||authoredLabSwitch)&&
-    p.seconds-p.lastDoorAt>1.2&&p.seconds-p.lastThrowAt>.85&&
-    (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
+  const upperBodyPlan=planUpperBodyStrategy(p,{
+    handling,physicalSpeed,hasModularBuild:!!coupledConfig?.build,
+    activeTransition:!!activeTransition,authoredLabSwitch,
+    interactionWindow:actionState.interactionWindow
+  });
+  const {previewReloadSeed,coupledEligible:eligible}=upperBodyPlan;
+  const poseEnvelope=upperBodyPlan.envelopeRequired?
+    poseClearanceEnvelope(clothing.armorStyle,clothing.rigStyle,clothing.top):null;
   let coupled:CoupledLowReadySolution|null=null;
   let reloadSeed:CoupledLowReadySolution|null=null;
   if(eligible&&coupledConfig){
-    const look=resolvedWardrobe(p.wardrobe,p.equipment);
+    const look=clothing;
     const shoulders:[THREE.Vector3,THREE.Vector3]=[
       shoulderFor(0),shoulderFor(1)];
     const solveAtTorsoYaw=(assistYaw:number)=>{
       // Offset chest yaw and subtract it from chest-local weapon yaw:
       // the physical shoulder axes and weapon/hand contacts stay coherent.
       const localYaw=relativeYaw-assistYaw;
-      const key=JSON.stringify([p.weapon,coupledConfig.build,
-        coupledConfig.slots,look.top,look.armorStyle,look.rigStyle,
-        poseWeight,Number(localYaw.toFixed(4)),
-        // Never reuse a forgiving result in the strict audit (or vice
-        // versa) when the same model and outfit are scrubbed in place.
-        !!p.poseV3Preview&&!p.poseV3StrictContact,
-        shoulders.map(v=>v.toArray().map(n=>Number(n.toFixed(3))))]);
-      const cache=coupledIdleCache.get(r);
-      if(cache?.key===key)return cache.solution;
-      let result:CoupledLowReadySolution|null;
-      if(sharedCoupledPoseCache.has(key))
-        result=sharedCoupledPoseCache.get(key)??null;
-      else{
-        result=solveCoupledLowReady({weapon:p.weapon,
-          configuration:coupledConfig,
-          armor:poseClearanceEnvelope(
-            look.armorStyle,look.rigStyle,look.top),
-          shoulders,nominalYaw:localYaw,
-          allowVisualOverlap:!!p.poseV3Preview&&!p.poseV3StrictContact});
-        sharedCoupledPoseCache.set(key,result);
-        if(sharedCoupledPoseCache.size>MAX_SHARED_COUPLED_POSES){
-          const oldest=sharedCoupledPoseCache.keys().next().value;
-          if(oldest!==undefined)sharedCoupledPoseCache.delete(oldest);
-        }
-      }
-      if(assistYaw===0)coupledIdleCache.set(r,{key,solution:result});
-      return result;
+      return cachedCoupledUpperBody(r,{
+        weapon:p.weapon,configuration:coupledConfig,
+        envelope:poseEnvelope!,shoulders,localYaw,poseWeight,
+        allowVisualOverlap:!!p.poseV3Preview&&!p.poseV3StrictContact
+      },assistYaw===0).result;
     };
     // Only the explicit Lab query may audition body/weapon coupling.
     // Normal gameplay, replay and authoritative aim retain original yaw.
@@ -1446,7 +1376,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     coupled=selected?.solution??null;
     const torsoAssistYaw=selected?.yaw??0;
     if(previewAssist)r.chest.rotation.y+=torsoAssistYaw;
-    r.root.userData.lowReadyPoseReport={
+    r.root.userData.lowReadyPoseReport=diagnosticsEnabled?{
       status:coupled?.status??'unresolved',
       mode:coupled?.mode??'unresolved',weapon:p.weapon,
       fittingYaw:relativeYaw-torsoAssistYaw,torsoAssistYaw,
@@ -1458,7 +1388,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       elbowLeft:coupled?.arms[0].joint.toArray()??null,
       elbowRight:coupled?.arms[1].joint.toArray()??null,
       supportFraction:coupled?.supportFraction??null,
-      candidates:coupled?.candidates??0};
+      candidates:coupled?.candidates??0}:null;
     if(previewReloadSeed){
       // Preserve actual firearm contacts, but never keep the static
       // support elbow during the released-hand reload animation.
@@ -1500,23 +1430,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Lab-only: a family rifle may be gripped farther back on its *actual*
   // handguard/magwell. This is a contact change, never a muzzle transform.
   // Do not apply to shot-time ballistics or alter an approved coupled pose.
-  if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
-     !p.firing&&!p.down&&!p.surrender&&p.reload<=0){
-    const look=resolvedWardrobe(p.wardrobe,p.equipment);
-    const choice=chooseV3SupportGrip({
+  if(!coupled&&upperBodyPlan.supportEligible&&coupledConfig?.build){
+    const supportSearch=cachedSupportUpperBody(r,{
       weapon:p.weapon,configuration:coupledConfig,fit,
       shoulder:shoulderFor(0),firingShoulder:shoulderFor(1),
-      envelope:poseClearanceEnvelope(
-        look.armorStyle,look.rigStyle,look.top),
+      envelope:poseEnvelope!,
       mode:p.reload>0?'reload':p.aiming||handling==='ads'?
         'aim':'carry'
     });
+    const choice=supportSearch.result;
     fit=choice.fit;
-    r.root.userData.poseV3SupportGrip={
+    r.root.userData.poseV3SupportGrip=diagnosticsEnabled?{
       selected:choice.selected,fraction:choice.fraction,
       quality:choice.quality,candidates:choice.candidates,
-      reason:choice.reason
-    };
+      cached:supportSearch.cached,reason:choice.reason
+    }:null;
   }else r.root.userData.poseV3SupportGrip=null;
   // V3 Stage 6b: rotate the *chest* a few degrees and counter-rotate the
   // rigid weapon into its new local frame. World muzzle, stock, firing grip
@@ -1551,20 +1479,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Preserve the canonical route for all other kits, especially flak AKS74U.
   const legacyAkReload=p.poseV3Preview&&reloadActive&&
     coupledConfig?.build?.family==='ak'&&
-    resolvedWardrobe(p.wardrobe,p.equipment).armorStyle==='plate-legacy';
+    clothing.armorStyle==='plate-legacy';
   const v3MagazinePalm:V3MagazinePalm=p.poseV3Preview?
     (p.poseV3MagazinePalm??'legacy'):'legacy';
   const v3ReloadCorridor:V3ReloadCorridorProfile=p.poseV3Preview?
     (p.poseV3ReloadCorridor??(legacyAkReload?'compact':'canonical')):
     'canonical';
-   if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
-     !p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
-     !actionState.interactionWindow&&!activeTransition){
-    const outfit=resolvedWardrobe(p.wardrobe,p.equipment);
+   if(!coupled&&upperBodyPlan.coordinatedEligible&&coupledConfig?.build){
     const activeReloadSocket=reloadActive?
       weaponPresentationSockets(p.weapon,p.weaponConfiguration):null;
-    const envelope=poseClearanceEnvelope(
-      outfit.armorStyle,outfit.rigStyle,outfit.top);
+    const envelope=poseEnvelope!;
     if(reloadActive)v3ReloadClearanceFront=envelope.front;
     const releaseInputs=reloadActive?{
       fit,lengthScale:data.lengthScale,
@@ -1591,29 +1515,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       !p.poseV3StrictContact;
     const allowVisualOverlap=!!p.poseV3Preview&&!p.firing&&
       !p.poseV3StrictContact;
-    // Exact-input, single-entry memo: unchanged pause/idle samples incur
-    // no repeated sleeve OBB candidate search. Any continuous pose change,
-    // outfit, assembly, action contact or constraint invalidates the result.
-    const coordinatedKey=JSON.stringify([
-      p.weapon,coupledConfig,outfit.armorStyle,outfit.rigStyle,outfit.top,
-      fit.origin.toArray(),fit.rotation.toArray(),
-      fit.stock.toArray(),fit.primary.toArray(),fit.support.toArray(),
-      shoulders.map(v=>v.toArray()),r.chest.rotation.toArray(),
-      releasedTarget?.toArray()??null,constraintMode,
-      allowReloadOverlap,allowVisualOverlap
-    ]);
-    const cached=coordinatedPoseCache.get(r);
-    const cacheHit=cached?.key===coordinatedKey;
-    const result=cacheHit?cached!.result:solveV3CoordinatedPose({
+    // Both expensive fitting strategies are owned by one coordinated
+    // authority; the pose renderer only consumes the selected result.
+    const solve=cachedCoordinatedUpperBody(r,{
       fit,weapon:p.weapon,configuration:coupledConfig,shoulders,
       chestRotation:r.chest.rotation,envelope,mode:constraintMode,
       releasedSupportTarget:releasedTarget,
       allowReloadOverlap,allowVisualOverlap
     });
-    if(!cacheHit)coordinatedPoseCache.set(r,{
-      key:coordinatedKey,result
-    });
-    r.root.userData.poseV3CoordinatedReport={
+    const result=solve.result;
+    const cacheHit=solve.cached;
+    r.root.userData.poseV3CoordinatedReport=diagnosticsEnabled?{
       cached:cacheHit===true,
       status:result.status,yaw:result.yaw,leanX:result.leanX,
       candidates:result.candidates,
@@ -1623,7 +1535,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       relaxedContact:!!result.reports?.some(report=>report.relaxedContact),
       strictContactValid:result.reports?.every(report=>
         report.strictContactValid)??false
-    };
+    }:null;
     if(result.status==='clear'&&result.arms){
       coordinatedDynamic=result;
       fit=result.fit;
@@ -1650,43 +1562,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       coupled=null;coordinatedDynamic=null;
     }
   }
-  let carryTransitionActive=false,carryTransitionAlpha=1;
-  let carryTransitionBends:[THREE.Vector3,THREE.Vector3]|null=null;
-  if(!p.deterministic&&!p.down&&!p.surrender){
-    let bridge=carryBlendStates.get(r);
-    if(!bridge){
-      bridge={lastCoupled:!!coupled,lastFit:null,lastWeapon:null,
-        from:null,fromBends:null,started:p.seconds,duration:.25,
-        lastSeconds:p.seconds};
-      carryBlendStates.set(r,bridge);
-    }
-    if(p.seconds<bridge.lastSeconds-.01||
-       p.seconds-bridge.lastSeconds>1.2||
-       bridge.lastWeapon!==null&&bridge.lastWeapon!==p.weapon){
-      bridge.from=null;bridge.fromBends=null;
-      bridge.lastFit=null;bridge.lastCoupled=!!coupled;
-    }
-    if(bridge.lastFit&&bridge.lastCoupled!==!!coupled){
-      bridge.from=bridge.lastFit;
-      bridge.fromBends=[r.arms[0].bend.clone(),r.arms[1].bend.clone()];
-      bridge.started=p.seconds;
-      bridge.duration=coupled?.34:.22;
-    }
-    bridge.lastCoupled=!!coupled;
-    bridge.lastWeapon=p.weapon;
-    bridge.lastSeconds=p.seconds;
-    if(bridge.from){
-      const alpha=(p.seconds-bridge.started)/bridge.duration;
-      if(alpha>=1){bridge.from=null;bridge.fromBends=null;}
-      else{
-        carryTransitionActive=true;
-        carryTransitionAlpha=lowReadyBlendPhase(alpha);
-        carryTransitionBends=bridge.fromBends;
-        fit=interpolateWeaponCarry(bridge.from,fit,alpha);
-      }
-    }
-    bridge.lastFit=fit;
-  }
+  const carryTransition=sampleCarryTransition(r,p,fit,!!coupled);
+  fit=carryTransition.fit;
+  const carryTransitionActive=carryTransition.active;
+  const carryTransitionAlpha=carryTransition.alpha;
+  const carryTransitionBends=carryTransition.bends;
   r.gripError=fit.contactError;
   r.stockError=fit.stockError;
   // Contact coordinates and visible weapon use one rigid transform.
@@ -1694,7 +1574,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.droppedGun.scale.set(data.lengthScale,1,1);
   r.weapon.rotation.copy(fit.rotation);
   r.weapon.position.copy(fit.origin);
-  if(p.poseV3Preview){
+  if(p.poseV3Preview&&diagnosticsEnabled){
     // Snapshot the actual rendered rigid weapon, including any active
     // partially blended stance. The next Lab tap can retarget from here.
     r.root.userData.presentedWeaponFit={
@@ -1895,17 +1775,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     leftGrip.copy(fit.support).lerp(fullDoorContact,reach);
   }
   // Preview-only evaluation; production continues to use the proven path.
-  const dynamicLook=p.poseV3Preview?
-    resolvedWardrobe(p.wardrobe,p.equipment):null;
-  const dynamicEnvelope=dynamicLook?poseClearanceEnvelope(
-    dynamicLook.armorStyle,dynamicLook.rigStyle,dynamicLook.top):null;
+  const dynamicEnvelope=p.poseV3Preview?poseEnvelope:null;
   const v3DynamicReports:Array<{
     side:string;status:string;reason:string;
     candidates:number;elbowDrop:number;outwardFlare:number;
     hardDepth:number;quality:number;
     reachError:number;violations:string[];
     evaluations:number;softScale:number;
-  }>=[];
+  }>|null=diagnosticsEnabled?[]:null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulder=shoulderFor(i);
@@ -1941,40 +1818,32 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
       continue;
     }
-    // The coupled fitting solver already chose BOTH elbows and the exact
-    // physical wrist contacts in one collision-checked candidate.
-    // Do not re-run per-arm IK and accidentally undo its armor clearance.
-    if(coupled&&!carryTransitionActive&&!p.unarmedPreview){
-      const joint=coupled.arms[i];
-      r.elbowSpread[i]=Math.max(0,sign*(joint.joint.z-shoulder.z));
-      arm.bend.copy(joint.bendPlane);arm.outOfReach=false;
-      alignSegment(arm.upper,shoulder,joint.joint,scratch.sides[i]);
-      alignSegment(arm.lower,joint.joint,joint.effector,scratch.sides[i]);
-      arm.hand.position.copy(joint.effector);
-      arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
-      continue;
-    }
-    // A jointly validated V3 pair owns BOTH elbow placements. Do not run
-    // independent IK again and accidentally undo its clearance selection.
-    if(coordinatedDynamic?.arms&&!carryTransitionActive&&
-       !p.unarmedPreview){
-      const pose=coordinatedDynamic.arms[i];
-      const report=coordinatedDynamic.reports![i];
-      r.elbowSpread[i]=Math.max(0,sign*(pose.joint.z-shoulder.z));
-      arm.bend.copy(pose.bendPlane);
+    // One final writer consumes either approved paired-arm source.
+    // Coupled low-ready wins first (as before), followed by coordinated
+    // V3 arms. Only when neither owns the pair does generic IK run.
+    // No second IK pass may undo a validated elbow/armor solution.
+    const pairedArms=!carryTransitionActive&&!p.unarmedPreview?
+      coupled?.arms??coordinatedDynamic?.arms??null:null;
+    if(pairedArms){
+      const limb=pairedArms[i];
+      r.elbowSpread[i]=Math.max(0,sign*(limb.joint.z-shoulder.z));
+      arm.bend.copy(limb.bendPlane);
       arm.outOfReach=false;
-      alignSegment(arm.upper,shoulder,pose.joint,scratch.sides[i]);
-      alignSegment(arm.lower,pose.joint,pose.effector,scratch.sides[i]);
-      arm.hand.position.copy(pose.effector);
+      alignSegment(arm.upper,shoulder,limb.joint,scratch.sides[i]);
+      alignSegment(arm.lower,limb.joint,limb.effector,scratch.sides[i]);
+      arm.hand.position.copy(limb.effector);
       arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
-      v3DynamicReports.push({
-        side:i===0?'support':'firing',status:'clear',reason:'valid',
-        candidates:6,elbowDrop:report.elbowDrop,
-        outwardFlare:report.outwardFlare,
-        hardDepth:report.hardDepth,quality:report.quality,
-        reachError:0,violations:[],
-        evaluations:6,softScale:coordinatedDynamic.softScales![i]
-      });
+      if(!coupled&&coordinatedDynamic?.arms){
+        const report=coordinatedDynamic.reports![i];
+        v3DynamicReports?.push({
+          side:i===0?'support':'firing',status:'clear',reason:'valid',
+          candidates:6,elbowDrop:report.elbowDrop,
+          outwardFlare:report.outwardFlare,
+          hardDepth:report.hardDepth,quality:report.quality,
+          reachError:0,violations:[],
+          evaluations:6,softScale:coordinatedDynamic.softScales![i]
+        });
+      }
       continue;
     }
     const neutralArms=!!p.unarmedPreview&&!p.down&&!p.surrender;
@@ -2015,27 +1884,27 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         wanted.copy(fromPole.lerp(wanted,
           lowReadyBlendPhase(activeTransition.alpha)));
     }
-    let solved=solveTwoBone(shoulder,wrist,10,10,
-      wanted,ARM_LIMITS,neutralArms?undefined:arm.bend,scratch.arms[i]);
-    let dynamicAccepted=false;
-    if(sourceArm&&dynamicEnvelope&&activeTransition&&
-       activeTransition.alpha<1&&solved.reached){
-      // A continuous two-bone solution can retain the source elbow
-      // without a new candidate search, but never ignore armor contact.
-      dynamicAccepted=evaluateSleeveArmorContact(shoulder,
-        solved.joint,solved.effector,dynamicEnvelope).valid;
-    }
-    if(!dynamicAccepted&&dynamicEnvelope&&!neutralArms&&
-       !p.down&&!p.surrender&&!p.firing){
-      const mode=reloadActive?'reload':p.aiming||handling==='ads'?
-        'aim':reaching||throwActive?'interaction':'carry';
-      const dynamic=solveV3DynamicArm({
-        shoulder,wrist:desired,side:sign as -1|1,mode,
-        envelope:dynamicEnvelope,preferredPole:wanted,
-        allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
-         !p.poseV3StrictContact
-      });
-      v3DynamicReports.push({side:i===0?'support':'firing',
+    const armFit=solveUnifiedFallbackArm({
+      shoulder,wrist,desired,preferredPole:wanted,
+      previousBend:arm.bend,side:sign as -1|1,
+      neutral:neutralArms,down:p.down,surrender:p.surrender,
+      firing:p.firing,
+      sourceContinuity:!!sourceArm&&!!activeTransition&&
+        activeTransition.alpha<1,
+      envelope:dynamicEnvelope,
+      mode:reloadActive?'reload':p.aiming||handling==='ads'?
+        'aim':reaching||throwActive?'interaction':'carry',
+      allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
+        !p.poseV3StrictContact,
+      curatedSupport:!!curatedSupport,familyLow,
+      legacyFront:p.equipment?.slots.armor==='armor-carrier'?9.8:
+        p.equipment?.slots.armor==='armor-soft'?8.8:7.1,
+      scratch,armIndex:i as 0|1
+    });
+    const solved=armFit.solution;
+    if(armFit.dynamic){
+      const dynamic=armFit.dynamic;
+      v3DynamicReports?.push({side:i===0?'support':'firing',
         status:dynamic.status,reason:dynamic.reason,
         candidates:dynamic.candidates,
         elbowDrop:dynamic.report.elbowDrop,
@@ -2045,37 +1914,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         reachError:Math.max(0,desired.distanceTo(shoulder)-19.92),
         violations:[...dynamic.report.reasons],
         evaluations:dynamic.evaluations,softScale:dynamic.softScale});
-      if(dynamic.solution){
-        solved=dynamic.solution;dynamicAccepted=true;
-      }
-    }
-    if(!dynamicAccepted&&!neutralArms&&!p.down&&!p.surrender){
-      // Front-plate clearance must score BOTH sleeve segments. Avoiding just
-      // the elbow point was letting the forearm pass straight through armor.
-      const front=p.equipment?.slots.armor==='armor-carrier'?9.8:
-        p.equipment?.slots.armor==='armor-soft'?8.8:7.1;
-      const score=(candidate:typeof solved)=>armorArmIntrusion(
-        shoulder,candidate.joint,candidate.effector,front)+
-        (intersectsTorso(candidate.joint,.25)?2.5:0);
-      let bestScore=score(solved);
-      if(bestScore>.04){
-        // Prefer a relaxed, downward/outboard AK-specific bend before the
-        // generic plate avoidance candidate. Both retain the real wrist grip.
-        const pole0=curatedSupport?
-          lowReadyElbowPole(shoulder,familyLow,1):
-          armorElbowPole(shoulder,sign as -1|1,0);
-        const retry=solveTwoBone(shoulder,wrist,10,10,
-          P(pole0.x,pole0.y,pole0.z),ARM_LIMITS,arm.bend,
-          scratch.armRetry[i]);
-        const retryScore=score(retry);
-        if(retryScore+.015<bestScore){solved=retry;bestScore=retryScore;}
-        const pole1=armorElbowPole(shoulder,sign as -1|1,1);
-        const alternate=solveTwoBone(shoulder,wrist,10,10,
-          P(pole1.x,pole1.y,pole1.z),ARM_LIMITS,arm.bend,
-          scratch.armFallback[i]);
-        const alternateScore=score(alternate);
-        if(alternateScore+.015<bestScore){solved=alternate;bestScore=alternateScore;}
-      }
     }
     r.elbowSpread[i]=Math.max(0,
       sign*(solved.joint.z-shoulder.z));
@@ -2092,7 +1930,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     arm.hand.rotation.set(0,p.unarmedPreview||p.surrender?0:
       clamp(fit.rotation.y,-1,1),0);
   }
-  r.root.userData.poseV3DynamicReport=p.poseV3Preview?
+  r.root.userData.poseV3DynamicReport=p.poseV3Preview&&diagnosticsEnabled?
     v3DynamicReports:null;
   // AK rock-in is local to the detached magazine and the gripping palm.
   // No mounted mesh, ballistic transform or gameplay magazine state changes.

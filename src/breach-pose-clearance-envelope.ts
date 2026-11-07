@@ -219,61 +219,75 @@ export type SleeveContactResult={
   upperExcess:number;lowerExcess:number;
   blocking:boolean}[];
 };
-const axisX=new THREE.Vector3(1,0,0),
- axisY=new THREE.Vector3(0,1,0),axisZ=new THREE.Vector3(0,0,1);
-const compareAxes=[axisX,axisY,axisZ];
+/** Allocation-free 15-axis sleeve OBB vs equipment AABB.
+ * Same broad-phase, sleeve basis, separating axes and overlap-depth metric
+ * as the previous Three.Vector3 implementation. This is the inner loop of
+ * every equipment-aware elbow candidate evaluation; a temporary Vector3
+ * per tested axis drove significant garbage collection on mobile.
+ */
 function sleeveBoxPenetration(
  a:THREE.Vector3,b:THREE.Vector3,width:number,depth:number,
  volume:PoseBox,trimProximal=0):number{
- const from=a.clone().lerp(b,Math.max(0,Math.min(.3,trimProximal)));
- const delta=b.clone().sub(from),length=delta.length();
+ const t=Math.max(0,Math.min(.3,trimProximal));
+ const fx=a.x+(b.x-a.x)*t,fy=a.y+(b.y-a.y)*t,
+   fz=a.z+(b.z-a.z)*t;
+ const dx=b.x-fx,dy=b.y-fy,dz=b.z-fz;
+ const length=Math.hypot(dx,dy,dz);
  if(length<1e-6)return 0;
- // Conservative cheap broad phase. AABB of the limb centerline expanded
- // by the half-diagonal of its actual blocky sleeve; avoids SAT work for
- // distant side returns and rear attachments.
  const reach=Math.hypot(width,depth)*.5;
- if(Math.max(from.x,b.x)+reach<volume.min.x||
-    Math.min(from.x,b.x)-reach>volume.max.x||
-    Math.max(from.y,b.y)+reach<volume.min.y||
-    Math.min(from.y,b.y)-reach>volume.max.y||
-    Math.max(from.z,b.z)+reach<volume.min.z||
-    Math.min(from.z,b.z)-reach>volume.max.z)return 0;
- const up=delta.clone().divideScalar(length);
- let sideways=axisZ.clone().addScaledVector(up,-axisZ.dot(up));
- if(sideways.lengthSq()<.000001)
-  sideways=axisX.clone().addScaledVector(up,-axisX.dot(up));
- sideways.normalize();
- const front=new THREE.Vector3().crossVectors(sideways,up).normalize();
- const sides=[sideways,up,front];
- const extents=[width*.5,length*.5,depth*.5];
- const center=from.clone().add(b).multiplyScalar(.5);
- const volCenter=new THREE.Vector3(
-  (volume.min.x+volume.max.x)*.5,
-  (volume.min.y+volume.max.y)*.5,
-  (volume.min.z+volume.max.z)*.5);
- const volHalf=[(volume.max.x-volume.min.x)*.5,
-  (volume.max.y-volume.min.y)*.5,
-  (volume.max.z-volume.min.z)*.5];
- const offset=center.sub(volCenter);
- // Face normals and all nine cross axes. A separating axis rejects
- // collision; minimum overlap on the remaining axes estimates depth.
+ if(Math.max(fx,b.x)+reach<volume.min.x||
+    Math.min(fx,b.x)-reach>volume.max.x||
+    Math.max(fy,b.y)+reach<volume.min.y||
+    Math.min(fy,b.y)-reach>volume.max.y||
+    Math.max(fz,b.z)+reach<volume.min.z||
+    Math.min(fz,b.z)-reach>volume.max.z)return 0;
+ // World-space unit arm axis; exactly the same reference Z and X
+ // fallback used by the previous Gram-Schmidt sleeve construction.
+ const ux=dx/length,uy=dy/length,uz=dz/length;
+ let sx=-uz*ux,sy=-uz*uy,sz=1-uz*uz;
+ let sideSq=sx*sx+sy*sy+sz*sz;
+ if(sideSq<.000001){
+  sx=1-ux*ux;sy=-ux*uy;sz=-ux*uz;
+  sideSq=sx*sx+sy*sy+sz*sz;
+ }
+ const sideScale=1/Math.sqrt(sideSq);
+ sx*=sideScale;sy*=sideScale;sz*=sideScale;
+ let bx=sy*uz-sz*uy,by=sz*ux-sx*uz,bz=sx*uy-sy*ux;
+ const bScale=1/Math.hypot(bx,by,bz);
+ bx*=bScale;by*=bScale;bz*=bScale;
+ const hx=width*.5,hy=length*.5,hz=depth*.5;
+ const mx=(fx+b.x)*.5-(volume.min.x+volume.max.x)*.5;
+ const my=(fy+b.y)*.5-(volume.min.y+volume.max.y)*.5;
+ const mz=(fz+b.z)*.5-(volume.min.z+volume.max.z)*.5;
+ const vx=(volume.max.x-volume.min.x)*.5;
+ const vy=(volume.max.y-volume.min.y)*.5;
+ const vz=(volume.max.z-volume.min.z)*.5;
  let minimum=Infinity;
- const consider=(axis:THREE.Vector3)=>{
-  const lengthSq=axis.lengthSq();
-  if(lengthSq<1e-9)return true;
-  const unit=axis.clone().multiplyScalar(1/Math.sqrt(lengthSq));
-  const ra=sides.reduce((v,x,i)=>v+Math.abs(x.dot(unit))*extents[i],0);
-  const rb=compareAxes.reduce((v,x,i)=>v+Math.abs(x.dot(unit))*volHalf[i],0);
-  const overlap=ra+rb-Math.abs(offset.dot(unit));
+ // Project both OBB half-extents onto an arbitrary separating axis.
+ // Normalization only happens for a surviving axis, matching the prior
+ // depth metric while avoiding a normalized vector allocation.
+ const consider=(ax:number,ay:number,az:number):boolean=>{
+  const squared=ax*ax+ay*ay+az*az;
+  if(squared<1e-9)return true;
+  const ra=Math.abs(ax*sx+ay*sy+az*sz)*hx+
+    Math.abs(ax*ux+ay*uy+az*uz)*hy+
+    Math.abs(ax*bx+ay*by+az*bz)*hz;
+  const rb=Math.abs(ax)*vx+Math.abs(ay)*vy+Math.abs(az)*vz;
+  const overlap=ra+rb-Math.abs(ax*mx+ay*my+az*mz);
   if(overlap<=0)return false;
-  minimum=Math.min(minimum,overlap);
+  minimum=Math.min(minimum,overlap/Math.sqrt(squared));
   return true;
  };
- for(const a of [...compareAxes,...sides])if(!consider(a))return 0;
- for(const a of compareAxes)for(const b of sides){
-  const axis=new THREE.Vector3().crossVectors(a,b);
-  if(!consider(axis))return 0;
- }
+ // Three world axes, three sleeve axes, then nine crossed axes.
+ if(!consider(1,0,0)||!consider(0,1,0)||!consider(0,0,1)||
+    !consider(sx,sy,sz)||!consider(ux,uy,uz)||
+    !consider(bx,by,bz))return 0;
+ if(!consider(0,-sz,sy)||!consider(sz,0,-sx)||
+    !consider(-sy,sx,0)||
+    !consider(0,-uz,uy)||!consider(uz,0,-ux)||
+    !consider(-uy,ux,0)||
+    !consider(0,-bz,by)||!consider(bz,0,-bx)||
+    !consider(-by,bx,0))return 0;
  return Number.isFinite(minimum)?minimum:0;
 }
 export function evaluateSleeveArmorContact(

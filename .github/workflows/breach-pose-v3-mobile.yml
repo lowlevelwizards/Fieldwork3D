@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   visual:
-    if: ${{ startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') && !github.event.pull_request.draft }}
+    if: ${{ (startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') || startsWith(github.head_ref, 'refactor/uop-pose-director')) && !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:
