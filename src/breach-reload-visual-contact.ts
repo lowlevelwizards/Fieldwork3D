@@ -36,11 +36,11 @@ export function reloadVisualContact(
       upper=Math.max(upper,action?2.10:.70);
       lower=Math.max(lower,action?1.05:.35);break;
     case 'front-insert':
-      upper=Math.max(upper,action?2.65:firing?2.12:1.85);
-      lower=Math.max(lower,action?1.60:firing?1.08:.95);break;
+      upper=Math.max(upper,action?2.65:firing?2.20:1.85);
+      lower=Math.max(lower,action?1.60:firing?1.16:.95);break;
     case 'side-insert':
-      upper=Math.max(upper,action?2.40:firing?1.94:1.75);
-      lower=Math.max(lower,action?1.35:firing?.94:.85);break;
+      upper=Math.max(upper,action?2.40:firing?2.30:1.75);
+      lower=Math.max(lower,action?1.35:firing?1.25:.85);break;
    }
   }else if(c.material==='structured'){
    upper=Math.max(upper,action?2.65:1.90);

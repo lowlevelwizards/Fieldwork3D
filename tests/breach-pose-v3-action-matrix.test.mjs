@@ -249,9 +249,9 @@ test('B17 compact AKM visual fit and strict canonical physical validity',()=>{
    assert.ok(['clear','unresolved'].includes(strict?.status),
     'strict status '+progress);
    if(strict?.status==='clear'){
-    assert.ok(strict.reports?.every(r=>r.strictContactValid===true&&
-      r.relaxedContact===false),
+    assert.equal(strict.strictContactValid,true,
      'strict canonical must have no forbidden contact '+progress);
+    assert.equal(strict.relaxedContact,false);
    }
    assert.ok(selected.root.userData.poseV3DynamicReport
     .every(arm=>arm.status==='clear'));

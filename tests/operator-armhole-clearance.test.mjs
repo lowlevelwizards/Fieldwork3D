@@ -53,7 +53,7 @@ test('firing sleeve has small extra plate-edge allowance, never torso permission
  assert.equal(reloadVisualContact(plate,true,'carry','support').valid,false);
  assert.equal(reloadVisualContact(plate,false,'carry','firing').valid,false,
   'strict audit remains strict');
- assert.equal(reloadVisualContact(fake('front-insert','rigid',2.20,.5),
+ assert.equal(reloadVisualContact(fake('front-insert','rigid',2.50,.5),
   true,'carry','firing').valid,false,'not unbounded plate intersection');
  assert.equal(reloadVisualContact(fake('torso-core','rigid',.80,.4),
   true,'carry','firing').valid,false,'not a torso exemption');
@@ -61,6 +61,9 @@ test('firing sleeve has small extra plate-edge allowance, never torso permission
   true,'aim','firing').valid,true);
  assert.equal(reloadVisualContact(fake('side-insert','rigid',1.88,.9),
   true,'aim','support').valid,false);
+ assert.equal(reloadVisualContact(fake('side-insert','rigid',2.45,.3),
+  true,'aim','firing').valid,false,
+  'hard side plate still has an explicit upper bound');
 });
 test('firing-side scoring favors lower, closer elbow without length changes',()=>{
  assert.equal(LOW_READY_ANATOMY.upperLength,10);
@@ -105,5 +108,18 @@ test('representative legacy, flak, heavy low-ready solves are measured',()=>{
   }
  }
  console.log('ARMHOLE-FIRING-ELBOW-AUDIT',JSON.stringify(out));
+ const p=FAMILY_PRESETS.find(x=>x.id==='ar-m16a1');
+ const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(p.weapon),p.id);
+ const variants=[];
+ for(const yaw of [-.20,-.10,0,.10,.20]){
+  const r=solveCoupledLowReady({weapon:p.weapon,configuration:cfg,
+   shoulders,armor:poseClearanceEnvelope('plate-heavy','no-rig','bdu-shirt'),
+   nominalYaw:yaw,allowVisualOverlap:true});
+  variants.push({yaw,status:r?.status??'unresolved',
+   drop:r?Number((shoulders[1].y-r.arms[1].joint.y).toFixed(2)):null,
+   flare:r?Number((r.arms[1].joint.z-shoulders[1].z).toFixed(2)):null,
+   stockError:r?.fit.stockError??null});
+ }
+ console.log('M16-HEAVY-YAW-AUDITION',JSON.stringify(variants));
  assert.equal(out.length,5);
 });

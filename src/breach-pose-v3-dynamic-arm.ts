@@ -93,7 +93,7 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
     const visual=req.allowVisualOverlap&&
       (mode==='carry'||mode==='aim');
     const hardCutoff=req.allowReloadOverlap&&mode==='reload'?2.65:
-      visual?(side===1?2.12:1.90):LOW_READY_CONTACT_LIMITS.rigid;
+      visual?(side===1?2.30:1.90):LOW_READY_CONTACT_LIMITS.rigid;
     if(report.hardDepth>hardCutoff+.001||
        !pose.reached)permanentlyBlocked.add(pose);
     if(!report.valid){
