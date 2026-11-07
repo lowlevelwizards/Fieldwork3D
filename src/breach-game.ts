@@ -723,6 +723,19 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
 export function planMoveStroke(s:Session,id:string,points:Pt[],
  strafe=false,replaceExisting=false){
   const a=party(s,id);if(!a||!canEdit(s))return false;
+  // HERE redraw replaces navigation, not sustained WATCH intent. A WATCH
+  // attached to an old MOVE waypoint becomes an independent HERE instruction,
+  // retaining its original ID and world-space target for editing/deletion.
+  // A subsequent explicit LOOK/RELEASE already supersedes that WATCH.
+  const latestAim=replaceExisting?[...a.plan].reverse().find(n=>
+    n.aimMode!==undefined||n.facing!==undefined):undefined;
+  const retainedWatch:PlanNode|null=latestAim?.aimMode==='track'&&
+    latestAim.aimPoint?{
+      id:latestAim.id,kind:'look',p:clone(a.p),aimMode:'track',
+      aimPoint:clone(latestAim.aimPoint),aimLabel:'watch'
+    }:null;
+  // An already-executed WATCH lives in a.aimInstruction, not the plan;
+  // editing the route must not modify it either.
   const proposed:PlanNode[]=[];
   let from=replaceExisting?a.p:finalPoint(a);
   const facing=replaceExisting?a.heading:
@@ -775,7 +788,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
   // The entire replacement stroke (including implicit door actions) is
   // ONE undoable transaction. A rejected stroke leaves the old route intact.
   return edit(s,a,()=>{
-    if(replaceExisting)a.plan=expanded;
+    if(replaceExisting)a.plan=retainedWatch?[retainedWatch,...expanded]:expanded;
     else a.plan.push(...expanded);
     s.nextId+=expanded.length;
   });
