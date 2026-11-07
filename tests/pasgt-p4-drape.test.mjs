@@ -42,5 +42,5 @@ test('eight field anchors all have distinct names and locations',()=>{
  assert.equal(PASGT_SLIT_ANCHORS.length,8);
  assert.equal(new Set(PASGT_SLIT_ANCHORS.map(a=>a.id)).size,8);
  const band=createPasgtBandGeometry();
- assert.ok(band.boundingBox.max.y<7.1&&band.boundingBox.min.y>6);
+ assert.ok(band.boundingBox.max.y<6&&band.boundingBox.min.y>5.1);
 });

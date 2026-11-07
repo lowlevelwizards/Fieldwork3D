@@ -1074,7 +1074,7 @@ function renderMaterials(){
    const bandRow=row('PASGT HELMET BAND',
     'One chunky elastic retaining band above the brow, continued across the upper nape.');
    addSelect(bandRow,PASGT_BANDS.map(id=>[
-    id,id==='none'?'NONE':'CHUNKY ELASTIC BAND'] as const),
+    id,id==='none'?'NONE':'ELASTIC BAND'] as const),
     details.band,id=>changeWardrobe({...current(),pasgtDetails:{
      ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
      band:id as typeof details.band}}));

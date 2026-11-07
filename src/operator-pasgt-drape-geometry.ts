@@ -209,25 +209,52 @@ export const PASGT_SLIT_ANCHORS:readonly PasgtSlitAnchor[]=[
  {id:'left-aft',position:[-SIDE-.09,4.24,2.30],yaw:-Math.PI/2,pitch:.13},
  {id:'left-forward',position:[-SIDE-.09,5.48,-3.15],yaw:-Math.PI/2,pitch:-.10}
 ];
-/** Temporary band until P5-C replaces it with a bare/covered fit pair. */
-export function createPasgtBandGeometry():THREE.BufferGeometry{
+/** PASGT P5-C: one vertically readable, near-flush strip. Its upper and
+ * lower edges lie on the UPRIGHT brim/side/nape surfaces, not the wide
+ * diagonal shoulder. Two prebuilt profiles allow bare-shell and cover fit.
+ */
+export function createPasgtBandGeometry(covered=true):THREE.BufferGeometry{
  const positions:number[]=[],uvs:number[]=[];
- const add=(p:readonly number[])=>{positions.push(...p);uvs.push(0,0);};
+ const push=(p:readonly number[],uv:readonly number[])=>{
+  positions.push(p[0],p[1],p[2]);uvs.push(uv[0],uv[1]);
+ };
+ const tri=(a:readonly number[],b:readonly number[],c:readonly number[],
+  ua:readonly number[],ub:readonly number[],uc:readonly number[])=>{
+  push(a,ua);push(b,ub);push(c,uc);
+ };
+ const sideWidth=covered?SIDE+.065:ear.x+ear.width/2+.055;
+ const frontZ=covered?PEAK_FRONT-.065:peak.z-peak.depth/2-.055;
+ const rearZ=covered?NAPE_REAR+.065:rear.z+rear.depth/2+.055;
+ const frontShift=frontZ-FRONT,rearShift=rearZ-REAR;
+ const project=(s:PasgtRingSample,y:number):readonly [number,number,number]=>{
+  if(s.side==='front')return [s.x/X*sideWidth,y,frontZ];
+  if(s.side==='rear')return [s.x/X*sideWidth,y,rearZ];
+  const f=clamp((-3.4-s.z)/(-3.4-FRONT));
+  const b=clamp((s.z-4.3)/(REAR-4.3));
+  return [s.side==='right'?sideWidth:-sideWidth,y,
+   s.z+frontShift*f+rearShift*b];
+ };
+ // 0.72 model-unit vertical width, ~0.065 unit protrusion from the
+ // surrounding material. Keeping both Y levels on vertical faces prevents
+ // another shelf / projecting roof, even for the covered brow.
+ const top=5.90,bottom=5.18;
  for(const panel of panels)for(let i=0;i<panel.length-1;i++){
   const a=PASGT_RING_SAMPLES.find(s=>s.side===panel[i].side&&s.x===panel[i].x&&s.z===panel[i].z)!;
   const b=PASGT_RING_SAMPLES.find(s=>s.side===panel[i+1].side&&s.x===panel[i+1].x&&s.z===panel[i+1].z)!;
-  const project=(s:PasgtRingSample,y:number)=>{
-   const p=pasgtRingPoint(s,'ramp');
-   const n=s.side==='front'?[0,0,-.10]:s.side==='rear'?[0,0,.10]:
-    [s.side==='right'?.10:-.10,0,0];
-   return [p[0]+n[0],y,p[2]+n[2]];
-  };
-  const p0=project(a,5.65),p1=project(b,5.65),p2=project(b,5.00),p3=project(a,5.00);
-  add(p0);add(p1);add(p2);add(p0);add(p2);add(p3);
+  const p0=project(a,top),p1=project(b,top),
+   p2=project(b,bottom),p3=project(a,bottom);
+  const u0:[number,number]=[a.distance/PASGT_RING_CIRCUMFERENCE,1];
+  const u1:[number,number]=[b.distance/PASGT_RING_CIRCUMFERENCE,1];
+  const v0:[number,number]=[a.distance/PASGT_RING_CIRCUMFERENCE,0];
+  const v1:[number,number]=[b.distance/PASGT_RING_CIRCUMFERENCE,0];
+  tri(p0,p1,p2,u0,u1,v1);tri(p0,p2,p3,u0,v1,v0);
  }
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
  g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
- g.computeVertexNormals();g.computeBoundingBox();g.userData.pasgtBandHeight=.65;
+ g.computeVertexNormals();g.computeBoundingBox();
+ g.userData.pasgtBandHeight=top-bottom;
+ g.userData.pasgtBandFit=covered?'cover':'bare-shell';
+ g.userData.pasgtBandContactOffset=.065;
  return g;
 }
