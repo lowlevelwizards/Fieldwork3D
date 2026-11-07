@@ -38,7 +38,8 @@ import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
 import {choreographV3ReloadHand,v3MagazineRockAngle,v3MagazineBodyGrip,type V3ReloadCorridorProfile,type V3MagazinePalm} from './breach-pose-v3-reload-choreography.ts';
 import {choreographV3ReloadWeapon,type V3ReloadHold} from './breach-pose-v3-reload-weapon.ts';
-import {choreographV4ReloadWeapon,reloadMechanismFor}
+import {choreographV4ReloadWeapon,reloadMechanismFor,
+ v4ReloadControlPose}
  from './breach-reload-performance.ts';
 import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
 import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
@@ -172,6 +173,8 @@ export type OperatorRig={
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
   detachedMagazine:THREE.Group;
+  /** B29 mechanical silhouette, preview only; no shot/collision writes. */
+  reloadControlMesh:THREE.Mesh;
   medicalItem:THREE.Mesh;
   weaponBody:THREE.Group;droppedWeaponBody:THREE.Group;
   weaponAccessories:THREE.Group;droppedAccessories:THREE.Group;
@@ -387,6 +390,12 @@ export function createOperatorRig(id:string,side:'blue'|'red',
    strap.castShadow=false;strap.receiveShadow=false;strap.visible=false;
    return strap;
   });
+  // Chunky symbolic control; x/y/z always come from real receiver socket.
+  // Keep distinct from the built weapon silhouette and any ballistic mesh.
+  const reloadControlMesh=block(weapon,0,0,0,1.55,1.20,1.50,steel);
+  reloadControlMesh.name='v4-moving-operating-handle';
+  reloadControlMesh.castShadow=false;
+  reloadControlMesh.visible=false;
   const magazineInserted=block(weapon,3,-4,0,2.7,6,2.5,boot);
   const magazineHand=block(chest,0,0,0,2.7,6,2.5,boot);
   magazineHand.visible=false;
@@ -428,6 +437,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   return {root,camoIdentity:id,legacyFrame,headCanonicalFrame,
     legacyYaw:0,legacyPitch:0,legacyRoll:0,
     hip,chest,head,weapon,droppedGun,feet,arms,pack,
+    reloadControlMesh,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
     medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,
     visualKit,equipmentDetails,colors,garmentFitAnchors,poseCavity,
@@ -1569,6 +1579,23 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.droppedGun.scale.set(data.lengthScale,1,1);
   r.weapon.rotation.copy(fit.rotation);
   r.weapon.position.copy(fit.origin);
+  // B29: visible HK lock/slap, AK handle rack and AR bolt-catch press.
+  // Physically attached to the weapon, driven only by the action clock.
+  // It never modifies fit, recoil, muzzle, shot state or inventory.
+  const v4Control=p.poseV4ReloadPreview&&v3ReloadActive?
+    v4ReloadControlPose(reloadMechanismFor(p.weapon,coupledConfig),
+      v3ReloadMode,v3ReloadProgress):null;
+  r.reloadControlMesh.visible=!!v4Control?.visible&&
+    !p.down&&!p.surrender;
+  if(r.reloadControlMesh.visible&&v4Control){
+    const sock=weaponPresentationSockets(p.weapon,p.weaponConfiguration)
+      .reloadControl;
+    r.reloadControlMesh.position.set(sock.x+v4Control.travel,sock.y,
+      sock.z+v4Control.press);
+    const mech=reloadMechanismFor(p.weapon,coupledConfig);
+    r.reloadControlMesh.scale.set(mech==='ar-bolt-catch'?.73:1,
+      mech==='hk-roller'?1.15:1,mech==='ak-rocking'?.80:1);
+  }
   // On ADS, bring the eyes toward the actual sight line, keeping the
   // firearm fixed. Head-only accommodation cannot change shot ballistics.
   r.head.position.z=0;

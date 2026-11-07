@@ -117,6 +117,29 @@ test('B28 the EXACT selected carried magazine leaves its visible rig cell',()=>{
    'non-reloading pose has no pickup owner');
  }finally{rig.dispose();}
 });
+test('B29 visible handle remains weapon-mounted through HK lock and slap',()=>{
+ const f=fixtures[2],rig=createOperatorRig('v4-hk-moving-handle','blue',true);
+ try{
+  const pose={...create(f,.53),poseV4ReloadPreview:true};
+  poseOperator(rig,pose,0);
+  assert.equal(rig.reloadControlMesh.visible,true);
+  const held=rig.reloadControlMesh.position.clone();
+  const first=snapshot(rig);
+  poseOperator(rig,pose,0);
+  equal(first,snapshot(rig),'B29/locked HK replay');
+  assert.ok(held.distanceTo(rig.reloadControlMesh.position)<1e-12);
+  poseOperator(rig,{...pose,reload:1.8*(1-.88)},0);
+  assert.equal(rig.reloadControlMesh.visible,true);
+  assert.ok(rig.reloadControlMesh.position.x>held.x,
+    'handle travels forward during the slap');
+  poseOperator(rig,{...pose,reload:0},0);
+  assert.equal(rig.reloadControlMesh.visible,false,
+    'idle rifle is not overlaid with an extra knob');
+  poseOperator(rig,{...pose,reloadMode:'retention'},0);
+  assert.equal(rig.reloadControlMesh.visible,false,
+    'retention reload does not invent a handle rack');
+ }finally{rig.dispose();}
+});
 test('B25 AR empty bolt press, retention bypass and neutral nonreload still work',()=>{
  const f=fixtures[0],rig=createOperatorRig('v4-m4-gestures','blue',true);
  try{
