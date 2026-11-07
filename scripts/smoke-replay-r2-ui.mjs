@@ -1,4 +1,4 @@
-/** Replay R2 UI regression: the battlefield must not become a button drawer. */
+/** Replay UX V2: compact direct selectors and contextual replay surfaces. */
 import {spawn} from 'node:child_process';
 import {chromium} from 'playwright';
 
@@ -72,21 +72,31 @@ try{
 
   const compact=await page.evaluate(measure);
   check(compact.drawer.hidden,'Drawer must be closed by default');
-  check(compact.dock.height<=190,
+  check(compact.dock.height<=230,
     'Portrait replay dock obscures battlefield: '+JSON.stringify(compact));
-  check(compact.markerCount<=Math.ceil(compact.markWidth/7)+1,
+  check(compact.markerCount<=Math.ceil(compact.markWidth/24)+1,
     'Event rail still has overlapping unclustered markers');
   check(compact.dock.top>compact.viewport.height*.54,
     'Compact replay dock should stay near screen bottom');
 
+  check(await page.locator('#replayQuickSpeed').isVisible(),
+    'Speed is not directly accessible');
+  await page.locator('#replayQuickSpeed').selectOption('0.5');
+  check(await page.locator('#replayQuickSpeed').inputValue()==='0.5',
+    'Direct speed setting failed');
+  await page.locator('#replayQuickView').selectOption('top');
+  check(await page.locator('#replayQuickView').inputValue()==='top',
+    'Direct perspective selection failed');
   await page.locator('#replayMore').click();
   const view=await page.evaluate(measure);
-  check(!view.drawer.hidden&&view.visibleGroups.join()==='view',
-    'Tools must open with only View group visible: '+JSON.stringify(view));
+  check(!view.drawer.hidden&&view.visibleGroups.sort().join()==='layers,precision,view',
+    'Analyze should expose collapsible review controls: '+JSON.stringify(view));
   check(view.drawer.bottom<=view.dock.top,
     'Drawer overlaps transport');
   check(view.drawer.top>=0,'Drawer leaves the viewport');
-  check(view.activeTabs.join()==='view','View tab must show selected state');
+  check(await page.locator('#replayMore').getAttribute('aria-expanded')==='true',
+    'Analyze state not announced');
+  await page.locator('[data-replay-group="view"] summary').click();
 
   // R3: advanced camera controls live exclusively in View, not on the dock.
   // R4.2: the contact lens is evidence-backed and intentionally does not
@@ -146,23 +156,20 @@ try{
     'Squad mode must disable Director');
   check((await page.locator('#replaySquad').getAttribute('aria-pressed'))==='true',
     'Squad camera did not activate');
-  await page.locator('[data-replay-tab=layers]').click();
-  const layers=await page.evaluate(measure);
-  check(layers.visibleGroups.join()==='layers',
-    'Layers tab must hide all other controls');
   check(await page.locator('#replayTraces').isVisible(),
-    'Trajectory setting disappeared');
+    'Advanced trajectory setting disappeared');
+  check(await page.locator('#replayInspectActor option').count()>=2,
+    'Operator investigation choices missing');
+  check(await page.locator('#replayInspectFollow').isVisible(),
+    'Contextual operator follow action missing');
 
-  await page.locator('[data-replay-tab=precision]').click();
-  const timing=await page.evaluate(measure);
-  check(timing.visibleGroups.join()==='precision',
-    'Precision tab must show only playback controls');
+  await page.locator('[data-replay-group="precision"] summary').click();
   check(await page.locator('#replayPrevFrame').isVisible(),
-    'Frame stepping disappeared');
+    'Advanced frame stepping disappeared');
 
-  await page.locator('[data-replay-tab=export]').click();
+  await page.locator('#replayShareToggle').click();
   check(await page.locator('#replayExportVideo').isVisible(),
-    'Export button must remain accessible');
+    'Video export must remain accessible through Save/Share');
 
   await page.locator('#replayFeedToggle').click();
   const feed=await page.evaluate(measure);
@@ -178,9 +185,14 @@ try{
   await page.locator('#replayBookmark').click();
   check((await page.locator('#replayChapterList .replay-chapter-item').count())>=2,
     'R3 bookmark/chapter list failed to update');
-  check(!feed.feedHidden&&feed.visibleGroups.length===0&&
-    feed.activeTabs.join()==='events',
-    'Events tab must take over the drawer without showing the tool grid');
+  check(feed.feedHidden&&feed.visibleGroups.length===0,
+    'Moments should default to highlights, not dense event feed');
+  await page.locator('[data-moments-view="events"]').click();
+  check(await page.locator('#replayFeed').isVisible(),
+    'All Events must expose the chronological feed');
+  await page.locator('#replayFeedFollow').click();
+  check(await page.locator('#replayFeedFollow').getAttribute('aria-pressed')==='true',
+    'Event feed follow-time control did not activate');
   await page.locator('#replayDrawerClose').click();
   const closed=await page.evaluate(measure);
   check(closed.drawer.hidden,'Close should restore compact replay');
@@ -188,7 +200,7 @@ try{
   await page.setViewportSize({width:844,height:390});
   await page.locator('#replayMore').click();
   const landscape=await page.evaluate(measure);
-  check(landscape.dock.height<=160,
+  check(landscape.dock.height<=190,
     'Landscape replay dock too tall: '+JSON.stringify(landscape));
   check(landscape.drawer.top>=0&&landscape.drawer.bottom<=landscape.dock.top,
     'Landscape tools overflow battlefield: '+JSON.stringify(landscape));

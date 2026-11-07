@@ -246,12 +246,29 @@
   <div class="replay-head">
     <strong>REPLAY</strong>
     <div class="replay-head-right">
+      <output id="replayStatusChip" class="replay-status-chip" hidden aria-live="off"></output>
       <output id="replayClock">00:00.000 / 00:00.000</output>
       <button id="replayExit" type="button" aria-label="Exit replay" title="Exit replay">×</button>
     </div>
   </div>
+  <div class="replay-quick-controls" aria-label="Replay perspective, camera and speed">
+    <label><span>VIEW</span><select id="replayQuickView" aria-label="Replay perspective">
+      <option value="iso">ISO</option><option value="top">TOP</option><option value="plan2d">FLOOR PLAN</option>
+    </select></label>
+    <label><span>CAMERA</span><select id="replayQuickCamera" aria-label="Replay camera behavior">
+      <option value="free">FREE</option><option value="squad">FOLLOW SQUAD</option>
+      <option value="director">DIRECTOR</option>
+    </select></label>
+    <label><span>SPEED</span><select id="replayQuickSpeed" aria-label="Replay playback speed">
+      <option value="0.25">0.25×</option><option value="0.5">0.5×</option>
+      <option value="0.75">0.75×</option><option value="1" selected>1×</option>
+      <option value="1.5">1.5×</option><option value="2">2×</option><option value="4">4×</option>
+    </select></label>
+  </div>
   <div class="replay-timeline">
-    <div id="replayMarks" class="replay-marks" aria-hidden="true"></div>
+    <div id="replayMarks" class="replay-marks" aria-label="Significant replay moments"></div>
+    <div id="replayClusterMenu" class="replay-cluster-menu" hidden
+      role="group" aria-label="Choose an event from this timeline cluster"></div>
     <input id="replaySeek" type="range" min="0" max="1" step="1" value="0"
       aria-label="Seek through mission by visual frame"/>
   </div>
@@ -265,24 +282,35 @@
   <div class="replay-utility">
     <output id="replayEventText" class="replay-event" aria-live="off"></output>
     <button id="replayFeedToggle" type="button" aria-expanded="false"
-      aria-controls="replayDrawer">EVENTS</button>
-    <button id="replayMore" type="button" aria-label="Replay tools"
-      aria-expanded="false" aria-controls="replayDrawer" title="Replay tools">TOOLS</button>
+      aria-controls="replayDrawer">MOMENTS</button>
+    <button id="replayMore" type="button" aria-label="Replay analysis"
+      aria-expanded="false" aria-controls="replayDrawer" title="Replay analysis">ANALYZE</button>
+    <button id="replayShareToggle" type="button" aria-expanded="false"
+      aria-controls="replayDrawer">SAVE / SHARE</button>
   </div>
   <section id="replayDrawer" class="replay-drawer" hidden aria-label="Replay tools">
     <div class="replay-drawer-head">
-      <strong>REPLAY TOOLS</strong>
+      <strong id="replayDrawerTitle">ANALYZE</strong>
       <button id="replayDrawerClose" type="button" aria-label="Close replay tools">×</button>
     </div>
-    <nav id="replayTabs" class="replay-tabs" role="tablist" aria-label="Replay tool categories">
-      <button type="button" role="tab" data-replay-tab="view" aria-selected="false">VIEW</button>
-      <button type="button" role="tab" data-replay-tab="layers" aria-selected="false">LAYERS</button>
-      <button type="button" role="tab" data-replay-tab="precision" aria-selected="false">TIMING</button>
-      <button type="button" role="tab" data-replay-tab="export" aria-selected="false">EXPORT</button>
-      <button type="button" role="tab" data-replay-tab="events" aria-selected="false">EVENTS</button>
-    </nav>
+    <nav id="replayTabs" hidden aria-hidden="true"></nav>
     <div id="replayExtra" class="replay-extra" hidden>
-      <section class="replay-group" data-replay-group="view" hidden>
+      <div id="replayPresets" class="replay-presets" role="group" aria-label="Tactical analysis presets">
+        <button data-replay-preset="clean" type="button" aria-pressed="true">CLEAN</button>
+        <button data-replay-preset="movement" type="button" aria-pressed="false">MOVEMENT</button>
+        <button data-replay-preset="combat" type="button" aria-pressed="false">COMBAT</button>
+        <button data-replay-preset="visibility" type="button" aria-pressed="false">VISIBILITY</button>
+        <output id="replayPresetStatus" aria-live="off"></output>
+      </div>
+      <div id="replayActorControls" class="replay-actor-controls" hidden
+        aria-label="Inspect operator">
+        <label for="replayInspectActor">OPERATOR</label>
+        <select id="replayInspectActor" aria-label="Choose an operator to inspect"></select>
+        <button id="replayInspectFollow" type="button">FOLLOW</button>
+        <button id="replayInspectMovement" type="button">PLAN / PATH</button>
+      </div>
+      <details class="replay-group" data-replay-group="view">
+        <summary>Camera, visibility & names</summary>
         <p class="replay-group-intro">Perspective and visibility</p>
         <div class="replay-control-grid">
           <button id="replayView" type="button">ISO</button>
@@ -309,9 +337,22 @@
           OPERATOR CONTACTS ONLY · MAP AND ENVIRONMENT REMAIN SQUAD KNOWLEDGE.
           FORENSIC SHOT PATHS HIDDEN.
         </p>
-      </section>
-      <section class="replay-group" data-replay-group="layers" hidden>
+      </details>
+      <details class="replay-group" data-replay-group="layers" open>
+        <summary>Advanced overlays</summary>
         <p class="replay-group-intro">Tactical overlays</p>
+      <section id="replayShotInspector" class="replay-shot-inspector" hidden aria-label="Shot investigation">
+        <div class="replay-inspector-head">
+          <strong id="replayShotTitle">SHOT INSPECTOR</strong>
+          <button id="replayShotClose" type="button" aria-label="Close shot inspector">×</button>
+        </div>
+        <output id="replayShotDetails" class="replay-inspector-details"></output>
+        <div class="replay-inspector-actions">
+          <button id="replayShotPrev" type="button">PREV SHOT</button>
+          <button id="replayShotFocus" type="button">FOCUS IMPACT</button>
+          <button id="replayShotNext" type="button">NEXT SHOT</button>
+        </div>
+      </section>
         <div class="replay-control-grid">
           <button id="replayAnalysis" type="button">ANALYSIS</button>
           <button id="replayPlans" type="button" aria-label="Replay plan line visibility">PLANS SELECTED</button>
@@ -320,8 +361,9 @@
           <button id="replayGhosts" type="button" aria-label="Replay historical movement ghosts">GHOSTS OFF</button>
           <button id="replayTrails" type="button" aria-label="Replay actual operator paths">ACTUAL PATH OFF</button>
         </div>
-      </section>
-      <section class="replay-group" data-replay-group="precision" hidden>
+      </details>
+      <details class="replay-group" data-replay-group="precision">
+        <summary>Precise timing & looping</summary>
         <p class="replay-group-intro">Playback speed and single-step</p>
         <div class="replay-control-grid">
           <button id="replaySpeed" type="button">1×</button>
@@ -335,7 +377,7 @@
           <button id="replayLoopToggle" type="button" aria-pressed="false">LOOP OFF</button>
         </div>
         <p class="replay-group-note">FRAME = 60 FPS visual step · SAMPLE = 20 Hz recorded state</p>
-      </section>
+      </details>
       <section class="replay-group" data-replay-group="export" hidden>
         <p class="replay-group-intro">Save and share a replay</p>
         <div class="replay-control-grid">
@@ -347,6 +389,11 @@
       </section>
     </div>
     <section id="replayFeedPanel" class="replay-feed-panel" hidden>
+      <div id="replayMomentsSwitch" class="replay-moments-switch" role="group" aria-label="Moments views">
+        <button type="button" data-moments-view="highlights" aria-pressed="true">HIGHLIGHTS</button>
+        <button type="button" data-moments-view="events" aria-pressed="false">ALL EVENTS</button>
+      </div>
+      <div id="replayHighlights">
       <section class="replay-debrief" aria-label="After-action highlights">
         <div class="replay-debrief-head">
           <strong>AFTER ACTION</strong>
@@ -376,6 +423,7 @@
         <div class="replay-incident-actions">
           <button id="replayIncidentWatch" type="button">WATCH</button>
           <button id="replayIncidentLoop" type="button">LOOP</button>
+          <button id="replayIncidentInvestigate" type="button">INVESTIGATE</button>
           <button id="replayIncidentClose" type="button" aria-label="Clear selected incident">×</button>
         </div>
       </section>
@@ -386,18 +434,8 @@
       </div>
       <div id="replayChapterList" class="replay-chapter-list"
         aria-label="Replay chapters and bookmarks"></div>
-      <section id="replayShotInspector" class="replay-shot-inspector" hidden aria-label="Shot investigation">
-        <div class="replay-inspector-head">
-          <strong id="replayShotTitle">SHOT INSPECTOR</strong>
-          <button id="replayShotClose" type="button" aria-label="Close shot inspector">×</button>
-        </div>
-        <output id="replayShotDetails" class="replay-inspector-details"></output>
-        <div class="replay-inspector-actions">
-          <button id="replayShotPrev" type="button">PREV SHOT</button>
-          <button id="replayShotFocus" type="button">FOCUS IMPACT</button>
-          <button id="replayShotNext" type="button">NEXT SHOT</button>
-        </div>
-      </section>
+      </div>
+      <div id="replayAllEvents" hidden>
       <div class="replay-feed-tools">
         <label for="replayFeedFilter">SHOW</label>
         <select id="replayFeedFilter" aria-label="Filter mission events" hidden>
@@ -407,9 +445,12 @@
           <option value="contacts">CONTACTS</option>
           <option value="objectives">OBJECTIVES</option>
         </select>
+        <button id="replayFeedFollow" type="button" aria-pressed="false"
+          title="Keep the event list near the current playback position">FOLLOW TIME OFF</button>
         <output id="replayFeedInfo" class="replay-feed-info" hidden></output>
       </div>
       <div id="replayFeed" class="replay-feed-list" role="list" hidden></div>
+      </div>
     </section>
   </section>
 </section>
