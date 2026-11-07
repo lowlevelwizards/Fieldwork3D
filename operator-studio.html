@@ -56,56 +56,34 @@
 </summary>
 <div class="studio-light-lab-body">
 <div class="studio-light-lab-grid">
-<label>CEL BANDS
-<select id="studioLightCel" aria-label="Cel shading bands">
-<option value="0">Smooth (original)</option>
-<option value="2">Two-band cel</option>
-<option value="3">Three-band cel</option>
+<label>CEL SHADING
+<select id="studioLightCel" aria-label="Graphic cel shading">
+<option value="0">Smooth · original</option>
+<option value="2">2-band · very graphic</option>
 </select></label>
 <label>RIM HIGHLIGHT
-<select id="studioLightRim" aria-label="Rim highlight style">
+<select id="studioLightRim" aria-label="Graphic rim highlight">
 <option value="off">Off</option>
-<option value="hard">Hard edge</option>
-<option value="pixel">Chunky pixel · legacy</option>
-<option value="dual">Warm + white graphic rim</option>
+<option value="dual">Warm + white · controlled</option>
 </select></label>
-<label>HEIGHT LIGHTING
-<select id="studioLightGradient" aria-label="Operator height gradient">
+<label>HEIGHT SHADING
+<select id="studioLightGradient" aria-label="Gradient on every solid item">
 <option value="current">Original</option>
-<option value="neutral">Neutral / flat</option>
-<option value="sculptural">Sculptural</option>
-<option value="strong">Strong</option>
-<option value="violet">Violet blue · dramatic</option>
-<option value="violet-noir">Violet noir · very dark</option>
+<option value="piece">Each item · blue/violet</option>
 </select></label>
-<label>SHADOW-SIDE COLOR
-<select id="studioLightShadow" aria-label="Shadow side fill color">
+<label>SHADOW-SIDE FILL
+<select id="studioLightShadow" aria-label="Shadow-side fill color">
 <option value="neutral">Original</option>
-<option value="steel">Steel blue</option>
-<option value="slate">Slate blue</option>
-<option value="plum">Plum</option>
-<option value="plum-plus">Plum+ · saturated</option>
-<option value="plum-noir">Plum noir · dramatic</option>
-<option value="dusk">Dusk</option>
+<option value="plum-plus">Saturated plum</option>
 </select></label>
 </div>
 <div class="studio-light-lab-grid studio-light-lab-tuning">
-<label>CEL BAND CHARACTER
-<select id="studioCelProfile" aria-label="Cel band character">
-<option value="classic">Classic</option>
-<option value="soft">Soft separation</option>
-<option value="hard">Hard graphic</option>
-<option value="graphic">Very graphic</option>
-</select></label>
-<label>SHADING COVERAGE
-<select id="studioLightScope" aria-label="Stylized surface coverage">
-<option value="all">All surfaces + weapons</option>
-<option value="cloth">Textiles only</option>
-</select></label>
-<label class="studio-light-slider">SHADOW CUTOFF <output id="studioCelLowValue">66%</output>
-<input id="studioCelLow" type="range" min="0.30" max="0.90" step="0.01" value="0.66" aria-label="Cel shadow band cutoff"/></label>
-<label class="studio-light-slider">HIGHLIGHT CUTOFF <output id="studioCelHighValue">84%</output>
-<input id="studioCelHigh" type="range" min="0.40" max="0.97" step="0.01" value="0.84" aria-label="Cel highlight band cutoff"/></label>
+<label id="studioCelLowWrap" class="studio-light-slider">CEL SHADOW CUTOFF
+<output id="studioCelLowValue" for="studioCelLow">70%</output>
+<input id="studioCelLow" type="range" min="0.35" max="0.90" step="0.01" value="0.70" aria-label="Two-band cel shadow cutoff"/></label>
+<label id="studioRimAmountWrap" class="studio-light-slider">RIM AMOUNT
+<output id="studioRimAmountValue" for="studioRimAmount">24%</output>
+<input id="studioRimAmount" type="range" min="0" max="1" step="0.01" value="0.24" aria-label="Rim light intensity"/></label>
 </div>
 <div class="studio-light-lab-actions">
 <button id="studioLightShowWeapon" type="button">PREVIEW WITH WEAPON</button>
@@ -115,7 +93,7 @@
 <button id="studioLightReset" type="button">RESET LIGHTING</button>
 </div>
 <output id="studioLightLabStatus" aria-live="polite">Adjust a setting to update the operator immediately.</output>
-<small>Preview only, not saved. The new graphic rim adds warm chunky edges to opaque surfaces and stronger projected white patches to helmets, armor and weapons; transparent optics are excluded. Toggle PREVIEW WITH WEAPON to inspect the full firearm.</small>
+<small>Preview only · not saved. Every opaque pouch, rig piece, plate, helmet and firearm part gets its own top-light/bottom-violet gradient. Transparent optics remain unchanged. Use PREVIEW WITH WEAPON to inspect gun parts.</small>
 </div>
 </details>
 <div class="studio-pinned-categories" role="group" aria-label="Persistent body part navigation">

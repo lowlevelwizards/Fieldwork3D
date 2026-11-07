@@ -1,5 +1,6 @@
-/** R7 opt-in real WebGL shader smoke, not a synthetic shader-string proof.
- * One 390px mobile browser, two cel/rim presets, no background campaign tests.
+/** R7.10 critical real WebGL/mobile input smoke.
+ * Pixel/hard legacy URLs normalize to the new safe graphic modes.
+ * Test native range focus/keyboard changes, not merely synthetic events.
  */
 import {spawn} from 'node:child_process';
 import {mkdir} from 'node:fs/promises';
@@ -16,148 +17,82 @@ try{
   catch{}
   await new Promise(resolve=>setTimeout(resolve,160));
  }
- if(!ready)throw Error('R7 shader smoke preview server unavailable');
+ if(!ready)throw Error('Preview server unavailable for R7.10 smoke');
  const browser=await chromium.launch({headless:true});
  try{
   await mkdir('operator-studio-captures',{recursive:true});
-  for(const [name,query,band,rim] of [
-   ['pixel-rim','?operatorLightingToon=3&operatorRim=pixel',3,'pixel'],
-   ['hard-rim','?operatorLightingToon=2&operatorRim=hard',2,'hard']
-  ]){
-   const page=await browser.newPage({
-    viewport:{width:390,height:844},deviceScaleFactor:1.5,
-    isMobile:true,hasTouch:true
-   });
-   const errors=[];
-   page.on('pageerror',e=>errors.push(e.message));
-   page.on('console',m=>{
-    if(m.type()==='error'&&
-       /WebGLProgram|shader error|INVALID_OPERATION|compile|linker/i.test(m.text()))
-     errors.push(m.text());
-   });
-   try{
-    await page.goto(origin+'/operator-studio.html'+query,
-     {waitUntil:'domcontentloaded'});
-    await page.waitForFunction(([bands,mode])=>{
-     const canvas=document.getElementById('studioCanvas');
-     return canvas?.dataset.ready==='true'&&
-      Number(canvas.dataset.drawCalls)>0&&
-      Number(canvas.dataset.operatorToonMeshes)>0&&
-      Number(canvas.dataset.operatorToonBands)===bands&&
-      canvas.dataset.operatorRimMode===mode;
-    },[band,rim],{timeout:35000});
-    const capture=await page.locator('#studioCanvas').screenshot({
-     path:'operator-studio-captures/r7-'+name+'-phone.png'
-    });
-    if(capture.byteLength<3000)throw Error('Blank '+name+' visual capture');
-    if(errors.length)throw Error(name+' WebGL errors: '+errors.join('; '));
-    console.log('R7 '+name+' rendering passed');
-   }finally{await page.close();}
-  }
-  // R7.8: exercise the actual controls, no URL reloads or mock images.
-  const live=await browser.newPage({
+  const page=await browser.newPage({
    viewport:{width:390,height:844},deviceScaleFactor:1.5,
    isMobile:true,hasTouch:true
   });
-  const uiErrors=[];
-  live.on('pageerror',error=>uiErrors.push(error.message));
-  live.on('console',message=>{
+  const errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  page.on('console',message=>{
    if(message.type()==='error'&&
       /WebGLProgram|shader error|INVALID_OPERATION|compile|linker/i.test(message.text()))
-    uiErrors.push(message.text());
+    errors.push(message.text());
   });
   try{
-   await live.goto(origin+'/operator-studio.html',{waitUntil:'domcontentloaded'});
-   await live.waitForFunction(()=>
+   await page.goto(origin+'/operator-studio.html',{waitUntil:'domcontentloaded'});
+   await page.waitForFunction(()=>
     document.getElementById('studioCanvas')?.dataset.ready==='true',
     null,{timeout:35000});
-   await live.locator('#studioLightLab > summary').click();
-   await live.locator('#studioLightCel').selectOption('3');
-   await live.locator('#studioLightRim').selectOption('pixel');
-   await live.locator('#studioLightGradient').selectOption('sculptural');
-   await live.locator('#studioLightShadow').selectOption('steel');
-   await live.waitForFunction(()=>{
-    const s=document.getElementById('studioCanvas')?.dataset;
-    return s?.operatorToonBands==='3'&&s.operatorRimMode==='pixel'&&
-     s.operatorGradient==='sculptural'&&s.operatorShadowColor==='steel';
+   await page.locator('#studioLightLab > summary').click();
+   if(await page.locator('#studioCelLow').isVisible())
+    throw Error('Cel cutoff shown while Smooth is selected');
+   if(await page.locator('#studioRimAmount').isVisible())
+    throw Error('Rim intensity shown while rim is Off');
+   await page.locator('#studioLightCel').selectOption('2');
+   await page.locator('#studioLightRim').selectOption('dual');
+   await page.locator('#studioLightGradient').selectOption('piece');
+   await page.locator('#studioLightShadow').selectOption('plum-plus');
+   await page.locator('#studioLightShowWeapon').click();
+   const cel=page.locator('#studioCelLow');
+   const rim=page.locator('#studioRimAmount');
+   if(!await cel.isVisible()||!await rim.isVisible())
+    throw Error('Active range controls are hidden or disabled');
+   // Actual keyboard-input interaction exercises the native range widget;
+   // merely dispatching a change event would miss the reported UX bug.
+   await cel.focus();await cel.press('ArrowRight');
+   await rim.focus();await rim.press('ArrowRight');
+   await page.waitForFunction(()=>{
+    const canvas=document.getElementById('studioCanvas');
+    const s=canvas?.dataset;
+    return s?.operatorToonBands==='2'&&s.operatorRimMode==='dual'&&
+     s.operatorGradient==='piece'&&s.operatorShadowColor==='plum-plus'&&
+     Number(s.operatorWeaponMeshes)>0&&
+     document.getElementById('studioCelLowValue')?.textContent==='71%'&&
+     document.getElementById('studioRimAmountValue')?.textContent==='25%';
    },null,{timeout:35000});
-   const edited=await live.locator('#studioCanvas').screenshot({
-    path:'operator-studio-captures/r7-live-lighting-lab-phone.png'
+   const img=await page.locator('#studioCanvas').screenshot({
+    path:'operator-studio-captures/r710-graphic-two-band-pieces-weapon-phone.png'
    });
-   if(edited.byteLength<3000)throw Error('Blank live light lab image');
-   await live.locator('#studioLightCompare').click();
-   await live.waitForFunction(()=>{
-    const s=document.getElementById('studioCanvas')?.dataset;
-    return s?.operatorToonBands==='0'&&s.operatorGradient==='current'&&
-     s.operatorRimMode==='off'&&s.operatorShadowColor==='neutral';
-   },null,{timeout:35000});
-   if(await live.locator('#studioLightCel').inputValue()!=='3')
-    throw Error('Compare Original erased the selected cel style');
-   await live.locator('#studioLightCompare').click();
-   await live.waitForFunction(()=>{
-    const s=document.getElementById('studioCanvas')?.dataset;
-    return s?.operatorToonBands==='3'&&s.operatorRimMode==='pixel'&&
-     s.operatorGradient==='sculptural'&&s.operatorShadowColor==='steel';
-   },null,{timeout:35000});
-   await live.locator('#studioLightReset').click();
-   await live.waitForFunction(()=>{
+   if(img.byteLength<3000)throw Error('Blank R7.10 WebGL frame');
+   await page.locator('#studioLightCompare').click();
+   await page.waitForFunction(()=>{
     const s=document.getElementById('studioCanvas')?.dataset;
     return s?.operatorToonBands==='0'&&s.operatorRimMode==='off'&&
      s.operatorGradient==='current'&&s.operatorShadowColor==='neutral';
    },null,{timeout:35000});
-   // R7.9: the stronger warm/white graphic rim must be testable on
-   // smooth surfaces AND a live firearm, not merely a helmet torso crop.
-   if(!await live.locator('#studioLightRim').isEnabled())
-    throw Error('R7.9 dual rim should be selectable without cel');
-   await live.locator('#studioLightRim').selectOption('dual');
-   await live.locator('#studioLightShowWeapon').click();
-   await live.waitForFunction(()=>{
+   await page.locator('#studioLightCompare').click();
+   await page.waitForFunction(()=>{
     const s=document.getElementById('studioCanvas')?.dataset;
-    return s?.operatorToonBands==='0'&&s.operatorRimMode==='dual'&&
-     Number(s.operatorWeaponMeshes)>0;
+    return s?.operatorToonBands==='2'&&s.operatorRimMode==='dual'&&
+     s.operatorGradient==='piece'&&s.operatorShadowColor==='plum-plus';
    },null,{timeout:35000});
-   await live.locator('#studioLightCel').selectOption('3');
-   await live.locator('#studioCelProfile').selectOption('graphic');
-   await live.locator('#studioLightScope').selectOption('all');
-   await live.locator('#studioCelLow').evaluate(el=>{
-    el.value='0.52';el.dispatchEvent(new Event('change',{bubbles:true}));
-   });
-   await live.locator('#studioCelHigh').evaluate(el=>{
-    el.value='0.78';el.dispatchEvent(new Event('change',{bubbles:true}));
-   });
-   await live.locator('#studioLightGradient').selectOption('violet-noir');
-   await live.locator('#studioLightShadow').selectOption('plum-plus');
-   await live.waitForFunction(()=>{
-    const s=document.getElementById('studioCanvas')?.dataset;
-    return s?.operatorToonBands==='3'&&s.operatorRimMode==='dual'&&
-     s.operatorCelProfile==='graphic'&&s.operatorCelLow==='0.52'&&
-     s.operatorCelHigh==='0.78'&&s.operatorGradient==='violet-noir'&&
-     s.operatorShadowColor==='plum-plus'&&Number(s.operatorWeaponMeshes)>0;
-   },null,{timeout:35000});
-   const firearm=await live.locator('#studioCanvas').screenshot({
-    path:'operator-studio-captures/r79-graphic-rim-violet-plum-firearm-phone.png'
-   });
-   if(firearm.byteLength<3000)
-    throw Error('R7.9 graphic weapon / violet WebGL screenshot blank');
-   const programCount=Number(await live.locator('#studioCanvas').getAttribute(
-    'data-shader-programs'));
-   if(!Number.isFinite(programCount)||programCount<=0)
-    throw Error('No compiled graphics programs for R7.9 audition');
-   await live.locator('#studioLightCompare').click();
-   await live.waitForFunction(()=>{
+   if(await cel.inputValue()!=='0.71'||await rim.inputValue()!=='0.25')
+    throw Error('Compare Original lost tuned slider amounts');
+   await page.locator('#studioLightReset').click();
+   await page.waitForFunction(()=>{
     const s=document.getElementById('studioCanvas')?.dataset;
     return s?.operatorToonBands==='0'&&s.operatorRimMode==='off'&&
      s.operatorGradient==='current'&&s.operatorShadowColor==='neutral';
    },null,{timeout:35000});
-   await live.locator('#studioLightCompare').click();
-   await live.waitForFunction(()=>
-    document.getElementById('studioCanvas')?.dataset.operatorRimMode==='dual',
-    null,{timeout:35000});
-   await live.locator('#studioLightReset').click();
-   if(uiErrors.length)throw Error('Live Lighting Lab WebGL errors: '+
-    uiErrors.join('; '));
-   console.log('R7 live Lighting Lab comparison, reset and WebGL smoke passed');
-  }finally{await live.close();}
+   if(await cel.isVisible()||await rim.isVisible())
+    throw Error('Reset must hide inactive cutoff/rim controls');
+   if(errors.length)throw Error('R7.10 WebGL errors: '+errors.join('; '));
+   console.log('R7.10 live cel/rim native sliders, per-piece gradient, weapon and Compare Original passed');
+  }finally{await page.close();}
  }finally{await browser.close();}
 }finally{
  server.kill('SIGTERM');

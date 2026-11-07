@@ -14,31 +14,43 @@ export type StudioLightLabSettings={
  toon:OperatorToonBands;rim:OperatorRimMode;
  gradient:OperatorHeightProfile;shadow:StudioShadowColor;
  celProfile:StudioCelProfile;celLow:number;celHigh:number;
+ /** 0–1 linear highlight blend; default subdued, exposed as Rim Amount. */
+ rimAmount:number;
  /** Audition the material on all opaque Standard surfaces, incl. firearms. */
  allSurfaces:boolean;
 };
 export const DEFAULT_STUDIO_LIGHT_LAB:Readonly<StudioLightLabSettings>={
  toon:0,rim:'off',gradient:'current',shadow:'neutral',
- celProfile:'classic',celLow:.66,celHigh:.84,allSurfaces:true
+ celProfile:'graphic',celLow:.70,celHigh:.84,rimAmount:.24,allSurfaces:true
 };
 function clampCutoff(value:string|null,defaultValue:number):number{
  const n=Number(value);
  return value!==null&&Number.isFinite(n)?
   Math.max(.3,Math.min(.95,Math.round(n*100)/100)):defaultValue;
 }
+/** Legacy direct URL experiments map onto the compact available controls.
+ * Prevent hidden selections that don't exist in the actual dropdown UI.
+ * The original unmodified look stays the default with no query flags.
+ */
 export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
  const p=new URLSearchParams(search);
- const rawProfile=p.get('operatorCelProfile');
- const celProfile:StudioCelProfile=rawProfile==='soft'||rawProfile==='hard'||
-  rawProfile==='graphic'?rawProfile:'classic';
- return {toon:requestedOperatorToonBands(search),
-  rim:requestedOperatorRimMode(search),
-  gradient:requestedOperatorGradient(search),
-  shadow:requestedStudioShadowColor(search),
-  celProfile,
-  celLow:clampCutoff(p.get('operatorCelLow'),DEFAULT_STUDIO_LIGHT_LAB.celLow),
-  celHigh:clampCutoff(p.get('operatorCelHigh'),DEFAULT_STUDIO_LIGHT_LAB.celHigh),
-  allSurfaces:p.get('operatorAllSurfaces')!=='0'};
+ const toon=requestedOperatorToonBands(search);
+ const rim=requestedOperatorRimMode(search);
+ const gradient=requestedOperatorGradient(search);
+ const shadow=requestedStudioShadowColor(search);
+ const amount=p.get('operatorRimAmount');
+ const n=amount===null ? .24 : Number(amount);
+ return {
+  toon:toon?2:0,
+  rim:rim==='off'?'off':'dual',
+  gradient:gradient==='current'?'current':'piece',
+  shadow:shadow==='neutral'?'neutral':'plum-plus',
+  celProfile:'graphic',
+  celLow:clampCutoff(p.get('operatorCelLow'),.70),
+  celHigh:.84,
+  rimAmount:Number.isFinite(n)?Math.max(0,Math.min(1,n)):.24,
+  allSurfaces:true
+ };
 }
 export function effectiveStudioLightLab(
  settings:StudioLightLabSettings,original=false
@@ -49,6 +61,8 @@ export function effectiveStudioLightLab(
  // Previous selective hard/pixel rims require cel. The new dual graphic
  // lighting is independent, so the smooth model can audition a rim too.
  return {...settings,celLow:low,celHigh:high,
+  rimAmount:Number.isFinite(settings.rimAmount)?
+   Math.max(0,Math.min(1,settings.rimAmount)):.24,
   rim:settings.toon===0&&settings.rim!=='dual'?'off':settings.rim};
 }
 export function studioLightLabLabel(s:StudioLightLabSettings):string{

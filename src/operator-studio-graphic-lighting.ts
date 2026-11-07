@@ -73,6 +73,41 @@ export function studioArtRole(node:THREE.Object3D,source:Source):
 const VARIANT_FLAG='fieldworkStudioArtOnly';
 const hasViolet=(profile:StudioLightLabSettings['gradient'])=>
  profile==='violet'||profile==='violet-noir';
+/** Local Y=0 is each independent mesh's lowest vertex, not the
+ * operator's feet. Every individual pouch, rig component, helmet plate,
+ * glove, boot and gun part receives its own complete gradient. The
+ * attribute is cached once per existing rig geometry, not per frame. */
+export function ensureStudioPieceGradient(geometry:THREE.BufferGeometry):boolean{
+ const position=geometry.getAttribute('position');
+ if(!position||position.itemSize<3)return false;
+ const existing=geometry.getAttribute('fieldworkPieceHeight');
+ if(existing&&existing.count===position.count)return true;
+ // consolidateVisualGroup retains these spans in vertex order. Use their
+ // bounds to preserve one gradient PER ORIGINAL POUCH/PANEL even if all share
+ // one material and are merged into a single iOS-friendly draw call.
+ const spans=geometry.userData.fieldworkLightingPartSpans as
+  Array<{start:number;count:number}>|undefined;
+ const valid=Array.isArray(spans)&&spans.length>0&&
+  spans.every(part=>Number.isInteger(part.start)&&
+   Number.isInteger(part.count)&&part.count>0&&part.start>=0&&
+   part.start+part.count<=position.count);
+ const ranges=valid?spans!:[{start:0,count:position.count}];
+ const values=new Float32Array(position.count);
+ for(const span of ranges){
+  let low=Infinity,high=-Infinity;
+  for(let i=span.start;i<span.start+span.count;i++){
+   const y=position.getY(i);
+   low=Math.min(low,y);high=Math.max(high,y);
+  }
+  const height=high-low;
+  for(let i=span.start;i<span.start+span.count;i++)
+   values[i]=height>0.001?
+    THREE.MathUtils.clamp((position.getY(i)-low)/height,0,1):.5;
+ }
+ geometry.setAttribute('fieldworkPieceHeight',
+  new THREE.BufferAttribute(values,1));
+ return true;
+}
 export function injectStudioGraphicLighting(
  shader:{vertexShader:string;fragmentShader:string},
  opts:{rim:StudioLightLabSettings['rim'];hard:boolean;
@@ -82,18 +117,27 @@ export function injectStudioGraphicLighting(
  if(!shader.vertexShader.includes(begin)||!shader.fragmentShader.includes(opaque))
   return;
  const {rim,hard,gradient}=opts;
- if((rim==='off'||rim==='hard'||rim==='pixel')&&!hasViolet(gradient)){
+ const piece=gradient==='piece';
+ const violet=hasViolet(gradient);
+ if((rim==='off'||rim==='hard'||rim==='pixel')&&!violet&&!piece){
   if(rim==='hard'||rim==='pixel')injectOperatorRim(shader,rim);
   return;
  }
- // World-height is evaluated at the mesh vertex so the violet fade does not
- // reset at every belt/pouch or at the weapon's own local bounding box.
- shader.vertexShader='varying vec3 vFWArtLocal;\nvarying float vFWArtHeight;\n'+
-  shader.vertexShader.replace(begin,
-   begin+'\nvFWArtLocal=position;\n'+
-   'vFWArtHeight=(modelMatrix*vec4(position,1.0)).y;');
+ const partHeader=piece?
+  'attribute float fieldworkPieceHeight;\nvarying float vFWPieceHeight;\n':'';
+ const partBody=piece?'vFWPieceHeight=fieldworkPieceHeight;\n':'';
+ shader.vertexShader=partHeader+
+  'varying vec3 vFWArtLocal;\nvarying float vFWArtHeight;\n'+
+  shader.vertexShader.replace(begin,begin+'\nvFWArtLocal=position;\n'+
+   'vFWArtHeight=(modelMatrix*vec4(position,1.0)).y;\n'+partBody);
  let effect='';
- if(hasViolet(gradient)){
+ if(piece){
+  effect+=
+   'float fwPieceLower=1.0-smoothstep(.02,.98,vFWPieceHeight);\n'+
+   'outgoingLight=mix(outgoingLight,'+
+   'outgoingLight*vec3(.43,.46,.79)+vec3(.012,.009,.042),'+
+   'fwPieceLower*.85);\n';
+ }else if(violet){
   const noir=gradient==='violet-noir';
   effect+=
    'float fwLower=1.0-smoothstep(3.0,39.0,vFWArtHeight);\n'+
@@ -104,31 +148,35 @@ export function injectStudioGraphicLighting(
    ');\n';
  }
  if(rim==='dual'){
-  // Large object-anchored cells rather than screen-space noise. Warm rim
-  // outlines nearly every opaque surface; white projected key accents are
-  // reserved for metallic / helmet / plate / firearm hard-shell regions.
+  // Two subtle layers, capped by the LIVE Rim Amount uniform. The earlier
+  // bright .58/.90 blends made broad metallic surfaces appear bleached out.
   effect+=
    'float fwFacing=abs(dot(normalize(normal),normalize(vViewPosition)));\n'+
    'float fwEdge=1.0-clamp(fwFacing,0.0,1.0);\n'+
    'vec3 fwCells=floor(vFWArtLocal/3.3);\n'+
    'float fwPattern=fract(dot(fwCells,vec3(.357,.619,.173)));\n'+
-   'float fwWarm=step(.38,fwEdge)*step(.22,fwPattern);\n'+
-   'outgoingLight=mix(outgoingLight,vec3(1.03,.79,.56),fwWarm*.58);\n';
+   'float fwWarm=step(.70,fwEdge)*step(.38,fwPattern);\n'+
+   'outgoingLight=mix(outgoingLight,vec3(.94,.78,.61),'+
+    'fwWarm*fieldworkRimStrength*.64);\n';
   if(hard){
    effect+=
     'vec3 fwKey=normalize((viewMatrix*vec4('+
      'vec3(.46,.88,.07),0.0)).xyz);\n'+
-    'float fwProjected=smoothstep(-.35,.30,dot(normalize(normal),fwKey));\n'+
-    'float fwWhite=step(.58,fwEdge)*step(.40,fwPattern)*fwProjected;\n'+
-    'outgoingLight=mix(outgoingLight,vec3(1.36,1.35,1.24),fwWhite*.90);\n';
+    'float fwProjected=smoothstep(-.25,.42,dot(normalize(normal),fwKey));\n'+
+    'float fwWhite=step(.82,fwEdge)*step(.46,fwPattern)*fwProjected;\n'+
+    'outgoingLight=mix(outgoingLight,vec3(1.15,1.13,1.09),'+
+     'fwWhite*fieldworkRimStrength*.72);\n';
   }
  }else if(rim==='hard'||rim==='pixel'){
-  // Legacy R7 variants remain available with their original silhouette.
   injectOperatorRim(shader,rim);
  }
- shader.fragmentShader='varying vec3 vFWArtLocal;\n'+
-  'varying float vFWArtHeight;\n'+shader.fragmentShader.replace(opaque,effect+opaque);
+ const rimHeader=rim==='dual'?'uniform float fieldworkRimStrength;\n':'';
+ const pieceFrag=piece?'varying float vFWPieceHeight;\n':'';
+ shader.fragmentShader=rimHeader+pieceFrag+
+  'varying vec3 vFWArtLocal;\nvarying float vFWArtHeight;\n'+
+  shader.fragmentShader.replace(opaque,effect+opaque);
 }
+
 function copyToon(target:THREE.MeshToonMaterial,source:Source):void{
  const mapChanged=target.map!==source.map||target.aoMap!==source.aoMap||
   target.alphaMap!==source.alphaMap||target.vertexColors!==source.vertexColors;
@@ -192,17 +240,23 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
   });
  }else variant=source.clone();
  variant.userData[VARIANT_FLAG]=true;
+ if(config.rim==='dual')
+  variant.userData.fieldworkRimUniform={value:config.rimAmount};
  const hook=source.onBeforeCompile;
  variant.onBeforeCompile=(shader,renderer)=>{
   if(hook!==THREE.Material.prototype.onBeforeCompile)
    hook.call(source,shader,renderer);
+  if(config.rim==='dual')
+   shader.uniforms.fieldworkRimStrength=
+    variant.userData.fieldworkRimUniform as {value:number};
   injectStudioGraphicLighting(shader,{
    rim:config.rim,hard:role==='hard',gradient:config.gradient
   });
  };
  variant.customProgramCacheKey=()=>[
   'fieldwork-r79',useToon?'toon'+config.toon:'standard',
-  config.rim,role,hasViolet(config.gradient)?config.gradient:'normal',
+  config.rim,role,(hasViolet(config.gradient)||config.gradient==='piece')?
+   config.gradient:'normal',
   source.customProgramCacheKey()
  ].join(':');
  return variant;
@@ -227,7 +281,8 @@ export function disposeStudioGraphicLighting(root:THREE.Object3D):void{
 export function applyStudioGraphicLighting(root:THREE.Object3D,
  config:StudioLightLabSettings
 ):{meshes:number;materials:number;weapons:number}{
- const effect=config.toon!==0||config.rim!=='off'||hasViolet(config.gradient);
+ const effect=config.toon!==0||config.rim!=='off'||
+  hasViolet(config.gradient)||config.gradient==='piece';
  if(!effect){restoreStudioGraphicLighting(root);
   return {meshes:0,materials:0,weapons:0};}
  restoreStudioGraphicLighting(root);
@@ -242,6 +297,8 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
   const src=original(node);
   if(!src||!isSafeSurface(src))return;
   if(!config.allSurfaces&&src.userData.fieldworkBakedEquipmentAO!==true)
+   return;
+  if(config.gradient==='piece'&&!ensureStudioPieceGradient(node.geometry))
    return;
   active.add(src);
   const role=studioArtRole(node,src);
@@ -258,6 +315,11 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
   }else if(entry.material instanceof THREE.MeshToonMaterial)
    copyToon(entry.material,src);
   else syncStandard(entry.material,src);
+  if(config.rim==='dual'){
+   const uniform=entry.material.userData.fieldworkRimUniform as
+    {value:number}|undefined;
+   if(uniform)uniform.value=config.rimAmount;
+  }
   node.userData.fieldworkStudioArtOriginal=src;
   node.material=entry.material;
   meshes++;

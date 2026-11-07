@@ -236,12 +236,12 @@ const labCel=$<HTMLSelectElement>('studioLightCel');
 const labRim=$<HTMLSelectElement>('studioLightRim');
 const labGradient=$<HTMLSelectElement>('studioLightGradient');
 const labShadow=$<HTMLSelectElement>('studioLightShadow');
-const labCelProfile=$<HTMLSelectElement>('studioCelProfile');
-const labScope=$<HTMLSelectElement>('studioLightScope');
 const labCelLow=$<HTMLInputElement>('studioCelLow');
-const labCelHigh=$<HTMLInputElement>('studioCelHigh');
+const labRimAmount=$<HTMLInputElement>('studioRimAmount');
+const labCelLowWrap=$<HTMLElement>('studioCelLowWrap');
+const labRimAmountWrap=$<HTMLElement>('studioRimAmountWrap');
 const labCelLowValue=$<HTMLOutputElement>('studioCelLowValue');
-const labCelHighValue=$<HTMLOutputElement>('studioCelHighValue');
+const labRimAmountValue=$<HTMLOutputElement>('studioRimAmountValue');
 const labWeapon=$<HTMLButtonElement>('studioLightShowWeapon');
 const labCompare=$<HTMLButtonElement>('studioLightCompare');
 const labReset=$<HTMLButtonElement>('studioLightReset');
@@ -253,18 +253,18 @@ function syncLightingLabControls(){
  labRim.value=lightLabSettings.rim;
  labGradient.value=lightLabSettings.gradient;
  labShadow.value=lightLabSettings.shadow;
- labCelProfile.value=lightLabSettings.celProfile;
- labScope.value=lightLabSettings.allSurfaces?'all':'cloth';
  labCelLow.value=String(lightLabSettings.celLow);
- labCelHigh.value=String(lightLabSettings.celHigh);
+ labRimAmount.value=String(lightLabSettings.rimAmount);
  labCelLowValue.textContent=Math.round(lightLabSettings.celLow*100)+'%';
- labCelHighValue.textContent=Math.round(lightLabSettings.celHigh*100)+'%';
+ labRimAmountValue.textContent=Math.round(lightLabSettings.rimAmount*100)+'%';
  labCel.disabled=atlasPrecedence;
- // Graphic dual rim is available independently of cel banding.
  labRim.disabled=atlasPrecedence;
- labCelProfile.disabled=atlasPrecedence||lightLabSettings.toon===0;
- labCelLow.disabled=atlasPrecedence||lightLabSettings.toon===0;
- labCelHigh.disabled=atlasPrecedence||lightLabSettings.toon!==3;
+ const celOn=lightLabSettings.toon===2&&!atlasPrecedence;
+ const rimOn=lightLabSettings.rim==='dual'&&!atlasPrecedence;
+ labCelLow.disabled=!celOn;
+ labRimAmount.disabled=!rimOn;
+ labCelLowWrap.hidden=!celOn;
+ labRimAmountWrap.hidden=!rimOn;
  labWeapon.setAttribute('aria-pressed',String(!clothesOnly&&showWeapon));
  labCompare.setAttribute('aria-pressed',String(lightLabCompareOriginal));
  labCompare.textContent=lightLabCompareOriginal?'RETURN TO EXPERIMENT':
@@ -272,9 +272,9 @@ function syncLightingLabControls(){
  labSummary.textContent=lightLabCompareOriginal?'ORIGINAL · COMPARISON':
   studioLightLabLabel(liveLightLabSettings());
  labStatus.textContent=atlasPrecedence?
-  'UV1 atlas takes precedence over cel and rim. The height/color controls remain live.':
+  'The UV1 atlas URL experiment takes precedence over cel and rim.':
   lightLabCompareOriginal?
-  'Showing original lighting. Experiment selections are preserved.':
+  'Original lighting shown. Experiment values are preserved.':
   'LIVE · '+studioLightLabLabel(liveLightLabSettings());
 }
 function applyLightingLab(){
@@ -285,35 +285,40 @@ function applyLightingLab(){
  posePreview();
 }
 function readLightingLabControls(){
- // The third band must remain wider than the shadow band. Clamp and mirror
- // both visible slider values, so the displayed cutoffs match the GPU ramp.
- const celLow=Math.min(.88,Number(labCelLow.value));
- const celHigh=Math.max(celLow+.06,Math.min(.97,Number(labCelHigh.value)));
  lightLabSettings={
+  ...lightLabSettings,
   toon:Number(labCel.value) as StudioLightLabSettings['toon'],
   rim:labRim.value as StudioLightLabSettings['rim'],
   gradient:labGradient.value as StudioLightLabSettings['gradient'],
   shadow:labShadow.value as StudioLightLabSettings['shadow'],
-  celProfile:labCelProfile.value as StudioLightLabSettings['celProfile'],
-  celLow,celHigh,
-  allSurfaces:labScope.value==='all'
+  celLow:Number(labCelLow.value),
+  rimAmount:Number(labRimAmount.value),
+  celProfile:'graphic',allSurfaces:true
  };
  lightLabCompareOriginal=false;
  applyLightingLab();
 }
-for(const input of [labCel,labRim,labGradient,labShadow,
- labCelProfile,labScope])input.addEventListener('change',readLightingLabControls);
-// Coalesce fast touch-slider changes instead of queuing thumbnail readbacks.
-let liveCelFrame=0;
-for(const slider of [labCelLow,labCelHigh]){
- slider.addEventListener('input',()=>{
-  if(liveCelFrame)return;
-  liveCelFrame=requestAnimationFrame(()=>{
-   liveCelFrame=0;
-   readLightingLabControls();
+for(const input of [labCel,labRim,labGradient,labShadow])
+ input.addEventListener('change',readLightingLabControls);
+// A single visible, native mobile range control per active feature.
+let lightSliderFrame=0;
+const readSlider=()=>{
+ const celLow=Number(labCelLow.value);
+ const rimAmount=Number(labRimAmount.value);
+ labCelLowValue.textContent=Math.round(celLow*100)+'%';
+ labRimAmountValue.textContent=Math.round(rimAmount*100)+'%';
+ lightLabSettings={...lightLabSettings,celLow,rimAmount};
+ lightLabCompareOriginal=false;
+ if(!lightSliderFrame){
+  lightSliderFrame=requestAnimationFrame(()=>{
+   lightSliderFrame=0;
+   applyLightingLab();
   });
- });
- slider.addEventListener('change',readLightingLabControls);
+ }
+};
+for(const slider of [labCelLow,labRimAmount]){
+ slider.addEventListener('input',readSlider);
+ slider.addEventListener('change',readSlider);
 }
 labWeapon.addEventListener('click',()=>{
  clothesOnly=false;showWeapon=true;
