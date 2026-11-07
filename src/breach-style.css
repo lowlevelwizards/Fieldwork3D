@@ -2182,3 +2182,74 @@ html,body{font-family:var(--fw-font-menu)}
 .replay-panel .replay-utility button[aria-expanded="true"]{
   border-color:#d6c493;color:#fff0cc
 }
+
+
+/* Replay R5: direct tactical lenses and a continuously visible film log.
+ * Contextual bodycam controls appear only while following an eligible operator. */
+.replay-quick-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.replay-quick-controls label[hidden]{display:none!important}
+.replay-direct-tools{display:grid;grid-template-columns:minmax(0,1.25fr)
+  repeat(3,minmax(0,1fr));gap:5px;margin-top:5px;align-items:stretch}
+.replay-direct-tools>button,.replay-direct-sight-wrap{min-width:0;min-height:38px;
+  padding:5px 7px;border:1px solid #678575;border-radius:6px;
+  background:#293f37;color:#e9e4d5;
+  font:700 11px/1.1 "Saira Condensed",sans-serif;
+  letter-spacing:.02em;text-align:center}
+.replay-direct-tools>button{cursor:pointer}
+.replay-direct-tools>button[hidden]{display:none!important}
+.replay-direct-tools>button[aria-pressed="true"]{background:#ac9b70;
+  color:#172723;border-color:#e1c995}
+.replay-direct-tools>button:disabled{opacity:.48}
+.replay-direct-tools>button:focus-visible,.replay-direct-sight-wrap select:focus-visible{
+  outline:2px solid #eddba8;outline-offset:1px}
+.replay-direct-sight-wrap{display:flex;align-items:center;gap:4px;padding:2px 5px}
+.replay-direct-sight-wrap span{font:700 9px/1 "Saira Condensed",sans-serif;color:#b7cabf}
+.replay-direct-sight-wrap select{flex:1;width:100%;min-width:0;min-height:32px;
+  border:0;background:transparent;color:#f1e3c9;font:700 12px "Saira Condensed",sans-serif}
+.replay-action-strip{display:flex;align-items:center;justify-content:center;
+  min-height:24px;max-height:31px;margin-top:4px;padding:3px 7px;
+  border-top:1px solid #59766a;background:#233730;color:#e6d5ae;
+  border-radius:4px;overflow:hidden}
+.replay-action-strip .replay-event,.replay-utility .replay-event{
+  display:block!important;position:static!important;max-width:none!important;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;
+  font:600 11px/1.25 "Work Sans",sans-serif;letter-spacing:0}
+.replay-direct-tools:has(>button:not([hidden]):nth-last-child(-n+3)){
+  grid-auto-flow:row
+}
+@media(max-width:390px){
+  .replay-direct-tools{gap:3px}
+  .replay-direct-tools>button{padding:5px 2px;font-size:10px}
+  .replay-direct-sight-wrap{gap:2px;padding:2px 3px}
+  .replay-direct-sight-wrap span{font-size:8px}
+  .replay-direct-sight-wrap select{font-size:11px}
+}
+@media(max-height:470px) and (min-width:600px){
+  .replay-panel{overflow:visible}
+  .replay-direct-tools{position:absolute;bottom:calc(100% + 6px);
+    right:0;left:0;margin:0;padding:5px;border:1px solid #5b7366;
+    border-radius:7px;background:#1e312cf5;box-shadow:0 4px 18px #07171399}
+  .replay-action-strip{min-height:18px;max-height:23px;padding:2px 5px;margin-top:0}
+  .replay-action-strip .replay-event{font-size:10px}
+  .replay-quick-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+}
+
+
+/* R5: the old cyclic View/Follow/Sight/Traces/Bodycam buttons were parallel
+ * implementations of the same actions. Their handlers remain as compatibility
+ * adapters for existing smoke probes, but no duplicate actions are presented.
+ * Squad follow stays in advanced camera options as a distinct viewing mode. */
+.replay-group #replayView,
+.replay-group #replaySight,
+.replay-group #replayBodycam,
+.replay-group #replayBodycamMount,
+.replay-group #replayFollow,
+.replay-group #replayDirector,
+.replay-group #replayTraces{display:none!important}
+
+/* An opened analysis drawer owns this upper landscape space. */
+@media(max-height:470px) and (min-width:600px){
+  .replay-panel:has(.replay-drawer:not([hidden])) .replay-direct-tools{
+    display:none!important
+  }
+}

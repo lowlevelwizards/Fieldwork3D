@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   replay-ui:
-    if: ${{ startsWith(github.head_ref, 'feature/replay-r2-mobile-ui-') || startsWith(github.head_ref, 'feature/replay-r3-') || startsWith(github.head_ref, 'feature/replay-r41-') || startsWith(github.head_ref, 'feature/replay-r42-') || startsWith(github.head_ref, 'feature/replay-r42b-') || startsWith(github.head_ref, 'feature/replay-r42c-') || startsWith(github.head_ref, 'feature/replay-ux-v2-') }}
+    if: ${{ startsWith(github.head_ref, 'feature/replay-r2-mobile-ui-') || startsWith(github.head_ref, 'feature/replay-r3-') || startsWith(github.head_ref, 'feature/replay-r41-') || startsWith(github.head_ref, 'feature/replay-r42-') || startsWith(github.head_ref, 'feature/replay-r42b-') || startsWith(github.head_ref, 'feature/replay-r42c-') || startsWith(github.head_ref, 'feature/replay-ux-v2-') || startsWith(github.head_ref, 'feature/replay-r5-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -26,10 +26,12 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: npx playwright install chromium
+      - name: Replay R5 — camera, bodycam, moments and entry contracts
+        run: node --test tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs tests/replay-r41-incidents.test.mjs tests/replay-r44-squad-entry.test.mjs
       - name: Verify compact replay dock and contextual viewer surfaces
         run: node scripts/smoke-replay-r2-ui.mjs
       - name: Replay UX V2 — verify prior Pages release before checkpoint
-        if: ${{ startsWith(github.head_ref, 'feature/replay-ux-v2-') }}
+        if: ${{ startsWith(github.head_ref, 'feature/replay-ux-v2-') || startsWith(github.head_ref, 'feature/replay-r5-') }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs

@@ -72,8 +72,8 @@ import {exteriorKnownFogRects,fogUvAt} from './breach-fog-domain.ts';
 import {fogFingerprint,fogMemoryFingerprint} from './breach-fog-cache.ts';
 import {wallOccludesFriendly,transitionWallOpacity} from './breach-camera-occlusion.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
-import {sampleBodycamSocket,applyBodycamCamera,
-  type BodycamSetting} from './breach-replay-bodycam.ts';
+import {sampleBodycamSocket,applyBodycamCamera,smoothBodycamSample,
+  type BodycamSetting,type BodycamSample} from './breach-replay-bodycam.ts';
 import type {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
 import type {ReplayWindowKnowledgeHistory} from './breach-replay-window-knowledge.ts';
 import {personalDecorVisible,personalCoverVisible}
@@ -149,6 +149,17 @@ export class TacticalScene3D{
   /** Replay-only perspective camera; default rendering stays orthographic. */
   readonly bodycamCamera=new THREE.PerspectiveCamera(95,1,.8,2800);
   private replayBodycam:BodycamSetting|null=null;
+  private bodycamSmooth:BodycamSample|null=null;
+  private lastBodycamSampleTime:number|null=null;
+  private replayXrayOn=false;
+  private replayDirectorFocus:Pt|null=null;
+  setReplayDirectorFocus(p:Pt|null):void{
+    this.replayDirectorFocus=p?{...p}:null;
+  }
+  /** Presentation-only wall transparency: recorded sight still governs actors. */
+  setReplayXray(enabled:boolean):void{
+    this.replayXrayOn=enabled;
+  }
   private bodycamLastQa:{active:boolean;owner:string|null;masked:number;
     maskRestored:boolean;frame:number;at:number}|null=null;
   private renderFrameSerial=0;
@@ -1486,8 +1497,14 @@ export class TacticalScene3D{
   /** Audition-only until interior occlusion, owner meshes and personal fog
    * have passed their visual checks. The shipped View menu never calls this.
    */
+  resetReplayBodycamSmoothing():void{
+    this.bodycamSmooth=null;this.lastBodycamSampleTime=null;
+  }
   setReplayBodycam(setting:BodycamSetting|null):void{
+    const changed=this.replayBodycam?.actorId!==setting?.actorId||
+      this.replayBodycam?.mount!==setting?.mount||!setting;
     this.replayBodycam=setting?{...setting}:null;
+    if(changed){this.bodycamSmooth=null;this.lastBodycamSampleTime=null;}
     // Every mount/lens change invalidates the previous frame's diagnostic:
     // slow software WebGL must not report the old chest frame as helmet QA.
     this.bodycamLastQa=null;
@@ -1819,17 +1836,22 @@ export class TacticalScene3D{
         bodycamAudition,personalGroundEvidence,p);
       this.staticBatches.setVisible(detail.obj,detail.obj.visible);
     }
-    // Fade only physical walls obstructing the selected friendly from camera.
+    // Director cuts walls around its actual historical friendly focal group,
+    // rather than a potentially unrelated manually selected soldier.
     const fromCamera=this.camera.position.clone().sub(this.target);
-    const pawn=team(s).find(a=>a.id===selected&&a.health>0)?.p;
+    const pawn=this.replayDirectorFocus??
+      team(s).find(a=>a.id===selected&&a.health>0)?.p;
     const maxCutDistance=Math.max(40,Math.min(150,
       90/Math.tan(Math.max(.38,this.view.pitch))));
     for(const wall of this.walls){
       const cut=!bodycamAudition&&this.view.mode==='iso'&&!!pawn&&wallOccludesFriendly(
         wall.segment,pawn,{x:fromCamera.x,y:fromCamera.z},maxCutDistance);
-      const opacity=bodycamAudition?1:
+      const naturalOpacity=bodycamAudition?1:
         transitionWallOpacity(this.wallFade.get(wall.mesh)??1,cut,dt);
-      this.wallFade.set(wall.mesh,opacity);
+      this.wallFade.set(wall.mesh,naturalOpacity);
+      // X-ray affects only architectural presentation, NEVER historical
+      // actor disclosure, contact evidence or the replay's authoritative fog.
+      const opacity=!bodycamAudition&&this.replayXrayOn?0.18:naturalOpacity;
       const translucent=opacity<.995;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
       if(material.transparent!==translucent){
@@ -2488,7 +2510,14 @@ export class TacticalScene3D{
         const sample=sampleBodycamSocket(
           socket,this.replayBodycam.stabilization,
           this.replayBodycam.mount==='chest'?.16:.11);
-        applyBodycamCamera(this.bodycamCamera,sample,
+        const elapsed=this.lastBodycamSampleTime===null?Infinity:
+          Math.abs(s.seconds-this.lastBodycamSampleTime);
+        const cut=this.lastBodycamSampleTime!==null&&(
+          s.seconds<this.lastBodycamSampleTime-.0001||elapsed>.55);
+        this.bodycamSmooth=smoothBodycamSample(this.bodycamSmooth,
+          sample,dt,cut);
+        this.lastBodycamSampleTime=s.seconds;
+        applyBodycamCamera(this.bodycamCamera,this.bodycamSmooth,
           this.replayBodycam.fov,this.width/this.height);
         camera=this.bodycamCamera;
         cameraOwner=rig;

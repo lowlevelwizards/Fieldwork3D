@@ -64,3 +64,29 @@ export function applyBodycamCamera(
   camera.lookAt(sample.position.clone().add(sample.forward));
   camera.updateMatrixWorld(true);
 }
+
+/** Bounded render-only stabilization. Recorded actor poses remain untouched.
+ * Reset this filter on seeks/mount changes; never accumulate across cuts.
+ * A short constant-time filter removes sampled animation jitter on phones.
+ */
+export function smoothBodycamSample(previous:BodycamSample|null,
+  next:BodycamSample,dt:number,reset=false):BodycamSample{
+  if(!previous||reset||!Number.isFinite(dt)||dt<0)
+    return {position:next.position.clone(),forward:next.forward.clone(),
+      up:next.up.clone()};
+  const positionAlpha=1-Math.exp(-Math.min(.12,dt)/.115);
+  const rotationAlpha=1-Math.exp(-Math.min(.12,dt)/.155);
+  // Keep the camera close to its real historical socket in tight interiors.
+  const position=previous.position.clone().lerp(next.position,positionAlpha);
+  if(position.distanceTo(next.position)>6)
+    position.copy(next.position).addScaledVector(
+      previous.position.clone().sub(next.position).normalize(),6);
+  const forward=previous.forward.clone().lerp(next.forward,rotationAlpha);
+  if(forward.lengthSq()<.01)forward.copy(next.forward);
+  forward.normalize();
+  const up=previous.up.clone().lerp(next.up,rotationAlpha);
+  up.addScaledVector(forward,-up.dot(forward));
+  if(up.lengthSq()<.01)up.copy(next.up);
+  up.normalize();
+  return {position,forward,up};
+}

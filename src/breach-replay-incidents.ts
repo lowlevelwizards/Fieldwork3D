@@ -122,7 +122,20 @@ export function featuredReplayIncidents(
   incidents:readonly ReplayIncident[],limit=5
 ):ReplayIncident[]{
   if(limit<=0)return [];
-  return incidents.slice().sort((a,b)=>b.score-a.score||
-    a.start-b.start||a.id.localeCompare(b.id))
-    .slice(0,Math.floor(limit)).sort((a,b)=>a.start-b.start);
+  // A highlight is an actual tactical development, not routine movement,
+  // a door click or a solitary administrative order. Keep varied moments
+  // rather than five nearly identical shots in one engagement.
+  const valuable=new Set(['casualty','objective','contact','engagement',
+    'flash','surrender']);
+  const ranked=incidents.filter(i=>valuable.has(i.kind))
+    .slice().sort((a,b)=>b.score-a.score||
+      a.start-b.start||a.id.localeCompare(b.id));
+  const chosen:ReplayIncident[]=[];
+  for(const incident of ranked){
+    if(chosen.length>=Math.floor(limit))break;
+    if(chosen.some(other=>Math.abs(other.start-incident.start)<6))continue;
+    if(chosen.filter(other=>other.kind===incident.kind).length>=2)continue;
+    chosen.push(incident);
+  }
+  return chosen.sort((a,b)=>a.start-b.start||a.id.localeCompare(b.id));
 }

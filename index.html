@@ -255,7 +255,7 @@
     <label><span>VIEW</span><select id="replayQuickView" aria-label="Replay perspective">
       <option value="iso">ISO</option><option value="top">TOP</option><option value="plan2d">FLOOR PLAN</option>
     </select></label>
-    <label><span>CAMERA</span><select id="replayQuickCamera" aria-label="Replay camera behavior">
+    <label hidden><span>CAMERA</span><select id="replayQuickCamera" aria-label="Replay camera behavior">
       <option value="free">FREE</option><option value="squad">FOLLOW SQUAD</option>
       <option value="director">DIRECTOR</option>
     </select></label>
@@ -264,6 +264,23 @@
       <option value="0.75">0.75×</option><option value="1" selected>1×</option>
       <option value="1.5">1.5×</option><option value="2">2×</option><option value="4">4×</option>
     </select></label>
+  </div>
+  <div class="replay-direct-tools" role="group" aria-label="Replay viewing controls">
+    <label class="replay-direct-sight-wrap"><span>SIGHT</span>
+      <select id="replayDirectSight" aria-label="Replay visibility policy">
+        <option value="team">TEAM</option>
+        <option value="full">FULL</option>
+        <option value="operator">OPERATOR</option>
+      </select>
+    </label>
+    <button id="replayDirectTracers" type="button" aria-pressed="false"
+      title="Show historically permitted recent shot tracers">TRACERS</button>
+    <button id="replayDirectXray" type="button" aria-pressed="false"
+      title="Fade walls for visualization; does not reveal undisclosed opponents">X-RAY</button>
+    <button id="replayDirectDirector" type="button" aria-pressed="false">DIRECTOR</button>
+    <button id="replayDirectBodycam" type="button" hidden aria-pressed="false">BODYCAM</button>
+    <button id="replayDirectMount" type="button" hidden>CHEST / HEAD</button>
+    <button id="replayDirectFree" type="button" hidden>FREE CAMERA</button>
   </div>
   <div class="replay-timeline">
     <div id="replayMarks" class="replay-marks" role="group" aria-label="Significant replay moments"></div>
@@ -280,13 +297,15 @@
     <button id="replayNextEvent" type="button" title="Next significant event" aria-label="Next significant event" data-caption="EVENT +">▶|</button>
   </div>
   <div class="replay-utility">
-    <output id="replayEventText" class="replay-event" aria-live="off"></output>
     <button id="replayFeedToggle" type="button" aria-expanded="false"
       aria-controls="replayDrawer">MOMENTS</button>
     <button id="replayMore" type="button" aria-label="Replay analysis"
       aria-expanded="false" aria-controls="replayDrawer" title="Replay analysis">ANALYZE</button>
     <button id="replayShareToggle" type="button" aria-expanded="false"
       aria-controls="replayDrawer">SAVE / SHARE</button>
+  </div>
+  <div class="replay-action-strip" role="status" aria-label="Replay action feed">
+    <output id="replayEventText" class="replay-event" aria-live="off">RECORDED ACTIONS WILL APPEAR HERE</output>
   </div>
   <section id="replayDrawer" class="replay-drawer" role="region" hidden aria-labelledby="replayDrawerTitle">
     <div class="replay-drawer-head">
