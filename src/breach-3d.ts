@@ -70,6 +70,7 @@ import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {sampleBodycamSocket,applyBodycamCamera,
   type BodycamSetting} from './breach-replay-bodycam.ts';
 import type {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
+import type {ReplayWindowKnowledgeHistory} from './breach-replay-window-knowledge.ts';
 import {personalDecorVisible,personalCoverVisible}
   from './breach-replay-personal-visibility.ts';
 import {interpolatedActor,type RenderFrame}
@@ -1666,7 +1667,8 @@ export class TacticalScene3D{
     liveMotion?:ReplayPresentation|null,
     replayDisclosurePolicy:ReplayDisclosure|null=null,
     replayDoorHistory:ReplayDoorKnowledgeHistory|null=null,
-    personalGroundEvidence:ReadonlySet<string>|null=null){
+    personalGroundEvidence:ReadonlySet<string>|null=null,
+    replayWindowHistory:ReplayWindowKnowledgeHistory|null=null){
     if(this.view.mode==='plan2d')return;
     const bodycamAudition=!!this.replayBodycam&&
       replayDisclosurePolicy?.mode==='operator'&&
@@ -1701,8 +1703,17 @@ export class TacticalScene3D{
       });
     }
     for(const [id,glass] of this.windowGlass){
-      const state=s.windows.find(w=>w.id===id);
-      glass.visible=!state||(!state.shattered&&!state.open);
+      const current=s.windows.find(w=>w.id===id);
+      // Shared architecture is reconstructed, but dynamic pane state is
+      // ONLY the last state personally observed by this camera operator.
+      // Legacy or unseen panes use neutral intact seed geometry; never
+      // show live open/broken hindsight when a replay is scrubbed.
+      const seen=bodycamAudition&&replayDisclosurePolicy?.observerId?
+        replayWindowHistory?.at(s.seconds,replayDisclosurePolicy.observerId,id):
+        null;
+      glass.visible=bodycamAudition?
+        !(seen?.open||seen?.shattered):
+        !current||(!current.shattered&&!current.open);
     }
     this.updateCamera(dt);
     this.fogAt+=dt;

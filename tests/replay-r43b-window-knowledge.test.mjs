@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newSession} from '../src/breach-game.ts';
+import {MissionRecorder} from '../src/breach-replay.ts';
+import {captureReplayArchive,replayArchiveIsValid,restoreReplayArchive}
+  from '../src/breach-replay-archive.ts';
 import {ReplayWindowObservationRecorder,ReplayWindowKnowledgeHistory}
   from '../src/breach-replay-window-knowledge.ts';
 
@@ -42,4 +45,25 @@ test('window observations deduplicate unchanged state at the sampling cadence',(
   }
   assert.equal(record.observations.length,1);
   assert.equal(new ReplayWindowKnowledgeHistory([]).at(0,observer.id,'PW'),null);
+});
+
+test('personal window changes survive archives; missing and corrupt journals fail closed',()=>{
+  const s=newSession(0,3411);
+  const rec=new MissionRecorder();
+  rec.capture(s,true);s.seconds=.05;rec.capture(s);
+  const archive=captureReplayArchive(rec,'bodycam-windows',12345);
+  assert.equal(replayArchiveIsValid(archive),true);
+  assert.deepEqual(restoreReplayArchive(archive).windowKnowledge.observations,
+    rec.windowKnowledge.observations);
+  const old=structuredClone(archive);
+  delete old.personalWindows;
+  assert.equal(replayArchiveIsValid(old),true);
+  assert.deepEqual(restoreReplayArchive(old).windowKnowledge.observations,[]);
+  const bad=structuredClone(archive);
+  bad.personalWindows=[{at:.01,observerId:'rook',windowId:'W0',
+    open:'yes',shattered:false}];
+  assert.equal(replayArchiveIsValid(bad),false);
+  bad.personalWindows=[{at:100,observerId:'rook',windowId:'W0',
+    open:false,shattered:false}];
+  assert.equal(replayArchiveIsValid(bad),false);
 });

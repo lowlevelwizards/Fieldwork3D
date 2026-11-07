@@ -111,6 +111,8 @@ import {replayActorDisclosed,replayCivilianDisclosed,type ReplayDisclosure}
 import {operatorContactEventKnown,operatorContactAvailable}
   from './breach-replay-contact-lens.ts';
 import {ReplayOperatorSightIndex} from './breach-replay-operator-sight.ts';
+import {ReplayWindowKnowledgeHistory}
+  from './breach-replay-window-knowledge.ts';
 import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
   bodycamDisclosureLabel,replayAudioListener,replayBodycamPan}
   from './breach-replay-bodycam-controls.ts';
@@ -799,6 +801,7 @@ let replayContactObserverId:string|null=null;
 let replayHasContactEvidence=false;
 let replayOperatorSightIndex:ReplayOperatorSightIndex|null=null;
 let replayDoorHistory:ReplayDoorKnowledgeHistory|null=null;
+let replayWindowHistory:ReplayWindowKnowledgeHistory|null=null;
 /** Optional recorded floor-discovery overlay, not a full actor POV. */
 let replayPersonalGroundHistory:PersonalGroundHistory|null=null;
 let replayGroundLensOn=false;
@@ -4565,6 +4568,8 @@ function enterReplay(){
     new ReplayOperatorSightIndex(recorder.frames):null;
   replayDoorHistory=recorder.doorKnowledge.observations.length?
     new ReplayDoorKnowledgeHistory(recorder.doorKnowledge.observations):null;
+  replayWindowHistory=recorder.windowKnowledge.observations.length?
+    new ReplayWindowKnowledgeHistory(recorder.windowKnowledge.observations):null;
   replayPersonalGroundHistory=recorder.personalGround.length?
     new PersonalGroundHistory(recorder.personalGround):null;
   replayGroundLensOn=false;replayGroundCacheObserver=null;
@@ -4620,7 +4625,7 @@ function exitReplay(){
   replayIncidents=[];replayFeaturedIncidents=[];
   replayContactObserverId=null;replayHasContactEvidence=false;
   replayOperatorSightIndex=null;
-  replayDoorHistory=null;
+  replayDoorHistory=null;replayWindowHistory=null;
   replayPersonalGroundHistory=null;replayGroundLensOn=false;
   replayGroundCacheObserver=null;replayGroundCacheCount=-1;
   replayGroundCacheSite=null;
@@ -6542,7 +6547,8 @@ function tick(now:number){
       replaying?replayDoorHistory:null,
       replaying&&replayContactObserverId?
         replayPersonalGroundHistory?.at(replayTime,replayContactObserverId)??null:
-        null);
+        null,
+      replaying?replayWindowHistory:null);
   const overlayBegin=perfOverlay?performance.now():0;
   render();
   if(replaying&&replayQuickVideo.active){
