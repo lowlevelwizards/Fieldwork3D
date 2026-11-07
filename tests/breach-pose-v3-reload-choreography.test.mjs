@@ -61,3 +61,30 @@ test('V3 magazine transport stays outside rigid torso at mid transit',()=>{
   assert.ok(a.target.distanceTo(b)<1e-8,'mount/contact endpoint '+t);
  }
 });
+
+test('B14 AR/AK handoffs have distinct bounded approach arcs and exact sockets',()=>{
+ const keyframes=[0,.20,.30,.32,.75,.82,.90,1];
+ for(const family of ['ar','ak','hk']){
+  for(const t of keyframes){
+   const original=choreograph(t).target;
+   const variant=choreographV3ReloadHand({...input,family,progress:t}).target;
+   assert.ok(variant.distanceTo(original)<1e-8,
+    family+' should preserve physical attachment point at '+t);
+  }
+  for(const t of [.20,.32,.75,.82]){
+   const before=choreographV3ReloadHand({...input,family,progress:t-1e-6}).target;
+   const after=choreographV3ReloadHand({...input,family,progress:t+1e-6}).target;
+   assert.ok(before.distanceTo(after)<.005,
+    family+' continuous at magazine handoff '+t);
+  }
+ }
+ for(const t of [.16,.39,.785]){
+  const ak=choreographV3ReloadHand({...input,family:'ak',progress:t}).target;
+  const ar=choreographV3ReloadHand({...input,family:'ar',progress:t}).target;
+  assert.ok(ak.distanceTo(ar)>.15,
+   'AK rock-in approach must differ from AR straight insertion '+t);
+ }
+ const shell=choreographV3ReloadHand({...input,family:'ak',mode:'shells',progress:.52});
+ assert.ok(shell.target.distanceTo(choreographV3ReloadHand({
+  ...input,mode:'shells',progress:.52}).target)<1e-12);
+});
