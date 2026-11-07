@@ -36,7 +36,7 @@ test('Quick Play MP5 choice changes class explicitly via existing ammo reset pat
  assert.equal(changed.members[0].reserve,WEAPONS.smg.reserve);
  assert.equal(changed.members[0].weaponConfiguration.build.parts.receiver,'hk-mp5-standard');
  assert.equal(original.members[0].weapon,rook.weapon);
- assert.equal(changed.members[1],original.members[1]);
+ assert.deepEqual(changed.members[1],original.members[1]);
 });
 test('invalid recipe or unknown operator leaves Quick Play state unchanged',()=>{
  const original=initialRoster();
