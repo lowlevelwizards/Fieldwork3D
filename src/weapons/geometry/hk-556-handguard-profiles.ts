@@ -7,10 +7,13 @@ const perimeter:readonly (readonly [number,number])[]=[
 export function addHK556Forearm(root:THREE.Group,id:string,n:number,
  start:number,end:number,compact:boolean,material:THREE.Material):THREE.Mesh{
  const cy=-.19,ry=compact?1.52:1.38,rz=compact?1.50:1.39;
+ // HK33: a modestly clearer muzzleward taper, NO extra ribs or faces.
+ // HK53: keep the already approved thicker compact proportions untouched.
+ const tipScale=compact?.92:.86;
  const rings=[
   {x:start,y:ry,z:rz},
   {x:end-(compact?1.18:2.1),y:ry,z:rz},
-  {x:end,y:ry*.92,z:rz*.92}
+  {x:end,y:ry*tipScale,z:rz*tipScale}
  ];
  const vertex=(r:typeof rings[number],i:number)=>{
   const [y,z]=perimeter[i];

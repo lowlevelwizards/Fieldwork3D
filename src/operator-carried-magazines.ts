@@ -15,7 +15,7 @@ export function carriedMagazineProfile(part:string|null|undefined):CarriedMagPro
  if(part==='hk-g3-mag20')
   return {family:'hk',length:HK_MAG20_LENGTH,material:0x5e6960};
  if(part==='hk556-mag25'||part==='hk556-mag30')
-  return {family:'hk',length:HK556_MAG_LENGTHS[part],material:0x5e6960};
+  return {family:'hk',length:HK556_MAG_LENGTHS[part],material:0x515b53};
  if(part.startsWith('ar-mag'))
   return {family:'ar',length:part==='ar-mag20'?4.1:5.3,
    material:part==='ar-magpoly'?0x343e37:0x687369};

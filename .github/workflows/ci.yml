@@ -1366,6 +1366,20 @@ jobs:
           name: hk-g3a4-hk33-hk53-orthographic-review
           path: reports/hk-expanded-ortho.html
           retention-days: 7
+      - name: HK 5.56 R2 — curved ribbon, OD/black factory, and AR/AK regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk556-ribbon-mag-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk556-ribbon-finish.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/weapon-ar-r48-silhouettes.test.mjs tests/weapon-ak-r47-final-polish.test.mjs
+      - name: HK 5.56 R2 — same-scale orthographic comparison
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk556-ribbon-mag-') }}
+        run: node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs reports/hk556-r2-ortho.html
+      - name: HK 5.56 R2 — upload actual mesh visual comparison
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk556-ribbon-mag-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hk556-ribbon-black-vs-od-orthographic-review
+          path: reports/hk556-r2-ortho.html
+          retention-days: 7
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

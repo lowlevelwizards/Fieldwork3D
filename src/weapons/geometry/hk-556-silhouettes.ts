@@ -7,8 +7,10 @@ import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
  from './profile-primitives.ts';
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {HK556_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
-import {HK_OLIVE_POLYMER,HK_MAG_METAL} from './weapon-visual-palette.ts';
-import {hk556MagazineOutline,type HK556MagazineId,HK556_MAG_LENGTHS}
+import {HK_OLIVE_POLYMER,HK_DARK_POLYMER,HK556_MAG_METAL,HK556_MAG_RIB}
+ from './weapon-visual-palette.ts';
+import {hk556MagazineOutline,hk556MagazineRibOutlines,
+ hk556MagazineHeelOutline,type HK556MagazineId,HK556_MAG_LENGTHS}
  from './hk-556-magazine-profiles.ts';
 import {addHK556Forearm} from './hk-556-handguard-profiles.ts';
 import {addHKRetractableStock} from './hk-retractable-stock.ts';
@@ -47,7 +49,8 @@ export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
   const rear=-13.88,start=rear+.44;
   p('stock',[[start,1.16],[-10.94,1.12],[-6.12,.75],
    [-6.12,-1.42],[-9.10,-2.25],[-13.36,-2.95],
-   [start,-2.75]],2.96,HK_OLIVE_POLYMER);
+   [start,-2.75]],2.96,
+   parts.stock==='hk33-fixed-stock-black'?HK_DARK_POLYMER:HK_OLIVE_POLYMER);
   const pad=b('stock',rear+.27,-.78,0,.54,4.26,3.34,dark);
   pad.userData.hkButtpad=true;
  }
@@ -58,14 +61,26 @@ export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
  const magId=parts.magazine as HK556MagazineId;
  if(!(magId in HK556_MAG_LENGTHS))
   throw new Error('Invalid HK 5.56 magazine: '+magId);
+ // AK-family normal-offset curved ribbon; the HK 5.56 silhouette stays
+ // shallower and slimmer than an AK-74 and keeps its own feed geometry.
  const magShape=hk556MagazineOutline(magId);
- p('magazine',magShape,1.90,HK_MAG_METAL);
- const floorY=-2.55-HK556_MAG_LENGTHS[magId];
- b('magazine',1.80,floorY+.09,0,2.39,.18,1.97,dark);
+ const mag=p('magazine',magShape,1.90,HK556_MAG_METAL);
+ mag.userData.hk556RibbonBody=true;
+ // Exactly two broad, low-contrast curved stamp impressions. One mesh each,
+ // .08 depth above the body surfaces: no coplanar z-fighting.
+ for(const shape of hk556MagazineRibOutlines(magId)){
+  const rib=p('magazine',shape,1.98,HK556_MAG_RIB);
+  rib.userData.hk556StampedRib=true;
+  rib.castShadow=false;rib.receiveShadow=false;
+ }
+ // Follow the tilted bottom of the actual ribbon, not an old horizontal box.
+ const heel=p('magazine',hk556MagazineHeelOutline(magId),1.98,dark);
+ heel.userData.hk556Heel=true;
 
  // HK33 slim tube versus HK53 stubby handguard, NEVER an AR-style quad rail.
  addHK556Forearm(root,parts.handguard,ids.handguard++,
-  art.handguardStartX,art.handguardEndX,compact,HK_OLIVE_POLYMER);
+  art.handguardStartX,art.handguardEndX,compact,
+  parts.handguard.endsWith('-black')?HK_DARK_POLYMER:HK_OLIVE_POLYMER);
  b('handguard',4.21,-.18,0,.34,2.58,compact?2.98:2.76,steel);
  const tube=addFacetedTube(root,'receiver',parts.receiver,ids.receiver++,
   3.47,art.handguardEndX+.06,.54,steel);
