@@ -107,6 +107,9 @@ try{
   check(finite(helmet.position)&&
     distance(chest.position,helmet.position)>1,
     'Helmet and chest mount produced identical/invalid historical camera');
+  check(helmet.position[1]<41.5,
+    'Helmet camera intersects the 42-unit interior ceiling: '+
+    JSON.stringify(helmet.position));
   check(helmet.maskRestored&&helmet.transparentWalls===0,
     'Helmet view left owner meshes hidden or walls translucent');
   const helmetShot=await browserFrame(page,'helmet-portrait');
