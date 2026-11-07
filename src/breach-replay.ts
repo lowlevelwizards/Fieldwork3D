@@ -18,6 +18,8 @@ import {captureReplayKnowledge,applyReplayKnowledge,type ReplayKnowledge}
   from './breach-replay-visibility.ts';
 import {enablePersonalGroundCapture,drainPersonalGround,
   type PersonalGroundBatch} from './breach-replay-personal-ground.ts';
+import {ReplayDoorObservationRecorder}
+  from './breach-replay-door-knowledge.ts';
 import {shareUnchangedReplayFrame,type ReplaySharingStats}
   from './breach-replay-sharing.ts';
 import type {TraverseOpportunity} from './breach-mantle.ts';
@@ -178,6 +180,8 @@ export class MissionRecorder{
    * Kept outside the 20 Hz frames to avoid duplicating four tile histories.
    */
   readonly personalGround:PersonalGroundBatch[]=[];
+  /** Individually observed door state changes, never shared live door truth. */
+  readonly doorKnowledge=new ReplayDoorObservationRecorder();
   private lastEventId=0;
   private lastExecutionEventId=0;
   private readonly discoveredBodies=new Set<string>();
@@ -201,6 +205,7 @@ export class MissionRecorder{
     enablePersonalGroundCapture(s);
     this.plans.capture(s);
     this.ballistics.capture(s);
+    this.doorKnowledge.capture(s);
     // The mission may receive new appearance/kit settings before first GO.
     // Finalize the one-time manifest on the first executed simulation tick.
     if(!this.manifest||(!this.manifestLocked&&s.started))
