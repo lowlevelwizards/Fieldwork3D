@@ -343,6 +343,46 @@ labReset.addEventListener('click',()=>{
  applyLightingLab();
 });
 syncLightingLabControls();
+// Render-quality comparisons intentionally reload: WebGL context MSAA is
+// immutable after creation. Preserve the existing URL/lighting audition flags,
+// but never save rendering diagnostics into operator/campaign appearance.
+const renderDiagnostics=$<HTMLDetailsElement>('studioRenderDiagnostics');
+const qualityControls=[
+ ['studioQualityAA','studioAA',studioRenderQuality.canvasAA?'on':'off'],
+ ['studioQualityPixels','studioPixelRatio',
+  studioRenderQuality.pixelRatio>1.75?'2':'1.5'],
+ ['studioQualityShadowFilter','studioShadowFilter',
+  studioRenderQuality.shadowFilter],
+ ['studioQualityLiveShadows','studioLiveShadows',
+  studioRenderQuality.liveShadows?'on':'off'],
+ ['studioQualityBaked','studioBakedLighting',
+  studioRenderQuality.bakedLighting?'on':'off'],
+ ['studioQualityCelAA','studioCelAA',
+  studioRenderQuality.celAA?'on':'off']
+] as const;
+for(const [id,param,value] of qualityControls){
+ const control=$<HTMLSelectElement>(id);
+ control.value=value;
+ control.addEventListener('change',()=>{
+  const next=studioQualityLink(location.href,{
+   [param]:control.value,
+   studioDiagnostics:'1'
+  });
+  location.assign(next);
+ });
+}
+renderDiagnostics.open=params.get('studioDiagnostics')==='1';
+$<HTMLButtonElement>('studioLightingInspectorLink').addEventListener(
+ 'click',()=>location.assign(studioQualityLink(location.href,{
+  operatorLightingDebug:'1',studioDiagnostics:'1'
+ }))
+);
+const qualityStatus=$<HTMLOutputElement>('studioQualityStatus');
+qualityStatus.textContent='Live canvas MSAA: '+
+ (renderer.getContext().getContextAttributes()?.antialias?'available':'disabled')+
+ ' · '+renderer.getPixelRatio()+'× · '+
+ (studioRenderQuality.shadowFilter==='pcf'?'filtered':'hard')+
+ ' shadows. Diagnostic switches reload this preview.';
 const member=()=>people.find(p=>p.id===selected);
 const current=()=>edits.get(selected)??member()?.wardrobe??initialWardrobe();
 const previewWardrobe=()=>comparingSaved?member()?.wardrobe??initialWardrobe():current();
