@@ -46,9 +46,13 @@ export function measureReplaySquadDoorEntry(
     return null;
   const ids=[...new Set(friendlyIds.filter(Boolean))].slice(0,8);
   if(!ids.length)return null;
+  // MissionRecorder stores monotone samples. Avoid resorting up to
+  // 12,000 frames once per doorway on mobile. An invalid order fails closed.
   const film=frames.filter(f=>Number.isFinite(f.t)&&f.t>=start&&
-    f.t<=end).slice().sort((a,b)=>a.t-b.t);
+    f.t<=end);
   if(!film.length)return null;
+  for(let i=1;i<film.length;i++)
+    if(film[i].t<film[i-1].t)return null;
   const doorway=film[0].doors.find(d=>d.id===doorId);
   if(!doorway||!Number.isFinite(signedDistance(doorway.a,doorway)))
     return null;
