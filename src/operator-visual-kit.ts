@@ -162,6 +162,14 @@ export function createOperatorVisualKit(
  const wardrobeHead=createWardrobeHeadLayers(head,
   canonicalHead??createCanonicalAttachment(head),
   headCloth,headArmor,dark,skin,lazyAccessories);
+ // R7 diagnostic hard-shell rim eligibility is semantic, not based on
+ // fragment hue or guessed vertex normals. Cloth hats remain unhighlighted.
+ const rimHeadwear=new Set([
+  'soviet-steel','pasgt','ach','high-cut','mich-2001','mich-2002',
+  'fast-sf','fast-xp-mid','m1-steel','ddr-m56','police-helmet'
+ ]);
+ for(const [style,group] of Object.entries(wardrobeHead.headwear))
+  if(rimHeadwear.has(style))group.userData.fieldworkRimRegion='hard-shell';
  const identityVisuals=createIdentityVisuals(chest,arms);
  const wardrobeBody=createWardrobeBodyLayers(chest,legs,arms,
   cloth,trousers,trim,dark);
@@ -280,6 +288,10 @@ export function createOperatorVisualKit(
   mesh.visible=false;
  const wardrobeGear=createWardrobeGearLayers(chest,hip,pack,vest,
   gearFabric,packFabric,dark,trim,lazyAccessories);
+ // Broad armor plates can receive opt-in chunky highlight patches;
+ // never highlight carrier webbing, pouches or exposed textile seams.
+ for(const [style,group] of Object.entries(wardrobeGear.armor))
+  if(style.startsWith('plate-'))group.userData.fieldworkRimRegion='hard-shell';
  const accessories=createWardrobeAccessoryVisuals(chest,hip,pack,
   gearFabric,dark,trim);
  // Static layered clothing/armor/pack geometry becomes a few multi-face
