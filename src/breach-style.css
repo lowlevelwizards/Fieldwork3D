@@ -2246,3 +2246,10 @@ html,body{font-family:var(--fw-font-menu)}
 .replay-group #replayFollow,
 .replay-group #replayDirector,
 .replay-group #replayTraces{display:none!important}
+
+/* An opened analysis drawer owns this upper landscape space. */
+@media(max-height:470px) and (min-width:600px){
+  .replay-panel:has(.replay-drawer:not([hidden])) .replay-direct-tools{
+    display:none!important
+  }
+}
