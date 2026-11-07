@@ -28,6 +28,8 @@ jobs:
       - run: npx playwright install chromium
       - name: Verify Bodycam toggle, operator switching, and return to tactical
         run: node scripts/smoke-replay-r43b-bodycam-ui.mjs
+      - name: Verify encoded Bodycam video disclosure pixels
+        run: node scripts/smoke-replay-r43b-video.mjs
       - name: Retain player-facing Bodycam screenshots
         if: always()
         uses: actions/upload-artifact@v4
