@@ -103,6 +103,8 @@ type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
 export type OperatorPose={
   /** V3 whole-arm fitting; enabled by the live tactical renderer. */
   poseV3Preview?:boolean;
+  /** Diagnostic-only: compare against the original strict contact budget. */
+  poseV3StrictContact?:boolean;
   /** V4 rifle, hand, magazine and controls; enabled for live reloads. */
   poseV4ReloadPreview?:boolean;
   /** Opt-in Lab reload corridor comparison; never read by game simulation. */
@@ -1336,6 +1338,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       const key=JSON.stringify([p.weapon,coupledConfig.build,
         coupledConfig.slots,look.top,look.armorStyle,look.rigStyle,
         poseWeight,Number(localYaw.toFixed(4)),
+        // Never reuse a forgiving result in the strict audit (or vice
+        // versa) when the same model and outfit are scrubbed in place.
+        !!p.poseV3Preview&&!p.poseV3StrictContact,
         shoulders.map(v=>v.toArray().map(n=>Number(n.toFixed(3))))]);
       const cache=coupledIdleCache.get(r);
       if(cache?.key===key)return cache.solution;
@@ -1347,7 +1352,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
           configuration:coupledConfig,
           armor:poseClearanceEnvelope(
             look.armorStyle,look.rigStyle,look.top),
-          shoulders,nominalYaw:localYaw});
+          shoulders,nominalYaw:localYaw,
+          allowVisualOverlap:!!p.poseV3Preview&&!p.poseV3StrictContact});
         sharedCoupledPoseCache.set(key,result);
         if(sharedCoupledPoseCache.size>MAX_SHARED_COUPLED_POSES){
           const oldest=sharedCoupledPoseCache.keys().next().value;
@@ -1516,7 +1522,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
         'aim':'carry',
       releasedSupportTarget:releasedTarget,
-      allowReloadOverlap:!!p.poseV4ReloadPreview&&v3ReloadActive
+      allowReloadOverlap:!!p.poseV4ReloadPreview&&v3ReloadActive&&
+       !p.poseV3StrictContact,
+      allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
+       !p.poseV3StrictContact
     });
     r.root.userData.poseV3CoordinatedReport={
       status:result.status,yaw:result.yaw,leanX:result.leanX,
@@ -1895,7 +1904,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         'aim':reaching||throwActive?'interaction':'carry';
       const dynamic=solveV3DynamicArm({
         shoulder,wrist:desired,side:sign as -1|1,mode,
-        envelope:dynamicEnvelope,preferredPole:wanted
+        envelope:dynamicEnvelope,preferredPole:wanted,
+        allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
+         !p.poseV3StrictContact
       });
       v3DynamicReports.push({side:i===0?'support':'firing',
         status:dynamic.status,reason:dynamic.reason,
