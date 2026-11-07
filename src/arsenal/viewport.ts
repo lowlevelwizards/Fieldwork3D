@@ -75,7 +75,8 @@ export class ArsenalViewport{
  }
  private clearParts(){
   if(this.highlight){this.scene.remove(this.highlight);
-   this.highlight.geometry.dispose();this.highlight.material.dispose();
+   this.highlight.geometry.dispose();
+   for(const material of Array.isArray(this.highlight.material)?this.highlight.material:[this.highlight.material])material.dispose();
    this.highlight=null;}
   if(this.body){this.model.remove(this.body);clearWeaponSilhouette(this.body);
    this.body=null;}
@@ -107,16 +108,17 @@ export class ArsenalViewport{
  setSelectedSlot(slot:ArsenalSlot){
   this.selected=slot;
   if(this.highlight){this.scene.remove(this.highlight);
-   this.highlight.geometry.dispose();this.highlight.material.dispose();this.highlight=null;}
+   this.highlight.geometry.dispose();
+   for(const material of Array.isArray(this.highlight.material)?this.highlight.material:[this.highlight.material])material.dispose();this.highlight=null;}
   if(this.body&&FAMILY_SLOTS.includes(slot as FamilyPartSlot)){
    const bounds=partVisualBounds(this.body,slot as FamilyPartSlot);
    if(bounds){
     this.body.updateMatrixWorld(true);
     bounds.applyMatrix4(this.body.matrixWorld);
     this.highlight=new THREE.Box3Helper(bounds,0x9fccc4);
-    this.highlight.material.transparent=true;
-    this.highlight.material.opacity=.43;
-    this.highlight.material.depthTest=true;
+    for(const material of Array.isArray(this.highlight.material)?this.highlight.material:[this.highlight.material]){
+     material.transparent=true;material.opacity=.43;material.depthTest=true;
+    }
     this.scene.add(this.highlight);
    }
   }
