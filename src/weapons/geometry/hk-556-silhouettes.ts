@@ -15,6 +15,7 @@ import {hk556MagazineOutline,hk556MagazineRibOutlines,
 import {addHK556Forearm} from './hk-556-handguard-profiles.ts';
 import {addHKRetractableStock} from './hk-retractable-stock.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
+import {addHKTriggerSelector} from './hk-trigger-selector.ts';
 
 export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,showFactoryMuzzle=true):void{
@@ -123,9 +124,7 @@ export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
  const port=addWeaponPixelMark(root,'hk-port',a.portX,a.portY,
   1.65,a.portWidthX,a.portHeightY);
  port.userData.hkEjectionPort=true;
- const selector=addWeaponPixelMark(root,'hk-selector',-3.48,-.67,
-  -1.657,2.05,.60);
- selector.rotation.y=Math.PI;
+ addHKTriggerSelector(root,'sef',1.66,1.54);
  // One broad six-sided turret. Compact variant has SAME absolute sight size.
  const drum=new THREE.CylinderGeometry(1.13,1.13,1.46,6);
  const rear=new THREE.Mesh(drum,steel);
