@@ -75,9 +75,11 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  // new black furniture IDs without silently recoloring old configurations.
  'hk33-fixed-stock':add('hk33-fixed-stock','HK33 fixed stock · OD green','hk','stock',{receivers:['hk33-556-rifle'],stockX:-13.88}),
  'hk33-fixed-stock-black':add('hk33-fixed-stock-black','HK33 fixed stock · black polymer','hk','stock',{receivers:['hk33-556-rifle'],stockX:-13.88}),
+ 'hk33-retract-stock':add('hk33-retract-stock','HK33A3 wire/twin-rail retractable stock · extended','hk','stock',{receivers:['hk33-556-rifle'],stockX:-14.90}),
  'hk53-retract-stock':add('hk53-retract-stock','HK53A3 short-pattern twin-rail retractable stock · extended','hk','stock',{receivers:['hk53-556-compact'],stockX:-14.90}),
  'hk-mp5-retract-stock':add('hk-mp5-retract-stock','MP5A3/SD3 thick twin-rail stock · extended','hk','stock',{receivers:['hk-mp5-standard','hk-mp5sd-integral'],stockX:-13.05}),
  'hk-mp5-fixed-stock':add('hk-mp5-fixed-stock','MP5A2/SD2 solid fixed polymer stock','hk','stock',{receivers:['hk-mp5-standard','hk-mp5sd-integral'],stockX:-13.05}),
+ 'hk-mp5k-pdw-stock':add('hk-mp5k-pdw-stock','MP5K-PDW chunky side-folding stock · extended','hk','stock',{receivers:['hk-mp5k-stockless'],stockX:-13.05}),
  'hk-mp5k-cap':add('hk-mp5k-cap','MP5K short stockless receiver cap','hk','stock',{receivers:['hk-mp5k-stockless'],stockX:-6.65}),
  'ar-grip-classic':add('ar-grip-classic','Classic pistol grip','ar','grip',{receivers:ar}),
  'ar-grip-a2':add('ar-grip-a2','A2 pistol grip','ar','grip',{receivers:ar}),

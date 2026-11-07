@@ -40,7 +40,8 @@ export function lowReadyFamilyFit(
  configuration?:WeaponConfiguration):Readonly<LowReadyFamilyFit>|null{
  const family=configuration?.build?.family;
  return family==='ar'?AR:family==='ak'?AK:family==='hk'?
-  (configuration?.build?.parts.receiver==='hk-mp5k-stockless'?HK_SMG_K:
+  (configuration?.build?.parts.receiver==='hk-mp5k-stockless'&&
+   configuration.build.parts.stock==='hk-mp5k-cap'?HK_SMG_K:
    configuration?.weapon==='smg'?HK_SMG:
    configuration?.build?.parts.barrel==='hk53-short'?HK_COMPACT:HK):null;
 }

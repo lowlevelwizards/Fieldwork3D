@@ -45,7 +45,9 @@ export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
  p('receiver',[[-.42,-2.02],[2.82,-2.02],[2.97,-2.95],
   [-.19,-2.95]],3.13);
 
- if(compact){
+ if(compact||parts.stock==='hk33-retract-stock'){
+  // A2 -> A3 transforms only the rear furniture; the 5.56 receiver,
+  // barrel, magazine and operator grip positions remain unchanged.
   addHKRetractableStock(root,parts.stock,-14.90,steel,dark);
  }else{
   const rear=-13.88,start=rear+.44;
