@@ -14,6 +14,12 @@ import {applyOperatorStudioToon,requestedOperatorToonBands}
 import {OperatorStudioLighting} from './operator-studio-lighting.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
+import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup,
+ HELMET_COVER_OPTIONS,HELMET_RAIL_OPTIONS,HELMET_SHROUD_OPTIONS,
+ HELMET_NVG_OPTIONS,HELMET_SCRIM_OPTIONS,HELMET_RETENTION_OPTIONS,
+ HELMET_HEADSET_MOUNT_OPTIONS,HELMET_REAR_OPTIONS,HELMET_LIGHT_OPTIONS,
+ type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
+import {applyHelmetPreset,helmetPresetChoices} from './operator-helmet-preset-catalog.ts';
 import {M1956_VARIANTS,type M1956Variant} from './operator-m1956-policy.ts';
 import {ALICE_LC2_LOADS,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {HELMET_COVER_STYLES,HELMET_BANDS,HELMET_NET_STYLES,
@@ -951,6 +957,58 @@ function renderMaterials(){
  if(activeCategory==='headwear'){
   row('HEADWEAR APPEARANCE',
    'All approved hats and helmets are selectable. Appearance does not alter head protection or inventory; the equipped kit controls those.');
+  const helmetShell=item==='high-cut-rails'?'high-cut':item;
+  if(isH1ModernHelmet(helmetShell)){
+   const presets=helmetPresetChoices(helmetShell);
+   if(presets.length){
+    const quick=row('QUICK HELMET SETUPS','Reference-led modular cosmetics; each setup keeps the equipped protection unchanged.');
+    for(const preset of presets)
+     quick.append(makeButton(preset.label,
+      w.helmetSetup?.presetOrigin===preset.id,
+      ()=>changeWardrobe(applyHelmetPreset(current(),helmetShell,preset.id))));
+   }
+   const setup=readHelmetSetup(w.helmetSetup);
+   const advanced=row('HELMET COMPONENTS','Independent cover, rail, optics, communications and retention. Saved choices survive incompatible combinations.');
+   const disclosure=document.createElement('details');
+   const summary=document.createElement('summary');
+   summary.textContent='ADVANCED HELMET CONFIGURATION';
+   disclosure.append(summary);
+   const option=(label:string,key:keyof HelmetSetupV1,choices:readonly string[])=>{
+    const line=document.createElement('div');line.className='material-group';
+    const heading=document.createElement('label');heading.textContent=label;
+    line.append(heading);
+    addSelect(line,choices.map(x=>[x,x.replaceAll('-',' ').toUpperCase()] as const),
+     String(setup[key]),value=>{
+      const before=current();
+      changeWardrobe({...before,helmetSetup:readHelmetSetup({
+       ...before.helmetSetup,[key]:value,presetOrigin:undefined})});
+     });
+    disclosure.append(line);
+   };
+   option('COVER','cover',HELMET_COVER_OPTIONS);
+   option('RETAINING BAND','band',['none','elastic']);
+   option('NET / SCRIM','scrim',HELMET_SCRIM_OPTIONS);
+   option('CHIN / NAPE RETENTION','retention',HELMET_RETENTION_OPTIONS);
+   option('FRONT SHROUD','shroud',HELMET_SHROUD_OPTIONS);
+   option('SIDE RAILS','rails',HELMET_RAIL_OPTIONS);
+   option('NIGHT VISION','nvg',HELMET_NVG_OPTIONS);
+   option('HEADSET MOUNT','headsetMount',HELMET_HEADSET_MOUNT_OPTIONS);
+   option('REAR MODULE','rearModule',HELMET_REAR_OPTIONS);
+   option('TASK LIGHT','light',HELMET_LIGHT_OPTIONS);
+   disclosure.append(makeButton('REAR STROBE: '+(setup.rearStrobe?'ON':'OFF'),
+    setup.rearStrobe,()=>changeWardrobe({...current(),helmetSetup:readHelmetSetup({
+     ...current().helmetSetup,rearStrobe:!setup.rearStrobe,presetOrigin:undefined})})));
+   const effective=resolveHelmetSetup(helmetShell,w.helmetSetup,{
+    hasLegacyPrint:!!w.headwearCamo,
+    headset:w.styles.headset,eyewear:w.styles.eyewear,facewear:w.styles.facewear
+   });
+   if(effective.suppressed.length){
+    const note=document.createElement('small');
+    note.textContent='FIT RESTRICTIONS: '+effective.suppressed.join(' · ');
+    disclosure.append(note);
+   }
+   advanced.append(disclosure);
+  }
   const solids=headwearColorChoices(item==='high-cut-rails'?'high-cut':item);
   const prints=headwearCamoChoices(item);
   const group=row('HEADGEAR FINISH','Select an appropriate solid shell/fabric or approved cover print.');

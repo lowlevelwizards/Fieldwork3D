@@ -423,7 +423,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  }
  if(desired.headset==='helmet-ears'&&
    !['ach','high-cut','high-cut-rails','bump-helmet',
-     'pasgt'].includes(desired.headwear))
+     'pasgt','mich-2001','mich-2002','fast-sf','fast-xp-mid'].includes(desired.headwear))
   desired.headset='comms-none';
  choose('armorStyle',slots.armor==='armor-carrier'?
   ['plate-slick','plate-jpc','plate-standard','plate-heavy','plate-legacy']:
