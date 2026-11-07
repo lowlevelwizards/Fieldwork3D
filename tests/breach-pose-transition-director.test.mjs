@@ -44,8 +44,12 @@ test('UOP transition director preserves manual Lab and combat precedence',()=>{
    handlingOverride:'ads',handlingTransition:manual}),'ads');
  assert.strictEqual(lab.active,manual);
  assert.equal(r.lastHandling,'low');
- assert.equal(sampleHandlingTransition(r,
-   pose(3,{aiming:true}),'ads').active,undefined);
+ const aiming=sampleHandlingTransition(r,
+   pose(3,{aiming:true}),'ads');
+ assert.equal(aiming.active?.from,'low');
+ assert.equal(aiming.active?.to,'ads');
+ assert.equal(aiming.active?.alpha,0,
+   'urgent combat pose now eases from the currently rendered arm');
 });
 test('UOP carry bridge is timestamp repeatable and clears on replay seeks',()=>{
  const r=rig(),a=fit(0),b=fit(3);

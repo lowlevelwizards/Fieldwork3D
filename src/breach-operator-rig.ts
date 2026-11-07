@@ -1897,7 +1897,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
     const armFit=solveUnifiedFallbackArm({
       shoulder,wrist,desired,preferredPole:wanted,
-      previousBend:arm.bend,side:sign as -1|1,
+      previousBend:sourceArm?.bend??arm.bend,
+      side:sign as -1|1,
       neutral:neutralArms,down:p.down,surrender:p.surrender,
       firing:p.firing,
       sourceContinuity:!!sourceArm&&!!activeTransition&&

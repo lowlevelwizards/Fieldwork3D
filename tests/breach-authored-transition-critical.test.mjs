@@ -14,7 +14,8 @@ test('Lab snapshots the rendered stance and does not re-enter generic mid-transi
  assert.match(lab,/authoredArms:presented\?/);
  assert.match(rig,/\(!activeTransition\|\|authoredLabSwitch\)/);
  assert.match(rig,/blendFrom:authoredLabSwitch\?undefined/);
- assert.match(rig,/fit=interpolateWeaponCarry\(activeTransition\.authoredFrom,fit,phase\)/);
+ assert.match(rig,/fit=interpolateWeaponCarry\(activeTransition!\.authoredFrom!,fit,/);
+ assert.match(rig,/authoredBridge/);
  assert.match(rig,/if\(sourceArm&&activeTransition!\.alpha<=0\)/);
  assert.match(rig,/dest\.userData\.visibleStockContact/);
  assert.match(lab,/stockArtResidual/);

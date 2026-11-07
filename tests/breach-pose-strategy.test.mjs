@@ -49,7 +49,8 @@ test('UOP strategy: combat, actions and preview switches preserve priorities',()
    activeTransition:true,authoredLabSwitch:true
  });
  assert.equal(lab.coupledEligible,true);
- assert.equal(lab.coordinatedEligible,false);
+ assert.equal(lab.coordinatedEligible,true,
+   'destination coordinated IK is computed during interruptible Lab blends');
  assert.equal(plan({},{interactionWindow:true}).coordinatedEligible,false);
  const game=plan({poseV3Preview:false});
  assert.equal(game.coupledEligible,true,'live low ready keeps its proven fit');

@@ -28,8 +28,8 @@ export function sampleHandlingTransition(
        at:p.seconds,
        // Physically blocked short stock responds quickly, but is no
        // longer a one-frame elbow teleport. Urgent aim also stays sharp.
-       duration:handling==='short'||r.lastHandling==='short'?.15:
-         p.aiming||p.firing?.18:.26,
+       duration:(handling==='short'||r.lastHandling==='short')?.15:
+         (p.aiming||p.firing)?.18:.26,
        fromProfile:r.handlingProfile??handlingProfile(r.lastHandling,p.weapon),
        fromWeapon:{origin:r.weapon.position.clone(),
          rotation:r.weapon.rotation.clone()}};

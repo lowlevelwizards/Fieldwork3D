@@ -155,7 +155,11 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
  if(envelope&&!req.neutral&&!req.down&&!req.surrender&&!req.firing){
    dynamic=solveV3DynamicArm({
      shoulder,wrist:desired,side,mode:req.mode,
-     envelope,preferredPole,allowVisualOverlap:req.allowVisualOverlap
+     envelope,preferredPole,
+     // During interruption, prefer the existing visible elbow among
+     // equally valid OBB candidates; never infer a new random pole.
+     referenceBend:req.sourceContinuity?req.previousBend:undefined,
+     allowVisualOverlap:req.allowVisualOverlap
    });
    if(dynamic.solution)
      return {solution:dynamic.solution,dynamic,used:'dynamic'};
