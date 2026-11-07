@@ -24,7 +24,7 @@ const bound=(group,slot)=>{
 };
 test('R4+HK catalog preserves 17 original recipes and adds five HK presets',()=>{
  assert.equal(FAMILY_PRESETS.length,22);
- assert.equal(Object.keys(FAMILY_PARTS).length,113);
+ assert.equal(Object.keys(FAMILY_PARTS).length,116);
  assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,22);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ar').length,8);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ak').length,9);
