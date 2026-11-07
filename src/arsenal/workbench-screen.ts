@@ -5,7 +5,9 @@ import {ARSENAL_CATEGORIES,arsenalPart,arsenalPartsForSlot,
  type ArsenalCategory,type ArsenalSlot,type ArsenalReference}
  from './catalog.ts';
 import {FAMILY_PARTS,type FamilyPartSlot} from '../equipment-weapon-families.ts';
-import {arsenalRecipeFromLegacy,type ArsenalAccessorySlot} from './recipes.ts';
+import {arsenalRecipeFromLegacy,readArsenalRecipe,type ArsenalAccessorySlot} from './recipes.ts';
+import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrary,
+ createSavedArsenalBuild,overwriteSavedArsenalBuild} from './saved-builds.ts';
 import {proposeArsenalPartChange,arsenalReferenceIdentity,
  type ArsenalEditProposal} from './compatibility.ts';
 import {createArsenalDraft,commitArsenalProposal,undoArsenalDraft,redoArsenalDraft,
@@ -20,10 +22,16 @@ function formatSlot(slot:ArsenalSlot):string{
  return slot==='opticMount'?'Mount':slot==='foregrip'?'Foregrip':
   slot==='handguard'?'Handguard':slot.charAt(0).toUpperCase()+slot.slice(1);
 }
-export function openArsenalWorkbench(ref:ArsenalReference):void{
- const config=selectWeaponFamilyPreset(initialWeaponConfiguration(ref.legacy.weapon),ref.id);
- const loadedRecipe=arsenalRecipeFromLegacy(config);if(!loadedRecipe)return;
+export function openArsenalWorkbench(
+ source:ArsenalReference|ArsenalSavedBuild,
+ onLibraryChange?:(savedId:string)=>void
+):void{
+ const loadedRecipe='recipe' in source?readArsenalRecipe(source.recipe):
+  arsenalRecipeFromLegacy(selectWeaponFamilyPreset(
+   initialWeaponConfiguration(source.legacy.weapon),source.id));
+ if(!loadedRecipe)return;
  let draft=createArsenalDraft(loadedRecipe);
+ let savedId:string|null='recipe' in source?source.id:null;
  let activeCategory:ArsenalCategory=ARSENAL_CATEGORIES[0];
  let activeSlot:ArsenalSlot='receiver';
  let showIncompatible=false;
@@ -39,13 +47,19 @@ export function openArsenalWorkbench(ref:ArsenalReference):void{
  kicker.textContent='WEAPON WORKBENCH';
  const title=document.createElement('h2');
  const dirtyStatus=document.createElement('small');dirtyStatus.className='arsenal-wb-dirty';
- identity.append(kicker,title,dirtyStatus);
+ const saveFeedback=document.createElement('small');
+ saveFeedback.className='arsenal-wb-save-feedback';saveFeedback.setAttribute('role','status');
+ identity.append(kicker,title,dirtyStatus,saveFeedback);
  const actions=document.createElement('div');actions.className='arsenal-wb-actions';
  const undo=document.createElement('button');undo.type='button';undo.className='arsenal-wb-action';undo.textContent='UNDO';
  const redo=document.createElement('button');redo.type='button';redo.className='arsenal-wb-action';redo.textContent='REDO';
  const fit=document.createElement('button');fit.type='button';fit.className='arsenal-wb-action';fit.textContent='FIT';
  const side=document.createElement('button');side.type='button';side.className='arsenal-wb-action';side.textContent='SIDE';
- actions.append(undo,redo,fit,side);head.append(back,identity,actions);
+ const save=document.createElement('button');save.type='button';
+ save.className='arsenal-wb-action arsenal-wb-save';save.textContent='SAVE BUILD';
+ const saveCopy=document.createElement('button');saveCopy.type='button';
+ saveCopy.className='arsenal-wb-action';saveCopy.textContent='SAVE COPY';
+ actions.append(undo,redo,save,saveCopy,fit,side);head.append(back,identity,actions);
  const main=document.createElement('div');main.className='arsenal-wb-main';
  const viewportHost=document.createElement('div');viewportHost.className='arsenal-wb-viewport';
  const nav=document.createElement('nav');nav.className='arsenal-wb-nav';
@@ -157,12 +171,64 @@ export function openArsenalWorkbench(ref:ArsenalReference):void{
   activeLabel.textContent='CURRENT · '+
    (arsenalPart(currentPartId(activeSlot))?.name??currentPartId(activeSlot));
   title.textContent=arsenalReferenceIdentity(draft.working).name;
-  dirtyStatus.textContent=arsenalDraftDirty(draft)?'UNAPPLIED DRAFT':'FACTORY CONFIGURATION';
+  dirtyStatus.textContent=arsenalDraftDirty(draft)?'UNSAVED CHANGES':
+   savedId?'SAVED BUILD':'FACTORY CONFIGURATION';
+  save.textContent=savedId?'SAVE':'SAVE BUILD';
+  saveCopy.hidden=!savedId;
   undo.disabled=draft.undo.length===0;redo.disabled=draft.redo.length===0;
   showAll.textContent=showIncompatible?'HIDE INCOMPATIBLE':'SHOW ALL';
   viewer.setSelectedSlot(activeSlot);
   renderChoices();renderPending();
  }
+ const saveDialog=document.createElement('dialog');saveDialog.className='arsenal-wb-save-dialog';
+ const saveHeading=document.createElement('h3');saveHeading.textContent='SAVE WEAPON BUILD';
+ const saveLabel=document.createElement('label');saveLabel.textContent='BUILD NAME';
+ const saveName=document.createElement('input');saveName.type='text';saveName.maxLength=32;
+ saveName.autocomplete='off';saveName.setAttribute('aria-label','Build name');
+ const saveActions=document.createElement('div');saveActions.className='arsenal-wb-save-actions';
+ const saveConfirm=document.createElement('button');saveConfirm.type='button';
+ saveConfirm.className='arsenal-wb-accept';saveConfirm.textContent='SAVE';
+ const saveCancel=document.createElement('button');saveCancel.type='button';
+ saveCancel.className='arsenal-wb-action';saveCancel.textContent='CANCEL';
+ saveActions.append(saveConfirm,saveCancel);
+ saveLabel.append(saveName);
+ saveDialog.append(saveHeading,saveLabel,saveActions);overlay.append(saveDialog);
+ const defaultName=()=>arsenalReferenceIdentity(draft.working).name
+  .replace(/ · (Modified|Custom)$/,'')+' Build';
+ const openSaveDialog=(name:string)=>{
+  saveFeedback.textContent='';saveName.value=name.slice(0,32);
+  saveDialog.showModal();saveName.focus();saveName.select();
+ };
+ const saveNew=()=>{
+  const lib=loadArsenalBuildLibrary();
+  const result=createSavedArsenalBuild(lib,draft.working,saveName.value);
+  if(!result){saveFeedback.textContent='Name required or saved-build limit reached';return;}
+  if(!persistArsenalBuildLibrary(result.library)){
+   saveFeedback.textContent='Storage unavailable; the build was not saved';return;
+  }
+  savedId=result.build.id;draft=createArsenalDraft(draft.working);
+  saveDialog.close();renderSelection();
+  saveFeedback.textContent='SAVED · '+result.build.name;
+  onLibraryChange?.(savedId);
+ };
+ saveConfirm.addEventListener('click',saveNew);
+ saveCancel.addEventListener('click',()=>saveDialog.close());
+ saveName.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();saveNew();}});
+ save.addEventListener('click',()=>{
+  if(!savedId){openSaveDialog(defaultName());return;}
+  const lib=loadArsenalBuildLibrary();
+  const next=overwriteSavedArsenalBuild(lib,savedId,draft.working);
+  if(!next){saveFeedback.textContent='Saved build not found; use Save Copy';return;}
+  if(!persistArsenalBuildLibrary(next)){
+   saveFeedback.textContent='Storage unavailable; the build was not saved';return;
+  }
+  draft=createArsenalDraft(draft.working);renderSelection();
+  saveFeedback.textContent='BUILD SAVED';onLibraryChange?.(savedId);
+ });
+ saveCopy.addEventListener('click',()=>{
+  const current=loadArsenalBuildLibrary().builds.find(x=>x.id===savedId);
+  openSaveDialog((current?.name??defaultName())+' Copy');
+ });
  renderSelection();
  fit.addEventListener('click',()=>viewer.fit());
  side.addEventListener('click',()=>viewer.sideView());
@@ -178,15 +244,17 @@ export function openArsenalWorkbench(ref:ArsenalReference):void{
   viewer.setRecipe(draft.working);renderSelection();
  });
  const close=()=>{
+  if(saveDialog.open){saveDialog.close();return;}
   if(arsenalDraftDirty(draft)&&
-   !window.confirm('Discard this uncommitted weapon draft?'))return;
+   !window.confirm('Discard unsaved changes to this weapon draft?'))return;
   viewer.dispose();overlay.remove();window.removeEventListener('keydown',keys);
   document.body.style.removeProperty('overflow');
  };
  const keys=(e:KeyboardEvent)=>{
   if(e.key!=='Escape')return;
   e.preventDefault();
-  if(pending){pending=null;renderPending();}
+  if(saveDialog.open)saveDialog.close();
+  else if(pending){pending=null;renderPending();}
   else close();
  };
  back.addEventListener('click',close);

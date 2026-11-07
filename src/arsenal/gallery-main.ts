@@ -8,6 +8,9 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
 import {arsenalRecipeFromLegacy,type ArsenalRecipeV2} from './recipes.ts';
 import {ArsenalThumbnailer} from './thumbnailer.ts';
 import {openArsenalWorkbench} from './workbench-screen.ts';
+import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrary,
+ renameSavedArsenalBuild,deleteSavedArsenalBuild,duplicateSavedArsenalBuild}
+ from './saved-builds.ts';
 
 const root=document.getElementById('arsenalRoot');
 if(!root)throw new Error('Missing Arsenal root');
@@ -29,10 +32,23 @@ heroHint.textContent='Explore real factory configurations in the full-screen Wor
 const openWorkbench=document.createElement('button');openWorkbench.type='button';
 openWorkbench.className='arsenal-hero-open';openWorkbench.textContent='OPEN WORKBENCH';
 openWorkbench.addEventListener('click',()=>{
- const ref=ARSENAL_REFERENCES.find(r=>r.id===selectedId);
- if(ref)openArsenalWorkbench(ref);
+ const ref=selectedSaved??ARSENAL_REFERENCES.find(r=>r.id===selectedId);
+ if(ref)openArsenalWorkbench(ref,id=>refreshLibrary(id));
 });
-heroCopy.append(heroPlatform,heroTitle,heroHint,openWorkbench);
+const savedControls=document.createElement('div');savedControls.className='arsenal-saved-actions';
+ const rename=document.createElement('button');rename.type='button';rename.textContent='RENAME';
+ const duplicate=document.createElement('button');duplicate.type='button';duplicate.textContent='DUPLICATE';
+ const remove=document.createElement('button');remove.type='button';remove.textContent='DELETE';
+ savedControls.append(rename,duplicate,remove);savedControls.hidden=true;
+ const renameBox=document.createElement('div');renameBox.className='arsenal-rename-box';renameBox.hidden=true;
+ const renameInput=document.createElement('input');renameInput.type='text';renameInput.maxLength=32;
+ renameInput.setAttribute('aria-label','New saved build name');
+ const renameSave=document.createElement('button');renameSave.type='button';renameSave.textContent='SAVE NAME';
+ const renameCancel=document.createElement('button');renameCancel.type='button';renameCancel.textContent='CANCEL';
+ renameBox.append(renameInput,renameSave,renameCancel);
+ const savedFeedback=document.createElement('p');savedFeedback.className='arsenal-saved-feedback';
+ savedFeedback.setAttribute('role','status');
+ heroCopy.append(heroPlatform,heroTitle,heroHint,openWorkbench,savedControls,renameBox,savedFeedback);
 hero.append(heroMedia,heroCopy);
 const browser=document.createElement('section');browser.className='arsenal-browser';
 const controls=document.createElement('div');controls.className='arsenal-controls';
@@ -51,8 +67,9 @@ const grid=document.createElement('div');grid.className='arsenal-grid';
 browser.append(controls,filters,count,grid);layout.append(hero,browser);
 shell.append(heading,layout);root.append(shell);
 
-let activePlatform:ArsenalPlatformId|'all'='all';
+let activePlatform:ArsenalPlatformId|'all'|'saved'='all';
 let selectedId='ar-m4a1';
+let selectedSaved:ArsenalSavedBuild|null=null;
 const thumbnails=new ArsenalThumbnailer();
 const previewQueue:(()=>void)[]=[];
 let renderScheduled=false;
@@ -78,8 +95,8 @@ function recipeFor(ref:ArsenalReference):ArsenalRecipeV2|undefined{
 function platformName(id:ArsenalPlatformId):string{
  return ARSENAL_PLATFORMS.find(p=>p.id===id)?.name??id;
 }
-function attachImage(host:HTMLElement,ref:ArsenalReference,size:'hero'|'card'){
- const recipe=recipeFor(ref);if(!recipe)return;
+function attachImage(host:HTMLElement,ref:ArsenalReference|ArsenalSavedBuild,size:'hero'|'card'){
+ const recipe='recipe' in ref?ref.recipe:recipeFor(ref);if(!recipe)return;
  const image=document.createElement('img');image.alt='';
  const placeholder=document.createElement('span');
  placeholder.className='arsenal-hero-placeholder';placeholder.textContent=ref.name;
@@ -91,15 +108,20 @@ function attachImage(host:HTMLElement,ref:ArsenalReference,size:'hero'|'card'){
   image.src=source;host.replaceChildren(image);
  });
 }
-function showSelected(ref:ArsenalReference){
- selectedId=ref.id;heroPlatform.textContent=platformName(ref.platformId);
+function showSelected(ref:ArsenalReference|ArsenalSavedBuild){
+ selectedId=ref.id;selectedSaved='recipe' in ref?ref:null;
+ heroPlatform.textContent=platformName('recipe' in ref?ref.recipe.platformId:ref.platformId);
  heroTitle.textContent=ref.name;attachImage(heroMedia,ref,'hero');
+ savedControls.hidden=!selectedSaved;renameBox.hidden=true;savedFeedback.textContent='';
  for(const button of grid.querySelectorAll<HTMLButtonElement>('[data-arsenal-reference]'))
   button.setAttribute('aria-pressed',String(button.dataset.arsenalReference===ref.id));
 }
 function renderFilters(){
  filters.replaceChildren();
- for(const item of [{id:'all' as const,name:'All'},...ARSENAL_PLATFORMS]){
+ const tabs:{id:ArsenalPlatformId|'all'|'saved';name:string}[]=[
+  {id:'all',name:'All'},...ARSENAL_PLATFORMS,
+  {id:'saved',name:'Saved · '+loadArsenalBuildLibrary().builds.length}];
+ for(const item of tabs){
   const button=document.createElement('button');button.type='button';
   button.className='arsenal-filter';button.textContent=item.name;
   button.setAttribute('aria-pressed',String(activePlatform===item.id));
@@ -115,11 +137,16 @@ function renderCards(){
  observer?.disconnect();observer=null;
  grid.replaceChildren();
  const term=search.value.trim().toLowerCase();
- const visible=ARSENAL_REFERENCES.filter(ref=>
-  (activePlatform==='all'||ref.platformId===activePlatform)&&
-  (!term||ref.name.toLowerCase().includes(term)||
-   platformName(ref.platformId).toLowerCase().includes(term)));
- count.textContent=visible.length+' FACTORY CONFIGURATIONS';
+ const saved=loadArsenalBuildLibrary().builds;
+ const visible:(ArsenalReference|ArsenalSavedBuild)[]=activePlatform==='saved'?
+  saved.filter(ref=>!term||ref.name.toLowerCase().includes(term)||
+   platformName(ref.recipe.platformId).toLowerCase().includes(term)):
+  ARSENAL_REFERENCES.filter(ref=>
+   (activePlatform==='all'||ref.platformId===activePlatform)&&
+   (!term||ref.name.toLowerCase().includes(term)||
+    platformName(ref.platformId).toLowerCase().includes(term)));
+ count.textContent=visible.length+
+  (activePlatform==='saved'?' SAVED BUILDS':' FACTORY CONFIGURATIONS');
  if(!visible.length){
   const empty=document.createElement('p');empty.className='arsenal-empty';
   empty.textContent='No matching weapons. Try another model or platform.';
@@ -131,7 +158,8 @@ function renderCards(){
     if(!entry.isIntersecting)continue;
     observer?.unobserve(entry.target);
     const element=entry.target as HTMLElement;
-    const ref=ARSENAL_REFERENCES.find(r=>r.id===element.dataset.referencePreview);
+    const ref=saved.find(r=>r.id===element.dataset.referencePreview)??
+     ARSENAL_REFERENCES.find(r=>r.id===element.dataset.referencePreview);
     if(ref)attachImage(element,ref,'card');
    }
   },{rootMargin:'100px'});
@@ -145,13 +173,52 @@ function renderCards(){
   photo.dataset.referencePreview=ref.id;
   const model=document.createElement('strong');model.className='model';model.textContent=ref.name;
   const platform=document.createElement('span');platform.className='platform';
-  platform.textContent=platformName(ref.platformId);
+  platform.textContent=platformName('recipe' in ref?ref.recipe.platformId:ref.platformId);
   card.append(photo,model,platform);
   card.addEventListener('click',()=>showSelected(ref));
   grid.append(card);
   if(observer)observer.observe(photo);else attachImage(photo,ref,'card');
  }
 }
+function refreshLibrary(id?:string){
+ activePlatform='saved';renderFilters();renderCards();
+ const saves=loadArsenalBuildLibrary().builds;
+ const selected=saves.find(x=>x.id===id)??saves[saves.length-1];
+ if(selected)showSelected(selected);
+ else{selectedSaved=null;savedControls.hidden=true;renameBox.hidden=true;}
+}
+rename.addEventListener('click',()=>{
+ if(!selectedSaved)return;
+ renameInput.value=selectedSaved.name;renameBox.hidden=false;renameInput.focus();
+});
+renameCancel.addEventListener('click',()=>{renameBox.hidden=true;});
+renameSave.addEventListener('click',()=>{
+ if(!selectedSaved)return;
+ const updated=renameSavedArsenalBuild(loadArsenalBuildLibrary(),selectedSaved.id,renameInput.value);
+ if(!updated){savedFeedback.textContent='Enter a valid name';return;}
+ if(!persistArsenalBuildLibrary(updated)){
+  savedFeedback.textContent='Storage unavailable; name not changed';return;
+ }
+ refreshLibrary(selectedSaved.id);
+});
+duplicate.addEventListener('click',()=>{
+ if(!selectedSaved)return;
+ const copy=duplicateSavedArsenalBuild(loadArsenalBuildLibrary(),selectedSaved.id);
+ if(!copy){savedFeedback.textContent='Saved-build limit reached';return;}
+ if(!persistArsenalBuildLibrary(copy.library)){
+  savedFeedback.textContent='Storage unavailable; build not duplicated';return;
+ }
+ refreshLibrary(copy.build.id);
+});
+remove.addEventListener('click',()=>{
+ if(!selectedSaved||!window.confirm('Delete the saved build "'+selectedSaved.name+'"?'))return;
+ const after=deleteSavedArsenalBuild(loadArsenalBuildLibrary(),selectedSaved.id);
+ if(!persistArsenalBuildLibrary(after)){
+  savedFeedback.textContent='Storage unavailable; build not deleted';return;
+ }
+ refreshLibrary();
+});
+
 search.addEventListener('input',renderCards);
 renderFilters();renderCards();
 const first=ARSENAL_REFERENCES.find(ref=>ref.id===selectedId)??ARSENAL_REFERENCES[0];
