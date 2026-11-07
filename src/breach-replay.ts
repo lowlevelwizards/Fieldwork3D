@@ -16,6 +16,8 @@ import {captureReplayManifest,type ReplayManifest} from './breach-replay-manifes
 import {copyNodes,type PlanNode} from './breach-plan.ts';
 import {captureReplayKnowledge,applyReplayKnowledge,type ReplayKnowledge}
   from './breach-replay-visibility.ts';
+import {enablePersonalGroundCapture,drainPersonalGround,
+  type PersonalGroundBatch} from './breach-replay-personal-ground.ts';
 import {shareUnchangedReplayFrame,type ReplaySharingStats}
   from './breach-replay-sharing.ts';
 import type {TraverseOpportunity} from './breach-mantle.ts';
@@ -171,6 +173,10 @@ export class MissionRecorder{
   readonly frames:ReplayFrame[]=[];
   readonly events:BattleEvent[]=[];
   readonly executionEvents:ExecutionEvent[]=[];
+  /** Sparse personal ground reveals, captured at the actual sight tick.
+   * Kept outside the 20 Hz frames to avoid duplicating four tile histories.
+   */
+  readonly personalGround:PersonalGroundBatch[]=[];
   private lastEventId=0;
   private lastExecutionEventId=0;
   private readonly discoveredBodies=new Set<string>();
@@ -189,6 +195,8 @@ export class MissionRecorder{
     sharedActors:0,sharedFields:0,fullKeyframes:0
   };
   capture(s:Session,force=false):void{
+    // First capture starts the personal ground journal before simulation GO.
+    enablePersonalGroundCapture(s);
     this.plans.capture(s);
     this.ballistics.capture(s);
     // The mission may receive new appearance/kit settings before first GO.
@@ -197,6 +205,8 @@ export class MissionRecorder{
       this.manifest=captureReplayManifest(s,this.manifest?.site);
     if(s.started)this.manifestLocked=true;
     if(this.frames.length>=12000){
+      // Keep capped recordings honest and bounded.
+      drainPersonalGround(s);
       if(this.completeness.complete){
         this.completeness.complete=false;
         this.completeness.truncatedAt=this.duration;
@@ -204,6 +214,7 @@ export class MissionRecorder{
       }
       return;
     }
+    this.personalGround.push(...drainPersonalGround(s));
     // This runs at 60Hz even though the outcome film is only 20Hz.
     // Recording step starts here avoids tying animation to render FPS.
     this.motion.record(s.seconds,s.operators,s.doors);

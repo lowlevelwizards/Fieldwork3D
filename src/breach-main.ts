@@ -175,7 +175,10 @@ import {TacticalFeedback} from './ui/tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './ui/contextual-teaching.ts';
 import {recoveryAdviceFor} from './ui/recovery-guidance.ts';
-import {paintFogMask,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
+import {paintFogMask,maskBounds,FOG_WIDTH,FOG_HEIGHT}
+  from './breach-fog-mask.ts';
+import {paintReplayPersonalGround} from './breach-replay-ground-overlay.ts';
+import {PersonalGroundHistory} from './breach-replay-personal-ground.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 
@@ -322,6 +325,7 @@ const ui={
   replayMarks:el<HTMLElement>('replayMarks'),
   replaySight:el<HTMLButtonElement>('replaySight'),
   replayContactLens:el<HTMLButtonElement>('replayContactLens'),
+  replayGroundLens:el<HTMLButtonElement>('replayGroundLens'),
   replayContactNote:el<HTMLElement>('replayContactNote'),
   replayObserverTransitions:el<HTMLElement>('replayObserverTransitions'),
   replayView:el<HTMLButtonElement>('replayView'),
@@ -786,6 +790,11 @@ let replayOmniscient=true,finishedSession:Session|null=null;
 let replayContactObserverId:string|null=null;
 let replayHasContactEvidence=false;
 let replayOperatorSightIndex:ReplayOperatorSightIndex|null=null;
+/** Optional recorded floor-discovery overlay, not a full actor POV. */
+let replayPersonalGroundHistory:PersonalGroundHistory|null=null;
+let replayGroundLensOn=false;
+let replayGroundCacheObserver:string|null=null,replayGroundCacheCount=-1;
+let replayGroundCacheSite:Session['site']|null=null;
 function replayDisclosure():ReplayDisclosure{
   return replayContactObserverId?
     {mode:'operator',observerId:replayContactObserverId}:
@@ -1416,6 +1425,9 @@ const fogCanvas=document.createElement('canvas');
 fogCanvas.width=FOG_WIDTH;fogCanvas.height=FOG_HEIGHT;
 const fogContext=fogCanvas.getContext('2d');
 if(!fogContext)throw Error('Fog canvas unavailable');
+const replayGroundCanvas=document.createElement('canvas');
+const replayGroundContext=replayGroundCanvas.getContext('2d');
+if(!replayGroundContext)throw Error('Replay ground canvas unavailable');
 let fogStamp=-1;
 let fogSession:Session|null=null;
 let fogIntelMode='';let fogSeenRevision=-1;
@@ -1624,6 +1636,7 @@ function fitZoom(next:number,x=cssW/2,y=cssH/2){
 }
 function cameraMode(mode:ViewMode){
   viewMode=stage?mode:'plan2d';
+  if(replaying&&viewMode!=='plan2d')replayGroundLensOn=false;
   if(stage){stage.setMode(viewMode);stage.updateCamera(1);}
   for(const [m,button] of [['iso',ui.viewIso],
     ['top',ui.viewTop],['plan2d',ui.view2d]] as const){
@@ -3544,6 +3557,28 @@ function renderProjectedPlans(){
   renderReplayBallistics(true);
   for(const a of team(state))drawExecutionProblem(a,true);
 }
+/** Gold denotes actual historically observed cells for the selected operator.
+ * Shared geometry/doors/people remain shared and are NEVER claimed as POV.
+ * Render only in the Floor Plan view; no speculative real-time raycasts.
+ */
+function renderReplayPersonalGround():void{
+  if(!replaying||!replayGroundLensOn||viewMode!=='plan2d'||
+    !replayContactObserverId||!replayPersonalGroundHistory)return;
+  const observed=replayPersonalGroundHistory.at(
+    replayTime,replayContactObserverId);
+  if(!observed)return;
+  if(replayGroundCacheObserver!==replayContactObserverId||
+     replayGroundCacheCount!==observed.size||
+     replayGroundCacheSite!==state.site){
+    paintReplayPersonalGround(replayGroundContext!,state.site,observed);
+    replayGroundCacheObserver=replayContactObserverId;
+    replayGroundCacheCount=observed.size;
+    replayGroundCacheSite=state.site;
+  }
+  const b=maskBounds(state.site);
+  draw.drawImage(replayGroundCanvas,b.minX,b.minY,
+    b.maxX-b.minX,b.maxY-b.minY);
+}
 function fog(){
   if(replaying&&replayOmniscient)return;
   if(fogStamp<0||fogSession!==state||fogIntelMode!==state.intel.mode||
@@ -3839,7 +3874,7 @@ function render(){
   draw.translate(ox,oy);draw.scale(viewScale,viewScale);
   draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
   terrain();furniture();renderGroundMarks();renderLightingMood2D();renderWeaponLights2D();
-  architecture();fog();missionMarkers();
+  architecture();fog();renderReplayPersonalGround();missionMarkers();
   paths();renderReplayMovementHistory(false);
   for(const a of state.civilians)civilianSprite(a);
   for(const a of state.operators)sprite(a);
@@ -4369,6 +4404,15 @@ function updateReplayHud(){
     'Only confirmed enemy contacts and own activity; team map remains shared':
     'This recording has no individual operator contact evidence';
   ui.replayContactNote.hidden=!replayContactObserverId;
+  ui.replayContactNote.textContent=replayGroundLensOn?
+    'GOLD CELLS: INDIVIDUALLY OBSERVED FLOOR · WORLD OBJECTS STILL SQUAD STATE · 2D ONLY.':
+    'OPERATOR CONTACTS ONLY · MAP AND ENVIRONMENT REMAIN SQUAD KNOWLEDGE. FORENSIC SHOT PATHS HIDDEN.';
+  ui.replayGroundLens.disabled=!replayContactObserverId||
+    !replayPersonalGroundHistory;
+  ui.replayGroundLens.textContent=replayGroundLensOn?
+    'GROUND: PERSONAL':'GROUND: OFF';
+  ui.replayGroundLens.setAttribute('aria-pressed',
+    String(replayGroundLensOn));
   ui.replayView.textContent=viewMode.toUpperCase();
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
   ui.replaySquad.textContent=replayCameraMode==='squad'?'SQUAD ON':'FOLLOW SQUAD';
@@ -4422,6 +4466,10 @@ function enterReplay(){
     Object.keys(f.knowledge.operatorVisibleActorIds).length>0);
   replayOperatorSightIndex=replayHasContactEvidence?
     new ReplayOperatorSightIndex(recorder.frames):null;
+  replayPersonalGroundHistory=recorder.personalGround.length?
+    new PersonalGroundHistory(recorder.personalGround):null;
+  replayGroundLensOn=false;replayGroundCacheObserver=null;
+  replayGroundCacheCount=-1;replayGroundCacheSite=null;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   replayCameraMode='free';replayDirectorCues=[];
   replayBookmarks=[];replayBookmarkCounter=0;
@@ -4465,6 +4513,9 @@ function exitReplay(){
   replayIncidents=[];replayFeaturedIncidents=[];
   replayContactObserverId=null;replayHasContactEvidence=false;
   replayOperatorSightIndex=null;
+  replayPersonalGroundHistory=null;replayGroundLensOn=false;
+  replayGroundCacheObserver=null;replayGroundCacheCount=-1;
+  replayGroundCacheSite=null;
   selectedReplayIncidentId=null;replayIncidentPlayback=null;
   ui.replayIncidentDetails.hidden=true;
   closeReplayShotInspector();
@@ -4810,6 +4861,7 @@ ui.replaySeek.addEventListener('input',()=>{
   seekReplay(Number(ui.replaySeek.value)/60);
 });
 ui.replaySight.addEventListener('click',()=>{
+  replayGroundLensOn=false;
   replayContactObserverId=null;
   replayOmniscient=!replayOmniscient;fogStamp=-1;
   rebuildReplayEventIndex();
@@ -4826,6 +4878,7 @@ ui.replayContactLens.addEventListener('click',()=>{
   const at=replayContactObserverId===null?-1:
     ids.indexOf(replayContactObserverId);
   replayContactObserverId=at>=ids.length-1?null:ids[at+1];
+  if(!replayContactObserverId)replayGroundLensOn=false;
   if(replayContactObserverId){
     replayOmniscient=false;
     selected=replayContactObserverId;
@@ -4836,6 +4889,14 @@ ui.replayContactLens.addEventListener('click',()=>{
   rebuildReplayEventIndex();
   renderReplayEventMarkers();renderReplayEventFeed();
   refreshReplayShotInspector();updateReplayHud();
+});
+ui.replayGroundLens.addEventListener('click',()=>{
+  if(!replayContactObserverId||!replayPersonalGroundHistory)return;
+  replayGroundLensOn=!replayGroundLensOn;
+  if(replayGroundLensOn&&viewMode!=='plan2d')cameraMode('plan2d');
+  replayGroundCacheObserver=null;
+  replayGroundCacheCount=-1;
+  updateReplayHud();
 });
 ui.replayView.addEventListener('click',()=>{
   cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
