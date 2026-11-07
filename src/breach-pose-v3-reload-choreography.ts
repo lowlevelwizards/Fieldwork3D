@@ -106,7 +106,7 @@ export function v3MagazineRockAngle(progress:number,mode:ReloadMode,
  family?:'ar'|'ak'|'hk'):number{
  if(mode==='shells'||family!=='ak')return 0;
  const t=clamp(progress);
- return .14*
-  (t<=.61?0:Math.min(1,Math.max(0,(t-.61)/.14)))*
-  (1-Math.min(1,Math.max(0,(t-.75)/.07)));
+ const rise=Math.sin(Math.PI*.5*clamp((t-.61)/.14))**2;
+ const fall=Math.cos(Math.PI*.5*clamp((t-.75)/.07))**2;
+ return .14*rise*fall;
 }
