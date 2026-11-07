@@ -101,7 +101,45 @@ try{
     };
     playback.close();
     transport.closed=playback.status==='closed';
+    // G4c3: hydrate a separate replay-only Session using the actual
+    // historical renderer frame source; no game tick, AI or extra sight.
+    const {openReplayChunkSceneV2}=await import(
+      '/src/breach-replay-chunk-scene.ts');
+    const {restoreReplayArchive}=await import(
+      '/src/breach-replay-archive.ts');
+    const {newSession}=await import('/src/breach-game.ts');
+    const scene=await openReplayChunkSceneV2('g3-browser-001');
+    const observer=await scene.seek(.25);
     const v1=await loadSavedReplay('g3-browser-001');
+    const legacy=restoreReplayArchive(v1).sample(.25);
+    const ownedFrame=observer.status==='ready'?observer.value:null;
+    const matched=JSON.stringify(ownedFrame?.frame)===
+      JSON.stringify(legacy);
+    const presentation=ownedFrame?.frame.presentation;
+    const historicalVisibility=ownedFrame?.frame.knowledge;
+    const stage=newSession(0,3948);
+    if(ownedFrame)scene.applyToReplaySession(stage,ownedFrame);
+    const hydration=ownedFrame?{
+      matched,actorPosition:stage.operators[0]?.p,
+      originalPosition:legacy.actors[0]?.p,
+      sceneTime:stage.seconds,filmTime:ownedFrame.frame.t,
+      sceneDoors:stage.doors.length,filmDoors:ownedFrame.frame.doors.length,
+      motionFeet:Object.keys(presentation?.feet??{}).length,
+      personalObservation:historicalVisibility?.operatorVisibleActorIds?
+        Object.hasOwn(historicalVisibility.operatorVisibleActorIds,'rook'):
+        false,
+      phantomObserver:scene.recordedObserverKnowledge('phantom')===null,
+      resident:scene.residentChunks,
+      worldWindows:stage.windows.length
+    }:null;
+    const earlier=await scene.seek(.03);
+    let staleRejected=false;
+    if(ownedFrame){
+      try{scene.applyToReplaySession(stage,ownedFrame);}
+      catch{staleRejected=true;}
+    }
+    const rewind=earlier.status==='ready'?earlier.value.frame.t:null;
+    scene.close();
     const pendingAfter=await storage.listInterruptedChunkedReplaysV2();
     return {generation:release.generation,
       count:release.frameCount,storageComplete:release.storageComplete,
@@ -111,6 +149,7 @@ try{
         alpha:sample?.alpha},
       resident:opened.window.residentCount,
       transport,
+      hydration,staleRejected,rewind,
       v1Count:v1.frames.length,
       pending:pendingAfter.length};
   });
@@ -133,6 +172,20 @@ try{
     completed.transport.recordingComplete&&completed.transport.closed,
     'G4 async playback was not faithful after browser reload: '+
     JSON.stringify(completed.transport));
+  check(completed.hydration?.matched&&
+    Math.abs(completed.hydration.sceneTime-.25)<1e-8&&
+    completed.hydration.sceneTime===completed.hydration.filmTime&&
+    JSON.stringify(completed.hydration.actorPosition)===
+      JSON.stringify(completed.hydration.originalPosition)&&
+    completed.hydration.sceneDoors===completed.hydration.filmDoors&&
+    completed.hydration.motionFeet>=1&&
+    completed.hydration.personalObservation&&
+    completed.hydration.phantomObserver&&
+    completed.hydration.resident<=3&&
+    completed.staleRejected&&
+    Math.abs(completed.rewind-.03)<1e-8,
+    'G4c3 replay scene failed actual browser V2 history parity: '+
+    JSON.stringify(completed.hydration));
   const replaced=await page.evaluate(async()=>{
     const storage=await import('/src/breach-replay-chunk-store.ts');
     const {loadSavedReplay}=await import('/src/breach-replay-library.ts');
