@@ -1925,40 +1925,32 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
       continue;
     }
-    // The coupled fitting solver already chose BOTH elbows and the exact
-    // physical wrist contacts in one collision-checked candidate.
-    // Do not re-run per-arm IK and accidentally undo its armor clearance.
-    if(coupled&&!carryTransitionActive&&!p.unarmedPreview){
-      const joint=coupled.arms[i];
-      r.elbowSpread[i]=Math.max(0,sign*(joint.joint.z-shoulder.z));
-      arm.bend.copy(joint.bendPlane);arm.outOfReach=false;
-      alignSegment(arm.upper,shoulder,joint.joint,scratch.sides[i]);
-      alignSegment(arm.lower,joint.joint,joint.effector,scratch.sides[i]);
-      arm.hand.position.copy(joint.effector);
-      arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
-      continue;
-    }
-    // A jointly validated V3 pair owns BOTH elbow placements. Do not run
-    // independent IK again and accidentally undo its clearance selection.
-    if(coordinatedDynamic?.arms&&!carryTransitionActive&&
-       !p.unarmedPreview){
-      const pose=coordinatedDynamic.arms[i];
-      const report=coordinatedDynamic.reports![i];
-      r.elbowSpread[i]=Math.max(0,sign*(pose.joint.z-shoulder.z));
-      arm.bend.copy(pose.bendPlane);
+    // One final writer consumes either approved paired-arm source.
+    // Coupled low-ready wins first (as before), followed by coordinated
+    // V3 arms. Only when neither owns the pair does generic IK run.
+    // No second IK pass may undo a validated elbow/armor solution.
+    const pairedArms=!carryTransitionActive&&!p.unarmedPreview?
+      coupled?.arms??coordinatedDynamic?.arms??null:null;
+    if(pairedArms){
+      const limb=pairedArms[i];
+      r.elbowSpread[i]=Math.max(0,sign*(limb.joint.z-shoulder.z));
+      arm.bend.copy(limb.bendPlane);
       arm.outOfReach=false;
-      alignSegment(arm.upper,shoulder,pose.joint,scratch.sides[i]);
-      alignSegment(arm.lower,pose.joint,pose.effector,scratch.sides[i]);
-      arm.hand.position.copy(pose.effector);
+      alignSegment(arm.upper,shoulder,limb.joint,scratch.sides[i]);
+      alignSegment(arm.lower,limb.joint,limb.effector,scratch.sides[i]);
+      arm.hand.position.copy(limb.effector);
       arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
-      v3DynamicReports.push({
-        side:i===0?'support':'firing',status:'clear',reason:'valid',
-        candidates:6,elbowDrop:report.elbowDrop,
-        outwardFlare:report.outwardFlare,
-        hardDepth:report.hardDepth,quality:report.quality,
-        reachError:0,violations:[],
-        evaluations:6,softScale:coordinatedDynamic.softScales![i]
-      });
+      if(!coupled&&coordinatedDynamic?.arms){
+        const report=coordinatedDynamic.reports![i];
+        v3DynamicReports.push({
+          side:i===0?'support':'firing',status:'clear',reason:'valid',
+          candidates:6,elbowDrop:report.elbowDrop,
+          outwardFlare:report.outwardFlare,
+          hardDepth:report.hardDepth,quality:report.quality,
+          reachError:0,violations:[],
+          evaluations:6,softScale:coordinatedDynamic.softScales![i]
+        });
+      }
       continue;
     }
     const neutralArms=!!p.unarmedPreview&&!p.down&&!p.surrender;
