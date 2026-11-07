@@ -258,3 +258,17 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
 .arsenal-wb-model-controls select:focus-visible,
 .arsenal-wb-model-controls input:focus-visible{
  outline:2px solid var(--fw-focus);outline-offset:2px}
+
+/* R14b: unavailable parts are inspectable, not deceptively disabled.
+ * Tapping one explains the fitment rule but never commits a change. */
+.arsenal-wb-option[data-fit="incompatible"]{opacity:.83;
+ border-style:dashed;border-color:var(--fw-text-faint)}
+.arsenal-wb-option[data-fit="incompatible"] small{color:var(--fw-warning)}
+.arsenal-wb-option[data-fit="requires"]{border-color:var(--fw-brass)}
+.arsenal-wb-option[data-fit="requires"] small{color:var(--fw-brass)}
+.arsenal-wb-fit-explanation{padding:11px 12px;margin:0;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-warning);
+ border-radius:var(--fw-radius-sm);color:var(--fw-text-warm);
+ font:600 12px/1.5 var(--fw-font-action)}
+.arsenal-wb-fit-explanation[hidden]{display:none}
+.arsenal-wb-option[aria-disabled="true"]{cursor:help}

@@ -20,6 +20,7 @@ import {proposeArsenalRecipeLoad,acceptArsenalRecipeLoad,arsenalRecipeDifference
  type ArsenalRecipeLoadProposal} from './recipe-loading.ts';
 import {ARSENAL_PLATFORMS,type ArsenalPlatformId} from './catalog.ts';
 import {arsenalFactoryChoices} from './factory-recipes.ts';
+import {arsenalFitFeedback} from './fit-feedback.ts';
 import './arsenal.css';
 /** Game context is an explicit commit callback; the Workbench owns no inventory. */
 export interface ArsenalWorkbenchApplyContext{
@@ -105,6 +106,10 @@ export function openArsenalWorkbench(
  const showAll=document.createElement('button');showAll.type='button';showAll.className='arsenal-wb-show-all';
  showAll.textContent='SHOW ALL';
  optionsHeader.append(optionsLabel,showAll);
+ const fitExplanation=document.createElement('p');
+ fitExplanation.className='arsenal-wb-fit-explanation';
+ fitExplanation.setAttribute('role','status');
+ fitExplanation.hidden=true;
  const choiceList=document.createElement('div');choiceList.className='arsenal-wb-option-list';
  const pendingHost=document.createElement('div');pendingHost.className='arsenal-wb-pending-host';
  const hint=document.createElement('p');hint.className='arsenal-wb-hint';
@@ -115,7 +120,7 @@ export function openArsenalWorkbench(
   'Edits are a reversible preview. No equipment is purchased or equipped here.';
  const applyQuote=document.createElement('p');applyQuote.className='arsenal-wb-apply-quote';
  applyQuote.setAttribute('role','status');
- panel.append(panelTitle,slotRow,activeLabel,optionsHeader,choiceList,
+ panel.append(panelTitle,slotRow,activeLabel,optionsHeader,fitExplanation,choiceList,
   pendingHost,applyQuote,hint);
  main.append(viewportHost,nav,panel);
  overlay.append(head,main);document.body.append(overlay);
@@ -160,17 +165,24 @@ export function openArsenalWorkbench(
    const proposal=proposeArsenalPartChange(draft.working,activeSlot,part.id);
    const equipped=currentPartId(activeSlot)===part.id;
    if(!equipped&&!proposal.valid&&!showIncompatible)continue;
+   const feedback=arsenalFitFeedback(proposal,equipped);
    const option=document.createElement('button');option.type='button';
-   option.className='arsenal-wb-option';option.disabled=!proposal.valid;
+   option.className='arsenal-wb-option';
+   option.dataset.fit=feedback.state;
    option.setAttribute('aria-pressed',String(equipped));
+   if(!proposal.valid)option.setAttribute('aria-disabled','true');
    option.title=part.detail;
    const name=document.createElement('strong');name.textContent=part.name;
-   const status=document.createElement('small');
-   status.textContent=equipped?'EQUIPPED':
-    !proposal.valid?proposal.reasons.join(' · '):
-    proposal.requiresConfirmation?'REQUIRES CHANGES':'FITS';
+   const status=document.createElement('small');status.textContent=feedback.label;
    option.append(name,status);
-   if(proposal.valid&&!equipped)option.addEventListener('click',()=>{
+   option.addEventListener('click',()=>{
+    if(!proposal.valid){
+     fitExplanation.hidden=false;
+     fitExplanation.textContent=part.name+' · '+feedback.explanation;
+     return;
+    }
+    if(equipped)return;
+    fitExplanation.hidden=true;fitExplanation.textContent='';
     pending=null;
     if(proposal.requiresConfirmation){
      pending=proposal;renderPending();return;
@@ -182,11 +194,12 @@ export function openArsenalWorkbench(
   }
   if(!displayed){
    const empty=document.createElement('p');empty.className='arsenal-wb-hint';
-   empty.textContent='No compatible alternatives for this component.';
+   empty.textContent='No direct replacements. Show unavailable parts for fitment details, or Choose Model to start from another platform.';
    choiceList.append(empty);
   }
  }
  function renderSelection(){
+  fitExplanation.hidden=true;fitExplanation.textContent='';
   nav.replaceChildren();
   for(const category of ARSENAL_CATEGORIES){
    const button=document.createElement('button');button.type='button';
@@ -222,7 +235,7 @@ export function openArsenalWorkbench(
     quote?.cost?'PENDING PURCHASE · '+quote.cost+' CR':'');
   }
   undo.disabled=draft.undo.length===0;redo.disabled=draft.redo.length===0;
-  showAll.textContent=showIncompatible?'HIDE INCOMPATIBLE':'SHOW ALL';
+  showAll.textContent=showIncompatible?'HIDE UNAVAILABLE':'SHOW UNAVAILABLE';
   viewer.setSelectedSlot(activeSlot);
   renderChoices();renderPending();
  }
