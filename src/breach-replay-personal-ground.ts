@@ -45,7 +45,10 @@ export class PersonalGroundHistory{
   private cursor=0;
   private atTime=-Infinity;
   private seen=new Map<string,Set<string>>();
-  constructor(private readonly batches:readonly PersonalGroundBatch[]){}
+  private readonly batches:readonly PersonalGroundBatch[];
+  constructor(batches:readonly PersonalGroundBatch[]){
+    this.batches=batches;
+  }
   /** Bounded incremental replay; rewind reconstructs without live geometry. */
   at(time:number,observerId:string):ReadonlySet<string>|null{
     if(!Number.isFinite(time)||time<0)return null;
