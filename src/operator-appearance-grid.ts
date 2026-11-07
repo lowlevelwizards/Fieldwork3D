@@ -13,6 +13,8 @@ import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
  from './operator-studio-lighting.ts';
 import {applyOperatorStudioToon,disposeOperatorStudioToon}
  from './operator-studio-toon-lighting.ts';
+import {applyStudioGraphicLighting,restoreStudioGraphicLighting,
+ disposeStudioGraphicLighting} from './operator-studio-graphic-lighting.ts';
 import {THUMB_LINEAR_TO_SRGB} from './operator-thumbnail-color.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {appearanceThumbnailContext,appearanceThumbnailKey,
@@ -159,7 +161,11 @@ export class OperatorAppearanceGrid{
   const previous=this.lightingSettings;
   if(previous.toon===settings.toon&&previous.rim===settings.rim&&
      previous.gradient===settings.gradient&&
-     previous.shadow===settings.shadow)return;
+     previous.shadow===settings.shadow&&
+     previous.celProfile===settings.celProfile&&
+     previous.celLow===settings.celLow&&
+     previous.celHigh===settings.celHigh&&
+     previous.allSurfaces===settings.allSurfaces)return;
   this.lightingSettings={...settings};
   this.lighting.setShadowColor(settings.shadow);
   this.cache.clear();
@@ -273,6 +279,7 @@ export class OperatorAppearanceGrid{
   if(this.thumbnailRig&&this.rigIdentity===id)return this.thumbnailRig;
   if(this.thumbnailRig){
    this.scene.remove(this.thumbnailRig.root);
+   disposeStudioGraphicLighting(this.thumbnailRig.root);
    disposeOperatorStudioToon(this.thumbnailRig.root);
    this.thumbnailRig.dispose();
   }
@@ -297,6 +304,7 @@ export class OperatorAppearanceGrid{
   try{
    // Let animated Standard material sources receive updated outfit colors;
    // reattach the selected toon variants only after that source update.
+   restoreStudioGraphicLighting(rig.root);
    applyOperatorStudioToon(rig.root,0);
    rig.root.userData.fieldworkHeightProfile=this.lightingSettings.gradient;
    poseOperator(rig,{
@@ -314,14 +322,14 @@ export class OperatorAppearanceGrid{
     applyOperatorHeightLighting(rig.root,
      String(rig.root.userData.fieldworkLightingAppearanceKey??'thumbnail'),
      profile);
-   const toon=this.lightingSettings.toon;
-   const rim=toon?this.lightingSettings.rim:'off';
-   const converted=applyOperatorStudioToon(rig.root,toon,rim);
-   this.grid.dataset.operatorToonBands=String(toon);
+   const light=this.lightingSettings;
+   const converted=applyStudioGraphicLighting(rig.root,light);
+   this.grid.dataset.operatorToonBands=String(light.toon);
    this.grid.dataset.operatorToonMeshes=String(converted.meshes);
-   this.grid.dataset.operatorRimMode=rim;
+   this.grid.dataset.operatorWeaponMeshes=String(converted.weapons);
+   this.grid.dataset.operatorRimMode=light.rim;
    this.grid.dataset.operatorGradient=profile;
-   this.grid.dataset.operatorShadowColor=this.lightingSettings.shadow;
+   this.grid.dataset.operatorShadowColor=light.shadow;
    this.scene.add(rig.root);
    this.lighting.invalidateGeometry();
    this.lighting.beforeRender(rig.root);
@@ -416,6 +424,7 @@ export class OperatorAppearanceGrid{
   this.observer?.disconnect();this.pending.clear();this.cards.clear();
   if(this.thumbnailRig){
    this.scene.remove(this.thumbnailRig.root);
+   disposeStudioGraphicLighting(this.thumbnailRig.root);
    disposeOperatorStudioToon(this.thumbnailRig.root);
    this.thumbnailRig.dispose();this.thumbnailRig=null;
   }
