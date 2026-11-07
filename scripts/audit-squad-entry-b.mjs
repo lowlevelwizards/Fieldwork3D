@@ -15,7 +15,12 @@ const pt=(x,y)=>({x,y});
 const dist=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y);
 const configs=[
  {name:'clear-opening',cover:[]},
+ // This obstruction is within the moving hinge leaf's actual arc:
+ // the truthful result is a physically blocked entry, not a traffic jam.
  {name:'near-jamb-furniture',cover:[{x:322,y:295,w:18,h:22}],expectBlocked:true},
+ // This prop is near the frame but OUTSIDE the hinge arc: it should
+ // make traversal more interesting without blocking the whole squad.
+ {name:'near-frame-passable',cover:[{x:352,y:305,w:16,h:18}]},
  {name:'far-interior-furniture',cover:[{x:306,y:351,w:24,h:23}]}
 ];
 const fixture=c=>({
@@ -70,6 +75,10 @@ function audit(c){
     }
    }
    if(finished.every(x=>x!==null))break;
+   // Do not burn 50 simulated seconds sampling an intentionally blocked
+   // physical door after its observable warning has been delivered.
+   if(c.expectBlocked&&s.seconds>16&&
+      s.events.some(e=>e.includes('DOOR SWING OBSTRUCTED')))break;
   }
   const mins=actors.map((a,i)=>({
    id:a.id,p:a.p,goal:goals[i].p,
