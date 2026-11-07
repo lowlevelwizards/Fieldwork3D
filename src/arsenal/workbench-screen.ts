@@ -18,7 +18,8 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
 import {ArsenalViewport} from './viewport.ts';
 import {proposeArsenalRecipeLoad,acceptArsenalRecipeLoad,arsenalRecipeDifferenceLabel,
  type ArsenalRecipeLoadProposal} from './recipe-loading.ts';
-import {ARSENAL_PLATFORMS} from './catalog.ts';
+import {ARSENAL_PLATFORMS,type ArsenalPlatformId} from './catalog.ts';
+import {arsenalFactoryChoices} from './factory-recipes.ts';
 import './arsenal.css';
 /** Game context is an explicit commit callback; the Workbench owns no inventory. */
 export interface ArsenalWorkbenchApplyContext{
@@ -75,10 +76,13 @@ export function openArsenalWorkbench(
  saveCopy.className='arsenal-wb-action';saveCopy.textContent='SAVE COPY';
  const load=document.createElement('button');load.type='button';
  load.className='arsenal-wb-action';load.textContent='LOAD BUILD';
+ const chooseModel=document.createElement('button');chooseModel.type='button';
+ chooseModel.className='arsenal-wb-action arsenal-wb-choose-model';
+ chooseModel.textContent='CHOOSE MODEL';
  const apply=document.createElement('button');apply.type='button';
  apply.className='arsenal-wb-action arsenal-wb-apply';
  apply.textContent=context?.applyLabel??'APPLY';apply.hidden=!context;
- actions.append(undo,redo,load,save,saveCopy,fit,side,apply);head.append(back,identity,actions);
+ actions.append(undo,redo,chooseModel,load,save,saveCopy,fit,side,apply);head.append(back,identity,actions);
  const main=document.createElement('div');main.className='arsenal-wb-main';
  const viewportHost=document.createElement('div');viewportHost.className='arsenal-wb-viewport';
  const nav=document.createElement('nav');nav.className='arsenal-wb-nav';
@@ -219,6 +223,15 @@ export function openArsenalWorkbench(
  const loadHeading=document.createElement('h3');loadHeading.textContent='LOAD SAVED BUILD';
  const loadNote=document.createElement('p');loadNote.className='arsenal-wb-hint';
  loadNote.textContent='Replace the working draft. No weapon is purchased or equipped yet.';
+ const modelControls=document.createElement('div');modelControls.className='arsenal-wb-model-controls';
+ const modelPlatform=document.createElement('select');
+ modelPlatform.setAttribute('aria-label','Filter factory weapon platform');
+ modelPlatform.add(new Option('ALL PLATFORMS','all'));
+ for(const platform of ARSENAL_PLATFORMS)
+  modelPlatform.add(new Option(platform.name,platform.id));
+ const modelSearch=document.createElement('input');modelSearch.type='search';
+ modelSearch.placeholder='Find a model';modelSearch.setAttribute('aria-label','Search factory weapon models');
+ modelControls.append(modelPlatform,modelSearch);
  const loadChoices=document.createElement('div');loadChoices.className='arsenal-wb-load-choices';
  const loadChanges=document.createElement('div');loadChanges.className='arsenal-wb-load-changes';
  loadChanges.setAttribute('role','status');
@@ -229,22 +242,28 @@ export function openArsenalWorkbench(
  const loadCancel=document.createElement('button');loadCancel.type='button';
  loadCancel.className='arsenal-wb-action';loadCancel.textContent='CANCEL';
  loadActions.append(loadConfirm,loadCancel);
- loadDialog.append(loadHeading,loadNote,loadChoices,loadChanges,loadActions);
+ loadDialog.append(loadHeading,loadNote,modelControls,loadChoices,loadChanges,loadActions);
  overlay.append(loadDialog);
  let selectedRecipeLoad:ArsenalRecipeLoadProposal|null=null;
+ let loadMode:'saved'|'model'='saved';
  function showLoadChoices(){
   loadChoices.replaceChildren();
   loadChanges.replaceChildren();selectedRecipeLoad=null;loadConfirm.disabled=true;
-  const saved=loadArsenalBuildLibrary().builds;
-  if(!saved.length){
+  const choices=loadMode==='model'?
+   arsenalFactoryChoices(modelPlatform.value as ArsenalPlatformId|'all',modelSearch.value):
+   loadArsenalBuildLibrary().builds;
+  if(!choices.length){
    const empty=document.createElement('p');empty.className='arsenal-wb-hint';
-   empty.textContent='No saved builds yet. Save a build in the Workbench first.';
+   empty.textContent=loadMode==='model'?'No matching models. Try another platform or name.':
+    'No saved builds yet. Save a build in the Workbench first.';
    loadChoices.append(empty);return;
   }
   const header=document.createElement('p');header.className='arsenal-wb-hint';
-  header.textContent=saved.length+' PERSONAL BUILDS · select one to review changes';
+  header.textContent=choices.length+(loadMode==='model'?
+   ' FACTORY MODELS · select a complete starting configuration':
+   ' PERSONAL BUILDS · select one to review changes');
   loadChanges.append(header);
-  for(const build of saved){
+  for(const build of choices){
    const proposal=proposeArsenalRecipeLoad(draft.working,build.recipe);
    const option=document.createElement('button');option.type='button';
    option.className='arsenal-wb-load-option';
@@ -286,10 +305,21 @@ export function openArsenalWorkbench(
    loadChoices.append(option);
   }
  }
- load.addEventListener('click',()=>{
-  pending=null;renderPending();showLoadChoices();
-  loadDialog.showModal();
- });
+ function openRecipePicker(mode:'saved'|'model'){
+  pending=null;renderPending();loadMode=mode;
+  modelControls.hidden=mode!=='model';modelSearch.value='';modelPlatform.value='all';
+  loadHeading.textContent=mode==='model'?'CHOOSE FACTORY MODEL':'LOAD SAVED BUILD';
+  loadDialog.setAttribute('aria-label',loadHeading.textContent);
+  loadNote.textContent=mode==='model'?
+   'Factory models are starting points. Changing model replaces the whole draft; nothing is purchased or equipped until Apply.':
+   'Replace the working draft. No weapon is purchased or equipped yet.';
+  loadConfirm.textContent=mode==='model'?'USE AS STARTING POINT':'LOAD INTO EDITOR';
+  showLoadChoices();loadDialog.showModal();
+ }
+ load.addEventListener('click',()=>openRecipePicker('saved'));
+ chooseModel.addEventListener('click',()=>openRecipePicker('model'));
+ modelPlatform.addEventListener('change',showLoadChoices);
+ modelSearch.addEventListener('input',showLoadChoices);
  loadCancel.addEventListener('click',()=>loadDialog.close());
  loadConfirm.addEventListener('click',()=>{
   if(!selectedRecipeLoad?.valid)return;
@@ -302,7 +332,8 @@ export function openArsenalWorkbench(
   // Loading a recipe must never silently redirect SAVE to someone else's
   // named recipe. Use Save Build (new) or Apply to equip this draft instead.
   savedId=null;loadDialog.close();renderSelection();
-  saveFeedback.textContent='SAVED RECIPE LOADED · NOT EQUIPPED';
+  saveFeedback.textContent=loadMode==='model'?
+   'FACTORY MODEL SELECTED · NOT EQUIPPED':'SAVED RECIPE LOADED · NOT EQUIPPED';
  });
  const saveDialog=document.createElement('dialog');saveDialog.className='arsenal-wb-save-dialog';
  const saveHeading=document.createElement('h3');saveHeading.textContent='SAVE WEAPON BUILD';

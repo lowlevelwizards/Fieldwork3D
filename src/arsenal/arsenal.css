@@ -216,3 +216,15 @@ button{cursor:pointer}
 .arsenal-wb-load-changes li{padding:2px 0}
 .arsenal-wb-load-warning{color:var(--fw-brass);font-weight:650}
 @media(max-width:480px){.arsenal-wb-load-choices{grid-template-columns:1fr}}
+
+/* R13: one factory/saved review panel, not a second editing implementation. */
+.arsenal-wb-choose-model{border-color:var(--fw-sage);color:var(--fw-text)}
+.arsenal-wb-model-controls{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.arsenal-wb-model-controls[hidden]{display:none}
+.arsenal-wb-model-controls select,.arsenal-wb-model-controls input{
+ min-height:44px;flex:1 1 180px;min-width:0;padding:8px 11px;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ background:var(--fw-panel-deep);color:var(--fw-text);font:600 13px var(--fw-font-action)}
+.arsenal-wb-model-controls select:focus-visible,
+.arsenal-wb-model-controls input:focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:2px}
