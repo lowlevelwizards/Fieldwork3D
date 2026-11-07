@@ -13,7 +13,7 @@ import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 
 test('family 01: 22 distinct AR/AK/HK presets normalize and survive saves',()=>{
- assert.equal(FAMILY_PRESETS.length,22);
+ assert.equal(FAMILY_PRESETS.length,25);
  assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,FAMILY_PRESETS.length);
  for(const preset of FAMILY_PRESETS){
   const build=initialWeaponFamilyBuild(preset.id);

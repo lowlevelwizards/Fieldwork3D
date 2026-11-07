@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../src/equipment-weapon-assemblies.ts';
-import {weaponGrips,fitWeaponPose}
+import {weaponGrips,fitWeaponPose,stocklessMP5K}
  from '../src/breach-weapon-pose.ts';
 import {stockPocket} from '../src/breach-anatomy.ts';
 import {lowReadyFamilyFit,lowReadyPocket,lowReadyElbowPole}
@@ -22,7 +22,10 @@ test('all modular AR/AK families tuck their stock and keep relaxed hand on rear 
   assert.ok(profile,preset.id);
   const base=weaponGrips(preset.weapon,c);
   const relaxed=weaponGrips(preset.weapon,c,'low',1);
-  assert.ok(relaxed.supportX<base.supportX,preset.id);
+  if(!stocklessMP5K(c))
+   assert.ok(relaxed.supportX<base.supportX,preset.id);
+  else assert.ok(relaxed.supportX<=4.40&&relaxed.supportX>=3.45,
+   'stockless K low-ready stays on its integral foregrip');
   assert.ok(relaxed.supportY<base.supportY,preset.id);
   assert.ok(relaxed.supportX>=profile.minSupportX,preset.id);
   assert.equal(relaxed.primaryX,base.primaryX,preset.id);
@@ -30,8 +33,10 @@ test('all modular AR/AK families tuck their stock and keep relaxed hand on rear 
   assert.deepEqual(weaponGrips(preset.weapon,c,'ads',1),base,preset.id);
   const oldPocket=stockPocket('low');
   const pocket=lowReadyPocket(oldPocket,profile,1);
-  assert.ok(pocket.x<oldPocket.x,preset.id);
-  assert.ok(pocket.z<oldPocket.z,preset.id);
+  if(!stocklessMP5K(c)){
+   assert.ok(pocket.x<oldPocket.x,preset.id);
+   assert.ok(pocket.z<oldPocket.z,preset.id);
+  }
   assert.ok(pocket.z>=6.35,preset.id);
  }
 });
@@ -64,11 +69,17 @@ test('low-ready contact fits have stable stock pocket and unmodified aimed balli
   assert.ok(Number.isFinite(relaxed.contactError),preset.id);
   assert.ok(relaxed.stockError<1.5,preset.id);
   const targetPocket=lowReadyPocket(stockPocket('low'),lowReadyFamilyFit(c),1);
-  assert.ok(relaxed.stock.distanceTo(
-   new THREE.Vector3(targetPocket.x,targetPocket.y,targetPocket.z))<1.5,preset.id);
-  // Even compact stocks may slide to preserve both wrists; they must
-  // remain on the external shoulder side, never buried in the carrier.
-  assert.ok(relaxed.stock.z>=6.35,preset.id);
+  if(stocklessMP5K(c)){
+   // MP5K rear cap must be ahead of and inside the shoulder, not sewn to
+   // a fictitious buttplate contact; its hands are the real fit targets.
+   assert.ok(relaxed.stock.x>targetPocket.x+2,preset.id);
+   assert.ok(relaxed.stock.z>=4.90&&relaxed.stock.z<6.35,preset.id);
+  }else{
+   assert.ok(relaxed.stock.distanceTo(
+    new THREE.Vector3(targetPocket.x,targetPocket.y,targetPocket.z))<1.5,preset.id);
+   // Real stocks stay externally seated against the shoulder pad.
+   assert.ok(relaxed.stock.z>=6.35,preset.id);
+  }
   assert.ok(relaxed.twoHanded||relaxed.contactError<2,preset.id);
   assert.ok(Number.isFinite(standard.stock.x),preset.id);
   const target={weapon:preset.weapon,configuration:c,

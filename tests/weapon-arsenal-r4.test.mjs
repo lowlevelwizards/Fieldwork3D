@@ -23,12 +23,12 @@ const bound=(group,slot)=>{
  assert.ok(b,'missing '+slot);return b;
 };
 test('R4+HK catalog preserves 17 original recipes and adds five HK presets',()=>{
- assert.equal(FAMILY_PRESETS.length,22);
- assert.equal(Object.keys(FAMILY_PARTS).length,116);
- assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,22);
+ assert.equal(FAMILY_PRESETS.length,25);
+ assert.equal(Object.keys(FAMILY_PARTS).length,128);
+ assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,25);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ar').length,8);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ak').length,9);
- assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,5);
+ assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,8);
  for(const id of ['ar-m16a2','ar-colt733','ak-aks74','ak-akms','ak-rpk74','ar-mk12mod0'])
   assert.ok(FAMILY_PRESETS.some(p=>p.id===id),id);
  for(const p of FAMILY_PRESETS){

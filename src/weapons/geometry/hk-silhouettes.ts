@@ -12,6 +12,7 @@ import {addHKFacetedForearm,addHKHandguardOpenings} from './hk-handguard-profile
 import {HK_MAG20_OUTLINE} from './hk-magazine-profiles.ts';
 import {addHKRetractableStock} from './hk-retractable-stock.ts';
 import {addHK556Family} from './hk-556-silhouettes.ts';
+import {addHKMP5Family} from './hk-mp5-silhouettes.ts';
 import {HK_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 
@@ -19,6 +20,10 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material,
  showFactoryMuzzle=true){
  const parts=build.parts,early=parts.receiver==='hk-g3-early';
+ if(parts.receiver.startsWith('hk-mp5')){
+  addHKMP5Family(root,build,steel,dark,showFactoryMuzzle);
+  return;
+ }
  if(parts.receiver==='hk33-556-rifle'||parts.receiver==='hk53-556-compact'){
   addHK556Family(root,build,steel,dark,showFactoryMuzzle);
   return;
