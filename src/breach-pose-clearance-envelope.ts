@@ -282,10 +282,12 @@ function sleeveBoxPenetration(
  if(!consider(1,0,0)||!consider(0,1,0)||!consider(0,0,1)||
     !consider(sx,sy,sz)||!consider(ux,uy,uz)||
     !consider(bx,by,bz))return 0;
- for(const [x,y,z] of [[sx,sy,sz],[ux,uy,uz],[bx,by,bz]]){
-  if(!consider(0,-z,y)||!consider(z,0,-x)||
-     !consider(-y,x,0))return 0;
- }
+ if(!consider(0,-sz,sy)||!consider(sz,0,-sx)||
+    !consider(-sy,sx,0)||
+    !consider(0,-uz,uy)||!consider(uz,0,-ux)||
+    !consider(-uy,ux,0)||
+    !consider(0,-bz,by)||!consider(bz,0,-bx)||
+    !consider(-by,bx,0))return 0;
  return Number.isFinite(minimum)?minimum:0;
 }
 export function evaluateSleeveArmorContact(
