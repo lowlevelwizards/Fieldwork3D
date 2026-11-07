@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {choreographV3ReloadHand}
+import {choreographV3ReloadHand,v3MagazineRockAngle}
  from '../src/breach-pose-v3-reload-choreography.ts';
 import {reloadHandChestTarget}
  from '../src/breach-reload-motion.ts';
@@ -87,4 +87,26 @@ test('B14 AR/AK handoffs have distinct bounded approach arcs and exact sockets',
  const shell=choreographV3ReloadHand({...input,family:'ak',mode:'shells',progress:.52});
  assert.ok(shell.target.distanceTo(choreographV3ReloadHand({
   ...input,mode:'shells',progress:.52}).target)<1e-12);
+});
+
+test('B15 AK rock-in is bounded, exact at feed-lip contact and replay-stable',()=>{
+ for(const t of [0,.20,.29,.32,.60,.82,.90,1]){
+  assert.equal(v3MagazineRockAngle(t,'emergency','ak'),0,
+   'no detached magazine rotation at contact keyframe '+t);
+ }
+ assert.ok(Math.abs(v3MagazineRockAngle(.75,'emergency','ak')-.14)<1e-12);
+ for(const t of [.62,.69,.75,.78,.81]){
+  const a=v3MagazineRockAngle(t,'emergency','ak');
+  const b=v3MagazineRockAngle(t,'emergency','ak');
+  assert.equal(a,b,'pure timestamp-driven magazine rotation');
+  assert.ok(a>=0&&a<=.140000001,'no over-rotation');
+  assert.equal(v3MagazineRockAngle(t,'emergency','ar'),0);
+  assert.equal(v3MagazineRockAngle(t,'emergency','hk'),0);
+  assert.equal(v3MagazineRockAngle(t,'shells','ak'),0);
+ }
+ for(const t of [.61,.75,.82]){
+  const a=v3MagazineRockAngle(t-1e-5,'emergency','ak');
+  const b=v3MagazineRockAngle(t+1e-5,'emergency','ak');
+  assert.ok(Math.abs(b-a)<.0005,'smooth pivot boundary '+t);
+ }
 });
