@@ -176,6 +176,30 @@ try{
   if(await page.locator('.arsenal-wb-screen').count()||
     await page.evaluate(()=>document.body.style.overflow==='hidden'))
    throw Error('Workbench close did not restore gallery scrolling');
+  // R15: a historical material choice should change its authored swatch
+  // without duplicating the wooden stock silhouette in the physical grid.
+  // Saving a personal recipe intentionally leaves the gallery on Saved.
+  await page.locator('.arsenal-filter').filter({hasText:'All'}).click();
+  await page.getByRole('button',{name:'Select AK-74',exact:true}).click();
+  await page.getByRole('button',{name:'OPEN WORKBENCH'}).click();
+  await page.locator('.arsenal-wb-category').filter({hasText:'Furniture'}).click();
+  await page.locator('.arsenal-wb-subslot').filter({hasText:'Stock'}).click();
+  const swatches=page.locator('.arsenal-wb-finish-choice');
+  if(await swatches.count()<3)throw Error('AK-74 stock does not expose authored finishes');
+  if(!await swatches.filter({hasText:'Honey Birch'}).count())
+   throw Error('AK-74 original honey birch not recognized');
+  const duplicates=await page.locator('.arsenal-wb-option').allTextContents();
+  if(duplicates.some(value=>value.includes('Honey Birch')||value.includes('Red Lacquer')))
+   throw Error('Material variants were duplicated as separate physical stocks');
+  await swatches.filter({hasText:'Red Lacquer'}).click();
+  await page.waitForFunction(()=>document.querySelector('.arsenal-wb-current')?.
+   textContent?.includes('Red Lacquer'));
+  if(!(await page.locator('.arsenal-wb-identity h2').textContent())?.includes('AK-74'))
+   throw Error('AK-74 identity lost after material change');
+  await page.screenshot({path:out+'/arsenal-ak74-red-lacquer-finish-iphone.png'});
+  await page.locator('.arsenal-wb-actions button').filter({hasText:'UNDO'}).click();
+  await page.waitForFunction(()=>document.querySelector('.arsenal-wb-current')?.
+   textContent?.includes('Honey Birch'));
   if(errors.length)throw Error('Arsenal runtime: '+errors.join('; '));
   await page.close();
  }finally{await browser.close();}

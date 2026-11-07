@@ -9,7 +9,8 @@ import * as THREE from 'three';
 import {requestedOperatorGradient} from './operator-height-lighting.ts';
 import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
  from './operator-studio-lighting.ts';
-import {applyOperatorStudioToon,requestedOperatorToonBands}
+import {applyOperatorStudioToon,requestedOperatorToonBands,
+ requestedOperatorRimMode,disposeOperatorStudioToon}
  from './operator-studio-toon-lighting.ts';
 import {THUMB_LINEAR_TO_SRGB} from './operator-thumbnail-color.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
@@ -74,6 +75,9 @@ export class OperatorAppearanceGrid{
  private readonly pending=new Map<HTMLCanvasElement,Entry>();
  private readonly observer:IntersectionObserver|null;
  private scheduled=false;
+ /** One WebGL render target and byte buffer means one in-flight GPU readback.
+  * Never render a second item into the target until the first has resolved. */
+ private reading=false;
  /** Stop queued GPU thumbnail work when the Studio iframe is hidden. */
  private suspended=false;
  private selected:WardrobeSlot='top';
@@ -148,7 +152,7 @@ export class OperatorAppearanceGrid{
   if(!suspended)this.scheduleThumb();
  }
  private scheduleThumb(){
-  if(this.suspended||this.scheduled||!this.queue.length)return;
+  if(this.suspended||this.scheduled||this.reading||!this.queue.length)return;
   this.scheduled=true;
   const token=this.token;
   requestAnimationFrame(()=>{
@@ -162,11 +166,15 @@ export class OperatorAppearanceGrid{
    const entry=this.queue.shift();
    if(entry&&this.cards.get(entry.item.id)===entry&&
       entry.readyKey!==entry.key){
+    this.reading=true;
     const started=performance.now();
-    this.renderThumbnail(entry);
-    this.grid.dataset.lastThumbnailMs=String(Math.round(performance.now()-started));
-   }
-   if(this.queue.length)this.scheduleThumb();
+    void this.renderThumbnail(entry,token).finally(()=>{
+     this.reading=false;
+     this.grid.dataset.lastThumbnailMs=
+      String(Math.round(performance.now()-started));
+     this.scheduleThumb();
+    });
+   }else this.scheduleThumb();
   });
  }
  private paint(){
@@ -250,6 +258,7 @@ export class OperatorAppearanceGrid{
   if(this.thumbnailRig&&this.rigIdentity===id)return this.thumbnailRig;
   if(this.thumbnailRig){
    this.scene.remove(this.thumbnailRig.root);
+   disposeOperatorStudioToon(this.thumbnailRig.root);
    this.thumbnailRig.dispose();
   }
   this.thumbnailRig=createOperatorRig(id,'blue');
@@ -258,7 +267,7 @@ export class OperatorAppearanceGrid{
   this.rigIdentity=id;
   return this.thumbnailRig;
  }
- private renderThumbnail(entry:Entry){
+ private async renderThumbnail(entry:Entry,token:number):Promise<void>{
   const {item,key,canvas}=entry;
   const {kit,wardrobe:w}=entry.context;
   const rig=this.thumbnailRigFor(this.liveContext?this.previewIdentity:'rook');
@@ -266,6 +275,10 @@ export class OperatorAppearanceGrid{
   const oldClear=this.renderer.getClearColor(new THREE.Color()).clone();
   const oldAlpha=this.renderer.getClearAlpha();
   const oldSceneBackground=this.scene.background;
+  // Three.js declares the readback as a generic TypedArray. The supplied
+  // Uint8Array is the authoritative byte destination for every pixel.
+  let readback:Promise<unknown>|null=null;
+  let readbackStart=0;
   try{
    rig.root.userData.fieldworkHeightProfile=
     requestedOperatorGradient(window.location.search);
@@ -279,7 +292,12 @@ export class OperatorAppearanceGrid{
    },0);
    rig.root.position.set(0,0,0);
    const toon=requestedOperatorToonBands(window.location.search);
-   if(toon)applyOperatorStudioToon(rig.root,toon);
+   if(toon){
+    applyOperatorStudioToon(rig.root,toon,
+     requestedOperatorRimMode(window.location.search));
+    this.grid.dataset.operatorRimMode=
+     requestedOperatorRimMode(window.location.search);
+   }
    this.scene.add(rig.root);
    this.lighting.invalidateGeometry();
    this.lighting.beforeRender(rig.root);
@@ -300,52 +318,73 @@ export class OperatorAppearanceGrid{
    this.camera.lookAt(0,view.height,0);
    this.camera.updateProjectionMatrix();
    this.renderer.setRenderTarget(this.target);
-   // One neutral Studio background for every category, including facewear.
    this.scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
    this.renderer.setClearColor(STUDIO_INSPECTION_BACKGROUND,1);
    this.renderer.clear(true,true,true);
    this.renderer.render(this.scene,this.camera);
-   const readbackStart=performance.now();
-   this.renderer.readRenderTargetPixels(this.target,0,0,THUMB_SIZE,
-    THUMB_SIZE,this.pixels);
-   this.grid.dataset.lastReadbackMs=
-    String(Math.round((performance.now()-readbackStart)*10)/10);
-   const context=canvas.getContext('2d');
-   if(context){
-    const image=context.createImageData(THUMB_SIZE,THUMB_SIZE);
-    // WebGL framebuffer origin is bottom-left; Canvas is top-left.
-    for(let y=0;y<THUMB_SIZE;y++){
-     const from=(THUMB_SIZE-1-y)*THUMB_SIZE*4,to=y*THUMB_SIZE*4;
-     // Render target reads are linear; convert all materials equally to
-     // display sRGB instead of converting facewear alone.
-     for(let x=0;x<THUMB_SIZE;x++){
-      const src=from+x*4,dst=to+x*4;
-      image.data[dst]=THUMB_LINEAR_TO_SRGB[this.pixels[src]];
-      image.data[dst+1]=THUMB_LINEAR_TO_SRGB[this.pixels[src+1]];
-      image.data[dst+2]=THUMB_LINEAR_TO_SRGB[this.pixels[src+2]];
-      image.data[dst+3]=this.pixels[src+3];
-     }
-    }
-    context.putImageData(image,0,0);
-    // Bounded thumbnail cache: only a couple of active categories retained.
-    if(this.cache.size>=90)this.cache.delete(this.cache.keys().next().value!);
-    this.cache.set(key,image);
-    this.grid.dataset.thumbnailRenders=String(
-     Number(this.grid.dataset.thumbnailRenders||0)+1);
-    entry.readyKey=key;
-    canvas.dataset.previewError='false';
-    canvas.dataset.thumbnailReady='true';
+   readbackStart=performance.now();
+   // Stage the GPU -> CPU readback before restoring renderer state, but
+   // do NOT await while the shared WebGL context is left on our FBO.
+   if(new URLSearchParams(window.location.search).get('thumbnailReadback')!== 'sync'&&
+      typeof this.renderer.readRenderTargetPixelsAsync==='function'){
+    this.grid.dataset.readbackMode='async';
+    readback=this.renderer.readRenderTargetPixelsAsync(
+     this.target,0,0,THUMB_SIZE,THUMB_SIZE,this.pixels);
+   }else{
+    // Older renderer fallback. Never add a new WebGL context.
+    this.grid.dataset.readbackMode='sync-fallback';
+    this.renderer.readRenderTargetPixels(this.target,0,0,THUMB_SIZE,
+     THUMB_SIZE,this.pixels);
+    readback=Promise.resolve(this.pixels);
    }
   }catch{
-   canvas.dataset.previewError='true';
-   canvas.dataset.thumbnailReady='false';
+   if(token===this.token){
+    canvas.dataset.previewError='true';
+    canvas.dataset.thumbnailReady='false';
+   }
+   return;
   }finally{
    this.scene.remove(rig.root);
    this.scene.background=oldSceneBackground;
    this.renderer.setRenderTarget(oldTarget);
    this.renderer.setClearColor(oldClear,oldAlpha);
-   // Reuse the fully authored geometry and GPU resources for the next
-   // card. Disposal is reserved for operator identity changes/unmount.
+   // Keep the shared renderer consistent for the main operator immediately.
+  }
+  try{
+   if(!readback)return;
+   await readback;
+   this.grid.dataset.lastReadbackMs=
+    String(Math.round((performance.now()-readbackStart)*10)/10);
+   // A slow device may change category/kit before a GPU fence resolves.
+   // Never paint an obsolete card, nor begin another render while pending.
+   if(token!==this.token||this.suspended||!this.grid.isConnected||
+      this.cards.get(item.id)!==entry||entry.key!==key)return;
+   const context=canvas.getContext('2d');
+   if(!context)return;
+   const image=context.createImageData(THUMB_SIZE,THUMB_SIZE);
+   for(let y=0;y<THUMB_SIZE;y++){
+    const from=(THUMB_SIZE-1-y)*THUMB_SIZE*4,to=y*THUMB_SIZE*4;
+    for(let x=0;x<THUMB_SIZE;x++){
+     const src=from+x*4,dst=to+x*4;
+     image.data[dst]=THUMB_LINEAR_TO_SRGB[this.pixels[src]];
+     image.data[dst+1]=THUMB_LINEAR_TO_SRGB[this.pixels[src+1]];
+     image.data[dst+2]=THUMB_LINEAR_TO_SRGB[this.pixels[src+2]];
+     image.data[dst+3]=this.pixels[src+3];
+    }
+   }
+   context.putImageData(image,0,0);
+   if(this.cache.size>=90)this.cache.delete(this.cache.keys().next().value!);
+   this.cache.set(key,image);
+   this.grid.dataset.thumbnailRenders=String(
+    Number(this.grid.dataset.thumbnailRenders||0)+1);
+   entry.readyKey=key;
+   canvas.dataset.previewError='false';
+   canvas.dataset.thumbnailReady='true';
+  }catch{
+   if(token===this.token){
+    canvas.dataset.previewError='true';
+    canvas.dataset.thumbnailReady='false';
+   }
   }
  }
  dispose(){
@@ -353,6 +392,7 @@ export class OperatorAppearanceGrid{
   this.observer?.disconnect();this.pending.clear();this.cards.clear();
   if(this.thumbnailRig){
    this.scene.remove(this.thumbnailRig.root);
+   disposeOperatorStudioToon(this.thumbnailRig.root);
    this.thumbnailRig.dispose();this.thumbnailRig=null;
   }
   this.target.dispose();

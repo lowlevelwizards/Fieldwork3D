@@ -10,7 +10,8 @@ import {inspectOperatorLighting,formatOperatorLightingReport,
  from './operator-lighting-inspector.ts';
 import {applyStudioSelfShadowAtlases}
  from './operator-gear-lightmap-atlas.ts';
-import {applyOperatorStudioToon,requestedOperatorToonBands}
+import {applyOperatorStudioToon,requestedOperatorToonBands,
+ requestedOperatorRimMode,disposeOperatorStudioToon}
  from './operator-studio-toon-lighting.ts';
 import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
  from './operator-studio-lighting.ts';
@@ -284,6 +285,8 @@ function renderScene(){
  // Built-in renderer accounting only: counts, NOT GPU timing estimates.
  canvas.dataset.rendererGeometries=String(renderer.info.memory.geometries);
  canvas.dataset.rendererTextures=String(renderer.info.memory.textures);
+ // Program count is a diagnostic, not GPU frame-time measurement.
+ canvas.dataset.shaderPrograms=String(renderer.info.programs?.length??0);
  canvas.dataset.operatorLighting=studioLighting.mode;
  canvas.dataset.shadowMapSize=String(studioLighting.shadowSize);
  if(lightingInspectorOutput){
@@ -452,7 +455,9 @@ function posePreview(){
  if(lightingInspectorOutput&&rig)restoreOperatorLightingPreview(rig.root);
  const reference=referenceOpen?resolveFactionReference(referenceBrowser.selectedId):null;
  if(!rig||rig.camoIdentity!==p.id){
-  if(rig){scene.remove(rig.root);rig.dispose();}
+  if(rig){
+   scene.remove(rig.root);disposeOperatorStudioToon(rig.root);rig.dispose();
+  }
   rig=createOperatorRig(p.id,'blue');
   scene.add(rig.root);
  }
@@ -491,8 +496,10 @@ function posePreview(){
  }else{
   const toon=requestedOperatorToonBands(location.search);
   if(toon){
-   const result=applyOperatorStudioToon(rig.root,toon);
+   const result=applyOperatorStudioToon(rig.root,toon,
+    requestedOperatorRimMode(location.search));
    canvas.dataset.operatorToonBands=String(toon);
+   canvas.dataset.operatorRimMode=requestedOperatorRimMode(location.search);
    canvas.dataset.operatorToonMeshes=String(result.meshes);
   }
  }

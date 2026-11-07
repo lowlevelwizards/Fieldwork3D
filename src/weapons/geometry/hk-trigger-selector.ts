@@ -16,7 +16,7 @@ export function addHKTriggerSelector(root:THREE.Group,style:HKSelectorStyle,
  // All HK receivers use the same normalized icon placement.
  const marks=addWeaponPixelMarkPair(root,
   style==='pictogram'?'hk-selector-picto':'hk-selector',
-  -3.21,-1.20,outerDepth+.024,3.07,1.42);
+  -3.21,-1.29,outerDepth+.024,3.07,1.42);
  for(const m of marks){
   m.userData.hkSelectorMarkings=style;
   m.userData.hkSelectorAlignedToHousing=true;

@@ -8,6 +8,7 @@ import {WEAPON_ATTACHMENTS,initialWeaponConfiguration,readWeaponConfiguration,
  type WeaponConfiguration} from '../equipment-weapon-assemblies.ts';
 import {ARSENAL_REFERENCES,arsenalPlatformForReceiver,type ArsenalSlot}
  from './catalog.ts';
+import {arsenalPhysicalPartId} from './finishes.ts';
 import {ARSENAL_ACCESSORY_SLOTS,arsenalRecipeIssues,arsenalRecipeToLegacy,
  copyArsenalRecipe,type ArsenalAccessorySlot,type ArsenalRecipeV2}
  from './recipes.ts';
@@ -28,13 +29,18 @@ export function arsenalReferenceIdentity(recipe:ArsenalRecipeV2):{
 }{
  const matches=ARSENAL_REFERENCES.filter(ref=>
   ref.platformId===recipe.platformId&&ref.legacy.weapon===recipe.weapon&&
-  ref.identitySlots.every(slot=>ref.legacy.parts[slot]===recipe.parts[slot]));
+  ref.identitySlots.every(slot=>
+   arsenalPhysicalPartId(ref.legacy.parts[slot])===
+   arsenalPhysicalPartId(recipe.parts[slot])));
+ const exact=matches.filter(ref=>ref.identitySlots.every(slot=>
+  ref.legacy.parts[slot]===recipe.parts[slot]));
+ const recognized=exact.length===1?exact:matches;
  const fallback=recipe.platformId==='ar15'?'AR-15':
   recipe.platformId==='ak'?'AK':recipe.platformId==='g3'?'G3':
   recipe.platformId==='hk33'?'HK33 / HK53':'MP5';
- if(matches.length!==1)
-  return {name:fallback+' · Custom',modified:true,ambiguous:matches.length>1};
- const ref=matches[0];
+ if(recognized.length!==1)
+  return {name:fallback+' · Custom',modified:true,ambiguous:recognized.length>1};
+ const ref=recognized[0];
  const bodyChanged=FAMILY_PART_SLOTS.some(slot=>
   recipe.parts[slot]!==ref.legacy.parts[slot]);
  const defaults=initialWeaponConfiguration(recipe.weapon).slots;
