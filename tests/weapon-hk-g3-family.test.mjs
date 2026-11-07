@@ -272,7 +272,7 @@ test('R5: scaled-up factory flash hider seats over a cut-back barrel with no coi
   const hider=g.children.find(x=>x.userData.hkFactoryFlashHider);
   assert.ok(barrel&&hider,id+' factory muzzle parts');
   assert.equal(g.children.filter(x=>x.userData.hkFactoryFlashHider).length,1);
-  assert.ok(Math.abs(hider.geometry.parameters.depth-1.92)<1e-6,'chunky hider depth');
+  assert.ok(Math.abs(hider.geometry.parameters.options.depth-1.92)<1e-6,'chunky hider depth');
   const bareBox=new THREE.Box3().setFromObject(barrel);
   const deviceBox=new THREE.Box3().setFromObject(hider);
   assert.ok(Math.abs(deviceBox.max.x-art.muzzleX)<.0001,'unchanged muzzle end');
