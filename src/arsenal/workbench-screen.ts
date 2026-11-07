@@ -51,6 +51,7 @@ export function openArsenalWorkbench(
  let activeSlot:ArsenalSlot='receiver';
  let showIncompatible=false;
  let pending:ArsenalEditProposal|null=null;
+ const priorBodyOverflow=document.body.style.overflow;
  const overlay=document.createElement('section');overlay.className='arsenal-wb-screen';
  overlay.setAttribute('aria-label','Weapon workbench');
  overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');
@@ -82,7 +83,15 @@ export function openArsenalWorkbench(
  const apply=document.createElement('button');apply.type='button';
  apply.className='arsenal-wb-action arsenal-wb-apply';
  apply.textContent=context?.applyLabel??'APPLY';apply.hidden=!context;
- actions.append(undo,redo,chooseModel,load,save,saveCopy,fit,side,apply);head.append(back,identity,actions);
+ back.classList.add('arsenal-wb-back');
+ const primaryActions=document.createElement('div');
+ primaryActions.className='arsenal-wb-primary-actions';
+ primaryActions.append(chooseModel,load,save,apply);
+ const utilityActions=document.createElement('div');
+ utilityActions.className='arsenal-wb-utility-actions';
+ utilityActions.append(undo,redo,saveCopy,fit,side);
+ actions.append(primaryActions,utilityActions);
+ head.append(back,identity,actions);
  const main=document.createElement('div');main.className='arsenal-wb-main';
  const viewportHost=document.createElement('div');viewportHost.className='arsenal-wb-viewport';
  const nav=document.createElement('nav');nav.className='arsenal-wb-nav';
@@ -420,7 +429,7 @@ export function openArsenalWorkbench(
   if(arsenalDraftDirty(draft)&&
    !window.confirm('Discard unsaved changes to this weapon draft?'))return;
   viewer.dispose();overlay.remove();window.removeEventListener('keydown',keys);
-  document.body.style.removeProperty('overflow');
+  document.body.style.overflow=priorBodyOverflow;
  };
  const keys=(e:KeyboardEvent)=>{
   if(e.key!=='Escape')return;
