@@ -1357,7 +1357,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const v3ReloadActive=p.reload>0&&p.reloadDuration>0;
   const v3ReloadProgress=v3ReloadActive?
     clamp(1-p.reload/p.reloadDuration,0,1):0;
-  const v3ReloadMode=p.v3ReloadMode??
+  const v3ReloadMode=p.reloadMode??
     (p.weapon==='shotgun'?'shells':'emergency');
   const v3ThrowAge=p.seconds-p.lastThrowAt;
   const v3DoorAge=p.seconds-p.lastDoorAt;
