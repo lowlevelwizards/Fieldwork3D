@@ -106,6 +106,8 @@ export function v3MagazineRockAngle(progress:number,mode:ReloadMode,
  family?:'ar'|'ak'|'hk'):number{
  if(mode==='shells'||family!=='ak')return 0;
  const t=clamp(progress);
+ // Mount must be bit-exact neutral, not a tiny trig residual.
+ if(t<=.61||t>=.82)return 0;
  const rise=Math.sin(Math.PI*.5*clamp((t-.61)/.14))**2;
  const fall=Math.cos(Math.PI*.5*clamp((t-.75)/.07))**2;
  return .14*rise*fall;
