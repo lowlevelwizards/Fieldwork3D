@@ -1546,6 +1546,29 @@ html,body{font-family:var(--fw-font-menu)}
   margin:9px 2px 2px;font:500 10px/1.4 var(--ui-font);
   color:#9db4a8
 }
+/* Replay R4: one glanceable debrief rail, not another scrolling dashboard. */
+.replay-debrief{flex:none;min-width:0;margin:0 0 7px;
+  border-bottom:1px solid #4a665b;padding:1px 0 8px}
+.replay-debrief-head{display:flex;align-items:center;gap:8px;
+  margin:0 2px 5px}
+.replay-debrief-head strong{font:700 11px/1 var(--ui-display);
+  letter-spacing:.07em;color:#e5d0a3}
+.replay-debrief-head output{min-width:0;font:500 10px/1.2 var(--ui-font);
+  color:#a9c1b2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.replay-debrief-moments{display:flex;gap:5px;max-width:100%;
+  overflow-x:auto;overscroll-behavior-x:contain;
+  scrollbar-width:thin;scroll-snap-type:x proximity;padding:1px 2px 4px}
+.replay-debrief-moment{flex:0 0 auto;width:145px;max-width:52vw;
+  min-height:44px;padding:5px 7px;text-align:left;scroll-snap-align:start;
+  border:1px solid #668174;border-radius:6px;
+  background:#2a4239;color:#f2eee1}
+.replay-debrief-moment .time{display:block;
+  font:700 10px/1.2 var(--ui-mono);color:#e2c58b}
+.replay-debrief-moment .detail{display:block;
+  font:600 10px/1.25 var(--ui-font);white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+.replay-debrief-moment[data-kind="movement"]{border-color:#bb9970}
+.replay-debrief-moment:focus-visible{outline:2px solid #e2c38b;outline-offset:1px}
 .replay-feed-panel{display:flex;flex-direction:column;flex:1;min-height:0;padding:8px 2px 1px}
 .replay-feed-tools{
   display:flex;align-items:center;gap:6px;margin:0 0 8px;flex:none

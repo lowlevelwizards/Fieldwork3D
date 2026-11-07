@@ -1159,6 +1159,14 @@ jobs:
             tests/equipment-19-01-weapon-assemblies.test.mjs \
             tests/weapon-workbench-mobile-sockets.test.mjs
           node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs /tmp/weapon-ortho-r33.html
+      - name: Replay R4 — debrief evidence boundaries and execution holds
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r4-after-action-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r4-debrief.test.mjs \
+            tests/replay-r2-event-index.test.mjs \
+            tests/replay-r3-chapters.test.mjs \
+            tests/replay-r3-movement-history.test.mjs
       - name: Replay R3 — saved mission favorites and exact rematches
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r3-mission-favorites-') }}
         run: |

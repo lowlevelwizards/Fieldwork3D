@@ -98,6 +98,8 @@ import {ReplaySoundTimeline,replayDoorSoundId} from './breach-replay-audio.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {sampleReplayGhosts} from './breach-replay-ghosts.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
+import {buildReplayDebrief,buildReplayExecutionInsights}
+  from './breach-replay-debrief.ts';
 import {makeReplayLoop,advanceReplayLoop} from './breach-replay-loop.ts';
 import {replayActorVisible} from './breach-replay-visibility.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
@@ -243,6 +245,8 @@ const ui={
   replayNextChapter:el<HTMLButtonElement>('replayNextChapter'),
   replayBookmark:el<HTMLButtonElement>('replayBookmark'),
   replayChapterList:el<HTMLElement>('replayChapterList'),
+  replayDebriefInfo:el<HTMLOutputElement>('replayDebriefInfo'),
+  replayDebriefMoments:el<HTMLElement>('replayDebriefMoments'),
   replayShotInspector:el<HTMLElement>('replayShotInspector'),
   replayShotTitle:el<HTMLElement>('replayShotTitle'),
   replayShotDetails:el<HTMLOutputElement>('replayShotDetails'),
@@ -4050,6 +4054,64 @@ function renderReplayChapters():void{
   }
   ui.replayChapterList.replaceChildren(fragment);
 }
+/** At most a short horizontal row: every item is a real, disclosed fact.
+ * Movement inspection enables existing planned/actual overlays without
+ * changing the recorded film or issuing any gameplay orders.
+ */
+function renderReplayDebrief():void{
+  const moments=buildReplayDebrief(replayEventIndex?.all??[],
+    recorder.duration,5);
+  const stalls=buildReplayExecutionInsights(recorder.executionEvents,
+    recorder.duration,5).filter(x=>x.end===null||(x.seconds??0)>=.75)
+    .slice(0,2);
+  const fragment=document.createDocumentFragment();
+  const add=(t:number,kind:string,label:string,detail:string,
+    actor?:string,movement=false):void=>{
+    const button=document.createElement('button');
+    button.type='button';button.className='replay-debrief-moment';
+    button.dataset.kind=movement?'movement':kind;
+    button.title=detail;
+    const stamp=document.createElement('span');
+    stamp.className='time';
+    stamp.textContent=formatReplayTime(t)+' · '+label;
+    const description=document.createElement('span');
+    description.className='detail';
+    description.textContent=detail;
+    button.append(stamp,description);
+    button.addEventListener('click',()=>{
+      replayPlaying=false;
+      if(actor&&team(state).some(a=>a.id===actor)){
+        selected=actor;replayFollowId=actor;
+      }
+      if(movement){
+        replayAnalysis=true;replayPlanScope='selected';
+        replayPlanVersion='active';replayTrailMode='recent';
+      }
+      seekReplay(t);
+      if(movement)showUiHelp(
+        'RECORDED INTERRUPTION · PLAN + ACTUAL TRAIL',2800);
+    });
+    fragment.append(button);
+  };
+  const entries=[
+    ...moments.map(x=>({t:x.t,kind:x.kind,label:x.label,
+      detail:x.detail,actor:x.actor,movement:x.kind==='blocked'})),
+    ...stalls.filter(x=>!moments.some(m=>m.kind==='blocked'&&
+      m.actor===x.actor&&Math.abs(m.t-x.t)<.5)).map(x=>({
+      t:x.t,kind:x.kind,label:'ORDER INTERRUPTION',
+      detail:x.detail+' · '+(x.seconds===null?
+        'NO RESOLUTION RECORDED':x.seconds.toFixed(1)+'S UNTIL RESUMED'),
+      actor:x.actor,movement:true
+    }))
+  ].sort((a,b)=>a.t-b.t);
+  for(const item of entries)
+    add(item.t,item.kind,item.label,item.detail,item.actor,item.movement);
+  ui.replayDebriefMoments.replaceChildren(fragment);
+  ui.replayDebriefInfo.textContent=entries.length?
+    moments.length+' KEY MOMENTS'+(stalls.length?
+      ' · '+stalls.length+' MOVEMENT CHECKS':''):
+    'NO RECORDED HIGHLIGHTS';
+}
 function rebuildReplayEventIndex():void{
   replayEventIndex=new ReplayEventIndex(recorder.events,
     recorder.executionEvents,e=>replayEventKnown(e));
@@ -4057,6 +4119,7 @@ function rebuildReplayEventIndex():void{
   replayDirectorCues=buildReplayDirectorCues(replayEventIndex.all);
   replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
   renderReplayChapters();
+  renderReplayDebrief();
 }
 /** R3 camera changes only presentation state, never the live simulation. */
 function advanceReplayCamera(dt:number,instant=false):void{
@@ -4262,6 +4325,8 @@ function exitReplay(){
   replaySoundTimeline=null;replayMovementHistory=null;stopReplaySounds();
   replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
   ui.replayFeed.replaceChildren();
+  ui.replayDebriefMoments.replaceChildren();
+  ui.replayDebriefInfo.textContent='';
   showReplayToolTab(null);
   document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
