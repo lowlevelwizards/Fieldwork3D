@@ -141,6 +141,7 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'hk53-poly-short':add('hk53-poly-short','HK53 compact fore-end · OD green','hk','handguard',{receivers:['hk53-556-compact'],length:'short'}),
  'hk53-poly-short-black':add('hk53-poly-short-black','HK53 compact fore-end · black polymer','hk','handguard',{receivers:['hk53-556-compact'],length:'short'}),
  'hk-mp5-tropical':add('hk-mp5-tropical','MP5A3 smooth tropical fore-end','hk','handguard',{receivers:['hk-mp5-standard'],length:'mid'}),
+ 'hk-mp5-trirail':add('hk-mp5-trirail','MP5 three-sided accessory rail fore-end','hk','handguard',{receivers:['hk-mp5-standard'],length:'mid'}),
  'hk-mp5sd-shroud':add('hk-mp5sd-shroud','MP5SD3 heavy integral shroud','hk','handguard',{receivers:['hk-mp5sd-integral'],length:'mid'}),
  'hk-mp5k-vertical':add('hk-mp5k-vertical','MP5K integrated vertical foregrip','hk','handguard',{receivers:['hk-mp5k-stockless'],length:'short'}),
  'ar-20':add('ar-20','20\" A1 pencil barrel','ar','barrel',{receivers:['ar-a1','ar-a2','ar-flat'],length:'long',role:'rifle',nominalInches:AR_BARREL_ART['ar-20'].nominalInches}),
