@@ -111,7 +111,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
   sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
   slideAroundStaticCorner,glideAlongStaticWall,releaseStaticWallOverlap}
   from './breach-navigation.ts';
-import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld}
+import {routeWithSqueezeIntel,routeWithSqueezeWorld,recoverNormalLane}
   from './breach-squeeze-route.ts';
 import {probeObstacleCrossing,probeWindowCrossing,probeWindowPortalRoute,
   canOpenWindowForClimb,preferTraversal,sampleTraversal,traversalRouteLength,
@@ -2192,7 +2192,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   if(!normalClear&&!blocking&&!closed&&!a.traversalPending&&
      s.seconds-a.lastNavRepairAt>.50){
     a.lastNavRepairAt=s.seconds;
-    const fullLane=routeWithNormalWorld(a.p,p,s.doors);
+    const fullLane=recoverNormalLane(a.p,p,s.doors);
     if(fullLane.length&&d(fullLane[0],next)>6&&
        d(fullLane[0],a.p)>3&&
        sweptBodyClear(a.p,fullLane[0],s.doors)){
