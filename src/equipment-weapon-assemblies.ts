@@ -113,6 +113,9 @@ export const compatibleWeaponAttachment=(weapon:WeaponId,slot:WeaponAttachmentSl
 export function familyAccessoryAllowed(build:WeaponFamilyBuild,
  slot:WeaponAttachmentSlot,id:string):boolean{
  if(slot==='stock')return id==='stock-standard';
+ // The SD is integral: never layer a detachable suppressor over its front.
+ if(slot==='muzzle'&&build.parts.receiver==='hk-mp5sd-integral')
+  return id==='muzzle-bare';
  if(slot==='optic'&&id!=='optic-irons'){
   const r=build.parts.receiver;
   return r==='ar-flat'||(build.family==='ak'&&
@@ -232,6 +235,7 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   build.family==='ar'?-4.00:-4.10):p.primaryY;
  const hkSupportX=hkArt?Math.min(7.75,hkArt.handguardStartX+
   .47*(hkArt.handguardEndX-hkArt.handguardStartX)):7.75;
+ const mp5k=build?.parts.receiver==='hk-mp5k-stockless';
  const supportX=build?.family==='hk'?hkSupportX:
   build?(familyHandguard?.length==='long'?9.10:
   familyHandguard?.length==='mid'?7.70:6.50):p.supportX;
@@ -242,7 +246,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   stockX:stockX+(build?0:(mounted.stock.stockShift??0)),
   primaryX,primaryY,
   supportX:supportX+(mounted.foregrip.supportShift??0),
-  supportY:(mounted.foregrip.id==='foregrip-vertical'?-3.65:
+  supportY:(mp5k?-3.65:
+   mounted.foregrip.id==='foregrip-vertical'?-3.65:
    mounted.foregrip.id==='foregrip-handstop'?-2.3:
    build?.family==='hk'?-1.35:build?-1.65:p.supportY)+
    (build?.family==='ar'?AR_VISUAL_AXIS_Y:0),
