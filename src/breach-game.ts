@@ -1138,13 +1138,15 @@ export function planSquadEntry(s:Session,doorId:string){
   for(let i=0;i<alive.length;i++){
     const a=alive[i],slot=slots[i];
     if(i>0){
-      // This is an entry gate, not a blind time delay. The lead must
-      // actually open a physical passage; existing passage leases handle
-      // moving-queue spacing after the gate becomes ready.
+      // A generated entry gate waits for ACTUAL door clearance, not an
+      // additional artificial .3s after clearance. Existing passage
+      // reservations and swept-body checks provide real follower spacing.
+      // Only this synthesized gate gets duration zero; a player's explicit
+      // WAIT still retains its chosen .3-6 second duration.
       if(!planWait(s,a.id,.3))return rollback();
       const gate=a.plan.at(-1);
       if(gate?.kind!=='wait')return rollback();
-      gate.doorId=doorId;
+      gate.doorId=doorId;gate.duration=0;
     }
     if(!planMove(s,a.id,slot.point)){
       notify(s,a.name+' ENTRY ROUTE UNAVAILABLE');
