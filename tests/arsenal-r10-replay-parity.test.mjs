@@ -16,6 +16,7 @@ test('replay manifest preserves exact saved component configuration and contact 
  const optic=proposeArsenalPartChange(stock.nextRecipe,'optic','optic-reflex');
  assert.equal(optic.valid,true);
  const config=arsenalRecipeToLegacy(optic.nextRecipe);assert.ok(config);
+ const frozenExpected=structuredClone(config);
  const live=newSession(0,91914);
  const operative=live.operators.find(actor=>actor.side==='blue');
  assert.ok(operative);
@@ -23,7 +24,7 @@ test('replay manifest preserves exact saved component configuration and contact 
  const manifest=captureReplayManifest(live);
  const actor=manifest.actors.find(a=>a.id===operative.id);
  assert.ok(actor);
- assert.deepEqual(actor.weaponConfiguration,config);
+ assert.deepEqual(actor.weaponConfiguration,frozenExpected);
  assert.equal(actor.weaponConfiguration.build.parts.stock,'hk-mp5-fixed-stock');
  assert.equal(actor.weaponConfiguration.slots.opticMount,'optic-hk-claw');
  assert.equal(actor.weaponConfiguration.slots.optic,'optic-reflex');
@@ -34,9 +35,9 @@ test('replay manifest preserves exact saved component configuration and contact 
  applyReplayActorIdentity(playback,manifest);
  const restored=playback.operators.find(a=>a.id===operative.id);
  assert.ok(restored);
- assert.deepEqual(restored.weaponConfiguration,config);
+ assert.deepEqual(restored.weaponConfiguration,frozenExpected);
  assert.equal(restored.weapon,'smg');
- const expected=resolveWeaponAssembly(config);
+ const expected=resolveWeaponAssembly(frozenExpected);
  const actual=resolveWeaponAssembly(restored.weaponConfiguration);
  assert.equal(actual.stockX,expected.stockX);
  assert.equal(actual.muzzleX,expected.muzzleX);
