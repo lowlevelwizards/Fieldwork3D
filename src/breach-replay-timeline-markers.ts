@@ -7,11 +7,14 @@ export type ReplayTimelineCluster={
 };
 const priority=(kind:string)=>kind==='down'?5:kind==='wound'?4:
   kind==='flash'?3:kind==='door'?2:kind==='shot'?1:0;
+/** Cluster by a touch-friendly horizontal bin, not by 7px display-only ticks. */
+export const replayTimelineBins=(width:number):number=>
+  Math.max(8,Math.floor(Math.max(0,width)/24));
 export function clusterReplayTimeline(
   events:readonly ReplayTimelineEvent[],duration:number,width:number
 ):ReplayTimelineCluster[]{
   if(duration<=0||!Number.isFinite(duration))return [];
-  const bins=Math.max(16,Math.floor(Math.max(0,width)/7));
+  const bins=replayTimelineBins(width);
   const clusters=new Map<number,ReplayTimelineCluster>();
   for(const e of events){
     if(!Number.isFinite(e.t))continue;

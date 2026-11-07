@@ -1946,3 +1946,125 @@ html,body{font-family:var(--fw-font-menu)}
  letter-spacing:.04em;color:var(--fw-text-muted)}
 .fw-legacy-weapon-controls[open]>summary{color:var(--fw-text)}
 .fw-legacy-weapon-controls .fw-weapon-editor{min-width:0}
+
+
+/* Replay UX V2 — compact direct controls with contextual, independently
+ * scrollable analysis, moments and sharing. Supersedes R2 drawer/tab rules. */
+.replay-quick-controls{display:grid;grid-template-columns:1fr 1.55fr .85fr;
+  gap:6px;margin:6px 0 0;min-width:0}
+.replay-quick-controls label{display:flex;align-items:center;gap:5px;min-width:0;
+  padding:0 6px;border:1px solid #526f64;border-radius:6px;
+  background:#293c36;color:#bdc8b8}
+.replay-quick-controls label span{flex:none;font:700 9px/1 var(--ui-font);
+  letter-spacing:.045em}
+.replay-quick-controls select{flex:1;min-width:0;min-height:34px;
+  border:0;background:#293c36;color:#f1ead9;
+  font:700 12px/1 var(--ui-font);cursor:pointer}
+.replay-quick-controls select:focus-visible{outline:2px solid #e1c38a;outline-offset:1px}
+.replay-quick-controls select:disabled{opacity:.48;cursor:not-allowed}
+.replay-utility #replayShareToggle{
+  flex:none;display:inline-flex;align-items:center;justify-content:center;
+  min-height:33px!important;margin:0;border:1px solid #607d70;
+  border-radius:5px;padding:5px 9px;background:#293d37;color:#e2e8da;
+  font:700 10px/1.1 var(--ui-font);letter-spacing:.02em
+}
+.replay-utility #replayShareToggle[aria-expanded="true"]{
+  background:#435a4c;border-color:#c0b188;color:#fff3d4
+}
+.replay-utility #replayShareToggle:focus-visible{outline:2px solid #e2c38b;outline-offset:2px}
+.replay-presets{display:flex;flex-wrap:wrap;align-items:center;gap:5px;
+  margin-bottom:9px;padding-bottom:8px;border-bottom:1px solid #50675d}
+.replay-presets[hidden]{display:none!important}
+.replay-presets button,.replay-moments-switch button{
+  min-height:40px;min-width:70px;padding:7px 9px;
+  border:1px solid #607c6e;border-radius:6px;background:#2a4037;
+  color:#e7eadf;font:700 11px/1.1 var(--ui-font)
+}
+.replay-presets button[aria-pressed="true"],.replay-moments-switch button[aria-pressed="true"]{
+  background:#baa77e;border-color:#e0c88c;color:#1a2925
+}
+.replay-presets output{color:#c8d3bf;font:600 10px var(--ui-font)}
+.replay-group{min-width:0;margin:0 0 7px;padding:6px 8px;
+  border:1px solid #526d60;border-radius:6px;background:#21372f}
+.replay-group[hidden]{display:none!important}
+.replay-group>summary{cursor:pointer;list-style-position:inside;
+  min-height:32px;display:list-item;padding:7px 1px 4px;color:#eee2c5;
+  font:700 12px/1.15 var(--ui-font)}
+.replay-group[open]>summary{margin-bottom:8px;border-bottom:1px solid #4d6559}
+.replay-extra{padding-top:8px;overscroll-behavior:contain}
+.replay-moments-switch{display:grid;grid-template-columns:1fr 1fr;gap:5px;
+  margin:0 0 9px;flex:none}
+.replay-moments-switch button{width:100%}
+.replay-feed-panel #replayHighlights,.replay-feed-panel #replayAllEvents{
+  flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.replay-feed-panel #replayAllEvents{display:flex;flex-direction:column}
+.replay-feed-panel #replayHighlights[hidden],.replay-feed-panel #replayAllEvents[hidden]{
+  display:none!important}
+.replay-cluster-menu{position:absolute;z-index:12;bottom:100%;
+  left:0;right:0;max-height:min(36dvh,210px);overflow-y:auto;
+  padding:6px;border:1px solid #9aab90;border-radius:8px;
+  background:#20362fee;box-shadow:0 8px 28px #061410c9}
+.replay-cluster-menu[hidden]{display:none!important}
+.replay-cluster-menu button{display:block;width:100%;min-height:41px;
+  margin:0 0 3px;padding:8px 10px;text-align:left;border:1px solid #506e5f;
+  border-radius:5px;background:#2c453a;color:#f0eadc;
+  font:600 11px/1.3 var(--ui-font)}
+.replay-cluster-menu button:focus-visible{outline:2px solid #e2c38b}
+@media(max-width:700px){
+  .replay-utility .replay-event{display:none}
+  .replay-utility{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+  .replay-utility #replayMore,.replay-utility #replayFeedToggle,
+  .replay-utility #replayShareToggle{width:100%!important;margin:0;
+    min-width:0;padding:5px 4px;font-size:10px}
+}
+@media(max-width:370px){
+  .replay-quick-controls{grid-template-columns:.95fr 1.45fr .85fr;gap:3px}
+  .replay-quick-controls label{padding:0 3px;gap:2px}
+  .replay-quick-controls label span{font-size:8px}
+  .replay-quick-controls select{font-size:10px}
+  .replay-utility #replayShareToggle{font-size:9px}
+}
+@media(max-height:470px){
+  .replay-quick-controls{margin-top:3px}
+  .replay-quick-controls select{min-height:29px}
+  .replay-drawer{max-height:min(42dvh,235px,calc(100dvh - 170px))}
+}
+
+
+/* Replay UX V2 Stage 2 — comfortably spaced interactive event markers. */
+.replay-mark{display:block;position:absolute;top:-5px;z-index:3;
+  width:22px;height:27px;min-height:0;padding:0;margin:0;
+  border:0;border-radius:3px;background:transparent!important;
+  box-shadow:none;opacity:1;pointer-events:auto;cursor:pointer;
+  --marker-color:#a1b5a6}
+.replay-mark::before{content:"";display:block;width:3px;height:11px;
+  position:absolute;left:calc(50% - 1.5px);top:7px;border-radius:2px;
+  background:var(--marker-color)}
+.replay-mark[data-cluster="true"]{width:22px;height:27px;top:-5px}
+.replay-mark[data-cluster="true"]::before{width:5px;height:13px;
+  left:calc(50% - 2.5px);top:6px}
+.replay-mark-door{--marker-color:#a1b5a6}
+.replay-mark-hit,.replay-mark-down,.replay-mark-wound{
+  --marker-color:#d58b78}
+.replay-mark-flash{--marker-color:#e2c78f}
+.replay-mark:focus-visible{outline:2px solid #f0dcad;outline-offset:1px}
+.replay-cluster-menu strong{display:block;padding:4px 7px 8px;
+  color:#e9d2a3;font:700 11px var(--ui-font)}
+
+
+/* Replay UX V2 landscape: relocate selectors beside header instead of
+ * shrinking transport targets or sacrificing battlefield visibility. */
+@media(max-height:470px) and (min-width:600px){
+  .replay-panel{display:grid;grid-template-columns:minmax(165px,1fr) minmax(0,2.6fr);
+    align-items:center;column-gap:8px;row-gap:3px;padding:4px 8px}
+  .replay-head{grid-column:1;grid-row:1;min-width:0;min-height:28px}
+  .replay-head strong{font-size:14px}
+  .replay-head-right{gap:4px}
+  .replay-quick-controls{grid-column:2;grid-row:1;margin:0;gap:4px}
+  .replay-quick-controls label{min-width:0}
+  .replay-quick-controls select{min-height:29px}
+  .replay-timeline{grid-column:1/-1;margin:0;height:26px}
+  .replay-actions{grid-column:1/-1;margin:0}
+  .replay-actions button,.replay-actions #replayPlay{min-height:38px}
+  .replay-utility{grid-column:1/-1;margin:0;min-height:27px}
+}
