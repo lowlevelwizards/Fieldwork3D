@@ -4,10 +4,9 @@
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
-import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid,
- type HeadwearSolidColorId} from './operator-headwear-colors.ts';
+import {HEADWEAR_SOLID_COLORS,headwearColorChoices,resolvedHeadwearSolid} from './operator-headwear-colors.ts';
 import {HEADWEAR_CAMO_RECIPES,headwearCamoChoices,resolvedHeadwearCamo,
- nextHeadwearCamoRoll,type HeadwearCamoId} from './operator-headwear-camo.ts';
+ type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {browseCamos,camoBrowseSection,readCamoBrowserPrefs,recordCamoRecent,
  sortHeadwearSolids} from './operator-material-browser.ts';
 import {createCamoBrowseControls,createCamoFavoriteButton,
@@ -15,30 +14,11 @@ import {createCamoBrowseControls,createCamoFavoriteButton,
  from './operator-material-browser-ui.ts';
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
 
-export const headwearAppearanceModel=(id:string)=>
- id==='high-cut-rails'?'high-cut':id;
+import {headwearAppearanceModel,selectHeadwearSolid,selectHeadwearCamo,rerollHeadwearCamo}
+ from './operator-headwear-appearance.ts';
+export {headwearAppearanceModel,selectHeadwearSolid,selectHeadwearCamo,rerollHeadwearCamo}
+ from './operator-headwear-appearance.ts';
 
-export function selectHeadwearSolid(w:WardrobeOptions,model:string,
- requested:unknown):WardrobeOptions{
- const id=headwearAppearanceModel(model);
- if(typeof requested!=='string'||!headwearColorChoices(id).includes(
-  requested as HeadwearSolidColorId))return w;
- return {...w,headwearColor:requested as HeadwearSolidColorId,
-  headwearCamo:undefined};
-}
-export function selectHeadwearCamo(w:WardrobeOptions,model:string,
- requested:unknown):WardrobeOptions{
- if(typeof requested!=='string'||!headwearCamoChoices(model).includes(
-  requested as HeadwearCamoId))return w;
- const id=requested as HeadwearCamoId;
- return {...w,headwearCamo:id,
-  headwearCamoRoll:w.headwearCamo===id?
-   nextHeadwearCamoRoll(w.headwearCamoRoll):0};
-}
-export function rerollHeadwearCamo(w:WardrobeOptions,model:string):WardrobeOptions{
- const selected=resolvedHeadwearCamo(model,w.headwearCamo);
- return selected?selectHeadwearCamo(w,model,selected):w;
-}
 type PickerOptions={
  disabled?:boolean;expanded?:boolean;camoExpanded?:boolean;
  onExpandedChange?:(open:boolean)=>void;

@@ -1,67 +1,19 @@
 name: Armor & Rig — Critical Mobile Silhouettes
 on:
-  pull_request:
-    paths:
-      - 'src/operator-armor-fit-debug.ts'
-      - 'src/operator-uniform-fit-envelope.ts'
-      - 'src/operator-adaptive-armor.ts'
-      - 'src/operator-armor-proportions.ts'
-      - 'src/operator-armor-side-layout.ts'
-      - 'src/operator-garment-contact-surface.ts'
-      - 'src/breach-operator-rig.ts'
-      - 'src/operator-armor-straps.ts'
-      - 'src/operator-field-blouse-prototypes.ts'
-      - 'src/operator-new-upper-garments.ts'
-      - 'src/operator-armor-shapes.ts'
-      - 'src/operator-armor-rig-silhouettes.ts'
-      - 'src/operator-armor-rig-lab.ts'
-      - 'src/operator-rig-authenticity-policy.ts'
-      - 'src/operator-fabric-camo-policy.ts'
-      - 'tests/operator-rig-r7-authenticity-policy.test.mjs'
-      - 'tests/operator-rig-r7-front-mounts.test.mjs'
-      - 'tests/operator-rig-r7-magazine-readability.test.mjs'
-      - 'tests/operator-armor-r8-default-color.test.mjs'
-      - 'tests/operator-r10-material-coupling.test.mjs'
-      - 'tests/operator-r10-silhouette-distinctions.test.mjs'
-      - 'src/operator-studio.ts'
-      - 'docs/operator-r10-color-and-identity.md'
-      - 'src/operator-fabric-camo-materials.ts'
-      - 'src/operator-armor-rig-lab.ts'
-      - 'scripts/capture-operator-camo-r9.mjs'
-      - 'tests/operator-r9-armor-visibility.test.mjs'
-      - 'tests/operator-r9-lower-front-straps.test.mjs'
-      - 'tests/operator-r9-camo-density.test.mjs'
-      - 'operator-armor-rig-lab.html'
-      - 'src/operator-wardrobe-gear-visuals.ts'
-      - 'src/operator-visual-kit.ts'
-      - 'src/operator-wardrobe-data.ts'
-      - 'operator-lab.html'
-      - 'src/operator-appearance-grid.css'
-      - 'src/operator-armor-attachment-frame.ts'
-      - 'scripts/smoke-armor-r1-ui.mjs'
-      - 'scripts/capture-operator-armor-rig.mjs'
-      - 'scripts/capture-breach-pose-fit.mjs'
-      - 'src/breach-coupled-low-ready.ts'
-      - 'src/breach-weapon-contact-zones.ts'
-      - 'src/breach-pose-clearance-envelope.ts'
-      - 'src/breach-low-ready-anatomy.ts'
-      - 'src/breach-low-ready-archetypes.ts'
-      - '.github/workflows/operator-armor-rig-visual.yml'
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  PLAYWRIGHT_BROWSERS_PATH: /tmp/fieldwork-browsers
 jobs:
   armor-rig:
     # Dedicated V3 visual job avoids slow general armor suite.
-    if: ${{ !startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - run: npm install --no-audit --no-fund
+      - uses: ./.github/actions/setup
+      - run: npm ci --no-audit --no-fund
       - name: Focused RIG-R6 pocket and shoulder contact regressions
         run: node --experimental-strip-types --test tests/operator-rig-r4-pocket-routing.test.mjs tests/operator-rig-r5-matrix.test.mjs tests/operator-rig-r6-pocket-pressure.test.mjs tests/operator-rig-r6-shoulder-joins.test.mjs
       - name: R7 real rig colors, mounts, and magazine identity critical tests
@@ -72,12 +24,11 @@ jobs:
         run: node --experimental-strip-types --test tests/operator-r10-material-coupling.test.mjs tests/operator-r10-silhouette-distinctions.test.mjs tests/operator-armor-r4-silhouette.test.mjs tests/operator-armor-r5-orthogonal.test.mjs tests/operator-armor-r6-contact.test.mjs
       - name: R9 armor occlusion, real lower strap joins and world-scale camo
         run: node --experimental-strip-types --test tests/operator-r9-armor-visibility.test.mjs tests/operator-r9-lower-front-straps.test.mjs tests/operator-r9-camo-density.test.mjs tests/operator-fabric-camo-stage2.test.mjs
-      - run: npm install --no-save --package-lock=false playwright@1.56.1
-      - run: npx playwright install --with-deps chromium
+      - run: npm exec -- playwright install --with-deps chromium
       - name: Existing mobile Operator Studio smoke
         run: node scripts/smoke-operator-studio.mjs
       - name: Phone Tops Material Clothes Only — no geometry spikes
-        if: ${{ startsWith(github.head_ref, 'fix/operator-lightmaps-metric-') }}
+        if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'fix/operator-lightmaps-metric-')) }}
         run: node scripts/smoke-lightmap-clothes-only.mjs
       - uses: actions/upload-artifact@v4
         if: always() && startsWith(github.head_ref, 'fix/operator-lightmaps-metric-')
@@ -88,7 +39,7 @@ jobs:
       - name: Phone Operator Lab appearance cards and playback navigation
         run: node scripts/smoke-armor-r1-ui.mjs
       - name: Coupled AR/AK low-ready mobile Pose Fit screenshots
-        if: ${{ (startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-') || (startsWith(github.head_ref, 'feature/breach-low-ready-pose-v2-') || startsWith(github.head_ref, 'feature/breach-unified-pose-v3-'))) }}
+        if: ${{ github.event_name == 'workflow_dispatch' || ((startsWith(github.head_ref, 'feature/breach-coupled-low-ready-pose-') || (startsWith(github.head_ref, 'feature/breach-low-ready-pose-v2-') || startsWith(github.head_ref, 'feature/breach-unified-pose-v3-')))) }}
         run: |
           if [[ "$GITHUB_HEAD_REF" == feature/breach-unified-pose-v3-* ]]; then
             POSE_V3=1 node scripts/capture-breach-pose-fit.mjs
@@ -104,7 +55,7 @@ jobs:
       - name: Gameplay-zoom armor and chest rig silhouette captures
         run: node scripts/capture-operator-armor-rig.mjs
       - name: R4 phone armor/rig/uniform cast-shadow comparisons
-        if: ${{ startsWith(github.head_ref, 'feature/gear-shadow-receiver-precision-') }}
+        if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'feature/gear-shadow-receiver-precision-')) }}
         run: node scripts/capture-operator-r4-contact-shadows.mjs
       - uses: actions/upload-artifact@v4
         if: always() && startsWith(github.head_ref, 'feature/gear-shadow-receiver-precision-')

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "check": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "test": "npm run test:all",
     "audit:physicality": "node --experimental-strip-types scripts/stress-physicality.mjs",
     "audit:breach-sites": "node --experimental-strip-types scripts/audit-breach-sites.mjs",
     "audit:mission-quality": "node --experimental-strip-types scripts/audit-mission-quality.mjs",
@@ -18,11 +18,26 @@
     "audit:realism": "node --experimental-strip-types scripts/audit-realism-release.mjs",
     "bench:operator-lighting": "node --experimental-strip-types scripts/bench-operator-lighting.mjs",
     "build": "tsc --noEmit && vite build && node scripts/stamp-pages.mjs",
-    "preview": "vite preview --host 0.0.0.0"
+    "preview": "vite preview --host 0.0.0.0",
+    "check:toolchain": "node scripts/verification/toolchain.mjs",
+    "test:core": "node scripts/verification/run.mjs core",
+    "test:feature": "node scripts/verification/run.mjs feature",
+    "test:all": "node scripts/verification/run.mjs all",
+    "test:baseline": "node scripts/verification/run.mjs baseline",
+    "test:browser": "playwright test",
+    "check:artifact": "node scripts/verification/artifact.mjs --write",
+    "verify": "node scripts/verification/verify.mjs"
   },
-  "engines": { "node": ">=22" },
-  "dependencies": { "three": "^0.180.0" },
+  "engines": {
+    "node": "24.22.1",
+    "npm": "11.9.0"
+  },
+  "packageManager": "npm@11.9.0",
+  "dependencies": {
+    "three": "^0.180.0"
+  },
   "devDependencies": {
+    "@playwright/test": "1.56.1",
     "@types/three": "^0.180.0",
     "typescript": "^5.9.3",
     "vite": "^7.1.0"

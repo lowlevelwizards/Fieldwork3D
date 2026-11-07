@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {doorLeafSegment,doorBlocksSegment,doorYaw} from '../src/breach-core.ts';
 import {initDoor,advanceDoor,doorClear,kickDoor} from '../src/breach-door.ts';
 import {generateSite} from '../src/breach-site.ts';
+import {withTacticalWorld} from './helpers/tactical-world.mjs';
 test('sliding leaves translate along their track, never rotate around a hinge',()=>{
  const input={id:'S',a:{x:10,y:30},b:{x:58,y:30},kind:'sliding',style:'glazed',
   slideDirection:1,open:false,openedAt:-1};
@@ -19,13 +20,15 @@ test('sliding doors animate to navigable opening fractions and appear in seeded 
  let sliders=0;
  for(let seed=1;seed<=77;seed++){
   const site=generateSite(seed);
+  withTacticalWorld(site,()=>{
   for(const d of site.doors.filter(d=>d.kind==='sliding')){
    sliders++;assert.ok(['glazed','steel','barn','pocket','screen'].includes(d.style),
      `seed ${seed}: unexpected sliding finish ${d.style}`);
    const active=initDoor(d,0);active.open=true;
    for(let i=0;i<120;i++)advanceDoor(active,1/60);
-   assert.equal(doorClear(active),true);
+   assert.equal(doorClear(active),true,`seed ${seed} door ${d.id}`);
   }
+  });
  }
  assert.ok(sliders>=2);
 });

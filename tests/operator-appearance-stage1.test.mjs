@@ -8,7 +8,7 @@ import {makeWardrobeLook,exportWardrobeLook,importWardrobeLook}
 import {initialRoster,freshQuickPlayRoster,serializeQuickPlayCosmetics,readRoster}
  from '../src/breach-roster.ts';
 import {headwearAppearanceModel,selectHeadwearSolid,selectHeadwearCamo,
- rerollHeadwearCamo} from '../src/operator-headwear-picker.ts';
+ rerollHeadwearCamo} from '../src/operator-headwear-appearance.ts';
 import {headwearCamoChoices} from '../src/operator-headwear-camo.ts';
 
 test('headgear picker respects material eligibility without changing kit or approved headwear materials',()=>{
@@ -53,21 +53,13 @@ test('approved headwear identity survives saved outfits and Quick Play reset',()
  assert.equal(restored.members[0].wardrobe.headwearCamo,'m81-woodland');
 });
 
-test('both game editors expose one shared approved swatch UI without inventory grants',()=>{
+test('both game editors hand appearance editing to the shared Studio',()=>{
  const campaign=readFileSync(new URL('../src/campaign-ui.ts',import.meta.url),'utf8');
  const quick=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- const picker=readFileSync(new URL('../src/operator-headwear-picker.ts',import.meta.url),'utf8');
- const css=readFileSync(new URL('../src/operator-headwear-picker.css',import.meta.url),'utf8');
- assert.match(campaign,/createHeadwearAppearancePicker\(person\.loadout,wardrobe/);
- assert.match(quick,/createHeadwearAppearancePicker\(member\.loadout/);
- assert.match(picker,/headwearCamoPixels\(id\)/);
- assert.match(picker,/headwearColorChoices\(canon\)/);
- assert.match(picker,/headwearCamoChoices\(model\)/);
- assert.match(picker,/nextHeadwearCamoRoll/);
- assert.match(picker,/options\.disabled/);
- assert.match(quick,/expandedQuickWardrobe=member\.id/);
- assert.match(css,/min-height:44px/);
- assert.doesNotMatch(picker,/setEquipmentChoice|equipCampaignGear|equipRosterGear/);
+ assert.match(campaign,/APPEARANCE/);
+ assert.match(campaign,/handlers\.openStudio/);
+ assert.match(quick,/openOperatorStudio\(member.id,'quick'\)/);
+ assert.match(quick,/fw-studio-commit-batch/);
 });
 
 test('Lab preserves approved styling, exposes one-step undo and never hides all bare hair',()=>{

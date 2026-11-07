@@ -13,7 +13,12 @@ test('053: authored plan nodes have stable ids independent of path vertices',()=
   const s=newSession(),rook=team(s)[0];
   assert.ok(planMove(s,'rook',{x:302,y:483}));
   assert.equal(rook.plan.length,1);
-  assert.ok(rook.path.length>1,'navigation vertices are generated separately');
+  // Motor navigation is deferred until execution; authored orders own their identity.
+  assert.notStrictEqual(rook.plan,rook.nav);
+  const authored=structuredClone(rook.plan);
+  rook.nav.push({x:12,y:34});
+  assert.deepEqual(rook.plan,authored);
+  rook.nav=[];
   const id=rook.plan[0].id;
   assert.ok(planMove(s,'rook',{x:224,y:342}));
   assert.ok(movePlanNode(s,'rook',id,{x:300,y:500}));

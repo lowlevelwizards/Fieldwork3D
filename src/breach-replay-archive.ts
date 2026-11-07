@@ -32,6 +32,36 @@ export type ReplayArchiveV1={
   completeness:{complete:boolean;truncatedAt:number|null;reason:string|null};
 };
 const allowed=(id:string)=>id.length>0&&id.length<=128&&/^[\w-]+$/.test(id);
+const point=(p:unknown):boolean=>{
+  if(!p||typeof p!=='object')return false;
+  const v=p as {x?:unknown;y?:unknown};
+  return Number.isFinite(v.x)&&Number.isFinite(v.y);
+};
+const segment=(s:unknown):boolean=>{
+  if(!s||typeof s!=='object')return false;
+  const v=s as {a?:unknown;b?:unknown};
+  return point(v.a)&&point(v.b);
+};
+const validDoor=(d:unknown):boolean=>{
+  if(!d||typeof d!=='object')return false;
+  const v=d as {id?:unknown;open?:unknown;openFraction?:unknown};
+  return typeof v.id==='string'&&allowed(v.id)&&segment(d)&&
+    typeof v.open==='boolean'&&
+    (v.openFraction===undefined||Number.isFinite(v.openFraction));
+};
+/** Validate the geometry playback consumes before constructing a mutable world. */
+function validSite(s:ReplayManifest['site']):boolean{
+  return !!s&&Number.isInteger(s.seed)&&typeof s.name==='string'&&
+    Array.isArray(s.rooms)&&s.rooms.every(r=>r&&typeof r.id==='string'&&
+      Number.isFinite(r.x)&&Number.isFinite(r.y)&&Number.isFinite(r.w)&&r.w>0&&
+      Number.isFinite(r.h)&&r.h>0)&&
+    Array.isArray(s.walls)&&s.walls.every(segment)&&
+    Array.isArray(s.cover)&&s.cover.every(o=>o&&point(o)&&
+      Number.isFinite(o.w)&&o.w>0&&Number.isFinite(o.h)&&o.h>0)&&
+    Array.isArray(s.doors)&&s.doors.every(validDoor)&&
+    Array.isArray(s.spawn)&&s.spawn.every(point)&&
+    point(s.objective)&&point(s.extract);
+}
 
 /** Optional per-observer evidence is validated without changing V1 archives. */
 function validObserverEvidence(frame:ReplayFrame):boolean{
@@ -101,7 +131,7 @@ export function replayArchiveIsValid(input:unknown):input is ReplayArchiveV1{
   if(a.format!=='fieldwork-breach-replay'||a.schemaVersion!==1||
      typeof a.id!=='string'||!allowed(a.id)||
      !Number.isFinite(a.createdAt)||
-     !a.manifest?.site||a.manifest.schemaVersion!==2||
+     !validSite(a.manifest?.site??null)||a.manifest?.schemaVersion!==2||
      !Array.isArray(a.frames)||a.frames.length<2||a.frames.length>12000||
      !Array.isArray(a.battleEvents)||
      !Array.isArray(a.executionEvents)||
@@ -112,8 +142,10 @@ export function replayArchiveIsValid(input:unknown):input is ReplayArchiveV1{
     return false;
   let previous=-Infinity;
   for(const f of a.frames){
-    if(!f||!Number.isFinite(f.t)||f.t<previous||!Array.isArray(f.actors)||
-      !Array.isArray(f.doors)||!validObserverEvidence(f))return false;
+    if(!f||!Number.isFinite(f.t)||f.t<0||f.t<previous||!Array.isArray(f.actors)||
+      !f.actors.every(actor=>actor&&typeof actor.id==='string'&&allowed(actor.id)&&
+        point(actor.p)&&Number.isFinite(actor.heading)&&Number.isFinite(actor.health))||
+      !Array.isArray(f.doors)||!f.doors.every(validDoor)||!validObserverEvidence(f))return false;
     previous=f.t;
   }
   return validPersonalGround(a.personalGround,a.frames.at(-1)!.t)&&

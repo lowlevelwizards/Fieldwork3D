@@ -1,22 +1,5 @@
 name: Operator motion critical gate
 on:
-  pull_request:
-    paths:
-      # Only animation/motion systems, not UI-only src/breach-main.ts changes.
-      - 'src/breach-gait.ts'
-      - 'src/breach-footsteps.ts'
-      - 'src/breach-ik.ts'
-      - 'src/breach-operator-rig.ts'
-      - 'src/breach-operator-lab.ts'
-      - 'src/breach-lab-tracks.ts'
-      - 'src/breach-locomotion.ts'
-      - 'src/breach-body-motion.ts'
-      - 'src/breach-foot-articulation.ts'
-      - 'src/breach-replay-motion.ts'
-      - 'src/breach-replay.ts'
-      - 'tests/breach-motion-*.test.mjs'
-      - 'tests/breach-distance-*.test.mjs'
-      - '.github/workflows/operator-motion-gate.yml'
   workflow_dispatch:
 jobs:
   motion:
@@ -24,10 +7,8 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - run: npm install --no-audit --no-fund
+      - uses: ./.github/actions/setup
+      - run: npm ci --no-audit --no-fund
       - name: Typecheck
         run: npm run check
       - name: Recorded gait, biomechanics and replay smoke

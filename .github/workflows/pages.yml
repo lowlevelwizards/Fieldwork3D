@@ -1,4 +1,4 @@
-name: Deploy Fieldwork Ground Zero
+name: Deploy verified Fieldwork
 on:
   push:
     branches: [main]
@@ -11,29 +11,29 @@ concurrency:
   group: github-pages
   cancel-in-progress: false
 jobs:
+  verify:
+    name: Verify main commit
+    uses: ./.github/workflows/verify.yml
+    with:
+      base-sha: ${{ github.event.before || '' }}
   deploy:
+    needs: verify
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: ./.github/actions/setup
+      - run: npm ci --no-audit --no-fund
+      - uses: actions/download-artifact@v4
         with:
-          node-version: '22'
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund
-      # Release gate: typecheck, compile, stamp the build, and verify deployable output.
-      # Behavioral regressions belong in focused PR checks; full suite is manual.
-      - name: Build and verify Pages output
-        run: |
-          npm run build
-          test -s dist/index.html
-          test -s dist/fieldwork-build.json
+          name: ${{ needs.verify.outputs.artifact-name }}
+          path: dist
+      # Validate the exact artifact already built, browser-tested and hashed by verify.
+      - run: node scripts/verification/artifact.mjs --verify
       - uses: actions/configure-pages@v5
-      # Rerunning a failed Pages job must not leave multiple identically
-      # named github-pages artifacts within a single workflow run.
-      # Key both producer and consumer by immutable run ID + attempt.
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

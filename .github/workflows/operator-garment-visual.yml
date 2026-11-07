@@ -1,28 +1,19 @@
 name: Operator Garments — Critical Silhouette Captures
 on:
-  pull_request:
-    paths:
-      - 'src/operator-new-upper-garments.ts'
-      - 'src/operator-field-blouse-prototypes.ts'
-      - 'src/operator-field-trouser-prototypes.ts'
-      - 'src/operator-garment-mount-frame.ts'
-      - 'scripts/capture-operator-garment-5.mjs'
-      - '.github/workflows/operator-garment-visual.yml'
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  PLAYWRIGHT_BROWSERS_PATH: /tmp/fieldwork-browsers
 jobs:
   garment-captures:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - run: npm install --no-audit --no-fund
-      - run: npm install --no-save --package-lock=false playwright@1.56.1
-      - run: npx playwright install --with-deps chromium
+      - uses: ./.github/actions/setup
+      - run: npm ci --no-audit --no-fund
+      - run: npm exec -- playwright install --with-deps chromium
       - name: Mobile Operator Studio appearance and local save smoke
         run: node scripts/smoke-operator-studio.mjs
       - run: node scripts/capture-operator-garment-5.mjs

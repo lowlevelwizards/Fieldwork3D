@@ -1,40 +1,21 @@
 name: Camouflage 8E–9B — Mobile Print Review
 on:
-  pull_request:
-    paths:
-      - 'src/operator-camo-batch-8a.ts'
-      - 'src/operator-armor-rig-lab.ts'
-      - 'src/operator-fabric-camo-materials.ts'
-      - 'scripts/capture-operator-camo-8e.mjs'
-      - 'scripts/capture-operator-camo-8f.mjs'
-      - 'scripts/capture-operator-camo-8g.mjs'
-      - 'scripts/capture-operator-camo-8h.mjs'
-      - 'src/operator-camo-batch-9a.ts'
-      - 'src/operator-camo-batch-9b.ts'
-      - 'scripts/capture-operator-camo-9a-9b.mjs'
-      - 'tests/operator-camo-batch9a9b.test.mjs'
-      - 'tests/operator-camo-batch8h.test.mjs'
-      - 'tests/operator-camo-batch8g.test.mjs'
-      - 'tests/operator-camo-batch8f.test.mjs'
-      - 'tests/operator-camo-batch8e.test.mjs'
-      - '.github/workflows/operator-camo-8e-visual.yml'
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  PLAYWRIGHT_BROWSERS_PATH: /tmp/fieldwork-browsers
 jobs:
   print-captures:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - run: npm install --no-audit --no-fund
+      - uses: ./.github/actions/setup
+      - run: npm ci --no-audit --no-fund
       - name: Install lightweight Chromium capture tooling
         run: |
-          npm install --no-save --package-lock=false playwright@1.56.1
-          npx playwright install --with-deps chromium
+          npm exec -- playwright install --with-deps chromium
       - name: Fixed-light BDU jacket/trouser views and master thumbnails
         run: |
           if [[ "$GITHUB_HEAD_REF" == feature/operator-camo-9a-9b-* ]]; then

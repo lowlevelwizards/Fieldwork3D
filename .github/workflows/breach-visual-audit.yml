@@ -3,6 +3,8 @@ name: Breach 052 — Mobile Tactical Audit
 # It requires two browser engines, screenshot captures and long interaction flows.
 on:
   workflow_dispatch:
+env:
+  PLAYWRIGHT_BROWSERS_PATH: /tmp/fieldwork-browsers
 jobs:
   mobile-breach:
     runs-on: ubuntu-24.04
@@ -11,12 +13,9 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
+      - uses: ./.github/actions/setup
       - run: npm install --no-package-lock
-      - run: npm install --no-save --package-lock=false playwright@1.56.1
-      - run: npx playwright install --with-deps chromium webkit
+      - run: npm exec -- playwright install --with-deps chromium webkit
       - run: npm run build
       - name: Operator Lab first-frame startup (Chromium and WebKit)
         run: node scripts/smoke-operator-lab.mjs
