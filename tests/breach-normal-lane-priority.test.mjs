@@ -133,12 +133,21 @@ test('motor replaces a grazing straight-line step with a full-body lane before s
   s.phase='running';
   stepSession(s,1/60); // let the motor consume the first authored waypoint
   actor.nav=[{...goal}]; // simulate a stale touch path grazing the prop
-  let squeezed=0;
+  let squeezed=0,firstSqueeze=null;
   for(let i=0;i<370;i++){
    stepSession(s,1/60);
-   if(actor.squeeze)squeezed++;
+   if(actor.squeeze){
+    squeezed++;
+    if(!firstSqueeze)firstSqueeze={
+     position:{...actor.p},nav:actor.nav.slice(0,5),
+     normal:routeWithNormalWorld(actor.p,goal,s.doors).slice(0,5),
+     repairAt:actor.lastNavRepairAt,blockedTime:actor.blockedTime,
+     lastBlocker:actor.lastBlocker,time:s.seconds
+    };
+   }
   }
-  assert.equal(squeezed,0,'no squeeze pose for a preventable prop graze');
+  assert.equal(squeezed,0,'no squeeze for prop graze: '+
+    JSON.stringify({firstSqueeze,finalPosition:actor.p,nav:actor.nav.slice(0,4)}));
   assert.ok(actor.p.x>280,
     'operator should move past the prop without stalling, even if wall-gliding is enough');
   assert.ok(actor.completedOrders>=1,'authored movement order is still consumed');
