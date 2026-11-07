@@ -1903,6 +1903,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       firing:p.firing,
       sourceContinuity:!!sourceArm&&!!activeTransition&&
         activeTransition.alpha<1,
+      transitionPhase:activeTransition?.alpha,
       envelope:dynamicEnvelope,
       mode:reloadActive?'reload':p.aiming||handling==='ads'?
         'aim':reaching||throwActive?'interaction':'carry',

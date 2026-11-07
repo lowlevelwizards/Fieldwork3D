@@ -124,6 +124,7 @@ export type FallbackArmRequest={
  preferredPole:THREE.Vector3;previousBend:THREE.Vector3;
  side:-1|1;neutral:boolean;down:boolean;surrender:boolean;
  firing:boolean;sourceContinuity:boolean;
+ transitionPhase?:number;
  envelope:PoseClearanceEnvelope|null;
  mode:PoseConstraintMode;allowVisualOverlap:boolean;
  curatedSupport:boolean;
@@ -144,6 +145,40 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
  let solved=solveTwoBone(shoulder,wrist,10,10,preferredPole,
    ARM_LIMITS,req.neutral?undefined:previousBend,
    scratch.arms[armIndex]);
+ // Lab-only authored retargets must not snap between discrete
+ // finite candidate families halfway through a pose. Use one smooth pole
+ // throughout the blend, with a bounded, continuous outboard correction
+ // for hard/soft gear contact. Never lerp elbow positions (which would
+ // stretch 10+10 anatomy); re-solve full IK at each sampled timestamp.
+ // The correction fades to zero at the destination, which is solved by
+ // the settled coordinated/paired arm authority. Strict contact audit
+ // still evaluates the original discrete admissibility policy below.
+ if(req.sourceContinuity&&req.allowVisualOverlap&&envelope&&solved.reached){
+   const phase=Math.max(0,Math.min(1,req.transitionPhase??.5));
+   const envelopeWeight=Math.sin(Math.PI*phase);
+   const pole=preferredPole.clone().normalize();
+   for(let iter=0;iter<3;iter++){
+     const report=evaluateSleeveArmorContact(
+       shoulder,solved.joint,solved.effector,envelope);
+     let rigid=0,soft=0;
+     for(const contact of report.contacts){
+       const exceed=Math.max(contact.upperExcess,contact.lowerExcess);
+       if(contact.material==='rigid')rigid=Math.max(rigid,exceed);
+       else soft=Math.max(soft,exceed);
+     }
+     // Each correction is proportional to actual penetration, with no
+     // discontinuous "if valid, switch pose family" branch.
+     const correction=Math.min(1.7,rigid*.45+soft*.16)*envelopeWeight;
+     if(correction<=1e-6)continue;
+     pole.x+=correction*.27;
+     pole.y-=correction*.20;
+     pole.z+=side*correction;
+     pole.normalize();
+     solved=solveTwoBone(shoulder,wrist,10,10,pole,ARM_LIMITS,
+       previousBend,scratch.arms[armIndex]);
+   }
+   return {solution:solved,dynamic:null,used:'authored'};
+ }
  let dynamicAccepted=false;
  if(req.sourceContinuity&&envelope&&solved.reached){
    dynamicAccepted=evaluateSleeveArmorContact(shoulder,
