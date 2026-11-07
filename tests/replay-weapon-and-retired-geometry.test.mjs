@@ -26,8 +26,9 @@ test('no retired class-only weapons can appear even without saved builds',()=>{
   assert.equal(weaponSilhouetteParts(id).length,0,id+' legacy mesh removed');
   const model=buildWeaponSilhouette(id,steel,dark);
   assert.ok(model.children.length>0,id+' receives authored family');
-  assert.ok(model.children.some(child=>child.name.startsWith('family-')),
-    id+' must render genuine named family geometry');
+  let authored=false;
+  model.traverse(child=>{if(child.name.startsWith('family-'))authored=true;});
+  assert.ok(authored,id+' must render genuine named family geometry');
   model.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
  }
  steel.dispose();dark.dispose();
