@@ -65,6 +65,15 @@ test('G4c2 never projects an observation without recorded individual evidence',a
   assert.equal((await bridge.seek(.7)).status,'ready');
   const observed=bridge.recordedObserverKnowledge('rook');
   assert.ok(observed?.operatorVisibleActorIds?.rook);
+  assert.deepEqual(observed.visibleActorIds,[]);
+  assert.deepEqual(observed.visibleCivilianIds,[]);
+  assert.deepEqual(observed.discoveredBodyIds,[]);
+  assert.deepEqual(Object.keys(observed.operatorVisibleActorIds),['rook']);
+  assert.deepEqual(
+    Object.keys(observed.operatorVisibleCivilianIds??{}),['rook']);
+  assert.equal(observed.operatorVisibleActorIds.moss,undefined);
+  assert.notEqual(observed,bridge.current.frame.knowledge,
+    'Personal evidence is a restricted projection, never raw team intel');
   assert.equal(bridge.recordedObserverKnowledge('not-a-real-observer'),null);
   bridge.close();
 });

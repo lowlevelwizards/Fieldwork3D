@@ -145,7 +145,20 @@ export class ReplayChunkSceneBridge{
       !Object.prototype.hasOwnProperty.call(
         sample.operatorVisibleActorIds,observerId))
       return null;
-    return sample;
+    // Personal POV must not expose the team's shared revelation, historical
+    // hostile identities from other observers, or entire observer dictionaries.
+    // An empty own array is affirmative evidence of "saw nobody".
+    const own=(field:Record<string,string[]>|undefined):
+      Record<string,string[]>|undefined=>
+      field&&Object.prototype.hasOwnProperty.call(field,observerId)?
+        {[observerId]:[...field[observerId]]}:undefined;
+    return {
+      visibleActorIds:[],visibleCivilianIds:[],discoveredBodyIds:[],
+      operatorVisibleActorIds:own(sample.operatorVisibleActorIds),
+      operatorVisibleCivilianIds:own(sample.operatorVisibleCivilianIds),
+      operatorVisibleBodyIds:own(sample.operatorVisibleBodyIds),
+      operatorDiscoveredBodyIds:own(sample.operatorDiscoveredBodyIds)
+    };
   }
   close(){
     this.transport.close();this.committed=null;
