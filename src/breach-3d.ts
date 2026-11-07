@@ -1493,6 +1493,9 @@ export class TacticalScene3D{
   /** Audition-only until interior occlusion, owner meshes and personal fog
    * have passed their visual checks. The shipped View menu never calls this.
    */
+  resetReplayBodycamSmoothing():void{
+    this.bodycamSmooth=null;this.lastBodycamSampleTime=null;
+  }
   setReplayBodycam(setting:BodycamSetting|null):void{
     const changed=this.replayBodycam?.actorId!==setting?.actorId||
       this.replayBodycam?.mount!==setting?.mount||!setting;
