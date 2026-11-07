@@ -440,6 +440,53 @@ try{
     streamed.fullWindow===6&&streamed.legacyFrames===8,
     'G5b2 IndexedDB stream durability, finalization or recovery broken: '+
     JSON.stringify(streamed));
+  // G5b4: complete 20 Hz sample capture -> bounded spool -> versioned
+  // IndexedDB chunk transactions -> same bounded playback reader.
+  const spooled=await page.evaluate(async()=>{
+    const storage=await import('/src/breach-replay-chunk-store.ts');
+    const {ReplayChunkCaptureSpool}=await import(
+      '/src/breach-replay-chunk-spool.ts');
+    const {loadSavedReplay}=await import('/src/breach-replay-library.ts');
+    const archive=await loadSavedReplay('g3-browser-001');
+    const {frames,...original}=archive;
+    const id='g5-spooled-001';
+    const draft=await storage.beginStreamingReplayV2(id,archive.createdAt,
+      {chunkFrames:3});
+    const spool=new ReplayChunkCaptureSpool(
+      (index,chunk,final)=>storage.appendStreamingReplayChunkV2(
+        draft.generation,index,chunk,final).then(()=>{}),
+      {chunkFrames:3,maxQueuedChunks:2});
+    const accepted=frames.every(frame=>spool.append(frame));
+    const finished=await spool.finish();
+    const sealed=await storage.sealStreamingReplayV2(draft.generation);
+    const saved=await storage.commitStreamingReplayV2(
+      draft.generation,{...original,id});
+    const reader=await storage.openChunkedReplayV2(id);
+    const span=await reader.window.surrounding(.25);
+    const {openReplayChunkSceneV2}=await import(
+      '/src/breach-replay-chunk-scene.ts');
+    const scene=await openReplayChunkSceneV2(id);
+    const viewed=await scene.seek(.25);
+    const viewMatches=viewed.status==='ready'&&
+      JSON.stringify(viewed.value.frame.knowledge)===
+        JSON.stringify(frames[2].knowledge);
+    scene.close();
+    const old=await loadSavedReplay('g3-browser-001');
+    return {accepted,completed:finished.recordingComplete,
+      count:finished.persistedFrames,chunks:finished.chunks,
+      sealed:sealed.sealed,stored:saved.frameCount,
+      diskComplete:saved.storageComplete,
+      first:span?.previous.t,last:span?.next.t,
+      resident:reader.window.residentCount,
+      viewMatches,unchangedLegacy:old.frames.length===8};
+  });
+  check(spooled.accepted&&spooled.completed&&spooled.count===8&&
+    spooled.chunks===3&&spooled.sealed&&spooled.stored===8&&
+    spooled.diskComplete&&spooled.first<.25&&
+    spooled.last>.25&&spooled.resident<=3&&
+    spooled.viewMatches&&spooled.unchangedLegacy,
+    'G5b4 bounded producer→IDB→consumer integration broke: '+
+    JSON.stringify(spooled));
   const corruption=await page.evaluate(async()=>{
     const storage=await import('/src/breach-replay-chunk-store.ts');
     const {loadSavedReplay}=await import('/src/breach-replay-library.ts');
