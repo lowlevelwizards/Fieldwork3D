@@ -3,6 +3,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {initialEquipmentLoadout,setEquipmentChoice}
  from '../src/equipment-loadouts.ts';
@@ -54,12 +55,14 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
     const pose={...base,...state,seconds:2+i*.21};
     poseOperator(original,pose,0);
     poseOperator(candidate,{...pose,poseV3Preview:true},0);
-    assert.ok(candidate.weapon.position.distanceTo(
-     original.weapon.position)<1e-7,
-     fixture.id+'/'+name+': visual solver must not move weapon');
-    assert.ok(Math.abs(candidate.weapon.rotation.y-
-     original.weapon.rotation.y)<1e-7,
-     fixture.id+'/'+name+': no change to aim yaw');
+    original.root.updateMatrixWorld(true);
+    candidate.root.updateMatrixWorld(true);
+    assert.ok(candidate.weapon.getWorldPosition(new THREE.Vector3())
+     .distanceTo(original.weapon.getWorldPosition(new THREE.Vector3()))<1e-6,
+     fixture.id+'/'+name+': world muzzle origin must be unchanged');
+    assert.ok(candidate.weapon.getWorldQuaternion(new THREE.Quaternion())
+     .angleTo(original.weapon.getWorldQuaternion(new THREE.Quaternion()))<1e-6,
+     fixture.id+'/'+name+': world aim rotation must be unchanged');
     const reports=candidate.root.userData.poseV3DynamicReport;
     assert.equal(reports?.length,2,fixture.id+'/'+name);
     for(const [armIndex,report] of reports.entries()){

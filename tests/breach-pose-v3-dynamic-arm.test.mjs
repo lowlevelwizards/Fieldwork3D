@@ -51,11 +51,15 @@ test('V3 preview evaluates real ADS pose without changing weapon aim',()=>{
  const rig=createOperatorRig('v3-dynamic','blue',true);
  try{
   poseOperator(rig,pose,0);
-  const origin=rig.weapon.position.clone();
-  const rotation=rig.weapon.rotation.clone();
+  rig.root.updateMatrixWorld(true);
+  const origin=rig.weapon.getWorldPosition(new THREE.Vector3());
+  const rotation=rig.weapon.getWorldQuaternion(new THREE.Quaternion());
   poseOperator(rig,{...pose,poseV3Preview:true},0);
-  assert.ok(rig.weapon.position.distanceTo(origin)<1e-8);
-  assert.ok(Math.abs(rig.weapon.rotation.y-rotation.y)<1e-8);
+  rig.root.updateMatrixWorld(true);
+  assert.ok(rig.weapon.getWorldPosition(new THREE.Vector3())
+   .distanceTo(origin)<1e-6);
+  assert.ok(rig.weapon.getWorldQuaternion(new THREE.Quaternion())
+   .angleTo(rotation)<1e-6);
   const diagnostics=rig.root.userData.poseV3DynamicReport;
   assert.equal(diagnostics.length,2);
   assert.ok(diagnostics.every(x=>x.status==='clear'||x.status==='unresolved'));

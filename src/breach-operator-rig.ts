@@ -40,6 +40,7 @@ import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
 import {chooseV3SupportGrip} from './breach-pose-v3-support-grip.ts';
+import {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
@@ -1348,6 +1349,47 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       reason:choice.reason
     };
   }else r.root.userData.poseV3SupportGrip=null;
+  // V3 Stage 6b: rotate the *chest* a few degrees and counter-rotate the
+  // rigid weapon into its new local frame. World muzzle, stock, firing grip
+  // and the existing reload interaction path stay in the same positions.
+  // This is a whole-pair solution, not two competing elbow corrections.
+  let coordinatedDynamic:ReturnType<typeof solveV3CoordinatedPose>|null=null;
+  if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
+     !p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
+     !treatmentActive&&!doorActive&&!throwActive&&!activeTransition){
+    const outfit=resolvedWardrobe(p.wardrobe,p.equipment);
+    const activeReloadSocket=reloadActive?
+      weaponPresentationSockets(p.weapon,p.weaponConfiguration):null;
+    const releasedTarget=reloadActive?reloadHandChestTarget({
+      fit,lengthScale:data.lengthScale,
+      progress:reloadProgress,mode:reloadMode,
+      supportX:data.supportX,supportY:data.supportY,
+      primaryX:data.primaryX,
+      magazineSocket:activeReloadSocket?.magazinePart?
+        activeReloadSocket.magazine:undefined}):undefined;
+    const result=solveV3CoordinatedPose({
+      fit,weapon:p.weapon,configuration:coupledConfig,
+      shoulders:[shoulderFor(0),shoulderFor(1)],
+      envelope:poseClearanceEnvelope(
+        outfit.armorStyle,outfit.rigStyle,outfit.top),
+      mode:reloadActive?'reload':p.aiming||handling==='ads'?
+        'aim':'carry',
+      releasedSupportTarget:releasedTarget
+    });
+    r.root.userData.poseV3CoordinatedReport={
+      status:result.status,yaw:result.yaw,
+      candidates:result.candidates,
+      validCandidates:result.validCandidates,
+      quality:result.quality
+    };
+    if(result.status==='clear'&&result.arms){
+      coordinatedDynamic=result;
+      fit=result.fit;
+      // Existing body rotation is set afresh from pose time on every call.
+      // Apply exactly one deterministic delta, not frame-history easing.
+      r.chest.rotation.y+=result.yaw;
+    }
+  }else r.root.userData.poseV3CoordinatedReport=null;
   let carryTransitionActive=false,carryTransitionAlpha=1;
   let carryTransitionBends:[THREE.Vector3,THREE.Vector3]|null=null;
   if(!p.deterministic&&!p.down&&!p.surrender){
@@ -1584,6 +1626,29 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       alignSegment(arm.lower,joint.joint,joint.effector,scratch.sides[i]);
       arm.hand.position.copy(joint.effector);
       arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
+      continue;
+    }
+    // A jointly validated V3 pair owns BOTH elbow placements. Do not run
+    // independent IK again and accidentally undo its clearance selection.
+    if(coordinatedDynamic?.arms&&!carryTransitionActive&&
+       !p.unarmedPreview){
+      const pose=coordinatedDynamic.arms[i];
+      const report=coordinatedDynamic.reports![i];
+      r.elbowSpread[i]=Math.max(0,sign*(pose.joint.z-shoulder.z));
+      arm.bend.copy(pose.bendPlane);
+      arm.outOfReach=false;
+      alignSegment(arm.upper,shoulder,pose.joint,scratch.sides[i]);
+      alignSegment(arm.lower,pose.joint,pose.effector,scratch.sides[i]);
+      arm.hand.position.copy(pose.effector);
+      arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
+      v3DynamicReports.push({
+        side:i===0?'support':'firing',status:'clear',reason:'valid',
+        candidates:6,elbowDrop:report.elbowDrop,
+        outwardFlare:report.outwardFlare,
+        hardDepth:report.hardDepth,quality:report.quality,
+        reachError:0,violations:[],
+        evaluations:6,softScale:coordinatedDynamic.softScales![i]
+      });
       continue;
     }
     const neutralArms=!!p.unarmedPreview&&!p.down&&!p.surrender;
