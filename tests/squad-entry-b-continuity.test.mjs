@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {entryClearanceForLook} from '../src/breach-entry-coordination.ts';
 import {angleDifference} from '../src/breach-plan.ts';
-import {newSession,team,planSquadEntry,planMove,undoPlan,redoPlan,
+import {newSession,team,planSquadEntry,planMove,planAim,undoPlan,redoPlan,
  stepSession,toggling} from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
 
@@ -118,5 +118,32 @@ test('B13: a real four-person entry begins sector turn during move and holds it 
     'persistent sector hold must activate on the authored destination');
    assert.ok(Math.abs(angleDifference(a.aimInstruction.angle,goal.facing))<.001);
   }
+ }finally{activateSite(null);}
+});
+
+test('B21: player WATCH on a stack waypoint is never commandeered by generated clearing',()=>{
+ const s=newSession(0,undefined,'full-view','standard','hold',site);
+ try{
+  const units=team(s),follower=units[1];
+  assert.equal(planSquadEntry(s,'ENTRY'),true);
+  const stack=follower.plan.find(n=>n.stackDoorId==='ENTRY');
+  const entry=follower.plan.find(n=>n.kind==='move'&&n.entryDoorId==='ENTRY');
+  const watched={x:450,y:170};
+  assert.ok(stack&&entry);
+  assert.equal(planAim(s,follower.id,'track',watched,stack.id,'watch'),true);
+  assert.equal(follower.plan.find(n=>n.id===stack.id)?.aimLabel,'watch');
+  toggling(s);
+  let reviewed=false;
+  for(let tick=0;tick<1500;tick++){
+   stepSession(s,1/30);
+   if(follower.plan[0]?.id!==entry.id||
+      !entryClearanceForLook(s.doors[0],follower.p,entry.p))continue;
+   assert.equal(follower.aimInstruction?.mode,'track');
+   assert.equal(follower.aimInstruction?.source,undefined,
+    'explicit player WATCH cannot be disguised as generated stack attention');
+   assert.deepEqual(follower.aimInstruction?.point,watched);
+   reviewed=true;break;
+  }
+  assert.ok(reviewed,'the follower must actually execute a crossed-room MOVE');
  }finally{activateSite(null);}
 });
