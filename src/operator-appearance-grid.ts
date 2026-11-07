@@ -165,6 +165,7 @@ export class OperatorAppearanceGrid{
      previous.celProfile===settings.celProfile&&
      previous.celLow===settings.celLow&&
      previous.celHigh===settings.celHigh&&
+     previous.rimAmount===settings.rimAmount&&
      previous.allSurfaces===settings.allSurfaces)return;
   this.lightingSettings={...settings};
   this.lighting.setShadowColor(settings.shadow);
