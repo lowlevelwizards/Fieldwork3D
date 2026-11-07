@@ -3822,6 +3822,16 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;
     a.stability=Math.min(a.stability,.65);}
+  // After a real flank hit, orient toward the attack before reacquiring an
+  // unrelated old contact. A now-visible hostile in that sector still wins
+  // through the normal target selector on the following ticks.
+  const hitFacing=a.side==='blue'?
+    incomingHitFacing(a.heading,a.lastHitYaw,s.seconds-a.lastHitAt):null;
+  if(hitFacing!==null&&s.seconds-a.lastHitAt<.85&&
+     Math.abs(angleDifference(hitFacing,angle(a.p,target.p)))>.75){
+    a.weaponYaw=approachAngle(a.weaponYaw,hitFacing,dt*profile.turnSpeed*mods.turn);
+    return;
+  }
   const moving=a.velocity>10;
   const weapon=WEAPONS[a.weapon];
   const range=d(a.p,target.p);
@@ -4520,7 +4530,10 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
             a.pace==='run'||a.treatmentActive||
             a.plan[0]?.kind==='treat'
         });
-      if(hitDirection!==null)rotate(a,hitDirection,h);
+      // Orders may rotate toward their authored gaze earlier this tick.
+      // Reaction uses a stronger one-second turn so opposing turn rates
+      // cannot cancel each other and leave the operator facing away.
+      if(hitDirection!==null)rotate(a,hitDirection,h*1.85);
     }else enemyDecisions(s,a,h);
     if(probe)mark('operator-'+a.id);
   }
