@@ -25,7 +25,8 @@ test('campaign saves preserve individual magazine IDs and upgrade old aggregate 
  const old=JSON.parse(JSON.stringify(c));
  for(const m of old.operators){delete m.magazines;delete m.loadedMagazineId;}
  const migrated=readCampaign(JSON.stringify(old));
- assert.equal(migrated.operators[1].magazines[0].weapon,'smg');
+ assert.equal(migrated.operators[1].magazines[0].weapon,migrated.operators[1].weapon,
+  'migrated spare magazines follow the actual issued starting weapon');
  assert.equal(reserveRounds(migrated.operators[1].magazines),migrated.operators[1].reserve);
  assert.equal(migrated.operators[0].loadedMagazineId,'rook/carbine/loaded');
 });

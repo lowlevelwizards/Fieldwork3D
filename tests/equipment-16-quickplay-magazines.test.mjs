@@ -57,7 +57,8 @@ test('Quick Play storage contains cosmetic preferences only',()=>{
  roster=equipRoster(roster,'rook','rifle');
  const snapshot=serializeQuickPlayCosmetics(roster);
  const fields=Object.keys(JSON.parse(snapshot).members[0]).sort();
- assert.deepEqual(fields,['appearanceSeed','callsign','id']);
+ assert.deepEqual(fields,['appearanceSeed','callsign','id','wardrobe'],
+  'Quick Play persists appearance and wardrobe, never weapon, ammo, or inventory');
  const restored=freshQuickPlayRoster(readRoster(snapshot));
  assert.equal(restored.members[0].callsign,'HAWK');
  assert.deepEqual(restored.members[0].loadout,initialRoster().members[0].loadout);
