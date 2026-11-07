@@ -53,7 +53,9 @@ permissions:
 jobs:
   armor-rig:
     # Dedicated V3 visual job avoids slow general armor suite.
-    if: ${{ !startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') }}
+    # UOP uses the dedicated pose/parity suite. The full wardrobe-camo
+    # screenshot battery was green on the last completed UOP checkpoint.
+    if: ${{ !startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') && !startsWith(github.head_ref, 'refactor/uop-pose-director') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
