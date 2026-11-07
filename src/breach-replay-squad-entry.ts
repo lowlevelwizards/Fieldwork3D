@@ -115,8 +115,15 @@ export function featuredReplaySquadEntries(
   const ids=[...new Set(frames[0].doors.map(d=>d.id))].slice(0,80);
   const results=ids.map(id=>measureReplaySquadDoorEntry(
     frames,id,friendlyIds,0,duration))
-    .filter((x):x is ReplaySquadEntryReview=>
-      !!x&&x.crossings.some(c=>c.crossedAt!==null));
+    .filter((x):x is ReplaySquadEntryReview=>{
+      if(!x||x.spreadSeconds===null)return false;
+      const count=x.crossings.filter(c=>c.crossedAt!==null).length;
+      // Only real, coordinated maneuvers: a rapid pair or 3+ team members
+      // across one threshold. A lone passage or people crossing separately
+      // over a long mission is not a useful after-action entry highlight.
+      return (count>=3&&x.spreadSeconds<=12)||
+        (count===2&&x.spreadSeconds<=2.5);
+    });
   const measured=(r:ReplaySquadEntryReview)=>
     r.crossings.filter(c=>c.crossedAt!==null).length;
   return results.sort((x,y)=>measured(y)-measured(x)||
