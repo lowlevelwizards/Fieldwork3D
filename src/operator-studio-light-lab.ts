@@ -39,7 +39,7 @@ export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
  const gradient=requestedOperatorGradient(search);
  const shadow=requestedStudioShadowColor(search);
  const amount=p.get('operatorRimAmount');
- const n=amount===null?.24:Number(amount);
+ const n=amount===null ? .24 : Number(amount);
  return {
   toon:toon?2:0,
   rim:rim==='off'?'off':'dual',
