@@ -1367,7 +1367,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Normal gameplay, replay and authoritative aim retain original yaw.
     const previewAssist=p.poseV3Preview===true&&
       p.handlingOverride==='low';
-    const selected=chooseTorsoAssist(solveAtTorsoYaw,previewAssist);
+    const selected=chooseTorsoAssist(solveAtTorsoYaw,previewAssist,
+      look.armorStyle==='plate-heavy'?shoulders[1]:undefined);
     coupled=selected?.solution??null;
     const torsoAssistYaw=selected?.yaw??0;
     if(previewAssist)r.chest.rotation.y+=torsoAssistYaw;

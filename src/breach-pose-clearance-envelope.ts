@@ -31,6 +31,16 @@ const sideBox=(label:PoseBox['label'],sign:number,
    z:Math.min(sign*z0,sign*z1)},
   {x:Math.max(x0,x1),y:Math.max(y0,y1),
    z:Math.max(sign*z0,sign*z1)},material,region);
+/** Old fragmentation/legacy shoulder wraps are flexible, not solid
+ * armhole walls. For ARM POSING only, inherit the heavy carrier's upper
+ * side-band height while keeping the full visible historical garment,
+ * full lower wrap and authentic soft materials. No physics/hitbox change.
+ */
+export function poseArmholeSideCeiling(armor:string):number|null{
+ if(armor!=='soft-flak'&&armor!=='plate-legacy')return null;
+ const heavy=ARMOR_PROPORTIONS['plate-heavy'];
+ return heavy.sideY+heavy.sideHeight*.5+.08;
+}
 const cache=new Map<string,PoseClearanceEnvelope>();
 export function poseClearanceEnvelope(armor:string,rig:string,top:string):
  PoseClearanceEnvelope{
@@ -89,7 +99,13 @@ export function poseClearanceEnvelope(armor:string,rig:string,top:string):
     if(band.height<.1)continue;
     const p=armorSideLayout(fit,spec,band.y,band.height);
     const y0=band.y-band.height*.5-.08;
-    const y1=band.y+band.height*.5+.08;
+    const fullUpper=band.y+band.height*.5+.08;
+    // The visible flak/legacy shoulder remains full height. A cloth
+    // underarm panel flexes as the bicep comes down; the collision proxy
+    // only keeps the heavy-carrier arm corridor, not an upper-armpit wall.
+    const ceiling=poseArmholeSideCeiling(a);
+    const y1=Math.min(fullUpper,ceiling??fullUpper);
+    if(y1<=y0)continue;
     const half=spec.sideThickness*.5+.10;
     const material:ContactMaterial=spec.sideStyle==='side_plate'?
       'structured':'soft';

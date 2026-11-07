@@ -10,12 +10,17 @@ export type ReloadVisualContactReport={
 };
 export function reloadVisualContact(
  contact:SleeveContactResult,enabled:boolean,
- profile:'reload'|'carry'|'aim'='reload'
+ profile:'reload'|'carry'|'aim'='reload',
+ role:'firing'|'support'='support'
 ):ReloadVisualContactReport{
  const strictValid=contact.valid;
  if(!enabled)return {valid:strictValid,strictValid,
   acceptedOverlaps:0,maxRigidIntersection:contact.hardDepth};
  const action=profile==='reload';
+ // The firing-side sleeve may sink a fraction farther into the EDGE
+ // of a plate pouch as its elbow lowers. Never increase torso budgets,
+ // support-arm allowance, or the reload limits.
+ const firing=role==='firing'&&!action;
  let valid=true,acceptedOverlaps=0;
  for(const c of contact.contacts){
   let upper=c.upperAllowed,lower=c.lowerAllowed;
@@ -31,11 +36,11 @@ export function reloadVisualContact(
       upper=Math.max(upper,action?2.10:.70);
       lower=Math.max(lower,action?1.05:.35);break;
     case 'front-insert':
-      upper=Math.max(upper,action?2.65:1.85);
-      lower=Math.max(lower,action?1.60:.95);break;
+      upper=Math.max(upper,action?2.65:firing?2.20:1.85);
+      lower=Math.max(lower,action?1.60:firing?1.16:.95);break;
     case 'side-insert':
-      upper=Math.max(upper,action?2.40:1.75);
-      lower=Math.max(lower,action?1.35:.85);break;
+      upper=Math.max(upper,action?2.40:firing?2.30:1.75);
+      lower=Math.max(lower,action?1.35:firing?1.25:.85);break;
    }
   }else if(c.material==='structured'){
    upper=Math.max(upper,action?2.65:1.90);

@@ -19,6 +19,19 @@ test('V3 torso assist prioritizes validity, retains neutral on ties',()=>{
  assert.equal(chooseTorsoAssist(()=>solution(1),true).yaw,0);
  assert.equal(chooseTorsoAssist(()=>null,true),null);
 });
+test('Heavy carrier chooses valid tucked arm over winged neutral fit',()=>{
+ const shoulder={y:4,z:7};
+ const make=(yaw)=>{
+  const wing=yaw===0;
+  return {status:'clear',quality:wing?0:2,
+   arms:[null,{joint:{y:wing?3.45:-4.0,z:wing?10.6:7.3}}]};
+ };
+ assert.equal(chooseTorsoAssist(make,true,shoulder).yaw,-.08);
+ assert.equal(chooseTorsoAssist(make,false,shoulder).yaw,0,
+  'live gameplay never auditions new body yaw');
+ assert.equal(chooseTorsoAssist(make,true).yaw,0,
+  'unarmored default keeps original neutral selection');
+});
 test('V3 Lab opt-in keeps valid low-ready contact and reports bounded yaw',()=>{
  const config=selectWeaponFamilyPreset(
   initialWeaponConfiguration('carbine'),'ar-m4a1');

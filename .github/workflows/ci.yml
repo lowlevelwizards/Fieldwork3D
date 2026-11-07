@@ -74,6 +74,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-reload-v4-') }}
         run: |
           node --experimental-strip-types --test tests/breach-reload-v4-timeline.test.mjs tests/breach-reload-v4-magazine.test.mjs tests/breach-reload-v4-clearance.test.mjs tests/breach-reload-v4-rig.test.mjs tests/breach-pose-v3-reload-weapon.test.mjs tests/breach-pose-v3-reload-replay.test.mjs tests/breach-pose-v3-coordinated.test.mjs tests/breach-pose-v3-constraints.test.mjs tests/breach-pose-v3-action-matrix.test.mjs
+      - name: Armhole / firing-elbow focused visual and physical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-armhole-clearance-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-armhole-clearance.test.mjs tests/breach-low-ready-anatomy-v2.test.mjs tests/breach-pose-v3-armor-proxies.test.mjs tests/breach-pose-v3-contact-policy.test.mjs tests/operator-lab-pose-contact.test.mjs tests/breach-coupled-rig-smoke.test.mjs tests/breach-pose-v3-body-assist.test.mjs tests/breach-pose-v3-action-matrix.test.mjs
       - name: Operator Lab unified poses — full weapon and animation matrix
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lab-unified-poses-') }}
         run: |
