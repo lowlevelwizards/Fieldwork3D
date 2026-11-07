@@ -316,6 +316,9 @@ jobs:
       - name: 'Traversal foundation: squeeze, step-over and clutter contact'
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-traversal-') }}
         run: node --experimental-strip-types --test tests/breach-traversal-foundation.test.mjs tests/physicality-door-aware-routing.test.mjs tests/physicality-friendly-traffic.test.mjs tests/doorway-right-of-way-session.test.mjs
+      - name: HERE route redraw — WATCH persistence and atomic undo
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/watch-preserve-here-path-') }}
+        run: node --experimental-strip-types --test tests/breach-here-watch-continuity.test.mjs tests/breach-active-watch-marker.test.mjs tests/breach-wall-glide-here-window.test.mjs
       - name: Focused active WATCH marker lifecycle and mobile editing
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'ux/watch-active-marker-') }}
         run: node --experimental-strip-types --test tests/breach-active-watch-marker.test.mjs
