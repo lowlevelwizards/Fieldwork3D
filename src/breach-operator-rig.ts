@@ -16,7 +16,7 @@ import {lowReadyFamilyFit,lowReadyElbowPole}
  from './breach-low-ready-family-fit.ts';
 import {solveCoupledLowReady,type CoupledLowReadySolution}
  from './breach-coupled-low-ready.ts';
-import {poseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
+import {poseClearanceEnvelope,evaluateSleeveArmorContact} from './breach-pose-clearance-envelope.ts';
 import {interpolateWeaponCarry,lowReadyBlendPhase}
  from './breach-low-ready-transition.ts';
 import {createOperatorPoseScratch,type OperatorPoseScratch}
@@ -1305,10 +1305,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // gameplay already used. Other handling modes retain their profiles.
     const shoulderWeight=handling==='low'&&
       !!p.weaponConfiguration?.build?0:poseWeight;
-    return P(base.x+shoulderWeight*(i===0?
+    const target=P(base.x+shoulderWeight*(i===0?
       profile.supportShoulderForward:profile.firingShoulderForward),
       base.y+shoulderWeight*profile.shoulderLift,
       base.z-sign*shoulderWeight*profile.shoulderInward);
+    // Existing modular low ready uses fixed anatomical anchors. Blend
+    // *from the rendered old shoulder* when the Lab enters that mode,
+    // otherwise the first frame can still pop despite a smooth gun.
+    const source=authoredLabSwitch?activeTransition?.authoredArms?.[i]:null;
+    return source?source.shoulder.clone().lerp(
+      target,lowReadyBlendPhase(activeTransition!.alpha)):target;
   };
   // The coupled solution is deliberately restricted to relaxed, stationary,
   // two-handed AR/AK presentation. Combat aim and shot-time geometry remain
@@ -1846,6 +1852,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulder=shoulderFor(i);
+    const sourceArm=authoredLabSwitch?
+      activeTransition?.authoredArms?.[i]:undefined;
     const grip=i===0?leftGrip:rightGrip;
     let desired:THREE.Vector3;
     if(p.down&&(i===0&&releaseLeft||i===1&&releaseRight)){
@@ -1862,6 +1870,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       desired=grip.clone().multiply(P(data.lengthScale,1,1))
         .applyEuler(fit.rotation).add(fit.origin);
       if(i===0&&reloadHandChest)desired.copy(reloadHandChest);
+    }
+    // At phase zero reproduce the *exact* displayed source anatomy.
+    // Subsequent frames are resolved from a continuous source elbow pole.
+    if(sourceArm&&activeTransition!.alpha<=0){
+      r.elbowSpread[i]=Math.max(0,
+        sign*(sourceArm.elbow.z-shoulder.z));
+      arm.bend.copy(sourceArm.bend);arm.outOfReach=false;
+      alignSegment(arm.upper,shoulder,sourceArm.elbow,scratch.sides[i]);
+      alignSegment(arm.lower,sourceArm.elbow,sourceArm.wrist,
+        scratch.sides[i]);
+      arm.hand.position.copy(sourceArm.wrist);
+      arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
+      continue;
     }
     // The coupled fitting solver already chose BOTH elbows and the exact
     // physical wrist contacts in one collision-checked candidate.
@@ -1931,11 +1952,24 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       wanted.copy(carryTransitionBends[i])
         .lerp(destination,carryTransitionAlpha).normalize();
     }
+    if(sourceArm&&activeTransition){
+      const fromPole=sourceArm.elbow.clone().sub(sourceArm.shoulder);
+      if(fromPole.lengthSq()>.01)
+        wanted.copy(fromPole.lerp(wanted,
+          lowReadyBlendPhase(activeTransition.alpha)));
+    }
     let solved=solveTwoBone(shoulder,wrist,10,10,
       wanted,ARM_LIMITS,neutralArms?undefined:arm.bend,scratch.arms[i]);
     let dynamicAccepted=false;
-    if(dynamicEnvelope&&!neutralArms&&!p.down&&!p.surrender&&
-       !p.firing){
+    if(sourceArm&&dynamicEnvelope&&activeTransition&&
+       activeTransition.alpha<1&&solved.reached){
+      // A continuous two-bone solution can retain the source elbow
+      // without a new candidate search, but never ignore armor contact.
+      dynamicAccepted=evaluateSleeveArmorContact(shoulder,
+        solved.joint,solved.effector,dynamicEnvelope).valid;
+    }
+    if(!dynamicAccepted&&dynamicEnvelope&&!neutralArms&&
+       !p.down&&!p.surrender&&!p.firing){
       const mode=reloadActive?'reload':p.aiming||handling==='ads'?
         'aim':reaching||throwActive?'interaction':'carry';
       const dynamic=solveV3DynamicArm({
