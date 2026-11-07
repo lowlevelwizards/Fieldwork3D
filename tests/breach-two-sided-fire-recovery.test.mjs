@@ -70,7 +70,13 @@ test('real player operator can request friendly-fire sidestep with orders intact
   const initial={...lead.p};
   stepSession(s,1/30);
   assert.ok(lead.fireRetreatTarget,
-   'a safe lateral target should be selected when ally blocks observed target');
+   'a safe lateral target should be selected: '+JSON.stringify({
+     phase:s.phase,visible:inSight(lead,guard,s),target:lead.targetId,
+     firePolicy:lead.firePolicy,velocity:lead.velocity,aim:lead.aim,
+     lastFireBlock:lead.lastFireBlock,lastFireRetreatAt:lead.lastFireRetreatAt,
+     guard:{p:guard.p,health:guard.health},blue:{p:lead.p,health:lead.health},
+     ally:ally.p,await:lead.aimInstruction,plan:lead.plan
+   }));
   assert.ok(Math.abs(lead.fireRetreatTarget.x-initial.x)<6);
   assert.ok(Math.abs(lead.fireRetreatTarget.y-initial.y)>=12);
   assert.deepEqual(ally.p,p(185,110),'recovery must not shove teammate');
