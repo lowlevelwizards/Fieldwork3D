@@ -3906,25 +3906,24 @@ function fire(s:Session,a:TeamActor,dt:number){
     return fireLaneReachable(lane,preview,candidate.p);
   });
   if(!target){
-    // The actual acquisition gate correctly rejects a teammate in front.
-    // This is still an observed enemy, so consider a tiny *own-body*
-    // sidestep and keep the teammate stationary.
-    if(a.side==='blue'&&visible.length&&a.velocity<10&&
-       !a.fireRetreatTarget&&s.seconds-a.lastFireRetreatAt>=1.9){
-      const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
-      for(const candidate of visible){
-        const height=aimHeight(candidate.posture==='crouch');
-        const muzzleHeight=a.posture==='crouch'?18:26;
-        const lane=assessFireLane(a.p,muzzleHeight,candidate.p,height,
-           COVER,WALLS,s.doors,friends);
-        if(lane.blocker!=='friendly'||observedCivilianFireLane(
-             s,a,a.p,muzzleHeight,candidate.p,height))continue;
-        if(requestClearFireStep(s,a,candidate,'friendly'))break;
-      }
-    }
     a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
     a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*profile.turnSpeed*mods.turn);
     return;
+  }
+  // The target selector deliberately keeps tracking a lone visible target
+  // even if their current firing lane is obstructed. That is correct
+  // targeting behavior, but friendly sidestep must run *after* selection,
+  // rather than only in the (often unreachable) no-target branch.
+  if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget){
+    const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
+    const muzzleHeight=a.posture==='crouch'?18:26;
+    const targetHeight=aimHeight(target.posture==='crouch');
+    const lane=assessFireLane(a.p,muzzleHeight,target.p,targetHeight,
+      COVER,WALLS,s.doors,friends);
+    if(lane.blocker==='friendly'&&!observedCivilianFireLane(
+       s,a,a.p,muzzleHeight,target.p,targetHeight)){
+      if(requestClearFireStep(s,a,target,'friendly'))return;
+    }
   }
   if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;
     a.stability=Math.min(a.stability,.65);}
