@@ -7,7 +7,7 @@ import {headwearCuboidVolumes} from './operator-headwear-silhouettes.ts';
 
 export const PASGT_ATLAS_WIDTH=256;
 export const PASGT_ATLAS_HEIGHT=256;
-export const PASGT_CAMO_SCALE=1.8; // P5-B replaces with reference textile density
+export const PASGT_CAMO_SCALE=1; // shared metric fabric prints, no additional PASGT scaling
 export const PASGT_TOP_SEAM_OFFSETS=[-2.6,2.6] as const;
 const shell=headwearCuboidVolumes('pasgt');
 const box=(name:string)=>{

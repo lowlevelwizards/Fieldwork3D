@@ -26,7 +26,7 @@ test('new cloth uses planar diagonal bridges, keeps unchanged PASGT shell',()=>{
  assert.ok(hem.getAttribute('uv1'));
 });
 test('print is denser and physically consistent between top and sides',()=>{
- assert.ok(PASGT_CAMO_SCALE>=1.7&&PASGT_CAMO_SCALE<=2.2);
+ assert.equal(PASGT_CAMO_SCALE,1);
  assert.ok(PASGT_RING_CIRCUMFERENCE>35&&PASGT_RING_CIRCUMFERENCE<47);
  const tex=pasgtCoverTexture('m81-woodland','operator',1);
  assert.equal(tex.channel,1);
