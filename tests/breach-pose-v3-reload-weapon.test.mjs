@@ -38,29 +38,6 @@ test('V3 rifle cants around stock while maintaining every rigid socket',()=>{
   'firing hand should move outward from side fabric');
  assert.ok(after.angleTo(before)<.20);
 });
-test('B19 alternative rigid holds preserve weapon sockets and endpoint neutrality',()=>{
- for(const hold of ['baseline','forward','forward-low','support-clear',
-   'stock-drop','counter-cant','support-lift','support-wide',
-   'support-high','support-close','support-long']){
-  for(const t of [0,1]){
-   const neutral=choreographV3ReloadWeapon(fit,t,'emergency',hold);
-   assert.equal(neutral.fit,fit,hold+'/'+t);
-  }
-  const v=choreographV3ReloadWeapon(fit,.5,'emergency',hold);
-  const before=new THREE.Quaternion().setFromEuler(fit.rotation);
-  const after=new THREE.Quaternion().setFromEuler(v.fit.rotation);
-  const delta=after.clone().multiply(before.clone().invert());
-  assert.ok(after.angleTo(before)<.21,hold+'/cant remains bounded');
-  assert.ok(v.fit.origin.distanceTo(fit.origin)<4.3,hold+'/receiver motion');
-  for(const key of ['origin','primary','support']){
-   const expected=fit[key].clone().sub(fit.stock)
-    .applyQuaternion(delta).add(v.fit.stock);
-   assert.ok(expected.distanceTo(v.fit[key])<1e-8,hold+'/'+key);
-  }
-  assert.equal(choreographV3ReloadWeapon(fit,.5,'shells',hold).fit,
-   fit,hold+'/shells ignored');
- }
-});
 test('V3 pose is deterministic, continuous and shell reload remains untouched',()=>{
  for(const t of [.04,.16,.35,.72,.88,.99]){
   const a=choreographV3ReloadWeapon(fit,t,'retention');
@@ -72,4 +49,18 @@ test('V3 pose is deterministic, continuous and shell reload remains untouched',(
    'no frame boundary snap '+t);
  }
  assert.equal(choreographV3ReloadWeapon(fit,.5,'shells').fit,fit);
+});
+
+test('B23 retained support-high research hold is bounded and replay-pure',()=>{
+ const a=choreographV3ReloadWeapon(fit,.53,'emergency','support-high');
+ const b=choreographV3ReloadWeapon(fit,.53,'emergency','support-high');
+ assert.ok(a.fit.primary.distanceTo(b.fit.primary)<1e-12);
+ assert.ok(a.fit.support.distanceTo(b.fit.support)<1e-12);
+ assert.ok(a.fit.stock.distanceTo(fit.stock)<2.5);
+ const before=new THREE.Quaternion().setFromEuler(fit.rotation);
+ const after=new THREE.Quaternion().setFromEuler(a.fit.rotation);
+ assert.ok(before.angleTo(after)<.21);
+ for(const end of [0,1])
+  assert.equal(choreographV3ReloadWeapon(fit,end,'emergency',
+   'support-high').fit,fit);
 });

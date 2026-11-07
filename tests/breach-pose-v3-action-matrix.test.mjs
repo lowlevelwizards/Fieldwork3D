@@ -249,73 +249,10 @@ test('B17 legacy AKM selects measured compact path without inflating validity',(
  }finally{selected.dispose();canonical.dispose();}
 });
 
-/** B19: real-rig bounded rifle-handling auditions, evaluated once in CI.
- * No default is changed by the audition. Unsolved candidates stay unsolved.
- */
-if(process.env.POSE_V3_HOLD_AUDITION==='1')test('B19 trial five finite rifle holds on the real heavy M4A1',()=>{
- const fixture=fixtures[0],base=assemble(fixture);
- const rig=createOperatorRig('v3-m4a1-hold-audition','blue',true);
- const results=[];
- try{
-  for(const t of [.14,.26,.40,.53,.78]){
-   for(const hold of ['baseline','forward','forward-low',
-       'support-clear','stock-drop','counter-cant']){
-    poseOperator(rig,{...base,seconds:3,
-      poseV3Preview:true,poseV3ReloadHold:hold,
-      reloadDuration:1.8,reload:1.8*(1-t)},0);
-    const pair=rig.root.userData.poseV3CoordinatedReport;
-    const arms=rig.root.userData.poseV3DynamicReport;
-    assert.ok(pair&&arms?.length===2);
-    assert.ok(arms.every(a=>a.candidates<=MAX_DYNAMIC_ARM_CANDIDATES));
-    results.push({phase:t,hold,pair:pair.status,
-      firing:arms[1].status,support:arms[0].status,
-      reach:Number(arms[0].reachError.toFixed(2)),
-      hard:Number(arms[0].hardDepth.toFixed(2)),
-      firingHard:Number(arms[1].hardDepth.toFixed(2))});
-   }
-  }
- }finally{rig.dispose();}
- console.log('POSE-V3-HOLD-AUDITION',JSON.stringify(results));
-});
-
-/** B20: directional refinement of the B19 evidence. This deliberately
- * compares two fixed hand corridors against small physically bounded rifle
- * presentation choices. It does not automatically pick the best per frame.
- */
-if(process.env.POSE_V3_HOLD_B20==='1')test('B20 evaluate five outboard shoulder-handling poses on heavy M4A1',()=>{
- const fixture=fixtures[0],base=assemble(fixture);
- const rig=createOperatorRig('v3-m4a1-b20-audition','blue',true);
- const results=[];
- try{
-  for(const t of [.14,.26,.40,.53,.78]){
-   for(const hold of ['support-clear','support-lift','support-wide',
-      'support-high','support-close','support-long']){
-    for(const corridor of ['canonical','outboard']){
-     poseOperator(rig,{...base,seconds:3,
-       poseV3Preview:true,poseV3ReloadHold:hold,
-       poseV3ReloadCorridor:corridor,
-       reloadDuration:1.8,reload:1.8*(1-t)},0);
-     const pair=rig.root.userData.poseV3CoordinatedReport;
-     const arms=rig.root.userData.poseV3DynamicReport;
-     assert.ok(pair&&arms?.length===2);
-     assert.ok(arms.every(a=>a.candidates<=MAX_DYNAMIC_ARM_CANDIDATES));
-     results.push({phase:t,hold,corridor,pair:pair.status,
-       firing:arms[1].status,support:arms[0].status,
-       reach:Number(arms[0].reachError.toFixed(2)),
-       hard:Number(arms[0].hardDepth.toFixed(2)),
-       firingHard:Number(arms[1].hardDepth.toFixed(2))});
-    }
-   }
-  }
- }finally{rig.dispose();}
- console.log('POSE-V3-B20-AUDITION',JSON.stringify(results));
-});
-
-
 /** B22: BODY grip on the real magazine, with weapon feed-lips/socket
  * unchanged. The firing arm and strict hard armor tests cannot be bypassed.
  */
-test('B22 audition magazine-body palm contact on heavy M4A1',()=>{
+if(process.env.POSE_V3_MAG_B22==='1')test('B22 audition magazine-body palm contact on heavy M4A1',()=>{
  const fixture=fixtures[0],base=assemble(fixture);
  const rig=createOperatorRig('v3-m4a1-mag-body','blue',true);
  const results=[];

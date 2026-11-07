@@ -136,3 +136,24 @@ test('B18 four independently posed operators cannot contaminate replay state',()
    'B18/four operators/'+i));
  }finally{for(const rig of rigs)rig.dispose();}
 });
+
+test('B23 experimental magazine-body grip reconstructs after replay seek',()=>{
+ for(const fixture of fixtures){
+  const state=base(fixture);
+  const palm=fixture.id==='ar-m4a1'?'upper-body':'mid-body';
+  const a=createOperatorRig('v3-grip-a-'+fixture.id,'blue',true);
+  const b=createOperatorRig('v3-grip-b-'+fixture.id,'blue',true);
+  try{
+   for(const t of [.30,.52,.78]){
+    const pose={...state,seconds:3+t,
+     poseV3MagazinePalm:palm,reload:1.8*(1-t)};
+    poseOperator(a,pose,0);poseOperator(b,pose,0);
+    equal(snapshot(a),snapshot(b),
+     fixture.id+'/'+palm+'/seek '+t);
+    const once=snapshot(a);poseOperator(a,pose,0);
+    equal(snapshot(a),once,
+     fixture.id+'/'+palm+'/repeat '+t);
+   }
+  }finally{a.dispose();b.dispose();}
+ }
+});
