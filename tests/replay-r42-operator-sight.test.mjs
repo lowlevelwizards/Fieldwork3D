@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newSession} from '../src/breach-game.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
-import {recordedObserverCanSee,recordedReplayKnowledge}
+import {recordedObserverCanSee,recordedReplayKnowledge,
+  replayActorDisclosed,replayOperatorSightAvailable}
   from '../src/breach-replay-visibility.ts';
 import {ReplayOperatorSightIndex}
   from '../src/breach-replay-operator-sight.ts';
@@ -67,4 +68,32 @@ test('gaps never produce invented loss/reacquisition transitions',()=>{
   assert.equal(new ReplayOperatorSightIndex([
     {t:0,knowledge:knowledge(null)}
   ]).hasEvidence,false);
+});
+
+test('disclosure policy preserves full/squad and fails closed in operator view',()=>{
+  const live=newSession(0),frame=snapshot(live);
+  const friendlies=live.operators.filter(x=>x.side==='blue');
+  const hostile=live.operators.find(x=>x.side==='red');
+  assert.ok(hostile&&friendlies.length>=2);
+  frame.knowledge={
+    visibleActorIds:[hostile.id],visibleCivilianIds:[],
+    discoveredBodyIds:[],operatorVisibleActorIds:{
+      [friendlies[0].id]:[],[friendlies[1].id]:[hostile.id]
+    }
+  };
+  const playback=newSession(0);applyReplayFrame(playback,frame);
+  const target=playback.operators.find(x=>x.id===hostile.id);
+  assert.equal(replayActorDisclosed(playback,target,{mode:'full'}),true);
+  assert.equal(replayActorDisclosed(playback,target,{mode:'squad'}),true);
+  assert.equal(replayActorDisclosed(playback,target,
+    {mode:'operator',observerId:friendlies[0].id}),false);
+  assert.equal(replayActorDisclosed(playback,target,
+    {mode:'operator',observerId:friendlies[1].id}),true);
+  assert.equal(replayOperatorSightAvailable(playback,friendlies[0].id),true);
+  const legacy=structuredClone(frame);delete legacy.knowledge.operatorVisibleActorIds;
+  applyReplayFrame(playback,legacy);
+  assert.equal(replayOperatorSightAvailable(playback,friendlies[0].id),false);
+  assert.equal(replayActorDisclosed(playback,target,
+    {mode:'operator',observerId:friendlies[1].id}),false);
+  assert.equal(replayActorDisclosed(playback,target,{mode:'squad'}),true);
 });
