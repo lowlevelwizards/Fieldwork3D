@@ -20,6 +20,8 @@ import {enablePersonalGroundCapture,drainPersonalGround,
   type PersonalGroundBatch} from './breach-replay-personal-ground.ts';
 import {ReplayDoorObservationRecorder}
   from './breach-replay-door-knowledge.ts';
+import {ReplayWindowObservationRecorder}
+  from './breach-replay-window-knowledge.ts';
 import {shareUnchangedReplayFrame,type ReplaySharingStats}
   from './breach-replay-sharing.ts';
 import type {TraverseOpportunity} from './breach-mantle.ts';
@@ -182,6 +184,8 @@ export class MissionRecorder{
   readonly personalGround:PersonalGroundBatch[]=[];
   /** Individually observed door state changes, never shared live door truth. */
   readonly doorKnowledge=new ReplayDoorObservationRecorder();
+  /** Sparse seen-window states, never every window's live/current snapshot. */
+  readonly windowKnowledge=new ReplayWindowObservationRecorder();
   private lastEventId=0;
   private lastExecutionEventId=0;
   private readonly discoveredBodies=new Set<string>();
@@ -221,6 +225,8 @@ export class MissionRecorder{
       }
       return;
     }
+    // Do not record future observations after the film has hit its cap.
+    this.windowKnowledge.capture(s);
     this.personalGround.push(...drainPersonalGround(s));
     // This runs at 60Hz even though the outcome film is only 20Hz.
     // Recording step starts here avoids tying animation to render FPS.

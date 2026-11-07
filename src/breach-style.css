@@ -1596,6 +1596,16 @@ html,body{font-family:var(--fw-font-menu)}
   .replay-incident-focus{grid-template-columns:1fr;gap:5px}
   .replay-incident-actions button{flex:1}
 }
+.replay-bodycam-status{
+  position:fixed;top:calc(env(safe-area-inset-top,0px) + 59px);
+  left:50%;transform:translateX(-50%);z-index:41;
+  max-width:min(86vw,400px);padding:5px 9px;
+  border-radius:5px;border:1px solid #947f5e;
+  background:rgba(15,25,22,.88);color:#e9d4a8;
+  font:700 10px/1.3 var(--ui-font);letter-spacing:.025em;
+  text-align:center;pointer-events:none
+}
+.replay-bodycam-status[hidden]{display:none!important}
 .replay-contact-note{margin:4px 3px 0;font:600 10px/1.35 var(--ui-font);
   letter-spacing:.015em;color:#d5bc8f;max-width:100%}
 .replay-contact-note[hidden]{display:none!important}

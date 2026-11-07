@@ -1,0 +1,54 @@
+name: Replay R4.3b — Player Bodycam UI Mobile Smoke
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'src/breach-main.ts'
+      - 'src/breach-style.css'
+      - 'src/breach-replay-bodycam-controls.ts'
+      - 'src/breach-replay-bodycam.ts'
+      - 'src/breach-replay-personal-visibility.ts'
+      - 'src/breach-replay-window-knowledge.ts'
+      - 'src/breach-replay-video.ts'
+      - 'src/breach-replay-archive.ts'
+      - 'src/breach-replay.ts'
+      - 'src/breach-3d.ts'
+      - 'scripts/smoke-replay-r43b-video.mjs'
+      - 'scripts/smoke-replay-r43b-bodycam-ui.mjs'
+      - 'scripts/smoke-replay-r43b-moving-scene.mjs'
+      - 'scripts/smoke-replay-r43b-indoor-entry.mjs'
+      - '.github/workflows/replay-r43b-bodycam-ui.yml'
+permissions:
+  contents: read
+concurrency:
+  group: replay-r43b-ui-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  bodycam-ui:
+    if: ${{ startsWith(github.head_ref, 'feature/replay-r43b-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Verify Bodycam toggle, operator switching, and return to tactical
+        run: node scripts/smoke-replay-r43b-bodycam-ui.mjs
+      - name: Verify encoded Bodycam video disclosure pixels
+        run: node scripts/smoke-replay-r43b-video.mjs
+      - name: Verify real operator movement, Bodycam seek and occlusion
+        run: node scripts/smoke-replay-r43b-moving-scene.mjs
+      - name: Verify four-operator indoor entry from Bodycam
+        run: node scripts/smoke-replay-r43b-indoor-entry.mjs
+      - name: Retain player-facing Bodycam screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: replay-r43b-bodycam-ui
+          path: artifacts/replay-r43b-bodycam/
+          if-no-files-found: ignore
+          retention-days: 7

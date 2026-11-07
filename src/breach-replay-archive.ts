@@ -12,6 +12,7 @@ import type {ReplayMotionArchiveV1} from './breach-replay-motion.ts';
 import type {ReplayBookmark} from './breach-replay-chapters.ts';
 import type {PersonalGroundBatch} from './breach-replay-personal-ground.ts';
 import type {ReplayDoorObservation} from './breach-replay-door-knowledge.ts';
+import type {ReplayWindowObservation} from './breach-replay-window-knowledge.ts';
 
 export type ReplayArchiveV1={
   format:'fieldwork-breach-replay';
@@ -29,6 +30,8 @@ export type ReplayArchiveV1={
   personalGround?:PersonalGroundBatch[];
   /** Per-observer door state transitions, absent in older replays. */
   personalDoors?:ReplayDoorObservation[];
+  /** Optional personally observed window changes; missing = unverified. */
+  personalWindows?:ReplayWindowObservation[];
   completeness:{complete:boolean;truncatedAt:number|null;reason:string|null};
 };
 const allowed=(id:string)=>id.length>0&&id.length<=128&&/^[\w-]+$/.test(id);
@@ -95,6 +98,22 @@ function validPersonalDoors(input:unknown,maxTime:number):boolean{
   }
   return true;
 }
+function validPersonalWindows(input:unknown,maxTime:number):boolean{
+  if(input===undefined)return true;
+  if(!Array.isArray(input)||input.length>100000)return false;
+  let last=-Infinity;
+  for(const raw of input){
+    if(!raw||typeof raw!=='object')return false;
+    const e=raw as Partial<ReplayWindowObservation>;
+    if(!Number.isFinite(e.at)||e.at!<last||e.at!<0||
+      e.at!>maxTime+.15||typeof e.observerId!=='string'||
+      typeof e.windowId!=='string'||!allowed(e.observerId)||
+      !allowed(e.windowId)||typeof e.open!=='boolean'||
+      typeof e.shattered!=='boolean')return false;
+    last=e.at!;
+  }
+  return true;
+}
 export function replayArchiveIsValid(input:unknown):input is ReplayArchiveV1{
   if(!input||typeof input!=='object')return false;
   const a=input as Partial<ReplayArchiveV1>;
@@ -117,7 +136,8 @@ export function replayArchiveIsValid(input:unknown):input is ReplayArchiveV1{
     previous=f.t;
   }
   return validPersonalGround(a.personalGround,a.frames.at(-1)!.t)&&
-    validPersonalDoors(a.personalDoors,a.frames.at(-1)!.t);
+    validPersonalDoors(a.personalDoors,a.frames.at(-1)!.t)&&
+    validPersonalWindows(a.personalWindows,a.frames.at(-1)!.t);
 }
 export function captureReplayArchive(
   rec:MissionRecorder,id:string,createdAt:number
@@ -137,6 +157,7 @@ export function captureReplayArchive(
     motion:rec.motion.toArchive(),
     personalGround:rec.personalGround,
     personalDoors:rec.doorKnowledge.observations,
+    personalWindows:rec.windowKnowledge.observations,
     completeness:{...rec.completeness}
   };
   // One clone retains structural sharing in frequent world samples.
@@ -156,6 +177,8 @@ export function restoreReplayArchive(input:unknown):MissionRecorder{
   if(data.personalGround)rec.personalGround.push(...data.personalGround);
   if(data.personalDoors)
     rec.doorKnowledge.observations.push(...data.personalDoors);
+  if(data.personalWindows)
+    rec.windowKnowledge.observations.push(...data.personalWindows);
   Object.assign(rec.completeness,data.completeness);
   return rec;
 }

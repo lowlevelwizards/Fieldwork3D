@@ -102,8 +102,8 @@ import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 import {buildReplayExecutionInsights} from './breach-replay-debrief.ts';
 import {indexReplayIncidents,featuredReplayIncidents,type ReplayIncident}
   from './breach-replay-incidents.ts';
-import {featuredReplaySquadEntries,type ReplaySquadEntryReview}
-  from './breach-replay-squad-entry.ts';
+import {featuredReplaySquadEntries,measureReplaySquadDoorEntry,
+  type ReplaySquadEntryReview} from './breach-replay-squad-entry.ts';
 import {incidentPlaybackWindow,advanceIncidentPlayback}
   from './breach-replay-incident-playback.ts';
 import {makeReplayLoop,advanceReplayLoop,type ReplayLoopRange}
@@ -113,6 +113,11 @@ import {replayActorDisclosed,replayCivilianDisclosed,type ReplayDisclosure}
 import {operatorContactEventKnown,operatorContactAvailable}
   from './breach-replay-contact-lens.ts';
 import {ReplayOperatorSightIndex} from './breach-replay-operator-sight.ts';
+import {ReplayWindowKnowledgeHistory}
+  from './breach-replay-window-knowledge.ts';
+import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
+  bodycamDisclosureLabel,replayAudioListener,replayBodycamPan}
+  from './breach-replay-bodycam-controls.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
@@ -332,6 +337,9 @@ const ui={
   replaySight:el<HTMLButtonElement>('replaySight'),
   replayContactLens:el<HTMLButtonElement>('replayContactLens'),
   replayGroundLens:el<HTMLButtonElement>('replayGroundLens'),
+  replayBodycam:el<HTMLButtonElement>('replayBodycam'),
+  replayBodycamMount:el<HTMLButtonElement>('replayBodycamMount'),
+  replayBodycamStatus:el<HTMLElement>('replayBodycamStatus'),
   replayContactNote:el<HTMLElement>('replayContactNote'),
   replayObserverTransitions:el<HTMLElement>('replayObserverTransitions'),
   replayView:el<HTMLButtonElement>('replayView'),
@@ -799,9 +807,43 @@ let replayContactObserverId:string|null=null;
 let replayHasContactEvidence=false;
 let replayOperatorSightIndex:ReplayOperatorSightIndex|null=null;
 let replayDoorHistory:ReplayDoorKnowledgeHistory|null=null;
+let replayWindowHistory:ReplayWindowKnowledgeHistory|null=null;
 /** Optional recorded floor-discovery overlay, not a full actor POV. */
 let replayPersonalGroundHistory:PersonalGroundHistory|null=null;
 let replayGroundLensOn=false;
+let replayBodycamOn=false;
+let replayBodycamMount:'chest'|'helmet'='chest';
+let replayBodycamObservers:string[]=[];
+let replayBodycamGroundObservers=new Set<string>();
+function stopReplayBodycam():void{
+  replayBodycamOn=false;
+  stage?.setReplayBodycam(null);
+  ui.replayBodycamStatus.hidden=true;
+}
+function applyReplayBodycamMount():void{
+  if(!replayBodycamOn||!stage||!replayContactObserverId){
+    stopReplayBodycam();return;
+  }
+  stage.setReplayBodycam({actorId:replayContactObserverId,
+    mount:replayBodycamMount,stabilization:'balanced',fov:95});
+}
+function startReplayBodycam():boolean{
+  if(!replaying||!stage||!replayBodycamObservers.length)return false;
+  const next=replayContactObserverId&&
+    replayBodycamObservers.includes(replayContactObserverId)?
+    replayContactObserverId:replayBodycamObservers[0];
+  if(!next)return false;
+  replayContactObserverId=next;
+  replayBodycamOn=true;
+  replayOmniscient=false;replayGroundLensOn=false;
+  replayCameraMode='free';replayFollow=false;
+  selected=next;replayFollowId=next;
+  closeReplayShotInspector();
+  cameraMode('iso');
+  applyReplayBodycamMount();
+  fogStamp=-1;
+  return true;
+}
 let replayGroundCacheObserver:string|null=null,replayGroundCacheCount=-1;
 let replayGroundCacheSite:Session['site']|null=null;
 function replayDisclosure():ReplayDisclosure{
@@ -1525,7 +1567,10 @@ function playApprovedCue(id:string,level=1,pan=0,replayCue=false,
  if(!audio)return false;
  // Pure room presentation. Source geometry is read once per emitted event.
  // AI hearing and replay evidence are deliberately unaffected.
- const listener=uid(selected)?.p;
+ const listener=replayCue&&replayBodycamOn?
+  (replayContactObserverId?
+    replayAudioListener(team(state),selected,replayContactObserverId)?.p:
+    undefined):uid(selected)?.p;
  const acoustics=roomAudioEnabled&&sourcePosition?
   acousticResponseForCue(state.site??undefined,sourcePosition,id,
    listener,state.doors,WALLS):null;
@@ -1661,6 +1706,7 @@ function fitZoom(next:number,x=cssW/2,y=cssH/2){
   updateContext();
 }
 function cameraMode(mode:ViewMode){
+  if(replaying&&replayBodycamOn&&mode!=='iso')stopReplayBodycam();
   viewMode=stage?mode:'plan2d';
   if(replaying&&viewMode!=='plan2d')replayGroundLensOn=false;
   if(stage){stage.setMode(viewMode);stage.updateCamera(1);}
@@ -4022,7 +4068,12 @@ function playReplayAudioBetween(start:number,end:number):void{
   if(!replaying||!replaySoundEnabled||!replaySoundTimeline||
     !audio||audio.state!=='running'||end<=start)return;
   if(replayRate>2)return; // Rapid scan is deliberately quiet.
-  const listener=team(state).find(a=>a.id===selected)?.p;
+  // First-person audio follows the recorded operator, not a teammate.
+  const listenerActor=replayBodycamOn&&!replayContactObserverId?null:
+    replayAudioListener(team(state),selected,
+      replayBodycamOn?replayContactObserverId:null);
+  if(replayBodycamOn&&!listenerActor)return;
+  const listener=listenerActor?.p;
   const rateScale=Math.max(.5,Math.min(2,1/replayRate));
   for(const event of replaySoundTimeline.between(start,end,7)){
     const p=event.p;
@@ -4030,7 +4081,9 @@ function playReplayAudioBetween(start:number,end:number):void{
       event.kind==='gunshot'?WEAPONS[event.weapon??'carbine'].noise:150,
       state.doors,WALLS):.35;
     if(level<.025)continue;
-    const pan=p&&listener?(p.x-listener.x)/210:0;
+    const pan=p&&listener?
+      (replayBodycamOn&&listenerActor?
+        replayBodycamPan(p,listenerActor):(p.x-listener.x)/210):0;
     if(event.kind==='gunshot'){
       const cue=weaponAudioCue(event.weapon??'carbine',event.suppressed);
       if(!playApprovedCue('weapons.'+(event.weapon??'carbine')+
@@ -4062,7 +4115,10 @@ function playReplayAudioBetween(start:number,end:number):void{
     const level=listener?heardIntensity(touch.position,listener,
       36,state.doors,WALLS):.2;
     if(level<.025)continue;
-    const pan=listener?(touch.position.x-listener.x)/210:0;
+    const pan=listener?
+      (replayBodycamOn&&listenerActor?
+        replayBodycamPan(touch.position,listenerActor):
+        (touch.position.x-listener.x)/210):0;
     if(!playApprovedCue('movement.boot',level*.20,pan,true,1/rateScale,
        touch.position,hashString(touch.id+'|'+touch.foot+'|'+touch.at.toFixed(3))))
       playTone(touch.foot===0?62:67,.055*rateScale,true,
@@ -4487,23 +4543,38 @@ function updateReplayHud(){
     'Only confirmed enemy contacts and own activity; team map remains shared':
     'This recording has no individual operator contact evidence';
   ui.replayContactNote.hidden=!replayContactObserverId;
-  ui.replayContactNote.textContent=replayGroundLensOn?
+  ui.replayContactNote.textContent=replayBodycamOn?
+    'RECONSTRUCTED FIRST PERSON · PERSONAL CONTACTS · STRUCTURAL MAP FROM SHARED RECORDING.':
+    replayGroundLensOn?
     'GOLD CELLS: INDIVIDUALLY OBSERVED FLOOR · WORLD OBJECTS STILL SQUAD STATE · 2D ONLY.':
     'PERSONAL CONTACTS / LAST-SEEN DOORS · MAP/PROPS REMAIN SQUAD KNOWLEDGE. SHOT PATHS HIDDEN.';
   ui.replayGroundLens.disabled=!replayContactObserverId||
-    !replayPersonalGroundHistory;
+    !replayPersonalGroundHistory||replayBodycamOn;
+  ui.replayBodycam.disabled=!stage||!replaying||
+    replayBodycamObservers.length===0;
+  ui.replayBodycam.textContent=replayBodycamOn?'BODYCAM ON':'BODYCAM OFF';
+  ui.replayBodycam.setAttribute('aria-pressed',String(replayBodycamOn));
+  ui.replayBodycamMount.disabled=!replayBodycamOn;
+  ui.replayBodycamMount.textContent='MOUNT '+replayBodycamMount.toUpperCase();
+  ui.replayBodycamStatus.hidden=!replayBodycamOn;
+  if(replayBodycamOn&&replayContactObserverId)
+    ui.replayBodycamStatus.textContent=bodycamDisclosureLabel(
+      replayContactObserverId,replayBodycamMount,
+      replayBodycamGroundObservers.has(replayContactObserverId));
   ui.replayGroundLens.textContent=replayGroundLensOn?
     'GROUND: PERSONAL':'GROUND: OFF';
   ui.replayGroundLens.setAttribute('aria-pressed',
     String(replayGroundLensOn));
   ui.replayView.textContent=viewMode.toUpperCase();
+  ui.replayView.disabled=replayBodycamOn;
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
   ui.replaySquad.textContent=replayCameraMode==='squad'?'SQUAD ON':'FOLLOW SQUAD';
   ui.replayDirector.textContent=replayCameraMode==='director'?'DIRECTOR ON':'DIRECTOR OFF';
   ui.replaySquad.setAttribute('aria-pressed',String(replayCameraMode==='squad'));
   ui.replayDirector.setAttribute('aria-pressed',String(replayCameraMode==='director'));
-  ui.replaySquad.disabled=viewMode==='plan2d'||!stage;
-  ui.replayDirector.disabled=viewMode==='plan2d'||!stage;
+  ui.replaySquad.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
+  ui.replayDirector.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
+  ui.replayFollow.disabled=replayBodycamOn;
   ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
   ui.replayPlans.textContent='PLANS '+replayPlanScope.toUpperCase();
   ui.replayPlanVersion.textContent='PLAN '+replayPlanVersion.toUpperCase();
@@ -4544,6 +4615,8 @@ function enterReplay(){
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayContactObserverId=null;
+  replayBodycamOn=false;replayBodycamMount='chest';
+  replayBodycamObservers=[];replayBodycamGroundObservers.clear();
   replayHasContactEvidence=recorder.frames.some(f=>
     !!f.knowledge?.operatorVisibleActorIds&&
     Object.keys(f.knowledge.operatorVisibleActorIds).length>0);
@@ -4551,6 +4624,8 @@ function enterReplay(){
     new ReplayOperatorSightIndex(recorder.frames):null;
   replayDoorHistory=recorder.doorKnowledge.observations.length?
     new ReplayDoorKnowledgeHistory(recorder.doorKnowledge.observations):null;
+  replayWindowHistory=recorder.windowKnowledge.observations.length?
+    new ReplayWindowKnowledgeHistory(recorder.windowKnowledge.observations):null;
   replayPersonalGroundHistory=recorder.personalGround.length?
     new PersonalGroundHistory(recorder.personalGround):null;
   replayGroundLensOn=false;replayGroundCacheObserver=null;
@@ -4583,6 +4658,11 @@ function enterReplay(){
   applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
   applyReplayActorIdentity(state,recorder.manifest);
+  replayBodycamObservers=bodycamEligibleObserverIds(
+    recorder.frames.find(f=>!!f.knowledge?.operatorVisibleActorIds)?.knowledge,
+    team(state).map(a=>a.id));
+  replayBodycamGroundObservers=new Set(replayBodycamObservers.filter(id=>
+    bodycamHasPersonalGround(recorder.personalGround,id)));
   stage?.applySite(state.site??null);
   stage?.setReplayBodycam(null);
   // One-time historical index; only recorded friendly coordinates and
@@ -4599,7 +4679,8 @@ function enterReplay(){
 function exitReplay(){
   if(!replaying)return;
   if(replayQuickVideo.active)replayQuickVideo.stop();
-  stage?.setReplayBodycam(null);
+  stopReplayBodycam();replayBodycamObservers=[];
+  replayBodycamGroundObservers.clear();
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   replayChapters=[];replayBookmarks=[];
@@ -4608,7 +4689,7 @@ function exitReplay(){
   renderReplaySquadEntries();
   replayContactObserverId=null;replayHasContactEvidence=false;
   replayOperatorSightIndex=null;
-  replayDoorHistory=null;
+  replayDoorHistory=null;replayWindowHistory=null;
   replayPersonalGroundHistory=null;replayGroundLensOn=false;
   replayGroundCacheObserver=null;replayGroundCacheCount=-1;
   replayGroundCacheSite=null;
@@ -4957,6 +5038,7 @@ ui.replaySeek.addEventListener('input',()=>{
   seekReplay(Number(ui.replaySeek.value)/60);
 });
 ui.replaySight.addEventListener('click',()=>{
+  stopReplayBodycam();
   replayGroundLensOn=false;
   replayContactObserverId=null;
   replayOmniscient=!replayOmniscient;fogStamp=-1;
@@ -4974,6 +5056,12 @@ if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
     seek:(time:number)=>boolean;
     stop:()=>void;
     diagnostic:()=>ReturnType<TacticalScene3D['inspectReplayBodycamQa']>|null;
+    /** Read-only candidate taps; browser must author with real pointer input. */
+    routeCandidates:()=>Array<{world:Pt;screen:Pt}>;
+    planned:()=>{actorId:string;path:Pt[]}|null;
+    motionSamples:()=>Array<{at:number;p:Pt;heading:number}>;
+    prepareIndoorEntry:()=>boolean;
+    indoorEntryReview:()=>ReplaySquadEntryReview|null;
   };
   const qa:BodycamQa={
     activate(mount){
@@ -5008,7 +5096,82 @@ if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
       fogStamp=-1;
       if(replaying)updateReplayHud();
     },
-    diagnostic:()=>stage?.inspectReplayBodycamQa()??null
+    diagnostic:()=>stage?.inspectReplayBodycamQa()??null,
+    routeCandidates(){
+      if(replaying||!stage||state.phase!=='planning')return [];
+      const actor=team(state)[0];if(!actor)return [];
+      const result:Array<{world:Pt;screen:Pt}>=[];
+      for(const radius of [55,78,105,42])
+        for(const bearing of [0,-.6,.6,-1.15,1.15,2.1,-2.1]){
+          const angle=actor.heading+bearing;
+          const world={x:actor.p.x+Math.cos(angle)*radius,
+            y:actor.p.y+Math.sin(angle)*radius};
+          if(!intelPassable(world,state.intel,SQUEEZE_RADIUS))continue;
+          const screen=worldToScreen(world,0);
+          if(screen.x<35||screen.x>cssW-35||
+             screen.y<85||screen.y>cssH-200)continue;
+          if(team(state).some(a=>distance(
+             worldToScreen(a.p,24),screen)<38))continue;
+          result.push({world,screen});
+        }
+      return result;
+    },
+    planned(){
+      const actor=team(state)[0];
+      return actor?{actorId:actor.id,
+        path:actor.plan.filter(n=>n.kind==='move').map(n=>({...n.p}))}:null;
+    },
+    motionSamples(){
+      const id=team(state)[0]?.id;
+      if(!id)return [];
+      return recorder.frames.flatMap(f=>{
+        const actor=f.actors.find(a=>a.id===id);
+        return actor?[{at:f.t,p:{...actor.p},heading:actor.heading}]:[];
+      });
+    },
+    prepareIndoorEntry(){
+      // Deterministic two-room indoor training fixture: two enclosed roofs,
+      // one physical hinged doorway. This still uses the real session motor,
+      // authored MOVE orders and normal MissionRecorder; no replay synthesis.
+      if(replaying||state.phase!=='planning')return false;
+      const at=(x:number,y:number):Pt=>({x,y});
+      const site:Site={
+        seed:731,name:'BODYCAM INDOOR ENTRY / QA',layout:'corridor',
+        training:true,archetype:'office',roomCount:2,
+        rooms:[
+          {id:'entry-room',x:240,y:110,w:140,h:150,
+            kind:'room',tone:.42,purpose:'lobby'},
+          {id:'inner-room',x:240,y:260,w:140,h:180,
+            kind:'room',tone:.39,purpose:'office'}
+        ],
+        walls:[
+          {a:at(240,110),b:at(380,110)},
+          {a:at(240,110),b:at(240,440)},
+          {a:at(380,110),b:at(380,440)},
+          {a:at(240,440),b:at(380,440)},
+          {a:at(240,260),b:at(290,260)},
+          {a:at(332,260),b:at(380,260)}
+        ],
+        doors:[{id:'ENTRY',a:at(290,260),b:at(332,260),
+          kind:'hinged',hinge:'a',swing:-1,open:true,openedAt:0}],
+        cover:[],windows:[],entrance:at(311,200),
+        spawn:[at(300,200),at(308,173),at(316,146),at(325,119)],
+        enemies:[],objective:at(320,400),extract:at(325,420),
+        bounds:{minX:0,minY:0,maxX:640,maxY:500}
+      };
+      reset(0,731,'hold',site);
+      const crew=team(state).slice(0,4);
+      if(crew.length!==4)return false;
+      const goals=[at(300,350),at(312,365),at(325,380),at(339,394)];
+      const accepted=crew.every((actor,i)=>
+        planMove(state,actor.id,goals[i]));
+      updateHud();return accepted;
+    },
+    indoorEntryReview(){
+      if(recorder.frames.length<2)return null;
+      return measureReplaySquadDoorEntry(recorder.frames,'ENTRY',
+        team(state).map(a=>a.id),0,recorder.duration);
+    }
   };
   (window as typeof window&{__fieldworkBodycamQa?:BodycamQa})
     .__fieldworkBodycamQa=qa;
@@ -5023,7 +5186,13 @@ ui.replayContactLens.addEventListener('click',()=>{
   const at=replayContactObserverId===null?-1:
     ids.indexOf(replayContactObserverId);
   replayContactObserverId=at>=ids.length-1?null:ids[at+1];
-  if(!replayContactObserverId)replayGroundLensOn=false;
+  if(!replayContactObserverId){
+    replayGroundLensOn=false;stopReplayBodycam();
+  }else if(replayBodycamOn){
+    if(replayBodycamObservers.includes(replayContactObserverId))
+      applyReplayBodycamMount();
+    else stopReplayBodycam();
+  }
   if(replayContactObserverId){
     replayOmniscient=false;
     selected=replayContactObserverId;
@@ -5036,6 +5205,7 @@ ui.replayContactLens.addEventListener('click',()=>{
   refreshReplayShotInspector();updateReplayHud();
 });
 ui.replayGroundLens.addEventListener('click',()=>{
+  if(replayBodycamOn)stopReplayBodycam();
   if(!replayContactObserverId||!replayPersonalGroundHistory)return;
   replayGroundLensOn=!replayGroundLensOn;
   if(replayGroundLensOn&&viewMode!=='plan2d')cameraMode('plan2d');
@@ -5043,7 +5213,20 @@ ui.replayGroundLens.addEventListener('click',()=>{
   replayGroundCacheCount=-1;
   updateReplayHud();
 });
+ui.replayBodycam.addEventListener('click',()=>{
+  if(replayBodycamOn)stopReplayBodycam();
+  else if(!startReplayBodycam())return;
+  rebuildReplayEventIndex();
+  renderReplayEventMarkers();renderReplayEventFeed();
+  refreshReplayShotInspector();updateReplayHud();
+});
+ui.replayBodycamMount.addEventListener('click',()=>{
+  if(!replayBodycamOn)return;
+  replayBodycamMount=replayBodycamMount==='chest'?'helmet':'chest';
+  applyReplayBodycamMount();updateReplayHud();
+});
 ui.replayView.addEventListener('click',()=>{
+  if(replayBodycamOn)stopReplayBodycam();
   cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
   updateReplayHud();
 });
@@ -5055,6 +5238,7 @@ const jumpReplayEvent=(forward:boolean)=>{
 ui.replayPrevEvent.addEventListener('click',()=>jumpReplayEvent(false));
 ui.replayNextEvent.addEventListener('click',()=>jumpReplayEvent(true));
 ui.replayFollow.addEventListener('click',()=>{
+  if(replayBodycamOn)stopReplayBodycam();
   if(replayFollow){
     const i=squadIds.indexOf(replayFollowId as typeof squadIds[number]);
     if(i===squadIds.length-1)replayFollow=false;
@@ -5064,10 +5248,12 @@ ui.replayFollow.addEventListener('click',()=>{
   advanceReplayCamera(0,true);updateReplayHud();
 });
 ui.replaySquad.addEventListener('click',()=>{
+  if(replayBodycamOn)stopReplayBodycam();
   replayCameraMode=replayCameraMode==='squad'?'free':'squad';
   replayFollow=false;advanceReplayCamera(0,true);updateReplayHud();
 });
 ui.replayDirector.addEventListener('click',()=>{
+  if(replayBodycamOn)stopReplayBodycam();
   replayCameraMode=replayCameraMode==='director'?'free':'director';
   replayFollow=false;advanceReplayCamera(0,true);updateReplayHud();
 });
@@ -6506,12 +6692,15 @@ function tick(now:number){
       replaying?replayDoorHistory:null,
       replaying&&replayContactObserverId?
         replayPersonalGroundHistory?.at(replayTime,replayContactObserverId)??null:
-        null);
+        null,
+      replaying?replayWindowHistory:null);
   const overlayBegin=perfOverlay?performance.now():0;
   render();
   if(replaying&&replayQuickVideo.active){
     replayQuickVideo.drawFrame(
-      stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayTime);
+      stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayTime,
+      replayBodycamOn&&replayContactObserverId?
+        {observerId:replayContactObserverId,mount:replayBodycamMount}:null);
     if(replayTime>=recorder.duration)replayQuickVideo.finishAtEnd();
     else if(!replayPlaying)replayQuickVideo.stop();
   }
