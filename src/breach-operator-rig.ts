@@ -43,6 +43,7 @@ import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
 import {chooseV3SupportGrip} from './breach-pose-v3-support-grip.ts';
 import {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
+import {v3ScapulaOffset,type V3ScapulaPreset} from './breach-pose-v3-scapula.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
@@ -99,6 +100,8 @@ export type OperatorPose={
   poseV3ReloadCorridor?:V3ReloadCorridorProfile;
   /** B19 fixed-profile offline handling audition; only read in V3 Lab. */
   poseV3ReloadHold?:V3ReloadHold;
+  /** B21 small support-shoulder motion audition, V3 Lab preview only. */
+  poseV3Scapula?:V3ScapulaPreset;
   x:number;z:number;heading:number;velocity:number;seconds:number;
   stride:number;posture:'stand'|'crouch';injury:number;weapon:WeaponId;
   /** Authoritative travel direction; optional until motion sampling is wired. */
@@ -1386,6 +1389,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   let coordinatedDynamic:ReturnType<typeof solveV3CoordinatedPose>|null=null;
   let v3ReloadClearanceFront:number|undefined;
   let v3LeanParentX=0,v3LeanParentY=0,v3LeanParentZ=0;
+  let v3AcceptedScapula:THREE.Vector3|null=null;
   const v3ReloadActive=p.reload>0&&p.reloadDuration>0;
   const v3ReloadProgress=v3ReloadActive?
     clamp(1-p.reload/p.reloadDuration,0,1):0;
@@ -1423,9 +1427,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       primaryX:data.primaryX,clearanceFront:envelope.front,
       magazineSocket:activeReloadSocket?.magazinePart?
         activeReloadSocket.magazine:undefined}).target:undefined;
+    const scapula=p.poseV3Preview&&v3ReloadActive&&p.poseV3Scapula?
+      v3ScapulaOffset(p.poseV3Scapula):null;
+    const supportShoulder=shoulderFor(0);
+    if(scapula)supportShoulder.add(scapula);
     const result=solveV3CoordinatedPose({
       fit,weapon:p.weapon,configuration:coupledConfig,
-      shoulders:[shoulderFor(0),shoulderFor(1)],
+      shoulders:[supportShoulder,shoulderFor(1)],
       chestRotation:r.chest.rotation,
       envelope,
       mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
@@ -1441,6 +1449,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     };
     if(result.status==='clear'&&result.arms){
       coordinatedDynamic=result;
+      v3AcceptedScapula=scapula;
       fit=result.fit;
       // No per-frame scratch allocation on the main render hot path.
       const offset=new THREE.Vector3(result.leanX,0,0)
@@ -1676,6 +1685,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulder=shoulderFor(i);
+    // Only a physically accepted pair owns the changed attachment; any
+    // unresolved audition keeps the original anatomical shoulder socket.
+    if(i===0&&v3AcceptedScapula)shoulder.add(v3AcceptedScapula);
     const grip=i===0?leftGrip:rightGrip;
     let desired:THREE.Vector3;
     if(p.down&&(i===0&&releaseLeft||i===1&&releaseRight)){
