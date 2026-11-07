@@ -105,7 +105,11 @@ import {incidentPlaybackWindow,advanceIncidentPlayback}
   from './breach-replay-incident-playback.ts';
 import {makeReplayLoop,advanceReplayLoop,type ReplayLoopRange}
   from './breach-replay-loop.ts';
-import {replayActorVisible} from './breach-replay-visibility.ts';
+import {replayActorDisclosed,type ReplayDisclosure}
+  from './breach-replay-visibility.ts';
+import {operatorContactEventKnown,operatorContactAvailable}
+  from './breach-replay-contact-lens.ts';
+import {ReplayOperatorSightIndex} from './breach-replay-operator-sight.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
@@ -317,6 +321,9 @@ const ui={
   replaySeek:el<HTMLInputElement>('replaySeek'),
   replayMarks:el<HTMLElement>('replayMarks'),
   replaySight:el<HTMLButtonElement>('replaySight'),
+  replayContactLens:el<HTMLButtonElement>('replayContactLens'),
+  replayContactNote:el<HTMLElement>('replayContactNote'),
+  replayObserverTransitions:el<HTMLElement>('replayObserverTransitions'),
   replayView:el<HTMLButtonElement>('replayView'),
   replayExit:el<HTMLButtonElement>('replayExit'),
   replayPrevEvent:el<HTMLButtonElement>('replayPrevEvent'),
@@ -773,6 +780,17 @@ let replayLibraryBusy=false;
 let replayLibraryRenderGeneration=0;
 let replayPresentation:ReplayPresentation|null=null;
 let replayOmniscient=true,finishedSession:Session|null=null;
+/** Contact lens filters recorded hostile models/events only; environment is
+ * still the shared team map until individual ground/door intel is recorded.
+ */
+let replayContactObserverId:string|null=null;
+let replayHasContactEvidence=false;
+let replayOperatorSightIndex:ReplayOperatorSightIndex|null=null;
+function replayDisclosure():ReplayDisclosure{
+  return replayContactObserverId?
+    {mode:'operator',observerId:replayContactObserverId}:
+    replayOmniscient?{mode:'full'}:{mode:'squad'};
+}
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
 let replayCameraMode:ReplayCameraMode='free';
 let replayDirectorCues:ReplayDirectorCue[]=[];
@@ -3150,6 +3168,9 @@ function paths(){
 }
 /** Bounded forensic overlay; complete shot evidence stays in recorder. */
 function historicalShotVisible(shot:RecordedShot):boolean{
+  // Shot endpoints and impacts reveal more than the confirmed observer's
+  // recorded contacts. Keep forensic trajectories in Team/Full modes only.
+  if(replayContactObserverId)return false;
   if(replayOmniscient||shot.side==='blue')return true;
   const frame=recorder.at(shot.recordedAt);
   return !!frame?.knowledge?.visibleActorIds.includes(shot.shooterId);
@@ -3426,7 +3447,7 @@ function renderProjectedPlans(){
   }
   // Screen-space icons stay readable regardless of ortho pitch or zoom.
   for(const hostile of enemies(state)){
-    if(replaying?!replayActorVisible(state,hostile,replayOmniscient):
+    if(replaying?!replayActorDisclosed(state,hostile,replayDisclosure()):
       !liveVisibility(state,hostile.p))continue;
     const ground=worldToScreen(hostile.p,1);
     if(replaying&&replayNameTags){
@@ -3491,6 +3512,7 @@ function renderProjectedPlans(){
   // by Three.js in 3D modes so depth testing never draws them over actors.
   // Unknown enemies stay unrendered; only grounded last-known reports show.
   for(const hostile of enemies(state)){
+    if(replaying&&replayContactObserverId)continue;
     if(isSeen(state,hostile)||hostile.health<=0)continue;
     const memory=lastKnown(state,hostile.id);
     if(!memory||state.seconds-memory.at>25)continue;
@@ -3587,11 +3609,11 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
 }
 function sprite(a:TeamActor){
   if(a.side==='red'&&!(replaying&&replayOmniscient)){
-    const visible=replaying?replayActorVisible(state,a,false):
+    const visible=replaying?replayActorDisclosed(state,a,replayDisclosure()):
       a.health>0?isSeen(state,a):liveVisibility(state,a.p);
     if(!visible){
       const memory=lastKnown(state,a.id);
-      if(memory&&a.health>0&&state.seconds-memory.at<25){
+      if(!replayContactObserverId&&memory&&a.health>0&&state.seconds-memory.at<25){
         draw.fillStyle=memory.status==='heard'?'#e6bb828e':'#d19d837e';
         draw.font='700 16px "Saira Condensed",sans-serif';draw.textAlign='center';
         draw.fillText(memory.status==='heard'?'~':'?',memory.p.x,memory.p.y);
@@ -3709,6 +3731,9 @@ function contacts(){
     draw.globalAlpha=1;
   }
   for(const shot of state.shots){
+    // Shot geometry can expose an unconfirmed enemy position in a personal
+    // contact review; team-wide ballistic evidence is disabled in this mode.
+    if(replaying&&replayContactObserverId)continue;
     const visibility=replaying&&replayOmniscient?
       {trace:true,flash:true,impact:true}:shotVisibility(state,shot);
     const fade=contactFade(shot.age,.40);
@@ -3767,8 +3792,8 @@ function renderWeaponLights2D(){
  }
  draw.save();draw.fillStyle='rgba(183,240,205,.12)';
  for(const actor of active){
-  if(actor.side==='red'&&!replayActorVisible(state,actor,
-      replaying&&replayOmniscient))continue;
+  if(actor.side==='red'&&!replayActorDisclosed(state,actor,
+      replaying?replayDisclosure():{mode:'squad'}))continue;
   const previous=beam2DHistory.get(actor.id);
   const yaw=actor.weaponYaw;
   if(!previous||previous.tick!==tick||!sameWeaponConfiguration(previous.config,actor.weaponConfiguration)||
@@ -3981,6 +4006,11 @@ function seekReplay(t:number){
 }
 /** Replay event feed and navigation share the same disclosure boundary. */
 function replayEventKnown(e:ReplayIndexedEvent):boolean{
+  if(replayContactObserverId){
+    const recorded=recorder.at(e.t)?.knowledge??null;
+    return operatorContactEventKnown(e,recorded,replayContactObserverId,
+      new Set(team(state).map(a=>a.id)));
+  }
   if(replayOmniscient||e.kind==='objective')return true;
   if(team(state).some(a=>a.id===e.actor))return true;
   const frame=recorder.at(e.t);
@@ -4082,9 +4112,49 @@ function renderReplayIncidentFocus():void{
     incident.label;
   ui.replayIncidentSummary.textContent=incident.summary;
 }
+/** Sparse personal observation events are independent of team battle feed.
+ * Importantly a lost contact contains no guessed position or threat state.
+ */
+function renderObserverSightTransitions():void{
+  const observer=replayContactObserverId;
+  const mount=ui.replayObserverTransitions;
+  mount.hidden=!observer;
+  if(!observer){mount.replaceChildren();return;}
+  const transitions=replayOperatorSightIndex?.forObserver(observer)??[];
+  const fragment=document.createDocumentFragment();
+  if(!transitions.length){
+    const empty=document.createElement('span');
+    empty.className='replay-observer-empty';
+    empty.textContent='NO PERSONAL CONTACT TRANSITIONS RECORDED';
+    fragment.append(empty);
+  }
+  for(const event of transitions.slice(0,16)){
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='replay-debrief-moment';
+    button.dataset.kind=event.kind;
+    const time=document.createElement('span');
+    time.className='time';
+    time.textContent=formatReplayTime(event.t)+' · '+
+      (event.kind==='visible-at-start'?'ALREADY VISIBLE':
+        event.kind==='acquired'?'CONTACT ACQUIRED':'CONTACT LOST');
+    const target=document.createElement('span');
+    target.className='detail';target.textContent=event.targetId;
+    button.append(time,target);
+    button.title=event.targetId+' · '+event.kind;
+    button.addEventListener('click',()=>{
+      replayPlaying=false;selected=observer;replayFollowId=observer;
+      seekReplay(event.t);
+    });
+    fragment.append(button);
+  }
+  mount.replaceChildren(fragment);
+}
 function renderReplayDebrief():void{
   const stalls=buildReplayExecutionInsights(recorder.executionEvents,
-    recorder.duration,5).filter(x=>x.end===null||(x.seconds??0)>=.75)
+    recorder.duration,5).filter(x=>
+      (!replayContactObserverId||x.actor===replayContactObserverId)&&
+      (x.end===null||(x.seconds??0)>=.75))
     .slice(0,2);
   const fragment=document.createDocumentFragment();
   for(const incident of replayFeaturedIncidents){
@@ -4147,6 +4217,7 @@ function renderReplayDebrief():void{
     replayFeaturedIncidents.length+' KEY INCIDENTS':
     'NO DISCLOSED INCIDENTS';
   renderReplayIncidentFocus();
+  renderObserverSightTransitions();
 }
 function startReplayIncident(loop:boolean):void{
   const incident=replayIncidents.find(i=>i.id===selectedReplayIncidentId);
@@ -4291,6 +4362,13 @@ function updateReplayHud(){
   ui.replaySpeed.setAttribute('aria-label',
     'Playback speed '+replayRate+' times. Tap to select next speed');
   ui.replaySight.textContent=replayOmniscient?'FULL VIEW':'TEAM SIGHT';
+  ui.replayContactLens.disabled=!replayHasContactEvidence;
+  ui.replayContactLens.textContent=replayContactObserverId?
+    'CONTACTS: '+replayContactObserverId.toUpperCase():'CONTACTS: TEAM';
+  ui.replayContactLens.title=replayHasContactEvidence?
+    'Only confirmed enemy contacts and own activity; team map remains shared':
+    'This recording has no individual operator contact evidence';
+  ui.replayContactNote.hidden=!replayContactObserverId;
   ui.replayView.textContent=viewMode.toUpperCase();
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
   ui.replaySquad.textContent=replayCameraMode==='squad'?'SQUAD ON':'FOLLOW SQUAD';
@@ -4338,6 +4416,12 @@ function enterReplay(){
   if(replaying||recorder.frames.length<2)return;
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
+  replayContactObserverId=null;
+  replayHasContactEvidence=recorder.frames.some(f=>
+    !!f.knowledge?.operatorVisibleActorIds&&
+    Object.keys(f.knowledge.operatorVisibleActorIds).length>0);
+  replayOperatorSightIndex=replayHasContactEvidence?
+    new ReplayOperatorSightIndex(recorder.frames):null;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   replayCameraMode='free';replayDirectorCues=[];
   replayBookmarks=[];replayBookmarkCounter=0;
@@ -4379,6 +4463,8 @@ function exitReplay(){
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   replayChapters=[];replayBookmarks=[];
   replayIncidents=[];replayFeaturedIncidents=[];
+  replayContactObserverId=null;replayHasContactEvidence=false;
+  replayOperatorSightIndex=null;
   selectedReplayIncidentId=null;replayIncidentPlayback=null;
   ui.replayIncidentDetails.hidden=true;
   closeReplayShotInspector();
@@ -4386,6 +4472,8 @@ function exitReplay(){
   replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
   ui.replayFeed.replaceChildren();
   ui.replayDebriefMoments.replaceChildren();
+  ui.replayObserverTransitions.replaceChildren();
+  ui.replayObserverTransitions.hidden=true;
   ui.replayDebriefInfo.textContent='';
   showReplayToolTab(null);
   document.body.classList.remove('replaying');
@@ -4722,7 +4810,29 @@ ui.replaySeek.addEventListener('input',()=>{
   seekReplay(Number(ui.replaySeek.value)/60);
 });
 ui.replaySight.addEventListener('click',()=>{
+  replayContactObserverId=null;
   replayOmniscient=!replayOmniscient;fogStamp=-1;
+  rebuildReplayEventIndex();
+  renderReplayEventMarkers();renderReplayEventFeed();
+  refreshReplayShotInspector();updateReplayHud();
+});
+ui.replayContactLens.addEventListener('click',()=>{
+  if(!replayHasContactEvidence)return;
+  const known=recorder.frames.find(f=>
+    !!f.knowledge?.operatorVisibleActorIds)?.knowledge;
+  const ids=team(state).map(a=>a.id).filter(id=>
+    operatorContactAvailable(known,id));
+  if(!ids.length)return;
+  const at=replayContactObserverId===null?-1:
+    ids.indexOf(replayContactObserverId);
+  replayContactObserverId=at>=ids.length-1?null:ids[at+1];
+  if(replayContactObserverId){
+    replayOmniscient=false;
+    selected=replayContactObserverId;
+    replayFollowId=replayContactObserverId;
+    closeReplayShotInspector();
+  }
+  fogStamp=-1;
   rebuildReplayEventIndex();
   renderReplayEventMarkers();renderReplayEventFeed();
   refreshReplayShotInspector();updateReplayHud();
@@ -6185,7 +6295,8 @@ function tick(now:number){
       !replaying?recorder.motion.presentation(Math.max(0,
         state.phase==='running'?
           state.seconds-(1-Math.min(1,accum*60))/60:
-          state.seconds),state.operators.map(a=>a.id)):null);
+          state.seconds),state.operators.map(a=>a.id)):null,
+      replaying?replayDisclosure():null);
   const overlayBegin=perfOverlay?performance.now():0;
   render();
   if(replaying&&replayQuickVideo.active){

@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import {createCivilianRig,updateCivilianRig,type CivilianRig}
  from './breach-civilian-visuals.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
-import {replayActorVisible} from './breach-replay-visibility.ts';
+import {replayActorVisible,replayActorDisclosed,type ReplayDisclosure}
+  from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
@@ -1613,7 +1614,8 @@ export class TacticalScene3D{
     focusedDoorId:string|null=null,omniscient=false,
     replay?:ReplayPresentation|null,
     renderFrame?:RenderFrame|null,
-    liveMotion?:ReplayPresentation|null){
+    liveMotion?:ReplayPresentation|null,
+    replayDisclosurePolicy:ReplayDisclosure|null=null){
     if(this.view.mode==='plan2d')return;
     if(this.appliedLightingMode!==s.lightingMode){
       const mood=lightingPresentation(s.lightingMode);
@@ -1825,7 +1827,9 @@ export class TacticalScene3D{
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
     for(const actor of s.operators){
-      const visible=replayActorVisible(s,actor,omniscient);
+      const visible=replayDisclosurePolicy?
+        replayActorDisclosed(s,actor,replayDisclosurePolicy):
+        replayActorVisible(s,actor,omniscient);
       // Spawn full 3D rigs only when needed. Enemy AI, LOS and simulation
       // always exist; hidden actors incur no model construction on mobile.
       if(!visible&&!this.actors.has(actor.id))continue;
@@ -2047,6 +2051,9 @@ export class TacticalScene3D{
     const casingDraw=this.casingMesh;
     let casingCount=0,casingDirty=false;
     for(const brass of s.casings){
+      // Casing positions could reveal a shooter who was never confirmed
+      // by the selected observer. Contact review has no shot forensics.
+      if(replayDisclosurePolicy?.mode==='operator')continue;
       if(!omniscient&&!liveVisibility(s,{x:brass.x,y:brass.z}))continue;
       if(casingCount>=CASING_LIMIT)break;
       // Full ballistic + bounce motion ends comfortably before two seconds.
@@ -2077,6 +2084,7 @@ export class TacticalScene3D{
     for(let index=s.shots.length-1;index>=0;index--){
       if(visibleShots>=20)break;
       const shot=s.shots[index];
+      if(replayDisclosurePolicy?.mode==='operator')continue;
       const visibility=omniscient?
         {flash:true,trace:true,impact:true}:shotVisibility(s,shot);
       if(!visibility.flash&&!visibility.trace&&!visibility.impact)continue;
@@ -2156,6 +2164,7 @@ export class TacticalScene3D{
     const markDraw=this.impactDecalMesh;
     let markCount=0;
     for(const mark of s.impactMarks){
+      if(replayDisclosurePolicy?.mode==='operator')continue;
       if(!omniscient&&!liveVisibility(s,mark.p))continue;
       if(markCount>=IMPACT_MARK_LIMIT)break;
       const dark=mark.surface==='blood'?0x763c38:

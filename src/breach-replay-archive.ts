@@ -26,6 +26,24 @@ export type ReplayArchiveV1={
   completeness:{complete:boolean;truncatedAt:number|null;reason:string|null};
 };
 const allowed=(id:string)=>id.length>0&&id.length<=128&&/^[\w-]+$/.test(id);
+
+/** Optional per-observer evidence is validated without changing V1 archives. */
+function validObserverEvidence(frame:ReplayFrame):boolean{
+  const observed=frame.knowledge?.operatorVisibleActorIds;
+  if(observed===undefined)return true;
+  if(!observed||typeof observed!=='object'||Array.isArray(observed))
+    return false;
+  const keys=Object.keys(observed);
+  if(keys.length>12)return false;
+  for(const id of keys){
+    const targets=observed[id];
+    if(!allowed(id)||!Array.isArray(targets)||targets.length>128||
+      targets.some(target=>typeof target!=='string'||!allowed(target)))
+      return false;
+  }
+  return true;
+}
+
 export function replayArchiveIsValid(input:unknown):input is ReplayArchiveV1{
   if(!input||typeof input!=='object')return false;
   const a=input as Partial<ReplayArchiveV1>;
@@ -44,7 +62,7 @@ export function replayArchiveIsValid(input:unknown):input is ReplayArchiveV1{
   let previous=-Infinity;
   for(const f of a.frames){
     if(!f||!Number.isFinite(f.t)||f.t<previous||!Array.isArray(f.actors)||
-      !Array.isArray(f.doors))return false;
+      !Array.isArray(f.doors)||!validObserverEvidence(f))return false;
     previous=f.t;
   }
   return true;

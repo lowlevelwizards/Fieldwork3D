@@ -89,6 +89,26 @@ try{
   check(view.activeTabs.join()==='view','View tab must show selected state');
 
   // R3: advanced camera controls live exclusively in View, not on the dock.
+  // R4.2: the contact lens is evidence-backed and intentionally does not
+  // pretend the shared tactical map is an individual observation map.
+  const lens=page.locator('#replayContactLens');
+  check(await lens.isVisible(),'Operator contacts control missing');
+  check(await lens.isEnabled(),'New mission should capture observer evidence');
+  await lens.click();
+  const contactLabel=await lens.textContent();
+  check(contactLabel?.includes('CONTACTS: ')&&!contactLabel.includes('TEAM'),
+    'Operator contacts did not select an individual observer');
+  check(await page.locator('#replayContactNote').isVisible(),
+    'The shared-map limitation must be visibly disclosed');
+  check(await page.locator('#replayObserverTransitions').evaluate(e=>
+    !e.hidden&&e.children.length>0),
+    'Operator contact timeline must be built from historical observation samples');
+  await page.locator('#replaySight').click();
+  check((await lens.textContent())?.includes('CONTACTS: TEAM'),
+    'Team/Full View must exit individual contact lens');
+  check(await page.locator('#replayContactNote').isHidden(),
+    'The personal-contact limitation must hide when exiting lens');
+
   check(await page.locator('#replayDirector').isVisible(),
     'R3 Director must be accessible under View');
   check(await page.locator('#replaySquad').isVisible(),
