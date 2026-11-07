@@ -522,6 +522,12 @@ type CarryBlendState={
 /** Visual-only state for live transitions. Deterministic replay never
  * consumes a previous, unrecorded render frame. */
 const carryBlendStates=new WeakMap<OperatorRig,CarryBlendState>();
+/** Unmodified turn targets are the ONLY history used for live yaw smoothing.
+ * The rendered chest/head also receive procedural and fitting offsets, so
+ * smoothing from their final Euler angles feeds those offsets back every frame.
+ * Keep the base turn state separate and reset it on seek/spawn discontinuities.
+ */
+const baseTurnAngles=new WeakMap<OperatorRig,{chest:number;head:number}>();
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Reconstruct source visibility from the authoritative inventory for
   // EVERY timestamp. A previous render must never make a pickup socket
@@ -532,7 +538,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.root.userData.reloadV4HiddenSource=null;
   let scratch=poseMath.get(r);
   if(!scratch){scratch=createOperatorPoseScratch();poseMath.set(r,scratch);}
-  if(dt<0||r.lastTime>p.seconds+.03||p.seconds-r.lastTime>1.2){
+  const discontinuity=dt<0||r.lastTime>p.seconds+.03||
+    p.seconds-r.lastTime>1.2;
+  if(discontinuity){
     r.lastTime=p.seconds;dt=0;
   }
   dt=clamp(dt,0,.08);
@@ -1073,25 +1081,37 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const motorYaw=-hipTarget;
   const scheduledYaw=p.pelvisYaw??(r.footsteps.mode==='pivot'?
     r.footsteps.pelvisYaw:undefined);
-  r.legacyYaw=scheduledYaw??(p.deterministic?motorYaw:
-    approach(r.legacyYaw,motorYaw,3.8,dt));
+  r.legacyYaw=scheduledYaw??(p.deterministic||discontinuity||!r.lastPose?
+    motorYaw:approach(r.legacyYaw,motorYaw,3.8,dt));
   const headingYaw=r.legacyYaw;
   const turn=turnHierarchy({pelvisYaw:headingYaw,
     bodyHeading:p.heading,targetHeading:p.shotHeading??p.heading,
     speed:physicalSpeed,aiming:p.aiming});
-  r.chest.rotation.y=p.deterministic?turn.chestYaw:
-    approach(r.chest.rotation.y,turn.chestYaw,
+  // Never smooth from r.chest.rotation.y. Later body sway, stance and
+  // coordinated IK add offsets to that Euler, which must not persist as
+  // the next frame's starting point.
+  let turns=baseTurnAngles.get(r);
+  if(!turns){
+    turns={chest:turn.chestYaw,head:turn.headYaw};
+    baseTurnAngles.set(r,turns);
+  }
+  if(p.deterministic||discontinuity||!r.lastPose){
+    turns.chest=turn.chestYaw;
+    turns.head=turn.headYaw;
+  }else{
+    turns.chest=approach(turns.chest,turn.chestYaw,
       p.aiming?7.5:5.8,dt);
+    turns.head=approach(turns.head,turn.headYaw,10.0,dt);
+  }
+  r.chest.rotation.y=turns.chest;
   const idleLife=idleLifeAt(p.idleLifeSeconds??p.seconds,
     p.appearanceSeed??0,{speed:physicalSpeed,aiming:p.aiming||
       (p.aimBlend??0)>.16,firing:p.firing,reloading:p.reload>0,
       down:p.down,surrender:p.surrender,interacting:!!p.treatmentActive||
       p.traversalProgress!==undefined&&p.traversalProgress>0});
-  r.head.rotation.y=p.deterministic?turn.headYaw:
-    approach(r.head.rotation.y,turn.headYaw,10.0,dt);
-  // Seeded micro-glance does not change weapon yaw or shot-time aim.
-  // Only the head rotates; never add to last frame's already posed value.
-  r.head.rotation.y+=idleLife.glance;
+  // Presentation glances are layered on the clean head target, not fed
+  // into next frame's approach() state.
+  r.head.rotation.y=turns.head+idleLife.glance;
   const motion=bodyFromContacts({velocity:p.down?0:physicalSpeed,
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
