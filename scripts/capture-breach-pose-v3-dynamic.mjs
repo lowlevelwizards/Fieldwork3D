@@ -35,20 +35,20 @@ try{
   await page.waitForFunction(()=>
    document.getElementById('preview')?.dataset.ready==='true',null,
    {timeout:30000});
-  const selectors=page.locator('#poseFitPanel select');
-  if(await selectors.count()!==4)throw Error('Pose Fit selector mismatch');
+  const selectors=['#poseWeapon','#poseArmor','#poseRig','#poseUniform']
+    .map(id=>page.locator(id));
+  for(const [index,selector] of selectors.entries())
+   if(await selector.count()!==1)
+    throw Error('Missing Pose selector '+index);
   const records=[];
   for(const fixture of fixtures){
-   await page.locator('#poseFitPanel').evaluate(e=>{e.open=true;});
    for(const [i,value] of [fixture.id,fixture.armor,
       fixture.rig,fixture.top].entries())
-    await selectors.nth(i).selectOption(value);
+    await selectors[i].selectOption(value);
    for(const track of actions){
-    await page.evaluate(t=>{
-     const b=document.querySelector('[data-pose="'+t+'"]');
-     if(!b)throw Error('Missing track '+t);
-     b.click();
-    },track);
+    // The unified Poses workspace exposes every track on one selector;
+    // the legacy action-panel buttons are not always visible on mobile.
+    await page.locator('#poseAnimation').selectOption(track);
     for(const time of times){
      await page.locator('#timeline').evaluate((el,value)=>{
       el.value=String(Math.round(value*1000));
@@ -77,7 +77,6 @@ try{
         expected:fixture,observed:{weapon:report.weapon,armor:report.armor,
           rig:report.rig,top:report.top},track,time}));
      records.push({fixture,track,time,...report});
-     await page.locator('#poseFitPanel').evaluate(e=>{e.open=false;});
      for(const view of ['front','iso']){
       await page.evaluate(v=>{
        const b=document.querySelector('[data-view="'+v+'"]');
