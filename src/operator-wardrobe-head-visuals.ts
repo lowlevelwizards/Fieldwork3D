@@ -306,10 +306,12 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  layers.deferredHeadwear[assembly.headwear]?.();
  const shell=assembly.headwear==='high-cut-rails'?'high-cut':assembly.headwear;
  let railMountedHeadset=false;
+ let shellCovered=false;
  if(shell==='pasgt'&&layers.pasgtCover){
   const effective=resolveHelmetSetup('pasgt',helmetCover?.helmetSetup,{
    hasLegacyPrint:!!helmetCover?.headwearCamo
   });
+  shellCovered=effective.setup.cover!=='none';
   updatePasgtCoverLayers(layers.pasgtCover,effective.setup.cover!=='none',
    readPasgtDetails(helmetCover?.pasgtDetails,helmetCover?.helmetSetup),
    helmetCover?.headwearCamo,camoIdentity,coverRoll,
@@ -322,6 +324,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
    hasLegacyPrint:!!helmetCover?.headwearCamo,
    headset:assembly.headset,eyewear:assembly.eyewear,facewear
   });
+  shellCovered=effective.setup.cover!=='none';
   updateModernHelmetCoverLayers(modern,shell,effective.setup,
    helmetCover?.headwearCamo,camoIdentity,coverRoll);
   const hardware=layers.modernHardware[assembly.headwear];
@@ -330,6 +333,8 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
    effective.setup.rails!=='none'&&
    ['over-ear','boom-headset','helmet-ears'].includes(assembly.headset);
  }
+ if(shell==='m1-steel')
+  shellCovered=!!helmetCover?.helmetCover&&helmetCover.helmetCover!=='none';
  if(layers.m1Cover)updateM1HelmetCoverLayers(layers.m1Cover,
   assembly.headwear==='m1-steel'?helmetCover:undefined,camoIdentity,coverRoll);
  if(layers.m56Extras)updateM56Extras(layers.m56Extras,
@@ -348,6 +353,22 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  ];
  for(const {map,id} of choices)
   for(const [style,model] of Object.entries(map))model.visible=style===id;
+ // R7.11: exactly the authored *bare shell* material may receive a white
+ // Studio contour. Never outline the cover fabric, camo scrim, ear pads,
+ // retention straps or helmet hardware. Update this after cover resolution so
+ // changing fitted/loose/none instantly alters the preview without saving art.
+ const bareShellIds=new Set([
+  'ach','pasgt','high-cut','high-cut-rails','mich-2001',
+  'mich-2002','fast-sf','fast-xp-mid','m1-steel','soviet-steel',
+  'ddr-m56','police-helmet'
+ ]);
+ const activeHeadwear=layers.headwear[assembly.headwear];
+ if(activeHeadwear){
+  const shellMat=layers.headwearMaterials[assembly.headwear];
+  activeHeadwear.userData.fieldworkStudioBareShellMaterial=
+   bareShellIds.has(assembly.headwear)&&!shellCovered&&shellMat?
+    shellMat:null;
+ }
  // Rail cups are separate canonical-head hardware; hide the legacy headband
  // model completely to prevent duplicate ears and a band through the shell.
  if(railMountedHeadset&&layers.headset[assembly.headset])
