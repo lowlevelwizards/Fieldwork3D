@@ -1,16 +1,34 @@
-/** PASGT P4-B — taut fabric skin over the unchanged blocky shell.
- * Authored front/brow and rear/nape diagonal bridges, plus one sloping
- * temple-to-ear lower edge. No shell remesh, interpolation subdivisions,
- * cloth simulation, or per-frame geometry construction.
+/** PASGT P5-A: shell-relative, sparse planar cloth fitted over the unchanged
+ * approved cuboid helmet. The fabric uses a deliberately small set of broad
+ * geometric transitions; no subdivision, smoothing, or cloth simulation.
  */
 import * as THREE from 'three';
+import {headwearCuboidVolumes} from './operator-headwear-silhouettes.ts';
 
 export const PASGT_ATLAS_WIDTH=256;
 export const PASGT_ATLAS_HEIGHT=256;
-export const PASGT_CAMO_SCALE=1.8; // relative to approved source print density
+export const PASGT_CAMO_SCALE=1.8; // P5-B replaces with reference textile density
 export const PASGT_TOP_SEAM_OFFSETS=[-2.6,2.6] as const;
-export const PASGT_COVER_TOP_Y=8.94;
-
+const shell=headwearCuboidVolumes('pasgt');
+const box=(name:string)=>{
+ const p=shell.find(c=>c.name===name);
+ if(!p)throw Error('Missing PASGT source volume '+name);
+ return p;
+};
+const crown=box('pasgt-single-protective-crown');
+const peak=box('pasgt-integrated-front-peak');
+const rear=box('pasgt-low-rear-skirt');
+const ear=box('pasgt-right-ear-lobe');
+export const PASGT_COVER_TOP_Y=crown.y+crown.height/2+.14;
+const X=crown.width/2+.12;
+const FRONT=-crown.depth/2-.13;
+const REAR=crown.depth/2+.13;
+const PEAK_FRONT=peak.z-peak.depth/2-.11;
+const NAPE_REAR=rear.z+rear.depth/2+.12;
+const SIDE=ear.x+ear.width/2+.13;
+const FRONT_BOTTOM=peak.y-peak.height/2+.23;
+const REAR_BOTTOM=rear.y-rear.height/2+.24;
+const SIDE_BOTTOM=ear.y-ear.height/2+.24;
 type Side='front'|'right'|'rear'|'left';
 export type PasgtRingSample={
  side:Side;x:number;z:number;bottomY:number;distance:number;
@@ -19,176 +37,197 @@ export type PasgtSlitAnchor={
  id:string;position:readonly [number,number,number];
  yaw:number;pitch:number;
 };
-const X=5.275,TOP_FRONT=-5.155,TOP_REAR=5.17;
-const rightBottom=(z:number):number=>
- z<=-1.5?4.31:z>=.40?1.96:4.31-(z+1.5)/1.9*2.35;
-/** Clockwise in horizontal plan: front left -> front right -> rear right
- * -> rear left. Corner duplicates are removed; wrap closure is explicit.
+const clamp=(v:number)=>Math.max(0,Math.min(1,v));
+/** The deep ear protection begins at approximately z=-1.45. Compress the
+ * transition into three large segments around that actual source boundary,
+ * instead of the previous long triangular cutout across the whole temple.
  */
-const layout:{side:Side;x:number;z:number;bottomY:number}[]=[
- ...[-X,-2.65,0,2.65,X].map(x=>({side:'front' as const,x,z:TOP_FRONT,bottomY:4.31})),
- ...[-3.4,-1.5,.40,2.3,4.55,TOP_REAR].map(z=>({
-  side:'right' as const,x:X,z,bottomY:rightBottom(z)
- })),
- ...[2.65,0,-2.65,-X].map(x=>({side:'rear' as const,x,z:TOP_REAR,bottomY:1.96})),
- ...[4.55,2.3,.40,-1.5,-3.4].map(z=>({
-  side:'left' as const,x:-X,z,bottomY:rightBottom(z)
- }))
+function sideHem(z:number):number{
+ if(z<=-1.65)return FRONT_BOTTOM;
+ if(z>=-.84)return SIDE_BOTTOM;
+ const t=clamp((z+1.65)/.81);
+ return FRONT_BOTTOM+(SIDE_BOTTOM-FRONT_BOTTOM)*t;
+}
+const frontXs=[-X,-2.65,0,2.65,X];
+const sideZs=[FRONT,-3.4,-1.7,-1.45,-1.20,-.96,-.78,.50,2.70,4.3,REAR];
+const panels:readonly (readonly Omit<PasgtRingSample,'distance'>[])[]=[
+ frontXs.map(x=>({side:'front' as const,x,z:FRONT,bottomY:FRONT_BOTTOM})),
+ sideZs.map(z=>({side:'right' as const,x:X,z,bottomY:sideHem(z)})),
+ [...frontXs].reverse().map(x=>({side:'rear' as const,x,z:REAR,bottomY:REAR_BOTTOM})),
+ [...sideZs].reverse().map(z=>({side:'left' as const,x:-X,z,bottomY:sideHem(z)}))
 ];
-let cumulative=0;
-export const PASGT_RING_SAMPLES:readonly PasgtRingSample[]=layout.map((a,i)=>{
- if(i){
-  const prev=layout[i-1];
-  cumulative+=Math.hypot(a.x-prev.x,a.z-prev.z);
- }
- return {...a,distance:cumulative};
-});
-export const PASGT_RING_CIRCUMFERENCE=cumulative+
- Math.hypot(layout[0].x-layout.at(-1)!.x,layout[0].z-layout.at(-1)!.z);
+let length=0;
+export const PASGT_RING_SAMPLES:readonly PasgtRingSample[]=panels.flatMap((panel,k)=>
+ panel.map((p,i)=>{
+  if(k||i){
+   const preceding=i?panel[i-1]:panels[k-1].at(-1)!;
+   length+=Math.hypot(p.x-preceding.x,p.z-preceding.z);
+  }
+  return {...p,distance:length};
+ }));
+export const PASGT_RING_CIRCUMFERENCE=length;
 export type PasgtRing='top'|'shoulder'|'ramp'|'hem';
+/** All four panel corners agree exactly in 3D. The side face expands
+ * towards the brow/nape only near its endpoints, so no corner cracks.
+ */
+function sideZ(sample:PasgtRingSample,ring:PasgtRing):number{
+ if(ring==='top')return sample.z;
+ const frontWeight=clamp((-3.4-sample.z)/(-3.4-FRONT));
+ const rearWeight=clamp((sample.z-4.3)/(REAR-4.3));
+ const f=(ring==='shoulder'?.035:1);
+ return sample.z+
+  (PEAK_FRONT-FRONT)*frontWeight*f+
+  (NAPE_REAR-REAR)*rearWeight*f;
+}
 export function pasgtRingPoint(sample:PasgtRingSample,ring:PasgtRing):
  readonly [number,number,number]{
  const face=sample.side==='front',back=sample.side==='rear';
- const isSide=sample.side==='left'||sample.side==='right';
- const sign=sample.x<0?-1:1;
- const extent=ring==='top'?X:ring==='shoulder'?X+.025:X+.13;
- const x=isSide?sign*extent:sample.x/X*extent;
- const z=face?(ring==='top'?TOP_FRONT:ring==='shoulder'?-5.19:-6.45):
-  back?(ring==='top'?TOP_REAR:ring==='shoulder'?5.22:5.86):
-  sample.z;
- const y=ring==='top'?PASGT_COVER_TOP_Y:ring==='shoulder'?6.74:
-  ring==='ramp'?6.12:sample.bottomY;
+ const isSide=!face&&!back;
+ const sx=sample.x<0?-1:1;
+ const extent=ring==='top'?X:ring==='shoulder'?X+.035:SIDE;
+ const x=isSide?sx*extent:sample.x/X*extent;
+ const z=face?ring==='top'?FRONT:ring==='shoulder'?FRONT-.035:PEAK_FRONT:
+  back?ring==='top'?REAR:ring==='shoulder'?REAR+.035:NAPE_REAR:
+  sideZ(sample,ring);
+ const y=ring==='top'?PASGT_COVER_TOP_Y:
+  ring==='shoulder'?6.81:ring==='ramp'?6.01:sample.bottomY;
  return [x,y,z];
 }
-const uvTop=(x:number,z:number):readonly [number,number]=>
- [(30+5*(x+X)+.5)/PASGT_ATLAS_WIDTH,
-  (30+5*(z-TOP_FRONT)+.5)/PASGT_ATLAS_HEIGHT];
-const uvSide=(distance:number,y:number,bottomY:number):
- readonly [number,number]=>
- [(10+4.9*distance+.5)/PASGT_ATLAS_WIDTH,
-  (145+5*(y-bottomY)+.5)/PASGT_ATLAS_HEIGHT];
+/** Unfold the physical cloth surface around its top edge. This provides a
+ * common planar coordinate across crown and adjoining side panels; the
+ * vertical fabric scale uses actual 3D geodesic distance, not local hem Y.
+ */
+export function pasgtFabricCoordinate(sample:PasgtRingSample,ring:PasgtRing):
+ readonly [number,number]{
+ const point=pasgtRingPoint(sample,ring);
+ if(ring==='top')return [point[0],point[2]];
+ const order:readonly PasgtRing[]=['top','shoulder','ramp','hem'];
+ let travel=0;
+ for(let k=1;k<=order.indexOf(ring);k++){
+  const a=pasgtRingPoint(sample,order[k-1]);
+  const b=pasgtRingPoint(sample,order[k]);
+  travel+=Math.hypot(b[0]-a[0],b[1]-a[1],b[2]-a[2]);
+ }
+ switch(sample.side){
+  case 'front':return [sample.x,FRONT-travel];
+  case 'rear':return [sample.x,REAR+travel];
+  case 'right':return [X+travel,sample.z];
+  case 'left':return [-X-travel,sample.z];
+ }
+}
+/** P5-B atlas will share these actual-unfolded coordinates. There is one
+ * cloth texel density across top, brow bridge and lower protective skirt.
+ */
+export const PASGT_UV_TEXELS_PER_UNIT=7;
+export const pasgtAtlasUv=(coord:readonly [number,number]):
+ readonly [number,number]=>[
+ (128+PASGT_UV_TEXELS_PER_UNIT*coord[0]+.5)/PASGT_ATLAS_WIDTH,
+ (128+PASGT_UV_TEXELS_PER_UNIT*coord[1]+.5)/PASGT_ATLAS_HEIGHT
+];
 export function createPasgtDrapedGeometry(hemOnly=false):THREE.BufferGeometry{
- const vertices:number[]=[],uvs:number[]=[];
- const put=(p:readonly number[],uv:readonly number[])=>{
-  vertices.push(p[0],p[1],p[2]);uvs.push(uv[0],uv[1]);
+ const positions:number[]=[],uvs:number[]=[];
+ const push=(p:readonly number[],uv:readonly number[])=>{
+  positions.push(p[0],p[1],p[2]);uvs.push(uv[0],uv[1]);
  };
  const tri=(a:readonly number[],b:readonly number[],c:readonly number[],
-  u:readonly number[],v:readonly number[],w:readonly number[])=>{
-  put(a,u);put(b,v);put(c,w);
+  ua:readonly number[],ub:readonly number[],uc:readonly number[])=>{
+  push(a,ua);push(b,ub);push(c,uc);
  };
  const quad=(a:readonly number[],b:readonly number[],c:readonly number[],
-  d:readonly number[],u:readonly number[],v:readonly number[],
-  w:readonly number[],q:readonly number[])=>{
-  tri(a,b,c,u,v,w);tri(a,c,d,u,w,q);
+  d:readonly number[],ua:readonly number[],ub:readonly number[],
+  uc:readonly number[],ud:readonly number[])=>{
+  tri(a,b,c,ua,ub,uc);tri(a,c,d,ua,uc,ud);
  };
- // A single truly flat crown: two longitudinal seams are printed, not
- // modeled. Do not create a stepped second shell on this surface.
  if(!hemOnly){
-  const y=PASGT_COVER_TOP_Y;
-  const a=[-X,y,TOP_FRONT],b=[X,y,TOP_FRONT],
-   c=[X,y,TOP_REAR],d=[-X,y,TOP_REAR];
-  tri(a,c,b,uvTop(a[0],a[2]),uvTop(c[0],c[2]),uvTop(b[0],b[2]));
-  tri(a,d,c,uvTop(a[0],a[2]),uvTop(d[0],d[2]),uvTop(c[0],c[2]));
+  const a=[-X,PASGT_COVER_TOP_Y,FRONT],b=[X,PASGT_COVER_TOP_Y,FRONT],
+   c=[X,PASGT_COVER_TOP_Y,REAR],d=[-X,PASGT_COVER_TOP_Y,REAR];
+  tri(a,c,b,pasgtAtlasUv([a[0],a[2]]),pasgtAtlasUv([c[0],c[2]]),
+   pasgtAtlasUv([b[0],b[2]]));
+  tri(a,d,c,pasgtAtlasUv([a[0],a[2]]),pasgtAtlasUv([d[0],d[2]]),
+   pasgtAtlasUv([c[0],c[2]]));
  }
- const N=PASGT_RING_SAMPLES.length;
  const pairs:readonly [PasgtRing,PasgtRing][]=
   hemOnly?[['ramp','hem']]:
-   [['top','shoulder'],['shoulder','ramp'],['ramp','hem']];
- for(const [upper,lower] of pairs){
-  for(let i=0;i<N;i++){
-   const a=PASGT_RING_SAMPLES[i],b=PASGT_RING_SAMPLES[(i+1)%N];
-   const sA=a.distance,sB=i===N-1?PASGT_RING_CIRCUMFERENCE:b.distance;
-   if(hemOnly){
-    // An integral 0.14-height folded textile tape along the lower boundary;
-    // sits just outside the drape and follows the diagonal ear transition.
-    const bottomA=pasgtRingPoint(a,'hem'),bottomB=pasgtRingPoint(b,'hem');
-    const offset=(p:readonly number[])=>{
-     const sx=p[0]===0?0:Math.sign(p[0])*.040;
-     const sz=p[2]<-5.5?-.040:p[2]>5.5?.040:0;
-     return [p[0]+sx,p[1],p[2]+sz];
-    };
-    const p0=offset([bottomA[0],bottomA[1]+.15,bottomA[2]]);
-    const p1=offset([bottomB[0],bottomB[1]+.15,bottomB[2]]);
-    const p2=offset(bottomB),p3=offset(bottomA);
+  [['top','shoulder'],['shoulder','ramp'],['ramp','hem']];
+ for(const [up,down] of pairs){
+  for(const panel of panels){
+   for(let i=0;i<panel.length-1;i++){
+    const rawA=panel[i],rawB=panel[i+1];
+    const a=PASGT_RING_SAMPLES.find(s=>s.side===rawA.side&&s.x===rawA.x&&s.z===rawA.z)!;
+    const b=PASGT_RING_SAMPLES.find(s=>s.side===rawB.side&&s.x===rawB.x&&s.z===rawB.z)!;
+    if(hemOnly){
+     // Slim folded seam with the same lower contour as the fitted fabric.
+     const make=(s:PasgtRingSample,raised:boolean):readonly number[]=>{
+      const p=pasgtRingPoint(s,'hem');
+      const n=s.side==='front'?[0,0,-.035]:
+       s.side==='rear'?[0,0,.035]:
+       [s.side==='right'?.035:-.035,0,0];
+      return [p[0]+n[0],p[1]+(raised?.14:0),p[2]+n[2]];
+     };
+     const p0=make(a,true),p1=make(b,true),p2=make(b,false),p3=make(a,false);
+     quad(p0,p1,p2,p3,
+      pasgtAtlasUv(pasgtFabricCoordinate(a,'hem')),
+      pasgtAtlasUv(pasgtFabricCoordinate(b,'hem')),
+      pasgtAtlasUv(pasgtFabricCoordinate(b,'hem')),
+      pasgtAtlasUv(pasgtFabricCoordinate(a,'hem')));
+     continue;
+    }
+    const p0=pasgtRingPoint(a,up),p1=pasgtRingPoint(b,up),
+     p2=pasgtRingPoint(b,down),p3=pasgtRingPoint(a,down);
     quad(p0,p1,p2,p3,
-     uvSide(sA,a.bottomY+.15,a.bottomY),
-     uvSide(sB,b.bottomY+.15,b.bottomY),
-     uvSide(sB,b.bottomY,b.bottomY),
-     uvSide(sA,a.bottomY,a.bottomY));
-    continue;
+     pasgtAtlasUv(pasgtFabricCoordinate(a,up)),
+     pasgtAtlasUv(pasgtFabricCoordinate(b,up)),
+     pasgtAtlasUv(pasgtFabricCoordinate(b,down)),
+     pasgtAtlasUv(pasgtFabricCoordinate(a,down)));
    }
-   const p0=pasgtRingPoint(a,upper),p1=pasgtRingPoint(b,upper),
-    p2=pasgtRingPoint(b,lower),p3=pasgtRingPoint(a,lower);
-   quad(p0,p1,p2,p3,uvSide(sA,p0[1],a.bottomY),
-    uvSide(sB,p1[1],b.bottomY),uvSide(sB,p2[1],b.bottomY),
-    uvSide(sA,p3[1],a.bottomY));
   }
- }
- const geometry=new THREE.BufferGeometry();
- geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
- geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
- geometry.setAttribute('uv1',new THREE.Float32BufferAttribute(uvs.slice(),2));
- geometry.computeVertexNormals();geometry.computeBoundingBox();
- geometry.userData.pasgtDrapedFabric=true;
- geometry.userData.pasgtPanelCount=hemOnly?N:N*3+1;
- geometry.userData.pasgtUvLayout='crown-planar/wrapped-skirt';
- geometry.userData.topSeams=[...PASGT_TOP_SEAM_OFFSETS];
- geometry.userData.printScale=PASGT_CAMO_SCALE;
- return geometry;
-}
-/** All field additions use these eight visible textile cuts. Nothing is
- * planted into empty space on top of the crown.
- */
-export const PASGT_SLIT_ANCHORS:readonly PasgtSlitAnchor[]=[
- {id:'front-left',position:[-2.70,5.47,-6.54],yaw:0,pitch:-.10},
- {id:'front-right',position:[2.70,5.47,-6.54],yaw:0,pitch:.10},
- {id:'right-forward',position:[5.47,5.48,-3.15],yaw:Math.PI/2,pitch:-.11},
- {id:'right-aft',position:[5.47,4.20,2.30],yaw:Math.PI/2,pitch:.12},
- {id:'rear-right',position:[2.65,4.22,5.95],yaw:Math.PI,pitch:.10},
- {id:'rear-left',position:[-2.65,4.22,5.95],yaw:Math.PI,pitch:-.10},
- {id:'left-aft',position:[-5.47,4.24,2.30],yaw:-Math.PI/2,pitch:.13},
- {id:'left-forward',position:[-5.47,5.48,-3.15],yaw:-Math.PI/2,pitch:-.10}
-];
-/** A simple explicit 3D tape follows a physical Y contour of the four
- * cover surfaces. It is NOT a flat shelf, and is NOT a crown X pattern.
- */
-export function createPasgtBandGeometry():THREE.BufferGeometry{
- const points:number[]=[],uvs:number[]=[];
- const push=(p:readonly number[])=>{points.push(...p);uvs.push(0,0);};
- const tri=(a:readonly number[],b:readonly number[],c:readonly number[])=>{
-  push(a);push(b);push(c);
- };
- const N=PASGT_RING_SAMPLES.length;
- const interp=(a:PasgtRingSample,y:number):readonly number[]=>{
-  const shoulder=pasgtRingPoint(a,'shoulder'),
-   ramp=pasgtRingPoint(a,'ramp');
-  if(y>=6.74){
-   const top=pasgtRingPoint(a,'top'),t=(y-6.74)/(8.94-6.74);
-   return shoulder.map((v,i)=>v*(1-t)+top[i]*t);
-  }
-  if(y>=6.12){
-   const t=(y-6.12)/.62;
-   return ramp.map((v,i)=>v*(1-t)+shoulder[i]*t);
-  }
-  return ramp;
- };
- const outset=(sample:PasgtRingSample,p:readonly number[])=>{
-  const v=[...p];
-  if(sample.side==='front')v[2]-=.095;
-  else if(sample.side==='rear')v[2]+=.095;
-  else v[0]+=Math.sign(v[0])*.095;
-  return v;
- };
- for(let i=0;i<N;i++){
-  const a=PASGT_RING_SAMPLES[i],b=PASGT_RING_SAMPLES[(i+1)%N];
-  const a0=outset(a,interp(a,6.86)),b0=outset(b,interp(b,6.86));
-  const a1=outset(a,interp(a,6.13)),b1=outset(b,interp(b,6.13));
-  tri(a0,b0,b1);tri(a0,b1,a1);
  }
  const g=new THREE.BufferGeometry();
- g.setAttribute('position',new THREE.Float32BufferAttribute(points,3));
+ g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
  g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+ g.setAttribute('uv1',new THREE.Float32BufferAttribute(uvs.slice(),2));
  g.computeVertexNormals();g.computeBoundingBox();
- g.userData.pasgtBandHeight=.73;
+ g.userData.pasgtDrapedFabric=true;
+ g.userData.pasgtPanelCount=hemOnly?
+  panels.reduce((n,p)=>n+p.length-1,0):
+  1+3*panels.reduce((n,p)=>n+p.length-1,0);
+ g.userData.pasgtUvLayout='common-unfolded-crown-side-fabric';
+ g.userData.topSeams=[...PASGT_TOP_SEAM_OFFSETS];
+ g.userData.printScale=PASGT_CAMO_SCALE;
+ return g;
+}
+/** PASGT P5-D will update slit frames using this same panel parameterization.
+ * Preserve the existing eight slots until the accessory audit begins.
+ */
+export const PASGT_SLIT_ANCHORS:readonly PasgtSlitAnchor[]=[
+ {id:'front-left',position:[-2.70,5.47,PEAK_FRONT-.09],yaw:0,pitch:-.10},
+ {id:'front-right',position:[2.70,5.47,PEAK_FRONT-.09],yaw:0,pitch:.10},
+ {id:'right-forward',position:[SIDE+.09,5.48,-3.15],yaw:Math.PI/2,pitch:-.11},
+ {id:'right-aft',position:[SIDE+.09,4.20,2.30],yaw:Math.PI/2,pitch:.12},
+ {id:'rear-right',position:[2.65,4.22,NAPE_REAR+.09],yaw:Math.PI,pitch:.10},
+ {id:'rear-left',position:[-2.65,4.22,NAPE_REAR+.09],yaw:Math.PI,pitch:-.10},
+ {id:'left-aft',position:[-SIDE-.09,4.24,2.30],yaw:-Math.PI/2,pitch:.13},
+ {id:'left-forward',position:[-SIDE-.09,5.48,-3.15],yaw:-Math.PI/2,pitch:-.10}
+];
+/** Temporary band until P5-C replaces it with a bare/covered fit pair. */
+export function createPasgtBandGeometry():THREE.BufferGeometry{
+ const positions:number[]=[],uvs:number[]=[];
+ const add=(p:readonly number[])=>{positions.push(...p);uvs.push(0,0);};
+ for(const panel of panels)for(let i=0;i<panel.length-1;i++){
+  const a=PASGT_RING_SAMPLES.find(s=>s.side===panel[i].side&&s.x===panel[i].x&&s.z===panel[i].z)!;
+  const b=PASGT_RING_SAMPLES.find(s=>s.side===panel[i+1].side&&s.x===panel[i+1].x&&s.z===panel[i+1].z)!;
+  const project=(s:PasgtRingSample,y:number)=>{
+   const p=pasgtRingPoint(s,'ramp');
+   const n=s.side==='front'?[0,0,-.10]:s.side==='rear'?[0,0,.10]:
+    [s.side==='right'?.10:-.10,0,0];
+   return [p[0]+n[0],y,p[2]+n[2]];
+  };
+  const p0=project(a,5.65),p1=project(b,5.65),p2=project(b,5.00),p3=project(a,5.00);
+  add(p0);add(p1);add(p2);add(p0);add(p2);add(p3);
+ }
+ const g=new THREE.BufferGeometry();
+ g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
+ g.computeVertexNormals();g.computeBoundingBox();g.userData.pasgtBandHeight=.65;
  return g;
 }
