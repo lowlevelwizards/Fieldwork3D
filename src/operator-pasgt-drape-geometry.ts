@@ -272,6 +272,15 @@ function pasgtSlitOnCloth(
   pitch:0
  };
 }
+/** Flat crown slits sit on the actual cover crown surface.
+ * Tangent frames are orthonormal, so the same anchor serves the
+ * reinforced opening and every attached foliage/scrim root.
+ */
+function pasgtCrownSlit(id:string,x:number,z:number):PasgtSlitAnchor{
+ return {id,position:[x,PASGT_COVER_TOP_Y+.095,z],
+  right:[1,0,0],up:[0,0,-1],normal:[0,1,0],
+  yaw:0,pitch:0};
+}
 export const PASGT_SLIT_ANCHORS:readonly PasgtSlitAnchor[]=[
  pasgtSlitOnCloth('front-left','front',-3.38,7.42),
  pasgtSlitOnCloth('front-right','front',3.38,7.42),
@@ -280,7 +289,11 @@ export const PASGT_SLIT_ANCHORS:readonly PasgtSlitAnchor[]=[
  pasgtSlitOnCloth('rear-right','rear',3.25,7.15),
  pasgtSlitOnCloth('rear-left','rear',-3.25,7.15),
  pasgtSlitOnCloth('left-aft','left',2.45,6.45),
- pasgtSlitOnCloth('left-forward','left',-3.10,7.25)
+ pasgtSlitOnCloth('left-forward','left',-3.10,7.25),
+ pasgtCrownSlit('crown-front-left',-3.65,-2.65),
+ pasgtCrownSlit('crown-front-right',3.65,-2.65),
+ pasgtCrownSlit('crown-rear-left',-3.65,2.72),
+ pasgtCrownSlit('crown-rear-right',3.65,2.72)
 ];
 /** PASGT P5-C: one vertically readable, near-flush strip. Its upper and
  * lower edges lie on the UPRIGHT brim/side/nape surfaces, not the wide

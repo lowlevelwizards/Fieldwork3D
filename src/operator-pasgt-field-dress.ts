@@ -35,7 +35,7 @@ const material=(hex:number,side:THREE.Side=THREE.FrontSide)=>
 const hidden=(parent:THREE.Group,name:string)=>{
  const g=new THREE.Group();g.name=name;g.visible=false;parent.add(g);return g;
 };
-/** Single near-coplanar eight-cut marking mesh, not protruding cubes.
+/** Twelve bold cover-conforming fabric cuts, not protruding cubes.
  * The long axis follows local fabric tangent and each mark is above the
  * elastic rather than under it.
  */
@@ -47,8 +47,10 @@ export function createPasgtSlitGeometry():THREE.BufferGeometry{
  };
  const add=(v:readonly number[])=>p.push(v[0],v[1],v[2]);
  for(const a of PASGT_SLIT_ANCHORS){
-  const a0=point(a,-.53,.07),a1=point(a,.53,.07);
-  const a2=point(a,.53,-.07),a3=point(a,-.53,-.07);
+  // Oversized slit marks remain a single, near-coplanar two-triangle
+  // mark each. Scale and positioning do the work, never box geometry.
+  const a0=point(a,-.83,.155),a1=point(a,.83,.155);
+  const a2=point(a,.83,-.155),a3=point(a,-.83,-.155);
   for(const v of [a0,a1,a2,a0,a2,a3])add(v);
  }
  const g=new THREE.BufferGeometry();
@@ -130,9 +132,18 @@ export function createPasgtScrimRibbonGeometry(style:number):THREE.BufferGeometr
  g.userData.pasgtSegmentCount=2;
  return g;
 }
-const CARD_ANCHORS=['front-left','right-forward','right-aft',
- 'rear-right','left-aft','left-forward'] as const;
-const TILTS=[-.21,.17,-.10,.24,-.18,.13] as const;
+/** Ten curated clusters and strips, two clean unused slits.
+ * The extra crown mounts let foliage break the miniature silhouette,
+ * while a few lower side mounts let scrim drape over the brow and nape.
+ */
+const CARD_ANCHORS=[
+ 'front-left','crown-front-left','crown-front-right',
+ 'right-forward','right-aft','crown-rear-right',
+ 'rear-right','crown-rear-left','left-aft','left-forward'
+] as const;
+const TILTS=[-.52,.48,-.43,-.63,.42,.58,-.35,-.43,.40,-.54] as const;
+const CARD_SCALES=[1.26,1.45,1.34,1.50,1.36,
+ 1.43,1.26,1.38,1.35,1.43] as const;
 function placedCard(parent:THREE.Group,index:number,mat:THREE.Material,
  geometry:THREE.BufferGeometry,name:string,offsetY=0):void{
  const anchor=PASGT_SLIT_ANCHORS.find(s=>s.id===CARD_ANCHORS[index]);
@@ -156,7 +167,7 @@ function placedCard(parent:THREE.Group,index:number,mat:THREE.Material,
  // Keep the mount root exactly at its slit and offset only card geometry.
  const card=new THREE.Mesh(geometry,mat);
  if(leaf){
-  const size=[1.16,1.36,1.07,1.27,1.38,1.14][index];
+  const size=CARD_SCALES[index];
   card.scale.setScalar(size);
   card.position.z=.07;
  }
@@ -278,7 +289,7 @@ export type PasgtFieldDressLayers={
  palette:PasgtPalette|null;
 };
 export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
- const slits=hidden(parent,'pasgt-eight-buttonholes');
+ const slits=hidden(parent,'pasgt-twelve-bold-buttonholes');
  const band=hidden(parent,'pasgt-one-chunky-elastic');
  const foliage=hidden(parent,'pasgt-leaves-from-buttonholes');
  const scrim=hidden(parent,'pasgt-fabric-strips-from-buttonholes');
@@ -291,7 +302,7 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  // The cuts share the cover's true normal/tangent frames. One flat mesh,
  // rather than eight black boxes and a second shadow-receiving surface.
  const slitMesh=new THREE.Mesh(createPasgtSlitGeometry(),slitMat);
- slitMesh.name='pasgt-eight-panel-tangent-buttonholes';
+ slitMesh.name='pasgt-twelve-panel-tangent-buttonholes';
  slitMesh.castShadow=false;slitMesh.receiveShadow=false;
  slits.add(slitMesh);
  for(const covered of [true,false]){
