@@ -16,11 +16,16 @@ const fixture=(options={})=>{
   }
   for(const frame of rec.frames){
     const knows=frame.t>=.4;
-    frame.knowledge.visibleActorIds=knows?
-      ['rook','moss',hostile.id]:['rook','moss'];
-    frame.knowledge.operatorVisibleActorIds={
-      rook:knows?[hostile.id]:[],
-      moss:[],
+    // Captured frames may share unchanged knowledge object references.
+    // Replace immutably; mutating fields in place would retroactively
+    // insert the future observation into the earlier history fixture.
+    frame.knowledge={
+      ...frame.knowledge,
+      visibleActorIds:knows?['rook','moss',hostile.id]:['rook','moss'],
+      operatorVisibleActorIds:{
+        rook:knows?[hostile.id]:[],
+        moss:[]
+      }
     };
   }
   const battle=[
