@@ -387,6 +387,24 @@ export function createPasgtRetentionGeometry():THREE.BufferGeometry{
  g.userData.pasgtSimpleTwoPointRetention=true;
  return g;
 }
+/** A shallow two-facet insert gives the flat PASGT chin cup a little
+ * fabric depth without turning the existing broad strap into jaw armor.
+ * Retention remains hidden for bulky facewear exactly as before.
+ */
+export function createPasgtChinCupInsetGeometry():THREE.BufferGeometry{
+ const p:number[]=[];
+ const left=[-1.65,-.32,-4.385],mid=[0,-.37,-4.44],
+  right=[1.65,-.32,-4.385];
+ const upperLeft=[-1.65,.025,-4.385],upperMid=[0,.045,-4.44],
+  upperRight=[1.65,.025,-4.385];
+ for(const v of [left,mid,upperMid,left,upperMid,upperLeft,
+  mid,right,upperRight,mid,upperRight,upperMid])p.push(...v);
+ const g=new THREE.BufferGeometry();
+ g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));
+ g.computeVertexNormals();g.computeBoundingBox();
+ g.userData.pasgtShallowChinCup=true;
+ return g;
+}
 /** Two broad rear cat-eye marks live on the existing elastic profile.
  * They're printed-looking flat strips: no tiny buckle or separate control.
  */
@@ -458,6 +476,11 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  strap.name='pasgt-chunky-two-point-retention';
  strap.castShadow=true;strap.receiveShadow=false;
  retention.add(strap);
+ const cup=new THREE.Mesh(createPasgtChinCupInsetGeometry(),
+  material(0x717b62,THREE.DoubleSide));
+ cup.name='pasgt-shallow-chin-cup-inset';
+ cup.castShadow=false;cup.receiveShadow=false;
+ retention.add(cup);
  const netMat=material(0x78816a,THREE.DoubleSide);
  const netMesh=new THREE.Mesh(createPasgtNetGeometry(),netMat);
  netMesh.name='pasgt-front-crown-side-rear-net';netMesh.castShadow=true;
