@@ -528,6 +528,14 @@ const carryBlendStates=new WeakMap<OperatorRig,CarryBlendState>();
  * Keep the base turn state separate and reset it on seek/spawn discontinuities.
  */
 const baseTurnAngles=new WeakMap<OperatorRig,{chest:number;head:number}>();
+/** One exact coordinated result per actor. Do not quantize aim or torso
+ * angles: a rounded cache key can turn continuous motion into discrete pops.
+ * The pure solver's local-space result is reusable only for identical inputs.
+ */
+const coordinatedPoseCache=new WeakMap<OperatorRig,{
+  key:string;result:ReturnType<typeof solveV3CoordinatedPose>
+}>();
+
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Reconstruct source visibility from the authoritative inventory for
   // EVERY timestamp. A previous render must never make a pickup socket
@@ -1565,20 +1573,39 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         choreographV4ReloadHand(releaseInputs,
           reloadMechanismFor(p.weapon,coupledConfig)):
         choreographV3ReloadHand(releaseInputs)).target:undefined;
-    const result=solveV3CoordinatedPose({
-      fit,weapon:p.weapon,configuration:coupledConfig,
-      shoulders:[shoulderFor(0),shoulderFor(1)],
-      chestRotation:r.chest.rotation,
-      envelope,
-      mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
-        'aim':'carry',
+    const shoulders:[THREE.Vector3,THREE.Vector3]=[
+      shoulderFor(0),shoulderFor(1)
+    ];
+    const constraintMode=v3ReloadActive?'reload':
+      p.aiming||handling==='ads'?'aim':'carry';
+    const allowReloadOverlap=!!p.poseV4ReloadPreview&&v3ReloadActive&&
+      !p.poseV3StrictContact;
+    const allowVisualOverlap=!!p.poseV3Preview&&!p.firing&&
+      !p.poseV3StrictContact;
+    // Exact-input, single-entry memo: unchanged pause/idle samples incur
+    // no repeated sleeve OBB candidate search. Any continuous pose change,
+    // outfit, assembly, action contact or constraint invalidates the result.
+    const coordinatedKey=JSON.stringify([
+      p.weapon,coupledConfig,outfit.armorStyle,outfit.rigStyle,outfit.top,
+      fit.origin.toArray(),fit.rotation.toArray(),
+      fit.stock.toArray(),fit.primary.toArray(),fit.support.toArray(),
+      shoulders.map(v=>v.toArray()),r.chest.rotation.toArray(),
+      releasedTarget?.toArray()??null,constraintMode,
+      allowReloadOverlap,allowVisualOverlap
+    ]);
+    const cached=coordinatedPoseCache.get(r);
+    const cacheHit=cached?.key===coordinatedKey;
+    const result=cacheHit?cached!.result:solveV3CoordinatedPose({
+      fit,weapon:p.weapon,configuration:coupledConfig,shoulders,
+      chestRotation:r.chest.rotation,envelope,mode:constraintMode,
       releasedSupportTarget:releasedTarget,
-      allowReloadOverlap:!!p.poseV4ReloadPreview&&v3ReloadActive&&
-       !p.poseV3StrictContact,
-      allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
-       !p.poseV3StrictContact
+      allowReloadOverlap,allowVisualOverlap
+    });
+    if(!cacheHit)coordinatedPoseCache.set(r,{
+      key:coordinatedKey,result
     });
     r.root.userData.poseV3CoordinatedReport={
+      cached:cacheHit,
       status:result.status,yaw:result.yaw,leanX:result.leanX,
       candidates:result.candidates,
       validCandidates:result.validCandidates,
