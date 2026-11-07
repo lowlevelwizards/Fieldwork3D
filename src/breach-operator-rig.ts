@@ -503,7 +503,9 @@ const DOWNED_TINT=new THREE.Color(0x555c57);
 /** Outfit, headwear and material maps are static between kit changes.
  * Keep a per-rig snapshot separate from motion/IK, which still runs on
  * every frame. Weak keys release disposed operator preview rigs. */
-const appearanceState=new WeakMap<OperatorRig,{key:string;downed:boolean}>();
+const appearanceState=new WeakMap<OperatorRig,{
+ key:string;downed:boolean;outfit:ReturnType<typeof resolvedWardrobe>
+}>();
 const poseMath=new WeakMap<OperatorRig,OperatorPoseScratch>();
 /** Results are keyed by visible equipment, authored weapon, and the actual
  * shoulder/yaw frame. No pose candidate search runs on every rendered frame. */
@@ -565,6 +567,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
   const previousAppearance=appearanceState.get(r);
   const appearanceChanged=previousAppearance?.key!==appearanceKey;
+  // Resolve once per appearance fingerprint, including in-place Studio edits.
+  // No repeated wardrobe normalization in coupled, coordinated or IK paths.
+  const clothing=appearanceChanged?
+    resolvedWardrobe(p.wardrobe,p.equipment):previousAppearance!.outfit;
   if(appearanceChanged){
   // Stable career-based presentation, never changing physical collision or IK.
   const identity=p.appearanceSeed??0;
@@ -679,7 +685,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   ])r.colors.set(material,material.color.clone());
   // Clothing coverage changes materials on existing articulated limbs only.
   // The bones, solved knee/elbow positions and planted feet stay identical.
-  const clothing=resolvedWardrobe(p.wardrobe,p.equipment);
   const sleeveState=p.wardrobe?.sleeveState??'unrolled';
   const bareForearm=clothing.top==='base-layer'||
     (sleeveState==='rolled'||sleeveState==='cuffed');
@@ -985,7 +990,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(previousAppearance){
     previousAppearance.key=appearanceKey;
     previousAppearance.downed=downed;
-  }else appearanceState.set(r,{key:appearanceKey,downed});
+    previousAppearance.outfit=clothing;
+  }else appearanceState.set(r,{key:appearanceKey,downed,outfit:clothing});
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
   const buckle=p.down&&!p.surrender?smooth(downProgress/.48):0;
@@ -1380,10 +1386,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     !p.treatmentActive&&(!activeTransition||authoredLabSwitch)&&
     p.seconds-p.lastDoorAt>1.2&&p.seconds-p.lastThrowAt>.85&&
     (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
+  // Share one outfit-specific clearance envelope across all IK paths.
+  const poseEnvelope=eligible||p.poseV3Preview?
+    poseClearanceEnvelope(clothing.armorStyle,clothing.rigStyle,clothing.top):null;
   let coupled:CoupledLowReadySolution|null=null;
   let reloadSeed:CoupledLowReadySolution|null=null;
   if(eligible&&coupledConfig){
-    const look=resolvedWardrobe(p.wardrobe,p.equipment);
+    const look=clothing;
     const shoulders:[THREE.Vector3,THREE.Vector3]=[
       shoulderFor(0),shoulderFor(1)];
     const solveAtTorsoYaw=(assistYaw:number)=>{
@@ -1405,8 +1414,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       else{
         result=solveCoupledLowReady({weapon:p.weapon,
           configuration:coupledConfig,
-          armor:poseClearanceEnvelope(
-            look.armorStyle,look.rigStyle,look.top),
+          armor:poseEnvelope!,
           shoulders,nominalYaw:localYaw,
           allowVisualOverlap:!!p.poseV3Preview&&!p.poseV3StrictContact});
         sharedCoupledPoseCache.set(key,result);
@@ -1483,12 +1491,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Do not apply to shot-time ballistics or alter an approved coupled pose.
   if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
      !p.firing&&!p.down&&!p.surrender&&p.reload<=0){
-    const look=resolvedWardrobe(p.wardrobe,p.equipment);
+    const look=clothing;
     const choice=chooseV3SupportGrip({
       weapon:p.weapon,configuration:coupledConfig,fit,
       shoulder:shoulderFor(0),firingShoulder:shoulderFor(1),
-      envelope:poseClearanceEnvelope(
-        look.armorStyle,look.rigStyle,look.top),
+      envelope:poseEnvelope!,
       mode:p.reload>0?'reload':p.aiming||handling==='ads'?
         'aim':'carry'
     });
@@ -1532,7 +1539,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Preserve the canonical route for all other kits, especially flak AKS74U.
   const legacyAkReload=p.poseV3Preview&&reloadActive&&
     coupledConfig?.build?.family==='ak'&&
-    resolvedWardrobe(p.wardrobe,p.equipment).armorStyle==='plate-legacy';
+    clothing.armorStyle==='plate-legacy';
   const v3MagazinePalm:V3MagazinePalm=p.poseV3Preview?
     (p.poseV3MagazinePalm??'legacy'):'legacy';
   const v3ReloadCorridor:V3ReloadCorridorProfile=p.poseV3Preview?
@@ -1541,11 +1548,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
      !p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
      !actionState.interactionWindow&&!activeTransition){
-    const outfit=resolvedWardrobe(p.wardrobe,p.equipment);
+    const outfit=clothing;
     const activeReloadSocket=reloadActive?
       weaponPresentationSockets(p.weapon,p.weaponConfiguration):null;
-    const envelope=poseClearanceEnvelope(
-      outfit.armorStyle,outfit.rigStyle,outfit.top);
+    const envelope=poseEnvelope!;
     if(reloadActive)v3ReloadClearanceFront=envelope.front;
     const releaseInputs=reloadActive?{
       fit,lengthScale:data.lengthScale,
@@ -1876,10 +1882,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     leftGrip.copy(fit.support).lerp(fullDoorContact,reach);
   }
   // Preview-only evaluation; production continues to use the proven path.
-  const dynamicLook=p.poseV3Preview?
-    resolvedWardrobe(p.wardrobe,p.equipment):null;
-  const dynamicEnvelope=dynamicLook?poseClearanceEnvelope(
-    dynamicLook.armorStyle,dynamicLook.rigStyle,dynamicLook.top):null;
+  const dynamicEnvelope=p.poseV3Preview?poseEnvelope:null;
   const v3DynamicReports:Array<{
     side:string;status:string;reason:string;
     candidates:number;elbowDrop:number;outwardFlare:number;
