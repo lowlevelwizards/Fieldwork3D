@@ -295,6 +295,8 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   const trousers=cloth.clone();
   const boot=mat(0x313935,'rubber'),vest=mat(0x43504b,'fabric'),
     skin=mat(0xb29b83),steel=mat(0x414846,'metal');
+  // Studio-only style classifier; no tactical material or physics change.
+  steel.userData.fieldworkSpecRim=true;
   const packFabric=vest.clone(),gearFabric=vest.clone(),
     headCloth=cloth.clone(),headArmor=vest.clone();
    // Only textiles are unfolded across adjacent faces; leave rubber, steel,
@@ -390,6 +392,12 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   const weaponLensMaterial=mat(0xb7e6df);
   weaponLensMaterial.emissive.setHex(0x7fdac9);
   weaponLensMaterial.emissiveIntensity=.90;
+  // Mark the whole firearm silhouette, optic/mount attachments and detachable
+  // magazines as specular highlights for the opt-in Studio art audition.
+  weapon.userData.fieldworkWeaponPresentation=true;
+  droppedGun.userData.fieldworkWeaponPresentation=true;
+  weapon.userData.fieldworkRimRegion='hard-shell';
+  droppedGun.userData.fieldworkRimRegion='hard-shell';
   weapon.add(weaponBody,weaponAccessories);
   droppedGun.add(droppedWeaponBody,droppedAccessories);
   // Three geometry-reused fabric spans connect gun mounts with shoulder

@@ -15,6 +15,8 @@ import {applyStudioSelfShadowAtlases}
  from './operator-gear-lightmap-atlas.ts';
 import {applyOperatorStudioToon,disposeOperatorStudioToon}
  from './operator-studio-toon-lighting.ts';
+import {applyStudioGraphicLighting,restoreStudioGraphicLighting,
+ disposeStudioGraphicLighting} from './operator-studio-graphic-lighting.ts';
 import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
  from './operator-studio-lighting.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
@@ -234,6 +236,13 @@ const labCel=$<HTMLSelectElement>('studioLightCel');
 const labRim=$<HTMLSelectElement>('studioLightRim');
 const labGradient=$<HTMLSelectElement>('studioLightGradient');
 const labShadow=$<HTMLSelectElement>('studioLightShadow');
+const labCelProfile=$<HTMLSelectElement>('studioCelProfile');
+const labScope=$<HTMLSelectElement>('studioLightScope');
+const labCelLow=$<HTMLInputElement>('studioCelLow');
+const labCelHigh=$<HTMLInputElement>('studioCelHigh');
+const labCelLowValue=$<HTMLOutputElement>('studioCelLowValue');
+const labCelHighValue=$<HTMLOutputElement>('studioCelHighValue');
+const labWeapon=$<HTMLButtonElement>('studioLightShowWeapon');
 const labCompare=$<HTMLButtonElement>('studioLightCompare');
 const labReset=$<HTMLButtonElement>('studioLightReset');
 const labSummary=$<HTMLElement>('studioLightLabSummary');
@@ -244,17 +253,28 @@ function syncLightingLabControls(){
  labRim.value=lightLabSettings.rim;
  labGradient.value=lightLabSettings.gradient;
  labShadow.value=lightLabSettings.shadow;
+ labCelProfile.value=lightLabSettings.celProfile;
+ labScope.value=lightLabSettings.allSurfaces?'all':'cloth';
+ labCelLow.value=String(lightLabSettings.celLow);
+ labCelHigh.value=String(lightLabSettings.celHigh);
+ labCelLowValue.textContent=Math.round(lightLabSettings.celLow*100)+'%';
+ labCelHighValue.textContent=Math.round(lightLabSettings.celHigh*100)+'%';
  labCel.disabled=atlasPrecedence;
- labRim.disabled=atlasPrecedence||lightLabSettings.toon===0;
+ // Graphic dual rim is available independently of cel banding.
+ labRim.disabled=atlasPrecedence;
+ labCelProfile.disabled=atlasPrecedence||lightLabSettings.toon===0;
+ labCelLow.disabled=atlasPrecedence||lightLabSettings.toon===0;
+ labCelHigh.disabled=atlasPrecedence||lightLabSettings.toon!==3;
+ labWeapon.setAttribute('aria-pressed',String(!clothesOnly&&showWeapon));
  labCompare.setAttribute('aria-pressed',String(lightLabCompareOriginal));
  labCompare.textContent=lightLabCompareOriginal?'RETURN TO EXPERIMENT':
   'COMPARE ORIGINAL';
  labSummary.textContent=lightLabCompareOriginal?'ORIGINAL · COMPARISON':
   studioLightLabLabel(liveLightLabSettings());
  labStatus.textContent=atlasPrecedence?
-  'The UV1 atlas URL experiment takes precedence over cel and rim. Other settings remain live.':
+  'UV1 atlas takes precedence over cel and rim. The height/color controls remain live.':
   lightLabCompareOriginal?
-  'Showing the original lighting on this same operator. Your selections are preserved.':
+  'Showing original lighting. Experiment selections are preserved.':
   'LIVE · '+studioLightLabLabel(liveLightLabSettings());
 }
 function applyLightingLab(){
@@ -265,17 +285,42 @@ function applyLightingLab(){
  posePreview();
 }
 function readLightingLabControls(){
+ // The third band must remain wider than the shadow band. Clamp and mirror
+ // both visible slider values, so the displayed cutoffs match the GPU ramp.
+ const celLow=Math.min(.88,Number(labCelLow.value));
+ const celHigh=Math.max(celLow+.06,Math.min(.97,Number(labCelHigh.value)));
  lightLabSettings={
   toon:Number(labCel.value) as StudioLightLabSettings['toon'],
   rim:labRim.value as StudioLightLabSettings['rim'],
   gradient:labGradient.value as StudioLightLabSettings['gradient'],
-  shadow:labShadow.value as StudioLightLabSettings['shadow']
+  shadow:labShadow.value as StudioLightLabSettings['shadow'],
+  celProfile:labCelProfile.value as StudioLightLabSettings['celProfile'],
+  celLow,celHigh,
+  allSurfaces:labScope.value==='all'
  };
  lightLabCompareOriginal=false;
  applyLightingLab();
 }
-for(const input of [labCel,labRim,labGradient,labShadow])
- input.addEventListener('change',readLightingLabControls);
+for(const input of [labCel,labRim,labGradient,labShadow,
+ labCelProfile,labScope])input.addEventListener('change',readLightingLabControls);
+// Coalesce fast touch-slider changes instead of queuing thumbnail readbacks.
+let liveCelFrame=0;
+for(const slider of [labCelLow,labCelHigh]){
+ slider.addEventListener('input',()=>{
+  if(liveCelFrame)return;
+  liveCelFrame=requestAnimationFrame(()=>{
+   liveCelFrame=0;
+   readLightingLabControls();
+  });
+ });
+ slider.addEventListener('change',readLightingLabControls);
+}
+labWeapon.addEventListener('click',()=>{
+ clothesOnly=false;showWeapon=true;
+ syncGearToggle();
+ posePreview();
+ syncLightingLabControls();
+});
 labCompare.addEventListener('click',()=>{
  lightLabCompareOriginal=!lightLabCompareOriginal;
  applyLightingLab();
@@ -519,13 +564,15 @@ function posePreview(){
  const reference=referenceOpen?resolveFactionReference(referenceBrowser.selectedId):null;
  if(!rig||rig.camoIdentity!==p.id){
   if(rig){
-   scene.remove(rig.root);disposeOperatorStudioToon(rig.root);rig.dispose();
+   scene.remove(rig.root);disposeStudioGraphicLighting(rig.root);
+   disposeOperatorStudioToon(rig.root);rig.dispose();
   }
   rig=createOperatorRig(p.id,'blue');
   scene.add(rig.root);
  }
  // Always restore Standard materials before updating authored garments
  // so pose-cavity and camo sync never writes into a stale toon replacement.
+ restoreStudioGraphicLighting(rig.root);
  applyOperatorStudioToon(rig.root,0);
  const light=liveLightLabSettings();
  rig.root.userData.fieldworkHeightProfile=light.gradient;
@@ -566,10 +613,14 @@ function posePreview(){
   canvas.dataset.operatorAtlasBytes=String(atlasResult.bytes);
   canvas.dataset.operatorAtlasCount=String(atlasResult.atlases);
  }else{
-  const result=applyOperatorStudioToon(rig.root,light.toon,light.rim);
+  const result=applyStudioGraphicLighting(rig.root,light);
   canvas.dataset.operatorToonBands=String(light.toon);
   canvas.dataset.operatorRimMode=light.rim;
   canvas.dataset.operatorToonMeshes=String(result.meshes);
+  canvas.dataset.operatorWeaponMeshes=String(result.weapons);
+  canvas.dataset.operatorCelProfile=light.celProfile;
+  canvas.dataset.operatorCelLow=String(light.celLow);
+  canvas.dataset.operatorCelHigh=String(light.celHigh);
  }
  canvas.dataset.operatorGradient=light.gradient;
  canvas.dataset.operatorShadowColor=light.shadow;

@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 
 export type OperatorToonBands=0|2|3;
-export type OperatorRimMode='off'|'hard'|'pixel';
+export type OperatorRimMode='off'|'hard'|'pixel'|'dual';
 const stops:Readonly<Record<2|3,readonly number[]>>={
  2:[.76,1],3:[.68,.86,1]
 };
@@ -19,7 +19,7 @@ export function requestedOperatorToonBands(search:string):OperatorToonBands{
  * material is untouched; there is no surprise second material path. */
 export function requestedOperatorRimMode(search:string):OperatorRimMode{
  const v=new URLSearchParams(search).get('operatorRim');
- return v==='hard'||v==='pixel'?v:'off';
+ return v==='hard'||v==='pixel'||v==='dual'?v:'off';
 }
 export function operatorToonRamp(bands:2|3):THREE.DataTexture{
  const existing=ramps.get(bands);if(existing)return existing;

@@ -105,8 +105,55 @@ try{
     return s?.operatorToonBands==='0'&&s.operatorRimMode==='off'&&
      s.operatorGradient==='current'&&s.operatorShadowColor==='neutral';
    },null,{timeout:35000});
-   if(await live.locator('#studioLightRim').isEnabled())
-    throw Error('Rim style editable without cel shading');
+   // R7.9: the stronger warm/white graphic rim must be testable on
+   // smooth surfaces AND a live firearm, not merely a helmet torso crop.
+   if(!await live.locator('#studioLightRim').isEnabled())
+    throw Error('R7.9 dual rim should be selectable without cel');
+   await live.locator('#studioLightRim').selectOption('dual');
+   await live.locator('#studioLightShowWeapon').click();
+   await live.waitForFunction(()=>{
+    const s=document.getElementById('studioCanvas')?.dataset;
+    return s?.operatorToonBands==='0'&&s.operatorRimMode==='dual'&&
+     Number(s.operatorWeaponMeshes)>0;
+   },null,{timeout:35000});
+   await live.locator('#studioLightCel').selectOption('3');
+   await live.locator('#studioCelProfile').selectOption('graphic');
+   await live.locator('#studioLightScope').selectOption('all');
+   await live.locator('#studioCelLow').evaluate(el=>{
+    el.value='0.52';el.dispatchEvent(new Event('change',{bubbles:true}));
+   });
+   await live.locator('#studioCelHigh').evaluate(el=>{
+    el.value='0.78';el.dispatchEvent(new Event('change',{bubbles:true}));
+   });
+   await live.locator('#studioLightGradient').selectOption('violet-noir');
+   await live.locator('#studioLightShadow').selectOption('plum-plus');
+   await live.waitForFunction(()=>{
+    const s=document.getElementById('studioCanvas')?.dataset;
+    return s?.operatorToonBands==='3'&&s.operatorRimMode==='dual'&&
+     s.operatorCelProfile==='graphic'&&s.operatorCelLow==='0.52'&&
+     s.operatorCelHigh==='0.78'&&s.operatorGradient==='violet-noir'&&
+     s.operatorShadowColor==='plum-plus'&&Number(s.operatorWeaponMeshes)>0;
+   },null,{timeout:35000});
+   const firearm=await live.locator('#studioCanvas').screenshot({
+    path:'operator-studio-captures/r79-graphic-rim-violet-plum-firearm-phone.png'
+   });
+   if(firearm.byteLength<3000)
+    throw Error('R7.9 graphic weapon / violet WebGL screenshot blank');
+   const programCount=Number(await live.locator('#studioCanvas').getAttribute(
+    'data-shader-programs'));
+   if(!Number.isFinite(programCount)||programCount<=0)
+    throw Error('No compiled graphics programs for R7.9 audition');
+   await live.locator('#studioLightCompare').click();
+   await live.waitForFunction(()=>{
+    const s=document.getElementById('studioCanvas')?.dataset;
+    return s?.operatorToonBands==='0'&&s.operatorRimMode==='off'&&
+     s.operatorGradient==='current'&&s.operatorShadowColor==='neutral';
+   },null,{timeout:35000});
+   await live.locator('#studioLightCompare').click();
+   await live.waitForFunction(()=>
+    document.getElementById('studioCanvas')?.dataset.operatorRimMode==='dual',
+    null,{timeout:35000});
+   await live.locator('#studioLightReset').click();
    if(uiErrors.length)throw Error('Live Lighting Lab WebGL errors: '+
     uiErrors.join('; '));
    console.log('R7 live Lighting Lab comparison, reset and WebGL smoke passed');
