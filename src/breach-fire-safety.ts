@@ -28,7 +28,12 @@ export function assessFireLane(from:Pt,muzzleHeight:number,to:Pt,
       const px=p.x-from.x,py=p.y-from.y;
       const along=px*ux+py*uy;
       const across=Math.abs(px*uy-py*ux);
-      if(along>12&&along<total-8&&across<10.5)
+      // A teammate is a physical disk against the full muzzle-to-target
+      // segment, including bodies overlapping either endpoint.
+      // Callers exclude the shooter from the friends array.
+      const nearest=Math.max(0,Math.min(total,along));
+      const axial=along-nearest;
+      if(axial*axial+across*across<10.5*10.5)
         return {blocker:'friendly',point:p};
     }
   }
