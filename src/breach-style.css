@@ -1589,6 +1589,9 @@ html,body{font-family:var(--fw-font-menu)}
   .replay-incident-focus{grid-template-columns:1fr;gap:5px}
   .replay-incident-actions button{flex:1}
 }
+.replay-contact-note{margin:4px 3px 0;font:600 10px/1.35 var(--ui-font);
+  letter-spacing:.015em;color:#d5bc8f;max-width:100%}
+.replay-contact-note[hidden]{display:none!important}
 .replay-feed-panel{display:flex;flex-direction:column;flex:1;min-height:0;padding:8px 2px 1px}
 .replay-feed-tools{
   display:flex;align-items:center;gap:6px;margin:0 0 8px;flex:none
