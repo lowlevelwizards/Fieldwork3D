@@ -1052,8 +1052,9 @@ function renderMaterials(){
     const slitRow=row('FOLIAGE SLITS',
      'Simple fabric cuts for leaves or scrim, not protruding sewn loops.');
     if(pasgtConcealmentRequiresSlits(details.concealment)){
-     slitRow.append(makeButton('ON · REQUIRED BY '+details.concealment.toUpperCase(),
-      true,()=>{}));
+     const explanation=document.createElement('small');
+     explanation.textContent='ON · REQUIRED BY '+details.concealment.toUpperCase();
+     slitRow.append(explanation);
     }else{
      addSelect(slitRow,[['off','NO SLITS'],['on','FOLIAGE SLITS']] as const,
       effective.slits?'on':'off',v=>changeWardrobe({...current(),

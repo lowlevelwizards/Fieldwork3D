@@ -20,13 +20,12 @@ const allowed=<T extends string>(value:unknown,values:readonly T[],fallback:T):T
 export const pasgtConcealmentRequiresSlits=(value:PasgtConcealment):boolean=>
  value==='foliage'||value==='scrim';
 export function readPasgtDetails(value:unknown,legacyHelmetSetup?:unknown):PasgtDetails{
- const incoming=value&&typeof value==='object'&&!Array.isArray(value)?
-  value as Partial<PasgtDetails>&{construction?:string}:{};
+ const incoming:Record<string,unknown>=value&&typeof value==='object'&&!Array.isArray(value)?
+  value as Record<string,unknown>:{};
  const old=legacyHelmetSetup===undefined?undefined:readHelmetSetup(legacyHelmetSetup);
  return {
-  // Both previous cloth construction types map to real foliage buttonholes.
-  slits:typeof incoming.slits==='boolean'?incoming.slits:
-   incoming.construction==='slits'||incoming.construction==='loops'?true:true,
+  // Both legacy cover constructions become the one remaining slit style.
+  slits:typeof incoming.slits==='boolean'?incoming.slits:true,
   band:incoming.band==='standard'||incoming.band==='crossed'?'elastic':
    allowed(incoming.band,PASGT_BANDS,old?.band==='elastic'?'elastic':'none'),
   concealment:allowed(incoming.concealment,PASGT_CONCEALMENTS,
