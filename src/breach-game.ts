@@ -18,7 +18,7 @@ import {
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
-import {entryDoorState} from './breach-entry-coordination.ts';
+import {entryDoorState,entryClearanceForLook} from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
@@ -32,12 +32,13 @@ import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {microKeyAt} from './breach-fog-memory.ts';
 import {groundView,groundViewCandidate} from './breach-ground-view.ts';
+import {notePersonalGround} from './breach-replay-personal-ground.ts';
 import {assessFireLane,fireLaneReachable,type FireBlock} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,
-  initialOpeningYieldCandidate,pressDoorOnBodyAttempt,
+  initialOpeningYieldCandidate,pressDoorOnBodyAttempt,doorSwingBlocked,
   autoDoorAtBodyContact,canAutoOpenEnRoute} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
@@ -99,7 +100,7 @@ import {newAwareness,addObservation,visibleObservation,
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {passageWait,approachingNarrowThreshold,
+import {passageWait,passageFollowerStep,approachingNarrowThreshold,
   type PassageActor,type PassageLease}
   from './breach-passage.ts';
 import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
@@ -1138,13 +1139,15 @@ export function planSquadEntry(s:Session,doorId:string){
   for(let i=0;i<alive.length;i++){
     const a=alive[i],slot=slots[i];
     if(i>0){
-      // This is an entry gate, not a blind time delay. The lead must
-      // actually open a physical passage; existing passage leases handle
-      // moving-queue spacing after the gate becomes ready.
+      // A generated entry gate waits for ACTUAL door clearance, not an
+      // additional artificial .3s after clearance. Existing passage
+      // reservations and swept-body checks provide real follower spacing.
+      // Only this synthesized gate gets duration zero; a player's explicit
+      // WAIT still retains its chosen .3-6 second duration.
       if(!planWait(s,a.id,.3))return rollback();
       const gate=a.plan.at(-1);
       if(gate?.kind!=='wait')return rollback();
-      gate.doorId=doorId;
+      gate.doorId=doorId;gate.duration=0;
     }
     if(!planMove(s,a.id,slot.point)){
       notify(s,a.name+' ENTRY ROUTE UNAVAILABLE');
@@ -1154,6 +1157,12 @@ export function planSquadEntry(s:Session,doorId:string){
     if(arrival?.kind!=='move'||
        !planAim(s,a.id,'fixed',slot.look,arrival.id,'look'))
       return rollback();
+    // Only this authored template may start facing the selected sector
+    // during the same MOVE, once its real body clears the door plane.
+    // Manual LOOK/MOVE plans never gain this marker automatically.
+    const assigned=a.plan.find(n=>n.id===arrival.id);
+    if(!assigned)return rollback();
+    assigned.entryDoorId=doorId;
   }
   // Collapse the many internal authoring steps into ONE undo entry per
   // participant. A single UNDO/REDO of any unchanged squad entry restores
@@ -1703,10 +1712,13 @@ function observe(s:Session){
           if(!groundViewCandidate(sight,x,y))continue;
           const p={x,y};
           if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))continue;
-          s.seenGround.add('fine:'+col+','+row);
+          const fine='fine:'+col+','+row;
+          s.seenGround.add(fine);
+          notePersonalGround(s,blue.id,s.seconds,fine);
           // Keep legacy coarse memories for knownAt and existing intel UI.
-          s.seenGround.add(Math.floor(p.x/40)+','+
-            Math.floor(p.y/40));
+          const coarse=Math.floor(p.x/40)+','+Math.floor(p.y/40);
+          s.seenGround.add(coarse);
+          notePersonalGround(s,blue.id,s.seconds,coarse);
         }
       // Fine independent explored footprints: 10-unit samples capture the
       // visible margins of corners that 20-unit center samples missed.
@@ -1719,7 +1731,9 @@ function observe(s:Session){
         const x=col*10+5,y=row*10+5;
         if(!groundViewCandidate(sight,x,y))continue;
         if(!unobstructed(blue.p,{x,y},s,blue.posture==='crouch'))continue;
-        s.seenGround.add(microKeyAt(col,row));
+        const micro=microKeyAt(col,row);
+        s.seenGround.add(micro);
+        notePersonalGround(s,blue.id,s.seconds,micro);
       }
       if(s.seenGround.size!==beforeGroundSize)s.seenGroundRevision++;
     }
@@ -1944,7 +1958,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const desired=Math.min(requested,sideLimit,a.squeeze?16:Infinity);
   a.velocity+=(desired-a.velocity)*Math.min(1,dt*6);
   const advance=Math.min(gap,a.velocity*dt);
-  const move={x:a.p.x+Math.cos(direction)*advance,
+  let move={x:a.p.x+Math.cos(direction)*advance,
     y:a.p.y+Math.sin(direction)*advance};
   // Resolve right-of-way BEFORE automatic door-opening, hinge pressure or
   // movement. Otherwise every teammate can start a competing OPEN action
@@ -1966,8 +1980,14 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       active:unit===a||traveling,
     };
   });
-  if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,
-     traffic,s.passageLeases,s.seconds,move)){
+  const passageActor=traffic.find(unit=>unit.id===a.id)!;
+  const negotiatedMove=passageFollowerStep(passageActor,s.doors,traffic,move);
+  // A partly free stride moves on this tick instead of stopping and
+  // repeatedly re-accelerating. A fully consumed gap still enters the
+  // existing WAIT state, with its unchanged warnings/lease semantics.
+  const noForwardRoom=d(negotiatedMove,a.p)<.05&&d(move,a.p)>.05;
+  if(passageWait(passageActor,s.doors,traffic,s.passageLeases,s.seconds,
+       noForwardRoom?move:negotiatedMove)||noForwardRoom){
     a.motorPause='passage';a.velocity=0;a.blockedTime=0;
     a.passageWaitSeconds+=dt;
     // A normal stack is allowed to wait. Warn only when two or more
@@ -1984,6 +2004,11 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     return true;
   }
   a.passageWaitSeconds=0;a.passageStallReported=false;
+  // Rendered locomotion uses real progress, not the unconstrained desired
+  // speed. Prevent foot-skating when a convoy's available stride is short.
+  if(d(negotiatedMove,a.p)<d(move,a.p)-.001)
+    a.velocity=Math.min(a.velocity,d(negotiatedMove,a.p)/Math.max(dt,.0001));
+  move=negotiatedMove;
   // Identify the leaf for closed-door authored handling; open hinged
   // leaves are pushed by the coupled swept-body solver below, not by
   // standing nearby or crossing a broad radius trigger.
@@ -2080,9 +2105,19 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       a.priorP=old;a.p=glide;
       // Footwork and motion cues follow resolved, not rejected movement.
       a.velocity=d(old,glide)/Math.max(dt,.0001);
-      // Point the body along its real sliding movement, not at the
-      // obstructed grid waypoint. Explicit WATCH remains authoritative.
-      if(a.aimInstruction?.mode!=='track')
+      // Ordinary wall-gliding faces the actual slide, not the obstructed
+      // grid waypoint. A generated squad entry that has already achieved
+      // full shoulder clearance is different: its authored clearing sector
+      // should keep rotating while the circular full-body sweep glides.
+      // Do not relax geometry, squeeze turning, or explicit WATCH priority.
+      const entry=a.plan[0];
+      const clearedEntryLook=!a.squeeze&&entry?.kind==='move'&&
+        !!entry.entryDoorId&&entry.aimMode==='fixed'&&
+        entry.facing!==undefined&&
+        entryClearanceForLook(
+          s.doors.find(door=>door.id===entry.entryDoorId),
+          glide,entry.p);
+      if(a.aimInstruction?.mode!=='track'&&!clearedEntryLook)
         a.heading=angle(old,glide);
       a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
       a.recoveryAttempts=0;
@@ -2247,7 +2282,10 @@ function aimHeading(a:TeamActor):number|null{
 function applyAimNode(a:TeamActor,n:PlanNode){
   if(n.aimMode==='free')a.aimInstruction=null;
   else if(n.aimMode==='track'&&n.aimPoint)
-    a.aimInstruction={mode:'track',point:clone(n.aimPoint)};
+    a.aimInstruction={mode:'track',point:clone(n.aimPoint),
+      // A player can change a stack waypoint into WATCH. Only the untouched
+      // template's PIE-labelled stack pivot may yield to an entry sector.
+      ...(n.stackDoorId&&n.aimLabel==='pie'?{source:'stack' as const}:{})};
   else if(n.aimMode==='fixed'&&n.facing!==undefined)
     a.aimInstruction={mode:'fixed',angle:n.facing};
   else if(n.facing!==undefined)
@@ -2648,7 +2686,18 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     // While wedged sideways, the physical shoulder axis has priority
     // over target tracking. The authored look resumes on exit.
     if(a.squeeze)return;
+    const clearedEntryLook=!running&&n.kind==='move'&&
+      !!n.entryDoorId&&n.aimMode==='fixed'&&n.facing!==undefined&&
+      entryClearanceForLook(s.doors.find(door=>door.id===n.entryDoorId),
+        a.p,n.p);
+    // A generated STACK pivot watches its door until the operator is
+    // physically through. Only then does that template gaze yield to
+    // the already-authored entry sector. Explicit WATCH has no 'stack'
+    // provenance and retains priority; visible threats still win.
+    const handoff=clearedEntryLook&&
+      (a.aimInstruction===null||a.aimInstruction?.source==='stack');
     const held=!running&&visibleThreat?angle(a.p,visibleThreat.p):
+      handoff?n.facing!:
       running&&a.aimInstruction?.mode==='track'?null:aimHeading(a);
     if(held!==null)rotate(a,held,dt);
     else if(n.kind==='move'&&n.moveMode==='strafe')
@@ -2701,9 +2750,20 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         a.velocity=0;a.waitRemaining=0;a.actionTimer+=dt;
         // A genuinely blocked entry is not silently abandoned. Alert once,
         // retain editable orders, and never force the squad through geometry.
-        if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5)
+        if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5){
+          // A stuck hinge is physically observable when the operator tries
+          // to enter. Report the blockage without revealing the identity or
+          // position of any undiscovered prop behind the door. This is an
+          // explanation, never permission to bypass the leaf or alter orders.
+          const stalledSwing=!!doorway&&doorway.open&&
+            (doorway.openFraction??0)<.98&&
+            doorSwingBlocked(doorway,
+              Math.min(1,(doorway.openFraction??0)+.07),[]);
           notify(s,a.name+' ENTRY WAIT · '+
-            (gate==='missing'?'DOOR MISSING':'DOOR NOT CLEAR'));
+            (gate==='missing'?'DOOR MISSING':
+             stalledSwing?'DOOR SWING OBSTRUCTED · CHECK ENTRY':
+             'DOOR NOT CLEAR'));
+        }
         return;
       }
       a.actionTimer=0;
@@ -4589,6 +4649,19 @@ export function debrief(s:Session){
 export function knownAt(s:Session,x:number,y:number){
   if(s.intel.mode==='full-view')return true;
   return s.seenGround.has(Math.floor(x/40)+','+Math.floor(y/40));
+}
+/** Confirmed geometric *point* sight for individual friendly observers.
+ * This matches liveVisibility's distance, facing and occlusion contract,
+ * but deliberately does NOT grant full-view or shared-team knowledge.
+ * Used only at authoritative recording time for personal civilian evidence.
+ */
+export function observerPointVisible(
+  s:Session,observer:TeamActor,p:Pt
+):boolean{
+  return observer.side==='blue'&&observer.health>0&&
+    d(observer.p,p)<240&&
+    Math.abs(angleDifference(observer.heading,angle(observer.p,p)))<1.15&&
+    unobstructed(observer.p,p,s,observer.posture==='crouch');
 }
 export function liveVisibility(s:Session,p:Pt){
   if(s.intel.mode==='full-view')return true;

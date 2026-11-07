@@ -3,32 +3,46 @@
  */
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
-import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName}
+import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
  from './profile-primitives.ts';
-import {HK_OLIVE_POLYMER,HK_MAG_METAL}
+import {HK_OLIVE_POLYMER,HK_MAG_METAL,HK_MUZZLE_METAL}
  from './weapon-visual-palette.ts';
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
-import {addHKFacetedForearm} from './hk-handguard-profiles.ts';
+import {addHKFacetedForearm,addHKHandguardOpenings} from './hk-handguard-profiles.ts';
 import {HK_MAG20_OUTLINE} from './hk-magazine-profiles.ts';
-import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
+import {addHKRetractableStock} from './hk-retractable-stock.ts';
+import {addHK556Family} from './hk-556-silhouettes.ts';
+import {addHKMP5Family} from './hk-mp5-silhouettes.ts';
+import {HK_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
+import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
+import {addHKTriggerSelector} from './hk-trigger-selector.ts';
 
 export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material,
  showFactoryMuzzle=true){
  const parts=build.parts,early=parts.receiver==='hk-g3-early';
+ if(parts.receiver.startsWith('hk-mp5')){
+  addHKMP5Family(root,build,steel,dark,showFactoryMuzzle);
+  return;
+ }
+ if(parts.receiver==='hk33-556-rifle'||parts.receiver==='hk53-556-compact'){
+  addHK556Family(root,build,steel,dark,showFactoryMuzzle);
+  return;
+ }
  const art=HK_BARREL_ART[parts.barrel];
  if(!art)throw new Error('Unknown HK art barrel: '+parts.barrel);
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
- const material=(finish:'steel'|'dark'|'wood'|'olive'|'mag')=>
+ const material=(finish:'steel'|'dark'|'wood'|'olive'|'mag'|'muzzle')=>
   finish==='steel'?steel:finish==='wood'?wood:
-  finish==='olive'?HK_OLIVE_POLYMER:finish==='mag'?HK_MAG_METAL:dark;
+  finish==='olive'?HK_OLIVE_POLYMER:finish==='mag'?HK_MAG_METAL:
+  finish==='muzzle'?HK_MUZZLE_METAL:dark;
  const p=(slot:SlotName,points:Outline,depth:number,
-  finish:'steel'|'dark'|'wood'|'olive'|'mag'='steel')=>
+  finish:'steel'|'dark'|'wood'|'olive'|'mag'|'muzzle'='steel')=>
   addOutline(root,slot,parts[slot],ids[slot]++,points,depth,material(finish));
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number,
-  finish:'steel'|'dark'|'wood'|'olive'|'mag'='steel')=>
+  finish:'steel'|'dark'|'wood'|'olive'|'mag'|'muzzle'='steel')=>
   addCuboid(root,slot,parts[slot],ids[slot]++,x,y,z,w,h,d,material(finish));
 
  // Stamped HK receiver and connected trigger housing: deliberately no AR split.
@@ -40,80 +54,107 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  p('receiver',[[-5.80,-1.28],[-5.34,-2.10],[-4.73,-2.23],
    [-4.38,-2.55],[-3.32,-2.61],[-2.95,-2.41],
    [-.80,-2.42],[-.42,-2.32],[2.52,-2.48],
-   [3.95,-1.48]],3.18,'dark');
+   [3.95,-1.48]],3.18,early?'steel':'dark');
  // Integrated angular magazine housing; the magazine top stays fully seated.
  p('receiver',[[-.58,-2.08],[3.32,-2.08],[3.39,-2.93],
    [3.13,-3.13],[-.29,-3.13],[-.50,-2.91]],3.35);
- // A single real negative-space trigger guard, not a delicate wire loop.
- // It overlaps grip/lower and magwell; the lower strip remains continuous.
- addProfileFrame(root,'receiver',parts.receiver,ids.receiver++,
-  [[-3.09,-2.36],[-.33,-2.36],[-.37,-3.72],
-   [-1.08,-4.00],[-2.47,-4.00],[-3.16,-3.52]],
-  [[-2.40,-2.89],[-2.28,-3.47],[-1.10,-3.47],[-.83,-2.89]],
-  1.12,dark);
+ // No separately modeled trigger guard. The stepped lower housing,
+ // grip shoulder, and magazine housing carry the silhouette just as they
+ // do in the existing Fieldwork AR/AK miniature families.
 
  // Early and polymer buttstocks are both confident single solid shapes.
- const rear=early?-15.15:-15.30;
+ const retract=parts.stock==='hk-g3-retract-stock';
+ const rear=early||retract?-15.15:-15.30;
+ // The stock shell stops INSIDE the buttplate. Its cap is now a genuine
+ // outward-facing slab instead of a coplanar overlaid side face (R3 Z-fight).
+ if(retract){
+  addHKRetractableStock(root,parts.stock,rear,steel,dark);
+ }else{
+ const stockStart=rear+.46;
  p('stock',early?[
-  [rear,1.22],[-11.18,1.25],[-10.77,1.16],
+  [stockStart,1.22],[-11.18,1.25],[-10.77,1.16],
   [-6.25,.67],[-6.18,-1.46],[-9.13,-2.49],
-  [-13.76,-3.29],[rear,-2.87]
+  [-13.76,-3.29],[stockStart,-2.87]
  ]:[
-  [rear,1.12],[-11.03,1.13],[-10.61,1.06],
+  [stockStart,1.12],[-11.03,1.13],[-10.61,1.06],
   [-6.23,.69],[-6.15,-1.44],[-9.52,-2.33],
-  [-14.73,-3.04],[rear,-2.85]
+  [-14.73,-3.04],[stockStart,-2.85]
  ],3.12,early?'wood':'olive');
- // Rear pad is seated within the stock envelope, not protruding into camera fit.
- b('stock',rear+.21,-.90,0,.42,4.28,3.30,'dark');
+ // One deliberately thick miniature buttplate: the visible rear remains
+ // at the ORIGINAL rear landmark. Its inner end overlaps the stock .10,
+ // and the side surfaces stand .19 clear of the stock on either side.
+ // No coplanar stock/pad faces or decorative buttplate layers.
+ const padMidY=early?-.825:-.865;
+ const padHeight=early?4.40:4.27;
+ const buttpad=b('stock',rear+.28,padMidY,0,.56,padHeight,3.50,'dark');
+ buttpad.userData.hkButtpad=true;
+ }
 
  // Simple HK grip, shorter and chunkier than literal scale reference.
- p('grip',[[-4.88,-2.31],[-2.48,-2.31],[-2.23,-5.82],
-   [-2.70,-6.81],[-4.42,-6.68],[-5.06,-3.40]],2.16,'dark');
+ // Distinct HK rearward rake; root stays underneath the trigger group
+ // and remains inside the existing -4.20 primary-hand pose contact.
+ p('grip',[[-4.90,-2.31],[-2.50,-2.31],[-2.90,-5.88],
+   [-3.12,-6.72],[-4.95,-6.66],[-5.06,-3.43]],2.16,'dark');
 
- // Straight, full-power 20-round box magazine; slight rearward heel bias.
+ // The 20-round steel magazine is a TRUE straight-sided box. Shared
+ // outline also drives carried and reload magazines; no AK-like heel drift.
  p('magazine',HK_MAG20_OUTLINE,2.08,'mag');
- // Dark integral heel: no disconnected bright bar across the underside.
- b('magazine',1.20,-7.69,0,3.36,.20,2.15,'dark');
- // Two extremely restrained imprinted strokes, flush to the broad steel
- // side faces, not separately casting light or making a ribbed AK magazine.
- addWeaponPixelMarkPair(root,'hk-mag-stamp20',1.27,-5.20,
-  1.052,2.66,3.24);
+ // Seat one muted heel cap flush to the new centered lower magazine width.
+ b('magazine',1.55,-7.73,0,3.22,.16,2.18,'dark');
+ // The simple straight box silhouette beats tiny pale stamped stripes.
 
  // HK slim fore-end: one faceted YZ body. Never an AK upper/lower split.
- const guardMat=parts.handguard==='hk-g3-wood-vented'?wood:HK_OLIVE_POLYMER;
+ const woodGuard=parts.handguard==='hk-g3-wood-vented';
+ const guardMat=woodGuard?wood:HK_OLIVE_POLYMER;
  // A real 8-sided broad-face tube with only a gentle taper at the nose:
  // single mesh, no fragile decorative sleeves or extended tropical furniture.
  addHKFacetedForearm(root,parts.handguard,ids.handguard++,
-  art.handguardStartX,art.handguardEndX,early,guardMat);
+  art.handguardStartX,art.handguardEndX,woodGuard,guardMat);
  b('handguard',4.23,-.15,0,.37,2.76,3.02,'steel');
- // The short end ferrule is physically buried in the fore-end, not a
- // floating full-height collar stacked ahead of its front face.
- p('handguard',[[13.67,-1.36],[13.98,-1.34],
-  [14.08,-1.04],[14.08,1.02],[13.95,1.24],[13.67,1.29]],
-  2.76,'steel');
+ // Four big, face-aligned vents per side instead of a tiny dot strip.
+ // No separate front lip to float beneath the tapered fore-end.
+ addHKHandguardOpenings(root,art.handguardStartX,art.handguardEndX,woodGuard);
 
  // Cocking tube sits above and slightly intersects the handguard roof.
  const tube=addFacetedTube(root,'receiver',parts.receiver,ids.receiver++,
   3.45,14.10,.57,steel);
  tube.position.y=1.58;
- // Enlarged side charging handle: two embedded solids, not a floating tab.
- b('receiver',4.68,1.99,.78,1.35,.55,1.09,'steel');
- b('receiver',4.38,2.08,1.40,.70,.66,.83,'dark');
+ // One oversized side-folded HK cocking handle, carved as a single
+ // low-poly L-shaped silhouette on the LEFT of the tube.
+ // Its foot intersects both the receiver nose and tube; never floats.
+ const handle=p('receiver',[
+  [3.83,1.48],[5.45,1.48],[5.45,2.03],
+  [4.85,2.03],[4.79,2.53],[4.06,2.53],
+  [3.83,2.24]
+ ],1.80,'steel');
+ // Z [-2.02, -.22]: one continuous solid engages the receiver flank
+ // AND forward cocking tube, while projecting clearly from the left side.
+ handle.position.z=-1.12;
+ handle.userData.hkCockingHandle=true;
 
- // Six-sided clean exposed nose: miniature roundness rather than the
- // previous square beam, but with the exact existing 22.4 shot-time tip.
+ // One slightly larger, solid factory flash hider wraps the last .15 of
+ // the exposed barrel instead of sharing any visible barrel surface.
+ // This removes the factory muzzle's Z-fighting at the nose while keeping
+ // the authoritative visible / shot-time muzzle at exactly X=22.40.
+ // On accessory-muzzle builds, the bare barrel still reaches that anchor.
+ const hiderStart=art.muzzleX-1.30;
+ const exposedBarrelTip=showFactoryMuzzle?hiderStart+.15:art.muzzleX;
  const barrelGeo=new THREE.CylinderGeometry(.74,.74,
-  art.muzzleX-art.barrelStartX,6,1);
+  exposedBarrelTip-art.barrelStartX,6,1);
  barrelGeo.rotateZ(-Math.PI/2);
  const barrelMesh=new THREE.Mesh(barrelGeo,steel);
- barrelMesh.position.x=(art.barrelStartX+art.muzzleX)/2;
+ barrelMesh.position.x=(art.barrelStartX+exposedBarrelTip)/2;
  barrelMesh.name='family-barrel-'+parts.barrel+'-'+ids.barrel++;
  barrelMesh.castShadow=true;barrelMesh.receiveShadow=true;root.add(barrelMesh);
- if(showFactoryMuzzle)
-  p('barrel',[[art.muzzleX-1.12,-.61],
-   [art.muzzleX-.27,-.73],[art.muzzleX,-.56],
-   [art.muzzleX,.56],[art.muzzleX-.27,.73],
-   [art.muzzleX-1.12,.61]],1.70,'dark');
+ if(showFactoryMuzzle){
+  const flashHider=p('barrel',[
+   [hiderStart,-.82],[hiderStart+.16,-.85],
+   [art.muzzleX-.24,-.85],[art.muzzleX,-.69],
+   [art.muzzleX,.69],[art.muzzleX-.24,.85],
+   [hiderStart+.16,.85],[hiderStart,.82]
+  ],1.92,'muzzle');
+  flashHider.userData.hkFactoryFlashHider=true;
+ }
 
  // Keep the successful open front ring. Reshape its large rectangular
  // foot into one seated tapered neck, avoiding a slab across the barrel.
@@ -121,37 +162,38 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [art.frontSightX-.39,1.33],[art.frontSightX-.22,1.47],
   [art.frontSightX+.21,1.47],[art.frontSightX+.51,.10]],
   1.66);
- const hoodGeo=new THREE.TorusGeometry(.89,.25,4,8);
+ // Six broad sides, one thick iconic ring, no fiddly sight hardware.
+ const hoodGeo=new THREE.TorusGeometry(.85,.31,4,6);
  hoodGeo.rotateY(Math.PI/2);
  const hood=new THREE.Mesh(hoodGeo,steel);
  hood.position.set(art.frontSightX,2.34,0);
  hood.name='family-barrel-'+parts.barrel+'-'+ids.barrel++;
  hood.castShadow=true;hood.receiveShadow=true;root.add(hood);
 
- // Low-relief receiver markings are seated on the true exterior side faces.
- addWeaponPixelMark(root,'hk-port',.40,.27,1.775,3.20,1.05);
- const selector=addWeaponPixelMark(root,'hk-selector',-3.48,-.67,-1.777,2.05,.60);
- selector.rotation.y=Math.PI;
- const vent=parts.handguard==='hk-g3-wood-vented'?'hk-wood-vents':'hk-poly-vents';
- // The lower pair of hex facets slopes in Z with Y. The decal tilts with
- // the actual surface, rather than floating above its center or clipping.
- // The central broad side facet is flat from x=4.05 to x=11.52.
- // Both vent marks sit just 0.012 units above that exact facet; no
- // tilted long decal traversing the tapered nose.
- addWeaponPixelMarkPair(root,vent,8.75,-.46,
-  early?1.512:1.562,5.10,.48);
- // Early flip-up leaf versus distinctive chunky later rotary sight drum.
- b('receiver',-3.68,1.95,0,2.0,.53,2.45);
+ // One dark receiver port with enlarged muted bolt, on the RIGHT,
+ // centered above the magazine. Shared anatomy prevents editor drift.
+ const anatomy=HK_VISUAL_ANATOMY;
+ const port=addWeaponPixelMark(root,'hk-port',anatomy.portX,
+  anatomy.portY,1.775,anatomy.portWidthX,anatomy.portHeightY);
+ port.userData.hkEjectionPort=true;
+ addHKTriggerSelector(root,'sef',1.78,1.59);
+ 
+ // One solid silhouette per rear sight: no separate base/knobs.
+ // Low early folding blade versus a broader, squat G3A3 diopter turret.
  if(early){
-  p('receiver',[[-4.12,2.13],[-4.06,2.86],
-   [-3.87,3.09],[-3.57,3.09],
-   [-3.34,2.84],[-3.12,2.13]],1.26,'steel');
+  // Thin early folding sight: one meaningful leaf shape, not a turret.
+  const rear=p('receiver',[[-4.33,1.73],[-4.33,2.14],
+   [-3.98,2.14],[-3.80,3.04],[-3.33,3.04],
+   [-3.02,1.73]],1.68,'steel');
+  rear.userData.hkRearSight='early-leaf';
  }else{
-  const g=new THREE.CylinderGeometry(.84,.84,1.27,6);
-  g.rotateX(Math.PI/2);
-  const mesh=new THREE.Mesh(g,steel);
-  mesh.position.set(-3.58,2.67,0);
-  mesh.name='family-receiver-'+parts.receiver+'-'+ids.receiver++;
-  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
+  // One real squat SIX-sided vertical turret. A distinctive HK drum
+  // silhouette, broad across X/Z but shorter than an AR carry handle.
+  const drum=new THREE.CylinderGeometry(1.18,1.18,1.48,6);
+  const rear=new THREE.Mesh(drum,steel);
+  rear.position.set(-3.55,2.54,0); // base Y=1.80 buried .05 into the roof
+  rear.name='family-receiver-'+parts.receiver+'-'+ids.receiver++;
+  rear.castShadow=true;rear.receiveShadow=true;root.add(rear);
+  rear.userData.hkRearSight='diopter-drum';
  }
 }

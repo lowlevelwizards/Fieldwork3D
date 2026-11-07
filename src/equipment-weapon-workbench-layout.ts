@@ -22,6 +22,7 @@ export function workbenchMounts(config:WeaponConfiguration,
  }
  const a=resolveWeaponAssembly(config);
  const mounts:Record<WeaponAttachmentSlot,WorkbenchMount>={
+  opticMount:{slot:'opticMount',x:-2,y:5,z:1,name:'Top rail mount'},
   optic:{slot:'optic',x:a.mounted.optic.mountX,y:9,z:1,name:'Sight rail'},
   muzzle:{slot:'muzzle',x:a.muzzleX,y:4,z:1,name:'Barrel tip'},
   foregrip:{slot:'foregrip',x:a.supportX,y:-7,z:1,name:'Support rail'},

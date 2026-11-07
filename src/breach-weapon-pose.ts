@@ -10,6 +10,10 @@ export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
 /** Shared authored weapon metadata; no duplicate geometry offsets. */
+/** The K's real rear cap must never be shouldered like a buttplate. */
+export const stocklessMP5K=(config?:WeaponConfiguration):boolean=>
+ config?.weapon==='smg'&&config.build?.parts.receiver==='hk-mp5k-stockless'&&
+ config.build.parts.stock==='hk-mp5k-cap';
 export const GRIPS:Record<WeaponId,WeaponGrip>=Object.fromEntries(
  (Object.keys(WEAPON_PLATFORMS) as WeaponId[]).map(id=>{
   const p=WEAPON_PLATFORMS[id];
@@ -118,10 +122,12 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       twoHanded:right<=LIMIT&&left<=LIMIT,
       primaryReachable:right<=LIMIT,
       contactError:Math.max(0,right-LIMIT)+Math.max(0,left-LIMIT),
-      stockError:anchorGap(stock,stockPocket(input.handling))};
+      stockError:stocklessMP5K(input.configuration)?0:
+        anchorGap(stock,stockPocket(input.handling))};
   }
   const data=weaponGrips(input.weapon,input.configuration,
      input.handling,input.relaxedLowReady),scale=data.lengthScale;
+  const stockless=stocklessMP5K(input.configuration);
    const relaxed=input.handling==='low'?
      lowReadyFamilyFit(input.configuration):null;
    const relaxedWeight=clamp(input.relaxedLowReady??0,0,1);
@@ -172,7 +178,12 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
           (stockPocket('ads').y-stockPocket('ready').y)*blendAim,
         z:normalPocket.z
       };
-    // During deliberate aim, no visual-only angular offset is permitted.
+    // The MP5K stockless cap rests forward and inboard of shoulder, not in
+    // the invisible stock socket. Both hands remain on their true weapon grips.
+    const contactPocket=stockless?{
+      x:shoulderPocket.x+4.20,y:shoulderPocket.y-.35,
+      z:shoulderPocket.z-1.10
+    }:shoulderPocket;
     for(const offset of (input.aimBlend??0)>=.20?[0]:[0,-.035,.035]){
       const candidateYaw=yaw+offset;
       const cy=Math.cos(candidateYaw),sy=Math.sin(candidateYaw);
@@ -187,13 +198,13 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
         for(const dz of [0,.4,-.4,.8,-.8]){
           // Select stable anatomy first. Applying clearance during fit
           // lets the optimizer move dx forward and cancel the retraction.
-          const sx=shoulderPocket.x+dx-recoilX;
-          const sy=shoulderPocket.y+recoilY;
-          const sz=shoulderPocket.z+dz;
+          const sx=contactPocket.x+dx-recoilX;
+          const sy=contactPocket.y+recoilY;
+          const sz=contactPocket.z+dz;
           // Buttplate now nests into the outer padded chest contour. Hard
           // lower limits still prevent tunnelling into the torso center;
           // short-stock gets additional underarm clearance.
-          if(sz<(mode==='short'?6.60:6.35))continue;
+          if(sz<(stockless?4.90:mode==='short'?6.60:6.35))continue;
           const px=sx+right[0],py=sy+right[1],pz=sz+right[2];
           const lx=sx+left[0],ly=sy+left[1],lz=sz+left[2];
           const rd=Math.hypot(px-1,py-4,pz-7);
@@ -244,7 +255,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   return {origin,rotation:new THREE.Euler(0,b.yaw,b.roll,'XYZ'),
     stock,primary,support,twoHanded:rightGap===0&&leftGap===0,
     primaryReachable:rightGap===0,handling:b.mode,
-    contactError:rightGap+leftGap,stockError:anchorGap(stock,pocket)};
+    contactError:rightGap+leftGap,stockError:stockless?0:anchorGap(stock,pocket)};
 }
 /** The support-hand rest/guard target for an impossible two-handed fit. */
 export function supportGuardTarget(weapon:THREE.Vector3):THREE.Vector3{

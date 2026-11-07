@@ -9,6 +9,7 @@ import {renderFocusedSound} from './sound-focus-audio.ts';
 import {renderRefinedSound} from './sound-refine-audio.ts';
 import {renderCompoundSound} from './sound-compound-audio.ts';
 import {renderAcousticResponse,type AcousticResponse} from './sound-room-filter.ts';
+import {renderTactileBody,tactileProfile,variationForSound} from './sound-live-tactility.ts';
 const rate=22050;
 const TAU=Math.PI*2;
 function hash(value:string){
@@ -153,42 +154,64 @@ export function packageSoundZip(files:{name:string;data:Uint8Array}[]){
 }
 export type PlayOptions={level?:number;pan?:number;
  output?:AudioNode|null;rate?:number;acoustics?:AcousticResponse|null;
+ /** Opt-in live-game physicality. Sound Lab and legacy test mix remain dry. */
+ liveTactile?:boolean;variationSeed?:number;
  onSource?:(source:AudioBufferSourceNode)=>void;}
 const bufferCache=new WeakMap<AudioContext,Map<string,AudioBuffer>>();
 /** No autoplay: caller must unlock AudioContext on a user gesture. */
 export function playDesignedSound(ctx:AudioContext,id:string,
  settings:SoundSettings,options:PlayOptions={}):AudioBufferSourceNode|null{
  if(ctx.state!=='running')return null;
+ const tactile=options.liveTactile===true&&tactileProfile(id)!==null;
+ const environment=options.acoustics;
  const key=id+'|'+Object.values(settings).join(',')+
-  '|room='+(options.acoustics?.key??'dry');
+  '|room='+(environment?.key??'dry')+'|body='+(tactile?'S4':'original');
  let cache=bufferCache.get(ctx);
  if(!cache){cache=new Map();bufferCache.set(ctx,cache);}
  let buffer=cache.get(key);
  if(!buffer){
-  const dry=renderSound(id,settings,ctx.sampleRate);
-  if(!dry.length)return null;
-  const pcm=options.acoustics?renderAcousticResponse(dry,ctx.sampleRate,
-   options.acoustics):dry;
+  const sourcePCM=renderSound(id,settings,ctx.sampleRate);
+  if(!sourcePCM.length)return null;
+  const dry=tactile?renderTactileBody(id,sourcePCM,ctx.sampleRate):sourcePCM;
+  // Room reverb still varies with space; only halve its redundant bass boost
+  // when a physical low-end impulse is already added to the dry sound.
+  const acoustic=environment&&tactile?
+   {...environment,bass:environment.bass*.52}:environment;
+  const pcm=acoustic?renderAcousticResponse(dry,ctx.sampleRate,acoustic):dry;
   buffer=ctx.createBuffer(1,pcm.length,ctx.sampleRate);
   buffer.getChannelData(0).set(pcm);
   if(cache.size>=64)cache.delete(cache.keys().next().value!);
   cache.set(key,buffer);
  }
+ const variation=tactile?variationForSound(id,options.variationSeed??0):
+  {rate:1,timbreDb:0,gain:1};
  const source=ctx.createBufferSource();source.buffer=buffer;
- source.playbackRate.value=Math.max(.25,Math.min(4,options.rate??1));
+ source.playbackRate.value=Math.max(.25,Math.min(4,
+  (options.rate??1)*variation.rate));
  const gain=ctx.createGain();
  gain.gain.value=Math.min(.8,Math.max(0,settings.gain))*
-  Math.max(0,Math.min(1,options.level??1))*.40;
+  Math.max(0,Math.min(1,options.level??1))*.40*variation.gain;
  source.connect(gain);
  let output:AudioNode=gain;
+ let color:BiquadFilterNode|null=null;
+ if(tactile&&variation.timbreDb!==0){
+  color=ctx.createBiquadFilter();color.type='peaking';
+  color.frequency.value=1480;color.Q.value=.80;
+  color.gain.value=variation.timbreDb;
+  output.connect(color);output=color;
+ }
+ let panNode:StereoPannerNode|null=null;
  if(typeof ctx.createStereoPanner==='function'){
-  const pan=ctx.createStereoPanner();
-  pan.pan.value=Math.max(-1,Math.min(1,options.pan??0));
-  gain.connect(pan);output=pan;
-  source.onended=()=>{source.disconnect();gain.disconnect();pan.disconnect();};
- }else source.onended=()=>{source.disconnect();gain.disconnect();};
+  panNode=ctx.createStereoPanner();
+  panNode.pan.value=Math.max(-1,Math.min(1,options.pan??0));
+  output.connect(panNode);output=panNode;
+ }
  output.connect(ctx.destination);
  if(options.output)output.connect(options.output);
+ source.onended=()=>{
+  source.disconnect();gain.disconnect();color?.disconnect();
+  panNode?.disconnect();
+ };
  source.start();
  return source;
 }

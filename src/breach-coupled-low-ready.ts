@@ -17,6 +17,7 @@ import {evaluateSleeveArmorContact,segmentArmorPenetration,
 import type {WeaponId} from './breach-combat.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import type {WeaponFit} from './breach-weapon-pose.ts';
+import {reloadVisualContact} from './breach-reload-visual-contact.ts';
 
 export type CoupledStatus='clear'|'guard-fallback'|'unresolved';
 export type LowReadyPoseMode='standard-two-hand'|'compressed-two-hand'|
@@ -33,6 +34,8 @@ export type CoupledInput={
  armor:PoseClearanceEnvelope;nominalYaw:number;
  /** Optional explicit replay-recorded prior bend (never implicit frame state). */
  previousBends?:readonly [THREE.Vector3,THREE.Vector3];
+ /** Presentation-only shoulder/gear compression, strict by default. */
+ allowVisualOverlap?:boolean;
  onDiagnostics?:(stats:Record<string,number>)=>void;
  onCandidate?:(sample:{right:number;left:number;receiver:number;depth:number;
   leftJoint:RiflePoint;leftWrist:RiflePoint;stock:RiflePoint})=>void;
@@ -70,7 +73,7 @@ export function relaxedArmShapeCost(
 function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
  side:-1|1,env:PoseClearanceEnvelope,softScale:number,
  previous?:THREE.Vector3,stats?:Record<string,number>,
- isSupport=false):SolvedArm|null{
+ isSupport=false,allowVisualOverlap=false):SolvedArm|null{
  // Evaluate every anatomically valid candidate when heavy gear is present:
  // culling after the eight prettiest elbow directions falsely made flak
  // wearers incapable of holding a rifle. The search is still pose-cached.
@@ -104,12 +107,46 @@ function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
     stats['minimum'+name+'Hard']??Infinity,contact.hardDepth);
    stats['minimum'+name+'Soft']=Math.min(
     stats['minimum'+name+'Soft']??Infinity,contact.softDepth);
+   // Upper/lower limbs have distinct legal allowances; a maximum
+   // combined depth / maximum allowance hides the actual obstruction.
    const worst=contact.contacts.reduce((m,c)=>Math.max(m,
-    c.depth/Math.max(.001,c.allowed)),0);
-   stats['minimum'+name+'Ratio']=Math.min(
-    stats['minimum'+name+'Ratio']??Infinity,worst);
+    c.upperDepth/Math.max(.001,c.upperAllowed),
+    c.lowerDepth/Math.max(.001,c.lowerAllowed)),0);
+   const ratioKey='minimum'+name+'Ratio';
+   if(worst<(stats[ratioKey]??Infinity)){
+    stats[ratioKey]=worst;
+    const prefix='nearest'+name+'-';
+    for(const k of Object.keys(stats))if(k.startsWith(prefix))
+      delete stats[k];
+    for(const c of contact.contacts){
+     if(c.upperExcess>.001)
+      stats[prefix+'upper-'+(c.region??c.label)]=
+       Math.round(c.upperExcess*1000)/1000;
+     if(c.lowerExcess>.001)
+      stats[prefix+'lower-'+(c.region??c.label)]=
+       Math.round(c.lowerExcess*1000)/1000;
+    }
+   }
   }
-  if(!contact.valid)continue;
+  if(stats&&!contact.valid){
+   // Only when explicitly requested (e.g., Lab/CI audit). Do not
+   // allocate or tally contact regions in normal pose solving.
+   for(const c of contact.contacts){
+    if(c.upperExcess>.001){
+     const k=(isSupport?'left':'right')+'-upper-'+
+       (c.region??c.label)+'-'+c.material;
+     stats[k]=(stats[k]??0)+1;
+    }
+    if(c.lowerExcess>.001){
+     const k=(isSupport?'left':'right')+'-lower-'+
+       (c.region??c.label)+'-'+c.material;
+     stats[k]=(stats[k]??0)+1;
+    }
+   }
+  }
+  // Arm and sleeve may slightly overlap worn gear when presenting a
+  // stylized rifle. Do not modify real measured contact or limb length.
+  if(!reloadVisualContact(contact,allowVisualOverlap,'carry').valid)continue;
   const quality=candidate.score+contact.quality*.09;
   if(quality<bestQuality){
    bestQuality=quality;
@@ -129,7 +166,8 @@ function hangingGuard(input:CoupledInput):SolvedArm|null{
   for(const back of [0,1,2.0]){
    const wrist=base.clone().add(new THREE.Vector3(-back,spread*.15,-spread));
    const candidate=selectArm(shoulder,wrist,-1,input.armor,1.5,
-    input.previousBends?.[0]);
+    input.previousBends?.[0],undefined,false,
+    input.allowVisualOverlap);
    if(candidate&&(!best||candidate.quality+spread*.10<best.quality))
     best=candidate;
   }
@@ -191,7 +229,8 @@ export function solveCoupledLowReady(input:CoupledInput):
      ptr(receiverB),rigidOnly,1.06,.18);
     if(receiverDepth>.12){rejects.receiverRigid++;continue;}
     const right=selectArm(rightShoulder,primary,1,input.armor,
-     budget.softScale,input.previousBends?.[1],rejects);
+     budget.softScale,input.previousBends?.[1],rejects,
+     false,input.allowVisualOverlap);
     if(!right){rejects.rightAnatomyOrArmor++;continue;}
     const rightDepth=right.contact.hardDepth;
     for(const fraction of budget.contactFractions){
@@ -201,7 +240,8 @@ export function solveCoupledLowReady(input:CoupledInput):
       transform(supportContactAt(contacts.support,f)));
      if(support.distanceTo(leftShoulder)>19.55){rejects.leftReach++;continue;}
      const left=selectArm(leftShoulder,support,-1,input.armor,
-      budget.softScale,input.previousBends?.[0],rejects,true);
+      budget.softScale,input.previousBends?.[0],rejects,true,
+      input.allowVisualOverlap);
      if(!left){rejects.leftAnatomyOrArmor++;continue;}
      const geometry=assessLowReadyPair(
       [leftShoulder,rightShoulder],

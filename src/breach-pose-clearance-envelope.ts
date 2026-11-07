@@ -6,15 +6,31 @@ import {fittedArmorSurfaces} from './operator-uniform-fit-envelope.ts';
 import {ARMOR_PROFILES,RIG_FRONT_PROFILES} from './operator-armor-rig-silhouettes.ts';
 import {rigContactFrame} from './operator-rig-contact-frame.ts';
 import {ARMOR_PROPORTIONS} from './operator-armor-proportions.ts';
+import {armorSideLayout} from './operator-armor-side-layout.ts';
+import {LOW_READY_CONTACT_LIMITS,poseContactBudget} from './breach-pose-contact-policy.ts';
+import {ARMOR_PANEL_DEPTHS} from './operator-uniform-fit-envelope.ts';
 import type {RiflePoint} from './breach-weapon-contact-zones.ts';
 export type ContactMaterial='rigid'|'structured'|'soft';
-export type PoseBox={label:'torso'|'front-armor'|'side-armor'|'chest-rig';
- material:ContactMaterial;min:RiflePoint;max:RiflePoint};
+export type PoseContactRegion='torso-core'|'torso-upper'|
+ 'front-lower'|'front-taper'|'front-insert'|'side-flank'|'side-front-return'|
+ 'side-rear-return'|'side-insert'|'chest-rig'|
+ 'rig-backing'|'rig-pouch'|'rig-shelf';
+export type PoseBox={label:'torso'|'front-armor'|'side-armor'|'side-plate'|'chest-rig';
+ material:ContactMaterial;min:RiflePoint;max:RiflePoint;
+ /** Optional for compatibility with authored synthetic collision tests. */
+ region?:PoseContactRegion};
 export type PoseClearanceEnvelope={armor:string;rig:string;top:string;
  front:number;boxes:readonly PoseBox[]};
 const box=(label:PoseBox['label'],min:RiflePoint,max:RiflePoint,
- material:ContactMaterial='rigid'):PoseBox=>
- ({label,material,min,max});
+ material:ContactMaterial='rigid',region?:PoseContactRegion):PoseBox=>
+ ({label,material,min,max,region});
+const sideBox=(label:PoseBox['label'],sign:number,
+ x0:number,x1:number,y0:number,y1:number,z0:number,z1:number,
+ material:ContactMaterial,region:PoseContactRegion):PoseBox=>
+ box(label,{x:Math.min(x0,x1),y:Math.min(y0,y1),
+   z:Math.min(sign*z0,sign*z1)},
+  {x:Math.max(x0,x1),y:Math.max(y0,y1),
+   z:Math.max(sign*z0,sign*z1)},material,region);
 const cache=new Map<string,PoseClearanceEnvelope>();
 export function poseClearanceEnvelope(armor:string,rig:string,top:string):
  PoseClearanceEnvelope{
@@ -25,35 +41,124 @@ export function poseClearanceEnvelope(armor:string,rig:string,top:string):
  const fit=fittedArmorSurfaces(a,top,ARMOR_PROFILES[a]);
  const front=Math.max(5.2,fit.front);
  const boxes:PoseBox[]=[
-  box('torso',{x:-5.1,y:-6,z:-5.15},{x:5.45,y:6.3,z:5.15})
+  // The actual torso remains solid. Its upper *attachment region* tapers
+  // rather than occupying imaginary volume out into the armhole.
+  box('torso',{x:-5.1,y:-6,z:-5.15},
+    {x:5.45,y:2.60,z:5.15},'rigid','torso-core'),
+  box('torso',{x:-5.1,y:2.60,z:-4.55},
+    {x:5.45,y:6.30,z:4.55},'rigid','torso-upper')
  ];
- if(a!=='armor-bare'&&a!=='soft-slick'&&a!=='soft-paca'){
+ const spec=ARMOR_PROPORTIONS[a];
+ if(spec&&a!=='armor-bare'&&a!=='soft-slick'&&a!=='soft-paca'){
+  // fittedArmorBag authors a clipped shoulder, not a rectangular slab.
+  // Use its width/inset/y-break values for two cached collision tiers.
+  const lower=spec.bottom;
+  const upper=spec.top;
+  const yBreak=Math.max(lower+1.6,upper-2.25);
+  const width=Math.max(2.7,spec.width*.5-.20);
+  const topWidth=Math.max(1.1,spec.width*.5-spec.upperInset);
+  // The outer bag is compressible textile. Only the independent insert
+  // is genuinely hard; never model the whole fabric silhouette as plate.
+  const material=a==='soft-flak'||a==='soft-vest'||
+    a==='plate-legacy'?'soft':'structured';
+  const panelInner=fit.front-(ARMOR_PANEL_DEPTHS[a]??1.2)-.12;
+  const panelOuter=fit.front+.24;
   boxes.push(box('front-armor',
-   {x:5,y:fit.frontBagBottom,z:-5},
-   {x:front+.24,y:5.3,z:5},
-   a==='soft-flak'||a==='soft-vest'||a==='plate-legacy'?'soft':'rigid'));
-  const side=Math.max(7.05,fit.side);
-  // A shoulder is allowed to articulate above the CUMMERBUND: earlier we
-  // filled the whole shoulder-to-waist side with an imaginary armor wall,
-  // falsely rejecting every clear support-elbow candidate.
-  const proportions=ARMOR_PROPORTIONS[a];
-  const half=(proportions?.sideHeight??3)*.5;
-  const low=(proportions?.sideY??-1.5)-half-.12;
-  const high=(proportions?.sideY??-1.5)+half+.12;
-  if(half>.1)for(const sign of [-1,1]){
-   boxes.push(box('side-armor',
-    {x:-2.6,y:low,z:sign<0?-side:5.2},
-    {x:5.6,y:high,z:sign<0?-5.2:side},
-    a==='plate-heavy'?'structured':'soft'));
+    {x:panelInner,y:lower,z:-width},
+    {x:panelOuter,y:yBreak,z:width},material,'front-lower'));
+  boxes.push(box('front-armor',
+    {x:panelInner,y:yBreak,z:-topWidth},
+    {x:panelOuter,y:upper,z:topWidth},material,'front-taper'));
+  if(spec.family==='slick'||spec.family==='skeleton'||
+     spec.family==='standard'||spec.family==='assault'){
+   // A hard ballistic insert nests INSIDE the wider sewn carrier.
+   // The actual modeled plate pouch may have protruding fabric,
+   // shoulder cutouts and straps beyond this insert.
+   const insertHalf=Math.max(2.65,
+    Math.min(4.05,spec.width*.5-1.10));
+   boxes.push(box('front-armor',
+    {x:panelInner+.08,y:Math.max(lower+.88,-4.15),z:-insertHalf},
+    {x:panelOuter-.24,y:Math.min(upper-.78,4.05),z:insertHalf},
+    'rigid','front-insert'));
+  }
+  const bands=spec.sideStyle==='open_two_band'?
+    [-2.45,1.05].map(y=>({y,height:spec.sideHeight})):
+    [{y:spec.sideY,height:spec.sideHeight}];
+  if(spec.sideStyle!=='none'){
+   for(const band of bands){
+    if(band.height<.1)continue;
+    const p=armorSideLayout(fit,spec,band.y,band.height);
+    const y0=band.y-band.height*.5-.08;
+    const y1=band.y+band.height*.5+.08;
+    const half=spec.sideThickness*.5+.10;
+    const material:ContactMaterial=spec.sideStyle==='side_plate'?
+      'structured':'soft';
+    for(const sign of [-1,1]){
+     // Real attachedSide draws a thin flank plus two short returns.
+     // The former single rectangle incorrectly filled all space between.
+     boxes.push(sideBox('side-armor',sign,p.backX-.12,
+       p.frontX+.12,y0,y1,p.centerZ-half,p.centerZ+half,
+       material,'side-flank'));
+     const returnHalf=Math.max(.28,p.returnThickness*.5+.10);
+     const z0=Math.min(p.plateEdgeZ-.20,p.centerZ-half);
+     const z1=p.centerZ+half;
+     boxes.push(sideBox('side-armor',sign,
+       p.frontX-returnHalf,p.frontX+returnHalf,y0,y1,
+       z0,z1,material,'side-front-return'));
+     boxes.push(sideBox('side-armor',sign,
+       p.backX-returnHalf,p.backX+returnHalf,y0,y1,
+       z0,z1,material,'side-rear-return'));
+     if(spec.sideStyle==='side_plate'){
+      // Heavy model has an actual hard protective insert OUTSIDE the
+      // flexible carrier. Never turn this into soft carrier fabric.
+      const inside=p.centerZ+spec.sideThickness*.5-.15;
+      boxes.push(sideBox('side-plate',sign,
+        -2.24,2.24,spec.sideY-.15-(spec.sidePlateHeight+.43)*.5,
+        spec.sideY-.15+(spec.sidePlateHeight+.43)*.5,
+        inside,inside+.72,'rigid','side-insert'));
+     }
+    }
+   }
   }
  }
  if(r!=='no-rig'){
   const f=rigContactFrame(a,top,r);
   const visibleFront=Math.max(f.front.x+1.1,
    Math.min(f.front.x+3,(RIG_FRONT_PROFILES[r]?.front??8.5)+f.rigShiftX));
-  boxes.push(box('chest-rig',
-   {x:f.front.x-.1,y:f.front.y-3.9,z:-4.6},
-   {x:visibleFront,y:f.front.y+3.9,z:4.6},'soft'));
+  if(r==='full-chest'){
+   // The modeled full-chest rig is a thin continuous textile bib with
+   // FOUR separate lower pouches and two thin admin shelves. The old
+   // single rectangle mistakenly filled the whole space from the body
+   // to the pouch fronts, making the flexible cloth a solid cuboid.
+   // Match authored rig geometry in operator-armor-rig-silhouettes.ts.
+   const shift=f.rigShiftX;
+   const pad=.09;
+   boxes.push(box('chest-rig',
+    {x:8.39+shift-.39-pad,y:-6.55-pad,z:-6.125-pad},
+    {x:8.39+shift+.39+pad,y:3.10+pad,z:6.125+pad},
+    'soft','rig-backing'));
+   for(const z of [-4.60,-1.5,1.5,4.60]){
+    // Cuboid pouch bodies; folded flap is small and pliable, not plate.
+    boxes.push(box('chest-rig',
+     {x:8.65+shift-.585-pad,y:-3.23-2.25-pad,z:z-1.375-pad},
+     {x:8.65+shift+.585+.20,y:-3.23+2.25+pad,z:z+1.375+pad},
+     'soft','rig-pouch'));
+   }
+   boxes.push(box('chest-rig',
+    {x:8.56+shift-.225-pad,y:1.40-.825-pad,z:-4.41-pad},
+    {x:8.56+shift+.225+pad,y:1.40+.825+pad,z:4.41+pad},
+    'soft','rig-shelf'));
+   boxes.push(box('chest-rig',
+    {x:8.69+shift-.16-pad,y:.25-.37-pad,z:-4.825-pad},
+    {x:8.69+shift+.16+pad,y:.25+.37+pad,z:4.825+pad},
+    'soft','rig-shelf'));
+  }else{
+   // Unrefined legacy rigs retain their conservative aggregate bounds.
+   boxes.push(box('chest-rig',
+    {x:f.front.x-.1,y:f.front.y-3.9,z:-4.6},
+    {x:visibleFront,y:f.front.y+3.9,z:4.6},
+    'soft','chest-rig'));
+  }
  }
  const result={armor:a,rig:r,top:fit.top,front,boxes:Object.freeze(boxes)};
  cache.set(key,result);return result;
@@ -88,16 +193,15 @@ export function armArmorPenetration(shoulder:RiflePoint,elbow:RiflePoint,
 // AABBs (15-axis separating-axis test). Broad-phase legacy capsule helpers
 // above remain for old callers. The rig's real garments are 3.9 x 4.0 upper,
 // 3.4 x 3.5 lower; no global narrowing/hidden sleeve geometry is permitted.
-export const LOW_READY_CONTACT_LIMITS={
- rigid:.12,structured:.34,soft:.56,
- /** Extreme compression is capped even in the deep carry archetype. */
- maximumSoftScale:1.65,
- proximalUpperSeam:.16
-} as const;
+export {LOW_READY_CONTACT_LIMITS} from './breach-pose-contact-policy.ts';
 export type SleeveContactResult={
  valid:boolean;hardDepth:number;softDepth:number;quality:number;
  contacts:readonly {label:PoseBox['label'];material:ContactMaterial;
-  depth:number;allowed:number}[];
+  depth:number;allowed:number;region?:PoseContactRegion;
+  upperDepth:number;lowerDepth:number;
+  upperAllowed:number;lowerAllowed:number;
+  upperExcess:number;lowerExcess:number;
+  blocking:boolean}[];
 };
 const axisX=new THREE.Vector3(1,0,0),
  axisY=new THREE.Vector3(0,1,0),axisZ=new THREE.Vector3(0,0,1);
@@ -108,6 +212,16 @@ function sleeveBoxPenetration(
  const from=a.clone().lerp(b,Math.max(0,Math.min(.3,trimProximal)));
  const delta=b.clone().sub(from),length=delta.length();
  if(length<1e-6)return 0;
+ // Conservative cheap broad phase. AABB of the limb centerline expanded
+ // by the half-diagonal of its actual blocky sleeve; avoids SAT work for
+ // distant side returns and rear attachments.
+ const reach=Math.hypot(width,depth)*.5;
+ if(Math.max(from.x,b.x)+reach<volume.min.x||
+    Math.min(from.x,b.x)-reach>volume.max.x||
+    Math.max(from.y,b.y)+reach<volume.min.y||
+    Math.min(from.y,b.y)-reach>volume.max.y||
+    Math.max(from.z,b.z)+reach<volume.min.z||
+    Math.min(from.z,b.z)-reach>volume.max.z)return 0;
  const up=delta.clone().divideScalar(length);
  let sideways=axisZ.clone().addScaledVector(up,-axisZ.dot(up));
  if(sideways.lengthSq()<.000001)
@@ -154,22 +268,20 @@ export function evaluateSleeveArmorContact(
  let hardDepth=0,softDepth=0,quality=0,valid=true;
  const contacts:SleeveContactResult['contacts'][number][]=[];
  for(const volume of env.boxes){
-  const proximal=LOW_READY_CONTACT_LIMITS.proximalUpperSeam;
+  // The real upper sleeve is SEWN into the shoulder/neck line. The
+  // shoulder-end rectangle naturally overlaps its own rigid upper torso:
+  // this is an attachment, not a forearm crossing through the abdomen.
+  // Trim ONLY the proximal upper segment against torso-upper; the lower
+  // torso and all rigid front/side ballistic inserts keep their original
+  // strict budget and their original segment starting position.
+  const proximal=volume.region==='torso-upper'?.30:
+   LOW_READY_CONTACT_LIMITS.proximalUpperSeam;
   const upper=sleeveBoxPenetration(shoulder,elbow,3.9,4.0,volume,proximal);
   const lower=sleeveBoxPenetration(elbow,wrist,3.4,3.5,volume);
   const depth=Math.max(upper,lower);
   if(depth<=0)continue;
-  const baseline=LOW_READY_CONTACT_LIMITS[volume.material];
-  const allowed=volume.material==='rigid'?baseline:baseline*scale;
-  // The outer sleeve is sewn beneath a thick flak/legacy shoulder-wrap.
-  // That proximal UPPER ARM interface is an attachment seam, not an
-  // obstacle spanning all the way through the arm. A forearm crossing
-  // that side wrap is still checked to the original tight budget.
-  const shoulderWrap=volume.label==='side-armor'&&
-   (env.armor==='soft-flak'||env.armor==='plate-legacy'||
-    env.armor==='soft-vest');
-  const upperAllowed=shoulderWrap?Math.max(allowed,
-   env.armor==='plate-legacy'?2.72:2.50):allowed;
+  const {upper:upperAllowed,lower:allowed}=
+   poseContactBudget(volume,env,scale);
   if(volume.material==='rigid')hardDepth=Math.max(hardDepth,depth);
   else softDepth=Math.max(softDepth,depth);
   if(upper>upperAllowed+.001||lower>allowed+.001)valid=false;
@@ -178,7 +290,13 @@ export function evaluateSleeveArmorContact(
    Math.max(0,lower-allowed*.18)/Math.max(.1,allowed);
   quality+=excess*(.5+(volume.material==='rigid'?3:0));
   contacts.push({label:volume.label,material:volume.material,
-   depth,allowed:Math.max(allowed,upperAllowed)});
+   region:volume.region,
+   depth,allowed:Math.max(allowed,upperAllowed),
+   upperDepth:upper,lowerDepth:lower,
+   upperAllowed,lowerAllowed:allowed,
+   upperExcess:Math.max(0,upper-upperAllowed),
+   lowerExcess:Math.max(0,lower-allowed),
+   blocking:upper>upperAllowed+.001||lower>allowed+.001});
  }
  return {valid,hardDepth,softDepth,quality,contacts};
 }

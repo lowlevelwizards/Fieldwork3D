@@ -1,6 +1,8 @@
 /** Build 156: continuous, phase-keyed support-hand path for physical reloads.
  * Pure presentation data; magazines remain owned by the simulation. */
 import type {ReloadMode} from './breach-magazines.ts';
+import * as THREE from 'three';
+import type {WeaponFit} from './breach-weapon-pose.ts';
 export type HandKey={t:number;x:number;y:number;z:number};
 const smooth=(t:number)=>{const v=Math.max(0,Math.min(1,t));return v*v*(3-2*v)};
 export function reloadHandKey(progress:number,mode:ReloadMode,
@@ -41,4 +43,31 @@ export function reloadHandKey(progress:number,mode:ReloadMode,
       y:prev.y+(next.y-prev.y)*f,z:prev.z+(next.z-prev.z)*f};
   }
   return rest;
+}
+
+/** V3: weapon-local reload track, anchored to the ACTUAL solved support grip
+ * at both boundaries. Releasing the coupled idle solver must not jump the
+ * support wrist to a nominal grip from a different weapon/armor pose.
+ * The magazine's true physical socket is unchanged through the middle.
+ */
+export function reloadHandChestTarget(input:{
+ fit:WeaponFit;lengthScale:number;
+ progress:number;mode:ReloadMode;
+ supportX:number;supportY:number;primaryX:number;
+ magazineSocket?:{x:number;y:number};
+}):THREE.Vector3{
+ const {fit,lengthScale,mode,progress,supportX,supportY,primaryX,
+  magazineSocket}=input;
+ const local=reloadHandKey(progress,mode,supportX,supportY,
+  primaryX,magazineSocket);
+ const transform=(x:number,y:number,z:number)=>new THREE.Vector3(
+  x*lengthScale,y,z).applyEuler(fit.rotation).add(fit.origin);
+ const desired=transform(local.x,local.y,local.z);
+ const nominal=transform(supportX,supportY,-1.6);
+ const correction=fit.support.clone().sub(nominal);
+ const t=Math.max(0,Math.min(1,progress));
+ const release=1-smooth(t/.20);
+ const recover=smooth((t-.82)/.18);
+ return desired.addScaledVector(correction,
+  Math.max(0,Math.min(1,release+recover)));
 }

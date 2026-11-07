@@ -1,0 +1,82 @@
+/** Focused actual WebGL iPhone-size proof of the unified Operator Lab. */
+import {spawn} from 'node:child_process';
+import {mkdir} from 'node:fs/promises';
+import {chromium} from 'playwright';
+const port=4197,origin='http://127.0.0.1:'+port;
+const server=spawn(process.execPath,[
+ 'node_modules/vite/bin/vite.js','--host','127.0.0.1',
+ '--port',String(port),'--strictPort'],{stdio:'ignore'});
+const out='operator-lab-pose-captures';
+await mkdir(out,{recursive:true});
+async function ready(page){
+ await page.waitForFunction(()=>{
+  const c=document.getElementById('preview');
+  return c?.dataset.ready==='true'||c?.dataset.ready==='error';
+ },null,{timeout:30000});
+ const d=await page.locator('#preview').evaluate(c=>({...c.dataset}));
+ if(d.ready!=='true'||Number(d.drawCalls)<1)
+  throw Error('Lab cannot render: '+JSON.stringify(d)+' / '+
+   await page.locator('#labStatus').textContent());
+ return d;
+}
+try{
+ let live=false;
+ for(let i=0;i<100;i++){
+  try{if((await fetch(origin+'/operator-lab.html')).ok){live=true;break;}}
+  catch{}
+  await new Promise(resolve=>setTimeout(resolve,140));
+ }
+ if(!live)throw Error('Vite operator-lab server unavailable');
+ const browser=await chromium.launch({headless:true});
+ try{
+  const page=await browser.newPage({viewport:{width:390,height:844},
+   deviceScaleFactor:2,isMobile:true,hasTouch:true});
+  const errors=[];
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.goto(origin+'/operator-lab.html?tab=poses',
+   {waitUntil:'domcontentloaded'});
+  await ready(page);
+  if(!await page.locator('#poseWeapon').isVisible()||
+    !await page.locator('#poseAnimation').isVisible())
+   throw Error('Poses controls are hidden behind the old modal');
+  if(await page.locator('#poseFitPanel').count())
+   throw Error('Old Pose Fit overlay still exists');
+  if(await page.locator('#poseWeapon').inputValue()!=='ar-m4a1')
+   throw Error('Poses tab should start with M4A1');
+  await page.locator('#poseAnimation').selectOption('low-ready');
+  await page.screenshot({path:out+'/m4a1-low-ready-iphone.png'});
+  await page.locator('#poseWeapon').selectOption('hk-mp5a3');
+  await page.locator('#poseArmor').selectOption('plate-heavy');
+  await page.locator('#poseRig').selectOption('full-chest');
+  await page.locator('#poseUniform').selectOption('combat-shirt');
+  await page.locator('#poseAnimation').selectOption('reload-emergency');
+  await page.locator('#timeline').evaluate(e=>{
+   e.value='1100';e.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  await page.waitForFunction(()=>{
+   const d=document.getElementById('preview')?.dataset;
+   return d?.time==='1.100'&&d?.track==='reload-emergency'&&
+    d?.poseFitWeapon==='hk-mp5a3'&&
+    d?.poseFitArmor==='plate-heavy'&&d?.poseFitRig==='full-chest';
+  },null,{timeout:15000});
+  const result=await ready(page);
+  await page.screenshot({path:out+'/mp5a3-heavy-reload-iphone.png'});
+  await page.locator('#poseInspector').evaluate(e=>e.open=true);
+  if(!(await page.locator('#poseInspectorReport').textContent())?.includes('GRIP'))
+   throw Error('Integrated pose report not showing');
+  await page.locator('#poseStrictContact').check();
+  await ready(page);
+  if(errors.length)throw Error('Runtime: '+errors.join('; '));
+  console.log('Unified Operator Lab phone WebGL PASS',JSON.stringify({
+   track:result.track,weapon:result.poseFitWeapon,
+   armor:result.poseFitArmor,rig:result.poseFitRig,
+   time:result.time,drawCalls:result.drawCalls,
+   triangles:result.triangles}));
+  await page.goto(origin+'/operator-lab.html?poseFit=1');
+  await ready(page);
+  if(!await page.locator('#poseWeapon').isVisible()||
+    await page.locator('#poseWeapon').inputValue()!=='ar-m4a1')
+   throw Error('Legacy Pose Fit URL no longer routes to unified Poses');
+  await page.close();
+ }finally{await browser.close();}
+}finally{server.kill('SIGTERM');}

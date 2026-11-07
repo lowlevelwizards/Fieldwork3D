@@ -241,6 +241,8 @@
   <div id="replayLibraryList" class="replay-library-list" role="list"></div>
 </section>
 <section id="replayPanel" class="replay-panel" hidden aria-label="Mission replay controls">
+  <output id="replayBodycamStatus" class="replay-bodycam-status" hidden
+    aria-live="off">RECONSTRUCTED BODYCAM · SHARED ARCHITECTURE</output>
   <div class="replay-head">
     <strong>REPLAY</strong>
     <div class="replay-head-right">
@@ -285,11 +287,28 @@
         <div class="replay-control-grid">
           <button id="replayView" type="button">ISO</button>
           <button id="replaySight" type="button">TEAM SIGHT</button>
+          <button id="replayContactLens" type="button"
+            title="Review enemy contacts confirmed by one operator"
+            aria-label="Review individual operator contacts">CONTACTS: TEAM</button>
+          <button id="replayGroundLens" type="button" disabled
+            title="Highlight this operator's recorded terrain discoveries in Floor Plan"
+            aria-label="Toggle personal explored ground overlay"
+            aria-pressed="false">GROUND: OFF</button>
+          <button id="replayBodycam" type="button" disabled
+            title="Reconstructed first-person replay; requires individual observation evidence"
+            aria-pressed="false">BODYCAM OFF</button>
+          <button id="replayBodycamMount" type="button" disabled
+            title="Choose chest-mounted or helmet-mounted reconstructed perspective"
+            aria-label="Bodycam attachment point">MOUNT CHEST</button>
           <button id="replayFollow" type="button">FOLLOW</button>
           <button id="replaySquad" type="button" aria-pressed="false">FOLLOW SQUAD</button>
           <button id="replayDirector" type="button" aria-pressed="false">DIRECTOR OFF</button>
           <button id="replayNames" type="button" aria-label="Replay name tags">NAMES ON</button>
         </div>
+        <p id="replayContactNote" class="replay-contact-note" hidden>
+          OPERATOR CONTACTS ONLY · MAP AND ENVIRONMENT REMAIN SQUAD KNOWLEDGE.
+          FORENSIC SHOT PATHS HIDDEN.
+        </p>
       </section>
       <section class="replay-group" data-replay-group="layers" hidden>
         <p class="replay-group-intro">Tactical overlays</p>
@@ -328,6 +347,38 @@
       </section>
     </div>
     <section id="replayFeedPanel" class="replay-feed-panel" hidden>
+      <section class="replay-debrief" aria-label="After-action highlights">
+        <div class="replay-debrief-head">
+          <strong>AFTER ACTION</strong>
+          <output id="replayDebriefInfo" aria-live="off"></output>
+        </div>
+        <div id="replayDebriefMoments" class="replay-debrief-moments"
+          aria-label="Jump to important recorded moments"></div>
+        <div id="replayObserverTransitions"
+          class="replay-debrief-moments replay-observer-transitions" hidden
+          aria-label="Historical individual contact acquisition and loss"></div>
+      </section>
+      <section id="replaySquadEntryPanel" class="replay-squad-entry" hidden
+        aria-label="Measured squad doorway crossings">
+        <div class="replay-squad-entry-heading">
+          <strong>SQUAD ENTRY</strong>
+          <small>RECORDED CROSSINGS · SHARED ARCHITECTURE</small>
+        </div>
+        <div id="replaySquadEntryList" class="replay-squad-entry-list"
+          aria-label="Jump to measured doorway entry"></div>
+      </section>
+      <section id="replayIncidentDetails" class="replay-incident-focus" hidden
+        aria-label="Selected replay incident">
+        <div class="replay-incident-copy">
+          <strong id="replayIncidentTitle">SELECTED INCIDENT</strong>
+          <output id="replayIncidentSummary"></output>
+        </div>
+        <div class="replay-incident-actions">
+          <button id="replayIncidentWatch" type="button">WATCH</button>
+          <button id="replayIncidentLoop" type="button">LOOP</button>
+          <button id="replayIncidentClose" type="button" aria-label="Clear selected incident">×</button>
+        </div>
+      </section>
       <div class="replay-chapter-tools">
         <button id="replayPrevChapter" type="button">◀ CHAPTER</button>
         <button id="replayBookmark" type="button">+ BOOKMARK</button>

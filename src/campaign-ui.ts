@@ -9,12 +9,13 @@ import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
 import {CampaignKitPreview} from './equipment-preview.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
-import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
+import {WeaponWorkbenchPreview,type WeaponWorkbenchViewState}
+ from './equipment-weapon-workbench.ts';
 import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- familyAccessoryAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
+ weaponAttachmentAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
 import {FAMILY_PART_SLOTS,FAMILY_PARTS,
- compatibleFamilyPart,matchingFamilyPreset,type FamilyPartSlot}
+ compatibleFamilyPart,matchingFamilyPreset,proposeFamilyPartChange,type FamilyPartSlot}
  from './equipment-weapon-families.ts';
 import {attachmentPrice} from './equipment-weapon-inventory.ts';
 import {stageMagazines,magazinePlacementSummary,magazineSpace,
@@ -70,10 +71,21 @@ export class CampaignScreen{
  private lastArmoryRenderedId:string|null=null;
  private activeKitGroup:QuickLoadoutGroup='weapon';
  private readonly operatorViewAngles=new Map<string,number>();
+ /** Keep orbit/zoom only across small cosmetic swaps; refit a new core. */
+ private readonly weaponWorkbenchViews=new Map<string,{
+  core:string;view:WeaponWorkbenchViewState
+ }>();
+ private workbenchCore:string|null=null;
  private disposePreview(){
   if(this.preview&&this.lastArmoryRenderedId)
    this.operatorViewAngles.set(this.lastArmoryRenderedId,this.preview.getAzimuth());
   this.preview?.dispose();this.preview=null;
+  if(this.workbench&&this.lastArmoryRenderedId&&this.workbenchCore){
+   const view=this.workbench.getViewState();
+   if(view)this.weaponWorkbenchViews.set(this.lastArmoryRenderedId,{
+    core:this.workbenchCore,view
+   });
+  }
   this.workbench?.dispose();this.workbench=null;}
  constructor(handlers:CampaignHandlers){
   this.handlers=handlers;
@@ -596,7 +608,7 @@ export class CampaignScreen{
   familyEditor.open=true;
   familyEditor.append(node('summary','','WEAPON FAMILY / MODULAR FURNITURE'));
   familyEditor.append(node('p','campaign-note',
-   'Visual family prototype: swap compatible receiver, stock, grip, magazine profile, handguard and barrel. The owned carbine/rifle class, actual ammunition and weapon serial remain unchanged.'));
+   'Tap a weapon part to choose compatible replacements. Factory builds are starting points. Core changes keep what fits; incompatible pieces are shown before replacement. Your owned weapon and ammunition remain unchanged.'));
   const selectedFamilyPreset=build?matchingFamilyPreset(build):undefined;
   const factoryBrowser=createWeaponPresetBrowser({
    selectedId:selectedFamilyPreset?.id,selectedFamily:build?.family,
@@ -611,8 +623,8 @@ export class CampaignScreen{
   familyEditor.append(factoryBrowser);
   if(build){
    familyEditor.append(node('p','campaign-kit-metrics',
-    'FAMILY · '+build.family.toUpperCase()+' · '+
-    (selectedFamilyPreset?.name??'CUSTOM COMBINATION')));
+    'PLATFORM · '+build.family.toUpperCase()+' · '+
+    (selectedFamilyPreset?.name??'CUSTOM BUILD')));
    for(const slot of FAMILY_PART_SLOTS){
     const row=node('label','campaign-kit-row');
     const select=node('select','campaign-select');
@@ -632,8 +644,21 @@ export class CampaignScreen{
      this.selectedWorkbenchSocket=socket;
      this.workbench?.showSocketChoices(socket,select);
     });
-    select.addEventListener('change',()=>this.handlers.equipWeaponFamilyPart(
-     id,slot,select.value));
+    select.addEventListener('change',async()=>{
+     const proposed=proposeFamilyPartChange(build,person.weapon,slot,select.value);
+     if(!proposed.valid){select.value=build.parts[slot];return;}
+     const dependent=proposed.replacements.filter(change=>change.slot!==slot);
+     if(dependent.length){
+      const message=dependent.map(change=>
+       FAMILY_PARTS[change.from]?.name+' → '+FAMILY_PARTS[change.to]?.name).join('; ');
+      if(!await confirmFieldworkAction({
+       title:'Replace incompatible parts?',
+       message:'Changing '+slot+' also replaces: '+message,
+       confirmLabel:'APPLY CHANGES'
+      })){select.value=build.parts[slot];return;}
+     }
+     this.handlers.equipWeaponFamilyPart(id,slot,select.value);
+    });
     familySelectors.set(slot,select);
     row.append(node('span','',slot.toUpperCase()),select);
     familyEditor.append(row);
@@ -642,7 +667,7 @@ export class CampaignScreen{
   grouped.field('weapon').append(familyEditor);
   const mountSelectors=new Map<WeaponAttachmentSlot,HTMLSelectElement>();
   const attachments=node('details','campaign-weapon-attachments');
-  attachments.append(node('summary','','WEAPON ATTACHMENTS / MOUNTS'));
+  attachments.append(node('summary','','SIGHTS / RAILS / ACCESSORIES'));
   attachments.append(node('p','campaign-note',
    'Factory parts are included. Additional modules are finite workshop stock; purchase and install before deployment.'));
   for(const slot of WEAPON_ATTACHMENT_SLOTS){
@@ -653,8 +678,8 @@ export class CampaignScreen{
    select.setAttribute('aria-label','Select '+slot+' for '+person.callsign);
    const current=person.weaponConfiguration.slots[slot];
    for(const part of Object.values(WEAPON_ATTACHMENTS)){
-    if(part.slot!==slot||!part.compatible.includes(person.weapon)||
-      (build&&!familyAccessoryAllowed(build,slot,part.id)))continue;
+    if(part.slot!==slot||!weaponAttachmentAllowed(person.weaponConfiguration,
+      slot,part.id))continue;
     const price=attachmentPrice(part.id),stock=c.inventory.attachments[part.id]??0;
     const suffix=price===0?' · INCLUDED':
      part.id===current?' · EQUIPPED':
@@ -736,6 +761,11 @@ export class CampaignScreen{
     // Campaign purchase confirmation and stock rules on the select handler.
     this.workbench?.showSocketChoices(socket,select);
    });
+   const core=person.weapon+'|'+(person.weaponConfiguration.build?.parts.receiver??'legacy')+
+    '|'+(person.weaponConfiguration.build?.parts.barrel??'none');
+   this.workbenchCore=core;
+   const savedView=this.weaponWorkbenchViews.get(id);
+   if(savedView?.core===core)this.workbench.restoreViewState(savedView.view);
    const remembered=this.selectedWorkbenchSocket;
    const savedSelect=remembered?.startsWith('body-')?
     familySelectors.get(remembered.slice(5) as FamilyPartSlot):

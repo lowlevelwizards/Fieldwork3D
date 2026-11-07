@@ -7,6 +7,7 @@ import type {WeaponId} from './breach-combat.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {readWeaponFamilyBuild} from './equipment-weapon-families.ts';
 import {buildModularWeaponSilhouette} from './breach-modular-weapon-geometry.ts';
+import {addHKClawRail,addHKRailVerticalGrip} from './weapons/geometry/hk-rail-accessories.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 type Part=readonly [number,number,number,number,number,number,0|1];
 /** x, y, z, width, height, depth, material (0=steel, 1=dark). */
@@ -110,8 +111,15 @@ export function buildWeaponSilhouette(id:WeaponId,
  config?:WeaponConfiguration):THREE.Group{
  const familyBuild=config?.weapon===id?
   readWeaponFamilyBuild(config.build,id):undefined;
- if(familyBuild)return buildModularWeaponSilhouette(familyBuild,steel,dark,
-  !config||config.slots.muzzle==='muzzle-bare');
+ if(familyBuild){
+  const root=buildModularWeaponSilhouette(familyBuild,steel,dark,
+   !config||config.slots.muzzle==='muzzle-bare');
+  if(familyBuild.family==='hk'&&config?.slots.opticMount==='optic-hk-claw')
+   addHKClawRail(root);
+  if(familyBuild.parts.handguard==='hk-mp5-trirail'&&
+   config?.slots.foregrip==='foregrip-vertical')addHKRailVerticalGrip(root);
+  return root;
+ }
  const g=new THREE.Group();
  const stockX=config&&config.weapon===id?resolveWeaponAssembly(config).stockX:-13.5;
  for(const [baseX,y,z,baseW,h,d,mat] of PARTS[id]){

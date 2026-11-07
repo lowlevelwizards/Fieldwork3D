@@ -89,6 +89,51 @@ try{
   check(view.activeTabs.join()==='view','View tab must show selected state');
 
   // R3: advanced camera controls live exclusively in View, not on the dock.
+  // R4.2: the contact lens is evidence-backed and intentionally does not
+  // pretend the shared tactical map is an individual observation map.
+  const lens=page.locator('#replayContactLens');
+  check(await lens.isVisible(),'Operator contacts control missing');
+  check(await lens.isEnabled(),'New mission should capture observer evidence');
+  await lens.click();
+  const contactLabel=await lens.textContent();
+  check(contactLabel?.includes('CONTACTS: ')&&!contactLabel.includes('TEAM'),
+    'Operator contacts did not select an individual observer');
+  check(await page.locator('#replayContactNote').isVisible(),
+    'The shared-map limitation must be visibly disclosed');
+  check(await page.locator('#replayObserverTransitions').evaluate(e=>
+    !e.hidden&&e.children.length>0),
+    'Operator contact timeline must be built from historical observation samples');
+  const floor=page.locator('#replayGroundLens');
+  check(await floor.isVisible(),'Personal ground control missing');
+  const groundEvidenceAvailable=await floor.isEnabled();
+  if(groundEvidenceAvailable){
+    await floor.click();
+    check((await floor.getAttribute('aria-pressed'))==='true',
+      'Personal floor evidence overlay did not activate');
+    check((await page.locator('#replayView').textContent())?.includes('PLAN2D'),
+      'Personal floor evidence must stay in Floor Plan view');
+    check((await page.locator('#replayContactNote').textContent())?.
+      includes('GOLD CELLS'),
+      'Floor evidence note must not claim full individual environment sight');
+  }else{
+    // CI's software WebGL can reach replay after only two 20 Hz frames.
+    // That film may have NO ground sight tick yet; do not invent discovery.
+    check((await floor.getAttribute('aria-pressed'))==='false',
+      'An evidence-free short film must leave personal ground disabled');
+  }
+  await page.locator('#replaySight').click();
+  check((await lens.textContent())?.includes('CONTACTS: TEAM'),
+    'Team/Full View must exit individual contact lens');
+  check(await page.locator('#replayContactNote').isHidden(),
+    'The personal-contact limitation must hide when exiting lens');
+  check((await floor.getAttribute('aria-pressed'))==='false',
+    'Leaving individual review must turn off the floor overlay');
+  if(groundEvidenceAvailable){
+    await page.locator('#replayView').click(); // Plan2D -> ISO for Director QA
+    check((await page.locator('#replayView').textContent())?.includes('ISO'),
+      'Tactical camera must restore after leaving the floor overlay');
+  }
+
   check(await page.locator('#replayDirector').isVisible(),
     'R3 Director must be accessible under View');
   check(await page.locator('#replaySquad').isVisible(),

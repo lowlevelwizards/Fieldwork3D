@@ -3,6 +3,8 @@
  * equipment-catalog / equipment-loadouts / campaign-state.
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {readHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
+import {readPasgtDetails,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
 import {isPoliceVisorPosition,isPoliceVisorTint,isPoliceVisorFrame,type PoliceVisorOptions} from './operator-police-visor-policy.ts';
 import {isM56Details,isM56Net,type M56Options} from './operator-ddr-m56-policy.ts';
 import {isM1956Variant,type M1956Variant} from './operator-m1956-policy.ts';
@@ -50,6 +52,8 @@ add('headwear','soft',[
 add('headwear','ballistic',[
  ['soviet-steel','Steel helmet'],['pasgt','PASGT-style helmet'],
  ['ach','ACH / MICH-style helmet'],['high-cut','High-cut helmet'],
+ ['mich-2001','MICH 2001 high-cut'],['mich-2002','MICH 2002 gunfighter'],
+ ['fast-sf','FAST SF high-cut'],['fast-xp-mid','FAST XP mid-cut'],
  ['m1-steel','US M1 steel helmet'],['ddr-m56','East German M56 steel helmet'],
  ['police-helmet','Protective police helmet']
 ]);
@@ -163,6 +167,10 @@ export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shir
 export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
  trousers==='acu-trousers'||trousers==='gorka-trousers'?TROUSER_HEMS:['unbloused'] as const;
 export type WardrobeOptions=HelmetCoverConfig&{
+ /** Optional additive H1 modern modular helmet configuration. */
+ helmetSetup?:HelmetSetupV1;
+ /** PASGT-family field-dress options; saved separately from modern mounts. */
+ pasgtDetails?:PasgtDetails;
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  /** East German helmet details are appearance-only. */
  m56Details?:M56Options['m56Details'];m56Net?:M56Options['m56Net'];
@@ -304,6 +312,10 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isAliceLc2Load(v.aliceLoad))result.aliceLoad=v.aliceLoad;
  if(isM1956Variant(v.m1956Variant))result.m1956Variant=v.m1956Variant;
  Object.assign(result,readHelmetCoverConfig(v));
+ if(v.helmetSetup&&typeof v.helmetSetup==='object')
+  result.helmetSetup=readHelmetSetup(v.helmetSetup);
+ if(v.pasgtDetails&&typeof v.pasgtDetails==='object')
+  result.pasgtDetails=readPasgtDetails(v.pasgtDetails,v.helmetSetup);
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
   result.headwearCamoRoll=v.headwearCamoRoll;
@@ -416,7 +428,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
  }
  if(desired.headset==='helmet-ears'&&
    !['ach','high-cut','high-cut-rails','bump-helmet',
-     'pasgt'].includes(desired.headwear))
+     'pasgt','mich-2001','mich-2002','fast-sf','fast-xp-mid'].includes(desired.headwear))
   desired.headset='comms-none';
  choose('armorStyle',slots.armor==='armor-carrier'?
   ['plate-slick','plate-jpc','plate-standard','plate-heavy','plate-legacy']:
