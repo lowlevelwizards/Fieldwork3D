@@ -70,10 +70,10 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
     if(state.reload>0){
      // Only the non-firing reload presentation may cant for magazine access.
      // The ballistic authoritative muzzle remains untouched.
-     assert.ok(visualOrigin.distanceTo(baselineOrigin)<6.7,
+     assert.ok(visualOrigin.distanceTo(baselineOrigin)<4.3,
       fixture.id+'/'+name+': reload receiver exceeds motion budget');
-     assert.ok(visualRotation.angleTo(baselineRotation)<.34,
-      fixture.id+'/'+name+': reload cant exceeds .34 rad budget');
+     assert.ok(visualRotation.angleTo(baselineRotation)<.21,
+      fixture.id+'/'+name+': reload cant exceeds .21 rad budget');
     }else{
      assert.ok(visualOrigin.distanceTo(baselineOrigin)<1e-6,
       fixture.id+'/'+name+': nonreload world muzzle must be unchanged');
