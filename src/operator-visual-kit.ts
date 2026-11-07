@@ -569,5 +569,5 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const root=v.visualChest.parent?.parent;
  if(root)applyOperatorHeightLighting(root,[
   lightingKey,looks.trousers,looks.footwear,looks.headwear
- ].join('/'));
+ ].join('/'),root.userData.fieldworkHeightProfile??'current');
 }
