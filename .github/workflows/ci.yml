@@ -1573,6 +1573,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-r13-model-switch-') }}
         run: |
           node --experimental-strip-types --test tests/arsenal-r13-factory-recipes.test.mjs tests/arsenal-r13-model-picker.test.mjs tests/arsenal-r14-mobile-style-isolation.test.mjs tests/arsenal-r14-fit-feedback.test.mjs tests/arsenal-r14-apply-guidance.test.mjs tests/arsenal-r9-recipe-loading.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-campaign-adapter.test.mjs tests/arsenal-v2-quickplay-adapter.test.mjs tests/equipment-27-01-campaign-ownership.test.mjs
+      - name: Arsenal R15 — authored finish taxonomy and critical geometry regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-r15-finishes-') }}
+        run: |
+          node --experimental-strip-types --test tests/arsenal-r15-finishes.test.mjs tests/arsenal-r15-finish-ui.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-saved-builds.test.mjs tests/weapon-ak-r47-final-polish.test.mjs tests/weapon-hk-r4-material-selector.test.mjs tests/weapon-ar-r45-silhouettes.test.mjs tests/equipment-19-04-weapon-persistence.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
