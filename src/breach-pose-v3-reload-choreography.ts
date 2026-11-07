@@ -16,6 +16,8 @@ export type ReloadChoreographyRequest={
  fit:WeaponFit;lengthScale:number;progress:number;mode:ReloadMode;
  supportX:number;supportY:number;primaryX:number;
  magazineSocket?:{x:number;y:number};
+ /** Only modular rifle previews opt into a family-specific magazine approach. */
+ family?:'ar'|'ak'|'hk';
  /** Fitted near-side front armor surface, cached with equipment. */
  clearanceFront?:number;
 };
@@ -49,6 +51,32 @@ export function choreographV3ReloadHand(
  const offset=release+recovery+transport*.72;
  const target=base.clone().add(new THREE.Vector3(
   2.1*offset,0,-2.65*offset));
+ // A real magazine presents a different entry geometry for each family.
+ // Keep the existing socket/keyframe authoritative at .20/.30/.32/.75/.82:
+ // these small *free* approach arcs are zero at every attachment boundary.
+ // In particular, the AK support hand approaches the front lug before the
+ // rock-in; AR/HK detachable magazines take a straighter upward approach.
+ // These are presentation-only, not new simulation magazine positions.
+ if(input.magazineSocket&&input.mode!=='shells'&&input.family){
+  const family=input.family;
+  const releaseApproach=bump(t,.12,.20);
+  const withdrawal=bump(t,.32,.47);
+  const insertApproach=bump(t,.75,.82);
+  const ak=family==='ak';
+  const delta=new THREE.Vector3(
+    ak?1.05*releaseApproach+1.15*withdrawal+
+      1.35*insertApproach:
+      .25*releaseApproach+.35*withdrawal+.22*insertApproach,
+    ak?-.40*releaseApproach-.70*withdrawal-
+      .95*insertApproach:
+      -.24*releaseApproach-.55*withdrawal-.65*insertApproach,
+    ak?-1.0*releaseApproach-1.15*withdrawal-
+      1.15*insertApproach:
+      -.30*releaseApproach-.55*withdrawal-.45*insertApproach
+  );
+  delta.x*=input.lengthScale;
+  target.add(delta.applyEuler(input.fit.rotation));
+ }
  if(transport>0){
   // Magazine stays in the hand while being carried. Route the entire
   // hand+magazine outside the front of the rigid torso/carrier, not through
