@@ -2276,7 +2276,10 @@ function aimHeading(a:TeamActor):number|null{
 function applyAimNode(a:TeamActor,n:PlanNode){
   if(n.aimMode==='free')a.aimInstruction=null;
   else if(n.aimMode==='track'&&n.aimPoint)
-    a.aimInstruction={mode:'track',point:clone(n.aimPoint)};
+    a.aimInstruction={mode:'track',point:clone(n.aimPoint),
+      // A player can change a stack waypoint into WATCH. Only the untouched
+      // template's PIE-labelled stack pivot may yield to an entry sector.
+      ...(n.stackDoorId&&n.aimLabel==='pie'?{source:'stack' as const}:{})};
   else if(n.aimMode==='fixed'&&n.facing!==undefined)
     a.aimInstruction={mode:'fixed',angle:n.facing};
   else if(n.facing!==undefined)
@@ -2677,19 +2680,21 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     // While wedged sideways, the physical shoulder axis has priority
     // over target tracking. The authored look resumes on exit.
     if(a.squeeze)return;
+    const clearedEntryLook=!running&&n.kind==='move'&&
+      !!n.entryDoorId&&n.aimMode==='fixed'&&n.facing!==undefined&&
+      entryClearanceForLook(s.doors.find(door=>door.id===n.entryDoorId),
+        a.p,n.p);
+    // A generated STACK pivot watches its door until the operator is
+    // physically through. Only then does that template gaze yield to
+    // the already-authored entry sector. Explicit WATCH has no 'stack'
+    // provenance and retains priority; visible threats still win.
+    const handoff=clearedEntryLook&&
+      (a.aimInstruction===null||a.aimInstruction?.source==='stack');
     const held=!running&&visibleThreat?angle(a.p,visibleThreat.p):
+      handoff?n.facing!:
       running&&a.aimInstruction?.mode==='track'?null:aimHeading(a);
     if(held!==null)rotate(a,held,dt);
-    else if(!running&&n.kind==='move'&&n.entryDoorId&&
-      n.aimMode==='fixed'&&n.facing!==undefined&&
-      entryClearanceForLook(s.doors.find(door=>door.id===n.entryDoorId),
-        a.p,n.p)){
-      // Face the player's generated clearing sector WHILE moving to its
-      // destination. No stop/waypoint/teleport and no combat override.
-      // The normal arrival handler below commits the persistent fixed
-      // LOOK; manual orders and prior WATCH still take precedence.
-      rotate(a,n.facing,dt);
-    }else if(n.kind==='move'&&n.moveMode==='strafe')
+    else if(n.kind==='move'&&n.moveMode==='strafe')
       rotate(a,n.facing??a.heading,dt);
     else if(a.nav.length)
       rotate(a,angle(a.p,a.nav[0]),dt);
