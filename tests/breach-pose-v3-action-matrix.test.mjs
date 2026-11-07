@@ -4,6 +4,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import {MAX_DYNAMIC_ARM_CANDIDATES}
+ from '../src/breach-pose-v3-dynamic-arm.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {initialEquipmentLoadout,setEquipmentChoice}
  from '../src/equipment-loadouts.ts';
@@ -81,7 +83,8 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
     const reports=candidate.root.userData.poseV3DynamicReport;
     assert.equal(reports?.length,2,fixture.id+'/'+name);
     for(const [armIndex,report] of reports.entries()){
-     assert.ok(report.candidates<=6,fixture.id+'/'+name);
+     assert.ok(report.candidates<=MAX_DYNAMIC_ARM_CANDIDATES,
+      fixture.id+'/'+name);
      assert.ok(Number.isFinite(report.quality),
       fixture.id+'/'+name+'/'+armIndex);
      assert.ok(Number.isFinite(report.hardDepth),

@@ -17,7 +17,7 @@ test('V3 dynamic arms choose valid downward elbow without moving the wrist',()=>
  assert.ok(a.report.valid);
  assert.ok(a.report.elbowDrop>0);
  assert.ok(a.solution.effector.distanceTo(input.wrist)<.00001);
- assert.equal(a.candidates,MAX_DYNAMIC_ARM_CANDIDATES);
+ assert.ok(a.candidates>=6&&a.candidates<=MAX_DYNAMIC_ARM_CANDIDATES);
  assert.ok(a.evaluations<=MAX_DYNAMIC_ARM_CANDIDATES*3);
  assert.equal(a.softScale,1,'empty envelope needs no compression');
  const b=solveV3DynamicArm(input);

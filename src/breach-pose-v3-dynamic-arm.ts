@@ -30,10 +30,29 @@ export type DynamicArmFit={
  softScale:number;
  reason:'valid'|'out-of-reach'|'no-clearance';
 };
-export const MAX_DYNAMIC_ARM_CANDIDATES=6;
+/** Six authored directions, then six geometric ring probes only when needed.
+ * Never do an exhaustive 24-angle search on every operator frame. */
+export const MAX_DYNAMIC_ARM_CANDIDATES=12;
+const MINIMAL_CANDIDATES=6;
+function ringPoles(shoulder:THREE.Vector3,wrist:THREE.Vector3){
+ const axis=wrist.clone().sub(shoulder).normalize();
+ const ref=new THREE.Vector3(0,-1,0);
+ ref.addScaledVector(axis,-ref.dot(axis));
+ if(ref.lengthSq()<1e-6)
+  ref.set(0,0,1).addScaledVector(axis,-axis.z);
+ ref.normalize();
+ const across=new THREE.Vector3().crossVectors(axis,ref).normalize();
+ const result:THREE.Vector3[]=[];
+ for(let i=0;i<6;i++){
+  const a=2*Math.PI*(i+.5)/6;
+  result.push(ref.clone().multiplyScalar(Math.cos(a))
+   .addScaledVector(across,Math.sin(a)));
+ }
+ return result;
+}
 export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
  const {shoulder,wrist,side,mode,envelope,referenceBend}=req;
- const poles=[
+ const seedPoles=[
   req.preferredPole.clone(),
   new THREE.Vector3(3,-9,side*1.5),
   new THREE.Vector3(6,-8,side*2.0),
@@ -42,34 +61,59 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
    return new THREE.Vector3(p.x,p.y,p.z);
   })
  ];
- // Generate each IK joint exactly once. Increase permissible SOFT contact
- // only through the established standard/compressed/deep budgets. A rigid
- // torso or plate never gets an increased penetration allowance.
- const candidates=poles.map(pole=>solveTwoBone(shoulder,wrist,10,10,
-  pole,ARM_LIMITS,referenceBend));
  const budgets=mode==='aim'?[1,1.35]:
   [1,1.35,LOW_READY_CONTACT_LIMITS.maximumSoftScale];
  let evaluations=0,firstReport:ArmConstraintReport|null=null;
- for(const softScale of budgets){
-  let best:LimbSolution|null=null,bestReport:ArmConstraintReport|null=null;
-  for(const pose of candidates){
-   evaluations++;
-   const report=evaluateArmConstraint({shoulder,arm:pose,side,
-     envelope,mode,referenceBend,softScale});
-   if(!firstReport)firstReport=report;
-   if(!report.valid)continue;
-   if(!bestReport||report.quality<bestReport.quality-1e-6){
-    best=pose;bestReport=report;
+ let bestInvalid:ArmConstraintReport|null=null,lowestFailure=Infinity;
+ const evaluate=(poles:readonly THREE.Vector3[],baseCount:number):
+  DynamicArmFit|null=>{
+  const poses=poles.map(pole=>solveTwoBone(shoulder,wrist,10,10,
+   pole,ARM_LIMITS,referenceBend));
+  for(const softScale of budgets){
+   let best:LimbSolution|null=null,bestReport:ArmConstraintReport|null=null;
+   for(const pose of poses){
+    evaluations++;
+    const report=evaluateArmConstraint({shoulder,arm:pose,side,
+      envelope,mode,referenceBend,softScale});
+    if(!firstReport)firstReport=report;
+    if(!report.valid){
+     const penalty=(pose.reached?0:12)+
+      (report.contactValid?0:4)+report.hardDepth*2+
+      report.softDepth*.4+report.quality*.1;
+     if(penalty<lowestFailure){
+      lowestFailure=penalty;bestInvalid=report;
+     }
+     continue;
+    }
+    if(!bestReport||report.quality<bestReport.quality-1e-6){
+     best=pose;bestReport=report;
+    }
    }
+   if(best&&bestReport)return {status:'clear',solution:best,
+    report:bestReport,candidates:baseCount,evaluations,softScale,
+    reason:'valid'};
   }
-  // The first tier with a valid result wins; attractive but heavily
-  // compressed poses cannot displace a standard low-contact solution.
-  if(best&&bestReport)return {status:'clear',solution:best,
-   report:bestReport,candidates:candidates.length,evaluations,
-   softScale,reason:'valid'};
+  return null;
+ };
+ const outOfReach=wrist.distanceTo(shoulder)>19.92;
+ // Avoid dozens of expensive box-intersection checks for a target that a
+ // fixed-length arm mathematically cannot reach.
+ if(outOfReach){
+  const pose=solveTwoBone(shoulder,wrist,10,10,seedPoles[0],ARM_LIMITS);
+  const report=evaluateArmConstraint({shoulder,arm:pose,side,
+   envelope,mode,softScale:1});
+  return {status:'unresolved',solution:null,report,
+   candidates:1,evaluations:1,softScale:1,reason:'out-of-reach'};
  }
- return {status:'unresolved',solution:null,report:firstReport!,
-  candidates:candidates.length,evaluations,softScale:budgets.at(-1)!,
-  reason:wrist.distanceTo(shoulder)>19.92?
-   'out-of-reach':'no-clearance'};
+ const found=evaluate(seedPoles,MINIMAL_CANDIDATES);
+ if(found)return found;
+ // Unusual armor and action targets may need an elbow bend plane that is
+ // not in our six preferred poses; audit a small deterministic ring only
+ // after the primary candidate set demonstrably fails.
+ const ring=evaluate(ringPoles(shoulder,wrist),MAX_DYNAMIC_ARM_CANDIDATES);
+ if(ring)return ring;
+ return {status:'unresolved',solution:null,
+  report:bestInvalid??firstReport!,
+  candidates:MAX_DYNAMIC_ARM_CANDIDATES,evaluations,
+  softScale:budgets.at(-1)!,reason:'no-clearance'};
 }
