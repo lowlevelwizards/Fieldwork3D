@@ -2,7 +2,8 @@
  * no effects on tactical gameplay, saved appearance, shared assets or replay.
  * Canvas MSAA must be chosen before WebGL context creation. */
 export type StudioRenderQuality={
- canvasAA:boolean;pixelRatio:number;shadowFilter:'pcf'|'hard';
+ canvasAA:boolean;pixelRatio:number;shadowFilter:'soft'|'pcf'|'hard';
+ shadowSize:1024|2048;shadowBias:'stable'|'legacy';
  liveShadows:boolean;celAA:boolean;bakedLighting:boolean;
  thumbnailAA:boolean;
 };
@@ -15,7 +16,10 @@ export function requestedStudioRenderQuality(search:string,
  return {
   canvasAA:p.get('studioAA')!=='off',
   pixelRatio:Math.max(1,Math.min(maxDevice,2,Math.max(1,ratio))),
-  shadowFilter:p.get('studioShadowFilter')==='hard'?'hard':'pcf',
+  shadowFilter:p.get('studioShadowFilter')==='hard'?'hard':
+   p.get('studioShadowFilter')==='pcf'?'pcf':'soft',
+  shadowSize:p.get('studioShadowSize')==='2048'?2048:1024,
+  shadowBias:p.get('studioShadowBias')==='legacy'?'legacy':'stable',
   liveShadows:p.get('studioLiveShadows')!=='off',
   celAA:p.get('studioCelAA')!=='off',
   bakedLighting:p.get('studioBakedLighting')!=='off',
