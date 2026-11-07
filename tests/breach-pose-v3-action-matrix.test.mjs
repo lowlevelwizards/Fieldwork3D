@@ -43,6 +43,7 @@ const assemble=f=>{
 };
 test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',()=>{
  let clear=0,unresolved=0;
+ const reasons=new Map(),violations=new Map(),examples=[];
  for(const fixture of fixtures){
   const base=assemble(fixture);
   const original=createOperatorRig('v3-old-'+fixture.id,'blue',true);
@@ -73,6 +74,14 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
        fixture.id+'/'+name+'/'+armIndex);
      }else{
       unresolved++;
+      reasons.set(report.reason,(reasons.get(report.reason)??0)+1);
+      for(const v of report.violations)
+       violations.set(v,(violations.get(v)??0)+1);
+      if(examples.length<20)examples.push({
+       kit:fixture.id,action:name,arm:armIndex,
+       reason:report.reason,violations:report.violations,
+       reachError:Number(report.reachError.toFixed(2)),
+       hardDepth:Number(report.hardDepth.toFixed(2))});
       assert.equal(report.status,'unresolved');
       assert.ok(['out-of-reach','no-clearance'].includes(report.reason));
      }
@@ -82,5 +91,7 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
  }
  assert.equal(clear+unresolved,fixtures.length*scenarios.length*2);
  console.log('POSE-V3-ACTION-MATRIX',JSON.stringify({clear,unresolved,
-  fixtures:fixtures.length,actions:scenarios.length}));
+  fixtures:fixtures.length,actions:scenarios.length,
+  reasons:Object.fromEntries(reasons),violations:Object.fromEntries(violations),
+  examples}));
 });
