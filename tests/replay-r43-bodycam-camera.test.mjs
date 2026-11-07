@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import {createOperatorRig} from '../src/breach-operator-rig.ts';
 import {sampleBodycamSocket,applyBodycamCamera,bodycamFieldOfView}
   from '../src/breach-replay-bodycam.ts';
 const approx=(a,b,eps=1e-6)=>assert.ok(Math.abs(a-b)<eps,
@@ -57,4 +58,19 @@ test('camera stays finite in vertical downed-body posture',()=>{
   for(const n of [...cam.position.toArray(),...cam.quaternion.toArray(),
     ...sample.up.toArray()])assert.ok(Number.isFinite(n));
   approx(sample.up.dot(sample.forward),0);
+});
+
+test('actual operator rig exposes invisible chest and helmet anchors',()=>{
+  const rig=createOperatorRig('rook','blue',true);
+  assert.equal(rig.bodycamChest.parent,rig.chest);
+  assert.equal(rig.bodycamHelmet.parent,rig.head);
+  assert.equal(rig.bodycamChest.children.length,0);
+  assert.equal(rig.bodycamHelmet.children.length,0);
+  rig.root.updateMatrixWorld(true);
+  const chest=sampleBodycamSocket(rig.bodycamChest,'balanced');
+  const helmet=sampleBodycamSocket(rig.bodycamHelmet,'balanced');
+  assert.ok(helmet.position.y>chest.position.y,
+    'Helmet mount must sit above the chest camera');
+  assert.ok(chest.position.y>15,
+    'Camera must be attached to torso, not ground/root origin');
 });
