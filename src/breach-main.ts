@@ -347,6 +347,7 @@ const ui={
   replayLoopToggle:el<HTMLButtonElement>('replayLoopToggle'),
   replaySeek:el<HTMLInputElement>('replaySeek'),
   replayMarks:el<HTMLElement>('replayMarks'),
+  replayClusterMenu:el<HTMLElement>('replayClusterMenu'),
   replaySight:el<HTMLButtonElement>('replaySight'),
   replayContactLens:el<HTMLButtonElement>('replayContactLens'),
   replayGroundLens:el<HTMLButtonElement>('replayGroundLens'),
@@ -4246,6 +4247,7 @@ function applyReplayFrameAt(t:number){
   fogStamp=-1;
 }
 function seekReplay(t:number){
+  ui.replayClusterMenu.hidden=true;
   // Direct navigation deliberately exits a bounded incident film.
   replayIncidentPlayback=null;
   if(replayQuickVideo.active)replayQuickVideo.stop();
@@ -4572,6 +4574,7 @@ function renderReplayEventFeed():void{
     const button=document.createElement('button');
     button.type='button';button.className='replay-feed-item';
     button.dataset.kind=event.kind;
+    button.dataset.eventKey=event.key;
     button.textContent=formatReplayTime(event.t)+' · '+
       event.kind.toUpperCase()+' · '+event.text;
     button.addEventListener('click',()=>{
@@ -4774,19 +4777,59 @@ function updateReplayHud(){
  */
 function renderReplayEventMarkers():void{
   ui.replayMarks.replaceChildren();
+  ui.replayClusterMenu.hidden=true;
+  ui.replayClusterMenu.replaceChildren();
   const duration=recorder.duration;
   if(duration<=0)return;
   const width=ui.replayMarks.clientWidth||ui.replaySeek.clientWidth||320;
-  const bins=Math.max(16,Math.floor(width/7));
-  const clusters=clusterReplayTimeline(replayEventIndex?.markers??[],duration,width);
+  const bins=Math.max(16,Math.floor(Math.max(0,width)/7));
+  const events=replayEventIndex?.markers??[];
+  const clusters=clusterReplayTimeline(events,duration,width);
+  const byBin=new Map<number,ReplayIndexedEvent[]>();
+  for(const event of events){
+    if(!Number.isFinite(event.t))continue;
+    const bin=Math.min(bins-1,Math.max(0,Math.floor(event.t/duration*bins)));
+    const list=byBin.get(bin);
+    if(list)list.push(event);else byBin.set(bin,[event]);
+  }
   const fragment=document.createDocumentFragment();
   for(const cluster of clusters){
-    const marker=document.createElement('span');
+    const members=byBin.get(cluster.index)??[];
+    if(!members.length)continue;
+    const marker=document.createElement('button');
+    marker.type='button';
     marker.className='replay-mark replay-mark-'+cluster.kind;
     marker.style.left=((cluster.index+.5)/bins*100).toFixed(3)+'%';
-    marker.dataset.cluster=String(cluster.count>1);
-    marker.title=cluster.count+' event'+(cluster.count===1?'':'s')+
+    marker.dataset.cluster=String(members.length>1);
+    marker.title=members.length+' event'+(members.length===1?'':'s')+
       ' near '+clockText(cluster.time);
+    marker.setAttribute('aria-label',members.length===1?
+      'Go to '+formatReplayTime(members[0].t)+': '+members[0].text:
+      'Choose among '+members.length+' recorded events near '+
+        formatReplayTime(cluster.time));
+    marker.addEventListener('click',()=>{
+      ui.replayClusterMenu.replaceChildren();
+      if(members.length===1){
+        replayPlaying=false;seekReplay(members[0].t);return;
+      }
+      const heading=document.createElement('strong');
+      heading.textContent=members.length+' EVENTS · '+
+        formatReplayTime(cluster.time);
+      ui.replayClusterMenu.append(heading);
+      for(const event of members){
+        const choice=document.createElement('button');
+        choice.type='button';choice.textContent=formatReplayTime(event.t)+
+          ' · '+event.kind.toUpperCase()+' · '+event.text;
+        choice.addEventListener('click',()=>{
+          replayPlaying=false;seekReplay(event.t);
+          ui.replayClusterMenu.hidden=true;
+          marker.focus();
+        });
+        ui.replayClusterMenu.append(choice);
+      }
+      ui.replayClusterMenu.hidden=false;
+      ui.replayClusterMenu.querySelector('button')?.focus();
+    });
     fragment.append(marker);
   }
   ui.replayMarks.append(fragment);
@@ -5255,6 +5298,7 @@ ui.replaySpeed.addEventListener('click',()=>{
   updateReplayHud();
 });
 ui.replaySeek.addEventListener('input',()=>{
+  ui.replayClusterMenu.hidden=true;
   replayPlaying=false;
   seekReplay(Number(ui.replaySeek.value)/60);
 });
@@ -6254,9 +6298,12 @@ window.addEventListener('keydown',e=>{
       updateReplayHud();
     }
     if(e.code==='Escape'){
-    if(replayToolTab!==null)showReplayToolTab(null);
-    else exitReplay();
-  }
+      if(!ui.replayClusterMenu.hidden){
+        ui.replayClusterMenu.hidden=true;
+        ui.replayClusterMenu.replaceChildren();
+      }else if(replayToolTab!==null)showReplayToolTab(null);
+      else exitReplay();
+    }
     if(e.code==='ArrowLeft'||e.code==='ArrowRight'){
       e.preventDefault();
       const direction:-1|1=e.code==='ArrowLeft'?-1:1;
