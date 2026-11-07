@@ -137,13 +137,18 @@ test('R7.12 A/B modes preserve safe no-AA/hard-shadow/off-bake fallback',()=>{
  const standard=requestedStudioRenderQuality('',3);
  assert.equal(standard.canvasAA,true);
  assert.equal(standard.pixelRatio,1.5);
- assert.equal(standard.shadowFilter,'pcf');
+ assert.equal(standard.shadowFilter,'soft');
+ assert.equal(standard.shadowSize,1024);
+ assert.equal(standard.shadowBias,'stable');
  const off=requestedStudioRenderQuality(
   '?studioAA=off&studioPixelRatio=2&studioShadowFilter=hard&'+
   'studioLiveShadows=off&studioCelAA=off&studioBakedLighting=off',3);
  assert.equal(off.canvasAA,false);
  assert.equal(off.pixelRatio,2);
  assert.equal(off.shadowFilter,'hard');
+ assert.equal(requestedStudioRenderQuality(
+  '?studioShadowSize=2048&studioShadowBias=legacy&studioShadowFilter=pcf',
+  3).shadowSize,2048);
  assert.equal(off.liveShadows,false);
  assert.deepEqual(requestedStudioGraphicDiagnostics(
   '?studioCelAA=off&studioBakedLighting=off'),
