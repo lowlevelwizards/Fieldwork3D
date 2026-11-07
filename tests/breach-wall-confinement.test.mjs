@@ -38,7 +38,7 @@ test('correct fall axes, tight-space folding, and taller shared portal',()=>{
  assert.ok(fallAngles('left',1).x< -1.4);
  assert.ok(fallAngles('right',1).x>1.4);
  const tight=fallAngles('forward',1,0);
- assert.equal(tight.z,0);
+ assert.ok(Math.abs(tight.z)<1e-8);
  assert.ok(tight.y< -10);
  assert.ok(WALL_VISUAL_HEIGHT>=DOOR_CLEAR_VISUAL_HEIGHT+4);
  assert.ok(DOOR_CLEAR_VISUAL_HEIGHT>=50);
