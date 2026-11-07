@@ -70,6 +70,8 @@ import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {sampleBodycamSocket,applyBodycamCamera,
   type BodycamSetting} from './breach-replay-bodycam.ts';
 import type {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
+import {personalDecorVisible}
+  from './breach-replay-personal-visibility.ts';
 import {interpolatedActor,type RenderFrame}
   from './breach-frame-interpolation.ts';
 
@@ -1660,7 +1662,8 @@ export class TacticalScene3D{
     renderFrame?:RenderFrame|null,
     liveMotion?:ReplayPresentation|null,
     replayDisclosurePolicy:ReplayDisclosure|null=null,
-    replayDoorHistory:ReplayDoorKnowledgeHistory|null=null){
+    replayDoorHistory:ReplayDoorKnowledgeHistory|null=null,
+    personalGroundEvidence:ReadonlySet<string>|null=null){
     if(this.view.mode==='plan2d')return;
     const bodycamAudition=!!this.replayBodycam&&
       replayDisclosurePolicy?.mode==='operator'&&
@@ -1745,8 +1748,14 @@ export class TacticalScene3D{
         roofShouldShow(omniscient,known,occupiedRoomIds.has(id));
     }
     for(const item of this.intelSurfaces){
-      item.obj.visible=spatialSurfaceState(s,item.kind,
+      const squadKnown=spatialSurfaceState(s,item.kind,
         item.index,omniscient)!=='unknown';
+      // Physically blocking structural WALLS never disappear in a POV.
+      // Only decorative/cover meshes use recorded personal ground memory.
+      item.obj.visible=bodycamAudition&&item.kind==='cover'?
+        personalDecorVisible(squadKnown,true,personalGroundEvidence,
+          {x:COVER[item.index]?.x??NaN,y:COVER[item.index]?.y??NaN}):
+        squadKnown;
     }
     // Unlike the room's floor, decorative props must be individually
     // seen (or remembered at their own position) before they are rendered.
@@ -1756,8 +1765,10 @@ export class TacticalScene3D{
       const p=detail.position;
       const micro='micro:'+Math.floor(p.x/10)+','+Math.floor(p.y/10);
       const fine='fine:'+Math.floor(p.x/20)+','+Math.floor(p.y/20);
-      detail.obj.visible=omniscient||s.seenGround.has(micro)||
-        s.seenGround.has(fine)||liveVisibility(s,p);
+      detail.obj.visible=personalDecorVisible(
+        omniscient||s.seenGround.has(micro)||
+          s.seenGround.has(fine)||liveVisibility(s,p),
+        bodycamAudition,personalGroundEvidence,p);
       this.staticBatches.setVisible(detail.obj,detail.obj.visible);
     }
     // Fade only physical walls obstructing the selected friendly from camera.
@@ -1894,7 +1905,10 @@ export class TacticalScene3D{
         this.rescueFigure.add(civilian,head);
         this.scene.add(this.rescueFigure);
       }
-      this.rescueFigure.visible=omniscient||liveVisibility(s,s.rescue.p);
+      // Squad-wide rescue markers cannot appear as a witnessed person
+      // within an uncompleted first-person history.
+      this.rescueFigure.visible=!bodycamAudition&&
+        (omniscient||liveVisibility(s,s.rescue.p));
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
     for(const actor of s.operators){
