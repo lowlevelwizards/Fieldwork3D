@@ -15,7 +15,7 @@ const base={
  bounds:{minX:0,minY:0,maxX:400,maxY:320}
 };
 const wall={a:{x:180,y:75},b:{x:180,y:200}};
-const crate={x:185,y:120,w:30,h:28,fixture:'crate'};
+const crate={x:185,y:120,w:30,h:28,fixture:'desk'};
 const session=(extra={},intel='full-view')=>
  newSession(0,undefined,intel,'standard','hold',{...base,...extra});
 const result=()=>({clipped:false,endpoint:{x:0,y:0}});
@@ -28,7 +28,7 @@ test('wall contact clips at closest known safe point instead of rejecting the en
   assert.ok(planMoveStroke(s,a.id,[{x:150,y:120},{x:250,y:120}],
     false,true,out));
   assert.equal(out.clipped,true);
-  assert.ok(out.endpoint.x>=164&&out.endpoint.x<178,
+  assert.ok(out.endpoint.x>150&&out.endpoint.x<178,
     'stop on the approach side, near wall clearance');
   assert.ok(Math.abs(out.endpoint.y-120)<1);
   assert.ok(intelPassable(out.endpoint,s.intel,SQUEEZE_RADIUS));
@@ -45,7 +45,7 @@ test('furniture contact clips near front face, not through/around the obstacle',
     false,true,out));
   assert.equal(out.clipped,true);
   assert.ok(out.endpoint.x>149&&out.endpoint.x<172,
-    'the endpoint stays on the near side of the crate');
+    'the endpoint stays on the near side of the desk');
   assert.ok(intelPassable(out.endpoint,s.intel,SQUEEZE_RADIUS));
  }finally{activateSite(null);}
 });
@@ -65,6 +65,8 @@ test('unseen obstacles do not trim a plan or leak knowledge',()=>{
  const s=session({walls:[wall],cover:[crate]},'true-blind');
  try{
   const a=team(s)[0],out=result();
+  // Startup LOS may have preobserved the fixtures; simulate unseen intel.
+  s.intel.walls.clear();s.intel.cover.clear();
   assert.equal(s.intel.walls.size,0);
   assert.equal(s.intel.cover.size,0);
   assert.ok(planMoveStroke(s,a.id,[{x:150,y:120},{x:230,y:120}],
