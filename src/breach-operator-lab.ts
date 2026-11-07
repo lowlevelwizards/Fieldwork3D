@@ -1589,6 +1589,8 @@ function draw(){
        'blank'|'quiet'|'graphic',
      magazineCarryLocations:currentCarry.filter(p=>p.kind==='magazine')
       .map(p=>p.location),
+     magazineCarryItems:currentCarry.filter(p=>p.kind==='magazine'),
+     reloadSelectedMagazineId:currentCarry.find(p=>p.kind==='magazine')?.id,
      medicalCarryLocation:currentCarry.find(p=>p.kind==='medical')?.location,
      utilityCarryLocation:currentCarry.find(p=>p.kind==='utility')?.location,
     downPose:track==='down-back'?'back':

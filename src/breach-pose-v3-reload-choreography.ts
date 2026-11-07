@@ -35,6 +35,8 @@ export type ReloadChoreographyRequest={
  magazineSocket?:{x:number;y:number};
  /** Family-authored bolt catch / operating handle / HK cocking handle. */
  reloadControl?:{x:number;y:number;z:number};
+ /** Existing on-body magazine socket in chest space; no ammo writes. */
+ pickupTarget?:THREE.Vector3;
  /** Only modular rifle previews opt into a family-specific magazine approach. */
  family?:'ar'|'ak'|'hk';
  /** Lab audition only. Default uses the proven B14 hand track. */
