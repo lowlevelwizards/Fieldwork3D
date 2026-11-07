@@ -85,7 +85,7 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
  if(isSD){
   // Massive cylindrical fore-end; coarse symbolic bands only.
   addMP5SDShroud(root,parts.handguard,ids.handguard++,
-   art.handguardStartX,art.handguardEndX,HK_DARK_POLYMER,dark);
+   art.handguardStartX,art.handguardEndX,HK_DARK_POLYMER);
  }else{
   addMP5TropicalForearm(root,parts.handguard,ids.handguard++,
    art.handguardStartX,art.handguardEndX,isK,HK_DARK_POLYMER);
