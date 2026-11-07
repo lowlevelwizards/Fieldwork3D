@@ -236,7 +236,14 @@ export function evaluateSleeveArmorContact(
  let hardDepth=0,softDepth=0,quality=0,valid=true;
  const contacts:SleeveContactResult['contacts'][number][]=[];
  for(const volume of env.boxes){
-  const proximal=LOW_READY_CONTACT_LIMITS.proximalUpperSeam;
+  // The real upper sleeve is SEWN into the shoulder/neck line. The
+  // shoulder-end rectangle naturally overlaps its own rigid upper torso:
+  // this is an attachment, not a forearm crossing through the abdomen.
+  // Trim ONLY the proximal upper segment against torso-upper; the lower
+  // torso and all rigid front/side ballistic inserts keep their original
+  // strict budget and their original segment starting position.
+  const proximal=volume.region==='torso-upper'?.30:
+   LOW_READY_CONTACT_LIMITS.proximalUpperSeam;
   const upper=sleeveBoxPenetration(shoulder,elbow,3.9,4.0,volume,proximal);
   const lower=sleeveBoxPenetration(elbow,wrist,3.4,3.5,volume);
   const depth=Math.max(upper,lower);

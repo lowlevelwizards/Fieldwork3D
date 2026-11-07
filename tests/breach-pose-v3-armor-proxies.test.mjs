@@ -66,3 +66,20 @@ test('A3: only the protective insert is rigid, not the outer sewn carrier',()=>{
   'rigid plate core must still reject a crossing sleeve');
  assert.ok(middle.hardDepth>LOW_READY_CONTACT_LIMITS.rigid);
 });
+
+test('B9: torso shoulder seam is localized; plate/forearm collision unchanged',()=>{
+ const e=poseClearanceEnvelope('plate-heavy','full-chest','smock-jacket');
+ const shoulder=V(1,4,-7),elbow=V(3,2,-4),wrist=V(7,-3,0);
+ const current=evaluateSleeveArmorContact(shoulder,elbow,wrist,e);
+ const strict={...e,boxes:e.boxes.map(v=>v.region==='torso-upper'?
+  {...v,region:undefined}:v)};
+ const previous=evaluateSleeveArmorContact(shoulder,elbow,wrist,strict);
+ assert.ok(current.hardDepth<=previous.hardDepth+1e-6,
+  'anatomical seam must not make hard contact worse');
+ const center=evaluateSleeveArmorContact(
+  V(1,4,-7),V(3,0,0),V(6,-3,0),e);
+ assert.equal(center.valid,false,
+  'central upper-arm and forearm penetration remains forbidden');
+ assert.ok(center.hardDepth>LOW_READY_CONTACT_LIMITS.rigid);
+ assert.equal(LOW_READY_CONTACT_LIMITS.rigid,.12);
+});
