@@ -179,6 +179,10 @@ const BEANIE_CUBOIDS:readonly HeadwearCuboid[]=[
  * Reference: 2005 U.S. Army PASGT vs ACH fit guidance; side-profile
  * photos of original PASGT shells.
  */
+/** A single large upper-crown taper; this pulls the four roof vertices in
+ * without turning the PASGT into a beveled high-poly dome. Cover and shell
+ * both use this one value so their upper contact stays consistent. */
+export const PASGT_UPPER_CROWN_INSET=.34;
 const PASGT_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'pasgt-single-protective-crown',x:0,y:7.18,z:0,
   width:9.78,height:3.20,depth:9.77},
@@ -434,6 +438,24 @@ function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId)
  const geometry=unionCuboids(volume,{faceTone:(part,axis,sign)=>
   headwearFaceTone(id,part.name,axis,sign),
   faceRegion:(part,axis,sign)=>headwearFaceRegion(id,part.name,axis,sign)});
+ // Audition only on the PASGT roof corners; all underlying cuboid volumes,
+ // ear coverage, bore/silhouette metrics and collision remain untouched.
+ if(id==='pasgt'){
+  const position=geometry.getAttribute('position') as THREE.BufferAttribute;
+  const crown=PASGT_CUBOIDS[0],roof=crown.y+crown.height/2;
+  for(let i=0;i<position.count;i++){
+   const x=position.getX(i),y=position.getY(i),z=position.getZ(i);
+   if(Math.abs(y-roof)>1e-5)continue;
+   if(Math.abs(x)<crown.width/2-.001||
+      Math.abs(z)<crown.depth/2-.001)continue;
+   position.setXYZ(i,
+    x-Math.sign(x)*PASGT_UPPER_CROWN_INSET,y,
+    z-Math.sign(z)*PASGT_UPPER_CROWN_INSET);
+  }
+  position.needsUpdate=true;geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.userData.pasgtCrownCornerInset=PASGT_UPPER_CROWN_INSET;
+ }
  // Existing helmet construction tones are compressed for dark camo inks.
  softenHeadwearAO(geometry);
  const mesh=new THREE.Mesh(geometry,m);

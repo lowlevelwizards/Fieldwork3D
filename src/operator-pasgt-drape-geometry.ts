@@ -3,7 +3,7 @@
  * geometric transitions; no subdivision, smoothing, or cloth simulation.
  */
 import * as THREE from 'three';
-import {headwearCuboidVolumes} from './operator-headwear-silhouettes.ts';
+import {headwearCuboidVolumes,PASGT_UPPER_CROWN_INSET} from './operator-headwear-silhouettes.ts';
 
 /** Three separate 160-pixel physical cloth panels within one texture.
  * The open gutters avoid bilinear/mipmap bleed across a sewn boundary.
@@ -32,6 +32,9 @@ export const PASGT_COVER_TOP_Y=crown.y+crown.height/2+.14;
 const X=crown.width/2+.12;
 const FRONT=-crown.depth/2-.13;
 const REAR=crown.depth/2+.13;
+const TOP_X=X-PASGT_UPPER_CROWN_INSET;
+const TOP_FRONT=FRONT+PASGT_UPPER_CROWN_INSET;
+const TOP_REAR=REAR-PASGT_UPPER_CROWN_INSET;
 const PEAK_FRONT=peak.z-peak.depth/2-.11;
 const NAPE_REAR=rear.z+rear.depth/2+.12;
 const SIDE=ear.x+ear.width/2+.13;
@@ -60,12 +63,12 @@ function sideHem(z:number):number{
  const t=clamp((z+1.65)/.81);
  return FRONT_BOTTOM+(SIDE_BOTTOM-FRONT_BOTTOM)*t;
 }
-const frontXs=[-X,...PASGT_TOP_SEAM_OFFSETS.slice(0,1),0,...PASGT_TOP_SEAM_OFFSETS.slice(1),X];
-const sideZs=[FRONT,-3.4,-1.7,-1.45,-1.20,-.96,-.78,.50,2.70,4.3,REAR];
+const frontXs=[-TOP_X,...PASGT_TOP_SEAM_OFFSETS.slice(0,1),0,...PASGT_TOP_SEAM_OFFSETS.slice(1),TOP_X];
+const sideZs=[TOP_FRONT,-3.4,-1.7,-1.45,-1.20,-.96,-.78,.50,2.70,4.3,TOP_REAR];
 const panels:readonly (readonly Omit<PasgtRingSample,'distance'>[])[]=[
- frontXs.map(x=>({side:'front' as const,x,z:FRONT,bottomY:FRONT_BOTTOM})),
+ frontXs.map(x=>({side:'front' as const,x,z:TOP_FRONT,bottomY:FRONT_BOTTOM})),
  sideZs.map(z=>({side:'right' as const,x:X,z,bottomY:sideHem(z)})),
- [...frontXs].reverse().map(x=>({side:'rear' as const,x,z:REAR,bottomY:REAR_BOTTOM})),
+ [...frontXs].reverse().map(x=>({side:'rear' as const,x,z:TOP_REAR,bottomY:REAR_BOTTOM})),
  [...sideZs].reverse().map(z=>({side:'left' as const,x:-X,z,bottomY:sideHem(z)}))
 ];
 let length=0;
@@ -84,22 +87,22 @@ export type PasgtRing='top'|'shoulder'|'ramp'|'hem';
  */
 function sideZ(sample:PasgtRingSample,ring:PasgtRing):number{
  if(ring==='top')return sample.z;
- const frontWeight=clamp((-3.4-sample.z)/(-3.4-FRONT));
- const rearWeight=clamp((sample.z-4.3)/(REAR-4.3));
- const f=(ring==='shoulder'?.035:1);
- return sample.z+
-  (PEAK_FRONT-FRONT)*frontWeight*f+
-  (NAPE_REAR-REAR)*rearWeight*f;
+ const frontWeight=clamp((-3.4-sample.z)/(-3.4-TOP_FRONT));
+ const rearWeight=clamp((sample.z-4.3)/(TOP_REAR-4.3));
+ const targetFront=ring==='shoulder'?FRONT-.035:PEAK_FRONT;
+ const targetRear=ring==='shoulder'?REAR+.035:NAPE_REAR;
+ return sample.z+(targetFront-TOP_FRONT)*frontWeight+
+  (targetRear-TOP_REAR)*rearWeight;
 }
 export function pasgtRingPoint(sample:PasgtRingSample,ring:PasgtRing):
  readonly [number,number,number]{
  const face=sample.side==='front',back=sample.side==='rear';
  const isSide=!face&&!back;
  const sx=sample.x<0?-1:1;
- const extent=ring==='top'?X:ring==='shoulder'?X+.035:SIDE;
- const x=isSide?sx*extent:sample.x/X*extent;
- const z=face?ring==='top'?FRONT:ring==='shoulder'?FRONT-.035:PEAK_FRONT:
-  back?ring==='top'?REAR:ring==='shoulder'?REAR+.035:NAPE_REAR:
+ const extent=ring==='top'?TOP_X:ring==='shoulder'?X+.035:SIDE;
+ const x=isSide?sx*extent:sample.x/TOP_X*extent;
+ const z=face?ring==='top'?TOP_FRONT:ring==='shoulder'?FRONT-.035:PEAK_FRONT:
+  back?ring==='top'?TOP_REAR:ring==='shoulder'?REAR+.035:NAPE_REAR:
   sideZ(sample,ring);
  const y=ring==='top'?PASGT_COVER_TOP_Y:
   ring==='shoulder'?6.81:ring==='ramp'?6.01:sample.bottomY;
@@ -121,8 +124,8 @@ export function pasgtFabricCoordinate(sample:PasgtRingSample,ring:PasgtRing):
   travel+=Math.hypot(b[0]-a[0],b[1]-a[1],b[2]-a[2]);
  }
  switch(sample.side){
-  case 'front':return [sample.x,FRONT-travel];
-  case 'rear':return [sample.x,REAR+travel];
+  case 'front':return [sample.x,TOP_FRONT-travel];
+  case 'rear':return [sample.x,TOP_REAR+travel];
   case 'right':return [X+travel,sample.z];
   case 'left':return [-X-travel,sample.z];
  }
@@ -161,14 +164,14 @@ export function createPasgtDrapedGeometry(hemOnly=false):THREE.BufferGeometry{
   // Three real UV islands: left, top and right crown cloth panels.
   // The same physical edge vertices are duplicated on the seam,
   // producing a visible print break without cracks or extra surfaces.
-  const edges=[-X,...PASGT_TOP_SEAM_OFFSETS,X];
+  const edges=[-TOP_X,...PASGT_TOP_SEAM_OFFSETS,TOP_X];
   for(let i=0;i<3;i++){
    const panel=PASGT_FABRIC_PANELS[i];
    const x0=edges[i],x1=edges[i+1];
-   const a:[number,number,number]=[x0,PASGT_COVER_TOP_Y,FRONT],
-    b:[number,number,number]=[x1,PASGT_COVER_TOP_Y,FRONT],
-    c:[number,number,number]=[x1,PASGT_COVER_TOP_Y,REAR],
-    d:[number,number,number]=[x0,PASGT_COVER_TOP_Y,REAR];
+   const a:[number,number,number]=[x0,PASGT_COVER_TOP_Y,TOP_FRONT],
+    b:[number,number,number]=[x1,PASGT_COVER_TOP_Y,TOP_FRONT],
+    c:[number,number,number]=[x1,PASGT_COVER_TOP_Y,TOP_REAR],
+    d:[number,number,number]=[x0,PASGT_COVER_TOP_Y,TOP_REAR];
    tri(a,c,b,pasgtAtlasUv([x0,FRONT],panel),
     pasgtAtlasUv([x1,REAR],panel),pasgtAtlasUv([x1,FRONT],panel));
    tri(a,d,c,pasgtAtlasUv([x0,FRONT],panel),
@@ -191,7 +194,7 @@ export function createPasgtDrapedGeometry(hemOnly=false):THREE.BufferGeometry{
       const n=s.side==='front'?[0,0,-.035]:
        s.side==='rear'?[0,0,.035]:
        [s.side==='right'?.035:-.035,0,0];
-      return [p[0]+n[0],p[1]+(raised?.14:0),p[2]+n[2]];
+      return [p[0]+n[0],p[1]+(raised?.19:0),p[2]+n[2]];
      };
      const p0=make(a,true),p1=make(b,true),p2=make(b,false),p3=make(a,false);
      const fabricPanel=a.side==='left'?'left':a.side==='right'?'right':
