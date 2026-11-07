@@ -1347,7 +1347,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
           configuration:coupledConfig,
           armor:poseClearanceEnvelope(
             look.armorStyle,look.rigStyle,look.top),
-          shoulders,nominalYaw:localYaw});
+          shoulders,nominalYaw:localYaw,
+          allowVisualOverlap:!!p.poseV3Preview});
         sharedCoupledPoseCache.set(key,result);
         if(sharedCoupledPoseCache.size>MAX_SHARED_COUPLED_POSES){
           const oldest=sharedCoupledPoseCache.keys().next().value;
@@ -1516,7 +1517,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
         'aim':'carry',
       releasedSupportTarget:releasedTarget,
-      allowReloadOverlap:!!p.poseV4ReloadPreview&&v3ReloadActive
+      allowReloadOverlap:!!p.poseV4ReloadPreview&&v3ReloadActive,
+      allowVisualOverlap:!!p.poseV3Preview&&!p.firing
     });
     r.root.userData.poseV3CoordinatedReport={
       status:result.status,yaw:result.yaw,leanX:result.leanX,
@@ -1895,7 +1897,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         'aim':reaching||throwActive?'interaction':'carry';
       const dynamic=solveV3DynamicArm({
         shoulder,wrist:desired,side:sign as -1|1,mode,
-        envelope:dynamicEnvelope,preferredPole:wanted
+        envelope:dynamicEnvelope,preferredPole:wanted,
+        allowVisualOverlap:!!p.poseV3Preview&&!p.firing
       });
       v3DynamicReports.push({side:i===0?'support':'firing',
         status:dynamic.status,reason:dynamic.reason,
