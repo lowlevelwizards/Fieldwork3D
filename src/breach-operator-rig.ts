@@ -1414,7 +1414,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     relaxedLowReady,
     swayYaw:motion.weaponYaw*freeMotion,
     swayPitch:motion.weaponPitch*freeMotion,
+    // Non-firing movement and manipulation cannot retain stale visual ADS.
+    // This affects only carry presentation, never shot-time muzzle authority.
     aimBlend:p.handlingOverride?undefined:
+      p.handlingIntent==='run'||p.handlingIntent==='traverse'||
+      p.handlingIntent==='reload'||p.handlingIntent==='treat'?0:
       p.aimBlend??(p.aiming?1:0),
     blendFrom:authoredLabSwitch?undefined:activeTransition?.from,
     blendAlpha:authoredLabSwitch?undefined:activeTransition?.alpha,

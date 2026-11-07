@@ -258,3 +258,47 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 #studioRoot[data-identity-mode="true"] #studioMaterials select{
  width:100%;min-height:42px;padding:7px 10px;border:1px solid #71897c;
  color:#e6e9df;background:#253e33;border-radius:6px}
+
+/* R7.8 — one compact, explicit live Studio lighting audition surface.
+ * Keep the operator viewport unobscured on a phone; choices live in the
+ * scrollable editor sheet and never compete with appearance SAVE/COMPARE. */
+.studio-light-lab{flex:0 0 auto;border:1px solid #728c7c;border-radius:9px;
+ background:#253d32;min-width:0}
+.studio-light-lab>summary{list-style:none;display:flex;align-items:center;
+ justify-content:space-between;gap:9px;padding:10px 12px;cursor:pointer;
+ min-height:43px;touch-action:manipulation}
+.studio-light-lab>summary::-webkit-details-marker{display:none}
+.studio-light-lab>summary>span{font:800 15px/1.2 "Saira Condensed",sans-serif;
+ color:#f1e8d0;letter-spacing:.045em}
+.studio-light-lab>summary>span small{display:inline;font:600 10px/1.2 "Work Sans",sans-serif;
+ color:#bbd2c1;margin-left:5px;letter-spacing:0}
+.studio-light-lab>summary>strong{max-width:52%;font:700 10px/1.3 "Work Sans",sans-serif;
+ color:#c1d7cc;text-align:right;overflow-wrap:anywhere}
+.studio-light-lab[open]>summary{border-bottom:1px solid #688474;background:#2c4839}
+.studio-light-lab-body{padding:10px 11px 12px;display:grid;gap:9px}
+.studio-light-lab-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:9px}
+.studio-light-lab-grid label{display:grid;gap:4px;font:700 10px/1.3 "Work Sans",sans-serif;
+ color:#c7d8c7;letter-spacing:.04em;min-width:0}
+.studio-light-lab-grid select{width:100%;min-width:0;min-height:43px;padding:7px 8px;
+ border-radius:6px;border:1px solid #8ba495;background:#193126;color:#f1eee1;
+ font:700 13px "Saira Condensed",sans-serif;touch-action:manipulation}
+.studio-light-lab-grid select:disabled{opacity:.45}
+.studio-light-lab-actions{display:flex;gap:7px}
+.studio-light-lab-actions button{flex:1;min-width:0;min-height:43px;padding:8px 5px;
+ font-size:12px}
+#studioLightCompare[aria-pressed="true"]{background:#e5d19e;color:#20352b}
+#studioLightLabStatus{font:600 11px/1.4 "Work Sans",sans-serif;
+ color:#e2ddc1;min-height:15px}
+.studio-light-lab-body>small{font:500 10px/1.4 "Work Sans",sans-serif;color:#aebfb1}
+@media(max-width:380px){
+ .studio-light-lab-grid{gap:7px}
+ .studio-light-lab>summary>span small{display:none}
+ .studio-light-lab-actions button{font-size:11px}
+}
+
+/* R7.8 mobile integration: the existing MORE popover must float above the
+ * sticky category navigation even when Lighting Lab increases sheet height.
+ * Do not disable the category bar or steal its normal touch interactions. */
+#studioMore[open]{z-index:12}
+#studioMore[open] .studio-more-panel{z-index:13}

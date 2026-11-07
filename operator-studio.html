@@ -49,6 +49,49 @@
 <small>Presets store appearance only, never campaign inventory.</small>
 </div></details>
 </div></div>
+<details id="studioLightLab" class="studio-light-lab">
+<summary aria-label="Toggle live lighting experiments">
+<span>LIGHTING LAB <small>LIVE 3D COMPARISON</small></span>
+<strong id="studioLightLabSummary">ORIGINAL</strong>
+</summary>
+<div class="studio-light-lab-body">
+<div class="studio-light-lab-grid">
+<label>CEL BANDS
+<select id="studioLightCel" aria-label="Cel shading bands">
+<option value="0">Smooth (original)</option>
+<option value="2">Two-band cel</option>
+<option value="3">Three-band cel</option>
+</select></label>
+<label>RIM HIGHLIGHT
+<select id="studioLightRim" aria-label="Rim highlight style">
+<option value="off">Off</option>
+<option value="hard">Hard edge</option>
+<option value="pixel">Chunky pixel</option>
+</select></label>
+<label>HEIGHT LIGHTING
+<select id="studioLightGradient" aria-label="Operator height gradient">
+<option value="current">Original</option>
+<option value="neutral">Neutral / flat</option>
+<option value="sculptural">Sculptural</option>
+<option value="strong">Strong</option>
+</select></label>
+<label>SHADOW-SIDE COLOR
+<select id="studioLightShadow" aria-label="Shadow side fill color">
+<option value="neutral">Original</option>
+<option value="steel">Steel blue</option>
+<option value="slate">Slate blue</option>
+<option value="plum">Plum</option>
+<option value="dusk">Dusk</option>
+</select></label>
+</div>
+<div class="studio-light-lab-actions">
+<button id="studioLightCompare" type="button" aria-pressed="false">COMPARE ORIGINAL</button>
+<button id="studioLightReset" type="button">RESET LIGHTING</button>
+</div>
+<output id="studioLightLabStatus" aria-live="polite">Adjust a setting to update the operator immediately.</output>
+<small>Preview only · No saved appearance or mission lighting changes. To see rim, switch off CLOTHES ONLY and select a ballistic helmet or plate carrier.</small>
+</div>
+</details>
 <div class="studio-pinned-categories" role="group" aria-label="Persistent body part navigation">
 <nav id="studioCategories" class="studio-categories" aria-label="Appearance categories"></nav>
 <nav id="studioSubcategories" class="studio-subcategories" aria-label="Appearance subcategories"></nav>

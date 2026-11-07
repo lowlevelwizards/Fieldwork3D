@@ -33,7 +33,7 @@ export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
   supportX:low?Math.max(low.minSupportX,a.supportX-low.supportBack*w):a.supportX,
   supportY:a.supportY-(low?.supportDown??0)*w};
 };
-export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage'|'squeeze';
+export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage'|'squeeze'|'entry'|'stack'|'reload'|'treat'|'traverse';
 /** Pure context-based handling selection shared with shot-time geometry.
  * Optional hysteresis only affects passive ready states, never combat.
  * A physically blocked muzzle has absolute priority.
@@ -43,6 +43,12 @@ export function handlingPose(input:{aim:number;moving:number;
   threatRange?:number|null;weapon?:WeaponId;
   previous?:Handling;heldFor?:number}):Handling{
   if(input.obstruction||input.intent==='squeeze')return 'short';
+  // Never display ADS or point shooting while sprinting, climbing,
+  // manipulating a magazine or treating. These activities prohibit
+  // normal ignition even if the old aim meter has not yet decayed.
+  // Squeeze / blocked barrel is a stronger physical short-stock case.
+  if(input.intent==='run'||input.intent==='traverse'||
+     input.intent==='reload'||input.intent==='treat')return 'low';
   const near=input.weapon==='shotgun'?86:
     input.weapon==='smg'?100:74;
   const closeThreat=input.threatRange!==undefined&&
@@ -51,10 +57,12 @@ export function handlingPose(input:{aim:number;moving:number;
   if(input.aim>=.82)return 'ads';
   if(input.aim>=.20)return 'point';
   let next:Handling='ready';
-  if(input.intent==='run')next='low';
-  else if(input.intent==='door'&&input.friendlyNear)next='high';
-  else if(input.intent==='pie')next='ready';
-  else if(input.intent==='look'||input.intent==='hold')next='ready';
+  if((input.intent==='door'||input.intent==='stack'||
+      input.intent==='entry')&&input.friendlyNear)next='high';
+  else if(input.intent==='entry'||input.intent==='stack'||
+          input.intent==='door'||input.intent==='pie'||
+          input.intent==='look'||input.intent==='hold'||
+          input.intent==='engage')next='ready';
   else if(input.friendlyNear)next='low';
   else if(input.moving>.32)next='low';
   // Ignore brief passive-pose threshold flicker; never delay urgent combat

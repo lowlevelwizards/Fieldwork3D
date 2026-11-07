@@ -185,6 +185,9 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('ar-m16a1','M16A1','rifle','ar','ar-a1','ar-fixed','ar-grip-classic','ar-mag20','ar-triangle','ar-20'),
  p('ar-m16a2','M16A2','rifle','ar','ar-a2','ar-fixed-a2','ar-grip-a2','ar-mag30','ar-round','ar-20-service'),
  p('ar-m16a4','M16A4','rifle','ar','ar-flat','ar-fixed-a2','ar-grip-a2','ar-mag30','ar-m5-rail','ar-20-service'),
+ // C7A2 core approximation: full-length flat-top, polymer handguard and telescoping butt.
+ // Canadian-green furniture and C79 optic are not yet dedicated assets.
+ p('ar-c7a2-proxy','C7A2 · core approximation','rifle','ar','ar-flat','ar-stock-m4','ar-grip-a2','ar-mag30','ar-round','ar-20-service'),
  p('ar-mk12mod0','Mk 12 Mod 0','rifle','ar','ar-flat','ar-fixed','ar-grip-a2','ar-mag20','ar-pri-tube','ar-spr18'),
  p('ar-car15','CAR-15','carbine','ar','ar-retro','ar-car','ar-grip-classic','ar-mag20','ar-car15-ribbed','ar-145'),
  p('ar-colt733','Colt 733 Commando','carbine','ar','ar-retro','ar-car','ar-grip-a2','ar-mag30','ar-733-ribbed','ar-733-115'),

@@ -54,6 +54,63 @@ try{
     console.log('R7 '+name+' rendering passed');
    }finally{await page.close();}
   }
+  // R7.8: exercise the actual controls, no URL reloads or mock images.
+  const live=await browser.newPage({
+   viewport:{width:390,height:844},deviceScaleFactor:1.5,
+   isMobile:true,hasTouch:true
+  });
+  const uiErrors=[];
+  live.on('pageerror',error=>uiErrors.push(error.message));
+  live.on('console',message=>{
+   if(message.type()==='error'&&
+      /WebGLProgram|shader error|INVALID_OPERATION|compile|linker/i.test(message.text()))
+    uiErrors.push(message.text());
+  });
+  try{
+   await live.goto(origin+'/operator-studio.html',{waitUntil:'domcontentloaded'});
+   await live.waitForFunction(()=>
+    document.getElementById('studioCanvas')?.dataset.ready==='true',
+    null,{timeout:35000});
+   await live.locator('#studioLightLab > summary').click();
+   await live.locator('#studioLightCel').selectOption('3');
+   await live.locator('#studioLightRim').selectOption('pixel');
+   await live.locator('#studioLightGradient').selectOption('sculptural');
+   await live.locator('#studioLightShadow').selectOption('steel');
+   await live.waitForFunction(()=>{
+    const s=document.getElementById('studioCanvas')?.dataset;
+    return s?.operatorToonBands==='3'&&s.operatorRimMode==='pixel'&&
+     s.operatorGradient==='sculptural'&&s.operatorShadowColor==='steel';
+   },null,{timeout:35000});
+   const edited=await live.locator('#studioCanvas').screenshot({
+    path:'operator-studio-captures/r7-live-lighting-lab-phone.png'
+   });
+   if(edited.byteLength<3000)throw Error('Blank live light lab image');
+   await live.locator('#studioLightCompare').click();
+   await live.waitForFunction(()=>{
+    const s=document.getElementById('studioCanvas')?.dataset;
+    return s?.operatorToonBands==='0'&&s.operatorGradient==='current'&&
+     s.operatorRimMode==='off'&&s.operatorShadowColor==='neutral';
+   },null,{timeout:35000});
+   if(await live.locator('#studioLightCel').inputValue()!=='3')
+    throw Error('Compare Original erased the selected cel style');
+   await live.locator('#studioLightCompare').click();
+   await live.waitForFunction(()=>{
+    const s=document.getElementById('studioCanvas')?.dataset;
+    return s?.operatorToonBands==='3'&&s.operatorRimMode==='pixel'&&
+     s.operatorGradient==='sculptural'&&s.operatorShadowColor==='steel';
+   },null,{timeout:35000});
+   await live.locator('#studioLightReset').click();
+   await live.waitForFunction(()=>{
+    const s=document.getElementById('studioCanvas')?.dataset;
+    return s?.operatorToonBands==='0'&&s.operatorRimMode==='off'&&
+     s.operatorGradient==='current'&&s.operatorShadowColor==='neutral';
+   },null,{timeout:35000});
+   if(await live.locator('#studioLightRim').isEnabled())
+    throw Error('Rim style editable without cel shading');
+   if(uiErrors.length)throw Error('Live Lighting Lab WebGL errors: '+
+    uiErrors.join('; '));
+   console.log('R7 live Lighting Lab comparison, reset and WebGL smoke passed');
+  }finally{await live.close();}
  }finally{await browser.close();}
 }finally{
  server.kill('SIGTERM');

@@ -3,15 +3,17 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
-import {requestedOperatorGradient} from './operator-height-lighting.ts';
+import {applyOperatorHeightLighting} from './operator-height-lighting.ts';
+import {studioLightLabFromQuery,effectiveStudioLightLab,
+ studioLightLabLabel,DEFAULT_STUDIO_LIGHT_LAB,type StudioLightLabSettings}
+ from './operator-studio-light-lab.ts';
 import {inspectOperatorLighting,formatOperatorLightingReport,
  previewOperatorLightingLayers,restoreOperatorLightingPreview,
  DEFAULT_LIGHTING_LAYERS,type LightingDiagnosticLayers}
  from './operator-lighting-inspector.ts';
 import {applyStudioSelfShadowAtlases}
  from './operator-gear-lightmap-atlas.ts';
-import {applyOperatorStudioToon,requestedOperatorToonBands,
- requestedOperatorRimMode,disposeOperatorStudioToon}
+import {applyOperatorStudioToon,disposeOperatorStudioToon}
  from './operator-studio-toon-lighting.ts';
 import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
  from './operator-studio-lighting.ts';
@@ -92,6 +94,11 @@ type StudioInit={type:'fw-studio-init';mode:StudioMode;
  selected:string;members:StudioPerson[];readonly:boolean};
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const params=new URLSearchParams(location.search);
+// Studio lighting experiments are unsaved, presentation-only state.
+let lightLabSettings=studioLightLabFromQuery(location.search);
+let lightLabCompareOriginal=false;
+const liveLightLabSettings=()=>effectiveStudioLightLab(
+ lightLabSettings,lightLabCompareOriginal);
 const embedded=params.get('embedded')==='1'&&window.parent!==window;
 let mode:StudioMode=params.get('mode')==='campaign'?'campaign':'quick';
 let selected=params.get('operator')??'rook';
@@ -223,6 +230,62 @@ controls.target.set(0,23,0);controls.update();
 const thumbBrowser=new OperatorAppearanceGrid(
  $('studioItemBrowser'),renderer,(slot,id)=>chooseStyle(slot,id),
  (slot,id)=>canEquip(slot,id),true);
+const labCel=$<HTMLSelectElement>('studioLightCel');
+const labRim=$<HTMLSelectElement>('studioLightRim');
+const labGradient=$<HTMLSelectElement>('studioLightGradient');
+const labShadow=$<HTMLSelectElement>('studioLightShadow');
+const labCompare=$<HTMLButtonElement>('studioLightCompare');
+const labReset=$<HTMLButtonElement>('studioLightReset');
+const labSummary=$<HTMLElement>('studioLightLabSummary');
+const labStatus=$<HTMLOutputElement>('studioLightLabStatus');
+const atlasPrecedence=params.get('operatorLightingAtlas')==='1';
+function syncLightingLabControls(){
+ labCel.value=String(lightLabSettings.toon);
+ labRim.value=lightLabSettings.rim;
+ labGradient.value=lightLabSettings.gradient;
+ labShadow.value=lightLabSettings.shadow;
+ labCel.disabled=atlasPrecedence;
+ labRim.disabled=atlasPrecedence||lightLabSettings.toon===0;
+ labCompare.setAttribute('aria-pressed',String(lightLabCompareOriginal));
+ labCompare.textContent=lightLabCompareOriginal?'RETURN TO EXPERIMENT':
+  'COMPARE ORIGINAL';
+ labSummary.textContent=lightLabCompareOriginal?'ORIGINAL · COMPARISON':
+  studioLightLabLabel(liveLightLabSettings());
+ labStatus.textContent=atlasPrecedence?
+  'The UV1 atlas URL experiment takes precedence over cel and rim. Other settings remain live.':
+  lightLabCompareOriginal?
+  'Showing the original lighting on this same operator. Your selections are preserved.':
+  'LIVE · '+studioLightLabLabel(liveLightLabSettings());
+}
+function applyLightingLab(){
+ const live=liveLightLabSettings();
+ syncLightingLabControls();
+ studioLighting.setShadowColor(live.shadow);
+ thumbBrowser.setLightingSettings(live);
+ posePreview();
+}
+function readLightingLabControls(){
+ lightLabSettings={
+  toon:Number(labCel.value) as StudioLightLabSettings['toon'],
+  rim:labRim.value as StudioLightLabSettings['rim'],
+  gradient:labGradient.value as StudioLightLabSettings['gradient'],
+  shadow:labShadow.value as StudioLightLabSettings['shadow']
+ };
+ lightLabCompareOriginal=false;
+ applyLightingLab();
+}
+for(const input of [labCel,labRim,labGradient,labShadow])
+ input.addEventListener('change',readLightingLabControls);
+labCompare.addEventListener('click',()=>{
+ lightLabCompareOriginal=!lightLabCompareOriginal;
+ applyLightingLab();
+});
+labReset.addEventListener('click',()=>{
+ lightLabSettings={...DEFAULT_STUDIO_LIGHT_LAB};
+ lightLabCompareOriginal=false;
+ applyLightingLab();
+});
+syncLightingLabControls();
 const member=()=>people.find(p=>p.id===selected);
 const current=()=>edits.get(selected)??member()?.wardrobe??initialWardrobe();
 const previewWardrobe=()=>comparingSaved?member()?.wardrobe??initialWardrobe():current();
@@ -461,9 +524,11 @@ function posePreview(){
   rig=createOperatorRig(p.id,'blue');
   scene.add(rig.root);
  }
- // R7 is an opt-in visual audition; the profile is a root-local bake input,
- // not persistent wardrobe data or an extra per-frame GPU effect.
- rig.root.userData.fieldworkHeightProfile=requestedOperatorGradient(location.search);
+ // Always restore Standard materials before updating authored garments
+ // so pose-cavity and camo sync never writes into a stale toon replacement.
+ applyOperatorStudioToon(rig.root,0);
+ const light=liveLightLabSettings();
+ rig.root.userData.fieldworkHeightProfile=light.gradient;
  const issue=issueWeaponPreset(starterWeaponPreset(p.id));
  const configuration=reference?.weapon.weaponConfiguration??
   p.weaponConfiguration??issue.weaponConfiguration;
@@ -488,21 +553,26 @@ function posePreview(){
   appearanceSeed:p.appearanceSeed
  };
  poseOperator(rig,armedPose,0);
+ // Changing only a lighting option does not invalidate the appearance
+ // fingerprint. Explicitly rebake from the neutral baseline in that case.
+ if(!String(rig.root.userData.fieldworkHeightRootKey??'')
+    .startsWith(light.gradient+':'))
+  applyOperatorHeightLighting(rig.root,
+   String(rig.root.userData.fieldworkLightingAppearanceKey??'studio'),
+   light.gradient);
  if(params.get('operatorLightingAtlas')==='1'){
   // Do not combine unapproved material experiments: atlas has priority.
   const atlasResult=applyStudioSelfShadowAtlases(rig.root);
   canvas.dataset.operatorAtlasBytes=String(atlasResult.bytes);
   canvas.dataset.operatorAtlasCount=String(atlasResult.atlases);
  }else{
-  const toon=requestedOperatorToonBands(location.search);
-  if(toon){
-   const result=applyOperatorStudioToon(rig.root,toon,
-    requestedOperatorRimMode(location.search));
-   canvas.dataset.operatorToonBands=String(toon);
-   canvas.dataset.operatorRimMode=requestedOperatorRimMode(location.search);
-   canvas.dataset.operatorToonMeshes=String(result.meshes);
-  }
+  const result=applyOperatorStudioToon(rig.root,light.toon,light.rim);
+  canvas.dataset.operatorToonBands=String(light.toon);
+  canvas.dataset.operatorRimMode=light.rim;
+  canvas.dataset.operatorToonMeshes=String(result.meshes);
  }
+ canvas.dataset.operatorGradient=light.gradient;
+ canvas.dataset.operatorShadowColor=light.shadow;
  if(lightingInspectorOutput)
   previewOperatorLightingLayers(rig.root,diagnosticLayers);
  studioLighting.invalidateGeometry();

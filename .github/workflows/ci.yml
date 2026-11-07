@@ -55,6 +55,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: Clearing C — near-muzzle safety and real four-person sector integration
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-clearing-fire-lanes-c-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-clearing-fire-c.test.mjs tests/breach-clearing-stance-c.test.mjs tests/breach-178.test.mjs tests/breach-164.test.mjs tests/breach-190b.test.mjs tests/breach-150.test.mjs tests/tactical-integration-17-firefight-b1.test.mjs tests/tactical-integration-09-firing-lanes.test.mjs tests/squad-entry-b-continuity.test.mjs
+      - name: Clearing C — prior verified Pages release gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-clearing-fire-lanes-c-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       - name: Squad Entry B — verify prior public release before merging
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-entry-b-') }}
         env:
@@ -173,7 +182,7 @@ jobs:
       - name: Rendering R7.5–R7.6 — shader composition and focused production build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r7-stylized-') }}
         run: |
-          node --experimental-strip-types --test tests/rendering-r7-toon-composition.test.mjs tests/rendering-r7-thumbnail-async.test.mjs tests/operator-studio-thumbnail-pipeline-perf.test.mjs tests/operator-studio-toon-r5.test.mjs tests/operator-pose-cavity-r5.test.mjs tests/rendering-r7-stylized-auditions.test.mjs
+          node --experimental-strip-types --test tests/rendering-r7-light-lab.test.mjs tests/rendering-r7-toon-composition.test.mjs tests/rendering-r7-thumbnail-async.test.mjs tests/operator-studio-thumbnail-pipeline-perf.test.mjs tests/operator-studio-toon-r5.test.mjs tests/operator-pose-cavity-r5.test.mjs tests/rendering-r7-stylized-auditions.test.mjs
           npm run build
       - name: Rendering R7 — production release preflight
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r7-rendering-') }}
@@ -1587,6 +1596,14 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-r15-finishes-') }}
         run: |
           node --experimental-strip-types --test tests/arsenal-r15-finishes.test.mjs tests/arsenal-r15-finish-ui.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-saved-builds.test.mjs tests/weapon-ak-r47-final-polish.test.mjs tests/weapon-hk-r4-material-selector.test.mjs tests/weapon-ar-r45-silhouettes.test.mjs tests/equipment-19-04-weapon-persistence.test.mjs
+      - name: Breach near-muzzle friendly safety — focused ignition regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/breach-muzzle-lane-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-muzzle-lane-hotfix.test.mjs tests/gameplay-g3-fire-lanes.test.mjs tests/gameplay-g3-target-stability.test.mjs
+      - name: Faction references R6 — forty kits, markings, PASGT and weapon presets
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/faction-reference-r6-') }}
+        run: |
+          node --experimental-strip-types --test tests/faction-reference.test.mjs tests/r5-identity-stage-a.test.mjs tests/pasgt-p1-policy.test.mjs tests/weapon-families-01.test.mjs
       - name: Arsenal R16a — physical magazine identities and persistence safety
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-r16-magazine-identity-') }}
         run: |
