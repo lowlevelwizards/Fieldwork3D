@@ -17,6 +17,8 @@ import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
 
 const Y=new THREE.Vector3(0,1,0);
 export const V3_TORSO_YAWS=Object.freeze([0,-.08,.08,-.16,.16] as const);
+/** Parent-local chest-forward translation; no stretching of shoulder joints. */
+export const V3_TORSO_LEANS=Object.freeze([0,.7,1.35] as const);
 const SUPPORT_SAMPLES=Object.freeze([null,0,.3] as const);
 export type CoordinatedRequest={
  fit:WeaponFit;weapon:WeaponId;configuration:WeaponConfiguration;
@@ -29,6 +31,7 @@ export type CoordinatedResult={
  status:'clear'|'unresolved';
  fit:WeaponFit;
  yaw:number;
+ leanX:number;
  arms:readonly [LimbSolution,LimbSolution]|null;
  reports:readonly [ArmConstraintReport,ArmConstraintReport]|null;
  softScales:readonly [number,number]|null;
@@ -37,9 +40,13 @@ export type CoordinatedResult={
  validCandidates:number;
  quality:number|null;
 };
-export function weaponFitInTurnedChest(fit:WeaponFit,yaw:number):WeaponFit{
+export function weaponFitInTurnedChest(
+ fit:WeaponFit,yaw:number,leanX=0):WeaponFit{
  const reverse=new THREE.Quaternion().setFromAxisAngle(Y,-yaw);
- const rotate=(v:THREE.Vector3)=>v.clone().applyQuaternion(reverse);
+ const lean=new THREE.Vector3(leanX,0,0);
+ // A chest-forward shift is canceled in its original local axes before
+ // applying the inverse yaw. Both operations preserve every world socket.
+ const rotate=(v:THREE.Vector3)=>v.clone().sub(lean).applyQuaternion(reverse);
  const q=reverse.clone().multiply(
   new THREE.Quaternion().setFromEuler(fit.rotation));
  return {...fit,origin:rotate(fit.origin),
@@ -53,10 +60,15 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
  let winning:CoordinatedResult|null=null;
  let best=Infinity,candidates=0,validCandidates=0;
  const yawSeeds=V3_TORSO_YAWS;
- for(const yaw of yawSeeds){
-  // Transform all geometry in the *new chest* frame. Chest +yaw and rifle
-  // -yaw cancel in world; all original grip/pocket landmarks remain fixed.
-  const fit=weaponFitInTurnedChest(original,yaw);
+ for(const leanX of V3_TORSO_LEANS){
+  const approvedBefore=validCandidates;
+  // Lean is tried only when the neutral body cannot find a valid solution,
+  // and secondary yaw samples are reduced to keep the candidate set finite.
+  const yaws=leanX===0?yawSeeds:[0,-.08,.08];
+  for(const yaw of yaws){
+  // Transform all geometry in the new chest frame. Chest rotation+lean and
+  // countertransformed rifle cancel in world; no ballistic path changes.
+  const fit=weaponFitInTurnedChest(original,yaw,leanX);
   const right=solveV3DynamicArm({shoulder:req.shoulders[1],
    wrist:fit.primary,side:1,mode:req.mode,envelope:req.envelope,
    preferredPole:new THREE.Vector3(3,-9,1.5)});
@@ -66,7 +78,8 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
   for(const fraction of options){
    candidates++;
    let support=req.releasedSupportTarget?
-    req.releasedSupportTarget.clone().applyAxisAngle(Y,-yaw):
+    req.releasedSupportTarget.clone().sub(new THREE.Vector3(leanX,0,0))
+      .applyAxisAngle(Y,-yaw):
     fit.support.clone();
    if(fraction!==null&&contacts){
     const local=supportContactAt(contacts.support,fraction);
@@ -81,7 +94,7 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
    validCandidates++;
    const stockDrift=fit.stock.distanceTo(original.stock);
    const score=right.report.quality+left.report.quality+
-     Math.abs(yaw)*1.8+stockDrift*.18+
+     Math.abs(yaw)*1.8+stockDrift*.18+leanX*.60+
      support.distanceTo(fit.support)*.09;
    if(score>=best-1e-8)continue;
    best=score;
@@ -89,13 +102,17 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
      // A released support hand is not a firearm attachment.
      twoHanded:req.releasedSupportTarget?false:true,
      primaryReachable:true,contactError:0};
-   winning={status:'clear',fit:newFit,yaw,
+   winning={status:'clear',fit:newFit,yaw,leanX,
     arms:[left.solution,right.solution],
     reports:[left.report,right.report],softScales:[left.softScale,right.softScale],
     supportFraction:fraction,candidates,validCandidates,quality:score};
   }
+  }
+  // No reason to prefer a strained forward lean when a lighter phase
+  // already found a physically viable two-arm solution.
+  if(validCandidates>approvedBefore)break;
  }
  return winning?{...winning,candidates,validCandidates}:{
-  status:'unresolved',fit:original,yaw:0,arms:null,
+  status:'unresolved',fit:original,yaw:0,leanX:0,arms:null,
   reports:null,softScales:null,supportFraction:null,candidates,validCandidates,quality:null};
 }
