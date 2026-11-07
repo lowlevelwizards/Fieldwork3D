@@ -3731,6 +3731,9 @@ function contacts(){
     draw.globalAlpha=1;
   }
   for(const shot of state.shots){
+    // Shot geometry can expose an unconfirmed enemy position in a personal
+    // contact review; team-wide ballistic evidence is disabled in this mode.
+    if(replaying&&replayContactObserverId)continue;
     const visibility=replaying&&replayOmniscient?
       {trace:true,flash:true,impact:true}:shotVisibility(state,shot);
     const fade=contactFade(shot.age,.40);
