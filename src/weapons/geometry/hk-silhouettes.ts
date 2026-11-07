@@ -10,6 +10,7 @@ import {HK_OLIVE_POLYMER,HK_MAG_METAL}
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {addHKFacetedForearm,addHKHandguardOpenings} from './hk-handguard-profiles.ts';
 import {HK_MAG20_OUTLINE} from './hk-magazine-profiles.ts';
+import {HK_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 
 export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
@@ -54,26 +55,36 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
 
  // Early and polymer buttstocks are both confident single solid shapes.
  const rear=early?-15.15:-15.30;
+ // The stock shell stops INSIDE the buttplate. Its cap is now a genuine
+ // outward-facing slab instead of a coplanar overlaid side face (R3 Z-fight).
+ const stockStart=rear+.20;
  p('stock',early?[
-  [rear,1.22],[-11.18,1.25],[-10.77,1.16],
+  [stockStart,1.22],[-11.18,1.25],[-10.77,1.16],
   [-6.25,.67],[-6.18,-1.46],[-9.13,-2.49],
-  [-13.76,-3.29],[rear,-2.87]
+  [-13.76,-3.29],[stockStart,-2.87]
  ]:[
-  [rear,1.12],[-11.03,1.13],[-10.61,1.06],
+  [stockStart,1.12],[-11.03,1.13],[-10.61,1.06],
   [-6.23,.69],[-6.15,-1.44],[-9.52,-2.33],
-  [-14.73,-3.04],[rear,-2.85]
+  [-14.73,-3.04],[stockStart,-2.85]
  ],3.12,early?'wood':'olive');
- // Rear pad is seated within the stock envelope, not protruding into camera fit.
- b('stock',rear+.21,-.90,0,.42,4.28,3.30,'dark');
+ // Rearmost X stays EXACTLY the old stock landmark. Pad front overlaps
+ // body by .04 but its Z faces stand clear by .04 on either side.
+ const padMidY=early?-.825:-.865;
+ const padHeight=early?4.13:4.01;
+ const buttpad=b('stock',rear+.12,padMidY,0,.24,padHeight,3.20,'dark');
+ buttpad.userData.hkButtpad=true;
 
  // Simple HK grip, shorter and chunkier than literal scale reference.
- p('grip',[[-4.88,-2.31],[-2.48,-2.31],[-2.23,-5.82],
-   [-2.70,-6.81],[-4.42,-6.68],[-5.06,-3.40]],2.16,'dark');
+ // Distinct HK rearward rake; root stays underneath the trigger group
+ // and remains inside the existing -4.20 primary-hand pose contact.
+ p('grip',[[-4.90,-2.31],[-2.50,-2.31],[-2.90,-5.88],
+   [-3.12,-6.72],[-4.95,-6.66],[-5.06,-3.43]],2.16,'dark');
 
- // Straight, full-power 20-round box magazine; slight rearward heel bias.
+ // The 20-round steel magazine is a TRUE straight-sided box. Shared
+ // outline also drives carried and reload magazines; no AK-like heel drift.
  p('magazine',HK_MAG20_OUTLINE,2.08,'mag');
- // Dark integral heel: no disconnected bright bar across the underside.
- b('magazine',1.20,-7.69,0,3.36,.20,2.15,'dark');
+ // Seat one muted heel cap flush to the new centered lower magazine width.
+ b('magazine',1.55,-7.73,0,3.22,.16,2.18,'dark');
  // The simple straight box silhouette beats tiny pale stamped stripes.
 
  // HK slim fore-end: one faceted YZ body. Never an AK upper/lower split.
@@ -132,9 +143,12 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  hood.name='family-barrel-'+parts.barrel+'-'+ids.barrel++;
  hood.castShadow=true;hood.receiveShadow=true;root.add(hood);
 
- // Widen the EJECTION OPENING and bold bolt-like silver mass in one decal.
- // Keep it flush on the real right receiver face, not extra floating metal.
- addWeaponPixelMark(root,'hk-port',.42,.27,1.775,4.35,1.28);
+ // One dark receiver port with enlarged muted bolt, on the RIGHT,
+ // centered above the magazine. Shared anatomy prevents editor drift.
+ const anatomy=HK_VISUAL_ANATOMY;
+ const port=addWeaponPixelMark(root,'hk-port',anatomy.portX,
+  anatomy.portY,1.775,anatomy.portWidthX,anatomy.portHeightY);
+ port.userData.hkEjectionPort=true;
  const selector=addWeaponPixelMark(root,'hk-selector',-3.48,-.67,-1.777,2.05,.60);
  selector.rotation.y=Math.PI;
  
