@@ -14,6 +14,9 @@ import {createModernHelmetCoverLayers,updateModernHelmetCoverLayers,
  type ModernHelmetCoverLayers} from './operator-helmet-cover-geometry.ts';
 import {resolveHelmetSetup,isH1ModernHelmet,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
+import {createPasgtCoverLayers,updatePasgtCoverLayers,type PasgtCoverLayers}
+ from './operator-pasgt-cover-visuals.ts';
+import {readPasgtDetails,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
 import {createHelmetHardware,updateHelmetHardware,type HelmetHardwareLayers}
  from './operator-helmet-module-visuals.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
@@ -52,6 +55,7 @@ export type WardrobeHeadLayers={
  policeVisor?:PoliceVisorLayers;
  modernCovers:Record<string,ModernHelmetCoverLayers>;
  modernHardware:Record<string,HelmetHardwareLayers>;
+ pasgtCover?:PasgtCoverLayers;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -74,6 +78,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  let m1Cover:M1HelmetCoverLayers|undefined;
  let m56Extras:M56Extras|undefined;
  let policeVisor:PoliceVisorLayers|undefined;
+ let pasgtCover:PasgtCoverLayers|undefined;
  const modernCovers:Record<string,ModernHelmetCoverLayers>={};
  const modernHardware:Record<string,HelmetHardwareLayers>={};
  const addModernCover=(model:THREE.Group,id:string,shell:string)=>{
@@ -148,7 +153,10 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  for(const id of ['boonie','beanie','pasgt','soviet-steel'] as const)
   headModel(id,true,cap=>{
    cap.add(createHeadwearSilhouette(id,detail(id)));
-   if(id==='pasgt')addModernCover(cap,id,id);
+   if(id==='pasgt'){
+    pasgtCover=createPasgtCoverLayers(cap);
+    if(layersRef)layersRef.pasgtCover=pasgtCover;
+   }
   });
  headModel('police-helmet',true,model=>{
   model.add(createHeadwearSilhouette('police-helmet',detail('police-helmet')));
@@ -264,7 +272,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
   eyewearStrap,maskRubber,deferredEyewear,deferredHeadwear,
   deferredFacewear,deferredHeadset,twoHoleMouthCover,m1Cover,m56Extras,policeVisor,
-  modernCovers,modernHardware};
+  modernCovers,modernHardware,pasgtCover};
  layersRef=layers;return layers;
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
@@ -273,6 +281,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  maskColor?:D2MaskSolid,beretDrape:'left'|'right'='right',
  helmetCover?:HelmetCoverConfig&M56Options&PoliceVisorOptions&{
   helmetSetup?:HelmetSetupV1;headwearCamo?:HeadwearCamoId;
+  pasgtDetails?:PasgtDetails;
  },camoIdentity='',coverRoll=0){
  // Update the already allocated material; do not recreate meshes or geometry.
  layers.faceFabric.color.setHex(faceSolid?
@@ -297,6 +306,14 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  layers.deferredHeadwear[assembly.headwear]?.();
  const shell=assembly.headwear==='high-cut-rails'?'high-cut':assembly.headwear;
  let railMountedHeadset=false;
+ if(shell==='pasgt'&&layers.pasgtCover){
+  const effective=resolveHelmetSetup('pasgt',helmetCover?.helmetSetup,{
+   hasLegacyPrint:!!helmetCover?.headwearCamo
+  });
+  updatePasgtCoverLayers(layers.pasgtCover,effective.setup.cover!=='none',
+   readPasgtDetails(helmetCover?.pasgtDetails,helmetCover?.helmetSetup),
+   helmetCover?.headwearCamo,camoIdentity,coverRoll);
+ }
  const modern=layers.modernCovers[assembly.headwear];
  if(modern&&isH1ModernHelmet(shell)){
   const effective=resolveHelmetSetup(shell,helmetCover?.helmetSetup,{
