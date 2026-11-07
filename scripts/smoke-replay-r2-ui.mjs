@@ -148,7 +148,7 @@ try{
     check((await floor.getAttribute('aria-pressed'))==='false',
       'An evidence-free short film must leave personal ground disabled');
   }
-  await page.locator('#replaySight').click();
+  await page.locator('#replayDirectSight').selectOption('full');
   check((await lens.textContent())?.includes('CONTACTS: TEAM'),
     'Team/Full View must exit individual contact lens');
   check(await page.locator('#replayContactNote').isHidden(),
