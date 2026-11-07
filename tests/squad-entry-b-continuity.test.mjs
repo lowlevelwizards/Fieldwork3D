@@ -47,9 +47,9 @@ test('B12: only generated entries carry the threshold look marker; squad undo is
   const members=team(s);
   assert.equal(planMove(s,members[0].id,{x:307,y:210}),true);
   assert.equal(members[0].plan[0].entryDoorId,undefined);
-  const before=members.map(a=>structuredClone(a.plan));
+  const before=members.map(a=>JSON.parse(JSON.stringify(a.plan)));
   assert.equal(planSquadEntry(s,'ENTRY'),true);
-  const after=members.map(a=>structuredClone(a.plan));
+  const after=members.map(a=>JSON.parse(JSON.stringify(a.plan)));
   for(const a of members){
    const generated=a.plan.filter(n=>n.kind==='move'&&n.entryDoorId==='ENTRY');
    assert.equal(generated.length,1);
@@ -59,9 +59,9 @@ test('B12: only generated entries carry the threshold look marker; squad undo is
     'the look handoff must not affect the gate or synchronization');
   }
   assert.equal(undoPlan(s,members[2].id),true);
-  assert.deepEqual(members.map(a=>a.plan),before);
+  assert.deepEqual(members.map(a=>JSON.parse(JSON.stringify(a.plan))),before);
   assert.equal(redoPlan(s,members[1].id),true);
-  assert.deepEqual(members.map(a=>a.plan),after);
+  assert.deepEqual(members.map(a=>JSON.parse(JSON.stringify(a.plan))),after);
  }finally{activateSite(null);}
 });
 
@@ -75,6 +75,9 @@ test('B13: a real four-person entry begins sector turn during move and holds it 
   const began=Array(actors.length).fill(false);
   const arrived=Array(actors.length).fill(false);
   const firstTurn=Array(actors.length).fill(null);
+  const samples=actors.map(()=>[]);
+  const closest=Array(actors.length).fill(Infinity);
+  const clearanceTicks=Array(actors.length).fill(0);
   toggling(s);
   for(let tick=0;tick<1500;tick++){
    stepSession(s,1/30);
@@ -82,8 +85,15 @@ test('B13: a real four-person entry begins sector turn during move and holds it 
     const a=actors[i],goal=objectives[i];
     if(!goal)continue;
     const stillMoving=a.plan[0]?.id===goal.id;
-    if(stillMoving&&a.p.y>282&&distance(a.p,goal.p)>18){
+    if(stillMoving&&entryClearanceForLook(s.doors[0],a.p,goal.p)){
      const error=aimed(a,goal.facing);
+     closest[i]=Math.min(closest[i],error);
+     clearanceTicks[i]++;
+     if(samples[i].length<12)
+      samples[i].push({at:+s.seconds.toFixed(2),y:+a.p.y.toFixed(1),
+       remaining:+distance(a.p,goal.p).toFixed(1),
+       heading:+a.heading.toFixed(2),facing:+goal.facing.toFixed(2),
+       error:+error.toFixed(2),squeeze:a.squeeze,plan:a.plan[0]?.kind});
      if(error<.4){
       began[i]=true;
       if(firstTurn[i]===null)
@@ -101,7 +111,7 @@ test('B13: a real four-person entry begins sector turn during move and holds it 
     }));
   assert.ok(began.every(Boolean),
     'entry sector facing should start while still walking: '+
-     JSON.stringify({began,firstTurn}));
+     JSON.stringify({began,firstTurn,closest,clearanceTicks,samples}));
   for(let i=0;i<actors.length;i++){
    const a=actors[i],goal=objectives[i];
    assert.equal(a.aimInstruction?.mode,'fixed',
