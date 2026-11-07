@@ -1,3 +1,4 @@
+import {incomingHitFacing,chooseMuzzleRecoveryStep} from './breach-combat-reactions.ts';
 /**
  * Fieldwork Breach 053–062: authoritative, fixed-step tactical session.
  * Author intent is editable PlanNode[]; motor navigation is transient.
@@ -229,6 +230,8 @@ export type TeamActor=Operator & {
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
   lastBashAt:number;lastBashRole:'push'|'receive'|null;
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
+  /** Transient, collision-checked gun-clearance recovery; not a PlanNode. */
+  fireRetreatTarget:Pt|null;fireRetreatUntil:number;lastFireRetreatAt:number;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   appearanceSeed:number;equipment?:EquipmentLoadout;
   wardrobe?:WardrobeOptions;
@@ -374,6 +377,7 @@ const withActions=(a:Operator):TeamActor=>({
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
   lastBashAt:-100,lastBashRole:null,
   lastLaneWarnAt:-100,lastFireBlock:'clear',
+  fireRetreatTarget:null,fireRetreatUntil:0,lastFireRetreatAt:-100,
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},appearanceSeed:0,
   weaponLightOn:false,
   armorIntegrity:0,helmetIntegrity:0,flashCharges:2,
@@ -2331,6 +2335,18 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   // An airborne crossing must reach a verified landing before combat pause,
   // waypoint completion, or fresh orders can resume.
   if(a.traversal){tickTraversal(a,s,dt);return;}
+  // A short, validated muzzle-clearance step never edits the player's plan.
+  // Complete or expire it before resuming the original waypoint motor.
+  if(a.fireRetreatTarget){
+    const goal=a.fireRetreatTarget;
+    if(s.seconds>a.fireRetreatUntil||d(a.p,goal)<3||
+       !sweptBodyClear(a.p,goal,s.doors)){
+      a.fireRetreatTarget=null;a.nav=[];
+    }else{
+      approach(a,goal,dt,s,.64);
+      return;
+    }
+  }
   // A confirmed visible threat can temporarily interrupt authored attention.
   // This is reactive execution only; it never modifies the player's plan.
   const visibleThreat=enemies(s).filter(e=>e.health>0&&inSight(a,e,s))
@@ -3836,6 +3852,37 @@ function fire(s:Session,a:TeamActor,dt:number){
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors);
   if(sightClearance.blocked){
     a.lastFireBlock=sightClearance.blocker;
+    // A known, visible hostile and a blocked local muzzle justify a tiny
+    // backward recovery. Neither the enemy's unseen position nor a hidden
+    // route is used, and shots still require the full existing safety gate.
+    const n=a.plan[0];
+    if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget&&
+       s.seconds-a.lastFireRetreatAt>1.65&&
+       (sightClearance.blocker==='wall'||sightClearance.blocker==='cover')&&
+       (!n||n.kind==='move'||n.kind==='look'||n.kind==='wait')&&
+       !a.carryingId&&!a.traversalPending&&!a.squeeze){
+      const friends=s.operators.filter(o=>o!==a&&o.health>0&&
+        o.side===a.side).map(o=>o.p);
+      const point=chooseMuzzleRecoveryStep(a.p,desiredYaw,
+        candidate=>sweptBodyClear(a.p,candidate,s.doors)&&
+          !friends.some(friend=>d(candidate,friend)<21),
+        candidate=>{
+          const test=weaponClearance({x:candidate.x,z:candidate.y,
+            heading:a.heading,weaponYaw:desiredYaw,weapon:a.weapon,
+            weaponConfiguration:a.weaponConfiguration,aim:a.aim,
+            posture:a.posture,velocity:0,recoil:0,threatRange:range},s.doors);
+          if(test.blocked)return false;
+          return assessFireLane({x:test.muzzle.x,y:test.muzzle.z},
+            test.muzzle.y,target.p,aimHeight(target.posture==='crouch'),
+            COVER,WALLS,s.doors,friends).blocker==='clear';
+        });
+      if(point){
+        a.fireRetreatTarget=point;
+        a.fireRetreatUntil=s.seconds+1.15;
+        a.lastFireRetreatAt=s.seconds;
+        a.nav=[];
+      }
+    }
     return;
   }
   const sightMuzzle=sightClearance.muzzle;
@@ -4462,8 +4509,19 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     a.suppression=Math.max(0,a.suppression-h*.17);
     a.priorP=clone(a.p);
     if(a.health<=0)continue;
-    if(a.side==='blue')runOrders(s,a,h);
-    else enemyDecisions(s,a,h);
+    if(a.side==='blue'){
+      runOrders(s,a,h);
+      // Incoming *actual hits* provide coarse directional evidence even
+      // before the flanking shooter enters the operator's vision cone.
+      // A brief gaze override never removes a WATCH or changes a MOVE.
+      const hitDirection=incomingHitFacing(a.heading,a.lastHitYaw,
+        s.seconds-a.lastHitAt,{
+          busy:!!a.traversal||!!a.squeeze||!!a.carryingId||
+            a.pace==='run'||a.treatmentActive||
+            a.plan[0]?.kind==='treat'
+        });
+      if(hitDirection!==null)rotate(a,hitDirection,h);
+    }else enemyDecisions(s,a,h);
     if(probe)mark('operator-'+a.id);
   }
   mark('actor-loop');
