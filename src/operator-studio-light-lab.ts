@@ -28,20 +28,29 @@ function clampCutoff(value:string|null,defaultValue:number):number{
  return value!==null&&Number.isFinite(n)?
   Math.max(.3,Math.min(.95,Math.round(n*100)/100)):defaultValue;
 }
+/** Legacy direct URL experiments map onto the compact available controls.
+ * Prevent hidden selections that don't exist in the actual dropdown UI.
+ * The original unmodified look stays the default with no query flags.
+ */
 export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
  const p=new URLSearchParams(search);
- const rawProfile=p.get('operatorCelProfile');
- const celProfile:StudioCelProfile=rawProfile==='soft'||rawProfile==='hard'||
-  rawProfile==='graphic'?rawProfile:'classic';
- return {toon:requestedOperatorToonBands(search),
-  rim:requestedOperatorRimMode(search),
-  gradient:requestedOperatorGradient(search),
-  shadow:requestedStudioShadowColor(search),
-  celProfile,
-  celLow:clampCutoff(p.get('operatorCelLow'),DEFAULT_STUDIO_LIGHT_LAB.celLow),
-  celHigh:clampCutoff(p.get('operatorCelHigh'),DEFAULT_STUDIO_LIGHT_LAB.celHigh),
-  rimAmount:Math.max(0,Math.min(1,Number(p.get('operatorRimAmount')??.24))),
-  allSurfaces:p.get('operatorAllSurfaces')!=='0'};
+ const toon=requestedOperatorToonBands(search);
+ const rim=requestedOperatorRimMode(search);
+ const gradient=requestedOperatorGradient(search);
+ const shadow=requestedStudioShadowColor(search);
+ const amount=p.get('operatorRimAmount');
+ const n=amount===null?.24:Number(amount);
+ return {
+  toon:toon?2:0,
+  rim:rim==='off'?'off':'dual',
+  gradient:gradient==='current'?'current':'piece',
+  shadow:shadow==='neutral'?'neutral':'plum-plus',
+  celProfile:'graphic',
+  celLow:clampCutoff(p.get('operatorCelLow'),.70),
+  celHigh:.84,
+  rimAmount:Number.isFinite(n)?Math.max(0,Math.min(1,n)):.24,
+  allSurfaces:true
+ };
 }
 export function effectiveStudioLightLab(
  settings:StudioLightLabSettings,original=false
