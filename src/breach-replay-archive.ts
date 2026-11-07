@@ -34,7 +34,9 @@ const allowed=(id:string)=>id.length>0&&id.length<=128&&/^[\w-]+$/.test(id);
 function validObserverEvidence(frame:ReplayFrame):boolean{
   const fields=[
     frame.knowledge?.operatorVisibleActorIds,
-    frame.knowledge?.operatorVisibleCivilianIds
+    frame.knowledge?.operatorVisibleCivilianIds,
+    frame.knowledge?.operatorVisibleBodyIds,
+    frame.knowledge?.operatorDiscoveredBodyIds
   ];
   for(const observed of fields){
     if(observed===undefined)continue; // legitimate old recording
