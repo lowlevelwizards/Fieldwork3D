@@ -316,3 +316,18 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
  color:#fff0d4;font-weight:800}
 .studio-light-lab-grid select:focus-visible,
 .studio-light-slider input:focus-visible{outline:2px solid #ecd7a6;outline-offset:2px}
+
+/* R7.10: native range controls must accept horizontal touch drag in the
+ * vertically scrollable mobile editor, not masquerade as disabled options. */
+.studio-light-lab-tuning .studio-light-slider:not([hidden]){grid-column:1/-1}
+.studio-light-lab-tuning .studio-light-slider[hidden]{display:none!important}
+.studio-light-lab-tuning .studio-light-slider input[type=range]{
+ touch-action:none;
+ width:100%;
+ min-height:44px;
+ accent-color:#dec09a;
+ cursor:ew-resize;
+}
+.studio-light-lab-tuning .studio-light-slider input[type=range]:disabled{
+ opacity:.45;cursor:default
+}
