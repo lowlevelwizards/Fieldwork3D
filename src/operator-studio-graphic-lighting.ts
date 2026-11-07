@@ -143,7 +143,6 @@ function copyToon(target:THREE.MeshToonMaterial,source:Source):void{
  target.emissiveMap=source.emissiveMap;
  target.depthWrite=source.depthWrite;target.depthTest=source.depthTest;
  target.side=source.side;target.fog=source.fog;
- target.flatShading=source.flatShading;
  if(mapChanged)target.needsUpdate=true;
 }
 /** Sync wardrobe/weapon material mutations without replacing this composed
@@ -185,7 +184,7 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
    lightMap:source.lightMap,lightMapIntensity:source.lightMapIntensity,
    alphaMap:source.alphaMap,alphaTest:source.alphaTest,
    depthWrite:source.depthWrite,depthTest:source.depthTest,
-   side:source.side,fog:source.fog,flatShading:source.flatShading,
+   side:source.side,fog:source.fog,
    emissive:source.emissive.clone(),emissiveIntensity:source.emissiveIntensity,
    emissiveMap:source.emissiveMap,
    gradientMap:updateStudioCelRamp(config.toon as 2|3,
