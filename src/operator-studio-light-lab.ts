@@ -16,12 +16,25 @@ export type StudioLightLabSettings={
  celProfile:StudioCelProfile;celLow:number;celHigh:number;
  /** 0–1 blend toward near-white on genuinely lit grazing surfaces. */
  rimAmount:number;
+ /** Glint footprint width relative to the current geometric strip. */
+ rimWidth:number;
+ /** Portion of a single edge visible as a moving glint (0.1–0.8). */
+ rimCoverage:number;
+ /** Material-specific maximum blends in the same single-pass shader. */
+ rimFabricOpacity:number;
+ rimSkinOpacity:number;
+ /** Debug the exact highlight mask rather than recoloring the surface. */
+ rimDebugMask:boolean;
+ /** Studio-only horizontal light orbit, degrees from the approved key. */
+ lightAzimuth:number;
  /** Audition the material on all opaque Standard surfaces, incl. firearms. */
  allSurfaces:boolean;
 };
 export const DEFAULT_STUDIO_LIGHT_LAB:Readonly<StudioLightLabSettings>={
  toon:0,rim:'off',gradient:'current',shadow:'neutral',
- celProfile:'graphic',celLow:.70,celHigh:.84,rimAmount:.80,allSurfaces:true
+ celProfile:'graphic',celLow:.70,celHigh:.84,rimAmount:.80,
+ rimWidth:1.4,rimCoverage:.30,rimFabricOpacity:.20,rimSkinOpacity:.28,
+ rimDebugMask:false,lightAzimuth:0,allSurfaces:true
 };
 function clampCutoff(value:string|null,defaultValue:number):number{
  const n=Number(value);
@@ -50,9 +63,16 @@ export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
   celLow:clampCutoff(p.get('operatorCelLow'),.70),
   celHigh:.84,
   rimAmount:Number.isFinite(n)?Math.max(0,Math.min(1,n)):.80,
+  rimWidth:DEFAULT_STUDIO_LIGHT_LAB.rimWidth,
+  rimCoverage:DEFAULT_STUDIO_LIGHT_LAB.rimCoverage,
+  rimFabricOpacity:DEFAULT_STUDIO_LIGHT_LAB.rimFabricOpacity,
+  rimSkinOpacity:DEFAULT_STUDIO_LIGHT_LAB.rimSkinOpacity,
+  rimDebugMask:false,lightAzimuth:0,
   allSurfaces:true
  };
 }
+const THREECLAMP=(value:number,min:number,max:number,fallback:number)=>
+ Number.isFinite(value)?Math.max(min,Math.min(max,value)):fallback;
 export function effectiveStudioLightLab(
  settings:StudioLightLabSettings,original=false
 ):StudioLightLabSettings{
@@ -64,6 +84,12 @@ export function effectiveStudioLightLab(
  return {...settings,celLow:low,celHigh:high,
   rimAmount:Number.isFinite(settings.rimAmount)?
    Math.max(0,Math.min(1,settings.rimAmount)):.80,
+  rimWidth:THREECLAMP(settings.rimWidth,.5,2.5,1.4),
+  rimCoverage:THREECLAMP(settings.rimCoverage,.10,.80,.30),
+  rimFabricOpacity:THREECLAMP(settings.rimFabricOpacity,0,.5,.20),
+  rimSkinOpacity:THREECLAMP(settings.rimSkinOpacity,0,.6,.28),
+  rimDebugMask:settings.rimDebugMask===true,
+  lightAzimuth:THREECLAMP(settings.lightAzimuth,-180,180,0),
   rim:settings.toon===0&&settings.rim!=='dual'?'off':settings.rim};
 }
 export function studioLightLabLabel(s:StudioLightLabSettings):string{
