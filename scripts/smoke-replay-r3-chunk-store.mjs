@@ -43,6 +43,12 @@ try{
     }
     const archive=captureReplayArchive(rec,'g3-browser-001',1712345678900);
     archive.optionalEvidence={personalWindows:[{observer:'rook',state:'known'}]};
+    archive.battleEvents.push(
+      {id:8001,t:.2,kind:'door',actor:'rook',
+        text:'ROOK OPENED DOOR',p:{x:120,y:180}},
+      {id:8002,t:.4,kind:'door',actor:'moss',
+        text:'MOSS OPENED DOOR',p:{x:125,y:190}}
+    );
     await saveReplayArchive(archive); // legacy must remain independent
     const draft=await storage.beginChunkedReplayV2(archive,{chunkFrames:3});
     await storage.appendReplayChunkV2(draft.generation,0,
@@ -173,6 +179,26 @@ try{
       afterRewind,silentlyRewound,oldMissionStillIntact,maxResident,
       closed:driver.status==='closed'
     };
+    // G4d4: historical event-feed disclosure uses a separate read window.
+    // Even while the player seeks their film, building an operator rail must
+    // not advance the active camera or grant the teammate's discoveries.
+    const {openChunkedReplayEventIndexV2}=await import(
+      '/src/breach-replay-chunk-event-index.ts');
+    const eventReader=await openChunkedReplayEventIndexV2('g3-browser-001');
+    const personalEvents=await eventReader.build(
+      {mode:'operator',observerId:'rook'},['rook','moss']);
+    const ownNames=personalEvents.status==='ready'?
+      personalEvents.index.all.map(e=>e.text):[];
+    const teamEvents=await eventReader.build({mode:'squad'},['rook','moss']);
+    const teamNames=teamEvents.status==='ready'?
+      teamEvents.index.all.map(e=>e.text):[];
+    const fullEvents=await eventReader.build({mode:'full'},['rook','moss']);
+    const disclosure={
+      ownNames,teamNames,
+      all:fullEvents.status==='ready'?fullEvents.index.all.length:-1,
+      cached:eventReader.residentChunks
+    };
+    eventReader.close();
     const pendingAfter=await storage.listInterruptedChunkedReplaysV2();
     return {generation:release.generation,
       count:release.frameCount,storageComplete:release.storageComplete,
@@ -182,7 +208,7 @@ try{
         alpha:sample?.alpha},
       resident:opened.window.residentCount,
       transport,
-      hydration,staleRejected,sceneRewind,controlled,
+      hydration,staleRejected,sceneRewind,controlled,disclosure,
       v1Count:v1.frames.length,
       pending:pendingAfter.length};
   });
@@ -234,6 +260,14 @@ try{
     completed.controlled.maxResident<=3&&completed.controlled.closed,
     'G4d2 persisted controller failed browser playback, pause and scrub: '+
     JSON.stringify(completed.controlled));
+  check(JSON.stringify(completed.disclosure?.ownNames)===
+      JSON.stringify(['ROOK OPENED DOOR'])&&
+    JSON.stringify(completed.disclosure?.teamNames)===
+      JSON.stringify(['ROOK OPENED DOOR','MOSS OPENED DOOR'])&&
+    completed.disclosure?.all===2&&
+    completed.disclosure?.cached<=3,
+    'G4d4 Chromium event disclosure mixed personal/team journals: '+
+    JSON.stringify(completed.disclosure));
   const replaced=await page.evaluate(async()=>{
     const storage=await import('/src/breach-replay-chunk-store.ts');
     const {loadSavedReplay}=await import('/src/breach-replay-library.ts');
