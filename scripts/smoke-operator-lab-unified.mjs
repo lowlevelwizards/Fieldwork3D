@@ -136,6 +136,21 @@ try{
   await page.locator('.arsenal-wb-actions button').filter({hasText:'UNDO'}).click();
   await page.waitForFunction(()=>document.querySelector(
    '.arsenal-wb-current')?.textContent?.includes('A2 Fixed'));
+  // R13: factory/model changes must be possible without legacy dropdowns.
+  await page.getByRole('button',{name:'CHOOSE MODEL'}).click();
+  await page.locator('.arsenal-wb-model-controls select').selectOption('mp5');
+  await page.locator('.arsenal-wb-model-controls input').fill('MP5K-PDW');
+  await page.locator('.arsenal-wb-load-option').filter({hasText:'MP5K-PDW'}).click();
+  const modelReview=await page.locator('.arsenal-wb-load-changes').textContent();
+  if(!modelReview?.includes('receiver')||!modelReview.includes('stock'))
+   throw Error('Factory change did not disclose receiver and stock: '+modelReview);
+  await page.getByRole('button',{name:'USE AS STARTING POINT'}).click();
+  await page.waitForFunction(()=>document.querySelector('.arsenal-wb-identity h2')?.
+   textContent?.includes('MP5K-PDW'));
+  await page.screenshot({path:out+'/arsenal-switch-mp5k-pdw-iphone.png'});
+  await page.locator('.arsenal-wb-actions button').filter({hasText:'UNDO'}).click();
+  await page.waitForFunction(()=>document.querySelector('.arsenal-wb-current')?.
+   textContent?.includes('A2 Fixed'));
   if(errors.length)throw Error('Arsenal runtime: '+errors.join('; '));
   await page.close();
  }finally{await browser.close();}
