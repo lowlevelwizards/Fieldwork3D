@@ -33,6 +33,7 @@ export type CoordinatedRejections={
  supportReach:number;supportClearance:number;
  /** Observational only: contact region + segment + material failures. */
  contactBlocks:Record<string,number>;
+ contactExcess:Record<string,{count:number;min:number;max:number;sum:number}>;
 };
 export type CoordinatedResult={
  rejects:CoordinatedRejections;
@@ -85,18 +86,23 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
  let best=Infinity,candidates=0,validCandidates=0;
  const rejects:CoordinatedRejections={
   primaryReach:0,primaryClearance:0,
-  supportReach:0,supportClearance:0,contactBlocks:{}
+  supportReach:0,supportClearance:0,contactBlocks:{},
+  contactExcess:{}
  };
  const tally=(report:ArmConstraintReport,arm:'firing'|'support')=>{
-  for(const contact of report.contacts){
-   if(contact.upperExcess>.001){
-    const k=arm+':upper:'+contact.label+':'+contact.material;
-    rejects.contactBlocks[k]=(rejects.contactBlocks[k]??0)+1;
-   }
-   if(contact.lowerExcess>.001){
-    const k=arm+':lower:'+contact.label+':'+contact.material;
-    rejects.contactBlocks[k]=(rejects.contactBlocks[k]??0)+1;
-   }
+  const count=(key:string,excess:number)=>{
+   if(excess<=.001)return;
+   rejects.contactBlocks[key]=(rejects.contactBlocks[key]??0)+1;
+   const old=rejects.contactExcess[key];
+   rejects.contactExcess[key]=old?{
+    count:old.count+1,
+    min:Math.min(old.min,excess),max:Math.max(old.max,excess),
+    sum:old.sum+excess}:{count:1,min:excess,max:excess,sum:excess};
+  };
+  for(const c of report.contacts){
+   const id=(c.region??c.label)+':'+c.material;
+   count(arm+':upper:'+id,c.upperExcess);
+   count(arm+':lower:'+id,c.lowerExcess);
   }
  };
  const yawSeeds=V3_TORSO_YAWS;
@@ -165,8 +171,10 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
   if(validCandidates>approvedBefore)break;
  }
  return winning?{...winning,candidates,validCandidates,
-  rejects:{...rejects,contactBlocks:{...rejects.contactBlocks}}}:{
+  rejects:{...rejects,contactBlocks:{...rejects.contactBlocks},
+   contactExcess:{...rejects.contactExcess}}}:{
   status:'unresolved',fit:original,yaw:0,leanX:0,arms:null,
-  rejects:{...rejects,contactBlocks:{...rejects.contactBlocks}},
+  rejects:{...rejects,contactBlocks:{...rejects.contactBlocks},
+   contactExcess:{...rejects.contactExcess}},
   reports:null,softScales:null,supportFraction:null,candidates,validCandidates,quality:null};
 }
