@@ -8,6 +8,7 @@ import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 export type HelmetPreset={
  id:string;label:string;shell:H1ModernHelmet;
  setup:Partial<HelmetSetupV1>;print?:HeadwearCamoId;
+ headset?:'boom-headset'|'over-ear';
  note:string;
 };
 export const HELMET_H1_PRESETS:readonly HelmetPreset[]=[
@@ -30,19 +31,19 @@ export const HELMET_H1_PRESETS:readonly HelmetPreset[]=[
   setup:{cover:'none',shroud:'legacy',nvg:'mono-stowed',retention:'four-point'},
   note:'Early high-cut tactical reference'},
  {id:'m2001-comms',label:'MICH 2001 · Comms',shell:'mich-2001',
-  setup:{cover:'none',shroud:'skeleton',retention:'h-nape'},
+  setup:{cover:'none',shroud:'skeleton',retention:'h-nape'},headset:'boom-headset',
   note:'Plain high-cut with independently selectable ear protection'},
  {id:'fast-basic',label:'FAST SF · Basic',shell:'fast-sf',
   setup:{cover:'none',rails:'arc',shroud:'integrated',retention:'dial'},
   note:'Modern high-cut base configuration'},
  {id:'fast-comms',label:'FAST SF · Comms',shell:'fast-sf',
   setup:{cover:'none',rails:'arc',shroud:'integrated',headsetMount:'rail',
-   retention:'dial',rearModule:'counterweight'},
+   retention:'dial',rearModule:'counterweight'},headset:'boom-headset',
   note:'Rails and hearing-protection mounting; select a compatible headset'},
  {id:'fast-night',label:'FAST SF · Night',shell:'fast-sf',
   setup:{cover:'none',rails:'arc',shroud:'integrated',headsetMount:'rail',
    nvg:'dual-stowed',rearModule:'battery',rearStrobe:true,
-   retention:'dial'},
+   retention:'dial'},headset:'boom-headset',
   note:'NVG-equipped helmet appearance; no gameplay night-vision benefit'},
  {id:'fast-xp-tactical',label:'FAST XP · Tactical',shell:'fast-xp-mid',
   setup:{cover:'none',rails:'powerpath',shroud:'integrated',
@@ -61,6 +62,7 @@ export function applyHelmetPreset(w:WardrobeOptions,shell:string,id:string):Ward
  const camo=preset.print&&headwearCamoChoices(shell).includes(preset.print)?
   preset.print:undefined;
  return {...w,
+  styles:preset.headset?{...w.styles,headset:preset.headset}:w.styles,
   helmetSetup:readHelmetSetup({...HELMET_SETUP_DEFAULTS,...preset.setup,
    presetOrigin:preset.id}),
   headwearCamo:camo,headwearCamoRoll:0

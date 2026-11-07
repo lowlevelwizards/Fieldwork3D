@@ -20,4 +20,6 @@ test('preset applies cosmetics only and mismatched shell is a no-op',()=>{
  const selected=applyHelmetPreset(w,'fast-sf','fast-basic');
  assert.deepEqual(selected.styles,w.styles);
  assert.equal(selected.helmetSetup?.rails,'arc');
+ const comms=applyHelmetPreset(w,'fast-sf','fast-comms');
+ assert.equal(comms.styles.headset,'boom-headset');
 });
