@@ -12,6 +12,10 @@ test('G5b1 chunks 12000 authoritative frames without per-frame writes',async()=>
   for(let i=0;i<12000;i++){
     assert.equal(spool.append({t:i*.05,actors:[{i}]}),true);
     assert.ok(spool.residentFrames<=spool.maximumResidentFrames);
+    // A real 20 Hz recording yields to the event loop between samples.
+    // Allow the simulated durable sink to acknowledge each 400-frame batch.
+    if((i+1)%400===0)
+      await new Promise(resolve=>setImmediate(resolve));
   }
   const result=await spool.finish();
   assert.equal(writes.length,30);
