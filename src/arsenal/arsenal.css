@@ -184,3 +184,9 @@ button{cursor:pointer}
  background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
  border-radius:var(--fw-radius-sm);font:600 15px var(--fw-font-action)}
 .arsenal-wb-save-actions{display:flex;gap:8px;margin-top:18px}
+
+/* Stage 7b: single contextual Apply control, priced by the authoritative Campaign adapter. */
+.arsenal-wb-apply{background:var(--fw-sage);border-color:var(--fw-sage);color:var(--fw-bg)}
+.arsenal-wb-apply:disabled{opacity:.45;cursor:not-allowed}
+.arsenal-wb-apply-quote{font:650 12px var(--fw-font-action);
+ color:var(--fw-brass);margin:0}

@@ -5,7 +5,8 @@ import {ARSENAL_CATEGORIES,arsenalPart,arsenalPartsForSlot,
  type ArsenalCategory,type ArsenalSlot,type ArsenalReference}
  from './catalog.ts';
 import {FAMILY_PARTS,type FamilyPartSlot} from '../equipment-weapon-families.ts';
-import {arsenalRecipeFromLegacy,readArsenalRecipe,type ArsenalAccessorySlot} from './recipes.ts';
+import {arsenalRecipeFromLegacy,readArsenalRecipe,type ArsenalAccessorySlot,
+ type ArsenalRecipeV2} from './recipes.ts';
 import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrary,
  createSavedArsenalBuild,overwriteSavedArsenalBuild} from './saved-builds.ts';
 import {proposeArsenalPartChange,arsenalReferenceIdentity,
@@ -15,6 +16,14 @@ import {createArsenalDraft,commitArsenalProposal,undoArsenalDraft,redoArsenalDra
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../equipment-weapon-assemblies.ts';
 import {ArsenalViewport} from './viewport.ts';
+import './arsenal.css';
+/** Game context is an explicit commit callback; the Workbench owns no inventory. */
+export interface ArsenalWorkbenchApplyContext{
+ mode:'campaign'|'quick';
+ applyLabel:string;
+ quote?:(recipe:ArsenalRecipeV2)=>{valid:boolean;canCommit?:boolean;cost?:number;reason?:string};
+ onApply:(recipe:ArsenalRecipeV2)=>{ok:boolean;message?:string};
+}
 
 const BODY_SLOTS:readonly FamilyPartSlot[]=
  ['receiver','barrel','handguard','stock','grip','magazine'];
@@ -24,14 +33,16 @@ function formatSlot(slot:ArsenalSlot):string{
 }
 export function openArsenalWorkbench(
  source:ArsenalReference|ArsenalSavedBuild,
- onLibraryChange?:(savedId:string)=>void
+ onLibraryChange?:(savedId:string)=>void,
+ context?:ArsenalWorkbenchApplyContext
 ):void{
  const loadedRecipe='recipe' in source?readArsenalRecipe(source.recipe):
   arsenalRecipeFromLegacy(selectWeaponFamilyPreset(
    initialWeaponConfiguration(source.legacy.weapon),source.id));
  if(!loadedRecipe)return;
  let draft=createArsenalDraft(loadedRecipe);
- let savedId:string|null='recipe' in source?source.id:null;
+ let savedId:string|null='recipe' in source&&/^arsenal-[1-9][0-9]*$/.test(source.id)?
+  source.id:null;
  let activeCategory:ArsenalCategory=ARSENAL_CATEGORIES[0];
  let activeSlot:ArsenalSlot='receiver';
  let showIncompatible=false;
@@ -41,7 +52,7 @@ export function openArsenalWorkbench(
  overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');
  const head=document.createElement('header');head.className='arsenal-wb-head';
  const back=document.createElement('button');back.className='arsenal-wb-action';
- back.type='button';back.textContent='BACK TO ARSENAL';
+ back.type='button';back.textContent=context?'BACK TO EQUIPMENT':'BACK TO ARSENAL';
  const identity=document.createElement('div');identity.className='arsenal-wb-identity';
  const kicker=document.createElement('span');kicker.className='arsenal-overline';
  kicker.textContent='WEAPON WORKBENCH';
@@ -59,7 +70,10 @@ export function openArsenalWorkbench(
  save.className='arsenal-wb-action arsenal-wb-save';save.textContent='SAVE BUILD';
  const saveCopy=document.createElement('button');saveCopy.type='button';
  saveCopy.className='arsenal-wb-action';saveCopy.textContent='SAVE COPY';
- actions.append(undo,redo,save,saveCopy,fit,side);head.append(back,identity,actions);
+ const apply=document.createElement('button');apply.type='button';
+ apply.className='arsenal-wb-action arsenal-wb-apply';
+ apply.textContent=context?.applyLabel??'APPLY';apply.hidden=!context;
+ actions.append(undo,redo,save,saveCopy,fit,side,apply);head.append(back,identity,actions);
  const main=document.createElement('div');main.className='arsenal-wb-main';
  const viewportHost=document.createElement('div');viewportHost.className='arsenal-wb-viewport';
  const nav=document.createElement('nav');nav.className='arsenal-wb-nav';
@@ -76,8 +90,15 @@ export function openArsenalWorkbench(
  const choiceList=document.createElement('div');choiceList.className='arsenal-wb-option-list';
  const pendingHost=document.createElement('div');pendingHost.className='arsenal-wb-pending-host';
  const hint=document.createElement('p');hint.className='arsenal-wb-hint';
- hint.textContent='Edits are a reversible preview. Nothing is purchased or equipped from this standalone Arsenal.';
- panel.append(panelTitle,slotRow,activeLabel,optionsHeader,choiceList,pendingHost,hint);
+ hint.textContent=context?.mode==='campaign'?
+  'Preview changes freely. Credits and stock change only after Equip.':
+  context?.mode==='quick'?
+  'Preview changes freely. Apply updates this Quick Play operator only.':
+  'Edits are a reversible preview. No equipment is purchased or equipped here.';
+ const applyQuote=document.createElement('p');applyQuote.className='arsenal-wb-apply-quote';
+ applyQuote.setAttribute('role','status');
+ panel.append(panelTitle,slotRow,activeLabel,optionsHeader,choiceList,
+  pendingHost,applyQuote,hint);
  main.append(viewportHost,nav,panel);
  overlay.append(head,main);document.body.append(overlay);
  const viewer=new ArsenalViewport(viewportHost,draft.working,slot=>{
@@ -175,6 +196,12 @@ export function openArsenalWorkbench(
    savedId?'SAVED BUILD':'FACTORY CONFIGURATION';
   save.textContent=savedId?'SAVE':'SAVE BUILD';
   saveCopy.hidden=!savedId;
+  if(context){
+   const quote=context.quote?.(draft.working);
+   apply.disabled=quote!==undefined&&(!quote.valid||quote.canCommit===false);
+   applyQuote.textContent=quote?.reason??(quote?.cost?
+    'PENDING PURCHASE · '+quote.cost+' CR':'');
+  }
   undo.disabled=draft.undo.length===0;redo.disabled=draft.redo.length===0;
   showAll.textContent=showIncompatible?'HIDE INCOMPATIBLE':'SHOW ALL';
   viewer.setSelectedSlot(activeSlot);
@@ -230,6 +257,16 @@ export function openArsenalWorkbench(
   openSaveDialog((current?.name??defaultName())+' Copy');
  });
  renderSelection();
+ apply.addEventListener('click',()=>{
+  if(!context||apply.disabled)return;
+  if(pending){saveFeedback.textContent='Confirm or cancel pending part changes first';return;}
+  try{
+   const result=context.onApply(draft.working);
+   if(!result.ok){saveFeedback.textContent=result.message??'Unable to equip build';return;}
+   draft=createArsenalDraft(draft.working);
+   close();
+  }catch{saveFeedback.textContent='Equipment update failed. Draft preserved.';}
+ });
  fit.addEventListener('click',()=>viewer.fit());
  side.addEventListener('click',()=>viewer.sideView());
  showAll.addEventListener('click',()=>{

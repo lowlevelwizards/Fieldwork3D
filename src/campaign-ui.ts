@@ -39,6 +39,7 @@ export type CampaignHandlers={
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
  setWardrobe:(id:string,look:WardrobeOptions)=>void;
  openStudio:(id:string)=>void;
+ openArsenal:(id:string)=>void;
  equipAttachment:(id:string,slot:WeaponAttachmentSlot,partId:string,acquire:boolean)=>void;
  equipWeaponPreset:(id:string,presetId:string)=>void;
  equipWeaponFamilyPart:(id:string,slot:FamilyPartSlot,partId:string)=>void;
@@ -442,7 +443,9 @@ export class CampaignScreen{
   });
   const appearance=button('APPEARANCE · OPEN STUDIO',()=>this.handlers.openStudio(id));
   rename.disabled=!!c.activeContractId;appearance.disabled=!!c.activeContractId;
-  identityActions.append(rename,appearance);summary.append(identityActions);
+  const arsenal=button('OPEN ARSENAL',()=>this.handlers.openArsenal(id));
+  arsenal.disabled=!!c.activeContractId||!person.weaponConfiguration.build;
+  identityActions.append(rename,appearance,arsenal);summary.append(identityActions);
   const readiness=node('details','campaign-readiness-details');
   readiness.append(node('summary','','READINESS DETAILS · ARMOR / AMMO / MOBILITY'));
   const carrying=carryCapacityReport(person.loadout,person.magazines);
