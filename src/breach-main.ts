@@ -278,7 +278,6 @@ const ui={
   replayExtra:el<HTMLElement>('replayExtra'),
   replayDrawer:el<HTMLElement>('replayDrawer'),
   replayDrawerClose:el<HTMLButtonElement>('replayDrawerClose'),
-  replayTabs:el<HTMLElement>('replayTabs'),
   replayFeedPanel:el<HTMLElement>('replayFeedPanel'),
   replayPrevChapter:el<HTMLButtonElement>('replayPrevChapter'),
   replayNextChapter:el<HTMLButtonElement>('replayNextChapter'),
@@ -4634,7 +4633,7 @@ function syncReplayEventFeed():void{
   if(replayFeedFollowing)scrollReplayFeedSelection();
 }
 /** One tool surface at a time; never let advanced controls grow the dock. */
-type ReplayToolTab='view'|'layers'|'precision'|'export'|'events';
+type ReplayToolTab='layers'|'export'|'events';
 type ReplayPreset='clean'|'movement'|'combat'|'visibility'|'custom';
 let replayToolTab:ReplayToolTab|null=null;
 let replaySurface:ReplaySurface='none';
@@ -5374,12 +5373,6 @@ for(const button of ui.replayFeedPanel.querySelectorAll<HTMLButtonElement>('[dat
 ui.replayFeedToggle.addEventListener('click',()=>
   toggleReplayPanel('moments',ui.replayFeedToggle));
 ui.replayDrawerClose.addEventListener('click',()=>closeReplaySurface());
-for(const button of ui.replayTabs.querySelectorAll<HTMLButtonElement>('[data-replay-tab]')){
-  button.addEventListener('click',()=>{
-    const tab=button.dataset.replayTab as ReplayToolTab;
-    showReplayToolTab(tab);
-  });
-}
 ui.replayFeedFilter.addEventListener('change',renderReplayEventFeed);
 ui.replayFeedFollow.addEventListener('click',()=>{
   replayFeedFollowing=!replayFeedFollowing;
