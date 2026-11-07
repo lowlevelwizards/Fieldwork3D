@@ -14,7 +14,7 @@ test('PASGT print density equals the approved uniform/gear fabric density',()=>{
   assert.equal(PASGT_FABRIC_DENSITY[id],FABRIC_CAMO_DENSITY[id]);
   assert.equal(pasgtCamoWorldPeriod(id),fabricCamoWorldPeriod(id));
   const t=pasgtCoverTexture(id,'operator-a',0);
-  assert.equal(t.image.width,256);
+  assert.equal(t.image.width,512);
   assert.equal(t.image.height,256);
   assert.equal(t.channel,1);
  }
@@ -27,5 +27,8 @@ test('top and side atlas use one physical coordinate system',()=>{
  assert.equal(PASGT_UV_TEXELS_PER_UNIT,7);
  const first=PASGT_TOP_SEAM_OFFSETS[0],second=PASGT_TOP_SEAM_OFFSETS[1];
  assert.ok(first<0&&second>0&&first===-second);
- assert.ok(Math.round(128+first*7)<128);
+ assert.ok(pasgtAtlasUv([first,0],'left')[0]<
+  pasgtAtlasUv([first,0],'top')[0]);
+ assert.ok(pasgtAtlasUv([second,0],'top')[0]<
+  pasgtAtlasUv([second,0],'right')[0]);
 });

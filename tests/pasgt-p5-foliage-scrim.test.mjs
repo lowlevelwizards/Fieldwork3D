@@ -28,8 +28,8 @@ test('scrim uses two broad folded panels, not needle outlines',()=>{
 });
 test('foliage and scrim are separate, lightweight groups and share palette',()=>{
  const root=new THREE.Group(),v=createPasgtFieldDress(root);
- assert.equal(v.foliage.children.length,6);
- assert.equal(v.scrim.children.length,6);
+ assert.equal(v.foliage.children.length,10);
+ assert.equal(v.scrim.children.length,10);
  assert.equal(v.scrim.children[0].children[0].geometry.userData.pasgtFoldedScrim,true);
  const options={slits:false,band:'none',concealment:'scrim'};
  updatePasgtFieldDress(v,true,options,'six-color-desert');

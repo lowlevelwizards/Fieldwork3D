@@ -167,7 +167,12 @@ const BEANIE_CUBOIDS:readonly HeadwearCuboid[]=[
  }))
 ];
 
-/** Stage 1N PASGT: brow seam cleanup preserves the original U.S.
+/** P6-D silhouette audition: retain all six authored major cuboids.
+ * The broad flat crown is only modestly narrower/shallower above the
+ * deliberately oversized brow and deep ear/nape skirt. No micro-bevels,
+ * high-poly rounding, tiers, or extra panels. Art-first A/B gate.
+ *
+ * Stage 1N PASGT: brow seam cleanup preserves the original U.S.
  * PASGT (not an ACH derivative). One uninterrupted shell rather than
  * two crown tiers; its defining FEATURES are the protruding eyebrow peak,
  * long backward ear lobes and a deep continuous rear skirt.
@@ -175,10 +180,10 @@ const BEANIE_CUBOIDS:readonly HeadwearCuboid[]=[
  * photos of original PASGT shells.
  */
 const PASGT_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'pasgt-single-protective-crown',x:0,y:7.08,z:0,
-  width:10.35,height:3.40,depth:10.05},
- {name:'pasgt-integrated-front-peak',x:0,y:4.98,z:-5.40,
-  width:10.35,height:1.85,depth:1.88},
+ {name:'pasgt-single-protective-crown',x:0,y:7.18,z:0,
+  width:9.78,height:3.20,depth:9.77},
+ {name:'pasgt-integrated-front-peak',x:0,y:4.98,z:-5.32,
+  width:10.35,height:1.85,depth:1.78},
  {name:'pasgt-low-rear-skirt',x:0,y:3.845,z:4.88,
   width:10.35,height:4.33,depth:1.60},
  ...([-1,1] as const).flatMap(sign=>[

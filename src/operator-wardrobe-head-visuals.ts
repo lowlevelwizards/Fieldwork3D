@@ -312,7 +312,9 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
   });
   updatePasgtCoverLayers(layers.pasgtCover,effective.setup.cover!=='none',
    readPasgtDetails(helmetCover?.pasgtDetails,helmetCover?.helmetSetup),
-   helmetCover?.headwearCamo,camoIdentity,coverRoll);
+   helmetCover?.headwearCamo,camoIdentity,coverRoll,
+   !['half-mask','respirator-half','gas-gp5','gas-m17',
+     'gas-m40','gas-m50','shemagh','bandana'].includes(assembly.facewear));
  }
  const modern=layers.modernCovers[assembly.headwear];
  if(modern&&isH1ModernHelmet(shell)){

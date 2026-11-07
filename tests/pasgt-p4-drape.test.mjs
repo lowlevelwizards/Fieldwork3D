@@ -30,7 +30,7 @@ test('print is denser and physically consistent between top and sides',()=>{
  assert.ok(PASGT_RING_CIRCUMFERENCE>35&&PASGT_RING_CIRCUMFERENCE<47);
  const tex=pasgtCoverTexture('m81-woodland','operator',1);
  assert.equal(tex.channel,1);
- assert.equal(tex.image.width,256);
+ assert.equal(tex.image.width,512);
  assert.equal(tex.image.height,256);
  const left=Math.round(30+5*(PASGT_TOP_SEAM_OFFSETS[0]+5.275));
  const right=Math.round(30+5*(PASGT_TOP_SEAM_OFFSETS[1]+5.275));
@@ -38,9 +38,9 @@ test('print is denser and physically consistent between top and sides',()=>{
  // The center column isn't sewn; the twin seams are.
  assert.ok(left<57&&right>57);
 });
-test('eight field anchors all have distinct names and locations',()=>{
- assert.equal(PASGT_SLIT_ANCHORS.length,8);
- assert.equal(new Set(PASGT_SLIT_ANCHORS.map(a=>a.id)).size,8);
+test('twelve meaningful field anchors all have distinct names and locations',()=>{
+ assert.equal(PASGT_SLIT_ANCHORS.length,12);
+ assert.equal(new Set(PASGT_SLIT_ANCHORS.map(a=>a.id)).size,12);
  const band=createPasgtBandGeometry();
  assert.ok(band.boundingBox.max.y<6&&band.boundingBox.min.y>5.1);
 });
