@@ -197,25 +197,28 @@ export function injectStudioGraphicLighting(
    ');\n';
  }
  if(litRim){
-  // Light-aware third graphic band, ON the actual surface—not an expanded
-  // backface shell or a camera-facing glow. Key, camera angle and true
-  // directional shadow visibility must all agree before the glimmer appears.
+  // R7.13: unmistakable near-white highlight WITHIN the original surface.
+  // Use a high-opacity color blend, not R7.12's almost invisible 10%
+  // additive cream. Still requires a grazing view, light-facing normal,
+  // received direct light, and real cast-shadow visibility.
   effect+=`
    vec3 fwNormal=normalize(normal);
    vec3 fwView=normalize(vViewPosition);
    vec3 fwKey=normalize((viewMatrix*vec4(.46,.88,.07,0.0)).xyz);
    float fwGrazing=1.0-abs(dot(fwNormal,fwView));
-   float fwEdgeWidth=max(fwidth(fwGrazing)*.85,.006);
-   float fwEdge=smoothstep(.80-fwEdgeWidth,.80+fwEdgeWidth,fwGrazing);
-   float fwFacesKey=smoothstep(.27,.58,dot(fwNormal,fwKey));
+   float fwEdgeWidth=max(fwidth(fwGrazing)*.8,.006);
+   float fwEdge=smoothstep(.67-fwEdgeWidth,.71+fwEdgeWidth,fwGrazing);
+   float fwFacesKey=smoothstep(.03,.20,dot(fwNormal,fwKey));
    float fwDirect=dot(reflectedLight.directDiffuse,vec3(.2126,.7152,.0722));
-   float fwReceivedLight=smoothstep(.12,.30,fwDirect);
+   float fwReceivedLight=smoothstep(.012,.065,fwDirect);
    float fwKeyShadow=1.0;
    #ifdef USE_SHADOWMAP
     fwKeyShadow=getShadowMask();
    #endif
-   float fwLitBand=fwEdge*fwFacesKey*fwReceivedLight*fwKeyShadow;
-   outgoingLight+=vec3(.96,.88,.74)*fwLitBand*fieldworkRimStrength;
+   float fwLitBand=fwEdge*fwFacesKey*fwReceivedLight*
+    smoothstep(.25,.75,fwKeyShadow);
+   outgoingLight=mix(outgoingLight,vec3(1.15),
+    clamp(fwLitBand*fieldworkRimStrength,0.0,1.0));
   `;
  }
  const rimHeader=litRim?'uniform float fieldworkRimStrength;\n':'';
