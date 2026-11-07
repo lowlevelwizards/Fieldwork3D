@@ -32,3 +32,27 @@ export function bodycamDisclosureLabel(
       ' · PERSONAL CONTACTS · SHARED ARCHITECTURE':
       ' · PERSONAL GROUND UNAVAILABLE · SHARED ARCHITECTURE');
 }
+
+/** Playback audio is relative to the recorded operator, not a teammate.
+ * This is presentation-only: never rewrite simulator hearing or evidence.
+ */
+import type {Pt} from './breach-core.ts';
+export type ReplayAudioObserver={id:string;p:Pt;heading:number};
+export function replayAudioListener<T extends ReplayAudioObserver>(
+  friendlies:readonly T[],selectedId:string,bodycamId:string|null
+):T|null{
+  const observer=friendlies.find(a=>a.id===(bodycamId??selectedId));
+  if(!observer||!Number.isFinite(observer.p.x)||
+    !Number.isFinite(observer.p.y)||!Number.isFinite(observer.heading))
+    return null;
+  return observer;
+}
+/** Positive pan is right of the observer's historically recorded facing. */
+export function replayBodycamPan(source:Pt,observer:ReplayAudioObserver):number{
+  if(!Number.isFinite(source.x)||!Number.isFinite(source.y)||
+    !Number.isFinite(observer.heading))return 0;
+  const dx=source.x-observer.p.x,dy=source.y-observer.p.y;
+  const right=-Math.sin(observer.heading)*dx+
+    Math.cos(observer.heading)*dy;
+  return Math.max(-1,Math.min(1,right/210));
+}

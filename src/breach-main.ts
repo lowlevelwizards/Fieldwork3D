@@ -112,7 +112,8 @@ import {operatorContactEventKnown,operatorContactAvailable}
   from './breach-replay-contact-lens.ts';
 import {ReplayOperatorSightIndex} from './breach-replay-operator-sight.ts';
 import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
-  bodycamDisclosureLabel} from './breach-replay-bodycam-controls.ts';
+  bodycamDisclosureLabel,replayAudioListener,replayBodycamPan}
+  from './breach-replay-bodycam-controls.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
@@ -1544,7 +1545,10 @@ function playApprovedCue(id:string,level=1,pan=0,replayCue=false,
  if(!audio)return false;
  // Pure room presentation. Source geometry is read once per emitted event.
  // AI hearing and replay evidence are deliberately unaffected.
- const listener=uid(selected)?.p;
+ const listener=replayCue&&replayBodycamOn?
+  (replayContactObserverId?
+    replayAudioListener(team(state),selected,replayContactObserverId)?.p:
+    undefined):uid(selected)?.p;
  const acoustics=roomAudioEnabled&&sourcePosition?
   acousticResponseForCue(state.site??undefined,sourcePosition,id,
    listener,state.doors,WALLS):null;
@@ -4042,7 +4046,12 @@ function playReplayAudioBetween(start:number,end:number):void{
   if(!replaying||!replaySoundEnabled||!replaySoundTimeline||
     !audio||audio.state!=='running'||end<=start)return;
   if(replayRate>2)return; // Rapid scan is deliberately quiet.
-  const listener=team(state).find(a=>a.id===selected)?.p;
+  // First-person audio follows the recorded operator, not a teammate.
+  const listenerActor=replayBodycamOn&&!replayContactObserverId?null:
+    replayAudioListener(team(state),selected,
+      replayBodycamOn?replayContactObserverId:null);
+  if(replayBodycamOn&&!listenerActor)return;
+  const listener=listenerActor?.p;
   const rateScale=Math.max(.5,Math.min(2,1/replayRate));
   for(const event of replaySoundTimeline.between(start,end,7)){
     const p=event.p;
@@ -4050,7 +4059,9 @@ function playReplayAudioBetween(start:number,end:number):void{
       event.kind==='gunshot'?WEAPONS[event.weapon??'carbine'].noise:150,
       state.doors,WALLS):.35;
     if(level<.025)continue;
-    const pan=p&&listener?(p.x-listener.x)/210:0;
+    const pan=p&&listener?
+      (replayBodycamOn&&listenerActor?
+        replayBodycamPan(p,listenerActor):(p.x-listener.x)/210):0;
     if(event.kind==='gunshot'){
       const cue=weaponAudioCue(event.weapon??'carbine',event.suppressed);
       if(!playApprovedCue('weapons.'+(event.weapon??'carbine')+
@@ -6470,7 +6481,10 @@ function tick(now:number){
         const level=listener?heardIntensity(touch.position,listener,
           36,state.doors,WALLS):.24;
         if(level<.025)continue;
-        const pan=listener?(touch.position.x-listener.x)/210:0;
+        const pan=listener?
+      (replayBodycamOn&&listenerActor?
+        replayBodycamPan(touch.position,listenerActor):
+        (touch.position.x-listener.x)/210):0;
         if(!playApprovedCue('movement.boot',level*.20,pan,false,1,
            touch.position,hashString(touch.id+'|'+touch.foot+'|'+touch.at.toFixed(3))))
           playTone(touch.foot===0?62:67,.055,true,level*.12,pan);
