@@ -1,0 +1,31 @@
+name: Operator Lab — Unified Poses iPhone smoke
+on:
+  pull_request:
+    paths:
+      - 'operator-lab.html'
+      - 'src/breach-operator-lab.ts'
+      - 'src/operator-lab-pose-browser.ts'
+      - 'scripts/smoke-operator-lab-unified.mjs'
+      - '.github/workflows/operator-lab-unified-mobile.yml'
+permissions:
+  contents: read
+jobs:
+  unified-poses-mobile:
+    if: ${{ startsWith(github.head_ref, 'feature/operator-lab-unified-poses-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/smoke-operator-lab-unified.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: operator-lab-unified-poses-iphone
+          path: operator-lab-pose-captures/
+          if-no-files-found: ignore
