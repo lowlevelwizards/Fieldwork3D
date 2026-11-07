@@ -45,6 +45,11 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-p7-') }}
         run: |
           node --experimental-strip-types --test tests/pasgt-p7-*.test.mjs tests/pasgt-p6-*.test.mjs tests/pasgt-p5-cover-fit.test.mjs tests/pasgt-p5-camo-uv.test.mjs tests/pasgt-p5-slits.test.mjs tests/pasgt-p5-net.test.mjs tests/pasgt-p4-field-dress.test.mjs tests/pasgt-p1-policy.test.mjs
+      - name: PASGT P7 release preflight — live Pages SHA must match current main
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-p7-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       - name: Production release preflight — Pages queue and live build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
         env:
