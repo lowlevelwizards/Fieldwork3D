@@ -82,9 +82,9 @@
 <label id="studioCelLowWrap" class="studio-light-slider">CEL SHADOW CUTOFF
 <output id="studioCelLowValue" for="studioCelLow">70%</output>
 <input id="studioCelLow" type="range" min="0.35" max="0.90" step="0.01" value="0.70" aria-label="Two-band cel shadow cutoff"/></label>
-<label id="studioRimAmountWrap" class="studio-light-slider">RIM AMOUNT
-<output id="studioRimAmountValue" for="studioRimAmount">10%</output>
-<input id="studioRimAmount" type="range" min="0" max="0.20" step="0.01" value="0.10" aria-label="Rim light intensity"/></label>
+<label id="studioRimAmountWrap" class="studio-light-slider">RIM OPACITY
+<output id="studioRimAmountValue" for="studioRimAmount">80%</output>
+<input id="studioRimAmount" type="range" min="0" max="1" step="0.01" value="0.80" aria-label="White rim opacity"/></label>
 </div>
 <div class="studio-light-lab-actions">
 <button id="studioLightShowWeapon" type="button">PREVIEW WITH WEAPON</button>
@@ -94,7 +94,7 @@
 <button id="studioLightReset" type="button">RESET LIGHTING</button>
 </div>
 <output id="studioLightLabStatus" aria-live="polite">Adjust a setting to update the operator immediately.</output>
-<small>Preview only · not saved. A small highlight appears only on key-lit metal, weapons and bare helmet shells. It stays on the original surface and disappears on unlit faces; fabric remains matte.</small>
+<small>Preview only · not saved. An opaque, near-white highlight appears on lit edges of metal, weapons and bare helmet shells. It stays on the original surface and disappears on unlit faces; fabric remains matte.</small>
 <details id="studioRenderDiagnostics" class="studio-render-diagnostics">
 <summary>RENDER QUALITY / SHADOW DIAGNOSTICS <small>RELOADS PREVIEW</small></summary>
 <div class="studio-light-lab-grid">

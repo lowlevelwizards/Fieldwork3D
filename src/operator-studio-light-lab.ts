@@ -14,14 +14,14 @@ export type StudioLightLabSettings={
  toon:OperatorToonBands;rim:OperatorRimMode;
  gradient:OperatorHeightProfile;shadow:StudioShadowColor;
  celProfile:StudioCelProfile;celLow:number;celHigh:number;
- /** 0–1 linear highlight blend; default subdued, exposed as Rim Amount. */
+ /** 0–1 blend toward near-white on genuinely lit grazing surfaces. */
  rimAmount:number;
  /** Audition the material on all opaque Standard surfaces, incl. firearms. */
  allSurfaces:boolean;
 };
 export const DEFAULT_STUDIO_LIGHT_LAB:Readonly<StudioLightLabSettings>={
  toon:0,rim:'off',gradient:'current',shadow:'neutral',
- celProfile:'graphic',celLow:.70,celHigh:.84,rimAmount:.10,allSurfaces:true
+ celProfile:'graphic',celLow:.70,celHigh:.84,rimAmount:.80,allSurfaces:true
 };
 function clampCutoff(value:string|null,defaultValue:number):number{
  const n=Number(value);
@@ -39,7 +39,7 @@ export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
  const gradient=requestedOperatorGradient(search);
  const shadow=requestedStudioShadowColor(search);
  const amount=p.get('operatorRimAmount');
- const n=amount===null ? .10 : Number(amount);
+ const n=amount===null ? .80 : Number(amount);
  return {
   toon:toon?2:0,
   rim:rim==='off'?'off':'dual',
@@ -49,7 +49,7 @@ export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
   celProfile:'graphic',
   celLow:clampCutoff(p.get('operatorCelLow'),.70),
   celHigh:.84,
-  rimAmount:Number.isFinite(n)?Math.max(0,Math.min(.20,n)):.10,
+  rimAmount:Number.isFinite(n)?Math.max(0,Math.min(1,n)):.80,
   allSurfaces:true
  };
 }
@@ -63,7 +63,7 @@ export function effectiveStudioLightLab(
  // lighting is independent, so the smooth model can audition a rim too.
  return {...settings,celLow:low,celHigh:high,
   rimAmount:Number.isFinite(settings.rimAmount)?
-   Math.max(0,Math.min(.20,settings.rimAmount)):.10,
+   Math.max(0,Math.min(1,settings.rimAmount)):.80,
   rim:settings.toon===0&&settings.rim!=='dual'?'off':settings.rim};
 }
 export function studioLightLabLabel(s:StudioLightLabSettings):string{

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {applyStudioGraphicLighting,restoreStudioGraphicLighting,
  disposeStudioGraphicLighting,updateStudioCelRamp,
- ensureStudioPieceGradient,studioPieceGradientEligible,
+ ensureStudioPieceGradient,ensureStudioRimBounds,
+ studioPieceGradientEligible,
  injectStudioCelEdgeAA,requestedStudioGraphicDiagnostics}
  from '../src/operator-studio-graphic-lighting.ts';
 import {studioContourEligible}
@@ -25,7 +26,7 @@ const shader=()=>({
 const cube=(material=new THREE.MeshStandardMaterial({color:0x778177}))=>
  new THREE.Mesh(new THREE.BoxGeometry(3,4,3),material);
 
-test('R7.12 key-lit 10% rim is drawn on surfaces, never an expanded hull',()=>{
+test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  const root=new THREE.Group(),metal=new THREE.MeshStandardMaterial({metalness:.68});
  const weapon=new THREE.Group();
  weapon.userData.fieldworkWeaponPresentation=true;
@@ -38,28 +39,41 @@ test('R7.12 key-lit 10% rim is drawn on surfaces, never an expanded hull',()=>{
  assert.equal(studioContourEligible(receiver,receiver.material),true);
  assert.equal(studioContourEligible(buckle,metal),true);
  assert.equal(studioContourEligible(uniform,fabric),false);
- const render=applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.10}));
+ const render=applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.80}));
  assert.equal(render.weapons,1);
  assert.equal(root.children.length,3,'no new top-level silhouette hull');
  assert.equal(weapon.children.length,1,'receiver does not grow duplicate hull');
  assert.equal(receiver.userData.fieldworkStudioContourMesh,undefined);
+ const rimMin=receiver.geometry.getAttribute('fieldworkRimBoundsMin');
+ const rimMax=receiver.geometry.getAttribute('fieldworkRimBoundsMax');
+ assert.ok(rimMin&&rimMax,'rim uses original mesh bounding-box attributes');
+ assert.equal(rimMin.count,receiver.geometry.getAttribute('position').count);
+ assert.equal(ensureStudioRimBounds(receiver.geometry),true);
+ assert.equal(receiver.geometry.getAttribute('fieldworkRimBoundsMin'),rimMin);
  assert.equal(uniform.material,fabric,'matte fabric remains unchanged');
  const mock=shader();
  receiver.material.onBeforeCompile(mock,null);
  assert.match(mock.fragmentShader,/getShadowMask\(\)/);
  assert.match(mock.fragmentShader,/fwFacesKey/);
  assert.match(mock.fragmentShader,/fwReceivedLight/);
+ assert.match(mock.fragmentShader,/outgoingLight=mix\(outgoingLight,vec3\(1\.15\)/);
+ assert.match(mock.fragmentShader,/smoothstep\(\.67-fwEdgeWidth,\.71\+fwEdgeWidth/);
+ assert.doesNotMatch(mock.fragmentShader,/outgoingLight\+=vec3\(\.96,\.88,\.74\)/);
  assert.match(mock.fragmentShader,/fieldworkRimStrength/);
  assert.match(mock.fragmentShader,/fwidth\(fwGrazing\)/);
+ assert.match(mock.fragmentShader,/fwSecond=fwBoundDist/);
+ assert.match(mock.fragmentShader,/fwGeometricEdge/);
+ assert.match(mock.fragmentShader,/fwEdge\*=fwGeometricEdge/);
+ assert.match(mock.vertexShader,/attribute vec3 fieldworkRimBoundsMin/);
  assert.doesNotMatch(mock.vertexShader,/transformed \+= normalize\(normal\)/);
  assert.doesNotMatch(mock.fragmentShader,/fwPattern|fwCells/);
  const uniformRef=mock.uniforms.fieldworkRimStrength;
- assert.equal(uniformRef.value,.10);
+ assert.equal(uniformRef.value,.80);
  const variant=receiver.material,programKey=variant.customProgramCacheKey();
- applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.15}));
+ applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.95}));
  assert.equal(receiver.material,variant);
  assert.equal(variant.customProgramCacheKey(),programKey);
- assert.equal(uniformRef.value,.15);
+ assert.equal(uniformRef.value,.95);
  restoreStudioGraphicLighting(root);
  assert.ok(receiver.material instanceof THREE.MeshStandardMaterial);
  disposeStudioGraphicLighting(root);
