@@ -58,7 +58,7 @@ try{
   await capture('05-solid-back','back');
   const picker=page.locator('.material-group').filter({hasText:'PASGT COVER PATTERN'})
    .locator('.studio-camo-picker');
-  await picker.locator('summary').click();
+  await picker.locator('summary.studio-camo-selected').click();
   const woodland=picker.locator('button.swatch').filter({hasText:'M81 WOODLAND'}).first();
   await woodland.scrollIntoViewIfNeeded();
   await woodland.click();
