@@ -6,6 +6,10 @@
  * accidentally return through an old selector. Category state is UI-only.
  */
 import * as THREE from 'three';
+import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
+ from './operator-studio-lighting.ts';
+import {applyOperatorStudioToon,requestedOperatorToonBands}
+ from './operator-studio-toon-lighting.ts';
 import {THUMB_LINEAR_TO_SRGB} from './operator-thumbnail-color.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {appearanceThumbnailContext,appearanceThumbnailKey,
@@ -81,6 +85,7 @@ export class OperatorAppearanceGrid{
  private readonly liveContext:boolean;
  private previewIdentity='rook';
  private readonly renderer:THREE.WebGLRenderer;
+ private readonly lighting:OperatorStudioLighting;
  constructor(root:HTMLElement,renderer:THREE.WebGLRenderer,onSelect:OnSelect,
   canEquip?: (slot:WardrobeSlot,id:string)=>boolean,
   liveContext=false){
@@ -100,12 +105,11 @@ export class OperatorAppearanceGrid{
     if(this.queue.length)this.scheduleThumb();
    },{rootMargin:'240px 0px'});
   this.liveContext=liveContext;
-  this.scene.background=new THREE.Color(0x23352e);
-  this.scene.add(new THREE.AmbientLight(0xffffff,1.5));
-  const key=new THREE.DirectionalLight(0xffeed4,2.0);
-  key.position.set(22,66,-44);this.scene.add(key);
-  const fill=new THREE.DirectionalLight(0xa5bdc8,.8);
-  fill.position.set(-40,30,22);this.scene.add(fill);
+  // Exact same inspection lighting and backdrop as the full-size Studio.
+  // A smaller shadow map is visually sufficient for 160px cards.
+  this.scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
+  this.lighting=new OperatorStudioLighting(this.scene,this.renderer,
+   window.location.search,512);
   this.nav=document.createElement('div');this.nav.className='appearance-item-tabs';
   this.nav.setAttribute('role','tablist');
   this.nav.setAttribute('aria-label','Operator appearance item categories');
@@ -271,7 +275,11 @@ export class OperatorAppearanceGrid{
     unarmedPreview:true,equipment:kit,wardrobe:w
    },0);
    rig.root.position.set(0,0,0);
+   const toon=requestedOperatorToonBands(window.location.search);
+   if(toon)applyOperatorStudioToon(rig.root,toon);
    this.scene.add(rig.root);
+   this.lighting.invalidateGeometry();
+   this.lighting.beforeRender(rig.root);
    const clothingMode=w.d2FaceMode;
    const view=item.slot==='facewear'&&item.id==='shemagh'?
     (clothingMode==='head-wrap'?
@@ -289,10 +297,9 @@ export class OperatorAppearanceGrid{
    this.camera.lookAt(0,view.height,0);
    this.camera.updateProjectionMatrix();
    this.renderer.setRenderTarget(this.target);
-   // Pale industrial backdrop specifically for near-black protective masks.
-   // Clothing/armor thumbnails keep their established background and framing.
-   this.scene.background=new THREE.Color(item.slot==='facewear'?0x435448:0x23352e);
-   this.renderer.setClearColor(item.slot==='facewear'?0x435448:0x23352e,1);
+   // One neutral Studio background for every category, including facewear.
+   this.scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
+   this.renderer.setClearColor(STUDIO_INSPECTION_BACKGROUND,1);
    this.renderer.clear(true,true,true);
    this.renderer.render(this.scene,this.camera);
    const readbackStart=performance.now();
@@ -306,17 +313,15 @@ export class OperatorAppearanceGrid{
     // WebGL framebuffer origin is bottom-left; Canvas is top-left.
     for(let y=0;y<THUMB_SIZE;y++){
      const from=(THUMB_SIZE-1-y)*THUMB_SIZE*4,to=y*THUMB_SIZE*4;
-     if(item.slot==='facewear'){
-      // Raw WebGLRenderTarget bytes are LINEAR; ImageData expects sRGB.
-      // The missing conversion made black masks and their background vanish.
-      for(let x=0;x<THUMB_SIZE;x++){
-       const src=from+x*4,dst=to+x*4;
-       image.data[dst]=THUMB_LINEAR_TO_SRGB[this.pixels[src]];
-       image.data[dst+1]=THUMB_LINEAR_TO_SRGB[this.pixels[src+1]];
-       image.data[dst+2]=THUMB_LINEAR_TO_SRGB[this.pixels[src+2]];
-       image.data[dst+3]=this.pixels[src+3];
-      }
-     }else image.data.set(this.pixels.subarray(from,from+THUMB_SIZE*4),to);
+     // Render target reads are linear; convert all materials equally to
+     // display sRGB instead of converting facewear alone.
+     for(let x=0;x<THUMB_SIZE;x++){
+      const src=from+x*4,dst=to+x*4;
+      image.data[dst]=THUMB_LINEAR_TO_SRGB[this.pixels[src]];
+      image.data[dst+1]=THUMB_LINEAR_TO_SRGB[this.pixels[src+1]];
+      image.data[dst+2]=THUMB_LINEAR_TO_SRGB[this.pixels[src+2]];
+      image.data[dst+3]=this.pixels[src+3];
+     }
     }
     context.putImageData(image,0,0);
     // Bounded thumbnail cache: only a couple of active categories retained.
