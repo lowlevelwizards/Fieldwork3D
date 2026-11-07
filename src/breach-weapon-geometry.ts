@@ -114,7 +114,7 @@ export function buildWeaponSilhouette(id:WeaponId,
  if(familyBuild){
   const root=buildModularWeaponSilhouette(familyBuild,steel,dark,
    !config||config.slots.muzzle==='muzzle-bare');
-  if(familyBuild.family==='hk'&&config?.slots.optic==='optic-hk-claw')
+  if(familyBuild.family==='hk'&&config?.slots.opticMount==='optic-hk-claw')
    addHKClawRail(root);
   if(familyBuild.parts.handguard==='hk-mp5-trirail'&&
    config?.slots.foregrip==='foregrip-vertical')addHKRailVerticalGrip(root);
