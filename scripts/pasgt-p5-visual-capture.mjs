@@ -105,7 +105,7 @@ try{
    const x=bounds.x+bounds.width*.52,y=bounds.y+bounds.height*.48;
    await page.mouse.move(x,y);
    await page.mouse.down();
-   await page.mouse.move(x-128,y-50,{steps:10});
+   await page.mouse.move(x-108,y+8,{steps:10});
    await page.mouse.up();
    await page.waitForTimeout(260);
   };

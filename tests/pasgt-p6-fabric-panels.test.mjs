@@ -64,3 +64,21 @@ test('two bold front-to-back seams exist on both plain and camouflaged covers',(
   }
  }
 });
+
+test('only true shared sewn edges are marked; no phantom side-panel seam',()=>{
+ const t=pasgtCoverTexture(undefined,'no-ghost-seams-test');
+ const sample=(panel,x,z=0)=>{
+  const uv=pasgtAtlasUv([x,z],panel);
+  const ix=Math.round(uv[0]*512-.5),iy=Math.round(uv[1]*256-.5);
+  const index=(iy*512+ix)*4;
+  return Array.from(t.image.data.slice(index,index+3)).reduce((s,x)=>s+x,0);
+ };
+ const [left,right]=PASGT_TOP_SEAM_OFFSETS;
+ const color=(146+150+123);
+ assert.ok(sample('left',left)<color*.88,'left seam at actual join');
+ assert.ok(sample('top',left)<color*.88,'top left edge');
+ assert.ok(sample('top',right)<color*.88,'top right edge');
+ assert.ok(sample('right',right)<color*.88,'right seam at actual join');
+ assert.equal(sample('left',right),color,'no extra right seam on left panel');
+ assert.equal(sample('right',left),color,'no extra left seam on right panel');
+});

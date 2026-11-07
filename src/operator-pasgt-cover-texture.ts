@@ -72,8 +72,14 @@ export function pasgtCoverTexture(camo:HeadwearCamoId|undefined,
  // highlight and stitch dashes. These are color pixels, NOT new polygons.
  // The run goes front-to-back and continues down the upper apron
  // in front and behind, terminating before the elastic band.
- for(const panel of PASGT_FABRIC_PANELS)
-  for(const x of PASGT_TOP_SEAM_OFFSETS){
+ for(const [panel,seams] of [
+  ['left',[PASGT_TOP_SEAM_OFFSETS[0]]],
+  ['top',PASGT_TOP_SEAM_OFFSETS],
+  ['right',[PASGT_TOP_SEAM_OFFSETS[1]]]
+ ] as const)
+  for(const x of seams){
+   // Exactly two physical seams: each is shaded only on its two
+   // adjoining cloth cuts. Never paint a ghost seam on a remote panel.
    const at=slotX(panel,x);
    for(let z=slotY(frontZ-1.33);z<=slotY(rearZ+1.33);z++){
     for(let dx=-PASGT_SEAM_HALF_WIDTH_TEXELS;
