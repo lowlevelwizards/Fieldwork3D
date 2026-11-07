@@ -324,7 +324,8 @@ export class OperatorAppearanceGrid{
    this.renderer.render(this.scene,this.camera);
    // Stage the GPU -> CPU readback before restoring renderer state, but
    // do NOT await while the shared WebGL context is left on our FBO.
-   if(typeof this.renderer.readRenderTargetPixelsAsync==='function'){
+   if(new URLSearchParams(window.location.search).get('thumbnailReadback')!== 'sync'&&
+      typeof this.renderer.readRenderTargetPixelsAsync==='function'){
     this.grid.dataset.readbackMode='async';
     readback=this.renderer.readRenderTargetPixelsAsync(
      this.target,0,0,THUMB_SIZE,THUMB_SIZE,this.pixels);
