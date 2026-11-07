@@ -103,11 +103,27 @@ try{
   check(await page.locator('#replayObserverTransitions').evaluate(e=>
     !e.hidden&&e.children.length>0),
     'Operator contact timeline must be built from historical observation samples');
+  const floor=page.locator('#replayGroundLens');
+  check(await floor.isVisible(),'Personal ground control missing');
+  check(await floor.isEnabled(),'New film lacks recorded personal ground cells');
+  await floor.click();
+  check((await floor.getAttribute('aria-pressed'))==='true',
+    'Personal floor evidence overlay did not activate');
+  check((await page.locator('#replayView').textContent())?.includes('PLAN2D'),
+    'Personal floor evidence must stay in Floor Plan view');
+  check((await page.locator('#replayContactNote').textContent())?.
+    includes('GOLD CELLS'),
+    'Floor evidence note must not claim a full individual environment view');
   await page.locator('#replaySight').click();
   check((await lens.textContent())?.includes('CONTACTS: TEAM'),
     'Team/Full View must exit individual contact lens');
   check(await page.locator('#replayContactNote').isHidden(),
     'The personal-contact limitation must hide when exiting lens');
+  check((await floor.getAttribute('aria-pressed'))==='false',
+    'Leaving individual review must turn off the floor overlay');
+  await page.locator('#replayView').click(); // Plan2D -> ISO for Director QA
+  check((await page.locator('#replayView').textContent())?.includes('ISO'),
+    'Tactical camera must restore after leaving the floor overlay');
 
   check(await page.locator('#replayDirector').isVisible(),
     'R3 Director must be accessible under View');
