@@ -161,9 +161,28 @@ const CARD_ANCHORS=[
  'right-forward','right-aft','crown-rear-right',
  'rear-right','crown-rear-left','left-aft','left-forward'
 ] as const;
-const TILTS=[-.52,.48,-.43,-.63,.42,.58,-.35,-.43,.40,-.54] as const;
-const CARD_SCALES=[1.26,1.45,1.34,1.50,1.36,
- 1.43,1.26,1.38,1.35,1.43] as const;
+/** Local geometry always starts at its buttonhole. The 10 authored
+ * variations are deliberately narrow: fabric behaves as cloth and leaf
+ * clusters disrupt the outline, rather than random billboard rotations.
+ */
+const TILTS=[-.13,.10,-.08,.12,-.10,.09,-.11,.08,-.07,.10] as const;
+const CARD_SCALES=[1.16,1.38,1.35,1.40,1.34,
+ 1.42,1.26,1.38,1.35,1.39] as const;
+export function pasgtDecorationDirection(
+ anchor:(typeof PASGT_SLIT_ANCHORS)[number],leaf:boolean):THREE.Vector3{
+ const crown=anchor.id.startsWith('crown-');
+ const outward=crown?
+  new THREE.Vector3(anchor.position[0]*1.12,0,anchor.position[2]*.78).normalize():
+  new THREE.Vector3(...anchor.normal).normalize();
+ // The leaf's *positive* Y points outward, with the main card no longer
+ // rising almost vertically like a plant. Side/back mounts tilt down.
+ // Scrim local geometry extends along *negative* Y; gravity wins.
+ return leaf?
+  outward.multiplyScalar(crown?.90:.87)
+   .add(new THREE.Vector3(0,crown?.35:-.49,0)).normalize():
+  outward.multiplyScalar(crown?.70:.45)
+   .add(new THREE.Vector3(0,-(crown?.72:.89),0)).normalize();
+}
 function placedCard(parent:THREE.Group,index:number,mat:THREE.Material,
  geometry:THREE.BufferGeometry,name:string,offsetY=0):void{
  const anchor=PASGT_SLIT_ANCHORS.find(s=>s.id===CARD_ANCHORS[index]);
@@ -172,27 +191,37 @@ function placedCard(parent:THREE.Group,index:number,mat:THREE.Material,
  mount.name=name+'-mount';
  mount.position.set(anchor.position[0],anchor.position[1],anchor.position[2]);
  mount.userData.pasgtSlitId=anchor.id;
- // The root is tangent to the fabric, but vegetation grows mostly
- // upright while hanging textiles fall vertically. A fully tangent card
- // disappeared into the cover in front/side views and never broke its rim.
- const leaf=name.includes('leaf');
- const right=new THREE.Vector3(...anchor.right);
- const up=new THREE.Vector3(...anchor.up).lerp(
-  new THREE.Vector3(0,1,0),leaf?.83:.60).normalize();
- up.addScaledVector(right,-right.dot(up)).normalize();
- const normal=right.clone().cross(up).normalize();
+ const leaf=name.includes('leaf'),crown=anchor.id.startsWith('crown-');
+ const aim=pasgtDecorationDirection(anchor,leaf);
+ // The mesh grows up for foliage and hangs down for scrim. Build a frame
+ // that makes positive fold depth face away from the shell in both cases.
+ const up=leaf?aim.clone():aim.clone().negate();
+ let right:THREE.Vector3;
+ if(crown){
+  const radial=new THREE.Vector3(anchor.position[0],0,anchor.position[2]).normalize();
+  right=new THREE.Vector3(radial.z,0,-radial.x);
+ }else right=new THREE.Vector3(...anchor.right);
+ right.addScaledVector(up,-right.dot(up)).normalize();
+ let normal=right.clone().cross(up).normalize();
+ const surfaceNormal=new THREE.Vector3(...anchor.normal);
+ if(normal.dot(surfaceNormal)<0){
+  // Preserve the material-facing side while still pointing toward the
+  // exterior. Material is double-sided; rotating the tangent is cheaper
+  // and less fragile than reversing individual card triangles.
+  right.negate();normal=right.clone().cross(up).normalize();
+ }
  const basis=new THREE.Matrix4().makeBasis(right,up,normal);
  mount.quaternion.setFromRotationMatrix(basis);
- mount.rotateZ(TILTS[index]);mount.rotateX(leaf?.21:-.33);
- if(!leaf)mount.rotateY(index%2?.34:-.34);
- // Keep the mount root exactly at its slit and offset only card geometry.
+ mount.rotateZ(TILTS[index]);
+ // Deliberate small out-of-plane irregularity, not arbitrary full spins.
+ mount.rotateY(index%2?.10:-.10);
+ // Store semantic direction for narrow geometry acceptance tests.
+ mount.userData.pasgtPrimaryWorldDirection=[aim.x,aim.y,aim.z];
  const card=new THREE.Mesh(geometry,mat);
- if(leaf){
-  const size=CARD_SCALES[index];
-  card.scale.setScalar(size);
-  card.position.z=.07;
- }
+ card.position.z=leaf?.13:.22;
  card.position.y=offsetY;
+ if(leaf)card.scale.setScalar(CARD_SCALES[index]);
+ else if(anchor.id==='front-left')card.scale.setScalar(.82);
  card.name=name;card.castShadow=true;card.receiveShadow=false;
  mount.add(card);parent.add(mount);
 }
