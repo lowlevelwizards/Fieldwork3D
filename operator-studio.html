@@ -110,8 +110,19 @@
 </select></label>
 <label>LIVE SHADOW FILTER
 <select id="studioQualityShadowFilter" aria-label="Studio shadow map filtering">
-<option value="pcf">Filtered shadows · PCF</option>
+<option value="soft">Soft PCF · reduced sawteeth</option>
+<option value="pcf">Standard PCF · compare</option>
 <option value="hard">Original hard shadows</option>
+</select></label>
+<label>SHADOW MAP DETAIL
+<select id="studioQualityShadowSize" aria-label="Studio shadow map resolution">
+<option value="1024">1024 · standard</option>
+<option value="2048">2048 · fine detail</option>
+</select></label>
+<label>SHADOW DEPTH BIAS
+<select id="studioQualityShadowBias" aria-label="Studio shadow bias">
+<option value="stable">Stable contact bias</option>
+<option value="legacy">Old bias · compare</option>
 </select></label>
 <label>LIVE DIRECTIONAL SHADOW
 <select id="studioQualityLiveShadows" aria-label="Live directional shadows">
