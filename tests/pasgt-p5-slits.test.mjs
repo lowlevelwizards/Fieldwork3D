@@ -5,7 +5,7 @@ import {PASGT_SLIT_ANCHORS} from '../src/operator-pasgt-drape-geometry.ts';
 import {createPasgtFieldDress,createPasgtSlitGeometry} from '../src/operator-pasgt-field-dress.ts';
 test('PASGT slit positions are surface-derived and clear the band',()=>{
  assert.equal(PASGT_SLIT_ANCHORS.length,12);
- assert.equal(new Set(PASGT_SLIT_ANCHORS.map(a=>a.id)).size,8);
+ assert.equal(new Set(PASGT_SLIT_ANCHORS.map(a=>a.id)).size,12);
  assert.ok(PASGT_SLIT_ANCHORS.filter(s=>s.position[1]>7.1).length>=5,
   'upper fabric slits support foliage that breaks crown silhouette');
  assert.ok(PASGT_SLIT_ANCHORS.some(s=>s.position[1]<6.6),

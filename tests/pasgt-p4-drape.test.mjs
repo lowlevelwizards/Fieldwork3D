@@ -40,7 +40,7 @@ test('print is denser and physically consistent between top and sides',()=>{
 });
 test('twelve meaningful field anchors all have distinct names and locations',()=>{
  assert.equal(PASGT_SLIT_ANCHORS.length,12);
- assert.equal(new Set(PASGT_SLIT_ANCHORS.map(a=>a.id)).size,8);
+ assert.equal(new Set(PASGT_SLIT_ANCHORS.map(a=>a.id)).size,12);
  const band=createPasgtBandGeometry();
  assert.ok(band.boundingBox.max.y<6&&band.boundingBox.min.y>5.1);
 });
