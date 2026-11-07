@@ -111,7 +111,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
   sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
   slideAroundStaticCorner,glideAlongStaticWall,releaseStaticWallOverlap}
   from './breach-navigation.ts';
-import {routeWithSqueezeIntel,routeWithSqueezeWorld}
+import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld}
   from './breach-squeeze-route.ts';
 import {probeObstacleCrossing,probeWindowCrossing,probeWindowPortalRoute,
   canOpenWindowForClimb,preferTraversal,sampleTraversal,traversalRouteLength,
@@ -2184,6 +2184,25 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const sidewaysYaw=squeezeFacing(travelHeading);
   const narrowClear=sweptProfileClear(a.p,desiredMove,s.doors,
     sidewaysYaw,'squeeze');
+  // An incidental near-miss with a prop or wall is NOT an order to
+  // rotate the entire body into a squeeze. First look for a genuine
+  // full-shoulder route around it (often just a short sidestep). This is
+  // transient motor navigation; the player-authored waypoint stays put.
+  // Rate-limit this *physical-world* search to avoid A* churn every tick.
+  if(!normalClear&&!blocking&&!closed&&!a.traversalPending&&
+     s.seconds-a.lastNavRepairAt>.50){
+    a.lastNavRepairAt=s.seconds;
+    const fullLane=routeWithNormalWorld(a.p,p,s.doors);
+    if(fullLane.length&&d(fullLane[0],next)>6&&
+       d(fullLane[0],a.p)>3&&
+       sweptBodyClear(a.p,fullLane[0],s.doors)){
+      a.nav=fullLane;a.retryRouteAt=0;a.recoveryAttempts=0;
+      // Preserve existing WATCH facing and weapon intention; only the
+      // feet choose a different line around the obstruction.
+      a.squeeze=false;a.squeezeTime=0;
+      return true;
+    }
+  }
   // A grazing wall is not a narrow corridor. Glide the legal tangential
   // component at the full body radius, even when the proposed step points
   // slightly INTO the wall. Avoid rotating into a squeeze facing while
