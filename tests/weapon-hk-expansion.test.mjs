@@ -29,8 +29,8 @@ const create=id=>{
  return {config,group};
 };
 test('catalog: 8 AR, 9 AK and 5 distinct HK factory models',()=>{
- assert.equal(FAMILY_PRESETS.length,22);
- assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,5);
+ assert.equal(FAMILY_PRESETS.length,25);
+ assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,8);
  for(const id of ids){
   const {config,group}=create(id);
   assert.equal(matchingFamilyPreset(config.build).id,id);

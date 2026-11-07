@@ -4,7 +4,7 @@
  */
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 export type LowReadyFamily='ar-carbine'|'ar-rifle'|'ak-carbine'|
- 'ak-rifle'|'rpk-long'|'hk-rifle'|'hk-carbine';
+ 'ak-rifle'|'rpk-long'|'hk-rifle'|'hk-carbine'|'hk-smg'|'hk-smg-stockless';
 export type LowReadyPass='standard'|'compressed'|'deep';
 export type LowReadyArchetype={
  family:LowReadyFamily;
@@ -35,7 +35,13 @@ export const LOW_READY_ARCHETYPES:Readonly<Record<
   elbowBias:{firingDrop:5.7,supportDrop:5.3}},
  'hk-carbine':{family:'hk-carbine',yaw:.36,pitch:-.23,
   supportFraction:.39,stock:{x:.08,y:-.12,z:0},
-  elbowBias:{firingDrop:5.7,supportDrop:5.35}}
+  elbowBias:{firingDrop:5.7,supportDrop:5.35}},
+ 'hk-smg':{family:'hk-smg',yaw:.35,pitch:-.22,
+  supportFraction:.38,stock:{x:.05,y:-.10,z:0},
+  elbowBias:{firingDrop:5.5,supportDrop:5.15}},
+ 'hk-smg-stockless':{family:'hk-smg-stockless',yaw:.28,pitch:-.17,
+  supportFraction:.55,stock:{x:0,y:0,z:0},
+  elbowBias:{firingDrop:5.25,supportDrop:5.05}}
 };
 export const LOW_READY_PASSES:Readonly<Record<LowReadyPass,{
  stockX:number;stockY:number;stockZ:number;
@@ -56,6 +62,8 @@ export function lowReadyArchetype(config:WeaponConfiguration):LowReadyArchetype|
  const build=config.build;if(!build)return null;
  if(build.family==='hk')
   return LOW_READY_ARCHETYPES[
+   build.parts.receiver==='hk-mp5k-stockless'?'hk-smg-stockless':
+   config.weapon==='smg'?'hk-smg':
    config.weapon==='carbine'?'hk-carbine':'hk-rifle'];
  if(build.family==='ar'){
   const carbine=config.weapon==='carbine'||
