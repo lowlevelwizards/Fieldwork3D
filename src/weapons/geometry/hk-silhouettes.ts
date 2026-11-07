@@ -3,7 +3,7 @@
  */
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
-import {addOutline,addCuboid,addFacetedTube,addProfileFrame,type Outline,type SlotName}
+import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
  from './profile-primitives.ts';
 import {HK_OLIVE_POLYMER,HK_MAG_METAL}
  from './weapon-visual-palette.ts';
@@ -45,15 +45,9 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Integrated angular magazine housing; the magazine top stays fully seated.
  p('receiver',[[-.58,-2.08],[3.32,-2.08],[3.39,-2.93],
    [3.13,-3.13],[-.29,-3.13],[-.50,-2.91]],3.35);
- // A single real negative-space trigger guard, not a delicate wire loop.
- // It overlaps grip/lower and magwell; the lower strip remains continuous.
- addProfileFrame(root,'receiver',parts.receiver,ids.receiver++,
-  // One clean five-corner housing frame with an open negative-space window.
-  // The front edge tucks directly into the magwell, not a floating black hook.
-  [[-3.12,-2.40],[-.55,-2.40],[-.55,-3.69],
-   [-1.17,-3.95],[-3.12,-3.80]],
-  [[-2.48,-2.86],[-2.62,-3.40],[-1.13,-3.40],[-.98,-2.86]],
-  1.12,dark);
+ // No separately modeled trigger guard. The stepped lower housing,
+ // grip shoulder, and magazine housing carry the silhouette just as they
+ // do in the existing Fieldwork AR/AK miniature families.
 
  // Early and polymer buttstocks are both confident single solid shapes.
  const rear=early?-15.15:-15.30;
@@ -171,16 +165,16 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Low early folding blade versus a broader, squat G3A3 diopter turret.
  if(early){
   // Thin early folding sight: one meaningful leaf shape, not a turret.
-  const rear=p('receiver',[[-4.20,1.73],[-4.20,2.08],
-   [-3.89,2.08],[-3.75,2.86],[-3.36,2.86],
-   [-3.17,1.73]],1.44,'steel');
+  const rear=p('receiver',[[-4.33,1.73],[-4.33,2.14],
+   [-3.98,2.14],[-3.80,3.04],[-3.33,3.04],
+   [-3.02,1.73]],1.68,'steel');
   rear.userData.hkRearSight='early-leaf';
  }else{
   // One real squat SIX-sided vertical turret. A distinctive HK drum
   // silhouette, broad across X/Z but shorter than an AR carry handle.
-  const drum=new THREE.CylinderGeometry(.98,.98,1.25,6);
+  const drum=new THREE.CylinderGeometry(1.18,1.18,1.48,6);
   const rear=new THREE.Mesh(drum,steel);
-  rear.position.set(-3.55,2.44,0); // base Y=1.815 seats in roof 1.85
+  rear.position.set(-3.55,2.54,0); // base Y=1.80 buried .05 into the roof
   rear.name='family-receiver-'+parts.receiver+'-'+ids.receiver++;
   rear.castShadow=true;rear.receiveShadow=true;root.add(rear);
   rear.userData.hkRearSight='diopter-drum';
