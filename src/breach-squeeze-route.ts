@@ -5,6 +5,7 @@ import {type Pt,route,passable,type Door,OPERATOR_RADIUS,
 import {type IntelState,intelPassable,routeWithIntel} from './breach-intel.ts';
 import {profileSamples,squeezeFacing,sweptProfileClear,SQUEEZE_RADIUS}
   from './breach-navigation.ts';
+import {localDetour} from './breach-cooperation.ts';
 
 const narrowPassable=(at:Pt,canStand:(p:Pt,r:number)=>boolean)=>
   canStand(at,SQUEEZE_RADIUS);
@@ -137,12 +138,24 @@ const worldCanStand=(doors:Door[])=>(p:Pt,r:number)=>
  * Its result is transient navigation, not an authored path change. */
 export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
  const canStand=worldCanStand(doors);
+ if(!canStand(to,OPERATOR_RADIUS))return [];
+ const physical=(a:Pt,b:Pt)=>sweptProfileClear(a,b,doors,0,'normal');
  const standard=route(from,to,p=>canStand(p,OPERATOR_RADIUS));
- if(!standard.length||!routeSwept(from,standard,
-   (a,b)=>sweptProfileClear(a,b,doors,0,'normal')))return [];
- return preferRoomyPath(from,to,standard,canStand,
-   (a,b,r)=>intelSweep(a,b,canStand,r)&&
-     sweptProfileClear(a,b,doors,0,'normal'));
+ if(standard.length&&routeSwept(from,standard,physical))
+   return preferRoomyPath(from,to,standard,canStand,
+     (a,b,r)=>intelSweep(a,b,canStand,r)&&physical(a,b));
+ // An 8-unit grid may legally visit each cell but cut a solid corner
+ // between cells. Do not mistake that coarse-grid miss for a genuinely
+ // narrow corridor: first try a padded route, then one safe lateral step.
+ const padded=route(from,to,p=>canStand(p,COMFORT_RADIUS));
+ if(padded.length&&routeSwept(from,padded,physical))
+   return smoothTraversalRoute(from,padded,physical);
+ const relief=localDetour(from,to,doors,[]);
+ if(!relief||!physical(from,relief))return [];
+ if(physical(relief,to))return [relief,{...to}];
+ const tail=route(relief,to,p=>canStand(p,OPERATOR_RADIUS));
+ if(!tail.length||!routeSwept(relief,tail,physical))return [];
+ return [relief,...smoothTraversalRoute(relief,tail,physical)];
 }
 export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
  // Open hinged leaves are pushable; ordinary motion must remain eligible.
