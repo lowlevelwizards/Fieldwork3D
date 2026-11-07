@@ -29,7 +29,7 @@ jobs:
       - name: Clearing C — near-muzzle safety and real four-person sector integration
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-clearing-fire-lanes-c-') }}
         run: |
-          node --experimental-strip-types --test tests/breach-clearing-fire-c.test.mjs tests/breach-150.test.mjs tests/tactical-integration-17-firefight-b1.test.mjs tests/tactical-integration-09-firing-lanes.test.mjs tests/squad-entry-b-continuity.test.mjs
+          node --experimental-strip-types --test tests/breach-clearing-fire-c.test.mjs tests/breach-clearing-stance-c.test.mjs tests/breach-178.test.mjs tests/breach-164.test.mjs tests/breach-190b.test.mjs tests/breach-150.test.mjs tests/tactical-integration-17-firefight-b1.test.mjs tests/tactical-integration-09-firing-lanes.test.mjs tests/squad-entry-b-continuity.test.mjs
       - name: Clearing C — prior verified Pages release gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-clearing-fire-lanes-c-') }}
         env:
