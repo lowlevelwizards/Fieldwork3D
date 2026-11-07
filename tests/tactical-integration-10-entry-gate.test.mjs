@@ -17,7 +17,7 @@ test('squad-entry followers wait for physically clear doors, not just elapsed ti
   const sample={...leaf,open:true,openFraction:fraction};
   assert.equal(entryDoorState(sample),doorClear(sample)?'ready':'pending');
  }
- assert.equal(entryDoorState({...leaf,open:true,openFraction:1}),'ready');
+ assert.equal(entryDoorState({...leaf,kind:'shutter',open:true,openFraction:.72}),'ready');
  assert.equal(entryDoorState({...leaf,open:false,openFraction:.90}),'pending');
 });
 
@@ -62,43 +62,55 @@ test('B1: an explicit player WAIT retains its normal bounded timing',()=>{
  }finally{activateSite(null);}
 });
 
-test('B1: generated gate is consumed on the first ready execution tick',()=>{
+test('B1: physical gate waits while closed and clears on first ready tick',()=>{
  const s=newSession(0,undefined,'full-view','standard','hold',site);
  try{
   const units=team(s);
   assert.equal(planSquadEntry(s,'ENTRY'),true);
-  const gates=units.slice(1).map(a=>
-   a.plan.find(n=>n.kind==='wait'&&n.doorId==='ENTRY')?.id);
-  assert.ok(gates.every(id=>Number.isInteger(id)));
-  const readyAt=new Array(3).fill(null),releasedAt=new Array(3).fill(null);
+  const follower=units[1];
+  const authored=follower.plan.find(n=>
+   n.kind==='wait'&&n.doorId==='ENTRY');
+  assert.ok(authored&&authored.duration===0);
+  // Isolate the synthesized gate from the long stack-approach stage.
+  // The door is still the actual session door, checked by swept geometry.
+  for(const actor of units){
+   actor.plan=[];actor.nav=[];actor.activeNode=-1;
+  }
+  follower.plan=[{...authored,p:{...follower.p}}];
+  toggling(s);
+  for(let tick=0;tick<18;tick++)stepSession(s,1/30);
+  assert.equal(follower.plan[0]?.id,authored.id,
+   'a zero-duration gate must never release through a closed door');
+  const door=s.doors.find(d=>d.id==='ENTRY');
+  assert.ok(door);
+  door.open=true;door.openFraction=1.34;door.pushTarget=1.34;
+  door.angularVelocity=0;
+  assert.equal(entryDoorState(door),'ready',
+   'real operator capsule can traverse the opened fixture');
+  stepSession(s,1/30);
+  assert.equal(follower.plan.length,0,
+   'the first ready fixed tick must consume the generated gate');
+ }finally{activateSite(null);}
+});
+
+test('B1: complete four-person entry executes all planned orders',()=>{
+ const s=newSession(0,undefined,'full-view','standard','hold',site);
+ try{
+  const units=team(s);
+  assert.equal(planSquadEntry(s,'ENTRY'),true);
+  const destinations=units.map(a=>a.plan.filter(n=>n.kind==='move').at(-1)?.p);
   toggling(s);
   for(let tick=0;tick<1500;tick++){
-   const clear=entryDoorState(s.doors.find(d=>d.id==='ENTRY'))==='ready';
-   units.slice(1).forEach((a,i)=>{
-    if(clear&&a.plan[0]?.id===gates[i]&&readyAt[i]===null)
-      readyAt[i]=s.seconds;
-   });
    stepSession(s,1/30);
-   units.slice(1).forEach((a,i)=>{
-    if(readyAt[i]!==null&&releasedAt[i]===null&&
-       a.plan[0]?.id!==gates[i])releasedAt[i]=s.seconds;
-   });
-   if(releasedAt.every(t=>t!==null))break;
+   if(units.every(a=>a.plan.length===0))break;
   }
-  const report={
-   door:s.doors.map(d=>({id:d.id,open:d.open,fraction:d.openFraction,
-    clear:entryDoorState(d)})),
-   actors:units.map(a=>({id:a.id,p:a.p,pause:a.motorPause,
-    blocked:a.lastBlocker,blockedSeconds:a.blockedTime,ready:a.syncReady,
-    orders:a.plan.slice(0,5).map(n=>({id:n.id,kind:n.kind,door:n.doorId,
-     duration:n.duration})),nav:a.nav.length})),
-   readyAt,releasedAt,seconds:s.seconds
-  };
-  assert.ok(readyAt.every(t=>t!==null),
-   'all followers must actually reach a ready physical door gate: '+
-   JSON.stringify(report));
-  for(let i=0;i<3;i++)assert.ok(
-   releasedAt[i]!==null&&releasedAt[i]-readyAt[i]<.09,
-   'no extra timer after door clearance: '+JSON.stringify({readyAt,releasedAt}));
+  assert.ok(units.every((a,i)=>a.plan.length===0&&
+   a.p.y>280&&
+   Math.hypot(a.p.x-destinations[i].x,a.p.y-destinations[i].y)<18),
+   'no follower may stall at a gate: '+
+   JSON.stringify(units.map((a,i)=>({
+    id:a.id,p:a.p,orders:a.plan.slice(0,3).map(n=>n.kind),
+    dest:destinations[i],pause:a.motorPause,blocked:a.blockedTime
+   }))));
  }finally{activateSite(null);}
 });
