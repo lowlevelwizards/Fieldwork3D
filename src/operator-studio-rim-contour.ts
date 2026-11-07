@@ -70,14 +70,15 @@ export function disposeStudioContours(root:THREE.Object3D):void{
  * The original mesh and its shared geometry remain untouched. */
 export function synchronizeStudioContours(
  root:THREE.Object3D,enabled:boolean,amount:number
-):{meshes:number}{
+):{meshes:number;weaponMeshes:number}{
  if(!enabled||amount<=0){
   removeStudioContours(root);
-  return {meshes:0};
+  return {meshes:0,weaponMeshes:0};
  }
  const material=outlineMaterial(root);
  material.opacity=THREE.MathUtils.clamp(amount,0,.20);
  const eligible=new Set<THREE.Mesh>();
+ let weaponMeshes=0;
  root.traverseVisible(node=>{
   if(!(node instanceof THREE.Mesh)||Array.isArray(node.material)||
      node.userData.fieldworkStudioContourOverlay===true)return;
@@ -86,6 +87,13 @@ export function synchronizeStudioContours(
   if(!(source instanceof THREE.MeshStandardMaterial)||
      !studioContourEligible(node,source))return;
   eligible.add(node);
+  let cursor:THREE.Object3D|null=node;
+  while(cursor&&cursor!==root){
+   if(cursor.userData.fieldworkWeaponPresentation===true){
+    weaponMeshes++;break;
+   }
+   cursor=cursor.parent;
+  }
   let overlay=node.userData.fieldworkStudioContourMesh as
    OverlayMesh|undefined;
   if(!overlay){
@@ -104,5 +112,5 @@ export function synchronizeStudioContours(
   if(node instanceof THREE.Mesh&&
      node.userData.fieldworkStudioContourMesh&&!eligible.has(node))drop(node);
  });
- return {meshes:eligible.size};
+ return {meshes:eligible.size,weaponMeshes};
 }
