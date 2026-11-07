@@ -111,7 +111,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
   sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
   slideAroundStaticCorner,glideAlongStaticWall,releaseStaticWallOverlap}
   from './breach-navigation.ts';
-import {routeWithSqueezeIntel,routeWithSqueezeWorld}
+import {routeWithSqueezeIntel,routeWithSqueezeWorld,recoverNormalLane}
   from './breach-squeeze-route.ts';
 import {probeObstacleCrossing,probeWindowCrossing,probeWindowPortalRoute,
   canOpenWindowForClimb,preferTraversal,sampleTraversal,traversalRouteLength,
@@ -719,31 +719,99 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
   if(target.adjusted)notify(s,'POSITION ADJUSTED TO WALKABLE GROUND');
   return addNode(s,id,'move',target.point,extra);
 }
-/** A finger-drawn path is one undoable gesture, while BACK removes one node. */
+/** A finger-drawn path is one undoable gesture, while BACK removes one node.
+ * An obstructed drag ends at its last known safe point, never across the
+ * obstacle and never by exposing geometry still hidden from the player. */
+export type StrokeOutcome={clipped:boolean;endpoint:Pt};
 export function planMoveStroke(s:Session,id:string,points:Pt[],
- strafe=false,replaceExisting=false){
+ strafe=false,replaceExisting=false,outcome?:StrokeOutcome){
   const a=party(s,id);if(!a||!canEdit(s))return false;
+  // HERE redraw replaces navigation, not sustained WATCH intent. A WATCH
+  // attached to an old MOVE waypoint becomes an independent HERE instruction,
+  // retaining its original ID and world-space target for editing/deletion.
+  // A subsequent explicit LOOK/RELEASE already supersedes that WATCH.
+  const latestAim=replaceExisting?[...a.plan].reverse().find(n=>
+    n.aimMode!==undefined||n.facing!==undefined):undefined;
+  const retainedWatch:PlanNode|null=latestAim?.aimMode==='track'&&
+    latestAim.aimPoint?{
+      id:latestAim.id,kind:'look',p:clone(a.p),aimMode:'track',
+      aimPoint:clone(latestAim.aimPoint),aimLabel:'watch'
+    }:null;
+  // An already-executed WATCH lives in a.aimInstruction, not the plan;
+  // editing the route must not modify it either.
   const proposed:PlanNode[]=[];
   let from=replaceExisting?a.p:finalPoint(a);
   const facing=replaceExisting?a.heading:
     [...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
-  // Input strokes may still contain many meaningful bends; keep the
-  // actual release position even if the safety cap clips the middle.
+  // Test the *drawn segments*, not just their endpoints. A route search
+  // could otherwise detour around a wall even though the finger crossed it.
+  // Use KNOWN clearance only: undiscovered walls/props must not leak.
+  // Window/mantle portals remain legal when the established traversal system
+  // explicitly permits them.
   const stroke=points.length>60?[...points.slice(0,59),points.at(-1)!]:points;
-  for(let i=0;i<stroke.length;i++){
-    const point=stroke[i],last=i===stroke.length-1;
-    // Intermediate touch samples may be noisy, but the point where the
-    // finger LIFTS is the actual player decision. Never quietly commit a
-    // shorter, different plan when the requested endpoint is unwalkable.
-    if(d(from,point)<(last?3:20))continue;
-    if(!intelPassable(point,s.intel,SQUEEZE_RADIUS)||
-       !legalMoveRoute(s,from,point).length){
-      if(last)return false;
-      continue;
-    }
+  const addStrokePoint=(point:Pt):boolean=>{
+    if(d(from,point)<3||!legalMoveRoute(s,from,point).length)return false;
     proposed.push({id:s.nextId+proposed.length,kind:'move',p:clone(point),
       ...(strafe?{moveMode:'strafe' as const,facing}:{})});
     from=point;
+    return true;
+  };
+  let previousInput=from,clipped=false;
+  for(let i=0;i<stroke.length;i++){
+    const point=stroke[i],last=i===stroke.length-1;
+    if(!Number.isFinite(point.x)||!Number.isFinite(point.y)){
+      clipped=true;break;
+    }
+    const span=d(previousInput,point);
+    const steps=Math.max(1,Math.ceil(span/3));
+    let lastClear=previousInput,firstBlocked:Pt|null=null;
+    for(let step=1;step<=steps;step++){
+      const fraction=step/steps;
+      const p={x:previousInput.x+(point.x-previousInput.x)*fraction,
+        y:previousInput.y+(point.y-previousInput.y)*fraction};
+      if(!intelPassable(p,s.intel,SQUEEZE_RADIUS)){
+        firstBlocked=p;break;
+      }
+      lastClear=p;
+    }
+    // A real, known window portal is not a solid wall. Do not trim a
+    // deliberate vault/window crossing that the movement planner supports.
+    if(firstBlocked&&knownTraversal(s,previousInput,point)&&
+       legalMoveRoute(s,previousInput,point).length)
+      firstBlocked=null;
+    if(firstBlocked){
+      // Refine the first collision to near the clearance boundary without
+      // ever placing a waypoint inside the wall or piece of furniture.
+      let safe=lastClear,blocked=firstBlocked;
+      for(let j=0;j<6;j++){
+        const mid={x:(safe.x+blocked.x)/2,y:(safe.y+blocked.y)/2};
+        if(intelPassable(mid,s.intel,SQUEEZE_RADIUS))safe=mid;
+        else blocked=mid;
+      }
+      // Clearance alone is insufficient if the routing grid cannot land
+      // exactly at this edge. Search backward for the furthest *routable*
+      // point along the same safe approach, without crossing the obstacle.
+      if(!legalMoveRoute(s,from,safe).length){
+        let reachable=from,limit=safe;
+        for(let j=0;j<7;j++){
+          const mid={x:(reachable.x+limit.x)/2,
+            y:(reachable.y+limit.y)/2};
+          if(intelPassable(mid,s.intel,SQUEEZE_RADIUS)&&
+             legalMoveRoute(s,from,mid).length)reachable=mid;
+          else limit=mid;
+        }
+        safe=reachable;
+      }
+      addStrokePoint(safe);
+      clipped=true;break;
+    }
+    previousInput=point;
+    if(d(from,point)<(last?3:20))continue;
+    if(!addStrokePoint(point)){
+      // A non-local pathfinding failure must not discard earlier accepted
+      // bends or silently jump to the other side of an obstruction.
+      clipped=true;break;
+    }
   }
   if(!proposed.length)return false;
   // Door actions inserted during one stroke remain one undoable edit.
@@ -775,9 +843,13 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
   // The entire replacement stroke (including implicit door actions) is
   // ONE undoable transaction. A rejected stroke leaves the old route intact.
   return edit(s,a,()=>{
-    if(replaceExisting)a.plan=expanded;
+    if(replaceExisting)a.plan=retainedWatch?[retainedWatch,...expanded]:expanded;
     else a.plan.push(...expanded);
     s.nextId+=expanded.length;
+    if(outcome){
+      outcome.clipped=clipped;
+      outcome.endpoint=clone(expanded.at(-1)!.p);
+    }
   });
 }
 export function setStrafe(s:Session,id:string,nodeId:number):boolean{
@@ -2112,6 +2184,25 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const sidewaysYaw=squeezeFacing(travelHeading);
   const narrowClear=sweptProfileClear(a.p,desiredMove,s.doors,
     sidewaysYaw,'squeeze');
+  // An incidental near-miss with a prop or wall is NOT an order to
+  // rotate the entire body into a squeeze. First look for a genuine
+  // full-shoulder route around it (often just a short sidestep). This is
+  // transient motor navigation; the player-authored waypoint stays put.
+  // Rate-limit this *physical-world* search to avoid A* churn every tick.
+  if(!normalClear&&!blocking&&!closed&&!a.traversalPending&&
+     s.seconds-a.lastNavRepairAt>.50){
+    a.lastNavRepairAt=s.seconds;
+    const fullLane=recoverNormalLane(a.p,p,s.doors);
+    if(fullLane.length&&d(fullLane[0],next)>6&&
+       d(fullLane[0],a.p)>3&&
+       sweptBodyClear(a.p,fullLane[0],s.doors)){
+      a.nav=fullLane;a.retryRouteAt=0;a.recoveryAttempts=0;
+      // Preserve existing WATCH facing and weapon intention; only the
+      // feet choose a different line around the obstruction.
+      a.squeeze=false;a.squeezeTime=0;
+      return true;
+    }
+  }
   // A grazing wall is not a narrow corridor. Glide the legal tangential
   // component at the full body radius, even when the proposed step points
   // slightly INTO the wall. Avoid rotating into a squeeze facing while

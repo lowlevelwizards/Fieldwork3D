@@ -6847,13 +6847,21 @@ function releasePointer(e:PointerEvent,cancelled=false){
       // queued plan, even when it contains several waypoints. Appending
       // still happens via taps and gestures on the existing route end.
       // planMoveStroke records the entire replacement as one undoable edit.
-      if(!planMoveStroke(state,selected,points.slice(1),false,true))
+      const strokeOutcome={clipped:false,endpoint:pt};
+      if(!planMoveStroke(state,selected,points.slice(1),false,true,strokeOutcome))
         rejectAt(pt,'NO WALKABLE STROKE · PREVIOUS ROUTE KEPT');
       else{
         selectedActiveWatch=false;
         selectedNode=uid(selected)?.plan.filter(n=>n.kind==='move')
           .at(-1)?.id??null;
-        showUiHelp('ROUTE REPLACED FROM HERE · UNDO TO RESTORE',3200);
+        const watchKept=uid(selected)?.plan.some(n=>n.aimMode==='track')||
+          uid(selected)?.aimInstruction?.mode==='track';
+        if(strokeOutcome.clipped)
+          tacticalFeedback.emit('node',strokeOutcome.endpoint);
+        showUiHelp((strokeOutcome.clipped?
+          'ROUTE ENDS AT LAST CLEAR POINT · UNDO TO RESTORE':
+          'ROUTE REPLACED FROM HERE · UNDO TO RESTORE')+
+          (watchKept?' · WATCH KEPT':''),3200);
       }
       doorFocusId=null;
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
