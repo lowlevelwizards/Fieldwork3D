@@ -353,6 +353,10 @@ const qualityControls=[
   studioRenderQuality.pixelRatio>1.75?'2':'1.5'],
  ['studioQualityShadowFilter','studioShadowFilter',
   studioRenderQuality.shadowFilter],
+ ['studioQualityShadowSize','studioShadowSize',
+  String(studioRenderQuality.shadowSize)],
+ ['studioQualityShadowBias','studioShadowBias',
+  studioRenderQuality.shadowBias],
  ['studioQualityLiveShadows','studioLiveShadows',
   studioRenderQuality.liveShadows?'on':'off'],
  ['studioQualityBaked','studioBakedLighting',
@@ -381,7 +385,7 @@ const qualityStatus=$<HTMLOutputElement>('studioQualityStatus');
 qualityStatus.textContent='Live canvas MSAA: '+
  (renderer.getContext().getContextAttributes()?.antialias?'available':'disabled')+
  ' · '+renderer.getPixelRatio()+'× · '+
- (studioRenderQuality.shadowFilter==='pcf'?'filtered':'hard')+
+ studioRenderQuality.shadowFilter+' '+studioRenderQuality.shadowSize+
  ' shadows. Diagnostic switches reload this preview.';
 const member=()=>people.find(p=>p.id===selected);
 const current=()=>edits.get(selected)??member()?.wardrobe??initialWardrobe();
@@ -453,6 +457,7 @@ function renderScene(){
   renderer.getContext().getContextAttributes()?.antialias===true);
  canvas.dataset.studioPixelRatio=String(renderer.getPixelRatio());
  canvas.dataset.studioShadowFilter=studioRenderQuality.shadowFilter;
+ canvas.dataset.studioShadowBias=studioRenderQuality.shadowBias;
  canvas.dataset.studioBakedLighting=String(studioRenderQuality.bakedLighting);
  canvas.dataset.studioCelAA=String(studioRenderQuality.celAA);
  if(lightingInspectorOutput){
