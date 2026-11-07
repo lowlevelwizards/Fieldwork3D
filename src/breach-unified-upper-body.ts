@@ -18,7 +18,7 @@ import {chooseV3SupportGrip,type SupportGripRequest,
 export type CoupledFitRequest={
  weapon:WeaponId;configuration:WeaponConfiguration;
  envelope:PoseClearanceEnvelope;
- shoulders:readonly [THREE.Vector3,THREE.Vector3];
+ shoulders:[THREE.Vector3,THREE.Vector3];
  localYaw:number;poseWeight:number;allowVisualOverlap:boolean;
 };
 export type FitReuse<T>={

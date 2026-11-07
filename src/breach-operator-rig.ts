@@ -1526,7 +1526,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
      !p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
      !actionState.interactionWindow&&!activeTransition){
-    const outfit=clothing;
     const activeReloadSocket=reloadActive?
       weaponPresentationSockets(p.weapon,p.weaponConfiguration):null;
     const envelope=poseEnvelope!;
