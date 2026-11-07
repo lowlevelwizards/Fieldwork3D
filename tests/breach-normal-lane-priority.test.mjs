@@ -154,3 +154,34 @@ test('motor replaces a grazing straight-line step with a full-body lane before s
   assert.notEqual(oldOrder,'[]');
  }finally{activateSite(null);}
 });
+
+test('failed normal-lane probes leave the real stuck-recovery timer untouched',()=>{
+ const narrow={
+  ...site,seed:2010,
+  walls:[
+   {a:p(230,20),b:p(230,200)},
+   {a:p(230,215.5),b:p(230,720)}
+  ],
+  spawn:[p(192,208),p(120,350),p(132,380),p(150,410)],
+  bounds:{minX:0,minY:0,maxX:420,maxY:600}
+ };
+ const s=newSession(0,undefined,'full-view','standard','hold',narrow);
+ try{
+  const a=team(s).find(a=>a.id==='rook');
+  assert.ok(a);
+  assert.ok(planMove(s,a.id,p(272,208)));
+  const beforeRepair=a.lastNavRepairAt;
+  s.phase='running';
+  let sawProbe=false;
+  for(let i=0;i<300;i++){
+   stepSession(s,1/60);
+   if(a.lastNormalLaneProbeAt>=0){
+    sawProbe=true;
+    assert.equal(a.lastNavRepairAt,beforeRepair,
+      'failed comfort probes cannot keep restarting recovery backoff');
+    break;
+   }
+  }
+  assert.ok(sawProbe,'a narrow aperture must actually exercise the probe');
+ }finally{activateSite(null);}
+});
