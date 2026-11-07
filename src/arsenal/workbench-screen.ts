@@ -21,12 +21,13 @@ import {proposeArsenalRecipeLoad,acceptArsenalRecipeLoad,arsenalRecipeDifference
 import {ARSENAL_PLATFORMS,type ArsenalPlatformId} from './catalog.ts';
 import {arsenalFactoryChoices} from './factory-recipes.ts';
 import {arsenalFitFeedback} from './fit-feedback.ts';
+import {arsenalApplyMessage,type ArsenalApplyQuote} from './apply-guidance.ts';
 import './arsenal.css';
 /** Game context is an explicit commit callback; the Workbench owns no inventory. */
 export interface ArsenalWorkbenchApplyContext{
  mode:'campaign'|'quick';
  applyLabel:string;
- quote?:(recipe:ArsenalRecipeV2)=>{valid:boolean;canCommit?:boolean;cost?:number;reason?:string;changesClass?:boolean};
+ quote?:(recipe:ArsenalRecipeV2)=>ArsenalApplyQuote;
  onApply:(recipe:ArsenalRecipeV2)=>{ok:boolean;message?:string};
 }
 
@@ -179,6 +180,13 @@ export function openArsenalWorkbench(
     if(!proposal.valid){
      fitExplanation.hidden=false;
      fitExplanation.textContent=part.name+' · '+feedback.explanation;
+     // Put the reason beside the tapped option too. On a phone the shared
+     // status above a long grid can otherwise be outside the viewport.
+     for(const old of choiceList.querySelectorAll('.arsenal-wb-fit-inline'))old.remove();
+     const detail=document.createElement('span');
+     detail.className='arsenal-wb-fit-inline';
+     detail.textContent=feedback.explanation;
+     option.append(detail);
      return;
     }
     if(equipped)return;
@@ -230,9 +238,7 @@ export function openArsenalWorkbench(
   if(context){
    const quote=context.quote?.(draft.working);
    apply.disabled=quote!==undefined&&(!quote.valid||quote.canCommit===false);
-   applyQuote.textContent=quote?.reason??(quote?.changesClass?
-    'CHANGING WEAPON CLASS RESETS THE LOADED AND SPARE MAGAZINES':
-    quote?.cost?'PENDING PURCHASE · '+quote.cost+' CR':'');
+   applyQuote.textContent=quote?arsenalApplyMessage(quote):'';
   }
   undo.disabled=draft.undo.length===0;redo.disabled=draft.redo.length===0;
   showAll.textContent=showIncompatible?'HIDE UNAVAILABLE':'SHOW UNAVAILABLE';
@@ -318,9 +324,7 @@ export function openArsenalWorkbench(
     if(quote&&(!quote.valid||quote.canCommit===false||
       quote.cost||quote.changesClass)){
      const warning=document.createElement('p');warning.className='arsenal-wb-load-warning';
-     warning.textContent=quote.reason??(quote.changesClass?
-      'Changing weapon class resets ammunition when equipped.':
-      quote.cost?'Campaign cost when equipped: '+quote.cost+' CR':'');
+     warning.textContent=arsenalApplyMessage(quote);
      loadChanges.append(warning);
     }
    });

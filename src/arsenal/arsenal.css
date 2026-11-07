@@ -272,3 +272,7 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
  font:600 12px/1.5 var(--fw-font-action)}
 .arsenal-wb-fit-explanation[hidden]{display:none}
 .arsenal-wb-option[aria-disabled="true"]{cursor:help}
+
+.arsenal-wb-fit-inline{display:block;padding:8px 0 1px;
+ color:var(--fw-text-warm);font:600 12px/1.45 var(--fw-font-action);
+ white-space:normal;overflow-wrap:break-word}

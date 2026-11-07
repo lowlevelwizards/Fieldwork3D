@@ -26,7 +26,7 @@ export function quoteCampaignArsenalEdit(c:CampaignState,operatorId:string,
  if(!operator||operator.status==='lost'||operator.status==='retired')
   return denied('Operator is unavailable');
  if(recipe.weapon!==operator.weapon)
-  return denied('Changing gameplay weapon class requires an explicit weapon swap');
+  return denied('Switch weapon class in Campaign Armory first, then reopen Arsenal');
  const next=arsenalRecipeToLegacy(recipe);
  if(!next)return denied('The assembled weapon is not valid');
  // The pre-existing Campaign attachment store remains authoritative.
