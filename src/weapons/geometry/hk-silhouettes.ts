@@ -11,6 +11,7 @@ import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {addHKFacetedForearm,addHKHandguardOpenings} from './hk-handguard-profiles.ts';
 import {HK_MAG20_OUTLINE} from './hk-magazine-profiles.ts';
 import {addHKRetractableStock} from './hk-retractable-stock.ts';
+import {addHK556Family} from './hk-556-silhouettes.ts';
 import {HK_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 
@@ -18,6 +19,10 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material,
  showFactoryMuzzle=true){
  const parts=build.parts,early=parts.receiver==='hk-g3-early';
+ if(parts.receiver==='hk33-556-rifle'||parts.receiver==='hk53-556-compact'){
+  addHK556Family(root,build,steel,dark,showFactoryMuzzle);
+  return;
+ }
  const art=HK_BARREL_ART[parts.barrel];
  if(!art)throw new Error('Unknown HK art barrel: '+parts.barrel);
  const ids:Record<SlotName,number>={
