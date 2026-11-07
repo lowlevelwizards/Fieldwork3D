@@ -3,6 +3,8 @@
  * operator key casts; camera-only navigation never invalidates the map.
  */
 import * as THREE from 'three';
+import {requestedStudioRenderQuality}
+ from './operator-studio-render-quality.ts';
 
 export type StudioShadowMode='legacy'|'hybrid';
 /** Shared presentation constants: full-size operator and all appearance cards
@@ -118,7 +120,8 @@ export class OperatorStudioLighting{
   this.mode=studioShadowMode(search);
   this.shadowSize=shadowSizeOverride??studioShadowSize(search);
   const legacy=this.mode==='legacy';
-  this.liveEnabled=!legacy;
+  const quality=requestedStudioRenderQuality(search);
+  this.liveEnabled=!legacy&&quality.liveShadows;
   const p=STUDIO_INSPECTION_LIGHT;
   const shadowFill=studioShadowFill(search);
   this.hemisphere=new THREE.HemisphereLight(p.sky,shadowFill.ground,
@@ -136,7 +139,8 @@ export class OperatorStudioLighting{
   this.key.shadow.radius=1;
   this.renderer.shadowMap.enabled=this.liveEnabled;
   this.renderer.shadowMap.autoUpdate=false;
-  this.renderer.shadowMap.type=THREE.BasicShadowMap;
+  this.renderer.shadowMap.type=quality.shadowFilter==='hard'?
+   THREE.BasicShadowMap:THREE.PCFShadowMap;
   scene.add(this.hemisphere,this.key,this.fill,this.key.target);
  }
  /** Retint only existing hemisphere ground + fill lights; never change
