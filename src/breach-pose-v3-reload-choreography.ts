@@ -16,6 +16,8 @@ export type ReloadChoreographyRequest={
  fit:WeaponFit;lengthScale:number;progress:number;mode:ReloadMode;
  supportX:number;supportY:number;primaryX:number;
  magazineSocket?:{x:number;y:number};
+ /** Fitted near-side front armor surface, cached with equipment. */
+ clearanceFront?:number;
 };
 export type ReloadChoreographyResult={
  target:THREE.Vector3;
@@ -47,6 +49,17 @@ export function choreographV3ReloadHand(
  const offset=release+recovery+transport*.72;
  const target=base.clone().add(new THREE.Vector3(
   2.1*offset,0,-2.65*offset));
+ if(transport>0){
+  // Magazine stays in the hand while being carried. Route the entire
+  // hand+magazine outside the front of the rigid torso/carrier, not through
+  // the unbendable chest core. Only the TRANSIT interval is modified.
+  // Smooth squared-sine weighting returns exactly to the authentic
+  // magazine mount at the end of each insertion/removal phase.
+  const safeX=(input.clearanceFront??7.5)+1.25;
+  const safeZ=-7.5;
+  target.x+=Math.max(0,safeX-target.x)*transport;
+  target.z-=Math.max(0,target.z-safeZ)*transport;
+ }
  return {
   target,
   fraction:offset,

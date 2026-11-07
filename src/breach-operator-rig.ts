@@ -1383,19 +1383,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const outfit=resolvedWardrobe(p.wardrobe,p.equipment);
     const activeReloadSocket=v3ReloadActive?
       weaponPresentationSockets(p.weapon,p.weaponConfiguration):null;
+    const envelope=poseClearanceEnvelope(
+      outfit.armorStyle,outfit.rigStyle,outfit.top);
     const releasedTarget=v3ReloadActive?choreographV3ReloadHand({
       fit,lengthScale:data.lengthScale,
       progress:v3ReloadProgress,mode:v3ReloadMode,
       supportX:data.supportX,supportY:data.supportY,
-      primaryX:data.primaryX,
+      primaryX:data.primaryX,clearanceFront:envelope.front,
       magazineSocket:activeReloadSocket?.magazinePart?
         activeReloadSocket.magazine:undefined}).target:undefined;
     const result=solveV3CoordinatedPose({
       fit,weapon:p.weapon,configuration:coupledConfig,
       shoulders:[shoulderFor(0),shoulderFor(1)],
       chestRotation:r.chest.rotation,
-      envelope:poseClearanceEnvelope(
-        outfit.armorStyle,outfit.rigStyle,outfit.top),
+      envelope,
       mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
         'aim':'carry',
       releasedSupportTarget:releasedTarget
@@ -1582,6 +1583,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         fit,lengthScale:data.lengthScale,progress:reloadProgress,
         mode:reloadMode,supportX:data.supportX,supportY:data.supportY,
         primaryX:data.primaryX,
+        clearanceFront:poseClearanceEnvelope(
+          resolvedWardrobe(p.wardrobe,p.equipment).armorStyle,
+          resolvedWardrobe(p.wardrobe,p.equipment).rigStyle,
+          resolvedWardrobe(p.wardrobe,p.equipment).top).front,
         magazineSocket:sockets.magazinePart?sockets.magazine:undefined
       }).target:
       reloadHandChestTarget({

@@ -47,3 +47,17 @@ test('V3 route is continuous at all authored contact transitions',()=>{
   assert.ok(before.distanceTo(after)<.005,'time boundary '+t);
  }
 });
+
+test('V3 magazine transport stays outside rigid torso at mid transit',()=>{
+ const result=choreographV3ReloadHand({
+  ...input,clearanceFront:8.0,progress:(.32+.75)/2
+ });
+ assert.equal(result.segment,'transport');
+ assert.ok(result.target.x>=9.25-1e-8,'front of fitted carrier');
+ assert.ok(result.target.z<=-7.5+1e-8,'outside support-side torso');
+ for(const t of [.32,.75]){
+  const a=choreographV3ReloadHand({...input,clearanceFront:8,progress:t});
+  const b=reloadHandChestTarget({...input,progress:t});
+  assert.ok(a.target.distanceTo(b)<1e-8,'mount/contact endpoint '+t);
+ }
+});
