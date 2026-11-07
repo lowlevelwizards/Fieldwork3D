@@ -8,6 +8,10 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
 import {interpolateWeaponCarry} from '../src/breach-low-ready-transition.ts';
 import {fitWeaponPose} from '../src/breach-weapon-pose.ts';
 
+import {continuousElbowPole}
+ from '../src/breach-unified-upper-body.ts';
+import {solveTwoBone,ARM_LIMITS} from '../src/breach-ik.ts';
+
 const V=(x,y,z)=>new THREE.Vector3(x,y,z);
 const config=selectWeaponFamilyPreset(
  initialWeaponConfiguration('carbine'),'ar-m4a1');
@@ -69,15 +73,6 @@ test('retarget-ready to short stock follows directly interpolated gun, no interm
     2+alpha*.32);
    if(previous){
     const d=distance(previous,f);
-    if(d>3)console.log('READY_SHORT_JUMP',step,alpha,'total',d,
-      'gun',previous.gun.distanceTo(f.gun),
-      'hands',previous.hands.map((h,i)=>h.distanceTo(f.hands[i])),
-      'elbows',previous.elbows.map((h,i)=>h.distanceTo(f.elbows[i])));
-    if(step>=62)console.log('ENDPOINT_DIAG',step,
-      'elbowRight',f.elbows[1].toArray(),
-      'paired',r.root.userData.poseV3CoordinatedReport,
-      'target',r.root.userData.transitionJointTargets?.[1],
-      'dynamic',r.root.userData.poseV3DynamicReport?.[1]);
     maxJump=Math.max(maxJump,d);
    }
    const expected=interpolateWeaponCarry(source.fit,
@@ -112,13 +107,29 @@ test('interrupted stance transition begins from the displayed gun, hands and elb
    const f=frame(r,'ads',transition('short','ads',second,i/48),
      2.13+i*.34/48);
    const d=distance(f,previous);
-   if(d>3)console.log('INTERRUPTED_JUMP',i,d,
-    'gun',previous.gun.distanceTo(f.gun),
-    'hands',previous.hands.map((h,j)=>h.distanceTo(f.hands[j])),
-    'elbows',previous.elbows.map((h,j)=>h.distanceTo(f.elbows[j])));
    maxJump=Math.max(maxJump,d);previous=f;
   }
   assert.ok(maxJump<4.0,'interrupted elbow jump '+maxJump);
   assert.ok(distance(previous,frame(r,'ads',undefined,2.55))<.6);
  }finally{r.dispose();}
+});
+
+test('elbow sweep uses downward/outboard arc without straight-arm singularity',()=>{
+ const shoulder=V(0,0,0),wrist=V(15,0,0);
+ const from=V(7.5,-6,0),to=V(7.5,6,0);
+ for(const side of [-1,1]){
+  let previous=null;
+  for(let i=0;i<=64;i++){
+   const t=i/64;
+   const pole=continuousElbowPole(shoulder,wrist,from,to,side,t);
+   const arm=solveTwoBone(shoulder,wrist,10,10,pole,ARM_LIMITS);
+   assert.ok(arm.joint.toArray().every(Number.isFinite));
+   assert.ok(Math.abs(arm.joint.distanceTo(shoulder)-10)<1e-5);
+   assert.ok(Math.abs(arm.joint.distanceTo(wrist)-10)<1e-5);
+   if(previous)assert.ok(arm.joint.distanceTo(previous)<.55);
+   if(i===32)assert.ok(side*arm.joint.z>1,
+     'opposite elbow branches must sweep outboard');
+   previous=arm.joint;
+  }
+ }
 });

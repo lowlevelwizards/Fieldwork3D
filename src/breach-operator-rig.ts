@@ -1833,16 +1833,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const destinationArms=coupled?.arms??coordinatedDynamic?.arms??null;
     const pairedArms=!carryTransitionActive&&!authoredBridge&&
       !p.unarmedPreview?destinationArms:null;
-    if(sourceArm&&p.poseDiagnostics!==false){
-      const details=r.root.userData.transitionJointTargets as
-        Array<{target:number[]|null;shoulder:number[];
-          wrist:number[];source:number[]}>|undefined;
-      const entry={target:destinationArms?.[i]?.joint.toArray()??null,
-        shoulder:shoulder.toArray(),wrist:desired.toArray(),
-        source:sourceArm.elbow.toArray()};
-      if(details)details[i]=entry;
-      else r.root.userData.transitionJointTargets=[entry];
-    }
     if(pairedArms){
       const limb=pairedArms[i];
       r.elbowSpread[i]=Math.max(0,sign*(limb.joint.z-shoulder.z));
