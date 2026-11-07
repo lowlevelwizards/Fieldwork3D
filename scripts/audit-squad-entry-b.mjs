@@ -7,6 +7,7 @@
 import {newSession,team,planSquadEntry,stepSession,toggling}
  from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
+import {doorSwingBlocked,doorClear} from '../src/breach-door.ts';
 import {angleDifference} from '../src/breach-plan.ts';
 import {entryClearanceForLook} from '../src/breach-entry-coordination.ts';
 
@@ -14,7 +15,7 @@ const pt=(x,y)=>({x,y});
 const dist=(p,q)=>Math.hypot(p.x-q.x,p.y-q.y);
 const configs=[
  {name:'clear-opening',cover:[]},
- {name:'near-jamb-furniture',cover:[{x:322,y:295,w:18,h:22}]},
+ {name:'near-jamb-furniture',cover:[{x:322,y:295,w:18,h:22}],expectBlocked:true},
  {name:'far-interior-furniture',cover:[{x:306,y:351,w:24,h:23}]}
 ];
 const fixture=c=>({
@@ -75,7 +76,13 @@ function audit(c){
    distanceToAuthored:Math.round(dist(a.p,goals[i].p)*100)/100,
    remaining:a.plan.length,aim:a.aimInstruction?.mode
   }));
-  return {name:c.name,legalGoalGap:Math.round(legalGap*100)/100,
+  const actualDoor=s.doors.find(d=>d.id==='ENTRY');
+  const physicallyBlocked=!!actualDoor&&doorSwingBlocked(actualDoor,
+   Math.min(1,(actualDoor.openFraction??0)+.07),[]);
+  return {name:c.name,expectBlocked:!!c.expectBlocked,
+   door:{open:actualDoor?.open,fraction:actualDoor?.openFraction,
+    physicallyBlocked,passable:actualDoor?doorClear(actualDoor):false},
+   legalGoalGap:Math.round(legalGap*100)/100,
    crossed,finished,firstLook,proximity,
    minActorGap:Math.round(minActorGap*100)/100,
    maxBlockedSeconds:Math.round(maxBlocked*100)/100,lastClose,
@@ -88,9 +95,13 @@ const results=configs.map(audit);
 console.log(JSON.stringify({kind:'generated four-person entry clearance',
  note:'Separate from the intentional ~10-unit overlapping goal stress fixture. Not a phone animation audit.',
  results},null,2));
-if(results.some(r=>r.legalGoalGap<23||r.crossed.some(t=>t===null)||
- r.finished.some(t=>t===null)||r.final.some(x=>x.remaining!==0||
- x.distanceToAuthored>18)||!r.preservedOrders||r.maxBlockedSeconds>8)){
+if(results.some(r=>r.legalGoalGap<23||!r.preservedOrders||
+ (r.expectBlocked?
+  (!r.door.open||!r.door.physicallyBlocked||r.door.passable||
+   r.crossed.some(t=>t!==null)||r.final.some(x=>x.remaining===0)):
+  (r.crossed.some(t=>t===null)||r.finished.some(t=>t===null)||
+   r.final.some(x=>x.remaining!==0||x.distanceToAuthored>18)||
+   r.maxBlockedSeconds>8)))){
  console.error('Generated entry physical acceptance failed');
  process.exitCode=1;
 }
