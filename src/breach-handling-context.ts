@@ -41,12 +41,22 @@ export function handlingIntentForMovement(p:HandlingContext):HandlingIntent{
  * Uses torso heading rather than a stale destination; actual firing still
  * calls assessFireLane from the authoritative shot-time muzzle.
  */
+export type HandlingTeammate={
+ p:{x:number;y:number};side:string;health:number
+};
+/** Accept the authoritative actor list directly on the render path.
+ * No transient filter/map arrays per frame or actor. The point-only
+ * form is retained for tiny pure geometric tests and Lab previews. */
 export function teammateAheadForHandling(
  p:{x:number;y:number},heading:number,
- others:readonly {x:number;y:number}[]):boolean{
+ others:readonly ({x:number;y:number}|HandlingTeammate)[],
+ self?:HandlingTeammate):boolean{
  const fx=Math.cos(heading),fy=Math.sin(heading);
  for(const other of others){
-  const dx=other.x-p.x,dy=other.y-p.y;
+  if('p' in other&&(other===self||
+     self!==undefined&&(other.side!==self.side||other.health<=0)))continue;
+  const pt='p' in other?other.p:other;
+  const dx=pt.x-p.x,dy=pt.y-p.y;
   const forward=dx*fx+dy*fy;
   const across=Math.abs(dx*fy-dy*fx);
   if(forward>=4&&forward<48&&across<20)return true;
