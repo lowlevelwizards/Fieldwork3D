@@ -8,13 +8,26 @@ export const OPERATOR_HEIGHT_REFERENCE=50;
 /** Smooth continuous piecewise gradient for an operator in rest-pose units.
  * Higher parts are brighter; no pouch, strap, boot or jacket restarts it.
  */
-const STOPS:readonly (readonly [number,number])[]=[
- [0,.82],[.20,.86],[.45,.92],[.70,.97],[1,1]
-];
-export function operatorHeightBrightness(height:number):number{
+export type OperatorHeightProfile='current'|'neutral'|'sculptural'|'strong';
+const PROFILE_STOPS:Record<OperatorHeightProfile,
+ readonly (readonly [number,number])[]>={
+ current:[[0,.82],[.20,.86],[.45,.92],[.70,.97],[1,1]],
+ neutral:[[0,1],[1,1]],
+ sculptural:[[0,.78],[.20,.84],[.45,.91],[.70,.98],[1,1.03]],
+ strong:[[0,.74],[.20,.81],[.45,.90],[.70,.99],[1,1.05]]
+};
+export function requestedOperatorGradient(search:string):OperatorHeightProfile{
+ const profile=new URLSearchParams(search).get('operatorGradient');
+ return profile==='neutral'||profile==='sculptural'||profile==='strong'?
+  profile:'current';
+}
+export function operatorHeightBrightness(
+ height:number,profile:OperatorHeightProfile='current'
+):number{
  const h=THREE.MathUtils.clamp(height/OPERATOR_HEIGHT_REFERENCE,0,1);
- for(let i=1;i<STOPS.length;i++){
-  const [x1,y1]=STOPS[i], [x0,y0]=STOPS[i-1];
+ const stops=PROFILE_STOPS[profile];
+ for(let i=1;i<stops.length;i++){
+  const [x1,y1]=stops[i], [x0,y0]=stops[i-1];
   if(h>x1)continue;
   const q=THREE.MathUtils.clamp((h-x0)/(x1-x0),0,1);
   return y0+(y1-y0)*q*q*(3-2*q);
@@ -27,8 +40,9 @@ export type HeightLightingResult={meshes:number;vertices:number;cached:boolean};
  * No UV/color-tint mutation, additional shaders or draw calls.
  */
 export function applyOperatorHeightLighting(root:THREE.Object3D,
- stamp:string):HeightLightingResult{
- if(root.userData.fieldworkHeightRootKey===stamp)
+ stamp:string,profile:OperatorHeightProfile='current'):HeightLightingResult{
+ const profileStamp=profile+':'+stamp;
+ if(root.userData.fieldworkHeightRootKey===profileStamp)
   return {meshes:0,vertices:0,cached:true};
  root.updateWorldMatrix(true,true);
  const toRoot=root.matrixWorld.clone().invert();
@@ -65,15 +79,15 @@ export function applyOperatorHeightLighting(root:THREE.Object3D,
   const transform=toRoot.clone().multiply(node.matrixWorld);
   for(let i=0;i<positions.count;i++){
    sample.fromBufferAttribute(positions,i).applyMatrix4(transform);
-   const factor=operatorHeightBrightness(sample.y);
+   const factor=operatorHeightBrightness(sample.y,profile);
    for(let c=0;c<3;c++)
-    samples[i*3+c]=Math.round(Math.max(.55,
-     baseline[i*3+c]/255*factor)*255);
+    samples[i*3+c]=Math.round(Math.min(1,Math.max(.55,
+     baseline[i*3+c]/255*factor))*255);
    vertices++;
   }
   colors.needsUpdate=true;
   meshes++;
  });
- root.userData.fieldworkHeightRootKey=stamp;
+ root.userData.fieldworkHeightRootKey=profileStamp;
  return {meshes,vertices,cached:false};
 }
