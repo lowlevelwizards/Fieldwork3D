@@ -267,6 +267,11 @@ function sampleOnEdge(edge:NetEdge):PasgtRingSample{
   bottomY:a.bottomY+(b.bottomY-a.bottomY)*t,distance:0
  };
 }
+/** The actual net cord center tucks inside the vertical .72-unit band.
+ * Ribbon widths may extend slightly beyond that center; the band mesh
+ * occludes the center and the entire endpoint is never a dangling wire.
+ */
+export const PASGT_NET_TIE_Y=5.59;
 function netDrape(edge:NetEdge):readonly (readonly number[])[]{
  const s=sampleOnEdge(edge);
  const outward=s.side==='front'?[0,0,-1]:
@@ -285,7 +290,7 @@ function netDrape(edge:NetEdge):readonly (readonly number[])[]{
  // Tie point sits *inside* the real fitted band mesh, rather than
  // resting on the outer apron as a dangling free-end. All six net
  // segments use the same perimeter projection as the elastic strip.
- const contact=pasgtBandSurfacePoint(s,true,5.59);
+ const contact=pasgtBandSurfacePoint(s,true,PASGT_NET_TIE_Y);
  const lower=[
   contact[0]-outward[0]*.16,
   contact[1],
@@ -350,6 +355,7 @@ export function createPasgtNetGeometry():THREE.BufferGeometry{
  g.userData.pasgtNetPattern='sparse-diamond';
  g.userData.pasgtNetCoverContact=true;
  g.userData.pasgtNetTuckedUnderBand=true;
+ g.userData.pasgtNetTieHeight=PASGT_NET_TIE_Y;
  return g;
 }
 /** Oversized two-point retention. Three graphic shapes, no hardware.
