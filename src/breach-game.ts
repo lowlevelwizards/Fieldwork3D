@@ -788,6 +788,20 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
         if(intelPassable(mid,s.intel,SQUEEZE_RADIUS))safe=mid;
         else blocked=mid;
       }
+      // Clearance alone is insufficient if the routing grid cannot land
+      // exactly at this edge. Search backward for the furthest *routable*
+      // point along the same safe approach, without crossing the obstacle.
+      if(!legalMoveRoute(s,from,safe).length){
+        let reachable=from,limit=safe;
+        for(let j=0;j<7;j++){
+          const mid={x:(reachable.x+limit.x)/2,
+            y:(reachable.y+limit.y)/2};
+          if(intelPassable(mid,s.intel,SQUEEZE_RADIUS)&&
+             legalMoveRoute(s,from,mid).length)reachable=mid;
+          else limit=mid;
+        }
+        safe=reachable;
+      }
       addStrokePoint(safe);
       clipped=true;break;
     }
