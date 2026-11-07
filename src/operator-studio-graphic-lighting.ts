@@ -9,7 +9,7 @@ import type {StudioLightLabSettings,StudioCelProfile}
  from './operator-studio-light-lab.ts';
 import {operatorRimRole,injectOperatorRim}
  from './operator-studio-toon-lighting.ts';
-import {synchronizeStudioContours,removeStudioContours,disposeStudioContours}
+import {synchronizeStudioContours,disposeStudioContours}
  from './operator-studio-rim-contour.ts';
 
 type Source=THREE.MeshStandardMaterial;
@@ -285,7 +285,7 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
  if(!shade){
   restoreStudioGraphicLighting(root);
   const contour=synchronizeStudioContours(root,rimOn,config.rimAmount);
-  return {meshes:contour.meshes,materials:0,weapons:contour.meshes};
+  return {meshes:contour.meshes,materials:0,weapons:contour.weaponMeshes};
  }
  restoreStudioGraphicLighting(root);
  let cache=root.userData.fieldworkStudioArtCache as Cache|undefined;
@@ -342,5 +342,5 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
  }
  const contour=synchronizeStudioContours(root,rimOn,config.rimAmount);
  let materials=0;for(const variants of cache.values())materials+=variants.size;
- return {meshes,materials,weapons:weapons+contour.meshes};
+ return {meshes,materials,weapons:weapons+contour.weaponMeshes};
 }
