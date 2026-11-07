@@ -4,6 +4,7 @@ import {assessFireLane,fireLaneReachable} from '../src/breach-fire-safety.ts';
 import {newSession,team,planSquadEntry,stepSession,toggling}
  from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
+import {selectFireableContact} from '../src/breach-target-selection.ts';
 
 const from={x:0,y:0},to={x:100,y:0};
 const lane=(friend,endpoint=to)=>
@@ -91,5 +92,55 @@ test('C4: real four-person entry finishes; muzzle checks protect every teammate 
      a.id+' must not fire through '+teammate.id);
    }
   }
+ }finally{activateSite(null);}
+});
+
+test('C18: moving four-person entry respects near-friendly veto and safe target selection',()=>{
+ const s=newSession(0,undefined,'full-view','standard','hold',fixture);
+ try{
+  const squad=team(s);
+  assert.equal(planSquadEntry(s,'ENTRY'),true);
+  let closeMovingSamples=0,entryMovingSamples=0,safeAlternativeSamples=0;
+  toggling(s);
+  for(let tick=0;tick<1500;tick++){
+   stepSession(s,1/30);
+   for(let i=0;i<squad.length;i++){
+    const a=squad[i];
+    if(a.plan[0]?.entryDoorId==='ENTRY'&&a.velocity>5)
+     entryMovingSamples++;
+    for(let j=i+1;j<squad.length;j++){
+     const b=squad[j],gap=dist(a.p,b.p);
+     if(gap<.2||gap>13||a.velocity<.5&&b.velocity<.5)continue;
+     // Use actual resolved per-frame positions, including partial-stride
+     // convoy movement near the threshold. A visible teammate ahead of the
+     // muzzle must veto a shot even before the pair has 12-unit separation.
+     const dx=b.p.x-a.p.x,dy=b.p.y-a.p.y;
+     const blocked={id:'behind-friendly',p:{
+      x:a.p.x+dx*3,y:a.p.y+dy*3}};
+     const safe={id:'clear-sector',p:{
+      x:a.p.x-dy/gap*85,y:a.p.y+dx/gap*85}};
+     const fireLane=c=>assessFireLane(a.p,26,c.p,26,
+      [],[],[],[b.p]).blocker==='clear';
+     assert.equal(fireLane(blocked),false);
+     assert.equal(assessFireLane(a.p,26,blocked.p,26,[],[],[],
+      [b.p]).blocker,'friendly');
+     if(fireLane(safe)){
+      assert.equal(selectFireableContact(a.p,[blocked,safe],
+       blocked.id,fireLane)?.id,safe.id,
+       'existing target selector should prefer a viable sector over a teammate');
+      safeAlternativeSamples++;
+     }
+     closeMovingSamples++;
+    }
+   }
+   if(squad.every(a=>!a.plan.length))break;
+  }
+  assert.ok(entryMovingSamples>20,'the test must actually simulate entry movement');
+  assert.ok(closeMovingSamples>0,
+   'the real moving stack must exercise close-passing teammate safety');
+  assert.ok(safeAlternativeSamples>0,
+   'at least one resolved moving state permits a safe alternate fire lane');
+  assert.ok(squad.every(a=>a.plan.length===0),
+   'safety checks are passive: no operator loses their authored entry');
  }finally{activateSite(null);}
 });
