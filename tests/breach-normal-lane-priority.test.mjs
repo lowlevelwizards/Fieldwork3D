@@ -66,7 +66,7 @@ test('a few units of lateral clearance are preferred when the roomy lane is affo
 test('normal passage must beat a shorter direct squeeze when a walkable detour exists',()=>{
  activateSite({...site,walls:[
   {a:p(205,20),b:p(205,150)},
-  {a:p(205,165),b:p(205,295)}
+  {a:p(205,165),b:p(205,266)}
  ]});
  try{
   const from=p(145,157),goal=p(275,157);
