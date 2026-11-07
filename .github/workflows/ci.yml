@@ -1202,6 +1202,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/replay-r43b-bodycam-controls.test.mjs \
+            tests/replay-r43b-window-knowledge.test.mjs \
             tests/replay-r43b-video-disclosure.test.mjs \
             tests/replay-r2-video.test.mjs \
             tests/replay-r43-bodycam-camera.test.mjs \
