@@ -16,10 +16,11 @@ import {ReplayChunkWindow,REPLAY_CHUNK_FRAMES,
   type ReplayChunkBoundary} from './breach-replay-chunks.ts';
 
 const DB='fieldwork-breach-replay-chunks';
-const VERSION=1;
+const VERSION=2;
 const DRAFTS='drafts';
 const CHUNKS='chunks';
 const PUBLISHED='published';
+const STREAMING='stream-drafts';
 export const REPLAY_V2_MAX_FRAMES=12000; // remains bounded by V1 recorder
 const MAX_PENDING=16;
 type Sidecar=Omit<ReplayArchiveV1,'frames'>;
@@ -75,6 +76,10 @@ async function open():Promise<IDBDatabase>{
         db.createObjectStore(CHUNKS,{keyPath:['generation','index']});
       if(!db.objectStoreNames.contains(PUBLISHED))
         db.createObjectStore(PUBLISHED,{keyPath:'id'});
+      // Additive upgrade: V1 drafts, immutable chunks, and complete
+      // publications remain untouched and continue loading normally.
+      if(!db.objectStoreNames.contains(STREAMING))
+        db.createObjectStore(STREAMING,{keyPath:'generation'});
     };
     request.onsuccess=()=>resolve(request.result);
     request.onerror=()=>reject(request.error??Error('Cannot open replay chunk database'));
@@ -305,4 +310,198 @@ export async function stageExistingReplayAsChunksV2(
       archive.frames.slice(first,first+chunkFrames));
   }
   return commitChunkedReplayV2(draft.generation);
+}
+
+/** G5b2 experimental unknown-length stream journal. The complete V1
+ * capture/restore contract remains capped at 12,000 frames; this bounded
+ * V2 writer is not connected to live recording until audio, plan and
+ * observer journals can also be kept without unbounded memory growth.
+ */
+export const REPLAY_STREAM_MAX_FRAMES=48000;
+export type ReplayStreamDraft={
+  generation:string;id:string;createdAt:number;startedAt:number;
+  previousGeneration:string|null;
+  chunkFrames:number;writtenFrames:number;
+  boundaries:ReplayChunkBoundary[];lastTime:number|null;
+  sealed:boolean;
+};
+export type ReplayStreamProgress={
+  id:string;generation:string;writtenFrames:number;chunkCount:number;
+  sealed:boolean;startedAt:number;
+};
+const streamInfo=(draft:ReplayStreamDraft):ReplayStreamProgress=>({
+  id:draft.id,generation:draft.generation,
+  writtenFrames:draft.writtenFrames,chunkCount:draft.boundaries.length,
+  sealed:draft.sealed,startedAt:draft.startedAt
+});
+/** Creates an unpublished stream without knowing its final frame count.
+ * No frames, full film, or giant event journals are copied on creation.
+ */
+export async function beginStreamingReplayV2(
+  id:string,createdAt:number,
+  options:{replace?:boolean;chunkFrames?:number}={}
+):Promise<ReplayStreamProgress>{
+  if(typeof id!=='string'||id.length<1||id.length>128||
+    !/^[\\w-]+$/.test(id)||!Number.isFinite(createdAt))
+    throw Error('Invalid long-film recording identity');
+  const chunkFrames=options.chunkFrames??REPLAY_CHUNK_FRAMES;
+  if(!Number.isSafeInteger(chunkFrames)||chunkFrames<2||
+    chunkFrames>REPLAY_CHUNK_FRAMES)
+    throw Error('Invalid streamed replay chunk size');
+  if(!globalThis.crypto?.randomUUID)
+    throw Error('Secure replay generation identifiers unavailable');
+  const generation=crypto.randomUUID();
+  const db=await open();
+  try{
+    const tx=db.transaction([STREAMING,PUBLISHED],'readwrite'),done=completed(tx);
+    const drafts=tx.objectStore(STREAMING);
+    const existing=await req<ReplayChunkPublished|undefined>(
+      tx.objectStore(PUBLISHED).get(id));
+    if(existing&&!options.replace)
+      throw Error('Existing complete replay requires explicit replacement');
+    const keys=await req(drafts.getAllKeys());
+    if(keys.length>=MAX_PENDING)
+      throw Error('Too many incomplete stream drafts; inspect recovery');
+    const draft:ReplayStreamDraft={
+      generation,id,createdAt,startedAt:Date.now(),
+      previousGeneration:existing?.generation??null,
+      chunkFrames,writtenFrames:0,boundaries:[],lastTime:null,sealed:false
+    };
+    drafts.add(draft);
+    await done;
+    return streamInfo(draft);
+  }finally{db.close();}
+}
+/** Each full chunk and its progress journal commit together. The only
+ * permitted short chunk must declare final=true. IndexedDB auto-aborts
+ * failed unique inserts; no frame count can advance on partial failure.
+ */
+export async function appendStreamingReplayChunkV2(
+  generation:string,index:number,frames:readonly ReplayFrame[],
+  final=false
+):Promise<ReplayStreamProgress>{
+  const db=await open();
+  try{
+    const tx=db.transaction([STREAMING,CHUNKS],'readwrite'),done=completed(tx);
+    const drafts=tx.objectStore(STREAMING);
+    const draft=await req<ReplayStreamDraft|undefined>(drafts.get(generation));
+    if(!draft)throw Error('Stream draft not found');
+    if(draft.sealed||index!==draft.boundaries.length||
+      frames.length<1||frames.length>draft.chunkFrames||
+      (!final&&frames.length!==draft.chunkFrames)||
+      draft.writtenFrames+frames.length>REPLAY_STREAM_MAX_FRAMES||
+      !acceptableChunk(frames,draft.lastTime)||
+      (draft.lastTime!==null&&frames[0]?.t<=draft.lastTime))
+      throw Error('Invalid streamed replay chunk sequence or duration');
+    const first=draft.writtenFrames;
+    const boundary:ReplayChunkBoundary={
+      index,first,endExclusive:first+frames.length,
+      fromTime:frames[0].t,toTime:frames.at(-1)!.t
+    };
+    tx.objectStore(CHUNKS).add({generation,index,frames:[...frames]});
+    const updated:ReplayStreamDraft={...draft,
+      writtenFrames:boundary.endExclusive,lastTime:boundary.toTime,
+      sealed:final,boundaries:[...draft.boundaries,boundary]};
+    drafts.put(updated);
+    await done;
+    return streamInfo(updated);
+  }finally{db.close();}
+}
+/** Exact multiple-of-chunk-length recordings still need a terminal marker.
+ * This operation and subsequent final publication are separate atomic
+ * transactions, so app suspension leaves a recoverable sealed draft.
+ */
+export async function sealStreamingReplayV2(
+  generation:string
+):Promise<ReplayStreamProgress>{
+  const db=await open();
+  try{
+    const tx=db.transaction(STREAMING,'readwrite'),done=completed(tx);
+    const drafts=tx.objectStore(STREAMING);
+    const draft=await req<ReplayStreamDraft|undefined>(drafts.get(generation));
+    if(!draft||draft.writtenFrames<2)
+      throw Error('Cannot seal missing or empty replay stream');
+    const next={...draft,sealed:true};
+    drafts.put(next);
+    await done;
+    return streamInfo(next);
+  }finally{db.close();}
+}
+/** The final evidence sidecar is validated against the true first and last
+ * frames loaded from durable chunk rows, not untrusted caller timestamps.
+ * All missing data, invalid personal journals and stale replacements fail
+ * before the pointer becomes visible. The previous film survives failure.
+ */
+export async function commitStreamingReplayV2(
+  generation:string,sidecar:Sidecar
+):Promise<ReplayChunkPublished>{
+  const db=await open();
+  try{
+    const tx=db.transaction([STREAMING,CHUNKS,PUBLISHED],'readwrite');
+    const done=completed(tx);
+    const drafts=tx.objectStore(STREAMING);
+    const draft=await req<ReplayStreamDraft|undefined>(drafts.get(generation));
+    if(!draft||!draft.sealed||draft.writtenFrames<2||
+      !draft.boundaries.length)
+      throw Error('Cannot publish an incomplete replay stream');
+    const firstIndex=0,lastIndex=draft.boundaries.length-1;
+    const first=await req<{frames:ReplayFrame[]}|undefined>(
+      tx.objectStore(CHUNKS).get([generation,firstIndex]));
+    const last=await req<{frames:ReplayFrame[]}|undefined>(
+      tx.objectStore(CHUNKS).get([generation,lastIndex]));
+    const firstFrame=first?.frames?.[0],lastFrame=last?.frames?.at(-1);
+    if(!firstFrame||!lastFrame||!replayArchiveIsValid({
+      ...sidecar,frames:[firstFrame,lastFrame]
+    })||sidecar.id!==draft.id||
+      sidecar.createdAt!==draft.createdAt)
+      throw Error('Final replay evidence is missing or invalid');
+    const published=tx.objectStore(PUBLISHED);
+    const previous=await req<ReplayChunkPublished|undefined>(
+      published.get(draft.id));
+    if((previous?.generation??null)!==draft.previousGeneration)
+      throw Error('Replay was replaced while stream draft was writing');
+    const result:ReplayChunkPublished={
+      id:draft.id,generation,frameCount:draft.writtenFrames,
+      chunkFrames:draft.chunkFrames,boundaries:draft.boundaries,
+      sidecar,publishedAt:Date.now(),storageComplete:true
+    };
+    published.put(result);
+    drafts.delete(generation);
+    if(previous)for(const b of previous.boundaries)
+      tx.objectStore(CHUNKS).delete([previous.generation,b.index]);
+    await done;
+    return result;
+  }finally{db.close();}
+}
+export async function listInterruptedStreamingReplaysV2():
+Promise<ReplayStreamProgress[]>{
+  const db=await open();
+  try{
+    const tx=db.transaction(STREAMING,'readonly'),done=completed(tx);
+    const records=await req<ReplayStreamDraft[]>(
+      tx.objectStore(STREAMING).getAll());
+    await done;
+    return records.map(streamInfo).sort((a,b)=>
+      a.startedAt-b.startedAt||
+      a.generation.localeCompare(b.generation));
+  }finally{db.close();}
+}
+/** Explicit draft discard, never an automatic cleanup of user evidence.
+ * Published generations are in a different namespace and unaffected.
+ */
+export async function discardStreamingReplayV2(
+  generation:string
+):Promise<boolean>{
+  const db=await open();
+  try{
+    const tx=db.transaction([STREAMING,CHUNKS],'readwrite'),done=completed(tx);
+    const drafts=tx.objectStore(STREAMING);
+    const draft=await req<ReplayStreamDraft|undefined>(drafts.get(generation));
+    if(!draft){await done;return false;}
+    for(const b of draft.boundaries)
+      tx.objectStore(CHUNKS).delete([generation,b.index]);
+    drafts.delete(generation);
+    await done;
+    return true;
+  }finally{db.close();}
 }

@@ -280,7 +280,7 @@ try{
     // Force an IDB uniqueness failure on the second chunk. The first
     // successful chunk and progress journal must survive atomically.
     const db=await new Promise((resolve,reject)=>{
-      const request=indexedDB.open('fieldwork-breach-replay-chunks',1);
+      const request=indexedDB.open('fieldwork-breach-replay-chunks',2);
       request.onsuccess=()=>resolve(request.result);
       request.onerror=()=>reject(request.error);
     });
@@ -351,7 +351,7 @@ try{
     const {loadSavedReplay}=await import('/src/breach-replay-library.ts');
     const final=await storage.getPublishedChunkedReplayV2('g3-browser-001');
     const db=await new Promise((resolve,reject)=>{
-      const request=indexedDB.open('fieldwork-breach-replay-chunks',1);
+      const request=indexedDB.open('fieldwork-breach-replay-chunks',2);
       request.onsuccess=()=>resolve(request.result);
       request.onerror=()=>reject(request.error);
     });
