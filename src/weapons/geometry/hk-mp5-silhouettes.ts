@@ -12,7 +12,7 @@ import {HK_DARK_POLYMER,HK9_MAG_METAL,HK_SD_SUPPRESSOR_METAL,
  HK_MUZZLE_METAL} from './weapon-visual-palette.ts';
 import {mp5MagazineOutline,mp5MagazineHeelOutline,MP5_MAG_DEPTH}
  from './hk-mp5-magazine-profiles.ts';
-import {addMP5TropicalForearm,addMP5SDShroud}
+import {addMP5TropicalForearm,addMP5SDShroud,addMP5TriRail}
  from './hk-mp5-handguard-profiles.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 import {addHKTriggerSelector} from './hk-trigger-selector.ts';
@@ -58,8 +58,30 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
 
  // Unique MP5 stock geometry, NOT a G3 stock scaled uniformly.
  if(isK){
-  const cap=b('stock',-6.30,-.25,0,.70,3.18,3.22,dark);
-  cap.userData.hkMP5StocklessCap=true;
+  if(parts.stock==='hk-mp5k-pdw-stock'){
+   // Choate-style PDW side folder: coarse upper arm, angled open brace,
+   // pivot and deep buttplate, without tiny screws/bolts or rear rails.
+   const pivot=b('stock',-6.33,-.24,-.40,1.03,3.20,3.30,steel);
+   pivot.userData.hkMP5PDWHinge=true;
+   const arm=p('stock',[
+    [-12.55,.80],[-6.42,.80],[-6.39,.16],
+    [-10.32,.12],[-12.55,-.43]
+   ],1.93,HK_DARK_POLYMER);
+   arm.userData.hkMP5PDWUpper=true;
+   const brace=p('stock',[
+    [-12.55,-1.90],[-12.09,-1.30],[-8.27,-.18],
+    [-7.32,-.18],[-10.89,-1.90]
+   ],1.68,HK_DARK_POLYMER);
+   brace.userData.hkMP5PDWBrace=true;
+   const butt=p('stock',[
+    [-13.05,1.02],[-12.53,1.02],[-12.53,-2.36],
+    [-12.82,-2.65],[-13.05,-2.65]
+   ],3.20,dark);
+   butt.userData.hkMP5PDWButt=true;
+  }else{
+   const cap=b('stock',-6.30,-.25,0,.70,3.18,3.22,dark);
+   cap.userData.hkMP5StocklessCap=true;
+  }
  }else if(parts.stock==='hk-mp5-fixed-stock'){
   // A2 and SD2 share the extended retractable stock's shoulder landmark.
   // One heavy solid polymer shell; no added screws, vents or buttstock rails.
@@ -99,6 +121,9 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
  if(isSD){
   // Massive cylindrical fore-end; coarse symbolic bands only.
   addMP5SDShroud(root,parts.handguard,ids.handguard++,
+   art.handguardStartX,art.handguardEndX,HK_DARK_POLYMER);
+ }else if(parts.handguard==='hk-mp5-trirail'){
+  addMP5TriRail(root,parts.handguard,ids.handguard++,
    art.handguardStartX,art.handguardEndX,HK_DARK_POLYMER);
  }else{
   addMP5TropicalForearm(root,parts.handguard,ids.handguard++,

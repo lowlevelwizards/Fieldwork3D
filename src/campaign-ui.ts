@@ -654,7 +654,8 @@ export class CampaignScreen{
    const current=person.weaponConfiguration.slots[slot];
    for(const part of Object.values(WEAPON_ATTACHMENTS)){
     if(part.slot!==slot||!part.compatible.includes(person.weapon)||
-      (build&&!familyAccessoryAllowed(build,slot,part.id)))continue;
+      (build&&!familyAccessoryAllowed(build,slot,part.id))||
+      (!build&&part.id==='optic-hk-claw'))continue;
     const price=attachmentPrice(part.id),stock=c.inventory.attachments[part.id]??0;
     const suffix=price===0?' · INCLUDED':
      part.id===current?' · EQUIPPED':

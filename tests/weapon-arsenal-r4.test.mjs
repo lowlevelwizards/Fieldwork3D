@@ -22,13 +22,13 @@ const bound=(group,slot)=>{
  const b=partVisualBounds(group,slot);
  assert.ok(b,'missing '+slot);return b;
 };
-test('R4+HK catalog preserves 17 original recipes and adds ten HK presets',()=>{
- assert.equal(FAMILY_PRESETS.length,27);
- assert.equal(Object.keys(FAMILY_PARTS).length,129);
- assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,27);
+test('R4+HK catalog preserves 17 original recipes and adds twelve HK presets',()=>{
+ assert.equal(FAMILY_PRESETS.length,29);
+ assert.equal(Object.keys(FAMILY_PARTS).length,132);
+ assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,29);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ar').length,8);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ak').length,9);
- assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,10);
+ assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,12);
  for(const id of ['ar-m16a2','ar-colt733','ak-aks74','ak-akms','ak-rpk74','ar-mk12mod0'])
   assert.ok(FAMILY_PRESETS.some(p=>p.id===id),id);
  for(const p of FAMILY_PRESETS){
@@ -42,7 +42,7 @@ test('R4+HK catalog preserves 17 original recipes and adds ten HK presets',()=>{
   }
  }
 });
-test('R4+HK all 27 models have seated parts and authoritative muzzle',()=>{
+test('R4+HK all 29 models have seated parts and authoritative muzzle',()=>{
  for(const p of FAMILY_PRESETS){
   const m=model(p.id),box=new THREE.Box3().setFromObject(m.group);
   assert.ok(Math.abs(box.max.x-resolveWeaponAssembly(m.config).muzzleX)<.001,p.id+' game muzzle');

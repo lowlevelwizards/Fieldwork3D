@@ -32,7 +32,7 @@ const geometry=id=>{
 const part=(root,s)=>partVisualBounds(root,s);
 
 test('HK preserves both original G3 factory rifles alongside the expanded ten-model catalog',()=>{
- assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,10);
+ assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,12);
  for(const id of ids){
   const {cfg,g}=geometry(id);
   assert.equal(cfg.build?.family,'hk');

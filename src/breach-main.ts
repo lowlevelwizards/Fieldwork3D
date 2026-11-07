@@ -1169,7 +1169,8 @@ function renderOperationsBoard(){
    for(const part of Object.values(WEAPON_ATTACHMENTS)){
     if(part.slot!==slot||!part.compatible.includes(member.weapon)||
      (member.weaponConfiguration.build&&
-      !familyAccessoryAllowed(member.weaponConfiguration.build,slot,part.id)))continue;
+      !familyAccessoryAllowed(member.weaponConfiguration.build,slot,part.id))||
+     (!member.weaponConfiguration.build&&part.id==='optic-hk-claw'))continue;
     const option=document.createElement('option');
     option.value=part.id;option.textContent=part.name;select.append(option);
    }

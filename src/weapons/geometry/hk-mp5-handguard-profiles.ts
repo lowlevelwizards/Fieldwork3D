@@ -2,7 +2,7 @@
  * The MP5K grip is authored as part of its factory handguard in the main builder.
  */
 import * as THREE from 'three';
-import {addFacetedTube} from './profile-primitives.ts';
+import {addFacetedTube,addCuboid} from './profile-primitives.ts';
 const sides:readonly (readonly [number,number])[]=[
  [-1,-.64],[-1,.64],[-.66,1],[.66,1],
  [1,.64],[1,-.64],[.66,-1],[-.66,-1]
@@ -61,5 +61,28 @@ export function addMP5SDShroud(root:THREE.Group,id:string,n:number,
   const band=addFacetedTube(root,'handguard',id,n+i+1,
    x,x+.80,1.78,material);
   band.position.y=-.18;band.userData.hkMP5SDBand=true;
+ }
+}
+
+/** Full-size MP5 RAS-style rail: one block body, three broad mounting rails,
+ * three coarse lower relief tabs. Fixed budget, no micromesh rail teeth. */
+export function addMP5TriRail(root:THREE.Group,id:string,index:number,
+ start:number,end:number,material:THREE.Material):void{
+ const span=end-start,x=(end+start)/2;
+ const body=addCuboid(root,'handguard',id,index,x,-.19,0,
+  span,2.64,2.73,material);
+ body.userData.hkMP5TriRailBody=true;
+ for(const [i,y,z,w,h,d] of [
+  [1,-.29,-1.54,span-.60,.59,.43],
+  [2,-.29,1.54,span-.60,.59,.43],
+  [3,-1.56,0,span-.60,.43,1.06]
+ ] as const){
+  const rail=addCuboid(root,'handguard',id,index+i,x,y,z,w,h,d,material);
+  rail.userData.hkMP5TriRailSide=i;
+ }
+ for(let i=0;i<3;i++){
+  const tab=addCuboid(root,'handguard',id,index+i+4,
+   start+1.10+i*(span-2.20)/2,-1.79,0,.38,.22,1.14,material);
+  tab.userData.hkMP5TriRailTooth=i;
  }
 }

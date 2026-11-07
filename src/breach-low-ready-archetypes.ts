@@ -62,7 +62,8 @@ export function lowReadyArchetype(config:WeaponConfiguration):LowReadyArchetype|
  const build=config.build;if(!build)return null;
  if(build.family==='hk')
   return LOW_READY_ARCHETYPES[
-   build.parts.receiver==='hk-mp5k-stockless'?'hk-smg-stockless':
+   build.parts.receiver==='hk-mp5k-stockless'&&
+   build.parts.stock==='hk-mp5k-cap'?'hk-smg-stockless':
    config.weapon==='smg'?'hk-smg':
    config.weapon==='carbine'?'hk-carbine':'hk-rifle'];
  if(build.family==='ar'){

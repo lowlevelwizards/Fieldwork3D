@@ -49,6 +49,10 @@ export const WEAPON_ATTACHMENTS:Readonly<Record<string,WeaponAttachment>>={
   massKg:.16,massX:2,mountX:0,mountY:2.6,mountZ:0,sightHeight:4.4},
  'optic-magnified':{id:'optic-magnified',name:'Magnified Optic',slot:'optic',compatible:LONG,
   massKg:.46,massX:1,mountX:-1,mountY:2.6,mountZ:0,sightHeight:4.8},
+ /** Historically plausible HK claw base; only HK family builds can use it. */
+ 'optic-hk-claw':{id:'optic-hk-claw',name:'HK claw-mounted top rail',
+  slot:'optic',compatible:RAIL,massKg:.14,massX:-1.60,
+  mountX:-1.60,mountY:4.05,mountZ:0,sightHeight:4.35},
  'muzzle-bare':{id:'muzzle-bare',name:'Bare Muzzle',slot:'muzzle',compatible:ALL,
   massKg:0,massX:19.5,mountX:19.5,mountY:0,mountZ:0,muzzleExtension:0},
  'muzzle-hider':{id:'muzzle-hider',name:'Flash Hider',slot:'muzzle',compatible:ALL,
@@ -113,6 +117,7 @@ export const compatibleWeaponAttachment=(weapon:WeaponId,slot:WeaponAttachmentSl
 export function familyAccessoryAllowed(build:WeaponFamilyBuild,
  slot:WeaponAttachmentSlot,id:string):boolean{
  if(slot==='stock')return id==='stock-standard';
+ if(slot==='optic'&&id==='optic-hk-claw')return build.family==='hk';
  // The SD is integral: never layer a detachable suppressor over its front.
  if(slot==='muzzle'&&build.parts.receiver==='hk-mp5sd-integral')
   return id==='muzzle-bare';
@@ -122,7 +127,8 @@ export function familyAccessoryAllowed(build:WeaponFamilyBuild,
    build.parts.handguard==='ak-rail-long');
  }
  if(slot==='foregrip'&&id!=='foregrip-none')
-  return ['ar-quad','ar-compact-rail','ar-m5-rail','ar-risii','ak-rail-long']
+  return ['ar-quad','ar-compact-rail','ar-m5-rail','ar-risii','ak-rail-long',
+   'hk-mp5-trirail']
    .includes(build.parts.handguard);
  return true;
 }
@@ -139,6 +145,8 @@ export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfi
    result.slots[slot]=id;
  }
  const build=readWeaponFamilyBuild((raw as {build?:unknown}).build,weapon);
+ if(!build&&result.slots.optic==='optic-hk-claw')
+  result.slots.optic='optic-irons';
  if(build){
   result.build=build;
   for(const slot of WEAPON_ATTACHMENT_SLOTS)
@@ -151,6 +159,7 @@ export function setWeaponAttachment(config:WeaponConfiguration,slot:WeaponAttach
  id:string):WeaponConfiguration{
  if(!WEAPON_ATTACHMENT_SLOTS.includes(slot)||
   !compatibleWeaponAttachment(config.weapon,slot,id)||
+  (id==='optic-hk-claw'&&config.build?.family!=='hk')||
   (config.build&&!familyAccessoryAllowed(config.build,slot,id)))return config;
  if(config.slots[slot]===id)return config;
  return {...config,slots:{...config.slots,[slot]:id}};
@@ -236,6 +245,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  const hkSupportX=hkArt?Math.min(7.75,hkArt.handguardStartX+
   .47*(hkArt.handguardEndX-hkArt.handguardStartX)):7.75;
  const mp5k=build?.parts.receiver==='hk-mp5k-stockless';
+ const triRailVertical=build?.parts.handguard==='hk-mp5-trirail'&&
+  config.slots.foregrip==='foregrip-vertical';
  const supportX=build?.family==='hk'?hkSupportX:
   build?(familyHandguard?.length==='long'?9.10:
   familyHandguard?.length==='mid'?7.70:6.50):p.supportX;
@@ -245,7 +256,7 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   muzzleY:build?.family==='ar'?AR_VISUAL_AXIS_Y:0,
   stockX:stockX+(build?0:(mounted.stock.stockShift??0)),
   primaryX,primaryY,
-  supportX:supportX+(mounted.foregrip.supportShift??0),
+  supportX:triRailVertical?7.0:supportX+(mounted.foregrip.supportShift??0),
   supportY:(mp5k?-4.20:
    mounted.foregrip.id==='foregrip-vertical'?-3.65:
    mounted.foregrip.id==='foregrip-handstop'?-2.3:
