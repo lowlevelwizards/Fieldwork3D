@@ -2142,12 +2142,12 @@ html,body{font-family:var(--fw-font-menu)}
 .replay-cluster-menu button{min-height:44px}
 .replay-feed-tools #replayFeedFollow{min-height:40px}
 @media(max-width:700px) and (min-height:471px){
-  .replay-panel{padding-top:6px;padding-bottom:6px}
+  .replay-panel{padding-top:5px;padding-bottom:5px}
   .replay-head{min-height:25px}
   .replay-quick-controls{margin-top:4px}
   .replay-quick-controls select{min-height:40px}
-  .replay-timeline{height:30px;margin-top:3px}
-  .replay-utility{margin-top:4px}
+  .replay-timeline{height:30px;margin-top:1px}
+  .replay-utility{margin-top:2px}
   .replay-utility #replayMore,
   .replay-utility #replayFeedToggle,
   .replay-utility #replayShareToggle{min-height:40px!important}
