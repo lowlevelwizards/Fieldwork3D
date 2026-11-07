@@ -5024,7 +5024,8 @@ async function renderSavedReplayLibrary():Promise<void>{
       watch.addEventListener('click',()=>{void playSavedReplay(item.id);});
       const favorite=document.createElement('button');favorite.type='button';
       favorite.textContent=item.favorite?'★':'☆';
-      favorite.setAttribute('aria-label',item.favorite?'Unfavorite replay':'Favorite replay');
+      favorite.setAttribute('aria-label',
+        (item.favorite?'Unfavorite ':'Favorite ')+item.siteName);
       favorite.setAttribute('aria-pressed',String(item.favorite));
       favorite.addEventListener('click',async()=>{
         if(replayLibraryBusy)return;
@@ -5054,7 +5055,19 @@ async function renderSavedReplayLibrary():Promise<void>{
         }catch(error){replayLibraryFailure(error);}
         finally{replayLibraryBusy=false;}
       });
-      row.append(information,watch,favorite,exportFile,remove);
+      const more=document.createElement('details');
+      more.className='replay-library-actions';
+      const summary=document.createElement('summary');
+      summary.textContent='MORE';
+      summary.setAttribute('aria-label','More actions for '+item.siteName);
+      const secondary=document.createElement('div');
+      secondary.className='replay-library-actions-list';
+      secondary.append(exportFile,remove);
+      more.append(summary,secondary);
+      more.addEventListener('toggle',()=>{
+        if(!more.open){remove.dataset.confirm='';remove.textContent='DELETE';}
+      });
+      row.append(information,watch,favorite,more);
       fragment.append(row);
     }
     ui.replayLibraryList.replaceChildren(fragment);
