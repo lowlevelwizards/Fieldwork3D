@@ -35,6 +35,9 @@ export type PasgtRingSample={
 };
 export type PasgtSlitAnchor={
  id:string;position:readonly [number,number,number];
+ right:readonly [number,number,number];
+ up:readonly [number,number,number];
+ normal:readonly [number,number,number];
  yaw:number;pitch:number;
 };
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));
@@ -196,18 +199,49 @@ export function createPasgtDrapedGeometry(hemOnly=false):THREE.BufferGeometry{
  g.userData.printScale=PASGT_CAMO_SCALE;
  return g;
 }
-/** PASGT P5-D will update slit frames using this same panel parameterization.
- * Preserve the existing eight slots until the accessory audit begins.
+/** PASGT P5-D: the only eight reinforced cuts are projected from the
+ * *actual cloth* shoulder-to-ramp transition, above the elastic at y5.90.
+ * Their attachment basis is also used by foliage and scrim. Moving the
+ * cover changes all three together, rather than leaving floating garnish.
  */
+function pasgtSlitOnCloth(
+ id:string,side:Side,along:number,atY=6.46
+):PasgtSlitAnchor{
+ const sample:PasgtRingSample={
+  side,x:side==='front'||side==='rear'?along:side==='right'?X:-X,
+  z:side==='front'?FRONT:side==='rear'?REAR:along,
+  bottomY:side==='front'?FRONT_BOTTOM:
+   side==='rear'?REAR_BOTTOM:sideHem(along),distance:0
+ };
+ const lo=new THREE.Vector3(...pasgtRingPoint(sample,'ramp'));
+ const hi=new THREE.Vector3(...pasgtRingPoint(sample,'shoulder'));
+ const t=clamp((atY-lo.y)/(hi.y-lo.y));
+ const up=hi.clone().sub(lo).normalize();
+ const right=side==='front'?new THREE.Vector3(-1,0,0):
+  side==='rear'?new THREE.Vector3(1,0,0):
+  side==='right'?new THREE.Vector3(0,0,-1):
+  new THREE.Vector3(0,0,1);
+ const normal=right.clone().cross(up).normalize();
+ const pos=lo.lerp(hi,t).addScaledVector(normal,.085);
+ return {
+  id,position:[pos.x,pos.y,pos.z],
+  right:[right.x,right.y,right.z],
+  up:[up.x,up.y,up.z],
+  normal:[normal.x,normal.y,normal.z],
+  yaw:side==='front'?0:side==='rear'?Math.PI:
+   side==='right'?Math.PI/2:-Math.PI/2,
+  pitch:0
+ };
+}
 export const PASGT_SLIT_ANCHORS:readonly PasgtSlitAnchor[]=[
- {id:'front-left',position:[-2.70,5.47,PEAK_FRONT-.09],yaw:0,pitch:-.10},
- {id:'front-right',position:[2.70,5.47,PEAK_FRONT-.09],yaw:0,pitch:.10},
- {id:'right-forward',position:[SIDE+.09,5.48,-3.15],yaw:Math.PI/2,pitch:-.11},
- {id:'right-aft',position:[SIDE+.09,4.20,2.30],yaw:Math.PI/2,pitch:.12},
- {id:'rear-right',position:[2.65,4.22,NAPE_REAR+.09],yaw:Math.PI,pitch:.10},
- {id:'rear-left',position:[-2.65,4.22,NAPE_REAR+.09],yaw:Math.PI,pitch:-.10},
- {id:'left-aft',position:[-SIDE-.09,4.24,2.30],yaw:-Math.PI/2,pitch:.13},
- {id:'left-forward',position:[-SIDE-.09,5.48,-3.15],yaw:-Math.PI/2,pitch:-.10}
+ pasgtSlitOnCloth('front-left','front',-3.38),
+ pasgtSlitOnCloth('front-right','front',3.38),
+ pasgtSlitOnCloth('right-forward','right',-3.10),
+ pasgtSlitOnCloth('right-aft','right',2.45),
+ pasgtSlitOnCloth('rear-right','rear',3.25),
+ pasgtSlitOnCloth('rear-left','rear',-3.25),
+ pasgtSlitOnCloth('left-aft','left',2.45),
+ pasgtSlitOnCloth('left-forward','left',-3.10)
 ];
 /** PASGT P5-C: one vertically readable, near-flush strip. Its upper and
  * lower edges lie on the UPRIGHT brim/side/nape surfaces, not the wide

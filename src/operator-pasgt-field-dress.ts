@@ -2,12 +2,10 @@
  * foliage slit anchor. Stable authored orientations; no per-frame RNG.
  */
 import * as THREE from 'three';
-import {unionCuboids,type HeadwearCuboid} from './operator-cuboid-union.ts';
 import {
  PASGT_SLIT_ANCHORS,createPasgtBandGeometry
 } from './operator-pasgt-drape-geometry.ts';
 import {resolvePasgtDetails,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
-import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 
 export type PasgtPalette='woodland'|'desert'|'urban';
@@ -29,15 +27,29 @@ const material=(hex:number,side:THREE.Side=THREE.FrontSide)=>
 const hidden=(parent:THREE.Group,name:string)=>{
  const g=new THREE.Group();g.name=name;g.visible=false;parent.add(g);return g;
 };
-const part=(name:string,x:number,y:number,z:number,width:number,height:number,depth:number):
- HeadwearCuboid=>({name,x,y,z,width,height,depth});
-const unite=(parent:THREE.Group,parts:readonly HeadwearCuboid[],
- mat:THREE.Material,name:string)=>{
- const geo=unionCuboids(parts);
- const mesh=new THREE.Mesh(geo,mat);mesh.name=name;mesh.castShadow=true;
- mesh.receiveShadow=false;parent.add(mesh);
- return mesh;
-};
+/** Single near-coplanar eight-cut marking mesh, not protruding cubes.
+ * The long axis follows local fabric tangent and each mark is above the
+ * elastic rather than under it.
+ */
+export function createPasgtSlitGeometry():THREE.BufferGeometry{
+ const p:number[]=[];
+ const point=(a:(typeof PASGT_SLIT_ANCHORS)[number],s:number,h:number)=>{
+  const [x,y,z]=a.position,[rx,ry,rz]=a.right,[ux,uy,uz]=a.up;
+  return [x+s*rx+h*ux,y+s*ry+h*uy,z+s*rz+h*uz];
+ };
+ const add=(v:readonly number[])=>p.push(v[0],v[1],v[2]);
+ for(const a of PASGT_SLIT_ANCHORS){
+  const a0=point(a,-.53,.07),a1=point(a,.53,.07);
+  const a2=point(a,.53,-.07),a3=point(a,-.53,-.07);
+  for(const v of [a0,a1,a2,a0,a2,a3])add(v);
+ }
+ const g=new THREE.BufferGeometry();
+ g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));
+ g.computeVertexNormals();g.computeBoundingBox();
+ g.userData.pasgtSlitCount=PASGT_SLIT_ANCHORS.length;
+ g.userData.pasgtMountedOnCloth=true;
+ return g;
+}
 function shapeGeometry(points:readonly (readonly [number,number])[]):THREE.ShapeGeometry{
  const shape=new THREE.Shape();
  for(let i=0;i<points.length;i++){
@@ -63,11 +75,17 @@ function placedCard(parent:THREE.Group,index:number,mat:THREE.Material,
  if(!anchor)throw Error('unknown PASGT slit '+CARD_ANCHORS[index]);
  const mount=new THREE.Group();
  mount.name=name+'-mount';
- mount.position.set(anchor.position[0],anchor.position[1]+offsetY,anchor.position[2]);
- mount.rotation.y=anchor.yaw;
- // Small, fixed deliberate tilts rather than uncontrolled noise.
- mount.rotation.z=TILTS[index];
- mount.rotation.x=anchor.pitch;
+ mount.position.set(anchor.position[0],anchor.position[1],anchor.position[2]);
+ mount.userData.pasgtSlitId=anchor.id;
+ const basis=new THREE.Matrix4().makeBasis(
+  new THREE.Vector3(...anchor.right),
+  new THREE.Vector3(...anchor.up),
+  new THREE.Vector3(...anchor.normal)
+ );
+ mount.quaternion.setFromRotationMatrix(basis);
+ mount.rotateZ(TILTS[index]);mount.rotateX(.18);
+ // Roots begin inside their slit frame; local up is the fabric tangent.
+ mount.translateY(offsetY);
  const card=new THREE.Mesh(geometry,mat);
  card.name=name;card.castShadow=true;card.receiveShadow=false;
  mount.add(card);parent.add(mount);
@@ -133,18 +151,17 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  const foliage=hidden(parent,'pasgt-leaves-from-buttonholes');
  const scrim=hidden(parent,'pasgt-fabric-strips-from-buttonholes');
  const net=hidden(parent,'pasgt-full-shell-overnet');
- const slitMat=material(0x404b3b),bandMat=material(0x5a6650);
+ const slitMat=material(0x49513f,THREE.DoubleSide),bandMat=material(0x5a6650);
  const leafMaterials=[material(0x536341,THREE.DoubleSide),
   material(0x778054,THREE.DoubleSide),material(0x98906b,THREE.DoubleSide)];
  const scrimMaterials=[material(0x536341,THREE.DoubleSide),
   material(0x778054,THREE.DoubleSide),material(0x98906b,THREE.DoubleSide)];
- // Eight holes arranged to look believable even with nothing in them.
- const holes=PASGT_SLIT_ANCHORS.map(a=>{
-  const isSide=a.id.startsWith('right')||a.id.startsWith('left');
-  return part(a.id+'-cut',a.position[0],a.position[1],a.position[2],
-   isSide?.13:1.13,.15,isSide?1.13:.13);
- });
- unite(slits,holes,slitMat,'pasgt-simple-eight-foliage-cuts');
+ // The cuts share the cover's true normal/tangent frames. One flat mesh,
+ // rather than eight black boxes and a second shadow-receiving surface.
+ const slitMesh=new THREE.Mesh(createPasgtSlitGeometry(),slitMat);
+ slitMesh.name='pasgt-eight-panel-tangent-buttonholes';
+ slitMesh.castShadow=false;slitMesh.receiveShadow=false;
+ slits.add(slitMesh);
  for(const covered of [true,false]){
   const bandMesh=new THREE.Mesh(createPasgtBandGeometry(covered),bandMat);
   bandMesh.name=covered?'pasgt-covered-fit-elastic':'pasgt-bare-fit-elastic';
@@ -161,7 +178,6 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  const netMesh=new THREE.Mesh(createPasgtNetGeometry(),netMat);
  netMesh.name='pasgt-front-crown-side-rear-net';netMesh.castShadow=true;
  netMesh.receiveShadow=false;net.add(netMesh);
- consolidateVisualGroup(slits);
  return {slits,band,foliage,scrim,net,
   leafMaterials,scrimMaterials,palette:null};
 }
