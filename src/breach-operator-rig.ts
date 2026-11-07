@@ -36,7 +36,7 @@ import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
-import {choreographV3ReloadHand} from './breach-pose-v3-reload-choreography.ts';
+import {choreographV3ReloadHand,v3MagazineRockAngle} from './breach-pose-v3-reload-choreography.ts';
 import {choreographV3ReloadWeapon} from './breach-pose-v3-reload-weapon.ts';
 import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
@@ -1816,6 +1816,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   r.root.userData.poseV3DynamicReport=p.poseV3Preview?
     v3DynamicReports:null;
+  // AK rock-in is local to the detached magazine and the gripping palm.
+  // No mounted mesh, ballistic transform or gameplay magazine state changes.
+  const v3MagazineRock=p.poseV3Preview&&reloadActive?
+    v3MagazineRockAngle(reloadProgress,reloadMode,
+      coupledConfig?.build?.family):0;
+  if(v3MagazineRock&&r.detachedMagazine.visible)
+    r.arms[0].hand.rotateZ(v3MagazineRock);
   if(r.magazineHand.visible){
     // Magazine visual follows the *solved* support wrist. The original
     // magazine is hidden from the gun while it is in hand.
@@ -1827,6 +1834,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // solved support wrist and return to their gun mount at insertion.
     r.detachedMagazine.position.copy(r.arms[0].hand.position);
     r.detachedMagazine.rotation.copy(fit.rotation);
+    if(v3MagazineRock)r.detachedMagazine.rotateZ(v3MagazineRock);
     r.detachedMagazine.scale.set(data.lengthScale,1,1);
   }
   // The pose system is the final writer for actor tilts and reactions.
