@@ -1573,6 +1573,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-r13-model-switch-') }}
         run: |
           node --experimental-strip-types --test tests/arsenal-r13-factory-recipes.test.mjs tests/arsenal-r13-model-picker.test.mjs tests/arsenal-r14-mobile-style-isolation.test.mjs tests/arsenal-r14-fit-feedback.test.mjs tests/arsenal-r14-apply-guidance.test.mjs tests/arsenal-r9-recipe-loading.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-campaign-adapter.test.mjs tests/arsenal-v2-quickplay-adapter.test.mjs tests/equipment-27-01-campaign-ownership.test.mjs
+      - name: Faction references R6 — forty kits, markings, PASGT and weapon presets
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/faction-reference-r6-') }}
+        run: |
+          node --experimental-strip-types --test tests/faction-reference.test.mjs tests/r5-identity-stage-a.test.mjs tests/pasgt-p1-policy.test.mjs tests/weapon-families-01.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
