@@ -19,7 +19,7 @@ test('3D blood behind faded opaque wall does not X-ray through cutaways',()=>{
  assert.equal(groundMarkOccludedFromCamera(mark,view,windowGap),false);
  assert.equal(groundMarkOccludedFromCamera(mark,{x:0,y:1,z:0},
   [foreground]),false);
- assert.equal(groundMarkOccludedFromCamera(mark,{x:0,y:.02,z:-1},
+ assert.equal(groundMarkOccludedFromCamera(mark,view,
   [foreground],5),false,'camera ray passes over short structure');
 });
 
