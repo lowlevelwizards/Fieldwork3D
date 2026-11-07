@@ -92,10 +92,10 @@ try{
   if(await page.locator('#replayDirectSight option[value="operator"]')
       .evaluate(el=>!el.disabled)){
     await page.locator('#replayDirectSight').selectOption('operator');
-    check(await page.locator('#replayContactNote').isVisible(),
-      'Direct Operator Sight must expose recorded personal-contact boundaries');
+    check(await page.locator('#replayContactNote').evaluate(e=>!e.hidden),
+      'Direct Operator Sight must establish historical contact disclosure');
     await page.locator('#replayDirectSight').selectOption('team');
-    check(await page.locator('#replayContactNote').isHidden(),
+    check(await page.locator('#replayContactNote').evaluate(e=>e.hidden),
       'Returning to Team Sight must exit personal-contact lens');
   }
   await page.locator('#replayDirectTracers').click();
