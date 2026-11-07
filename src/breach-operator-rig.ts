@@ -37,7 +37,7 @@ import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
 import {choreographV3ReloadHand,v3MagazineRockAngle,type V3ReloadCorridorProfile} from './breach-pose-v3-reload-choreography.ts';
-import {choreographV3ReloadWeapon} from './breach-pose-v3-reload-weapon.ts';
+import {choreographV3ReloadWeapon,type V3ReloadHold} from './breach-pose-v3-reload-weapon.ts';
 import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
@@ -97,6 +97,8 @@ export type OperatorPose={
   poseV3Preview?:boolean;
   /** Opt-in Lab reload corridor comparison; never read by game simulation. */
   poseV3ReloadCorridor?:V3ReloadCorridorProfile;
+  /** B19 fixed-profile offline handling audition; only read in V3 Lab. */
+  poseV3ReloadHold?:V3ReloadHold;
   x:number;z:number;heading:number;velocity:number;seconds:number;
   stride:number;posture:'stand'|'crouch';injury:number;weapon:WeaponId;
   /** Authoritative travel direction; optional until motion sampling is wired. */
@@ -1353,7 +1355,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
      !p.firing&&!p.down&&!p.surrender&&coupledConfig?.build){
     fit=choreographV3ReloadWeapon(fit,
       clamp(1-p.reload/p.reloadDuration,0,1),
-      p.reloadMode??(p.weapon==='shotgun'?'shells':'emergency')).fit;
+      p.reloadMode??(p.weapon==='shotgun'?'shells':'emergency'),
+      p.poseV3ReloadHold??'baseline').fit;
   }
   // Lab-only: a family rifle may be gripped farther back on its *actual*
   // handguard/magwell. This is a contact change, never a muzzle transform.

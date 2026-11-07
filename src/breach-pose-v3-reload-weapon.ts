@@ -12,33 +12,51 @@ import type {WeaponFit} from './breach-weapon-pose.ts';
 const Y=new THREE.Vector3(0,1,0),Z=new THREE.Vector3(0,0,1);
 const clamp=(t:number)=>Math.max(0,Math.min(1,t));
 const smooth=(t:number)=>{const x=clamp(t);return x*x*(3-2*x)};
+/** Deliberate temporary rifle-handling postures for bounded real-kit
+ * auditions. NEVER an exhaustive runtime optimizer or ballistic transform.
+ */
+export type V3ReloadHold='baseline'|'forward'|'forward-low'|
+ 'support-clear'|'stock-drop'|'counter-cant';
+const RELOAD_HOLDS:Record<V3ReloadHold,readonly [number,number,number,number,number]>={
+ 'baseline':[-.17,-.065,1.35,0,0],
+ 'forward':[-.15,-.055,2.25,0,0],
+ 'forward-low':[-.13,-.055,2.10,-.70,0],
+ 'support-clear':[-.12,-.045,1.70,.65,-.90],
+ 'stock-drop':[-.14,-.04,1.60,-.95,-.50],
+ 'counter-cant':[-.065,-.10,2.00,-.35,-.45],
+};
 export type ReloadWeaponPresentation={
  fit:WeaponFit;weight:number;yaw:number;pitch:number;
- forwardShift:number;
+ forwardShift:number;verticalShift:number;lateralShift:number;
 };
 export function choreographV3ReloadWeapon(
- fit:WeaponFit,progress:number,mode:ReloadMode
+ fit:WeaponFit,progress:number,mode:ReloadMode,hold:V3ReloadHold='baseline'
 ):ReloadWeaponPresentation{
  const t=clamp(progress);
  // Shell-loading guns already have a deliberate magazine-tube handling
  // pose; do not apply a detachable-magazine rifle cant to that family.
  const weight=mode==='shells'?0:
   smooth(t/.24)*(1-smooth((t-.76)/.24));
- if(weight<=0)return {fit,weight:0,yaw:0,pitch:0,forwardShift:0};
+ if(weight<=0)return {fit,weight:0,yaw:0,pitch:0,
+  forwardShift:0,verticalShift:0,lateralShift:0};
  const scale=mode==='retention'?.82:1;
  // +X is firearm forward; negative yaw shifts the firing-side hand OUT
  // away from the vest (positive Z) while the stock remains seated.
- const yaw=-.17*weight*scale,pitch=-.065*weight*scale;
+ const [requestedYaw,requestedPitch,front,vertical,lateral]=RELOAD_HOLDS[hold];
+ const yaw=requestedYaw*weight*scale,pitch=requestedPitch*weight*scale;
  // A magazine reload may briefly unseat the stock FORWARD without
  // shoving the receiver sideways through rigid body armor. This small
  // scalar is a presentation-only displacement of the ENTIRE assembly.
- const forwardShift=1.35*weight*scale;
+ const forwardShift=front*weight*scale;
+ const verticalShift=vertical*weight*scale;
+ const lateralShift=lateral*weight*scale;
+ const displacement=new THREE.Vector3(forwardShift,verticalShift,lateralShift);
  const delta=new THREE.Quaternion().setFromAxisAngle(Y,yaw)
   .multiply(new THREE.Quaternion().setFromAxisAngle(Z,pitch));
  const around=(point:THREE.Vector3)=>{
   const result=point.clone().sub(fit.stock)
    .applyQuaternion(delta).add(fit.stock);
-  result.x+=forwardShift;return result;
+  return result.add(displacement);
  };
  // Never mutate 'delta': the same pure rotation maps every contact
  // point while the composed quaternion only determines rifle orientation.
@@ -48,7 +66,8 @@ export function choreographV3ReloadWeapon(
  const newFit={...fit,origin:around(fit.origin),rotation,
   // During free reload handling the stock may unseat slightly, but
   // returns EXACTLY to the original shoulder pocket at both endpoints.
-  stock:fit.stock.clone().add(new THREE.Vector3(forwardShift,0,0)),
+  stock:fit.stock.clone().add(displacement),
   primary:around(fit.primary),support:around(fit.support)};
- return {fit:newFit,weight,yaw,pitch,forwardShift};
+ return {fit:newFit,weight,yaw,pitch,forwardShift,
+  verticalShift,lateralShift};
 }
