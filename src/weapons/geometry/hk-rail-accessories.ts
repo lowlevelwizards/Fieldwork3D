@@ -13,10 +13,10 @@ export function addHKClawRail(root:THREE.Group):void{
  // Four big receiver claws, one raised single top bar; rear diopter stays
  // exposed below the rail. Deliberately no tiny hardware or micro-teeth.
  for(const x of [-4.90,1.60])for(const z of [-1.39,1.39])
-  block(x,2.62,z,.74,1.66,.58,'foot');
- block(-1.65,4.06,0,7.62,.46,1.94,'rail');
+  block(x,2.76,z,.74,2.18,.58,'foot');
+ block(-1.65,4.06,0,7.62,.46,2.40,'rail');
  for(const x of [-3.60,-1.55,.45])
-  block(x,4.36,0,.40,.17,1.99,'rib');
+  block(x,4.36,0,.40,.17,2.42,'rib');
 }
 export function addHKRailVerticalGrip(root:THREE.Group):void{
  const grip=new THREE.Mesh(new THREE.BoxGeometry(1.48,3.70,1.52),HK_DARK_POLYMER);

@@ -81,6 +81,11 @@ test('HK claw top rail only appears when fitted to HK; keeps true muzzle geometr
  assert.equal(familyAccessoryAllowed(a.build,'optic','optic-hk-claw'),true);
  const gun=model(b),plain=model(a);
  assert.equal(gun.children.filter(x=>x.userData.hkClawMount).length,8);
+ const top=gun.children.find(x=>x.userData.hkClawMount==='rail');
+ const topBox=new THREE.Box3().setFromObject(top);
+ for(const foot of gun.children.filter(x=>x.userData.hkClawMount==='foot'))
+  assert.ok(new THREE.Box3().setFromObject(foot).intersectsBox(topBox),
+   'claw feet must actually connect to top rail');
  assert.equal(plain.children.filter(x=>x.userData.hkClawMount).length,0);
  assert.equal(resolveWeaponAssembly(b).muzzleX,resolveWeaponAssembly(a).muzzleX);
  clearWeaponSilhouette(gun);clearWeaponSilhouette(plain);
