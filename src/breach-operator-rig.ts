@@ -38,7 +38,7 @@ import {choreographV4ReloadWeapon,reloadMechanismFor,
  v4ReloadControlPose}
  from './breach-reload-performance.ts';
 import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
-import {directOperatorPose} from './breach-pose-director.ts';
+import {directOperatorPose,planUpperBodyStrategy} from './breach-pose-director.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,
  cachedSupportUpperBody,solveUnifiedFallbackArm} from './breach-unified-upper-body.ts';
@@ -1340,18 +1340,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // weapon with that fit instead of abruptly switching to legacy IK.
   // Do not use the coupled idle *arm* solution during the active reload:
   // the magazine hand is released and needs independent action IK.
-  const previewReloadSeed=p.poseV3Preview===true&&
-    p.reload>0&&p.reloadDuration>0;
-  const eligible=!!coupledConfig?.build&&handling==='low'&&
-    p.posture==='stand'&&physicalSpeed<.45&&
-    Math.abs(p.turning)<.28&&!p.down&&!p.surrender&&!p.firing&&
-    !p.aiming&&(p.aimBlend??0)<.02&&
-    (p.reload<=0||previewReloadSeed)&&
-    !p.treatmentActive&&(!activeTransition||authoredLabSwitch)&&
-    p.seconds-p.lastDoorAt>1.2&&p.seconds-p.lastThrowAt>.85&&
-    (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
-  // Share one outfit-specific clearance envelope across all IK paths.
-  const poseEnvelope=eligible||p.poseV3Preview?
+  const upperBodyPlan=planUpperBodyStrategy(p,{
+    handling,physicalSpeed,hasModularBuild:!!coupledConfig?.build,
+    activeTransition:!!activeTransition,authoredLabSwitch,
+    interactionWindow:actionState.interactionWindow
+  });
+  const {previewReloadSeed,coupledEligible:eligible}=upperBodyPlan;
+  const poseEnvelope=upperBodyPlan.envelopeRequired?
     poseClearanceEnvelope(clothing.armorStyle,clothing.rigStyle,clothing.top):null;
   let coupled:CoupledLowReadySolution|null=null;
   let reloadSeed:CoupledLowReadySolution|null=null;
@@ -1432,8 +1427,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Lab-only: a family rifle may be gripped farther back on its *actual*
   // handguard/magwell. This is a contact change, never a muzzle transform.
   // Do not apply to shot-time ballistics or alter an approved coupled pose.
-  if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
-     !p.firing&&!p.down&&!p.surrender&&p.reload<=0){
+  if(!coupled&&upperBodyPlan.supportEligible&&coupledConfig?.build){
     const supportSearch=cachedSupportUpperBody(r,{
       weapon:p.weapon,configuration:coupledConfig,fit,
       shoulder:shoulderFor(0),firingShoulder:shoulderFor(1),
@@ -1488,9 +1482,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const v3ReloadCorridor:V3ReloadCorridorProfile=p.poseV3Preview?
     (p.poseV3ReloadCorridor??(legacyAkReload?'compact':'canonical')):
     'canonical';
-   if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
-     !p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
-     !actionState.interactionWindow&&!activeTransition){
+   if(!coupled&&upperBodyPlan.coordinatedEligible&&coupledConfig?.build){
     const activeReloadSocket=reloadActive?
       weaponPresentationSockets(p.weapon,p.weaponConfiguration):null;
     const envelope=poseEnvelope!;

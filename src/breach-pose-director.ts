@@ -39,3 +39,39 @@ export function directOperatorPose(p:OperatorPose,context:PoseDirectorContext){
     });
   return {handling,action};
 }
+
+/** Exactly one pure policy for selecting the upper-body strategy.
+ * Search implementations are internal to the unified fitter; this
+ * policy preserves live/preview gates, action priority and ballistics.
+ * It never reads previous-frame elbow state or mutates a game order.
+ */
+export type UpperBodyStrategyContext={
+ handling:Handling;physicalSpeed:number;hasModularBuild:boolean;
+ activeTransition:boolean;authoredLabSwitch:boolean;
+ interactionWindow:boolean;
+};
+export type UpperBodyStrategy={
+ previewReloadSeed:boolean;coupledEligible:boolean;
+ supportEligible:boolean;coordinatedEligible:boolean;
+ envelopeRequired:boolean;
+};
+export function planUpperBodyStrategy(p:OperatorPose,
+ c:UpperBodyStrategyContext):UpperBodyStrategy{
+ const previewReloadSeed=p.poseV3Preview===true&&
+   p.reload>0&&p.reloadDuration>0;
+ const coupledEligible=c.hasModularBuild&&c.handling==='low'&&
+   p.posture==='stand'&&c.physicalSpeed<.45&&
+   Math.abs(p.turning)<.28&&!p.down&&!p.surrender&&!p.firing&&
+   !p.aiming&&(p.aimBlend??0)<.02&&
+   (p.reload<=0||previewReloadSeed)&&
+   !p.treatmentActive&&(!c.activeTransition||c.authoredLabSwitch)&&
+   p.seconds-p.lastDoorAt>1.2&&p.seconds-p.lastThrowAt>.85&&
+   (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
+ const supportEligible=!!p.poseV3Preview&&c.hasModularBuild&&
+   !p.firing&&!p.down&&!p.surrender&&p.reload<=0;
+ const coordinatedEligible=!!p.poseV3Preview&&c.hasModularBuild&&
+   !p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
+   !c.interactionWindow&&!c.activeTransition;
+ return {previewReloadSeed,coupledEligible,supportEligible,
+   coordinatedEligible,envelopeRequired:coupledEligible||!!p.poseV3Preview};
+}
