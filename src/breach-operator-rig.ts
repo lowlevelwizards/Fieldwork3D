@@ -1033,6 +1033,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(!passiveBlend)r.autoHandling=null;
   if(auto&&auto.alpha>=1)r.autoHandling=null;
   const activeTransition=p.handlingTransition??auto;
+  // Lab stance-to-stance switching must solve the authored destination
+  // before blending. Live/replay and action tracks retain existing authority.
+  const authoredLabSwitch=!!p.poseV3Preview&&
+    !!p.handlingTransition?.authoredFrom&&!!p.handlingOverride&&
+    !p.down&&!p.surrender&&p.reload<=0;
   const profile=activeTransition?
     blendedHandlingProfile(activeTransition.from,
       activeTransition.to,activeTransition.alpha,p.weapon,
@@ -1322,7 +1327,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     Math.abs(p.turning)<.28&&!p.down&&!p.surrender&&!p.firing&&
     !p.aiming&&(p.aimBlend??0)<.02&&
     (p.reload<=0||previewReloadSeed)&&
-    !p.treatmentActive&&!activeTransition&&
+    !p.treatmentActive&&(!activeTransition||authoredLabSwitch)&&
     p.seconds-p.lastDoorAt>1.2&&p.seconds-p.lastThrowAt>.85&&
     (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
   let coupled:CoupledLowReadySolution|null=null;
@@ -1400,9 +1405,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     swayPitch:motion.weaponPitch*freeMotion,
     aimBlend:p.handlingOverride?undefined:
       p.aimBlend??(p.aiming?1:0),
-    blendFrom:activeTransition?.from,
-    blendAlpha:activeTransition?.alpha,
-    blendSnapshot:activeTransition?.fromWeapon});
+    blendFrom:authoredLabSwitch?undefined:activeTransition?.from,
+    blendAlpha:authoredLabSwitch?undefined:activeTransition?.alpha,
+    blendSnapshot:authoredLabSwitch?undefined:activeTransition?.fromWeapon});
   // Small, deterministic rifle manipulation is permissible in the Lab
   // only while reloading: never alters shot-time muzzle or live aiming.
   // It pivots about the seated stock so the firing wrist can clear gear.
@@ -1553,6 +1558,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       r.chest.rotation.y+=result.yaw;
     }
   }else r.root.userData.poseV3CoordinatedReport=null;
+  // For a Lab switch, the destination solver above retains full authority:
+  // in particular, low-ready must not fall back to the generic fitter.
+  // Interpolate the rigid weapon once from the *visible* previous fit.
+  // During the bridge, normal clearance-aware IK follows both hand sockets.
+  if(authoredLabSwitch&&activeTransition?.authoredFrom){
+    const phase=clamp(activeTransition.alpha,0,1);
+    if(phase<1){
+      fit=interpolateWeaponCarry(activeTransition.authoredFrom,fit,phase);
+      coupled=null;coordinatedDynamic=null;
+    }
+  }
   let carryTransitionActive=false,carryTransitionAlpha=1;
   let carryTransitionBends:[THREE.Vector3,THREE.Vector3]|null=null;
   if(!p.deterministic&&!p.down&&!p.surrender){
@@ -1597,6 +1613,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.droppedGun.scale.set(data.lengthScale,1,1);
   r.weapon.rotation.copy(fit.rotation);
   r.weapon.position.copy(fit.origin);
+  if(p.poseV3Preview){
+    // Snapshot the actual rendered rigid weapon, including any active
+    // partially blended stance. The next Lab tap can retarget from here.
+    r.root.userData.presentedWeaponFit={
+      ...fit,origin:fit.origin.clone(),rotation:fit.rotation.clone(),
+      stock:fit.stock.clone(),primary:fit.primary.clone(),
+      support:fit.support.clone()
+    } as WeaponFit;
+  }else r.root.userData.presentedWeaponFit=null;
   // B29: visible HK lock/slap, AK handle rack and AR bolt-catch press.
   // Physically attached to the weapon, driven only by the action clock.
   // It never modifies fit, recoil, muzzle, shot state or inventory.
@@ -1690,6 +1715,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.chest.position.x=bash.reach*.18+v3LeanParentX;
   r.chest.position.y+=v3LeanParentY;
   r.chest.position.z+=v3LeanParentZ;
+  if(authoredLabSwitch&&activeTransition?.authoredChest){
+    const phase=lowReadyBlendPhase(activeTransition.alpha);
+    if(phase<1){
+      const from=activeTransition.authoredChest;
+      const q0=new THREE.Quaternion().setFromEuler(from.rotation);
+      const q1=new THREE.Quaternion().setFromEuler(r.chest.rotation);
+      r.chest.rotation.setFromQuaternion(q0.slerp(q1,phase),'XYZ');
+      r.chest.position.lerpVectors(from.position,r.chest.position,phase);
+    }
+  }
   r.reachRequest=null;
   r.weapon.visible=(!p.down&&!p.surrender)||downProgress<.30;
   r.droppedGun.visible=(p.down||p.surrender)&&downProgress>=.30;
