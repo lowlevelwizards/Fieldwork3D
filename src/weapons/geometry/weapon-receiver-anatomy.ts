@@ -31,7 +31,7 @@ export const HK_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
  gripShiftX:-4.20,gripDepthZ:2.16,
  magwellCenterX:1.55,magazineWidthX:3.54,magazineDepthZ:2.08,
  magazineTopY:-2.70,magwellTopY:-2.08,magwellBottomY:-3.07,
- portX:.42,portY:.27,portWidthX:4.35,portHeightY:1.28
+ portX:1.55,portY:.55,portWidthX:4.00,portHeightY:1.15
 };
 export const AK_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
  gripShiftX:-2.05,gripDepthZ:2.19,

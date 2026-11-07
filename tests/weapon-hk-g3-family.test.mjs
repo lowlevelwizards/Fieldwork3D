@@ -11,7 +11,10 @@ import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 import {partVisualBounds} from '../src/weapons/geometry/weapon-visual-anchors.ts';
 import {HK_BARREL_ART} from '../src/weapons/geometry/hk-barrel-profiles.ts';
-import {HK_MAG20_OUTLINE} from '../src/weapons/geometry/hk-magazine-profiles.ts';
+import {HK_MAG20_OUTLINE,HK_MAG20_CENTER_X}
+ from '../src/weapons/geometry/hk-magazine-profiles.ts';
+import {HK_VISUAL_ANATOMY}
+ from '../src/weapons/geometry/weapon-receiver-anatomy.ts';
 import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
 import {lowReadyFamilyFit} from '../src/breach-low-ready-family-fit.ts';
 import {weaponPresentationSockets} from '../src/breach-weapon-presentation.ts';
@@ -115,12 +118,12 @@ test('R2 HK miniature anatomy stays long, slim and deliberately connected',()=>{
    'six strong sides rather than a fiddly circular ring');
   const port=g.children.find(c=>c.name==='family-art-hk-port');
   assert.ok(port);
-  assert.equal(port.geometry.parameters.width,4.35,'wider HK ejection opening');
+  assert.equal(port.geometry.parameters.width,4.00,'port sized for the magwell');
   assert.equal(port.material.map.image.width,24);
   const pixels=port.material.map.image.data;
   const boltPixels=[];
   for(let p=0;p<pixels.length/4;p++){
-   if(pixels[p*4]>85)boltPixels.push(p);
+   if(pixels[p*4]>=70)boltPixels.push(p);
   }
   assert.ok(boltPixels.length>=40,'one broad visible light bolt inset');
   const contacts=riflePoseContacts('rifle',cfg);
@@ -159,4 +162,104 @@ test('factory muzzle art hides for muzzle attachments, and faction references us
  assert.equal(REFERENCE_WEAPONS['norwegian-m98-2005'].presetId,'hk-g3a3');
  assert.equal(REFERENCE_WEAPONS['norwegian-m98-2005'].fidelity,'representative');
  clearWeaponSilhouette(g);clearWeaponSilhouette(group);
+});
+
+test('R4: one non-coplanar buttplate per stock, preserving the rear landmark',()=>{
+ for(const id of ids){
+  const {cfg,g}=geometry(id),a=resolveWeaponAssembly(cfg);
+  const pad=g.children.find(x=>x.userData.hkButtpad);
+  const stock=g.children.find(x=>x.name===
+   'family-stock-'+cfg.build.parts.stock+'-0');
+  assert.ok(pad&&stock,id+' one seated buttpad and stock body');
+  assert.equal(g.children.filter(x=>x.userData.hkButtpad).length,1);
+  const rear=pad.position.x-pad.geometry.parameters.width/2;
+  assert.ok(Math.abs(rear-a.stockX)<1e-5,id+' outer stock X unchanged');
+  const shell=new THREE.Box3().setFromObject(stock);
+  const cover=new THREE.Box3().setFromObject(pad);
+  assert.ok(cover.min.x<shell.min.x,'pad is the actual rear-most component');
+  assert.ok(cover.max.x>shell.min.x+.02,'pad overlaps stock body');
+  assert.ok(cover.min.z<shell.min.z-.02 && cover.max.z>shell.max.z+.02,
+   'pad side faces stand clear of stock side faces, no Z fight');
+  clearWeaponSilhouette(g);
+ }
+});
+test('R4: vertical box magazine is centered in its magwell at top and heel',()=>{
+ const profile=HK_MAG20_OUTLINE;
+ assert.equal(profile.length,6,'one clean magazine mesh with two heel bevels');
+ const topCenter=(profile[0][0]+profile[1][0])/2;
+ const heelCenter=(profile[3][0]+profile[4][0])/2;
+ assert.ok(Math.abs(topCenter-HK_MAG20_CENTER_X)<1e-6);
+ assert.ok(Math.abs(heelCenter-topCenter)<1e-6);
+ assert.equal(profile[0][0],profile[5][0],'rear edge stays vertical');
+ assert.equal(profile[1][0],profile[2][0],'front edge stays vertical');
+ for(const id of ids){
+  const {cfg,g}=geometry(id);
+  const mag=g.children.find(x=>x.name==='family-magazine-'+cfg.build.parts.magazine+'-0');
+  const base=g.children.find(x=>x.name==='family-magazine-'+cfg.build.parts.magazine+'-1');
+  assert.ok(mag&&base);
+  assert.equal(base.position.x,HK_MAG20_CENTER_X,'baseplate seated on box');
+  assert.ok(base.geometry.parameters.width<=3.24,'no oversized projecting heel');
+  clearWeaponSilhouette(g);
+ }
+});
+test('R4: right-side port aligns with magazine; opposite side holds HK selector',()=>{
+ assert.equal(HK_VISUAL_ANATOMY.portX,HK_VISUAL_ANATOMY.magwellCenterX);
+ for(const id of ids){
+  const {cfg,g}=geometry(id);
+  const port=g.children.find(x=>x.userData.hkEjectionPort);
+  const selector=g.children.find(x=>x.name==='family-art-hk-selector');
+  assert.ok(port&&selector);
+  assert.equal(port.position.x,HK_VISUAL_ANATOMY.magwellCenterX);
+  assert.equal(port.position.y,HK_VISUAL_ANATOMY.portY);
+  assert.equal(port.geometry.parameters.width,HK_VISUAL_ANATOMY.portWidthX);
+  assert.ok(port.position.z>1.76 && selector.position.z<0,
+   'ejection opening right, selector on opposite side');
+  assert.ok(HK_VISUAL_ANATOMY.portY>.35 && HK_VISUAL_ANATOMY.portY<.75,
+   'ejection opening stays adjacent to barrel centerline');
+  const bolt=port.material.map.image.data;
+  assert.ok(bolt.length>0);
+  let bright=0;
+  for(let n=0;n<bolt.length;n+=4)
+   if(bolt[n]>=70)bright++;
+  assert.ok(bright>=40,'single broad bolt inset remains readable');
+  clearWeaponSilhouette(g);
+ }
+});
+test('R4: HK pistol-grip rake, one side cocking handle and distinct sights',()=>{
+ for(const id of ids){
+  const {cfg,g}=geometry(id),a=resolveWeaponAssembly(cfg);
+  const grip=g.children.find(x=>x.name===
+   'family-grip-'+cfg.build.parts.grip+'-0');
+  const gripBounds=new THREE.Box3().setFromObject(grip);
+  assert.ok(a.primaryX>gripBounds.min.x&&a.primaryX<gripBounds.max.x,
+   'hand socket remains within raked grip span');
+  const position=grip.geometry.getAttribute('position');
+  const low=[],high=[];
+  for(let i=0;i<position.count;i++){
+   const x=position.getX(i),y=position.getY(i);
+   if(y<-6.5)low.push(x);
+   if(y>-2.5&&y<-2.0)high.push(x);
+  }
+  assert.ok(low.length&&high.length);
+  // Extruded profiles contain repeated triangle vertices. Comparing their
+  // raw average biases toward tessellation instead of the authored contour.
+  const contourCenter=xs=>{
+   const unique=[...new Set(xs.map(x=>x.toFixed(3)))].map(Number);
+   return (Math.min(...unique)+Math.max(...unique))/2;
+  };
+  assert.ok(contourCenter(low)<contourCenter(high)-.25,
+   'authored grip heel has a clear rearward rake');
+  const handle=g.children.find(x=>x.userData.hkCockingHandle);
+  assert.ok(handle);
+  const hb=new THREE.Box3().setFromObject(handle);
+  assert.ok(hb.min.z< -1.95,'side cocking handle is visible beyond receiver');
+  assert.ok(hb.max.y<=2.56,'side handle does not become a second rear tower');
+  const rear=g.children.find(x=>x.userData.hkRearSight);
+  assert.ok(rear);
+  if(id==='hk-g3a3'){
+   assert.equal(rear.geometry.type,'CylinderGeometry');
+   assert.equal(rear.geometry.parameters.radialSegments,6);
+  }else assert.equal(rear.geometry.type,'ExtrudeGeometry');
+  clearWeaponSilhouette(g);
+ }
 });

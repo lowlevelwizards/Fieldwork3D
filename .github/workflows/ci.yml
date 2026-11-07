@@ -1306,6 +1306,20 @@ jobs:
           name: hk-g3-r3-orthographic-review
           path: reports/hk-g3-r3-ortho.html
           retention-days: 7
+      - name: HK G3 R4 — geometry, magazine, pose and AR/AK critical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3-r4-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk-g3-family.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/weapon-ar-r48-silhouettes.test.mjs tests/weapon-ak-r47-final-polish.test.mjs tests/breach-low-ready-family-fit.test.mjs tests/breach-weapon-magazine-idle.test.mjs
+      - name: HK G3 R4 — six-rifle actual-mesh visual comparison
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3-r4-') }}
+        run: node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs reports/hk-g3-r4-ortho.html
+      - name: HK G3 R4 — upload orthographic visual review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3-r4-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hk-g3-r4-orthographic-review
+          path: reports/hk-g3-r4-ortho.html
+          retention-days: 7
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
