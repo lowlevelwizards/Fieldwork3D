@@ -10,6 +10,8 @@ import {HK_OLIVE_POLYMER,HK_MAG_METAL}
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {addHKFacetedForearm,addHKHandguardOpenings} from './hk-handguard-profiles.ts';
 import {HK_MAG20_OUTLINE} from './hk-magazine-profiles.ts';
+import {addHKRetractableStock} from './hk-retractable-stock.ts';
+import {addHK556Family} from './hk-556-silhouettes.ts';
 import {HK_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
 
@@ -17,6 +19,10 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material,
  showFactoryMuzzle=true){
  const parts=build.parts,early=parts.receiver==='hk-g3-early';
+ if(parts.receiver==='hk33-556-rifle'||parts.receiver==='hk53-556-compact'){
+  addHK556Family(root,build,steel,dark,showFactoryMuzzle);
+  return;
+ }
  const art=HK_BARREL_ART[parts.barrel];
  if(!art)throw new Error('Unknown HK art barrel: '+parts.barrel);
  const ids:Record<SlotName,number>={
@@ -50,9 +56,13 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // do in the existing Fieldwork AR/AK miniature families.
 
  // Early and polymer buttstocks are both confident single solid shapes.
- const rear=early?-15.15:-15.30;
+ const retract=parts.stock==='hk-g3-retract-stock';
+ const rear=early||retract?-15.15:-15.30;
  // The stock shell stops INSIDE the buttplate. Its cap is now a genuine
  // outward-facing slab instead of a coplanar overlaid side face (R3 Z-fight).
+ if(retract){
+  addHKRetractableStock(root,parts.stock,rear,steel,dark);
+ }else{
  const stockStart=rear+.46;
  p('stock',early?[
   [stockStart,1.22],[-11.18,1.25],[-10.77,1.16],
@@ -71,6 +81,7 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const padHeight=early?4.40:4.27;
  const buttpad=b('stock',rear+.28,padMidY,0,.56,padHeight,3.50,'dark');
  buttpad.userData.hkButtpad=true;
+ }
 
  // Simple HK grip, shorter and chunkier than literal scale reference.
  // Distinct HK rearward rake; root stays underneath the trigger group

@@ -1343,6 +1343,20 @@ jobs:
           name: hk-g3-r5-orthographic-review
           path: reports/hk-g3-r5-ortho.html
           retention-days: 7
+      - name: HK family expansion — targeted geometry, magazines, pose and legacy preservation
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3a4-hk33-hk53-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk-expansion.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/weapon-ar-r48-silhouettes.test.mjs tests/weapon-ak-r47-final-polish.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: HK family expansion — side, top and front actual-mesh comparison
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3a4-hk33-hk53-') }}
+        run: node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs reports/hk-expanded-ortho.html
+      - name: HK family expansion — upload mesh review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-g3a4-hk33-hk53-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hk-g3a4-hk33-hk53-orthographic-review
+          path: reports/hk-expanded-ortho.html
+          retention-days: 7
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

@@ -9,6 +9,14 @@ export const HK_BARREL_ART:Readonly<Record<string,HKBarrelArt>>={
  'hk-g3-service':{
   id:'hk-g3-service',lengthScale:.95,handguardStartX:4.05,
   handguardEndX:14.05,barrelStartX:13.4,frontSightX:17.4,muzzleX:22.4
+ },
+ 'hk33-service':{
+  id:'hk33-service',lengthScale:.95,handguardStartX:4.05,
+  handguardEndX:13.00,barrelStartX:12.60,frontSightX:16.25,muzzleX:20.00
+ },
+ 'hk53-short':{
+  id:'hk53-short',lengthScale:.95,handguardStartX:4.05,
+  handguardEndX:9.25,barrelStartX:8.90,frontSightX:10.65,muzzleX:12.90
  }
 };
 export const hkBarrelArt=(id:string)=>HK_BARREL_ART[id];

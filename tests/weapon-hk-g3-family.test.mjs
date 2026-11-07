@@ -31,8 +31,8 @@ const geometry=id=>{
 };
 const part=(root,s)=>partVisualBounds(root,s);
 
-test('HK catalog has exactly two distinct factory rifles with stable saved builds',()=>{
- assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,2);
+test('HK preserves both original G3 factory rifles alongside the expanded five-model catalog',()=>{
+ assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,5);
  for(const id of ids){
   const {cfg,g}=geometry(id);
   assert.equal(cfg.build?.family,'hk');

@@ -6,11 +6,16 @@ import {akMagazineCurve,akMagazineOutline}
  from './weapons/geometry/ak-magazine-profiles.ts';
 import {HK_MAG20_OUTLINE,HK_MAG20_CENTER_X,HK_MAG20_TOP_Y,HK_MAG20_LENGTH}
  from './weapons/geometry/hk-magazine-profiles.ts';
+import {HK556_MAG_CENTER_X,HK556_MAG_TOP_Y,HK556_MAG_LENGTHS,
+ hk556MagazineOutline,type HK556MagazineId}
+ from './weapons/geometry/hk-556-magazine-profiles.ts';
 export type CarriedMagProfile={family:'ar'|'ak'|'hk';length:number;material:number};
 export function carriedMagazineProfile(part:string|null|undefined):CarriedMagProfile|null{
  if(!part)return null;
  if(part==='hk-g3-mag20')
   return {family:'hk',length:HK_MAG20_LENGTH,material:0x5e6960};
+ if(part==='hk556-mag25'||part==='hk556-mag30')
+  return {family:'hk',length:HK556_MAG_LENGTHS[part],material:0x5e6960};
  if(part.startsWith('ar-mag'))
   return {family:'ar',length:part==='ar-mag20'?4.1:5.3,
    material:part==='ar-magpoly'?0x343e37:0x687369};
@@ -29,15 +34,20 @@ export function carriedMagazineGeometry(part:string):THREE.BufferGeometry|null{
  const profile=carriedMagazineProfile(part);
  if(!profile)return null;
  if(profile.family==='hk'){
+  const is556=part==='hk556-mag25'||part==='hk556-mag30';
+  const points=is556?hk556MagazineOutline(part as HK556MagazineId):HK_MAG20_OUTLINE;
+  const center=is556?HK556_MAG_CENTER_X:HK_MAG20_CENTER_X;
+  const topY=is556?HK556_MAG_TOP_Y:HK_MAG20_TOP_Y;
+  const depth=is556?1.90:2.08;
   const shape=new THREE.Shape();
-  shape.moveTo(HK_MAG20_OUTLINE[0][0],HK_MAG20_OUTLINE[0][1]);
-  for(const [x,y] of HK_MAG20_OUTLINE.slice(1))shape.lineTo(x,y);
+  shape.moveTo(points[0][0],points[0][1]);
+  for(const [x,y] of points.slice(1))shape.lineTo(x,y);
   shape.closePath();
-  const geometry=new THREE.ExtrudeGeometry(shape,{depth:2.08,steps:1,
+  const geometry=new THREE.ExtrudeGeometry(shape,{depth,steps:1,
    bevelEnabled:false,curveSegments:1});
-  geometry.translate(-HK_MAG20_CENTER_X,
-   -HK_MAG20_TOP_Y+HK_MAG20_LENGTH*.5,-1.04);
-  geometry.scale(.62,.82,.73);geometry.rotateY(Math.PI/2);
+  geometry.translate(-center,-topY+profile.length*.5,-depth*.5);
+  geometry.scale(.62,Math.min(.82,4/profile.length),.73);
+  geometry.rotateY(Math.PI/2);
   return geometry;
  }
  const ar=profile.family==='ar';
