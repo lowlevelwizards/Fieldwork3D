@@ -13,7 +13,8 @@ const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 test('C1: first 12 units of actual muzzle ray are no longer a friendly-fire blind spot',()=>{
  for(const friend of [{x:0,y:0},{x:1,y:0},{x:5,y:2},
                      {x:9.9,y:7},{x:11.9,y:10},{x:12.1,y:2},
-                     {x:35,y:0}]){
+                     {x:35,y:0},{x:-9,y:0},{x:98,y:0},
+                     {x:105,y:0}]){
   assert.equal(lane(friend).blocker,'friendly',
    'near or farther teammate directly in outgoing corridor: '+
    JSON.stringify(friend));
@@ -23,10 +24,10 @@ test('C1: first 12 units of actual muzzle ray are no longer a friendly-fire blin
 });
 
 test('C2: backward/sideways friendlies are not fictitious forward blockers',()=>{
- for(const friend of [{x:-9,y:0},{x:-.01,y:0},{x:5,y:11},
-                     {x:50,y:15},{x:98,y:0},{x:115,y:0}]){
+ for(const friend of [{x:-12,y:0},{x:-11,y:0},{x:5,y:11},
+                     {x:50,y:15},{x:110.5,y:0},{x:115,y:0}]){
   assert.equal(lane(friend).blocker,'clear',
-   'teammates behind/off the ray or beyond the aimed target are not blocking: '+
+   'teammates whose physical body is outside the ray are not blocking: '+
    JSON.stringify(friend));
  }
  assert.equal(assessFireLane(from,26,{x:100,y:100},26,[],[],[],
