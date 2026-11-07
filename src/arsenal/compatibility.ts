@@ -81,7 +81,7 @@ export function proposeArsenalPartChange(recipe:ArsenalRecipeV2,
    return rejected(slot,id,proposal.reason??'This part does not fit');
   const platformId=arsenalPlatformForReceiver(proposal.build.parts.receiver);
   if(platformId!==recipe.platformId)
-   return rejected(slot,id,'Choose the other platform through the Arsenal gallery');
+   return rejected(slot,id,'Receiver belongs to another platform');
   next.parts={...proposal.build.parts};
  }else{
   const attachmentSlot=slot as ArsenalAccessorySlot;

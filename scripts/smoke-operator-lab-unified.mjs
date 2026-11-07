@@ -136,6 +136,46 @@ try{
   await page.locator('.arsenal-wb-actions button').filter({hasText:'UNDO'}).click();
   await page.waitForFunction(()=>document.querySelector(
    '.arsenal-wb-current')?.textContent?.includes('A2 Fixed'));
+  // R13: factory/model changes must be possible without legacy dropdowns.
+  await page.getByRole('button',{name:'CHOOSE MODEL'}).click();
+  await page.locator('.arsenal-wb-model-controls select').selectOption('mp5');
+  await page.locator('.arsenal-wb-model-controls input').fill('MP5K-PDW');
+  await page.locator('.arsenal-wb-load-option').filter({hasText:'MP5K-PDW'}).click();
+  const modelReview=await page.locator('.arsenal-wb-load-changes').textContent();
+  if(!modelReview?.includes('receiver')||!modelReview.includes('stock'))
+   throw Error('Factory change did not disclose receiver and stock: '+modelReview);
+  await page.getByRole('button',{name:'USE AS STARTING POINT'}).click();
+  await page.waitForFunction(()=>document.querySelector('.arsenal-wb-identity h2')?.
+   textContent?.includes('MP5K-PDW'));
+  await page.screenshot({path:out+'/arsenal-switch-mp5k-pdw-iphone.png'});
+  await page.locator('.arsenal-wb-actions button').filter({hasText:'UNDO'}).click();
+  await page.waitForFunction(()=>document.querySelector('.arsenal-wb-current')?.
+   textContent?.includes('A2 Fixed'));
+  // R14: iPhone primary actions stay within the screen and offer 44px targets.
+  const sizes=await page.locator('.arsenal-wb-primary-actions button:visible')
+   .evaluateAll(buttons=>buttons.map(b=>{
+    const r=b.getBoundingClientRect(),boundary=b.closest('.arsenal-wb-screen').getBoundingClientRect();
+    return {label:b.textContent,height:r.height,
+      contained:r.left>=boundary.left-1&&r.right<=boundary.right+1};
+   }));
+  if(sizes.length<3||sizes.some(s=>s.height<43||!s.contained))
+   throw Error('Mobile Arsenal actions overflow or miss touch target: '+JSON.stringify(sizes));
+  await page.locator('.arsenal-wb-show-all').click();
+  const incompatible=page.locator('.arsenal-wb-option[data-fit="incompatible"]').first();
+  if(!await incompatible.count())
+   throw Error('SHOW UNAVAILABLE did not expose blocked stock choices');
+  const beforeCurrent=await page.locator('.arsenal-wb-current').textContent();
+  await incompatible.click();
+  if(!await page.locator('.arsenal-wb-fit-inline').isVisible())
+   throw Error('Unavailable part has no on-device explanation');
+  if(await page.locator('.arsenal-wb-current').textContent()!==beforeCurrent)
+   throw Error('Inspecting unavailable stock unexpectedly changed the weapon');
+  await page.screenshot({path:out+'/arsenal-mobile-compatibility-iphone.png'});
+  page.once('dialog',dialog=>dialog.accept());
+  await page.getByRole('button',{name:'BACK TO ARSENAL'}).click();
+  if(await page.locator('.arsenal-wb-screen').count()||
+    await page.evaluate(()=>document.body.style.overflow==='hidden'))
+   throw Error('Workbench close did not restore gallery scrolling');
   if(errors.length)throw Error('Arsenal runtime: '+errors.join('; '));
   await page.close();
  }finally{await browser.close();}

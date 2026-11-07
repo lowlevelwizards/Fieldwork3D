@@ -1,11 +1,14 @@
-/* Standalone Arsenal stage 3: gallery shell, not a second live loadout editor. */
-:root{color-scheme:dark}
-*{box-sizing:border-box}
-html,body{margin:0;min-height:100%;background:var(--fw-bg);color:var(--fw-text);
+/* Standalone gallery resets stay on its own page. The Workbench is imported
+ * into Breach and Campaign dynamically: never restyle their root elements. */
+body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
+ background:var(--fw-bg);color:var(--fw-text);
  font:400 14px/1.45 var(--fw-font-action)}
-button,input,a{font:inherit}
-a{color:inherit;text-decoration:none}
-button{cursor:pointer}
+.arsenal-shell,.arsenal-wb-screen{box-sizing:border-box;
+ font:400 14px/1.45 var(--fw-font-action)}
+.arsenal-shell *,.arsenal-wb-screen *{box-sizing:border-box}
+:where(.arsenal-shell,.arsenal-wb-screen) :where(button,input,a){font:inherit}
+.arsenal-shell a{color:inherit;text-decoration:none}
+.arsenal-shell button,.arsenal-wb-screen button{cursor:pointer}
 .arsenal-shell{min-height:100dvh;padding:env(safe-area-inset-top,0px) max(16px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(16px,env(safe-area-inset-left,0px));
  display:flex;flex-direction:column;gap:22px;max-width:1600px;margin:auto}
 .arsenal-top{display:flex;justify-content:space-between;align-items:center;gap:14px;
@@ -82,7 +85,12 @@ button{cursor:pointer}
 .arsenal-wb-head h2{font:800 clamp(22px,3vw,32px)/1 var(--fw-font-display);
  margin:4px 0 0;letter-spacing:.02em}
 .arsenal-wb-identity{min-width:0;flex:1}
-.arsenal-wb-actions{display:flex;gap:7px}
+.arsenal-wb-actions{display:flex;align-items:center;gap:10px;min-width:0}
+.arsenal-wb-primary-actions,.arsenal-wb-utility-actions{
+ display:flex;align-items:center;gap:7px;min-width:0}
+.arsenal-wb-primary-actions{flex-wrap:wrap}
+.arsenal-wb-utility-actions{flex-wrap:wrap;justify-content:flex-end}
+.arsenal-wb-action[hidden]{display:none}
 .arsenal-wb-action{min-height:44px;padding:9px 13px;background:var(--fw-panel);
  color:var(--fw-text);border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
  font:700 12px var(--fw-font-action)}
@@ -158,7 +166,29 @@ button{cursor:pointer}
 @media(max-width:760px){
  .arsenal-wb-panel{overflow:visible;max-height:none}
  .arsenal-wb-option-list{grid-template-columns:repeat(2,minmax(0,1fr))}
- .arsenal-wb-head .arsenal-wb-actions{flex-wrap:wrap;justify-content:flex-end}
+ .arsenal-wb-head{
+  display:grid;grid-template-columns:auto minmax(0,1fr);
+  grid-template-areas:"back identity" "actions actions";align-items:center;
+  gap:8px;padding:9px 0 10px
+ }
+ .arsenal-wb-back{grid-area:back;max-width:140px}
+ .arsenal-wb-identity{grid-area:identity}
+ .arsenal-wb-head h2{font-size:clamp(20px,5vw,26px)}
+ .arsenal-wb-actions{grid-area:actions;display:grid;gap:6px;min-width:0;margin:0}
+ .arsenal-wb-primary-actions{display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+ .arsenal-wb-primary-actions .arsenal-wb-action{
+  width:100%;min-width:0;min-height:44px;text-align:center;
+  overflow-wrap:anywhere;font-size:12px;padding:8px 6px
+ }
+ .arsenal-wb-utility-actions{display:flex;gap:6px;
+  overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;
+  justify-content:flex-start;padding:2px 1px 5px;
+  overscroll-behavior-x:contain;scrollbar-width:thin}
+ .arsenal-wb-utility-actions .arsenal-wb-action{
+  flex:0 0 auto;min-height:44px;padding:8px 12px}
+ .arsenal-wb-main{padding-top:6px}
+ .arsenal-wb-viewport{height:clamp(220px,39dvh,360px)}
 }
 
 /* Stage 6 saved recipe management. Keep actions compact and secondary. */
@@ -216,3 +246,33 @@ button{cursor:pointer}
 .arsenal-wb-load-changes li{padding:2px 0}
 .arsenal-wb-load-warning{color:var(--fw-brass);font-weight:650}
 @media(max-width:480px){.arsenal-wb-load-choices{grid-template-columns:1fr}}
+
+/* R13: one factory/saved review panel, not a second editing implementation. */
+.arsenal-wb-choose-model{border-color:var(--fw-sage);color:var(--fw-text)}
+.arsenal-wb-model-controls{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}
+.arsenal-wb-model-controls[hidden]{display:none}
+.arsenal-wb-model-controls select,.arsenal-wb-model-controls input{
+ min-height:44px;flex:1 1 180px;min-width:0;padding:8px 11px;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ background:var(--fw-panel-deep);color:var(--fw-text);font:600 13px var(--fw-font-action)}
+.arsenal-wb-model-controls select:focus-visible,
+.arsenal-wb-model-controls input:focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:2px}
+
+/* R14b: unavailable parts are inspectable, not deceptively disabled.
+ * Tapping one explains the fitment rule but never commits a change. */
+.arsenal-wb-option[data-fit="incompatible"]{opacity:.83;
+ border-style:dashed;border-color:var(--fw-text-faint)}
+.arsenal-wb-option[data-fit="incompatible"] small{color:var(--fw-warning)}
+.arsenal-wb-option[data-fit="requires"]{border-color:var(--fw-brass)}
+.arsenal-wb-option[data-fit="requires"] small{color:var(--fw-brass)}
+.arsenal-wb-fit-explanation{padding:11px 12px;margin:0;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-warning);
+ border-radius:var(--fw-radius-sm);color:var(--fw-text-warm);
+ font:600 12px/1.5 var(--fw-font-action)}
+.arsenal-wb-fit-explanation[hidden]{display:none}
+.arsenal-wb-option[data-fit="incompatible"]{cursor:help}
+
+.arsenal-wb-fit-inline{display:block;padding:8px 0 1px;
+ color:var(--fw-text-warm);font:600 12px/1.45 var(--fw-font-action);
+ white-space:normal;overflow-wrap:break-word}
