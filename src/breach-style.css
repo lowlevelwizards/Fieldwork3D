@@ -2050,3 +2050,21 @@ html,body{font-family:var(--fw-font-menu)}
 .replay-mark:focus-visible{outline:2px solid #f0dcad;outline-offset:1px}
 .replay-cluster-menu strong{display:block;padding:4px 7px 8px;
   color:#e9d2a3;font:700 11px var(--ui-font)}
+
+
+/* Replay UX V2 landscape: relocate selectors beside header instead of
+ * shrinking transport targets or sacrificing battlefield visibility. */
+@media(max-height:470px) and (min-width:600px){
+  .replay-panel{display:grid;grid-template-columns:minmax(165px,1fr) minmax(0,2.6fr);
+    align-items:center;column-gap:8px;row-gap:3px;padding:4px 8px}
+  .replay-head{grid-column:1;grid-row:1;min-width:0;min-height:28px}
+  .replay-head strong{font-size:14px}
+  .replay-head-right{gap:4px}
+  .replay-quick-controls{grid-column:2;grid-row:1;margin:0;gap:4px}
+  .replay-quick-controls label{min-width:0}
+  .replay-quick-controls select{min-height:29px}
+  .replay-timeline{grid-column:1/-1;margin:0;height:26px}
+  .replay-actions{grid-column:1/-1;margin:0}
+  .replay-actions button,.replay-actions #replayPlay{min-height:38px}
+  .replay-utility{grid-column:1/-1;margin:0;min-height:27px}
+}
