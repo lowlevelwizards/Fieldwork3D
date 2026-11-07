@@ -20,9 +20,12 @@ export function poseContactBudget(volume:PoseBox,env:PoseClearanceEnvelope,
  switch(volume.region){
   case 'side-flank':
    if(volume.material==='structured'){
-    upper=Math.max(base,.68);lower=Math.max(base,.78);
+    // Only the sewn side band is allowed to compress around a
+    // blocky moving forearm. The independent rigid side insert remains
+    // governed by the hard 0.12 budget.
+    upper=Math.max(base,.68);lower=Math.max(base,1.50);
    }else{
-    upper=Math.max(base,1.30);lower=Math.max(base,1.35);
+    upper=Math.max(base,1.30);lower=Math.max(base,1.55);
    }
    // The real flak/legacy shoulder wrap sits OVER the sleeve attachment.
    // Never grant that allowance to a front plate, forearm or rear return.
@@ -32,9 +35,9 @@ export function poseContactBudget(volume:PoseBox,env:PoseClearanceEnvelope,
    break;
   case 'side-front-return':
    if(volume.material==='structured'){
-    upper=Math.max(base,.62);lower=Math.max(base,.72);
+    upper=Math.max(base,.62);lower=Math.max(base,1.52);
    }else{
-    upper=Math.max(base,1.23);lower=Math.max(base,1.05);
+    upper=Math.max(base,1.23);lower=Math.max(base,1.45);
    }
    break;
   case 'side-rear-return':
