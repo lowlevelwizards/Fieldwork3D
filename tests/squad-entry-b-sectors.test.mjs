@@ -73,3 +73,23 @@ test('B7: returned look targets always advance inward, not behind the door',()=>
   assert.ok(slot.look.y<slot.point.y,
    'entry facing must point deeper into room');
 });
+
+test('B10: fallback search keeps explicit planning probes bounded',()=>{
+ let probes=0;
+ const impossible=p=>{
+  probes++;
+  return p.x>=223&&p.x<=225&&p.y<300;
+ };
+ const snapshot=structuredClone(door);
+ assert.deepEqual(entryLanes(door,from,4,impossible),[]);
+ assert.ok(probes<200,
+  'a tiny failed room must not trigger a heavy pathfinding search: '+probes);
+ assert.deepEqual(door,snapshot,'planning cannot mutate the actual door');
+});
+
+test('B10: planning two surviving operators needs no artificial four-lane width',()=>{
+ const slots=entryLanes(door,from,2,p=>p.x>=222&&p.x<=226);
+ assert.equal(slots.length,2);
+ for(let i=1;i<slots.length;i++)
+  assert.ok(gap(slots[0].point,slots[i].point)>=23);
+});
