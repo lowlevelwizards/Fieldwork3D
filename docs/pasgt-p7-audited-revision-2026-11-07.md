@@ -42,3 +42,6 @@ P7-D (integration/release): `npm run build` and focused `node --experimental-str
 
 ## Promotion gates
 P7-A/P7-B/P7-C commit independently to the same feature branch. Review each stage head. Critical tests only. Keep PR draft while mobile visual inspection or source-specific checks are incomplete. Do not claim visually approved or deployed merely because source tests pass.
+
+## P7 release preflight enforcement
+The P7 branch's focused GitHub Actions gate includes `scripts/audit-pages-release-checkpoint.mjs`. It fails closed if a previous main Pages release is still queued, last deployment fails, the deployed SHA differs from main, or public `fieldwork-build.json` does not identify the latest main commit. Preserve the prior successful P7 mobile visual runs and release as one coherent PR merge, never one deployment per stage.
