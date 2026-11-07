@@ -97,7 +97,11 @@ export const LOW_READY_CONTACT_LIMITS={
 export type SleeveContactResult={
  valid:boolean;hardDepth:number;softDepth:number;quality:number;
  contacts:readonly {label:PoseBox['label'];material:ContactMaterial;
-  depth:number;allowed:number}[];
+  depth:number;allowed:number;
+  upperDepth:number;lowerDepth:number;
+  upperAllowed:number;lowerAllowed:number;
+  upperExcess:number;lowerExcess:number;
+  blocking:boolean}[];
 };
 const axisX=new THREE.Vector3(1,0,0),
  axisY=new THREE.Vector3(0,1,0),axisZ=new THREE.Vector3(0,0,1);
@@ -178,7 +182,12 @@ export function evaluateSleeveArmorContact(
    Math.max(0,lower-allowed*.18)/Math.max(.1,allowed);
   quality+=excess*(.5+(volume.material==='rigid'?3:0));
   contacts.push({label:volume.label,material:volume.material,
-   depth,allowed:Math.max(allowed,upperAllowed)});
+   depth,allowed:Math.max(allowed,upperAllowed),
+   upperDepth:upper,lowerDepth:lower,
+   upperAllowed,lowerAllowed:allowed,
+   upperExcess:Math.max(0,upper-upperAllowed),
+   lowerExcess:Math.max(0,lower-allowed),
+   blocking:upper>upperAllowed+.001||lower>allowed+.001});
  }
  return {valid,hardDepth,softDepth,quality,contacts};
 }

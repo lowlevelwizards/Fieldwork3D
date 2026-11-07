@@ -50,6 +50,7 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
  const pairCounts={clear:0,unresolved:0,primaryReach:0,
   primaryClearance:0,supportReach:0,supportClearance:0};
  const posePairExamples=[];
+ const contactBlocks={};
  for(const fixture of fixtures){
   const base=assemble(fixture);
   const original=createOperatorRig('v3-old-'+fixture.id,'blue',true);
@@ -74,6 +75,9 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
      for(const key of ['primaryReach','primaryClearance',
       'supportReach','supportClearance'])
       pairCounts[key]+=(pair.rejects?.[key]??0);
+     for(const [region,count] of Object.entries(
+       pair.rejects?.contactBlocks??{}))
+      contactBlocks[region]=(contactBlocks[region]??0)+count;
      if(posePairExamples.length<12)posePairExamples.push({
       kit:fixture.id,action:name,
       status:pair.status,yaw:pair.yaw,leanX:pair.leanX,
@@ -114,5 +118,5 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
  console.log('POSE-V3-ACTION-MATRIX',JSON.stringify({clear,unresolved,
   fixtures:fixtures.length,actions:scenarios.length,
   reasons:Object.fromEntries(reasons),violations:Object.fromEntries(violations),
-  pairCounts,posePairExamples,examples}));
+  pairCounts,contactBlocks,posePairExamples,examples}));
 });

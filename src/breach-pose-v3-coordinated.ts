@@ -31,6 +31,8 @@ export type CoordinatedRequest={
 export type CoordinatedRejections={
  primaryReach:number;primaryClearance:number;
  supportReach:number;supportClearance:number;
+ /** Observational only: contact region + segment + material failures. */
+ contactBlocks:Record<string,number>;
 };
 export type CoordinatedResult={
  rejects:CoordinatedRejections;
@@ -83,7 +85,19 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
  let best=Infinity,candidates=0,validCandidates=0;
  const rejects:CoordinatedRejections={
   primaryReach:0,primaryClearance:0,
-  supportReach:0,supportClearance:0
+  supportReach:0,supportClearance:0,contactBlocks:{}
+ };
+ const tally=(report:ArmConstraintReport,arm:'firing'|'support')=>{
+  for(const contact of report.contacts){
+   if(contact.upperExcess>.001){
+    const k=arm+':upper:'+contact.label+':'+contact.material;
+    rejects.contactBlocks[k]=(rejects.contactBlocks[k]??0)+1;
+   }
+   if(contact.lowerExcess>.001){
+    const k=arm+':lower:'+contact.label+':'+contact.material;
+    rejects.contactBlocks[k]=(rejects.contactBlocks[k]??0)+1;
+   }
+  }
  };
  const yawSeeds=V3_TORSO_YAWS;
  for(const leanX of V3_TORSO_LEANS){
@@ -99,6 +113,7 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
    wrist:fit.primary,side:1,mode:req.mode,envelope:req.envelope,
    preferredPole:new THREE.Vector3(3,-9,1.5)});
   if(!right.solution){
+   tally(right.report,'firing');
    rejects[right.reason==='out-of-reach'?'primaryReach':
      'primaryClearance']++;
    candidates+=req.releasedSupportTarget?1:SUPPORT_SAMPLES.length;
@@ -124,6 +139,7 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
      wrist:support,side:-1,mode:req.mode,envelope:req.envelope,
      preferredPole:new THREE.Vector3(3,-9,-1.5)});
    if(!left.solution){
+    tally(left.report,'support');
     rejects[left.reason==='out-of-reach'?'supportReach':
       'supportClearance']++;continue;
    }
@@ -149,8 +165,8 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
   if(validCandidates>approvedBefore)break;
  }
  return winning?{...winning,candidates,validCandidates,
-  rejects:{...rejects}}:{
+  rejects:{...rejects,contactBlocks:{...rejects.contactBlocks}}}:{
   status:'unresolved',fit:original,yaw:0,leanX:0,arms:null,
-  rejects:{...rejects},
+  rejects:{...rejects,contactBlocks:{...rejects.contactBlocks}},
   reports:null,softScales:null,supportFraction:null,candidates,validCandidates,quality:null};
 }
