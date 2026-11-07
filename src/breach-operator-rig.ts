@@ -875,7 +875,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
      resolveHelmetSetup(modelId,p.wardrobe?.helmetSetup,{
       hasLegacyPrint:!!requestedCamo
      }).setup.cover!=='none';
-   const camo=fabricOnShell?null:requestedCamo;
+   // A PASGT never prints its camouflage directly on Kevlar. When the
+   // cover is removed, the separately selected hard-shell solid is visible.
+   const camo=modelId==='pasgt'||fabricOnShell?null:requestedCamo;
    const map=camo?headwearCamoTexture(modelId,camo,
      headwearCamoPlacement(r.camoIdentity,'headwear:'+modelId,camo,
       p.wardrobe?.headwearCamoRoll??0)):headwearDetailTexture(modelId);

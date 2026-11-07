@@ -4,6 +4,7 @@
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {readHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
+import {readPasgtDetails,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
 import {isPoliceVisorPosition,isPoliceVisorTint,isPoliceVisorFrame,type PoliceVisorOptions} from './operator-police-visor-policy.ts';
 import {isM56Details,isM56Net,type M56Options} from './operator-ddr-m56-policy.ts';
 import {isM1956Variant,type M1956Variant} from './operator-m1956-policy.ts';
@@ -168,6 +169,8 @@ export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
 export type WardrobeOptions=HelmetCoverConfig&{
  /** Optional additive H1 modern modular helmet configuration. */
  helmetSetup?:HelmetSetupV1;
+ /** PASGT-family field-dress options; saved separately from modern mounts. */
+ pasgtDetails?:PasgtDetails;
  version:1;styles:Partial<Record<WardrobeSlot,string>>;
  /** East German helmet details are appearance-only. */
  m56Details?:M56Options['m56Details'];m56Net?:M56Options['m56Net'];
@@ -311,6 +314,8 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  Object.assign(result,readHelmetCoverConfig(v));
  if(v.helmetSetup&&typeof v.helmetSetup==='object')
   result.helmetSetup=readHelmetSetup(v.helmetSetup);
+ if(v.pasgtDetails&&typeof v.pasgtDetails==='object')
+  result.pasgtDetails=readPasgtDetails(v.pasgtDetails,v.helmetSetup);
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
   result.headwearCamoRoll=v.headwearCamoRoll;
