@@ -90,7 +90,8 @@ export function resolveHelmetSetup(shell:string,raw:unknown,context:{
  if(s.headsetMount==='rail'&&s.rails==='none'){
   s.headsetMount='headband';suppressed.push('headset needs rails');
  }
- if(s.headsetMount==='rail'&&['comms-none','earpiece'].includes(context.headset??'comms-none')){
+ if(s.headsetMount==='rail'&&context.headset!==undefined&&
+   ['comms-none','earpiece'].includes(context.headset)){
   s.headsetMount='auto';suppressed.push('no rail-compatible headset equipped');
  }
  if(s.light!=='none'&&s.rails==='none'){

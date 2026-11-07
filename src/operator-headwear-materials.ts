@@ -100,6 +100,12 @@ export function headwearRegionPixel(id:HeadSilhouetteId,region:0|1|2|3,
   case 'high-cut':
    // Even quieter than the ACH. Ear relief is actual geometry.
    return region===1?240:region===2?228:region===3?251:249;
+  case 'mich-2001':
+  case 'mich-2002':
+   return region===1?240:region===2?227:region===3?251:249;
+  case 'fast-sf':
+  case 'fast-xp-mid':
+   return region===1?242:region===2?230:region===3?251:250;
   case 'pasgt':
    // Monolithic older shell with distinctly weighty brow and lower skirt.
    return region===1?236:region===2?217:region===3?251:249;

@@ -21,7 +21,7 @@ const part=(name:string,x:number,y:number,z:number,width:number,height:number,de
 const hidden=(parent:THREE.Group)=>{const g=new THREE.Group();g.visible=false;parent.add(g);return g;};
 const meshed=(group:THREE.Group,parts:readonly HeadwearCuboid[],
  material:THREE.Material,label:string)=>{
- const geo=unionCuboids(parts,{faceTone:()=>1,faceRegion:(p,axis,sign)=>
+ const geo=unionCuboids(parts,{faceTone:()=>1,faceRegion:(_part,axis,sign)=>
   axis===1&&sign===1?3:0});
  bakeGearGeometryAO(geo,material);
  const m=new THREE.Mesh(geo,material);m.name=label;m.castShadow=true;

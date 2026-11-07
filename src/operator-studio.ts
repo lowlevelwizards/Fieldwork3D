@@ -1093,7 +1093,12 @@ function renderMaterials(){
   if(prints.length){
    const printRow=row('COMPATIBLE HEADGEAR PRINTS');
    addCamoSwatches(printRow,prints,w.headwearCamo??null,id=>
-    changeWardrobe({...current(),headwearCamo:id,headwearCamoRoll:
+    changeWardrobe({...current(),headwearCamo:id,
+     // An H1 helmet print always belongs to a physical cover, not bare resin.
+     helmetSetup:isH1ModernHelmet(helmetShell)?readHelmetSetup({
+      ...current().helmetSetup,cover:'fitted',presetOrigin:undefined}):
+      current().helmetSetup,
+     headwearCamoRoll:
       w.headwearCamo===id?nextHeadwearCamoRoll(w.headwearCamoRoll):0}),
     'headwear',w.fabricCamo?.top??null);
   }
