@@ -47,7 +47,7 @@ export function pasgtCoverTexture(camo:HeadwearCamoId|undefined,
  for(const panel of PASGT_FABRIC_PANELS){
   const center=PASGT_PANEL_CENTER_U[panel],
    [shiftX,shiftY]=PASGT_PANEL_PRINT_PHASE[panel];
-  for(let y=0;y<h;y++)for(let x=center-78;x<=center+78;x++){
+  for(let y=0;y<h;y++)for(let x=center-88;x<=center+88;x++){
    const u=(x-center)/PASGT_UV_TEXELS_PER_UNIT,
     v=(y-128)/PASGT_UV_TEXELS_PER_UNIT;
    const mx=camo?mod(Math.floor(u*density)+phase!.offsetX+shiftX,size):0;

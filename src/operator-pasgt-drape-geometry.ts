@@ -12,7 +12,7 @@ import {headwearCuboidVolumes} from './operator-headwear-silhouettes.ts';
 export const PASGT_ATLAS_WIDTH=512;
 export type PasgtFabricPanel='left'|'top'|'right';
 export const PASGT_PANEL_CENTER_U:Readonly<Record<PasgtFabricPanel,number>>={
- left:84,top:256,right:428
+ left:89,top:256,right:423
 };
 export const PASGT_FABRIC_PANELS=['left','top','right'] as const;
 export const PASGT_ATLAS_HEIGHT=256;
