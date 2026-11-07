@@ -14,6 +14,8 @@ on:
       - 'tests/replay-r3-chunk-controller.test.mjs'
       - 'src/breach-replay-frame-sampling.ts'
       - 'src/breach-replay.ts'
+      - 'src/breach-replay-live-capture.ts'
+      - 'tests/replay-r3-live-capture.test.mjs'
       - 'tests/replay-r3-chunk-scene.test.mjs'
       - 'tests/replay-r3-frame-sampling.test.mjs'
       - 'tests/replay-r3-chunk-transport.test.mjs'

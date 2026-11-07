@@ -487,6 +487,94 @@ try{
     spooled.viewMatches&&spooled.unchangedLegacy,
     'G5b4 bounded producer→IDB→consumer integration broke: '+
     JSON.stringify(spooled));
+  // G5c2: actual 60 Hz mission motor -> native MissionRecorder.capture
+  // -> synchronous 20 Hz observer -> bounded spool -> atomic IndexedDB ->
+  // published historical scene. No synthetic replacement of source samples.
+  const realCapture=await page.evaluate(async()=>{
+    const [{newSession,toggling,stepSession},
+      {MissionRecorder},{ReplayLiveCaptureTap},
+      {ReplayChunkCaptureSpool},storage,{captureReplayArchive}]=
+      await Promise.all([
+        import('/src/breach-game.ts'),
+        import('/src/breach-replay.ts'),
+        import('/src/breach-replay-live-capture.ts'),
+        import('/src/breach-replay-chunk-spool.ts'),
+        import('/src/breach-replay-chunk-store.ts'),
+        import('/src/breach-replay-archive.ts')
+      ]);
+    const seed=910,createdAt=1712345678900,id='g5c-actual-motor-001';
+    const session=newSession(0,seed),recorded=new MissionRecorder();
+    recorded.capture(session,true);
+    const draft=await storage.beginStreamingReplayV2(id,createdAt,
+      {chunkFrames:6});
+    const spool=new ReplayChunkCaptureSpool(
+      (index,frames,final)=>storage.appendStreamingReplayChunkV2(
+        draft.generation,index,frames,final).then(()=>{}),
+      {chunkFrames:6,maxQueuedChunks:2});
+    const capture=new ReplayLiveCaptureTap(recorded,spool);
+    toggling(session);
+    for(let n=0;n<120;n++){
+      // Motor provides actual authoritative movement, combat, visibility
+      // and 60 Hz motion; recorder itself decides 20 Hz frame cadence.
+      if(session.phase!=='running')session.phase='running';
+      stepSession(session,1/60);
+      recorded.capture(session);
+      // Allow real async IDB commits at realistic simulation ticks.
+      if(n%6===5)
+        await new Promise(resolve=>setTimeout(resolve,0));
+    }
+    recorded.capture(session,true); // duplicate final time must replace tail
+    const finish=await capture.finish();
+    const archive=captureReplayArchive(recorded,id,createdAt);
+    const {frames,...sidecar}=archive;
+    const sealed=await storage.sealStreamingReplayV2(draft.generation);
+    const published=await storage.commitStreamingReplayV2(
+      draft.generation,sidecar);
+    const {openReplayChunkSceneV2}=await import(
+      '/src/breach-replay-chunk-scene.ts');
+    const scene=await openReplayChunkSceneV2(id);
+    const at=Math.min(.82,scene.endTime);
+    const read=await scene.seek(at);
+    const expected=recorded.sample(at);
+    const frameMatches=read.status==='ready'&&
+      JSON.stringify(read.value.frame)===JSON.stringify(expected);
+    const viewer=newSession(0,seed);
+    if(read.status==='ready')
+      scene.applyToReplaySession(viewer,read.value);
+    const actorMatches=read.status==='ready'&&
+      JSON.stringify(viewer.operators.find(x=>x.id==='rook')?.p)===
+      JSON.stringify(expected.actors.find(x=>x.id==='rook')?.p);
+    const personalKnowledge=read.status==='ready'&&
+      !!scene.recordedObserverKnowledge('rook')?.operatorVisibleActorIds?.rook;
+    const originalV1Frames=recorded.frames.length;
+    scene.close();
+    return {frames:originalV1Frames,
+      written:finish.persistedFrames,notices:capture.deliveredNotices,
+      sourceComplete:finish.sourceComplete,
+      streamComplete:finish.recordingComplete,
+      diskComplete:published.storageComplete,
+      persistedCount:published.frameCount,
+      chunkCount:published.boundaries.length,
+      sealed:sealed.sealed,
+      frameMatches,actorMatches,personalKnowledge,
+      motionActors:sidecar.motion.actors.length,
+      sidecarEvents:sidecar.battleEvents.length,
+      capturedTime:recorded.duration,
+      resident:spool.residentFrames,
+      persistedResident:published.boundaries.length>0
+    };
+  });
+  check(realCapture.frames>25&&realCapture.frames<65&&
+    realCapture.written===realCapture.frames&&
+    realCapture.sourceComplete&&realCapture.streamComplete&&
+    realCapture.diskComplete&&
+    realCapture.persistedCount===realCapture.frames&&
+    realCapture.chunkCount>=5&&realCapture.sealed&&
+    realCapture.frameMatches&&realCapture.actorMatches&&
+    realCapture.personalKnowledge&&realCapture.motionActors>=2&&
+    realCapture.capturedTime>=1.9&&realCapture.resident===0,
+    'G5c2 REAL 60 Hz motor → 20 Hz film → IDB → replay parity failed: '+
+    JSON.stringify(realCapture));
   const corruption=await page.evaluate(async()=>{
     const storage=await import('/src/breach-replay-chunk-store.ts');
     const {loadSavedReplay}=await import('/src/breach-replay-library.ts');
