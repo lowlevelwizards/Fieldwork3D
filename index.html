@@ -240,7 +240,7 @@
   <output id="replayLibraryStatus" class="replay-library-status" aria-live="polite"></output>
   <div id="replayLibraryList" class="replay-library-list" role="list"></div>
 </section>
-<section id="replayPanel" class="replay-panel" hidden aria-label="Mission replay controls">
+<section id="replayPanel" class="replay-panel" role="region" hidden aria-label="Mission replay controls">
   <output id="replayBodycamStatus" class="replay-bodycam-status" hidden
     aria-live="off">RECONSTRUCTED BODYCAM · SHARED ARCHITECTURE</output>
   <div class="replay-head">
@@ -266,7 +266,7 @@
     </select></label>
   </div>
   <div class="replay-timeline">
-    <div id="replayMarks" class="replay-marks" aria-label="Significant replay moments"></div>
+    <div id="replayMarks" class="replay-marks" role="group" aria-label="Significant replay moments"></div>
     <div id="replayClusterMenu" class="replay-cluster-menu" hidden
       role="group" aria-label="Choose an event from this timeline cluster"></div>
     <input id="replaySeek" type="range" min="0" max="1" step="1" value="0"
@@ -288,12 +288,11 @@
     <button id="replayShareToggle" type="button" aria-expanded="false"
       aria-controls="replayDrawer">SAVE / SHARE</button>
   </div>
-  <section id="replayDrawer" class="replay-drawer" hidden aria-label="Replay tools">
+  <section id="replayDrawer" class="replay-drawer" role="region" hidden aria-labelledby="replayDrawerTitle">
     <div class="replay-drawer-head">
       <strong id="replayDrawerTitle">ANALYZE</strong>
-      <button id="replayDrawerClose" type="button" aria-label="Close replay tools">×</button>
+      <button id="replayDrawerClose" type="button" aria-label="Close replay panel">×</button>
     </div>
-    <nav id="replayTabs" hidden aria-hidden="true"></nav>
     <div id="replayExtra" class="replay-extra" hidden>
       <div id="replayPresets" class="replay-presets" role="group" aria-label="Tactical analysis presets">
         <button data-replay-preset="clean" type="button" aria-pressed="true">CLEAN</button>
@@ -311,7 +310,6 @@
       </div>
       <details class="replay-group" data-replay-group="view">
         <summary>Camera, visibility & names</summary>
-        <p class="replay-group-intro">Perspective and visibility</p>
         <div class="replay-control-grid">
           <button id="replayView" type="button">ISO</button>
           <button id="replaySight" type="button">TEAM SIGHT</button>
@@ -340,7 +338,6 @@
       </details>
       <details class="replay-group" data-replay-group="layers" open>
         <summary>Advanced overlays</summary>
-        <p class="replay-group-intro">Tactical overlays</p>
       <section id="replayShotInspector" class="replay-shot-inspector" hidden aria-label="Shot investigation">
         <div class="replay-inspector-head">
           <strong id="replayShotTitle">SHOT INSPECTOR</strong>
@@ -364,7 +361,6 @@
       </details>
       <details class="replay-group" data-replay-group="precision">
         <summary>Precise timing & looping</summary>
-        <p class="replay-group-intro">Playback speed and single-step</p>
         <div class="replay-control-grid">
           <button id="replaySpeed" type="button">1×</button>
           <button id="replaySound" type="button" aria-pressed="true" aria-label="Toggle replay sound">SOUND ON</button>
@@ -379,7 +375,6 @@
         <p class="replay-group-note">FRAME = 60 FPS visual step · SAMPLE = 20 Hz recorded state</p>
       </details>
       <section class="replay-group" data-replay-group="export" hidden>
-        <p class="replay-group-intro">Save and share a replay</p>
         <div class="replay-control-grid">
           <button id="replayExportJson" type="button" title="Export full-reconstruction mission logs as JSON">EXPORT JSON</button>
           <button id="replayExportVideo" type="button" title="Record a 20-second replay clip using browser-supported video encoding">VIDEO 20S</button>
