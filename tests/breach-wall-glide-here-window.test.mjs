@@ -125,7 +125,7 @@ test('HERE replacement clips at known world bounds and keeps undo intact',()=>{
 });
 test('the touch gesture uses HERE replacement, not route-append',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(main,/planMoveStroke\(state,selected,points\.slice\(1\),false,true\)/);
+ assert.match(main,/planMoveStroke\(state,selected,points\.slice\(1\),false,true,strokeOutcome\)/);
  assert.match(main,/ROUTE REPLACED FROM HERE · UNDO TO RESTORE/);
 });
 test('window classification distinguishes standard sash from fixed and unsafe glazing',()=>{
