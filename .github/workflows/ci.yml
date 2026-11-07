@@ -77,7 +77,7 @@ jobs:
       - name: Operator Lab unified poses — full weapon and animation matrix
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lab-unified-poses-') }}
         run: |
-          node --experimental-strip-types --test tests/operator-lab-unified-poses.test.mjs tests/breach-pose-v3-action-matrix.test.mjs tests/breach-reload-v4-rig.test.mjs
+          node --experimental-strip-types --test tests/operator-lab-unified-poses.test.mjs tests/operator-lab-pose-contact.test.mjs tests/breach-pose-v3-action-matrix.test.mjs tests/breach-reload-v4-rig.test.mjs
       - name: Unified Pose V3 — baseline, contact and transition critical gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') }}
         run: |
