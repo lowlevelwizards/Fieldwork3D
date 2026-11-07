@@ -1,0 +1,43 @@
+name: Breach Pose V3 — Focused Mobile Visuals
+on:
+  pull_request:
+    paths:
+      - 'src/breach-operator-rig.ts'
+      - 'src/breach-operator-lab.ts'
+      - 'src/breach-pose-v3-*.ts'
+      - 'src/breach-reload-motion.ts'
+      - 'scripts/capture-breach-pose-fit.mjs'
+      - 'scripts/capture-breach-pose-v3-dynamic.mjs'
+      - '.github/workflows/breach-pose-v3-mobile.yml'
+permissions:
+  contents: read
+concurrency:
+  group: pose-v3-mobile-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  visual:
+    if: ${{ startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install only required dependencies
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Eight-kit static mobile pose fit gate
+        run: POSE_V3=1 node scripts/capture-breach-pose-fit.mjs
+      - name: ADS and reload action-time dynamic pose evidence
+        run: node scripts/capture-breach-pose-v3-dynamic.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: breach-pose-v3-static-and-dynamic-phone
+          path: |
+            breach-pose-fit-captures/
+            breach-pose-v3-dynamic-captures/
+          if-no-files-found: warn
