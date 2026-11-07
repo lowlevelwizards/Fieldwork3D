@@ -22,7 +22,7 @@ test('chinstrap is two broad diagonal sides and one shared chin cup',()=>{
  const g=createPasgtRetentionGeometry();
  assert.equal(g.getAttribute('position').count,30);
  assert.equal(g.userData.pasgtSimpleTwoPointRetention,true);
- assert.ok(g.boundingBox.min.y < -1);
+ assert.ok(g.boundingBox.min.y < -.2);
  assert.ok(g.boundingBox.max.y > 3);
  assert.ok(g.boundingBox.max.x > 4.5&&g.boundingBox.min.x < -4.5);
 });

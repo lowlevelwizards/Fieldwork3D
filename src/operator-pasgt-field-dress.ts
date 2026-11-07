@@ -72,21 +72,24 @@ function shapeGeometry(points:readonly (readonly [number,number])[]):THREE.Shape
  * read clearly at normal gameplay distance. No tiny branch meshes.
  */
 export const PASGT_LEAF_SHAPES:readonly THREE.ShapeGeometry[]=[
+ // Broad, blunt iconic leaf masses; no long needle points.
  shapeGeometry([
-  [-.13,-.08],[.16,0],[.34,.37],[.67,.68],[.43,.94],
-  [.59,1.30],[.22,1.87],[.01,2.23],[-.26,1.66],
-  [-.57,1.46],[-.40,1.08],[-.62,.81],[-.24,.40]
+  [-.28,-.12],[.28,-.12],[.40,.25],[.83,.49],
+  [.65,.83],[.98,1.07],[.55,1.28],[.57,1.70],
+  [.22,1.96],[-.20,1.91],[-.53,1.65],[-.56,1.29],
+  [-.98,1.13],[-.72,.84],[-.85,.48],[-.34,.27]
  ]),
  shapeGeometry([
-  [-.12,-.08],[.12,0],[.25,.49],[.42,.85],[.19,1.25],
-  [.29,1.69],[.02,2.41],[-.20,1.63],[-.29,1.21],
-  [-.48,.83],[-.26,.56]
+  [-.27,-.12],[.30,-.12],[.37,.21],[.82,.50],
+  [.67,.89],[.98,1.13],[.53,1.35],[.63,1.72],
+  [.27,2.08],[-.13,2.08],[-.55,1.69],[-.44,1.35],
+  [-.95,1.12],[-.70,.84],[-.80,.53],[-.36,.21]
  ]),
  shapeGeometry([
-  [-.12,-.08],[.19,0],[.30,.47],[.85,.88],[.66,1.16],
-  [.33,1.04],[.47,1.56],[.18,1.90],[-.05,1.62],
-  [-.29,2.04],[-.54,1.68],[-.29,1.19],[-.78,1.30],
-  [-.91,1.04],[-.40,.65]
+  [-.31,-.12],[.28,-.12],[.43,.34],[.97,.63],
+  [.78,1.00],[1.08,1.35],[.59,1.49],[.48,1.91],
+  [.13,2.21],[-.33,1.99],[-.59,1.61],[-.99,1.45],
+  [-.83,1.08],[-1.05,.73],[-.42,.37]
  ])
 ];
 /** Three big, graphic leaf cards in ONE premerged cluster per slit.
@@ -130,7 +133,9 @@ export function createPasgtScrimRibbonGeometry(style:number):THREE.BufferGeometr
  const halfway=length*.46,lower=length-halfway;
  const a=[-w/2,.12,-.055],b=[w/2,.12,-.055];
  const c=[w*.45,-halfway,.30],d=[-w*.55,-halfway,.30];
- const e=[-w*.54,-halfway-lower,.94],f=[w*.40,-halfway-lower,.94];
+ // Deliberately twist the second broad face to read from side as fabric,
+ // not an edge-on needle. Still one fold and two quad segments.
+ const e=[-w*.54,-halfway-lower,.61],f=[w*.40,-halfway-lower,1.31];
  const vertices:number[]=[];
  const tri=(p:readonly number[],q:readonly number[],r:readonly number[])=>
   vertices.push(...p,...q,...r);
@@ -175,6 +180,7 @@ function placedCard(parent:THREE.Group,index:number,mat:THREE.Material,
  const basis=new THREE.Matrix4().makeBasis(right,up,normal);
  mount.quaternion.setFromRotationMatrix(basis);
  mount.rotateZ(TILTS[index]);mount.rotateX(leaf?.21:-.33);
+ if(!leaf)mount.rotateY(index%2?.34:-.34);
  // Keep the mount root exactly at its slit and offset only card geometry.
  const card=new THREE.Mesh(geometry,mat);
  if(leaf){
@@ -238,14 +244,14 @@ function netDrape(edge:NetEdge):readonly (readonly number[])[]{
   else v[2]+=along*distance;
   return v;
  };
- const shoulder=shift(pasgtRingPoint(s,'shoulder'),.18);
- const ramp=shift(pasgtRingPoint(s,'ramp'),.59);
+ const shoulder=shift(pasgtRingPoint(s,'shoulder'),.10);
+ const ramp=shift(pasgtRingPoint(s,'ramp'),.12);
  const hem=pasgtRingPoint(s,'hem');
  // Net is gathered into the elastic height instead of dangling down
  // as a set of unsupported external poles.
  const t=Math.max(0,Math.min(1,(ramp[1]-5.43)/(ramp[1]-hem[1])));
  const lowerUnshifted=ramp.map((v,i)=>v*(1-t)+hem[i]*t);
- const lower=shift(lowerUnshifted,.91);
+ const lower=shift(lowerUnshifted,1.65);
  // Tuck the final portion beneath the fabric band so it reads as held,
  // rather than as six wires standing on top of a rim.
  const outwardContact=new THREE.Vector3(outward[0],outward[1],outward[2]).multiplyScalar(.09);
@@ -300,7 +306,7 @@ export function createPasgtNetGeometry():THREE.BufferGeometry{
    PASGT_COVER_TOP_Y+.085,
    (a.z+2*b.z)/3+.19];
   const path=[...start,center1,center2,...[...end].reverse()];
-  appendNetRibbon(coordinates,path,.27);
+  appendNetRibbon(coordinates,path,.31);
  }
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(coordinates,3));
@@ -322,9 +328,9 @@ export function createPasgtRetentionGeometry():THREE.BufferGeometry{
  const put=(p:THREE.Vector3)=>data.push(p.x,p.y,p.z);
  for(const sign of [-1,1] as const){
   const path=[
-   vec([sign*4.99,3.30,.42]),
-   vec([sign*4.36,1.15,-3.42]),
-   vec([sign*2.34,-.84,-4.28])
+   vec([sign*4.99,3.30,-1.12]),
+   vec([sign*4.22,1.32,-4.23]),
+   vec([sign*2.34,-.13,-4.31])
   ];
   const normal=new THREE.Vector3(sign*.68,0,-.74);
   for(let i=0;i<path.length-1;i++){
@@ -338,8 +344,8 @@ export function createPasgtRetentionGeometry():THREE.BufferGeometry{
   }
  }
  const pad=[
-  vec([-2.34,-1.11,-4.30]),vec([2.34,-1.11,-4.30]),
-  vec([2.34,-.51,-4.30]),vec([-2.34,-.51,-4.30])
+  vec([-2.34,-.46,-4.34]),vec([2.34,-.46,-4.34]),
+  vec([2.34,.15,-4.34]),vec([-2.34,.15,-4.34])
  ];
  for(const i of [0,1,2,0,2,3])put(pad[i]);
  const g=new THREE.BufferGeometry();
@@ -415,7 +421,7 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  strap.name='pasgt-chunky-two-point-retention';
  strap.castShadow=true;strap.receiveShadow=false;
  retention.add(strap);
- const netMat=material(0x636e53,THREE.DoubleSide);
+ const netMat=material(0x78816a,THREE.DoubleSide);
  const netMesh=new THREE.Mesh(createPasgtNetGeometry(),netMat);
  netMesh.name='pasgt-front-crown-side-rear-net';netMesh.castShadow=true;
  netMesh.receiveShadow=false;net.add(netMesh);
