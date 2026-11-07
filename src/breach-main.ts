@@ -102,6 +102,8 @@ import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 import {buildReplayExecutionInsights} from './breach-replay-debrief.ts';
 import {indexReplayIncidents,featuredReplayIncidents,type ReplayIncident}
   from './breach-replay-incidents.ts';
+import {featuredReplaySquadEntries,type ReplaySquadEntryReview}
+  from './breach-replay-squad-entry.ts';
 import {incidentPlaybackWindow,advanceIncidentPlayback}
   from './breach-replay-incident-playback.ts';
 import {makeReplayLoop,advanceReplayLoop,type ReplayLoopRange}
@@ -260,6 +262,8 @@ const ui={
   replayChapterList:el<HTMLElement>('replayChapterList'),
   replayDebriefInfo:el<HTMLOutputElement>('replayDebriefInfo'),
   replayDebriefMoments:el<HTMLElement>('replayDebriefMoments'),
+  replaySquadEntryPanel:el<HTMLElement>('replaySquadEntryPanel'),
+  replaySquadEntryList:el<HTMLElement>('replaySquadEntryList'),
   replayIncidentDetails:el<HTMLElement>('replayIncidentDetails'),
   replayIncidentTitle:el<HTMLElement>('replayIncidentTitle'),
   replayIncidentSummary:el<HTMLOutputElement>('replayIncidentSummary'),
@@ -755,6 +759,8 @@ let replaySoundTimeline:ReplaySoundTimeline|null=null;
 let replayChapters:ReplayChapter[]=[];
 let replayIncidents:ReplayIncident[]=[];
 let replayFeaturedIncidents:ReplayIncident[]=[];
+let replaySquadEntries:ReplaySquadEntryReview[]=[];
+let selectedReplaySquadEntry:string|null=null;
 let selectedReplayIncidentId:string|null=null;
 let replayIncidentPlayback:{range:ReplayLoopRange;loop:boolean}|null=null;
 let replayBookmarks:ReplayBookmark[]=[];
@@ -4225,6 +4231,43 @@ function renderObserverSightTransitions():void{
   }
   mount.replaceChildren(fragment);
 }
+/** R4.4: only recorded friendly threshold crossing facts. No inferred
+ * breach timing, synchronized intent, or knowledge of unseen enemies.
+ */
+function renderReplaySquadEntries():void{
+  const host=ui.replaySquadEntryList;
+  const panel=ui.replaySquadEntryPanel;
+  panel.hidden=replaySquadEntries.length===0;
+  if(panel.hidden){host.replaceChildren();return;}
+  const fragment=document.createDocumentFragment();
+  for(const entry of replaySquadEntries){
+    const count=entry.crossings.filter(c=>c.crossedAt!==null).length;
+    const button=document.createElement('button');
+    button.type='button';button.className='replay-entry-review-item';
+    button.setAttribute('aria-pressed',
+      String(entry.doorId===selectedReplaySquadEntry));
+    const title=document.createElement('strong');
+    title.textContent=entry.doorId+' · '+count+'/'+entry.crossings.length+
+      ' CROSSED'+(entry.spreadSeconds===null?'': ' · '+
+      entry.spreadSeconds.toFixed(1)+'S SPREAD');
+    const details=document.createElement('small');
+    details.textContent=entry.crossings.map(c=>
+      c.actorId.toUpperCase()+' '+
+      (c.crossedAt===null?(c.alreadyBeyond?'ALREADY PAST':'NOT RECORDED'):
+        formatReplayTime(c.crossedAt))).join(' · ');
+    button.title='Measured crossings only · '+details.textContent;
+    button.append(title,details);
+    button.addEventListener('click',()=>{
+      if(entry.firstCrossingAt===null)return;
+      selectedReplaySquadEntry=entry.doorId;
+      replayPlaying=false;
+      seekReplay(Math.max(0,entry.firstCrossingAt-.6));
+      renderReplaySquadEntries();
+    });
+    fragment.append(button);
+  }
+  host.replaceChildren(fragment);
+}
 function renderReplayDebrief():void{
   const stalls=buildReplayExecutionInsights(recorder.executionEvents,
     recorder.duration,5).filter(x=>
@@ -4542,6 +4585,12 @@ function enterReplay(){
   applyReplayActorIdentity(state,recorder.manifest);
   stage?.applySite(state.site??null);
   stage?.setReplayBodycam(null);
+  // One-time historical index; only recorded friendly coordinates and
+  // recorded door geometry, never current world positions or hidden AI.
+  replaySquadEntries=featuredReplaySquadEntries(recorder.frames,
+    team(state).map(a=>a.id),recorder.duration,3);
+  selectedReplaySquadEntry=null;
+  renderReplaySquadEntries();
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
   ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
@@ -4555,6 +4604,8 @@ function exitReplay(){
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   replayChapters=[];replayBookmarks=[];
   replayIncidents=[];replayFeaturedIncidents=[];
+  replaySquadEntries=[];selectedReplaySquadEntry=null;
+  renderReplaySquadEntries();
   replayContactObserverId=null;replayHasContactEvidence=false;
   replayOperatorSightIndex=null;
   replayDoorHistory=null;

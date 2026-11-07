@@ -2,6 +2,9 @@ name: Replay R4.4 — Squad Entry Critical
 on:
   pull_request:
     paths:
+      - 'index.html'
+      - 'src/breach-main.ts'
+      - 'src/breach-style.css'
       - 'src/breach-replay-squad-entry.ts'
       - 'tests/replay-r44-squad-entry.test.mjs'
       - '.github/workflows/replay-r44-squad-entry.yml'

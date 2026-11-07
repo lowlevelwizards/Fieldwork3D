@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {measureReplaySquadDoorEntry}
+import {readFileSync} from 'node:fs';
+import {measureReplaySquadDoorEntry,featuredReplaySquadEntries}
   from '../src/breach-replay-squad-entry.ts';
 
 const door={id:'FRONT',a:{x:0,y:-20},b:{x:0,y:20}};
@@ -66,4 +67,26 @@ test('downed actor transport is not a squad entry; missing inputs fail closed',(
   assert.equal(measureReplaySquadDoorEntry(film,'OTHER',IDs,0,1),null);
   assert.equal(measureReplaySquadDoorEntry(film,'FRONT',IDs,2,3),null);
   assert.equal(measureReplaySquadDoorEntry(film,'FRONT',IDs,0,0),null);
+});
+
+test('featured entries rank actual recorded operator crossings, not unused doors',()=>{
+  const film=[
+    sample(0,[-30,-30,-30,-30]),
+    sample(1,[11,-30,-30,-30]),
+    sample(2,[11,12,-30,-30]),
+    sample(3,[11,12,11,-30])
+  ].map(frame=>({...frame,doors:[
+    door,{id:'UNUSED',a:{x:250,y:-20},b:{x:250,y:20}}
+  ]}));
+  const ranked=featuredReplaySquadEntries(film,IDs,3,3);
+  assert.deepEqual(ranked.map(r=>r.doorId),['FRONT']);
+  assert.equal(ranked[0].crossings.filter(c=>c.crossedAt!==null).length,3);
+  assert.deepEqual(featuredReplaySquadEntries(film,IDs,3,0),[]);
+});
+test('event drawer exposes a bounded operator-crossing review, not a HUD dock',()=>{
+  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+  assert.ok(html.includes('id="replaySquadEntryPanel"'));
+  assert.ok(main.includes('featuredReplaySquadEntries('));
+  assert.ok(main.includes('function renderReplaySquadEntries()'));
 });

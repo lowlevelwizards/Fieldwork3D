@@ -97,3 +97,25 @@ export function measureReplaySquadDoorEntry(
     spreadSeconds:measured.length>=2&&firstAt!==null&&lastAt!==null?
       Math.max(0,lastAt-firstAt):null};
 }
+
+/** Prioritize entries with actual friendly crossings, not door opens.
+ * This index is built once on replay entry and never during rendering.
+ * Do not show a “four-person clear” if only some operators crossed.
+ */
+export function featuredReplaySquadEntries(
+  frames:readonly ReplayFrame[],friendlyIds:readonly string[],
+  duration:number,limit=3
+):ReplaySquadEntryReview[]{
+  if(!Number.isFinite(duration)||duration<=0||limit<=0||
+    !frames.length)return [];
+  const ids=[...new Set(frames[0].doors.map(d=>d.id))].slice(0,80);
+  const results=ids.map(id=>measureReplaySquadDoorEntry(
+    frames,id,friendlyIds,0,duration))
+    .filter((x):x is ReplaySquadEntryReview=>
+      !!x&&x.crossings.some(c=>c.crossedAt!==null));
+  const measured=(r:ReplaySquadEntryReview)=>
+    r.crossings.filter(c=>c.crossedAt!==null).length;
+  return results.sort((x,y)=>measured(y)-measured(x)||
+    (x.firstCrossingAt??Infinity)-(y.firstCrossingAt??Infinity)||
+    x.doorId.localeCompare(y.doorId)).slice(0,Math.floor(limit));
+}
