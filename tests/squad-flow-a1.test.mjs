@@ -81,3 +81,30 @@ test('A1: a wide passage does not gain synthetic single-file throttling',()=>{
  assert.deepEqual(passageFollowerStep(follow,[wide],[lead,follow],wanted),
   wanted);
 });
+
+test('A8: same-lane approach forms a spaced convoy before lease acquisition',()=>{
+ const lead=actor('lead',64,41),follow=actor('follow',64,17);
+ const units=[follow,lead],wanted=at(64,22);
+ // At 83 world units from the doorway, the follower is too far back
+ // to claim the real passage; the anticipatory gap is a separate hint.
+ assert.equal(passageWait(follow,[door],units,{},1,wanted),false);
+ const step=passageFollowerStep(follow,[door],units,wanted);
+ assert.ok(step.y>follow.p.y&&step.y<wanted.y,
+  'retain positive partial progress, not an early hard STOP');
+ assert.ok(d(step,lead.p)>=PASSAGE_FOLLOW_GAP-.001);
+ assert.deepEqual(follow.goal,at(64,180));
+});
+
+test('A8: no pre-door throttling when both goals remain on this side',()=>{
+ const lead=actor('lead',64,41,70),follow=actor('follow',64,17,70);
+ const wanted=at(64,22);
+ assert.deepEqual(passageFollowerStep(follow,[door],[follow,lead],wanted),
+  wanted);
+});
+
+test('A8: physically different approach lanes are not serialized',()=>{
+ const lead=actor('lead',45,41),follow=actor('follow',84,17);
+ const wanted=at(84,22);
+ assert.deepEqual(passageFollowerStep(follow,[door],[follow,lead],wanted),
+  wanted);
+});
