@@ -1934,3 +1934,15 @@ html,body{font-family:var(--fw-font-menu)}
 .replay-entry-review-item[aria-pressed="true"]{
   border-color:#e4c891;background:#3c5545}
 .replay-entry-review-item:focus-visible{outline:2px solid #e4c891}
+
+/* R12: the interactive Arsenal is primary. Preserve direct fallback for
+ * unsupported class-only guns and existing advanced loadout workflows.
+ */
+.fw-legacy-weapon-controls{margin:11px 0 4px;padding:9px 10px;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ background:var(--fw-panel-deep);min-width:0}
+.fw-legacy-weapon-controls>summary{min-height:44px;display:flex;
+ align-items:center;cursor:pointer;font:700 12px var(--fw-font-menu);
+ letter-spacing:.04em;color:var(--fw-text-muted)}
+.fw-legacy-weapon-controls[open]>summary{color:var(--fw-text)}
+.fw-legacy-weapon-controls .fw-weapon-editor{min-width:0}

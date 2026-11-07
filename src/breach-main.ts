@@ -1154,11 +1154,11 @@ function renderOperationsBoard(){
   const loadout=buildQuickLoadoutGroups(kit,expandedQuickLoadoutGroup,group=>{
    expandedQuickLoadoutGroup=group;
   });
-  // The modular factory chooser below is the actual weapon selection UI.
-  // Legacy WeaponId remains internal simulation/persistence compatibility.
+  // Arsenal is the primary builder. Direct factory and socket controls remain
+  // behind one accessible fallback for class-only or unsupported weapons.
   const modelHint=document.createElement('small');
   modelHint.className='fw-weapon-section-label';
-  modelHint.textContent='SELECT PLATFORM · FACTORY CHECKPOINTS + CUSTOM PARTS';
+  modelHint.textContent='WEAPON · ARSENAL';
   loadout.field('weapon').append(modelHint);
   const arsenalAction=document.createElement('button');arsenalAction.type='button';
   arsenalAction.className='fw-button fw-arsenal-open';
@@ -1167,6 +1167,14 @@ function renderOperationsBoard(){
    !member.weaponConfiguration.build;
   arsenalAction.addEventListener('click',()=>{void openQuickArsenal(member.id);});
   loadout.field('weapon').append(arsenalAction);
+  const legacyControls=document.createElement('details');
+  legacyControls.className='fw-legacy-weapon-controls';
+  legacyControls.open=!member.weaponConfiguration.build;
+  const legacyTitle=document.createElement('summary');
+  legacyTitle.textContent='ADVANCED · CLASSIC WEAPON CONTROLS';
+  const legacyNote=document.createElement('p');legacyNote.className='fw-weapon-helper';
+  legacyNote.textContent='Direct factory and socket options for unsupported builds or troubleshooting.';
+  legacyControls.append(legacyTitle,legacyNote);
   const activePreset=member.weaponConfiguration.build?
    matchingFamilyPreset(member.weaponConfiguration.build):undefined;
   const factoryLabel=document.createElement('strong');
@@ -1191,7 +1199,7 @@ function renderOperationsBoard(){
     expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
    }
   });
-  loadout.field('weapon').append(factoryLabel,factoryBrowser);
+  legacyControls.append(factoryLabel,factoryBrowser);
   const resupply=document.createElement('button');resupply.type='button';
   resupply.className='fw-squad-resupply';resupply.textContent='RESUPPLY';
   resupply.addEventListener('click',()=>{
@@ -1257,7 +1265,7 @@ function renderOperationsBoard(){
    quickWorkbench?.showSocketChoices(slot,select);
   };
   const syncWorkbench=()=>{
-   const active=kit.open&&loadout.group.weapon.open&&weaponEditor.open;
+   const active=kit.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open;
    if(!active){if(quickWorkbenchId===member.id){
     rememberQuickWorkbenchView();
     quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
@@ -1276,6 +1284,7 @@ function renderOperationsBoard(){
    if(saved&&socketRows.has(saved))showSocket(saved);
    else quickWorkbench.setActiveSlot(initialSocket,false);
   };
+  legacyControls.addEventListener('toggle',syncWorkbench);
   weaponEditor.addEventListener('toggle',()=>{
    if(weaponEditor.open)expandedQuickWeapon=member.id;
    else if(expandedQuickWeapon===member.id)expandedQuickWeapon=null;
@@ -1372,7 +1381,8 @@ function renderOperationsBoard(){
   const diag=document.createElement('details');diag.className='fw-loadout-diagnostics';
   const diagTitle=document.createElement('summary');diagTitle.textContent='WEAPON MEASUREMENTS';
   diag.append(diagTitle,properties);weaponEditor.append(diag);
-  loadout.field('weapon').append(weaponEditor);
+  legacyControls.append(weaponEditor);
+  loadout.field('weapon').append(legacyControls);
   const carrying=carryCapacityReport(member.loadout,member.magazines);
   const carryItems=carrying.placements.filter(p=>p.kind!=='magazine');
   if(carryItems.length){
@@ -1427,7 +1437,7 @@ function renderOperationsBoard(){
   card.append(kit);operationsBoard.append(card);
   // A newly opened details subtree can report zero width on iOS until
   // it is attached and laid out. Initialize after paint, not only on toggle.
-  if(kit.open&&loadout.group.weapon.open&&weaponEditor.open)
+  if(kit.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open)
    requestAnimationFrame(()=>{if(kit.isConnected)syncWorkbench();});
  }
  const hint=document.createElement('p');
