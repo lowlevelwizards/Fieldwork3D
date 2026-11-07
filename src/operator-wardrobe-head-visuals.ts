@@ -14,6 +14,8 @@ import {createModernHelmetCoverLayers,updateModernHelmetCoverLayers,
  type ModernHelmetCoverLayers} from './operator-helmet-cover-geometry.ts';
 import {resolveHelmetSetup,isH1ModernHelmet,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
+import {createHelmetHardware,updateHelmetHardware,type HelmetHardwareLayers}
+ from './operator-helmet-module-visuals.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
@@ -49,6 +51,7 @@ export type WardrobeHeadLayers={
  m56Extras?:M56Extras;
  policeVisor?:PoliceVisorLayers;
  modernCovers:Record<string,ModernHelmetCoverLayers>;
+ modernHardware:Record<string,HelmetHardwareLayers>;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
  x:number,y:number,z:number,w:number,h:number,d:number)=>{
@@ -72,8 +75,10 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  let m56Extras:M56Extras|undefined;
  let policeVisor:PoliceVisorLayers|undefined;
  const modernCovers:Record<string,ModernHelmetCoverLayers>={};
+ const modernHardware:Record<string,HelmetHardwareLayers>={};
  const addModernCover=(model:THREE.Group,id:string,shell:string)=>{
   modernCovers[id]=createModernHelmetCoverLayers(model,shell);
+  modernHardware[id]=createHelmetHardware(model,shell);
  };
  // A dedicated face textile material ensures color edits never recolor helmets,
  // uniform sleeves, straps or unrelated body pieces.
@@ -259,7 +264,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
   eyewearStrap,maskRubber,deferredEyewear,deferredHeadwear,
   deferredFacewear,deferredHeadset,twoHoleMouthCover,m1Cover,m56Extras,policeVisor,
-  modernCovers};
+  modernCovers,modernHardware};
  layersRef=layers;return layers;
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
@@ -291,6 +296,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  // operator labs remain eager; switching a style builds it just once.
  layers.deferredHeadwear[assembly.headwear]?.();
  const shell=assembly.headwear==='high-cut-rails'?'high-cut':assembly.headwear;
+ let railMountedHeadset=false;
  const modern=layers.modernCovers[assembly.headwear];
  if(modern&&isH1ModernHelmet(shell)){
   const effective=resolveHelmetSetup(shell,helmetCover?.helmetSetup,{
@@ -299,6 +305,11 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
   });
   updateModernHelmetCoverLayers(modern,shell,effective.setup,
    helmetCover?.headwearCamo,camoIdentity,coverRoll);
+  const hardware=layers.modernHardware[assembly.headwear];
+  if(hardware)updateHelmetHardware(hardware,effective.setup,assembly.headset);
+  railMountedHeadset=effective.setup.headsetMount==='rail'&&
+   effective.setup.rails!=='none'&&
+   ['over-ear','boom-headset','helmet-ears'].includes(assembly.headset);
  }
  if(layers.m1Cover)updateM1HelmetCoverLayers(layers.m1Cover,
   assembly.headwear==='m1-steel'?helmetCover:undefined,camoIdentity,coverRoll);
@@ -318,6 +329,10 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  ];
  for(const {map,id} of choices)
   for(const [style,model] of Object.entries(map))model.visible=style===id;
+ // Rail cups are separate canonical-head hardware; hide the legacy headband
+ // model completely to prevent duplicate ears and a band through the shell.
+ if(railMountedHeadset&&layers.headset[assembly.headset])
+  layers.headset[assembly.headset].visible=false;
  // A persistent option of the same balaclava, never a separate wardrobe card.
  if(layers.twoHoleMouthCover)
   layers.twoHoleMouthCover.visible=facewear==='balaclava-three'&&d2FaceMode==='two-hole';
