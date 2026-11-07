@@ -1621,7 +1621,7 @@ jobs:
       - name: Replay weapons, constrained casualties, blood and doors — critical gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/replay-weapons-blood-falls-door-clearance') }}
         run: |
-          node --experimental-strip-types --test tests/replay-weapon-and-retired-geometry.test.mjs tests/breach-wall-confinement.test.mjs tests/breach-132.test.mjs tests/breach-139.test.mjs tests/breach-156.test.mjs tests/operator-weapon-detail.test.mjs tests/equipment-19-02-weapon-silhouettes.test.mjs tests/equipment-24-00-grip-socket-geometry.test.mjs tests/replay-r2-recording.test.mjs
+          node --experimental-strip-types --test tests/replay-weapon-and-retired-geometry.test.mjs tests/breach-wall-confinement.test.mjs tests/breach-132.test.mjs tests/breach-139.test.mjs tests/breach-156.test.mjs tests/operator-weapon-detail.test.mjs tests/equipment-19-02-weapon-silhouettes.test.mjs tests/equipment-24-00-grip-socket-geometry.test.mjs tests/breach-weapon-issue-faction-studio.test.mjs tests/replay-r2-recording.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
