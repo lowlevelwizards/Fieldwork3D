@@ -36,7 +36,7 @@ jobs:
       - name: PASGT P5 — focused cover, band and field-dress regression
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-p5-') }}
         run: |
-          node --experimental-strip-types --test tests/pasgt-p5-cover-fit.test.mjs tests/pasgt-p5-camo-uv.test.mjs tests/pasgt-p5-band.test.mjs tests/pasgt-p5-slits.test.mjs tests/pasgt-p5-foliage-scrim.test.mjs tests/pasgt-p5-net.test.mjs tests/pasgt-p4-drape.test.mjs tests/pasgt-p4-field-dress.test.mjs tests/pasgt-p2-cover-visuals.test.mjs tests/pasgt-p1-policy.test.mjs
+          node --experimental-strip-types --test tests/pasgt-p5-cover-fit.test.mjs tests/pasgt-p5-camo-uv.test.mjs tests/pasgt-p5-band.test.mjs tests/pasgt-p5-slits.test.mjs tests/pasgt-p5-foliage-scrim.test.mjs tests/pasgt-p5-net.test.mjs tests/pasgt-p5-visual-acceptance.test.mjs tests/pasgt-p4-drape.test.mjs tests/pasgt-p4-field-dress.test.mjs tests/pasgt-p2-cover-visuals.test.mjs tests/pasgt-p1-policy.test.mjs
       - name: Production release preflight — Pages queue and live build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
         env:
