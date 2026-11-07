@@ -302,3 +302,17 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
  * Do not disable the category bar or steal its normal touch interactions. */
 #studioMore[open]{z-index:12}
 #studioMore[open] .studio-more-panel{z-index:13}
+
+/* R7.9 — compact touch adjustments for the graphic-lighting audition.
+ * Maintain the source Studio sheet as the only scrolling surface. */
+.studio-light-lab-tuning{padding-top:8px;border-top:1px solid #5c7d6b}
+.studio-light-lab-tuning label.studio-light-slider{
+ grid-template-columns:1fr auto;align-items:center;column-gap:7px}
+.studio-light-slider output{font:700 11px/1 "Work Sans",sans-serif;
+ color:#f0dab2;text-align:right}
+.studio-light-slider input[type=range]{grid-column:1/-1;width:100%;
+ min-height:32px;margin:0;accent-color:#d7b58b;touch-action:pan-x}
+#studioLightShowWeapon{background:#526c57;border-color:#d6bb87;
+ color:#fff0d4;font-weight:800}
+.studio-light-lab-grid select:focus-visible,
+.studio-light-slider input:focus-visible{outline:2px solid #ecd7a6;outline-offset:2px}
