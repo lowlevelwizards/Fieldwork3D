@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import {readFileSync as fsRead} from 'node:fs';
 import {sampleVisibleShoulderSurfaces}
  from '../src/breach-shoulder-contact-surface.ts';
 test('shoulder sampler measures actual local triangles and ignores chest pouches',()=>{
@@ -39,3 +40,13 @@ test('hidden groups cannot become phantom stock seating candidates',()=>{
   id:'hidden',layer:'armor-shoulder',material:'soft',object:shoulder
  }],1).length,0);
 });
+
+test('outfit-change pipeline owns the shoulder sample; pose frame does not',()=>{
+ const {readFileSync}=requireSourceHelpers();
+ const visual=readFileSync(new URL('../src/operator-visual-kit.ts',import.meta.url),'utf8');
+ const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
+ assert.match(visual,/userData\.shoulderSurfaceCandidates/);
+ assert.match(visual,/sampleVisibleShoulderSurfaces\(v\.visualChest,sources,1\)/);
+ assert.doesNotMatch(rig,/sampleVisibleShoulderSurfaces\(/);
+});
+function requireSourceHelpers(){return {readFileSync:fsRead};}
