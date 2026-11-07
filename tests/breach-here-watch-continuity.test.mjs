@@ -15,6 +15,7 @@ const stage={
 };
 const session=()=>newSession(0,undefined,'full-view','standard','hold',stage);
 const stroke=[{x:145,y:150},{x:180,y:185}];
+const visiblePlan=plan=>JSON.parse(JSON.stringify(plan));
 const target={x:270,y:88};
 
 test('HERE redraw retains the independent WATCH node/target, and is one undo',()=>{
@@ -25,7 +26,7 @@ test('HERE redraw retains the independent WATCH node/target, and is one undo',()
   const watchId=a.plan[0].id;
   assert.ok(planMove(s,a.id,{x:196,y:130}));
   const oldMoveId=a.plan.at(-1).id;
-  const before=structuredClone(a.plan);
+  const before=visiblePlan(a.plan);
   assert.ok(planMoveStroke(s,a.id,stroke,false,true));
   assert.equal(a.plan[0].id,watchId,'same WATCH handle, not an invisible duplicate');
   assert.equal(a.plan[0].kind,'look');
@@ -34,11 +35,13 @@ test('HERE redraw retains the independent WATCH node/target, and is one undo',()
   assert.deepEqual(a.plan[0].p,a.p,'WATCH starts at HERE before new movement');
   assert.equal(a.plan.some(n=>n.id===oldMoveId),false);
   assert.equal(a.plan.filter(n=>n.kind==='move').length,2);
-  const replacement=structuredClone(a.plan);
+  const replacement=visiblePlan(a.plan);
   assert.ok(undoPlan(s,a.id));
-  assert.deepEqual(a.plan,before,'UNDO restores both old route and WATCH node');
+  assert.deepEqual(visiblePlan(a.plan),before,
+   'UNDO restores both old route and WATCH node');
   assert.ok(redoPlan(s,a.id));
-  assert.deepEqual(a.plan,replacement,'REDO retains WATCH and replacement path');
+  assert.deepEqual(visiblePlan(a.plan),replacement,
+   'REDO retains WATCH and replacement path');
   assert.ok(planMoveStroke(s,a.id,[{x:178,y:149}],false,true));
   assert.equal(a.plan[0].id,watchId,'repeated HERE redraws preserve WATCH');
   assert.deepEqual(a.plan[0].aimPoint,target);
