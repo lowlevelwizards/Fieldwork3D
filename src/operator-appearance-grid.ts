@@ -6,7 +6,9 @@
  * accidentally return through an old selector. Category state is UI-only.
  */
 import * as THREE from 'three';
-import {requestedOperatorGradient} from './operator-height-lighting.ts';
+import {applyOperatorHeightLighting} from './operator-height-lighting.ts';
+import {studioLightLabFromQuery,type StudioLightLabSettings}
+ from './operator-studio-light-lab.ts';
 import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
  from './operator-studio-lighting.ts';
 import {applyOperatorStudioToon,requestedOperatorToonBands,
@@ -81,6 +83,7 @@ export class OperatorAppearanceGrid{
  /** Stop queued GPU thumbnail work when the Studio iframe is hidden. */
  private suspended=false;
  private selected:WardrobeSlot='top';
+ private lightingSettings=studioLightLabFromQuery(window.location.search);
  private token=0;
  private queue:Entry[]=[];
  private kit:EquipmentLoadout=bareLabEquipment();
@@ -150,6 +153,19 @@ export class OperatorAppearanceGrid{
   if(this.suspended===suspended)return;
   this.suspended=suspended;
   if(!suspended)this.scheduleThumb();
+ }
+ /** Live lighting audition: invalidate cards without destroying the rig,
+  * WebGL context, scroll position or any saved wardrobe selections. */
+ setLightingSettings(settings:StudioLightLabSettings){
+  const previous=this.lightingSettings;
+  if(previous.toon===settings.toon&&previous.rim===settings.rim&&
+     previous.gradient===settings.gradient&&
+     previous.shadow===settings.shadow)return;
+  this.lightingSettings={...settings};
+  this.lighting.setShadowColor(settings.shadow);
+  this.cache.clear();
+  for(const card of this.cards.values())card.readyKey='';
+  this.paint();
  }
  private scheduleThumb(){
   if(this.suspended||this.scheduled||this.reading||!this.queue.length)return;
@@ -280,8 +296,10 @@ export class OperatorAppearanceGrid{
   let readback:Promise<unknown>|null=null;
   let readbackStart=0;
   try{
-   rig.root.userData.fieldworkHeightProfile=
-    requestedOperatorGradient(window.location.search);
+   // Let animated Standard material sources receive updated outfit colors;
+   // reattach the selected toon variants only after that source update.
+   applyOperatorStudioToon(rig.root,0);
+   rig.root.userData.fieldworkHeightProfile=this.lightingSettings.gradient;
    poseOperator(rig,{
     x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
     posture:'stand',injury:0,weapon:'carbine',reload:0,reloadDuration:0,
@@ -291,13 +309,20 @@ export class OperatorAppearanceGrid{
     unarmedPreview:true,equipment:kit,wardrobe:w
    },0);
    rig.root.position.set(0,0,0);
-   const toon=requestedOperatorToonBands(window.location.search);
-   if(toon){
-    applyOperatorStudioToon(rig.root,toon,
-     requestedOperatorRimMode(window.location.search));
-    this.grid.dataset.operatorRimMode=
-     requestedOperatorRimMode(window.location.search);
-   }
+   const profile=this.lightingSettings.gradient;
+   if(!String(rig.root.userData.fieldworkHeightRootKey??'')
+      .startsWith(profile+':'))
+    applyOperatorHeightLighting(rig.root,
+     String(rig.root.userData.fieldworkLightingAppearanceKey??'thumbnail'),
+     profile);
+   const toon=this.lightingSettings.toon;
+   const rim=toon?this.lightingSettings.rim:'off';
+   const converted=applyOperatorStudioToon(rig.root,toon,rim);
+   this.grid.dataset.operatorToonBands=String(toon);
+   this.grid.dataset.operatorToonMeshes=String(converted.meshes);
+   this.grid.dataset.operatorRimMode=rim;
+   this.grid.dataset.operatorGradient=profile;
+   this.grid.dataset.operatorShadowColor=this.lightingSettings.shadow;
    this.scene.add(rig.root);
    this.lighting.invalidateGeometry();
    this.lighting.beforeRender(rig.root);
