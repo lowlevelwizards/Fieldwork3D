@@ -20,6 +20,9 @@ export type PlanNode={
   patientId?:string;woundId?:number;
   transportMode?:'drag'|'carry';
   stackDoorId?:string;
+  /** The physical threshold for a generated squad-entry clearing handoff.
+   * Ordinary authored MOVE/LOOK orders intentionally omit this marker. */
+  entryDoorId?:string;
   firePolicyState?:FirePolicy;firePoint?:Pt;fireTargetId?:string;
 };
 export type PlanHistory={undo:PlanNode[][];redo:PlanNode[][]};
