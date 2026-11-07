@@ -279,6 +279,8 @@ main[data-lab-active="poses"] #weapon{display:none}
 <section class="pose-workspace" data-lab-group="poses" aria-label="Weapon, armor and animation preview">
  <div class="pose-select-grid">
   <label>WEAPON<select id="poseWeapon" aria-label="Weapon family and model"></select></label>
+  <label>SAVED BUILD<select id="poseSavedWeapon" aria-label="Saved Arsenal weapon build">
+   <option value="">FACTORY MODEL / NO SAVED BUILD</option></select></label>
   <label>ARMOR<select id="poseArmor" aria-label="Visible armor style"></select></label>
   <label>RIG<select id="poseRig" aria-label="Visible chest rig"></select></label>
   <label>UNIFORM<select id="poseUniform" aria-label="Uniform style"></select></label>
@@ -292,6 +294,7 @@ main[data-lab-active="poses"] #weapon{display:none}
   <button type="button" id="poseFrameBack">−1 FRAME</button>
   <button type="button" id="poseFrameNext">+1 FRAME</button>
  </div>
+ <small id="poseSavedWeaponHint" aria-live="polite">Saved Arsenal builds preview exact parts and accessories without equipping them.</small>
  <small id="poseWorkspaceHint">Any weapon and loadout · Every animation · Play, scrub, orbit or step through frames. Same model as Appearance.</small>
  <details id="poseInspector"><summary>POSE REPORT</summary>
   <label class="pose-strict-label"><input type="checkbox" id="poseStrictContact"/> STRICT CONTACT AUDIT</label>
