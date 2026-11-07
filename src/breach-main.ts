@@ -6853,7 +6853,10 @@ function releasePointer(e:PointerEvent,cancelled=false){
         selectedActiveWatch=false;
         selectedNode=uid(selected)?.plan.filter(n=>n.kind==='move')
           .at(-1)?.id??null;
-        showUiHelp('ROUTE REPLACED FROM HERE · UNDO TO RESTORE',3200);
+        const watchKept=uid(selected)?.plan.some(n=>n.aimMode==='track')||
+          uid(selected)?.aimInstruction?.mode==='track';
+        showUiHelp('ROUTE REPLACED FROM HERE · UNDO TO RESTORE'+
+          (watchKept?' · WATCH KEPT':''),3200);
       }
       doorFocusId=null;
     }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
