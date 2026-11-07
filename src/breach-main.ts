@@ -6881,7 +6881,23 @@ function releasePointer(e:PointerEvent,cancelled=false){
   const p=activePointers.get(e.pointerId);if(!p)return;
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   const pt=pointerWorld(e);
-  if(!cancelled&&replaying&&replayTraceMode!=='off'&&
+  // During replay, a deliberate single tap on a friendly miniature
+  // follows that operator. Two-finger gestures, camera drags, and scrubbing
+  // never steal camera focus. Avoid interpreting the same tap as a shot.
+  let tappedReplayOperator=false;
+  if(!cancelled&&replaying&&!replayBodycamOn&&
+     activePointers.size===1&&!p.moved&&p.mode==='undecided'){
+    const finger={x:e.clientX,y:e.clientY};
+    const nearest=team(state).filter(actor=>actor.health>0)
+      .map(actor=>({id:actor.id,d:distance(
+        worldToScreen(actor.p,viewMode==='plan2d'?0:24),finger)}))
+      .sort((a,b)=>a.d-b.d)[0];
+    if(nearest&&nearest.d<=(e.pointerType==='touch'?36:26)){
+      tappedReplayOperator=true;
+      followReplayOperator(nearest.id);
+    }
+  }
+  if(!tappedReplayOperator&&!cancelled&&replaying&&replayTraceMode!=='off'&&
     activePointers.size===1&&!p.moved&&p.mode==='undecided'){
     const hit=shotScreenHit(recorder.ballistics.between(
       Math.max(0,replayTime-3),replayTime),replayTime,
