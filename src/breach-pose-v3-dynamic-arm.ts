@@ -69,13 +69,21 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
   DynamicArmFit|null=>{
   const poses=poles.map(pole=>solveTwoBone(shoulder,wrist,10,10,
    pole,ARM_LIMITS,referenceBend));
+  // Hard torso and insert intersections cannot be cured by expanding
+  // SOFT fabric allowances. Evaluate each permanently blocked candidate
+  // only once instead of repeating an expensive 15-axis OBB pass at the
+  // moderate and deep compression tiers.
+  const permanentlyBlocked=new Set<LimbSolution>();
   for(const softScale of budgets){
    let best:LimbSolution|null=null,bestReport:ArmConstraintReport|null=null;
    for(const pose of poses){
+    if(permanentlyBlocked.has(pose))continue;
     evaluations++;
     const report=evaluateArmConstraint({shoulder,arm:pose,side,
       envelope,mode,referenceBend,softScale});
     if(!firstReport)firstReport=report;
+    if(report.hardDepth>LOW_READY_CONTACT_LIMITS.rigid+.001||
+       !pose.reached)permanentlyBlocked.add(pose);
     if(!report.valid){
      const penalty=(pose.reached?0:12)+
       (report.contactValid?0:4)+report.hardDepth*2+

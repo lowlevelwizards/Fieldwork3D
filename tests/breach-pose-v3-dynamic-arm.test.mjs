@@ -37,7 +37,8 @@ test('V3 rejects rigid penetration even if a candidate looks attractive',()=>{
  assert.equal(r.status,'unresolved');
  assert.equal(r.solution,null);
  assert.equal(r.reason,'no-clearance');
- assert.ok(r.evaluations<=MAX_DYNAMIC_ARM_CANDIDATES*3);
+ assert.equal(r.evaluations,MAX_DYNAMIC_ARM_CANDIDATES,
+  'each hard-collision candidate is tested only once');
  assert.ok(r.softScale<=1.65,'rigid collisions cannot bypass hard limits');
 });
 test('V3 preview evaluates real ADS pose without changing weapon aim',()=>{
