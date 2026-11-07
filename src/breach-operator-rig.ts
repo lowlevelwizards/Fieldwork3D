@@ -42,7 +42,7 @@ import {choreographV4ReloadWeapon,reloadMechanismFor,
  v4ReloadControlPose}
  from './breach-reload-performance.ts';
 import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
-import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
+import {resolveOperatorActionState} from './breach-pose-action-state.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
 import {chooseV3SupportGrip} from './breach-pose-v3-support-grip.ts';
@@ -1032,26 +1032,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     kickMotion(kickAge):null;
   const bash=contactReaction(p.seconds-(p.lastBashAt??-100),
     p.bashRole??null,!!p.blocked);
-  // Resolve action clocks and explicit hand ownership once for all pose
-  // paths; preview and live rendering cannot independently shift the window.
-  const treatmentActive=!!p.treatmentActive&&!p.down&&!p.surrender;
-  const reloadActive=p.reload>0&&p.reloadDuration>0;
-  const reloadProgress=reloadActive?
-    clamp(1-p.reload/p.reloadDuration,0,1):0;
-  const reloadMode=p.reloadMode??(p.weapon==='shotgun'?'shells':'emergency');
-  const throwAge=p.seconds-p.lastThrowAt;
-  const throwActive=throwAge>=0&&throwAge<.70;
-  const doorAge=p.seconds-p.lastDoorAt;
-  const doorActive=doorAge>=0&&doorAge<1.12&&!!p.doorPoint&&
-    p.doorMethod!=='kick';
-  const handOwners=resolvePoseContactOwners({
-    surrender:p.surrender,down:p.down,downProgress,
-    treatmentActive,reloadActive,reloadProgress,reloadMode,
-    throwActive,pushActive:bash.active&&p.bashRole==='push',
-    woundedGuard:!p.down&&p.injury>0&&p.hitRegion!=='leg'&&
-      !p.aiming&&!p.firing&&p.hitAge!==undefined&&
-      p.hitAge>=0&&p.hitAge<1.1,doorActive
-  });
+  // All V3/V4 action windows and hand ownership are one pure decision.
+  const actionState=resolveOperatorActionState(
+    p,downProgress,bash.active&&p.bashRole==='push');
+  const {treatmentActive,reloadActive,reloadProgress,reloadMode,
+    throwAge,throwActive,doorAge,doorActive,handOwners}=actionState;
   const handling=p.treatmentActive?'low':p.handlingOverride??handlingPose({
     aim:p.aimBlend??(p.aiming?1:0),moving,
     obstruction:!!p.obstruction||
@@ -1557,13 +1542,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const v3ReloadCorridor:V3ReloadCorridorProfile=p.poseV3Preview?
     (p.poseV3ReloadCorridor??(legacyAkReload?'compact':'canonical')):
     'canonical';
-  const v3Interacting=!!p.treatmentActive||
-    throwAge>=0&&throwAge<.70||
-    doorAge>=0&&doorAge<1.12&&
-      !!p.doorPoint&&p.doorMethod!=='kick';
-  if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
+   if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
      !p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
-     !v3Interacting&&!activeTransition){
+     !actionState.interactionWindow&&!activeTransition){
     const outfit=resolvedWardrobe(p.wardrobe,p.equipment);
     const activeReloadSocket=reloadActive?
       weaponPresentationSockets(p.weapon,p.weaponConfiguration):null;
