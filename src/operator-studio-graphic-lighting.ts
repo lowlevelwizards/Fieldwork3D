@@ -208,6 +208,7 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
  const effect=config.toon!==0||config.rim!=='off'||hasViolet(config.gradient);
  if(!effect){restoreStudioGraphicLighting(root);
   return {meshes:0,materials:0,weapons:0};}
+ restoreStudioGraphicLighting(root);
  let cache=root.userData.fieldworkStudioArtCache as Cache|undefined;
  if(!cache){cache=new Map();root.userData.fieldworkStudioArtCache=cache;}
  if(config.toon)updateStudioCelRamp(config.toon,config.celProfile,
