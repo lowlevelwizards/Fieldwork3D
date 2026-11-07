@@ -17,18 +17,20 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  lensMaterial:THREE.Material=steel):THREE.Group{
  const assembly=resolveWeaponAssembly(raw),g=new THREE.Group(),parts=assembly.mounted;
  const optic=parts.optic;
+ // Claw rail is its own receiver mesh; raise only the separate fitted optic.
+ const sightRise=raw.slots.opticMount==='optic-hk-claw'?1.50:0;
  if(optic.id==='optic-reflex'){
-  block(g,optic.mountX,3.8,0,4,1.1,3,dark);
-  block(g,optic.mountX,5,0,3.3,2.8,.75,steel);
-  block(g,optic.mountX+1.3,5,0,.55,2.3,2.9,dark);
+  block(g,optic.mountX,3.8+sightRise,0,4,1.1,3,dark);
+  block(g,optic.mountX,5+sightRise,0,3.3,2.8,.75,steel);
+  block(g,optic.mountX+1.3,5+sightRise,0,.55,2.3,2.9,dark);
  }else if(optic.id==='optic-magnified'){
   // One overscale objective bell, stout tube and two unmistakable mounts.
-  block(g,optic.mountX,5.10,0,7.35,2.40,2.52,dark);
-  block(g,optic.mountX+3.30,5.10,0,1.55,3.48,3.48,steel);
-  block(g,optic.mountX-3.12,5.10,0,1.00,2.75,2.85,steel);
-  block(g,optic.mountX-1.75,3.74,0,1.00,1.36,1.72,steel);
-  block(g,optic.mountX+1.45,3.74,0,1.00,1.36,1.72,steel);
-  block(g,optic.mountX-.42,6.51,0,1.32,.96,1.63,steel);
+  block(g,optic.mountX,5.10+sightRise,0,7.35,2.40,2.52,dark);
+  block(g,optic.mountX+3.30,5.10+sightRise,0,1.55,3.48,3.48,steel);
+  block(g,optic.mountX-3.12,5.10+sightRise,0,1.00,2.75,2.85,steel);
+  block(g,optic.mountX-1.75,3.74+sightRise,0,1.00,1.36,1.72,steel);
+  block(g,optic.mountX+1.45,3.74+sightRise,0,1.00,1.36,1.72,steel);
+  block(g,optic.mountX-.42,6.51+sightRise,0,1.32,.96,1.63,steel);
  }
  const muzzle=parts.muzzle;
  const muzzleY=raw.build?.family==='ar'?AR_VISUAL_AXIS_Y:0;
