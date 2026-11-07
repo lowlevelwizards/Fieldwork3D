@@ -4152,7 +4152,9 @@ function renderObserverSightTransitions():void{
 }
 function renderReplayDebrief():void{
   const stalls=buildReplayExecutionInsights(recorder.executionEvents,
-    recorder.duration,5).filter(x=>x.end===null||(x.seconds??0)>=.75)
+    recorder.duration,5).filter(x=>
+      (!replayContactObserverId||x.actor===replayContactObserverId)&&
+      (x.end===null||(x.seconds??0)>=.75))
     .slice(0,2);
   const fragment=document.createDocumentFragment();
   for(const incident of replayFeaturedIncidents){
