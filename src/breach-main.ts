@@ -6444,6 +6444,7 @@ window.addEventListener('keydown',e=>{
   // Global game shortcuts must never fire while the player edits a name,
   // operates a dialog, or navigates Campaign / the front menu.
   if(e.isComposing||e.altKey||campaignMode==='menu'||campaignMode==='home')return;
+  if(document.querySelector('.fw-confirm-backdrop'))return;
   const target=e.target;
   // Escape is handled before the usual input guard so a focused replay
   // range/button can dismiss its panel; native select popups keep Escape.
@@ -6461,7 +6462,6 @@ window.addEventListener('keydown',e=>{
     (target.isContentEditable||target.closest(
       'input,textarea,select,[contenteditable="true"],[role="dialog"],[role="alertdialog"]'
     )))return;
-  if(document.querySelector('.fw-confirm-backdrop'))return;
   if(replaying){
     if(e.code==='Space'&&!e.repeat&&!(
       target instanceof HTMLElement&&target.closest('button,[role="button"]'))){
