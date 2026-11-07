@@ -1453,6 +1453,12 @@ export class TacticalScene3D{
     // slow software WebGL must not report the old chest frame as helmet QA.
     this.bodycamLastQa=null;
   }
+  /** Bodycam frames intentionally suppress tactical projection labels, which
+   * would otherwise draw through walls as floating first-person nameplates.
+   */
+  isReplayBodycamActive():boolean{
+    return this.bodycamLastQa?.active??false;
+  }
   /** Read-only debug information for Vite dev Bodycam smoke; not a UI API. */
   inspectReplayBodycamQa(){
     const cam=this.bodycamCamera;
