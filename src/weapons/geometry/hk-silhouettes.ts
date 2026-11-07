@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
  from './profile-primitives.ts';
-import {HK_OLIVE_POLYMER,HK_MAG_METAL}
+import {HK_OLIVE_POLYMER,HK_MAG_METAL,HK_MUZZLE_METAL}
  from './weapon-visual-palette.ts';
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {addHKFacetedForearm,addHKHandguardOpenings} from './hk-handguard-profiles.ts';
@@ -15,6 +15,7 @@ import {addHK556Family} from './hk-556-silhouettes.ts';
 import {addHKMP5Family} from './hk-mp5-silhouettes.ts';
 import {HK_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
+import {addHKTriggerSelector} from './hk-trigger-selector.ts';
 
 export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material,
@@ -33,14 +34,15 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
- const material=(finish:'steel'|'dark'|'wood'|'olive'|'mag')=>
+ const material=(finish:'steel'|'dark'|'wood'|'olive'|'mag'|'muzzle')=>
   finish==='steel'?steel:finish==='wood'?wood:
-  finish==='olive'?HK_OLIVE_POLYMER:finish==='mag'?HK_MAG_METAL:dark;
+  finish==='olive'?HK_OLIVE_POLYMER:finish==='mag'?HK_MAG_METAL:
+  finish==='muzzle'?HK_MUZZLE_METAL:dark;
  const p=(slot:SlotName,points:Outline,depth:number,
-  finish:'steel'|'dark'|'wood'|'olive'|'mag'='steel')=>
+  finish:'steel'|'dark'|'wood'|'olive'|'mag'|'muzzle'='steel')=>
   addOutline(root,slot,parts[slot],ids[slot]++,points,depth,material(finish));
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number,
-  finish:'steel'|'dark'|'wood'|'olive'|'mag'='steel')=>
+  finish:'steel'|'dark'|'wood'|'olive'|'mag'|'muzzle'='steel')=>
   addCuboid(root,slot,parts[slot],ids[slot]++,x,y,z,w,h,d,material(finish));
 
  // Stamped HK receiver and connected trigger housing: deliberately no AR split.
@@ -52,7 +54,7 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  p('receiver',[[-5.80,-1.28],[-5.34,-2.10],[-4.73,-2.23],
    [-4.38,-2.55],[-3.32,-2.61],[-2.95,-2.41],
    [-.80,-2.42],[-.42,-2.32],[2.52,-2.48],
-   [3.95,-1.48]],3.18,'dark');
+   [3.95,-1.48]],3.18,early?'steel':'dark');
  // Integrated angular magazine housing; the magazine top stays fully seated.
  p('receiver',[[-.58,-2.08],[3.32,-2.08],[3.39,-2.93],
    [3.13,-3.13],[-.29,-3.13],[-.50,-2.91]],3.35);
@@ -150,7 +152,7 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
    [art.muzzleX-.24,-.85],[art.muzzleX,-.69],
    [art.muzzleX,.69],[art.muzzleX-.24,.85],
    [hiderStart+.16,.85],[hiderStart,.82]
-  ],1.92,'dark');
+  ],1.92,'muzzle');
   flashHider.userData.hkFactoryFlashHider=true;
  }
 
@@ -174,8 +176,7 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const port=addWeaponPixelMark(root,'hk-port',anatomy.portX,
   anatomy.portY,1.775,anatomy.portWidthX,anatomy.portHeightY);
  port.userData.hkEjectionPort=true;
- const selector=addWeaponPixelMark(root,'hk-selector',-3.48,-.67,-1.777,2.05,.60);
- selector.rotation.y=Math.PI;
+ addHKTriggerSelector(root,'sef',1.78,1.59);
  
  // One solid silhouette per rear sight: no separate base/knobs.
  // Low early folding blade versus a broader, squat G3A3 diopter turret.

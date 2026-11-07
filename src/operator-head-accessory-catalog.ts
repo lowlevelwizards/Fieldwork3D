@@ -190,7 +190,8 @@ export function resolveD2HeadAssembly(input:{
   const requested=input.options?.eyePosition??'eyes';
   if(requested==='neck')placement='neck';
   else if(requested==='raised'){
-   if(['ach','high-cut','pasgt','soviet-steel','high-cut-rails'].includes(headwear))
+   if(['ach','high-cut','pasgt','soviet-steel','high-cut-rails',
+     'mich-2001','mich-2002','fast-sf','fast-xp-mid'].includes(headwear))
     placement='helmet';
    else if(headwear==='bare'||headwear==='beanie')placement='forehead';
    else placement='eyes'; // Incompatible brim: preserve preference, use safe effective position.

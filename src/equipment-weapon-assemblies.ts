@@ -14,9 +14,10 @@ import {FAMILY_PARTS,FAMILY_PART_SLOTS,familyPreset,initialWeaponFamilyBuild,
  type FamilyPartSlot,type WeaponFamilyBuild}
  from './equipment-weapon-families.ts';
 
-export type WeaponAttachmentSlot='optic'|'muzzle'|'foregrip'|'stock'|'light'|'sling';
+/** Mount is distinct from optic: a classic HK claw base can hold a sight. */
+export type WeaponAttachmentSlot='opticMount'|'optic'|'muzzle'|'foregrip'|'stock'|'light'|'sling';
 export const WEAPON_ATTACHMENT_SLOTS:readonly WeaponAttachmentSlot[]=
- ['optic','muzzle','foregrip','stock','light','sling'];
+ ['opticMount','optic','muzzle','foregrip','stock','light','sling'];
 export type WeaponConfiguration={
  version:1;weapon:WeaponId;slots:Record<WeaponAttachmentSlot,string>;
  /** Optional visual family. Old four-class saves keep their legacy models. */
@@ -49,6 +50,14 @@ export const WEAPON_ATTACHMENTS:Readonly<Record<string,WeaponAttachment>>={
   massKg:.16,massX:2,mountX:0,mountY:2.6,mountZ:0,sightHeight:4.4},
  'optic-magnified':{id:'optic-magnified',name:'Magnified Optic',slot:'optic',compatible:LONG,
   massKg:.46,massX:1,mountX:-1,mountY:2.6,mountZ:0,sightHeight:4.8},
+ /** Factory rail (AR/railed AK) is still integral; none means no added mount. */
+ 'optic-mount-none':{id:'optic-mount-none',name:'No Added Optic Mount',
+  slot:'opticMount',compatible:ALL,massKg:0,massX:0,
+  mountX:0,mountY:0,mountZ:0},
+ /** Preserve the old HK accessory ID and paid inventory when migrating. */
+ 'optic-hk-claw':{id:'optic-hk-claw',name:'HK Claw Top Rail',
+  slot:'opticMount',compatible:RAIL,massKg:.14,massX:-1.60,
+  mountX:-1.60,mountY:4.05,mountZ:0,sightHeight:4.35},
  'muzzle-bare':{id:'muzzle-bare',name:'Bare Muzzle',slot:'muzzle',compatible:ALL,
   massKg:0,massX:19.5,mountX:19.5,mountY:0,mountZ:0,muzzleExtension:0},
  'muzzle-hider':{id:'muzzle-hider',name:'Flash Hider',slot:'muzzle',compatible:ALL,
@@ -99,7 +108,7 @@ export const WEAPON_PLATFORMS:Readonly<Record<WeaponId,PlatformGeometry>>={
   baseBalanceX:2,stockX:-13.5,primaryX:-2.9,primaryY:-3.25,supportX:8,supportY:-2,muzzleX:19.5}
 };
 const DEFAULT_IDS:Readonly<Record<WeaponAttachmentSlot,string>>={
- optic:'optic-irons',muzzle:'muzzle-bare',foregrip:'foregrip-none',
+ opticMount:'optic-mount-none',optic:'optic-irons',muzzle:'muzzle-bare',foregrip:'foregrip-none',
  stock:'stock-standard',light:'light-none',sling:'sling-none'
 };
 export function initialWeaponConfiguration(weapon:WeaponId='carbine'):WeaponConfiguration{
@@ -111,21 +120,31 @@ export const compatibleWeaponAttachment=(weapon:WeaponId,slot:WeaponAttachmentSl
  * stock or rail attachment as interchangeable physical factory furniture.
  */
 export function familyAccessoryAllowed(build:WeaponFamilyBuild,
- slot:WeaponAttachmentSlot,id:string):boolean{
+ slot:WeaponAttachmentSlot,id:string,mount='optic-mount-none'):boolean{
  if(slot==='stock')return id==='stock-standard';
- // The SD is integral: never layer a detachable suppressor over its front.
+ if(slot==='opticMount')return id==='optic-mount-none'||
+  (id==='optic-hk-claw'&&build.family==='hk');
+ // The SD is integral: never overlay a second detachable suppressor.
  if(slot==='muzzle'&&build.parts.receiver==='hk-mp5sd-integral')
   return id==='muzzle-bare';
  if(slot==='optic'&&id!=='optic-irons'){
-  const r=build.parts.receiver;
-  return r==='ar-flat'||(build.family==='ak'&&
-   build.parts.handguard==='ak-rail-long');
+  return (build.family==='hk'&&mount==='optic-hk-claw')||
+   build.parts.receiver==='ar-flat'||
+   (build.family==='ak'&&build.parts.handguard==='ak-rail-long');
  }
  if(slot==='foregrip'&&id!=='foregrip-none')
-  return ['ar-quad','ar-compact-rail','ar-m5-rail','ar-risii','ak-rail-long']
-   .includes(build.parts.handguard);
+  return ['ar-quad','ar-compact-rail','ar-m5-rail','ar-risii',
+   'ak-rail-long','hk-mp5-trirail'].includes(build.parts.handguard);
  return true;
 }
+/** Shared for Campaign and Quick Play; ownership is checked separately. */
+export function weaponAttachmentAllowed(config:WeaponConfiguration,
+ slot:WeaponAttachmentSlot,id:string):boolean{
+ return compatibleWeaponAttachment(config.weapon,slot,id)&&
+  (config.build?familyAccessoryAllowed(config.build,slot,id,
+   config.slots.opticMount):slot!=='opticMount'||id==='optic-mount-none');
+}
+
 export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfiguration{
  const result=initialWeaponConfiguration(weapon);
  if(!raw||typeof raw!=='object'||Array.isArray(raw)||
@@ -133,8 +152,11 @@ export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfi
  const slots=(raw as {slots?:unknown}).slots;
  if(!slots||typeof slots!=='object'||Array.isArray(slots))return result;
  const source=slots as Record<string,unknown>;
+ // Pre-mount saves stored the HK claw rail as an optic. Keep its same
+ // paid ID but migrate it to the mount slot; avoid refund/ownership loss.
+ const oldClaw=source.optic==='optic-hk-claw';
  for(const slot of WEAPON_ATTACHMENT_SLOTS){
-  const id=source[slot];
+  const id=oldClaw&&slot==='opticMount'?'optic-hk-claw':source[slot];
   if(typeof id==='string'&&compatibleWeaponAttachment(weapon,slot,id))
    result.slots[slot]=id;
  }
@@ -142,18 +164,22 @@ export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfi
  if(build){
   result.build=build;
   for(const slot of WEAPON_ATTACHMENT_SLOTS)
-   if(!familyAccessoryAllowed(build,slot,result.slots[slot]))
-    result.slots[slot]=DEFAULT_IDS[slot];
+   if(!familyAccessoryAllowed(build,slot,result.slots[slot],
+    result.slots.opticMount))result.slots[slot]=DEFAULT_IDS[slot];
+ }else{
+  result.slots.opticMount=DEFAULT_IDS.opticMount;
  }
  return result;
 }
 export function setWeaponAttachment(config:WeaponConfiguration,slot:WeaponAttachmentSlot,
  id:string):WeaponConfiguration{
  if(!WEAPON_ATTACHMENT_SLOTS.includes(slot)||
-  !compatibleWeaponAttachment(config.weapon,slot,id)||
-  (config.build&&!familyAccessoryAllowed(config.build,slot,id)))return config;
+  !weaponAttachmentAllowed(config,slot,id))return config;
  if(config.slots[slot]===id)return config;
- return {...config,slots:{...config.slots,[slot]:id}};
+ // Removing a mount makes its optic invalid: reset just that dependency.
+ // Keep this as one immutable transaction without introducing V2 saves.
+ return readWeaponConfiguration({...config,
+  slots:{...config.slots,[slot]:id}},config.weapon);
 }
 /** Select an authored model using the currently owned gameplay class.
  * It never buys or converts a physical Campaign gun behind the player's back.
@@ -214,7 +240,10 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   // share the authoritative shot-time tip with the visible barrel.
   const part=slot==='muzzle'&&art?
    {...original,mountX:art.muzzleX,massX:original.massX+art.muzzleX-19.5}:
-   original;
+   slot==='optic'&&build?.family==='hk'&&
+    config.slots.opticMount==='optic-hk-claw'&&original.id!=='optic-irons'?
+    {...original,mountX:original.mountX-1.60,mountY:original.mountY+1.50,
+     sightHeight:(original.sightHeight??2.6)+1.50}:original;
   mounted[slot]=part;
   mass+=part.massKg;weighted+=part.massKg*part.massX;
   inertia+=part.massKg*part.massX*part.massX;
@@ -236,6 +265,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  const hkSupportX=hkArt?Math.min(7.75,hkArt.handguardStartX+
   .47*(hkArt.handguardEndX-hkArt.handguardStartX)):7.75;
  const mp5k=build?.parts.receiver==='hk-mp5k-stockless';
+ const triRailVertical=build?.parts.handguard==='hk-mp5-trirail'&&
+  config.slots.foregrip==='foregrip-vertical';
  const supportX=build?.family==='hk'?hkSupportX:
   build?(familyHandguard?.length==='long'?9.10:
   familyHandguard?.length==='mid'?7.70:6.50):p.supportX;
@@ -245,8 +276,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   muzzleY:build?.family==='ar'?AR_VISUAL_AXIS_Y:0,
   stockX:stockX+(build?0:(mounted.stock.stockShift??0)),
   primaryX,primaryY,
-  supportX:supportX+(mounted.foregrip.supportShift??0),
-  supportY:(mp5k?-3.65:
+  supportX:triRailVertical?7.0:supportX+(mounted.foregrip.supportShift??0),
+  supportY:(mp5k?-4.20:
    mounted.foregrip.id==='foregrip-vertical'?-3.65:
    mounted.foregrip.id==='foregrip-handstop'?-2.3:
    build?.family==='hk'?-1.35:build?-1.65:p.supportY)+

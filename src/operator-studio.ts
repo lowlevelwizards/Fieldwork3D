@@ -3,17 +3,28 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {requestedOperatorGradient} from './operator-height-lighting.ts';
 import {inspectOperatorLighting,formatOperatorLightingReport,
  previewOperatorLightingLayers,restoreOperatorLightingPreview,
  DEFAULT_LIGHTING_LAYERS,type LightingDiagnosticLayers}
  from './operator-lighting-inspector.ts';
 import {applyStudioSelfShadowAtlases}
  from './operator-gear-lightmap-atlas.ts';
-import {applyOperatorStudioToon,requestedOperatorToonBands}
+import {applyOperatorStudioToon,requestedOperatorToonBands,
+ requestedOperatorRimMode,disposeOperatorStudioToon}
  from './operator-studio-toon-lighting.ts';
-import {OperatorStudioLighting} from './operator-studio-lighting.ts';
+import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
+ from './operator-studio-lighting.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
+import {readPasgtDetails,resolvePasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
+ pasgtConcealmentRequiresSlits} from './operator-pasgt-cover-policy.ts';
+import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup,
+ HELMET_COVER_OPTIONS,HELMET_RAIL_OPTIONS,HELMET_SHROUD_OPTIONS,
+ HELMET_NVG_OPTIONS,HELMET_SCRIM_OPTIONS,HELMET_RETENTION_OPTIONS,
+ HELMET_HEADSET_MOUNT_OPTIONS,HELMET_REAR_OPTIONS,HELMET_LIGHT_OPTIONS,
+ type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
+import {applyHelmetPreset,helmetPresetChoices} from './operator-helmet-preset-catalog.ts';
 import {M1956_VARIANTS,type M1956Variant} from './operator-m1956-policy.ts';
 import {ALICE_LC2_LOADS,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {HELMET_COVER_STYLES,HELMET_BANDS,HELMET_NET_STYLES,
@@ -134,9 +145,9 @@ const modeLabel=$<HTMLElement>('studioModeLabel');
 const studioRoot=$<HTMLElement>('studioRoot');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'low-power'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
-renderer.setClearColor(0xc4c7bd);
+renderer.setClearColor(STUDIO_INSPECTION_BACKGROUND);
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0xc4c7bd);
+scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
 // R5 Studio shadows are isolated from the shared thumbnail scene.
 const studioLighting=new OperatorStudioLighting(scene,renderer,location.search);
 const diagnosticLayers:LightingDiagnosticLayers={...DEFAULT_LIGHTING_LAYERS};
@@ -263,14 +274,19 @@ function resize(){
  camera.updateProjectionMatrix();
  renderScene();
 }
+let studioSuspended=false;
 function renderScene(){
+ if(studioSuspended)return;
  studioLighting.beforeRender(rig?.root??null);
  renderer.setRenderTarget(null);renderer.render(scene,camera);
- canvas.dataset.ready='true';
+ // Never report readiness for a bare/empty canvas.
+ canvas.dataset.ready=rig?.root.visible?'true':'false';
  canvas.dataset.drawCalls=String(renderer.info.render.calls);
  // Built-in renderer accounting only: counts, NOT GPU timing estimates.
  canvas.dataset.rendererGeometries=String(renderer.info.memory.geometries);
  canvas.dataset.rendererTextures=String(renderer.info.memory.textures);
+ // Program count is a diagnostic, not GPU frame-time measurement.
+ canvas.dataset.shaderPrograms=String(renderer.info.programs?.length??0);
  canvas.dataset.operatorLighting=studioLighting.mode;
  canvas.dataset.shadowMapSize=String(studioLighting.shadowSize);
  if(lightingInspectorOutput){
@@ -395,7 +411,7 @@ let armedPose:OperatorPose|null=null;
 let armedFrame=0,armedStarted=0,armedLastDraw=0;
 let previewInViewport=true;
 function armedPreviewEnabled(){
- return !clothesOnly&&showWeapon&&!!armedPose&&!!rig&&
+ return !studioSuspended&&!clothesOnly&&showWeapon&&!!armedPose&&!!rig&&
   !!member()&&!document.hidden&&previewInViewport;
 }
 function tickArmedPreview(now:number){
@@ -433,15 +449,21 @@ new IntersectionObserver(entries=>{
 }).observe(stage);
 function posePreview(){
  const p=member();if(!p)return;
+ const previewStart=performance.now();
  // Restore exact unmodified colors before the wardrobe refresh; otherwise
  // a previously disabled debug layer would contaminate the next bake.
  if(lightingInspectorOutput&&rig)restoreOperatorLightingPreview(rig.root);
  const reference=referenceOpen?resolveFactionReference(referenceBrowser.selectedId):null;
  if(!rig||rig.camoIdentity!==p.id){
-  if(rig){scene.remove(rig.root);rig.dispose();}
+  if(rig){
+   scene.remove(rig.root);disposeOperatorStudioToon(rig.root);rig.dispose();
+  }
   rig=createOperatorRig(p.id,'blue');
   scene.add(rig.root);
  }
+ // R7 is an opt-in visual audition; the profile is a root-local bake input,
+ // not persistent wardrobe data or an extra per-frame GPU effect.
+ rig.root.userData.fieldworkHeightProfile=requestedOperatorGradient(location.search);
  const issue=issueWeaponPreset(starterWeaponPreset(p.id));
  const configuration=reference?.weapon.weaponConfiguration??
   p.weaponConfiguration??issue.weaponConfiguration;
@@ -474,8 +496,10 @@ function posePreview(){
  }else{
   const toon=requestedOperatorToonBands(location.search);
   if(toon){
-   const result=applyOperatorStudioToon(rig.root,toon);
+   const result=applyOperatorStudioToon(rig.root,toon,
+    requestedOperatorRimMode(location.search));
    canvas.dataset.operatorToonBands=String(toon);
+   canvas.dataset.operatorRimMode=requestedOperatorRimMode(location.search);
    canvas.dataset.operatorToonMeshes=String(result.meshes);
   }
  }
@@ -483,6 +507,8 @@ function posePreview(){
   previewOperatorLightingLayers(rig.root,diagnosticLayers);
  studioLighting.invalidateGeometry();
  renderScene();
+ canvas.dataset.operatorPreviewMs=
+  String(Math.round((performance.now()-previewStart)*10)/10);
  syncArmedPreview();
 }
 function canEquip(slot:WardrobeSlot,id:string){
@@ -525,7 +551,7 @@ function undo(){
  say('RESTORED PREVIOUS APPEARANCE');refresh();
 }
 undoButton.addEventListener('click',undo);
-const MATERIAL_LABELS=/^(SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
+const MATERIAL_LABELS=/^(SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|PASGT SHELL COLOR|PASGT CLOTH COVER|PASGT COVER PATTERN|FOLIAGE SLITS|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
 function studioSectionKind(node:HTMLElement):'materials'|'details'{
  return node.dataset.studioStep==='materials'?'materials':'details';
 }
@@ -951,21 +977,138 @@ function renderMaterials(){
  if(activeCategory==='headwear'){
   row('HEADWEAR APPEARANCE',
    'All approved hats and helmets are selectable. Appearance does not alter head protection or inventory; the equipped kit controls those.');
+  const helmetShell=item==='high-cut-rails'?'high-cut':item;
+  if(isH1ModernHelmet(helmetShell)&&helmetShell!=='pasgt'){
+   const presets=helmetPresetChoices(helmetShell);
+   if(presets.length){
+    const quick=row('QUICK HELMET SETUPS','Reference-led modular cosmetics; each setup keeps the equipped protection unchanged.');
+    for(const preset of presets)
+     quick.append(makeButton(preset.label,
+      w.helmetSetup?.presetOrigin===preset.id,
+      ()=>changeWardrobe(applyHelmetPreset(current(),helmetShell,preset.id))));
+   }
+   const setup=readHelmetSetup(w.helmetSetup);
+   const advanced=row('HELMET COMPONENTS','Independent cover, rail, optics, communications and retention. Saved choices survive incompatible combinations.');
+   const disclosure=document.createElement('details');
+   const summary=document.createElement('summary');
+   summary.textContent='ADVANCED HELMET CONFIGURATION';
+   disclosure.append(summary);
+   const option=(label:string,key:keyof HelmetSetupV1,choices:readonly string[])=>{
+    const line=document.createElement('div');line.className='material-group';
+    const heading=document.createElement('label');heading.textContent=label;
+    line.append(heading);
+    addSelect(line,choices.map(x=>[x,x.replaceAll('-',' ').toUpperCase()] as const),
+     String(setup[key]),value=>{
+      const before=current();
+      changeWardrobe({...before,helmetSetup:readHelmetSetup({
+       ...before.helmetSetup,[key]:value,presetOrigin:undefined})});
+     });
+    disclosure.append(line);
+   };
+   option('COVER','cover',HELMET_COVER_OPTIONS);
+   option('RETAINING BAND','band',['none','elastic']);
+   option('NET / SCRIM','scrim',HELMET_SCRIM_OPTIONS);
+   option('CHIN / NAPE RETENTION','retention',HELMET_RETENTION_OPTIONS);
+   option('FRONT SHROUD','shroud',HELMET_SHROUD_OPTIONS);
+   option('SIDE RAILS','rails',HELMET_RAIL_OPTIONS);
+   option('NIGHT VISION','nvg',HELMET_NVG_OPTIONS);
+   option('HEADSET MOUNT','headsetMount',HELMET_HEADSET_MOUNT_OPTIONS);
+   option('REAR MODULE','rearModule',HELMET_REAR_OPTIONS);
+   option('TASK LIGHT','light',HELMET_LIGHT_OPTIONS);
+   disclosure.append(makeButton('REAR STROBE: '+(setup.rearStrobe?'ON':'OFF'),
+    setup.rearStrobe,()=>changeWardrobe({...current(),helmetSetup:readHelmetSetup({
+     ...current().helmetSetup,rearStrobe:!setup.rearStrobe,presetOrigin:undefined})})));
+   const effective=resolveHelmetSetup(helmetShell,w.helmetSetup,{
+    hasLegacyPrint:!!w.headwearCamo,
+    headset:w.styles.headset,eyewear:w.styles.eyewear,facewear:w.styles.facewear
+   });
+   if(effective.suppressed.length){
+    const note=document.createElement('small');
+    note.textContent='FIT RESTRICTIONS: '+effective.suppressed.join(' · ');
+    disclosure.append(note);
+   }
+   advanced.append(disclosure);
+  }
   const solids=headwearColorChoices(item==='high-cut-rails'?'high-cut':item);
   const prints=headwearCamoChoices(item);
-  const group=row('HEADGEAR FINISH','Select an appropriate solid shell/fabric or approved cover print.');
+  const group=row(item==='pasgt'?'PASGT SHELL COLOR':'HEADGEAR FINISH',
+   item==='pasgt'?
+    'Painted composite shell finish — remains selected underneath the cover.':
+    'Select an appropriate solid shell/fabric or approved cover print.');
   if(solids.length){
    const grid=document.createElement('div');grid.className='solid-swatches';
    for(const id of sortHeadwearSolids(solids,w.headwearColor)){
     const info=HEADWEAR_SOLID_COLORS[id];
-    const b=makeButton(info.label,!w.headwearCamo&&
+    const b=makeButton(info.label,(item==='pasgt'||!w.headwearCamo)&&
      (w.headwearColor??solids[0])===id,()=>changeWardrobe({
-      ...current(),headwearColor:id,headwearCamo:undefined}));
+      ...current(),headwearColor:id,
+      // PASGT shell paint and textile cover print are independent channels.
+      headwearCamo:item==='pasgt'?current().headwearCamo:undefined}));
     b.className='swatch';const chip=document.createElement('span');
     chip.className='swatch-chip';
     chip.style.backgroundColor='#'+info.hex.toString(16).padStart(6,'0');
     b.prepend(chip);grid.append(b);
    }group.append(grid);
+  }
+  if(item==='pasgt'){
+   const state=resolveHelmetSetup('pasgt',w.helmetSetup,{
+    hasLegacyPrint:!!w.headwearCamo
+   });
+   const details=readPasgtDetails(w.pasgtDetails,w.helmetSetup);
+   const updateCover=(covered:boolean)=>changeWardrobe({
+    ...current(),helmetSetup:readHelmetSetup({
+     ...current().helmetSetup,cover:covered?'fitted':'none',
+     presetOrigin:undefined
+    })
+   });
+   const coverRow=row('PASGT CLOTH COVER',
+    'One fitted cover. NO COVER exposes painted composite, never camouflaged shell.');
+   addSelect(coverRow,[['none','NO COVER'],['fitted','COVER']] as const,
+    state.setup.cover==='none'?'none':'fitted',id=>updateCover(id==='fitted'));
+   if(state.setup.cover!=='none'){
+    const effective=resolvePasgtDetails(w.pasgtDetails,w.helmetSetup);
+    const slitRow=row('FOLIAGE SLITS',
+     'Simple fabric cuts for leaves or scrim, not protruding sewn loops.');
+    if(pasgtConcealmentRequiresSlits(details.concealment)){
+     const explanation=document.createElement('small');
+     explanation.textContent='ON · REQUIRED BY '+details.concealment.toUpperCase();
+     slitRow.append(explanation);
+    }else{
+     addSelect(slitRow,[['off','NO SLITS'],['on','FOLIAGE SLITS']] as const,
+      effective.slits?'on':'off',v=>changeWardrobe({...current(),
+       pasgtDetails:{...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
+        slits:v==='on'}}));
+    }
+    if(prints.length){
+     const printRow=row('PASGT COVER PATTERN',
+      'Printed textile only. The helmet shell keeps its own solid color.');
+     addCamoSwatches(printRow,prints,w.headwearCamo??null,id=>
+      changeWardrobe({...current(),headwearCamo:id,
+       headwearCamoRoll:w.headwearCamo===id?
+        nextHeadwearCamoRoll(w.headwearCamoRoll):0}),
+      'pasgt-cover',w.fabricCamo?.top??null);
+    }
+   }
+   const bandRow=row('PASGT HELMET BAND',
+    'A broad, surface-fitted elastic strip above the brow and around the rear skirt.');
+   const netForcesBand=state.setup.cover!=='none'&&details.concealment==='net';
+   if(netForcesBand){
+    const explanation=document.createElement('small');
+    explanation.textContent='ON · REQUIRED TO SECURE NET';
+    bandRow.append(explanation);
+   }else addSelect(bandRow,PASGT_BANDS.map(id=>[
+    id,id==='none'?'NONE':'ELASTIC BAND'] as const),
+    details.band,id=>changeWardrobe({...current(),pasgtDetails:{
+     ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
+     band:id as typeof details.band}}));
+   if(state.setup.cover!=='none'){
+    const concealRow=row('PASGT CONCEALMENT',
+     'Foliage and scrim require slits; net automatically secures under the elastic band.');
+    addSelect(concealRow,PASGT_CONCEALMENTS.map(id=>[id,id.toUpperCase()] as const),
+     details.concealment,id=>changeWardrobe({...current(),pasgtDetails:{
+      ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
+      concealment:id as typeof details.concealment}}));
+   }
   }
   if(item==='police-helmet'){
    const pos=row('POLICE PROTECTIVE VISOR',
@@ -1032,10 +1175,15 @@ function renderMaterials(){
     w.beretDrape??'right',value=>changeWardrobe({...current(),
      beretDrape:value as 'left'|'right'}));
   }
-  if(prints.length){
+  if(prints.length&&item!=='pasgt'){
    const printRow=row('COMPATIBLE HEADGEAR PRINTS');
    addCamoSwatches(printRow,prints,w.headwearCamo??null,id=>
-    changeWardrobe({...current(),headwearCamo:id,headwearCamoRoll:
+    changeWardrobe({...current(),headwearCamo:id,
+     // An H1 helmet print always belongs to a physical cover, not bare resin.
+     helmetSetup:isH1ModernHelmet(helmetShell)?readHelmetSetup({
+      ...current().helmetSetup,cover:'fitted',presetOrigin:undefined}):
+      current().helmetSetup,
+     headwearCamoRoll:
       w.headwearCamo===id?nextHeadwearCamoRoll(w.headwearCamoRoll):0}),
     'headwear',w.fabricCamo?.top??null);
   }
@@ -1387,6 +1535,8 @@ function populate(){
  modelSelector.value=selected;refresh();
 }
 function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];readonly:boolean}){
+ studioSuspended=false;
+ thumbBrowser.setSuspended(false);
  identityMode=false;referenceOpen=false;referenceBrowser.hide();
  mode=data.mode;selected=data.selected;readOnly=data.readonly;
  comparingSaved=false;saveInFlight=false;
@@ -1467,7 +1617,11 @@ if(embedded){
  window.addEventListener('message',event=>{
   if(event.origin!==location.origin||event.source!==window.parent)return;
   const data=event.data as StudioInit|{type:string;id?:string;ok?:boolean};
-  if(data?.type==='fw-studio-init'){
+  if(data?.type==='fw-studio-suspend'){
+   studioSuspended=true;
+   thumbBrowser.setSuspended(true);
+   syncArmedPreview();
+  }else if(data?.type==='fw-studio-init'){
    const init=data as StudioInit;
    start({mode:init.mode,selected:init.selected,
     members:init.members,readonly:init.readonly});

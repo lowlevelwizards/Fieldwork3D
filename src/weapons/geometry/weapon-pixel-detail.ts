@@ -3,10 +3,10 @@
  * Art-only overlays have no cast shadow and never affect weapon handling.
  */
 import * as THREE from 'three';
-export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ak-receiver-stamp'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage'|'rail-cover-stripes'|'ar-spr-ports'|'hk-port'|'hk-selector';
+export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ak-receiver-stamp'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage'|'rail-cover-stripes'|'ar-spr-ports'|'hk-port'|'hk-selector'|'hk-selector-picto';
 const dimensions:Record<WeaponMark,readonly [number,number]>={
  'ar-port':[16,12],'ak-port':[16,12],
- 'hk-port':[24,12],'hk-selector':[16,8],
+ 'hk-port':[24,12],'hk-selector':[24,20],'hk-selector-picto':[24,20],
  'ak-selector':[16,8],'ak-cover-ribs':[24,8],
  'ak-receiver-stamp':[32,8],'ris-panel':[32,8],'pri-vents':[16,8],
  'poly-ribs':[32,10],'car-ribs':[24,10],
@@ -29,7 +29,39 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   data[n]=rgb[0];data[n+1]=rgb[1];data[n+2]=rgb[2];
   data[n+3]=mark==='ak-cover-ribs'?214:strong?255:232;
  };
- if(mark==='hk-port'){
+ // Unlike generic monochrome pixel marks, HK fire-mode markings need
+ // factory-style white safe and muted red live modes.
+ const colorPixel=(x:number,y:number,rgb:readonly number[])=>{
+  if(x<0||y<0||x>=w||y>=h)return;
+  const n=(y*w+x)*4;
+  data[n]=rgb[0];data[n+1]=rgb[1];data[n+2]=rgb[2];data[n+3]=255;
+ };
+ if(mark==='hk-selector'||mark==='hk-selector-picto'){
+  const white=[223,226,209],red=[191,65,56];
+  if(mark==='hk-selector-picto'){
+   // Three chunky little cartridges-in-boxes; no microscopic text.
+   for(let i=0;i<3;i++){
+    // DataTexture starts at its bottom: white SAFE must render on TOP.
+    const y0=1+(2-i)*7,c=i===0?white:red;
+    for(let x=15;x<=22;x++){
+     colorPixel(x,y0,c);colorPixel(x,y0+4,c);
+    }
+    for(let y=y0;y<=y0+4;y++){
+     colorPixel(15,y,c);colorPixel(22,y,c);
+    }
+    for(const x of (i===2?[17,19,21]:[19]))
+     for(let y=y0+1;y<=y0+3;y++)colorPixel(x,y,c);
+   }
+  }else{
+   // SEF lower: S in white, E and F in red (G3/HK33/HK53).
+   const rows=[['111','100','111','001','111'],
+    ['111','100','110','100','111'],
+    ['111','100','110','100','100']];
+   rows.forEach((glyph,i)=>glyph.forEach((row,y)=>
+    [...row].forEach((bit,x)=>{if(bit==='1')
+     colorPixel(17+x,1+(2-i)*7+(4-y),i===0?white:red);})));
+  }
+ }else if(mark==='hk-port'){
    // Bold ejection-port and enlarged bolt face from one shared pixel mark:
    // wide, dark inset with ONE simple light steel block at its front.
    // No thin silver pinstripes, micro-screws or extra surface meshes.
@@ -37,10 +69,7 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
     pixel(x,y,false,true);
    for(let y=4;y<=8;y++)for(let x=11;x<=20;x++)
     pixel(x,y,true);
-  }else if(mark==='hk-selector'){
-   for(let y=3;y<=5;y++)for(let x=2;x<=4;x++)pixel(x,y);
-   for(let x=4;x<=13;x++)pixel(x,4);
-   }else if(mark==='ar-port'){
+  }else if(mark==='ar-port'){
   // Dark recessed upper, with only a muted narrow lip. No silver decal.
   for(let y=2;y<=9;y++)for(let x=2;x<=13;x++)pixel(x,y,false,y>3);
   for(let x=2;x<=13;x++)pixel(x,2,true);

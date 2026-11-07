@@ -21,6 +21,35 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Helmet H1 — modular shell, cover, setup and legacy wardrobe gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h1-') }}
+        run: |
+          node --experimental-strip-types --test tests/helmet-h1-*.test.mjs
+      - name: PASGT P1/P2 — cover UV, field dress, legacy setup and rendering smoke
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-cover-refinement-') }}
+        run: |
+          node --experimental-strip-types --test tests/pasgt-p1-policy.test.mjs tests/pasgt-p2-cover-visuals.test.mjs tests/helmet-h1-config.test.mjs tests/helmet-h1-presets.test.mjs tests/helmet-h1-integration.test.mjs
+      - name: PASGT P4 — taut cover, slit-card dress, UV and save regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-p4-') }}
+        run: |
+          node --experimental-strip-types --test tests/pasgt-p1-policy.test.mjs tests/pasgt-p2-cover-visuals.test.mjs tests/pasgt-p4-drape.test.mjs tests/pasgt-p4-field-dress.test.mjs tests/helmet-h1-config.test.mjs
+      - name: PASGT P5 — focused cover, band and field-dress regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-p5-') }}
+        run: |
+          node --experimental-strip-types --test tests/pasgt-p5-cover-fit.test.mjs tests/pasgt-p5-camo-uv.test.mjs tests/pasgt-p5-band.test.mjs tests/pasgt-p5-slits.test.mjs tests/pasgt-p5-foliage-scrim.test.mjs tests/pasgt-p5-net.test.mjs tests/pasgt-p5-visual-acceptance.test.mjs tests/pasgt-p5-art-clarity.test.mjs tests/pasgt-p4-drape.test.mjs tests/pasgt-p4-field-dress.test.mjs tests/pasgt-p2-cover-visuals.test.mjs tests/pasgt-p1-policy.test.mjs
+      - name: PASGT P6 — shell, separate fabric panels, field dressing and save
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-p6-') }}
+        run: |
+          node --experimental-strip-types --test tests/pasgt-p6-*.test.mjs tests/pasgt-p5-camo-uv.test.mjs tests/pasgt-p5-cover-fit.test.mjs tests/pasgt-p5-band.test.mjs tests/pasgt-p5-slits.test.mjs tests/pasgt-p5-foliage-scrim.test.mjs tests/pasgt-p5-net.test.mjs tests/pasgt-p5-visual-acceptance.test.mjs tests/pasgt-p5-art-clarity.test.mjs tests/pasgt-p4-drape.test.mjs tests/pasgt-p4-field-dress.test.mjs tests/pasgt-p1-policy.test.mjs
+      - name: PASGT P7 — construction, saved effects, attachments and main P6 regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-p7-') }}
+        run: |
+          node --experimental-strip-types --test tests/pasgt-p7-*.test.mjs tests/pasgt-p6-*.test.mjs tests/pasgt-p5-cover-fit.test.mjs tests/pasgt-p5-camo-uv.test.mjs tests/pasgt-p5-slits.test.mjs tests/pasgt-p5-net.test.mjs tests/pasgt-p4-field-dress.test.mjs tests/pasgt-p1-policy.test.mjs
+      - name: PASGT P7 release preflight — live Pages SHA must match current main
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-p7-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       - name: Production release preflight — Pages queue and live build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
         env:
@@ -51,6 +80,10 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/squad-flow-a1.test.mjs tests/physicality-friendly-traffic.test.mjs tests/doorway-convoy-flow.test.mjs tests/dnav-r7-squad-intelligence.test.mjs tests/doorway-right-of-way-session.test.mjs tests/tactical-integration-11-traffic-autonomy.test.mjs
           node --experimental-strip-types scripts/audit-squad-flow-a.mjs
+      - name: Breach authored stance / stock geometry critical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-stock-contact-authored-transitions-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-authored-transition-critical.test.mjs tests/breach-stock-contact-surface.test.mjs tests/breach-shoulder-contact-surface.test.mjs tests/breach-low-ready-transition-v2.test.mjs tests/breach-pose-v3-coordinated.test.mjs
       - name: AR / AK low-ready shoulder and forearm critical gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-low-ready-ar-ak-armor-fit-') }}
         run: |
@@ -63,6 +96,22 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-low-ready-pose-v2-') }}
         run: |
           node --experimental-strip-types --test tests/breach-low-ready-anatomy-v2.test.mjs tests/breach-low-ready-clearance-v2.test.mjs tests/breach-low-ready-v2-matrix.test.mjs tests/breach-low-ready-transition-v2.test.mjs tests/breach-low-ready-transition-rig-v2.test.mjs tests/breach-coupled-rig-smoke.test.mjs
+      - name: Breach reload V4 — family timing and preview safety
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-reload-v4-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-reload-v4-timeline.test.mjs tests/breach-reload-v4-magazine.test.mjs tests/breach-reload-v4-clearance.test.mjs tests/breach-reload-v4-rig.test.mjs tests/breach-pose-v3-reload-weapon.test.mjs tests/breach-pose-v3-reload-replay.test.mjs tests/breach-pose-v3-coordinated.test.mjs tests/breach-pose-v3-constraints.test.mjs tests/breach-pose-v3-action-matrix.test.mjs
+      - name: Armhole / firing-elbow focused visual and physical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-armhole-clearance-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-armhole-clearance.test.mjs tests/breach-low-ready-anatomy-v2.test.mjs tests/breach-pose-v3-armor-proxies.test.mjs tests/breach-pose-v3-contact-policy.test.mjs tests/operator-lab-pose-contact.test.mjs tests/breach-coupled-rig-smoke.test.mjs tests/breach-pose-v3-body-assist.test.mjs tests/breach-pose-v3-action-matrix.test.mjs
+      - name: Operator Lab unified poses — full weapon and animation matrix
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lab-unified-poses-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-lab-unified-poses.test.mjs tests/operator-lab-pose-contact.test.mjs tests/breach-pose-v3-action-matrix.test.mjs tests/breach-reload-v4-rig.test.mjs
+      - name: Unified Pose V3 — baseline, contact and transition critical gates
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-unified-pose-v3-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-pose-v3-baseline.test.mjs tests/breach-pose-v3-contacts.test.mjs tests/breach-pose-v3-constraints.test.mjs tests/breach-pose-v3-reload.test.mjs tests/breach-pose-v3-reload-choreography.test.mjs tests/breach-pose-v3-reload-weapon.test.mjs tests/breach-pose-v3-reload-replay.test.mjs tests/breach-pose-v3-body-assist.test.mjs tests/breach-pose-v3-dynamic-arm.test.mjs tests/breach-pose-v3-support-grip.test.mjs tests/breach-pose-v3-coordinated.test.mjs tests/breach-pose-v3-action-matrix.test.mjs tests/breach-pose-v3-armor-proxies.test.mjs tests/breach-pose-v3-contact-policy.test.mjs tests/breach-low-ready-transition-rig-v2.test.mjs tests/breach-low-ready-v2-matrix.test.mjs
       - name: Breach magazine, socket and shared-idle critical gates
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-weapon-sockets-magazines-idle-') }}
         run: |
@@ -124,6 +173,26 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/weapon-arsenal-r4.test.mjs tests/weapon-families-01.test.mjs tests/weapon-geometry-r2-silhouettes.test.mjs tests/weapon-geometry-r3-refinement.test.mjs tests/weapon-geometry-r31-polish.test.mjs tests/weapon-geometry-r32-anatomy.test.mjs tests/weapon-geometry-r33-axes.test.mjs
           node --experimental-strip-types --test tests/equipment-19-01-weapon-assemblies.test.mjs tests/equipment-19-08-campaign-attachment-stock.test.mjs tests/equipment-19-09-campaign-armory.test.mjs tests/weapon-workbench-mobile-sockets.test.mjs
+          npm run build
+      - name: Rendering R7.5–R7.7 — release preflight and live Pages build gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r7-stylized-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: Rendering R7.5–R7.6 — shader composition and focused production build
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r7-stylized-') }}
+        run: |
+          node --experimental-strip-types --test tests/rendering-r7-toon-composition.test.mjs tests/rendering-r7-thumbnail-async.test.mjs tests/operator-studio-thumbnail-pipeline-perf.test.mjs tests/operator-studio-toon-r5.test.mjs tests/operator-pose-cavity-r5.test.mjs tests/rendering-r7-stylized-auditions.test.mjs
+          npm run build
+      - name: Rendering R7 — production release preflight
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r7-rendering-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: Rendering R7 — Studio lifecycle, lighting parity and build gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r7-rendering-') }}
+        run: |
+          node --experimental-strip-types --test tests/rendering-r7-studio-foundation.test.mjs tests/rendering-r7-stylized-auditions.test.mjs tests/operator-height-lighting-r5.test.mjs tests/operator-studio-toon-r5.test.mjs
           npm run build
       - name: Operator Lighting R5 — focused Studio, baked lighting and production build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lighting-r5-') }}
@@ -1190,6 +1259,34 @@ jobs:
             tests/equipment-19-01-weapon-assemblies.test.mjs \
             tests/weapon-workbench-mobile-sockets.test.mjs
           node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs /tmp/weapon-ortho-r33.html
+      - name: Replay R4.3b — Bodycam eligibility and safe replay modes
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r43b-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r43b-bodycam-controls.test.mjs \
+            tests/replay-r43b-window-knowledge.test.mjs \
+            tests/replay-r43b-video-disclosure.test.mjs \
+            tests/replay-r2-video.test.mjs \
+            tests/replay-r43-bodycam-camera.test.mjs \
+            tests/replay-r43-personal-visibility.test.mjs \
+            tests/replay-r42c-door-knowledge.test.mjs
+      - name: Replay R4.3 — body-mounted perspective camera geometry
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r43-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r43-bodycam-camera.test.mjs \
+            tests/replay-r43-personal-visibility.test.mjs \
+            tests/replay-r42c-operator-bodies.test.mjs \
+            tests/replay-r42c-door-knowledge.test.mjs
+      - name: Replay R4.2c — individual civilian evidence and archive
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r42c-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r42c-civilian-sight.test.mjs \
+            tests/replay-r42c-operator-bodies.test.mjs \
+            tests/replay-r42c-door-knowledge.test.mjs \
+            tests/replay-r42-operator-sight.test.mjs \
+            tests/replay-r42b-archive.test.mjs
       - name: Replay R4.2b — sparse personal ground evidence and archive
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r42b-') }}
         run: |
@@ -1297,8 +1394,8 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/breach-weapon-issue-faction-studio.test.mjs tests/lw-roster.test.mjs tests/campaign-01.test.mjs tests/faction-reference.test.mjs tests/equipment-09-armor.test.mjs
       - name: Sound Lab — focused catalog, synthesis, WAV and ZIP validation
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/breach-sound-lab-') || startsWith(github.head_ref, 'feature/breach-live-audio-')) }}
-        run: node --experimental-strip-types --test tests/sound-lab.test.mjs tests/sound-lab-focus.test.mjs tests/sound-lab-refine.test.mjs tests/sound-lab-compound.test.mjs tests/breach-live-audio-environment.test.mjs
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/breach-sound-') || startsWith(github.head_ref, 'feature/breach-live-audio-')) }}
+        run: node --experimental-strip-types --test tests/sound-lab.test.mjs tests/sound-lab-focus.test.mjs tests/sound-lab-refine.test.mjs tests/sound-lab-compound.test.mjs tests/breach-live-audio-environment.test.mjs tests/breach-sound-tactile-variation.test.mjs
       - name: Exact mission restart — site, setup and insertion critical gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/breach-repeat-mission-') }}
         run: node --experimental-strip-types --test tests/mission-restart-snapshot.test.mjs tests/mission-deployment-r2.test.mjs
@@ -1425,6 +1522,80 @@ jobs:
           name: hk-mp5-a3-sd3-k-orthographic
           path: reports/hk-mp5-family-ortho.html
           retention-days: 7
+      - name: MP5 R2 — focused HK silhouette, pose, camera and AR/AK regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-mp5-r2-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk-mp5-r2-refinements.test.mjs tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-hk556-ribbon-finish.test.mjs tests/weapon-families-01.test.mjs tests/weapon-ar-r48-silhouettes.test.mjs tests/weapon-ak-r47-final-polish.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: MP5 R2 — actual mesh side/top/front comparison
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-mp5-r2-') }}
+        run: node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs reports/hk-mp5-r2-ortho.html
+      - name: MP5 R2 — upload full-family visual comparison
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-mp5-r2-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hk-mp5-r2-actual-mesh-review
+          path: reports/hk-mp5-r2-ortho.html
+          retention-days: 7
+      - name: HK MP5 R3 — fixed stocks, selector markings and family safety
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-mp5-selector-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-mp5-r2-refinements.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-hk556-ribbon-finish.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: HK R4 — factory colors, selectors, muzzles and family safety
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-r4-material-selector-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk-r4-material-selector.test.mjs tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-mp5-r2-refinements.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-hk556-ribbon-finish.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: HK R4 — actual-color orthographic ten-factory review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-r4-material-selector-') }}
+        run: node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs reports/hk-r4-factory-colors.html --hk-only --material-colors
+      - name: HK R4 — upload actual-mesh material-color review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-r4-material-selector-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hk-r4-ten-factory-finish-review
+          path: reports/hk-r4-factory-colors.html
+          retention-days: 7
+      - name: HK modular R1 — stock/rail compatibility, factory saves and pose critical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-modular-parts-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk-modular-r1.test.mjs tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-mp5-r2-refinements.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-hk-r4-material-selector.test.mjs tests/weapon-hk556-ribbon-finish.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: HK modular R1 — same-scale factory geometry review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-modular-parts-') }}
+        run: node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs reports/hk-modular-r1-ortho.html --hk-only --material-colors
+      - name: HK modular R1 — upload actual-geometry review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-modular-parts-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hk-modular-r1-factory-orthographic
+          path: reports/hk-modular-r1-ortho.html
+          retention-days: 7
+      - name: Armory R2 — HK/AK/AR compatibility, mount migration and pose regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-platform-interchange-r2-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-platform-interchange-r2.test.mjs tests/weapon-hk-modular-r1.test.mjs tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-mp5-r2-refinements.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/equipment-19-01-weapon-assemblies.test.mjs tests/equipment-19-06-quickplay-editor.test.mjs tests/equipment-21-01-workbench.test.mjs tests/equipment-21-02-workbench-integration.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: Arsenal V2 — focused compatibility, persistence and editor-state gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-workbench-v2') }}
+        run: |
+          node --experimental-strip-types --test tests/arsenal-v2-catalog.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-gallery.test.mjs tests/arsenal-v2-viewport.test.mjs tests/arsenal-v2-editing-ui.test.mjs tests/weapon-platform-interchange-r2.test.mjs tests/equipment-19-04-weapon-persistence.test.mjs
+      - name: Arsenal V2 Stage 6 — saved recipe persistence and critical editing regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-v2-saved-builds') }}
+        run: |
+          node --experimental-strip-types --test tests/arsenal-v2-saved-builds.test.mjs tests/arsenal-v2-saved-ui.test.mjs tests/arsenal-v2-campaign-adapter.test.mjs tests/arsenal-v2-quickplay-adapter.test.mjs tests/arsenal-v2-game-integration.test.mjs tests/arsenal-v2-catalog.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-editing-ui.test.mjs tests/equipment-19-04-weapon-persistence.test.mjs tests/equipment-27-01-campaign-ownership.test.mjs tests/equipment-19-09-campaign-armory.test.mjs tests/equipment-19-06-quickplay-editor.test.mjs
+      - name: Arsenal R9 — saved build load and operator equipment regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-v2-operator-recipes-r9-') }}
+        run: |
+          node --experimental-strip-types --test tests/arsenal-r9-recipe-loading.test.mjs tests/arsenal-r9-load-ui.test.mjs tests/arsenal-r10-operator-lab.test.mjs tests/arsenal-r10-replay-parity.test.mjs tests/arsenal-r11-camera-entry.test.mjs tests/operator-lab-unified-poses.test.mjs tests/replay-r2-recording.test.mjs tests/arsenal-v2-saved-builds.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-campaign-adapter.test.mjs tests/arsenal-v2-quickplay-adapter.test.mjs tests/arsenal-v2-game-integration.test.mjs tests/equipment-27-01-campaign-ownership.test.mjs tests/equipment-19-04-weapon-persistence.test.mjs
+      - name: Arsenal R12 — classic fallback and ownership critical regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-r12-classic-fallback-') }}
+        run: |
+          node --experimental-strip-types --test tests/arsenal-r12-classic-fallback.test.mjs tests/arsenal-v2-game-integration.test.mjs tests/equipment-19-09-campaign-armory.test.mjs tests/equipment-19-06-quickplay-editor.test.mjs tests/equipment-27-01-campaign-ownership.test.mjs
+      - name: Arsenal R13 — factory model changes, saved recipes and ownership
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-r13-model-switch-') }}
+        run: |
+          node --experimental-strip-types --test tests/arsenal-r13-factory-recipes.test.mjs tests/arsenal-r13-model-picker.test.mjs tests/arsenal-r14-mobile-style-isolation.test.mjs tests/arsenal-r14-fit-feedback.test.mjs tests/arsenal-r14-apply-guidance.test.mjs tests/arsenal-r9-recipe-loading.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-campaign-adapter.test.mjs tests/arsenal-v2-quickplay-adapter.test.mjs tests/equipment-27-01-campaign-ownership.test.mjs
+      - name: Arsenal R15 — authored finish taxonomy and critical geometry regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-r15-finishes-') }}
+        run: |
+          node --experimental-strip-types --test tests/arsenal-r15-finishes.test.mjs tests/arsenal-r15-finish-ui.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-saved-builds.test.mjs tests/weapon-ak-r47-final-polish.test.mjs tests/weapon-hk-r4-material-selector.test.mjs tests/weapon-ar-r45-silhouettes.test.mjs tests/equipment-19-04-weapon-persistence.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

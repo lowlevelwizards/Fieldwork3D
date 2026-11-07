@@ -28,9 +28,9 @@ const create=id=>{
  group.updateMatrixWorld(true);
  return {config,group};
 };
-test('catalog: 8 AR, 9 AK and 5 distinct HK factory models',()=>{
- assert.equal(FAMILY_PRESETS.length,25);
- assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,8);
+test('catalog: 8 AR, 9 AK and 12 distinct HK factory models',()=>{
+ assert.equal(FAMILY_PRESETS.length,29);
+ assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,12);
  for(const id of ids){
   const {config,group}=create(id);
   assert.equal(matchingFamilyPreset(config.build).id,id);

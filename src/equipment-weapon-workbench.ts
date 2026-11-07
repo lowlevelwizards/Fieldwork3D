@@ -12,6 +12,7 @@ import {type WorkbenchMode,type WorkbenchMount,type WorkbenchSocket}
  from './equipment-weapon-workbench-layout.ts';
 import {workbenchVisualAnchors}
  from './weapons/geometry/weapon-visual-anchors.ts';
+import {matchingFamilyPreset} from './equipment-weapon-families.ts';
 import {weaponVisualLayout}
  from './weapons/geometry/weapon-visual-layout.ts';
 import {workbenchFitDistance,workbenchFitCenter}
@@ -53,6 +54,9 @@ export class WeaponWorkbenchPreview{
  private yaw=.15;
  private pitch=.17;
  private distance=51;
+ /** Workbench-only tighter fit for the stockless MP5K. */
+ private compactPreview=false;
+ private get minPreviewDistance(){return this.compactPreview?24:27;}
  private previewCenterX=0;
  private previewCenterY=0;
  private autoFitPending=true;
@@ -164,6 +168,7 @@ export class WeaponWorkbenchPreview{
  }
  setConfiguration(config:WeaponConfiguration){
   this.config=config;
+  this.compactPreview=config.build?.parts.receiver==='hk-mp5k-stockless';
   // The workbench never reuses a stale gun or a previous operator's sockets.
   this.clearMounts();
   clearWeaponSilhouette(this.model);
@@ -196,7 +201,7 @@ export class WeaponWorkbenchPreview{
  restoreViewState(view:WeaponWorkbenchViewState){
   if(!Number.isFinite(view.distance)||view.distance<=0)return;
   this.yaw=view.yaw;this.pitch=view.pitch;
-  this.distance=THREE.MathUtils.clamp(view.distance,27,170);
+  this.distance=THREE.MathUtils.clamp(view.distance,this.minPreviewDistance,170);
   this.autoFitPending=false;
   if(this.renderer&&this.in2D!==view.in2D)this.switchView();
   this.draw();
@@ -269,7 +274,8 @@ export class WeaponWorkbenchPreview{
    button.setAttribute('aria-pressed',String(selected));
    const dot=button.firstElementChild as HTMLElement|null;
    if(dot){
-    dot.style.background=selected?'#ffffff':'#f7fbf6ad';
+    dot.style.background=selected?'#ffffff':'#e2efe2a9';
+    dot.style.opacity=reveal?(selected?'1':'.34'):'.72';
     dot.style.transform=selected?'scale(1.25)':'scale(1)';
     dot.style.boxShadow=selected?
      '0 0 0 4px #ffffff3b,0 0 7px #ffffffcc':
@@ -277,7 +283,10 @@ export class WeaponWorkbenchPreview{
    }
   }
   const a=resolveWeaponAssembly(this.config);
-  this.caption.textContent=a.massKg.toFixed(2)+' KG · '+
+  const factory=this.config.build?matchingFamilyPreset(this.config.build):undefined;
+  const identity=this.config.build?(factory?.name??'CUSTOM BUILD'):
+   this.config.weapon.toUpperCase();
+  this.caption.textContent=identity+' · '+a.massKg.toFixed(2)+' KG · '+
    (this.in2D?'2D FIXED SIDE VIEW · PINCH TO ZOOM':
     '3D · DRAG TO ROTATE · PINCH TO ZOOM');
   this.renderModeControls();
@@ -288,11 +297,16 @@ export class WeaponWorkbenchPreview{
   */
  showSocketChoices(slot:WorkbenchSocket,select:HTMLSelectElement){
   this.setActiveSlot(slot);
-  this.choiceTitle.textContent=slot.replace('body-','').replace(/-/g,' ').toUpperCase();
+  this.choiceTitle.textContent=(slot==='opticMount'?'TOP MOUNT':
+   slot.replace('body-','').replace(/-/g,' ')).toUpperCase();
   const selected=select.selectedOptions[0];
   this.choiceSubtitle.textContent=selected?
    'EQUIPPED · '+selected.textContent:
    'Choose a compatible replacement';
+  if(slot==='body-receiver')
+   this.choiceSubtitle.textContent+=' · Core swaps keep compatible parts';
+  if(slot==='opticMount')
+   this.choiceSubtitle.textContent+=' · Fit a mount before selecting a new sight';
   this.choiceGrid.replaceChildren();
   for(const option of Array.from(select.options)){
    if(!option.value)continue;
@@ -373,7 +387,8 @@ export class WeaponWorkbenchPreview{
    const [a,b]=[...this.pointerPositions.values()];
    const d=Math.hypot(a.x-b.x,a.y-b.y);
    if(this.pinchDistance>0&&d>1)
-    this.distance=Math.max(27,Math.min(170,this.distance*this.pinchDistance/d));
+    this.distance=Math.max(this.minPreviewDistance,
+      Math.min(170,this.distance*this.pinchDistance/d));
    this.pinchDistance=d;this.dragDistance=30;
    this.hideDotsDuringInspection();
   }else if(this.pointerPositions.size===1&&!this.in2D){
@@ -399,7 +414,8 @@ export class WeaponWorkbenchPreview{
   e.preventDefault();
   this.hideDotsDuringInspection();
   this.autoFitPending=false;
-  this.distance=Math.max(27,Math.min(170,this.distance+e.deltaY*.08));
+  this.distance=Math.max(this.minPreviewDistance,
+    Math.min(170,this.distance+e.deltaY*.08));
   this.draw();
   this.finishInspection();
  };
@@ -484,12 +500,15 @@ export class WeaponWorkbenchPreview{
    this.model.rotation.set(0,0,0);
    this.model.updateMatrixWorld(true);
    const bounds=new THREE.Box3().setFromObject(this.model);
-   this.distance=workbenchFitDistance(bounds,w,h);
+   this.distance=workbenchFitDistance(bounds,w,h,37,
+     this.compactPreview?.80:.78,this.compactPreview);
    this.autoFitPending=false;
   }
   this.camera.aspect=w/h;this.camera.updateProjectionMatrix();
   const centerX=this.previewCenterX,centerY=this.previewCenterY;
-  this.camera.position.set(centerX,centerY+16,this.distance);
+  // Preserve a similar viewing angle when the K is framed more tightly.
+  const elevation=this.compactPreview?this.distance*(16/51):16;
+  this.camera.position.set(centerX,centerY+elevation,this.distance);
   this.camera.lookAt(centerX,centerY,0);
   this.camera.updateMatrixWorld(true);
   // An orthographic, level side projection: 2D never tumbles into pseudo-3D.

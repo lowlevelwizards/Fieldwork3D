@@ -69,6 +69,7 @@ import {heardIntensity} from './breach-acoustics.ts';
 import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
 import {defaultSoundPack,readSoundPack,SOUND_STORAGE_KEY} from './sound-catalog.ts';
 import {playPackSound} from './sound-synth.ts';
+import {hashString} from './sound-live-tactility.ts';
 import {withFieldworkLiveMix} from './breach-live-sound-pack.ts';
 import {acousticResponseForCue} from './breach-audio-environment.ts';
 import {parseOperationHistory,addOperationRecord,
@@ -101,15 +102,22 @@ import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 import {buildReplayExecutionInsights} from './breach-replay-debrief.ts';
 import {indexReplayIncidents,featuredReplayIncidents,type ReplayIncident}
   from './breach-replay-incidents.ts';
+import {featuredReplaySquadEntries,measureReplaySquadDoorEntry,
+  type ReplaySquadEntryReview} from './breach-replay-squad-entry.ts';
 import {incidentPlaybackWindow,advanceIncidentPlayback}
   from './breach-replay-incident-playback.ts';
 import {makeReplayLoop,advanceReplayLoop,type ReplayLoopRange}
   from './breach-replay-loop.ts';
-import {replayActorDisclosed,type ReplayDisclosure}
+import {replayActorDisclosed,replayCivilianDisclosed,type ReplayDisclosure}
   from './breach-replay-visibility.ts';
 import {operatorContactEventKnown,operatorContactAvailable}
   from './breach-replay-contact-lens.ts';
 import {ReplayOperatorSightIndex} from './breach-replay-operator-sight.ts';
+import {ReplayWindowKnowledgeHistory}
+  from './breach-replay-window-knowledge.ts';
+import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
+  bodycamDisclosureLabel,replayAudioListener,replayBodycamPan}
+  from './breach-replay-bodycam-controls.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
@@ -136,8 +144,8 @@ import {validateStudioAppearanceEdits,applyStudioRosterEdits,
  applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- sameWeaponConfiguration,familyAccessoryAllowed} from './equipment-weapon-assemblies.ts';
-import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,familyPreset,type FamilyPartSlot} from './equipment-weapon-families.ts';
+ sameWeaponConfiguration,weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
+import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,familyPreset,proposeFamilyPartChange,type FamilyPartSlot} from './equipment-weapon-families.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {newCampaign,readCampaign,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,resupplyMedicalOperator,treatOperator,
@@ -179,6 +187,7 @@ import {paintFogMask,maskBounds,FOG_WIDTH,FOG_HEIGHT}
   from './breach-fog-mask.ts';
 import {paintReplayPersonalGround} from './breach-replay-ground-overlay.ts';
 import {PersonalGroundHistory} from './breach-replay-personal-ground.ts';
+import {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 
@@ -258,6 +267,8 @@ const ui={
   replayChapterList:el<HTMLElement>('replayChapterList'),
   replayDebriefInfo:el<HTMLOutputElement>('replayDebriefInfo'),
   replayDebriefMoments:el<HTMLElement>('replayDebriefMoments'),
+  replaySquadEntryPanel:el<HTMLElement>('replaySquadEntryPanel'),
+  replaySquadEntryList:el<HTMLElement>('replaySquadEntryList'),
   replayIncidentDetails:el<HTMLElement>('replayIncidentDetails'),
   replayIncidentTitle:el<HTMLElement>('replayIncidentTitle'),
   replayIncidentSummary:el<HTMLOutputElement>('replayIncidentSummary'),
@@ -326,6 +337,9 @@ const ui={
   replaySight:el<HTMLButtonElement>('replaySight'),
   replayContactLens:el<HTMLButtonElement>('replayContactLens'),
   replayGroundLens:el<HTMLButtonElement>('replayGroundLens'),
+  replayBodycam:el<HTMLButtonElement>('replayBodycam'),
+  replayBodycamMount:el<HTMLButtonElement>('replayBodycamMount'),
+  replayBodycamStatus:el<HTMLElement>('replayBodycamStatus'),
   replayContactNote:el<HTMLElement>('replayContactNote'),
   replayObserverTransitions:el<HTMLElement>('replayObserverTransitions'),
   replayView:el<HTMLButtonElement>('replayView'),
@@ -459,7 +473,16 @@ let studioMode:'quick'|'campaign'='quick';
 let studioSelected='rook';
 let studioOverlay:HTMLDivElement|null=null;
 let studioFrame:HTMLIFrameElement|null=null;
+/** Keep one warm Studio context for short returns; release it after a bounded
+ * hidden interval to avoid retaining two WebGL contexts indefinitely on iOS.
+ * The iframe never owns tactical simulation or authoritative roster state. */
+const STUDIO_WARM_RETAIN_MS=60_000;
+let studioReady=false,studioOpenEpoch=0,studioInitSentEpoch=-1;
+let studioReleaseTimer:ReturnType<typeof setTimeout>|null=null;
 function sendStudioInit(){
+ if(!studioOverlay||studioOverlay.hidden||
+    studioInitSentEpoch===studioOpenEpoch)return;
+ studioInitSentEpoch=studioOpenEpoch;
  if(!studioFrame?.contentWindow)return;
  const people=studioMode==='campaign'?
   campaign?.operators.filter(o=>o.status!=='retired'&&o.status!=='lost')??[]:
@@ -476,8 +499,16 @@ function sendStudioInit(){
  },location.origin);
 }
 function closeOperatorStudio(){
- if(studioOverlay)studioOverlay.hidden=true;
- if(studioFrame)studioFrame.src='about:blank';
+ if(!studioOverlay||studioOverlay.hidden)return;
+ studioOverlay.hidden=true;
+ studioFrame?.contentWindow?.postMessage({type:'fw-studio-suspend'},location.origin);
+ if(studioReleaseTimer!==null)clearTimeout(studioReleaseTimer);
+ studioReleaseTimer=setTimeout(()=>{
+  studioReleaseTimer=null;
+  if(!studioOverlay?.hidden||!studioFrame)return;
+  studioFrame.src='about:blank';
+  studioReady=false;studioInitSentEpoch=-1;
+ },STUDIO_WARM_RETAIN_MS);
 }
 function openOperatorStudio(id?:string,requestedMode?:'quick'|'campaign'){
  studioMode=requestedMode??(campaignMode==='home'||campaignMode==='mission'?
@@ -489,14 +520,26 @@ function openOperatorStudio(id?:string,requestedMode?:'quick'|'campaign'){
   studioFrame=document.createElement('iframe');
   studioFrame.title='Fieldwork Operator Studio';
   studioOverlay.append(studioFrame);document.body.append(studioOverlay);
+  studioFrame.onload=()=>{
+   if(studioOverlay&&!studioOverlay.hidden)sendStudioInit();
+  };
  }
  studioSelected=id??(studioMode==='campaign'?campaign?.operators[0]?.id:'rook')??'rook';
+ if(studioReleaseTimer!==null){
+  clearTimeout(studioReleaseTimer);studioReleaseTimer=null;
+ }
+ studioOpenEpoch++;
  studioOverlay.hidden=false;
  const url=new URL('./operator-studio.html',location.href);
  url.searchParams.set('embedded','1');url.searchParams.set('mode',studioMode);
  url.searchParams.set('operator',studioSelected);
- studioFrame!.src=url.href;
- studioFrame!.onload=sendStudioInit;
+ // A hidden frame still owns the already compiled rig and GPU resources.
+ // Send fresh authoritative roster/readonly state rather than navigate it.
+ if(!studioFrame!.getAttribute('src')||
+    studioFrame!.getAttribute('src')==='about:blank'){
+  studioReady=false;
+  studioFrame!.src=url.href;
+ }else if(studioReady)sendStudioInit();
 }
 document.getElementById('openOperatorStudio')?.addEventListener('click',()=>
  openOperatorStudio(selected,'quick'));
@@ -505,7 +548,9 @@ window.addEventListener('message',event=>{
     event.origin!==location.origin||!event.data||typeof event.data!=='object')return;
  const msg=event.data as {type?:string;id?:unknown;
   wardrobe?:unknown;entries?:unknown};
- if(msg.type==='fw-studio-ready'){sendStudioInit();return;}
+ if(msg.type==='fw-studio-ready'){
+  studioReady=true;sendStudioInit();return;
+ }
  if(msg.type==='fw-studio-close'){closeOperatorStudio();return;}
  const batch=msg.type==='fw-studio-commit-batch';
  if(!batch&&msg.type!=='fw-studio-commit')return;
@@ -753,6 +798,8 @@ let replaySoundTimeline:ReplaySoundTimeline|null=null;
 let replayChapters:ReplayChapter[]=[];
 let replayIncidents:ReplayIncident[]=[];
 let replayFeaturedIncidents:ReplayIncident[]=[];
+let replaySquadEntries:ReplaySquadEntryReview[]=[];
+let selectedReplaySquadEntry:string|null=null;
 let selectedReplayIncidentId:string|null=null;
 let replayIncidentPlayback:{range:ReplayLoopRange;loop:boolean}|null=null;
 let replayBookmarks:ReplayBookmark[]=[];
@@ -790,9 +837,44 @@ let replayOmniscient=true,finishedSession:Session|null=null;
 let replayContactObserverId:string|null=null;
 let replayHasContactEvidence=false;
 let replayOperatorSightIndex:ReplayOperatorSightIndex|null=null;
+let replayDoorHistory:ReplayDoorKnowledgeHistory|null=null;
+let replayWindowHistory:ReplayWindowKnowledgeHistory|null=null;
 /** Optional recorded floor-discovery overlay, not a full actor POV. */
 let replayPersonalGroundHistory:PersonalGroundHistory|null=null;
 let replayGroundLensOn=false;
+let replayBodycamOn=false;
+let replayBodycamMount:'chest'|'helmet'='chest';
+let replayBodycamObservers:string[]=[];
+let replayBodycamGroundObservers=new Set<string>();
+function stopReplayBodycam():void{
+  replayBodycamOn=false;
+  stage?.setReplayBodycam(null);
+  ui.replayBodycamStatus.hidden=true;
+}
+function applyReplayBodycamMount():void{
+  if(!replayBodycamOn||!stage||!replayContactObserverId){
+    stopReplayBodycam();return;
+  }
+  stage.setReplayBodycam({actorId:replayContactObserverId,
+    mount:replayBodycamMount,stabilization:'balanced',fov:95});
+}
+function startReplayBodycam():boolean{
+  if(!replaying||!stage||!replayBodycamObservers.length)return false;
+  const next=replayContactObserverId&&
+    replayBodycamObservers.includes(replayContactObserverId)?
+    replayContactObserverId:replayBodycamObservers[0];
+  if(!next)return false;
+  replayContactObserverId=next;
+  replayBodycamOn=true;
+  replayOmniscient=false;replayGroundLensOn=false;
+  replayCameraMode='free';replayFollow=false;
+  selected=next;replayFollowId=next;
+  closeReplayShotInspector();
+  cameraMode('iso');
+  applyReplayBodycamMount();
+  fogStamp=-1;
+  return true;
+}
 let replayGroundCacheObserver:string|null=null,replayGroundCacheCount=-1;
 let replayGroundCacheSite:Session['site']|null=null;
 function replayDisclosure():ReplayDisclosure{
@@ -918,6 +1000,8 @@ let expandedQuickOperator:string|null=null;
 let expandedQuickKit:string|null=null;
 let expandedQuickLoadoutGroup:QuickLoadoutGroup='weapon';
 let expandedQuickWeapon:string|null=null;
+/** Keep the intentional classic fallback open across part/weapon rerenders. */
+const expandedClassicWeaponControls=new Set<string>();
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
 const selectedQuickWeaponSockets=new Map<string,WorkbenchSocket>();
@@ -928,6 +1012,47 @@ function rememberQuickWorkbenchView(){
   resetQuickWorkbenchViews.has(quickWorkbenchId))return;
  const pose=quickWorkbench.getViewState();
  if(pose)savedQuickWorkbenchViews.set(quickWorkbenchId,pose);
+}
+/** Full Arsenal editor uses the same pure draft and resolver as the standalone gallery.
+ * Quick Play commits remain in the transient roster; weapon/kit progress is not saved.
+ */
+async function openQuickArsenal(id:string){
+ if(state.phase!=='planning'||replaying||campaignMode!=='quick')return;
+ const member=persistentRoster.members.find(m=>m.id===id);
+ if(!member)return;
+ try{
+  const [{arsenalRecipeFromLegacy},{openArsenalWorkbench},
+   {applyQuickPlayArsenalEdit,quoteQuickPlayArsenalEdit}]=await Promise.all([
+    import('./arsenal/recipes.ts'),import('./arsenal/workbench-screen.ts'),
+    import('./arsenal/quickplay-adapter.ts')]);
+  if(state.phase!=='planning'||replaying||campaignMode!=='quick')return;
+  const current=persistentRoster.members.find(m=>m.id===id);
+  const recipe=current&&arsenalRecipeFromLegacy(current.weaponConfiguration);
+  if(!current||!recipe){showUiHelp('THIS WEAPON USES THE LEGACY LOADOUT EDITOR',3000);return;}
+  openArsenalWorkbench({id:'equipped-quick-'+id,name:current.callsign,recipe},undefined,{
+   mode:'quick',applyLabel:'APPLY TO OPERATOR',
+   quote:r=>{
+    const result=quoteQuickPlayArsenalEdit(persistentRoster,id,r);
+    return {...result,canCommit:result.valid};
+   },
+   onApply:nextRecipe=>{
+    if(state.phase!=='planning'||replaying||campaignMode!=='quick')
+     return {ok:false,message:'Equipment changes are only available before deployment'};
+    const next=applyQuickPlayArsenalEdit(persistentRoster,id,nextRecipe);
+    if(next===persistentRoster&&
+     !persistentRoster.members.some(m=>m.id===id))
+     return {ok:false,message:'Operator is unavailable'};
+    persistentRoster=next;
+    applyRosterIdentity(state,persistentRoster);
+    expandedQuickKit=id;expandedQuickWeapon=id;
+    expandedQuickLoadoutGroup='weapon';
+    renderOperationsBoard();updateHud();
+    return {ok:true};
+   }
+  });
+ }catch{
+  showUiHelp('ARSENAL UNAVAILABLE · EXISTING LOADOUT EDITOR STILL WORKS',4000);
+ }
 }
 function renderOperationsBoard(){
  const priorScroll=operationsBoard.scrollTop;
@@ -1031,12 +1156,28 @@ function renderOperationsBoard(){
   const loadout=buildQuickLoadoutGroups(kit,expandedQuickLoadoutGroup,group=>{
    expandedQuickLoadoutGroup=group;
   });
-  // The modular factory chooser below is the actual weapon selection UI.
-  // Legacy WeaponId remains internal simulation/persistence compatibility.
+  // Arsenal is the primary builder. Direct factory and socket controls remain
+  // behind one accessible fallback for class-only or unsupported weapons.
   const modelHint=document.createElement('small');
   modelHint.className='fw-weapon-section-label';
-  modelHint.textContent='SELECT AN AR / AK / HK VARIANT · FACTORY MODEL + PARTS';
+  modelHint.textContent='WEAPON · ARSENAL';
   loadout.field('weapon').append(modelHint);
+  const arsenalAction=document.createElement('button');arsenalAction.type='button';
+  arsenalAction.className='fw-button fw-arsenal-open';
+  arsenalAction.textContent='OPEN ARSENAL · FULL WORKBENCH';
+  arsenalAction.disabled=state.phase!=='planning'||replaying||
+   !member.weaponConfiguration.build;
+  arsenalAction.addEventListener('click',()=>{void openQuickArsenal(member.id);});
+  loadout.field('weapon').append(arsenalAction);
+  const legacyControls=document.createElement('details');
+  legacyControls.className='fw-legacy-weapon-controls';
+  legacyControls.open=!member.weaponConfiguration.build||
+   expandedClassicWeaponControls.has(member.id);
+  const legacyTitle=document.createElement('summary');
+  legacyTitle.textContent='ADVANCED · CLASSIC WEAPON CONTROLS';
+  const legacyNote=document.createElement('p');legacyNote.className='fw-weapon-helper';
+  legacyNote.textContent='Direct factory and socket options for unsupported builds or troubleshooting.';
+  legacyControls.append(legacyTitle,legacyNote);
   const activePreset=member.weaponConfiguration.build?
    matchingFamilyPreset(member.weaponConfiguration.build):undefined;
   const factoryLabel=document.createElement('strong');
@@ -1061,7 +1202,7 @@ function renderOperationsBoard(){
     expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
    }
   });
-  loadout.field('weapon').append(factoryLabel,factoryBrowser);
+  legacyControls.append(factoryLabel,factoryBrowser);
   const resupply=document.createElement('button');resupply.type='button';
   resupply.className='fw-squad-resupply';resupply.textContent='RESUPPLY';
   resupply.addEventListener('click',()=>{
@@ -1127,7 +1268,7 @@ function renderOperationsBoard(){
    quickWorkbench?.showSocketChoices(slot,select);
   };
   const syncWorkbench=()=>{
-   const active=kit.open&&loadout.group.weapon.open&&weaponEditor.open;
+   const active=kit.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open;
    if(!active){if(quickWorkbenchId===member.id){
     rememberQuickWorkbenchView();
     quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
@@ -1146,6 +1287,11 @@ function renderOperationsBoard(){
    if(saved&&socketRows.has(saved))showSocket(saved);
    else quickWorkbench.setActiveSlot(initialSocket,false);
   };
+  legacyControls.addEventListener('toggle',()=>{
+   if(legacyControls.open)expandedClassicWeaponControls.add(member.id);
+   else expandedClassicWeaponControls.delete(member.id);
+   syncWorkbench();
+  });
   weaponEditor.addEventListener('toggle',()=>{
    if(weaponEditor.open)expandedQuickWeapon=member.id;
    else if(expandedQuickWeapon===member.id)expandedQuickWeapon=null;
@@ -1154,7 +1300,7 @@ function renderOperationsBoard(){
   kit.addEventListener('toggle',syncWorkbench);
   loadout.group.weapon.addEventListener('toggle',syncWorkbench);
   const weaponTitle=document.createElement('summary');
-  weaponTitle.textContent='3D WEAPON WORKBENCH · TAP SOCKETS';
+  weaponTitle.textContent='WEAPON WORKBENCH · TAP PART TO EDIT';
   weaponEditor.append(weaponTitle,workbenchHost,socketPanel);
   for(const slot of WEAPON_ATTACHMENT_SLOTS){
    if(member.weaponConfiguration.build&&slot==='stock')continue;
@@ -1164,9 +1310,8 @@ function renderOperationsBoard(){
    const select=document.createElement('select');
    select.setAttribute('aria-label',slot+' attachment for '+member.callsign);
    for(const part of Object.values(WEAPON_ATTACHMENTS)){
-    if(part.slot!==slot||!part.compatible.includes(member.weapon)||
-     (member.weaponConfiguration.build&&
-      !familyAccessoryAllowed(member.weaponConfiguration.build,slot,part.id)))continue;
+    if(part.slot!==slot||!weaponAttachmentAllowed(
+     member.weaponConfiguration,slot,part.id))continue;
     const option=document.createElement('option');
     option.value=part.id;option.textContent=part.name;select.append(option);
    }
@@ -1204,8 +1349,23 @@ function renderOperationsBoard(){
    select.disabled=state.phase!=='planning'||replaying;
    select.addEventListener('focus',()=>quickWorkbenchId===member.id&&
     quickWorkbench?.setActiveSlot(socket));
-   select.addEventListener('change',()=>{
+   select.addEventListener('change',async()=>{
     if(state.phase!=='planning'||replaying)return;
+    const proposal=proposeFamilyPartChange(build,member.weapon,
+     slot as FamilyPartSlot,select.value);
+    if(!proposal.valid){select.value=build.parts[slot];return;}
+    const dependent=proposal.replacements.filter(x=>x.slot!==slot);
+    if(dependent.length){
+     if(!await confirmFieldworkAction({
+      title:'Replace incompatible parts?',
+      message:'Changing '+slot+' will also replace: '+
+       dependent.map(x=>FAMILY_PARTS[x.from]?.name+' → '+
+        FAMILY_PARTS[x.to]?.name).join('; '),
+      confirmLabel:'APPLY CHANGES'
+     })){select.value=build.parts[slot];return;}
+    }
+    if(slot==='receiver'||slot==='barrel')
+     resetQuickWorkbenchViews.add(member.id);
     persistentRoster=configureRosterWeaponBodyPart(persistentRoster,member.id,
      slot as FamilyPartSlot,select.value);
     saveRoster();applyRosterIdentity(state,persistentRoster);
@@ -1228,7 +1388,8 @@ function renderOperationsBoard(){
   const diag=document.createElement('details');diag.className='fw-loadout-diagnostics';
   const diagTitle=document.createElement('summary');diagTitle.textContent='WEAPON MEASUREMENTS';
   diag.append(diagTitle,properties);weaponEditor.append(diag);
-  loadout.field('weapon').append(weaponEditor);
+  legacyControls.append(weaponEditor);
+  loadout.field('weapon').append(legacyControls);
   const carrying=carryCapacityReport(member.loadout,member.magazines);
   const carryItems=carrying.placements.filter(p=>p.kind!=='magazine');
   if(carryItems.length){
@@ -1283,7 +1444,7 @@ function renderOperationsBoard(){
   card.append(kit);operationsBoard.append(card);
   // A newly opened details subtree can report zero width on iOS until
   // it is attached and laid out. Initialize after paint, not only on toggle.
-  if(kit.open&&loadout.group.weapon.open&&weaponEditor.open)
+  if(kit.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open)
    requestAnimationFrame(()=>{if(kit.isConnected)syncWorkbench();});
  }
  const hint=document.createElement('p');
@@ -1466,6 +1627,7 @@ function stopReplaySounds():void{
 }
 let lastSoundShotId=0,lastEventAudio='';
 let lastFootstepSoundTime=0;
+let liveAudioVariationCounter=0;
 const playTone=(frequency:number,decay:number,noise=false,
   level=1,pan=0,replayCue=false)=>{
   try{
@@ -1497,16 +1659,21 @@ const playTone=(frequency:number,decay:number,noise=false,
  * Replay sources remain cancellable on pause / seek / export.
  */
 function playApprovedCue(id:string,level=1,pan=0,replayCue=false,
- rate=1,sourcePosition?:Pt):boolean{
+ rate=1,sourcePosition?:Pt,variationSeed?:number):boolean{
  if(!audio)return false;
  // Pure room presentation. Source geometry is read once per emitted event.
  // AI hearing and replay evidence are deliberately unaffected.
- const listener=uid(selected)?.p;
+ const listener=replayCue&&replayBodycamOn?
+  (replayContactObserverId?
+    replayAudioListener(team(state),selected,replayContactObserverId)?.p:
+    undefined):uid(selected)?.p;
  const acoustics=roomAudioEnabled&&sourcePosition?
   acousticResponseForCue(state.site??undefined,sourcePosition,id,
    listener,state.doors,WALLS):null;
  return playPackSound(audio,id,{
-  level,pan,rate,acoustics,output:replayCue?videoAudioDestination:null,
+  level,pan,rate,acoustics,liveTactile:liveMixEnabled,
+  variationSeed:liveMixEnabled?(variationSeed??++liveAudioVariationCounter):undefined,
+  output:replayCue?videoAudioDestination:null,
   onSource:replayCue?(source)=>{
     replaySoundBuffers.add(source);
     const previous=source.onended;
@@ -1635,6 +1802,7 @@ function fitZoom(next:number,x=cssW/2,y=cssH/2){
   updateContext();
 }
 function cameraMode(mode:ViewMode){
+  if(replaying&&replayBodycamOn&&mode!=='iso')stopReplayBodycam();
   viewMode=stage?mode:'plan2d';
   if(replaying&&viewMode!=='plan2d')replayGroundLensOn=false;
   if(stage){stage.setMode(viewMode);stage.updateCamera(1);}
@@ -2825,9 +2993,15 @@ function architecture(){
   for(const door of state.doors){
     if(spatialSurfaceState(state,'door',door.id,replaying&&replayOmniscient)==='unknown')continue;
     const a=door.a,b=door.b,center=doorCenter(door);
-    const visuallyOpen=liveVisibility(state,center)?
-      (door.openFraction??(door.open?1:0)):
-      (state.intel.doorMemory.get(door.id)??0);
+    // Personal contact review consumes the last door state this operator
+    // actually witnessed. Never substitute today's door state after a rewind.
+    const personalDoor=replaying&&replayContactObserverId?
+      replayDoorHistory?.at(replayTime,replayContactObserverId,door.id):null;
+    const visuallyOpen=replaying&&replayContactObserverId?
+      (personalDoor?.openFraction??0):
+      liveVisibility(state,center)?
+        (door.openFraction??(door.open?1:0)):
+        (state.intel.doorMemory.get(door.id)??0);
     // Every known hinged door has a true-to-geometry swing preview
     // before selection, so an entry side can be chosen from the briefing.
     if(state.phase==='planning'&&door.kind!=='sliding'&&door.kind!=='shutter'){
@@ -2844,7 +3018,8 @@ function architecture(){
       }
       draw.stroke();draw.setLineDash([]);draw.restore();
     }
-    if(door.wedged){
+    if(replaying&&replayContactObserverId?
+      !!personalDoor?.wedged:door.wedged){
       circle(center.x,center.y,4.5,'#e8b36d');
       line({x:center.x-5,y:center.y+6},{x:center.x+5,y:center.y+6},'#33271b',2);
     }
@@ -3611,7 +3786,11 @@ function missionMarkers(){
   draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
 }
 function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
-  if(!civilianPresentationVisible(c,replaying,replayOmniscient,
+  // Personal observation is not shared civilian intel. Old films omit the
+  // observer evidence and must fail closed, not re-evaluate future LOS.
+  if(replaying&&replayContactObserverId){
+    if(!replayCivilianDisclosed(state,c.id,replayDisclosure()))return;
+  }else if(!civilianPresentationVisible(c,replaying,replayOmniscient,
        liveVisibility(state,c.p)))return;
   const coats=['#766e62','#637d75','#82726b','#667985'];
   const trousers=['#454c4b','#61574d','#4e5664'];
@@ -3865,6 +4044,14 @@ function renderGroundMarks(){
  }
 function render(){
   if(stage&&viewMode!=='plan2d'){
+    if(stage.isReplayBodycamActive()){
+      // Bodycam footage is a clean perspective, not an X-ray tactical HUD.
+      // Keep accessible replay transport as DOM, clear only projected plans,
+      // floating names, objective circles and selection rings.
+      draw.setTransform(dpr,0,0,dpr,0,0);
+      draw.clearRect(0,0,cssW,cssH);
+      return;
+    }
     renderProjectedPlans();return;
   }
   draw.setTransform(dpr,0,0,dpr,0,0);
@@ -3977,7 +4164,12 @@ function playReplayAudioBetween(start:number,end:number):void{
   if(!replaying||!replaySoundEnabled||!replaySoundTimeline||
     !audio||audio.state!=='running'||end<=start)return;
   if(replayRate>2)return; // Rapid scan is deliberately quiet.
-  const listener=team(state).find(a=>a.id===selected)?.p;
+  // First-person audio follows the recorded operator, not a teammate.
+  const listenerActor=replayBodycamOn&&!replayContactObserverId?null:
+    replayAudioListener(team(state),selected,
+      replayBodycamOn?replayContactObserverId:null);
+  if(replayBodycamOn&&!listenerActor)return;
+  const listener=listenerActor?.p;
   const rateScale=Math.max(.5,Math.min(2,1/replayRate));
   for(const event of replaySoundTimeline.between(start,end,7)){
     const p=event.p;
@@ -3985,11 +4177,14 @@ function playReplayAudioBetween(start:number,end:number):void{
       event.kind==='gunshot'?WEAPONS[event.weapon??'carbine'].noise:150,
       state.doors,WALLS):.35;
     if(level<.025)continue;
-    const pan=p&&listener?(p.x-listener.x)/210:0;
+    const pan=p&&listener?
+      (replayBodycamOn&&listenerActor?
+        replayBodycamPan(p,listenerActor):(p.x-listener.x)/210):0;
     if(event.kind==='gunshot'){
       const cue=weaponAudioCue(event.weapon??'carbine',event.suppressed);
       if(!playApprovedCue('weapons.'+(event.weapon??'carbine')+
-        (event.suppressed?'_suppressed':''),level,pan,true,1/rateScale,p??undefined)){
+        (event.suppressed?'_suppressed':''),level,pan,true,1/rateScale,
+         p??undefined,hashString(event.id))){
         playTone(cue.crackHz,cue.crackSeconds*rateScale,true,level,pan,true);
         playTone(cue.bodyHz,cue.bodySeconds*rateScale,false,
           level*cue.bodyLevel,pan,true);
@@ -4004,7 +4199,7 @@ function playReplayAudioBetween(start:number,end:number):void{
         reload:'equipment.reload',interaction:'',surrender:'people.surrender'
       }[event.kind];
       if(!soundId||!playApprovedCue(soundId,Math.min(level,.7),
-        pan,true,1/rateScale,p??undefined))
+        pan,true,1/rateScale,p??undefined,hashString(event.id)))
         playTone(hz,length*rateScale,event.kind==='flash',
           Math.min(level,.7),pan,true);
     }
@@ -4016,9 +4211,12 @@ function playReplayAudioBetween(start:number,end:number):void{
     const level=listener?heardIntensity(touch.position,listener,
       36,state.doors,WALLS):.2;
     if(level<.025)continue;
-    const pan=listener?(touch.position.x-listener.x)/210:0;
-    if(!playApprovedCue('movement.boot',level*.13,pan,true,1/rateScale,
-      touch.position))
+    const pan=listener?
+      (replayBodycamOn&&listenerActor?
+        replayBodycamPan(touch.position,listenerActor):
+        (touch.position.x-listener.x)/210):0;
+    if(!playApprovedCue('movement.boot',level*.20,pan,true,1/rateScale,
+       touch.position,hashString(touch.id+'|'+touch.foot+'|'+touch.at.toFixed(3))))
       playTone(touch.foot===0?62:67,.055*rateScale,true,
         level*.12,pan,true);
   }
@@ -4184,6 +4382,43 @@ function renderObserverSightTransitions():void{
     fragment.append(button);
   }
   mount.replaceChildren(fragment);
+}
+/** R4.4: only recorded friendly threshold crossing facts. No inferred
+ * breach timing, synchronized intent, or knowledge of unseen enemies.
+ */
+function renderReplaySquadEntries():void{
+  const host=ui.replaySquadEntryList;
+  const panel=ui.replaySquadEntryPanel;
+  panel.hidden=replaySquadEntries.length===0;
+  if(panel.hidden){host.replaceChildren();return;}
+  const fragment=document.createDocumentFragment();
+  for(const entry of replaySquadEntries){
+    const count=entry.crossings.filter(c=>c.crossedAt!==null).length;
+    const button=document.createElement('button');
+    button.type='button';button.className='replay-entry-review-item';
+    button.setAttribute('aria-pressed',
+      String(entry.doorId===selectedReplaySquadEntry));
+    const title=document.createElement('strong');
+    title.textContent=entry.doorId+' · '+count+'/'+entry.crossings.length+
+      ' CROSSED'+(entry.spreadSeconds===null?'': ' · '+
+      entry.spreadSeconds.toFixed(1)+'S SPREAD');
+    const details=document.createElement('small');
+    details.textContent=entry.crossings.map(c=>
+      c.actorId.toUpperCase()+' '+
+      (c.crossedAt===null?(c.alreadyBeyond?'ALREADY PAST':'NOT RECORDED'):
+        formatReplayTime(c.crossedAt))).join(' · ');
+    button.title='Measured crossings only · '+details.textContent;
+    button.append(title,details);
+    button.addEventListener('click',()=>{
+      if(entry.firstCrossingAt===null)return;
+      selectedReplaySquadEntry=entry.doorId;
+      replayPlaying=false;
+      seekReplay(Math.max(0,entry.firstCrossingAt-.6));
+      renderReplaySquadEntries();
+    });
+    fragment.append(button);
+  }
+  host.replaceChildren(fragment);
 }
 function renderReplayDebrief():void{
   const stalls=buildReplayExecutionInsights(recorder.executionEvents,
@@ -4404,23 +4639,38 @@ function updateReplayHud(){
     'Only confirmed enemy contacts and own activity; team map remains shared':
     'This recording has no individual operator contact evidence';
   ui.replayContactNote.hidden=!replayContactObserverId;
-  ui.replayContactNote.textContent=replayGroundLensOn?
+  ui.replayContactNote.textContent=replayBodycamOn?
+    'RECONSTRUCTED FIRST PERSON · PERSONAL CONTACTS · STRUCTURAL MAP FROM SHARED RECORDING.':
+    replayGroundLensOn?
     'GOLD CELLS: INDIVIDUALLY OBSERVED FLOOR · WORLD OBJECTS STILL SQUAD STATE · 2D ONLY.':
-    'OPERATOR CONTACTS ONLY · MAP AND ENVIRONMENT REMAIN SQUAD KNOWLEDGE. FORENSIC SHOT PATHS HIDDEN.';
+    'PERSONAL CONTACTS / LAST-SEEN DOORS · MAP/PROPS REMAIN SQUAD KNOWLEDGE. SHOT PATHS HIDDEN.';
   ui.replayGroundLens.disabled=!replayContactObserverId||
-    !replayPersonalGroundHistory;
+    !replayPersonalGroundHistory||replayBodycamOn;
+  ui.replayBodycam.disabled=!stage||!replaying||
+    replayBodycamObservers.length===0;
+  ui.replayBodycam.textContent=replayBodycamOn?'BODYCAM ON':'BODYCAM OFF';
+  ui.replayBodycam.setAttribute('aria-pressed',String(replayBodycamOn));
+  ui.replayBodycamMount.disabled=!replayBodycamOn;
+  ui.replayBodycamMount.textContent='MOUNT '+replayBodycamMount.toUpperCase();
+  ui.replayBodycamStatus.hidden=!replayBodycamOn;
+  if(replayBodycamOn&&replayContactObserverId)
+    ui.replayBodycamStatus.textContent=bodycamDisclosureLabel(
+      replayContactObserverId,replayBodycamMount,
+      replayBodycamGroundObservers.has(replayContactObserverId));
   ui.replayGroundLens.textContent=replayGroundLensOn?
     'GROUND: PERSONAL':'GROUND: OFF';
   ui.replayGroundLens.setAttribute('aria-pressed',
     String(replayGroundLensOn));
   ui.replayView.textContent=viewMode.toUpperCase();
+  ui.replayView.disabled=replayBodycamOn;
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
   ui.replaySquad.textContent=replayCameraMode==='squad'?'SQUAD ON':'FOLLOW SQUAD';
   ui.replayDirector.textContent=replayCameraMode==='director'?'DIRECTOR ON':'DIRECTOR OFF';
   ui.replaySquad.setAttribute('aria-pressed',String(replayCameraMode==='squad'));
   ui.replayDirector.setAttribute('aria-pressed',String(replayCameraMode==='director'));
-  ui.replaySquad.disabled=viewMode==='plan2d'||!stage;
-  ui.replayDirector.disabled=viewMode==='plan2d'||!stage;
+  ui.replaySquad.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
+  ui.replayDirector.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
+  ui.replayFollow.disabled=replayBodycamOn;
   ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
   ui.replayPlans.textContent='PLANS '+replayPlanScope.toUpperCase();
   ui.replayPlanVersion.textContent='PLAN '+replayPlanVersion.toUpperCase();
@@ -4461,11 +4711,17 @@ function enterReplay(){
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayContactObserverId=null;
+  replayBodycamOn=false;replayBodycamMount='chest';
+  replayBodycamObservers=[];replayBodycamGroundObservers.clear();
   replayHasContactEvidence=recorder.frames.some(f=>
     !!f.knowledge?.operatorVisibleActorIds&&
     Object.keys(f.knowledge.operatorVisibleActorIds).length>0);
   replayOperatorSightIndex=replayHasContactEvidence?
     new ReplayOperatorSightIndex(recorder.frames):null;
+  replayDoorHistory=recorder.doorKnowledge.observations.length?
+    new ReplayDoorKnowledgeHistory(recorder.doorKnowledge.observations):null;
+  replayWindowHistory=recorder.windowKnowledge.observations.length?
+    new ReplayWindowKnowledgeHistory(recorder.windowKnowledge.observations):null;
   replayPersonalGroundHistory=recorder.personalGround.length?
     new PersonalGroundHistory(recorder.personalGround):null;
   replayGroundLensOn=false;replayGroundCacheObserver=null;
@@ -4498,7 +4754,19 @@ function enterReplay(){
   applyRequestedCondition(state);
   applyRosterIdentity(state,persistentRoster);
   applyReplayActorIdentity(state,recorder.manifest);
+  replayBodycamObservers=bodycamEligibleObserverIds(
+    recorder.frames.find(f=>!!f.knowledge?.operatorVisibleActorIds)?.knowledge,
+    team(state).map(a=>a.id));
+  replayBodycamGroundObservers=new Set(replayBodycamObservers.filter(id=>
+    bodycamHasPersonalGround(recorder.personalGround,id)));
   stage?.applySite(state.site??null);
+  stage?.setReplayBodycam(null);
+  // One-time historical index; only recorded friendly coordinates and
+  // recorded door geometry, never current world positions or hidden AI.
+  replaySquadEntries=featuredReplaySquadEntries(recorder.frames,
+    team(state).map(a=>a.id),recorder.duration,3);
+  selectedReplaySquadEntry=null;
+  renderReplaySquadEntries();
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
   ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
@@ -4507,12 +4775,17 @@ function enterReplay(){
 function exitReplay(){
   if(!replaying)return;
   if(replayQuickVideo.active)replayQuickVideo.stop();
+  stopReplayBodycam();replayBodycamObservers=[];
+  replayBodycamGroundObservers.clear();
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   replayChapters=[];replayBookmarks=[];
   replayIncidents=[];replayFeaturedIncidents=[];
+  replaySquadEntries=[];selectedReplaySquadEntry=null;
+  renderReplaySquadEntries();
   replayContactObserverId=null;replayHasContactEvidence=false;
   replayOperatorSightIndex=null;
+  replayDoorHistory=null;replayWindowHistory=null;
   replayPersonalGroundHistory=null;replayGroundLensOn=false;
   replayGroundCacheObserver=null;replayGroundCacheCount=-1;
   replayGroundCacheSite=null;
@@ -4861,6 +5134,7 @@ ui.replaySeek.addEventListener('input',()=>{
   seekReplay(Number(ui.replaySeek.value)/60);
 });
 ui.replaySight.addEventListener('click',()=>{
+  stopReplayBodycam();
   replayGroundLensOn=false;
   replayContactObserverId=null;
   replayOmniscient=!replayOmniscient;fogStamp=-1;
@@ -4868,6 +5142,136 @@ ui.replaySight.addEventListener('click',()=>{
   renderReplayEventMarkers();renderReplayEventFeed();
   refreshReplayShotInspector();updateReplayHud();
 });
+/** Only Vite DEVELOPMENT + explicit QA query can access this hook.
+ * Production builds strip it; normal replay has NO Bodycam button yet.
+ * Browser smoke uses historical replay disclosure, never simulated LOS.
+ */
+if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
+  type BodycamQa={
+    activate:(mount:'chest'|'helmet')=>boolean;
+    seek:(time:number)=>boolean;
+    stop:()=>void;
+    diagnostic:()=>ReturnType<TacticalScene3D['inspectReplayBodycamQa']>|null;
+    /** Read-only candidate taps; browser must author with real pointer input. */
+    routeCandidates:()=>Array<{world:Pt;screen:Pt}>;
+    planned:()=>{actorId:string;path:Pt[]}|null;
+    motionSamples:()=>Array<{at:number;p:Pt;heading:number}>;
+    prepareIndoorEntry:()=>boolean;
+    indoorEntryReview:()=>ReplaySquadEntryReview|null;
+  };
+  const qa:BodycamQa={
+    activate(mount){
+      if(!replaying||!stage||viewMode==='plan2d')return false;
+      const observer=team(state)[0];
+      if(!observer||!recorder.frames[0]?.knowledge?.operatorVisibleActorIds?.[observer.id])
+        return false;
+      replayContactObserverId=observer.id;
+      replayOmniscient=false;
+      replayGroundLensOn=false;
+      replayPlaying=false;
+      replayCameraMode='free';
+      selected=observer.id;
+      replayFollowId=observer.id;
+      cameraMode('iso');
+      stage.setReplayBodycam({actorId:observer.id,mount,
+        stabilization:'balanced',fov:95});
+      seekReplay(Math.min(.1,recorder.duration));
+      updateReplayHud();
+      return true;
+    },
+    seek(time){
+      if(!replaying||!Number.isFinite(time))return false;
+      replayPlaying=false;
+      seekReplay(Math.max(0,Math.min(time,recorder.duration)));
+      return true;
+    },
+    stop(){
+      stage?.setReplayBodycam(null);
+      replayContactObserverId=null;
+      replayOmniscient=false;
+      fogStamp=-1;
+      if(replaying)updateReplayHud();
+    },
+    diagnostic:()=>stage?.inspectReplayBodycamQa()??null,
+    routeCandidates(){
+      if(replaying||!stage||state.phase!=='planning')return [];
+      const actor=team(state)[0];if(!actor)return [];
+      const result:Array<{world:Pt;screen:Pt}>=[];
+      for(const radius of [55,78,105,42])
+        for(const bearing of [0,-.6,.6,-1.15,1.15,2.1,-2.1]){
+          const angle=actor.heading+bearing;
+          const world={x:actor.p.x+Math.cos(angle)*radius,
+            y:actor.p.y+Math.sin(angle)*radius};
+          if(!intelPassable(world,state.intel,SQUEEZE_RADIUS))continue;
+          const screen=worldToScreen(world,0);
+          if(screen.x<35||screen.x>cssW-35||
+             screen.y<85||screen.y>cssH-200)continue;
+          if(team(state).some(a=>distance(
+             worldToScreen(a.p,24),screen)<38))continue;
+          result.push({world,screen});
+        }
+      return result;
+    },
+    planned(){
+      const actor=team(state)[0];
+      return actor?{actorId:actor.id,
+        path:actor.plan.filter(n=>n.kind==='move').map(n=>({...n.p}))}:null;
+    },
+    motionSamples(){
+      const id=team(state)[0]?.id;
+      if(!id)return [];
+      return recorder.frames.flatMap(f=>{
+        const actor=f.actors.find(a=>a.id===id);
+        return actor?[{at:f.t,p:{...actor.p},heading:actor.heading}]:[];
+      });
+    },
+    prepareIndoorEntry(){
+      // Deterministic two-room indoor training fixture: two enclosed roofs,
+      // one physical hinged doorway. This still uses the real session motor,
+      // authored MOVE orders and normal MissionRecorder; no replay synthesis.
+      if(replaying||state.phase!=='planning')return false;
+      const at=(x:number,y:number):Pt=>({x,y});
+      const site:Site={
+        seed:731,name:'BODYCAM INDOOR ENTRY / QA',layout:'corridor',
+        training:true,archetype:'office',roomCount:2,
+        rooms:[
+          {id:'entry-room',x:240,y:110,w:140,h:150,
+            kind:'room',tone:.42,purpose:'lobby'},
+          {id:'inner-room',x:240,y:260,w:140,h:180,
+            kind:'room',tone:.39,purpose:'office'}
+        ],
+        walls:[
+          {a:at(240,110),b:at(380,110)},
+          {a:at(240,110),b:at(240,440)},
+          {a:at(380,110),b:at(380,440)},
+          {a:at(240,440),b:at(380,440)},
+          {a:at(240,260),b:at(290,260)},
+          {a:at(332,260),b:at(380,260)}
+        ],
+        doors:[{id:'ENTRY',a:at(290,260),b:at(332,260),
+          kind:'hinged',hinge:'a',swing:-1,open:true,openedAt:0}],
+        cover:[],windows:[],entrance:at(311,200),
+        spawn:[at(300,200),at(308,173),at(316,146),at(325,119)],
+        enemies:[],objective:at(320,400),extract:at(325,420),
+        bounds:{minX:0,minY:0,maxX:640,maxY:500}
+      };
+      reset(0,731,'hold',site);
+      const crew=team(state).slice(0,4);
+      if(crew.length!==4)return false;
+      const goals=[at(300,350),at(312,365),at(325,380),at(339,394)];
+      const accepted=crew.every((actor,i)=>
+        planMove(state,actor.id,goals[i]));
+      updateHud();return accepted;
+    },
+    indoorEntryReview(){
+      if(recorder.frames.length<2)return null;
+      return measureReplaySquadDoorEntry(recorder.frames,'ENTRY',
+        team(state).map(a=>a.id),0,recorder.duration);
+    }
+  };
+  (window as typeof window&{__fieldworkBodycamQa?:BodycamQa})
+    .__fieldworkBodycamQa=qa;
+}
 ui.replayContactLens.addEventListener('click',()=>{
   if(!replayHasContactEvidence)return;
   const known=recorder.frames.find(f=>
@@ -4878,7 +5282,13 @@ ui.replayContactLens.addEventListener('click',()=>{
   const at=replayContactObserverId===null?-1:
     ids.indexOf(replayContactObserverId);
   replayContactObserverId=at>=ids.length-1?null:ids[at+1];
-  if(!replayContactObserverId)replayGroundLensOn=false;
+  if(!replayContactObserverId){
+    replayGroundLensOn=false;stopReplayBodycam();
+  }else if(replayBodycamOn){
+    if(replayBodycamObservers.includes(replayContactObserverId))
+      applyReplayBodycamMount();
+    else stopReplayBodycam();
+  }
   if(replayContactObserverId){
     replayOmniscient=false;
     selected=replayContactObserverId;
@@ -4891,6 +5301,7 @@ ui.replayContactLens.addEventListener('click',()=>{
   refreshReplayShotInspector();updateReplayHud();
 });
 ui.replayGroundLens.addEventListener('click',()=>{
+  if(replayBodycamOn)stopReplayBodycam();
   if(!replayContactObserverId||!replayPersonalGroundHistory)return;
   replayGroundLensOn=!replayGroundLensOn;
   if(replayGroundLensOn&&viewMode!=='plan2d')cameraMode('plan2d');
@@ -4898,7 +5309,20 @@ ui.replayGroundLens.addEventListener('click',()=>{
   replayGroundCacheCount=-1;
   updateReplayHud();
 });
+ui.replayBodycam.addEventListener('click',()=>{
+  if(replayBodycamOn)stopReplayBodycam();
+  else if(!startReplayBodycam())return;
+  rebuildReplayEventIndex();
+  renderReplayEventMarkers();renderReplayEventFeed();
+  refreshReplayShotInspector();updateReplayHud();
+});
+ui.replayBodycamMount.addEventListener('click',()=>{
+  if(!replayBodycamOn)return;
+  replayBodycamMount=replayBodycamMount==='chest'?'helmet':'chest';
+  applyReplayBodycamMount();updateReplayHud();
+});
 ui.replayView.addEventListener('click',()=>{
+  if(replayBodycamOn)stopReplayBodycam();
   cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
   updateReplayHud();
 });
@@ -4910,6 +5334,7 @@ const jumpReplayEvent=(forward:boolean)=>{
 ui.replayPrevEvent.addEventListener('click',()=>jumpReplayEvent(false));
 ui.replayNextEvent.addEventListener('click',()=>jumpReplayEvent(true));
 ui.replayFollow.addEventListener('click',()=>{
+  if(replayBodycamOn)stopReplayBodycam();
   if(replayFollow){
     const i=squadIds.indexOf(replayFollowId as typeof squadIds[number]);
     if(i===squadIds.length-1)replayFollow=false;
@@ -4919,10 +5344,12 @@ ui.replayFollow.addEventListener('click',()=>{
   advanceReplayCamera(0,true);updateReplayHud();
 });
 ui.replaySquad.addEventListener('click',()=>{
+  if(replayBodycamOn)stopReplayBodycam();
   replayCameraMode=replayCameraMode==='squad'?'free':'squad';
   replayFollow=false;advanceReplayCamera(0,true);updateReplayHud();
 });
 ui.replayDirector.addEventListener('click',()=>{
+  if(replayBodycamOn)stopReplayBodycam();
   replayCameraMode=replayCameraMode==='director'?'free':'director';
   replayFollow=false;advanceReplayCamera(0,true);updateReplayHud();
 });
@@ -5190,6 +5617,26 @@ async function launchQuickPlay(){
     const hudStart=performance.now();
     layout();updateHud();
     const hudMs=Math.round(performance.now()-hudStart);
+    // Shader preparation can use KHR_parallel_shader_compile on capable
+    // browsers. It does not pre-render the game or upload the whole wardrobe.
+    // Keep an A/B opt-out: ?gpuWarmup=0 allows identical-seed comparisons.
+    let shaderPreparationMs=0;
+    if(stage&&viewMode!=='plan2d'&&
+       new URLSearchParams(location.search).get('gpuWarmup')!=='0'){
+      quickPlayCheckpoint(96,'Preparing GPU programs',
+        'Warming visible materials before the first 3D draw');
+      await allowQuickPlayPaint();
+      if(id!==quickPlayRun)return;
+      const shaderStart=performance.now();
+      try{
+        await stage.renderer.compileAsync(stage.scene,stage.camera);
+      }catch(error){
+        // A failed async warmup must never prevent the ordinary first frame.
+        console.warn('[Quick Play shader preparation fallback]',error);
+      }
+      shaderPreparationMs=Math.round(performance.now()-shaderStart);
+      if(id!==quickPlayRun)return;
+    }
     // The first WebGL render is the last major synchronous initialization
     // step (costume materials, visibility, fog, shadow atlas and shaders).
     // Keep the loading mask up while it runs and measure its real duration.
@@ -5220,7 +5667,8 @@ async function launchQuickPlay(){
       (firstFrameMs/1000).toFixed(1)+'s';
     console.info('[Quick Play startup]',{
       seed,scale,generationMs:generated.generationMs,sessionMs,sceneMs,
-      operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs
+      operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs,
+      shaderPreparationMs
     });
     // Now that an actual complete frame exists behind the overlay, allow
     // live RAF updates. Never declare READY before the render has returned.
@@ -5254,6 +5702,42 @@ campaignBackButton.type='button';campaignBackButton.id='campaignReturnButton';
 campaignBackButton.textContent='OPERATIONS ROOM';
 campaignBackButton.setAttribute('aria-label','Return to campaign operations room');
 ui.siteSettings.append(campaignBackButton);
+/** Campaign Arsenal drafts are always re-quoted against live ownership and credits.
+ * The existing editor remains usable until the new UI completes its cutover.
+ */
+async function openCampaignArsenal(id:string){
+ if(!campaign||campaign.activeContractId)return;
+ try{
+  const [{arsenalRecipeFromLegacy},{openArsenalWorkbench},
+   {quoteCampaignArsenalEdit,commitCampaignArsenalEdit}]=await Promise.all([
+    import('./arsenal/recipes.ts'),import('./arsenal/workbench-screen.ts'),
+    import('./arsenal/campaign-adapter.ts')]);
+  const member=campaign?.operators.find(o=>o.id===id&&o.status!=='retired'&&o.status!=='lost');
+  if(!campaign||campaign.activeContractId||!member)return;
+  const recipe=arsenalRecipeFromLegacy(member.weaponConfiguration);
+  if(!recipe){showUiHelp('THIS WEAPON USES THE LEGACY ARMORY',3000);return;}
+  openArsenalWorkbench({id:'equipped-campaign-'+id,name:member.callsign,recipe},undefined,{
+   mode:'campaign',applyLabel:'EQUIP WEAPON',
+   quote:r=>campaign?quoteCampaignArsenalEdit(campaign,id,r):
+    {valid:false,canCommit:false,reason:'Campaign unavailable'},
+   onApply:r=>{
+    if(!campaign)return {ok:false,message:'Campaign unavailable'};
+    const before=campaign;
+    const result=commitCampaignArsenalEdit(before,id,r);
+    if(!result.quote.canCommit)
+     return {ok:false,message:result.quote.reason??'Cannot equip this build'};
+    if(result.state===before)return {ok:true};
+    campaign=result.state;
+    if(!saveCampaign()){
+     campaign=before;return {ok:false,message:'Could not save Campaign. No equipment was changed.'};
+    }
+    showCampaignHome();return {ok:true};
+   }
+  });
+ }catch{
+  showUiHelp('ARSENAL UNAVAILABLE · EXISTING ARMORY STILL WORKS',4000);
+ }
+}
 const campaignScreen=new CampaignScreen({
  newCampaign:async()=>{
   if(campaign&&!await confirmFieldworkAction({
@@ -5331,6 +5815,7 @@ const campaignScreen=new CampaignScreen({
   campaign=setCampaignWardrobe(campaign,id,look);
   saveCampaign();showCampaignHome();}},
  openStudio:(id)=>openOperatorStudio(id,'campaign'),
+ openArsenal:(id)=>{void openCampaignArsenal(id);},
  exportSave:()=>{
   if(!campaign)return;
   const blob=new Blob([exportCampaign(campaign)],{type:'application/json'});
@@ -6275,7 +6760,7 @@ function tick(now:number){
       firingActor?.weaponConfiguration?.slots.muzzle==='muzzle-suppressor');
     if(!playApprovedCue('weapons.'+weapon+
       (firingActor?.weaponConfiguration?.slots.muzzle==='muzzle-suppressor'?
-      '_suppressed':''),level,pan,false,1,shot.start)){
+      '_suppressed':''),level,pan,false,1,shot.start,shot.id)){
       playTone(cue.crackHz,cue.crackSeconds,true,level,pan);
       playTone(cue.bodyHz,cue.bodySeconds,false,level*cue.bodyLevel,pan);
     }
@@ -6286,7 +6771,7 @@ function tick(now:number){
     if(shot.hit&&audibleImpact(shotVisibility(state,shot).impact,
         impactLevel))
       if(!playApprovedCue('impacts.body_hit',
-        level*Math.max(.22,impactLevel),pan,false,1,shot.end))
+        level*Math.max(.22,impactLevel),pan,false,1,shot.end,shot.id+197))
         playTone(shot.down?75:225,shot.down?.25:.10,
           shot.down,level*Math.max(.22,impactLevel),pan);
   }
@@ -6304,8 +6789,8 @@ function tick(now:number){
           36,state.doors,WALLS):.24;
         if(level<.025)continue;
         const pan=listener?(touch.position.x-listener.x)/210:0;
-        if(!playApprovedCue('movement.boot',level*.13,pan,false,1,
-           touch.position))
+        if(!playApprovedCue('movement.boot',level*.20,pan,false,1,
+           touch.position,hashString(touch.id+'|'+touch.foot+'|'+touch.at.toFixed(3))))
           playTone(touch.foot===0?62:67,.055,true,level*.12,pan);
       }
     }
@@ -6347,7 +6832,11 @@ function tick(now:number){
     updateHud();if(replaying)updateReplayHud();hudAt=now;
   }
   const perfRenderStart=perfOverlay?performance.now():0;
-  if(stage&&viewMode!=='plan2d')
+  // The Studio is an opaque full-screen view. Skip only hidden rendering,
+  // never fixed-step gameplay or authoritative replay/simulation state.
+  const studioOccludesTactical=!!studioOverlay&&!studioOverlay.hidden&&
+   !replayQuickVideo.active;
+  if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
     stage.update(state,selected,dt,doorFocusId,
       replaying&&replayOmniscient,replaying?replayPresentation:null,
       !replaying&&state.phase==='running'&&previousRenderActors?
@@ -6357,12 +6846,19 @@ function tick(now:number){
         state.phase==='running'?
           state.seconds-(1-Math.min(1,accum*60))/60:
           state.seconds),state.operators.map(a=>a.id)):null,
-      replaying?replayDisclosure():null);
+      replaying?replayDisclosure():null,
+      replaying?replayDoorHistory:null,
+      replaying&&replayContactObserverId?
+        replayPersonalGroundHistory?.at(replayTime,replayContactObserverId)??null:
+        null,
+      replaying?replayWindowHistory:null);
   const overlayBegin=perfOverlay?performance.now():0;
-  render();
+  if(!studioOccludesTactical)render();
   if(replaying&&replayQuickVideo.active){
     replayQuickVideo.drawFrame(
-      stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayTime);
+      stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayTime,
+      replayBodycamOn&&replayContactObserverId?
+        {observerId:replayContactObserverId,mount:replayBodycamMount}:null);
     if(replayTime>=recorder.duration)replayQuickVideo.finishAtEnd();
     else if(!replayPlaying)replayQuickVideo.stop();
   }
@@ -6378,7 +6874,7 @@ function tick(now:number){
         actor.lastBlocker==='furniture'?'OBSTRUCTED':actor.lastBlocker);
     }
   }
-  if(feedbackDraw){
+  if(feedbackDraw&&!studioOccludesTactical){
     feedbackDraw.setTransform(dpr,0,0,dpr,0,0);
     feedbackDraw.clearRect(0,0,cssW,cssH);
     const actor=uid(selected);

@@ -1,0 +1,33 @@
+name: Operator Armhole — Phone Silhouettes
+on:
+  pull_request:
+    paths:
+      - 'src/breach-pose-clearance-envelope.ts'
+      - 'src/breach-low-ready-anatomy.ts'
+      - 'src/breach-pose-v3-constraints.ts'
+      - 'src/breach-reload-visual-contact.ts'
+      - 'src/breach-coupled-low-ready.ts'
+      - 'scripts/capture-operator-armhole.mjs'
+      - '.github/workflows/operator-armhole-mobile.yml'
+permissions:
+  contents: read
+jobs:
+  shoulder-mobile:
+    if: ${{ startsWith(github.head_ref, 'feature/operator-armhole-clearance-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/capture-operator-armhole.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: armhole-m16a1-heavy-flak-legacy-iphone
+          path: operator-armhole-captures/
+          if-no-files-found: ignore

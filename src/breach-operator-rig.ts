@@ -16,7 +16,7 @@ import {lowReadyFamilyFit,lowReadyElbowPole}
  from './breach-low-ready-family-fit.ts';
 import {solveCoupledLowReady,type CoupledLowReadySolution}
  from './breach-coupled-low-ready.ts';
-import {poseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
+import {poseClearanceEnvelope,evaluateSleeveArmorContact} from './breach-pose-clearance-envelope.ts';
 import {interpolateWeaponCarry,lowReadyBlendPhase}
  from './breach-low-ready-transition.ts';
 import {createOperatorPoseScratch,type OperatorPoseScratch}
@@ -35,7 +35,18 @@ import {turnHierarchy} from './breach-turn-hierarchy.ts';
 import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
-import {reloadHandKey} from './breach-reload-motion.ts';
+import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
+import {choreographV3ReloadHand,v3MagazineRockAngle,v3MagazineBodyGrip,type V3ReloadCorridorProfile,type V3MagazinePalm} from './breach-pose-v3-reload-choreography.ts';
+import {choreographV3ReloadWeapon,type V3ReloadHold} from './breach-pose-v3-reload-weapon.ts';
+import {choreographV4ReloadWeapon,reloadMechanismFor,
+ v4ReloadControlPose}
+ from './breach-reload-performance.ts';
+import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
+import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
+import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
+import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
+import {chooseV3SupportGrip} from './breach-pose-v3-support-grip.ts';
+import {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile,smoothHandling,type HandlingTransition}
@@ -46,6 +57,7 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
 import {resolvedWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {SKIN_TONES,seededSkinTone} from './operator-identity-palette.ts';
+import {isH1ModernHelmet,resolveHelmetSetup} from './operator-helmet-setup-policy.ts';
 import {headwearSolidHex} from './operator-headwear-colors.ts';
 import {resolvedHeadwearCamo,headwearCamoPlacement} from './operator-headwear-camo.ts';
 import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-materials.ts';
@@ -64,7 +76,10 @@ import {garmentSolidHex,isGarmentSolidId,resolvedCuffSolid,resolvedCombatKnitSol
  from './operator-garment-color-policy.ts';
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
-import type {CarryLocation} from './equipment-carry-placement.ts';
+import type {CarryLocation,CarryPlacement} from './equipment-carry-placement.ts';
+import {selectedReloadPouchSlot,v4MagazineInHand,
+ v4SelectedPouchVisible,v4AuthoredPouchAnchor}
+ from './breach-reload-v4-magazine-handoff.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
  type OperatorVisualKit} from './operator-visual-kit.ts';
 import {createGarmentFitAnchors,type GarmentFitAnchors}
@@ -86,6 +101,18 @@ type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
   bend:THREE.Vector3;outOfReach:boolean};
 export type OperatorPose={
+  /** V3 whole-arm fitting; enabled by the live tactical renderer. */
+  poseV3Preview?:boolean;
+  /** Diagnostic-only: compare against the original strict contact budget. */
+  poseV3StrictContact?:boolean;
+  /** V4 rifle, hand, magazine and controls; enabled for live reloads. */
+  poseV4ReloadPreview?:boolean;
+  /** Opt-in Lab reload corridor comparison; never read by game simulation. */
+  poseV3ReloadCorridor?:V3ReloadCorridorProfile;
+  /** B19 fixed-profile offline handling audition; only read in V3 Lab. */
+  poseV3ReloadHold?:V3ReloadHold;
+  /** B22 magazine-body grip, explicitly Lab-only and replay-time pure. */
+  poseV3MagazinePalm?:V3MagazinePalm;
   x:number;z:number;heading:number;velocity:number;seconds:number;
   stride:number;posture:'stand'|'crouch';injury:number;weapon:WeaponId;
   /** Authoritative travel direction; optional until motion sampling is wired. */
@@ -113,6 +140,9 @@ export type OperatorPose={
   equipment?:EquipmentLoadout;flashCharges?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
   magazineCarryLocations?:readonly CarryLocation[];
+  /** Simulation-owned IDs and actual stowage, used for V4 handoff ONLY. */
+  magazineCarryItems?:readonly Pick<CarryPlacement,'id'|'kind'|'location'>[];
+  reloadSelectedMagazineId?:string|null;
   weaponConfiguration?:WeaponConfiguration;
   weaponLightOn?:boolean;
   treatmentActive?:boolean;treatmentProgress?:number;
@@ -142,9 +172,12 @@ export type OperatorRig={
   /** Authoritative, old motor yaw; a tactical heading is never remapped. */
   legacyYaw:number;legacyPitch:number;legacyRoll:number;
   hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
+  bodycamChest:THREE.Object3D;bodycamHelmet:THREE.Object3D;
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
   detachedMagazine:THREE.Group;
+  /** B29 mechanical silhouette, preview only; no shot/collision writes. */
+  reloadControlMesh:THREE.Mesh;
   medicalItem:THREE.Mesh;
   weaponBody:THREE.Group;droppedWeaponBody:THREE.Group;
   weaponAccessories:THREE.Group;droppedAccessories:THREE.Group;
@@ -248,6 +281,12 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   root.add(legacyFrame);
   legacyFrame.add(hip,chest,droppedGun);droppedGun.visible=false;
   chest.add(head,weapon);
+  const bodycamChest=new THREE.Object3D();
+  bodycamChest.name='fieldwork-replay-bodycam-chest';
+  bodycamChest.position.set(9.5,1.4,0);chest.add(bodycamChest);
+  const bodycamHelmet=new THREE.Object3D();
+  bodycamHelmet.name='fieldwork-replay-bodycam-helmet';
+  bodycamHelmet.position.set(8.5,2.4,0);head.add(bodycamHelmet);
   const headCanonicalFrame=createCanonicalAttachment(head);
   root.quaternion.copy(canonicalRootOrientation(0,0,0));
   const cloth=mat(side==='red'?0x936e5b:
@@ -360,6 +399,12 @@ export function createOperatorRig(id:string,side:'blue'|'red',
    strap.castShadow=false;strap.receiveShadow=false;strap.visible=false;
    return strap;
   });
+  // Chunky symbolic control; x/y/z always come from real receiver socket.
+  // Keep distinct from the built weapon silhouette and any ballistic mesh.
+  const reloadControlMesh=block(weapon,0,0,0,1.55,1.20,1.50,steel);
+  reloadControlMesh.name='v4-moving-operating-handle';
+  reloadControlMesh.castShadow=false;
+  reloadControlMesh.visible=false;
   const magazineInserted=block(weapon,3,-4,0,2.7,6,2.5,boot);
   const magazineHand=block(chest,0,0,0,2.7,6,2.5,boot);
   magazineHand.visible=false;
@@ -401,6 +446,8 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   return {root,camoIdentity:id,legacyFrame,headCanonicalFrame,
     legacyYaw:0,legacyPitch:0,legacyRoll:0,
     hip,chest,head,weapon,droppedGun,feet,arms,pack,
+    bodycamChest,bodycamHelmet,
+    reloadControlMesh,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
     medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,
     visualKit,equipmentDetails,colors,garmentFitAnchors,poseCavity,
@@ -466,6 +513,13 @@ type CarryBlendState={
  * consumes a previous, unrecorded render frame. */
 const carryBlendStates=new WeakMap<OperatorRig,CarryBlendState>();
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
+  // Reconstruct source visibility from the authoritative inventory for
+  // EVERY timestamp. A previous render must never make a pickup socket
+  // disappear when replay seeks to the same or an earlier frame.
+  const previouslyHiddenV4=r.root.userData.reloadV4HiddenSource as
+    THREE.Mesh|undefined;
+  if(previouslyHiddenV4)previouslyHiddenV4.visible=true;
+  r.root.userData.reloadV4HiddenSource=null;
   let scratch=poseMath.get(r);
   if(!scratch){scratch=createOperatorPoseScratch();poseMath.set(r,scratch);}
   if(dt<0||r.lastTime>p.seconds+.03||p.seconds-r.lastTime>1.2){
@@ -851,8 +905,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
    const selected=id===clothing.headwear;
    const modelId=(id==='high-cut-rails'?'high-cut':id) as HeadSilhouetteId;
-   const camo=selected&&p.wardrobe?.headwearCamo!=='splittertarn-31'?
+   const requestedCamo=selected&&p.wardrobe?.headwearCamo!=='splittertarn-31'?
      resolvedHeadwearCamo(modelId,p.wardrobe?.headwearCamo):null;
+   // Modern printed helmets carry actual cloth covers; preserve the
+   // independent shell material beneath them, as on main.
+   const fabricOnShell=isH1ModernHelmet(modelId)&&
+     resolveHelmetSetup(modelId,p.wardrobe?.helmetSetup,{
+      hasLegacyPrint:!!requestedCamo
+     }).setup.cover!=='none';
+   // A PASGT never prints camouflage directly on the Kevlar shell.
+   // With its cloth cover removed, the independent hard-shell solid shows.
+   const camo=modelId==='pasgt'||fabricOnShell?null:requestedCamo;
    const map=camo?headwearCamoTexture(modelId,camo,
      headwearCamoPlacement(r.camoIdentity,'headwear:'+modelId,camo,
       p.wardrobe?.headwearCamoRoll??0)):headwearDetailTexture(modelId);
@@ -970,6 +1033,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(!passiveBlend)r.autoHandling=null;
   if(auto&&auto.alpha>=1)r.autoHandling=null;
   const activeTransition=p.handlingTransition??auto;
+  // Lab stance-to-stance switching must solve the authored destination
+  // before blending. Live/replay and action tracks retain existing authority.
+  const authoredLabSwitch=!!p.poseV3Preview&&
+    !!p.handlingTransition?.authoredFrom&&!!p.handlingOverride&&
+    !p.down&&!p.surrender&&p.reload<=0;
   const profile=activeTransition?
     blendedHandlingProfile(activeTransition.from,
       activeTransition.to,activeTransition.alpha,p.weapon,
@@ -1197,8 +1265,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       [r.weaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config)],
       [r.droppedWeaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config)]
     ] as const;
-    for(const [dest,model] of models)
+    for(const [dest,model] of models){
+      // Preserve the read-only visible buttplate descriptor when transferring
+      // the prebuilt mesh children into the reusable weapon rig.
+      dest.userData.visibleStockContact=
+        model.userData.visibleStockContact??null;
       while(model.children.length)dest.add(model.children[0]);
+    }
     // Detachable geometry is copied from precisely the same named AR/AK
     // magazine slot. No extra placeholder or alternate silhouette exists.
     const magazineSocket=weaponPresentationSockets(p.weapon,config).magazine;
@@ -1237,55 +1310,89 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // gameplay already used. Other handling modes retain their profiles.
     const shoulderWeight=handling==='low'&&
       !!p.weaponConfiguration?.build?0:poseWeight;
-    return P(base.x+shoulderWeight*(i===0?
+    const target=P(base.x+shoulderWeight*(i===0?
       profile.supportShoulderForward:profile.firingShoulderForward),
       base.y+shoulderWeight*profile.shoulderLift,
       base.z-sign*shoulderWeight*profile.shoulderInward);
+    // Existing modular low ready uses fixed anatomical anchors. Blend
+    // *from the rendered old shoulder* when the Lab enters that mode,
+    // otherwise the first frame can still pop despite a smooth gun.
+    const source=authoredLabSwitch?activeTransition?.authoredArms?.[i]:null;
+    return source?source.shoulder.clone().lerp(
+      target,lowReadyBlendPhase(activeTransition!.alpha)):target;
   };
   // The coupled solution is deliberately restricted to relaxed, stationary,
   // two-handed AR/AK presentation. Combat aim and shot-time geometry remain
   // on the existing authoritative pose path.
   const coupledConfig=p.weaponConfiguration?.weapon===p.weapon?
     p.weaponConfiguration:undefined;
+  // A reload starts from an already validated stationary two-handed
+  // low-ready rifle hold. On the V3 Lab preview ONLY, seed the reload
+  // weapon with that fit instead of abruptly switching to legacy IK.
+  // Do not use the coupled idle *arm* solution during the active reload:
+  // the magazine hand is released and needs independent action IK.
+  const previewReloadSeed=p.poseV3Preview===true&&
+    p.reload>0&&p.reloadDuration>0;
   const eligible=!!coupledConfig?.build&&handling==='low'&&
     p.posture==='stand'&&physicalSpeed<.45&&
     Math.abs(p.turning)<.28&&!p.down&&!p.surrender&&!p.firing&&
-    !p.aiming&&(p.aimBlend??0)<.02&&p.reload<=0&&
-    !p.treatmentActive&&!activeTransition&&
+    !p.aiming&&(p.aimBlend??0)<.02&&
+    (p.reload<=0||previewReloadSeed)&&
+    !p.treatmentActive&&(!activeTransition||authoredLabSwitch)&&
     p.seconds-p.lastDoorAt>1.2&&p.seconds-p.lastThrowAt>.85&&
     (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
   let coupled:CoupledLowReadySolution|null=null;
+  let reloadSeed:CoupledLowReadySolution|null=null;
   if(eligible&&coupledConfig){
     const look=resolvedWardrobe(p.wardrobe,p.equipment);
     const shoulders:[THREE.Vector3,THREE.Vector3]=[
       shoulderFor(0),shoulderFor(1)];
-    const key=JSON.stringify([p.weapon,coupledConfig.build,coupledConfig.slots,
-      look.top,look.armorStyle,look.rigStyle,poseWeight,
-      Number(relativeYaw.toFixed(4)),
-      shoulders.map(v=>v.toArray().map(n=>Number(n.toFixed(3))))]);
-    const cache=coupledIdleCache.get(r);
-    if(cache?.key===key)coupled=cache.solution;
-    else{
+    const solveAtTorsoYaw=(assistYaw:number)=>{
+      // Offset chest yaw and subtract it from chest-local weapon yaw:
+      // the physical shoulder axes and weapon/hand contacts stay coherent.
+      const localYaw=relativeYaw-assistYaw;
+      const key=JSON.stringify([p.weapon,coupledConfig.build,
+        coupledConfig.slots,look.top,look.armorStyle,look.rigStyle,
+        poseWeight,Number(localYaw.toFixed(4)),
+        // Never reuse a forgiving result in the strict audit (or vice
+        // versa) when the same model and outfit are scrubbed in place.
+        !!p.poseV3Preview&&!p.poseV3StrictContact,
+        shoulders.map(v=>v.toArray().map(n=>Number(n.toFixed(3))))]);
+      const cache=coupledIdleCache.get(r);
+      if(cache?.key===key)return cache.solution;
+      let result:CoupledLowReadySolution|null;
       if(sharedCoupledPoseCache.has(key))
-        coupled=sharedCoupledPoseCache.get(key)??null;
+        result=sharedCoupledPoseCache.get(key)??null;
       else{
-        coupled=solveCoupledLowReady({weapon:p.weapon,
+        result=solveCoupledLowReady({weapon:p.weapon,
           configuration:coupledConfig,
-          armor:poseClearanceEnvelope(look.armorStyle,look.rigStyle,look.top),
-          shoulders,nominalYaw:relativeYaw});
-        sharedCoupledPoseCache.set(key,coupled);
+          armor:poseClearanceEnvelope(
+            look.armorStyle,look.rigStyle,look.top),
+          shoulders,nominalYaw:localYaw,
+          allowVisualOverlap:!!p.poseV3Preview&&!p.poseV3StrictContact});
+        sharedCoupledPoseCache.set(key,result);
         if(sharedCoupledPoseCache.size>MAX_SHARED_COUPLED_POSES){
           const oldest=sharedCoupledPoseCache.keys().next().value;
           if(oldest!==undefined)sharedCoupledPoseCache.delete(oldest);
         }
       }
-      coupledIdleCache.set(r,{key,solution:coupled});
-    }
+      if(assistYaw===0)coupledIdleCache.set(r,{key,solution:result});
+      return result;
+    };
+    // Only the explicit Lab query may audition body/weapon coupling.
+    // Normal gameplay, replay and authoritative aim retain original yaw.
+    const previewAssist=p.poseV3Preview===true&&
+      p.handlingOverride==='low';
+    const selected=chooseTorsoAssist(solveAtTorsoYaw,previewAssist,
+      look.armorStyle==='plate-heavy'?shoulders[1]:undefined);
+    coupled=selected?.solution??null;
+    const torsoAssistYaw=selected?.yaw??0;
+    if(previewAssist)r.chest.rotation.y+=torsoAssistYaw;
     r.root.userData.lowReadyPoseReport={
       status:coupled?.status??'unresolved',
       mode:coupled?.mode??'unresolved',weapon:p.weapon,
-      fittingYaw:relativeYaw,
-      fittingShoulders:[shoulderFor(0).toArray(),shoulderFor(1).toArray()],
+      fittingYaw:relativeYaw-torsoAssistYaw,torsoAssistYaw,
+      fittingShoulders:shoulders.map(v=>v.toArray()),
       armor:look.armorStyle,rig:look.rigStyle,top:look.top,
       penetration:coupled?.penetration??null,
       softContact:coupled?.softContact??null,
@@ -1294,25 +1401,189 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       elbowRight:coupled?.arms[1].joint.toArray()??null,
       supportFraction:coupled?.supportFraction??null,
       candidates:coupled?.candidates??0};
+    if(previewReloadSeed){
+      // Preserve actual firearm contacts, but never keep the static
+      // support elbow during the released-hand reload animation.
+      reloadSeed=coupled;coupled=null;
+    }
   }else r.root.userData.lowReadyPoseReport=null;
-  let fit=coupled?.fit??fitWeaponPose({weapon:p.weapon,handling,
+  let fit=reloadSeed?.fit??coupled?.fit??fitWeaponPose({weapon:p.weapon,handling,
     configuration:p.weaponConfiguration,
     yaw:relativeYaw,
     recoil,clearanceRetraction:p.clearanceRetraction,
     relaxedLowReady,
     swayYaw:motion.weaponYaw*freeMotion,
     swayPitch:motion.weaponPitch*freeMotion,
-    // A stale simulation aim meter must not visually raise the barrel
-    // during a non-firing sprint, climb, reload or medical interaction.
-    // Shot-time geometry does not consume this visual-only carry rule,
-    // and the fire motor already prohibits ignition in these states.
+    // Non-firing movement and manipulation cannot retain stale visual ADS.
+    // This affects only carry presentation, never shot-time muzzle authority.
     aimBlend:p.handlingOverride?undefined:
       p.handlingIntent==='run'||p.handlingIntent==='traverse'||
       p.handlingIntent==='reload'||p.handlingIntent==='treat'?0:
       p.aimBlend??(p.aiming?1:0),
-    blendFrom:activeTransition?.from,
-    blendAlpha:activeTransition?.alpha,
-    blendSnapshot:activeTransition?.fromWeapon});
+    blendFrom:authoredLabSwitch?undefined:activeTransition?.from,
+    blendAlpha:authoredLabSwitch?undefined:activeTransition?.alpha,
+    blendSnapshot:authoredLabSwitch?undefined:activeTransition?.fromWeapon});
+  // Small, deterministic rifle manipulation is permissible in the Lab
+  // only while reloading: never alters shot-time muzzle or live aiming.
+  // It pivots about the seated stock so the firing wrist can clear gear.
+  r.root.userData.reloadV4Cue=null;
+  if(p.poseV3Preview&&p.reload>0&&p.reloadDuration>0&&
+     !p.firing&&!p.down&&!p.surrender&&coupledConfig?.build){
+    const t=clamp(1-p.reload/p.reloadDuration,0,1);
+    const mode=p.reloadMode??(p.weapon==='shotgun'?'shells':'emergency');
+    if(p.poseV4ReloadPreview){
+      const presentation=choreographV4ReloadWeapon(fit,mode,t,
+        reloadMechanismFor(p.weapon,coupledConfig));
+      fit=presentation.fit;
+      r.root.userData.reloadV4Cue=presentation.cue;
+    }else fit=choreographV3ReloadWeapon(fit,t,mode,
+      p.poseV3ReloadHold??'baseline').fit;
+  }
+  // Lab-only: a family rifle may be gripped farther back on its *actual*
+  // handguard/magwell. This is a contact change, never a muzzle transform.
+  // Do not apply to shot-time ballistics or alter an approved coupled pose.
+  if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
+     !p.firing&&!p.down&&!p.surrender&&p.reload<=0){
+    const look=resolvedWardrobe(p.wardrobe,p.equipment);
+    const choice=chooseV3SupportGrip({
+      weapon:p.weapon,configuration:coupledConfig,fit,
+      shoulder:shoulderFor(0),firingShoulder:shoulderFor(1),
+      envelope:poseClearanceEnvelope(
+        look.armorStyle,look.rigStyle,look.top),
+      mode:p.reload>0?'reload':p.aiming||handling==='ads'?
+        'aim':'carry'
+    });
+    fit=choice.fit;
+    r.root.userData.poseV3SupportGrip={
+      selected:choice.selected,fraction:choice.fraction,
+      quality:choice.quality,candidates:choice.candidates,
+      reason:choice.reason
+    };
+  }else r.root.userData.poseV3SupportGrip=null;
+  // V3 Stage 6b: rotate the *chest* a few degrees and counter-rotate the
+  // rigid weapon into its new local frame. World muzzle, stock, firing grip
+  // and the existing reload interaction path stay in the same positions.
+  // This is a whole-pair solution, not two competing elbow corrections.
+  let coordinatedDynamic:ReturnType<typeof solveV3CoordinatedPose>|null=null;
+  let v3ReloadClearanceFront:number|undefined;
+  let v3LeanParentX=0,v3LeanParentY=0,v3LeanParentZ=0;
+  const v3ReloadActive=p.reload>0&&p.reloadDuration>0;
+  const v3ReloadProgress=v3ReloadActive?
+    clamp(1-p.reload/p.reloadDuration,0,1):0;
+  const v3ReloadMode=p.reloadMode??
+    (p.weapon==='shotgun'?'shells':'emergency');
+  // Look up the selected item in the existing inventory display, NOT a
+  // second fake ammo stack. The Lab can use its authored sample magazines.
+  const v4Carry=(p.magazineCarryItems??
+    p.magazineCarryLocations?.map((location,i)=>({
+      id:'v4-preview-'+i,kind:'magazine' as const,location
+    }))??[]);
+  const v4Slot=p.poseV4ReloadPreview&&v3ReloadActive&&
+    v3ReloadMode!=='shells'?
+    selectedReloadPouchSlot(v4Carry,p.reloadSelectedMagazineId,
+      !p.reloadSelectedMagazineId):null;
+  const v4Magazine=v4Slot?
+    r.visualKit.magazines[v4Slot.location][v4Slot.index]:undefined;
+  // The target is a real existing rig/belt/pocket magazine. No slot ->
+  // no fake retrieval and no missing magazine conjured in the hand.
+  // The authored magazine socket is fixed to gear/hip, not based on
+  // last-frame world matrices (which broke same-time replay seeks).
+  const v4PouchAnchor=v4Magazine?.visible?
+    v4AuthoredPouchAnchor(v4Magazine,r.chest,r.hip)??undefined:
+    undefined;
+  r.root.userData.reloadV4MagazineSlot=v4Magazine?.visible?
+    v4Slot:null;
+  // B17 measured on the actual legacy-armored AKM: the compact outboard
+  // magazine path clears more support-arm phases without extra solver probes.
+  // Preserve the canonical route for all other kits, especially flak AKS74U.
+  const legacyAkReload=p.poseV3Preview&&v3ReloadActive&&
+    coupledConfig?.build?.family==='ak'&&
+    resolvedWardrobe(p.wardrobe,p.equipment).armorStyle==='plate-legacy';
+  const v3MagazinePalm:V3MagazinePalm=p.poseV3Preview?
+    (p.poseV3MagazinePalm??'legacy'):'legacy';
+  const v3ReloadCorridor:V3ReloadCorridorProfile=p.poseV3Preview?
+    (p.poseV3ReloadCorridor??(legacyAkReload?'compact':'canonical')):
+    'canonical';
+  const v3ThrowAge=p.seconds-p.lastThrowAt;
+  const v3DoorAge=p.seconds-p.lastDoorAt;
+  const v3Interacting=!!p.treatmentActive||
+    v3ThrowAge>=0&&v3ThrowAge<.70||
+    v3DoorAge>=0&&v3DoorAge<1.12&&
+      !!p.doorPoint&&p.doorMethod!=='kick';
+  if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
+     !p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
+     !v3Interacting&&!activeTransition){
+    const outfit=resolvedWardrobe(p.wardrobe,p.equipment);
+    const activeReloadSocket=v3ReloadActive?
+      weaponPresentationSockets(p.weapon,p.weaponConfiguration):null;
+    const envelope=poseClearanceEnvelope(
+      outfit.armorStyle,outfit.rigStyle,outfit.top);
+    if(v3ReloadActive)v3ReloadClearanceFront=envelope.front;
+    const releaseInputs=v3ReloadActive?{
+      fit,lengthScale:data.lengthScale,
+      progress:v3ReloadProgress,mode:v3ReloadMode,
+      family:coupledConfig.build.family,corridor:v3ReloadCorridor,
+      magazinePalm:v3MagazinePalm,
+      supportX:data.supportX,supportY:data.supportY,
+      primaryX:data.primaryX,clearanceFront:envelope.front,
+      magazineSocket:activeReloadSocket?.magazinePart?
+        activeReloadSocket.magazine:undefined,
+      reloadControl:activeReloadSocket?.reloadControl,
+      pickupTarget:v4PouchAnchor}:null;
+    const releasedTarget=releaseInputs?(
+      p.poseV4ReloadPreview?
+        choreographV4ReloadHand(releaseInputs,
+          reloadMechanismFor(p.weapon,coupledConfig)):
+        choreographV3ReloadHand(releaseInputs)).target:undefined;
+    const result=solveV3CoordinatedPose({
+      fit,weapon:p.weapon,configuration:coupledConfig,
+      shoulders:[shoulderFor(0),shoulderFor(1)],
+      chestRotation:r.chest.rotation,
+      envelope,
+      mode:v3ReloadActive?'reload':p.aiming||handling==='ads'?
+        'aim':'carry',
+      releasedSupportTarget:releasedTarget,
+      allowReloadOverlap:!!p.poseV4ReloadPreview&&v3ReloadActive&&
+       !p.poseV3StrictContact,
+      allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
+       !p.poseV3StrictContact
+    });
+    r.root.userData.poseV3CoordinatedReport={
+      status:result.status,yaw:result.yaw,leanX:result.leanX,
+      candidates:result.candidates,
+      validCandidates:result.validCandidates,
+      rejects:{...result.rejects},
+      quality:result.quality,
+      relaxedContact:!!result.reports?.some(report=>report.relaxedContact),
+      strictContactValid:result.reports?.every(report=>
+        report.strictContactValid)??false
+    };
+    if(result.status==='clear'&&result.arms){
+      coordinatedDynamic=result;
+      fit=result.fit;
+      // No per-frame scratch allocation on the main render hot path.
+      const offset=new THREE.Vector3(result.leanX,0,0)
+        .applyQuaternion(new THREE.Quaternion().setFromEuler(
+          r.chest.rotation));
+      v3LeanParentX=offset.x;
+      v3LeanParentY=offset.y;
+      v3LeanParentZ=offset.z;
+      // Existing body rotation is set afresh from pose time on every call.
+      // Apply exactly one deterministic delta, not frame-history easing.
+      r.chest.rotation.y+=result.yaw;
+    }
+  }else r.root.userData.poseV3CoordinatedReport=null;
+  // For a Lab switch, the destination solver above retains full authority:
+  // in particular, low-ready must not fall back to the generic fitter.
+  // Interpolate the rigid weapon once from the *visible* previous fit.
+  // During the bridge, normal clearance-aware IK follows both hand sockets.
+  if(authoredLabSwitch&&activeTransition?.authoredFrom){
+    const phase=clamp(activeTransition.alpha,0,1);
+    if(phase<1){
+      fit=interpolateWeaponCarry(activeTransition.authoredFrom,fit,phase);
+      coupled=null;coordinatedDynamic=null;
+    }
+  }
   let carryTransitionActive=false,carryTransitionAlpha=1;
   let carryTransitionBends:[THREE.Vector3,THREE.Vector3]|null=null;
   if(!p.deterministic&&!p.down&&!p.surrender){
@@ -1357,6 +1628,32 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.droppedGun.scale.set(data.lengthScale,1,1);
   r.weapon.rotation.copy(fit.rotation);
   r.weapon.position.copy(fit.origin);
+  if(p.poseV3Preview){
+    // Snapshot the actual rendered rigid weapon, including any active
+    // partially blended stance. The next Lab tap can retarget from here.
+    r.root.userData.presentedWeaponFit={
+      ...fit,origin:fit.origin.clone(),rotation:fit.rotation.clone(),
+      stock:fit.stock.clone(),primary:fit.primary.clone(),
+      support:fit.support.clone()
+    } as WeaponFit;
+  }else r.root.userData.presentedWeaponFit=null;
+  // B29: visible HK lock/slap, AK handle rack and AR bolt-catch press.
+  // Physically attached to the weapon, driven only by the action clock.
+  // It never modifies fit, recoil, muzzle, shot state or inventory.
+  const v4Control=p.poseV4ReloadPreview&&v3ReloadActive?
+    v4ReloadControlPose(reloadMechanismFor(p.weapon,coupledConfig),
+      v3ReloadMode,v3ReloadProgress):null;
+  r.reloadControlMesh.visible=!!v4Control?.visible&&
+    !p.down&&!p.surrender;
+  if(r.reloadControlMesh.visible&&v4Control){
+    const sock=weaponPresentationSockets(p.weapon,p.weaponConfiguration)
+      .reloadControl;
+    r.reloadControlMesh.position.set(sock.x+v4Control.travel,sock.y,
+      sock.z+v4Control.press);
+    const mech=reloadMechanismFor(p.weapon,coupledConfig);
+    r.reloadControlMesh.scale.set(mech==='ar-bolt-catch'?.73:1,
+      mech==='hk-roller'?1.15:1,mech==='ak-rocking'?.80:1);
+  }
   // On ADS, bring the eyes toward the actual sight line, keeping the
   // firearm fixed. Head-only accommodation cannot change shot ballistics.
   r.head.position.z=0;
@@ -1407,6 +1704,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     magazinePhase!=='reach'&&magazinePhase!=='settle';
   r.detachedMagazine.visible=authoredMagazine&&reloadActive&&
     !mountedMagazine&&magazinePhase!=='settle'&&!p.down&&!p.surrender;
+  if(p.poseV4ReloadPreview&&v3ReloadActive&&v4Magazine&&
+    v4PouchAnchor){
+    // Before pickup the identical magazine remains IN its visible pouch.
+    // During the rendezvous the wrist is empty; only after extraction
+    // does the new magazine become hand-owned. No duplicated magazine.
+    if(!v4MagazineInHand(v3ReloadProgress)){
+      r.magazineHand.visible=false;
+      r.detachedMagazine.visible=false;
+    }
+    if(!v4SelectedPouchVisible(v3ReloadProgress)){
+      v4Magazine.visible=false;
+      r.root.userData.reloadV4HiddenSource=v4Magazine;
+    }
+  }
   r.magazineHand.scale.set(
     p.weapon==='shotgun'?.48:1,p.weapon==='shotgun'?.55:1,1);
   const throwAge=p.seconds-p.lastThrowAt;
@@ -1414,28 +1725,53 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const doorAge=p.seconds-p.lastDoorAt;
   const doorActive=doorAge>=0&&doorAge<1.12&&!!p.doorPoint&&
     p.doorMethod!=='kick';
-  r.chest.position.x=bash.reach*.18;
+  // Body-assisted V3 preview keeps the firearm world-fixed by applying
+  // the matching parent-space chest lean after the usual door/bashing reset.
+  r.chest.position.x=bash.reach*.18+v3LeanParentX;
+  r.chest.position.y+=v3LeanParentY;
+  r.chest.position.z+=v3LeanParentZ;
+  if(authoredLabSwitch&&activeTransition?.authoredChest){
+    const phase=lowReadyBlendPhase(activeTransition.alpha);
+    if(phase<1){
+      const from=activeTransition.authoredChest;
+      const q0=new THREE.Quaternion().setFromEuler(from.rotation);
+      const q1=new THREE.Quaternion().setFromEuler(r.chest.rotation);
+      r.chest.rotation.setFromQuaternion(q0.slerp(q1,phase),'XYZ');
+      r.chest.position.lerpVectors(from.position,r.chest.position,phase);
+    }
+  }
   r.reachRequest=null;
   r.weapon.visible=(!p.down&&!p.surrender)||downProgress<.30;
   r.droppedGun.visible=(p.down||p.surrender)&&downProgress>=.30;
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
-  let reaching=false,releaseLeft=false,releaseRight=false;
+    const handOwners=resolvePoseContactOwners({
+    surrender:p.surrender,down:p.down,downProgress,
+    treatmentActive,reloadActive,reloadProgress,reloadMode,
+    throwActive,pushActive:bash.active&&p.bashRole==='push',
+    woundedGuard:!p.down&&p.injury>0&&p.hitRegion!=='leg'&&
+      !p.aiming&&!p.firing&&p.hitAge!==undefined&&
+      p.hitAge>=0&&p.hitAge<1.1,doorActive
+  });
+  const releaseLeft=handOwners.left!=='weapon';
+  const releaseRight=handOwners.right!=='weapon';
+  let reaching=false;
+  let reloadHandChest:THREE.Vector3|null=null;
   r.medicalItem.visible=treatmentActive;
   let fullDoorContact:THREE.Vector3|null=null;
   if(p.surrender){
     // Deliberate visible surrender: discard the gun, kneel and raise both
     // hands overhead. Unlike an incapacitated actor this is not a fall.
-    releaseLeft=true;releaseRight=true;
+    
     const raised=smooth(downProgress/.60);
     leftGrip.set(-1,3+15*raised,-7);
     rightGrip.set(-1,3+15*raised,7);
   }else if(p.down){
     // Support hand gives way first, then the firing hand releases.
-    releaseLeft=downProgress>.16;releaseRight=downProgress>.53;
+    
     leftGrip.set(-3,-7,-8);rightGrip.set(-2,-8,8);
   }else if(treatmentActive){
-    releaseLeft=true;releaseRight=true;reaching=true;
+    reaching=true;
     const target=p.treatmentPoint??{x:p.x+Math.cos(p.heading)*12,
       y:p.z+Math.sin(p.heading)*12};
     const local=P(target.x-p.x,12-r.chest.position.y,target.y-p.z);
@@ -1447,36 +1783,57 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     leftGrip.copy(left);rightGrip.copy(right);
     r.medicalItem.position.copy(left);
   }else if(reloadActive){
-    releaseLeft=true;
+    
     const sockets=weaponPresentationSockets(p.weapon,p.weaponConfiguration);
     const hand=reloadHandKey(reloadProgress,reloadMode,
       data.supportX,data.supportY,data.primaryX,
       sockets.magazinePart?sockets.magazine:undefined);
     leftGrip.set(hand.x,hand.y,hand.z);
+    const renderReloadInputs={
+      fit,lengthScale:data.lengthScale,progress:reloadProgress,
+      mode:reloadMode,family:coupledConfig?.build?.family,
+      corridor:v3ReloadCorridor,magazinePalm:v3MagazinePalm,
+      supportX:data.supportX,supportY:data.supportY,
+      primaryX:data.primaryX,clearanceFront:v3ReloadClearanceFront,
+      magazineSocket:sockets.magazinePart?sockets.magazine:undefined,
+      reloadControl:sockets.reloadControl,
+      pickupTarget:v4PouchAnchor
+    };
+    reloadHandChest=p.poseV3Preview?
+      (p.poseV4ReloadPreview?
+       choreographV4ReloadHand(renderReloadInputs,
+        reloadMechanismFor(p.weapon,coupledConfig)):
+       choreographV3ReloadHand(renderReloadInputs)).target:
+      reloadHandChestTarget({
+        fit,lengthScale:data.lengthScale,progress:reloadProgress,
+        mode:reloadMode,supportX:data.supportX,supportY:data.supportY,
+        primaryX:data.primaryX,
+        magazineSocket:sockets.magazinePart?sockets.magazine:undefined
+      });
   }else if(throwActive){
-    releaseLeft=true;
+    
     const t=Math.sin(Math.PI*clamp(throwAge/.7,0,1));
     leftGrip.set(data.supportX+8*t,4+7*t,-7);
   }else if(p.surrender){
-    releaseLeft=true;
+    
     const raised=smooth(downProgress/.60);
     leftGrip.set(-1,3+15*raised,-6);
     rightGrip.set(-1,3+15*raised,6);
   }else if(bash.active&&p.bashRole==='push'){
     // A short forearm/shoulder extension separates the opponent, while
     // the primary hand keeps the gun from flailing through the torso.
-    releaseLeft=true;
+    
     leftGrip.set(data.supportX+bash.reach*2,-4,-6);
   }else if(!p.down&&p.injury>0&&
     p.hitRegion!=='leg'&&!p.aiming&&!p.firing&&
     p.hitAge!==undefined&&p.hitAge>=0&&p.hitAge<1.1){
     // Only release the support grip to guard a fresh injury when the
     // operator is not actively aiming or already using that hand.
-    releaseLeft=true;
+    
     const progress=Math.sin(Math.PI*clamp(p.hitAge/1.1,0,1));
     leftGrip.set(3+progress*2,-5,-5);
   }else if(doorActive&&p.doorPoint){
-    releaseLeft=true;reaching=true;
+    reaching=true;
     const local=P(p.doorPoint.x-p.x,19-r.chest.position.y,
       p.doorPoint.y-p.z);
     local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
@@ -1489,9 +1846,23 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     fullDoorContact=local.sub(P(r.chest.position.x,0,0)).clone();
     leftGrip.copy(fit.support).lerp(fullDoorContact,reach);
   }
+  // Preview-only evaluation; production continues to use the proven path.
+  const dynamicLook=p.poseV3Preview?
+    resolvedWardrobe(p.wardrobe,p.equipment):null;
+  const dynamicEnvelope=dynamicLook?poseClearanceEnvelope(
+    dynamicLook.armorStyle,dynamicLook.rigStyle,dynamicLook.top):null;
+  const v3DynamicReports:Array<{
+    side:string;status:string;reason:string;
+    candidates:number;elbowDrop:number;outwardFlare:number;
+    hardDepth:number;quality:number;
+    reachError:number;violations:string[];
+    evaluations:number;softScale:number;
+  }>=[];
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     const shoulder=shoulderFor(i);
+    const sourceArm=authoredLabSwitch?
+      activeTransition?.authoredArms?.[i]:undefined;
     const grip=i===0?leftGrip:rightGrip;
     let desired:THREE.Vector3;
     if(p.down&&(i===0&&releaseLeft||i===1&&releaseRight)){
@@ -1507,6 +1878,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }else{
       desired=grip.clone().multiply(P(data.lengthScale,1,1))
         .applyEuler(fit.rotation).add(fit.origin);
+      if(i===0&&reloadHandChest)desired.copy(reloadHandChest);
+    }
+    // At phase zero reproduce the *exact* displayed source anatomy.
+    // Subsequent frames are resolved from a continuous source elbow pole.
+    if(sourceArm&&activeTransition!.alpha<=0){
+      r.elbowSpread[i]=Math.max(0,
+        sign*(sourceArm.elbow.z-shoulder.z));
+      arm.bend.copy(sourceArm.bend);arm.outOfReach=false;
+      alignSegment(arm.upper,shoulder,sourceArm.elbow,scratch.sides[i]);
+      alignSegment(arm.lower,sourceArm.elbow,sourceArm.wrist,
+        scratch.sides[i]);
+      arm.hand.position.copy(sourceArm.wrist);
+      arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
+      continue;
     }
     // The coupled fitting solver already chose BOTH elbows and the exact
     // physical wrist contacts in one collision-checked candidate.
@@ -1519,6 +1904,29 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       alignSegment(arm.lower,joint.joint,joint.effector,scratch.sides[i]);
       arm.hand.position.copy(joint.effector);
       arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
+      continue;
+    }
+    // A jointly validated V3 pair owns BOTH elbow placements. Do not run
+    // independent IK again and accidentally undo its clearance selection.
+    if(coordinatedDynamic?.arms&&!carryTransitionActive&&
+       !p.unarmedPreview){
+      const pose=coordinatedDynamic.arms[i];
+      const report=coordinatedDynamic.reports![i];
+      r.elbowSpread[i]=Math.max(0,sign*(pose.joint.z-shoulder.z));
+      arm.bend.copy(pose.bendPlane);
+      arm.outOfReach=false;
+      alignSegment(arm.upper,shoulder,pose.joint,scratch.sides[i]);
+      alignSegment(arm.lower,pose.joint,pose.effector,scratch.sides[i]);
+      arm.hand.position.copy(pose.effector);
+      arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
+      v3DynamicReports.push({
+        side:i===0?'support':'firing',status:'clear',reason:'valid',
+        candidates:6,elbowDrop:report.elbowDrop,
+        outwardFlare:report.outwardFlare,
+        hardDepth:report.hardDepth,quality:report.quality,
+        reachError:0,violations:[],
+        evaluations:6,softScale:coordinatedDynamic.softScales![i]
+      });
       continue;
     }
     const neutralArms=!!p.unarmedPreview&&!p.down&&!p.surrender;
@@ -1553,9 +1961,47 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       wanted.copy(carryTransitionBends[i])
         .lerp(destination,carryTransitionAlpha).normalize();
     }
+    if(sourceArm&&activeTransition){
+      const fromPole=sourceArm.elbow.clone().sub(sourceArm.shoulder);
+      if(fromPole.lengthSq()>.01)
+        wanted.copy(fromPole.lerp(wanted,
+          lowReadyBlendPhase(activeTransition.alpha)));
+    }
     let solved=solveTwoBone(shoulder,wrist,10,10,
       wanted,ARM_LIMITS,neutralArms?undefined:arm.bend,scratch.arms[i]);
-    if(!neutralArms&&!p.down&&!p.surrender){
+    let dynamicAccepted=false;
+    if(sourceArm&&dynamicEnvelope&&activeTransition&&
+       activeTransition.alpha<1&&solved.reached){
+      // A continuous two-bone solution can retain the source elbow
+      // without a new candidate search, but never ignore armor contact.
+      dynamicAccepted=evaluateSleeveArmorContact(shoulder,
+        solved.joint,solved.effector,dynamicEnvelope).valid;
+    }
+    if(!dynamicAccepted&&dynamicEnvelope&&!neutralArms&&
+       !p.down&&!p.surrender&&!p.firing){
+      const mode=reloadActive?'reload':p.aiming||handling==='ads'?
+        'aim':reaching||throwActive?'interaction':'carry';
+      const dynamic=solveV3DynamicArm({
+        shoulder,wrist:desired,side:sign as -1|1,mode,
+        envelope:dynamicEnvelope,preferredPole:wanted,
+        allowVisualOverlap:!!p.poseV3Preview&&!p.firing&&
+         !p.poseV3StrictContact
+      });
+      v3DynamicReports.push({side:i===0?'support':'firing',
+        status:dynamic.status,reason:dynamic.reason,
+        candidates:dynamic.candidates,
+        elbowDrop:dynamic.report.elbowDrop,
+        outwardFlare:dynamic.report.outwardFlare,
+        hardDepth:dynamic.report.hardDepth,
+        quality:dynamic.report.quality,
+        reachError:Math.max(0,desired.distanceTo(shoulder)-19.92),
+        violations:[...dynamic.report.reasons],
+        evaluations:dynamic.evaluations,softScale:dynamic.softScale});
+      if(dynamic.solution){
+        solved=dynamic.solution;dynamicAccepted=true;
+      }
+    }
+    if(!dynamicAccepted&&!neutralArms&&!p.down&&!p.surrender){
       // Front-plate clearance must score BOTH sleeve segments. Avoiding just
       // the elbow point was letting the forearm pass straight through armor.
       const front=p.equipment?.slots.armor==='armor-carrier'?9.8:
@@ -1598,6 +2044,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     arm.hand.rotation.set(0,p.unarmedPreview||p.surrender?0:
       clamp(fit.rotation.y,-1,1),0);
   }
+  r.root.userData.poseV3DynamicReport=p.poseV3Preview?
+    v3DynamicReports:null;
+  // AK rock-in is local to the detached magazine and the gripping palm.
+  // No mounted mesh, ballistic transform or gameplay magazine state changes.
+  const v3MagazineRock=p.poseV3Preview&&reloadActive?
+    v3MagazineRockAngle(reloadProgress,reloadMode,
+      coupledConfig?.build?.family):0;
+  if(v3MagazineRock&&r.detachedMagazine.visible)
+    r.arms[0].hand.rotateZ(v3MagazineRock);
   if(r.magazineHand.visible){
     // Magazine visual follows the *solved* support wrist. The original
     // magazine is hidden from the gun while it is in hand.
@@ -1609,7 +2064,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // solved support wrist and return to their gun mount at insertion.
     r.detachedMagazine.position.copy(r.arms[0].hand.position);
     r.detachedMagazine.rotation.copy(fit.rotation);
+    if(v3MagazineRock)r.detachedMagazine.rotateZ(v3MagazineRock);
     r.detachedMagazine.scale.set(data.lengthScale,1,1);
+    // Detached magazine meshes are authored relative to FEED LIPS.
+    // The palm may now wrap the magazine BODY, several units below the
+    // lips. Keep the feed-lip origin rigidly offset from that real palm.
+    if(p.poseV3Preview&&v3ReloadActive&&coupledConfig?.build){
+      const palm=v3MagazineBodyGrip(coupledConfig.build.family,
+        v3MagazinePalm);
+      if(palm){
+        palm.x*=data.lengthScale;
+        palm.applyQuaternion(r.detachedMagazine.quaternion);
+        r.detachedMagazine.position.sub(palm);
+      }
+    }
   }
   // The pose system is the final writer for actor tilts and reactions.
   // The scene controls XY world placement only, not anatomy or weapon pose.

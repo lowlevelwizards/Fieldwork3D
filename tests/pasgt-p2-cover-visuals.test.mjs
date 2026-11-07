@@ -1,0 +1,41 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {headwearCuboidVolumes} from '../src/operator-headwear-silhouettes.ts';
+import {pasgtCoverTexture,createPasgtCoverLayers,
+ updatePasgtCoverLayers} from '../src/operator-pasgt-cover-visuals.ts';
+test('P4 keeps original PASGT shell and renders its fabric separately',()=>{
+ const source=headwearCuboidVolumes('pasgt');
+ assert.equal(source[0].name,'pasgt-single-protective-crown');
+ const root=new THREE.Group(),v=createPasgtCoverLayers(root);
+ assert.ok(root.children.length>=3);
+ assert.equal(v.fabric.color.getHex(),0xffffff);
+ assert.equal(v.fabric.vertexColors,false);
+ const body=v.cover.children[0];
+ assert.ok(body instanceof THREE.Mesh);
+ assert.ok(body.geometry.userData.pasgtDrapedFabric);
+ assert.ok(body.geometry.getAttribute('uv1'));
+ assert.equal(body.receiveShadow,false);
+ const tex=pasgtCoverTexture('m81-woodland','identity-a',0);
+ assert.equal(tex.channel,1);
+ assert.equal(tex.image.width,256);
+ assert.equal(tex.image.height,256);
+});
+test('PASGT cover OFF exposes solid shell, while band can remain',()=>{
+ const root=new THREE.Group(),v=createPasgtCoverLayers(root);
+ const details={slits:false,band:'elastic',concealment:'scrim'};
+ updatePasgtCoverLayers(v,true,details,'m81-woodland','operator-a');
+ assert.equal(v.cover.visible,true);
+ assert.equal(v.hem.visible,true);
+ assert.equal(v.field.slits.visible,true);
+ assert.equal(v.field.scrim.visible,true);
+ assert.equal(v.field.band.visible,true);
+ assert.equal(v.activePrint,'m81-woodland');
+ updatePasgtCoverLayers(v,false,details,'m81-woodland','operator-a');
+ assert.equal(v.cover.visible,false);
+ assert.equal(v.hem.visible,false);
+ assert.equal(v.field.slits.visible,false);
+ assert.equal(v.field.scrim.visible,false);
+ assert.equal(v.field.band.visible,true);
+ assert.equal(v.activePrint,'');
+});

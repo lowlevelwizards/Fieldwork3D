@@ -7,7 +7,8 @@ import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
  from './profile-primitives.ts';
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {HK556_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
-import {HK_OLIVE_POLYMER,HK_DARK_POLYMER,HK556_MAG_METAL,HK556_MAG_RIB}
+import {HK_OLIVE_POLYMER,HK_DARK_POLYMER,HK556_MAG_METAL,HK556_MAG_RIB,
+ HK_MUZZLE_METAL}
  from './weapon-visual-palette.ts';
 import {hk556MagazineOutline,hk556MagazineRibOutlines,
  hk556MagazineHeelOutline,type HK556MagazineId,HK556_MAG_LENGTHS}
@@ -15,6 +16,7 @@ import {hk556MagazineOutline,hk556MagazineRibOutlines,
 import {addHK556Forearm} from './hk-556-handguard-profiles.ts';
 import {addHKRetractableStock} from './hk-retractable-stock.ts';
 import {addWeaponPixelMark} from './weapon-pixel-detail.ts';
+import {addHKTriggerSelector} from './hk-trigger-selector.ts';
 
 export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,showFactoryMuzzle=true):void{
@@ -43,7 +45,9 @@ export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
  p('receiver',[[-.42,-2.02],[2.82,-2.02],[2.97,-2.95],
   [-.19,-2.95]],3.13);
 
- if(compact){
+ if(compact||parts.stock==='hk33-retract-stock'){
+  // A2 -> A3 transforms only the rear furniture; the 5.56 receiver,
+  // barrel, magazine and operator grip positions remain unchanged.
   addHKRetractableStock(root,parts.stock,-14.90,steel,dark);
  }else{
   const rear=-13.88,start=rear+.44;
@@ -106,7 +110,7 @@ export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
   const hider=p('barrel',[[flashStart,-.76],[flashStart+.16,-.79],
    [art.muzzleX-.24,-.79],[art.muzzleX,-.62],
    [art.muzzleX,.62],[art.muzzleX-.24,.79],
-   [flashStart+.16,.79],[flashStart,.76]],1.84,dark);
+   [flashStart+.16,.79],[flashStart,.76]],1.84,HK_MUZZLE_METAL);
   hider.userData.hkFactoryFlashHider=true;
  }
  p('barrel',[[art.frontSightX-.49,.12],
@@ -123,9 +127,7 @@ export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
  const port=addWeaponPixelMark(root,'hk-port',a.portX,a.portY,
   1.65,a.portWidthX,a.portHeightY);
  port.userData.hkEjectionPort=true;
- const selector=addWeaponPixelMark(root,'hk-selector',-3.48,-.67,
-  -1.657,2.05,.60);
- selector.rotation.y=Math.PI;
+ addHKTriggerSelector(root,'sef',1.66,1.54);
  // One broad six-sided turret. Compact variant has SAME absolute sight size.
  const drum=new THREE.CylinderGeometry(1.13,1.13,1.46,6);
  const rear=new THREE.Mesh(drum,steel);

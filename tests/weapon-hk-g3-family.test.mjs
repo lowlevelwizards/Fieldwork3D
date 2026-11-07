@@ -31,8 +31,8 @@ const geometry=id=>{
 };
 const part=(root,s)=>partVisualBounds(root,s);
 
-test('HK preserves both original G3 factory rifles alongside the expanded five-model catalog',()=>{
- assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,8);
+test('HK preserves both original G3 factory rifles alongside the expanded ten-model catalog',()=>{
+ assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,12);
  for(const id of ids){
   const {cfg,g}=geometry(id);
   assert.equal(cfg.build?.family,'hk');
@@ -206,7 +206,7 @@ test('R4: right-side port aligns with magazine; opposite side holds HK selector'
  for(const id of ids){
   const {cfg,g}=geometry(id);
   const port=g.children.find(x=>x.userData.hkEjectionPort);
-  const selector=g.children.find(x=>x.name==='family-art-hk-selector');
+  const selector=g.children.find(x=>x.name==='family-art-hk-selector'&&x.position.z<0);
   assert.ok(port&&selector);
   assert.equal(port.position.x,HK_VISUAL_ANATOMY.magwellCenterX);
   assert.equal(port.position.y,HK_VISUAL_ANATOMY.portY);

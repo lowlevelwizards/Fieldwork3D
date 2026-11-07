@@ -5,6 +5,18 @@
 export const QUICK_VIDEO_SECONDS=20;
 /** Canvas capture encoders need more than an instantaneous terminal frame. */
 export const MIN_VIDEO_WALL_MS=1800;
+export type ReplayBodycamVideoContext={
+  observerId:string;mount:'chest'|'helmet';
+};
+export function replayBodycamVideoDisclosure(
+  context:ReplayBodycamVideoContext|null
+):string|null{
+  if(!context)return null;
+  const observer=context.observerId.replace(/[^a-z0-9_-]/gi,'')
+    .slice(0,16).toUpperCase();
+  return 'RECONSTRUCTED BODYCAM · '+(observer||'OPERATOR')+
+    ' · '+context.mount.toUpperCase();
+}
 
 export function replayVideoMime(
   supports:(mime:string)=>boolean,
@@ -102,7 +114,8 @@ export class ReplayQuickVideo{
   }
   /** Call immediately after both battlefield and overlay are rendered. */
   drawFrame(scene:HTMLCanvasElement|null,
-    overlay:HTMLCanvasElement,time:number):void{
+    overlay:HTMLCanvasElement,time:number,
+    bodycam:ReplayBodycamVideoContext|null=null):void{
     if(!this.active||!this.canvas||!this.ctx)return;
     const ctx=this.ctx,w=this.canvas.width,h=this.canvas.height;
     ctx.fillStyle='#142422';ctx.fillRect(0,0,w,h);
@@ -116,6 +129,17 @@ export class ReplayQuickVideo{
     ctx.fillStyle='#12201fbd';ctx.fillRect(18,14,272,36);
     ctx.fillStyle='#e4d8c0';ctx.font='600 18px monospace';
     ctx.fillText('FIELDWORK  ·  REPLAY',28,39);
+    const perspective=replayBodycamVideoDisclosure(bodycam);
+    if(perspective){
+      // Burn the reconstruction disclaimer directly into exported pixels.
+      // Browser/player overlays are not part of a raw canvas video stream.
+      const rw=Math.min(496,w-36);
+      ctx.fillStyle='#12201fe8';ctx.fillRect(18,80,rw,54);
+      ctx.fillStyle='#edcf9c';ctx.font='700 14px monospace';
+      ctx.fillText(perspective,28,102,rw-20);
+      ctx.fillStyle='#c6bc9f';ctx.font='600 12px monospace';
+      ctx.fillText('PERSONAL CONTACTS · SHARED ARCHITECTURE',28,121,rw-20);
+    }
     this.capturedFrames++;
     this.debugSummary='frames='+this.capturedFrames+
       ' wallMs='+Math.round(performance.now()-this.startedWall)+

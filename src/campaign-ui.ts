@@ -9,12 +9,13 @@ import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
 import {CampaignKitPreview} from './equipment-preview.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
-import {WeaponWorkbenchPreview} from './equipment-weapon-workbench.ts';
+import {WeaponWorkbenchPreview,type WeaponWorkbenchViewState}
+ from './equipment-weapon-workbench.ts';
 import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- familyAccessoryAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
+ weaponAttachmentAllowed,type WeaponAttachmentSlot} from './equipment-weapon-assemblies.ts';
 import {FAMILY_PART_SLOTS,FAMILY_PARTS,
- compatibleFamilyPart,matchingFamilyPreset,type FamilyPartSlot}
+ compatibleFamilyPart,matchingFamilyPreset,proposeFamilyPartChange,type FamilyPartSlot}
  from './equipment-weapon-families.ts';
 import {attachmentPrice} from './equipment-weapon-inventory.ts';
 import {stageMagazines,magazinePlacementSummary,magazineSpace,
@@ -38,6 +39,7 @@ export type CampaignHandlers={
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
  setWardrobe:(id:string,look:WardrobeOptions)=>void;
  openStudio:(id:string)=>void;
+ openArsenal:(id:string)=>void;
  equipAttachment:(id:string,slot:WeaponAttachmentSlot,partId:string,acquire:boolean)=>void;
  equipWeaponPreset:(id:string,presetId:string)=>void;
  equipWeaponFamilyPart:(id:string,slot:FamilyPartSlot,partId:string)=>void;
@@ -65,15 +67,28 @@ export class CampaignScreen{
  private preview:CampaignKitPreview|null=null;
  private workbench:WeaponWorkbenchPreview|null=null;
  private weaponView=false;
+ /** Temporary UI preference only; no Campaign save mutation. */
+ private readonly expandedClassicWeaponControls=new Set<string>();
  private selectedMount:WeaponAttachmentSlot='optic';
  private selectedWorkbenchSocket:WorkbenchSocket|null=null;
  private lastArmoryRenderedId:string|null=null;
  private activeKitGroup:QuickLoadoutGroup='weapon';
  private readonly operatorViewAngles=new Map<string,number>();
+ /** Keep orbit/zoom only across small cosmetic swaps; refit a new core. */
+ private readonly weaponWorkbenchViews=new Map<string,{
+  core:string;view:WeaponWorkbenchViewState
+ }>();
+ private workbenchCore:string|null=null;
  private disposePreview(){
   if(this.preview&&this.lastArmoryRenderedId)
    this.operatorViewAngles.set(this.lastArmoryRenderedId,this.preview.getAzimuth());
   this.preview?.dispose();this.preview=null;
+  if(this.workbench&&this.lastArmoryRenderedId&&this.workbenchCore){
+   const view=this.workbench.getViewState();
+   if(view)this.weaponWorkbenchViews.set(this.lastArmoryRenderedId,{
+    core:this.workbenchCore,view
+   });
+  }
   this.workbench?.dispose();this.workbench=null;}
  constructor(handlers:CampaignHandlers){
   this.handlers=handlers;
@@ -95,6 +110,10 @@ export class CampaignScreen{
   actions.append(button('NEW CAMPAIGN',this.handlers.newCampaign,
     hasSave?'':'campaign-primary'));
   actions.append(button('QUICK PLAY · TACTICAL SANDBOX',this.handlers.quickPlay));
+  const arsenal=node('a','campaign-entry-arsenal','ARSENAL · WEAPON WORKBENCH');
+  arsenal.href='./arsenal.html';
+  arsenal.setAttribute('aria-label','Open the full-screen Arsenal weapon builder');
+  actions.append(arsenal);
   main.append(actions);
   main.append(node('p','campaign-note',
     'Quick Play has fresh health and equipment every round. Campaign progress stays separate.'));
@@ -414,10 +433,10 @@ export class CampaignScreen{
   const summary=node('section','campaign-section campaign-kit-summary');
   summary.append(node('h2','','OPERATOR'));
   const preview=node('div','campaign-kit-preview');
-  const viewToggle=button(this.weaponView?'SHOW FULL OPERATOR':'INSPECT WEAPON / MOUNTS',()=>{
+  const viewToggle=button(this.weaponView?'SHOW FULL OPERATOR':'CLASSIC SOCKET PREVIEW',()=>{
    this.weaponView=!this.weaponView;this.armory(c,id);
   });
-  summary.append(preview,viewToggle,node('p','campaign-note',
+  summary.append(preview,node('p','campaign-note',
    this.weaponView?'DRAG TO ROTATE · TAP A MOUNT TO SELECT ITS SLOT':'DRAG THE SOLDIER TO ROTATE'));
   summary.append(node('strong','campaign-kit-name',person.callsign));
   const identityActions=node('div','campaign-kit-actions');
@@ -430,7 +449,9 @@ export class CampaignScreen{
   });
   const appearance=button('APPEARANCE · OPEN STUDIO',()=>this.handlers.openStudio(id));
   rename.disabled=!!c.activeContractId;appearance.disabled=!!c.activeContractId;
-  identityActions.append(rename,appearance);summary.append(identityActions);
+  const arsenal=button('OPEN ARSENAL',()=>this.handlers.openArsenal(id));
+  arsenal.disabled=!!c.activeContractId||!person.weaponConfiguration.build;
+  identityActions.append(rename,appearance,arsenal);summary.append(identityActions);
   const readiness=node('details','campaign-readiness-details');
   readiness.append(node('summary','','READINESS DETAILS · ARMOR / AMMO / MOBILITY'));
   const carrying=carryCapacityReport(person.loadout,person.magazines);
@@ -593,10 +614,21 @@ export class CampaignScreen{
   const familySelectors=new Map<FamilyPartSlot,HTMLSelectElement>();
   const familyEditor=node('details','campaign-weapon-attachments');
   const build=person.weaponConfiguration.build;
+  const legacyControls=node('details','campaign-legacy-weapons');
+  legacyControls.open=!build||this.weaponView||
+   this.expandedClassicWeaponControls.has(id);
+  legacyControls.addEventListener('toggle',()=>{
+   if(legacyControls.open)this.expandedClassicWeaponControls.add(id);
+   else this.expandedClassicWeaponControls.delete(id);
+  });
+  legacyControls.append(node('summary','','ADVANCED · CLASSIC WEAPON CONTROLS'),
+   node('p','campaign-note',
+    'Use OPEN ARSENAL to build modular weapons. These direct controls remain available for unsupported weapons and troubleshooting.'),
+   viewToggle);
   familyEditor.open=true;
   familyEditor.append(node('summary','','WEAPON FAMILY / MODULAR FURNITURE'));
   familyEditor.append(node('p','campaign-note',
-   'Visual family prototype: swap compatible receiver, stock, grip, magazine profile, handguard and barrel. The owned carbine/rifle class, actual ammunition and weapon serial remain unchanged.'));
+   'Tap a weapon part to choose compatible replacements. Factory builds are starting points. Core changes keep what fits; incompatible pieces are shown before replacement. Your owned weapon and ammunition remain unchanged.'));
   const selectedFamilyPreset=build?matchingFamilyPreset(build):undefined;
   const factoryBrowser=createWeaponPresetBrowser({
    selectedId:selectedFamilyPreset?.id,selectedFamily:build?.family,
@@ -611,8 +643,8 @@ export class CampaignScreen{
   familyEditor.append(factoryBrowser);
   if(build){
    familyEditor.append(node('p','campaign-kit-metrics',
-    'FAMILY · '+build.family.toUpperCase()+' · '+
-    (selectedFamilyPreset?.name??'CUSTOM COMBINATION')));
+    'PLATFORM · '+build.family.toUpperCase()+' · '+
+    (selectedFamilyPreset?.name??'CUSTOM BUILD')));
    for(const slot of FAMILY_PART_SLOTS){
     const row=node('label','campaign-kit-row');
     const select=node('select','campaign-select');
@@ -632,17 +664,30 @@ export class CampaignScreen{
      this.selectedWorkbenchSocket=socket;
      this.workbench?.showSocketChoices(socket,select);
     });
-    select.addEventListener('change',()=>this.handlers.equipWeaponFamilyPart(
-     id,slot,select.value));
+    select.addEventListener('change',async()=>{
+     const proposed=proposeFamilyPartChange(build,person.weapon,slot,select.value);
+     if(!proposed.valid){select.value=build.parts[slot];return;}
+     const dependent=proposed.replacements.filter(change=>change.slot!==slot);
+     if(dependent.length){
+      const message=dependent.map(change=>
+       FAMILY_PARTS[change.from]?.name+' → '+FAMILY_PARTS[change.to]?.name).join('; ');
+      if(!await confirmFieldworkAction({
+       title:'Replace incompatible parts?',
+       message:'Changing '+slot+' also replaces: '+message,
+       confirmLabel:'APPLY CHANGES'
+      })){select.value=build.parts[slot];return;}
+     }
+     this.handlers.equipWeaponFamilyPart(id,slot,select.value);
+    });
     familySelectors.set(slot,select);
     row.append(node('span','',slot.toUpperCase()),select);
     familyEditor.append(row);
    }
   }
-  grouped.field('weapon').append(familyEditor);
+  legacyControls.append(familyEditor);
   const mountSelectors=new Map<WeaponAttachmentSlot,HTMLSelectElement>();
   const attachments=node('details','campaign-weapon-attachments');
-  attachments.append(node('summary','','WEAPON ATTACHMENTS / MOUNTS'));
+  attachments.append(node('summary','','SIGHTS / RAILS / ACCESSORIES'));
   attachments.append(node('p','campaign-note',
    'Factory parts are included. Additional modules are finite workshop stock; purchase and install before deployment.'));
   for(const slot of WEAPON_ATTACHMENT_SLOTS){
@@ -653,8 +698,8 @@ export class CampaignScreen{
    select.setAttribute('aria-label','Select '+slot+' for '+person.callsign);
    const current=person.weaponConfiguration.slots[slot];
    for(const part of Object.values(WEAPON_ATTACHMENTS)){
-    if(part.slot!==slot||!part.compatible.includes(person.weapon)||
-      (build&&!familyAccessoryAllowed(build,slot,part.id)))continue;
+    if(part.slot!==slot||!weaponAttachmentAllowed(person.weaponConfiguration,
+      slot,part.id))continue;
     const price=attachmentPrice(part.id),stock=c.inventory.attachments[part.id]??0;
     const suffix=price===0?' · INCLUDED':
      part.id===current?' · EQUIPPED':
@@ -692,7 +737,8 @@ export class CampaignScreen{
   attachments.append(node('p','campaign-kit-metrics',
    'WEAPON MASS · '+gun.massKg.toFixed(2)+' KG · BALANCE '+gun.balanceX.toFixed(1)+
    ' · MUZZLE EXTENSION '+(gun.muzzleX-19.5).toFixed(1)));
-  grouped.field('weapon').append(attachments);
+  legacyControls.append(attachments);
+  grouped.field('weapon').append(legacyControls);
   if(placed.length){
    const magazines=node('details','campaign-magazines');
    magazines.append(node('summary','','MAGAZINE LOCATIONS · '+placed.length));
@@ -730,12 +776,18 @@ export class CampaignScreen{
      mountSelectors.get(socket as WeaponAttachmentSlot);
     if(!select)return;
     this.selectedWorkbenchSocket=socket;
+    legacyControls.open=true;
     if(bodyPart)familyEditor.open=true;
     else{attachments.open=true;this.selectedMount=socket as WeaponAttachmentSlot;}
     // Mirror the existing options directly below the model. Keep
     // Campaign purchase confirmation and stock rules on the select handler.
     this.workbench?.showSocketChoices(socket,select);
    });
+   const core=person.weapon+'|'+(person.weaponConfiguration.build?.parts.receiver??'legacy')+
+    '|'+(person.weaponConfiguration.build?.parts.barrel??'none');
+   this.workbenchCore=core;
+   const savedView=this.weaponWorkbenchViews.get(id);
+   if(savedView?.core===core)this.workbench.restoreViewState(savedView.view);
    const remembered=this.selectedWorkbenchSocket;
    const savedSelect=remembered?.startsWith('body-')?
     familySelectors.get(remembered.slice(5) as FamilyPartSlot):

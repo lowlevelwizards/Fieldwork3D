@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import {createCivilianRig,updateCivilianRig,type CivilianRig}
  from './breach-civilian-visuals.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
-import {replayActorVisible,replayActorDisclosed,type ReplayDisclosure}
-  from './breach-replay-visibility.ts';
+import {replayActorVisible,replayActorDisclosed,replayCivilianDisclosed,
+  type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
@@ -69,6 +69,12 @@ import {exteriorKnownFogRects,fogUvAt} from './breach-fog-domain.ts';
 import {fogFingerprint,fogMemoryFingerprint} from './breach-fog-cache.ts';
 import {wallOccludesFriendly,transitionWallOpacity} from './breach-camera-occlusion.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
+import {sampleBodycamSocket,applyBodycamCamera,
+  type BodycamSetting} from './breach-replay-bodycam.ts';
+import type {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
+import type {ReplayWindowKnowledgeHistory} from './breach-replay-window-knowledge.ts';
+import {personalDecorVisible,personalCoverVisible}
+  from './breach-replay-personal-visibility.ts';
 import {interpolatedActor,type RenderFrame}
   from './breach-frame-interpolation.ts';
 
@@ -137,6 +143,12 @@ export class TacticalScene3D{
   readonly renderer:THREE.WebGLRenderer;
   readonly scene=new THREE.Scene();
   readonly camera=new THREE.OrthographicCamera(-320,320,370,-370,.1,2800);
+  /** Replay-only perspective camera; default rendering stays orthographic. */
+  readonly bodycamCamera=new THREE.PerspectiveCamera(95,1,.8,2800);
+  private replayBodycam:BodycamSetting|null=null;
+  private bodycamLastQa:{active:boolean;owner:string|null;masked:number;
+    maskRestored:boolean;frame:number;at:number}|null=null;
+  private renderFrameSerial=0;
   readonly view:ViewState={mode:'iso',yaw:Math.PI/4,zoom:1.25,
     pitch:55*Math.PI/180,
     focus:{x:W/2,y:H/2}};
@@ -1438,7 +1450,45 @@ export class TacticalScene3D{
     this.shadowUpdates.invalidate();
     this.updateCamera(1);
   }
+  /** Audition-only until interior occlusion, owner meshes and personal fog
+   * have passed their visual checks. The shipped View menu never calls this.
+   */
+  setReplayBodycam(setting:BodycamSetting|null):void{
+    this.replayBodycam=setting?{...setting}:null;
+    // Every mount/lens change invalidates the previous frame's diagnostic:
+    // slow software WebGL must not report the old chest frame as helmet QA.
+    this.bodycamLastQa=null;
+  }
+  /** Bodycam frames intentionally suppress tactical projection labels, which
+   * would otherwise draw through walls as floating first-person nameplates.
+   */
+  isReplayBodycamActive():boolean{
+    return this.bodycamLastQa?.active??false;
+  }
+  /** Read-only debug information for Vite dev Bodycam smoke; not a UI API. */
+  inspectReplayBodycamQa(){
+    const cam=this.bodycamCamera;
+    return {
+      active:this.bodycamLastQa?.active??false,
+      owner:this.bodycamLastQa?.owner??null,
+      masked:this.bodycamLastQa?.masked??0,
+      maskRestored:this.bodycamLastQa?.maskRestored??true,
+      frame:this.bodycamLastQa?.frame??-1,
+      at:this.bodycamLastQa?.at??null,
+      fov:cam.fov,aspect:cam.aspect,
+      position:cam.position.toArray(),
+      direction:cam.getWorldDirection(new THREE.Vector3()).toArray(),
+      knownRoofs:[...this.roofGroups.values()].filter(r=>r.visible).length,
+      transparentWalls:this.walls.filter(w=>
+        (w.mesh.material as THREE.MeshStandardMaterial).transparent).length,
+      fogUnknown:this.fogUnknown.visible,
+      fogExplored:this.fogExplored.visible,
+      fogSheet:this.smoothFog.visible,
+      sceneChildren:this.scene.children.length
+    };
+  }
   setMode(mode:ViewMode){
+    if(mode==='plan2d')this.replayBodycam=null;
     this.view.mode=mode;
     if(mode==='top')this.view.pitch=Math.PI/2;
     else if(mode==='iso')this.view.pitch=55*Math.PI/180;
@@ -1617,8 +1667,14 @@ export class TacticalScene3D{
     replay?:ReplayPresentation|null,
     renderFrame?:RenderFrame|null,
     liveMotion?:ReplayPresentation|null,
-    replayDisclosurePolicy:ReplayDisclosure|null=null){
+    replayDisclosurePolicy:ReplayDisclosure|null=null,
+    replayDoorHistory:ReplayDoorKnowledgeHistory|null=null,
+    personalGroundEvidence:ReadonlySet<string>|null=null,
+    replayWindowHistory:ReplayWindowKnowledgeHistory|null=null){
     if(this.view.mode==='plan2d')return;
+    const bodycamAudition=!!this.replayBodycam&&
+      replayDisclosurePolicy?.mode==='operator'&&
+      replayDisclosurePolicy.observerId===this.replayBodycam.actorId;
     if(this.appliedLightingMode!==s.lightingMode){
       const mood=lightingPresentation(s.lightingMode);
       this.hemisphere.intensity=mood.hemisphere;
@@ -1649,8 +1705,17 @@ export class TacticalScene3D{
       });
     }
     for(const [id,glass] of this.windowGlass){
-      const state=s.windows.find(w=>w.id===id);
-      glass.visible=!state||(!state.shattered&&!state.open);
+      const current=s.windows.find(w=>w.id===id);
+      // Shared architecture is reconstructed, but dynamic pane state is
+      // ONLY the last state personally observed by this camera operator.
+      // Legacy or unseen panes use neutral intact seed geometry; never
+      // show live open/broken hindsight when a replay is scrubbed.
+      const seen=bodycamAudition&&replayDisclosurePolicy?.observerId?
+        replayWindowHistory?.at(s.seconds,replayDisclosurePolicy.observerId,id):
+        null;
+      glass.visible=bodycamAudition?
+        !(seen?.open||seen?.shattered):
+        !current||(!current.shattered&&!current.open);
     }
     this.updateCamera(dt);
     this.fogAt+=dt;
@@ -1682,13 +1747,30 @@ export class TacticalScene3D{
     // An operator physically standing in a room can still read that room's
     // structure even when their viewing cone is pointed at one corner.
     const occupiedRoomIds=new Set(occupiedFogRooms(s).map(room=>room.id));
-    for(const [id,roof] of this.roofGroups)
-      roof.visible=roofShouldShow(omniscient,
-        spatialSurfaceState(s,'room',id,omniscient)!=='unknown',
-        occupiedRoomIds.has(id));
+    // Tactical roof cutaways must NOT follow the camera indoors. The
+    // first-person view needs a true, two-sided ceiling for known rooms.
+    if(this.roofMaterial){
+      const opaque=bodycamAudition;
+      if(this.roofMaterial.transparent===opaque){
+        this.roofMaterial.transparent=!opaque;
+        this.roofMaterial.depthWrite=opaque;
+        this.roofMaterial.needsUpdate=true;
+      }
+      this.roofMaterial.opacity=opaque?1:.21;
+    }
+    for(const [id,roof] of this.roofGroups){
+      const known=spatialSurfaceState(s,'room',id,omniscient)!=='unknown';
+      roof.visible=bodycamAudition?known:
+        roofShouldShow(omniscient,known,occupiedRoomIds.has(id));
+    }
     for(const item of this.intelSurfaces){
-      item.obj.visible=spatialSurfaceState(s,item.kind,
+      const squadKnown=spatialSurfaceState(s,item.kind,
         item.index,omniscient)!=='unknown';
+      // Physically blocking structural WALLS never disappear in a POV.
+      // Only decorative/cover meshes use recorded personal ground memory.
+      item.obj.visible=item.kind==='cover'?
+        personalCoverVisible(squadKnown,bodycamAudition,personalGroundEvidence,
+          s.coverState[item.index]??null):squadKnown;
     }
     // Unlike the room's floor, decorative props must be individually
     // seen (or remembered at their own position) before they are rendered.
@@ -1698,8 +1780,10 @@ export class TacticalScene3D{
       const p=detail.position;
       const micro='micro:'+Math.floor(p.x/10)+','+Math.floor(p.y/10);
       const fine='fine:'+Math.floor(p.x/20)+','+Math.floor(p.y/20);
-      detail.obj.visible=omniscient||s.seenGround.has(micro)||
-        s.seenGround.has(fine)||liveVisibility(s,p);
+      detail.obj.visible=personalDecorVisible(
+        omniscient||s.seenGround.has(micro)||
+          s.seenGround.has(fine)||liveVisibility(s,p),
+        bodycamAudition,personalGroundEvidence,p);
       this.staticBatches.setVisible(detail.obj,detail.obj.visible);
     }
     // Fade only physical walls obstructing the selected friendly from camera.
@@ -1708,9 +1792,10 @@ export class TacticalScene3D{
     const maxCutDistance=Math.max(40,Math.min(150,
       90/Math.tan(Math.max(.38,this.view.pitch))));
     for(const wall of this.walls){
-      const cut=this.view.mode==='iso'&&!!pawn&&wallOccludesFriendly(
+      const cut=!bodycamAudition&&this.view.mode==='iso'&&!!pawn&&wallOccludesFriendly(
         wall.segment,pawn,{x:fromCamera.x,y:fromCamera.z},maxCutDistance);
-      const opacity=transitionWallOpacity(this.wallFade.get(wall.mesh)??1,cut,dt);
+      const opacity=bodycamAudition?1:
+        transitionWallOpacity(this.wallFade.get(wall.mesh)??1,cut,dt);
       this.wallFade.set(wall.mesh,opacity);
       const translucent=opacity<.995;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
@@ -1732,24 +1817,32 @@ export class TacticalScene3D{
       if(!object)continue;
       object.root.visible=spatialSurfaceState(s,'door',door.id,omniscient)!=='unknown';
       this.staticBatches.setVisible(object.root,object.root.visible);
-      // Freeze the last observed door state when it drops out of view:
-      // a guard opening an unseen door may not broadcast its exact state.
-      if(omniscient||liveVisibility(s,doorCenter(door)))
+      // Personal review uses the LAST individually observed leaf state.
+      // An unseen opening/kick cannot magically update this perspective.
+      const personal=replayDisclosurePolicy?.mode==='operator';
+      const observed=personal&&replayDoorHistory?
+        replayDoorHistory.at(s.seconds,replayDisclosurePolicy.observerId,door.id):
+        null;
+      const directlyObserved=!personal&&liveVisibility(s,doorCenter(door));
+      if(!personal&&(omniscient||directlyObserved)){
         this.observedDoorOpen.set(door.id,door.openFraction??(door.open?1:0));
-      const directlyObserved=liveVisibility(s,doorCenter(door));
-      if(omniscient||directlyObserved)
         this.observedDoorGlass.set(door.id,!!door.glassShattered);
+      }
       if(object.glassPane)
-        object.glassPane.visible=!(this.observedDoorGlass.get(door.id)??false);
-      object.wedge.visible=door.wedged===true&&(omniscient||directlyObserved);
-      const fraction=omniscient||directlyObserved?
+        object.glassPane.visible=personal?
+          !(observed?.glassShattered??false):
+          !(this.observedDoorGlass.get(door.id)??false);
+      object.wedge.visible=personal?
+        !!observed?.wedged:
+        door.wedged===true&&(omniscient||directlyObserved);
+      const fraction=personal?(observed?.openFraction??0):
+        omniscient||directlyObserved?
         (door.openFraction??(door.open?1:0)):
         (s.intel.doorMemory.get(door.id)??0);
       const replayProgress=replay?.doors[door.id];
-      // The rendered leaf follows the authoritative hinge rather than
-      // a render-rate easing curve that disagrees with collision.
-      const shownFraction=(omniscient||directlyObserved)?
-        (replayProgress??fraction):fraction;
+      // Never apply hidden live leaf motion over remembered personal state.
+      const shownFraction=personal?fraction:
+        (omniscient||directlyObserved)?(replayProgress??fraction):fraction;
       if(door.kind==='shutter'){
         object.leaf.rotation.y=0;
         object.leaf.position.y=shownFraction*37;
@@ -1759,7 +1852,7 @@ export class TacticalScene3D{
           Math.hypot(door.b.x-door.a.x,door.b.y-door.a.y)*(door.slideDirection??1);
       }else{
         const age=s.seconds-(door.lastKickAt??-100);
-        const wobble=age>=0&&age<.34?
+        const wobble=!personal&&age>=0&&age<.34?
           Math.sin(age*76)*.045*(1-age/.34):0;
         // A failed kick visibly rattles the leaf in its frame; the hinge
         // yaw remains authoritative for collision, LOS and navigation.
@@ -1800,9 +1893,11 @@ export class TacticalScene3D{
       this.scene.remove(rig.root);this.civilianRigs.delete(id);
     }
     for(const civil of s.civilians){
-      const visible=civilianPresentationVisible(civil,
-        civil.replayVisible!==undefined,omniscient,
-        liveVisibility(s,civil.p));
+      const visible=replayDisclosurePolicy?.mode==='operator'?
+        replayCivilianDisclosed(s,civil.id,replayDisclosurePolicy):
+        civilianPresentationVisible(civil,
+          civil.replayVisible!==undefined,omniscient,
+          liveVisibility(s,civil.p));
       let rig=this.civilianRigs.get(civil.id);
       if(!visible&&!rig)continue;
       if(!rig){
@@ -1825,7 +1920,10 @@ export class TacticalScene3D{
         this.rescueFigure.add(civilian,head);
         this.scene.add(this.rescueFigure);
       }
-      this.rescueFigure.visible=omniscient||liveVisibility(s,s.rescue.p);
+      // Squad-wide rescue markers cannot appear as a witnessed person
+      // within an uncompleted first-person history.
+      this.rescueFigure.visible=!bodycamAudition&&
+        (omniscient||liveVisibility(s,s.rescue.p));
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
     for(const actor of s.operators){
@@ -1964,7 +2062,12 @@ export class TacticalScene3D{
           actor.traversalElapsed/Math.max(.001,actor.traversal.duration):0,
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,wardrobe:actor.wardrobe,
+        // B30: live and replay use the new posing by default.
+        // This changes rendered anatomy only, not fixed-step ammo/shot.
+        poseV3Preview:true,poseV4ReloadPreview:true,
         magazineCarryLocations:carried.filter(p=>p.kind==='magazine').map(p=>p.location),
+        magazineCarryItems:carried.filter(p=>p.kind==='magazine'),
+        reloadSelectedMagazineId:actor.reloadSelectedMagazineId,
         medicalCarryLocation:carried.find(p=>p.kind==='medical')?.location,
         utilityCarryLocation:carried.find(p=>p.kind==='utility')?.location,
          weaponConfiguration:actor.weaponConfiguration,
@@ -2328,7 +2431,48 @@ export class TacticalScene3D{
     });
     if(this.shadowUpdates.shouldRefresh(dynamicShadows,shadowSignature))
       this.renderer.shadowMap.needsUpdate=true;
-    this.renderer.render(this.scene,this.camera);
+    // Read from the already posed historical rig. No additional animation
+    // tick, physics, awareness query or mutable replay state is introduced.
+    // The QA bodycam is never active without explicit personal disclosure.
+    let camera:THREE.Camera=this.camera;
+    let cameraOwner:OperatorRig|null=null;
+    if(bodycamAudition&&this.replayBodycam){
+      const rig=this.actors.get(this.replayBodycam.actorId)?.physical;
+      if(rig?.root.visible){
+        const socket=this.replayBodycam.mount==='helmet'?
+          rig.bodycamHelmet:rig.bodycamChest;
+        const sample=sampleBodycamSocket(
+          socket,this.replayBodycam.stabilization,
+          this.replayBodycam.mount==='chest'?.16:.11);
+        applyBodycamCamera(this.bodycamCamera,sample,
+          this.replayBodycam.fov,this.width/this.height);
+        camera=this.bodycamCamera;
+        cameraOwner=rig;
+      }
+    }
+    // This single-pass owner mask avoids seeing through our own face/armor,
+    // while retaining hands, arms and weapon. Restore all visibility after
+    // the draw; the tactical world and historical rig remain authoritative.
+    const masked:Array<[THREE.Mesh,boolean]>=[];
+    if(camera===this.bodycamCamera&&cameraOwner){
+      const hide=(obj:THREE.Object3D)=>{
+        if(!(obj instanceof THREE.Mesh)||!obj.visible)return;
+        masked.push([obj,true]);obj.visible=false;
+      };
+      for(const child of cameraOwner.chest.children)hide(child);
+      cameraOwner.head.traverse(hide);
+    }
+    try{this.renderer.render(this.scene,camera);}
+    finally{
+      for(const [mesh,visible] of masked)mesh.visible=visible;
+      this.bodycamLastQa={
+        active:camera===this.bodycamCamera,
+        owner:camera===this.bodycamCamera?this.replayBodycam?.actorId??null:null,
+        masked:masked.length,
+        maskRestored:masked.every(([mesh,visible])=>mesh.visible===visible),
+        frame:++this.renderFrameSerial,at:s.seconds
+      };
+    }
     // Effects geometry is released before rebuilding the next frame; pooled
     // material instances are reused for every shot to reduce phone GC work.
   }

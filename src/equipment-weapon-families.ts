@@ -75,8 +75,11 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  // new black furniture IDs without silently recoloring old configurations.
  'hk33-fixed-stock':add('hk33-fixed-stock','HK33 fixed stock · OD green','hk','stock',{receivers:['hk33-556-rifle'],stockX:-13.88}),
  'hk33-fixed-stock-black':add('hk33-fixed-stock-black','HK33 fixed stock · black polymer','hk','stock',{receivers:['hk33-556-rifle'],stockX:-13.88}),
+ 'hk33-retract-stock':add('hk33-retract-stock','HK33A3 wire/twin-rail retractable stock · extended','hk','stock',{receivers:['hk33-556-rifle'],stockX:-14.90}),
  'hk53-retract-stock':add('hk53-retract-stock','HK53A3 short-pattern twin-rail retractable stock · extended','hk','stock',{receivers:['hk53-556-compact'],stockX:-14.90}),
  'hk-mp5-retract-stock':add('hk-mp5-retract-stock','MP5A3/SD3 thick twin-rail stock · extended','hk','stock',{receivers:['hk-mp5-standard','hk-mp5sd-integral'],stockX:-13.05}),
+ 'hk-mp5-fixed-stock':add('hk-mp5-fixed-stock','MP5A2/SD2 solid fixed polymer stock','hk','stock',{receivers:['hk-mp5-standard','hk-mp5sd-integral'],stockX:-13.05}),
+ 'hk-mp5k-pdw-stock':add('hk-mp5k-pdw-stock','MP5K-PDW chunky side-folding stock · extended','hk','stock',{receivers:['hk-mp5k-stockless'],stockX:-13.05}),
  'hk-mp5k-cap':add('hk-mp5k-cap','MP5K short stockless receiver cap','hk','stock',{receivers:['hk-mp5k-stockless'],stockX:-6.65}),
  'ar-grip-classic':add('ar-grip-classic','Classic pistol grip','ar','grip',{receivers:ar}),
  'ar-grip-a2':add('ar-grip-a2','A2 pistol grip','ar','grip',{receivers:ar}),
@@ -138,6 +141,8 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'hk53-poly-short':add('hk53-poly-short','HK53 compact fore-end · OD green','hk','handguard',{receivers:['hk53-556-compact'],length:'short'}),
  'hk53-poly-short-black':add('hk53-poly-short-black','HK53 compact fore-end · black polymer','hk','handguard',{receivers:['hk53-556-compact'],length:'short'}),
  'hk-mp5-tropical':add('hk-mp5-tropical','MP5A3 smooth tropical fore-end','hk','handguard',{receivers:['hk-mp5-standard'],length:'mid'}),
+ 'hk-mp5-slim':add('hk-mp5-slim','Classic MP5 narrow early fore-end','hk','handguard',{receivers:['hk-mp5-standard'],length:'mid'}),
+ 'hk-mp5-trirail':add('hk-mp5-trirail','MP5 three-sided accessory rail fore-end','hk','handguard',{receivers:['hk-mp5-standard'],length:'mid'}),
  'hk-mp5sd-shroud':add('hk-mp5sd-shroud','MP5SD3 heavy integral shroud','hk','handguard',{receivers:['hk-mp5sd-integral'],length:'mid'}),
  'hk-mp5k-vertical':add('hk-mp5k-vertical','MP5K integrated vertical foregrip','hk','handguard',{receivers:['hk-mp5k-stockless'],length:'short'}),
  'ar-20':add('ar-20','20\" A1 pencil barrel','ar','barrel',{receivers:['ar-a1','ar-a2','ar-flat'],length:'long',role:'rifle',nominalInches:AR_BARREL_ART['ar-20'].nominalInches}),
@@ -169,10 +174,14 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('hk-g3a3','G3A3','rifle','hk','hk-g3-drum','hk-g3-poly-stock','hk-g3-grip','hk-g3-mag20','hk-g3-poly-slim','hk-g3-service'),
  p('hk-g3a4','G3A4','rifle','hk','hk-g3-drum','hk-g3-retract-stock','hk-g3-grip','hk-g3-mag20','hk-g3-poly-slim','hk-g3-service'),
  p('hk-hk33a2','HK33A2','rifle','hk','hk33-556-rifle','hk33-fixed-stock-black','hk-g3-grip','hk556-mag30','hk33-poly-slim-black','hk33-service'),
+ p('hk-hk33a3','HK33A3','rifle','hk','hk33-556-rifle','hk33-retract-stock','hk-g3-grip','hk556-mag30','hk33-poly-slim-black','hk33-service'),
  p('hk-hk53a3','HK53A3','carbine','hk','hk53-556-compact','hk53-retract-stock','hk-g3-grip','hk556-mag25','hk53-poly-short-black','hk53-short'),
  p('hk-mp5a3','MP5A3','smg','hk','hk-mp5-standard','hk-mp5-retract-stock','hk-g3-grip','hk9-mag30','hk-mp5-tropical','hk-mp5-standard-barrel'),
  p('hk-mp5sd3','MP5SD3','smg','hk','hk-mp5sd-integral','hk-mp5-retract-stock','hk-g3-grip','hk9-mag30','hk-mp5sd-shroud','hk-mp5sd-integrated'),
  p('hk-mp5k','MP5K','smg','hk','hk-mp5k-stockless','hk-mp5k-cap','hk-g3-grip','hk9-mag30','hk-mp5k-vertical','hk-mp5k-short'),
+ p('hk-mp5k-pdw','MP5K-PDW','smg','hk','hk-mp5k-stockless','hk-mp5k-pdw-stock','hk-g3-grip','hk9-mag30','hk-mp5k-vertical','hk-mp5k-short'),
+ p('hk-mp5a2','MP5A2','smg','hk','hk-mp5-standard','hk-mp5-fixed-stock','hk-g3-grip','hk9-mag30','hk-mp5-tropical','hk-mp5-standard-barrel'),
+ p('hk-mp5sd2','MP5SD2','smg','hk','hk-mp5sd-integral','hk-mp5-fixed-stock','hk-g3-grip','hk9-mag30','hk-mp5sd-shroud','hk-mp5sd-integrated'),
  p('ar-m16a1','M16A1','rifle','ar','ar-a1','ar-fixed','ar-grip-classic','ar-mag20','ar-triangle','ar-20'),
  p('ar-m16a2','M16A2','rifle','ar','ar-a2','ar-fixed-a2','ar-grip-a2','ar-mag30','ar-round','ar-20-service'),
  p('ar-m16a4','M16A4','rifle','ar','ar-flat','ar-fixed-a2','ar-grip-a2','ar-mag30','ar-m5-rail','ar-20-service'),
@@ -243,26 +252,56 @@ export function readWeaponFamilyBuild(raw:unknown,weapon:WeaponId):WeaponFamilyB
  }
  return next;
 }
-export function setWeaponFamilyPart(build:WeaponFamilyBuild,weapon:WeaponId,
- slot:FamilyPartSlot,id:string):WeaponFamilyBuild{
- if(!FAMILY_PART_SLOTS.includes(slot))return build;
+/** Interactive edits are separate from tolerant old-save normalization.
+ * Report every dependent reset so the UI can ask once before applying it.
+ * No second build schema and no separate renderer.
+ */
+export type FamilyPartReplacement={
+ slot:FamilyPartSlot;from:string;to:string;
+};
+export type FamilyPartProposal={
+ valid:boolean;build:WeaponFamilyBuild;
+ replacements:readonly FamilyPartReplacement[];reason?:string;
+};
+export function validFamilyBuild(build:WeaponFamilyBuild,weapon:WeaponId):boolean{
+ const receiver=receiverFor(build.parts.receiver,weapon);
+ if(!receiver||receiver.family!==build.family)return false;
+ const barrel=FAMILY_PARTS[build.parts.barrel];
+ if(!barrel)return false;
+ return FAMILY_PART_SLOTS.every(slot=>compatibleFamilyPart(
+  build.parts.receiver,slot,build.parts[slot],weapon,
+  slot==='handguard'?barrel.length:undefined));
+}
+export function proposeFamilyPartChange(build:WeaponFamilyBuild,weapon:WeaponId,
+ slot:FamilyPartSlot,id:string):FamilyPartProposal{
+ const reject=(reason:string):FamilyPartProposal=>({
+  valid:false,build,replacements:[],reason
+ });
+ if(!FAMILY_PART_SLOTS.includes(slot))return reject('Unknown part slot');
+ if(!validFamilyBuild(build,weapon))return reject('Current build needs repair');
+ if(build.parts[slot]===id)return {valid:true,build,replacements:[]};
  const receiverId=slot==='receiver'?id:build.parts.receiver;
  const receiver=receiverFor(receiverId,weapon);
- if(!receiver||receiver.family!==build.family)return build;
- if(slot!=='receiver'&&!compatibleFamilyPart(
-   receiverId,slot,id,weapon,FAMILY_PARTS[build.parts.barrel]?.length))return build;
- if(build.parts[slot]===id)return build;
- if(slot==='receiver'){
-  const fallback=FAMILY_PRESETS.find(x=>x.weapon===weapon&&x.parts.receiver===id);
-  if(!fallback)return build;
-  const normalized=readWeaponFamilyBuild({family:build.family,
-   parts:{...build.parts,receiver:id}},weapon);
-  return normalized??{family:build.family,parts:{...fallback.parts}};
- }
- const next=readWeaponFamilyBuild({family:build.family,
-  parts:{...build.parts,[slot]:id}},weapon);
- return next??build;
+ if(!receiver||receiver.family!==build.family)
+  return reject('This core belongs to a different weapon class or family');
+ const candidate={...build.parts,[slot]:id};
+ // The receiver may invalidate several pieces. Preserve everything else
+ // when possible and use the historical factory fallback only where needed.
+ const result=readWeaponFamilyBuild({family:build.family,parts:candidate},weapon);
+ if(!result||result.parts[slot]!==id||!validFamilyBuild(result,weapon))
+  return reject('This part does not fit the current core and front end');
+ const replacements=FAMILY_PART_SLOTS.filter(key=>
+  build.parts[key]!==result.parts[key]).map(key=>({
+   slot:key,from:build.parts[key],to:result.parts[key]
+  }));
+ return {valid:true,build:result,replacements};
 }
+export function setWeaponFamilyPart(build:WeaponFamilyBuild,weapon:WeaponId,
+ slot:FamilyPartSlot,id:string):WeaponFamilyBuild{
+ const proposal=proposeFamilyPartChange(build,weapon,slot,id);
+ return proposal.valid?proposal.build:build;
+}
+
 export function matchingFamilyPreset(build:WeaponFamilyBuild):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(p=>p.family===build.family&&
   FAMILY_PART_SLOTS.every(slot=>p.parts[slot]===build.parts[slot]));

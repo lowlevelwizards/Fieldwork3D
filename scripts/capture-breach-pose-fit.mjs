@@ -24,7 +24,8 @@ try{
    deviceScaleFactor:2,isMobile:true,hasTouch:true});
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
-  await page.goto(origin+'/operator-lab.html?poseFit=1',
+  await page.goto(origin+'/operator-lab.html?poseFit=1'+
+    (process.env.POSE_V3==='1'?'&poseV3=1':''),
    {waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.getElementById('preview')?.
    dataset.ready==='true',null,{timeout:30000});

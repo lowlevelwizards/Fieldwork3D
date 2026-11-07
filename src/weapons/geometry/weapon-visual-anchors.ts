@@ -45,7 +45,7 @@ export function workbenchVisualAnchors(config:WeaponConfiguration,
  return authored.map(mount=>{
   const bodySlot=mount.slot.startsWith('body-');
   const slot=bodySlot?mount.slot.slice(5) as FamilyPartSlot:
-   mount.slot==='optic'?'receiver':
+   mount.slot==='optic'||mount.slot==='opticMount'?'receiver':
    mount.slot==='muzzle'?'barrel':
    mount.slot==='foregrip'||mount.slot==='light'?'handguard':
    mount.slot==='stock'||mount.slot==='sling'?'stock':null;
@@ -54,7 +54,8 @@ export function workbenchVisualAnchors(config:WeaponConfiguration,
   const mid=box.getCenter(new THREE.Vector3());
   let x=mid.x,y=mid.y;
   if(mount.slot==='muzzle')x=box.max.x-.55;
-  if(mount.slot==='optic')y=box.max.y-.35;
+  if(mount.slot==='optic'){x=box.max.x-1.2;y=box.max.y+2.30;}
+  if(mount.slot==='opticMount'){x=box.min.x+2.2;y=box.max.y+.35;}
   if(mount.slot==='foregrip')y=box.min.y+.3;
   if(mount.slot==='light')x=box.max.x-1.8;
   if(mount.slot==='sling')x=box.min.x+1.2;

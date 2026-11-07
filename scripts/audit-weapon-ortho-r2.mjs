@@ -16,6 +16,8 @@ import {buildWeaponSilhouette,clearWeaponSilhouette}
 
 const steel=new THREE.MeshBasicMaterial({color:0xb5beb1});
 const dark=new THREE.MeshBasicMaterial({color:0x69756d});
+const hkOnly=process.argv.includes('--hk-only');
+const actualPalette=process.argv.includes('--material-colors');
 const t=(n)=>Number(n).toFixed(2);
 const htmlEscape=s=>String(s).replace(/[&<>"']/g,c=>({
  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
@@ -32,7 +34,10 @@ function panel(group,view,scale){
   if(!(o instanceof THREE.Mesh)||o.userData.weaponPixelArt)return;
   const geo=o.geometry,pos=geo.getAttribute('position'),idx=geo.getIndex();
   const n=idx?idx.count:pos.count;
-  const col=o.material===dark?'#7e9185':
+  const surface=Array.isArray(o.material)?o.material[0]:o.material;
+  const realColor=surface?.color?.getHexString?.();
+  const col=actualPalette&&realColor?'#'+realColor:
+   o.material===dark?'#7e9185':
    o.material===steel?'#cdd7c9':'#a8ac92';
   // An InstancedMesh is drawn several times. Orthographic audit MUST draw
   // the actual instances, not a single untransformed unit cube at origin.
@@ -65,13 +70,37 @@ function panel(group,view,scale){
   'xmlns="http://www.w3.org/2000/svg" role="img" aria-label="'+view+
   ' orthographic outline" viewBox="'+vb+'" preserveAspectRatio="xMidYMid meet">'+
   '<path d="M -21 0H22" stroke="#415c55" stroke-width=".08"/>'+
-  polys.join('')+'</svg></div>';
+  polys.join('')+(actualPalette&&view==='side'?selectorInk(group,scale):'')+
+  '</svg></div>';
+}
+/** In the material-color review, include the actual cached selector decals.
+ * The normal geometry-only audit intentionally excludes pixel-detail overlays.
+ */
+function selectorInk(group,scale){
+ const ink=[];
+ const mesh=group.children.find(x=>x.userData.hkSelectorMarkings&&x.position.z>0);
+ const img=mesh?.material?.map?.image;
+ if(!img?.data)return '';
+ const tw=img.width,th=img.height,w=mesh.geometry.parameters.width,
+  h=mesh.geometry.parameters.height;
+ const pw=w*scale/tw,ph=h/th;
+ for(let y=0;y<th;y++)for(let x=0;x<tw;x++){
+  const i=(y*tw+x)*4,alpha=img.data[i+3];
+  if(alpha<128)continue;
+  const px=(mesh.position.x-w/2+(x+.5)*w/tw)*scale-pw/2;
+  const py=-(mesh.position.y-h/2+(y+.5)*h/th)-ph/2;
+  ink.push('<rect x="'+t(px)+'" y="'+t(py)+
+   '" width="'+t(pw)+'" height="'+t(ph)+
+   '" fill="rgb('+img.data[i]+','+img.data[i+1]+','+img.data[i+2]+')" />');
+ }
+ return ink.join('');
 }
 let body='',totalMeshes=0,totalTriangles=0;
 // Put the canonical M16, AK and HK silhouettes together at the start so
 // their shape language is immediately comparable at identical game scale.
 const lineupIds=['ar-m16a1','ar-m16a2','ak-akm','ak-ak74m','hk-g3','hk-g3a3'];
-const ordered=[...FAMILY_PRESETS].sort((a,b)=>{
+const selected=hkOnly?FAMILY_PRESETS.filter(p=>p.family==='hk'):FAMILY_PRESETS;
+const ordered=[...selected].sort((a,b)=>{
  const ai=lineupIds.indexOf(a.id),bi=lineupIds.indexOf(b.id);
  return (ai<0?999:ai)-(bi<0?999:bi);
 });
@@ -104,25 +133,25 @@ for(const preset of ordered){
 steel.dispose();dark.dispose();
 const html='<!doctype html><html lang="en"><head><meta charset="utf-8">'+
  '<meta name="viewport" content="width=device-width,initial-scale=1">'+
- '<title>Fieldwork Weapon Ortho R2</title><style>'+
+ '<title>'+(hkOnly?'Fieldwork HK Finish R4':'Fieldwork Weapon Ortho R2')+'</title><style>'+
  'body{margin:0;padding:22px;background:#101e1a;color:#eef2e7;font:14px system-ui}'+
  'header{max-width:1040px;margin:auto auto 24px}h1{font-size:25px}p{color:#b4c6b8}'+
  '.preset{max-width:1040px;margin:0 auto 12px;background:#1d312b;border:1px solid #557064;'+
  'border-radius:8px;padding:12px;box-sizing:border-box}.meta{display:flex;'+
  'justify-content:space-between;flex-wrap:wrap;gap:6px}.meta small{color:#c8d5ca}'+
  '.views{display:grid;grid-template-columns:2fr 2fr 1fr;gap:8px;margin-top:9px}'+
- '.panel{background:#152620;border:1px solid #31463c;border-radius:5px;padding:5px}'+
+ '.panel{background:'+(actualPalette?'#b6c2bb':'#152620')+';border:1px solid #31463c;border-radius:5px;padding:5px}'+
  '.panel b{font-size:10px;letter-spacing:.08em;color:#9fb5a6}'+
  '.panel svg{display:block;width:100%;height:120px}'+
  '@media(max-width:660px){.views{grid-template-columns:1fr}.panel svg{height:140px}}'+
- '</style></head><body><header><h1>FIELDWORK / WEAPON ORTHO R2</h1>'+
+ '</style></head><body><header><h1>'+(hkOnly?'FIELDWORK / HK FINISH R4':'FIELDWORK / WEAPON ORTHO R2')+'</h1>'+
  '<p>Generated from actual geometry, not separate art. Fixed orthographic views;'+
  ' same game scale across presets. Exterior-only comparative silhouettes.</p>'+
- '<p>'+FAMILY_PRESETS.length+' presets · '+totalMeshes+' visible meshes · '+
+ '<p>'+selected.length+' presets · '+totalMeshes+' visible meshes · '+
  Math.round(totalTriangles)+' triangles · no firearm mechanisms</p></header>'+
  body+'</body></html>';
 const target=process.argv[2]??'reports/weapon-ortho-r2.html';
 mkdirSync(dirname(target),{recursive:true});
 writeFileSync(target,html,'utf8');
 console.log('Weapon geometry orthographic review: '+target+' ('+
- FAMILY_PRESETS.length+' presets, '+totalMeshes+' meshes)');
+ selected.length+' presets, '+totalMeshes+' meshes)');
