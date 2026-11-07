@@ -5552,6 +5552,26 @@ async function launchQuickPlay(){
     const hudStart=performance.now();
     layout();updateHud();
     const hudMs=Math.round(performance.now()-hudStart);
+    // Shader preparation can use KHR_parallel_shader_compile on capable
+    // browsers. It does not pre-render the game or upload the whole wardrobe.
+    // Keep an A/B opt-out: ?gpuWarmup=0 allows identical-seed comparisons.
+    let shaderPreparationMs=0;
+    if(stage&&viewMode!=='plan2d'&&
+       new URLSearchParams(location.search).get('gpuWarmup')!=='0'){
+      quickPlayCheckpoint(96,'Preparing GPU programs',
+        'Warming visible materials before the first 3D draw');
+      await allowQuickPlayPaint();
+      if(id!==quickPlayRun)return;
+      const shaderStart=performance.now();
+      try{
+        await stage.renderer.compileAsync(stage.scene,stage.camera);
+      }catch(error){
+        // A failed async warmup must never prevent the ordinary first frame.
+        console.warn('[Quick Play shader preparation fallback]',error);
+      }
+      shaderPreparationMs=Math.round(performance.now()-shaderStart);
+      if(id!==quickPlayRun)return;
+    }
     // The first WebGL render is the last major synchronous initialization
     // step (costume materials, visibility, fog, shadow atlas and shaders).
     // Keep the loading mask up while it runs and measure its real duration.
@@ -5582,7 +5602,8 @@ async function launchQuickPlay(){
       (firstFrameMs/1000).toFixed(1)+'s';
     console.info('[Quick Play startup]',{
       seed,scale,generationMs:generated.generationMs,sessionMs,sceneMs,
-      operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs
+      operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs,
+      shaderPreparationMs
     });
     // Now that an actual complete frame exists behind the overlay, allow
     // live RAF updates. Never declare READY before the render has returned.
