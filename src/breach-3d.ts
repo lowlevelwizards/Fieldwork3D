@@ -1631,6 +1631,9 @@ export class TacticalScene3D{
     replayDisclosurePolicy:ReplayDisclosure|null=null,
     replayDoorHistory:ReplayDoorKnowledgeHistory|null=null){
     if(this.view.mode==='plan2d')return;
+    const bodycamAudition=!!this.replayBodycam&&
+      replayDisclosurePolicy?.mode==='operator'&&
+      replayDisclosurePolicy.observerId===this.replayBodycam.actorId;
     if(this.appliedLightingMode!==s.lightingMode){
       const mood=lightingPresentation(s.lightingMode);
       this.hemisphere.intensity=mood.hemisphere;
@@ -1694,10 +1697,22 @@ export class TacticalScene3D{
     // An operator physically standing in a room can still read that room's
     // structure even when their viewing cone is pointed at one corner.
     const occupiedRoomIds=new Set(occupiedFogRooms(s).map(room=>room.id));
-    for(const [id,roof] of this.roofGroups)
-      roof.visible=roofShouldShow(omniscient,
-        spatialSurfaceState(s,'room',id,omniscient)!=='unknown',
-        occupiedRoomIds.has(id));
+    // Tactical roof cutaways must NOT follow the camera indoors. The
+    // first-person view needs a true, two-sided ceiling for known rooms.
+    if(this.roofMaterial){
+      const opaque=bodycamAudition;
+      if(this.roofMaterial.transparent===opaque){
+        this.roofMaterial.transparent=!opaque;
+        this.roofMaterial.depthWrite=opaque;
+        this.roofMaterial.needsUpdate=true;
+      }
+      this.roofMaterial.opacity=opaque?1:.21;
+    }
+    for(const [id,roof] of this.roofGroups){
+      const known=spatialSurfaceState(s,'room',id,omniscient)!=='unknown';
+      roof.visible=bodycamAudition?known:
+        roofShouldShow(omniscient,known,occupiedRoomIds.has(id));
+    }
     for(const item of this.intelSurfaces){
       item.obj.visible=spatialSurfaceState(s,item.kind,
         item.index,omniscient)!=='unknown';
@@ -1720,9 +1735,10 @@ export class TacticalScene3D{
     const maxCutDistance=Math.max(40,Math.min(150,
       90/Math.tan(Math.max(.38,this.view.pitch))));
     for(const wall of this.walls){
-      const cut=this.view.mode==='iso'&&!!pawn&&wallOccludesFriendly(
+      const cut=!bodycamAudition&&this.view.mode==='iso'&&!!pawn&&wallOccludesFriendly(
         wall.segment,pawn,{x:fromCamera.x,y:fromCamera.z},maxCutDistance);
-      const opacity=transitionWallOpacity(this.wallFade.get(wall.mesh)??1,cut,dt);
+      const opacity=bodycamAudition?1:
+        transitionWallOpacity(this.wallFade.get(wall.mesh)??1,cut,dt);
       this.wallFade.set(wall.mesh,opacity);
       const translucent=opacity<.995;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
@@ -2350,8 +2366,8 @@ export class TacticalScene3D{
     // tick, physics, awareness query or mutable replay state is introduced.
     // The QA bodycam is never active without explicit personal disclosure.
     let camera:THREE.Camera=this.camera;
-    if(this.replayBodycam&&replayDisclosurePolicy?.mode==='operator'&&
-      replayDisclosurePolicy.observerId===this.replayBodycam.actorId){
+    let cameraOwner:OperatorRig|null=null;
+    if(bodycamAudition&&this.replayBodycam){
       const rig=this.actors.get(this.replayBodycam.actorId)?.physical;
       if(rig?.root.visible){
         const socket=this.replayBodycam.mount==='helmet'?
@@ -2361,9 +2377,25 @@ export class TacticalScene3D{
         applyBodycamCamera(this.bodycamCamera,sample,
           this.replayBodycam.fov,this.width/this.height);
         camera=this.bodycamCamera;
+        cameraOwner=rig;
       }
     }
-    this.renderer.render(this.scene,camera);
+    // This single-pass owner mask avoids seeing through our own face/armor,
+    // while retaining hands, arms and weapon. Restore all visibility after
+    // the draw; the tactical world and historical rig remain authoritative.
+    const masked:Array<[THREE.Mesh,boolean]>=[];
+    if(camera===this.bodycamCamera&&cameraOwner){
+      const hide=(obj:THREE.Object3D)=>{
+        if(!(obj instanceof THREE.Mesh)||!obj.visible)return;
+        masked.push([obj,true]);obj.visible=false;
+      };
+      for(const child of cameraOwner.chest.children)hide(child);
+      cameraOwner.head.traverse(hide);
+    }
+    try{this.renderer.render(this.scene,camera);}
+    finally{
+      for(const [mesh,visible] of masked)mesh.visible=visible;
+    }
     // Effects geometry is released before rebuilding the next frame; pooled
     // material instances are reused for every shot to reduce phone GC work.
   }
