@@ -195,3 +195,32 @@ test('B16 M4A1/AKM magazine corridor is deterministic and physically audited',()
  }
  console.log('POSE-V3-RELOAD-CORRIDOR',JSON.stringify(frames));
 });
+
+/** B17 one-time preview audition. Physical acceptance remains the shared V3
+ * solver, not a heuristic pose count. Profiles are deterministic through
+ * complete reloads and do not touch ballistic or magazine authority.
+ */
+test('B17 compare compact vs outboard reload corridors on actual rigs',()=>{
+ const trial=[];
+ for(const fixture of fixtures.slice(0,2)){
+  const base=assemble(fixture);
+  const rig=createOperatorRig('v3-audition-'+fixture.id,'blue',true);
+  try{
+   for(const progress of [.14,.26,.40,.53,.70,.78,.92]){
+    for(const corridor of ['canonical','compact','outboard']){
+     poseOperator(rig,{...base,poseV3Preview:true,
+      poseV3ReloadCorridor:corridor,seconds:3,
+      reload:1.8*(1-progress),reloadDuration:1.8},0);
+     const pair=rig.root.userData.poseV3CoordinatedReport;
+     const arms=rig.root.userData.poseV3DynamicReport;
+     assert.ok(pair&&arms?.length===2,fixture.id+'/'+corridor+'/'+progress);
+     trial.push({kit:fixture.id,progress,corridor,
+      pair:pair.status,arms:arms.map(a=>a.status),
+      hard:arms.map(a=>Number(a.hardDepth.toFixed(2))),
+      reach:arms.map(a=>Number(a.reachError.toFixed(2)))});
+    }
+   }
+  }finally{rig.dispose();}
+ }
+ console.log('POSE-V3-CORRIDOR-AUDITION',JSON.stringify(trial));
+});

@@ -12,12 +12,15 @@ import type {ReloadMode} from './breach-magazines.ts';
 import type {WeaponFit} from './breach-weapon-pose.ts';
 import {reloadHandChestTarget} from './breach-reload-motion.ts';
 
+export type V3ReloadCorridorProfile='canonical'|'compact'|'outboard';
 export type ReloadChoreographyRequest={
  fit:WeaponFit;lengthScale:number;progress:number;mode:ReloadMode;
  supportX:number;supportY:number;primaryX:number;
  magazineSocket?:{x:number;y:number};
  /** Only modular rifle previews opt into a family-specific magazine approach. */
  family?:'ar'|'ak'|'hk';
+ /** Lab audition only. Default uses the proven B14 hand track. */
+ corridor?:V3ReloadCorridorProfile;
  /** Fitted near-side front armor surface, cached with equipment. */
  clearanceFront?:number;
 };
@@ -87,6 +90,26 @@ export function choreographV3ReloadHand(
   const safeZ=-7.5;
   target.x+=Math.max(0,safeX-target.x)*transport;
   target.z-=Math.max(0,target.z-safeZ)*transport;
+ }
+ // B17 audition: bounded alternative free-hand corridors. Do not change
+ // the real magazine sockets or any release/reattach frame; only the
+ // approach/transit portions can detour around the fitted shoulder/vest.
+ // Choose one profile for a whole replayed action, not frame-to-frame.
+ if(input.family&&input.mode!=='shells'&&
+    input.corridor&&input.corridor!=='canonical'){
+  const transit=bump(t,.32,.75);
+  const approach=bump(t,.12,.20);
+  const insert=bump(t,.75,.82);
+  const recovery=bump(t,.90,1);
+  const weight=transit+.48*approach+.73*insert+.35*recovery;
+  if(input.corridor==='compact'){
+   // Bring the wrist toward shoulder height and slightly outboard;
+   // remaining reach still has to pass the strict fixed-length solver.
+   target.x-=.75*weight;target.y+=.85*weight;target.z-=.55*weight;
+  }else{
+   // Wider magazine corridor for broad side inserts/plate carrier.
+   target.x+=.20*weight;target.y+=.30*weight;target.z-=1.40*weight;
+  }
  }
  return {
   target,

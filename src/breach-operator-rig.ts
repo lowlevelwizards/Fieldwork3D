@@ -36,7 +36,7 @@ import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
 import {reloadHandKey,reloadHandChestTarget} from './breach-reload-motion.ts';
-import {choreographV3ReloadHand,v3MagazineRockAngle} from './breach-pose-v3-reload-choreography.ts';
+import {choreographV3ReloadHand,v3MagazineRockAngle,type V3ReloadCorridorProfile} from './breach-pose-v3-reload-choreography.ts';
 import {choreographV3ReloadWeapon} from './breach-pose-v3-reload-weapon.ts';
 import {resolvePoseContactOwners} from './breach-pose-v3-contacts.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
@@ -95,6 +95,8 @@ type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
 export type OperatorPose={
   /** Opt-in LAB-only V3 torso fit audition; never set by gameplay. */
   poseV3Preview?:boolean;
+  /** Opt-in Lab reload corridor comparison; never read by game simulation. */
+  poseV3ReloadCorridor?:V3ReloadCorridorProfile;
   x:number;z:number;heading:number;velocity:number;seconds:number;
   stride:number;posture:'stand'|'crouch';injury:number;weapon:WeaponId;
   /** Authoritative travel direction; optional until motion sampling is wired. */
@@ -1386,6 +1388,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     clamp(1-p.reload/p.reloadDuration,0,1):0;
   const v3ReloadMode=p.reloadMode??
     (p.weapon==='shotgun'?'shells':'emergency');
+  const v3ReloadCorridor:V3ReloadCorridorProfile=
+    p.poseV3Preview?p.poseV3ReloadCorridor??'canonical':'canonical';
   const v3ThrowAge=p.seconds-p.lastThrowAt;
   const v3DoorAge=p.seconds-p.lastDoorAt;
   const v3Interacting=!!p.treatmentActive||
@@ -1404,7 +1408,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const releasedTarget=v3ReloadActive?choreographV3ReloadHand({
       fit,lengthScale:data.lengthScale,
       progress:v3ReloadProgress,mode:v3ReloadMode,
-      family:coupledConfig.build.family,
+      family:coupledConfig.build.family,corridor:v3ReloadCorridor,
       supportX:data.supportX,supportY:data.supportY,
       primaryX:data.primaryX,clearanceFront:envelope.front,
       magazineSocket:activeReloadSocket?.magazinePart?
@@ -1599,6 +1603,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       choreographV3ReloadHand({
         fit,lengthScale:data.lengthScale,progress:reloadProgress,
         mode:reloadMode,family:coupledConfig?.build?.family,
+        corridor:v3ReloadCorridor,
         supportX:data.supportX,supportY:data.supportY,
         primaryX:data.primaryX,
         clearanceFront:v3ReloadClearanceFront,
