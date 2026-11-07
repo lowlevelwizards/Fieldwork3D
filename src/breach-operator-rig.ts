@@ -1032,6 +1032,26 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     kickMotion(kickAge):null;
   const bash=contactReaction(p.seconds-(p.lastBashAt??-100),
     p.bashRole??null,!!p.blocked);
+  // Resolve action clocks and explicit hand ownership once for all pose
+  // paths; preview and live rendering cannot independently shift the window.
+  const treatmentActive=!!p.treatmentActive&&!p.down&&!p.surrender;
+  const reloadActive=p.reload>0&&p.reloadDuration>0;
+  const reloadProgress=reloadActive?
+    clamp(1-p.reload/p.reloadDuration,0,1):0;
+  const reloadMode=p.reloadMode??(p.weapon==='shotgun'?'shells':'emergency');
+  const throwAge=p.seconds-p.lastThrowAt;
+  const throwActive=throwAge>=0&&throwAge<.70;
+  const doorAge=p.seconds-p.lastDoorAt;
+  const doorActive=doorAge>=0&&doorAge<1.12&&!!p.doorPoint&&
+    p.doorMethod!=='kick';
+  const handOwners=resolvePoseContactOwners({
+    surrender:p.surrender,down:p.down,downProgress,
+    treatmentActive,reloadActive,reloadProgress,reloadMode,
+    throwActive,pushActive:bash.active&&p.bashRole==='push',
+    woundedGuard:!p.down&&p.injury>0&&p.hitRegion!=='leg'&&
+      !p.aiming&&!p.firing&&p.hitAge!==undefined&&
+      p.hitAge>=0&&p.hitAge<1.1,doorActive
+  });
   const handling=p.treatmentActive?'low':p.handlingOverride??handlingPose({
     aim:p.aimBlend??(p.aiming?1:0),moving,
     obstruction:!!p.obstruction||
@@ -1505,19 +1525,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   let coordinatedDynamic:ReturnType<typeof solveV3CoordinatedPose>|null=null;
   let v3ReloadClearanceFront:number|undefined;
   let v3LeanParentX=0,v3LeanParentY=0,v3LeanParentZ=0;
-  const v3ReloadActive=p.reload>0&&p.reloadDuration>0;
-  const v3ReloadProgress=v3ReloadActive?
-    clamp(1-p.reload/p.reloadDuration,0,1):0;
-  const v3ReloadMode=p.reloadMode??
-    (p.weapon==='shotgun'?'shells':'emergency');
   // Look up the selected item in the existing inventory display, NOT a
   // second fake ammo stack. The Lab can use its authored sample magazines.
   const v4Carry=(p.magazineCarryItems??
     p.magazineCarryLocations?.map((location,i)=>({
       id:'v4-preview-'+i,kind:'magazine' as const,location
     }))??[]);
-  const v4Slot=p.poseV4ReloadPreview&&v3ReloadActive&&
-    v3ReloadMode!=='shells'?
+  const v4Slot=p.poseV4ReloadPreview&&reloadActive&&
+    reloadMode!=='shells'?
     selectedReloadPouchSlot(v4Carry,p.reloadSelectedMagazineId,
       !p.reloadSelectedMagazineId):null;
   const v4Magazine=v4Slot?
@@ -1534,7 +1549,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // B17 measured on the actual legacy-armored AKM: the compact outboard
   // magazine path clears more support-arm phases without extra solver probes.
   // Preserve the canonical route for all other kits, especially flak AKS74U.
-  const legacyAkReload=p.poseV3Preview&&v3ReloadActive&&
+  const legacyAkReload=p.poseV3Preview&&reloadActive&&
     coupledConfig?.build?.family==='ak'&&
     resolvedWardrobe(p.wardrobe,p.equipment).armorStyle==='plate-legacy';
   const v3MagazinePalm:V3MagazinePalm=p.poseV3Preview?
@@ -1542,24 +1557,22 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const v3ReloadCorridor:V3ReloadCorridorProfile=p.poseV3Preview?
     (p.poseV3ReloadCorridor??(legacyAkReload?'compact':'canonical')):
     'canonical';
-  const v3ThrowAge=p.seconds-p.lastThrowAt;
-  const v3DoorAge=p.seconds-p.lastDoorAt;
   const v3Interacting=!!p.treatmentActive||
-    v3ThrowAge>=0&&v3ThrowAge<.70||
-    v3DoorAge>=0&&v3DoorAge<1.12&&
+    throwAge>=0&&throwAge<.70||
+    doorAge>=0&&doorAge<1.12&&
       !!p.doorPoint&&p.doorMethod!=='kick';
   if(p.poseV3Preview&&!coupled&&coupledConfig?.build&&
      !p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
      !v3Interacting&&!activeTransition){
     const outfit=resolvedWardrobe(p.wardrobe,p.equipment);
-    const activeReloadSocket=v3ReloadActive?
+    const activeReloadSocket=reloadActive?
       weaponPresentationSockets(p.weapon,p.weaponConfiguration):null;
     const envelope=poseClearanceEnvelope(
       outfit.armorStyle,outfit.rigStyle,outfit.top);
-    if(v3ReloadActive)v3ReloadClearanceFront=envelope.front;
-    const releaseInputs=v3ReloadActive?{
+    if(reloadActive)v3ReloadClearanceFront=envelope.front;
+    const releaseInputs=reloadActive?{
       fit,lengthScale:data.lengthScale,
-      progress:v3ReloadProgress,mode:v3ReloadMode,
+      progress:reloadProgress,mode:reloadMode,
       family:coupledConfig.build.family,corridor:v3ReloadCorridor,
       magazinePalm:v3MagazinePalm,
       supportX:data.supportX,supportY:data.supportY,
@@ -1576,9 +1589,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const shoulders:[THREE.Vector3,THREE.Vector3]=[
       shoulderFor(0),shoulderFor(1)
     ];
-    const constraintMode=v3ReloadActive?'reload':
+    const constraintMode=reloadActive?'reload':
       p.aiming||handling==='ads'?'aim':'carry';
-    const allowReloadOverlap=!!p.poseV4ReloadPreview&&v3ReloadActive&&
+    const allowReloadOverlap=!!p.poseV4ReloadPreview&&reloadActive&&
       !p.poseV3StrictContact;
     const allowVisualOverlap=!!p.poseV3Preview&&!p.firing&&
       !p.poseV3StrictContact;
@@ -1697,9 +1710,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // B29: visible HK lock/slap, AK handle rack and AR bolt-catch press.
   // Physically attached to the weapon, driven only by the action clock.
   // It never modifies fit, recoil, muzzle, shot state or inventory.
-  const v4Control=p.poseV4ReloadPreview&&v3ReloadActive?
+  const v4Control=p.poseV4ReloadPreview&&reloadActive?
     v4ReloadControlPose(reloadMechanismFor(p.weapon,coupledConfig),
-      v3ReloadMode,v3ReloadProgress):null;
+      reloadMode,reloadProgress):null;
   r.reloadControlMesh.visible=!!v4Control?.visible&&
     !p.down&&!p.surrender;
   if(r.reloadControlMesh.visible&&v4Control){
@@ -1743,11 +1756,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Weapon kick and muzzle flash may not break solved hand contacts.
   // A physical door reach may shift the chest a little over the support
   // foot, but the whole character is never allowed to tip like a rigid pole.
-  const treatmentActive=!!p.treatmentActive&&!p.down&&!p.surrender;
-  const reloadActive=p.reload>0&&p.reloadDuration>0;
-  const reloadProgress=reloadActive?
-    clamp(1-p.reload/p.reloadDuration,0,1):0;
-  const reloadMode=p.reloadMode??(p.weapon==='shotgun'?'shells':'emergency');
   const magazinePhase=reloadPhase(reloadProgress,reloadMode);
   const authoredMagazine=r.detachedMagazine.children.length>0;
   const mountedMagazine=!(p.reloadRemoved&&!p.reloadInserted)&&
@@ -1761,27 +1769,22 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     magazinePhase!=='reach'&&magazinePhase!=='settle';
   r.detachedMagazine.visible=authoredMagazine&&reloadActive&&
     !mountedMagazine&&magazinePhase!=='settle'&&!p.down&&!p.surrender;
-  if(p.poseV4ReloadPreview&&v3ReloadActive&&v4Magazine&&
+  if(p.poseV4ReloadPreview&&reloadActive&&v4Magazine&&
     v4PouchAnchor){
     // Before pickup the identical magazine remains IN its visible pouch.
     // During the rendezvous the wrist is empty; only after extraction
     // does the new magazine become hand-owned. No duplicated magazine.
-    if(!v4MagazineInHand(v3ReloadProgress)){
+    if(!v4MagazineInHand(reloadProgress)){
       r.magazineHand.visible=false;
       r.detachedMagazine.visible=false;
     }
-    if(!v4SelectedPouchVisible(v3ReloadProgress)){
+    if(!v4SelectedPouchVisible(reloadProgress)){
       v4Magazine.visible=false;
       r.root.userData.reloadV4HiddenSource=v4Magazine;
     }
   }
   r.magazineHand.scale.set(
     p.weapon==='shotgun'?.48:1,p.weapon==='shotgun'?.55:1,1);
-  const throwAge=p.seconds-p.lastThrowAt;
-  const throwActive=throwAge>=0&&throwAge<.70;
-  const doorAge=p.seconds-p.lastDoorAt;
-  const doorActive=doorAge>=0&&doorAge<1.12&&!!p.doorPoint&&
-    p.doorMethod!=='kick';
   // Body-assisted V3 preview keeps the firearm world-fixed by applying
   // the matching parent-space chest lean after the usual door/bashing reset.
   r.chest.position.x=bash.reach*.18+v3LeanParentX;
@@ -1802,14 +1805,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.droppedGun.visible=(p.down||p.surrender)&&downProgress>=.30;
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
-    const handOwners=resolvePoseContactOwners({
-    surrender:p.surrender,down:p.down,downProgress,
-    treatmentActive,reloadActive,reloadProgress,reloadMode,
-    throwActive,pushActive:bash.active&&p.bashRole==='push',
-    woundedGuard:!p.down&&p.injury>0&&p.hitRegion!=='leg'&&
-      !p.aiming&&!p.firing&&p.hitAge!==undefined&&
-      p.hitAge>=0&&p.hitAge<1.1,doorActive
-  });
   const releaseLeft=handOwners.left!=='weapon';
   const releaseRight=handOwners.right!=='weapon';
   let reaching=false;
@@ -2126,7 +2121,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Detached magazine meshes are authored relative to FEED LIPS.
     // The palm may now wrap the magazine BODY, several units below the
     // lips. Keep the feed-lip origin rigidly offset from that real palm.
-    if(p.poseV3Preview&&v3ReloadActive&&coupledConfig?.build){
+    if(p.poseV3Preview&&reloadActive&&coupledConfig?.build){
       const palm=v3MagazineBodyGrip(coupledConfig.build.family,
         v3MagazinePalm);
       if(palm){
