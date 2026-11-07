@@ -67,7 +67,7 @@ export class ReplayChunkTransport{
     this.phase='reading';
     try{
       const frames=await this.session.window.surrounding(target);
-      if(this.phase==='closed')return {status:'closed'};
+      if(this.status==='closed')return {status:'closed'};
       if(version!==this.serial)return {status:'superseded'};
       if(!frames)throw Error('Historical samples are unavailable');
       this.committed=target;
@@ -76,7 +76,7 @@ export class ReplayChunkTransport{
       this.phase='ready';
       return {status:'ready',sample:this.sampleValue};
     }catch(error){
-      if(this.phase==='closed')return {status:'closed'};
+      if(this.status==='closed')return {status:'closed'};
       if(version!==this.serial)return {status:'superseded'};
       this.phase='error';
       this.sampleValue=null; // Never continue displaying a stale “truth” film.
