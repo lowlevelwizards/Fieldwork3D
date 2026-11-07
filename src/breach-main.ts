@@ -4284,6 +4284,7 @@ function seekReplay(t:number){
   if(replayQuickVideo.active)replayQuickVideo.stop();
   stopReplaySounds();
   replayTime=Math.max(0,Math.min(recorder.duration,t));
+  stage?.resetReplayBodycamSmoothing();
   applyReplayFrameAt(replayTime);advanceReplayCamera(0,true);
   if(!ui.replayFeed.hidden)renderReplayEventFeed();
   updateReplayHud();
@@ -4478,7 +4479,7 @@ function renderReplayDebrief():void{
   const stalls=buildReplayExecutionInsights(recorder.executionEvents,
     recorder.duration,5).filter(x=>
       (!replayContactObserverId||x.actor===replayContactObserverId)&&
-      (x.end===null||(x.seconds??0)>=.75))
+      (x.end===null||(x.seconds??0)>=2))
     .slice(0,2);
   const fragment=document.createDocumentFragment();
   for(const incident of replayFeaturedIncidents){
@@ -5565,7 +5566,7 @@ ui.replayDirectDirector.addEventListener('click',()=>{
   if(viewMode!=='iso'&&stage)cameraMode('iso');
   replayCameraMode=replayCameraMode==='director'?'free':'director';
   replayFollow=false;
-  advanceReplayCamera(0,true);updateReplayHud();
+  advanceReplayCamera(1/60,false);updateReplayHud();
 });
 ui.replayDirectBodycam.addEventListener('click',()=>{
   if(replayBodycamOn){
