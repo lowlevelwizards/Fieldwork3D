@@ -4811,8 +4811,10 @@ function updateReplayHud(){
   ui.replayDirectDirector.setAttribute('aria-pressed',
     String(replayCameraMode==='director'));
   const canBodycam=!!stage&&replayBodycamObservers.includes(replayFollowId);
-  ui.replayDirectBodycam.hidden=!replayBodycamOn&&
-    (replayCameraMode!=='operator'||!canBodycam);
+  ui.replayDirectBodycam.hidden=!replayBodycamOn&&replayCameraMode!=='operator';
+  ui.replayDirectBodycam.title=canBodycam?
+    'Reconstructed operator camera from recorded observation evidence':
+    'This replay lacks recorded personal sight evidence for this operator';
   ui.replayDirectBodycam.disabled=!replayBodycamOn&&!canBodycam;
   ui.replayDirectBodycam.setAttribute('aria-pressed',String(replayBodycamOn));
   ui.replayDirectBodycam.textContent=replayBodycamOn?'EXIT BODYCAM':'BODYCAM';
@@ -5566,8 +5568,11 @@ ui.replayDirectDirector.addEventListener('click',()=>{
   advanceReplayCamera(0,true);updateReplayHud();
 });
 ui.replayDirectBodycam.addEventListener('click',()=>{
-  if(replayBodycamOn)stopReplayBodycam();
-  else{
+  if(replayBodycamOn){
+    const returnId=replayFollowId;
+    stopReplayBodycam();
+    followReplayOperator(returnId);
+  }else{
     if(replayCameraMode!=='operator'||
       !replayBodycamObservers.includes(replayFollowId))return;
     replayContactObserverId=replayFollowId;
