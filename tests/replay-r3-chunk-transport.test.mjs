@@ -95,3 +95,42 @@ test('G4a fails closed on corrupt chunks and rejects unsafe clock inputs',async(
   assert.equal(b.status,'error');
   assert.equal(b.current,null);
 });
+
+test('G5a 12k-frame random-access stress stays within three decoded chunks',async()=>{
+  // Host structural stress only; intentionally not an iPhone FPS claim.
+  // The underlying synthetic source demonstrates correctness and residency,
+  // not yet an incremental recorder or real-world replay disk footprint.
+  const count=12000,film=Array.from({length:count},(_,i)=>({
+    t:i*.05,actors:[{sampleIndex:i}],doors:[]
+  }));
+  const index=new ReplayFrameChunkIndex(film,400),loads=[];
+  const cache=new ReplayChunkWindow(index.chunks,async i=>{
+    loads.push(i);
+    const b=index.chunks[i];
+    return film.slice(b.first,b.endExclusive);
+  },{maxFramesPerChunk:400,maxResidentChunks:3});
+  const view=new ReplayChunkTransport({window:cache,summary:{
+    boundaries:index.chunks,sidecar:{completeness:{
+      complete:true,truncatedAt:null,reason:null
+    }}
+  }});
+  assert.equal(index.chunks.length,30);
+  for(let turn=0;turn<310;turn++){
+    // Full-length, nonmonotonic seeks to force real cache evictions.
+    const i=(turn*6173+173)%11999;
+    const time=(i+.43)*.05;
+    const result=await view.seek(time);
+    assert.equal(result.status,'ready');
+    assert.equal(result.sample.previous.actors[0].sampleIndex,i);
+    assert.equal(result.sample.next.actors[0].sampleIndex,i+1);
+    assert.ok(cache.residentCount<=3,
+      'Replay cache exceeded bounded resident chunk budget');
+    assert.ok(cache.residentIndices.every(n=>n>=0&&n<30));
+  }
+  assert.ok(loads.length<=310*2,
+    'Each seek must touch at most its two adjacent historical chunks');
+  assert.ok(loads.length>25,'Stress should exercise actual cache eviction');
+  assert.equal(view.status,'ready');
+  view.close();
+  assert.equal(view.residentChunks<=3,true);
+});
