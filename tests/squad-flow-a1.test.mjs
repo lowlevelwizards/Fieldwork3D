@@ -61,7 +61,7 @@ test('A1: retreat, inactive actors and different factions remain unrestricted',(
 test('A1: four same-lane operators preserve individual authored destinations',()=>{
  const members=[
   actor('one',64,113),actor('two',64,90),
-  actor('three',64,66),actor('four',64,42)
+  actor('three',64,66),actor('four',64,38)
  ];
  const old=structuredClone(members);
  const intended=members.map(a=>at(a.p.x,a.p.y+5));
