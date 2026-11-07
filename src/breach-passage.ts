@@ -156,6 +156,60 @@ function tooCloseToLeader(actor:PassageActor,others:readonly PassageActor[],
  }
  return false;
 }
+/** A0/A1: preserve partial forward travel when a full fixed-tick step
+ * would collapse a same-direction convoy gap. Returning a shorter proposed
+ * step is not a movement commit: the existing passage lease, geometry sweep,
+ * opposing-body authority and authored order remain unchanged.
+ *
+ * A 20-unit gap with 0.8 units of available travel should result in an
+ * 0.8-unit step, not a full-stop followed by another acceleration ramp.
+ * The tiny numerical reserve keeps the regular passageWait() gate stable.
+ */
+export function passageFollowerStep(actor:PassageActor,doors:readonly Door[],
+ actors:readonly PassageActor[],intendedStep:Pt):Pt{
+ if(!actor.active||actor.health<=0||!actor.goal||
+    distance(actor.p,intendedStep)<1e-6)return intendedStep;
+ let fraction=1;
+ const seen=new Set<string>();
+ for(const door of doors){
+  if(distance(door.a,door.b)>60)continue;
+  const cluster=passageCluster(door,doors);
+  const key=cluster.map(d=>d.id).join('+');
+  if(seen.has(key))continue;
+  seen.add(key);
+  if(!seeksPassage(actor,cluster,doors))continue;
+  const relevant=actors.filter(a=>
+   a.id!==actor.id&&a.active&&a.health>0&&
+   (!actor.side||!a.side||a.side===actor.side)&&
+   (a.blockedTime<1.5||insidePassage(a,cluster)||
+    cluster.some(d=>inDoorway(a,d)))&&
+   seeksPassage(a,cluster,doors));
+  for(const aperture of cluster){
+   const heading=travelSign(actor,aperture);
+   if(!heading)continue;
+   const advance=(side(intendedStep,aperture)-
+     side(actor.p,aperture))*heading;
+   // Reversing, stepping out of the queue or stopping is never restrained.
+   if(advance<=.025)continue;
+   for(const other of relevant){
+    if(!sameQueueLane(actor,other,aperture)||
+       travelSign(other,aperture)!==heading)continue;
+    const ahead=(side(other.p,aperture)-side(actor.p,aperture))*heading;
+    if(ahead<=0)continue;
+    // A genuinely separate full-body lane stays free of queue throttling.
+    if(!sameQueueLane({...actor,p:intendedStep},other,aperture)&&
+       distance(intendedStep,other.p)>=PASSAGE_FOLLOW_GAP)continue;
+    const remaining=Math.max(0,ahead-PASSAGE_FOLLOW_GAP-.04);
+    fraction=Math.min(fraction,remaining/advance);
+   }
+  }
+ }
+ if(fraction>=1)return intendedStep;
+ const f=Math.max(0,Math.min(1,fraction));
+ return {x:actor.p.x+(intendedStep.x-actor.p.x)*f,
+  y:actor.p.y+(intendedStep.y-actor.p.y)*f};
+}
+
 /** The exclusive lease is still meaningful for *opposing* streams. Let
  * everyone approach the threshold first, then stop the non-owner just
  * outside the mouth. People already moving out of the aperture must never
