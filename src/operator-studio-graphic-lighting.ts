@@ -154,6 +154,30 @@ export function ensureStudioPieceGradient(geometry:THREE.BufferGeometry):boolean
   new THREE.BufferAttribute(values,1));
  return true;
 }
+/** A planar voxel face must not turn into an entirely white slab just
+ * because its normal is near-grazing. Supply per-geometry local bounds to
+ * the material shader so it can keep highlights on the actual face rim.
+ * No new geometry, extra draw calls, or camera-facing outline hulls. */
+export function ensureStudioRimBounds(geometry:THREE.BufferGeometry):boolean{
+ const position=geometry.getAttribute('position');
+ if(!position||position.itemSize<3)return false;
+ const min=geometry.getAttribute('fieldworkRimBoundsMin');
+ const max=geometry.getAttribute('fieldworkRimBoundsMax');
+ if(min?.count===position.count&&max?.count===position.count)return true;
+ if(!geometry.boundingBox)geometry.computeBoundingBox();
+ const bounds=geometry.boundingBox;
+ if(!bounds||bounds.isEmpty())return false;
+ const a=new Float32Array(position.count*3);
+ const b=new Float32Array(position.count*3);
+ for(let i=0;i<position.count;i++){
+  const index=i*3;
+  a[index]=bounds.min.x;a[index+1]=bounds.min.y;a[index+2]=bounds.min.z;
+  b[index]=bounds.max.x;b[index+1]=bounds.max.y;b[index+2]=bounds.max.z;
+ }
+ geometry.setAttribute('fieldworkRimBoundsMin',new THREE.BufferAttribute(a,3));
+ geometry.setAttribute('fieldworkRimBoundsMax',new THREE.BufferAttribute(b,3));
+ return true;
+}
 export function injectStudioGraphicLighting(
  shader:{vertexShader:string;fragmentShader:string},
  opts:{rim:StudioLightLabSettings['rim'];hard:boolean;
@@ -172,10 +196,18 @@ export function injectStudioGraphicLighting(
  const partHeader=piece?
   'attribute float fieldworkPieceHeight;\nvarying float vFWPieceHeight;\n':'';
  const partBody=piece?'vFWPieceHeight=fieldworkPieceHeight;\n':'';
- shader.vertexShader=partHeader+
+ const rimVertexHeader=litRim?
+  'attribute vec3 fieldworkRimBoundsMin;\n'+
+  'attribute vec3 fieldworkRimBoundsMax;\n'+
+  'varying vec3 vFWRimBoundsMin;\nvarying vec3 vFWRimBoundsMax;\n':'';
+ const rimVertexBody=litRim?
+  'vFWRimBoundsMin=fieldworkRimBoundsMin;\n'+
+  'vFWRimBoundsMax=fieldworkRimBoundsMax;\n':'';
+ shader.vertexShader=partHeader+rimVertexHeader+
   'varying vec3 vFWArtLocal;\nvarying float vFWArtHeight;\n'+
   shader.vertexShader.replace(begin,begin+'\nvFWArtLocal=position;\n'+
-   'vFWArtHeight=(modelMatrix*vec4(position,1.0)).y;\n'+partBody);
+   'vFWArtHeight=(modelMatrix*vec4(position,1.0)).y;\n'+
+   partBody+rimVertexBody);
  let effect='';
  if(piece){
   // Reweighted luminance, never a strong violet wash. The dusty variant
@@ -208,6 +240,23 @@ export function injectStudioGraphicLighting(
    float fwGrazing=1.0-abs(dot(fwNormal,fwView));
    float fwEdgeWidth=max(fwidth(fwGrazing)*.8,.006);
    float fwEdge=smoothstep(.67-fwEdgeWidth,.71+fwEdgeWidth,fwGrazing);
+   // For boxy, flat-shaded geometry the Fresnel value is identical at
+   // every pixel of a face. Approximate its border by taking the second
+   // smallest distance to that mesh's three local bounding-box planes:
+   // one coordinate is always on the face plane, another becomes small
+   // only near an actual side edge. Prevents giant white helmet slabs.
+   vec3 fwBoundDist=max(vec3(0.0),min(
+    vFWArtLocal-vFWRimBoundsMin,vFWRimBoundsMax-vFWArtLocal));
+   float fwSmall=min(fwBoundDist.x,min(fwBoundDist.y,fwBoundDist.z));
+   float fwLarge=max(fwBoundDist.x,max(fwBoundDist.y,fwBoundDist.z));
+   float fwSecond=fwBoundDist.x+fwBoundDist.y+fwBoundDist.z-
+    fwSmall-fwLarge;
+   vec3 fwSpan=vFWRimBoundsMax-vFWRimBoundsMin;
+   float fwLineWidth=clamp(min(fwSpan.x,min(fwSpan.y,fwSpan.z))*
+    .10,.18,.58);
+   float fwGeometricEdge=1.0-smoothstep(fwLineWidth*.40,
+    fwLineWidth*1.45,fwSecond);
+   fwEdge*=fwGeometricEdge;
    float fwFacesKey=smoothstep(.03,.20,dot(fwNormal,fwKey));
    float fwDirect=dot(reflectedLight.directDiffuse,vec3(.2126,.7152,.0722));
    float fwReceivedLight=smoothstep(.012,.065,fwDirect);
@@ -222,8 +271,10 @@ export function injectStudioGraphicLighting(
   `;
  }
  const rimHeader=litRim?'uniform float fieldworkRimStrength;\n':'';
+ const rimFragmentHeader=litRim?
+  'varying vec3 vFWRimBoundsMin;\nvarying vec3 vFWRimBoundsMax;\n':'';
  const pieceFrag=piece?'varying float vFWPieceHeight;\n':'';
- shader.fragmentShader=rimHeader+pieceFrag+
+ shader.fragmentShader=rimHeader+rimFragmentHeader+pieceFrag+
   'varying vec3 vFWArtLocal;\nvarying float vFWArtHeight;\n'+
   shader.fragmentShader.replace(opaque,effect+opaque);
  // Three r180's MeshToon/Standard sources include shadowmap_pars_fragment
@@ -383,7 +434,8 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
   const gradient=(config.gradient==='piece'||
    config.gradient==='piece-rose')&&!studioPieceGradientEligible(node)?
    'current':config.gradient;
-  const litRim=rimOn&&studioContourEligible(node,src);
+  const litRim=rimOn&&studioContourEligible(node,src)&&
+   ensureStudioRimBounds(node.geometry);
   // With rim-only preview, leave cloth/skin/soft gear on exact source
   // materials. Avoid needless shader variants on unrelated mesh surfaces.
   if(config.toon===0&&gradient==='current'&&!litRim&&
