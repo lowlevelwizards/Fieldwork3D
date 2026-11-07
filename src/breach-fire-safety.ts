@@ -28,13 +28,14 @@ export function assessFireLane(from:Pt,muzzleHeight:number,to:Pt,
       const px=p.x-from.x,py=p.y-from.y;
       const along=px*ux+py*uy;
       const across=Math.abs(px*uy-py*ux);
-      // The first 12 world units after the muzzle used to be a blind
-      // zone: a teammate immediately ahead of the barrel could occupy the
-      // actual outgoing shot corridor without vetoing ignition. The shooter
-      // is already excluded by the caller; protect the whole forward ray,
-      // including point-blank overlapping squad positions. Teammates behind
-      // the muzzle or outside the physical corridor do not block a shot.
-      if(along>=0&&along<total-8&&across<10.5)
+      // Treat a teammate as a physical disk against the COMPLETE outgoing
+      // segment. Testing only its center beyond the muzzle previously
+      // missed bodies overlapping the first 12 units; it also missed body
+      // edges touching the muzzle or target even with centers just outside
+      // the segment. The shooter is excluded by the caller.
+      const nearest=Math.max(0,Math.min(total,along));
+      const axial=along-nearest;
+      if(axial*axial+across*across<10.5*10.5)
         return {blocker:'friendly',point:p};
     }
   }
