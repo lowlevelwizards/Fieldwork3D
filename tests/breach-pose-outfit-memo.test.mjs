@@ -19,6 +19,7 @@ test('UOP garment cache is stable across time and reacts to in-place kit editing
    armorStyle:'plate-jpc',rigStyle:'no-rig',top:'bdu-shirt'}};
  let kit=initialEquipmentLoadout('carbine');
  kit=setEquipmentChoice(kit,'armor','armor-carrier');
+ kit=setEquipmentChoice(kit,'rig','rig-none');
  const configuration=selectWeaponFamilyPreset(
    initialWeaponConfiguration('carbine'),'ar-m4a1');
  const state={x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
@@ -39,13 +40,18 @@ test('UOP garment cache is stable across time and reacts to in-place kit editing
   assert.equal(rig.root.userData.lowReadyPoseReport?.armor,'plate-jpc');
   // Mutate the exact same wardrobe object (normal Studio behavior).
   wardrobe.styles.armorStyle='plate-heavy';
-  wardrobe.styles.rigStyle='full-chest';
   wardrobe.styles.top='smock-jacket';
   poseOperator(rig,{...state,seconds:2},0);
   const changed=rig.root.userData.lowReadyPoseReport;
   assert.equal(changed?.armor,'plate-heavy');
-  assert.equal(changed?.rig,'full-chest');
+  assert.equal(changed?.rig,'no-rig');
   assert.equal(changed?.top,'smock-jacket');
+  // An actual full rig must also be present; Wardrobe cosmetics cannot
+  // invent equipment that was not equipped by the authoritative loadout.
+  const fullKit=setEquipmentChoice(kit,'rig','rig-full');
+  wardrobe.styles.rigStyle='full-chest';
+  poseOperator(rig,{...state,equipment:fullKit,seconds:2.5},0);
+  assert.equal(rig.root.userData.lowReadyPoseReport?.rig,'full-chest');
   wardrobe.styles.armorStyle='plate-jpc';
   wardrobe.styles.rigStyle='no-rig';
   wardrobe.styles.top='bdu-shirt';
