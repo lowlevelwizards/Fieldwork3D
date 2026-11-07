@@ -51,8 +51,13 @@ export function weaponSilhouetteParts(id:WeaponId):readonly Part[]{return PARTS[
 export function buildWeaponSilhouette(id:WeaponId,
  steel:THREE.Material,dark:THREE.Material,
  config?:WeaponConfiguration):THREE.Group{
- const familyBuild=config?.weapon===id?
-  readWeaponFamilyBuild(config.build,id):undefined;
+ // No class-only placeholder silhouette may appear in live play or replay.
+ // Keep the category as a ballistics tier, never an obsolete 3D model.
+ const fallback=id==='smg'?'hk-mp5a3':
+  id==='rifle'?'ar-m16a2':id==='carbine'?'ar-m4a1':null;
+ const familyBuild=(config?.weapon===id?
+  readWeaponFamilyBuild(config.build,id):undefined) ??
+  (fallback?initialWeaponFamilyBuild(fallback):undefined);
  if(familyBuild){
   const root=buildModularWeaponSilhouette(familyBuild,steel,dark,
    !config||config.slots.muzzle==='muzzle-bare');
