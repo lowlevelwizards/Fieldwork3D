@@ -38,9 +38,17 @@ export function entryLanes(door:Door,from:Pt,count:number,
     if(chosen)break;
    }
    if(!chosen)break;
-   const look={x:chosen.x+inward.x*84+tangent.x*sign*70,
-    y:chosen.y+inward.y*84+tangent.y*sign*70};
-   slots.push({point:chosen,look,side:sign<0?'left':'right',depth});
+   // When geometry blocks the preferred flank, this slot can land on
+   // the opposite side. The clearing sector MUST follow its real position,
+   // not the requested alternating index (which would point across a
+   // teammate and leave the occupied flank unwatched).
+   const lateral=(chosen.x-center.x)*tangent.x+
+     (chosen.y-center.y)*tangent.y;
+   const assignedSign=Math.abs(lateral)>.01?Math.sign(lateral):sign;
+   const look={x:chosen.x+inward.x*84+tangent.x*assignedSign*70,
+    y:chosen.y+inward.y*84+tangent.y*assignedSign*70};
+   slots.push({point:chosen,look,
+    side:assignedSign<0?'left':'right',depth});
   }
   // A row of positions on a two-unit line is not a four-person entry.
   const laterals=slots.map(s=>(s.point.x-center.x)*tangent.x+
