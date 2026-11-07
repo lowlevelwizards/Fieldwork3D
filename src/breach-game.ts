@@ -111,8 +111,8 @@ import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
   from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
   from './breach-squeeze-route.ts';
-import {probeObstacleCrossing,probeWindowCrossing,
-  canOpenWindowForClimb,preferTraversal,sampleTraversal,
+import {probeObstacleCrossing,probeWindowCrossing,probeWindowPortalRoute,
+  canOpenWindowForClimb,preferTraversal,sampleTraversal,traversalRouteLength,
   traversalStepClear,type TraverseOpportunity}
   from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
@@ -594,33 +594,39 @@ export const canEdit=(s:Session)=>s.phase==='planning';
  * validation runs again at execution; hidden furniture isn't exposed by
  * an unexplained path preview or a shortcut through a closed window.
  */
-function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
- const visible=s.coverState.filter((_,i)=>s.intel.cover.has(i));
- const world={
-   cover:visible,walls:WALLS.filter((_,i)=>s.intel.walls.has(i)),
-   doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
-   // Planning is allowed to expect the operator to OPEN a known standard
-   // sash on arrival, not reject the entire move because it starts closed.
-   // Nothing hidden becomes eligible; the authoritative motor rechecks it.
-   windows:s.windows.filter(w=>s.intel.cover.has(s.coverState.findIndex(o=>
-      (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
-      Math.hypot(o.x-w.x,o.y-w.y)<1))).map(w=>
-        canOpenWindowForClimb(w)?{...w,open:true}:w),
-   canStand:(at:Pt)=>intelPassable(at,s.intel)
+function knownWindowWorld(s:Session){
+ const cover=s.coverState.filter((_,i)=>s.intel.cover.has(i));
+ return {
+  cover,walls:WALLS.filter((_,i)=>s.intel.walls.has(i)),
+  doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
+  windows:s.windows.filter(w=>s.intel.cover.has(s.coverState.findIndex(o=>
+    (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
+    Math.hypot(o.x-w.x,o.y-w.y)<1))).map(w=>
+      canOpenWindowForClimb(w)?{...w,open:true}:w),
+  canStand:(at:Pt)=>intelPassable(at,s.intel)
  };
- const ordinaryCrossing=probeObstacleCrossing(from,to,world);
- if(ordinaryCrossing)return true;
- const windowCrossing=probeWindowCrossing(from,to,world);
- if(!windowCrossing)return false;
- // A crossable pane alone is not a route. Both feet-on-ground connectors
- // must also be reachable under the player's known world geometry.
- return !!routeWithSqueezeIntel(s.intel,from,windowCrossing.approach).length&&
-   !!routeWithSqueezeIntel(s.intel,windowCrossing.landing,to).length;
+}
+/** Preview only known, reachable window portals; never infer hidden rooms. */
+export function plannedWindowRoute(s:Session,from:Pt,to:Pt,
+ ordinary:readonly Pt[]=routeWithSqueezeIntel(s.intel,from,to)):Pt[]|null{
+ const world=knownWindowWorld(s);
+ if(!world.windows.length)return null;
+ const portal=probeWindowPortalRoute(from,to,world,
+   (a,b)=>routeWithSqueezeIntel(s.intel,a,b));
+ if(!portal||ordinary.length&&portal.duration+.12>=
+   traversalRouteLength(from,ordinary)/53)return null;
+ return [...portal.approachPath,portal.crossing.landing,...portal.exitPath];
+}
+function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
+ const world=knownWindowWorld(s);
+ return !!probeObstacleCrossing(from,to,world)||
+   !!probeWindowPortalRoute(from,to,world,
+     (a,b)=>routeWithSqueezeIntel(s.intel,a,b));
 }
 const legalMoveRoute=(s:Session,from:Pt,to:Pt):Pt[]=>{
  const ordinary=routeWithSqueezeIntel(s.intel,from,to);
- return ordinary.length?ordinary:
-   knownTraversal(s,from,to)?[to]:[];
+ return plannedWindowRoute(s,from,to,ordinary)??(
+   ordinary.length?ordinary:knownTraversal(s,from,to)?[to]:[]);
 };
 
 export const finalPoint=(a:TeamActor)=>lastPoint(a.p,a.plan);
@@ -1770,19 +1776,22 @@ const traversalFitness=(a:TeamActor)=>({
 function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
  const world=traversalWorld(s,a);
  const fit=traversalFitness(a);
- const op=probeObstacleCrossing(a.p,goal,world,fit)||
-   probeWindowCrossing(a.p,goal,{
-     ...world,
-     windows:world.windows.map(w=>
-       canOpenWindowForClimb(w)?{...w,open:true}:w)
-   },fit);
- if(!op||!s.intel.cover.has(op.obstacleIndex))return null;
- if(op.windowId&&!routeWithSqueezeWorld(op.landing,goal,s.doors).length)
-   return null;
  const ordinary=routeWithSqueezeIntel(s.intel,a.p,goal);
- if(!preferTraversal(a.p,goal,op,ordinary))return null;
+ const portal=probeWindowPortalRoute(a.p,goal,{
+   ...world,
+   windows:world.windows.map(w=>
+     canOpenWindowForClimb(w)?{...w,open:true}:w)
+ },(from,to)=>routeWithSqueezeWorld(from,to,s.doors),fit);
+ if(portal&&s.intel.cover.has(portal.crossing.obstacleIndex)&&
+     (!ordinary.length||portal.duration+.12<
+      traversalRouteLength(a.p,ordinary)/53))
+   return {op:portal.crossing,approachPath:portal.approachPath};
+ const op=probeObstacleCrossing(a.p,goal,world,fit);
+ if(!op||!s.intel.cover.has(op.obstacleIndex)||
+    !preferTraversal(a.p,goal,op,ordinary))return null;
  const approachPath=routeWithSqueezeWorld(a.p,op.approach,s.doors);
- return approachPath.length?{op,approachPath}:null;
+ return approachPath.length?{op,approachPath}:
+   d(a.p,op.approach)<3?{op,approachPath:[op.approach]}:null;
 }
 function tickTraversal(a:TeamActor,s:Session,dt:number):boolean{
  const op=a.traversal;
@@ -1864,8 +1873,11 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       }
     }
     const world=traversalWorld(s,a),fit=traversalFitness(a);
-    const validated=probeObstacleCrossing(a.p,p,world,fit)||
-      probeWindowCrossing(a.p,p,world,fit);
+    // Validate the LOCAL aperture, not the distant waypoint.
+    // Window probes intentionally reject spans greater than 180 units.
+    const validated=planned.windowId?
+      probeWindowCrossing(a.p,planned.landing,world,fit):
+      probeObstacleCrossing(a.p,p,world,fit);
     if(validated&&validated.obstacleIndex===planned.obstacleIndex&&
        d(validated.landing,planned.landing)<5&&
        d(validated.approach,a.p)<4){
