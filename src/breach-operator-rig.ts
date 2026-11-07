@@ -163,6 +163,8 @@ export type OperatorRig={
   /** Authoritative, old motor yaw; a tactical heading is never remapped. */
   legacyYaw:number;legacyPitch:number;legacyRoll:number;
   hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
+  /** Empty mount anchors; no extra render geometry, physics, or IK. */
+  bodycamChest:THREE.Object3D;bodycamHelmet:THREE.Object3D;
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
   detachedMagazine:THREE.Group;
@@ -318,6 +320,19 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   for(const mesh of [...rigPouches,beltPouch,medicalPouch,
     radioUnit,flashCanister,utilityTool])mesh.visible=false;
   head.position.y=10;
+  // Anatomical mount offsets use the legacy local +X-forward frame.
+  // Camera sampling happens AFTER the historical pose is reconstructed.
+  const bodycamChest=new THREE.Object3D();
+  bodycamChest.name='fieldwork-replay-bodycam-chest';
+  bodycamChest.position.set(9.5,1.4,0);
+  chest.add(bodycamChest);
+  const bodycamHelmet=new THREE.Object3D();
+  bodycamHelmet.name='fieldwork-replay-bodycam-helmet';
+  // Brow-height mount stays clear of the standard 42-unit roof underside.
+  // The older top-of-helmet position sat inside the ceiling and obscured
+  // most of the first-person screen in actual iPhone screenshots.
+  bodycamHelmet.position.set(8.5,2.4,0);
+  head.add(bodycamHelmet);
   // Faces and necks are real receiving surfaces for projected hat/collar
   // shadows, independent of the skin tint shared by arms and hands.
   const faceSkin=skin.clone(),neckSkin=skin.clone();
@@ -420,6 +435,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
       colors.set(obj.material,obj.material.color.clone());
   });
   return {root,camoIdentity:id,legacyFrame,headCanonicalFrame,
+    bodycamChest,bodycamHelmet,
     legacyYaw:0,legacyPitch:0,legacyRoll:0,
     hip,chest,head,weapon,droppedGun,feet,arms,pack,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
