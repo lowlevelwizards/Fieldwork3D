@@ -55,18 +55,26 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
   const base=assemble(fixture);
   const original=createOperatorRig('v3-old-'+fixture.id,'blue',true);
   const candidate=createOperatorRig('v3-new-'+fixture.id,'blue',true);
+  const reloadReference=createOperatorRig('v3-reload-idle-'+fixture.id,'blue',true);
   try{
    for(const [i,scenario] of scenarios.entries()){
     const {name,...state}=scenario;
     const pose={...base,...state,seconds:2+i*.21};
     poseOperator(original,pose,0);
     poseOperator(candidate,{...pose,poseV3Preview:true},0);
+    if(state.reload>0)poseOperator(reloadReference,
+      {...pose,reload:0,poseV3Preview:true},0);
     original.root.updateMatrixWorld(true);
     candidate.root.updateMatrixWorld(true);
+    reloadReference.root.updateMatrixWorld(true);
     const visualOrigin=candidate.weapon.getWorldPosition(new THREE.Vector3());
-    const baselineOrigin=original.weapon.getWorldPosition(new THREE.Vector3());
+    // Reloads begin from V3's validated idle grip, NOT the older generic
+    // renderer. Measure only the temporary reload manipulation relative
+    // to that exact starting grip, keeping the same .21 rad cant budget.
+    const baseline=state.reload>0?reloadReference:original;
+    const baselineOrigin=baseline.weapon.getWorldPosition(new THREE.Vector3());
     const visualRotation=candidate.weapon.getWorldQuaternion(new THREE.Quaternion());
-    const baselineRotation=original.weapon.getWorldQuaternion(new THREE.Quaternion());
+    const baselineRotation=baseline.weapon.getWorldQuaternion(new THREE.Quaternion());
     if(state.reload>0){
      // Only the non-firing reload presentation may cant for magazine access.
      // The ballistic authoritative muzzle remains untouched.
@@ -129,7 +137,7 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
      }
     }
    }
-  }finally{original.dispose();candidate.dispose();}
+  }finally{original.dispose();candidate.dispose();reloadReference.dispose();}
  }
  assert.equal(clear+unresolved,fixtures.length*scenarios.length*2);
  console.log('POSE-V3-ACTION-MATRIX',JSON.stringify({clear,unresolved,
