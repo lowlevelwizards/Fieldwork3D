@@ -110,56 +110,56 @@ export function injectStudioGraphicLighting(
   return;
  }
  const partHeader=piece?
-  'attribute float fieldworkPieceHeight;\\nvarying float vFWPieceHeight;\\n':'';
- const partBody=piece?'vFWPieceHeight=fieldworkPieceHeight;\\n':'';
+  'attribute float fieldworkPieceHeight;\nvarying float vFWPieceHeight;\n':'';
+ const partBody=piece?'vFWPieceHeight=fieldworkPieceHeight;\n':'';
  shader.vertexShader=partHeader+
-  'varying vec3 vFWArtLocal;\\nvarying float vFWArtHeight;\\n'+
-  shader.vertexShader.replace(begin,begin+'\\nvFWArtLocal=position;\\n'+
-   'vFWArtHeight=(modelMatrix*vec4(position,1.0)).y;\\n'+partBody);
+  'varying vec3 vFWArtLocal;\nvarying float vFWArtHeight;\n'+
+  shader.vertexShader.replace(begin,begin+'\nvFWArtLocal=position;\n'+
+   'vFWArtHeight=(modelMatrix*vec4(position,1.0)).y;\n'+partBody);
  let effect='';
  if(piece){
   effect+=
-   'float fwPieceLower=1.0-smoothstep(.02,.98,vFWPieceHeight);\\n'+
+   'float fwPieceLower=1.0-smoothstep(.02,.98,vFWPieceHeight);\n'+
    'outgoingLight=mix(outgoingLight,'+
    'outgoingLight*vec3(.43,.46,.79)+vec3(.012,.009,.042),'+
-   'fwPieceLower*.85);\\n';
+   'fwPieceLower*.85);\n';
  }else if(violet){
   const noir=gradient==='violet-noir';
   effect+=
-   'float fwLower=1.0-smoothstep(3.0,39.0,vFWArtHeight);\\n'+
+   'float fwLower=1.0-smoothstep(3.0,39.0,vFWArtHeight);\n'+
    'outgoingLight=mix(outgoingLight,'+
    (noir?
     'outgoingLight*vec3(.36,.33,.78)+vec3(.014,.007,.064),fwLower*.90':
     'outgoingLight*vec3(.49,.46,.86)+vec3(.025,.015,.065),fwLower*.76')+
-   ');\\n';
+   ');\n';
  }
  if(rim==='dual'){
   // Two subtle layers, capped by the LIVE Rim Amount uniform. The earlier
   // bright .58/.90 blends made broad metallic surfaces appear bleached out.
   effect+=
-   'float fwFacing=abs(dot(normalize(normal),normalize(vViewPosition)));\\n'+
-   'float fwEdge=1.0-clamp(fwFacing,0.0,1.0);\\n'+
-   'vec3 fwCells=floor(vFWArtLocal/3.3);\\n'+
-   'float fwPattern=fract(dot(fwCells,vec3(.357,.619,.173)));\\n'+
-   'float fwWarm=step(.70,fwEdge)*step(.38,fwPattern);\\n'+
+   'float fwFacing=abs(dot(normalize(normal),normalize(vViewPosition)));\n'+
+   'float fwEdge=1.0-clamp(fwFacing,0.0,1.0);\n'+
+   'vec3 fwCells=floor(vFWArtLocal/3.3);\n'+
+   'float fwPattern=fract(dot(fwCells,vec3(.357,.619,.173)));\n'+
+   'float fwWarm=step(.70,fwEdge)*step(.38,fwPattern);\n'+
    'outgoingLight=mix(outgoingLight,vec3(.94,.78,.61),'+
-    'fwWarm*fieldworkRimStrength*.64);\\n';
+    'fwWarm*fieldworkRimStrength*.64);\n';
   if(hard){
    effect+=
     'vec3 fwKey=normalize((viewMatrix*vec4('+
-     'vec3(.46,.88,.07),0.0)).xyz);\\n'+
-    'float fwProjected=smoothstep(-.25,.42,dot(normalize(normal),fwKey));\\n'+
-    'float fwWhite=step(.82,fwEdge)*step(.46,fwPattern)*fwProjected;\\n'+
+     'vec3(.46,.88,.07),0.0)).xyz);\n'+
+    'float fwProjected=smoothstep(-.25,.42,dot(normalize(normal),fwKey));\n'+
+    'float fwWhite=step(.82,fwEdge)*step(.46,fwPattern)*fwProjected;\n'+
     'outgoingLight=mix(outgoingLight,vec3(1.15,1.13,1.09),'+
-     'fwWhite*fieldworkRimStrength*.72);\\n';
+     'fwWhite*fieldworkRimStrength*.72);\n';
   }
  }else if(rim==='hard'||rim==='pixel'){
   injectOperatorRim(shader,rim);
  }
- const rimHeader=rim==='dual'?'uniform float fieldworkRimStrength;\\n':'';
- const pieceFrag=piece?'varying float vFWPieceHeight;\\n':'';
+ const rimHeader=rim==='dual'?'uniform float fieldworkRimStrength;\n':'';
+ const pieceFrag=piece?'varying float vFWPieceHeight;\n':'';
  shader.fragmentShader=rimHeader+pieceFrag+
-  'varying vec3 vFWArtLocal;\\nvarying float vFWArtHeight;\\n'+
+  'varying vec3 vFWArtLocal;\nvarying float vFWArtHeight;\n'+
   shader.fragmentShader.replace(opaque,effect+opaque);
 }
 
