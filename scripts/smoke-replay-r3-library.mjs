@@ -81,7 +81,7 @@ try{
   check(dialog.top>=0&&dialog.bottom<=844&&dialog.width<=390,
     'Mobile library exceeds screen: '+JSON.stringify(dialog));
   check(!dialog.backdrop,'Library must block underlying battlefield interaction');
-  await page.locator('.replay-library-row button[aria-label="Favorite replay"]').click();
+  await page.locator('.replay-library-row button[aria-label^="Favorite "]').click();
   await page.waitForFunction(()=>
     document.querySelector('.replay-library-row button[aria-pressed="true"]'));
   await page.locator('.replay-library-row button').first().click();
@@ -96,13 +96,16 @@ try{
   await page.evaluate(()=>document.querySelector('#replayExit').click());
   check(await page.evaluate(()=>document.querySelector('#replayPanel').hidden),
     'Exiting imported replay should restore the previous live mission');
-  await page.evaluate(()=>document.querySelector('#openReplayLibrary').click());
+  check(await page.locator('#replayLibraryDialog').isVisible(),
+    'Saved replay must return to the library after exit');
   await page.waitForFunction(()=>
+    document.querySelector('#replayLibraryDialog')?.hidden===false&&
     document.querySelectorAll('.replay-library-row').length===1,
     null,{timeout:12000});
   // Full portable archive transfer must keep the same site, film and mark.
   const downloadPromise=page.waitForEvent('download',{timeout:20000});
-  await page.locator('.replay-library-row button').filter({hasText:'EXPORT'}).click();
+  await page.locator('.replay-library-row .replay-library-actions summary').first().click();
+  await page.locator('.replay-library-actions-list button').filter({hasText:'EXPORT'}).click();
   const download=await downloadPromise;
   check(download.suggestedFilename().endsWith('.fieldwork-replay.json.gz'),
     'Portable export must use the versioned replay extension');
@@ -126,6 +129,7 @@ try{
     transferred.duration===.1,
     'Portable replay import lost site, film duration or bookmarks: '+
     JSON.stringify(transferred));
+  await page.locator('.replay-library-row .replay-library-actions summary').first().click();
   await page.locator('.replay-library-row button[aria-label^="Delete replay"]')
     .first().click();
   check((await page.locator('.replay-library-row button[data-confirm="yes"]')
