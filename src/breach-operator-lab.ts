@@ -1746,9 +1746,13 @@ function draw(){
     (report?.fittingYaw??0)+(report?.torsoAssistYaw??0));
    canvas.dataset.poseFitWeaponYaw=String(report?.fittingYaw??'');
    canvas.dataset.torsoAssistYaw=String(report?.torsoAssistYaw??0);
-   canvas.dataset.poseFitArmor=report?.armor??'';
-   canvas.dataset.poseFitRig=report?.rig??'';
-   canvas.dataset.poseFitTop=report?.top??'';
+   // During an ACTION the stationary low-ready report is null; read the
+   // actual normalized equipment that the renderer just applied instead.
+   const actionLook=poseV3Action?
+     resolvedWardrobe(poseFitWardrobe,poseFitKit):null;
+   canvas.dataset.poseFitArmor=actionLook?.armorStyle??report?.armor??'';
+   canvas.dataset.poseFitRig=actionLook?.rigStyle??report?.rig??'';
+   canvas.dataset.poseFitTop=actionLook?.top??report?.top??'';
    canvas.dataset.poseFitWeapon=poseFitPreset;
   }
   canvas.dataset.poseV3DynamicReport=JSON.stringify(

@@ -73,7 +73,9 @@ try{
       throw Error('Invalid grip error '+fixture.id+'/'+track+'/'+time);
      if(report.weapon!==fixture.id||report.armor!==fixture.armor||
         report.rig!==fixture.rig||report.top!==fixture.top)
-      throw Error('Selected physical outfit normalized away');
+      throw Error('Selected physical outfit normalized away: '+JSON.stringify({
+        expected:fixture,observed:{weapon:report.weapon,armor:report.armor,
+          rig:report.rig,top:report.top},track,time}));
      records.push({fixture,track,time,...report});
      await page.locator('#poseFitPanel').evaluate(e=>{e.open=false;});
      for(const view of ['front','iso']){
