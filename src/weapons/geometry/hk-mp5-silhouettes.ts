@@ -85,7 +85,7 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
  if(isSD){
   // Massive cylindrical fore-end; coarse symbolic bands only.
   addMP5SDShroud(root,parts.handguard,ids.handguard++,
-   art.handguardStartX,art.handguardEndX,HK_DARK_POLYMER,dark);
+   art.handguardStartX,art.handguardEndX,HK_DARK_POLYMER);
  }else{
   addMP5TropicalForearm(root,parts.handguard,ids.handguard++,
    art.handguardStartX,art.handguardEndX,isK,HK_DARK_POLYMER);
@@ -94,10 +94,13 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
  b('handguard',3.24,-.17,0,.42,2.52,2.81,steel);
  if(isK){
   // The K's huge INTEGRAL vertical foregrip, not a generic attachment.
+  // Broad forward-raked silhouette, firmly seated under the tiny fore-end.
+  // Deliberately oversize height/width/depth instead of adding grip grooves.
   const vertical=p('handguard',[
-   [3.45,-1.21],[4.55,-1.21],[4.60,-4.62],
-   [4.36,-5.03],[3.61,-5.03],[3.38,-4.62]
-  ],1.70,HK_DARK_POLYMER);
+   [3.54,-1.19],[4.78,-1.19],[4.94,-2.52],
+   [5.14,-5.51],[4.85,-5.92],[3.83,-5.92],
+   [3.61,-5.50],[3.61,-2.44]
+  ],2.20,HK_DARK_POLYMER);
   vertical.userData.hkMP5KVerticalForegrip=true;
  }
  // Short cocking tube still exists on the K; never scale the lever away.

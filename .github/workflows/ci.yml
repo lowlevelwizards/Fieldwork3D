@@ -1420,6 +1420,20 @@ jobs:
           name: hk-mp5-a3-sd3-k-orthographic
           path: reports/hk-mp5-family-ortho.html
           retention-days: 7
+      - name: MP5 R2 — focused HK silhouette, pose, camera and AR/AK regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-mp5-r2-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-hk-mp5-r2-refinements.test.mjs tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-hk556-ribbon-finish.test.mjs tests/weapon-families-01.test.mjs tests/weapon-ar-r48-silhouettes.test.mjs tests/weapon-ak-r47-final-polish.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: MP5 R2 — actual mesh side/top/front comparison
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-mp5-r2-') }}
+        run: node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs reports/hk-mp5-r2-ortho.html
+      - name: MP5 R2 — upload full-family visual comparison
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/hk-mp5-r2-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hk-mp5-r2-actual-mesh-review
+          path: reports/hk-mp5-r2-ortho.html
+          retention-days: 7
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
