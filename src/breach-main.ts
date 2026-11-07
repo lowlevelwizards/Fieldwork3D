@@ -473,7 +473,16 @@ let studioMode:'quick'|'campaign'='quick';
 let studioSelected='rook';
 let studioOverlay:HTMLDivElement|null=null;
 let studioFrame:HTMLIFrameElement|null=null;
+/** Keep one warm Studio context for short returns; release it after a bounded
+ * hidden interval to avoid retaining two WebGL contexts indefinitely on iOS.
+ * The iframe never owns tactical simulation or authoritative roster state. */
+const STUDIO_WARM_RETAIN_MS=60_000;
+let studioReady=false,studioOpenEpoch=0,studioInitSentEpoch=-1;
+let studioReleaseTimer:ReturnType<typeof setTimeout>|null=null;
 function sendStudioInit(){
+ if(!studioOverlay||studioOverlay.hidden||
+    studioInitSentEpoch===studioOpenEpoch)return;
+ studioInitSentEpoch=studioOpenEpoch;
  if(!studioFrame?.contentWindow)return;
  const people=studioMode==='campaign'?
   campaign?.operators.filter(o=>o.status!=='retired'&&o.status!=='lost')??[]:
@@ -490,8 +499,16 @@ function sendStudioInit(){
  },location.origin);
 }
 function closeOperatorStudio(){
- if(studioOverlay)studioOverlay.hidden=true;
- if(studioFrame)studioFrame.src='about:blank';
+ if(!studioOverlay||studioOverlay.hidden)return;
+ studioOverlay.hidden=true;
+ studioFrame?.contentWindow?.postMessage({type:'fw-studio-suspend'},location.origin);
+ if(studioReleaseTimer!==null)clearTimeout(studioReleaseTimer);
+ studioReleaseTimer=setTimeout(()=>{
+  studioReleaseTimer=null;
+  if(!studioOverlay?.hidden||!studioFrame)return;
+  studioFrame.src='about:blank';
+  studioReady=false;studioInitSentEpoch=-1;
+ },STUDIO_WARM_RETAIN_MS);
 }
 function openOperatorStudio(id?:string,requestedMode?:'quick'|'campaign'){
  studioMode=requestedMode??(campaignMode==='home'||campaignMode==='mission'?
@@ -503,14 +520,26 @@ function openOperatorStudio(id?:string,requestedMode?:'quick'|'campaign'){
   studioFrame=document.createElement('iframe');
   studioFrame.title='Fieldwork Operator Studio';
   studioOverlay.append(studioFrame);document.body.append(studioOverlay);
+  studioFrame.onload=()=>{
+   if(studioOverlay&&!studioOverlay.hidden)sendStudioInit();
+  };
  }
  studioSelected=id??(studioMode==='campaign'?campaign?.operators[0]?.id:'rook')??'rook';
+ if(studioReleaseTimer!==null){
+  clearTimeout(studioReleaseTimer);studioReleaseTimer=null;
+ }
+ studioOpenEpoch++;
  studioOverlay.hidden=false;
  const url=new URL('./operator-studio.html',location.href);
  url.searchParams.set('embedded','1');url.searchParams.set('mode',studioMode);
  url.searchParams.set('operator',studioSelected);
- studioFrame!.src=url.href;
- studioFrame!.onload=sendStudioInit;
+ // A hidden frame still owns the already compiled rig and GPU resources.
+ // Send fresh authoritative roster/readonly state rather than navigate it.
+ if(!studioFrame!.getAttribute('src')||
+    studioFrame!.getAttribute('src')==='about:blank'){
+  studioReady=false;
+  studioFrame!.src=url.href;
+ }else if(studioReady)sendStudioInit();
 }
 document.getElementById('openOperatorStudio')?.addEventListener('click',()=>
  openOperatorStudio(selected,'quick'));
@@ -519,7 +548,9 @@ window.addEventListener('message',event=>{
     event.origin!==location.origin||!event.data||typeof event.data!=='object')return;
  const msg=event.data as {type?:string;id?:unknown;
   wardrobe?:unknown;entries?:unknown};
- if(msg.type==='fw-studio-ready'){sendStudioInit();return;}
+ if(msg.type==='fw-studio-ready'){
+  studioReady=true;sendStudioInit();return;
+ }
  if(msg.type==='fw-studio-close'){closeOperatorStudio();return;}
  const batch=msg.type==='fw-studio-commit-batch';
  if(!batch&&msg.type!=='fw-studio-commit')return;
@@ -5565,6 +5596,26 @@ async function launchQuickPlay(){
     const hudStart=performance.now();
     layout();updateHud();
     const hudMs=Math.round(performance.now()-hudStart);
+    // Shader preparation can use KHR_parallel_shader_compile on capable
+    // browsers. It does not pre-render the game or upload the whole wardrobe.
+    // Keep an A/B opt-out: ?gpuWarmup=0 allows identical-seed comparisons.
+    let shaderPreparationMs=0;
+    if(stage&&viewMode!=='plan2d'&&
+       new URLSearchParams(location.search).get('gpuWarmup')!=='0'){
+      quickPlayCheckpoint(96,'Preparing GPU programs',
+        'Warming visible materials before the first 3D draw');
+      await allowQuickPlayPaint();
+      if(id!==quickPlayRun)return;
+      const shaderStart=performance.now();
+      try{
+        await stage.renderer.compileAsync(stage.scene,stage.camera);
+      }catch(error){
+        // A failed async warmup must never prevent the ordinary first frame.
+        console.warn('[Quick Play shader preparation fallback]',error);
+      }
+      shaderPreparationMs=Math.round(performance.now()-shaderStart);
+      if(id!==quickPlayRun)return;
+    }
     // The first WebGL render is the last major synchronous initialization
     // step (costume materials, visibility, fog, shadow atlas and shaders).
     // Keep the loading mask up while it runs and measure its real duration.
@@ -5595,7 +5646,8 @@ async function launchQuickPlay(){
       (firstFrameMs/1000).toFixed(1)+'s';
     console.info('[Quick Play startup]',{
       seed,scale,generationMs:generated.generationMs,sessionMs,sceneMs,
-      operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs
+      operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs,
+      shaderPreparationMs
     });
     // Now that an actual complete frame exists behind the overlay, allow
     // live RAF updates. Never declare READY before the render has returned.
@@ -6759,7 +6811,11 @@ function tick(now:number){
     updateHud();if(replaying)updateReplayHud();hudAt=now;
   }
   const perfRenderStart=perfOverlay?performance.now():0;
-  if(stage&&viewMode!=='plan2d')
+  // The Studio is an opaque full-screen view. Skip only hidden rendering,
+  // never fixed-step gameplay or authoritative replay/simulation state.
+  const studioOccludesTactical=!!studioOverlay&&!studioOverlay.hidden&&
+   !replayQuickVideo.active;
+  if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
     stage.update(state,selected,dt,doorFocusId,
       replaying&&replayOmniscient,replaying?replayPresentation:null,
       !replaying&&state.phase==='running'&&previousRenderActors?
@@ -6776,7 +6832,7 @@ function tick(now:number){
         null,
       replaying?replayWindowHistory:null);
   const overlayBegin=perfOverlay?performance.now():0;
-  render();
+  if(!studioOccludesTactical)render();
   if(replaying&&replayQuickVideo.active){
     replayQuickVideo.drawFrame(
       stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayTime,
@@ -6797,7 +6853,7 @@ function tick(now:number){
         actor.lastBlocker==='furniture'?'OBSTRUCTED':actor.lastBlocker);
     }
   }
-  if(feedbackDraw){
+  if(feedbackDraw&&!studioOccludesTactical){
     feedbackDraw.setTransform(dpr,0,0,dpr,0,0);
     feedbackDraw.clearRect(0,0,cssW,cssH);
     const actor=uid(selected);
