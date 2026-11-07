@@ -102,13 +102,14 @@ try{
    'studioDiagnostics=1';
   const comparisons=[
    ['aa-soft',{}],
+   ['soft-standard',{'studioShadowSize':'1024'}],
    ['aa-off',{'studioAA':'off'}],
    ['pixel-ratio-2',{'studioPixelRatio':'2'}],
-   ['hard-shadow',{'studioShadowFilter':'hard'}],
-   ['pcf-standard',{'studioShadowFilter':'pcf'}],
+   ['hard-shadow',{'studioShadowFilter':'hard','studioShadowSize':'1024'}],
+   ['pcf-standard',{'studioShadowFilter':'pcf','studioShadowSize':'1024'}],
    ['soft-fine',{'studioShadowSize':'2048'}],
    ['pcf-fine',{'studioShadowFilter':'pcf','studioShadowSize':'2048'}],
-   ['soft-legacy-bias',{'studioShadowBias':'legacy'}],
+   ['soft-legacy-bias',{'studioShadowBias':'legacy','studioShadowSize':'1024'}],
    ['no-live-shadow',{'studioLiveShadows':'off'}],
    ['no-baked-light',{'studioBakedLighting':'off'}],
    ['no-cel-aa',{'studioCelAA':'off'}]
