@@ -11,7 +11,8 @@ import {ArsenalViewport} from './viewport.ts';
 export function openArsenalWorkbench(ref:ArsenalReference):void{
  const config=selectWeaponFamilyPreset(
   initialWeaponConfiguration(ref.legacy.weapon),ref.id);
- const recipe=arsenalRecipeFromLegacy(config);if(!recipe)return;
+ const loadedRecipe=arsenalRecipeFromLegacy(config);if(!loadedRecipe)return;
+ const recipe=loadedRecipe;
  const overlay=document.createElement('section');overlay.className='arsenal-wb-screen';
  overlay.setAttribute('aria-label','Weapon inspection workbench');
  overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');
