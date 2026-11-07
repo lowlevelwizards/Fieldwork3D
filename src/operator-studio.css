@@ -296,3 +296,9 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
  .studio-light-lab>summary>span small{display:none}
  .studio-light-lab-actions button{font-size:11px}
 }
+
+/* R7.8 mobile integration: the existing MORE popover must float above the
+ * sticky category navigation even when Lighting Lab increases sheet height.
+ * Do not disable the category bar or steal its normal touch interactions. */
+#studioMore[open]{z-index:12}
+#studioMore[open] .studio-more-panel{z-index:13}
