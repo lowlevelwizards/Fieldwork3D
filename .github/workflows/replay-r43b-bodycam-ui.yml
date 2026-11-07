@@ -16,6 +16,7 @@ on:
       - 'scripts/smoke-replay-r43b-video.mjs'
       - 'scripts/smoke-replay-r43b-bodycam-ui.mjs'
       - 'scripts/smoke-replay-r43b-moving-scene.mjs'
+      - 'scripts/smoke-replay-r43b-indoor-entry.mjs'
       - '.github/workflows/replay-r43b-bodycam-ui.yml'
 permissions:
   contents: read
@@ -41,6 +42,8 @@ jobs:
         run: node scripts/smoke-replay-r43b-video.mjs
       - name: Verify real operator movement, Bodycam seek and occlusion
         run: node scripts/smoke-replay-r43b-moving-scene.mjs
+      - name: Verify four-operator indoor entry from Bodycam
+        run: node scripts/smoke-replay-r43b-indoor-entry.mjs
       - name: Retain player-facing Bodycam screenshots
         if: always()
         uses: actions/upload-artifact@v4

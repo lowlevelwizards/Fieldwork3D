@@ -102,8 +102,8 @@ import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 import {buildReplayExecutionInsights} from './breach-replay-debrief.ts';
 import {indexReplayIncidents,featuredReplayIncidents,type ReplayIncident}
   from './breach-replay-incidents.ts';
-import {featuredReplaySquadEntries,type ReplaySquadEntryReview}
-  from './breach-replay-squad-entry.ts';
+import {featuredReplaySquadEntries,measureReplaySquadDoorEntry,
+  type ReplaySquadEntryReview} from './breach-replay-squad-entry.ts';
 import {incidentPlaybackWindow,advanceIncidentPlayback}
   from './breach-replay-incident-playback.ts';
 import {makeReplayLoop,advanceReplayLoop,type ReplayLoopRange}
@@ -5060,6 +5060,8 @@ if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
     routeCandidates:()=>Array<{world:Pt;screen:Pt}>;
     planned:()=>{actorId:string;path:Pt[]}|null;
     motionSamples:()=>Array<{at:number;p:Pt;heading:number}>;
+    prepareIndoorEntry:()=>boolean;
+    indoorEntryReview:()=>ReplaySquadEntryReview|null;
   };
   const qa:BodycamQa={
     activate(mount){
@@ -5126,6 +5128,49 @@ if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
         const actor=f.actors.find(a=>a.id===id);
         return actor?[{at:f.t,p:{...actor.p},heading:actor.heading}]:[];
       });
+    },
+    prepareIndoorEntry(){
+      // Deterministic two-room indoor training fixture: two enclosed roofs,
+      // one physical hinged doorway. This still uses the real session motor,
+      // authored MOVE orders and normal MissionRecorder; no replay synthesis.
+      if(replaying||state.phase!=='planning')return false;
+      const at=(x:number,y:number):Pt=>({x,y});
+      const site:Site={
+        seed:731,name:'BODYCAM INDOOR ENTRY / QA',layout:'corridor',
+        training:true,archetype:'office',roomCount:2,
+        rooms:[
+          {id:'entry-room',x:240,y:110,w:140,h:150,
+            kind:'room',tone:.42,purpose:'lobby'},
+          {id:'inner-room',x:240,y:260,w:140,h:180,
+            kind:'room',tone:.39,purpose:'office'}
+        ],
+        walls:[
+          {a:at(240,110),b:at(380,110)},
+          {a:at(240,110),b:at(240,440)},
+          {a:at(380,110),b:at(380,440)},
+          {a:at(240,440),b:at(380,440)},
+          {a:at(240,260),b:at(290,260)},
+          {a:at(332,260),b:at(380,260)}
+        ],
+        doors:[{id:'ENTRY',a:at(290,260),b:at(332,260),
+          kind:'hinged',hinge:'a',swing:-1,open:true,openedAt:0}],
+        cover:[],windows:[],entrance:at(311,200),
+        spawn:[at(300,200),at(308,173),at(316,146),at(325,119)],
+        enemies:[],objective:at(320,400),extract:at(325,420),
+        bounds:{minX:0,minY:0,maxX:640,maxY:500}
+      };
+      reset(0,731,'hold',site);
+      const crew=team(state).slice(0,4);
+      if(crew.length!==4)return false;
+      const goals=[at(300,350),at(312,365),at(325,380),at(339,394)];
+      const accepted=crew.every((actor,i)=>
+        planMove(state,actor.id,goals[i]));
+      updateHud();return accepted;
+    },
+    indoorEntryReview(){
+      if(recorder.frames.length<2)return null;
+      return measureReplaySquadDoorEntry(recorder.frames,'ENTRY',
+        team(state).map(a=>a.id),0,recorder.duration);
     }
   };
   (window as typeof window&{__fieldworkBodycamQa?:BodycamQa})
