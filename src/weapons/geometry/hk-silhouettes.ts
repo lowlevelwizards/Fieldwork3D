@@ -48,9 +48,11 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // A single real negative-space trigger guard, not a delicate wire loop.
  // It overlaps grip/lower and magwell; the lower strip remains continuous.
  addProfileFrame(root,'receiver',parts.receiver,ids.receiver++,
-  [[-3.09,-2.36],[-.33,-2.36],[-.37,-3.72],
-   [-1.08,-4.00],[-2.47,-4.00],[-3.16,-3.52]],
-  [[-2.40,-2.89],[-2.28,-3.47],[-1.10,-3.47],[-.83,-2.89]],
+  // One clean five-corner housing frame with an open negative-space window.
+  // The front edge tucks directly into the magwell, not a floating black hook.
+  [[-3.12,-2.40],[-.55,-2.40],[-.55,-3.69],
+   [-1.17,-3.95],[-3.12,-3.80]],
+  [[-2.62,-2.86],[-.98,-2.86],[-1.13,-3.40],[-2.48,-3.40]],
   1.12,dark);
 
  // Early and polymer buttstocks are both confident single solid shapes.
@@ -107,11 +109,13 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // low-poly L-shaped silhouette on the LEFT of the tube.
  // Its foot intersects both the receiver nose and tube; never floats.
  const handle=p('receiver',[
-  [3.82,1.52],[5.50,1.52],[5.50,2.16],
-  [4.91,2.16],[4.83,2.86],[4.08,2.86],
-  [3.82,2.48]
- ],.98,'steel');
- handle.position.z=-1.05;
+  [3.83,1.48],[5.45,1.48],[5.45,2.03],
+  [4.85,2.03],[4.79,2.53],[4.06,2.53],
+  [3.83,2.24]
+ ],1.80,'steel');
+ // Z [-2.02, -.22]: one continuous solid engages the receiver flank
+ // AND forward cocking tube, while projecting clearly from the left side.
+ handle.position.z=-1.12;
  handle.userData.hkCockingHandle=true;
 
  // Six-sided clean exposed nose: miniature roundness rather than the
@@ -155,17 +159,19 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // One solid silhouette per rear sight: no separate base/knobs.
  // Low early folding blade versus a broader, squat G3A3 diopter turret.
  if(early){
-  const rear=p('receiver',[[-4.34,1.73],[-4.34,2.08],
-   [-4.04,2.08],[-3.89,2.88],[-3.49,2.88],
-   [-3.29,2.11],[-2.96,2.11],[-2.96,1.72]],
-  1.44,'steel');
+  // Thin early folding sight: one meaningful leaf shape, not a turret.
+  const rear=p('receiver',[[-4.20,1.73],[-4.20,2.08],
+   [-3.89,2.08],[-3.75,2.86],[-3.36,2.86],
+   [-3.17,1.73]],1.44,'steel');
   rear.userData.hkRearSight='early-leaf';
  }else{
-  const rear=p('receiver',[[-4.48,1.73],[-4.48,2.30],
-   [-4.12,2.32],[-4.06,2.94],
-   [-3.70,3.17],[-3.24,3.17],
-   [-2.92,2.87],[-2.90,1.73]],
-  1.82,'steel');
+  // One real squat SIX-sided vertical turret. A distinctive HK drum
+  // silhouette, broad across X/Z but shorter than an AR carry handle.
+  const drum=new THREE.CylinderGeometry(.98,.98,1.25,6);
+  const rear=new THREE.Mesh(drum,steel);
+  rear.position.set(-3.55,2.44,0); // base Y=1.815 seats in roof 1.85
+  rear.name='family-receiver-'+parts.receiver+'-'+ids.receiver++;
+  rear.castShadow=true;rear.receiveShadow=true;root.add(rear);
   rear.userData.hkRearSight='diopter-drum';
  }
 }
