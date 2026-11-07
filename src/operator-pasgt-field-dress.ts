@@ -2,6 +2,7 @@
  * foliage slit anchor. Stable authored orientations; no per-frame RNG.
  */
 import * as THREE from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {
  PASGT_SLIT_ANCHORS,createPasgtBandGeometry,
  PASGT_RING_SAMPLES,PASGT_COVER_TOP_Y,pasgtRingPoint,
@@ -19,6 +20,11 @@ export function pasgtConcealmentPalette(camo:HeadwearCamoId|undefined):PasgtPale
   return 'urban';
  return 'woodland';
 }
+const SCRIM_PALETTES:Record<PasgtPalette,readonly [number,number,number]>={
+ woodland:[0xa69b7b,0x687454,0x93917a],
+ desert:[0xc3aa7e,0x9b8868,0xd2bb93],
+ urban:[0x98a095,0x6e786f,0xb0b2a4]
+};
 const PALETTES:Record<PasgtPalette,readonly [number,number,number]>={
  woodland:[0x526541,0x748054,0x95846a],
  desert:[0x968064,0xc0a77b,0x9e8b6c],
@@ -81,12 +87,31 @@ export const PASGT_LEAF_SHAPES:readonly THREE.ShapeGeometry[]=[
   [-.91,1.04],[-.40,.65]
  ])
 ];
+/** Two crossed planar cards make a single recognizable foliage cluster
+ * from more than one camera angle, at the cost of only ONE draw call per
+ * root. No curved leaves, tiny stems or independent mini-branch pieces.
+ */
+export const PASGT_LEAF_CLUSTERS:readonly THREE.BufferGeometry[]=
+ PASGT_LEAF_SHAPES.map((shape,i)=>{
+  const front=shape.index?shape.toNonIndexed():shape.clone();
+  const crossed=shape.index?shape.toNonIndexed():shape.clone();
+  crossed.applyMatrix4(new THREE.Matrix4()
+   .makeTranslation(i%2?.20:-.20,.13,.035)
+   .multiply(new THREE.Matrix4().makeRotationY(i%2?.60:-.60))
+   .multiply(new THREE.Matrix4().makeScale(.82,.91,.82)));
+  const merged=mergeGeometries([front,crossed],false);
+  front.dispose();crossed.dispose();
+  if(!merged)throw Error('unable to merge PASGT crossed leaf cards');
+  merged.computeBoundingBox();
+  merged.userData.pasgtCrossedPixelLeaf=true;
+  return merged;
+ });
 /** Four triangles of broad, two-panel fabric with one angular fold,
  * rather than one needle-like dangling contour.
  * All strips are prebuilt; no per-frame cloth simulation.
  */
 export function createPasgtScrimRibbonGeometry(style:number):THREE.BufferGeometry{
- const widths=[.79,.88,.71],lengths=[1.75,2.10,1.91];
+ const widths=[1.04,1.17,.95],lengths=[1.75,2.10,1.91];
  const w=widths[style%widths.length],
   length=lengths[style%lengths.length];
  const halfway=length*.42,lower=length-halfway;
@@ -277,7 +302,7 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  }
  for(let i=0;i<CARD_ANCHORS.length;i++){
   placedCard(foliage,i,leafMaterials[i%3],
-   PASGT_LEAF_SHAPES[i%PASGT_LEAF_SHAPES.length],
+   PASGT_LEAF_CLUSTERS[i%PASGT_LEAF_CLUSTERS.length],
    'pasgt-iconic-forked-leaf',-.10);
   placedCard(scrim,i,scrimMaterials[i%3],
    createPasgtScrimRibbonGeometry(i),
@@ -307,7 +332,7 @@ export function updatePasgtFieldDress(v:PasgtFieldDressLayers,
   const colors=PALETTES[palette];
   for(let i=0;i<3;i++){
    v.leafMaterials[i].color.setHex(colors[i]);
-   v.scrimMaterials[i].color.setHex(colors[(i+1)%3]);
+   v.scrimMaterials[i].color.setHex(SCRIM_PALETTES[palette][i]);
   }
   v.palette=palette;
  }
