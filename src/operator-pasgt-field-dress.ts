@@ -89,23 +89,33 @@ export const PASGT_LEAF_SHAPES:readonly THREE.ShapeGeometry[]=[
   [-.91,1.04],[-.40,.65]
  ])
 ];
-/** Two crossed planar cards make a single recognizable foliage cluster
- * from more than one camera angle, at the cost of only ONE draw call per
- * root. No curved leaves, tiny stems or independent mini-branch pieces.
+/** Three big, graphic leaf cards in ONE premerged cluster per slit.
+ * A tall leaf, a lateral leaf and a purposely drooping leaf establish
+ * asymmetry and visible downward angles without tiny botanical geometry.
+ * Leaf bunches are authored and seeded by slot order, never per-frame.
  */
 export const PASGT_LEAF_CLUSTERS:readonly THREE.BufferGeometry[]=
  PASGT_LEAF_SHAPES.map((shape,i)=>{
-  const front=shape.index?shape.toNonIndexed():shape.clone();
-  const crossed=shape.index?shape.toNonIndexed():shape.clone();
-  crossed.applyMatrix4(new THREE.Matrix4()
-   .makeTranslation(i%2?.20:-.20,.13,.035)
-   .multiply(new THREE.Matrix4().makeRotationY(i%2?.60:-.60))
-   .multiply(new THREE.Matrix4().makeScale(.82,.91,.82)));
-  const merged=mergeGeometries([front,crossed],false);
-  front.dispose();crossed.dispose();
-  if(!merged)throw Error('unable to merge PASGT crossed leaf cards');
+  const make=()=>shape.index?shape.toNonIndexed():shape.clone();
+  const tall=make(),swept=make(),drooped=make();
+  tall.applyMatrix4(new THREE.Matrix4().makeRotationY(i%2?.15:-.15)
+   .multiply(new THREE.Matrix4().makeScale(1.27,1.22,1.27)));
+  swept.applyMatrix4(new THREE.Matrix4()
+   .makeTranslation(i%2?.28:-.28,.10,.08)
+   .multiply(new THREE.Matrix4().makeRotationY(i%2?.72:-.72))
+   .multiply(new THREE.Matrix4().makeRotationZ(i%2?-.67:.67))
+   .multiply(new THREE.Matrix4().makeScale(.98,1.21,.98)));
+  drooped.applyMatrix4(new THREE.Matrix4()
+   .makeTranslation(i%2?.18:-.18,.06,.16)
+   .multiply(new THREE.Matrix4().makeRotationY(i%2?-.44:.44))
+   .multiply(new THREE.Matrix4().makeRotationZ(i%2?2.03:-2.03))
+   .multiply(new THREE.Matrix4().makeScale(1.05,1.12,1.05)));
+  const merged=mergeGeometries([tall,swept,drooped],false);
+  tall.dispose();swept.dispose();drooped.dispose();
+  if(!merged)throw Error('unable to merge iconic PASGT foliage bunch');
   merged.computeBoundingBox();
   merged.userData.pasgtCrossedPixelLeaf=true;
+  merged.userData.pasgtBunchCardCount=3;
   return merged;
  });
 /** Four triangles of broad, two-panel fabric with one angular fold,
@@ -113,13 +123,14 @@ export const PASGT_LEAF_CLUSTERS:readonly THREE.BufferGeometry[]=
  * All strips are prebuilt; no per-frame cloth simulation.
  */
 export function createPasgtScrimRibbonGeometry(style:number):THREE.BufferGeometry{
- const widths=[1.04,1.17,.95],lengths=[1.75,2.10,1.91];
+ const widths=[1.52,1.79,1.39,1.88],
+  lengths=[3.35,2.72,3.65,3.04];
  const w=widths[style%widths.length],
   length=lengths[style%lengths.length];
- const halfway=length*.42,lower=length-halfway;
+ const halfway=length*.46,lower=length-halfway;
  const a=[-w/2,.12,-.055],b=[w/2,.12,-.055];
- const c=[w*.45,-halfway,.18],d=[-w*.55,-halfway,.18];
- const e=[-w*.49,-halfway-lower,.53],f=[w*.38,-halfway-lower,.53];
+ const c=[w*.45,-halfway,.30],d=[-w*.55,-halfway,.30];
+ const e=[-w*.54,-halfway-lower,.94],f=[w*.40,-halfway-lower,.94];
  const vertices:number[]=[];
  const tri=(p:readonly number[],q:readonly number[],r:readonly number[])=>
   vertices.push(...p,...q,...r);
@@ -163,7 +174,7 @@ function placedCard(parent:THREE.Group,index:number,mat:THREE.Material,
  const normal=right.clone().cross(up).normalize();
  const basis=new THREE.Matrix4().makeBasis(right,up,normal);
  mount.quaternion.setFromRotationMatrix(basis);
- mount.rotateZ(TILTS[index]);mount.rotateX(leaf?.17:-.10);
+ mount.rotateZ(TILTS[index]);mount.rotateX(leaf?.21:-.33);
  // Keep the mount root exactly at its slit and offset only card geometry.
  const card=new THREE.Mesh(geometry,mat);
  if(leaf){
