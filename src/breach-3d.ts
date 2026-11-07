@@ -3,8 +3,8 @@ import * as THREE from 'three';
 import {createCivilianRig,updateCivilianRig,type CivilianRig}
  from './breach-civilian-visuals.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
-import {replayActorVisible,replayActorDisclosed,type ReplayDisclosure}
-  from './breach-replay-visibility.ts';
+import {replayActorVisible,replayActorDisclosed,replayCivilianDisclosed,
+  type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
@@ -67,6 +67,7 @@ import {exteriorKnownFogRects,fogUvAt} from './breach-fog-domain.ts';
 import {fogFingerprint,fogMemoryFingerprint} from './breach-fog-cache.ts';
 import {wallOccludesFriendly,transitionWallOpacity} from './breach-camera-occlusion.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
+import type {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
 import {interpolatedActor,type RenderFrame}
   from './breach-frame-interpolation.ts';
 
@@ -1615,7 +1616,8 @@ export class TacticalScene3D{
     replay?:ReplayPresentation|null,
     renderFrame?:RenderFrame|null,
     liveMotion?:ReplayPresentation|null,
-    replayDisclosurePolicy:ReplayDisclosure|null=null){
+    replayDisclosurePolicy:ReplayDisclosure|null=null,
+    replayDoorHistory:ReplayDoorKnowledgeHistory|null=null){
     if(this.view.mode==='plan2d')return;
     if(this.appliedLightingMode!==s.lightingMode){
       const mood=lightingPresentation(s.lightingMode);
@@ -1730,24 +1732,32 @@ export class TacticalScene3D{
       if(!object)continue;
       object.root.visible=spatialSurfaceState(s,'door',door.id,omniscient)!=='unknown';
       this.staticBatches.setVisible(object.root,object.root.visible);
-      // Freeze the last observed door state when it drops out of view:
-      // a guard opening an unseen door may not broadcast its exact state.
-      if(omniscient||liveVisibility(s,doorCenter(door)))
+      // Personal review uses the LAST individually observed leaf state.
+      // An unseen opening/kick cannot magically update this perspective.
+      const personal=replayDisclosurePolicy?.mode==='operator';
+      const observed=personal&&replayDoorHistory?
+        replayDoorHistory.at(s.seconds,replayDisclosurePolicy.observerId,door.id):
+        null;
+      const directlyObserved=!personal&&liveVisibility(s,doorCenter(door));
+      if(!personal&&(omniscient||directlyObserved)){
         this.observedDoorOpen.set(door.id,door.openFraction??(door.open?1:0));
-      const directlyObserved=liveVisibility(s,doorCenter(door));
-      if(omniscient||directlyObserved)
         this.observedDoorGlass.set(door.id,!!door.glassShattered);
+      }
       if(object.glassPane)
-        object.glassPane.visible=!(this.observedDoorGlass.get(door.id)??false);
-      object.wedge.visible=door.wedged===true&&(omniscient||directlyObserved);
-      const fraction=omniscient||directlyObserved?
+        object.glassPane.visible=personal?
+          !(observed?.glassShattered??false):
+          !(this.observedDoorGlass.get(door.id)??false);
+      object.wedge.visible=personal?
+        !!observed?.wedged:
+        door.wedged===true&&(omniscient||directlyObserved);
+      const fraction=personal?(observed?.openFraction??0):
+        omniscient||directlyObserved?
         (door.openFraction??(door.open?1:0)):
         (s.intel.doorMemory.get(door.id)??0);
       const replayProgress=replay?.doors[door.id];
-      // The rendered leaf follows the authoritative hinge rather than
-      // a render-rate easing curve that disagrees with collision.
-      const shownFraction=(omniscient||directlyObserved)?
-        (replayProgress??fraction):fraction;
+      // Never apply hidden live leaf motion over remembered personal state.
+      const shownFraction=personal?fraction:
+        (omniscient||directlyObserved)?(replayProgress??fraction):fraction;
       if(door.kind==='shutter'){
         object.leaf.rotation.y=0;
         object.leaf.position.y=shownFraction*37;
@@ -1757,7 +1767,7 @@ export class TacticalScene3D{
           Math.hypot(door.b.x-door.a.x,door.b.y-door.a.y)*(door.slideDirection??1);
       }else{
         const age=s.seconds-(door.lastKickAt??-100);
-        const wobble=age>=0&&age<.34?
+        const wobble=!personal&&age>=0&&age<.34?
           Math.sin(age*76)*.045*(1-age/.34):0;
         // A failed kick visibly rattles the leaf in its frame; the hinge
         // yaw remains authoritative for collision, LOS and navigation.
@@ -1798,9 +1808,11 @@ export class TacticalScene3D{
       this.scene.remove(rig.root);this.civilianRigs.delete(id);
     }
     for(const civil of s.civilians){
-      const visible=civilianPresentationVisible(civil,
-        civil.replayVisible!==undefined,omniscient,
-        liveVisibility(s,civil.p));
+      const visible=replayDisclosurePolicy?.mode==='operator'?
+        replayCivilianDisclosed(s,civil.id,replayDisclosurePolicy):
+        civilianPresentationVisible(civil,
+          civil.replayVisible!==undefined,omniscient,
+          liveVisibility(s,civil.p));
       let rig=this.civilianRigs.get(civil.id);
       if(!visible&&!rig)continue;
       if(!rig){

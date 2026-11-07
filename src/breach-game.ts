@@ -4650,6 +4650,19 @@ export function knownAt(s:Session,x:number,y:number){
   if(s.intel.mode==='full-view')return true;
   return s.seenGround.has(Math.floor(x/40)+','+Math.floor(y/40));
 }
+/** Confirmed geometric *point* sight for individual friendly observers.
+ * This matches liveVisibility's distance, facing and occlusion contract,
+ * but deliberately does NOT grant full-view or shared-team knowledge.
+ * Used only at authoritative recording time for personal civilian evidence.
+ */
+export function observerPointVisible(
+  s:Session,observer:TeamActor,p:Pt
+):boolean{
+  return observer.side==='blue'&&observer.health>0&&
+    d(observer.p,p)<240&&
+    Math.abs(angleDifference(observer.heading,angle(observer.p,p)))<1.15&&
+    unobstructed(observer.p,p,s,observer.posture==='crouch');
+}
 export function liveVisibility(s:Session,p:Pt){
   if(s.intel.mode==='full-view')return true;
   return team(s).some(a=>a.health>0&&d(a.p,p)<240&&

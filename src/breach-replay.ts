@@ -18,6 +18,8 @@ import {captureReplayKnowledge,applyReplayKnowledge,type ReplayKnowledge}
   from './breach-replay-visibility.ts';
 import {enablePersonalGroundCapture,drainPersonalGround,
   type PersonalGroundBatch} from './breach-replay-personal-ground.ts';
+import {ReplayDoorObservationRecorder}
+  from './breach-replay-door-knowledge.ts';
 import {shareUnchangedReplayFrame,type ReplaySharingStats}
   from './breach-replay-sharing.ts';
 import type {TraverseOpportunity} from './breach-mantle.ts';
@@ -82,7 +84,8 @@ const shotCopy=(shot:ShotEvent):ShotEvent=>({...shot,
   start:position(shot.start),end:position(shot.end)});
 export function snapshot(s:Session,seenGround?:string[],
   unchangedWorld?:Pick<ReplayFrame,'windows'|'coverState'>,
-  previouslyDiscovered:ReadonlySet<string>=new Set()):ReplayFrame{
+  previouslyDiscovered:ReadonlySet<string>=new Set(),
+  observerBodies:Map<string,Set<string>>=new Map()):ReplayFrame{
   return {
     t:s.seconds,phase:s.phase,mission:s.mission,
     actors:s.operators.map(a=>({id:a.id,p:position(a.p),
@@ -166,7 +169,7 @@ export function snapshot(s:Session,seenGround?:string[],
     seenGround:seenGround??[...s.seenGround],intel:intelSnapshot(s.intel),
     known:[...s.known].map(([id,c])=>[id,
       {p:position(c.p),at:c.at,status:c.status}]),
-    knowledge:captureReplayKnowledge(s,previouslyDiscovered),
+    knowledge:captureReplayKnowledge(s,previouslyDiscovered,observerBodies),
   };
 }
 export class MissionRecorder{
@@ -177,9 +180,12 @@ export class MissionRecorder{
    * Kept outside the 20 Hz frames to avoid duplicating four tile histories.
    */
   readonly personalGround:PersonalGroundBatch[]=[];
+  /** Individually observed door state changes, never shared live door truth. */
+  readonly doorKnowledge=new ReplayDoorObservationRecorder();
   private lastEventId=0;
   private lastExecutionEventId=0;
   private readonly discoveredBodies=new Set<string>();
+  private readonly discoveredByObserver=new Map<string,Set<string>>();
   readonly motion=new ReplayMotionRecorder();
   readonly plans=new ReplayPlanRecorder();
   readonly ballistics=new ReplayBallisticsRecorder();
@@ -199,6 +205,7 @@ export class MissionRecorder{
     enablePersonalGroundCapture(s);
     this.plans.capture(s);
     this.ballistics.capture(s);
+    this.doorKnowledge.capture(s);
     // The mission may receive new appearance/kit settings before first GO.
     // Finalize the one-time manifest on the first executed simulation tick.
     if(!this.manifest||(!this.manifestLocked&&s.started))
@@ -236,7 +243,8 @@ export class MissionRecorder{
     if(!force&&last&&s.seconds-last.t<.049)return;
     if(last&&Math.abs(last.t-s.seconds)<1e-6){
       if(force){
-        const sample=snapshot(s,undefined,undefined,this.discoveredBodies);
+        const sample=snapshot(s,undefined,undefined,this.discoveredBodies,
+          this.discoveredByObserver);
         for(const id of sample.knowledge?.discoveredBodyIds??[])
           this.discoveredBodies.add(id);
         this.frames[this.frames.length-1]=sample;
@@ -248,7 +256,8 @@ export class MissionRecorder{
       last.seenGround:undefined;
     const unchangedWorld=last&&last.objectRevision===s.objectRevision?
       last:undefined;
-    const frame=snapshot(s,remembered,unchangedWorld,this.discoveredBodies);
+    const frame=snapshot(s,remembered,unchangedWorld,this.discoveredBodies,
+      this.discoveredByObserver);
     for(const id of frame.knowledge?.discoveredBodyIds??[])
       this.discoveredBodies.add(id);
     for(const actor of frame.actors)
