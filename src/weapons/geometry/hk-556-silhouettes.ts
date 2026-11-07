@@ -7,7 +7,8 @@ import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
  from './profile-primitives.ts';
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {HK556_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
-import {HK_OLIVE_POLYMER,HK_DARK_POLYMER,HK556_MAG_METAL,HK556_MAG_RIB}
+import {HK_OLIVE_POLYMER,HK_DARK_POLYMER,HK556_MAG_METAL,HK556_MAG_RIB,
+ HK_MUZZLE_METAL}
  from './weapon-visual-palette.ts';
 import {hk556MagazineOutline,hk556MagazineRibOutlines,
  hk556MagazineHeelOutline,type HK556MagazineId,HK556_MAG_LENGTHS}
@@ -107,7 +108,7 @@ export function addHK556Family(root:THREE.Group,build:WeaponFamilyBuild,
   const hider=p('barrel',[[flashStart,-.76],[flashStart+.16,-.79],
    [art.muzzleX-.24,-.79],[art.muzzleX,-.62],
    [art.muzzleX,.62],[art.muzzleX-.24,.79],
-   [flashStart+.16,.79],[flashStart,.76]],1.84,dark);
+   [flashStart+.16,.79],[flashStart,.76]],1.84,HK_MUZZLE_METAL);
   hider.userData.hkFactoryFlashHider=true;
  }
  p('barrel',[[art.frontSightX-.49,.12],

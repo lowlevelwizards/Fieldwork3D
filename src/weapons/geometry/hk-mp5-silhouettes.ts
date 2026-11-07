@@ -8,7 +8,8 @@ import {addOutline,addCuboid,addFacetedTube,type Outline,type SlotName}
  from './profile-primitives.ts';
 import {HK_BARREL_ART} from './hk-barrel-profiles.ts';
 import {MP5_VISUAL_ANATOMY} from './weapon-receiver-anatomy.ts';
-import {HK_DARK_POLYMER,HK9_MAG_METAL} from './weapon-visual-palette.ts';
+import {HK_DARK_POLYMER,HK9_MAG_METAL,HK_SD_SUPPRESSOR_METAL,
+ HK_MUZZLE_METAL} from './weapon-visual-palette.ts';
 import {mp5MagazineOutline,mp5MagazineHeelOutline,MP5_MAG_DEPTH}
  from './hk-mp5-magazine-profiles.ts';
 import {addMP5TropicalForearm,addMP5SDShroud}
@@ -134,7 +135,7 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
   const length=art.muzzleX-9.48;
   const geometry=new THREE.CylinderGeometry(1.15,1.15,length,8,1);
   geometry.rotateZ(-Math.PI/2);
-  const suppressor=new THREE.Mesh(geometry,dark);
+  const suppressor=new THREE.Mesh(geometry,HK_SD_SUPPRESSOR_METAL);
   suppressor.position.x=(art.muzzleX+9.48)/2;
   suppressor.name='family-barrel-'+parts.barrel+'-'+ids.barrel++;
   suppressor.castShadow=true;suppressor.receiveShadow=true;
@@ -157,7 +158,7 @@ export function addHKMP5Family(root:THREE.Group,build:WeaponFamilyBuild,
     [hiderStart,-.76],[art.muzzleX-.14,-.76],
     [art.muzzleX,-.61],[art.muzzleX,.61],
     [art.muzzleX-.14,.76],[hiderStart,.76]
-   ],1.72,dark);
+   ],1.72,HK_MUZZLE_METAL);
    device.userData.hkFactoryFlashHider=true;
   }
  }

@@ -7,7 +7,7 @@ import {akMagazineCurve,akMagazineSample,akMagazineWidthPoints}
 import {hk556MagazineCurve,hk556MagazineOutline,hk556MagazineRibOutlines,
  hk556MagazineHeelOutline,HK556_MAG_CENTER_X,HK556_MAG_LENGTHS}
  from '../src/weapons/geometry/hk-556-magazine-profiles.ts';
-import {AK_MAG_RIB,HK556_MAG_METAL,HK556_MAG_RIB,HK_DARK_POLYMER,
+import {HK556_MAG_METAL,HK556_MAG_RIB,HK_DARK_POLYMER,
  HK_OLIVE_POLYMER}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 import {FAMILY_PRESETS,FAMILY_PARTS,compatibleFamilyPart}
@@ -63,7 +63,8 @@ test('HK magazines inherit AK normal-offset ribbon construction, but less sweep'
   assert.equal(hk556MagazineHeelOutline(id).length,4,
    'heel follows toe as a single four-corner plate');
  }
- assert.equal(HK556_MAG_RIB,AK_MAG_RIB,'identical existing AK rib finish');
+ assert.notEqual(HK556_MAG_RIB,HK556_MAG_METAL,'HK stamped ribs remain subdued');
+ assert.equal(HK556_MAG_RIB.color.getHex(),0x353d39,'HK ribs are not AK green');
 });
 test('HK33 and HK53 bodies, two ribs and heel share one curved magazine',()=>{
  for(const id of ['hk-hk33a2','hk-hk53a3']){
