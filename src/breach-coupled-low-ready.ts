@@ -151,7 +151,8 @@ function selectArm(shoulder:THREE.Vector3,wrist:THREE.Vector3,
   }
   // Arm and sleeve may slightly overlap worn gear when presenting a
   // stylized rifle. Do not modify real measured contact or limb length.
-  if(!reloadVisualContact(contact,allowVisualOverlap,'carry').valid)continue;
+  if(!reloadVisualContact(contact,allowVisualOverlap,'carry',
+   side===1?'firing':'support').valid)continue;
   const quality=candidate.score+contact.quality*.09;
   if(quality<bestQuality){
    bestQuality=quality;
