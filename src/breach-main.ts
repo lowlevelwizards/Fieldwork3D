@@ -105,7 +105,7 @@ import {incidentPlaybackWindow,advanceIncidentPlayback}
   from './breach-replay-incident-playback.ts';
 import {makeReplayLoop,advanceReplayLoop,type ReplayLoopRange}
   from './breach-replay-loop.ts';
-import {replayActorDisclosed,type ReplayDisclosure}
+import {replayActorDisclosed,replayCivilianDisclosed,type ReplayDisclosure}
   from './breach-replay-visibility.ts';
 import {operatorContactEventKnown,operatorContactAvailable}
   from './breach-replay-contact-lens.ts';
@@ -3611,7 +3611,11 @@ function missionMarkers(){
   draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
 }
 function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
-  if(!civilianPresentationVisible(c,replaying,replayOmniscient,
+  // Personal observation is not shared civilian intel. Old films omit the
+  // observer evidence and must fail closed, not re-evaluate future LOS.
+  if(replaying&&replayContactObserverId){
+    if(!replayCivilianDisclosed(state,c.id,replayDisclosure()))return;
+  }else if(!civilianPresentationVisible(c,replaying,replayOmniscient,
        liveVisibility(state,c.p)))return;
   const coats=['#766e62','#637d75','#82726b','#667985'];
   const trousers=['#454c4b','#61574d','#4e5664'];
@@ -4406,7 +4410,7 @@ function updateReplayHud(){
   ui.replayContactNote.hidden=!replayContactObserverId;
   ui.replayContactNote.textContent=replayGroundLensOn?
     'GOLD CELLS: INDIVIDUALLY OBSERVED FLOOR · WORLD OBJECTS STILL SQUAD STATE · 2D ONLY.':
-    'OPERATOR CONTACTS ONLY · MAP AND ENVIRONMENT REMAIN SQUAD KNOWLEDGE. FORENSIC SHOT PATHS HIDDEN.';
+    'OPERATOR CONTACTS + CIVILIAN SIGHTINGS · MAP/OBJECTS REMAIN SQUAD KNOWLEDGE. SHOT PATHS HIDDEN.';
   ui.replayGroundLens.disabled=!replayContactObserverId||
     !replayPersonalGroundHistory;
   ui.replayGroundLens.textContent=replayGroundLensOn?
