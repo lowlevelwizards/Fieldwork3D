@@ -48,7 +48,13 @@ function score(p:Pt,goal:Pt,peers:readonly Pt[],traveling=true):number{
  // Begin yielding before the next movement tick enters the teammate's
  // personal space. The motor still demands meaningful forward progress,
  // so this never forces sideward wandering or changes the authored goal.
- return dist(p,goal)+Math.max(0,(traveling?22:17)-gap)*2.2;
+ // Keep the established soft passing weight during travel. Near an
+ // authored destination, prefer the available empty shoulder-space more
+ // strongly so converging operators settle beside, not through, each other.
+ // This affects candidate ranking only; failed sweeps and insufficient
+ // forward progress still return the original desired step unchanged.
+ return dist(p,goal)+Math.max(0,(traveling?22:21)-gap)*
+   (traveling?2.2:3.8);
 }
 /** Two teammates should not settle on the same exact spot. Approaching an
  * occupied goal to within one body diameter counts as a practical arrival. */
