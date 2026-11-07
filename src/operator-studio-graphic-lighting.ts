@@ -371,12 +371,16 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
   const gradient=(config.gradient==='piece'||
    config.gradient==='piece-rose')&&!studioPieceGradientEligible(node)?
    'current':config.gradient;
+  const litRim=rimOn&&studioContourEligible(node,src);
+  // With rim-only preview, leave cloth/skin/soft gear on exact source
+  // materials. Avoid needless shader variants on unrelated mesh surfaces.
+  if(config.toon===0&&gradient==='current'&&!litRim&&
+     diag.bakedVertexLighting)return;
   if((gradient==='piece'||gradient==='piece-rose')&&
      !ensureStudioPieceGradient(node.geometry))return;
   active.add(src);
   const role=studioArtRole(node,src);
   const useToon=config.toon!==0&&canToon(src);
-  const litRim=rimOn&&studioContourEligible(node,src);
   const key=[config.toon,gradient,role,litRim?'rim':'matte',
    diag.celAA?'edge-aa':'hard-edge',
    diag.bakedVertexLighting?'baked':'no-bake',
