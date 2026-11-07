@@ -140,6 +140,39 @@ try{
     }
     const sceneRewind=earlier.status==='ready'?earlier.value.frame.t:null;
     scene.close();
+    // G4d2: the browser's persisted film now drives the exact playback
+    // controller used by a future tactical/Bodycam UI, without a full film.
+    const {ReplayChunkPlaybackController}=await import(
+      '/src/breach-replay-chunk-controller.ts');
+    const driverScene=await openReplayChunkSceneV2('g3-browser-001');
+    const driverSession=newSession(0,3948);
+    const driver=new ReplayChunkPlaybackController(driverScene,driverSession);
+    const initial=await driver.seek(.13);
+    const initialMatches=JSON.stringify(driver.frame?.frame)===
+      JSON.stringify(restoreReplayArchive(v1).sample(.13));
+    driver.setRate(2);
+    const accepted=driver.play();
+    const stepped=await driver.tick(.1);
+    const afterTick=driverSession.seconds;
+    const matchedAfter=JSON.stringify(driver.frame?.frame)===
+      JSON.stringify(restoreReplayArchive(v1).sample(.33));
+    driver.pause();
+    const pausedAt=driver.time;
+    const idle=await driver.tick(1);
+    const rewindResult=await driver.seek(.17);
+    const silentlyRewound=rewindResult.candidateSounds.length===0;
+    const afterRewind=driverSession.seconds;
+    const oldMissionStillIntact=(await loadSavedReplay('g3-browser-001'))
+      .frames.length===8;
+    const maxResident=driver.residentChunks;
+    driver.close();
+    const controlled={
+      initial:initial.status,initialMatches,accepted,
+      stepped:stepped.status,tickTime:afterTick,matchedAfter,
+      pausedAt,idle:idle.status,rewind:rewindResult.status,
+      afterRewind,silentlyRewound,oldMissionStillIntact,maxResident,
+      closed:driver.status==='closed'
+    };
     const pendingAfter=await storage.listInterruptedChunkedReplaysV2();
     return {generation:release.generation,
       count:release.frameCount,storageComplete:release.storageComplete,
@@ -149,7 +182,7 @@ try{
         alpha:sample?.alpha},
       resident:opened.window.residentCount,
       transport,
-      hydration,staleRejected,sceneRewind,
+      hydration,staleRejected,sceneRewind,controlled,
       v1Count:v1.frames.length,
       pending:pendingAfter.length};
   });
@@ -186,6 +219,21 @@ try{
     Math.abs(completed.sceneRewind-.03)<1e-8,
     'G4c3 replay scene failed actual browser V2 history parity: '+
     JSON.stringify(completed.hydration));
+  check(completed.controlled.initial==='ready'&&
+    completed.controlled.initialMatches&&
+    completed.controlled.accepted&&
+    completed.controlled.stepped==='ready'&&
+    Math.abs(completed.controlled.tickTime-.33)<1e-8&&
+    completed.controlled.matchedAfter&&
+    Math.abs(completed.controlled.pausedAt-.33)<1e-8&&
+    completed.controlled.idle==='idle'&&
+    completed.controlled.rewind==='ready'&&
+    Math.abs(completed.controlled.afterRewind-.17)<1e-8&&
+    completed.controlled.silentlyRewound&&
+    completed.controlled.oldMissionStillIntact&&
+    completed.controlled.maxResident<=3&&completed.controlled.closed,
+    'G4d2 persisted controller failed browser playback, pause and scrub: '+
+    JSON.stringify(completed.controlled));
   const replaced=await page.evaluate(async()=>{
     const storage=await import('/src/breach-replay-chunk-store.ts');
     const {loadSavedReplay}=await import('/src/breach-replay-library.ts');
