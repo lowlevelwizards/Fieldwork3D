@@ -77,6 +77,46 @@ test('B25 three mechanism previews are deterministic and inherit real magazine s
  }
  console.log('RELOAD-V4-B25-MATRIX',JSON.stringify(results));
 });
+test('B28 the EXACT selected carried magazine leaves its visible rig cell',()=>{
+ const f=fixtures[0],rig=createOperatorRig('v4-b28-rig','blue',true);
+ const inventory=[
+  {id:'reserve-A',kind:'magazine',location:'rig'},
+  {id:'reserve-B',kind:'magazine',location:'rig'},
+  {id:'reserve-C',kind:'magazine',location:'belt'}];
+ try{
+  const base={...create(f,.53),magazineCarryItems:inventory,
+    magazineCarryLocations:inventory.map(i=>i.location),
+    reloadSelectedMagazineId:'reserve-B',poseV4ReloadPreview:true};
+  poseOperator(rig,base,0);
+  assert.equal(rig.root.userData.reloadV4MagazineSlot?.id,'reserve-B');
+  assert.equal(rig.root.userData.reloadV4MagazineSlot?.index,1);
+  assert.equal(rig.visualKit.magazines.rig[0].visible,true);
+  assert.equal(rig.visualKit.magazines.rig[1].visible,true,
+   'selected mag remains stowed until physical extraction');
+  assert.equal(rig.detachedMagazine.visible,false,
+   'the receiving wrist must be empty when reaching the pouch');
+  const before=snapshot(rig);
+  poseOperator(rig,base,0);
+  equal(before,snapshot(rig),'B28/resume same timestamp');
+  poseOperator(rig,{...base,reload:1.8*(1-.70)},0);
+  assert.equal(rig.visualKit.magazines.rig[0].visible,true,
+   'unselected magazine never disappears');
+  assert.equal(rig.visualKit.magazines.rig[1].visible,false,
+   'selected magazine moves from pouch to hand');
+  assert.equal(rig.detachedMagazine.visible,true,
+   'same magazine-family silhouette is held in hand');
+  const after=snapshot(rig);
+  poseOperator(rig,{...base,reload:1.8*(1-.70)},0);
+  equal(after,snapshot(rig),'B28/held seek');
+  poseOperator(rig,{...base,reload:1.8*(1-.53)},0);
+  assert.equal(rig.visualKit.magazines.rig[1].visible,true,
+   'rewind returns the magazine to the same rig cell');
+  assert.equal(rig.detachedMagazine.visible,false);
+  poseOperator(rig,{...base,reload:0},0);
+  assert.equal(rig.root.userData.reloadV4MagazineSlot,null,
+   'non-reloading pose has no pickup owner');
+ }finally{rig.dispose();}
+});
 test('B25 AR empty bolt press, retention bypass and neutral nonreload still work',()=>{
  const f=fixtures[0],rig=createOperatorRig('v4-m4-gestures','blue',true);
  try{

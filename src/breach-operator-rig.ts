@@ -75,7 +75,10 @@ import {garmentSolidHex,isGarmentSolidId,resolvedCuffSolid,resolvedCombatKnitSol
  from './operator-garment-color-policy.ts';
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
-import type {CarryLocation} from './equipment-carry-placement.ts';
+import type {CarryLocation,CarryPlacement} from './equipment-carry-placement.ts';
+import {selectedReloadPouchSlot,v4ReloadPouchReach,
+ v4MagazineInHand,v4SelectedPouchVisible}
+ from './breach-reload-v4-magazine-handoff.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
  type OperatorVisualKit} from './operator-visual-kit.ts';
 import {createGarmentFitAnchors,type GarmentFitAnchors}
@@ -134,6 +137,9 @@ export type OperatorPose={
   equipment?:EquipmentLoadout;flashCharges?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
   magazineCarryLocations?:readonly CarryLocation[];
+  /** Simulation-owned IDs and actual stowage, used for V4 handoff ONLY. */
+  magazineCarryItems?:readonly Pick<CarryPlacement,'id'|'kind'|'location'>[];
+  reloadSelectedMagazineId?:string|null;
   weaponConfiguration?:WeaponConfiguration;
   weaponLightOn?:boolean;
   treatmentActive?:boolean;treatmentProgress?:number;
@@ -1414,6 +1420,29 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     clamp(1-p.reload/p.reloadDuration,0,1):0;
   const v3ReloadMode=p.reloadMode??
     (p.weapon==='shotgun'?'shells':'emergency');
+  // Look up the selected item in the existing inventory display, NOT a
+  // second fake ammo stack. The Lab can use its authored sample magazines.
+  const v4Carry=(p.magazineCarryItems??
+    p.magazineCarryLocations?.map((location,i)=>({
+      id:'v4-preview-'+i,kind:'magazine' as const,location
+    }))??[]);
+  const v4Slot=p.poseV4ReloadPreview&&v3ReloadActive&&
+    v3ReloadMode!=='shells'?
+    selectedReloadPouchSlot(v4Carry,p.reloadSelectedMagazineId,
+      !p.reloadSelectedMagazineId):null;
+  const v4Magazine=v4Slot?
+    r.visualKit.magazines[v4Slot.location][v4Slot.index]:undefined;
+  // The target is a real existing rig/belt/pocket magazine. No slot ->
+  // no fake retrieval and no missing magazine conjured in the hand.
+  let v4PouchAnchor:THREE.Vector3|undefined;
+  if(v4Magazine?.visible){
+    r.root.updateMatrixWorld(true);
+    const world=v4Magazine.getWorldPosition(new THREE.Vector3());
+    v4PouchAnchor=r.chest.worldToLocal(world).add(
+      new THREE.Vector3(0,.75,0));
+  }
+  r.root.userData.reloadV4MagazineSlot=v4Magazine?.visible?
+    v4Slot:null;
   // B17 measured on the actual legacy-armored AKM: the compact outboard
   // magazine path clears more support-arm phases without extra solver probes.
   // Preserve the canonical route for all other kits, especially flak AKS74U.
@@ -1449,7 +1478,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       primaryX:data.primaryX,clearanceFront:envelope.front,
       magazineSocket:activeReloadSocket?.magazinePart?
         activeReloadSocket.magazine:undefined,
-      reloadControl:activeReloadSocket?.reloadControl}:null;
+      reloadControl:activeReloadSocket?.reloadControl,
+      pickupTarget:v4PouchAnchor}:null;
     const releasedTarget=releaseInputs?(
       p.poseV4ReloadPreview?
         choreographV4ReloadHand(releaseInputs,
@@ -1584,6 +1614,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     magazinePhase!=='reach'&&magazinePhase!=='settle';
   r.detachedMagazine.visible=authoredMagazine&&reloadActive&&
     !mountedMagazine&&magazinePhase!=='settle'&&!p.down&&!p.surrender;
+  if(p.poseV4ReloadPreview&&v3ReloadActive&&v4Magazine&&
+    v4PouchAnchor){
+    // Before pickup the identical magazine remains IN its visible pouch.
+    // During the rendezvous the wrist is empty; only after extraction
+    // does the new magazine become hand-owned. No duplicated magazine.
+    if(!v4MagazineInHand(v3ReloadProgress)){
+      r.magazineHand.visible=false;
+      r.detachedMagazine.visible=false;
+    }
+    if(!v4SelectedPouchVisible(v3ReloadProgress))
+      v4Magazine.visible=false;
+  }
   r.magazineHand.scale.set(
     p.weapon==='shotgun'?.48:1,p.weapon==='shotgun'?.55:1,1);
   const throwAge=p.seconds-p.lastThrowAt;
@@ -1652,7 +1694,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       supportX:data.supportX,supportY:data.supportY,
       primaryX:data.primaryX,clearanceFront:v3ReloadClearanceFront,
       magazineSocket:sockets.magazinePart?sockets.magazine:undefined,
-      reloadControl:sockets.reloadControl
+      reloadControl:sockets.reloadControl,
+      pickupTarget:v4PouchAnchor
     };
     reloadHandChest=p.poseV3Preview?
       (p.poseV4ReloadPreview?
