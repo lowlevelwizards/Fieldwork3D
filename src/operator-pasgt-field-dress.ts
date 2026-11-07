@@ -248,7 +248,7 @@ function netDrape(edge:NetEdge):readonly (readonly number[])[]{
  const lower=shift(lowerUnshifted,.91);
  // Tuck the final portion beneath the fabric band so it reads as held,
  // rather than as six wires standing on top of a rim.
- const outwardContact=new THREE.Vector3(...outward).multiplyScalar(.09);
+ const outwardContact=new THREE.Vector3(outward[0],outward[1],outward[2]).multiplyScalar(.09);
  lower[0]-=outwardContact.x;
  lower[2]-=outwardContact.z;
  // The fabric net wraps off the crown and diagonally across the shoulder.
