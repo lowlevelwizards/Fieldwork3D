@@ -28,3 +28,22 @@ export function chooseMuzzleRecoveryStep(p:Pt,aimYaw:number,
  }
  return null;
 }
+
+/** A teammate obscuring the target is a reason to move *ourselves*, never
+ * the teammate or a reason to skip friendly-fire protection. Compare short
+ * lateral steps on either side of the muzzle axis, nearest first, and only
+ * accept a candidate whose entire motor sweep and firing lane are safe.
+ * All candidate iteration is deterministic for replay.
+ */
+export function chooseFriendlyLaneStep(p:Pt,aimYaw:number,
+ canMove:(next:Pt)=>boolean,canShoot:(next:Pt)=>boolean):Pt|null{
+ const left={x:-Math.sin(aimYaw),y:Math.cos(aimYaw)};
+ for(const length of [12,20,28]){
+  for(const side of [-1,1]){
+   const next={x:p.x+left.x*length*side,
+     y:p.y+left.y*length*side};
+   if(canMove(next)&&canShoot(next))return next;
+  }
+ }
+ return null;
+}

@@ -1509,28 +1509,12 @@ html,body{font-family:var(--fw-font-menu)}
   min-width:27px;min-height:27px;border:1px solid #587266;
   border-radius:5px;color:#d8d9cb;background:#293d37;font-size:19px;line-height:1
 }
-.replay-tabs{
-  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
-  gap:3px;flex:none;padding-bottom:8px;border-bottom:1px solid #4b6559
-}
-.replay-tabs button{
-  min-width:0;min-height:35px;padding:3px 1px;border:1px solid #557366;
-  border-radius:5px;background:#263d35;color:#bfcfbe;
-  font:700 10px/1 var(--ui-font);letter-spacing:.01em
-}
-.replay-tabs button[aria-selected="true"]{
-  border-color:#cfb889;background:#bfa882;color:#172623
-}
 .replay-extra{
   min-height:0;overflow-y:auto;overscroll-behavior:contain;
   display:block!important;flex:1;padding:9px 2px 2px
 }
 .replay-extra[hidden]{display:none!important}
 .replay-group{display:block}
-.replay-group-intro{
-  margin:0 2px 8px;font:600 11px/1.3 var(--ui-font);
-  color:#c4d0c1
-}
 .replay-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .replay-control-grid button{
   flex:none;min-width:0;width:100%;min-height:44px;
@@ -1641,7 +1625,6 @@ html,body{font-family:var(--fw-font-menu)}
     padding:5px 7px;font-size:9px
   }
   .replay-drawer{max-height:min(44dvh,310px,calc(100dvh - 210px))}
-  .replay-tabs button{font-size:9px}
 }
 @media(max-height:470px){
   .replay-panel{padding:5px 8px}
@@ -2144,4 +2127,58 @@ html,body{font-family:var(--fw-font-menu)}
     padding:8px}
   .replay-library-row .replay-library-watch,
   .replay-library-row .replay-library-favorite{min-height:44px}
+}
+
+
+/* Replay UX V2 Stage 6 — focus and mobile hit-area finishing pass.
+ * Reclaim static spacing rather than shrinking interactive targets. */
+.replay-panel button:focus-visible,
+.replay-panel summary:focus-visible,
+.replay-panel select:focus-visible,
+.replay-panel input:focus-visible{
+  outline:2px solid #ecd59d;outline-offset:2px
+}
+.replay-group>summary{min-height:44px;padding:13px 3px 8px}
+.replay-cluster-menu button{min-height:44px}
+.replay-feed-tools #replayFeedFollow{min-height:40px}
+@media(max-width:700px) and (min-height:471px){
+  .replay-panel{padding-top:5px;padding-bottom:5px}
+  .replay-head{min-height:25px}
+  .replay-quick-controls{margin-top:4px}
+  .replay-quick-controls select{min-height:40px}
+  .replay-timeline{height:30px;margin-top:1px}
+  .replay-utility{margin-top:2px}
+  .replay-utility #replayMore,
+  .replay-utility #replayFeedToggle,
+  .replay-utility #replayShareToggle{min-height:40px!important}
+  #replayExit{min-height:38px;min-width:40px}
+}
+@media(max-width:370px){
+  .replay-quick-controls label span{font-size:9px}
+  .replay-quick-controls select{font-size:11px}
+}
+@media(max-height:470px) and (min-width:600px){
+  .replay-quick-controls select{min-height:36px}
+  .replay-actions button,.replay-actions #replayPlay{min-height:44px}
+  .replay-utility #replayMore,
+  .replay-utility #replayFeedToggle,
+  .replay-utility #replayShareToggle{min-height:36px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .replay-panel,.replay-panel *,
+  .replay-drawer,.replay-cluster-menu{
+    animation-duration:0.01ms!important;
+    transition-duration:0.01ms!important;
+    scroll-behavior:auto!important
+  }
+}
+
+
+/* Replay UX V2 Stage 7 — compact, accessible panel header.
+ * Keep the close control usable in scrolling mobile drawers. */
+.replay-drawer-head{min-height:44px}
+.replay-drawer-head #replayDrawerClose{min-width:44px;min-height:44px}
+.replay-drawer-head strong{font-size:13px}
+.replay-panel .replay-utility button[aria-expanded="true"]{
+  border-color:#d6c493;color:#fff0cc
 }

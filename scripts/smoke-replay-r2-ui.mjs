@@ -23,9 +23,6 @@ const measure=()=>({
   })(),
   visibleGroups:[...document.querySelectorAll('[data-replay-group]')]
     .filter(el=>!el.hidden).map(el=>el.dataset.replayGroup),
-  activeTabs:[...document.querySelectorAll('[data-replay-tab]')]
-    .filter(el=>el.getAttribute('aria-selected')==='true')
-    .map(el=>el.dataset.replayTab),
   markerCount:document.querySelectorAll('.replay-mark').length,
   markWidth:document.querySelector('#replayMarks').clientWidth,
   feedHidden:document.querySelector('#replayFeed').hidden
@@ -72,6 +69,10 @@ try{
 
   const compact=await page.evaluate(measure);
   check(compact.drawer.hidden,'Drawer must be closed by default');
+  check(await page.locator('#replayPanel').getAttribute('role')==='region',
+    'Replay transport needs a named accessible region');
+  check(await page.locator('#replayTabs').count()===0,
+    'Obsolete five-tab drawer must not remain in the DOM');
   check(compact.dock.height<=230,
     'Portrait replay dock obscures battlefield: '+JSON.stringify(compact));
   check(compact.markerCount<=Math.ceil(compact.markWidth/24)+1,
@@ -196,6 +197,26 @@ try{
   await page.locator('#replayDrawerClose').click();
   const closed=await page.evaluate(measure);
   check(closed.drawer.hidden,'Close should restore compact replay');
+  check(await page.evaluate(()=>document.activeElement?.id)==='replayFeedToggle',
+    'Closing Moments must restore keyboard focus to its launcher');
+
+  // Replay keyboard shortcuts must defer to focused buttons, and Escape
+  // should close the active surface without exiting replay.
+  await page.locator('#replayMore').focus();
+  const playLabelBefore=await page.locator('#replayPlay').getAttribute('aria-label');
+  await page.keyboard.press('Space');
+  check(await page.locator('#replayDrawer').isVisible(),
+    'Space on focused Analyze button did not activate its own control');
+  check((await page.locator('#replayPlay').getAttribute('aria-label'))===playLabelBefore,
+    'Space on focused replay control incorrectly changed playback');
+  await page.locator('#replayDrawerClose').focus();
+  await page.keyboard.press('Escape');
+  check(await page.locator('#replayDrawer').isHidden(),
+    'Escape on focused replay close control failed to close panel');
+  check(await page.evaluate(()=>document.activeElement?.id)==='replayMore',
+    'Escape must restore focus to Analyze button');
+  check(await page.locator('#replayPanel').isVisible(),
+    'Escape should not exit playback when a secondary panel was open');
 
   await page.setViewportSize({width:844,height:390});
   await page.locator('#replayMore').click();
