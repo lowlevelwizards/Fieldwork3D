@@ -2,6 +2,7 @@
  * All functions are replay-time pure and do not alter simulation inventory.
  */
 import type {CarryPlacement} from './equipment-carry-placement.ts';
+import * as THREE from 'three';
 export type VisibleMagLocation='rig'|'belt'|'pocket';
 export type ReloadPouchSlot={id:string;location:VisibleMagLocation;index:number};
 export type ReloadPickupPhase='stowed'|'retrieving'|'held'|'inserted';
@@ -57,4 +58,25 @@ export function v4MagazineInHand(progress:number):boolean{
 }
 export function v4SelectedPouchVisible(progress:number):boolean{
  return clamp(progress)<.60;
+}
+
+/** Exact authored local socket without reading last frame's world matrices.
+ * Rig magazines live on the chest or on nested wardrobe gear. Belt/pocket
+ * magazines live on the sibling hip whose REST height is 20.2 vs chest 26.
+ * Neither previous-frame chest yaw nor IK can contaminate a replay seek.
+ */
+export function v4AuthoredPouchAnchor(
+ mesh:THREE.Object3D,chest:THREE.Object3D,hip:THREE.Object3D
+):THREE.Vector3|null{
+ const point=mesh.position.clone();
+ let parent=mesh.parent;
+ let depth=0;
+ while(parent&&parent!==chest&&parent!==hip&&depth++<8){
+  parent.updateMatrix();
+  point.applyMatrix4(parent.matrix);
+  parent=parent.parent;
+ }
+ if(parent!==chest&&parent!==hip)return null;
+ if(parent===hip)point.y+=20.2-26;
+ return point.add(new THREE.Vector3(0,.75,0));
 }

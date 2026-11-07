@@ -77,7 +77,7 @@ import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-cam
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
 import type {CarryLocation,CarryPlacement} from './equipment-carry-placement.ts';
 import {selectedReloadPouchSlot,v4ReloadPouchReach,
- v4MagazineInHand,v4SelectedPouchVisible}
+ v4MagazineInHand,v4SelectedPouchVisible,v4AuthoredPouchAnchor}
  from './breach-reload-v4-magazine-handoff.ts';
 import {createOperatorVisualKit,applyOperatorVisualKit,
  type OperatorVisualKit} from './operator-visual-kit.ts';
@@ -1434,13 +1434,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.visualKit.magazines[v4Slot.location][v4Slot.index]:undefined;
   // The target is a real existing rig/belt/pocket magazine. No slot ->
   // no fake retrieval and no missing magazine conjured in the hand.
-  let v4PouchAnchor:THREE.Vector3|undefined;
-  if(v4Magazine?.visible){
-    r.root.updateMatrixWorld(true);
-    const world=v4Magazine.getWorldPosition(new THREE.Vector3());
-    v4PouchAnchor=r.chest.worldToLocal(world).add(
-      new THREE.Vector3(0,.75,0));
-  }
+  // The authored magazine socket is fixed to gear/hip, not based on
+  // last-frame world matrices (which broke same-time replay seeks).
+  const v4PouchAnchor=v4Magazine?.visible?
+    v4AuthoredPouchAnchor(v4Magazine,r.chest,r.hip)??undefined:
+    undefined;
   r.root.userData.reloadV4MagazineSlot=v4Magazine?.visible?
     v4Slot:null;
   // B17 measured on the actual legacy-armored AKM: the compact outboard
