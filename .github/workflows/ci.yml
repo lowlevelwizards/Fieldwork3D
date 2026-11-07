@@ -1530,6 +1530,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-platform-interchange-r2-') }}
         run: |
           node --experimental-strip-types --test tests/weapon-platform-interchange-r2.test.mjs tests/weapon-hk-modular-r1.test.mjs tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-mp5-r2-refinements.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/equipment-19-01-weapon-assemblies.test.mjs tests/equipment-19-06-quickplay-editor.test.mjs tests/equipment-21-01-workbench.test.mjs tests/equipment-21-02-workbench-integration.test.mjs tests/breach-low-ready-family-fit.test.mjs
+      - name: Arsenal V2 — focused compatibility, persistence and editor-state gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-workbench-v2') }}
+        run: |
+          node --experimental-strip-types --test tests/arsenal-v2-catalog.test.mjs tests/arsenal-v2-assembly.test.mjs tests/arsenal-v2-gallery.test.mjs tests/arsenal-v2-viewport.test.mjs tests/arsenal-v2-editing-ui.test.mjs tests/weapon-platform-interchange-r2.test.mjs tests/equipment-19-04-weapon-persistence.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
