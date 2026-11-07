@@ -7,7 +7,7 @@ import {akMagazineCurve,akMagazineSample,akMagazineWidthPoints}
 import {hk556MagazineCurve,hk556MagazineOutline,hk556MagazineRibOutlines,
  hk556MagazineHeelOutline,HK556_MAG_CENTER_X,HK556_MAG_LENGTHS}
  from '../src/weapons/geometry/hk-556-magazine-profiles.ts';
-import {AK_MAG_RIB,HK556_MAG_METAL,HK556_MAG_RIB,HK_DARK_POLYMER,
+import {HK556_MAG_METAL,HK556_MAG_RIB,HK_DARK_POLYMER,
  HK_OLIVE_POLYMER}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 import {FAMILY_PRESETS,FAMILY_PARTS,compatibleFamilyPart}
@@ -63,7 +63,8 @@ test('HK magazines inherit AK normal-offset ribbon construction, but less sweep'
   assert.equal(hk556MagazineHeelOutline(id).length,4,
    'heel follows toe as a single four-corner plate');
  }
- assert.equal(HK556_MAG_RIB,AK_MAG_RIB,'identical existing AK rib finish');
+ assert.notEqual(HK556_MAG_RIB,HK556_MAG_METAL,'HK stamped ribs remain subdued');
+ assert.equal(HK556_MAG_RIB.color.getHex(),0x353d39,'HK ribs are not AK green');
 });
 test('HK33 and HK53 bodies, two ribs and heel share one curved magazine',()=>{
  for(const id of ['hk-hk33a2','hk-hk53a3']){
@@ -75,7 +76,7 @@ test('HK33 and HK53 bodies, two ribs and heel share one curved magazine',()=>{
   assert.equal(ribs.length,2,id+' two longitudinal ribs');
   assert.equal(heel.length,1,id+' one angled heel');
   assert.equal(body[0].material,HK556_MAG_METAL);
-  assert.ok(ribs.every(x=>x.material===AK_MAG_RIB&&!x.castShadow));
+  assert.ok(ribs.every(x=>x.material===HK556_MAG_RIB&&!x.castShadow));
   const bodyZ=new THREE.Box3().setFromObject(body[0]);
   for(const rib of ribs){
    const ribZ=new THREE.Box3().setFromObject(rib);
@@ -85,7 +86,7 @@ test('HK33 and HK53 bodies, two ribs and heel share one curved magazine',()=>{
   const magId=config.build.parts.magazine;
   const carried=carriedMagazineProfile(magId);
   assert.equal(carried.length,HK556_MAG_LENGTHS[magId]);
-  assert.equal(carried.material,0x515b53,'carried metal matches rifle');
+  assert.equal(carried.material,HK556_MAG_METAL.color.getHex(),'carried metal matches rifle');
   const geometry=carriedMagazineGeometry(magId);
   assert.ok(geometry.getAttribute('position').count>0);
   geometry.dispose();

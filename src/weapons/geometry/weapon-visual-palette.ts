@@ -2,8 +2,8 @@
  * Each mesh remains a single solid finish. Never allocate per frame/config.
  */
 import * as THREE from 'three';
-const finish=(color:number,roughness=.84)=>
- new THREE.MeshStandardMaterial({color,roughness,metalness:.05,flatShading:true});
+const finish=(color:number,roughness=.84,metalness=.05)=>
+ new THREE.MeshStandardMaterial({color,roughness,metalness,flatShading:true});
 export const AR_BLACK_METAL=finish(0x414a44,.76);
 export const AR_BLACK_POLYMER=finish(0x343e37,.9);
 /** Matte, very low relief molded ribs, not high-contrast glowing decals. */
@@ -24,15 +24,21 @@ export const AK_PLUM_POLYMER=finish(0x4e3b4c,.92);
 /** Low-contrast curved stamped ribs on classic steel 7.62 magazines. */
 export const AK_MAG_RIB=finish(0x364238,.93);
 
-/** HK service finishes use the same low-specular Fieldwork art language. */
-export const HK_BLACK_METAL=finish(0x454b43,.8);
-export const HK_DARK_POLYMER=finish(0x343d36,.93);
-export const HK_OLIVE_POLYMER=finish(0x606950,.94);
-export const HK_WOOD=finish(0x95714a,.95);
-export const HK_MAG_METAL=finish(0x5e6960,.88);
-/** Darker HK33/HK53 stamped steel: G3's established 7.62 finish is unchanged. */
-export const HK556_MAG_METAL=finish(0x515b53,.90);
-/** Dark blued MP5 steel stands out against the warmer HK receiver. */
-export const HK9_MAG_METAL=finish(0x373f3b,.92);
-/** Ribbon ribs deliberately reuse the AK's proven stamped-metal finish. */
-export const HK556_MAG_RIB=AK_MAG_RIB;
+/** HK blackened steel and molded plastic are related, not the same finish.
+ * These colors are appearance targets, not manufacturer paint codes.
+ * Steel stays muted to match Fieldwork's chunky 8-facet miniatures.
+ */
+export const HK_BLACK_METAL=finish(0x3b4140,.82,.12);
+export const HK_DARK_POLYMER=finish(0x303433,.95,.02);
+export const HK_OLIVE_POLYMER=finish(0x60694e,.94,.02);
+export const HK_WOOD=finish(0x896947,.95,.02);
+/** Magazine steel differs by historical family; never tint it olive plastic. */
+export const HK_MAG_METAL=finish(0x505757,.90,.12);
+export const HK556_MAG_METAL=finish(0x414747,.91,.12);
+export const HK9_MAG_METAL=finish(0x373d3d,.92,.11);
+/** HK33/HK53 low-relief stamp lines must not inherit AK-green ribs. */
+export const HK556_MAG_RIB=finish(0x353d39,.95,.10);
+/** Integral SD can uses subdued anodized metal, not the polymer shroud. */
+export const HK_SD_SUPPRESSOR_METAL=finish(0x2f3434,.80,.16);
+/** Muzzle brakes/flash hiders are blackened steel, not rubber furniture. */
+export const HK_MUZZLE_METAL=finish(0x2f3533,.78,.16);

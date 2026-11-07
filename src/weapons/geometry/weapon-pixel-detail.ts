@@ -41,7 +41,8 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
   if(mark==='hk-selector-picto'){
    // Three chunky little cartridges-in-boxes; no microscopic text.
    for(let i=0;i<3;i++){
-    const y0=1+i*7,c=i===0?white:red;
+    // DataTexture starts at its bottom: white SAFE must render on TOP.
+    const y0=1+(2-i)*7,c=i===0?white:red;
     for(let x=15;x<=22;x++){
      colorPixel(x,y0,c);colorPixel(x,y0+4,c);
     }
@@ -58,7 +59,7 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
     ['111','100','110','100','100']];
    rows.forEach((glyph,i)=>glyph.forEach((row,y)=>
     [...row].forEach((bit,x)=>{if(bit==='1')
-     colorPixel(17+x,1+i*7+y,i===0?white:red);})));
+     colorPixel(17+x,1+(2-i)*7+(4-y),i===0?white:red);})));
   }
  }else if(mark==='hk-port'){
    // Bold ejection-port and enlarged bolt face from one shared pixel mark:

@@ -10,12 +10,17 @@ export type HKSelectorStyle='sef'|'pictogram';
 export function addHKTriggerSelector(root:THREE.Group,style:HKSelectorStyle,
  outerDepth:number,lowerHalfDepth:number):void{
  // Markings are a single cached nearest-neighbor texture on each face.
- // The upper housing is wider than the lower: put the art on its visible
- // plane, not buried inside stamped steel.
+ // The upper housing is wider than the lower, so place the marks just
+ // outside the visible side face. Keep their BOTTOM ABOVE the lower's
+ // -2.4 silhouette edge; previously the white safe box fell off the gun.
+ // All HK receivers use the same normalized icon placement.
  const marks=addWeaponPixelMarkPair(root,
   style==='pictogram'?'hk-selector-picto':'hk-selector',
-  -3.21,-1.77,outerDepth+.024,3.07,1.86);
- for(const m of marks)m.userData.hkSelectorMarkings=style;
+  -3.21,-1.38,outerDepth+.024,3.07,1.42);
+ for(const m of marks){
+  m.userData.hkSelectorMarkings=style;
+  m.userData.hkSelectorAlignedToHousing=true;
+ }
  // The selector is a chunky eight-sided polymer pivot and one broad,
  // low-poly paddle, not a little white dial drawn on the receiver.
  // The classic SEF layout only has a left lever; later pictogram is ambi.
