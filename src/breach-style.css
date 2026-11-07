@@ -2091,3 +2091,26 @@ html,body{font-family:var(--fw-font-menu)}
 @media(max-height:470px){
   .replay-status-chip{max-width:90px;font-size:8px}
 }
+
+
+/* Replay UX V2 Stage 4 — contextual investigation without a dense new tab. */
+.replay-actor-controls{display:flex;align-items:center;gap:5px;flex-wrap:wrap;
+  padding:7px 6px;margin:0 0 8px;border:1px solid #667f6e;
+  border-radius:7px;background:#2a4038}
+.replay-actor-controls[hidden]{display:none!important}
+.replay-actor-controls label{color:#dccda9;font:700 10px var(--ui-font)}
+.replay-actor-controls select{flex:1;min-width:115px;min-height:39px;
+  border:1px solid #789182;border-radius:5px;padding:5px;
+  background:#344b40;color:#f1e9d7;font:700 11px var(--ui-font)}
+.replay-actor-controls button{min-height:40px;min-width:65px;
+  border:1px solid #7a9987;border-radius:5px;padding:6px 8px;
+  background:#405a49;color:#f1ebd9;font:700 10px var(--ui-font)}
+.replay-actor-controls button:focus-visible,.replay-actor-controls select:focus-visible{
+  outline:2px solid #e5c486;outline-offset:1px}
+.replay-incident-actions{flex-wrap:wrap}
+.replay-incident-actions #replayIncidentInvestigate{background:#a99164;
+  border-color:#d8bf86;color:#172723}
+@media(max-width:360px){
+  .replay-actor-controls label{flex-basis:100%}
+  .replay-actor-controls select{min-width:100px}
+}
