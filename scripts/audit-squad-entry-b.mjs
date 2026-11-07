@@ -80,6 +80,7 @@ function audit(c){
   const physicallyBlocked=!!actualDoor&&doorSwingBlocked(actualDoor,
    Math.min(1,(actualDoor.openFraction??0)+.07),[]);
   return {name:c.name,expectBlocked:!!c.expectBlocked,
+   reportedObstruction:s.events.some(e=>e.includes('DOOR SWING OBSTRUCTED')),
    door:{open:actualDoor?.open,fraction:actualDoor?.openFraction,
     physicallyBlocked,passable:actualDoor?doorClear(actualDoor):false},
    legalGoalGap:Math.round(legalGap*100)/100,
@@ -98,6 +99,7 @@ console.log(JSON.stringify({kind:'generated four-person entry clearance',
 if(results.some(r=>r.legalGoalGap<23||!r.preservedOrders||
  (r.expectBlocked?
   (!r.door.open||!r.door.physicallyBlocked||r.door.passable||
+   !r.reportedObstruction||
    r.crossed.some(t=>t!==null)||r.final.some(x=>x.remaining===0)):
   (r.crossed.some(t=>t===null)||r.finished.some(t=>t===null)||
    r.final.some(x=>x.remaining!==0||x.distanceToAuthored>18)||
