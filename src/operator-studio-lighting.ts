@@ -48,7 +48,7 @@ export function studioShadowMode(search:string):StudioShadowMode{
 export function studioShadowSize(search:string):512|1024|2048{
  const value=new URLSearchParams(search).get('studioShadowSize')??
   new URLSearchParams(search).get('operatorShadowSize');
- return value==='2048'?2048:value==='512'?512:1024;
+ return value==='1024'?1024:value==='512'?512:2048;
 }
 export function visibleOperatorBounds(root:THREE.Object3D):THREE.Box3|null{
  root.updateWorldMatrix(true,true);
