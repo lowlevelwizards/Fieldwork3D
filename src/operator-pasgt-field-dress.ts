@@ -215,8 +215,7 @@ export function createPasgtNetGeometry():THREE.BufferGeometry{
  for(const slope of slopes)for(const shift of [-4,0,4]){
   const [a,b]=clippedNetLine(slope,shift);
   const start=netDrape(a),end=netDrape(b);
-  const path=[...start,
-   ...[...end].reverse().slice(1)];
+  const path=[...start,...[...end].reverse()];
   appendNetRibbon(coordinates,path,.19);
  }
  const g=new THREE.BufferGeometry();
