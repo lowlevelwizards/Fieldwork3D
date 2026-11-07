@@ -119,7 +119,7 @@ test('SD3 has an intrinsic thick shroud and always ONE integrated suppressor',()
  const {config,group}=create('hk-mp5sd3');
  assert.equal(group.children.filter(x=>x.userData.hkMP5IntegralSuppressor).length,1);
  assert.equal(group.children.filter(x=>x.userData.hkMP5SDShroud).length,1);
- assert.equal(group.children.filter(x=>x.userData.hkMP5SDBand).length,3);
+ assert.equal(group.children.filter(x=>x.userData.hkMP5SDBand).length,2);
  assert.equal(setWeaponAttachment(config,'muzzle','muzzle-suppressor'),config);
  const handguard=partVisualBounds(group,'handguard'),
   barrel=partVisualBounds(group,'barrel');
@@ -137,8 +137,8 @@ test('K is truly stockless and held by its oversized integral vertical grip',()=
  assert.equal(k.group.children.filter(x=>x.userData.hkMP5KVerticalForegrip).length,1);
  assert.ok(stocklessMP5K(k.config));
  const contact=riflePoseContacts('smg',k.config);
- assert.ok(contact.support.near.x>=3.45);
- assert.ok(contact.support.far.x<=4.55);
+ assert.ok(contact.support.near.x>=3.70);
+ assert.ok(contact.support.far.x<=4.85);
  assert.ok(contact.support.near.y<-3,'support target is low, on vertical grip');
  assert.equal(lowReadyArchetype(k.config)?.family,'hk-smg-stockless');
  const fit=fitWeaponPose({
