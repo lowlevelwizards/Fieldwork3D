@@ -21,6 +21,10 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: UOP Stage A — live spawn, IK, and reload replay critical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'refactor/unified-operator-pose') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-unified-pose-stability.test.mjs tests/breach-pose-temporal-diagnostics.test.mjs tests/breach-pose-coordinated-cache.test.mjs tests/breach-pose-action-state.test.mjs tests/breach-pose-v3-contacts.test.mjs tests/breach-pose-v3-action-matrix.test.mjs tests/breach-120.test.mjs tests/breach-pose-v3-reload-replay.test.mjs
       - name: Helmet H1 — modular shell, cover, setup and legacy wardrobe gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h1-') }}
         run: |

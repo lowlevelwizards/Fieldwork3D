@@ -6,6 +6,7 @@ import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator,type OperatorRig}
   from './breach-operator-rig.ts';
 import {weaponGrips,type Handling,type WeaponFit} from './breach-weapon-pose.ts';
+import {PoseTemporalMonitor} from './breach-pose-temporal-diagnostics.ts';
 import {stockPocket,elbowCorridor} from './breach-anatomy.ts';
 import {HANDLING_PROFILES} from './breach-handling-profiles.ts';
 import {weaponTruth,footTruth,legReachTruth} from './breach-animation-diagnostics.ts';
@@ -80,6 +81,9 @@ let wardrobeOptions:WardrobeOptions=initialWardrobe();
 // Pose Fit is a normal Operator Lab category. The legacy ?poseFit=1
 // link routes to that category; it no longer freezes or overlays the model.
 const poseFlags=new URLSearchParams(location.search);
+/** Explicit debugging only: no world-matrix sampling in normal Lab frames. */
+const poseTemporalEnabled=poseFlags.get('poseTemporal')==='1';
+const poseTemporalMonitor=new PoseTemporalMonitor();
 const poseV4ReloadPreview=poseFlags.get('poseV4')!=='0';
 const poseV3Preview=poseV4ReloadPreview||poseFlags.get('poseV3')==='1';
 const startingPoseTab=poseFlags.get('tab')==='poses'||
@@ -1908,6 +1912,16 @@ function draw(){
   canvas.dataset.lowReadyFit=staticReport?.status??'action';
   canvas.dataset.poseV3DynamicReport=JSON.stringify(
     rig.root.userData.poseV3DynamicReport??[]);
+  if(poseTemporalEnabled&&!comparing){
+    // Comparison changes are not stationary: tag the exact authored track,
+    // weapon/configuration and input motion before inspecting frame deltas.
+    const key=JSON.stringify([track,selectedHandling,currentWeapon,
+      exactWeaponConfig?.build??null,motion.posture,motion.speed,
+      motion.x,motion.z,motion.heading,motion.aim,motion.turning,
+      poseStrictContact.checked]);
+    canvas.dataset.poseTemporal=JSON.stringify(
+      poseTemporalMonitor.sample(rig,key,clock));
+  }
   canvas.dataset.poseV3Preview=String(poseV3Preview);
   canvas.dataset.poseV4ReloadPreview=String(poseV4ReloadPreview);
   canvas.dataset.gripError=rig.gripError.toFixed(4);
