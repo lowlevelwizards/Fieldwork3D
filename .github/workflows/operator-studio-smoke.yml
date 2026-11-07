@@ -34,8 +34,8 @@ jobs:
       - name: R5 UV1 self-shadow atlas — actual mobile WebGL proof
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lighting-r5-') }}
         run: node scripts/smoke-operator-lightmap-r5.mjs
-      - name: PASGT P5/P6 actual WebGL material / fit captures
-        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/pasgt-p5-') || startsWith(github.head_ref, 'feature/pasgt-p6-')) }}
+      - name: PASGT P5/P6/P7 actual WebGL material / fit captures
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/pasgt-p5-') || startsWith(github.head_ref, 'feature/pasgt-p6-') || startsWith(github.head_ref, 'feature/pasgt-p7-')) }}
         run: node scripts/pasgt-p5-visual-capture.mjs
       - uses: actions/upload-artifact@v4
         if: always()
@@ -44,7 +44,7 @@ jobs:
           path: operator-studio-captures/
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
-        if: ${{ always() && github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/pasgt-p5-') || startsWith(github.head_ref, 'feature/pasgt-p6-')) }}
+        if: ${{ always() && github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/pasgt-p5-') || startsWith(github.head_ref, 'feature/pasgt-p6-') || startsWith(github.head_ref, 'feature/pasgt-p7-')) }}
         with:
           name: pasgt-actual-mobile-visual-proof
           path: pasgt-p5-captures/

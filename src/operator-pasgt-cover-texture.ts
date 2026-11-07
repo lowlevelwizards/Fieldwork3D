@@ -11,6 +11,7 @@ import {
  PASGT_ATLAS_WIDTH,PASGT_ATLAS_HEIGHT,PASGT_TOP_SEAM_OFFSETS,
  PASGT_PANEL_CENTER_U,PASGT_FABRIC_PANELS,
  PASGT_UV_TEXELS_PER_UNIT,PASGT_RING_SAMPLES,pasgtRingPoint,
+  pasgtFabricCoordinate,
  type PasgtFabricPanel
 } from './operator-pasgt-drape-geometry.ts';
 const cache=new Map<string,THREE.DataTexture>();
@@ -25,7 +26,7 @@ export const pasgtCamoWorldPeriod=(id:HeadwearCamoId)=>
  */
 export const PASGT_PANEL_PRINT_PHASE:Readonly<Record<PasgtFabricPanel,
  readonly [number,number]>>={
- left:[9,-7],top:[0,0],right:[-8,11]
+ left:[13,-11],top:[0,0],right:[-12,15]
 };
 export const PASGT_SEAM_HALF_WIDTH_TEXELS=2;
 export function pasgtCoverTexture(camo:HeadwearCamoId|undefined,
@@ -81,7 +82,10 @@ export function pasgtCoverTexture(camo:HeadwearCamoId|undefined,
    // Exactly two physical seams: each is shaded only on its two
    // adjoining cloth cuts. Never paint a ghost seam on a remote panel.
    const at=slotX(panel,x);
-   for(let z=slotY(frontZ-1.33);z<=slotY(rearZ+1.33);z++){
+   const frontApron=pasgtFabricCoordinate(seamFront,'ramp')[1],
+   rearApron=pasgtFabricCoordinate(seamBack,'ramp')[1];
+   for(let z=slotY(Math.min(frontZ-1.2,frontApron));
+    z<=slotY(Math.max(rearZ+1.2,rearApron));z++){
     for(let dx=-PASGT_SEAM_HALF_WIDTH_TEXELS;
      dx<=PASGT_SEAM_HALF_WIDTH_TEXELS;dx++)
      tint(at+dx,z,Math.abs(dx)===2?.89:.75);
