@@ -1388,8 +1388,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     clamp(1-p.reload/p.reloadDuration,0,1):0;
   const v3ReloadMode=p.reloadMode??
     (p.weapon==='shotgun'?'shells':'emergency');
-  const v3ReloadCorridor:V3ReloadCorridorProfile=
-    p.poseV3Preview?p.poseV3ReloadCorridor??'canonical':'canonical';
+  // B17 measured on the actual legacy-armored AKM: the compact outboard
+  // magazine path clears more support-arm phases without extra solver probes.
+  // Preserve the canonical route for all other kits, especially flak AKS74U.
+  const legacyAkReload=p.poseV3Preview&&v3ReloadActive&&
+    coupledConfig?.build?.family==='ak'&&
+    resolvedWardrobe(p.wardrobe,p.equipment).armorStyle==='plate-legacy';
+  const v3ReloadCorridor:V3ReloadCorridorProfile=p.poseV3Preview?
+    (p.poseV3ReloadCorridor??(legacyAkReload?'compact':'canonical')):
+    'canonical';
   const v3ThrowAge=p.seconds-p.lastThrowAt;
   const v3DoorAge=p.seconds-p.lastDoorAt;
   const v3Interacting=!!p.treatmentActive||

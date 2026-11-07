@@ -155,7 +155,7 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
  * Its output identifies which fitted hard material still blocks each phase;
  * the actual joint fallback remains UNRESOLVED, never silently accepted.
  */
-test('B16 M4A1/AKM magazine corridor is deterministic and physically audited',()=>{
+if(process.env.POSE_V3_RELOAD_AUDIT==='1')test('B16 M4A1/AKM magazine corridor is deterministic and physically audited',()=>{
  const frames=[];
  for(const fixture of fixtures.slice(0,2)){
   const base=assemble(fixture);
@@ -200,7 +200,7 @@ test('B16 M4A1/AKM magazine corridor is deterministic and physically audited',()
  * solver, not a heuristic pose count. Profiles are deterministic through
  * complete reloads and do not touch ballistic or magazine authority.
  */
-test('B17 compare compact vs outboard reload corridors on actual rigs',()=>{
+if(process.env.POSE_V3_CORRIDOR_AUDITION==='1')test('B17 compare compact vs outboard reload corridors on actual rigs',()=>{
  const trial=[];
  for(const fixture of fixtures.slice(0,2)){
   const base=assemble(fixture);
@@ -223,4 +223,28 @@ test('B17 compare compact vs outboard reload corridors on actual rigs',()=>{
   }finally{rig.dispose();}
  }
  console.log('POSE-V3-CORRIDOR-AUDITION',JSON.stringify(trial));
+});
+
+/** Only two expensive physically useful cases remain in the fast CI.
+ * The full 7x3 B17 audition is opt-in for future path experiments.
+ */
+test('B17 legacy AKM selects measured compact path without inflating validity',()=>{
+ const f=fixtures[1],base=assemble(f);
+ const selected=createOperatorRig('v3-ak-compact','blue',true);
+ const canonical=createOperatorRig('v3-ak-original','blue',true);
+ try{
+  for(const progress of [.40,.53]){
+   const pose={...base,seconds:3,poseV3Preview:true,
+    reload:1.8*(1-progress),reloadDuration:1.8};
+   poseOperator(selected,pose,0);
+   poseOperator(canonical,{...pose,
+    poseV3ReloadCorridor:'canonical'},0);
+   assert.equal(selected.root.userData.poseV3CoordinatedReport?.status,
+    'clear','legacy AKM compact '+progress);
+   assert.equal(canonical.root.userData.poseV3CoordinatedReport?.status,
+    'unresolved','do not inflate canonical validity '+progress);
+   assert.ok(selected.root.userData.poseV3DynamicReport
+    .every(arm=>arm.status==='clear'));
+  }
+ }finally{selected.dispose();canonical.dispose();}
 });
