@@ -18,18 +18,21 @@ export const STUDIO_INSPECTION_LIGHT={
 /** R7 experimental colored shadow-side fill: no extra shadow pass, no
  * changes to the neutral baked contact/occlusion masks. Disabled by default.
  * The actual scene shadow map remains the single source of cast occlusion. */
-export type StudioShadowColor='neutral'|'steel'|'slate'|'plum'|'dusk';
+export type StudioShadowColor='neutral'|'steel'|'slate'|'plum'|'dusk'|'plum-plus'|'plum-noir';
 const STUDIO_SHADOW_PALETTES:Record<StudioShadowColor,
  {ground:number;fill:number}>={
  neutral:{ground:STUDIO_INSPECTION_LIGHT.ground,fill:STUDIO_INSPECTION_LIGHT.fill},
  steel:{ground:0x65748f,fill:0x96adc6},
  slate:{ground:0x58717c,fill:0x99bdc2},
  plum:{ground:0x786786,fill:0xb8a7ca},
+ 'plum-plus':{ground:0x5b466c,fill:0xd1a2ed},
+ 'plum-noir':{ground:0x473755,fill:0xd5a3ed},
  dusk:{ground:0x686986,fill:0x9b9fbf}
 };
 export function requestedStudioShadowColor(search:string):StudioShadowColor{
  const v=new URLSearchParams(search).get('operatorShadowColor');
- return v==='steel'||v==='slate'||v==='plum'||v==='dusk'?v:'neutral';
+ return v==='steel'||v==='slate'||v==='plum'||v==='dusk'||
+  v==='plum-plus'||v==='plum-noir'?v:'neutral';
 }
 export function studioShadowFill(search:string){
  return STUDIO_SHADOW_PALETTES[requestedStudioShadowColor(search)];
@@ -142,6 +145,10 @@ export class OperatorStudioLighting{
   const palette=STUDIO_SHADOW_PALETTES[color];
   this.hemisphere.groundColor.setHex(palette.ground);
   this.fill.color.setHex(palette.fill);
+  const legacy=this.mode==='legacy';
+  const p=STUDIO_INSPECTION_LIGHT;
+  this.fill.intensity=(legacy?p.legacyFillIntensity:p.fillIntensity)*
+   (color==='plum-plus'?1.35:color==='plum-noir'?1.5:1);
  }
  invalidateGeometry(){this.dirty=true;}
  setLiveShadows(enabled:boolean){
