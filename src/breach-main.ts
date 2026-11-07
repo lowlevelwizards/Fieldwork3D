@@ -6529,7 +6529,9 @@ function tick(now:number){
   render();
   if(replaying&&replayQuickVideo.active){
     replayQuickVideo.drawFrame(
-      stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayTime);
+      stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayTime,
+      replayBodycamOn&&replayContactObserverId?
+        {observerId:replayContactObserverId,mount:replayBodycamMount}:null);
     if(replayTime>=recorder.duration)replayQuickVideo.finishAtEnd();
     else if(!replayPlaying)replayQuickVideo.stop();
   }
