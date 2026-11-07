@@ -223,6 +223,15 @@ export function injectStudioGraphicLighting(
  shader.fragmentShader=rimHeader+pieceFrag+
   'varying vec3 vFWArtLocal;\nvarying float vFWArtHeight;\n'+
   shader.fragmentShader.replace(opaque,effect+opaque);
+ // Three r180's MeshToon/Standard sources include shadowmap_pars_fragment
+ // but NOT the separate shadowmask_pars_fragment function. Adding this
+ // declaration AFTER the shadowmap structs prevents an undefined helper
+ // and ensures the rim is actually hidden by the key's cast shadow.
+ const shadowSource='#include <shadowmap_pars_fragment>';
+ if(litRim&&shader.fragmentShader.includes(shadowSource)&&
+    !shader.fragmentShader.includes('#include <shadowmask_pars_fragment>'))
+  shader.fragmentShader=shader.fragmentShader.replace(shadowSource,
+   shadowSource+'\n#include <shadowmask_pars_fragment>');
 }
 
 function copyToon(target:THREE.MeshToonMaterial,source:Source):void{
