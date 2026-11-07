@@ -18,7 +18,7 @@ export function requestedStudioRenderQuality(search:string,
   pixelRatio:Math.max(1,Math.min(maxDevice,2,Math.max(1,ratio))),
   shadowFilter:p.get('studioShadowFilter')==='hard'?'hard':
    p.get('studioShadowFilter')==='pcf'?'pcf':'soft',
-  shadowSize:p.get('studioShadowSize')==='2048'?2048:1024,
+  shadowSize:p.get('studioShadowSize')==='1024'?1024:2048,
   shadowBias:p.get('studioShadowBias')==='legacy'?'legacy':'stable',
   liveShadows:p.get('studioLiveShadows')!=='off',
   celAA:p.get('studioCelAA')!=='off',
