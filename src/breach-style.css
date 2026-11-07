@@ -2233,3 +2233,16 @@ html,body{font-family:var(--fw-font-menu)}
   .replay-action-strip .replay-event{font-size:10px}
   .replay-quick-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 }
+
+
+/* R5: the old cyclic View/Follow/Sight/Traces/Bodycam buttons were parallel
+ * implementations of the same actions. Their handlers remain as compatibility
+ * adapters for existing smoke probes, but no duplicate actions are presented.
+ * Squad follow stays in advanced camera options as a distinct viewing mode. */
+.replay-group #replayView,
+.replay-group #replaySight,
+.replay-group #replayBodycam,
+.replay-group #replayBodycamMount,
+.replay-group #replayFollow,
+.replay-group #replayDirector,
+.replay-group #replayTraces{display:none!important}
