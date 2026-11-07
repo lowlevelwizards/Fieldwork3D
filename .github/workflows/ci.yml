@@ -25,6 +25,7 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/squad-entry-b-sectors.test.mjs tests/squad-entry-b-continuity.test.mjs tests/tactical-integration-10-entry-gate.test.mjs tests/tactical-integration-04-squad-planning.test.mjs tests/breach-149.test.mjs tests/squad-flow-a1.test.mjs tests/doorway-convoy-flow.test.mjs
           node --experimental-strip-types scripts/audit-squad-flow-a.mjs
+          node --experimental-strip-types scripts/audit-squad-entry-b.mjs
       - name: Squad Flow A — partial stride, real-door motor and autonomy gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
         run: |
