@@ -80,6 +80,15 @@ test('real player operator can request friendly-fire sidestep with orders intact
   assert.ok(Math.abs(lead.fireRetreatTarget.x-initial.x)<6);
   assert.ok(Math.abs(lead.fireRetreatTarget.y-initial.y)>=12);
   assert.deepEqual(ally.p,p(185,110),'recovery must not shove teammate');
+  let moved=false;
+  for(let tick=0;tick<24&&s.phase==='running';tick++){
+    stepSession(s,1/30);
+    moved ||=Math.abs(lead.p.y-initial.y)>6;
+    if(moved)break;
+  }
+  assert.ok(moved,'the sidestep must execute through the live movement motor');
+  assert.deepEqual(ally.p,p(185,110),
+    'teammate must remain stationary during a real sidestep');
  }finally{activateSite(null);}
 });
 test('real enemy facing a shattered glass barrier seeks its own rearward muzzle clearance',()=>{
@@ -112,5 +121,12 @@ test('real enemy facing a shattered glass barrier seeks its own rearward muzzle 
     'enemy should step away from the window rather than crossing its barrier');
   assert.deepEqual(lead.p,fixture.spawn[0],
     'the enemy recovery may not move the opposing operator');
+  let backedAway=false;
+  for(let tick=0;tick<24&&s.phase==='running';tick++){
+    stepSession(s,1/30);
+    backedAway ||=guard.p.x<before.x-6;
+    if(backedAway)break;
+  }
+  assert.ok(backedAway,'the red NPC must actually walk backward, not just select a destination');
  }finally{activateSite(null);}
 });
