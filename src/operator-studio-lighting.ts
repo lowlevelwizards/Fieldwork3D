@@ -136,6 +136,13 @@ export class OperatorStudioLighting{
   this.renderer.shadowMap.type=THREE.BasicShadowMap;
   scene.add(this.hemisphere,this.key,this.fill,this.key.target);
  }
+ /** Retint only existing hemisphere ground + fill lights; never change
+  * neutral baked AO, authored print colors or shadow-map occlusion. */
+ setShadowColor(color:StudioShadowColor):void{
+  const palette=STUDIO_SHADOW_PALETTES[color];
+  this.hemisphere.groundColor.setHex(palette.ground);
+  this.fill.color.setHex(palette.fill);
+ }
  invalidateGeometry(){this.dirty=true;}
  setLiveShadows(enabled:boolean){
   if(this.mode==='legacy')return;
