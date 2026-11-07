@@ -31,13 +31,18 @@ const copyPoint=(object:THREE.Object3D):MeasuredPoint=>({
 });
 function frameOf(rig:OperatorRig,key:string,time:number):Frame{
   rig.root.updateMatrixWorld(true);
-  const wrists=rig.arms.map(a=>a.hand.getWorldPosition(new THREE.Vector3()))
-    as [THREE.Vector3,THREE.Vector3];
+  const wrists:[THREE.Vector3,THREE.Vector3]=[
+    rig.arms[0].hand.getWorldPosition(new THREE.Vector3()),
+    rig.arms[1].hand.getWorldPosition(new THREE.Vector3())
+  ];
   // Arm segments are centered at their midpoints. Infer the actual elbow
   // from the rendered lower segment and wrist, not a solver's chosen flag.
-  const elbows=rig.arms.map((a,i)=>a.lower.getWorldPosition(
-    new THREE.Vector3()).multiplyScalar(2).sub(wrists[i]))
-    as [THREE.Vector3,THREE.Vector3];
+  const elbows:[THREE.Vector3,THREE.Vector3]=[
+    rig.arms[0].lower.getWorldPosition(new THREE.Vector3())
+      .multiplyScalar(2).sub(wrists[0]),
+    rig.arms[1].lower.getWorldPosition(new THREE.Vector3())
+      .multiplyScalar(2).sub(wrists[1])
+  ];
   return {key,time,chest:copyPoint(rig.chest),
     head:copyPoint(rig.head),weapon:copyPoint(rig.weapon),
     wrists,elbows};
