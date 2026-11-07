@@ -3878,6 +3878,14 @@ function renderGroundMarks(){
  }
 function render(){
   if(stage&&viewMode!=='plan2d'){
+    if(stage.isReplayBodycamActive()){
+      // Bodycam footage is a clean perspective, not an X-ray tactical HUD.
+      // Keep accessible replay transport as DOM, clear only projected plans,
+      // floating names, objective circles and selection rings.
+      draw.setTransform(dpr,0,0,dpr,0,0);
+      draw.clearRect(0,0,cssW,cssH);
+      return;
+    }
     renderProjectedPlans();return;
   }
   draw.setTransform(dpr,0,0,dpr,0,0);
