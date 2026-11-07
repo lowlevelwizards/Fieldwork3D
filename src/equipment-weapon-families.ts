@@ -251,26 +251,56 @@ export function readWeaponFamilyBuild(raw:unknown,weapon:WeaponId):WeaponFamilyB
  }
  return next;
 }
-export function setWeaponFamilyPart(build:WeaponFamilyBuild,weapon:WeaponId,
- slot:FamilyPartSlot,id:string):WeaponFamilyBuild{
- if(!FAMILY_PART_SLOTS.includes(slot))return build;
+/** Interactive edits are separate from tolerant old-save normalization.
+ * Report every dependent reset so the UI can ask once before applying it.
+ * No second build schema and no separate renderer.
+ */
+export type FamilyPartReplacement={
+ slot:FamilyPartSlot;from:string;to:string;
+};
+export type FamilyPartProposal={
+ valid:boolean;build:WeaponFamilyBuild;
+ replacements:readonly FamilyPartReplacement[];reason?:string;
+};
+export function validFamilyBuild(build:WeaponFamilyBuild,weapon:WeaponId):boolean{
+ const receiver=receiverFor(build.parts.receiver,weapon);
+ if(!receiver||receiver.family!==build.family)return false;
+ const barrel=FAMILY_PARTS[build.parts.barrel];
+ if(!barrel)return false;
+ return FAMILY_PART_SLOTS.every(slot=>compatibleFamilyPart(
+  build.parts.receiver,slot,build.parts[slot],weapon,
+  slot==='handguard'?barrel.length:undefined));
+}
+export function proposeFamilyPartChange(build:WeaponFamilyBuild,weapon:WeaponId,
+ slot:FamilyPartSlot,id:string):FamilyPartProposal{
+ const reject=(reason:string):FamilyPartProposal=>({
+  valid:false,build,replacements:[],reason
+ });
+ if(!FAMILY_PART_SLOTS.includes(slot))return reject('Unknown part slot');
+ if(!validFamilyBuild(build,weapon))return reject('Current build needs repair');
+ if(build.parts[slot]===id)return {valid:true,build,replacements:[]};
  const receiverId=slot==='receiver'?id:build.parts.receiver;
  const receiver=receiverFor(receiverId,weapon);
- if(!receiver||receiver.family!==build.family)return build;
- if(slot!=='receiver'&&!compatibleFamilyPart(
-   receiverId,slot,id,weapon,FAMILY_PARTS[build.parts.barrel]?.length))return build;
- if(build.parts[slot]===id)return build;
- if(slot==='receiver'){
-  const fallback=FAMILY_PRESETS.find(x=>x.weapon===weapon&&x.parts.receiver===id);
-  if(!fallback)return build;
-  const normalized=readWeaponFamilyBuild({family:build.family,
-   parts:{...build.parts,receiver:id}},weapon);
-  return normalized??{family:build.family,parts:{...fallback.parts}};
- }
- const next=readWeaponFamilyBuild({family:build.family,
-  parts:{...build.parts,[slot]:id}},weapon);
- return next??build;
+ if(!receiver||receiver.family!==build.family)
+  return reject('This core belongs to a different weapon class or family');
+ const candidate={...build.parts,[slot]:id};
+ // The receiver may invalidate several pieces. Preserve everything else
+ // when possible and use the historical factory fallback only where needed.
+ const result=readWeaponFamilyBuild({family:build.family,parts:candidate},weapon);
+ if(!result||result.parts[slot]!==id||!validFamilyBuild(result,weapon))
+  return reject('This part does not fit the current core and front end');
+ const replacements=FAMILY_PART_SLOTS.filter(key=>
+  build.parts[key]!==result.parts[key]).map(key=>({
+   slot:key,from:build.parts[key],to:result.parts[key]
+  }));
+ return {valid:true,build:result,replacements};
 }
+export function setWeaponFamilyPart(build:WeaponFamilyBuild,weapon:WeaponId,
+ slot:FamilyPartSlot,id:string):WeaponFamilyBuild{
+ const proposal=proposeFamilyPartChange(build,weapon,slot,id);
+ return proposal.valid?proposal.build:build;
+}
+
 export function matchingFamilyPreset(build:WeaponFamilyBuild):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(p=>p.family===build.family&&
   FAMILY_PART_SLOTS.every(slot=>p.parts[slot]===build.parts[slot]));
