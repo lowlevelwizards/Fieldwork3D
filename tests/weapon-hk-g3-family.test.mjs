@@ -62,7 +62,7 @@ test('G3 silhouettes retain authored muzzle, seated furniture and miniature budg
   const [rear,front]=[
    g.children.filter(x=>x.name.startsWith('family-receiver-')),
    g.children.filter(x=>x.name.startsWith('family-barrel-'))];
-  assert.ok(rear.length>=7&&front.length>=3,id+' seated HK landmarks');
+  assert.ok(rear.length===6&&front.length>=3,id+' six purposeful HK receiver parts, no trigger guard');
   assert.equal(g.children.filter(x=>x.userData.hkRearSight).length,1,
    id+' exactly one simple rear sight');
   clearWeaponSilhouette(g);
@@ -155,9 +155,8 @@ test('factory muzzle art hides for muzzle attachments, and faction references us
  const {cfg,g}=geometry('hk-g3a3');
  const modified=setWeaponAttachment(cfg,'muzzle','muzzle-suppressor');
  const group=buildWeaponSilhouette('rifle',mat,mat,modified);
- assert.ok(!group.children.some(x=>x.name.startsWith('family-barrel-')&&
-  x.geometry.type==='BoxGeometry'&&x.geometry.parameters?.width===1.10),
-  'the stock muzzle device is not drawn under the suppressor');
+ assert.ok(!group.children.some(x=>x.userData.hkFactoryFlashHider),
+  'the stock flash hider is removed under an optional suppressor');
  assert.equal(REFERENCE_WEAPONS['greek-lizard-1990'].presetId,'hk-g3a3');
  assert.equal(REFERENCE_WEAPONS['norwegian-m98-2005'].presetId,'hk-g3a3');
  assert.equal(REFERENCE_WEAPONS['norwegian-m98-2005'].fidelity,'representative');
@@ -261,5 +260,77 @@ test('R4: HK pistol-grip rake, one side cocking handle and distinct sights',()=>
    assert.equal(rear.geometry.parameters.radialSegments,6);
   }else assert.equal(rear.geometry.type,'ExtrudeGeometry');
   clearWeaponSilhouette(g);
+ }
+});
+
+test('R5: scaled-up factory flash hider seats over a cut-back barrel with no coincident exterior',()=>{
+ for(const id of ids){
+  const {cfg,g}=geometry(id);
+  const art=HK_BARREL_ART['hk-g3-service'];
+  const barrel=g.children.find(x=>x.name.startsWith('family-barrel-')&&
+   x.geometry.type==='CylinderGeometry'&&x.geometry.parameters?.radialSegments===6);
+  const hider=g.children.find(x=>x.userData.hkFactoryFlashHider);
+  assert.ok(barrel&&hider,id+' factory muzzle parts');
+  assert.equal(g.children.filter(x=>x.userData.hkFactoryFlashHider).length,1);
+  assert.ok(Math.abs(hider.geometry.parameters.options.depth-1.92)<1e-6,'chunky hider depth');
+  const bareBox=new THREE.Box3().setFromObject(barrel);
+  const deviceBox=new THREE.Box3().setFromObject(hider);
+  assert.ok(Math.abs(deviceBox.max.x-art.muzzleX)<.0001,'unchanged muzzle end');
+  assert.ok(Math.abs(deviceBox.max.x-deviceBox.min.x-1.30)<.0001,'larger visible muzzle device');
+  const overlap=bareBox.max.x-deviceBox.min.x;
+  assert.ok(overlap>.12&&overlap<.18,'barrel embedded only .15 in device');
+  assert.ok(bareBox.max.x<deviceBox.max.x-1.0,
+   'barrel is trimmed instead of coplanar at the tip');
+  assert.ok(deviceBox.max.z>bareBox.max.z+.15
+   &&deviceBox.min.z<bareBox.min.z-.15,
+   'flash hider shell covers the barrel in depth');
+  const pad=g.children.find(x=>x.userData.hkButtpad);
+  assert.equal(pad.geometry.parameters.width,.56,'a noticeably thicker buttplate');
+  assert.equal(pad.geometry.parameters.depth,3.50,'a broad proud buttplate');
+  const stock=g.children.find(x=>x.name==='family-stock-'+cfg.build.parts.stock+'-0');
+  const stockBox=new THREE.Box3().setFromObject(stock);
+  const padBox=new THREE.Box3().setFromObject(pad);
+  assert.ok(padBox.min.x<stockBox.min.x);
+  assert.ok(padBox.max.x>stockBox.min.x+.08,'cap overlaps the stock .10');
+  assert.ok(padBox.min.z<stockBox.min.z-.18,'pad has clear noncoplanar sides');
+  clearWeaponSilhouette(g);
+ }
+});
+test('R5: no trigger-guard meshes and bolder single-piece HK rear sights',()=>{
+ for(const id of ids){
+  const {cfg,g}=geometry(id);
+  const receivers=g.children.filter(x=>x.name.startsWith('family-receiver-'));
+  assert.equal(receivers.length,6,'trigger guard frame removed, no replacement clutter');
+  const rear=g.children.find(x=>x.userData.hkRearSight);
+  assert.ok(rear);
+  if(id==='hk-g3a3'){
+   assert.equal(rear.geometry.type,'CylinderGeometry');
+   assert.ok(rear.geometry.parameters.radiusTop>=1.18);
+   assert.ok(rear.geometry.parameters.height>=1.48);
+   assert.equal(rear.geometry.parameters.radialSegments,6);
+  }else{
+   assert.equal(rear.geometry.type,'ExtrudeGeometry');
+   const bounds=new THREE.Box3().setFromObject(rear);
+   assert.ok(bounds.max.y>=3.03,'large readable early folding leaf');
+   assert.ok(bounds.max.x-bounds.min.x>=1.30,'bold but lower-profile early sight');
+  }
+  clearWeaponSilhouette(g);
+ }
+});
+test('R5: optional muzzle accessory replaces factory hider and retains bare-barrel anchor',()=>{
+ for(const id of ids){
+  const {cfg,g}=geometry(id);
+  const art=HK_BARREL_ART['hk-g3-service'];
+  const modified=setWeaponAttachment(cfg,'muzzle','muzzle-suppressor');
+  const other=buildWeaponSilhouette('rifle',mat,mat,modified);
+  assert.ok(!other.children.some(x=>x.userData.hkFactoryFlashHider));
+  const barrel=other.children.find(x=>x.name.startsWith('family-barrel-')
+   &&x.geometry.type==='CylinderGeometry'
+   &&x.geometry.parameters?.radialSegments===6);
+  assert.ok(barrel,'continuous underlying barrel on attachment variant');
+  const box=new THREE.Box3().setFromObject(barrel);
+  assert.ok(Math.abs(box.max.x-art.muzzleX)<.0001,
+   'barrel returns to original mount anchor when factory muzzle is hidden');
+  clearWeaponSilhouette(g);clearWeaponSilhouette(other);
  }
 });
