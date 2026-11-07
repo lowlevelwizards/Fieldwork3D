@@ -86,6 +86,8 @@ export function reloadWeaponPresentationTarget(
 ):ReloadWeaponPresentationTarget{
  const c=reloadAnimationCue(mechanism,mode,progress);
  const k=c.presentation*(mode==='retention'?.82:1);
+ // Exact, bit-neutral mount and start/end frames: no signed -0.
+ if(k===0)return {yaw:0,pitch:0,roll:0,forward:0,up:0,side:0};
  const p=ART[mechanism];
  return {yaw:p.yaw*k,pitch:p.pitch*k,roll:p.roll*k,
   forward:p.forward*k,up:p.up*k,side:p.side*k};
