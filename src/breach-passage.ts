@@ -156,6 +156,83 @@ function tooCloseToLeader(actor:PassageActor,others:readonly PassageActor[],
  }
  return false;
 }
+/** Only the *soft* follower-spacing proposal looks farther back than
+ * the real threshold lease. A rear operator should begin forming a queue
+ * before two shoulder capsules visually overlap near the door. This does
+ * not reserve or open a door: crossingDoor and passageWait retain their
+ * existing shorter acquisition range.
+ */
+const approachingQueue=(actor:PassageActor,door:Door):boolean=>{
+ if(!actor.active||actor.health<=0||!actor.goal)return false;
+ if(distance(actor.p,doorCenter(door))>116)return false;
+ const from=side(actor.p,door),destination=side(actor.goal,door);
+ if(from*destination>=0)return false;
+ const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
+ const width=Math.hypot(dx,dy)||1;
+ const across=((actor.p.x-door.a.x)*dx+
+   (actor.p.y-door.a.y)*dy)/width;
+ return across>=-OPERATOR_RADIUS-8&&
+   across<=width+OPERATOR_RADIUS+8;
+};
+const isFollowerCandidate=(a:PassageActor,cluster:readonly Door[],
+ all:readonly Door[]):boolean=>
+ seeksPassage(a,cluster,all)||
+ cluster.some(door=>approachingQueue(a,door));
+
+/** A0/A1: preserve partial forward travel when a full fixed-tick step
+ * would collapse a same-direction convoy gap. Returning a shorter proposed
+ * step is not a movement commit: the existing passage lease, geometry sweep,
+ * opposing-body authority and authored order remain unchanged.
+ *
+ * A 20-unit gap with 0.8 units of available travel should result in an
+ * 0.8-unit step, not a full-stop followed by another acceleration ramp.
+ * The tiny numerical reserve keeps the regular passageWait() gate stable.
+ */
+export function passageFollowerStep(actor:PassageActor,doors:readonly Door[],
+ actors:readonly PassageActor[],intendedStep:Pt):Pt{
+ if(!actor.active||actor.health<=0||!actor.goal||
+    distance(actor.p,intendedStep)<1e-6)return intendedStep;
+ let fraction=1;
+ const seen=new Set<string>();
+ for(const door of doors){
+  if(distance(door.a,door.b)>60)continue;
+  const cluster=passageCluster(door,doors);
+  const key=cluster.map(d=>d.id).join('+');
+  if(seen.has(key))continue;
+  seen.add(key);
+  if(!isFollowerCandidate(actor,cluster,doors))continue;
+  const relevant=actors.filter(a=>
+   a.id!==actor.id&&a.active&&a.health>0&&
+   (!actor.side||!a.side||a.side===actor.side)&&
+   (a.blockedTime<1.5||insidePassage(a,cluster)||
+    cluster.some(d=>inDoorway(a,d)))&&
+   isFollowerCandidate(a,cluster,doors));
+  for(const aperture of cluster){
+   const heading=travelSign(actor,aperture);
+   if(!heading)continue;
+   const advance=(side(intendedStep,aperture)-
+     side(actor.p,aperture))*heading;
+   // Reversing, stepping out of the queue or stopping is never restrained.
+   if(advance<=.025)continue;
+   for(const other of relevant){
+    if(!sameQueueLane(actor,other,aperture)||
+       travelSign(other,aperture)!==heading)continue;
+    const ahead=(side(other.p,aperture)-side(actor.p,aperture))*heading;
+    if(ahead<=0)continue;
+    // A genuinely separate full-body lane stays free of queue throttling.
+    if(!sameQueueLane({...actor,p:intendedStep},other,aperture)&&
+       distance(intendedStep,other.p)>=PASSAGE_FOLLOW_GAP)continue;
+    const remaining=Math.max(0,ahead-PASSAGE_FOLLOW_GAP-.04);
+    fraction=Math.min(fraction,remaining/advance);
+   }
+  }
+ }
+ if(fraction>=1)return intendedStep;
+ const f=Math.max(0,Math.min(1,fraction));
+ return {x:actor.p.x+(intendedStep.x-actor.p.x)*f,
+  y:actor.p.y+(intendedStep.y-actor.p.y)*f};
+}
+
 /** The exclusive lease is still meaningful for *opposing* streams. Let
  * everyone approach the threshold first, then stop the non-owner just
  * outside the mouth. People already moving out of the aperture must never
