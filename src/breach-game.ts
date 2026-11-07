@@ -99,7 +99,7 @@ import {newAwareness,addObservation,visibleObservation,
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {passageWait,approachingNarrowThreshold,
+import {passageWait,passageFollowerStep,approachingNarrowThreshold,
   type PassageActor,type PassageLease}
   from './breach-passage.ts';
 import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
@@ -1944,7 +1944,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const desired=Math.min(requested,sideLimit,a.squeeze?16:Infinity);
   a.velocity+=(desired-a.velocity)*Math.min(1,dt*6);
   const advance=Math.min(gap,a.velocity*dt);
-  const move={x:a.p.x+Math.cos(direction)*advance,
+  let move={x:a.p.x+Math.cos(direction)*advance,
     y:a.p.y+Math.sin(direction)*advance};
   // Resolve right-of-way BEFORE automatic door-opening, hinge pressure or
   // movement. Otherwise every teammate can start a competing OPEN action
@@ -1966,8 +1966,14 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       active:unit===a||traveling,
     };
   });
-  if(passageWait(traffic.find(unit=>unit.id===a.id)!,s.doors,
-     traffic,s.passageLeases,s.seconds,move)){
+  const passageActor=traffic.find(unit=>unit.id===a.id)!;
+  const negotiatedMove=passageFollowerStep(passageActor,s.doors,traffic,move);
+  // A partly free stride moves on this tick instead of stopping and
+  // repeatedly re-accelerating. A fully consumed gap still enters the
+  // existing WAIT state, with its unchanged warnings/lease semantics.
+  const noForwardRoom=d(negotiatedMove,a.p)<.05&&d(move,a.p)>.05;
+  if(passageWait(passageActor,s.doors,traffic,s.passageLeases,s.seconds,
+       noForwardRoom?move:negotiatedMove)||noForwardRoom){
     a.motorPause='passage';a.velocity=0;a.blockedTime=0;
     a.passageWaitSeconds+=dt;
     // A normal stack is allowed to wait. Warn only when two or more
@@ -1984,6 +1990,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     return true;
   }
   a.passageWaitSeconds=0;a.passageStallReported=false;
+  move=negotiatedMove;
   // Identify the leaf for closed-door authored handling; open hinged
   // leaves are pushed by the coupled swept-body solver below, not by
   // standing nearby or crossing a broad radius trigger.
