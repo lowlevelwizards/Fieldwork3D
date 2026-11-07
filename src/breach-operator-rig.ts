@@ -1392,6 +1392,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       status:result.status,yaw:result.yaw,leanX:result.leanX,
       candidates:result.candidates,
       validCandidates:result.validCandidates,
+      rejects:{...result.rejects},
       quality:result.quality
     };
     if(result.status==='clear'&&result.arms){

@@ -27,7 +27,12 @@ export type CoordinatedRequest={
  /** A released support palm follows its real interaction path, not furniture. */
  releasedSupportTarget?:THREE.Vector3;
 };
+export type CoordinatedRejections={
+ primaryReach:number;primaryClearance:number;
+ supportReach:number;supportClearance:number;
+};
 export type CoordinatedResult={
+ rejects:CoordinatedRejections;
  status:'clear'|'unresolved';
  fit:WeaponFit;
  yaw:number;
@@ -59,6 +64,10 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
  const original=req.fit;
  let winning:CoordinatedResult|null=null;
  let best=Infinity,candidates=0,validCandidates=0;
+ const rejects:CoordinatedRejections={
+  primaryReach:0,primaryClearance:0,
+  supportReach:0,supportClearance:0
+ };
  const yawSeeds=V3_TORSO_YAWS;
  for(const leanX of V3_TORSO_LEANS){
   const approvedBefore=validCandidates;
@@ -72,7 +81,12 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
   const right=solveV3DynamicArm({shoulder:req.shoulders[1],
    wrist:fit.primary,side:1,mode:req.mode,envelope:req.envelope,
    preferredPole:new THREE.Vector3(3,-9,1.5)});
-  if(!right.solution){candidates+=req.releasedSupportTarget?1:SUPPORT_SAMPLES.length;continue;}
+  if(!right.solution){
+   rejects[right.reason==='out-of-reach'?'primaryReach':
+     'primaryClearance']++;
+   candidates+=req.releasedSupportTarget?1:SUPPORT_SAMPLES.length;
+   continue;
+  }
   const options=(!contacts||req.releasedSupportTarget?
     [null]:SUPPORT_SAMPLES) as readonly (number|null)[];
   for(const fraction of options){
@@ -86,11 +100,16 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
     support=new THREE.Vector3(local.x*contacts.scale,local.y,local.z)
       .applyEuler(fit.rotation).add(fit.origin);
    }
-   if(support.distanceTo(req.shoulders[0])>19.92)continue;
+   if(support.distanceTo(req.shoulders[0])>19.92){
+    rejects.supportReach++;continue;
+   }
    const left=solveV3DynamicArm({shoulder:req.shoulders[0],
      wrist:support,side:-1,mode:req.mode,envelope:req.envelope,
      preferredPole:new THREE.Vector3(3,-9,-1.5)});
-   if(!left.solution)continue;
+   if(!left.solution){
+    rejects[left.reason==='out-of-reach'?'supportReach':
+      'supportClearance']++;continue;
+   }
    validCandidates++;
    const stockDrift=fit.stock.distanceTo(original.stock);
    const score=right.report.quality+left.report.quality+
@@ -102,7 +121,7 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
      // A released support hand is not a firearm attachment.
      twoHanded:req.releasedSupportTarget?false:true,
      primaryReachable:true,contactError:0};
-   winning={status:'clear',fit:newFit,yaw,leanX,
+   winning={status:'clear',fit:newFit,yaw,leanX,rejects,
     arms:[left.solution,right.solution],
     reports:[left.report,right.report],softScales:[left.softScale,right.softScale],
     supportFraction:fraction,candidates,validCandidates,quality:score};
@@ -112,7 +131,9 @@ export function solveV3CoordinatedPose(req:CoordinatedRequest):CoordinatedResult
   // already found a physically viable two-arm solution.
   if(validCandidates>approvedBefore)break;
  }
- return winning?{...winning,candidates,validCandidates}:{
+ return winning?{...winning,candidates,validCandidates,
+  rejects:{...rejects}}:{
   status:'unresolved',fit:original,yaw:0,leanX:0,arms:null,
+  rejects:{...rejects},
   reports:null,softScales:null,supportFraction:null,candidates,validCandidates,quality:null};
 }

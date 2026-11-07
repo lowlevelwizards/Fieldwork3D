@@ -4,7 +4,8 @@
  * ADS, magazine manipulation and low-ready have different valid envelopes.
  */
 import type * as THREE from 'three';
-import {evaluateSleeveArmorContact,type PoseClearanceEnvelope}
+import {evaluateSleeveArmorContact,type PoseClearanceEnvelope,
+ type SleeveContactResult}
  from './breach-pose-clearance-envelope.ts';
 import {ARM_LIMITS,type LimbSolution} from './breach-ik.ts';
 
@@ -26,6 +27,7 @@ export type ArmConstraintReport={
  hardDepth:number;softDepth:number;
  elbowDrop:number;outwardFlare:number;
  quality:number;contactValid:boolean;
+ contacts:SleeveContactResult['contacts'];
 };
 const preferredDrop:Record<PoseConstraintMode,number>={
  carry:5.4,aim:3.0,reload:4.2,interaction:4.0
@@ -65,7 +67,7 @@ export function evaluateArmConstraint(p:ArmConstraintInput):ArmConstraintReport{
  return {valid:reasons.length===0,reasons,
   hardDepth:contact.hardDepth,softDepth:contact.softDepth,
   elbowDrop:drop,outwardFlare:flare,quality,
-  contactValid:contact.valid};
+  contactValid:contact.valid,contacts:contact.contacts};
 }
 /** Physical validity always outranks beauty. A failed pose cannot win just
  * because it happens to look less winged; candidates must first be valid.

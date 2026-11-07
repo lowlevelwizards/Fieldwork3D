@@ -45,6 +45,9 @@ const assemble=f=>{
 test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',()=>{
  let clear=0,unresolved=0;
  const reasons=new Map(),violations=new Map(),examples=[];
+ const pairCounts={clear:0,unresolved:0,primaryReach:0,
+  primaryClearance:0,supportReach:0,supportClearance:0};
+ const posePairExamples=[];
  for(const fixture of fixtures){
   const base=assemble(fixture);
   const original=createOperatorRig('v3-old-'+fixture.id,'blue',true);
@@ -63,6 +66,18 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
     assert.ok(candidate.weapon.getWorldQuaternion(new THREE.Quaternion())
      .angleTo(original.weapon.getWorldQuaternion(new THREE.Quaternion()))<1e-6,
      fixture.id+'/'+name+': world aim rotation must be unchanged');
+    const pair=candidate.root.userData.poseV3CoordinatedReport;
+    if(pair){
+     pairCounts[pair.status]++;
+     for(const key of ['primaryReach','primaryClearance',
+      'supportReach','supportClearance'])
+      pairCounts[key]+=(pair.rejects?.[key]??0);
+     if(posePairExamples.length<12)posePairExamples.push({
+      kit:fixture.id,action:name,
+      status:pair.status,yaw:pair.yaw,leanX:pair.leanX,
+      candidates:pair.candidates,valid:pair.validCandidates,
+      rejects:pair.rejects});
+    }
     const reports=candidate.root.userData.poseV3DynamicReport;
     assert.equal(reports?.length,2,fixture.id+'/'+name);
     for(const [armIndex,report] of reports.entries()){
@@ -96,5 +111,5 @@ test('V3 3-kit action matrix: preserve weapon authority and mark unsolved arms',
  console.log('POSE-V3-ACTION-MATRIX',JSON.stringify({clear,unresolved,
   fixtures:fixtures.length,actions:scenarios.length,
   reasons:Object.fromEntries(reasons),violations:Object.fromEntries(violations),
-  examples}));
+  pairCounts,posePairExamples,examples}));
 });
