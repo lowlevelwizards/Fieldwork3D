@@ -1,0 +1,27 @@
+name: Exhaustive verification audit
+on:
+  schedule:
+    - cron: '17 8 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: exhaustive-verification
+  cancel-in-progress: false
+jobs:
+  exhaustive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm ci --no-audit --no-fund
+      # Execute every case. Known failures remain visible; new/changed/resolved/expired entries fail.
+      - run: npm run test:baseline
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exhaustive-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: reports/baseline
+          if-no-files-found: error
+          retention-days: 14

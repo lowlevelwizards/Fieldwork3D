@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {assertIdentityEqual as assertEqual} from './helpers/identity.mjs';
+
 import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
@@ -25,50 +27,50 @@ const near=(a,b,tol=1e-5)=>assert.ok(a.distanceTo(b)<tol,
 test('Stage 3A fixes the reference anatomy but approves no new proportions',()=>{
  assert.deepEqual(GARMENT_FIT_REFERENCE.shoulderLeft,ANATOMY.shoulderLeft);
  assert.deepEqual(GARMENT_FIT_REFERENCE.shoulderRight,ANATOMY.shoulderRight);
- assert.equal(GARMENT_FIT_REFERENCE.pelvis.centerY,LEG_HIP_HEIGHT);
- assert.equal(GARMENT_FIT_REFERENCE.hipSide,LEG_HIP_SIDE);
- assert.equal(GARMENT_FIT_REFERENCE.upperLegLength,LEG_UPPER_LENGTH);
- assert.equal(GARMENT_FIT_REFERENCE.lowerLegLength,LEG_LOWER_LENGTH);
+ assertEqual(GARMENT_FIT_REFERENCE.pelvis.centerY,LEG_HIP_HEIGHT);
+ assertEqual(GARMENT_FIT_REFERENCE.hipSide,LEG_HIP_SIDE);
+ assertEqual(GARMENT_FIT_REFERENCE.upperLegLength,LEG_UPPER_LENGTH);
+ assertEqual(GARMENT_FIT_REFERENCE.lowerLegLength,LEG_LOWER_LENGTH);
  assert.deepEqual(GARMENT_FIT_LAYER_ORDER,[
   'skin','underlayer','outer-fabric','armor-textile','rig-textile','hardware']);
  assert.ok(GARMENT_FIT_TOLERANCES.minDistinctSurfaceGap>0);
- assert.equal(GARMENT_FIT_TOLERANCES.headgearReserved,true);
+ assertEqual(GARMENT_FIT_TOLERANCES.headgearReserved,true);
 });
 
 test('garment anchors belong to actual body and IK segments, never headgear, collision or render meshes',()=>{
  const rig=createOperatorRig('rook','blue');
  const anchors=rig.garmentFitAnchors;
- assert.equal(Object.keys(anchors).length,GARMENT_FIT_ANCHOR_IDS.length);
- assert.equal(anchors.torso.parent,rig.chest);
- assert.equal(anchors.collar.parent,rig.chest);
- assert.equal(anchors['front-hem'].parent,rig.chest);
- assert.equal(anchors['back-hem'].parent,rig.chest);
- assert.equal(anchors['shoulder-left'].parent,rig.chest);
- assert.equal(anchors['shoulder-right'].parent,rig.chest);
- assert.equal(anchors.waist.parent,rig.hip);
- assert.equal(anchors['upper-sleeve-left'].parent,rig.arms[0].upper);
- assert.equal(anchors['upper-sleeve-right'].parent,rig.arms[1].upper);
- assert.equal(anchors['forearm-left'].parent,rig.arms[0].lower);
- assert.equal(anchors['forearm-right'].parent,rig.arms[1].lower);
- assert.equal(anchors['thigh-left'].parent,rig.feet[0].upper);
- assert.equal(anchors['knee-left'].parent,rig.feet[0].lower);
- assert.equal(anchors['knee-right'].parent,rig.feet[1].lower);
- assert.equal(anchors['shin-right'].parent,rig.feet[1].lower);
- assert.equal(anchors['boot-right'].parent,rig.feet[1].shoe);
+ assertEqual(Object.keys(anchors).length,GARMENT_FIT_ANCHOR_IDS.length);
+ assertEqual(anchors.torso.parent,rig.chest);
+ assertEqual(anchors.collar.parent,rig.chest);
+ assertEqual(anchors['front-hem'].parent,rig.chest);
+ assertEqual(anchors['back-hem'].parent,rig.chest);
+ assertEqual(anchors['shoulder-left'].parent,rig.chest);
+ assertEqual(anchors['shoulder-right'].parent,rig.chest);
+ assertEqual(anchors.waist.parent,rig.hip);
+ assertEqual(anchors['upper-sleeve-left'].parent,rig.arms[0].upper);
+ assertEqual(anchors['upper-sleeve-right'].parent,rig.arms[1].upper);
+ assertEqual(anchors['forearm-left'].parent,rig.arms[0].lower);
+ assertEqual(anchors['forearm-right'].parent,rig.arms[1].lower);
+ assertEqual(anchors['thigh-left'].parent,rig.feet[0].upper);
+ assertEqual(anchors['knee-left'].parent,rig.feet[0].lower);
+ assertEqual(anchors['knee-right'].parent,rig.feet[1].lower);
+ assertEqual(anchors['shin-right'].parent,rig.feet[1].lower);
+ assertEqual(anchors['boot-right'].parent,rig.feet[1].shoe);
  assert.ok(!Object.values(anchors).some(a=>a.parent===rig.head));
  let extraSceneNodes=0;
  rig.root.traverse(node=>{if(node.name.startsWith('garment-fit:'))extraSceneNodes++;});
- assert.equal(extraSceneNodes,0,'all 19 garment references are virtual: no per-frame scene work');
+ assertEqual(extraSceneNodes,0,'all 19 garment references are virtual: no per-frame scene work');
  for(const key of GARMENT_FIT_ANCHOR_IDS){
   const item=anchors[key];
-  assert.equal(item.id,key);
+  assertEqual(item.id,key);
   assert.ok(item.parent instanceof THREE.Object3D,key);
   assert.ok(item.offset instanceof THREE.Vector3,key);
   assert.ok(item.offset.toArray().every(Number.isFinite),key);
   assert.ok(!('children' in item),'virtual reference must not be a scene node');
  }
- assert.equal(anchors['knee-left'].offset.y,-.5);
- assert.equal(anchors['knee-right'].offset.y,-.5);
+ assertEqual(anchors['knee-left'].offset.y,-.5);
+ assertEqual(anchors['knee-right'].offset.y,-.5);
  rig.root.updateMatrixWorld(true);
  near(garmentFitWorldPoint(anchors,'shoulder-left'),
   rig.chest.localToWorld(vec(ANATOMY.shoulderLeft)));
@@ -76,7 +78,7 @@ test('garment anchors belong to actual body and IK segments, never headgear, col
   rig.chest.localToWorld(vec(ANATOMY.shoulderRight)));
  const report=sampleGarmentFit(anchors);
  assert.ok(Math.abs(report.shoulderSpan-14)<1e-5);
- assert.equal(garmentFitDiagnosticLines(report).length,8);
+ assertEqual(garmentFitDiagnosticLines(report).length,8);
  assert.ok(garmentFitDiagnosticLines(report)[0].includes('PROPORTIONS LOCKED'));
  rig.dispose();
 });
@@ -84,8 +86,8 @@ test('garment anchors belong to actual body and IK segments, never headgear, col
 test('optional fit diagnostics track authentic animation poses without touching garment joints or replay',()=>{
  const rig=createOperatorRig('rook','blue');
  const before={
-  chestGeometry:rig.chest.children.filter(c=>c instanceof THREE.Mesh).map(m=>m.geometry),
-  bootGeo:rig.feet.map(f=>f.shoe.geometry),
+  chestGeometry:rig.chest.children.filter(c=>c instanceof THREE.Mesh).map(m=>m.geometry.uuid),
+  bootGeo:rig.feet.map(f=>f.shoe.geometry.uuid),
   shoulder:rig.garmentFitAnchors['shoulder-left'].offset.clone(),
   headwear:rig.visualKit.wardrobeHead
  };
@@ -119,10 +121,10 @@ test('optional fit diagnostics track authentic animation poses without touching 
    rig.feet[0].lower.localToWorld(new THREE.Vector3(0,-.5,0)),1e-4);
  }
  assert.deepEqual(before.chestGeometry,
-  rig.chest.children.filter(c=>c instanceof THREE.Mesh).map(m=>m.geometry));
- assert.deepEqual(before.bootGeo,rig.feet.map(f=>f.shoe.geometry));
+  rig.chest.children.filter(c=>c instanceof THREE.Mesh).map(m=>m.geometry.uuid));
+ assert.deepEqual(before.bootGeo,rig.feet.map(f=>f.shoe.geometry.uuid));
  near(before.shoulder,rig.garmentFitAnchors['shoulder-left'].offset);
- assert.equal(rig.visualKit.wardrobeHead,before.headwear);
+ assertEqual(rig.visualKit.wardrobeHead,before.headwear);
  rig.dispose();
 });
 

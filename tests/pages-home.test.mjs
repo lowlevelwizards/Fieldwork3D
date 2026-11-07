@@ -39,7 +39,15 @@ test('Original Verdigris is archived and included in the Pages build',()=>{
 test('Main branch automatically deploys the Vite build to GitHub Pages',()=>{
   const workflow=read('.github/workflows/pages.yml');
   assert.match(workflow,/branches: \[main\]/);
-  assert.match(workflow,/npm run build/);
+  assert.match(workflow,/uses: \.\/.github\/workflows\/verify\.yml/);
+  assert.match(workflow,/needs: verify/);
+  assert.match(workflow,/actions\/download-artifact@v4/);
+  assert.match(workflow,/artifact\.mjs --verify/);
+  assert.doesNotMatch(workflow,/run: npm run build/);
+  const verification=read('.github/workflows/verify.yml');
+  assert.match(verification,/run: npm run build/);
+  assert.match(verification,/run: npm run test:browser/);
+  assert.match(verification,/run: npm run check:artifact/);
   assert.match(workflow,/path: dist/);
   assert.match(workflow,/actions\/deploy-pages@v4/);
 });

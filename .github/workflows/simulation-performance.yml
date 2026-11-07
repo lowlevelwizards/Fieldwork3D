@@ -1,40 +1,5 @@
 name: Simulation performance probe
 on:
-  pull_request:
-    paths:
-      - 'scripts/bench-breach-performance.mjs'
-      - '.github/workflows/simulation-performance.yml'
-      - 'src/breach-game.ts'
-      - 'src/breach-ground-view.ts'
-      - 'src/breach-replay.ts'
-      - 'src/breach-3d.ts'
-      - 'src/breach-operator-rig.ts'
-      - 'tests/breach-ground-view-performance.test.mjs'
-      - 'tests/breach-intel-discovery-performance.test.mjs'
-      - 'src/breach-defense.ts'
-      - 'src/breach-intel.ts'
-      - 'src/breach-core.ts'
-      - 'src/breach-route-heap.ts'
-      - 'src/breach-spatial-index.ts'
-      - 'tests/breach-route-heap-performance.test.mjs'
-      - 'tests/breach-spatial-index-performance.test.mjs'
-      - 'src/breach-vision-polygon.ts'
-      - 'src/breach-fog-mask.ts'
-      - 'src/breach-fog-memory.ts'
-      - 'tests/breach-fog-ray-broadphase-performance.test.mjs'
-      - 'tests/breach-fog-sparse-memory-performance.test.mjs'
-      - 'src/breach-ai-work-scheduler.ts'
-      - 'src/breach-tactical-route-cache.ts'
-      - 'src/breach-perception-cache.ts'
-      - 'tests/breach-ai-work-scheduler-performance.test.mjs'
-      - 'tests/breach-tactical-route-cache-performance.test.mjs'
-      - 'tests/breach-perception-cache-performance.test.mjs'
-      - 'tests/breach-p7-fog-layer-performance.test.mjs'
-      - 'src/breach-plan-projection-cache.ts'
-      - 'src/breach-replay-sharing.ts'
-      - 'tests/breach-p7-projected-route-cache.test.mjs'
-      - 'tests/breach-p7-replay-sharing.test.mjs'
-      - 'src/breach-fog-cache.ts'
   workflow_dispatch:
 jobs:
   simulation-benchmark:
@@ -42,10 +7,8 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: npm install --no-audit --no-fund
+      - uses: ./.github/actions/setup
+      - run: npm ci --no-audit --no-fund
       - name: Simulation workload profiles (host CPU, not device FPS)
         run: node --experimental-strip-types scripts/bench-breach-performance.mjs
       - name: Critical AI, muzzle and effects regressions

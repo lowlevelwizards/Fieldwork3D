@@ -1,0 +1,102 @@
+name: Reusable verification
+on:
+  workflow_call:
+    inputs:
+      base-sha:
+        type: string
+        default: ''
+    outputs:
+      artifact-name:
+        value: ${{ jobs.browser.outputs.artifact-name }}
+permissions:
+  contents: read
+jobs:
+  core:
+    name: Core contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm ci --no-audit --no-fund
+      - run: npm run test:core
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: core-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: reports/core
+          if-no-files-found: error
+  features:
+    name: Affected feature regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - run: npm ci --no-audit --no-fund
+      - name: Run affected suites, detecting new and changed failures
+        env:
+          BASE_SHA: ${{ inputs.base-sha }}
+        run: |
+          if [[ -n "$BASE_SHA" && ! "$BASE_SHA" =~ ^0+$ ]]; then
+            npm run test:feature -- --changed "$BASE_SHA"
+          else
+            npm run test:baseline
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: feature-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: reports
+          if-no-files-found: ignore
+  browser:
+    name: Production build and browser journeys
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/fieldwork-browsers
+    outputs:
+      artifact-name: ${{ steps.identity.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - run: npm ci --no-audit --no-fund
+      # Build includes the strict TypeScript check and all supported Pages entrypoints.
+      - run: npm run build
+      - run: npm exec -- playwright install --with-deps chromium
+      - run: npm run test:browser
+      - run: npm run check:artifact
+      - id: identity
+        run: echo "name=verified-pages-${GITHUB_SHA}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.identity.outputs.name }}
+          path: dist
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-report-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            reports/browser
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+  required:
+    name: Required verification
+    if: always()
+    needs: [core, features, browser]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Every mandatory job must succeed
+        env:
+          CORE: ${{ needs.core.result }}
+          FEATURES: ${{ needs.features.result }}
+          BROWSER: ${{ needs.browser.result }}
+        run: |
+          test "$CORE" = success
+          test "$FEATURES" = success
+          test "$BROWSER" = success

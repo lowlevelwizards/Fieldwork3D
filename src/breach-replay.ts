@@ -112,8 +112,7 @@ export function snapshot(s:Session,seenGround?:string[],
       lastHitSeverity:a.lastHitSeverity,downPose:a.downPose,
       flashUntil:a.flashUntil,suppression:a.suppression,
       weapon:a.weapon,weaponConfiguration:a.weaponConfiguration?
-        {version:1,weapon:a.weaponConfiguration.weapon,
-          slots:{...a.weaponConfiguration.slots}}:undefined,
+        structuredClone(a.weaponConfiguration):undefined,
        injuryStage:a.injuryStage,medical:copyMedicalCondition(a.medical),
        medicalSupplies:{...a.medicalSupplies},
        lastTreatmentAt:a.lastTreatmentAt,
@@ -365,6 +364,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   for(const copy of f.actors){
     const a=s.operators.find(actor=>actor.id===copy.id);
     if(a)Object.assign(a,copy,{p:position(copy.p),
+      weaponConfiguration:copy.weaponConfiguration?
+        structuredClone(copy.weaponConfiguration):undefined,
       traversal:traversalCopy(copy.traversal),traversalPending:null,
       aimInstruction:copy.aimInstruction?{...copy.aimInstruction,
         point:copy.aimInstruction.point?position(copy.aimInstruction.point):undefined}:null,

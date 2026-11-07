@@ -1,3 +1,15 @@
+# Fieldwork3D — Tactical Breach
+
+The current game opens at `index.html`. For reproducible setup, mandatory checks,
+failure triage and verified Pages deployment, see
+[the verification guide](docs/verification/README.md).
+
+Quick start: use `.node-version`, run `npm ci`, then `npm run dev`.
+Run `npm exec -- playwright install chromium` once and `npm run verify` before a PR.
+
+The material below is the historical development record of the environmental
+prototypes and their subsequent builds.
+
 # Fieldwork — Ground Zero / Builds 011–014: Living Ground
 
 One continuous 10 × 10 metre heightfield, with real rainfall, drainage,

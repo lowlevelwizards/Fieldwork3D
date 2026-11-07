@@ -1,32 +1,21 @@
 name: Replay R3 — Durable Library Browser Smoke
 on:
-  pull_request:
-    paths:
-      - 'src/breach-replay-archive.ts'
-      - 'src/breach-replay-motion.ts'
-      - 'src/breach-replay-library.ts'
-      - 'src/breach-replay-portable.ts'
-      - 'src/breach-main.ts'
-      - 'index.html'
-      - 'scripts/smoke-replay-r3-library.mjs'
-      - '.github/workflows/replay-r3-library-smoke.yml'
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: replay-r3-library-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+env:
+  PLAYWRIGHT_BROWSERS_PATH: /tmp/fieldwork-browsers
 jobs:
   library-smoke:
-    if: ${{ startsWith(github.head_ref, 'feature/replay-r3-library-') || startsWith(github.head_ref, 'feature/replay-r3-portable-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 11
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - run: npm install --no-audit --no-fund
-      - run: npm install --no-save --package-lock=false playwright@1.56.1
-      - run: npx playwright install chromium
+      - uses: ./.github/actions/setup
+      - run: npm ci --no-audit --no-fund
+      - run: npm exec -- playwright install chromium
       - name: Verify IndexedDB save/reload/watch/delete and mobile library
         run: node scripts/smoke-replay-r3-library.mjs

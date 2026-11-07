@@ -1,6 +1,6 @@
 /** Visual-only route cache. Never trusted by the movement motor.
  * Plans, local origin cell, known topology and exact goal form the key. */
-import {type Pt,WALLS,COVER,activeSite} from './breach-core.ts';
+import {type Pt,WALLS,COVER,activeSite,activeGeometryRevision} from './breach-core.ts';
 import {type IntelState,routeWithIntel} from './breach-intel.ts';
 import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 export type DisplayRoute={points:readonly Pt[];narrowOnly:boolean};
@@ -12,7 +12,7 @@ export function intelRouteFingerprint(intel:IntelState){
     sorted(intel.doors),doors,activeSite()?.seed??'standard',
     activeSite()?.scale??'standard',
     JSON.stringify(activeSite()?.bounds??null),
-    WALLS.length,COVER.length].join('|');
+    WALLS.length,COVER.length,activeGeometryRevision()].join('|');
 }
 export class DisplayRouteCache{
   private knownKey='';

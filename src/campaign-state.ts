@@ -178,6 +178,11 @@ export function readCampaign(raw:string|null):CampaignState|null{
      !Number.isFinite(c.supplies.medical))return null;
   for(const o of c.operators){
    if(!o||typeof o.id!=='string'||typeof o.callsign!=='string'||
+     !WEAPONS.includes(o.weapon)||
+     !['available','reserve','lost','retired'].includes(o.status)||
+     !Number.isInteger(o.magazine)||o.magazine<0||o.magazine>200||
+     !Number.isInteger(o.reserve)||o.reserve<0||o.reserve>300||
+     !Number.isInteger(o.recoveryDays)||o.recoveryDays<0||o.recoveryDays>1000000||
      !SKILL_NAMES.every(k=>Number.isFinite(o.skills?.[k])&&Number.isFinite(o.experience?.[k])&&Number.isFinite(o.aptitudes?.[k])))return null;
   }
   for(const contract of c.contracts){

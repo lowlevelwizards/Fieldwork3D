@@ -83,7 +83,9 @@ test('052: breach actions have deterministic victory and defeat outcomes',()=>{
 test('052: new game does not import old simulation, preserves legacy entries',()=>{
   const vite=readFileSync(new URL('../vite.config.ts',import.meta.url),'utf8');
   const src=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
-  const page=readFileSync(new URL('../breach.html',import.meta.url),'utf8');
+  const redirect=readFileSync(new URL('../breach.html',import.meta.url),'utf8');
+  const page=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  assert.match(redirect,/window\.location\.replace\(target\.href\)/);
   assert.ok(vite.includes("breach: 'breach.html'"));
   assert.ok(vite.includes("world: 'world.html'"));
   assert.ok(vite.includes("study: 'study.html'"));
