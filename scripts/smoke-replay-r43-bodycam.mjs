@@ -120,18 +120,33 @@ try{
   check(distance(chest.position,helmet.position)>1,
     'Switching mount did not move the perspective camera');
 
-  // Rewind must give identical exact socket transform on identical sample.
-  await page.evaluate(()=>window.__fieldworkBodycamQa.seek(0));
-  await page.waitForTimeout(250);
-  const initial=await page.evaluate(()=>window.__fieldworkBodycamQa.diagnostic());
-  await page.evaluate(()=>window.__fieldworkBodycamQa.seek(.1));
-  await page.waitForTimeout(250);
-  await page.evaluate(()=>window.__fieldworkBodycamQa.seek(0));
-  await page.waitForTimeout(250);
-  const rewound=await page.evaluate(()=>window.__fieldworkBodycamQa.diagnostic());
-  check(distance(initial.position,rewound.position)<.005&&
-    distance(initial.direction,rewound.direction)<.0005,
-    'Rewind produced different Bodycam socket at same historical sample');
+  // Rewind must sample a NEWLY rendered frame, not a stale screenshot
+  // from earlier when SwiftShader runs slower than our replay scrubber.
+  const seekAndDraw=async(time)=>{
+    const previous=await page.evaluate(()=>
+      window.__fieldworkBodycamQa.diagnostic()?.frame??-1);
+    check(await page.evaluate(t=>
+      window.__fieldworkBodycamQa.seek(t),time),
+      'Bodycam did not accept a replay seek');
+    await page.waitForFunction(previous=>{
+      const d=window.__fieldworkBodycamQa.diagnostic();
+      return d?.active&&d.frame>previous;
+    },previous,{timeout:30000});
+    return page.evaluate(()=>window.__fieldworkBodycamQa.diagnostic());
+  };
+  const initial=await seekAndDraw(0);
+  await seekAndDraw(.1);
+  const rewound=await seekAndDraw(0);
+  const delta=distance(initial.position,rewound.position);
+  const headingDelta=distance(initial.direction,rewound.direction);
+  check(Math.abs(initial.at-rewound.at)<1e-6&&
+    delta<.005&&headingDelta<.0005,
+    'Rewind mismatch between freshly rendered historical frames: '+
+    JSON.stringify({initial:{at:initial.at,frame:initial.frame,
+      position:initial.position,direction:initial.direction},
+      rewound:{at:rewound.at,frame:rewound.frame,
+      position:rewound.position,direction:rewound.direction},
+      delta,headingDelta}));
   const rewindShot=await browserFrame(page,'helmet-rewind');
 
   await page.setViewportSize({width:844,height:390});
