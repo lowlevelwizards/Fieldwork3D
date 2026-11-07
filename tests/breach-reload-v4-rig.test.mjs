@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createOperatorRig,poseOperator}
@@ -153,4 +154,18 @@ test('B25 AR empty bolt press, retention bypass and neutral nonreload still work
     poseV4ReloadPreview:true},0);
   assert.equal(rig.root.userData.reloadV4Cue,null);
  }finally{rig.dispose();}
+});
+
+test('B30 live renderer and replay use authored V4 without a debug query',()=>{
+ const game=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
+ const start=game.indexOf('poseOperator(object.physical,{');
+ assert.ok(start>0,'tactical 3D renderer must be present');
+ const args=game.slice(start,game.indexOf('},dt);',start)+7);
+ assert.match(args,/poseV3Preview:true,poseV4ReloadPreview:true/);
+ assert.match(args,/reloadSelectedMagazineId:actor\.reloadSelectedMagazineId/);
+ assert.match(args,/magazineCarryItems:carried\.filter/);
+ assert.match(args,/reloadRemoved:actor\.reloadRemoved/);
+ assert.match(args,/reloadInserted:actor\.reloadInserted/);
+ const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
+ assert.match(lab,/poseV4ReloadPreview=poseFlags\.get\('poseV4'\)!=='0'/);
 });

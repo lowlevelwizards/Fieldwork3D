@@ -101,9 +101,9 @@ type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
   bend:THREE.Vector3;outOfReach:boolean};
 export type OperatorPose={
-  /** Opt-in LAB-only V3 torso fit audition; never set by gameplay. */
+  /** V3 whole-arm fitting; enabled by the live tactical renderer. */
   poseV3Preview?:boolean;
-  /** B24b reload-action visual tolerance, opt-in Lab only. */
+  /** V4 rifle, hand, magazine and controls; enabled for live reloads. */
   poseV4ReloadPreview?:boolean;
   /** Opt-in Lab reload corridor comparison; never read by game simulation. */
   poseV3ReloadCorridor?:V3ReloadCorridorProfile;
@@ -170,6 +170,7 @@ export type OperatorRig={
   /** Authoritative, old motor yaw; a tactical heading is never remapped. */
   legacyYaw:number;legacyPitch:number;legacyRoll:number;
   hip:THREE.Group;chest:THREE.Group;head:THREE.Group;
+  bodycamChest:THREE.Object3D;bodycamHelmet:THREE.Object3D;
   weapon:THREE.Group;droppedGun:THREE.Group;feet:Foot[];arms:Arm[];
   magazineInserted:THREE.Mesh;magazineHand:THREE.Mesh;
   detachedMagazine:THREE.Group;
@@ -278,6 +279,12 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   root.add(legacyFrame);
   legacyFrame.add(hip,chest,droppedGun);droppedGun.visible=false;
   chest.add(head,weapon);
+  const bodycamChest=new THREE.Object3D();
+  bodycamChest.name='fieldwork-replay-bodycam-chest';
+  bodycamChest.position.set(9.5,1.4,0);chest.add(bodycamChest);
+  const bodycamHelmet=new THREE.Object3D();
+  bodycamHelmet.name='fieldwork-replay-bodycam-helmet';
+  bodycamHelmet.position.set(8.5,2.4,0);head.add(bodycamHelmet);
   const headCanonicalFrame=createCanonicalAttachment(head);
   root.quaternion.copy(canonicalRootOrientation(0,0,0));
   const cloth=mat(side==='red'?0x936e5b:
@@ -437,6 +444,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   return {root,camoIdentity:id,legacyFrame,headCanonicalFrame,
     legacyYaw:0,legacyPitch:0,legacyRoll:0,
     hip,chest,head,weapon,droppedGun,feet,arms,pack,
+    bodycamChest,bodycamHelmet,
     reloadControlMesh,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
     medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,

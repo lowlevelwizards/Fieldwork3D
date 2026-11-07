@@ -29,6 +29,14 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-cover-refinement-') }}
         run: |
           node --experimental-strip-types --test tests/pasgt-p1-policy.test.mjs tests/pasgt-p2-cover-visuals.test.mjs tests/helmet-h1-config.test.mjs tests/helmet-h1-presets.test.mjs tests/helmet-h1-integration.test.mjs
+      - name: PASGT P4 — taut cover, slit-card dress, UV and save regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-p4-') }}
+        run: |
+          node --experimental-strip-types --test tests/pasgt-p1-policy.test.mjs tests/pasgt-p2-cover-visuals.test.mjs tests/pasgt-p4-drape.test.mjs tests/pasgt-p4-field-dress.test.mjs tests/helmet-h1-config.test.mjs
+      - name: PASGT P5 foundation — shell fit, metric UV and elastic band
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/pasgt-p5-') }}
+        run: |
+          node --experimental-strip-types --test tests/pasgt-p5-cover-fit.test.mjs tests/pasgt-p5-camo-uv.test.mjs tests/pasgt-p5-band.test.mjs tests/pasgt-p4-drape.test.mjs tests/pasgt-p4-field-dress.test.mjs tests/pasgt-p2-cover-visuals.test.mjs tests/pasgt-p1-policy.test.mjs
       - name: Production release preflight — Pages queue and live build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-squad-flow-a-') }}
         env:
@@ -1197,6 +1205,14 @@ jobs:
             tests/equipment-19-01-weapon-assemblies.test.mjs \
             tests/weapon-workbench-mobile-sockets.test.mjs
           node --experimental-strip-types scripts/audit-weapon-ortho-r2.mjs /tmp/weapon-ortho-r33.html
+      - name: Replay R4.3 — body-mounted perspective camera geometry
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r43-') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-r43-bodycam-camera.test.mjs \
+            tests/replay-r43-personal-visibility.test.mjs \
+            tests/replay-r42c-operator-bodies.test.mjs \
+            tests/replay-r42c-door-knowledge.test.mjs
       - name: Replay R4.2c — individual civilian evidence and archive
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-r42c-') }}
         run: |
@@ -1487,6 +1503,10 @@ jobs:
           name: hk-modular-r1-factory-orthographic
           path: reports/hk-modular-r1-ortho.html
           retention-days: 7
+      - name: Armory R2 — HK/AK/AR compatibility, mount migration and pose regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/weapon-platform-interchange-r2-') }}
+        run: |
+          node --experimental-strip-types --test tests/weapon-platform-interchange-r2.test.mjs tests/weapon-hk-modular-r1.test.mjs tests/weapon-hk-mp5-family.test.mjs tests/weapon-hk-mp5-r2-refinements.test.mjs tests/weapon-hk-g3-family.test.mjs tests/weapon-hk-expansion.test.mjs tests/weapon-families-01.test.mjs tests/weapon-arsenal-r4.test.mjs tests/equipment-19-01-weapon-assemblies.test.mjs tests/equipment-19-06-quickplay-editor.test.mjs tests/equipment-21-01-workbench.test.mjs tests/equipment-21-02-workbench-integration.test.mjs tests/breach-low-ready-family-fit.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

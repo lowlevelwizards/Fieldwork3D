@@ -76,9 +76,9 @@ test('standard MP5 can morph from tropical to three-sided rail with optional gri
   'hk-mp5sd-shroud','SD integral front end cannot take the standard MP5 rail');
 });
 test('HK claw top rail only appears when fitted to HK; keeps true muzzle geometry',()=>{
- const a=preset('hk-hk33a2'),b=setWeaponAttachment(a,'optic','optic-hk-claw');
- assert.equal(b.slots.optic,'optic-hk-claw');
- assert.equal(familyAccessoryAllowed(a.build,'optic','optic-hk-claw'),true);
+ const a=preset('hk-hk33a2'),b=setWeaponAttachment(a,'opticMount','optic-hk-claw');
+ assert.equal(b.slots.opticMount,'optic-hk-claw');
+ assert.equal(familyAccessoryAllowed(a.build,'opticMount','optic-hk-claw'),true);
  const gun=model(b),plain=model(a);
  assert.equal(gun.children.filter(x=>x.userData.hkClawMount).length,8);
  const top=gun.children.find(x=>x.userData.hkClawMount==='rail');
@@ -90,9 +90,9 @@ test('HK claw top rail only appears when fitted to HK; keeps true muzzle geometr
  assert.equal(resolveWeaponAssembly(b).muzzleX,resolveWeaponAssembly(a).muzzleX);
  clearWeaponSilhouette(gun);clearWeaponSilhouette(plain);
  const ar=preset('ar-m16a2');
- assert.equal(setWeaponAttachment(ar,'optic','optic-hk-claw'),ar);
- assert.equal(setWeaponAttachment(initialWeaponConfiguration('carbine'),'optic','optic-hk-claw')
-  .slots.optic,'optic-irons');
+ assert.equal(setWeaponAttachment(ar,'opticMount','optic-hk-claw'),ar);
+ assert.equal(setWeaponAttachment(initialWeaponConfiguration('carbine'),'opticMount','optic-hk-claw')
+  .slots.opticMount,'optic-mount-none');
 });
 test('receiver swaps obey weapon class, feed and front-end compatibility gates',()=>{
  const a=preset('hk-mp5k-pdw');

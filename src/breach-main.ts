@@ -137,8 +137,8 @@ import {validateStudioAppearanceEdits,applyStudioRosterEdits,
  applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- sameWeaponConfiguration,familyAccessoryAllowed} from './equipment-weapon-assemblies.ts';
-import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,familyPreset,type FamilyPartSlot} from './equipment-weapon-families.ts';
+ sameWeaponConfiguration,weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
+import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,familyPreset,proposeFamilyPartChange,type FamilyPartSlot} from './equipment-weapon-families.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {newCampaign,readCampaign,acceptContract,resolveOperation,
  purchaseAmmo,purchaseMedical,resupplyOperator,resupplyMedicalOperator,treatOperator,
@@ -1038,7 +1038,7 @@ function renderOperationsBoard(){
   // Legacy WeaponId remains internal simulation/persistence compatibility.
   const modelHint=document.createElement('small');
   modelHint.className='fw-weapon-section-label';
-  modelHint.textContent='SELECT AN AR / AK / HK VARIANT · FACTORY MODEL + PARTS';
+  modelHint.textContent='SELECT PLATFORM · FACTORY CHECKPOINTS + CUSTOM PARTS';
   loadout.field('weapon').append(modelHint);
   const activePreset=member.weaponConfiguration.build?
    matchingFamilyPreset(member.weaponConfiguration.build):undefined;
@@ -1157,7 +1157,7 @@ function renderOperationsBoard(){
   kit.addEventListener('toggle',syncWorkbench);
   loadout.group.weapon.addEventListener('toggle',syncWorkbench);
   const weaponTitle=document.createElement('summary');
-  weaponTitle.textContent='3D WEAPON WORKBENCH · TAP SOCKETS';
+  weaponTitle.textContent='WEAPON WORKBENCH · TAP PART TO EDIT';
   weaponEditor.append(weaponTitle,workbenchHost,socketPanel);
   for(const slot of WEAPON_ATTACHMENT_SLOTS){
    if(member.weaponConfiguration.build&&slot==='stock')continue;
@@ -1167,10 +1167,8 @@ function renderOperationsBoard(){
    const select=document.createElement('select');
    select.setAttribute('aria-label',slot+' attachment for '+member.callsign);
    for(const part of Object.values(WEAPON_ATTACHMENTS)){
-    if(part.slot!==slot||!part.compatible.includes(member.weapon)||
-     (member.weaponConfiguration.build&&
-      !familyAccessoryAllowed(member.weaponConfiguration.build,slot,part.id))||
-     (!member.weaponConfiguration.build&&part.id==='optic-hk-claw'))continue;
+    if(part.slot!==slot||!weaponAttachmentAllowed(
+     member.weaponConfiguration,slot,part.id))continue;
     const option=document.createElement('option');
     option.value=part.id;option.textContent=part.name;select.append(option);
    }
@@ -1208,8 +1206,23 @@ function renderOperationsBoard(){
    select.disabled=state.phase!=='planning'||replaying;
    select.addEventListener('focus',()=>quickWorkbenchId===member.id&&
     quickWorkbench?.setActiveSlot(socket));
-   select.addEventListener('change',()=>{
+   select.addEventListener('change',async()=>{
     if(state.phase!=='planning'||replaying)return;
+    const proposal=proposeFamilyPartChange(build,member.weapon,
+     slot as FamilyPartSlot,select.value);
+    if(!proposal.valid){select.value=build.parts[slot];return;}
+    const dependent=proposal.replacements.filter(x=>x.slot!==slot);
+    if(dependent.length){
+     if(!await confirmFieldworkAction({
+      title:'Replace incompatible parts?',
+      message:'Changing '+slot+' will also replace: '+
+       dependent.map(x=>FAMILY_PARTS[x.from]?.name+' → '+
+        FAMILY_PARTS[x.to]?.name).join('; '),
+      confirmLabel:'APPLY CHANGES'
+     })){select.value=build.parts[slot];return;}
+    }
+    if(slot==='receiver'||slot==='barrel')
+     resetQuickWorkbenchViews.add(member.id);
     persistentRoster=configureRosterWeaponBodyPart(persistentRoster,member.id,
      slot as FamilyPartSlot,select.value);
     saveRoster();applyRosterIdentity(state,persistentRoster);
@@ -3883,6 +3896,14 @@ function renderGroundMarks(){
  }
 function render(){
   if(stage&&viewMode!=='plan2d'){
+    if(stage.isReplayBodycamActive()){
+      // Bodycam footage is a clean perspective, not an X-ray tactical HUD.
+      // Keep accessible replay transport as DOM, clear only projected plans,
+      // floating names, objective circles and selection rings.
+      draw.setTransform(dpr,0,0,dpr,0,0);
+      draw.clearRect(0,0,cssW,cssH);
+      return;
+    }
     renderProjectedPlans();return;
   }
   draw.setTransform(dpr,0,0,dpr,0,0);
@@ -4520,6 +4541,7 @@ function enterReplay(){
   applyRosterIdentity(state,persistentRoster);
   applyReplayActorIdentity(state,recorder.manifest);
   stage?.applySite(state.site??null);
+  stage?.setReplayBodycam(null);
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
   ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
@@ -4528,6 +4550,7 @@ function enterReplay(){
 function exitReplay(){
   if(!replaying)return;
   if(replayQuickVideo.active)replayQuickVideo.stop();
+  stage?.setReplayBodycam(null);
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   replayChapters=[];replayBookmarks=[];
@@ -4890,6 +4913,55 @@ ui.replaySight.addEventListener('click',()=>{
   renderReplayEventMarkers();renderReplayEventFeed();
   refreshReplayShotInspector();updateReplayHud();
 });
+/** Only Vite DEVELOPMENT + explicit QA query can access this hook.
+ * Production builds strip it; normal replay has NO Bodycam button yet.
+ * Browser smoke uses historical replay disclosure, never simulated LOS.
+ */
+if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
+  type BodycamQa={
+    activate:(mount:'chest'|'helmet')=>boolean;
+    seek:(time:number)=>boolean;
+    stop:()=>void;
+    diagnostic:()=>ReturnType<TacticalScene3D['inspectReplayBodycamQa']>|null;
+  };
+  const qa:BodycamQa={
+    activate(mount){
+      if(!replaying||!stage||viewMode==='plan2d')return false;
+      const observer=team(state)[0];
+      if(!observer||!recorder.frames[0]?.knowledge?.operatorVisibleActorIds?.[observer.id])
+        return false;
+      replayContactObserverId=observer.id;
+      replayOmniscient=false;
+      replayGroundLensOn=false;
+      replayPlaying=false;
+      replayCameraMode='free';
+      selected=observer.id;
+      replayFollowId=observer.id;
+      cameraMode('iso');
+      stage.setReplayBodycam({actorId:observer.id,mount,
+        stabilization:'balanced',fov:95});
+      seekReplay(Math.min(.1,recorder.duration));
+      updateReplayHud();
+      return true;
+    },
+    seek(time){
+      if(!replaying||!Number.isFinite(time))return false;
+      replayPlaying=false;
+      seekReplay(Math.max(0,Math.min(time,recorder.duration)));
+      return true;
+    },
+    stop(){
+      stage?.setReplayBodycam(null);
+      replayContactObserverId=null;
+      replayOmniscient=false;
+      fogStamp=-1;
+      if(replaying)updateReplayHud();
+    },
+    diagnostic:()=>stage?.inspectReplayBodycamQa()??null
+  };
+  (window as typeof window&{__fieldworkBodycamQa?:BodycamQa})
+    .__fieldworkBodycamQa=qa;
+}
 ui.replayContactLens.addEventListener('click',()=>{
   if(!replayHasContactEvidence)return;
   const known=recorder.frames.find(f=>
@@ -6380,7 +6452,10 @@ function tick(now:number){
           state.seconds-(1-Math.min(1,accum*60))/60:
           state.seconds),state.operators.map(a=>a.id)):null,
       replaying?replayDisclosure():null,
-      replaying?replayDoorHistory:null);
+      replaying?replayDoorHistory:null,
+      replaying&&replayContactObserverId?
+        replayPersonalGroundHistory?.at(replayTime,replayContactObserverId)??null:
+        null);
   const overlayBegin=perfOverlay?performance.now():0;
   render();
   if(replaying&&replayQuickVideo.active){

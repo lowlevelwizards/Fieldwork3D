@@ -1,0 +1,38 @@
+name: Replay R4.3 — Bodycam iPhone Visual QA
+on:
+  pull_request:
+    paths:
+      - 'src/breach-replay-bodycam.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-main.ts'
+      - 'src/breach-operator-rig.ts'
+      - 'scripts/smoke-replay-r43-bodycam.mjs'
+      - '.github/workflows/replay-r43-bodycam-qa.yml'
+permissions:
+  contents: read
+concurrency:
+  group: replay-r43-visual-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  bodycam-qa:
+    if: ${{ startsWith(github.head_ref, 'feature/replay-r43-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Audition Bodycam chest, helmet, rewind and landscape in WebGL
+        run: node scripts/smoke-replay-r43-bodycam.mjs
+      - name: Retain first-person comparison frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: replay-r43-bodycam-screenshots
+          path: artifacts/replay-r43-bodycam/
+          if-no-files-found: ignore
+          retention-days: 7

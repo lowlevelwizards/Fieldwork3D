@@ -12,6 +12,7 @@ import {type WorkbenchMode,type WorkbenchMount,type WorkbenchSocket}
  from './equipment-weapon-workbench-layout.ts';
 import {workbenchVisualAnchors}
  from './weapons/geometry/weapon-visual-anchors.ts';
+import {matchingFamilyPreset} from './equipment-weapon-families.ts';
 import {weaponVisualLayout}
  from './weapons/geometry/weapon-visual-layout.ts';
 import {workbenchFitDistance,workbenchFitCenter}
@@ -273,7 +274,8 @@ export class WeaponWorkbenchPreview{
    button.setAttribute('aria-pressed',String(selected));
    const dot=button.firstElementChild as HTMLElement|null;
    if(dot){
-    dot.style.background=selected?'#ffffff':'#f7fbf6ad';
+    dot.style.background=selected?'#ffffff':'#e2efe2a9';
+    dot.style.opacity=reveal?(selected?'1':'.34'):'.72';
     dot.style.transform=selected?'scale(1.25)':'scale(1)';
     dot.style.boxShadow=selected?
      '0 0 0 4px #ffffff3b,0 0 7px #ffffffcc':
@@ -281,7 +283,10 @@ export class WeaponWorkbenchPreview{
    }
   }
   const a=resolveWeaponAssembly(this.config);
-  this.caption.textContent=a.massKg.toFixed(2)+' KG · '+
+  const factory=this.config.build?matchingFamilyPreset(this.config.build):undefined;
+  const identity=this.config.build?(factory?.name??'CUSTOM BUILD'):
+   this.config.weapon.toUpperCase();
+  this.caption.textContent=identity+' · '+a.massKg.toFixed(2)+' KG · '+
    (this.in2D?'2D FIXED SIDE VIEW · PINCH TO ZOOM':
     '3D · DRAG TO ROTATE · PINCH TO ZOOM');
   this.renderModeControls();
@@ -292,11 +297,16 @@ export class WeaponWorkbenchPreview{
   */
  showSocketChoices(slot:WorkbenchSocket,select:HTMLSelectElement){
   this.setActiveSlot(slot);
-  this.choiceTitle.textContent=slot.replace('body-','').replace(/-/g,' ').toUpperCase();
+  this.choiceTitle.textContent=(slot==='opticMount'?'TOP MOUNT':
+   slot.replace('body-','').replace(/-/g,' ')).toUpperCase();
   const selected=select.selectedOptions[0];
   this.choiceSubtitle.textContent=selected?
    'EQUIPPED · '+selected.textContent:
    'Choose a compatible replacement';
+  if(slot==='body-receiver')
+   this.choiceSubtitle.textContent+=' · Core swaps keep compatible parts';
+  if(slot==='opticMount')
+   this.choiceSubtitle.textContent+=' · Fit a mount before selecting a new sight';
   this.choiceGrid.replaceChildren();
   for(const option of Array.from(select.options)){
    if(!option.value)continue;
