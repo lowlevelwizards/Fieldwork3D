@@ -12,6 +12,7 @@ test('camera capability is explicit and preserves the independent perspective',(
   assert.equal(replayCameraAvailable('director','plan2d',true,false),false);
   assert.equal(resolvedReplayCamera('director','plan2d',true,false),'free');
   assert.equal(resolvedReplayCamera('operator','iso',true,false),'operator');
+  assert.equal(resolvedReplayCamera('operator','plan2d',true,false),'free');
   assert.equal(resolvedReplayCamera('squad','iso',true,true),'free');
 });
 test('speed choices and seek bounds reject invalid values',()=>{

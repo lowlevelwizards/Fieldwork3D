@@ -158,6 +158,10 @@ try{
     'Squad camera did not activate');
   check(await page.locator('#replayTraces').isVisible(),
     'Advanced trajectory setting disappeared');
+  check(await page.locator('#replayInspectActor option').count()>=2,
+    'Operator investigation choices missing');
+  check(await page.locator('#replayInspectFollow').isVisible(),
+    'Contextual operator follow action missing');
 
   await page.locator('[data-replay-group="precision"] summary').click();
   check(await page.locator('#replayPrevFrame').isVisible(),
@@ -186,6 +190,9 @@ try{
   await page.locator('[data-moments-view="events"]').click();
   check(await page.locator('#replayFeed').isVisible(),
     'All Events must expose the chronological feed');
+  await page.locator('#replayFeedFollow').click();
+  check(await page.locator('#replayFeedFollow').getAttribute('aria-pressed')==='true',
+    'Event feed follow-time control did not activate');
   await page.locator('#replayDrawerClose').click();
   const closed=await page.evaluate(measure);
   check(closed.drawer.hidden,'Close should restore compact replay');

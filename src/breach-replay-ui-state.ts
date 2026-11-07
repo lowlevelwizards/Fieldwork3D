@@ -17,9 +17,9 @@ export function replayCameraAvailable(
   hasScene:boolean,bodycam:boolean
 ):boolean{
   if(bodycam)return choice==='free';
-  if(choice==='squad'||choice==='director')
+  if(choice==='squad'||choice==='director'||choice==='operator')
     return perspective!=='plan2d'&&hasScene;
-  return choice!=='operator'||hasScene;
+  return true;
 }
 export function resolvedReplayCamera(
   choice:ReplayCameraChoice,perspective:ReplayPerspective,
