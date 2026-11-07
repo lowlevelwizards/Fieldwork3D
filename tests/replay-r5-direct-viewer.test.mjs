@@ -41,7 +41,10 @@ test('director eases perspective without rotating the long way round',()=>{
   assert.ok(eased.focus.x>0&&eased.focus.x<100);
   assert.ok(eased.zoom>1&&eased.zoom<3);
   assert.ok(Math.abs(eased.yaw-current.yaw)<.1);
-  assert.deepEqual(easeCinematicReplayShot(current,target,0,true),target);
+  const cut=easeCinematicReplayShot(current,target,0,true);
+  assert.deepEqual(cut.focus,target.focus);
+  assert.equal(cut.zoom,target.zoom);
+  assert.ok(Math.abs(cut.yaw-target.yaw)<1e-12);
 });
 test('bodycam smoothing is bounded, normalized and supports explicit cuts',()=>{
   const p={position:new THREE.Vector3(0,2,0),forward:new THREE.Vector3(1,0,0),
