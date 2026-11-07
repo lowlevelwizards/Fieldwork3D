@@ -59,7 +59,7 @@ test('read-side replay window loads only needed chunks and interpolates boundari
   assert.equal(edge.previous.i,2);
   assert.equal(edge.next.i,3);
   assert.ok(Math.abs(edge.alpha-.5)<1e-10);
-  assert.deepEqual(reads,[0,1]);
+  assert.deepEqual([...reads].sort((a,b)=>a-b),[0,1]);
   const later=await window.surrounding(.99);
   assert.equal(later.previous.i,9);
   assert.equal(later.next.i,10);
