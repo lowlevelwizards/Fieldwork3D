@@ -59,7 +59,7 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const rear=early?-15.15:-15.30;
  // The stock shell stops INSIDE the buttplate. Its cap is now a genuine
  // outward-facing slab instead of a coplanar overlaid side face (R3 Z-fight).
- const stockStart=rear+.20;
+ const stockStart=rear+.46;
  p('stock',early?[
   [stockStart,1.22],[-11.18,1.25],[-10.77,1.16],
   [-6.25,.67],[-6.18,-1.46],[-9.13,-2.49],
@@ -69,11 +69,13 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   [-6.23,.69],[-6.15,-1.44],[-9.52,-2.33],
   [-14.73,-3.04],[stockStart,-2.85]
  ],3.12,early?'wood':'olive');
- // Rearmost X stays EXACTLY the old stock landmark. Pad front overlaps
- // body by .04 but its Z faces stand clear by .04 on either side.
+ // One deliberately thick miniature buttplate: the visible rear remains
+ // at the ORIGINAL rear landmark. Its inner end overlaps the stock .10,
+ // and the side surfaces stand .19 clear of the stock on either side.
+ // No coplanar stock/pad faces or decorative buttplate layers.
  const padMidY=early?-.825:-.865;
- const padHeight=early?4.13:4.01;
- const buttpad=b('stock',rear+.12,padMidY,0,.24,padHeight,3.20,'dark');
+ const padHeight=early?4.40:4.27;
+ const buttpad=b('stock',rear+.28,padMidY,0,.56,padHeight,3.50,'dark');
  buttpad.userData.hkButtpad=true;
 
  // Simple HK grip, shorter and chunkier than literal scale reference.
@@ -118,20 +120,29 @@ export function addHKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  handle.position.z=-1.12;
  handle.userData.hkCockingHandle=true;
 
- // Six-sided clean exposed nose: miniature roundness rather than the
- // previous square beam, but with the exact existing 22.4 shot-time tip.
+ // One slightly larger, solid factory flash hider wraps the last .15 of
+ // the exposed barrel instead of sharing any visible barrel surface.
+ // This removes the factory muzzle's Z-fighting at the nose while keeping
+ // the authoritative visible / shot-time muzzle at exactly X=22.40.
+ // On accessory-muzzle builds, the bare barrel still reaches that anchor.
+ const hiderStart=art.muzzleX-1.30;
+ const exposedBarrelTip=showFactoryMuzzle?hiderStart+.15:art.muzzleX;
  const barrelGeo=new THREE.CylinderGeometry(.74,.74,
-  art.muzzleX-art.barrelStartX,6,1);
+  exposedBarrelTip-art.barrelStartX,6,1);
  barrelGeo.rotateZ(-Math.PI/2);
  const barrelMesh=new THREE.Mesh(barrelGeo,steel);
- barrelMesh.position.x=(art.barrelStartX+art.muzzleX)/2;
+ barrelMesh.position.x=(art.barrelStartX+exposedBarrelTip)/2;
  barrelMesh.name='family-barrel-'+parts.barrel+'-'+ids.barrel++;
  barrelMesh.castShadow=true;barrelMesh.receiveShadow=true;root.add(barrelMesh);
- if(showFactoryMuzzle)
-  p('barrel',[[art.muzzleX-1.12,-.61],
-   [art.muzzleX-.27,-.73],[art.muzzleX,-.56],
-   [art.muzzleX,.56],[art.muzzleX-.27,.73],
-   [art.muzzleX-1.12,.61]],1.70,'dark');
+ if(showFactoryMuzzle){
+  const flashHider=p('barrel',[
+   [hiderStart,-.82],[hiderStart+.16,-.85],
+   [art.muzzleX-.24,-.85],[art.muzzleX,-.69],
+   [art.muzzleX,.69],[art.muzzleX-.24,.85],
+   [hiderStart+.16,.85],[hiderStart,.82]
+  ],1.92,'dark');
+  flashHider.userData.hkFactoryFlashHider=true;
+ }
 
  // Keep the successful open front ring. Reshape its large rectangular
  // foot into one seated tapered neck, avoiding a slab across the barrel.
