@@ -109,6 +109,7 @@ import {replayActorDisclosed,type ReplayDisclosure}
   from './breach-replay-visibility.ts';
 import {operatorContactEventKnown,operatorContactAvailable}
   from './breach-replay-contact-lens.ts';
+import {ReplayOperatorSightIndex} from './breach-replay-operator-sight.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
@@ -322,6 +323,7 @@ const ui={
   replaySight:el<HTMLButtonElement>('replaySight'),
   replayContactLens:el<HTMLButtonElement>('replayContactLens'),
   replayContactNote:el<HTMLElement>('replayContactNote'),
+  replayObserverTransitions:el<HTMLElement>('replayObserverTransitions'),
   replayView:el<HTMLButtonElement>('replayView'),
   replayExit:el<HTMLButtonElement>('replayExit'),
   replayPrevEvent:el<HTMLButtonElement>('replayPrevEvent'),
@@ -783,6 +785,7 @@ let replayOmniscient=true,finishedSession:Session|null=null;
  */
 let replayContactObserverId:string|null=null;
 let replayHasContactEvidence=false;
+let replayOperatorSightIndex:ReplayOperatorSightIndex|null=null;
 function replayDisclosure():ReplayDisclosure{
   return replayContactObserverId?
     {mode:'operator',observerId:replayContactObserverId}:
@@ -4106,6 +4109,44 @@ function renderReplayIncidentFocus():void{
     incident.label;
   ui.replayIncidentSummary.textContent=incident.summary;
 }
+/** Sparse personal observation events are independent of team battle feed.
+ * Importantly a lost contact contains no guessed position or threat state.
+ */
+function renderObserverSightTransitions():void{
+  const observer=replayContactObserverId;
+  const mount=ui.replayObserverTransitions;
+  mount.hidden=!observer;
+  if(!observer){mount.replaceChildren();return;}
+  const transitions=replayOperatorSightIndex?.forObserver(observer)??[];
+  const fragment=document.createDocumentFragment();
+  if(!transitions.length){
+    const empty=document.createElement('span');
+    empty.className='replay-observer-empty';
+    empty.textContent='NO PERSONAL CONTACT TRANSITIONS RECORDED';
+    fragment.append(empty);
+  }
+  for(const event of transitions.slice(0,16)){
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='replay-debrief-moment';
+    button.dataset.kind=event.kind;
+    const time=document.createElement('span');
+    time.className='time';
+    time.textContent=formatReplayTime(event.t)+' · '+
+      (event.kind==='visible-at-start'?'ALREADY VISIBLE':
+        event.kind==='acquired'?'CONTACT ACQUIRED':'CONTACT LOST');
+    const target=document.createElement('span');
+    target.className='detail';target.textContent=event.targetId;
+    button.append(time,target);
+    button.title=event.targetId+' · '+event.kind;
+    button.addEventListener('click',()=>{
+      replayPlaying=false;selected=observer;replayFollowId=observer;
+      seekReplay(event.t);
+    });
+    fragment.append(button);
+  }
+  mount.replaceChildren(fragment);
+}
 function renderReplayDebrief():void{
   const stalls=buildReplayExecutionInsights(recorder.executionEvents,
     recorder.duration,5).filter(x=>x.end===null||(x.seconds??0)>=.75)
@@ -4171,6 +4212,7 @@ function renderReplayDebrief():void{
     replayFeaturedIncidents.length+' KEY INCIDENTS':
     'NO DISCLOSED INCIDENTS';
   renderReplayIncidentFocus();
+  renderObserverSightTransitions();
 }
 function startReplayIncident(loop:boolean):void{
   const incident=replayIncidents.find(i=>i.id===selectedReplayIncidentId);
@@ -4373,6 +4415,8 @@ function enterReplay(){
   replayHasContactEvidence=recorder.frames.some(f=>
     !!f.knowledge?.operatorVisibleActorIds&&
     Object.keys(f.knowledge.operatorVisibleActorIds).length>0);
+  replayOperatorSightIndex=replayHasContactEvidence?
+    new ReplayOperatorSightIndex(recorder.frames):null;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   replayCameraMode='free';replayDirectorCues=[];
   replayBookmarks=[];replayBookmarkCounter=0;
@@ -4415,6 +4459,7 @@ function exitReplay(){
   replayChapters=[];replayBookmarks=[];
   replayIncidents=[];replayFeaturedIncidents=[];
   replayContactObserverId=null;replayHasContactEvidence=false;
+  replayOperatorSightIndex=null;
   selectedReplayIncidentId=null;replayIncidentPlayback=null;
   ui.replayIncidentDetails.hidden=true;
   closeReplayShotInspector();
@@ -4422,6 +4467,8 @@ function exitReplay(){
   replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
   ui.replayFeed.replaceChildren();
   ui.replayDebriefMoments.replaceChildren();
+  ui.replayObserverTransitions.replaceChildren();
+  ui.replayObserverTransitions.hidden=true;
   ui.replayDebriefInfo.textContent='';
   showReplayToolTab(null);
   document.body.classList.remove('replaying');
