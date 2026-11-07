@@ -116,17 +116,25 @@ function placedCard(parent:THREE.Group,index:number,mat:THREE.Material,
  mount.name=name+'-mount';
  mount.position.set(anchor.position[0],anchor.position[1],anchor.position[2]);
  mount.userData.pasgtSlitId=anchor.id;
- const basis=new THREE.Matrix4().makeBasis(
-  new THREE.Vector3(...anchor.right),
-  new THREE.Vector3(...anchor.up),
-  new THREE.Vector3(...anchor.normal)
- );
+ // The root is tangent to the fabric, but vegetation grows mostly
+ // upright while hanging textiles fall vertically. A fully tangent card
+ // disappeared into the cover in front/side views and never broke its rim.
+ const leaf=name.includes('leaf');
+ const right=new THREE.Vector3(...anchor.right);
+ const up=new THREE.Vector3(...anchor.up).lerp(
+  new THREE.Vector3(0,1,0),leaf?.83:.60).normalize();
+ up.addScaledVector(right,-right.dot(up)).normalize();
+ const normal=right.clone().cross(up).normalize();
+ const basis=new THREE.Matrix4().makeBasis(right,up,normal);
  mount.quaternion.setFromRotationMatrix(basis);
- mount.rotateZ(TILTS[index]);mount.rotateX(.18);
- // Roots begin inside their slit frame; local up is the fabric tangent.
- // Shift the card locally, not the attachment group: its position must
- // remain identical to the slit anchor for persistence/QA geometry probes.
+ mount.rotateZ(TILTS[index]);mount.rotateX(leaf?.17:-.10);
+ // Keep the mount root exactly at its slit and offset only card geometry.
  const card=new THREE.Mesh(geometry,mat);
+ if(leaf){
+  const size=[1.16,1.36,1.07,1.27,1.38,1.14][index];
+  card.scale.setScalar(size);
+  card.position.z=.07;
+ }
  card.position.y=offsetY;
  card.name=name;card.castShadow=true;card.receiveShadow=false;
  mount.add(card);parent.add(mount);
@@ -175,13 +183,24 @@ function netDrape(edge:NetEdge):readonly (readonly number[])[]{
  const outward=s.side==='front'?[0,0,-1]:
   s.side==='rear'?[0,0,1]:
   s.side==='right'?[1,0,0]:[-1,0,0];
- const push=(p:readonly number[])=>p.map((n,i)=>n+outward[i]*.10);
- const shoulder=push(pasgtRingPoint(s,'shoulder'));
- const ramp=push(pasgtRingPoint(s,'ramp'));
- const hem=push(pasgtRingPoint(s,'hem'));
+ const along=(s.side==='front'||s.side==='rear')?
+  (edge.x<0?1:-1):(edge.z<0?1:-1);
+ const shift=(p:readonly number[],distance:number)=>{
+  const v=p.map((n,i)=>n+outward[i]*.10);
+  if(s.side==='front'||s.side==='rear')v[0]+=along*distance;
+  else v[2]+=along*distance;
+  return v;
+ };
+ const shoulder=shift(pasgtRingPoint(s,'shoulder'),.18);
+ const ramp=shift(pasgtRingPoint(s,'ramp'),.59);
+ const hem=pasgtRingPoint(s,'hem');
+ const lowerUnshifted=ramp.map((v,i)=>.73*v+.27*hem[i]);
+ const lower=shift(lowerUnshifted,.97);
+ // The fabric net wraps off the crown and diagonally across the shoulder.
+ // Terminate at the retaining-band level instead of making long vertical
+ // roof-trellis supports that hang into the nape/ear gap.
  return [
-  ramp.map((v,i)=>.42*v+.58*hem[i]),
-  ramp,shoulder,
+  lower,ramp,shoulder,
   [edge.x,PASGT_COVER_TOP_Y+.09,edge.z]
  ];
 }
@@ -216,7 +235,7 @@ export function createPasgtNetGeometry():THREE.BufferGeometry{
   const [a,b]=clippedNetLine(slope,shift);
   const start=netDrape(a),end=netDrape(b);
   const path=[...start,...[...end].reverse()];
-  appendNetRibbon(coordinates,path,.19);
+  appendNetRibbon(coordinates,path,.25);
  }
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(coordinates,3));
