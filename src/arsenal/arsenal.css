@@ -190,3 +190,29 @@ button{cursor:pointer}
 .arsenal-wb-apply:disabled{opacity:.45;cursor:not-allowed}
 .arsenal-wb-apply-quote{font:650 12px var(--fw-font-action);
  color:var(--fw-brass);margin:0}
+
+/* Arsenal R9: saved-recipe picker is a modal review, not an equip transaction. */
+.arsenal-wb-load-dialog{width:min(590px,calc(100vw - 22px));max-height:min(84dvh,720px);
+ overflow:auto;color:var(--fw-text);background:var(--fw-panel);
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-md);padding:17px}
+.arsenal-wb-load-dialog::backdrop{background:#07100fe6}
+.arsenal-wb-load-dialog h3{font:800 24px/1 var(--fw-font-display);margin:0 0 10px}
+.arsenal-wb-load-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px;margin:14px 0;max-height:210px;overflow-y:auto}
+.arsenal-wb-load-option{min-height:64px;text-align:left;display:flex;flex-direction:column;
+ justify-content:center;gap:5px;padding:10px;color:var(--fw-text);
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ background:var(--fw-panel-deep)}
+.arsenal-wb-load-option strong{font:700 14px var(--fw-font-action)}
+.arsenal-wb-load-option small{font:600 11px var(--fw-font-action);
+ color:var(--fw-text-muted);line-height:1.3}
+.arsenal-wb-load-option[aria-pressed="true"]{border-color:var(--fw-sage);
+ background:var(--fw-control-active)}
+.arsenal-wb-load-option:focus-visible{outline:2px solid var(--fw-focus);outline-offset:2px}
+.arsenal-wb-load-changes{border-top:1px solid var(--fw-panel-border);
+ padding:12px 0;max-height:180px;overflow-y:auto;font:500 12px/1.4 var(--fw-font-action)}
+.arsenal-wb-load-changes strong{font:750 14px var(--fw-font-menu)}
+.arsenal-wb-load-changes ul{margin:8px 0;padding-left:20px}
+.arsenal-wb-load-changes li{padding:2px 0}
+.arsenal-wb-load-warning{color:var(--fw-brass);font-weight:650}
+@media(max-width:480px){.arsenal-wb-load-choices{grid-template-columns:1fr}}

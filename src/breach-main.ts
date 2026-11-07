@@ -1020,7 +1020,7 @@ async function openQuickArsenal(id:string){
  if(!member)return;
  try{
   const [{arsenalRecipeFromLegacy},{openArsenalWorkbench},
-   {applyQuickPlayArsenalEdit}]=await Promise.all([
+   {applyQuickPlayArsenalEdit,quoteQuickPlayArsenalEdit}]=await Promise.all([
     import('./arsenal/recipes.ts'),import('./arsenal/workbench-screen.ts'),
     import('./arsenal/quickplay-adapter.ts')]);
   if(state.phase!=='planning'||replaying||campaignMode!=='quick')return;
@@ -1029,6 +1029,10 @@ async function openQuickArsenal(id:string){
   if(!current||!recipe){showUiHelp('THIS WEAPON USES THE LEGACY LOADOUT EDITOR',3000);return;}
   openArsenalWorkbench({id:'equipped-quick-'+id,name:current.callsign,recipe},undefined,{
    mode:'quick',applyLabel:'APPLY TO OPERATOR',
+   quote:r=>{
+    const result=quoteQuickPlayArsenalEdit(persistentRoster,id,r);
+    return {...result,canCommit:result.valid};
+   },
    onApply:nextRecipe=>{
     if(state.phase!=='planning'||replaying||campaignMode!=='quick')
      return {ok:false,message:'Equipment changes are only available before deployment'};
