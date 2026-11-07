@@ -9,6 +9,8 @@ import * as THREE from 'three';
 import {applyOperatorHeightLighting} from './operator-height-lighting.ts';
 import {studioLightLabFromQuery,type StudioLightLabSettings}
  from './operator-studio-light-lab.ts';
+import {requestedStudioRenderQuality}
+ from './operator-studio-render-quality.ts';
 import {OperatorStudioLighting,STUDIO_INSPECTION_BACKGROUND}
  from './operator-studio-lighting.ts';
 import {applyOperatorStudioToon,disposeOperatorStudioToon}
@@ -99,6 +101,8 @@ export class OperatorAppearanceGrid{
   canEquip?: (slot:WardrobeSlot,id:string)=>boolean,
   liveContext=false){
   this.renderer=renderer;this.onSelect=onSelect;this.canEquip=canEquip;
+  const quality=requestedStudioRenderQuality(window.location.search);
+  this.target.samples=quality.canvasAA&&quality.thumbnailAA?4:0;
   // Avoid compiling/posing/reading off-screen cards on a small phone.
   this.observer=typeof IntersectionObserver==='undefined'?null:
    new IntersectionObserver(events=>{
