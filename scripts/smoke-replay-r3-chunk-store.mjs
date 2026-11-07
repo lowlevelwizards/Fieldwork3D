@@ -138,7 +138,7 @@ try{
       try{scene.applyToReplaySession(stage,ownedFrame);}
       catch{staleRejected=true;}
     }
-    const rewind=earlier.status==='ready'?earlier.value.frame.t:null;
+    const sceneRewind=earlier.status==='ready'?earlier.value.frame.t:null;
     scene.close();
     const pendingAfter=await storage.listInterruptedChunkedReplaysV2();
     return {generation:release.generation,
@@ -149,7 +149,7 @@ try{
         alpha:sample?.alpha},
       resident:opened.window.residentCount,
       transport,
-      hydration,staleRejected,rewind,
+      hydration,staleRejected,sceneRewind,
       v1Count:v1.frames.length,
       pending:pendingAfter.length};
   });
@@ -183,7 +183,7 @@ try{
     completed.hydration.phantomObserver&&
     completed.hydration.resident<=3&&
     completed.staleRejected&&
-    Math.abs(completed.rewind-.03)<1e-8,
+    Math.abs(completed.sceneRewind-.03)<1e-8,
     'G4c3 replay scene failed actual browser V2 history parity: '+
     JSON.stringify(completed.hydration));
   const replaced=await page.evaluate(async()=>{
