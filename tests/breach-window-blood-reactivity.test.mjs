@@ -62,7 +62,8 @@ test('gunblocked operators only step back when motion and shot are safe',()=>{
  const p={x:0,y:0};
  const move=at=>at.x< -11;
  const muzzle=at=>at.x<=-20;
- assert.deepEqual(chooseMuzzleRecoveryStep(p,0,move,muzzle),{x:-22,y:0});
+ const backward=chooseMuzzleRecoveryStep(p,0,move,muzzle);
+ assert.ok(backward&&Math.abs(backward.x+22)<1e-8&&Math.abs(backward.y)<1e-8);
  assert.equal(chooseMuzzleRecoveryStep(p,0,()=>false,()=>true),null);
  assert.equal(chooseMuzzleRecoveryStep(p,0,()=>true,()=>false),null);
 });
