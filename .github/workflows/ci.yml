@@ -1190,6 +1190,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/replay-r43-bodycam-camera.test.mjs \
+            tests/replay-r43-personal-visibility.test.mjs \
             tests/replay-r42c-operator-bodies.test.mjs \
             tests/replay-r42c-door-knowledge.test.mjs
       - name: Replay R4.2c — individual civilian evidence and archive
