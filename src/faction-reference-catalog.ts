@@ -35,7 +35,9 @@ export type FactionReference={
 };
 const gap=(id:string,label:string,importance:ReferenceGap['importance']='significant'):ReferenceGap=>
  ({id,label,importance});
-const patch=gap('unit-insignia','National, unit and service identification','defining');
+// Unit-specific badges remain a small detail; flags and generic labels only
+// establish national/agency identity, not provenance of a particular unit.
+const patch=gap('unit-insignia','Specific period-correct unit/service badge','minor');
 const weapon=(id:string,label:string)=>gap(id,label);
 export const FACTION_REFERENCES:readonly FactionReference[]=([
  {id:'usmc-woodland-2005',name:'US Marine Corps · Woodland',country:'United States',
@@ -138,14 +140,14 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  environment:'mixed',era:{start:2015,end:2026,label:'2015–2020s'},
  summary:'Scorpion W2 operational camouflage and modern issued armor.',
  baseRecipeId:'acu-patrol',uniformCamo:'scorpion-w2',gearSolid:'coyote',
- markings:{rightShoulder:'flag-us'},weaponFamily:'M4 / M4A1',
+ markings:{rightShoulder:'flag-us-reversed'},weaponFamily:'M4 / M4A1',
  gaps:[patch,weapon('ar-family','M4-family service carbine'),gap('iotv-armor','IOTV armor silhouette')],
  sourceNotes:'Broad OCP infantry reference, not an exact unit-issued packing list.'},
  {id:'us-army-ucp-2010',name:'US Army · UCP Era',country:'United States',organization:'military',
  environment:'mixed',era:{start:2005,end:2019,label:'2005–2019'},
  summary:'Universal Camouflage Pattern utility uniform with foliage-era protection.',
  baseRecipeId:'ucp-era',uniformCamo:'ucp',gearSolid:'olive-drab',
- markings:{rightShoulder:'flag-us'},weaponFamily:'M4 / M16A4',
+ markings:{rightShoulder:'flag-us-reversed'},weaponFamily:'M4 / M16A4',
  gaps:[patch,weapon('ar-family','M4/M16-family service rifle'),gap('iotv-armor','IOTV armor silhouette')],
  sourceNotes:'Representative UCP-era field appearance; actual gear often foliage green.'},
  {id:'us-army-m81-1990',name:'US Army · Woodland BDU',country:'United States',organization:'military',
@@ -259,7 +261,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  baseRecipeId:'police-entry',uniformCamo:'urban-kamysh',gearSolid:'black',
  styles:{top:'bdu-shirt',trousers:'bdu-trousers',headwear:'police-helmet'},
  policeVisorPosition:'lowered',policeVisorTint:'clear',
- policeVisorFrame:'standard',headwearColor:'black',markings:{chest:'label-police'},weaponFamily:'AK / MP5 equivalents',
+ policeVisorFrame:'standard',headwearColor:'black',markings:{chest:'label-omon'},weaponFamily:'AK / compact AK',
  gaps:[patch,weapon('ak-family','AK-family rifle'),gap('visor-police','Visored law-enforcement helmet','defining')],
  sourceNotes:'Generic visored protective police helmet is a representative approximation, not a confirmed period OMON model.'},
  {id:'russian-gorka-leto-2010',name:'Russian Reconnaissance · Gorka/SS-Leto',country:'Russia',
