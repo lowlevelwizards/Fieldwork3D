@@ -4640,14 +4640,14 @@ function toggleReplayPanel(surface:Exclude<ReplaySurface,'none'>):void{
 function applyReplayPreset(next:Exclude<ReplayPreset,'custom'>):void{
   replayPreset=next;
   if(next==='clean'){
-    replayAnalysis=false;replayTraceMode='off';replayGhostMode='off';replayTrailMode='off';
+    replayAnalysis=false;replayPlanScope='none';replayTraceMode='off';replayGhostMode='off';replayTrailMode='off';
   }else if(next==='movement'){
     replayAnalysis=true;replayPlanScope='selected';replayPlanVersion='active';
     replayTraceMode='off';replayGhostMode='off';replayTrailMode='recent';
   }else if(next==='combat'){
-    replayAnalysis=false;replayTraceMode='recent';replayGhostMode='off';replayTrailMode='off';
+    replayAnalysis=false;replayPlanScope='none';replayTraceMode='recent';replayGhostMode='off';replayTrailMode='off';
   }else{
-    replayAnalysis=false;replayTraceMode='off';replayGhostMode='off';replayTrailMode='off';
+    replayAnalysis=false;replayPlanScope='none';replayTraceMode='off';replayGhostMode='off';replayTrailMode='off';
     const details=ui.replayExtra.querySelector<HTMLDetailsElement>('[data-replay-group="view"]');
     if(details)details.open=true;
     // A visibility preset must never change the historical disclosure policy.
@@ -4857,7 +4857,7 @@ function enterReplay(){
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   replayCameraMode='free';replayDirectorCues=[];
   replayBookmarks=[];replayBookmarkCounter=0;
-  replayPlanScope='selected';replayPlanVersion='active';
+  replayPlanScope='none';replayPlanVersion='active';
   replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
   replayTrailMode='off';
   replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
@@ -5493,6 +5493,9 @@ ui.replayBodycamMount.addEventListener('click',()=>{
 ui.replayView.addEventListener('click',()=>{
   if(replayBodycamOn)stopReplayBodycam();
   cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
+  replayCameraMode=resolvedReplayCamera(replayCameraMode,
+    viewMode as ReplayPerspective,!!stage,replayBodycamOn);
+  replayFollow=replayCameraMode==='operator';
   updateReplayHud();
 });
 const jumpReplayEvent=(forward:boolean)=>{
