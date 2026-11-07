@@ -75,7 +75,7 @@ test('rewinding and scrubbing replay restores the actual active target',()=>{
 test('2D and 3D use persistent marker; touch selects, drags and deletes it',()=>{
   const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
   assert.match(main,/function drawActiveWatchMarker\(/);
-  assert.ok((main.match(/if\\(activeTarget&&\\(!replaying\\|\\|replayPlanVersion==='active'\\)\\)drawActiveWatchMarker/g)||[]).length>=2,
+  assert.ok(main.split("if(activeTarget&&(!replaying||replayPlanVersion==='active'))drawActiveWatchMarker").length>=3,
     'active marker is drawn in both 2D and 3D outside historical replay');
   assert.match(main,/marker:'activeWatch'/);
   assert.match(main,/p\.mode==='activeWatch'/);
