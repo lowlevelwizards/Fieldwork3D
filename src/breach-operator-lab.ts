@@ -39,6 +39,9 @@ import {sleeveStateOptions} from './operator-wardrobe-data.ts';
 import {FAMILY_PRESETS} from './equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from './equipment-weapon-assemblies.ts';
+import {loadArsenalBuildLibrary} from './arsenal/saved-builds.ts';
+import {arsenalRecipeToLegacy,readArsenalRecipe,type ArsenalRecipeV2}
+ from './arsenal/recipes.ts';
 import {POSE_ARMOR_OPTIONS,POSE_RIG_OPTIONS,POSE_UNIFORM_OPTIONS,
  POSE_ANIMATIONS,posePreset,poseWeaponType,defaultPoseWeapon,
  poseArmorEquipment,poseRigEquipment}
@@ -82,10 +85,15 @@ const poseV3Preview=poseV4ReloadPreview||poseFlags.get('poseV3')==='1';
 const startingPoseTab=poseFlags.get('tab')==='poses'||
  poseFlags.get('poseFit')==='1';
 let poseWeaponPreset='none';
+/** Lab-only exact Arsenal preview; no Campaign or Quick Play authority. */
+let poseArsenalRecipe:ArsenalRecipeV2|null=null;
+let poseArsenalSavedId:string|null=null;
 let appearanceGrid:OperatorAppearanceGrid|null=null;
 /** One-step Lab-only undo: snapshot display choices, never owned inventory. */
 type AppearanceSnapshot={kit:EquipmentLoadout;wardrobe:WardrobeOptions;
- weapon:string;magazines:string;face:string;seed:number};
+ weapon:string;magazines:string;face:string;seed:number;
+ poseWeaponPreset:string;poseArsenalRecipe:ArsenalRecipeV2|null;
+ poseArsenalSavedId:string|null};
 let previousAppearance:AppearanceSnapshot|null=null;
 const wardrobeUndoButton=document.getElementById('wardrobeUndo') as HTMLButtonElement;
 function checkpointAppearance(){
@@ -95,7 +103,9 @@ function checkpointAppearance(){
   weapon:(document.getElementById('weapon') as HTMLSelectElement).value,
   magazines:(document.getElementById('kitMagazines') as HTMLSelectElement).value,
   face:(document.getElementById('faceTreatment') as HTMLSelectElement).value,
-  seed:labPalette
+  seed:labPalette,
+  poseWeaponPreset,poseArsenalRecipe:poseArsenalRecipe?
+   structuredClone(poseArsenalRecipe):null,poseArsenalSavedId
  };
  wardrobeUndoButton.disabled=false;
 }
@@ -103,6 +113,8 @@ function undoAppearance(){
  const restore=previousAppearance;if(!restore)return;
  previousAppearance=null;wardrobeUndoButton.disabled=true;
  labKit=restore.kit;wardrobeOptions=restore.wardrobe;labPalette=restore.seed;
+ poseWeaponPreset=restore.poseWeaponPreset;
+ poseArsenalRecipe=restore.poseArsenalRecipe;poseArsenalSavedId=restore.poseArsenalSavedId;
  (document.getElementById('weapon') as HTMLSelectElement).value=restore.weapon;
  (document.getElementById('kitMagazines') as HTMLSelectElement).value=restore.magazines;
  (document.getElementById('faceTreatment') as HTMLSelectElement).value=restore.face;
@@ -167,6 +179,8 @@ function syncPosePickers(){
   poseWeaponPreset=defaultPoseWeapon(current);
  const model=document.getElementById('poseWeapon') as HTMLSelectElement;
  if(model?.options.length)model.value=poseWeaponPreset;
+ const savedModel=document.getElementById('poseSavedWeapon') as HTMLSelectElement|null;
+ if(savedModel)savedModel.value=poseArsenalSavedId??'';
  const look=resolvedWardrobe(wardrobeOptions,labKit);
  for(const [id,value] of [
   ['poseArmor',look.armorStyle],['poseRig',look.rigStyle],
@@ -188,6 +202,7 @@ document.getElementById('wardrobeApply')?.addEventListener('click',()=>{
  checkpointAppearance();labKit=result.kit;wardrobeOptions=result.wardrobe;
  (document.getElementById('weapon') as HTMLSelectElement).value=
   result.kit.slots.primary.replace(/^primary-/,'');
+ poseArsenalRecipe=null;poseArsenalSavedId=null;
  // Archived color wheels are retired; headwear receives its own swatch.
  labPalette=1;
  syncKit();updateMagazineState();
@@ -697,6 +712,7 @@ function updateMagazineState(){
   'Preview locations use the real equipment carrying ledger.';
 }
 weapon.addEventListener('change',()=>{
+ poseArsenalRecipe=null;poseArsenalSavedId=null;
  poseWeaponPreset=defaultPoseWeapon(weapon.value);
  if(weapon.value!=='none')
   labKit=syncPrimaryWeapon(labKit,weapon.value as WeaponId);
@@ -739,8 +755,54 @@ for(const animation of POSE_ANIMATIONS){
  }
  group.append(new Option(animation.label,animation.id));
 }
+/** Saved Arsenal recipes enter the exact rig/presentation path.
+ * Reopening Poses or focusing the picker refreshes the local library.
+ */
+const poseSavedWeaponSelect=choose<HTMLSelectElement>('poseSavedWeapon');
+const poseSavedWeaponHint=choose<HTMLElement>('poseSavedWeaponHint');
+function refreshSavedPoseWeapons(){
+ const available=loadArsenalBuildLibrary().builds;
+ const kept=poseArsenalSavedId;
+ poseSavedWeaponSelect.replaceChildren(new Option('FACTORY MODEL / NO SAVED BUILD',''));
+ for(const build of available)
+  poseSavedWeaponSelect.add(new Option(build.name+' · '+build.recipe.weapon.toUpperCase(),build.id));
+ if(kept&&!available.some(build=>build.id===kept)){
+  poseArsenalRecipe=null;poseArsenalSavedId=null;
+ }
+ poseSavedWeaponSelect.value=poseArsenalSavedId??'';
+ poseSavedWeaponHint.textContent=poseArsenalSavedId?
+  'SAVED BUILD ACTIVE · Exact parts and accessories in every animation · Preview only':
+  available.length+' SAVED BUILDS · Select to inspect exact parts and contacts';
+}
+poseSavedWeaponSelect.addEventListener('focus',refreshSavedPoseWeapons);
+poseSavedWeaponSelect.addEventListener('change',()=>{
+ checkpointAppearance();
+ const selected=loadArsenalBuildLibrary().builds.find(
+  saved=>saved.id===poseSavedWeaponSelect.value);
+ if(!selected){
+  poseArsenalRecipe=null;poseArsenalSavedId=null;
+  refreshSavedPoseWeapons();syncPosePickers();draw();return;
+ }
+ const recipe=readArsenalRecipe(selected.recipe);
+ if(!recipe||!arsenalRecipeToLegacy(recipe)){
+  poseSavedWeaponHint.textContent='SAVED BUILD INCOMPATIBLE · No changes applied';
+  return;
+ }
+ poseArsenalRecipe=recipe;poseArsenalSavedId=selected.id;
+ weapon.value=recipe.weapon;
+ // Pose grammar takes a known family; exact meshes and sockets use
+ // the saved V1 assembly below, not this factory reference.
+ const origin=FAMILY_PRESETS.find(p=>p.id===recipe.sourcePresetId&&
+  p.weapon===recipe.weapon);
+ poseWeaponPreset=origin?.id??defaultPoseWeapon(recipe.weapon);
+ labKit=syncPrimaryWeapon(labKit,recipe.weapon);
+ updateMagazineState();syncKit();refreshSavedPoseWeapons();draw();
+});
+refreshSavedPoseWeapons();
+
 poseWeaponSelect.addEventListener('change',()=>{
- checkpointAppearance();poseWeaponPreset=poseWeaponSelect.value;
+ checkpointAppearance();poseArsenalRecipe=null;poseArsenalSavedId=null;
+ poseWeaponPreset=poseWeaponSelect.value;
  const next=poseWeaponType(poseWeaponPreset);
  weapon.value=next;
  if(next!=='none')labKit=syncPrimaryWeapon(labKit,next);
@@ -773,6 +835,7 @@ choose<HTMLButtonElement>('unequipAll').addEventListener('click',()=>{
  checkpointAppearance();const empty=unequipLabAppearance();
  labKit=empty.kit;wardrobeOptions=empty.wardrobe;
  weapon.value='none';injury.value='0';
+ poseArsenalRecipe=null;poseArsenalSavedId=null;refreshSavedPoseWeapons();
  magazineSelector.value='0';
  choose<HTMLSelectElement>('faceTreatment').value='blank';
  labPalette=1;
@@ -1601,6 +1664,11 @@ function draw(){
    selectedPosePreset.weapon===currentWeapon?
    selectWeaponFamilyPreset(initialWeaponConfiguration(
     currentWeapon),selectedPosePreset.id):undefined;
+  // The special shell-loading track intentionally excludes modular overrides.
+  const savedWeaponConfig=track!=='reload-shotgun'&&poseArsenalRecipe&&
+   poseArsenalRecipe.weapon===currentWeapon?
+   arsenalRecipeToLegacy(poseArsenalRecipe):undefined;
+  const exactWeaponConfig=savedWeaponConfig??poseWeaponConfig;
   const currentKit=syncPrimaryWeapon(labKit,currentWeapon);
   const currentCarry=previewCarry(currentKit,currentWeapon);
   if(!comparing)poseOperator(rig,{
@@ -1614,7 +1682,7 @@ function draw(){
       track==='squeeze'?'squeeze':'walk',
     injury:Math.max(motion.injury,Number(injury.value),
       track==='reload-wounded'?2:0),
-    weapon:currentWeapon,weaponConfiguration:poseWeaponConfig,
+    weapon:currentWeapon,weaponConfiguration:exactWeaponConfig,
     unarmedPreview:weapon.value==='none'&&track!=='reload-shotgun',
     reload:motion.reload,reloadDuration:1.8,
     reloadMode:track==='reload-retention'?'retention':
@@ -1830,6 +1898,9 @@ function draw(){
     '\\nJoint markers and contacts: DIAGNOSTICS tab.';
   }
   canvas.dataset.poseFitWeapon=poseWeaponPreset;
+  canvas.dataset.poseFitSavedWeapon=poseArsenalSavedId??'';
+  canvas.dataset.poseFitWeaponReceiver=exactWeaponConfig?.build?.parts.receiver??'';
+  canvas.dataset.poseFitWeaponStock=exactWeaponConfig?.build?.parts.stock??'';
   const activeLook=resolvedWardrobe(wardrobeOptions,currentKit);
   canvas.dataset.poseFitArmor=activeLook.armorStyle;
   canvas.dataset.poseFitRig=activeLook.rigStyle;

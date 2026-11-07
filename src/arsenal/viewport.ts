@@ -8,6 +8,7 @@ import {weaponVisualLayout} from '../weapons/geometry/weapon-visual-layout.ts';
 import {partVisualBounds} from '../weapons/geometry/weapon-visual-anchors.ts';
 import {workbenchFitDistance} from '../weapons/geometry/weapon-workbench-camera-fit.ts';
 import {arsenalRecipeToLegacy,type ArsenalRecipeV2} from './recipes.ts';
+import {remapArsenalZoom} from './camera-state.ts';
 import type {FamilyPartSlot} from '../equipment-weapon-families.ts';
 import type {ArsenalSlot} from './catalog.ts';
 const FAMILY_SLOTS:readonly FamilyPartSlot[]=
@@ -37,6 +38,8 @@ export class ArsenalViewport{
  private gestureMoved=false;
  private multiTouch=false;
  private frame=0;
+ private lastWidth=0;
+ private lastHeight=0;
  private queued=false;
  private disposed=false;
  constructor(host:HTMLElement,recipe:ArsenalRecipeV2,
@@ -97,11 +100,12 @@ export class ArsenalViewport{
   const box=new THREE.Box3().setFromObject(this.model);
   this.target=box.getCenter(new THREE.Vector3());
   const rect=this.canvas.getBoundingClientRect();
+  const oldFit=this.fitDistance;
   this.fitDistance=workbenchFitDistance(box,Math.max(100,rect.width),
    Math.max(100,rect.height),37,.72,
    config.build?.parts.receiver==='hk-mp5k-stockless');
   if(!preserveView){this.distance=this.fitDistance;this.yaw=.12;this.pitch=.12;}
-  else this.distance=Math.max(this.distance,this.fitDistance);
+  else this.distance=remapArsenalZoom(oldFit,this.distance,this.fitDistance);
   this.setSelectedSlot(this.selected);this.invalidate();
   return true;
  }
@@ -139,7 +143,12 @@ export class ArsenalViewport{
   if(!this.renderer||this.disposed)return;
   const rect=this.canvas.getBoundingClientRect();
   const w=Math.max(1,Math.floor(rect.width)),h=Math.max(1,Math.floor(rect.height));
-  this.renderer.setSize(w,h,false);
+  // Don't reallocate the WebGL drawing buffer when only orbiting or
+  // switching parts. Resize is driven by the host ResizeObserver.
+  if(w!==this.lastWidth||h!==this.lastHeight){
+   this.renderer.setSize(w,h,false);
+   this.lastWidth=w;this.lastHeight=h;
+  }
   this.camera.aspect=w/h;this.camera.updateProjectionMatrix();
   const cos=Math.cos(this.pitch);
   this.camera.position.set(this.target.x+this.distance*Math.sin(this.yaw)*cos,

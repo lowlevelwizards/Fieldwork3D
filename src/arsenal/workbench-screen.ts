@@ -16,12 +16,15 @@ import {createArsenalDraft,commitArsenalProposal,undoArsenalDraft,redoArsenalDra
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../equipment-weapon-assemblies.ts';
 import {ArsenalViewport} from './viewport.ts';
+import {proposeArsenalRecipeLoad,acceptArsenalRecipeLoad,arsenalRecipeDifferenceLabel,
+ type ArsenalRecipeLoadProposal} from './recipe-loading.ts';
+import {ARSENAL_PLATFORMS} from './catalog.ts';
 import './arsenal.css';
 /** Game context is an explicit commit callback; the Workbench owns no inventory. */
 export interface ArsenalWorkbenchApplyContext{
  mode:'campaign'|'quick';
  applyLabel:string;
- quote?:(recipe:ArsenalRecipeV2)=>{valid:boolean;canCommit?:boolean;cost?:number;reason?:string};
+ quote?:(recipe:ArsenalRecipeV2)=>{valid:boolean;canCommit?:boolean;cost?:number;reason?:string;changesClass?:boolean};
  onApply:(recipe:ArsenalRecipeV2)=>{ok:boolean;message?:string};
 }
 
@@ -70,10 +73,12 @@ export function openArsenalWorkbench(
  save.className='arsenal-wb-action arsenal-wb-save';save.textContent='SAVE BUILD';
  const saveCopy=document.createElement('button');saveCopy.type='button';
  saveCopy.className='arsenal-wb-action';saveCopy.textContent='SAVE COPY';
+ const load=document.createElement('button');load.type='button';
+ load.className='arsenal-wb-action';load.textContent='LOAD BUILD';
  const apply=document.createElement('button');apply.type='button';
  apply.className='arsenal-wb-action arsenal-wb-apply';
  apply.textContent=context?.applyLabel??'APPLY';apply.hidden=!context;
- actions.append(undo,redo,save,saveCopy,fit,side,apply);head.append(back,identity,actions);
+ actions.append(undo,redo,load,save,saveCopy,fit,side,apply);head.append(back,identity,actions);
  const main=document.createElement('div');main.className='arsenal-wb-main';
  const viewportHost=document.createElement('div');viewportHost.className='arsenal-wb-viewport';
  const nav=document.createElement('nav');nav.className='arsenal-wb-nav';
@@ -199,14 +204,106 @@ export function openArsenalWorkbench(
   if(context){
    const quote=context.quote?.(draft.working);
    apply.disabled=quote!==undefined&&(!quote.valid||quote.canCommit===false);
-   applyQuote.textContent=quote?.reason??(quote?.cost?
-    'PENDING PURCHASE · '+quote.cost+' CR':'');
+   applyQuote.textContent=quote?.reason??(quote?.changesClass?
+    'CHANGING WEAPON CLASS RESETS THE LOADED AND SPARE MAGAZINES':
+    quote?.cost?'PENDING PURCHASE · '+quote.cost+' CR':'');
   }
   undo.disabled=draft.undo.length===0;redo.disabled=draft.redo.length===0;
   showAll.textContent=showIncompatible?'HIDE INCOMPATIBLE':'SHOW ALL';
   viewer.setSelectedSlot(activeSlot);
   renderChoices();renderPending();
  }
+ const loadDialog=document.createElement('dialog');
+ loadDialog.className='arsenal-wb-load-dialog';
+ loadDialog.setAttribute('aria-label','Load a saved weapon build');
+ const loadHeading=document.createElement('h3');loadHeading.textContent='LOAD SAVED BUILD';
+ const loadNote=document.createElement('p');loadNote.className='arsenal-wb-hint';
+ loadNote.textContent='Replace the working draft. No weapon is purchased or equipped yet.';
+ const loadChoices=document.createElement('div');loadChoices.className='arsenal-wb-load-choices';
+ const loadChanges=document.createElement('div');loadChanges.className='arsenal-wb-load-changes';
+ loadChanges.setAttribute('role','status');
+ const loadActions=document.createElement('div');loadActions.className='arsenal-wb-save-actions';
+ const loadConfirm=document.createElement('button');loadConfirm.type='button';
+ loadConfirm.className='arsenal-wb-accept';loadConfirm.textContent='LOAD INTO EDITOR';
+ loadConfirm.disabled=true;
+ const loadCancel=document.createElement('button');loadCancel.type='button';
+ loadCancel.className='arsenal-wb-action';loadCancel.textContent='CANCEL';
+ loadActions.append(loadConfirm,loadCancel);
+ loadDialog.append(loadHeading,loadNote,loadChoices,loadChanges,loadActions);
+ overlay.append(loadDialog);
+ let selectedRecipeLoad:ArsenalRecipeLoadProposal|null=null;
+ function showLoadChoices(){
+  loadChoices.replaceChildren();
+  loadChanges.replaceChildren();selectedRecipeLoad=null;loadConfirm.disabled=true;
+  const saved=loadArsenalBuildLibrary().builds;
+  if(!saved.length){
+   const empty=document.createElement('p');empty.className='arsenal-wb-hint';
+   empty.textContent='No saved builds yet. Save a build in the Workbench first.';
+   loadChoices.append(empty);return;
+  }
+  const header=document.createElement('p');header.className='arsenal-wb-hint';
+  header.textContent=saved.length+' PERSONAL BUILDS · select one to review changes';
+  loadChanges.append(header);
+  for(const build of saved){
+   const proposal=proposeArsenalRecipeLoad(draft.working,build.recipe);
+   const option=document.createElement('button');option.type='button';
+   option.className='arsenal-wb-load-option';
+   option.setAttribute('aria-pressed','false');
+   option.disabled=!proposal.valid;
+   const name=document.createElement('strong');name.textContent=build.name;
+   const sub=document.createElement('small');
+   const platform=ARSENAL_PLATFORMS.find(p=>p.id===build.recipe.platformId);
+   sub.textContent=(platform?.name??build.recipe.platformId)+' · '+
+    build.recipe.weapon.toUpperCase()+' · '+proposal.changes.length+' CHANGES';
+   option.append(name,sub);
+   option.addEventListener('click',()=>{
+    selectedRecipeLoad=proposal;loadConfirm.disabled=!proposal.valid;
+    for(const button of loadChoices.querySelectorAll('button'))
+     button.setAttribute('aria-pressed',String(button===option));
+    loadChanges.replaceChildren();
+    const summary=document.createElement('strong');
+    summary.textContent=proposal.changes.length?
+     'REPLACE '+proposal.changes.length+' COMPONENTS / PROPERTIES':'ALREADY MATCHES';
+    loadChanges.append(summary);
+    if(proposal.changes.length){
+     const list=document.createElement('ul');
+     for(const change of proposal.changes){
+      const item=document.createElement('li');
+      item.textContent=arsenalRecipeDifferenceLabel(change);list.append(item);
+     }
+     loadChanges.append(list);
+    }
+    const quote=context?.quote?.(build.recipe);
+    if(quote&&(!quote.valid||quote.canCommit===false||
+      quote.cost||quote.changesClass)){
+     const warning=document.createElement('p');warning.className='arsenal-wb-load-warning';
+     warning.textContent=quote.reason??(quote.changesClass?
+      'Changing weapon class resets ammunition when equipped.':
+      quote.cost?'Campaign cost when equipped: '+quote.cost+' CR':'');
+     loadChanges.append(warning);
+    }
+   });
+   loadChoices.append(option);
+  }
+ }
+ load.addEventListener('click',()=>{
+  pending=null;renderPending();showLoadChoices();
+  loadDialog.showModal();
+ });
+ loadCancel.addEventListener('click',()=>loadDialog.close());
+ loadConfirm.addEventListener('click',()=>{
+  if(!selectedRecipeLoad?.valid)return;
+  const changed=acceptArsenalRecipeLoad(draft,selectedRecipeLoad);
+  if(changed===draft){loadDialog.close();return;}
+  if(!viewer.setRecipe(changed.working)){
+   saveFeedback.textContent='Unable to render this build; nothing changed';return;
+  }
+  draft=changed;pending=null;
+  // Loading a recipe must never silently redirect SAVE to someone else's
+  // named recipe. Use Save Build (new) or Apply to equip this draft instead.
+  savedId=null;loadDialog.close();renderSelection();
+  saveFeedback.textContent='SAVED RECIPE LOADED · NOT EQUIPPED';
+ });
  const saveDialog=document.createElement('dialog');saveDialog.className='arsenal-wb-save-dialog';
  const saveHeading=document.createElement('h3');saveHeading.textContent='SAVE WEAPON BUILD';
  const saveLabel=document.createElement('label');saveLabel.textContent='BUILD NAME';
@@ -260,6 +357,12 @@ export function openArsenalWorkbench(
  apply.addEventListener('click',()=>{
   if(!context||apply.disabled)return;
   if(pending){saveFeedback.textContent='Confirm or cancel pending part changes first';return;}
+  const checked=context.quote?.(draft.working);
+  if(checked&&(!checked.valid||checked.canCommit===false)){
+   saveFeedback.textContent=checked.reason??'This build cannot be equipped';return;
+  }
+  if(checked?.changesClass&&
+   !window.confirm('Switch weapon class? This replaces the loaded and spare magazines.'))return;
   try{
    const result=context.onApply(draft.working);
    if(!result.ok){saveFeedback.textContent=result.message??'Unable to equip build';return;}
@@ -281,6 +384,7 @@ export function openArsenalWorkbench(
   viewer.setRecipe(draft.working);renderSelection();
  });
  const close=()=>{
+  if(loadDialog.open){loadDialog.close();return;}
   if(saveDialog.open){saveDialog.close();return;}
   if(arsenalDraftDirty(draft)&&
    !window.confirm('Discard unsaved changes to this weapon draft?'))return;
@@ -290,7 +394,8 @@ export function openArsenalWorkbench(
  const keys=(e:KeyboardEvent)=>{
   if(e.key!=='Escape')return;
   e.preventDefault();
-  if(saveDialog.open)saveDialog.close();
+  if(loadDialog.open)loadDialog.close();
+  else if(saveDialog.open)saveDialog.close();
   else if(pending){pending=null;renderPending();}
   else close();
  };
