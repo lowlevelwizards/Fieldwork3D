@@ -10,6 +10,7 @@ import type {RecordedShot} from './breach-replay-ballistics.ts';
 import type {ReplayPlanRevision} from './breach-replay-plans.ts';
 import type {ReplayMotionArchiveV1} from './breach-replay-motion.ts';
 import type {ReplayBookmark} from './breach-replay-chapters.ts';
+import type {PersonalGroundBatch} from './breach-replay-personal-ground.ts';
 
 export type ReplayArchiveV1={
   format:'fieldwork-breach-replay';
@@ -23,6 +24,8 @@ export type ReplayArchiveV1={
   planRevisions:ReplayPlanRevision[];
   motion:ReplayMotionArchiveV1;
   bookmarks?:ReplayBookmark[];
+  /** Sparse, authoritative per-operator terrain reveals. Optional for V1. */
+  personalGround?:PersonalGroundBatch[];
   completeness:{complete:boolean;truncatedAt:number|null;reason:string|null};
 };
 const allowed=(id:string)=>id.length>0&&id.length<=128&&/^[\w-]+$/.test(id);
@@ -44,6 +47,25 @@ function validObserverEvidence(frame:ReplayFrame):boolean{
   return true;
 }
 
+/** Strict caps prevent oversized/malformed optional ground journals. */
+function validPersonalGround(batches:unknown,maxTime:number):boolean{
+  if(batches===undefined)return true;
+  if(!Array.isArray(batches)||batches.length>50000)return false;
+  let last=-Infinity,total=0;
+  for(const raw of batches){
+    if(!raw||typeof raw!=='object')return false;
+    const b=raw as Partial<PersonalGroundBatch>;
+    if(!Number.isFinite(b.at)||b.at!<last||b.at!<0||
+      b.at!>maxTime+.15||typeof b.observerId!=='string'||
+      !allowed(b.observerId)||!Array.isArray(b.keys)||
+      b.keys.length>30000)return false;
+    last=b.at!;
+    total+=b.keys.length;
+    if(total>1000000||b.keys.some(k=>typeof k!=='string'||
+      !/^(?:(?:fine|micro):)?-?\d+,-?\d+$/.test(k)))return false;
+  }
+  return true;
+}
 export function replayArchiveIsValid(input:unknown):input is ReplayArchiveV1{
   if(!input||typeof input!=='object')return false;
   const a=input as Partial<ReplayArchiveV1>;
@@ -65,7 +87,7 @@ export function replayArchiveIsValid(input:unknown):input is ReplayArchiveV1{
       !Array.isArray(f.doors)||!validObserverEvidence(f))return false;
     previous=f.t;
   }
-  return true;
+  return validPersonalGround(a.personalGround,a.frames.at(-1)!.t);
 }
 export function captureReplayArchive(
   rec:MissionRecorder,id:string,createdAt:number
@@ -83,6 +105,7 @@ export function captureReplayArchive(
     shots:rec.ballistics.shots,
     planRevisions:rec.plans.revisions,
     motion:rec.motion.toArchive(),
+    personalGround:rec.personalGround,
     completeness:{...rec.completeness}
   };
   // One clone retains structural sharing in frequent world samples.
@@ -99,6 +122,7 @@ export function restoreReplayArchive(input:unknown):MissionRecorder{
   rec.ballistics.shots.push(...data.shots);
   rec.plans.revisions.push(...data.planRevisions);
   rec.motion.loadArchive(data.motion);
+  if(data.personalGround)rec.personalGround.push(...data.personalGround);
   Object.assign(rec.completeness,data.completeness);
   return rec;
 }
