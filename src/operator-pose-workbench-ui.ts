@@ -434,6 +434,11 @@ function tick(now:number){
  }
  orbit.update();
  renderer.render(scene,camera);
+ canvas.dataset.ready='true';
+ canvas.dataset.drawCalls=String(renderer.info.render.calls);
+ canvas.dataset.workbenchWeapon=edited.weapon;
+ canvas.dataset.workbenchTarget=selection;
+ canvas.dataset.poseBlend=progress.toFixed(3);
  requestAnimationFrame(tick);
 }
 try{
