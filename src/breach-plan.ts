@@ -13,13 +13,13 @@ export type PieSide='cw'|'ccw';
 export type DoorMethod='open'|'close'|'kick'|'hold';
 export type PlanNode={
   id:number;kind:PlanKind;p:Pt;facing?:number;doorId?:string;
-  objectId?:string;interaction?:'push'|'open-window'|'close-window'|
+  objectId?:string;pushDirection?:Pt;interaction?:'push'|'open-window'|'close-window'|
     'secure-civilian'|'follow-civilian'|'release-civilian';
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
   postureState?:'stand'|'crouch';paceState?:'walk'|'run';
   moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;pieDegrees?:number;arc?:Pt[];
   aimMode?:AimMode;aimPoint?:Pt;aimLabel?:'look'|'watch'|'strafe'|'pie';
-  toolMethod?:'pry'|'cut'|'wedge'|'unwedge'|'breach';
+  toolMethod?:'pick'|'pry'|'cut'|'wedge'|'unwedge'|'breach';
   patientId?:string;woundId?:number;
   transportMode?:'drag'|'carry';
   stackDoorId?:string;
@@ -33,6 +33,7 @@ export const copyNodes=(nodes:PlanNode[]):PlanNode[]=>
   nodes.map(n=>({...n,p:{...n.p},
     pivot:n.pivot?{...n.pivot}:undefined,
     aimPoint:n.aimPoint?{...n.aimPoint}:undefined,
+    pushDirection:n.pushDirection?{...n.pushDirection}:undefined,
     firePoint:n.firePoint?{...n.firePoint}:undefined,
     arc:n.arc?.map(p=>({...p}))}));
 export const makeHistory=():PlanHistory=>({undo:[],redo:[]});
@@ -56,7 +57,7 @@ export function modifyNode(nodes:PlanNode[],id:number,patch:Partial<PlanNode>){
   if(!node)return false;
   if(patch.p)node.p={...patch.p};
   for(const prop of ['facing','kind','doorId','method','duration','syncCode','holdOnContact','moveMode','postureState','paceState','pieSide','aimMode','aimLabel',
-    'firePolicyState','fireTargetId','objectId','interaction'] as const){
+    'firePolicyState','fireTargetId','objectId','interaction','pushDirection'] as const){
     const val=patch[prop];
     if(val!==undefined){
       // Values have different property types; assign to the matching key.

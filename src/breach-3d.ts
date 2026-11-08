@@ -2522,12 +2522,17 @@ export class TacticalScene3D{
       // Never apply hidden live leaf motion over remembered personal state.
       const shownFraction=personal?fraction:
         (omniscient||directlyObserved)?(replayProgress??fraction):fraction;
+      const previousFraction=!replay&&(omniscient||directlyObserved)?
+        renderFrame?.previousDoors?.[door.id]:undefined;
+      const drawFraction=previousFraction===undefined?shownFraction:
+        previousFraction+(shownFraction-previousFraction)*
+          Math.max(0,Math.min(1,renderFrame?.alpha??1));
       if(door.kind==='shutter'){
         object.leaf.rotation.y=0;
-        object.leaf.position.y=shownFraction*37;
+        object.leaf.position.y=drawFraction*37;
       }else if(door.kind==='sliding'){
         object.leaf.rotation.y=0;
-        object.leaf.position.x=shownFraction*
+        object.leaf.position.x=drawFraction*
           Math.hypot(door.b.x-door.a.x,door.b.y-door.a.y)*(door.slideDirection??1);
       }else{
         const age=s.seconds-(door.lastKickAt??-100);
@@ -2535,7 +2540,7 @@ export class TacticalScene3D{
           Math.sin(age*76)*.045*(1-age/.34):0;
         // A failed kick visibly rattles the leaf in its frame; the hinge
         // yaw remains authoritative for collision, LOS and navigation.
-        object.leaf.rotation.y=(door.swing??-1)*shownFraction*1.54+wobble;
+        object.leaf.rotation.y=(door.swing??-1)*drawFraction*1.54+wobble;
       }
       // A solid open leaf is still geometry. In orthographic Director
       // a door between the camera and a friendly fades as a very light
@@ -2545,7 +2550,7 @@ export class TacticalScene3D{
       const leafCut=physicalDirector&&this.replayDirectorLens==='ortho'&&
         !['glazed','french','screen','mesh-gate'].includes(door.style??'')&&
         subjects.some(p=>wallOccludesFriendly(
-          doorLeafSegment({...door,openFraction:shownFraction}),
+          doorLeafSegment({...door,openFraction:drawFraction}),
           p,{x:fromCamera.x,y:fromCamera.z},maxCutDistance));
       if(leafCut||object.leaf.userData.directorCutMaterials){
         object.leaf.userData.directorCutMaterials=true;
@@ -2718,7 +2723,12 @@ export class TacticalScene3D{
           actor.aimInstruction.source!=='stack',
         speed:actor.velocity
       });
-      const friendlyAhead=teammateAheadForHandling(
+      const stackCrowded=(handlingIntent==='stack'||
+        handlingIntent==='door'||handlingIntent==='entry')&&
+        s.operators.some(peer=>peer!==actor&&peer.side===actor.side&&
+          peer.health>0&&Math.hypot(peer.p.x-actor.p.x,
+            peer.p.y-actor.p.y)<40);
+      const friendlyAhead=stackCrowded||teammateAheadForHandling(
         actor.p,actor.heading,s.operators,actor);
       // Physical contact is queried from the actual interpolated barrel,
       // never from a long ray projected along the feet/body heading.
@@ -2808,6 +2818,18 @@ export class TacticalScene3D{
          weaponLightOn:actor.weaponLightOn,
         treatmentActive:actor.treatmentActive,
         treatmentProgress:actor.treatmentProgress,
+        lockpickActive:actor.plan[0]?.kind==='tool'&&
+          actor.plan[0]?.toolMethod==='pick'&&actor.actionTimer>0,
+        lockpickProgress:actor.plan[0]?.kind==='tool'&&
+          actor.plan[0]?.toolMethod==='pick'?
+          Math.min(1,actor.actionTimer/Math.max(.1,
+            (actor.lastDoorId?s.doors.find(d=>d.id===actor.lastDoorId):null)?.
+             style==='reinforced'?8.5:5.5)):0,
+        interactionCrouch:actor.treatmentActive?
+          Math.min(1,Math.max(0,(s.seconds-actor.lastTreatmentAt)/.38)):
+          actor.plan[0]?.kind==='tool'&&actor.plan[0]?.toolMethod==='pick'&&
+          actor.actionTimer>0?
+          Math.min(1,Math.max(0,(s.seconds-actor.lastDoorAt)/.38)):0,
         treatmentPoint:actor.treatmentActive?
          s.operators.find(o=>o.id===actor.lastTreatmentTargetId)?.p:undefined,
         flashCharges:actor.flashCharges,

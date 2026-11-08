@@ -29,6 +29,7 @@ const TOPPLEABLE=new Set([
 const SHOVEABLE=new Set([
  'chair','patio-chair','office-chair','stool','lamp',
  'storage-tote','tipped-trash-bin','trash-bag','mop-bucket',
+ 'box','nightstand','recycling-bin','cart','supply-cart',
  'small-table','side-table',
 ]);
 export function traversalSurface(o:Obstacle):TraversalSurface{

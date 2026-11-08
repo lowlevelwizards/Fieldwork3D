@@ -43,6 +43,7 @@ import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,
   initialOpeningYieldCandidate,pressDoorOnBodyAttempt,doorSwingBlocked,
+  doorWouldStrikeActors,
   autoDoorAtBodyContact,canAutoOpenEnRoute} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
@@ -61,6 +62,7 @@ import {interpretSound,soundResponse,soundPriority}
   from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
+import {canAutoShove} from './breach-traversal-surfaces.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
 import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
 import {damageCover} from './breach-reactive-cover.ts';
@@ -91,7 +93,8 @@ import {firstCivilianAlongRay,applyCivilianBulletHit}
 import {knownCivilianInFireLane} from './breach-civilian-fire-safety.ts';
 import {recordCivilianHarm,attributableCivilianHarm,
   type CivilianHarmEvent} from './breach-civilian-harm.ts';
-import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
+import {retreatDoorClosureEligible,routineDoorClosureEligible}
+ from './breach-ai-door-response.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic,shouldSeekHoldCover}
  from './breach-ai-tactical-response.ts';
@@ -245,6 +248,10 @@ export type TeamActor=Operator & {
   stride:number;weapon:WeaponId;injuryStage:number;
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
   lastBashAt:number;lastBashRole:'push'|'receive'|null;
+  /** Bounded, idle-only clearer gaze; never an authored aim or detection. */
+  clearLookBearing?:number|null;lastClearLookProbeAt?:number;
+  /** Brief physical interruption after a door leaf impact, not a wound. */
+  doorStunUntil?:number;
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
   /** Transient, collision-checked gun-clearance recovery; not a PlanNode. */
   fireRetreatTarget:Pt|null;fireRetreatUntil:number;lastFireRetreatAt:number;
@@ -650,9 +657,47 @@ export function plannedWindowRoute(s:Session,from:Pt,to:Pt,
    traversalRouteLength(from,ordinary)/53)return null;
  return [...portal.approachPath,portal.crossing.landing,...portal.exitPath];
 }
+/** An explicit straight gesture through ONE known light object may remain
+ * authored. Other blocked samples (walls, unknown cover, doors) still reject.
+ * The motor must physically reach and shove the same known object later. */
+function knownShoveCrossing(s:Session,from:Pt,to:Pt):number|null{
+ if(!intelPassable(from,s.intel,SQUEEZE_RADIUS)||
+    !intelPassable(to,s.intel,SQUEEZE_RADIUS))return null;
+ const span=d(from,to);
+ if(span<3)return null;
+ // A shove cannot be used to disguise an ordinary known wall or a latched
+ // door, even when its sample is inside the expanded furniture envelope.
+ const segment={a:from,b:to};
+ if(WALLS.some((wall,index)=>s.intel.walls.has(index)&&
+    segmentsCross(segment,wall)))return null;
+ if(s.doors.some(door=>doorKnown(s.intel,door.id)&&
+    doorBlocksSegment(door,segment)))return null;
+ for(let index=0;index<s.coverState.length;index++){
+   const obstacle=s.coverState[index];
+   if(!s.intel.cover.has(index)||!canAutoShove(obstacle)||
+      !canRelocateCover(obstacle)||
+      !segmentHitsBox(from,to,{...obstacle,
+        w:obstacle.w+2,h:obstacle.h+2}))continue;
+   const allowance={...obstacle,
+     w:obstacle.w+SQUEEZE_RADIUS*2+4,
+     h:obstacle.h+SQUEEZE_RADIUS*2+4};
+   let otherObstruction=false;
+   for(let i=1,n=Math.ceil(span/4);i<n;i++){
+     const t=i/n,p={x:from.x+(to.x-from.x)*t,
+       y:from.y+(to.y-from.y)*t};
+     if(!intelPassable(p,s.intel,SQUEEZE_RADIUS)&&
+        !segmentHitsBox(p,p,allowance)){
+       otherObstruction=true;break;
+     }
+   }
+   if(!otherObstruction)return index;
+ }
+ return null;
+}
 function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
  const world=knownWindowWorld(s);
- return !!probeObstacleCrossing(from,to,world)||
+ return knownShoveCrossing(s,from,to)!==null||
+   !!probeObstacleCrossing(from,to,world)||
    !!probeWindowPortalRoute(from,to,world,
      (a,b)=>routeWithSqueezeIntel(s.intel,a,b));
 }
@@ -719,15 +764,16 @@ export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
  * Using the selected waypoint's world position avoids context buttons that
  * appear available but target the unrelated final route endpoint. */
 export function planNearbyInteraction(s:Session,id:string,
- action:'push'|'open-window'|'close-window',afterNodeId?:number):boolean{
+ action:'push'|'open-window'|'close-window',afterNodeId?:number,
+ pushPoint?:Pt):boolean{
  const a=party(s,id);if(!a||!canEdit(s))return false;
  const insertion=afterNodeId===undefined?-1:
    a.plan.findIndex(n=>n.id===afterNodeId);
  if(afterNodeId!==undefined&&insertion<0)return false;
  const at=insertion>=0?a.plan[insertion].p:finalPoint(a);
- const queue=(objectId:string)=>edit(s,a,()=>{
+ const queue=(objectId:string,pushDirection?:Pt)=>edit(s,a,()=>{
    const order:PlanNode={id:s.nextId++,kind:'interact',p:clone(at),
-     objectId,interaction:action};
+     objectId,interaction:action,pushDirection};
    if(insertion>=0)a.plan.splice(insertion+1,0,order);
    else a.plan.push(order);
  });
@@ -737,7 +783,13 @@ export function planNearbyInteraction(s:Session,id:string,
        canRelocateCover(c.o)&&c.distance<Math.max(c.o.w,c.o.h)/2+43)
      .sort((x,y)=>x.distance-y.distance||x.index-y.index);
    const item=candidates[0];if(!item)return false;
-   return queue('prop:'+item.index);
+   const toward={x:item.o.x-at.x,y:item.o.y-at.y};
+   const base=Math.atan2(toward.y,toward.x);
+   const chosen=pushPoint&&d(pushPoint,{x:item.o.x,y:item.o.y})>4?
+     Math.atan2(pushPoint.y-item.o.y,pushPoint.x-item.o.x):base;
+   const delta=angleDifference(base,chosen);
+   const yaw=base+clamp(delta,-Math.PI*4/9,Math.PI*4/9);
+   return queue('prop:'+item.index,{x:Math.cos(yaw),y:Math.sin(yaw)});
  }
  const target=s.windows.filter(w=>w.operable&&!w.shattered&&
    d(at,{x:w.x,y:w.y})<54&&w.open===(action==='close-window'))
@@ -819,6 +871,9 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
     if(!Number.isFinite(point.x)||!Number.isFinite(point.y)){
       clipped=true;break;
     }
+    if(!last&&!intelPassable(point,s.intel,SQUEEZE_RADIUS)&&
+       intelPassable(stroke[stroke.length-1],s.intel,SQUEEZE_RADIUS)&&
+       knownTraversal(s,previousInput,stroke[stroke.length-1]))continue;
     const span=d(previousInput,point);
     const steps=Math.max(1,Math.ceil(span/3));
     let lastClear=previousInput,firstBlocked:Pt|null=null;
@@ -2079,6 +2134,27 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     if(s.seconds<a.retryRouteAt){a.velocity=0;return false;}
     a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
       cachedEnemyRoute(s,a.p,p,true);
+    if(!a.nav.length&&a.side==='blue'){
+      // A known small object that the player drew THROUGH is a contextual
+      // crossing, not a permanently impassable destination. Approach its
+      // near edge using ordinary world-truth navigation; only body contact
+      // can actually move it. Nothing is learned about hidden furniture.
+      const index=knownShoveCrossing(s,a.p,p);
+      if(index!==null){
+        const obstacle=s.coverState[index];
+        const dx=p.x-a.p.x,dy=p.y-a.p.y;
+        const span=Math.hypot(dx,dy)||1;
+        const ux=dx/span,uy=dy/span;
+        const setback=(Math.abs(ux)*obstacle.w+
+          Math.abs(uy)*obstacle.h)/2+OPERATOR_RADIUS+5;
+        const staging={x:obstacle.x-ux*setback,
+          y:obstacle.y-uy*setback};
+        const path=d(a.p,staging)<5?[]:
+          routeWithSqueezeWorld(a.p,staging,s.doors);
+        if(d(a.p,staging)<5||path.length)
+          a.nav=[...path,p];
+      }
+    }
     if(!a.nav.length){
       // A failed route is a stationary brace, not phantom walking speed.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
@@ -2220,6 +2296,18 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       doorBlocksSegment(door,{a:a.p,b:p});
   })??autoDoorAtBodyContact(a.p,move,automaticCandidates);
   if(doorAhead){
+    // A cautious defender should operate a door from a real clear stance,
+    // not repeatedly crowd its swing while touching the handle.
+    if(a.side==='red'&&!doorAhead.open&&a.actionTimer===0&&
+       doorWouldStrikeActors({...doorAhead,openFraction:0},.46,
+         [a.p],OPERATOR_RADIUS+1)){
+      const staged=doorApproach(a.p,doorAhead);
+      if(staged&&d(staged,a.p)>5&&d(staged,a.p)<50&&
+         sweptBodyClear(a.p,staged,s.doors)){
+        a.nav.unshift(staged);a.velocity=0;
+        a.motorPause='door-opening';return true;
+      }
+    }
     a.motorPause='door-opening';
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
       actorPosition:a.p,action:'open'});
@@ -2622,8 +2710,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.lastDoorMethod='open';}
     // Tool retrieval from a backpack or inaccessible overflow is slower
     // than a belt mount. Wedge removal still uses the required tool.
-    const access=equipmentRetrievalSeconds(
+    const access=method==='pick'?0:equipmentRetrievalSeconds(
       a.equipment??initialEquipmentLoadout(a.weapon),a.spareMagazines,'utility');
+    // A hit interrupts fine hand manipulation without consuming a tool.
+    if(method==='pick'&&s.seconds-a.lastHitAt<.35){
+      a.actionTimer=0;return;
+    }
     a.actionTimer+=dt;
     if(a.actionTimer<verdict.seconds+(Number.isFinite(access)?access:0))return;
     if(method==='wedge'){
@@ -2637,7 +2729,11 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         owner.wedgeRemaining+1);
       door.wedgeOwnerId=undefined;
     }
-    else{
+    else if(method==='pick'){
+      // Picking operates the lock rather than destroying the frame.
+      door.locked=false;door.open=true;door.openedAt=s.seconds;
+      door.pushTarget=1;
+    }else{
       door.latchIntegrity=Math.max(-1,(door.latchIntegrity??1)-verdict.damage);
       if((door.latchIntegrity??0)<=0){
         door.locked=false;door.jammed=false;door.heldBy=null;
@@ -2646,7 +2742,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     }
     s.objectRevision++;
     hear(s,doorCenter(door),verdict.noise,method);
-    const label=method.toUpperCase()+(door.open?' · FORCED OPEN':
+    const label=method.toUpperCase()+(method==='pick'?' · UNLOCKED':
+      door.open?' · FORCED OPEN':
       method==='wedge'?' · SECURED':method==='unwedge'?' · REMOVED':
       ' · FRAME DAMAGED');
     notify(s,door.id+' '+label);battleEvent(s,'door',a,doorCenter(door),door.id+' '+label);
@@ -2851,10 +2948,20 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       const dx=o.x-a.p.x,dy=o.y-a.p.y,
         length=Math.hypot(dx,dy)||1;
       const amount=coverPushDistance(o);
-      const pushed={x:o.x+dx/length*amount,y:o.y+dy/length*amount};
-      if(!movePhysicalProp(s,index,pushed)){
+      const direction=n.pushDirection??{x:dx/length,y:dy/length};
+      const mag=Math.hypot(direction.x,direction.y)||1;
+      // Move the real collider a short swept increment per fixed tick.
+      // Visuals, replay, firing cover and pathfinding see the same position.
+      const duration=Math.max(.45,amount/28);
+      const part=Math.max(0,Math.min(dt,duration-a.actionTimer));
+      const distance=amount*part/duration;
+      const pushed={x:o.x+direction.x/mag*distance,
+        y:o.y+direction.y/mag*distance};
+      if(part>.0001&&!movePhysicalProp(s,index,pushed)){
         failCurrentOrder(s,a,n,'OBJECT OBSTRUCTED');return;
       }
+      a.velocity=0;a.actionTimer+=dt;
+      if(a.actionTimer<duration)return;
       notify(s,a.name+' PUSHED '+(o.fixture??'OBJECT'));
     }else if(kind==='window'){
       // A pane cannot swing shut through somebody currently occupying the
@@ -3103,7 +3210,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       failCurrentOrder(s,a,n,'DOOR MISSING');return;
     }
     if((n.method==='close'&&!door.open)||
-       (n.method!=='close'&&n.method!=='kick'&&n.method!=='hold'&&door.open)){
+       (n.method!=='close'&&n.method!=='kick'&&n.method!=='hold'&&
+        door.open&&(door.openFraction??1)>=.98)){
       // The requested state already exists: legitimate completion.
       pop(a);return;
     }
@@ -3133,7 +3241,60 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       if(!door.open){
         const outcome=kickDoor(door,a.p);
         door.lastKickAt=s.seconds;
-        if(outcome.opened)door.openedAt=s.seconds;
+        if(outcome.opened){
+          door.openedAt=s.seconds;
+          // Kicks into an occupied sweep impact the actual body. A validated
+          // displacement clears room for the hinge; pinned actors remain solid.
+          const impactLeaf=doorLeafSegment({...door,openFraction:.60});
+          for(const struck of s.operators){
+            if(struck===a||struck.health<=0||
+               !doorWouldStrikeActors({...door,openFraction:0},.60,
+                 [struck.p],OPERATOR_RADIUS+1))continue;
+            const along=Math.max(0,Math.min(1,(
+              (struck.p.x-impactLeaf.a.x)*(impactLeaf.b.x-impactLeaf.a.x)+
+              (struck.p.y-impactLeaf.a.y)*(impactLeaf.b.y-impactLeaf.a.y))/
+              Math.max(1,d(impactLeaf.a,impactLeaf.b)**2)));
+            const closest={x:impactLeaf.a.x+
+              (impactLeaf.b.x-impactLeaf.a.x)*along,
+              y:impactLeaf.a.y+(impactLeaf.b.y-impactLeaf.a.y)*along};
+            const dx=struck.p.x-closest.x,dy=struck.p.y-closest.y;
+            const mag=Math.hypot(dx,dy)||1;
+            const lx=impactLeaf.b.x-impactLeaf.a.x,
+              ly=impactLeaf.b.y-impactLeaf.a.y;
+            const length=Math.hypot(lx,ly)||1;
+            // First try the real radial impact, then a short slip along
+            // either edge when the defender is pinned against furniture.
+            // Every candidate is swept and other characters remain solid.
+            const directions=[
+              {x:dx/mag,y:dy/mag},
+              {x:lx/length,y:ly/length},
+              {x:-lx/length,y:-ly/length}
+            ];
+            let displaced=false;
+            for(const dir of directions){
+              for(const distance of [18,12,7,3]){
+                const dest={x:struck.p.x+dir.x*distance,
+                  y:struck.p.y+dir.y*distance};
+                if(!sweptBodyClear(struck.p,dest,s.doors)||
+                   s.operators.some(other=>other!==struck&&
+                     other.health>0&&d(other.p,dest)<13)||
+                   s.civilians.some(other=>other.health>0&&
+                     d(other.p,dest)<13))continue;
+                struck.priorP=clone(struck.p);struck.p=dest;
+                displaced=true;break;
+              }
+              if(displaced)break;
+            }
+            struck.doorStunUntil=Math.max(struck.doorStunUntil??0,
+              s.seconds+.85);
+            struck.lastBashAt=s.seconds;struck.lastBashRole='receive';
+            struck.fireCd=Math.max(struck.fireCd,.85);
+            struck.aim=Math.max(0,struck.aim-.7);
+            struck.velocity=0;struck.nav=[];
+            battleEvent(s,'door',a,struck.p,
+              struck.name+' STRUCK BY DOOR');
+          }
+        }
         hear(s,doorCenter(door),340,'kick');
         const result=!outcome.pushSide?'WRONG SIDE · CANNOT KICK INWARD':
           outcome.opened?'FORCED OPEN':'KICK RESISTED';
@@ -3178,10 +3339,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
           failCurrentOrder(s,a,n,'DOOR BRACED SHUT');return;
         }
         for(const leaf of pairedLeaves(s,door)){
+          const wasOpening=leaf.open;
           leaf.open=true;leaf.openedAt=s.seconds;
-          // A deliberate OPEN uses the normal ~90-degree stop.
-          // Only actual sustained shoulder contact requests extra swing.
-          leaf.pushTarget=1;leaf.angularVelocity=0;
+          // Reopening an ajar leaf must continue from its physical angle.
+          // Never zero moving hinge velocity or rewind the panel.
+          leaf.pushTarget=Math.max(1,leaf.pushTarget??1);
+          if(!wasOpening)leaf.angularVelocity=0;
         }
         hear(s,doorCenter(door),145,'door');
         notify(s,door.id+' OPENED');
@@ -3529,6 +3692,24 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     const index=visit%a.encounterRoutine.length;
     const target=a.encounterRoutine[index];
     if(d(a.p,target)<13){
+      // A settled occupant may quietly close a nearby hinged leaf after a
+      // real journey. Other travelers retain priority over the doorway.
+      if(visit%3===1){
+        const inUse=s.operators.filter(other=>other!==a&&other.health>0&&
+          (other.velocity>5||other.nav.length>0)).map(other=>other.p);
+        const door=s.doors.find(candidate=>
+          routineDoorClosureEligible(a.p,candidate,s.seconds,
+            a.lastEnemyDoorCloseAt,inUse)&&
+          !doorWouldStrikeActors(candidate,0,[a.p],OPERATOR_RADIUS));
+        if(door&&doorInteraction({target:door,actorId:a.id,
+          actorPosition:a.p,action:'close'}).allowed){
+          door.open=false;door.openedAt=s.seconds;
+          a.lastEnemyDoorCloseAt=s.seconds;
+          hear(s,doorCenter(door),62,'door');
+          battleEvent(s,'door',a,doorCenter(door),
+            a.name+' CLOSED '+door.id+' AFTER ROUTINE');
+        }
+      }
       a.routineIndex=visit+1;
       a.routinePauseUntil=s.seconds+routineDwellSeconds(a.id,
         a.encounterActivity??'idle',index,visit);
@@ -4166,7 +4347,37 @@ function fire(s:Session,a:TeamActor,dt:number){
   });
   if(!target){
     a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
-    a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*profile.turnSpeed*mods.turn);
+    const canPreferClearLook=a.velocity<6&&!a.aimInstruction&&
+      a.side==='blue'&&!a.traversal&&!a.squeeze&&
+      !['look','door','tool','treat','reload','flash'].includes(
+        a.plan[0]?.kind??'');
+    if(canPreferClearLook&&s.seconds-(a.lastClearLookProbeAt??-10)>.48){
+      a.lastClearLookProbeAt=s.seconds;
+      const probe=(yaw:number)=>weaponClearance({
+        x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:yaw,
+        weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+        equipment:a.equipment,aim:0,posture:a.posture,
+        velocity:0,recoil:0
+      },s.doors);
+      const blocked=probe(a.heading).obstruction;
+      a.clearLookBearing=null;
+      if(blocked){
+        // Only a 20-degree unobstructed alternative is considered.
+        // The real muzzle, not a head-only illusion, selects the bearing.
+        for(const delta of [-.16,.16,-.34,.34]){
+          const clearance=probe(a.heading+delta);
+          if(!clearance.obstruction&&!clearance.blocked){
+            a.clearLookBearing=a.heading+delta;break;
+          }
+        }
+      }
+    }
+    const alternate=canPreferClearLook&&
+      a.clearLookBearing!==null&&a.clearLookBearing!==undefined&&
+      Math.abs(angleDifference(a.heading,a.clearLookBearing))<.38?
+      a.clearLookBearing:a.heading;
+    a.weaponYaw=approachAngle(a.weaponYaw,alternate,
+      dt*profile.turnSpeed*mods.turn);
     return;
   }
   // The target selector deliberately keeps tracking a lone visible target
@@ -4768,7 +4979,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     // An operator just inside the initial sweep may yield a small REAL
     // step before the leaf advances. This is not an actor-collision bypass:
     // static geometry, other leaves and opposing bodies must all remain solid.
-    if(door.open&&(door.openFraction??0)<.36&&
+    if(door.open&&(door.openFraction??0)<.96&&
        (door.pushTarget??1)<=1.01){
       for(const actor of s.operators){
         if(actor.health<=0)continue;
@@ -4869,6 +5080,11 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     a.suppression=Math.max(0,a.suppression-h*.17);
     a.priorP=clone(a.p);
     if(a.health<=0)continue;
+    if((a.doorStunUntil??0)>s.seconds){
+      // Retain authored orders; no movement or firing while physically stunned.
+      a.velocity=0;a.motorPause='contact';
+      continue;
+    }
     if(a.side==='blue'){
       runOrders(s,a,h);
       // Incoming *actual hits* provide coarse directional evidence even

@@ -36,7 +36,7 @@ export function doorReachable(p:Pt,d:Door):boolean{
   // An opened leaf can be grabbed from anywhere along its actual panel.
   // Requiring proximity to the empty frame made closing a swung door
   // impossible even with the operator's hand against the leaf.
-  if(d.open&&(d.openFraction??1)>.15)
+  if((d.openFraction??(d.open?1:0))>.15)
     return pointToSegment(p,doorLeafSegment(d))<DOOR_REACH;
   return (dist(p,handlePoint(d))<DOOR_REACH||pointToSegment(p,d)<31)&&
     dist(p,doorCenter(d))<DOOR_REACH+16;
@@ -82,7 +82,7 @@ export function doorApproach(from:Pt,d:Door):Pt|null{
   const n={x:-t.y,y:t.x};
   const side=Math.sign((from.x-m.x)*n.x+(from.y-m.y)*n.y)||1;
   const candidates:Pt[]=[];
-  if(d.open&&(d.openFraction??1)>.15){
+  if((d.openFraction??(d.open?1:0))>.15){
     const leaf=doorLeafSegment(d),dx=leaf.b.x-leaf.a.x,dy=leaf.b.y-leaf.a.y;
     const length=Math.hypot(dx,dy)||1;
     const leafNormal={x:-dy/length,y:dx/length};
@@ -293,12 +293,11 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   const length=dist(from,to);
   if(length<.0001)return null;
   const steps=Math.max(1,Math.ceil(length/2));
-  const nearby:{door:Door;distance:number}[]=[];
+  const nearby:{door:Door;distance:number;closing:boolean}[]=[];
   for(const door of doors){
-    if(!door.open||door.kind==='shutter'||door.kind==='sliding'||
+    if(door.kind==='shutter'||door.kind==='sliding'||
        door.wedged||door.heldBy||
-       (door.openFraction??0)<.08||
-       (door.openFraction??0)>=PUSHED_OPEN_LIMIT-.001)continue;
+       (door.openFraction??0)<.08)continue;
     const panel=doorLeafSegment(door);
     // A hinged door can only be pushed farther OPEN in the direction its
     // leaf is actually rotating. Opposite-side contact must not drive the
@@ -308,7 +307,10 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
     const leafLength=Math.hypot(lx,ly)||1;
     const openingX=(door.swing??-1)*ly/leafLength;
     const openingY=-(door.swing??-1)*lx/leafLength;
-    if(vx*openingX+vy*openingY<Math.hypot(vx,vy)*.12)continue;
+    const pressure=vx*openingX+vy*openingY;
+    if(Math.abs(pressure)<Math.hypot(vx,vy)*.12)continue;
+    const closing=pressure<0;
+    if(!closing&&(door.openFraction??0)>=PUSHED_OPEN_LIMIT-.001)continue;
     const before=pointToSegment(from,panel);
     // The capsule must be near the *actual rotating leaf*.
     if(before>OPERATOR_RADIUS+7)continue;
@@ -321,7 +323,7 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
     }
     if(minimum>OPERATOR_RADIUS+1.5||
        minimum>before-.015&&before>OPERATOR_RADIUS+1)continue;
-    nearby.push({door,distance:minimum});
+    nearby.push({door,distance:minimum,closing});
   }
   nearby.sort((a,b)=>a.distance-b.distance||
     a.door.id.localeCompare(b.door.id));
@@ -342,12 +344,20 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   // A stopped/obstructed leaf can still accept a fresh real contact.
   const alreadyOpening=(door.pushTarget??1)>1.01&&
     (door.angularVelocity??0)>1.2;
-  if(!alreadyOpening)pushDoor(door,1.3+2.1*leverage);
+  if(contact.closing){
+    // The opposite face can push the real leaf toward the frame.
+    // Sustained pressure does not re-inject a new impulse every motor tick.
+    const alreadyClosing=!door.open&&(door.angularVelocity??0)<-1.2;
+    door.open=false;door.pushTarget=1;
+    if(!alreadyClosing)door.angularVelocity=Math.min(-.35,
+      (door.angularVelocity??0)-(1.0+1.4*leverage));
+  }else if(!alreadyOpening)pushDoor(door,1.3+2.1*leverage);
   else door.pushTarget=PUSHED_OPEN_LIMIT;
   // Door motion gets a small share of this very simulation tick. The main
   // global motor subsequently handles normal animation and swept obstacles.
   advanceDoor(door,Math.min(Math.max(0,dt),1/60),actors);
-  return {doorId:door.id,advanced:(door.openFraction??0)>initial+.0001};
+  return {doorId:door.id,
+    advanced:Math.abs((door.openFraction??0)-initial)>.0001};
 }
 /** An entry gate is clear only when an actual full-size operator capsule
  * can traverse the threshold. Angle percentages are not aperture widths:
@@ -387,12 +397,12 @@ export function doorClear(d:Door):boolean{
  * A blocked sidestep leaves the door blocked as usual.
  */
 export function initialOpeningYieldCandidate(d:Door,actor:Pt,
-  maxStep=1.4):Pt|null{
+  maxStep=1.25):Pt|null{
  const fraction=d.openFraction??0;
  if(!d.open||d.kind==='sliding'||d.kind==='shutter'||d.wedged||
-    fraction>=.36||(d.pushTarget??1)>1.01)return null;
+    fraction>=.96||(d.pushTarget??1)>1.01)return null;
  const leaf=doorLeafSegment(d);
- const future=doorLeafSegment({...d,openFraction:Math.min(.50,fraction+.065)});
+ const future=doorLeafSegment({...d,openFraction:Math.min(1.03,fraction+.065)});
  const before=pointToSegment(actor,leaf),after=pointToSegment(actor,future);
  const clearance=OPERATOR_RADIUS+1;
  // Only a shoulder near the sweep's edge may yield. Never displace an

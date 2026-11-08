@@ -2,7 +2,9 @@
  * Never mutates simulation or affects ballistic RNG and replay film.
  */
 export type RenderActor={x:number;z:number;heading:number;weaponYaw:number};
-export type RenderFrame={previous:Record<string,RenderActor>;alpha:number};
+export type RenderFrame={previous:Record<string,RenderActor>;alpha:number;
+  /** One physical fixed-step sample for render-only door hinge blending. */
+  previousDoors?:Record<string,number>};
 type ActorLike={id:string;p:{x:number;y:number};
   heading:number;weaponYaw:number};
 const clamp=(t:number)=>Math.max(0,Math.min(1,t));

@@ -34,7 +34,7 @@ import {resolveTacticalPick,screenSegmentDistance,watchDragReady,
   type TacticalPick} from './ui/tactical-target-resolver.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
-import {interruptsWatch} from './breach-plan.ts';
+import {interruptsWatch,angleDifference} from './breach-plan.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
@@ -162,7 +162,7 @@ import {liveMagazineCapacity,magazineAlert,fitMagazineInventory}
 
 import {stageMagazines,magazineSpace,type MagazineLocation} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
-import {canRelocateCover} from './breach-movable-cover.ts';
+import {canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {INTEL_MODES,doorKnown,
   intelPassable,type IntelMode} from './breach-intel.ts';
 import {orderFailureText} from './breach-nav-diagnostics.ts';
@@ -1601,7 +1601,7 @@ operationsToggle.addEventListener('click',()=>{
 });
 let selected='rook';
 let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
-let looking=false,flashMode=false;
+let looking=false,flashMode=false,pushMode=false;
 let firePlacement:'suppress'|null=null;
 let lookMode:'look'|'watch'='look';
 // The stationary dock remains the reliable default; Smart Floating may only
@@ -1732,12 +1732,12 @@ let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
 let draggingWatchTarget=false;
 function cancelTargeting(){
-  const hadTarget=looking||flashMode||!!firePlacement||!!evacMode;
+  const hadTarget=looking||flashMode||pushMode||!!firePlacement||!!evacMode;
   if(hadTarget){
     const actor=uid(selected);
     if(actor)tacticalFeedback.emit('cancel',actor.p,'CANCELLED');
   }
-  looking=false;flashMode=false;firePlacement=null;flashDoorId=null;
+  looking=false;flashMode=false;pushMode=false;firePlacement=null;flashDoorId=null;
   evacMode=null;contextSignature='';updateHud();
 }
 const fogCanvas=document.createElement('canvas');
@@ -1901,6 +1901,7 @@ function unlockAudio(){
 
 let last=performance.now(),accum=0,hudAt=0;
 let previousRenderActors:Record<string,RenderActor>|null=null;
+let previousRenderDoors:Record<string,number>|null=null;
 const displayRouteCache=new DisplayRouteCache();
 const projectedRouteCache=new ProjectedRouteCache();
 let cssW=innerWidth,cssH=innerHeight,dpr=1;
@@ -2047,7 +2048,7 @@ const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   hideWeaponChooser();
-  uiClickTone('select');selected=id;looking=false;evacMode=null;
+  uiClickTone('select');selected=id;looking=false;pushMode=false;evacMode=null;
   selectedNode=null;selectedActiveWatch=false;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
@@ -2112,6 +2113,7 @@ function installTouchCommandHelp(button:HTMLButtonElement){
 function message(){
   if(replaying)return 'MISSION FILM · ORBIT, PAN, ZOOM AND SCRUB FREELY';
   if(flashMode)return 'FLASH: tap a target, or CANCEL to back out.';
+  if(pushMode)return 'PUSH: tap or drag a direction away from the selected object (±80°). CANCEL to exit.';
   if(state.phase==='planning'){
     if(looking)return lookMode==='watch'?
       'WATCH ARMED · TAP A POINT · CANCEL/BACK TO EXIT. Replaces prior WATCH; RUN or interactions end tracking.':
@@ -2152,7 +2154,7 @@ function selectedPlanNode(){
 /** The actor itself is HERE. Selected plan nodes own subsequent orders;
  * a door tap brings up ONLY door actions. No redundant HERE/END buttons. */
 function updateContext(){
-  if(state.phase!=='planning'||replaying||looking||flashMode||firePlacement||
+  if(state.phase!=='planning'||replaying||looking||flashMode||pushMode||firePlacement||
      !ui.briefingPanel.hidden||
      draggingNode||trace||
      !ui.siteSettings.hidden){
@@ -2212,7 +2214,9 @@ function updateContext(){
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
-    doorOpen:!!door&&(door.openFraction??(door.open?1:0))>=.35,
+    doorOpen:!!door&&(door.openFraction??(door.open?1:0))>=.98,
+    doorPartial:!!door&&(door.openFraction??(door.open?1:0))>.08&&
+      (door.openFraction??(door.open?1:0))<.98,
     availableTools:door?equippedEntryMethods(a.equipment)
       .filter(method=>entryToolVerdict(door,method).allowed):[],
     nodeKind:node?.kind,nodeMoveMode:node?.moveMode,aimLabel:node?.aimLabel,
@@ -2534,9 +2538,10 @@ const handleContextAction=(event:MouseEvent)=>{
         state.events.push('CANNOT PLAN RELOAD');
       break;
     case 'ctxPush':
-      if(!planNearbyInteraction(state,selected,'push',node?.id))
-        state.events.push('NO PUSHABLE OBJECT IN REACH');
-      break;
+      pushMode=true;looking=false;flashMode=false;firePlacement=null;
+      tacticalFeedback.emit('armed',node?.p??a.p,'PUSH DIRECTION');
+      showUiHelp('TAP OR DRAG AWAY FROM THE OBJECT TO CHOOSE PUSH DIRECTION',3600);
+      uiClickTone('select');updateHud();return;
     case 'ctxTreat':{
       const patient=medicalCandidate(selected,node?.p??finalPoint(a));
       if(!patient||!planMedicalTreatment(state,selected,patient.id,node?.id))
@@ -4366,6 +4371,16 @@ function rejectAt(pt:Pt,reason:string){
 }
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
+  if(pushMode){
+    const accepted=planNearbyInteraction(state,selected,'push',
+      selectedNode??undefined,pt);
+    if(!accepted)rejectAt(pt,'NO PUSHABLE OBJECT IN REACH');
+    else{
+      pushMode=false;tacticalFeedback.emit('command',pt,'PUSH');
+      uiClickTone('command');
+    }
+    updateHud();return;
+  }
   if(evacMode){
    const mode=evacMode;evacMode=null;
    if(!planCasualtyTransport(state,selected,mode.patientId,pt,mode.mode))
@@ -7214,7 +7229,7 @@ ui.play.addEventListener('click',()=>{
   if(state.phase==='won'||state.phase==='lost'){
    if(!returnAfterCampaignMission())reset();
   }else{
-    looking=false;
+    looking=false;pushMode=false;
     if(state.phase==='planning'){
       if(!state.started)
         missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
@@ -7450,7 +7465,7 @@ canvas.addEventListener('pointerdown',e=>{
       startX:e.clientX,startY:e.clientY,pointerType:e.pointerType,wasUnit:false,nodeId:null,
       mode:orbit?'cameraOrbit':'cameraPan',moved:false});
   }else{
-    const contextual=looking||flashMode||!!firePlacement||!!evacMode;
+    const contextual=looking||flashMode||pushMode||!!firePlacement||!!evacMode;
     const pick=contextual?null:tacticalPickAt({x:e.clientX,y:e.clientY},
       e.pointerType);
     const handle=pick?.kind==='activeWatch'?'activeWatch':
@@ -7530,7 +7545,7 @@ canvas.addEventListener('pointermove',e=>{
   // While a command is armed, one-finger dragging previews its target.
   // Two fingers still exclusively pan/pinch and never author an order.
   if(p.mode==='undecided'&&e.pointerType==='touch'&&p.moved&&
-     (looking||flashMode||!!firePlacement||!!evacMode)){
+     (looking||flashMode||pushMode||!!firePlacement||!!evacMode)){
     p.mode='targetPreview';
     return;
   }
@@ -7631,7 +7646,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
     selectUnit(p.pick.owner);
   }
   if(!cancelled&&state.phase==='planning'&&!replaying&&activePointers.size===1){
-    if((looking||flashMode||firePlacement||evacMode)&&
+    if((looking||flashMode||pushMode||firePlacement||evacMode)&&
        (p.mode==='targetPreview'||p.mode==='undecided')){
       // A brief iPhone tap often travels a few pixels without entering
       // targetPreview. Always commit an armed target on release, even then.
@@ -7948,7 +7963,7 @@ function tick(now:number){
   const frameGap=Math.max(0,now-last);
   const dt=Math.min(.08,frameGap/1000);last=now;
   if(quickPlayBusy||((campaignMode==='menu'||campaignMode==='home')&&!replaying)){
-   accum=0;previousRenderActors=null;
+   accum=0;previousRenderActors=null;previousRenderDoors=null;
    requestAnimationFrame(tick);return;
   }
   let simSteps=0;
@@ -7958,13 +7973,15 @@ function tick(now:number){
     accum=budget.remaining;
     for(let i=0;i<budget.steps;i++){
       previousRenderActors=renderSnapshot(state.operators);
+      previousRenderDoors=Object.fromEntries(state.doors.map(d=>
+        [d.id,d.openFraction??(d.open?1:0)]));
       stepSession(state,1/60,simPhaseCosts?
         (name,ms)=>simPhaseCosts.set(name,
           (simPhaseCosts.get(name)??0)+ms):undefined);
       simSteps++;
       recorder.capture(state,isMissionTerminal(state));
     }
-  }else{accum=0;previousRenderActors=null;}
+  }else{accum=0;previousRenderActors=null;previousRenderDoors=null;}
   if(replaying&&replayPlaying){
     // Smooth a selected speed over several render frames without modifying
     // the authoritative 20Hz recording or re-simulating events.
@@ -8089,6 +8106,51 @@ function tick(now:number){
   if(now-hudAt>(state.phase==='running'?180:120)){
     updateHud();if(replaying)updateReplayHud();hudAt=now;
   }
+  // Reusable world-anchored action rings. This is a view of authoritative
+// progress, never a second animation clock or a separate action timer.
+const physicalActionRings=new Map<string,HTMLDivElement>();
+function updatePhysicalActionRings(){
+  for(const actor of team(state)){
+    let ring=physicalActionRings.get(actor.id);
+    if(!ring){
+      ring=document.createElement('div');
+      ring.style.cssText='position:fixed;pointer-events:none;z-index:18;'+
+        'width:42px;height:42px;border-radius:50%;'+
+        'display:flex;align-items:center;justify-content:center;'+
+        'box-shadow:0 0 0 1px rgba(220,202,158,.45);'+
+        'font:700 9px Saira Condensed,sans-serif;color:#e8dfc6';
+      const label=document.createElement('span');
+      label.style.cssText='background:#1d302a;border-radius:50%;'+
+        'width:32px;height:32px;display:flex;align-items:center;'+
+        'justify-content:center;text-align:center';
+      ring.append(label);document.body.append(ring);
+      physicalActionRings.set(actor.id,ring);
+    }
+    const order=actor.plan[0];
+    const picking=order?.kind==='tool'&&order.toolMethod==='pick'&&
+      actor.actionTimer>0&&actor.lastDoorId===order.doorId;
+    const treating=actor.treatmentActive&&actor.treatmentProgress>0;
+    const show=!replaying&&state.phase==='running'&&actor.health>0&&
+      (picking||treating);
+    ring.hidden=!show;
+    ring.style.display=show?'flex':'none';
+    if(!show)continue;
+    const progress=treating?actor.treatmentProgress:
+      Math.min(1,actor.actionTimer/((
+        state.doors.find(d=>d.id===order?.doorId)?.style==='reinforced')?
+        8.5:5.5));
+    const pct=Math.round(Math.max(0,Math.min(1,progress))*100);
+    const point=worldToScreen(actor.p,viewMode==='plan2d'?14:34);
+    ring.style.left=(point.x-21)+'px';
+    ring.style.top=(point.y-57)+'px';
+    ring.style.background='conic-gradient(#ddc69e '+(pct*3.6)+
+      'deg,rgba(65,87,77,.86) 0deg)';
+    const label=ring.firstElementChild;
+    if(label&&label.textContent!==(treating?'MED':'PICK')+' '+pct+'%')
+      label.textContent=(treating?'MED':'PICK')+' '+pct+'%';
+  }
+}
+  updatePhysicalActionRings();
   const perfRenderStart=perfOverlay?performance.now():0;
   // The Studio is an opaque full-screen view. Skip only hidden rendering,
   // never fixed-step gameplay or authoritative replay/simulation state.
@@ -8100,7 +8162,8 @@ function tick(now:number){
     stage.update(state,selected,dt,doorFocusId,
       replaying&&replayOmniscient,replaying?replayPresentation:null,
       !replaying&&state.phase==='running'&&previousRenderActors?
-        {previous:previousRenderActors,alpha:Math.min(1,accum*60)}:null,
+        {previous:previousRenderActors,previousDoors:previousRenderDoors??undefined,
+          alpha:Math.min(1,accum*60)}:null,
       // Pausing the encounter must NOT switch to render-local footsteps.
       !replaying?recorder.motion.presentation(Math.max(0,
         state.phase==='running'?
@@ -8155,6 +8218,45 @@ function tick(now:number){
       orderMode?{origin,direction:cursor!,mode:orderMode}:undefined;
     tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
       performance.now(),preview,reducedMotionMedia.matches);
+    // Direction-only preview of an authored furniture push. The authoritative
+    // simulation still decides how far the real object can move on contact;
+    // this never mutates cover, reveals unknown obstacles, or guarantees travel.
+    if(pushMode&&state.phase==='planning'&&!replaying&&actor){
+      const from=selectedPlanNode()?.p??finalPoint(actor);
+      const candidate=state.coverState.map((object,index)=>({
+        object,index,range:distance(from,{x:object.x,y:object.y})
+      })).filter(item=>canRelocateCover(item.object)&&
+        state.intel.cover.has(item.index)&&
+        item.range<Math.max(item.object.w,item.object.h)/2+43)
+        .sort((a,b)=>a.range-b.range||a.index-b.index)[0];
+      if(candidate){
+        const obj=candidate.object,center={x:obj.x,y:obj.y};
+        const base=Math.atan2(obj.y-from.y,obj.x-from.x);
+        const aimed=canPreview&&cursor&&distance(cursor,center)>4?
+          Math.atan2(cursor.y-center.y,cursor.x-center.x):base;
+        const yaw=base+Math.max(-Math.PI*4/9,Math.min(Math.PI*4/9,
+          angleDifference(base,aimed)));
+        const dist=Math.max(7,coverPushDistance(obj));
+        const end={x:obj.x+Math.cos(yaw)*dist,
+          y:obj.y+Math.sin(yaw)*dist};
+        const startPx=worldToScreen(center,13),endPx=worldToScreen(end,13);
+        feedbackDraw.save();
+        feedbackDraw.strokeStyle='#e4c998';feedbackDraw.fillStyle='#e4c998';
+        feedbackDraw.lineWidth=2.4;feedbackDraw.setLineDash([5,4]);
+        feedbackDraw.beginPath();feedbackDraw.arc(startPx.x,startPx.y,15,
+          0,Math.PI*2);feedbackDraw.stroke();
+        feedbackDraw.setLineDash([]);
+        feedbackDraw.beginPath();feedbackDraw.moveTo(startPx.x,startPx.y);
+        feedbackDraw.lineTo(endPx.x,endPx.y);feedbackDraw.stroke();
+        const direction=Math.atan2(endPx.y-startPx.y,endPx.x-startPx.x);
+        feedbackDraw.beginPath();feedbackDraw.moveTo(endPx.x,endPx.y);
+        for(const side of [-1,1])
+          feedbackDraw.lineTo(endPx.x-Math.cos(direction+side*.48)*13,
+            endPx.y-Math.sin(direction+side*.48)*13);
+        feedbackDraw.closePath();feedbackDraw.fill();
+        feedbackDraw.restore();
+      }
+    }
   }
   updateContext();advanceContextPalette(dt);
   if(frameMeter&&perfOverlay){

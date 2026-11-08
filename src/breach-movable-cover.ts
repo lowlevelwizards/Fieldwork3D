@@ -3,8 +3,9 @@
  * position obeys the same wall, door, actor and cover clearance as its endpoint.
  * Heavier fixtures have a visibly slower displacement, rather than teleporting.
  */
-import {pointToSegment,type Door,type Obstacle,type Pt,type Segment}
+import {doorLeafSegment,type Door,type Obstacle,type Pt,type Segment}
  from './breach-core.ts';
+import {segmentHitsBox} from './breach-ray.ts';
 import {canAutoShove,canToppleLightCover} from './breach-traversal-surfaces.ts';
 export type CoverMass='light'|'medium'|'heavy'|'fixed';
 const light=new Set(['box','chair','stool','lamp','patio-chair','small-table','side-table',
@@ -26,14 +27,30 @@ const overlaps=(a:Obstacle,b:Obstacle,padding=5)=>
  Math.abs(a.x-b.x)<(a.w+b.w)/2+padding&&
  Math.abs(a.y-b.y)<(a.h+b.h)/2+padding;
 function collisionAt(target:Obstacle,index:number,cover:readonly Obstacle[],
- walls:readonly Segment[],doors:readonly Door[],actors:readonly Pt[]):boolean{
+ walls:readonly Segment[],doors:readonly Door[],actors:readonly Pt[],
+ initial?:Obstacle):boolean{
  const p={x:target.x,y:target.y};
- const radius=Math.max(target.w,target.h)/2;
- if(walls.some(w=>pointToSegment(p,w)<radius+2))return true;
+ const expanded={...target,w:target.w+4,h:target.h+4};
+ if(walls.some(w=>segmentHitsBox(w.a,w.b,expanded)))return true;
  if(cover.some((o,i)=>i!==index&&overlaps(target,o)))return true;
- if(actors.some(a=>Math.abs(a.x-p.x)<target.w/2+9&&
-   Math.abs(a.y-p.y)<target.h/2+9))return true;
- if(doors.some(d=>pointToSegment(p,d)<radius+9))return true;
+ if(actors.some(a=>{
+   if(Math.abs(a.x-p.x)>=target.w/2+9||
+      Math.abs(a.y-p.y)>=target.h/2+9)return false;
+   if(initial&&Math.abs(a.x-initial.x)<initial.w/2+9&&
+      Math.abs(a.y-initial.y)<initial.h/2+9){
+     // An already contacting operator may move a prop AWAY from their body.
+     // Never allow a newly created overlap or a deeper penetration.
+     const oldGap=Math.hypot(a.x-initial.x,a.y-initial.y);
+     const nextGap=Math.hypot(a.x-p.x,a.y-p.y);
+     if(nextGap>oldGap+.001)return false;
+   }
+   return true;
+ }))return true;
+ const hingeClear={...target,w:target.w+18,h:target.h+18};
+ if(doors.some(d=>{
+   const leaf=doorLeafSegment(d);
+   return segmentHitsBox(leaf.a,leaf.b,hingeClear);
+ }))return true;
  return false;
 }
 export function relocateCover(cover:Obstacle[],index:number,to:Pt,
@@ -47,7 +64,7 @@ export function relocateCover(cover:Obstacle[],index:number,to:Pt,
  for(let i=1;i<=steps;i++){
   const t=i/steps,target={...old,
    x:old.x+(to.x-old.x)*t,y:old.y+(to.y-old.y)*t};
-  if(collisionAt(target,index,cover,walls,doors,actors))return false;
+  if(collisionAt(target,index,cover,walls,doors,actors,old))return false;
  }
  cover[index]={...old,x:to.x,y:to.y};
  return true;
