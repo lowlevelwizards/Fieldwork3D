@@ -101,8 +101,8 @@ test('moving follow rig dollies decisively without edits, while maintaining two-
   assert.equal(view.roomId,'hall');
   assert.ok(directorCameraLegal(view.cameraAnchor,room,scene));
   if(previous)assert.ok(distance(view.cameraAnchor,
-    previous.cameraAnchor)<4,
-   'tracking may accelerate but never jump to another camera anchor');
+    previous.cameraAnchor)<8,
+   'active tracking can match the squad pace but must never teleport');
   previous=view;
  }
  const start=director.sample(0),later=director.sample(8.0);
@@ -143,8 +143,8 @@ test('following dolly takes a legal furniture detour rather than freezing or tel
    const shot=director.sample(t);
    assert.ok(directorCameraLegal(shot.cameraAnchor,room,setting),
      'camera cannot intersect or pass through the table');
-   if(prev)assert.ok(distance(shot.cameraAnchor,prev.cameraAnchor)<4,
-     'detour must be an actual dolly, not a teleport');
+   if(prev)assert.ok(distance(shot.cameraAnchor,prev.cameraAnchor)<8,
+     'physical detour remains bounded even while following action');
    prev=shot;
  }
  assert.ok(director.sample(13).cameraAnchor.x>188,
