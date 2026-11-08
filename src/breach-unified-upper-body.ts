@@ -126,6 +126,7 @@ export type FallbackArmRequest={
  firing:boolean;sourceContinuity:boolean;
  /** Live strafe uses previous rendered bend, replay always uses pose time. */
  liveContinuity?:boolean;
+ outboardFiring?:boolean;
  transitionPhase?:number;
  envelope:PoseClearanceEnvelope|null;
  mode:PoseConstraintMode;allowVisualOverlap:boolean;
@@ -198,6 +199,7 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
      referenceBend:req.sourceContinuity||req.liveContinuity?
        req.previousBend:undefined,
      continuityBias:req.liveContinuity?2.1:0,
+     outboardFiring:req.outboardFiring,
      allowVisualOverlap:req.allowVisualOverlap
    });
    if(dynamic.solution)

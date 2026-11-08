@@ -1942,6 +1942,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
           previousBend:P(3,-9,sign*.5),side:sign as -1|1,
           neutral:false,down:false,surrender:false,firing:false,
           sourceContinuity:false,envelope:dynamicEnvelope,
+          outboardFiring:handling==='short'&&i===1,
           mode:handling==='ads'?'aim':'carry',
           allowVisualOverlap:!!p.poseV3Preview&&
             !p.poseV3StrictContact,
@@ -1970,6 +1971,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       transitionPhase:activeTransition?.alpha,
       liveContinuity:!p.deterministic&&!discontinuity&&!!r.lastPose&&
         !reloadActive&&!reaching&&!p.firing,
+      outboardFiring:handling==='short'&&i===1,
       envelope:dynamicEnvelope,
       mode:reloadActive?'reload':p.aiming||handling==='ads'?
         'aim':reaching||throwActive?'interaction':'carry',

@@ -22,6 +22,9 @@ export interface DynamicArmRequest {
  referenceBend?:THREE.Vector3;
  /** Live-only candidate hysteresis. Never sample frame history in replay. */
  continuityBias?:number;
+ /** For an underarm short-stock firing hand, the elbow stays outside
+  * the right receiver/stock rather than crossing behind it. */
+ outboardFiring?:boolean;
  /** B24b V4 preview only; normal V3 and gameplay remain strict. */
  allowReloadOverlap?:boolean;
  allowVisualOverlap?:boolean;
@@ -101,6 +104,7 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
   const permanentlyBlocked=new Set<LimbSolution>();
   for(const softScale of budgets){
    let best:LimbSolution|null=null,bestReport:ArmConstraintReport|null=null;
+  let bestScore=Infinity;
    for(const pose of poses){
     if(permanentlyBlocked.has(pose))continue;
     evaluations++;
@@ -126,13 +130,15 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
     }
     const difference=referenceBend?
       Math.max(0,1-pose.bendPlane.dot(referenceBend)):0;
+    // Outboard short-stock is a preferred VALID silhouette, never a
+    // license to penetrate the plate or extend an arm. Penalize solutions
+    // that fold the right elbow behind the firing hand/receiver.
+    const outboardDeficit=req.outboardFiring&&side===1?
+      Math.max(0,Math.max(shoulder.z,wrist.z)+.35-pose.joint.z):0;
     const weightedQuality=report.quality+
-      difference*(req.continuityBias??0);
-    if(!bestReport||weightedQuality<
-      bestReport.quality+
-        Math.max(0,1-best!.bendPlane.dot(referenceBend??best!.bendPlane))*
-        (req.continuityBias??0)-1e-6){
-     best=pose;bestReport=report;
+      difference*(req.continuityBias??0)+outboardDeficit*1.8;
+    if(weightedQuality<bestScore-1e-6){
+     best=pose;bestReport=report;bestScore=weightedQuality;
     }
    }
    if(best&&bestReport)return {status:'clear',solution:best,
