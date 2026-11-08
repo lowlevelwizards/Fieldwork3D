@@ -9,6 +9,9 @@ import {parkingStallCandidates} from './parking-stalls.ts';
 import {SERVICE_EDGE_FIXTURES,serviceYardEdgeCandidates} from './service-yard-layout.ts';
 import {landscapeEdgeCandidates} from './landscape-edge-program.ts';
 import {serviceFixtureInRoad} from './road-service-fixtures.ts';
+import {landscapePhysicalFootprint,TREE_FIXTURES} from './landscape-footprint.ts';
+import {outdoorFixtureAllowed,frontageEdgeCandidates}
+ from './outdoor-fixture-policy.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
 export function addExteriorProperty(site:Site,seed:number):Site{
@@ -107,8 +110,9 @@ export function addExteriorProperty(site:Site,seed:number):Site{
       ['planter','patio-chair','bike-rack','trash-bin','grill'],
    garden:residential?['tree-broadleaf','shrub-round','shrub-tall',
       'picnic-table','shed','grill']:['planter','shrub-tall','picnic-table'],
-   yard:residential?['mailbox','tree-broadleaf','shrub-round','trash-bin','hydrant']:
-     ['planter','street-lamp','bollard','trash-bin'],
+   yard:residential?['tree-broadleaf','tree-scrub','shrub-round',
+      'shrub-tall','trash-bin']:
+     ['planter','shrub-tall','bollard','trash-bin'],
  };
  const cover=site.cover.slice();
  const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
@@ -118,7 +122,9 @@ export function addExteriorProperty(site:Site,seed:number):Site{
   for(let i=0;i<count;i++){
    // Props must belong to the authored land-use zone, not to a generic
    // "outside" bucket. No legacy car family is eligible for new maps.
-   const choices=byZone[zone.kind]??available;
+   const choices=(byZone[zone.kind]??available).filter(item=>
+     outdoorFixtureAllowed(site,zone,item));
+   if(!choices.length)continue;
    // First object establishes what this exterior space is *for*. Subsequent
    // objects add character; no vehicle in a garden or dumpsters at the
    // public-facing cafe seating area.
@@ -127,18 +133,25 @@ export function addExteriorProperty(site:Site,seed:number):Site{
        residential?'mailbox':'planter',
      service:industrial?'utility-cabinet':'dumpster',
      patio:kind==='restaurant'?'patio-chair':'planter',
-     garden:'tree-broadleaf',yard:residential?'mailbox':'planter'
+     garden:residential?'tree-broadleaf':'shrub-tall',
+     yard:zone.id==='arrival-forecourt'&&
+       ['house','townhouse'].includes(kind)?'mailbox':
+       residential?'shrub-round':'planter'
    };
-   const item=i===0?(anchor[zone.kind]??choices[0]):
-     choices[Math.floor(rng()*choices.length)];
+   const preferred=anchor[zone.kind];
+   const item=i===0&&preferred&&outdoorFixtureAllowed(site,zone,preferred)?
+     preferred:choices[Math.floor(rng()*choices.length)];
    const asset=propDefinition(item);if(!asset)continue;
-   const w=asset.width,h=asset.depth;
+   const footprint=landscapePhysicalFootprint(item,asset.width,asset.depth);
+   const w=footprint.w,h=footprint.h;
+   const streetSpots=frontageEdgeCandidates(site,zone,item,w,h);
    const serviceEdge=zone.kind==='service'&&SERVICE_EDGE_FIXTURES.has(item);
    const edgeSpots=serviceEdge?serviceYardEdgeCandidates(zone,w,h):[];
    if(zone.w<w+22||zone.h<h+22)continue;
    let accepted=false;
-   for(let attempt=0;attempt<(serviceEdge?edgeSpots.length:12);attempt++){
-    const edge=serviceEdge?edgeSpots[attempt]:undefined;
+   const fixed=streetSpots??(serviceEdge?edgeSpots:null);
+   for(let attempt=0;attempt<(fixed?fixed.length:12);attempt++){
+    const edge=fixed?.[attempt];
     const x=edge?.x??zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
     const y=edge?.y??zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
     const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low'};
@@ -148,6 +161,16 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     if(site.rooms.some(r=>x+w/2>r.x&&x-w/2<r.x+r.w&&
       y+h/2>r.y&&y-h/2<r.y+r.h))continue;
     if(serviceFixtureInRoad(site,item,candidate))continue;
+    // A tree's leaf crown can hang over a planting bed, but must not
+    // intersect a room wall or the actual accessible entry walkway.
+    if(TREE_FIXTURES.has(item)){
+      const canopy={...candidate,w:asset.width,h:asset.depth};
+      if(site.rooms.some(room=>x+canopy.w/2>room.x-4&&
+         x-canopy.w/2<room.x+room.w+4&&
+         y+canopy.h/2>room.y-4&&
+         y-canopy.h/2<room.y+room.h+4))continue;
+      if(overlapsArrivalLane(site,zone,canopy))continue;
+    }
     if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32))continue;
     if(site.doors.some(d=>distance({x,y},{x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<68))continue;
     if(overlapsArrivalLane(site,zone,candidate))continue;
@@ -198,8 +221,10 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    const points=landscapeEdgeCandidates(zone,seed);
    for(const point of points){
      const asset=propDefinition(point.fixture);if(!asset)continue;
+     const footprint=landscapePhysicalFootprint(point.fixture,
+       asset.width,asset.depth);
      const candidate:Obstacle={x:point.x,y:point.y,
-       w:asset.width,h:asset.depth,fixture:point.fixture,
+       w:footprint.w,h:footprint.h,fixture:point.fixture,
        low:asset.cover==='low'};
      const {x,y,w,h}=candidate;
      if(x-w/2<zone.x-zone.w/2+9||x+w/2>zone.x+zone.w/2-9||
@@ -213,6 +238,14 @@ export function addExteriorProperty(site:Site,seed:number):Site{
      if(site.doors.some(d=>distance({x,y},{
        x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<66))continue;
      if(overlapsArrivalLane(site,zone,candidate))continue;
+     if(TREE_FIXTURES.has(point.fixture)){
+       const canopy={...candidate,w:asset.width,h:asset.depth};
+       if(site.rooms.some(room=>x+canopy.w/2>room.x-4&&
+         x-canopy.w/2<room.x+room.w+4&&
+         y+canopy.h/2>room.y-4&&
+         y-canopy.h/2<room.y+room.h+4))continue;
+       if(overlapsArrivalLane(site,zone,canopy))continue;
+     }
      if(cover.some(o=>overlaps(o,candidate)))continue;
      cover.push(candidate);
    }
