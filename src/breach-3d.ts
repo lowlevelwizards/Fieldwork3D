@@ -7,8 +7,12 @@ import {STUDIO_INSPECTION_LIGHT,STUDIO_KEY_DIRECTION,studioShadowPalette}
  from './operator-studio-lighting.ts';
 import {applyStudioGraphicLighting}
  from './operator-studio-graphic-lighting.ts';
-import {applyWorldGraphicLighting}
+import {applyWorldGraphicLighting,enableWorldGraphicMaterial}
  from './breach-graphic-world-lighting.ts';
+import {propertySurfaceCenterHeight,PROPERTY_SURFACE_THICKNESS}
+ from './rendering/property-surface-elevation.ts';
+import {windowShardPose,WINDOW_SHARDS_PER_PANE}
+ from './rendering/window-shatter-presentation.ts';
 import {createCivilianRig,updateCivilianRig,type CivilianRig}
  from './breach-civilian-visuals.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
@@ -330,6 +334,8 @@ export class TacticalScene3D{
   private readonly signMaterials=new Map<string,THREE.MeshBasicMaterial>();
   private readonly groundOverlays=new Map<PixelOverlay,THREE.MeshBasicMaterial>();
   private windowGlass=new Map<string,THREE.Mesh>();
+  private windowShards:THREE.InstancedMesh|null=null;
+  private readonly shardMatrix=new THREE.Object3D();
   private coverGroups=new Map<number,THREE.Group>();
   private readonly coverFrameValues=new Map<number,{
     x:number;y:number;w:number;h:number;destroyed:boolean;toppled:boolean
@@ -568,6 +574,7 @@ export class TacticalScene3D{
     this.wallMaterials.clear();
     this.walls.length=0;this.wallFade.clear();
     this.doors.clear();this.windowGlass.clear();
+    if(this.windowShards)this.windowShards.count=0;
     this.observedDoorGlass.clear();
     this.currentWear=[];this.objectWear=[];
     this.roofGroups.clear();
@@ -761,19 +768,23 @@ export class TacticalScene3D{
       'waste-collection':0x696f65,'clear-route':0x8b8c7d,
     };
     // Exterior ground markings are legible construction details, not cover.
+    // Sidewalk/path/curb/ramp markings overlap by design, but their top
+    // planes must not coincide. Distinct narrow finish elevations prevent
+    // moire and flashing without changing the tactical ground collider.
     for(const mark of planPropertySurfaces(site))
-      this.box(this.root,mark.x,-1.32,mark.y,mark.width,.2,
+      this.box(this.root,mark.x,propertySurfaceCenterHeight(mark.kind),
+        mark.y,mark.width,PROPERTY_SURFACE_THICKNESS,
         mark.depth,this.solid(age(surfaceColor[mark.kind],'concrete')),false);
     const road=this.solid(age(0x59584a,'asphalt'),.91,'asphalt');
     const side=site.entrySide??'south';
     if(side==='east'||side==='west'){
       const edge=side==='east'?bounds.maxX:bounds.minX;
-      this.box(this.root,(site.entrance.x+edge)/2,-1,site.entrance.y,
-        Math.abs(site.entrance.x-edge)+10,1,85,road,false);
+      this.box(this.root,(site.entrance.x+edge)/2,-1.43,site.entrance.y,
+        Math.abs(site.entrance.x-edge)+10,.30,85,road,false);
     }else{
       const edge=side==='south'?bounds.maxY:bounds.minY;
-      this.box(this.root,site.entrance.x,-1,(site.entrance.y+edge)/2,
-        85,1,Math.abs(site.entrance.y-edge)+10,road,false);
+      this.box(this.root,site.entrance.x,-1.43,(site.entrance.y+edge)/2,
+        85,.30,Math.abs(site.entrance.y-edge)+10,road,false);
     }
     this.objectWear=[...planObjectWear(site),...planExposureWear(site)];
     const marksOn=(owner:ObjectWear['owner'],index:number)=>
@@ -1001,14 +1012,14 @@ export class TacticalScene3D{
         // Small face rebate keeps the chunky iconography without two
         // massive offset bars dominating the aperture.
         this.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,
-          profile.jambDepth/2+.35,profile.casingWidth,
+          profile.jambDepth/2+1.25,profile.casingWidth,
           DOOR_CLEAR_VISUAL_HEIGHT-3,
           profile.casingDepth,doorTrim,false);
       }
       this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight/2,0,
         length+2*profile.jambWidth,
         profile.headerHeight,profile.headerDepth,doorTrim);
-      this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.5,.45,
+      this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.5,1.50,
         length+2*profile.jambWidth+1,
         1.1,profile.headerDepth+.8,doorTrim,false);
       const threshold=this.box(frame,0,.275,0,length,
@@ -1468,14 +1479,14 @@ export class TacticalScene3D{
         this.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,0,
           profile.jambWidth,DOOR_CLEAR_VISUAL_HEIGHT,profile.jambDepth,doorTrim);
         this.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,
-          profile.jambDepth/2+.35,profile.casingWidth,
+          profile.jambDepth/2+1.25,profile.casingWidth,
           DOOR_CLEAR_VISUAL_HEIGHT-3,
           profile.casingDepth,doorTrim,false);
       }
       this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight/2,0,
         width+2*profile.jambWidth,
         profile.headerHeight,profile.headerDepth,doorTrim);
-      this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.5,.45,
+      this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.5,1.50,
         width+2*profile.jambWidth+1,
         1.1,profile.headerDepth+.8,doorTrim,false);
       const threshold=this.box(frame,0,.275,0,width,
@@ -1874,19 +1885,50 @@ export class TacticalScene3D{
         destroyed:!!current.destroyed,toppled:!!current.toppled
       });
     }
+    // Personal replay (including non-bodycam operator views) reads only
+    // historically observed panes. The global replay reads its exact frame.
+    // Scrubbing cannot inherit future breakage from a previous seek.
+    const personalWindows=replayDisclosurePolicy?.mode==='operator';
+    if(!this.windowShards){
+      const shardMaterial=new THREE.MeshStandardMaterial({
+        color:0xaacac3,roughness:.27,metalness:.08,flatShading:true,
+        transparent:true,opacity:.76,depthWrite:false,side:THREE.DoubleSide});
+      this.mats.push(shardMaterial);
+      this.windowShards=new THREE.InstancedMesh(
+        new THREE.TetrahedronGeometry(.85,0),shardMaterial,96);
+      this.windowShards.count=0;
+      this.windowShards.frustumCulled=false;
+      this.windowShards.castShadow=false;
+      this.windowShards.receiveShadow=false;
+      this.windowShards.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      this.effects.add(this.windowShards);
+    }
+    let shardCount=0;
     for(const [id,glass] of this.windowGlass){
       const current=s.windows.find(w=>w.id===id);
-      // Shared architecture is reconstructed, but dynamic pane state is
-      // ONLY the last state personally observed by this camera operator.
-      // Legacy or unseen panes use neutral intact seed geometry; never
-      // show live open/broken hindsight when a replay is scrubbed.
-      const seen=bodycamAudition&&replayDisclosurePolicy?.observerId?
+      const seen=personalWindows&&replayDisclosurePolicy?.observerId?
         replayWindowHistory?.at(s.seconds,replayDisclosurePolicy.observerId,id):
         null;
-      glass.visible=bodycamAudition?
-        !(seen?.open||seen?.shattered):
-        !current||(!current.shattered&&!current.open);
+      const broken=personalWindows?!!seen?.shattered:!!current?.shattered;
+      const opened=personalWindows?!!seen?.open:!!current?.open;
+      glass.visible=!(broken||opened);
+      // Time-stamped shards work in GO, paused playback and reverse scrubs.
+      // In personal replay, unseen breakage never produces visible debris.
+      if(!broken||!current||current.shatteredAt===undefined)continue;
+      for(let i=0;i<WINDOW_SHARDS_PER_PANE&&shardCount<96;i++){
+        const part=windowShardPose(current,s.seconds,i);
+        if(!part)continue;
+        this.shardMatrix.position.set(part.x,part.y,part.z);
+        this.shardMatrix.rotation.set(part.rx,part.ry,part.rz);
+        this.shardMatrix.scale.setScalar(part.scale);
+        this.shardMatrix.updateMatrix();
+        this.windowShards.setMatrixAt(shardCount++,this.shardMatrix.matrix);
+      }
     }
+    if(this.windowShards.count!==shardCount){
+      this.windowShards.count=shardCount;
+    }
+    if(shardCount)this.windowShards.instanceMatrix.needsUpdate=true;
     this.updateCamera(dt);
     this.fogAt+=dt;
     // Gameplay may stop on the exact downing tick. Finish visual collapse
@@ -2018,7 +2060,9 @@ export class TacticalScene3D{
       if(object.glassPane)
         object.glassPane.visible=personal?
           !(observed?.glassShattered??false):
-          !(this.observedDoorGlass.get(door.id)??false);
+          replay||renderFrame?
+            !(omniscient||directlyObserved?!!door.glassShattered:false):
+            !(this.observedDoorGlass.get(door.id)??false);
       object.wedge.visible=personal?
         !!observed?.wedged:
         door.wedged===true&&(omniscient||directlyObserved);
@@ -2354,11 +2398,17 @@ export class TacticalScene3D{
       }
     }
     if(!this.casingMesh){
-      // Shared unlit brass is inexpensive on mobile; no shadows or per-shell
-      // draw calls. A settled set needs NO GPU matrix upload until it changes.
+      // One scene-lit brass material keeps the pooled instancing and zero
+      // casing shadows. Deeper copper/gold, rather than flat yellow paint.
+      // The graphic world's three-band lighting can shade it at no extra draw.
+      const brass=new THREE.MeshStandardMaterial({
+        color:0xb38d59,roughness:.48,metalness:.52,flatShading:true});
+      if(this.graphicLookEnabled)enableWorldGraphicMaterial(brass);
+      this.mats.push(brass);
       this.casingMesh=new THREE.InstancedMesh(
-        new THREE.CylinderGeometry(.75,.75,3.1,6),
-        new THREE.MeshBasicMaterial({color:0xc7a361}),CASING_LIMIT);
+        new THREE.CylinderGeometry(.75,.75,3.1,6),brass,CASING_LIMIT);
+      this.casingMesh.castShadow=false;
+      this.casingMesh.receiveShadow=false;
       this.casingMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       this.casingMesh.frustumCulled=false;
       this.effects.add(this.casingMesh);
