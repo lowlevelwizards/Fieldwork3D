@@ -298,9 +298,6 @@ export class TacticalScene3D{
       this.view.mode==='top'?'top':
       this.view.mode==='plan2d'?'floor-plan':
       director?'director':this.miniFocusIsReplay?'free-replay':'tactical';
-    const potentiallyEnabled=view!=='bodycam'&&view!=='top'&&
-      view!=='floor-plan'&&this.quality.mode!=='performance'&&
-      (this.miniFocusMode!=='replay'||this.miniFocusIsReplay);
     const decision=miniatureFocusDecision({
       mode:this.miniFocusMode,view,quality:this.quality.mode,
       protectedRegionValid:this.width>0&&this.height>0,

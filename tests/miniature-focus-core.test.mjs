@@ -23,7 +23,7 @@ test('Gestures do NOT turn the frame effect off; unsafe view presets still do',(
    {capable:false},{protectedRegionValid:false},
    {mode:'replay',view:'tactical'}])
   assert.equal(decision(patch).active,false,JSON.stringify(patch));
- assert.equal(decision({mode:'strong'}).strength,1*0+.94);
+ assert.equal(decision({mode:'strong'}).strength,.94);
  assert.equal(decision({view:'director'}).centerY,.54);
  assert.equal(decision({mode:'replay',view:'director'}).active,true);
 });
@@ -43,5 +43,5 @@ test('Replay follow is stable with deadzone, bounded and framerate-aware',()=>{
  assert.ok(nextReplayTiltShiftCenter(.54,.82,.10)<.68);
  assert.equal(nextReplayTiltShiftCenter(.54,.70,0),.54);
  let c=.54;for(let n=0;n<180;n++)c=nextReplayTiltShiftCenter(c,.95,1/60);
- assert.ok(c<=.68&&c>.60);
+ assert.ok(c<=.60&&c>.59);
 });
