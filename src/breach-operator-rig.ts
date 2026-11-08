@@ -1895,7 +1895,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     if(manualShort&&manualSourceFit){
-      const armKey=i===0?'support':'firing';
       const startShoulder=shoulderFor(i);
       const targetShoulder=new THREE.Vector3(
         ...M4A1_AUTHORED_SHORT.targets[
