@@ -307,11 +307,18 @@ try{
   await page.waitForTimeout(150);
   const afterYaw=Number(await page.locator('#breach3dCanvas')
     .getAttribute('data-camera-yaw'));
+  const gestureProbe=await page.evaluate(()=>({
+    phase:document.querySelector('#breachCanvas')?.dataset.gesturePhase,
+    count:document.querySelector('#breachCanvas')?.dataset.gestureCount,
+    modes:document.querySelector('#breachCanvas')?.dataset.gestureModes,
+    atPoint:document.elementFromPoint(96,250)?.id,
+    view:document.querySelector('#breach3dCanvas')?.dataset.cameraMode
+  }));
   check(Number.isFinite(beforeYaw)&&Number.isFinite(afterYaw)&&
     Math.abs(Math.atan2(Math.sin(afterYaw-beforeYaw),
       Math.cos(afterYaw-beforeYaw)))>.04,
     'Pinch-to-single-finger handoff failed to restore orbit: '+
-      JSON.stringify({beforeYaw,afterYaw}));
+      JSON.stringify({beforeYaw,afterYaw,gestureProbe}));
   await cdp.detach();
 
 
