@@ -99,6 +99,8 @@ import {ReplayDirectorStoryboard}
   from './breach-replay-director-storyboard.ts';
 import {directorRecordedContact}
   from './breach-replay-director-contact.ts';
+import {directorRecentAction}
+  from './breach-replay-director-action.ts';
 import {directorReplaySafeFrame}
   from './breach-replay-director-projection.ts';
 import {buildDirectorTempoEdits,directorTempoJump,
@@ -4857,6 +4859,8 @@ function rebuildReplayEventIndex():void{
         intents,upcoming:directorFutureAt(t,replayDirectorFuture),
         beat,contact,actionPair:canShowPair&&beat?
           directorFilmPair(beat,frame):null,
+        actionLines:directorRecentAction(recorder.ballistics.between(
+          Math.max(0,t-.72),t),t,historicalShotVisible),
         entry:directorFirstEntryAt(t,replayDirectorEntries,2.2,1.4),
         doors:frame.doors,cover:frame.coverState,
         usableWidth:cssW<500?.75:.85,

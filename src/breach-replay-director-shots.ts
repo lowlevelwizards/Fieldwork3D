@@ -9,6 +9,7 @@ import type {DirectorIntent} from './breach-replay-director-intent.ts';
 import type {DirectorFutureCue} from './breach-replay-director-events.ts';
 import type {DirectorFilmBeat} from './breach-replay-director-film.ts';
 import type {DirectorEntryEvent} from './breach-replay-director-crossings.ts';
+import type {DirectorActionLine} from './breach-replay-director-action.ts';
 import type {DirectorRecordedContact} from './breach-replay-director-contact.ts';
 import {selectDirectorEditorialShot,type DirectorEditorialShot}
   from './breach-replay-director-edit.ts';
@@ -27,6 +28,7 @@ export type DirectorShotContext={
   upcoming:DirectorFutureCue|null;
   beat?:DirectorFilmBeat|null;
   actionPair?:{shooter:Pt;target:Pt}|null;
+  actionLines?:readonly DirectorActionLine[];
   contact?:DirectorRecordedContact|null;
   entry?:DirectorEntryEvent|null;
   editorial?:DirectorEditorialShot|null;
@@ -131,6 +133,7 @@ export function composeReplayDirectorShot(time:number,
     doorPoint:plan.kind==='door'?door?.mid??null:null,
     doorNormal:plan.kind==='door'?door?.normal??null:null,
     targetWeight:isContact?270:isDoor?210:125,
+    actionLines:isContact?context.actionLines:undefined,
     composition:{treatment:plan.kind,
       baseSpan,usableWidth:context.usableWidth??.78,
       usableHeight:context.usableHeight??.76,
