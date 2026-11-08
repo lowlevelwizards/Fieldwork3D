@@ -9,6 +9,8 @@ import type {DirectorRoom} from './breach-replay-cinematic-director.ts';
 import {directorCameraLegal,directorLineBlocked}
   from './breach-replay-director-physical.ts';
 import type {PhysicalDirectorScene} from './breach-replay-director-physical.ts';
+import {directorOrthoFittingZoom}
+  from './breach-replay-director-projection.ts';
 
 type Pt={x:number;y:number};
 type RailShot=DirectorShot&{sceneStartIndex?:number};
@@ -33,7 +35,9 @@ export class ReplayDirectorStoryboard{
   private readonly step:number;
   private readonly maxCache:number;
   private readonly rooms:readonly DirectorRoom[];
-  private readonly physicalScene:PhysicalDirectorScene;
+  private physicalScene:PhysicalDirectorScene;
+  private readonly sceneAt?:(
+    time:number)=>Pick<PhysicalDirectorScene,'doors'|'cover'>;
   private readonly aspect:number;
   private readonly baseSpan:number;
   private readonly usableWidth:number;
@@ -46,13 +50,15 @@ export class ReplayDirectorStoryboard{
       cover?:PhysicalDirectorScene['cover'];
       doors?:PhysicalDirectorScene['doors'];
       aspect?:number;baseSpan?:number;
-      usableWidth?:number;usableHeight?:number}={}){
+      usableWidth?:number;usableHeight?:number;
+      sceneAt?:(time:number)=>Pick<PhysicalDirectorScene,'doors'|'cover'>}={}){
     this.duration=duration;this.solve=solve;
     this.step=Math.max(.2,options.step??.8);
     this.maxCache=Math.max(4,options.maxCache??96);
     this.rooms=options.rooms??[];
     this.physicalScene={rooms:this.rooms,walls:options.walls??[],
       cover:options.cover,doors:options.doors};
+    this.sceneAt=options.sceneAt;
     this.aspect=clamp(options.aspect??1.1,.45,2.5);
     this.baseSpan=Math.max(200,options.baseSpan??1100);
     this.usableWidth=clamp(options.usableWidth??.78,.5,.9);
@@ -189,27 +195,34 @@ export class ReplayDirectorStoryboard{
    * This fit follows the actual moving camera and keeps key subjects in
    * frame while the rig tracks, pans, and dollies. */
   private fittingZoom(shot:DirectorShot,anchor:Pt,focus:Pt):number{
-    if(!shot.framePoints?.length)return shot.zoom;
-    const yaw=yawOf(anchor,focus);
-    const tilt=Math.atan2(53-17,Math.max(1,distance(anchor,focus)));
-    const cs=Math.cos(yaw),sn=Math.sin(yaw);
-    let xExtent=0,yExtent=0;
-    for(const p of shot.framePoints){
-      const dx=p.x-focus.x,dy=p.y-focus.y;
-      const horizontal=dx*cs-dy*sn;
-      const depth=(dx*sn+dy*cs)*Math.sin(tilt);
-      xExtent=Math.max(xExtent,Math.abs(horizontal)+19);
-      // Feet and helmets: leave more vertical air above action.
-      yExtent=Math.max(yExtent,
-        Math.abs(depth)+25*Math.cos(tilt)+13);
-    }
-    const fit=Math.min(
-      this.baseSpan*this.aspect*this.usableWidth/
-        Math.max(1,2*xExtent),
-      this.baseSpan*this.usableHeight/Math.max(1,2*yExtent));
-    // Wider shots with generous near-edge and backpack clearance.
-    const limit=shot.subjects.length<=2?8.4:7.4;
-    return clamp(fit*.80,.65,limit);
+    const points=shot.framePoints?.length?shot.framePoints:
+      shot.requiredPoints??[];
+    if(!points.length)return shot.zoom;
+    return directorOrthoFittingZoom(anchor,focus,points,
+      this.aspect,this.baseSpan,this.usableWidth,
+      this.usableHeight,shot.subjects.length<=2?8.4:7.4,.8);
+  }
+  /** Read physical door and cover state at the recorded knot. This
+   * never affects replay simulation, only camera collision and LOS. */
+  private activateScene(index:number):void{
+    const sample=this.sceneAt?.(Math.min(this.duration,index*this.step));
+    if(!sample)return;
+    this.physicalScene={...this.physicalScene,
+      doors:sample.doors,cover:sample.cover};
+  }
+  /** Is the ALREADY established camera good enough for the new
+   * essential subjects? This question precedes every shot change. */
+  private coversPrior(prior:RailShot,raw:DirectorShot):boolean{
+    if(!raw.requiredPoints?.length||!prior.cameraAnchor)return false;
+    const room=this.rooms.find(r=>r.id===prior.roomId)??null;
+    if(!directorCameraLegal(prior.cameraAnchor,room,
+      this.physicalScene))return false;
+    if(raw.requiredPoints.some(point=>directorLineBlocked(
+      prior.cameraAnchor,point,this.physicalScene)))return false;
+    const fit=directorOrthoFittingZoom(prior.cameraAnchor,
+      prior.focus,raw.requiredPoints,this.aspect,this.baseSpan,
+      this.usableWidth,this.usableHeight,10,.92);
+    return prior.zoom<=fit*1.04;
   }
   /** No camera edit merely because another framewise shot scores higher.
    * Confirm an actual new majority room for three consecutive recorded
@@ -230,13 +243,44 @@ export class ReplayDirectorStoryboard{
   }
   private plan(raw:DirectorShot|null,prior:RailShot|null,
     index:number):RailShot|null{
-    if(!prior)return raw?{...raw,sceneStartIndex:index}:null;
-    if(!raw)return prior;
+    this.activateScene(index);
+    if(!prior)return raw?{...raw,sceneStartIndex:index,
+      cameraDecision:'establish'}:null;
+    if(!raw)return {...prior,cameraDecision:'hold:no-evidence'};
+    const sameStory=!!raw.editorialId&&
+      raw.editorialId===prior.editorialId;
+    const covered=this.coversPrior(prior,raw);
+    const entering=!!raw.firstEntry&&raw.shotType==='entry';
     if(raw.roomId!==prior.roomId){
-      if(!this.acceptsNewRoom(raw,prior,index))return prior;
-      // One legitimate room entry is an editorial cut. Never attempt
-      // to roll the rig through a solid partition or fly through the roof.
-      return {...raw,sceneStartIndex:index};
+      // The first entrant calls for an editorial evaluation, NOT an
+      // automatic cut. An existing legal threshold two-shot can hold.
+      if(entering&&covered)return {...raw,
+        roomId:prior.roomId,cameraAnchor:prior.cameraAnchor,
+        focus:prior.focus,yaw:prior.yaw,zoom:prior.zoom,
+        sceneStartIndex:prior.sceneStartIndex,
+        cameraDecision:'hold:entry-covered'};
+      if(!this.acceptsNewRoom(raw,prior,index))
+        return {...prior,cameraDecision:'hold:room-confirmation'};
+      return {...raw,sceneStartIndex:index,
+        cameraDecision:entering?'cut:first-entry-uncovered':
+          'cut:confirmed-new-room'};
+    }
+    if(!sameStory&&covered){
+      // Adopt the new narrative subject without moving the actual rig
+      // if the existing view already covers this event.
+      return {...raw,cameraAnchor:prior.cameraAnchor,
+        focus:prior.focus,yaw:prior.yaw,zoom:prior.zoom,
+        sceneStartIndex:prior.sceneStartIndex,
+        cameraDecision:'hold:new-story-covered'};
+    }
+    const actionOutOfFrame=!sameStory&&!covered&&
+      (raw.editorialPriority??0)>=5&&
+      (raw.editorialPriority??0)>=(prior.editorialPriority??0);
+    if(actionOutOfFrame&&index-(prior.sceneStartIndex??0)>=1){
+      // An essential gunfight is sometimes better served by one
+      // purposeful same-room cut than by a slow sideways chase.
+      return {...raw,sceneStartIndex:index,
+        cameraDecision:'cut:action-out-of-frame'};
     }
     const room=this.rooms.find(r=>r.id===raw.roomId)??null;
     const meanSpeed=raw.motion/Math.max(1,raw.subjects.length);
@@ -249,7 +293,8 @@ export class ReplayDirectorStoryboard{
     // a real recorded action becomes the subject.
     if(!action&&!traveling&&raw.motion<9)
       return {...prior,sceneStartIndex:prior.sceneStartIndex,
-        motion:raw.motion,actionWeight:0};
+        motion:raw.motion,actionWeight:0,
+        cameraDecision:'hold:quiet'};
     const dolly=cameraStep+Math.min(34,
       Math.max(0,meanSpeed)*.74)+
       (action?7:0);
@@ -279,16 +324,9 @@ export class ReplayDirectorStoryboard{
     // An important door or fire pair requires a balanced two-shot:
     // the shooter remains the foreground anchor while the real target
     // or doorway leads the frame. Ordinary tracking keeps the raw focus.
-    const attention=raw.attentionPoint&&raw.operatorPoint?{
-      x:mix(raw.operatorPoint.x,raw.attentionPoint.x,.5),
-      y:mix(raw.operatorPoint.y,raw.attentionPoint.y,.5)
-    }:raw.focus;
-    const aim=raw.attentionPoint?{
-      x:mix(raw.focus.x,attention.x,
-        raw.shotType==='contact'?.91:.75),
-      y:mix(raw.focus.y,attention.y,
-        raw.shotType==='contact'?.91:.75)
-    }:raw.focus;
+    // Composer owns the one intended aim point. Don't introduce
+    // yet another operator/target focus blend in the motion layer.
+    const aim=raw.focus;
     const requestedDistance=distance(cameraAnchor,aim);
     const desiredYaw=requestedDistance<minFocusRadius?
       oldYaw:yawOf(cameraAnchor,aim);
@@ -327,7 +365,9 @@ export class ReplayDirectorStoryboard{
     return {...raw,sceneStartIndex:prior.sceneStartIndex,
       roomId:prior.roomId,cameraAnchor,focus,
       yaw:(accurateYaw+2*Math.PI)%(2*Math.PI),
-      zoom,fov,pitch:prior.pitch+(raw.pitch-prior.pitch)*.16};
+      zoom,fov,pitch:prior.pitch+(raw.pitch-prior.pitch)*.16,
+      cameraDecision:traveling?'track:subject-motion':
+        action?'reframe:action':'hold:composition'};
   }
   private remember(index:number,shot:RailShot|null):void{
     this.cache.set(index,shot);
@@ -360,7 +400,9 @@ export class ReplayDirectorStoryboard{
     if(!from)return to;
     if(!to)return from;
     const p=clamp(fraction-index,0,1);
-    if(from.roomId!==to.roomId){
+    if(from.roomId!==to.roomId||
+      (from.sceneStartIndex!==to.sceneStartIndex&&
+        to.cameraDecision?.startsWith('cut:'))){
       // Only a CONFIRMED room change cuts. Every other shot change
       // below is continuously interpolated and never jumps.
       return p<.5?from:to;
