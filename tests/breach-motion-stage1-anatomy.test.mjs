@@ -21,7 +21,7 @@ const pose=(handlingOverride,more={})=>({
  deterministic:true,handlingOverride,...more
 });
 test('stage 1: one neutral knee and natural planted-stance geometry',()=>{
- assert.equal(LEG_STANCE_SIDE-LEG_HIP_SIDE,.7999999999999998);
+ assert.ok(Math.abs((LEG_STANCE_SIDE-LEG_HIP_SIDE)-.8)<1e-6);
  assert.ok(LEG_NEUTRAL_KNEE_FLEXION>.3&&
    LEG_NEUTRAL_KNEE_FLEXION<.7);
  assert.equal(legRestRise(0,'stand'),LEG_REST_RISE);
