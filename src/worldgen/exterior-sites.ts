@@ -100,14 +100,14 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    // Current vehicle models are intentionally retired from generated maps
    // until their silhouettes, scale, and parking semantics are rebuilt.
    // Parking areas read as genuinely empty bays, not random cover walls.
-   parking:['parking-sign','bollard','bike-rack','planter'],
+   parking:['parking-sign','bollard','bike-rack','public-bench','planter'],
    driveway:residential?['mailbox','trash-bin','shrub-round']:
      ['bollard','parking-sign','planter'],
    service:industrial?['utility-cabinet','dumpster','recycling-bin','storage-tote',
       'bollard','crate','shipping-container','trash-bin','supply-cart']:
      ['dumpster','recycling-bin','trash-bin','supply-cart','bike-rack','planter'],
    patio:kind==='restaurant'?
-      ['patio-chair','picnic-table','planter','trash-bin']:
+      ['patio-chair','picnic-table','public-bench','planter','trash-bin']:
       ['planter','patio-chair','bike-rack','trash-bin','grill'],
    garden:residential?['tree-broadleaf','shrub-round','shrub-tall',
       'picnic-table','shed','grill']:['planter','shrub-tall','picnic-table'],
@@ -130,7 +130,8 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    // objects add character; no vehicle in a garden or dumpsters at the
    // public-facing cafe seating area.
    const anchor:Partial<Record<ExteriorZone['kind'],string>>={
-     parking:'parking-sign',driveway:industrial?'bollard':
+     parking:kind==='clinic'?'public-bench':'parking-sign',
+     driveway:industrial?'bollard':
        residential?'mailbox':'planter',
      service:industrial?'utility-cabinet':'dumpster',
      patio:kind==='restaurant'?'patio-chair':'planter',
