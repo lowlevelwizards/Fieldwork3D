@@ -38,9 +38,11 @@ export function createAliceLc2Waist(
   const z=side*7.02;
   // Front-hip twin magazine pouches with a big flap rather than PLCE's
   // broad weather-cover box and many rear belt cells.
-  part(magazineCases,pouch,2.00,-.18,z,3.05,3.68,2.50,'LC2-dual-mag-pouch');
-  part(magazineCases,pouch,3.61,1.17,z,.42,1.32,2.64,'LC2-cover-flap');
-  part(magazineCases,webbing,3.87,.37,z,.30,1.13,.76,'LC2-closure-tab');
+  // The actual three staggered magazine sockets must remain within the
+  // textile case, including the rearmost magazine in a full loadout.
+  part(magazineCases,pouch,1.55,-.18,z,5.00,3.68,2.78,'LC2-dual-mag-pouch');
+  part(magazineCases,pouch,4.12,1.17,z,.42,1.32,2.94,'LC2-cover-flap');
+  part(magazineCases,webbing,4.37,.37,z,.30,1.13,.76,'LC2-closure-tab');
  }
  const canteens=group(root,'alice-covered-canteens');
  for(const side of [-1,1]){
