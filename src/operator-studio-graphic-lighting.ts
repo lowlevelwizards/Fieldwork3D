@@ -313,38 +313,39 @@ export function injectStudioGraphicLighting(
    #endif
    float fwLitBand=fwEdge*fwFacesKey*fwReceivedLight*
     smoothstep(.25,.75,fwKeyShadow);
-   // R7.16: all three inks operate INSIDE the original depth-writing
-   // surface. The cream and warm bands are never geometry offsets.
+   // R7.17: the cloth and skin inks are the EXACT SAME TYPE OF LIGHT
+   // RESPONSE as the white weapon glint: bright, key-facing, unshadowed
+   // edges only. A wider cream/peach strip replaces the harder white ink.
+   // It never colors the backlit/shadow-side silhouette or empty space.
    float fwSoftWidth=fieldworkRimRole<1.5?
     fieldworkRimFabricWidth:fieldworkRimSkinWidth;
    float fwSoftOpacity=fieldworkRimRole<1.5?
     fieldworkRimFabric:fieldworkRimSkin;
-   float fwSoftBacklight=fieldworkRimRole<1.5?
-    fieldworkRimFabricBacklight:fieldworkRimSkinBacklight;
-   // The second nearest plane picks the edge WITHIN a visible voxel face.
-   // It remains bounded by the actual triangle, never extending into air.
+   float fwSoftThreshold=fieldworkRimRole<1.5?
+    fieldworkRimFabricLightThreshold:fieldworkRimSkinLightThreshold;
+   // Shared authored face-edge distance, travel segment, one-edge choice
+   // and key-light/shadow visibility from the hard-surface glint.
    float fwSoftLineWidth=clamp(min(fwSpan.x,min(fwSpan.y,fwSpan.z))*
     .10,.18,.58)*fwSoftWidth;
    float fwSoftAA=max(fwidth(fwSecond)*1.1,.005);
    float fwSoftBorder=1.0-smoothstep(
-    fwSoftLineWidth*.82,fwSoftLineWidth+fwSoftAA,fwSecond);
-   float fwSilhouette=smoothstep(.12,.54,fwGrazing);
-   // Unlike the white glint, backlit cloth is allowed on the shadow-side
-   // surface (faux transmitted light). It is still gated by view slant and
-   // a geometric face border, not unbounded Fresnel or bloom.
-   float fwRearNormal=max(-dot(fwNormal,fwKey),0.0);
-   float fwRearKey=max(-dot(fwKey,fwView),0.0);
-   float fwBack=smoothstep(.06,.70,max(fwRearNormal,fwRearKey*.72));
-   float fwSoftBackGate=mix(.04,1.0,
-    clamp(fwBack*fwSoftBacklight,0.0,1.0));
-   float fwSoftBand=fwSoftBorder*fwSilhouette*fwSoftBackGate;
+    fwSoftLineWidth*.58,fwSoftLineWidth*1.18+fwSoftAA,fwSecond);
+   // Permit a slightly wider camera view window than reflective metal,
+   // but NEVER trigger against the light.
+   float fwSoftView=smoothstep(.33,.64,fwGrazing);
+   float fwSoftLightPeak=smoothstep(
+    mix(.005,.038,fwSoftThreshold),
+    mix(.035,.105,fwSoftThreshold),fwDirect);
+   float fwSoftBand=fwSoftBorder*fwSoftView*fwTravel*fwSingleEdge*
+    fwFacesKey*fwSoftLightPeak*smoothstep(.25,.75,fwKeyShadow);
    float fwStrength=fieldworkRimRole<.5?
-    fwLitBand*fieldworkRimStrength:
-    fwSoftBand*fwSoftOpacity;
-   vec3 fwSkinTint=outgoingLight*vec3(1.28,.94,.89)+
-    vec3(.19,.058,.061)*fieldworkRimSkinWarmth;
+    fwLitBand*fieldworkRimStrength:fwSoftBand*fwSoftOpacity;
+   // Warm cream on all gear, cream/peach light on skin. Skin remains
+   // complexion-aware because its target retains the underlying albedo.
+   vec3 fwSkinTint=outgoingLight*vec3(1.16,1.07,.97)+
+    vec3(.14,.082,.060)*fieldworkRimSkinWarmth;
    vec3 fwTarget=fieldworkRimRole<.5?vec3(1.15):
-    fieldworkRimRole<1.5?vec3(1.0,.93,.82):fwSkinTint;
+    fieldworkRimRole<1.5?vec3(1.03,.95,.82):fwSkinTint;
    float fwMask=clamp(fwStrength,0.0,1.0);
    float fwDiagnostic=fieldworkRimRole<.5?fwLitBand:fwSoftBand;
    outgoingLight=fieldworkRimDebug>.5?
@@ -359,10 +360,10 @@ export function injectStudioGraphicLighting(
   'uniform float fieldworkRimAngleLooseness;',
   'uniform float fieldworkRimFabric;',
   'uniform float fieldworkRimFabricWidth;',
-  'uniform float fieldworkRimFabricBacklight;',
+  'uniform float fieldworkRimFabricLightThreshold;',
   'uniform float fieldworkRimSkin;',
   'uniform float fieldworkRimSkinWidth;',
-  'uniform float fieldworkRimSkinBacklight;',
+  'uniform float fieldworkRimSkinLightThreshold;',
   'uniform float fieldworkRimSkinWarmth;',
   'uniform float fieldworkRimRole;',
   'uniform float fieldworkRimDebug;',
@@ -459,10 +460,10 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
    angle:{value:config.rimAngleLooseness},
    fabric:{value:config.rimFabricOpacity},
    fabricWidth:{value:config.rimFabricWidth},
-   fabricBacklight:{value:config.rimFabricBacklight},
+   fabricLightThreshold:{value:config.rimFabricLightThreshold},
    skin:{value:config.rimSkinOpacity},
    skinWidth:{value:config.rimSkinWidth},
-   skinBacklight:{value:config.rimSkinBacklight},
+   skinLightThreshold:{value:config.rimSkinLightThreshold},
    skinWarmth:{value:config.rimSkinWarmth},
    role:{value:role==='hard'?0:role==='fabric'?1:2},
    debug:{value:config.rimDebugMask?1:0},
@@ -491,8 +492,8 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
     strength:{value:number};width:{value:number};
     coverage:{value:number};angle:{value:number};
     fabric:{value:number};fabricWidth:{value:number};
-    fabricBacklight:{value:number};skin:{value:number};
-    skinWidth:{value:number};skinBacklight:{value:number};
+    fabricLightThreshold:{value:number};skin:{value:number};
+    skinWidth:{value:number};skinLightThreshold:{value:number};
     skinWarmth:{value:number};role:{value:number};
     debug:{value:number};key:{value:THREE.Vector3}
    };
@@ -502,10 +503,10 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
    shader.uniforms.fieldworkRimAngleLooseness=u.angle;
    shader.uniforms.fieldworkRimFabric=u.fabric;
    shader.uniforms.fieldworkRimFabricWidth=u.fabricWidth;
-   shader.uniforms.fieldworkRimFabricBacklight=u.fabricBacklight;
+   shader.uniforms.fieldworkRimFabricLightThreshold=u.fabricLightThreshold;
    shader.uniforms.fieldworkRimSkin=u.skin;
    shader.uniforms.fieldworkRimSkinWidth=u.skinWidth;
-   shader.uniforms.fieldworkRimSkinBacklight=u.skinBacklight;
+   shader.uniforms.fieldworkRimSkinLightThreshold=u.skinLightThreshold;
    shader.uniforms.fieldworkRimSkinWarmth=u.skinWarmth;
    shader.uniforms.fieldworkRimRole=u.role;
    shader.uniforms.fieldworkRimDebug=u.debug;
@@ -605,9 +606,9 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
    const u=entry.material.userData.fieldworkRimUniform as
     {strength:{value:number};width:{value:number};coverage:{value:number};
      angle:{value:number};fabric:{value:number};
-     fabricWidth:{value:number};fabricBacklight:{value:number};
+     fabricWidth:{value:number};fabricLightThreshold:{value:number};
      skin:{value:number};skinWidth:{value:number};
-     skinBacklight:{value:number};skinWarmth:{value:number};
+     skinLightThreshold:{value:number};skinWarmth:{value:number};
      debug:{value:number};
      key:{value:THREE.Vector3}}|undefined;
    if(u){
@@ -617,10 +618,10 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
     u.angle.value=config.rimAngleLooseness;
     u.fabric.value=config.rimFabricOpacity;
     u.fabricWidth.value=config.rimFabricWidth;
-    u.fabricBacklight.value=config.rimFabricBacklight;
+    u.fabricLightThreshold.value=config.rimFabricLightThreshold;
     u.skin.value=config.rimSkinOpacity;
     u.skinWidth.value=config.rimSkinWidth;
-    u.skinBacklight.value=config.rimSkinBacklight;
+    u.skinLightThreshold.value=config.rimSkinLightThreshold;
     u.skinWarmth.value=config.rimSkinWarmth;
     u.debug.value=config.rimDebugMask?1:0;
     u.key.value.set(.46,.88,.07).normalize()
