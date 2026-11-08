@@ -1775,6 +1775,16 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-planned-door-sequence-') }}
         run: |
           node --experimental-strip-types --test tests/doorway-planned-sequence.test.mjs tests/doorway-right-of-way.test.mjs tests/doorway-right-of-way-session.test.mjs tests/doorway-convoy-flow.test.mjs tests/squad-flow-a1.test.mjs tests/squad-entry-b-continuity.test.mjs tests/tactical-integration-04-squad-planning.test.mjs tests/tactical-integration-10-entry-gate.test.mjs tests/breach-137.test.mjs tests/breach-137-1.test.mjs
+      - name: Living Encounters live civilians — focused release gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/living-encounters-live-') }}
+        run: |
+          node --experimental-strip-types --test tests/living-encounters-r1-pose.test.mjs tests/living-encounters-r2-civilian-transition.test.mjs tests/living-encounters-r2-civilian-pose.test.mjs tests/living-encounters-live-default.test.mjs tests/briefing-default-live.test.mjs tests/civilian-b7-rescue-session.test.mjs tests/civilian-release-field-smoke.test.mjs tests/civilian-r2-release-matrix.test.mjs tests/breach-weapon-magazine-idle.test.mjs tests/breach-unified-pose-stability.test.mjs
+          node --experimental-strip-types scripts/audit-mission-quality.mjs 3 --living
+      - name: Living Encounters — prior Pages release must be live
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/living-encounters-live-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

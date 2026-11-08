@@ -464,9 +464,10 @@ function buildPreviewDossier(session:Session,risk?:1|2|3){
     return undefined;
   }
 }
-// E5-B controlled field preview. Ordinary Quick Play/Campaign is unchanged
-// until rescue/ballistics/mobile acceptance and deliberate public enablement.
-const civilianPreview=startupParams.get('civilians')==='1';
+// Live civilian field testing is enabled in ordinary Quick Play/Campaign.
+// ?civilians=0 is a deliberate rollback switch while testing on phones;
+// seeded population limits, rescue compatibility and fog rules are unchanged.
+const civilianPreview=startupParams.get('civilians')!=='0';
 const legacyStudy=startupParams.has('fixedSite');
 const requestedSeed=Number(startupParams.get('seed'));
 const initialSiteSeed=startupParams.has('seed')&&Number.isSafeInteger(requestedSeed)&&

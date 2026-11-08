@@ -64,10 +64,20 @@ export function setCivilianState(c:CivilianActor,
  if(condition==='incapacitated'&&state!=='incapacitated')return false;
  if(condition==='injured'&&state==='routine'&&
     c.state==='wounded')return false;
- if(c.state===state)return true;
+ // An explicit FOLLOW may reassign a person already escorted by another
+ // operator. Re-entering that state must clear the old escort route too.
+ if(c.state===state&&state!=='escorted')return true;
  c.state=state;c.stateSince=now;c.velocity=0;
- if(state==='incapacitated'||state==='compliant'||state==='wounded'){
+ if(state==='incapacitated'||state==='compliant'||state==='wounded'||
+    state==='escorted'){
+  // An explicitly secured or followed person cannot keep a former
+  // panic/refuge route. A successful interaction must not begin by
+  // walking toward a stale hiding place or honoring an old retry pause.
   c.goal=null;c.nav=[];
+ }
+ if(state==='compliant'||state==='escorted'){
+  c.blockedTime=0;c.retryAt=now;c.dwellUntil=now;
+  if(state==='escorted')c.lastEscortRouteAt=-100;
  }
  return true;
 }

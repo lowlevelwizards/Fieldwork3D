@@ -11,6 +11,7 @@ const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 test('R3: ordinary Quick Play and Campaign enable procedural briefings',()=>{
  const main=read('src/breach-main.ts'),worker=read('src/quick-play-worker.ts');
  assert.match(main,/briefingPreviewEnabled=startupParams\.get\('briefingV2'\)!=='0'/);
+ assert.match(main,/const civilianPreview=startupParams\.get\('civilians'\)!=='0'/);
  assert.match(main,/enableCivilians:civilianPreview,enableIncidentIntent:true/);
  assert.match(main,/enableIncidentIntent:true\}\);/);
  assert.match(worker,/\},\{enableIncidentIntent:true\}\)/);
