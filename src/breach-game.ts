@@ -3103,7 +3103,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       failCurrentOrder(s,a,n,'DOOR MISSING');return;
     }
     if((n.method==='close'&&!door.open)||
-       (n.method!=='close'&&n.method!=='kick'&&n.method!=='hold'&&door.open)){
+       (n.method!=='close'&&n.method!=='kick'&&n.method!=='hold'&&
+        door.open&&(door.openFraction??1)>=.98)){
       // The requested state already exists: legitimate completion.
       pop(a);return;
     }
@@ -3178,10 +3179,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
           failCurrentOrder(s,a,n,'DOOR BRACED SHUT');return;
         }
         for(const leaf of pairedLeaves(s,door)){
+          const wasOpening=leaf.open;
           leaf.open=true;leaf.openedAt=s.seconds;
-          // A deliberate OPEN uses the normal ~90-degree stop.
-          // Only actual sustained shoulder contact requests extra swing.
-          leaf.pushTarget=1;leaf.angularVelocity=0;
+          // Reopening an ajar leaf must continue from its physical angle.
+          // Never zero moving hinge velocity or rewind the panel.
+          leaf.pushTarget=Math.max(1,leaf.pushTarget??1);
+          if(!wasOpening)leaf.angularVelocity=0;
         }
         hear(s,doorCenter(door),145,'door');
         notify(s,door.id+' OPENED');
