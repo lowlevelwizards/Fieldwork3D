@@ -7,15 +7,17 @@ import {HANDLING_PROFILES} from '../src/breach-handling-profiles.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 
 const modes=['high','low','ready','short','point','ads'];
-test('168: every shoulder pocket is on the upper chest, not an outboard shelf',()=>{
+test('168: stocks sit forward on outer firing shoulder, not inside armor',()=>{
  for(const mode of modes){
   const pocket=stockPocket(mode);
-  assert.ok(pocket.z<=7.2,mode+' pocket is too far to the side');
-  assert.ok(pocket.z>=6.50,mode+' pocket buried into the torso');
+  assert.ok(pocket.z>=7.75&&pocket.z<=(mode==='short'?11:8.25),
+   mode+' stock is too medial or outside the right underarm');
+  assert.ok(pocket.x>=(mode==='short'?-1.5:2.5),
+   mode+' rear face is buried behind fitted armor');
  }
+ assert.ok(stockPocket('ads').y<6.5,'ADS buttstock floats too high');
  assert.ok(stockPocket('short').y<stockPocket('ready').y-5);
- assert.ok(stockPocket('short').z>stockPocket('ready').z+.25);
- assert.ok(stockPocket('short').z<7.6);
+ assert.ok(stockPocket('short').z>stockPocket('ready').z+2);
 });
 test('168: longer stock rear face is still physically exact at all weapon scales',()=>{
  for(const weapon of ['carbine','smg','rifle','shotgun']){
@@ -37,7 +39,8 @@ test('168: elbow targets are intermediate, not chicken wings or rib-pinned',()=>
  for(const mode of modes){
   for(const sign of [-1,1]){
    const p=elbowCorridor(mode,sign);
-   assert.ok(Math.abs(p.z)>7.7&&Math.abs(p.z)<8.9,
+   const outboard=mode==='short'&&sign===1;
+   assert.ok(Math.abs(p.z)>7.7&&Math.abs(p.z)<(outboard?14:8.9),
      mode+' has implausible pole lateral spread');
   }
  }
