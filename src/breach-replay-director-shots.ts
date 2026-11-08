@@ -42,7 +42,11 @@ export type DirectorShot=CinematicShot&{
   framePoints?:Pt[];
   attentionPoint?:Pt|null;
   /** Used to track the lead operator from behind rather than orbit them. */
-  followDirection?:Pt|null
+  followDirection?:Pt|null;
+  /** A recorded lead operator crossed into the next room: edit promptly. */
+  firstEntry?:boolean;
+  /** Only genuine action or significant travel should move the film rig. */
+  actionWeight?:number
 };
 type Pt={x:number;y:number};
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
@@ -129,6 +133,10 @@ function subjectGroup(actors:readonly DirectorActor[],
 function shotClass(subjects:readonly DirectorActor[],
   ctx:DirectorShotContext):DirectorShotType{
   if(ctx.beat)return ctx.beat.kind==='fight'?'contact':'breach';
+  // The first actor's recorded entry is itself an editorial event,
+  // even while three teammates are still on the original side.
+  if(ctx.intents.some(i=>i.kind==='entry'&&i.door&&
+    i.door.distance<42))return 'entry';
   if(ctx.upcoming?.kind==='contact'||ctx.upcoming?.kind==='casualty')
     return 'contact';
   const doors=directorIntentGroup(ctx.intents);
@@ -415,15 +423,28 @@ export function composeReplayDirectorShot(_time:number,
     }
   }
   if(!best)return null;
-  // Hold on the room containing MOST of the active group. The first
-  // operator through a threshold must not trigger a cut while three
-  // teammates are still stacking on the approach side.
+  // Ordinary travel stays with the squad's majority; a real ENTRY
+  // changes that rule. Once a breacher is across the physical threshold,
+  // film that lead rather than waiting until all four have entered.
   const dominant=rooms.map(room=>({room,count:subjects.filter(actor=>
     directorOperatorRoom(actor.p,rooms)?.id===room.id).length}))
     .sort((a,b)=>b.count-a.count)[0];
-  const members=dominant?.count?
+  const leadEntry=type==='entry'&&dominant?.count?
+    subjects.filter(a=>{
+      const intent=context.intents.find(i=>i.actorId===a.id);
+      const inRoom=directorOperatorRoom(a.p,rooms);
+      return intent?.kind==='entry'&&!!intent.door&&
+        intent.door.distance<42&&!!inRoom&&
+        inRoom.id!==dominant.room.id;
+    }).sort((a,b)=>{
+      const av=speedFor(a,context),bv=speedFor(b,context);
+      return bv-av||a.id.localeCompare(b.id);
+    })[0]:undefined;
+  const leadRoom=leadEntry?directorOperatorRoom(leadEntry.p,rooms):null;
+  const filmingRoom=leadRoom??dominant?.room??null;
+  const members=filmingRoom?
     subjects.filter(a=>directorOperatorRoom(a.p,rooms)?.id===
-      dominant.room.id):subjects;
+      filmingRoom.id):subjects;
   const ranked=members.slice().sort((a,b)=>{
     const ai=context.intents.find(i=>i.actorId===a.id);
     const bi=context.intents.find(i=>i.actorId===b.id);
@@ -436,21 +457,31 @@ export function composeReplayDirectorShot(_time:number,
       weight(ai,speedFor(a,context))||
       a.id.localeCompare(b.id);
   });
-  const operator=members.find(a=>a.id===context.beat?.actorId)??
+  const operator=leadEntry??
+    members.find(a=>a.id===context.beat?.actorId)??
     members.find(a=>a.id===context.upcoming?.actorId)??
     ranked[0]??subjects[0];
   if(!operator)return best;
+  const entryDirection=leadEntry?
+    context.intents.find(i=>i.actorId===leadEntry.id)?.direction:null;
   const target=context.beat?.kind==='fight'&&context.actionPair?
     (context.beat.actorId===context.beat.shooterId?
       context.actionPair.target:context.actionPair.shooter):
-    doorBeat?.target??relevantDoor?.mid??null;
+    leadEntry&&entryDirection?{
+      x:leadEntry.p.x+entryDirection.x*52,
+      y:leadEntry.p.y+entryDirection.y*52
+    }:doorBeat?.target??relevantDoor?.mid??null;
   const physical=physicalDirectorView({
     operator:operator.p,focus:best.focus,
     subjectPoints:subjects.map(a=>a.p),
     target,preferredYaw:best.yaw,
-    followDirection:forward,
-    targetWeight:type==='contact'?170:
-      ['approach','stack','breach','entry'].includes(type)?135:105
+    followDirection:leadEntry&&entryDirection?entryDirection:
+      relevantDoor?normalize({x:relevantDoor.mid.x-operator.p.x,
+        y:relevantDoor.mid.y-operator.p.y}):forward,
+    doorPoint:!leadEntry?doorBeat?.target??relevantDoor?.mid??null:null,
+    doorNormal:!leadEntry?relevantDoor?.normal??null:null,
+    targetWeight:type==='contact'?255:
+      ['approach','stack','breach','entry'].includes(type)?190:110
   },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
   const realYaw=atan({x:physical.cameraAnchor.x-physical.focus.x,
     y:physical.cameraAnchor.y-physical.focus.y});
@@ -469,11 +500,11 @@ export function composeReplayDirectorShot(_time:number,
   const planar=dist(physical.cameraAnchor,physical.focus);
   const orthoTilt=Math.atan2(53-17,Math.max(1,planar));
   const focused=subjects.length<=2;
-  const zoomCeiling=focused?10:8.5;
+  const zoomCeiling=focused?8.4:7.4;
   const fit=projectedBounds(visibleTargets,physical.focus,realYaw,
     orthoTilt,aspect,baseSpan,zoomCeiling,
     Math.min(.83,usableWidth),Math.min(.77,usableHeight));
-  const wideZoom=clamp(fit.zoom*.93,.65,zoomCeiling);
+  const wideZoom=clamp(fit.zoom*.79,.65,zoomCeiling);
   return {...best,focus:physical.focus,
     cameraAnchor:physical.cameraAnchor,
     zoom:wideZoom,pitch:orthoTilt,
@@ -483,6 +514,12 @@ export function composeReplayDirectorShot(_time:number,
     attentionPoint:target?(physical.targetVisible?{...target}:
       {...physical.focus}):
       composition.attention?{...composition.attention}:null,
-    followDirection:{...forward},
+    followDirection:leadEntry&&entryDirection?{...entryDirection}:
+      relevantDoor?normalize({x:relevantDoor.mid.x-operator.p.x,
+        y:relevantDoor.mid.y-operator.p.y}):{...forward},
+    firstEntry:!!leadEntry,
+    actionWeight:type==='contact'?1:
+      ['entry','breach','stack','approach'].includes(type)?.84:
+      type==='travel'?.5:0,
     framePoints:visibleTargets.map(p=>({...p}))};
 }
