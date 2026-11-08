@@ -1868,7 +1868,7 @@ export class TacticalScene3D{
       // Historical knowledge and object visibility remain authoritative.
       const opacity=bodycamAudition?1:transitionWallOpacity(
         this.wallFade.get(wall.mesh)??1,cut,dt,
-        this.replayXrayOn?.19:.38);
+        this.replayXrayOn?0.19:0.38);
       this.wallFade.set(wall.mesh,opacity);
       const translucent=opacity<.995;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
