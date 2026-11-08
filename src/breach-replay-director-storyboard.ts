@@ -323,8 +323,25 @@ export class ReplayDirectorStoryboard{
           x:mix(raw.cameraAnchor.x,translated.x,.72),
           y:mix(raw.cameraAnchor.y,translated.y,.72)
         }:raw.cameraAnchor;
-    const desired=directorCameraLegal(follow,room,this.physicalScene)?
-      follow:raw.cameraAnchor;
+    // Protect the established action axis and shoulder side. A tiny
+    // raw-solver score improvement may not orbit through the opposite
+    // side of the hero while the current lens still covers the event.
+    const side=(axis:Pt,operator:Pt,camera:Pt)=>
+      axis.x*(camera.y-operator.y)-
+      axis.y*(camera.x-operator.x);
+    const oldSide=prior.actionAxis&&prior.operatorPoint?
+      side(prior.actionAxis,prior.operatorPoint,
+        prior.cameraAnchor):0;
+    const candidateSide=raw.actionAxis&&raw.operatorPoint?
+      side(raw.actionAxis,raw.operatorPoint,
+        raw.cameraAnchor):0;
+    const preserveSide=sameStory&&covered&&
+      Math.abs(oldSide)>12&&
+      oldSide*candidateSide<0;
+    const wanted=preserveSide?
+      translated??prior.cameraAnchor:follow;
+    const desired=directorCameraLegal(wanted,room,
+      this.physicalScene)?wanted:raw.cameraAnchor;
     const cameraAnchor=this.walk(prior.cameraAnchor,desired,
       room,dolly);
     // A subject crossing immediately behind the camera must not produce
