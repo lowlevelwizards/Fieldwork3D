@@ -4583,7 +4583,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
   if(replayCameraMode==='director'){
     const target=cinematicReplayShot(replayTime,actors,
       state.site?.rooms??[],state.site?.walls??[],replayDirectorCues,
-      cssW/Math.max(1,cssH),stage.view.yaw);
+      cssW/Math.max(1,cssH),stage.view.yaw,stage.replayCameraBaseSpan());
     if(!target)return;
     const current={focus:stage.view.focus,zoom:stage.view.zoom,
       yaw:stage.view.yaw,pitch:stage.view.pitch,roomId:null,
