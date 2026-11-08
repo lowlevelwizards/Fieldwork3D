@@ -93,7 +93,8 @@ import {firstCivilianAlongRay,applyCivilianBulletHit}
 import {knownCivilianInFireLane} from './breach-civilian-fire-safety.ts';
 import {recordCivilianHarm,attributableCivilianHarm,
   type CivilianHarmEvent} from './breach-civilian-harm.ts';
-import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
+import {retreatDoorClosureEligible,routineDoorClosureEligible}
+ from './breach-ai-door-response.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic,shouldSeekHoldCover}
  from './breach-ai-tactical-response.ts';
@@ -3668,6 +3669,24 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     const index=visit%a.encounterRoutine.length;
     const target=a.encounterRoutine[index];
     if(d(a.p,target)<13){
+      // A settled occupant may quietly close a nearby hinged leaf after a
+      // real journey. Other travelers retain priority over the doorway.
+      if(visit%3===1){
+        const inUse=s.operators.filter(other=>other!==a&&other.health>0&&
+          (other.velocity>5||other.nav.length>0)).map(other=>other.p);
+        const door=s.doors.find(candidate=>
+          routineDoorClosureEligible(a.p,candidate,s.seconds,
+            a.lastEnemyDoorCloseAt,inUse)&&
+          !doorWouldStrikeActors(candidate,0,[a.p],OPERATOR_RADIUS));
+        if(door&&doorInteraction({target:door,actorId:a.id,
+          actorPosition:a.p,action:'close'}).allowed){
+          door.open=false;door.openedAt=s.seconds;
+          a.lastEnemyDoorCloseAt=s.seconds;
+          hear(s,doorCenter(door),62,'door');
+          battleEvent(s,'door',a,doorCenter(door),
+            a.name+' CLOSED '+door.id+' AFTER ROUTINE');
+        }
+      }
       a.routineIndex=visit+1;
       a.routinePauseUntil=s.seconds+routineDwellSeconds(a.id,
         a.encounterActivity??'idle',index,visit);
