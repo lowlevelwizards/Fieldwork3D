@@ -8,12 +8,13 @@ import {evaluateSleeveArmorContact,type PoseClearanceEnvelope,
  type SleeveContactResult}
  from './breach-pose-clearance-envelope.ts';
 import {ARM_LIMITS,type LimbSolution} from './breach-ik.ts';
-import {anatomicalElbowCost} from './breach-anatomy.ts';
+import {anatomicalElbowCost,carryElbowViolation}
+ from './breach-anatomy.ts';
 import {reloadVisualContact} from './breach-reload-visual-contact.ts';
 
 export type PoseConstraintMode='carry'|'aim'|'reload'|'interaction';
 export type PoseConstraintReason='non-finite'|'unreachable'|'bone-length'|
- 'joint-range'|'equipment-contact';
+ 'joint-range'|'equipment-contact'|'elbow-corridor';
 export type ArmConstraintInput={
  shoulder:THREE.Vector3;
  arm:LimbSolution;side:-1|1;
@@ -57,6 +58,9 @@ export function evaluateArmConstraint(p:ArmConstraintInput):ArmConstraintReport{
  if(arm.angle<ARM_LIMITS.minBend-.001||
     arm.angle>ARM_LIMITS.maxBend+.001)
   reasons.push('joint-range');
+ if((mode==='carry'||mode==='aim')&&
+    carryElbowViolation(shoulder,joint,side)>.001)
+  reasons.push('elbow-corridor');
  // A real rectangular sleeve tests against fitted hard/soft equipment.
  // This is shared by idle/ADS/reload/interaction; no hidden shrinking.
  const contact=evaluateSleeveArmorContact(

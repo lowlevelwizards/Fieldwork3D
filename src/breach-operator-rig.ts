@@ -47,6 +47,7 @@ import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,
 import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor,equipmentStockPush} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
+import {blendedHandlingProfile} from './breach-handling-transition.ts';
 import type {HandlingTransition} from './breach-handling-transition.ts';
 import {sampleHandlingTransition,sampleCarryTransition}
  from './breach-pose-transition-director.ts';
@@ -1051,8 +1052,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     throwAge,throwActive,doorAge,doorActive,handOwners}=actionState;
   // The transition director is the sole owner of handling history and
   // interpolation; the rig remains only the final pose renderer.
-  const {active:activeTransition,authoredLabSwitch,profile}=
-    sampleHandlingTransition(r,p,handling);
+  const sample=sampleHandlingTransition(r,p,handling);
+  // Wall proximity owns the short-stock transition, not a second timed
+  // pose jump. The weapon, shoulders and elbow poles share one progress.
+  const nearingWall=handling==='short'&&
+    p.shortCompression!==undefined;
+  const activeTransition=nearingWall?undefined:sample.active;
+  const authoredLabSwitch=sample.authoredLabSwitch;
+  const profile=nearingWall?
+    blendedHandlingProfile(
+      shortStockSourceHandling(p.aimBlend??(p.aiming?1:0),moving,
+        p.weapon,!!p.friendlyNear),
+      'short',p.shortCompression!,p.weapon):sample.profile;
   // Explicit laboratory stances can shift the chest/weight. Live combat
   // retains the authoritative shot-time muzzle/chest transform until the
   // equivalent shot-time balance transform is integrated.

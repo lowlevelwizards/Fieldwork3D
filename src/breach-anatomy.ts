@@ -57,7 +57,7 @@ export function anatomicalElbowCost(shoulder:Anchor3,elbow:Anchor3,
  const forward=elbow.x-shoulder.x;
  const drop=shoulder.y-elbow.y;
  const shortGap=outboardFiring&&side===1?
-   Math.max(0,Math.max(shoulder.z,wrist.z)+.65-elbow.z):0;
+   Math.max(0,1.0-(elbow.z-shoulder.z)):0;
  return Math.max(0,-outward-.8)*1.05+
    Math.max(0,outward-5.8)*.65+
    Math.max(0,-forward-1.4)*.65+
@@ -65,6 +65,18 @@ export function anatomicalElbowCost(shoulder:Anchor3,elbow:Anchor3,
    Math.max(0,.65-drop)*1.45+
    Math.max(0,drop-10)*.32+
    shortGap*1.75;
+}
+/** Forward/down carry corridor. Zero means an acceptable elbow; a wrist
+ * that cannot be solved here reports a constraint failure rather than
+ * being solved with a winging, backward limb. */
+export function carryElbowViolation(shoulder:Anchor3,elbow:Anchor3,
+ side:-1|1):number{
+ const rear=Math.max(0,shoulder.x-elbow.x-.45);
+ const raised=Math.max(0,elbow.y-shoulder.y+.15);
+ const flare=side*(elbow.z-shoulder.z);
+ const wing=Math.max(0,flare-6.0);
+ const cross=Math.max(0,-flare-.6);
+ return rear+raised+wing+cross;
 }
 export function anchorGap(a:Anchor3,b:Anchor3){
   return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);
