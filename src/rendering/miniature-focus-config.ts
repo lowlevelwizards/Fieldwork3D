@@ -6,8 +6,18 @@ export type FocusQuality='performance'|'balanced'|'quality';
 export type FocusDecision={
   active:boolean;radiusPx:number;strength:number;reason:string;
 };
+/** Default to a very subtle treatment. Explicit invalid values fail closed. */
+export const MINIATURE_FOCUS_STORAGE_KEY='fieldwork3d.graphics.miniature-focus';
 export function requestedMiniatureFocus(value:string|null):MiniatureFocusMode{
+  if(value===null)return 'subtle';
   return value==='subtle'||value==='replay'?value:'off';
+}
+/** Developer URL query wins on initial load, then the visible preference
+ * controls the session. No query is required for ordinary gameplay.
+ */
+export function initialMiniatureFocusMode(query:string|null,
+ stored:string|null):MiniatureFocusMode{
+  return requestedMiniatureFocus(query??stored);
 }
 export function miniatureFocusDecision(input:{
   mode:MiniatureFocusMode;view:MiniatureFocusView;

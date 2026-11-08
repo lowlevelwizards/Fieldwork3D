@@ -19,8 +19,9 @@ import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 import {replayActorVisible,replayActorDisclosed,replayCivilianDisclosed,
   type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
-import {requestedMiniatureFocus,miniatureFocusDecision,
- type MiniatureFocusView} from './rendering/miniature-focus-config.ts';
+import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
+ miniatureFocusDecision,type MiniatureFocusMode,type MiniatureFocusView}
+ from './rendering/miniature-focus-config.ts';
 import {miniatureProtectedRect,type FocusPoint,type FocusRect}
  from './rendering/miniature-focus-mask.ts';
 import {MiniatureFocusPass,type MiniatureFocusDebug}
@@ -151,9 +152,11 @@ export class TacticalScene3D{
   private readonly quality=graphicsBudget(
     new URLSearchParams(location.search).get('quality'),
     navigator.maxTouchPoints>0);
-  /** Opt-in, presentation only. The default path remains direct render. */
-  private readonly miniFocusMode=requestedMiniatureFocus(
-    new URLSearchParams(location.search).get('focusFx'));
+  /** Subtle is the default; explicit Off always uses the direct renderer. */
+  private miniFocusMode=initialMiniatureFocusMode(
+    new URLSearchParams(location.search).get('focusFx'),
+    (()=>{try{return localStorage.getItem(MINIATURE_FOCUS_STORAGE_KEY);}
+      catch{return null;}})());
   private readonly miniFocusDebug:MiniatureFocusDebug=(()=>{
     const d=new URLSearchParams(location.search).get('focusDebug');
     return d==='mask'||d==='protected'?d:null;
@@ -216,6 +219,14 @@ export class TacticalScene3D{
     return this.physicalDirectorActive?
       (this.replayDirectorLens==='wide'?
         this.directorCamera:this.directorOrthoCamera):this.camera;
+  }
+  getMiniatureFocusMode():MiniatureFocusMode{return this.miniFocusMode;}
+  setMiniatureFocusMode(mode:MiniatureFocusMode):void{
+    if(this.miniFocusMode===mode)return;
+    this.miniFocusMode=mode;
+    if(mode==='off'){
+      this.miniFocusPass?.dispose();this.miniFocusPass=null;
+    }
   }
   /** Main loop supplies only view/interaction state, never actor intel. */
   setMiniatureFocusContext(replaying:boolean,interacting:boolean,dt:number):void{
