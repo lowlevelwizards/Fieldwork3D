@@ -273,6 +273,15 @@ export class ReplayDirectorStoryboard{
         sceneStartIndex:prior.sceneStartIndex,
         cameraDecision:'hold:new-story-covered'};
     }
+    if(sameStory&&covered&&raw.motion<9){
+      // Once a new action has taken ownership of an adequate static
+      // composition, keep that same rig; don't creep toward the latest
+      // raw camera suggestion at the following storyboard knot.
+      return {...raw,cameraAnchor:prior.cameraAnchor,
+        focus:prior.focus,yaw:prior.yaw,zoom:prior.zoom,
+        sceneStartIndex:prior.sceneStartIndex,
+        cameraDecision:'hold:action-covered'};
+    }
     const actionOutOfFrame=!sameStory&&!covered&&
       (raw.editorialPriority??0)>=5&&
       (raw.editorialPriority??0)>=(prior.editorialPriority??0);
