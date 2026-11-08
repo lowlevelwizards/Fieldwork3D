@@ -9,8 +9,8 @@ import {applyStudioGraphicLighting}
  from './operator-studio-graphic-lighting.ts';
 import {applyWorldGraphicLighting,enableWorldGraphicMaterial}
  from './breach-graphic-world-lighting.ts';
-import {propertySurfaceCenterHeight,PROPERTY_SURFACE_THICKNESS}
- from './rendering/property-surface-elevation.ts';
+import {propertySurfaceCenterHeight,PROPERTY_SURFACE_THICKNESS,
+  exteriorZoneRenderLift} from './rendering/property-surface-elevation.ts';
 import {windowShardPose,WINDOW_SHARDS_PER_PANE}
  from './rendering/window-shatter-presentation.ts';
 import {createCivilianRig,updateCivilianRig,type CivilianRig}
@@ -700,12 +700,13 @@ export class TacticalScene3D{
       service:0x7f827b,garden:0x788d61,parking:0x676c6b} as const;
     for(const zone of site.exteriorZones??[]){
       const ground=zonePixelSurface(zone.kind,outdoors);
-      this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.45,
+      const lift=exteriorZoneRenderLift(zone.id);
+      this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.45+lift,
         this.solid(age(zoneColor[zone.kind],ground),.91,ground));
       // One cheap repeated layer per relevant exterior zone, no dynamic allocation.
       const overlay=overlayForZone(outdoors,zone.kind);
       if(overlay){
-        const mark=this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.42,
+        const mark=this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.42+lift,
           this.groundOverlayMaterial(overlay));
         mark.castShadow=false;mark.receiveShadow=false;
       }
