@@ -91,7 +91,8 @@ test('R9.2 discovered corpses never disappear on squad replay or personal memory
  });
  assert.equal(replayActorDisclosed(session,dead,{mode:'squad'}),true);
  assert.equal(replayActorDisclosed(session,dead,
-  {mode:'operator',observerId:'rook'}),true);
+  {mode:'operator',observerId:'rook'}),false,
+  'individual memory must not reveal a possibly moved unseen corpse');
  assert.equal(replayActorDisclosed(session,dead,
   {mode:'operator',observerId:'moss'}),false);
 });

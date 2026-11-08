@@ -280,7 +280,9 @@ export class ReplayDirectorStoryboard{
     // A transition just after another scene edit still waits for one
     // whole knot, so repeated adjacent doors cannot strobe.
     if(raw.firstEntry&&raw.shotType==='entry')
-      return index-(prior.sceneStartIndex??0)>=Math.ceil(2/this.step);
+      // The confirmed first physical crossing is a deliberately
+      // motivated exception to ordinary three-second shot commitment.
+      return index-(prior.sceneStartIndex??0)>=1;
     const minResidence=Math.ceil(2.4/this.step);
     if(index-(prior.sceneStartIndex??0)<minResidence)return false;
     if(index<2)return false;

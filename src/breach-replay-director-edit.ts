@@ -84,6 +84,13 @@ export function selectDirectorEditorialShot(
       e.actionPair.target:e.actionPair.shooter;
     else if(e.contact?.observerId===primary.id)
       target={...e.contact.target};
+    else if(e.contact&&byId(e.contact.observerId)){
+      // Another operator actually sees the enemy while this film beat's
+      // nominated hero does not. Shoot the OBSERVED pair instead.
+      primary=byId(e.contact.observerId);
+      target={...e.contact.target};
+      reason='recorded contact overrides unobserved combat pair';
+    }
   }else if(e.contact&&byId(e.contact.observerId)){
     // Current recorded eye contact, not an anticipated/projected threat.
     // Both observer and enemy are essential to a readable contact shot.
