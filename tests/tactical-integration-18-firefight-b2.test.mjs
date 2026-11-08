@@ -44,7 +44,11 @@ test('B5 weapon identities differ, suppressors reduce transients and hidden hits
 test('B6 presentation consumes shot IDs and visibility, never chooses hit results',()=>{
  const three=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(three,/muzzleFlashCue\(actor\.weapon,shot\.age,muzzleAttachment\)/);
+ assert.match(three,/mostRecentActiveMuzzleShot\(s\.shots,actor\.id,/,
+  'scene selects authoritative newest shot rather than an older flash');
+ const cues=readFileSync(new URL('../src/breach-combat-cues.ts',import.meta.url),'utf8');
+ assert.match(cues,/muzzleFlashCue\(weapon,shot\.age,attachment\)\.active/,
+  'shared event resolver must still use exact shot age and muzzle attachment');
  assert.match(three,/impactPulse\(shot\.surface\?\?'dust',shot\.age/);
  assert.match(three,/shotVisibility\(s,shot\)\.flash/);
  assert.match(main,/audibleImpact\(shotVisibility\(state,shot\)\.impact/);
@@ -58,5 +62,13 @@ test('encounter regression: no false initial audio suspicion; real gunfire inter
  assert.equal(hasRecentSound(9,1.5),false);
  const game=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
  assert.match(game,/const recentNoise=hasRecentSound\(s\.seconds,a\.lastNoiseAt\)/);
- assert.match(game,/const newAlarm=s\.noise\.some/);
+ // E1/E5 replaced the former raw-noise alarm scan. Defenders now consume
+ // each audible evidence item once, then update suspicion only if warranted.
+ const decisions=game.slice(game.indexOf('function enemyDecisions('),
+  game.indexOf('function distributeReports('));
+ assert.match(decisions,/for\(const sound of s\.noise\)/);
+ assert.match(decisions,/sound\.id<=a\.lastNoiseExaminedId/);
+ assert.match(decisions,/interpretSound\(sound,a\.id,a\.p,s\.doors,WALLS,s\.windows\)/);
+ assert.match(decisions,/if\(disposition!=='ignore'\)observeSuspicion/);
+ assert.match(decisions,/a\.lastNoiseExaminedId=Math\.max/);
 });
