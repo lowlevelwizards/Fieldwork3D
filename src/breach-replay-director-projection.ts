@@ -121,7 +121,7 @@ export function directorCompositionQuality(
   const desiredX=screenDir>.02?-.32:screenDir<-.02?.32:0;
   const pCenter=(primary.minX+primary.maxX)*.5;
   const thirdsError=Math.min(1,Math.abs(pCenter-desiredX));
-  const headroomError=Math.min(1,Math.abs(primary.minY+safeHeight*.72)/Math.max(.2,safeHeight));
+  const headroomError=Math.min(1,Math.abs(primary.maxY-safeHeight*.52)/Math.max(.2,safeHeight));
   const leadError=screenDir>.02?
     Math.max(0,pCenter+.12):screenDir<-.02?
       Math.max(0,.12-pCenter):0;
