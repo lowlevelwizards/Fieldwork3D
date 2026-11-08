@@ -2223,6 +2223,18 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       doorBlocksSegment(door,{a:a.p,b:p});
   })??autoDoorAtBodyContact(a.p,move,automaticCandidates);
   if(doorAhead){
+    // A cautious defender should operate a door from a real clear stance,
+    // not repeatedly crowd its swing while touching the handle.
+    if(a.side==='red'&&!doorAhead.open&&a.actionTimer===0&&
+       doorWouldStrikeActors({...doorAhead,openFraction:0},.46,
+         [a.p],OPERATOR_RADIUS+1)){
+      const staged=doorApproach(a.p,doorAhead);
+      if(staged&&d(staged,a.p)>5&&d(staged,a.p)<50&&
+         sweptBodyClear(a.p,staged,s.doors)){
+        a.nav.unshift(staged);a.velocity=0;
+        a.motorPause='door-opening';return true;
+      }
+    }
     a.motorPause='door-opening';
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
       actorPosition:a.p,action:'open'});
@@ -4820,7 +4832,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     // An operator just inside the initial sweep may yield a small REAL
     // step before the leaf advances. This is not an actor-collision bypass:
     // static geometry, other leaves and opposing bodies must all remain solid.
-    if(door.open&&(door.openFraction??0)<.36&&
+    if(door.open&&(door.openFraction??0)<.96&&
        (door.pushTarget??1)<=1.01){
       for(const actor of s.operators){
         if(actor.health<=0)continue;
