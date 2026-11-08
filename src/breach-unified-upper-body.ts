@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import {solveTwoBone,ARM_LIMITS,intersectsTorso,
  type LimbSolution} from './breach-ik.ts';
+import {anatomicalElbowCost} from './breach-anatomy.ts';
 import {armorArmIntrusion,armorElbowPole}
  from './breach-arm-armor-clearance.ts';
 import {lowReadyFamilyFit,lowReadyElbowPole}
@@ -208,7 +209,10 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
  if(!req.neutral&&!req.down&&!req.surrender){
    const score=(candidate:LimbSolution)=>armorArmIntrusion(
      shoulder,candidate.joint,candidate.effector,req.legacyFront)+
-     (intersectsTorso(candidate.joint,.25)?2.5:0);
+     (intersectsTorso(candidate.joint,.25)?2.5:0)+
+     (req.mode==='carry'||req.mode==='aim'?
+       anatomicalElbowCost(shoulder,candidate.joint,candidate.effector,
+         side,req.outboardFiring):0);
    let bestScore=score(solved);
    if(bestScore>.04){
      const pole0=req.curatedSupport&&req.familyLow?

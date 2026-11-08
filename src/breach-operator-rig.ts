@@ -1632,7 +1632,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(!p.unarmedPreview&&handling==='ads'&&!p.down&&!p.surrender){
     const strength=p.handlingOverride?1:
       clamp(p.aimBlend??(p.aiming?1:0),0,1);
-    const eye=P(4.5,r.head.position.y+3,3.0);
+    // Use the modeled eye anchor rather than a guessed secondary point.
+    const eye=P(ANATOMY.eyeRight.x,
+      r.head.position.y+ANATOMY.eyeRight.y-ANATOMY.headRest.y,
+      ANATOMY.eyeRight.z);
     const sight=P(-1*data.lengthScale,
       p.weaponConfiguration?resolveWeaponAssembly(p.weaponConfiguration).sightHeight:2.6,0)
       .applyEuler(fit.rotation).add(fit.origin);
@@ -1641,14 +1644,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       eye.clone().sub(sight).dot(ray));
     // In the Lab the shoulder girdle and chest now help align the sight,
     // so the head should not have to crane dramatically toward the rifle.
-    const maxHeadVertical=p.handlingOverride?1.45:2.2;
-    const maxHeadLateral=p.handlingOverride?1.2:1.6;
+    const maxHeadVertical=p.handlingOverride?1.65:2.2;
+    const maxHeadLateral=p.handlingOverride?1.3:1.6;
     r.head.position.y+=clamp(nearest.y-eye.y,
       -maxHeadVertical,maxHeadVertical)*strength;
     r.head.position.z+=clamp(nearest.z-eye.z,
       -maxHeadLateral,maxHeadLateral)*strength;
   }
-  const eye=P(4.5,r.head.position.y+3,3+r.head.position.z);
+  const eye=P(ANATOMY.eyeRight.x,
+    r.head.position.y+ANATOMY.eyeRight.y-ANATOMY.headRest.y,
+    ANATOMY.eyeRight.z+r.head.position.z);
   const sight=P(-1*data.lengthScale,
     p.weaponConfiguration?resolveWeaponAssembly(p.weaponConfiguration).sightHeight:2.6,0)
     .applyEuler(fit.rotation).add(fit.origin);

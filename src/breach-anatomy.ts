@@ -57,6 +57,23 @@ export function elbowCorridor(mode:Handling,side:-1|1,
   return {x:5-tuck*.55+(side===-1?.15:0),
     y:-7.5-1.2*tuck,z:side*(8.0-.55*tuck+flare)};
 }
+/** Soft anatomical preference shared by dynamic and fallback IK.
+ * Hard armor, hand contacts and bone lengths always remain authoritative. */
+export function anatomicalElbowCost(shoulder:Anchor3,elbow:Anchor3,
+ wrist:Anchor3,side:-1|1,outboardFiring=false):number{
+ const outward=side*(elbow.z-shoulder.z);
+ const forward=elbow.x-shoulder.x;
+ const drop=shoulder.y-elbow.y;
+ const shortGap=outboardFiring&&side===1?
+   Math.max(0,Math.max(shoulder.z,wrist.z)+.65-elbow.z):0;
+ return Math.max(0,-outward-.8)*1.05+
+   Math.max(0,outward-5.8)*.65+
+   Math.max(0,-forward-1.4)*.65+
+   Math.max(0,forward-9.5)*.22+
+   Math.max(0,.65-drop)*1.45+
+   Math.max(0,drop-10)*.32+
+   shortGap*1.75;
+}
 export function anchorGap(a:Anchor3,b:Anchor3){
   return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);
 }
