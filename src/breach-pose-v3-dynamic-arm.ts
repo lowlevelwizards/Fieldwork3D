@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import {solveTwoBone,ARM_LIMITS,type LimbSolution} from './breach-ik.ts';
 import {armorElbowPole} from './breach-arm-armor-clearance.ts';
+import {anatomicalElbowCost} from './breach-anatomy.ts';
 import {evaluateArmConstraint,type PoseConstraintMode,
  type ArmConstraintReport} from './breach-pose-v3-constraints.ts';
 import {LOW_READY_CONTACT_LIMITS,type PoseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
@@ -133,10 +134,11 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
     // Outboard short-stock is a preferred VALID silhouette, never a
     // license to penetrate the plate or extend an arm. Penalize solutions
     // that fold the right elbow behind the firing hand/receiver.
-    const outboardDeficit=req.outboardFiring&&side===1?
-      Math.max(0,Math.max(shoulder.z,wrist.z)+.35-pose.joint.z):0;
+    const outboardCost=req.outboardFiring&&side===1?
+      anatomicalElbowCost(shoulder,pose.joint,pose.effector,side,true)-
+      anatomicalElbowCost(shoulder,pose.joint,pose.effector,side):0;
     const weightedQuality=report.quality+
-      difference*(req.continuityBias??0)+outboardDeficit*1.8;
+      difference*(req.continuityBias??0)+outboardCost;
     if(weightedQuality<bestScore-1e-6){
      best=pose;bestReport=report;bestScore=weightedQuality;
     }

@@ -4,6 +4,7 @@ import {activateSite,COVER,WALLS} from '../src/breach-core.ts';
 import {chooseDefense} from '../src/breach-defense.ts';
 import {assessFireLane} from '../src/breach-fire-safety.ts';
 import {muzzleAtShot} from '../src/breach-muzzle.ts';
+import {LEG_REST_RISE} from '../src/breach-leg-geometry.ts';
 import {newSession,team,enemies,toggling,stepSession}
   from '../src/breach-game.ts';
 test('152: a defender selects a reachable position with muzzle clearance',()=>{
@@ -20,12 +21,12 @@ test('152: a defender selects a reachable position with muzzle clearance',()=>{
    'clear');
  activateSite(null);
 });
-test('152: physically crouching lowers the actual gun muzzle by eight',()=>{
+test('152: crouching lowers the gun from the new standing rest height',()=>{
  const base={x:100,z:120,heading:0,weaponYaw:0,weapon:'carbine',
    aim:1,velocity:0,recoil:0};
  const standing=muzzleAtShot({...base,posture:'stand'});
  const crouching=muzzleAtShot({...base,posture:'crouch'});
- assert.ok(Math.abs(standing.y-crouching.y-8)<1e-6);
+ assert.ok(Math.abs(standing.y-crouching.y-(8+LEG_REST_RISE))<1e-6);
  assert.equal(standing.x,crouching.x);
 });
 test('152: blocked visible fire triggers a bounded defender reposition attempt',()=>{

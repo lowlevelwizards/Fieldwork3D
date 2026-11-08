@@ -16,7 +16,7 @@ const pose=(unarmedPreview,velocity=0)=>({
  turning:0,deterministic:true,unarmedPreview,
  equipment:bareLabEquipment()
 });
-test('mannequin relaxation applies only to unarmed stationary stand',()=>{
+test('every stationary standing hold shares the mannequin rest calibration',()=>{
  assert.equal(neutralMannequinHipRise(0,'stand',false,false),NEUTRAL_MANNEQUIN_HIP_RISE);
  assert.equal(neutralMannequinHipRise(13,'stand',false,false),0);
  assert.equal(neutralMannequinHipRise(0,'crouch',false,false),0);
@@ -29,10 +29,11 @@ test('mannequin relaxation applies only to unarmed stationary stand',()=>{
  const originalGap=originalChest-originalHip;
  const shoes=rig.feet.map(f=>f.shoe.position.clone());
  poseOperator(rig,pose(true),0);
- assert.ok(rig.hip.position.y>originalHip+2);
- assert.ok(Math.abs((rig.chest.position.y-originalChest)-
-  (rig.hip.position.y-originalHip))<.01,
-  'upper torso MUST rise with the pelvis instead of being swallowed by it');
+ assert.ok(originalHip>LEG_HIP_HEIGHT+2);
+ assert.ok(Math.abs(rig.hip.position.y-originalHip)<.01,
+  'armed and unarmed operators share the neutral hip');
+ assert.ok(Math.abs(rig.chest.position.y-originalChest)<.01,
+  'chest keeps the same separation for both');
  assert.ok(Math.abs((rig.chest.position.y-rig.hip.position.y)-
   originalGap)<.01,'shorts-to-torso separation is invariant');
  rig.feet.forEach((f,i)=>assert.ok(f.shoe.position.distanceTo(shoes[i])<1e-6,

@@ -7,6 +7,7 @@ import {handlingProfile,HANDLING_PROFILES}
 import {fitWeaponPose,weaponGrips} from '../src/breach-weapon-pose.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {readFileSync} from 'node:fs';
+import {LEG_REST_RISE} from '../src/breach-leg-geometry.ts';
 
 const modes=['low','high','ready','short','point','ads'];
 const weapons=['carbine','smg','rifle','shotgun'];
@@ -76,7 +77,7 @@ test('169: shoulder girdle and eye alignment contribute without moving gameplay 
  assert.ok(body.ads.profile.headDrop<body.ads.profile.shoulderLift+1);
  // The live muzzle/chest stays authoritative when no explicit Lab override.
  poseOperator(rig,{...rigPose('ads'),handlingOverride:undefined},0);
- assert.ok(Math.abs(rig.chest.position.y-26)<1e-6);
+ assert.ok(Math.abs(rig.chest.position.y-(26+LEG_REST_RISE))<1e-6);
  rig.dispose();
 });
 

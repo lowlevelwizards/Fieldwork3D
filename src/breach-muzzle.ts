@@ -7,6 +7,7 @@ import type {WeaponId} from './breach-combat.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {fitWeaponPose,handlingPose,weaponGrips} from './breach-weapon-pose.ts';
 import {equipmentStockPush} from './breach-anatomy.ts';
+import {legRestRise} from './breach-leg-geometry.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 export type MuzzleSample={x:number;y:number;z:number;yaw:number;pitch:number};
 export type MuzzleInput={x:number;z:number;heading:number;
@@ -36,7 +37,9 @@ export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
   const axis=new THREE.Vector3(1,0,0).applyEuler(fit.rotation)
     .applyAxisAngle(worldUp,-p.heading).normalize();
   local.applyAxisAngle(worldUp,-p.heading);
-  return {x:p.x+local.x,y:26+local.y-
+  // Must agree with the visible neutral chest: no render-time history.
+  return {x:p.x+local.x,y:26+legRestRise(p.velocity,
+    p.posture??'stand')+local.y-
     (p.posture==='crouch'?8:0),z:p.z+local.z,
     yaw:Math.atan2(axis.z,axis.x),
     pitch:Math.atan2(axis.y,Math.hypot(axis.x,axis.z))};

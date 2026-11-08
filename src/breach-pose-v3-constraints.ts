@@ -8,6 +8,7 @@ import {evaluateSleeveArmorContact,type PoseClearanceEnvelope,
  type SleeveContactResult}
  from './breach-pose-clearance-envelope.ts';
 import {ARM_LIMITS,type LimbSolution} from './breach-ik.ts';
+import {anatomicalElbowCost} from './breach-anatomy.ts';
 import {reloadVisualContact} from './breach-reload-visual-contact.ts';
 
 export type PoseConstraintMode='carry'|'aim'|'reload'|'interaction';
@@ -80,7 +81,9 @@ export function evaluateArmConstraint(p:ArmConstraintInput):ArmConstraintReport{
   Math.max(0,-flare-1.2)*.22+
   Math.max(0,-drop)*.48+
   Math.max(0,arm.angle-2.0)*.25+
-  contact.quality*.09+bendContinuity;
+  contact.quality*.09+bendContinuity+
+  (mode==='carry'||mode==='aim'?
+    anatomicalElbowCost(shoulder,joint,effector,side):0);
  return {valid:reasons.length===0,reasons,
   hardDepth:contact.hardDepth,softDepth:contact.softDepth,
   elbowDrop:drop,outwardFlare:flare,quality,

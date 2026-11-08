@@ -2,6 +2,7 @@
  * +X forward, +Y up, +Z firing-side shoulder. Values are in chest space. */
 import type {Handling} from './breach-weapon-pose.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {LEG_HIP_HEIGHT,LEG_REST_RISE} from './breach-leg-geometry.ts';
 import {HANDLING_PROFILES,type HandlingProfile}
   from './breach-handling-profiles.ts';
 export type Anchor3={x:number;y:number;z:number};
@@ -10,7 +11,7 @@ export const ANATOMY={
   shoulderRight:{x:1,y:4,z:7},
   eyeRight:{x:5.0,y:12.7,z:3.0},
   headRest:{x:0,y:10,z:0},
-  neutralHip:20.2,
+  neutralHip:LEG_HIP_HEIGHT+LEG_REST_RISE,
 } as const;
 /** The stock rests on the *outside* padded firing shoulder, ahead of the
  * bare mannequin's upper-pec surface. This gives fitted armor/rigs front
@@ -56,6 +57,23 @@ export function elbowCorridor(mode:Handling,side:-1|1,
     return {x:4.45,y:-4.6,z:13.0+(flare-1.10)};
   return {x:5-tuck*.55+(side===-1?.15:0),
     y:-7.5-1.2*tuck,z:side*(8.0-.55*tuck+flare)};
+}
+/** Soft anatomical preference shared by dynamic and fallback IK.
+ * Hard armor, hand contacts and bone lengths always remain authoritative. */
+export function anatomicalElbowCost(shoulder:Anchor3,elbow:Anchor3,
+ wrist:Anchor3,side:-1|1,outboardFiring=false):number{
+ const outward=side*(elbow.z-shoulder.z);
+ const forward=elbow.x-shoulder.x;
+ const drop=shoulder.y-elbow.y;
+ const shortGap=outboardFiring&&side===1?
+   Math.max(0,Math.max(shoulder.z,wrist.z)+.65-elbow.z):0;
+ return Math.max(0,-outward-.8)*1.05+
+   Math.max(0,outward-5.8)*.65+
+   Math.max(0,-forward-1.4)*.65+
+   Math.max(0,forward-9.5)*.22+
+   Math.max(0,.65-drop)*1.45+
+   Math.max(0,drop-10)*.32+
+   shortGap*1.75;
 }
 export function anchorGap(a:Anchor3,b:Anchor3){
   return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);

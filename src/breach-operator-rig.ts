@@ -5,8 +5,8 @@ import {CORE_TORSO_CONTACT} from './operator-garment-contact-surface.ts';
 import {operatorPixelTextures,type PixelSurface} from './rendering/pixel-materials.ts';
 import {canonicalRootOrientation,LEGACY_FRAME_YAW,
   createCanonicalAttachment} from './operator-axis-convention.ts';
-import {neutralMannequinHipRise,neutralMannequinWrist,
- neutralMannequinElbowPole} from './operator-mannequin-pose.ts';
+import {neutralMannequinWrist,neutralMannequinElbowPole}
+ from './operator-mannequin-pose.ts';
 import {alignSegment,solveTwoBone,LEG_LIMITS} from './breach-ik.ts';
 import {idleLifeAt} from './breach-idle-life.ts';
 import {lowReadyFamilyFit,lowReadyElbowPole}
@@ -26,7 +26,8 @@ import {bodyFromContacts} from './breach-body-motion.ts';
 import {packInertia} from './breach-gear-inertia.ts';
 import {BOOT_FOREFOOT_OFFSET} from './breach-gait-geometry.ts';
 import {operatorMotionTraits} from './breach-operator-personality.ts';
-import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_SIDE} from './breach-leg-geometry.ts';
+import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_SIDE,
+  LEG_HIP_HEIGHT,LEG_ANKLE_HEIGHT,legRestRise} from './breach-leg-geometry.ts';
 import {turnHierarchy} from './breach-turn-hierarchy.ts';
 import {contactReaction,type BashRole} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
@@ -311,7 +312,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
    for(const kitMaterial of [
      cloth,trousers,vest,packFabric,gearFabric,headCloth,headArmor
     ])enableBakedGearAO(kitMaterial);
-  hip.position.y=20.2;
+  hip.position.y=LEG_HIP_HEIGHT;
   block(hip,0,0,0,8,5,12,trousers);
   chest.position.y=26;
   const c=CORE_TORSO_CONTACT;
@@ -1010,7 +1011,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Fixed-step recorded acceleration replaces render-rate velocity deltas.
   const braking=clamp(-(p.acceleration??0)/180,-1,1);
   const crouch=p.posture==='crouch'?8:0;
-  r.hip.position.y=20.2-crouch;
+  r.hip.position.y=LEG_HIP_HEIGHT-crouch;
   r.chest.position.y=26-crouch;
   // Low traversal carries a rearward pelvis and counterbalanced thorax.
   r.hip.position.x=p.posture==='crouch'?-0.85:0;
@@ -1105,6 +1106,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const motion=bodyFromContacts({velocity:p.down?0:physicalSpeed,
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
+    down:p.down,surrender:p.surrender,
     hybridSupport:p.hybridSupport,acceleration:p.acceleration,
     seconds:p.seconds,personalPhase:r.personality.phase,
     personalLooseness:r.personality.looseness,
@@ -1123,23 +1125,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // not a longer limb or a shoe teleported away from its world anchor.
   // Build 184: the balance solver already accounts for reachable hip
   // height. Do not apply another independent stance-radius correction.
-  const neutralHip=20.2-crouch;
-  // Keep BOTH pelvis and chest together when straightening the Lab-only
-  // mannequin. Raising only the pelvis pushes shorts/belt into the torso.
-  // This lift is cosmetic to the no-gun preview: grounded feet, gait and
-  // normal battle skeleton stay unchanged.
-  // Armed low-ready's cosmetic lift must use the SAME sampled phase as
-  // chest/arms. Toggling the named pose used to teleport the pelvis,
-  // producing an apparent leg snap while the torso interpolated.
-  const lowTarget=p.handlingOverride==='low'&&!p.aiming&&!p.firing?1:0;
-  const lowSource=activeTransition?.from==='low'?1:0;
-  const lowLiftWeight=authoredLabSwitch&&activeTransition?
-    lowSource+(lowTarget-lowSource)*
-      lowReadyBlendPhase(activeTransition.alpha):lowTarget;
-  const mannequinLift=neutralMannequinHipRise(physicalSpeed,p.posture,
-    p.down,p.surrender)*(p.unarmedPreview?1:.83*lowLiftWeight);
-  // Armed Studio low-ready borrows the upright reference's hip/torso lift,
-  // but leaves ALL live gameplay/replay contacts and ballistics unchanged.
+  const neutralHip=LEG_HIP_HEIGHT-crouch;
+  // Stage 1: one standing hip/leg calibration for all weapon holds AND the
+  // unarmed mannequin. The lift applies to pelvis and chest together;
+  // it never moves planted feet or stretches the two-bone skeleton.
+  // Shot-time muzzle elevation consumes this same pure rise.
+  const mannequinLift=legRestRise(physicalSpeed,p.posture,
+    p.down,p.surrender);
   const stanceHip=neutralHip+motion.pelvisY-bash.brace;
   r.hip.position.y=Math.max(
     17.35-crouch-buckle*8-kneel*9,
@@ -1234,12 +1226,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const hipLocal=scratch.hips[i].set(0,r.hip.position.y,
       r.hip.position.z+sign*LEG_HIP_SIDE);
     const anchor=target.position;
-    foot.anchor.set(anchor.x,1.45,anchor.y);
+    foot.anchor.set(anchor.x,LEG_ANKLE_HEIGHT,anchor.y);
     // Replay seeks must never inherit a pole fallback from another time.
     if(p.deterministic)foot.bend.set(1,0,0);
     foot.swinging=!target.contact;
     const targetWorld=scratch.targets[i].set(target.position.x,
-      1.45+target.height,target.position.y);
+      LEG_ANKLE_HEIGHT+target.height,target.position.y);
     if(i===1&&kick){
       const motion=smooth((kick.progress-.30)/.23)*
         (1-smooth((kick.progress-.67)/.25));
@@ -1640,7 +1632,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(!p.unarmedPreview&&handling==='ads'&&!p.down&&!p.surrender){
     const strength=p.handlingOverride?1:
       clamp(p.aimBlend??(p.aiming?1:0),0,1);
-    const eye=P(4.5,r.head.position.y+3,3.0);
+    // Use the modeled eye anchor rather than a guessed secondary point.
+    const eye=P(ANATOMY.eyeRight.x,
+      r.head.position.y+ANATOMY.eyeRight.y-ANATOMY.headRest.y,
+      ANATOMY.eyeRight.z);
     const sight=P(-1*data.lengthScale,
       p.weaponConfiguration?resolveWeaponAssembly(p.weaponConfiguration).sightHeight:2.6,0)
       .applyEuler(fit.rotation).add(fit.origin);
@@ -1649,14 +1644,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       eye.clone().sub(sight).dot(ray));
     // In the Lab the shoulder girdle and chest now help align the sight,
     // so the head should not have to crane dramatically toward the rifle.
-    const maxHeadVertical=p.handlingOverride?1.45:2.2;
-    const maxHeadLateral=p.handlingOverride?1.2:1.6;
+    const maxHeadVertical=p.handlingOverride?1.65:2.2;
+    const maxHeadLateral=p.handlingOverride?1.3:1.6;
     r.head.position.y+=clamp(nearest.y-eye.y,
       -maxHeadVertical,maxHeadVertical)*strength;
     r.head.position.z+=clamp(nearest.z-eye.z,
       -maxHeadLateral,maxHeadLateral)*strength;
   }
-  const eye=P(4.5,r.head.position.y+3,3+r.head.position.z);
+  const eye=P(ANATOMY.eyeRight.x,
+    r.head.position.y+ANATOMY.eyeRight.y-ANATOMY.headRest.y,
+    ANATOMY.eyeRight.z+r.head.position.z);
   const sight=P(-1*data.lengthScale,
     p.weaponConfiguration?resolveWeaponAssembly(p.weaponConfiguration).sightHeight:2.6,0)
     .applyEuler(fit.rotation).add(fit.origin);

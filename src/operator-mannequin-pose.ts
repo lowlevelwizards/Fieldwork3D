@@ -1,17 +1,12 @@
-/** Stage 1B mannequin-only posing. Combat pose/movement/footstep targets
- * remain authoritative. This gives the unarmed Lab a true neutral reference
- * without moving contacts, changing limb lengths or modifying IK solvers.
- * Coordinates are legacy chest +X forward; renderer adapter is unchanged.
+/** Unarmed reference wrists and elbows with a shared operator rest hip.
+ * Footstep contacts and the existing two-bone solver remain authoritative.
+ * Coordinates are legacy chest +X forward.
  */
 import * as THREE from 'three';
-export const NEUTRAL_MANNEQUIN_HIP_RISE=3.05;
-export function neutralMannequinHipRise(speed:number,posture:'stand'|'crouch',
- down:boolean,surrender:boolean):number{
- if(posture!=='stand'||down||surrender)return 0;
- // Only a motionless/very slow inspection stance gets the high hip.
- // Keep real locomotion leg reach and all planted step targets untouched.
- return NEUTRAL_MANNEQUIN_HIP_RISE*Math.max(0,1-Math.max(0,speed)/12);
-}
+import {LEG_REST_RISE,legRestRise} from './breach-leg-geometry.ts';
+/** Compatibility wrapper for the now-shared operator rest-pose calibration. */
+export const NEUTRAL_MANNEQUIN_HIP_RISE=LEG_REST_RISE;
+export const neutralMannequinHipRise=legRestRise;
 export function neutralMannequinWrist(side:-1|1):THREE.Vector3{
  // Shoulder is (1,4,side*7): near full arm extension, mild wrist offset
  // and no 'gripping an invisible rifle' forward reach.

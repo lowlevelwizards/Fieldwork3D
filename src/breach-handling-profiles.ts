@@ -46,7 +46,7 @@ export const HANDLING_PROFILES:Record<Handling,HandlingProfile>={
     supportShoulderForward:.60,firingShoulderForward:.40,
     shoulderInward:.08},
   ads:{pitch:0,stockY:5.92,preferredBack:.40,
-    torsoLean:.078,torsoTurn:.012,headPitch:-.09,headDrop:.87,
+    torsoLean:.078,torsoTurn:.012,headPitch:-.09,headDrop:.74,
     shoulderLift:.57,pelvisShift:.27,elbowTuck:.24,stanceCompression:.48,
     supportElbowFlare:.70,firingElbowFlare:.82,
     supportShoulderForward:.68,firingShoulderForward:.53,
