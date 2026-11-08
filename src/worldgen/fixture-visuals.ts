@@ -9,10 +9,8 @@ import {fixturePixelSurface} from './pixel-surface-selection.ts';
 import type {PixelSurface} from '../rendering/pixel-recipes.ts';
 import {renderDetailedFixture} from './detailed-fixture-visuals.ts';
 import {renderCharacterFixture} from './asset-character-visuals.ts';
+import {renderFoliageCardFixture} from './foliage-card-visuals.ts';
 import {conditionColor,conditionRoughness} from './asset-condition.ts';
-/** Shared faceted primitives prevent new geometry allocations for every tree. */
-const FOLIAGE_LOBE_GEOMETRY=new THREE.IcosahedronGeometry(1,0);
-const FOLIAGE_CONE_GEOMETRY=new THREE.ConeGeometry(1,1,7);
 export type FixtureVisualContext={
  box:(parent:THREE.Object3D,x:number,y:number,z:number,
    w:number,h:number,d:number,material:THREE.Material,cast?:boolean)=>THREE.Mesh;
@@ -290,80 +288,9 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         for(const sx of [-1,1])ctx.box(group,c.x+sx*(w*.43),
           (asset?.height??37)/2,c.y,5,asset?.height??37,6,metal);
         ctx.box(group,c.x,9,c.y,w*.8,4,d*.55,wood);
-      }else if(['hedge','bush','tree','plant','tree-broadleaf',
-        'tree-conifer','tree-scrub','shrub-round','shrub-tall'].includes(fixture)){
-        const leaves=ctx.solid(fixture==='tree-conifer'?0x425b4d:
-          fixture==='tree-scrub'?0x6b7955:
-          fixture==='shrub-tall'?0x596a50:0x526e51,.9,'foliage');
-        const bark=ctx.solid(0x645846,.94,'wood');
-        const isTree=fixture==='tree'||fixture.startsWith('tree-');
-        const tall=asset?.height??(isTree?72:22);
-        const blob=(x:number,y:number,z:number,r:number,scaleY=.83)=>{
-          const crown=new THREE.Mesh(FOLIAGE_LOBE_GEOMETRY,leaves);
-          crown.position.set(x,y,z);
-          crown.scale.set(r,Math.max(2,r*scaleY),r*.88);
-          crown.castShadow=true;group.add(crown);
-        };
-        const branch=(x:number,y:number,z:number,dx:number,dy:number,dz:number)=>{
-          const length=Math.hypot(dx,dy,dz);
-          const part=ctx.box(group,x+dx*.5,y+dy*.5,z+dz*.5,
-            Math.max(2,w*.055),length,Math.max(2,d*.055),bark);
-          part.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),
-            new THREE.Vector3(dx,dy,dz).normalize());
-        };
-        if(isTree){
-          const scrub=fixture==='tree-scrub';
-          const conifer=fixture==='tree-conifer';
-          const n=(Math.abs(i)%5-2)*.04;
-          const trunkHeight=tall*(scrub?.48:conifer?.67:.61);
-          // Trunk flare and a readable branching hierarchy anchor the foliage.
-          ctx.box(group,c.x,trunkHeight*.48,c.y,
-            Math.min(8,w*.15),trunkHeight,Math.min(8,d*.15),bark);
-          ctx.box(group,c.x,3,c.y,Math.min(12,w*.24),6,Math.min(12,d*.24),bark);
-          if(conifer){
-            for(let layer=0;layer<3;layer++){
-              const radius=Math.min(w,d)*(.43-layer*.09);
-              const crown=new THREE.Mesh(FOLIAGE_CONE_GEOMETRY,leaves);
-              crown.scale.set(radius,tall*(.38-layer*.035),radius*.91);
-              crown.position.set(c.x+(layer%2?1:-1)*w*.045,
-                tall*(.51+layer*.145),c.y+(layer-1)*d*.028);
-              crown.castShadow=true;group.add(crown);
-            }
-            blob(c.x,tall*.86,c.y,Math.min(w,d)*.12,1.4);
-          }else if(scrub){
-            // A crooked, low tree: lateral load, not a scaled broadleaf ball.
-            branch(c.x,trunkHeight*.72,c.y,-w*.23,tall*.09,d*.06);
-            branch(c.x,trunkHeight*.64,c.y,w*.24,tall*.10,-d*.12);
-            blob(c.x-w*.23,tall*.55,c.y+d*.05,w*.23,.70);
-            blob(c.x+w*.21,tall*.58,c.y-d*.13,w*.25,.75);
-            blob(c.x+w*n,tall*.73,c.y,w*.19,.72);
-          }else{
-            branch(c.x,trunkHeight*.78,c.y,-w*.25,tall*.16,d*.06);
-            branch(c.x,trunkHeight*.73,c.y,w*.21,tall*.20,-d*.08);
-            blob(c.x-w*.22,tall*.72,c.y+d*.07,Math.min(w,d)*.28,1.0);
-            blob(c.x+w*.20,tall*.76,c.y-d*.09,Math.min(w,d)*.32,.86);
-            blob(c.x+w*n,tall*.89,c.y,Math.min(w,d)*.31,.82);
-            if(fixture==='tree-broadleaf')
-              blob(c.x-w*.06,tall*.97,c.y-d*.09,Math.min(w,d)*.20,.70);
-          }
-        }else if(fixture==='hedge'){
-          ctx.box(group,c.x,tall*.38,c.y,w*.96,tall*.55,d*.65,leaves);
-          for(const sx of [-.34,0,.34])
-            blob(c.x+w*sx,tall*.70,c.y,Math.min(w*.18,d*.40));
-        }else if(fixture==='plant'){
-          const pot=ctx.solid(0x927665);
-          ctx.box(group,c.x,5,c.y,w*.45,10,d*.48,pot);
-          for(const sx of [-.19,.18])
-            blob(c.x+w*sx,15,c.y+d*sx,Math.min(w,d)*.23);
-        }else{
-          const round=fixture==='shrub-round';
-          const height=round?Math.min(19,tall):tall;
-          for(const sx of [-.24,.05,.29]){
-            blob(c.x+w*sx,height*(round?.60:.70),
-              c.y+d*(sx*.60),Math.min(w,d)*(round?.34:.28));
-          }
-          if(!round)blob(c.x,height*.91,c.y,Math.min(w,d)*.24);
-        }
+      }else if(renderFoliageCardFixture(group,c,i,visualCtx)){
+        // Stable crossed alpha-cutout cards. Geometry/collisions still come
+        // exclusively from the existing physical Obstacle footprint.
       }else if(['mailbox','trash-bin','bollard','hydrant','utility-cabinet',
         'parking-block','parking-sign','street-lamp','bike-rack'].includes(fixture)){
         const enamel=ctx.solid(0x777f79,.72,'metal');
