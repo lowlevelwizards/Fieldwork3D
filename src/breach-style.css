@@ -2430,3 +2430,24 @@ body.replaying #replayTopHud *{-webkit-tap-highlight-color:transparent}
   .replay-panel:has(.replay-drawer:not([hidden])){z-index:12}
   .replay-panel .replay-drawer{right:59px}
 }
+
+
+/* Landscape: stack only the necessary compact rows; old two-column replay
+ * grid kept an empty second column and stretched the dock by ~20px.
+ * Keep the drawer below the top toolbar, never off-screen. */
+@media(max-height:470px) and (min-width:600px){
+  .replay-panel{display:grid;grid-template-columns:minmax(0,1fr);
+    row-gap:0;column-gap:0;padding:3px 7px}
+  .replay-head,.replay-timeline,.replay-actions,
+  .replay-utility,.replay-action-strip{
+    grid-column:1/-1;grid-row:auto;margin-top:0;margin-bottom:0}
+  .replay-head{min-height:22px}
+  .replay-timeline{height:19px}
+  .replay-panel .replay-timeline input[type=range]{height:14px;margin:3px 0 0}
+  .replay-actions button,.replay-actions #replayPlay{min-height:35px!important}
+  .replay-utility{min-height:26px}
+  .replay-utility #replayMore,.replay-utility #replayFeedToggle,
+  .replay-utility #replayShareToggle{min-height:26px!important}
+  .replay-action-strip{min-height:20px;max-height:22px;padding:2px 4px}
+  .replay-drawer{max-height:min(37dvh,142px,calc(100dvh - 205px))}
+}
