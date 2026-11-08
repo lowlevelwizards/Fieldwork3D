@@ -81,12 +81,11 @@ function shotClass(subjects:readonly DirectorActor[],
   const doors=directorIntentGroup(ctx.intents);
   const matching=ctx.intents.filter(i=>subjects.some(a=>a.id===i.actorId));
   if(doors&&doors.count>=2){
-    if(matching.some(i=>i.door?.id===doors.door.id&&i.kind==='breach'))
-      return 'breach';
-    if(matching.some(i=>i.door?.id===doors.door.id&&i.kind==='entry'))
-      return 'entry';
-    if(matching.filter(i=>i.door?.id===doors.door.id&&
-      i.door.distance<42).length>=2)return 'stack';
+    const front=matching.filter(i=>i.door?.id===doors.door.id&&
+      i.door.approachSide===doors.door.approachSide);
+    if(front.some(i=>i.kind==='breach'))return 'breach';
+    if(front.some(i=>i.kind==='entry'))return 'entry';
+    if(front.filter(i=>i.door!.distance<42).length>=2)return 'stack';
     return 'approach';
   }
   if(matching.some(i=>i.kind==='overwatch'))return 'overwatch';
