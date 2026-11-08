@@ -4,6 +4,8 @@
  * including head/feet envelope, within the selected usable viewport.
  */
 import * as THREE from 'three';
+import type {DirectorActionLine} from './breach-replay-director-action.ts';
+
 export type DirectorPoint={x:number;y:number};
 /** NDC bounds of the truly visible film stage (headers and playback dock
  * are excluded). The defaults remain symmetric for non-replay callers. */
@@ -300,4 +302,33 @@ export function directorForegroundOccupancy(
       Math.min(1,coveredActor));
   }
   return result;
+}
+
+
+/** A bounded visual bonus for a RECORDED exchange: both the firing
+ * muzzle and impact side should be photographically readable. Never
+ * evaluates unknown actors, creates shots, or overrides legal geometry. */
+export function directorProjectedActionVisibility(
+  anchor:DirectorPoint,focus:DirectorPoint,
+  lines:readonly DirectorActionLine[],
+  lens:'ortho'|'wide',aspect:number,baseSpan:number,zoom:number,fov:number,
+  safeFrame?:DirectorSafeFrame
+):number{
+  if(!lines.length)return 0;
+  const project=directorProjector(anchor,focus,aspect,baseSpan,zoom,fov,lens);
+  const bounds=safeFrame??{left:-.78,right:.78,top:.76,bottom:-.76};
+  const fits=(x:number,y:number,z:number)=>{
+    const p=project.project(x,y,z);
+    return p.z>=-1&&p.z<=1&&p.x>=bounds.left&&p.x<=bounds.right&&
+      p.y>=bounds.bottom&&p.y<=bounds.top;
+  };
+  let best=0;
+  for(const line of lines){
+    const muzzle=fits(line.start.x,20,line.start.y);
+    const impact=fits(line.end.x,12,line.end.y);
+    const value=muzzle&&impact?(line.hit?1:.85):
+      muzzle||impact?.22:0;
+    best=Math.max(best,value);
+  }
+  return best;
 }

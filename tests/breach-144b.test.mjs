@@ -6,7 +6,13 @@ test('144B: 2D blood is painted beneath architecture and visibility fog',()=>{
   const main=readFileSync(new URL('breach-main.ts',root),'utf8');
   const render=main.slice(main.indexOf('function render(){'),
     main.indexOf('function useSelectedGround('));
-  assert.match(render,/furniture\(\);renderGroundMarks\(\);architecture\(\);fog\(\)/);
+  // Lighting/weapon-light passes may live between a stain and a wall.
+  // Assert painter order instead of brittle adjacent-call formatting.
+  const floor=render.indexOf('renderGroundMarks();');
+  const walls=render.indexOf('architecture();');
+  const fog=render.indexOf('fog();');
+  assert.ok(floor>=0&&walls>floor&&fog>walls,
+    '2D floor marks must remain below walls and visibility fog');
   const contacts=main.slice(main.indexOf('function contacts(){'),
     main.indexOf('function renderGroundMarks(){'));
   assert.doesNotMatch(contacts,/for\(const mark of state\.impactMarks\)/);

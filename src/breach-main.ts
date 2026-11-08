@@ -99,6 +99,8 @@ import {ReplayDirectorStoryboard}
   from './breach-replay-director-storyboard.ts';
 import {directorRecordedContact}
   from './breach-replay-director-contact.ts';
+import {directorRecentAction}
+  from './breach-replay-director-action.ts';
 import {directorReplaySafeFrame}
   from './breach-replay-director-projection.ts';
 import {buildDirectorTempoEdits,directorTempoJump,
@@ -3910,21 +3912,17 @@ function renderProjectedPlans(){
     if(replaying?!replayActorDisclosed(state,hostile,replayDisclosure()):
       !liveVisibility(state,hostile.p))continue;
     const ground=worldToScreen(hostile.p,1);
-    if(hostile.health<=0){
-      // The actual grounded body and restrained blood mark communicate DOWN.
-      draw.fillStyle='rgba(125,48,43,.52)';draw.beginPath();
-      draw.ellipse(ground.x,ground.y,11,6,0,0,Math.PI*2);draw.fill();
-    }else if(!replaying||replayContactMarkers){
+    // Do not paint projected blood/bodies over the finished 3D scene:
+    // Canvas2D cannot depth-test against walls, packs or door leaves.
+    // The grounded miniature and actual world-space floor stain carry DOWN.
+    if(hostile.health>0&&(!replaying||replayContactMarkers)){
       draw.strokeStyle='#e2a18b';draw.lineWidth=1.6;
       draw.beginPath();draw.arc(ground.x,ground.y,12,0,Math.PI*2);draw.stroke();
     }
   }
   for(const member of team(state)){
     const pawn=worldToScreen(member.p,33);
-    if(member.health<=0){
-      draw.fillStyle='rgba(129,54,48,.35)';draw.beginPath();
-      draw.ellipse(pawn.x,pawn.y+11,9,4,0,0,2*Math.PI);draw.fill();
-    }else if(member.health===1){
+    if(member.health===1){
       draw.fillStyle='#e6a485';draw.fillRect(pawn.x-10,pawn.y+1,20,3);
     }
   }
@@ -4861,6 +4859,8 @@ function rebuildReplayEventIndex():void{
         intents,upcoming:directorFutureAt(t,replayDirectorFuture),
         beat,contact,actionPair:canShowPair&&beat?
           directorFilmPair(beat,frame):null,
+        actionLines:directorRecentAction(recorder.ballistics.between(
+          Math.max(0,t-.72),t),t,historicalShotVisible),
         entry:directorFirstEntryAt(t,replayDirectorEntries,2.2,1.4),
         doors:frame.doors,cover:frame.coverState,
         usableWidth:cssW<500?.75:.85,
