@@ -133,7 +133,8 @@ test('R7.15 soft equipment is included without turning lenses into outlines',()=
  const head=read('src/operator-wardrobe-head-visuals.ts');
  const gear=read('src/operator-wardrobe-gear-visuals.ts');
  const kit=read('src/operator-visual-kit.ts');
- assert.match(rig,/headCloth,headArmor/);
+ assert.match(rig,/headArmor\.userData\.fieldworkStudioSoftGear=true/);
+ assert.doesNotMatch(rig,/headCloth,headArmor\]/);
  assert.match(head,/fieldworkStudioSoftGear=true/);
  assert.match(gear,/armorFabric,gearFabric,packFabric,trim/);
  assert.match(kit,/\[trim,seam,patchMaterial\]/);
