@@ -96,7 +96,7 @@ export const RIG_POCKET_CONSTRUCTION:Readonly<Record<string,RigPocketConstructio
 export const RIG_MAGAZINE_POUCH_PUFF=1.00;
 const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  x:number,y:number,z:number,h:number,d:number,depth=1.10,
- isMagazinePouch=true)=>{
+ isMagazinePouch=true,yaw=0)=>{
  const style=g.name.replace('authored-rig-','');
  const construction=RIG_POCKET_CONSTRUCTION[style]??'flap-snap';
  const extra=rigVisualBudget(style).projection;
@@ -108,7 +108,7 @@ const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
   // acquire a magazine socket.
   const cells=(g.userData.magazinePouchCells??=[]) as MagazinePouchCell[];
   cells.push({x:x+(extra+RIG_MAGAZINE_POUCH_PUFF)*.5,
-   y,z,height:h,width:span,depth:depth+extra+RIG_MAGAZINE_POUCH_PUFF});
+   y,z,height:h,width:span,depth:depth+extra+RIG_MAGAZINE_POUCH_PUFF,yaw});
  }
  // Body and its flap are ONE logical self-shadowing pouch, even though
  // each cuboid is a separate pre-merge geometric primitive.
@@ -160,18 +160,18 @@ const NOMINAL_RIG_MAGAZINE_MOUTHS:Readonly<
   [9.48,-.28,-2.73,2.12],[9.48,-.28,0,2.12],[9.48,-.28,2.73,2.12]
  ],
  'micro-rig':[
-  [9.15,-1.10,-1.65,2.36],[9.15,-1.10,1.65,2.36]
+  [9.15,-.34,-1.65,2.36],[9.15,-.34,1.65,2.36]
  ],
  'light-rig':[-4.6,-1.5,1.5,4.6].map(z=>[9.20,.09,z,2.38] as const),
  'chicom-rig':[-3.12,0,3.12].map(z=>[9.37,.45,z,2.34] as const),
  'bandolier':[0,1,2,3].map(i=>
-  [8.94,5.01-i*1.85,3.85-i*1.925,1.65] as const),
+  [9.22,5.32-i*1.85,3.85-i*1.925,1.65] as const),
  'split-front':[-5.64,-2.92,2.92,5.64].map(z=>
   [9.65,-.19,z,1.93] as const),
  'full-chest':[-4.60,-1.5,1.5,4.60].map(z=>
   [9.59,-.92,z,2.18] as const),
  'lbv':[-1,1].flatMap(s=>[1.28,-2.56].map(y=>
-  [8.87,y+1.51,s*4.20,2.75] as const)),
+  [8.87,y+1.725,s*4.20,2.75] as const)),
  'chicom-utility':[],
  'sadf-webbing':[-5.85,-3.25,3.25,5.85].map(z=>
   [8.92,.31,z,2.17] as const),
@@ -509,7 +509,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   const g=make('chest-placard');
   box(g,fabric,8.18,-2.05,0,.78,5.05,9.10);
   for(const z of [-2.73,0,2.73])
-   pouch(g,pocketFabric,pocketFabric,8.74,-2.20,z,3.85,2.45,1.08);
+   pouch(g,pocketFabric,pocketFabric,8.74,-2.20,z,3.85,2.55,1.08);
   for(const s of [-1,1])
    box(g,dark,7.95,1.2,s*3.65,.40,2.65,.90);
   // Keep the legacy mode marker for existing wardrobe/UI consumers,
@@ -527,7 +527,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   // Two substantial front cells and a small high organizer distinguish
   // the complete micro harness from the flat three-cell carrier placard.
   for(const z of [-1.65,1.65])
-   pouch(g,pocketFabric,pocketFabric,8.54,-2.14,z,3.22,2.80,.91);
+   pouch(g,pocketFabric,pocketFabric,8.54,-2.14,z,3.60,2.80,.91);
   box(g,webbing,8.35,.06,0,.29,.70,5.36);
   for(const s of [-1,1])
    pouch(g,pocketFabric,pocketFabric,7.75,-2.62,s*4.60,2.26,1.52,.77,false);
@@ -551,7 +551,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   for(const s of [-1,1]){
    box(g,fabric,8.12,-2.08,s*4.48,.78,6.30,5.50);
    for(const p of [3.15,5.92])
-    pouch(g,pocketFabric,pocketFabric,8.77,-2.22,s*p,4.35,2.24,1.11);
+    pouch(g,pocketFabric,pocketFabric,8.77,-2.22,s*p,4.35,2.55,1.11);
    box(g,webbing,8.64,-1.95,s*1.35,.37,4.72,.44);
   }
   // Only two chunky closure tabs bridge toward the opening. The deep
@@ -572,7 +572,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    const half=new THREE.Group();half.position.z=s*3.25;g.add(half);
    fittedArmorBag(half,fabric,7.82,1,3.55,-5.80,4.02,.72,.72);
    for(const y of [1.28,-2.56,-5.35])
-    pouch(g,pocketFabric,pocketFabric,8.12,y,s*4.20,3.02,3.38,.99,
+    pouch(g,pocketFabric,pocketFabric,8.12,y,s*4.20,3.45,3.38,.99,
      y!==-5.35);
    // Recognizable upper yoke joins the tapered vest panel, without
    // closing the open central sternum.
@@ -667,7 +667,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    const t=i/4,z=3.85-t*7.7,y=3.6-t*7.4;
    // Four magazine positions plus a deliberate fifth utility cell.
    pouch(g,pocketFabric,pocketFabric,8.20,y,z,
-     i<4?3.05:2.65,1.76,.78,i<4);
+     i<4?3.45:2.65,1.76,i<4?1.40:.78,i<4,Math.PI/2);
   }
  }
  if(!onlyStyle||onlyStyle==='sadf-webbing'){
