@@ -175,6 +175,8 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
 /** Gameplay window state never mutates the seed-derived architectural plan. */
 export type WindowState=WindowOpening&{
  open:boolean;integrity:number;shattered:boolean;operable:boolean;
+ /** Simulation time of first complete fracture; copied into replay frames. */
+ shatteredAt?:number;
 };
 export function initializeWindows(openings:readonly WindowOpening[]):WindowState[]{
  return openings.map(w=>({...w,open:false,integrity:2,

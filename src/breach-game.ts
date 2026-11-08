@@ -3806,6 +3806,8 @@ function shatterStruckWindows(s:Session,paneHits:readonly number[],force:number)
   if(!window||!damageWindow(window,force))continue;
   s.objectRevision++;
   hear(s,{x:window.x,y:window.y},170,'glass');
+  if(window.shattered&&window.shatteredAt===undefined)
+    window.shatteredAt=s.seconds;
   if(window.shattered)battleEvent(s,'impact',null,
     {x:window.x,y:window.y},'GLASS SHATTERED');
  }
