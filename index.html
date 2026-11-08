@@ -361,9 +361,11 @@
       </div>
       <div id="replayActorControls" class="replay-actor-controls" hidden
         aria-label="Inspect operator">
-        <label for="replayInspectActor">OPERATOR</label>
-        <select id="replayInspectActor" aria-label="Choose an operator to inspect"></select>
-        <button id="replayInspectFollow" type="button">FOLLOW</button>
+        <select id="replayInspectActor" hidden aria-hidden="true"
+          aria-label="Current operator for investigation"></select>
+        <div id="replayInspectActorButtons" class="replay-actor-choices"
+          role="group" aria-label="Tap an operator to follow"></div>
+        <button id="replayInspectFollow" type="button" hidden aria-label="Follow selected operator">FOLLOW</button>
         <button id="replayInspectMovement" type="button">PLAN / PATH</button>
       </div>
       <details class="replay-group" data-replay-group="view">
