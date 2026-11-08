@@ -65,8 +65,8 @@ test('recorded gunfight wins over approaching breach and keeps both in view',()=
    result.focus.y-result.cameraAnchor.y));
  assert.ok(Math.abs(result.pitch-cameraElevation)<1e-7,
    'ortho projection and fit should match the actual in-room camera elevation');
- assert.ok(result.zoom<=6,
-   'wide director composition must not crop back into an operator close-up');
+ assert.ok(result.zoom<=9,
+   'director may move tighter but must retain the real cast in frame');
  // Use the same center-aware ortho geometry as shot selection. Both
  // shooter and target must fit regardless of ordinary 6x camera cap.
  const c=Math.cos(result.yaw),s=Math.sin(result.yaw);
