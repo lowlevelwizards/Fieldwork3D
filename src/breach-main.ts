@@ -7369,6 +7369,7 @@ function insertAtRouteLine(screen:Pt,pointerKind:string):boolean{
 }
 function releasePointer(e:PointerEvent,cancelled=false){
   const p=activePointers.get(e.pointerId);if(!p)return;
+  if(cancelled&&p.dragCommitted)restorePointerSelection(p);
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   const pt=pointerWorld(e);
   // During replay, a deliberate single tap on a friendly miniature
@@ -7405,19 +7406,22 @@ function releasePointer(e:PointerEvent,cancelled=false){
       if(pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)useSelectedGround(pt);
       else showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
     }else if(p.mode==='activeWatch'){
-      const accepted=!p.moved||retargetActiveWatch(state,selected,pt);
+      adoptPointerOwner(p);
+      const accepted=!p.dragCommitted||retargetActiveWatch(state,selected,pt);
       if(!accepted)rejectAt(pt,'WATCH TARGET TOO CLOSE OR INVALID');
       selectedNode=null;selectedActiveWatch=true;doorFocusId=null;
-      if(accepted)tacticalFeedback.emit(p.moved?'command':'select',pt,
-        p.moved?'WATCH RETARGETED':undefined);
+      if(accepted)tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
+        p.dragCommitted?'WATCH RETARGETED':undefined);
     }else if(p.mode==='watchTarget'&&p.nodeId!==null){
-      const accepted=!p.moved||planWatch(state,selected,pt,p.nodeId);
+      adoptPointerOwner(p);
+      const accepted=!p.dragCommitted||planWatch(state,selected,pt,p.nodeId);
       if(!accepted)rejectAt(pt,'WATCH TARGET UNAVAILABLE');
       selectedNode=p.nodeId;doorFocusId=null;
-      if(accepted)tacticalFeedback.emit(p.moved?'command':'select',pt,
-        p.moved?'WATCH UPDATED':undefined);
+      if(accepted)tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
+        p.dragCommitted?'WATCH UPDATED':undefined);
     }else if(p.mode==='node'&&p.nodeId!==null){
-      if(p.moved){
+      adoptPointerOwner(p);
+      if(p.dragCommitted){
         const moving=uid(selected)?.plan.find(node=>node.id===p.nodeId);
         const moved=moving?.kind==='flash'?
           moveFlashTarget(state,selected,p.nodeId,pt):
@@ -7477,38 +7481,40 @@ function releasePointer(e:PointerEvent,cancelled=false){
           (watchKept?' · WATCH KEPT':''),3200);
       }
       doorFocusId=null;
-    }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
-      pt.x<=W&&pt.y<=H){
-      const selectedActor=uid(selected);
-      // Out-of-reach door geometry must NOT steal a ground tap intended
-      // to author a waypoint beside the door. Once the planned endpoint
-      // is within reach, the physical door becomes selectable.
-      const tap={x:e.clientX,y:e.clientY};
-      const door=state.doors.find(d=>{
-        if(!doorKnown(state.intel,d.id)||!selectedActor||
-          ![selectedActor.p,finalPoint(selectedActor)].some(p=>
-            doorReachable(p,d)))return false;
-        const fraction=liveVisibility(state,doorCenter(d))?
-          (d.openFraction??(d.open?1:0)):
-          (state.intel.doorMemory.get(d.id)??0);
-        const leaf=doorLeafSegment({...d,openFraction:fraction});
-        const midpoint={x:(leaf.a.x+leaf.b.x)/2,
-          y:(leaf.a.y+leaf.b.y)/2};
-        return [doorCenter(d),midpoint,leaf.b].some(p=>
-          distance(worldToScreen(p,10),tap)<tacticalHitProfile(e.pointerType).reachableDoor||
-          distance(worldToScreen(p,38),tap)<tacticalHitProfile(e.pointerType).reachableDoor);
-      });
-      if(door&&!looking&&!flashMode&&!firePlacement){
-        doorFocusId=door.id;selectedNode=null;
-        doorMenuDismissedId=null;
-        tacticalFeedback.emit('select',doorCenter(door));
-        teach('door-selected','Door selected. Choose OPEN, KICK or another available action.',4700);
-      }else if(!looking&&!flashMode&&!firePlacement&&insertAtRouteLine({x:e.clientX,y:e.clientY},e.pointerType)){
-        // Insert-and-select: contextual LOOK/WATCH/WAIT/DELETE are immediately
-        // available on the newly authored waypoint.
-      }else{
+    }else if(!p.moved&&pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H){
+      // The hit was captured at pointer-down, but no selection/order was
+      // committed before the gesture resolved. Camera gestures never reach
+      // this branch and a tap can produce only one semantic outcome.
+      const pick=p.pick;
+      if(pick?.kind==='operator'&&pick.owner){
+        selectUnit(pick.owner);
+        tacticalFeedback.emit('select',uid(pick.owner)?.p??pt);
+      }else if(pick?.kind==='door'&&pick.doorId){
+        const door=state.doors.find(d=>d.id===pick.doorId&&
+          doorKnown(state.intel,d.id));
+        const actor=uid(selected),node=selectedPlanNode();
+        const origins=actor?(node?[node.p]:[finalPoint(actor),actor.p]):[];
+        if(door&&origins.some(origin=>doorReachable(origin,door))){
+          doorFocusId=door.id;selectedNode=null;selectedActiveWatch=false;
+          doorMenuDismissedId=null;
+          tacticalFeedback.emit('select',doorCenter(door));
+          teach('door-selected',
+            'Door selected. Choose OPEN, KICK or another available action.',4700);
+        }else if(door){
+          showUiHelp('NO DOOR ACTION IN REACH · PLAN AN APPROACH',2200);
+        }
+      }else if(pick?.kind==='route'&&pick.owner){
+        if(pick.owner!==selected){
+          // First touch on another operator's line is selection only.
+          selectUnit(pick.owner);
+          tacticalFeedback.emit('select',uid(pick.owner)?.p??pt);
+        }else{
+          insertAtRouteLine({x:e.clientX,y:e.clientY},e.pointerType);
+        }
+      }else if(!pick){
         doorFocusId=null;useSelectedGround(pt);
       }
+
     }
   }
   trace=null;draggingNode=null;draggingWatchTarget=false;
