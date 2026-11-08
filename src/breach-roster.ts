@@ -7,6 +7,8 @@ import {initialWardrobe,readWardrobe,type WardrobeOptions}
 import {WEAPONS,type WeaponId} from './breach-combat.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {magazineKit,type MagazineItem} from './breach-magazines.ts';
+import {liveMagazineCapacity,standardReserveRounds,freshMagazineIssue,
+ fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
 import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
  from './equipment-magazine-persistence.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
@@ -35,16 +37,16 @@ const names=['rook','moss','ash','vale'] as const;
 const weapons:WeaponId[]=['carbine','smg','rifle','shotgun'];
 const defaultMember=(id:string,i:number):RosterMember=>{
  const issue=issueWeaponPreset(starterWeaponPreset(id));
+ const ammo=freshMagazineIssue(id,issue.weapon,issue.weaponConfiguration);
  return {
   id,callsign:id.toUpperCase(),missions:0,successful:0,
   injuries:0,recovery:0,weapon:issue.weapon,
-  magazine:WEAPONS[issue.weapon].capacity,reserve:WEAPONS[issue.weapon].reserve,
+  magazine:ammo.magazine,reserve:ammo.reserve,
   fired:0,appearanceSeed:i+1,wardrobe:initialWardrobe(),
   loadout:initialEquipmentLoadout(issue.weapon),
   weaponConfiguration:issue.weaponConfiguration,
-  magazines:magazineKit(id,issue.weapon,WEAPONS[issue.weapon].reserve,
-    WEAPONS[issue.weapon].capacity),
-  loadedMagazineId:id+'/'+issue.weapon+'/loaded'
+  magazines:ammo.magazines,
+  loadedMagazineId:ammo.loadedMagazineId
  };
 };
 export function initialRoster():RosterState{
@@ -69,15 +71,21 @@ export function readRoster(raw:string|null):RosterState{
    const f=found as Partial<RosterMember>;
    const weapon=weapons.includes(f.weapon as WeaponId)?
      f.weapon as WeaponId:base.weapon;
+   const config=resolveIssuedOrLegacy(
+    readWeaponConfiguration(f.weaponConfiguration,weapon),weapon,
+    starterWeaponPreset(base.id));
    const reserve=finite(f.reserve,0,300,base.reserve);
-   const magazines=readPersistentMagazines(base.id,weapon,reserve,f.magazines);
+   const parsed=readPersistentMagazines(base.id,weapon,reserve,f.magazines,
+    Math.max(WEAPONS[weapon].capacity,liveMagazineCapacity(weapon,config)));
+   const fitted=fitMagazineInventory(base.id,weapon,config,
+    finite(f.magazine,0,300,base.magazine),reserve,parsed);
+   const magazines=fitted.magazines;
    return {...base,callsign:typeof f.callsign==='string'&&f.callsign.trim()?
      f.callsign.trim().slice(0,24):base.callsign,
     appearanceSeed:finite(f.appearanceSeed,0,0xffffffff,base.appearanceSeed),
     loadout:readEquipmentLoadout(f.loadout,weapon),
     wardrobe:readWardrobe(f.wardrobe),
-    weaponConfiguration:resolveIssuedOrLegacy(
-      readWeaponConfiguration(f.weaponConfiguration,weapon),weapon,starterWeaponPreset(base.id)),
+    weaponConfiguration:config,
     magazines,loadedMagazineId:readLoadedMagazineId(base.id,weapon,
      f.loadedMagazineId,magazines),
     missions:finite(f.missions,0,100000,0),
@@ -86,9 +94,8 @@ export function readRoster(raw:string|null):RosterState{
     recovery:finite(f.recovery,0,12,0),
     weapon:weapons.includes(f.weapon as WeaponId)?
        f.weapon as WeaponId:base.weapon,
-    magazine:finite(f.magazine,0,WEAPONS[f.weapon??base.weapon]?.capacity??36,
-      base.magazine),
-    reserve,
+    magazine:fitted.magazine,
+    reserve:fitted.reserve,
     fired:finite(f.fired,0,1000000,0)};
   })};
  }catch{return fresh;}
@@ -129,7 +136,7 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
    a.armorIntegrity=protection.torso;a.helmetIntegrity=protection.head;
    a.loadMovementScale=loadMovementScale(member.loadout,member.weaponConfiguration);
    a.weapon=member.weapon;
-   a.magazine=Math.min(WEAPONS[a.weapon].capacity,member.magazine);
+   a.magazine=Math.min(liveMagazineCapacity(a.weapon,member.weaponConfiguration),member.magazine);
    a.reserve=member.reserve;
    a.insertedMagazineId=member.loadedMagazineId;
    a.spareMagazines=a.weapon==='shotgun'?[]:
@@ -170,7 +177,7 @@ export function recordRosterMission(s:Session,roster:RosterState):RosterState{
     weaponConfiguration:changeWeaponPlatform(m.weaponConfiguration,actor.weapon),
     magazine:actor.magazine,reserve:actor.reserve,
     magazines:readPersistentMagazines(m.id,actor.weapon,actor.reserve,
-     actor.spareMagazines),
+     actor.spareMagazines,liveMagazineCapacity(actor.weapon,actor.weaponConfiguration)),
     loadedMagazineId:readLoadedMagazineId(m.id,actor.weapon,
      actor.insertedMagazineId,actor.spareMagazines)};
  })};
@@ -178,26 +185,25 @@ export function recordRosterMission(s:Session,roster:RosterState):RosterState{
 
 /** Explicit between-mission resupply: no hidden refill or weapon swap. */
 export function resupplyRoster(roster:RosterState,id?:string):RosterState{
- return {version:1,members:roster.members.map(m=>
-  id!==undefined&&m.id!==id?{...m}:{
-   ...m,magazine:WEAPONS[m.weapon].capacity,
-   reserve:Math.max(m.reserve,WEAPONS[m.weapon].reserve),
-   magazines:addReserveRounds(m.id,m.weapon,m.magazines,
-    Math.max(0,WEAPONS[m.weapon].reserve-m.reserve))
-  })};
+ return {version:1,members:roster.members.map(m=>{
+  if(id!==undefined&&m.id!==id)return {...m};
+  const cap=liveMagazineCapacity(m.weapon,m.weaponConfiguration);
+  const target=standardReserveRounds(m.weapon,m.weaponConfiguration);
+  const extra=Math.max(0,target-m.reserve);
+  return {...m,magazine:cap,reserve:m.reserve+extra,
+   magazines:addReserveRounds(m.id,m.weapon,m.magazines,extra,cap)};
+ })};
 }
 /** Pre-mission equipment swap with coherent ammunition, not just HUD text. */
 export function equipRoster(roster:RosterState,id:string,weapon:WeaponId):RosterState{
- return {version:1,members:roster.members.map(m=>m.id===id?{
-   ...m,weapon,loadout:syncPrimaryWeapon(m.loadout,weapon),
-    weaponConfiguration:resolveIssuedOrLegacy(
-      changeWeaponPlatform(m.weaponConfiguration,weapon),weapon,
-      starterWeaponPreset(m.id)),
-   magazine:WEAPONS[weapon].capacity,reserve:WEAPONS[weapon].reserve,
-   magazines:weapon==='shotgun'?[]:
-    magazineKit(m.id,weapon,WEAPONS[weapon].reserve,WEAPONS[weapon].capacity),
-   loadedMagazineId:m.id+'/'+weapon+'/loaded'
-  }:{...m})};
+ return {version:1,members:roster.members.map(m=>{
+  if(m.id!==id)return {...m};
+  const config=resolveIssuedOrLegacy(
+   changeWeaponPlatform(m.weaponConfiguration,weapon),weapon,
+   starterWeaponPreset(m.id));
+  return {...m,weapon,loadout:syncPrimaryWeapon(m.loadout,weapon),
+   weaponConfiguration:config,...freshMagazineIssue(m.id,weapon,config)};
+ })};
 }
 
 /** Quick play has unlimited equipment availability, but each individual
@@ -230,7 +236,8 @@ export function configureRosterWeaponPreset(roster:RosterState,id:string,
  const config=selectWeaponFamilyPreset(m.weaponConfiguration,presetId);
  if(config===m.weaponConfiguration||config.build===m.weaponConfiguration.build)return roster;
  return {...roster,members:roster.members.map(member=>member.id===id?
-  {...member,weaponConfiguration:config}:member)};
+  {...member,weaponConfiguration:config,
+   ...freshMagazineIssue(member.id,member.weapon,config)}:member)};
 }
 /** Changing model furniture never changes physical weapon ownership or ammunition. */
 export function configureRosterWeaponBodyPart(roster:RosterState,id:string,
@@ -240,7 +247,8 @@ export function configureRosterWeaponBodyPart(roster:RosterState,id:string,
  const config=setConfiguredFamilyPart(m.weaponConfiguration,slot,partId);
  if(config===m.weaponConfiguration)return roster;
  return {...roster,members:roster.members.map(member=>member.id===id?
-  {...member,weaponConfiguration:config}:member)};
+  {...member,weaponConfiguration:config,
+   ...(slot==='magazine'?freshMagazineIssue(member.id,member.weapon,config):{})}:member)};
 }
 export function renameRosterMember(roster:RosterState,id:string,name:string):RosterState{
  const next=name.trim().slice(0,24);
