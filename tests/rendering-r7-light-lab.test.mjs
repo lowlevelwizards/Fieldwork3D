@@ -11,6 +11,9 @@ test('R7.10 original remains default with transient preview-only settings',()=>{
  assert.equal(APPROVED_GRAPHIC_LIGHTING.toon,3);
  assert.equal(APPROVED_GRAPHIC_LIGHTING.shadow,'plum-plus');
  assert.equal(APPROVED_GRAPHIC_LIGHTING.gradient,'piece-rose');
+ assert.equal(APPROVED_GRAPHIC_LIGHTING.rimAmount,.42);
+ assert.equal(APPROVED_GRAPHIC_LIGHTING.rimWidth,2);
+ assert.equal(APPROVED_GRAPHIC_LIGHTING.rimCoverage,.40);
  assert.equal(studioLightLabLabel(DEFAULT_STUDIO_LIGHT_LAB),'ORIGINAL');
  assert.deepEqual(effectiveStudioLightLab(DEFAULT_STUDIO_LIGHT_LAB),
   DEFAULT_STUDIO_LIGHT_LAB);
@@ -50,9 +53,9 @@ test('R7.10 Lighting Lab presents only usable user-selected choices',()=>{
  assert.match(html,/3-band · very graphic · highlight/);
  assert.match(html,/Each item · soft grayscale/);
  assert.match(html,/Each item · dusty gray-rose/);
- assert.match(html,/White glints · weapons, metal/);
+ assert.match(html,/Subtle white glints · weapons only/);
  assert.match(html,/HARD GLINT OPACITY/);
- assert.match(html,/id="studioRimAmount"[^>]*max="1"[^>]*value="0.85"/);
+ assert.match(html,/id="studioRimAmount"[^>]*max="1"[^>]*value="0.42"/);
  assert.match(html,/Saturated plum/);
  assert.match(html,/PREVIEW WITH WEAPON/);
  for(const id of ['studioRimWidth','studioRimCoverage','studioRimAngle',
