@@ -46,7 +46,7 @@ export function mountArsenalLightingLab(host:HTMLElement,
   String(settings.toon),value=>{
    settings={...settings,toon:Number(value) as StudioLightLabSettings['toon']};
   });
- dropdown('HIGHLIGHT',[['off','Off'],['dual','Material glints']],
+ dropdown('HIGHLIGHT',[['off','Off'],['dual','Subtle weapon glints']],
   settings.rim,value=>{
    settings={...settings,rim:value as StudioLightLabSettings['rim']};
   });

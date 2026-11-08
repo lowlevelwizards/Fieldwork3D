@@ -57,14 +57,22 @@ test('R7.18 architectural shader patches existing standard material once',()=>{
  const glass=new THREE.MeshStandardMaterial({transparent:true});
  assert.equal(enableWorldGraphicMaterial(glass),false);
 });
-test('R7.18 soft gear and skin never receive glowing rim uniforms',()=>{
+test('R7.19 only weapon parts receive subtle glints; no helmets, clothing or loose metal',()=>{
  const root=new THREE.Group(),fabric=new THREE.MeshStandardMaterial(),
   skin=new THREE.MeshStandardMaterial(),metal=new THREE.MeshStandardMaterial({metalness:.7});
  fabric.userData.fieldworkFabric=true;
  skin.userData.fieldworkStudioSkin=true;
  const meshes=[fabric,skin,metal].map(m=>new THREE.Mesh(
   new THREE.BoxGeometry(2,2,2),m));
- root.add(...meshes);
+ const weapon=new THREE.Group();
+ weapon.userData.fieldworkWeaponPresentation=true;
+ const receiver=new THREE.Mesh(new THREE.BoxGeometry(2,2,2),metal);
+ weapon.add(receiver);
+ const helmet=new THREE.Group();
+ helmet.userData.fieldworkStudioBareShellMaterial=metal;
+ const helmetBracket=new THREE.Mesh(new THREE.BoxGeometry(1,1,1),metal);
+ helmet.add(helmetBracket);
+ root.add(...meshes,weapon,helmet);
  applyStudioGraphicLighting(root,APPROVED_GRAPHIC_LIGHTING);
  assert.equal(meshes[0].children.length,0);
  assert.equal(meshes[1].children.length,0);
@@ -73,12 +81,21 @@ test('R7.18 soft gear and skin never receive glowing rim uniforms',()=>{
   fragmentShader:'#include <gradientmap_pars_fragment>\\n'+
    '#include <opaque_fragment>',uniforms:{}});
  const head=shader(),shirt=shader(),shell=shader();
+ const gun=shader(),bracket=shader();
  meshes[0].material.onBeforeCompile(shirt,null);
  meshes[1].material.onBeforeCompile(head,null);
  meshes[2].material.onBeforeCompile(shell,null);
+ receiver.material.onBeforeCompile(gun,null);
+ helmetBracket.material.onBeforeCompile(bracket,null);
  assert.equal(shirt.uniforms.fieldworkRimStrength,undefined);
  assert.equal(head.uniforms.fieldworkRimStrength,undefined);
- assert.ok(shell.uniforms.fieldworkRimStrength);
+ assert.equal(shell.uniforms.fieldworkRimStrength,undefined);
+ assert.equal(bracket.uniforms.fieldworkRimStrength,undefined);
+ assert.equal(gun.uniforms.fieldworkRimStrength.value,.42);
+ assert.equal(gun.uniforms.fieldworkRimWidth.value,2);
+ assert.equal(gun.uniforms.fieldworkRimCoverage.value,.40);
+ assert.equal(helmetBracket.geometry.getAttribute('fieldworkRimBoundsMin'),undefined,
+  'no helmet shader-side glint geometry setup');
  assert.match(shirt.fragmentShader,/fieldworkCelHighlightTone/);
  disposeStudioGraphicLighting(root);
  assert.equal(meshes[0].material,fabric);
