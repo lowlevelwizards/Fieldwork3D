@@ -55,7 +55,7 @@ export function planServiceBoundaryMarks(site:Site):ServiceBoundaryMark[]{
    const back=broad?
      mark(cover.x,cover.y+side*extent,other*2,thickness):
      mark(cover.x+side*extent,cover.y,thickness,other*2);
-   const wings=(-1===0?[]:[-1,1]).map(offset=>broad?
+   const wings=([-1,1] as const).map(offset=>broad?
      mark(cover.x+offset*other,cover.y+side*(extent-shortLength/2),
        thickness,shortLength):
      mark(cover.x+side*(extent-shortLength/2),cover.y+offset*other,
