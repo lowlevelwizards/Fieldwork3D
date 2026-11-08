@@ -21,8 +21,16 @@ export function recoveryAdviceFor(message:string):RecoveryAdvice|null{
   if(/NO WALKABLE|NO SAFE ROUTE|NO WALKABLE STROKE|CANNOT REACH|BLOCKED.*ROUTE/.test(s))
     return {title:'ROUTE NOT AVAILABLE',
       next:'Choose another reachable floor point or check known doors along your route.',marker:'ROUTE'};
-  if(/WATCH TARGET UNAVAILABLE|AIM POINT|INVALID SUPPRESSION/.test(s))
-    return {title:'INVALID TARGET',next:'Choose a valid point inside the map and try again.',marker:'TARGET'};
+  if(/NEEDS A DIRECTION|TARGET OVERLAPS OPERATOR/.test(s))
+    return {title:'NO AIM DIRECTION',
+      next:'Aim away from the selected operator or waypoint. LOOK and WATCH do not need a walkable destination.',
+      marker:'AIM'};
+  if(/WATCH TARGET UNAVAILABLE|AIM POINT/.test(s))
+    return {title:'WATCH UNAVAILABLE',
+      next:'Try another point or reselect the operator or waypoint.',marker:'WATCH'};
+  if(/INVALID SUPPRESSION/.test(s))
+    return {title:'INVALID TARGET',
+      next:'Select a valid suppression point.',marker:'TARGET'};
   if(/NO OPERABLE WINDOW|WINDOW.*CANNOT/.test(s))
     return {title:'WINDOW UNAVAILABLE',
       next:'Move closer to a known operable window, or select another entry.',marker:'WINDOW'};

@@ -1829,6 +1829,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: LOOK/WATCH marker placement — focused planning and targeting gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/look-watch-target-placement-') }}
+        run: |
+          node --experimental-strip-types --test tests/aim-target-placement.test.mjs tests/ux2-21-look-watch.test.mjs tests/breach-active-watch-marker.test.mjs tests/breach-here-watch-continuity.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

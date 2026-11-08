@@ -1,6 +1,7 @@
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
  from './breach-combat-reactions.ts';
 import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts';
+import {aimTargetHasDirection} from './breach-aim-target.ts';
 /**
  * Fieldwork Breach 053–062: authoritative, fixed-step tactical session.
  * Author intent is editable PlanNode[]; motor navigation is transient.
@@ -1074,7 +1075,7 @@ export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:numbe
   const node=nodeId===undefined?undefined:a.plan.find(n=>n.id===nodeId);
   if(nodeId!==undefined&&!node)return false;
   const pos=node?.p??(origin==='here'?a.p:finalPoint(a));
-  if(d(pos,target)<2)return false;
+  if(!aimTargetHasDirection(pos,target))return false;
   const patch:Partial<PlanNode>=mode==='track'?
     {aimMode:'track',facing:undefined,aimPoint:clone(target),aimLabel:label}:
     {aimMode:mode,facing:angle(pos,target),aimPoint:undefined,aimLabel:label};
@@ -1107,8 +1108,7 @@ export function planWatch(s:Session,id:string,p:Pt,nodeId?:number,
 export function retargetActiveWatch(s:Session,id:string,target:Pt):boolean{
   const a=party(s,id);
   if(!a||!canEdit(s)||a.aimInstruction?.mode!=='track'||
-     !Number.isFinite(target.x)||!Number.isFinite(target.y)||
-     d(a.p,target)<2)return false;
+     !aimTargetHasDirection(a.p,target))return false;
   a.aimInstruction={mode:'track',point:clone(target)};
   return true;
 }

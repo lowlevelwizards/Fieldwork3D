@@ -34,6 +34,8 @@ import {resolveTacticalPick,screenSegmentDistance,watchDragReady,
   type TacticalPick} from './ui/tactical-target-resolver.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
+import {aimTargetHasDirection} from './breach-aim-target.ts';
+import {targetPlacementAllowed} from './ui/tactical-target-placement.ts';
 import {interruptsWatch} from './breach-plan.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
@@ -4399,8 +4401,17 @@ function useSelectedGround(pt:Pt){
         planWatch(state,selected,pt,selectedNode??undefined,armedOrigin):
         planAim(state,selected,'free',pt,selectedNode??undefined,'look',armedOrigin);
     if(!committed){
-      rejectAt(pt,'AIM TOO CLOSE · TAP FARTHER FROM THE OPERATOR OR WAYPOINT');
-      showUiHelp('AIM TOO CLOSE · TAP FARTHER AWAY, OR CANCEL',3200);
+      const actor=uid(selected);
+      const origin=retargetingActive?actor?.p:
+        selectedNode!==null?actor?.plan.find(n=>n.id===selectedNode)?.p:
+        armedOrigin==='here'?actor?.p:actor?finalPoint(actor):undefined;
+      const name=lookMode.toUpperCase();
+      const reason=origin&&!aimTargetHasDirection(origin,pt)?
+        name+' NEEDS A DIRECTION · TAP AWAY FROM THE '+
+          (selectedNode!==null?'WAYPOINT':'OPERATOR'):
+        name+' COULD NOT BE PLACED · RESELECT THE OPERATOR OR WAYPOINT';
+      rejectAt(pt,reason);
+      showUiHelp(reason,3200);
     }
     else{
       tacticalFeedback.emit('command',pt,lookMode==='watch'?'WATCH':'LOOK');
@@ -7564,8 +7575,17 @@ function releasePointer(e:PointerEvent,cancelled=false){
       // A brief iPhone tap often travels a few pixels without entering
       // targetPreview. Always commit an armed target on release, even then.
       // CameraMulti/cancelled pointers remain excluded.
-      if(pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)useSelectedGround(pt);
-      else showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
+      // A LOOK/WATCH is a direction instruction, not a walkable ground
+      // destination. Allow aiming at any projected point on screen, even
+      // beyond the site's movement envelope or over a wall/prop.
+      // Physical targets still obey the actual mission bounds, not W/H.
+      const target=looking&&stage&&viewMode!=='plan2d'?
+        stage.screenToWorld(e.clientX,e.clientY):pt;
+      if(targetPlacementAllowed(target,looking?'aim':'physical',
+          activeWorldBounds()))useSelectedGround(target);
+      else showUiHelp(looking?
+        'CANNOT PROJECT AIM TARGET · TRY ANOTHER VISIBLE POINT':
+        'TARGET OUTSIDE MISSION AREA · TAP INSIDE THE SITE',2700);
     }else if(p.mode==='activeWatch'){
       adoptPointerOwner(p);
       const accepted=!p.dragCommitted||retargetActiveWatch(state,selected,pt);
