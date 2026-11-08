@@ -8,7 +8,7 @@ test('Preferences exposes an accessible, mutually exclusive Focus control',()=>{
  const settingsIndex=page.indexOf('data-site-panel="preferences"');
  const focusIndex=page.indexOf('MINIATURE FOCUS');
  assert.ok(settingsIndex>=0&&focusIndex>settingsIndex);
- for(const mode of ['off','subtle','replay'])
+ for(const mode of ['off','subtle','strong','replay'])
    assert.match(page,new RegExp('data-miniature-focus="'+mode+'"'));
  assert.match(game,/miniatureFocusButtons/);
  assert.match(game,/syncMiniatureFocusPreference/);

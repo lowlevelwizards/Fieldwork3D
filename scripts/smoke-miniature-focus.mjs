@@ -21,7 +21,7 @@ try{
  ]});
  try{
   const frames=[];
-  for(const variant of ['off','subtle','mask','default']){
+  for(const variant of ['off','subtle','mask','band','default']){
    const page=await browser.newPage({viewport:{width:390,height:844},
      deviceScaleFactor:1.5,hasTouch:true,isMobile:true});
    const errors=[];
@@ -34,7 +34,8 @@ try{
    try{
     const params=variant==='off'?'&focusFx=off':
      variant==='subtle'?'&focusFx=subtle':
-     variant==='mask'?'&focusFx=subtle&focusDebug=mask':'';
+     variant==='mask'?'&focusFx=subtle&focusDebug=mask':
+     variant==='band'?'&focusFx=subtle&focusDebug=band':'';
     await page.goto(origin+'/breach.html?quick=1&seed=23'+params,
       {waitUntil:'domcontentloaded'});
     await page.locator('#breach3dCanvas').waitFor({
@@ -73,11 +74,15 @@ try{
       if(await page.locator('[data-miniature-focus="off"]')
         .getAttribute('aria-pressed')!=='true')
         throw Error('Saved Off choice was not restored after reload');
+      await page.locator('[data-miniature-focus="strong"]').click();
+      if(await page.evaluate(()=>localStorage.getItem(
+        'fieldwork3d.graphics.miniature-focus'))!=='strong')
+        throw Error('Strong setting was not saved');
       await page.locator('[data-miniature-focus="replay"]').click();
       if(await page.evaluate(()=>localStorage.getItem(
         'fieldwork3d.graphics.miniature-focus'))!=='replay')
         throw Error('Replay Only setting was not saved');
-      console.log('MF-1 default, live Preferences toggle and persistence passed');
+      console.log('MF-3 default, Strong, Replay Only and saved Preferences passed');
     }
     console.log('MF-1 '+variant+' WebGL frame succeeded; HDR support='+hdr);
    }finally{await page.close();}
@@ -103,9 +108,11 @@ try{
       null,{timeout:30000});
     const center={x:157,y:388,width:76,height:68};
     const corner={x:2,y:2,width:100,height:105};
+    const bottom={x:290,y:730,width:99,height:110};
     const shot=async box=>fixture.screenshot({clip:box});
     const centerOff=await shot(center);
     const cornerOff=await shot(corner);
+    const bottomOff=await shot(bottom);
     await fixture.evaluate(()=>window.miniatureFixtureDraw('zero'));
     if(!centerOff.equals(await shot(center))||
        !cornerOff.equals(await shot(corner)))
@@ -114,9 +121,18 @@ try{
     if(!centerOff.equals(await shot(center)))
       throw Error('MF-2 changed protected center brightness/tone');
     if(cornerOff.equals(await shot(corner)))
-      throw Error('MF-2 blur is still invisible on a textured periphery');
-    if(gpuErrors.length)throw Error('MF-2 WebGL errors: '+gpuErrors.join(' | '));
-    console.log('MF-2 frozen-scene center parity, no color flicker, visible optical edge passed');
+      throw Error('MF-3 tilt-shift is missing above the focus band');
+    if(bottomOff.equals(await shot(bottom)))
+      throw Error('MF-3 tilt-shift is missing below the focus band');
+    const firstOn=await shot(corner);
+    await fixture.evaluate(()=>window.miniatureFixtureDraw('focus'));
+    if(!firstOn.equals(await shot(corner)))
+      throw Error('MF-3 same frame changed between identical render calls');
+    if(gpuErrors.length)throw Error('MF-3 WebGL errors: '+gpuErrors.join(' | '));
+    await fixture.evaluate(()=>window.miniatureFixtureDraw('band'));
+    if(centerOff.equals(await shot(center)))
+      throw Error('MF-3 debug band not rendered');
+    console.log('MF-3 screen-wide top/bottom tilt-shift, center parity, stability and debug band passed');
   }finally{await fixture.close();}
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
