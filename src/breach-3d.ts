@@ -165,9 +165,12 @@ export class TacticalScene3D{
   readonly renderer:THREE.WebGLRenderer;
   readonly scene=new THREE.Scene();
   readonly camera=new THREE.OrthographicCamera(-320,320,370,-370,.1,2800);
-  /** Physically located inside the operator's room. Unlike the tactical
-   * orthographic camera, these rays cannot start outside the roof. */
-  private readonly directorCamera=new THREE.PerspectiveCamera(76,1,.45,2400);
+  /** Director lenses share a legal in-room X/Z anchor, but use entirely
+   * separate projection limits from the tactical orbit. */
+  private readonly directorOrthoCamera=
+    new THREE.OrthographicCamera(-320,320,370,-370,.1,2400);
+  private readonly directorCamera=
+    new THREE.PerspectiveCamera(108,1,.45,2400);
   /** Replay-only perspective camera; default rendering stays orthographic. */
   readonly bodycamCamera=new THREE.PerspectiveCamera(95,1,.8,2800);
   private replayBodycam:BodycamSetting|null=null;
@@ -177,18 +180,23 @@ export class TacticalScene3D{
   private replayDirectorFocus:Pt|null=null;
   private replayDirectorSubjects:Pt[]=[];
   private replayDirectorCameraAnchor:Pt|null=null;
-  private replayDirectorLensFov=76;
+  private replayDirectorLensFov=108;
+  private replayDirectorLens:'ortho'|'wide'='ortho';
   private get physicalDirectorActive():boolean{
     return !!this.replayDirectorCameraAnchor&&this.view.mode==='iso';
   }
   private get projectionCamera():THREE.Camera{
-    return this.physicalDirectorActive?this.directorCamera:this.camera;
+    return this.physicalDirectorActive?
+      (this.replayDirectorLens==='wide'?
+        this.directorCamera:this.directorOrthoCamera):this.camera;
   }
-  /** A real replay-only camera with its own perspective lens. All manual,
-   * top-down, and tactical cameras retain their original limits. */
-  setReplayDirectorCameraAnchor(p:Pt|null,fov=76):void{
+  /** Default: in-room orthographic. WIDE is a deliberate A/B preview,
+   * never changes the tactical camera, replay footage or simulation. */
+  setReplayDirectorCameraAnchor(
+    p:Pt|null,fov=108,lens:'ortho'|'wide'='ortho'):void{
     this.replayDirectorCameraAnchor=p?{...p}:null;
-    this.replayDirectorLensFov=THREE.MathUtils.clamp(fov,66,105);
+    this.replayDirectorLensFov=THREE.MathUtils.clamp(fov,96,118);
+    this.replayDirectorLens=lens;
   }
   setReplayDirectorFocus(p:Pt|null):void{
     this.replayDirectorFocus=p?{...p}:null;
@@ -1699,13 +1707,28 @@ export class TacticalScene3D{
     this.camera.lookAt(this.target);
     if(this.physicalDirectorActive){
       const anchor=this.replayDirectorCameraAnchor!;
-      // Shoulder-height crew member; below the 56-unit wall and 59-unit
-      // roof. The actual perspective camera stays in the occupied room.
-      this.directorCamera.position.set(anchor.x,28,anchor.y);
+      // Default orthographic camera lives in the occupied room footprint
+      // and looks down over shoulders. Unlike the previous perspective
+      // pass it isn't planted at face height beside one operator's back.
+      this.directorOrthoCamera.position.set(anchor.x,53,anchor.y);
+      this.directorOrthoCamera.up.set(0,1,0);
+      this.directorOrthoCamera.lookAt(
+        this.view.focus.x,17,this.view.focus.y);
+      const aspect=this.width/this.height;
+      const span=this.replayCameraBaseSpan()/Math.max(.65,this.view.zoom);
+      this.directorOrthoCamera.left=-span*aspect/2;
+      this.directorOrthoCamera.right=span*aspect/2;
+      this.directorOrthoCamera.top=span/2;
+      this.directorOrthoCamera.bottom=-span/2;
+      this.directorOrthoCamera.updateProjectionMatrix();
+      this.directorOrthoCamera.updateMatrixWorld(true);
+      // Optional wide-perspective audition uses the SAME legal room and
+      // shot timeline, but a more elevated, wider lens for group coverage.
+      this.directorCamera.position.set(anchor.x,44,anchor.y);
       this.directorCamera.up.set(0,1,0);
       this.directorCamera.lookAt(
-        this.view.focus.x,21,this.view.focus.y);
-      this.directorCamera.aspect=this.width/this.height;
+        this.view.focus.x,18,this.view.focus.y);
+      this.directorCamera.aspect=aspect;
       this.directorCamera.fov=this.replayDirectorLensFov;
       this.directorCamera.updateProjectionMatrix();
       this.directorCamera.updateMatrixWorld(true);
@@ -1725,7 +1748,9 @@ export class TacticalScene3D{
     const signature=[
       this.view.mode,this.view.zoom.toFixed(3),this.view.yaw.toFixed(3),
       this.view.pitch.toFixed(3),this.view.focus.x.toFixed(2),
-      this.view.focus.y.toFixed(2),
+      this.view.focus.y.toFixed(2),this.replayDirectorLens,
+      this.replayDirectorCameraAnchor?.x.toFixed(2)??'—',
+      this.replayDirectorCameraAnchor?.y.toFixed(2)??'—',
     ].join('|');
     if(signature!==this.lastCameraStatus){
       this.lastCameraStatus=signature;
@@ -1735,6 +1760,12 @@ export class TacticalScene3D{
       this.canvas.dataset.cameraPitch=this.view.pitch.toFixed(3);
       this.canvas.dataset.cameraFocusX=this.view.focus.x.toFixed(2);
       this.canvas.dataset.cameraFocusY=this.view.focus.y.toFixed(2);
+      this.canvas.dataset.replayDirectorLens=this.physicalDirectorActive?
+        this.replayDirectorLens:'none';
+      this.canvas.dataset.replayDirectorAnchorX=
+        this.replayDirectorCameraAnchor?.x.toFixed(2)??'';
+      this.canvas.dataset.replayDirectorAnchorY=
+        this.replayDirectorCameraAnchor?.y.toFixed(2)??'';
     }
   }
   screenToWorld(sx:number,sy:number):Pt|null{
@@ -1885,11 +1916,12 @@ export class TacticalScene3D{
     // An operator physically standing in a room can still read that room's
     // structure even when their viewing cone is pointed at one corner.
     const occupiedRoomIds=new Set(occupiedFogRooms(s).map(room=>room.id));
-    // Director is also a physical observer: visible occupied rooms have
-    // actual, opaque ceilings rather than X-ray cutaway roof slots.
+    // An in-room Director keeps structural walls solid but removes
+    // ceiling slabs, as in the readable tabletop game. No camera needs
+    // to hover outside the building to see a room.
     const physicalDirector=this.physicalDirectorActive&&!bodycamAudition;
     if(this.roofMaterial){
-      const opaque=bodycamAudition||physicalDirector;
+      const opaque=bodycamAudition;
       if(this.roofMaterial.transparent===opaque){
         this.roofMaterial.transparent=!opaque;
         this.roofMaterial.depthWrite=opaque;
@@ -1899,7 +1931,7 @@ export class TacticalScene3D{
     }
     for(const [id,roof] of this.roofGroups){
       const known=spatialSurfaceState(s,'room',id,omniscient)!=='unknown';
-      roof.visible=physicalDirector?(known||occupiedRoomIds.has(id)):
+      roof.visible=physicalDirector?false:
         bodycamAudition?known:
         roofShouldShow(omniscient,known,occupiedRoomIds.has(id));
     }

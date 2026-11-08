@@ -7,7 +7,8 @@ import {directorIntentGroup,type DirectorIntent}
   from './breach-replay-director-intent.ts';
 import type {DirectorFutureCue} from './breach-replay-director-events.ts';
 import type {DirectorFilmBeat} from './breach-replay-director-film.ts';
-import {physicalDirectorView} from './breach-replay-director-physical.ts';
+import {physicalDirectorView,directorOperatorRoom}
+  from './breach-replay-director-physical.ts';
 import type {Door,Obstacle} from './breach-core.ts';
 
 export type DirectorShotType='travel'|'approach'|'stack'|'breach'|
@@ -78,14 +79,16 @@ function subjectGroup(actors:readonly DirectorActor[],
   ctx:DirectorShotContext):DirectorActor[]{
   const starring=ctx.beat&&actors.find(a=>a.id===ctx.beat!.actorId);
   if(starring){
+    // Establish a wide scene of the active squad, not an isolated
+    // close-up of a single shooter's back.
     const support=actors.filter(a=>a.id!==starring.id&&
-      dist(a.p,starring.p)<75);
+      dist(a.p,starring.p)<165);
     return [starring,...support].slice(0,ctx.maxSubjects??4);
   }
   const future=ctx.upcoming&&actors.find(a=>a.id===ctx.upcoming!.actorId);
   if(future){
     // Only focus on the friendly participant and nearby support.
-    const nearby=actors.filter(a=>dist(a.p,future.p)<105);
+    const nearby=actors.filter(a=>dist(a.p,future.p)<155);
     return nearby.length?nearby:[future];
   }
   const movers=actors.filter(a=>speedFor(a,ctx)>9);
@@ -407,8 +410,17 @@ export function composeReplayDirectorShot(_time:number,
     }
   }
   if(!best)return null;
-  const operator=subjects.find(a=>a.id===context.beat?.actorId)??
-    subjects[0];
+  // Hold on the room containing MOST of the active group. The first
+  // operator through a threshold must not trigger a cut while three
+  // teammates are still stacking on the approach side.
+  const dominant=rooms.map(room=>({room,count:subjects.filter(actor=>
+    directorOperatorRoom(actor.p,rooms)?.id===room.id).length}))
+    .sort((a,b)=>b.count-a.count)[0];
+  const members=dominant?.count?
+    subjects.filter(a=>directorOperatorRoom(a.p,rooms)?.id===
+      dominant.room.id):subjects;
+  const operator=members.find(a=>a.id===context.beat?.actorId)??
+    members[0]??subjects[0];
   if(!operator)return best;
   const target=context.beat?.kind==='fight'&&context.actionPair?
     (context.beat.actorId===context.beat.shooterId?
@@ -421,8 +433,23 @@ export function composeReplayDirectorShot(_time:number,
   },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
   const realYaw=atan({x:physical.cameraAnchor.x-physical.focus.x,
     y:physical.cameraAnchor.y-physical.focus.y});
+  // Orthographic default: choose scale from EVERY involved friendly
+  // plus the reachable action target, with ample safety border. The
+  // camera must not clip heads, feet or the advancing element.
+  const visibleTargets=[...subjects.map(a=>a.p),
+    ...(target&&physical.targetVisible?[target]:[])];
+  // Match the REAL in-room overhead position: as the team gets closer
+  // to the rig, its projection gets steeper. Fit at that elevation
+  // instead of pretending the camera is still a flat 17° shoulder POV.
+  const planar=dist(physical.cameraAnchor,physical.focus);
+  const orthoTilt=Math.atan2(53-17,Math.max(1,planar));
+  const fit=projectedBounds(visibleTargets,physical.focus,realYaw,
+    orthoTilt,aspect,baseSpan,6.4,
+    Math.min(.82,usableWidth),Math.min(.76,usableHeight));
+  const wideZoom=clamp(Math.min(6.0,fit.zoom*.91),.7,6);
   return {...best,focus:physical.focus,
     cameraAnchor:physical.cameraAnchor,
+    zoom:wideZoom,pitch:orthoTilt,
     yaw:(realYaw+2*Math.PI)%(2*Math.PI),
     roomId:physical.roomId,occluded:physical.occluded,
     fov:physical.fov,operatorPoint:{...operator.p}};

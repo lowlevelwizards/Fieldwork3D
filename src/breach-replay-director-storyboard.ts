@@ -14,7 +14,6 @@ const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const angleDelta=(next:number,from:number)=>
   Math.atan2(Math.sin(next-from),Math.cos(next-from));
 const smooth=(n:number)=>n*n*(3-2*n);
-const cutAngle=65*Math.PI/180;
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 export class ReplayDirectorStoryboard{
@@ -65,25 +64,23 @@ export class ReplayDirectorStoryboard{
     }
     const sameBeat=!!raw.beatId&&raw.beatId===prior.beatId;
     const startingBeat=!!raw.beatId&&raw.beatId!==prior.beatId;
-    const turn=angleDelta(raw.yaw,prior.yaw);
-    // Establish a completely new breach or gunfight with a deliberate
-    // camera cut; never whip through that angle over .8 seconds.
-    if(startingBeat&&Math.abs(turn)>cutAngle)return raw;
+    // A new muzzle flash or event is NOT sufficient reason to edit.
+    // Keep the installed room camera and re-aim slowly when possible.
+    // Cuts are reserved for genuine room changes or blocked camera paths.
     const room=this.rooms.find(r=>r.id===raw.roomId)??null;
     const actor=raw.operatorPoint??raw.focus;
     const stillPossible=directorCameraLegal(
       prior.cameraAnchor,room,this.physicalScene)&&
-      distance(prior.cameraAnchor,actor)<96&&
+      distance(prior.cameraAnchor,actor)<180&&
       !directorLineBlocked(prior.cameraAnchor,actor,this.physicalScene);
     let cameraAnchor=raw.cameraAnchor;
     if(stillPossible){
-      // A camera operator walks with a team instead of orbiting the
-      // actors. One continuous fight is one locked tripod until the
-      // participants truly leave the available shooting position.
+      // One moving camera in a single room. Keep the platform stable
+      // through the whole exchange; otherwise dolly at walking speed.
       if(sameBeat)cameraAnchor=prior.cameraAnchor;
       else {
         const d=distance(prior.cameraAnchor,raw.cameraAnchor);
-        const t=d>0?Math.min(1,11/d):1;
+        const t=d>0?Math.min(1,6/d):1;
         const proposed={x:prior.cameraAnchor.x+
           (raw.cameraAnchor.x-prior.cameraAnchor.x)*t,
           y:prior.cameraAnchor.y+
@@ -93,7 +90,7 @@ export class ReplayDirectorStoryboard{
           cameraAnchor=proposed;
       }
     }
-    const focusFactor=sameBeat?.42:startingBeat?.65:.30;
+    const focusFactor=sameBeat?.36:startingBeat?.39:.25;
     let focus={x:prior.focus.x+
       (raw.focus.x-prior.focus.x)*focusFactor,
       y:prior.focus.y+(raw.focus.y-prior.focus.y)*focusFactor};
@@ -145,8 +142,6 @@ export class ReplayDirectorStoryboard{
     if(!to)return from;
     const p=smooth(clamp(fraction-index,0,1));
     const sameRoom=from.roomId===to.roomId;
-    const flip=from.beatId!==to.beatId&&
-      Math.abs(angleDelta(to.yaw,from.yaw))>cutAngle;
     const room=this.rooms.find(r=>r.id===from.roomId)??null;
     const midpoint={x:(from.cameraAnchor.x+to.cameraAnchor.x)*.5,
       y:(from.cameraAnchor.y+to.cameraAnchor.y)*.5};
@@ -154,9 +149,9 @@ export class ReplayDirectorStoryboard{
       this.physicalScene)&&
       !directorLineBlocked(from.cameraAnchor,to.cameraAnchor,
         this.physicalScene,false);
-    if(!sameRoom||flip||!physicallyConnected){
-      // No fly-through walls, fixtures or ceilings. A shot transition
-      // with no walkable camera path is a planned EDIT, not a dolly.
+    if(!sameRoom||!physicallyConnected){
+      // Actual room changes and physically blocked camera paths still
+      // require edits, but shot labels and aim changes do not.
       return p<.5?from:to;
     }
     const mix=(a:number,b:number)=>a+(b-a)*p;

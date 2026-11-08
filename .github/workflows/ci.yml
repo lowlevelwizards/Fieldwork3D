@@ -1740,6 +1740,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-physical-interior-') }}
         run: |
           node --experimental-strip-types --test tests/replay-director-physical.test.mjs tests/replay-director-storyboard.test.mjs tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
+      - name: Replay Director — wide in-room ORTHO / perspective A-B critical
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-wide-ortho-ab-') }}
+        run: |
+          node --experimental-strip-types --test tests/replay-director-wide-coverage.test.mjs tests/replay-director-physical.test.mjs tests/replay-director-storyboard.test.mjs tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

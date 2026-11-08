@@ -60,8 +60,13 @@ test('recorded gunfight wins over approaching breach and keeps both in view',()=
    result.cameraAnchor.x<scenes[0].x+scenes[0].w-1);
  assert.ok(result.cameraAnchor.y>scenes[0].y+1&&
    result.cameraAnchor.y<scenes[0].y+scenes[0].h-1);
- assert.ok(result.pitch<=36*Math.PI/180,
-   'director is lower than tactical orbit');
+ const cameraElevation=Math.atan2(53-17,Math.hypot(
+   result.focus.x-result.cameraAnchor.x,
+   result.focus.y-result.cameraAnchor.y));
+ assert.ok(Math.abs(result.pitch-cameraElevation)<1e-7,
+   'ortho projection and fit should match the actual in-room camera elevation');
+ assert.ok(result.zoom<=6,
+   'wide director composition must not crop back into an operator close-up');
  // Use the same center-aware ortho geometry as shot selection. Both
  // shooter and target must fit regardless of ordinary 6x camera cap.
  const c=Math.cos(result.yaw),s=Math.sin(result.yaw);
@@ -201,15 +206,16 @@ test('one firefight keeps its established camera side throughout the exchange',(
     'same filmed combat beat allows only tiny physical lens pans, not orbits');
  }
 });
-test('a dramatically different action is an intentional edit, never a fast spin',()=>{
+test('new action in same room does not cause a jump cut or fast spin',()=>{
  const director=new ReplayDirectorStoryboard(4,
   t=>stablePose(t,t<.8?0:Math.PI,t<.8?null:'fight:19'),{
    step:.8,rooms:[room]});
  const early=director.sample(.2),late=director.sample(.6);
- assert.ok(Math.abs(signedAngle(early.yaw,0))<.001);
- assert.ok(Math.abs(signedAngle(late.yaw,Math.PI))<.001);
- assert.ok(Math.abs(signedAngle(late.yaw,early.yaw))>3,
-  'an establishing cut is allowed; fast in-between spinning is not');
+ assert.ok(Math.abs(signedAngle(late.yaw,early.yaw))<.35,
+  'a new combat beat must retain a stable camera side, not jump 180 degrees');
+ assert.ok(Math.hypot(late.cameraAnchor.x-early.cameraAnchor.x,
+   late.cameraAnchor.y-early.cameraAnchor.y)<18,
+  'do not teleport the camera within an occupied room');
 });
 test('a one-knot room boundary flicker cannot force two camera cuts',()=>{
  const rooms=[room,{id:'next',x:250,y:0,w:220,h:190}];
