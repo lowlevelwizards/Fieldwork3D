@@ -359,7 +359,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           const H=asset?.height??44;
           const shell=visualCtx.solid(0x7b342c,.84,'painted-metal');
           const border=visualCtx.solid(0x293a3a,.88,'painted-metal');
-          const glass=visualCtx.solid(0x45636a,.35,'glass');
+          const display=visualCtx.solid(0x45636a,.56,'painted-metal');
           const inset=visualCtx.solid(0x233b3e,.92,'industrial-steel');
           const button=visualCtx.solid(0xc1b18b,.72,'painted-metal');
           ctx.box(group,c.x,H*.49,c.y,w*.99,H*.94,d*.97,shell);
@@ -368,12 +368,12 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x-w*.14,H*.60,c.y+d*.503,
             w*.62,H*.62,1.4,border,false);
           ctx.box(group,c.x-w*.14,H*.60,c.y+d*.578,
-            w*.55,H*.55,.7,glass,false);
+            w*.55,H*.55,.7,display,false);
           for(let row=0;row<3;row++)for(let col=0;col<4;col++){
             const tone=[0x9b9869,0x788b82,0xb47b57,0x927d73][(col+row)%4];
             const pack=visualCtx.solid(tone,.82,'painted-metal');
             ctx.box(group,c.x-w*.355+col*w*.145,H*.79-row*H*.155,
-              c.y+d*.52,w*.105,H*.090,1.5,pack,false);
+              c.y+d*.62,w*.105,H*.090,1.5,pack,false);
           }
           ctx.box(group,c.x+w*.34,H*.54,c.y+d*.536,
             w*.16,H*.35,1.5,inset,false);
