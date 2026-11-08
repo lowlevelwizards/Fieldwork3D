@@ -158,14 +158,14 @@ const NOMINAL_RIG_MAGAZINE_MOUTHS:Readonly<
  'bandolier':[0,1,2,3].map(i=>
   [8.94,5.01-i*1.85,3.85-i*1.925,1.65] as const),
  'split-front':[-5.64,-2.92,2.92,5.64].map(z=>
-  [9.43,-.19,z,1.93] as const),
+  [9.65,-.19,z,1.93] as const),
  'full-chest':[-4.60,-1.5,1.5,4.60].map(z=>
-  [9.30,-.92,z,2.18] as const),
+  [9.59,-.92,z,2.18] as const),
  'lbv':[-1,1].flatMap(s=>[1.28,-2.56].map(y=>
   [8.87,y+1.51,s*4.20,2.75] as const)),
  'chicom-utility':[],
  'sadf-webbing':[-5.85,-3.25,3.25,5.85].map(z=>
-  [8.66,.31,z,2.17] as const),
+  [8.92,.31,z,2.17] as const),
  'field-webbing':[],
  'alice-lc2':[],
  'm1956-lce':[],
@@ -531,7 +531,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   for(const z of [-4.85,-1.63,1.63,4.85]){
    pouch(g,pocketFabric,pocketFabric,8.38,-2.18,z,4.63,2.70,1.10);
    // Four independent closure flaps; never read as one continuous panel.
-   box(g,pocketFabric,9.02+RIG_MAGAZINE_POUCH_PUFF,-.57,z,.23,.51,2.92);
+   box(g,pocketFabric,9.35+RIG_MAGAZINE_POUCH_PUFF,-.57,z,.23,.51,2.92);
   }
   box(g,dark,7.94,-4.65,0,.48,.70,13.25);
  }
