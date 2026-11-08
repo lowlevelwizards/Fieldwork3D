@@ -2,6 +2,7 @@
  * +X forward, +Y up, +Z firing-side shoulder. Values are in chest space. */
 import type {Handling} from './breach-weapon-pose.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {LEG_HIP_HEIGHT,LEG_REST_RISE} from './breach-leg-geometry.ts';
 import {HANDLING_PROFILES,type HandlingProfile}
   from './breach-handling-profiles.ts';
 export type Anchor3={x:number;y:number;z:number};
@@ -10,7 +11,7 @@ export const ANATOMY={
   shoulderRight:{x:1,y:4,z:7},
   eyeRight:{x:5.0,y:12.7,z:3.0},
   headRest:{x:0,y:10,z:0},
-  neutralHip:20.2,
+  neutralHip:LEG_HIP_HEIGHT+LEG_REST_RISE,
 } as const;
 /** The stock rests on the *outside* padded firing shoulder, ahead of the
  * bare mannequin's upper-pec surface. This gives fitted armor/rigs front
