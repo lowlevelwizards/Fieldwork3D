@@ -67,10 +67,12 @@ function isSafeSurface(m:Source):boolean{
 /** Role assignment is geometry-led so textile fabric and weapon metal never
  * acquire identical specular accents simply because they share a material. */
 export function studioArtRole(node:THREE.Object3D,source:Source):
- 'hard'|'warm'{
+ 'hard'|'fabric'|'skin'|'matte'{
+ if(source.userData.fieldworkStudioSkin===true)return 'skin';
+ if(source.userData.fieldworkFabric===true)return 'fabric';
  return operatorRimRole(node)==='hard-shell'||
   source.userData.fieldworkSpecRim===true||source.metalness>.24?
-  'hard':'warm';
+  'hard':'matte';
 }
 const VARIANT_FLAG='fieldworkStudioArtOnly';
 /** Inspector switches are query-only, never saved to a character or campaign. */
@@ -236,7 +238,7 @@ export function injectStudioGraphicLighting(
   effect+=`
    vec3 fwNormal=normalize(normal);
    vec3 fwView=normalize(vViewPosition);
-   vec3 fwKey=normalize((viewMatrix*vec4(.46,.88,.07,0.0)).xyz);
+   vec3 fwKey=normalize((viewMatrix*vec4(fieldworkRimKeyWorld,0.0)).xyz);
    float fwGrazing=1.0-abs(dot(fwNormal,fwView));
    float fwEdgeWidth=max(fwidth(fwGrazing)*.8,.006);
    float fwEdge=smoothstep(.67-fwEdgeWidth,.71+fwEdgeWidth,fwGrazing);
@@ -253,10 +255,29 @@ export function injectStudioGraphicLighting(
     fwSmall-fwLarge;
    vec3 fwSpan=vFWRimBoundsMax-vFWRimBoundsMin;
    float fwLineWidth=clamp(min(fwSpan.x,min(fwSpan.y,fwSpan.z))*
-    .10,.18,.58);
+    .10,.18,.58)*fieldworkRimWidth;
    float fwGeometricEdge=1.0-smoothstep(fwLineWidth*.40,
     fwLineWidth*1.45,fwSecond);
    fwEdge*=fwGeometricEdge;
+   // A single localized, key-dependent glint travels along one edge.
+   // Choose the dominant mesh axis rather than screen-pixel cells; no
+   // random sparkle, halo geometry or time-driven animation.
+   vec3 fwUnit=clamp((vFWArtLocal-vFWRimBoundsMin)/
+    max(fwSpan,vec3(.001)),vec3(0.0),vec3(1.0));
+   bool fwAlongX=fwSpan.x>=fwSpan.y&&fwSpan.x>=fwSpan.z;
+   bool fwAlongZ=!fwAlongX&&fwSpan.z>=fwSpan.y;
+   float fwAlong=fwAlongX?fwUnit.x:(fwAlongZ?fwUnit.z:fwUnit.y);
+   float fwCross=fwAlongX?fwUnit.z:fwUnit.x;
+   float fwSweep=clamp(fwKey.x*.78+fwKey.z*.22,-1.0,1.0);
+   float fwCenter=clamp(.50+.33*fwSweep,.12,.88);
+   float fwRadius=max(.05,fieldworkRimCoverage*.5);
+   float fwTravel=1.0-smoothstep(fwRadius*.70,fwRadius*1.15,
+    abs(fwAlong-fwCenter));
+   // Prefer one side of a rectangular crown/receiver at a time.
+   float fwChosenSide=fwSweep>=0.0?0.0:1.0;
+   float fwSingleEdge=1.0-smoothstep(.12,.62,
+    abs(fwCross-fwChosenSide));
+   fwEdge*=fwTravel*fwSingleEdge;
    float fwFacesKey=smoothstep(.03,.20,dot(fwNormal,fwKey));
    float fwDirect=dot(reflectedLight.directDiffuse,vec3(.2126,.7152,.0722));
    float fwReceivedLight=smoothstep(.012,.065,fwDirect);
@@ -266,11 +287,32 @@ export function injectStudioGraphicLighting(
    #endif
    float fwLitBand=fwEdge*fwFacesKey*fwReceivedLight*
     smoothstep(.25,.75,fwKeyShadow);
-   outgoingLight=mix(outgoingLight,vec3(1.15),
-    clamp(fwLitBand*fieldworkRimStrength,0.0,1.0));
+   float fwRoleAmount=fieldworkRimRole<.5?fieldworkRimStrength:
+    fieldworkRimRole<1.5?fieldworkRimStrength*fieldworkRimFabric:
+    fieldworkRimStrength*fieldworkRimSkin;
+   // Matte cloth gets a cream ink, not metal shine. Skin catches a
+   // warm reddish-orange-pink bounce scaled from the actual complexion,
+   // preserving dark skin rather than replacing all tones with pink.
+   vec3 fwTarget=fieldworkRimRole<.5?vec3(1.15):
+    fieldworkRimRole<1.5?vec3(1.0,.92,.80):
+    outgoingLight*vec3(1.26,.91,.84)+vec3(.17,.048,.055);
+   float fwMask=clamp(fwLitBand*fwRoleAmount,0.0,1.0);
+   outgoingLight=fieldworkRimDebug>.5?
+    mix(outgoingLight,vec3(fwLitBand),.90):
+    mix(outgoingLight,fwTarget,fwMask);
   `;
  }
- const rimHeader=litRim?'uniform float fieldworkRimStrength;\n':'';
+ const rimHeader=litRim?[
+  'uniform float fieldworkRimStrength;',
+  'uniform float fieldworkRimWidth;',
+  'uniform float fieldworkRimCoverage;',
+  'uniform float fieldworkRimFabric;',
+  'uniform float fieldworkRimSkin;',
+  'uniform float fieldworkRimRole;',
+  'uniform float fieldworkRimDebug;',
+  'uniform vec3 fieldworkRimKeyWorld;',
+  ''
+ ].join('\n'):'';
  const rimFragmentHeader=litRim?
   'varying vec3 vFWRimBoundsMin;\nvarying vec3 vFWRimBoundsMax;\n':'';
  const pieceFrag=piece?'varying float vFWPieceHeight;\n':'';
@@ -333,7 +375,7 @@ function canToon(m:Source):boolean{
   !m.metalnessMap&&!m.envMap;
 }
 function makeVariant(source:Source,config:StudioLightLabSettings,
- role:'hard'|'warm',useToon:boolean,litRim:boolean,
+ role:'hard'|'fabric'|'skin'|'matte',useToon:boolean,litRim:boolean,
  diag:StudioGraphicDiagnostics):Variant{
  let variant:Variant;
  if(useToon){
@@ -354,7 +396,18 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
  if(!diag.bakedVertexLighting)variant.vertexColors=false;
  variant.userData[VARIANT_FLAG]=true;
  if(litRim)
-  variant.userData.fieldworkRimUniform={value:config.rimAmount};
+  variant.userData.fieldworkRimUniform={
+   strength:{value:config.rimAmount},
+   width:{value:config.rimWidth},
+   coverage:{value:config.rimCoverage},
+   fabric:{value:config.rimFabricOpacity},
+   skin:{value:config.rimSkinOpacity},
+   role:{value:role==='hard'?0:role==='fabric'?1:2},
+   debug:{value:config.rimDebugMask?1:0},
+   key:{value:new THREE.Vector3(.46,.88,.07).normalize()
+    .applyAxisAngle(new THREE.Vector3(0,1,0),
+     THREE.MathUtils.degToRad(config.lightAzimuth))}
+  };
  if(useToon&&diag.celAA){
   variant.userData.fieldworkCelUniforms={
    cutoff:{value:config.celLow},
@@ -371,9 +424,22 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
    shader.uniforms.fieldworkCelCutoff=uniforms.cutoff;
    shader.uniforms.fieldworkCelShadowTone=uniforms.tone;
   }
-  if(litRim)
-   shader.uniforms.fieldworkRimStrength=
-    variant.userData.fieldworkRimUniform as {value:number};
+  if(litRim){
+   const u=variant.userData.fieldworkRimUniform as {
+    strength:{value:number};width:{value:number};
+    coverage:{value:number};fabric:{value:number};
+    skin:{value:number};role:{value:number};
+    debug:{value:number};key:{value:THREE.Vector3}
+   };
+   shader.uniforms.fieldworkRimStrength=u.strength;
+   shader.uniforms.fieldworkRimWidth=u.width;
+   shader.uniforms.fieldworkRimCoverage=u.coverage;
+   shader.uniforms.fieldworkRimFabric=u.fabric;
+   shader.uniforms.fieldworkRimSkin=u.skin;
+   shader.uniforms.fieldworkRimRole=u.role;
+   shader.uniforms.fieldworkRimDebug=u.debug;
+   shader.uniforms.fieldworkRimKeyWorld=u.key;
+  }
   injectStudioGraphicLighting(shader,{
    rim:config.rim,hard:role==='hard',gradient:config.gradient,litRim
   });
@@ -434,8 +500,10 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
   const gradient=(config.gradient==='piece'||
    config.gradient==='piece-rose')&&!studioPieceGradientEligible(node)?
    'current':config.gradient;
-  const litRim=rimOn&&studioContourEligible(node,src)&&
-   ensureStudioRimBounds(node.geometry);
+  const role=studioArtRole(node,src);
+  const eligible=studioContourEligible(node,src)||
+   role==='fabric'||role==='skin';
+  const litRim=rimOn&&eligible&&ensureStudioRimBounds(node.geometry);
   // With rim-only preview, leave cloth/skin/soft gear on exact source
   // materials. Avoid needless shader variants on unrelated mesh surfaces.
   if(config.toon===0&&gradient==='current'&&!litRim&&
@@ -443,7 +511,6 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
   if((gradient==='piece'||gradient==='piece-rose')&&
      !ensureStudioPieceGradient(node.geometry))return;
   active.add(src);
-  const role=studioArtRole(node,src);
   const useToon=config.toon!==0&&canToon(src);
   const key=[config.toon,gradient,role,litRim?'rim':'matte',
    diag.celAA?'edge-aa':'hard-edge',
@@ -462,8 +529,20 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
   if(!diag.bakedVertexLighting)entry.material.vertexColors=false;
   if(litRim){
    const u=entry.material.userData.fieldworkRimUniform as
-    {value:number}|undefined;
-   if(u)u.value=config.rimAmount;
+    {strength:{value:number};width:{value:number};coverage:{value:number};
+     fabric:{value:number};skin:{value:number};debug:{value:number};
+     key:{value:THREE.Vector3}}|undefined;
+   if(u){
+    u.strength.value=config.rimAmount;
+    u.width.value=config.rimWidth;
+    u.coverage.value=config.rimCoverage;
+    u.fabric.value=config.rimFabricOpacity;
+    u.skin.value=config.rimSkinOpacity;
+    u.debug.value=config.rimDebugMask?1:0;
+    u.key.value.set(.46,.88,.07).normalize()
+     .applyAxisAngle(new THREE.Vector3(0,1,0),
+      THREE.MathUtils.degToRad(config.lightAzimuth));
+   }
   }
   if(useToon&&diag.celAA){
    const u=entry.material.userData.fieldworkCelUniforms as
