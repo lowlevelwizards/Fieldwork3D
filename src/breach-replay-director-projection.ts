@@ -200,3 +200,60 @@ export function directorCompositionQuality(
     targetOverlap,thirdsError,leadError,headroomError,
     score,shoulderSide};
 }
+
+
+/** Projected, bounded foreground surfaces. Screen coverage complements
+ * sample-ray subject visibility: a camera next to an open opaque leaf may
+ * technically see a shoulder, yet frame little besides the door itself.
+ * A piece of framing architecture is fine; a full-screen leaf is not. */
+export type DirectorForegroundSegment={
+  a:DirectorPoint;b:DirectorPoint;height:number;
+  kind:'door'|'wall'|'furniture';
+};
+export type DirectorForegroundOccupancy={
+  door:number;wall:number;furniture:number;subjectMask:number;
+};
+export function directorForegroundOccupancy(
+  anchor:DirectorPoint,focus:DirectorPoint,operator:DirectorPoint,
+  surfaces:readonly DirectorForegroundSegment[],
+  lens:'ortho'|'wide',aspect:number,baseSpan:number,zoom:number,fov:number,
+  safeFrame:DirectorSafeFrame={left:-.85,right:.85,top:.81,bottom:-.81}
+):DirectorForegroundOccupancy{
+  const project=directorProjector(anchor,focus,aspect,baseSpan,zoom,fov,lens);
+  const body=bodyBounds(project,operator,[11,13,8]);
+  const bodySize=Math.max(.0001,boxArea(body));
+  const canvas={minX:safeFrame.left,maxX:safeFrame.right,
+    minY:safeFrame.bottom,maxY:safeFrame.top};
+  const canvasSize=Math.max(.0001,boxArea(canvas));
+  const result:DirectorForegroundOccupancy={
+    door:0,wall:0,furniture:0,subjectMask:0};
+  const subjectDist=Math.hypot(operator.x-anchor.x,operator.y-anchor.y);
+  for(const surface of surfaces){
+    const mx=(surface.a.x+surface.b.x)*.5,
+      my=(surface.a.y+surface.b.y)*.5;
+    // Only optical foreground surfaces matter. Walls behind the cast
+    // give the shot context and should never be penalized.
+    if(Math.hypot(mx-anchor.x,my-anchor.y)>subjectDist+3)continue;
+    const world=[surface.a,surface.b];
+    const screen:Box={minX:Infinity,maxX:-Infinity,
+      minY:Infinity,maxY:-Infinity};
+    let near=0;
+    for(const p of world)for(const h of [0,surface.height]){
+      const projected=project.project(p.x,h,p.y);
+      if(projected.z < -1||projected.z > 1.02)continue;
+      near++;
+      screen.minX=Math.min(screen.minX,projected.x);
+      screen.maxX=Math.max(screen.maxX,projected.x);
+      screen.minY=Math.min(screen.minY,projected.y);
+      screen.maxY=Math.max(screen.maxY,projected.y);
+    }
+    if(near<3)continue;
+    const clipped=boxOverlap(screen,canvas)/canvasSize;
+    const coveredActor=boxOverlap(screen,body)/bodySize;
+    result[surface.kind]=Math.max(result[surface.kind],
+      Math.min(1,clipped));
+    result.subjectMask=Math.max(result.subjectMask,
+      Math.min(1,coveredActor));
+  }
+  return result;
+}
