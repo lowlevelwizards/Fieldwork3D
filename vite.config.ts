@@ -16,6 +16,7 @@ export default defineConfig({
       arsenal: 'arsenal.html',
       breachVisualLab: 'breach-visual-lab.html',
       operatorLab: 'operator-lab.html',
+      poseWorkbench: 'pose-workbench.html',
       operatorStudio: 'operator-studio.html',
       mapLab: 'map-lab.html',
       physicalityLab: 'physicality-lab.html',
