@@ -2,8 +2,10 @@
  * queued orders never change: only execution can temporarily defer. */
 import {doorCenter,doorLeafSegment,pointToSegment,OPERATOR_RADIUS,
   type Door,type Pt,type Side} from './breach-core.ts';
+import type {PassageSlot} from './breach-passage-plan.ts';
 export type PassageActor={id:string;p:Pt;goal:Pt|null;health:number;
-  blockedTime:number;active:boolean;side?:Side};
+  blockedTime:number;active:boolean;side?:Side;
+  plannedPassage?:PassageSlot|null};
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const side=(p:Pt,d:Door)=>{
   const m=doorCenter(d),dx=d.b.x-d.a.x,dy=d.b.y-d.a.y;
@@ -101,6 +103,56 @@ function seeksPassage(actor:PassageActor,cluster:readonly Door[],
   return own<peer-.01||(Math.abs(own-peer)<=.01&&
     d.id.localeCompare(partner.id)<0);
  })||insidePassage(actor,cluster);
+}
+const scheduledBefore=(a:PassageActor,b:PassageActor,d:Door)=>{
+ const x=a.plannedPassage,y=b.plannedPassage;
+ return !!x&&!!y&&x.doorId===d.id&&y.doorId===d.id&&
+   x.fromSide===y.fromSide&&x.rank<y.rank;
+};
+/** Early GO-time crossing-order speed governor: the planned predecessor
+ * enters first, not whichever body is currently closest to the threshold.
+ * Later-ranked operators may step aside if already nearer the door. */
+export function passageScheduledStep(a:PassageActor,doors:readonly Door[],
+ actors:readonly PassageActor[],step:Pt,
+ physicallyClear:(from:Pt,to:Pt)=>boolean):Pt{
+ const slot=a.plannedPassage;
+ const door=slot&&doors.find(d=>d.id===slot.doorId);
+ if(!door||!a.active||!a.goal||
+    distance(a.p,doorCenter(door))>170||
+    // Future planned entry is not a reason to freeze pre-entry STACK,
+    // SYNC, LOOK or door manipulation movements. That creates a
+    // dependency deadlock in the otherwise atomic squad entry template.
+    side(a.goal,door)*slot!.fromSide>=-4)return step;
+ const before=side(a.p,door)*slot!.fromSide;
+ const advance=before-side(step,door)*slot!.fromSide;
+ if(advance<=.025||before< -15)return step;
+ const earlier=actors.filter(b=>b.id!==a.id&&b.health>0&&
+   scheduledBefore(b,a,door)&&b.blockedTime<2.2&&
+   side(b.p,door)*slot!.fromSide>=-18);
+ if(!earlier.length)return step;
+ earlier.sort((x,y)=>y.plannedPassage!.rank-x.plannedPassage!.rank);
+ const leader=earlier[0];
+ const ahead=side(leader.p,door)*slot!.fromSide;
+ const free=Math.max(0,before-(Math.max(-15,ahead)+PASSAGE_FOLLOW_GAP));
+ if(free>=advance-.01)return step;
+ const fraction=Math.min(1,free/advance);
+ if(fraction>.035)return {x:a.p.x+(step.x-a.p.x)*fraction,
+   y:a.p.y+(step.y-a.p.y)*fraction};
+ if(before>115)return a.p;
+ // The queue shouldn't strand a nearer, lower-priority operator squarely
+ // in the opening. A tiny clear lateral peel creates a passing pocket.
+ const mid=doorCenter(door),dx=door.b.x-door.a.x,
+   dy=door.b.y-door.a.y,length=Math.hypot(dx,dy)||1;
+ const lateral=((a.p.x-mid.x)*dx+(a.p.y-mid.y)*dy)/length;
+ for(const sign of [lateral>=0?1:-1,lateral>=0?-1:1]){
+  const amount=distance(a.p,step)*.85*sign;
+  const candidate={x:a.p.x+dx/length*amount,
+    y:a.p.y+dy/length*amount};
+  if(physicallyClear(a.p,candidate)&&
+     distance(candidate,leader.p)>distance(a.p,leader.p)+.05)
+    return candidate;
+ }
+ return a.p;
 }
 /** Body-diameter spacing (16 units) plus a small visual buffer.
  * Followers can enter the throat as soon as the person ahead has advanced,
@@ -291,10 +343,15 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
   const current=leases?.[key];
   const leased=current&&now<current.until&&
     relevant.some(a=>a.id===current.actorId);
-  const nearest=[...relevant].sort((a,b)=>
-    Math.min(...cluster.map(d=>distance(a.p,doorCenter(d))))-
-    Math.min(...cluster.map(d=>distance(b.p,doorCenter(d))))||
-    a.id.localeCompare(b.id))[0];
+  const nearest=[...relevant].sort((a,b)=>{
+    if(a.plannedPassage&&b.plannedPassage&&
+       a.plannedPassage.doorId===b.plannedPassage.doorId&&
+       a.plannedPassage.fromSide===b.plannedPassage.fromSide)
+      return a.plannedPassage.rank-b.plannedPassage.rank;
+    return Math.min(...cluster.map(d=>distance(a.p,doorCenter(d))))-
+      Math.min(...cluster.map(d=>distance(b.p,doorCenter(d))))||
+      a.id.localeCompare(b.id);
+  })[0];
   // A prior, still-active claimant keeps its turn even if a later actor
   // becomes geometrically closer at the doorway while finishing a WAIT.
   // Only someone already trapped *between two doors* can override that lease
