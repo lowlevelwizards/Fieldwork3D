@@ -95,6 +95,8 @@ import {buildDirectorFilmBeats,directorFilmBeatAt,directorFilmPair,
   type DirectorFilmBeat} from './breach-replay-director-film.ts';
 import {ReplayDirectorStoryboard}
   from './breach-replay-director-storyboard.ts';
+import {directorReplaySafeFrame}
+  from './breach-replay-director-projection.ts';
 import {buildDirectorTempoEdits,directorTempoJump,
   type DirectorTempoEdit} from './breach-replay-director-tempo.ts';
 import {buildDirectorPlanIndex,directorIntentsAt,
@@ -4800,6 +4802,19 @@ function rebuildReplayEventIndex():void{
     recorder.frames,doors,friendlies);
   replayDirectorTempoEdits=buildDirectorTempoEdits(recorder.frames,
     recorder.executionEvents,recorder.events,friendlies);
+  // Frame for the actual unobstructed image stage: the persistent mission
+  // header and replay dock cover asymmetric areas on phone screens.
+  // Use the real mounted rectangles when available, with a conservative
+  // dock reserve before the replay UI has finished its first layout.
+  const headerBottom=Math.max(65,
+    ui.replayTopHud.getBoundingClientRect().bottom,
+    document.querySelector('.top')?.getBoundingClientRect().bottom??0);
+  const dockRect=ui.replayPanel.getBoundingClientRect();
+  const dockPixels=ui.replayPanel.hidden||dockRect.height<40?
+    Math.min(205,cssH*.235):
+    Math.max(cssH-dockRect.top,Math.min(205,cssH*.235));
+  const directorSafeFrame=directorReplaySafeFrame(
+    cssW,cssH,headerBottom,dockPixels);
   // The director knows the whole finished film. Fixed knots are lazily
   // solved from historical samples, independent of FPS or seek direction.
   replayDirectorStoryboard=new ReplayDirectorStoryboard(recorder.duration,t=>{
@@ -4830,7 +4845,8 @@ function rebuildReplayEventIndex():void{
         entry:directorFirstEntryAt(t,replayDirectorEntries,2.2,1.4),
         doors:frame.doors,cover:frame.coverState,
         usableWidth:cssW<500?.75:.85,
-        usableHeight:cssH<520?.68:.81,maxZoom:14
+        usableHeight:cssH<520?.68:.81,maxZoom:14,
+        safeFrame:directorSafeFrame
       });
   },{step:.5,maxCache:96,rooms:state.site?.rooms??[],
     walls:state.site?.walls??[],cover:state.site?.cover??[],
@@ -4842,7 +4858,8 @@ function rebuildReplayEventIndex():void{
     aspect:cssW/Math.max(1,cssH),
     baseSpan:stage?.replayCameraBaseSpan()??1100,
     usableWidth:cssW<500?.75:.83,
-    usableHeight:cssH<520?.69:.77});
+    usableHeight:cssH<520?.69:.77,
+    safeFrame:directorSafeFrame});
   replayDirectorTarget=null;
   
   replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
@@ -4888,6 +4905,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
           target.compositionQuality.score.toFixed(1)+' / OTS '+
           (target.compositionQuality.shoulderReadable?'CLEAR':'FALLBACK'):
           'LEGACY')+
+        '\\nVISIBILITY '+Math.round((target.subjectVisibility??0)*100)+'%'+
         '\\nTEMPO '+replayDirectorTempoEdits.length+' EDITS';
     }
     // No reactive hold/reorientation race and no frame-rate-dependent

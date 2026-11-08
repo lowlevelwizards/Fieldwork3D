@@ -6,10 +6,11 @@
  */
 import type {DirectorShot} from './breach-replay-director-shots.ts';
 import type {DirectorRoom} from './breach-replay-cinematic-director.ts';
-import {directorCameraLegal,directorLineBlocked}
+import {directorCameraLegal,directorLineBlocked,directorSubjectVisibility}
   from './breach-replay-director-physical.ts';
 import type {PhysicalDirectorScene} from './breach-replay-director-physical.ts';
-import {directorOrthoFittingZoom,directorCompositionQuality}
+import {directorOrthoFittingZoom,directorCompositionQuality,
+  type DirectorSafeFrame}
   from './breach-replay-director-projection.ts';
 
 type Pt={x:number;y:number};
@@ -42,6 +43,7 @@ export class ReplayDirectorStoryboard{
   private readonly baseSpan:number;
   private readonly usableWidth:number;
   private readonly usableHeight:number;
+  private readonly safeFrame?:DirectorSafeFrame;
   private readonly duration:number;
   private readonly solve:(time:number)=>DirectorShot|null;
   constructor(duration:number,solve:(time:number)=>DirectorShot|null,
@@ -51,6 +53,7 @@ export class ReplayDirectorStoryboard{
       doors?:PhysicalDirectorScene['doors'];
       aspect?:number;baseSpan?:number;
       usableWidth?:number;usableHeight?:number;
+      safeFrame?:DirectorSafeFrame;
       sceneAt?:(time:number)=>Pick<PhysicalDirectorScene,'doors'|'cover'>}={}){
     this.duration=duration;this.solve=solve;
     this.step=Math.max(.2,options.step??.8);
@@ -63,6 +66,7 @@ export class ReplayDirectorStoryboard{
     this.baseSpan=Math.max(200,options.baseSpan??1100);
     this.usableWidth=clamp(options.usableWidth??.78,.5,.9);
     this.usableHeight=clamp(options.usableHeight??.76,.5,.9);
+    this.safeFrame=options.safeFrame;
   }
   clear():void{
     this.cache.clear();this.checkpoints.clear();this.rawCache.clear();
@@ -200,7 +204,8 @@ export class ReplayDirectorStoryboard{
     if(!points.length)return shot.zoom;
     return directorOrthoFittingZoom(anchor,focus,points,
       this.aspect,this.baseSpan,this.usableWidth,
-      this.usableHeight,shot.subjects.length<=2?8.4:7.4,.8);
+      this.usableHeight,shot.subjects.length<=2?8.4:7.4,.8,
+      this.safeFrame);
   }
   /** Read physical door and cover state at the recorded knot. This
    * never affects replay simulation, only camera collision and LOS. */
@@ -221,23 +226,51 @@ export class ReplayDirectorStoryboard{
       prior.cameraAnchor,point,this.physicalScene)))return false;
     const fit=directorOrthoFittingZoom(prior.cameraAnchor,
       prior.focus,raw.requiredPoints,this.aspect,this.baseSpan,
-      this.usableWidth,this.usableHeight,10,.92);
+      this.usableWidth,this.usableHeight,10,.92,
+      this.safeFrame);
     if(prior.zoom>fit*1.04)return false;
     // A point can be geometrically visible yet hidden by a foreground
     // silhouette. Judge the established frame with the SAME evaluator
     // that produced the competing R9 shot, not a second focus heuristic.
     if(raw.operatorPoint&&raw.editorialKind){
+      if(!directorSubjectVisibility(prior.cameraAnchor,raw.operatorPoint,
+        this.physicalScene).readable)return false;
       const quality=directorCompositionQuality(prior.cameraAnchor,
         prior.focus,raw.operatorPoint,
-        raw.requiredPoints.length>1?raw.requiredPoints[1]:null,
+        raw.editorialKind==='engage'&&raw.requiredPoints.length>1?
+          raw.requiredPoints[1]:null,
         raw.actionAxis??{x:1,y:0},raw.editorialKind,
         'ortho',this.aspect,this.baseSpan,prior.zoom,
-        prior.fov??108,this.usableWidth,this.usableHeight);
+        prior.fov??108,this.usableWidth,this.usableHeight,
+        this.safeFrame);
       if(!quality.primaryReadable||!quality.targetReadable)return false;
       if(raw.compositionQuality&&
         raw.compositionQuality.score-quality.score>12)return false;
     }
     return true;
+  }
+
+  /** At each fixed historical knot, validate the CURRENT subject against
+   * the currently held rig. This must run BEFORE any hold/room-deference
+   * choice; otherwise a once-good camera can film an empty wall forever. */
+  private subjectLegible(prior:RailShot,raw:DirectorShot):boolean{
+    if(!raw.operatorPoint)return this.coversPrior(prior,raw);
+    const room=this.rooms.find(r=>r.id===prior.roomId)??null;
+    if(!directorCameraLegal(prior.cameraAnchor,room,
+      this.physicalScene))return false;
+    const physical=directorSubjectVisibility(prior.cameraAnchor,
+      raw.operatorPoint,this.physicalScene);
+    if(!physical.readable)return false;
+    const quality=directorCompositionQuality(prior.cameraAnchor,
+      prior.focus,raw.operatorPoint,
+      raw.editorialKind==='engage'&&(raw.requiredPoints?.length??0)>1?
+        raw.requiredPoints![1]:null,
+      raw.actionAxis??{x:1,y:0},
+      raw.editorialKind??'follow',
+      'ortho',this.aspect,this.baseSpan,prior.zoom,
+      prior.fov??108,this.usableWidth,this.usableHeight,
+      this.safeFrame);
+    return quality.primaryReadable&&quality.targetReadable;
   }
   /** No camera edit merely because another framewise shot scores higher.
    * Confirm an actual new majority room for three consecutive recorded
@@ -265,7 +298,24 @@ export class ReplayDirectorStoryboard{
     const sameStory=!!raw.editorialId&&
       raw.editorialId===prior.editorialId;
     const covered=this.coversPrior(prior,raw);
+    const establishedLegible=this.subjectLegible(prior,raw);
+    const rawLegible=raw.subjectReadable!==false&&
+      raw.compositionQuality?.primaryReadable!==false;
+    const verifiedRecovery=raw.subjectReadable===true&&
+      raw.compositionQuality?.primaryReadable!==false;
     const entering=!!raw.firstEntry&&raw.shotType==='entry';
+    // Hard integrity outranks scene residence and aesthetic continuity.
+    // If action has LEFT the existing image, use the legal, newly
+    // solved rig at the next fixed knot rather than tracking empty walls.
+    if(!establishedLegible&&verifiedRecovery&&
+      index-(prior.sceneStartIndex??0)>=1){
+      return {...raw,sceneStartIndex:index,
+        cameraDecision:'cut:restore-visible-subject'};
+    }
+    // The fresh candidate may also be obstructed: prefer an established,
+    // actually readable frame to a new door/backpack-only image.
+    if(!rawLegible&&establishedLegible)
+      return {...prior,cameraDecision:'hold:visible-over-obstructed'};
     if(raw.roomId!==prior.roomId){
       // The first entrant calls for an editorial evaluation, NOT an
       // automatic cut. An existing legal threshold two-shot can hold.
@@ -316,6 +366,10 @@ export class ReplayDirectorStoryboard{
     // Keep the established frame steady until actors actually move or
     // a real recorded action becomes the subject.
     if(!action&&!traveling&&raw.motion<9){
+      if(!covered&&verifiedRecovery&&
+        index-(prior.sceneStartIndex??0)>=Math.ceil(1/this.step))
+        return {...raw,sceneStartIndex:index,
+          cameraDecision:'cut:quiet-recover-action'};
       // A newly authored doorway approach can be meaningful even while
       // the breacher is temporarily still. Avoid trapping the camera on
       // the previous unrelated subject for the rest of the scene.

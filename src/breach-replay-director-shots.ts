@@ -13,7 +13,8 @@ import {selectDirectorEditorialShot,type DirectorEditorialShot}
   from './breach-replay-director-edit.ts';
 import {physicalDirectorView,directorLineBlocked}
   from './breach-replay-director-physical.ts';
-import {directorOrthoFittingZoom,directorPerspectiveCovers}
+import {directorOrthoFittingZoom,directorPerspectiveCovers,
+  type DirectorSafeFrame}
   from './breach-replay-director-projection.ts';
 import type {Door,Obstacle} from './breach-core.ts';
 
@@ -28,9 +29,10 @@ export type DirectorShotContext={
   entry?:DirectorEntryEvent|null;
   editorial?:DirectorEditorialShot|null;
   usableWidth?:number;usableHeight?:number;
+  safeFrame?:DirectorSafeFrame;
   maxZoom?:number;maxSubjects?:number;
-  doors?:readonly Pick<Door,'a'|'b'|'open'|'openFraction'|'style'>[];
-  cover?:readonly Pick<Obstacle,'x'|'y'|'w'|'h'>[]
+  doors?:readonly Pick<Door,'a'|'b'|'open'|'openFraction'|'style'|'kind'|'hinge'|'swing'|'slideDirection'>[];
+  cover?:readonly Pick<Obstacle,'x'|'y'|'w'|'h'|'low'|'fixture'>[]
 };
 export type DirectorShot=CinematicShot&{
   shotType:DirectorShotType;subjects:string[];doorId:string|null;
@@ -47,6 +49,7 @@ export type DirectorShot=CinematicShot&{
    * Never misreport a failed two-shot as successful. */
   wideCoverage?:boolean;
   compositionQuality?:import('./breach-replay-director-projection.ts').DirectorCompositionQuality;
+  subjectVisibility?:number;subjectReadable?:boolean;
   /** HOLD/REFRAME/TRACK/CUT derived from storyboard decision. */
   cameraDecision?:string
 };
@@ -108,11 +111,14 @@ export function composeReplayDirectorShot(time:number,
   const optional=plan.optional.filter(p=>dist(p,primary.p)<145);
   const fitSubjects=[...required,...optional.slice(
     0,isContact?0:isDoor?2:3)];
-  const physical=physicalDirectorView({
+  let hero=primary;
+  let physical=physicalDirectorView({
     operator:primary.p,focus,
     subjectPoints:featured.map(a=>a.p),
     requiredPoints:required,
-    target:plan.target??(door?.mid??null),
+    // Doorway markers are not human targets; only real actors enter the
+    // target silhouette coverage test.
+    target:plan.target,
     preferredYaw:Math.atan2(-direction.x,-direction.y),
     followDirection:direction,
     doorPoint:plan.kind==='door'?door?.mid??null:null,
@@ -120,15 +126,41 @@ export function composeReplayDirectorShot(time:number,
     targetWeight:isContact?270:isDoor?210:125,
     composition:{treatment:plan.kind,
       baseSpan,usableWidth:context.usableWidth??.78,
-      usableHeight:context.usableHeight??.76}
+      usableHeight:context.usableHeight??.76,
+      safeFrame:context.safeFrame}
   },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
-  const legalRequired=required.filter(p=>
+  // If the nominated protagonist is truly invisible, the final fallback
+  // is another historically recorded friendly. This is a cutaway, not
+  // license to reveal undisclosed combatants or shoot through solid walls.
+  if(physical.subjectReadable===false){
+    for(const alternate of featured.filter(a=>a.id!==primary.id)){
+      const recovered=physicalDirectorView({
+        operator:alternate.p,
+        focus:{x:alternate.p.x+direction.x*27,
+          y:alternate.p.y+direction.y*27},
+        subjectPoints:featured.map(a=>a.p),
+        requiredPoints:[alternate.p],target:null,
+        preferredYaw:Math.atan2(-direction.x,-direction.y),
+        followDirection:direction,targetWeight:0,
+        composition:{treatment:'follow',baseSpan,
+          usableWidth:context.usableWidth??.78,
+          usableHeight:context.usableHeight??.76,
+          safeFrame:context.safeFrame}
+      },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
+      if(recovered.subjectReadable&&
+        (recovered.subjectVisibility??0)>(physical.subjectVisibility??0)+.12){
+        hero=alternate;physical=recovered;break;
+      }
+    }
+  }
+  const activeRequired=hero===primary?required:[hero.p];
+  const legalRequired=activeRequired.filter(p=>
     !directorLineBlocked(physical.cameraAnchor,p,
       {rooms,walls,doors:context.doors,cover:context.cover}));
-  const mandatory=[primary.p,...legalRequired.filter(p=>
-    dist(p,primary.p)>.01)];
+  const mandatory=[hero.p,...legalRequired.filter(p=>
+    dist(p,hero.p)>.01)];
   const points=[...mandatory,...fitSubjects.filter(p=>
-    dist(p,primary.p)>1&&
+    dist(p,hero.p)>1&&
     !mandatory.some(v=>dist(v,p)<1)&&
     !directorLineBlocked(physical.cameraAnchor,p,
       {rooms,walls,doors:context.doors,cover:context.cover}))];
@@ -137,7 +169,8 @@ export function composeReplayDirectorShot(time:number,
   const zoom=directorOrthoFittingZoom(physical.cameraAnchor,
     physical.focus,points,aspect,baseSpan,
     safeWidth,safeHeight,
-    Math.min(featured.length>2?7.4:8,context.maxZoom??14),.81);
+    Math.min(featured.length>2?7.4:8,context.maxZoom??14),
+    .81,context.safeFrame);
   const yaw=Math.atan2(physical.cameraAnchor.x-physical.focus.x,
     physical.cameraAnchor.y-physical.focus.y);
   const tilt=Math.atan2(53-17,Math.max(1,
@@ -145,7 +178,7 @@ export function composeReplayDirectorShot(time:number,
   const wideCoverage=directorPerspectiveCovers(
     physical.cameraAnchor,physical.focus,mandatory,aspect,
     physical.fov,Math.min(.89,safeWidth+.1),
-    Math.min(.9,safeHeight+.1));
+    Math.min(.9,safeHeight+.1),context.safeFrame);
   return {focus:physical.focus,zoom,
     yaw:(yaw+Math.PI*2)%(Math.PI*2),pitch:tilt,
     roomId:physical.roomId,actorsFramed:featured.length,
@@ -159,16 +192,20 @@ export function composeReplayDirectorShot(time:number,
       a.velocity??0),0),
     beatId:context.beat?.id??null,
     cameraAnchor:physical.cameraAnchor,
-    fov:physical.fov,operatorPoint:{...primary.p},
+    fov:physical.fov,operatorPoint:{...hero.p},
     framePoints:points,
-    attentionPoint:plan.target??door?.mid??null,
+    attentionPoint:hero===primary?plan.target??door?.mid??null:null,
     followDirection:direction,
     firstEntry:plan.firstEntry,
     actionWeight:isContact?1:isDoor?.85:
       plan.kind==='follow'?.5:0,
-    editorialId:plan.id,editorialKind:plan.kind,
-    editorialPriority:plan.priority,primaryActorId:primary.id,
+    editorialId:hero===primary?plan.id:plan.id+':fallback:'+hero.id,
+    editorialKind:plan.kind,
+    editorialPriority:plan.priority,primaryActorId:hero.id,
     requiredPoints:mandatory,actionAxis:direction,
-    editReason:plan.reason,wideCoverage,
-    compositionQuality:physical.compositionQuality};
+    editReason:hero===primary?plan.reason:
+      'supporting operator cutaway: primary occluded',
+    wideCoverage,compositionQuality:physical.compositionQuality,
+    subjectVisibility:physical.subjectVisibility,
+    subjectReadable:physical.subjectReadable};
 }

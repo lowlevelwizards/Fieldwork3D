@@ -4,18 +4,20 @@
  * unobstructed. Never changes simulation visibility or replay knowledge.
  */
 import type {DirectorRoom,DirectorWall} from './breach-replay-cinematic-director.ts';
-import type {Door,Obstacle} from './breach-core.ts';
+import {doorOpticalSegment,doorTransmitsSightAndLight,
+  type Door,type Obstacle} from './breach-core.ts';
 import {directorPerspectiveCovers,directorOrthoFittingZoom,
-  directorCompositionQuality,type DirectorCompositionTreatment,
-  type DirectorCompositionQuality}
+  directorCompositionQuality,directorForegroundOccupancy,
+  type DirectorForegroundSegment,type DirectorSafeFrame,
+  type DirectorCompositionTreatment,type DirectorCompositionQuality}
   from './breach-replay-director-projection.ts';
 
 export type PhysicalPoint={x:number;y:number};
 export type PhysicalDirectorScene={
   rooms:readonly DirectorRoom[];
   walls:readonly DirectorWall[];
-  cover?:readonly Pick<Obstacle,'x'|'y'|'w'|'h'>[];
-  doors?:readonly Pick<Door,'a'|'b'|'open'|'openFraction'|'style'>[];
+  cover?:readonly Pick<Obstacle,'x'|'y'|'w'|'h'|'low'|'fixture'>[];
+  doors?:readonly Pick<Door,'a'|'b'|'open'|'openFraction'|'style'|'kind'|'hinge'|'swing'|'slideDirection'>[];
 };
 export type PhysicalDirectorRequest={
   operator:PhysicalPoint;focus:PhysicalPoint;
@@ -31,12 +33,13 @@ export type PhysicalDirectorRequest={
   doorPoint?:PhysicalPoint|null;
   doorNormal?:PhysicalPoint|null;
   composition?:{treatment:DirectorCompositionTreatment;baseSpan:number;
-    usableWidth:number;usableHeight:number};
+    usableWidth:number;usableHeight:number;safeFrame?:DirectorSafeFrame};
 };
 export type PhysicalDirectorView={
   cameraAnchor:PhysicalPoint;focus:PhysicalPoint;
   roomId:string|null;fov:number;targetVisible:boolean;
-  occluded:number;compositionQuality?:DirectorCompositionQuality
+  occluded:number;compositionQuality?:DirectorCompositionQuality;
+  subjectVisibility?:number;subjectReadable?:boolean
 };
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const distance=(a:PhysicalPoint,b:PhysicalPoint)=>
@@ -47,14 +50,20 @@ const inside=(p:PhysicalPoint,r:DirectorRoom,pad=0)=>
   p.x>=r.x+pad&&p.x<=r.x+r.w-pad&&
   p.y>=r.y+pad&&p.y<=r.y+r.h-pad;
 const cross=(a:PhysicalPoint,b:PhysicalPoint)=>a.x*b.y-a.y*b.x;
-const segmentHits=(a:PhysicalPoint,b:PhysicalPoint,
-  c:PhysicalPoint,d:PhysicalPoint)=>{
+
+/** Fraction of camera-to-subject ray crossing a vertical architectural
+ * edge. The height test is separate: high camera rays can clear low cover. */
+const segmentHitFraction=(a:PhysicalPoint,b:PhysicalPoint,
+  c:PhysicalPoint,d:PhysicalPoint):number|null=>{
   const r={x:b.x-a.x,y:b.y-a.y},s={x:d.x-c.x,y:d.y-c.y};
-  const den=cross(r,s);if(Math.abs(den)<1e-6)return false;
+  const den=cross(r,s);if(Math.abs(den)<1e-6)return null;
   const p={x:c.x-a.x,y:c.y-a.y};
   const t=cross(p,s)/den,u=cross(p,r)/den;
-  return t>.001&&t<.999&&u>=0&&u<=1;
+  return t>.002&&t<.985&&u>=0&&u<=1?t:null;
 };
+const segmentHits=(a:PhysicalPoint,b:PhysicalPoint,
+  c:PhysicalPoint,d:PhysicalPoint)=>
+  segmentHitFraction(a,b,c,d)!==null;
 const segmentDistance=(p:PhysicalPoint,a:PhysicalPoint,b:PhysicalPoint)=>{
   const dx=b.x-a.x,dy=b.y-a.y;
   const t=clamp(((p.x-a.x)*dx+(p.y-a.y)*dy)/
@@ -64,14 +73,79 @@ const segmentDistance=(p:PhysicalPoint,a:PhysicalPoint,b:PhysicalPoint)=>{
 /** Closed physical doors block optical lines through otherwise open wall
  * gaps. Glazed doors remain optically permeable, but camera rigs cannot
  * occupy the door opening. */
-const closedDoors=(scene:PhysicalDirectorScene)=>scene.doors?.filter(d=>
-  (d.openFraction!==undefined?d.openFraction<.8:!d.open)&&
-  !['glazed','french','screen','mesh-gate'].includes(d.style??''))??[];
+const opaqueDoors=(scene:PhysicalDirectorScene)=>
+  (scene.doors??[]).filter(d=>!doorTransmitsSightAndLight(d as Door));
 export function directorLineBlocked(a:PhysicalPoint,b:PhysicalPoint,
   scene:PhysicalDirectorScene,checkDoors=true):boolean{
   if(scene.walls.some(w=>segmentHits(a,b,w.a,w.b)))return true;
-  return checkDoors&&closedDoors(scene).some(d=>segmentHits(a,b,d.a,d.b));
+  // The door has MOVED since the level was built: use the actual leaf,
+  // not the closed threshold line. This includes fully open solid doors.
+  return checkDoors&&opaqueDoors(scene).some(d=>{
+    const leaf=doorOpticalSegment(d as Door);
+    return segmentHits(a,b,leaf.a,leaf.b);
+  });
 }
+
+/** Cheap 3D silhouette visibility for a staged operator. Seven optical rays
+ * sample head, torso, shoulders and feet; a point-only LOS is insufficient
+ * when an open door or furniture masks most of the character. This is
+ * camera evidence ONLY, not tactical/fog-of-war visibility. */
+export function directorSubjectVisibility(
+  camera:PhysicalPoint,subject:PhysicalPoint,scene:PhysicalDirectorScene,
+  eyeHeight=53
+):{fraction:number;torsoVisible:boolean;headVisible:boolean;readable:boolean}{
+  // Architectural walls are always hard opaque regardless of camera
+  // elevation. The sampled-height allowance below is only for leaves
+  // and furniture, and must never introduce a wall X-ray.
+  if(scene.walls.some(w=>segmentHits(camera,subject,w.a,w.b)))
+    return {fraction:0,torsoVisible:false,headVisible:false,
+      readable:false};
+  const dx=subject.x-camera.x,dy=subject.y-camera.y;
+  const length=Math.hypot(dx,dy)||1;
+  const side={x:-dy/length,y:dx/length};
+  const samples:readonly [number,number][]=[
+    [22,0],[36,0],[8,0],[25,-9],[25,9],[33,-7],[33,7]];
+  const doors=opaqueDoors(scene).map(d=>doorOpticalSegment(d as Door));
+  const visible=(height:number,offset:number)=>{
+    const point={x:subject.x+side.x*offset,y:subject.y+side.y*offset};
+    const blocks=(a:PhysicalPoint,b:PhysicalPoint,h:number)=>{
+      const t=segmentHitFraction(camera,point,a,b);
+      return t!==null&&eyeHeight+(height-eyeHeight)*t<h;
+    };
+    if(scene.walls.some(w=>blocks(w.a,w.b,47)))return false;
+    if(doors.some(d=>blocks(d.a,d.b,44)))return false;
+    // Furniture is center-based; lower pieces should obscure boots,
+    // not a torso. Its exact screen geometry varies by prop family.
+    for(const o of scene.cover??[]){
+      const minX=o.x-o.w/2,minY=o.y-o.h/2;
+      const sx=point.x-camera.x,sy=point.y-camera.y;
+      let entry=0,exit=1;
+      for(const [base,dir,low,high] of [
+        [camera.x,sx,minX,minX+o.w],
+        [camera.y,sy,minY,minY+o.h]]){
+        if(Math.abs(dir)<1e-7){
+          if(base<low||base>high){entry=2;break;}
+        }else{
+          const t1=(low-base)/dir,t2=(high-base)/dir;
+          entry=Math.max(entry,Math.min(t1,t2));
+          exit=Math.min(exit,Math.max(t1,t2));
+        }
+      }
+      if(entry>0.002&&entry<.98&&entry<=exit&&
+        eyeHeight+(height-eyeHeight)*entry<(o.low?17:35))
+        return false;
+    }
+    return true;
+  };
+  let count=0;
+  const seen=samples.map(([height,offset])=>{
+    const ok=visible(height,offset);if(ok)count++;return ok;
+  });
+  const fraction=count/samples.length;
+  return {fraction,torsoVisible:seen[0],headVisible:seen[1],
+    readable:fraction>=.43&&(seen[0]||seen[1]||seen[3]&&seen[4])};
+}
+
 /** A camera can fit in a room only if it has wall, leaf and furniture
  * clearance. Opaque roofs never alter this ground-plane feasibility. */
 export function directorCameraLegal(p:PhysicalPoint,
@@ -82,7 +156,11 @@ export function directorCameraLegal(p:PhysicalPoint,
     if(!inside(p,room,inset))return false;
   }else if(scene.rooms.some(r=>inside(p,r,0)))return false;
   if(scene.walls.some(w=>segmentDistance(p,w.a,w.b)<8.5))return false;
-  if((scene.doors??[]).some(d=>segmentDistance(p,d.a,d.b)<7))return false;
+  if((scene.doors??[]).some(d=>{
+    const leaf=doorOpticalSegment(d as Door);
+    return segmentDistance(p,d.a,d.b)<7||
+      segmentDistance(p,leaf.a,leaf.b)<8;
+  }))return false;
   // Cover coordinates are center-based, unlike the room rectangles.
   if((scene.cover??[]).some(o=>Math.abs(p.x-o.x)<=o.w/2+7&&
     Math.abs(p.y-o.y)<=o.h/2+7))return false;
@@ -210,8 +288,9 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
   let best:PhysicalDirectorView|null=null,score=-Infinity;
   const candidates:{view:PhysicalDirectorView;score:number}[]=[];
   for(const p of anchors){
-    if(directorLineBlocked(p,req.operator,scene))continue;
+    const primaryVision=directorSubjectVisibility(p,req.operator,scene);
     const targetVisible=!!req.target&&
+      directorSubjectVisibility(p,req.target,scene).readable&&
       !directorLineBlocked(p,req.target,scene);
     // The intended victim may physically be in a different room.
     // Without an opening, frame the shooter and the threat direction
@@ -225,10 +304,11 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       };
     if(directorLineBlocked(p,focus,scene))focus={...req.operator};
     const visible=req.subjectPoints.filter(pt=>
-      !directorLineBlocked(p,pt,scene));
+      directorSubjectVisibility(p,pt,scene).readable);
     const mandatory=req.requiredPoints??[req.operator];
     const essentialVisible=mandatory.filter(pt=>
-      !directorLineBlocked(p,pt,scene));
+      (distance(pt,req.operator)<.5?primaryVision.readable:
+        !directorLineBlocked(p,pt,scene)));
     const fits=[...essentialVisible,
       ...(targetVisible&&req.target?[req.target]:[])];
     const fov=directorRequiredFov(p,focus,fits,aspect);
@@ -271,28 +351,36 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       (ideal?distance(p,ideal)*.92:0)-
       (forwardOffset>0?Math.min(110,forwardOffset*1.65):0)-
       Math.max(0,fov-107)*7-
-      Math.max(0,visible.length?0:120);
+      Math.max(0,visible.length?0:120)+
+      // A center-point LOS alone does not make a shot watchable.
+      // These penalties dominate pretty-angle and exact-thirds terms;
+      // partial foreground silhouettes remain intentionally allowed.
+      primaryVision.fraction*640-
+      (primaryVision.readable?0:1450)-
+      (!primaryVision.torsoVisible&&!primaryVision.headVisible?310:0);
     const proposal:PhysicalDirectorView={cameraAnchor:p,focus,roomId:room?.id??null,
       fov:clamp(Math.max(96,fov),96,116),targetVisible,
       occluded:req.subjectPoints.length-visible.length+
-        (req.target&&!targetVisible?1:0)};
+        (req.target&&!targetVisible?1:0),
+      subjectVisibility:primaryVision.fraction,
+      subjectReadable:primaryVision.readable};
     let rankedScore=candidate;
     if(req.composition){
       const c=req.composition;
       const zoom=directorOrthoFittingZoom(p,focus,
         req.requiredPoints??[req.operator],aspect,c.baseSpan,
-        c.usableWidth,c.usableHeight,8,.8);
+        c.usableWidth,c.usableHeight,8,.8,c.safeFrame);
       const quality=directorCompositionQuality(p,focus,req.operator,
         targetVisible?req.target??null:null,
         req.followDirection??{x:1,y:0},c.treatment,'ortho',
         aspect,c.baseSpan,zoom,proposal.fov,
-        c.usableWidth,c.usableHeight);
+        c.usableWidth,c.usableHeight,c.safeFrame);
       proposal.compositionQuality=quality;
       // Coverage remains paramount. A back-of-head that conceals a real
       // target is not an acceptable OTS even if point LOS is clear.
       if(targetVisible&&req.target&&!quality.targetReadable)
         rankedScore-=420;
-      if(!quality.primaryReadable)rankedScore-=230;
+      if(!quality.primaryReadable)rankedScore-=850;
       rankedScore+=(quality.score-80)*2.6;
       if(quality.shoulderReadable&&c.treatment==='engage')
         rankedScore+=36;
@@ -300,22 +388,67 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     candidates.push({score:rankedScore,view:proposal});
     if(rankedScore>score){score=rankedScore;best=proposal;}
   }
-  // Only inspect the strongest small set with the REAL WIDE projection.
-  // The old FOV estimate could request 150 degrees then clamp to 116
-  // and silently crop a required shooter/target. Prefer a different
-  // legal setup when it is comparably strong and genuinely fits.
+  // A full-screen opened door leaf may pass a point LOS. Audition the
+  // strongest *physical* candidates for real projected foreground surface
+  // occupation, then rank again before selecting either lens. This runs
+  // only at storyboard knots, never each rendered frame.
+  if(req.composition&&candidates.length){
+    const surfaces:DirectorForegroundSegment[]=[
+      ...scene.walls.map(w=>({a:w.a,b:w.b,height:47,
+        kind:'wall' as const})),
+      ...opaqueDoors(scene).map(d=>{
+        const leaf=doorOpticalSegment(d as Door);
+        return {...leaf,height:44,kind:'door' as const};
+      }),
+      ...(scene.cover??[]).flatMap(o=>{
+        const a={x:o.x-o.w/2,y:o.y-o.h/2},
+          b={x:o.x+o.w/2,y:o.y+o.h/2},
+          c={x:a.x,y:b.y},d={x:b.x,y:a.y};
+        return [{a,b,height:o.low?17:35,
+          kind:'furniture' as const},
+          {a:c,b:d,height:o.low?17:35,
+          kind:'furniture' as const}];
+      })
+    ];
+    for(const candidate of candidates.slice()
+      .sort((a,b)=>b.score-a.score).slice(0,24)){
+      const v=candidate.view;
+      const zoom=directorOrthoFittingZoom(v.cameraAnchor,v.focus,
+        req.requiredPoints??[req.operator],aspect,
+        req.composition.baseSpan,req.composition.usableWidth,
+        req.composition.usableHeight,8,.8,
+        req.composition.safeFrame);
+      const fg=directorForegroundOccupancy(v.cameraAnchor,v.focus,
+        req.operator,surfaces,'ortho',aspect,
+        req.composition.baseSpan,zoom,v.fov,
+        req.composition.safeFrame);
+      candidate.score-=
+        Math.max(0,fg.door-.30)*660+
+        Math.max(0,fg.wall-.63)*260+
+        Math.max(0,fg.furniture-.69)*120+
+        Math.max(0,fg.subjectMask-.42)*95;
+    }
+    const ranked=candidates.sort((a,b)=>b.score-a.score);
+    best=ranked[0]?.view??best;
+    score=ranked[0]?.score??score;
+  }
+  // The camera rig is common to ORTHO and WIDE. Confirm the strongest
+  // shots in real perspective before opting for one with a cropped cast.
   if(best&&req.requiredPoints?.length){
     const ranked=candidates.sort((a,b)=>b.score-a.score);
     for(const proposal of ranked.slice(0,16)){
       if(proposal.score<score-200)break;
       if(directorPerspectiveCovers(proposal.view.cameraAnchor,
         proposal.view.focus,req.requiredPoints,aspect,
-        proposal.view.fov,.90,.89))return proposal.view;
+        proposal.view.fov,.90,.89,req.composition?.safeFrame))
+        return proposal.view;
     }
   }
-  // No legal WIDE two-shot exists: preserve the strongest physical
-  // ORTHO setup rather than inventing an impossible camera position.
+  // No legal WIDE two-shot exists: retain the highest-ranked, legal
+  // ORTHO candidate. Never accept a hidden subject merely because the
+  // perspective-audition lens cannot fit the full two-shot.
   return best??{cameraAnchor:anchors[0],focus:{...req.operator},
     roomId:room?.id??null,fov:112,targetVisible:false,
-    occluded:req.subjectPoints.length};
+    occluded:req.subjectPoints.length,
+    subjectVisibility:0,subjectReadable:false};
 }

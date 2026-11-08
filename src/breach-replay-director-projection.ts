@@ -5,11 +5,29 @@
  */
 import * as THREE from 'three';
 export type DirectorPoint={x:number;y:number};
+/** NDC bounds of the truly visible film stage (headers and playback dock
+ * are excluded). The defaults remain symmetric for non-replay callers. */
+export type DirectorSafeFrame={
+  left:number;right:number;top:number;bottom:number;
+};
+export function directorReplaySafeFrame(width:number,height:number,
+  topObscuredPx:number,bottomObscuredPx:number):DirectorSafeFrame{
+  const w=Math.max(200,width),h=Math.max(200,height);
+  const side=w<520?.79:.88;
+  const top= Math.max(.36,Math.min(.89,1-2*(topObscuredPx+12)/h));
+  const bottom=Math.min(.08,Math.max(-.86,
+    -1+2*(bottomObscuredPx+16)/h));
+  return {left:-side,right:side,top:Math.max(bottom+.30,top),bottom};
+}
+const inSafeFrame=(x:number,y:number,frame:DirectorSafeFrame)=>
+  Number.isFinite(x)&&Number.isFinite(y)&&
+  x>=frame.left&&x<=frame.right&&
+  y>=frame.bottom&&y<=frame.top;
 export function directorOrthoFittingZoom(
   anchor:DirectorPoint,focus:DirectorPoint,
   points:readonly DirectorPoint[],aspect:number,baseSpan:number,
   usableWidth=.78,usableHeight=.76,
-  limit=8.0,margin=.81
+  limit=8.0,margin=.81,safeFrame?:DirectorSafeFrame
 ):number{
   if(!points.length)return 2;
   const span=Math.max(200,baseSpan);
@@ -20,16 +38,27 @@ export function directorOrthoFittingZoom(
   camera.up.set(0,1,0);
   camera.lookAt(focus.x,17,focus.y);
   camera.updateProjectionMatrix();camera.updateMatrixWorld(true);
-  let maxX=0,maxY=0;
+  let maxX=0,maxY=0,frameFit=Infinity;
   for(const p of points){
     for(const height of [4,23,40]){
       const v=new THREE.Vector3(p.x,height,p.y).project(camera);
       if(!Number.isFinite(v.x)||!Number.isFinite(v.y))return .65;
       maxX=Math.max(maxX,Math.abs(v.x));
       maxY=Math.max(maxY,Math.abs(v.y));
+      if(safeFrame){
+        // Orthographic projected coordinates scale linearly with zoom.
+        // Each edge constrains zoom independently, protecting a screen
+        // whose upper mission header and lower replay dock are asymmetric.
+        const bounds=[
+          v.x>0?safeFrame.right/v.x:Infinity,
+          v.x<0?safeFrame.left/v.x:Infinity,
+          v.y>0?safeFrame.top/v.y:Infinity,
+          v.y<0?safeFrame.bottom/v.y:Infinity];
+        frameFit=Math.min(frameFit,...bounds.filter(n=>n>=0));
+      }
     }
   }
-  const maxFit=Math.min(
+  const maxFit=safeFrame?frameFit:Math.min(
     usableWidth/Math.max(.0001,maxX),
     usableHeight/Math.max(.0001,maxY));
   return Math.max(.65,Math.min(limit,maxFit*margin));
@@ -37,7 +66,7 @@ export function directorOrthoFittingZoom(
 export function directorPerspectiveCovers(
   anchor:DirectorPoint,focus:DirectorPoint,
   points:readonly DirectorPoint[],aspect:number,fov:number,
-  safeWidth=.87,safeHeight=.87
+  safeWidth=.87,safeHeight=.87,safeFrame?:DirectorSafeFrame
 ):boolean{
   if(!points.length)return true;
   const camera=new THREE.PerspectiveCamera(
@@ -50,7 +79,8 @@ export function directorPerspectiveCovers(
     const v=new THREE.Vector3(p.x,height,p.y).project(camera);
     if(!Number.isFinite(v.x)||!Number.isFinite(v.y)||
       v.z<-1||v.z>1||
-      Math.abs(v.x)>safeWidth||Math.abs(v.y)>safeHeight)return false;
+      (safeFrame?!inSafeFrame(v.x,v.y,safeFrame):
+        Math.abs(v.x)>safeWidth||Math.abs(v.y)>safeHeight))return false;
   }
   return true;
 }
@@ -109,7 +139,7 @@ export function directorCompositionQuality(
   target:DirectorPoint|null,direction:DirectorPoint,
   treatment:DirectorCompositionTreatment,
   lens:'ortho'|'wide',aspect:number,baseSpan:number,zoom:number,fov:number,
-  safeWidth=.78,safeHeight=.76
+  safeWidth=.78,safeHeight=.76,safeFrame?:DirectorSafeFrame
 ):DirectorCompositionQuality{
   const project=directorProjector(anchor,focus,aspect,baseSpan,zoom,fov,lens);
   const primary=bodyBounds(project,operator,[11,13,8]);
@@ -121,19 +151,25 @@ export function directorCompositionQuality(
   const desiredX=screenDir>.02?-.32:screenDir<-.02?.32:0;
   const pCenter=(primary.minX+primary.maxX)*.5;
   const thirdsError=Math.min(1,Math.abs(pCenter-desiredX));
-  const headroomError=Math.min(1,Math.abs(primary.maxY-safeHeight*.52)/Math.max(.2,safeHeight));
+  const top=safeFrame?.top??safeHeight;
+  const bottom=safeFrame?.bottom??-safeHeight;
+  const left=safeFrame?.left??-safeWidth;
+  const right=safeFrame?.right??safeWidth;
+  const headroomError=Math.min(1,
+    Math.abs(primary.maxY-(top-.18*(top-bottom)))/
+    Math.max(.2,top-bottom));
   const leadError=screenDir>.02?
     Math.max(0,pCenter+.12):screenDir<-.02?
       Math.max(0,.12-pCenter):0;
   const primaryReadable=Number.isFinite(pCenter)&&
-    primary.minX>=-safeWidth&&primary.maxX<=safeWidth&&
-    primary.minY>=-safeHeight&&primary.maxY<=safeHeight;
+    primary.minX>=left&&primary.maxX<=right&&
+    primary.minY>=bottom&&primary.maxY<=top;
   let targetReadable=true,targetOverlap=0;
   if(target){
     const tBox=bodyBounds(project,target,[8,10,7]);
     const tCenter=project.project(target.x,22,target.y);
-    const inFrame=tBox.minX>=-safeWidth&&tBox.maxX<=safeWidth&&
-      tBox.minY>=-safeHeight&&tBox.maxY<=safeHeight&&
+    const inFrame=tBox.minX>=left&&tBox.maxX<=right&&
+      tBox.minY>=bottom&&tBox.maxY<=top&&
       tCenter.z>=-1&&tCenter.z<=1;
     targetOverlap=boxOverlap(primary,tBox)/Math.max(.00001,boxArea(tBox));
     const centerBlocked=tCenter.x>=primary.minX&&tCenter.x<=primary.maxX&&
@@ -163,4 +199,61 @@ export function directorCompositionQuality(
   return {primaryReadable,targetReadable,shoulderReadable,
     targetOverlap,thirdsError,leadError,headroomError,
     score,shoulderSide};
+}
+
+
+/** Projected, bounded foreground surfaces. Screen coverage complements
+ * sample-ray subject visibility: a camera next to an open opaque leaf may
+ * technically see a shoulder, yet frame little besides the door itself.
+ * A piece of framing architecture is fine; a full-screen leaf is not. */
+export type DirectorForegroundSegment={
+  a:DirectorPoint;b:DirectorPoint;height:number;
+  kind:'door'|'wall'|'furniture';
+};
+export type DirectorForegroundOccupancy={
+  door:number;wall:number;furniture:number;subjectMask:number;
+};
+export function directorForegroundOccupancy(
+  anchor:DirectorPoint,focus:DirectorPoint,operator:DirectorPoint,
+  surfaces:readonly DirectorForegroundSegment[],
+  lens:'ortho'|'wide',aspect:number,baseSpan:number,zoom:number,fov:number,
+  safeFrame:DirectorSafeFrame={left:-.85,right:.85,top:.81,bottom:-.81}
+):DirectorForegroundOccupancy{
+  const project=directorProjector(anchor,focus,aspect,baseSpan,zoom,fov,lens);
+  const body=bodyBounds(project,operator,[11,13,8]);
+  const bodySize=Math.max(.0001,boxArea(body));
+  const canvas={minX:safeFrame.left,maxX:safeFrame.right,
+    minY:safeFrame.bottom,maxY:safeFrame.top};
+  const canvasSize=Math.max(.0001,boxArea(canvas));
+  const result:DirectorForegroundOccupancy={
+    door:0,wall:0,furniture:0,subjectMask:0};
+  const subjectDist=Math.hypot(operator.x-anchor.x,operator.y-anchor.y);
+  for(const surface of surfaces){
+    const mx=(surface.a.x+surface.b.x)*.5,
+      my=(surface.a.y+surface.b.y)*.5;
+    // Only optical foreground surfaces matter. Walls behind the cast
+    // give the shot context and should never be penalized.
+    if(Math.hypot(mx-anchor.x,my-anchor.y)>subjectDist+3)continue;
+    const world=[surface.a,surface.b];
+    const screen:Box={minX:Infinity,maxX:-Infinity,
+      minY:Infinity,maxY:-Infinity};
+    let near=0;
+    for(const p of world)for(const h of [0,surface.height]){
+      const projected=project.project(p.x,h,p.y);
+      if(projected.z < -1||projected.z > 1.02)continue;
+      near++;
+      screen.minX=Math.min(screen.minX,projected.x);
+      screen.maxX=Math.max(screen.maxX,projected.x);
+      screen.minY=Math.min(screen.minY,projected.y);
+      screen.maxY=Math.max(screen.maxY,projected.y);
+    }
+    if(near<3)continue;
+    const clipped=boxOverlap(screen,canvas)/canvasSize;
+    const coveredActor=boxOverlap(screen,body)/bodySize;
+    result[surface.kind]=Math.max(result[surface.kind],
+      Math.min(1,clipped));
+    result.subjectMask=Math.max(result.subjectMask,
+      Math.min(1,coveredActor));
+  }
+  return result;
 }
