@@ -3,7 +3,7 @@
  */
 import type {FootTarget} from './breach-footsteps.ts';
 import {legMaximumLength,LEG_HIP_SIDE,LEG_ANKLE_HEIGHT,
-  LEG_HIP_HEIGHT} from './breach-leg-geometry.ts';
+  LEG_HIP_HEIGHT,legRestRise} from './breach-leg-geometry.ts';
 export type BalanceInput={velocity:number;heading:number;travelYaw:number;
   turning:number;injury:number;posture:'stand'|'crouch';
   feet:readonly [FootTarget,FootTarget];
@@ -12,7 +12,8 @@ export type BalanceInput={velocity:number;heading:number;travelYaw:number;
   /** Lab candidate: use actual weighted shoe positions for load transfer. */
   hybridSupport?:boolean;acceleration?:number;weaponWeight?:number;
   tacticalTension?:number;seconds?:number;
-  personalPhase?:number;personalLooseness?:number;};
+  personalPhase?:number;personalLooseness?:number;
+  down?:boolean;surrender?:boolean;};
 export type BodyMotion={pelvisY:number;pelvisSide:number;
   torsoForward:number;torsoSide:number;torsoYaw:number;headCounter:number;
   support:number;chestLift:number;weaponYaw:number;weaponPitch:number;
@@ -73,7 +74,10 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   // not from a separate stance-radius correction in the renderer.
   if(input.position){
     const lateral={x:-Math.sin(input.heading),y:Math.cos(input.heading)};
-    const restHip=LEG_HIP_HEIGHT-(input.posture==='crouch'?8:0);
+    // Reach-limiting uses the very same neutral hip height as the rig.
+    const restHip=LEG_HIP_HEIGHT-(input.posture==='crouch'?8:0)+
+      legRestRise(input.velocity,input.posture,
+        input.down,input.surrender);
     let hipCeiling=restHip;
     for(let i=0;i<2;i++){
       const foot=input.feet[i];

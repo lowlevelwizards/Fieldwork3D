@@ -7,6 +7,20 @@ export const LEG_HIP_HEIGHT=20.2;
 export const LEG_ANKLE_HEIGHT=1.45;
 export const LEG_HIP_SIDE=4.8;
 export const LEG_STANCE_SIDE=5.6;
+/** Shared upright neutral pose for every standing operator. The travelling
+ * hip stays lower so the existing planted-foot scheduler retains reach. */
+export const LEG_REST_RISE=3.05;
+export function legRestRise(speed:number,posture:'stand'|'crouch',
+  down=false,surrender=false):number{
+  if(posture!=='stand'||down||surrender)return 0;
+  return LEG_REST_RISE*Math.max(0,1-Math.max(0,speed)/12);
+}
+/** Neutral knee flexion in radians (0 = locked straight). No pose-specific
+ * limb scaling or extra ready/ADS/short-stock knee bend. */
+export const LEG_NEUTRAL_KNEE_FLEXION=2*Math.acos(Math.max(-1,Math.min(1,
+  Math.hypot(LEG_HIP_HEIGHT+LEG_REST_RISE-LEG_ANKLE_HEIGHT,
+    LEG_STANCE_SIDE-LEG_HIP_SIDE)/(2*LEG_UPPER_LENGTH))));
+
 export const legMaximumLength=()=>Math.sqrt(
   LEG_UPPER_LENGTH**2+LEG_LOWER_LENGTH**2+
   2*LEG_UPPER_LENGTH*LEG_LOWER_LENGTH*Math.cos(LEG_MIN_BEND));
