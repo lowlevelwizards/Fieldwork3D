@@ -87,7 +87,7 @@ noscript{position:absolute;top:15%;left:8%;right:8%;background:#1c312a;padding:1
 <div class="detailsBody">
 <output id="wbLibraryStats">2 human references · 0 transferred drafts</output>
 <p>Pick a source and apply a transferable short-stock starting pose to every compatible weapon preset. Each weapon gets its own editable copy, with hands adapted to its real grips. Your manually tuned poses and the two original references are protected.</p>
-<div class="row"><div class="field"><label for="wbTransferSource">SOURCE</label><select id="wbTransferSource"><option value="references">M4A1 + AKM references (nearest family)</option><option value="current">CURRENT EDITED WEAPON</option></select></div></div>
+<div class="row"><div class="field"><label for="wbTransferSource">SOURCE</label><select id="wbTransferSource"><option value="references">M4A1 + AKM references (nearest family)</option><option value="current">MY CAPTURED POSE</option></select></div><button type="button" id="wbCaptureSource">CAPTURE CURRENT AS SOURCE</button></div><output id="wbSourceStatus">Source: the two authored references</output>
 <div class="actions"><button type="button" class="primary" id="wbApplyAll">APPLY TO ALL · KEEP TUNED</button><button type="button" id="wbTransferSelected">APPLY SOURCE TO SELECTED</button></div>
 <label class="checkline"><input type="checkbox" id="wbReplaceGenerated">Replace existing automatically transferred drafts (never overwrite tuned poses)</label>
 <output id="wbBulkStatus">The results are workbench drafts, not battle animations.</output>
