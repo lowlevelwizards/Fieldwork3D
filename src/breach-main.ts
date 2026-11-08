@@ -91,6 +91,14 @@ import {buildReplayDirectorCues,replayCameraTarget,easeReplayCamera,
   from './breach-replay-director.ts';
 import {cinematicReplayShot,easeCinematicReplayShot}
   from './breach-replay-cinematic-director.ts';
+import {buildDirectorPlanIndex,directorIntentsAt,
+  type DirectorPlanIndex} from './breach-replay-director-intent.ts';
+import {buildDirectorFutureCues,directorFutureAt,
+  type DirectorFutureCue} from './breach-replay-director-events.ts';
+import {composeReplayDirectorShot,type DirectorShot}
+  from './breach-replay-director-shots.ts';
+import {ReplayDirectorScheduler}
+  from './breach-replay-director-scheduler.ts';
 import {clusterReplayTimeline,replayTimelineBins} from './breach-replay-timeline-markers.ts';
 import {replayFeedPosition} from './breach-replay-feed-window.ts';
 import {toggleReplaySurface,resolvedReplayCamera,isReplaySpeed,
@@ -930,6 +938,11 @@ function replayDisclosure():ReplayDisclosure{
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
 let replayCameraMode:ReplayCameraMode='free';
 let replayDirectorCues:ReplayDirectorCue[]=[];
+let replayDirectorFuture:DirectorFutureCue[]=[];
+let replayDirectorPlanIndex:DirectorPlanIndex=new Map();
+const replayDirectorScheduler=new ReplayDirectorScheduler();
+let replayDirectorTarget:DirectorShot|null=null;
+let replayDirectorEvaluatedAt=-Infinity;
 let replayPlanScope:'all'|'selected'|'none'='selected';
 let replayPlanVersion:'active'|'original'='active';
 let replayNameTags=true;
@@ -4332,6 +4345,8 @@ function seekReplay(t:number){
   if(replayQuickVideo.active)replayQuickVideo.stop();
   stopReplaySounds();
   replayTime=Math.max(0,Math.min(recorder.duration,t));
+  replayDirectorScheduler.reset();replayDirectorTarget=null;
+  replayDirectorEvaluatedAt=-Infinity;
   stage?.resetReplayBodycamSmoothing();
   applyReplayFrameAt(replayTime);advanceReplayCamera(0,true);
   if(!ui.replayFeed.hidden)renderReplayEventFeed();
@@ -4614,6 +4629,10 @@ function rebuildReplayEventIndex():void{
     recorder.executionEvents,e=>replayEventKnown(e));
   // Only disclosed historical events are eligible for the director.
   replayDirectorCues=buildReplayDirectorCues(replayEventIndex.all);
+  replayDirectorFuture=buildDirectorFutureCues(replayEventIndex.all,
+    new Set(team(state).map(a=>a.id)));
+  replayDirectorScheduler.reset();replayDirectorTarget=null;
+  replayDirectorEvaluatedAt=-Infinity;
   replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
   replayIncidents=indexReplayIncidents(replayEventIndex.all,recorder.duration);
   replayFeaturedIncidents=featuredReplayIncidents(replayIncidents,5);
@@ -4629,18 +4648,32 @@ function advanceReplayCamera(dt:number,instant=false):void{
     id:a.id,p:a.p,side:a.side,health:a.health,heading:a.heading
   }));
   if(replayCameraMode==='director'){
-    const target=cinematicReplayShot(replayTime,actors,
-      state.site?.rooms??[],state.site?.walls??[],replayDirectorCues,
-      cssW/Math.max(1,cssH),stage.view.yaw,stage.replayCameraBaseSpan());
+    if(instant||!replayDirectorTarget||
+      Math.abs(replayTime-replayDirectorEvaluatedAt)>=.25){
+      const frame=recorder.at(replayTime);
+      const intents=directorIntentsAt(frame,replayDirectorPlanIndex,
+        state.site?.doors??[],replayTime,
+        new Set(team(state).map(a=>a.id)));
+      const upcoming=directorFutureAt(replayTime,replayDirectorFuture);
+      const proposal=composeReplayDirectorShot(replayTime,actors,
+        state.site?.rooms??[],state.site?.walls??[],
+        cssW/Math.max(1,cssH),stage.view.yaw,
+        stage.replayCameraBaseSpan(),{intents,upcoming,
+          usableWidth:cssW<500?.73:.84,
+          usableHeight:cssH<520?.65:.78,
+          maxZoom:6});
+      replayDirectorTarget=replayDirectorScheduler.choose(
+        replayTime,proposal,instant);
+      replayDirectorEvaluatedAt=replayTime;
+    }
+    const target=replayDirectorTarget;
     if(!target)return;
     const current={focus:stage.view.focus,zoom:stage.view.zoom,
       yaw:stage.view.yaw,pitch:stage.view.pitch,roomId:null,
       actorsFramed:target.actorsFramed,kind:target.kind} as const;
     const shot=easeCinematicReplayShot(current,target,dt,instant);
-    stage.view.focus=shot.focus;
-    stage.view.zoom=shot.zoom;
-    stage.view.yaw=shot.yaw;
-    stage.view.pitch=shot.pitch;
+    stage.view.focus=shot.focus;stage.view.zoom=shot.zoom;
+    stage.view.yaw=shot.yaw;stage.view.pitch=shot.pitch;
     stage.setReplayDirectorFocus(shot.focus);
     return;
   }
@@ -5117,6 +5150,9 @@ function enterReplay(){
   replayGroundCacheCount=-1;replayGroundCacheSite=null;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
   replayCameraMode='free';replayDirectorCues=[];
+  replayDirectorPlanIndex=buildDirectorPlanIndex(recorder.plans.revisions);
+  replayDirectorFuture=[];replayDirectorTarget=null;
+  replayDirectorEvaluatedAt=-Infinity;replayDirectorScheduler.reset();
   replayBookmarks=[];replayBookmarkCounter=0;
   replayPlanScope='none';replayPlanVersion='active';
   replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
@@ -5179,6 +5215,9 @@ function exitReplay(){
   replayBodycamGroundObservers.clear();
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
+  replayDirectorPlanIndex=new Map();replayDirectorFuture=[];
+  replayDirectorTarget=null;replayDirectorEvaluatedAt=-Infinity;
+  replayDirectorScheduler.reset();
   replayChapters=[];replayBookmarks=[];
   replayIncidents=[];replayFeaturedIncidents=[];
   replaySquadEntries=[];selectedReplaySquadEntry=null;
@@ -5725,6 +5764,8 @@ ui.replayDirectDirector.addEventListener('click',()=>{
   if(viewMode!=='iso'&&stage)cameraMode('iso');
   replayCameraMode=replayCameraMode==='director'?'free':'director';
   replayFollow=false;
+  replayDirectorTarget=null;replayDirectorEvaluatedAt=-Infinity;
+  replayDirectorScheduler.reset();
   advanceReplayCamera(1/60,false);updateReplayHud();
 });
 ui.replayDirectBodycam.addEventListener('click',()=>{
