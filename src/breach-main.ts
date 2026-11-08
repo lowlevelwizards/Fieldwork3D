@@ -7147,8 +7147,9 @@ function tacticalPickAt(screen:Pt,pointerKind:string):TacticalPick|null{
     const problem=executionProblemStatus(unit);
     if(problem?.orderId!=null){
       const marker=executionMarkerPoint(unit,viewMode!=='plan2d');
+      const point=viewMode==='plan2d'?worldToScreen(marker,0):marker;
       hits.push({kind:'problem',owner:unit.id,nodeId:problem.orderId,
-        distancePx:distance(marker,screen),corePx:touch?15:12,haloPx:19});
+        distancePx:distance(point,screen),corePx:touch?15:12,haloPx:19});
     }
     const active=activeWatchTarget(unit);
     if(active){
@@ -7205,12 +7206,20 @@ function adoptPointerOwner(p:{pick?:TacticalPick|null}):void{
   const owner=p.pick?.owner;
   if(owner&&owner!==selected)selectUnit(owner);
 }
+function activatePointerEdit(p:{pick?:TacticalPick|null}):void{
+  adoptPointerOwner(p);
+  const pick=p.pick;
+  if(!pick)return;
+  selectedActiveWatch=pick.kind==='activeWatch';
+  selectedNode=selectedActiveWatch?null:pick.nodeId??null;
+  doorFocusId=null;
+}
 function restorePointerSelection(p:{selectionBefore?:{
   owner:string;node:number|null;watch:boolean;door:string|null
 }}):void{
   const prior=p.selectionBefore;
-  if(!prior||selected===prior.owner)return;
-  selectUnit(prior.owner);
+  if(!prior)return;
+  if(selected!==prior.owner)selectUnit(prior.owner);
   selectedNode=prior.node;selectedActiveWatch=prior.watch;
   doorFocusId=prior.door;
 }
@@ -7338,13 +7347,13 @@ canvas.addEventListener('pointermove',e=>{
     const travel=Math.hypot(e.clientX-p.startX,e.clientY-p.startY);
     if(watchDragReady(travel,e.pointerType)&&
       (p.mode==='activeWatch'||p.nodeId!==null)){
-      if(!p.dragCommitted)adoptPointerOwner(p);
+      if(!p.dragCommitted)activatePointerEdit(p);
       p.dragCommitted=true;draggingNode=cursor;draggingWatchTarget=true;
     }
     return;
   }
   if(p.mode==='node'&&p.moved&&p.nodeId!==null){
-    if(!p.dragCommitted)adoptPointerOwner(p);
+    if(!p.dragCommitted)activatePointerEdit(p);
     p.dragCommitted=true;draggingWatchTarget=false;draggingNode=cursor;return;
   }
   if(state.phase==='planning'&&p.wasUnit&&p.moved){
