@@ -57,8 +57,8 @@ test('158: short-stock firearm is physically retracted, ready and ADS distinct',
   const fit=handling=>fitWeaponPose({weapon:'carbine',
     handling,yaw:0,recoil:0});
   const ready=fit('ready'),short=fit('short'),ads=fit('ads');
-  assert.ok(short.stock.x<ready.stock.x-1,
-    'short stock should be closer to chest rather than a mere label');
+  assert.ok(short.stock.x<ready.stock.x-.25,
+    'short stock should stay seated on the front chest while retracting');
   assert.ok(ads.stock.y>ready.stock.y+1);
   const rig=createOperatorRig('rook','blue');
   const p={x:0,z:0,seconds:1,heading:0,velocity:0,stride:0,

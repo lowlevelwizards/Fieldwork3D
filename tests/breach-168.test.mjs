@@ -7,17 +7,17 @@ import {HANDLING_PROFILES} from '../src/breach-handling-profiles.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 
 const modes=['high','low','ready','short','point','ads'];
-test('168: stocks sit forward on outer firing shoulder, not inside armor',()=>{
+test('168: stocks seat on the FRONT chest near the firing shoulder',()=>{
  for(const mode of modes){
   const pocket=stockPocket(mode);
-  assert.ok(pocket.z>=7.75&&pocket.z<=(mode==='short'?11:8.25),
-   mode+' stock is too medial or outside the right underarm');
-  assert.ok(pocket.x>=(mode==='short'?-1.5:2.5),
-   mode+' rear face is buried behind fitted armor');
+  assert.ok(pocket.z>=6.4&&pocket.z<=7.05,
+   mode+' stock leaves the front shoulder/torso surface');
+  assert.ok(pocket.x>=4.25&&pocket.x<=5.2,
+   mode+' buttplate must remain at chest front (X≈5)');
  }
  assert.ok(stockPocket('ads').y<6.5,'ADS buttstock floats too high');
- assert.ok(stockPocket('short').y<stockPocket('ready').y-5);
- assert.ok(stockPocket('short').z>stockPocket('ready').z+2);
+ assert.ok(stockPocket('short').y<stockPocket('ready').y-.5);
+ assert.ok(Math.abs(stockPocket('short').z-stockPocket('ready').z)<.5);
 });
 test('168: longer stock rear face is still physically exact at all weapon scales',()=>{
  for(const weapon of ['carbine','smg','rifle','shotgun']){
@@ -30,7 +30,7 @@ test('168: longer stock rear face is still physically exact at all weapon scales
    assert.ok(rear.distanceTo(fit.stock)<1e-6,
      mode+' buttplate does not match visible rear');
    assert.ok(fit.stockError<3,mode+' stock loses contact');
-   assert.ok(fit.stock.z>=(mode==='short'?6.60:6.35));
+   assert.ok(fit.stock.z>=5.90);
    assert.ok(Number.isFinite(fit.contactError));
   }
  }
@@ -39,8 +39,7 @@ test('168: elbow targets are intermediate, not chicken wings or rib-pinned',()=>
  for(const mode of modes){
   for(const sign of [-1,1]){
    const p=elbowCorridor(mode,sign);
-   const outboard=mode==='short'&&sign===1;
-   assert.ok(Math.abs(p.z)>7.7&&Math.abs(p.z)<(outboard?14:8.9),
+   assert.ok(Math.abs(p.z)>7.7&&Math.abs(p.z)<9.0,
      mode+' has implausible pole lateral spread');
   }
  }
@@ -60,7 +59,7 @@ test('168: elbow targets are intermediate, not chicken wings or rib-pinned',()=>
 test('168: upper-body profiles keep six different intentions',()=>{
  const p=HANDLING_PROFILES;
  assert.ok(p.high.pitch>.4&&p.low.pitch<-.4);
- assert.ok(p.short.stockY<p.low.stockY-4);
+ assert.ok(p.short.stockY>p.low.stockY&&p.short.pitch<p.low.pitch-.1);
  assert.ok(p.ads.headDrop>p.point.headDrop+.55);
  assert.ok(p.short.elbowTuck>p.high.elbowTuck);
  assert.ok(p.high.elbowTuck>p.ads.elbowTuck);
