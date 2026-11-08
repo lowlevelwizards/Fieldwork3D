@@ -7,7 +7,9 @@ import * as THREE from 'three';
 export function studioContourEligible(
  mesh:THREE.Mesh,source:THREE.MeshStandardMaterial
 ):boolean{
- if(source.userData.fieldworkFabric===true)return false;
+ if(source.userData.fieldworkFabric===true||
+    source.userData.fieldworkStudioSoftGear===true||
+    source.userData.fieldworkStudioSkin===true)return false;
  if(source.transparent||source.opacity<.999||source.alphaTest>0||
     !source.depthWrite||source.side===THREE.DoubleSide)return false;
  if(!mesh.geometry.getAttribute('normal'))return false;
