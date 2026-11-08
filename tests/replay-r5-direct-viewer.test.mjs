@@ -18,20 +18,37 @@ const members=[
 ];
 const rooms=[{id:'A',x:0,y:0,w:150,h:150},
   {id:'B',x:330,y:300,w:140,h:130}];
-test('cinematic director favors a coherent room group with disclosed action',()=>{
+test('cinematic director fits ALL four friendlies and ignores hidden enemies',()=>{
   const cues=[{t:5,p:{x:60,y:65},weight:9,kind:'wound'}];
   const shot=cinematicReplayShot(6,members,rooms,[],cues,1.4,0);
   assert.equal(shot.roomId,'A');
-  assert.equal(shot.actorsFramed,3);
+  assert.equal(shot.actorsFramed,4);
   assert.equal(shot.kind,'action');
-  assert.ok(shot.focus.x>40&&shot.focus.x<72);
-  assert.ok(shot.zoom>1&&shot.zoom<=3.6);
+  assert.ok(shot.focus.x>200&&shot.focus.x<230,
+    'Framing center must include the fourth teammate, even in another room');
+  assert.ok(shot.zoom>=.65&&shot.zoom<=18);
   assert.ok(shot.pitch>0.8&&shot.pitch<1.1);
   const withoutEnemy=cinematicReplayShot(6,members.filter(a=>a.side==='blue'),
     rooms,[],cues,1.4,0);
   assert.deepEqual(shot,withoutEnemy,'unseen hostiles must never steer the camera');
   assert.deepEqual(shot,cinematicReplayShot(6,members,rooms,[],cues,1.4,0),
     'same recorded frame and context must produce deterministic framing');
+});
+test('director aggressively zooms to the closest four-person fit',()=>{
+  const grouped=members.filter(m=>m.side==='blue').map((m,i)=>({
+    ...m,p:{x:48+i*9,y:54+(i%2)*12}
+  }));
+  const close=cinematicReplayShot(8,grouped,rooms,[],[],1.4,0,1200);
+  assert.equal(close.actorsFramed,4);
+  assert.ok(close.zoom>=10,'Compact squad should be a genuine close-up');
+  const distant=cinematicReplayShot(8,members,rooms,[],[],1.4,0,1200);
+  assert.ok(distant.zoom<close.zoom,
+    'A more spread-out squad must fit safely instead of being cropped');
+  const modifiedEnemy=members.map(m=>m.side==='red'?{
+    ...m,p:{x:900,y:900}
+  }:m);
+  assert.deepEqual(cinematicReplayShot(8,modifiedEnemy,rooms,[],[],1.4,0,1200),
+    distant,'Hostile positions never influence Director framing');
 });
 test('director eases perspective without rotating the long way round',()=>{
   const current={focus:{x:0,y:0},zoom:1,yaw:Math.PI*1.98,
