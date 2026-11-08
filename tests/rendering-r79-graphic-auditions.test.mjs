@@ -50,8 +50,8 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  assert.equal(rimMin.count,receiver.geometry.getAttribute('position').count);
  assert.equal(ensureStudioRimBounds(receiver.geometry),true);
  assert.equal(receiver.geometry.getAttribute('fieldworkRimBoundsMin'),rimMin);
- assert.notEqual(uniform.material,fabric,'opt-in preview lights fabric');
- assert.equal(uniform.material.userData.fieldworkStudioArtOnly,true);
+ assert.equal(uniform.material,fabric,
+  'gear stays matte; only separate translucent backfaces receive ink');
  const overlay=uniform.children.find(x=>x.userData.fieldworkStudioEdgeBleedOverlay);
  assert.ok(overlay,'gear outline actually extends outside the source mesh');
  assert.equal(overlay.material.side,THREE.BackSide);
@@ -213,8 +213,8 @@ test('R7.15 skin and fabric draw separate genuine silhouette shells',()=>{
   rimSkinWidth:3.2,rimSkinOpacity:.34,rimSkinBacklight:1.2,
   rimSkinWarmth:1.25,rimDebugMask:true,lightAzimuth:45});
  applyStudioGraphicLighting(root,audition);
- assert.notEqual(head.material,skin);
- assert.notEqual(shirt.material,cloth);
+ assert.equal(head.material,skin,'skin face remains original under overlay');
+ assert.equal(shirt.material,cloth,'cloth remains original under overlay');
  const skinShell=head.children.find(x=>x.userData.fieldworkStudioEdgeBleedOverlay);
  const clothShell=shirt.children.find(x=>x.userData.fieldworkStudioEdgeBleedOverlay);
  assert.ok(skinShell&&clothShell);
