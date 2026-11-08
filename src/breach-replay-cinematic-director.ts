@@ -6,7 +6,9 @@
 import type {ReplayCameraActor,ReplayCameraPoint,ReplayDirectorCue}
   from './breach-replay-director.ts';
 
-export type DirectorActor=ReplayCameraActor&{heading?:number};
+export type DirectorActor=ReplayCameraActor&{
+  heading?:number;velocity?:number
+};
 export type DirectorRoom={id?:string;x:number;y:number;w:number;h:number};
 export type DirectorWall={a:ReplayCameraPoint;b:ReplayCameraPoint};
 export type CinematicShot={
