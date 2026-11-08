@@ -270,7 +270,7 @@ export class TacticalScene3D{
       !add(this.rescueFigure.position))return null;
     return output;
   }
-  private renderMiniatureFocus(camera:THREE.Camera,omniscient:boolean):void{
+  private renderMiniatureFocus(camera:THREE.Camera):void{
     if(this.miniFocusMode==='off'&&!this.miniFocusDebug){
       this.renderer.render(this.scene,camera);return;
     }
@@ -2903,7 +2903,7 @@ export class TacticalScene3D{
       for(const child of cameraOwner.chest.children)hide(child);
       cameraOwner.head.traverse(hide);
     }
-    try{this.renderMiniatureFocus(camera,omniscient);}
+    try{this.renderMiniatureFocus(camera);}
     finally{
       for(const [mesh,visible] of masked)mesh.visible=visible;
       this.bodycamLastQa={
