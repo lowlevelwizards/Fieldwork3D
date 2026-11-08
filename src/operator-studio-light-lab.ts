@@ -1,4 +1,6 @@
-/** R7.9 interactive Studio-only visual auditions. Nothing here is persisted
+/** R7.18 shared art-look settings for Studio, Arsenal and tactical scenes.
+ * Studio controls remain temporary; approved values are presentation-only.
+ * Nothing here is persisted
  * to operator wardrobe, campaign inventory, combat simulation or replay.
  * Retain the original R7 URL flags as initial presets.
  */
@@ -42,10 +44,26 @@ export const DEFAULT_STUDIO_LIGHT_LAB:Readonly<StudioLightLabSettings>={
  toon:0,rim:'off',gradient:'current',shadow:'neutral',
  celProfile:'graphic',celLow:.70,celHigh:.84,rimAmount:.85,
  rimWidth:2.5,rimCoverage:.55,rimAngleLooseness:1.25,
- rimFabricWidth:2.8,rimFabricOpacity:.16,rimFabricLightThreshold:.65,
- rimSkinWidth:2.6,rimSkinOpacity:.24,rimSkinLightThreshold:.65,rimSkinWarmth:1.0,
+ rimFabricWidth:2.8,rimFabricOpacity:0,rimFabricLightThreshold:.65,
+ rimSkinWidth:2.6,rimSkinOpacity:0,rimSkinLightThreshold:.65,rimSkinWarmth:1.0,
  rimDebugMask:false,lightAzimuth:0,allSurfaces:true
 };
+/** Approved R7.18 graphic look; experiment A/B still restores the above
+ * original. The same numeric profile drives all three 3D viewers.
+ * Fabric and skin edge inks stay rejected and completely disabled.
+ */
+export const APPROVED_GRAPHIC_LIGHTING:Readonly<StudioLightLabSettings>={
+ ...DEFAULT_STUDIO_LIGHT_LAB,
+ toon:3,rim:'dual',gradient:'piece-rose',shadow:'plum-plus',
+ celProfile:'graphic',celLow:.60,celHigh:.86,
+ rimAmount:.85,rimWidth:2.5,rimCoverage:.55,
+ rimFabricOpacity:0,rimSkinOpacity:0
+};
+/** Avoid optional URL or UI settings accidentally reactivating rejected
+ * fabric/skin glints. This restriction applies in gameplay as well. */
+export function approvedGraphicLighting():StudioLightLabSettings{
+ return {...APPROVED_GRAPHIC_LIGHTING};
+}
 function clampCutoff(value:string|null,defaultValue:number):number{
  const n=Number(value);
  return value!==null&&Number.isFinite(n)?
@@ -63,6 +81,9 @@ export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
  const shadow=requestedStudioShadowColor(search);
  const amount=p.get('operatorRimAmount');
  const n=amount===null ? DEFAULT_STUDIO_LIGHT_LAB.rimAmount : Number(amount);
+ if(!['operatorLightingToon','operatorRim','operatorGradient',
+    'operatorShadowColor','operatorRimAmount','operatorCelLow']
+  .some(k=>p.has(k)))return approvedGraphicLighting();
  return {
   toon:toon?2:0,
   rim:rim==='off'?'off':'dual',
@@ -105,10 +126,10 @@ export function effectiveStudioLightLab(
   rimCoverage:THREECLAMP(settings.rimCoverage,.10,.80,.55),
   rimAngleLooseness:THREECLAMP(settings.rimAngleLooseness,.75,2,1.25),
   rimFabricWidth:THREECLAMP(settings.rimFabricWidth,1,4,2.8),
-  rimFabricOpacity:THREECLAMP(settings.rimFabricOpacity,0,.35,.16),
+  rimFabricOpacity:0,
   rimFabricLightThreshold:THREECLAMP(settings.rimFabricLightThreshold,0,1,.65),
   rimSkinWidth:THREECLAMP(settings.rimSkinWidth,1,4,2.6),
-  rimSkinOpacity:THREECLAMP(settings.rimSkinOpacity,0,.45,.24),
+  rimSkinOpacity:0,
   rimSkinLightThreshold:THREECLAMP(settings.rimSkinLightThreshold,0,1,.65),
   rimSkinWarmth:THREECLAMP(settings.rimSkinWarmth,.5,1.5,1),
   rimDebugMask:settings.rimDebugMask===true,
