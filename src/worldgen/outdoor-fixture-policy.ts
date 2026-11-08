@@ -67,10 +67,18 @@ export function frontageEdgeCandidates(
    const normal=(entry==='north'||entry==='south')?'y':'x';
    const along=normal==='y'?'x':'y';
    const main=along==='x'?site.entrance.x:site.entrance.y;
+   const roomSide=along==='x'?w:h;
+   // Short side-facing forecourts cannot accommodate a fixed 77-unit
+   // displacement. Keep the whole kiosk in the forecourt while protecting
+   // at least the regular entrance clearance.
+   const sideRoom=along==='x'?zone.w:zone.h;
+   const limit=sideRoom/2-roomSide/2-8;
+   if(limit<58)return [];
+   const displacement=Math.min(77,limit);
    const transverse=frontage+sign*(26+(normal==='x'?w:h)*.20);
    return [-1,1].map(dir=>along==='x'?
-     {x:main+dir*77,y:transverse}:
-     {x:transverse,y:main+dir*77});
+     {x:main+dir*displacement,y:transverse}:
+     {x:transverse,y:main+dir*displacement});
  }
  if(fixture==='parking-sign'&&zone.kind==='parking'&&
     site.doors&&site.entrance){
