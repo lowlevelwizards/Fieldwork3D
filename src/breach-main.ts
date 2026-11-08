@@ -3457,6 +3457,33 @@ function renderReplayBallistics(projected:boolean):void{
 }
 /** Ghost sprites are intentionally abstract and share the operator palette. */
 /** Replay R3: actual recorded route — not authored waypoints. */
+/** Camera-follow selection is a spatial affordance, not just a HUD label.
+ * The ring sits on the actual historical friendly; no enemy data is used. */
+function renderReplayFollowMarker(projected:boolean):void{
+  if(!replaying||replayCameraMode!=='operator'||replayBodycamOn)return;
+  const actor=team(state).find(a=>a.id===replayFollowId&&a.health>0);
+  if(!actor)return;
+  const point=projected?worldToScreen(actor.p,21):actor.p;
+  if(!Number.isFinite(point.x)||!Number.isFinite(point.y))return;
+  const px=projected?1:1/Math.max(.3,viewScale);
+  const radius=22*px;
+  const pulse=1.5*Math.sin(replayTime*2.2);
+  draw.save();
+  draw.lineWidth=3*px;
+  draw.strokeStyle='#1b302b';
+  draw.beginPath();draw.arc(point.x,point.y,radius+2*px,0,Math.PI*2);
+  draw.stroke();
+  draw.lineWidth=2.3*px;
+  draw.strokeStyle='#f0d394';
+  draw.beginPath();draw.arc(point.x,point.y,radius+pulse*px,0,Math.PI*2);
+  draw.stroke();
+  draw.fillStyle='#f5e4bb';
+  draw.font='700 '+(11*px)+'px "Saira Condensed",sans-serif';
+  draw.textAlign='center';
+  draw.fillText('FOLLOW · '+actor.name.toUpperCase(),
+    point.x,point.y-(radius+10*px));
+  draw.restore();
+}
 function renderReplayMovementHistory(projected:boolean):void{
   if(!replaying||replayTrailMode==='off'||!replayMovementHistory)return;
   draw.save();draw.globalAlpha=.58;draw.lineWidth=2.15;draw.setLineDash([]);
@@ -3786,6 +3813,7 @@ function renderProjectedPlans(){
   renderReplayMovementHistory(true);
   renderReplayGhosts(true);
   renderReplayBallistics(true);
+  renderReplayFollowMarker(true);
   for(const a of team(state))drawExecutionProblem(a,true);
 }
 /** Gold denotes actual historically observed cells for the selected operator.
@@ -4125,7 +4153,8 @@ function render(){
   for(const a of state.civilians)civilianSprite(a);
   for(const a of state.operators)sprite(a);
   for(const a of team(state))drawExecutionProblem(a,false);
-  contacts();renderReplayGhosts(false);renderReplayBallistics(false);endMessage();
+  contacts();renderReplayGhosts(false);renderReplayBallistics(false);
+  renderReplayFollowMarker(false);endMessage();
   draw.strokeStyle='#d4dac64f';draw.lineWidth=2;
   draw.strokeRect(0,0,W,H);
   draw.restore();
