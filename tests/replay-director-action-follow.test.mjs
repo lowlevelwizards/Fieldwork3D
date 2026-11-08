@@ -124,3 +124,29 @@ test('moving follow rig dollies decisively without edits, while maintaining two-
    'shooter and target must both remain in the actual moving viewport');
  }
 });
+
+test('following dolly takes a legal furniture detour rather than freezing or teleporting',()=>{
+ const furniture={x:150,y:110,w:56,h:78};
+ const setting={rooms:[room],walls:[],cover:[furniture]};
+ const director=new ReplayDirectorStoryboard(14,t=>({
+   roomId:'hall',cameraAnchor:t<.8?at(70,110):at(231,110),
+   focus:at(280,112),operatorPoint:at(270,112),
+   attentionPoint:at(340,112),followDirection:at(1,0),
+   framePoints:[at(270,112),at(340,112)],
+   zoom:3.4,fov:105,pitch:.6,yaw:0,
+   subjects:['rook','moss'],motion:72,beatId:'fight:couch',
+   shotType:'contact',kind:'action',actorsFramed:2,
+   doorId:null,score:99,occluded:0
+ }),{...setting,step:.8,aspect:.82,baseSpan:1100});
+ let prev=null;
+ for(let t=0;t<=13;t+=.1){
+   const shot=director.sample(t);
+   assert.ok(directorCameraLegal(shot.cameraAnchor,room,setting),
+     'camera cannot intersect or pass through the table');
+   if(prev)assert.ok(distance(shot.cameraAnchor,prev.cameraAnchor)<4,
+     'detour must be an actual dolly, not a teleport');
+   prev=shot;
+ }
+ assert.ok(director.sample(13).cameraAnchor.x>188,
+   'camera must find a real walkable route around the obstacle');
+});
