@@ -36,7 +36,7 @@ export function assessLowReadyArm(
  if(flexion>LOW_READY_ANATOMY.maxElbowFlex)reasons.push('folded-arm');
  // Prevent broken shoulder posture: never solve an elbow so far behind
  // the shoulder that the upper arm visibly reverses direction.
- if(elbow.x<shoulder.x-8.8)reasons.push('rear-break');
+ if(elbow.x<shoulder.x-.45)reasons.push('rear-break');
  const preferredDrop=side===1?
   LOW_READY_ANATOMY.preferredFiringDrop:
   LOW_READY_ANATOMY.preferredSupportDrop;

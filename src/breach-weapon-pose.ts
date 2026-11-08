@@ -115,7 +115,7 @@ export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
   /** Fire direction in chest-local space. */
   yaw:number;recoil:number;aimBlend?:number;
   swayYaw?:number;swayPitch?:number;
-  /** Underarm pull-back for a physically blocked muzzle. */
+  /** Legacy authored pull-back; live wall handling now uses compression. */
   clearanceRetraction?:number;
   /** Wall proximity 0..1; omitted for manually authored full short-stock. */
   shortCompression?:number;
@@ -298,7 +298,9 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     }
   }
   const b=best!;
-  // Apply a single rigid slide to the stock AND both physical hand sockets.
+  // Legacy explicit clearance (manual callers only). Live approach uses
+  // the progressive shortCompression path above, without a sudden slide.
+  // Apply a single rigid slide to stock and both contact sockets.
   const retract=input.handling==='short'?
     clamp(input.clearanceRetraction??0,0,3.4):0;
   const stock=new THREE.Vector3(b.sx-retract,b.sy,b.sz);

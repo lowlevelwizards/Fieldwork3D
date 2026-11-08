@@ -2239,7 +2239,8 @@ export class TacticalScene3D{
         threatRange,
         obstruction:clearance.obstruction,
         clearanceRetraction:clearance.retraction,
-        shortCompression:clearance.compression,
+        shortCompression:handlingIntent==='squeeze'?1:
+          clearance.obstruction?clearance.compression:undefined,
         clearanceBlocked:clearance.blocked,
         hitRegion:actor.lastHitRegion,hitYaw:actor.lastHitYaw,
         hitSeverity:actor.lastHitSeverity,downPose:actor.downPose,

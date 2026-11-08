@@ -1,7 +1,7 @@
 /** Shared V3 arm validation and compact silhouette preference.
  * Hard physical viability is separate from aesthetic ranking.
- * No global elbow drop/flare threshold may reject a legitimate action pose:
- * ADS, magazine manipulation and low-ready have different valid envelopes.
+ * Carry/ADS elbows stay within the human forward/down hemisphere.
+ * Reload and interaction poses have separate envelopes.
  */
 import type * as THREE from 'three';
 import {evaluateSleeveArmorContact,type PoseClearanceEnvelope,
