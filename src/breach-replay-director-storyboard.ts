@@ -242,10 +242,8 @@ export class ReplayDirectorStoryboard{
         raw.actionAxis??{x:1,y:0},raw.editorialKind,
         'ortho',this.aspect,this.baseSpan,prior.zoom,
         prior.fov??108,this.usableWidth,this.usableHeight,
-        this.safeFrame);
+        this.safeFrame,raw.foregroundOperatorPoints??[]);
       if(!quality.primaryReadable||!quality.targetReadable)return false;
-      if(raw.compositionQuality&&
-        raw.compositionQuality.score-quality.score>12)return false;
     }
     return true;
   }
@@ -269,7 +267,7 @@ export class ReplayDirectorStoryboard{
       raw.editorialKind??'follow',
       'ortho',this.aspect,this.baseSpan,prior.zoom,
       prior.fov??108,this.usableWidth,this.usableHeight,
-      this.safeFrame);
+      this.safeFrame,raw.foregroundOperatorPoints??[]);
     return quality.primaryReadable&&quality.targetReadable;
   }
   /** No camera edit merely because another framewise shot scores higher.
@@ -282,6 +280,8 @@ export class ReplayDirectorStoryboard{
     // A transition just after another scene edit still waits for one
     // whole knot, so repeated adjacent doors cannot strobe.
     if(raw.firstEntry&&raw.shotType==='entry')
+      // The confirmed first physical crossing is a deliberately
+      // motivated exception to ordinary three-second shot commitment.
       return index-(prior.sceneStartIndex??0)>=1;
     const minResidence=Math.ceil(2.4/this.step);
     if(index-(prior.sceneStartIndex??0)<minResidence)return false;
@@ -304,11 +304,21 @@ export class ReplayDirectorStoryboard{
     const verifiedRecovery=raw.subjectReadable===true&&
       raw.compositionQuality?.primaryReadable!==false;
     const entering=!!raw.firstEntry&&raw.shotType==='entry';
+    const residence=(index-(prior.sceneStartIndex??0))*this.step;
+    const priorEvidence=this.raw(index-1);
+    const confirmedChange=!!priorEvidence&&
+      priorEvidence.editorialId===raw.editorialId;
+    const purposefulLoss=priorEvidence&&raw.operatorPoint&&
+      !this.subjectLegible(prior,priorEvidence)&&
+      !establishedLegible;
+    // Optical failure must persist; a single half-second silhouette
+    // occlusion is not an editing event. Keep good camera setups for
+    // at least three seconds and don't reset commitment during reframes.
     // Hard integrity outranks scene residence and aesthetic continuity.
     // If action has LEFT the existing image, use the legal, newly
     // solved rig at the next fixed knot rather than tracking empty walls.
-    if(!establishedLegible&&verifiedRecovery&&
-      index-(prior.sceneStartIndex??0)>=1){
+    if(!establishedLegible&&verifiedRecovery&&purposefulLoss&&
+      confirmedChange&&residence>=3){
       return {...raw,sceneStartIndex:index,
         cameraDecision:'cut:restore-visible-subject'};
     }
@@ -350,7 +360,8 @@ export class ReplayDirectorStoryboard{
     const actionOutOfFrame=!sameStory&&!covered&&
       (raw.editorialPriority??0)>=5&&
       (raw.editorialPriority??0)>=(prior.editorialPriority??0);
-    if(actionOutOfFrame&&index-(prior.sceneStartIndex??0)>=1){
+    if(actionOutOfFrame&&verifiedRecovery&&confirmedChange&&
+      residence>=3){
       // An essential gunfight is sometimes better served by one
       // purposeful same-room cut than by a slow sideways chase.
       return {...raw,sceneStartIndex:index,
@@ -366,8 +377,8 @@ export class ReplayDirectorStoryboard{
     // Keep the established frame steady until actors actually move or
     // a real recorded action becomes the subject.
     if(!action&&!traveling&&raw.motion<9){
-      if(!covered&&verifiedRecovery&&
-        index-(prior.sceneStartIndex??0)>=Math.ceil(1/this.step))
+      if(!covered&&verifiedRecovery&&purposefulLoss&&
+        residence>=3)
         return {...raw,sceneStartIndex:index,
           cameraDecision:'cut:quiet-recover-action'};
       // A newly authored doorway approach can be meaningful even while
@@ -375,7 +386,7 @@ export class ReplayDirectorStoryboard{
       // the previous unrelated subject for the rest of the scene.
       const interest=!sameStory&&
         (raw.editorialPriority??0)>(prior.editorialPriority??0)+1.2&&
-        index-(prior.sceneStartIndex??0)>=Math.ceil(1.5/this.step);
+        residence>=3;
       if(interest)return {...raw,sceneStartIndex:index,
         cameraDecision:'cut:quiet-new-interest'};
       return {...prior,sceneStartIndex:prior.sceneStartIndex,

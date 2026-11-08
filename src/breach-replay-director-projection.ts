@@ -139,7 +139,8 @@ export function directorCompositionQuality(
   target:DirectorPoint|null,direction:DirectorPoint,
   treatment:DirectorCompositionTreatment,
   lens:'ortho'|'wide',aspect:number,baseSpan:number,zoom:number,fov:number,
-  safeWidth=.78,safeHeight=.76,safeFrame?:DirectorSafeFrame
+  safeWidth=.78,safeHeight=.76,safeFrame?:DirectorSafeFrame,
+  foregroundActors:readonly DirectorPoint[]=[]
 ):DirectorCompositionQuality{
   const project=directorProjector(anchor,focus,aspect,baseSpan,zoom,fov,lens);
   const primary=bodyBounds(project,operator,[11,13,8]);
@@ -171,10 +172,24 @@ export function directorCompositionQuality(
     const inFrame=tBox.minX>=left&&tBox.maxX<=right&&
       tBox.minY>=bottom&&tBox.maxY<=top&&
       tCenter.z>=-1&&tCenter.z<=1;
-    targetOverlap=boxOverlap(primary,tBox)/Math.max(.00001,boxArea(tBox));
-    const centerBlocked=tCenter.x>=primary.minX&&tCenter.x<=primary.maxX&&
-      tCenter.y>=primary.minY&&tCenter.y<=primary.maxY;
-    targetReadable=inFrame&&targetOverlap<=.30&&!centerBlocked&&
+    // Every friendly that actually sits BETWEEN the camera and target
+    // is an occluder. Two bodies at the same screen position must never
+    // count as a successful two-shot simply because the target's world
+    // coordinate is technically in the lens.
+    const targetDepth=Math.hypot(target.x-anchor.x,target.y-anchor.y);
+    const blockers=[operator,...foregroundActors.filter(p=>
+      Math.hypot(p.x-operator.x,p.y-operator.y)>1)];
+    let occludedArea=0,centerBlocked=false;
+    for(const body of blockers){
+      const distance=Math.hypot(body.x-anchor.x,body.y-anchor.y);
+      if(distance>=targetDepth-5)continue;
+      const b=bodyBounds(project,body,[11,13,8]);
+      occludedArea+=boxOverlap(b,tBox)/Math.max(.00001,boxArea(tBox));
+      if(tCenter.x>=b.minX&&tCenter.x<=b.maxX&&
+         tCenter.y>=b.minY&&tCenter.y<=b.maxY)centerBlocked=true;
+    }
+    targetOverlap=Math.min(1,occludedArea);
+    targetReadable=inFrame&&targetOverlap<=.23&&!centerBlocked&&
       Math.abs(tCenter.x-op.x)>=.095;
   }
   const axis=dir.x*(anchor.y-operator.y)-dir.y*(anchor.x-operator.x);

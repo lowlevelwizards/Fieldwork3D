@@ -9,6 +9,7 @@ import {type DirectorIntent,
 import type {DirectorFutureCue} from './breach-replay-director-events.ts';
 import type {DirectorFilmBeat} from './breach-replay-director-film.ts';
 import type {DirectorEntryEvent} from './breach-replay-director-crossings.ts';
+import type {DirectorRecordedContact} from './breach-replay-director-contact.ts';
 
 export type Point={x:number;y:number};
 export type DirectorEditorialKind=
@@ -29,6 +30,7 @@ export type DirectorEditorialEvidence={
   intents:readonly DirectorIntent[];
   beat?:DirectorFilmBeat|null;
   actionPair?:{shooter:Point;target:Point}|null;
+  contact?:DirectorRecordedContact|null;
   upcoming:DirectorFutureCue|null;
   entry?:DirectorEntryEvent|null
 };
@@ -80,6 +82,21 @@ export function selectDirectorEditorialShot(
     // A cue alone is NEVER proof that a future enemy should be shown.
     if(e.actionPair)target=e.beat.actorId===e.beat.shooterId?
       e.actionPair.target:e.actionPair.shooter;
+    else if(e.contact?.observerId===e.beat.actorId)
+      target={...e.contact.target};
+    else if(e.contact&&byId(e.contact.observerId)){
+      // Another operator actually sees the enemy while this film beat's
+      // nominated hero does not. Shoot the OBSERVED pair instead.
+      primary=byId(e.contact.observerId);
+      target={...e.contact.target};
+      reason='recorded contact overrides unobserved combat pair';
+    }
+  }else if(e.contact&&byId(e.contact.observerId)){
+    // Current recorded eye contact, not an anticipated/projected threat.
+    // Both observer and enemy are essential to a readable contact shot.
+    primary=byId(e.contact.observerId);
+    kind='engage';priority=5.8;reason='recorded operator visual contact';
+    target={...e.contact.target};
   }else if(e.upcoming?.kind==='contact'&&byId(e.upcoming.actorId)){
     primary=byId(e.upcoming.actorId);
     kind='engage';priority=5;reason='anticipate friendly contact';

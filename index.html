@@ -271,6 +271,20 @@
   <button id="replayRailToggle" class="replay-rail-toggle" type="button"
     aria-label="Collapse replay side controls" aria-expanded="true"
     title="Collapse replay side controls">‹</button>
+  <div class="replay-rail-choice replay-overlay-choice">
+    <button id="replayOverlayTrigger" type="button" aria-expanded="false"
+      aria-controls="replayOverlayChoices"
+      aria-label="Show or hide replay overlays">◫<small>HIDE</small></button>
+    <div id="replayOverlayChoices" class="replay-choice-pop replay-overlay-pop"
+      hidden role="group" aria-label="Replay overlay visibility">
+      <button type="button" data-overlay-choice="names" aria-pressed="true">NAMES ON</button>
+      <button type="button" data-overlay-choice="contacts" aria-pressed="true">CONTACTS ON</button>
+      <button type="button" data-overlay-choice="plans" aria-pressed="false">PLANS OFF</button>
+      <button type="button" data-overlay-choice="objectives" aria-pressed="true">OBJECTIVES ON</button>
+      <button type="button" data-overlay-choice="clear" class="replay-overlay-clear">CLEAR ALL</button>
+      <button type="button" data-overlay-choice="show">SHOW ALL</button>
+    </div>
+  </div>
   <div class="replay-rail-choice">
     <button id="replayViewTrigger" type="button" aria-expanded="false"
       aria-controls="replayViewChoices" aria-label="Perspective: ISO">▱<small>ISO</small></button>

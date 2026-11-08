@@ -2651,6 +2651,20 @@ body.replaying .replay-top-hud{
   isolation:isolate
 }
 
+
+/* R9.2: compact replay-only tactical presentation switchboard. The
+ * transport remains visible when every optional overlay is hidden. */
+.replay-overlay-pop{min-width:166px!important;max-width:min(74vw,224px)!important;
+  padding:6px!important;gap:4px!important;max-height:min(56dvh,360px)!important;
+  overflow-y:auto!important}
+.replay-overlay-pop button{min-height:41px!important;text-align:left!important;
+  font:700 12px/1 "Saira Condensed",sans-serif!important;letter-spacing:.04em}
+.replay-overlay-pop button[aria-pressed="false"]{color:#a9baac}
+.replay-overlay-pop button[aria-pressed="true"]{color:#fff1c9;
+  border-color:#b8a77e;background:#3a4b3a}
+.replay-overlay-pop .replay-overlay-clear{border-color:#c4ad83!important;
+  color:#f7e2b4!important;background:#384139!important}
+
 /* MF-1 graphics preference: existing sheet layout, generous phone controls. */
 .miniature-focus-preference{margin:15px 0 16px}
 .miniature-focus-preference>strong{display:block;margin:0 2px 8px;

@@ -1,4 +1,5 @@
-import {groundMarkOccludedFromCamera} from './breach-ground-geometry.ts';
+import {groundMarkHiddenByWallFromCamera,groundMarkHiddenByActors}
+  from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
 import {APPROVED_GRAPHIC_LIGHTING}
@@ -356,7 +357,7 @@ export class TacticalScene3D{
   private impactDecalMesh:THREE.InstancedMesh|null=null;
   private impactDecalMatrix=new THREE.Object3D();
   private impactDecalColor=new THREE.Color();
-  private groundMarkTowardCamera=new THREE.Vector3();
+
   private casingMesh:THREE.InstancedMesh|null=null;
   private casingIds:number[]=[];
   private casingMatrix=new THREE.Object3D();
@@ -2153,20 +2154,26 @@ export class TacticalScene3D{
     const fromCamera=this.projectionCamera.position.clone().sub(this.target);
     const pawn=this.replayDirectorFocus??
       team(s).find(a=>a.id===selected&&a.health>0)?.p;
-    const subjects=this.replayDirectorSubjects.length?
+    const subjects=physicalDirector&&this.replayDirectorLens==='ortho'?
+      team(s).map(a=>a.p):this.replayDirectorSubjects.length?
       this.replayDirectorSubjects:pawn?[pawn]:[];
     const maxCutDistance=Math.max(40,Math.min(150,
       90/Math.tan(Math.max(.38,this.view.pitch))));
     for(const wall of this.walls){
-      const cut=!bodycamAudition&&!physicalDirector&&this.view.mode==='iso'&&
+      const cut=!bodycamAudition&&this.view.mode==='iso'&&
+        (!physicalDirector||this.replayDirectorLens==='ortho')&&
         subjects.some(subject=>wallOccludesFriendly(
           wall.segment,subject,{x:fromCamera.x,y:fromCamera.z},maxCutDistance));
       // CUTAWAY never makes the whole building transparent. Only walls
       // between the camera and the selected friendly/Director subjects fade.
       // Historical knowledge and object visibility remain authoritative.
-      const opacity=bodycamAudition||physicalDirector?1:transitionWallOpacity(
-        this.wallFade.get(wall.mesh)??1,cut,dt,
-        this.replayXrayOn?0.19:0.38);
+      // For orthographic Director, the player-side friendly silhouette
+      // remains readable behind a camera-facing wall. Wall structure
+      // stays recognizable as a faint cutaway, never an operator fade.
+      const opacity=bodycamAudition?1:physicalDirector?
+        cut?.12:1:transitionWallOpacity(
+          this.wallFade.get(wall.mesh)??1,cut,dt,
+          this.replayXrayOn?0.19:0.38);
       this.wallFade.set(wall.mesh,opacity);
       const translucent=opacity<.995;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
@@ -2176,7 +2183,8 @@ export class TacticalScene3D{
       }
       material.opacity=opacity;
       const patina=wall.mesh.userData.patinaMaterial as THREE.MeshBasicMaterial|undefined;
-      if(patina)patina.opacity=Math.max(.24,1-(1-opacity)*1.226);
+      if(patina)patina.opacity=Math.max(physicalDirector?.08:.24,
+        1-(1-opacity)*1.226);
       wall.mesh.renderOrder=translucent?1001:0;
     }
     // The selected endpoint is stable across this entire render. Do not
@@ -2232,11 +2240,45 @@ export class TacticalScene3D{
         // yaw remains authoritative for collision, LOS and navigation.
         object.leaf.rotation.y=(door.swing??-1)*shownFraction*1.54+wobble;
       }
+      // A solid open leaf is still geometry. In orthographic Director
+      // a door between the camera and a friendly fades as a very light
+      // architectural ghost while the miniature stays fully opaque.
+      // Clone each affected opaque material ONCE so changing one door
+      // never fades other doors or the rest of the building.
+      const leafCut=physicalDirector&&this.replayDirectorLens==='ortho'&&
+        !['glazed','french','screen','mesh-gate'].includes(door.style??'')&&
+        subjects.some(p=>wallOccludesFriendly(
+          doorLeafSegment({...door,openFraction:shownFraction}),
+          p,{x:fromCamera.x,y:fromCamera.z},maxCutDistance));
+      if(leafCut||object.leaf.userData.directorCutMaterials){
+        object.leaf.userData.directorCutMaterials=true;
+        object.leaf.traverse(child=>{
+          if(!(child instanceof THREE.Mesh))return;
+          const original=child.material;
+          if(!(original instanceof THREE.MeshStandardMaterial))return;
+          if(!child.userData.directorCutMat){
+            if(!leafCut||original.transparent)return;
+            const clone=original.clone();
+            this.mats.push(clone);
+            child.material=clone;
+            child.userData.directorCutMat=clone;
+          }
+          const local=child.userData.directorCutMat as THREE.MeshStandardMaterial;
+          if(local.transparent!==leafCut){
+            local.transparent=leafCut;
+            local.depthWrite=!leafCut;
+            local.needsUpdate=true;
+          }
+          local.opacity=leafCut?.12:1;
+          child.renderOrder=leafCut?1001:0;
+        });
+      }
       const reachable=selectedActor&&selectedActor.health>0&&
         (doorReachable(selectedActor.p,door)||
           (!!selectedEndpoint&&doorReachable(selectedEndpoint,door)));
       const focused=focusedDoorId===door.id;
-      object.halo.visible=door.kind!=='shutter'&&door.kind!=='sliding'&&
+      object.halo.visible=!replayDisclosurePolicy&&
+        door.kind!=='shutter'&&door.kind!=='sliding'&&
         object.root.visible&&s.phase==='planning'&&
         (!focused||!!reachable)&&
         (liveVisibility(s,doorCenter(door))||
@@ -2680,7 +2722,8 @@ export class TacticalScene3D{
       this.impactDecalMesh=new THREE.InstancedMesh(
         new THREE.CircleGeometry(1,9),
         new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,
-          opacity:.82,depthWrite:false,side:THREE.DoubleSide}),
+          opacity:.82,depthTest:true,depthWrite:false,
+          side:THREE.DoubleSide}),
         IMPACT_MARK_LIMIT);
       this.impactDecalMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
       this.impactDecalMesh.frustumCulled=false;
@@ -2689,13 +2732,18 @@ export class TacticalScene3D{
     const markDraw=this.impactDecalMesh;
     // The intentionally translucent wall cutaway never reveals stains
     // that are physically on the far side of a full-height wall.
-    this.projectionCamera.getWorldDirection(this.groundMarkTowardCamera).negate();
+    const bloodCamera=this.projectionCamera.position;
+    const visibleBloodBlockers=s.operators.filter(a=>
+      this.actors.get(a.id)?.root.visible).map(a=>a.p);
     let markCount=0;
     for(const mark of s.impactMarks){
       if(replayDisclosurePolicy?.mode==='operator')continue;
       if(!omniscient&&!liveVisibility(s,mark.p))continue;
-      if(groundMarkOccludedFromCamera(mark.p,this.groundMarkTowardCamera,
-          s.site?.walls??WALLS))continue;
+      if(groundMarkHiddenByWallFromCamera(mark.p,bloodCamera,
+          s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,
+          mark.surface==='blood'?.85:(mark.height??1)))continue;
+      if(mark.surface==='blood'&&groundMarkHiddenByActors(
+          mark.p,bloodCamera,visibleBloodBlockers))continue;
       if(markCount>=IMPACT_MARK_LIMIT)break;
       const dark=mark.surface==='blood'?0x763c38:
         mark.surface==='wood'?0x3a2920:

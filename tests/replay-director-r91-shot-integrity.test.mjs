@@ -61,7 +61,7 @@ test('R9.1 projection measures foreground surfaces and asymmetric safe stage',()
 test('R9.1 formerly valid quiet camera cuts when current actor leaves view',()=>{
  const room={id:'lab',x:0,y:0,w:550,h:200};
  const position=t=>t<.5?p(105,100):p(386,100);
- const rail=new ReplayDirectorStoryboard(3,t=>{
+ const rail=new ReplayDirectorStoryboard(5,t=>{
   const current=position(t);
   return {
    focus:t<.5?p(124,100):p(398,100),
@@ -77,11 +77,14 @@ test('R9.1 formerly valid quiet camera cuts when current actor leaves view',()=>
   };
  },{step:.5,rooms:[room],aspect:.62,baseSpan:1100});
  const before=rail.sample(0);
- const recovered=rail.sample(.5);
+ const early=rail.sample(.5);
+ assert.ok(!early.cameraDecision.startsWith('cut:'),
+  'brief lost subject must not trigger hyperactive immediate cuts');
+ const recovered=rail.sample(3);
  assert.ok(recovered.cameraAnchor.x>280,
-  'new actor is no longer in original room-corner camera view');
+  'after confirmed sustained loss camera restores visible subject');
  assert.equal(recovered.cameraDecision,'cut:restore-visible-subject');
- assert.equal(rail.sample(.5).cameraAnchor.x,recovered.cameraAnchor.x,
+ assert.equal(rail.sample(3).cameraAnchor.x,recovered.cameraAnchor.x,
   'random seeks remain deterministic');
  assert.equal(before.cameraAnchor.x,55);
 });

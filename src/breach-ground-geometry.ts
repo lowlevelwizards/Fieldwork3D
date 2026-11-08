@@ -90,3 +90,47 @@ export function groundMarkOccludedFromCamera(
  }
  return false;
 }
+
+
+/** Exact camera-space ray for perspective ORTHO and WIDE blood stains.
+ * Unlike a single camera forward vector, perspective rays diverge from
+ * the lens, so a far-side wall may hide a different portion of the floor. */
+export function groundMarkHiddenByWallFromCamera(
+  mark:Pt,camera:{x:number;y:number;z:number},
+  walls:readonly Pick<Segment,'a'|'b'>[],
+  wallHeight=56,groundHeight=.85
+):boolean{
+  const dx=camera.x-mark.x,dy=camera.z-mark.y;
+  const rise=camera.y-groundHeight;
+  if(rise<=.01)return false;
+  for(const wall of walls){
+    const sx=wall.b.x-wall.a.x,sy=wall.b.y-wall.a.y;
+    const det=dx*sy-dy*sx;
+    if(Math.abs(det)<1e-7)continue;
+    const ox=wall.a.x-mark.x,oy=wall.a.y-mark.y;
+    const t=(ox*sy-oy*sx)/det,u=(ox*dy-oy*dx)/det;
+    if(t>.002&&t<.995&&u>=0&&u<=1&&
+      groundHeight+rise*t<wallHeight)return true;
+  }
+  return false;
+}
+/** Presentation-only silhouette gate, never used for hit detection.
+ * A translucent floor mark behind an already visible actor should not
+ * render over their legs or body because of transparent pass order. */
+export function groundMarkHiddenByActors(
+  mark:Pt,camera:{x:number;y:number;z:number},
+  actors:readonly Pt[],radius=10,bodyHeight=41
+):boolean{
+  const dx=camera.x-mark.x,dy=camera.z-mark.y,
+    len2=dx*dx+dy*dy;
+  if(len2<1e-4)return false;
+  for(const actor of actors){
+    const t=Math.max(0,Math.min(.995,
+      ((actor.x-mark.x)*dx+(actor.y-mark.y)*dy)/len2));
+    const x=mark.x+t*dx,y=mark.y+t*dy;
+    if((x-actor.x)**2+(y-actor.y)**2>radius*radius)continue;
+    const vertical=.85+t*(camera.y-.85);
+    if(vertical>=0&&vertical<bodyHeight)return true;
+  }
+  return false;
+}

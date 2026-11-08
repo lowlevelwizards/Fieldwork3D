@@ -109,9 +109,13 @@ export function replayActorDisclosed(
   const sample=recordedReplayKnowledge(s);
   if(policy.mode==='operator')
     return a.health<=0?
+      // A remembered corpse may have been carried to an UNOBSERVED new
+      // location. Individual observers only display the actual recorded
+      // current sighting; the memory itself remains on the timeline.
       recordedObserverCanSeeBody(sample,policy.observerId,a.id)===true:
       recordedObserverCanSee(sample,policy.observerId,a.id)===true;
-  if(sample)return sample.visibleActorIds.includes(a.id);
+  if(sample)return sample.visibleActorIds.includes(a.id)||
+    (a.health<=0&&sample.discoveredBodyIds.includes(a.id));
   return a.health>0?isSeen(s,a):liveVisibility(s,a.p);
 }
 /** Existing callers keep their exact legacy boolean contract. */

@@ -135,6 +135,7 @@ test('a serious action out of prior coverage earns a motivated same-room cut',()
   kind:'action',shotType:t<.8?'travel':'contact',
   subjects:['rook'],actorsFramed:1,doorId:null,
   score:50,occluded:0,motion:40,
+  subjectReadable:true,
   editorialId:t<.8?'travel:rook':'fight:22',
   editorialPriority:t<.8?2.6:6,
   requiredPoints:t<.8?[pt(130,90)]:
@@ -145,8 +146,14 @@ test('a serious action out of prior coverage earns a motivated same-room cut',()
  const rail=new ReplayDirectorStoryboard(4,raw,{
   step:.8,rooms:[room],walls:[],aspect:.8,baseSpan:1100
  });
- assert.equal(rail.sample(.8).cameraDecision,
-  'cut:action-out-of-frame');
+ assert.ok(!rail.sample(.8).cameraDecision.startsWith('cut:'),
+  'a new contact candidate must not interrupt the shot immediately');
+ const later=rail.sample(3.2);
+ assert.ok(later.cameraAnchor.x>100,
+  'the rig may track the established event instead of making a cut');
+ assert.ok(later.cameraDecision==='cut:action-out-of-frame'||
+   later.cameraDecision.startsWith('track:'),
+  'a serious contact remains framed without unnecessary rapid cuts');
  assert.equal(rail.sample(1.6).roomId,'r');
 });
 test('real camera projection distinguishes zoom fit and impossible wide two-shot',()=>{

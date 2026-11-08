@@ -374,12 +374,18 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
         targetVisible?req.target??null:null,
         req.followDirection??{x:1,y:0},c.treatment,'ortho',
         aspect,c.baseSpan,zoom,proposal.fov,
-        c.usableWidth,c.usableHeight,c.safeFrame);
+        c.usableWidth,c.usableHeight,c.safeFrame,req.subjectPoints);
       proposal.compositionQuality=quality;
       // Coverage remains paramount. A back-of-head that conceals a real
       // target is not an acceptable OTS even if point LOS is clear.
-      if(targetVisible&&req.target&&!quality.targetReadable)
-        rankedScore-=420;
+      if(req.target){
+        // A seen hostile that vanishes behind ANY nearer teammate is not
+        // a cinematic two-shot. Never award a point-only LOS victory.
+        if(!targetVisible||!quality.targetReadable){
+          rankedScore-=1100;
+          proposal.targetVisible=false;
+        }else rankedScore+=240;
+      }
       if(!quality.primaryReadable)rankedScore-=850;
       rankedScore+=(quality.score-80)*2.6;
       if(quality.shoulderReadable&&c.treatment==='engage')
