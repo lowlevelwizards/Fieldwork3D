@@ -133,8 +133,8 @@ test('camera moves smoothly between fixed planned poses without 360° yaw whip',
  const before=storyboard.sample(.35);
  const after=storyboard.sample(.45);
  const angle=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
- assert.ok(Math.abs(angle(after.yaw,before.y))<.15,
-  'yaw delta='+angle(after.yaw,before.y)+
+ assert.ok(Math.abs(angle(after.yaw,before.yaw))<.15,
+  'yaw delta='+angle(after.yaw,before.yaw)+
   ' poses='+JSON.stringify({before,after}));
  assert.ok(Math.abs(after.focus.x-before.focus.x)<10);
 });
