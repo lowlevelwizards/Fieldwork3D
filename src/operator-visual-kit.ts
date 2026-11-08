@@ -100,6 +100,10 @@ export function createOperatorVisualKit(
  const hairMaterial=new THREE.MeshStandardMaterial({color:0x302d29,roughness:1,flatShading:true});
  const patchMaterial=new THREE.MeshStandardMaterial({color:0x87775f,
    roughness:.96,flatShading:true});
+ // Small textile trims, sewn patches and webbing are part of the same
+ // preview-only cream silhouette family as rigs, armor covers and packs.
+ for(const material of [trim,seam,patchMaterial])
+  material.userData.fieldworkStudioSoftGear=true;
  // Legacy head-local +X remains forward behind the new -Z compatibility adapter.
  // The head stays chunky; no anatomical joint
  // translations or scale changes occur in this visual pass.

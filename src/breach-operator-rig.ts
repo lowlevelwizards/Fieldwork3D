@@ -301,8 +301,12 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     headCloth=cloth.clone(),headArmor=vest.clone();
    // Only textiles are unfolded across adjacent faces; leave rubber, steel,
    // skin and the approved, separately authored headwear atlas untouched.
-   for(const material of [cloth,trousers,vest,packFabric,gearFabric,headCloth])
+   for(const material of [cloth,trousers,vest,packFabric,gearFabric,
+     headCloth])
     material.userData.fieldworkFabric=true;
+   // A helmet fabric/liner tint may share the armor palette, but must NOT
+   // opt into garment UV remapping (fieldworkFabric has gameplay meaning).
+   headArmor.userData.fieldworkStudioSoftGear=true;
    // Fixed grayscale AO uses existing textile shaders and textures.
    for(const kitMaterial of [
      cloth,trousers,vest,packFabric,gearFabric,headCloth,headArmor

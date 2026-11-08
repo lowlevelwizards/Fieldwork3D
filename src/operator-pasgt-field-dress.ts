@@ -32,8 +32,11 @@ const PALETTES:Record<PasgtPalette,readonly [number,number,number]>={
  desert:[0x968064,0xc0a77b,0x9e8b6c],
  urban:[0x62685f,0x848980,0x9a988e]
 };
-const material=(hex:number,side:THREE.Side=THREE.FrontSide)=>
- new THREE.MeshStandardMaterial({color:hex,roughness:1,flatShading:true,side});
+const material=(hex:number,side:THREE.Side=THREE.FrontSide)=>{
+ const m=new THREE.MeshStandardMaterial({color:hex,roughness:1,flatShading:true,side});
+ m.userData.fieldworkStudioSoftGear=true;
+ return m;
+};
 const hidden=(parent:THREE.Group,name:string)=>{
  const g=new THREE.Group();g.name=name;g.visible=false;parent.add(g);return g;
 };

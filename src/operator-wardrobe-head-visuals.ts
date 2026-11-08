@@ -89,6 +89,9 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  // uniform sleeves, straps or unrelated body pieces.
  const faceFabric=cloth instanceof THREE.MeshStandardMaterial?
   cloth.clone():new THREE.MeshStandardMaterial({color:0x515b50,roughness:1});
+ // Masks/wraps, scarf folds and goggle webbing receive the soft edge;
+ // lenses, rubber, metal shell hardware and translucent faces do not.
+ faceFabric.userData.fieldworkStudioSoftGear=true;
  const faceFabricDefaultHex=faceFabric.color.getHex();
  const eyewearFrame=new THREE.MeshStandardMaterial({color:0x24282b,
   roughness:.68,metalness:.03,flatShading:true});
@@ -98,6 +101,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   roughness:.25,metalness:.05,side:THREE.DoubleSide});
  const eyewearStrap=new THREE.MeshStandardMaterial({color:0x323936,
   roughness:.90,flatShading:true});
+ eyewearStrap.userData.fieldworkStudioSoftGear=true;
  const maskRubber=new THREE.MeshStandardMaterial({color:0x2b302e,
   roughness:.93,flatShading:true});
  const maskHardware=new THREE.MeshStandardMaterial({color:0x242c2b,
@@ -114,6 +118,8 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  const headwearMaterials:Record<string,THREE.MeshStandardMaterial>={};
  const detail=(id:HeadSilhouetteId,key:string=id)=>{
   const material=createHeadwearDetailMaterial(id);
+  if(['patrol-cap','beret','boonie','beanie'].includes(id))
+   material.userData.fieldworkStudioSoftGear=true;
   headwearMaterials[key]=material;
   return material;
  };

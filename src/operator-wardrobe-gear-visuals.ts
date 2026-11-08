@@ -42,6 +42,9 @@ export function createWardrobeGearLayers(
  packFabric:THREE.Material,dark:THREE.Material,
  trim:THREE.Material,lazyVariants=false):WardrobeGearLayers{
  // Standalone Operator Labs receive identical baked AO to gameplay rigs.
+ for(const material of [armorFabric,gearFabric,packFabric,trim])
+  if(material instanceof THREE.MeshStandardMaterial)
+   material.userData.fieldworkStudioSoftGear=true;
  for(const material of [armorFabric,gearFabric,packFabric])
   if(material instanceof THREE.MeshStandardMaterial)enableBakedGearAO(material);
  // Complete authored silhouettes replace all superficial generic shell
