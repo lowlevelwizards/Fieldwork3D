@@ -157,10 +157,15 @@ export function selectDirectorEditorialShot(
   if(kind==='entry'&&i?.direction)actionDirection=travel;
   let interest:Point|null=null;
   if(kind==='follow'&&i?.watchDirection){
-    // An ACTIVE WATCH may lean the framing without changing the action.
+    // Executed LOOK/WATCH and actual aim should lead the photograph.
+    // The CAMERA still travels with the actual movement vector; only
+    // the framing/interest changes. Deliberate aim beats casual travel.
+    const watchWeight=i.speed>7?.74:.93;
     actionDirection=unit({
-      x:travel.x*.7+i.watchDirection.x*.3,
-      y:travel.y*.7+i.watchDirection.y*.3});
+      x:travel.x*(1-watchWeight)+i.watchDirection.x*watchWeight,
+      y:travel.y*(1-watchWeight)+i.watchDirection.y*watchWeight});
+    interest={x:primary.p.x+actionDirection.x*78,
+      y:primary.p.y+actionDirection.y*78};
   }else if(kind==='follow'&&i?.plannedAttention){
     const future=i.plannedAttention;
     const proximity=Math.max(.15,Math.min(1,1-future.distance/240));
