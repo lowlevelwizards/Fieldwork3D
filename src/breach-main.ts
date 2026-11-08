@@ -267,8 +267,6 @@ const ui={
   quickStates:el<HTMLElement>('quickStates'),
   quickScope:el<HTMLElement>('quickScope'),
   tacticalHud:el<HTMLElement>('tacticalHud'),
-  orders:el<HTMLElement>('advancedOrders'),
-  moreOrders:el<HTMLButtonElement>('moreOrders'),
   cancelTarget:el<HTMLButtonElement>('cancelTarget'),
   siteSettingsToggle:el<HTMLButtonElement>('siteSettingsToggle'),
   siteSize:el<HTMLButtonElement>('siteSize'),
@@ -424,7 +422,7 @@ const ui={
   rookAmmo:el<HTMLElement>('rookAmmo'),mossAmmo:el<HTMLElement>('mossAmmo'),
   ashAmmo:el<HTMLElement>('ashAmmo'),valeAmmo:el<HTMLElement>('valeAmmo'),
 };
-for(const key of ['back','undo','redo','moreOrders','siteSettingsToggle','cancelTarget'] as const){
+for(const key of ['back','undo','redo','siteSettingsToggle','cancelTarget'] as const){
   decorateIconButton(ui[key],key);
 }
 // Match the approved art across the stationary tools and replay strip.
@@ -1538,19 +1536,13 @@ const tacticalSheetNavigation=createTacticalSheetNavigation({
  settings:ui.siteSettings,squad:operationsBoard,briefing:ui.briefingPanel
 },()=>{collapseTacticalSheets(null);updateContext();});
 /** Only one major tactical sheet owns the viewport and touch focus at a time. */
-function collapseTacticalSheets(except:'squad'|'weapon'|'settings'|'tools'|'briefing'|null){
+function collapseTacticalSheets(except:'squad'|'weapon'|'settings'|'briefing'|null){
  if(except!=='squad')operationsBoard.hidden=true;
  if(except!=='weapon')hideWeaponChooser();
  if(except!=='settings'){
   ui.siteSettings.hidden=true;
   ui.siteSettingsToggle.setAttribute('aria-expanded','false');
   closeSiteChoice();
- }
- if(except!=='tools'){
-  ui.orders.classList.add('compact');
-  ui.moreOrders.setAttribute('aria-pressed','false');
-  ui.moreOrders.setAttribute('aria-label','More tactical tools');
-  ui.moreOrders.title='More tactical tools';
  }
  if(except!=='briefing'){
   ui.briefingPanel.hidden=true;
@@ -1595,8 +1587,7 @@ function hideContextPalette(){
   lastPlacementKey='';
   // Mutually exclusive sheets must take over immediately. A fading palette
   // still counts as visible/hit-testable and can obscure the TOOLS drawer.
-  const exclusive=!ui.orders.classList.contains('compact')||
-    !ui.siteSettings.hidden||!ui.briefingPanel.hidden;
+  const exclusive=!ui.siteSettings.hidden||!ui.briefingPanel.hidden;
   if(!paletteMotion.active){
     if(exclusive){paletteExit?.cancel();paletteExit=null;
       ui.context.hidden=true;contextTether.hidden=true;}
@@ -2024,7 +2015,7 @@ function updateContext(){
   if(state.phase!=='planning'||replaying||looking||flashMode||firePlacement||
      !ui.briefingPanel.hidden||
      draggingNode||trace||
-     !ui.orders.classList.contains('compact')||!ui.siteSettings.hidden){
+     !ui.siteSettings.hidden){
     hideContextPalette();return;
   }
   const a=uid(selected);
@@ -6732,7 +6723,7 @@ ui.cancelTarget.addEventListener('click',cancelTargeting);
 ui.flash.addEventListener('click',()=>{
   if(state.phase!=='planning')return;
   flashMode=!flashMode;flashDoorId=null;
-  looking=false;ui.orders.classList.add('compact');
+  looking=false;
   updateHud();
 });
 ui.sync.addEventListener('click',()=>{planSync(state);playOrderCue('orders.sync');updateHud();});
@@ -6930,8 +6921,6 @@ window.addEventListener('keydown',e=>{
       ui.briefingClose.click();
     }else if(!ui.siteSettings.hidden){
       ui.siteSettingsToggle.click();
-    }else if(!ui.orders.classList.contains('compact')){
-      ui.moreOrders.click();
     }else cancelTargeting();
     return;
   }
@@ -7384,7 +7373,7 @@ const closeSiteSettingsButton=el<HTMLButtonElement>('closeSiteSettings');
 function closeMissionSettings(returnFocus=true){
   if(ui.siteSettings.hidden)return;
   collapseTacticalSheets(null);
-  if(returnFocus)ui.moreOrders.focus();
+  if(returnFocus)ui.siteSettingsToggle.focus();
   updateContext();
 }
 closeSiteSettingsButton.addEventListener('click',()=>{
@@ -7493,18 +7482,7 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   if(opening)selectMissionSettingsTab('mission');
   tacticalSheetNavigation.sync();
   if(opening)tacticalSheetNavigation.focusFirst();
-  else ui.moreOrders.focus();
-  updateContext();
-});
-ui.moreOrders.addEventListener('click',()=>{
-  const expanded=ui.orders.classList.contains('compact');
-  collapseTacticalSheets(expanded?'tools':null);
-  ui.orders.classList.toggle('compact',!expanded);
-  ui.moreOrders.setAttribute('aria-pressed',String(expanded));
-  ui.moreOrders.replaceChildren(tacticalIcon('moreOrders'));
-  ui.moreOrders.setAttribute('aria-label',expanded?'Close tools':'More tactical tools');
-  ui.moreOrders.title=expanded?'Close tactical tools':'More tactical tools';
-  // Never render two command overlays on top of each other.
+  else ui.siteSettingsToggle.focus();
   updateContext();
 });
 canvas.addEventListener('wheel',e=>{
