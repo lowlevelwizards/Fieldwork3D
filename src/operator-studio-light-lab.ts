@@ -20,9 +20,16 @@ export type StudioLightLabSettings={
  rimWidth:number;
  /** Portion of a single edge visible as a moving glint (0.1–0.8). */
  rimCoverage:number;
- /** Material-specific maximum blends in the same single-pass shader. */
+ /** Relaxation of the light-facing/slant gate for the localized hard glint. */
+ rimAngleLooseness:number;
+ /** Broad external-silhouette ink, independent of the hard glint. */
+ rimFabricWidth:number;
  rimFabricOpacity:number;
+ rimFabricBacklight:number;
+ rimSkinWidth:number;
  rimSkinOpacity:number;
+ rimSkinBacklight:number;
+ rimSkinWarmth:number;
  /** Debug the exact highlight mask rather than recoloring the surface. */
  rimDebugMask:boolean;
  /** Studio-only horizontal light orbit, degrees from the approved key. */
@@ -32,8 +39,10 @@ export type StudioLightLabSettings={
 };
 export const DEFAULT_STUDIO_LIGHT_LAB:Readonly<StudioLightLabSettings>={
  toon:0,rim:'off',gradient:'current',shadow:'neutral',
- celProfile:'graphic',celLow:.70,celHigh:.84,rimAmount:.80,
- rimWidth:1.4,rimCoverage:.30,rimFabricOpacity:.20,rimSkinOpacity:.28,
+ celProfile:'graphic',celLow:.70,celHigh:.84,rimAmount:.85,
+ rimWidth:2.5,rimCoverage:.55,rimAngleLooseness:1.25,
+ rimFabricWidth:2.8,rimFabricOpacity:.16,rimFabricBacklight:.7,
+ rimSkinWidth:2.6,rimSkinOpacity:.24,rimSkinBacklight:.8,rimSkinWarmth:1.0,
  rimDebugMask:false,lightAzimuth:0,allSurfaces:true
 };
 function clampCutoff(value:string|null,defaultValue:number):number{
@@ -52,7 +61,7 @@ export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
  const gradient=requestedOperatorGradient(search);
  const shadow=requestedStudioShadowColor(search);
  const amount=p.get('operatorRimAmount');
- const n=amount===null ? .80 : Number(amount);
+ const n=amount===null ? DEFAULT_STUDIO_LIGHT_LAB.rimAmount : Number(amount);
  return {
   toon:toon?2:0,
   rim:rim==='off'?'off':'dual',
@@ -62,11 +71,18 @@ export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
   celProfile:'graphic',
   celLow:clampCutoff(p.get('operatorCelLow'),.70),
   celHigh:.84,
-  rimAmount:Number.isFinite(n)?Math.max(0,Math.min(1,n)):.80,
+  rimAmount:Number.isFinite(n)?Math.max(0,Math.min(1,n)):
+   DEFAULT_STUDIO_LIGHT_LAB.rimAmount,
   rimWidth:DEFAULT_STUDIO_LIGHT_LAB.rimWidth,
   rimCoverage:DEFAULT_STUDIO_LIGHT_LAB.rimCoverage,
+  rimAngleLooseness:DEFAULT_STUDIO_LIGHT_LAB.rimAngleLooseness,
+  rimFabricWidth:DEFAULT_STUDIO_LIGHT_LAB.rimFabricWidth,
   rimFabricOpacity:DEFAULT_STUDIO_LIGHT_LAB.rimFabricOpacity,
+  rimFabricBacklight:DEFAULT_STUDIO_LIGHT_LAB.rimFabricBacklight,
+  rimSkinWidth:DEFAULT_STUDIO_LIGHT_LAB.rimSkinWidth,
   rimSkinOpacity:DEFAULT_STUDIO_LIGHT_LAB.rimSkinOpacity,
+  rimSkinBacklight:DEFAULT_STUDIO_LIGHT_LAB.rimSkinBacklight,
+  rimSkinWarmth:DEFAULT_STUDIO_LIGHT_LAB.rimSkinWarmth,
   rimDebugMask:false,lightAzimuth:0,
   allSurfaces:true
  };
@@ -83,11 +99,17 @@ export function effectiveStudioLightLab(
  // lighting is independent, so the smooth model can audition a rim too.
  return {...settings,celLow:low,celHigh:high,
   rimAmount:Number.isFinite(settings.rimAmount)?
-   Math.max(0,Math.min(1,settings.rimAmount)):.80,
-  rimWidth:THREECLAMP(settings.rimWidth,.5,2.5,1.4),
-  rimCoverage:THREECLAMP(settings.rimCoverage,.10,.80,.30),
-  rimFabricOpacity:THREECLAMP(settings.rimFabricOpacity,0,.5,.20),
-  rimSkinOpacity:THREECLAMP(settings.rimSkinOpacity,0,.6,.28),
+   Math.max(0,Math.min(1,settings.rimAmount)):.85,
+  rimWidth:THREECLAMP(settings.rimWidth,1,4,2.5),
+  rimCoverage:THREECLAMP(settings.rimCoverage,.10,.80,.55),
+  rimAngleLooseness:THREECLAMP(settings.rimAngleLooseness,.75,2,1.25),
+  rimFabricWidth:THREECLAMP(settings.rimFabricWidth,1,4,2.8),
+  rimFabricOpacity:THREECLAMP(settings.rimFabricOpacity,0,.35,.16),
+  rimFabricBacklight:THREECLAMP(settings.rimFabricBacklight,0,1.5,.7),
+  rimSkinWidth:THREECLAMP(settings.rimSkinWidth,1,4,2.6),
+  rimSkinOpacity:THREECLAMP(settings.rimSkinOpacity,0,.45,.24),
+  rimSkinBacklight:THREECLAMP(settings.rimSkinBacklight,0,1.5,.8),
+  rimSkinWarmth:THREECLAMP(settings.rimSkinWarmth,.5,1.5,1),
   rimDebugMask:settings.rimDebugMask===true,
   lightAzimuth:THREECLAMP(settings.lightAzimuth,-180,180,0),
   rim:settings.toon===0&&settings.rim!=='dual'?'off':settings.rim};
