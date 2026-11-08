@@ -34,6 +34,6 @@ export function miniatureFocusDecision(input:{
   if(input.mode==='replay'&&input.view==='tactical')return off('replay-only');
   if(input.gesturesActive)return off('active-gesture');
   const director=input.view==='director';
-  return {active:true,radiusPx:director?2:1.25,
-    strength:director?.30:.15,reason:director?'director':'peripheral'};
+  return {active:true,radiusPx:director?4.8:3.2,
+    strength:director?.62:.42,reason:director?'director':'peripheral'};
 }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {requestedMiniatureFocus,initialMiniatureFocusMode,miniatureFocusDecision}
   from '../src/rendering/miniature-focus-config.ts';
 import {miniatureProtectedRect,miniatureRegionFullyProtected,
-  miniatureFocusEligibility} from '../src/rendering/miniature-focus-mask.ts';
+  miniatureFocusEligibility,miniatureStableFocusRect} from '../src/rendering/miniature-focus-mask.ts';
 const decision=(patch={})=>miniatureFocusDecision({mode:'subtle',
   view:'tactical',quality:'balanced',protectedRegionValid:true,
   capable:true,gesturesActive:false,...patch});
@@ -44,4 +44,13 @@ test('protected pixels stay completely sharp; exposed corners can soften',()=>{
  assert.ok(miniatureFocusEligibility(0,0,100,100,rect)>0);
  assert.equal(miniatureFocusEligibility(50,50,100,100,
    {left:0,top:0,right:100,bottom:100}),0);
+});
+
+test('MF-2 stable focus window exposes optical edges and protects the center',()=>{
+ const box=miniatureStableFocusRect(390,844);
+ assert.ok(box);
+ assert.equal(miniatureFocusEligibility(195,422,390,844,box),0);
+ assert.ok(miniatureFocusEligibility(2,2,390,844,box)>.5);
+ assert.equal(miniatureStableFocusRect(0,844),null);
+ assert.equal(miniatureStableFocusRect(Number.NaN,844),null);
 });

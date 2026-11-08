@@ -1,4 +1,4 @@
-/** MF-1: conservative screen-space protection, never based on undisclosed contacts. */
+/** MF-2: stable screen-space focus mask, never based on hidden intel. */
 export type FocusPoint={x:number;y:number};
 export type FocusRect={left:number;top:number;right:number;bottom:number};
 const finite=(v:number)=>Number.isFinite(v);
@@ -26,14 +26,21 @@ export function miniatureRegionFullyProtected(
  rect:FocusRect,width:number,height:number):boolean{
  return rect.left<=0&&rect.top<=0&&rect.right>=width&&rect.bottom>=height;
 }
-/** Smooth edge-only mask with an additional guarded rectangle.
- * The transition never grows *into* the protected area.
+/** Unmoving focus window. Critical visible people are protected separately
+ * by screen-space anchors. Unlike map-bounds masks this cannot change
+ * coverage when the camera translates or site bounds reach off-screen.
  */
+export function miniatureStableFocusRect(width:number,height:number):FocusRect|null{
+ if(!finite(width)||!finite(height)||width<=0||height<=0)return null;
+ return {left:width*.18,top:height*.18,
+   right:width*.82,bottom:height*.82};
+}
+/** Same static geometry as the GPU mask; no actor context is needed here. */
 export function miniatureFocusEligibility(x:number,y:number,width:number,
  height:number,protectedRect:FocusRect,transitionCss=12):number{
  if(!finite(x)||!finite(y)||width<=0||height<=0)return 0;
  const nx=Math.abs(2*x/width-1),ny=Math.abs(2*y/height-1);
- const peripheral=Math.max(smoothstep(.8,.98,nx),smoothstep(.8,.98,ny));
+ const peripheral=Math.max(smoothstep(.58,.97,nx),smoothstep(.58,.97,ny));
  const dx=Math.max(protectedRect.left-x,0,x-protectedRect.right);
  const dy=Math.max(protectedRect.top-y,0,y-protectedRect.bottom);
  const dist=Math.hypot(dx,dy);
