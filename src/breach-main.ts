@@ -4680,7 +4680,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
         stage.replayCameraBaseSpan(),{intents,upcoming,
           usableWidth:cssW<500?.73:.84,
           usableHeight:cssH<520?.65:.78,
-          maxZoom:6});
+          maxZoom:9.5});
       replayDirectorTarget=replayDirectorScheduler.choose(
         replayTime,proposal,instant);
       replayDirectorEvaluatedAt=replayTime;
