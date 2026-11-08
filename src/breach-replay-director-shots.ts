@@ -37,7 +37,12 @@ export type DirectorShot=CinematicShot&{
   /** A real perspective lens in replay-only Director mode. */
   fov?:number;
   /** Friendly actor the camera operator must physically accompany. */
-  operatorPoint?:Pt
+  operatorPoint?:Pt;
+  /** Primary action anchors must stay visible during dolly and reframe. */
+  framePoints?:Pt[];
+  attentionPoint?:Pt|null;
+  /** Used to track the lead operator from behind rather than orbit them. */
+  followDirection?:Pt|null
 };
 type Pt={x:number;y:number};
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
@@ -188,13 +193,13 @@ function anchorsFor(subjects:readonly DirectorActor[],
     out.push(pair.shooter,pair.target);
     interest=lerp(pair.shooter,pair.target,.5);
     const actionCenter=lerp(center,interest,.73);
-    return {points:out,focus:actionCenter};
+    return {points:out,focus:actionCenter,attention:interest};
   }
   if(ctx.beat?.kind==='door'){
     interest=ctx.beat.target;
     out.push(ctx.beat.shooter,ctx.beat.target);
     return {points:out,focus:lerp(center,
-      bounded(center,interest,62),.43)};
+      bounded(center,interest,62),.43),attention:interest};
   }
   if(kind==='contact'){
     const actor=subjects.find(a=>a.id===ctx.upcoming?.actorId);
@@ -237,7 +242,7 @@ function anchorsFor(subjects:readonly DirectorActor[],
   const leadStrength=kinetic.length?.32:.23;
   const focus=interest?lerp(center,bounded(center,interest,56),
     leadStrength):center;
-  return {points:out,focus};
+  return {points:out,focus,attention:interest};
 }
 /** For a deliberate WATCH while moving, orient down the weapon with
  * enough travel information to keep the upcoming route legible. Future
@@ -419,17 +424,33 @@ export function composeReplayDirectorShot(_time:number,
   const members=dominant?.count?
     subjects.filter(a=>directorOperatorRoom(a.p,rooms)?.id===
       dominant.room.id):subjects;
+  const ranked=members.slice().sort((a,b)=>{
+    const ai=context.intents.find(i=>i.actorId===a.id);
+    const bi=context.intents.find(i=>i.actorId===b.id);
+    const weight=(i:typeof ai,v:number)=>(
+      i?.kind==='breach'?200:i?.kind==='entry'?165:
+      i?.kind==='stack'?115:i?.kind==='approach'?95:
+      i?.kind==='travel'?65:0)+v*.65+
+      (i?.door?Math.max(0,50-i.door.distance)*.8:0);
+    return weight(bi,speedFor(b,context))-
+      weight(ai,speedFor(a,context))||
+      a.id.localeCompare(b.id);
+  });
   const operator=members.find(a=>a.id===context.beat?.actorId)??
-    members[0]??subjects[0];
+    members.find(a=>a.id===context.upcoming?.actorId)??
+    ranked[0]??subjects[0];
   if(!operator)return best;
   const target=context.beat?.kind==='fight'&&context.actionPair?
     (context.beat.actorId===context.beat.shooterId?
       context.actionPair.target:context.actionPair.shooter):
-    doorBeat?.target??null;
+    doorBeat?.target??relevantDoor?.mid??null;
   const physical=physicalDirectorView({
     operator:operator.p,focus:best.focus,
     subjectPoints:subjects.map(a=>a.p),
-    target,preferredYaw:best.yaw
+    target,preferredYaw:best.yaw,
+    followDirection:forward,
+    targetWeight:type==='contact'?170:
+      ['approach','stack','breach','entry'].includes(type)?135:105
   },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
   const realYaw=atan({x:physical.cameraAnchor.x-physical.focus.x,
     y:physical.cameraAnchor.y-physical.focus.y});
@@ -437,20 +458,31 @@ export function composeReplayDirectorShot(_time:number,
   // plus the reachable action target, with ample safety border. The
   // camera must not clip heads, feet or the advancing element.
   const visibleTargets=[...subjects.map(a=>a.p),
-    ...(target&&physical.targetVisible?[target]:[])];
+    ...(target&&physical.targetVisible?[target]:[]),
+    ...(!target&&composition.attention&&
+      !walls.some(w=>segmentCross(physical.cameraAnchor,
+        composition.attention!,w.a,w.b))?
+      [bounded(operator.p,composition.attention,68)]:[])];
   // Match the REAL in-room overhead position: as the team gets closer
   // to the rig, its projection gets steeper. Fit at that elevation
   // instead of pretending the camera is still a flat 17° shoulder POV.
   const planar=dist(physical.cameraAnchor,physical.focus);
   const orthoTilt=Math.atan2(53-17,Math.max(1,planar));
+  const focused=subjects.length<=2;
+  const zoomCeiling=focused?10:8.5;
   const fit=projectedBounds(visibleTargets,physical.focus,realYaw,
-    orthoTilt,aspect,baseSpan,6.4,
-    Math.min(.82,usableWidth),Math.min(.76,usableHeight));
-  const wideZoom=clamp(Math.min(6.0,fit.zoom*.91),.7,6);
+    orthoTilt,aspect,baseSpan,zoomCeiling,
+    Math.min(.83,usableWidth),Math.min(.77,usableHeight));
+  const wideZoom=clamp(fit.zoom*.93,.65,zoomCeiling);
   return {...best,focus:physical.focus,
     cameraAnchor:physical.cameraAnchor,
     zoom:wideZoom,pitch:orthoTilt,
     yaw:(realYaw+2*Math.PI)%(2*Math.PI),
     roomId:physical.roomId,occluded:physical.occluded,
-    fov:physical.fov,operatorPoint:{...operator.p}};
+    fov:physical.fov,operatorPoint:{...operator.p},
+    attentionPoint:target?(physical.targetVisible?{...target}:
+      {...physical.focus}):
+      composition.attention?{...composition.attention}:null,
+    followDirection:{...forward},
+    framePoints:visibleTargets.map(p=>({...p}))};
 }

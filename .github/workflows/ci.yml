@@ -1767,6 +1767,10 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/phase-a-combat-cues.test.mjs tests/tactical-integration-18-firefight-b2.test.mjs tests/tactical-integration-17-firefight-b1.test.mjs tests/phase-a-shot-pressure.test.mjs tests/phase-a-ai-hold-cover.test.mjs tests/squad-entry-b-continuity.test.mjs tests/doorway-convoy-flow.test.mjs tests/mission-reactivity-r8b.test.mjs tests/replay-r44-real-session.test.mjs
           node --experimental-strip-types scripts/audit-squad-entry-b.mjs
+      - name: Replay director — prioritized action framing, moving dolly and optical zoom
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-action-tracking-') }}
+        run: |
+          node --experimental-strip-types --test tests/replay-director-action-follow.test.mjs tests/replay-director-continuous.test.mjs tests/replay-director-physical.test.mjs tests/replay-director-storyboard.test.mjs tests/replay-director-wide-coverage.test.mjs tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

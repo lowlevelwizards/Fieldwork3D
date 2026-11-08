@@ -4737,7 +4737,11 @@ function rebuildReplayEventIndex():void{
       });
   },{step:.8,maxCache:96,rooms:state.site?.rooms??[],
     walls:state.site?.walls??[],cover:state.site?.cover??[],
-    doors:state.site?.doors??[]});
+    doors:state.site?.doors??[],
+    aspect:cssW/Math.max(1,cssH),
+    baseSpan:stage?.replayCameraBaseSpan()??1100,
+    usableWidth:cssW<500?.75:.83,
+    usableHeight:cssH<520?.69:.77});
   replayDirectorScheduler.reset();replayDirectorTarget=null;
   
   replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
