@@ -57,8 +57,9 @@ export class ReplayDirectorScheduler{
       old.doorId===proposal.doorId&&sameSubjects;
     const focusDrift=Math.hypot(old.focus.x-proposal.focus.x,
       old.focus.y-proposal.focus.y);
+    const actionMoves=proposal.motion>10&&!sameSubjects;
     if(leavingDoor||crossingRoom||followingThroughDoor||
-      sameSubjects&&focusDrift>54){
+      actionMoves||sameSubjects&&focusDrift>54){
       // Architecture NEVER pins the camera after a threshold crossing.
       // Breach -> entry -> travel must follow the squad even if the
       // old high-priority door shot had time left on its hold.
