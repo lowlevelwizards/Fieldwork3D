@@ -34,15 +34,16 @@ test('167: stock contact uses the actual rear face of the visible stock',()=>{
  }
 });
 
-test('167: short-stock butt remains on front chest while folding down',()=>{
+test('167: short-stock releases shoulder and tucks beside waist',()=>{
  const ready=stockPocket('ready'),short=stockPocket('short');
- assert.ok(short.y<ready.y-.5);
- assert.ok(Math.abs(short.z-ready.z)<.5);
- assert.ok(short.x<ready.x-.25&&short.x>3.8);
+ assert.ok(short.y<ready.y-7);
+ assert.ok(short.z>ready.z+2);
+ assert.ok(short.x<ready.x-5);
  const fitR=fitWeaponPose({weapon:'carbine',handling:'ready',yaw:0,recoil:0});
  const fitS=fitWeaponPose({weapon:'carbine',handling:'short',yaw:0,recoil:0});
- assert.ok(fitS.stock.y<fitR.stock.y-.5);
- assert.ok(Math.abs(fitS.stock.z-fitR.stock.z)<1.25);
+ assert.ok(fitS.stock.y<fitR.stock.y-7);
+ assert.ok(fitS.stock.z>fitR.stock.z+2);
+ assert.ok(fitS.stock.x<fitR.stock.x-5);
 });
 
 test('167: elbows use compact shoulder-relative bend corridors',()=>{

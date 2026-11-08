@@ -31,8 +31,8 @@ const armJoint=arm=>arm.lower.position.clone().multiplyScalar(2)
 const armShoulder=(arm,joint)=>arm.upper.position.clone()
  .multiplyScalar(2).sub(joint);
 
-test('front torso is the buttplate seat in every ready pose',()=>{
- for(const mode of ['low','high','ready','short','point','ads']){
+test('normal stocks shoulder at the front; SHORT tucks beside the waist',()=>{
+ for(const mode of ['low','high','ready','point','ads']){
   const pocket=stockPocket(mode);
   assert.ok(pocket.x>=4.3&&pocket.x<=5.2,mode+' front seat X');
   assert.ok(pocket.z>=5.0&&pocket.z<5.5,mode+' close to chest edge');
@@ -41,16 +41,28 @@ test('front torso is the buttplate seat in every ready pose',()=>{
   assert.ok(fit.stockError<3,mode+' contact stays seated');
   assert.ok(fit.stock.z<7.8,mode+' no floating side stock');
  }
+ const short=stockPocket('short'),ready=stockPocket('ready');
+ assert.ok(short.x<0&&short.x<ready.x-5,'tuck must pull BACK');
+ assert.ok(short.y<-4&&short.y<ready.y-7,'tuck must drop toward waist');
+ assert.ok(short.z>ANATOMY.shoulderRight.z+.5,
+   'tuck must move outside right ribs beneath the armpit');
+ const fit=fitWeaponPose({weapon:carbine,configuration,
+   handling:'short',yaw:0,recoil:0});
+ assert.ok(fit.stock.distanceTo(V(short.x,short.y,short.z))<2,
+   'buttplate must match real underarm socket');
 });
 test('wall fold is a continuous rigid gun transform with sliding grip',()=>{
  const input={weapon:carbine,configuration,handling:'short',
   shortFrom:'ready',yaw:0,recoil:0};
  const from=fitWeaponPose({...input,handling:'ready'});
  let lastZ=Infinity,lastX=Infinity;
+ let lastButtX=Infinity,lastButtY=Infinity,lastButtZ=-Infinity;
  for(const progress of [0,.1,.25,.4,.6,.8,1]){
   const fit=fitWeaponPose({...input,shortCompression:progress});
-  assert.ok(fit.stock.x>3.0&&fit.stock.z<6.5,
-    'buttplate leaves chest at '+progress);
+  assert.ok(fit.stock.x<=lastButtX+.01&&
+    fit.stock.y<=lastButtY+.01&&fit.stock.z>=lastButtZ-.01,
+    'butt must move rearward, downward and outside: '+progress);
+  lastButtX=fit.stock.x;lastButtY=fit.stock.y;lastButtZ=fit.stock.z;
   const grips=weaponGrips(carbine,configuration,'ready');
   const shortGrips=weaponGrips(carbine,configuration,'short');
   const ease=progress*progress*(3-2*progress);
@@ -67,6 +79,11 @@ test('wall fold is a continuous rigid gun transform with sliding grip',()=>{
   assert.ok(sample.x<=lastX+.01,'barrel must come back toward torso');
   lastZ=sample.y;lastX=sample.x;
  }
+ const ready=fitWeaponPose({...input,handling:'ready'});
+ const tucked=fitWeaponPose({...input,shortCompression:1});
+ assert.ok(tucked.stock.x<ready.stock.x-5);
+ assert.ok(tucked.stock.y<ready.stock.y-7);
+ assert.ok(tucked.stock.z>ready.stock.z+2);
 });
 test('approaching a wall produces increasing compression before contact',()=>{
  const ready=muzzleAtShot(base);

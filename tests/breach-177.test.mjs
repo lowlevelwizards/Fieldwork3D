@@ -4,14 +4,18 @@ import {stockPocket,elbowCorridor} from '../src/breach-anatomy.ts';
 import {HANDLING_PROFILES} from '../src/breach-handling-profiles.ts';
 import {fitWeaponPose} from '../src/breach-weapon-pose.ts';
 import {readFileSync} from 'node:fs';
-test('177: buttplate seats on chest front without lateral short-stock teleport',()=>{
+test('177: ordinary shoulder seat and separate underarm waist tuck',()=>{
  for(const mode of ['high','low','ready','point','ads','short']){
   const p=stockPocket(mode);
-  assert.ok(p.x>4.2&&p.x<5.2);
-  assert.ok(p.z>4.9&&p.z<5.6);
+  if(mode==='short'){
+   assert.ok(p.x<0&&p.y<-4&&p.z>7.7);
+  }else{
+   assert.ok(p.x>4.2&&p.x<5.2);
+   assert.ok(p.z>4.9&&p.z<5.6);
+  }
   const fit=fitWeaponPose({weapon:'carbine',handling:mode,
    yaw:0,recoil:0});
-  assert.ok(fit.stock.z<6.5);
+  assert.ok(fit.stock.z<(mode==='short'?9.5:6.5));
   assert.ok(fit.stockError<3);
  }
  const src=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');

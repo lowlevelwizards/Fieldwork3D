@@ -13,22 +13,30 @@ export const ANATOMY={
   headRest:{x:0,y:10,z:0},
   neutralHip:LEG_HIP_HEIGHT+LEG_REST_RISE,
 } as const;
-/** Shared stock seat on the FRONT surface of the upper chest (X≈5),
- * just inside the firing shoulder. Armor increases forward stand-off,
- * not lateral distance. The old near-Z=10 short-stock underarm socket
- * detached the butt from the body and drove elbows behind the shoulder.
- * Shot-time muzzle and visible weapon use identical physical seats. */
+/** Two separate physical contacts: regular ready/aim rests the buttplate
+ * on the FRONT upper-chest/shoulder surface. Short-stock RELEASES that
+ * shoulder seat and brings the buttplate BACK along the right ribs, under
+ * the armpit near the waist. A negative chest-local X is behind the front
+ * surface, negative Y is down, positive Z is the firing-side underarm.
+ * Both the visible model and shot-time muzzle share this authority. */
 export const equipmentStockPush=(equipment?:EquipmentLoadout):number=>
   equipment?.slots.armor==='armor-carrier'?.90:
   equipment?.slots.armor==='armor-soft'?.43:0;
+/** Independent underarm stock contact, not an adjustment to the ADS socket.
+ * The cap lands beside (not inside) the lower right torso; armor shifts it
+ * only slightly outward. Never force a short-stock butt onto the shoulder. */
+export function shortStockUnderarmPocket(forwardPush=0):Anchor3{
+ const armor=Math.max(0,Math.min(1.25,forwardPush));
+ return {x:-1.90+armor*.25,y:-4.65,z:8.15+armor*.20};
+}
 export function stockPocket(mode:Handling,forwardPush=0):Anchor3{
  const xPush=Math.max(0,Math.min(1.25,forwardPush));
   switch(mode){
     case 'high':return {x:4.75+xPush,y:5.30,z:5.20};
     case 'low':return {x:4.65+xPush,y:3.15,z:5.20};
     case 'ready':return {x:4.85+xPush,y:4.45,z:5.20};
-    // Fold the firearm down against the same front upper-torso contour.
-    case 'short':return {x:4.35+xPush,y:3.55,z:5.35};
+    // SHORT disengages the front shoulder socket entirely.
+    case 'short':return shortStockUnderarmPocket(xPush);
     case 'point':return {x:5.05+xPush,y:5.20,z:5.25};
     case 'ads':return {x:5.10+xPush,y:5.65,z:5.30};
   }
@@ -43,9 +51,10 @@ export function elbowCorridor(mode:Handling,side:-1|1,
   const tuck=Math.max(0,Math.min(1,profile.elbowTuck));
   const flare=side===-1?profile.supportElbowFlare:
     profile.firingElbowFlare;
-  // A short outward/back adjustment, never the old wide underarm wing.
+  // Carry the tucked stock with a compact firing elbow, still pointing
+  // down and slightly out—not a wing flapping backward behind the shoulder.
   if(mode==='short'&&side===1)
-    return {x:4.3,y:-2.65,z:8.45+(flare-.74)*.35};
+    return {x:4.05,y:-2.8,z:8.5+(flare-.74)*.35};
   return {x:5-tuck*.55+(side===-1?.15:0),
     y:-7.5-1.2*tuck,z:side*(8.0-.55*tuck+flare)};
 }
