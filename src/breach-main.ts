@@ -974,6 +974,8 @@ let replayDirectorTarget:DirectorShot|null=null;
 let replayPlanScope:'all'|'selected'|'none'='selected';
 let replayPlanVersion:'active'|'original'='active';
 let replayNameTags=true;
+let replayContactMarkers=true;
+let replayObjectiveMarkers=true;
 let replayTraceMode:'off'|'recent'|'selected'='off';
 let replayGhostMode:'off'|'selected'|'squad'='off';
 let replayTrailMode:'off'|'recent'|'full'='off';
@@ -3637,7 +3639,7 @@ function renderReplayBallistics(projected:boolean):void{
 /** Camera-follow selection is a spatial affordance, not just a HUD label.
  * The ring sits on the actual historical friendly; no enemy data is used. */
 function renderReplayFollowMarker(projected:boolean):void{
-  if(!replaying||replayCameraMode!=='operator'||replayBodycamOn)return;
+  if(!replaying||!replayNameTags||replayCameraMode!=='operator'||replayBodycamOn)return;
   const actor=team(state).find(a=>a.id===replayFollowId&&a.health>0);
   if(!actor)return;
   const point=projected?worldToScreen(actor.p,21):actor.p;
@@ -3904,15 +3906,11 @@ function renderProjectedPlans(){
     if(replaying?!replayActorDisclosed(state,hostile,replayDisclosure()):
       !liveVisibility(state,hostile.p))continue;
     const ground=worldToScreen(hostile.p,1);
-    if(replaying&&replayNameTags){
-      draw.textAlign='center';draw.font='700 11px "Saira Condensed",sans-serif';
-      draw.fillStyle='#e2a18b';draw.fillText(hostile.name,ground.x,ground.y-23);
-    }
     if(hostile.health<=0){
       // The actual grounded body and restrained blood mark communicate DOWN.
       draw.fillStyle='rgba(125,48,43,.52)';draw.beginPath();
       draw.ellipse(ground.x,ground.y,11,6,0,0,Math.PI*2);draw.fill();
-    }else{
+    }else if(!replaying||replayContactMarkers){
       draw.strokeStyle='#e2a18b';draw.lineWidth=1.6;
       draw.beginPath();draw.arc(ground.x,ground.y,12,0,Math.PI*2);draw.stroke();
     }
@@ -3929,7 +3927,7 @@ function renderProjectedPlans(){
   // Door shapes communicate door identity. Only show a selector when the
   // selected operator or its planned endpoint can actually interact.
   const active=uid(selected);
-  for(const door of state.doors){
+  if(!replaying)for(const door of state.doors){
     const visibility=doorVisibility(state,door);
     if(!visibility.known||!active||active.health<=0)continue;
     const node=selectedPlanNode();
@@ -3966,7 +3964,7 @@ function renderProjectedPlans(){
   // by Three.js in 3D modes so depth testing never draws them over actors.
   // Unknown enemies stay unrendered; only grounded last-known reports show.
   for(const hostile of enemies(state)){
-    if(replaying&&replayContactObserverId)continue;
+    if(replaying&&(!replayContactMarkers||replayContactObserverId))continue;
     if(isSeen(state,hostile)||hostile.health<=0)continue;
     const memory=lastKnown(state,hostile.id);
     if(!memory||state.seconds-memory.at>25)continue;
@@ -3985,7 +3983,8 @@ function renderProjectedPlans(){
     }
     draw.strokeStyle='#f0cd96';draw.lineWidth=3;draw.stroke();
   }
-  if(state.mission!=='clear'&&state.mission!=='done'){
+  if((!replaying||replayObjectiveMarkers)&&
+    state.mission!=='clear'&&state.mission!=='done'){
     const target=worldToScreen(state.mission==='secure'?
       state.scenario.objective:state.scenario.extract,9);
     draw.strokeStyle='#e8d5a6';draw.lineWidth=2;
@@ -3997,7 +3996,8 @@ function renderProjectedPlans(){
   renderReplayGhosts(true);
   renderReplayBallistics(true);
   renderReplayFollowMarker(true);
-  for(const a of team(state))drawExecutionProblem(a,true);
+  if(!replaying||replayAnalysis)
+    for(const a of team(state))drawExecutionProblem(a,true);
 }
 /** Gold denotes actual historically observed cells for the selected operator.
  * Shared geometry/doors/people remain shared and are NEVER claimed as POV.
@@ -4035,6 +4035,7 @@ function fog(){
   draw.drawImage(fogCanvas,0,0,W,H);
 }
 function missionMarkers(){
+  if(replaying&&!replayObjectiveMarkers)return;
   if(state.rescue&&!state.civilians.some(c=>c.rescueTarget)&&
      liveVisibility(state,state.rescue.p)){
     const p=state.rescue.p;
@@ -4116,7 +4117,8 @@ function sprite(a:TeamActor){
     draw.ellipse(a.p.x,a.p.y,13,6,a.heading,0,2*Math.PI);draw.fill();
     return;
   }
-  if(friendly&&(a.id===selected)){
+  if(friendly&&(a.id===selected)&&
+     (!replaying||replayPlanScope!=='none')){
     draw.strokeStyle='#e8d6b1';draw.lineWidth=1.6;
     draw.beginPath();draw.arc(a.p.x,a.p.y,16,0,2*Math.PI);draw.stroke();
     conical(a);
@@ -4173,17 +4175,18 @@ function sprite(a:TeamActor){
     if(a.health===1){draw.fillStyle='#e7a886';
       draw.fillRect(a.p.x-8,a.p.y+13,16,2);}
   }else{
-    draw.strokeStyle='#f0c5a4';draw.lineWidth=1.4;
-    draw.strokeRect(a.p.x-12,a.p.y-12,24,24);
-    if(replaying&&replayNameTags){
-      draw.textAlign='center';draw.fillStyle='#e2a18b';
-      draw.font='700 11px "Saira Condensed",sans-serif';
-      draw.fillText(a.name,a.p.x,a.p.y-22);
+    // The enemy is still drawn; only the optional red tactical outline
+    // disappears when replay contact markers are disabled.
+    if(!replaying||replayContactMarkers){
+      draw.strokeStyle='#f0c5a4';draw.lineWidth=1.4;
+      draw.strokeRect(a.p.x-12,a.p.y-12,24,24);
     }
+    // Enemy names are intentionally never shown.
   }
 }
 function contacts(){
-  if(replaying&&replayAnalysis)for(const a of enemies(state)){
+  if(replaying&&replayAnalysis&&replayContactMarkers)
+    for(const a of enemies(state)){
     if(a.health<=0)continue;
     const start=viewMode==='plan2d'?a.p:worldToScreen(a.p,22);
     const focus=a.contact??a.watch;
@@ -4336,7 +4339,8 @@ function render(){
   paths();renderReplayMovementHistory(false);
   for(const a of state.civilians)civilianSprite(a);
   for(const a of state.operators)sprite(a);
-  for(const a of team(state))drawExecutionProblem(a,false);
+  if(!replaying||replayAnalysis)
+    for(const a of team(state))drawExecutionProblem(a,false);
   contacts();renderReplayGhosts(false);renderReplayBallistics(false);
   renderReplayFollowMarker(false);endMessage();
   draw.strokeStyle='#d4dac64f';draw.lineWidth=2;
