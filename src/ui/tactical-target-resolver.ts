@@ -40,12 +40,14 @@ export function resolveTacticalPick(
     }
     const delta=a.distancePx-b.distancePx;
     if(Math.abs(delta)>TIE_PX)return delta;
+    // Direct object type breaks a near-tie before ownership. Otherwise a
+    // selected route can swallow its own doorway or another direct handle.
+    const rank=kindRank[a.kind]-kindRank[b.kind];
+    if(rank!==0)return rank;
     if(a.owner!==b.owner){
       if(a.owner===selectedOwner)return -1;
       if(b.owner===selectedOwner)return 1;
     }
-    const rank=kindRank[a.kind]-kindRank[b.kind];
-    if(rank!==0)return rank;
     if(delta!==0)return delta;
     // Stable regardless of actor array iteration order.
     const first=(a.owner??'')+':'+(a.nodeId??'')+':'+(a.doorId??'');
