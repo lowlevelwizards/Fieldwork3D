@@ -2412,3 +2412,10 @@ body.replaying #replayTopHud *{-webkit-tap-highlight-color:transparent}
   color:#e9eadc;font:700 11px "Saira Condensed",sans-serif}
 .replay-actor-choices button[aria-pressed="true"]{background:#b09c6e;
   border-color:#e0cd9a;color:#152721}
+
+
+/* A pop-out investigation panel must own taps on its own close button.
+ * The independent side rail must not intercept drawer interactions. */
+.replay-panel:has(.replay-drawer:not([hidden])){z-index:17}
+.replay-top-hud{z-index:19}
+.replay-choice-pop{z-index:20}
