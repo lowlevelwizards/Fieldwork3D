@@ -20,7 +20,7 @@ const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 const yawOf=(anchor:Pt,focus:Pt)=>Math.atan2(
   anchor.x-focus.x,anchor.y-focus.y);
 const cameraStep=12; // Minimum comfortable dolly per .8s knot.
-const turnStep=8*Math.PI/180; // Calm tracking; NEVER a whip/cut.
+const turnStep=7*Math.PI/180; // Calm travel tracking; NEVER a whip/cut.
 const actionTurnStep=16*Math.PI/180; // Bring real action into view in time.
 const radiusStep=19;
 const minFocusRadius=30;
