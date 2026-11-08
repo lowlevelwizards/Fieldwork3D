@@ -245,6 +245,10 @@ main[data-lab-active="poses"]>[data-lab-group]:not([data-lab-group="poses"]):not
 #poseInspector .pose-strict-label input{width:17px;height:17px;accent-color:#c8ac72}
 #poseInspectorReport{display:block;white-space:pre-wrap;padding:6px 0;font:12px/1.45 "Saira Condensed",monospace;color:#dbe6d8}
 #poseWorkspaceHint{color:#b9c7bd;font:11px/1.4 "Work Sans",sans-serif}
+.pose-workbench-link{display:inline-flex;align-items:center;justify-content:center;
+ min-height:38px;padding:8px 12px;color:#172b27!important;
+ border:1px solid #d5bc8b;border-radius:6px;background:#d7bd8c;
+ font-weight:800;text-decoration:none;flex:0 0 auto}
 main[data-lab-active="poses"] #weapon{display:none}
 @media(min-width:700px){.pose-select-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 </style></head>
@@ -287,6 +291,7 @@ main[data-lab-active="poses"] #weapon{display:none}
   <label class="pose-animation">ANIMATION<select id="poseAnimation" aria-label="Every operator animation"></select></label>
  </div>
  <div class="pose-quick-controls">
+  <a class="pose-workbench-link" href="./pose-workbench.html">POSE WORKBENCH · XYZ HANDLES</a>
   <button type="button" data-view="front">FRONT</button>
   <button type="button" data-view="side">SIDE</button>
   <button type="button" data-view="iso">3/4</button>
