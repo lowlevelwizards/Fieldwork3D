@@ -7,6 +7,9 @@ import {propDefinition} from './asset-catalog.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
 import {parkingStallCandidates} from './parking-stalls.ts';
 import {SERVICE_EDGE_FIXTURES,serviceYardEdgeCandidates} from './service-yard-layout.ts';
+import {SERVICED_FACING_FIXTURES,serviceEnvelope,
+ serviceFacingOrientation,intersectsServiceAccess}
+ from './service-clear-route.ts';
 import {landscapeEdgeCandidates} from './landscape-edge-program.ts';
 import {serviceFixtureInRoad} from './road-service-fixtures.ts';
 import {overlapsPublicStreetRoad} from './public-street-layout.ts';
@@ -163,8 +166,9 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    const orientation=facesStreet?
      entry==='east'?1:entry==='north'?2:entry==='west'?3:0:0;
    const quarterTurn=orientation%2===1;
-   const w=quarterTurn?footprint.h:footprint.w;
-   const h=quarterTurn?footprint.w:footprint.h;
+   const envelope=serviceEnvelope(zone,item,footprint.w,footprint.h);
+   const w=quarterTurn?envelope.h:envelope.w;
+   const h=quarterTurn?envelope.w:envelope.h;
    const streetSpots=frontageEdgeCandidates(site,zone,item,w,h);
    const serviceEdge=zone.kind==='service'&&SERVICE_EDGE_FIXTURES.has(item);
    const edgeSpots=serviceEdge?serviceYardEdgeCandidates(zone,w,h,item):[];
@@ -180,15 +184,21 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     if(item==='vending-machine'&&(
        x-w/2<zone.x-zone.w/2||x+w/2>zone.x+zone.w/2||
        y-h/2<zone.y-zone.h/2||y+h/2>zone.y+zone.h/2))continue;
+    const facesService=zone.kind==='service'&&
+      SERVICED_FACING_FIXTURES.has(item);
+    const serviceOrientation=facesService?
+      serviceFacingOrientation(zone,{x,y}):undefined;
     const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low',
-      ...(facesStreet?{orientation}:{})};
+      ...(facesStreet?{orientation}:facesService?
+        {orientation:serviceOrientation}:{})};
     const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
     if(x-w/2<bounds.minX+17||x+w/2>bounds.maxX-17||
       y-h/2<bounds.minY+23||y+h/2>bounds.maxY-22)continue;
     if(site.rooms.some(r=>x+w/2>r.x&&x-w/2<r.x+r.w&&
       y+h/2>r.y&&y-h/2<r.y+r.h))continue;
     if(serviceFixtureInRoad(site,item,candidate)||
-       overlapsPublicStreetRoad(site,candidate))continue;
+       overlapsPublicStreetRoad(site,candidate)||
+       intersectsServiceAccess(zone,candidate))continue;
     // A tree's leaf crown can hang over a planting bed, but must not
     // intersect a room wall or the actual accessible entry walkway.
     if(TREE_FIXTURES.has(item)){
