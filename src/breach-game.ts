@@ -2622,8 +2622,12 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.lastDoorMethod='open';}
     // Tool retrieval from a backpack or inaccessible overflow is slower
     // than a belt mount. Wedge removal still uses the required tool.
-    const access=equipmentRetrievalSeconds(
+    const access=method==='pick'?0:equipmentRetrievalSeconds(
       a.equipment??initialEquipmentLoadout(a.weapon),a.spareMagazines,'utility');
+    // A hit interrupts fine hand manipulation without consuming a tool.
+    if(method==='pick'&&s.seconds-a.lastHitAt<.35){
+      a.actionTimer=0;return;
+    }
     a.actionTimer+=dt;
     if(a.actionTimer<verdict.seconds+(Number.isFinite(access)?access:0))return;
     if(method==='wedge'){
@@ -2637,7 +2641,11 @@ function runOrders(s:Session,a:TeamActor,dt:number){
         owner.wedgeRemaining+1);
       door.wedgeOwnerId=undefined;
     }
-    else{
+    else if(method==='pick'){
+      // Picking operates the lock rather than destroying the frame.
+      door.locked=false;door.open=true;door.openedAt=s.seconds;
+      door.pushTarget=1;
+    }else{
       door.latchIntegrity=Math.max(-1,(door.latchIntegrity??1)-verdict.damage);
       if((door.latchIntegrity??0)<=0){
         door.locked=false;door.jammed=false;door.heldBy=null;
@@ -2646,7 +2654,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     }
     s.objectRevision++;
     hear(s,doorCenter(door),verdict.noise,method);
-    const label=method.toUpperCase()+(door.open?' · FORCED OPEN':
+    const label=method.toUpperCase()+(method==='pick'?' · UNLOCKED':
+      door.open?' · FORCED OPEN':
       method==='wedge'?' · SECURED':method==='unwedge'?' · REMOVED':
       ' · FRAME DAMAGED');
     notify(s,door.id+' '+label);battleEvent(s,'door',a,doorCenter(door),door.id+' '+label);
