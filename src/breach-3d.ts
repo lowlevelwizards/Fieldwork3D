@@ -195,7 +195,7 @@ export class TacticalScene3D{
   setReplayDirectorCameraAnchor(
     p:Pt|null,fov=108,lens:'ortho'|'wide'='ortho'):void{
     this.replayDirectorCameraAnchor=p?{...p}:null;
-    this.replayDirectorLensFov=THREE.MathUtils.clamp(fov,96,118);
+    this.replayDirectorLensFov=THREE.MathUtils.clamp(fov,82,116);
     this.replayDirectorLens=lens;
   }
   setReplayDirectorFocus(p:Pt|null):void{
