@@ -486,7 +486,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           const height=asset?.height??97;
           const pole=visualCtx.solid(0x606f6a,.8,'industrial-steel');
           const crown=visualCtx.solid(0x3c4948,.83,'painted-metal');
-          const diffuser=visualCtx.solid(0xc9c1a3,.9,'glass');
+          const diffuser=visualCtx.solid(0xc9c1a3,.9,'porcelain');
           ctx.box(group,c.x,3,c.y,9,6,9,dark);
           ctx.box(group,c.x,height*.33,c.y,5.0,height*.63,5,pole);
           ctx.box(group,c.x,height*.80,c.y,3.8,height*.39,3.8,pole);
