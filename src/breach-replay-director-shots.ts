@@ -355,13 +355,15 @@ export function composeReplayDirectorShot(_time:number,
     const yaw=front+a*Math.PI/(relevantDoor?18:12);
     for(const degrees of [12,17,22,29,36]){
       const pitch=degrees*Math.PI/180;
-      const bounds=projectedBounds(points,center,yaw,pitch,aspect,
-        baseSpan,maxZoom,usableWidth,usableHeight);
       const wall=wallCost(center,yaw,
         [...subjects.map(x=>x.p),
           ...(context.beat?.kind==='fight'&&context.actionPair?
             [context.actionPair.shooter,context.actionPair.target]:[])],
         room,walls,average(subjects));
+      const trueYaw=atan({x:wall.camera.x-center.x,
+        y:wall.camera.y-center.y});
+      const bounds=projectedBounds(points,center,trueYaw,pitch,aspect,
+        baseSpan,maxZoom,usableWidth,usableHeight);
       // Zoom tightness rewards intimate framing only after subject coverage.
       const close=clamp((bounds.zoom-.65)/9,0,1);
       const elevationTarget=type==='contact'?17:
@@ -375,12 +377,12 @@ export function composeReplayDirectorShot(_time:number,
         wall.blocked*4.4 -
         (wall.insideRoom?0:30) -
         (room?Math.max(0,23-wall.roomClearance)*.85:0) -
-        (relevantDoor||doorBeat?Math.abs(delta(yaw,front))*11:
-          Math.abs(delta(yaw,behind))*2.3) -
-        Math.abs(delta(yaw,currentYaw))*1.05;
+        (relevantDoor||doorBeat?Math.abs(delta(trueYaw,front))*11:
+          Math.abs(delta(trueYaw,behind))*2.3) -
+        Math.abs(delta(trueYaw,currentYaw))*1.05;
       if(!best||score>best.score){
         best={focus:{...center},zoom:bounds.zoom,
-          yaw:(yaw%(2*Math.PI)+2*Math.PI)%(2*Math.PI),
+          yaw:(trueYaw%(2*Math.PI)+2*Math.PI)%(2*Math.PI),
           pitch,roomId:room?.id??null,
           actorsFramed:subjects.length,
           kind:type==='contact'||type==='breach'?'action':'squad',
