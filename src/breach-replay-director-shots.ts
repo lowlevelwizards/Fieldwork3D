@@ -6,19 +6,26 @@ import type {DirectorActor,DirectorRoom,DirectorWall,CinematicShot}
 import {directorIntentGroup,type DirectorIntent}
   from './breach-replay-director-intent.ts';
 import type {DirectorFutureCue} from './breach-replay-director-events.ts';
+import type {DirectorFilmBeat} from './breach-replay-director-film.ts';
 
 export type DirectorShotType='travel'|'approach'|'stack'|'breach'|
   'entry'|'contact'|'overwatch'|'reorientation';
 export type DirectorShotContext={
   intents:readonly DirectorIntent[];
   upcoming:DirectorFutureCue|null;
+  /** Already recorded event, selected using the complete film timeline. */
+  beat?:DirectorFilmBeat|null;
+  /** Shooter AND intended victim, located in the sampled historical frame. */
+  actionPair?:{shooter:Pt;target:Pt}|null;
   /** Geometry space corresponding to viewport without controls. */
   usableWidth?:number;usableHeight?:number;
   maxZoom?:number;maxSubjects?:number
 };
 export type DirectorShot=CinematicShot&{
   shotType:DirectorShotType;subjects:string[];doorId:string|null;
-  score:number;occluded:number;motion:number
+  score:number;occluded:number;motion:number;
+  /** Actual director-only camera position in the map's X/Z plane. */
+  cameraAnchor:Pt
 };
 type Pt={x:number;y:number};
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
@@ -58,6 +65,12 @@ const speedFor=(a:DirectorActor,ctx:DirectorShotContext):number=>
 
 function subjectGroup(actors:readonly DirectorActor[],
   ctx:DirectorShotContext):DirectorActor[]{
+  const starring=ctx.beat&&actors.find(a=>a.id===ctx.beat!.actorId);
+  if(starring){
+    const support=actors.filter(a=>a.id!==starring.id&&
+      dist(a.p,starring.p)<75);
+    return [starring,...support].slice(0,ctx.maxSubjects??4);
+  }
   const future=ctx.upcoming&&actors.find(a=>a.id===ctx.upcoming!.actorId);
   if(future){
     // Only focus on the friendly participant and nearby support.
@@ -96,6 +109,7 @@ function subjectGroup(actors:readonly DirectorActor[],
 }
 function shotClass(subjects:readonly DirectorActor[],
   ctx:DirectorShotContext):DirectorShotType{
+  if(ctx.beat)return ctx.beat.kind==='fight'?'contact':'breach';
   if(ctx.upcoming?.kind==='contact'||ctx.upcoming?.kind==='casualty')
     return 'contact';
   const doors=directorIntentGroup(ctx.intents);
@@ -153,6 +167,21 @@ function anchorsFor(subjects:readonly DirectorActor[],
     (a.plannedAttention?.distance??Infinity)-
     (b.plannedAttention?.distance??Infinity)||
     dist(a.position,center)-dist(b.position,center))[0];
+  if(ctx.beat?.kind==='fight'&&ctx.actionPair){
+    const pair=ctx.actionPair;
+    // The two participants are non-negotiable framing anchors, even
+    // when one is hostile and not part of the friendly subject group.
+    out.push(pair.shooter,pair.target);
+    interest=lerp(pair.shooter,pair.target,.5);
+    const actionCenter=lerp(center,interest,.73);
+    return {points:out,focus:actionCenter};
+  }
+  if(ctx.beat?.kind==='door'){
+    interest=ctx.beat.target;
+    out.push(ctx.beat.shooter,ctx.beat.target);
+    return {points:out,focus:lerp(center,
+      bounded(center,interest,62),.43)};
+  }
   if(kind==='contact'){
     const actor=subjects.find(a=>a.id===ctx.upcoming?.actorId);
     const intent=intents.find(i=>i.actorId===actor?.id);
@@ -246,36 +275,39 @@ function projectedBounds(pts:readonly Pt[],center:Pt,
   return {zoom,width,height};
 }
 function wallCost(center:Pt,yaw:number,subjects:readonly Pt[],
-  room:DirectorRoom|null,walls:readonly DirectorWall[]){
+  room:DirectorRoom|null,walls:readonly DirectorWall[],
+  squadCenter:Pt){
   const ray={x:Math.sin(yaw),y:Math.cos(yaw)};
-  // Evaluate a low virtual camera on the SUBJECTS' side of the room.
-  // Looking through a distant external wall or an adjacent room should
-  // lose against a shot with the camera inside the occupied room.
+  // Solve a REAL camera in the operator's room, rather than merely
+  // pretending the orthographic camera is inside while placing it
+  // 1,200 world units away. In a gunfight, the focus may lie outside
+  // the occupied room, but the camera stays on the operator's side.
   const inset=room?Math.min(9,room.w*.2,room.h*.2):0;
   const origin=room?{
-    x:clamp(center.x,room.x+inset,room.x+room.w-inset),
-    y:clamp(center.y,room.y+inset,room.y+room.h-inset)
-  }:center;
-  let distToRoom=80;
+    x:clamp(squadCenter.x,room.x+inset,room.x+room.w-inset),
+    y:clamp(squadCenter.y,room.y+inset,room.y+room.h-inset)
+  }:squadCenter;
+  let clearance=78;
   if(room){
     for(const [p,d,min,max] of [
       [origin.x,ray.x,room.x,room.x+room.w],
       [origin.y,ray.y,room.y,room.y+room.h]
     ] as const){
-      if(Math.abs(d)>.001)distToRoom=Math.min(distToRoom,
+      if(Math.abs(d)>.001)clearance=Math.min(clearance,
         Math.max(0,((d>0?max:min)-p)/d));
     }
   }
-  const camera={x:origin.x+ray.x*Math.min(72,Math.max(4,distToRoom-8)),
-    y:origin.y+ray.y*Math.min(72,Math.max(4,distToRoom-8))};
+  const offset=room?Math.max(0,Math.min(66,clearance-inset)):
+    54;
+  const camera={x:origin.x+ray.x*offset,y:origin.y+ray.y*offset};
   let blocked=0;
   for(const wall of walls){
     if(segmentCross(camera,center,wall.a,wall.b))blocked+=2;
     for(const subject of subjects)
       if(segmentCross(camera,subject,wall.a,wall.b))blocked+=1;
   }
-  return {blocked,roomClearance:distToRoom,
-    insideRoom:!room||pointIn(camera,room,3)};
+  return {blocked,roomClearance:clearance,
+    camera,insideRoom:!room||pointIn(camera,room,Math.min(3,inset))};
 }
 export function composeReplayDirectorShot(_time:number,
   actors:readonly DirectorActor[],rooms:readonly DirectorRoom[],
@@ -293,38 +325,57 @@ export function composeReplayDirectorShot(_time:number,
   const group=directorIntentGroup(context.intents);
   const relevantDoor=['approach','stack','breach','entry'].includes(type)?
     group?.door??null:null;
+  const doorBeat=context.beat?.kind==='door'?context.beat:null;
   const room=rooms.filter(r=>subjects.some(a=>pointIn(a.p,r,-2)))
     .sort((a,b)=>subjects.filter(x=>pointIn(x.p,b,-2)).length-
       subjects.filter(x=>pointIn(x.p,a,-2)).length)[0]??null;
-  const forward=forwardDirection(subjects,context);
+  let forward=forwardDirection(subjects,context);
+  if(context.beat?.kind==='fight'&&context.actionPair){
+    const centerActor=subjects.find(a=>a.id===context.beat!.actorId);
+    const other=context.beat.actorId===context.beat.shooterId?
+      context.actionPair.target:context.actionPair.shooter;
+    if(centerActor)forward=normalize({
+      x:other.x-centerActor.p.x,y:other.y-centerActor.p.y});
+  }else if(doorBeat)forward=normalize({
+    x:doorBeat.target.x-doorBeat.shooter.x,
+    y:doorBeat.target.y-doorBeat.shooter.y});
   const behind=atan({x:-forward.x,y:-forward.y});
   let best:DirectorShot|null=null;
-  const maxZoom=Math.min(11,context.maxZoom??9.5);
+  // Director mode is intentionally independent of the tactical UI cap.
+  const maxZoom=Math.min(18,context.maxZoom??14);
   const usableWidth=clamp(context.usableWidth??.83,.55,.92);
   const usableHeight=clamp(context.usableHeight??.78,.55,.9);
   // The threshold normal points toward the stacked operators. Filming
   // along it is a recognisable frontal doorway shot, not a side-on wall.
-  const front=relevantDoor?atan(relevantDoor.normal):behind;
+  const front=doorBeat?atan(normalize({
+    x:doorBeat.shooter.x-doorBeat.target.x,
+    y:doorBeat.shooter.y-doorBeat.target.y})):
+    relevantDoor?atan(relevantDoor.normal):behind;
   for(let a=-4;a<=4;a++){
     const yaw=front+a*Math.PI/(relevantDoor?18:12);
-    for(const degrees of [20,25,31,38,44]){
+    for(const degrees of [12,17,22,29,36]){
       const pitch=degrees*Math.PI/180;
       const bounds=projectedBounds(points,center,yaw,pitch,aspect,
         baseSpan,maxZoom,usableWidth,usableHeight);
-      const wall=wallCost(center,yaw,subjects.map(x=>x.p),room,walls);
+      const wall=wallCost(center,yaw,
+        [...subjects.map(x=>x.p),
+          ...(context.beat?.kind==='fight'&&context.actionPair?
+            [context.actionPair.shooter,context.actionPair.target]:[])],
+        room,walls,average(subjects));
       // Zoom tightness rewards intimate framing only after subject coverage.
       const close=clamp((bounds.zoom-.65)/9,0,1);
-      const elevationTarget=type==='contact'||type==='stack'||
-        type==='breach'?24:type==='approach'||type==='entry'?27:
-        type==='travel'||type==='overwatch'?26:31;
+      const elevationTarget=type==='contact'?17:
+        type==='stack'||type==='breach'?18:
+        type==='approach'||type==='entry'?22:
+        type==='travel'||type==='overwatch'?20:25;
       const dynamicElevation=elevationTarget+(1-close)*7;
       const score=
         45 + Math.min(23,bounds.zoom*2.55) -
         Math.abs(degrees-dynamicElevation)*.38 -
         wall.blocked*4.4 -
-        (wall.insideRoom?0:10) -
-        (room?Math.max(0,24-wall.roomClearance)*.44:0) -
-        (relevantDoor?Math.abs(delta(yaw,front))*11:
+        (wall.insideRoom?0:30) -
+        (room?Math.max(0,23-wall.roomClearance)*.85:0) -
+        (relevantDoor||doorBeat?Math.abs(delta(yaw,front))*11:
           Math.abs(delta(yaw,behind))*2.3) -
         Math.abs(delta(yaw,currentYaw))*1.05;
       if(!best||score>best.score){
@@ -334,9 +385,10 @@ export function composeReplayDirectorShot(_time:number,
           actorsFramed:subjects.length,
           kind:type==='contact'||type==='breach'?'action':'squad',
           shotType:type,subjects:subjects.map(a=>a.id),
-          doorId:relevantDoor?.id??null,
+          doorId:doorBeat?.doorId??relevantDoor?.id??null,
           score,occluded:wall.blocked,
-          motion:subjects.reduce((v,a)=>v+speedFor(a,context),0)};
+          motion:subjects.reduce((v,a)=>v+speedFor(a,context),0),
+          cameraAnchor:wall.camera};
       }
     }
   }
