@@ -88,8 +88,10 @@ import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-in
 import {buildReplayDirectorCues,replayCameraTarget,easeReplayCamera,
   type ReplayCameraMode,type ReplayDirectorCue}
   from './breach-replay-director.ts';
-import {easeCinematicReplayShot}
-  from './breach-replay-cinematic-director.ts';
+import {buildDirectorFilmBeats,directorFilmBeatAt,directorFilmPair,
+  type DirectorFilmBeat} from './breach-replay-director-film.ts';
+import {ReplayDirectorStoryboard}
+  from './breach-replay-director-storyboard.ts';
 import {buildDirectorPlanIndex,directorIntentsAt,
   type DirectorPlanIndex} from './breach-replay-director-intent.ts';
 import {buildDirectorFutureCues,directorFutureAt,
@@ -949,9 +951,10 @@ let replayCameraMode:ReplayCameraMode='free';
 let replayDirectorCues:ReplayDirectorCue[]=[];
 let replayDirectorFuture:DirectorFutureCue[]=[];
 let replayDirectorPlanIndex:DirectorPlanIndex=new Map();
+let replayDirectorFilmBeats:DirectorFilmBeat[]=[];
+let replayDirectorStoryboard:ReplayDirectorStoryboard|null=null;
 const replayDirectorScheduler=new ReplayDirectorScheduler();
 let replayDirectorTarget:DirectorShot|null=null;
-let replayDirectorEvaluatedAt=-Infinity;
 let replayPlanScope:'all'|'selected'|'none'='selected';
 let replayPlanVersion:'active'|'original'='active';
 let replayNameTags=true;
@@ -1915,7 +1918,10 @@ const squadIds=['rook','moss','ash','vale'] as const;
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 function layout(){
+  const oldWidth=cssW,oldHeight=cssH;
   cssW=Math.max(1,innerWidth);cssH=Math.max(1,innerHeight);
+  if((cssW!==oldWidth||cssH!==oldHeight)&&replayDirectorStoryboard)
+    replayDirectorStoryboard.clear();
   dpr=Math.min(devicePixelRatio||1,2);
   feedbackLayer.width=Math.round(cssW*dpr);
   feedbackLayer.height=Math.round(cssH*dpr);
@@ -4349,7 +4355,7 @@ function seekReplay(t:number){
   stopReplaySounds();
   replayTime=Math.max(0,Math.min(recorder.duration,t));
   replayDirectorScheduler.reset();replayDirectorTarget=null;
-  replayDirectorEvaluatedAt=-Infinity;
+  
   stage?.resetReplayBodycamSmoothing();
   applyReplayFrameAt(replayTime);advanceReplayCamera(0,true);
   if(!ui.replayFeed.hidden)renderReplayEventFeed();
@@ -4632,10 +4638,39 @@ function rebuildReplayEventIndex():void{
     recorder.executionEvents,e=>replayEventKnown(e));
   // Only disclosed historical events are eligible for the director.
   replayDirectorCues=buildReplayDirectorCues(replayEventIndex.all);
+  const friendlies=new Set(team(state).map(a=>a.id));
   replayDirectorFuture=buildDirectorFutureCues(replayEventIndex.all,
-    new Set(team(state).map(a=>a.id)));
+    friendlies);
+  const doors=state.site?.doors??[];
+  replayDirectorFilmBeats=buildDirectorFilmBeats(
+    recorder.ballistics.shots,replayEventIndex.all,
+    t=>recorder.at(t),doors,friendlies,
+    shot=>historicalShotVisible(shot));
+  // The director knows the whole finished film. Fixed knots are lazily
+  // solved from historical samples, independent of FPS or seek direction.
+  replayDirectorStoryboard=new ReplayDirectorStoryboard(recorder.duration,t=>{
+    const frame=recorder.at(t);
+    if(!frame)return null;
+    const actors=frame.actors.map(a=>({
+      id:a.id,p:a.p,heading:a.heading,health:a.health,
+      velocity:a.velocity,side:friendlies.has(a.id)?
+        'blue' as const:'red' as const
+    }));
+    const intents=directorIntentsAt(frame,replayDirectorPlanIndex,
+      doors,t,friendlies);
+    const beat=directorFilmBeatAt(t,replayDirectorFilmBeats);
+    return composeReplayDirectorShot(t,actors,
+      state.site?.rooms??[],state.site?.walls??[],
+      cssW/Math.max(1,cssH),0,
+      stage?.replayCameraBaseSpan()??1100,{
+        intents,upcoming:directorFutureAt(t,replayDirectorFuture),
+        beat,actionPair:beat?directorFilmPair(beat,frame):null,
+        usableWidth:cssW<500?.75:.85,
+        usableHeight:cssH<520?.68:.81,maxZoom:14
+      });
+  },{step:.8,maxCache:96});
   replayDirectorScheduler.reset();replayDirectorTarget=null;
-  replayDirectorEvaluatedAt=-Infinity;
+  
   replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
   replayIncidents=indexReplayIncidents(replayEventIndex.all,recorder.duration);
   replayFeaturedIncidents=featuredReplayIncidents(replayIncidents,5);
@@ -4651,48 +4686,38 @@ function advanceReplayCamera(dt:number,instant=false):void{
     id:a.id,p:a.p,side:a.side,health:a.health,heading:a.heading
   }));
   if(replayCameraMode==='director'){
-    if(instant||!replayDirectorTarget||
-      Math.abs(replayTime-replayDirectorEvaluatedAt)>=.25){
-      const frame=recorder.at(replayTime);
-      const intents=directorIntentsAt(frame,replayDirectorPlanIndex,
-        state.site?.doors??[],replayTime,
-        new Set(team(state).map(a=>a.id)));
-      const upcoming=directorFutureAt(replayTime,replayDirectorFuture);
-      const proposal=composeReplayDirectorShot(replayTime,actors,
-        state.site?.rooms??[],state.site?.walls??[],
-        cssW/Math.max(1,cssH),instant?0:stage.view.yaw,
-        stage.replayCameraBaseSpan(),{intents,upcoming,
-          usableWidth:cssW<500?.73:.84,
-          usableHeight:cssH<520?.65:.78,
-          maxZoom:9.5});
-      replayDirectorTarget=replayDirectorScheduler.choose(
-        replayTime,proposal,instant);
-      replayDirectorEvaluatedAt=replayTime;
+    const target=replayDirectorStoryboard?.sample(replayTime)??null;
+    replayDirectorTarget=target;
+    
+    if(!target){
+      stage.setReplayDirectorCameraAnchor(null);
+      return;
     }
-    const target=replayDirectorTarget;
-    if(!target)return;
     if(replayDirectorDebugPanel){
-      const status=replayDirectorScheduler.status;
       replayDirectorDebugPanel.hidden=false;
-      replayDirectorDebugPanel.textContent='DIRECTOR R7 · '+target.shotType.toUpperCase()+
+      const beat=directorFilmBeatAt(replayTime,replayDirectorFilmBeats);
+      replayDirectorDebugPanel.textContent='DIRECTOR FILM · '+
+        target.shotType.toUpperCase()+
+        '\\nBEAT '+(beat?.kind.toUpperCase()??'TRAVEL')+
         '\\nSUBJECTS '+target.subjects.join(', ')+
         '\\nDOOR '+(target.doorId??'—')+
-        '\\nSCORE '+target.score.toFixed(1)+
+        '\\nZOOM '+target.zoom.toFixed(2)+
         ' / OCC '+target.occluded+
-        '\\nHOLD '+Math.max(0,status.holdUntil-replayTime).toFixed(1)+'s'+
-        '\\nEDIT '+status.edits;
+        '\\nROOM '+(target.roomId??'—');
     }
-    const current={focus:stage.view.focus,zoom:stage.view.zoom,
-      yaw:stage.view.yaw,pitch:stage.view.pitch,roomId:null,
-      actorsFramed:target.actorsFramed,kind:target.kind} as const;
-    const shot=easeCinematicReplayShot(current,target,dt,instant);
-    stage.view.focus=shot.focus;stage.view.zoom=shot.zoom;
-    stage.view.yaw=shot.yaw;stage.view.pitch=shot.pitch;
-    stage.setReplayDirectorFocus(shot.focus);
+    // No reactive hold/reorientation race and no frame-rate-dependent
+    // orbit damping. The camera follows the precomputed film-time path.
+    stage.view.focus=target.focus;
+    stage.view.zoom=target.zoom;
+    stage.view.yaw=target.yaw;
+    stage.view.pitch=target.pitch;
+    stage.setReplayDirectorCameraAnchor(target.cameraAnchor);
+    stage.setReplayDirectorFocus(target.focus);
     stage.setReplayDirectorSubjects(actors.filter(a=>a.side==='blue'&&
       target.subjects.includes(a.id)).map(a=>a.p));
     return;
   }
+  stage.setReplayDirectorCameraAnchor(null);
   stage.setReplayDirectorFocus(null);
   if(replayDirectorDebugPanel)replayDirectorDebugPanel.hidden=true;
   const target=replayCameraTarget(replayCameraMode,replayTime,actors,
@@ -5196,7 +5221,7 @@ function enterReplay(){
   replayCameraMode='free';replayDirectorCues=[];
   replayDirectorPlanIndex=buildDirectorPlanIndex(recorder.plans.revisions);
   replayDirectorFuture=[];replayDirectorTarget=null;
-  replayDirectorEvaluatedAt=-Infinity;replayDirectorScheduler.reset();
+  replayDirectorScheduler.reset();
   replayBookmarks=[];replayBookmarkCounter=0;
   replayPlanScope='none';replayPlanVersion='active';
   replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
@@ -5256,11 +5281,14 @@ function exitReplay(){
   stopReplayBodycam();replayBodycamObservers=[];
   replayXrayOn=false;stage?.setReplayXray(false);
   stage?.setReplayDirectorFocus(null);
+  stage?.setReplayDirectorCameraAnchor(null);
   replayBodycamGroundObservers.clear();
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   replayDirectorPlanIndex=new Map();replayDirectorFuture=[];
-  replayDirectorTarget=null;replayDirectorEvaluatedAt=-Infinity;
+  replayDirectorFilmBeats=[];replayDirectorStoryboard=null;
+  stage?.setReplayDirectorCameraAnchor(null);
+  replayDirectorTarget=null;
   replayDirectorScheduler.reset();
   replayChapters=[];replayBookmarks=[];
   replayIncidents=[];replayFeaturedIncidents=[];
@@ -5823,7 +5851,7 @@ ui.replayDirectDirector.addEventListener('click',()=>{
   if(viewMode!=='iso'&&stage)cameraMode('iso');
   replayCameraMode=replayCameraMode==='director'?'free':'director';
   replayFollow=false;
-  replayDirectorTarget=null;replayDirectorEvaluatedAt=-Infinity;
+  replayDirectorTarget=null;
   replayDirectorScheduler.reset();
   advanceReplayCamera(1/60,false);updateReplayHud();
 });
