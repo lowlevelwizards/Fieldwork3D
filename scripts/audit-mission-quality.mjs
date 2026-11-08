@@ -10,16 +10,49 @@ import {MissionRecorder} from '../src/breach-replay.ts';
 import {assessMissionFilm,summarizeMissionSamples}
  from '../src/breach-mission-quality.ts';
 import {activateSite} from '../src/breach-core.ts';
+import {compileMissionFacts} from '../src/briefing/mission-facts.ts';
+import {createOperationDossier} from '../src/briefing/briefing-composer.ts';
 const count=Math.min(48,Math.max(1,
  Number.parseInt(process.argv[2]??'11',10)||11));
 const missions=['clear','intel','rescue','hold','capture'];
 const observations=[],issues=[];
 const exposureByPurpose=new Map();
+// Optional extension of the existing mission-quality audit. Never used as
+// player-visible truth; no new behavior and no extra generator passes.
+const living=process.argv.includes('--living');
+const livingSummary={incidentRequested:0,incidentChanged:0,
+ activities:{},readiness:{},generatedCivilians:0,
+ activeCivilians:0,withRoutine:0,rows:[]};
 for(let index=0;index<count;index++){
  const seed=11+index,mission=missions[index%missions.length];
- const site=generateSite(seed,'small',undefined,{mission});
+ const site=generateSite(seed,'small',undefined,{mission,
+  ...(living?{enableIncidentIntent:true}: {})});
  const audit=auditSite(site);
- const session=newSession(0,seed,'floor-plan','small',mission,site);
+ const session=newSession(0,seed,'floor-plan','small',mission,site,
+  living?{enableCivilians:true}:{});
+ if(living){
+  const facts=compileMissionFacts(session);
+  const dossier=createOperationDossier(facts,{quality:'low'});
+  const intent=site.encounter?.incidentIntentId??null;
+  const actual=dossier.identity.incidentId;
+  livingSummary.incidentRequested+=Number(!!intent);
+  livingSummary.incidentChanged+=Number(!!intent&&intent!==actual);
+  const actors=site.encounter?.actors??[];
+  for(const a of actors){
+   livingSummary.activities[a.activity]=(livingSummary.activities[a.activity]??0)+1;
+   livingSummary.readiness[a.readiness]=(livingSummary.readiness[a.readiness]??0)+1;
+   livingSummary.withRoutine+=Number((a.routine?.length??0)>0);
+  }
+  const generated=site.encounter?.neutrals?.length??0;
+  livingSummary.generatedCivilians+=generated;
+  livingSummary.activeCivilians+=session.civilians.length;
+  livingSummary.rows.push({seed,building:site.archetype,mission,
+   premise:site.encounter?.premise,profile:site.encounter?.profile,
+   initialIncidentIntent:intent,briefedIncident:actual,
+   hostileCount:actors.length,generatedNeutrals:generated,
+   liveCivilians:session.civilians.length,
+   activities:actors.map(a=>a.activity)});
+ }
  session.phase='running';session.started=true;
  const recording=new MissionRecorder();
  recording.capture(session,true);
@@ -68,6 +101,7 @@ const exposureRoles=[...exposureByPurpose.values()].map(r=>({
  b.percentOverexposed-a.percentOverexposed||a.purpose.localeCompare(b.purpose));
 console.log(JSON.stringify({method:'11 archetypes / 5 mission types, passive 2s actual replay',
  seeds:count,summary,exposureByPurpose:exposureRoles,issues,
+ ...(living?{livingEncounters:livingSummary}:{}),
  observations:observations.map(s=>({
  seed:s.seed,mission:s.mission,topology:s.topology,
  verifiedApproaches:s.verifiedApproaches,
