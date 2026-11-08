@@ -34,7 +34,7 @@ import {resolveTacticalPick,screenSegmentDistance,watchDragReady,
   type TacticalPick} from './ui/tactical-target-resolver.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
-import {interruptsWatch} from './breach-plan.ts';
+import {interruptsWatch,angleDifference} from './breach-plan.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
@@ -162,7 +162,7 @@ import {liveMagazineCapacity,magazineAlert,fitMagazineInventory}
 
 import {stageMagazines,magazineSpace,type MagazineLocation} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
-import {canRelocateCover} from './breach-movable-cover.ts';
+import {canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {INTEL_MODES,doorKnown,
   intelPassable,type IntelMode} from './breach-intel.ts';
 import {orderFailureText} from './breach-nav-diagnostics.ts';
@@ -8218,6 +8218,45 @@ function updatePhysicalActionRings(){
       orderMode?{origin,direction:cursor!,mode:orderMode}:undefined;
     tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
       performance.now(),preview,reducedMotionMedia.matches);
+    // Direction-only preview of an authored furniture push. The authoritative
+    // simulation still decides how far the real object can move on contact;
+    // this never mutates cover, reveals unknown obstacles, or guarantees travel.
+    if(pushMode&&state.phase==='planning'&&!replaying&&actor){
+      const from=selectedPlanNode()?.p??finalPoint(actor);
+      const candidate=state.coverState.map((object,index)=>({
+        object,index,range:distance(from,{x:object.x,y:object.y})
+      })).filter(item=>canRelocateCover(item.object)&&
+        state.intel.cover.has(item.index)&&
+        item.range<Math.max(item.object.w,item.object.h)/2+43)
+        .sort((a,b)=>a.range-b.range||a.index-b.index)[0];
+      if(candidate){
+        const obj=candidate.object,center={x:obj.x,y:obj.y};
+        const base=Math.atan2(obj.y-from.y,obj.x-from.x);
+        const aimed=canPreview&&cursor&&distance(cursor,center)>4?
+          Math.atan2(cursor.y-center.y,cursor.x-center.x):base;
+        const yaw=base+Math.max(-Math.PI*4/9,Math.min(Math.PI*4/9,
+          angleDifference(base,aimed)));
+        const dist=Math.max(7,coverPushDistance(obj));
+        const end={x:obj.x+Math.cos(yaw)*dist,
+          y:obj.y+Math.sin(yaw)*dist};
+        const startPx=worldToScreen(center,13),endPx=worldToScreen(end,13);
+        feedbackDraw.save();
+        feedbackDraw.strokeStyle='#e4c998';feedbackDraw.fillStyle='#e4c998';
+        feedbackDraw.lineWidth=2.4;feedbackDraw.setLineDash([5,4]);
+        feedbackDraw.beginPath();feedbackDraw.arc(startPx.x,startPx.y,15,
+          0,Math.PI*2);feedbackDraw.stroke();
+        feedbackDraw.setLineDash([]);
+        feedbackDraw.beginPath();feedbackDraw.moveTo(startPx.x,startPx.y);
+        feedbackDraw.lineTo(endPx.x,endPx.y);feedbackDraw.stroke();
+        const direction=Math.atan2(endPx.y-startPx.y,endPx.x-startPx.x);
+        feedbackDraw.beginPath();feedbackDraw.moveTo(endPx.x,endPx.y);
+        for(const side of [-1,1])
+          feedbackDraw.lineTo(endPx.x-Math.cos(direction+side*.48)*13,
+            endPx.y-Math.sin(direction+side*.48)*13);
+        feedbackDraw.closePath();feedbackDraw.fill();
+        feedbackDraw.restore();
+      }
+    }
   }
   updateContext();advanceContextPalette(dt);
   if(frameMeter&&perfOverlay){
