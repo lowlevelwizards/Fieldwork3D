@@ -198,6 +198,8 @@ import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
 import {PaletteMotion} from './ui/palette-motion.ts';
+import {bubblePlacement,bubbleSlots,parseContextLayout,
+  type ContextLayout} from './ui/context-layout.ts';
 import {TacticalFeedback} from './ui/tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './ui/contextual-teaching.ts';
@@ -1568,6 +1570,34 @@ let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
 let looking=false,flashMode=false;
 let firePlacement:'suppress'|null=null;
 let lookMode:'look'|'watch'='look';
+const CONTEXT_LAYOUT_PREF='fieldwork3d.ui.contextLayout';
+let contextLayout:ContextLayout='dock';
+try{contextLayout=parseContextLayout(localStorage.getItem(CONTEXT_LAYOUT_PREF));}
+catch{/* A blocked preference store must never prevent opening the UI. */}
+const contextLayoutButtons=Array.from(
+  document.querySelectorAll<HTMLButtonElement>('[data-context-layout]'));
+function syncContextLayoutButtons(){
+  for(const button of contextLayoutButtons)
+    button.setAttribute('aria-pressed',
+      String(button.dataset.contextLayout===contextLayout));
+}
+syncContextLayoutButtons();
+for(const button of contextLayoutButtons)button.addEventListener('click',()=>{
+  const layout=parseContextLayout(button.dataset.contextLayout??null);
+  if(contextLayout===layout)return;
+  contextLayout=layout;
+  try{localStorage.setItem(CONTEXT_LAYOUT_PREF,layout);}
+  catch{/* Preference persistence is optional. */}
+  syncContextLayoutButtons();
+  // Both alternatives share the existing actual command buttons/handler.
+  // Cancel any old animation before detaching a palette into the HUD.
+  paletteExit?.cancel();paletteExit=null;
+  paletteMotion.hide();contextTether.hidden=true;
+  ui.context.hidden=true;ui.context.style.transform='';
+  contextActionsSignature='';lastPlacementKey='';
+  paletteWidth=0;paletteHeight=0;
+  updateContext();
+});
 let contextSignature='';
 let contextActionsSignature='';
 let lastContextSide:MenuSide|null=null;
@@ -1585,12 +1615,13 @@ contextTether.setAttribute('aria-hidden','true');
 document.body.append(contextTether);
 function hideContextPalette(){
   lastPlacementKey='';
-  // Mutually exclusive sheets must take over immediately. A fading palette
-  // still counts as visible/hit-testable and can obscure the TOOLS drawer.
+  // Docked commands never leave an invisible touch surface over the map.
+  // Bubbles also dismiss immediately when the map enters target mode.
   const exclusive=!ui.siteSettings.hidden||!ui.briefingPanel.hidden;
-  if(!paletteMotion.active){
-    if(exclusive){paletteExit?.cancel();paletteExit=null;
-      ui.context.hidden=true;contextTether.hidden=true;}
+  if(contextLayout!=='floating'||!paletteMotion.active){
+    paletteExit?.cancel();paletteExit=null;
+    paletteMotion.hide();contextTether.hidden=true;
+    ui.context.hidden=true;ui.context.style.pointerEvents='none';
     return;
   }
   paletteMotion.hide();contextTether.hidden=true;
@@ -1621,7 +1652,7 @@ function advanceContextPalette(dt:number){
   const bx=Math.max(x,Math.min(ax,x+w));
   const by=Math.max(y,Math.min(ay,y+h));
   const dx=bx-ax,dy=by-ay,length=Math.hypot(dx,dy);
-  const visible=length>24&&!reduced;
+  const visible=ui.context.dataset.layout==='floating'&&length>24&&!reduced;
   contextTether.hidden=!visible;
   if(visible){
     // At long distance use only a nearby pointer instead of cutting
@@ -2079,7 +2110,31 @@ function updateContext(){
   });
   const paletteChoices=choices.filter(choice=>choice.group!=='state');
   // The four persistent toggles have their own stationary bar above the HUD.
-  // Reconcile buttons in-place: avoid tearing down the menu when a toggle changes.
+  // Bubbles follow the selected operator, while their commands still target
+  // the focused door / node / watch exactly as before.
+  const actorAnchor=worldToScreen(a.p,24);
+  const menuTop=Math.max(8,
+    (document.querySelector<HTMLElement>('.top')?.getBoundingClientRect().bottom??62)+8);
+  const menuHudTop=ui.quickStates.getBoundingClientRect().top;
+  const bubbleBounds=contextLayout==='bubbles'?bubblePlacement({
+    anchorX:actorAnchor.x,anchorY:actorAnchor.y,
+    viewportWidth:cssW,top:menuTop,hudTop:menuHudTop,
+  }):null;
+  // Tiny landscape/edge cases use the dock rather than laying bubbles over
+  // the persistent HUD or outside the visible canvas.
+  const effectiveLayout:ContextLayout=contextLayout==='bubbles'&&!bubbleBounds?
+    'dock':contextLayout;
+  if(ui.context.dataset.layout!==effectiveLayout){
+    ui.context.dataset.layout=effectiveLayout;
+    if(effectiveLayout==='dock')
+      ui.tacticalHud.insertBefore(ui.context,ui.quickStates);
+    else document.body.append(ui.context);
+    paletteMotion.hide();contextTether.hidden=true;
+    ui.context.style.transform='';
+    contextActionsSignature='';lastPlacementKey='';
+    paletteWidth=0;paletteHeight=0;
+  }
+  // Reconcile buttons in-place: never create a second action dispatcher.
   const identity=(door?'door:'+door.id:node?'node:'+node.id:
     selectedWatch?'active-watch':'here')+'/'+selected;
   const contextChanged=contextSignature!==identity;
@@ -2113,7 +2168,7 @@ function updateContext(){
     if(contextHeading.textContent!==text)contextHeading.textContent=text;
     contextHeading.title=scope;
   }
-  const actionSignature=identity+'/'+paletteChoices.map(c=>
+  const actionSignature=effectiveLayout+'/'+identity+'/'+paletteChoices.map(c=>
     c.id+':'+c.label+':'+c.group+':'+!!c.disabled+':'+!!c.pressed).join('|');
   const actionChanged=contextActionsSignature!==actionSignature;
   if(actionChanged){
@@ -2155,7 +2210,11 @@ function updateContext(){
     // contextual action must never reorder the fixed command slots.
     // 'advanced' is only a semantic group now: render those commands
     // alongside primary orders instead of inside a height-changing drawer.
-    buckets[choice.group==='advanced'?'primary':choice.group].append(button);
+    // In the two auditions, all contextual buttons share one stable visual
+    // group, including a distinguishable destructive button.
+    const destination=effectiveLayout==='floating'?
+      buckets[choice.group==='advanced'?'primary':choice.group]:buckets.primary;
+    destination.append(button);
   }
   for(const btn of ui.context.querySelectorAll<HTMLButtonElement>('button[data-action]')){
     if(!wanted.has(btn.dataset.action??''))btn.remove();
@@ -2163,16 +2222,53 @@ function updateContext(){
   buckets.state.hidden=!buckets.state.childElementCount;
   buckets.destructive.hidden=!buckets.destructive.childElementCount;
   ui.context.classList.toggle('door-menu',!!door);
+  if(effectiveLayout==='bubbles'){
+    const bubbles=bubbleSlots(paletteChoices.length);
+    const buttons=Array.from(buckets.primary.querySelectorAll<HTMLButtonElement>(
+      'button[data-action]'));
+    for(let index=0;index<buttons.length;index++){
+      const offset=bubbles[index]??{x:0,y:0};
+      buttons[index].style.left='calc(50% '+(offset.x<0?'- ':'+ ')+
+        Math.abs(offset.x)+'px)';
+      buttons[index].style.top='calc(50% '+(offset.y<0?'- ':'+ ')+
+        Math.abs(offset.y)+'px)';
+    }
+  }else{
+    for(const button of ui.context.querySelectorAll<HTMLButtonElement>(
+      'button[data-action]')){
+      button.style.removeProperty('left');
+      button.style.removeProperty('top');
+    }
+  }
   }
   if(paletteExit){paletteExit.cancel();paletteExit=null;}
   ui.context.hidden=false;
-  ui.context.style.pointerEvents='auto';
+  // The transparent center of the bubble ring must not eat map gestures.
+  ui.context.style.pointerEvents=effectiveLayout==='bubbles'?'none':'auto';
   if(contextChanged&&!reducedMotionMedia.matches)
     ui.context.animate([{opacity:.78,scale:.96},{opacity:1,scale:1}],
       {duration:160,easing:'cubic-bezier(.2,.8,.2,1)'});
   ui.context.dataset.door=door?.id??'';
   ui.context.setAttribute('aria-label',door?
     'Door actions':'Selected position actions and operator settings');
+  if(effectiveLayout==='dock'){
+    paletteMotion.hide();contextTether.hidden=true;
+    ui.context.style.transform='';
+    return;
+  }
+  if(effectiveLayout==='bubbles'&&bubbleBounds){
+    const key=[identity,actionSignature,
+      Math.round(bubbleBounds.x/3),Math.round(bubbleBounds.y/3)].join('|');
+    // Never move a touch target while the player holds a command.
+    if(contextPointerIds.size===0&&
+      (!paletteMotion.active||key!==lastPlacementKey)){
+      lastPlacementKey=key;
+      paletteMotion.set(bubbleBounds.x,bubbleBounds.y,
+        actorAnchor.x,actorAnchor.y);
+    }
+    contextTether.hidden=true;
+    return;
+  }
   // Keep the full operator bodies, selected route, and tap targets visible.
   // Don't inspect concealed enemies: context placement must not leak intel.
   const target=door?doorCenter(door):node?.p??selectedWatch??a.p;

@@ -84,6 +84,15 @@
         <button id="uiHelp" type="button" aria-label="Show contextual help">? HELP</button>
         <button id="uiSoundToggle" type="button" aria-pressed="true">UI SOUND ON</button>
       </div>
+      <div class="context-layout-settings" role="group" aria-label="Contextual action placement">
+        <strong>CONTEXT ACTIONS</strong>
+        <div class="context-layout-options">
+          <button type="button" data-context-layout="dock" aria-pressed="true">DOCK</button>
+          <button type="button" data-context-layout="bubbles" aria-pressed="false">BUBBLES</button>
+          <button type="button" data-context-layout="floating" aria-pressed="false">FLOATING</button>
+        </div>
+        <p class="site-settings-hint">Dock stays above the operator state bar. Bubbles circle the selected operator when space permits. Floating is the original layout for comparison.</p>
+      </div>
       <div class="site-settings-row" role="group" aria-label="Live game audio experiment">
         <button id="liveMixToggle" type="button" aria-pressed="true">TEST MIX ON</button>
         <button id="roomAudioToggle" type="button" aria-pressed="true">ROOM ACOUSTICS ON</button>
