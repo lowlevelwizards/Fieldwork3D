@@ -2392,6 +2392,12 @@ function aimHeading(a:TeamActor):number|null{
   return angle(a.p,instruction.point);
 }
 function applyAimNode(a:TeamActor,n:PlanNode){
+  // The clearing angle belongs to the OPTIONAL generated entry template.
+  // A player's explicit persistent WATCH on the stack takes precedence
+  // through arrival; merely reaching an entry MOVE must not cancel it.
+  if(n.entryDoorId&&n.aimMode==='fixed'&&
+     a.aimInstruction?.mode==='track'&&
+     a.aimInstruction.source!=='stack')return;
   if(n.aimMode==='free')a.aimInstruction=null;
   else if(n.aimMode==='track'&&n.aimPoint)
     a.aimInstruction={mode:'track',point:clone(n.aimPoint),
