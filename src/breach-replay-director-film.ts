@@ -72,7 +72,7 @@ export function buildDirectorFilmBeats(
     const frame=at(event.t);
     const near=event.p??frame?.actors.find(a=>a.id===event.actor)?.p;
     if(!near)continue;
-    const door=doors.map(d=>({door,p:center(d)}))
+    const door=doors.map(d=>({door:d,p:center(d)}))
       .sort((a,b)=>dist(a.p,near)-dist(b.p,near))[0];
     if(!door||dist(door.p,near)>52)continue;
     // Close repeats and flash/door interactions on the same leaf into
