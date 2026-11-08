@@ -93,8 +93,13 @@ export function selectDirectorEditorialShot(
     door=strongestDoor.door;
   }
   if(!primary){
-    const movers=friends.filter(a=>
-      (intent(a.id)?.speed??a.velocity??0)>7);
+    const movers=friends.filter(a=>{
+      const i=intent(a.id);
+      return (i?.speed??a.velocity??0)>7||
+        (!!i&&i.route.length>1&&
+          distance(i.position,i.route.at(-1)!)>17&&
+          ['travel','approach'].includes(i.kind));
+    });
     if(movers.length){
       primary=movers.slice().sort((a,b)=>{
         const value=(a:DirectorActor)=>(
@@ -133,6 +138,9 @@ export function selectDirectorEditorialShot(
     distance(a.p,primary!.p)<160)
     .sort((a,b)=>distance(a.p,primary!.p)-
       distance(b.p,primary!.p)||a.id.localeCompare(b.id))
+    .filter(a=>kind!=='follow'||(
+      distance(a.p,primary!.p)<95&&
+      (intent(a.id)?.speed??a.velocity??0)>7))
     .slice(0,3);
   const required=[{...primary.p}];
   const mandatory=kind==='engage'?target:
