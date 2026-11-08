@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {cinematicReplayShot,easeCinematicReplayShot}
-  from '../src/breach-replay-cinematic-director.ts';
+import {composeReplayDirectorShot}
+  from '../src/breach-replay-director-shots.ts';
 import {smoothBodycamSample} from '../src/breach-replay-bodycam.ts';
 import {indexReplayIncidents,featuredReplayIncidents}
   from '../src/breach-replay-incidents.ts';
@@ -18,50 +18,33 @@ const members=[
 ];
 const rooms=[{id:'A',x:0,y:0,w:150,h:150},
   {id:'B',x:330,y:300,w:140,h:130}];
-test('cinematic director fits ALL four friendlies and ignores hidden enemies',()=>{
-  const cues=[{t:5,p:{x:60,y:65},weight:9,kind:'wound'}];
-  const shot=cinematicReplayShot(6,members,rooms,[],cues,1.4,0);
-  assert.equal(shot.roomId,'A');
-  assert.equal(shot.actorsFramed,4);
-  assert.equal(shot.kind,'action');
-  assert.ok(shot.focus.x>200&&shot.focus.x<230,
-    'Framing center must include the fourth teammate, even in another room');
-  assert.ok(shot.zoom>=.65&&shot.zoom<=18);
-  assert.ok(shot.pitch>0.8&&shot.pitch<1.1);
-  const withoutEnemy=cinematicReplayShot(6,members.filter(a=>a.side==='blue'),
-    rooms,[],cues,1.4,0);
-  assert.deepEqual(shot,withoutEnemy,'unseen hostiles must never steer the camera');
-  assert.deepEqual(shot,cinematicReplayShot(6,members,rooms,[],cues,1.4,0),
-    'same recorded frame and context must produce deterministic framing');
+const direct=(actors)=>composeReplayDirectorShot(6,actors,rooms,[],
+  1.4,0,1200,{intents:[],upcoming:null});
+test('R8 chooses a coherent local element instead of an unrelated distant fourth',()=>{
+  const result=direct(members);
+  assert.ok(result);
+  assert.equal(result.roomId,'A');
+  assert.equal(result.editorialKind,'establish');
+  assert.ok(result.subjects.includes('rook'));
+  assert.ok(result.subjects.includes('ash'));
+  assert.ok(!result.subjects.includes('vale'),
+    'a distant fourth operator cannot force the shot to span two rooms');
+  assert.ok(result.focus.x<160,
+    'keep the visual focus within the main tactical element');
+  assert.deepEqual(result,direct(members.filter(a=>a.side==='blue')),
+    'undisclosed enemy coordinates never steer the shot');
+  assert.deepEqual(result,direct(members),
+    'the same evidence produces the same composition');
 });
-test('director aggressively zooms to the closest four-person fit',()=>{
+test('R8 favors medium-wide local squad framing rather than compulsory closeups',()=>{
   const grouped=members.filter(m=>m.side==='blue').map((m,i)=>({
     ...m,p:{x:48+i*9,y:54+(i%2)*12}
   }));
-  const close=cinematicReplayShot(8,grouped,rooms,[],[],1.4,0,1200);
-  assert.equal(close.actorsFramed,4);
-  assert.ok(close.zoom>=10,'Compact squad should be a genuine close-up');
-  const distant=cinematicReplayShot(8,members,rooms,[],[],1.4,0,1200);
-  assert.ok(distant.zoom<close.zoom,
-    'A more spread-out squad must fit safely instead of being cropped');
-  const modifiedEnemy=members.map(m=>m.side==='red'?{
-    ...m,p:{x:900,y:900}
-  }:m);
-  assert.deepEqual(cinematicReplayShot(8,modifiedEnemy,rooms,[],[],1.4,0,1200),
-    distant,'Hostile positions never influence Director framing');
-});
-test('director eases perspective without rotating the long way round',()=>{
-  const current={focus:{x:0,y:0},zoom:1,yaw:Math.PI*1.98,
-    pitch:1,roomId:null,actorsFramed:3,kind:'squad'};
-  const target={...current,focus:{x:100,y:20},zoom:3,yaw:.03,pitch:.9};
-  const eased=easeCinematicReplayShot(current,target,1/60);
-  assert.ok(eased.focus.x>0&&eased.focus.x<100);
-  assert.ok(eased.zoom>1&&eased.zoom<3);
-  assert.ok(Math.abs(eased.yaw-current.yaw)<.1);
-  const cut=easeCinematicReplayShot(current,target,0,true);
-  assert.deepEqual(cut.focus,target.focus);
-  assert.equal(cut.zoom,target.zoom);
-  assert.ok(Math.abs(cut.yaw-target.yaw)<1e-12);
+  const shot=direct(grouped);
+  assert.equal(shot.actorsFramed,4);
+  assert.ok(shot.zoom>=.65&&shot.zoom<=7.4,
+    'establishing shot leaves air around all four nearby operators');
+  assert.ok(shot.requiredPoints.length>=1);
 });
 test('bodycam smoothing is bounded, normalized and supports explicit cuts',()=>{
   const p={position:new THREE.Vector3(0,2,0),forward:new THREE.Vector3(1,0,0),
