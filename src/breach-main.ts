@@ -1669,19 +1669,20 @@ function quietTacticalSpace(){
     if(liveVisibility(state,p))square(worldToScreen(p,8),33);
   }
   for(const room of state.site?.rooms??[]){
-    if(room.kind!=='room')continue;
-    const center={x:room.x+room.w/2,y:room.y+room.h/2};
-    if(!liveVisibility(state,center))continue;
-    const corners=[
-      {x:room.x,y:room.y},{x:room.x+room.w,y:room.y},
-      {x:room.x+room.w,y:room.y+room.h},{x:room.x,y:room.y+room.h},
-    ].map(p=>worldToScreen(p,0));
-    const minX=Math.min(...corners.map(p=>p.x));
-    const maxX=Math.max(...corners.map(p=>p.x));
-    const minY=Math.min(...corners.map(p=>p.y));
-    const maxY=Math.max(...corners.map(p=>p.y));
-    protectedRects.push({x:minX-10,y:minY-10,
-      w:maxX-minX+20,h:maxY-minY+20});
+    // Sample *only* presently visible patches. Do not react to unseen
+    // corners of a room just because its center became visible.
+    const revealed:ScreenPoint[]=[];
+    for(const fx of [.15,.5,.85])for(const fy of [.15,.5,.85]){
+      const p={x:room.x+room.w*fx,y:room.y+room.h*fy};
+      if(liveVisibility(state,p))revealed.push(worldToScreen(p,0));
+    }
+    if(!revealed.length)continue;
+    const minX=Math.min(...revealed.map(p=>p.x));
+    const maxX=Math.max(...revealed.map(p=>p.x));
+    const minY=Math.min(...revealed.map(p=>p.y));
+    const maxY=Math.max(...revealed.map(p=>p.y));
+    protectedRects.push({x:minX-38,y:minY-38,
+      w:maxX-minX+76,h:maxY-minY+76});
   }
   return {protectedRects,protectedPaths};
 }
@@ -2244,13 +2245,13 @@ function updateContext(){
       protectedRects,protectedPaths,previous:prior,
     });
     if(!quietPocket)quietReadyAt=0;
-    else if(!prior)quietReadyAt=now+500;
+    else if(!prior||
+      Math.hypot(quietPocket.x-prior.x,quietPocket.y-prior.y)>44)
+      quietReadyAt=now+500;
   }
   // If no safe pocket exists, FLOAT is an explicitly docked fallback.
   // A short stable period is required before floating back out.
-  if(quietPocket&&
-      (ui.context.dataset.layout==='floating'||now>=quietReadyAt)&&
-      contextFingerIds.size===0){
+  if(quietPocket&&now>=quietReadyAt&&contextFingerIds.size===0){
     setContextPresentation('floating');
     ui.context.style.transform='translate3d('+
       quietPocket.x.toFixed(1)+'px,'+quietPocket.y.toFixed(1)+'px,0)';
