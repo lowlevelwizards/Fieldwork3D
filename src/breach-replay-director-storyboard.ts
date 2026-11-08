@@ -233,9 +233,12 @@ export class ReplayDirectorStoryboard{
     // silhouette. Judge the established frame with the SAME evaluator
     // that produced the competing R9 shot, not a second focus heuristic.
     if(raw.operatorPoint&&raw.editorialKind){
+      if(!directorSubjectVisibility(prior.cameraAnchor,raw.operatorPoint,
+        this.physicalScene).readable)return false;
       const quality=directorCompositionQuality(prior.cameraAnchor,
         prior.focus,raw.operatorPoint,
-        raw.requiredPoints.length>1?raw.requiredPoints[1]:null,
+        raw.editorialKind==='engage'&&raw.requiredPoints.length>1?
+          raw.requiredPoints[1]:null,
         raw.actionAxis??{x:1,y:0},raw.editorialKind,
         'ortho',this.aspect,this.baseSpan,prior.zoom,
         prior.fov??108,this.usableWidth,this.usableHeight,
@@ -295,7 +298,22 @@ export class ReplayDirectorStoryboard{
     const sameStory=!!raw.editorialId&&
       raw.editorialId===prior.editorialId;
     const covered=this.coversPrior(prior,raw);
+    const establishedLegible=this.subjectLegible(prior,raw);
+    const rawLegible=raw.subjectReadable!==false&&
+      raw.compositionQuality?.primaryReadable!==false;
     const entering=!!raw.firstEntry&&raw.shotType==='entry';
+    // Hard integrity outranks scene residence and aesthetic continuity.
+    // If action has LEFT the existing image, use the legal, newly
+    // solved rig at the next fixed knot rather than tracking empty walls.
+    if(!establishedLegible&&rawLegible&&
+      index-(prior.sceneStartIndex??0)>=1){
+      return {...raw,sceneStartIndex:index,
+        cameraDecision:'cut:restore-visible-subject'};
+    }
+    // The fresh candidate may also be obstructed: prefer an established,
+    // actually readable frame to a new door/backpack-only image.
+    if(!rawLegible&&establishedLegible)
+      return {...prior,cameraDecision:'hold:visible-over-obstructed'};
     if(raw.roomId!==prior.roomId){
       // The first entrant calls for an editorial evaluation, NOT an
       // automatic cut. An existing legal threshold two-shot can hold.
@@ -346,6 +364,10 @@ export class ReplayDirectorStoryboard{
     // Keep the established frame steady until actors actually move or
     // a real recorded action becomes the subject.
     if(!action&&!traveling&&raw.motion<9){
+      if(!covered&&rawLegible&&
+        index-(prior.sceneStartIndex??0)>=Math.ceil(1/this.step))
+        return {...raw,sceneStartIndex:index,
+          cameraDecision:'cut:quiet-recover-action'};
       // A newly authored doorway approach can be meaningful even while
       // the breacher is temporarily still. Avoid trapping the camera on
       // the previous unrelated subject for the rest of the scene.
