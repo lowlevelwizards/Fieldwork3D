@@ -510,20 +510,36 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   (v.wardrobeGear.rig[looks.rigStyle]?.position.x??0);
  const sample=v.magazines.rig[0]?.geometry;
  if(sample&&!sample.boundingBox)sample.computeBoundingBox();
- const bounds=sample?.boundingBox??null;
+ const bounds=sample?.boundingBox?.clone()??null;
+ if(bounds&&!magazinePart){
+  bounds.min.set(bounds.min.x*magShape.x,
+   bounds.min.y*magShape.y,bounds.min.z*magShape.z);
+  bounds.max.set(bounds.max.x*magShape.x,
+   bounds.max.y*magShape.y,bounds.max.z*magShape.z);
+ }
+ let cellCursor=0;
  v.magazines.rig.forEach((mag,i)=>{
   const parent=waist??v.rigMagazineHome;
   if(mag.parent!==parent)parent.add(mag);
   mag.scale.set(magazinePart?1:magShape.x,
    magazinePart?1:magShape.y,magazinePart?1:magShape.z);
   if(usingWardrobe){
-   const cell=i<realRigCount?cells[i]:undefined;
-   const place=cell&&bounds?seatMagazineInPouch(bounds,cell):null;
+   // Search forward through only REGISTERED magazine pouches. If a case
+   // is too small, it stays unused rather than wasting this owned magazine
+   // or pushing that magazine into a utility pouch or a fictitious row.
+   let place:ReturnType<typeof seatMagazineInPouch>=null;
+   let seatedIndex=-1;
+   if(i<realRigCount&&bounds){
+    while(cellCursor<cells.length&&!place){
+     seatedIndex=cellCursor;
+     place=seatMagazineInPouch(bounds,cells[cellCursor++]);
+    }
+   }
    mag.visible=!!place;
    if(place){
     mag.position.set(place.x+rigShift,place.y,place.z);
     mag.rotation.y=place.yaw;
-    mag.userData.magazinePouchCell=i;
+    mag.userData.magazinePouchCell=seatedIndex;
     mag.userData.magazinePouchStyle=looks.rigStyle;
    }else{
     mag.userData.magazinePouchCell=null;
