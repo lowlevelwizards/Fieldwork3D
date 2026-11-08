@@ -2140,6 +2140,39 @@ export class TacticalScene3D{
         // yaw remains authoritative for collision, LOS and navigation.
         object.leaf.rotation.y=(door.swing??-1)*shownFraction*1.54+wobble;
       }
+      // A solid open leaf is still geometry. In orthographic Director
+      // a door between the camera and a friendly fades as a very light
+      // architectural ghost while the miniature stays fully opaque.
+      // Clone each affected opaque material ONCE so changing one door
+      // never fades other doors or the rest of the building.
+      const leafCut=physicalDirector&&this.replayDirectorLens==='ortho'&&
+        !['glazed','french','screen','mesh-gate'].includes(door.style??'')&&
+        subjects.some(p=>wallOccludesFriendly(
+          doorLeafSegment({...door,openFraction:shownFraction}),
+          p,{x:fromCamera.x,y:fromCamera.z},maxCutDistance));
+      if(leafCut||object.leaf.userData.directorCutMaterials){
+        object.leaf.userData.directorCutMaterials=true;
+        object.leaf.traverse(child=>{
+          if(!(child instanceof THREE.Mesh))return;
+          const original=child.material;
+          if(!(original instanceof THREE.MeshStandardMaterial))return;
+          if(!child.userData.directorCutMat){
+            if(!leafCut||original.transparent)return;
+            const clone=original.clone();
+            this.mats.push(clone);
+            child.material=clone;
+            child.userData.directorCutMat=clone;
+          }
+          const local=child.userData.directorCutMat as THREE.MeshStandardMaterial;
+          if(local.transparent!==leafCut){
+            local.transparent=leafCut;
+            local.depthWrite=!leafCut;
+            local.needsUpdate=true;
+          }
+          local.opacity=leafCut?.12:1;
+          child.renderOrder=leafCut?1001:0;
+        });
+      }
       const reachable=selectedActor&&selectedActor.health>0&&
         (doorReachable(selectedActor.p,door)||
           (!!selectedEndpoint&&doorReachable(selectedEndpoint,door)));
