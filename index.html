@@ -15,12 +15,17 @@
 <header class="top">
   <div class="ident"><span>FIELDWORK <i>/</i> TACTICAL STUDY</span>
     <strong>CUTWOODS / BREACH</strong><small>PROCEDURAL SITE — FOUR OPERATORS</small></div>
+  <div class="top-controls">
   <div class="mode"><strong id="phase">PLANNING</strong><output id="clock">00:00</output></div>
+  <button id="siteSettingsToggle" class="header-settings" type="button"
+    aria-expanded="false" aria-controls="siteSettings"
+    aria-label="Mission settings" title="Mission settings">SETTINGS</button>
+</div>
 </header>
 <div class="guidance" id="hint" role="status" aria-live="polite" hidden>Tap the floor to move · Select a waypoint for LOOK or WATCH</div>
-<section class="orders compact" id="advancedOrders" aria-label="Additional tactical options">
+<!-- Legacy command hooks remain for internal shortcuts; this drawer is intentionally retired. -->
+<section id="advancedOrders" hidden aria-hidden="true">
   <button id="undo" type="button" title="Undo the last planning edit">UNDO</button>
-  <button id="redo" type="button" title="Redo the last planning edit">REDO</button>
   <button id="wait" type="button">WAIT</button>
   <button id="reload" type="button">RELOAD</button>
   <button id="loadout" type="button" title="Cycle selected operator weapon">WEAPON</button>
@@ -28,7 +33,6 @@
   <button id="sync" type="button" title="Synchronize the squad's planned go-code">SYNC</button>
   <button id="stance" type="button">CROUCH</button>
   <button id="contact" type="button" aria-pressed="false">STOP ON CONTACT</button>
-  <button id="siteSettingsToggle" type="button" aria-expanded="false">SETTINGS</button>
   <button id="clear" type="button" title="Clear all remaining orders for selected operator">CLEAR PLAN</button>
 </section>
 <section id="siteSettings" class="site-settings" hidden role="dialog" aria-modal="true" aria-label="Mission options">
@@ -197,7 +201,7 @@
   </div>
   <div class="actions">
     <button id="back" type="button" aria-label="Remove last pending order" title="Remove last pending order"></button>
-    <button id="moreOrders" type="button" aria-label="More tactical tools" aria-pressed="false" title="More tactical tools"></button>
+    <button id="redo" type="button" aria-label="Redo last planning edit" title="Redo last planning edit"></button>
     <button id="play" type="button" class="play" aria-label="Execute plan">GO</button>
   </div>
 </nav>
