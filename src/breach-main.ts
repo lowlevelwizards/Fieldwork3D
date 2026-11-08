@@ -1664,6 +1664,16 @@ function quietTacticalSpace(){
       previous=point.p;
     }
   }
+  // Known hostile and civilian contacts are battlefield focal points too.
+  // Never query hidden contacts to decide where UI should appear.
+  for(const hostile of enemies(state)){
+    if(hostile.health>0&&isSeen(state,hostile))
+      square(worldToScreen(hostile.p,24),44);
+  }
+  for(const civilian of state.civilians){
+    if(liveVisibility(state,civilian.p))
+      square(worldToScreen(civilian.p,20),36);
+  }
   for(const door of state.doors){
     const p=doorCenter(door);
     if(liveVisibility(state,p))square(worldToScreen(p,8),33);
