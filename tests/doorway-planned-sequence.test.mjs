@@ -7,6 +7,8 @@ import {passageScheduledStep,passageWait}
 import {newSession,team,planMove,planWaitAt,planWait,stepSession,toggling}
  from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
+import {friendlyArrivalSettleTarget}
+ from '../src/breach-friendly-traffic.ts';
 
 const pt=(x,y)=>({x,y});
 const door={id:'MAIN',a:pt(290,260),b:pt(332,260),
@@ -76,6 +78,17 @@ test('later-ranked actor paces on approach before touching the doorframe',()=>{
  const resumed=passageScheduledStep(later,[d],[later,lead],moveTo,()=>true);
  assert.ok(resumed.y>later.p.y,'following operator resumes as leader advances');
 });
+test('crowded last waypoint chooses a safe nearby rest, not overlap',()=>{
+ const at=pt(320,380),target=pt(322,379);
+ const peers=[pt(330,383),pt(285,370)];
+ const picked=friendlyArrivalSettleTarget(at,target,peers,()=>true);
+ assert.ok(picked);
+ assert.ok(Math.hypot(picked.x-target.x,picked.y-target.y)<=15.5);
+ assert.ok(peers.every(p=>Math.hypot(p.x-picked.x,p.y-picked.y)>=14.5));
+ assert.equal(friendlyArrivalSettleTarget(at,target,peers,()=>false),null,
+  'cannot solve overlap by phasing through furniture or door leaves');
+});
+
 test('one second is the default authored WAIT, while explicit durations are kept',()=>{
  const s=newSession(0,undefined,'full-view','standard','hold',site);
  try{
