@@ -1,4 +1,4 @@
-import {groundMarkHiddenByWallFromCamera,groundMarkHiddenByActors}
+import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
   from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
@@ -381,6 +381,7 @@ export class TacticalScene3D{
   // and transparent material allocation per hit.
   private impactDecalMesh:THREE.InstancedMesh|null=null;
   private impactDecalMatrix=new THREE.Object3D();
+  private bloodCameraDirection=new THREE.Vector3();
   private impactDecalColor=new THREE.Color();
 
   private casingMesh:THREE.InstancedMesh|null=null;
@@ -2806,26 +2807,36 @@ export class TacticalScene3D{
     const markDraw=this.impactDecalMesh;
     // The intentionally translucent wall cutaway never reveals stains
     // that are physically on the far side of a full-height wall.
-    const bloodCamera=this.projectionCamera.position;
+    const opticalCamera=this.projectionCamera;
+    const bloodCamera=opticalCamera.position;
+    const orthoBlood=opticalCamera instanceof THREE.OrthographicCamera;
+    opticalCamera.getWorldDirection(this.bloodCameraDirection).negate();
     const visibleBloodBlockers=s.operators.filter(a=>
       this.actors.get(a.id)?.root.visible).map(a=>a.p);
     let markCount=0;
     for(const mark of s.impactMarks){
       if(replayDisclosurePolicy?.mode==='operator')continue;
       if(!omniscient&&!liveVisibility(s,mark.p))continue;
-      if(groundMarkHiddenByWallFromCamera(mark.p,bloodCamera,
-          s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,
-          mark.surface==='blood'?.85:(mark.height??1)))continue;
-      if(mark.surface==='blood'&&groundMarkHiddenByActors(
-          mark.p,bloodCamera,visibleBloodBlockers))continue;
+      // Unlike a screen-space overlay, the decal is always ON the floor.
+      // Transparent architecture may not write depth, so a blood stain
+      // must also be culled when any part lies behind a cutaway wall or
+      // a visible miniature. Camera rays differ for ORTHO and WIDE.
+      const radius=mark.surface==='blood'?
+        confinedGroundRadius(mark.p,4,s.site?.walls??WALLS):2.3;
+      if(radius<.5)continue;
+      if(mark.surface==='blood'&&groundBloodFootprintOccluded(
+          mark.p,radius,bloodCamera,this.bloodCameraDirection,
+          orthoBlood,s.site?.walls??WALLS,visibleBloodBlockers,
+          WALL_VISUAL_HEIGHT))continue;
+      if(mark.surface!=='blood'&&groundMarkHiddenByWallFromCamera(
+          mark.p,bloodCamera,s.site?.walls??WALLS,WALL_VISUAL_HEIGHT,
+          mark.height??1))continue;
       if(markCount>=IMPACT_MARK_LIMIT)break;
       const dark=mark.surface==='blood'?0x763c38:
         mark.surface==='wood'?0x3a2920:
         mark.surface==='stone'?0x38332c:
         mark.surface==='metal'?0x202b2e:0x514e42;
-      const groundRadius=mark.surface==='blood'?
-        confinedGroundRadius(mark.p,4,s.site?.walls??WALLS):2.3;
-      if(groundRadius<.5)continue; // never bleed into a solid wall
+      const groundRadius=radius;
       this.impactDecalMatrix.position.set(mark.p.x,
         mark.surface==='blood'?.85:(mark.height??1),mark.p.y);
       this.impactDecalMatrix.rotation.set(-Math.PI/2,0,0);
