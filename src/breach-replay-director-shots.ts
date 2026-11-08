@@ -15,7 +15,7 @@ import {selectDirectorEditorialShot,type DirectorEditorialShot}
 import {physicalDirectorView,directorLineBlocked}
   from './breach-replay-director-physical.ts';
 import {directorOrthoFittingZoom,directorPerspectiveCovers,
-  type DirectorSafeFrame}
+  directorCompositionQuality,type DirectorSafeFrame}
   from './breach-replay-director-projection.ts';
 import type {Door,Obstacle} from './breach-core.ts';
 
@@ -53,6 +53,8 @@ export type DirectorShot=CinematicShot&{
   compositionQuality?:import('./breach-replay-director-projection.ts').DirectorCompositionQuality;
   subjectVisibility?:number;subjectReadable?:boolean;
   foregroundOperatorPoints?:Pt[];
+  /** Explicit real, disclosed enemy target. Never infer from an endpoint. */
+  contactTargetPoint?:Pt|null;
   /** HOLD/REFRAME/TRACK/CUT derived from storyboard decision. */
   cameraDecision?:string
 };
@@ -107,7 +109,7 @@ export function composeReplayDirectorShot(time:number,
   const isContact=plan.kind==='engage';
   const isDoor=plan.kind==='door'||plan.kind==='entry';
   const focus=mix(primary.p,anchor,
-    isContact?.54:isDoor?.59:.37);
+    isContact?.50:isDoor?.59:.37);
   const required=plan.required.slice();
   // Optional teammates affect composition only when there is enough
   // room; they must never displace an actual shooter-target pair.
@@ -180,6 +182,16 @@ export function composeReplayDirectorShot(time:number,
     physical.cameraAnchor.y-physical.focus.y);
   const tilt=Math.atan2(53-17,Math.max(1,
     dist(physical.cameraAnchor,physical.focus)));
+  // Check the ACTUAL final camera and zoom, not the physical solver's
+  // preliminary candidate. Storyboard must know when an advertised
+  // two-shot has in fact become a centered backpack.
+  const finalQuality=directorCompositionQuality(
+    physical.cameraAnchor,physical.focus,hero.p,
+    isContact&&hero===primary?plan.target:null,
+    direction,plan.kind,'ortho',aspect,baseSpan,zoom,physical.fov,
+    safeWidth,safeHeight,context.safeFrame,friends.map(a=>a.p));
+  if(isContact&&plan.target&&!physical.targetVisible)
+    finalQuality.targetReadable=false;
   const wideCoverage=directorPerspectiveCovers(
     physical.cameraAnchor,physical.focus,mandatory,aspect,
     physical.fov,Math.min(.89,safeWidth+.1),
@@ -210,8 +222,9 @@ export function composeReplayDirectorShot(time:number,
     requiredPoints:mandatory,actionAxis:direction,
     editReason:hero===primary?plan.reason:
       'supporting operator cutaway: primary occluded',
-    wideCoverage,compositionQuality:physical.compositionQuality,
+    wideCoverage,compositionQuality:finalQuality,
     subjectVisibility:physical.subjectVisibility,
-    subjectReadable:physical.subjectReadable,
-    foregroundOperatorPoints:friends.map(a=>a.p)};
+    subjectReadable:physical.subjectReadable&&finalQuality.primaryReadable,
+    foregroundOperatorPoints:friends.map(a=>a.p),
+    contactTargetPoint:isContact?plan.target:null};
 }
