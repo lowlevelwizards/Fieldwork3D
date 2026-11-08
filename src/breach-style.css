@@ -2452,6 +2452,78 @@ body.replaying #replayTopHud *{-webkit-tap-highlight-color:transparent}
   .replay-drawer{max-height:min(37dvh,142px,calc(100dvh - 205px))}
 }
 
+
+/* Replay R7 — independent side-rail tuck and tactile, no-scroll playback
+ * speed selector. Keep all touch targets >=40px, even when minimized. */
+.replay-rail-toggle{position:absolute;top:1px;left:-29px;z-index:1;
+  display:flex;align-items:center;justify-content:center;
+  width:27px;min-height:45px;padding:0;border:1px solid #89a293;
+  border-radius:7px 0 0 7px;background:#29443be8;color:#f4e3bd;
+  font:700 22px/1 "Work Sans",sans-serif;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;box-shadow:0 3px 12px #07181199}
+.replay-rail-toggle:focus-visible{outline:2px solid #efdaa6;outline-offset:2px}
+.replay-rail[data-collapsed="true"]{
+  width:29px!important;right:0!important;left:auto!important;
+  max-height:none!important;overflow:visible}
+.replay-rail[data-collapsed="true"]>:not(#replayRailToggle){
+  display:none!important}
+.replay-rail[data-collapsed="true"] .replay-rail-toggle{
+  position:static;left:auto;top:auto;width:29px;min-height:48px;
+  border-radius:8px 0 0 8px}
+.replay-speed-pop{width:min(295px,calc(100vw - 83px))!important;
+  max-width:none!important;min-width:220px!important;max-height:none!important;
+  padding:13px 12px 11px!important;gap:8px!important;
+  overflow:visible!important;overscroll-behavior:contain}
+.replay-speed-head{display:flex;justify-content:space-between;
+  align-items:center;gap:10px;color:#bcc9bd;
+  font:700 11px "Saira Condensed",sans-serif;letter-spacing:.06em}
+.replay-speed-head output{color:#f6e6c0;font:700 23px/1 "Saira Condensed",sans-serif}
+.replay-speed-pop #replaySpeedRange{
+  width:100%;height:40px;min-height:40px;min-width:0;margin:0;padding:0;
+  background:transparent;appearance:none;-webkit-appearance:none;
+  cursor:pointer;touch-action:pan-x;-webkit-tap-highlight-color:transparent;
+  outline:none}
+.replay-speed-pop #replaySpeedRange::-webkit-slider-runnable-track{
+  height:12px;border-radius:6px;border:1px solid #92a994;
+  background:linear-gradient(90deg,#c5ae7e var(--speed-progress,27%),
+    #374e45 var(--speed-progress,27%));box-shadow:inset 0 2px 4px #071b1499}
+.replay-speed-pop #replaySpeedRange::-webkit-slider-thumb{
+  appearance:none;-webkit-appearance:none;
+  width:29px;height:29px;margin-top:-10px;border:2px solid #f0dbb3;
+  border-radius:9px;background:linear-gradient(160deg,#faf0d5,#b69b68);
+  box-shadow:0 3px 0 #655236,0 5px 9px #081a14bb;transition:box-shadow .13s}
+.replay-speed-pop #replaySpeedRange:focus-visible::-webkit-slider-thumb{
+  box-shadow:0 0 0 4px #e5c9905c,0 4px 8px #071a10}
+.replay-speed-pop #replaySpeedRange::-moz-range-track{
+  height:12px;border:1px solid #91a38e;border-radius:6px;background:#374e45}
+.replay-speed-pop #replaySpeedRange::-moz-range-progress{
+  height:12px;border-radius:6px;background:#c5ae7e}
+.replay-speed-pop #replaySpeedRange::-moz-range-thumb{
+  width:26px;height:26px;border:2px solid #f0dbb3;
+  border-radius:9px;background:#ddcda0}
+.replay-speed-ticks{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));
+  justify-items:center;align-items:start;margin-top:-10px;
+  padding:0 8px;height:14px;pointer-events:none}
+.replay-speed-ticks i{height:5px;width:2px;background:#94a99a;
+  opacity:.6;border-radius:2px}
+.replay-speed-ticks i.major{height:10px;width:3px;
+  opacity:1;background:#dac99e}
+.replay-speed-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:4px;width:100%}
+.replay-speed-pop .replay-speed-presets button{
+  min-width:0!important;min-height:40px!important;padding:5px 2px!important;
+  text-align:center!important;font:700 12px "Saira Condensed",sans-serif!important}
+.replay-speed-hint{font:600 9px/1.3 "Work Sans",sans-serif;
+  letter-spacing:.02em;color:#9aaea2;text-align:center}
+@media(max-height:470px) and (min-width:600px){
+  .replay-rail-toggle{top:0;left:-25px;min-height:42px;width:23px}
+  .replay-rail[data-collapsed="true"]{right:54px!important;top:calc(38px + env(safe-area-inset-top))}
+  .replay-speed-pop{top:calc(100% + 5px)!important;right:0!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .replay-speed-pop #replaySpeedRange::-webkit-slider-thumb{transition:none!important}
+}
+
 /* The actual magazine in the weapon is the alert authority. All four squad
  * cards remain readable at phone size, even while another unit is selected. */
 @keyframes fw-low-ammo-pulse{

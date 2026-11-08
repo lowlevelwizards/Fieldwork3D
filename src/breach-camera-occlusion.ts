@@ -12,8 +12,10 @@ export function wallOccludesFriendly(wall:Segment,operator:Pt,
  }
  return false;
 }
-export function transitionWallOpacity(previous:number,cut:boolean,dt:number):number{
- const target=cut?.38:1,rate=cut?12:8;
+export function transitionWallOpacity(previous:number,cut:boolean,dt:number,
+ cutOpacity=.38):number{
+ const target=cut?Math.max(.12,Math.min(.65,cutOpacity)):1,
+ rate=cut?12:8;
  const alpha=1-Math.exp(-Math.max(0,dt)*rate);
  const next=previous+(target-previous)*alpha;
  return Math.abs(next-target)<.008?target:next;

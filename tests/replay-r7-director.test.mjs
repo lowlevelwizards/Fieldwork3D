@@ -1,0 +1,96 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {buildDirectorPlanIndex,directorRevisionAt,
+  directorIntentsAt,directorIntentGroup}
+  from '../src/breach-replay-director-intent.ts';
+import {buildDirectorFutureCues,directorFutureAt}
+  from '../src/breach-replay-director-events.ts';
+import {composeReplayDirectorShot}
+  from '../src/breach-replay-director-shots.ts';
+import {ReplayDirectorScheduler}
+  from '../src/breach-replay-director-scheduler.ts';
+const door={id:'D-1',a:{x:160,y:50},b:{x:160,y:110},open:false,openedAt:0};
+const ids=['rook','moss','ash','vale'];
+const friendlies=new Set(ids);
+const frame=(t,positions,plan)=>({t,actors:ids.map((id,i)=>({
+ id,p:positions[i],health:3,heading:0,plan:plan?plan(id,i):undefined
+}))});
+const positions=[{x:89,y:72},{x:98,y:88},{x:105,y:70},{x:117,y:89}];
+const nodes=(id,i)=>[
+  {id:1,kind:'move',p:{x:136,y:76+(i%2)*15}},
+  {id:2,kind:'door',doorId:'D-1',p:{x:160,y:80}},
+  {id:3,kind:'move',entryDoorId:'D-1',p:{x:195,y:80}}
+];
+const revision=(actorId,tick,nodes,order=0)=>({
+ actorId,tick,order,revisionId:tick+order+1,
+ origin:{x:50,y:80},nodes,phase:'running'
+});
+test('plan revisions are looked up at the recorded time, never from the future',()=>{
+ const index=buildDirectorPlanIndex([
+  revision('rook',180,[{id:3,kind:'move',p:{x:550,y:500}}],2),
+  revision('rook',60,[{id:1,kind:'move',p:{x:120,y:80}}],1),
+  revision('rook',180,[{id:2,kind:'move',p:{x:160,y:80}}],1)
+ ]);
+ assert.equal(directorRevisionAt(index,'rook',2).tick,60);
+ assert.equal(directorRevisionAt(index,'rook',2).nodes[0].p.x,120);
+ assert.equal(directorRevisionAt(index,'rook',3).nodes[0].p.x,550);
+ assert.equal(directorRevisionAt(index,'rook',.2),null);
+ const emptyFrame=frame(3,positions,()=>[]);
+ const intent=directorIntentsAt(emptyFrame,index,[door],3,friendlies)
+  .find(i=>i.actorId==='rook');
+ assert.equal(intent.route.length,1,
+  'Explicitly spent orders must not be resurrected from plan journal');
+});
+test('door stack and path are detected while path overlay is off',()=>{
+ const snap=frame(2,positions,nodes);
+ const intents=directorIntentsAt(snap,new Map(),[door],2,friendlies);
+ assert.equal(intents.length,4);
+ assert.equal(directorIntentGroup(intents).count,4);
+ assert.ok(intents.every(i=>i.door?.id==='D-1'));
+ const actors=ids.map((id,i)=>({id,side:'blue',health:3,
+  heading:0,p:positions[i]}));
+ const result=composeReplayDirectorShot(2,actors,
+  [{id:'R1',x:40,y:30,w:220,h:150}],[],.9,0,1100,
+  {intents,upcoming:null,maxZoom:6});
+ assert.ok(['approach','stack','breach','entry'].includes(result.shotType));
+ assert.equal(result.doorId,'D-1');
+ assert.equal(result.actorsFramed,4);
+ assert.ok(result.focus.x>100,'Camera should lead toward approaching door');
+ assert.ok(result.pitch>=35*Math.PI/180&&result.pitch<=60*Math.PI/180);
+});
+test('future cue anticipates only known friendly participant, no enemy positions',()=>{
+ const events=[
+  {key:'a',kind:'shot',t:8.5,actor:'unknown',order:0},
+  {key:'b',kind:'shot',t:10,actor:'rook',order:1},
+  {key:'c',kind:'door',t:11,actor:'moss',order:2},
+ ];
+ const cues=buildDirectorFutureCues(events,friendlies);
+ assert.equal(cues.length,2);
+ assert.equal(directorFutureAt(8.8,cues).actorId,'rook');
+ assert.equal(directorFutureAt(5,cues),null);
+ const actor=ids.map((id,i)=>({id,side:'blue',health:3,
+  heading:0,p:positions[i]}));
+ const intents=directorIntentsAt(frame(9,positions,nodes),
+  new Map(),[door],9,friendlies);
+ const ctx={intents,upcoming:directorFutureAt(9,cues)};
+ const shot=composeReplayDirectorShot(9,actor,[],[],1,0,1200,ctx);
+ assert.equal(shot.shotType,'contact');
+ assert.ok(shot.subjects.includes('rook'));
+ const enemy={id:'enemy',side:'red',health:3,
+  heading:Math.PI,p:{x:9999,y:9999}};
+ assert.deepEqual(composeReplayDirectorShot(9,[...actor,enemy],[],[],1,0,1200,ctx),shot);
+});
+test('shot scheduler commits, accepts emergencies and resets on seek',()=>{
+ const c=new ReplayDirectorScheduler();
+ const base={shotType:'travel',kind:'squad',subjects:['rook','moss'],
+   focus:{x:60,y:60},zoom:2,yaw:0,pitch:1,
+   score:42,occluded:0,roomId:'R',actorsFramed:2,doorId:null};
+ const approach={...base,shotType:'approach',score:44};
+ const contact={...base,shotType:'contact',kind:'action',
+   score:47,subjects:['rook']};
+ assert.equal(c.choose(0,base).shotType,'travel');
+ assert.equal(c.choose(1,approach).shotType,'travel');
+ assert.equal(c.choose(1.2,contact).shotType,'contact');
+ assert.equal(c.choose(.3,approach,true).shotType,'approach');
+ assert.equal(c.status.shotType,'approach');
+});
