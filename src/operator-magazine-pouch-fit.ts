@@ -15,6 +15,8 @@ export type MagazinePouchCell={
  yaw?:number;
  /** Only a true multi-mag case has more than one indexed internal slot. */
  slots?:readonly number[];
+ /** Which actual depth lane of that multi-mag case is displayed. */
+ slot?:number;
 };
 export type SeatedMagazine={x:number;y:number;z:number;yaw:number};
 
@@ -47,7 +49,7 @@ export function seatMagazineInPouch(
  if(top>pouch.y+pouch.height*.5+1.10)return null;
  // One case may hold multiple real magazines, in genuinely separate
  // depthwise lanes. Never stack two models on exactly the same socket.
- const lane=pouch.slots?.[slot]??0;
+ const lane=pouch.slots?.[pouch.slot??slot]??0;
  const insideBack=pouch.x-pouch.depth*.5+.10;
  const insideFront=pouch.x+pouch.depth*.5-.10;
  const centerX=(insideBack+insideFront)*.5+lane;
