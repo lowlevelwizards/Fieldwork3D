@@ -61,19 +61,33 @@ export function weaponClearance(input:MuzzleInput,
   if(proximity<=.001)
     return {obstruction:false,blocked:false,compression:0,
       retraction:0,blocker:'clear',muzzle:ready};
-  let blocker:FireBlock='clear',candidate=ready,compression=proximity;
-  // If the preferred comfortable fold still intersects geometry, deepen
-  // it only as far as required. The final blocked state forbids ignition.
-  for(const extra of [0,.12,.28,.48,1] as const){
-    compression=clamp(proximity+extra);
-    candidate=muzzleAtShot({...input,obstruction:true,
+  const folded=(compression:number)=>{
+    const muzzle=muzzleAtShot({...input,obstruction:true,
       shortCompression:compression,clearanceRetraction:0});
-    blocker=check({x:candidate.x,y:candidate.z},candidate.y);
-    if(blocker==='clear')return {obstruction:true,blocked:false,
-      compression,retraction:compression*MAX_LEGACY_RETRACTION,
-      blocker,muzzle:candidate};
-    if(compression>=1)break;
+    return {muzzle,blocker:check({x:muzzle.x,y:muzzle.z},muzzle.y)};
+  };
+  const comfortable=folded(proximity);
+  if(comfortable.blocker==='clear')
+    return {obstruction:true,blocked:false,compression:proximity,
+      retraction:proximity*MAX_LEGACY_RETRACTION,
+      blocker:'clear',muzzle:comfortable.muzzle};
+  // If the comfortable pose still hits the wall, find the *least* extra
+  // compression that clears it. Stepped .12/.28/.48 jumps caused another
+  // visible short-stock pop, even though the initial approach was smooth.
+  const full=folded(1);
+  if(full.blocker!=='clear')
+    return {obstruction:true,blocked:true,compression:1,
+      retraction:MAX_LEGACY_RETRACTION,
+      blocker:full.blocker,muzzle:full.muzzle};
+  let min=proximity,max=1;
+  let best=full.muzzle;
+  for(let i=0;i<5;i++){
+    const middle=(min+max)*.5;
+    const attempt=folded(middle);
+    if(attempt.blocker==='clear'){max=middle;best=attempt.muzzle;}
+    else min=middle;
   }
-  return {obstruction:true,blocked:true,compression:1,
-    retraction:MAX_LEGACY_RETRACTION,blocker,muzzle:candidate};
+  return {obstruction:true,blocked:false,compression:max,
+    retraction:max*MAX_LEGACY_RETRACTION,
+    blocker:'clear',muzzle:best};
 }
