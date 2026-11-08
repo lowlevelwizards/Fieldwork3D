@@ -109,9 +109,11 @@ export function replayActorDisclosed(
   const sample=recordedReplayKnowledge(s);
   if(policy.mode==='operator')
     return a.health<=0?
-      recordedObserverCanSeeBody(sample,policy.observerId,a.id)===true:
+      recordedObserverCanSeeBody(sample,policy.observerId,a.id)===true||
+      recordedObserverDiscoveredBody(sample,policy.observerId,a.id)===true:
       recordedObserverCanSee(sample,policy.observerId,a.id)===true;
-  if(sample)return sample.visibleActorIds.includes(a.id);
+  if(sample)return sample.visibleActorIds.includes(a.id)||
+    (a.health<=0&&sample.discoveredBodyIds.includes(a.id));
   return a.health>0?isSeen(s,a):liveVisibility(s,a.p);
 }
 /** Existing callers keep their exact legacy boolean contract. */
