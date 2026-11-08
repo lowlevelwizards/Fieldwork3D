@@ -197,7 +197,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
    const reserve=Number.isFinite(o.reserve)?Math.max(0,Math.floor(o.reserve)):0;
    const parsed=readPersistentMagazines(o.id,o.weapon,reserve,
     (o as {magazines?:unknown}).magazines,
-    Math.max(COMBAT_WEAPONS[o.weapon].capacity,liveMagazineCapacity(o.weapon,config)));
+    300);
    const fitted=fitMagazineInventory(o.id,o.weapon,config,o.magazine,reserve,parsed);
    return {...o,...fitted,
     loadedMagazineId:readLoadedMagazineId(o.id,o.weapon,
