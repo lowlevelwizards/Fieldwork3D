@@ -173,24 +173,28 @@ export function ensureStudioRimBounds(geometry:THREE.BufferGeometry):boolean{
  // Reuse the authored non-overlapping geometry spans when available.
  const spans=geometry.userData.fieldworkLightingPartSpans as
   Array<{start:number;count:number}>|undefined;
+ let cursor=0;
  const valid=Array.isArray(spans)&&spans.length>0&&
-  spans.every(p=>Number.isInteger(p.start)&&Number.isInteger(p.count)&&
-   p.start>=0&&p.count>0&&p.start+p.count<=position.count);
+  spans.every(p=>{
+   if(!Number.isInteger(p.start)||!Number.isInteger(p.count)||
+      p.count<=0||p.start!==cursor||
+      p.start+p.count>position.count)return false;
+   cursor+=p.count;return true;
+  })&&cursor===position.count;
  const ranges=valid?spans!:[{start:0,count:position.count}];
  const low=new Float32Array(position.count*3);
  const high=new Float32Array(position.count*3);
  for(const range of ranges){
-  const a=new THREE.Vector3(Infinity,Infinity,Infinity);
-  const b=new THREE.Vector3(-Infinity,-Infinity,-Infinity);
+  let ax=Infinity,ay=Infinity,az=Infinity;
+  let bx=-Infinity,by=-Infinity,bz=-Infinity;
   for(let i=range.start;i<range.start+range.count;i++){
-   a.min(new THREE.Vector3(position.getX(i),position.getY(i),
-    position.getZ(i)));
-   b.max(new THREE.Vector3(position.getX(i),position.getY(i),
-    position.getZ(i)));
+   const x=position.getX(i),y=position.getY(i),z=position.getZ(i);
+   ax=Math.min(ax,x);ay=Math.min(ay,y);az=Math.min(az,z);
+   bx=Math.max(bx,x);by=Math.max(by,y);bz=Math.max(bz,z);
   }
   for(let i=range.start;i<range.start+range.count;i++){
-   let j=i*3;low[j]=a.x;low[j+1]=a.y;low[j+2]=a.z;
-   high[j]=b.x;high[j+1]=b.y;high[j+2]=b.z;
+   const j=i*3;low[j]=ax;low[j+1]=ay;low[j+2]=az;
+   high[j]=bx;high[j+1]=by;high[j+2]=bz;
   }
  }
  geometry.setAttribute('fieldworkRimBoundsMin',
@@ -311,7 +315,6 @@ export function injectStudioGraphicLighting(
     smoothstep(.25,.75,fwKeyShadow);
    // R7.16: all three inks operate INSIDE the original depth-writing
    // surface. The cream and warm bands are never geometry offsets.
-   float fwSoftRole=step(.5,fieldworkRimRole);
    float fwSoftWidth=fieldworkRimRole<1.5?
     fieldworkRimFabricWidth:fieldworkRimSkinWidth;
    float fwSoftOpacity=fieldworkRimRole<1.5?
