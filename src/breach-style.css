@@ -2695,3 +2695,12 @@ body.replaying #replayTopHud *{-webkit-tap-highlight-color:transparent}
  .context-tools[data-layout="dock"],
  .context-tools[data-layout="bubbles"]{transition:none!important}
 }
+
+/* Keep long tool names legible inside compact radial buttons. */
+.context-tools[data-layout="bubbles"] .context-primary .command-label{
+ max-width:58px;max-height:23px;overflow:hidden;text-align:center;
+ white-space:normal;overflow-wrap:anywhere;line-height:1.05
+}
+.context-tools[data-layout="dock"]{overflow:visible!important}
+.context-tools[data-layout="dock"] .context-primary .command-label{
+ max-width:100%;overflow:hidden;text-overflow:ellipsis}
