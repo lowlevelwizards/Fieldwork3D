@@ -8,9 +8,12 @@ import {doorOpticalSegment,doorTransmitsSightAndLight,
   type Door,type Obstacle} from './breach-core.ts';
 import {directorPerspectiveCovers,directorOrthoFittingZoom,
   directorCompositionQuality,directorForegroundOccupancy,
+  directorProjectedActionVisibility,
   type DirectorForegroundSegment,type DirectorSafeFrame,
   type DirectorCompositionTreatment,type DirectorCompositionQuality}
   from './breach-replay-director-projection.ts';
+import type {DirectorActionLine}
+  from './breach-replay-director-action.ts';
 
 export type PhysicalPoint={x:number;y:number};
 export type PhysicalDirectorScene={
@@ -29,6 +32,9 @@ export type PhysicalDirectorRequest={
   followDirection?:PhysicalPoint|null;
   /** Action LOS outranks merely including an unrelated supporting actor. */
   targetWeight?:number;
+  /** Historical muzzle/impact lines add a SMALL framing bonus, never
+   * a new cut reason or an implicit/disclosed target. */
+  actionLines?:readonly DirectorActionLine[];
   /** Filming across the threshold normal yields the door's front face. */
   doorPoint?:PhysicalPoint|null;
   doorNormal?:PhysicalPoint|null;
@@ -470,6 +476,14 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
         Math.max(0,fg.wall-.55)*390+
         Math.max(0,fg.furniture-.69)*120+
         Math.max(0,fg.subjectMask-.42)*95;
+      if(req.composition.treatment==='engage'&&req.actionLines?.length){
+        const opticallyClear=req.actionLines.filter(line=>
+          !directorLineBlocked(v.cameraAnchor,line.start,scene)&&
+          !directorLineBlocked(v.cameraAnchor,line.end,scene));
+        candidate.score+=90*directorProjectedActionVisibility(
+          v.cameraAnchor,v.focus,opticallyClear,'ortho',aspect,
+          req.composition.baseSpan,zoom,v.fov,req.composition.safeFrame);
+      }
       if(req.target&&candidate.view.targetVisible){
         const target=directorForegroundOccupancy(v.cameraAnchor,v.focus,
           req.target,surfaces,'ortho',aspect,req.composition.baseSpan,
