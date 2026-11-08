@@ -5,6 +5,7 @@ import {type Site,type ExteriorZone} from '../breach-site.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
 import {parkingStallCount} from './parking-stalls.ts';
 import {planRearServiceMarks} from './rear-service-program.ts';
+import {planPublicStreet,type StreetRect} from './public-street-layout.ts';
 export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
  'garden-border'|'service-pad'|'patio-paver'|'drainage-grate'|
  'sidewalk'|'curb-edge'|'curb-ramp'|'crosswalk-stripe'|
@@ -27,45 +28,28 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
   marks.push({id:zone.id+':'+kind+':'+marks.length,zoneId:zone.id,
     kind,x,y,width,depth});
  };
+ // Public streets are authored by one site-edge layout instead of
+ // independent sidewalk/curb estimates inside a forecourt rectangle.
+ // These are presentation marks only: no new invisible obstruction.
+ const street=planPublicStreet(site);
+ const publicZone=site.exteriorZones?.find(z=>z.id==='arrival-forecourt');
+ if(street&&publicZone){
+   const addStreet=(kind:SurfaceKind,r:StreetRect)=>{
+     marks.push({id:'street:'+kind+':'+marks.length,
+       zoneId:publicZone.id,kind,x:r.x,y:r.y,
+       width:r.width,depth:r.depth});
+   };
+   if(street.sidewalk)addStreet('sidewalk',street.sidewalk);
+   if(street.approach)addStreet('path',street.approach);
+   for(const curb of street.curb)addStreet('curb-edge',curb);
+   if(street.curbRamp)addStreet('curb-ramp',street.curbRamp);
+ }
  for(const zone of site.exteriorZones??[]){
    if(zone.w<16||zone.h<16)continue;
-   // An arrival facade has a pedestrian street edge and an accessible
-   // interruption in the kerb on the line of the actual FRONT door. Surface
-   // markings never block movement, cast cover or alter navigation.
-   if(zone.id==='arrival-forecourt'&&frontCenter){
-     const lane=arrivalAccessLane(site,zone);
-     const vertical=entry==='south'||entry==='north';
-     const streetSign=(entry==='south'||entry==='east')?1:-1;
-     const along=vertical?zone.x:zone.y;
-     const across=vertical?zone.y:zone.x;
-     const span=vertical?zone.w:zone.h;
-     const thickness=vertical?zone.h:zone.w;
-     if(span>=70&&thickness>=35){
-       const edge=across+streetSign*(thickness/2-9);
-       const sidewalk=vertical?
-        {x:along,y:edge,width:span*.92,depth:16}:
-        {x:edge,y:along,width:16,depth:span*.92};
-       add(zone,'sidewalk',sidewalk.x,sidewalk.y,sidewalk.width,sidewalk.depth);
-       const curbCenter=edge-streetSign*9;
-       if(vertical){
-         add(zone,'curb-edge',along,curbCenter,span*.90,2.2);
-         if(lane)add(zone,'curb-ramp',lane.x,curbCenter,26,12);
-       }else{
-         add(zone,'curb-edge',curbCenter,along,2.2,span*.90);
-         if(lane)add(zone,'curb-ramp',curbCenter,lane.y,12,26);
-       }
-       // Parking/drop-off approaches get ground stripes; gardens do not.
-       if(lane&&(zone.kind==='parking'||zone.kind==='driveway'))
-         for(let n=-1;n<=1;n++){
-           const coord=edge+streetSign*(2+n*3.5);
-           if(vertical)add(zone,'crosswalk-stripe',lane.x,coord,24,1.6);
-           else add(zone,'crosswalk-stripe',coord,lane.y,1.6,24);
-         }
-     }
-   }
    const broad=zone.w>=zone.h;
    if(zone.kind==='yard'){
      const arrival=zone.id==='arrival-forecourt'&&frontCenter;
+     if(arrival&&street)continue;
      const vertical=arrival?(entry==='south'||entry==='north'):broad;
      if(vertical){
        const x=arrival?Math.max(zone.x-zone.w/2+15,
@@ -79,7 +63,7 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
    }
    if(zone.kind==='driveway'){
      const lane=arrivalAccessLane(site,zone);
-     if(lane)add(zone,'path',lane.x,lane.y,
+     if(lane&&!street)add(zone,'path',lane.x,lane.y,
        Math.min(lane.w,24),Math.min(lane.h,zone.h*.9));
      if(broad)add(zone,'driveway-stripe',zone.x,zone.y,
        Math.max(15,zone.w-20),Math.min(zone.h*.10,5));
@@ -95,7 +79,7 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
        zone.x-zone.w*.37,zone.y,3.5,zone.h*.62);
    }
    if(zone.kind==='parking'){
-     if(zone.id==='arrival-forecourt'&&frontCenter){
+     if(zone.id==='arrival-forecourt'&&frontCenter&&!street){
        const vertical=entry==='south'||entry==='north';
        if(vertical){
          const x=Math.max(zone.x-zone.w/2+14,
