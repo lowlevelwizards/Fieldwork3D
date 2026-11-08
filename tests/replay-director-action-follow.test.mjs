@@ -23,7 +23,7 @@ const scene={rooms:[room],walls:[],cover:[]};
 function shot(frame=all,context={}){
  return composeReplayDirectorShot(3,frame,[room],[],.82,0,1100,{
   intents:[],upcoming:null,beat,
-  actionPair:{shooter:frame[0].p,target:frame[4].p},
+  actionPair:frame[4]?{shooter:frame[0].p,target:frame[4].p}:null,
   usableWidth:.77,usableHeight:.75,maxZoom:14,...context
  });
 }
