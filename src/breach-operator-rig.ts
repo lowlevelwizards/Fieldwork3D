@@ -90,7 +90,7 @@ import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
 import {weaponPresentationSockets} from './breach-weapon-presentation.ts';
 import {resolveWeaponAssembly,sameWeaponConfiguration,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
-import {weaponGrips,clampReach,
+import {weaponGrips,clampReach,shortStockSourceHandling,
   fitWeaponPose,type WeaponFit,type Handling,type HandlingIntent}
   from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
@@ -134,6 +134,7 @@ export type OperatorPose={
   handlingTransition?:HandlingTransition;
   obstruction?:boolean;friendlyNear?:boolean;
   clearanceRetraction?:number;clearanceBlocked?:boolean;
+  shortCompression?:number;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   gait?:'walk'|'run'|'pie'|'squeeze';
   /** 0-1 motor-owned vault phase, also restored during replay. */
@@ -1417,6 +1418,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     configuration:p.weaponConfiguration,
     yaw:relativeYaw,
     recoil,clearanceRetraction:p.clearanceRetraction,
+    shortCompression:p.shortCompression,
+    shortFrom:shortStockSourceHandling(
+      p.aimBlend??(p.aiming?1:0),moving,p.weapon,!!p.friendlyNear),
     relaxedLowReady,
     swayYaw:motion.weaponYaw*freeMotion,
     swayPitch:motion.weaponPitch*freeMotion,
@@ -1427,10 +1431,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       p.handlingIntent==='run'||p.handlingIntent==='traverse'||
       p.handlingIntent==='reload'||p.handlingIntent==='treat'?0:
       p.aimBlend??(p.aiming?1:0),
-    blendFrom:authoredLabSwitch?undefined:activeTransition?.from,
-    blendAlpha:authoredLabSwitch?undefined:activeTransition?
+    blendFrom:authoredLabSwitch||p.shortCompression!==undefined?
+      undefined:activeTransition?.from,
+    blendAlpha:authoredLabSwitch||p.shortCompression!==undefined?
+      undefined:activeTransition?
       lowReadyBlendPhase(activeTransition.alpha):undefined,
-    blendSnapshot:authoredLabSwitch?undefined:activeTransition?.fromWeapon});
+    blendSnapshot:authoredLabSwitch||p.shortCompression!==undefined?
+      undefined:activeTransition?.fromWeapon});
   // Small, deterministic rifle manipulation is permissible in the Lab
   // only while reloading: never alters shot-time muzzle or live aiming.
   // It pivots about the seated stock so the firing wrist can clear gear.
