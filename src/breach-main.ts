@@ -4955,6 +4955,9 @@ function updateReplayHud(){
   ui.replayDirectTracers.setAttribute('aria-pressed',
     String(replayTraceMode!=='off'));
   ui.replayDirectXray.setAttribute('aria-pressed',String(replayXrayOn));
+  ui.replayDirectXray.title=replayXrayOn?
+    'Selective Cutaway on: fade only blocking walls':
+    'Selective Cutaway off: retain normal architectural opacity';
   ui.replayDirectDirector.setAttribute('aria-pressed',
     String(replayCameraMode==='director'));
   const canBodycam=!!stage&&replayBodycamObservers.includes(replayFollowId);
