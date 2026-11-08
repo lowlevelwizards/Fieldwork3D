@@ -19,6 +19,7 @@ const look=(options={})=>({...DEFAULT_STUDIO_LIGHT_LAB,...options});
 const shader=()=>({
  vertexShader:'#include <begin_vertex>',
  fragmentShader:'#include <gradientmap_pars_fragment>\n'+
+  '#include <gradientmap_pars_fragment>\n'+
   '#include <color_fragment>\nvec3 outgoingLight=vec3(.5);\n'+
   '#include <opaque_fragment>',
  uniforms:{}
