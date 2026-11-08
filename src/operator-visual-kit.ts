@@ -498,7 +498,10 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  const order=wardrobe?.mounts?.magazineOrder==='right-left'?-1:1;
  const realRigCount=s.rig==='rig-none'?0:
   magazineLocations.filter(loc=>loc==='rig').length;
- const waist=usingWardrobe?v.wardrobeGear.waistRig[looks.rigStyle]:undefined;
+ const waistCandidate=usingWardrobe?
+  v.wardrobeGear.waistRig[looks.rigStyle]:undefined;
+ const waist=registeredMagazinePouches(waistCandidate).length?
+  waistCandidate:undefined;
  const dedicated=usingWardrobe?
   registeredMagazinePouches(waist??v.wardrobeGear.rig[looks.rigStyle]):[];
  // Mirroring the fill order never changes where the pouches themselves live.
