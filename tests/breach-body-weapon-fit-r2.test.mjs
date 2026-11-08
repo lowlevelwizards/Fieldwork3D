@@ -9,9 +9,14 @@ import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../src/equipment-weapon-assemblies.ts';
+import {FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
 
 const config=id=>{
- const weapon=id.startsWith('ak-')?'rifle':'carbine';
+ // Use the exact preset's OWN weapon class. AK-105 is a carbine, not
+ // a rifle: choosing the wrong class silently tests different furniture.
+ const preset=FAMILY_PRESETS.find(p=>p.id===id);
+ assert.ok(preset,'Unknown family preset '+id);
+ const weapon=preset.weapon;
  return {weapon,configuration:selectWeaponFamilyPreset(
   initialWeaponConfiguration(weapon),id)};
 };

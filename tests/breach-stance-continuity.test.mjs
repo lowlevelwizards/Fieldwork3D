@@ -73,10 +73,6 @@ test('retarget-ready to short stock follows directly interpolated gun, no interm
     2+alpha*.32);
    if(previous){
     const d=distance(previous,f);
-    if(d>3.3)console.log('R2_POSE_DISCONTINUITY',step,
-      'total',d,'gun',previous.gun.distanceTo(f.gun),
-      'hands',previous.hands.map((h,j)=>h.distanceTo(f.hands[j])),
-      'elbows',previous.elbows.map((h,j)=>h.distanceTo(f.elbows[j])));
     maxJump=Math.max(maxJump,d);
    }
    const expected=interpolateWeaponCarry(source.fit,
