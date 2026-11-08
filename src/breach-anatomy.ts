@@ -45,7 +45,7 @@ export function elbowCorridor(mode:Handling,side:-1|1,
     profile.firingElbowFlare;
   // A short outward/back adjustment, never the old wide underarm wing.
   if(mode==='short'&&side===1)
-    return {x:4.3,y:-2.65,z:8.0+(flare-1.10)*.35};
+    return {x:4.3,y:-2.65,z:8.45+(flare-.74)*.35};
   return {x:5-tuck*.55+(side===-1?.15:0),
     y:-7.5-1.2*tuck,z:side*(8.0-.55*tuck+flare)};
 }
