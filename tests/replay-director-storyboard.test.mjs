@@ -60,8 +60,11 @@ test('recorded gunfight wins over approaching breach and keeps both in view',()=
    result.cameraAnchor.x<scenes[0].x+scenes[0].w-1);
  assert.ok(result.cameraAnchor.y>scenes[0].y+1&&
    result.cameraAnchor.y<scenes[0].y+scenes[0].h-1);
- assert.ok(result.pitch>=18*Math.PI/180&&result.pitch<=80*Math.PI/180,
-   'room camera elevation must follow its real in-room overhead position');
+ const cameraElevation=Math.atan2(53-17,Math.hypot(
+   result.focus.x-result.cameraAnchor.x,
+   result.focus.y-result.cameraAnchor.y));
+ assert.ok(Math.abs(result.pitch-cameraElevation)<1e-7,
+   'ortho projection and fit should match the actual in-room camera elevation');
  assert.ok(result.zoom<=6,
    'wide director composition must not crop back into an operator close-up');
  // Use the same center-aware ortho geometry as shot selection. Both
