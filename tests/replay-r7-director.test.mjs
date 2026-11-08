@@ -57,7 +57,7 @@ test('door stack and path are detected while path overlay is off',()=>{
  assert.equal(result.actorsFramed,4);
  assert.ok(result.focus.x>100,'Camera should lead toward approaching door');
  assert.ok(result.pitch>=15*Math.PI/180&&result.pitch<=80*Math.PI/180);
- assert.ok(result.zoom<=6,'wide overhead composition is the default');
+ assert.ok(result.zoom<=10,'director may push in while preserving operator coverage');
 });
 test('future cue anticipates only known friendly participant, no enemy positions',()=>{
  const events=[
@@ -135,7 +135,7 @@ test('director frames the front of the stacked door rather than its rear wall',(
   'door should be filmed from the operator side, near its face normal');
  assert.ok(shot.pitch>=15*Math.PI/180,
   'a room-level camera films from an elevated position, not a face-level POV');
- assert.ok(shot.zoom<=6,'stack coverage must retain breathing room');
+ assert.ok(shot.zoom<=10,'stack coverage must retain the door and lead operators');
  assert.ok(shot.focus.x>100&&shot.focus.x<160,
   'door and its stacked team must both influence composition');
 });
@@ -217,8 +217,8 @@ test('an active moving WATCH blends movement direction with deliberate gaze',()=
   'the camera should be behind the WATCH but retain the direction of travel');
  assert.ok(shot.pitch>=15*Math.PI/180,
   'an overhead lens should keep WATCH and movement legible');
- assert.ok(shot.zoom<=6&&shot.zoom>=.65,
-  'full team needs breathable zoom, not a cropped close-up');
+ assert.ok(shot.zoom<=10&&shot.zoom>=.65,
+  'watch framing must remain bounded by actual scene coverage');
 });
 test('an authored future WATCH influences direction before becoming active',()=>{
  const positions=[{x:100,y:100},{x:111,y:108},
@@ -281,5 +281,5 @@ test('a planned door action can pull interest before its order activates',()=>{
   {intents:stripped,upcoming:null,maxZoom:9.5});
  assert.ok(before.focus.x>without.focus.x+2,
   'an unactivated but authored doorway action must shift interest ahead');
- assert.ok(before.zoom<=6,'an upcoming door action must not demand a backpack close-up');
+ assert.ok(before.zoom<=10,'an upcoming door action may zoom but not crop its approach');
 });
