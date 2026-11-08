@@ -32,7 +32,9 @@ test('every-half-second optimal angle changes NEVER create same-room camera cuts
  const board=new ReplayDirectorStoryboard(20,t=>{
   const n=Math.floor(t/.8);
   const position=n%2?at(196,121):at(38,40);
-  const focus=n%2?at(32,34):at(204,113);
+  // Reverse-scored poses must not whip the camera. Later, a lasting
+  // change of action direction should still produce a gradual turn.
+  const focus=t>12?at(190,28):n%2?at(32,34):at(204,113);
   return pose(t,position,focus,'main',n%2?5.5:1.2);
  },{step:.8,maxCache:16,...scene});
  let previous=null;
