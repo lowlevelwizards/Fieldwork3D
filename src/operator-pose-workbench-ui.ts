@@ -252,6 +252,7 @@ function updateValue(key:Selection,index:number,numberValue:number){
   snapWorkbenchHandsToGun(edited,activeConfiguration);
  if(key==='supportHand'||key==='firingHand')follow.checked=false;
  endPreview();syncAxisValues();applyAndRenderTargets();
+ storeEdited(true);
 }
 function syncAxisValues(){
  const array=getArray(edited,selection);
@@ -383,6 +384,7 @@ canvas.addEventListener('pointermove',event=>{
   if(dragging==='firingHand'||dragging==='supportHand')
    follow.checked=false;
   endPreview();syncAxisValues();applyAndRenderTargets();
+  storeEdited(true);
  }
  event.preventDefault();
 },true);
