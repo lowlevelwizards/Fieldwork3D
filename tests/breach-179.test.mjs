@@ -18,7 +18,7 @@ test('179: real barrel fits freely in open floor, including different headings',
   assert.deepEqual(result.muzzle,muzzleAtShot(p));
  }
 });
-test('179: obstruction pulls rigid weapon underarm and shortens projection',()=>{
+test('179: wall approach folds gun before impact without jumping sockets',()=>{
  const normal=muzzleAtShot(base);
  const short=muzzleAtShot({...base,obstruction:true});
  assert.ok(short.x<normal.x-1);
@@ -26,8 +26,9 @@ test('179: obstruction pulls rigid weapon underarm and shortens projection',()=>
  const result=weaponClearance(base,[],[],[geometry]);
  assert.equal(result.obstruction,true);
  assert.equal(result.blocked,false);
- assert.equal(result.muzzle.x,short.x);
- assert.equal(result.retraction,0);
+ assert.ok(result.muzzle.x<normal.x);
+ assert.ok(result.muzzle.x<geometry.a.x);
+ assert.ok(result.compression>0&&result.compression<=1);
  // The rearward movement is an actual rig transform, not a projectile clamp.
  const stock=fitWeaponPose({weapon:'carbine',handling:'short',yaw:0,
    recoil:0,aimBlend:.9});
