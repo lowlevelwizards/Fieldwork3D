@@ -99,7 +99,7 @@ let progress=1;
 let animate=false;
 let animationTime=0;
 let lastTick=0;
-let lastReport:WorkbenchReport|null=null;
+
 const clamps:{position:[number,number];angle:[number,number]}={
  position:[-30,35],angle:[-90,90]
 };
@@ -183,7 +183,19 @@ function updateValue(key:Selection,index:number,numberValue:number){
  if((key==='stock'||key==='weaponRotation')&&follow.checked)
   snapWorkbenchHandsToGun(edited,activeConfiguration);
  if(key==='supportHand'||key==='firingHand')follow.checked=false;
- endPreview();refreshSelection();applyAndRenderTargets();
+ endPreview();syncAxisValues();applyAndRenderTargets();
+}
+function syncAxisValues(){
+ const array=getArray(edited,selection);
+ for(let i=0;i<3;i++){
+  const group=xyzControls.children[i];
+  if(!group)continue;
+  const fields=group.querySelectorAll<HTMLInputElement>('input');
+  if(fields.length===2){
+   fields[0].value=String(array[i]);
+   fields[1].value=String(round(array[i]));
+  }
+ }
 }
 function refreshSelection(){
  targetTitle.textContent=targetNames[selection];
@@ -244,7 +256,6 @@ function applyAndRenderTargets(){
  const shown=progress>=.999?edited:
   interpolateWorkbenchPose(baseline,edited,progress);
  const report=applyWorkbenchPose(rig,shown,activeConfiguration);
- lastReport=report;
  rig.root.updateMatrixWorld(true);
  for(const name of markers){
   const mesh=targetMarkers.get(name)!;
