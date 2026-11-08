@@ -43,7 +43,8 @@ export function elbowCorridor(mode:Handling,side:-1|1,
   // Short-stocking holds the firing elbow outside the receiver, not
   // trapped between stock, trigger hand and the vest. This is a POLE
   // preference; the IK/clearance solver still enforces the real contacts.
-  if(mode==='short'&&side===1)return {x:4.45,y:-4.6,z:13.0};
+  if(mode==='short'&&side===1)
+    return {x:4.45,y:-4.6,z:13.0+(flare-1.10)};
   return {x:5-tuck*.55+(side===-1?.15:0),
     y:-7.5-1.2*tuck,z:side*(8.0-.55*tuck+flare)};
 }
