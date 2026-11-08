@@ -3929,9 +3929,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Reload independently of sprint/no-target exits. An empty gun begins
   // its emergency reload as soon as both hands are available.
   if(a.reload>0){advanceReload(s,a,dt);return;}
-  if(a.magazine<=0&&a.reserve>0&&!a.traversal&&!a.squeeze&&
-     !a.carryingId&&!a.treatmentActive&&a.plan[0]?.kind!=='treat'){
-    beginReload(s,a);return;
+  if(a.magazine<=0){
+    if(a.reserve>0&&!a.traversal&&!a.squeeze&&!a.carryingId&&
+       !a.treatmentActive&&a.plan[0]?.kind!=='treat')beginReload(s,a);
+    return; // No shots, including after the last reserve magazine is spent.
   }
   // Encounter actors cannot fire during their first perceptual reaction.
   // Infinity means they have not yet received evidence of a threat.
