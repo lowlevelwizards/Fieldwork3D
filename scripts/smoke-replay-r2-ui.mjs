@@ -73,28 +73,36 @@ try{
     'Replay transport needs a named accessible region');
   check(await page.locator('#replayTabs').count()===0,
     'Obsolete five-tab drawer must not remain in the DOM');
-  check(compact.dock.height<=320,
+  check(compact.dock.height<=200,
     'Portrait replay dock obscures battlefield: '+JSON.stringify(compact));
   check(compact.markerCount<=Math.ceil(compact.markWidth/24)+1,
     'Event rail still has overlapping unclustered markers');
-  check(compact.dock.top>compact.viewport.height*.54,
+  check(compact.dock.top>compact.viewport.height*.7,
     'Compact replay dock should stay near screen bottom');
 
-  check(await page.locator('#replayQuickSpeed').isVisible(),
-    'Speed is not directly accessible');
-  for(const id of ['replayDirectSight','replayDirectTracers',
+  check(await page.locator('#replaySpeedTrigger').isVisible(),
+    'Custom speed pop-out must be directly accessible');
+  for(const id of ['replaySightTrigger','replayDirectTracers',
     'replayDirectXray','replayDirectDirector']){
     check(await page.locator('#'+id).isVisible(),
       'Direct viewing control missing: '+id);
   }
   check(await page.locator('#replayEventText').isVisible(),
     'The bottom action feed must stay visible on mobile');
-  if(await page.locator('#replayDirectSight option[value="operator"]')
-      .evaluate(el=>!el.disabled)){
-    await page.locator('#replayDirectSight').selectOption('operator');
+  check(await page.locator('#replayTopHud').isVisible()&&
+    await page.locator('#replayExit').isVisible(),
+    'Replay exit must be in the persistent top HUD');
+  check(await page.locator('#replayQuickSpeed').isHidden()&&
+    await page.locator('#replayQuickView').isHidden()&&
+    await page.locator('#replayDirectSight').isHidden(),
+    'Native iOS replay dropdowns should not be exposed');
+  if(await page.locator('#replaySightChoices [data-sight-choice="operator"]').isEnabled()){
+    await page.locator('#replaySightTrigger').click();
+    await page.locator('#replaySightChoices [data-sight-choice="operator"]').click();
     check(await page.locator('#replayContactNote').evaluate(e=>!e.hidden),
       'Direct Operator Sight must establish historical contact disclosure');
-    await page.locator('#replayDirectSight').selectOption('team');
+    await page.locator('#replaySightTrigger').click();
+    await page.locator('#replaySightChoices [data-sight-choice="team"]').click();
     check(await page.locator('#replayContactNote').evaluate(e=>e.hidden),
       'Returning to Team Sight must exit personal-contact lens');
   }
@@ -104,10 +112,12 @@ try{
   await page.locator('#replayDirectXray').click();
   check(await page.locator('#replayDirectXray').getAttribute('aria-pressed')==='true',
     'Direct X-ray toggle did not activate');
-  await page.locator('#replayQuickSpeed').selectOption('0.5');
+  await page.locator('#replaySpeedTrigger').click();
+  await page.locator('#replaySpeedChoices [data-speed-choice="0.5"]').click();
   check(await page.locator('#replayQuickSpeed').inputValue()==='0.5',
     'Direct speed setting failed');
-  await page.locator('#replayQuickView').selectOption('top');
+  await page.locator('#replayViewTrigger').click();
+  await page.locator('#replayViewChoices [data-view-choice="top"]').click();
   check(await page.locator('#replayQuickView').inputValue()==='top',
     'Direct perspective selection failed');
   await page.locator('#replayMore').click();
@@ -157,7 +167,8 @@ try{
     check((await floor.getAttribute('aria-pressed'))==='false',
       'An evidence-free short film must leave personal ground disabled');
   }
-  await page.locator('#replayDirectSight').selectOption('full');
+  await page.locator('#replaySightTrigger').click();
+  await page.locator('#replaySightChoices [data-sight-choice="full"]').click();
   check((await lens.textContent())?.includes('CONTACTS: TEAM'),
     'Team/Full View must exit individual contact lens');
   check(await page.locator('#replayContactNote').isHidden(),
@@ -165,7 +176,8 @@ try{
   check((await floor.getAttribute('aria-pressed'))==='false',
     'Leaving individual review must turn off the floor overlay');
   if(groundEvidenceAvailable){
-    await page.locator('#replayQuickView').selectOption('iso'); // Plan2D -> ISO for Director QA
+    await page.locator('#replayViewTrigger').click();
+    await page.locator('#replayViewChoices [data-view-choice="iso"]').click(); // Plan2D -> ISO
     check((await page.locator('#replayView').textContent())?.includes('ISO'),
       'Tactical camera must restore after leaving the floor overlay');
   }
@@ -208,8 +220,13 @@ try{
   }
   check(await page.locator('#replayInspectActor option').count()>=2,
     'Operator investigation choices missing');
-  check(await page.locator('#replayInspectFollow').isVisible(),
-    'Contextual operator follow action missing');
+  check(await page.locator('#replayInspectActorButtons button').count()>=2,
+    'Direct operator-follow chips missing in Analyze');
+  await page.locator('#replayInspectActorButtons button').first().click();
+  check((await page.locator('#replayFollowStatus').textContent())?.includes('FOLLOW'),
+    'Following an operator must be visible outside the menu');
+  check((await page.locator('#replayFollowStatus').getAttribute('data-following'))==='true',
+    'The followed operator status must be highlighted');
 
   await page.locator('[data-replay-group="precision"] summary').click();
   check(await page.locator('#replayPrevFrame').isVisible(),
@@ -265,10 +282,26 @@ try{
   check(await page.locator('#replayPanel').isVisible(),
     'Escape should not exit playback when a secondary panel was open');
 
+  // The arrow collapses to a minimal bottom playback bar, while the
+  // side rail and exit remain accessible without another settings menu.
+  await page.locator('#replayDockToggle').click();
+  check(await page.locator('#replayPanel').getAttribute('data-collapsed')==='true',
+    'Replay dock minimization did not activate');
+  const minimized=await page.evaluate(measure);
+  check(minimized.dock.height<=85,
+    'Minimized replay controls still cover the battlefield: '+JSON.stringify(minimized));
+  check(await page.locator('#replayMiniPlay').isVisible(),
+    'Minimized player lost its play/pause control');
+  check(await page.locator('#replayRail').isVisible(),
+    'Side toolbar must remain visible after minimizing the dock');
+  await page.locator('#replayDockToggle').click();
+  check(await page.locator('#replayPanel').getAttribute('data-collapsed')==='false',
+    'Replay dock would not expand');
+
   await page.setViewportSize({width:844,height:390});
   await page.locator('#replayMore').click();
   const landscape=await page.evaluate(measure);
-  check(landscape.dock.height<=210,
+  check(landscape.dock.height<=165,
     'Landscape replay dock too tall: '+JSON.stringify(landscape));
   check(landscape.drawer.top>=0&&landscape.drawer.bottom<=landscape.dock.top,
     'Landscape tools overflow battlefield: '+JSON.stringify(landscape));
