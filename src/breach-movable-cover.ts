@@ -3,8 +3,9 @@
  * position obeys the same wall, door, actor and cover clearance as its endpoint.
  * Heavier fixtures have a visibly slower displacement, rather than teleporting.
  */
-import {pointToSegment,type Door,type Obstacle,type Pt,type Segment}
+import {doorLeafSegment,type Door,type Obstacle,type Pt,type Segment}
  from './breach-core.ts';
+import {segmentHitsBox} from './breach-ray.ts';
 import {canAutoShove,canToppleLightCover} from './breach-traversal-surfaces.ts';
 export type CoverMass='light'|'medium'|'heavy'|'fixed';
 const light=new Set(['box','chair','stool','lamp','patio-chair','small-table','side-table',
@@ -28,12 +29,16 @@ const overlaps=(a:Obstacle,b:Obstacle,padding=5)=>
 function collisionAt(target:Obstacle,index:number,cover:readonly Obstacle[],
  walls:readonly Segment[],doors:readonly Door[],actors:readonly Pt[]):boolean{
  const p={x:target.x,y:target.y};
- const radius=Math.max(target.w,target.h)/2;
- if(walls.some(w=>pointToSegment(p,w)<radius+2))return true;
+ const expanded={...target,w:target.w+4,h:target.h+4};
+ if(walls.some(w=>segmentHitsBox(w.a,w.b,expanded)))return true;
  if(cover.some((o,i)=>i!==index&&overlaps(target,o)))return true;
  if(actors.some(a=>Math.abs(a.x-p.x)<target.w/2+9&&
    Math.abs(a.y-p.y)<target.h/2+9))return true;
- if(doors.some(d=>pointToSegment(p,d)<radius+9))return true;
+ const hingeClear={...target,w:target.w+18,h:target.h+18};
+ if(doors.some(d=>{
+   const leaf=doorLeafSegment(d);
+   return segmentHitsBox(leaf.a,leaf.b,hingeClear);
+ }))return true;
  return false;
 }
 export function relocateCover(cover:Obstacle[],index:number,to:Pt,
