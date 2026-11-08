@@ -79,13 +79,14 @@ export function createWardrobeGearLayers(
  box(webbing,strapMaterial,-4.15,.18,0,1.06,1.34,12.20);
  for(const side of [-1,1])
   for(const x of [2.30,-.65,-3.60]){
-   box(webbing,pouchMaterial,x,.10,side*7.20,2.69,3.66,2.36);
+   // Puff the magazine cell toward its front, retaining contact at the belt.
+   box(webbing,pouchMaterial,x+.25,.10,side*7.20,3.50,3.66,2.56);
    // Field webbing/PLCE: broad cloth weather flap with one short
    // centrally placed retention strap, all textile swatches inherited.
-   box(webbing,pouchMaterial,x+1.40,1.50,side*7.20,.36,1.07,2.61);
-   box(webbing,strapMaterial,x+1.65,.75,side*7.20,.26,1.10,.65);
+   box(webbing,pouchMaterial,x+2.02,1.50,side*7.20,.36,1.07,2.78);
+   box(webbing,strapMaterial,x+2.25,.75,side*7.20,.26,1.10,.65);
    // A clear, dark top opening shows where carried belt magazines sit.
-   box(webbing,dark,x,1.88,side*8.42,2.02,.28,.19);
+   box(webbing,dark,x,1.88,side*8.60,2.02,.28,.19);
   }
  const battle=make(hip);waistRig['sadf-webbing']=battle;
  box(battle,strapMaterial,4.26,.13,0,1.18,1.50,13.55);
@@ -93,9 +94,9 @@ export function createWardrobeGearLayers(
  for(const side of [-1,1]){
   for(const x of [2.1,-1.30]){
    // P83: large two-tier projecting cargo bag with a broad deep cap.
-   box(battle,pouchMaterial,x,.16,side*7.32,3.25,4.38,2.84);
-   box(battle,pouchMaterial,x+1.72,1.77,side*7.32,.42,1.05,3.06);
-   box(battle,strapMaterial,x+2.02,.29,side*7.32,.28,1.30,.64);
+   box(battle,pouchMaterial,x+.25,.16,side*7.32,3.85,4.38,3.02);
+   box(battle,pouchMaterial,x+2.30,1.77,side*7.32,.42,1.05,3.25);
+   box(battle,strapMaterial,x+2.60,.29,side*7.32,.28,1.30,.64);
   }
   box(battle,strapMaterial,-3.75,.12,side*5.4,1.16,4.15,5.15);
  }

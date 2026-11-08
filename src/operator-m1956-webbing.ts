@@ -32,12 +32,14 @@ export function createM1956Waist(hip:THREE.Group,canvas:THREE.Material,
  const casesLate=group(root,'m1956-late-rectangular-cases');
  for(const side of [-1,1]){
   const z=side*7.06;
-  box(casesEarly,pouch,2.07,-.17,z,3.20,4.02,3.10,'early-universal-case');
-  box(casesEarly,canvas,3.77,1.16,z,.48,1.45,3.28,'early-large-flap');
-  box(casesEarly,webbing,4.05,.36,z,.32,1.15,.72,'early-toggle');
-  box(casesLate,pouch,2.05,-.18,z,3.12,3.67,2.82,'late-ammunition-case');
-  box(casesLate,canvas,3.71,1.11,z,.46,1.25,2.99,'late-closure-flap');
-  box(casesLate,webbing,3.98,.41,z,.32,.95,.72,'late-fastener');
+  // Magazine stacks extend rearward to the third real ledger socket;
+  // expand the shell in both directions without shifting the belt mount.
+  box(casesEarly,pouch,1.60,-.17,z,4.70,4.02,3.28,'early-universal-case');
+  box(casesEarly,canvas,4.08,1.16,z,.48,1.45,3.47,'early-large-flap');
+  box(casesEarly,webbing,4.36,.36,z,.32,1.15,.72,'early-toggle');
+  box(casesLate,pouch,1.58,-.18,z,4.70,3.67,3.06,'late-ammunition-case');
+  box(casesLate,canvas,4.05,1.11,z,.46,1.25,3.24,'late-closure-flap');
+  box(casesLate,webbing,4.33,.41,z,.32,.95,.72,'late-fastener');
  }
  const canteenLeft=group(root,'m1956-canteen-left');
  const canteenRight=group(root,'m1956-canteen-right');

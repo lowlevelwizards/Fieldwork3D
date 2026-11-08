@@ -88,13 +88,18 @@ export const RIG_POCKET_CONSTRUCTION:Readonly<Record<string,RigPocketConstructio
  'alice-lc2':'flap-snap','m1956-lce':'canvas-toggle',
  'belt-harness':'plce-cover','no-rig':'open-elastic'
 };
+/** The largest authored carried magazine projects roughly .81 units either
+ * side of its center in the chest's forward axis. Leave room for it under
+ * a physical fabric front, not a face it can clip through.
+ */
+export const RIG_MAGAZINE_POUCH_PUFF=1.00;
 const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  x:number,y:number,z:number,h:number,d:number,depth=1.10)=>{
  const style=g.name.replace('authored-rig-','');
  const construction=RIG_POCKET_CONSTRUCTION[style]??'flap-snap';
  const extra=rigVisualBudget(style).projection;
  const span=d+(d>=2.3?.17:.11);
- const front=x+depth*.5+extra;
+ const front=x+depth*.5+extra+RIG_MAGAZINE_POUCH_PUFF;
  // Body and its flap are ONE logical self-shadowing pouch, even though
  // each cuboid is a separate pre-merge geometric primitive.
  const partId=style+'/pouch/'+[x,y,z].map(v=>v.toFixed(2)).join('/');
@@ -103,7 +108,8 @@ const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
   mesh.userData.fieldworkShadowRole=role;
   return mesh;
  };
- label(box(g,m,x+extra*.5,y,z,depth+extra,h,span),'body');
+ label(box(g,m,x+(extra+RIG_MAGAZINE_POUCH_PUFF)*.5,y,z,
+  depth+extra+RIG_MAGAZINE_POUCH_PUFF,h,span),'body');
  const lip=(cy:number,height:number,thickness:number,width=span+.14)=>
   label(box(g,fold,front+.08+thickness*.50,cy,z,
    thickness,height,width),'flap');
@@ -137,7 +143,7 @@ const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
  * X is the outer pouch-front lip, Y its upper opening, Z lateral.
  */
 export type RigMagazineMouth=readonly [number,number,number,number];
-export const RIG_MAGAZINE_MOUTHS:Readonly<
+const NOMINAL_RIG_MAGAZINE_MOUTHS:Readonly<
  Record<string,readonly RigMagazineMouth[]>>={
  'no-rig':[],
  'chest-placard':[
@@ -152,19 +158,27 @@ export const RIG_MAGAZINE_MOUTHS:Readonly<
  'bandolier':[0,1,2,3].map(i=>
   [8.94,5.01-i*1.85,3.85-i*1.925,1.65] as const),
  'split-front':[-5.64,-2.92,2.92,5.64].map(z=>
-  [9.43,-.19,z,1.93] as const),
+  [9.65,-.19,z,1.93] as const),
  'full-chest':[-4.60,-1.5,1.5,4.60].map(z=>
-  [9.30,-.92,z,2.18] as const),
+  [9.59,-.92,z,2.18] as const),
  'lbv':[-1,1].flatMap(s=>[1.28,-2.56].map(y=>
   [8.87,y+1.51,s*4.20,2.75] as const)),
  'chicom-utility':[],
  'sadf-webbing':[-5.85,-3.25,3.25,5.85].map(z=>
-  [8.66,.31,z,2.17] as const),
+  [8.92,.31,z,2.17] as const),
  'field-webbing':[],
  'alice-lc2':[],
  'm1956-lce':[],
  'belt-harness':[]
 };
+// Move each dark magazine mouth to the fabric front, rather than hiding
+// the old slit INSIDE the enlarged pouch body.
+export const RIG_MAGAZINE_MOUTHS:Readonly<
+ Record<string,readonly RigMagazineMouth[]>>=Object.fromEntries(
+ Object.entries(NOMINAL_RIG_MAGAZINE_MOUTHS).map(([style,mouths])=>[
+  style,mouths.map(([x,y,z,width])=>
+   [x+RIG_MAGAZINE_POUCH_PUFF,y,z,width] as const)
+ ]));
 /** Nested strap groups must NOT be baked into the rig's static mesh.
  * They are deterministically refitted when either uniform or armor changes.
  */
@@ -517,7 +531,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   for(const z of [-4.85,-1.63,1.63,4.85]){
    pouch(g,pocketFabric,pocketFabric,8.38,-2.18,z,4.63,2.70,1.10);
    // Four independent closure flaps; never read as one continuous panel.
-   box(g,pocketFabric,9.02,-.57,z,.23,.51,2.92);
+   box(g,pocketFabric,9.35+RIG_MAGAZINE_POUCH_PUFF,-.57,z,.23,.51,2.92);
   }
   box(g,dark,7.94,-4.65,0,.48,.70,13.25);
  }
@@ -630,7 +644,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    pouch(g,pocketFabric,pocketFabric,8.52,-2.32,z,5.72,2.88,1.06);
    // Oversized Type 56 toggle closures are visually recognizable,
    // rather than three anonymous modern nylon zipper pouches.
-   box(g,webbing,9.46,-.20,z,.36,.55,.64);
+   box(g,webbing,9.46+RIG_MAGAZINE_POUCH_PUFF,-.20,z,.36,.55,.64);
   }
   for(const s of [-1,1])
    pouch(g,pocketFabric,pocketFabric,8.42,-3.46,s*5.65,2.38,1.65,.75);
