@@ -5079,7 +5079,6 @@ function syncReplayOverlayChoices():void{
     'Show or hide replay overlays';
 }
 function clearReplayPresentation():void{
-  replayPreset='custom';
   replayNameTags=false;replayContactMarkers=false;
   replayPlanScope='none';replayObjectiveMarkers=false;
   replayAnalysis=false;replayTraceMode='off';
