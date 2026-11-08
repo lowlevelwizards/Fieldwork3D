@@ -19,7 +19,7 @@ test('short-stock rotates one rigid gun with both real hand sockets',()=>{
   const short=fitWeaponPose({weapon:id,handling:'short',yaw:0,recoil:0});
   assert.ok(Math.abs(short.stock.z-ready.stock.z)<1.25,id);
   assert.ok(short.rotation.z<ready.rotation.z-.3,id);
-  const data=weaponGrips(id);
+  const data=weaponGrips(id,undefined,'short');
   const point=(x,y,z)=>V(x*data.lengthScale,y,z)
     .applyEuler(short.rotation).add(short.origin);
   assert.ok(short.stock.distanceTo(point(data.stockX,0,0))<1e-6);
