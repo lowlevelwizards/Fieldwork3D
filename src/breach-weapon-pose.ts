@@ -25,7 +25,12 @@ export const GRIPS:Record<WeaponId,WeaponGrip>=Object.fromEntries(
  })) as Record<WeaponId,WeaponGrip>;
 export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
  handling?:Handling,relaxedWeight=0):WeaponGrip=>{
- if(!configuration||configuration.weapon!==id)return GRIPS[id];
+ if(!configuration||configuration.weapon!==id){
+  const base=GRIPS[id];
+  // Classic weapon IDs use the same compact receiver/magwell hold.
+  // Previously only modular builds brought the support palm inward.
+  return handling==='short'?{...base,supportX:Math.min(base.supportX,1.35)}:base;
+ }
  const a=resolveWeaponAssembly(configuration);
  // The low-ready grip is presentation-only, not a shot-time muzzle change.
  const low=handling==='low'?lowReadyFamilyFit(configuration):null;
