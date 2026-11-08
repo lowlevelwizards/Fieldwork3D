@@ -1601,7 +1601,7 @@ operationsToggle.addEventListener('click',()=>{
 });
 let selected='rook';
 let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
-let looking=false,flashMode=false;
+let looking=false,flashMode=false,pushMode=false;
 let firePlacement:'suppress'|null=null;
 let lookMode:'look'|'watch'='look';
 // The stationary dock remains the reliable default; Smart Floating may only
@@ -1732,12 +1732,12 @@ let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
 let draggingWatchTarget=false;
 function cancelTargeting(){
-  const hadTarget=looking||flashMode||!!firePlacement||!!evacMode;
+  const hadTarget=looking||flashMode||pushMode||!!firePlacement||!!evacMode;
   if(hadTarget){
     const actor=uid(selected);
     if(actor)tacticalFeedback.emit('cancel',actor.p,'CANCELLED');
   }
-  looking=false;flashMode=false;firePlacement=null;flashDoorId=null;
+  looking=false;flashMode=false;pushMode=false;firePlacement=null;flashDoorId=null;
   evacMode=null;contextSignature='';updateHud();
 }
 const fogCanvas=document.createElement('canvas');
@@ -2112,6 +2112,7 @@ function installTouchCommandHelp(button:HTMLButtonElement){
 function message(){
   if(replaying)return 'MISSION FILM · ORBIT, PAN, ZOOM AND SCRUB FREELY';
   if(flashMode)return 'FLASH: tap a target, or CANCEL to back out.';
+  if(pushMode)return 'PUSH: tap or drag a direction away from the selected object (±80°). CANCEL to exit.';
   if(state.phase==='planning'){
     if(looking)return lookMode==='watch'?
       'WATCH ARMED · TAP A POINT · CANCEL/BACK TO EXIT. Replaces prior WATCH; RUN or interactions end tracking.':
@@ -2152,7 +2153,7 @@ function selectedPlanNode(){
 /** The actor itself is HERE. Selected plan nodes own subsequent orders;
  * a door tap brings up ONLY door actions. No redundant HERE/END buttons. */
 function updateContext(){
-  if(state.phase!=='planning'||replaying||looking||flashMode||firePlacement||
+  if(state.phase!=='planning'||replaying||looking||flashMode||pushMode||firePlacement||
      !ui.briefingPanel.hidden||
      draggingNode||trace||
      !ui.siteSettings.hidden){
@@ -2536,9 +2537,10 @@ const handleContextAction=(event:MouseEvent)=>{
         state.events.push('CANNOT PLAN RELOAD');
       break;
     case 'ctxPush':
-      if(!planNearbyInteraction(state,selected,'push',node?.id))
-        state.events.push('NO PUSHABLE OBJECT IN REACH');
-      break;
+      pushMode=true;looking=false;flashMode=false;firePlacement=null;
+      tacticalFeedback.emit('armed',node?.p??a.p,'PUSH DIRECTION');
+      showUiHelp('TAP OR DRAG AWAY FROM THE OBJECT TO CHOOSE PUSH DIRECTION',3600);
+      uiClickTone('select');updateHud();return;
     case 'ctxTreat':{
       const patient=medicalCandidate(selected,node?.p??finalPoint(a));
       if(!patient||!planMedicalTreatment(state,selected,patient.id,node?.id))
@@ -4368,6 +4370,16 @@ function rejectAt(pt:Pt,reason:string){
 }
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
+  if(pushMode){
+    const accepted=planNearbyInteraction(state,selected,'push',
+      selectedNode??undefined,pt);
+    if(!accepted)rejectAt(pt,'NO PUSHABLE OBJECT IN REACH');
+    else{
+      pushMode=false;tacticalFeedback.emit('command',pt,'PUSH');
+      uiClickTone('command');
+    }
+    updateHud();return;
+  }
   if(evacMode){
    const mode=evacMode;evacMode=null;
    if(!planCasualtyTransport(state,selected,mode.patientId,pt,mode.mode))
@@ -7452,7 +7464,7 @@ canvas.addEventListener('pointerdown',e=>{
       startX:e.clientX,startY:e.clientY,pointerType:e.pointerType,wasUnit:false,nodeId:null,
       mode:orbit?'cameraOrbit':'cameraPan',moved:false});
   }else{
-    const contextual=looking||flashMode||!!firePlacement||!!evacMode;
+    const contextual=looking||flashMode||pushMode||!!firePlacement||!!evacMode;
     const pick=contextual?null:tacticalPickAt({x:e.clientX,y:e.clientY},
       e.pointerType);
     const handle=pick?.kind==='activeWatch'?'activeWatch':
@@ -7532,7 +7544,7 @@ canvas.addEventListener('pointermove',e=>{
   // While a command is armed, one-finger dragging previews its target.
   // Two fingers still exclusively pan/pinch and never author an order.
   if(p.mode==='undecided'&&e.pointerType==='touch'&&p.moved&&
-     (looking||flashMode||!!firePlacement||!!evacMode)){
+     (looking||flashMode||pushMode||!!firePlacement||!!evacMode)){
     p.mode='targetPreview';
     return;
   }
@@ -7633,7 +7645,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
     selectUnit(p.pick.owner);
   }
   if(!cancelled&&state.phase==='planning'&&!replaying&&activePointers.size===1){
-    if((looking||flashMode||firePlacement||evacMode)&&
+    if((looking||flashMode||pushMode||firePlacement||evacMode)&&
        (p.mode==='targetPreview'||p.mode==='undecided')){
       // A brief iPhone tap often travels a few pixels without entering
       // targetPreview. Always commit an armed target on release, even then.
