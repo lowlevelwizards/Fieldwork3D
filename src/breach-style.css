@@ -2571,23 +2571,7 @@ body.replaying #replayTopHud *{-webkit-tap-highlight-color:transparent}
 }
 
 
-/* Context UI audition — one action model, three independently testable views. */
-.context-layout-settings{padding:11px 10px;margin:11px 0 13px;
- border:1px solid #648375;border-radius:9px;background:#21372f}
-.context-layout-settings>strong{display:block;margin-bottom:7px;
- font:700 12px/1.2 "Saira Condensed",sans-serif;letter-spacing:.08em;
- color:#efe6d1}
-.context-layout-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
-.context-layout-options button{min-width:0;min-height:44px;
- font:700 12px/1 "Saira Condensed",sans-serif!important;
- border:1px solid #718a78;border-radius:7px;
- background:#344b40;color:#dce5d4}
-.context-layout-options button[aria-pressed="true"]{
- background:#c5b388;border-color:#efddb5;color:#14271f}
-.context-layout-settings .site-settings-hint{margin:8px 0 0;
- font:500 11px/1.4 "Work Sans",sans-serif;color:#bdc9bb}
-
-/* Dock: attach to the existing fixed HUD, immediately above the
+/* Context actions: fixed dock directly above the
  * persistent stance/pace/reload strip. No map-space tether or drift. */
 .context-tools[data-layout="dock"]{
  position:relative!important;inset:auto!important;
@@ -2647,60 +2631,11 @@ body.replaying #replayTopHud *{-webkit-tap-highlight-color:transparent}
    min-height:36px!important;min-width:62px!important}
 }
 
-/* Bubbles: airy discrete commands in an ellipse surrounding the selected
- * actor. The center stays transparent for their silhouette and route. */
-.context-tools[data-layout="bubbles"],
-.context-tools[data-layout="bubbles"].door-menu{
- position:fixed!important;left:0!important;top:0!important;
- right:auto!important;bottom:auto!important;
- width:320px!important;height:286px!important;
- max-width:320px!important;max-height:286px!important;
- min-width:320px!important;min-height:286px!important;
- display:block!important;padding:0!important;margin:0!important;
- border:0!important;border-radius:0!important;
- background:none!important;backdrop-filter:none!important;
- box-shadow:none!important;overflow:visible;
- pointer-events:none;will-change:transform
-}
-.context-tools[data-layout="bubbles"][hidden]{display:none!important}
-.context-tools[data-layout="bubbles"] .fw-context-heading{
- position:absolute;width:1px;height:1px;overflow:hidden;
- clip-path:inset(50%);white-space:nowrap;pointer-events:none}
-.context-tools[data-layout="bubbles"] .context-primary{
- position:absolute;inset:0;display:block!important;
- border:0!important;padding:0!important;margin:0!important;
- background:none!important;pointer-events:none}
-.context-tools[data-layout="bubbles"] .context-primary button,
-.context-tools[data-layout="bubbles"].door-menu .context-primary button{
- position:absolute!important;width:62px!important;min-width:62px!important;
- height:50px!important;min-height:50px!important;max-height:50px!important;
- padding:4px 2px!important;margin:0!important;
- transform:translate(-50%,-50%)!important;
- flex-direction:column!important;align-items:center;justify-content:center;
- gap:2px!important;border-radius:15px!important;
- background:#203a32f0;border:1.5px solid #a4bd9f;
- color:#f0f0df;font:700 9px/1 "Work Sans",sans-serif!important;
- box-shadow:0 2px 7px #03100cae;
- letter-spacing:0!important;white-space:nowrap;
- pointer-events:auto;touch-action:manipulation}
-.context-tools[data-layout="bubbles"] .context-primary button.danger{
- background:#523634e9;border-color:#c7907b;color:#ffe1d3}
-.context-tools[data-layout="bubbles"] .context-primary button[aria-pressed="true"]{
- border-color:#f2dba2;box-shadow:0 0 0 2px #bca66c7a,0 3px 7px #03100caa}
-.context-tools[data-layout="bubbles"] .context-primary .ui-icon{
- width:20px;height:20px}
-.context-tools[data-layout="bubbles"] .context-state,
-.context-tools[data-layout="bubbles"] .context-danger{display:none!important}
-@media(prefers-reduced-motion:reduce){
- .context-tools[data-layout="dock"],
- .context-tools[data-layout="bubbles"]{transition:none!important}
-}
 
-/* Keep long tool names legible inside compact radial buttons. */
-.context-tools[data-layout="bubbles"] .context-primary .command-label{
- max-width:58px;max-height:23px;overflow:hidden;text-align:center;
- white-space:normal;overflow-wrap:anywhere;line-height:1.05
-}
+/* Protect the full label area on narrow phones. */
 .context-tools[data-layout="dock"]{overflow:visible!important}
 .context-tools[data-layout="dock"] .context-primary .command-label{
  max-width:100%;overflow:hidden;text-overflow:ellipsis}
+@media(prefers-reduced-motion:reduce){
+ .context-tools[data-layout="dock"]{transition:none!important}
+}
