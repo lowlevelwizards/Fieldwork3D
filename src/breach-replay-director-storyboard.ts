@@ -6,7 +6,8 @@
  */
 import type {DirectorShot} from './breach-replay-director-shots.ts';
 import type {DirectorRoom} from './breach-replay-cinematic-director.ts';
-import {directorCameraLegal,directorLineBlocked}
+import {directorCameraLegal,directorLineBlocked,
+  directorOperatorRoom,directorOpenPortalAt}
   from './breach-replay-director-physical.ts';
 import type {PhysicalDirectorScene} from './breach-replay-director-physical.ts';
 import {directorOrthoFittingZoom}
@@ -224,6 +225,81 @@ export class ReplayDirectorStoryboard{
       this.usableWidth,this.usableHeight,10,.92);
     return prior.zoom<=fit*1.04;
   }
+  /** Optional Steadicam continuation through the SAME recorded open
+   * doorway. Prevalidate the entire path across both room footprints so
+   * a failed path never drifts halfway into a jamb. No X-ray, teleport,
+   * roof fly-through, or invented open-door state is permitted. */
+  private portalFollow(prior:RailShot,raw:DirectorShot):RailShot|null{
+    if(!raw.firstEntry||raw.shotType!=='entry'||!raw.doorId||
+      raw.motion<8)return null;
+    const door=this.physicalScene.doors?.find(d=>d.id===raw.doorId);
+    if(!door||!directorOpenPortalAt({
+      x:(door.a.x+door.b.x)*.5,
+      y:(door.a.y+door.b.y)*.5},door))return null;
+    const mid={x:(door.a.x+door.b.x)*.5,
+      y:(door.a.y+door.b.y)*.5};
+    const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
+    const length=Math.hypot(dx,dy);
+    if(length<25)return null;
+    const normal={x:-dy/length,y:dx/length};
+    const facing=(p:Pt)=>(p.x-mid.x)*normal.x+
+      (p.y-mid.y)*normal.y;
+    const start=facing(prior.cameraAnchor);
+    const finish=facing(raw.cameraAnchor);
+    if(start*finish>=0||Math.abs(start)<7||Math.abs(finish)<7)
+      return null;
+    const side=start>0?1:-1;
+    const approach={x:mid.x+normal.x*side*18,
+      y:mid.y+normal.y*side*18};
+    const exit={x:mid.x-normal.x*side*18,
+      y:mid.y-normal.y*side*18};
+    const route=[prior.cameraAnchor,approach,mid,exit,raw.cameraAnchor];
+    // A physical camera crosses just like an actor: between the two
+    // occupied room footprints, through a sufficiently broad open gap.
+    for(let k=1;k<route.length;k++){
+      const from=route[k-1],to=route[k];
+      if(directorLineBlocked(from,to,this.physicalScene,false))
+        return null;
+      const count=Math.max(1,Math.ceil(distance(from,to)/2));
+      for(let i=0;i<=count;i++){
+        const p={x:mix(from.x,to.x,i/count),
+          y:mix(from.y,to.y,i/count)};
+        const room=directorOperatorRoom(p,this.rooms);
+        if(!directorCameraLegal(p,room,this.physicalScene,true))
+          return null;
+      }
+    }
+    const pace=raw.motion/Math.max(1,raw.subjects.length);
+    let remaining=(cameraStep+Math.min(34,pace*.8)+8)*
+      this.step/.8;
+    let cameraAnchor={...prior.cameraAnchor};
+    for(let k=1;k<route.length&&remaining>0;k++){
+      const from=route[k-1],to=route[k];
+      const segment=distance(from,to);
+      if(segment<.001)continue;
+      const amount=Math.min(1,remaining/segment);
+      cameraAnchor={x:mix(from.x,to.x,amount),
+        y:mix(from.y,to.y,amount)};
+      remaining-=segment*amount;
+      if(amount<1)break;
+    }
+    const fraction=.37;
+    let focus={x:mix(prior.focus.x,raw.focus.x,fraction),
+      y:mix(prior.focus.y,raw.focus.y,fraction)};
+    if(directorLineBlocked(cameraAnchor,focus,this.physicalScene))
+      focus=directorLineBlocked(cameraAnchor,raw.focus,
+        this.physicalScene)?{...mid}:{...raw.focus};
+    const yaw=yawOf(cameraAnchor,focus);
+    const zoom=clamp(this.fittingZoom(raw,cameraAnchor,focus),
+      prior.zoom*Math.pow(.70,this.step/.8),
+      prior.zoom*Math.pow(1.11,this.step/.8));
+    const room=directorOperatorRoom(cameraAnchor,this.rooms);
+    return {...raw,sceneStartIndex:prior.sceneStartIndex,
+      roomId:room?.id??null,cameraAnchor,focus,zoom,
+      yaw:(yaw+Math.PI*2)%(Math.PI*2),
+      fov:prior.fov??raw.fov,pitch:raw.pitch,
+      cameraDecision:'track:through-open-door'};
+  }
   /** No camera edit merely because another framewise shot scores higher.
    * Confirm an actual new majority room for three consecutive recorded
    * samples and enforce minimum residency in the previous room. */
@@ -252,6 +328,8 @@ export class ReplayDirectorStoryboard{
     const covered=this.coversPrior(prior,raw);
     const entering=!!raw.firstEntry&&raw.shotType==='entry';
     if(raw.roomId!==prior.roomId){
+      const followThrough=this.portalFollow(prior,raw);
+      if(followThrough)return followThrough;
       // The first entrant calls for an editorial evaluation, NOT an
       // automatic cut. An existing legal threshold two-shot can hold.
       if(entering&&covered)return {...raw,
