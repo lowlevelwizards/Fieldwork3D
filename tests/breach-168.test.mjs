@@ -7,8 +7,8 @@ import {HANDLING_PROFILES} from '../src/breach-handling-profiles.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 
 const modes=['high','low','ready','short','point','ads'];
-test('168: stocks seat on the FRONT chest near the firing shoulder',()=>{
- for(const mode of modes){
+test('168: ordinary stocks use the shoulder, SHORT uses underarm',()=>{
+ for(const mode of modes.filter(m=>m!=='short')){
   const pocket=stockPocket(mode);
   assert.ok(pocket.z>=4.9&&pocket.z<=5.6,
    mode+' stock leaves the front shoulder/torso surface');
@@ -16,8 +16,9 @@ test('168: stocks seat on the FRONT chest near the firing shoulder',()=>{
    mode+' buttplate must remain at chest front (X≈5)');
  }
  assert.ok(stockPocket('ads').y<6.5,'ADS buttstock floats too high');
- assert.ok(stockPocket('short').y<stockPocket('ready').y-.5);
- assert.ok(Math.abs(stockPocket('short').z-stockPocket('ready').z)<.5);
+ assert.ok(stockPocket('short').y<-4);
+ assert.ok(stockPocket('short').x<-1);
+ assert.ok(stockPocket('short').z>7.7);
 });
 test('168: longer stock rear face is still physically exact at all weapon scales',()=>{
  for(const weapon of ['carbine','smg','rifle','shotgun']){
@@ -59,7 +60,9 @@ test('168: elbow targets are intermediate, not chicken wings or rib-pinned',()=>
 test('168: upper-body profiles keep six different intentions',()=>{
  const p=HANDLING_PROFILES;
  assert.ok(p.high.pitch>.4&&p.low.pitch<-.4);
- assert.ok(p.short.stockY>p.low.stockY&&p.short.pitch<p.low.pitch-.1);
+ assert.ok(p.short.stockY<p.low.stockY-7);
+ assert.ok(p.short.pitch<p.ready.pitch-.1&&p.short.pitch>p.low.pitch+.1,
+   'underarm tuck dips moderately, not toward the floor');
  assert.ok(p.ads.headDrop>p.point.headDrop+.55);
  assert.ok(p.short.elbowTuck>p.high.elbowTuck);
  assert.ok(p.high.elbowTuck>p.ads.elbowTuck);

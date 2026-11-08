@@ -22,9 +22,13 @@ const rigPose=(mode)=>({
 test('169: stock sits forward and on firing side with correct buttplate length',()=>{
  for(const mode of modes){
   const p=stockPocket(mode);
-  assert.ok(p.z>=4.9&&p.z<=5.6,
-    'stock left the front torso contact zone '+mode);
-  if(mode!=='short')assert.ok(p.x>2.5,'armor needs forward seat '+mode);
+  if(mode==='short'){
+   assert.ok(p.x<-1&&p.y<-4&&p.z>7.7,
+     'short-stock must tuck beside the waist');
+  }else{
+   assert.ok(p.z>=4.9&&p.z<=5.6,'stock left front chest '+mode);
+   assert.ok(p.x>2.5,'armor needs forward seat '+mode);
+  }
   for(const weapon of weapons){
    const fit=fitWeaponPose({weapon,handling:mode,yaw:0,recoil:0});
    const g=weaponGrips(weapon);
@@ -37,8 +41,8 @@ test('169: stock sits forward and on firing side with correct buttplate length',
    assert.ok(Number.isFinite(fit.contactError));
   }
  }
- assert.ok(Math.abs(stockPocket('short').z-stockPocket('ready').z)<.5);
- assert.ok(stockPocket('short').y<stockPocket('ready').y-.5);
+ assert.ok(stockPocket('short').z>stockPocket('ready').z+2);
+ assert.ok(stockPocket('short').y<stockPocket('ready').y-7);
 });
 
 test('169: independent elbows are driven by authored profiles and blend inputs',()=>{
