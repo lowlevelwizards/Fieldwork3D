@@ -27,7 +27,6 @@ try{
   await page.goto(origin+'/index.html?fixedSite=1',{waitUntil:'domcontentloaded'});
   await page.locator('#operationsBoardToggle:visible').waitFor({timeout:30000});
   const openMission=async()=>{
-   await page.locator('#moreOrders').click();
    await page.locator('#siteSettingsToggle').click();
    await page.locator('#siteSettings:visible').waitFor();
   };

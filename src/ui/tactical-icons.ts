@@ -217,8 +217,7 @@ const aliases:Record<string,string>={
   "siteSettingsToggle": "settings",
   "reset": "restart",
   "cancelTarget": "cancelTarget",
-  "back": "undo",
-  "moreOrders": "settings"
+  "back": "undo"
 };
 
 /** Resolve the four persistent quick-strip states without mutating actions. */
