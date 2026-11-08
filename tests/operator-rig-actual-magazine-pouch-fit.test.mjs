@@ -14,7 +14,7 @@ import {rigContactFrame} from '../src/operator-rig-contact-frame.ts';
 // generic magazine. X is forward and these dimensions are authored rig-local.
 const CELLS={
  'chest-placard':[[8.74,1.08],[8.74,1.08],[8.74,1.08]],
- 'micro-rig':[[8.54,.91],[8.54,.91],[7.75,.77],[7.75,.77]],
+ 'micro-rig':[[8.54,.91],[8.54,.91]],
  'light-rig':Array.from({length:4},()=>[8.38,1.10]),
  'chicom-rig':Array.from({length:3},()=>[8.52,1.06]),
  'bandolier':Array.from({length:4},()=>[8.20,.78]),
