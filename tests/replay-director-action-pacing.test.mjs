@@ -164,3 +164,21 @@ test('actual recorded action tracks farther than quiet rig without cuts',()=>{
   rail.sample(0).cameraAnchor.x>130,
   'camera should actually follow the moving main operator at speed');
 });
+
+test('small room fallback does not place the lens in an operator backpack',()=>{
+ const tiny={id:'tiny',x:0,y:0,w:75,h:70};
+ const operator=p(37,35);
+ const world={rooms:[tiny],walls:[]};
+ const shot=physicalDirectorView({
+  operator,focus:p(63,35),
+  subjectPoints:[operator,p(43,34),p(32,42)],
+  target:null,preferredYaw:-Math.PI/2,
+  followDirection:p(1,0)
+ },world,.78);
+ assert.ok(directorCameraLegal(shot.cameraAnchor,tiny,world),
+  'even a cramped shot must occupy a physically legal room location');
+ assert.ok(d(shot.cameraAnchor,operator)>=29,
+  'never fall back directly onto the selected operator');
+ assert.ok(shot.cameraAnchor.x<operator.x,
+  'choose an available behind-the-shoulder viewpoint');
+});
