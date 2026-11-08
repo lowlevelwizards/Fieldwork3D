@@ -55,10 +55,12 @@ function subjectGroup(actors:readonly DirectorActor[],
     return nearby.length?nearby:[future];
   }
   const group=directorIntentGroup(ctx.intents);
-  if(group&&group.count>=2){
+  if(group&&group.count>=Math.max(2,Math.ceil(actors.length*.75))){
     const members=actors.filter(a=>group.actors.includes(a.id));
     if(members.length>=2)return members;
   }
+  // Do not abandon the entry element to film two operators still
+  // stacked at a door. Keep the moving squad together while it is near.
   const center=average(actors);
   const spread=Math.max(...actors.map(a=>dist(a.p,center)));
   if(spread>140&&actors.length>=3){
@@ -79,17 +81,31 @@ function shotClass(subjects:readonly DirectorActor[],
   const doors=directorIntentGroup(ctx.intents);
   const matching=ctx.intents.filter(i=>subjects.some(a=>a.id===i.actorId));
   if(doors&&doors.count>=2){
-    if(matching.some(i=>i.door?.id===doors.door.id&&i.kind==='breach'))
-      return 'breach';
-    if(matching.some(i=>i.door?.id===doors.door.id&&i.kind==='entry'))
-      return 'entry';
-    if(matching.filter(i=>i.door?.id===doors.door.id&&
-      i.door.distance<42).length>=2)return 'stack';
+    const front=matching.filter(i=>i.door?.id===doors.door.id&&
+      i.door.approachSide===doors.door.approachSide);
+    if(front.some(i=>i.kind==='breach'))return 'breach';
+    if(front.some(i=>i.kind==='entry'))return 'entry';
+    if(front.filter(i=>i.door!.distance<42).length>=2)return 'stack';
     return 'approach';
   }
   if(matching.some(i=>i.kind==='overwatch'))return 'overwatch';
   if(matching.some(i=>i.route.length>1))return 'travel';
   return 'reorientation';
+}
+function routeLead(route:readonly Pt[],maxDistance:number):Pt{
+  let remaining=maxDistance;
+  for(let i=1;i<route.length;i++){
+    const start=route[i-1],end=route[i];
+    const segment=dist(start,end);
+    if(segment<.001)continue;
+    if(segment>=remaining){
+      const t=remaining/segment;
+      return {x:start.x+(end.x-start.x)*t,
+        y:start.y+(end.y-start.y)*t};
+    }
+    remaining-=segment;
+  }
+  return route.at(-1)??{x:0,y:0};
 }
 function anchorsFor(subjects:readonly DirectorActor[],
   ctx:DirectorShotContext,kind:DirectorShotType):Pt[]{
@@ -100,20 +116,40 @@ function anchorsFor(subjects:readonly DirectorActor[],
       const intent=ctx.intents.find(i=>i.actorId===actor.id);
       const d=intent?.direction??{x:Math.cos(actor.heading??0),
         y:Math.sin(actor.heading??0)};
-      // Do not use the unrevealed enemy position: 30u into the friendly's
-      // already recorded movement/aim direction is enough to create lead.
+      // Lead from the disclosed friendly's own movement, never the
+      // unrevealed contact position.
       out.push({x:actor.p.x+d.x*32,y:actor.p.y+d.y*32});
     }
   }else{
     const group=directorIntentGroup(ctx.intents);
     if(group&&['approach','stack','breach','entry'].includes(kind)){
-      out.push(group.door.mid);
-      const d=group.door.normal;
-      out.push({x:group.door.mid.x-d.x*20,y:group.door.mid.y-d.y*20});
+      const door=group.door;
+      // Compose the FRONT of the door and the operator-side wall, not
+      // the far side of the doorway. Door detail is a framing anchor
+      // only: living operators remain the dominant subject.
+      out.push(door.mid);
+      out.push({x:door.mid.x+door.normal.x*18,
+        y:door.mid.y+door.normal.y*18});
+      if(kind==='stack'||kind==='breach'){
+        const tangent=normalize({x:door.b.x-door.a.x,
+          y:door.b.y-door.a.y});
+        out.push({x:door.a.x-tangent.x*14,
+          y:door.a.y-tangent.y*14});
+        out.push({x:door.b.x+tangent.x*14,
+          y:door.b.y+tangent.y*14});
+      }
     }else{
-      for(const i of ctx.intents.filter(i=>
-        subjects.some(a=>a.id===i.actorId)&&i.route.length>1))
-        out.push(i.route[Math.min(2,i.route.length-1)]);
+      // A bounded look-ahead (not every operator's distant final node)
+      // reveals where the already-drawn plan flows without dragging
+      // the actual squad out of the viewport.
+      const center=average(subjects);
+      const intent=ctx.intents.filter(i=>
+        subjects.some(a=>a.id===i.actorId)&&i.route.length>1)
+        .sort((a,b)=>dist(a.position,center)-dist(b.position,center))[0];
+      if(intent){
+        out.push(routeLead(intent.route,38));
+        out.push(routeLead(intent.route,65));
+      }
     }
   }
   return out;
@@ -141,26 +177,34 @@ function projectedBounds(pts:readonly Pt[],center:Pt,
 function wallCost(center:Pt,yaw:number,subjects:readonly Pt[],
   room:DirectorRoom|null,walls:readonly DirectorWall[]){
   const ray={x:Math.sin(yaw),y:Math.cos(yaw)};
-  let distToRoom=85;
-  if(room&&pointIn(center,room)){
+  // Evaluate a low virtual camera on the SUBJECTS' side of the room.
+  // Looking through a distant external wall or an adjacent room should
+  // lose against a shot with the camera inside the occupied room.
+  const inset=room?Math.min(9,room.w*.2,room.h*.2):0;
+  const origin=room?{
+    x:clamp(center.x,room.x+inset,room.x+room.w-inset),
+    y:clamp(center.y,room.y+inset,room.y+room.h-inset)
+  }:center;
+  let distToRoom=80;
+  if(room){
     for(const [p,d,min,max] of [
-      [center.x,ray.x,room.x,room.x+room.w],
-      [center.y,ray.y,room.y,room.y+room.h]
+      [origin.x,ray.x,room.x,room.x+room.w],
+      [origin.y,ray.y,room.y,room.y+room.h]
     ] as const){
       if(Math.abs(d)>.001)distToRoom=Math.min(distToRoom,
         Math.max(0,((d>0?max:min)-p)/d));
     }
   }
-  const camera={x:center.x+ray.x*Math.min(distToRoom+8,80),
-    y:center.y+ray.y*Math.min(distToRoom+8,80)};
+  const camera={x:origin.x+ray.x*Math.min(72,Math.max(4,distToRoom-8)),
+    y:origin.y+ray.y*Math.min(72,Math.max(4,distToRoom-8))};
   let blocked=0;
   for(const wall of walls){
-    if(segmentCross(center,camera,wall.a,wall.b))blocked+=2;
-    for(const subject of subjects){
+    if(segmentCross(camera,center,wall.a,wall.b))blocked+=2;
+    for(const subject of subjects)
       if(segmentCross(camera,subject,wall.a,wall.b))blocked+=1;
-    }
   }
-  return {blocked,roomClearance:distToRoom};
+  return {blocked,roomClearance:distToRoom,
+    insideRoom:!room||pointIn(camera,room,3)};
 }
 export function composeReplayDirectorShot(_time:number,
   actors:readonly DirectorActor[],rooms:readonly DirectorRoom[],
@@ -195,9 +239,12 @@ export function composeReplayDirectorShot(_time:number,
   const maxZoom=Math.min(7.5,context.maxZoom??6);
   const usableWidth=clamp(context.usableWidth??.83,.55,.92);
   const usableHeight=clamp(context.usableHeight??.78,.55,.9);
+  // The threshold normal points toward the stacked operators. Filming
+  // along it is a recognisable frontal doorway shot, not a side-on wall.
+  const front=relevantDoor?atan(relevantDoor.normal):behind;
   for(let a=-4;a<=4;a++){
-    const yaw=behind+a*Math.PI/12;
-    for(const degrees of [38,44,51,59]){
+    const yaw=front+a*Math.PI/(relevantDoor?18:12);
+    for(const degrees of [31,37,43,49]){
       const pitch=degrees*Math.PI/180;
       const bounds=projectedBounds(points,center,yaw,pitch,aspect,
         baseSpan,maxZoom,usableWidth,usableHeight);
@@ -205,15 +252,18 @@ export function composeReplayDirectorShot(_time:number,
       // Zoom tightness rewards intimate framing only after subject coverage.
       const close=clamp((bounds.zoom-.65)/5,0,1);
       const elevationTarget=type==='contact'||type==='stack'||
-        type==='breach'?39:type==='approach'||type==='travel'?44:52;
-      const dynamicElevation=elevationTarget+(1-close)*8;
+        type==='breach'?34:type==='approach'||type==='entry'?38:
+        type==='travel'?40:44;
+      const dynamicElevation=elevationTarget+(1-close)*6;
       const score=
-        25 + 20 + Math.min(15,bounds.zoom*2.1) -
-        Math.abs(degrees-dynamicElevation)*.24 -
-        wall.blocked*3.8 -
-        (wall.roomClearance<15?6:0) -
-        Math.abs(delta(yaw,behind))*2.1 -
-        Math.abs(delta(yaw,currentYaw))*1.4;
+        45 + Math.min(16,bounds.zoom*2.35) -
+        Math.abs(degrees-dynamicElevation)*.32 -
+        wall.blocked*4.4 -
+        (wall.insideRoom?0:10) -
+        (room?Math.max(0,24-wall.roomClearance)*.44:0) -
+        (relevantDoor?Math.abs(delta(yaw,front))*11:
+          Math.abs(delta(yaw,behind))*2.3) -
+        Math.abs(delta(yaw,currentYaw))*1.05;
       if(!best||score>best.score){
         best={focus:{...center},zoom:bounds.zoom,
           yaw:(yaw%(2*Math.PI)+2*Math.PI)%(2*Math.PI),

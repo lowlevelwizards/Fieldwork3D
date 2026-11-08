@@ -1712,6 +1712,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/real-mag-capacity-ammo-hud-') }}
         run: |
           node --experimental-strip-types --test tests/arsenal-live-magazine-capacity-hud.test.mjs tests/breach-136.test.mjs tests/arsenal-v2-quickplay-adapter.test.mjs tests/arsenal-v2-campaign-adapter.test.mjs tests/equipment-16-quickplay-magazines.test.mjs
+      - name: Replay director doorway handoff — focused historical camera gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/replay-director-door-handoff-') }}
+        run: |
+          node --experimental-strip-types --test tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

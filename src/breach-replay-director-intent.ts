@@ -87,6 +87,15 @@ function nearestDoor(position:Pt,route:readonly Pt[],
   const mid=midpoint(door.a,door.b);
   const d=distance(position,mid);
   if(d>175)return null;
+  // A tagged historical node is not proof the door is still ahead. Once
+  // the operator is moving away on the same side of the threshold, stop
+  // attaching yesterday's door to the current camera shot.
+  const currentSide=signed(door.a,door.b,position);
+  const crossesThreshold=route.slice(1).some(p=>
+    currentSide*signed(door.a,door.b,p)<-36);
+  const next=route.find(p=>distance(p,position)>8);
+  if(d>22&&next&&!crossesThreshold&&
+    distance(next,mid)>d+10)return null;
   const x=door.b.x-door.a.x,y=door.b.y-door.a.y;
   const mag=Math.hypot(x,y)||1;
   const side:signedSide= signed(door.a,door.b,position)>=0?1:-1;
@@ -120,7 +129,7 @@ export function directorIntentsAt(frame:ReplayFrame|null,
     const door=nearestDoor(position,route,nodes,doors);
     const first=nodes[0];
     const nearDoor=!!door&&door.distance<=clamp(
-      distance(position,route[1]??position)+24,35,75);
+      distance(position,route[1]??position)+35,35,75);
     let kind:DirectorIntentKind='hold';
     if(first?.kind==='look'||first?.kind==='holdClear'||actor.watch)
       kind='overwatch';
@@ -142,15 +151,21 @@ export function directorIntentsAt(frame:ReplayFrame|null,
 }
 type safePlan=readonly PlanNode[];
 export function directorIntentGroup(intents:readonly DirectorIntent[]){
-  const ranked=intents.filter(i=>i.door&&i.door.distance<110);
+  // A door only earns a dedicated shot while members are actually
+  // approaching, stacked, breaching or entering. Never group operators
+  // on opposite faces as one stack; that would put the camera in a wall.
+  const ranked=intents.filter(i=>i.door&&i.door.distance<90&&
+    ['approach','stack','breach','entry'].includes(i.kind));
   const counts=new Map<string,{door:DirectorDoorAnchor;count:number;
     actors:string[]}>();
   for(const intent of ranked){
-    const key=intent.door!.id;
+    const key=intent.door!.id+':'+intent.door!.approachSide;
     if(!counts.has(key))counts.set(key,
       {door:intent.door!,count:0,actors:[]});
     const group=counts.get(key)!;
     group.count++;group.actors.push(intent.actorId);
+    if(intent.door!.distance<group.door.distance)
+      group.door=intent.door!;
   }
   return [...counts.values()].sort((a,b)=>b.count-a.count||
     a.door.distance-b.door.distance||a.door.id.localeCompare(b.door.id))[0]??null;

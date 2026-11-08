@@ -94,3 +94,81 @@ test('shot scheduler commits, accepts emergencies and resets on seek',()=>{
  assert.equal(c.choose(.3,approach,true).shotType,'approach');
  assert.equal(c.status.shotType,'approach');
 });
+
+test('passed door stops being a target; camera leads the moving team into the next room',()=>{
+ const passed=ids.map((id,i)=>({x:216+i*6,y:68+i*8}));
+ // A historical entryDoorId can survive on a route waypoint even when
+ // everybody is already traveling away from that threshold.
+ const planned=frame(6,passed,(id,i)=>[
+  {id:1,kind:'move',entryDoorId:'D-1',p:{x:261+i*4,y:70+i*8}},
+  {id:2,kind:'move',p:{x:307+i*4,y:70+i*8}}
+ ]);
+ const intents=directorIntentsAt(planned,new Map(),[door],6,friendlies);
+ assert.ok(intents.every(i=>i.door===null),
+  'door IDs retained on downstream waypoints must not drag the camera back');
+ assert.equal(directorIntentGroup(intents),null);
+ const actors=ids.map((id,i)=>({id,side:'blue',health:3,
+  heading:0,p:passed[i]}));
+ const shot=composeReplayDirectorShot(6,actors,[
+  {id:'stack-room',x:40,y:20,w:120,h:145},
+  {id:'next-room',x:160,y:20,w:240,h:145}
+ ],[],1,0,1100,{intents,upcoming:null,maxZoom:6});
+ assert.equal(shot.doorId,null);
+ assert.equal(shot.shotType,'travel');
+ assert.equal(shot.roomId,'next-room');
+ assert.equal(shot.actorsFramed,4);
+ assert.ok(shot.focus.x>230&&shot.focus.x<285,
+  'forward lead must anticipate the drawn route without losing the team');
+});
+test('director frames the front of the stacked door rather than its rear wall',()=>{
+ const intents=directorIntentsAt(frame(2,positions,nodes),
+  new Map(),[door],2,friendlies);
+ const actors=ids.map((id,i)=>({id,side:'blue',health:3,
+  heading:0,p:positions[i]}));
+ const shot=composeReplayDirectorShot(2,actors,
+  [{id:'stack-room',x:40,y:20,w:120,h:145}],[],1,0,1100,
+  {intents,upcoming:null,maxZoom:6});
+ const normal=directorIntentGroup(intents).door.normal;
+ const cameraSide={x:Math.sin(shot.yaw),y:Math.cos(shot.yaw)};
+ assert.ok(cameraSide.x*normal.x+cameraSide.y*normal.y>.75,
+  'door should be filmed from the operator side, near its face normal');
+ assert.ok(shot.pitch<=49*Math.PI/180+1e-7,
+  'stack shot should seek a low, graphic, close perspective');
+ assert.ok(shot.focus.x>100&&shot.focus.x<160,
+  'door and its stacked team must both influence composition');
+});
+test('a doorway split retains the complete squad rather than abandoning entrants',()=>{
+ const split=[{x:128,y:73},{x:144,y:86},
+  {x:174,y:71},{x:185,y:88}];
+ const splitPlan=(id,i)=>i<2?nodes(id,i):[
+  {id:1,kind:'move',entryDoorId:'D-1',p:{x:206,y:80+i*4}},
+  {id:2,kind:'move',p:{x:246,y:80+i*4}}
+ ];
+ const intents=directorIntentsAt(frame(3,split,splitPlan),
+  new Map(),[door],3,friendlies);
+ const actors=ids.map((id,i)=>({id,side:'blue',health:3,
+  heading:0,p:split[i]}));
+ const shot=composeReplayDirectorShot(3,actors,
+  [{id:'R1',x:40,y:20,w:240,h:145}],[],1,0,1100,
+  {intents,upcoming:null,maxZoom:6});
+ assert.equal(shot.actorsFramed,4,
+  'two actors still stacking cannot monopolize the film');
+});
+test('scheduler follows a breach through entry and releases old door immediately',()=>{
+ const scheduler=new ReplayDirectorScheduler();
+ const shot={shotType:'breach',kind:'action',subjects:['rook','moss','ash','vale'],
+  focus:{x:137,y:81},zoom:4,yaw:1,pitch:.65,score:62,
+  occluded:0,roomId:'outside',actorsFramed:4,doorId:'D-1'};
+ assert.equal(scheduler.choose(0,shot).shotType,'breach');
+ const entry={...shot,shotType:'entry',kind:'squad',
+  focus:{x:183,y:82},score:55,roomId:'inside'};
+ assert.deepEqual(scheduler.choose(.3,entry).focus,entry.focus,
+  'entry movement must override the earlier breach shot hold');
+ const departure={...entry,shotType:'travel',doorId:null,
+  focus:{x:250,y:86},score:38};
+ assert.equal(scheduler.choose(.55,departure).shotType,'travel');
+ assert.deepEqual(scheduler.status.doorId,null);
+ assert.deepEqual(scheduler.choose(.7,{...departure,
+  focus:{x:273,y:89}}).focus,{x:273,y:89},
+  'tracking must keep updating without another hard cut');
+});

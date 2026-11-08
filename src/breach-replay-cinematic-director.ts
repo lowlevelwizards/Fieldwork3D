@@ -126,9 +126,15 @@ export function cinematicReplayShot(time:number,
 export function easeCinematicReplayShot(
   current:CinematicShot,target:CinematicShot,dt:number,instant=false
 ):CinematicShot{
-  const f=instant?1:1-Math.exp(-clamp(dt,0,.1)*1.85);
-  const z=instant?1:1-Math.exp(-clamp(dt,0,.1)*1.55);
-  const r=instant?1:1-Math.exp(-clamp(dt,0,.1)*1.1);
+  // A replay camera can be cinematic without letting the operators
+  // walk off screen. Large target jumps (especially through doors)
+  // receive faster position catch-up; angles retain gentle damping.
+  const distance=Math.hypot(target.focus.x-current.focus.x,
+    target.focus.y-current.focus.y);
+  const focusRate=distance>75?6.2:distance>35?4.6:3.2;
+  const f=instant?1:1-Math.exp(-clamp(dt,0,.1)*focusRate);
+  const z=instant?1:1-Math.exp(-clamp(dt,0,.1)*2.4);
+  const r=instant?1:1-Math.exp(-clamp(dt,0,.1)*1.8);
   const yaw=current.yaw+angleDelta(target.yaw,current.yaw)*r;
   return {
     ...target,

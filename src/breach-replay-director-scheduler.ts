@@ -41,13 +41,30 @@ export class ReplayDirectorScheduler{
       return proposal;
     }
     const old=this.chosen;
+    const sameSubjects=proposal.subjects.some(id=>old.subjects.includes(id));
     const stable=old.shotType===proposal.shotType&&
-      old.doorId===proposal.doorId&&
-      proposal.subjects.some(id=>old.subjects.includes(id));
+      old.doorId===proposal.doorId&&sameSubjects;
     if(stable){
-      // Permit continuous follow without changing the edit. Slow camera
-      // damping downstream maintains the selected cinematic composition.
+      // Preserve a moving shot, not a frozen focus point.
       this.chosen=proposal;
+      return proposal;
+    }
+    const leavingDoor=old.doorId!==null&&
+      old.doorId!==proposal.doorId;
+    const crossingRoom=old.roomId!==null&&proposal.roomId!==null&&
+      old.roomId!==proposal.roomId&&sameSubjects;
+    const followingThroughDoor=old.doorId!==null&&
+      old.doorId===proposal.doorId&&sameSubjects;
+    const focusDrift=Math.hypot(old.focus.x-proposal.focus.x,
+      old.focus.y-proposal.focus.y);
+    if(leavingDoor||crossingRoom||followingThroughDoor||
+      sameSubjects&&focusDrift>54){
+      // Architecture NEVER pins the camera after a threshold crossing.
+      // Breach -> entry -> travel must follow the squad even if the
+      // old high-priority door shot had time left on its hold.
+      this.chosen=proposal;
+      this.heldUntil=time+hold[proposal.shotType];
+      this.edits++;
       return proposal;
     }
     const incoming=priority[proposal.shotType];
@@ -57,11 +74,18 @@ export class ReplayDirectorScheduler{
     const durationElapsed=time>=this.heldUntil;
     if(!emergency&&(!durationElapsed||
       (incoming<=existing&&improvement<5))){
-      // Track previous group while the shot is held, but never let the
-      // rejected new subject yank the camera across the level.
+      if(sameSubjects){
+        // Keep the edit classification during its minimum hold, but
+        // update its physical composition so the actors cannot leave
+        // the frame while a more dramatic event is being considered.
+        this.chosen={...old,focus:proposal.focus,
+          zoom:Math.min(old.zoom,proposal.zoom),
+          actorsFramed:proposal.actorsFramed,
+          occluded:proposal.occluded};
+        return this.chosen;
+      }
       return old;
     }
-    // Prevent repeated reselects from slightly better scores.
     if(!emergency&&improvement<1.5&&incoming<existing)return old;
     this.chosen=proposal;
     this.heldUntil=time+hold[proposal.shotType];
