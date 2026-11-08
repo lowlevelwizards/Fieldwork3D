@@ -123,16 +123,20 @@ test('director camera film path is deterministic across seek order and rate',()=
  assert.ok(first.pitch<20*Math.PI/180);
 });
 test('camera moves smoothly between fixed planned poses without 360° yaw whip',()=>{
- const storyboard=new ReplayDirectorStoryboard(4,t=>({
-  focus:{x:t*30,y:80},
-  cameraAnchor:{x:24+t*30,y:64},
+ const storyboard=new ReplayDirectorStoryboard(4,t=>{
+  const focus={x:t*30,y:80};
+  const yaw=t<.8?Math.PI*1.95:Math.PI*.03;
+  return {
+  focus,
+  cameraAnchor:{x:focus.x+Math.sin(yaw)*45,
+    y:focus.y+Math.cos(yaw)*45},
   zoom:12,pitch:17*Math.PI/180,
-  yaw:t<.8?Math.PI*1.95:Math.PI*.03,
+  yaw,
   roomId:'near',actorsFramed:2,
   shotType:'contact',kind:'action',
   subjects:['rook'],doorId:null,
   score:60,occluded:0,motion:12
- }),{step:.8});
+ };},{step:.8});
  const before=storyboard.sample(.35);
  const after=storyboard.sample(.45);
  const angle=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
@@ -193,8 +197,8 @@ test('one firefight keeps its established camera side throughout the exchange',(
  const first=director.sample(0);
  for(let t=.8;t<5;t+=.8){
    const shot=director.sample(t);
-   assert.ok(Math.abs(signedAngle(shot.yaw,first.yaw))<.001,
-    'same recorded combat beat must not reorient after each shot');
+   assert.ok(Math.abs(signedAngle(shot.yaw,first.yaw))<.13,
+    'same filmed combat beat allows only tiny physical lens pans, not orbits');
  }
 });
 test('a dramatically different action is an intentional edit, never a fast spin',()=>{

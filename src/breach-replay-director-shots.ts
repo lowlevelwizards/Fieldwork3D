@@ -7,6 +7,8 @@ import {directorIntentGroup,type DirectorIntent}
   from './breach-replay-director-intent.ts';
 import type {DirectorFutureCue} from './breach-replay-director-events.ts';
 import type {DirectorFilmBeat} from './breach-replay-director-film.ts';
+import {physicalDirectorView} from './breach-replay-director-physical.ts';
+import type {Door,Obstacle} from './breach-core.ts';
 
 export type DirectorShotType='travel'|'approach'|'stack'|'breach'|
   'entry'|'contact'|'overwatch'|'reorientation';
@@ -19,7 +21,10 @@ export type DirectorShotContext={
   actionPair?:{shooter:Pt;target:Pt}|null;
   /** Geometry space corresponding to viewport without controls. */
   usableWidth?:number;usableHeight?:number;
-  maxZoom?:number;maxSubjects?:number
+  maxZoom?:number;maxSubjects?:number;
+  /** Physical obstacles at the historical replay timestamp. */
+  doors?:readonly Pick<Door,'a'|'b'|'open'|'openFraction'|'style'>[];
+  cover?:readonly Pick<Obstacle,'x'|'y'|'w'|'h'>[]
 };
 export type DirectorShot=CinematicShot&{
   shotType:DirectorShotType;subjects:string[];doorId:string|null;
@@ -27,7 +32,11 @@ export type DirectorShot=CinematicShot&{
   /** Stable film beat identifier; an ongoing exchange is one camera setup. */
   beatId:string|null;
   /** Actual director-only camera position in the map's X/Z plane. */
-  cameraAnchor:Pt
+  cameraAnchor:Pt;
+  /** A real perspective lens in replay-only Director mode. */
+  fov?:number;
+  /** Friendly actor the camera operator must physically accompany. */
+  operatorPoint?:Pt
 };
 type Pt={x:number;y:number};
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
@@ -397,5 +406,24 @@ export function composeReplayDirectorShot(_time:number,
       }
     }
   }
-  return best;
+  if(!best)return null;
+  const operator=subjects.find(a=>a.id===context.beat?.actorId)??
+    subjects[0];
+  if(!operator)return best;
+  const target=context.beat?.kind==='fight'&&context.actionPair?
+    (context.beat.actorId===context.beat.shooterId?
+      context.actionPair.target:context.actionPair.shooter):
+    doorBeat?.target??null;
+  const physical=physicalDirectorView({
+    operator:operator.p,focus:best.focus,
+    subjectPoints:subjects.map(a=>a.p),
+    target,preferredYaw:best.yaw
+  },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
+  const realYaw=atan({x:physical.cameraAnchor.x-physical.focus.x,
+    y:physical.cameraAnchor.y-physical.focus.y});
+  return {...best,focus:physical.focus,
+    cameraAnchor:physical.cameraAnchor,
+    yaw:(realYaw+2*Math.PI)%(2*Math.PI),
+    roomId:physical.roomId,occluded:physical.occluded,
+    fov:physical.fov,operatorPoint:{...operator.p}};
 }

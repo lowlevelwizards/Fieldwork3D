@@ -165,6 +165,9 @@ export class TacticalScene3D{
   readonly renderer:THREE.WebGLRenderer;
   readonly scene=new THREE.Scene();
   readonly camera=new THREE.OrthographicCamera(-320,320,370,-370,.1,2800);
+  /** Physically located inside the operator's room. Unlike the tactical
+   * orthographic camera, these rays cannot start outside the roof. */
+  private readonly directorCamera=new THREE.PerspectiveCamera(76,1,.45,2400);
   /** Replay-only perspective camera; default rendering stays orthographic. */
   readonly bodycamCamera=new THREE.PerspectiveCamera(95,1,.8,2800);
   private replayBodycam:BodycamSetting|null=null;
@@ -174,10 +177,18 @@ export class TacticalScene3D{
   private replayDirectorFocus:Pt|null=null;
   private replayDirectorSubjects:Pt[]=[];
   private replayDirectorCameraAnchor:Pt|null=null;
-  /** Only Director replay uses a physically close, in-room camera.
-   * Normal gameplay, manual orbit, top view and Bodycam are unchanged. */
-  setReplayDirectorCameraAnchor(p:Pt|null):void{
+  private replayDirectorLensFov=76;
+  private get physicalDirectorActive():boolean{
+    return !!this.replayDirectorCameraAnchor&&this.view.mode==='iso';
+  }
+  private get projectionCamera():THREE.Camera{
+    return this.physicalDirectorActive?this.directorCamera:this.camera;
+  }
+  /** A real replay-only camera with its own perspective lens. All manual,
+   * top-down, and tactical cameras retain their original limits. */
+  setReplayDirectorCameraAnchor(p:Pt|null,fov=76):void{
     this.replayDirectorCameraAnchor=p?{...p}:null;
+    this.replayDirectorLensFov=THREE.MathUtils.clamp(fov,66,105);
   }
   setReplayDirectorFocus(p:Pt|null):void{
     this.replayDirectorFocus=p?{...p}:null;
@@ -1677,32 +1688,28 @@ export class TacticalScene3D{
     this.currentElev=THREE.MathUtils.lerp(this.currentElev,targetElev,blend);
     if(Math.abs(this.currentElev-targetElev)<.0001)
       this.currentElev=targetElev;
-    const director=this.replayDirectorCameraAnchor&&this.view.mode==='iso'?
-      this.replayDirectorCameraAnchor:null;
-    this.target.set(this.view.focus.x,director?12:0,this.view.focus.y);
-    const angle=director?
-      Math.atan2(director.x-this.target.x,director.y-this.target.z):
-      this.view.yaw;
-    if(director){
-      const planar=Math.hypot(director.x-this.target.x,
-        director.y-this.target.z);
-      // A low shoulder-height actual camera, not the old imaginary
-      // 1,200-unit orthographic orbit outside the building. Limit camera
-      // height under ordinary interiors even on long sightlines.
-      const lift=Math.min(24,Math.max(5,
-        planar*Math.tan(Math.max(.12,this.currentElev))));
-      this.camera.position.set(director.x,this.target.y+lift,director.y);
-    }else{
-      const radius=1200;
-      this.camera.position.set(
-        this.target.x+radius*Math.cos(this.currentElev)*Math.sin(angle),
-        this.target.y+radius*Math.sin(this.currentElev),
-        this.target.z+radius*Math.cos(this.currentElev)*Math.cos(angle));
-    }
-    // Fixed map-facing 'north' avoids the top-down up-vector singularity.
-    // Right = positive X at yaw 0; orbit never flips at 90-degree pitch.
+    this.target.set(this.view.focus.x,0,this.view.focus.y);
+    const angle=this.view.yaw;
+    const radius=1200;
+    this.camera.position.set(
+      this.target.x+radius*Math.cos(this.currentElev)*Math.sin(angle),
+      this.target.y+radius*Math.sin(this.currentElev),
+      this.target.z+radius*Math.cos(this.currentElev)*Math.cos(angle));
     this.camera.up.set(-Math.sin(angle),0,-Math.cos(angle));
     this.camera.lookAt(this.target);
+    if(this.physicalDirectorActive){
+      const anchor=this.replayDirectorCameraAnchor!;
+      // Shoulder-height crew member; below the 56-unit wall and 59-unit
+      // roof. The actual perspective camera stays in the occupied room.
+      this.directorCamera.position.set(anchor.x,28,anchor.y);
+      this.directorCamera.up.set(0,1,0);
+      this.directorCamera.lookAt(
+        this.view.focus.x,21,this.view.focus.y);
+      this.directorCamera.aspect=this.width/this.height;
+      this.directorCamera.fov=this.replayDirectorLensFov;
+      this.directorCamera.updateProjectionMatrix();
+      this.directorCamera.updateMatrixWorld(true);
+    }
     const aspect=this.width/this.height;
     const bounds=activeWorldBounds();
     const diagonal=Math.hypot(bounds.maxX-bounds.minX,
@@ -1733,14 +1740,14 @@ export class TacticalScene3D{
   screenToWorld(sx:number,sy:number):Pt|null{
     if(this.view.mode==='plan2d')return null;
     const ndc=new THREE.Vector2(sx/this.width*2-1,1-sy/this.height*2);
-    this.ray.setFromCamera(ndc,this.camera);
+    this.ray.setFromCamera(ndc,this.projectionCamera);
     const p=new THREE.Vector3();
     if(!this.ray.ray.intersectPlane(this.pickPlane,p))return null;
     if(!Number.isFinite(p.x)||!Number.isFinite(p.z))return null;
     return {x:p.x,y:p.z};
   }
   project(p:Pt,y=4):Pt{
-    const world=v(p,y).project(this.camera);
+    const world=v(p,y).project(this.projectionCamera);
     return {x:(world.x+1)*this.width/2,
       y:(1-world.y)*this.height/2};
   }
@@ -1878,10 +1885,11 @@ export class TacticalScene3D{
     // An operator physically standing in a room can still read that room's
     // structure even when their viewing cone is pointed at one corner.
     const occupiedRoomIds=new Set(occupiedFogRooms(s).map(room=>room.id));
-    // Tactical roof cutaways must NOT follow the camera indoors. The
-    // first-person view needs a true, two-sided ceiling for known rooms.
+    // Director is also a physical observer: visible occupied rooms have
+    // actual, opaque ceilings rather than X-ray cutaway roof slots.
+    const physicalDirector=this.physicalDirectorActive&&!bodycamAudition;
     if(this.roofMaterial){
-      const opaque=bodycamAudition;
+      const opaque=bodycamAudition||physicalDirector;
       if(this.roofMaterial.transparent===opaque){
         this.roofMaterial.transparent=!opaque;
         this.roofMaterial.depthWrite=opaque;
@@ -1891,7 +1899,8 @@ export class TacticalScene3D{
     }
     for(const [id,roof] of this.roofGroups){
       const known=spatialSurfaceState(s,'room',id,omniscient)!=='unknown';
-      roof.visible=bodycamAudition?known:
+      roof.visible=physicalDirector?(known||occupiedRoomIds.has(id)):
+        bodycamAudition?known:
         roofShouldShow(omniscient,known,occupiedRoomIds.has(id));
     }
     for(const item of this.intelSurfaces){
@@ -1899,9 +1908,13 @@ export class TacticalScene3D{
         item.index,omniscient)!=='unknown';
       // Physically blocking structural WALLS never disappear in a POV.
       // Only decorative/cover meshes use recorded personal ground memory.
-      item.obj.visible=item.kind==='cover'?
-        personalCoverVisible(squadKnown,bodycamAudition,personalGroundEvidence,
-          s.coverState[item.index]??null):squadKnown;
+      // This is not omniscient actor knowledge: these are actual opaque
+      // walls physically surrounding the in-room camera. Leaving them
+      // missing would make even a perspective shot see through the map.
+      item.obj.visible=item.kind==='wall'&&physicalDirector?true:
+        item.kind==='cover'?
+          personalCoverVisible(squadKnown,bodycamAudition,personalGroundEvidence,
+            s.coverState[item.index]??null):squadKnown;
     }
     // Unlike the room's floor, decorative props must be individually
     // seen (or remembered at their own position) before they are rendered.
@@ -1919,7 +1932,7 @@ export class TacticalScene3D{
     }
     // Director cuts walls around its actual historical friendly focal group,
     // rather than a potentially unrelated manually selected soldier.
-    const fromCamera=this.camera.position.clone().sub(this.target);
+    const fromCamera=this.projectionCamera.position.clone().sub(this.target);
     const pawn=this.replayDirectorFocus??
       team(s).find(a=>a.id===selected&&a.health>0)?.p;
     const subjects=this.replayDirectorSubjects.length?
@@ -1927,13 +1940,13 @@ export class TacticalScene3D{
     const maxCutDistance=Math.max(40,Math.min(150,
       90/Math.tan(Math.max(.38,this.view.pitch))));
     for(const wall of this.walls){
-      const cut=!bodycamAudition&&this.view.mode==='iso'&&
+      const cut=!bodycamAudition&&!physicalDirector&&this.view.mode==='iso'&&
         subjects.some(subject=>wallOccludesFriendly(
           wall.segment,subject,{x:fromCamera.x,y:fromCamera.z},maxCutDistance));
       // CUTAWAY never makes the whole building transparent. Only walls
       // between the camera and the selected friendly/Director subjects fade.
       // Historical knowledge and object visibility remain authoritative.
-      const opacity=bodycamAudition?1:transitionWallOpacity(
+      const opacity=bodycamAudition||physicalDirector?1:transitionWallOpacity(
         this.wallFade.get(wall.mesh)??1,cut,dt,
         this.replayXrayOn?0.19:0.38);
       this.wallFade.set(wall.mesh,opacity);
@@ -1955,7 +1968,8 @@ export class TacticalScene3D{
     for(const door of s.doors){
       const object=this.doors.get(door.id);
       if(!object)continue;
-      object.root.visible=spatialSurfaceState(s,'door',door.id,omniscient)!=='unknown';
+      object.root.visible=physicalDirector||
+        spatialSurfaceState(s,'door',door.id,omniscient)!=='unknown';
       this.staticBatches.setVisible(object.root,object.root.visible);
       // Personal review uses the LAST individually observed leaf state.
       // An unseen opening/kick cannot magically update this perspective.
@@ -2430,7 +2444,7 @@ export class TacticalScene3D{
     const markDraw=this.impactDecalMesh;
     // The intentionally translucent wall cutaway never reveals stains
     // that are physically on the far side of a full-height wall.
-    this.camera.getWorldDirection(this.groundMarkTowardCamera).negate();
+    this.projectionCamera.getWorldDirection(this.groundMarkTowardCamera).negate();
     let markCount=0;
     for(const mark of s.impactMarks){
       if(replayDisclosurePolicy?.mode==='operator')continue;
@@ -2599,7 +2613,7 @@ export class TacticalScene3D{
     // Read from the already posed historical rig. No additional animation
     // tick, physics, awareness query or mutable replay state is introduced.
     // The QA bodycam is never active without explicit personal disclosure.
-    let camera:THREE.Camera=this.camera;
+    let camera:THREE.Camera=this.projectionCamera;
     let cameraOwner:OperatorRig|null=null;
     if(bodycamAudition&&this.replayBodycam){
       const rig=this.actors.get(this.replayBodycam.actorId)?.physical;
