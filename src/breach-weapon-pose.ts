@@ -29,7 +29,7 @@ export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
   const base=GRIPS[id];
   // Classic weapon IDs use the same compact receiver/magwell hold.
   // Previously only modular builds brought the support palm inward.
-  return handling==='short'?{...base,supportX:Math.min(base.supportX,1.35)}:base;
+  return handling==='short'?{...base,supportX:Math.min(base.supportX,-3.0)}:base;
  }
  const a=resolveWeaponAssembly(configuration);
  // The low-ready grip is presentation-only, not a shot-time muzzle change.
@@ -43,7 +43,7 @@ export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
  const baseline=contact?supportContactAt(contact.support,.32):null;
  const supportX=low?Math.max(low.minSupportX,
    a.supportX-low.supportBack*w):
-   handling==='short'?Math.min(a.supportX,1.35):
+   handling==='short'?Math.min(a.supportX,-3.0):
    Math.max(a.supportX,baseline?.x??a.supportX);
  return {lengthScale:a.lengthScale,stockX:a.stockX,
   primaryX:a.primaryX,primaryY:a.primaryY,
@@ -136,10 +136,10 @@ export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
  * spikes. Only the winning solution becomes Three.js geometry.
  */
 export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
-  // Progressive short-stock: rotate one rigid firearm from the source hold
-  // around its torso contact, progressively moving the support palm to
-  // the near handguard/magwell. The elbow is solved independently from the
-  // interpolated wrist; neither hand is detached from the weapon transform.
+  // The short-stock butt is pulled BACK from the ordinary shoulder socket
+  // into an independent underarm/waist contact. Gradually lower the muzzle
+  // while moving the support palm back to the receiver/magwell. Both hands
+  // remain on the same rigid firearm; IK uses each interpolated wrist.
   if(input.handling==='short'&&input.shortCompression!==undefined){
     const q=clamp(input.shortCompression,0,1),t=q*q*(3-2*q);
     const clean={...input,shortCompression:undefined,
@@ -242,9 +242,8 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
         handlingProfile('ads',input.weapon).pitch)*blendAim;
     const physicalRoll=roll+(input.swayPitch??0);
     const sr=Math.sin(physicalRoll),cr=Math.cos(physicalRoll);
-    // Buttplate is the authority. Search only around an EXTERNAL shoulder
-    // contact, never around the old in-chest receiver midpoint. Keep tiny
-    // yaw variations to preserve the authoritative shot heading.
+    // The buttplate follows the selected contact: upper-chest for normal
+    // poses, right underarm beside the waist for SHORT. Aim yaw stays true.
     const normalPocket=lowReadyPocket(stockPocket(mode,input.armorPush),relaxed,
       mode==='low'?relaxedWeight:0);
     // Low-ready must use its own stock pocket even when live aimBlend=0.
@@ -279,10 +278,10 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
           const sx=contactPocket.x+dx-recoilX;
           const sy=contactPocket.y+recoilY;
           const sz=contactPocket.z+dz;
-          // Buttplate now nests into the outer padded chest contour. Hard
-          // lower limits still prevent tunnelling into the torso center;
-          // short-stock gets additional underarm clearance.
-          if(sz<(stockless?4.10:mode==='short'?4.65:4.55))continue;
+          // Ordinary firing stays against the front torso. Short-stock
+          // deliberately travels OUTSIDE its side to a separate underarm
+          // pocket, so the butt doesn't clip through a vest or ribs.
+          if(sz<(mode==='short'?7.6:stockless?4.10:4.55))continue;
           const px=sx+right[0],py=sy+right[1],pz=sz+right[2];
           const lx=sx+left[0],ly=sy+left[1],lz=sz+left[2];
           const rd=Math.hypot(px-1,py-4,pz-7);

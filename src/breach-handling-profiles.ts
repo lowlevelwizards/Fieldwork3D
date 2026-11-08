@@ -33,8 +33,10 @@ export const HANDLING_PROFILES:Record<Handling,HandlingProfile>={
     supportElbowFlare:.56,firingElbowFlare:.72,
     supportShoulderForward:.22,firingShoulderForward:.12,
     shoulderInward:.10},
-  short:{pitch:-.72,stockY:3.55,preferredBack:.9,
-    torsoLean:.025,torsoTurn:-.018,headPitch:0,headDrop:0,
+  // True underarm short-stock: butt to right ribs at waist, rearward
+  // pullback does most of the clearance work. Only a modest barrel dip.
+  short:{pitch:-.26,stockY:-4.65,preferredBack:6.0,
+    torsoLean:.028,torsoTurn:-.018,headPitch:0,headDrop:0,
     shoulderLift:-.08,pelvisShift:.08,elbowTuck:.68,stanceCompression:.18,
     supportElbowFlare:.48,firingElbowFlare:.74,
     supportShoulderForward:.22,firingShoulderForward:.26,
