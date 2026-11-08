@@ -249,7 +249,7 @@ export function selectDirectorEditorialShot(
   // the featured observer and their line of sight, not four backpacks.
   const optional=discoveryStrength>0?[]:
     secondary.map(a=>({...a.p}));
-  if(kind==='follow'&&i&&i.route.length>1){
+  if(kind==='follow'&&i&&i.route.length>1&&discoveryStrength===0){
     const lead=i.route.find(p=>distance(p,primary!.p)>25);
     if(lead)optional.push({...lead});
   }
