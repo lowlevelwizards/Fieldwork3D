@@ -173,6 +173,12 @@ export class TacticalScene3D{
   private replayXrayOn=false;
   private replayDirectorFocus:Pt|null=null;
   private replayDirectorSubjects:Pt[]=[];
+  private replayDirectorCameraAnchor:Pt|null=null;
+  /** Only Director replay uses a physically close, in-room camera.
+   * Normal gameplay, manual orbit, top view and Bodycam are unchanged. */
+  setReplayDirectorCameraAnchor(p:Pt|null):void{
+    this.replayDirectorCameraAnchor=p?{...p}:null;
+  }
   setReplayDirectorFocus(p:Pt|null):void{
     this.replayDirectorFocus=p?{...p}:null;
     if(!p)this.replayDirectorSubjects=[];
@@ -1671,13 +1677,26 @@ export class TacticalScene3D{
     this.currentElev=THREE.MathUtils.lerp(this.currentElev,targetElev,blend);
     if(Math.abs(this.currentElev-targetElev)<.0001)
       this.currentElev=targetElev;
-    this.target.set(this.view.focus.x,0,this.view.focus.y);
+    const director=this.replayDirectorCameraAnchor&&this.view.mode==='iso'?
+      this.replayDirectorCameraAnchor:null;
+    this.target.set(this.view.focus.x,director?12:0,this.view.focus.y);
     const angle=this.view.yaw;
-    const radius=1200;
-    this.camera.position.set(
-      this.target.x+radius*Math.cos(this.currentElev)*Math.sin(angle),
-      this.target.y+radius*Math.sin(this.currentElev),
-      this.target.z+radius*Math.cos(this.currentElev)*Math.cos(angle));
+    if(director){
+      const planar=Math.hypot(director.x-this.target.x,
+        director.y-this.target.z);
+      // A low shoulder-height actual camera, not the old imaginary
+      // 1,200-unit orthographic orbit outside the building. Limit camera
+      // height under ordinary interiors even on long sightlines.
+      const lift=Math.min(24,Math.max(5,
+        planar*Math.tan(Math.max(.12,this.currentElev))));
+      this.camera.position.set(director.x,this.target.y+lift,director.y);
+    }else{
+      const radius=1200;
+      this.camera.position.set(
+        this.target.x+radius*Math.cos(this.currentElev)*Math.sin(angle),
+        this.target.y+radius*Math.sin(this.currentElev),
+        this.target.z+radius*Math.cos(this.currentElev)*Math.cos(angle));
+    }
     // Fixed map-facing 'north' avoids the top-down up-vector singularity.
     // Right = positive X at yaw 0; orbit never flips at 90-degree pitch.
     this.camera.up.set(-Math.sin(angle),0,-Math.cos(angle));
