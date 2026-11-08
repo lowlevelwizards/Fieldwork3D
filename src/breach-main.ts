@@ -385,6 +385,8 @@ const ui={
   replaySpeedRange:el<HTMLInputElement>('replaySpeedRange'),
   replaySpeedValue:el<HTMLOutputElement>('replaySpeedValue'),
   replayRailToggle:el<HTMLButtonElement>('replayRailToggle'),
+  replayOverlayTrigger:el<HTMLButtonElement>('replayOverlayTrigger'),
+  replayOverlayChoices:el<HTMLElement>('replayOverlayChoices'),
   replaySpeedChoices:el<HTMLElement>('replaySpeedChoices'),
   replayPlay:el<HTMLButtonElement>('replayPlay'),
   replayBack:el<HTMLButtonElement>('replayBack'),
@@ -5043,13 +5045,47 @@ function setReplayMomentsView(view:'highlights'|'events'):void{
   if(active)renderReplayEventFeed();
 }
 let replayDockCollapsed=false;
-type ReplayChoiceKey='view'|'sight'|'speed';
+type ReplayChoiceKey='view'|'sight'|'speed'|'overlay';
 const replayChoices={
   view:{trigger:ui.replayViewTrigger,menu:ui.replayViewChoices},
   sight:{trigger:ui.replaySightTrigger,menu:ui.replaySightChoices},
-  speed:{trigger:ui.replaySpeedTrigger,menu:ui.replaySpeedChoices}
+  speed:{trigger:ui.replaySpeedTrigger,menu:ui.replaySpeedChoices},
+  overlay:{trigger:ui.replayOverlayTrigger,menu:ui.replayOverlayChoices}
 };
 let replayRailCollapsed=false;
+let replayOverlaySignature='';
+/** One fast signature gate: replay transport refreshes every frame; overlay
+ * controls should update only when a visibility preference changes. */
+function syncReplayOverlayChoices():void{
+  const signature=[
+    replayNameTags,replayContactMarkers,
+    replayPlanScope,replayObjectiveMarkers].join('|');
+  if(signature===replayOverlaySignature)return;
+  replayOverlaySignature=signature;
+  const states:Record<string,boolean>={
+    names:replayNameTags,contacts:replayContactMarkers,
+    plans:replayPlanScope!=='none',objectives:replayObjectiveMarkers};
+  for(const button of ui.replayOverlayChoices
+    .querySelectorAll<HTMLButtonElement>('[data-overlay-choice]')){
+    const key=button.dataset.overlayChoice??'';
+    if(!(key in states))continue;
+    const value=states[key];
+    button.textContent=key.toUpperCase()+' '+(value?'ON':'OFF');
+    button.setAttribute('aria-pressed',String(value));
+  }
+  const cleared=Object.values(states).every(v=>!v);
+  ui.replayOverlayTrigger.dataset.cleared=String(cleared);
+  ui.replayOverlayTrigger.title=cleared?'Show replay overlays':
+    'Show or hide replay overlays';
+}
+function clearReplayPresentation():void{
+  replayPreset='custom';
+  replayNameTags=false;replayContactMarkers=false;
+  replayPlanScope='none';replayObjectiveMarkers=false;
+  replayAnalysis=false;replayTraceMode='off';
+  replayGhostMode='off';replayTrailMode='off';
+  replayGroundLensOn=false;selectedReplayShotId=null;
+}
 function setReplayRailCollapsed(collapsed:boolean):void{
   replayRailCollapsed=collapsed;
   closeReplayChoices();
@@ -5116,7 +5152,7 @@ function toggleReplayPanel(surface:Exclude<ReplaySurface,'none'>,
 function applyReplayPreset(next:Exclude<ReplayPreset,'custom'>):void{
   replayPreset=next;
   if(next==='clean'){
-    replayAnalysis=false;replayPlanScope='none';replayTraceMode='off';replayGhostMode='off';replayTrailMode='off';
+    clearReplayPresentation();
   }else if(next==='movement'){
     replayAnalysis=true;replayPlanScope='selected';replayPlanVersion='active';
     replayTraceMode='off';replayGhostMode='off';replayTrailMode='recent';
@@ -5194,7 +5230,26 @@ function updateReplayHud(){
   ui.replaySpeedRange.style.setProperty('--speed-progress',
     (speedIndex(replayRate)/(REPLAY_SPEED_STOPS.length-1)*100)+'%');
   ui.replaySpeedValue.textContent=replayRate+'×';
-  for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-speed-choice]')){
+  for(const b of ui.replayOverlayChoices
+  .querySelectorAll<HTMLButtonElement>('[data-overlay-choice]')){
+  b.addEventListener('click',()=>{
+    const choice=b.dataset.overlayChoice;
+    replayPreset='custom';
+    if(choice==='names')replayNameTags=!replayNameTags;
+    else if(choice==='contacts')replayContactMarkers=!replayContactMarkers;
+    else if(choice==='plans')replayPlanScope=
+      replayPlanScope==='none'?'selected':'none';
+    else if(choice==='objectives')replayObjectiveMarkers=!replayObjectiveMarkers;
+    else if(choice==='clear')clearReplayPresentation();
+    else if(choice==='show'){
+      replayNameTags=true;replayContactMarkers=true;
+      replayPlanScope='selected';replayObjectiveMarkers=true;
+    }
+    updateReplayHud();
+    if(choice==='clear'||choice==='show')closeReplayChoices();
+  });
+}
+for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-speed-choice]')){
     b.disabled=replayQuickVideo.active;
     b.setAttribute('aria-pressed',String(Number(b.dataset.speedChoice)===replayRate));
   }
@@ -5332,6 +5387,7 @@ function updateReplayHud(){
   ui.replayPlans.textContent='PLANS '+replayPlanScope.toUpperCase();
   ui.replayPlanVersion.textContent='PLAN '+replayPlanVersion.toUpperCase();
   ui.replayNames.textContent=replayNameTags?'NAMES ON':'NAMES OFF';
+  syncReplayOverlayChoices();
   ui.replayTraces.textContent='TRACES '+replayTraceMode.toUpperCase();
   ui.replayGhosts.textContent='GHOSTS '+replayGhostMode.toUpperCase();
   ui.replayTrails.textContent='ACTUAL PATH '+replayTrailMode.toUpperCase();
@@ -5458,7 +5514,9 @@ function enterReplay(){
   
   replayBookmarks=[];replayBookmarkCounter=0;
   replayPlanScope='none';replayPlanVersion='active';
-  replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
+  replayNameTags=true;replayContactMarkers=true;
+  replayObjectiveMarkers=true;replayOverlaySignature='';
+  replayTraceMode='off';replayGhostMode='off';
   replayTrailMode='off';
   replayLoopIn=null;replayLoopOut=null;replayLoopEnabled=false;
   replayPreset='clean';replayMomentsView='highlights';
