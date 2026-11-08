@@ -4,6 +4,7 @@ import {SKILL_NAMES} from './campaign-state.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import type {MagazineItem} from './breach-magazines.ts';
 import {readPersistentMagazines,readLoadedMagazineId} from './equipment-magazine-persistence.ts';
+import {fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
 export type OperatorPerformance={
  id:string;shots:number;hits:number;pointShots:number;aimedShots:number;
  longHits:number;injuryStage:number;survived:boolean;
@@ -34,11 +35,14 @@ export function progressOperator(o:CampaignOperator,p:OperatorPerformance,
   skills[key]=clamp(skills[key]+delta,.2,.95);
   if(actual>0)gains[key]=actual;
  }
- const magazines=readPersistentMagazines(o.id,o.weapon,p.reserve,p.spareMagazines);
+ const reserve=clamp(p.reserve,0,300);
+ const raw=readPersistentMagazines(o.id,o.weapon,reserve,p.spareMagazines,300);
+ const fitted=fitMagazineInventory(o.id,o.weapon,o.weaponConfiguration,
+  clamp(p.magazine,0,300),reserve,raw);
  return {operator:{...o,skills:skills as ShootingSkills,experience:xp as ShootingSkills,
-  weapon:o.weapon,magazine:clamp(p.magazine,0,200),reserve:clamp(p.reserve,0,300),
-  magazines,loadedMagazineId:readLoadedMagazineId(o.id,o.weapon,
-   p.loadedMagazineId,magazines),
+  weapon:o.weapon,...fitted,
+  loadedMagazineId:readLoadedMagazineId(o.id,o.weapon,
+   p.loadedMagazineId,fitted.magazines),
   shotsFired:o.shotsFired+p.shots,
   injuries:Math.max(o.injuries,p.injuryStage),
   recoveryDays:Math.max(o.recoveryDays>0?o.recoveryDays-1:0,
