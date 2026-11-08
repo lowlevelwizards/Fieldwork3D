@@ -955,7 +955,6 @@ let replayDirectorFilmBeats:DirectorFilmBeat[]=[];
 let replayDirectorStoryboard:ReplayDirectorStoryboard|null=null;
 const replayDirectorScheduler=new ReplayDirectorScheduler();
 let replayDirectorTarget:DirectorShot|null=null;
-let replayDirectorEvaluatedAt=-Infinity;
 let replayPlanScope:'all'|'selected'|'none'='selected';
 let replayPlanVersion:'active'|'original'='active';
 let replayNameTags=true;
@@ -4356,7 +4355,7 @@ function seekReplay(t:number){
   stopReplaySounds();
   replayTime=Math.max(0,Math.min(recorder.duration,t));
   replayDirectorScheduler.reset();replayDirectorTarget=null;
-  replayDirectorEvaluatedAt=-Infinity;
+  
   stage?.resetReplayBodycamSmoothing();
   applyReplayFrameAt(replayTime);advanceReplayCamera(0,true);
   if(!ui.replayFeed.hidden)renderReplayEventFeed();
@@ -4671,7 +4670,7 @@ function rebuildReplayEventIndex():void{
       });
   },{step:.8,maxCache:96});
   replayDirectorScheduler.reset();replayDirectorTarget=null;
-  replayDirectorEvaluatedAt=-Infinity;
+  
   replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
   replayIncidents=indexReplayIncidents(replayEventIndex.all,recorder.duration);
   replayFeaturedIncidents=featuredReplayIncidents(replayIncidents,5);
@@ -4689,7 +4688,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
   if(replayCameraMode==='director'){
     const target=replayDirectorStoryboard?.sample(replayTime)??null;
     replayDirectorTarget=target;
-    replayDirectorEvaluatedAt=replayTime;
+    
     if(!target){
       stage.setReplayDirectorCameraAnchor(null);
       return;
@@ -5222,7 +5221,7 @@ function enterReplay(){
   replayCameraMode='free';replayDirectorCues=[];
   replayDirectorPlanIndex=buildDirectorPlanIndex(recorder.plans.revisions);
   replayDirectorFuture=[];replayDirectorTarget=null;
-  replayDirectorEvaluatedAt=-Infinity;replayDirectorScheduler.reset();
+  replayDirectorScheduler.reset();
   replayBookmarks=[];replayBookmarkCounter=0;
   replayPlanScope='none';replayPlanVersion='active';
   replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
@@ -5289,7 +5288,7 @@ function exitReplay(){
   replayDirectorPlanIndex=new Map();replayDirectorFuture=[];
   replayDirectorFilmBeats=[];replayDirectorStoryboard=null;
   stage?.setReplayDirectorCameraAnchor(null);
-  replayDirectorTarget=null;replayDirectorEvaluatedAt=-Infinity;
+  replayDirectorTarget=null;
   replayDirectorScheduler.reset();
   replayChapters=[];replayBookmarks=[];
   replayIncidents=[];replayFeaturedIncidents=[];
@@ -5852,7 +5851,7 @@ ui.replayDirectDirector.addEventListener('click',()=>{
   if(viewMode!=='iso'&&stage)cameraMode('iso');
   replayCameraMode=replayCameraMode==='director'?'free':'director';
   replayFollow=false;
-  replayDirectorTarget=null;replayDirectorEvaluatedAt=-Infinity;
+  replayDirectorTarget=null;
   replayDirectorScheduler.reset();
   advanceReplayCamera(1/60,false);updateReplayHud();
 });
