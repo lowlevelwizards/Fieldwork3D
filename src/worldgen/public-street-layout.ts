@@ -14,6 +14,8 @@ export type StreetRect={x:number;y:number;width:number;depth:number};
 export type PublicStreet={
  road:StreetRect;
  sidewalk:StreetRect|null;
+ /** Actual sidewalk slabs, split only where a vehicular curb cut slopes. */
+ sidewalkPieces:StreetRect[];
  approach:StreetRect|null;
  curb:StreetRect[];
  curbRamp:StreetRect|null;
@@ -65,6 +67,7 @@ export function planPublicStreet(site:StreetSite):PublicStreet|null{
  const approach=spanAccess>5?rect(alongAt,22,
    (start+end)/2,spanAccess):null;
  const curb:StreetRect[]=[];
+ const sidewalkPieces:StreetRect[]=[];
  let curbRamp:StreetRect|null=null;
  if(sidewalk){
    const boundary=border-sign*(roadWidth+1.2);
@@ -80,12 +83,30 @@ export function planPublicStreet(site:StreetSite):PublicStreet|null{
      const right=(along+half)-(alongAt+cut/2);
      if(left>4)curb.push(rect(along-half+left/2,left,boundary,2.6));
      if(right>4)curb.push(rect(alongAt+cut/2+right/2,right,boundary,2.6));
-     curbRamp=rect(alongAt,cut,boundary-sign*3.4,7);
+     // Remove the same portion from the flat sidewalk. Otherwise a
+     // supposed ramp is buried under a full-height slab during replay.
+     if(sidewalk){
+       const sidewalkL=vertical?sidewalk.width:sidewalk.depth;
+       const stripHalf=sidewalkL/2;
+       const leftLength=(alongAt-cut/2)-(along-stripHalf);
+       const rightLength=(along+stripHalf)-(alongAt+cut/2);
+       if(leftLength>2)sidewalkPieces.push(
+         rect(along-stripHalf+leftLength/2,leftLength,
+           sidewalkCenter,sidewalkWidth));
+       if(rightLength>2)sidewalkPieces.push(
+         rect(alongAt+cut/2+rightLength/2,rightLength,
+           sidewalkCenter,sidewalkWidth));
+     }
+     // Full-width ramp reaches from the building-side footway down to the
+     // carriageway; only render presentation changes, never motor geometry.
+     curbRamp=rect(alongAt,cut,sidewalkCenter+sign*1,
+       sidewalkWidth+2);
    }else{
      curb.push(rect(along,span,boundary,2.6));
    }
+   if(sidewalk&&!sidewalkPieces.length)sidewalkPieces.push(sidewalk);
  }
- return {road,sidewalk,approach,curb,curbRamp,entry};
+ return {road,sidewalk,sidewalkPieces,approach,curb,curbRamp,entry};
 }
 /** No exterior obstacle may be authored into a public carriageway. For
  * existing replay maps this is not applied retroactively.
