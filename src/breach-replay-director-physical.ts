@@ -50,7 +50,7 @@ const segmentDistance=(p:PhysicalPoint,a:PhysicalPoint,b:PhysicalPoint)=>{
  * gaps. Glazed doors remain optically permeable, but camera rigs cannot
  * occupy the door opening. */
 const closedDoors=(scene:PhysicalDirectorScene)=>scene.doors?.filter(d=>
-  !d.open&&(d.openFraction??0)<.7&&
+  (d.openFraction!==undefined?d.openFraction<.8:!d.open)&&
   !['glazed','french','screen','mesh-gate'].includes(d.style??''))??[];
 export function directorLineBlocked(a:PhysicalPoint,b:PhysicalPoint,
   scene:PhysicalDirectorScene,checkDoors=true):boolean{
