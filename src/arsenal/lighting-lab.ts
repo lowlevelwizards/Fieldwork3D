@@ -6,17 +6,25 @@ import {DEFAULT_STUDIO_LIGHT_LAB,effectiveStudioLightLab}
  from '../operator-studio-light-lab.ts';
 
 type NumericKey='celLow'|'rimAmount'|'rimWidth'|'rimCoverage'|
- 'rimFabricOpacity'|'rimSkinOpacity'|'lightAzimuth';
+ 'rimAngleLooseness'|'rimFabricWidth'|'rimFabricOpacity'|
+ 'rimFabricBacklight'|'rimSkinWidth'|'rimSkinOpacity'|
+ 'rimSkinBacklight'|'rimSkinWarmth'|'lightAzimuth';
 const numerical:readonly {
  key:NumericKey;label:string;min:number;max:number;step:number;
  suffix:string;factor:number
 }[]=[
  {key:'celLow',label:'CEL SHADOW CUTOFF',min:.35,max:.9,step:.01,suffix:'%',factor:100},
- {key:'rimAmount',label:'HARD SURFACE OPACITY',min:0,max:1,step:.01,suffix:'%',factor:100},
- {key:'rimWidth',label:'GLINT THICKNESS',min:.5,max:2.5,step:.05,suffix:'%',factor:100},
+ {key:'rimAmount',label:'HARD GLINT OPACITY',min:0,max:1,step:.01,suffix:'%',factor:100},
+ {key:'rimWidth',label:'GLINT THICKNESS',min:1,max:4,step:.05,suffix:'%',factor:100},
  {key:'rimCoverage',label:'SINGLE-EDGE COVERAGE',min:.1,max:.8,step:.05,suffix:'%',factor:100},
- {key:'rimFabricOpacity',label:'CLOTH CREAM OPACITY',min:0,max:.5,step:.01,suffix:'%',factor:100},
- {key:'rimSkinOpacity',label:'SKIN WARMTH OPACITY',min:0,max:.6,step:.01,suffix:'%',factor:100},
+ {key:'rimAngleLooseness',label:'GLINT ANGLE WINDOW',min:.75,max:2,step:.05,suffix:'%',factor:100},
+ {key:'rimFabricWidth',label:'GEAR EDGE WIDTH',min:1,max:4,step:.05,suffix:'%',factor:100},
+ {key:'rimFabricOpacity',label:'GEAR CREAM OPACITY',min:0,max:.35,step:.01,suffix:'%',factor:100},
+ {key:'rimFabricBacklight',label:'GEAR BACKLIGHT BIAS',min:0,max:1.5,step:.05,suffix:'%',factor:100},
+ {key:'rimSkinWidth',label:'SKIN EDGE WIDTH',min:1,max:4,step:.05,suffix:'%',factor:100},
+ {key:'rimSkinOpacity',label:'SKIN EDGE OPACITY',min:0,max:.45,step:.01,suffix:'%',factor:100},
+ {key:'rimSkinBacklight',label:'SKIN BACKLIGHT BIAS',min:0,max:1.5,step:.05,suffix:'%',factor:100},
+ {key:'rimSkinWarmth',label:'SKIN WARMTH',min:.5,max:1.5,step:.05,suffix:'%',factor:100},
  {key:'lightAzimuth',label:'KEY LIGHT ORBIT',min:-180,max:180,step:5,suffix:'°',factor:1}
 ];
 export function mountArsenalLightingLab(host:HTMLElement,
