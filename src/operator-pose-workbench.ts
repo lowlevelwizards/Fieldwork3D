@@ -69,7 +69,8 @@ export function cloneWorkbenchPose(pose:WorkbenchPose):WorkbenchPose{
 export function weaponWorkbenchContacts(pose:WorkbenchPose,
  configuration?:WeaponConfiguration){
  const grip=weaponGrips(pose.weapon,configuration,'ready');
- const rotation=new THREE.Euler(...pose.weaponRotation.map(rads) as Vec3,'XYZ');
+ const rotation=new THREE.Euler(rads(pose.weaponRotation[0]),
+  rads(pose.weaponRotation[1]),rads(pose.weaponRotation[2]),'XYZ');
  const stock=vec(pose.targets.stock);
  const origin=stock.clone().sub(new THREE.Vector3(
   grip.stockX*grip.lengthScale,0,0).applyEuler(rotation));
@@ -96,7 +97,8 @@ export function snapWorkbenchHandsToGun(pose:WorkbenchPose,
 export function applyWorkbenchPose(rig:OperatorRig,pose:WorkbenchPose,
  configuration?:WeaponConfiguration):WorkbenchReport{
  const gun=weaponWorkbenchContacts(pose,configuration);
- rig.chest.rotation.set(...pose.torso.map(rads) as Vec3,'XYZ');
+ rig.chest.rotation.set(rads(pose.torso[0]),
+  rads(pose.torso[1]),rads(pose.torso[2]),'XYZ');
  rig.weapon.position.copy(gun.origin);
  rig.weapon.rotation.copy(gun.rotation);
  rig.weapon.scale.set(gun.lengthScale,1,1);
