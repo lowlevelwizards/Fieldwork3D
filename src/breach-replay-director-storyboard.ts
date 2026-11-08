@@ -237,8 +237,8 @@ export class ReplayDirectorStoryboard{
         this.physicalScene).readable)return false;
       const quality=directorCompositionQuality(prior.cameraAnchor,
         prior.focus,raw.operatorPoint,
-        raw.editorialKind==='engage'&&raw.requiredPoints.length>1?
-          raw.requiredPoints[1]:null,
+        raw.editorialKind==='engage'?
+          raw.contactTargetPoint??raw.requiredPoints[1]??null:null,
         raw.actionAxis??{x:1,y:0},raw.editorialKind,
         'ortho',this.aspect,this.baseSpan,prior.zoom,
         prior.fov??108,this.usableWidth,this.usableHeight,
@@ -261,8 +261,8 @@ export class ReplayDirectorStoryboard{
     if(!physical.readable)return false;
     const quality=directorCompositionQuality(prior.cameraAnchor,
       prior.focus,raw.operatorPoint,
-      raw.editorialKind==='engage'&&(raw.requiredPoints?.length??0)>1?
-        raw.requiredPoints![1]:null,
+      raw.editorialKind==='engage'?
+        raw.contactTargetPoint??raw.requiredPoints?.[1]??null:null,
       raw.actionAxis??{x:1,y:0},
       raw.editorialKind??'follow',
       'ortho',this.aspect,this.baseSpan,prior.zoom,
@@ -300,9 +300,13 @@ export class ReplayDirectorStoryboard{
     const covered=this.coversPrior(prior,raw);
     const establishedLegible=this.subjectLegible(prior,raw);
     const rawLegible=raw.subjectReadable!==false&&
-      raw.compositionQuality?.primaryReadable!==false;
+      raw.compositionQuality?.primaryReadable!==false&&
+      (!raw.contactTargetPoint||
+        raw.compositionQuality?.targetReadable===true);
     const verifiedRecovery=raw.subjectReadable===true&&
-      raw.compositionQuality?.primaryReadable!==false;
+      raw.compositionQuality?.primaryReadable!==false&&
+      (!raw.contactTargetPoint||
+        raw.compositionQuality?.targetReadable===true);
     const entering=!!raw.firstEntry&&raw.shotType==='entry';
     const residence=(index-(prior.sceneStartIndex??0))*this.step;
     const priorEvidence=this.raw(index-1);
@@ -477,6 +481,23 @@ export class ReplayDirectorStoryboard{
     const currentFov=prior.fov??108,desiredFov=raw.fov??108;
     const fov=currentFov+clamp(desiredFov-currentFov,
       -4*this.step/.8,6*this.step/.8);
+    if(raw.contactTargetPoint&&raw.operatorPoint){
+      // A tracking camera may drift back behind the shooter even if the
+      // raw physical shot was a perfect two-shot. Never advance a track
+      // which makes a previously visible enemy disappear behind the cast.
+      const tracked=directorCompositionQuality(cameraAnchor,focus,
+        raw.operatorPoint,raw.contactTargetPoint,
+        raw.actionAxis??{x:1,y:0},'engage','ortho',
+        this.aspect,this.baseSpan,zoom,fov,
+        this.usableWidth,this.usableHeight,this.safeFrame,
+        raw.foregroundOperatorPoints??[]);
+      if(!tracked.targetReadable&&this.coversPrior(prior,raw))
+        return {...raw,sceneStartIndex:prior.sceneStartIndex,
+          roomId:prior.roomId,cameraAnchor:prior.cameraAnchor,
+          focus:prior.focus,yaw:prior.yaw,zoom:prior.zoom,
+          fov:prior.fov??fov,pitch:prior.pitch,
+          cameraDecision:'hold:protect-contact-pair'};
+    }
     return {...raw,sceneStartIndex:prior.sceneStartIndex,
       roomId:prior.roomId,cameraAnchor,focus,
       yaw:(accurateYaw+2*Math.PI)%(2*Math.PI),

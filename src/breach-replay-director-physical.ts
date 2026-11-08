@@ -230,8 +230,11 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
   if(req.composition?.treatment==='engage'&&req.followDirection){
     const d=req.followDirection,n=Math.hypot(d.x,d.y)||1;
     const fx=d.x/n,fy=d.y/n;
-    for(const back of [54,72,90])for(const side of [-1,1])
-      for(const lateral of [22,34])add({
+    // A 15-unit shoulder offset produces the centered-backpack failure.
+    // Audition both genuine lateral shoulders and near-profile cameras.
+    // All positions still pass the same room/wall/leaf clearance gates.
+    for(const back of [18,42,66,88])for(const side of [-1,1])
+      for(const lateral of [36,54,74])add({
         x:req.operator.x-fx*back-fy*lateral*side,
         y:req.operator.y-fy*back+fx*lateral*side});
   }
@@ -322,9 +325,10 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     const dir=req.followDirection;
     const mag=dir?Math.hypot(dir.x,dir.y):0;
     const forward=dir&&mag>.01?{x:dir.x/mag,y:dir.y/mag}:null;
+    const lateral=req.composition?.treatment==='engage'?54:15;
     const ideal=forward?{
-      x:req.operator.x-forward.x*78-forward.y*15,
-      y:req.operator.y-forward.y*78+forward.x*15}:null;
+      x:req.operator.x-forward.x*78-forward.y*lateral,
+      y:req.operator.y-forward.y*78+forward.x*lateral}:null;
     const forwardOffset=forward?
       (p.x-req.operator.x)*forward.x+
       (p.y-req.operator.y)*forward.y:0;
@@ -382,14 +386,28 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
         // A seen hostile that vanishes behind ANY nearer teammate is not
         // a cinematic two-shot. Never award a point-only LOS victory.
         if(!targetVisible||!quality.targetReadable){
-          rankedScore-=1100;
+          rankedScore-=1450;
           proposal.targetVisible=false;
-        }else rankedScore+=240;
+          // When the room makes a true two-shot impossible, the least
+          // dishonest alternative still favors a lateral, separated
+          // view rather than straight down the backpack.
+          rankedScore+=Math.min(.3,quality.targetHorizontalGap)*350;
+        }else rankedScore+=380;
       }
       if(!quality.primaryReadable)rankedScore-=850;
-      rankedScore+=(quality.score-80)*2.6;
-      if(quality.shoulderReadable&&c.treatment==='engage')
-        rankedScore+=36;
+      rankedScore+=(quality.score-80)*3;
+      if(c.treatment==='engage'){
+        // Contact framing prefers shoulders with real lateral separation,
+        // not just a frontal muzzle and a point-coordinate behind it.
+        const d=req.followDirection;
+        if(d){
+          const delta={x:p.x-req.operator.x,y:p.y-req.operator.y};
+          const cross=Math.abs(d.x*delta.y-d.y*delta.x)/
+            Math.max(1,Math.hypot(d.x,d.y)*Math.hypot(delta.x,delta.y));
+          rankedScore-=Math.max(0,.43-cross)*600;
+        }
+        if(quality.shoulderReadable)rankedScore+=90;
+      }
     }
     candidates.push({score:rankedScore,view:proposal});
     if(rankedScore>score){score=rankedScore;best=proposal;}
@@ -434,14 +452,26 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
         Math.max(0,fg.furniture-.69)*120+
         Math.max(0,fg.subjectMask-.42)*95;
     }
-    const ranked=candidates.sort((a,b)=>b.score-a.score);
+    // Never let an unconvincing backpack view defeat a verified two-shot
+    // merely through generic follow-camera or visible-teammate rewards.
+    const clear=req.target&&req.composition.treatment==='engage'?
+      candidates.filter(c=>c.view.targetVisible&&
+        c.view.compositionQuality?.targetReadable&&
+        c.view.compositionQuality.primaryReadable):[];
+    const ranked=(clear.length?clear:candidates)
+      .sort((a,b)=>b.score-a.score);
     best=ranked[0]?.view??best;
     score=ranked[0]?.score??score;
   }
   // The camera rig is common to ORTHO and WIDE. Confirm the strongest
   // shots in real perspective before opting for one with a cropped cast.
   if(best&&req.requiredPoints?.length){
-    const ranked=candidates.sort((a,b)=>b.score-a.score);
+    const clear=req.target&&req.composition?.treatment==='engage'?
+      candidates.filter(c=>c.view.targetVisible&&
+        c.view.compositionQuality?.targetReadable&&
+        c.view.compositionQuality.primaryReadable):[];
+    const ranked=(clear.length?clear:candidates)
+      .sort((a,b)=>b.score-a.score);
     for(const proposal of ranked.slice(0,16)){
       if(proposal.score<score-200)break;
       if(directorPerspectiveCovers(proposal.view.cameraAnchor,
