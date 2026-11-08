@@ -49,7 +49,7 @@ float actorProtection(vec2 uv){
 float edgePreserve(vec4 center,vec4 sampleColor){
  vec3 delta=abs(center.rgb-sampleColor.rgb);
  float contrast=max(delta.r,max(delta.g,delta.b));
- return 1.0-band(.09,.22,contrast);
+ return 1.0-band(.16,.43,contrast);
 }
 void main(){
  float coverage=edgeMask(vUv)*actorProtection(vUv);

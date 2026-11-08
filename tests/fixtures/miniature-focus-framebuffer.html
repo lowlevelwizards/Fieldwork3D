@@ -29,7 +29,7 @@ const patch=new THREE.Mesh(new THREE.PlaneGeometry(95,95),
 patch.position.set(0,0,1);scene.add(patch);
 for(let i=0;i<9;i++){
  const stripe=new THREE.Mesh(new THREE.PlaneGeometry(4,130),
-   new THREE.MeshBasicMaterial({color:i%2?0xdabf81:0x102a2c,
+   new THREE.MeshBasicMaterial({color:i%2?0x98a99b:0x6f8c7e,
       toneMapped:false}));
  stripe.position.set(-185+i*9,375,3);
  scene.add(stripe);
