@@ -1838,6 +1838,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: R9.4 cinematic Director, blood, contacts and shot-hold critical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-r94-') }}
+        run: |
+          node --experimental-strip-types --test tests/replay-director-r94-cinematic.test.mjs tests/replay-director-r93-contact-offset.test.mjs tests/replay-director-r92-contact-stability.test.mjs tests/replay-director-r91-shot-integrity.test.mjs tests/replay-director-r8-editorial.test.mjs tests/replay-director-storyboard.test.mjs tests/replay-director-physical.test.mjs tests/breach-144b.test.mjs tests/breach-wall-confinement.test.mjs
+      - name: R9.4 release checkpoint — previous live Pages must match main
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-r94-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
