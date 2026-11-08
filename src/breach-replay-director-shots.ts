@@ -132,7 +132,8 @@ export function composeReplayDirectorShot(time:number,
   const safeHeight=clip(context.usableHeight??.77,.5,.9);
   const zoom=directorOrthoFittingZoom(physical.cameraAnchor,
     physical.focus,points,aspect,baseSpan,
-    safeWidth,safeHeight,Math.min(8,context.maxZoom??14),.81);
+    safeWidth,safeHeight,
+    Math.min(featured.length>2?7.4:8,context.maxZoom??14),.81);
   const yaw=Math.atan2(physical.cameraAnchor.x-physical.focus.x,
     physical.cameraAnchor.y-physical.focus.y);
   const tilt=Math.atan2(53-17,Math.max(1,
