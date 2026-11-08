@@ -113,3 +113,14 @@ test('short-stock and run keep both elbows forward/down without stretching',()=>
   }
  }finally{rig.dispose();}
 });
+
+test('classic weapons use a compact support grip on the same rigid gun',()=>{
+ for(const weapon of ['carbine','smg','rifle','shotgun']){
+  const fit=fitWeaponPose({weapon,handling:'short',yaw:0,recoil:0});
+  const grip=weaponGrips(weapon,undefined,'short');
+  const p=V(grip.supportX*grip.lengthScale,grip.supportY,-1.6)
+    .applyEuler(fit.rotation).add(fit.origin);
+  assert.ok(fit.support.distanceTo(p)<1e-6,weapon+' wrist detached');
+  assert.ok(grip.supportX<=1.35,weapon+' hand should fold in near the receiver');
+ }
+});
