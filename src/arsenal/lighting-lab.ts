@@ -32,6 +32,7 @@ export function mountArsenalLightingLab(host:HTMLElement,
  const heading=document.createElement('summary');
  heading.textContent='LIGHTING LAB · LIVE 3D';
  const body=document.createElement('div');body.className='arsenal-lighting-controls';
+ const dropdowns:HTMLSelectElement[]=[];
  const dropdown=(label:string,choices:readonly [string,string][],
   value:string,onValue:(value:string)=>void)=>{
   const wrap=document.createElement('label');wrap.textContent=label;
@@ -42,7 +43,7 @@ export function mountArsenalLightingLab(host:HTMLElement,
   }
   select.value=value;
   select.addEventListener('change',()=>{onValue(select.value);emit();});
-  wrap.append(select);body.append(wrap);return select;
+  wrap.append(select);body.append(wrap);dropdowns.push(select);return select;
  };
  dropdown('CEL SHADING',[['0','Original'],['2','2-band graphic']],
   String(settings.toon),value=>{
@@ -92,8 +93,12 @@ export function mountArsenalLightingLab(host:HTMLElement,
  reset.addEventListener('click',()=>{
   settings={...DEFAULT_STUDIO_LIGHT_LAB,toon:2,rim:'dual',gradient:'piece'};
   compareOriginal=false;
-  // Reset the complete control panel so its visible values match the renderer.
-  details.replaceWith(details);
+  // Reset visible selectors and sliders along with the live 3D material.
+  dropdowns[0].value=String(settings.toon);
+  dropdowns[1].value=settings.rim;
+  dropdowns[2].value=settings.gradient;
+  dropdowns[3].value=settings.shadow;
+  dropdowns[4].value=settings.rimDebugMask?'on':'off';
   for(const [key,input] of inputMap)input.value=String(settings[key]);
   refreshLabels();emit();
  });
