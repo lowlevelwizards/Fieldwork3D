@@ -4,7 +4,7 @@
  * hostile coordinate. Every caller uses the same story hierarchy.
  */
 import type {DirectorActor} from './breach-replay-cinematic-director.ts';
-import {directorIntentGroup,type DirectorIntent,
+import {type DirectorIntent,
   type DirectorDoorAnchor} from './breach-replay-director-intent.ts';
 import type {DirectorFutureCue} from './breach-replay-director-events.ts';
 import type {DirectorFilmBeat} from './breach-replay-director-film.ts';
@@ -42,14 +42,13 @@ function direction(actor:DirectorActor,intent?:DirectorIntent):Point{
     x:Math.cos(actor.heading??0),y:Math.sin(actor.heading??0)});
 }
 export function selectDirectorEditorialShot(
-  time:number,actors:readonly DirectorActor[],e:DirectorEditorialEvidence
+  _time:number,actors:readonly DirectorActor[],e:DirectorEditorialEvidence
 ):DirectorEditorialShot|null{
   const friends=actors.filter(a=>a.side==='blue'&&a.health>0&&
     Number.isFinite(a.p.x)&&Number.isFinite(a.p.y));
   if(!friends.length)return null;
   const byId=(id:string|null|undefined)=>friends.find(a=>a.id===id);
   const intent=(id:string)=>e.intents.find(i=>i.actorId===id);
-  const doorGroup=directorIntentGroup(e.intents);
   const doorIntents=e.intents.filter(i=>i.door&&
     i.door.distance<105&&
     ['approach','stack','breach','entry'].includes(i.kind));
@@ -180,7 +179,7 @@ export function selectDirectorEditorialShot(
     (kind==='door'||kind==='entry')?(door?.mid??target):null;
   if(mandatory)required.push({...mandatory});
   const optional=secondary.map(a=>({...a.p}));
-  if(kind==='follow'&&i?.route.length>1){
+  if(kind==='follow'&&i&&i.route.length>1){
     const lead=i.route.find(p=>distance(p,primary!.p)>25);
     if(lead)optional.push({...lead});
   }
