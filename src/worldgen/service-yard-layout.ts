@@ -7,7 +7,8 @@ import type {Pt} from '../breach-core.ts';
 import {planRearServiceMarks} from './rear-service-program.ts';
 export const SERVICE_EDGE_FIXTURES=new Set([
  'utility-cabinet','dumpster','shipping-container','crate','pallet','rack',
- 'recycling-bin','supply-cart','storage-tote','trash-bag','step-ladder'
+ 'recycling-bin','supply-cart','storage-tote','trash-bag','step-ladder',
+ 'screened-dumpster'
 ]);
 export function serviceYardEdgeCandidates(
  zone:ExteriorZone,w:number,h:number,fixture?:string):Pt[]{
@@ -39,7 +40,7 @@ export function serviceYardEdgeCandidates(
  if(fixture){
    const work=planRearServiceMarks([zone]);
    const use=fixture==='utility-cabinet'?'maintenance-bay':
-     ['dumpster','recycling-bin','trash-bin','trash-bag'].includes(fixture)?
+     ['dumpster','screened-dumpster','recycling-bin','trash-bin','trash-bag'].includes(fixture)?
        'waste-collection':'loading-zone';
    const target=work.find(m=>m.kind===use)??work.find(m=>
      m.kind===('maintenance-bay' as const))??work.find(m=>m.kind==='loading-zone');

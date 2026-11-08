@@ -49,7 +49,10 @@ export function addExteriorProperty(site:Site,seed:number):Site{
   const thickness=Math.min(maxLength,Math.max(24,gap-18));
   // Arrival pavement starts at the facade, not floating halfway across
   // a deep setback; the actual public door must meet its outside approach.
-  const nearFacade=id==='arrival-forecourt';
+  // Industrial rear service yards must touch the rear facade, not float
+  // halfway across the open property where a loading door cannot reach.
+  const nearFacade=id==='arrival-forecourt'||
+    (id==='rear-property'&&zoneKind==='service');
   const inset=7;
   const c=side==='north'?minY-(nearFacade?thickness/2+inset:gap/2):
     side==='south'?maxY+(nearFacade?thickness/2+inset:gap/2):
@@ -100,26 +103,32 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    // Current vehicle models are intentionally retired from generated maps
    // until their silhouettes, scale, and parking semantics are rebuilt.
    // Parking areas read as genuinely empty bays, not random cover walls.
-   parking:['parking-sign','bollard','bike-rack','public-bench','planter'],
+   parking:['parking-sign','bollard','bike-rack','public-bench',
+      'planter','vending-machine','wayfinding-sign','street-lamp','hydrant'],
    driveway:residential?['mailbox','trash-bin','shrub-round']:
-     ['bollard','parking-sign','planter'],
-   service:industrial?['utility-cabinet','dumpster','recycling-bin','storage-tote',
+     ['bollard','parking-sign','planter','street-lamp'],
+   service:industrial?['utility-cabinet','dumpster','screened-dumpster',
+      'recycling-bin','storage-tote',
       'bollard','crate','shipping-container','trash-bin','supply-cart']:
-     ['dumpster','recycling-bin','trash-bin','supply-cart','bike-rack','planter'],
+     ['dumpster','screened-dumpster','recycling-bin','trash-bin',
+       'supply-cart','bike-rack','planter'],
    patio:kind==='restaurant'?
       ['patio-chair','picnic-table','public-bench','planter','trash-bin']:
       ['planter','patio-chair','bike-rack','trash-bin','grill'],
    garden:residential?['tree-broadleaf','shrub-round','shrub-tall',
       'picnic-table','shed','grill']:['planter','shrub-tall','picnic-table'],
    yard:residential?['tree-broadleaf','tree-scrub','shrub-round',
-      'shrub-tall','trash-bin']:
-     ['planter','shrub-tall','bollard','trash-bin'],
+      'shrub-tall','trash-bin','hydrant','street-lamp']:
+     ['planter','shrub-tall','bollard','trash-bin','wayfinding-sign',
+       'vending-machine','street-lamp','hydrant'],
  };
  const cover=site.cover.slice();
  const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
  for(const zone of zones){
   const count=zone.id.startsWith('court-')?0:
-    zone.kind==='garden'?3:zone.kind==='yard'?2:2;
+    zone.kind==='garden'?3:
+    zone.kind==='parking'?3:
+    zone.kind==='yard'&&zone.id==='arrival-forecourt'&&!residential?3:2;
   for(let i=0;i<count;i++){
    // Props must belong to the authored land-use zone, not to a generic
    // "outside" bucket. No legacy car family is eligible for new maps.
@@ -133,7 +142,8 @@ export function addExteriorProperty(site:Site,seed:number):Site{
      parking:kind==='clinic'?'public-bench':'parking-sign',
      driveway:industrial?'bollard':
        residential?'mailbox':'planter',
-     service:industrial?'utility-cabinet':'dumpster',
+     service:industrial?(seed%4===0?'screened-dumpster':'utility-cabinet'):
+       'dumpster',
      patio:kind==='restaurant'?'patio-chair':'planter',
      garden:residential?'tree-broadleaf':'shrub-tall',
      yard:zone.id==='arrival-forecourt'&&
@@ -148,7 +158,8 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    // Public fixtures face the actual street and keep the same physical
    // footprint as their rotated mesh on all four building orientations.
    const facesStreet=zone.id==='arrival-forecourt'&&
-     ['mailbox','parking-sign','public-bench','bike-rack'].includes(item);
+     ['mailbox','parking-sign','public-bench','bike-rack',
+      'vending-machine','wayfinding-sign','street-lamp','hydrant'].includes(item);
    const orientation=facesStreet?
      entry==='east'?1:entry==='north'?2:entry==='west'?3:0:0;
    const quarterTurn=orientation%2===1;
@@ -164,6 +175,11 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     const edge=fixed?.[attempt];
     const x=edge?.x??zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
     const y=edge?.y??zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
+    // A commercial machine and its customer-facing side must actually sit
+    // within the site's accessible front forecourt; never behind a wall.
+    if(item==='vending-machine'&&(
+       x-w/2<zone.x-zone.w/2||x+w/2>zone.x+zone.w/2||
+       y-h/2<zone.y-zone.h/2||y+h/2>zone.y+zone.h/2))continue;
     const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low',
       ...(facesStreet?{orientation}:{})};
     const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};

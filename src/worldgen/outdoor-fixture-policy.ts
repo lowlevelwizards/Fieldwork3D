@@ -11,17 +11,24 @@ const housing=new Set(['house','townhouse']);
 const publicPremises=new Set(['retail','restaurant','clinic','motel']);
 const frontageFixtures=new Set([
  'mailbox','parking-sign','street-lamp','hydrant','bike-rack','bollard',
- 'public-bench'
+ 'public-bench','vending-machine','wayfinding-sign'
 ]);
 export function outdoorFixtureAllowed(site:Pick<Site,'archetype'>,
  zone:ExteriorZone,item:string):boolean{
  const front=zone.id==='arrival-forecourt';
  const type=site.archetype??'house';
  if(item==='mailbox')return front&&housing.has(type);
+ if(item==='vending-machine')return front&&
+   ['retail','restaurant','motel'].includes(type);
+ if(item==='wayfinding-sign')return front&&
+   ['retail','restaurant','clinic','motel','office'].includes(type);
+ if(item==='screened-dumpster')return zone.kind==='service'&&
+   zone.id!=='arrival-forecourt';
  if(item==='parking-sign')return front&&zone.kind==='parking';
  if(item==='hydrant')return front; // municipal street, never inside a garden
  if(item==='street-lamp')return front&&
-   (zone.kind==='parking'||zone.kind==='driveway');
+   (zone.kind==='parking'||zone.kind==='driveway'||
+     zone.kind==='yard');
  if(item==='public-bench')return front&&publicPremises.has(type)||
    zone.kind==='patio'&&['restaurant','motel'].includes(type);
  if(item==='bike-rack')return front&&publicPremises.has(type)||
@@ -49,6 +56,30 @@ export function frontageEdgeCandidates(
  const entry=site.entrySide??'south';
  // A parking sign identifies a real authored bay, never a random post at
  // the front property corners. No canonical bay -> no sign.
+ // Commercial vending belongs along an approachable, paved facade, not
+ // an arbitrary curbside post or a machine stranded in a rear service pad.
+ if(fixture==='vending-machine'&&site.rooms?.length&&site.entrance){
+   const frontage=entry==='north'?Math.min(...site.rooms.map(r=>r.y)):
+     entry==='south'?Math.max(...site.rooms.map(r=>r.y+r.h)):
+     entry==='east'?Math.max(...site.rooms.map(r=>r.x+r.w)):
+     Math.min(...site.rooms.map(r=>r.x));
+   const sign=entry==='north'||entry==='west'?-1:1;
+   const normal=(entry==='north'||entry==='south')?'y':'x';
+   const along=normal==='y'?'x':'y';
+   const main=along==='x'?site.entrance.x:site.entrance.y;
+   const roomSide=along==='x'?w:h;
+   // Short side-facing forecourts cannot accommodate a fixed 77-unit
+   // displacement. Keep the whole kiosk in the forecourt while protecting
+   // at least the regular entrance clearance.
+   const sideRoom=along==='x'?zone.w:zone.h;
+   const limit=sideRoom/2-roomSide/2-8;
+   if(limit<58)return [];
+   const displacement=Math.min(77,limit);
+   const transverse=frontage+sign*(26+(normal==='x'?w:h)*.20);
+   return [-1,1].map(dir=>along==='x'?
+     {x:main+dir*displacement,y:transverse}:
+     {x:transverse,y:main+dir*displacement});
+ }
  if(fixture==='parking-sign'&&zone.kind==='parking'&&
     site.doors&&site.entrance){
    const bay=reservedParkingBay({
