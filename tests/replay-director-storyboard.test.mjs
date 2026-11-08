@@ -38,7 +38,7 @@ test('camera pre-roll discovers a known upcoming gunfight and keeps firing pair'
  const beats=buildDirectorFilmBeats([shot(1,5),shot(2,5.2)],
   [],frame,doors,friendly,()=>true);
  assert.equal(beats.length,1,'burst is one established shot, not two cuts');
- assert.equal(directorFilmBeatAt(2.3,beats)?.kind,null);
+ assert.equal(directorFilmBeatAt(2.3,beats),null);
  assert.equal(directorFilmBeatAt(2.5,beats)?.kind,'fight');
  assert.equal(directorFilmBeatAt(5.12,beats)?.kind,'fight');
  const beat=directorFilmBeatAt(4.2,beats);
