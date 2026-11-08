@@ -488,7 +488,11 @@ export function composeReplayDirectorShot(_time:number,
   // Orthographic default: choose scale from EVERY involved friendly
   // plus the reachable action target, with ample safety border. The
   // camera must not clip heads, feet or the advancing element.
-  const visibleTargets=[...subjects.map(a=>a.p),
+  const visibleSubjects=leadEntry?subjects.filter(a=>
+    directorOperatorRoom(a.p,rooms)?.id===leadRoom?.id||
+    !walls.some(w=>segmentCross(physical.cameraAnchor,a.p,
+      w.a,w.b))):subjects;
+  const visibleTargets=[...visibleSubjects.map(a=>a.p),
     ...(target&&physical.targetVisible?[target]:[]),
     ...(!target&&composition.attention&&
       !walls.some(w=>segmentCross(physical.cameraAnchor,
