@@ -39,7 +39,7 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
        zoneId:publicZone.id,kind,x:r.x,y:r.y,
        width:r.width,depth:r.depth});
    };
-   if(street.sidewalk)addStreet('sidewalk',street.sidewalk);
+   for(const strip of street.sidewalkPieces)addStreet('sidewalk',strip);
    if(street.approach)addStreet('path',street.approach);
    for(const curb of street.curb)addStreet('curb-edge',curb);
    if(street.curbRamp)addStreet('curb-ramp',street.curbRamp);
