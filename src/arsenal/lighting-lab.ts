@@ -2,13 +2,11 @@
  * UI state is ephemeral and never added to recipes, inventory or saves.
  */
 import type {StudioLightLabSettings} from '../operator-studio-light-lab.ts';
-import {DEFAULT_STUDIO_LIGHT_LAB,effectiveStudioLightLab}
+import {APPROVED_GRAPHIC_LIGHTING,effectiveStudioLightLab}
  from '../operator-studio-light-lab.ts';
 
 type NumericKey='celLow'|'rimAmount'|'rimWidth'|'rimCoverage'|
- 'rimAngleLooseness'|'rimFabricWidth'|'rimFabricOpacity'|
- 'rimFabricLightThreshold'|'rimSkinWidth'|'rimSkinOpacity'|
- 'rimSkinLightThreshold'|'rimSkinWarmth'|'lightAzimuth';
+ 'rimAngleLooseness'|'lightAzimuth';
 const numerical:readonly {
  key:NumericKey;label:string;min:number;max:number;step:number;
  suffix:string;factor:number
@@ -18,22 +16,13 @@ const numerical:readonly {
  {key:'rimWidth',label:'GLINT THICKNESS',min:1,max:4,step:.05,suffix:'%',factor:100},
  {key:'rimCoverage',label:'SINGLE-EDGE COVERAGE',min:.1,max:.8,step:.05,suffix:'%',factor:100},
  {key:'rimAngleLooseness',label:'GLINT ANGLE WINDOW',min:.75,max:2,step:.05,suffix:'%',factor:100},
- {key:'rimFabricWidth',label:'GEAR EDGE WIDTH',min:1,max:4,step:.05,suffix:'%',factor:100},
- {key:'rimFabricOpacity',label:'GEAR CREAM OPACITY',min:0,max:.35,step:.01,suffix:'%',factor:100},
- {key:'rimFabricLightThreshold',label:'GEAR LIGHT SELECTIVITY',min:0,max:1,step:.05,suffix:'%',factor:100},
- {key:'rimSkinWidth',label:'SKIN EDGE WIDTH',min:1,max:4,step:.05,suffix:'%',factor:100},
- {key:'rimSkinOpacity',label:'SKIN EDGE OPACITY',min:0,max:.45,step:.01,suffix:'%',factor:100},
- {key:'rimSkinLightThreshold',label:'SKIN LIGHT SELECTIVITY',min:0,max:1,step:.05,suffix:'%',factor:100},
- {key:'rimSkinWarmth',label:'SKIN WARMTH',min:.5,max:1.5,step:.05,suffix:'%',factor:100},
  {key:'lightAzimuth',label:'KEY LIGHT ORBIT',min:-180,max:180,step:5,suffix:'°',factor:1}
 ];
 export function mountArsenalLightingLab(host:HTMLElement,
  onChange:(settings:StudioLightLabSettings,compareOriginal:boolean)=>void,
  startOpen=false):void{
- let settings:StudioLightLabSettings={
-  ...DEFAULT_STUDIO_LIGHT_LAB,toon:2,rim:'dual',gradient:'piece'
- };
- let compareOriginal=!startOpen;
+ let settings:StudioLightLabSettings={...APPROVED_GRAPHIC_LIGHTING};
+ let compareOriginal=false;
  const details=document.createElement('details');
  details.className='arsenal-lighting-lab';
  details.open=startOpen;
@@ -53,7 +42,7 @@ export function mountArsenalLightingLab(host:HTMLElement,
   select.addEventListener('change',()=>{onValue(select.value);emit();});
   wrap.append(select);body.append(wrap);dropdowns.push(select);return select;
  };
- dropdown('CEL SHADING',[['0','Original'],['2','2-band graphic']],
+ dropdown('CEL SHADING',[['0','Original'],['2','2-band'],['3','3-band graphic + highlight']],
   String(settings.toon),value=>{
    settings={...settings,toon:Number(value) as StudioLightLabSettings['toon']};
   });
@@ -99,7 +88,7 @@ export function mountArsenalLightingLab(host:HTMLElement,
   compareOriginal=!compareOriginal;emit();
  });
  reset.addEventListener('click',()=>{
-  settings={...DEFAULT_STUDIO_LIGHT_LAB,toon:2,rim:'dual',gradient:'piece'};
+  settings={...APPROVED_GRAPHIC_LIGHTING};
   compareOriginal=false;
   // Reset visible selectors and sliders along with the live 3D material.
   dropdowns[0].value=String(settings.toon);

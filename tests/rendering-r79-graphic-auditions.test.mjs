@@ -19,6 +19,7 @@ const look=(options={})=>({...DEFAULT_STUDIO_LIGHT_LAB,...options});
 const shader=()=>({
  vertexShader:'#include <begin_vertex>',
  fragmentShader:'#include <gradientmap_pars_fragment>\n'+
+  '#include <gradientmap_pars_fragment>\n'+
   '#include <color_fragment>\nvec3 outgoingLight=vec3(.5);\n'+
   '#include <opaque_fragment>',
  uniforms:{}
@@ -50,38 +51,20 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  assert.equal(rimMin.count,receiver.geometry.getAttribute('position').count);
  assert.equal(ensureStudioRimBounds(receiver.geometry),true);
  assert.equal(receiver.geometry.getAttribute('fieldworkRimBoundsMin'),rimMin);
- assert.notEqual(uniform.material,fabric,
-  'gear ink must tint the ORIGINAL solid surface');
- assert.equal(uniform.material.userData.fieldworkStudioArtOnly,true);
- assert.equal(uniform.children.length,0,'no external halo geometry or draw calls');
- const gearShader=shader();
- uniform.material.onBeforeCompile(gearShader,null);
- assert.equal(gearShader.uniforms.fieldworkRimRole.value,1);
- assert.equal(gearShader.uniforms.fieldworkRimFabricWidth.value,2.8);
- assert.equal(gearShader.uniforms.fieldworkRimFabricLightThreshold.value,.65);
- assert.match(gearShader.fragmentShader,/fwSoftLightPeak/);
- assert.match(gearShader.fragmentShader,/fwTravel\*fwSingleEdge/);
- assert.match(gearShader.fragmentShader,/fwFacesKey\*fwSoftLightPeak/);
- assert.match(gearShader.fragmentShader,/smoothstep\(\.25,\.75,fwKeyShadow\)/);
- assert.doesNotMatch(gearShader.fragmentShader,/fwRearNormal|fwBackGate/);
- assert.match(gearShader.fragmentShader,/fwSoftBorder/);
- assert.match(gearShader.fragmentShader,/fwSoftBand/);
- assert.match(gearShader.fragmentShader,/fwSecond/);
- assert.doesNotMatch(gearShader.vertexShader,/normalize\(normal\)\*fwBleedWidth/);
+ assert.equal(uniform.material,fabric,
+  'gear/skin highlights are explicitly rejected and not cloned in rim-only mode');
+ assert.equal(uniform.children.length,0);
  const mock=shader();
  receiver.material.onBeforeCompile(mock,null);
  assert.match(mock.fragmentShader,/getShadowMask\(\)/);
  assert.match(mock.fragmentShader,/fwFacesKey/);
  assert.match(mock.fragmentShader,/fwReceivedLight/);
- assert.match(mock.fragmentShader,/fwTarget/);
- assert.match(mock.fragmentShader,/fieldworkRimRole/);
+ assert.match(mock.fragmentShader,/vec3\(1\.15\)/);
  assert.match(mock.fragmentShader,/fwTravel/);
  assert.match(mock.fragmentShader,/fwSingleEdge/);
  assert.match(mock.fragmentShader,/fieldworkRimWidth/);
  assert.match(mock.fragmentShader,/fieldworkRimCoverage/);
  assert.match(mock.fragmentShader,/fieldworkRimKeyWorld/);
- assert.match(mock.fragmentShader,/fieldworkRimSkin/);
- assert.match(mock.fragmentShader,/fieldworkRimFabric/);
  assert.match(mock.fragmentShader,/fieldworkRimAngleLooseness/);
  assert.doesNotMatch(mock.fragmentShader,/outgoingLight\+=vec3\(\.96,\.88,\.74\)/);
  assert.match(mock.fragmentShader,/fieldworkRimStrength/);
@@ -107,7 +90,7 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  assert.ok(receiver.material instanceof THREE.MeshStandardMaterial);
  disposeStudioGraphicLighting(root);
 });
-test('R7.12 bare helmet only, not fabric covers, glasses or skin',()=>{
+test('R7.18 bare helmets and explicitly authored shell covers, never general fabric or skin',()=>{
  const shell=new THREE.MeshStandardMaterial({color:0x34373a});
  const cloth=new THREE.MeshStandardMaterial({color:0x988d77});
  cloth.userData.fieldworkFabric=true;
@@ -210,58 +193,52 @@ test('R7.12 original Look restores with direct-light rim disabled',()=>{
  assert.equal(ensureStudioPieceGradient(new THREE.BufferGeometry()),false);
 });
 
-test('R7.17 cream and skin glints land only on illuminated original mesh edges',()=>{
+test('R7.18 three real cel bands, white glints only on hard shells',()=>{
  const root=new THREE.Group();
  const skin=new THREE.MeshStandardMaterial({color:0x55372c});
  skin.userData.fieldworkStudioSkin=true;
  const cloth=new THREE.MeshStandardMaterial({color:0x857354});
  cloth.userData.fieldworkFabric=true;
- const head=cube(skin),shirt=cube(cloth);
- root.add(head,shirt);
- const audition=look({rim:'dual',rimAmount:.9,
-  rimWidth:3.5,rimCoverage:.6,rimAngleLooseness:1.4,
-  rimFabricWidth:3,rimFabricOpacity:.14,rimFabricLightThreshold:.9,
-  rimSkinWidth:3.2,rimSkinOpacity:.34,rimSkinLightThreshold:.8,
-  rimSkinWarmth:1.25,rimDebugMask:true,lightAzimuth:45});
- const oldGeo=head.geometry,oldClothGeo=shirt.geometry;
+ const metal=new THREE.MeshStandardMaterial({color:0x7d7d7d,metalness:.75});
+ const cover=new THREE.MeshStandardMaterial({color:0x947e57});
+ cover.userData.fieldworkStudioSoftGear=true;
+ cover.userData.fieldworkStudioHelmetShellCover=true;
+ const head=cube(skin),shirt=cube(cloth),steel=cube(metal),helmet=cube(cover);
+ root.add(head,shirt,steel,helmet);
+ const audition=look({toon:3,rim:'dual',gradient:'piece-rose',
+  shadow:'plum-plus',celLow:.6,celHigh:.86,
+  rimFabricOpacity:1,rimSkinOpacity:1});
  applyStudioGraphicLighting(root,audition);
- assert.notEqual(head.material,skin);
- assert.notEqual(shirt.material,cloth);
- assert.equal(head.geometry,oldGeo,'no skin vertex expansion');
- assert.equal(shirt.geometry,oldClothGeo,'no garment vertex expansion');
- assert.equal(head.children.length,0,'no separate glow hull on skin');
- assert.equal(shirt.children.length,0,'no separate glow hull on gear');
- const sk=shader();head.material.onBeforeCompile(sk,null);
- const cl=shader();shirt.material.onBeforeCompile(cl,null);
- assert.equal(sk.uniforms.fieldworkRimRole.value,2);
- assert.equal(sk.uniforms.fieldworkRimSkinWidth.value,3.2);
- assert.equal(sk.uniforms.fieldworkRimSkin.value,.34);
- assert.equal(sk.uniforms.fieldworkRimSkinLightThreshold.value,.8);
- assert.equal(sk.uniforms.fieldworkRimSkinWarmth.value,1.25);
- assert.equal(cl.uniforms.fieldworkRimRole.value,1);
- assert.equal(cl.uniforms.fieldworkRimFabric.value,.14);
- assert.equal(cl.uniforms.fieldworkRimFabricWidth.value,3);
- assert.equal(cl.uniforms.fieldworkRimFabricLightThreshold.value,.9);
- assert.match(sk.fragmentShader,/fwSkinTint/);
- assert.match(sk.fragmentShader,/fwSoftView/);
- assert.match(sk.fragmentShader,/fwSoftLightPeak/);
- assert.match(sk.fragmentShader,/fwFacesKey\*fwSoftLightPeak/);
- assert.match(sk.fragmentShader,/fwDirect/);
- assert.doesNotMatch(sk.fragmentShader,/fwRearNormal|fwRearKey|fwSoftBackGate|fwBacklit/);
- assert.match(sk.fragmentShader,/fwSoftBorder/);
- assert.doesNotMatch(sk.vertexShader,/expanded=position|gl_Position=projectionMatrix\*view/);
- assert.doesNotMatch(sk.fragmentShader,/gl_FragColor=vec4\(ink,alpha\)/);
- const variant=head.material,programKey=variant.customProgramCacheKey();
- applyStudioGraphicLighting(root,{...audition,rimSkinOpacity:.22,
-  rimSkinLightThreshold:.25,lightAzimuth:90});
- assert.equal(head.material,variant,'cached shader updates without recompilation');
- assert.equal(variant.customProgramCacheKey(),programKey);
- assert.equal(sk.uniforms.fieldworkRimSkin.value,.22);
- assert.equal(sk.uniforms.fieldworkRimSkinLightThreshold.value,.25);
+ assert.equal(studioContourEligible(helmet,cover),true);
+ assert.equal(studioContourEligible(shirt,cloth),false);
+ assert.equal(studioContourEligible(head,skin),false);
+ const hc=shader();head.material.onBeforeCompile(hc,null);
+ const cc=shader();shirt.material.onBeforeCompile(cc,null);
+ const mc=shader();steel.material.onBeforeCompile(mc,null);
+ const cap=shader();helmet.material.onBeforeCompile(cap,null);
+ assert.equal(hc.uniforms.fieldworkRimStrength,undefined);
+ assert.equal(cc.uniforms.fieldworkRimStrength,undefined);
+ assert.ok(mc.uniforms.fieldworkRimStrength);
+ assert.ok(cap.uniforms.fieldworkRimStrength);
+ assert.match(hc.fragmentShader,/fieldworkCelMidTone/);
+ assert.match(hc.fragmentShader,/fieldworkCelHighCutoff/);
+ assert.match(hc.fragmentShader,/fieldworkCelHighlightTone/);
+ assert.equal(hc.uniforms.fieldworkCelMidTone.value,.72);
+ assert.equal(hc.uniforms.fieldworkCelHighlightTone.value,1.14);
+ assert.equal(hc.uniforms.fieldworkCelHighCutoff.value,.86);
+ assert.doesNotMatch(hc.fragmentShader,/fwSoftBand|fwSkinTint/);
+ assert.doesNotMatch(mc.fragmentShader,/fwSoftBand|fwSkinTint/);
  assert.equal(head.children.length,0);
+ assert.equal(shirt.children.length,0);
+ assert.equal(steel.children.length,0);
+ const first=steel.material;
+ applyStudioGraphicLighting(root,{...audition,rimWidth:3});
+ assert.equal(steel.material,first,'shader cached while glint width changes');
  applyStudioGraphicLighting(root,look({rim:'off',toon:0}));
  assert.equal(head.material,skin);
  assert.equal(shirt.material,cloth);
+ assert.equal(steel.material,metal);
+ assert.equal(helmet.material,cover);
  disposeStudioGraphicLighting(root);
 });
 test('R7.16 merged gear keeps per-part bounds so no cross-part false bands',()=>{

@@ -2,12 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {studioLightLabFromQuery,effectiveStudioLightLab,
- DEFAULT_STUDIO_LIGHT_LAB,studioLightLabLabel}
+ DEFAULT_STUDIO_LIGHT_LAB,APPROVED_GRAPHIC_LIGHTING,studioLightLabLabel}
  from '../src/operator-studio-light-lab.ts';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
 test('R7.10 original remains default with transient preview-only settings',()=>{
- assert.deepEqual(studioLightLabFromQuery(''),DEFAULT_STUDIO_LIGHT_LAB);
+ assert.deepEqual(studioLightLabFromQuery(''),APPROVED_GRAPHIC_LIGHTING);
+ assert.equal(APPROVED_GRAPHIC_LIGHTING.toon,3);
+ assert.equal(APPROVED_GRAPHIC_LIGHTING.shadow,'plum-plus');
+ assert.equal(APPROVED_GRAPHIC_LIGHTING.gradient,'piece-rose');
  assert.equal(studioLightLabLabel(DEFAULT_STUDIO_LIGHT_LAB),'ORIGINAL');
  assert.deepEqual(effectiveStudioLightLab(DEFAULT_STUDIO_LIGHT_LAB),
   DEFAULT_STUDIO_LIGHT_LAB);
@@ -15,7 +18,7 @@ test('R7.10 original remains default with transient preview-only settings',()=>{
 test('R7.10 previous art links normalize into the actual compact selections',()=>{
  const state=studioLightLabFromQuery(
   '?operatorLightingToon=3&operatorRim=pixel&operatorGradient=violet-noir&operatorShadowColor=steel');
- assert.equal(state.toon,2);
+ assert.equal(state.toon,3);
  assert.equal(state.rim,'dual');
  assert.equal(state.gradient,'piece');
  assert.equal(state.shadow,'plum-plus');
@@ -44,10 +47,10 @@ test('R7.10 Lighting Lab presents only usable user-selected choices',()=>{
   assert.match(html,new RegExp('id="'+id+'"'));
  for(const removed of ['studioCelHigh','studioCelProfile','studioLightScope'])
   assert.doesNotMatch(html,new RegExp('id="'+removed+'"'));
- assert.match(html,/2-band · very graphic/);
+ assert.match(html,/3-band · very graphic · highlight/);
  assert.match(html,/Each item · soft grayscale/);
  assert.match(html,/Each item · dusty gray-rose/);
- assert.match(html,/Material glints/);
+ assert.match(html,/White glints · weapons, metal/);
  assert.match(html,/HARD GLINT OPACITY/);
  assert.match(html,/id="studioRimAmount"[^>]*max="1"[^>]*value="0.85"/);
  assert.match(html,/Saturated plum/);
@@ -64,7 +67,7 @@ test('R7.10 Lighting Lab presents only usable user-selected choices',()=>{
  assert.match(ts,/addEventListener\('input',readSlider\)/);
  assert.match(ts,/addEventListener\('change',readSlider\)/);
  assert.match(ts,/lightLabCompareOriginal=!lightLabCompareOriginal/);
- assert.match(ts,/lightLabSettings=\{\.\.\.DEFAULT_STUDIO_LIGHT_LAB\}/);
+ assert.match(ts,/lightLabSettings=approvedGraphicLighting\(\)/);
  assert.match(ts,/thumbBrowser\.setLightingSettings\(live\)/);
  assert.match(ts,/applyStudioGraphicLighting\(rig\.root,light\)/);
 });
@@ -100,10 +103,10 @@ test('R7.15 hard/gear/skin settings are independent, clamped and preview-only',(
  assert.equal(d.rimCoverage,.55);
  assert.equal(d.rimAngleLooseness,1.25);
  assert.equal(d.rimFabricWidth,2.8);
- assert.equal(d.rimFabricOpacity,.16);
+ assert.equal(d.rimFabricOpacity,0);
  assert.equal(d.rimFabricLightThreshold,.65);
  assert.equal(d.rimSkinWidth,2.6);
- assert.equal(d.rimSkinOpacity,.24);
+ assert.equal(d.rimSkinOpacity,0);
  assert.equal(d.rimSkinLightThreshold,.65);
  assert.equal(d.rimSkinWarmth,1);
  const constrained=effectiveStudioLightLab({...d,rimWidth:99,
@@ -113,10 +116,10 @@ test('R7.15 hard/gear/skin settings are independent, clamped and preview-only',(
  assert.equal(constrained.rimWidth,4);
  assert.equal(constrained.rimAngleLooseness,2);
  assert.equal(constrained.rimFabricWidth,1);
- assert.equal(constrained.rimFabricOpacity,.35);
+ assert.equal(constrained.rimFabricOpacity,0);
  assert.equal(constrained.rimFabricLightThreshold,1);
  assert.equal(constrained.rimSkinWidth,4);
- assert.equal(constrained.rimSkinOpacity,.45);
+ assert.equal(constrained.rimSkinOpacity,0);
  assert.equal(constrained.rimSkinLightThreshold,0);
  assert.equal(constrained.rimSkinWarmth,1.5);
  assert.deepEqual(effectiveStudioLightLab(constrained,true),d);
@@ -124,9 +127,9 @@ test('R7.15 hard/gear/skin settings are independent, clamped and preview-only',(
  assert.match(grid,/previous\.rimFabricWidth===settings\.rimFabricWidth/);
  assert.match(grid,/previous\.rimSkinWarmth===settings\.rimSkinWarmth/);
  const arsenal=read('src/arsenal/lighting-lab.ts');
- for(const name of ['GLINT ANGLE WINDOW','GEAR EDGE WIDTH',
-  'GEAR LIGHT SELECTIVITY','SKIN EDGE WIDTH','SKIN LIGHT SELECTIVITY',
-  'SKIN WARMTH'])assert.ok(arsenal.includes(name));
+ assert.match(arsenal,/3-band graphic \+ highlight/);
+ assert.match(arsenal,/APPROVED_GRAPHIC_LIGHTING/);
+ assert.doesNotMatch(arsenal,/GEAR EDGE WIDTH|SKIN WARMTH/);
 });
 test('R7.15 soft equipment is included without turning lenses into outlines',()=>{
  const rig=read('src/breach-operator-rig.ts');
@@ -139,13 +142,28 @@ test('R7.15 soft equipment is included without turning lenses into outlines',()=
  assert.match(gear,/armorFabric,gearFabric,packFabric,trim/);
  assert.match(kit,/\[trim,seam,patchMaterial\]/);
  const material=read('src/operator-studio-graphic-lighting.ts');
- assert.match(material,/fwSoftBorder/);
- assert.match(material,/fwSoftBand/);
- assert.match(material,/fwSkinTint/);
- assert.match(material,/fwSoftLightPeak/);
- assert.match(material,/fwTravel\*fwSingleEdge/);
- assert.doesNotMatch(material,/fwRearNormal|fwSoftBackGate|fwRearKey/);
+ assert.match(material,/fwLitBand/);
+ assert.match(material,/fieldworkRimStrength/);
+ assert.doesNotMatch(material,/fwSoftBand|fwSkinTint|fwSoftLightPeak|fieldworkRimFabric/);
  assert.doesNotMatch(material,/applyStudioEdgeBleed|clearStudioEdgeBleed|disposeStudioEdgeBleed/);
  assert.doesNotMatch(material,/gl_Position=projectionMatrix\*view/);
  assert.doesNotMatch(material,/localStorage|sessionStorage/);
+});
+
+test('R7.18 shared look reaches Arsenal/live, without tactical shadow-size changes',()=>{
+ const live=read('src/breach-3d.ts');
+ const arsenal=read('src/arsenal/viewport.ts');
+ const world=read('src/breach-graphic-world-lighting.ts');
+ const studio=read('src/operator-studio-graphic-lighting.ts');
+ assert.match(live,/applyStudioGraphicLighting\(object\.root,APPROVED_GRAPHIC_LIGHTING\)/);
+ assert.match(live,/applyWorldGraphicLighting\(this\.root\)/);
+ assert.match(live,/this\.quality\.shadowSize/);
+ assert.doesNotMatch(live,/studioShadowSize|studioShadowSizeOverride/);
+ assert.match(arsenal,/APPROVED_GRAPHIC_LIGHTING/);
+ assert.match(arsenal,/STUDIO_INSPECTION_LIGHT/);
+ assert.match(arsenal,/studioShadowPalette/);
+ assert.match(studio,/fieldworkCelHighlightTone/);
+ assert.match(studio,/vec3\(\.975,\.926,\.941\)/);
+ assert.match(world,/r718-world-3-band-rose/);
+ assert.doesNotMatch(world,/new THREE\.Mesh|new THREE\.WebGLRenderTarget/);
 });

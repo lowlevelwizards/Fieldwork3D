@@ -1,6 +1,14 @@
 import {groundMarkOccludedFromCamera} from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
+import {APPROVED_GRAPHIC_LIGHTING}
+ from './operator-studio-light-lab.ts';
+import {STUDIO_INSPECTION_LIGHT,STUDIO_KEY_DIRECTION,studioShadowPalette}
+ from './operator-studio-lighting.ts';
+import {applyStudioGraphicLighting}
+ from './operator-studio-graphic-lighting.ts';
+import {applyWorldGraphicLighting}
+ from './breach-graphic-world-lighting.ts';
 import {createCivilianRig,updateCivilianRig,type CivilianRig}
  from './breach-civilian-visuals.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
@@ -117,7 +125,15 @@ function doorSweepArc(door:Door,length:number):THREE.Group{
   return group;
 }
 export class TacticalScene3D{
-  private readonly hemisphere=new THREE.HemisphereLight(0xdde8df,0x24302e,1.18);
+  private readonly hemisphere=new THREE.HemisphereLight(
+   STUDIO_INSPECTION_LIGHT.sky,studioShadowPalette('plum-plus').ground,1.20);
+  private readonly graphicFill=new THREE.DirectionalLight(
+   studioShadowPalette('plum-plus').fill,.60);
+  /** A/B baseline for perf audits; never changes tactical shadow resolution. */
+  private readonly graphicLookEnabled=
+   new URLSearchParams(location.search).get('lighting')!=='legacy';
+  private graphicWorldMaterialCount=0;
+  private graphicOperatorRestyles=0;
   private appliedLightingMode:import('./equipment-site-lighting.ts').LightingMode|null=null;
   private readonly quality=graphicsBudget(
     new URLSearchParams(location.search).get('quality'),
@@ -141,7 +157,10 @@ export class TacticalScene3D{
       shadowReuses:this.shadowUpdates.reuses,
       shadowLodTransitions:this.shadowLodTransitions,
       fogMemoryPaints:this.fogMemoryPaints,
-      fogSightPaints:this.fogSightPaints};
+      fogSightPaints:this.fogSightPaints,
+      graphicWorldMaterialCount:this.graphicWorldMaterialCount,
+      graphicOperatorRestyles:this.graphicOperatorRestyles,
+      graphicLookEnabled:this.graphicLookEnabled};
   }
   readonly renderer:THREE.WebGLRenderer;
   readonly scene=new THREE.Scene();
@@ -321,9 +340,23 @@ export class TacticalScene3D{
     // Visibility is handled separately by authoritative exploration tiles.
     this.scene.background=color(0x182a2a);
     this.scene.fog=null;
-    this.scene.add(this.hemisphere);
-    this.sun=new THREE.DirectionalLight(0xf4dab4,2.35);
-    this.sun.position.set(-100,260,180);this.sun.castShadow=true;
+    this.graphicFill.position.set(-35,23,30);
+    this.graphicFill.intensity=this.graphicLookEnabled?.60:0;
+    if(this.graphicLookEnabled){
+     this.hemisphere.color.setHex(STUDIO_INSPECTION_LIGHT.sky);
+     this.hemisphere.groundColor.setHex(
+      studioShadowPalette('plum-plus').ground);
+    }else{
+     this.hemisphere.color.setHex(0xdde8df);
+     this.hemisphere.groundColor.setHex(0x24302e);
+    }
+    this.scene.add(this.hemisphere,this.graphicFill);
+    this.sun=new THREE.DirectionalLight(
+     this.graphicLookEnabled?STUDIO_INSPECTION_LIGHT.key:0xf4dab4,2.35);
+    if(this.graphicLookEnabled)
+     this.sun.position.copy(STUDIO_KEY_DIRECTION).multiplyScalar(300);
+    else this.sun.position.set(-100,260,180);
+    this.sun.castShadow=true;
     this.sun.shadow.mapSize.set(this.quality.shadowSize,this.quality.shadowSize);
     Object.assign(this.sun.shadow.camera,{
       left:-320,right:320,top:320,bottom:-320,near:.5,far:800,
@@ -333,6 +366,9 @@ export class TacticalScene3D{
     this.scene.add(this.sun,this.sun.target);
     this.scene.add(this.root,this.effects);
     this.buildWorld();
+    if(this.graphicLookEnabled)
+     this.graphicWorldMaterialCount=
+      applyWorldGraphicLighting(this.root).materials;
     if(activeSite())this.view.zoom=1.48;
     // Architectural silhouettes remain visible (as in the 2D map), but
     // unknown cells are strongly darkened. Unseen soldiers and door states
@@ -570,6 +606,9 @@ export class TacticalScene3D{
     this.fogTexture.needsUpdate=true;
     this.buildWorld(site);
     if(site)this.buildStaticBatches();
+    if(this.graphicLookEnabled)
+     this.graphicWorldMaterialCount=
+      applyWorldGraphicLighting(this.root).materials;
     this.root.add(this.fogUnknown,this.fogExplored);
     this.fogAt=-1;this.lastFogSignature='';this.lastFogSession=null;
     this.lastMemoryFogSignature='';this.lastMemoryFogSession=null;
@@ -1694,6 +1733,8 @@ export class TacticalScene3D{
   private soldier(a:TeamActor){
     const physical=createOperatorRig(a.id,a.side,true);
     const {root,weapon,pack}=physical;
+    if(this.graphicLookEnabled)
+     weapon.userData.fieldworkWeaponPresentation=true;
     const flash=new THREE.Mesh(new THREE.OctahedronGeometry(3.5),
       new THREE.MeshBasicMaterial({color:0xffd59e,transparent:true,
         opacity:.94,depthWrite:false}));
@@ -1741,8 +1782,13 @@ export class TacticalScene3D{
       replayDisclosurePolicy.observerId===this.replayBodycam.actorId;
     if(this.appliedLightingMode!==s.lightingMode){
       const mood=lightingPresentation(s.lightingMode);
-      this.hemisphere.intensity=mood.hemisphere;
+      this.hemisphere.intensity=this.graphicLookEnabled?
+       mood.hemisphere*(STUDIO_INSPECTION_LIGHT.hemiIntensity/1.18):
+       mood.hemisphere;
       this.sun.intensity=mood.sun;
+      if(this.graphicLookEnabled)
+       this.graphicFill.intensity=STUDIO_INSPECTION_LIGHT.fillIntensity*
+        1.35*(mood.sun/2.35);
       this.appliedLightingMode=s.lightingMode;
     }
     for(const [index,group] of this.coverGroups){
@@ -2200,6 +2246,18 @@ export class TacticalScene3D{
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
         friendlyNear:friendlyAhead
       },dt);
+      if(this.graphicLookEnabled&&object.root.visible){
+       // Do not traverse hundreds of meshes every 60Hz frame. Recompose
+       // only after costume/weapon source materials actually changed.
+       const appearance=String(
+        object.physical.root.userData.fieldworkLightingAppearanceKey??'');
+       const stamp=appearance+'|'+actor.weapon;
+       if(object.root.userData.fieldworkProductionGraphicStamp!==stamp){
+        applyStudioGraphicLighting(object.root,APPROVED_GRAPHIC_LIGHTING);
+        object.root.userData.fieldworkProductionGraphicStamp=stamp;
+        this.graphicOperatorRestyles++;
+       }
+      }
       // Rebuild caster choices only on projected-size/wardrobe tier changes.
       // A paused scene is explicitly invalidated when casters change.
       const shadowLod=applyOperatorShadowLod(

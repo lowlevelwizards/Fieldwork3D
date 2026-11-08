@@ -27,6 +27,7 @@ export function createPasgtCoverLayers(parent:THREE.Group):PasgtCoverLayers{
   vertexColors:false,side:THREE.FrontSide
  });
  fabric.userData.fieldworkStudioSoftGear=true;
+ fabric.userData.fieldworkStudioHelmetShellCover=true;
  fabric.map=pasgtCoverTexture(undefined,'default');
  const cover=hidden(parent,'pasgt-bridged-fitted-cover');
  const body=new THREE.Mesh(createPasgtDrapedGeometry(),fabric);

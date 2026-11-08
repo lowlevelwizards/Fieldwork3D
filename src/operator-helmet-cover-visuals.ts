@@ -82,6 +82,7 @@ export function createM1HelmetCoverLayers(parent:THREE.Group):M1HelmetCoverLayer
  const field=new THREE.MeshStandardMaterial({color:OPERATOR_SOLID_FAMILIES['forest-green'],
   roughness:1,flatShading:true});
  // All cover, net and scrim variants use the same pattern-neutral AO.
+ fabric.userData.fieldworkStudioHelmetShellCover=true;
  for(const material of [fabric,support,elastic,field]){
   material.userData.fieldworkStudioSoftGear=true;
   enableBakedGearAO(material);

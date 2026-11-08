@@ -7,12 +7,16 @@ import * as THREE from 'three';
 export function studioContourEligible(
  mesh:THREE.Mesh,source:THREE.MeshStandardMaterial
 ):boolean{
- if(source.userData.fieldworkFabric===true||
+ // A fitted ballistic helmet cover belongs to the helmet SHELL family,
+ // not the rejected generic clothing/gear/skin highlight family.
+ const shellCover=source.userData.fieldworkStudioHelmetShellCover===true;
+ if(!shellCover&&(source.userData.fieldworkFabric===true||
     source.userData.fieldworkStudioSoftGear===true||
-    source.userData.fieldworkStudioSkin===true)return false;
+    source.userData.fieldworkStudioSkin===true))return false;
  if(source.transparent||source.opacity<.999||source.alphaTest>0||
     !source.depthWrite||source.side===THREE.DoubleSide)return false;
  if(!mesh.geometry.getAttribute('normal'))return false;
+ if(shellCover)return true;
  let node:THREE.Object3D|null=mesh;
  while(node){
   // A helmet with a fitted/loose textile cover never gets a pale highlight.

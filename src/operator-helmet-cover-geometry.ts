@@ -53,6 +53,7 @@ export function createModernHelmetCoverLayers(parent:THREE.Group,shell:string):
  const scrimMaterial=new THREE.MeshStandardMaterial({
   color:OPERATOR_SOLID_FAMILIES['forest-green'],roughness:1,flatShading:true,vertexColors:true
  });
+ fabric.userData.fieldworkStudioHelmetShellCover=true;
  for(const m of [fabric,binding,scrimMaterial]){
   m.userData.fieldworkStudioSoftGear=true;
   enableBakedGearAO(m);

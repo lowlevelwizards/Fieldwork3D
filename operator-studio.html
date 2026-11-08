@@ -59,12 +59,13 @@
 <label>CEL SHADING
 <select id="studioLightCel" aria-label="Graphic cel shading">
 <option value="0">Smooth · original</option>
-<option value="2">2-band · very graphic</option>
+<option value="2">2-band · high contrast</option>
+<option value="3">3-band · very graphic · highlight</option>
 </select></label>
 <label>RIM HIGHLIGHT
 <select id="studioLightRim" aria-label="Graphic rim highlight">
 <option value="off">Off</option>
-<option value="dual">Material glints · metal, fabric and skin</option>
+<option value="dual">White glints · weapons, metal + helmet covers</option>
 </select></label>
 <label>HEIGHT SHADING
 <select id="studioLightGradient" aria-label="Gradient on every solid item">
@@ -81,7 +82,7 @@
 <div class="studio-light-lab-grid studio-light-lab-tuning">
 <label id="studioCelLowWrap" class="studio-light-slider">CEL SHADOW CUTOFF
 <output id="studioCelLowValue" for="studioCelLow">70%</output>
-<input id="studioCelLow" type="range" min="0.35" max="0.90" step="0.01" value="0.70" aria-label="Two-band cel shadow cutoff"/></label>
+<input id="studioCelLow" type="range" min="0.35" max="0.90" step="0.01" value="0.70" aria-label="Three-band first shadow cutoff"/></label>
 <label id="studioRimAmountWrap" class="studio-light-slider">HARD GLINT OPACITY
 <output id="studioRimAmountValue" for="studioRimAmount">85%</output>
 <input id="studioRimAmount" type="range" min="0" max="1" step="0.01" value="0.85" aria-label="Hard glint opacity"/></label>
@@ -133,7 +134,7 @@
 <button id="studioLightReset" type="button">RESET LIGHTING</button>
 </div>
 <output id="studioLightLabStatus" aria-live="polite">Adjust a setting to update the operator immediately.</output>
-<small>Preview only · not saved. Metal retains a chunky traveling white glint. Armor, rigs, straps, pouches, packs, hats and skin now catch a broader, lower-opacity <strong>warm edge glint only on their brightest, light-facing surfaces</strong>. Shadow-side/backlit outlines are disabled; no floating halo or bloom. Rotate the key to test the lighting; Original restores the exact source material. Mission lighting is unchanged.</small>
+<small>Approved graphic look: three distinct cel tiers, with the brightest tier as a graphic highlight; slightly richer dusty-rose height lighting and saturated plum shadow fill. White glints stay on weapons, metal and actual helmet shell covers only. Gear and skin edge glints are disabled. Compare Original to restore untreated materials. Studio shadow-resolution controls stay Studio-only.</small>
 <details id="studioRenderDiagnostics" class="studio-render-diagnostics">
 <summary>RENDER QUALITY / SHADOW DIAGNOSTICS <small>RELOADS PREVIEW</small></summary>
 <div class="studio-light-lab-grid">
