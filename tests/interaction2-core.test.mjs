@@ -19,13 +19,13 @@ test('stroke sampling and hit sizes are screen-space, not world zoom dependent',
   assert.ok(tacticalHitProfile('touch').waypoint>tacticalHitProfile('mouse').waypoint);
   assert.match(main,/!\(state.phase==='planning'&&p.wasUnit\)/);
   assert.match(main,/p.mode='cameraPan';panX\+=dx;panY\+=dy;layout\(\)/);
-  assert.match(main,/worldToScreen\(a\.p,viewMode==='plan2d'\?0:24\)/);
+  assert.match(main,/worldToScreen\(unit\.p,viewMode==='plan2d'\?0:24\)/);
   assert.match(main,/shouldAppendStrokePoint\(worldToScreen/);
 });
 test('only one command long-press controller remains; failed targeting can retry',()=>{
   assert.doesNotMatch(main,/contextHoldTimer/);
   assert.match(main,/installTouchCommandHelp\(button\)/);
-  assert.match(main,/if\(accepted\)tacticalFeedback\.emit\(p\.moved\?'command':'select'/);
+  assert.match(main,/if\(accepted\)tacticalFeedback\.emit\(p\.dragCommitted\?'command':'select'/);
   assert.match(main,/if\(committed\)looking=false/);
   assert.match(main,/p.mode==='targetPreview'\|\|p.mode==='undecided'/);
   assert.match(main,/if\(looking\|\|flashMode\|\|firePlacement\|\|evacMode\)/);

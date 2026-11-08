@@ -26,8 +26,10 @@ import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
 import {executionStatus} from './breach-execution-state.ts';
 import {compactExecutionStatus} from './ui/tactical-hud-density.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
-import {tacticalHitProfile,preferSelectedHit,shouldAppendStrokePoint,
+import {tacticalHitProfile,shouldAppendStrokePoint,
   simplifyStrokePoints} from './ui/touch-hit-targets.ts';
+import {resolveTacticalPick,screenSegmentDistance,watchDragReady,
+  type TacticalPick} from './ui/tactical-target-resolver.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {interruptsWatch} from './breach-plan.ts';
@@ -1883,6 +1885,8 @@ let previewHover=false;
 let trace:Pt[]|null=null;
 const activePointers=new Map<number,{x:number;y:number;startX:number;startY:number;
   pointerType:string;wasUnit:boolean;nodeId:number|null;
+  pick?:TacticalPick|null;dragCommitted?:boolean;
+  selectionBefore?:{owner:string;node:number|null;watch:boolean;door:string|null};
   mode:'undecided'|'route'|'pan'|'node'|'watchTarget'|'activeWatch'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti'|'targetPreview';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null;
 /** Rebase the surviving pointers after a normal lift or a missing iOS lift. */
@@ -3378,10 +3382,15 @@ function paths(){
       replayPlanScope==='selected'&&a.id!==selected))continue;
     const c=colorFor(a.id);
     const {nodes:plan,origin}=replayPlanFor(a);
+    const muted=!replaying&&a.id!==selected;
     const activeTarget=activeWatchTarget(a);
-    if(activeTarget&&(!replaying||replayPlanVersion==='active'))drawActiveWatchMarker(a.p,
-      a.id===selected&&selectedActiveWatch&&draggingNode?
-        draggingNode:activeTarget,c,a.id===selected,a.name);
+    if(activeTarget&&(!replaying||replayPlanVersion==='active')){
+      draw.save();draw.globalAlpha=muted?.30:1;
+      drawActiveWatchMarker(a.p,
+        a.id===selected&&selectedActiveWatch&&draggingNode?
+          draggingNode:activeTarget,c,a.id===selected,a.name);
+      draw.restore();
+    }
     const visual=orderVisualScopes(plan,{
       watch:a.aimInstruction?.mode==='track',pace:a.pace,
       posture:a.posture,fire:a.firePolicy
@@ -3399,7 +3408,7 @@ function paths(){
           from=node.p;
         }
       }
-      draw.strokeStyle=c;draw.globalAlpha=a.id===selected?.88:.40;
+      draw.strokeStyle=c;draw.globalAlpha=a.id===selected?.94:muted?.18:.40;
       draw.lineWidth=a.id===selected?2.6:1.6;
       draw.setLineDash([8,4]);draw.stroke();draw.setLineDash([]);
       draw.globalAlpha=1;
@@ -3442,6 +3451,7 @@ function paths(){
           previous=node.p;
       }
     }
+    draw.save();draw.globalAlpha=muted?.32:1;
     for(let i=0;i<plan.length;i++){
       const n=plan[i],selectedNow=a.id===selected&&selectedNode===n.id;
       const semantics=visual[i];
@@ -3528,6 +3538,7 @@ function paths(){
           point.x+11,point.y-9);
       }
     }
+    draw.restore();
     // A suppression order issued HERE belongs to the operator, not a node.
     if(a.id===selected&&a.firePolicy==='suppress'&&a.suppressPoint){
       draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
@@ -3690,18 +3701,22 @@ function renderProjectedPlans(){
       replayPlanScope==='selected'&&a.id!==selected))continue;
     const {nodes:plan,origin}=replayPlanFor(a);
     const color=colorFor(a.id);
+    const muted=!replaying&&a.id!==selected;
     const activeTarget=activeWatchTarget(a);
-    if(activeTarget&&(!replaying||replayPlanVersion==='active'))drawActiveWatchMarker(
-      worldToScreen(a.p,8),
-      worldToScreen(a.id===selected&&selectedActiveWatch&&draggingNode?
-        draggingNode:activeTarget,12),
-      color,a.id===selected,a.name);
+    if(activeTarget&&(!replaying||replayPlanVersion==='active')){
+      draw.save();draw.globalAlpha=muted?.30:1;
+      drawActiveWatchMarker(worldToScreen(a.p,8),
+        worldToScreen(a.id===selected&&selectedActiveWatch&&draggingNode?
+          draggingNode:activeTarget,12),color,a.id===selected,a.name);
+      draw.restore();
+    }
     let previous=origin;
     const visual=orderVisualScopes(plan,{
       watch:a.aimInstruction?.mode==='track',pace:a.pace,
       posture:a.posture,fire:a.firePolicy
     });
     let visualIndex=0;
+    draw.save();
     for(const n of plan){
       const semantics=visual[visualIndex++];
       const cachedRoute=n.kind==='move'||n.kind==='door'?
@@ -3719,7 +3734,7 @@ function renderProjectedPlans(){
         for(const projected of projectedSteps)
           draw.lineTo(projected.x,projected.y);
         draw.strokeStyle=color;
-        draw.globalAlpha=a.id===selected?.94:.50;
+        draw.globalAlpha=a.id===selected?.96:muted?.18:.50;
         draw.lineWidth=n.kind==='pie'?3:
           semantics.before.watch&&a.id===selected?3.6:2.4;
         const narrowOnly=n.kind==='move'&&!!cachedRoute?.narrowOnly;
@@ -3730,6 +3745,7 @@ function renderProjectedPlans(){
           narrowOnly?[2,4]:[7,4]);
         draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
       }
+      draw.globalAlpha=muted?.32:1;
       const selectedNow=a.id===selected&&selectedNode===n.id;
       const point=worldToScreen(selectedNow&&draggingNode&&!draggingWatchTarget&&n.kind!=='flash'?
         draggingNode:n.p,8);
@@ -3838,6 +3854,7 @@ function renderProjectedPlans(){
       }
       if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
     }
+    draw.restore();
     const pawn=worldToScreen(a.p,32),ground=worldToScreen(a.p,1);
     const squadIndex=team(state).findIndex(member=>member.id===a.id);
     const labelSpread=state.site?[
@@ -4774,7 +4791,6 @@ function rebuildReplayEventIndex():void{
     recorder.ballistics.shots,replayEventIndex.all,
     t=>recorder.at(t),doors,friendlies,
     shot=>historicalShotVisible(shot));
-  // Actual 20 Hz positions, never guessed majority-room transitions.
   replayDirectorEntries=buildDirectorEntryEvents(
     recorder.frames,doors,friendlies);
   // The director knows the whole finished film. Fixed knots are lazily
@@ -4790,8 +4806,6 @@ function rebuildReplayEventIndex():void{
     const intents=directorIntentsAt(frame,replayDirectorPlanIndex,
       doors,t,friendlies);
     const beat=directorFilmBeatAt(t,replayDirectorFilmBeats);
-    // A friendly's known future action may guide anticipation, but
-    // undisclosed opponents and future target coordinates must not.
     const opposite=beat?.kind==='fight'?
       (beat.actorId===beat.shooterId?
         beat.targetId:beat.shooterId):null;
@@ -7139,40 +7153,109 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Digit0'&&!e.repeat)ui.cameraFit.click();
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
-const hitNode=(cursor:Pt,pointerKind:string):{id:number;index:number;owner:string;marker:'node'|'watch'|'flash'|'activeWatch'}|null=>{
-  const radius=tacticalHitProfile(pointerKind).waypoint;
-  const candidates:{id:number;index:number;owner:string;gap:number;marker:'node'|'watch'|'flash'|'activeWatch'}[]=[];
-  for(const unit of team(state))if(unit.health>0){
-    const problem=executionProblemStatus(unit);
-    if(problem?.orderId!==null&&problem){
-      const marker=executionMarkerPoint(unit,viewMode!=='plan2d');
-      const gap=distance(marker,cursor);
-      if(gap<Math.min(radius,19))
-        candidates.push({id:problem.orderId!,index:0,owner:unit.id,
-          gap:Math.max(0,gap-2),marker:'node'});
-    }
-    const activeTarget=activeWatchTarget(unit);
-    if(activeTarget){
-      const gap=distance(worldToScreen(activeTarget,12),cursor);
-      if(gap<radius)candidates.push({id:-1,index:-1,
-        owner:unit.id,gap,marker:'activeWatch'});
-    }
-    for(let i=unit.plan.length-1;i>=0;i--){
-      const n=unit.plan[i];
-      const targets:[Pt,'node'|'watch'|'flash'][]=[[n.p,'node']];
-      if(n.aimPoint&&n.aimMode==='track')targets.push([n.aimPoint,'watch']);
-      if(n.aimPoint&&n.kind==='flash')targets.push([n.aimPoint,'flash']);
-      for(const [point,kind] of targets){
-        const projected=worldToScreen(point,kind==='node'?8:12);
-        const gap=distance(projected,cursor);
-        if(gap<radius)candidates.push({id:n.id,index:i,owner:unit.id,gap,marker:kind});
-      }
-    }
+/** One shared screen-space picker for the visible planning surface.
+ * Routes, doors and order handles compete by explicit geometry, never by
+ * separate first-match handlers or unseen world information. */
+function tacticalPickAt(screen:Pt,pointerKind:string):TacticalPick|null{
+  if(replaying)return null;
+  const touch=pointerKind==='touch',pen=pointerKind==='pen';
+  // GO/PAUSE still permit direct operator selection. The rest of the
+  // planning surface is deliberately non-interactive while executing.
+  if(state.phase!=='planning'){
+    return resolveTacticalPick(team(state).filter(a=>a.health>0).map(a=>({
+      kind:'operator' as const,owner:a.id,
+      distancePx:distance(worldToScreen(a.p,viewMode==='plan2d'?0:24),screen),
+      corePx:touch?18:pen?16:14,haloPx:touch?30:pen?25:21
+    })),selected);
   }
-  // Keep the selected operator's node when it is essentially as close as
-  // a competing marker. Avoid unpredictable swaps in crowded four-unit stacks.
-  return preferSelectedHit(candidates.map(c=>({...c,distancePx:c.gap})),selected);
-};
+  const hits:TacticalPick[]=[];
+  const actor=uid(selected);
+  for(const unit of team(state)){
+    if(unit.health<=0)continue;
+    const here=worldToScreen(unit.p,viewMode==='plan2d'?0:24);
+    // A 44 px direct finger target is generous without an invisible 60 px
+    // magnetic halo that steals floor taps beside a stacked teammate.
+    hits.push({kind:'operator',owner:unit.id,distancePx:distance(here,screen),
+      corePx:touch?22:pen?18:15});
+    const problem=executionProblemStatus(unit);
+    if(problem?.orderId!=null){
+      const marker=executionMarkerPoint(unit,viewMode!=='plan2d');
+      const point=viewMode==='plan2d'?worldToScreen(marker,0):marker;
+      hits.push({kind:'problem',owner:unit.id,nodeId:problem.orderId,
+        distancePx:distance(point,screen),corePx:touch?15:12,haloPx:19});
+    }
+    const active=activeWatchTarget(unit);
+    if(active){
+      hits.push({kind:'activeWatch',owner:unit.id,
+        distancePx:distance(worldToScreen(active,12),screen),
+        corePx:touch?17:pen?15:12,
+        haloPx:unit.id===selected&&touch?24:undefined});
+    }
+    for(const node of unit.plan){
+      const here=worldToScreen(node.p,8);
+      const selectedHandle=unit.id===selected&&node.id===selectedNode;
+      hits.push({kind:'node',owner:unit.id,nodeId:node.id,
+        distancePx:distance(here,screen),
+        corePx:touch?(unit.id===selected?19:17):pen?16:13,
+        haloPx:selectedHandle&&touch?24:undefined});
+      if(node.aimPoint&&node.aimMode==='track')
+        hits.push({kind:'watch',owner:unit.id,nodeId:node.id,
+          distancePx:distance(worldToScreen(node.aimPoint,12),screen),
+          corePx:touch?17:pen?15:12,
+          haloPx:selectedHandle&&touch?23:undefined});
+      if(node.aimPoint&&node.kind==='flash')
+        hits.push({kind:'flash',owner:unit.id,nodeId:node.id,
+          distancePx:distance(worldToScreen(node.aimPoint,12),screen),
+          corePx:touch?17:pen?15:12});
+    }
+    const hit=routeLineHit(unit.p,unit.plan,screen,
+      point=>worldToScreen(point,4),
+      unit.id===selected?(touch?14:pen?12:10):(touch?8:pen?7:6),
+      (from,to)=>displayRouteCache.get(from,to,state.intel,true).points);
+    if(hit)hits.push({kind:'route',owner:unit.id,
+      routeIndex:hit.index,routePoint:hit.point,
+      distancePx:hit.distancePx,corePx:unit.id===selected?
+        (touch?14:pen?12:10):(touch?8:pen?7:6)});
+  }
+  // Known doors only. The painted leaf and visible door selector own the
+  // tap, not a cluster of broad, overlapping circles around the threshold.
+  // Interaction reach is checked at commit using the selected command origin.
+  if(actor)for(const door of state.doors){
+    if(!doorKnown(state.intel,door.id))continue;
+    const fraction=liveVisibility(state,doorCenter(door))?
+      (door.openFraction??(door.open?1:0)):
+      (state.intel.doorMemory.get(door.id)??0);
+    const leaf=doorLeafSegment({...door,openFraction:fraction});
+    const a=worldToScreen(leaf.a,10),b=worldToScreen(leaf.b,10);
+    const center=worldToScreen(doorCenter(door),12);
+    const gap=Math.min(screenSegmentDistance(screen,a,b),
+      Math.max(0,distance(screen,center)-4));
+    hits.push({kind:'door',doorId:door.id,distancePx:gap,
+      corePx:touch?(door.id===doorFocusId?15:12):pen?11:9});
+  }
+  return resolveTacticalPick(hits,selected);
+}
+function adoptPointerOwner(p:{pick?:TacticalPick|null}):void{
+  const owner=p.pick?.owner;
+  if(owner&&owner!==selected)selectUnit(owner);
+}
+function activatePointerEdit(p:{pick?:TacticalPick|null}):void{
+  adoptPointerOwner(p);
+  const pick=p.pick;
+  if(!pick)return;
+  selectedActiveWatch=pick.kind==='activeWatch';
+  selectedNode=selectedActiveWatch?null:pick.nodeId??null;
+  doorFocusId=null;
+}
+function restorePointerSelection(p:{selectionBefore?:{
+  owner:string;node:number|null;watch:boolean;door:string|null
+}}):void{
+  const prior=p.selectionBefore;
+  if(!prior)return;
+  if(selected!==prior.owner)selectUnit(prior.owner);
+  selectedNode=prior.node;selectedActiveWatch=prior.watch;
+  doorFocusId=prior.door;
+}
 canvas.addEventListener('contextmenu',e=>e.preventDefault());
 canvas.addEventListener('pointerenter',e=>{
   if(e.pointerType!=='touch'){previewHover=true;cursor=pointerWorld(e);}
@@ -7195,64 +7278,26 @@ canvas.addEventListener('pointerdown',e=>{
       mode:orbit?'cameraOrbit':'cameraPan',moved:false});
   }else{
     const contextual=looking||flashMode||!!firePlacement||!!evacMode;
-    // A selected route can pass near a teammate. Its line remains tappable
-    // unless the finger is directly over the teammate's physical icon.
-    // Previously the oversized soldier hitbox stole mid-route insert taps.
-    const selectedActor=uid(selected);
-    const overSelectedLine=!contextual&&state.phase==='planning'&&
-      !!selectedActor&&!!routeLineHit(selectedActor.p,selectedActor.plan,
-        {x:e.clientX,y:e.clientY},p=>worldToScreen(p,4),
-        tacticalHitProfile(e.pointerType).route,
-        (from,to)=>displayRouteCache.get(from,to,state.intel,true).points);
-    const hit=contextual?undefined:team(state).find(a=>{
-      if(a.health<=0)return false;
-      const direct=overSelectedLine&&a.id!==selected;
-      // All camera modes use the same CSS-pixel finger target; world-space
-      // distances would make Floor Plan selection scale with zoom.
-      const hitRadius=direct?(e.pointerType==='touch'?18:15):
-        (e.pointerType==='touch'?31:25);
-      return distance(worldToScreen(a.p,viewMode==='plan2d'?0:24),
-        {x:e.clientX,y:e.clientY})<hitRadius;
-    });
-    // Tapping the operator always selects HERE, even if a waypoint
-    // happens to overlap its icon.
-    const touch={x:e.clientX,y:e.clientY};
-    const candidate=state.phase==='planning'&&!contextual?
-      hitNode(touch,e.pointerType):null;
-    // Preserve actor-first selection, except when the finger is directly
-    // on a WATCH ring even if its screen footprint overlaps the operator.
-    const activeRingHit=candidate?.marker==='activeWatch'&&
-      distance(worldToScreen(activeWatchTarget(uid(candidate.owner)!)!,12),
-        touch)<=Math.min(22,tacticalHitProfile(e.pointerType).waypoint);
-    // The small persistent problem marker takes precedence over the actor
-    // body hit. Its target is that existing, editable authored order.
-    const problemTap=!!candidate&&candidate.marker==='node'&&
-      !!team(state).find(unit=>unit.id===candidate.owner&&
-        executionProblemStatus(unit)?.orderId===candidate.id&&
-        distance(executionMarkerPoint(unit,viewMode!=='plan2d'),
-          touch)<=19);
-    const node=candidate&&(!hit||activeRingHit||problemTap)?candidate:null;
-    if(node){
-          lastAuthoringAt=performance.now();
-          if(node.owner!==selected)selectUnit(node.owner);
-      selectedActiveWatch=node.marker==='activeWatch';
-      selectedNode=selectedActiveWatch?null:node.id;
-      doorFocusId=null;
-      teach(selectedActiveWatch?'watch-active-selected':'waypoint-selected',
-        selectedActiveWatch?
-          'Active WATCH: drag this ring to retarget; DELETE WATCH releases it.':
-          'Drag this waypoint to move it. LOOK checks briefly; WATCH persists.',4200);
-    }else if(hit)selectUnit(hit.id);
+    const pick=contextual?null:tacticalPickAt({x:e.clientX,y:e.clientY},
+      e.pointerType);
+    const handle=pick?.kind==='activeWatch'?'activeWatch':
+      pick?.kind==='watch'?'watchTarget':
+      pick&&['node','flash','problem'].includes(pick.kind)?'node':'undecided';
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
-      startX:e.clientX,startY:e.clientY,pointerType:e.pointerType,wasUnit:!!hit&&!node,
-      nodeId:node?.id??null,
-      mode:node?.marker==='activeWatch'?'activeWatch':
-        node?.marker==='watch'?'watchTarget':node?'node':'undecided',moved:false});
+      startX:e.clientX,startY:e.clientY,pointerType:e.pointerType,
+      wasUnit:pick?.kind==='operator',nodeId:pick?.nodeId??null,
+      pick,mode:handle,moved:false,dragCommitted:false,
+      selectionBefore:{owner:selected,node:selectedNode,
+        watch:selectedActiveWatch,door:doorFocusId}});
+
   }
   if(activePointers.size>=2){
     // Cancel any tentative route gesture when a second finger arrives.
     // The remaining finger is never retroactively treated as a map tap.
-    for(const pointer of activePointers.values())pointer.mode='cameraMulti';
+    for(const pointer of activePointers.values()){
+      if(pointer.dragCommitted)restorePointerSelection(pointer);
+      pointer.mode='cameraMulti';pointer.dragCommitted=false;
+    }
     const pts=[...activePointers.values()];
     pinchDistance=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
@@ -7331,21 +7376,22 @@ canvas.addEventListener('pointermove',e=>{
     }
     return;
   }
-  if(p.mode==='activeWatch'){
-    if(p.moved){draggingNode=cursor;draggingWatchTarget=true;}
-    return;
-  }
-  if(p.mode==='watchTarget'){
-    if(p.moved&&p.nodeId!==null){
-      draggingNode=cursor;draggingWatchTarget=true;
+  if(p.mode==='activeWatch'||p.mode==='watchTarget'){
+    const travel=Math.hypot(e.clientX-p.startX,e.clientY-p.startY);
+    if(watchDragReady(travel,e.pointerType)&&
+      (p.mode==='activeWatch'||p.nodeId!==null)){
+      if(!p.dragCommitted)activatePointerEdit(p);
+      p.dragCommitted=true;draggingNode=cursor;draggingWatchTarget=true;
     }
     return;
   }
   if(p.mode==='node'&&p.moved&&p.nodeId!==null){
-    draggingWatchTarget=false;draggingNode=cursor;return;
+    if(!p.dragCommitted)activatePointerEdit(p);
+    p.dragCommitted=true;draggingWatchTarget=false;draggingNode=cursor;return;
   }
   if(state.phase==='planning'&&p.wasUnit&&p.moved){
-    p.mode='route';
+    if(!p.dragCommitted)adoptPointerOwner(p);
+    p.dragCommitted=true;p.mode='route';
     if(!trace)trace=[{...uid(selected)!.p}];
     if(shouldAppendStrokePoint(worldToScreen(trace.at(-1)!,8),
        {x:e.clientX,y:e.clientY}))trace.push({...cursor});
@@ -7378,6 +7424,7 @@ function insertAtRouteLine(screen:Pt,pointerKind:string):boolean{
 }
 function releasePointer(e:PointerEvent,cancelled=false){
   const p=activePointers.get(e.pointerId);if(!p)return;
+  if(cancelled&&p.dragCommitted)restorePointerSelection(p);
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
   const pt=pointerWorld(e);
   // During replay, a deliberate single tap on a friendly miniature
@@ -7405,6 +7452,11 @@ function releasePointer(e:PointerEvent,cancelled=false){
       historicalShotVisible,e.pointerType==='touch'?30:22);
     if(hit)selectReplayShot(hit);
   }
+  if(!cancelled&&!replaying&&state.phase!=='planning'&&
+     activePointers.size===1&&!p.moved&&p.mode==='undecided'&&
+     p.pick?.kind==='operator'&&p.pick.owner){
+    selectUnit(p.pick.owner);
+  }
   if(!cancelled&&state.phase==='planning'&&!replaying&&activePointers.size===1){
     if((looking||flashMode||firePlacement||evacMode)&&
        (p.mode==='targetPreview'||p.mode==='undecided')){
@@ -7414,19 +7466,22 @@ function releasePointer(e:PointerEvent,cancelled=false){
       if(pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)useSelectedGround(pt);
       else showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
     }else if(p.mode==='activeWatch'){
-      const accepted=!p.moved||retargetActiveWatch(state,selected,pt);
+      adoptPointerOwner(p);
+      const accepted=!p.dragCommitted||retargetActiveWatch(state,selected,pt);
       if(!accepted)rejectAt(pt,'WATCH TARGET TOO CLOSE OR INVALID');
       selectedNode=null;selectedActiveWatch=true;doorFocusId=null;
-      if(accepted)tacticalFeedback.emit(p.moved?'command':'select',pt,
-        p.moved?'WATCH RETARGETED':undefined);
+      if(accepted)tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
+        p.dragCommitted?'WATCH RETARGETED':undefined);
     }else if(p.mode==='watchTarget'&&p.nodeId!==null){
-      const accepted=!p.moved||planWatch(state,selected,pt,p.nodeId);
+      adoptPointerOwner(p);
+      const accepted=!p.dragCommitted||planWatch(state,selected,pt,p.nodeId);
       if(!accepted)rejectAt(pt,'WATCH TARGET UNAVAILABLE');
       selectedNode=p.nodeId;doorFocusId=null;
-      if(accepted)tacticalFeedback.emit(p.moved?'command':'select',pt,
-        p.moved?'WATCH UPDATED':undefined);
+      if(accepted)tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
+        p.dragCommitted?'WATCH UPDATED':undefined);
     }else if(p.mode==='node'&&p.nodeId!==null){
-      if(p.moved){
+      adoptPointerOwner(p);
+      if(p.dragCommitted){
         const moving=uid(selected)?.plan.find(node=>node.id===p.nodeId);
         const moved=moving?.kind==='flash'?
           moveFlashTarget(state,selected,p.nodeId,pt):
@@ -7486,38 +7541,40 @@ function releasePointer(e:PointerEvent,cancelled=false){
           (watchKept?' · WATCH KEPT':''),3200);
       }
       doorFocusId=null;
-    }else if(!p.moved&&!p.wasUnit&&pt.x>=0&&pt.y>=0&&
-      pt.x<=W&&pt.y<=H){
-      const selectedActor=uid(selected);
-      // Out-of-reach door geometry must NOT steal a ground tap intended
-      // to author a waypoint beside the door. Once the planned endpoint
-      // is within reach, the physical door becomes selectable.
-      const tap={x:e.clientX,y:e.clientY};
-      const door=state.doors.find(d=>{
-        if(!doorKnown(state.intel,d.id)||!selectedActor||
-          ![selectedActor.p,finalPoint(selectedActor)].some(p=>
-            doorReachable(p,d)))return false;
-        const fraction=liveVisibility(state,doorCenter(d))?
-          (d.openFraction??(d.open?1:0)):
-          (state.intel.doorMemory.get(d.id)??0);
-        const leaf=doorLeafSegment({...d,openFraction:fraction});
-        const midpoint={x:(leaf.a.x+leaf.b.x)/2,
-          y:(leaf.a.y+leaf.b.y)/2};
-        return [doorCenter(d),midpoint,leaf.b].some(p=>
-          distance(worldToScreen(p,10),tap)<tacticalHitProfile(e.pointerType).reachableDoor||
-          distance(worldToScreen(p,38),tap)<tacticalHitProfile(e.pointerType).reachableDoor);
-      });
-      if(door&&!looking&&!flashMode&&!firePlacement){
-        doorFocusId=door.id;selectedNode=null;
-        doorMenuDismissedId=null;
-        tacticalFeedback.emit('select',doorCenter(door));
-        teach('door-selected','Door selected. Choose OPEN, KICK or another available action.',4700);
-      }else if(!looking&&!flashMode&&!firePlacement&&insertAtRouteLine({x:e.clientX,y:e.clientY},e.pointerType)){
-        // Insert-and-select: contextual LOOK/WATCH/WAIT/DELETE are immediately
-        // available on the newly authored waypoint.
-      }else{
+    }else if(!p.moved&&pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H){
+      // The hit was captured at pointer-down, but no selection/order was
+      // committed before the gesture resolved. Camera gestures never reach
+      // this branch and a tap can produce only one semantic outcome.
+      const pick=p.pick;
+      if(pick?.kind==='operator'&&pick.owner){
+        selectUnit(pick.owner);
+        tacticalFeedback.emit('select',uid(pick.owner)?.p??pt);
+      }else if(pick?.kind==='door'&&pick.doorId){
+        const door=state.doors.find(d=>d.id===pick.doorId&&
+          doorKnown(state.intel,d.id));
+        const actor=uid(selected),node=selectedPlanNode();
+        const origins=actor?(node?[node.p]:[finalPoint(actor),actor.p]):[];
+        if(door&&origins.some(origin=>doorReachable(origin,door))){
+          doorFocusId=door.id;selectedNode=null;selectedActiveWatch=false;
+          doorMenuDismissedId=null;
+          tacticalFeedback.emit('select',doorCenter(door));
+          teach('door-selected',
+            'Door selected. Choose OPEN, KICK or another available action.',4700);
+        }else if(door){
+          showUiHelp('NO DOOR ACTION IN REACH · PLAN AN APPROACH',2200);
+        }
+      }else if(pick?.kind==='route'&&pick.owner){
+        if(pick.owner!==selected){
+          // First touch on another operator's line is selection only.
+          selectUnit(pick.owner);
+          tacticalFeedback.emit('select',uid(pick.owner)?.p??pt);
+        }else{
+          insertAtRouteLine({x:e.clientX,y:e.clientY},e.pointerType);
+        }
+      }else if(!pick){
         doorFocusId=null;useSelectedGround(pt);
       }
+
     }
   }
   trace=null;draggingNode=null;draggingWatchTarget=false;

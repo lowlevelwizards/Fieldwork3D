@@ -15,11 +15,11 @@ test('finger targets are more forgiving without making mouse imprecise',()=>{
  assert.deepEqual(tacticalHitProfile(''),mouse);
 });
 test('gesture thresholds and hit tests all use pointer type',()=>{
- assert.match(main,/const hitNode=\(cursor:Pt,pointerKind:string\)/);
- assert.match(main,/hitNode\(\{x:e\.clientX,y:e\.clientY\},e\.pointerType\)/);
+ assert.match(main,/function tacticalPickAt\(screen:Pt,pointerKind:string\)/);
+ assert.match(main,/tacticalPickAt\(\{x:e\.clientX,y:e\.clientY\}/);
  assert.match(main,/tacticalHitProfile\(e\.pointerType\)\.dragStart/);
- assert.match(main,/tacticalHitProfile\(e\.pointerType\)\.reachableDoor/);
- assert.match(main,/tacticalHitProfile\(e\.pointerType\)\.route/);
+ assert.match(main,/screenSegmentDistance\(screen,a,b\)/);
+ assert.match(main,/routeLineHit\(unit\.p,unit\.plan,screen/);
  assert.match(main,/insertAtRouteLine\(\{x:e\.clientX,y:e\.clientY\},e\.pointerType\)/);
 });
 test('two-finger camera gesture still cancels route authoring',()=>{
