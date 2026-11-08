@@ -2212,7 +2212,9 @@ function updateContext(){
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
-    doorOpen:!!door&&(door.openFraction??(door.open?1:0))>=.35,
+    doorOpen:!!door&&(door.openFraction??(door.open?1:0))>=.98,
+    doorPartial:!!door&&(door.openFraction??(door.open?1:0))>.08&&
+      (door.openFraction??(door.open?1:0))<.98,
     availableTools:door?equippedEntryMethods(a.equipment)
       .filter(method=>entryToolVerdict(door,method).allowed):[],
     nodeKind:node?.kind,nodeMoveMode:node?.moveMode,aimLabel:node?.aimLabel,
