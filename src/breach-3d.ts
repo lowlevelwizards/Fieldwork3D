@@ -175,6 +175,8 @@ export class TacticalScene3D{
   private miniFocusPass:MiniatureFocusPass|null=null;
   private miniFocusIsReplay=false;
   private miniFocusFrameDt=1/60;
+  private miniFocusAttentionTime=.15;
+  private miniFocusZoomStrength=1;
   private miniFocusCenterY=.54;
   private miniFocusSelectedId:string|null=null;
   private readonly miniFocusProjection=new THREE.Vector3();
@@ -249,6 +251,7 @@ export class TacticalScene3D{
   setMiniatureFocusMode(mode:MiniatureFocusMode):void{
     if(this.miniFocusMode===mode)return;
     this.miniFocusMode=mode;
+    this.miniFocusAttentionTime=.15;
     if(mode==='off'){
       this.miniFocusPass?.dispose();this.miniFocusPass=null;
       this.miniFocusAttention?.dispose();this.miniFocusAttention=null;
@@ -385,7 +388,7 @@ export class TacticalScene3D{
    * actor meshes are used only if replay disclosure already shows them.
    */
   private miniatureUpdateAttention(camera:THREE.Camera,
-    s:Session,director:boolean):number{
+    s:Session,director:boolean,elapsed:number):number{
     if(!this.miniFocusAttention)
       this.miniFocusAttention=new MiniatureAttentionMask();
     const polygons=this.miniFocusAttentionPolygons;
@@ -480,7 +483,7 @@ export class TacticalScene3D{
       }
     }
     this.miniFocusAttention.update(
-      this.width,this.height,this.miniFocusFrameDt,polygons,discs);
+      this.width,this.height,elapsed,polygons,discs);
     const overviewZoom=activeSite()?1.48:1.25;
     return focusZoomMultiplier(
       this.view.zoom/overviewZoom,
@@ -510,12 +513,22 @@ export class TacticalScene3D{
     else this.miniFocusCenterY=decision.centerY;
     if(director)decision.centerY=this.miniFocusCenterY;
     const anchors=this.miniatureFocusAnchors(camera,director);
-    const zoomStrength=this.miniFocusSession?
-      this.miniatureUpdateAttention(camera,this.miniFocusSession,director):1;
+    // Vision polygons perform geometry occlusion. Collect them ~10 Hz,
+    // NOT at 60 Hz, and reuse the last attention texture for in-between
+    // frames. This prevents scene-complexity-driven phone stutters.
+    this.miniFocusAttentionTime+=this.miniFocusFrameDt;
+    if(this.miniFocusSession&&
+       (this.miniFocusAttentionTime>=.09||!this.miniFocusAttention)){
+      const interval=this.miniFocusAttentionTime;
+      this.miniFocusAttentionTime=0;
+      this.miniFocusZoomStrength=this.miniatureUpdateAttention(
+        camera,this.miniFocusSession,director,interval);
+    }
     if(!this.miniFocusPass)this.miniFocusPass=new MiniatureFocusPass(this.renderer);
     this.miniFocusPass.render(this.scene,camera,decision,
       this.width,this.height,anchors,this.miniFocusDebug,
-      this.miniFocusAttention?.texture??null,zoomStrength);
+      this.miniFocusAttention?.texture??null,
+      this.miniFocusZoomStrength);
   }
   inspectMiniatureFocus(){
     return {mode:this.miniFocusMode,debug:this.miniFocusDebug,
