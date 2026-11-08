@@ -480,7 +480,8 @@ export function composeReplayDirectorShot(_time:number,
     yaw:(realYaw+2*Math.PI)%(2*Math.PI),
     roomId:physical.roomId,occluded:physical.occluded,
     fov:physical.fov,operatorPoint:{...operator.p},
-    attentionPoint:target&&physical.targetVisible?{...target}:
+    attentionPoint:target?(physical.targetVisible?{...target}:
+      {...physical.focus}):
       composition.attention?{...composition.attention}:null,
     followDirection:{...forward},
     framePoints:visibleTargets.map(p=>({...p}))};
