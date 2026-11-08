@@ -4,9 +4,9 @@
 import type {Session} from './breach-game.ts';
 import {initialWardrobe,readWardrobe,type WardrobeOptions}
  from './operator-wardrobe-data.ts';
-import {WEAPONS,type WeaponId} from './breach-combat.ts';
+import type {WeaponId} from './breach-combat.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
-import {magazineKit,type MagazineItem} from './breach-magazines.ts';
+import type {MagazineItem} from './breach-magazines.ts';
 import {liveMagazineCapacity,standardReserveRounds,freshMagazineIssue,
  fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
 import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
