@@ -20,7 +20,7 @@ const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 const yawOf=(anchor:Pt,focus:Pt)=>Math.atan2(
   anchor.x-focus.x,anchor.y-focus.y);
 const cameraStep=8; // World units per storyboard knot (.8 s by default).
-const turnStep=10*Math.PI/180; // Calm, legible tracking: no 180° whips.
+const turnStep=7*Math.PI/180; // Calm, legible tracking: no 180° whips.
 const radiusStep=12;
 const minFocusRadius=30;
 const maxFocusRadius=175;
