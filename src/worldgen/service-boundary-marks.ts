@@ -6,7 +6,6 @@
  * which might be empty because a generator correctly rejected the prop.
  */
 import type {Site,ExteriorZone} from '../breach-site.ts';
-import type {Obstacle} from '../breach-core.ts';
 import {planRearServiceMarks} from './rear-service-program.ts';
 
 export type ServiceBoundaryMark={
