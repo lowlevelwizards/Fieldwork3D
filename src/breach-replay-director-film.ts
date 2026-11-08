@@ -53,7 +53,7 @@ export function buildDirectorFilmBeats(
       shot.recordedAt-b.last<=1.6&&
       (b.actorId===friendly||b.shooterId===shot.shooterId||
         b.targetId===shot.targetId||b.targetId===shot.shooterId)&&
-      dist(b.shooter,shooter)<165);
+      dist(b.shooter,shooter)<255);
     if(existing){
       existing.last=shot.recordedAt;
       existing.end=shot.recordedAt+1.15;
