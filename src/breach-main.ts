@@ -5118,6 +5118,8 @@ function enterReplay(){
   renderReplaySquadEntries();
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
+  ui.replayTopHud.hidden=false;ui.replayRail.hidden=false;
+  closeReplayChoices();setReplayDockCollapsed(false);
   ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
   renderReplayEventMarkers();seekReplay(0);updateHud();
 }
@@ -5153,6 +5155,8 @@ function exitReplay(){
   showReplayToolTab(null);
   document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
+  ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
+  closeReplayChoices();
   if(finishedSession)state=finishedSession;
   finishedSession=null;fogStamp=-1;
   if(savedReplayPreviousRecorder){
@@ -6011,6 +6015,8 @@ function reset(next=state.variant,siteSeed?:number,
   hideWeaponChooser();
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
+  ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
+  closeReplayChoices();
   state=newSession(next,legacyStudy?undefined:
     siteSeed??randomSiteSeed(),restartStart?.intelMode??selectedIntelMode,
     restartStart?.scale??requestedSiteScale,missionOverride,
