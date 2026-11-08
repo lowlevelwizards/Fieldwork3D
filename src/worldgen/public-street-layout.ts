@@ -8,7 +8,8 @@
 import type {Site} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
 
-type StreetSite=Pick<Site,'entrySide'|'entrance'|'bounds'|'rooms'|'doors'|'exteriorZones'>;
+type StreetSite=Pick<Site,'entrySide'|'entrance'> &
+ Partial<Pick<Site,'bounds'|'rooms'|'doors'|'exteriorZones'>>;
 export type StreetRect={x:number;y:number;width:number;depth:number};
 export type PublicStreet={
  road:StreetRect;
@@ -25,7 +26,7 @@ const clamp=(n:number,min:number,max:number)=>Math.min(max,Math.max(min,n));
 
 export function planPublicStreet(site:StreetSite):PublicStreet|null{
  const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
- if(!site.rooms.length)return null;
+ if(!site.rooms?.length)return null;
  const entry=site.entrySide??'south';
  const vertical=entry==='north'||entry==='south';
  const sign=entry==='south'||entry==='east'?1:-1;
@@ -53,7 +54,7 @@ export function planPublicStreet(site:StreetSite):PublicStreet|null{
  const road=rect(along,span,roadCenter,roadWidth);
  const sidewalk=sidewalkWidth>=9?
    rect(along,span,sidewalkCenter,sidewalkWidth):null;
- const front=site.doors.find(d=>d.id==='FRONT');
+ const front=site.doors?.find(d=>d.id==='FRONT');
  const entrance=front?{x:(front.a.x+front.b.x)/2,
    y:(front.a.y+front.b.y)/2}:site.entrance;
  const center=vertical?entrance.x:entrance.y;
