@@ -7,7 +7,7 @@ import {muzzleAtShot} from '../src/breach-muzzle.ts';
 import {M4A1_AUTHORED_SHORT}
  from '../src/breach-authored-m4a1-short-stock.ts';
 import {weaponClearance} from '../src/breach-weapon-clearance.ts';
-import {fitWeaponPose,weaponGrips}
+import {fitWeaponPose,weaponGrips,liveShortStockPose}
  from '../src/breach-weapon-pose.ts';
 import {createOperatorRig,poseOperator}
  from '../src/breach-operator-rig.ts';
@@ -143,6 +143,12 @@ test('classic weapons use a compact support grip on the same rigid gun',()=>{
   const p=V(grip.supportX*grip.lengthScale,grip.supportY,-1.6)
     .applyEuler(fit.rotation).add(fit.origin);
   assert.ok(fit.support.distanceTo(p)<1e-6,weapon+' wrist detached');
-  assert.ok(grip.supportX<=1.35,weapon+' hand should fold in near the receiver');
+  // Real support sockets stay on each physical handguard. The operator's
+  // authored wrist target follows that actual socket (with at most the
+  // transferred 3-unit manual offset), rather than making up an attachment
+  // behind the receiver just to satisfy the abandoned short-stock solver.
+  const pose=liveShortStockPose(weapon);
+  assert.ok(V(...pose.targets.supportHand).distanceTo(fit.support)<=3.001,
+   weapon+' authored hand is too far from its actual gun grip');
  }
 });
