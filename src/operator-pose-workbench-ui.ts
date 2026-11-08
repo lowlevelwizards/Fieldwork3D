@@ -91,7 +91,7 @@ function storeEdited(tuned=false){
  const previous=library.entries[edited.preset];
  library.entries[edited.preset]={pose:cloneWorkbenchPose(edited),
   quality:tuned?'tuned':previous?.quality??'tuned',
-  from:previous?.from};
+  ...(previous?.from?{from:previous.from}:{})};
  renderLibraryStatus();
 }
 function restorePreset(id:string){
