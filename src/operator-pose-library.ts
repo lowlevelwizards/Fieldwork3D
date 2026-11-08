@@ -174,7 +174,7 @@ export function parsePoseLibrary(raw:string):PoseLibrary{
    throw Error('Invalid quality for '+id);
   result.entries[id]={
    pose,quality:e.quality as PoseQuality,
-   from:typeof e.from==='string'?e.from.slice(0,80):undefined
+   ...(typeof e.from==='string'?{from:e.from.slice(0,80)}:{})
   };
  }
  return result;
