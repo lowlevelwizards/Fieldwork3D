@@ -216,7 +216,7 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     if(candidate>score){
       score=candidate;
       best={cameraAnchor:p,focus,roomId:room?.id??null,
-        fov:clamp(Math.max(94,fov),94,116),targetVisible,
+        fov:clamp(Math.max(96,fov),96,116),targetVisible,
         occluded:req.subjectPoints.length-visible.length+
           (req.target&&!targetVisible?1:0)};
     }
