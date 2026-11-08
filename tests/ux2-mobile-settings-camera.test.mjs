@@ -8,18 +8,18 @@ const sheetCss=readFileSync(new URL('../src/ui/ux-r1-sheets.css',import.meta.url
 const audit=readFileSync(new URL('../scripts/capture-breach.mjs',import.meta.url),'utf8');
 
 test('header settings replaces the old overflow menu; dock pairs back and redo',()=>{
- const header=html.match(/<header class="top">([\\s\\S]*?)<\\/header>/)?.[1]??'';
- const dock=html.match(/<div class="actions">([\\s\\S]*?)<\\/div>/)?.[1]??'';
- const legacy=html.match(/<section id="advancedOrders"([\\s\\S]*?)<\\/section>/)?.[0]??'';
+ const header=html.match(/<header class="top">([\s\S]*?)<\/header>/)?.[1]??'';
+ const dock=html.match(/<div class="actions">([\s\S]*?)<\/div>/)?.[1]??'';
+ const legacy=html.match(/<section id="advancedOrders"([\s\S]*?)<\/section>/)?.[0]??'';
  assert.ok(header.includes('id="siteSettingsToggle"'));
  assert.ok(dock.includes('id="back"')&&dock.includes('id="redo"'));
  assert.ok(!dock.includes('id="moreOrders"'));
  assert.match(legacy,/hidden aria-hidden="true"/);
  assert.ok(!legacy.includes('id="siteSettingsToggle"'));
  assert.ok(!legacy.includes('id="redo"'));
- assert.match(main,/ui\\.redo\\.addEventListener\\('click'/);
- assert.doesNotMatch(main,/ui\\.moreOrders/);
- assert.match(css,/#advancedOrders\\[hidden\\]\\{display:none!important\\}/);
+ assert.match(main,/ui\.redo\.addEventListener\('click'/);
+ assert.doesNotMatch(main,/ui\.moreOrders/);
+ assert.match(css,/#advancedOrders\[hidden\]\{display:none!important\}/);
 });
 
 test('settings has its own reachable 44px close affordance',()=>{
