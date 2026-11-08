@@ -63,15 +63,6 @@ test('every rig presents only its explicit dedicated magazine pouch inventory',(
    assert.equal(actualCells.length,capacity,
     style+' every socket must correspond to a real magazine-only case');
    const visible=r.visualKit.magazines.rig.filter(m=>m.visible);
-   if(style==='chest-placard'||style==='micro-rig'){
-    const mag=r.visualKit.magazines.rig[0];
-    mag.geometry.computeBoundingBox();
-    console.log('MAG_POUCH_FIT_DEBUG',style,JSON.stringify({
-     bbox:mag.geometry.boundingBox,cell:actualCells[0],
-     fit:seatMagazineInPouch(mag.geometry.boundingBox,actualCells[0]),
-     count:visible.length,rig:kit.slots.rig,part:issue.build?.parts.magazine
-    }));
-   }
    assert.ok(visible.length<=capacity,style+' no phantom side/second row');
    assert.ok(visible.length>0,style+' at least one real magazine fits');
    assert.ok(r.visualKit.magazines.rig.slice(capacity).every(m=>!m.visible),
