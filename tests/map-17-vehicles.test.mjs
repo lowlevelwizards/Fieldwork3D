@@ -12,7 +12,7 @@ test('MAP 17 vehicle types have independent physical dimensions and catalog prev
   assert.equal(items.find(x=>x.id===id)?.presentation,'bespoke');
  }
 });
-test('MAP 17 parking vehicles are deterministic in seeded properties',()=>{
+test('MAP 17 existing car models are retired from all new seeded properties',()=>{
  let found=0;
  for(let seed=1;seed<=80;seed++){
   const a=generateSite(seed),b=generateSite(seed);
@@ -25,5 +25,5 @@ test('MAP 17 parking vehicles are deterministic in seeded properties',()=>{
    }
   }
  }
- assert.ok(found>0);
+ assert.equal(found,0,'vehicles must remain absent until their full art rebuild');
 });

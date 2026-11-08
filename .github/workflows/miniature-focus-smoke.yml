@@ -1,0 +1,34 @@
+name: MF-1 — Critical Opt-in WebGL Smoke
+on:
+  pull_request:
+    paths:
+      - 'src/rendering/miniature-focus-*.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-main.ts'
+      - 'tests/miniature-focus-*.test.mjs'
+      - 'scripts/smoke-miniature-focus.mjs'
+      - '.github/workflows/miniature-focus-smoke.yml'
+permissions:
+  contents: read
+concurrency:
+  group: miniature-focus-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  miniature-smoke:
+    if: ${{ startsWith(github.head_ref, 'feature/breach-miniature-focus-') || startsWith(github.head_ref, 'feature/miniature-focus-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install project and WebGL browser
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install chromium
+      - name: MF-1 pure policy and protection contract
+        run: node --experimental-strip-types --test tests/miniature-focus-core.test.mjs tests/miniature-focus-preferences.test.mjs
+      - name: MF-1 real tactical WebGL and mask smoke
+        run: node scripts/smoke-miniature-focus.mjs

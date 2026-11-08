@@ -21,6 +21,8 @@ import {
   planCasualtyTransport,planRecoverMedical,planCivilianRelease,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
+ type MiniatureFocusMode} from './rendering/miniature-focus-config.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
 import {executionStatus} from './breach-execution-state.ts';
@@ -7777,6 +7779,33 @@ ui.briefingClose.addEventListener('click',()=>{
   tacticalSheetNavigation.sync();
   updateContext();
 });
+// Live graphics preference. Buttons apply immediately, without resetting
+// mission/replay or rebuilding the WebGL scene.
+const miniatureFocusButtons=Array.from(
+ ui.siteSettings.querySelectorAll<HTMLButtonElement>('[data-miniature-focus]'));
+function storedMiniatureFocus():string|null{
+ try{return localStorage.getItem(MINIATURE_FOCUS_STORAGE_KEY);}
+ catch{return null;}
+}
+let miniatureFocusSetting:MiniatureFocusMode=stage?.getMiniatureFocusMode()??
+ initialMiniatureFocusMode(
+   new URLSearchParams(location.search).get('focusFx'),storedMiniatureFocus());
+function syncMiniatureFocusPreference():void{
+ for(const button of miniatureFocusButtons){
+   const active=button.dataset.miniatureFocus===miniatureFocusSetting;
+   button.setAttribute('aria-pressed',String(active));
+ }
+}
+for(const button of miniatureFocusButtons)button.addEventListener('click',()=>{
+ const value=button.dataset.miniatureFocus;
+ if(value!=='off'&&value!=='subtle'&&value!=='replay')return;
+ miniatureFocusSetting=value;
+ stage?.setMiniatureFocusMode(value);
+ try{localStorage.setItem(MINIATURE_FOCUS_STORAGE_KEY,value);}
+ catch{/* Preference remains active for this session without storage. */}
+ syncMiniatureFocusPreference();
+});
+syncMiniatureFocusPreference();
 const liveMixToggle=el<HTMLButtonElement>('liveMixToggle');
 const roomAudioToggle=el<HTMLButtonElement>('roomAudioToggle');
 function updateAudioLabButtons(){
@@ -7993,6 +8022,10 @@ function tick(now:number){
   // never fixed-step gameplay or authoritative replay/simulation state.
   const studioOccludesTactical=!!studioOverlay&&!studioOverlay.hidden&&
    !replayQuickVideo.active;
+  if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
+    stage.setMiniatureFocusContext(replaying,
+      activePointers.size>0||!!draggingNode||draggingWatchTarget||
+      looking||flashMode||!!firePlacement||!!evacMode,dt);
   if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
     stage.update(state,selected,dt,doorFocusId,
       replaying&&replayOmniscient,replaying?replayPresentation:null,

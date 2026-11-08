@@ -4,6 +4,16 @@ on:
     paths:
       - 'src/worldgen/asset-character-visuals.ts'
       - 'src/worldgen/fixture-visuals.ts'
+      - 'src/worldgen/foliage-card-visuals.ts'
+      - 'src/worldgen/exterior-sites.ts'
+      - 'src/worldgen/public-street-layout.ts'
+      - 'src/worldgen/property-surfaces.ts'
+      - 'src/worldgen/outdoor-fixture-policy.ts'
+      - 'tests/public-street-layout-20261108.test.mjs'
+      - 'tests/outdoor-service-seating-20261108.test.mjs'
+      - 'src/worldgen/landscape-edge-program.ts'
+      - 'src/worldgen/outdoor-fixture-policy.ts'
+      - 'tests/exterior-realism-stage1-20261108.test.mjs'
       - 'src/breach-3d.ts'
       - 'src/worldgen/road-service-fixtures.ts'
       - 'tests/replay-prop-stability-20261108.test.mjs'
@@ -28,6 +38,6 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Fixture geometry and scale regression
-        run: node --experimental-strip-types --test tests/map-21-asset-character-pass.test.mjs tests/map-17-vehicles.test.mjs tests/map-04-fixture-renderer.test.mjs tests/map-01-asset-registry.test.mjs tests/map-22-asset-audit.test.mjs tests/replay-prop-stability-20261108.test.mjs
+        run: node --experimental-strip-types --test tests/map-21-asset-character-pass.test.mjs tests/map-17-vehicles.test.mjs tests/map-04-fixture-renderer.test.mjs tests/map-01-asset-registry.test.mjs tests/map-22-asset-audit.test.mjs tests/replay-prop-stability-20261108.test.mjs tests/map-28-organic-silhouettes.test.mjs tests/exterior-realism-stage1-20261108.test.mjs tests/public-street-layout-20261108.test.mjs tests/outdoor-service-seating-20261108.test.mjs tests/worldgen-28a-entrance-lane.test.mjs tests/worldgen-35-02-parking-program.test.mjs
       - name: Typecheck
         run: npm run check

@@ -13,7 +13,9 @@ const flagged:Readonly<Record<string,readonly string[]>>={
  'office-chair':['Replace unsupported-looking arm posts and rudimentary caster base'],
  'shower':['Reconnect pipe, head and controls to panel; establish door opening'],
  'bike-rack':['Horizontal half-torus produces C-shaped plan silhouette'],
- 'sedan':['Cabin sits too high; distinguish hood, roof and rear deck'],
+ 'vehicle':['Retired legacy vehicle placeholder; total rebuild required'],
+ 'sedan':['Retired from missions; rebuild body silhouette and material hierarchy'],
+ 'pickup':['Retired from missions; rebuild cab, bed, wheels and proportions'],
  'van':['Featureless single cargo slab; define passenger and loading compartments'],
  'suv':['Differentiate window pillars, rear hatch and roof'],
  'tree-broadleaf':['Replace equal-size canopy blobs with asymmetric branching'],
@@ -28,7 +30,9 @@ export function assetReviewInventory():readonly AssetReview[]{
     DETAILED_FIXTURE_IDS.has(entry.id)?'detailed':'shared';
   const scores=Object.fromEntries(ART_REVIEW_DIMENSIONS.map(d=>[d,null])) as Record<ArtReviewDimension,number|null>;
   return {id:entry.id,category:entry.category,
-   status:flagged[entry.id]?'needs-cleanup' as const:'needs-review' as const,
+   status:['vehicle','sedan','pickup','van','suv'].includes(entry.id)?
+     'needs-redesign' as const:flagged[entry.id]?
+     'needs-cleanup' as const:'needs-review' as const,
    metres:[entry.width,entry.depth,entry.height].map(n=>Number((n/WORLD_UNITS_PER_METRE).toFixed(3))) as [number,number,number],
    modelFamily,scores,notes:flagged[entry.id]??[]};
  });

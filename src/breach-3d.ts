@@ -20,6 +20,13 @@ import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 import {replayActorVisible,replayActorDisclosed,replayCivilianDisclosed,
   type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
+import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
+ miniatureFocusDecision,type MiniatureFocusMode,type MiniatureFocusView}
+ from './rendering/miniature-focus-config.ts';
+import {miniatureProtectedRect,type FocusPoint,type FocusRect}
+ from './rendering/miniature-focus-mask.ts';
+import {MiniatureFocusPass,type MiniatureFocusDebug}
+ from './rendering/miniature-focus-pass.ts';
 import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
  from './operator-shadow-quality.ts';
@@ -38,6 +45,7 @@ import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
   from './rendering/breach-shadow-controller.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
+import {planPublicStreet} from './worldgen/public-street-layout.ts';
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {conditionFloorPixels,effectiveCondition} from './worldgen/condition-visual.ts';
@@ -146,6 +154,22 @@ export class TacticalScene3D{
   private readonly quality=graphicsBudget(
     new URLSearchParams(location.search).get('quality'),
     navigator.maxTouchPoints>0);
+  /** Subtle is the default; explicit Off always uses the direct renderer. */
+  private miniFocusMode=initialMiniatureFocusMode(
+    new URLSearchParams(location.search).get('focusFx'),
+    (()=>{try{return localStorage.getItem(MINIATURE_FOCUS_STORAGE_KEY);}
+      catch{return null;}})());
+  private readonly miniFocusDebug:MiniatureFocusDebug=(()=>{
+    const d=new URLSearchParams(location.search).get('focusDebug');
+    return d==='mask'||d==='protected'?d:null;
+  })();
+  private miniFocusPass:MiniatureFocusPass|null=null;
+  private miniFocusIsReplay=false;
+  private miniFocusInputActive=false;
+  private miniFocusRecovery=1;
+  private readonly miniFocusProjection=new THREE.Vector3();
+  private readonly miniFocusPoints:FocusPoint[]=Array.from(
+    {length:8},()=>({x:0,y:0}));
   private lastFogSignature='';
   private lastMemoryFogSignature='';
   private lastMemoryFogSession:Session|null=null;
@@ -197,6 +221,80 @@ export class TacticalScene3D{
     return this.physicalDirectorActive?
       (this.replayDirectorLens==='wide'?
         this.directorCamera:this.directorOrthoCamera):this.camera;
+  }
+  getMiniatureFocusMode():MiniatureFocusMode{return this.miniFocusMode;}
+  setMiniatureFocusMode(mode:MiniatureFocusMode):void{
+    if(this.miniFocusMode===mode)return;
+    this.miniFocusMode=mode;
+    if(mode==='off'){
+      this.miniFocusPass?.dispose();this.miniFocusPass=null;
+    }
+  }
+  /** Main loop supplies only view/interaction state, never actor intel. */
+  setMiniatureFocusContext(replaying:boolean,interacting:boolean,dt:number):void{
+    this.miniFocusIsReplay=replaying;
+    this.miniFocusInputActive=interacting;
+    if(interacting)this.miniFocusRecovery=0;
+    else this.miniFocusRecovery=Math.min(1,
+      this.miniFocusRecovery+Math.max(0,dt)/.18);
+  }
+  /** Conservative projection of known site bounds, unless an omniscient
+   * replay director may safely protect its explicitly featured friendlies.
+   * An invalid or behind-camera projection disables blur for that frame.
+   */
+  private miniatureFocusRect(camera:THREE.Camera,
+    director:boolean,omniscient:boolean):FocusRect|null{
+    const subjects=director&&omniscient&&
+      this.replayDirectorSubjects.length>0?
+      this.replayDirectorSubjects:null;
+    const bounds=activeWorldBounds();
+    const count=subjects?Math.min(4,subjects.length)*2:8;
+    for(let i=0;i<count;i++){
+      const p=subjects?subjects[i>>1]:null;
+      const x=p?.x??((i&1)?bounds.maxX:bounds.minX);
+      const z=p?.y??((i&2)?bounds.maxY:bounds.minY);
+      const height=subjects?(i&1?42:0):(i&4?42:0);
+      const projected=this.miniFocusProjection.set(x,height,z).project(camera);
+      if(!Number.isFinite(projected.x)||!Number.isFinite(projected.y)||
+         !Number.isFinite(projected.z)||
+         projected.z<-1||projected.z>1)return null;
+      this.miniFocusPoints[i].x=(projected.x+1)*this.width/2;
+      this.miniFocusPoints[i].y=(1-projected.y)*this.height/2;
+    }
+    return miniatureProtectedRect(this.miniFocusPoints.slice(0,count),
+      this.width,this.height,subjects?48:32);
+  }
+  private renderMiniatureFocus(camera:THREE.Camera,omniscient:boolean):void{
+    if(this.miniFocusMode==='off'&&!this.miniFocusDebug){
+      this.renderer.render(this.scene,camera);return;
+    }
+    const director=this.miniFocusIsReplay&&this.physicalDirectorActive;
+    const view:MiniatureFocusView=
+      camera===this.bodycamCamera?'bodycam':
+      this.view.mode==='top'?'top':
+      this.view.mode==='plan2d'?'floor-plan':
+      director?'director':this.miniFocusIsReplay?'free-replay':'tactical';
+    const potentiallyEnabled=view!=='bodycam'&&view!=='top'&&
+      view!=='floor-plan'&&this.quality.mode!=='performance'&&
+      (this.miniFocusMode!=='replay'||this.miniFocusIsReplay);
+    const rect=potentiallyEnabled||this.miniFocusDebug?
+      this.miniatureFocusRect(camera,director,omniscient):null;
+    const decision=miniatureFocusDecision({
+      mode:this.miniFocusMode,view,quality:this.quality.mode,
+      protectedRegionValid:!!rect,gesturesActive:this.miniFocusInputActive,
+      capable:true,
+    });
+    if(!decision.active&&!this.miniFocusDebug){
+      this.renderer.render(this.scene,camera);return;
+    }
+    decision.strength*=this.miniFocusRecovery;
+    if(!this.miniFocusPass)this.miniFocusPass=new MiniatureFocusPass(this.renderer);
+    this.miniFocusPass.render(this.scene,camera,decision,rect,
+      this.width,this.height,this.miniFocusDebug);
+  }
+  inspectMiniatureFocus(){
+    return {mode:this.miniFocusMode,debug:this.miniFocusDebug,
+      ...this.miniFocusPass?.getDiagnostics()};
   }
   /** Default: in-room orthographic. WIDE is a deliberate A/B preview,
    * never changes the tactical camera, replay footage or simulation. */
@@ -781,16 +879,14 @@ export class TacticalScene3D{
       this.box(this.root,mark.x,propertySurfaceCenterHeight(mark.kind),
         mark.y,mark.width,PROPERTY_SURFACE_THICKNESS,
         mark.depth,this.solid(age(surfaceColor[mark.kind],'concrete')),false);
-    const road=this.solid(age(0x59584a,'asphalt'),.91,'asphalt');
-    const side=site.entrySide??'south';
-    if(side==='east'||side==='west'){
-      const edge=side==='east'?bounds.maxX:bounds.minX;
-      this.box(this.root,(site.entrance.x+edge)/2,-1.43,site.entrance.y,
-        Math.abs(site.entrance.x-edge)+10,.30,85,road,false);
-    }else{
-      const edge=side==='south'?bounds.maxY:bounds.minY;
-      this.box(this.root,site.entrance.x,-1.43,(site.entrance.y+edge)/2,
-        85,.30,Math.abs(site.entrance.y-edge)+10,road,false);
+    // The public carriageway runs along the LOT boundary, not up the
+    // pedestrian approach to the front door. One street layout also owns
+    // sidewalks, curb cuts and worldgen street-exclusion checks.
+    const street=planPublicStreet(site);
+    if(street){
+      const road=this.solid(age(0x595d59,'asphalt'),.94,'asphalt');
+      this.box(this.root,street.road.x,-1.41,street.road.y,
+        street.road.width,.24,street.road.depth,road,false);
     }
     this.objectWear=[...planObjectWear(site),...planExposureWear(site)];
     const marksOn=(owner:ObjectWear['owner'],index:number)=>
@@ -1648,7 +1744,11 @@ export class TacticalScene3D{
     };
   }
   setMode(mode:ViewMode){
-    if(mode==='plan2d')this.replayBodycam=null;
+    if(mode==='plan2d'){
+      this.replayBodycam=null;
+      this.miniFocusPass?.dispose();
+      this.miniFocusPass=null;
+    }
     this.view.mode=mode;
     if(mode==='top')this.view.pitch=Math.PI/2;
     else if(mode==='iso')this.view.pitch=55*Math.PI/180;
@@ -2841,7 +2941,7 @@ export class TacticalScene3D{
       for(const child of cameraOwner.chest.children)hide(child);
       cameraOwner.head.traverse(hide);
     }
-    try{this.renderer.render(this.scene,camera);}
+    try{this.renderMiniatureFocus(camera,omniscient);}
     finally{
       for(const [mesh,visible] of masked)mesh.visible=visible;
       this.bodycamLastQa={
