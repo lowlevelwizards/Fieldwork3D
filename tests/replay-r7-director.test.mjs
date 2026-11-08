@@ -194,7 +194,8 @@ test('moving operators win the camera over a separate idle element',()=>{
   'the director needs to follow live movement instead of watching idle actors');
 });
 test('an active moving WATCH blends movement direction with deliberate gaze',()=>{
- const location=[{x:100,y:100},{x:111,y:110}];
+ const location=[{x:100,y:100},{x:111,y:110},
+  {x:116,y:99},{x:126,y:106}];
  const f=frame(5,location,()=>[
   {id:1,kind:'move',p:{x:181,y:100}},
   {id:2,kind:'move',p:{x:226,y:100}}
@@ -218,7 +219,8 @@ test('an active moving WATCH blends movement direction with deliberate gaze',()=
   'a compact moving pair should be closer than the old tactical zoom cap');
 });
 test('an authored future WATCH influences direction before becoming active',()=>{
- const positions=[{x:100,y:100},{x:111,y:108}];
+ const positions=[{x:100,y:100},{x:111,y:108},
+  {x:114,y:98},{x:126,y:109}];
  const planned=(id,i)=>[
   {id:1,kind:'move',p:{x:142,y:100+i*8}},
   {id:2,kind:'move',p:{x:179,y:100+i*8},
@@ -254,7 +256,8 @@ test('an authored future WATCH influences direction before becoming active',()=>
   'anticipation must not leave the moving squad out of frame');
 });
 test('a planned door action can pull interest before its order activates',()=>{
- const positions=[{x:49,y:90},{x:59,y:104}];
+ const positions=[{x:49,y:90},{x:59,y:104},
+  {x:64,y:89},{x:75,y:105}];
  const planned=(id,i)=>[
   {id:1,kind:'move',p:{x:96,y:90+i*10}},
   {id:2,kind:'move',p:{x:142,y:90+i*10}},
