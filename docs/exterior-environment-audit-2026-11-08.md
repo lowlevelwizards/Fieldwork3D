@@ -15,24 +15,29 @@ A seed/shot acceptance matrix remains required.
 1. `exterior-sites.ts` gave most zones only two primary objects, or three in
    gardens; it anchored parking and driveway zones to particular **vehicle**
    models. This overrepresents bad vehicles and underpopulates foliage.
-2. `landscape-edge-program.ts` generated at most three small candidates
+2. `breach-windows.ts` had a **second, independent frontage prop pass**
+   that created a generic `vehicle` for most building archetypes and a
+   `bench` for clinics, bypassing any real street, parking or amenity rules.
+   This is removed in Stage A; only the exterior system now authors outdoor
+   furnishing.
+4. `landscape-edge-program.ts` generated at most three small candidates
    under restrictive zone sizes. Tree colliders were as wide as their crowns;
    candidates were often rejected near walls, doors and paths.
-3. The old vegetation renderer in `fixture-visuals.ts` made broadleaf blobs,
+4. The old vegetation renderer in `fixture-visuals.ts` made broadleaf blobs,
    stacked conifer cones and uniform shrub lobes. This reads as rocks and
    angular balls, not pixel-card foliage.
-4. The only strong placement contracts were world bounds, overlap, door
+5. The only strong placement contracts were world bounds, overlap, door
    distance, protected encounter points and the arrival lane. Postal, public
    service, street, parking and amenity relationships were under-specified.
-5. `property-surfaces.ts` builds flat sidewalk/curb/crosswalk/parking and
+6. `property-surfaces.ts` builds flat sidewalk/curb/crosswalk/parking and
    maintenance rectangles. Surface elevations were recently separated to
    stop z-fighting, but curb ramps are still visual marks, not a modeled
    sloping transition. Never claim these are certified accessible routes.
-6. The "vending machine" reported in replay is a dark **utility cabinet**.
+7. The "vending machine" reported in replay is a dark **utility cabinet**.
    There is no actual vending-machine fixture in the prop catalog. Its
    surprise appearance was fixed in the earlier Director replay batch, but
    poor contextual generation remained.
-7. `asset-review.ts` itself flags several cars, tree families and bike rack
+8. `asset-review.ts` itself flags several cars, tree families and bike rack
    silhouettes. Existing reviews are not approvals of visual quality.
 
 ## Current release batch / Stage A
@@ -88,15 +93,15 @@ A seed/shot acceptance matrix remains required.
 2. Every fixture declares required and forbidden substrates, preferred
    adjacency, preferred facing, access/maintenance apron, minimum spacing and
    visibility role (physical cover vs decorative).
-3. Generate major fixed/utility objects first; reserve pedestrian and vehicle
+4. Generate major fixed/utility objects first; reserve pedestrian and vehicle
    circulation second; then add furnishings, planting clusters and final
    decals without moving existing critical paths.
-4. Structural access trumps aesthetics: keep real door swing, operator
+5. Structural access trumps aesthetics: keep real door swing, operator
    shoulder-clearance, flash/fire visibility and extraction lanes intact.
-5. Seeds vary composition/age and **purpose**, not object positions alone.
+6. Seeds vary composition/age and **purpose**, not object positions alone.
    A house front yard may have mailbox + hedge + tree; a warehouse gets loading
    lane + service utilities; a clinic gets pedestrian approach + parking.
-6. Reserve layout space for future vehicle bays, but do not fill with old
+7. Reserve layout space for future vehicle bays, but do not fill with old
    car models during this art-rebuild phase.
 
 ## Art / technical acceptance
