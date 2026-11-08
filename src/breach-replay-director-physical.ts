@@ -13,7 +13,8 @@ export type PhysicalDirectorScene={
   rooms:readonly DirectorRoom[];
   walls:readonly DirectorWall[];
   cover?:readonly Pick<Obstacle,'x'|'y'|'w'|'h'>[];
-  doors?:readonly Pick<Door,'a'|'b'|'open'|'openFraction'|'style'>[];
+  doors?:readonly (Pick<Door,'a'|'b'|'open'|'openFraction'|'style'>&
+    {id?:string})[];
 };
 export type PhysicalDirectorRequest={
   operator:PhysicalPoint;focus:PhysicalPoint;
@@ -68,17 +69,38 @@ export function directorLineBlocked(a:PhysicalPoint,b:PhysicalPoint,
   if(scene.walls.some(w=>segmentHits(a,b,w.a,w.b)))return true;
   return checkDoors&&closedDoors(scene).some(d=>segmentHits(a,b,d.a,d.b));
 }
-/** A camera can fit in a room only if it has wall, leaf and furniture
- * clearance. Opaque roofs never alter this ground-plane feasibility. */
+/** An open aperture is traversable by a camera dolly only where its
+ * ground-plane envelope can clear BOTH jambs. Ordinary shot placement
+ * still excludes door thresholds: a passing lens is not a static setup.
+ */
+export function directorOpenPortalAt(p:PhysicalPoint,
+  door:Pick<Door,'a'|'b'|'open'|'openFraction'>,
+  radius=14):boolean{
+  if((door.openFraction??(door.open?1:0))<.85)return false;
+  const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
+  const length=Math.hypot(dx,dy);
+  if(length<25)return false;
+  const t=clamp(((p.x-door.a.x)*dx+
+    (p.y-door.a.y)*dy)/Math.max(1,dx*dx+dy*dy),0,1);
+  return segmentDistance(p,door.a,door.b)<=radius&&
+    t*length>=11&&(1-t)*length>=11;
+}
+/** Physical placement and movement clearance. allowOpenPortal is ONLY
+ * used while validating a continuous through-door camera track. */
 export function directorCameraLegal(p:PhysicalPoint,
-  room:DirectorRoom|null,scene:PhysicalDirectorScene):boolean{
+  room:DirectorRoom|null,scene:PhysicalDirectorScene,
+  allowOpenPortal=false):boolean{
   if(!Number.isFinite(p.x)||!Number.isFinite(p.y))return false;
+  const onPortal=allowOpenPortal&&(scene.doors??[]).some(d=>
+    directorOpenPortalAt(p,d));
   if(room){
-    const inset=Math.min(11,room.w*.24,room.h*.24);
+    const inset=onPortal?0:Math.min(11,room.w*.24,room.h*.24);
     if(!inside(p,room,inset))return false;
   }else if(scene.rooms.some(r=>inside(p,r,0)))return false;
   if(scene.walls.some(w=>segmentDistance(p,w.a,w.b)<8.5))return false;
-  if((scene.doors??[]).some(d=>segmentDistance(p,d.a,d.b)<7))return false;
+  if((scene.doors??[]).some(d=>
+    segmentDistance(p,d.a,d.b)<7&&
+    !(allowOpenPortal&&directorOpenPortalAt(p,d))))return false;
   // Cover coordinates are center-based, unlike the room rectangles.
   if((scene.cover??[]).some(o=>Math.abs(p.x-o.x)<=o.w/2+7&&
     Math.abs(p.y-o.y)<=o.h/2+7))return false;
