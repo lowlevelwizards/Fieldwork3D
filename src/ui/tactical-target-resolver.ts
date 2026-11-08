@@ -38,6 +38,10 @@ export function resolveTacticalPick(
       if(a.owner===selectedOwner)return -1;
       if(b.owner===selectedOwner)return 1;
     }
+    // An actual marker, miniature or door leaf cannot be stolen by a
+    // movement line running underneath it. Both were direct hits.
+    if(a.kind==='route'&&b.kind!=='route')return 1;
+    if(b.kind==='route'&&a.kind!=='route')return -1;
     const delta=a.distancePx-b.distancePx;
     if(Math.abs(delta)>TIE_PX)return delta;
     // Direct object type breaks a near-tie before ownership. Otherwise a
