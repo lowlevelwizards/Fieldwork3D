@@ -1136,6 +1136,7 @@ let labSwitch:null|{from:Handling;to:Handling;
   fromProfile:NonNullable<OperatorRig['handlingProfile']>;
   authoredFrom?:WeaponFit;
   authoredChest?:{position:THREE.Vector3;rotation:THREE.Euler};
+  authoredHip?:{position:THREE.Vector3;rotation:THREE.Euler};
   authoredArms?:readonly {shoulder:THREE.Vector3;elbow:THREE.Vector3;
     wrist:THREE.Vector3;bend:THREE.Vector3}[]}=null;
 let rig:OperatorRig|null=null,track:LabTrack='idle';
@@ -1239,7 +1240,7 @@ function chooseTrack(next:LabTrack){
   // Snapshot the actual current presentation, not merely the last named
   // pose. Rapid tap-to-tap retargeting remains continuous mid-transition.
   const target=LAB_HANDLING[next];
-  if(target&&rig&&!comparing&&next!==track){
+  if(target&&rig&&rig.lastPose&&!comparing&&next!==track){
     const previous=LAB_HANDLING[track]??labSwitch?.to??'ready';
     const delta=(target==='ads'||previous==='ads')?.32:
       (target==='short'||previous==='short')?.30:.24;
@@ -1262,6 +1263,9 @@ function chooseTrack(next:LabTrack){
       }:undefined,
       authoredChest:presented?{
         position:rig.chest.position.clone(),rotation:rig.chest.rotation.clone()
+      }:undefined,
+      authoredHip:presented?{
+        position:rig.hip.position.clone(),rotation:rig.hip.rotation.clone()
       }:undefined,
       authoredArms:presented?rig.arms.map(arm=>{
         // Each segment is centered between its endpoints. Recover the
@@ -1654,6 +1658,7 @@ function draw(){
       fromWeapon:labSwitch.fromWeapon,
       authoredFrom:labSwitch.authoredFrom,
       authoredChest:labSwitch.authoredChest,
+      authoredHip:labSwitch.authoredHip,
       authoredArms:labSwitch.authoredArms}:undefined;
   const transition=direct??scripted;
   if(labSwitch&&alpha>=1)labSwitch=null;

@@ -124,6 +124,8 @@ export type FallbackArmRequest={
  preferredPole:THREE.Vector3;previousBend:THREE.Vector3;
  side:-1|1;neutral:boolean;down:boolean;surrender:boolean;
  firing:boolean;sourceContinuity:boolean;
+ /** Live strafe uses previous rendered bend, replay always uses pose time. */
+ liveContinuity?:boolean;
  transitionPhase?:number;
  envelope:PoseClearanceEnvelope|null;
  mode:PoseConstraintMode;allowVisualOverlap:boolean;
@@ -193,7 +195,9 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
      envelope,preferredPole,
      // During interruption, prefer the existing visible elbow among
      // equally valid OBB candidates; never infer a new random pole.
-     referenceBend:req.sourceContinuity?req.previousBend:undefined,
+     referenceBend:req.sourceContinuity||req.liveContinuity?
+       req.previousBend:undefined,
+     continuityBias:req.liveContinuity?2.1:0,
      allowVisualOverlap:req.allowVisualOverlap
    });
    if(dynamic.solution)
