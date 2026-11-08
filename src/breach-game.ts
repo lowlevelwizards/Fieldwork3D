@@ -155,6 +155,8 @@ import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipme
 import {magazineKit,
   reloadDuration as reloadTiming,type MagazineItem,type ReloadMode}
   from './breach-magazines.ts';
+import {liveMagazineCapacity,freshMagazineIssue}
+ from './arsenal/live-magazine-capacity.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
 import {CASING_LIMIT,IMPACT_MARK_LIMIT,BLOOD_MARK_LIMIT,
   type EjectedCasing} from './breach-effects.ts';
@@ -417,11 +419,10 @@ export function newSession(index=0,siteSeed?:number,
     friendly.forEach((a,i)=>{
       const issue=issueWeaponPreset(starterWeaponPreset(a.id));
        a.weapon=issue.weapon;a.weaponConfiguration=issue.weaponConfiguration;
-      a.magazine=WEAPONS[a.weapon].capacity;
-      a.reserve=WEAPONS[a.weapon].reserve;
-      a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
-      a.spareMagazines=a.weapon==='shotgun'?[]:magazineKit(
-        a.id,a.weapon,a.reserve,WEAPONS[a.weapon].capacity);
+      const issueRounds=freshMagazineIssue(a.id,a.weapon,a.weaponConfiguration);
+      a.magazine=issueRounds.magazine;a.reserve=issueRounds.reserve;
+      a.insertedMagazineId=issueRounds.loadedMagazineId;
+      a.spareMagazines=issueRounds.magazines;
       a.health=4;a.injuryStage=0;
       a.p={...site.spawn[i]};
       // Entry teams face the nearest actual interior, not a hard-coded
@@ -466,11 +467,10 @@ export function newSession(index=0,siteSeed?:number,
       a.appearanceSeed=issued.appearanceSeed;
       a.armorIntegrity=issued.armorIntegrity;
       a.helmetIntegrity=issued.helmetIntegrity;
-      a.magazine=WEAPONS[a.weapon].capacity;
-      a.reserve=WEAPONS[a.weapon].reserve;
-      a.insertedMagazineId=a.id+'/'+a.weapon+'/loaded';
-      a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,
-        WEAPONS[a.weapon].capacity);
+      const issueRounds=freshMagazineIssue(a.id,a.weapon,a.weaponConfiguration);
+      a.magazine=issueRounds.magazine;a.reserve=issueRounds.reserve;
+      a.insertedMagazineId=issueRounds.loadedMagazineId;
+      a.spareMagazines=issueRounds.magazines;
       a.injuryStage=0;
       a.personality=spec?.role==='investigator'?'aggressor':
         spec?.role==='reserve'||spec?.role==='target'?'cautious':
@@ -492,10 +492,11 @@ export function newSession(index=0,siteSeed?:number,
     a.appearanceSeed=issued.appearanceSeed;
     a.armorIntegrity=issued.armorIntegrity;
     a.helmetIntegrity=issued.helmetIntegrity;
-    a.health=2;a.magazine=WEAPONS[a.weapon].capacity;
-    a.reserve=WEAPONS[a.weapon].reserve;a.weaponYaw=a.heading;
-    a.spareMagazines=magazineKit(a.id,a.weapon,a.reserve,
-      WEAPONS[a.weapon].capacity);
+    const issueRounds=freshMagazineIssue(a.id,a.weapon,a.weaponConfiguration);
+    a.health=2;a.magazine=issueRounds.magazine;
+    a.reserve=issueRounds.reserve;a.weaponYaw=a.heading;
+    a.insertedMagazineId=issueRounds.loadedMagazineId;
+    a.spareMagazines=issueRounds.magazines;
   });
   // The base tactical study carries two legacy defenders. An explicit
   // training site must remove them rather than spawning hostile AI off-map.
@@ -1476,9 +1477,10 @@ export function redoPlan(s:Session,id:string){
  * Ammo moves only at timed detach/insert events, never on animation startup. */
 export function beginReload(s:Session,a:TeamActor):boolean{
   const w=WEAPONS[a.weapon];
-  if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=w.capacity)return false;
+  const capacity=liveMagazineCapacity(a.weapon,a.weaponConfiguration);
+  if(a.health<=0||a.reload>0||a.reserve<=0||a.magazine>=capacity)return false;
   if(a.weapon!=='shotgun'&&!a.spareMagazines.length){
-    const replacement=magazineKit(a.id,a.weapon,a.reserve,w.capacity);
+    const replacement=magazineKit(a.id,a.weapon,a.reserve,capacity);
     a.spareMagazines=a.equipment?stageMagazines(replacement,a.equipment):replacement;
   }
   const mode:ReloadMode=a.weapon==='shotgun'?'shells':
@@ -1488,10 +1490,10 @@ export function beginReload(s:Session,a:TeamActor):boolean{
   a.reloadSelectedMagazineId=selected>=0?a.spareMagazines[selected].id:null;
   const source=selected>=0?a.spareMagazines[selected]:undefined;
   a.reloadDuration=reloadTiming(w.reload,injuryReload(a.injuryStage),
-    mode,w.capacity-a.magazine)+reloadMagazineDelay(source);
+    mode,capacity-a.magazine)+reloadMagazineDelay(source);
   a.reload=a.reloadDuration;a.reloadRemoved=false;
   a.reloadInserted=false;a.reloadFromRounds=a.magazine;
-  a.reloadTargetRounds=Math.min(w.capacity-a.magazine,a.reserve);
+  a.reloadTargetRounds=Math.min(capacity-a.magazine,a.reserve);
   a.aim=0;
   notify(s,a.name+' '+(mode==='retention'?'RETENTION RELOAD':
     mode==='shells'?'LOADING SHELLS':'EMERGENCY RELOAD'));
@@ -1645,11 +1647,10 @@ export function equipWeaponChoice(s:Session,id:string,next:WeaponId):boolean{
   if(a.weapon===next)return true;
   a.weapon=next;
   if(a.weaponConfiguration)a.weaponConfiguration=changeWeaponPlatform(a.weaponConfiguration,next);
-  a.magazine=WEAPONS[next].capacity;
-  a.reserve=WEAPONS[next].reserve;a.reload=0;a.aim=0;
-  a.insertedMagazineId=a.id+'/'+next+'/loaded';
-  a.spareMagazines=next==='shotgun'?[]:magazineKit(
-    a.id,next,a.reserve,WEAPONS[next].capacity);
+  const issue=freshMagazineIssue(a.id,next,a.weaponConfiguration);
+   a.magazine=issue.magazine;a.reserve=issue.reserve;a.reload=0;a.aim=0;
+   a.insertedMagazineId=issue.loadedMagazineId;
+   a.spareMagazines=issue.magazines;
   a.reloadMode=null;a.reloadRemoved=false;a.reloadInserted=false;
   notify(s,a.name+' EQUIPPED '+WEAPONS[next].label);
   return true;
@@ -2923,7 +2924,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     // refills when the final available magazine isn't completely full.
     if(a.actionTimer>0&&a.reload===0){pop(a);return;}
     if(a.actionTimer===0){
-      if(a.magazine>=WEAPONS[a.weapon].capacity){pop(a);return;}
+      if(a.magazine>=liveMagazineCapacity(a.weapon,a.weaponConfiguration)){pop(a);return;}
       if(a.reload>0){a.velocity=0;return;}
       if(!beginReload(s,a)){
         failCurrentOrder(s,a,n,'RELOAD UNAVAILABLE · CHECK AMMO');return;
@@ -3925,6 +3926,13 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.health<=0){
     a.reload=0;a.reloadMode=null;return;
   }
+  // Reload independently of sprint/no-target exits. An empty gun begins
+  // its emergency reload as soon as both hands are available.
+  if(a.reload>0){advanceReload(s,a,dt);return;}
+  if(a.magazine<=0&&a.reserve>0&&!a.traversal&&!a.squeeze&&
+     !a.carryingId&&!a.treatmentActive&&a.plan[0]?.kind!=='treat'){
+    beginReload(s,a);return;
+  }
   // Encounter actors cannot fire during their first perceptual reaction.
   // Infinity means they have not yet received evidence of a threat.
   if(a.side==='red'&&(a.encounterReactionUntil??0)>s.seconds){
@@ -3956,10 +3964,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // speed is zero. It takes time to settle the sights again.
   if(a.turning>.12)a.stability=Math.max(0,a.stability-
     dt*Math.min(1.6,a.turning*.30));
-  if(a.reload>0){
-    advanceReload(s,a,dt);return;
-  }
-  if(!a.magazine){beginReload(s,a);return;}
+
   if(a.flashUntil>s.seconds){a.aim=0;return;}
   // R8B: tactical HOLD/WITHDRAW must actually cease shooting. These
   // decisions originate in direct observations, not remembered targets.
