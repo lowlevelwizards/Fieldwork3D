@@ -2639,3 +2639,14 @@ body.replaying #replayTopHud *{-webkit-tap-highlight-color:transparent}
 @media(prefers-reduced-motion:reduce){
  .context-tools[data-layout="dock"]{transition:none!important}
 }
+
+
+/* R9.1 film-safe replay header: the mission title remains, but the old
+ * phase/clock/settings block must not ghost behind the Director badge.
+ * The replay timeline already carries the authoritative time. */
+body.replaying .top .top-controls{
+  visibility:hidden;pointer-events:none
+}
+body.replaying .replay-top-hud{
+  isolation:isolate
+}
