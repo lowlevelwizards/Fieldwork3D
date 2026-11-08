@@ -36,7 +36,8 @@ test('spare magazines appear only at the ledger-specified carry location',()=>{
  const gear=initialEquipmentLoadout();
  poseOperator(rig,base(gear,['rig','rig','belt','backpack']),0);
  assert.equal(rig.visualKit.magazines.rig.filter(x=>x.visible).length,2);
- assert.equal(rig.visualKit.magazines.belt.filter(x=>x.visible).length,1);
+ assert.equal(rig.visualKit.magazines.belt.filter(x=>x.visible).length,0,
+  'a general-purpose belt slot does not create a visible magazine pouch');
  assert.equal(rig.visualKit.magazines.pocket.filter(x=>x.visible).length,0);
  poseOperator(rig,base(gear,[]),0);
  assert.ok(rig.visualKit.magazines.rig.every(x=>!x.visible));
