@@ -4677,7 +4677,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
       const upcoming=directorFutureAt(replayTime,replayDirectorFuture);
       const proposal=composeReplayDirectorShot(replayTime,actors,
         state.site?.rooms??[],state.site?.walls??[],
-        cssW/Math.max(1,cssH),stage.view.yaw,
+        cssW/Math.max(1,cssH),instant?0:stage.view.yaw,
         stage.replayCameraBaseSpan(),{intents,upcoming,
           usableWidth:cssW<500?.73:.84,
           usableHeight:cssH<520?.65:.78,
