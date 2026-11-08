@@ -4846,9 +4846,14 @@ function rebuildReplayEventIndex():void{
     // A future combat beat is NOT permission to place an undiscovered
     // enemy in the shot. Current individual observation is authoritative.
     const canShowPair=beat?.kind==='fight'&&t>=beat.first&&
-      (!opposite||friendlies.has(opposite)||
+      !!opposite&&frame.actors.some(a=>a.id===opposite)&&
+      (friendlies.has(opposite)||
+       replayOmniscient&&!replayContactObserverId||
        !!contact&&contact.targetId===opposite&&
         contact.observerId===beat.actorId);
+    // Never use a missed bullet's impact coordinate as a human target.
+    // FULL SIGHT may frame a physically present recorded enemy; TEAM and
+    // OPERATOR views require actual historical actor observation.
     return composeReplayDirectorShot(t,actors,
       state.site?.rooms??[],state.site?.walls??[],
       cssW/Math.max(1,cssH),0,
