@@ -96,22 +96,22 @@
 <input id="studioRimAngle" type="range" min="0.75" max="2" step="0.05" value="1.25" aria-label="Hard glint angle looseness"/></label>
 <label id="studioRimFabricWidthWrap" class="studio-light-slider">GEAR EDGE WIDTH
 <output id="studioRimFabricWidthValue" for="studioRimFabricWidth">280%</output>
-<input id="studioRimFabricWidth" type="range" min="1" max="4" step="0.05" value="2.8" aria-label="Soft gear silhouette width"/></label>
+<input id="studioRimFabricWidth" type="range" min="1" max="4" step="0.05" value="2.8" aria-label="Soft gear lit edge thickness"/></label>
 <label id="studioRimFabricWrap" class="studio-light-slider">GEAR CREAM OPACITY
 <output id="studioRimFabricValue" for="studioRimFabric">16%</output>
 <input id="studioRimFabric" type="range" min="0" max="0.35" step="0.01" value="0.16" aria-label="Gear cream outline opacity"/></label>
-<label id="studioRimFabricBacklightWrap" class="studio-light-slider">GEAR BACKLIGHT BIAS
-<output id="studioRimFabricBacklightValue" for="studioRimFabricBacklight">70%</output>
-<input id="studioRimFabricBacklight" type="range" min="0" max="1.5" step="0.05" value="0.7" aria-label="Gear backlight bias"/></label>
+<label id="studioRimFabricLightThresholdWrap" class="studio-light-slider">GEAR LIGHT SELECTIVITY
+<output id="studioRimFabricLightThresholdValue" for="studioRimFabricLightThreshold">65%</output>
+<input id="studioRimFabricLightThreshold" type="range" min="0" max="1" step="0.05" value="0.65" aria-label="Gear light selectivity"/></label>
 <label id="studioRimSkinWidthWrap" class="studio-light-slider">SKIN EDGE WIDTH
 <output id="studioRimSkinWidthValue" for="studioRimSkinWidth">260%</output>
-<input id="studioRimSkinWidth" type="range" min="1" max="4" step="0.05" value="2.6" aria-label="Skin silhouette width"/></label>
+<input id="studioRimSkinWidth" type="range" min="1" max="4" step="0.05" value="2.6" aria-label="Skin lit edge thickness"/></label>
 <label id="studioRimSkinWrap" class="studio-light-slider">SKIN EDGE OPACITY
 <output id="studioRimSkinValue" for="studioRimSkin">24%</output>
 <input id="studioRimSkin" type="range" min="0" max="0.45" step="0.01" value="0.24" aria-label="Skin edge opacity"/></label>
-<label id="studioRimSkinBacklightWrap" class="studio-light-slider">SKIN BACKLIGHT BIAS
-<output id="studioRimSkinBacklightValue" for="studioRimSkinBacklight">80%</output>
-<input id="studioRimSkinBacklight" type="range" min="0" max="1.5" step="0.05" value="0.8" aria-label="Skin backlight bias"/></label>
+<label id="studioRimSkinLightThresholdWrap" class="studio-light-slider">SKIN LIGHT SELECTIVITY
+<output id="studioRimSkinLightThresholdValue" for="studioRimSkinLightThreshold">65%</output>
+<input id="studioRimSkinLightThreshold" type="range" min="0" max="1" step="0.05" value="0.65" aria-label="Skin light selectivity"/></label>
 <label id="studioRimSkinWarmthWrap" class="studio-light-slider">SKIN WARMTH
 <output id="studioRimSkinWarmthValue" for="studioRimSkinWarmth">100%</output>
 <input id="studioRimSkinWarmth" type="range" min="0.5" max="1.5" step="0.05" value="1.0" aria-label="Skin edge warmth"/></label>
@@ -133,7 +133,7 @@
 <button id="studioLightReset" type="button">RESET LIGHTING</button>
 </div>
 <output id="studioLightLabStatus" aria-live="polite">Adjust a setting to update the operator immediately.</output>
-<small>Preview only · not saved. Metal retains a chunky traveling white glint. Armor, rigs, straps, pouches, packs, hats and skin receive a crisp, backlit color band <strong>on their own surfaces</strong>, not a floating silhouette or bloom. Rotate the key to test the lighting; Original restores the exact source material. Mission lighting is unchanged.</small>
+<small>Preview only · not saved. Metal retains a chunky traveling white glint. Armor, rigs, straps, pouches, packs, hats and skin now catch a broader, lower-opacity <strong>warm edge glint only on their brightest, light-facing surfaces</strong>. Shadow-side/backlit outlines are disabled; no floating halo or bloom. Rotate the key to test the lighting; Original restores the exact source material. Mission lighting is unchanged.</small>
 <details id="studioRenderDiagnostics" class="studio-render-diagnostics">
 <summary>RENDER QUALITY / SHADOW DIAGNOSTICS <small>RELOADS PREVIEW</small></summary>
 <div class="studio-light-lab-grid">
