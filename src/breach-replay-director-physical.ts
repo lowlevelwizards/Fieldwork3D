@@ -21,6 +21,9 @@ export type PhysicalDirectorRequest={
   followDirection?:PhysicalPoint|null;
   /** Action LOS outranks merely including an unrelated supporting actor. */
   targetWeight?:number;
+  /** Filming across the threshold normal yields the door's front face. */
+  doorPoint?:PhysicalPoint|null;
+  doorNormal?:PhysicalPoint|null;
 };
 export type PhysicalDirectorView={
   cameraAnchor:PhysicalPoint;focus:PhysicalPoint;
@@ -121,12 +124,12 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
   const room=directorOperatorRoom(req.operator,scene.rooms);
   // Prefer a roomy, elevated three-quarter composition. A camera
   // planted against a helmet is never an acceptable wide shot.
-  const radius=[38,52,68,84,100];
+  const radius=[50,66,82,98,116];
   const anchors:PhysicalPoint[]=[];
   const add=(p:PhysicalPoint)=>{if(directorCameraLegal(p,room,scene)&&
-    distance(p,req.operator)>=29&&distance(p,req.operator)<125&&
-    distance(p,req.focus)>=26&&
-    req.subjectPoints.every(subject=>distance(p,subject)>=24))
+    distance(p,req.operator)>=40&&distance(p,req.operator)<145&&
+    distance(p,req.focus)>=32&&
+    req.subjectPoints.every(subject=>distance(p,subject)>=35))
     anchors.push(p);};
   // Search around the actual friendly actor, not a focus point across
   // a wall in a different room. The full 360° set always contains a
@@ -183,27 +186,37 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     const mag=dir?Math.hypot(dir.x,dir.y):0;
     const forward=dir&&mag>.01?{x:dir.x/mag,y:dir.y/mag}:null;
     const ideal=forward?{
-      x:req.operator.x-forward.x*66-forward.y*12,
-      y:req.operator.y-forward.y*66+forward.x*12}:null;
+      x:req.operator.x-forward.x*78-forward.y*15,
+      y:req.operator.y-forward.y*78+forward.x*15}:null;
     const forwardOffset=forward?
       (p.x-req.operator.x)*forward.x+
       (p.y-req.operator.y)*forward.y:0;
-    // The protagonist and actual line of action are editorial priorities.
-    // A fourth teammate behind a wall must not displace a visible
-    // shooter/target or front-on door shot.
-    const candidate=visible.length*32+
-      (targetVisible?(req.targetWeight??115):0)-
-      (req.target&&!targetVisible?24:0)-
-      Math.abs(angleDelta(yaw,req.preferredYaw))*8-
-      Math.abs(distance(p,groupCenter)-75)*.13-
-      (ideal?distance(p,ideal)*.34:0)-
-      (forwardOffset>4?Math.min(48,forwardOffset*.7):0)-
-      Math.max(0,fov-112)*3-
+    const door=req.doorPoint,normal=req.doorNormal;
+    const doorFacing=door&&normal?
+      ((p.x-door.x)*normal.x+(p.y-door.y)*normal.y)/
+       Math.max(1,distance(p,door)):null;
+    // A deliberate door-front photograph should see the whole mouth
+    // nearly perpendicular to its wall, from the approach side.
+    // Penalize a side-on profile, even when it fits all four actors.
+    const doorPenalty=doorFacing===null?0:
+      Math.max(0,.82-doorFacing)*115;
+    // The shooter/target two-shot is higher priority than an unrelated
+    // teammate behind the camera. A foreground backpack with the target
+    // outside the lens is never an acceptable successful composition.
+    const candidate=visible.length*24+
+      (targetVisible?(req.targetWeight??155):0)-
+      (req.target&&!targetVisible?100:0)-
+      doorPenalty-
+      Math.abs(angleDelta(yaw,req.preferredYaw))*5-
+      Math.abs(distance(p,groupCenter)-86)*.13-
+      (ideal?distance(p,ideal)*.92:0)-
+      (forwardOffset>0?Math.min(110,forwardOffset*1.65):0)-
+      Math.max(0,fov-107)*7-
       Math.max(0,visible.length?0:120);
     if(candidate>score){
       score=candidate;
       best={cameraAnchor:p,focus,roomId:room?.id??null,
-        fov:clamp(fov,82,116),targetVisible,
+        fov:clamp(Math.max(94,fov),94,116),targetVisible,
         occluded:req.subjectPoints.length-visible.length+
           (req.target&&!targetVisible?1:0)};
     }
