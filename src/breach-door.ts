@@ -346,8 +346,10 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
     (door.angularVelocity??0)>1.2;
   if(contact.closing){
     // The opposite face can push the real leaf toward the frame.
+    // Sustained pressure does not re-inject a new impulse every motor tick.
+    const alreadyClosing=!door.open&&(door.angularVelocity??0)<-1.2;
     door.open=false;door.pushTarget=1;
-    door.angularVelocity=Math.min(-.35,
+    if(!alreadyClosing)door.angularVelocity=Math.min(-.35,
       (door.angularVelocity??0)-(1.0+1.4*leverage));
   }else if(!alreadyOpening)pushDoor(door,1.3+2.1*leverage);
   else door.pushTarget=PUSHED_OPEN_LIMIT;
@@ -395,7 +397,7 @@ export function doorClear(d:Door):boolean{
  * A blocked sidestep leaves the door blocked as usual.
  */
 export function initialOpeningYieldCandidate(d:Door,actor:Pt,
-  maxStep=2.4):Pt|null{
+  maxStep=1.25):Pt|null{
  const fraction=d.openFraction??0;
  if(!d.open||d.kind==='sliding'||d.kind==='shutter'||d.wedged||
     fraction>=.96||(d.pushTarget??1)>1.01)return null;
