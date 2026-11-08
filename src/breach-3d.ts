@@ -1899,7 +1899,8 @@ export class TacticalScene3D{
     }
     for(const [id,roof] of this.roofGroups){
       const known=spatialSurfaceState(s,'room',id,omniscient)!=='unknown';
-      roof.visible=bodycamAudition||physicalDirector?known:
+      roof.visible=physicalDirector?(known||occupiedRoomIds.has(id)):
+        bodycamAudition?known:
         roofShouldShow(omniscient,known,occupiedRoomIds.has(id));
     }
     for(const item of this.intelSurfaces){
@@ -1907,9 +1908,13 @@ export class TacticalScene3D{
         item.index,omniscient)!=='unknown';
       // Physically blocking structural WALLS never disappear in a POV.
       // Only decorative/cover meshes use recorded personal ground memory.
-      item.obj.visible=item.kind==='cover'?
-        personalCoverVisible(squadKnown,bodycamAudition,personalGroundEvidence,
-          s.coverState[item.index]??null):squadKnown;
+      // This is not omniscient actor knowledge: these are actual opaque
+      // walls physically surrounding the in-room camera. Leaving them
+      // missing would make even a perspective shot see through the map.
+      item.obj.visible=item.kind==='wall'&&physicalDirector?true:
+        item.kind==='cover'?
+          personalCoverVisible(squadKnown,bodycamAudition,personalGroundEvidence,
+            s.coverState[item.index]??null):squadKnown;
     }
     // Unlike the room's floor, decorative props must be individually
     // seen (or remembered at their own position) before they are rendered.
@@ -1963,7 +1968,8 @@ export class TacticalScene3D{
     for(const door of s.doors){
       const object=this.doors.get(door.id);
       if(!object)continue;
-      object.root.visible=spatialSurfaceState(s,'door',door.id,omniscient)!=='unknown';
+      object.root.visible=physicalDirector||
+        spatialSurfaceState(s,'door',door.id,omniscient)!=='unknown';
       this.staticBatches.setVisible(object.root,object.root.visible);
       // Personal review uses the LAST individually observed leaf state.
       // An unseen opening/kick cannot magically update this perspective.
