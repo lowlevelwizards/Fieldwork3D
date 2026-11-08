@@ -247,6 +247,8 @@ export type TeamActor=Operator & {
   stride:number;weapon:WeaponId;injuryStage:number;
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
   lastBashAt:number;lastBashRole:'push'|'receive'|null;
+  /** Bounded, idle-only clearer gaze; never an authored aim or detection. */
+  clearLookBearing?:number|null;lastClearLookProbeAt?:number;
   /** Brief physical interruption after a door leaf impact, not a wound. */
   doorStunUntil?:number;
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
@@ -4303,7 +4305,37 @@ function fire(s:Session,a:TeamActor,dt:number){
   });
   if(!target){
     a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
-    a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*profile.turnSpeed*mods.turn);
+    const canPreferClearLook=a.velocity<6&&!a.aimInstruction&&
+      a.side==='blue'&&!a.traversal&&!a.squeeze&&
+      !['look','door','tool','treat','reload','flash'].includes(
+        a.plan[0]?.kind??'');
+    if(canPreferClearLook&&s.seconds-(a.lastClearLookProbeAt??-10)>.48){
+      a.lastClearLookProbeAt=s.seconds;
+      const probe=(yaw:number)=>weaponClearance({
+        x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:yaw,
+        weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+        equipment:a.equipment,aim:0,posture:a.posture,
+        velocity:0,recoil:0
+      },s.doors);
+      const blocked=probe(a.heading).obstruction;
+      a.clearLookBearing=null;
+      if(blocked){
+        // Only a 20-degree unobstructed alternative is considered.
+        // The real muzzle, not a head-only illusion, selects the bearing.
+        for(const delta of [-.16,.16,-.34,.34]){
+          const clearance=probe(a.heading+delta);
+          if(!clearance.obstruction&&!clearance.blocked){
+            a.clearLookBearing=a.heading+delta;break;
+          }
+        }
+      }
+    }
+    const alternate=canPreferClearLook&&
+      a.clearLookBearing!==null&&a.clearLookBearing!==undefined&&
+      Math.abs(angleDifference(a.heading,a.clearLookBearing))<.38?
+      a.clearLookBearing:a.heading;
+    a.weaponYaw=approachAngle(a.weaponYaw,alternate,
+      dt*profile.turnSpeed*mods.turn);
     return;
   }
   // The target selector deliberately keeps tracking a lone visible target
