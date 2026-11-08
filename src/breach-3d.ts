@@ -1855,17 +1855,21 @@ export class TacticalScene3D{
     const fromCamera=this.camera.position.clone().sub(this.target);
     const pawn=this.replayDirectorFocus??
       team(s).find(a=>a.id===selected&&a.health>0)?.p;
+    const subjects=this.replayDirectorSubjects.length?
+      this.replayDirectorSubjects:pawn?[pawn]:[];
     const maxCutDistance=Math.max(40,Math.min(150,
       90/Math.tan(Math.max(.38,this.view.pitch))));
     for(const wall of this.walls){
-      const cut=!bodycamAudition&&this.view.mode==='iso'&&!!pawn&&wallOccludesFriendly(
-        wall.segment,pawn,{x:fromCamera.x,y:fromCamera.z},maxCutDistance);
-      const naturalOpacity=bodycamAudition?1:
-        transitionWallOpacity(this.wallFade.get(wall.mesh)??1,cut,dt);
-      this.wallFade.set(wall.mesh,naturalOpacity);
-      // X-ray affects only architectural presentation, NEVER historical
-      // actor disclosure, contact evidence or the replay's authoritative fog.
-      const opacity=!bodycamAudition&&this.replayXrayOn?0.18:naturalOpacity;
+      const cut=!bodycamAudition&&this.view.mode==='iso'&&
+        subjects.some(subject=>wallOccludesFriendly(
+          wall.segment,subject,{x:fromCamera.x,y:fromCamera.z},maxCutDistance));
+      // CUTAWAY never makes the whole building transparent. Only walls
+      // between the camera and the selected friendly/Director subjects fade.
+      // Historical knowledge and object visibility remain authoritative.
+      const opacity=bodycamAudition?1:transitionWallOpacity(
+        this.wallFade.get(wall.mesh)??1,cut,dt,
+        this.replayXrayOn?.19:.38);
+      this.wallFade.set(wall.mesh,opacity);
       const translucent=opacity<.995;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
       if(material.transparent!==translucent){
