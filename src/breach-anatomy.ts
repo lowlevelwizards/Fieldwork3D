@@ -24,13 +24,13 @@ export const equipmentStockPush=(equipment?:EquipmentLoadout):number=>
 export function stockPocket(mode:Handling,forwardPush=0):Anchor3{
  const xPush=Math.max(0,Math.min(1.25,forwardPush));
   switch(mode){
-    case 'high':return {x:4.75+xPush,y:5.30,z:6.65};
-    case 'low':return {x:4.65+xPush,y:3.15,z:6.65};
-    case 'ready':return {x:4.85+xPush,y:4.45,z:6.65};
+    case 'high':return {x:4.75+xPush,y:5.30,z:5.20};
+    case 'low':return {x:4.65+xPush,y:3.15,z:5.20};
+    case 'ready':return {x:4.85+xPush,y:4.45,z:5.20};
     // Fold the firearm down against the same front upper-torso contour.
-    case 'short':return {x:4.35+xPush,y:3.55,z:6.80};
-    case 'point':return {x:5.05+xPush,y:5.20,z:6.70};
-    case 'ads':return {x:5.10+xPush,y:5.65,z:6.75};
+    case 'short':return {x:4.35+xPush,y:3.55,z:5.35};
+    case 'point':return {x:5.05+xPush,y:5.20,z:5.25};
+    case 'ads':return {x:5.10+xPush,y:5.65,z:5.30};
   }
 }
 /** Target for a two-bone elbow. The rig converts this anatomical point to a
@@ -75,7 +75,9 @@ export function carryElbowViolation(shoulder:Anchor3,elbow:Anchor3,
  const raised=Math.max(0,elbow.y-shoulder.y+.15);
  const flare=side*(elbow.z-shoulder.z);
  const wing=Math.max(0,flare-6.0);
- const cross=Math.max(0,-flare-.6);
+ // The support arm naturally reaches IN toward a right-shouldered gun;
+ // rearward and excessive outward winging remain disallowed.
+ const cross=Math.max(0,-flare-(side===-1?5.8:2.7));
  return rear+raised+wing+cross;
 }
 export function anchorGap(a:Anchor3,b:Anchor3){
