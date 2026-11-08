@@ -420,6 +420,7 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
   // strongest *physical* candidates for real projected foreground surface
   // occupation, then rank again before selecting either lens. This runs
   // only at storyboard knots, never each rendered frame.
+  let auditedCandidates=candidates;
   if(req.composition&&candidates.length){
     const surfaces:DirectorForegroundSegment[]=[
       ...scene.walls.map(w=>({a:w.a,b:w.b,height:47,
@@ -452,6 +453,7 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
         signed(c.view.cameraAnchor)*side>12).slice(0,7))
         shortlisted.add(candidate);
     }
+    auditedCandidates=Array.from(shortlisted);
     for(const candidate of shortlisted){
       const v=candidate.view;
       const zoom=directorOrthoFittingZoom(v.cameraAnchor,v.focus,
@@ -486,7 +488,7 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     // Never let an unconvincing backpack view defeat a verified two-shot
     // merely through generic follow-camera or visible-teammate rewards.
     const clear=req.target&&req.composition.treatment==='engage'?
-      candidates.filter(c=>c.view.targetVisible&&
+      auditedCandidates.filter(c=>c.view.targetVisible&&
         c.view.compositionQuality?.targetReadable&&
         c.view.compositionQuality.primaryReadable):[];
     const ranked=(clear.length?
@@ -499,10 +501,10 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
   // shots in real perspective before opting for one with a cropped cast.
   if(best&&req.requiredPoints?.length){
     const clear=req.target&&req.composition?.treatment==='engage'?
-      candidates.filter(c=>c.view.targetVisible&&
+      auditedCandidates.filter(c=>c.view.targetVisible&&
         c.view.compositionQuality?.targetReadable&&
         c.view.compositionQuality.primaryReadable):[];
-    const ranked=(clear.length?clear:candidates)
+    const ranked=(clear.length?clear:auditedCandidates)
       .sort((a,b)=>b.score-a.score);
     for(const proposal of ranked.slice(0,16)){
       if(proposal.score<score-200)break;
