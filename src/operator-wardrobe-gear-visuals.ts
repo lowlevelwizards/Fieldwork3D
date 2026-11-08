@@ -83,7 +83,7 @@ export function createWardrobeGearLayers(
    box(webbing,pouchMaterial,x+2.02,1.50,side*7.20,.36,1.07,2.78);
    box(webbing,strapMaterial,x+2.25,.75,side*7.20,.26,1.10,.65);
    // A clear, dark top opening shows where carried belt magazines sit.
-   box(webbing,dark,x,1.88,side*8.42,2.02,.28,.19);
+   box(webbing,dark,x,1.88,side*8.60,2.02,.28,.19);
   }
  const battle=make(hip);waistRig['sadf-webbing']=battle;
  box(battle,strapMaterial,4.26,.13,0,1.18,1.50,13.55);
