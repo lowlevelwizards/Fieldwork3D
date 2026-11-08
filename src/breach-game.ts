@@ -43,6 +43,7 @@ import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,
   initialOpeningYieldCandidate,pressDoorOnBodyAttempt,doorSwingBlocked,
+  doorWouldStrikeActors,
   autoDoorAtBodyContact,canAutoOpenEnRoute} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
@@ -245,6 +246,8 @@ export type TeamActor=Operator & {
   stride:number;weapon:WeaponId;injuryStage:number;
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
   lastBashAt:number;lastBashRole:'push'|'receive'|null;
+  /** Brief physical interruption after a door leaf impact, not a wound. */
+  doorStunUntil?:number;
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
   /** Transient, collision-checked gun-clearance recovery; not a PlanNode. */
   fireRetreatTarget:Pt|null;fireRetreatUntil:number;lastFireRetreatAt:number;
@@ -3143,7 +3146,44 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       if(!door.open){
         const outcome=kickDoor(door,a.p);
         door.lastKickAt=s.seconds;
-        if(outcome.opened)door.openedAt=s.seconds;
+        if(outcome.opened){
+          door.openedAt=s.seconds;
+          // Kicks into an occupied sweep impact the actual body. A validated
+          // displacement clears room for the hinge; pinned actors remain solid.
+          const impactLeaf=doorLeafSegment({...door,openFraction:.60});
+          for(const struck of s.operators){
+            if(struck===a||struck.health<=0||
+               !doorWouldStrikeActors({...door,openFraction:0},.60,
+                 [struck.p],OPERATOR_RADIUS+1))continue;
+            const along=Math.max(0,Math.min(1,(
+              (struck.p.x-impactLeaf.a.x)*(impactLeaf.b.x-impactLeaf.a.x)+
+              (struck.p.y-impactLeaf.a.y)*(impactLeaf.b.y-impactLeaf.a.y))/
+              Math.max(1,d(impactLeaf.a,impactLeaf.b)**2)));
+            const closest={x:impactLeaf.a.x+
+              (impactLeaf.b.x-impactLeaf.a.x)*along,
+              y:impactLeaf.a.y+(impactLeaf.b.y-impactLeaf.a.y)*along};
+            const dx=struck.p.x-closest.x,dy=struck.p.y-closest.y;
+            const mag=Math.hypot(dx,dy)||1;
+            for(const distance of [18,12,7,3]){
+              const dest={x:struck.p.x+dx/mag*distance,
+                y:struck.p.y+dy/mag*distance};
+              if(!sweptBodyClear(struck.p,dest,s.doors)||
+                 s.operators.some(other=>other!==struck&&
+                   other.health>0&&d(other.p,dest)<13)||
+                 s.civilians.some(other=>other.health>0&&
+                   d(other.p,dest)<13))continue;
+              struck.priorP=clone(struck.p);struck.p=dest;break;
+            }
+            struck.doorStunUntil=Math.max(struck.doorStunUntil??0,
+              s.seconds+.85);
+            struck.lastBashAt=s.seconds;struck.lastBashRole='receive';
+            struck.fireCd=Math.max(struck.fireCd,.85);
+            struck.aim=Math.max(0,struck.aim-.7);
+            struck.velocity=0;struck.nav=[];
+            battleEvent(s,'door',a,struck.p,
+              struck.name+' STRUCK BY DOOR');
+          }
+        }
         hear(s,doorCenter(door),340,'kick');
         const result=!outcome.pushSide?'WRONG SIDE · CANNOT KICK INWARD':
           outcome.opened?'FORCED OPEN':'KICK RESISTED';
@@ -4881,6 +4921,11 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     a.suppression=Math.max(0,a.suppression-h*.17);
     a.priorP=clone(a.p);
     if(a.health<=0)continue;
+    if((a.doorStunUntil??0)>s.seconds){
+      // Retain authored orders; no movement or firing while physically stunned.
+      a.velocity=0;a.motorPause='contact';
+      continue;
+    }
     if(a.side==='blue'){
       runOrders(s,a,h);
       // Incoming *actual hits* provide coarse directional evidence even
