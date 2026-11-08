@@ -1,6 +1,7 @@
 /** Operator-local anatomical references.
  * +X forward, +Y up, +Z firing-side shoulder. Values are in chest space. */
 import type {Handling} from './breach-weapon-pose.ts';
+import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {HANDLING_PROFILES,type HandlingProfile}
   from './breach-handling-profiles.ts';
 export type Anchor3={x:number;y:number;z:number};
@@ -16,18 +17,26 @@ export const ANATOMY={
  * clearance without driving the butt through the center of the torso.
  * Shot-time muzzle geometry and the live model call this same authority.
  * Short-stock releases the shoulder contact and tucks to the right underarm. */
-export function stockPocket(mode:Handling):Anchor3{
+/** A deterministic forward seat behind the shoulder/upper vest.
+ * Armor changes the physical stock socket, NOT only the cosmetic model.
+ * Shot-time muzzle and rendering both sample this exact scalar.
+ */
+export const equipmentStockPush=(equipment?:EquipmentLoadout):number=>
+  equipment?.slots.armor==='armor-carrier'?.90:
+  equipment?.slots.armor==='armor-soft'?.43:0;
+export function stockPocket(mode:Handling,forwardPush=0):Anchor3{
+ const xPush=Math.max(0,Math.min(1.25,forwardPush));
   switch(mode){
-    case 'high':return {x:2.65,y:5.45,z:7.83};
-    case 'low':return {x:2.85,y:3.0,z:7.85};
-    case 'ready':return {x:3.10,y:4.5,z:7.87};
+    case 'high':return {x:2.65+xPush,y:5.45,z:7.83};
+    case 'low':return {x:2.85+xPush,y:3.0,z:7.85};
+    case 'ready':return {x:3.10+xPush,y:4.5,z:7.87};
     // Short-stock: tuck the butt under the firing arm, OUTSIDE the right
     // shoulder rather than centering the receiver against the sternum.
     // +Z is the firing/right side in the legacy anatomical frame.
     // The exact same rigid fit feeds live presentation and shot-time muzzle.
-    case 'short':return {x:-.90,y:-2.2,z:10.35};
-    case 'point':return {x:3.75,y:5.35,z:7.95};
-    case 'ads':return {x:3.62,y:5.92,z:8.04};
+    case 'short':return {x:-.90+xPush*.45,y:-2.2,z:10.35};
+    case 'point':return {x:3.75+xPush,y:5.35,z:7.95};
+    case 'ads':return {x:3.62+xPush,y:5.92,z:8.04};
   }
 }
 /** Target for a two-bone elbow. The rig converts this anatomical point to a

@@ -4060,7 +4060,8 @@ function renderWeaponLights2D(){
    Math.abs(Math.atan2(Math.sin(previous.yaw-yaw),Math.cos(previous.yaw-yaw)))>.025){
    const muzzle=weaponClearance({x:actor.p.x,z:actor.p.y,
     heading:actor.heading,weaponYaw:yaw,weapon:actor.weapon,
-    weaponConfiguration:actor.weaponConfiguration,aim:actor.aim,
+    weaponConfiguration:actor.weaponConfiguration,
+    equipment:actor.equipment,aim:actor.aim,
     velocity:actor.velocity,recoil:actor.recoil,posture:actor.posture},
     state.doors).muzzle;
    const from=weaponLightEmitter(muzzle,actor.weaponConfiguration!);

@@ -44,7 +44,7 @@ import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,
  cachedSupportUpperBody,solveUnifiedFallbackArm,
  continuousElbowPole} from './breach-unified-upper-body.ts';
 import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
-import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
+import {ANATOMY,elbowCorridor,equipmentStockPush} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import type {HandlingTransition} from './breach-handling-transition.ts';
 import {sampleHandlingTransition,sampleCarryTransition}
@@ -1424,6 +1424,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     relaxedLowReady,
     swayYaw:motion.weaponYaw*freeMotion,
     swayPitch:motion.weaponPitch*freeMotion,
+    armorPush:equipmentStockPush(p.equipment),
     // Non-firing movement and manipulation cannot retain stale visual ADS.
     // This affects only carry presentation, never shot-time muzzle authority.
     aimBlend:p.handlingOverride?undefined:
