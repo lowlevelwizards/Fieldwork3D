@@ -4,7 +4,8 @@
  * unobstructed. Never changes simulation visibility or replay knowledge.
  */
 import type {DirectorRoom,DirectorWall} from './breach-replay-cinematic-director.ts';
-import type {Door,Obstacle} from './breach-core.ts';
+import {doorOpticalSegment,doorTransmitsSightAndLight,
+  type Door,type Obstacle} from './breach-core.ts';
 import {directorPerspectiveCovers,directorOrthoFittingZoom,
   directorCompositionQuality,type DirectorCompositionTreatment,
   type DirectorCompositionQuality}
@@ -14,8 +15,8 @@ export type PhysicalPoint={x:number;y:number};
 export type PhysicalDirectorScene={
   rooms:readonly DirectorRoom[];
   walls:readonly DirectorWall[];
-  cover?:readonly Pick<Obstacle,'x'|'y'|'w'|'h'>[];
-  doors?:readonly Pick<Door,'a'|'b'|'open'|'openFraction'|'style'>[];
+  cover?:readonly Pick<Obstacle,'x'|'y'|'w'|'h'|'low'|'fixture'>[];
+  doors?:readonly Pick<Door,'a'|'b'|'open'|'openFraction'|'style'|'kind'|'hinge'|'swing'|'slideDirection'>[];
 };
 export type PhysicalDirectorRequest={
   operator:PhysicalPoint;focus:PhysicalPoint;
@@ -47,14 +48,20 @@ const inside=(p:PhysicalPoint,r:DirectorRoom,pad=0)=>
   p.x>=r.x+pad&&p.x<=r.x+r.w-pad&&
   p.y>=r.y+pad&&p.y<=r.y+r.h-pad;
 const cross=(a:PhysicalPoint,b:PhysicalPoint)=>a.x*b.y-a.y*b.x;
-const segmentHits=(a:PhysicalPoint,b:PhysicalPoint,
-  c:PhysicalPoint,d:PhysicalPoint)=>{
+
+/** Fraction of camera-to-subject ray crossing a vertical architectural
+ * edge. The height test is separate: high camera rays can clear low cover. */
+const segmentHitFraction=(a:PhysicalPoint,b:PhysicalPoint,
+  c:PhysicalPoint,d:PhysicalPoint):number|null=>{
   const r={x:b.x-a.x,y:b.y-a.y},s={x:d.x-c.x,y:d.y-c.y};
-  const den=cross(r,s);if(Math.abs(den)<1e-6)return false;
+  const den=cross(r,s);if(Math.abs(den)<1e-6)return null;
   const p={x:c.x-a.x,y:c.y-a.y};
   const t=cross(p,s)/den,u=cross(p,r)/den;
-  return t>.001&&t<.999&&u>=0&&u<=1;
+  return t>.002&&t<.985&&u>=0&&u<=1?t:null;
 };
+const segmentHits=(a:PhysicalPoint,b:PhysicalPoint,
+  c:PhysicalPoint,d:PhysicalPoint)=>
+  segmentHitFraction(a,b,c,d)!==null;
 const segmentDistance=(p:PhysicalPoint,a:PhysicalPoint,b:PhysicalPoint)=>{
   const dx=b.x-a.x,dy=b.y-a.y;
   const t=clamp(((p.x-a.x)*dx+(p.y-a.y)*dy)/
@@ -64,14 +71,73 @@ const segmentDistance=(p:PhysicalPoint,a:PhysicalPoint,b:PhysicalPoint)=>{
 /** Closed physical doors block optical lines through otherwise open wall
  * gaps. Glazed doors remain optically permeable, but camera rigs cannot
  * occupy the door opening. */
-const closedDoors=(scene:PhysicalDirectorScene)=>scene.doors?.filter(d=>
-  (d.openFraction!==undefined?d.openFraction<.8:!d.open)&&
-  !['glazed','french','screen','mesh-gate'].includes(d.style??''))??[];
+const opaqueDoors=(scene:PhysicalDirectorScene)=>
+  (scene.doors??[]).filter(d=>!doorTransmitsSightAndLight(d as Door));
 export function directorLineBlocked(a:PhysicalPoint,b:PhysicalPoint,
   scene:PhysicalDirectorScene,checkDoors=true):boolean{
   if(scene.walls.some(w=>segmentHits(a,b,w.a,w.b)))return true;
-  return checkDoors&&closedDoors(scene).some(d=>segmentHits(a,b,d.a,d.b));
+  // The door has MOVED since the level was built: use the actual leaf,
+  // not the closed threshold line. This includes fully open solid doors.
+  return checkDoors&&opaqueDoors(scene).some(d=>{
+    const leaf=doorOpticalSegment(d as Door);
+    return segmentHits(a,b,leaf.a,leaf.b);
+  });
 }
+
+/** Cheap 3D silhouette visibility for a staged operator. Seven optical rays
+ * sample head, torso, shoulders and feet; a point-only LOS is insufficient
+ * when an open door or furniture masks most of the character. This is
+ * camera evidence ONLY, not tactical/fog-of-war visibility. */
+export function directorSubjectVisibility(
+  camera:PhysicalPoint,subject:PhysicalPoint,scene:PhysicalDirectorScene,
+  eyeHeight=53
+):{fraction:number;torsoVisible:boolean;headVisible:boolean;readable:boolean}{
+  const dx=subject.x-camera.x,dy=subject.y-camera.y;
+  const length=Math.hypot(dx,dy)||1;
+  const side={x:-dy/length,y:dx/length};
+  const samples:readonly [number,number][]=[
+    [22,0],[36,0],[8,0],[25,-9],[25,9],[33,-7],[33,7]];
+  const doors=opaqueDoors(scene).map(d=>doorOpticalSegment(d as Door));
+  const visible=(height:number,offset:number)=>{
+    const point={x:subject.x+side.x*offset,y:subject.y+side.y*offset};
+    const blocks=(a:PhysicalPoint,b:PhysicalPoint,h:number)=>{
+      const t=segmentHitFraction(camera,point,a,b);
+      return t!==null&&eyeHeight+(height-eyeHeight)*t<h;
+    };
+    if(scene.walls.some(w=>blocks(w.a,w.b,47)))return false;
+    if(doors.some(d=>blocks(d.a,d.b,44)))return false;
+    // Furniture is center-based; lower pieces should obscure boots,
+    // not a torso. Its exact screen geometry varies by prop family.
+    for(const o of scene.cover??[]){
+      const minX=o.x-o.w/2,minY=o.y-o.h/2;
+      const sx=point.x-camera.x,sy=point.y-camera.y;
+      let entry=0,exit=1;
+      for(const [base,dir,low,high] of [
+        [camera.x,sx,minX,minX+o.w],
+        [camera.y,sy,minY,minY+o.h]]){
+        if(Math.abs(dir)<1e-7){
+          if(base<low||base>high){entry=2;break;}
+        }else{
+          const t1=(low-base)/dir,t2=(high-base)/dir;
+          entry=Math.max(entry,Math.min(t1,t2));
+          exit=Math.min(exit,Math.max(t1,t2));
+        }
+      }
+      if(entry>0.002&&entry<.98&&entry<=exit&&
+        eyeHeight+(height-eyeHeight)*entry<(o.low?17:35))
+        return false;
+    }
+    return true;
+  };
+  let count=0;
+  const seen=samples.map(([height,offset])=>{
+    const ok=visible(height,offset);if(ok)count++;return ok;
+  });
+  const fraction=count/samples.length;
+  return {fraction,torsoVisible:seen[0],headVisible:seen[1],
+    readable:fraction>=.43&&(seen[0]||seen[1]||seen[3]&&seen[4])};
+}
+
 /** A camera can fit in a room only if it has wall, leaf and furniture
  * clearance. Opaque roofs never alter this ground-plane feasibility. */
 export function directorCameraLegal(p:PhysicalPoint,
@@ -82,7 +148,11 @@ export function directorCameraLegal(p:PhysicalPoint,
     if(!inside(p,room,inset))return false;
   }else if(scene.rooms.some(r=>inside(p,r,0)))return false;
   if(scene.walls.some(w=>segmentDistance(p,w.a,w.b)<8.5))return false;
-  if((scene.doors??[]).some(d=>segmentDistance(p,d.a,d.b)<7))return false;
+  if((scene.doors??[]).some(d=>{
+    const leaf=doorOpticalSegment(d as Door);
+    return segmentDistance(p,d.a,d.b)<7||
+      segmentDistance(p,leaf.a,leaf.b)<8;
+  }))return false;
   // Cover coordinates are center-based, unlike the room rectangles.
   if((scene.cover??[]).some(o=>Math.abs(p.x-o.x)<=o.w/2+7&&
     Math.abs(p.y-o.y)<=o.h/2+7))return false;
