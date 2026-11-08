@@ -56,7 +56,9 @@ definitions.push(
  {id:'vending-machine',category:'exterior',width:29,depth:24,height:44,
   solid:true,cover:'high',rooms:['parking','patio','service-yard']},
  {id:'wayfinding-sign',category:'exterior',width:18,depth:10,height:48,
-  solid:true,cover:'low',rooms:['parking','patio','yard']}
+  solid:true,cover:'low',rooms:['parking','patio','yard']},
+ {id:'screened-dumpster',category:'exterior',width:56,depth:36,height:38,
+  solid:true,cover:'high',rooms:['service-yard']}
 );
 definitions.push({id:'window-boards',category:'security',width:52,depth:10,
  height:36,solid:true,cover:'high',rooms:['yard','garden','parking','service-yard']});
