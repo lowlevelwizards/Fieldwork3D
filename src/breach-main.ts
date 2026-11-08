@@ -2048,7 +2048,7 @@ const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   hideWeaponChooser();
-  uiClickTone('select');selected=id;looking=false;evacMode=null;
+  uiClickTone('select');selected=id;looking=false;pushMode=false;evacMode=null;
   selectedNode=null;selectedActiveWatch=false;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
@@ -7229,7 +7229,7 @@ ui.play.addEventListener('click',()=>{
   if(state.phase==='won'||state.phase==='lost'){
    if(!returnAfterCampaignMission())reset();
   }else{
-    looking=false;
+    looking=false;pushMode=false;
     if(state.phase==='planning'){
       if(!state.started)
         missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
