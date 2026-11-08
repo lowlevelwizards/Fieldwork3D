@@ -1919,7 +1919,10 @@ const squadIds=['rook','moss','ash','vale'] as const;
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 function layout(){
+  const oldWidth=cssW,oldHeight=cssH;
   cssW=Math.max(1,innerWidth);cssH=Math.max(1,innerHeight);
+  if((cssW!==oldWidth||cssH!==oldHeight)&&replayDirectorStoryboard)
+    replayDirectorStoryboard.clear();
   dpr=Math.min(devicePixelRatio||1,2);
   feedbackLayer.width=Math.round(cssW*dpr);
   feedbackLayer.height=Math.round(cssH*dpr);
