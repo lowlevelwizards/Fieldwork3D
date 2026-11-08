@@ -5,6 +5,7 @@
 <script type="module">
 import * as THREE from 'three';
 import {MiniatureFocusPass} from '../../src/rendering/miniature-focus-pass.ts';
+import {MiniatureAttentionMask} from '../../src/rendering/miniature-attention-mask.ts';
 const width=390,height=844;
 const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('scene'),
   antialias:true,alpha:false,powerPreference:'high-performance'});
@@ -41,6 +42,7 @@ const accent=new THREE.Mesh(new THREE.BoxGeometry(40,35,10),
  new THREE.MeshStandardMaterial({color:0xb07253,roughness:.7}));
 accent.position.set(65,-110,2);scene.add(accent);
 const pass=new MiniatureFocusPass(renderer);
+const attention=new MiniatureAttentionMask();
 const decision={
  active:true,radiusPx:6,strength:.84,reason:'test',
  centerY:.56,innerHalfHeight:.15,outerHalfHeight:.34,
@@ -48,8 +50,17 @@ const decision={
 };
 window.miniatureFixtureDraw=(mode)=>{
  if(mode==='off'){renderer.render(scene,camera);return;}
+ if(mode==='attention'){
+   attention.reset();
+   // Cover the entire upper-left test patch while keeping the lower-right
+   // test stripes outside protected attention.
+   attention.update(width,height,.2,[],[
+    {x:51,y:54,radiusX:220,radiusY:220,importance:1}
+   ]);
+ }
  pass.render(scene,camera,{...decision,strength:mode==='zero'?0:.84},
-   width,height,[],mode==='band'?'band':null);
+   width,height,[],mode==='band'?'band':null,
+   mode==='attention'?attention.texture:null,1);
 };
 window.miniatureFixtureDraw('off');
 window.miniatureFixtureReady=true;

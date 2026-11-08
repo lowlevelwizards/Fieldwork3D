@@ -128,7 +128,14 @@ try{
     await fixture.evaluate(()=>window.miniatureFixtureDraw('focus'));
     if(!firstOn.equals(await shot(corner)))
       throw Error('MF-3 same frame changed between identical render calls');
-    if(gpuErrors.length)throw Error('MF-3 WebGL errors: '+gpuErrors.join(' | '));
+    // The protected region must exactly reproduce the native scene,
+    // even though the rest of the frame remains miniaturized.
+    await fixture.evaluate(()=>window.miniatureFixtureDraw('attention'));
+    if(!cornerOff.equals(await shot(corner)))
+      throw Error('MF-4 tactical attention did not completely protect the active patch');
+    if(bottomOff.equals(await shot(bottom)))
+      throw Error('MF-4 attention mask incorrectly disabled the whole lens');
+    if(gpuErrors.length)throw Error('MF-4 WebGL errors: '+gpuErrors.join(' | '));
     await fixture.evaluate(()=>window.miniatureFixtureDraw('band'));
     if(centerOff.equals(await shot(center)))
       throw Error('MF-3 debug band not rendered');

@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'src/rendering/miniature-focus-*.ts'
+      - 'src/rendering/miniature-attention-*.ts'
+      - 'tests/miniature-attention-*.test.mjs'
       - 'src/breach-3d.ts'
       - 'src/breach-main.ts'
       - 'tests/miniature-focus-*.test.mjs'
@@ -16,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   miniature-smoke:
-    if: ${{ startsWith(github.head_ref, 'feature/breach-miniature-focus-') || startsWith(github.head_ref, 'feature/breach-miniature-tiltshift-') || startsWith(github.head_ref, 'feature/miniature-focus-') || startsWith(github.head_ref, 'fix/miniature-focus-') }}
+    if: ${{ startsWith(github.head_ref, 'feature/breach-miniature-focus-') || startsWith(github.head_ref, 'feature/breach-miniature-tiltshift-') || startsWith(github.head_ref, 'feature/breach-miniature-attention-') || startsWith(github.head_ref, 'feature/miniature-focus-') || startsWith(github.head_ref, 'fix/miniature-focus-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
@@ -30,6 +32,6 @@ jobs:
           npm install --no-save --package-lock=false playwright@1.56.1
           npx playwright install chromium
       - name: MF-1 pure policy and protection contract
-        run: node --experimental-strip-types --test tests/miniature-focus-core.test.mjs tests/miniature-focus-preferences.test.mjs
+        run: node --experimental-strip-types --test tests/miniature-focus-core.test.mjs tests/miniature-focus-preferences.test.mjs tests/miniature-attention-policy.test.mjs tests/miniature-attention-mask.test.mjs
       - name: MF-1 real tactical WebGL and mask smoke
         run: node scripts/smoke-miniature-focus.mjs

@@ -347,6 +347,7 @@ export class TacticalScene3D{
   private miniatureUpdateRecentReveal(s:Session):void{
     if(this.miniFocusGroundOwner!==s||this.miniFocusIsReplay||
        s.seconds<this.miniFocusLastSeconds-.001){
+      this.miniFocusAttention?.reset();
       this.miniFocusGroundOwner=s;this.miniFocusLastSeconds=s.seconds;
       this.miniFocusGroundRevision=s.seenGroundRevision;
       this.miniFocusRememberedFine.clear();
@@ -2029,6 +2030,7 @@ export class TacticalScene3D{
       this.miniFocusPass=null;
     }
     this.view.mode=mode;
+    if(mode==='plan2d')this.miniFocusAttention?.reset();
     if(mode==='top')this.view.pitch=Math.PI/2;
     else if(mode==='iso')this.view.pitch=55*Math.PI/180;
     this.canvas.style.display=mode==='plan2d'?'none':'block';

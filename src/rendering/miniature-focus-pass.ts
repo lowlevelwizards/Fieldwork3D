@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import type {FocusDecision} from './miniature-focus-config.ts';
 import type {FocusPoint} from './miniature-focus-mask.ts';
-export type MiniatureFocusDebug='mask'|'protected'|'band'|null;
+export type MiniatureFocusDebug='mask'|'protected'|'band'|'attention'|null;
 export const MINIATURE_FOCUS_MAX_ANCHORS=3;
 const VERTEX=`
 varying vec2 vUv;
@@ -71,6 +71,10 @@ void main(){
  float tactical=uHasAttention>.5?texture2D(tAttention,vUv).r:0.0;
  float mask=optics*(1.0-clamp(tactical,0.0,1.0))*
     visibilityGuard(vUv)*uZoomStrength;
+ if(uDebug>3.5){
+  gl_FragColor=vec4(vec3(tactical),1.0);
+  return;
+ }
  if(uDebug>.5){
   float centerLine=1.0-step(.002,abs((1.0-vUv.y)-uCenterY));
   float edgeLines=1.0-step(.002,
@@ -220,7 +224,8 @@ export class MiniatureFocusPass{
    c.uStrength.value=decision.strength;
    c.uSaturation.value=decision.saturation;
    c.uContrast.value=decision.contrast;
-   c.uDebug.value=debug==='band'?3:debug==='protected'?2:
+   c.uDebug.value=debug==='attention'?4:
+     debug==='band'?3:debug==='protected'?2:
      debug==='mask'?1:0;
    c.uAnchorCount.value=Math.min(anchors.length,MINIATURE_FOCUS_MAX_ANCHORS);
    const vectors=c.uAnchors.value as THREE.Vector4[];
