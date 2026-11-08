@@ -82,6 +82,7 @@ try{
   const loaded=JSON.parse(await page.locator('#poseJson').inputValue());
   if(JSON.stringify(loaded)!==JSON.stringify(recipe))
    throw Error('Local save/load did not roundtrip pose recipe');
+  await page.locator('#wbPreviewDetails').evaluate(e=>e.open=true);
   await page.locator('#blend').evaluate(e=>{
    e.value='40';e.dispatchEvent(new Event('input',{bubbles:true}));
   });
