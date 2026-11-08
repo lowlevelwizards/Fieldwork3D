@@ -109,13 +109,27 @@ try{
   await page.locator('#replayDirectTracers').click();
   check(await page.locator('#replayDirectTracers').getAttribute('aria-pressed')==='true',
     'Direct tracer toggle did not activate');
+  check((await page.locator('#replayDirectXray').getAttribute('aria-label'))
+    ?.includes('cutaway'),'X-ray label should be replaced by selective Cutaway');
+  check(await page.locator('#replayDirectXray').getAttribute('aria-pressed')==='true',
+    'Selective cutaway should initially be available in replay');
+  await page.locator('#replayDirectXray').click();
+  check(await page.locator('#replayDirectXray').getAttribute('aria-pressed')==='false',
+    'Turning off selective cutaway failed');
   await page.locator('#replayDirectXray').click();
   check(await page.locator('#replayDirectXray').getAttribute('aria-pressed')==='true',
-    'Direct X-ray toggle did not activate');
+    'Turning on selective cutaway failed');
   await page.locator('#replaySpeedTrigger').click();
-  await page.locator('#replaySpeedChoices [data-speed-choice="0.5"]').click();
+  check(await page.locator('#replaySpeedRange').isVisible(),
+    'The tactile speed slider should replace the scrollable speed list');
+  await page.locator('#replaySpeedRange').focus();
+  await page.keyboard.press('Home');
+  await page.keyboard.press('ArrowRight');
   check(await page.locator('#replayQuickSpeed').inputValue()==='0.5',
-    'Direct speed setting failed');
+    'Speed slider keyboard detent should select 0.5×');
+  await page.locator('#replaySpeedChoices [data-speed-choice="1.5"]').click();
+  check(await page.locator('#replayQuickSpeed').inputValue()==='1.5',
+    'Major magnetic speed preset 1.5× did not select');
   await page.locator('#replayViewTrigger').click();
   await page.locator('#replayViewChoices [data-view-choice="top"]').click();
   check(await page.locator('#replayQuickView').inputValue()==='top',
@@ -341,6 +355,17 @@ try{
 
   // The arrow collapses to a minimal bottom playback bar, while the
   // side rail and exit remain accessible without another settings menu.
+  await page.locator('#replayRailToggle').click();
+  check(await page.locator('#replayRail').getAttribute('data-collapsed')==='true',
+    'Side rail must minimize independently');
+  check(await page.locator('#replayViewTrigger').isHidden(),
+    'Side rail buttons must be hidden while minimized');
+  check(await page.locator('#replayRailToggle').isVisible(),
+    'Side rail restore handle disappeared');
+  await page.locator('#replayRailToggle').click();
+  check(await page.locator('#replayViewTrigger').isVisible(),
+    'Side rail cannot restore with one tap');
+
   await page.locator('#replayDockToggle').click();
   check(await page.locator('#replayPanel').getAttribute('data-collapsed')==='true',
     'Replay dock minimization did not activate');
