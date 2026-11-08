@@ -48,6 +48,8 @@ definitions.push(
  {id:'bike-rack',category:'exterior',width:39,depth:19,height:25,
   solid:true,cover:'low',rooms:['parking','patio','service-yard']}
 );
+definitions.push({id:'public-bench',category:'exterior',width:45,depth:21,
+ height:26,solid:true,cover:'low',rooms:['parking','patio','yard']});
 definitions.push({id:'window-boards',category:'security',width:52,depth:10,
  height:36,solid:true,cover:'high',rooms:['yard','garden','parking','service-yard']});
 definitions.push(

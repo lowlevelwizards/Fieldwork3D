@@ -44,6 +44,7 @@ import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
   from './rendering/breach-shadow-controller.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
+import {planPublicStreet} from './worldgen/public-street-layout.ts';
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {conditionFloorPixels,effectiveCondition} from './worldgen/condition-visual.ts';
@@ -877,16 +878,14 @@ export class TacticalScene3D{
       this.box(this.root,mark.x,propertySurfaceCenterHeight(mark.kind),
         mark.y,mark.width,PROPERTY_SURFACE_THICKNESS,
         mark.depth,this.solid(age(surfaceColor[mark.kind],'concrete')),false);
-    const road=this.solid(age(0x59584a,'asphalt'),.91,'asphalt');
-    const side=site.entrySide??'south';
-    if(side==='east'||side==='west'){
-      const edge=side==='east'?bounds.maxX:bounds.minX;
-      this.box(this.root,(site.entrance.x+edge)/2,-1.43,site.entrance.y,
-        Math.abs(site.entrance.x-edge)+10,.30,85,road,false);
-    }else{
-      const edge=side==='south'?bounds.maxY:bounds.minY;
-      this.box(this.root,site.entrance.x,-1.43,(site.entrance.y+edge)/2,
-        85,.30,Math.abs(site.entrance.y-edge)+10,road,false);
+    // The public carriageway runs along the LOT boundary, not up the
+    // pedestrian approach to the front door. One street layout also owns
+    // sidewalks, curb cuts and worldgen street-exclusion checks.
+    const street=planPublicStreet(site);
+    if(street){
+      const road=this.solid(age(0x595d59,'asphalt'),.94,'asphalt');
+      this.box(this.root,street.road.x,-1.41,street.road.y,
+        street.road.width,.24,street.road.depth,road,false);
     }
     this.objectWear=[...planObjectWear(site),...planExposureWear(site)];
     const marksOn=(owner:ObjectWear['owner'],index:number)=>
