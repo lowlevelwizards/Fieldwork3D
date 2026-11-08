@@ -116,6 +116,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
   from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld,recoverNormalLane}
   from './breach-squeeze-route.ts';
+import {knownPortalStrokeRoute} from './breach-known-portal-stroke.ts';
 import {probeObstacleCrossing,probeWindowCrossing,probeWindowPortalRoute,
   canOpenWindowForClimb,preferTraversal,sampleTraversal,traversalRouteLength,
   traversalStepClear,type TraverseOpportunity}
@@ -641,6 +642,25 @@ const legalMoveRoute=(s:Session,from:Pt,to:Pt):Pt[]=>{
    ordinary.length?ordinary:knownTraversal(s,from,to)?[to]:[]);
 };
 
+/** A short, already-routable gesture may use a nearby KNOWN real portal.
+ * Serving windows retain their authoritative solid sill collision.
+ */
+function knownPortalGesture(s:Session,from:Pt,to:Pt,blocked:Pt):boolean{
+ if(!intelPassable(to,s.intel,SQUEEZE_RADIUS))return false;
+ const portals=[
+   ...s.doors.filter(door=>doorKnown(s.intel,door.id))
+     .map(door=>({a:door.a,b:door.b})),
+   ...(s.site?.openings??[]).filter(opening=>
+     opening.kind!=='serving'&&
+     (s.intel.mode==='floor-plan'||s.intel.mode==='full-view'||
+       liveVisibility(s,{x:(opening.a.x+opening.b.x)/2,
+         y:(opening.a.y+opening.b.y)/2})))
+     .map(opening=>({a:opening.a,b:opening.b})),
+ ];
+ if(!portals.some(portal=>pointToSegment(blocked,portal)<=18))return false;
+ return knownPortalStrokeRoute(from,to,blocked,portals,
+   legalMoveRoute(s,from,to));
+}
 export const finalPoint=(a:TeamActor)=>lastPoint(a.p,a.plan);
 function pathFor(a:TeamActor){
   const points:Pt[]=[];let from=a.p;
@@ -792,8 +812,10 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
     }
     // A real, known window portal is not a solid wall. Do not trim a
     // deliberate vault/window crossing that the movement planner supports.
-    if(firstBlocked&&knownTraversal(s,previousInput,point)&&
-       legalMoveRoute(s,previousInput,point).length)
+    if(firstBlocked&&(
+       (knownTraversal(s,previousInput,point)&&
+         legalMoveRoute(s,previousInput,point).length)||
+       knownPortalGesture(s,previousInput,point,firstBlocked)))
       firstBlocked=null;
     if(firstBlocked){
       // Refine the first collision to near the clearance boundary without
