@@ -163,3 +163,19 @@ export function renderFoliageCardFixture(group:THREE.Group,c:Obstacle,
  }
  return true;
 }
+
+/** Exterior planter greenery uses the same pixel cards as garden shrubs.
+ * Unlike the former three solid icosahedron balls, these sprigs share the
+ * existing five pooled foliage materials and never cast shadow-map quads.
+ * The physical planter's obstacle is unchanged.
+ */
+export function renderPlanterFoliageCards(group:THREE.Group,c:Obstacle,
+ seed:number):void{
+ const H=propDefinition('planter')?.height??30;
+ const w=c.w,d=c.h;
+ // Slightly offset crowns avoid a symmetric green sphere silhouette.
+ crown(group,'shrub',c.x-w*.12,H*.76,c.y+d*.08,
+   w*.59,H*.47,seed);
+ crown(group,'scrub',c.x+w*.18,H*.72,c.y-d*.12,
+   w*.49,H*.40,seed+3);
+}
