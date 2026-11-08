@@ -5135,7 +5135,9 @@ function enterReplay(){
   replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
   replayContactObserverId=null;
   replayBodycamOn=false;replayBodycamMount='chest';
-  replayXrayOn=false;stage?.setReplayXray(false);
+  // Selective CUTAWAY is a harmless presentation default: only blocking
+  // walls fade. The visible control can turn it off at any time.
+  replayXrayOn=true;stage?.setReplayXray(true);
   replayBodycamObservers=[];replayBodycamGroundObservers.clear();
   replayHasContactEvidence=recorder.frames.some(f=>
     !!f.knowledge?.operatorVisibleActorIds&&
