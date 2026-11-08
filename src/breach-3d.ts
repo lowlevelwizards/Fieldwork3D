@@ -70,6 +70,7 @@ import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable,initDoor} from './breach-door.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
+import {armedPrecontactStyle} from './breach-idle-life.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse}
@@ -2288,10 +2289,27 @@ export class TacticalScene3D{
       const carried=actor.equipment?
        carryPlacementLedger(actor.equipment,actor.spareMagazines):[];
       const carriedMagazines=carried.filter(p=>p.kind==='magazine');
+      // Actors generated as hostile 'occupants' are still ARMED. Visual
+      // activity only adjusts existing idle head/breath, never stows rifles
+      // or overrides the simulation. The resolved site is recorded with
+      // replay manifests; historical sites without activity fail neutral.
+      const siteActorIndex=actor.side==='red'&&/^guard\\d+$/.test(actor.id)?
+        Number(actor.id.slice(5)):-1;
+      const encounterSpec=siteActorIndex>=0?
+        s.site?.encounter?.actors[siteActorIndex]:undefined;
+      const precontact=armedPrecontactStyle({
+        side:actor.side,
+        activity:encounterSpec?.activity,
+        alert:actor.alert,velocity:actor.velocity,aim:actor.aim,
+        health:actor.health,surrendered:actor.surrendered,
+        reloading:actor.reload>0,interacting:!!actor.treatmentActive||
+          !!actor.traversal||actor.plan[0]?.kind==='door'
+      });
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.traversal?0:actor.velocity,
         seconds:poseSeconds,idleLifeSeconds:actorIdleSeconds,
+        precontact,
         stride:actor.traversal?0:actor.stride,
         traversalProgress:actor.traversal?
           actor.traversalElapsed/Math.max(.001,actor.traversal.duration):0,

@@ -1771,6 +1771,11 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-action-tracking-') }}
         run: |
           node --experimental-strip-types --test tests/replay-director-action-follow.test.mjs tests/replay-director-continuous.test.mjs tests/replay-director-physical.test.mjs tests/replay-director-storyboard.test.mjs tests/replay-director-wide-coverage.test.mjs tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
+      - name: Living Encounters R1 — harmless pre-contact, replay and briefing
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/living-encounters-r1-') }}
+        run: |
+          node --experimental-strip-types --test tests/living-encounters-r1-pose.test.mjs tests/breach-weapon-magazine-idle.test.mjs tests/breach-unified-pose-stability.test.mjs tests/briefing-incident-steering.test.mjs tests/briefing-incident-site.test.mjs
+          node --experimental-strip-types scripts/audit-mission-quality.mjs 3 --living
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

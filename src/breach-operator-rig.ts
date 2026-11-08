@@ -8,7 +8,7 @@ import {canonicalRootOrientation,LEGACY_FRAME_YAW,
 import {neutralMannequinWrist,neutralMannequinElbowPole}
  from './operator-mannequin-pose.ts';
 import {alignSegment,solveTwoBone,LEG_LIMITS,ARM_LIMITS} from './breach-ik.ts';
-import {idleLifeAt} from './breach-idle-life.ts';
+import {idleLifeAt,type PrecontactStyle} from './breach-idle-life.ts';
 import {lowReadyFamilyFit,lowReadyElbowPole}
  from './breach-low-ready-family-fit.ts';
 import type {CoupledLowReadySolution} from './breach-coupled-low-ready.ts';
@@ -124,6 +124,8 @@ export type OperatorPose={
   travelYaw?:number;
   /** Presentation-only clock advances during tactical pause, never the motor. */
   idleLifeSeconds?:number;
+  /** Render-only, static armed pre-contact nuance. Never changes handling. */
+  precontact?:PrecontactStyle;
   /** Render-only reconstructed feet and pose: no accumulated render state. */
   replayFeet?:ReplayFeet;deterministic?:boolean;pelvisYaw?:number;
   reload:number;reloadDuration:number;reloadMode?:ReloadMode|null;
@@ -1131,7 +1133,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.appearanceSeed??0,{speed:physicalSpeed,aiming:p.aiming||
       (p.aimBlend??0)>.16,firing:p.firing,reloading:p.reload>0,
       down:p.down,surrender:p.surrender,interacting:!!p.treatmentActive||
-      p.traversalProgress!==undefined&&p.traversalProgress>0});
+      p.traversalProgress!==undefined&&p.traversalProgress>0,
+      precontact:p.precontact});
   // Presentation glances are layered on the clean head target, not fed
   // into next frame's approach() state.
   r.head.rotation.y=turns.head+idleLife.glance;
@@ -1223,7 +1226,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.head.position.y=10-sightEngagement*profile.headDrop;
   r.head.rotation.x=p.unarmedPreview&&physicalSpeed<.5&&
     p.posture==='stand'&&!p.down?0:
-    motion.headCounter+bash.head+poseWeight*profile.headPitch;
+    motion.headCounter+bash.head+poseWeight*profile.headPitch+
+    idleLife.headDip;
   // Apply the collapsing root transform before solving the legs.
   // Inverse full-body rotation holds each shoe in world-space contact
   // instead of sweeping planted boots through the floor during a fall.
