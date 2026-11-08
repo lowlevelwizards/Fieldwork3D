@@ -128,6 +128,8 @@ import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {injuryOf,WEAPONS} from './breach-combat.ts';
+import {liveMagazineCapacity,magazineAlert,fitMagazineInventory}
+ from './arsenal/live-magazine-capacity.ts';
 
 import {stageMagazines,magazineSpace,type MagazineLocation} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
@@ -646,10 +648,12 @@ function applyCampaignSkills(){
    a.armorIntegrity=Math.min(protection.torso,m.armorCondition.torso);
    a.helmetIntegrity=Math.min(protection.head,m.armorCondition.head);
    a.loadMovementScale=loadMovementScale(m.loadout,m.weaponConfiguration);
-   a.magazine=m.magazine;a.reserve=m.reserve;
+   const fitted=fitMagazineInventory(a.id,a.weapon,m.weaponConfiguration,
+    m.magazine,m.reserve,m.magazines);
+   a.magazine=fitted.magazine;a.reserve=fitted.reserve;
    a.insertedMagazineId=m.loadedMagazineId;
    a.spareMagazines=a.weapon==='shotgun'?[]:
-    stageMagazines(m.magazines,m.loadout);
+    stageMagazines(fitted.magazines,m.loadout);
    if(m.recoveryDays>0&&m.injuries>0){
     a.injuryStage=Math.max(a.injuryStage,Math.min(2,m.injuries));
     a.health=Math.min(a.health,4-a.injuryStage);
@@ -2840,9 +2844,13 @@ function updateHud(){
       ((a?.reload??0)>0?Math.round(100*(1-a!.reload/
         (WEAPONS[a!.weapon].reload*(a!.injuryStage===2?1.5:
           a!.injuryStage===1?1.1:1)))):0)+'%');
-    ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'].textContent=
-      a?String(a.magazine).padStart(2,'0')+' / '+a.reserve+
+    const ammo=ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'];
+    const capacity=a?liveMagazineCapacity(a.weapon,a.weaponConfiguration):0;
+    const alert=a?magazineAlert(a.magazine,capacity):'normal';
+    ammo.dataset.ammo=alert;
+    ammo.textContent=a?String(a.magazine).padStart(2,'0')+' / '+a.reserve+
       (a.reload>0?' ↻':''):'--';
+    ammo.title=a?`${a.magazine} / ${capacity} loaded · ${a.reserve} reserve rounds`:'';
     button.setAttribute('aria-pressed',String(id===selected));
     ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'].textContent=
       !a?'--':a.health<=0?'DOWN':
@@ -2890,7 +2898,7 @@ function updateHud(){
       stateLine.style.removeProperty('--execution-progress');
     }
     button.setAttribute('aria-label',a?
-      a.name+', '+condition+', '+a.magazine+
+      a.name+', '+condition+', '+a.magazine+' of '+capacity+
       ' rounds loaded, '+a.reserve+' reserve'+(a.reload>0?', reloading':'')+
       '. '+(execution?.label??'IDLE')+'. '+(execution?.detail??''):
       id+', unavailable');
