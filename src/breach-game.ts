@@ -20,7 +20,8 @@ import {
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
-import {entryDoorState,entryClearanceForLook} from './breach-entry-coordination.ts';
+import {entryDoorState,entryClearanceForLook,stackApproachPositions}
+ from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
@@ -1120,9 +1121,6 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<=0&&afterNodeId!==undefined)return false;
   const from=index===0?a.p:a.plan[index-1].p,center=doorCenter(door);
-  const horizontal=Math.abs(door.a.y-door.b.y)<1;
-  const approachSide=horizontal?
-    Math.sign(from.y-center.y)||1:Math.sign(from.x-center.x)||1;
   const assigned=team(s).filter(b=>b!==a&&b.health>0)
     .map(b=>b.plan.find(n=>n.stackDoorId===doorId))
     .filter((n):n is PlanNode=>!!n);
@@ -1130,15 +1128,13 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
   // All four slots must remain within the 43-unit door-use radius.
   // The first two take opposite sides of the frame; the next two fill in
   // behind the opening. This prevents two-person legacy stack regressions.
-  const positions=[-38,38,-12,12];
   const preferred=team(s).findIndex(b=>b.id===id);
-  const candidates:Pt[]=positions.map(tangent=>horizontal?
-    {x:center.x+tangent,y:center.y+approachSide*19}:
-    {x:center.x+approachSide*19,y:center.y+tangent});
+  const candidates=stackApproachPositions(door,from);
   // Smaller entrance frames retain valid nearby choices; never pick a
   // physical stack slot too far away to use the door.
   const legal=candidates.filter(p=>
-    d(p,center)<43&&passable(p)&&!!route(from,p).length&&
+    d(p,center)<43&&intelPassable(p,s.intel)&&
+    !!routeWithIntel(s.intel,from,p).length&&
     occupied.every(other=>d(p,other)>23));
   legal.sort((u,v)=>{
     const rank=(p:Pt)=>{
@@ -2396,6 +2392,12 @@ function aimHeading(a:TeamActor):number|null{
   return angle(a.p,instruction.point);
 }
 function applyAimNode(a:TeamActor,n:PlanNode){
+  // The clearing angle belongs to the OPTIONAL generated entry template.
+  // A player's explicit persistent WATCH on the stack takes precedence
+  // through arrival; merely reaching an entry MOVE must not cancel it.
+  if(n.entryDoorId&&n.aimMode==='fixed'&&
+     a.aimInstruction?.mode==='track'&&
+     a.aimInstruction.source!=='stack')return;
   if(n.aimMode==='free')a.aimInstruction=null;
   else if(n.aimMode==='track'&&n.aimPoint)
     a.aimInstruction={mode:'track',point:clone(n.aimPoint),
