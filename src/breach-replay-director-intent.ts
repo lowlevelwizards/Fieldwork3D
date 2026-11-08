@@ -69,6 +69,8 @@ function routeDirection(route:readonly Pt[],heading:number):Pt{
 }
 function nearestDoor(position:Pt,route:readonly Pt[],
   nodes:readonly PlanNode[],doors:readonly Door[]):DirectorDoorAnchor|null{
+  if(!nodes.length||route.length<2&&!nodes.some(n=>
+    n.doorId||n.stackDoorId||n.entryDoorId))return null;
   const upcoming=nodes.slice(0,8);
   const tagged=upcoming.find(node=>
     node.doorId||node.stackDoorId||node.entryDoorId);
@@ -100,11 +102,12 @@ type signedSide=-1|1;
  */
 export function directorIntentsAt(frame:ReplayFrame|null,
   index:DirectorPlanIndex,doors:readonly Door[],
-  time=frame?.t??0):DirectorIntent[]{
+  time=frame?.t??0,
+  friendlyIds?:ReadonlySet<string>):DirectorIntent[]{
   if(!frame)return [];
   const result:DirectorIntent[]=[];
   for(const actor of frame.actors){
-    if(actor.health<=0)continue;
+    if(actor.health<=0||friendlyIds&&!friendlyIds.has(actor.id))continue;
     // Blue ownership is derived from the manifest integration caller. Frames
     // include enemy actors too, and we deliberately require a known plan.
     const rev=directorRevisionAt(index,actor.id,time);
