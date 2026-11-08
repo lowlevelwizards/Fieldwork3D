@@ -4806,12 +4806,12 @@ function rebuildReplayEventIndex():void{
         intents,upcoming:directorFutureAt(t,replayDirectorFuture),
         beat,actionPair:canShowPair&&beat?
           directorFilmPair(beat,frame):null,
-        entry:directorFirstEntryAt(t,replayDirectorEntries),
+        entry:directorFirstEntryAt(t,replayDirectorEntries,2.2,1.4),
         doors:frame.doors,cover:frame.coverState,
         usableWidth:cssW<500?.75:.85,
         usableHeight:cssH<520?.68:.81,maxZoom:14
       });
-  },{step:.8,maxCache:96,rooms:state.site?.rooms??[],
+  },{step:.5,maxCache:96,rooms:state.site?.rooms??[],
     walls:state.site?.walls??[],cover:state.site?.cover??[],
     doors:state.site?.doors??[],
     sceneAt:t=>{
