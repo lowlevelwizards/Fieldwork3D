@@ -76,11 +76,17 @@ test('R9.3 candidate is revalidated at the exact finished composition and zoom',
  assert.deepEqual(result.contactTargetPoint,target);
 });
 test('R9.3 camera staging honors inaccessible opposite rooms, not X-ray',()=>{
- const split={rooms:[room],walls:[{a:p(180,0),b:p(180,330)}],
+ // A physical dividing wall also divides camera-occupied rooms.
+ // Declaring both sides as one room would permit a lens to teleport to
+ // the target side, which is not a realistic generated site footprint.
+ const left={id:'left',x:0,y:0,w:180,h:330};
+ const right={id:'right',x:180,y:0,w:230,h:330};
+ const split={rooms:[left,right],walls:[{a:p(180,0),b:p(180,330)}],
   cover:[],doors:[]};
  const shot=physicalDirectorView(request(),split,.46);
+ assert.equal(shot.roomId,'left');
  assert.equal(shot.targetVisible,false);
- assert.equal(directorCameraLegal(shot.cameraAnchor,room,split),true);
+ assert.equal(directorCameraLegal(shot.cameraAnchor,left,split),true);
 });
 test('R9.3 keep recorded target identity separate from unknown impact points',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
