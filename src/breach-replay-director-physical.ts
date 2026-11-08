@@ -121,6 +121,7 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
   const anchors:PhysicalPoint[]=[];
   const add=(p:PhysicalPoint)=>{if(directorCameraLegal(p,room,scene)&&
     distance(p,req.operator)>=29&&distance(p,req.operator)<125&&
+    distance(p,req.focus)>=26&&
     req.subjectPoints.every(subject=>distance(p,subject)>=24))
     anchors.push(p);};
   // Search around the actual friendly actor, not a focus point across
@@ -177,7 +178,7 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     const candidate=visible.length*46+
       (targetVisible?30:0)-
       (req.target&&!targetVisible?6:0)-
-      Math.abs(angleDelta(yaw,req.preferredYaw))*3-
+      Math.abs(angleDelta(yaw,req.preferredYaw))*14-
       Math.abs(distance(p,groupCenter)-75)*.19-
       Math.max(0,fov-112)*3-
       Math.max(0,visible.length?0:120);
