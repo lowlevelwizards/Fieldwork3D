@@ -67,10 +67,27 @@ try{
    await capture('02-short-entry');
    await page.waitForTimeout(185);
    await capture('03-short-settled');
+   if(process.env.UOP_R2==='1'){
+    await page.locator('[data-view="side"]').first().click();
+    await capture('03b-short-side');
+    await page.locator('[data-view="back"]').first().click();
+    await capture('03c-short-back');
+    await view.click();
+   }
    await animation.selectOption('active-aim');
    await capture('04-ads-retarget');
    await page.waitForTimeout(300);
    await capture('05-ads-settled');
+   if(process.env.UOP_R2==='1'){
+    await page.locator('[data-view="side"]').first().click();
+    await capture('05b-ads-side-stock-height');
+    await animation.selectOption('strafe-left');
+    await page.waitForTimeout(200);
+    await capture('06-strafe-elbow');
+    await page.waitForTimeout(200);
+    await capture('07-strafe-elbow-continuity');
+    await view.click();
+   }
   }
   if(errors.length)throw Error('Lab runtime errors: '+errors.join('; '));
   await writeFile(folder+'/diagnostics.json',
