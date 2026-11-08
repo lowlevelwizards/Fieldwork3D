@@ -7803,7 +7803,7 @@ function syncMiniatureFocusPreference():void{
 }
 for(const button of miniatureFocusButtons)button.addEventListener('click',()=>{
  const value=button.dataset.miniatureFocus;
- if(value!=='off'&&value!=='subtle'&&value!=='replay')return;
+ if(value!=='off'&&value!=='subtle'&&value!=='strong'&&value!=='replay')return;
  miniatureFocusSetting=value;
  stage?.setMiniatureFocusMode(value);
  try{localStorage.setItem(MINIATURE_FOCUS_STORAGE_KEY,value);}
@@ -8028,9 +8028,7 @@ function tick(now:number){
   const studioOccludesTactical=!!studioOverlay&&!studioOverlay.hidden&&
    !replayQuickVideo.active;
   if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
-    stage.setMiniatureFocusContext(replaying,
-      activePointers.size>0||!!draggingNode||draggingWatchTarget||
-      looking||flashMode||!!firePlacement||!!evacMode,dt);
+    stage.setMiniatureFocusContext(replaying,dt);
   if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
     stage.update(state,selected,dt,doorFocusId,
       replaying&&replayOmniscient,replaying?replayPresentation:null,

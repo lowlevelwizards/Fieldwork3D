@@ -33,17 +33,23 @@ for(let i=0;i<9;i++){
       toneMapped:false}));
  stripe.position.set(-185+i*9,375,3);
  scene.add(stripe);
+ const lower=stripe.clone();
+ lower.position.set(108+i*9,-375,3);
+ scene.add(lower);
 }
 const accent=new THREE.Mesh(new THREE.BoxGeometry(40,35,10),
  new THREE.MeshStandardMaterial({color:0xb07253,roughness:.7}));
 accent.position.set(65,-110,2);scene.add(accent);
 const pass=new MiniatureFocusPass(renderer);
-const rect={left:70,top:150,right:320,bottom:694};
-const decision={active:true,radiusPx:6,strength:.8,reason:'test'};
+const decision={
+ active:true,radiusPx:6,strength:.84,reason:'test',
+ centerY:.56,innerHalfHeight:.15,outerHalfHeight:.34,
+ saturation:1.045,contrast:1.02
+};
 window.miniatureFixtureDraw=(mode)=>{
  if(mode==='off'){renderer.render(scene,camera);return;}
- pass.render(scene,camera,{...decision,strength:mode==='zero'?0:.8},
-   rect,width,height,[],null);
+ pass.render(scene,camera,{...decision,strength:mode==='zero'?0:.84},
+   width,height,[],mode==='band'?'band':null);
 };
 window.miniatureFixtureDraw('off');
 window.miniatureFixtureReady=true;

@@ -2669,7 +2669,7 @@ body.replaying .replay-top-hud{
 .miniature-focus-preference{margin:15px 0 16px}
 .miniature-focus-preference>strong{display:block;margin:0 2px 8px;
  font:700 14px/1.25 var(--fw-font-display,sans-serif);letter-spacing:.06em;color:#c3d2c1}
-.site-settings .miniature-focus-options{grid-template-columns:repeat(3,minmax(0,1fr))}
+.site-settings .miniature-focus-options{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:6px}
 .site-settings .miniature-focus-options button{min-height:48px;white-space:normal;
  font:650 13px/1.2 var(--fw-font-action,sans-serif)}
 .site-settings .miniature-focus-options button[aria-pressed="true"]{

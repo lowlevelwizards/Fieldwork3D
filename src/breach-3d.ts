@@ -23,7 +23,7 @@ import {graphicsBudget} from './breach-graphics-budget.ts';
 import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
  miniatureFocusDecision,type MiniatureFocusMode,type MiniatureFocusView}
  from './rendering/miniature-focus-config.ts';
-import {miniatureStableFocusRect,type FocusPoint}
+import {nextReplayTiltShiftCenter,type FocusPoint}
  from './rendering/miniature-focus-mask.ts';
 import {MINIATURE_FOCUS_MAX_ANCHORS} from './rendering/miniature-focus-pass.ts';
 import {MiniatureFocusPass,type MiniatureFocusDebug}
@@ -165,12 +165,13 @@ export class TacticalScene3D{
       catch{return null;}})());
   private readonly miniFocusDebug:MiniatureFocusDebug=(()=>{
     const d=new URLSearchParams(location.search).get('focusDebug');
-    return d==='mask'||d==='protected'?d:null;
+    return d==='mask'||d==='protected'||d==='band'?d:null;
   })();
   private miniFocusPass:MiniatureFocusPass|null=null;
   private miniFocusIsReplay=false;
-  private miniFocusInputActive=false;
-  private miniFocusRecovery=1;
+  private miniFocusFrameDt=1/60;
+  private miniFocusCenterY=.54;
+  private miniFocusSelectedId:string|null=null;
   private readonly miniFocusProjection=new THREE.Vector3();
   private readonly miniFocusAnchorPool:FocusPoint[]=Array.from(
     {length:MINIATURE_FOCUS_MAX_ANCHORS},()=>({x:0,y:0}));
@@ -235,45 +236,58 @@ export class TacticalScene3D{
       this.miniFocusPass?.dispose();this.miniFocusPass=null;
     }
   }
-  /** Main loop supplies only view/interaction state, never actor intel. */
-  setMiniatureFocusContext(replaying:boolean,interacting:boolean,dt:number):void{
+  /** Focus never shuts off during gestures. Returning to the native
+   * renderer whenever the camera moved caused the brightness flicker.
+   * dt is only for optional replay-director's slow focus bias. */
+  setMiniatureFocusContext(replaying:boolean,dt:number):void{
+    if(replaying!==this.miniFocusIsReplay)
+      this.miniFocusCenterY=replaying?.54:.56;
     this.miniFocusIsReplay=replaying;
-    this.miniFocusInputActive=interacting;
-    if(interacting)this.miniFocusRecovery=0;
-    else this.miniFocusRecovery=Math.min(1,
-      this.miniFocusRecovery+Math.max(0,dt)/.18);
+    this.miniFocusFrameDt=Math.max(0,Math.min(.15,dt));
   }
-  /** Protect only actors that have actually been disclosed for this view.
-   * Hidden enemies never contribute their positions to the focus effect.
-   * Actor models stay sharp even when the camera frames one near the edge.
-   * Over-capacity fails closed to the native image rather than hiding a
-   * thirteenth visible person's face/equipment behind blur.
+  /** Tiny, explicit readability exceptions only: the currently selected
+   * friendly in gameplay, or up to two director-featured replay subjects.
+   * Do NOT globally protect every actor/room or the effect disappears.
    */
-  private miniatureFocusAnchors(camera:THREE.Camera):readonly FocusPoint[]|null{
+  private miniatureFocusAnchors(
+   camera:THREE.Camera,director:boolean):readonly FocusPoint[]{
     const output=this.miniFocusVisibleAnchors;
     output.length=0;
-    const add=(p:THREE.Vector3):boolean=>{
-      const clip=this.miniFocusProjection.copy(p).project(camera);
+    const add=(x:number,y:number,z:number):void=>{
+      if(output.length>=MINIATURE_FOCUS_MAX_ANCHORS)return;
+      const clip=this.miniFocusProjection.set(x,y,z).project(camera);
       if(!Number.isFinite(clip.x)||!Number.isFinite(clip.y)||
-         !Number.isFinite(clip.z))return false;
-      if(clip.z<-1||clip.z>1)return true;
-      const x=(clip.x+1)*this.width/2,y=(1-clip.y)*this.height/2;
-      // Offscreen actors cannot be affected by the current framebuffer.
-      if(x< -90||x>this.width+90||
-         y< -100||y>this.height+100)return true;
-      if(output.length>=MINIATURE_FOCUS_MAX_ANCHORS)return false;
+         clip.z<-1||clip.z>1)return;
+      const px=(clip.x+1)*this.width/2,py=(1-clip.y)*this.height/2;
+      if(px<-65||px>this.width+65||
+         py<-85||py>this.height+85)return;
       const point=this.miniFocusAnchorPool[output.length];
-      point.x=x;point.y=y;
-      output.push(point);
-      return true;
+      point.x=px;point.y=py;output.push(point);
     };
-    for(const o of this.actors.values())
-      if(o.root.visible&&!add(o.root.position))return null;
-    for(const rig of this.civilianRigs.values())
-      if(rig.root.visible&&!add(rig.root.position))return null;
-    if(this.rescueFigure?.visible&&
-      !add(this.rescueFigure.position))return null;
+    if(director){
+      for(const p of this.replayDirectorSubjects.slice(0,2))
+        add(p.x,22,p.y);
+    }else if(this.miniFocusSelectedId){
+      const selected=this.actors.get(this.miniFocusSelectedId);
+      if(selected?.root.visible){
+        const p=selected.root.position;
+        add(p.x,p.y+20,p.z);
+      }
+    }
     return output;
+  }
+  /** A rare slow-follow option for replay only. No hunting in tactical mode;
+   * a deadzone and clamp prevent the shot composer from being overridden. */
+  private updateMiniatureReplayFocus(camera:THREE.Camera):void{
+    let total=0,count=0;
+    for(const p of this.replayDirectorSubjects.slice(0,2)){
+      const projected=this.miniFocusProjection.set(p.x,20,p.y).project(camera);
+      if(!Number.isFinite(projected.y)||projected.z<-1||projected.z>1)
+        continue;
+      total+=(1-projected.y)*.5;count++;
+    }
+    if(count)this.miniFocusCenterY=nextReplayTiltShiftCenter(
+      this.miniFocusCenterY,total/count,this.miniFocusFrameDt);
   }
   private renderMiniatureFocus(camera:THREE.Camera):void{
     if(this.miniFocusMode==='off'&&!this.miniFocusDebug){
@@ -285,24 +299,23 @@ export class TacticalScene3D{
       this.view.mode==='top'?'top':
       this.view.mode==='plan2d'?'floor-plan':
       director?'director':this.miniFocusIsReplay?'free-replay':'tactical';
-    const potentiallyEnabled=view!=='bodycam'&&view!=='top'&&
-      view!=='floor-plan'&&this.quality.mode!=='performance'&&
-      (this.miniFocusMode!=='replay'||this.miniFocusIsReplay);
-    const rect=potentiallyEnabled||this.miniFocusDebug?
-      miniatureStableFocusRect(this.width,this.height):null;
-    const anchors=rect?this.miniatureFocusAnchors(camera):null;
     const decision=miniatureFocusDecision({
       mode:this.miniFocusMode,view,quality:this.quality.mode,
-      protectedRegionValid:!!rect&&anchors!==null,
-      gesturesActive:this.miniFocusInputActive,capable:true,
+      protectedRegionValid:this.width>0&&this.height>0,
+      gesturesActive:false,capable:true,
     });
     if(!decision.active&&!this.miniFocusDebug){
       this.renderer.render(this.scene,camera);return;
     }
-    decision.strength*=this.miniFocusRecovery;
+    // Static .56 focus in gameplay. Replay director may slowly bias the
+    // horizontal band toward featured subjects without moving the camera.
+    if(director)this.updateMiniatureReplayFocus(camera);
+    else this.miniFocusCenterY=decision.centerY;
+    if(director)decision.centerY=this.miniFocusCenterY;
+    const anchors=this.miniatureFocusAnchors(camera,director);
     if(!this.miniFocusPass)this.miniFocusPass=new MiniatureFocusPass(this.renderer);
-    this.miniFocusPass.render(this.scene,camera,decision,rect,
-      this.width,this.height,anchors??[],this.miniFocusDebug);
+    this.miniFocusPass.render(this.scene,camera,decision,
+      this.width,this.height,anchors,this.miniFocusDebug);
   }
   inspectMiniatureFocus(){
     return {mode:this.miniFocusMode,debug:this.miniFocusDebug,
@@ -2035,6 +2048,7 @@ export class TacticalScene3D{
     personalGroundEvidence:ReadonlySet<string>|null=null,
     replayWindowHistory:ReplayWindowKnowledgeHistory|null=null){
     if(this.view.mode==='plan2d')return;
+    this.miniFocusSelectedId=selected;
     const bodycamAudition=!!this.replayBodycam&&
       replayDisclosurePolicy?.mode==='operator'&&
       replayDisclosurePolicy.observerId===this.replayBodycam.actorId;
