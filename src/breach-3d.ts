@@ -31,6 +31,7 @@ import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-
 import {isArchitecturalSillCover} from './worldgen/architectural-cover-visuals.ts';
 import {planFacadeAwnings} from './worldgen/facade-awnings.ts';
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
+import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
 import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
   from './rendering/breach-shadow-controller.ts';
@@ -338,6 +339,7 @@ export class TacticalScene3D{
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
   private coverGroups=new Map<number,THREE.Group>();
+  private coverVisualStates=new Map<number,{intact:THREE.Group;debris:THREE.Group}>();
   private readonly coverFrameValues=new Map<number,{
     x:number;y:number;w:number;h:number;destroyed:boolean;toppled:boolean
   }>();
@@ -580,6 +582,7 @@ export class TacticalScene3D{
     this.currentWear=[];this.objectWear=[];
     this.roofGroups.clear();
     this.coverGroups.clear();this.coverFrameValues.clear();
+    this.coverVisualStates.clear();
     this.intelSurfaces.length=0;this.observedDetails.length=0;
     this.architecturalOpenings.length=0;
     this.observedDoorOpen.clear();
@@ -1177,12 +1180,16 @@ export class TacticalScene3D{
       group.rotation.y=(c.orientation??0)*Math.PI/2;
       const turned=(c.orientation??0)%2===1;
       const visual={...c,x:0,y:0,w:turned?c.h:c.w,h:turned?c.w:c.h};
+      const intact=new THREE.Group(),debris=new THREE.Group();
+      group.add(intact,debris);
+      debris.visible=false;
+      this.coverVisualStates.set(i,{intact,debris});
       // Five deterministic condition tones prevent furniture from looking
       // as though every object aged uniformly at precisely the same rate.
       const variant=((i%5)-2)/2;
       const localCtx:FixtureVisualContext={...fixtureCtx,
         solid:(hex,roughness,surface)=>this.solid(age(hex,surface,variant),roughness,surface)};
-      renderFixtureVisual(group,visual,i,localCtx,
+      renderFixtureVisual(intact,visual,i,localCtx,
         this.solid(age(theme.wood,'furniture-wood',variant),.9,'furniture-wood'),
         this.solid(age(0x465958,'metal',variant),.8,'metal'),
         this.solid(age(0x70715e,'fabric',variant),.9,'fabric'),
@@ -1190,9 +1197,26 @@ export class TacticalScene3D{
       for(const mark of marksOn('fixture',i)){
         const height=visibleSurfaceHeight(c.fixture??'crate');
         if(height<8)continue;
-        this.addSurfaceWear(group,mark,(mark.u-.5)*visual.w,
+        this.addSurfaceWear(intact,mark,(mark.u-.5)*visual.w,
           Math.min(height-2,Math.max(3,mark.v*height)),visual.h/2+.8,
           fixturePixelSurface(c.fixture));
+      }
+      // Destruction never scales a complete shelving/cabinet silhouette into
+      // a miniature. A collapsed fixture becomes low, irregular remnants
+      // centered on the ACTUAL reduced physical footprint instead.
+      const residue=this.solid(age(theme.wood,'furniture-wood',variant),
+        .93,'furniture-wood');
+      const slag=this.solid(age(0x4c5955,'industrial-steel',variant),
+        .85,'industrial-steel');
+      for(let j=0;j<5;j++){
+        const sx=(j%3-1)*visual.w*.105,sz=(Math.floor(j/3)-.5)*visual.h*.15;
+        const width=Math.max(3.2,visual.w*(j%2?.16:.20));
+        const depth=Math.max(3.2,visual.h*(j%2?.18:.20));
+        const height=2.3+(j%3)*1.3;
+        const fragment=this.box(debris,sx,height/2+.35,sz,
+          width,height,depth,j%2?slag:residue,false);
+        fragment.rotation.y=(j%2?-.22:.27);
+        fragment.castShadow=false;
       }
     });
     // Glass does not impede sight; the low sill does impede traversal.
@@ -1876,12 +1900,21 @@ export class TacticalScene3D{
          last.destroyed===!!current.destroyed&&
          last.toppled===!!current.toppled)continue;
       const transform=fixtureFrameTransform(before,current);
-      group.scale.set(transform.scaleX,transform.scaleY,transform.scaleZ);
+      const collapsed=!!current.destroyed;
+      const visuals=this.coverVisualStates.get(index);
+      if(visuals){
+        visuals.intact.visible=!collapsed;
+        visuals.debris.visible=collapsed;
+      }
+      // The collider can shrink, but the intact mesh must never be rendered
+      // at miniature scale. Debris geometry was authored to that footprint.
+      group.scale.set(collapsed?1:transform.scaleX,
+        collapsed?1:transform.scaleY,collapsed?1:transform.scaleZ);
       group.position.set(transform.x,
-        current.toppled?Math.min(10,current.h*.4):0,transform.y);
-      // Tip the actual fixture mesh, not a visual clone. The physical
-      // toppled flag also changes movement/cover clearance and replay.
-      group.rotation.x=current.toppled?Math.PI*.48:0;
+        collapsed?0:current.toppled?Math.min(10,current.h*.4):0,transform.y);
+      // Tipped furniture remains physical. Ruins do not inherit a standing
+      // object's 90-degree tilt when a replay scrubs across its destruction.
+      group.rotation.x=!collapsed&&current.toppled?Math.PI*.48:0;
       this.coverFrameValues.set(index,{
         x:current.x,y:current.y,w:current.w,h:current.h,
         destroyed:!!current.destroyed,toppled:!!current.toppled
@@ -1988,10 +2021,18 @@ export class TacticalScene3D{
       // This is not omniscient actor knowledge: these are actual opaque
       // walls physically surrounding the in-room camera. Leaving them
       // missing would make even a perspective shot see through the map.
+      const cover=s.coverState[item.index];
+      const exteriorSetDressing=physicalDirector&&item.kind==='cover'&&
+        s.intel.mode==='exterior-known'&&!!cover&&
+        exteriorBriefedAt(s.site,{x:cover.x,y:cover.y});
+      // The Director can frame already-briefed outdoor objects without
+      // making them pop into existence mid-shot. Live tactical discovery,
+      // personal bodycam evidence and all interior cover remain unchanged.
       item.obj.visible=item.kind==='wall'&&physicalDirector?true:
+        exteriorSetDressing?true:
         item.kind==='cover'?
           personalCoverVisible(squadKnown,bodycamAudition,personalGroundEvidence,
-            s.coverState[item.index]??null):squadKnown;
+            cover??null):squadKnown;
     }
     // Unlike the room's floor, decorative props must be individually
     // seen (or remembered at their own position) before they are rendered.
