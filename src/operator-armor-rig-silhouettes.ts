@@ -723,6 +723,7 @@ export function rigMagazineCellCount(style:string):number{
 }
 export function rigMagazineMount(style:string,index:number,armor:string,
  mirror=1):RigMagazineSocket{
+ const profile=ARMOR_PROFILES[armor]??ARMOR_PROFILES['armor-bare'];
  const rig=RIG_FRONT_PROFILES[style]??RIG_FRONT_PROFILES['light-rig'];
  const delta=profile.front-ARMOR_PROFILES['plate-standard'].front;
  const cells=RIG_CELLS[style]??[];
