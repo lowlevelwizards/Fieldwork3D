@@ -21,7 +21,7 @@ try{
  ]});
  try{
   const frames=[];
-  for(const variant of ['off','subtle','mask']){
+  for(const variant of ['off','subtle','mask','default']){
    const page=await browser.newPage({viewport:{width:390,height:844},
      deviceScaleFactor:1.5,hasTouch:true,isMobile:true});
    const errors=[];
@@ -34,7 +34,7 @@ try{
    try{
     const params=variant==='off'?'&focusFx=off':
      variant==='subtle'?'&focusFx=subtle':
-     '&focusFx=subtle&focusDebug=mask';
+     variant==='mask'?'&focusFx=subtle&focusDebug=mask':'';
     await page.goto(origin+'/breach.html?quick=1&seed=23'+params,
       {waitUntil:'domcontentloaded'});
     await page.locator('#breach3dCanvas').waitFor({
@@ -53,6 +53,32 @@ try{
       return !!gl?.getExtension('EXT_color_buffer_float');
     });
     frames.push({variant,frame,hdr});
+    if(variant==='default'){
+      const openPreferences=async()=>{
+        await page.locator('#siteSettingsToggle').click();
+        await page.locator('[data-site-tab="preferences"]').click();
+      };
+      await openPreferences();
+      if(await page.locator('[data-miniature-focus="subtle"]')
+        .getAttribute('aria-pressed')!=='true')
+        throw Error('Subtle is not selected by default');
+      await page.locator('[data-miniature-focus="off"]').click();
+      if(await page.evaluate(()=>localStorage.getItem(
+        'fieldwork3d.graphics.miniature-focus'))!=='off')
+        throw Error('Off setting was not saved');
+      await page.reload({waitUntil:'domcontentloaded'});
+      await page.waitForFunction(()=>document.querySelector('#phase')?.
+        textContent?.includes('PLANNING'),null,{timeout:50000});
+      await openPreferences();
+      if(await page.locator('[data-miniature-focus="off"]')
+        .getAttribute('aria-pressed')!=='true')
+        throw Error('Saved Off choice was not restored after reload');
+      await page.locator('[data-miniature-focus="replay"]').click();
+      if(await page.evaluate(()=>localStorage.getItem(
+        'fieldwork3d.graphics.miniature-focus'))!=='replay')
+        throw Error('Replay Only setting was not saved');
+      console.log('MF-1 default, live Preferences toggle and persistence passed');
+    }
     console.log('MF-1 '+variant+' WebGL frame succeeded; HDR support='+hdr);
    }finally{await page.close();}
   }
