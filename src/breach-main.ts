@@ -198,6 +198,8 @@ import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
 import {PaletteMotion} from './ui/palette-motion.ts';
+import {bubblePlacement,bubbleSlots,parseContextLayout,
+  type ContextLayout} from './ui/context-layout.ts';
 import {TacticalFeedback} from './ui/tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './ui/contextual-teaching.ts';
@@ -1568,6 +1570,34 @@ let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
 let looking=false,flashMode=false;
 let firePlacement:'suppress'|null=null;
 let lookMode:'look'|'watch'='look';
+const CONTEXT_LAYOUT_PREF='fieldwork3d.ui.contextLayout';
+let contextLayout:ContextLayout='dock';
+try{contextLayout=parseContextLayout(localStorage.getItem(CONTEXT_LAYOUT_PREF));}
+catch{/* A blocked preference store must never prevent opening the UI. */}
+const contextLayoutButtons=Array.from(
+  document.querySelectorAll<HTMLButtonElement>('[data-context-layout]'));
+function syncContextLayoutButtons(){
+  for(const button of contextLayoutButtons)
+    button.setAttribute('aria-pressed',
+      String(button.dataset.contextLayout===contextLayout));
+}
+syncContextLayoutButtons();
+for(const button of contextLayoutButtons)button.addEventListener('click',()=>{
+  const layout=parseContextLayout(button.dataset.contextLayout??null);
+  if(contextLayout===layout)return;
+  contextLayout=layout;
+  try{localStorage.setItem(CONTEXT_LAYOUT_PREF,layout);}
+  catch{/* Preference persistence is optional. */}
+  syncContextLayoutButtons();
+  // Both alternatives share the existing actual command buttons/handler.
+  // Cancel any old animation before detaching a palette into the HUD.
+  paletteExit?.cancel();paletteExit=null;
+  paletteMotion.hide();contextTether.hidden=true;
+  ui.context.hidden=true;ui.context.style.transform='';
+  contextActionsSignature='';lastPlacementKey='';
+  paletteWidth=0;paletteHeight=0;
+  updateContext();
+});
 let contextSignature='';
 let contextActionsSignature='';
 let lastContextSide:MenuSide|null=null;
@@ -1585,12 +1615,13 @@ contextTether.setAttribute('aria-hidden','true');
 document.body.append(contextTether);
 function hideContextPalette(){
   lastPlacementKey='';
-  // Mutually exclusive sheets must take over immediately. A fading palette
-  // still counts as visible/hit-testable and can obscure the TOOLS drawer.
+  // Docked commands never leave an invisible touch surface over the map.
+  // Bubbles also dismiss immediately when the map enters target mode.
   const exclusive=!ui.siteSettings.hidden||!ui.briefingPanel.hidden;
-  if(!paletteMotion.active){
-    if(exclusive){paletteExit?.cancel();paletteExit=null;
-      ui.context.hidden=true;contextTether.hidden=true;}
+  if(contextLayout!=='floating'||!paletteMotion.active){
+    paletteExit?.cancel();paletteExit=null;
+    paletteMotion.hide();contextTether.hidden=true;
+    ui.context.hidden=true;ui.context.style.pointerEvents='none';
     return;
   }
   paletteMotion.hide();contextTether.hidden=true;
@@ -1621,7 +1652,7 @@ function advanceContextPalette(dt:number){
   const bx=Math.max(x,Math.min(ax,x+w));
   const by=Math.max(y,Math.min(ay,y+h));
   const dx=bx-ax,dy=by-ay,length=Math.hypot(dx,dy);
-  const visible=length>24&&!reduced;
+  const visible=ui.context.dataset.layout==='floating'&&length>24&&!reduced;
   contextTether.hidden=!visible;
   if(visible){
     // At long distance use only a nearby pointer instead of cutting
