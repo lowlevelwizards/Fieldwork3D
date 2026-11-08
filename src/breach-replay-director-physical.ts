@@ -16,6 +16,8 @@ export type PhysicalDirectorScene={
 export type PhysicalDirectorRequest={
   operator:PhysicalPoint;focus:PhysicalPoint;
   subjectPoints:readonly PhysicalPoint[];
+  /** R8: if required actors are readable, other teammates are optional. */
+  requiredPoints?:readonly PhysicalPoint[];
   target?:PhysicalPoint|null;preferredYaw:number;
   /** Travel/weapon direction: prefer a follow rig behind the active actor. */
   followDirection?:PhysicalPoint|null;
@@ -207,6 +209,9 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     if(directorLineBlocked(p,focus,scene))focus={...req.operator};
     const visible=req.subjectPoints.filter(pt=>
       !directorLineBlocked(p,pt,scene));
+    const mandatory=req.requiredPoints??[req.operator];
+    const essentialVisible=mandatory.filter(pt=>
+      !directorLineBlocked(p,pt,scene));
     const fits=[...visible,
       ...(targetVisible&&req.target?[req.target]:[])];
     const fov=directorRequiredFov(p,focus,fits,aspect);
@@ -238,7 +243,9 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     // The shooter/target two-shot is higher priority than an unrelated
     // teammate behind the camera. A foreground backpack with the target
     // outside the lens is never an acceptable successful composition.
-    const candidate=visible.length*24+
+    const candidate=essentialVisible.length*310-
+      (mandatory.length-essentialVisible.length)*450+
+      visible.length*9+
       (targetVisible?(req.targetWeight??155):0)-
       (req.target&&!targetVisible?100:0)-
       doorPenalty-
