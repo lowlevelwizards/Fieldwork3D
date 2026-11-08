@@ -1682,7 +1682,7 @@ function quietTacticalSpace(){
     // Sample *only* presently visible patches. Do not react to unseen
     // corners of a room just because its center became visible.
     const revealed:ScreenPoint[]=[];
-    const samples=[[.2,.2],[.8,.2],[.5,.5],[.2,.8],[.8,.8]];
+    const samples:[number,number][]=[[.2,.2],[.8,.2],[.5,.5],[.2,.8],[.8,.8]];
     for(const [fx,fy] of samples){
       const p={x:room.x+room.w*fx,y:room.y+room.h*fy};
       if(liveVisibility(state,p))revealed.push(worldToScreen(p,0));
