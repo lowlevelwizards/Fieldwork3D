@@ -1,14 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {requestedMiniatureFocus,miniatureFocusDecision}
+import {requestedMiniatureFocus,initialMiniatureFocusMode,miniatureFocusDecision}
   from '../src/rendering/miniature-focus-config.ts';
 import {miniatureProtectedRect,miniatureRegionFullyProtected,
   miniatureFocusEligibility} from '../src/rendering/miniature-focus-mask.ts';
 const decision=(patch={})=>miniatureFocusDecision({mode:'subtle',
   view:'tactical',quality:'balanced',protectedRegionValid:true,
   capable:true,gesturesActive:false,...patch});
-test('opt-in parsing fails closed',()=>{
- assert.equal(requestedMiniatureFocus(null),'off');
+test('default subtle, stored preference and explicit URL override',()=>{
+ assert.equal(requestedMiniatureFocus(null),'subtle');
+ assert.equal(initialMiniatureFocusMode(null,null),'subtle');
+ assert.equal(initialMiniatureFocusMode(null,'off'),'off');
+ assert.equal(initialMiniatureFocusMode(null,'replay'),'replay');
+ assert.equal(initialMiniatureFocusMode('subtle','off'),'subtle');
+ assert.equal(initialMiniatureFocusMode('off','subtle'),'off');
+ assert.equal(initialMiniatureFocusMode(null,'garbage'),'off');
+ assert.equal(requestedMiniatureFocus('off'),'off');
  assert.equal(requestedMiniatureFocus('cinematic'),'off');
  assert.equal(requestedMiniatureFocus('subtle'),'subtle');
  assert.equal(requestedMiniatureFocus('replay'),'replay');
