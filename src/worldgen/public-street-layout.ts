@@ -8,7 +8,7 @@
 import type {Site} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
 
-type StreetSite=Pick<Site,'entrySide'|'entrance'|'bounds'|'rooms'|'doors'>;
+type StreetSite=Pick<Site,'entrySide'|'entrance'|'bounds'|'rooms'|'doors'|'exteriorZones'>;
 export type StreetRect={x:number;y:number;width:number;depth:number};
 export type PublicStreet={
  road:StreetRect;
