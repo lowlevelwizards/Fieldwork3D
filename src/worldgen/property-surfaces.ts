@@ -6,11 +6,15 @@ import {arrivalAccessLane} from './property-access-lane.ts';
 import {parkingStallCount,reservedParkingBay} from './parking-stalls.ts';
 import {planRearServiceMarks} from './rear-service-program.ts';
 import {planPublicStreet,type StreetRect} from './public-street-layout.ts';
+import {planLandscapeBedMarks} from './landscape-bed-surfaces.ts';
+import {planServiceBoundaryMarks} from './service-boundary-marks.ts';
 export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
  'garden-border'|'service-pad'|'patio-paver'|'drainage-grate'|
  'sidewalk'|'curb-edge'|'curb-ramp'|'crosswalk-stripe'|
  'reserved-parking'|'access-hatch'|'stall-end-line'|
- 'loading-zone'|'maintenance-bay'|'waste-collection'|'clear-route';
+ 'loading-zone'|'maintenance-bay'|'waste-collection'|'clear-route'|
+ 'planting-bed'|'planting-edge'|
+ 'waste-bay-line'|'utility-bay-line'|'loading-bay-line';
 export type PropertySurface={
  id:string;zoneId:string;kind:SurfaceKind;
  x:number;y:number;width:number;depth:number;
@@ -144,5 +148,11 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
  for(const m of planRearServiceMarks(site.exteriorZones??[]))
   marks.push({id:m.id,zoneId:m.zoneId,kind:m.kind,
    x:m.x,y:m.y,width:m.width,depth:m.depth});
+ // Ground finishing follows objects which actually survived all placement
+ // checks. Never invent a decorative bed where no plant/fixture exists.
+ for(const mark of planLandscapeBedMarks(site))
+  marks.push({id:mark.zoneId+':'+mark.kind+':'+marks.length,...mark});
+ for(const mark of planServiceBoundaryMarks(site))
+  marks.push({id:mark.zoneId+':'+mark.kind+':'+marks.length,...mark});
  return marks;
 }
