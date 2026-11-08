@@ -307,7 +307,8 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         // Stable crossed alpha-cutout cards. Geometry/collisions still come
         // exclusively from the existing physical Obstacle footprint.
       }else if(['mailbox','trash-bin','bollard','hydrant','utility-cabinet',
-        'parking-block','parking-sign','street-lamp','bike-rack'].includes(fixture)){
+        'parking-block','parking-sign','street-lamp','bike-rack',
+        'vending-machine','wayfinding-sign'].includes(fixture)){
         const enamel=ctx.solid(0x777f79,.72,'metal');
         const dark=ctx.solid(0x343c3b,.86);
         const safety=ctx.solid(0xae8e52,.78);
@@ -323,6 +324,60 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x,top-5,c.y+d*.461,w*.76,5.5,.9,dark,false);
           ctx.box(group,c.x,top-4.9,c.y+d*.515,w*.58,3.7,.6,enamel,false);
           ctx.box(group,c.x+w*.45,top-2,c.y,1.7,7,1.6,signal,false);
+        }else if(fixture==='vending-machine'){
+          // A real commercial vending cabinet, visually independent of
+          // electrical infrastructure: bright product display, keypad,
+          // coin/payment reader, collection hatch and weather hood.
+          const H=asset?.height??44;
+          const shell=visualCtx.solid(0x7b342c,.84,'painted-metal');
+          const border=visualCtx.solid(0x293a3a,.88,'painted-metal');
+          const glass=visualCtx.solid(0x45636a,.35,'glass');
+          const inset=visualCtx.solid(0x233b3e,.92,'industrial-steel');
+          const button=visualCtx.solid(0xc1b18b,.72,'painted-metal');
+          ctx.box(group,c.x,H*.49,c.y,w*.99,H*.94,d*.97,shell);
+          ctx.box(group,c.x,2,c.y,w*.99,4,d*.99,border);
+          // +Z is the customer-facing side of the vending machine.
+          ctx.box(group,c.x-w*.14,H*.60,c.y+d*.503,
+            w*.62,H*.62,1.4,border,false);
+          ctx.box(group,c.x-w*.14,H*.60,c.y+d*.578,
+            w*.55,H*.55,.7,glass,false);
+          for(let row=0;row<3;row++)for(let col=0;col<4;col++){
+            const tone=[0x9b9869,0x788b82,0xb47b57,0x927d73][(col+row)%4];
+            const pack=visualCtx.solid(tone,.82,'painted-metal');
+            ctx.box(group,c.x-w*.355+col*w*.145,H*.79-row*H*.155,
+              c.y+d*.52,w*.105,H*.090,1.5,pack,false);
+          }
+          ctx.box(group,c.x+w*.34,H*.54,c.y+d*.536,
+            w*.16,H*.35,1.5,inset,false);
+          for(let k=0;k<3;k++)ctx.box(group,c.x+w*.34,
+            H*(.60-k*.079),c.y+d*.62,3,1.3,1.0,button,false);
+          ctx.box(group,c.x+w*.32,H*.68,c.y+d*.625,
+            4.4,3.2,1.1,button,false);
+          ctx.box(group,c.x,H*.145,c.y+d*.533,
+            w*.62,H*.13,1.7,border,false);
+          ctx.box(group,c.x,H*.12,c.y+d*.635,
+            w*.47,H*.055,.9,inset,false);
+          // Built-in rain hood makes the rare outdoor unit a protected kiosk.
+          ctx.box(group,c.x,H+.5,c.y+d*.12,w+4,2.2,d+4,border,false);
+          ctx.box(group,c.x,H-2.2,c.y+d*.54,w*.89,1.7,1.4,button,false);
+        }else if(fixture==='wayfinding-sign'){
+          // Freestanding, street-facing entrance arrow, not an arbitrary
+          // parking restriction sign. Symbolic geometry is legible zoomed out.
+          const H=asset?.height??48;
+          const post=visualCtx.solid(0x52635f,.82,'industrial-steel');
+          const face=visualCtx.solid(0x42656a,.86,'painted-metal');
+          const glyph=visualCtx.solid(0xd9d3ba,.74,'painted-metal');
+          for(const x of [-w*.29,w*.29])
+            ctx.box(group,c.x+x,H*.45,c.y,2.7,H*.90,2.7,post);
+          ctx.box(group,c.x,H*.78,c.y,w,H*.29,3.2,face,false);
+          ctx.box(group,c.x,H*.79,c.y+d*.20,w*.62,2.2,1.1,glyph,false);
+          const arrowX=c.x+w*.23,arrowY=H*.79;
+          const up=ctx.box(group,arrowX,arrowY+3,c.y+d*.26,
+            w*.27,2.0,1.2,glyph,false);
+          const down=ctx.box(group,arrowX,arrowY-3,c.y+d*.26,
+            w*.27,2.0,1.2,glyph,false);
+          up.rotation.z=-.67;down.rotation.z=.67;
+          ctx.box(group,c.x,H*.95,c.y,w+1,1.5,3.8,post,false);
         }else if(fixture==='trash-bin'){
           ctx.box(group,c.x,(asset?.height??23)*.45,c.y,
             w*.86,(asset?.height??23)*.9,d*.86,dark);
@@ -333,10 +388,29 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x,20,c.y,5.8,3,5.8,dark,false);
           ctx.box(group,c.x,1.6,c.y,8,3.2,8,enamel);
         }else if(fixture==='hydrant'){
-          ctx.box(group,c.x,8,c.y,7,16,7,signal);
-          ctx.box(group,c.x,17,c.y,9,5,9,signal);
-          ctx.box(group,c.x,10,c.y,16,4,5,enamel,false);
-          ctx.box(group,c.x,2,c.y,11,4,11,enamel);
+          // Low, chunky six-sided fire hydrant with actual valve caps,
+          // top bonnet, nozzle neck and a cast base. Never a lamppost cube.
+          const body=visualCtx.solid(0xa55749,.82,'painted-metal');
+          const iron=visualCtx.solid(0x555c57,.88,'industrial-steel');
+          const H=asset?.height??21;
+          ctx.box(group,c.x,1.7,c.y,w*.91,3.4,d*.88,iron);
+          const barrel=new THREE.Mesh(
+            new THREE.CylinderGeometry(5.1,6.2,H*.69,6),body);
+          barrel.position.set(c.x,H*.44,c.y);
+          barrel.castShadow=true;group.add(barrel);
+          const crown=new THREE.Mesh(
+            new THREE.CylinderGeometry(4.1,5.2,4.5,6),body);
+          crown.position.set(c.x,H*.81,c.y);
+          crown.castShadow=true;group.add(crown);
+          ctx.box(group,c.x,H*.97,c.y,4,2.7,4,iron,false);
+          for(const sign of [-1,1]){
+            ctx.box(group,c.x+sign*w*.37,H*.51,c.y,5.5,5.2,6,body);
+            ctx.box(group,c.x+sign*w*.49,H*.51,c.y,
+              2.2,7.4,7.4,iron,false);
+            ctx.box(group,c.x+sign*w*.49,H*.51,c.y,
+              2.6,3.5,3.5,body,false);
+          }
+          ctx.box(group,c.x,H*.14,c.y,w*.85,2.2,d*.85,body,false);
         }else if(fixture==='utility-cabinet'){
           // Service electrical enclosure, not a vending machine: muted
           // powder-coated steel, two accessible door leaves, flush louvres,
@@ -378,11 +452,24 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x,height*.79,c.y,w*.9,13,1,enamel,false);
           ctx.box(group,c.x,height*.79,c.y+.9,w*.55,1.8,.7,safety,false);
         }else if(fixture==='street-lamp'){
-          const height=asset?.height??82;
-          ctx.box(group,c.x,height*.49,c.y,3,height*.98,3,dark);
-          ctx.box(group,c.x,height*.95,c.y-d*.22,14,3,4,dark,false);
-          ctx.box(group,c.x+5,height*.93,c.y-d*.22,9,2,4,safety,false);
-          ctx.box(group,c.x,2,c.y,7,4,7,enamel);
+          // Street-standard stepped pole with a cantilever luminaire
+          // facing the carriageway (-Z in the front-facing local frame).
+          // No extra real-time light sources or per-frame shadow updates.
+          const height=asset?.height??97;
+          const pole=visualCtx.solid(0x606f6a,.8,'industrial-steel');
+          const crown=visualCtx.solid(0x3c4948,.83,'painted-metal');
+          const diffuser=visualCtx.solid(0xc9c1a3,.9,'glass');
+          ctx.box(group,c.x,3,c.y,9,6,9,dark);
+          ctx.box(group,c.x,height*.33,c.y,5.0,height*.63,5,pole);
+          ctx.box(group,c.x,height*.80,c.y,3.8,height*.39,3.8,pole);
+          const arm=ctx.box(group,c.x,height*.955,
+            c.y-d*.57,3.5,3.7,d*1.40,pole,false);
+          arm.rotation.x=-.13;
+          ctx.box(group,c.x,height*.98,c.y-d*1.23,
+            13,3.3,8,crown,false);
+          ctx.box(group,c.x,height*.954,c.y-d*1.23,
+            11.5,1.0,7.2,diffuser,false);
+          ctx.box(group,c.x,height*.46,c.y,5.7,2.2,5.7,crown,false);
         }else if(fixture==='bike-rack'){
           // Three continuous upright hoops in the YZ plane. The old
           // X rotation laid open semicircles horizontally like C glyphs.
