@@ -12,9 +12,18 @@ export type DirectorDoorAnchor={
   id:string;mid:Pt;a:Pt;b:Pt;approachSide:-1|1;
   distance:number;normal:Pt
 };
+export type DirectorPlannedAttention={
+  kind:'watch'|'action';at:Pt;direction:Pt;distance:number
+};
 export type DirectorIntent={
   actorId:string;position:Pt;heading:number;route:Pt[];
   direction:Pt;destination:Pt|null;door:DirectorDoorAnchor|null;
+  /** Actual replay speed, used to follow action rather than idle teammates. */
+  speed:number;
+  /** An already executed WATCH/LOOK, never a future-only instruction. */
+  watchDirection:Pt|null;
+  /** Next authored action in the remaining plan, BEFORE it becomes active. */
+  plannedAttention:DirectorPlannedAttention|null;
   kind:DirectorIntentKind;activeRevision:number|null;
 };
 export type DirectorPlanIndex=ReadonlyMap<string,readonly ReplayPlanRevision[]>;
@@ -58,6 +67,53 @@ function meaningfulRoute(position:Pt,nodes:readonly PlanNode[]):Pt[]{
     if(result.length>=7)break;
   }
   return result;
+}
+function directionTo(from:Pt,to:Pt):Pt|null{
+  const dx=to.x-from.x,dy=to.y-from.y;
+  const d=Math.hypot(dx,dy);
+  return d>2&&Number.isFinite(d)?{x:dx/d,y:dy/d}:null;
+}
+function aimDirection(position:Pt,
+  aim:{mode:string;angle?:number;point?:Pt}|null|undefined):Pt|null{
+  if(!aim||aim.mode==='free')return null;
+  if(aim.mode==='track'&&aim.point)
+    return directionTo(position,aim.point);
+  if(aim.mode==='fixed'&&Number.isFinite(aim.angle))
+    return {x:Math.cos(aim.angle!),y:Math.sin(aim.angle!)};
+  return null;
+}
+/** Only orders already authored at this frame are allowed to predict a
+ * future composition. Their authored direction is evidence of intent,
+ * never a revelation of an enemy or completed replay event. */
+function plannedAttention(position:Pt,nodes:readonly PlanNode[],
+  doors:readonly Door[]):DirectorPlannedAttention|null{
+  let previous=position,traveled=0;
+  for(const node of nodes.slice(0,12)){
+    if(!Number.isFinite(node.p.x)||!Number.isFinite(node.p.y))continue;
+    const segment=distance(previous,node.p);
+    if(segment>3)traveled+=segment;
+    previous=node.p;
+    const lookPoint=node.aimPoint;
+    const aim=lookPoint&&(node.aimMode==='track'||node.kind==='look'||
+      node.aimLabel==='watch')?
+      directionTo(node.p,lookPoint):null;
+    const fixed=node.facing!==undefined&&Number.isFinite(node.facing)&&
+      (node.aimMode==='fixed'||node.kind==='look')?
+      {x:Math.cos(node.facing),y:Math.sin(node.facing)}:null;
+    if(aim||fixed)return {kind:'watch',at:{...node.p},
+      direction:aim??fixed!,distance:traveled};
+    if(['door','flash','tool','interact'].includes(node.kind)||
+      node.doorId||node.stackDoorId||node.entryDoorId){
+      const id=node.doorId??node.stackDoorId??node.entryDoorId;
+      const door=doors.find(d=>d.id===id);
+      const at=door?midpoint(door.a,door.b):node.p;
+      const direction=directionTo(node.p,at)??
+        directionTo(position,node.p);
+      if(direction)return {kind:'action',at:{...at},
+        direction,distance:traveled};
+    }
+  }
+  return null;
 }
 function routeDirection(route:readonly Pt[],heading:number):Pt{
   const first=route[0],next=route.find(p=>distance(p,first)>8);
@@ -126,6 +182,12 @@ export function directorIntentsAt(frame:ReplayFrame|null,
     const position={...actor.p};
     const route=meaningfulRoute(position,nodes);
     const direction=routeDirection(route,actor.heading);
+    const directAim=aimDirection(position,actor.aimInstruction);
+    const watchDirection=directAim??
+      (actor.watch?directionTo(position,actor.watch):null);
+    const nextAttention=plannedAttention(position,nodes,doors);
+    const speed=Number.isFinite(actor.velocity)?
+      Math.max(0,actor.velocity):0;
     const door=nearestDoor(position,route,nodes,doors);
     const first=nodes[0];
     const nearDoor=!!door&&door.distance<=clamp(
@@ -145,6 +207,7 @@ export function directorIntentsAt(frame:ReplayFrame|null,
       kind='entry';
     result.push({actorId:actor.id,position,heading:actor.heading,
       route,direction,destination:route.at(-1)??null,door,kind,
+      speed,watchDirection,plannedAttention:nextAttention,
       activeRevision:rev?.revisionId??null});
   }
   return result;
