@@ -2718,7 +2718,12 @@ export class TacticalScene3D{
           actor.aimInstruction.source!=='stack',
         speed:actor.velocity
       });
-      const friendlyAhead=teammateAheadForHandling(
+      const stackCrowded=(handlingIntent==='stack'||
+        handlingIntent==='door'||handlingIntent==='entry')&&
+        s.operators.some(peer=>peer!==actor&&peer.side===actor.side&&
+          peer.health>0&&Math.hypot(peer.p.x-actor.p.x,
+            peer.p.y-actor.p.y)<40);
+      const friendlyAhead=stackCrowded||teammateAheadForHandling(
         actor.p,actor.heading,s.operators,actor);
       // Physical contact is queried from the actual interpolated barrel,
       // never from a long ray projected along the feet/body heading.
