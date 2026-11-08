@@ -21,7 +21,7 @@ try{
  ]});
  try{
   const frames=[];
-  for(const variant of ['off','subtle','mask','band','default']){
+  for(const variant of ['off','subtle','mask','band','attention','default']){
    const page=await browser.newPage({viewport:{width:390,height:844},
      deviceScaleFactor:1.5,hasTouch:true,isMobile:true});
    const errors=[];
@@ -35,7 +35,8 @@ try{
     const params=variant==='off'?'&focusFx=off':
      variant==='subtle'?'&focusFx=subtle':
      variant==='mask'?'&focusFx=subtle&focusDebug=mask':
-     variant==='band'?'&focusFx=subtle&focusDebug=band':'';
+     variant==='band'?'&focusFx=subtle&focusDebug=band':
+     variant==='attention'?'&focusFx=subtle&focusDebug=attention':'';
     await page.goto(origin+'/breach.html?quick=1&seed=23'+params,
       {waitUntil:'domcontentloaded'});
     await page.locator('#breach3dCanvas').waitFor({

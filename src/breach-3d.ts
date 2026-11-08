@@ -468,7 +468,7 @@ export class TacticalScene3D{
         a.side==='blue');
       if(selected){
         disc(this.miniatureScreenPoint(camera,
-          selected.p.x,selected.p.y,15),94,112,1);
+          selected.p.x,selected.p.y,15),76,92,1);
         const upcoming=selected.plan[0]?.p;
         if(upcoming)disc(this.miniatureScreenPoint(camera,
           upcoming.x,upcoming.y,13),48,56,.92);

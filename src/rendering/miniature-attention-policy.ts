@@ -13,9 +13,9 @@ const smoothstep=(a:number,b:number,x:number)=>{
 };
 export function focusZoomMultiplier(zoomRatio:number,roomCoverage=0):number{
  if(!Number.isFinite(zoomRatio)||!Number.isFinite(roomCoverage))return 0;
- const closeUp=smoothstep(1.18,2.15,zoomRatio);
- const framedRoom=smoothstep(.27,.62,roomCoverage);
- return clamp(1-.86*Math.max(closeUp,framedRoom),.14,1);
+ const closeUp=smoothstep(1.17,1.95,zoomRatio);
+ const framedRoom=smoothstep(.22,.52,roomCoverage);
+ return clamp(1-Math.max(closeUp,framedRoom),0,1);
 }
 /** Visibility overrides optics. No undisclosed entity participates. */
 export const FOCUS_PROTECTION:Record<FocusImportance,number>={

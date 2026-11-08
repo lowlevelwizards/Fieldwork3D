@@ -210,7 +210,7 @@ export class MiniatureFocusPass{
    zoomStrength=1):boolean{
    this.renderer.render(scene,camera);
    if((!decision.active&&!debug)||cssWidth<=0||cssHeight<=0||
-      !this.init())return false;
+      (zoomStrength<=.005&&!debug)||!this.init())return false;
    const previousTarget=this.renderer.getRenderTarget();
    const previousClear=this.renderer.autoClear;
    const b=this.blurMaterial!.uniforms;
