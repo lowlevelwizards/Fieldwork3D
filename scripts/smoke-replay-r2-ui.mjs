@@ -281,6 +281,39 @@ try{
     'Escape must restore focus to Analyze button');
   check(await page.locator('#replayPanel').isVisible(),
     'Escape should not exit playback when a secondary panel was open');
+  // Real two-pointer CDP gestures: after a pinch ends, the surviving finger
+  // must orbit instead of staying stuck in cameraMulti (zoom-only mode).
+  await page.locator('#replayViewTrigger').click();
+  await page.locator('#replayViewChoices [data-view-choice="iso"]').click();
+  if(await page.locator('#replayDirectFree').isVisible())
+    await page.locator('#replayDirectFree').click();
+  await page.waitForTimeout(90);
+  const beforeYaw=Number(await page.locator('#breach3dCanvas')
+    .getAttribute('data-camera-yaw'));
+  const cdp=await page.context().newCDPSession(page);
+  const finger=(id,x,y)=>({id,x,y,radiusX:4,radiusY:4,force:1});
+  await cdp.send('Input.dispatchTouchEvent',{
+    type:'touchStart',touchPoints:[finger(1,96,250)]});
+  await cdp.send('Input.dispatchTouchEvent',{
+    type:'touchStart',touchPoints:[finger(1,96,250),finger(2,185,250)]});
+  await cdp.send('Input.dispatchTouchEvent',{
+    type:'touchMove',touchPoints:[finger(1,96,250),finger(2,202,252)]});
+  await cdp.send('Input.dispatchTouchEvent',{
+    type:'touchEnd',touchPoints:[finger(1,96,250)]});
+  await cdp.send('Input.dispatchTouchEvent',{
+    type:'touchMove',touchPoints:[finger(1,160,275)]});
+  await cdp.send('Input.dispatchTouchEvent',{
+    type:'touchEnd',touchPoints:[]});
+  await page.waitForTimeout(150);
+  const afterYaw=Number(await page.locator('#breach3dCanvas')
+    .getAttribute('data-camera-yaw'));
+  check(Number.isFinite(beforeYaw)&&Number.isFinite(afterYaw)&&
+    Math.abs(Math.atan2(Math.sin(afterYaw-beforeYaw),
+      Math.cos(afterYaw-beforeYaw)))>.04,
+    'Pinch-to-single-finger handoff failed to restore orbit: '+
+      JSON.stringify({beforeYaw,afterYaw}));
+  await cdp.detach();
+
 
   // The arrow collapses to a minimal bottom playback bar, while the
   // side rail and exit remain accessible without another settings menu.
