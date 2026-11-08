@@ -52,7 +52,7 @@ export function elbowCorridor(mode:Handling,side:-1|1,
 /** Soft anatomical preference shared by dynamic and fallback IK.
  * Hard armor, hand contacts and bone lengths always remain authoritative. */
 export function anatomicalElbowCost(shoulder:Anchor3,elbow:Anchor3,
- wrist:Anchor3,side:-1|1,outboardFiring=false):number{
+ _wrist:Anchor3,side:-1|1,outboardFiring=false):number{
  const outward=side*(elbow.z-shoulder.z);
  const forward=elbow.x-shoulder.x;
  const drop=shoulder.y-elbow.y;
