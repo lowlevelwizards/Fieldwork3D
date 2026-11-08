@@ -11,6 +11,7 @@ import type {DirectorFilmBeat} from './breach-replay-director-film.ts';
 import type {DirectorEntryEvent} from './breach-replay-director-crossings.ts';
 import type {DirectorActionLine} from './breach-replay-director-action.ts';
 import type {DirectorRecordedContact} from './breach-replay-director-contact.ts';
+import type {DirectorDiscovery} from './breach-replay-director-discovery.ts';
 import {selectDirectorEditorialShot,type DirectorEditorialShot}
   from './breach-replay-director-edit.ts';
 import {physicalDirectorView,directorLineBlocked}
