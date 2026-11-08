@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initialRoster} from '../src/breach-roster.ts';
-import {WEAPONS} from '../src/breach-combat.ts';
+import {liveMagazineCapacity,standardReserveRounds} from '../src/arsenal/live-magazine-capacity.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../src/equipment-weapon-assemblies.ts';
 import {arsenalRecipeFromLegacy} from '../src/arsenal/recipes.ts';
@@ -32,8 +32,10 @@ test('Quick Play MP5 choice changes class explicitly via existing ammo reset pat
  assert.equal(q.valid,true);assert.equal(q.changesClass,true);
  const changed=applyQuickPlayArsenalEdit(original,rook.id,recipe);
  assert.equal(changed.members[0].weapon,'smg');
- assert.equal(changed.members[0].magazine,WEAPONS.smg.capacity);
- assert.equal(changed.members[0].reserve,WEAPONS.smg.reserve);
+ assert.equal(changed.members[0].magazine,
+  liveMagazineCapacity('smg',changed.members[0].weaponConfiguration));
+ assert.equal(changed.members[0].reserve,
+  standardReserveRounds('smg',changed.members[0].weaponConfiguration));
  assert.equal(changed.members[0].weaponConfiguration.build.parts.receiver,'hk-mp5-standard');
  assert.equal(original.members[0].weapon,rook.weapon);
  assert.deepEqual(changed.members[1],original.members[1]);

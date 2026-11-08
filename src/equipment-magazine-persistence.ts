@@ -17,10 +17,11 @@ const boundedRounds=(n:number,max:number)=>
  * This never creates more rounds than the campaign already owns.
  */
 export function readPersistentMagazines(
- owner:string,weapon:WeaponId,reserve:number,raw:unknown
+ owner:string,weapon:WeaponId,reserve:number,raw:unknown,
+ capacity=WEAPONS[weapon].capacity
 ):MagazineItem[]{
  if(weapon==='shotgun')return [];
- const max=WEAPONS[weapon].capacity;
+ const max=Math.max(1,Math.floor(capacity));
  const total=boundedRounds(Number.isFinite(reserve)?reserve:0,300);
  const fallback=()=>magazineKit(owner,weapon,total,max);
  if(!Array.isArray(raw)||raw.length>64)return fallback();
@@ -48,10 +49,11 @@ export function readLoadedMagazineId(
  * are minted only for the genuinely new rounds that cannot fit anywhere else.
  */
 export function addReserveRounds(
- owner:string,weapon:WeaponId,mags:readonly MagazineItem[],added:number
+ owner:string,weapon:WeaponId,mags:readonly MagazineItem[],added:number,
+ capacity=WEAPONS[weapon].capacity
 ):MagazineItem[]{
  if(weapon==='shotgun')return [];
- const cap=WEAPONS[weapon].capacity;
+ const cap=Math.max(1,Math.floor(capacity));
  let remaining=boundedRounds(added,300);
  const result=mags.map(m=>{
   const n=Math.min(remaining,Math.max(0,cap-m.rounds));

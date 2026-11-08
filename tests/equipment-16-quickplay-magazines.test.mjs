@@ -5,7 +5,8 @@ import {initialRoster,readRoster,applyRosterIdentity,recordRosterMission,
  freshQuickPlayRoster,serializeQuickPlayCosmetics} from '../src/breach-roster.ts';
 import {newSession} from '../src/breach-game.ts';
 import {reserveRounds} from '../src/breach-magazines.ts';
-import {WEAPONS} from '../src/breach-combat.ts';
+import {liveMagazineCapacity,standardReserveRounds}
+ from '../src/arsenal/live-magazine-capacity.ts';
 
 test('legacy Quick Play roster gains independent magazines without gaining ammunition',()=>{
  const base=initialRoster();
@@ -70,12 +71,15 @@ test('unlimited Quick Play restock keeps previous magazine IDs and fills them',(
   ...m,reserve:m.reserve-5,magazines:m.magazines.map((mag,i)=>i===0?
    {...mag,rounds:mag.rounds-5}:mag)}:m)};
  const stocked=resupplyRoster(depleted,'rook');
- assert.equal(stocked.members[0].reserve,WEAPONS.carbine.reserve);
+ assert.equal(stocked.members[0].reserve,
+  standardReserveRounds('carbine',stocked.members[0].weaponConfiguration));
  assert.equal(stocked.members[0].magazines[0].id,base.members[0].magazines[0].id);
- assert.equal(stocked.members[0].magazines[0].rounds,WEAPONS.carbine.capacity);
+ assert.equal(stocked.members[0].magazines[0].rounds,
+  liveMagazineCapacity('carbine',stocked.members[0].weaponConfiguration));
  assert.deepEqual(stocked.members[1],base.members[1]);
  const swapped=equipRoster(stocked,'rook','rifle');
  assert.equal(swapped.members[0].magazines[0].weapon,'rifle');
  assert.equal(swapped.members[0].loadedMagazineId,'rook/rifle/loaded');
- assert.equal(reserveRounds(swapped.members[0].magazines),WEAPONS.rifle.reserve);
+ assert.equal(reserveRounds(swapped.members[0].magazines),
+  standardReserveRounds('rifle',swapped.members[0].weaponConfiguration));
 });

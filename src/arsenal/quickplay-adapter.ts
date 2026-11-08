@@ -3,6 +3,7 @@
  * purchases, or persistent combat equipment. The live UI owns when to commit.
  */
 import {WEAPONS} from '../breach-combat.ts';
+import {freshMagazineIssue} from './live-magazine-capacity.ts';
 import {equipRoster,type RosterState} from '../breach-roster.ts';
 import {sameWeaponConfiguration} from '../equipment-weapon-assemblies.ts';
 import {arsenalRecipeToLegacy,type ArsenalRecipeV2} from './recipes.ts';
@@ -22,9 +23,8 @@ export function quoteQuickPlayArsenalEdit(roster:RosterState,operatorId:string,
  if(!resolved)return {valid:false,reason:'Invalid weapon assembly',changesClass:false};
  return {valid:true,changesClass:member.weapon!==recipe.weapon};
 }
-/** Same-class edits keep each real loaded/spare magazine untouched.
- * A deliberate cross-class choice follows existing equipRoster() magazine
- * replacement rules and then installs the correctly resolved appearance.
+/** Quick Play starts every newly selected physical magazine profile full.
+ * Campaign does NOT use this adapter; no persistent ammunition is modified.
  */
 export function applyQuickPlayArsenalEdit(roster:RosterState,operatorId:string,
  recipe:ArsenalRecipeV2):RosterState{
@@ -37,5 +37,6 @@ export function applyQuickPlayArsenalEdit(roster:RosterState,operatorId:string,
   sameWeaponConfiguration(original.weaponConfiguration,config))return roster;
  const prepared=original.weapon===recipe.weapon?roster:equipRoster(roster,operatorId,recipe.weapon);
  return {...prepared,members:prepared.members.map(member=>member.id===operatorId?
-  {...member,weaponConfiguration:config}:member)};
+  {...member,weaponConfiguration:config,
+   ...freshMagazineIssue(member.id,member.weapon,config)}:member)};
 }
