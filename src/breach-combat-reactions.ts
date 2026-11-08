@@ -20,7 +20,7 @@ export function chooseMuzzleRecoveryStep(p:Pt,aimYaw:number,
  canMove:(next:Pt)=>boolean,canShoot:(next:Pt)=>boolean):Pt|null{
  for(const delta of [0,-.30,.30]){
   const yaw=aimYaw+Math.PI+delta;
-  for(const length of [14,22,30]){
+  for(const length of [7,10,14,22,30]){
    const next={x:p.x+Math.cos(yaw)*length,
      y:p.y+Math.sin(yaw)*length};
    if(canMove(next)&&canShoot(next))return next;
