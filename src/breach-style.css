@@ -2451,3 +2451,23 @@ body.replaying #replayTopHud *{-webkit-tap-highlight-color:transparent}
   .replay-action-strip{min-height:20px;max-height:22px;padding:2px 4px}
   .replay-drawer{max-height:min(37dvh,142px,calc(100dvh - 205px))}
 }
+
+/* The actual magazine in the weapon is the alert authority. All four squad
+ * cards remain readable at phone size, even while another unit is selected. */
+@keyframes fw-low-ammo-pulse{
+  0%,100%{color:#f4a44d;text-shadow:0 0 1px #b76b2877;opacity:1}
+  50%{color:#ffd392;text-shadow:0 0 9px #ee8624b0;opacity:.67}
+}
+.bar .unit em[data-ammo="low"]{
+  color:#f4a44d!important;
+  animation:fw-low-ammo-pulse 900ms ease-in-out infinite
+}
+.bar .unit em[data-ammo="empty"]{
+  color:#ff6b62!important;text-shadow:0 0 6px #e0444280;
+  animation:none
+}
+@media(prefers-reduced-motion:reduce){
+  .bar .unit em[data-ammo="low"]{
+    animation:none;color:#f4a44d!important;text-shadow:none
+  }
+}
