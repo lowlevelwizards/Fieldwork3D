@@ -7,7 +7,7 @@ const makeDoor=()=>initDoor({
   id:'TEST',a:{x:200,y:250},b:{x:240,y:250},
   hinge:'a',swing:1,open:false,openedAt:-1
 },0);
-test('push-side kick opens a light latch; pull side requires repeated force',()=>{
+test('push-side kick opens a light latch; pull-side kick never reverses hinge',()=>{
   const push=makeDoor(),pull=makeDoor();
   assert.equal(kickDoor(push,{x:220,y:290}).opened,true);
   assert.equal(push.open,true);
@@ -15,7 +15,7 @@ test('push-side kick opens a light latch; pull side requires repeated force',()=
   assert.equal(kickDoor(pull,{x:220,y:210}).opened,false);
   assert.equal(pull.open,false);
   assert.equal(kickDoor(pull,{x:220,y:210}).opened,false);
-  assert.equal(kickDoor(pull,{x:220,y:210}).opened,true);
+  assert.equal(kickDoor(pull,{x:220,y:210}).opened,false);
   assert.equal(pull.swing,original,'kicking cannot flip hinges');
 });
 test('physical bracing resists one kick but yields under accumulated damage',()=>{
