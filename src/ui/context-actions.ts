@@ -7,6 +7,7 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   nodeKind?:string;nodeMoveMode?:string;aimLabel?:string;nodeFirePolicy?:string;
   watchActive?:boolean;
   nearMovable?:boolean;nearWindow?:boolean;nearDoor?:boolean;
+  treatTargetName?:string;
   nearCivilian?:boolean;escortableCivilian?:boolean;
   nearCivilianCasualty?:boolean;
   carryingCivilian?:boolean;
@@ -32,6 +33,8 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
       title:'Keep watching a chosen point as you move until released'},
     {id:'ctxWait',label:'WAIT',group:'primary',
       pressed:o.nodeKind==='wait'||o.nodeKind==='holdClear',title:'Wait at this position'},
+    ...(o.treatTargetName?[{id:'ctxTreat',label:'TREAT',group:'primary' as const,
+      title:'Queue medical treatment for '+o.treatTargetName}]:[]),
     ...(o.nearDoor?[{id:'ctxDoor',label:'DOOR',group:'primary' as const,
       title:'Show actions for a reachable door'}]:[]),
     ...(o.nearCivilian?[{id:'ctxSecureCivilian',label:'SECURE',
@@ -66,7 +69,7 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     ...(o.nearMovable?[{id:'ctxPush',label:'PUSH',group:'advanced' as const,
       title:'Queue a physical push of nearby light furniture'}]:[]),
     ...(o.nearWindow?[{id:'ctxWindow',label:'WINDOW',group:'advanced' as const,
-      title:'Queue opening or closing the nearby window'}]:[]),
+      title:'Queue opening or closing the reachable operable window'}]:[]),
     ...(o.node?[{id:'ctxDelete',label:'Delete',group:'destructive' as const,title:'Remove selected waypoint'}]:[]),
   ];
 }
