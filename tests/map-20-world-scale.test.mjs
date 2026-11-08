@@ -35,9 +35,10 @@ test('Operators, doorways, furniture, and vehicles use consistent absolute scale
 test('Neither interior nor exterior placement silently rescales asset geometry',()=>{
  const outside=source('src/worldgen/exterior-sites.ts');
  const inside=source('src/worldgen/room-furnishing.ts');
- // Exterior parking rotates the *entire* canonical rectangle without scaling.
- assert.match(outside,/const w=parked&&zone.w>=zone.h\?asset.depth:asset.width/);
- assert.match(outside,/const h=parked&&zone.w>=zone.h\?asset.width:asset.depth/);
+ // Tree canopies keep canonical art dimensions but have small physical
+ // trunks. All other outdoor assets retain the physical catalog envelope.
+ assert.match(outside,/landscapePhysicalFootprint\(item,asset.width,asset.depth\)/);
+ assert.match(outside,/const w=footprint.w,h=footprint.h/);
  assert.match(inside,/const w=asset.width,h=asset.depth/);
  assert.doesNotMatch(outside,/Math.min\(asset.width/);
  assert.doesNotMatch(inside,/Math.min\(asset.width/);
