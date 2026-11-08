@@ -132,3 +132,33 @@ test('support elbow does not switch candidate branches while strafing',()=>{
   assert.ok(maxJump<4,'support elbow changed branch while strafing: '+maxJump);
  }finally{r.dispose();}
 });
+
+test('starting low-ready from ADS keeps support elbow continuous at handoff',()=>{
+ const r=createOperatorRig('starting-pose-stability','blue');
+ try{
+  poseOperator(r,pose(2,{handlingOverride:'ads',
+   aiming:true,aimBlend:1}),0);
+  const src=shown(r);
+  let previous=null,maxElbow=0;
+  for(let i=0;i<=64;i++){
+   const alpha=i/64;
+   poseOperator(r,pose(2+alpha*.36,{
+    handlingOverride:'low',aiming:false,aimBlend:0,
+    handlingTransition:{from:'ads',to:'low',alpha,
+      authoredFrom:src.fit,authoredChest:src.chest,
+      authoredHip:src.hip,authoredArms:src.arms}
+   }),0);
+   const elbow=joint(r.arms[0]);
+   if(previous)maxElbow=Math.max(maxElbow,elbow.distanceTo(previous));
+   if(i===0)assert.ok(elbow.distanceTo(src.arms[0].elbow)<1e-5,
+     'first starting-pose frame must preserve presented support elbow');
+   previous=elbow;
+  }
+  assert.ok(maxElbow<3.5,
+    'support elbow snapped returning to starting low ready: '+maxElbow);
+  const end=joint(r.arms[0]);
+  poseOperator(r,pose(2.5,{handlingOverride:'low'}),0);
+  assert.ok(joint(r.arms[0]).distanceTo(end)<.55,
+    'coupled low-ready endpoint switched support elbow');
+ }finally{r.dispose();}
+});
