@@ -23,8 +23,7 @@ uniform float uRadius;
 uniform float uStrength;
 uniform float uDebug;
 varying vec2 vUv;
-#include <tonemapping_pars_fragment>
-#include <colorspace_pars_fragment>
+// ShaderMaterial injects tone/color-space helper declarations itself.
 float band(float a,float b,float x){
  float t=clamp((x-a)/(b-a),0.0,1.0);
  return t*t*(3.0-2.0*t);
