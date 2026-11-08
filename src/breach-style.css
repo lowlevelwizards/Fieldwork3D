@@ -2253,3 +2253,201 @@ html,body{font-family:var(--fw-font-menu)}
     display:none!important
   }
 }
+
+
+/* Replay R6 — compact battlefield-first controls. The film and controls are
+ * separate surfaces: the viewer rail stays reachable even with dock folded. */
+body.replaying #breachCanvas,body.replaying #tacticalFeedback,
+body.replaying #replayPanel,body.replaying #replayRail,
+body.replaying #replayTopHud,body.replaying #replayBodycamStatus{
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none
+}
+body.replaying #breachCanvas{touch-action:none;-webkit-tap-highlight-color:transparent}
+body.replaying #replayPanel *,body.replaying #replayRail *,
+body.replaying #replayTopHud *{-webkit-tap-highlight-color:transparent}
+.replay-top-hud{position:fixed;z-index:16;
+  top:calc(9px + env(safe-area-inset-top));right:calc(9px + env(safe-area-inset-right));
+  display:flex;align-items:center;gap:6px;pointer-events:auto}
+.replay-top-hud[hidden],.replay-rail[hidden],
+.replay-quick-controls[hidden],.replay-direct-sight-wrap[hidden]{
+  display:none!important
+}
+.replay-follow-status{max-width:min(52vw,250px);min-height:34px;
+  display:flex;align-items:center;padding:5px 9px;border:1px solid #6e8c7c;
+  border-radius:7px;background:#1d322ddf;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;color:#d5decf;
+  font:700 11px/1.1 "Saira Condensed",sans-serif;letter-spacing:.05em}
+.replay-follow-status[data-following="true"]{background:#5a5035eF;
+  border-color:#e3cc90;color:#fff0b9;box-shadow:0 0 0 2px #e3cc9038}
+#replayExit{position:static;min-width:40px;min-height:40px;
+  padding:0 7px;border:1px solid #b38a7d;border-radius:7px;
+  background:#493732eE;color:#f2ded3;font:700 25px/1 "Work Sans",sans-serif;
+  touch-action:manipulation}
+.replay-bodycam-status{position:fixed;z-index:11;top:calc(56px + env(safe-area-inset-top));
+  left:50%;transform:translateX(-50%);bottom:auto;max-width:min(78vw,300px);
+  padding:4px 7px;border-radius:6px;font-size:9px;pointer-events:none;
+  box-shadow:0 3px 12px #0009}
+.replay-rail{position:fixed;z-index:13;top:clamp(114px,16dvh,190px);
+  right:calc(7px + env(safe-area-inset-right));
+  width:51px;max-height:calc(100dvh - 235px - env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;align-items:stretch;gap:4px;
+  overflow:visible;pointer-events:auto}
+.replay-rail-choice{position:relative;flex:none}
+.replay-rail-choice>button,.replay-rail .replay-direct-tools>button{
+  width:50px!important;min-width:50px!important;height:45px;min-height:45px!important;
+  padding:4px 2px!important;margin:0!important;
+  display:flex;flex-direction:column;gap:1px;justify-content:center;
+  align-items:center;border:1px solid #779687;border-radius:8px;
+  background:#203831ee;color:#eee1be;font:600 20px/1 "Work Sans",sans-serif;
+  letter-spacing:0;box-shadow:0 3px 11px #09171380;
+  touch-action:manipulation}
+.replay-rail-choice>button small,.replay-rail .replay-direct-tools>button small{
+  font:700 10px/1 "Saira Condensed",sans-serif;letter-spacing:.015em
+}
+.replay-rail .replay-direct-tools{position:static!important;display:contents!important;
+  padding:0!important;margin:0!important;box-shadow:none!important}
+.replay-rail .replay-direct-tools>button[hidden]{display:none!important}
+.replay-rail-choice>button[aria-expanded="true"],
+.replay-rail-choice>button:focus-visible,
+.replay-rail .replay-direct-tools>button[aria-pressed="true"]{
+  background:#bca577;color:#192923;border-color:#e9d6a2}
+.replay-rail button:focus-visible{outline:2px solid #f3d89a;outline-offset:1px}
+.replay-choice-pop{position:absolute;z-index:18;right:calc(100% + 7px);top:0;
+  width:max-content;min-width:132px;max-width:min(75vw,230px);
+  max-height:min(55dvh,320px);overflow-y:auto;overscroll-behavior:contain;
+  padding:5px;display:flex;flex-direction:column;gap:4px;
+  border:1px solid #829985;border-radius:9px;background:#182b27f9;
+  box-shadow:0 9px 26px #07120fe0}
+.replay-choice-pop[hidden]{display:none!important}
+.replay-choice-pop button{min-height:43px;min-width:120px;padding:7px 11px;
+  text-align:left;border-radius:6px;border:1px solid #4c7163;
+  background:#2b463b;color:#e8e3d2;font:700 12px/1.1 "Work Sans",sans-serif}
+.replay-choice-pop button[aria-pressed="true"]{background:#af9d77;
+  color:#1b2924;border-color:#e5c995}
+.replay-choice-pop button:disabled{opacity:.36}
+.replay-panel{position:fixed;z-index:12;
+  bottom:calc(7px + env(safe-area-inset-bottom));left:50%;right:auto;
+  width:min(610px,calc(100vw - 16px));max-height:none;overflow:visible;
+  transform:translateX(-50%);padding:6px 8px 5px;
+  border-radius:10px;background:#192d29f2;
+  box-shadow:0 8px 24px #05150cae}
+.replay-head{display:flex;align-items:center;justify-content:space-between;
+  min-height:25px;margin:0;color:#e8dec3;letter-spacing:.035em}
+.replay-head>strong{font:700 14px/1 "Saira Condensed",sans-serif}
+.replay-head-right{display:flex;align-items:center;gap:7px}
+.replay-head output{font:600 11px/1 "DM Mono",monospace}
+#replayDockToggle,#replayMiniPlay{min-width:34px;min-height:33px;
+  padding:1px 6px;border:1px solid #647e72;border-radius:6px;
+  background:#30483c;color:#f4e8ca;font:700 24px/1 "Work Sans",sans-serif}
+#replayMiniPlay[hidden]{display:none!important}
+.replay-panel[data-collapsed="true"]{width:min(480px,calc(100vw - 16px))}
+.replay-panel[data-collapsed="true"] .replay-quick-controls,
+.replay-panel[data-collapsed="true"] .replay-timeline,
+.replay-panel[data-collapsed="true"] .replay-actions,
+.replay-panel[data-collapsed="true"] .replay-utility,
+.replay-panel[data-collapsed="true"] .replay-drawer{display:none!important}
+.replay-panel .replay-quick-controls{display:none!important}
+.replay-timeline{height:23px;margin-top:2px;margin-bottom:1px}
+.replay-panel .replay-timeline input[type=range]{height:16px;margin:5px 0 0;
+  touch-action:pan-x}
+.replay-marks{top:-2px}
+.replay-actions{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:4px;margin:0}
+.replay-actions button,.replay-actions #replayPlay{
+  min-width:0!important;min-height:40px!important;padding:4px 2px;
+  border-radius:7px;display:flex;align-items:center;justify-content:center}
+.replay-actions button::after{display:none!important}
+.replay-actions button .ui-icon,.replay-actions #replayPlay .ui-icon{
+  width:20px;height:20px}
+.replay-utility{min-height:29px;margin-top:3px;display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.replay-utility #replayFeedToggle,.replay-utility #replayMore,
+.replay-utility #replayShareToggle{display:flex!important;min-width:0!important;
+  width:100%!important;margin:0!important;min-height:30px!important;
+  padding:4px 2px!important;font:700 10px/1 "Saira Condensed",sans-serif;
+  border-radius:6px;letter-spacing:.015em}
+.replay-action-strip{min-height:23px;max-height:27px;
+  padding:3px 4px;margin-top:3px;border-radius:4px}
+.replay-action-strip .replay-event{font-size:10px;line-height:1.1}
+.replay-drawer{max-height:min(55dvh,400px,calc(100dvh - 185px))}
+@media(max-width:400px){
+  .replay-rail{right:5px;width:47px}
+  .replay-rail-choice>button,.replay-rail .replay-direct-tools>button{
+    width:47px!important;min-width:47px!important;height:43px;
+    min-height:43px!important}
+  .replay-rail-choice>button small,.replay-rail .replay-direct-tools>button small{font-size:9px}
+}
+@media(max-height:470px) and (min-width:600px){
+  .replay-rail{top:calc(38px + env(safe-area-inset-top));right:54px;
+    left:auto;width:unset;height:47px;max-height:none;
+    flex-direction:row;justify-content:flex-end;gap:4px}
+  .replay-rail-choice>button,.replay-rail .replay-direct-tools>button{
+    width:45px!important;min-width:45px!important;height:42px;
+    min-height:42px!important;font-size:16px}
+  .replay-choice-pop{right:0;top:calc(100% + 6px)}
+  .replay-panel{padding:4px 8px}
+  .replay-head{min-height:24px}
+  .replay-timeline{height:21px}
+  .replay-actions button,.replay-actions #replayPlay{min-height:36px!important}
+  .replay-utility #replayFeedToggle,.replay-utility #replayMore,
+  .replay-utility #replayShareToggle{min-height:29px!important}
+  .replay-panel:has(.replay-drawer:not([hidden])) .replay-rail{
+    display:flex!important
+  }
+  .replay-bodycam-status{top:calc(87px + env(safe-area-inset-top));max-width:220px}
+}
+@media(prefers-reduced-motion:reduce){
+  .replay-rail,.replay-panel,.replay-choice-pop{transition:none!important}
+}
+
+
+/* Direct operator chips in Analyze replace the last iOS select on the
+ * main replay viewing path. */
+.replay-actor-controls #replayInspectActor[hidden],
+.replay-actor-controls #replayInspectFollow[hidden]{display:none!important}
+.replay-actor-choices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:4px;width:100%}
+.replay-actor-choices button{min-width:0;min-height:39px;padding:5px 2px;
+  border-radius:6px;border:1px solid #6d8877;background:#2d4539;
+  color:#e9eadc;font:700 11px "Saira Condensed",sans-serif}
+.replay-actor-choices button[aria-pressed="true"]{background:#b09c6e;
+  border-color:#e0cd9a;color:#152721}
+
+
+/* A pop-out investigation panel must own taps on its own close button.
+ * The independent side rail must not intercept drawer interactions. */
+.replay-panel:has(.replay-drawer:not([hidden])){z-index:17}
+.replay-top-hud{z-index:19}
+.replay-choice-pop{z-index:20}
+/* A chosen rail pop-out temporarily sits above Analyze; when dismissed,
+ * the Analyze drawer regains the tap layer for its close button. */
+.replay-rail:has(.replay-choice-pop:not([hidden])){z-index:18}
+
+
+/* Keep a permanent side-rail corridor when a mobile analysis sheet opens.
+ * Both the sheet's Close and the toolbar remain touchable at once. */
+@media(max-width:600px){
+  .replay-panel:has(.replay-drawer:not([hidden])){z-index:12}
+  .replay-panel .replay-drawer{right:59px}
+}
+
+
+/* Landscape: stack only the necessary compact rows; old two-column replay
+ * grid kept an empty second column and stretched the dock by ~20px.
+ * Keep the drawer below the top toolbar, never off-screen. */
+@media(max-height:470px) and (min-width:600px){
+  .replay-panel{display:grid;grid-template-columns:minmax(0,1fr);
+    row-gap:0;column-gap:0;padding:3px 7px}
+  .replay-head,.replay-timeline,.replay-actions,
+  .replay-utility,.replay-action-strip{
+    grid-column:1/-1;grid-row:auto;margin-top:0;margin-bottom:0}
+  .replay-head{min-height:22px}
+  .replay-timeline{height:19px}
+  .replay-panel .replay-timeline input[type=range]{height:14px;margin:3px 0 0}
+  .replay-actions button,.replay-actions #replayPlay{min-height:35px!important}
+  .replay-utility{min-height:26px}
+  .replay-utility #replayMore,.replay-utility #replayFeedToggle,
+  .replay-utility #replayShareToggle{min-height:26px!important}
+  .replay-action-strip{min-height:20px;max-height:22px;padding:2px 4px}
+  .replay-drawer{max-height:min(37dvh,142px,calc(100dvh - 205px))}
+}

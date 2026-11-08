@@ -240,18 +240,74 @@
   <output id="replayLibraryStatus" class="replay-library-status" aria-live="polite"></output>
   <div id="replayLibraryList" class="replay-library-list" role="list"></div>
 </section>
+<div id="replayTopHud" class="replay-top-hud" hidden>
+  <output id="replayFollowStatus" class="replay-follow-status" aria-live="polite">FREE CAMERA</output>
+  <button id="replayExit" type="button" aria-label="Exit replay" title="Exit replay">×</button>
+</div>
+<output id="replayBodycamStatus" class="replay-bodycam-status" hidden
+  aria-live="off">RECONSTRUCTED BODYCAM · SHARED ARCHITECTURE</output>
+<div id="replayRail" class="replay-rail" hidden role="group" aria-label="Replay viewing tools">
+  <div class="replay-rail-choice">
+    <button id="replayViewTrigger" type="button" aria-expanded="false"
+      aria-controls="replayViewChoices" aria-label="Perspective: ISO">▱<small>ISO</small></button>
+    <div id="replayViewChoices" class="replay-choice-pop" hidden role="group" aria-label="Choose perspective">
+      <button type="button" data-view-choice="iso">ISOMETRIC</button>
+      <button type="button" data-view-choice="top">TOP-DOWN</button>
+      <button type="button" data-view-choice="plan2d">FLOOR PLAN</button>
+    </div>
+  </div>
+  <div class="replay-rail-choice">
+    <button id="replaySightTrigger" type="button" aria-expanded="false"
+      aria-controls="replaySightChoices" aria-label="Visibility: Team Sight">◉<small>TEAM</small></button>
+    <div id="replaySightChoices" class="replay-choice-pop" hidden role="group" aria-label="Choose replay sight">
+      <button type="button" data-sight-choice="team">TEAM SIGHT</button>
+      <button type="button" data-sight-choice="full">FULL SIGHT</button>
+      <button type="button" data-sight-choice="operator">OPERATOR SIGHT</button>
+    </div>
+  </div>
+  <div class="replay-rail-choice">
+    <button id="replaySpeedTrigger" type="button" aria-expanded="false"
+      aria-controls="replaySpeedChoices" aria-label="Playback speed: 1×">⏵<small>1×</small></button>
+    <div id="replaySpeedChoices" class="replay-choice-pop" hidden role="group" aria-label="Choose playback speed">
+      <button type="button" data-speed-choice="0.25">0.25×</button>
+      <button type="button" data-speed-choice="0.5">0.5×</button>
+      <button type="button" data-speed-choice="0.75">0.75×</button>
+      <button type="button" data-speed-choice="1">1×</button>
+      <button type="button" data-speed-choice="1.5">1.5×</button>
+      <button type="button" data-speed-choice="2">2×</button>
+      <button type="button" data-speed-choice="4">4×</button>
+    </div>
+  </div>
+  <div class="replay-direct-tools" role="group" aria-label="Replay visualization toggles">
+    <button id="replayDirectTracers" type="button" aria-pressed="false"
+      title="Show historically permitted recent shot tracers">⌁<small>SHOT</small></button>
+    <button id="replayDirectXray" type="button" aria-pressed="false"
+      title="Fade walls for visualization; does not reveal undisclosed opponents">▧<small>X-RAY</small></button>
+    <button id="replayDirectDirector" type="button" aria-pressed="false">◇<small>DIR</small></button>
+    <button id="replayDirectBodycam" type="button" hidden aria-pressed="false">▣<small>CAM</small></button>
+    <button id="replayDirectMount" type="button" hidden>⇅<small>HEAD</small></button>
+    <button id="replayDirectFree" type="button" hidden>↗<small>FREE</small></button>
+  </div>
+  <label class="replay-direct-sight-wrap" hidden aria-hidden="true"><span>SIGHT</span>
+      <select id="replayDirectSight" aria-label="Replay visibility policy">
+        <option value="team">TEAM</option>
+        <option value="full">FULL</option>
+        <option value="operator">OPERATOR</option>
+      </select>
+    </label>
+</div>
 <section id="replayPanel" class="replay-panel" role="region" hidden aria-label="Mission replay controls">
-  <output id="replayBodycamStatus" class="replay-bodycam-status" hidden
-    aria-live="off">RECONSTRUCTED BODYCAM · SHARED ARCHITECTURE</output>
   <div class="replay-head">
     <strong>REPLAY</strong>
     <div class="replay-head-right">
       <output id="replayStatusChip" class="replay-status-chip" hidden aria-live="off"></output>
       <output id="replayClock">00:00.000 / 00:00.000</output>
-      <button id="replayExit" type="button" aria-label="Exit replay" title="Exit replay">×</button>
+      <button id="replayMiniPlay" type="button" hidden aria-label="Play or pause replay">▶</button>
+      <button id="replayDockToggle" type="button" aria-label="Collapse replay controls"
+        aria-expanded="true" title="Minimize replay timeline">⌄</button>
     </div>
   </div>
-  <div class="replay-quick-controls" aria-label="Replay perspective, camera and speed">
+  <div class="replay-quick-controls" hidden aria-hidden="true" aria-label="Replay perspective, camera and speed">
     <label><span>VIEW</span><select id="replayQuickView" aria-label="Replay perspective">
       <option value="iso">ISO</option><option value="top">TOP</option><option value="plan2d">FLOOR PLAN</option>
     </select></label>
@@ -264,23 +320,6 @@
       <option value="0.75">0.75×</option><option value="1" selected>1×</option>
       <option value="1.5">1.5×</option><option value="2">2×</option><option value="4">4×</option>
     </select></label>
-  </div>
-  <div class="replay-direct-tools" role="group" aria-label="Replay viewing controls">
-    <label class="replay-direct-sight-wrap"><span>SIGHT</span>
-      <select id="replayDirectSight" aria-label="Replay visibility policy">
-        <option value="team">TEAM</option>
-        <option value="full">FULL</option>
-        <option value="operator">OPERATOR</option>
-      </select>
-    </label>
-    <button id="replayDirectTracers" type="button" aria-pressed="false"
-      title="Show historically permitted recent shot tracers">TRACERS</button>
-    <button id="replayDirectXray" type="button" aria-pressed="false"
-      title="Fade walls for visualization; does not reveal undisclosed opponents">X-RAY</button>
-    <button id="replayDirectDirector" type="button" aria-pressed="false">DIRECTOR</button>
-    <button id="replayDirectBodycam" type="button" hidden aria-pressed="false">BODYCAM</button>
-    <button id="replayDirectMount" type="button" hidden>CHEST / HEAD</button>
-    <button id="replayDirectFree" type="button" hidden>FREE CAMERA</button>
   </div>
   <div class="replay-timeline">
     <div id="replayMarks" class="replay-marks" role="group" aria-label="Significant replay moments"></div>
@@ -322,9 +361,11 @@
       </div>
       <div id="replayActorControls" class="replay-actor-controls" hidden
         aria-label="Inspect operator">
-        <label for="replayInspectActor">OPERATOR</label>
-        <select id="replayInspectActor" aria-label="Choose an operator to inspect"></select>
-        <button id="replayInspectFollow" type="button">FOLLOW</button>
+        <select id="replayInspectActor" hidden aria-hidden="true"
+          aria-label="Current operator for investigation"></select>
+        <div id="replayInspectActorButtons" class="replay-actor-choices"
+          role="group" aria-label="Tap an operator to follow"></div>
+        <button id="replayInspectFollow" type="button" hidden aria-label="Follow selected operator">FOLLOW</button>
         <button id="replayInspectMovement" type="button">PLAN / PATH</button>
       </div>
       <details class="replay-group" data-replay-group="view">

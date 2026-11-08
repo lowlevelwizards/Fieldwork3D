@@ -277,6 +277,7 @@ const ui={
   replayPresets:el<HTMLElement>('replayPresets'),
   replayActorControls:el<HTMLElement>('replayActorControls'),
   replayInspectActor:el<HTMLSelectElement>('replayInspectActor'),
+  replayInspectActorButtons:el<HTMLElement>('replayInspectActorButtons'),
   replayInspectFollow:el<HTMLButtonElement>('replayInspectFollow'),
   replayInspectMovement:el<HTMLButtonElement>('replayInspectMovement'),
   replayIncidentInvestigate:el<HTMLButtonElement>('replayIncidentInvestigate'),
@@ -347,6 +348,17 @@ const ui={
   favoriteMission:el<HTMLButtonElement>('favoriteMission'),
   favoriteMissionsList:el<HTMLElement>('favoriteMissionsList'),
   replayPanel:el<HTMLElement>('replayPanel'),
+  replayRail:el<HTMLElement>('replayRail'),
+  replayTopHud:el<HTMLElement>('replayTopHud'),
+  replayFollowStatus:el<HTMLOutputElement>('replayFollowStatus'),
+  replayDockToggle:el<HTMLButtonElement>('replayDockToggle'),
+  replayMiniPlay:el<HTMLButtonElement>('replayMiniPlay'),
+  replayViewTrigger:el<HTMLButtonElement>('replayViewTrigger'),
+  replayViewChoices:el<HTMLElement>('replayViewChoices'),
+  replaySightTrigger:el<HTMLButtonElement>('replaySightTrigger'),
+  replaySightChoices:el<HTMLElement>('replaySightChoices'),
+  replaySpeedTrigger:el<HTMLButtonElement>('replaySpeedTrigger'),
+  replaySpeedChoices:el<HTMLElement>('replaySpeedChoices'),
   replayPlay:el<HTMLButtonElement>('replayPlay'),
   replayBack:el<HTMLButtonElement>('replayBack'),
   replayForward:el<HTMLButtonElement>('replayForward'),
@@ -1787,6 +1799,12 @@ const activePointers=new Map<number,{x:number;y:number;startX:number;startY:numb
   wasUnit:boolean;nodeId:number|null;
   mode:'undecided'|'route'|'pan'|'node'|'watchTarget'|'activeWatch'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti'|'targetPreview';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null;
+function probeCameraGesture(phase:string):void{
+  if(!import.meta.env.DEV)return;
+  canvas.dataset.gesturePhase=phase;
+  canvas.dataset.gestureCount=String(activePointers.size);
+  canvas.dataset.gestureModes=[...activePointers.values()].map(p=>p.mode).join(',');
+}
 const colors:Record<string,string>={
   rook:'#a2d4ca',moss:'#b9c6a0',ash:'#dfb992',vale:'#b7b1d9',
 };
@@ -3446,6 +3464,33 @@ function renderReplayBallistics(projected:boolean):void{
 }
 /** Ghost sprites are intentionally abstract and share the operator palette. */
 /** Replay R3: actual recorded route — not authored waypoints. */
+/** Camera-follow selection is a spatial affordance, not just a HUD label.
+ * The ring sits on the actual historical friendly; no enemy data is used. */
+function renderReplayFollowMarker(projected:boolean):void{
+  if(!replaying||replayCameraMode!=='operator'||replayBodycamOn)return;
+  const actor=team(state).find(a=>a.id===replayFollowId&&a.health>0);
+  if(!actor)return;
+  const point=projected?worldToScreen(actor.p,21):actor.p;
+  if(!Number.isFinite(point.x)||!Number.isFinite(point.y))return;
+  const px=projected?1:1/Math.max(.3,viewScale);
+  const radius=22*px;
+  const pulse=1.5*Math.sin(replayTime*2.2);
+  draw.save();
+  draw.lineWidth=3*px;
+  draw.strokeStyle='#1b302b';
+  draw.beginPath();draw.arc(point.x,point.y,radius+2*px,0,Math.PI*2);
+  draw.stroke();
+  draw.lineWidth=2.3*px;
+  draw.strokeStyle='#f0d394';
+  draw.beginPath();draw.arc(point.x,point.y,radius+pulse*px,0,Math.PI*2);
+  draw.stroke();
+  draw.fillStyle='#f5e4bb';
+  draw.font='700 '+(11*px)+'px "Saira Condensed",sans-serif';
+  draw.textAlign='center';
+  draw.fillText('FOLLOW · '+actor.name.toUpperCase(),
+    point.x,point.y-(radius+10*px));
+  draw.restore();
+}
 function renderReplayMovementHistory(projected:boolean):void{
   if(!replaying||replayTrailMode==='off'||!replayMovementHistory)return;
   draw.save();draw.globalAlpha=.58;draw.lineWidth=2.15;draw.setLineDash([]);
@@ -3775,6 +3820,7 @@ function renderProjectedPlans(){
   renderReplayMovementHistory(true);
   renderReplayGhosts(true);
   renderReplayBallistics(true);
+  renderReplayFollowMarker(true);
   for(const a of team(state))drawExecutionProblem(a,true);
 }
 /** Gold denotes actual historically observed cells for the selected operator.
@@ -4114,7 +4160,8 @@ function render(){
   for(const a of state.civilians)civilianSprite(a);
   for(const a of state.operators)sprite(a);
   for(const a of team(state))drawExecutionProblem(a,false);
-  contacts();renderReplayGhosts(false);renderReplayBallistics(false);endMessage();
+  contacts();renderReplayGhosts(false);renderReplayBallistics(false);
+  renderReplayFollowMarker(false);endMessage();
   draw.strokeStyle='#d4dac64f';draw.lineWidth=2;
   draw.strokeRect(0,0,W,H);
   draw.restore();
@@ -4583,7 +4630,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
   if(replayCameraMode==='director'){
     const target=cinematicReplayShot(replayTime,actors,
       state.site?.rooms??[],state.site?.walls??[],replayDirectorCues,
-      cssW/Math.max(1,cssH),stage.view.yaw);
+      cssW/Math.max(1,cssH),stage.view.yaw,stage.replayCameraBaseSpan());
     if(!target)return;
     const current={focus:stage.view.focus,zoom:stage.view.zoom,
       yaw:stage.view.yaw,pitch:stage.view.pitch,roomId:null,
@@ -4705,6 +4752,37 @@ function setReplayMomentsView(view:'highlights'|'events'):void{
     b.setAttribute('aria-pressed',String(b.dataset.momentsView===view));
   if(active)renderReplayEventFeed();
 }
+let replayDockCollapsed=false;
+type ReplayChoiceKey='view'|'sight'|'speed';
+const replayChoices={
+  view:{trigger:ui.replayViewTrigger,menu:ui.replayViewChoices},
+  sight:{trigger:ui.replaySightTrigger,menu:ui.replaySightChoices},
+  speed:{trigger:ui.replaySpeedTrigger,menu:ui.replaySpeedChoices}
+};
+function closeReplayChoices():void{
+  for(const {trigger,menu} of Object.values(replayChoices)){
+    menu.hidden=true;
+    trigger.setAttribute('aria-expanded','false');
+  }
+}
+function toggleReplayChoice(key:ReplayChoiceKey):void{
+  const {trigger,menu}=replayChoices[key];
+  const open=menu.hidden;
+  closeReplayChoices();
+  menu.hidden=!open;
+  trigger.setAttribute('aria-expanded',String(open));
+}
+function setReplayDockCollapsed(collapsed:boolean):void{
+  replayDockCollapsed=collapsed;
+  if(collapsed)showReplayToolTab(null);
+  ui.replayPanel.dataset.collapsed=String(collapsed);
+  ui.replayDockToggle.textContent=collapsed?'⌃':'⌄';
+  ui.replayDockToggle.title=collapsed?'Expand replay timeline':'Minimize replay timeline';
+  ui.replayDockToggle.setAttribute('aria-label',ui.replayDockToggle.title);
+  ui.replayDockToggle.setAttribute('aria-expanded',String(!collapsed));
+  ui.replayMiniPlay.hidden=!collapsed;
+  ui.replayMiniPlay.textContent=replayPlaying?'Ⅱ':'▶';
+}
 function showReplayToolTab(tab:ReplayToolTab|null):void{
   replayToolTab=tab;
   replaySurface=tab===null?'none':tab==='events'?'moments':tab==='export'?'share':'analyze';
@@ -4729,6 +4807,7 @@ function toggleReplayPanel(surface:Exclude<ReplaySurface,'none'>,
   const next=toggleReplaySurface(replaySurface,surface);
   if(next==='none'){closeReplaySurface(false);return;}
   replaySurfaceOpener=opener;
+  setReplayDockCollapsed(false);
   showReplayToolTab(next==='moments'?'events':
     next==='share'?'export':'layers');
 }
@@ -4751,10 +4830,17 @@ function applyReplayPreset(next:Exclude<ReplayPreset,'custom'>):void{
 }
 function populateReplayInspectActors():void{
   ui.replayInspectActor.replaceChildren();
+  ui.replayInspectActorButtons.replaceChildren();
   for(const actor of team(state)){
     const option=document.createElement('option');
     option.value=actor.id;option.textContent=actor.name.toUpperCase();
     ui.replayInspectActor.append(option);
+    const button=document.createElement('button');
+    button.type='button';button.dataset.followActor=actor.id;
+    button.textContent=actor.name.toUpperCase();
+    button.title='Follow '+actor.name;
+    button.addEventListener('click',()=>followReplayOperator(actor.id));
+    ui.replayInspectActorButtons.append(button);
   }
 }
 function populateReplayCameraChoices():void{
@@ -4769,6 +4855,17 @@ function populateReplayCameraChoices():void{
 }
 function updateReplayHud(){
   ui.replaySeek.value=String(Math.round(replayTime*60));
+  ui.replayMiniPlay.textContent=replayPlaying?'Ⅱ':'▶';
+  const following=replayCameraMode==='operator'&&
+    team(state).some(actor=>actor.id===replayFollowId&&actor.health>0);
+  const followingName=team(state).find(actor=>actor.id===replayFollowId)?.name??
+    replayFollowId;
+  ui.replayFollowStatus.textContent=replayBodycamOn?
+    'BODYCAM · '+followingName.toUpperCase():following?
+    'FOLLOWING · '+followingName.toUpperCase():
+    replayCameraMode==='director'?'DIRECTOR · SQUAD':
+    replayCameraMode==='squad'?'FOLLOWING · SQUAD':'FREE CAMERA';
+  ui.replayFollowStatus.dataset.following=String(following||replayBodycamOn);
   ui.replayClock.textContent=formatReplayTime(replayTime)+' / '+
     formatReplayTime(recorder.duration)+
     (recorder.completeness.complete?'':' · PARTIAL');
@@ -4785,6 +4882,11 @@ function updateReplayHud(){
   ui.replaySpeed.textContent=replayRate+'×';
   ui.replayQuickSpeed.value=String(replayRate);
   ui.replayQuickSpeed.disabled=replayQuickVideo.active;
+  ui.replaySpeedTrigger.querySelector('small')!.textContent=replayRate+'×';
+  ui.replaySpeedTrigger.setAttribute('aria-label','Playback speed '+replayRate+' times');
+  ui.replaySpeedTrigger.disabled=replayQuickVideo.active;
+  for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-speed-choice]'))
+    b.setAttribute('aria-pressed',String(Number(b.dataset.speedChoice)===replayRate));
   const loop=makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration);
   ui.replayLoopIn.textContent=replayLoopIn===null?'SET LOOP IN':
     'IN '+formatReplayTime(replayLoopIn);
@@ -4806,6 +4908,12 @@ function updateReplayHud(){
   const replaySightMode=replayContactObserverId?'operator':
     replayOmniscient?'full':'team';
   ui.replayDirectSight.value=replaySightMode;
+  ui.replaySightTrigger.querySelector('small')!.textContent=replaySightMode.toUpperCase();
+  ui.replaySightTrigger.setAttribute('aria-label','Visibility: '+replaySightMode+' sight');
+  for(const b of ui.replaySightChoices.querySelectorAll<HTMLButtonElement>('[data-sight-choice]')){
+    b.setAttribute('aria-pressed',String(b.dataset.sightChoice===replaySightMode));
+    b.disabled=b.dataset.sightChoice==='operator'&&!replayHasContactEvidence;
+  }
   ui.replayDirectSight.querySelector<HTMLOptionElement>('option[value="operator"]')!
     .disabled=!replayHasContactEvidence;
   ui.replayDirectTracers.setAttribute('aria-pressed',
@@ -4820,11 +4928,14 @@ function updateReplayHud(){
     'This replay lacks recorded personal sight evidence for this operator';
   ui.replayDirectBodycam.disabled=!replayBodycamOn&&!canBodycam;
   ui.replayDirectBodycam.setAttribute('aria-pressed',String(replayBodycamOn));
-  ui.replayDirectBodycam.textContent=replayBodycamOn?'EXIT BODYCAM':'BODYCAM';
+  ui.replayDirectBodycam.querySelector('small')!.textContent=replayBodycamOn?'EXIT':'CAM';
+  ui.replayDirectBodycam.setAttribute('aria-label',replayBodycamOn?'Exit Bodycam':'Enter Bodycam');
   ui.replayDirectMount.hidden=!replayBodycamOn;
-  ui.replayDirectMount.textContent=replayBodycamMount==='chest'?'MOUNT: CHEST':'MOUNT: HEAD';
+  ui.replayDirectMount.querySelector('small')!.textContent=replayBodycamMount==='chest'?'CHEST':'HEAD';
+  ui.replayDirectMount.setAttribute('aria-label','Bodycam mount: '+replayBodycamMount);
   ui.replayDirectFree.hidden=replayCameraMode==='free'&&!replayBodycamOn;
-  ui.replayDirectFree.textContent=replayBodycamOn?'EXIT CAMERA':'FREE CAMERA';
+  ui.replayDirectFree.querySelector('small')!.textContent=replayBodycamOn?'EXIT':'FREE';
+  ui.replayDirectFree.setAttribute('aria-label',replayBodycamOn?'Exit Bodycam camera':'Free camera');
   ui.replayContactLens.disabled=!replayHasContactEvidence;
   ui.replayContactLens.textContent=replayContactObserverId?
     'CONTACTS: '+replayContactObserverId.toUpperCase():'CONTACTS: TEAM';
@@ -4857,6 +4968,12 @@ function updateReplayHud(){
   ui.replayView.textContent=viewMode.toUpperCase();
   ui.replayQuickView.value=viewMode;
   ui.replayQuickView.disabled=replayBodycamOn;
+  ui.replayViewTrigger.querySelector('small')!.textContent=
+    viewMode==='plan2d'?'PLAN':viewMode.toUpperCase();
+  ui.replayViewTrigger.setAttribute('aria-label','Perspective: '+viewMode);
+  ui.replayViewTrigger.disabled=replayBodycamOn;
+  for(const b of ui.replayViewChoices.querySelectorAll<HTMLButtonElement>('[data-view-choice]'))
+    b.setAttribute('aria-pressed',String(b.dataset.viewChoice===viewMode));
   ui.replayView.disabled=replayBodycamOn;
   ui.replayFollow.textContent=replayFollow?'FOLLOW '+replayFollowId.toUpperCase():'FOLLOW';
   ui.replaySquad.textContent=replayCameraMode==='squad'?'SQUAD ON':'FOLLOW SQUAD';
@@ -4872,6 +4989,9 @@ function updateReplayHud(){
   }
   ui.replayQuickCamera.disabled=replayBodycamOn;
   if(team(state).some(a=>a.id===selected))ui.replayInspectActor.value=selected;
+  for(const b of ui.replayInspectActorButtons.querySelectorAll<HTMLButtonElement>('[data-follow-actor]'))
+    b.setAttribute('aria-pressed',String(replayCameraMode==='operator'&&
+      b.dataset.followActor===replayFollowId));
   ui.replaySquad.setAttribute('aria-pressed',String(replayCameraMode==='squad'));
   ui.replayDirector.setAttribute('aria-pressed',String(replayCameraMode==='director'));
   ui.replaySquad.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
@@ -5044,6 +5164,8 @@ function enterReplay(){
   renderReplaySquadEntries();
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
+  ui.replayTopHud.hidden=false;ui.replayRail.hidden=false;
+  closeReplayChoices();setReplayDockCollapsed(false);
   ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
   renderReplayEventMarkers();seekReplay(0);updateHud();
 }
@@ -5079,6 +5201,8 @@ function exitReplay(){
   showReplayToolTab(null);
   document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
+  ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
+  closeReplayChoices();
   if(finishedSession)state=finishedSession;
   finishedSession=null;fogStamp=-1;
   if(savedReplayPreviousRecorder){
@@ -5373,6 +5497,37 @@ ui.replayShareToggle.addEventListener('click',()=>{
   if(replayQuickVideo.active){ui.replayExportVideo.click();return;}
   toggleReplayPanel('share',ui.replayShareToggle);
 });
+for(const [key,{trigger}] of Object.entries(replayChoices) as
+  Array<[ReplayChoiceKey,{trigger:HTMLButtonElement;menu:HTMLElement}]>){
+  trigger.addEventListener('click',()=>toggleReplayChoice(key));
+}
+for(const b of ui.replayViewChoices.querySelectorAll<HTMLButtonElement>('[data-view-choice]')){
+  b.addEventListener('click',()=>{
+    ui.replayQuickView.value=b.dataset.viewChoice??'iso';
+    ui.replayQuickView.dispatchEvent(new Event('change'));
+    closeReplayChoices();
+  });
+}
+for(const b of ui.replaySightChoices.querySelectorAll<HTMLButtonElement>('[data-sight-choice]')){
+  b.addEventListener('click',()=>{
+    ui.replayDirectSight.value=b.dataset.sightChoice??'team';
+    ui.replayDirectSight.dispatchEvent(new Event('change'));
+    closeReplayChoices();
+  });
+}
+for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-speed-choice]')){
+  b.addEventListener('click',()=>{
+    ui.replayQuickSpeed.value=b.dataset.speedChoice??'1';
+    ui.replayQuickSpeed.dispatchEvent(new Event('change'));
+    closeReplayChoices();
+  });
+}
+document.addEventListener('pointerdown',e=>{
+  if(!(e.target instanceof Node)||ui.replayRail.contains(e.target))return;
+  closeReplayChoices();
+});
+ui.replayDockToggle.addEventListener('click',()=>setReplayDockCollapsed(!replayDockCollapsed));
+ui.replayMiniPlay.addEventListener('click',()=>ui.replayPlay.click());
 ui.replayQuickSpeed.addEventListener('change',()=>{
   const rate=Number(ui.replayQuickSpeed.value);
   if(!isReplaySpeed(rate)||replayQuickVideo.active)return;
@@ -5906,6 +6061,8 @@ function reset(next=state.variant,siteSeed?:number,
   hideWeaponChooser();
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
+  ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
+  closeReplayChoices();
   state=newSession(next,legacyStudy?undefined:
     siteSeed??randomSiteSeed(),restartStart?.intelMode??selectedIntelMode,
     restartStart?.scale??requestedSiteScale,missionOverride,
@@ -6788,6 +6945,7 @@ canvas.addEventListener('pointerdown',e=>{
     panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
     trace=null;draggingNode=null;draggingWatchTarget=false;
   }
+  probeCameraGesture('down');
 });
 canvas.addEventListener('pointermove',e=>{
   const p=activePointers.get(e.pointerId);
@@ -6798,8 +6956,8 @@ canvas.addEventListener('pointermove',e=>{
   p.x=e.clientX;p.y=e.clientY;
   if(Math.hypot(e.clientX-p.startX,e.clientY-p.startY)>
      tacticalHitProfile(e.pointerType).dragStart)p.moved=true;
-  if(activePointers.size===2){
-    const pts=[...activePointers.values()];
+  if(activePointers.size>=2){
+    const pts=[...activePointers.values()].slice(0,2);
     const gap=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
     const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
@@ -6822,6 +6980,7 @@ canvas.addEventListener('pointermove',e=>{
       replayCameraMode='free';replayFollow=false;updateReplayHud();
     }
     stage.orbit(dx,dy);
+    probeCameraGesture('orbit');
     for(const [mode,button] of [['iso',ui.viewIso],
       ['top',ui.viewTop],['plan2d',ui.view2d]] as const)
       button.setAttribute('aria-pressed',String(mode===stage.view.mode));
@@ -7050,14 +7209,47 @@ function releasePointer(e:PointerEvent,cancelled=false){
   trace=null;draggingNode=null;draggingWatchTarget=false;
   activePointers.delete(e.pointerId);
   if(e.pointerType==='touch')previewHover=false;
-  if(activePointers.size<2){panMid=null;pinchDistance=0;}
+  if(activePointers.size>=2){
+    // Rebase a new pinch pair immediately when one of three fingers leaves.
+    // A stale midpoint/gap otherwise causes a huge camera jump on the next move.
+    const pts=[...activePointers.values()].slice(0,2);
+    pinchDistance=distance({x:pts[0].x,y:pts[0].y},
+      {x:pts[1].x,y:pts[1].y});
+    panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+  }else{
+    panMid=null;pinchDistance=0;
+    if(activePointers.size===1){
+      const remaining=[...activePointers.values()][0];
+      if(remaining.mode==='cameraMulti'){
+        // Pinch → orbit: explicitly transfer gesture ownership to the one
+        // remaining finger; otherwise it can remain trapped in cameraMulti.
+        remaining.mode=viewMode==='plan2d'||!stage?'cameraPan':'cameraOrbit';
+        remaining.moved=true;
+        remaining.startX=remaining.x;remaining.startY=remaining.y;
+      }
+    }
+  }
+  probeCameraGesture('up');
   updateHud();
 }
 canvas.addEventListener('pointerup',e=>releasePointer(e));
 canvas.addEventListener('pointercancel',e=>releasePointer(e,true));
 canvas.addEventListener('lostpointercapture',e=>releasePointer(e,true));
-window.addEventListener('blur',()=>{activePointers.clear();trace=null;
-  panMid=null;pinchDistance=0;draggingWatchTarget=false;});
+function clearTacticalGestureState():void{
+  activePointers.clear();trace=null;
+  panMid=null;pinchDistance=0;draggingWatchTarget=false;draggingNode=null;
+}
+window.addEventListener('blur',clearTacticalGestureState);
+window.addEventListener('pagehide',clearTacticalGestureState);
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)clearTacticalGestureState();
+});
+// Prevent iOS Safari's native page-scale gesture from competing with our
+// Two-finger world pan/zoom while the canvas owns the gesture.
+for(const gesture of ['gesturestart','gesturechange','gestureend']){
+  canvas.addEventListener(gesture,e=>e.preventDefault(),{passive:false});
+}
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('resize',layout);
 // The Settings trigger lives in the collapsible Tools drawer. Settings
 // therefore owns an always-visible close action, and camera changes return

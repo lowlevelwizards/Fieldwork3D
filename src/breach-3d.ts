@@ -1612,6 +1612,13 @@ export class TacticalScene3D{
       if(after)this.shiftFocus(before.x-after.x,before.y-after.y);
     }
   }
+  /** The same world-size basis used by the ortho camera, for accurate
+   * close-up framing independent of map size and mobile aspect ratio. */
+  replayCameraBaseSpan():number{
+    const b=activeWorldBounds();
+    const diagonal=Math.hypot(b.maxX-b.minX,b.maxY-b.minY);
+    return Math.max(820,(diagonal+66)/(this.width/Math.max(1,this.height)));
+  }
   updateCamera(dt:number){
     const targetElev=this.view.pitch;
     const blend=1-Math.exp(-Math.max(0,dt)*13);
