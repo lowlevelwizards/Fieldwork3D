@@ -84,7 +84,7 @@ test('threshold assignment and outdoors are derived from operator, not target',(
  assert.equal(outside.roomId,null);
  assert.equal(scene.rooms.some(r=>pointIn(outside.cameraAnchor,r)),false);
 });
-test('an obstructed new camera position must cut rather than pass through wall',()=>{
+test('a sustained room transition uses one cut, not a wall fly-through',()=>{
  const plan=new ReplayDirectorStoryboard(3,t=>({
   focus:{x:t<.8?70:209,y:60},cameraAnchor:{
    x:t<.8?95:238,y:90},
@@ -94,9 +94,12 @@ test('an obstructed new camera position must cut rather than pass through wall',
   doorId:null,beatId:null,score:1,occluded:0,motion:20,
   operatorPoint:{x:t<.8?80:215,y:65}
  }),{rooms:scene.rooms,walls,step:.8});
- const p=plan.sample(.2),q=plan.sample(.6);
+ const p=plan.sample(.2),early=plan.sample(.6),q=plan.sample(2.8);
  assert.ok(pointIn(p.cameraAnchor,entry));
+ assert.ok(pointIn(early.cameraAnchor,entry),
+  'one raw room switch must not jump the camera');
  assert.ok(pointIn(q.cameraAnchor,inner));
  assert.equal(plan.sample(.2).roomId,'entry');
- assert.equal(plan.sample(.6).roomId,'inner');
+ assert.equal(plan.sample(.6).roomId,'entry');
+ assert.equal(plan.sample(2.8).roomId,'inner');
 });
