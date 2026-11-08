@@ -8,6 +8,7 @@ import {garmentContactAnchor} from './operator-garment-contact-surface.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {fittedShoulderBridge,fittedFlatSurfaceBand,fittedArmorBag,fittedSideWrap} from './operator-armor-shapes.ts';
 import {rigVisualBudget} from './operator-rig-visual-standards.ts';
+import type {MagazinePouchCell} from './operator-magazine-pouch-fit.ts';
 import {createAdaptiveArmorSilhouettes,updateAdaptiveArmorFit}
  from './operator-adaptive-armor.ts';
 export {updateAdaptiveArmorFit};
@@ -94,12 +95,21 @@ export const RIG_POCKET_CONSTRUCTION:Readonly<Record<string,RigPocketConstructio
  */
 export const RIG_MAGAZINE_POUCH_PUFF=1.00;
 const pouch=(g:THREE.Group,m:THREE.Material,fold:THREE.Material,
- x:number,y:number,z:number,h:number,d:number,depth=1.10)=>{
+ x:number,y:number,z:number,h:number,d:number,depth=1.10,
+ isMagazinePouch=true)=>{
  const style=g.name.replace('authored-rig-','');
  const construction=RIG_POCKET_CONSTRUCTION[style]??'flap-snap';
  const extra=rigVisualBudget(style).projection;
  const span=d+(d>=2.3?.17:.11);
  const front=x+depth*.5+extra+RIG_MAGAZINE_POUCH_PUFF;
+ if(isMagazinePouch){
+  // Register ONLY physical dedicated ammunition cases, at the source
+  // of their real dimensions. Utility, canteen and admin pockets never
+  // acquire a magazine socket.
+  const cells=(g.userData.magazinePouchCells??=[]) as MagazinePouchCell[];
+  cells.push({x:x+(extra+RIG_MAGAZINE_POUCH_PUFF)*.5,
+   y,z,height:h,width:span,depth:depth+extra+RIG_MAGAZINE_POUCH_PUFF});
+ }
  // Body and its flap are ONE logical self-shadowing pouch, even though
  // each cuboid is a separate pre-merge geometric primitive.
  const partId=style+'/pouch/'+[x,y,z].map(v=>v.toFixed(2)).join('/');
@@ -150,8 +160,8 @@ const NOMINAL_RIG_MAGAZINE_MOUTHS:Readonly<
   [9.48,-.28,-2.73,2.12],[9.48,-.28,0,2.12],[9.48,-.28,2.73,2.12]
  ],
  'micro-rig':[
-  [9.15,-1.10,-1.65,2.36],[9.15,-1.10,1.65,2.36],
-  [8.42,-1.57,-4.55,1.36],[8.42,-1.57,4.55,1.36]
+  [9.15,-1.10,-1.65,2.36],[9.15,-1.10,1.65,2.36]
+  // The small outboard organizer wings are not magazine carriers.
  ],
  'light-rig':[-4.6,-1.5,1.5,4.6].map(z=>[9.20,.09,z,2.38] as const),
  'chicom-rig':[-3.12,0,3.12].map(z=>[9.37,.45,z,2.34] as const),
@@ -521,7 +531,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    pouch(g,pocketFabric,pocketFabric,8.54,-2.14,z,2.85,2.80,.91);
   box(g,webbing,8.35,.06,0,.29,.70,5.36);
   for(const s of [-1,1])
-   pouch(g,pocketFabric,pocketFabric,7.75,-2.62,s*4.60,2.26,1.52,.77);
+   pouch(g,pocketFabric,pocketFabric,7.75,-2.62,s*4.60,2.26,1.52,.77,false);
  }
  if(!onlyStyle||onlyStyle==='light-rig'){
   const g=make('light-rig');
@@ -563,7 +573,8 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    const half=new THREE.Group();half.position.z=s*3.25;g.add(half);
    fittedArmorBag(half,fabric,7.82,1,3.55,-5.80,4.02,.72,.72);
    for(const y of [1.28,-2.56,-5.35])
-    pouch(g,pocketFabric,pocketFabric,8.12,y,s*4.20,3.02,3.38,.99);
+    pouch(g,pocketFabric,pocketFabric,8.12,y,s*4.20,3.02,3.38,.99,
+     y!==-5.35);
    // Recognizable upper yoke joins the tapered vest panel, without
    // closing the open central sternum.
    box(g,webbing,7.86,2.76,s*3.98,.56,.76,3.18);
@@ -630,7 +641,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
     [.05,5.70,sign*5.20],1.45,1.04);
    strap(h,webbing,[.05,5.70,sign*5.20],
     [-5.10,-4.7,sign*6.3],1.36,1.04);
-   pouch(g,pocketFabric,pocketFabric,3.1,-5.30,sign*7.65,5.30,3.40,1.49);
+   pouch(g,pocketFabric,pocketFabric,3.1,-5.30,sign*7.65,5.30,3.40,1.49,false);
   }
   box(g,webbing,3.55,-5.7,0,1.35,1.45,14.15);
  }
@@ -647,7 +658,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
    box(g,webbing,9.46+RIG_MAGAZINE_POUCH_PUFF,-.20,z,.36,.55,.64);
   }
   for(const s of [-1,1])
-   pouch(g,pocketFabric,pocketFabric,8.42,-3.46,s*5.65,2.38,1.65,.75);
+   pouch(g,pocketFabric,pocketFabric,8.42,-3.46,s*5.65,2.38,1.65,.75,false);
  }
  if(!onlyStyle||onlyStyle==='bandolier'){
   const g=make('bandolier');
@@ -656,7 +667,8 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   for(let i=0;i<5;i++){
    const t=i/4,z=3.85-t*7.7,y=3.6-t*7.4;
    // Four magazine positions plus a deliberate fifth utility cell.
-   pouch(g,pocketFabric,pocketFabric,8.20,y,z,2.65,1.76,.78);
+   pouch(g,pocketFabric,pocketFabric,8.20,y,z,
+     i<4?3.05:2.65,1.76,.78,i<4);
   }
  }
  if(!onlyStyle||onlyStyle==='sadf-webbing'){
