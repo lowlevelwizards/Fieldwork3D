@@ -37,6 +37,9 @@ void main(){
 const COMPOSITE=`
 uniform sampler2D tOriginal;
 uniform sampler2D tBlur;
+uniform sampler2D tAttention;
+uniform float uHasAttention;
+uniform float uZoomStrength;
 uniform float uCenterY;
 uniform float uInnerHalf;
 uniform float uOuterHalf;
@@ -65,7 +68,9 @@ void main(){
  // focusCenter uses top-down screen coordinates; vUv uses bottom-up.
  float distanceFromBand=abs((1.0-vUv.y)-uCenterY);
  float optics=band(uInnerHalf,uOuterHalf,distanceFromBand);
- float mask=optics*visibilityGuard(vUv);
+ float tactical=uHasAttention>.5?texture2D(tAttention,vUv).r:0.0;
+ float mask=optics*(1.0-clamp(tactical,0.0,1.0))*
+    visibilityGuard(vUv)*uZoomStrength;
  if(uDebug>.5){
   float centerLine=1.0-step(.002,abs((1.0-vUv.y)-uCenterY));
   float edgeLines=1.0-step(.002,
@@ -82,6 +87,12 @@ void main(){
  if(amount<.00001)discard;
  vec4 sharp=texture2D(tOriginal,vUv);
  vec4 soft=texture2D(tBlur,vUv);
+ // Fog and undiscovered-room boundaries are strong color discontinuities.
+ // Never bleed a brighter disclosed pixel into dark concealed space.
+ vec3 delta=abs(sharp.rgb-soft.rgb);
+ float disagreement=max(delta.r,max(delta.g,delta.b));
+ amount*=1.0-band(.11,.29,disagreement);
+ if(amount<.00001)discard;
  // Grade applies only to the blur portion; center of the frame is
  // byte-identical to the original. Neutral gray axis prevents tint shifts.
  float gray=dot(soft.rgb,vec3(.2126,.7152,.0722));
@@ -151,6 +162,8 @@ export class MiniatureFocusPass{
        uniforms:{
          tOriginal:{value:this.original},
          tBlur:{value:this.vertical!.texture},
+         tAttention:{value:this.original},
+         uHasAttention:{value:0},uZoomStrength:{value:1},
          uCenterY:{value:.56},uInnerHalf:{value:.15},
          uOuterHalf:{value:.34},uStrength:{value:.82},
          uSaturation:{value:1.045},uContrast:{value:1.02},
@@ -188,7 +201,9 @@ export class MiniatureFocusPass{
    decision:FocusDecision,
    cssWidth:number,cssHeight:number,
    anchors:readonly FocusPoint[]=[],
-   debug:MiniatureFocusDebug=null):boolean{
+   debug:MiniatureFocusDebug=null,
+   attention:THREE.Texture|null=null,
+   zoomStrength=1):boolean{
    this.renderer.render(scene,camera);
    if((!decision.active&&!debug)||cssWidth<=0||cssHeight<=0||
       !this.init())return false;
@@ -196,6 +211,9 @@ export class MiniatureFocusPass{
    const previousClear=this.renderer.autoClear;
    const b=this.blurMaterial!.uniforms;
    const c=this.compositeMaterial!.uniforms;
+   c.tAttention.value=attention??this.original;
+   c.uHasAttention.value=attention?1:0;
+   c.uZoomStrength.value=Math.max(0,Math.min(1,zoomStrength));
    c.uCenterY.value=decision.centerY;
    c.uInnerHalf.value=decision.innerHalfHeight;
    c.uOuterHalf.value=decision.outerHalfHeight;
