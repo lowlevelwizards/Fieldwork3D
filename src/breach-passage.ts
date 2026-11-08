@@ -186,8 +186,7 @@ function tooCloseToLeader(actor:PassageActor,others:readonly PassageActor[],
   if(!heading)continue;
   for(const other of others){
    if(other.id===actor.id||!sameQueueLane(actor,other,door)||
-      travelSign(other,door)!==heading||
-      scheduledBefore(actor,other,door))continue;
+      travelSign(other,door)!==heading)continue;
    const ahead=(side(other.p,door)-side(actor.p,door))*heading;
    if(ahead>.01){
     // Consider the whole intended tick, not only today's gap. Without
@@ -269,8 +268,7 @@ export function passageFollowerStep(actor:PassageActor,doors:readonly Door[],
    if(advance<=.025)continue;
    for(const other of relevant){
     if(!sameQueueLane(actor,other,aperture)||
-       travelSign(other,aperture)!==heading||
-       scheduledBefore(actor,other,aperture))continue;
+       travelSign(other,aperture)!==heading)continue;
     const ahead=(side(other.p,aperture)-side(actor.p,aperture))*heading;
     if(ahead<=0)continue;
     // A genuinely separate full-body lane stays free of queue throttling.
