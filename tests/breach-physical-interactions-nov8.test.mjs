@@ -8,6 +8,7 @@ import {equippedEntryMethods,canUseEntryTool} from '../src/equipment-entry-tools
 import {contextActionChoices} from '../src/ui/context-actions.ts';
 import {handlingPose} from '../src/breach-weapon-pose.ts';
 import {chooseMuzzleRecoveryStep} from '../src/breach-combat-reactions.ts';
+import {routineDoorClosureEligible} from '../src/breach-ai-door-response.ts';
 
 const fixture=()=>initDoor({
   id:'TEST-HINGE',a:{x:200,y:250},b:{x:238,y:250},
@@ -87,4 +88,16 @@ test('muzzle recovery tries genuinely small swept, legal steps first',()=>{
  assert.ok(move);
  assert.equal(Math.round(move.x),93);
  assert.equal(Math.round(move.y),100);
+});
+
+test('routine door closing honors real handle reach and other travelers',()=>{
+ const d=fixture();d.openFraction=1;
+ const leaf=doorLeafSegment(d);
+ const mid={x:(leaf.a.x+leaf.b.x)/2,y:(leaf.a.y+leaf.b.y)/2};
+ assert.equal(routineDoorClosureEligible(mid,d,30,0,[]),true);
+ assert.equal(routineDoorClosureEligible(mid,d,30,25,[]),false);
+ assert.equal(routineDoorClosureEligible(mid,d,30,0,[mid]),false);
+ assert.equal(routineDoorClosureEligible({x:5,y:5},d,30,0,[]),false);
+ d.wedged=true;
+ assert.equal(routineDoorClosureEligible(mid,d,30,0,[]),false);
 });
