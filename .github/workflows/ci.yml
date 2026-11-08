@@ -1811,6 +1811,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: Replay Director R9.1 — live shot-integrity regression gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-r91-') }}
+        run: |
+          node --experimental-strip-types --test tests/replay-director-r91-shot-integrity.test.mjs tests/replay-director-r9-composition-tempo.test.mjs tests/replay-director-r8-editorial.test.mjs tests/replay-director-action-pacing.test.mjs tests/replay-director-physical.test.mjs tests/replay-director-storyboard.test.mjs tests/replay-director-continuous.test.mjs tests/replay-director-wide-coverage.test.mjs
+      - name: Replay Director R9.1 — public build / Pages release checkpoint
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-r91-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
