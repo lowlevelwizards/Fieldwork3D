@@ -540,7 +540,7 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
         // Seeing what is newly discovered outranks fitting the cast,
         // but can't excuse a missing protagonist or an illegal camera.
         candidate.score+=(disclosedLook?340:-410)*
-          req.composition.discoveryStrength;
+          (req.composition.discoveryStrength??0);
       }
       if(req.composition.treatment==='engage'&&req.actionLines?.length){
         const opticallyClear=req.actionLines.filter(line=>

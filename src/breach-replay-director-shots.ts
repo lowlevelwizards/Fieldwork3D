@@ -30,6 +30,7 @@ export type DirectorShotContext={
   actionPair?:{shooter:Pt;target:Pt}|null;
   actionLines?:readonly DirectorActionLine[];
   contact?:DirectorRecordedContact|null;
+  discovery?:DirectorDiscovery|null;
   entry?:DirectorEntryEvent|null;
   editorial?:DirectorEditorialShot|null;
   usableWidth?:number;usableHeight?:number;
