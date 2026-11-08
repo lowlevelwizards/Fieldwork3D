@@ -32,8 +32,8 @@ test('real carried magazine sockets follow exactly the same armor surface',()=>{
     rig+' '+armor+' shares the fitted front surface');
    assert.equal(mounted.y,base.y,'same rig pouch row');
    assert.equal(mounted.z,base.z,'same pouch bank');
-   const side=armorMountedMagazineSocket(rig,6,armor);
-   assert.ok(Math.abs(side.rotation)>1,'issued overflow remains on side');
+   assert.throws(()=>armorMountedMagazineSocket(rig,6,armor),RangeError,
+    'overflow inventory never creates a phantom side magazine');
   }
  }
 });
