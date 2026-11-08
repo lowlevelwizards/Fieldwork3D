@@ -13,7 +13,8 @@ import {selectDirectorEditorialShot,type DirectorEditorialShot}
   from './breach-replay-director-edit.ts';
 import {physicalDirectorView,directorLineBlocked}
   from './breach-replay-director-physical.ts';
-import {directorOrthoFittingZoom,directorPerspectiveCovers}
+import {directorOrthoFittingZoom,directorPerspectiveCovers,
+  type DirectorSafeFrame}
   from './breach-replay-director-projection.ts';
 import type {Door,Obstacle} from './breach-core.ts';
 
@@ -28,9 +29,10 @@ export type DirectorShotContext={
   entry?:DirectorEntryEvent|null;
   editorial?:DirectorEditorialShot|null;
   usableWidth?:number;usableHeight?:number;
+  safeFrame?:DirectorSafeFrame;
   maxZoom?:number;maxSubjects?:number;
-  doors?:readonly Pick<Door,'a'|'b'|'open'|'openFraction'|'style'>[];
-  cover?:readonly Pick<Obstacle,'x'|'y'|'w'|'h'>[]
+  doors?:readonly Pick<Door,'a'|'b'|'open'|'openFraction'|'style'|'kind'|'hinge'|'swing'|'slideDirection'>[];
+  cover?:readonly Pick<Obstacle,'x'|'y'|'w'|'h'|'low'|'fixture'>[]
 };
 export type DirectorShot=CinematicShot&{
   shotType:DirectorShotType;subjects:string[];doorId:string|null;
@@ -47,6 +49,7 @@ export type DirectorShot=CinematicShot&{
    * Never misreport a failed two-shot as successful. */
   wideCoverage?:boolean;
   compositionQuality?:import('./breach-replay-director-projection.ts').DirectorCompositionQuality;
+  subjectVisibility?:number;subjectReadable?:boolean;
   /** HOLD/REFRAME/TRACK/CUT derived from storyboard decision. */
   cameraDecision?:string
 };
@@ -108,11 +111,14 @@ export function composeReplayDirectorShot(time:number,
   const optional=plan.optional.filter(p=>dist(p,primary.p)<145);
   const fitSubjects=[...required,...optional.slice(
     0,isContact?0:isDoor?2:3)];
-  const physical=physicalDirectorView({
+  let hero=primary;
+  let physical=physicalDirectorView({
     operator:primary.p,focus,
     subjectPoints:featured.map(a=>a.p),
     requiredPoints:required,
-    target:plan.target??(door?.mid??null),
+    // Doorway markers are not human targets; only real actors enter the
+    // target silhouette coverage test.
+    target:plan.target,
     preferredYaw:Math.atan2(-direction.x,-direction.y),
     followDirection:direction,
     doorPoint:plan.kind==='door'?door?.mid??null:null,
@@ -120,7 +126,8 @@ export function composeReplayDirectorShot(time:number,
     targetWeight:isContact?270:isDoor?210:125,
     composition:{treatment:plan.kind,
       baseSpan,usableWidth:context.usableWidth??.78,
-      usableHeight:context.usableHeight??.76}
+      usableHeight:context.usableHeight??.76,
+      safeFrame:context.safeFrame}
   },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
   const legalRequired=required.filter(p=>
     !directorLineBlocked(physical.cameraAnchor,p,
