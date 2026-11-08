@@ -34,10 +34,11 @@ import {createWardrobeGearLayers,updateWardrobeGearLayers,
  type WardrobeGearLayers} from './operator-wardrobe-gear-visuals.ts';
 import {sampleVisibleShoulderSurfaces,type ShoulderContactSource}
  from './breach-shoulder-contact-surface.ts';
-import {armorMountedMagazineSocket}
- from './operator-armor-attachment-frame.ts';
+
 import {carriedMagazineGeometry,carriedMagazineProfile}
  from './operator-carried-magazines.ts';
+import {registeredMagazinePouches,seatMagazineInPouch}
+ from './operator-magazine-pouch-fit.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {createWardrobeAccessoryVisuals,updateWardrobeAccessories,
  initialWardrobeAccessories,type WardrobeAccessoryVisuals}
@@ -491,70 +492,76 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   {x:.73,y:1.17,z:.86}:s.primary==='primary-rifle'?
   {x:1.1,y:1.06,z:1.04}:
   {x:1,y:1,z:1};
- // The equipment ledger defines how MANY magazines exist; the selected
- // harness defines WHERE they are displayed. Don't invent a generic four-
- // cell row over a micro/three-cell rig, nor put the side magazines inside
- // bulky legacy armor. The old locations remain for non-wardrobe callers.
+ // The ledger owns magazine identities and locations. Only AUTHORED magazine
+ // pouch bodies own the corresponding visible geometry. Never create another
+ // row, side socket, belt prop, or canteen/medical/utility magazine.
  const order=wardrobe?.mounts?.magazineOrder==='right-left'?-1:1;
+ const realRigCount=s.rig==='rig-none'?0:
+  magazineLocations.filter(loc=>loc==='rig').length;
+ const waistCandidate=usingWardrobe?
+  v.wardrobeGear.waistRig[looks.rigStyle]:undefined;
+ const waist=registeredMagazinePouches(waistCandidate).length?
+  waistCandidate:undefined;
+ const dedicated=usingWardrobe?
+  registeredMagazinePouches(waist??v.wardrobeGear.rig[looks.rigStyle]):[];
+ // Mirroring the fill order never changes where the pouches themselves live.
+ const cells=order<0?[...dedicated].reverse():dedicated;
+ const rigShift=waist?0:
+  (v.wardrobeGear.rig[looks.rigStyle]?.position.x??0);
+ const sample=v.magazines.rig[0]?.geometry;
+ if(sample&&!sample.boundingBox)sample.computeBoundingBox();
+ const bounds=sample?.boundingBox?.clone()??null;
+ if(bounds&&!magazinePart){
+  bounds.min.set(bounds.min.x*magShape.x,
+   bounds.min.y*magShape.y,bounds.min.z*magShape.z);
+  bounds.max.set(bounds.max.x*magShape.x,
+   bounds.max.y*magShape.y,bounds.max.z*magShape.z);
+ }
+ let cellCursor=0;
  v.magazines.rig.forEach((mag,i)=>{
-  // Maintain the exact same real magazine instances and carry count.
-  const waist=usingWardrobe&&['field-webbing','alice-lc2','m1956-lce'].includes(looks.rigStyle)?
-   v.wardrobeGear.waistRig[looks.rigStyle]:undefined;
-  if(waist){
-   if(mag.parent!==waist)waist.add(mag);
-   const tier=Math.floor(i/2),sign=(i%2===0?-1:1)*order;
-   if(looks.rigStyle==='m1956-lce'){
-    // Only existing ledger-owned magazines enter the front canvas cases.
-    mag.position.set(tier===0?2.1:tier===1?1.30:.45,
-     -.05-tier*.12,sign*7.04);
-    mag.rotation.y=sign*Math.PI/2;
-   }else if(looks.rigStyle==='alice-lc2'){
-    // Only real magazines owned by the loadout are displayed. Two genuine
-    // flap-covered magazine cases sit at front hips, not a fictitious bib.
-    const sign=(i%2===0?-1:1)*order,tier=Math.floor(i/2);
-    mag.position.set(tier===0?2.0:tier===1?1.15:.3,
-     .15-tier*.16,sign*7.10);
-    mag.rotation.y=sign*Math.PI/2;
-   }else if(i===6){
-    // A seventh carried magazine shares a REAL large utility pouch,
-    // not an unsupported imaginary front-of-belt magazine.
-    mag.position.set(1.78,.42,order*-7.20);
-    mag.rotation.y=order*-Math.PI/2;
-   }else{
-    mag.position.set(tier===0?2.30:tier===1?-.65:-3.60,
-     .10,sign*7.20);
-    mag.rotation.y=sign*Math.PI/2;
-   }
-  }else{
-   if(mag.parent!==v.rigMagazineHome)v.rigMagazineHome.add(mag);
+  const parent=waist??v.rigMagazineHome;
+  if(mag.parent!==parent)parent.add(mag);
+  mag.scale.set(magazinePart?1:magShape.x,
+   magazinePart?1:magShape.y,magazinePart?1:magShape.z);
   if(usingWardrobe){
-   const socket=armorMountedMagazineSocket(looks.rigStyle,i,looks.armorStyle,order,looks.top);
-   mag.position.set(socket.x,socket.y,socket.z);
-   mag.rotation.y=socket.rotation;
-  }else if(i<4){
-   mag.position.set(s.armor==='armor-carrier'?9.15:
-    s.armor==='armor-soft'?8.25:6.65,-1.6,order*(i-1.5)*3.1);
-   mag.rotation.y=0;
-  }else{
-   const side=order*(i===4?1:-1);
-   mag.position.set(i===6?1.7:-2.8,-1.55,
-    side*(s.armor==='armor-carrier'?9.0:s.armor==='armor-soft'?8.65:8.1));
-   mag.rotation.y=side*Math.PI/2;
+   // Search forward through only REGISTERED magazine pouches. If a case
+   // is too small, it stays unused rather than wasting this owned magazine
+   // or pushing that magazine into a utility pouch or a fictitious row.
+   let place:ReturnType<typeof seatMagazineInPouch>=null;
+   let seatedIndex=-1;
+   if(i<realRigCount&&bounds){
+    while(cellCursor<cells.length&&!place){
+     seatedIndex=cellCursor;
+     place=seatMagazineInPouch(bounds,cells[cellCursor++]);
+    }
+   }
+   mag.visible=!!place;
+   if(place){
+    mag.position.set(place.x+rigShift,place.y,place.z);
+    mag.rotation.y=place.yaw;
+    mag.userData.magazinePouchCell=seatedIndex;
+    mag.userData.magazinePouchStyle=looks.rigStyle;
+   }else{
+    mag.userData.magazinePouchCell=null;
+    mag.userData.magazinePouchStyle=null;
+   }
+   return;
   }
+  // Older non-wardrobe training rigs still have their own genuine
+  // four-cell generic chest rig. They do not gain fabricated side rows.
+  mag.visible=i<realRigCount&&i<4;
+  if(i<4){
+   mag.position.set(s.armor==='armor-carrier'?9.15:
+    s.armor==='armor-soft'?8.25:6.65,-1.6,
+    order*(i-1.5)*3.1);
+   mag.rotation.y=0;
   }
  });
- for(const loc of ['rig','belt','pocket'] as const){
-  let count=magazineLocations.filter(x=>x===loc).length;
-  // Backpacks do not display imaginary accessible chest magazines.
-  if(loc==='rig'&&s.rig==='rig-none')count=0;
-  if(loc==='rig'&&s.rig==='rig-light')count=Math.min(4,count);
-  if(loc==='belt'&&s.belt==='belt-light')count=Math.min(1,count);
-  v.magazines[loc].forEach((m,i)=>{
-   m.visible=i<count;
-   m.scale.set(magazinePart?1:magShape.x,
-    magazinePart?1:magShape.y,magazinePart?1:magShape.z);
-  });
- }
+ // Belt attachment loops, ordinary trouser pockets and backpacks are NOT
+ // magazine pouches. They can still own inventory and reload-access times;
+ // do not draw a loose magazine clipping through the holder/garment.
+ for(const loc of ['belt','pocket'] as const)
+  v.magazines[loc].forEach(m=>{m.visible=false;});
  // Apply garment occlusion AFTER all armor, rig and magazine visibility
  // updates so nothing can revive colliding collar or pocket meshes.
  // R9 cosmetic occlusion: never delete source details or modify IK.

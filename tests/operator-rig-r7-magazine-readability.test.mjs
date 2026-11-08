@@ -12,7 +12,7 @@ import {initialEquipmentLoadout,setEquipmentChoice}
 
 test('R7 front rig silhouettes have explicit physical magazine pouch mouths',()=>{
  const mouths={
-  'micro-rig':4,'chest-placard':3,'light-rig':4,'chicom-rig':3,
+  'micro-rig':2,'chest-placard':3,'light-rig':4,'chicom-rig':3,
   'bandolier':4,'split-front':4,'full-chest':4,
   lbv:4,'sadf-webbing':4,'field-webbing':0
  };
@@ -23,17 +23,17 @@ test('R7 front rig silhouettes have explicit physical magazine pouch mouths',()=
    assert.ok([x,y,z,width].every(Number.isFinite)&&width>1,
     rig+' mouth is a physical legible opening');
  }
- assert.equal(rigMagazineCellCount('micro-rig'),4,'side wings receive carried magazines');
+ assert.equal(rigMagazineCellCount('micro-rig'),2,'tiny utility wings must not carry magazines');
  assert.equal(rigMagazineCellCount('chest-placard'),3,'fourth is not hidden in a false panel cell');
  assert.equal(rigMagazineCellCount('chicom-rig'),3,'two side pockets are utility, not mags');
  assert.equal(rigMagazineCellCount('bandolier'),4,'fifth is intentionally utility');
- assert.equal(rigMagazineCellCount('lbv'),8,'double magazines belong in four physical pouches');
- assert.equal(rigMagazineCellCount('sadf-webbing'),8,'P83 double magazine pockets');
+ assert.equal(rigMagazineCellCount('lbv'),4,'no phantom double-magazine positions');
+ assert.equal(rigMagazineCellCount('sadf-webbing'),4,'P83 lower cargo bags are not magazine pouches');
 });
 test('R7 real magazines emerge from visible pouch mouths rather than the front plate',()=>{
  for(const armor of ['armor-bare','soft-flak','plate-standard','plate-heavy']){
-  for(const [rig,count] of [['micro-rig',4],['chicom-rig',3],
-   ['lbv',7],['sadf-webbing',7]]){
+  for(const [rig,count] of [['micro-rig',2],['chicom-rig',3],
+   ['lbv',4],['sadf-webbing',4]]){
    const frame=rigContactFrame(armor,'bdu-shirt',rig);
    for(let i=0;i<count;i++){
     const sock=armorMountedMagazineSocket(rig,i,armor,1,'bdu-shirt');
@@ -72,12 +72,13 @@ test('R7 visible magazines are the real loadout instances, not eight decorative 
    ['field-webbing',7]
   ]){
    preview(r,rig,n);
-   assert.equal(r.visualKit.magazines.rig.filter(m=>m.visible).length,n,
-    rig+' has exactly '+n+' actual carried magazine meshes');
+   const expected=Math.min(n,rig==='micro-rig'?2:
+    rig==='sadf-webbing'?4:rig==='field-webbing'?6:rig==='lbv'?4:3);
+   assert.equal(r.visualKit.magazines.rig.filter(m=>m.visible).length,expected,
+    rig+' never invents a '+(expected+1)+'th pouch');
    if(rig==='field-webbing'){
     const last=r.visualKit.magazines.rig[6];
-    assert.equal(last.parent,r.visualKit.wardrobeGear.waistRig['field-webbing']);
-    assert.ok(Math.abs(last.position.z)>7,'seventh mag nests in a real side pouch');
+    assert.equal(last.visible,false,'seventh magazine has no dedicated PLCE pouch');
    }
   }
  }finally{r.dispose();}

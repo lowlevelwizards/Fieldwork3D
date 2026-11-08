@@ -6,6 +6,9 @@ import {initialWardrobe} from '../src/operator-wardrobe-data.ts';
 import {ARMOR_PROFILES,rigMagazineMount} from '../src/operator-armor-rig-silhouettes.ts';
 import {armorAttachmentFrame,armorMountedMagazineSocket}
  from '../src/operator-armor-attachment-frame.ts';
+import {registeredMagazinePouches,seatMagazineInPouch}
+ from '../src/operator-magazine-pouch-fit.ts';
+import {rigContactFrame} from '../src/operator-rig-contact-frame.ts';
 
 test('every wearable provides one canonical front, side, shoulder and rear mount',()=>{
  for(const id of Object.keys(ARMOR_PROFILES)){
@@ -27,13 +30,12 @@ test('real carried magazine sockets follow exactly the same armor surface',()=>{
    const frame=armorAttachmentFrame(armor);
    const base=rigMagazineMount(rig,0,armor,1);
    const mounted=armorMountedMagazineSocket(rig,0,armor,1);
-   assert.equal(mounted.x,base.x+
-    (frame.front.x-ARMOR_PROFILES[armor].front)+frame.standOff,
-    rig+' '+armor+' shares the fitted front surface');
-   assert.equal(mounted.y,base.y,'same rig pouch row');
+   assert.ok(mounted.x>frame.front.x,
+    rig+' '+armor+' socket is outside garment, not an imaginary side row');
+   assert.ok(mounted.y>=base.y,'mouth is at or above pouch center');
    assert.equal(mounted.z,base.z,'same pouch bank');
-   const side=armorMountedMagazineSocket(rig,6,armor);
-   assert.ok(Math.abs(side.rotation)>1,'issued overflow remains on side');
+   assert.throws(()=>armorMountedMagazineSocket(rig,6,armor),RangeError,
+    'overflow inventory never creates a phantom side magazine');
   }
  }
 });
@@ -50,16 +52,25 @@ test('changing armor silhouette moves rig and issued magazines without changing 
    lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,
    aiming:false,firing:false,turning:0,deterministic:true,
    unarmedPreview:true,equipment:kit,
+   magazineCarryLocations:['rig'],
    wardrobe:{...initialWardrobe(),styles:{
     armorStyle:armor,rigStyle:'micro-rig',top:'bdu-shirt',
     trousers:'bdu-trousers'
    }}
   },0);
-  const frame=armorAttachmentFrame(armor,'bdu-shirt');
+  const frame=rigContactFrame(armor,'bdu-shirt','micro-rig');
   assert.equal(r.visualKit.wardrobeGear.rig['micro-rig'].position.x,
    frame.rigShiftX);
-  assert.equal(r.visualKit.magazines.rig[0].position.x,
-   armorMountedMagazineSocket('micro-rig',0,armor,1,'bdu-shirt').x);
+  const mag=r.visualKit.magazines.rig[0];
+  assert.equal(mag.visible,true);
+  mag.geometry.computeBoundingBox();
+  const pouch=registeredMagazinePouches(
+   r.visualKit.wardrobeGear.rig['micro-rig'])[0];
+  const fit=seatMagazineInPouch(mag.geometry.boundingBox,pouch);
+  assert.ok(fit);
+  assert.ok(Math.abs(mag.position.x-(fit.x+
+   r.visualKit.wardrobeGear.rig['micro-rig'].position.x))<.001,
+   'magazine moves with fitted physical pouch volume');
   assert.equal(kit.slots.armor,'armor-carrier');
   assert.equal(kit.slots.rig,'rig-light');
  }
