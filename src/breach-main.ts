@@ -1901,6 +1901,7 @@ function unlockAudio(){
 
 let last=performance.now(),accum=0,hudAt=0;
 let previousRenderActors:Record<string,RenderActor>|null=null;
+let previousRenderDoors:Record<string,number>|null=null;
 const displayRouteCache=new DisplayRouteCache();
 const projectedRouteCache=new ProjectedRouteCache();
 let cssW=innerWidth,cssH=innerHeight,dpr=1;
@@ -7962,7 +7963,7 @@ function tick(now:number){
   const frameGap=Math.max(0,now-last);
   const dt=Math.min(.08,frameGap/1000);last=now;
   if(quickPlayBusy||((campaignMode==='menu'||campaignMode==='home')&&!replaying)){
-   accum=0;previousRenderActors=null;
+   accum=0;previousRenderActors=null;previousRenderDoors=null;
    requestAnimationFrame(tick);return;
   }
   let simSteps=0;
@@ -7972,13 +7973,15 @@ function tick(now:number){
     accum=budget.remaining;
     for(let i=0;i<budget.steps;i++){
       previousRenderActors=renderSnapshot(state.operators);
+      previousRenderDoors=Object.fromEntries(state.doors.map(d=>
+        [d.id,d.openFraction??(d.open?1:0)]));
       stepSession(state,1/60,simPhaseCosts?
         (name,ms)=>simPhaseCosts.set(name,
           (simPhaseCosts.get(name)??0)+ms):undefined);
       simSteps++;
       recorder.capture(state,isMissionTerminal(state));
     }
-  }else{accum=0;previousRenderActors=null;}
+  }else{accum=0;previousRenderActors=null;previousRenderDoors=null;}
   if(replaying&&replayPlaying){
     // Smooth a selected speed over several render frames without modifying
     // the authoritative 20Hz recording or re-simulating events.
@@ -8158,7 +8161,8 @@ function updatePhysicalActionRings(){
     stage.update(state,selected,dt,doorFocusId,
       replaying&&replayOmniscient,replaying?replayPresentation:null,
       !replaying&&state.phase==='running'&&previousRenderActors?
-        {previous:previousRenderActors,alpha:Math.min(1,accum*60)}:null,
+        {previous:previousRenderActors,previousDoors:previousRenderDoors??undefined,
+          alpha:Math.min(1,accum*60)}:null,
       // Pausing the encounter must NOT switch to render-local footsteps.
       !replaying?recorder.motion.presentation(Math.max(0,
         state.phase==='running'?
