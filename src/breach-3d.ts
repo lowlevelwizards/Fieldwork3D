@@ -357,7 +357,7 @@ export class TacticalScene3D{
   private impactDecalMesh:THREE.InstancedMesh|null=null;
   private impactDecalMatrix=new THREE.Object3D();
   private impactDecalColor=new THREE.Color();
-  private groundMarkTowardCamera=new THREE.Vector3();
+
   private casingMesh:THREE.InstancedMesh|null=null;
   private casingIds:number[]=[];
   private casingMatrix=new THREE.Object3D();

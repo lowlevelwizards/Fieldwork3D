@@ -82,7 +82,7 @@ export function selectDirectorEditorialShot(
     // A cue alone is NEVER proof that a future enemy should be shown.
     if(e.actionPair)target=e.beat.actorId===e.beat.shooterId?
       e.actionPair.target:e.actionPair.shooter;
-    else if(e.contact?.observerId===primary.id)
+    else if(e.contact?.observerId===e.beat.actorId)
       target={...e.contact.target};
     else if(e.contact&&byId(e.contact.observerId)){
       // Another operator actually sees the enemy while this film beat's
