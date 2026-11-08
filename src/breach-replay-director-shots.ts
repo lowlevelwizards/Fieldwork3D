@@ -94,7 +94,7 @@ export function composeReplayDirectorShot(time:number,
   const door=plan.door;
   // Camera looks toward the selected editorial subject's action, not
   // toward the numerical average of all four squad members.
-  const anchor=plan.required[1]??{
+  const anchor=plan.required[1]??plan.interest??{
     x:primary.p.x+direction.x*56,
     y:primary.p.y+direction.y*56};
   const isContact=plan.kind==='engage';
