@@ -143,9 +143,44 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     for(let a=1;a<=8;a++)for(let b=1;b<=8;b++)
       add({x:room.x+room.w*a/9,y:room.y+room.h*b/9});
   }
-  // In an extremely small room the safest available shot is a
-  // centered, close establishing shot; never retreat outside the wall.
+  // Cramped rooms occasionally have no candidate with a 35-unit
+  // standoff from EVERY teammate. Relax only the shoulder margin, never
+  // actual wall/door/fixture geometry; prefer a legal establishing frame
+  // over placing the lens inside the selected operator's backpack.
   if(!anchors.length){
+    const relaxed:PhysicalPoint[]=[];
+    const addRelaxed=(p:PhysicalPoint)=>{
+      if(directorCameraLegal(p,room,scene)&&
+         distance(p,req.operator)>=29&&
+         req.subjectPoints.every(subject=>distance(p,subject)>=20)&&
+         !directorLineBlocked(p,req.operator,scene))
+        relaxed.push(p);
+    };
+    if(room){
+      for(let x=1;x<=12;x++)for(let y=1;y<=12;y++)
+        addRelaxed({x:room.x+room.w*x/13,
+          y:room.y+room.h*y/13});
+    }else for(let i=0;i<24;i++){
+      const yaw=req.preferredYaw+i*Math.PI/12;
+      for(const radius of [31,40,52])
+        addRelaxed({x:req.operator.x+Math.sin(yaw)*radius,
+          y:req.operator.y+Math.cos(yaw)*radius});
+    }
+    relaxed.sort((a,b)=>{
+      const direction=req.followDirection;
+      const ahead=(p:PhysicalPoint)=>direction?
+        (p.x-req.operator.x)*direction.x+
+        (p.y-req.operator.y)*direction.y:0;
+      const score=(p:PhysicalPoint)=>
+        distance(p,req.operator)*.45-
+        Math.max(0,ahead(p))*1.8;
+      return score(b)-score(a);
+    });
+    anchors.push(...relaxed.slice(0,36));
+  }
+  if(!anchors.length){
+    // Truly impossible physical placement: preserve the old safe
+    // fallback without inventing passage through a solid wall.
     const fallback=room?{x:clamp(req.operator.x,
       room.x+Math.min(11,room.w*.24),room.x+room.w-Math.min(11,room.w*.24)),
       y:clamp(req.operator.y,
