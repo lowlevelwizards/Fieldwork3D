@@ -59,6 +59,9 @@ test('one recorded lead entry changes the scene before the fourth teammate',()=>
   walls,.78,0,1100,{
    intents:friends.map(actor=>intent(actor)),
    upcoming:null,beat:null,actionPair:null,
+   entry:{id:'ENTRY:rook:2.4',doorId:'ENTRY',actorId:'rook',
+     t:2.4,fromSide:1,toSide:-1,sequenceId:'ENTRY:1:2.4',
+     first:true},
    doors:[{a:door.a,b:door.b,open:true,openFraction:1}],
    usableWidth:.75,usableHeight:.72
   });

@@ -35,8 +35,8 @@ test('fight shot names lead operator and preserves both actual firing endpoints'
  assert.ok(result.framePoints.some(p=>distance(p,all[0].p)<.001));
  assert.ok(result.framePoints.some(p=>distance(p,all[4].p)<.001),
   'a line-of-sight fight MUST pass the actual target to camera framing');
- assert.ok(result.framePoints.length>=5,
-  'keep squad support and the real target as compositional points');
+ assert.ok(result.requiredPoints.length>=2,
+  'a real shooter and target are required; extra teammates must stay optional');
  assert.ok(result.zoom>.65&&result.zoom<=9.01);
  assert.ok(directorCameraLegal(result.cameraAnchor,room,scene));
  const offset=result.cameraAnchor.x-result.operatorPoint.x;

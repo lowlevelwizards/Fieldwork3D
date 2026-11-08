@@ -23,14 +23,14 @@ const solve=(characters,rooms,override={})=>composeReplayDirectorShot(3,
   actionPair:{shooter:characters[0].p,target:characters.at(-1).p},
   usableWidth:.75,usableHeight:.7,maxZoom:14,...override
  });
-test('gunfight coverage keeps all four friendlies, not just the shooter close-up',()=>{
+test('gunfight requires the shooter and visible target, with teammates optional',()=>{
  const shot=solve(actors,[room]);
  assert.ok(shot);
  assert.equal(shot.subjects.length,4);
  assert.deepEqual(new Set(shot.subjects),
   new Set(['rook','moss','ash','vale']));
  assert.equal(shot.roomId,'lobby');
- assert.ok(shot.zoom<=7.4,'portrait coverage must leave air around all four operators');
+ assert.ok(shot.zoom<=7.4,'multi-operator fight framing must remain medium-wide');
  assert.ok(shot.zoom>=.65);
  assert.ok(shot.fov>=82&&shot.fov<=116);
  assert.ok(shot.cameraAnchor.x>=room.x&&
@@ -45,16 +45,17 @@ test('gunfight coverage keeps all four friendlies, not just the shooter close-up
  camera.left=-span*.75/2;camera.right=span*.75/2;
  camera.top=span/2;camera.bottom=-span/2;
  camera.updateProjectionMatrix();camera.updateMatrixWorld(true);
- for(const actor of actors.slice(0,4)){
+ for(const point of shot.requiredPoints){
   for(const height of [4,40]){
-   const screen=new THREE.Vector3(actor.p.x,height,actor.p.y)
+   const screen=new THREE.Vector3(point.x,height,point.y)
     .project(camera);
    assert.ok(Math.abs(screen.x)<.94&&Math.abs(screen.y)<.94,
-    actor.id+' must fit with padding: '+JSON.stringify(screen.toArray()));
+    'mandatory shooter/target must fit; teammates are optional: '+
+    JSON.stringify(screen.toArray()));
   }
  }
 });
-test('first operator across a door does not move camera away from stacked majority',()=>{
+test('a starring shooter may control the camera despite teammates stacking elsewhere',()=>{
  const r1={id:'entry',x:0,y:0,w:150,h:150};
  const r2={id:'room',x:150,y:0,w:150,h:150};
  const split=[
@@ -66,10 +67,10 @@ test('first operator across a door does not move camera away from stacked majori
  ];
  const shot=solve(split,[r1,r2]);
  assert.ok(shot.subjects.length>=4);
- assert.equal(shot.roomId,'entry',
-  '3 operators stacking should keep the director on their room side');
+ assert.equal(shot.roomId,'room',
+  'the visible firefight subject outranks a separate majority stack');
  assert.equal(directorOperatorRoom(shot.cameraAnchor,[r1,r2])?.id,
-  'entry');
+  'room');
 });
 test('wide audition prefers a clear multi-operator view over a backpack shot',()=>{
  const lens=physicalDirectorView({

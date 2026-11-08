@@ -1798,6 +1798,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: Replay Director R8 — editorial consolidation critical suite
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-r8-editorial-') }}
+        run: |
+          node --experimental-strip-types --test tests/replay-director-r8-editorial.test.mjs tests/replay-director-action-pacing.test.mjs tests/replay-director-action-follow.test.mjs tests/replay-director-continuous.test.mjs tests/replay-director-physical.test.mjs tests/replay-director-storyboard.test.mjs tests/replay-director-wide-coverage.test.mjs tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs tests/replay-r7-cutaway.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

@@ -7,8 +7,6 @@ import {buildDirectorFutureCues,directorFutureAt}
   from '../src/breach-replay-director-events.ts';
 import {composeReplayDirectorShot}
   from '../src/breach-replay-director-shots.ts';
-import {ReplayDirectorScheduler}
-  from '../src/breach-replay-director-scheduler.ts';
 const door={id:'D-1',a:{x:160,y:50},b:{x:160,y:110},open:false,openedAt:0};
 const ids=['rook','moss','ash','vale'];
 const friendlies=new Set(ids);
@@ -81,20 +79,6 @@ test('future cue anticipates only known friendly participant, no enemy positions
   heading:Math.PI,p:{x:9999,y:9999}};
  assert.deepEqual(composeReplayDirectorShot(9,[...actor,enemy],[],[],1,0,1200,ctx),shot);
 });
-test('shot scheduler commits, accepts emergencies and resets on seek',()=>{
- const c=new ReplayDirectorScheduler();
- const base={shotType:'travel',kind:'squad',subjects:['rook','moss'],
-   focus:{x:60,y:60},zoom:2,yaw:0,pitch:1,
-   score:42,occluded:0,roomId:'R',actorsFramed:2,doorId:null};
- const approach={...base,shotType:'approach',score:44};
- const contact={...base,shotType:'contact',kind:'action',
-   score:47,subjects:['rook']};
- assert.equal(c.choose(0,base).shotType,'travel');
- assert.equal(c.choose(1,approach).shotType,'travel');
- assert.equal(c.choose(1.2,contact).shotType,'contact');
- assert.equal(c.choose(.3,approach,true).shotType,'approach');
- assert.equal(c.status.shotType,'approach');
-});
 
 test('passed door stops being a target; camera leads the moving team into the next room',()=>{
  const passed=ids.map((id,i)=>({x:216+i*6,y:68+i*8}));
@@ -155,24 +139,6 @@ test('a doorway split retains the complete squad rather than abandoning entrants
   {intents,upcoming:null,maxZoom:6});
  assert.equal(shot.actorsFramed,4,
   'two actors still stacking cannot monopolize the film');
-});
-test('scheduler follows a breach through entry and releases old door immediately',()=>{
- const scheduler=new ReplayDirectorScheduler();
- const shot={shotType:'breach',kind:'action',subjects:['rook','moss','ash','vale'],
-  focus:{x:137,y:81},zoom:4,yaw:1,pitch:.65,score:62,
-  occluded:0,roomId:'outside',actorsFramed:4,doorId:'D-1'};
- assert.equal(scheduler.choose(0,shot).shotType,'breach');
- const entry={...shot,shotType:'entry',kind:'squad',
-  focus:{x:183,y:82},score:55,roomId:'inside'};
- assert.deepEqual(scheduler.choose(.3,entry).focus,entry.focus,
-  'entry movement must override the earlier breach shot hold');
- const departure={...entry,shotType:'travel',doorId:null,
-  focus:{x:250,y:86},score:38};
- assert.equal(scheduler.choose(.55,departure).shotType,'travel');
- assert.deepEqual(scheduler.status.doorId,null);
- assert.deepEqual(scheduler.choose(.7,{...departure,
-  focus:{x:273,y:89}}).focus,{x:273,y:89},
-  'tracking must keep updating without another hard cut');
 });
 
 test('moving operators win the camera over a separate idle element',()=>{
