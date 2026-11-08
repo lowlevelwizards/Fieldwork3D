@@ -196,9 +196,9 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
-import {quietFloatingPocket} from './ui/quiet-floating-pocket.ts';
-import type {ScreenRect,ScreenPath,ScreenPoint}
+import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide}
   from './breach-context-placement.ts';
+import {PaletteMotion} from './ui/palette-motion.ts';
 import {TacticalFeedback} from './ui/tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './ui/contextual-teaching.ts';
@@ -1573,9 +1573,8 @@ let lookMode:'look'|'watch'='look';
 // occupy a verified quiet edge pocket, never the "least bad" map position.
 const FLOAT_PREF='fieldwork3d.ui.contextLayout';
 let contextPlacement:'dock'|'floating'='dock';
-try{
-  contextPlacement=localStorage.getItem(FLOAT_PREF)==='floating'?'floating':'dock';
-}catch{/* Storage may be unavailable. */}
+try{contextPlacement=localStorage.getItem(FLOAT_PREF)==='floating'?'floating':'dock';}
+catch{/* Optional browser preference. */}
 const contextLayoutButtons=Array.from(document.querySelectorAll<HTMLButtonElement>(
   '[data-context-layout]'));
 function syncContextPlacement(){
@@ -1583,126 +1582,110 @@ function syncContextPlacement(){
     button.setAttribute('aria-pressed',
       String(button.dataset.contextLayout===contextPlacement));
 }
-syncContextPlacement();
-let quietPocket:ScreenPoint|null=null;
-let lastQuietCheck=0,quietReadyAt=0;
-const contextFingerIds=new Set<number>();
-for(const button of contextLayoutButtons)button.addEventListener('click',()=>{
-  contextPlacement=button.dataset.contextLayout==='floating'?'floating':'dock';
-  try{localStorage.setItem(FLOAT_PREF,contextPlacement);}
-  catch{/* Optional local preference. */}
-  syncContextPlacement();
-  quietPocket=null;lastQuietCheck=0;quietReadyAt=0;
-  updateContext();
-});
 let contextSignature='';
 let contextActionsSignature='';
+let lastContextSide:MenuSide|null=null;
+let lastAuthoringAt=0;
+const paletteMotion=new PaletteMotion();
 const reducedMotionMedia=matchMedia('(prefers-reduced-motion: reduce)');
+let paletteWidth=0,paletteHeight=0;
+let lastPlacementKey='';
+const contextPointerIds=new Set<number>();
+let tetherBrightUntil=0;
+let paletteExit:Animation|null=null;
+const contextTether=document.createElement('div');
+contextTether.id='contextTether';
+contextTether.setAttribute('aria-hidden','true');
+document.body.append(contextTether);
 ui.context.dataset.layout='dock';
 ui.tacticalHud.insertBefore(ui.context,ui.quickStates);
-function hideContextPalette(){
-  ui.context.hidden=true;
-  ui.context.style.pointerEvents='none';
-}
 function setContextPresentation(mode:'dock'|'floating'){
   if(ui.context.dataset.layout===mode)return;
+  paletteExit?.cancel();paletteExit=null;
+  paletteMotion.hide();contextTether.hidden=true;
   ui.context.dataset.layout=mode;
   if(mode==='dock'){
     ui.tacticalHud.insertBefore(ui.context,ui.quickStates);
-    ui.context.style.transform='';
   }else document.body.append(ui.context);
+  ui.context.style.transform='';
+  contextActionsSignature='';lastPlacementKey='';
+  paletteWidth=0;paletteHeight=0;
 }
-// Never reposition a button while a finger is pressing it.
+syncContextPlacement();
+for(const button of contextLayoutButtons)button.addEventListener('click',()=>{
+  const next=button.dataset.contextLayout==='floating'?'floating':'dock';
+  if(next===contextPlacement)return;
+  contextPlacement=next;
+  try{localStorage.setItem(FLOAT_PREF,next);}
+  catch{/* Optional browser preference. */}
+  syncContextPlacement();
+  updateContext();
+});
+function hideContextPalette(){
+  lastPlacementKey='';
+  // Docked commands never leave an invisible touch surface over the map.
+  // Bubbles also dismiss immediately when the map enters target mode.
+  const exclusive=!ui.siteSettings.hidden||!ui.briefingPanel.hidden;
+  if(contextPlacement!=='floating'||!paletteMotion.active){
+    paletteExit?.cancel();paletteExit=null;
+    paletteMotion.hide();contextTether.hidden=true;
+    ui.context.hidden=true;ui.context.style.pointerEvents='none';
+    return;
+  }
+  paletteMotion.hide();contextTether.hidden=true;
+  ui.context.style.pointerEvents='none';
+  if(reducedMotionMedia.matches||exclusive){
+    paletteExit?.cancel();paletteExit=null;
+    ui.context.hidden=true;return;
+  }
+  paletteExit?.cancel();
+  paletteExit=ui.context.animate([
+    {opacity:1,scale:1},{opacity:0,scale:.96}
+  ],{duration:115,easing:'ease-in',fill:'forwards'});
+  const exit=paletteExit;
+  exit.onfinish=()=>{
+    if(!paletteMotion.active){ui.context.hidden=true;exit.cancel();}
+    if(paletteExit===exit)paletteExit=null;
+  };
+}
+function advanceContextPalette(dt:number){
+  if(ui.context.hidden||!paletteMotion.active){contextTether.hidden=true;return;}
+  const reduced=reducedMotionMedia.matches;
+  paletteMotion.step(dt,reduced);
+  const x=paletteMotion.x.position,y=paletteMotion.y.position;
+  ui.context.style.transform='translate3d('+x.toFixed(2)+'px,'+
+    y.toFixed(2)+'px,0)';
+  const w=paletteWidth,h=paletteHeight;
+  const ax=paletteMotion.anchorX,ay=paletteMotion.anchorY;
+  const bx=Math.max(x,Math.min(ax,x+w));
+  const by=Math.max(y,Math.min(ay,y+h));
+  const dx=bx-ax,dy=by-ay,length=Math.hypot(dx,dy);
+  const visible=ui.context.dataset.layout==='floating'&&length>24&&!reduced;
+  contextTether.hidden=!visible;
+  if(visible){
+    // At long distance use only a nearby pointer instead of cutting
+    // straight across the entire tactical board.
+    const short=length>390,segment=short?45:length;
+    const vx=dx/length,vy=dy/length;
+    const sx=short?bx-vx*segment:ax,sy=short?by-vy*segment:ay;
+    contextTether.style.left=sx+'px';contextTether.style.top=sy+'px';
+    contextTether.style.width=segment+'px';
+    contextTether.style.opacity=performance.now()<tetherBrightUntil?'.75':
+      length>390?'.32':length>210?'.22':'.43';
+    contextTether.style.transform='rotate('+Math.atan2(dy,dx)+'rad)';
+  }
+}
+// While a command finger is down, freeze the palette's pocket so it cannot
+// slip out from under the touch. This does not block camera or map rendering.
 ui.context.addEventListener('pointerdown',event=>{
-  if((event.target as HTMLElement).closest('button[data-action]'))
-    contextFingerIds.add(event.pointerId);
+  if((event.target as HTMLElement).closest('button'))
+    contextPointerIds.add(event.pointerId);
 });
 for(const type of ['pointerup','pointercancel'] as const)
-  window.addEventListener(type,event=>contextFingerIds.delete(event.pointerId),
-    {capture:true});
-window.addEventListener('blur',()=>contextFingerIds.clear());
-/** Only knowledge already exposed to the player may influence the UI.
- * A room's interior is protected if its center has been revealed; the
- * unseen floor plan must not control where the menu goes.
- */
-function quietTacticalSpace(){
-  const protectedRects:ScreenRect[]=[];
-  const protectedPaths:ScreenPath[]=[];
-  const square=(p:ScreenPoint,r:number)=>
-    protectedRects.push({x:p.x-r,y:p.y-r,w:r*2,h:r*2});
-  for(const actor of team(state)){
-    const feet=worldToScreen(actor.p,0),head=worldToScreen(actor.p,33);
-    protectedRects.push({
-      x:Math.min(feet.x,head.x)-38,y:Math.min(feet.y,head.y)-32,
-      w:Math.abs(head.x-feet.x)+76,h:Math.abs(head.y-feet.y)+76,
-    });
-    const from=worldToScreen(actor.p,8);
-    // Protect where the operator actually looks, plus a fan on either side.
-    const track=actor.aimInstruction?.mode==='track'?
-      actor.aimInstruction.point:undefined;
-    const fixed=actor.aimInstruction?.mode==='fixed'?
-      actor.aimInstruction.angle:undefined;
-    const angles=track?
-      [Math.atan2(track.y-actor.p.y,track.x-actor.p.x)]:
-      [fixed??actor.heading];
-    for(const base of angles)for(const offset of [-.35,0,.35]){
-      const yaw=base+offset;
-      const end={x:actor.p.x+Math.cos(yaw)*225,
-        y:actor.p.y+Math.sin(yaw)*225};
-      protectedPaths.push({a:from,b:worldToScreen(end,8)});
-    }
-    let previous=actor.p;
-    for(const point of actor.plan){
-      const screen=worldToScreen(point.p,8);
-      square(screen,24);
-      protectedPaths.push({
-        a:worldToScreen(previous,8),b:screen,
-      });
-      if(point.aimPoint){
-        protectedPaths.push({
-          a:screen,b:worldToScreen(point.aimPoint,8),
-        });
-      }else if(point.facing!==undefined){
-        const end={x:point.p.x+Math.cos(point.facing)*220,
-          y:point.p.y+Math.sin(point.facing)*220};
-        protectedPaths.push({a:screen,b:worldToScreen(end,8)});
-      }
-      previous=point.p;
-    }
-  }
-  // Known hostile and civilian contacts are battlefield focal points too.
-  // Never query hidden contacts to decide where UI should appear.
-  for(const hostile of enemies(state)){
-    if(hostile.health>0&&isSeen(state,hostile))
-      square(worldToScreen(hostile.p,24),44);
-  }
-  for(const civilian of state.civilians){
-    if(liveVisibility(state,civilian.p))
-      square(worldToScreen(civilian.p,20),36);
-  }
-  for(const door of state.doors){
-    const p=doorCenter(door);
-    if(liveVisibility(state,p))square(worldToScreen(p,8),33);
-  }
-  for(const room of state.site?.rooms??[]){
-    // Sample *only* presently visible patches. Do not react to unseen
-    // corners of a room just because its center became visible.
-    const revealed:ScreenPoint[]=[];
-    const samples:[number,number][]=[[.2,.2],[.8,.2],[.5,.5],[.2,.8],[.8,.8]];
-    for(const [fx,fy] of samples){
-      const p={x:room.x+room.w*fx,y:room.y+room.h*fy};
-      if(liveVisibility(state,p))revealed.push(worldToScreen(p,0));
-    }
-    if(!revealed.length)continue;
-    const minX=Math.min(...revealed.map(p=>p.x));
-    const maxX=Math.max(...revealed.map(p=>p.x));
-    const minY=Math.min(...revealed.map(p=>p.y));
-    const maxY=Math.max(...revealed.map(p=>p.y));
-    protectedRects.push({x:minX-38,y:minY-38,
-      w:maxX-minX+76,h:maxY-minY+76});
-  }
-  return {protectedRects,protectedPaths};
-}
+  window.addEventListener(type,event=>{
+    contextPointerIds.delete(event.pointerId);
+  },{capture:true});
+window.addEventListener('blur',()=>contextPointerIds.clear());
 const auditRouteMode=new URLSearchParams(location.search).has('audit');
 let selectedNode:number|null=null;
 // Executed WATCH has no queued waypoint, but its targeting handle is selectable.
