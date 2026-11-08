@@ -1799,6 +1799,12 @@ const activePointers=new Map<number,{x:number;y:number;startX:number;startY:numb
   wasUnit:boolean;nodeId:number|null;
   mode:'undecided'|'route'|'pan'|'node'|'watchTarget'|'activeWatch'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti'|'targetPreview';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null;
+function probeCameraGesture(phase:string):void{
+  if(!import.meta.env.DEV)return;
+  canvas.dataset.gesturePhase=phase;
+  canvas.dataset.gestureCount=String(activePointers.size);
+  canvas.dataset.gestureModes=[...activePointers.values()].map(p=>p.mode).join(',');
+}
 const colors:Record<string,string>={
   rook:'#a2d4ca',moss:'#b9c6a0',ash:'#dfb992',vale:'#b7b1d9',
 };
@@ -6939,6 +6945,7 @@ canvas.addEventListener('pointerdown',e=>{
     panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
     trace=null;draggingNode=null;draggingWatchTarget=false;
   }
+  probeCameraGesture('down');
 });
 canvas.addEventListener('pointermove',e=>{
   const p=activePointers.get(e.pointerId);
@@ -6973,6 +6980,7 @@ canvas.addEventListener('pointermove',e=>{
       replayCameraMode='free';replayFollow=false;updateReplayHud();
     }
     stage.orbit(dx,dy);
+    probeCameraGesture('orbit');
     for(const [mode,button] of [['iso',ui.viewIso],
       ['top',ui.viewTop],['plan2d',ui.view2d]] as const)
       button.setAttribute('aria-pressed',String(mode===stage.view.mode));
@@ -7221,6 +7229,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
       }
     }
   }
+  probeCameraGesture('up');
   updateHud();
 }
 canvas.addEventListener('pointerup',e=>releasePointer(e));
