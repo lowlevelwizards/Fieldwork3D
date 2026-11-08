@@ -94,6 +94,9 @@ export type DirectorCompositionQuality={
   primaryReadable:boolean;targetReadable:boolean;shoulderReadable:boolean;
   targetOverlap:number;thirdsError:number;leadError:number;
   headroomError:number;score:number;shoulderSide:-1|0|1;
+  /** Actual projected horizontal clearance (NDC), not world LOS. */
+  targetHorizontalGap:number;primaryScreenX:number;
+  targetScreenX:number|null;
 };
 type Box={minX:number;maxX:number;minY:number;maxY:number};
 type Projector={project:(x:number,y:number,z:number)=>THREE.Vector3;
@@ -166,9 +169,13 @@ export function directorCompositionQuality(
     primary.minX>=left&&primary.maxX<=right&&
     primary.minY>=bottom&&primary.maxY<=top;
   let targetReadable=true,targetOverlap=0;
+  let targetHorizontalGap=0,targetScreenX:number|null=null;
   if(target){
-    const tBox=bodyBounds(project,target,[8,10,7]);
+    // Chunky low-poly backpacks and weapons reach past the slender
+    // nominal human torso: use a conservative silhouette for overlap.
+    const tBox=bodyBounds(project,target,[9,12,9]);
     const tCenter=project.project(target.x,22,target.y);
+    targetScreenX=tCenter.x;
     const inFrame=tBox.minX>=left&&tBox.maxX<=right&&
       tBox.minY>=bottom&&tBox.maxY<=top&&
       tCenter.z>=-1&&tCenter.z<=1;
@@ -176,21 +183,30 @@ export function directorCompositionQuality(
     // is an occluder. Two bodies at the same screen position must never
     // count as a successful two-shot simply because the target's world
     // coordinate is technically in the lens.
-    const targetDepth=Math.hypot(target.x-anchor.x,target.y-anchor.y);
+    // Camera projection depth, not flat-ground radial distance: ORTHO
+    // looks downward, so Euclidean radius can reverse the draw order.
+    const targetDepth=tCenter.z;
     const blockers=[operator,...foregroundActors.filter(p=>
       Math.hypot(p.x-operator.x,p.y-operator.y)>1)];
     let occludedArea=0,centerBlocked=false;
     for(const body of blockers){
-      const distance=Math.hypot(body.x-anchor.x,body.y-anchor.y);
-      if(distance>=targetDepth-5)continue;
-      const b=bodyBounds(project,body,[11,13,8]);
+      const depth=project.project(body.x,22,body.y).z;
+      if(depth>=targetDepth-.005)continue;
+      const b=bodyBounds(project,body,[15,17,11]);
       occludedArea+=boxOverlap(b,tBox)/Math.max(.00001,boxArea(tBox));
       if(tCenter.x>=b.minX&&tCenter.x<=b.maxX&&
          tCenter.y>=b.minY&&tCenter.y<=b.maxY)centerBlocked=true;
     }
     targetOverlap=Math.min(1,occludedArea);
-    targetReadable=inFrame&&targetOverlap<=.23&&!centerBlocked&&
-      Math.abs(tCenter.x-op.x)>=.095;
+    // The front operator and target must be separate in SCREEN SPACE.
+    // Vertical displacement from the top-down pitch is not enough:
+    // a same-column target still disappears behind the backpack.
+    targetHorizontalGap=Math.max(0,
+      tBox.minX-primary.maxX,primary.minX-tBox.maxX);
+    const minGap=(right-left)*.035;
+    targetReadable=inFrame&&targetOverlap<=.18&&!centerBlocked&&
+      targetHorizontalGap>=minGap&&
+      Math.abs(tCenter.x-op.x)>=(right-left)*.145;
   }
   const axis=dir.x*(anchor.y-operator.y)-dir.y*(anchor.x-operator.x);
   const shoulderSide: -1|0|1=Math.abs(axis)<2?0:axis>0?1:-1;
@@ -205,15 +221,24 @@ export function directorCompositionQuality(
   const headWeight=treatment==='follow'?3:2;
   // This is a bounded aesthetic preference, never a replacement for
   // physical legality, essential visibility, or story continuity.
+  const contact=treatment==='engage';
+  // A central backpack is a *bad contact photograph* even before the
+  // enemy's recorded coordinates become discloseable in pre-roll.
+  const centeredShooter=contact?
+    Math.max(0,(right-left)*.15-Math.abs(pCenter))/
+      Math.max(.1,right-left):0;
   const score=100-
     thirdsError*thirdsWeight-leadError*leadWeight-
     headroomError*headWeight-
     (target?targetOverlap*18:0)-
-    (target&&!targetReadable?44:0)-
-    (target&&shoulderReadable&&treatment==='engage'?-5:0);
+    (target&&!targetReadable?55:0)-
+    centeredShooter*170+
+    (target&&targetReadable?18:0)+
+    (target&&shoulderReadable&&contact?5:0);
   return {primaryReadable,targetReadable,shoulderReadable,
     targetOverlap,thirdsError,leadError,headroomError,
-    score,shoulderSide};
+    score,shoulderSide,targetHorizontalGap,primaryScreenX:pCenter,
+    targetScreenX};
 }
 
 
