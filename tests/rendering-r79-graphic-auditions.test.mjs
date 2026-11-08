@@ -58,7 +58,12 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  uniform.material.onBeforeCompile(gearShader,null);
  assert.equal(gearShader.uniforms.fieldworkRimRole.value,1);
  assert.equal(gearShader.uniforms.fieldworkRimFabricWidth.value,2.8);
- assert.equal(gearShader.uniforms.fieldworkRimFabricBacklight.value,.7);
+ assert.equal(gearShader.uniforms.fieldworkRimFabricLightThreshold.value,.65);
+ assert.match(gearShader.fragmentShader,/fwSoftLightPeak/);
+ assert.match(gearShader.fragmentShader,/fwTravel\*fwSingleEdge/);
+ assert.match(gearShader.fragmentShader,/fwFacesKey\*fwSoftLightPeak/);
+ assert.match(gearShader.fragmentShader,/smoothstep\(\.25,\.75,fwKeyShadow\)/);
+ assert.doesNotMatch(gearShader.fragmentShader,/fwRearNormal|fwBackGate/);
  assert.match(gearShader.fragmentShader,/fwSoftBorder/);
  assert.match(gearShader.fragmentShader,/fwSoftBand/);
  assert.match(gearShader.fragmentShader,/fwSecond/);
@@ -205,7 +210,7 @@ test('R7.12 original Look restores with direct-light rim disabled',()=>{
  assert.equal(ensureStudioPieceGradient(new THREE.BufferGeometry()),false);
 });
 
-test('R7.16 skin and gear show hard-edged ink only on their original meshes',()=>{
+test('R7.17 cream and skin glints land only on illuminated original mesh edges',()=>{
  const root=new THREE.Group();
  const skin=new THREE.MeshStandardMaterial({color:0x55372c});
  skin.userData.fieldworkStudioSkin=true;
@@ -215,8 +220,8 @@ test('R7.16 skin and gear show hard-edged ink only on their original meshes',()=
  root.add(head,shirt);
  const audition=look({rim:'dual',rimAmount:.9,
   rimWidth:3.5,rimCoverage:.6,rimAngleLooseness:1.4,
-  rimFabricWidth:3,rimFabricOpacity:.14,rimFabricBacklight:.9,
-  rimSkinWidth:3.2,rimSkinOpacity:.34,rimSkinBacklight:1.2,
+  rimFabricWidth:3,rimFabricOpacity:.14,rimFabricLightThreshold:.9,
+  rimSkinWidth:3.2,rimSkinOpacity:.34,rimSkinLightThreshold:.8,
   rimSkinWarmth:1.25,rimDebugMask:true,lightAzimuth:45});
  const oldGeo=head.geometry,oldClothGeo=shirt.geometry;
  applyStudioGraphicLighting(root,audition);
@@ -231,23 +236,28 @@ test('R7.16 skin and gear show hard-edged ink only on their original meshes',()=
  assert.equal(sk.uniforms.fieldworkRimRole.value,2);
  assert.equal(sk.uniforms.fieldworkRimSkinWidth.value,3.2);
  assert.equal(sk.uniforms.fieldworkRimSkin.value,.34);
- assert.equal(sk.uniforms.fieldworkRimSkinBacklight.value,1.2);
+ assert.equal(sk.uniforms.fieldworkRimSkinLightThreshold.value,.8);
  assert.equal(sk.uniforms.fieldworkRimSkinWarmth.value,1.25);
  assert.equal(cl.uniforms.fieldworkRimRole.value,1);
  assert.equal(cl.uniforms.fieldworkRimFabric.value,.14);
  assert.equal(cl.uniforms.fieldworkRimFabricWidth.value,3);
- assert.equal(cl.uniforms.fieldworkRimFabricBacklight.value,.9);
+ assert.equal(cl.uniforms.fieldworkRimFabricLightThreshold.value,.9);
  assert.match(sk.fragmentShader,/fwSkinTint/);
- assert.match(sk.fragmentShader,/fwSilhouette/);
- assert.match(sk.fragmentShader,/fwRearNormal/);
+ assert.match(sk.fragmentShader,/fwSoftView/);
+ assert.match(sk.fragmentShader,/fwSoftLightPeak/);
+ assert.match(sk.fragmentShader,/fwFacesKey\*fwSoftLightPeak/);
+ assert.match(sk.fragmentShader,/fwDirect/);
+ assert.doesNotMatch(sk.fragmentShader,/fwRearNormal|fwRearKey|fwSoftBackGate|fwBacklit/);
  assert.match(sk.fragmentShader,/fwSoftBorder/);
  assert.doesNotMatch(sk.vertexShader,/expanded=position|gl_Position=projectionMatrix\*view/);
  assert.doesNotMatch(sk.fragmentShader,/gl_FragColor=vec4\(ink,alpha\)/);
  const variant=head.material,programKey=variant.customProgramCacheKey();
- applyStudioGraphicLighting(root,{...audition,rimSkinOpacity:.22,lightAzimuth:90});
+ applyStudioGraphicLighting(root,{...audition,rimSkinOpacity:.22,
+  rimSkinLightThreshold:.25,lightAzimuth:90});
  assert.equal(head.material,variant,'cached shader updates without recompilation');
  assert.equal(variant.customProgramCacheKey(),programKey);
  assert.equal(sk.uniforms.fieldworkRimSkin.value,.22);
+ assert.equal(sk.uniforms.fieldworkRimSkinLightThreshold.value,.25);
  assert.equal(head.children.length,0);
  applyStudioGraphicLighting(root,look({rim:'off',toon:0}));
  assert.equal(head.material,skin);

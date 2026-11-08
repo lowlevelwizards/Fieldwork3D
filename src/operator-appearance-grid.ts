@@ -175,10 +175,10 @@ export class OperatorAppearanceGrid{
      previous.rimAngleLooseness===settings.rimAngleLooseness&&
      previous.rimFabricWidth===settings.rimFabricWidth&&
      previous.rimFabricOpacity===settings.rimFabricOpacity&&
-     previous.rimFabricBacklight===settings.rimFabricBacklight&&
+     previous.rimFabricLightThreshold===settings.rimFabricLightThreshold&&
      previous.rimSkinWidth===settings.rimSkinWidth&&
      previous.rimSkinOpacity===settings.rimSkinOpacity&&
-     previous.rimSkinBacklight===settings.rimSkinBacklight&&
+     previous.rimSkinLightThreshold===settings.rimSkinLightThreshold&&
      previous.rimSkinWarmth===settings.rimSkinWarmth&&
      previous.rimDebugMask===settings.rimDebugMask&&
      previous.lightAzimuth===settings.lightAzimuth&&

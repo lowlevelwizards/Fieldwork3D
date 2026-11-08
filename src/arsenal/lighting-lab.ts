@@ -7,8 +7,8 @@ import {DEFAULT_STUDIO_LIGHT_LAB,effectiveStudioLightLab}
 
 type NumericKey='celLow'|'rimAmount'|'rimWidth'|'rimCoverage'|
  'rimAngleLooseness'|'rimFabricWidth'|'rimFabricOpacity'|
- 'rimFabricBacklight'|'rimSkinWidth'|'rimSkinOpacity'|
- 'rimSkinBacklight'|'rimSkinWarmth'|'lightAzimuth';
+ 'rimFabricLightThreshold'|'rimSkinWidth'|'rimSkinOpacity'|
+ 'rimSkinLightThreshold'|'rimSkinWarmth'|'lightAzimuth';
 const numerical:readonly {
  key:NumericKey;label:string;min:number;max:number;step:number;
  suffix:string;factor:number
@@ -20,10 +20,10 @@ const numerical:readonly {
  {key:'rimAngleLooseness',label:'GLINT ANGLE WINDOW',min:.75,max:2,step:.05,suffix:'%',factor:100},
  {key:'rimFabricWidth',label:'GEAR EDGE WIDTH',min:1,max:4,step:.05,suffix:'%',factor:100},
  {key:'rimFabricOpacity',label:'GEAR CREAM OPACITY',min:0,max:.35,step:.01,suffix:'%',factor:100},
- {key:'rimFabricBacklight',label:'GEAR BACKLIGHT BIAS',min:0,max:1.5,step:.05,suffix:'%',factor:100},
+ {key:'rimFabricLightThreshold',label:'GEAR LIGHT SELECTIVITY',min:0,max:1,step:.05,suffix:'%',factor:100},
  {key:'rimSkinWidth',label:'SKIN EDGE WIDTH',min:1,max:4,step:.05,suffix:'%',factor:100},
  {key:'rimSkinOpacity',label:'SKIN EDGE OPACITY',min:0,max:.45,step:.01,suffix:'%',factor:100},
- {key:'rimSkinBacklight',label:'SKIN BACKLIGHT BIAS',min:0,max:1.5,step:.05,suffix:'%',factor:100},
+ {key:'rimSkinLightThreshold',label:'SKIN LIGHT SELECTIVITY',min:0,max:1,step:.05,suffix:'%',factor:100},
  {key:'rimSkinWarmth',label:'SKIN WARMTH',min:.5,max:1.5,step:.05,suffix:'%',factor:100},
  {key:'lightAzimuth',label:'KEY LIGHT ORBIT',min:-180,max:180,step:5,suffix:'°',factor:1}
 ];
