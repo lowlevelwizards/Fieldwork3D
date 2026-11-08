@@ -332,3 +332,21 @@ export function directorProjectedActionVisibility(
   }
   return best;
 }
+
+
+/** Is the actual attention destination legible inside the playable screen?
+ * Unlike required actor bounds, this is a DISCOVERY interest point and may
+ * be a look through a doorway. This never reveals hidden game entities. */
+export function directorAttentionVisible(
+  anchor:DirectorPoint,focus:DirectorPoint,attention:DirectorPoint,
+  lens:'ortho'|'wide',aspect:number,baseSpan:number,zoom:number,fov:number,
+  safeFrame?:DirectorSafeFrame
+):boolean{
+  const project=directorProjector(anchor,focus,aspect,baseSpan,zoom,fov,lens);
+  const p=project.project(attention.x,19,attention.y);
+  const frame=safeFrame??{left:-.78,right:.78,top:.76,bottom:-.76};
+  const margin=.07;
+  return p.z>=-1&&p.z<=1&&
+    p.x>=frame.left+margin&&p.x<=frame.right-margin&&
+    p.y>=frame.bottom+margin&&p.y<=frame.top-margin;
+}
