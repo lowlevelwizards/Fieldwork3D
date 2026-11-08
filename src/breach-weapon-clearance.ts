@@ -66,6 +66,17 @@ export function weaponClearance(input:MuzzleInput,
       shortCompression:compression,clearanceRetraction:0});
     return {muzzle,blocker:check({x:muzzle.x,y:muzzle.z},muzzle.y)};
   };
+  // Even a fully tucked barrel must never be allowed to ignite when a
+  // solid obstruction is immediately in front of the operator's body.
+  // Without this floor, deeply tucked guns can sit behind a near wall and
+  // their muzzle-only probe incorrectly reports an unrestricted shot.
+  const MIN_OPERATOR_FIRE_CLEARANCE=18;
+  if(distanceToObstacle<=MIN_OPERATOR_FIRE_CLEARANCE){
+    const full=folded(1);
+    return {obstruction:true,blocked:true,compression:1,
+      retraction:MAX_LEGACY_RETRACTION,blocker:
+        full.blocker==='clear'?horizonHit:full.blocker,muzzle:full.muzzle};
+  }
   const comfortable=folded(proximity);
   if(comfortable.blocker==='clear')
     return {obstruction:true,blocked:false,compression:proximity,

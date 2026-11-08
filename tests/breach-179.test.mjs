@@ -29,13 +29,17 @@ test('179: wall approach folds gun before impact without jumping sockets',()=>{
  assert.ok(result.muzzle.x<normal.x);
  assert.ok(result.muzzle.x<geometry.a.x);
  assert.ok(result.compression>0&&result.compression<=1);
- // The rearward movement is an actual rig transform, not a projectile clamp.
- const stock=fitWeaponPose({weapon:'carbine',handling:'short',yaw:0,
-   recoil:0,aimBlend:.9});
+ // The authorized retraction is now ONE continuous progress channel.
+ // Legacy clearanceRetraction must never perform a second stock teleport.
+ const ready=fitWeaponPose({weapon:'carbine',handling:'short',yaw:0,
+   recoil:0,shortCompression:0,shortFrom:'ads'});
  const tucked=fitWeaponPose({weapon:'carbine',handling:'short',yaw:0,
-   recoil:0,aimBlend:.9,clearanceRetraction:2.35});
- assert.ok(tucked.stock.x<stock.stock.x-2);
- assert.ok(tucked.primary.x<stock.primary.x-2);
+   recoil:0,shortCompression:1,shortFrom:'ads'});
+ const legacy=fitWeaponPose({weapon:'carbine',handling:'short',yaw:0,
+   recoil:0,shortCompression:1,shortFrom:'ads',
+   clearanceRetraction:2.35});
+ assert.ok(tucked.stock.x<ready.stock.x-2);
+ assert.deepEqual(tucked.stock.toArray(),legacy.stock.toArray());
 });
 test('179: an impossible blocked corridor suppresses shots, never moves actor',()=>{
  const before=JSON.stringify(base);

@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import * as THREE from 'three';
 import {stockPocket,elbowCorridor} from '../src/breach-anatomy.ts';
 import {HANDLING_PROFILES} from '../src/breach-handling-profiles.ts';
-import {fitWeaponPose} from '../src/breach-weapon-pose.ts';
+import {fitWeaponPose,liveShortStockPose} from '../src/breach-weapon-pose.ts';
 import {readFileSync} from 'node:fs';
 test('177: ordinary shoulder seat and separate underarm waist tuck',()=>{
  for(const mode of ['high','low','ready','point','ads','short']){
@@ -15,7 +16,13 @@ test('177: ordinary shoulder seat and separate underarm waist tuck',()=>{
   }
   const fit=fitWeaponPose({weapon:'carbine',handling:mode,
    yaw:0,recoil:0});
-  assert.ok(fit.stock.z<(mode==='short'?9.5:6.5));
+  if(mode==='short'){
+   // Classic weapons use their own grip-aware underarm target, not the
+   // fixed M4A1 lateral bound from the abandoned pose fitter.
+   const target=liveShortStockPose('carbine');
+   assert.ok(fit.stock.distanceTo(
+     new THREE.Vector3(...target.targets.stock))<1e-6);
+  }else assert.ok(fit.stock.z<6.5);
   assert.ok(fit.stockError<3);
  }
  const src=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
