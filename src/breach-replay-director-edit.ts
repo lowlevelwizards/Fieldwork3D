@@ -17,6 +17,8 @@ export type DirectorEditorialShot={
   id:string;kind:DirectorEditorialKind;priority:number;
   primaryActorId:string;secondaryActorIds:string[];
   target:Point|null;door:DirectorDoorAnchor|null;
+  /** Bounded optional lead point from an already-authored future order. */
+  interest:Point|null;
   doorId:string|null;actionDirection:Point;
   required:Point[];optional:Point[];
   /** A true crossing is a cue to evaluate framing, never an automatic cut. */
@@ -126,11 +128,41 @@ export function selectDirectorEditorialShot(
   if(kind==='settle'&&i?.watchDirection)actionDirection=
     unit(i.watchDirection);
   if(kind==='entry'&&i?.direction)actionDirection=travel;
+  let interest:Point|null=null;
   if(kind==='follow'&&i?.watchDirection){
-    // WATCH influences available look space, never replaces travel.
+    // An ACTIVE WATCH may lean the framing without changing the action.
     actionDirection=unit({
       x:travel.x*.7+i.watchDirection.x*.3,
       y:travel.y*.7+i.watchDirection.y*.3});
+  }else if(kind==='follow'&&i?.plannedAttention){
+    const future=i.plannedAttention;
+    const proximity=Math.max(.15,Math.min(1,1-future.distance/240));
+    if(future.kind==='watch'){
+      const amount=.18+.3*proximity;
+      actionDirection=unit({
+        x:travel.x*(1-amount)+future.direction.x*amount,
+        y:travel.y*(1-amount)+future.direction.y*amount
+      });
+      interest={x:primary.p.x+actionDirection.x*76,
+        y:primary.p.y+actionDirection.y*76};
+    }else{
+      // Future authored door/action locations may lead a travel frame,
+      // but cannot introduce future unseen threats as subjects.
+      const towardFuture=unit({
+        x:future.at.x-primary.p.x,
+        y:future.at.y-primary.p.y
+      });
+      const amount=.15+.2*proximity;
+      actionDirection=unit({
+        x:travel.x*(1-amount)+towardFuture.x*amount,
+        y:travel.y*(1-amount)+towardFuture.y*amount
+      });
+      const length=Math.min(95,
+        Math.max(65,Math.hypot(future.at.x-primary.p.x,
+          future.at.y-primary.p.y)));
+      interest={x:primary.p.x+actionDirection.x*length,
+        y:primary.p.y+actionDirection.y*length};
+    }
   }
   // Other actors remain supporting cast; never silently promote their
   // positions to required frame bounds in a fight.
@@ -139,8 +171,9 @@ export function selectDirectorEditorialShot(
     .sort((a,b)=>distance(a.p,primary!.p)-
       distance(b.p,primary!.p)||a.id.localeCompare(b.id))
     .filter(a=>kind!=='follow'||(
-      distance(a.p,primary!.p)<95&&
-      (intent(a.id)?.speed??a.velocity??0)>7))
+      distance(a.p,primary!.p)<95&&(
+      (intent(a.id)?.speed??a.velocity??0)>7||
+      (intent(a.id)?.route.length??0)>1)))
     .slice(0,3);
   const required=[{...primary.p}];
   const mandatory=kind==='engage'?target:
@@ -159,5 +192,6 @@ export function selectDirectorEditorialShot(
     kind+':'+primary.id;
   return {id:identity,kind,priority,primaryActorId:primary.id,
     secondaryActorIds:secondary.map(a=>a.id),target,door,doorId,
+    interest,
     actionDirection,required,optional,firstEntry,reason};
 }
