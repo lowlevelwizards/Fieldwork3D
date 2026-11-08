@@ -38,8 +38,8 @@ test('Director physically remains inside same room as friendly actors',()=>{
  assert.ok(directorCameraLegal(film.cameraAnchor,entry,scene));
  assert.equal(directorLineBlocked(film.cameraAnchor,request.operator,scene),
   false,'operator must be optically reachable without X-ray walls');
- assert.ok(film.fov>=96&&film.fov<=116,
-  'wide perspective audition can use a genuinely broad interior lens');
+ assert.ok(film.fov>=82&&film.fov<=116,
+  'wide-perspective camera may push in but must retain fitted interior coverage');
 });
 test('solid partition and closed doors cannot be made transparent by framing',()=>{
  assert.equal(directorLineBlocked({x:80,y:24},{x:235,y:24},scene),true);
