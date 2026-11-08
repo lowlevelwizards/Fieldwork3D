@@ -37,8 +37,13 @@ test('workbench captures seven ACTUAL rig targets, not synthetic IK guesses',()=
   const work=applyWorkbenchPose(rig,p,configuration);
   assert.ok(work.maxReachError<.2,
     'capturing a physically solved ready rig should not stretch arms');
-  assert.ok(work.maxContactGap<1.5,
-    'the captured ready arm meshes should match their gun sockets');
+  // Existing auto-ready can itself be offset from a real gun socket.
+  // The editor must REPORT that original mismatch, not fake a grip fit.
+  const contacts=weaponWorkbenchContacts(p,configuration);
+  assert.ok(Math.abs(work.support.gripGap-
+    new THREE.Vector3(...work.support.hand).distanceTo(contacts.support))<1e-6);
+  assert.ok(Math.abs(work.firing.gripGap-
+    new THREE.Vector3(...work.firing.hand).distanceTo(contacts.firing))<1e-6);
   assert.ok(new THREE.Vector3(...p.targets.stock).distanceTo(
    new THREE.Vector3(...work.stock))<1e-6);
  }finally{rig.dispose();}
@@ -55,7 +60,13 @@ test('stock handle translates the actual firearm, never the operator legs',()=>{
   const report=applyWorkbenchPose(rig,p,configuration);
   assert.ok(Math.abs(rig.weapon.position.x-(gunBefore.x-4.25))<1e-6);
   assert.ok(Math.abs(rig.weapon.position.y-(gunBefore.y-2.75))<1e-6);
-  assert.ok(report.maxContactGap<.5,'snapped hands must follow gun');
+  const gun=weaponWorkbenchContacts(p,configuration);
+  assert.deepEqual(p.targets.supportHand,gun.support.toArray());
+  assert.deepEqual(p.targets.firingHand,gun.firing.toArray());
+  // If the gun is too far away, the fixed-length IK must report its
+  // unsatisfied wrist gap rather than stretch the forearm to fake contact.
+  assert.ok(Math.abs(report.support.gripGap-report.support.wristGap)<1e-5);
+  assert.ok(Math.abs(report.firing.gripGap-report.firing.wristGap)<1e-5);
   for(let i=0;i<2;i++)
    assert.ok(rig.feet[i].shoe.position.distanceTo(footBefore[i])<1e-6);
  }finally{rig.dispose();}
@@ -117,7 +128,7 @@ test('workbench is a separate production-built page with discoverable entry',()=
   assert.match(html,new RegExp('id="'+id+'"'),id);
  }
  assert.match(ui,/raycaster\.intersectObjects/);
- assert.match(ui,/input\.type='range'/); // continuous XYZ sliders
+ assert.match(ui,/slider\.type='range'/); // continuous XYZ sliders
  assert.match(ui,/snapWorkbenchHandsToGun/);
  assert.doesNotMatch(ui,/carryElbowViolation|solveUnifiedFallbackArm|weaponClearance/);
 });
