@@ -23,6 +23,20 @@ test('LE3: an authored FOLLOW releases a former panic route and retry backoff',(
  assert.equal(c.state,'escorted');
 });
 
+test('LE3: reassigning an existing FOLLOW abandons the former escort route',()=>{
+ const c=person();c.state='escorted';c.following='rook';
+ c.goal={x:200,y:55};c.nav=[{x:80,y:55}];
+ c.blockedTime=1;c.retryAt=30;c.dwellUntil=31;
+ c.lastEscortRouteAt=17;
+ assert.equal(setCivilianState(c,'escorted',22),true);
+ assert.equal(c.state,'escorted');
+ assert.deepEqual(c.nav,[]);assert.equal(c.goal,null);
+ assert.equal(c.retryAt,22);assert.equal(c.dwellUntil,22);
+ assert.equal(c.lastEscortRouteAt,-100);
+ // The command executor alone owns changing following to the new operator.
+ assert.equal(c.following,'rook');
+});
+
 test('LE3: SECURE removes panic navigation but never moves a compliant person',()=>{
  const c=person();c.state='startled';c.goal={x:100,y:90};
  c.nav=[{x:70,y:60}];c.retryAt=28;c.dwellUntil=30;
