@@ -158,7 +158,7 @@ export function createWardrobeGearLayers(
   const cells:MagazinePouchCell[]=[];
   for(let lane=0;lane<3;lane++)for(const side of [-1,1]){
    cells.push({x:1.55,y:-.18,z:side*7.02,depth:5.0,height:3.68,
-    width:2.78,yaw:side*Math.PI/2,slots:[-1.25,0,1.25],slot:lane});
+    width:2.78,yaw:0,slots:[-1.45,0,1.45],slot:lane});
   }
   alice.root.userData.magazinePouchCells=cells;
   visual.aliceWaist=alice;waistRig['alice-lc2']=alice.root;
@@ -170,7 +170,7 @@ export function createWardrobeGearLayers(
   for(let lane=0;lane<2;lane++)for(const side of [-1,1]){
    cells.push({x:historic.variant==='early'?1.60:1.58,y:-.18,
     z:side*7.06,depth:4.70,height:3.67,width:3.06,
-    yaw:side*Math.PI/2,slots:[-.92,.92],slot:lane});
+    yaw:0,slots:[-.92,.92],slot:lane});
   }
   historic.root.userData.magazinePouchCells=cells;
   // The historically separate pouches/canteens are retained as individual
