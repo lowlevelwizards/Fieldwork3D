@@ -28,6 +28,11 @@ import {nextReplayTiltShiftCenter,type FocusPoint}
 import {MINIATURE_FOCUS_MAX_ANCHORS} from './rendering/miniature-focus-pass.ts';
 import {MiniatureFocusPass,type MiniatureFocusDebug}
  from './rendering/miniature-focus-pass.ts';
+import {MiniatureAttentionMask,type AttentionPolygon,type AttentionDisc}
+ from './rendering/miniature-attention-mask.ts';
+import {focusZoomMultiplier,recentRevealWeight,FOCUS_PROTECTION}
+ from './rendering/miniature-attention-policy.ts';
+import {visionPolygon} from './breach-vision-polygon.ts';
 import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
  from './operator-shadow-quality.ts';
@@ -165,7 +170,7 @@ export class TacticalScene3D{
       catch{return null;}})());
   private readonly miniFocusDebug:MiniatureFocusDebug=(()=>{
     const d=new URLSearchParams(location.search).get('focusDebug');
-    return d==='mask'||d==='protected'||d==='band'?d:null;
+    return d==='mask'||d==='protected'||d==='band'||d==='attention'?d:null;
   })();
   private miniFocusPass:MiniatureFocusPass|null=null;
   private miniFocusIsReplay=false;
@@ -176,6 +181,18 @@ export class TacticalScene3D{
   private readonly miniFocusAnchorPool:FocusPoint[]=Array.from(
     {length:MINIATURE_FOCUS_MAX_ANCHORS},()=>({x:0,y:0}));
   private readonly miniFocusVisibleAnchors:FocusPoint[]=[];
+  private miniFocusAttention:MiniatureAttentionMask|null=null;
+  private miniFocusSession:Session|null=null;
+  private miniFocusDoorId:string|null=null;
+  private miniFocusGroundOwner:Session|null=null;
+  private miniFocusLastSeconds=-1;
+  private miniFocusGroundRevision=-1;
+  private readonly miniFocusRememberedFine=new Set<string>();
+  private readonly miniFocusNewlySeen:Array<{
+    key:string;x:number;z:number;at:number
+  }>=[];
+  private readonly miniFocusAttentionPolygons:AttentionPolygon[]=[];
+  private readonly miniFocusAttentionDiscs:AttentionDisc[]=[];
   private lastFogSignature='';
   private lastMemoryFogSignature='';
   private lastMemoryFogSession:Session|null=null;
@@ -234,6 +251,7 @@ export class TacticalScene3D{
     this.miniFocusMode=mode;
     if(mode==='off'){
       this.miniFocusPass?.dispose();this.miniFocusPass=null;
+      this.miniFocusAttention?.dispose();this.miniFocusAttention=null;
     }
   }
   /** Focus never shuts off during gestures. Returning to the native
@@ -289,6 +307,184 @@ export class TacticalScene3D{
     if(count)this.miniFocusCenterY=nextReplayTiltShiftCenter(
       this.miniFocusCenterY,total/count,this.miniFocusFrameDt);
   }
+  /** Return screen position of a world point already permitted for display.
+   * This is projection only: it never queries hidden contacts.
+   */
+  private miniatureScreenPoint(camera:THREE.Camera,
+    x:number,z:number,y=12):FocusPoint|null{
+    const clip=this.miniFocusProjection.set(x,y,z).project(camera);
+    if(!Number.isFinite(clip.x)||!Number.isFinite(clip.y)||
+       !Number.isFinite(clip.z)||clip.z< -1||clip.z>1)return null;
+    return {x:(clip.x+1)*this.width/2,
+      y:(1-clip.y)*this.height/2};
+  }
+  private miniatureFrameRoomCoverage(camera:THREE.Camera,s:Session):number{
+    const selected=s.operators.find(a=>a.id===this.miniFocusSelectedId&&
+      a.side==='blue');
+    if(!selected||!s.site)return 0;
+    const room=s.site.rooms.find(r=>
+      selected.p.x>=r.x&&selected.p.x<=r.x+r.w&&
+      selected.p.y>=r.y&&selected.p.y<=r.y+r.h);
+    if(!room)return 0;
+    let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+    for(const x of [room.x,room.x+room.w])
+      for(const z of [room.y,room.y+room.h])
+        for(const y of [0,40]){
+          const p=this.miniatureScreenPoint(camera,x,z,y);
+          if(!p)continue;
+          minX=Math.min(minX,p.x);maxX=Math.max(maxX,p.x);
+          minY=Math.min(minY,p.y);maxY=Math.max(maxY,p.y);
+        }
+    if(!Number.isFinite(minX)||!Number.isFinite(minY))return 0;
+    return Math.max(0,Math.min(1,Math.max(
+      (maxX-minX)/Math.max(1,this.width),
+      (maxY-minY)/Math.max(1,this.height))));
+  }
+  /** New reconnaissance uses only the authoritative, already-seen FINE
+   * ground keys. No future/undisclosed level geometry is sampled. History
+   * resets on mission changes, replay seeks and time reversal.
+   */
+  private miniatureUpdateRecentReveal(s:Session):void{
+    if(this.miniFocusGroundOwner!==s||this.miniFocusIsReplay||
+       s.seconds<this.miniFocusLastSeconds-.001){
+      this.miniFocusGroundOwner=s;this.miniFocusLastSeconds=s.seconds;
+      this.miniFocusGroundRevision=s.seenGroundRevision;
+      this.miniFocusRememberedFine.clear();
+      this.miniFocusNewlySeen.length=0;
+      for(const key of s.seenGround)
+        if(key.startsWith('fine:'))this.miniFocusRememberedFine.add(key);
+      return;
+    }
+    this.miniFocusLastSeconds=s.seconds;
+    if(this.miniFocusGroundRevision!==s.seenGroundRevision){
+      this.miniFocusGroundRevision=s.seenGroundRevision;
+      for(const key of s.seenGround){
+        if(!key.startsWith('fine:')||this.miniFocusRememberedFine.has(key))
+          continue;
+        this.miniFocusRememberedFine.add(key);
+        const parts=key.slice(5).split(',');
+        const col=Number(parts[0]),row=Number(parts[1]);
+        if(!Number.isInteger(col)||!Number.isInteger(row))continue;
+        this.miniFocusNewlySeen.push({
+          key,x:col*20+10,z:row*20+10,at:s.seconds
+        });
+      }
+    }
+    // Only the most recent revelations, not every tile explored in a
+    // mission: bounded memory and no global historical sharpness.
+    while(this.miniFocusNewlySeen.length>96)
+      this.miniFocusNewlySeen.shift();
+    for(let i=this.miniFocusNewlySeen.length-1;i>=0;i--)
+      if(s.seconds-this.miniFocusNewlySeen[i].at>3.6)
+        this.miniFocusNewlySeen.splice(i,1);
+  }
+  /** Compose a soft, screen-space tactical attention matte. Authority for
+   * live sight is the same vision polygon used by the FOW renderer.
+   * Replay never recomputes live sight from hidden historical geometry:
+   * actor meshes are used only if replay disclosure already shows them.
+   */
+  private miniatureUpdateAttention(camera:THREE.Camera,
+    s:Session,director:boolean):number{
+    if(!this.miniFocusAttention)
+      this.miniFocusAttention=new MiniatureAttentionMask();
+    const polygons=this.miniFocusAttentionPolygons;
+    const discs=this.miniFocusAttentionDiscs;
+    polygons.length=0;discs.length=0;
+    const disc=(p:FocusPoint|null,rx:number,ry:number,
+      importance:number):void=>{
+      if(!p||p.x< -rx||p.x>this.width+rx||
+         p.y< -ry||p.y>this.height+ry)return;
+      discs.push({x:p.x,y:p.y,radiusX:rx,radiusY:ry,importance});
+    };
+    if(!this.miniFocusIsReplay){
+      for(const friendly of team(s)){
+        if(friendly.health<=0)continue;
+        const polygon=visionPolygon(friendly.p,friendly.heading,240,
+          undefined,s.doors,friendly.posture==='crouch');
+        const projected:FocusPoint[]=[];
+        for(const p of polygon){
+          const xy=this.miniatureScreenPoint(camera,p.x,p.y,13);
+          if(xy)projected.push(xy);
+        }
+        if(projected.length>=3)
+          polygons.push({points:projected,importance:FOCUS_PROTECTION.sight});
+      }
+      this.miniatureUpdateRecentReveal(s);
+      for(const reveal of this.miniFocusNewlySeen){
+        const age=s.seconds-reveal.at;
+        const importance=recentRevealWeight(age);
+        if(importance<.005)continue;
+        disc(this.miniatureScreenPoint(camera,reveal.x,reveal.z,12),
+          30,30,importance*FOCUS_PROTECTION.recent);
+      }
+      // Known-last-position evidence only: never sample the real invisible
+      // hostile location after contact is lost.
+      for(const memory of s.known.values()){
+        if(memory.status!=='seen')continue;
+        const age=s.seconds-memory.at;
+        const strength=recentRevealWeight(age);
+        if(strength<=0)continue;
+        disc(this.miniatureScreenPoint(camera,memory.p.x,memory.p.y,20),
+          65,70,strength);
+      }
+      for(const shot of s.shots){
+        if(shot.age>.55||!shotVisibility(s,shot).impact)continue;
+        disc(this.miniatureScreenPoint(camera,shot.end.x,shot.end.y,15),
+          58,63,FOCUS_PROTECTION.critical);
+      }
+    }else{
+      // Explicitly remove a live tactical matte when transitioning to a
+      // historical replay, including backwards seeks.
+      this.miniFocusNewlySeen.length=0;
+    }
+    for(const actor of s.operators){
+      const object=this.actors.get(actor.id);
+      if(!object?.root.visible)continue;
+      const selected=actor.id===this.miniFocusSelectedId;
+      const critical=actor.side!=='blue'||selected;
+      const p=this.miniatureScreenPoint(camera,
+        object.root.position.x,object.root.position.z,
+        object.root.position.y+21);
+      disc(p,critical?78:50,critical?94:65,
+        critical?FOCUS_PROTECTION.critical:FOCUS_PROTECTION.context);
+    }
+    for(const civil of s.civilians){
+      const rig=this.civilianRigs.get(civil.id);
+      if(!rig?.root.visible)continue;
+      disc(this.miniatureScreenPoint(camera,
+          rig.root.position.x,rig.root.position.z,
+          rig.root.position.y+20),
+        58,70,FOCUS_PROTECTION.critical);
+    }
+    if(director){
+      for(const p of this.replayDirectorSubjects.slice(0,3))
+        disc(this.miniatureScreenPoint(camera,p.x,p.y,22),90,105,1);
+    }else{
+      const selected=s.operators.find(a=>a.id===this.miniFocusSelectedId&&
+        a.side==='blue');
+      if(selected){
+        disc(this.miniatureScreenPoint(camera,
+          selected.p.x,selected.p.y,15),94,112,1);
+        const upcoming=selected.plan[0]?.p;
+        if(upcoming)disc(this.miniatureScreenPoint(camera,
+          upcoming.x,upcoming.y,13),48,56,.92);
+      }
+      if(this.miniFocusDoorId){
+        const door=s.doors.find(d=>d.id===this.miniFocusDoorId);
+        if(door){
+          const p=doorCenter(door);
+          disc(this.miniatureScreenPoint(camera,p.x,p.y,22),
+            64,70,FOCUS_PROTECTION.critical);
+        }
+      }
+    }
+    this.miniFocusAttention.update(
+      this.width,this.height,this.miniFocusFrameDt,polygons,discs);
+    const overviewZoom=activeSite()?1.48:1.25;
+    return focusZoomMultiplier(
+      this.view.zoom/overviewZoom,
+      this.miniatureFrameRoomCoverage(camera,s));
+  }
   private renderMiniatureFocus(camera:THREE.Camera):void{
     if(this.miniFocusMode==='off'&&!this.miniFocusDebug){
       this.renderer.render(this.scene,camera);return;
@@ -313,13 +509,17 @@ export class TacticalScene3D{
     else this.miniFocusCenterY=decision.centerY;
     if(director)decision.centerY=this.miniFocusCenterY;
     const anchors=this.miniatureFocusAnchors(camera,director);
+    const zoomStrength=this.miniFocusSession?
+      this.miniatureUpdateAttention(camera,this.miniFocusSession,director):1;
     if(!this.miniFocusPass)this.miniFocusPass=new MiniatureFocusPass(this.renderer);
     this.miniFocusPass.render(this.scene,camera,decision,
-      this.width,this.height,anchors,this.miniFocusDebug);
+      this.width,this.height,anchors,this.miniFocusDebug,
+      this.miniFocusAttention?.texture??null,zoomStrength);
   }
   inspectMiniatureFocus(){
     return {mode:this.miniFocusMode,debug:this.miniFocusDebug,
-      ...this.miniFocusPass?.getDiagnostics()};
+      ...this.miniFocusPass?.getDiagnostics(),
+      attention:this.miniFocusAttention?.diagnostics()??null};
   }
   /** Default: in-room orthographic. WIDE is a deliberate A/B preview,
    * never changes the tactical camera, replay footage or simulation. */
@@ -2054,6 +2254,8 @@ export class TacticalScene3D{
     personalGroundEvidence:ReadonlySet<string>|null=null,
     replayWindowHistory:ReplayWindowKnowledgeHistory|null=null){
     if(this.view.mode==='plan2d')return;
+    this.miniFocusSession=s;
+    this.miniFocusDoorId=focusedDoorId;
     this.miniFocusSelectedId=selected;
     const bodycamAudition=!!this.replayBodycam&&
       replayDisclosurePolicy?.mode==='operator'&&
