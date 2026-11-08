@@ -11,6 +11,8 @@ import {operatorRimRole,injectOperatorRim}
  from './operator-studio-toon-lighting.ts';
 import {studioContourEligible}
  from './operator-studio-rim-contour.ts';
+import {applyStudioEdgeBleed,clearStudioEdgeBleed,disposeStudioEdgeBleed}
+ from './operator-studio-edge-bleed.ts';
 
 type Source=THREE.MeshStandardMaterial;
 type Variant=THREE.MeshStandardMaterial|THREE.MeshToonMaterial;
@@ -69,7 +71,9 @@ function isSafeSurface(m:Source):boolean{
 export function studioArtRole(node:THREE.Object3D,source:Source):
  'hard'|'fabric'|'skin'|'matte'{
  if(source.userData.fieldworkStudioSkin===true)return 'skin';
- if(source.userData.fieldworkFabric===true)return 'fabric';
+ if(source.userData.fieldworkFabric===true||
+  source.userData.fieldworkStudioSoftGear===true||
+  node.userData.fieldworkStudioSoftGear===true)return 'fabric';
  return operatorRimRole(node)==='hard-shell'||
   source.userData.fieldworkSpecRim===true||source.metalness>.24?
   'hard':'matte';
@@ -241,7 +245,9 @@ export function injectStudioGraphicLighting(
    vec3 fwKey=normalize((viewMatrix*vec4(fieldworkRimKeyWorld,0.0)).xyz);
    float fwGrazing=1.0-abs(dot(fwNormal,fwView));
    float fwEdgeWidth=max(fwidth(fwGrazing)*.8,.006);
-   float fwEdge=smoothstep(.67-fwEdgeWidth,.71+fwEdgeWidth,fwGrazing);
+   float fwEdge=smoothstep(
+    .57-fwEdgeWidth-.11*(fieldworkRimAngleLooseness-1.0),
+    .72+fwEdgeWidth,fwGrazing);
    // For boxy, flat-shaded geometry the Fresnel value is identical at
    // every pixel of a face. Approximate its border by taking the second
    // smallest distance to that mesh's three local bounding-box planes:
@@ -275,12 +281,13 @@ export function injectStudioGraphicLighting(
     abs(fwAlong-fwCenter));
    // Prefer one side of a rectangular crown/receiver at a time.
    float fwChosenSide=fwSweep>=0.0?0.0:1.0;
-   float fwSingleEdge=1.0-smoothstep(.12,.62,
+   float fwSingleEdge=1.0-smoothstep(.20,.80,
     abs(fwCross-fwChosenSide));
    fwEdge*=fwTravel*fwSingleEdge;
-   float fwFacesKey=smoothstep(.03,.20,dot(fwNormal,fwKey));
+   float fwFacesKey=smoothstep(
+    -.10*fieldworkRimAngleLooseness,.18,dot(fwNormal,fwKey));
    float fwDirect=dot(reflectedLight.directDiffuse,vec3(.2126,.7152,.0722));
-   float fwReceivedLight=smoothstep(.012,.065,fwDirect);
+   float fwReceivedLight=smoothstep(.004,.050,fwDirect);
    float fwKeyShadow=1.0;
    #ifdef USE_SHADOWMAP
     fwKeyShadow=getShadowMask();
@@ -306,6 +313,7 @@ export function injectStudioGraphicLighting(
   'uniform float fieldworkRimStrength;',
   'uniform float fieldworkRimWidth;',
   'uniform float fieldworkRimCoverage;',
+  'uniform float fieldworkRimAngleLooseness;',
   'uniform float fieldworkRimFabric;',
   'uniform float fieldworkRimSkin;',
   'uniform float fieldworkRimRole;',
@@ -400,6 +408,7 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
    strength:{value:config.rimAmount},
    width:{value:config.rimWidth},
    coverage:{value:config.rimCoverage},
+   angle:{value:config.rimAngleLooseness},
    fabric:{value:config.rimFabricOpacity},
    skin:{value:config.rimSkinOpacity},
    role:{value:role==='hard'?0:role==='fabric'?1:2},
@@ -427,13 +436,14 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
   if(litRim){
    const u=variant.userData.fieldworkRimUniform as {
     strength:{value:number};width:{value:number};
-    coverage:{value:number};fabric:{value:number};
+    coverage:{value:number};angle:{value:number};fabric:{value:number};
     skin:{value:number};role:{value:number};
     debug:{value:number};key:{value:THREE.Vector3}
    };
    shader.uniforms.fieldworkRimStrength=u.strength;
    shader.uniforms.fieldworkRimWidth=u.width;
    shader.uniforms.fieldworkRimCoverage=u.coverage;
+   shader.uniforms.fieldworkRimAngleLooseness=u.angle;
    shader.uniforms.fieldworkRimFabric=u.fabric;
    shader.uniforms.fieldworkRimSkin=u.skin;
    shader.uniforms.fieldworkRimRole=u.role;
@@ -455,6 +465,7 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
  return variant;
 }
 export function restoreStudioGraphicLighting(root:THREE.Object3D):void{
+ clearStudioEdgeBleed(root);
  root.traverse(node=>{
   if(!(node instanceof THREE.Mesh)||Array.isArray(node.material))return;
   const src=node.userData.fieldworkStudioArtOriginal as Source|undefined;
@@ -465,6 +476,7 @@ export function restoreStudioGraphicLighting(root:THREE.Object3D):void{
 }
 export function disposeStudioGraphicLighting(root:THREE.Object3D):void{
  restoreStudioGraphicLighting(root);
+ disposeStudioEdgeBleed(root);
  const cache=root.userData.fieldworkStudioArtCache as Cache|undefined;
  if(cache)for(const variants of cache.values())
   for(const entry of variants.values())entry.material.dispose();
@@ -474,7 +486,8 @@ export function disposeStudioGraphicLighting(root:THREE.Object3D):void{
 export function applyStudioGraphicLighting(root:THREE.Object3D,
  config:StudioLightLabSettings
 ):{meshes:number;materials:number;weapons:number}{
- const rimOn=config.rim==='dual'&&config.rimAmount>0;
+ const rimOn=config.rim==='dual'&&(
+  config.rimAmount>0||config.rimFabricOpacity>0||config.rimSkinOpacity>0);
  const shade=config.toon!==0||hasViolet(config.gradient)||
   config.gradient==='piece'||config.gradient==='piece-rose'||rimOn||
   !diagnostics().bakedVertexLighting;
@@ -502,10 +515,13 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
    'current':config.gradient;
   const hardSurface=studioContourEligible(node,src);
   const role=hardSurface?'hard':studioArtRole(node,src);
-  const eligible=hardSurface||role==='fabric'||role==='skin';
-  const litRim=rimOn&&eligible&&ensureStudioRimBounds(node.geometry);
-  // With rim-only preview, leave cloth/skin/soft gear on exact source
-  // materials. Avoid needless shader variants on unrelated mesh surfaces.
+  const litRim=rimOn&&config.rimAmount>0&&hardSurface&&
+   ensureStudioRimBounds(node.geometry);
+  // Soft equipment and skin use a genuinely extruded, depth-masked
+  // silhouette, not the hard glint's tiny on-surface edge patch.
+  if(rimOn&&(role==='fabric'||role==='skin'))
+   applyStudioEdgeBleed(root,node,src,role,config);
+  // No new material variant just to draw the separate backface shell.
   if(config.toon===0&&gradient==='current'&&!litRim&&
      diag.bakedVertexLighting)return;
   if((gradient==='piece'||gradient==='piece-rose')&&
@@ -530,12 +546,14 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
   if(litRim){
    const u=entry.material.userData.fieldworkRimUniform as
     {strength:{value:number};width:{value:number};coverage:{value:number};
-     fabric:{value:number};skin:{value:number};debug:{value:number};
+     angle:{value:number};fabric:{value:number};skin:{value:number};
+     debug:{value:number};
      key:{value:THREE.Vector3}}|undefined;
    if(u){
     u.strength.value=config.rimAmount;
     u.width.value=config.rimWidth;
     u.coverage.value=config.rimCoverage;
+    u.angle.value=config.rimAngleLooseness;
     u.fabric.value=config.rimFabricOpacity;
     u.skin.value=config.rimSkinOpacity;
     u.debug.value=config.rimDebugMask?1:0;
