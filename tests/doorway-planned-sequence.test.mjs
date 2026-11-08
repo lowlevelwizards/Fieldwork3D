@@ -28,7 +28,7 @@ const actors=[
  {id:'fast',side:'blue',health:4,p:pt(308,170),
    pace:'walk',plan:[move(3,pt(308,350))]},
  {id:'detour',side:'blue',health:4,p:pt(316,170),
-   pace:'walk',plan:[move(4,pt(360,190)),move(5,pt(320,350))]},
+   pace:'walk',plan:[move(4,pt(340,190)),move(5,pt(320,350))]},
  {id:'rear',side:'blue',health:4,p:pt(325,125),
    pace:'walk',plan:[move(6,pt(326,350))]}
 ];
