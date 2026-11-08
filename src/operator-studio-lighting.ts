@@ -76,12 +76,13 @@ export function visibleOperatorBounds(root:THREE.Object3D):THREE.Box3|null{
  * alternate wardrobe prototypes. Works independently of orbit/zoom.
  */
 export function fitStudioKeyShadow(
- light:THREE.DirectionalLight,root:THREE.Object3D,padding=STUDIO_SHADOW_PAD
+ light:THREE.DirectionalLight,root:THREE.Object3D,padding=STUDIO_SHADOW_PAD,
+ direction:THREE.Vector3=STUDIO_KEY_DIRECTION
 ):boolean{
  const bounds=visibleOperatorBounds(root);
  if(!bounds)return false;
  const center=bounds.getCenter(new THREE.Vector3());
- const eye=center.clone().addScaledVector(STUDIO_KEY_DIRECTION,100);
+ const eye=center.clone().addScaledVector(direction,100);
  light.position.copy(eye);
  light.target.position.copy(center);
  light.target.updateMatrixWorld();
@@ -113,6 +114,8 @@ export class OperatorStudioLighting{
  readonly fill:THREE.DirectionalLight;
  readonly mode:StudioShadowMode;
  private dirty=true;
+ private keyAngle=0;
+ private readonly keyDirection=STUDIO_KEY_DIRECTION.clone();
  private liveEnabled:boolean;
  private readonly renderer:THREE.WebGLRenderer;
  readonly shadowSize:512|1024|2048;
@@ -157,6 +160,16 @@ export class OperatorStudioLighting{
   this.fill.intensity=(legacy?p.legacyFillIntensity:p.fillIntensity)*
    (color==='plum-plus'?1.35:color==='plum-noir'?1.5:1);
  }
+ /** Lab-only orbit. The approved zero-angle key is restored on A/B compare. */
+ setKeyAngle(degrees:number){
+  const angle=THREE.MathUtils.clamp(degrees,-180,180);
+  if(angle===this.keyAngle)return;
+  this.keyAngle=angle;
+  this.keyDirection.copy(STUDIO_KEY_DIRECTION)
+   .applyAxisAngle(new THREE.Vector3(0,1,0),THREE.MathUtils.degToRad(angle));
+  this.key.position.copy(this.keyDirection).multiplyScalar(100);
+  this.invalidateGeometry();
+ }
  invalidateGeometry(){this.dirty=true;}
  setLiveShadows(enabled:boolean){
   if(this.mode==='legacy')return;
@@ -167,7 +180,7 @@ export class OperatorStudioLighting{
  }
  beforeRender(operator:THREE.Object3D|null){
   if(!operator||!this.liveEnabled||!this.dirty)return;
-  if(fitStudioKeyShadow(this.key,operator)){
+  if(fitStudioKeyShadow(this.key,operator,STUDIO_SHADOW_PAD,this.keyDirection)){
    this.renderer.shadowMap.needsUpdate=true;
    this.dirty=false;
   }

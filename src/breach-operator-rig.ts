@@ -301,7 +301,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     headCloth=cloth.clone(),headArmor=vest.clone();
    // Only textiles are unfolded across adjacent faces; leave rubber, steel,
    // skin and the approved, separately authored headwear atlas untouched.
-   for(const material of [cloth,trousers,vest,packFabric,gearFabric])
+   for(const material of [cloth,trousers,vest,packFabric,gearFabric,headCloth])
     material.userData.fieldworkFabric=true;
    // Fixed grayscale AO uses existing textile shaders and textures.
    for(const kitMaterial of [
@@ -341,6 +341,9 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   // Faces and necks are real receiving surfaces for projected hat/collar
   // shadows, independent of the skin tint shared by arms and hands.
   const faceSkin=skin.clone(),neckSkin=skin.clone();
+  // Explicit skin identity for the Studio-only faux subsurface light band.
+  // Do not infer skin from diffuse RGB; complexions remain freely editable.
+  for(const m of [skin,faceSkin,neckSkin])m.userData.fieldworkStudioSkin=true;
   const neckMesh=block(head,0,-3,0,3.6,4,3.8,neckSkin);
   const faceMesh=block(head,0,3,0,8,8,8,faceSkin);
   mapSkinReceiverAtlas(neckMesh.geometry as THREE.BoxGeometry);

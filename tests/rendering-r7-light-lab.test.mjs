@@ -47,11 +47,15 @@ test('R7.10 Lighting Lab presents only usable user-selected choices',()=>{
  assert.match(html,/2-band · very graphic/);
  assert.match(html,/Each item · soft grayscale/);
  assert.match(html,/Each item · dusty gray-rose/);
- assert.match(html,/Metal, weapons \+ bare helmets/);
+ assert.match(html,/Material glints/);
  assert.match(html,/RIM OPACITY/);
  assert.match(html,/id="studioRimAmount"[^>]*max="1"[^>]*value="0.80"/);
  assert.match(html,/Saturated plum/);
  assert.match(html,/PREVIEW WITH WEAPON/);
+ for(const id of ['studioRimWidth','studioRimCoverage','studioRimFabric',
+  'studioRimSkin','studioLightAzimuth','studioRimMask'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/OPEN 3D ARSENAL LIGHTING LAB/);
  const ts=read('src/operator-studio.ts');
  assert.match(ts,/labCelLowWrap\.hidden=!celOn/);
  assert.match(ts,/labRimAmountWrap\.hidden=!rimOn/);
@@ -72,4 +76,18 @@ test('R7.10 lighting cannot be stored in roster or loadout',()=>{
  assert.match(grid,/setLightingSettings\(settings:StudioLightLabSettings\)/);
  assert.match(grid,/previous\.rimAmount===settings\.rimAmount/);
  assert.match(grid,/this\.cache\.clear\(\)/);
+});
+
+test('R7.14 Arsenal Lab uses actual Workbench 3D scene and avoids save pollution',()=>{
+ const lab=read('src/arsenal/lighting-lab.ts');
+ const viewer=read('src/arsenal/viewport.ts');
+ const screen=read('src/arsenal/workbench-screen.ts');
+ assert.match(lab,/mountArsenalLightingLab/);
+ assert.match(lab,/COMPARE ORIGINAL/);
+ assert.match(lab,/SINGLE-EDGE COVERAGE/);
+ assert.match(lab,/KEY LIGHT ORBIT/);
+ assert.doesNotMatch(lab,/localStorage|sessionStorage|persistArsenal/);
+ assert.match(viewer,/applyStudioGraphicLighting\(this\.model,settings\)/);
+ assert.match(viewer,/disposeStudioGraphicLighting\(this\.model\)/);
+ assert.match(screen,/mountArsenalLightingLab\(panel/);
 });

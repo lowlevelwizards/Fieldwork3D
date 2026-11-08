@@ -50,13 +50,22 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  assert.equal(rimMin.count,receiver.geometry.getAttribute('position').count);
  assert.equal(ensureStudioRimBounds(receiver.geometry),true);
  assert.equal(receiver.geometry.getAttribute('fieldworkRimBoundsMin'),rimMin);
- assert.equal(uniform.material,fabric,'matte fabric remains unchanged');
+ assert.notEqual(uniform.material,fabric,'opt-in preview lights fabric');
+ assert.equal(uniform.material.userData.fieldworkStudioArtOnly,true);
  const mock=shader();
  receiver.material.onBeforeCompile(mock,null);
  assert.match(mock.fragmentShader,/getShadowMask\(\)/);
  assert.match(mock.fragmentShader,/fwFacesKey/);
  assert.match(mock.fragmentShader,/fwReceivedLight/);
- assert.match(mock.fragmentShader,/outgoingLight=mix\(outgoingLight,vec3\(1\.15\)/);
+ assert.match(mock.fragmentShader,/fwTarget/);
+ assert.match(mock.fragmentShader,/fieldworkRimRole/);
+ assert.match(mock.fragmentShader,/fwTravel/);
+ assert.match(mock.fragmentShader,/fwSingleEdge/);
+ assert.match(mock.fragmentShader,/fieldworkRimWidth/);
+ assert.match(mock.fragmentShader,/fieldworkRimCoverage/);
+ assert.match(mock.fragmentShader,/fieldworkRimKeyWorld/);
+ assert.match(mock.fragmentShader,/fieldworkRimSkin/);
+ assert.match(mock.fragmentShader,/fieldworkRimFabric/);
  assert.match(mock.fragmentShader,/smoothstep\(\.67-fwEdgeWidth,\.71\+fwEdgeWidth/);
  assert.doesNotMatch(mock.fragmentShader,/outgoingLight\+=vec3\(\.96,\.88,\.74\)/);
  assert.match(mock.fragmentShader,/fieldworkRimStrength/);
@@ -69,11 +78,14 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  assert.doesNotMatch(mock.fragmentShader,/fwPattern|fwCells/);
  const uniformRef=mock.uniforms.fieldworkRimStrength;
  assert.equal(uniformRef.value,.80);
+ assert.equal(mock.uniforms.fieldworkRimCoverage.value,.30);
+ assert.equal(mock.uniforms.fieldworkRimWidth.value,1.4);
  const variant=receiver.material,programKey=variant.customProgramCacheKey();
  applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.95}));
  assert.equal(receiver.material,variant);
  assert.equal(variant.customProgramCacheKey(),programKey);
  assert.equal(uniformRef.value,.95);
+ assert.equal(mock.uniforms.fieldworkRimCoverage.value,.30);
  restoreStudioGraphicLighting(root);
  assert.ok(receiver.material instanceof THREE.MeshStandardMaterial);
  disposeStudioGraphicLighting(root);
@@ -179,4 +191,32 @@ test('R7.12 original Look restores with direct-light rim disabled',()=>{
  assert.deepEqual(effectiveStudioLightLab(q,true),original);
  assert.equal(q.rimAmount,.10);
  assert.equal(ensureStudioPieceGradient(new THREE.BufferGeometry()),false);
+});
+
+test('R7.14 skin ink is explicit, complexion-aware, opt-in and reversible',()=>{
+ const root=new THREE.Group();
+ const skin=new THREE.MeshStandardMaterial({color:0x55372c});
+ skin.userData.fieldworkStudioSkin=true;
+ const cloth=new THREE.MeshStandardMaterial({color:0x857354});
+ cloth.userData.fieldworkFabric=true;
+ const head=cube(skin),shirt=cube(cloth);
+ root.add(head,shirt);
+ applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.9,
+  rimWidth:2,rimCoverage:.2,rimSkinOpacity:.34,rimFabricOpacity:.14,
+  rimDebugMask:true,lightAzimuth:45}));
+ assert.notEqual(head.material,skin);
+ assert.notEqual(shirt.material,cloth);
+ const skinShader=shader();head.material.onBeforeCompile(skinShader,null);
+ assert.equal(skinShader.uniforms.fieldworkRimRole.value,2);
+ assert.equal(skinShader.uniforms.fieldworkRimSkin.value,.34);
+ assert.equal(skinShader.uniforms.fieldworkRimDebug.value,1);
+ assert.equal(skinShader.uniforms.fieldworkRimWidth.value,2);
+ assert.equal(skinShader.uniforms.fieldworkRimCoverage.value,.2);
+ const clothShader=shader();shirt.material.onBeforeCompile(clothShader,null);
+ assert.equal(clothShader.uniforms.fieldworkRimRole.value,1);
+ assert.equal(clothShader.uniforms.fieldworkRimFabric.value,.14);
+ applyStudioGraphicLighting(root,look({rim:'off',toon:0}));
+ assert.equal(head.material,skin);
+ assert.equal(shirt.material,cloth);
+ disposeStudioGraphicLighting(root);
 });

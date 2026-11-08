@@ -170,9 +170,16 @@ export class OperatorAppearanceGrid{
      previous.celLow===settings.celLow&&
      previous.celHigh===settings.celHigh&&
      previous.rimAmount===settings.rimAmount&&
+     previous.rimWidth===settings.rimWidth&&
+     previous.rimCoverage===settings.rimCoverage&&
+     previous.rimFabricOpacity===settings.rimFabricOpacity&&
+     previous.rimSkinOpacity===settings.rimSkinOpacity&&
+     previous.rimDebugMask===settings.rimDebugMask&&
+     previous.lightAzimuth===settings.lightAzimuth&&
      previous.allSurfaces===settings.allSurfaces)return;
   this.lightingSettings={...settings};
   this.lighting.setShadowColor(settings.shadow);
+  this.lighting.setKeyAngle(settings.lightAzimuth);
   this.cache.clear();
   for(const card of this.cards.values())card.readyKey='';
   this.paint();

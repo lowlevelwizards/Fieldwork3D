@@ -2,6 +2,10 @@
  * No socket dots, duplicated part UI, inventory writes, or continuous animation.
  */
 import * as THREE from 'three';
+import {applyStudioGraphicLighting,disposeStudioGraphicLighting}
+ from '../operator-studio-graphic-lighting.ts';
+import {effectiveStudioLightLab,DEFAULT_STUDIO_LIGHT_LAB,
+ type StudioLightLabSettings} from '../operator-studio-light-lab.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from '../breach-weapon-accessories.ts';
 import {weaponVisualLayout} from '../weapons/geometry/weapon-visual-layout.ts';
@@ -19,6 +23,10 @@ export class ArsenalViewport{
  private readonly scene=new THREE.Scene();
  private readonly camera=new THREE.PerspectiveCamera(37,1,.1,400);
  private readonly model=new THREE.Group();
+ private readonly keyLight=new THREE.DirectionalLight(0xf8d8a8,2.6);
+ private readonly hemisphere=new THREE.HemisphereLight(0xe2e9d9,0x253c36,2.3);
+ private lighting:StudioLightLabSettings={...DEFAULT_STUDIO_LIGHT_LAB};
+ private compareOriginal=true;
  private readonly steel=new THREE.MeshStandardMaterial({color:0x707875,roughness:.78,flatShading:true});
  private readonly dark=new THREE.MeshStandardMaterial({color:0x303a38,roughness:.84,flatShading:true});
  private readonly resizeObserver:ResizeObserver;
@@ -51,9 +59,11 @@ export class ArsenalViewport{
   this.canvas.style.touchAction='none';
   host.append(this.canvas);
   this.scene.background=new THREE.Color(0x162723);
-  this.scene.add(new THREE.HemisphereLight(0xe2e9d9,0x253c36,2.3));
-  const key=new THREE.DirectionalLight(0xf8d8a8,2.6);
-  key.position.set(30,55,70);this.scene.add(key,this.model);
+  this.keyLight.position.set(30,55,70);
+  this.scene.add(this.hemisphere,this.keyLight,this.model);
+  // The Arsenal uses the same real authored weapon parts as gameplay; every
+  // opaque piece can audition the Studio weapon material without recoloring.
+  this.model.userData.fieldworkWeaponPresentation=true;
   let renderer:THREE.WebGLRenderer|null=null;
   try{
    renderer=new THREE.WebGLRenderer({canvas:this.canvas,antialias:false,
@@ -77,6 +87,8 @@ export class ArsenalViewport{
   this.setRecipe(recipe,false);
  }
  private clearParts(){
+  // Return source materials before disposing weapon geometry and caches.
+  disposeStudioGraphicLighting(this.model);
   if(this.highlight){this.scene.remove(this.highlight);
    this.highlight.geometry.dispose();
    for(const material of Array.isArray(this.highlight.material)?this.highlight.material:[this.highlight.material])material.dispose();
@@ -106,8 +118,42 @@ export class ArsenalViewport{
    config.build?.parts.receiver==='hk-mp5k-stockless');
   if(!preserveView){this.distance=this.fitDistance;this.yaw=.12;this.pitch=.12;}
   else this.distance=remapArsenalZoom(oldFit,this.distance,this.fitDistance);
-  this.setSelectedSlot(this.selected);this.invalidate();
+  this.setSelectedSlot(this.selected);
+  this.applyLightingPreview();this.invalidate();
   return true;
+ }
+ /** Preview-only lighting, never stored in build recipes or inventory. */
+ setLighting(settings:StudioLightLabSettings,compareOriginal=false){
+  this.lighting=effectiveStudioLightLab(settings);
+  this.compareOriginal=compareOriginal;
+  this.applyLightingPreview();
+  this.invalidate();
+ }
+ private applyLightingPreview(){
+  const active=!this.compareOriginal&&
+   (this.lighting.toon!==0||this.lighting.rim!=='off'||
+    this.lighting.gradient!=='current');
+  const settings=active?this.lighting:effectiveStudioLightLab(this.lighting,true);
+  if(active){
+   this.keyLight.color.setHex(0xfff2d6);
+   this.keyLight.intensity=2.35;
+   this.hemisphere.color.setHex(0xffffff);
+   this.hemisphere.groundColor.setHex(
+    settings.shadow==='plum-plus'?0x5b466c:0x798a7f);
+   this.hemisphere.intensity=1.20;
+   const a=THREE.MathUtils.degToRad(settings.lightAzimuth);
+   this.keyLight.position.set(.46,.88,.07).normalize()
+    .applyAxisAngle(new THREE.Vector3(0,1,0),a)
+    .multiplyScalar(90);
+  }else{
+   this.keyLight.color.setHex(0xf8d8a8);
+   this.keyLight.intensity=2.6;
+   this.keyLight.position.set(30,55,70);
+   this.hemisphere.color.setHex(0xe2e9d9);
+   this.hemisphere.groundColor.setHex(0x253c36);
+   this.hemisphere.intensity=2.3;
+  }
+  applyStudioGraphicLighting(this.model,settings);
  }
  setSelectedSlot(slot:ArsenalSlot){
   this.selected=slot;
