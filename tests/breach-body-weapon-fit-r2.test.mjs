@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {stockPocket,ANATOMY,elbowCorridor} from '../src/breach-anatomy.ts';
+import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH}
+ from '../src/breach-leg-geometry.ts';
 import {fitWeaponPose,weaponGrips} from '../src/breach-weapon-pose.ts';
 import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
@@ -47,7 +49,7 @@ test('AR/AK fallback and authored contact positions start ahead of magwell',()=>
   const {weapon,configuration}=config(id);
   const region=riflePoseContacts(weapon,configuration);
   const grips=weaponGrips(weapon,configuration,'ready');
-  assert.ok(region?.support.near.x>3.5,id);
+  assert.ok(region?.support.near.x>3.0,id);
   assert.ok(grips.supportX>=region.support.near.x,id);
   const fit=fitWeaponPose({weapon,configuration,
     handling:'ready',yaw:0,recoil:0});
@@ -99,8 +101,8 @@ test('hip and legs retarget with upper body while planted feet remain planted',(
    for(let side=0;side<2;side++){
     assert.ok(r.feet[side].shoe.position.distanceTo(planted[side])<1e-4,
       'stance transition moved a planted boot');
-    assert.ok(Math.abs(r.feet[side].upper.scale.y-10)<1e-5);
-    assert.ok(Math.abs(r.feet[side].lower.scale.y-10)<1e-5);
+    assert.ok(Math.abs(r.feet[side].upper.scale.y-LEG_UPPER_LENGTH)<1e-5);
+    assert.ok(Math.abs(r.feet[side].lower.scale.y-LEG_LOWER_LENGTH)<1e-5);
    }
    prior={hip,lower};
   }

@@ -84,7 +84,8 @@ test('169: Lab diagnostics and version label use the same elbow profile',()=>{
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
  const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
- assert.match(html,/Build 169/);
+ assert.match(html,/id="poseAnimation"/,
+   'Pose Lab still exposes authored stance selection');
  assert.match(lab,/rig\.handlingProfile\?\?undefined/);
  assert.match(rig,/elbowCorridor\(handling,sign as -1\|1,profile\)/);
  assert.match(rig,/profile\.supportShoulderForward/);

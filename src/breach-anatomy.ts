@@ -25,7 +25,7 @@ export function stockPocket(mode:Handling):Anchor3{
     // shoulder rather than centering the receiver against the sternum.
     // +Z is the firing/right side in the legacy anatomical frame.
     // The exact same rigid fit feeds live presentation and shot-time muzzle.
-    case 'short':return {x:-.90,y:-2.2,z:10.15};
+    case 'short':return {x:-.90,y:-2.2,z:10.35};
     case 'point':return {x:3.75,y:5.35,z:7.95};
     case 'ads':return {x:3.62,y:5.92,z:8.04};
   }
