@@ -2674,3 +2674,16 @@ body.replaying .replay-top-hud{
  font:650 13px/1.2 var(--fw-font-action,sans-serif)}
 .site-settings .miniature-focus-options button[aria-pressed="true"]{
  background:#c1cca9;color:#182b24;border-color:#e0d5aa}
+
+
+/* R9.5: visible, falsifiable Director self-grade. Fits inside the existing
+ * replay mode pill so it remains in screenshots without a new HUD panel. */
+body.replaying .replay-follow-status[data-grade]{
+  min-height:49px;flex-direction:column;justify-content:center;
+  align-items:center;gap:3px;overflow:visible
+}
+body.replaying .replay-follow-status[data-grade]::after{
+  content:"SHOT " attr(data-grade);
+  display:block;font:700 10px/1 "Saira Condensed",sans-serif;
+  color:#e9cfa1;letter-spacing:.11em;white-space:nowrap
+}

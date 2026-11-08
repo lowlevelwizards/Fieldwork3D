@@ -11,6 +11,7 @@ import type {DirectorFilmBeat} from './breach-replay-director-film.ts';
 import type {DirectorEntryEvent} from './breach-replay-director-crossings.ts';
 import type {DirectorActionLine} from './breach-replay-director-action.ts';
 import type {DirectorRecordedContact} from './breach-replay-director-contact.ts';
+import type {DirectorDiscovery} from './breach-replay-director-discovery.ts';
 import {selectDirectorEditorialShot,type DirectorEditorialShot}
   from './breach-replay-director-edit.ts';
 import {physicalDirectorView,directorLineBlocked}
@@ -30,6 +31,7 @@ export type DirectorShotContext={
   actionPair?:{shooter:Pt;target:Pt}|null;
   actionLines?:readonly DirectorActionLine[];
   contact?:DirectorRecordedContact|null;
+  discovery?:DirectorDiscovery|null;
   entry?:DirectorEntryEvent|null;
   editorial?:DirectorEditorialShot|null;
   usableWidth?:number;usableHeight?:number;
@@ -57,6 +59,8 @@ export type DirectorShot=CinematicShot&{
   foregroundOperatorPoints?:Pt[];
   /** Explicit real, disclosed enemy target. Never infer from an endpoint. */
   contactTargetPoint?:Pt|null;
+  /** Actual newly discovered ground / sightline during this beat. */
+  discoveryStrength?:number;
   /** HOLD/REFRAME/TRACK/CUT derived from storyboard decision. */
   cameraDecision?:string
 };
@@ -123,6 +127,8 @@ export function composeReplayDirectorShot(time:number,
   const optional=plan.optional.filter(p=>dist(p,primary.p)<145);
   const fitSubjects=[...required,...optional.slice(
     0,isContact?0:isDoor?2:3)];
+  if((plan.discoveryStrength??0)>0&&plan.interest)
+    fitSubjects.push(plan.interest);
   let hero=primary;
   let physical=physicalDirectorView({
     operator:primary.p,focus,
@@ -145,7 +151,9 @@ export function composeReplayDirectorShot(time:number,
     composition:{treatment:plan.kind,
       baseSpan,usableWidth:context.usableWidth??.78,
       usableHeight:context.usableHeight??.76,
-      safeFrame:context.safeFrame}
+      safeFrame:context.safeFrame,
+      discoveryStrength:plan.discoveryStrength??0,
+      attentionPoint:plan.discoveryStrength?plan.interest:null}
   },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
   // If the nominated protagonist is truly invisible, the final fallback
   // is another historically recorded friendly. This is a cutaway, not
@@ -227,7 +235,9 @@ export function composeReplayDirectorShot(time:number,
     cameraAnchor:physical.cameraAnchor,
     fov:physical.fov,operatorPoint:{...hero.p},
     framePoints:points,
-    attentionPoint:hero===primary?plan.target??door?.mid??null:null,
+    attentionPoint:hero===primary?
+      plan.target??door?.mid??(plan.discoveryStrength?plan.interest:null):
+      null,
     followDirection:movementDirection,
     firstEntry:plan.firstEntry,
     actionWeight:isContact?1:isDoor?.85:
@@ -242,5 +252,6 @@ export function composeReplayDirectorShot(time:number,
     subjectVisibility:physical.subjectVisibility,
     subjectReadable:physical.subjectReadable&&finalQuality.primaryReadable,
     foregroundOperatorPoints:friends.map(a=>a.p),
-    contactTargetPoint:isContact?plan.target:null};
+    contactTargetPoint:isContact?plan.target:null,
+    discoveryStrength:plan.discoveryStrength??0};
 }

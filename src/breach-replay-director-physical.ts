@@ -8,7 +8,7 @@ import {doorOpticalSegment,doorTransmitsSightAndLight,
   type Door,type Obstacle} from './breach-core.ts';
 import {directorPerspectiveCovers,directorOrthoFittingZoom,
   directorCompositionQuality,directorForegroundOccupancy,
-  directorProjectedActionVisibility,
+  directorProjectedActionVisibility,directorAttentionVisible,
   type DirectorForegroundSegment,type DirectorSafeFrame,
   type DirectorCompositionTreatment,type DirectorCompositionQuality}
   from './breach-replay-director-projection.ts';
@@ -40,7 +40,8 @@ export type PhysicalDirectorRequest={
   doorPoint?:PhysicalPoint|null;
   doorNormal?:PhysicalPoint|null;
   composition?:{treatment:DirectorCompositionTreatment;baseSpan:number;
-    usableWidth:number;usableHeight:number;safeFrame?:DirectorSafeFrame};
+    usableWidth:number;usableHeight:number;safeFrame?:DirectorSafeFrame;
+    discoveryStrength?:number;attentionPoint?:PhysicalPoint|null};
 };
 export type PhysicalDirectorView={
   cameraAnchor:PhysicalPoint;focus:PhysicalPoint;
@@ -368,7 +369,8 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     // outside the lens is never an acceptable successful composition.
     const candidate=essentialVisible.length*310-
       (mandatory.length-essentialVisible.length)*450+
-      visible.length*(req.composition?.treatment==='door'||
+      visible.length*(req.composition?.discoveryStrength?2:
+        req.composition?.treatment==='door'||
         req.composition?.treatment==='entry'?22:9)+
       (targetVisible?(req.targetWeight??155):0)-
       (req.target&&!targetVisible?100:0)-
@@ -527,6 +529,19 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
         Math.max(0,fg.wall-.55)*390+
         Math.max(0,fg.furniture-.69)*120+
         Math.max(0,fg.subjectMask-.42)*95;
+      if((req.composition.discoveryStrength??0)>.1&&
+        req.composition.attentionPoint){
+        const attention=req.composition.attentionPoint;
+        const disclosedLook=directorAttentionVisible(
+          v.cameraAnchor,v.focus,attention,'ortho',aspect,
+          req.composition.baseSpan,zoom,v.fov,
+          req.composition.safeFrame)&&
+          !directorLineBlocked(v.cameraAnchor,attention,scene);
+        // Seeing what is newly discovered outranks fitting the cast,
+        // but can't excuse a missing protagonist or an illegal camera.
+        candidate.score+=(disclosedLook?340:-410)*
+          (req.composition.discoveryStrength??0);
+      }
       if(req.composition.treatment==='engage'&&req.actionLines?.length){
         const opticallyClear=req.actionLines.filter(line=>
           !directorLineBlocked(v.cameraAnchor,line.start,scene)&&

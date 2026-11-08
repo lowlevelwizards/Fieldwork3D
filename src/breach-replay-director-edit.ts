@@ -10,6 +10,7 @@ import type {DirectorFutureCue} from './breach-replay-director-events.ts';
 import type {DirectorFilmBeat} from './breach-replay-director-film.ts';
 import type {DirectorEntryEvent} from './breach-replay-director-crossings.ts';
 import type {DirectorRecordedContact} from './breach-replay-director-contact.ts';
+import type {DirectorDiscovery} from './breach-replay-director-discovery.ts';
 
 export type Point={x:number;y:number};
 export type DirectorEditorialKind=
@@ -24,6 +25,8 @@ export type DirectorEditorialShot={
   required:Point[];optional:Point[];
   /** A true crossing is a cue to evaluate framing, never an automatic cut. */
   firstEntry:boolean;
+  /** Strength of verifiably NEW historical information in this shot. */
+  discoveryStrength?:number;
   reason:string;
 };
 export type DirectorEditorialEvidence={
@@ -31,6 +34,7 @@ export type DirectorEditorialEvidence={
   beat?:DirectorFilmBeat|null;
   actionPair?:{shooter:Point;target:Point}|null;
   contact?:DirectorRecordedContact|null;
+  discovery?:DirectorDiscovery|null;
   upcoming:DirectorFutureCue|null;
   entry?:DirectorEntryEvent|null
 };
@@ -68,6 +72,24 @@ export function selectDirectorEditorialShot(
     doorIntents.find(i=>i.actorId===e.entry!.actorId&&
       i.door?.id===e.entry!.doorId):undefined;
   const leadDoor=futureEntry??strongestDoor;
+  // Previously unseen ground is a discovery cue, not permission to invent
+  // actor positions. Prefer the real observing operator when known; else
+  // an ACTIVE look/watch or actual leading movement, never a future target.
+  const revealIntent=e.discovery&&e.discovery.strength>.2?
+    e.intents.filter(i=>byId(i.actorId)).slice().sort((a,b)=>{
+      const value=(i:DirectorIntent)=>i.watchDirection?100:
+        i.kind==='entry'||i.kind==='breach'?80:
+        i.kind==='approach'?65:i.speed>6?50+i.speed*.1:0;
+      return value(b)-value(a)||a.actorId.localeCompare(b.actorId);
+    })[0]:null;
+  const revealActor=e.discovery?.observerId&&
+    byId(e.discovery.observerId)||
+    (revealIntent&&(
+      revealIntent.watchDirection||revealIntent.speed>6||
+      ['entry','breach','approach'].includes(revealIntent.kind))?
+      byId(revealIntent.actorId):undefined);
+  const isGroundReveal=!!revealActor&&!!e.discovery&&
+    (e.discovery.newGround>=3||e.discovery.newCivilians>0);
   let primary:DirectorActor|undefined;
   let kind:DirectorEditorialKind='establish';
   let reason='establish geography',priority=1;
@@ -114,6 +136,10 @@ export function selectDirectorEditorialShot(
     doorId=e.beat.doorId;
     door=intent(primary!.id)?.door??null;
     target={...e.beat.target};
+  }else if(isGroundReveal&&revealActor){
+    primary=revealActor;
+    kind='follow';priority=4.65;
+    reason='newly discovered recorded ground / sightline';
   }else if(leadDoor&&byId(leadDoor.actorId)){
     primary=byId(leadDoor.actorId);
     kind='door';priority=4.2;
@@ -156,6 +182,12 @@ export function selectDirectorEditorialShot(
     unit(i.watchDirection);
   if(kind==='entry'&&i?.direction)actionDirection=travel;
   let interest:Point|null=null;
+  if(kind==='follow'&&isGroundReveal&&!i?.watchDirection){
+    // Show where a moving observer is looking into new terrain, rather
+    // than choosing a wider frame just to fit unrelated teammates.
+    interest={x:primary.p.x+travel.x*78,
+      y:primary.p.y+travel.y*78};
+  }
   if(kind==='follow'&&i?.watchDirection){
     // Executed LOOK/WATCH and actual aim should lead the photograph.
     // The CAMERA still travels with the actual movement vector; only
@@ -211,8 +243,13 @@ export function selectDirectorEditorialShot(
   const mandatory=kind==='engage'?target:
     (kind==='door'||kind==='entry')?(door?.mid??target):null;
   if(mandatory)required.push({...mandatory});
-  const optional=secondary.map(a=>({...a.p}));
-  if(kind==='follow'&&i&&i.route.length>1){
+  const discoveryStrength=isGroundReveal&&kind==='follow'?
+    e.discovery?.strength??0:0;
+  // Familiar geography welcomes an ensemble. New territory belongs to
+  // the featured observer and their line of sight, not four backpacks.
+  const optional=discoveryStrength>0?[]:
+    secondary.map(a=>({...a.p}));
+  if(kind==='follow'&&i&&i.route.length>1&&discoveryStrength===0){
     const lead=i.route.find(p=>distance(p,primary!.p)>25);
     if(lead)optional.push({...lead});
   }
@@ -225,5 +262,6 @@ export function selectDirectorEditorialShot(
   return {id:identity,kind,priority,primaryActorId:primary.id,
     secondaryActorIds:secondary.map(a=>a.id),target,door,doorId,
     interest,
-    actionDirection,required,optional,firstEntry,reason};
+    actionDirection,required,optional,firstEntry,
+    discoveryStrength,reason};
 }
