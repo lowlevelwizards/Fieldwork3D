@@ -185,6 +185,11 @@ export const FIELDWORK_ICON_FAMILY:Record<string,Glyph>={
     "viewBox": "0 0 40 40",
     "strokeWidth": 2.4
   },
+  "medical": {
+    "markup": "<path d=\"M18 6H30V18H42V30H30V42H18V30H6V18H18Z\"/>",
+    "viewBox": "0 0 48 48",
+    "strokeWidth": 2.65
+  },
   "focus": {
     "markup": "<circle cx=\"24\" cy=\"24\" r=\"8\"/><path d=\"M24 4V12M24 36V44M4 24H12M36 24H44\"/>",
     "viewBox": "0 0 48 48",
@@ -214,6 +219,7 @@ const aliases:Record<string,string>={
   "ctxDelete": "deletePoint",
   "ctxPush": "push",
   "ctxWindow": "window",
+  "ctxTreat": "medical",
   "siteSettingsToggle": "settings",
   "reset": "restart",
   "cancelTarget": "cancelTarget",

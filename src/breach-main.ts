@@ -2135,11 +2135,12 @@ function updateContext(){
   const nearbyDoor=selectedWatch?undefined:focusedDoor(a,node);
   const door=doorFocusId?nearbyDoor:undefined;
   const current=plannedControl(state,selected,node?.id);
-  const at=finalPoint(a);
+  const at=node?.p??finalPoint(a);
   const nearMovable=state.coverState.some(o=>canRelocateCover(o)&&
     distance(at,{x:o.x,y:o.y})<Math.max(o.w,o.h)/2+43);
   const nearWindow=state.windows.some(w=>w.operable&&!w.shattered&&
     distance(at,{x:w.x,y:w.y})<54);
+  const treatTarget=medicalCandidate(selected,at);
   // WATCH remains active through later waypoints until LOOK or RELEASE.
   // Read the authored history, not merely this node's local modifier.
   let watchActive=a.aimInstruction?.mode==='track'&&a.pace!=='run';
@@ -2169,7 +2170,8 @@ function updateContext(){
       title:'Stop tracking this point; leave movement orders unchanged'}
   ]:contextActionChoices({
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
-    nearMovable,nearWindow,nearDoor:!door&&!!nearbyDoor,
+    nearMovable,nearWindow,treatTargetName:treatTarget?.name,
+    nearDoor:!door&&!!nearbyDoor,
     nearCivilian:!!civilianAtPlan&&civilianAtPlan.state!=='compliant',
     escortableCivilian:!!civilianAtPlan&&
       civilianAtPlan.rescueTarget&&state.mission==='extract',
@@ -2501,17 +2503,23 @@ const handleContextAction=(event:MouseEvent)=>{
         state.events.push('CANNOT PLAN RELOAD');
       break;
     case 'ctxPush':
-      if(!planNearbyInteraction(state,selected,'push'))
+      if(!planNearbyInteraction(state,selected,'push',node?.id))
         state.events.push('NO PUSHABLE OBJECT IN REACH');
       break;
+    case 'ctxTreat':{
+      const patient=medicalCandidate(selected,node?.p??finalPoint(a));
+      if(!patient||!planMedicalTreatment(state,selected,patient.id,node?.id))
+        state.events.push('NO REACHABLE PATIENT WITH SUITABLE SUPPLIES');
+      break;
+    }
     case 'ctxWindow':{
-      const at=finalPoint(a);
+      const at=node?.p??finalPoint(a);
       const nearby=state.windows.filter(w=>w.operable&&!w.shattered&&
         distance(at,{x:w.x,y:w.y})<54)
         .sort((x,y)=>distance(at,{x:x.x,y:x.y})-
           distance(at,{x:y.x,y:y.y}))[0];
       if(!nearby||!planNearbyInteraction(state,selected,
-        nearby.open?'close-window':'open-window'))
+        nearby.open?'close-window':'open-window',node?.id))
         state.events.push('NO OPERABLE WINDOW IN REACH');
       break;
     }
@@ -2639,13 +2647,14 @@ function casualtyCandidate(id:string){
  return team(state).filter(o=>o.health<=0&&!o.surrendered)
   .sort((a,b)=>distance(operator.p,a.p)-distance(operator.p,b.p))[0]??null;
 }
-function medicalCandidate(id:string){
+function medicalCandidate(id:string,origin?:Pt){
  const a=team(state).find(o=>o.id===id&&o.health>0);
  if(!a)return null;
+ const at=origin??a.p;
  return team(state).filter(o=>{
   const wound=mostUrgentWound(o.medical);
   return wound&&treatmentSupplyForWound(wound,a.medicalSupplies);
- }).sort((x,y)=>distance(a.p,x.p)-distance(a.p,y.p))[0]??null;
+ }).sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0]??null;
 }
 /** V3: render only when mission identity or roster changes; never on each frame. */
 let briefingRenderedSession:Session|null=null;
