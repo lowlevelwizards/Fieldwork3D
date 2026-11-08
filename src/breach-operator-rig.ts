@@ -154,6 +154,8 @@ export type OperatorPose={
   weaponConfiguration?:WeaponConfiguration;
   weaponLightOn?:boolean;
   treatmentActive?:boolean;treatmentProgress?:number;
+  lockpickActive?:boolean;lockpickProgress?:number;
+  interactionCrouch?:number;
   treatmentPoint?:{x:number;y:number};
   /** Opt-in to contact-position weight transfer for lab candidate only. */
   hybridSupport?:boolean;
@@ -1017,7 +1019,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // before the one authoritative root heading can be selected.
   // Fixed-step recorded acceleration replaces render-rate velocity deltas.
   const braking=clamp(-(p.acceleration??0)/180,-1,1);
-  const crouch=p.posture==='crouch'?8:0;
+  const crouch=p.posture==='crouch'?8:
+    8*clamp(p.interactionCrouch??0,0,1);
   r.hip.position.y=LEG_HIP_HEIGHT-crouch;
   r.chest.position.y=26-crouch;
   // Low traversal carries a rearward pelvis and counterbalanced thorax.
@@ -1846,11 +1849,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     local.applyAxisAngle(P(0,1,0),-r.chest.rotation.y);
     // Deliberate hand-off: release weapon, reach physical handle, and
     // return the support hand to its real gun grip after the latch moves.
-    const reach=smooth(doorAge/.32)*
-      (1-smooth((doorAge-.62)/.48));
+    const reach=p.lockpickActive?smooth(doorAge/.32):
+      smooth(doorAge/.32)*(1-smooth((doorAge-.62)/.48));
     r.chest.position.x=clamp(local.x-13,0,2.4)*reach;
     fullDoorContact=local.sub(P(r.chest.position.x,0,0)).clone();
     leftGrip.copy(fit.support).lerp(fullDoorContact,reach);
+    if(p.lockpickActive){
+      const phase=(p.lockpickProgress??0)*Math.PI*20;
+      leftGrip.x+=Math.sin(phase)*.72*reach;
+      leftGrip.y+=Math.cos(phase)*.34*reach;
+    }
   }
   // Preview-only evaluation; production continues to use the proven path.
   const dynamicEnvelope=p.poseV3Preview?poseEnvelope:null;
