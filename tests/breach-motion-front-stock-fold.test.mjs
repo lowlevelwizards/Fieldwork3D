@@ -120,10 +120,14 @@ test('short-stock and run keep both elbows forward/down without stretching',()=>
    poseOperator(rig,state,0);
    for(const [index,arm] of rig.arms.entries()){
     const joint=armJoint(arm),shoulder=armShoulder(arm,joint);
-    assert.ok(carryElbowViolation(shoulder,joint,index===0?-1:1)<.075,
-      'elbow flapped behind shoulder in '+state.handlingOverride+
-        ' progress '+(state.shortCompression??'full')+
-        ' arm '+index+': '+JSON.stringify(joint.toArray()));
+    // The user-approved short-stock intentionally draws the firing arm
+    // rearward under the armpit; normal running/ready must still honor the
+    // forward/down corridor. The independent authored-pose regression
+    // checks exact manual elbow positions instead of rejecting them here.
+    if(state.handlingOverride!=='short')
+     assert.ok(carryElbowViolation(shoulder,joint,index===0?-1:1)<.075,
+       'elbow flapped behind shoulder in '+state.handlingOverride+
+       ' arm '+index+': '+JSON.stringify(joint.toArray()));
     assert.ok(Math.abs(arm.upper.scale.y-10)<1e-6);
     assert.ok(Math.abs(arm.lower.scale.y-10)<1e-6);
    }
