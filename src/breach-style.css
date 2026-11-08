@@ -2419,3 +2419,6 @@ body.replaying #replayTopHud *{-webkit-tap-highlight-color:transparent}
 .replay-panel:has(.replay-drawer:not([hidden])){z-index:17}
 .replay-top-hud{z-index:19}
 .replay-choice-pop{z-index:20}
+/* A chosen rail pop-out temporarily sits above Analyze; when dismissed,
+ * the Analyze drawer regains the tap layer for its close button. */
+.replay-rail:has(.replay-choice-pop:not([hidden])){z-index:18}
