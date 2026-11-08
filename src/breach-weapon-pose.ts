@@ -1,11 +1,15 @@
 /** Rigid, shoulder-supported firearm geometry and feasible grip targets. */
 import type {WeaponId} from './breach-combat.ts';
 import {WEAPON_PLATFORMS,resolveWeaponAssembly,
+ initialWeaponConfiguration,selectWeaponFamilyPreset,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import * as THREE from 'three';
 import {stockPocket,anchorGap} from './breach-anatomy.ts';
-import {M4A1_AUTHORED_SHORT,isAuthoredM4A1,authoredShortPhase}
+import {M4A1_AUTHORED_SHORT,authoredShortPhase}
  from './breach-authored-m4a1-short-stock.ts';
+import {shortStockReference,sameAuthoredReferenceBuild,
+ transferShortStockPose} from './breach-authored-short-stock.ts';
+import type {WorkbenchPose} from './operator-pose-workbench.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
 import {lowReadyFamilyFit,lowReadyPocket} from './breach-low-ready-family-fit.ts';
 import {riflePoseContacts,supportContactAt}
@@ -54,6 +58,39 @@ export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
     handling==='short'?a.supportY:
     baseline?.y??a.supportY};
 };
+// Cache exact and adapted stock/arm endpoints together: the rig, rendered
+// weapon and shot-time muzzle MUST read the same recipe. The heavy transfer
+// runs at most once per immutable configuration, never per animation frame.
+const authoredPoseCache=new WeakMap<WeaponConfiguration,Readonly<WorkbenchPose>>();
+const classicPoseCache=new Map<WeaponId,Readonly<WorkbenchPose>>();
+const M4_REFERENCE_CONFIG=selectWeaponFamilyPreset(
+ initialWeaponConfiguration('carbine'),'ar-m4a1');
+const AK_REFERENCE_CONFIG=selectWeaponFamilyPreset(
+ initialWeaponConfiguration('rifle'),'ak-akm');
+export function liveShortStockPose(weapon:WeaponId,
+ configuration?:WeaponConfiguration):Readonly<WorkbenchPose>{
+ const valid=configuration?.weapon===weapon?configuration:undefined;
+ if(valid){
+  const cached=authoredPoseCache.get(valid);
+  if(cached)return cached;
+ }
+ const cachedClassic=!valid?classicPoseCache.get(weapon):undefined;
+ if(cachedClassic)return cachedClassic;
+ const source=shortStockReference(weapon,valid);
+ if(sameAuthoredReferenceBuild(source,valid)){
+  if(valid)authoredPoseCache.set(valid,source);
+  return source;
+ }
+ const sourceConfiguration=source.preset==='ar-m4a1'?
+  M4_REFERENCE_CONFIG:AK_REFERENCE_CONFIG;
+ const sourceGrip=weaponGrips(source.weapon,sourceConfiguration,'ready');
+ const targetGrip=weaponGrips(weapon,valid,'ready');
+ const pose=transferShortStockPose(source,sourceGrip,targetGrip,
+  weapon,valid?.build?.family??weapon);
+ if(valid)authoredPoseCache.set(valid,pose);
+ else classicPoseCache.set(weapon,pose);
+ return pose;
+}
 export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage'|'squeeze'|'entry'|'stack'|'reload'|'treat'|'traverse';
 /** Pure context-based handling selection shared with shot-time geometry.
  * Optional hysteresis only affects passive ready states, never combat.
@@ -138,12 +175,11 @@ export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
  * spikes. Only the winning solution becomes Three.js geometry.
  */
 export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
-  // Exact M4A1 manual-authoring track. No old short-stock candidate search:
-  // the weapon and shot-time barrel share this single rigid interpolation.
-  // Every joint target lives in the corresponding operator-rig manual track.
-  // Do not extrapolate this pose to unreviewed carbine builds.
-  if(input.handling==='short'&&isAuthoredM4A1(
-    input.weapon,input.configuration)){
+  // User-authored M4A1/AKM pose family. All physical weapon builds have
+  // one cached underarm tuck, derived from their *real* grip sockets.
+  // Retain the one true rigid weapon transform for rendering and firing.
+  if(input.handling==='short'){
+    const authored=liveShortStockPose(input.weapon,input.configuration);
     const phase=authoredShortPhase(input.shortCompression);
     const source=input.shortFrom&&input.shortFrom!=='short'?
       input.shortFrom:'ready';
@@ -153,10 +189,10 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     if(phase<=0)return {...from,handling:'short'};
     const data=weaponGrips(input.weapon,input.configuration,'ready');
     const deg=THREE.MathUtils.degToRad;
-    const angles=M4A1_AUTHORED_SHORT.weaponRotation;
+    const angles=authored.weaponRotation;
     const targetRotation=new THREE.Euler(deg(angles[0]),
       input.yaw+deg(angles[1]),deg(angles[2]),'XYZ');
-    const requestedStock=M4A1_AUTHORED_SHORT.targets.stock;
+    const requestedStock=authored.targets.stock;
     const targetStock=new THREE.Vector3(...requestedStock);
     const stockLocal=new THREE.Vector3(data.stockX*data.lengthScale,0,0);
     const targetOrigin=targetStock.sub(
@@ -172,7 +208,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     const primary=point(data.primaryX,data.primaryY,1.8);
     const support=point(data.supportX,data.supportY,-1.6);
     const elbowTarget=(name:'firingHand'|'supportHand')=>
-      new THREE.Vector3(...M4A1_AUTHORED_SHORT.targets[name]);
+      new THREE.Vector3(...authored.targets[name]);
     const primaryGap=primary.distanceTo(elbowTarget('firingHand'));
     const supportGap=support.distanceTo(elbowTarget('supportHand'));
     return {origin,rotation,stock,primary,support,handling:'short',
