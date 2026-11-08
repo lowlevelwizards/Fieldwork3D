@@ -113,7 +113,20 @@ function subjectGroup(actors:readonly DirectorActor[],
   const group=directorIntentGroup(ctx.intents);
   if(group&&group.count>=Math.max(2,Math.ceil(actors.length*.75))){
     const members=actors.filter(a=>group.actors.includes(a.id));
-    if(members.length>=2)return members;
+    // The very first member across a threshold may now be on the
+    // OPPOSITE signed door face and therefore absent from the old
+    // three-person approach group. Keep that person in the subject
+    // list or the camera cannot recognize the entry until the last
+    // followers have crossed.
+    const firstInside=actors.filter(a=>{
+      const intent=ctx.intents.find(i=>i.actorId===a.id);
+      return intent?.kind==='entry'&&intent.door?.id===group.door.id&&
+        intent.door.approachSide!==group.door.approachSide&&
+        intent.door.distance<46;
+    });
+    if(members.length>=2)return [
+      ...firstInside,...members.filter(a=>!firstInside.includes(a))
+    ].slice(0,ctx.maxSubjects??4);
   }
   // Do not abandon the entry element to film two operators still
   // stacked at a door. Keep the moving squad together while it is near.
