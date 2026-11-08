@@ -247,6 +247,12 @@ const labCelLow=$<HTMLInputElement>('studioCelLow');
 const labRimAmount=$<HTMLInputElement>('studioRimAmount');
 const labRimWidth=$<HTMLInputElement>('studioRimWidth');
 const labRimCoverage=$<HTMLInputElement>('studioRimCoverage');
+const labRimAngle=$<HTMLInputElement>('studioRimAngle');
+const labRimFabricWidth=$<HTMLInputElement>('studioRimFabricWidth');
+const labRimFabricBacklight=$<HTMLInputElement>('studioRimFabricBacklight');
+const labRimSkinWidth=$<HTMLInputElement>('studioRimSkinWidth');
+const labRimSkinBacklight=$<HTMLInputElement>('studioRimSkinBacklight');
+const labRimSkinWarmth=$<HTMLInputElement>('studioRimSkinWarmth');
 const labRimFabric=$<HTMLInputElement>('studioRimFabric');
 const labRimSkin=$<HTMLInputElement>('studioRimSkin');
 const labLightAzimuth=$<HTMLInputElement>('studioLightAzimuth');
@@ -255,6 +261,12 @@ const labCelLowWrap=$<HTMLElement>('studioCelLowWrap');
 const labRimAmountWrap=$<HTMLElement>('studioRimAmountWrap');
 const labRimWidthWrap=$<HTMLElement>('studioRimWidthWrap');
 const labRimCoverageWrap=$<HTMLElement>('studioRimCoverageWrap');
+const labRimAngleWrap=$<HTMLElement>('studioRimAngleWrap');
+const labRimFabricWidthWrap=$<HTMLElement>('studioRimFabricWidthWrap');
+const labRimFabricBacklightWrap=$<HTMLElement>('studioRimFabricBacklightWrap');
+const labRimSkinWidthWrap=$<HTMLElement>('studioRimSkinWidthWrap');
+const labRimSkinBacklightWrap=$<HTMLElement>('studioRimSkinBacklightWrap');
+const labRimSkinWarmthWrap=$<HTMLElement>('studioRimSkinWarmthWrap');
 const labRimFabricWrap=$<HTMLElement>('studioRimFabricWrap');
 const labRimSkinWrap=$<HTMLElement>('studioRimSkinWrap');
 const labLightAzimuthWrap=$<HTMLElement>('studioLightAzimuthWrap');
@@ -263,6 +275,12 @@ const labCelLowValue=$<HTMLOutputElement>('studioCelLowValue');
 const labRimAmountValue=$<HTMLOutputElement>('studioRimAmountValue');
 const labRimWidthValue=$<HTMLOutputElement>('studioRimWidthValue');
 const labRimCoverageValue=$<HTMLOutputElement>('studioRimCoverageValue');
+const labRimAngleValue=$<HTMLOutputElement>('studioRimAngleValue');
+const labRimFabricWidthValue=$<HTMLOutputElement>('studioRimFabricWidthValue');
+const labRimFabricBacklightValue=$<HTMLOutputElement>('studioRimFabricBacklightValue');
+const labRimSkinWidthValue=$<HTMLOutputElement>('studioRimSkinWidthValue');
+const labRimSkinBacklightValue=$<HTMLOutputElement>('studioRimSkinBacklightValue');
+const labRimSkinWarmthValue=$<HTMLOutputElement>('studioRimSkinWarmthValue');
 const labRimFabricValue=$<HTMLOutputElement>('studioRimFabricValue');
 const labRimSkinValue=$<HTMLOutputElement>('studioRimSkinValue');
 const labLightAzimuthValue=$<HTMLOutputElement>('studioLightAzimuthValue');
@@ -281,6 +299,12 @@ function syncLightingLabControls(){
  labRimAmount.value=String(lightLabSettings.rimAmount);
  labRimWidth.value=String(lightLabSettings.rimWidth);
  labRimCoverage.value=String(lightLabSettings.rimCoverage);
+ labRimAngle.value=String(lightLabSettings.rimAngleLooseness);
+ labRimFabricWidth.value=String(lightLabSettings.rimFabricWidth);
+ labRimFabricBacklight.value=String(lightLabSettings.rimFabricBacklight);
+ labRimSkinWidth.value=String(lightLabSettings.rimSkinWidth);
+ labRimSkinBacklight.value=String(lightLabSettings.rimSkinBacklight);
+ labRimSkinWarmth.value=String(lightLabSettings.rimSkinWarmth);
  labRimFabric.value=String(lightLabSettings.rimFabricOpacity);
  labRimSkin.value=String(lightLabSettings.rimSkinOpacity);
  labLightAzimuth.value=String(lightLabSettings.lightAzimuth);
@@ -289,6 +313,12 @@ function syncLightingLabControls(){
  labRimAmountValue.textContent=Math.round(lightLabSettings.rimAmount*100)+'%';
  labRimWidthValue.textContent=Math.round(lightLabSettings.rimWidth*100)+'%';
  labRimCoverageValue.textContent=Math.round(lightLabSettings.rimCoverage*100)+'%';
+ labRimAngleValue.textContent=Math.round(lightLabSettings.rimAngleLooseness*100)+'%';
+ labRimFabricWidthValue.textContent=Math.round(lightLabSettings.rimFabricWidth*100)+'%';
+ labRimFabricBacklightValue.textContent=Math.round(lightLabSettings.rimFabricBacklight*100)+'%';
+ labRimSkinWidthValue.textContent=Math.round(lightLabSettings.rimSkinWidth*100)+'%';
+ labRimSkinBacklightValue.textContent=Math.round(lightLabSettings.rimSkinBacklight*100)+'%';
+ labRimSkinWarmthValue.textContent=Math.round(lightLabSettings.rimSkinWarmth*100)+'%';
  labRimFabricValue.textContent=Math.round(lightLabSettings.rimFabricOpacity*100)+'%';
  labRimSkinValue.textContent=Math.round(lightLabSettings.rimSkinOpacity*100)+'%';
  labLightAzimuthValue.textContent=lightLabSettings.lightAzimuth+'°';
@@ -298,12 +328,17 @@ function syncLightingLabControls(){
  const rimOn=lightLabSettings.rim==='dual'&&!atlasPrecedence;
  labCelLow.disabled=!celOn;
  labRimAmount.disabled=!rimOn;
- for(const input of [labRimWidth,labRimCoverage,labRimFabric,labRimSkin,labLightAzimuth,labRimMask])
+ for(const input of [labRimWidth,labRimCoverage,labRimAngle,
+   labRimFabricWidth,labRimFabric,labRimFabricBacklight,
+   labRimSkinWidth,labRimSkin,labRimSkinBacklight,labRimSkinWarmth,
+   labLightAzimuth,labRimMask])
   input.disabled=!rimOn;
  labCelLowWrap.hidden=!celOn;
  labRimAmountWrap.hidden=!rimOn;
- for(const row of [labRimWidthWrap,labRimCoverageWrap,labRimFabricWrap,
-   labRimSkinWrap,labLightAzimuthWrap,labRimMaskWrap])row.hidden=!rimOn;
+ for(const row of [labRimWidthWrap,labRimCoverageWrap,labRimAngleWrap,
+   labRimFabricWidthWrap,labRimFabricWrap,labRimFabricBacklightWrap,
+   labRimSkinWidthWrap,labRimSkinWrap,labRimSkinBacklightWrap,
+   labRimSkinWarmthWrap,labLightAzimuthWrap,labRimMaskWrap])row.hidden=!rimOn;
  labWeapon.setAttribute('aria-pressed',String(!clothesOnly&&showWeapon));
  labCompare.setAttribute('aria-pressed',String(lightLabCompareOriginal));
  labCompare.textContent=lightLabCompareOriginal?'RETURN TO EXPERIMENT':
@@ -335,6 +370,12 @@ function readLightingLabControls(){
   rimAmount:Number(labRimAmount.value),
   rimWidth:Number(labRimWidth.value),
   rimCoverage:Number(labRimCoverage.value),
+  rimAngleLooseness:Number(labRimAngle.value),
+  rimFabricWidth:Number(labRimFabricWidth.value),
+  rimFabricBacklight:Number(labRimFabricBacklight.value),
+  rimSkinWidth:Number(labRimSkinWidth.value),
+  rimSkinBacklight:Number(labRimSkinBacklight.value),
+  rimSkinWarmth:Number(labRimSkinWarmth.value),
   rimFabricOpacity:Number(labRimFabric.value),
   rimSkinOpacity:Number(labRimSkin.value),
   lightAzimuth:Number(labLightAzimuth.value),
@@ -353,18 +394,31 @@ const readSlider=()=>{
  const rimAmount=Number(labRimAmount.value);
  const rimWidth=Number(labRimWidth.value);
  const rimCoverage=Number(labRimCoverage.value);
+ const rimAngleLooseness=Number(labRimAngle.value);
+ const rimFabricWidth=Number(labRimFabricWidth.value);
+ const rimFabricBacklight=Number(labRimFabricBacklight.value);
+ const rimSkinWidth=Number(labRimSkinWidth.value);
+ const rimSkinBacklight=Number(labRimSkinBacklight.value);
+ const rimSkinWarmth=Number(labRimSkinWarmth.value);
  const rimFabricOpacity=Number(labRimFabric.value);
  const rimSkinOpacity=Number(labRimSkin.value);
  const lightAzimuth=Number(labLightAzimuth.value);
  labRimWidthValue.textContent=Math.round(rimWidth*100)+'%';
  labRimCoverageValue.textContent=Math.round(rimCoverage*100)+'%';
+ labRimAngleValue.textContent=Math.round(rimAngleLooseness*100)+'%';
+ labRimFabricWidthValue.textContent=Math.round(rimFabricWidth*100)+'%';
+ labRimFabricBacklightValue.textContent=Math.round(rimFabricBacklight*100)+'%';
+ labRimSkinWidthValue.textContent=Math.round(rimSkinWidth*100)+'%';
+ labRimSkinBacklightValue.textContent=Math.round(rimSkinBacklight*100)+'%';
+ labRimSkinWarmthValue.textContent=Math.round(rimSkinWarmth*100)+'%';
  labRimFabricValue.textContent=Math.round(rimFabricOpacity*100)+'%';
  labRimSkinValue.textContent=Math.round(rimSkinOpacity*100)+'%';
  labLightAzimuthValue.textContent=lightAzimuth+'°';
  labCelLowValue.textContent=Math.round(celLow*100)+'%';
  labRimAmountValue.textContent=Math.round(rimAmount*100)+'%';
  lightLabSettings={...lightLabSettings,celLow,rimAmount,rimWidth,rimCoverage,
-  rimFabricOpacity,rimSkinOpacity,lightAzimuth};
+  rimAngleLooseness,rimFabricWidth,rimFabricOpacity,rimFabricBacklight,
+  rimSkinWidth,rimSkinOpacity,rimSkinBacklight,rimSkinWarmth,lightAzimuth};
  lightLabCompareOriginal=false;
  if(!lightSliderFrame){
   lightSliderFrame=requestAnimationFrame(()=>{
@@ -374,7 +428,9 @@ const readSlider=()=>{
  }
 };
 for(const slider of [labCelLow,labRimAmount,labRimWidth,labRimCoverage,
- labRimFabric,labRimSkin,labLightAzimuth]){
+ labRimAngle,labRimFabricWidth,labRimFabric,labRimFabricBacklight,
+ labRimSkinWidth,labRimSkin,labRimSkinBacklight,labRimSkinWarmth,
+ labLightAzimuth]){
  slider.addEventListener('input',readSlider);
  slider.addEventListener('change',readSlider);
 }
