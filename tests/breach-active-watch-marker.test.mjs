@@ -77,7 +77,7 @@ test('2D and 3D use persistent marker; touch selects, drags and deletes it',()=>
   assert.match(main,/function drawActiveWatchMarker\(/);
   assert.ok(main.split("if(activeTarget&&(!replaying||replayPlanVersion==='active')){").length>=3,
     'active marker is drawn in both 2D and 3D outside historical replay');
-  assert.match(main,/marker:'activeWatch'/);
+  assert.match(main,/kind:'activeWatch'/);
   assert.match(main,/p\.mode==='activeWatch'/);
   assert.match(main,/retargetActiveWatch\(state,selected,pt\)/);
   assert.match(main,/selectedActiveWatch\)removeActiveWatch\(state,selected\)/);
