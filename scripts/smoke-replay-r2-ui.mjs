@@ -313,8 +313,10 @@ try{
   await cdp.send('Input.dispatchTouchEvent',{
     type:'touchEnd',touchPoints:[finger(1,96,250)]});
   await captureTouch('lift-one');
+  // Chrome's touchEnd points identify the lifted finger, not the finger
+  // that remains active: id=2 is the surviving captured orbit pointer.
   await cdp.send('Input.dispatchTouchEvent',{
-    type:'touchMove',touchPoints:[finger(1,160,275)]});
+    type:'touchMove',touchPoints:[finger(2,260,275)]});
   await captureTouch('single-move');
   await cdp.send('Input.dispatchTouchEvent',{
     type:'touchEnd',touchPoints:[]});
