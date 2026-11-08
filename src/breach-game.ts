@@ -3252,15 +3252,31 @@ function runOrders(s:Session,a:TeamActor,dt:number){
               y:impactLeaf.a.y+(impactLeaf.b.y-impactLeaf.a.y)*along};
             const dx=struck.p.x-closest.x,dy=struck.p.y-closest.y;
             const mag=Math.hypot(dx,dy)||1;
-            for(const distance of [18,12,7,3]){
-              const dest={x:struck.p.x+dx/mag*distance,
-                y:struck.p.y+dy/mag*distance};
-              if(!sweptBodyClear(struck.p,dest,s.doors)||
-                 s.operators.some(other=>other!==struck&&
-                   other.health>0&&d(other.p,dest)<13)||
-                 s.civilians.some(other=>other.health>0&&
-                   d(other.p,dest)<13))continue;
-              struck.priorP=clone(struck.p);struck.p=dest;break;
+            const lx=impactLeaf.b.x-impactLeaf.a.x,
+              ly=impactLeaf.b.y-impactLeaf.a.y;
+            const length=Math.hypot(lx,ly)||1;
+            // First try the real radial impact, then a short slip along
+            // either edge when the defender is pinned against furniture.
+            // Every candidate is swept and other characters remain solid.
+            const directions=[
+              {x:dx/mag,y:dy/mag},
+              {x:lx/length,y:ly/length},
+              {x:-lx/length,y:-ly/length}
+            ];
+            let displaced=false;
+            for(const dir of directions){
+              for(const distance of [18,12,7,3]){
+                const dest={x:struck.p.x+dir.x*distance,
+                  y:struck.p.y+dir.y*distance};
+                if(!sweptBodyClear(struck.p,dest,s.doors)||
+                   s.operators.some(other=>other!==struck&&
+                     other.health>0&&d(other.p,dest)<13)||
+                   s.civilians.some(other=>other.health>0&&
+                     d(other.p,dest)<13))continue;
+                struck.priorP=clone(struck.p);struck.p=dest;
+                displaced=true;break;
+              }
+              if(displaced)break;
             }
             struck.doorStunUntil=Math.max(struck.doorStunUntil??0,
               s.seconds+.85);
