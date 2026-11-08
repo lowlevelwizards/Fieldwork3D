@@ -2480,8 +2480,8 @@ const handleContextAction=(event:MouseEvent)=>{
       if(looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP WATCH TARGET');
       uiClickTone('select');return;
     case 'ctxWait':{
-      if(node?.kind==='wait')setWaitDuration(state,selected,node.id,.5);
-      else planWaitAt(state,selected,.5,node?'end':'here',node?.id);
+      if(node?.kind==='wait')setWaitDuration(state,selected,node.id,1);
+      else planWaitAt(state,selected,1,node?'end':'here',node?.id);
       break;
     }
     case 'ctxStance':{
@@ -6807,7 +6807,7 @@ ui.clear.addEventListener('click',async()=>{
 });
 ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;playOrderCue('orders.undo');updateHud();});
 ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;playOrderCue('orders.redo');updateHud();});
-ui.wait.addEventListener('click',()=>{planWait(state,selected,.5);playOrderCue('orders.wait');updateHud();});
+ui.wait.addEventListener('click',()=>{planWait(state,selected,1);playOrderCue('orders.wait');updateHud();});
 fieldLightButton=document.createElement('button');
 fieldLightButton.type='button';fieldLightButton.textContent='WEAPON LIGHT';
 fieldLightButton.setAttribute('aria-label','Toggle selected operator weapon light');
