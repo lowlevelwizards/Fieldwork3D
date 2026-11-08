@@ -284,6 +284,7 @@ const ui={
   replayDirectTracers:el<HTMLButtonElement>('replayDirectTracers'),
   replayDirectXray:el<HTMLButtonElement>('replayDirectXray'),
   replayDirectDirector:el<HTMLButtonElement>('replayDirectDirector'),
+  replayDirectLens:el<HTMLButtonElement>('replayDirectLens'),
   replayDirectBodycam:el<HTMLButtonElement>('replayDirectBodycam'),
   replayDirectMount:el<HTMLButtonElement>('replayDirectMount'),
   replayDirectFree:el<HTMLButtonElement>('replayDirectFree'),
@@ -948,6 +949,7 @@ function replayDisclosure():ReplayDisclosure{
 }
 let replayFollow=false,replayAnalysis=false,replayFollowId='rook';
 let replayCameraMode:ReplayCameraMode='free';
+let replayDirectorLens:'ortho'|'wide'='ortho';
 let replayDirectorCues:ReplayDirectorCue[]=[];
 let replayDirectorFuture:DirectorFutureCue[]=[];
 let replayDirectorPlanIndex:DirectorPlanIndex=new Map();
@@ -4768,6 +4770,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
         '\\nBEAT '+(beat?.kind.toUpperCase()??'TRAVEL')+
         '\\nSUBJECTS '+target.subjects.join(', ')+
         '\\nDOOR '+(target.doorId??'—')+
+        '\\nLENS '+replayDirectorLens.toUpperCase()+
         '\\nZOOM '+target.zoom.toFixed(2)+
         ' / OCC '+target.occluded+
         '\\nROOM '+(target.roomId??'—');
@@ -4778,7 +4781,8 @@ function advanceReplayCamera(dt:number,instant=false):void{
     stage.view.zoom=target.zoom;
     stage.view.yaw=target.yaw;
     stage.view.pitch=target.pitch;
-    stage.setReplayDirectorCameraAnchor(target.cameraAnchor,target.fov??76);
+    stage.setReplayDirectorCameraAnchor(target.cameraAnchor,
+      target.fov??108,replayDirectorLens);
     stage.setReplayDirectorFocus(target.focus);
     stage.setReplayDirectorSubjects(actors.filter(a=>a.side==='blue'&&
       target.subjects.includes(a.id)).map(a=>a.p));
@@ -5082,17 +5086,29 @@ function updateReplayHud(){
     .disabled=!replayHasContactEvidence;
   ui.replayDirectTracers.setAttribute('aria-pressed',
     String(replayTraceMode!=='off'));
-  // Director is a physically present camera crew. The translucent
-  // tabletop cutaway is incompatible with real interior cinematography.
+  // Both director lenses keep walls opaque but cut away the ceiling.
+  // The tactical X-ray toggle must not influence either film audition.
   ui.replayDirectXray.disabled=replayCameraMode==='director';
   ui.replayDirectXray.setAttribute('aria-pressed',
     String(replayCameraMode!=='director'&&replayXrayOn));
   ui.replayDirectXray.title=replayCameraMode==='director'?
-    'Director camera: solid walls and ceilings; cutaway unavailable':
+    'Director: solid walls, removed ceiling; wall X-ray unavailable':
     replayXrayOn?'Selective Cutaway on: fade only blocking walls':
       'Selective Cutaway off: retain normal architectural opacity';
   ui.replayDirectDirector.setAttribute('aria-pressed',
     String(replayCameraMode==='director'));
+  ui.replayDirectLens.hidden=replayCameraMode!=='director';
+  ui.replayDirectLens.setAttribute('aria-pressed',
+    String(replayDirectorLens==='wide'));
+  ui.replayDirectLens.setAttribute('aria-label',
+    'Director camera lens: '+(replayDirectorLens==='ortho'?
+      'in-room orthographic; audition wide perspective':
+      'wide perspective audition; return to orthographic'));
+  ui.replayDirectLens.title=replayDirectorLens==='ortho'?
+    'ORTHO — in-room orthographic; tap to preview wide perspective':
+    'WIDE — wide in-room perspective audition; tap for orthographic';
+  ui.replayDirectLens.querySelector('small')!.textContent=
+    replayDirectorLens==='ortho'?'ORTHO':'WIDE';
   const canBodycam=!!stage&&replayBodycamObservers.includes(replayFollowId);
   ui.replayDirectBodycam.hidden=!replayBodycamOn&&replayCameraMode!=='operator';
   ui.replayDirectBodycam.title=canBodycam?
@@ -5290,7 +5306,8 @@ function enterReplay(){
   replayGroundLensOn=false;replayGroundCacheObserver=null;
   replayGroundCacheCount=-1;replayGroundCacheSite=null;
   replayFollow=false;replayAnalysis=false;replayFollowId='rook';
-  replayCameraMode='free';replayDirectorCues=[];
+  replayCameraMode='free';replayDirectorLens='ortho';
+  replayDirectorCues=[];
   replayDirectorPlanIndex=buildDirectorPlanIndex(recorder.plans.revisions);
   replayDirectorFuture=[];replayDirectorTarget=null;
   replayDirectorScheduler.reset();
@@ -5926,6 +5943,14 @@ ui.replayDirectDirector.addEventListener('click',()=>{
   replayDirectorTarget=null;
   replayDirectorScheduler.reset();
   advanceReplayCamera(1/60,false);updateReplayHud();
+});
+ui.replayDirectLens.addEventListener('click',()=>{
+  if(!replaying||replayCameraMode!=='director')return;
+  replayDirectorLens=replayDirectorLens==='ortho'?'wide':'ortho';
+  // Same exact film timestamp, room and camera anchor: honest A/B
+  // comparison of projection/framing, without a reactive shot recut.
+  advanceReplayCamera(0,true);
+  updateReplayHud();
 });
 ui.replayDirectBodycam.addEventListener('click',()=>{
   if(replayBodycamOn){
