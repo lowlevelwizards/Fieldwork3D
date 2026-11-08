@@ -62,6 +62,42 @@ export function nearOccupiedFriendlyGoal(at:Pt,goal:Pt,
    canConnect(at,goal);
 }
 
+/** An authored MOVE goal may be deliberately within one body of
+ * another operator's goal. A full arrival is allowed only at a safe
+ * resting position: search a tiny arc around the *original* target,
+ * preserving the requested destination within ordinary arrival tolerance.
+ * This is an execution-only settling target, not a new PlanNode or a
+ * physical shove against an already-settled friendly.
+ */
+export function friendlyArrivalSettleTarget(
+ at:Pt,goal:Pt,peers:readonly Pt[],
+ sweep:(from:Pt,to:Pt)=>boolean
+):Pt|null{
+ if(dist(at,goal)>6||minGap(at,peers)>=14)return null;
+ let best:Pt|null=null,bestScore=Infinity;
+ const nearest=peers.reduce<Pt|null>((prior,p)=>
+  !prior||dist(p,at)<dist(prior,at)?p:prior,null);
+ if(!nearest)return null;
+ const baseAngle=Math.atan2(at.y-nearest.y,at.x-nearest.x);
+ // Prefer a short radial separation, then test nearby arcs if a
+ // table, wall or additional teammate blocks the first candidate.
+ for(const r of [5.5,8,11,14,15]){
+  for(const turn of [0,.4,-.4,.85,-.85,1.3,-1.3,Math.PI]){
+   const bearing=baseAngle+turn;
+   const p={x:goal.x+Math.cos(bearing)*r,
+    y:goal.y+Math.sin(bearing)*r};
+   if(dist(p,at)<.2||dist(p,goal)>15.5||
+      peers.some(other=>dist(other,p)<14.5)||
+      !sweep(at,p))continue;
+   const score=dist(at,p)+dist(goal,p)*.5+
+     Math.abs(turn)*2;
+   if(score<bestScore){best=p;bestScore=score;}
+  }
+  if(best)break;
+ }
+ return best;
+}
+
 /** Opposing actors are physically solid, but two people in a sufficiently
  * wide corridor can naturally sidestep around one another. Prefer each
  * actor's own right-hand side: this breaks mirror-symmetric head-on jams
