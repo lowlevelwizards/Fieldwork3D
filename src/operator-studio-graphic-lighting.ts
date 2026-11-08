@@ -500,9 +500,9 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
   const gradient=(config.gradient==='piece'||
    config.gradient==='piece-rose')&&!studioPieceGradientEligible(node)?
    'current':config.gradient;
-  const role=studioArtRole(node,src);
-  const eligible=studioContourEligible(node,src)||
-   role==='fabric'||role==='skin';
+  const hardSurface=studioContourEligible(node,src);
+  const role=hardSurface?'hard':studioArtRole(node,src);
+  const eligible=hardSurface||role==='fabric'||role==='skin';
   const litRim=rimOn&&eligible&&ensureStudioRimBounds(node.geometry);
   // With rim-only preview, leave cloth/skin/soft gear on exact source
   // materials. Avoid needless shader variants on unrelated mesh surfaces.
