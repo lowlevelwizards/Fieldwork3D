@@ -19,7 +19,7 @@ test('parking bodies rotate with their footprints and align between marked bays'
  assert.equal(dividers.length,2);
  assert.ok(spots.every(p=>dividers.every(m=>Math.abs(p.x-m.x)>14)));
 });
-test('real exterior parking uses marked stalls without obstructing front access',()=>{
+test('real exterior parking has marked empty stalls without retired cars',()=>{
  const site={seed:21,archetype:'clinic',entrySide:'south',
   rooms:[{id:'R',kind:'room',purpose:'waiting',x:225,y:230,w:250,h:200}],
   bounds:{minX:0,minY:0,maxX:700,maxY:700},cover:[],doors:[
@@ -29,15 +29,11 @@ test('real exterior parking uses marked stalls without obstructing front access'
  const a=addExteriorProperty(site,21),b=addExteriorProperty(site,21);
  assert.deepEqual(a.cover,b.cover);
  const parking=a.exteriorZones.find(z=>z.id==='arrival-forecourt');
- const cars=a.cover.filter(o=>PARKING_VEHICLES.has(o.fixture)&&
-  o.x>parking.x-parking.w/2&&o.x<parking.x+parking.w/2&&
-  o.y>parking.y-parking.h/2&&o.y<parking.y+parking.h/2);
- assert.ok(cars.length>=1);
- for(const car of cars){
-  const dimensions=car.orientation===1?{width:car.h,depth:car.w}:
-   {width:car.w,depth:car.h};
-  const slots=parkingStallCandidates(parking,dimensions.width,dimensions.depth);
-  assert.ok(slots.some(p=>p.x===car.x&&p.y===car.y&&
-   p.w===car.w&&p.h===car.h&&p.orientation===car.orientation));
- }
+ const cars=a.cover.filter(o=>PARKING_VEHICLES.has(o.fixture??'')||
+   o.fixture==='vehicle');
+ assert.equal(cars.length,0,'retired vehicle geometry must not spawn');
+ // Physical lane protection remains; unoccupied parking bays are valid.
+ const marks=planPropertySurfaces(a).filter(m=>
+   m.zoneId===parking.id&&m.kind==='parking-divider');
+ assert.ok(marks.length>=1);
 });

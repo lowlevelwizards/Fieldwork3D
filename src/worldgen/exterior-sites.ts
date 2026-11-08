@@ -5,10 +5,13 @@ import {type Site,type ExteriorZone,seeded} from '../breach-site.ts';
 import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
-import {PARKING_VEHICLES,parkingStallCandidates} from './parking-stalls.ts';
+import {parkingStallCandidates} from './parking-stalls.ts';
 import {SERVICE_EDGE_FIXTURES,serviceYardEdgeCandidates} from './service-yard-layout.ts';
 import {landscapeEdgeCandidates} from './landscape-edge-program.ts';
 import {serviceFixtureInRoad} from './road-service-fixtures.ts';
+import {landscapePhysicalFootprint,TREE_FIXTURES} from './landscape-footprint.ts';
+import {outdoorFixtureAllowed,frontageEdgeCandidates}
+ from './outdoor-fixture-policy.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
 export function addExteriorProperty(site:Site,seed:number):Site{
@@ -93,9 +96,12 @@ export function addExteriorProperty(site:Site,seed:number):Site{
   ['tree-broadleaf','shrub-round','hedge','picnic-table','tree-scrub','mailbox','trash-bin']:
   ['planter','shrub-tall','patio-chair','dumpster','bike-rack'];
  const byZone:Partial<Record<ExteriorZone['kind'],readonly string[]>>={
-   parking:['sedan','pickup','van','suv','parking-block','parking-sign','bollard','bike-rack'],
-   driveway:residential?['sedan','pickup','suv','mailbox','trash-bin']:
-     ['van','pickup','bollard','utility-cabinet'],
+   // Current vehicle models are intentionally retired from generated maps
+   // until their silhouettes, scale, and parking semantics are rebuilt.
+   // Parking areas read as genuinely empty bays, not random cover walls.
+   parking:['parking-sign','bollard','bike-rack','planter'],
+   driveway:residential?['mailbox','trash-bin','shrub-round']:
+     ['bollard','parking-sign','planter'],
    service:industrial?['utility-cabinet','dumpster','recycling-bin','storage-tote',
       'bollard','crate','shipping-container','trash-bin','supply-cart']:
      ['dumpster','recycling-bin','trash-bin','supply-cart','bike-rack','planter'],
@@ -104,8 +110,9 @@ export function addExteriorProperty(site:Site,seed:number):Site{
       ['planter','patio-chair','bike-rack','trash-bin','grill'],
    garden:residential?['tree-broadleaf','shrub-round','shrub-tall',
       'picnic-table','shed','grill']:['planter','shrub-tall','picnic-table'],
-   yard:residential?['mailbox','tree-broadleaf','shrub-round','trash-bin','hydrant']:
-     ['planter','street-lamp','bollard','trash-bin'],
+   yard:residential?['tree-broadleaf','tree-scrub','shrub-round',
+      'shrub-tall','trash-bin']:
+     ['planter','shrub-tall','bollard','trash-bin'],
  };
  const cover=site.cover.slice();
  const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
@@ -113,43 +120,57 @@ export function addExteriorProperty(site:Site,seed:number):Site{
   const count=zone.id.startsWith('court-')?0:
     zone.kind==='garden'?3:zone.kind==='yard'?2:2;
   for(let i=0;i<count;i++){
-   // Vehicles belong to arrival/parking zones, not a random garden plot.
-   const choices=byZone[zone.kind]??available;
+   // Props must belong to the authored land-use zone, not to a generic
+   // "outside" bucket. No legacy car family is eligible for new maps.
+   const choices=(byZone[zone.kind]??available).filter(item=>
+     outdoorFixtureAllowed(site,zone,item));
+   if(!choices.length)continue;
    // First object establishes what this exterior space is *for*. Subsequent
    // objects add character; no vehicle in a garden or dumpsters at the
    // public-facing cafe seating area.
    const anchor:Partial<Record<ExteriorZone['kind'],string>>={
-     parking:'sedan',driveway:industrial?'van':'pickup',
+     parking:'parking-sign',driveway:industrial?'bollard':
+       residential?'mailbox':'planter',
      service:industrial?'utility-cabinet':'dumpster',
      patio:kind==='restaurant'?'patio-chair':'planter',
-     garden:'tree-broadleaf',yard:residential?'mailbox':'planter'
+     garden:residential?'tree-broadleaf':'shrub-tall',
+     yard:zone.id==='arrival-forecourt'&&
+       ['house','townhouse'].includes(kind)?'mailbox':
+       residential?'shrub-round':'planter'
    };
-   const item=i===0?(anchor[zone.kind]??choices[0]):
-     choices[Math.floor(rng()*choices.length)];
+   const preferred=anchor[zone.kind];
+   const item=i===0&&preferred&&outdoorFixtureAllowed(site,zone,preferred)?
+     preferred:choices[Math.floor(rng()*choices.length)];
    const asset=propDefinition(item);if(!asset)continue;
-   // Preserve true dimensions: a car never becomes smaller than an operator.
-   const parked=zone.kind==='parking'&&PARKING_VEHICLES.has(item);
-   const stalls=parked?parkingStallCandidates(zone,asset.width,asset.depth):[];
-   const w=parked&&zone.w>=zone.h?asset.depth:asset.width;
-   const h=parked&&zone.w>=zone.h?asset.width:asset.depth;
+   const footprint=landscapePhysicalFootprint(item,asset.width,asset.depth);
+   const w=footprint.w,h=footprint.h;
+   const streetSpots=frontageEdgeCandidates(site,zone,item,w,h);
    const serviceEdge=zone.kind==='service'&&SERVICE_EDGE_FIXTURES.has(item);
    const edgeSpots=serviceEdge?serviceYardEdgeCandidates(zone,w,h):[];
    if(zone.w<w+22||zone.h<h+22)continue;
    let accepted=false;
-   for(let attempt=0;attempt<(parked?stalls.length:
-      serviceEdge?edgeSpots.length:12);attempt++){
-    const slot=parked?stalls[attempt]:undefined;
-    const edge=serviceEdge?edgeSpots[attempt]:undefined;
-    const x=slot?.x??edge?.x??zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
-    const y=slot?.y??edge?.y??zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
-    const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low',
-     ...(slot?{orientation:slot.orientation}:{})};
+   const fixed=streetSpots??(serviceEdge?edgeSpots:null);
+   for(let attempt=0;attempt<(fixed?fixed.length:12);attempt++){
+    const edge=fixed?.[attempt];
+    const x=edge?.x??zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
+    const y=edge?.y??zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
+    const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low'};
     const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
     if(x-w/2<bounds.minX+17||x+w/2>bounds.maxX-17||
       y-h/2<bounds.minY+23||y+h/2>bounds.maxY-22)continue;
     if(site.rooms.some(r=>x+w/2>r.x&&x-w/2<r.x+r.w&&
       y+h/2>r.y&&y-h/2<r.y+r.h))continue;
     if(serviceFixtureInRoad(site,item,candidate))continue;
+    // A tree's leaf crown can hang over a planting bed, but must not
+    // intersect a room wall or the actual accessible entry walkway.
+    if(TREE_FIXTURES.has(item)){
+      const canopy={...candidate,w:asset.width,h:asset.depth};
+      if(site.rooms.some(room=>x+canopy.w/2>room.x-4&&
+         x-canopy.w/2<room.x+room.w+4&&
+         y+canopy.h/2>room.y-4&&
+         y-canopy.h/2<room.y+room.h+4))continue;
+      if(overlapsArrivalLane(site,zone,canopy))continue;
+    }
     if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32))continue;
     if(site.doors.some(d=>distance({x,y},{x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<68))continue;
     if(overlapsArrivalLane(site,zone,candidate))continue;
@@ -200,8 +221,10 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    const points=landscapeEdgeCandidates(zone,seed);
    for(const point of points){
      const asset=propDefinition(point.fixture);if(!asset)continue;
+     const footprint=landscapePhysicalFootprint(point.fixture,
+       asset.width,asset.depth);
      const candidate:Obstacle={x:point.x,y:point.y,
-       w:asset.width,h:asset.depth,fixture:point.fixture,
+       w:footprint.w,h:footprint.h,fixture:point.fixture,
        low:asset.cover==='low'};
      const {x,y,w,h}=candidate;
      if(x-w/2<zone.x-zone.w/2+9||x+w/2>zone.x+zone.w/2-9||
@@ -215,6 +238,14 @@ export function addExteriorProperty(site:Site,seed:number):Site{
      if(site.doors.some(d=>distance({x,y},{
        x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<66))continue;
      if(overlapsArrivalLane(site,zone,candidate))continue;
+     if(TREE_FIXTURES.has(point.fixture)){
+       const canopy={...candidate,w:asset.width,h:asset.depth};
+       if(site.rooms.some(room=>x+canopy.w/2>room.x-4&&
+         x-canopy.w/2<room.x+room.w+4&&
+         y+canopy.h/2>room.y-4&&
+         y-canopy.h/2<room.y+room.h+4))continue;
+       if(overlapsArrivalLane(site,zone,canopy))continue;
+     }
      if(cover.some(o=>overlaps(o,candidate)))continue;
      cover.push(candidate);
    }

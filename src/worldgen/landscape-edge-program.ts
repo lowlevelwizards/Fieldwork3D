@@ -5,9 +5,13 @@
 import type {ExteriorZone} from '../breach-site.ts';
 export type LandscapeCandidate={x:number;y:number;fixture:string};
 const palette:Partial<Record<ExteriorZone['kind'],readonly string[]>>={
- garden:['shrub-round','planter','tree-scrub','shrub-tall','picnic-table'],
- yard:['planter','shrub-round','mailbox'],
- patio:['planter','shrub-round','patio-chair'],
+ // Garden beds and lot edges get layered vegetation, never picnic furniture.
+ garden:['shrub-round','shrub-tall','tree-scrub','shrub-round',
+   'tree-broadleaf','shrub-tall'],
+ yard:['shrub-round','shrub-tall','tree-broadleaf','shrub-round',
+   'tree-scrub'],
+ // Paved areas need an actual container; no magically rooted shrubs.
+ patio:['planter'],
  parking:['planter']
 };
 export function landscapeEdgeCandidates(zone:ExteriorZone,seed:number):
@@ -16,7 +20,12 @@ export function landscapeEdgeCandidates(zone:ExteriorZone,seed:number):
  if(!choices||zone.w<78||zone.h<48)return [];
  const broad=zone.w>=zone.h;
  const longer=broad?zone.w:zone.h;
- const count=Math.min(zone.kind==='parking'?1:3,Math.max(1,Math.floor(longer/140)));
+ // Meaningful vegetation groups rather than one isolated shrub per lot.
+ // Larger sites get denser edges, but parking remains intentionally sparse.
+ const max=zone.kind==='garden'?5:zone.kind==='yard'?4:
+   zone.kind==='parking'?1:2;
+ const minimum=zone.kind==='garden'?3:zone.kind==='yard'?3:1;
+ const count=Math.min(max,Math.max(minimum,Math.floor(longer/65)));
  const choicesOut:LandscapeCandidate[]=[];
  const hash=(n:number)=>(Math.imul(seed>>>0^Math.imul(n,1103515245),2654435761)>>>0)/4294967295;
  for(let i=0;i<count;i++){
