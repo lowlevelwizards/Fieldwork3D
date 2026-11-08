@@ -5,6 +5,9 @@
  */
 import type {DirectorShot} from './breach-replay-director-shots.ts';
 import type {DirectorRoom} from './breach-replay-cinematic-director.ts';
+import {directorCameraLegal,directorLineBlocked}
+  from './breach-replay-director-physical.ts';
+import type {PhysicalDirectorScene} from './breach-replay-director-physical.ts';
 
 type Pt={x:number;y:number};
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
@@ -13,37 +16,8 @@ const angleDelta=(next:number,from:number)=>
 const smooth=(n:number)=>n*n*(3-2*n);
 const cutAngle=65*Math.PI/180;
 const quietAngle=26*Math.PI/180;
-const cameraRadius=53;
+const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 
-/** Keep the true, low replay camera in the occupied room on the
- * PLANNED side of the focus, not whichever side a framewise solver
- * happens to favor. A ray from an exterior action focus can still
- * enter the room and sit over the friendly shooter's shoulder.
- */
-function anchorOnSide(focus:Pt,yaw:number,
-  room:DirectorRoom|null):Pt|null{
-  const ray={x:Math.sin(yaw),y:Math.cos(yaw)};
-  if(!room)return {x:focus.x+ray.x*cameraRadius,
-    y:focus.y+ray.y*cameraRadius};
-  const inset=Math.min(7,room.w*.18,room.h*.18);
-  let enter=0,leave=Infinity;
-  for(const [p,d,min,max] of [
-    [focus.x,ray.x,room.x+inset,room.x+room.w-inset],
-    [focus.y,ray.y,room.y+inset,room.y+room.h-inset]
-  ] as const){
-    if(Math.abs(d)<.0001){
-      if(p<min||p>max)return null;
-      continue;
-    }
-    const a=(min-p)/d,b=(max-p)/d;
-    enter=Math.max(enter,Math.min(a,b));
-    leave=Math.min(leave,Math.max(a,b));
-  }
-  if(leave<=enter+.01)return null;
-  const margin=Math.min(5,(leave-enter)*.2);
-  const radius=clamp(cameraRadius,enter+margin,leave-margin);
-  return {x:focus.x+ray.x*radius,y:focus.y+ray.y*radius};
-}
 export class ReplayDirectorStoryboard{
   private cache=new Map<number,DirectorShot|null>();
   private checkpoints=new Map<number,DirectorShot|null>();
@@ -51,14 +25,20 @@ export class ReplayDirectorStoryboard{
   private readonly step:number;
   private readonly maxCache:number;
   private readonly rooms:readonly DirectorRoom[];
+  private readonly physicalScene:PhysicalDirectorScene;
   private readonly duration:number;
   private readonly solve:(time:number)=>DirectorShot|null;
   constructor(duration:number,solve:(time:number)=>DirectorShot|null,
-    options:{step?:number;maxCache?:number;rooms?:readonly DirectorRoom[]}={}){
+    options:{step?:number;maxCache?:number;rooms?:readonly DirectorRoom[];
+      walls?:PhysicalDirectorScene['walls'];
+      cover?:PhysicalDirectorScene['cover'];
+      doors?:PhysicalDirectorScene['doors']}={}){
     this.duration=duration;this.solve=solve;
     this.step=Math.max(.2,options.step??.8);
     this.maxCache=Math.max(4,options.maxCache??96);
     this.rooms=options.rooms??[];
+    this.physicalScene={rooms:this.rooms,walls:options.walls??[],
+      cover:options.cover,doors:options.doors};
   }
   clear():void{
     this.cache.clear();this.checkpoints.clear();this.rawCache.clear();
@@ -78,46 +58,60 @@ export class ReplayDirectorStoryboard{
     if(!raw||!prior)return raw;
     const sameRoom=raw.roomId===prior.roomId;
     if(!sameRoom){
-      // Ignore a one-knot threshold wobble. A real room transition
-      // must persist into the next recorded moment before cutting.
+      // A single sample at a doorway must not move the physical rig to
+      // another room. A real entry uses a deliberate whole-camera cut.
       const next=this.raw(index+1);
       if(next&&next.roomId!==raw.roomId)return prior;
       return raw;
     }
-    const turn=angleDelta(raw.yaw,prior.yaw);
-    const abs=Math.abs(turn);
     const sameBeat=!!raw.beatId&&raw.beatId===prior.beatId;
     const startingBeat=!!raw.beatId&&raw.beatId!==prior.beatId;
-    // The only large same-room angle jump allowed is ONE deliberate
-    // establishing cut at the start of a recorded firefight/breach.
-    if(startingBeat&&abs>cutAngle)return raw;
-    let yaw=prior.yaw;
-    if(!sameBeat&&abs>quietAngle){
-      const maximum=(startingBeat?13:7)*Math.PI/180;
-      yaw+=Math.sign(turn)*Math.min(maximum,abs-quietAngle);
-    }
-    yaw=(yaw+4*Math.PI)%(2*Math.PI);
+    const turn=angleDelta(raw.yaw,prior.yaw);
+    // Establish a completely new breach or gunfight with a deliberate
+    // camera cut; never whip through that angle over .8 seconds.
+    if(startingBeat&&Math.abs(turn)>cutAngle)return raw;
     const room=this.rooms.find(r=>r.id===raw.roomId)??null;
-    // Keep camera on the same side while operators advance through
-    // the room; do not interpolate between opposite imaginary orbits.
-    const cameraAnchor=this.rooms.length?
-      (anchorOnSide(raw.focus,yaw,room)??prior.cameraAnchor):
-      raw.cameraAnchor;
-    // Pan with actors without responding to every tiny body/head turn.
-    // Pull out for action coverage immediately; creep closer afterwards.
-    const focus=raw.beatId?
-      {x:prior.focus.x+(raw.focus.x-prior.focus.x)*.8,
-        y:prior.focus.y+(raw.focus.y-prior.focus.y)*.8}:
-      {x:prior.focus.x+(raw.focus.x-prior.focus.x)*.7,
-        y:prior.focus.y+(raw.focus.y-prior.focus.y)*.7};
-    const keptAnchor=this.rooms.length?
-      (anchorOnSide(focus,yaw,room)??cameraAnchor):cameraAnchor;
-    const zoom=raw.zoom<prior.zoom?
-      raw.zoom:prior.zoom+(raw.zoom-prior.zoom)*.32;
-    const conservativeZoom=abs>quietAngle?zoom*.89:zoom;
-    return {...raw,focus,cameraAnchor:keptAnchor,yaw,
-      zoom:conservativeZoom,
-      pitch:prior.pitch+(raw.pitch-prior.pitch)*.3};
+    const actor=raw.operatorPoint??raw.focus;
+    const stillPossible=directorCameraLegal(
+      prior.cameraAnchor,room,this.physicalScene)&&
+      distance(prior.cameraAnchor,actor)<96&&
+      !directorLineBlocked(prior.cameraAnchor,actor,this.physicalScene);
+    let cameraAnchor=raw.cameraAnchor;
+    if(stillPossible){
+      // A camera operator walks with a team instead of orbiting the
+      // actors. One continuous fight is one locked tripod until the
+      // participants truly leave the available shooting position.
+      if(sameBeat)cameraAnchor=prior.cameraAnchor;
+      else {
+        const d=distance(prior.cameraAnchor,raw.cameraAnchor);
+        const t=d>0?Math.min(1,11/d):1;
+        const proposed={x:prior.cameraAnchor.x+
+          (raw.cameraAnchor.x-prior.cameraAnchor.x)*t,
+          y:prior.cameraAnchor.y+
+          (raw.cameraAnchor.y-prior.cameraAnchor.y)*t};
+        if(directorCameraLegal(proposed,room,this.physicalScene)&&
+           !directorLineBlocked(proposed,actor,this.physicalScene))
+          cameraAnchor=proposed;
+      }
+    }
+    const focusFactor=sameBeat?.42:startingBeat?.65:.30;
+    let focus={x:prior.focus.x+
+      (raw.focus.x-prior.focus.x)*focusFactor,
+      y:prior.focus.y+(raw.focus.y-prior.focus.y)*focusFactor};
+    if(directorLineBlocked(cameraAnchor,focus,this.physicalScene))
+      focus=!directorLineBlocked(cameraAnchor,raw.focus,
+        this.physicalScene)?raw.focus:actor;
+    const yaw=(Math.atan2(cameraAnchor.x-focus.x,
+      cameraAnchor.y-focus.y)+4*Math.PI)%(2*Math.PI);
+    const oldFov=prior.fov??76,newFov=raw.fov??76;
+    const fov=newFov>oldFov?newFov:
+      oldFov+(newFov-oldFov)*.30;
+    return {...raw,focus,cameraAnchor,yaw,
+      // Keep the action visible while a physical camera repositions.
+      fov:clamp(fov+(!stillPossible?5:0),66,105),
+      pitch:prior.pitch+(raw.pitch-prior.pitch)*.25,
+      zoom:raw.zoom<prior.zoom?raw.zoom:
+        prior.zoom+(raw.zoom-prior.zoom)*.28};
   }
   private remember(index:number,shot:DirectorShot|null):void{
     this.cache.set(index,shot);
@@ -154,8 +148,16 @@ export class ReplayDirectorStoryboard{
     const sameRoom=from.roomId===to.roomId;
     const flip=from.beatId!==to.beatId&&
       Math.abs(angleDelta(to.yaw,from.yaw))>cutAngle;
-    if(!sameRoom||flip){
-      // A planned edit is a CUT, not a 180° orbit in .8 seconds.
+    const room=this.rooms.find(r=>r.id===from.roomId)??null;
+    const midpoint={x:(from.cameraAnchor.x+to.cameraAnchor.x)*.5,
+      y:(from.cameraAnchor.y+to.cameraAnchor.y)*.5};
+    const physicallyConnected=directorCameraLegal(midpoint,room,
+      this.physicalScene)&&
+      !directorLineBlocked(from.cameraAnchor,to.cameraAnchor,
+        this.physicalScene,false);
+    if(!sameRoom||flip||!physicallyConnected){
+      // No fly-through walls, fixtures or ceilings. A shot transition
+      // with no walkable camera path is a planned EDIT, not a dolly.
       return p<.5?from:to;
     }
     const mix=(a:number,b:number)=>a+(b-a)*p;
@@ -166,6 +168,7 @@ export class ReplayDirectorStoryboard{
       yaw:(from.yaw+angleDelta(to.yaw,from.yaw)*p+
         2*Math.PI)%(2*Math.PI),
       pitch:mix(from.pitch,to.pitch),
+      fov:mix(from.fov??76,to.fov??76),
       cameraAnchor:{
         x:mix(from.cameraAnchor.x,to.cameraAnchor.x),
         y:mix(from.cameraAnchor.y,to.cameraAnchor.y)}
