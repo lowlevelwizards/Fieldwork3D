@@ -82,7 +82,7 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
        a.actionTimer>=2.5?'ENTRY BLOCKED':'WAITING',
        door?'DOOR NOT CLEAR':'DOOR UNAVAILABLE',id,'entry-gate');
    }
-   const duration=n.duration??.5;
+   const duration=n.duration??(n.kind==='wait'?1:.5);
    return result('waiting','WAIT',a.waitRemaining===0&&a.actionTimer>0?
      'CONTACT HOLD':'TIMED WAIT',id,'wait',
      Math.min(1,a.waitRemaining/Math.max(.001,duration)));
