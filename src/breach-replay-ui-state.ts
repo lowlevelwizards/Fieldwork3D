@@ -4,7 +4,9 @@
 export type ReplaySurface='none'|'moments'|'analyze'|'share';
 export type ReplayCameraChoice='free'|'operator'|'squad'|'director';
 export type ReplayPerspective='iso'|'top'|'plan2d';
-export const REPLAY_SPEED_OPTIONS=[0.25,0.5,0.75,1,1.5,2,4] as const;
+export const REPLAY_SPEED_OPTIONS=[
+  .25,.5,.75,1,1.25,1.5,1.75,2,2.5,3,3.5,4
+] as const;
 export type ReplaySpeed=typeof REPLAY_SPEED_OPTIONS[number];
 
 export function toggleReplaySurface(
