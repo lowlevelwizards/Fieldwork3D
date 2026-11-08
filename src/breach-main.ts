@@ -4732,7 +4732,7 @@ function rebuildReplayEventIndex():void{
         usableWidth:cssW<500?.75:.85,
         usableHeight:cssH<520?.68:.81,maxZoom:14
       });
-  },{step:.8,maxCache:96});
+  },{step:.8,maxCache:96,rooms:state.site?.rooms??[]});
   replayDirectorScheduler.reset();replayDirectorTarget=null;
   
   replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
