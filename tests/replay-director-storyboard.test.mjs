@@ -208,8 +208,6 @@ test('new action in same room does not cause a jump cut or fast spin',()=>{
   t=>stablePose(t,t<.8?0:Math.PI,t<.8?null:'fight:19'),{
    step:.8,rooms:[room]});
  const early=director.sample(.2),late=director.sample(.6);
- assert.ok(Math.abs(signedAngle(early.yaw,0))<.001);
- assert.ok(Math.abs(signedAngle(late.yaw,Math.PI))<.001);
  assert.ok(Math.abs(signedAngle(late.yaw,early.yaw))<.35,
   'a new combat beat must retain a stable camera side, not jump 180 degrees');
  assert.ok(Math.hypot(late.cameraAnchor.x-early.cameraAnchor.x,
