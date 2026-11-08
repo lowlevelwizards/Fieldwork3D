@@ -2808,6 +2808,18 @@ export class TacticalScene3D{
          weaponLightOn:actor.weaponLightOn,
         treatmentActive:actor.treatmentActive,
         treatmentProgress:actor.treatmentProgress,
+        lockpickActive:actor.plan[0]?.kind==='tool'&&
+          actor.plan[0]?.toolMethod==='pick'&&actor.actionTimer>0,
+        lockpickProgress:actor.plan[0]?.kind==='tool'&&
+          actor.plan[0]?.toolMethod==='pick'?
+          Math.min(1,actor.actionTimer/Math.max(.1,
+            (actor.lastDoorId?s.doors.find(d=>d.id===actor.lastDoorId):null)?.
+             style==='reinforced'?8.5:5.5)):0,
+        interactionCrouch:actor.treatmentActive?
+          Math.min(1,Math.max(0,(s.seconds-actor.lastTreatmentAt)/.38)):
+          actor.plan[0]?.kind==='tool'&&actor.plan[0]?.toolMethod==='pick'&&
+          actor.actionTimer>0?
+          Math.min(1,Math.max(0,(s.seconds-actor.lastDoorAt)/.38)):0,
         treatmentPoint:actor.treatmentActive?
          s.operators.find(o=>o.id===actor.lastTreatmentTargetId)?.p:undefined,
         flashCharges:actor.flashCharges,
