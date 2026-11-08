@@ -1751,7 +1751,7 @@ jobs:
       - name: Phase A A3 — physical shot pressure and fire safety
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/phase-a-danger-evidence-') }}
         run: |
-          node --experimental-strip-types --test tests/phase-a-shot-pressure.test.mjs tests/tactical-integration-17-firefight-b1.test.mjs tests/breach-150.test.mjs tests/gameplay-g3-target-stability.test.mjs
+          node --experimental-strip-types --test tests/phase-a-shot-pressure.test.mjs tests/tactical-integration-17-firefight-b1.test.mjs tests/breach-150.test.mjs tests/gameplay-g3-target-stability.test.mjs tests/phase-a-ai-hold-cover.test.mjs tests/mission-reactivity-r8b.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

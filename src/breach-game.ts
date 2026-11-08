@@ -89,7 +89,8 @@ import {recordCivilianHarm,attributableCivilianHarm,
   type CivilianHarmEvent} from './breach-civilian-harm.ts';
 import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
-import {contactTactic} from './breach-ai-tactical-response.ts';
+import {contactTactic,shouldSeekHoldCover}
+ from './breach-ai-tactical-response.ts';
 import {directionalCoverFrom} from './breach-cover-direction.ts';
 import {reportToListener,type TacticalReport} from './breach-communication.ts';
 import {groupResponse,type GroupRole} from './breach-ai-coordination.ts';
@@ -3234,7 +3235,20 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       }
     }
     if(a.combatChoice==='hold'&&a.alert!=='retreat'){
-      a.alert='cover';a.nav=[];a.defense=null;
+      // HOLD is not permission to repeatedly cancel and replan movement.
+      // Keep an already chosen position; if none exists, request a new
+      // physically validated cover spot only on a bounded cooldown.
+      if(a.alert!=='cover'&&!a.defense)a.nav=[];
+      a.alert='cover';
+      if(shouldSeekHoldCover(a.combatChoice,!!a.defense,
+           s.seconds,a.defenseUntil)){
+        const safe=defensivePosition(a,b.p,s);
+        a.defenseUntil=s.seconds+2.5;
+        if(safe&&d(safe,a.p)>15){
+          a.defense=safe;a.nav=[];
+          a.defenseUntil=coverMoveDeadline(s.seconds,d(a.p,safe));
+        }
+      }
     }
     const committed=coverMoveCommitted(a.alert==='cover'&&!!a.defense,
       a.defense?d(a.p,a.defense):0,s.seconds,a.defenseUntil);
