@@ -4729,10 +4729,13 @@ function rebuildReplayEventIndex():void{
       stage?.replayCameraBaseSpan()??1100,{
         intents,upcoming:directorFutureAt(t,replayDirectorFuture),
         beat,actionPair:beat?directorFilmPair(beat,frame):null,
+        doors:frame.doors,cover:frame.coverState,
         usableWidth:cssW<500?.75:.85,
         usableHeight:cssH<520?.68:.81,maxZoom:14
       });
-  },{step:.8,maxCache:96,rooms:state.site?.rooms??[]});
+  },{step:.8,maxCache:96,rooms:state.site?.rooms??[],
+    walls:state.site?.walls??[],cover:state.site?.cover??[],
+    doors:state.site?.doors??[]});
   replayDirectorScheduler.reset();replayDirectorTarget=null;
   
   replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
@@ -4775,7 +4778,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
     stage.view.zoom=target.zoom;
     stage.view.yaw=target.yaw;
     stage.view.pitch=target.pitch;
-    stage.setReplayDirectorCameraAnchor(target.cameraAnchor);
+    stage.setReplayDirectorCameraAnchor(target.cameraAnchor,target.fov??76);
     stage.setReplayDirectorFocus(target.focus);
     stage.setReplayDirectorSubjects(actors.filter(a=>a.side==='blue'&&
       target.subjects.includes(a.id)).map(a=>a.p));
@@ -5079,10 +5082,15 @@ function updateReplayHud(){
     .disabled=!replayHasContactEvidence;
   ui.replayDirectTracers.setAttribute('aria-pressed',
     String(replayTraceMode!=='off'));
-  ui.replayDirectXray.setAttribute('aria-pressed',String(replayXrayOn));
-  ui.replayDirectXray.title=replayXrayOn?
-    'Selective Cutaway on: fade only blocking walls':
-    'Selective Cutaway off: retain normal architectural opacity';
+  // Director is a physically present camera crew. The translucent
+  // tabletop cutaway is incompatible with real interior cinematography.
+  ui.replayDirectXray.disabled=replayCameraMode==='director';
+  ui.replayDirectXray.setAttribute('aria-pressed',
+    String(replayCameraMode!=='director'&&replayXrayOn));
+  ui.replayDirectXray.title=replayCameraMode==='director'?
+    'Director camera: solid walls and ceilings; cutaway unavailable':
+    replayXrayOn?'Selective Cutaway on: fade only blocking walls':
+      'Selective Cutaway off: retain normal architectural opacity';
   ui.replayDirectDirector.setAttribute('aria-pressed',
     String(replayCameraMode==='director'));
   const canBodycam=!!stage&&replayBodycamObservers.includes(replayFollowId);
