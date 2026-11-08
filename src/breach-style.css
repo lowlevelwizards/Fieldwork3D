@@ -2422,3 +2422,11 @@ body.replaying #replayTopHud *{-webkit-tap-highlight-color:transparent}
 /* A chosen rail pop-out temporarily sits above Analyze; when dismissed,
  * the Analyze drawer regains the tap layer for its close button. */
 .replay-rail:has(.replay-choice-pop:not([hidden])){z-index:18}
+
+
+/* Keep a permanent side-rail corridor when a mobile analysis sheet opens.
+ * Both the sheet's Close and the toolbar remain touchable at once. */
+@media(max-width:600px){
+  .replay-panel:has(.replay-drawer:not([hidden])){z-index:12}
+  .replay-panel .replay-drawer{right:59px}
+}
