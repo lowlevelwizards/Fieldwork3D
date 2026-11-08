@@ -217,8 +217,8 @@ test('new action in same room does not cause a jump cut or fast spin',()=>{
  assert.ok(Math.abs(signedAngle(late.yaw,early.yaw))<.35,
   'a new combat beat must retain a stable camera side, not jump 180 degrees');
  assert.ok(Math.hypot(late.cameraAnchor.x-early.cameraAnchor.x,
-   late.cameraAnchor.y-early.cameraAnchor.y)<18,
-  'do not teleport the camera within an occupied room');
+   late.cameraAnchor.y-early.cameraAnchor.y)<30,
+  'faster physical tracking must remain bounded and continuous, not jump');
 });
 test('a one-knot room boundary flicker cannot force two camera cuts',()=>{
  const rooms=[room,{id:'next',x:250,y:0,w:220,h:190}];

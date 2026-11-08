@@ -30,7 +30,7 @@ test('gunfight coverage keeps all four friendlies, not just the shooter close-up
  assert.deepEqual(new Set(shot.subjects),
   new Set(['rook','moss','ash','vale']));
  assert.equal(shot.roomId,'lobby');
- assert.ok(shot.zoom<=9,'director should zoom as far as subject coverage safely permits');
+ assert.ok(shot.zoom<=7.4,'portrait coverage must leave air around all four operators');
  assert.ok(shot.zoom>=.65);
  assert.ok(shot.fov>=82&&shot.fov<=116);
  assert.ok(shot.cameraAnchor.x>=room.x&&
