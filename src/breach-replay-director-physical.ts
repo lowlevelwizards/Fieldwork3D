@@ -94,6 +94,12 @@ export function directorSubjectVisibility(
   camera:PhysicalPoint,subject:PhysicalPoint,scene:PhysicalDirectorScene,
   eyeHeight=53
 ):{fraction:number;torsoVisible:boolean;headVisible:boolean;readable:boolean}{
+  // Architectural walls are always hard opaque regardless of camera
+  // elevation. The sampled-height allowance below is only for leaves
+  // and furniture, and must never introduce a wall X-ray.
+  if(scene.walls.some(w=>segmentHits(camera,subject,w.a,w.b)))
+    return {fraction:0,torsoVisible:false,headVisible:false,
+      readable:false};
   const dx=subject.x-camera.x,dy=subject.y-camera.y;
   const length=Math.hypot(dx,dy)||1;
   const side={x:-dy/length,y:dx/length};
