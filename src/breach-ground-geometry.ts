@@ -134,3 +134,26 @@ export function groundMarkHiddenByActors(
   }
   return false;
 }
+
+
+/** A decal is an AREA, not its single center point. Test the footprint
+ * along the camera's actual optical rays so cutaway walls cannot make a
+ * floor stain float over walls or the actor silhouette. Conservative: a
+ * partly hidden stain vanishes rather than becoming a floating red patch.
+ * ORTHO rays are parallel; WIDE rays come from the camera origin. */
+export function groundBloodFootprintOccluded(
+  mark:Pt,radius:number,camera:{x:number;y:number;z:number},
+  towardCamera:Readonly<{x:number;y:number;z:number}>,
+  orthographic:boolean,walls:readonly Pick<Segment,'a'|'b'>[],
+  actors:readonly Pt[],wallHeight=56
+):boolean{
+  const r=Math.max(0,radius*.62);
+  const sample:readonly Pt[]=[
+    mark,{x:mark.x+r,y:mark.y+r},{x:mark.x-r,y:mark.y+r},
+    {x:mark.x+r,y:mark.y-r},{x:mark.x-r,y:mark.y-r}];
+  return sample.some(p=>
+    (orthographic?
+      groundMarkOccludedFromCamera(p,towardCamera,walls,wallHeight,.85):
+      groundMarkHiddenByWallFromCamera(p,camera,walls,wallHeight,.85))||
+    groundMarkHiddenByActors(p,camera,actors,14,43));
+}
