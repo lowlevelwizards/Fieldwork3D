@@ -104,13 +104,14 @@ uniform float fieldworkCelHighlightTone;
 vec3 getGradientIrradiance(vec3 surfaceNormal,vec3 lightDirection){
  float coord=dot(surfaceNormal,lightDirection)*.5+.5;
  float pixel=max(fwidth(coord)*.72,.0005);
- float middle=mix(fieldworkCelShadowTone,
+ ${bands===3?`float middle=mix(fieldworkCelShadowTone,
   fieldworkCelMidTone,
   smoothstep(fieldworkCelCutoff-pixel,fieldworkCelCutoff+pixel,coord));
  float light=mix(middle,fieldworkCelHighlightTone,
   smoothstep(fieldworkCelHighCutoff-pixel,
    fieldworkCelHighCutoff+pixel,coord));
- return vec3(light);
+ return vec3(light);`:`return vec3(mix(fieldworkCelShadowTone,1.0,
+  smoothstep(fieldworkCelCutoff-pixel,fieldworkCelCutoff+pixel,coord)));`}
 }
 `);
  return true;
