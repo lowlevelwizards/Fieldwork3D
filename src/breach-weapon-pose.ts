@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import {stockPocket,anchorGap} from './breach-anatomy.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
 import {lowReadyFamilyFit,lowReadyPocket} from './breach-low-ready-family-fit.ts';
+import {riflePoseContacts,supportContactAt}
+ from './breach-weapon-contact-zones.ts';
 export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
@@ -28,10 +30,20 @@ export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
  // The low-ready grip is presentation-only, not a shot-time muzzle change.
  const low=handling==='low'?lowReadyFamilyFit(configuration):null;
  const w=clamp(relaxedWeight,0,1);
+ // The receiver/magwell is NOT the default support-palm socket. Start
+ // with a reachable position on the actual handguard; the coordinated
+ // fitter may slide farther forward if the armor/arm geometry permits.
+ // This is shared with the shot-time rigid assembly, never visual-only.
+ const contact=riflePoseContacts(id,configuration);
+ const baseline=contact?supportContactAt(contact.support,.32):null;
+ const supportX=low?Math.max(low.minSupportX,
+   a.supportX-low.supportBack*w):
+   Math.max(a.supportX,baseline?.x??a.supportX);
  return {lengthScale:a.lengthScale,stockX:a.stockX,
   primaryX:a.primaryX,primaryY:a.primaryY,
-  supportX:low?Math.max(low.minSupportX,a.supportX-low.supportBack*w):a.supportX,
-  supportY:a.supportY-(low?.supportDown??0)*w};
+  supportX,supportY:low?
+    a.supportY-(low?.supportDown??0)*w:
+    baseline?.y??a.supportY};
 };
 export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage'|'squeeze'|'entry'|'stack'|'reload'|'treat'|'traverse';
 /** Pure context-based handling selection shared with shot-time geometry.
