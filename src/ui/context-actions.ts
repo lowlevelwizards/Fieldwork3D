@@ -3,7 +3,7 @@ export type ContextAction={id:string;label:string;group:'primary'|'advanced'|'st
   pressed?:boolean;disabled?:boolean;title?:string};
 export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   posture:'stand'|'crouch';pace:'walk'|'run';firePolicy:string;
-  reserve:number;magazine:number;doorOpen?:boolean;
+  reserve:number;magazine:number;doorOpen?:boolean;doorPartial?:boolean;
   nodeKind?:string;nodeMoveMode?:string;aimLabel?:string;nodeFirePolicy?:string;
   watchActive?:boolean;
   nearMovable?:boolean;nearWindow?:boolean;nearDoor?:boolean;
@@ -13,7 +13,12 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   carryingCivilian?:boolean;
   availableTools?:readonly string[];doorWedged?:boolean;};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
-  if(o.door)return o.doorOpen?[
+  if(o.door)return o.doorPartial?[
+     {id:'ctxOpen',label:'OPEN MORE',group:'primary',title:'Continue swinging this partially open door'},
+     {id:'ctxClose',label:'CLOSE',group:'primary',title:'Swing this door toward its frame'},
+     {id:'ctxDoorFlash',label:'FLASH ×'+o.flashRemaining,group:'primary',
+       disabled:o.flashRemaining<=0,title:'Flash through this doorway'},
+   ]:o.doorOpen?[
     {id:'ctxClose',label:'CLOSE',group:'primary',title:'Pull the open door shut'},
     {id:'ctxDoorFlash',label:'FLASH ×'+o.flashRemaining,group:'primary',
       disabled:o.flashRemaining<=0,title:'Flash through the doorway'},
