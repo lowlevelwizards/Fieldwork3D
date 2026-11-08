@@ -101,6 +101,10 @@ import {directorRecordedContact}
   from './breach-replay-director-contact.ts';
 import {directorRecentAction}
   from './breach-replay-director-action.ts';
+import {directorRecordedDiscovery}
+  from './breach-replay-director-discovery.ts';
+import {gradeActualDirectorShot,type DirectorShotGrade}
+  from './breach-replay-director-grade.ts';
 import {directorReplaySafeFrame}
   from './breach-replay-director-projection.ts';
 import {buildDirectorTempoEdits,directorTempoJump,
@@ -977,6 +981,10 @@ let replayDirectorTempoEdits:DirectorTempoEdit[]=[];
 let replayDirectorEditNoticeUntil=0;
 let replayDirectorEditNoticeSeconds=0;
 let replayDirectorTarget:DirectorShot|null=null;
+let replayDirectorGrade:DirectorShotGrade|null=null;
+let replayDirectorGradeBucket=-1;
+let replayDirectorGradeKey='';
+let replayDirectorSafeFrame:ReturnType<typeof directorReplaySafeFrame>|null=null;
 let replayPlanScope:'all'|'selected'|'none'='selected';
 let replayPlanVersion:'active'|'original'='active';
 let replayNameTags=true;
@@ -4823,6 +4831,10 @@ function rebuildReplayEventIndex():void{
     Math.max(cssH-dockRect.top,Math.min(205,cssH*.235));
   const directorSafeFrame=directorReplaySafeFrame(
     cssW,cssH,headerBottom,dockPixels);
+  replayDirectorSafeFrame=directorSafeFrame;
+  replayDirectorGrade=null;
+  replayDirectorGradeBucket=-1;
+  replayDirectorGradeKey='';
   // The director knows the whole finished film. Fixed knots are lazily
   // solved from historical samples, independent of FPS or seek direction.
   replayDirectorStoryboard=new ReplayDirectorStoryboard(recorder.duration,t=>{
@@ -4857,7 +4869,10 @@ function rebuildReplayEventIndex():void{
       cssW/Math.max(1,cssH),0,
       stage?.replayCameraBaseSpan()??1100,{
         intents,upcoming:directorFutureAt(t,replayDirectorFuture),
-        beat,contact,actionPair:canShowPair&&beat?
+        beat,contact,
+        discovery:directorRecordedDiscovery(frame,
+          recorder.at(Math.max(0,t-1.1)),friendlies),
+        actionPair:canShowPair&&beat?
           directorFilmPair(beat,frame):null,
         actionLines:directorRecentAction(recorder.ballistics.between(
           Math.max(0,t-.72),t),t,historicalShotVisible),
@@ -4900,14 +4915,63 @@ function advanceReplayCamera(dt:number,instant=false):void{
     replayDirectorTarget=target;
     
     if(!target){
+      replayDirectorGrade=null;
+      delete ui.replayFollowStatus.dataset.grade;
       stage.setReplayDirectorCameraAnchor(null);
       return;
+    }
+    // Grade the ACTUAL held/tracked camera, not the raw staging candidate.
+    // Sample at 8 Hz for iPhone cost control; seeking and shot changes
+    // invalidate immediately. The label remains visible in screenshots.
+    const gradeBucket=Math.floor(replayTime*8);
+    const gradeKey=(target.editorialId??'unknown')+'|'+
+      replayDirectorLens+'|'+(replayContactObserverId??'team')+
+      '|'+String(replayOmniscient)+'|'+target.cameraDecision;
+    if(gradeBucket!==replayDirectorGradeBucket||
+       gradeKey!==replayDirectorGradeKey||instant){
+      const current=recorder.at(replayTime);
+      if(current){
+        const friendlies=new Set(team(state).map(a=>a.id));
+        const visibleHostiles=new Set<string>(
+          replayOmniscient&&!replayContactObserverId?
+            current.actors.filter(a=>!friendlies.has(a.id)).map(a=>a.id):
+          replayContactObserverId?
+            current.knowledge?.operatorVisibleActorIds?.[
+              replayContactObserverId]??[]:
+            current.knowledge?.visibleActorIds??[]);
+        replayDirectorGrade=gradeActualDirectorShot({
+          shot:target,current,
+          previous:recorder.at(Math.max(0,replayTime-1.1)),
+          friendlies,visibleHostiles,
+          rooms:state.site?.rooms??[],walls:state.site?.walls??[],
+          lens:replayDirectorLens,aspect:cssW/Math.max(1,cssH),
+          baseSpan:stage.replayCameraBaseSpan(),
+          safeFrame:replayDirectorSafeFrame??undefined});
+        replayDirectorGradeBucket=gradeBucket;
+        replayDirectorGradeKey=gradeKey;
+        const grade=replayDirectorGrade;
+        ui.replayFollowStatus.dataset.grade=grade.grade+' · '+grade.score;
+        ui.replayFollowStatus.title='DIRECTOR SELF-GRADE '+
+          grade.grade+' ('+grade.score+'/100) · '+grade.summary+
+          ' · '+grade.decision;
+      }
     }
     if(replayDirectorDebugPanel){
       replayDirectorDebugPanel.hidden=false;
       const beat=directorFilmBeatAt(replayTime,replayDirectorFilmBeats);
       replayDirectorDebugPanel.textContent='DIRECTOR FILM · '+
         target.shotType.toUpperCase()+
+        (replayDirectorGrade?'\nSELF-GRADE '+
+          replayDirectorGrade.grade+' · '+
+          replayDirectorGrade.score+'/100'+
+          '\nASSESSMENT '+replayDirectorGrade.summary+
+          '\nVISIBLE HERO '+replayDirectorGrade.subjectVisible+
+          ' / ENEMY '+replayDirectorGrade.targetVisible+
+          '\nLOOK IN FRAME '+replayDirectorGrade.attentionVisible+
+          ' / SUPPORT '+replayDirectorGrade.supportVisible+
+          '\nNEW GROUND '+replayDirectorGrade.discovery.newGround+
+          ' / ACQUISITIONS '+
+            replayDirectorGrade.discovery.newHostiles:'')+
         '\\nBEAT '+(beat?.kind.toUpperCase()??'TRAVEL')+
         '\\nSUBJECTS '+target.subjects.join(', ')+
         '\\nDOOR '+(target.doorId??'—')+
@@ -4942,6 +5006,9 @@ function advanceReplayCamera(dt:number,instant=false):void{
   }
   stage.setReplayDirectorCameraAnchor(null);
   stage.setReplayDirectorFocus(null);
+  replayDirectorGrade=null;
+  delete ui.replayFollowStatus.dataset.grade;
+  ui.replayFollowStatus.title='Replay camera';
   if(replayDirectorDebugPanel)replayDirectorDebugPanel.hidden=true;
   const target=replayCameraTarget(replayCameraMode,replayTime,actors,
     replayFollowId,cssW/Math.max(1,cssH),replayDirectorCues);
