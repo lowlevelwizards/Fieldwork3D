@@ -25,6 +25,7 @@ test('stage 1: one neutral knee and natural planted-stance geometry',()=>{
  assert.ok(LEG_NEUTRAL_KNEE_FLEXION>.3&&
    LEG_NEUTRAL_KNEE_FLEXION<.7);
  assert.equal(legRestRise(0,'stand'),LEG_REST_RISE);
+ assert.equal(ANATOMY.neutralHip,LEG_HIP_HEIGHT+LEG_REST_RISE);
  assert.equal(legRestRise(12,'stand'),0);
  assert.equal(legRestRise(0,'crouch'),0);
  assert.equal(legRestRise(0,'stand',true),0);
