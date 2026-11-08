@@ -63,8 +63,8 @@ test('magazine sockets follow distinctive rigs, separate fronts and side capacit
  assert.notEqual(rigMagazineMount('chest-placard',0,'plate-standard').z,
   rigMagazineMount('split-front',0,'plate-standard').z,
   'plate-mounted 3-cell and split front carry different spacing');
- const a=rigMagazineMount('chest-placard',3,'plate-standard');
- assert.ok(Math.abs(a.rotation)>1,'4th magazine moves to physical side');
+ assert.throws(()=>rigMagazineMount('chest-placard',3,'plate-standard'),
+  RangeError,'fourth magazine has no dedicated placard pocket');
  const b=rigMagazineMount('chest-placard',0,'plate-legacy');
  const c=rigMagazineMount('chest-placard',0,'plate-jpc');
  assert.ok(b.x>c.x,'legacy carrier projects pouch farther than light carrier');
