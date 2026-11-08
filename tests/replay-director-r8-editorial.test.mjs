@@ -158,3 +158,63 @@ test('real camera projection distinguishes zoom fit and impossible wide two-shot
  assert.equal(directorPerspectiveCovers(anchor,focus,
   [pt(95,80),pt(10,80)],.75,116),false);
 });
+
+test('future first-entry evidence chooses the lead breacher without prematurely cutting',()=>{
+ const actors=[actor('rook',88,62,19),actor('moss',81,57,26)];
+ const a=actors[0],b=actors[1];
+ const makeIntent=(x,role,distance)=>({
+  actorId:x.id,position:x.p,heading:0,
+  route:[x.p,pt(110,60)],direction:pt(1,0),
+  destination:pt(110,60),door:{
+   id:'D',mid:pt(100,60),a:door.a,b:door.b,
+   normal:pt(-1,0),approachSide:1,distance
+  },kind:role,speed:x.velocity,
+  watchDirection:null,plannedAttention:null,
+  activeRevision:1
+ });
+ const entry={id:'D:rook:9',doorId:'D',actorId:'rook',t:9,
+  fromSide:1,toSide:-1,first:true,sequenceId:'D:1:9'};
+ const context={...evidence,entry,
+  intents:[makeIntent(a,'approach',25),
+   makeIntent(b,'breach',13)]};
+ const before=selectDirectorEditorialShot(7.3,actors,context);
+ assert.equal(before.kind,'door');
+ assert.equal(before.primaryActorId,'rook',
+  'recorded first entrant should lead the setup, not the closer kicker');
+ assert.equal(before.firstEntry,false,
+  'knowing the future lead is never permission for an early room cut');
+ const crossing=selectDirectorEditorialShot(9.08,actors,context);
+ assert.equal(crossing.kind,'entry');
+ assert.equal(crossing.firstEntry,true);
+});
+test('pre-roll firefight does not steal a door setup 2 seconds early',()=>{
+ const actors=[actor('rook',84,60,25),actor('moss',72,70,10)];
+ const intent={actorId:'rook',position:actors[0].p,heading:0,
+  route:[actors[0].p,pt(112,60)],direction:pt(1,0),
+  destination:pt(112,60),door:{
+   id:'D',a:door.a,b:door.b,mid:pt(100,60),
+   normal:pt(-1,0),approachSide:1,distance:16
+  },kind:'approach',speed:25,
+  watchDirection:null,plannedAttention:null,activeRevision:1};
+ const beat={id:'fight:120',kind:'fight',first:10,last:10.4,
+  start:7.4,end:11.5,actorId:'rook',shooterId:'rook',
+  targetId:'red-1',shooter:actors[0].p,target:pt(220,60),
+  doorId:null};
+ const far=selectDirectorEditorialShot(8,actors,{
+  ...evidence,intents:[intent],beat});
+ assert.equal(far.kind,'door',
+  'door setup remains the shot until contact genuinely approaches');
+ assert.equal(far.target,null,
+  'future undisclosed enemy is never a framing anchor');
+ const close=selectDirectorEditorialShot(9.3,actors,{
+  ...evidence,intents:[intent],beat});
+ assert.equal(close.kind,'engage');
+ assert.equal(close.target,null,
+  'anticipated friendly action must not disclose target');
+ const actual=selectDirectorEditorialShot(10.1,actors,{
+  ...evidence,intents:[intent],beat,actionPair:{
+   shooter:actors[0].p,target:pt(220,60)
+  }});
+ assert.equal(actual.kind,'engage');
+ assert.equal(actual.required.length,2);
+});
