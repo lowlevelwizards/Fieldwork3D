@@ -129,7 +129,7 @@ export function directorIntentsAt(frame:ReplayFrame|null,
     const door=nearestDoor(position,route,nodes,doors);
     const first=nodes[0];
     const nearDoor=!!door&&door.distance<=clamp(
-      distance(position,route[1]??position)+24,35,75);
+      distance(position,route[1]??position)+35,35,75);
     let kind:DirectorIntentKind='hold';
     if(first?.kind==='look'||first?.kind==='holdClear'||actor.watch)
       kind='overwatch';
