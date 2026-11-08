@@ -16,3 +16,13 @@ const layers:Record<SurfaceKind,number>={
 export function propertySurfaceCenterHeight(kind:SurfaceKind):number{
  return -1.30+layers[kind]*.20;
 }
+
+/** Stable height precedence when independently authored exterior zones touch.
+ * Forecourts win over narrow service strips without z-buffer ties.
+ */
+export function exteriorZoneRenderLift(zoneId:string):number{
+ if(zoneId==='arrival-forecourt')return .105;
+ if(zoneId.startsWith('court-'))return .070;
+ if(zoneId==='side-passage')return .035;
+ return 0;
+}
