@@ -41,7 +41,6 @@ const average=(actors:readonly DirectorActor[]):Pt=>({
   x:actors.reduce((v,a)=>v+a.p.x,0)/actors.length,
   y:actors.reduce((v,a)=>v+a.p.y,0)/actors.length
 });
-const midpoint=(a:Pt,b:Pt):Pt=>({x:(a.x+b.x)/2,y:(a.y+b.y)/2});
 const mag=(p:Pt)=>Math.hypot(p.x,p.y);
 const normalize=(p:Pt):Pt=>mag(p)<.001?{x:0,y:1}:
   {x:p.x/mag(p),y:p.y/mag(p)};
