@@ -37,7 +37,8 @@ export type PhysicalDirectorRequest={
 export type PhysicalDirectorView={
   cameraAnchor:PhysicalPoint;focus:PhysicalPoint;
   roomId:string|null;fov:number;targetVisible:boolean;
-  occluded:number;compositionQuality?:DirectorCompositionQuality
+  occluded:number;compositionQuality?:DirectorCompositionQuality;
+  subjectVisibility?:number;subjectReadable?:boolean
 };
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const distance=(a:PhysicalPoint,b:PhysicalPoint)=>
@@ -280,8 +281,9 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
   let best:PhysicalDirectorView|null=null,score=-Infinity;
   const candidates:{view:PhysicalDirectorView;score:number}[]=[];
   for(const p of anchors){
-    if(directorLineBlocked(p,req.operator,scene))continue;
+    const primaryVision=directorSubjectVisibility(p,req.operator,scene);
     const targetVisible=!!req.target&&
+      directorSubjectVisibility(p,req.target,scene).readable&&
       !directorLineBlocked(p,req.target,scene);
     // The intended victim may physically be in a different room.
     // Without an opening, frame the shooter and the threat direction
@@ -295,10 +297,11 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       };
     if(directorLineBlocked(p,focus,scene))focus={...req.operator};
     const visible=req.subjectPoints.filter(pt=>
-      !directorLineBlocked(p,pt,scene));
+      directorSubjectVisibility(p,pt,scene).readable);
     const mandatory=req.requiredPoints??[req.operator];
     const essentialVisible=mandatory.filter(pt=>
-      !directorLineBlocked(p,pt,scene));
+      (distance(pt,req.operator)<.5?primaryVision.readable:
+        !directorLineBlocked(p,pt,scene)));
     const fits=[...essentialVisible,
       ...(targetVisible&&req.target?[req.target]:[])];
     const fov=directorRequiredFov(p,focus,fits,aspect);
@@ -341,11 +344,19 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       (ideal?distance(p,ideal)*.92:0)-
       (forwardOffset>0?Math.min(110,forwardOffset*1.65):0)-
       Math.max(0,fov-107)*7-
-      Math.max(0,visible.length?0:120);
+      Math.max(0,visible.length?0:120)+
+      // A center-point LOS alone does not make a shot watchable.
+      // These penalties dominate pretty-angle and exact-thirds terms;
+      // partial foreground silhouettes remain intentionally allowed.
+      primaryVision.fraction*640-
+      (primaryVision.readable?0:1450)-
+      (!primaryVision.torsoVisible&&!primaryVision.headVisible?310:0);
     const proposal:PhysicalDirectorView={cameraAnchor:p,focus,roomId:room?.id??null,
       fov:clamp(Math.max(96,fov),96,116),targetVisible,
       occluded:req.subjectPoints.length-visible.length+
-        (req.target&&!targetVisible?1:0)};
+        (req.target&&!targetVisible?1:0),
+      subjectVisibility:primaryVision.fraction,
+      subjectReadable:primaryVision.readable};
     let rankedScore=candidate;
     if(req.composition){
       const c=req.composition;
@@ -362,7 +373,7 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       // target is not an acceptable OTS even if point LOS is clear.
       if(targetVisible&&req.target&&!quality.targetReadable)
         rankedScore-=420;
-      if(!quality.primaryReadable)rankedScore-=230;
+      if(!quality.primaryReadable)rankedScore-=850;
       rankedScore+=(quality.score-80)*2.6;
       if(quality.shoulderReadable&&c.treatment==='engage')
         rankedScore+=36;
@@ -383,9 +394,11 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
         proposal.view.fov,.90,.89))return proposal.view;
     }
   }
-  // No legal WIDE two-shot exists: preserve the strongest physical
-  // ORTHO setup rather than inventing an impossible camera position.
+  // No legal WIDE two-shot exists: retain the highest-ranked, legal
+  // ORTHO candidate. Never accept a hidden subject merely because the
+  // perspective-audition lens cannot fit the full two-shot.
   return best??{cameraAnchor:anchors[0],focus:{...req.operator},
     roomId:room?.id??null,fov:112,targetVisible:false,
-    occluded:req.subjectPoints.length};
+    occluded:req.subjectPoints.length,
+    subjectVisibility:0,subjectReadable:false};
 }
