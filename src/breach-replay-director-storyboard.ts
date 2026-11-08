@@ -81,8 +81,86 @@ export class ReplayDirectorStoryboard{
     }
     return !directorLineBlocked(from,to,this.physicalScene,false);
   }
+  /** Short local camera-dolly route around furniture and inside corners.
+   * Only evaluated when the direct route is obstructed; a bounded
+   * visibility graph prevents the camera from freezing behind a sofa,
+   * while all interpolated positions remain legal and in the room. */
+  private detour(from:Pt,goal:Pt,
+    room:DirectorRoom|null):Pt|null{
+    if(!room||!directorCameraLegal(goal,room,this.physicalScene))
+      return null;
+    const direct=distance(from,goal);
+    const segmentDistance=(p:Pt)=>{
+      const dx=goal.x-from.x,dy=goal.y-from.y;
+      const t=clamp(((p.x-from.x)*dx+(p.y-from.y)*dy)/
+        Math.max(1,dx*dx+dy*dy),0,1);
+      return Math.hypot(p.x-from.x-dx*t,p.y-from.y-dy*t);
+    };
+    const candidates:Pt[]=[];
+    const put=(p:Pt)=>{
+      if(directorCameraLegal(p,room,this.physicalScene))
+        candidates.push(p);
+    };
+    const covers=(this.physicalScene.cover??[])
+      .filter(o=>segmentDistance(o)<
+        Math.max(o.w,o.h)*.7+40)
+      .sort((a,b)=>segmentDistance(a)-segmentDistance(b))
+      .slice(0,4);
+    for(const o of covers)
+      for(const sx of [-1,1])for(const sy of [-1,1])
+        put({x:o.x+sx*(o.w/2+13),
+          y:o.y+sy*(o.h/2+13)});
+    // Broken partitions and wide archways may be the obstruction rather
+    // than a rectangular prop. Allow a legal camera move around wall ends.
+    const relevantWalls=this.physicalScene.walls
+      .filter(w=>Math.min(segmentDistance(w.a),
+        segmentDistance(w.b))<75).slice(0,8);
+    for(const wall of relevantWalls){
+      const dx=wall.b.x-wall.a.x,dy=wall.b.y-wall.a.y;
+      const length=Math.hypot(dx,dy)||1;
+      for(const end of [wall.a,wall.b])
+        for(const side of [-1,1])
+          put({x:end.x+side*(-dy/length)*15,
+            y:end.y+side*(dx/length)*15});
+    }
+    const inset=Math.min(13,room.w*.23,room.h*.23);
+    for(const x of [room.x+inset,room.x+room.w-inset])
+      for(const y of [room.y+inset,room.y+room.h-inset])
+        put({x,y});
+    const nodes=[from,...candidates,goal],n=nodes.length;
+    const reached=new Set<number>(),g=new Array<number>(n).fill(Infinity);
+    const predecessor=new Array<number>(n).fill(-1);
+    g[0]=0;
+    // Dijkstra on <=4 furniture obstacles and <=8 wall-end pairs:
+    // no global pathfinding, no simulation mutation and no GPU work.
+    for(let iterations=0;iterations<n;iterations++){
+      let u=-1,best=Infinity;
+      for(let i=0;i<n;i++)if(!reached.has(i)&&g[i]<best){
+        best=g[i];u=i;
+      }
+      if(u<0||u===n-1)break;
+      reached.add(u);
+      for(let v=1;v<n;v++){
+        if(v===u||reached.has(v))continue;
+        const length=distance(nodes[u],nodes[v]);
+        if(length>Math.max(100,direct*.7)&&v!==n-1)continue;
+        const cost=g[u]+length;
+        if(cost>=g[v]||!this.traversable(nodes[u],nodes[v],room))
+          continue;
+        g[v]=cost;predecessor[v]=u;
+      }
+    }
+    if(predecessor[n-1]<0)return null;
+    let j=n-1;
+    while(predecessor[j]>0)j=predecessor[j];
+    return nodes[j]??null;
+  }
   private walk(from:Pt,desired:Pt,room:DirectorRoom|null,
     maxStep=cameraStep):Pt{
+    // A blocked straight route may still have a legal dolly around a
+    // table or end of a partition. Prefer a short waypoint over HOLD.
+    if(!this.traversable(from,desired,room))
+      desired=this.detour(from,desired,room)??desired;
     const d=distance(from,desired);
     if(d<.05)return from;
     const step=Math.min(maxStep*this.step/.8,d);
