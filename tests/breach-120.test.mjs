@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
 import {solveTwoBone,alignSegment,bendDirection,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from '../src/breach-ik.ts';
-import {fitWeaponPose,weaponGrips} from '../src/breach-weapon-pose.ts';
+import {fitWeaponPose,weaponGrips,liveShortStockPose} from '../src/breach-weapon-pose.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 
 const near=(a,b,t=.0001)=>Math.abs(a-b)<t;
@@ -69,9 +69,15 @@ test('120: a gun is rigid; stock, firing hand and support grip derive from it',(
       for(const yaw of [-1.3,-.5,0,.6,1.3]){
         const fit=fitWeaponPose({weapon,handling,yaw,recoil:.4});
         assert.ok(Number.isFinite(fit.rotation.y));
-        assert.ok(Math.abs(Math.atan2(Math.sin(fit.rotation.y-yaw),
-          Math.cos(fit.rotation.y-yaw)))<.05,
-          'weapon yaw follows the requested heading instead of clipping');
+        // The short-stock author deliberately offsets the gun's yaw from
+        // the upper body (M4 +8°, AK -2°). Preserve that intended angle
+        // rather than forcing all underarm holds to aim straight ahead.
+        const wanted=yaw+(handling==='short'?
+          THREE.MathUtils.degToRad(
+            liveShortStockPose(weapon).weaponRotation[1]):0);
+        assert.ok(Math.abs(Math.atan2(Math.sin(fit.rotation.y-wanted),
+          Math.cos(fit.rotation.y-wanted)))<.05,
+          'rigid weapon should keep its authored yaw relative to heading');
         assert.ok(Number.isFinite(fit.origin.x));
         // Stock error now measures the actual anatomical shoulder separation;
         // high-yaw/recoil previews may legitimately show a large offset.
@@ -93,9 +99,10 @@ test('120: fitted contacts exactly equal points on a rigid transformed gun',()=>
     for(const handling of ['low','high','point','ads','short'])
       for(const yaw of [-1.1,-.45,0,.55,1.1]){
         const fit=fitWeaponPose({weapon,handling,yaw,recoil:1.2});
-        // The compact short-stock support socket intentionally slides from
-        // the fore-end toward the receiver on the SAME rigid firearm.
-        const data=weaponGrips(weapon,undefined,handling);
+        // Short-stock retains the real handguard attachment on the
+        // rigid gun. The user-authored hand guide is a separate IK target.
+        const data=weaponGrips(weapon,undefined,
+          handling==='short'?'ready':handling);
         const project=(x,y,z)=>v(x*data.lengthScale,y,z)
           .applyEuler(fit.rotation).add(fit.origin);
         assert.ok(fit.stock.distanceTo(project(data.stockX,0,0))<1e-6);
