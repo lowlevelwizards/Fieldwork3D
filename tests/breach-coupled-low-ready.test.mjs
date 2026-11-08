@@ -20,15 +20,21 @@ const build=id=>{
 const shoulders=[new THREE.Vector3(1,4,-7),new THREE.Vector3(1,4,7)];
 test('all 17 authored family guns use real physical fore-end intervals',()=>{
  assert.ok(AR_HANDGUARD_START>3);
- // Receiver-supported magwell holding must be closer than the handguard.
- assert.ok(1.86<akHandguardStart('akm'));
- assert.ok(2.02<AR_HANDGUARD_START);
+ // Ordinary two-handed contact begins on the real handguard, never
+ // on the receiver/magwell. Short furniture remains bounded by its tip.
+ assert.ok(AR_HANDGUARD_START>3);
+ assert.ok(akHandguardStart('akm')>3);
  for(const preset of FAMILY_PRESETS){
   const c=build(preset.id),region=riflePoseContacts(preset.weapon,c.config);
   assert.ok(region,preset.id);
   assert.equal(region.family,preset.family);
   assert.equal(region.scale>0,true);
   assert.ok(region.support.near.x<region.support.far.x,preset.id);
+  if(preset.family==='ar')
+   assert.ok(region.support.near.x>=AR_HANDGUARD_START+.7,preset.id);
+  if(preset.family==='ak')
+   assert.ok(region.support.near.x>=akHandguardStart(
+     preset.parts.receiver)+.6,preset.id);
   const front=preset.family==='ar'?
    arHandguardEnd(preset.parts.handguard):
    undefined;

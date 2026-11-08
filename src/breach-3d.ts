@@ -2073,7 +2073,7 @@ export class TacticalScene3D{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         weaponYaw:drawActor.weaponYaw,weapon:actor.weapon,
          weaponConfiguration:actor.weaponConfiguration,
-        aim:actor.aim,velocity:actor.velocity,recoil:actor.recoil,
+        equipment:actor.equipment,aim:actor.aim,velocity:actor.velocity,recoil:actor.recoil,
         posture:actor.posture,threatRange
       },s.doors);
       const lightOn=!!actor.weaponLightOn&&actor.health>0&&

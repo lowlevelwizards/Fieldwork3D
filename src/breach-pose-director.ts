@@ -69,8 +69,11 @@ export function planUpperBodyStrategy(p:OperatorPose,
    (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
  const supportEligible=!!p.poseV3Preview&&c.hasModularBuild&&
    !p.firing&&!p.down&&!p.surrender&&p.reload<=0;
+ // Short-stock has a deliberately OUTBOARD firing elbow. The generic
+ // paired coordinated aim search favors medial carry elbows and can undo
+ // that intent. Use the same equipment-aware direct arm fit instead.
  const coordinatedEligible=!!p.poseV3Preview&&c.hasModularBuild&&
-   !p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
+   c.handling!=='short'&&!p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
    !c.interactionWindow&&(!c.activeTransition||c.authoredLabSwitch);
  return {previewReloadSeed,coupledEligible,supportEligible,
    coordinatedEligible,envelopeRequired:coupledEligible||!!p.poseV3Preview};

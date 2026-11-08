@@ -35,7 +35,10 @@ try{
   await page.waitForFunction(()=>document.getElementById('preview')?.
    dataset.ready==='true',null,{timeout:30000});
   const preview=page.locator('#preview'),animation=page.locator('#poseAnimation');
-  const view=page.locator('[data-view="front"]').first();
+  // Compact iPhone UI folds away some camera buttons. Exercise the same
+  // existing view handler programmatically without altering visible UX.
+  const setView=async name=>page.locator('[data-view="'+name+'"]')
+   .first().evaluate(el=>el.click());
   const captures=[];
   for(const fixture of fixtures){
    for(const [id,value] of [
@@ -47,7 +50,7 @@ try{
     return d?.poseFitWeapon===f.id&&d?.poseFitArmor===f.armor&&
       d?.poseFitRig===f.rig&&d?.poseFitTop===f.top;
    },fixture,{timeout:14000});
-   await view.click();
+   await setView('front');
    const capture=async label=>{
     await page.waitForTimeout(85);
     const d=await preview.evaluate(el=>el.dataset);
@@ -67,10 +70,27 @@ try{
    await capture('02-short-entry');
    await page.waitForTimeout(185);
    await capture('03-short-settled');
+   if(process.env.UOP_R2==='1'){
+    await setView('side');
+    await capture('03b-short-side');
+    await setView('back');
+    await capture('03c-short-back');
+    await setView('front');
+   }
    await animation.selectOption('active-aim');
    await capture('04-ads-retarget');
    await page.waitForTimeout(300);
    await capture('05-ads-settled');
+   if(process.env.UOP_R2==='1'){
+    await setView('side');
+    await capture('05b-ads-side-stock-height');
+    await animation.selectOption('strafe-left');
+    await page.waitForTimeout(200);
+    await capture('06-strafe-elbow');
+    await page.waitForTimeout(200);
+    await capture('07-strafe-elbow-continuity');
+    await setView('front');
+   }
   }
   if(errors.length)throw Error('Lab runtime errors: '+errors.join('; '));
   await writeFile(folder+'/diagnostics.json',

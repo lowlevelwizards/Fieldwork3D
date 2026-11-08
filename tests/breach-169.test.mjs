@@ -18,11 +18,12 @@ const rigPose=(mode)=>({
  deterministic:true
 });
 
-test('169: stock seats medially without changing the visible buttplate or stock length',()=>{
+test('169: stock sits forward and on firing side with correct buttplate length',()=>{
  for(const mode of modes){
   const p=stockPocket(mode);
-  assert.ok(p.z>=6.50&&p.z<=7.2,'bad shoulder pocket '+mode);
-  if(mode!=='short')assert.ok(p.z<6.8,'stock still outboard '+mode);
+  assert.ok(p.z>=7.75&&p.z<=(mode==='short'?11:8.25),
+    'stock moved into torso or too far outside '+mode);
+  if(mode!=='short')assert.ok(p.x>2.5,'armor needs forward seat '+mode);
   for(const weapon of weapons){
    const fit=fitWeaponPose({weapon,handling:mode,yaw:0,recoil:0});
    const g=weaponGrips(weapon);
@@ -49,7 +50,8 @@ test('169: independent elbows are driven by authored profiles and blend inputs',
   const relaxed={...p,firingElbowFlare:p.firingElbowFlare+.35};
   assert.ok(elbowCorridor(mode,1,relaxed).z>right.z+.3);
   assert.equal(elbowCorridor(mode,-1,relaxed).z,left.z);
-  assert.ok(Math.abs(right.z)<9&&Math.abs(left.z)<9);
+  assert.ok(Math.abs(right.z)<(mode==='short'?14:9)&&
+    Math.abs(left.z)<9);
  }
  assert.ok(HANDLING_PROFILES.high.elbowTuck>HANDLING_PROFILES.ads.elbowTuck);
  assert.ok(HANDLING_PROFILES.short.elbowTuck>HANDLING_PROFILES.ready.elbowTuck);
@@ -68,8 +70,9 @@ test('169: shoulder girdle and eye alignment contribute without moving gameplay 
  }
  assert.ok(body.ads.profile.supportShoulderForward>
    body.ready.profile.supportShoulderForward);
- assert.ok(body.short.profile.firingShoulderForward<
-   body.ready.profile.firingShoulderForward);
+ assert.ok(body.short.profile.firingShoulderForward>
+   body.ready.profile.firingShoulderForward,
+   'short-stock firing shoulder must follow right/outboard grip');
  assert.ok(body.ads.profile.headDrop<body.ads.profile.shoulderLift+1);
  // The live muzzle/chest stays authoritative when no explicit Lab override.
  poseOperator(rig,{...rigPose('ads'),handlingOverride:undefined},0);
@@ -81,7 +84,8 @@ test('169: Lab diagnostics and version label use the same elbow profile',()=>{
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
  const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
- assert.match(html,/Build 169/);
+ assert.match(html,/id="poseAnimation"/,
+   'Pose Lab still exposes authored stance selection');
  assert.match(lab,/rig\.handlingProfile\?\?undefined/);
  assert.match(rig,/elbowCorridor\(handling,sign as -1\|1,profile\)/);
  assert.match(rig,/profile\.supportShoulderForward/);

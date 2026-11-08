@@ -11,7 +11,7 @@ import {riflePoseContacts,supportContactAt}
 import type {PoseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
 import type {PoseConstraintMode} from './breach-pose-v3-constraints.ts';
 import {solveV3DynamicArm} from './breach-pose-v3-dynamic-arm.ts';
-export const V3_SUPPORT_GRIP_FRACTIONS=[0,.15,.35,.55,.8] as const;
+export const V3_SUPPORT_GRIP_FRACTIONS=[1,.80,.60,.40,.20,0] as const;
 export type SupportGripRequest={
  weapon:WeaponId;configuration:WeaponConfiguration;
  fit:WeaponFit;shoulder:THREE.Vector3;
@@ -41,9 +41,11 @@ export function chooseV3SupportGrip(req:SupportGripRequest):SupportGripChoice{
    envelope:req.envelope,preferredPole:new THREE.Vector3(3,-9,-1.5)
   });
   if(!candidate.solution)continue;
+  // Prefer a sustainable grip forward on the furniture. Never let a
+  // cosmetic preference override actual 10+10 reach or rigid armor limits.
   const quality=candidate.report.quality+
-   wrist.distanceTo(req.fit.support)*.10+
-   Math.abs(fraction-contact.support.preferredFraction)*.5;
+   wrist.distanceTo(req.fit.support)*.08+
+   Math.abs(fraction-contact.support.preferredFraction)*1.45;
   if(quality<bestQuality){
    best=wrist;bestQuality=quality;bestFraction=fraction;
   }

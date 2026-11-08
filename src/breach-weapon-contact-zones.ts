@@ -33,13 +33,15 @@ export function riflePoseContacts(
  const end=hkArt?.handguardEndX??
   (ar?arHandguardEnd(b.parts.handguard):
   (akBarrelArt(b.parts.barrel)??AK_BARREL_ART['ak-long']).handguardFrontX);
- // The *physical* lower receiver/magwell joint is a supported hold.
- // Restricting the hand to farther-forward furniture forced near-full
- // extension and made a comfortably bent elbow impossible.
+ // All ordinary two-handed holds must locate the palm on the actual
+ // handguard, ahead of the receiver/magwell. The limit remains reachable:
+ // if an outboard stock makes the front grip inaccessible, hand ownership
+ // falls back safely instead of grabbing the magazine housing.
  const mp5k=hk&&b.parts.receiver==='hk-mp5k-stockless';
  const hkTriVertical=hk&&b.parts.handguard==='hk-mp5-trirail'&&
   config.slots.foregrip==='foregrip-vertical';
- const near=hkTriVertical?6.40:mp5k?3.70:hk?2.30:ar?2.02:1.86;
+ const near=hkTriVertical?6.40:mp5k?Math.max(3.90,start+.32):
+   Math.min(end-.60,start+(hk?.65:ar?.90:.75));
  const hkCompact=hk&&b.parts.barrel==='hk53-short';
  const far=hkTriVertical?7.50:mp5k?4.85:
   Math.max(start+1.4,end-(hk?1.80:ar?1.36:1.17));
@@ -51,7 +53,7 @@ export function riflePoseContacts(
   // the real 3.9-unit-deep hand must wrap the actual fore-end, with its
   // inner palm touching it rather than its center buried inside the steel.
   support:{near:{x:near,y,z:-2.68},far:{x:far,y,z:-2.68},
-   preferredFraction:mp5k?.55:hk?(hkCompact?0.40:0.22):ar?.14:.09}};
+   preferredFraction:mp5k?.55:hk?(hkCompact?.48:.60):ar?.64:.58}};
 }
 export function supportContactAt(r:RifleContactRange,t:number):RiflePoint{
  const f=Math.min(1,Math.max(0,t));

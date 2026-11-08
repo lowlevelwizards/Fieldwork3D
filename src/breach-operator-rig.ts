@@ -44,7 +44,7 @@ import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,
  cachedSupportUpperBody,solveUnifiedFallbackArm,
  continuousElbowPole} from './breach-unified-upper-body.ts';
 import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
-import {ANATOMY,elbowCorridor} from './breach-anatomy.ts';
+import {ANATOMY,elbowCorridor,equipmentStockPush} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import type {HandlingTransition} from './breach-handling-transition.ts';
 import {sampleHandlingTransition,sampleCarryTransition}
@@ -1124,10 +1124,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // mannequin. Raising only the pelvis pushes shorts/belt into the torso.
   // This lift is cosmetic to the no-gun preview: grounded feet, gait and
   // normal battle skeleton stay unchanged.
-  const mannequinLift=p.unarmedPreview?
-    neutralMannequinHipRise(physicalSpeed,p.posture,p.down,p.surrender):
-    p.handlingOverride==='low'&&!p.aiming&&!p.firing?
-      neutralMannequinHipRise(physicalSpeed,p.posture,p.down,p.surrender)*.83:0;
+  // Armed low-ready's cosmetic lift must use the SAME sampled phase as
+  // chest/arms. Toggling the named pose used to teleport the pelvis,
+  // producing an apparent leg snap while the torso interpolated.
+  const lowTarget=p.handlingOverride==='low'&&!p.aiming&&!p.firing?1:0;
+  const lowSource=activeTransition?.from==='low'?1:0;
+  const lowLiftWeight=authoredLabSwitch&&activeTransition?
+    lowSource+(lowTarget-lowSource)*
+      lowReadyBlendPhase(activeTransition.alpha):lowTarget;
+  const mannequinLift=neutralMannequinHipRise(physicalSpeed,p.posture,
+    p.down,p.surrender)*(p.unarmedPreview?1:.83*lowLiftWeight);
   // Armed Studio low-ready borrows the upright reference's hip/torso lift,
   // but leaves ALL live gameplay/replay contacts and ballistics unchanged.
   const stanceHip=neutralHip+motion.pelvisY-bash.brace;
@@ -1143,6 +1149,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.hip.rotation.x=clamp(-motion.support*physicalSpeed/72*.022,-.03,.03);
   r.hip.position.z=motion.pelvisSide+
     poseWeight*profile.pelvisShift;
+  // Preserve the actual last displayed pelvis on rapid Lab retargets;
+  // knees are re-solved from planted ankles, never independently lerped.
+  if(authoredLabSwitch&&activeTransition?.authoredHip){
+    const t=lowReadyBlendPhase(activeTransition.alpha);
+    r.hip.position.lerpVectors(
+      activeTransition.authoredHip.position,r.hip.position,t);
+    const fromQ=new THREE.Quaternion().setFromEuler(
+      activeTransition.authoredHip.rotation);
+    const toQ=new THREE.Quaternion().setFromEuler(r.hip.rotation);
+    r.hip.rotation.setFromQuaternion(fromQ.slerp(toQ,t),'XYZ');
+  }
   const aimLevel=clamp(p.aimBlend??(p.aiming?1:0),0,1);
   // Physical bob fades out before firing: live muzzle geometry remains the
   // same fixed-step weapon solution used by ballistics.
@@ -1150,7 +1167,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     clamp((.32-aimLevel)/.32,0,1);
   r.chest.position.y=26-crouch+idleLife.breathe+motion.pelvisY*.5+
     motion.chestLift*freeMotion*1.4-
-    bash.brace*.4-buckle*7-kneel*12+mannequinLift;
+    bash.brace*.4-buckle*7-kneel*12+mannequinLift-
+    poseWeight*profile.stanceCompression;
   r.chest.position.z=motion.pelvisSide*.75+
     poseWeight*profile.pelvisShift*.45;
   r.chest.rotation.z=motion.torsoForward+idleLife.sway+braking*.018+
@@ -1406,6 +1424,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     relaxedLowReady,
     swayYaw:motion.weaponYaw*freeMotion,
     swayPitch:motion.weaponPitch*freeMotion,
+    armorPush:equipmentStockPush(p.equipment),
     // Non-firing movement and manipulation cannot retain stale visual ADS.
     // This affects only carry presentation, never shot-time muzzle authority.
     aimBlend:p.handlingOverride?undefined:
@@ -1923,6 +1942,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
           previousBend:P(3,-9,sign*.5),side:sign as -1|1,
           neutral:false,down:false,surrender:false,firing:false,
           sourceContinuity:false,envelope:dynamicEnvelope,
+          outboardFiring:handling==='short'&&i===1,
           mode:handling==='ads'?'aim':'carry',
           allowVisualOverlap:!!p.poseV3Preview&&
             !p.poseV3StrictContact,
@@ -1949,6 +1969,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       sourceContinuity:!!sourceArm&&!!activeTransition&&
         activeTransition.alpha<1,
       transitionPhase:activeTransition?.alpha,
+      liveContinuity:!p.deterministic&&!discontinuity&&!!r.lastPose&&
+        !reloadActive&&!reaching&&!p.firing,
+      outboardFiring:handling==='short'&&i===1,
       envelope:dynamicEnvelope,
       mode:reloadActive?'reload':p.aiming||handling==='ads'?
         'aim':reaching||throwActive?'interaction':'carry',

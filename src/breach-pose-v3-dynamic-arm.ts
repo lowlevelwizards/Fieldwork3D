@@ -20,6 +20,11 @@ export interface DynamicArmRequest {
  preferredPole:THREE.Vector3;
  /** Non-deterministic continuity is permitted only as a weak preference. */
  referenceBend?:THREE.Vector3;
+ /** Live-only candidate hysteresis. Never sample frame history in replay. */
+ continuityBias?:number;
+ /** For an underarm short-stock firing hand, the elbow stays outside
+  * the right receiver/stock rather than crossing behind it. */
+ outboardFiring?:boolean;
  /** B24b V4 preview only; normal V3 and gameplay remain strict. */
  allowReloadOverlap?:boolean;
  allowVisualOverlap?:boolean;
@@ -73,6 +78,8 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
  }
  const firingTuck=side===1&&(mode==='carry'||mode==='aim');
  const seedPoles=[
+  ...(referenceBend&&req.continuityBias?
+    [referenceBend.clone()]:[]),
   req.preferredPole.clone(),
   firingTuck?new THREE.Vector3(3,-10.5,.45):
    new THREE.Vector3(3,-9,side*1.5),
@@ -97,6 +104,7 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
   const permanentlyBlocked=new Set<LimbSolution>();
   for(const softScale of budgets){
    let best:LimbSolution|null=null,bestReport:ArmConstraintReport|null=null;
+  let bestScore=Infinity;
    for(const pose of poses){
     if(permanentlyBlocked.has(pose))continue;
     evaluations++;
@@ -120,8 +128,17 @@ export function solveV3DynamicArm(req:DynamicArmRequest):DynamicArmFit{
      }
      continue;
     }
-    if(!bestReport||report.quality<bestReport.quality-1e-6){
-     best=pose;bestReport=report;
+    const difference=referenceBend?
+      Math.max(0,1-pose.bendPlane.dot(referenceBend)):0;
+    // Outboard short-stock is a preferred VALID silhouette, never a
+    // license to penetrate the plate or extend an arm. Penalize solutions
+    // that fold the right elbow behind the firing hand/receiver.
+    const outboardDeficit=req.outboardFiring&&side===1?
+      Math.max(0,Math.max(shoulder.z,wrist.z)+.35-pose.joint.z):0;
+    const weightedQuality=report.quality+
+      difference*(req.continuityBias??0)+outboardDeficit*1.8;
+    if(weightedQuality<bestScore-1e-6){
+     best=pose;bestReport=report;bestScore=weightedQuality;
     }
    }
    if(best&&bestReport)return {status:'clear',solution:best,

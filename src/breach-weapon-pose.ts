@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import {stockPocket,anchorGap} from './breach-anatomy.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
 import {lowReadyFamilyFit,lowReadyPocket} from './breach-low-ready-family-fit.ts';
+import {riflePoseContacts,supportContactAt}
+ from './breach-weapon-contact-zones.ts';
 export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
@@ -28,10 +30,20 @@ export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
  // The low-ready grip is presentation-only, not a shot-time muzzle change.
  const low=handling==='low'?lowReadyFamilyFit(configuration):null;
  const w=clamp(relaxedWeight,0,1);
+ // The receiver/magwell is NOT the default support-palm socket. Start
+ // with a reachable position on the actual handguard; the coordinated
+ // fitter may slide farther forward if the armor/arm geometry permits.
+ // This is shared with the shot-time rigid assembly, never visual-only.
+ const contact=riflePoseContacts(id,configuration);
+ const baseline=contact?supportContactAt(contact.support,.32):null;
+ const supportX=low?Math.max(low.minSupportX,
+   a.supportX-low.supportBack*w):
+   Math.max(a.supportX,baseline?.x??a.supportX);
  return {lengthScale:a.lengthScale,stockX:a.stockX,
   primaryX:a.primaryX,primaryY:a.primaryY,
-  supportX:low?Math.max(low.minSupportX,a.supportX-low.supportBack*w):a.supportX,
-  supportY:a.supportY-(low?.supportDown??0)*w};
+  supportX,supportY:low?
+    a.supportY-(low?.supportDown??0)*w:
+    baseline?.y??a.supportY};
 };
 export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage'|'squeeze'|'entry'|'stack'|'reload'|'treat'|'traverse';
 /** Pure context-based handling selection shared with shot-time geometry.
@@ -97,6 +109,8 @@ export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
   swayYaw?:number;swayPitch?:number;
   /** Underarm pull-back for a physically blocked muzzle. */
   clearanceRetraction?:number;
+  /** Exact equipment-driven stock seat shared with shot-time muzzle. */
+  armorPush?:number;
   /** Visual-only low-ready blend; never set by shot-time muzzle code. */
   relaxedLowReady?:number;
   blendFrom?:Handling;blendAlpha?:number;
@@ -131,7 +145,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       primaryReachable:right<=LIMIT,
       contactError:Math.max(0,right-LIMIT)+Math.max(0,left-LIMIT),
       stockError:stocklessMP5K(input.configuration)?0:
-        anchorGap(stock,stockPocket(input.handling))};
+        anchorGap(stock,stockPocket(input.handling,input.armorPush))};
   }
   const data=weaponGrips(input.weapon,input.configuration,
      input.handling,input.relaxedLowReady),scale=data.lengthScale;
@@ -175,15 +189,15 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     // Buttplate is the authority. Search only around an EXTERNAL shoulder
     // contact, never around the old in-chest receiver midpoint. Keep tiny
     // yaw variations to preserve the authoritative shot heading.
-    const normalPocket=lowReadyPocket(stockPocket(mode),relaxed,
+    const normalPocket=lowReadyPocket(stockPocket(mode,input.armorPush),relaxed,
       mode==='low'?relaxedWeight:0);
     // Low-ready must use its own stock pocket even when live aimBlend=0.
     const shoulderPocket=input.aimBlend===undefined||mode==='short'||
       mode==='low'?normalPocket:{
-        x:stockPocket('ready').x+
-          (stockPocket('ads').x-stockPocket('ready').x)*blendAim,
-        y:stockPocket('ready').y+
-          (stockPocket('ads').y-stockPocket('ready').y)*blendAim,
+        x:stockPocket('ready',input.armorPush).x+
+          (stockPocket('ads',input.armorPush).x-stockPocket('ready',input.armorPush).x)*blendAim,
+        y:stockPocket('ready',input.armorPush).y+
+          (stockPocket('ads',input.armorPush).y-stockPocket('ready',input.armorPush).y)*blendAim,
         z:normalPocket.z
       };
     // The MP5K stockless cap rests forward and inboard of shoulder, not in
@@ -249,14 +263,14 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   // not a reference synthesized from the stock itself (always zero).
   const pocket=input.aimBlend===undefined||input.handling==='short'||
     input.handling==='low'?
-    lowReadyPocket(stockPocket(input.handling),relaxed,relaxedWeight):{
-      x:stockPocket('ready').x+
-        (stockPocket('ads').x-stockPocket('ready').x)*
+    lowReadyPocket(stockPocket(input.handling,input.armorPush),relaxed,relaxedWeight):{
+      x:stockPocket('ready',input.armorPush).x+
+        (stockPocket('ads',input.armorPush).x-stockPocket('ready',input.armorPush).x)*
         clamp(input.aimBlend,0,1),
-      y:stockPocket('ready').y+
-        (stockPocket('ads').y-stockPocket('ready').y)*
+      y:stockPocket('ready',input.armorPush).y+
+        (stockPocket('ads',input.armorPush).y-stockPocket('ready',input.armorPush).y)*
         clamp(input.aimBlend,0,1),
-      z:stockPocket(input.handling).z
+      z:stockPocket(input.handling,input.armorPush).z
     };
   const rightGap=Math.max(0,primary.distanceTo(new THREE.Vector3(1,4,7))-LIMIT);
   const leftGap=Math.max(0,support.distanceTo(new THREE.Vector3(1,4,-7))-LIMIT);

@@ -3108,7 +3108,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     if(Math.abs(angleDifference(a.heading,yaw))<.90){
       const check=weaponClearance({
         x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:yaw,
-        weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+        weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
         aim:a.aim,posture:a.posture,velocity:0,recoil:a.recoil,
         threatRange:d(a.p,target.p)
       },s.doors);
@@ -3807,7 +3807,7 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  const legalShot=(candidate:Pt)=>{
    const clearance=weaponClearance({
      x:candidate.x,z:candidate.y,heading:a.heading,weaponYaw:aimYaw,
-     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
      aim:a.aim,posture:a.posture,velocity:0,recoil:a.recoil,
      threatRange:range
    },s.doors);
@@ -3848,7 +3848,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     sightSpreadScale(mods,'ads',d(a.p,point));
   const proposedYaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
   const clearance=weaponClearance({x:a.p.x,z:a.p.y,
-    heading:a.heading,weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,aim:a.aim,posture:a.posture,
+    heading:a.heading,weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil},s.doors);
   if(clearance.blocked)return;
   const muzzle=clearance.muzzle;
@@ -4060,7 +4060,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Hold the shot rather than dumping ammunition into adjacent cover or
   // risking a friendly operator standing in the near firing corridor.
   const sightClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:a.weaponYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,aim:a.aim,posture:a.posture,
+    weaponYaw:a.weaponYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors);
   if(sightClearance.blocked){
     a.lastFireBlock=sightClearance.blocker;
@@ -4107,7 +4107,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // happens *before* muzzle construction, not as an invisible post-shot roll.
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,aim:a.aim,posture:a.posture,
+    weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors);
   if(shotClearance.blocked){
     a.lastFireBlock=shotClearance.blocker;return;

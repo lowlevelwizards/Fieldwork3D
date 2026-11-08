@@ -1,6 +1,7 @@
 /** Operator-local anatomical references.
  * +X forward, +Y up, +Z firing-side shoulder. Values are in chest space. */
 import type {Handling} from './breach-weapon-pose.ts';
+import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {HANDLING_PROFILES,type HandlingProfile}
   from './breach-handling-profiles.ts';
 export type Anchor3={x:number;y:number;z:number};
@@ -11,21 +12,31 @@ export const ANATOMY={
   headRest:{x:0,y:10,z:0},
   neutralHip:20.2,
 } as const;
-/** Real buttplate is seated in the padded upper-pec/shoulder contour,
- * rather than parked outside the shoulder. Geometry spans +/-7 laterally.
- * Short-stock remains lower under the arm with a little extra clearance. */
-export function stockPocket(mode:Handling):Anchor3{
+/** The stock rests on the *outside* padded firing shoulder, ahead of the
+ * bare mannequin's upper-pec surface. This gives fitted armor/rigs front
+ * clearance without driving the butt through the center of the torso.
+ * Shot-time muzzle geometry and the live model call this same authority.
+ * Short-stock releases the shoulder contact and tucks to the right underarm. */
+/** A deterministic forward seat behind the shoulder/upper vest.
+ * Armor changes the physical stock socket, NOT only the cosmetic model.
+ * Shot-time muzzle and rendering both sample this exact scalar.
+ */
+export const equipmentStockPush=(equipment?:EquipmentLoadout):number=>
+  equipment?.slots.armor==='armor-carrier'?.90:
+  equipment?.slots.armor==='armor-soft'?.43:0;
+export function stockPocket(mode:Handling,forwardPush=0):Anchor3{
+ const xPush=Math.max(0,Math.min(1.25,forwardPush));
   switch(mode){
-    case 'high':return {x:1.15,y:5.6,z:6.61};
-    case 'low':return {x:1.48,y:3.0,z:6.64};
-    case 'ready':return {x:1.62,y:4.5,z:6.61};
+    case 'high':return {x:2.65+xPush,y:5.45,z:7.83};
+    case 'low':return {x:2.85+xPush,y:3.0,z:7.85};
+    case 'ready':return {x:3.10+xPush,y:4.5,z:7.87};
     // Short-stock: tuck the butt under the firing arm, OUTSIDE the right
     // shoulder rather than centering the receiver against the sternum.
     // +Z is the firing/right side in the legacy anatomical frame.
     // The exact same rigid fit feeds live presentation and shot-time muzzle.
-    case 'short':return {x:-2.15,y:-2.0,z:9.35};
-    case 'point':return {x:2.44,y:5.3,z:6.61};
-    case 'ads':return {x:2.07,y:7.5,z:6.60};
+    case 'short':return {x:-.90+xPush*.45,y:-2.2,z:10.35};
+    case 'point':return {x:3.75+xPush,y:5.35,z:7.95};
+    case 'ads':return {x:3.62+xPush,y:5.92,z:8.04};
   }
 }
 /** Target for a two-bone elbow. The rig converts this anatomical point to a
@@ -38,7 +49,12 @@ export function elbowCorridor(mode:Handling,side:-1|1,
   const tuck=Math.max(0,Math.min(1,profile.elbowTuck));
   const flare=side===-1?profile.supportElbowFlare:
     profile.firingElbowFlare;
-  return {x:(mode==='short'?3.1:5-tuck*.55)+(side===-1?.15:0),
+  // Short-stocking holds the firing elbow outside the receiver, not
+  // trapped between stock, trigger hand and the vest. This is a POLE
+  // preference; the IK/clearance solver still enforces the real contacts.
+  if(mode==='short'&&side===1)
+    return {x:4.45,y:-4.6,z:13.0+(flare-1.10)};
+  return {x:5-tuck*.55+(side===-1?.15:0),
     y:-7.5-1.2*tuck,z:side*(8.0-.55*tuck+flare)};
 }
 export function anchorGap(a:Anchor3,b:Anchor3){

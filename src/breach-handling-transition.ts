@@ -11,6 +11,7 @@ export type HandlingTransition={from:Handling;to:Handling;alpha:number;
   /** Lab-only complete visible source; never an extra live muzzle authority. */
   authoredFrom?:WeaponFit;
   authoredChest?:{position:THREE.Vector3;rotation:THREE.Euler};
+  authoredHip?:{position:THREE.Vector3;rotation:THREE.Euler};
   authoredArms?:readonly {shoulder:THREE.Vector3;elbow:THREE.Vector3;
     wrist:THREE.Vector3;bend:THREE.Vector3}[]};
 export const smoothHandling=(x:number)=>{

@@ -41,6 +41,10 @@ test('UOP strategy: combat, actions and preview switches preserve priorities',()
  assert.equal(reload.previewReloadSeed,true);
  assert.equal(reload.coupledEligible,true);
  assert.equal(reload.supportEligible,false);
+ const short=plan({},{handling:'short'});
+ assert.equal(short.coordinatedEligible,false,
+   'short stock must preserve outward firing elbow via direct arm fit');
+ assert.equal(short.supportEligible,true);
  const wait=plan({},{activeTransition:true});
  assert.equal(wait.coupledEligible,false);
  assert.equal(wait.coordinatedEligible,false);
