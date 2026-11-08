@@ -1448,7 +1448,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }else r.root.userData.lowReadyPoseReport=null;
   let fit=reloadSeed?.fit??coupled?.fit??fitWeaponPose({weapon:p.weapon,handling,
     configuration:p.weaponConfiguration,
-    yaw:relativeYaw,
+    // Explicit Lab short-stock is the exact XYZ pose exported from the
+    // Workbench, without the automatic director's small facing offset.
+    // Live actor-relative yaw remains the shared shot/render authority.
+    yaw:manualShort&&p.handlingOverride==='short'?0:relativeYaw,
     recoil,clearanceRetraction:p.clearanceRetraction,
     shortCompression:manualRaw??p.shortCompression,
     shortFrom:shortStockSourceHandling(
@@ -1863,7 +1866,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       p.weapon,!!p.friendlyNear):'ready';
   const manualSourceFit=manualShort?fitWeaponPose({
     weapon:p.weapon,configuration:p.weaponConfiguration,
-    handling:manualSource,yaw:relativeYaw,recoil,
+    handling:manualSource,
+    yaw:p.handlingOverride==='short'?0:relativeYaw,recoil,
     armorPush:equipmentStockPush(p.equipment),
     aimBlend:p.handlingOverride?undefined:
       p.aimBlend??(p.aiming?1:0)}):null;
@@ -1874,7 +1878,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       'supportElbow'|'firingElbow')=>{
     const start=new THREE.Vector3(...M4A1_AUTHORED_SHORT.targets.stock);
     return new THREE.Vector3(...M4A1_AUTHORED_SHORT.targets[key])
-      .sub(start).applyAxisAngle(P(0,1,0),relativeYaw).add(start);
+      .sub(start).applyAxisAngle(P(0,1,0),
+        p.handlingOverride==='short'?0:relativeYaw).add(start);
   };
   if(manualShort&&p.handlingOverride==='short'&&physicalSpeed<.2){
     // Match the static workbench silhouette without altering the battle's

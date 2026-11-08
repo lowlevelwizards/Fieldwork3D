@@ -8,6 +8,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset,
 import {fitWeaponPose,weaponGrips}
  from '../src/breach-weapon-pose.ts';
 import {muzzleAtShot} from '../src/breach-muzzle.ts';
+import {legRestRise} from '../src/breach-leg-geometry.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {applyWorkbenchPose,readWorkbenchPose}
  from '../src/operator-pose-workbench.ts';
@@ -78,8 +79,8 @@ test('0..1 compressed fit follows one continuous rigid firearm, never steps',()=
  const ready=fitWeaponPose({weapon:'carbine',configuration:config,
   handling:'ready',yaw:0,recoil:0});
  const zero=sample(0);
- sameVec(zero.stock,ready.stock);
- sameVec(zero.origin,ready.origin);
+ sameVec(zero.stock,ready.stock.toArray());
+ sameVec(zero.origin,ready.origin.toArray());
  const last=sample(1);
  assert.ok(last.stock.x<ready.stock.x-5);
  assert.ok(last.stock.z>ready.stock.z+2);
@@ -111,7 +112,7 @@ test('shot muzzle samples the identical rigid M4A1 fit through compression',()=>
   });
   close(shot.x,tip.x,1e-6);
   close(shot.z,tip.z,1e-6);
-  close(shot.y,26+tip.y,1e-6);
+  close(shot.y,26+legRestRise(0,'stand')+tip.y,1e-6);
  }
 });
 test('full static rig hands/elbows equal the same manual workbench IK',()=>{
