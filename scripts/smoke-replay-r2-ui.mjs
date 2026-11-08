@@ -292,18 +292,33 @@ try{
     .getAttribute('data-camera-yaw'));
   const cdp=await page.context().newCDPSession(page);
   const finger=(id,x,y)=>({id,x,y,radiusX:4,radiusY:4,force:1});
+  const touchTimeline=[];
+  const captureTouch=async name=>touchTimeline.push({
+    name,...await page.evaluate(()=>({
+      count:document.querySelector('#breachCanvas')?.dataset.gestureCount,
+      phase:document.querySelector('#breachCanvas')?.dataset.gesturePhase,
+      modes:document.querySelector('#breachCanvas')?.dataset.gestureModes,
+      yaw:document.querySelector('#breach3dCanvas')?.dataset.cameraYaw
+    }))
+  });
   await cdp.send('Input.dispatchTouchEvent',{
     type:'touchStart',touchPoints:[finger(1,96,250)]});
+  await captureTouch('start-one');
   await cdp.send('Input.dispatchTouchEvent',{
     type:'touchStart',touchPoints:[finger(1,96,250),finger(2,185,250)]});
+  await captureTouch('start-two');
   await cdp.send('Input.dispatchTouchEvent',{
     type:'touchMove',touchPoints:[finger(1,96,250),finger(2,202,252)]});
+  await captureTouch('pinch-move');
   await cdp.send('Input.dispatchTouchEvent',{
     type:'touchEnd',touchPoints:[finger(1,96,250)]});
+  await captureTouch('lift-one');
   await cdp.send('Input.dispatchTouchEvent',{
     type:'touchMove',touchPoints:[finger(1,160,275)]});
+  await captureTouch('single-move');
   await cdp.send('Input.dispatchTouchEvent',{
     type:'touchEnd',touchPoints:[]});
+  await captureTouch('end-all');
   await page.waitForTimeout(150);
   const afterYaw=Number(await page.locator('#breach3dCanvas')
     .getAttribute('data-camera-yaw'));
@@ -318,7 +333,7 @@ try{
     Math.abs(Math.atan2(Math.sin(afterYaw-beforeYaw),
       Math.cos(afterYaw-beforeYaw)))>.04,
     'Pinch-to-single-finger handoff failed to restore orbit: '+
-      JSON.stringify({beforeYaw,afterYaw,gestureProbe}));
+      JSON.stringify({beforeYaw,afterYaw,gestureProbe,touchTimeline}));
   await cdp.detach();
 
 
