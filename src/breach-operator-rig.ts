@@ -48,7 +48,7 @@ import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor,equipmentStockPush} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile} from './breach-handling-transition.ts';
-import {M4A1_AUTHORED_SHORT,isAuthoredM4A1,authoredShortPhase}
+import {authoredShortPhase}
  from './breach-authored-m4a1-short-stock.ts';
 import type {HandlingTransition} from './breach-handling-transition.ts';
 import {sampleHandlingTransition,sampleCarryTransition}
@@ -94,7 +94,8 @@ import {weaponPresentationSockets} from './breach-weapon-presentation.ts';
 import {resolveWeaponAssembly,sameWeaponConfiguration,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponGrips,clampReach,shortStockSourceHandling,
-  fitWeaponPose,type WeaponFit,type Handling,type HandlingIntent}
+  fitWeaponPose,liveShortStockPose,
+  type WeaponFit,type Handling,type HandlingIntent}
   from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
   ankleLink:THREE.Mesh;
@@ -1052,12 +1053,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   });
   const {treatmentActive,reloadActive,reloadProgress,reloadMode,
     throwAge,throwActive,doorAge,doorActive,handOwners}=actionState;
-  // The user's precise static M4A1 underarm pose takes ownership of the
-  // *entire two-arm hold*. It cannot be followed by the old elbow candidate
-  // search or the auto-short-stock stock pocket. Reload/interaction releases
-  // retain their own action-specific IK as before.
+  // Every equipped weapon uses the same authored, grip-adapted underarm
+  // short-stock system. Never let the old armor/elbow-candidate stack
+  // fight it. Reload, treatment and action handoffs keep their own IK.
   const manualShort=handling==='short'&&
-    isAuthoredM4A1(p.weapon,p.weaponConfiguration)&&
     !p.unarmedPreview&&!p.down&&!p.surrender&&!reloadActive&&
     !treatmentActive&&!throwActive&&!doorActive&&
     handOwners.left==='weapon'&&handOwners.right==='weapon';
@@ -1861,6 +1860,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // The base hold is calculated from the very same ready/aim source used
   // by shot-time geometry. No previous-frame elbow memory; replay is pure.
   const manualPhase=manualShort?authoredShortPhase(manualRaw):0;
+  const manualPose=manualShort?
+    liveShortStockPose(p.weapon,p.weaponConfiguration):null;
   const manualSource=manualShort?
     shortStockSourceHandling(p.aimBlend??(p.aiming?1:0),moving,
       p.weapon,!!p.friendlyNear):'ready';
@@ -1876,8 +1877,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // facing relative to the chest changes; shoulders remain anatomical.
   const authoredPoint=(key:'supportHand'|'firingHand'|
       'supportElbow'|'firingElbow')=>{
-    const start=new THREE.Vector3(...M4A1_AUTHORED_SHORT.targets.stock);
-    return new THREE.Vector3(...M4A1_AUTHORED_SHORT.targets[key])
+    const start=new THREE.Vector3(...manualPose!.targets.stock);
+    return new THREE.Vector3(...manualPose!.targets[key])
       .sub(start).applyAxisAngle(P(0,1,0),
         p.handlingOverride==='short'?0:relativeYaw).add(start);
   };
@@ -1885,7 +1886,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Match the static workbench silhouette without altering the battle's
     // upper-body recoil/turn authority. This tiny torso adjustment only
     // runs for the explicitly selected stationary Lab stance.
-    const angles=M4A1_AUTHORED_SHORT.torso;
+    const angles=manualPose!.torso;
     r.chest.rotation.x=THREE.MathUtils.lerp(r.chest.rotation.x,
       THREE.MathUtils.degToRad(angles[0]),manualPhase);
     r.chest.rotation.y=THREE.MathUtils.lerp(r.chest.rotation.y,
@@ -1893,16 +1894,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     r.chest.rotation.z=THREE.MathUtils.lerp(r.chest.rotation.z,
       THREE.MathUtils.degToRad(angles[2]),manualPhase);
   }
-  r.root.userData.authoredM4ShortStock=manualShort?{
-    progress:manualPhase,preset:M4A1_AUTHORED_SHORT.preset,
+  const manualReport=manualShort?{
+    progress:manualPhase,preset:manualPose!.preset,
     handTargets:'manual',solver:'single-two-bone',
     stock:fit.stock.toArray()}:null;
+  r.root.userData.authoredShortStock=manualReport;
+  // Preserve the old M4-specific diagnostic only for exact M4A1 poses.
+  r.root.userData.authoredM4ShortStock=
+    manualReport&&manualPose!.preset==='ar-m4a1'&&
+      p.weapon==='carbine'?manualReport:null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     if(manualShort&&manualSourceFit){
       const startShoulder=shoulderFor(i);
       const targetShoulder=new THREE.Vector3(
-        ...M4A1_AUTHORED_SHORT.targets[
+        ...manualPose!.targets[
           i===0?'supportShoulder':'firingShoulder']);
       const shoulder=startShoulder.clone().lerp(targetShoulder,manualPhase);
       const oldWrist=i===0?manualSourceFit.support:
