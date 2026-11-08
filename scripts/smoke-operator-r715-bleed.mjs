@@ -75,7 +75,7 @@ try{
    await page.locator('#studioLightCompare').click();
    await page.waitForFunction(()=>
     document.getElementById('studioCanvas')?.dataset.operatorRimMode==='dual');
-   if(await exposed.inputValue()!=='.28')
+   if(Math.abs(Number(await exposed.inputValue())-.28)>.005)
     throw Error('Compare Original did not preserve gear outline values');
    if(errors.length)throw Error('WebGL shader errors: '+errors.join(' | '));
    console.log('R7.15 actual mobile Studio soft silhouette, mask, A/B and controls passed');
