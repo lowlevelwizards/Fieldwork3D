@@ -9,6 +9,7 @@ import {parkingStallCandidates} from './parking-stalls.ts';
 import {SERVICE_EDGE_FIXTURES,serviceYardEdgeCandidates} from './service-yard-layout.ts';
 import {landscapeEdgeCandidates} from './landscape-edge-program.ts';
 import {serviceFixtureInRoad} from './road-service-fixtures.ts';
+import {overlapsPublicStreetRoad} from './public-street-layout.ts';
 import {landscapePhysicalFootprint,TREE_FIXTURES} from './landscape-footprint.ts';
 import {outdoorFixtureAllowed,frontageEdgeCandidates}
  from './outdoor-fixture-policy.ts';
@@ -160,7 +161,8 @@ export function addExteriorProperty(site:Site,seed:number):Site{
       y-h/2<bounds.minY+23||y+h/2>bounds.maxY-22)continue;
     if(site.rooms.some(r=>x+w/2>r.x&&x-w/2<r.x+r.w&&
       y+h/2>r.y&&y-h/2<r.y+r.h))continue;
-    if(serviceFixtureInRoad(site,item,candidate))continue;
+    if(serviceFixtureInRoad(site,item,candidate)||
+       overlapsPublicStreetRoad(site,candidate))continue;
     // A tree's leaf crown can hang over a planting bed, but must not
     // intersect a room wall or the actual accessible entry walkway.
     if(TREE_FIXTURES.has(item)){
@@ -205,6 +207,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
        candidate.y+h/2>zone.y+zone.h/2-3)continue;
      if(lane&&Math.abs(candidate.x-lane.x)<(w+lane.w)/2+10&&
        Math.abs(candidate.y-lane.y)<(h+lane.h)/2+10)continue;
+     if(overlapsPublicStreetRoad(site,candidate))continue;
      if(protectedPoints.some(p=>Math.abs(p.x-candidate.x)<w/2+23&&
        Math.abs(p.y-candidate.y)<h/2+23))continue;
      if(cover.some(other=>overlaps(other,candidate)))continue;
@@ -231,6 +234,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
        y-h/2<zone.y-zone.h/2+9||y+h/2>zone.y+zone.h/2-9)continue;
      if(x-w/2<bounds.minX+17||x+w/2>bounds.maxX-17||
        y-h/2<bounds.minY+22||y+h/2>bounds.maxY-22)continue;
+     if(overlapsPublicStreetRoad(site,candidate))continue;
      if(site.rooms.some(room=>x+w/2>room.x&&x-w/2<room.x+room.w&&
        y+h/2>room.y&&y-h/2<room.y+room.h))continue;
      if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+31&&
