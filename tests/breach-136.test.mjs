@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {newSession,team,beginReload,advanceReload}
+import {newSession,team,equipWeaponChoice,beginReload,advanceReload}
  from '../src/breach-game.ts';
 import {magazineKit,reserveRounds,fullestMagazineIndex,reloadPhase}
  from '../src/breach-magazines.ts';
@@ -45,8 +45,9 @@ test('136: empty reload drops the empty magazine only at physical detach',()=>{
  assert.equal(a.reserve,reserve-cap);
 });
 test('136: shell-fed weapon loads individual rounds with no box magazine',()=>{
- const s=newSession(0,891237),a=team(s).find(x=>x.weapon==='shotgun');
+ const s=newSession(0,891237),a=team(s)[0];
  assert.ok(a);
+ assert.equal(equipWeaponChoice(s,a.id,'shotgun'),true);
  a.magazine=2;
  const total=a.magazine+a.reserve;
  assert.ok(beginReload(s,a));assert.equal(a.reloadMode,'shells');
