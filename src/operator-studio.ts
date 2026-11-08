@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import {applyOperatorHeightLighting} from './operator-height-lighting.ts';
 import {studioLightLabFromQuery,effectiveStudioLightLab,
- studioLightLabLabel,DEFAULT_STUDIO_LIGHT_LAB,type StudioLightLabSettings}
+ studioLightLabLabel,DEFAULT_STUDIO_LIGHT_LAB,approvedGraphicLighting,
+ type StudioLightLabSettings}
  from './operator-studio-light-lab.ts';
 import {inspectOperatorLighting,formatOperatorLightingReport,
  previewOperatorLightingLayers,restoreOperatorLightingPreview,
@@ -324,7 +325,7 @@ function syncLightingLabControls(){
  labLightAzimuthValue.textContent=lightLabSettings.lightAzimuth+'°';
  labCel.disabled=atlasPrecedence;
  labRim.disabled=atlasPrecedence;
- const celOn=lightLabSettings.toon===2&&!atlasPrecedence;
+ const celOn=lightLabSettings.toon!==0&&!atlasPrecedence;
  const rimOn=lightLabSettings.rim==='dual'&&!atlasPrecedence;
  labCelLow.disabled=!celOn;
  labRimAmount.disabled=!rimOn;
@@ -336,9 +337,11 @@ function syncLightingLabControls(){
  labCelLowWrap.hidden=!celOn;
  labRimAmountWrap.hidden=!rimOn;
  for(const row of [labRimWidthWrap,labRimCoverageWrap,labRimAngleWrap,
-   labRimFabricWidthWrap,labRimFabricWrap,labRimFabricLightThresholdWrap,
-   labRimSkinWidthWrap,labRimSkinWrap,labRimSkinLightThresholdWrap,
-   labRimSkinWarmthWrap,labLightAzimuthWrap,labRimMaskWrap])row.hidden=!rimOn;
+   labLightAzimuthWrap,labRimMaskWrap])row.hidden=!rimOn;
+ // Rejected fabric and skin glints never appear in the approved Lab.
+ for(const row of [labRimFabricWidthWrap,labRimFabricWrap,
+   labRimFabricLightThresholdWrap,labRimSkinWidthWrap,labRimSkinWrap,
+   labRimSkinLightThresholdWrap,labRimSkinWarmthWrap])row.hidden=true;
  labWeapon.setAttribute('aria-pressed',String(!clothesOnly&&showWeapon));
  labCompare.setAttribute('aria-pressed',String(lightLabCompareOriginal));
  labCompare.textContent=lightLabCompareOriginal?'RETURN TO EXPERIMENT':
@@ -445,7 +448,7 @@ labCompare.addEventListener('click',()=>{
  applyLightingLab();
 });
 labReset.addEventListener('click',()=>{
- lightLabSettings={...DEFAULT_STUDIO_LIGHT_LAB};
+ lightLabSettings=approvedGraphicLighting();
  lightLabCompareOriginal=false;
  applyLightingLab();
 });
