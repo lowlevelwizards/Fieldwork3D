@@ -8,6 +8,7 @@ import {armorAttachmentFrame,armorMountedMagazineSocket}
  from '../src/operator-armor-attachment-frame.ts';
 import {registeredMagazinePouches,seatMagazineInPouch}
  from '../src/operator-magazine-pouch-fit.ts';
+import {rigContactFrame} from '../src/operator-rig-contact-frame.ts';
 
 test('every wearable provides one canonical front, side, shoulder and rear mount',()=>{
  for(const id of Object.keys(ARMOR_PROFILES)){
@@ -57,7 +58,7 @@ test('changing armor silhouette moves rig and issued magazines without changing 
     trousers:'bdu-trousers'
    }}
   },0);
-  const frame=armorAttachmentFrame(armor,'bdu-shirt');
+  const frame=rigContactFrame(armor,'bdu-shirt','micro-rig');
   assert.equal(r.visualKit.wardrobeGear.rig['micro-rig'].position.x,
    frame.rigShiftX);
   const mag=r.visualKit.magazines.rig[0];
