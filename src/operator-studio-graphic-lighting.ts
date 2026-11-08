@@ -11,8 +11,6 @@ import {operatorRimRole,injectOperatorRim}
  from './operator-studio-toon-lighting.ts';
 import {studioContourEligible}
  from './operator-studio-rim-contour.ts';
-import {applyStudioEdgeBleed,clearStudioEdgeBleed,disposeStudioEdgeBleed}
- from './operator-studio-edge-bleed.ts';
 
 type Source=THREE.MeshStandardMaterial;
 type Variant=THREE.MeshStandardMaterial|THREE.MeshToonMaterial;
@@ -170,18 +168,35 @@ export function ensureStudioRimBounds(geometry:THREE.BufferGeometry):boolean{
  const min=geometry.getAttribute('fieldworkRimBoundsMin');
  const max=geometry.getAttribute('fieldworkRimBoundsMax');
  if(min?.count===position.count&&max?.count===position.count)return true;
- if(!geometry.boundingBox)geometry.computeBoundingBox();
- const bounds=geometry.boundingBox;
- if(!bounds||bounds.isEmpty())return false;
- const a=new Float32Array(position.count*3);
- const b=new Float32Array(position.count*3);
- for(let i=0;i<position.count;i++){
-  const index=i*3;
-  a[index]=bounds.min.x;a[index+1]=bounds.min.y;a[index+2]=bounds.min.z;
-  b[index]=bounds.max.x;b[index+1]=bounds.max.y;b[index+2]=bounds.max.z;
+ // Gear often merges every strap/pouch into one draw call. A single broad
+ // bounds box would make those neighboring parts share false "edges".
+ // Reuse the authored non-overlapping geometry spans when available.
+ const spans=geometry.userData.fieldworkLightingPartSpans as
+  Array<{start:number;count:number}>|undefined;
+ const valid=Array.isArray(spans)&&spans.length>0&&
+  spans.every(p=>Number.isInteger(p.start)&&Number.isInteger(p.count)&&
+   p.start>=0&&p.count>0&&p.start+p.count<=position.count);
+ const ranges=valid?spans!:[{start:0,count:position.count}];
+ const low=new Float32Array(position.count*3);
+ const high=new Float32Array(position.count*3);
+ for(const range of ranges){
+  const a=new THREE.Vector3(Infinity,Infinity,Infinity);
+  const b=new THREE.Vector3(-Infinity,-Infinity,-Infinity);
+  for(let i=range.start;i<range.start+range.count;i++){
+   a.min(new THREE.Vector3(position.getX(i),position.getY(i),
+    position.getZ(i)));
+   b.max(new THREE.Vector3(position.getX(i),position.getY(i),
+    position.getZ(i)));
+  }
+  for(let i=range.start;i<range.start+range.count;i++){
+   let j=i*3;low[j]=a.x;low[j+1]=a.y;low[j+2]=a.z;
+   high[j]=b.x;high[j+1]=b.y;high[j+2]=b.z;
+  }
  }
- geometry.setAttribute('fieldworkRimBoundsMin',new THREE.BufferAttribute(a,3));
- geometry.setAttribute('fieldworkRimBoundsMax',new THREE.BufferAttribute(b,3));
+ geometry.setAttribute('fieldworkRimBoundsMin',
+  new THREE.BufferAttribute(low,3));
+ geometry.setAttribute('fieldworkRimBoundsMax',
+  new THREE.BufferAttribute(high,3));
  return true;
 }
 export function injectStudioGraphicLighting(
@@ -294,18 +309,43 @@ export function injectStudioGraphicLighting(
    #endif
    float fwLitBand=fwEdge*fwFacesKey*fwReceivedLight*
     smoothstep(.25,.75,fwKeyShadow);
-   float fwRoleAmount=fieldworkRimRole<.5?fieldworkRimStrength:
-    fieldworkRimRole<1.5?fieldworkRimStrength*fieldworkRimFabric:
-    fieldworkRimStrength*fieldworkRimSkin;
-   // Matte cloth gets a cream ink, not metal shine. Skin catches a
-   // warm reddish-orange-pink bounce scaled from the actual complexion,
-   // preserving dark skin rather than replacing all tones with pink.
+   // R7.16: all three inks operate INSIDE the original depth-writing
+   // surface. The cream and warm bands are never geometry offsets.
+   float fwSoftRole=step(.5,fieldworkRimRole);
+   float fwSoftWidth=fieldworkRimRole<1.5?
+    fieldworkRimFabricWidth:fieldworkRimSkinWidth;
+   float fwSoftOpacity=fieldworkRimRole<1.5?
+    fieldworkRimFabric:fieldworkRimSkin;
+   float fwSoftBacklight=fieldworkRimRole<1.5?
+    fieldworkRimFabricBacklight:fieldworkRimSkinBacklight;
+   // The second nearest plane picks the edge WITHIN a visible voxel face.
+   // It remains bounded by the actual triangle, never extending into air.
+   float fwSoftLineWidth=clamp(min(fwSpan.x,min(fwSpan.y,fwSpan.z))*
+    .10,.18,.58)*fwSoftWidth;
+   float fwSoftAA=max(fwidth(fwSecond)*1.1,.005);
+   float fwSoftBorder=1.0-smoothstep(
+    fwSoftLineWidth*.82,fwSoftLineWidth+fwSoftAA,fwSecond);
+   float fwSilhouette=smoothstep(.12,.54,fwGrazing);
+   // Unlike the white glint, backlit cloth is allowed on the shadow-side
+   // surface (faux transmitted light). It is still gated by view slant and
+   // a geometric face border, not unbounded Fresnel or bloom.
+   float fwRearNormal=max(-dot(fwNormal,fwKey),0.0);
+   float fwRearKey=max(-dot(fwKey,fwView),0.0);
+   float fwBack=smoothstep(.06,.70,max(fwRearNormal,fwRearKey*.72));
+   float fwSoftBackGate=mix(.04,1.0,
+    clamp(fwBack*fwSoftBacklight,0.0,1.0));
+   float fwSoftBand=fwSoftBorder*fwSilhouette*fwSoftBackGate;
+   float fwStrength=fieldworkRimRole<.5?
+    fwLitBand*fieldworkRimStrength:
+    fwSoftBand*fwSoftOpacity;
+   vec3 fwSkinTint=outgoingLight*vec3(1.28,.94,.89)+
+    vec3(.19,.058,.061)*fieldworkRimSkinWarmth;
    vec3 fwTarget=fieldworkRimRole<.5?vec3(1.15):
-    fieldworkRimRole<1.5?vec3(1.0,.92,.80):
-    outgoingLight*vec3(1.26,.91,.84)+vec3(.17,.048,.055);
-   float fwMask=clamp(fwLitBand*fwRoleAmount,0.0,1.0);
+    fieldworkRimRole<1.5?vec3(1.0,.93,.82):fwSkinTint;
+   float fwMask=clamp(fwStrength,0.0,1.0);
+   float fwDiagnostic=fieldworkRimRole<.5?fwLitBand:fwSoftBand;
    outgoingLight=fieldworkRimDebug>.5?
-    mix(outgoingLight,vec3(fwLitBand),.90):
+    mix(outgoingLight,vec3(fwDiagnostic),.90):
     mix(outgoingLight,fwTarget,fwMask);
   `;
  }
@@ -315,7 +355,12 @@ export function injectStudioGraphicLighting(
   'uniform float fieldworkRimCoverage;',
   'uniform float fieldworkRimAngleLooseness;',
   'uniform float fieldworkRimFabric;',
+  'uniform float fieldworkRimFabricWidth;',
+  'uniform float fieldworkRimFabricBacklight;',
   'uniform float fieldworkRimSkin;',
+  'uniform float fieldworkRimSkinWidth;',
+  'uniform float fieldworkRimSkinBacklight;',
+  'uniform float fieldworkRimSkinWarmth;',
   'uniform float fieldworkRimRole;',
   'uniform float fieldworkRimDebug;',
   'uniform vec3 fieldworkRimKeyWorld;',
@@ -410,7 +455,12 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
    coverage:{value:config.rimCoverage},
    angle:{value:config.rimAngleLooseness},
    fabric:{value:config.rimFabricOpacity},
+   fabricWidth:{value:config.rimFabricWidth},
+   fabricBacklight:{value:config.rimFabricBacklight},
    skin:{value:config.rimSkinOpacity},
+   skinWidth:{value:config.rimSkinWidth},
+   skinBacklight:{value:config.rimSkinBacklight},
+   skinWarmth:{value:config.rimSkinWarmth},
    role:{value:role==='hard'?0:role==='fabric'?1:2},
    debug:{value:config.rimDebugMask?1:0},
    key:{value:new THREE.Vector3(.46,.88,.07).normalize()
@@ -436,8 +486,11 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
   if(litRim){
    const u=variant.userData.fieldworkRimUniform as {
     strength:{value:number};width:{value:number};
-    coverage:{value:number};angle:{value:number};fabric:{value:number};
-    skin:{value:number};role:{value:number};
+    coverage:{value:number};angle:{value:number};
+    fabric:{value:number};fabricWidth:{value:number};
+    fabricBacklight:{value:number};skin:{value:number};
+    skinWidth:{value:number};skinBacklight:{value:number};
+    skinWarmth:{value:number};role:{value:number};
     debug:{value:number};key:{value:THREE.Vector3}
    };
    shader.uniforms.fieldworkRimStrength=u.strength;
@@ -445,7 +498,12 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
    shader.uniforms.fieldworkRimCoverage=u.coverage;
    shader.uniforms.fieldworkRimAngleLooseness=u.angle;
    shader.uniforms.fieldworkRimFabric=u.fabric;
+   shader.uniforms.fieldworkRimFabricWidth=u.fabricWidth;
+   shader.uniforms.fieldworkRimFabricBacklight=u.fabricBacklight;
    shader.uniforms.fieldworkRimSkin=u.skin;
+   shader.uniforms.fieldworkRimSkinWidth=u.skinWidth;
+   shader.uniforms.fieldworkRimSkinBacklight=u.skinBacklight;
+   shader.uniforms.fieldworkRimSkinWarmth=u.skinWarmth;
    shader.uniforms.fieldworkRimRole=u.role;
    shader.uniforms.fieldworkRimDebug=u.debug;
    shader.uniforms.fieldworkRimKeyWorld=u.key;
@@ -465,7 +523,6 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
  return variant;
 }
 export function restoreStudioGraphicLighting(root:THREE.Object3D):void{
- clearStudioEdgeBleed(root);
  root.traverse(node=>{
   if(!(node instanceof THREE.Mesh)||Array.isArray(node.material))return;
   const src=node.userData.fieldworkStudioArtOriginal as Source|undefined;
@@ -476,7 +533,6 @@ export function restoreStudioGraphicLighting(root:THREE.Object3D):void{
 }
 export function disposeStudioGraphicLighting(root:THREE.Object3D):void{
  restoreStudioGraphicLighting(root);
- disposeStudioEdgeBleed(root);
  const cache=root.userData.fieldworkStudioArtCache as Cache|undefined;
  if(cache)for(const variants of cache.values())
   for(const entry of variants.values())entry.material.dispose();
@@ -515,13 +571,12 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
    'current':config.gradient;
   const hardSurface=studioContourEligible(node,src);
   const role=hardSurface?'hard':studioArtRole(node,src);
-  const litRim=rimOn&&config.rimAmount>0&&hardSurface&&
-   ensureStudioRimBounds(node.geometry);
-  // Soft equipment and skin use a genuinely extruded, depth-masked
-  // silhouette, not the hard glint's tiny on-surface edge patch.
-  if(rimOn&&(role==='fabric'||role==='skin'))
-   applyStudioEdgeBleed(root,node,src,role,config);
-  // No new material variant just to draw the separate backface shell.
+  // Every material role uses the same original surface shader and the same
+  // authored geometry. No BackSide shell, transparent sprite or extra pass.
+  const activeInk=hardSurface?config.rimAmount>0:
+   role==='fabric'?config.rimFabricOpacity>0:
+   role==='skin'?config.rimSkinOpacity>0:false;
+  const litRim=rimOn&&activeInk&&ensureStudioRimBounds(node.geometry);
   if(config.toon===0&&gradient==='current'&&!litRim&&
      diag.bakedVertexLighting)return;
   if((gradient==='piece'||gradient==='piece-rose')&&
@@ -546,7 +601,10 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
   if(litRim){
    const u=entry.material.userData.fieldworkRimUniform as
     {strength:{value:number};width:{value:number};coverage:{value:number};
-     angle:{value:number};fabric:{value:number};skin:{value:number};
+     angle:{value:number};fabric:{value:number};
+     fabricWidth:{value:number};fabricBacklight:{value:number};
+     skin:{value:number};skinWidth:{value:number};
+     skinBacklight:{value:number};skinWarmth:{value:number};
      debug:{value:number};
      key:{value:THREE.Vector3}}|undefined;
    if(u){
@@ -555,7 +613,12 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
     u.coverage.value=config.rimCoverage;
     u.angle.value=config.rimAngleLooseness;
     u.fabric.value=config.rimFabricOpacity;
+    u.fabricWidth.value=config.rimFabricWidth;
+    u.fabricBacklight.value=config.rimFabricBacklight;
     u.skin.value=config.rimSkinOpacity;
+    u.skinWidth.value=config.rimSkinWidth;
+    u.skinBacklight.value=config.rimSkinBacklight;
+    u.skinWarmth.value=config.rimSkinWarmth;
     u.debug.value=config.rimDebugMask?1:0;
     u.key.value.set(.46,.88,.07).normalize()
      .applyAxisAngle(new THREE.Vector3(0,1,0),
