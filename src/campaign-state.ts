@@ -3,8 +3,7 @@ import type {OperationKind} from './breach-operations.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import type {RosterState} from './breach-roster.ts';
 import {initialWardrobe,readWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
-import {WEAPONS as COMBAT_WEAPONS} from './breach-combat.ts';
-import {magazineKit,type MagazineItem} from './breach-magazines.ts';
+import type {MagazineItem} from './breach-magazines.ts';
 import {liveMagazineCapacity,standardReserveRounds,freshMagazineIssue,
  fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
 import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
