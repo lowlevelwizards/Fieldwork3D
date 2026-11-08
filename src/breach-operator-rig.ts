@@ -301,7 +301,8 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     headCloth=cloth.clone(),headArmor=vest.clone();
    // Only textiles are unfolded across adjacent faces; leave rubber, steel,
    // skin and the approved, separately authored headwear atlas untouched.
-   for(const material of [cloth,trousers,vest,packFabric,gearFabric,headCloth])
+   for(const material of [cloth,trousers,vest,packFabric,gearFabric,
+     headCloth,headArmor])
     material.userData.fieldworkFabric=true;
    // Fixed grayscale AO uses existing textile shaders and textures.
    for(const kitMaterial of [
