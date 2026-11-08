@@ -4801,6 +4801,18 @@ const replayChoices={
   sight:{trigger:ui.replaySightTrigger,menu:ui.replaySightChoices},
   speed:{trigger:ui.replaySpeedTrigger,menu:ui.replaySpeedChoices}
 };
+let replayRailCollapsed=false;
+function setReplayRailCollapsed(collapsed:boolean):void{
+  replayRailCollapsed=collapsed;
+  closeReplayChoices();
+  ui.replayRail.dataset.collapsed=String(collapsed);
+  ui.replayRailToggle.textContent=collapsed?'›':'‹';
+  const description=collapsed?'Expand replay side controls':
+    'Collapse replay side controls';
+  ui.replayRailToggle.setAttribute('aria-label',description);
+  ui.replayRailToggle.title=description;
+  ui.replayRailToggle.setAttribute('aria-expanded',String(!collapsed));
+}
 function closeReplayChoices():void{
   for(const {trigger,menu} of Object.values(replayChoices)){
     menu.hidden=true;
@@ -5224,7 +5236,7 @@ function enterReplay(){
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
   ui.replayTopHud.hidden=false;ui.replayRail.hidden=false;
-  closeReplayChoices();setReplayDockCollapsed(false);
+  setReplayRailCollapsed(false);setReplayDockCollapsed(false);
   ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
   renderReplayEventMarkers();seekReplay(0);updateHud();
 }
@@ -5602,6 +5614,8 @@ document.addEventListener('pointerdown',e=>{
   closeReplayChoices();
 });
 ui.replayDockToggle.addEventListener('click',()=>setReplayDockCollapsed(!replayDockCollapsed));
+ui.replayRailToggle.addEventListener('click',()=>
+  setReplayRailCollapsed(!replayRailCollapsed));
 ui.replayMiniPlay.addEventListener('click',()=>ui.replayPlay.click());
 ui.replayQuickSpeed.addEventListener('change',()=>{
   const rate=Number(ui.replayQuickSpeed.value);
