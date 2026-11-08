@@ -14,7 +14,6 @@ const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const angleDelta=(next:number,from:number)=>
   Math.atan2(Math.sin(next-from),Math.cos(next-from));
 const smooth=(n:number)=>n*n*(3-2*n);
-const cutAngle=65*Math.PI/180;
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 export class ReplayDirectorStoryboard{
