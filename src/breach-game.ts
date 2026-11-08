@@ -1,5 +1,6 @@
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
  from './breach-combat-reactions.ts';
+import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts';
 /**
  * Fieldwork Breach 053–062: authoritative, fixed-step tactical session.
  * Author intent is editable PlanNode[]; motor navigation is transient.
@@ -4274,7 +4275,18 @@ function fire(s:Session,a:TeamActor,dt:number){
       notify(s,'CIVILIAN HIT');
     return;
   }
-  target.suppression=Math.min(1,target.suppression+.31);
+  // Only a real hit or a physically near projectile/impact can pressure
+  // this actor. Aim intent is not evidence: a distant miss must not
+  // suppress a target merely because it was selected for acquisition.
+  // Solid walls and opaque closed doors occlude the near-miss evidence;
+  // material cover is excluded here because a nearby cover strike is an
+  // actual, locally experienced impact. Explicit SUPPRESS uses its own
+  // area-impact rules above and is not added a second time here.
+  const exposure=shotPressureAtActor(muzzlePoint,end,target.p,hit,
+    (from,to)=>assessFireLane(from,muzzle.y,to,
+      aimHeight(target.posture==='crouch'),[],WALLS,s.doors).blocker==='clear');
+  target.suppression=Math.min(1,target.suppression+
+    shotPressureAmount(exposure));
   if(target.side==='red')target.morale=Math.max(0,target.morale-.035);
   if(hit){
     target.armorIntegrity=protection.torso;

@@ -1748,6 +1748,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/replay-director-continuous-camera-') }}
         run: |
           node --experimental-strip-types --test tests/replay-director-continuous.test.mjs tests/replay-director-storyboard.test.mjs tests/replay-director-physical.test.mjs tests/replay-director-wide-coverage.test.mjs tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
+      - name: Phase A A3 — physical shot pressure and fire safety
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/phase-a-danger-evidence-') }}
+        run: |
+          node --experimental-strip-types --test tests/phase-a-shot-pressure.test.mjs tests/tactical-integration-17-firefight-b1.test.mjs tests/breach-150.test.mjs tests/gameplay-g3-target-stability.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
