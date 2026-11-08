@@ -5,6 +5,8 @@
  */
 import type {DirectorRoom,DirectorWall} from './breach-replay-cinematic-director.ts';
 import type {Door,Obstacle} from './breach-core.ts';
+import {directorPerspectiveCovers}
+  from './breach-replay-director-projection.ts';
 
 export type PhysicalPoint={x:number;y:number};
 export type PhysicalDirectorScene={
@@ -192,6 +194,7 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       roomId:room?.id??null,fov:112,targetVisible:false,occluded:0};
   }
   let best:PhysicalDirectorView|null=null,score=-Infinity;
+  const candidates:{view:PhysicalDirectorView;score:number}[]=[];
   for(const p of anchors){
     if(directorLineBlocked(p,req.operator,scene))continue;
     const targetVisible=!!req.target&&
@@ -212,7 +215,7 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     const mandatory=req.requiredPoints??[req.operator];
     const essentialVisible=mandatory.filter(pt=>
       !directorLineBlocked(p,pt,scene));
-    const fits=[...visible,
+    const fits=[...essentialVisible,
       ...(targetVisible&&req.target?[req.target]:[])];
     const fov=directorRequiredFov(p,focus,fits,aspect);
     const yaw=Math.atan2(p.x-focus.x,p.y-focus.y);
@@ -255,16 +258,28 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       (forwardOffset>0?Math.min(110,forwardOffset*1.65):0)-
       Math.max(0,fov-107)*7-
       Math.max(0,visible.length?0:120);
-    if(candidate>score){
-      score=candidate;
-      best={cameraAnchor:p,focus,roomId:room?.id??null,
-        fov:clamp(Math.max(96,fov),96,116),targetVisible,
-        occluded:req.subjectPoints.length-visible.length+
-          (req.target&&!targetVisible?1:0)};
+    const proposal={cameraAnchor:p,focus,roomId:room?.id??null,
+      fov:clamp(Math.max(96,fov),96,116),targetVisible,
+      occluded:req.subjectPoints.length-visible.length+
+        (req.target&&!targetVisible?1:0)};
+    candidates.push({score:candidate,view:proposal});
+    if(candidate>score){score=candidate;best=proposal;}
+  }
+  // Only inspect the strongest small set with the REAL WIDE projection.
+  // The old FOV estimate could request 150 degrees then clamp to 116
+  // and silently crop a required shooter/target. Prefer a different
+  // legal setup when it is comparably strong and genuinely fits.
+  if(best&&req.requiredPoints?.length){
+    const ranked=candidates.sort((a,b)=>b.score-a.score);
+    for(const proposal of ranked.slice(0,16)){
+      if(proposal.score<score-200)break;
+      if(directorPerspectiveCovers(proposal.view.cameraAnchor,
+        proposal.view.focus,req.requiredPoints,aspect,
+        proposal.view.fov,.90,.89))return proposal.view;
     }
   }
-  // In a room with no optically clear shot, keep the camera INSIDE and
-  // look at the nearest friendly. It must not jump outside the building.
+  // No legal WIDE two-shot exists: preserve the strongest physical
+  // ORTHO setup rather than inventing an impossible camera position.
   return best??{cameraAnchor:anchors[0],focus:{...req.operator},
     roomId:room?.id??null,fov:112,targetVisible:false,
     occluded:req.subjectPoints.length};
