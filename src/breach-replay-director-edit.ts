@@ -42,7 +42,7 @@ function direction(actor:DirectorActor,intent?:DirectorIntent):Point{
     x:Math.cos(actor.heading??0),y:Math.sin(actor.heading??0)});
 }
 export function selectDirectorEditorialShot(
-  _time:number,actors:readonly DirectorActor[],e:DirectorEditorialEvidence
+  time:number,actors:readonly DirectorActor[],e:DirectorEditorialEvidence
 ):DirectorEditorialShot|null{
   const friends=actors.filter(a=>a.side==='blue'&&a.health>0&&
     Number.isFinite(a.p.x)&&Number.isFinite(a.p.y));
@@ -59,13 +59,21 @@ export function selectDirectorEditorialShot(
       (105-i.door!.distance)/140;
     return value(b)-value(a)||a.actorId.localeCompare(b.actorId);
   })[0];
+  // A retrospective director may anticipate who will cross (a FRIENDLY),
+  // but anticipation must not be misclassified as an actual crossing.
+  const futureEntry=e.entry&&e.entry.t>time+.15&&
+    e.entry.t-time<=2.2?
+    doorIntents.find(i=>i.actorId===e.entry!.actorId&&
+      i.door?.id===e.entry!.doorId):undefined;
+  const leadDoor=futureEntry??strongestDoor;
   let primary:DirectorActor|undefined;
   let kind:DirectorEditorialKind='establish';
   let reason='establish geography',priority=1;
   let door:DirectorDoorAnchor|null=null;
   let doorId:string|null=null,target:Point|null=null;
   let firstEntry=false;
-  if(e.beat?.kind==='fight'&&byId(e.beat.actorId)){
+  if(e.beat?.kind==='fight'&&time>=e.beat.first-1.2&&
+      byId(e.beat.actorId)){
     primary=byId(e.beat.actorId);
     kind='engage';priority=6;reason='recorded firefight';
     // The caller must apply historical visibility gating to actionPair.
@@ -75,10 +83,12 @@ export function selectDirectorEditorialShot(
   }else if(e.upcoming?.kind==='contact'&&byId(e.upcoming.actorId)){
     primary=byId(e.upcoming.actorId);
     kind='engage';priority=5;reason='anticipate friendly contact';
-  }else if(e.entry&&byId(e.entry.actorId)){
+  }else if(e.entry&&time>=e.entry.t-.15&&
+      byId(e.entry.actorId)){
     primary=byId(e.entry.actorId);
     kind='entry';priority=5.5;
-    firstEntry=e.entry.first;reason='recorded first doorway crossing';
+    firstEntry=e.entry.first&&time>=e.entry.t;
+    reason='recorded first doorway crossing';
     doorId=e.entry.doorId;
     door=intent(primary!.id)?.door??null;
   }else if(e.beat?.kind==='door'&&byId(e.beat.actorId)){
@@ -87,11 +97,13 @@ export function selectDirectorEditorialShot(
     doorId=e.beat.doorId;
     door=intent(primary!.id)?.door??null;
     target={...e.beat.target};
-  }else if(strongestDoor&&byId(strongestDoor.actorId)){
-    primary=byId(strongestDoor.actorId);
-    kind='door';priority=4.2;reason='planned door approach';
-    doorId=strongestDoor.door!.id;
-    door=strongestDoor.door;
+  }else if(leadDoor&&byId(leadDoor.actorId)){
+    primary=byId(leadDoor.actorId);
+    kind='door';priority=4.2;
+    reason=futureEntry?'anticipate recorded lead breacher':
+      'planned door approach';
+    doorId=leadDoor.door!.id;
+    door=leadDoor.door;
   }
   if(!primary){
     const movers=friends.filter(a=>{
