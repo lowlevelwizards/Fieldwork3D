@@ -19,9 +19,9 @@ const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 const yawOf=(anchor:Pt,focus:Pt)=>Math.atan2(
   anchor.x-focus.x,anchor.y-focus.y);
-const cameraStep=12; // Minimum comfortable dolly per .8s knot.
-const turnStep=7*Math.PI/180; // Calm travel tracking; NEVER a whip/cut.
-const actionTurnStep=16*Math.PI/180; // Bring real action into view in time.
+const cameraStep=16; // Base dolly per .8-second storyboard knot.
+const turnStep=6*Math.PI/180; // Unhurried travel pan, never a whip.
+const actionTurnStep=19*Math.PI/180; // Keep actual action in shot.
 const radiusStep=19;
 const minFocusRadius=30;
 const maxFocusRadius=300;
@@ -207,14 +207,21 @@ export class ReplayDirectorStoryboard{
       this.baseSpan*this.aspect*this.usableWidth/
         Math.max(1,2*xExtent),
       this.baseSpan*this.usableHeight/Math.max(1,2*yExtent));
-    const limit=shot.subjects.length<=2?10.5:9.0;
-    return clamp(fit*.94,.65,limit);
+    // Wider shots with generous near-edge and backpack clearance.
+    const limit=shot.subjects.length<=2?8.4:7.4;
+    return clamp(fit*.80,.65,limit);
   }
   /** No camera edit merely because another framewise shot scores higher.
    * Confirm an actual new majority room for three consecutive recorded
    * samples and enforce minimum residency in the previous room. */
   private acceptsNewRoom(raw:DirectorShot,prior:RailShot,index:number){
     if(raw.roomId===prior.roomId)return false;
+    // The first recorded ENTRY is already real physical evidence.
+    // Cut once when that operator enters, not when the fourth crosses.
+    // A transition just after another scene edit still waits for one
+    // whole knot, so repeated adjacent doors cannot strobe.
+    if(raw.firstEntry&&raw.shotType==='entry')
+      return index-(prior.sceneStartIndex??0)>=1;
     const minResidence=Math.ceil(2.4/this.step);
     if(index-(prior.sceneStartIndex??0)<minResidence)return false;
     if(index<2)return false;
@@ -233,11 +240,38 @@ export class ReplayDirectorStoryboard{
     }
     const room=this.rooms.find(r=>r.id===raw.roomId)??null;
     const meanSpeed=raw.motion/Math.max(1,raw.subjects.length);
-    // Catch up with operators on the move: 15-30 world units per second
-    // instead of the old sluggish 10. Slow tracking remains deliberate
-    // when the team settles and begins a room clear.
-    const dolly=cameraStep+Math.min(13,Math.max(0,meanSpeed)*.43);
-    const cameraAnchor=this.walk(prior.cameraAnchor,raw.cameraAnchor,
+    const action=raw.shotType==='contact'||raw.shotType==='breach'||
+      raw.shotType==='entry';
+    const traveling=meanSpeed>7;
+    // A held WATCH, stopped squad or completed traversal is NOT a
+    // request to orbit, pan or zoom continually toward fresh suggestions.
+    // Keep the established frame steady until actors actually move or
+    // a real recorded action becomes the subject.
+    if(!action&&!traveling&&raw.motion<9)
+      return {...prior,sceneStartIndex:prior.sceneStartIndex,
+        motion:raw.motion,actionWeight:0};
+    const dolly=cameraStep+Math.min(34,
+      Math.max(0,meanSpeed)*.74)+
+      (action?7:0);
+    // A tracking shot is a translation alongside the protagonist.
+    // Carry their actual displacement into the desired rig position;
+    // don't make the camera repeatedly chase a new best-angled anchor.
+    const traveled=raw.operatorPoint&&prior.operatorPoint?
+      {x:raw.operatorPoint.x-prior.operatorPoint.x,
+        y:raw.operatorPoint.y-prior.operatorPoint.y}:null;
+    const translated=traveled?{
+      x:prior.cameraAnchor.x+traveled.x,
+      y:prior.cameraAnchor.y+traveled.y}:null;
+    const follow=translated&&traveling&&
+      directorCameraLegal(translated,room,this.physicalScene)&&
+      !directorLineBlocked(translated,raw.operatorPoint!,
+        this.physicalScene)?{
+          x:mix(raw.cameraAnchor.x,translated.x,.72),
+          y:mix(raw.cameraAnchor.y,translated.y,.72)
+        }:raw.cameraAnchor;
+    const desired=directorCameraLegal(follow,room,this.physicalScene)?
+      follow:raw.cameraAnchor;
+    const cameraAnchor=this.walk(prior.cameraAnchor,desired,
       room,dolly);
     // A subject crossing immediately behind the camera must not produce
     // an 180° reorientation. Turn toward new interest gradually instead.
@@ -246,12 +280,14 @@ export class ReplayDirectorStoryboard{
     // the shooter remains the foreground anchor while the real target
     // or doorway leads the frame. Ordinary tracking keeps the raw focus.
     const attention=raw.attentionPoint&&raw.operatorPoint?{
-      x:mix(raw.operatorPoint.x,raw.attentionPoint.x,.53),
-      y:mix(raw.operatorPoint.y,raw.attentionPoint.y,.53)
+      x:mix(raw.operatorPoint.x,raw.attentionPoint.x,.5),
+      y:mix(raw.operatorPoint.y,raw.attentionPoint.y,.5)
     }:raw.focus;
     const aim=raw.attentionPoint?{
-      x:mix(raw.focus.x,attention.x,.67),
-      y:mix(raw.focus.y,attention.y,.67)
+      x:mix(raw.focus.x,attention.x,
+        raw.shotType==='contact'?.91:.75),
+      y:mix(raw.focus.y,attention.y,
+        raw.shotType==='contact'?.91:.75)
     }:raw.focus;
     const requestedDistance=distance(cameraAnchor,aim);
     const desiredYaw=requestedDistance<minFocusRadius?
@@ -284,10 +320,10 @@ export class ReplayDirectorStoryboard{
     // and target from the edge; slow push-ins add visual intention.
     const zoom=clamp(desiredZoom,
       currentZoom*Math.pow(.64,this.step/.8),
-      currentZoom*Math.pow(1.15,this.step/.8));
+      currentZoom*Math.pow(1.10,this.step/.8));
     const currentFov=prior.fov??108,desiredFov=raw.fov??108;
     const fov=currentFov+clamp(desiredFov-currentFov,
-      -5*this.step/.8,9*this.step/.8);
+      -4*this.step/.8,6*this.step/.8);
     return {...raw,sceneStartIndex:prior.sceneStartIndex,
       roomId:prior.roomId,cameraAnchor,focus,
       yaw:(accurateYaw+2*Math.PI)%(2*Math.PI),
