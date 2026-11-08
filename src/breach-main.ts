@@ -978,6 +978,20 @@ if(awarenessPanel){
  });
  document.body.append(awarenessPanel);
 }
+const replayDirectorDiagnostics=new URLSearchParams(location.search).has('directorDebug');
+const replayDirectorDebugPanel=replayDirectorDiagnostics?
+  document.createElement('output'):null;
+if(replayDirectorDebugPanel){
+  replayDirectorDebugPanel.id='replayDirectorDiagnostics';
+  Object.assign(replayDirectorDebugPanel.style,{
+    position:'fixed',left:'8px',top:'134px',zIndex:'69',
+    maxWidth:'210px',whiteSpace:'pre-wrap',pointerEvents:'none',
+    padding:'7px',font:'11px/1.4 monospace',borderRadius:'5px',
+    color:'#f4e7bc',background:'rgba(10,28,24,.87)'
+  });
+  replayDirectorDebugPanel.hidden=true;
+  document.body.append(replayDirectorDebugPanel);
+}
 const navDiagnostics=new URLSearchParams(location.search).has('nav');
 const navPanel=navDiagnostics?document.createElement('output'):null;
 if(navPanel){
@@ -4674,6 +4688,17 @@ function advanceReplayCamera(dt:number,instant=false):void{
     }
     const target=replayDirectorTarget;
     if(!target)return;
+    if(replayDirectorDebugPanel){
+      const status=replayDirectorScheduler.status;
+      replayDirectorDebugPanel.hidden=false;
+      replayDirectorDebugPanel.textContent='DIRECTOR R7 · '+target.shotType.toUpperCase()+
+        '\\nSUBJECTS '+target.subjects.join(', ')+
+        '\\nDOOR '+(target.doorId??'—')+
+        '\\nSCORE '+target.score.toFixed(1)+
+        ' / OCC '+target.occluded+
+        '\\nHOLD '+Math.max(0,status.holdUntil-replayTime).toFixed(1)+'s'+
+        '\\nEDIT '+status.edits;
+    }
     const current={focus:stage.view.focus,zoom:stage.view.zoom,
       yaw:stage.view.yaw,pitch:stage.view.pitch,roomId:null,
       actorsFramed:target.actorsFramed,kind:target.kind} as const;
@@ -4686,6 +4711,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
     return;
   }
   stage.setReplayDirectorFocus(null);
+  if(replayDirectorDebugPanel)replayDirectorDebugPanel.hidden=true;
   const target=replayCameraTarget(replayCameraMode,replayTime,actors,
     replayFollowId,cssW/Math.max(1,cssH),replayDirectorCues);
   if(!target)return;
@@ -4917,7 +4943,8 @@ function updateReplayHud(){
   ui.replayFollowStatus.textContent=replayBodycamOn?
     'BODYCAM · '+followingName.toUpperCase():following?
     'FOLLOWING · '+followingName.toUpperCase():
-    replayCameraMode==='director'?'DIRECTOR · SQUAD':
+    replayCameraMode==='director'?
+      'DIRECTOR · '+(replayDirectorTarget?.shotType.toUpperCase()??'SQUAD') :
     replayCameraMode==='squad'?'FOLLOWING · SQUAD':'FREE CAMERA';
   ui.replayFollowStatus.dataset.following=String(following||replayBodycamOn);
   ui.replayClock.textContent=formatReplayTime(replayTime)+' / '+
