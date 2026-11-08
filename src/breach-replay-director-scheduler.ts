@@ -13,8 +13,6 @@ const hold:Record<DirectorShotType,number>={
   reorientation:1.6,travel:2.7,overwatch:2.8,approach:2.7,
   stack:2.8,entry:1.7,breach:1.8,contact:2.1
 };
-const dist=(a:{x:number;y:number},b:{x:number;y:number})=>
-  Math.hypot(a.x-b.x,a.y-b.y);
 export class ReplayDirectorScheduler{
   private chosen:DirectorShot|null=null;
   private lastTime=-Infinity;
