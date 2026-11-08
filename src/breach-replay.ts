@@ -10,6 +10,7 @@ import type {ExecutionEvent} from './breach-execution-events.ts';
 import {copyMedicalCondition,newMedicalCondition} from './breach-medical-wounds.ts';
 import {normalizedMedicalSupplies,kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
+import {sampleReplaySpan} from './breach-replay-frame-sampling.ts';
 import {ReplayPlanRecorder} from './breach-replay-plans.ts';
 import {ReplayBallisticsRecorder} from './breach-replay-ballistics.ts';
 import {captureReplayManifest,type ReplayManifest} from './breach-replay-manifest.ts';
@@ -174,8 +175,42 @@ export function snapshot(s:Session,seenGround?:string[],
     knowledge:captureReplayKnowledge(s,previouslyDiscovered,observerBodies),
   };
 }
+/** One synchronous delivery at the exact authoritative 20 Hz capture site.
+ * Same-timestamp forced updates replace only the unsealed last frame.
+ */
+export type ReplayFrameCaptureNotice={
+  kind:'append'|'replace';frame:ReplayFrame;count:number
+};
 export class MissionRecorder{
   readonly frames:ReplayFrame[]=[];
+  private frameCaptureListener:((notice:ReplayFrameCaptureNotice)=>void)|null=null;
+  /** A listener failure must never interrupt the 60 Hz tactical simulation.
+   * It is exposed, never silently treated as a complete streamed film.
+   */
+  frameCaptureListenerError:string|null=null;
+  observeRecordedFrames(
+    listener:(notice:ReplayFrameCaptureNotice)=>void
+  ):()=>void{
+    if(this.frameCaptureListener)
+      throw Error('Only one live replay capture subscriber is supported');
+    if(typeof listener!=='function')
+      throw Error('Invalid live replay capture subscriber');
+    this.frameCaptureListener=listener;
+    return ()=>{
+      if(this.frameCaptureListener===listener)this.frameCaptureListener=null;
+    };
+  }
+  private deliverCapturedFrame(kind:'append'|'replace',
+    frame:ReplayFrame):void{
+    const listener=this.frameCaptureListener;
+    if(!listener)return;
+    try{listener({kind,frame,count:this.frames.length});}
+    catch(error){
+      this.frameCaptureListener=null;
+      this.frameCaptureListenerError=error instanceof Error?
+        error.message:String(error);
+    }
+  }
   readonly events:BattleEvent[]=[];
   readonly executionEvents:ExecutionEvent[]=[];
   /** Sparse personal ground reveals, captured at the actual sight tick.
@@ -254,6 +289,7 @@ export class MissionRecorder{
         for(const id of sample.knowledge?.discoveredBodyIds??[])
           this.discoveredBodies.add(id);
         this.frames[this.frames.length-1]=sample;
+        this.deliverCapturedFrame('replace',sample);
       }
       return;
     }
@@ -275,6 +311,7 @@ export class MissionRecorder{
     shareUnchangedReplayFrame(last,frame,this.frames.length,
       this.sharingStats);
     this.frames.push(frame);
+    this.deliverCapturedFrame('append',frame);
   }
   get duration(){return this.frames.at(-1)?.t??0;}
   surrounding(time:number):{previous:ReplayFrame;next:ReplayFrame;alpha:number}|null{
@@ -297,63 +334,9 @@ export class MissionRecorder{
    * authoritative sample. No mutation of stored frames or motor state. */
   sample(time:number):ReplayFrame|null{
     const span=this.surrounding(time);
-    if(!span)return null;
-    const {previous,next,alpha}=span;
-    const t=previous.t+(next.t-previous.t)*alpha;
-    const byId=new Map(next.actors.map(a=>[a.id,a]));
-    const actors=previous.actors.map(a=>{
-      const b=byId.get(a.id);
-      if(!b||!alpha)return {...a,p:position(a.p)};
-      return {...a,p:{x:mix(a.p.x,b.p.x,alpha),
-        y:mix(a.p.y,b.p.y,alpha)},
-        heading:mixAngle(a.heading,b.heading,alpha),
-        weaponYaw:mixAngle(a.weaponYaw,b.weaponYaw,alpha),
-        travelYaw:mixAngle(a.travelYaw??a.heading,
-          b.travelYaw??b.heading,alpha),
-        velocity:mix(a.velocity,b.velocity,alpha),
-        turning:mix(a.turning,b.turning,alpha),
-        aim:mix(a.aim,b.aim,alpha),
-        reload:mix(a.reload,b.reload,alpha),
-        recoil:mix(a.recoil,b.recoil,alpha),
-        stability:mix(a.stability,b.stability,alpha),
-        stride:mix(a.stride,b.stride,alpha),
-        traversalElevation:a.traversal&&b.traversal&&
-          a.traversal.obstacleIndex===b.traversal.obstacleIndex?
-          mix(a.traversalElevation,b.traversalElevation,alpha):
-          a.traversalElevation,
-        traversalElapsed:a.traversal&&b.traversal&&
-          a.traversal.obstacleIndex===b.traversal.obstacleIndex?
-          mix(a.traversalElapsed,b.traversalElapsed,alpha):
-          a.traversalElapsed};
-    });
-    const nextCivilians=new Map((next.civilians??[]).map(c=>[c.id,c]));
-    const civilians=(previous.civilians??[]).map(c=>{
-      const later=nextCivilians.get(c.id);
-      if(!later||!alpha)return {...c,p:position(c.p)};
-      return {...c,p:{
-        x:mix(c.p.x,later.p.x,alpha),
-        y:mix(c.p.y,later.p.y,alpha)
-      },heading:mixAngle(c.heading,later.heading,alpha),
-      velocity:mix(c.velocity,later.velocity,alpha)};
-    });
-    const presentation=this.motion.presentation(t,actors.map(a=>a.id));
-    for(const actor of actors)
-      presentation.travelYaw[actor.id]=actor.travelYaw??actor.heading;
-    const delta=t-previous.t;
-    const nextDoors=new Map(next.doors.map(d=>[d.id,d]));
-    const doors=previous.doors.map(d=>{
-      const later=nextDoors.get(d.id);
-      return {...d,openFraction:later?mix(
-        d.openFraction??(d.open?1:0),
-        later.openFraction??(later.open?1:0),alpha):d.openFraction};
-    });
-    return {...previous,t,actors,civilians,doors,presentation,
-      shots:previous.shots.map(s=>({...shotCopy(s),age:s.age+delta})),
-      grenades:previous.grenades.map(g=>({...g,p:position(g.p),
-        from:position(g.from),to:position(g.to)}))};
+    return span?sampleReplaySpan(span,this.motion):null;
   }
 }
-const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 export const mixAngle=(a:number,b:number,t:number)=>
   a+Math.atan2(Math.sin(b-a),Math.cos(b-a))*t;
 // Track replay identity as well as count. Seeking between equally populated
