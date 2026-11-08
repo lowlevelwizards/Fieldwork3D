@@ -127,31 +127,11 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     h:opening.vertical?opening.width:10,
     low:(opening.sillHeight??14)<25,
     fixture:opening.sillHeight===0?'glass-barrier':'window-sill'});
-  const exteriorFixture=site.archetype==='warehouse'?'pallet':
-    site.archetype==='garage'?'vehicle':
-    site.archetype==='house'?'fence':
-    site.archetype==='clinic'?'bench':'vehicle';
-  const entrySide=site.entrySide??'south',bounds=site.bounds??
-    {minX:0,minY:0,maxX:640,maxY:740};
-  const horizontal=entrySide==='south'||entrySide==='north';
-  const min=horizontal?minX:minY,max=horizontal?maxX:maxY;
-  const near=min+82,far=max-82;
-  const lateral=Math.abs(near-(horizontal?site.entrance.x:site.entrance.y))>
-    Math.abs(far-(horizontal?site.entrance.x:site.entrance.y))?near:far;
-  const x=horizontal?lateral:entrySide==='east'?maxX+79:minX-79;
-  const y=horizontal?(entrySide==='south'?maxY+79:minY-79):lateral;
-  const frontage:Obstacle={x,y,w:exteriorFixture==='fence'?58:46,
-    h:exteriorFixture==='fence'?10:24,
-    low:exteriorFixture!=='vehicle',fixture:exteriorFixture};
-  // A frontage vehicle/planter must not occupy a real glazed aperture
-  // and its sill. Earlier it was added unconditionally after the windows.
-  const clearsFacade=cover.every(o=>
-    Math.abs(o.x-x)>=(o.w+frontage.w)/2+7||
-    Math.abs(o.y-y)>=(o.h+frontage.h)/2+7);
-  if(x>bounds.minX+25&&x<bounds.maxX-25&&
-    y>bounds.minY+25&&y<bounds.maxY-25&&
-    dist({x,y},site.entrance)>80&&clearsFacade)
-    cover.push(frontage);
+  // Exterior furnishing belongs exclusively to addExteriorProperty.
+  // The old second frontage pass spawned a generic 'vehicle' for most
+  // archetypes and an unattached 'bench' for clinics, independently of
+  // sidewalks, road masks, parking, pedestrian lanes and amenity context.
+  // Do not restore it as a substitute for future purpose-built assets.
   const glazed=addInteriorGlazing({...site,walls,cover,windows},seed);
   // The public window list is authoritative: each opening gets exactly one
   // matching sill collider, even when interior glazing inserts apertures.
