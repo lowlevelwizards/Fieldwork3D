@@ -30,6 +30,7 @@ export type PhysicalDirectorRequest={
   target?:PhysicalPoint|null;preferredYaw:number;
   /** Travel/weapon direction: prefer a follow rig behind the active actor. */
   followDirection?:PhysicalPoint|null;
+  motionSpeed?:number;
   /** Action LOS outranks merely including an unrelated supporting actor. */
   targetWeight?:number;
   /** Historical muzzle/impact lines add a SMALL framing bonus, never
@@ -244,6 +245,18 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
         x:req.operator.x-fx*back-fy*lateral*side,
         y:req.operator.y-fy*back+fx*lateral*side});
   }
+  if(req.composition?.treatment==='follow'&&req.followDirection&&
+     (req.motionSpeed??0)>6){
+    const d=req.followDirection,n=Math.hypot(d.x,d.y)||1;
+    const fx=d.x/n,fy=d.y/n;
+    // Traveling beside the team: lateral dolly with some look-ahead.
+    // These remain candidates in the EXISTING legal solver, not a new
+    // camera state machine or permission to cut.
+    for(const along of [-45,-25,0])for(const side of [-1,1])
+      for(const lateral of [52,78,104])add({
+        x:req.operator.x+fx*along-fy*lateral*side,
+        y:req.operator.y+fy*along+fx*lateral*side});
+  }
   if(room){
     for(let a=1;a<=8;a++)for(let b=1;b<=8;b++)
       add({x:room.x+room.w*a/9,y:room.y+room.h*b/9});
@@ -406,6 +419,15 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       }
       if(!quality.primaryReadable)rankedScore-=850;
       rankedScore+=(quality.score-80)*3;
+      if(c.treatment==='follow'&&(req.motionSpeed??0)>6&&forward){
+        const rel={x:p.x-req.operator.x,y:p.y-req.operator.y};
+        const separation=Math.hypot(rel.x,rel.y)||1;
+        const sideAngle=Math.abs(forward.x*rel.y-forward.y*rel.x)/
+          separation;
+        // A modest staging preference; the already-held rail remains
+        // authoritative, so this never forces the editor to change shot.
+        rankedScore+=Math.max(0,sideAngle-.55)*200;
+      }
       if(c.treatment==='engage'){
         // Contact framing prefers shoulders with real lateral separation,
         // not just a frontal muzzle and a point-coordinate behind it.
