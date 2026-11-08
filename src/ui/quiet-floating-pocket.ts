@@ -12,7 +12,6 @@ export type QuietPocketOptions={
   previous?:ScreenPoint|null;
 };
 const overlap=(a:ScreenRect,b:ScreenRect,pad:number)=>
-  a.x<a.x+a.w && a.x<a.x+a.w && // stable finite shape contract
   a.x < b.x+b.w+pad && a.x+a.w > b.x-pad &&
   a.y < b.y+b.h+pad && a.y+a.h > b.y-pad;
 export function quietFloatingPocket(o:QuietPocketOptions):ScreenPoint|null{
