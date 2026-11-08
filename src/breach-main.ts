@@ -277,6 +277,7 @@ const ui={
   replayPresets:el<HTMLElement>('replayPresets'),
   replayActorControls:el<HTMLElement>('replayActorControls'),
   replayInspectActor:el<HTMLSelectElement>('replayInspectActor'),
+  replayInspectActorButtons:el<HTMLElement>('replayInspectActorButtons'),
   replayInspectFollow:el<HTMLButtonElement>('replayInspectFollow'),
   replayInspectMovement:el<HTMLButtonElement>('replayInspectMovement'),
   replayIncidentInvestigate:el<HTMLButtonElement>('replayIncidentInvestigate'),
@@ -4823,10 +4824,17 @@ function applyReplayPreset(next:Exclude<ReplayPreset,'custom'>):void{
 }
 function populateReplayInspectActors():void{
   ui.replayInspectActor.replaceChildren();
+  ui.replayInspectActorButtons.replaceChildren();
   for(const actor of team(state)){
     const option=document.createElement('option');
     option.value=actor.id;option.textContent=actor.name.toUpperCase();
     ui.replayInspectActor.append(option);
+    const button=document.createElement('button');
+    button.type='button';button.dataset.followActor=actor.id;
+    button.textContent=actor.name.toUpperCase();
+    button.title='Follow '+actor.name;
+    button.addEventListener('click',()=>followReplayOperator(actor.id));
+    ui.replayInspectActorButtons.append(button);
   }
 }
 function populateReplayCameraChoices():void{
@@ -4975,6 +4983,9 @@ function updateReplayHud(){
   }
   ui.replayQuickCamera.disabled=replayBodycamOn;
   if(team(state).some(a=>a.id===selected))ui.replayInspectActor.value=selected;
+  for(const b of ui.replayInspectActorButtons.querySelectorAll<HTMLButtonElement>('[data-follow-actor]'))
+    b.setAttribute('aria-pressed',String(replayCameraMode==='operator'&&
+      b.dataset.followActor===replayFollowId));
   ui.replaySquad.setAttribute('aria-pressed',String(replayCameraMode==='squad'));
   ui.replayDirector.setAttribute('aria-pressed',String(replayCameraMode==='director'));
   ui.replaySquad.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
