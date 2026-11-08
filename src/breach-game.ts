@@ -48,6 +48,8 @@ import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
 import {localDetour} from './breach-cooperation.ts';
+import {beginAutoSidestep,autoSidestepFacing,type AutoSidestep}
+  from './breach-auto-sidestep.ts';
 import {friendlyPassingStep,nearOccupiedFriendlyGoal,
   friendlyArrivalSettleTarget} from './breach-friendly-traffic.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
@@ -227,6 +229,8 @@ export type TeamActor=Operator & {
   lastHitAt:number;lastDownAt:number;
   lastHitRegion:WoundRegion;lastHitYaw:number;
   lastHitSeverity:number;downPose:FallPose;downClearance:number;
+  /** Short-lived motor-only forward gaze during an automatic lateral bypass. */
+  autoSidestep:AutoSidestep|null;
   /** Temporary cooperative sidestep, independent of authored orders. */
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
@@ -385,6 +389,7 @@ const withActions=(a:Operator):TeamActor=>({
   recoveryAttempts:0,retryRouteAt:0,routeGoalKey:'',
   lastAutoShoveAt:-100,
   squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
+   autoSidestep:null,
   traversalPending:null,traversal:null,traversalElapsed:0,
   traversalElevation:0,lastTraversalAt:-100,
   traversalRetreating:false,
@@ -689,7 +694,8 @@ function pathFor(a:TeamActor){
     }
   }
   a.path=points;
-  a.activeNode=-1;a.nav=[];a.waitRemaining=0;a.actionTimer=0;
+  a.activeNode=-1;a.nav=[];a.autoSidestep=null;
+  a.waitRemaining=0;a.actionTimer=0;
   a.syncReady=null;a.pieIndex=0;
 }
 function edit(s:Session,a:TeamActor,fn:()=>void){
@@ -2043,6 +2049,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   }
   const goalKey=Math.round(p.x*2)+':'+Math.round(p.y*2);
   if(a.routeGoalKey!==goalKey){
+    a.autoSidestep=null;
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
     a.lastNormalLaneProbeAt=-10;
   }
@@ -2093,6 +2100,16 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const next=a.nav[0],gap=d(a.p,next);
   if(gap<3){a.nav.shift();return false;}
   const direction=angle(a.p,next);
+  // Explicit LOOK/WATCH, running, room-clearing sector looks and true
+  // narrow-body squeezes retain complete facing authority.
+  const canAutoSidestep=a.side==='blue'&&a.health>0&&
+    a.pace!=='run'&&!a.squeeze&&!a.traversal&&!a.traversalPending&&
+    !a.aimInstruction&&!approachingNarrowThreshold(a.p,p,s.doors)&&
+    (a.plan[0]?.kind==='move'||a.plan[0]?.kind==='door')&&
+    a.plan[0]?.moveMode!=='sprint'&&
+    a.plan[0]?.moveMode!=='strafe'&&
+    a.plan[0]?.aimMode!=='track'&&
+    a.plan[0]?.aimMode!=='fixed'&&a.plan[0]?.facing===undefined;
   // Ordinary cautious travel must fit within achievable step cadence.
   // Running retains the faster existing speed via the pace multiplier.
   const movingSpeed=a.side==='blue'?53:48;
@@ -2272,6 +2289,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     if(fullLane.length&&d(fullLane[0],next)>6&&
        d(fullLane[0],a.p)>3&&
        sweptBodyClear(a.p,fullLane[0],s.doors)){
+      const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
+        s.seconds,canAutoSidestep);
+      if(side)a.autoSidestep=side;
       a.nav=fullLane;a.retryRouteAt=0;a.recoveryAttempts=0;
       // Preserve existing WATCH facing and weapon intention; only the
       // feet choose a different line around the obstruction.
@@ -2290,6 +2310,13 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       a.priorP=old;a.p=glide;
       // Footwork and motion cues follow resolved, not rejected movement.
       a.velocity=d(old,glide)/Math.max(dt,.0001);
+      // A legal sideways wall glide moves the feet, not necessarily the
+      // entire upper body. Never grant passage without the existing sweep.
+      const side=beginAutoSidestep(old,next,glide,a.heading,p,
+        s.seconds,canAutoSidestep);
+      if(side)a.autoSidestep=side;
+      const heldSide=autoSidestepFacing(a.autoSidestep,old,glide,p,
+        s.seconds,canAutoSidestep);
       // Ordinary wall-gliding faces the actual slide, not the obstructed
       // grid waypoint. A generated squad entry that has already achieved
       // full shoulder clearance is different: its authored clearing sector
@@ -2302,7 +2329,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
         entryClearanceForLook(
           s.doors.find(door=>door.id===entry.entryDoorId),
           glide,entry.p);
-      if(a.aimInstruction?.mode!=='track'&&!clearedEntryLook)
+      if(a.aimInstruction?.mode!=='track'&&!clearedEntryLook&&
+         heldSide===null)
         a.heading=angle(old,glide);
       a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
       a.recoveryAttempts=0;
@@ -2370,6 +2398,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     const slide=slideAroundStaticCorner(a.p,desiredMove,next,s.doors);
     if(slide){
       const old=clone(a.p);
+      const side=beginAutoSidestep(old,next,slide,a.heading,p,
+        s.seconds,canAutoSidestep);
+      if(side)a.autoSidestep=side;
       a.priorP=old;a.p=slide;
       a.velocity=d(old,slide)/Math.max(dt,.0001);
       a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
@@ -2384,6 +2415,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       .filter(o=>o!==a&&o.health>0).map(o=>o.p));
     if(candidate&&d(candidate,p)<d(a.p,p)+12&&
       (!a.nav.length||d(candidate,a.nav[0])>12)){
+      const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
+        s.seconds,canAutoSidestep);
+      if(side)a.autoSidestep=side;
       a.nav.unshift(candidate);a.lastNavRepairAt=s.seconds;
       return true;
     }
@@ -2484,7 +2518,8 @@ function applyAimNode(a:TeamActor,n:PlanNode){
 }
 function pop(a:TeamActor){
   if(a.plan.length)a.completedOrders++;
-  a.plan.shift();a.activeNode=-1;a.nav=[];a.waitRemaining=0;
+  a.plan.shift();a.activeNode=-1;a.nav=[];a.autoSidestep=null;
+  a.waitRemaining=0;
   a.actionTimer=0;a.syncReady=null;a.pieIndex=0;
   a.orderIssue=null;a.motorPause=null;
   a.passageWaitSeconds=0;a.passageStallReported=false;pathFor(a);
@@ -2553,7 +2588,8 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     return;
   }
   if(a.activeNode!==n.id){
-    a.activeNode=n.id;a.nav=[];a.waitRemaining=0;a.actionTimer=0;
+    a.activeNode=n.id;a.nav=[];a.autoSidestep=null;
+    a.waitRemaining=0;a.actionTimer=0;
     a.orderIssue=null;
     // Physical interactions and running terminate sustained WATCH, never
     // silently resume it when the operator returns to walking.
@@ -2914,11 +2950,29 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     const held=!running&&visibleThreat?angle(a.p,visibleThreat.p):
       handoff?n.facing!:
       running&&a.aimInstruction?.mode==='track'?null:aimHeading(a);
-    if(held!==null)rotate(a,held,dt);
-    else if(n.kind==='move'&&n.moveMode==='strafe')
+    if(held!==null){
+      a.autoSidestep=null;
+      rotate(a,held,dt);
+    }else if(n.kind==='move'&&n.moveMode==='strafe'){
+      a.autoSidestep=null;
       rotate(a,n.facing??a.heading,dt);
-    else if(a.nav.length)
-      rotate(a,angle(a.p,a.nav[0]),dt);
+    }else if(a.nav.length){
+      // Clearance glides may move laterally even while the original
+      // nav point remains straight ahead. Test the actual resolved motor
+      // displacement before declaring the sidestep finished.
+      const moved=d(a.p,a.priorP)>.15&&a.velocity>1.5;
+      const motorNext=moved?{
+        x:a.p.x+(a.p.x-a.priorP.x),
+        y:a.p.y+(a.p.y-a.priorP.y)
+      }:a.nav[0];
+      const facing=autoSidestepFacing(a.autoSidestep,a.p,motorNext,
+        n.p,s.seconds,
+        a.pace!=='run'&&!a.squeeze&&!visibleThreat&&!a.traversal&&
+        !a.aimInstruction&&
+        !approachingNarrowThreshold(a.p,n.p,s.doors));
+      if(facing===null)a.autoSidestep=null;
+      rotate(a,facing??angle(a.p,a.nav[0]),dt);
+    }
     return;
   }
   a.velocity=Math.max(0,a.velocity-dt*180);
