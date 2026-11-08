@@ -95,6 +95,8 @@ import {buildDirectorFilmBeats,directorFilmBeatAt,directorFilmPair,
   type DirectorFilmBeat} from './breach-replay-director-film.ts';
 import {ReplayDirectorStoryboard}
   from './breach-replay-director-storyboard.ts';
+import {directorRecordedContact}
+  from './breach-replay-director-contact.ts';
 import {directorReplaySafeFrame}
   from './breach-replay-director-projection.ts';
 import {buildDirectorTempoEdits,directorTempoJump,
@@ -4828,19 +4830,23 @@ function rebuildReplayEventIndex():void{
     const intents=directorIntentsAt(frame,replayDirectorPlanIndex,
       doors,t,friendlies);
     const beat=directorFilmBeatAt(t,replayDirectorFilmBeats);
+    const contact=directorRecordedContact(frame,friendlies,
+      beat?.actorId??null,replayContactObserverId);
     const opposite=beat?.kind==='fight'?
       (beat.actorId===beat.shooterId?
         beat.targetId:beat.shooterId):null;
+    // A future combat beat is NOT permission to place an undiscovered
+    // enemy in the shot. Current individual observation is authoritative.
     const canShowPair=beat?.kind==='fight'&&t>=beat.first&&
-      (!opposite||friendlies.has(opposite)||replayOmniscient||
-      !replayContactObserverId&&!!frame.knowledge?.
-        visibleActorIds.includes(opposite));
+      (!opposite||friendlies.has(opposite)||
+       !!contact&&contact.targetId===opposite&&
+        contact.observerId===beat.actorId);
     return composeReplayDirectorShot(t,actors,
       state.site?.rooms??[],state.site?.walls??[],
       cssW/Math.max(1,cssH),0,
       stage?.replayCameraBaseSpan()??1100,{
         intents,upcoming:directorFutureAt(t,replayDirectorFuture),
-        beat,actionPair:canShowPair&&beat?
+        beat,contact,actionPair:canShowPair&&beat?
           directorFilmPair(beat,frame):null,
         entry:directorFirstEntryAt(t,replayDirectorEntries,2.2,1.4),
         doors:frame.doors,cover:frame.coverState,

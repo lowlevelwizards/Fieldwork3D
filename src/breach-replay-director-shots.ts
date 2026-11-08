@@ -9,6 +9,7 @@ import type {DirectorIntent} from './breach-replay-director-intent.ts';
 import type {DirectorFutureCue} from './breach-replay-director-events.ts';
 import type {DirectorFilmBeat} from './breach-replay-director-film.ts';
 import type {DirectorEntryEvent} from './breach-replay-director-crossings.ts';
+import type {DirectorRecordedContact} from './breach-replay-director-contact.ts';
 import {selectDirectorEditorialShot,type DirectorEditorialShot}
   from './breach-replay-director-edit.ts';
 import {physicalDirectorView,directorLineBlocked}
@@ -26,6 +27,7 @@ export type DirectorShotContext={
   upcoming:DirectorFutureCue|null;
   beat?:DirectorFilmBeat|null;
   actionPair?:{shooter:Pt;target:Pt}|null;
+  contact?:DirectorRecordedContact|null;
   entry?:DirectorEntryEvent|null;
   editorial?:DirectorEditorialShot|null;
   usableWidth?:number;usableHeight?:number;
@@ -114,7 +116,9 @@ export function composeReplayDirectorShot(time:number,
   let hero=primary;
   let physical=physicalDirectorView({
     operator:primary.p,focus,
-    subjectPoints:featured.map(a=>a.p),
+    // Every foreground teammate may hide the enemy, not just featured
+    // actors participating in this editorial beat.
+    subjectPoints:friends.map(a=>a.p),
     requiredPoints:required,
     // Doorway markers are not human targets; only real actors enter the
     // target silhouette coverage test.
@@ -132,13 +136,13 @@ export function composeReplayDirectorShot(time:number,
   // If the nominated protagonist is truly invisible, the final fallback
   // is another historically recorded friendly. This is a cutaway, not
   // license to reveal undisclosed combatants or shoot through solid walls.
-  if(physical.subjectReadable===false){
+  if(physical.subjectReadable===false&&!isContact){
     for(const alternate of featured.filter(a=>a.id!==primary.id)){
       const recovered=physicalDirectorView({
         operator:alternate.p,
         focus:{x:alternate.p.x+direction.x*27,
           y:alternate.p.y+direction.y*27},
-        subjectPoints:featured.map(a=>a.p),
+        subjectPoints:friends.map(a=>a.p),
         requiredPoints:[alternate.p],target:null,
         preferredYaw:Math.atan2(-direction.x,-direction.y),
         followDirection:direction,targetWeight:0,
