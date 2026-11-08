@@ -8,6 +8,7 @@ import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
 import {PARKING_VEHICLES,parkingStallCandidates} from './parking-stalls.ts';
 import {SERVICE_EDGE_FIXTURES,serviceYardEdgeCandidates} from './service-yard-layout.ts';
 import {landscapeEdgeCandidates} from './landscape-edge-program.ts';
+import {serviceFixtureInRoad} from './road-service-fixtures.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
 export function addExteriorProperty(site:Site,seed:number):Site{
@@ -148,6 +149,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
       y-h/2<bounds.minY+23||y+h/2>bounds.maxY-22)continue;
     if(site.rooms.some(r=>x+w/2>r.x&&x-w/2<r.x+r.w&&
       y+h/2>r.y&&y-h/2<r.y+r.h))continue;
+    if(serviceFixtureInRoad(site,item,candidate))continue;
     if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32))continue;
     if(site.doors.some(d=>distance({x,y},{x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<68))continue;
     if(overlapsArrivalLane(site,zone,candidate))continue;
