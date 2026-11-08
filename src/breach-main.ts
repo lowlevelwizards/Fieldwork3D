@@ -8133,6 +8133,7 @@ function updatePhysicalActionRings(){
     const show=!replaying&&state.phase==='running'&&actor.health>0&&
       (picking||treating);
     ring.hidden=!show;
+    ring.style.display=show?'flex':'none';
     if(!show)continue;
     const progress=treating?actor.treatmentProgress:
       Math.min(1,actor.actionTimer/((
