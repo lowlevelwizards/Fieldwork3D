@@ -7,8 +7,9 @@ import type {DirectorRoom,DirectorWall} from './breach-replay-cinematic-director
 import {doorOpticalSegment,doorTransmitsSightAndLight,
   type Door,type Obstacle} from './breach-core.ts';
 import {directorPerspectiveCovers,directorOrthoFittingZoom,
-  directorCompositionQuality,type DirectorCompositionTreatment,
-  type DirectorCompositionQuality}
+  directorCompositionQuality,directorForegroundOccupancy,
+  type DirectorForegroundSegment,type DirectorSafeFrame,
+  type DirectorCompositionTreatment,type DirectorCompositionQuality}
   from './breach-replay-director-projection.ts';
 
 export type PhysicalPoint={x:number;y:number};
@@ -32,7 +33,7 @@ export type PhysicalDirectorRequest={
   doorPoint?:PhysicalPoint|null;
   doorNormal?:PhysicalPoint|null;
   composition?:{treatment:DirectorCompositionTreatment;baseSpan:number;
-    usableWidth:number;usableHeight:number};
+    usableWidth:number;usableHeight:number;safeFrame?:DirectorSafeFrame};
 };
 export type PhysicalDirectorView={
   cameraAnchor:PhysicalPoint;focus:PhysicalPoint;
@@ -362,12 +363,12 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       const c=req.composition;
       const zoom=directorOrthoFittingZoom(p,focus,
         req.requiredPoints??[req.operator],aspect,c.baseSpan,
-        c.usableWidth,c.usableHeight,8,.8);
+        c.usableWidth,c.usableHeight,8,.8,c.safeFrame);
       const quality=directorCompositionQuality(p,focus,req.operator,
         targetVisible?req.target??null:null,
         req.followDirection??{x:1,y:0},c.treatment,'ortho',
         aspect,c.baseSpan,zoom,proposal.fov,
-        c.usableWidth,c.usableHeight);
+        c.usableWidth,c.usableHeight,c.safeFrame);
       proposal.compositionQuality=quality;
       // Coverage remains paramount. A back-of-head that conceals a real
       // target is not an acceptable OTS even if point LOS is clear.
@@ -381,17 +382,60 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     candidates.push({score:rankedScore,view:proposal});
     if(rankedScore>score){score=rankedScore;best=proposal;}
   }
-  // Only inspect the strongest small set with the REAL WIDE projection.
-  // The old FOV estimate could request 150 degrees then clamp to 116
-  // and silently crop a required shooter/target. Prefer a different
-  // legal setup when it is comparably strong and genuinely fits.
+  // A full-screen opened door leaf may pass a point LOS. Audition the
+  // strongest *physical* candidates for real projected foreground surface
+  // occupation, then rank again before selecting either lens. This runs
+  // only at storyboard knots, never each rendered frame.
+  if(req.composition&&candidates.length){
+    const surfaces:DirectorForegroundSegment[]=[
+      ...scene.walls.map(w=>({a:w.a,b:w.b,height:47,
+        kind:'wall' as const})),
+      ...opaqueDoors(scene).map(d=>{
+        const leaf=doorOpticalSegment(d as Door);
+        return {...leaf,height:44,kind:'door' as const};
+      }),
+      ...(scene.cover??[]).flatMap(o=>{
+        const a={x:o.x-o.w/2,y:o.y-o.h/2},
+          b={x:o.x+o.w/2,y:o.y+o.h/2},
+          c={x:a.x,y:b.y},d={x:b.x,y:a.y};
+        return [{a,b,height:o.low?17:35,
+          kind:'furniture' as const},
+          {a:c,b:d,height:o.low?17:35,
+          kind:'furniture' as const}];
+      })
+    ];
+    for(const candidate of candidates.slice()
+      .sort((a,b)=>b.score-a.score).slice(0,24)){
+      const v=candidate.view;
+      const zoom=directorOrthoFittingZoom(v.cameraAnchor,v.focus,
+        req.requiredPoints??[req.operator],aspect,
+        req.composition.baseSpan,req.composition.usableWidth,
+        req.composition.usableHeight,8,.8,
+        req.composition.safeFrame);
+      const fg=directorForegroundOccupancy(v.cameraAnchor,v.focus,
+        req.operator,surfaces,'ortho',aspect,
+        req.composition.baseSpan,zoom,v.fov,
+        req.composition.safeFrame);
+      candidate.score-=
+        Math.max(0,fg.door-.30)*660+
+        Math.max(0,fg.wall-.63)*260+
+        Math.max(0,fg.furniture-.69)*120+
+        Math.max(0,fg.subjectMask-.42)*95;
+    }
+    const ranked=candidates.sort((a,b)=>b.score-a.score);
+    best=ranked[0]?.view??best;
+    score=ranked[0]?.score??score;
+  }
+  // The camera rig is common to ORTHO and WIDE. Confirm the strongest
+  // shots in real perspective before opting for one with a cropped cast.
   if(best&&req.requiredPoints?.length){
     const ranked=candidates.sort((a,b)=>b.score-a.score);
     for(const proposal of ranked.slice(0,16)){
       if(proposal.score<score-200)break;
       if(directorPerspectiveCovers(proposal.view.cameraAnchor,
         proposal.view.focus,req.requiredPoints,aspect,
-        proposal.view.fov,.90,.89))return proposal.view;
+        proposal.view.fov,.90,.89,req.composition?.safeFrame))
+        return proposal.view;
     }
   }
   // No legal WIDE two-shot exists: retain the highest-ranked, legal
