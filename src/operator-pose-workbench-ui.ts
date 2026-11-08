@@ -493,6 +493,39 @@ get<HTMLButtonElement>('wbEnd').addEventListener('click',()=>{
  endPreview();applyAndRenderTargets();
 });
 const serialized=()=>JSON.stringify(edited,null,2);
+const exportLibrary=()=>{storeEdited();return JSON.stringify(library,null,2);};
+function downloadText(content:string,name:string){
+ const blob=new Blob([content],{type:'application/json'});
+ const url=URL.createObjectURL(blob);
+ const link=document.createElement('a');
+ link.href=url;link.download=name;
+ document.body.append(link);link.click();link.remove();
+ URL.revokeObjectURL(url);
+}
+function importLibrary(content:string){
+ const loaded=parsePoseLibrary(content);
+ library=loaded;syncCatalog();
+ restorePreset(library.entries[edited.preset]?edited.preset:'ar-m4a1');
+ notify('Imported '+Object.keys(library.entries).length+
+  ' independent weapon poses. No live gameplay changes.');
+}
+get<HTMLButtonElement>('wbExportLibrary').addEventListener('click',()=>{
+ jsonField.value=exportLibrary();
+ notify('Full v2 pose library JSON exported. Copy or download below.');
+});
+get<HTMLButtonElement>('wbSaveLibrary').addEventListener('click',()=>{
+ try{
+  localStorage.setItem(libraryKey,exportLibrary());
+  notify('All independent weapon poses saved locally.');
+ }catch{notify('Storage unavailable. Export library JSON instead.');}
+});
+get<HTMLButtonElement>('wbLoadLibrary').addEventListener('click',()=>{
+ try{
+  const saved=localStorage.getItem(libraryKey);
+  if(!saved)throw Error('No saved pose library found');
+  importLibrary(saved);
+ }catch(error){notify(error instanceof Error?error.message:String(error));}
+});
 get<HTMLButtonElement>('wbExport').addEventListener('click',()=>{
  jsonField.value=serialized();notify('Final authored pose JSON shown below.');
 });
@@ -508,39 +541,49 @@ get<HTMLButtonElement>('wbCopy').addEventListener('click',async()=>{
 });
 const saveKey='fieldwork.operator-pose-workbench.v1';
 get<HTMLButtonElement>('wbSave').addEventListener('click',()=>{
- try{localStorage.setItem(saveKey,serialized());
-  notify('Saved locally in this browser.');
- }catch{notify('Local storage unavailable. Use COPY POSE JSON instead.');}
+ try{
+  storeEdited();
+  localStorage.setItem(libraryKey,exportLibrary());
+  localStorage.setItem(saveKey,serialized());
+  notify('Saved current pose and complete weapon library locally.');
+ }catch{notify('Storage unavailable. Copy pose or library JSON instead.');}
 });
 get<HTMLButtonElement>('wbLoad').addEventListener('click',()=>{
  try{
-  const saved=localStorage.getItem(saveKey);
+  const saved=localStorage.getItem(libraryKey)||
+   localStorage.getItem(saveKey);
   if(!saved)throw Error('No saved pose found');
   importPose(saved);
  }catch(error){notify(error instanceof Error?error.message:String(error));}
 });
 function importPose(source:string){
+ const parsed:unknown=JSON.parse(source);
+ if(parsed&&typeof parsed==='object'&&
+  (parsed as {version?:number}).version===2){
+  importLibrary(source);return;
+ }
  const pose=readWorkbenchPose(source);
- if(!['ar-m4a1','ak-akm','hk-mp5a3','shotgun'].includes(pose.preset))
-  throw Error('Unsupported weapon preset: '+pose.preset);
- if(presetOptions(pose.preset).weapon!==pose.weapon)
-  throw Error('Weapon family and preset do not match');
+ if(!PRESET_IDS.has(pose.preset)||
+  specForPreset(pose.preset).weapon!==pose.weapon)
+  throw Error('Weapon family / preset mismatch');
+ storeEdited();
+ library.entries[pose.preset]={pose:cloneWorkbenchPose(pose),
+  quality:'tuned'};
  rebaseFromReady(pose.preset,pose);
- follow.checked=false;
- notify('Imported valid authored targets; no automatic IK correction applied.');
+ follow.checked=false;renderLibraryStatus();
+ notify('Imported v1 pose for '+pose.preset+'; other drafts retained.');
 }
 get<HTMLButtonElement>('wbImport').addEventListener('click',()=>{
  try{importPose(jsonField.value);}
  catch(error){notify(error instanceof Error?error.message:String(error));}
 });
 get<HTMLButtonElement>('wbDownload').addEventListener('click',()=>{
- const blob=new Blob([serialized()],{type:'application/json'});
- const url=URL.createObjectURL(blob);
- const link=document.createElement('a');
- link.href=url;link.download='fieldwork-short-stock-pose.json';
- document.body.append(link);link.click();link.remove();
- URL.revokeObjectURL(url);
- notify('Pose recipe exported.');
+ const content=jsonField.value||serialized();
+ const isBundle=(()=>{try{return JSON.parse(content).version===2;}
+  catch{return false;}})();
+ downloadText(content,isBundle?'fieldwork-pose-library.json':
+  'fieldwork-'+edited.preset+'-pose.json');
+ notify(isBundle?'Downloaded all poses.':'Downloaded current pose.');
 });
 function resize(){
  const width=Math.max(1,stage.clientWidth),
@@ -574,10 +617,11 @@ function tick(now:number){
  requestAnimationFrame(tick);
 }
 try{
- rebaseFromReady('ar-m4a1');
+ syncCatalog();
+ restorePreset('ar-m4a1');
  setSelection('stock');
  resize();
- notify('Sculpt a static pose: select a handle, move XYZ, then copy the JSON.');
+ notify('M4A1 and AKM references ready. Apply to all to generate editable weapon drafts.');
  requestAnimationFrame(tick);
 }catch(error){
  notify('POSE WORKBENCH FAILED: '+(error instanceof Error?error.message:String(error)));
