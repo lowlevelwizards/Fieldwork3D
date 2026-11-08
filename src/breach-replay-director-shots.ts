@@ -129,7 +129,32 @@ export function composeReplayDirectorShot(time:number,
       usableHeight:context.usableHeight??.76,
       safeFrame:context.safeFrame}
   },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
-  const legalRequired=required.filter(p=>
+  // If the nominated protagonist is truly invisible, the final fallback
+  // is another historically recorded friendly. This is a cutaway, not
+  // license to reveal undisclosed combatants or shoot through solid walls.
+  if(physical.subjectReadable===false){
+    for(const alternate of featured.filter(a=>a.id!==primary.id)){
+      const recovered=physicalDirectorView({
+        operator:alternate.p,
+        focus:{x:alternate.p.x+direction.x*27,
+          y:alternate.p.y+direction.y*27},
+        subjectPoints:featured.map(a=>a.p),
+        requiredPoints:[alternate.p],target:null,
+        preferredYaw:Math.atan2(-direction.x,-direction.y),
+        followDirection:direction,targetWeight:0,
+        composition:{treatment:'follow',baseSpan,
+          usableWidth:context.usableWidth??.78,
+          usableHeight:context.usableHeight??.76,
+          safeFrame:context.safeFrame}
+      },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
+      if(recovered.subjectReadable&&
+        (recovered.subjectVisibility??0)>(physical.subjectVisibility??0)+.12){
+        hero=alternate;physical=recovered;break;
+      }
+    }
+  }
+  const activeRequired=hero===primary?required:[hero.p];
+  const legalRequired=activeRequired.filter(p=>
     !directorLineBlocked(physical.cameraAnchor,p,
       {rooms,walls,doors:context.doors,cover:context.cover}));
   const mandatory=[primary.p,...legalRequired.filter(p=>
