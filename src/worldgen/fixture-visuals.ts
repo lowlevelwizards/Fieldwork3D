@@ -250,6 +250,21 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x+sx*w*.515,12,c.y-d*.26,1.2,4,d*.17,lamp,false);
           ctx.box(group,c.x+sx*w*.515,12,c.y+d*.26,1.2,4,d*.17,lamp,false);
         }
+      }else if(fixture==='public-bench'){
+        // Public seating needs a cast-metal support frame, visible slats
+        // and unmistakable seat/back profile, not a generic box.
+        const iron=visualCtx.solid(0x454f4a,.83,'industrial-steel');
+        const timber=visualCtx.solid(0x7d745f,.94,'wood');
+        const seat=11.2,back=asset?.height??26;
+        for(const sx of [-.40,.40]){
+          ctx.box(group,c.x+sx*w,seat*.46,c.y,3,seat*.92,d*.68,iron);
+          ctx.box(group,c.x+sx*w,back*.60,c.y-d*.40,3,back*.70,3,iron);
+          ctx.box(group,c.x+sx*w,seat+2.3,c.y+d*.12,2.5,2.5,d*.70,iron,false);
+        }
+        for(const z of [-.25,0,.25])
+          ctx.box(group,c.x,seat,c.y+d*z,w*.89,2.1,d*.19,timber,false);
+        for(const y of [16.5,21.0,25.1])
+          ctx.box(group,c.x,y,c.y-d*.40,w*.88,2.7,2.2,timber,false);
       }else if(fixture==='chair'||fixture==='bench'){
         const seat=10.4;
         ctx.box(group,c.x,seat,c.y,w*.88,3,d*.87,wood);
@@ -298,9 +313,16 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         const safety=ctx.solid(0xae8e52,.78);
         const signal=ctx.solid(0xb37c5a,.75);
         if(fixture==='mailbox'){
-          ctx.box(group,c.x,9,c.y,3,18,3,dark);
-          ctx.box(group,c.x,(asset?.height??27)-5,c.y,w,10,d,enamel);
-          ctx.box(group,c.x+w*.43,25,c.y,2,8,2,signal,false);
+          // Street-facing mailbox: clear support, case, sloping cap and
+          // hinged front flap; not an unmarked electrical junction box.
+          const top=asset?.height??29;
+          ctx.box(group,c.x,top*.39,c.y,3.7,top*.78,3.7,dark);
+          ctx.box(group,c.x,top-5,c.y,w*.96,9,d*.90,enamel);
+          const lid=ctx.box(group,c.x,top-.1,c.y-.6,w,2.1,d*.98,dark,false);
+          lid.rotation.x=-.10;
+          ctx.box(group,c.x,top-5,c.y+d*.461,w*.76,5.5,.9,dark,false);
+          ctx.box(group,c.x,top-4.9,c.y+d*.515,w*.58,3.7,.6,enamel,false);
+          ctx.box(group,c.x+w*.45,top-2,c.y,1.7,7,1.6,signal,false);
         }else if(fixture==='trash-bin'){
           ctx.box(group,c.x,(asset?.height??23)*.45,c.y,
             w*.86,(asset?.height??23)*.9,d*.86,dark);
@@ -316,16 +338,40 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x,10,c.y,16,4,5,enamel,false);
           ctx.box(group,c.x,2,c.y,11,4,11,enamel);
         }else if(fixture==='utility-cabinet'){
-          const height=asset?.height??37;
-          ctx.box(group,c.x,height/2,c.y,w,height,d,enamel);
-          ctx.box(group,c.x,height/2,c.y+d*.51,w*.84,height*.90,1,dark,false);
-          ctx.box(group,c.x+w*.27,18,c.y+d*.56,2,7,1,safety,false);
-          for(const yy of [8,13,18])ctx.box(group,c.x-w*.21,yy,c.y+d*.56,
-            7,1,1,safety,false);
+          // Service electrical enclosure, not a vending machine: muted
+          // powder-coated steel, two accessible door leaves, flush louvres,
+          // hinges, latch and a small warning emblem. No giant black screen
+          // or vending-like gold product rows.
+          const height=asset?.height??39;
+          const shell=visualCtx.solid(0x7b8780,.88,'painted-metal');
+          const doors=visualCtx.solid(0x85918a,.84,'painted-metal');
+          const recess=visualCtx.solid(0x495653,.94,'industrial-steel');
+          const caution=visualCtx.solid(0xc0a66b,.83,'painted-metal');
+          ctx.box(group,c.x,1.5,c.y,w*.95,3,d*.95,enamel);
+          ctx.box(group,c.x,height*.52,c.y,w*.92,height*.89,d*.92,shell);
+          for(const sign of [-1,1]){
+            ctx.box(group,c.x+sign*w*.226,height*.51,c.y+d*.473,
+              w*.438,height*.77,1.15,doors,false);
+            for(const yy of [height*.26,height*.73])
+              ctx.box(group,c.x+sign*w*.425,yy,c.y+d*.522,
+                1.3,3.2,1.4,recess,false);
+            for(const yy of [8.5,11.3,14.1])
+              ctx.box(group,c.x+sign*w*.225,yy,c.y+d*.54,
+                w*.20,.75,1.15,recess,false);
+          }
+          ctx.box(group,c.x,height*.50,c.y+d*.534,1.0,height*.68,1.1,recess,false);
+          ctx.box(group,c.x+w*.13,height*.52,c.y+d*.55,1.3,4.5,1.1,recess,false);
+          ctx.box(group,c.x-w*.17,height*.65,c.y+d*.55,5,4,1.1,caution,false);
+          ctx.box(group,c.x-w*.17,height*.65,c.y+d*.59,.8,2.6,1.2,recess,false);
         }else if(fixture==='parking-block'){
-          ctx.box(group,c.x,3,c.y,w,6,d*.85,enamel);
-          for(const sx of [-.31,.31])ctx.box(group,c.x+w*sx,6.3,c.y,
-            w*.2,.8,d*.74,safety,false);
+          // Real low concrete wheel stop with end reflectors (not a
+          // dangerous striped barrier across the entire driving lane).
+          const concrete=visualCtx.solid(0x979488,.97,'concrete');
+          ctx.box(group,c.x,2.9,c.y,w,5.8,d*.83,concrete);
+          ctx.box(group,c.x,6.1,c.y,w*.93,1.4,d*.69,concrete,false);
+          for(const sx of [-.36,.36])
+            ctx.box(group,c.x+w*sx,6.9,c.y,
+              w*.11,.7,d*.52,safety,false);
         }else if(fixture==='parking-sign'){
           const height=asset?.height??44;
           ctx.box(group,c.x,height*.5,c.y,2,height,2,dark);
