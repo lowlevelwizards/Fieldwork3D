@@ -1,39 +1,56 @@
-/** MF-1: presentation-only miniature optics. Never consult simulation/intel. */
-export type MiniatureFocusMode='off'|'subtle'|'replay';
+/** MF-3: photographic miniature / tilt-shift presentation only. */
+export type MiniatureFocusMode='off'|'subtle'|'strong'|'replay';
 export type MiniatureFocusView='tactical'|'top'|'floor-plan'|
   'director'|'free-replay'|'bodycam';
 export type FocusQuality='performance'|'balanced'|'quality';
 export type FocusDecision={
-  active:boolean;radiusPx:number;strength:number;reason:string;
+ active:boolean;radiusPx:number;strength:number;
+ centerY:number;innerHalfHeight:number;outerHalfHeight:number;
+ saturation:number;contrast:number;reason:string;
 };
-/** Default to a very subtle treatment. Explicit invalid values fail closed. */
 export const MINIATURE_FOCUS_STORAGE_KEY='fieldwork3d.graphics.miniature-focus';
 export function requestedMiniatureFocus(value:string|null):MiniatureFocusMode{
-  if(value===null)return 'subtle';
-  return value==='subtle'||value==='replay'?value:'off';
+ if(value===null)return 'subtle';
+ return value==='subtle'||value==='strong'||value==='replay'?value:'off';
 }
-/** Developer URL query wins on initial load, then the visible preference
- * controls the session. No query is required for ordinary gameplay.
- */
+/** Explicit URL override supports A/B comparison; ordinary visits use
+ * saved preference and default to Subtle. Unknown values fail closed. */
 export function initialMiniatureFocusMode(query:string|null,
  stored:string|null):MiniatureFocusMode{
-  return requestedMiniatureFocus(query??stored);
+ return requestedMiniatureFocus(query??stored);
 }
+/** Guard is the *canvas*, not the playable map. Intentional full-frame lens
+ * may soften world geometry; 2D controls and overlays are drawn separately.
+ */
 export function miniatureFocusDecision(input:{
-  mode:MiniatureFocusMode;view:MiniatureFocusView;
-  quality:FocusQuality;protectedRegionValid:boolean;
-  gesturesActive:boolean;capable:boolean;
+ mode:MiniatureFocusMode;view:MiniatureFocusView;
+ quality:FocusQuality;protectedRegionValid:boolean;
+ gesturesActive:boolean;capable:boolean;
 }):FocusDecision{
-  const off=(reason:string):FocusDecision=>({active:false,radiusPx:0,strength:0,reason});
-  if(input.mode==='off')return off('setting-off');
-  if(input.quality==='performance')return off('performance-preset');
-  if(!input.capable)return off('unsupported-gpu');
-  if(!input.protectedRegionValid)return off('unprotected-view');
-  if(input.view==='floor-plan'||input.view==='top'||input.view==='bodycam')
-    return off('view-disabled');
-  if(input.mode==='replay'&&input.view==='tactical')return off('replay-only');
-  if(input.gesturesActive)return off('active-gesture');
-  const director=input.view==='director';
-  return {active:true,radiusPx:director?4.8:3.2,
-    strength:director?.62:.42,reason:director?'director':'peripheral'};
+ const off=(reason:string):FocusDecision=>({
+  active:false,radiusPx:0,strength:0,centerY:.56,
+  innerHalfHeight:.14,outerHalfHeight:.34,
+  saturation:1,contrast:1,reason
+ });
+ if(input.mode==='off')return off('setting-off');
+ if(input.quality==='performance')return off('performance-preset');
+ if(!input.capable)return off('unsupported-gpu');
+ if(!input.protectedRegionValid)return off('invalid-frame');
+ if(input.view==='floor-plan'||input.view==='top'||input.view==='bodycam')
+  return off('view-disabled');
+ if(input.mode==='replay'&&input.view==='tactical')return off('replay-only');
+ const replay=input.view==='director'||input.view==='free-replay';
+ const strong=replay||input.mode==='strong';
+ // Camera gestures MUST NOT bypass the effect: doing so made MF-2 pop
+ // from a composited frame to a different image on every gesture.
+ return {
+  active:true,radiusPx:strong?9:6,
+  strength:strong?.94:.82,
+  centerY:replay?.54:.56,
+  innerHalfHeight:strong?.11:.15,
+  outerHalfHeight:strong?.30:.34,
+  saturation:strong?1.065:1.045,
+  contrast:strong?1.035:1.02,
+  reason:strong?'photographic-replay':'photographic-live'
+ };
 }
