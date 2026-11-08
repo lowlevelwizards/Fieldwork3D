@@ -7151,8 +7151,10 @@ function tacticalPickAt(screen:Pt,pointerKind:string):TacticalPick|null{
   for(const unit of team(state)){
     if(unit.health<=0)continue;
     const here=worldToScreen(unit.p,viewMode==='plan2d'?0:24);
+    // A 44 px direct finger target is generous without an invisible 60 px
+    // magnetic halo that steals floor taps beside a stacked teammate.
     hits.push({kind:'operator',owner:unit.id,distancePx:distance(here,screen),
-      corePx:touch?18:pen?16:14,haloPx:touch?30:pen?25:21});
+      corePx:touch?22:pen?18:15});
     const problem=executionProblemStatus(unit);
     if(problem?.orderId!=null){
       const marker=executionMarkerPoint(unit,viewMode!=='plan2d');
