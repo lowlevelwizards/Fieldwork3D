@@ -26,6 +26,7 @@ export function createPasgtCoverLayers(parent:THREE.Group):PasgtCoverLayers{
   color:0xffffff,roughness:.97,metalness:0,flatShading:true,
   vertexColors:false,side:THREE.FrontSide
  });
+ fabric.userData.fieldworkStudioSoftGear=true;
  fabric.map=pasgtCoverTexture(undefined,'default');
  const cover=hidden(parent,'pasgt-bridged-fitted-cover');
  const body=new THREE.Mesh(createPasgtDrapedGeometry(),fabric);
