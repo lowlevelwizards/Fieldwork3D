@@ -104,13 +104,11 @@ try{
   await live.locator('#vale').click();
   if(await live.locator('#vale').getAttribute('aria-pressed')!=='true')
     throw Error('Vale cannot be selected');
-  // Settings lives inside Tools, but opening it intentionally collapses Tools.
-  // Never click a hidden trigger or treat a stateful toggle as an open action.
+  // Header settings are directly reachable; no intermediate tools drawer.
   async function openSettings(page){
     if(await page.locator('#siteSettings').isVisible())return;
-    if(!await page.locator('#siteSettingsToggle').isVisible() &&
-       !await page.locator('#advancedOrders').isVisible())
-      await page.locator('#moreOrders').click();
+    if(!await page.locator('#siteSettingsToggle').isVisible())
+      throw Error('Header Settings trigger is not reachable');
     await page.locator('#siteSettingsToggle').click();
     if(!await page.locator('#siteSettings').isVisible() ||
        !await page.locator('#closeSiteSettings').isVisible())
@@ -173,8 +171,8 @@ try{
   await phone.screenshot({path:resolve(folder,'12-presentation-2d.png')});
   await chooseCamera(phone,'#viewIso');
   await phone.waitForTimeout(380);
-  if(await phone.locator('#moreOrders').getAttribute('aria-pressed')!=='false')
-    throw Error('Presentation view audit left TOOLS open');
+  if(await phone.locator('#siteSettings').isVisible())
+    throw Error('Presentation view audit left Settings open');
   const initial=await cameraState();
   const cdp=await phone.context().newCDPSession(phone);
   const touch=async(start,frames)=>{
@@ -221,13 +219,10 @@ try{
     throw Error('Camera gestures generated phantom plan nodes');
   await phone.screenshot({path:resolve(folder,'02-phone-pan-pinch.png')});
 
-  await phone.locator('#moreOrders').click();
-  if(!await phone.locator('#advancedOrders').isVisible())
-    throw Error('TOOLS drawer did not open');
+  if(await phone.locator('#advancedOrders').isVisible())
+    throw Error('Retired tactical drawer is visible');
   await chooseCamera(phone,'#cameraFit');
   await chooseCamera(phone,'#view2d');
-  if(await phone.locator('#advancedOrders').isVisible())
-    throw Error('TOOLS drawer failed to collapse');
 
   const screen=(x,y)=>{
     const scale=Math.min((390-20)/640,(844-172)/740);
@@ -264,12 +259,12 @@ try{
   if(!await phone.locator('#back').isDisabled())
     throw Error('BACK remains enabled after the final order');
   await phone.screenshot({path:resolve(folder,'08-phone-back-cleared-one-by-one.png')});
-  await phone.locator('#moreOrders').click();
-  await phone.locator('#undo').click();
   if(await phone.locator('#redo').isDisabled())
-    throw Error('Undo did not populate redo stack');
+    throw Error('BACK did not populate redo stack');
   await phone.locator('#redo').click();
-  await phone.locator('#moreOrders').click();
+  if(await phone.locator('#back').isDisabled())
+    throw Error('REDO did not restore the last removed waypoint');
+  await phone.locator('#back').click();
 
   // Selecting a waypoint near a door exposes door actions only there.
   await openSettings(phone);
@@ -297,11 +292,10 @@ try{
     if(!await phone.locator('#contextTools button[data-action="'+action+'"]').isVisible())
       throw Error('Missing contextual door option '+action+' at planned destination');
   }
-  // The expanded TOOLS panel must never be obscured by a second tray.
-  await phone.locator('#moreOrders').click();
-  if(await phone.locator('#contextTools').isVisible())
-    throw Error('Contextual aiming/door buttons obscure the TOOLS drawer');
+  // Header Settings must dismiss the contextual tray before opening.
   await openSettings(phone);
+  if(await phone.locator('#contextTools').isVisible())
+    throw Error('Contextual aiming/door buttons obscure Settings');
   await phone.locator('#restart').click();
   // Restarting authored plans intentionally requires explicit confirmation.
   // Dismiss the safety dialog before returning to the battlefield; never
@@ -330,7 +324,7 @@ try{
   if(!await phone.locator('#contextTools button[data-action="ctxOpen"]').isVisible())
     throw Error('Reachable door menu did not open');
   const bounds=await phone.locator('#contextTools').boundingBox();
-  const nav=await phone.locator('#moreOrders').boundingBox();
+  const nav=await phone.locator('#redo').boundingBox();
   if(!bounds||!nav||bounds.y+bounds.height>=nav.y)
     throw Error('Contextual tray overlaps the bottom action bar');
   await phone.screenshot({path:resolve(folder,'09-phone-door-context-no-overlap.png')});
