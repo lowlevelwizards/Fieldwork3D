@@ -64,7 +64,6 @@ import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
-import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide} from './breach-context-placement.ts';
 import {spatialSurfaceState,shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {heardIntensity} from './breach-acoustics.ts';
 import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
@@ -197,9 +196,6 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {contextActionChoices} from './ui/context-actions.ts';
-import {PaletteMotion} from './ui/palette-motion.ts';
-import {bubblePlacement,bubbleSlots,parseContextLayout,
-  type ContextLayout} from './ui/context-layout.ts';
 import {TacticalFeedback} from './ui/tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './ui/contextual-teaching.ts';
@@ -1570,102 +1566,16 @@ let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
 let looking=false,flashMode=false;
 let firePlacement:'suppress'|null=null;
 let lookMode:'look'|'watch'='look';
-const CONTEXT_LAYOUT_PREF='fieldwork3d.ui.contextLayout';
-let contextLayout:ContextLayout='dock';
-try{contextLayout=parseContextLayout(localStorage.getItem(CONTEXT_LAYOUT_PREF));}
-catch{/* A blocked preference store must never prevent opening the UI. */}
-const contextLayoutButtons=Array.from(
-  document.querySelectorAll<HTMLButtonElement>('[data-context-layout]'));
-function syncContextLayoutButtons(){
-  for(const button of contextLayoutButtons)
-    button.setAttribute('aria-pressed',
-      String(button.dataset.contextLayout===contextLayout));
-}
-syncContextLayoutButtons();
-for(const button of contextLayoutButtons)button.addEventListener('click',()=>{
-  const layout=parseContextLayout(button.dataset.contextLayout??null);
-  if(contextLayout===layout)return;
-  contextLayout=layout;
-  try{localStorage.setItem(CONTEXT_LAYOUT_PREF,layout);}
-  catch{/* Preference persistence is optional. */}
-  syncContextLayoutButtons();
-  // Both alternatives share the existing actual command buttons/handler.
-  // Cancel any old animation before detaching a palette into the HUD.
-  paletteExit?.cancel();paletteExit=null;
-  paletteMotion.hide();contextTether.hidden=true;
-  ui.context.hidden=true;ui.context.style.transform='';
-  contextActionsSignature='';lastPlacementKey='';
-  paletteWidth=0;paletteHeight=0;
-  updateContext();
-});
+// Contextual commands live in one fixed dock above the persistent
+// operator-state bar. No map-space popup, spring, or tether.
 let contextSignature='';
 let contextActionsSignature='';
-let lastContextSide:MenuSide|null=null;
-let lastAuthoringAt=0;
-const paletteMotion=new PaletteMotion();
 const reducedMotionMedia=matchMedia('(prefers-reduced-motion: reduce)');
-let paletteWidth=0,paletteHeight=0;
-let lastPlacementKey='';
-const contextPointerIds=new Set<number>();
-let tetherBrightUntil=0;
-let paletteExit:Animation|null=null;
-const contextTether=document.createElement('div');
-contextTether.id='contextTether';
-contextTether.setAttribute('aria-hidden','true');
-document.body.append(contextTether);
+ui.context.dataset.layout='dock';
+ui.tacticalHud.insertBefore(ui.context,ui.quickStates);
 function hideContextPalette(){
-  lastPlacementKey='';
-  // Docked commands never leave an invisible touch surface over the map.
-  // Bubbles also dismiss immediately when the map enters target mode.
-  const exclusive=!ui.siteSettings.hidden||!ui.briefingPanel.hidden;
-  if(contextLayout!=='floating'||!paletteMotion.active){
-    paletteExit?.cancel();paletteExit=null;
-    paletteMotion.hide();contextTether.hidden=true;
-    ui.context.hidden=true;ui.context.style.pointerEvents='none';
-    return;
-  }
-  paletteMotion.hide();contextTether.hidden=true;
+  ui.context.hidden=true;
   ui.context.style.pointerEvents='none';
-  if(reducedMotionMedia.matches||exclusive){
-    paletteExit?.cancel();paletteExit=null;
-    ui.context.hidden=true;return;
-  }
-  paletteExit?.cancel();
-  paletteExit=ui.context.animate([
-    {opacity:1,scale:1},{opacity:0,scale:.96}
-  ],{duration:115,easing:'ease-in',fill:'forwards'});
-  const exit=paletteExit;
-  exit.onfinish=()=>{
-    if(!paletteMotion.active){ui.context.hidden=true;exit.cancel();}
-    if(paletteExit===exit)paletteExit=null;
-  };
-}
-function advanceContextPalette(dt:number){
-  if(ui.context.hidden||!paletteMotion.active){contextTether.hidden=true;return;}
-  const reduced=reducedMotionMedia.matches;
-  paletteMotion.step(dt,reduced);
-  const x=paletteMotion.x.position,y=paletteMotion.y.position;
-  ui.context.style.transform='translate3d('+x.toFixed(2)+'px,'+
-    y.toFixed(2)+'px,0)';
-  const w=paletteWidth,h=paletteHeight;
-  const ax=paletteMotion.anchorX,ay=paletteMotion.anchorY;
-  const bx=Math.max(x,Math.min(ax,x+w));
-  const by=Math.max(y,Math.min(ay,y+h));
-  const dx=bx-ax,dy=by-ay,length=Math.hypot(dx,dy);
-  const visible=ui.context.dataset.layout==='floating'&&length>24&&!reduced;
-  contextTether.hidden=!visible;
-  if(visible){
-    // At long distance use only a nearby pointer instead of cutting
-    // straight across the entire tactical board.
-    const short=length>390,segment=short?45:length;
-    const vx=dx/length,vy=dy/length;
-    const sx=short?bx-vx*segment:ax,sy=short?by-vy*segment:ay;
-    contextTether.style.left=sx+'px';contextTether.style.top=sy+'px';
-    contextTether.style.width=segment+'px';
-    contextTether.style.opacity=performance.now()<tetherBrightUntil?'.75':
-      length>390?'.32':length>210?'.22':'.43';
-    contextTether.style.transform='rotate('+Math.atan2(dy,dx)+'rad)';
-  }
 }
 const auditRouteMode=new URLSearchParams(location.search).has('audit');
 let selectedNode:number|null=null;
@@ -2109,37 +2019,12 @@ function updateContext(){
     nodeFirePolicy:node?.firePolicyState,
   });
   const paletteChoices=choices.filter(choice=>choice.group!=='state');
-  // The four persistent toggles have their own stationary bar above the HUD.
-  // Bubbles follow the selected operator, while their commands still target
-  // the focused door / node / watch exactly as before.
-  const actorAnchor=worldToScreen(a.p,24);
-  const menuTop=Math.max(8,
-    (document.querySelector<HTMLElement>('.top')?.getBoundingClientRect().bottom??62)+8);
-  const menuHudTop=ui.quickStates.getBoundingClientRect().top;
-  const bubbleBounds=contextLayout==='bubbles'?bubblePlacement({
-    anchorX:actorAnchor.x,anchorY:actorAnchor.y,
-    viewportWidth:cssW,top:menuTop,hudTop:menuHudTop,
-  }):null;
-  // Tiny landscape/edge cases use the dock rather than laying bubbles over
-  // the persistent HUD or outside the visible canvas.
-  const effectiveLayout:ContextLayout=contextLayout==='bubbles'&&!bubbleBounds?
-    'dock':contextLayout;
-  if(ui.context.dataset.layout!==effectiveLayout){
-    ui.context.dataset.layout=effectiveLayout;
-    if(effectiveLayout==='dock')
-      ui.tacticalHud.insertBefore(ui.context,ui.quickStates);
-    else document.body.append(ui.context);
-    paletteMotion.hide();contextTether.hidden=true;
-    ui.context.style.transform='';
-    contextActionsSignature='';lastPlacementKey='';
-    paletteWidth=0;paletteHeight=0;
-  }
+  // The dock stays fixed for all operator, waypoint and door contexts.
   // Reconcile buttons in-place: never create a second action dispatcher.
   const identity=(door?'door:'+door.id:node?'node:'+node.id:
     selectedWatch?'active-watch':'here')+'/'+selected;
   const contextChanged=contextSignature!==identity;
   if(contextChanged){
-    tetherBrightUntil=performance.now()+420;
     contextActionsSignature='';
     contextSignature=identity;
     ui.context.replaceChildren();
@@ -2168,7 +2053,7 @@ function updateContext(){
     if(contextHeading.textContent!==text)contextHeading.textContent=text;
     contextHeading.title=scope;
   }
-  const actionSignature=effectiveLayout+'/'+identity+'/'+paletteChoices.map(c=>
+  const actionSignature=identity+'/'+paletteChoices.map(c=>
     c.id+':'+c.label+':'+c.group+':'+!!c.disabled+':'+!!c.pressed).join('|');
   const actionChanged=contextActionsSignature!==actionSignature;
   if(actionChanged){
@@ -2210,11 +2095,8 @@ function updateContext(){
     // contextual action must never reorder the fixed command slots.
     // 'advanced' is only a semantic group now: render those commands
     // alongside primary orders instead of inside a height-changing drawer.
-    // In the two auditions, all contextual buttons share one stable visual
-    // group, including a distinguishable destructive button.
-    const destination=effectiveLayout==='floating'?
-      buckets[choice.group==='advanced'?'primary':choice.group]:buckets.primary;
-    destination.append(button);
+    // Context-only actions occupy the dock; four state toggles stay below.
+    buckets.primary.append(button);
   }
   for(const btn of ui.context.querySelectorAll<HTMLButtonElement>('button[data-action]')){
     if(!wanted.has(btn.dataset.action??''))btn.remove();
@@ -2222,170 +2104,16 @@ function updateContext(){
   buckets.state.hidden=!buckets.state.childElementCount;
   buckets.destructive.hidden=!buckets.destructive.childElementCount;
   ui.context.classList.toggle('door-menu',!!door);
-  if(effectiveLayout==='bubbles'){
-    const bubbles=bubbleSlots(paletteChoices.length);
-    const buttons=Array.from(buckets.primary.querySelectorAll<HTMLButtonElement>(
-      'button[data-action]'));
-    for(let index=0;index<buttons.length;index++){
-      const offset=bubbles[index]??{x:0,y:0};
-      buttons[index].style.left='calc(50% '+(offset.x<0?'- ':'+ ')+
-        Math.abs(offset.x)+'px)';
-      buttons[index].style.top='calc(50% '+(offset.y<0?'- ':'+ ')+
-        Math.abs(offset.y)+'px)';
-    }
-  }else{
-    for(const button of ui.context.querySelectorAll<HTMLButtonElement>(
-      'button[data-action]')){
-      button.style.removeProperty('left');
-      button.style.removeProperty('top');
-    }
   }
-  }
-  if(paletteExit){paletteExit.cancel();paletteExit=null;}
   ui.context.hidden=false;
-  // The transparent center of the bubble ring must not eat map gestures.
-  ui.context.style.pointerEvents=effectiveLayout==='bubbles'?'none':'auto';
+  ui.context.style.pointerEvents='auto';
   if(contextChanged&&!reducedMotionMedia.matches)
     ui.context.animate([{opacity:.78,scale:.96},{opacity:1,scale:1}],
       {duration:160,easing:'cubic-bezier(.2,.8,.2,1)'});
   ui.context.dataset.door=door?.id??'';
   ui.context.setAttribute('aria-label',door?
     'Door actions':'Selected position actions and operator settings');
-  if(effectiveLayout==='dock'){
-    paletteMotion.hide();contextTether.hidden=true;
-    ui.context.style.transform='';
-    return;
-  }
-  if(effectiveLayout==='bubbles'&&bubbleBounds){
-    const key=[identity,actionSignature,
-      Math.round(bubbleBounds.x/3),Math.round(bubbleBounds.y/3)].join('|');
-    // Never move a touch target while the player holds a command.
-    if(contextPointerIds.size===0&&
-      (!paletteMotion.active||key!==lastPlacementKey)){
-      lastPlacementKey=key;
-      paletteMotion.set(bubbleBounds.x,bubbleBounds.y,
-        actorAnchor.x,actorAnchor.y);
-    }
-    contextTether.hidden=true;
-    return;
-  }
-  // Keep the full operator bodies, selected route, and tap targets visible.
-  // Don't inspect concealed enemies: context placement must not leak intel.
-  const target=door?doorCenter(door):node?.p??selectedWatch??a.p;
-  const anchor=worldToScreen(target,door?15:node?8:selectedWatch?12:24);
-  // Re-measure DOM only when contents change; reading offset dimensions every
-  // animation frame forces avoidable synchronous layout on mobile browsers.
-  const measure=contextChanged||actionChanged||paletteWidth<=0||paletteHeight<=0;
-  if(measure){paletteWidth=ui.context.offsetWidth;paletteHeight=ui.context.offsetHeight;}
-  const w=paletteWidth,h=paletteHeight;
-  const header=document.querySelector<HTMLElement>('.top');
-  const nav=document.querySelector<HTMLElement>('.bar');
-  const minY=Math.max(8,(header?.getBoundingClientRect().bottom??62)+8);
-  const hudTop=!ui.quickStates.hidden?
-    ui.quickStates.getBoundingClientRect().top:
-    (nav?.getBoundingClientRect().top??ui.play.getBoundingClientRect().top);
-  const maxY=Math.max(minY+h,hudTop-10);
-  // Lightweight dirty key: only meaningfully changed screen geometry may
-  // trigger the expensive avoid-zone and candidate placement calculations.
-  // The existing palette holds its pocket through incidental frame updates.
-  const unitKey=team(state).map(unit=>{
-    const point=worldToScreen(unit.p,8);
-    return unit.id+':'+Math.round(point.x/6)+','+Math.round(point.y/6)+
-      ':'+unit.plan.map(n=>Math.round(n.p.x/3)+','+
-      Math.round(n.p.y/3)+','+n.kind).join(';');
-  }).join('|');
-  const placementKey=[identity,actionSignature,Math.round(anchor.x/6),
-    Math.round(anchor.y/6),Math.round(cssW),Math.round(cssH),
-    Math.round(minY/3),Math.round(maxY/3),w,h,unitKey].join('|');
-  if(paletteMotion.active&&!contextChanged&&!actionChanged&&
-     (contextPointerIds.size>0||placementKey===lastPlacementKey))return;
-  lastPlacementKey=placementKey;
-  const avoid:AvoidRect[]=[{x:anchor.x-38,y:anchor.y-38,
-    w:76,h:76,weight:3}];
-  for(const unit of team(state)){
-    const feet=worldToScreen(unit.p,0),head=worldToScreen(unit.p,30);
-    avoid.push({x:Math.min(feet.x,head.x)-29,
-      y:Math.min(feet.y,head.y)-17,
-      w:Math.abs(head.x-feet.x)+58,
-      h:Math.abs(head.y-feet.y)+34,weight:3});
-  }
-  // Known visible contacts also deserve clear sightlines. Hidden enemies must
-  // never enter the placement heuristic (that would leak fog-of-war intel).
-  for(const hostile of enemies(state)){
-    if(hostile.health<=0||!isSeen(state,hostile))continue;
-    const p=worldToScreen(hostile.p,20);
-    avoid.push({x:p.x-31,y:p.y-38,w:62,h:76,weight:4});
-  }
-  const paths:ScreenPath[]=[];
-  // Avoid all friendly-authored routes, not only the selected unit's plan.
-  // Teammates and their paths remain known even behind current fog.
-  for(const friendly of team(state)){
-    let previous=friendly.p;
-    for(const waypoint of friendly.plan){
-      if(waypoint.kind==='move'||waypoint.kind==='door'){
-        // Match the actual visible navigated polyline, not a straight
-        // authored-endpoint chord that may cut across walls and doors.
-        const routed=displayRouteCache.get(previous,waypoint.p,
-          state.intel,true).points;
-        let segmentStart=previous;
-        for(const point of routed){
-          paths.push({a:worldToScreen(segmentStart,8),
-            b:worldToScreen(point,8)});
-          segmentStart=point;
-        }
-        previous=waypoint.p;
-      }
-      const p=worldToScreen(waypoint.p,8);
-      avoid.push({x:p.x-19,y:p.y-19,w:38,h:38,
-        weight:friendly.id===selected?2:1.3});
-    }
-  }
-  for(const overlay of [ui.hint,ui.feed]){
-    if(overlay.hidden||!overlay.getClientRects().length)continue;
-    const r=overlay.getBoundingClientRect();
-    avoid.push({x:r.left-7,y:r.top-7,w:r.width+14,h:r.height+14});
-  }
-  // Protect the next-tap region, not just the selected node itself.
-  // The palette should choose unused screen space away from the editing lane.
-  const activeEditing=performance.now()-lastAuthoringAt<1150;
-  const radius=cssW<=600?(activeEditing?148:118):100;
-  const actorPoint=worldToScreen(a.p,8);
-  const lastPoint=worldToScreen(finalPoint(a),8);
-  const editingZones=[
-    {x:anchor.x-radius,y:anchor.y-radius,w:radius*2,h:radius*2},
-    {x:lastPoint.x-90,y:lastPoint.y-90,w:180,h:180},
-    {x:actorPoint.x-75,y:actorPoint.y-75,w:150,h:150},
-  ];
-  const vx=lastPoint.x-actorPoint.x,vy=lastPoint.y-actorPoint.y;
-  const length=Math.hypot(vx,vy);
-  const dir=length>35?{x:vx/length,y:vy/length}:{x:0,y:-1};
-  const corridor={a:anchor,b:{
-    x:anchor.x+dir.x*(activeEditing?245:190),
-    y:anchor.y+dir.y*(activeEditing?245:190)}};
-  const placement=placeContextMenu({
-    anchor,width:w,height:h,viewportWidth:cssW,
-    top:minY,bottom:maxY,avoid,paths,preferredSide:lastContextSide,
-    authoring:editingZones,corridor,
-    minClearance:cssW<=600?(activeEditing?142:112):100,
-    preferredPosition:paletteMotion.active?
-      {x:paletteMotion.targetX,y:paletteMotion.targetY}:null,
-  });
-  lastContextSide=placement.side;
-  paletteMotion.set(placement.x,placement.y,anchor.x,anchor.y);
-  // Keep the actual menu hit target in its visually interpolated position.
-  // Geometry measurement uses offsetWidth/Height (unaffected by transforms).
 }
-// While a command finger is down, freeze the palette's pocket so it cannot
-// slip out from under the touch. This does not block camera or map rendering.
-ui.context.addEventListener('pointerdown',event=>{
-  if((event.target as HTMLElement).closest('button'))
-    contextPointerIds.add(event.pointerId);
-});
-for(const type of ['pointerup','pointercancel'] as const)
-  window.addEventListener(type,event=>{
-    contextPointerIds.delete(event.pointerId);
-  },{capture:true});
-window.addEventListener('blur',()=>contextPointerIds.clear());
 // One shared long-press handler is installed on each actual command button.
 // Duplicating a second timer on the palette caused conflicting 450/540ms holds.
 const handleContextAction=(event:MouseEvent)=>{
@@ -2742,7 +2470,6 @@ function updateHud(){
   if(repeat)repeat.hidden=!state.site?.training;
   paintOperatorAccent(ui.quickStates,selected);
   paintOperatorAccent(ui.context,selected);
-  paintOperatorAccent(contextTether,selected);
   updateQuickStates();
   if(medicalButton){
    const patient=medicalCandidate(selected);
@@ -4361,7 +4088,6 @@ function useSelectedGround(pt:Pt){
     updateHud();return;
   }
   const beforeRoute=uid(selected)?finalPoint(uid(selected)!):pt;
-  lastAuthoringAt=performance.now();
   if(!planMove(state,selected,pt))
     rejectAt(pt,!intelPassable(pt,state.intel)?
       'DESTINATION BLOCKED · CHOOSE NEARBY FLOOR':
@@ -7130,8 +6856,7 @@ canvas.addEventListener('pointerdown',e=>{
           touch)<=19);
     const node=candidate&&(!hit||activeRingHit||problemTap)?candidate:null;
     if(node){
-      lastAuthoringAt=performance.now();
-      if(node.owner!==selected)selectUnit(node.owner);
+          if(node.owner!==selected)selectUnit(node.owner);
       selectedActiveWatch=node.marker==='activeWatch';
       selectedNode=selectedActiveWatch?null:node.id;
       doorFocusId=null;
@@ -7267,7 +6992,6 @@ function insertAtRouteLine(screen:Pt,pointerKind:string):boolean{
     return true; // This was a route tap, not a new destination order.
   }
   canvas.dataset.lastRouteTap='inserted:'+hit.index;
-  lastAuthoringAt=performance.now();
   tacticalFeedback.emit('node',hit.point);
   teach('route-inserted','Waypoint inserted. Drag to reposition, or add LOOK / WATCH.',4100);
   selectedNode=id;doorFocusId=null;contextSignature='';
@@ -7797,7 +7521,7 @@ function tick(now:number){
     tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
       performance.now(),preview,reducedMotionMedia.matches);
   }
-  updateContext();advanceContextPalette(dt);
+  updateContext();
   if(frameMeter&&perfOverlay){
     const end=performance.now(),stats=stage?.performanceStats();
     frameMeter.add({frame:end-perfStart,cadence:frameGap,sim:perfRenderStart-perfStart,
