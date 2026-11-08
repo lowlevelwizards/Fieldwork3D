@@ -16,6 +16,7 @@ import {createArmorSilhouettes,createChestRigSilhouettes,
  from './operator-armor-rig-silhouettes.ts';
 import {armorAttachmentFrame} from './operator-armor-attachment-frame.ts';
 import {rigContactFrame} from './operator-rig-contact-frame.ts';
+import type {MagazinePouchCell} from './operator-magazine-pouch-fit.ts';
 type StyleGroups=Record<string,THREE.Group>;
 export type WardrobeGearLayers={
  armor:StyleGroups;rig:StyleGroups;belt:StyleGroups;pack:StyleGroups;
@@ -75,12 +76,15 @@ export function createWardrobeGearLayers(
  // while their independent shoulder suspenders follow the chest.
  const waistRig:StyleGroups={};
  const webbing=make(hip);waistRig['field-webbing']=webbing;
+ const fieldMagazineCells:MagazinePouchCell[]=[];
  box(webbing,strapMaterial,4.35,.18,0,1.12,1.36,13.35);
  box(webbing,strapMaterial,-4.15,.18,0,1.06,1.34,12.20);
  for(const side of [-1,1])
   for(const x of [2.30,-.65,-3.60]){
    // Puff the magazine cell toward its front, retaining contact at the belt.
    box(webbing,pouchMaterial,x+.25,.10,side*7.20,3.50,3.66,2.56);
+   fieldMagazineCells.push({x:x+.25,y:.10,z:side*7.20,
+    depth:3.50,height:3.66,width:2.56,yaw:side*Math.PI/2});
    // Field webbing/PLCE: broad cloth weather flap with one short
    // centrally placed retention strap, all textile swatches inherited.
    box(webbing,pouchMaterial,x+2.02,1.50,side*7.20,.36,1.07,2.78);
@@ -88,7 +92,10 @@ export function createWardrobeGearLayers(
    // A clear, dark top opening shows where carried belt magazines sit.
    box(webbing,dark,x,1.88,side*8.60,2.02,.28,.19);
   }
+ webbing.userData.magazinePouchCells=fieldMagazineCells;
  const battle=make(hip);waistRig['sadf-webbing']=battle;
+ // Pattern 83's broad lower bags are GENERAL-PURPOSE cargo, not another
+ // four invented ammunition sockets. Only its chest cells hold visible mags.
  box(battle,strapMaterial,4.26,.13,0,1.18,1.50,13.55);
  box(battle,strapMaterial,-4.24,.13,0,1.10,1.48,12.55);
  for(const side of [-1,1]){
@@ -148,11 +155,24 @@ export function createWardrobeGearLayers(
  visual.ensureAliceWaist=()=>{
   if(visual.aliceWaist)return;
   const alice=createAliceLc2Waist(hip,gearFabric,pouchMaterial,strapMaterial,trim);
+  const cells:MagazinePouchCell[]=[];
+  for(let lane=0;lane<3;lane++)for(const side of [-1,1]){
+   cells.push({x:1.55,y:-.18,z:side*7.02,depth:5.0,height:3.68,
+    width:2.78,yaw:side*Math.PI/2,slots:[-1.25,0,1.25],slot:lane});
+  }
+  alice.root.userData.magazinePouchCells=cells;
   visual.aliceWaist=alice;waistRig['alice-lc2']=alice.root;
  };
  visual.ensureM1956Waist=()=>{
   if(visual.m1956Waist)return;
   const historic=createM1956Waist(hip,gearFabric,pouchMaterial,strapMaterial,trim);
+  const cells:MagazinePouchCell[]=[];
+  for(let lane=0;lane<2;lane++)for(const side of [-1,1]){
+   cells.push({x:historic.variant==='early'?1.60:1.58,y:-.18,
+    z:side*7.06,depth:4.70,height:3.67,width:3.06,
+    yaw:side*Math.PI/2,slots:[-.92,.92],slot:lane});
+  }
+  historic.root.userData.magazinePouchCells=cells;
   // The historically separate pouches/canteens are retained as individual
   // variant groups: bake within each one, not across hidden alternatives.
   for(const child of historic.root.children)
