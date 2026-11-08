@@ -2228,8 +2228,10 @@ function updateContext(){
       'button[data-action]'));
     for(let index=0;index<buttons.length;index++){
       const offset=bubbles[index]??{x:0,y:0};
-      buttons[index].style.left='calc(50% + '+offset.x+'px)';
-      buttons[index].style.top='calc(50% + '+offset.y+'px)';
+      buttons[index].style.left='calc(50% '+(offset.x<0?'- ':'+ ')+
+        Math.abs(offset.x)+'px)';
+      buttons[index].style.top='calc(50% '+(offset.y<0?'- ':'+ ')+
+        Math.abs(offset.y)+'px)';
     }
   }else{
     for(const button of ui.context.querySelectorAll<HTMLButtonElement>(
@@ -2241,7 +2243,8 @@ function updateContext(){
   }
   if(paletteExit){paletteExit.cancel();paletteExit=null;}
   ui.context.hidden=false;
-  ui.context.style.pointerEvents='auto';
+  // The transparent center of the bubble ring must not eat map gestures.
+  ui.context.style.pointerEvents=effectiveLayout==='bubbles'?'none':'auto';
   if(contextChanged&&!reducedMotionMedia.matches)
     ui.context.animate([{opacity:.78,scale:.96},{opacity:1,scale:1}],
       {duration:160,easing:'cubic-bezier(.2,.8,.2,1)'});
