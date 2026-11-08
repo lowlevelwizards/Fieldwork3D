@@ -157,10 +157,10 @@ export function composeReplayDirectorShot(time:number,
   const legalRequired=activeRequired.filter(p=>
     !directorLineBlocked(physical.cameraAnchor,p,
       {rooms,walls,doors:context.doors,cover:context.cover}));
-  const mandatory=[primary.p,...legalRequired.filter(p=>
-    dist(p,primary.p)>.01)];
+  const mandatory=[hero.p,...legalRequired.filter(p=>
+    dist(p,hero.p)>.01)];
   const points=[...mandatory,...fitSubjects.filter(p=>
-    dist(p,primary.p)>1&&
+    dist(p,hero.p)>1&&
     !mandatory.some(v=>dist(v,p)<1)&&
     !directorLineBlocked(physical.cameraAnchor,p,
       {rooms,walls,doors:context.doors,cover:context.cover}))];
@@ -169,7 +169,8 @@ export function composeReplayDirectorShot(time:number,
   const zoom=directorOrthoFittingZoom(physical.cameraAnchor,
     physical.focus,points,aspect,baseSpan,
     safeWidth,safeHeight,
-    Math.min(featured.length>2?7.4:8,context.maxZoom??14),.81);
+    Math.min(featured.length>2?7.4:8,context.maxZoom??14),
+    .81,context.safeFrame);
   const yaw=Math.atan2(physical.cameraAnchor.x-physical.focus.x,
     physical.cameraAnchor.y-physical.focus.y);
   const tilt=Math.atan2(53-17,Math.max(1,
@@ -177,7 +178,7 @@ export function composeReplayDirectorShot(time:number,
   const wideCoverage=directorPerspectiveCovers(
     physical.cameraAnchor,physical.focus,mandatory,aspect,
     physical.fov,Math.min(.89,safeWidth+.1),
-    Math.min(.9,safeHeight+.1));
+    Math.min(.9,safeHeight+.1),context.safeFrame);
   return {focus:physical.focus,zoom,
     yaw:(yaw+Math.PI*2)%(Math.PI*2),pitch:tilt,
     roomId:physical.roomId,actorsFramed:featured.length,
@@ -191,16 +192,20 @@ export function composeReplayDirectorShot(time:number,
       a.velocity??0),0),
     beatId:context.beat?.id??null,
     cameraAnchor:physical.cameraAnchor,
-    fov:physical.fov,operatorPoint:{...primary.p},
+    fov:physical.fov,operatorPoint:{...hero.p},
     framePoints:points,
-    attentionPoint:plan.target??door?.mid??null,
+    attentionPoint:hero===primary?plan.target??door?.mid??null:null,
     followDirection:direction,
     firstEntry:plan.firstEntry,
     actionWeight:isContact?1:isDoor?.85:
       plan.kind==='follow'?.5:0,
-    editorialId:plan.id,editorialKind:plan.kind,
-    editorialPriority:plan.priority,primaryActorId:primary.id,
+    editorialId:hero===primary?plan.id:plan.id+':fallback:'+hero.id,
+    editorialKind:plan.kind,
+    editorialPriority:plan.priority,primaryActorId:hero.id,
     requiredPoints:mandatory,actionAxis:direction,
-    editReason:plan.reason,wideCoverage,
-    compositionQuality:physical.compositionQuality};
+    editReason:hero===primary?plan.reason:
+      'supporting operator cutaway: primary occluded',
+    wideCoverage,compositionQuality:physical.compositionQuality,
+    subjectVisibility:physical.subjectVisibility,
+    subjectReadable:physical.subjectReadable};
 }
