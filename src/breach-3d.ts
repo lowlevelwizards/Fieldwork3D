@@ -2293,7 +2293,7 @@ export class TacticalScene3D{
       // activity only adjusts existing idle head/breath, never stows rifles
       // or overrides the simulation. The resolved site is recorded with
       // replay manifests; historical sites without activity fail neutral.
-      const siteActorIndex=actor.side==='red'&&/^guard\\d+$/.test(actor.id)?
+      const siteActorIndex=actor.side==='red'&&/^guard[0-9]+$/.test(actor.id)?
         Number(actor.id.slice(5)):-1;
       const encounterSpec=siteActorIndex>=0?
         s.site?.encounter?.actors[siteActorIndex]:undefined;
