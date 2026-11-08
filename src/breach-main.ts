@@ -101,6 +101,8 @@ import {ReplayDirectorScheduler}
   from './breach-replay-director-scheduler.ts';
 import {clusterReplayTimeline,replayTimelineBins} from './breach-replay-timeline-markers.ts';
 import {replayFeedPosition} from './breach-replay-feed-window.ts';
+import {REPLAY_SPEED_STOPS,speedIndex,speedFromIndex,smoothReplaySpeed}
+  from './breach-replay-speed.ts';
 import {toggleReplaySurface,resolvedReplayCamera,isReplaySpeed,
   type ReplaySurface,type ReplayCameraChoice,type ReplayPerspective}
   from './breach-replay-ui-state.ts';
@@ -366,6 +368,9 @@ const ui={
   replaySightTrigger:el<HTMLButtonElement>('replaySightTrigger'),
   replaySightChoices:el<HTMLElement>('replaySightChoices'),
   replaySpeedTrigger:el<HTMLButtonElement>('replaySpeedTrigger'),
+  replaySpeedRange:el<HTMLInputElement>('replaySpeedRange'),
+  replaySpeedValue:el<HTMLOutputElement>('replaySpeedValue'),
+  replayRailToggle:el<HTMLButtonElement>('replayRailToggle'),
   replaySpeedChoices:el<HTMLElement>('replaySpeedChoices'),
   replayPlay:el<HTMLButtonElement>('replayPlay'),
   replayBack:el<HTMLButtonElement>('replayBack'),
@@ -843,6 +848,7 @@ function recordCompletedOperation(){
   catch{/* Private mode may reject local storage. Game still works. */}
 }
 let replaying=false,replayPlaying=false,replayTime=0,replayRate=1;
+let replayRateEffective=1;
 let replayEventIndex:ReplayEventIndex|null=null;
 let replaySoundTimeline:ReplaySoundTimeline|null=null;
 let replayChapters:ReplayChapter[]=[];
@@ -4619,7 +4625,7 @@ function startReplayIncident(loop:boolean):void{
   replayIncidentPlayback={range,loop};
   // A/B and incident playback are mutually exclusive control surfaces.
   replayLoopEnabled=false;
-  replayRate=1;replayPlaying=true;
+  replayRate=1;replayRateEffective=1;replayPlaying=true;
   unlockAudio();
   showReplayToolTab(null);
   updateReplayHud();
@@ -4921,8 +4927,16 @@ function updateReplayHud(){
   ui.replaySpeedTrigger.querySelector('small')!.textContent=replayRate+'×';
   ui.replaySpeedTrigger.setAttribute('aria-label','Playback speed '+replayRate+' times');
   ui.replaySpeedTrigger.disabled=replayQuickVideo.active;
-  for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-speed-choice]'))
+  ui.replaySpeedRange.disabled=replayQuickVideo.active;
+  ui.replaySpeedRange.value=String(speedIndex(replayRate));
+  ui.replaySpeedRange.setAttribute('aria-valuetext',replayRate+'×');
+  ui.replaySpeedRange.style.setProperty('--speed-progress',
+    (speedIndex(replayRate)/(REPLAY_SPEED_STOPS.length-1)*100)+'%');
+  ui.replaySpeedValue.textContent=replayRate+'×';
+  for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-speed-choice]')){
+    b.disabled=replayQuickVideo.active;
     b.setAttribute('aria-pressed',String(Number(b.dataset.speedChoice)===replayRate));
+  }
   const loop=makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration);
   ui.replayLoopIn.textContent=replayLoopIn===null?'SET LOOP IN':
     'IN '+formatReplayTime(replayLoopIn);
@@ -5135,7 +5149,8 @@ function renderReplayEventMarkers():void{
 function enterReplay(){
   if(replaying||recorder.frames.length<2)return;
   finishedSession=state;replaying=true;replayPlaying=true;replayTime=0;
-  replayRate=1;replayOmniscient=false;looking=false;flashMode=false;
+  replayRate=1;replayRateEffective=1;
+  replayOmniscient=false;looking=false;flashMode=false;
   replayContactObserverId=null;
   replayBodycamOn=false;replayBodycamMount='chest';
   // Selective CUTAWAY is a harmless presentation default: only blocking
@@ -5566,9 +5581,22 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
   b.addEventListener('click',()=>{
     ui.replayQuickSpeed.value=b.dataset.speedChoice??'1';
     ui.replayQuickSpeed.dispatchEvent(new Event('change'));
-    closeReplayChoices();
   });
 }
+ui.replaySpeedRange.addEventListener('input',()=>{
+  const rate=speedFromIndex(Number(ui.replaySpeedRange.value));
+  ui.replaySpeedValue.textContent=rate+'×';
+  ui.replaySpeedRange.setAttribute('aria-valuetext',rate+'×');
+  ui.replaySpeedRange.style.setProperty('--speed-progress',
+    (Number(ui.replaySpeedRange.value)/
+      (REPLAY_SPEED_STOPS.length-1)*100)+'%');
+});
+ui.replaySpeedRange.addEventListener('change',()=>{
+  if(replayQuickVideo.active)return;
+  ui.replayQuickSpeed.value=String(speedFromIndex(
+    Number(ui.replaySpeedRange.value)));
+  ui.replayQuickSpeed.dispatchEvent(new Event('change'));
+});
 document.addEventListener('pointerdown',e=>{
   if(!(e.target instanceof Node)||ui.replayRail.contains(e.target))return;
   closeReplayChoices();
@@ -5707,9 +5735,9 @@ ui.replaySound.addEventListener('click',()=>{
   updateReplayHud();
 });
 ui.replaySpeed.addEventListener('click',()=>{
-  stopReplaySounds();
-  replayRate=({0.25:0.5,0.5:0.75,0.75:1,1:1.5,1.5:2,2:4,4:0.25} as Record<number,number>)[replayRate]??1;
-  updateReplayHud();
+  ui.replayQuickSpeed.value=String(speedFromIndex(
+    (speedIndex(replayRate)+1)%REPLAY_SPEED_STOPS.length));
+  ui.replayQuickSpeed.dispatchEvent(new Event('change'));
 });
 ui.replaySeek.addEventListener('input',()=>{
   ui.replayClusterMenu.hidden=true;
@@ -6063,7 +6091,7 @@ ui.replayExportVideo.addEventListener('click',()=>{
   videoAudioDestination=audio?.state==='running'&&replaySoundEnabled?
     audio.createMediaStreamDestination():null;
   if(replayTime>=recorder.duration-.2)seekReplay(0);
-  replayRate=1;
+  replayRate=1;replayRateEffective=1;
   replayLoopEnabled=false;replayLoopIn=null;replayLoopOut=null;
   const started=replayQuickVideo.start(replayTime,
     {width:cssW,height:cssH},videoAudioDestination?.stream??null);
@@ -7469,9 +7497,12 @@ function tick(now:number){
     }
   }else{accum=0;previousRenderActors=null;}
   if(replaying&&replayPlaying){
+    // Smooth a selected speed over several render frames without modifying
+    // the authoritative 20Hz recording or re-simulating events.
+    replayRateEffective=smoothReplaySpeed(replayRateEffective,replayRate,dt);
     const previousReplayTime=replayTime;
     if(replayIncidentPlayback){
-      const step=advanceIncidentPlayback(replayTime,dt*replayRate,
+      const step=advanceIncidentPlayback(replayTime,dt*replayRateEffective,
         replayIncidentPlayback.range,replayIncidentPlayback.loop);
       replayTime=step.time;
       applyReplayFrameAt(replayTime);
@@ -7483,7 +7514,7 @@ function tick(now:number){
     }else{
       const loop=replayLoopEnabled?
         makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration):null;
-      const step=advanceReplayLoop(replayTime,dt*replayRate,loop,recorder.duration);
+      const step=advanceReplayLoop(replayTime,dt*replayRateEffective,loop,recorder.duration);
       replayTime=step.time;
       applyReplayFrameAt(replayTime);
       if(step.wrapped)stopReplaySounds();
