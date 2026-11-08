@@ -161,7 +161,6 @@ const NOMINAL_RIG_MAGAZINE_MOUTHS:Readonly<
  ],
  'micro-rig':[
   [9.15,-1.10,-1.65,2.36],[9.15,-1.10,1.65,2.36]
-  // The small outboard organizer wings are not magazine carriers.
  ],
  'light-rig':[-4.6,-1.5,1.5,4.6].map(z=>[9.20,.09,z,2.38] as const),
  'chicom-rig':[-3.12,0,3.12].map(z=>[9.37,.45,z,2.34] as const),
@@ -708,19 +707,16 @@ export type RigMagazineSocket={x:number;y:number;z:number;rotation:number};
 type FrontCell=readonly [number,number]; // lateral offset, vertical center
 const RIG_CELLS:Readonly<Record<string,readonly FrontCell[]>>={
  'chest-placard':[[-2.73,-2.18],[0,-2.18],[2.73,-2.18]],
- 'micro-rig':[[-1.65,-2.58],[1.65,-2.58],
-  [-4.55,-2.62],[4.55,-2.62]],
+ 'micro-rig':[[-1.65,-2.58],[1.65,-2.58]],
  'light-rig':[[-4.60,-2.20],[-1.50,-2.20],[1.50,-2.20],[4.60,-2.20]],
  'split-front':[[-5.64,-2.18],[-2.92,-2.18],[2.92,-2.18],[5.64,-2.18]],
  'chicom-rig':[[-3.12,-2.32],[0,-2.32],[3.12,-2.32]],
  'bandolier':[[3.85,3.6],[1.93,1.75],[0,-.1],[-1.93,-1.95]],
  'full-chest':[[-4.60,-2.75],[-1.50,-2.75],[1.50,-2.75],[4.60,-2.75]],
- 'lbv':[[-4.20,1.28],[-4.20,-2.56],[4.20,1.28],[4.20,-2.56],
-  [-4.52,.78],[-4.52,-3.06],[4.52,.78],[4.52,-3.06]],
- 'field-webbing':[[-6.8,-5.40],[6.8,-5.40]],
- 'belt-harness':[[-6.6,-5.3],[6.6,-5.3]],
- 'sadf-webbing':[[-5.85,-2.75],[-3.25,-2.75],[3.25,-2.75],[5.85,-2.75],
-  [-5.48,-3.25],[-2.88,-3.25],[3.62,-3.25],[6.22,-3.25]]
+ 'lbv':[[-4.20,1.28],[-4.20,-2.56],[4.20,1.28],[4.20,-2.56]],
+ 'field-webbing':[], // magazine cases live on the hip instead
+ 'belt-harness':[], // retired utility-only harness
+ 'sadf-webbing':[[-5.85,-2.75],[-3.25,-2.75],[3.25,-2.75],[5.85,-2.75]]
 };
 export function rigMagazineCellCount(style:string):number{
  return (RIG_CELLS[style]??[]).length;
@@ -730,16 +726,11 @@ export function rigMagazineMount(style:string,index:number,armor:string,
  const profile=ARMOR_PROFILES[armor]??ARMOR_PROFILES['armor-bare'];
  const rig=RIG_FRONT_PROFILES[style]??RIG_FRONT_PROFILES['light-rig'];
  const delta=profile.front-ARMOR_PROFILES['plate-standard'].front;
- const cells=RIG_CELLS[style]??RIG_CELLS['light-rig'];
- if(index<cells.length){
-  const [z,y]=cells[index];
-  return {x:rig.front+delta,y,z:mirror*z,rotation:0};
- }
- // Any remaining actual carried magazines use a distinct side socket
- // instead of projecting an imaginary second row across the front plate.
- const sideIndex=index-cells.length;
- const sign=(sideIndex%2===0?1:-1)*mirror;
- return {x:sideIndex>=2?-2.35:1.25,
-  y:rig.low-.3, z:sign*(profile.side+.35),
-  rotation:sign*Math.PI/2};
+ const cells=RIG_CELLS[style]??[];
+ // Historical interface: even a direct socket query may never invent
+ // side storage after every genuine magazine pouch is full.
+ if(!Number.isInteger(index)||index<0||index>=cells.length)
+  throw new RangeError('No dedicated magazine pouch '+style+' #'+index);
+ const [z,y]=cells[index];
+ return {x:rig.front+delta,y,z:mirror*z,rotation:0};
 }
