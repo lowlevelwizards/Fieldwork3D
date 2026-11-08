@@ -1,5 +1,6 @@
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
  from './breach-combat-reactions.ts';
+import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts';
 /**
  * Fieldwork Breach 053–062: authoritative, fixed-step tactical session.
  * Author intent is editable PlanNode[]; motor navigation is transient.
@@ -89,7 +90,8 @@ import {recordCivilianHarm,attributableCivilianHarm,
   type CivilianHarmEvent} from './breach-civilian-harm.ts';
 import {retreatDoorClosureEligible} from './breach-ai-door-response.ts';
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
-import {contactTactic} from './breach-ai-tactical-response.ts';
+import {contactTactic,shouldSeekHoldCover}
+ from './breach-ai-tactical-response.ts';
 import {directionalCoverFrom} from './breach-cover-direction.ts';
 import {reportToListener,type TacticalReport} from './breach-communication.ts';
 import {groupResponse,type GroupRole} from './breach-ai-coordination.ts';
@@ -3235,7 +3237,20 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       }
     }
     if(a.combatChoice==='hold'&&a.alert!=='retreat'){
-      a.alert='cover';a.nav=[];a.defense=null;
+      // HOLD is not permission to repeatedly cancel and replan movement.
+      // Keep an already chosen position; if none exists, request a new
+      // physically validated cover spot only on a bounded cooldown.
+      if(a.alert!=='cover'&&!a.defense)a.nav=[];
+      a.alert='cover';
+      if(shouldSeekHoldCover(a.combatChoice,!!a.defense,
+           s.seconds,a.defenseUntil)){
+        const safe=defensivePosition(a,b.p,s);
+        a.defenseUntil=s.seconds+2.5;
+        if(safe&&d(safe,a.p)>15){
+          a.defense=safe;a.nav=[];
+          a.defenseUntil=coverMoveDeadline(s.seconds,d(a.p,safe));
+        }
+      }
     }
     const committed=coverMoveCommitted(a.alert==='cover'&&!!a.defense,
       a.defense?d(a.p,a.defense):0,s.seconds,a.defenseUntil);
@@ -4276,7 +4291,18 @@ function fire(s:Session,a:TeamActor,dt:number){
       notify(s,'CIVILIAN HIT');
     return;
   }
-  target.suppression=Math.min(1,target.suppression+.31);
+  // Only a real hit or a physically near projectile/impact can pressure
+  // this actor. Aim intent is not evidence: a distant miss must not
+  // suppress a target merely because it was selected for acquisition.
+  // Solid walls and opaque closed doors occlude the near-miss evidence;
+  // material cover is excluded here because a nearby cover strike is an
+  // actual, locally experienced impact. Explicit SUPPRESS uses its own
+  // area-impact rules above and is not added a second time here.
+  const exposure=shotPressureAtActor(muzzlePoint,end,target.p,hit,
+    (from,to)=>assessFireLane(from,muzzle.y,to,
+      aimHeight(target.posture==='crouch'),[],WALLS,s.doors).blocker==='clear');
+  target.suppression=Math.min(1,target.suppression+
+    shotPressureAmount(exposure));
   if(target.side==='red')target.morale=Math.max(0,target.morale-.035);
   if(hit){
     target.armorIntegrity=protection.torso;

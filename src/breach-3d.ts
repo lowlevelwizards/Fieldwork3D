@@ -68,7 +68,8 @@ import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {casingAt,CASING_LIMIT,IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
-import {muzzleFlashCue,impactPulse} from './breach-combat-cues.ts';
+import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse}
+ from './breach-combat-cues.ts';
 import {sampleThrow} from './breach-flash.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET,
@@ -2152,9 +2153,11 @@ export class TacticalScene3D{
         WEAPONS[actor.weapon].reload*
         (actor.injuryStage===2?1.5:actor.injuryStage===1?1.1:1);
       const muzzleAttachment=actor.weaponConfiguration?.slots.muzzle;
-      const firing=s.shots.find(shot=>shot.shooterId===actor.id&&
-        muzzleFlashCue(actor.weapon,shot.age,muzzleAttachment).active&&
-        (omniscient||shotVisibility(s,shot).flash));
+      // Rapid bursts can have overlapping live shot cues. Display the
+      // newest physically recorded flash, never an older first match.
+      const firing=mostRecentActiveMuzzleShot(s.shots,actor.id,
+        actor.weapon,muzzleAttachment,
+        shot=>omniscient||shotVisibility(s,shot).flash);
       const flashCue=muzzleFlashCue(actor.weapon,
         firing?.age??Infinity,muzzleAttachment);
       object.flash.visible=flashCue.active&&actor.health>0;
