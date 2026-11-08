@@ -70,7 +70,8 @@ test('R7.18 soft gear and skin never receive glowing rim uniforms',()=>{
  assert.equal(meshes[1].children.length,0);
  assert.equal(meshes[2].children.length,0);
  const shader=()=>({vertexShader:'#include <begin_vertex>',
-  fragmentShader:'#include <opaque_fragment>',uniforms:{}});
+  fragmentShader:'#include <gradientmap_pars_fragment>\\n'+
+   '#include <opaque_fragment>',uniforms:{}});
  const head=shader(),shirt=shader(),shell=shader();
  meshes[0].material.onBeforeCompile(shirt,null);
  meshes[1].material.onBeforeCompile(head,null);
