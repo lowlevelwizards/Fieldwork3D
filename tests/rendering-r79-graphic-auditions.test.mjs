@@ -52,6 +52,11 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  assert.equal(receiver.geometry.getAttribute('fieldworkRimBoundsMin'),rimMin);
  assert.notEqual(uniform.material,fabric,'opt-in preview lights fabric');
  assert.equal(uniform.material.userData.fieldworkStudioArtOnly,true);
+ const overlay=uniform.children.find(x=>x.userData.fieldworkStudioEdgeBleedOverlay);
+ assert.ok(overlay,'gear outline actually extends outside the source mesh');
+ assert.equal(overlay.material.side,THREE.BackSide);
+ assert.equal(overlay.material.depthWrite,false);
+ assert.equal(overlay.castShadow,false);
  const mock=shader();
  receiver.material.onBeforeCompile(mock,null);
  assert.match(mock.fragmentShader,/getShadowMask\(\)/);
@@ -66,7 +71,7 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  assert.match(mock.fragmentShader,/fieldworkRimKeyWorld/);
  assert.match(mock.fragmentShader,/fieldworkRimSkin/);
  assert.match(mock.fragmentShader,/fieldworkRimFabric/);
- assert.match(mock.fragmentShader,/smoothstep\(\.67-fwEdgeWidth,\.71\+fwEdgeWidth/);
+ assert.match(mock.fragmentShader,/fieldworkRimAngleLooseness/);
  assert.doesNotMatch(mock.fragmentShader,/outgoingLight\+=vec3\(\.96,\.88,\.74\)/);
  assert.match(mock.fragmentShader,/fieldworkRimStrength/);
  assert.match(mock.fragmentShader,/fwidth\(fwGrazing\)/);
@@ -78,14 +83,15 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  assert.doesNotMatch(mock.fragmentShader,/fwPattern|fwCells/);
  const uniformRef=mock.uniforms.fieldworkRimStrength;
  assert.equal(uniformRef.value,.80);
- assert.equal(mock.uniforms.fieldworkRimCoverage.value,.30);
- assert.equal(mock.uniforms.fieldworkRimWidth.value,1.4);
+ assert.equal(mock.uniforms.fieldworkRimCoverage.value,.55);
+ assert.equal(mock.uniforms.fieldworkRimWidth.value,2.5);
+ assert.equal(mock.uniforms.fieldworkRimAngleLooseness.value,1.25);
  const variant=receiver.material,programKey=variant.customProgramCacheKey();
  applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.95}));
  assert.equal(receiver.material,variant);
  assert.equal(variant.customProgramCacheKey(),programKey);
  assert.equal(uniformRef.value,.95);
- assert.equal(mock.uniforms.fieldworkRimCoverage.value,.30);
+ assert.equal(mock.uniforms.fieldworkRimCoverage.value,.55);
  restoreStudioGraphicLighting(root);
  assert.ok(receiver.material instanceof THREE.MeshStandardMaterial);
  disposeStudioGraphicLighting(root);
@@ -193,7 +199,7 @@ test('R7.12 original Look restores with direct-light rim disabled',()=>{
  assert.equal(ensureStudioPieceGradient(new THREE.BufferGeometry()),false);
 });
 
-test('R7.14 skin ink is explicit, complexion-aware, opt-in and reversible',()=>{
+test('R7.15 skin and fabric draw separate genuine silhouette shells',()=>{
  const root=new THREE.Group();
  const skin=new THREE.MeshStandardMaterial({color:0x55372c});
  skin.userData.fieldworkStudioSkin=true;
@@ -201,22 +207,38 @@ test('R7.14 skin ink is explicit, complexion-aware, opt-in and reversible',()=>{
  cloth.userData.fieldworkFabric=true;
  const head=cube(skin),shirt=cube(cloth);
  root.add(head,shirt);
- applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.9,
-  rimWidth:2,rimCoverage:.2,rimSkinOpacity:.34,rimFabricOpacity:.14,
-  rimDebugMask:true,lightAzimuth:45}));
+ const audition=look({rim:'dual',rimAmount:.9,
+  rimWidth:3.5,rimCoverage:.6,rimAngleLooseness:1.4,
+  rimFabricWidth:3,rimFabricOpacity:.14,rimFabricBacklight:.9,
+  rimSkinWidth:3.2,rimSkinOpacity:.34,rimSkinBacklight:1.2,
+  rimSkinWarmth:1.25,rimDebugMask:true,lightAzimuth:45});
+ applyStudioGraphicLighting(root,audition);
  assert.notEqual(head.material,skin);
  assert.notEqual(shirt.material,cloth);
- const skinShader=shader();head.material.onBeforeCompile(skinShader,null);
- assert.equal(skinShader.uniforms.fieldworkRimRole.value,2);
- assert.equal(skinShader.uniforms.fieldworkRimSkin.value,.34);
- assert.equal(skinShader.uniforms.fieldworkRimDebug.value,1);
- assert.equal(skinShader.uniforms.fieldworkRimWidth.value,2);
- assert.equal(skinShader.uniforms.fieldworkRimCoverage.value,.2);
- const clothShader=shader();shirt.material.onBeforeCompile(clothShader,null);
- assert.equal(clothShader.uniforms.fieldworkRimRole.value,1);
- assert.equal(clothShader.uniforms.fieldworkRimFabric.value,.14);
+ const skinShell=head.children.find(x=>x.userData.fieldworkStudioEdgeBleedOverlay);
+ const clothShell=shirt.children.find(x=>x.userData.fieldworkStudioEdgeBleedOverlay);
+ assert.ok(skinShell&&clothShell);
+ assert.equal(skinShell.geometry,head.geometry,'reuse source geometry');
+ assert.equal(skinShell.material.transparent,true);
+ assert.equal(skinShell.material.side,THREE.BackSide);
+ assert.equal(skinShell.material.uniforms.fwBleedOpacity.value,.34);
+ assert.equal(skinShell.material.uniforms.fwBleedBacklight.value,1.2);
+ assert.equal(clothShell.material.uniforms.fwBleedOpacity.value,.14);
+ assert.equal(clothShell.material.uniforms.fwBleedBacklight.value,.9);
+ assert.match(clothShell.material.vertexShader,/position\+normalize\(normal\)\*fwBleedWidth/);
+ assert.match(clothShell.material.fragmentShader,/lightBehind/);
+ assert.match(clothShell.material.fragmentShader,/contour\*backFactor/);
+ assert.notEqual(skinShell.material.uniforms.fwBleedColor.value.getHex(),
+  clothShell.material.uniforms.fwBleedColor.value.getHex());
+ const skinMat=skinShell.material;
+ applyStudioGraphicLighting(root,{...audition,rimSkinOpacity:.22,lightAzimuth:90});
+ const again=head.children.find(x=>x.userData.fieldworkStudioEdgeBleedOverlay);
+ assert.equal(again.material,skinMat,'cached shader no per-slider recompile');
+ assert.equal(again.material.uniforms.fwBleedOpacity.value,.22);
  applyStudioGraphicLighting(root,look({rim:'off',toon:0}));
  assert.equal(head.material,skin);
  assert.equal(shirt.material,cloth);
+ assert.equal(head.children.length,0);
+ assert.equal(shirt.children.length,0);
  disposeStudioGraphicLighting(root);
 });
