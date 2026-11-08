@@ -17,7 +17,7 @@ const CELLS={
  'micro-rig':[[8.54,.91],[8.54,.91]],
  'light-rig':Array.from({length:4},()=>[8.38,1.10]),
  'chicom-rig':Array.from({length:3},()=>[8.52,1.06]),
- 'bandolier':Array.from({length:4},()=>[8.20,.78]),
+ 'bandolier':Array.from({length:4},()=>[8.20,1.40]),
  'split-front':Array.from({length:4},()=>[8.77,1.11]),
  'full-chest':Array.from({length:4},()=>[8.65,1.17]),
  lbv:Array.from({length:4},()=>[8.12,.99]),
