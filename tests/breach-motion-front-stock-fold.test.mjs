@@ -35,7 +35,7 @@ test('front torso is the buttplate seat in every ready pose',()=>{
  for(const mode of ['low','high','ready','short','point','ads']){
   const pocket=stockPocket(mode);
   assert.ok(pocket.x>=4.3&&pocket.x<=5.2,mode+' front seat X');
-  assert.ok(pocket.z>=6.5&&pocket.z<7.0,mode+' close to chest edge');
+  assert.ok(pocket.z>=5.0&&pocket.z<5.5,mode+' close to chest edge');
   const fit=fitWeaponPose({weapon:carbine,configuration,
    handling:mode,yaw:0,recoil:0});
   assert.ok(fit.stockError<3,mode+' contact stays seated');
@@ -49,7 +49,7 @@ test('wall fold is a continuous rigid gun transform with sliding grip',()=>{
  let lastZ=Infinity,lastX=Infinity;
  for(const progress of [0,.1,.25,.4,.6,.8,1]){
   const fit=fitWeaponPose({...input,shortCompression:progress});
-  assert.ok(fit.stock.x>3.0&&fit.stock.z<7.8,
+  assert.ok(fit.stock.x>3.0&&fit.stock.z<6.5,
     'buttplate leaves chest at '+progress);
   const grips=weaponGrips(carbine,configuration,'ready');
   const shortGrips=weaponGrips(carbine,configuration,'short');

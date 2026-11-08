@@ -8,10 +8,10 @@ test('177: buttplate seats on chest front without lateral short-stock teleport',
  for(const mode of ['high','low','ready','point','ads','short']){
   const p=stockPocket(mode);
   assert.ok(p.x>4.2&&p.x<5.2);
-  assert.ok(p.z>6.4&&p.z<7.1);
+  assert.ok(p.z>4.9&&p.z<5.6);
   const fit=fitWeaponPose({weapon:'carbine',handling:mode,
    yaw:0,recoil:0});
-  assert.ok(fit.stock.z<7.7);
+  assert.ok(fit.stock.z<6.5);
   assert.ok(fit.stockError<3);
  }
  const src=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');

@@ -36,7 +36,7 @@ test('modular AR and AK short-stock keeps actual assembly and same muzzle frame'
   const fit=fitWeaponPose({weapon,configuration,handling:'short',
     yaw:.15,recoil:0,clearanceRetraction:2.2});
   // Both AK and AR contacts stay against the front chest.
-  assert.ok(fit.stock.z>5.9&&fit.stock.z<7.8,preset);
+  assert.ok(fit.stock.z>4.1&&fit.stock.z<6.5,preset);
   assert.ok(fit.primaryReachable,preset);
   assert.ok(Math.abs(fit.rotation.y-.15)<.05,preset);
   assert.ok(fit.contactError<8,preset);

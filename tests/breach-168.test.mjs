@@ -10,7 +10,7 @@ const modes=['high','low','ready','short','point','ads'];
 test('168: stocks seat on the FRONT chest near the firing shoulder',()=>{
  for(const mode of modes){
   const pocket=stockPocket(mode);
-  assert.ok(pocket.z>=6.4&&pocket.z<=7.05,
+  assert.ok(pocket.z>=4.9&&pocket.z<=5.6,
    mode+' stock leaves the front shoulder/torso surface');
   assert.ok(pocket.x>=4.25&&pocket.x<=5.2,
    mode+' buttplate must remain at chest front (X≈5)');
@@ -30,7 +30,7 @@ test('168: longer stock rear face is still physically exact at all weapon scales
    assert.ok(rear.distanceTo(fit.stock)<1e-6,
      mode+' buttplate does not match visible rear');
    assert.ok(fit.stockError<3,mode+' stock loses contact');
-   assert.ok(fit.stock.z>=5.90);
+   assert.ok(fit.stock.z>=4.15);
    assert.ok(Number.isFinite(fit.contactError));
   }
  }

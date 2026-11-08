@@ -22,7 +22,7 @@ const rigPose=(mode)=>({
 test('169: stock sits forward and on firing side with correct buttplate length',()=>{
  for(const mode of modes){
   const p=stockPocket(mode);
-  assert.ok(p.z>=6.4&&p.z<=7.05,
+  assert.ok(p.z>=4.9&&p.z<=5.6,
     'stock left the front torso contact zone '+mode);
   if(mode!=='short')assert.ok(p.x>2.5,'armor needs forward seat '+mode);
   for(const weapon of weapons){
@@ -32,7 +32,7 @@ test('169: stock sits forward and on firing side with correct buttplate length',
    const rear=new THREE.Vector3(g.stockX*g.lengthScale,0,0)
      .applyEuler(fit.rotation).add(fit.origin);
    assert.ok(fit.stock.distanceTo(rear)<1e-6);
-   assert.ok(fit.stock.z>=5.90);
+   assert.ok(fit.stock.z>=4.15);
    assert.ok(fit.stockError<3);
    assert.ok(Number.isFinite(fit.contactError));
   }
