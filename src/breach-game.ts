@@ -665,6 +665,13 @@ function knownShoveCrossing(s:Session,from:Pt,to:Pt):number|null{
     !intelPassable(to,s.intel,SQUEEZE_RADIUS))return null;
  const span=d(from,to);
  if(span<3)return null;
+ // A shove cannot be used to disguise an ordinary known wall or a latched
+ // door, even when its sample is inside the expanded furniture envelope.
+ const segment={a:from,b:to};
+ if(WALLS.some((wall,index)=>s.intel.walls.has(index)&&
+    segmentsCross(segment,wall)))return null;
+ if(s.doors.some(door=>doorKnown(s.intel,door.id)&&
+    doorBlocksSegment(door,segment)))return null;
  for(let index=0;index<s.coverState.length;index++){
    const obstacle=s.coverState[index];
    if(!s.intel.cover.has(index)||!canAutoShove(obstacle)||
