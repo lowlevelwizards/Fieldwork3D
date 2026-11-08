@@ -17,3 +17,7 @@ The default mission-quality audit remains behaviorally unchanged. For a small **
 ## Release discipline
 
 LE0 is a branch-only stage. For Release 1, use only focused pose/replay/incident tests and production typecheck/build. Inspect armed actors and replay at normal tactical zoom. Merge a single compatible LE0–LE2 batch only after the active doorway work is integrated, the last Pages deployment is completed and public SHA verified. LE2 incident behavior changes are conditional, not mandatory.
+
+## Live field-testing activation (November 8, 2026)
+
+The user explicitly authorized enabling the already implemented civilian simulation in standard Quick Play and Campaign. The game entrypoint now enables the existing `enableCivilians` session option by default; `?civilians=0` opts out for comparisons, and `?civilians=1` remains accepted. Existing mission-selected population caps, legitimately empty premises, rescue-target compatibility, fog disclosure, combat targeting, and scoring are unchanged. This is a live player-test release, **not** a claim that full on-device visual/performance acceptance is complete. The old replay constructor can still load legacy films with no physical civilians.
