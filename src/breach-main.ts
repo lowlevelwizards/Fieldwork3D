@@ -6938,8 +6938,8 @@ canvas.addEventListener('pointermove',e=>{
   p.x=e.clientX;p.y=e.clientY;
   if(Math.hypot(e.clientX-p.startX,e.clientY-p.startY)>
      tacticalHitProfile(e.pointerType).dragStart)p.moved=true;
-  if(activePointers.size===2){
-    const pts=[...activePointers.values()];
+  if(activePointers.size>=2){
+    const pts=[...activePointers.values()].slice(0,2);
     const gap=distance({x:pts[0].x,y:pts[0].y},
       {x:pts[1].x,y:pts[1].y});
     const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
@@ -7190,14 +7190,46 @@ function releasePointer(e:PointerEvent,cancelled=false){
   trace=null;draggingNode=null;draggingWatchTarget=false;
   activePointers.delete(e.pointerId);
   if(e.pointerType==='touch')previewHover=false;
-  if(activePointers.size<2){panMid=null;pinchDistance=0;}
+  if(activePointers.size>=2){
+    // Rebase a new pinch pair immediately when one of three fingers leaves.
+    // A stale midpoint/gap otherwise causes a huge camera jump on the next move.
+    const pts=[...activePointers.values()].slice(0,2);
+    pinchDistance=distance({x:pts[0].x,y:pts[0].y},
+      {x:pts[1].x,y:pts[1].y});
+    panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+  }else{
+    panMid=null;pinchDistance=0;
+    if(activePointers.size===1){
+      const remaining=[...activePointers.values()][0];
+      if(remaining.mode==='cameraMulti'){
+        // Pinch → orbit: explicitly transfer gesture ownership to the one
+        // remaining finger; otherwise it can remain trapped in cameraMulti.
+        remaining.mode=viewMode==='plan2d'||!stage?'cameraPan':'cameraOrbit';
+        remaining.moved=true;
+        remaining.startX=remaining.x;remaining.startY=remaining.y;
+      }
+    }
+  }
   updateHud();
 }
 canvas.addEventListener('pointerup',e=>releasePointer(e));
 canvas.addEventListener('pointercancel',e=>releasePointer(e,true));
 canvas.addEventListener('lostpointercapture',e=>releasePointer(e,true));
-window.addEventListener('blur',()=>{activePointers.clear();trace=null;
-  panMid=null;pinchDistance=0;draggingWatchTarget=false;});
+function clearTacticalGestureState():void{
+  activePointers.clear();trace=null;
+  panMid=null;pinchDistance=0;draggingWatchTarget=false;draggingNode=null;
+}
+window.addEventListener('blur',clearTacticalGestureState);
+window.addEventListener('pagehide',clearTacticalGestureState);
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)clearTacticalGestureState();
+});
+// Prevent iOS Safari's native page-scale gesture from competing with our
+// Two-finger world pan/zoom while the canvas owns the gesture.
+for(const gesture of ['gesturestart','gesturechange','gestureend']){
+  canvas.addEventListener(gesture,e=>e.preventDefault(),{passive:false});
+}
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('resize',layout);
 // The Settings trigger lives in the collapsible Tools drawer. Settings
 // therefore owns an always-visible close action, and camera changes return
