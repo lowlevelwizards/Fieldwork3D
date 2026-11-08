@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import {applyOperatorHeightLighting} from './operator-height-lighting.ts';
 import {studioLightLabFromQuery,effectiveStudioLightLab,
- studioLightLabLabel,DEFAULT_STUDIO_LIGHT_LAB,approvedGraphicLighting,
+ studioLightLabLabel,approvedGraphicLighting,
  type StudioLightLabSettings}
  from './operator-studio-light-lab.ts';
 import {inspectOperatorLighting,formatOperatorLightingReport,
