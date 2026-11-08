@@ -2089,7 +2089,11 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       id:unit.id,side:unit.side,p:unit.p,
       // Only the action happening NOW competes for a doorway. A future
       // movement after WAIT/RELOAD/etc. must not hold the reservation.
-      goal:unit===a?p:traveling?(unit.nav.at(-1)??order!.p):null,
+      // Crossing intent is the active route's real destination, not
+      // today's tiny motor step. A stack-position MOVE on the same
+      // side must remain free to finish before the coordinated SYNC.
+      goal:unit===a?(unit.nav.at(-1)??order?.p??p):
+        traveling?(unit.nav.at(-1)??order!.p):null,
       health:unit.health,blockedTime:unit.blockedTime,
       active:unit===a||traveling,
       plannedPassage:pendingPassageSlot(unit.p,
