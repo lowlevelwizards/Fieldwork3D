@@ -47,7 +47,7 @@ export function updateStudioCelRamp(
   const n=(i+.5)/128;
   const intensity=bands===2?(n<shadow?levels.shadow:levels.light):
    n<shadow?levels.shadow:n<highlight?levels.mid:levels.light;
-  const v=Math.round(intensity*255),index=i*4;
+  const v=Math.min(255,Math.round(intensity*255)),index=i*4;
   data[index]=data[index+1]=data[index+2]=v;
   data[index+3]=255;
  }
