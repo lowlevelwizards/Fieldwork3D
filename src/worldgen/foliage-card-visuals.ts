@@ -8,6 +8,8 @@
 import * as THREE from 'three';
 import type {Obstacle} from '../breach-core.ts';
 import type {FixtureVisualContext} from './fixture-visuals.ts';
+import {propDefinition} from './asset-catalog.ts';
+import {foliageCanopyFootprint} from './landscape-footprint.ts';
 
 export type FoliageFamily='broadleaf'|'conifer'|'scrub'|'shrub'|'hedge';
 const foliage:Readonly<Record<string,FoliageFamily>>={
@@ -112,7 +114,10 @@ export function renderFoliageCardFixture(group:THREE.Group,c:Obstacle,
  i:number,ctx:FixtureVisualContext):boolean{
  const id=c.fixture??'',kind=foliage[id];
  if(!kind)return false;
- const w=c.w,d=c.h;
+ const art=propDefinition(id);
+ const canopy=foliageCanopyFootprint(id,c.w,c.h,
+   art?.width??c.w,art?.depth??c.h);
+ const w=canopy.w,d=canopy.h;
  const tall=id==='plant'?27:id==='hedge'?30:
   id==='shrub-round'?23:id==='shrub-tall'?37:
   id==='bush'?25:id==='tree-scrub'?67:
@@ -122,7 +127,7 @@ export function renderFoliageCardFixture(group:THREE.Group,c:Obstacle,
  const variation=(i%7-3)/20;
  if(tree){
    const trunkHeight=tall*(kind==='conifer'?.60:kind==='scrub'?.49:.60);
-   const thickness=Math.min(7.2,Math.min(w,d)*.14);
+   const thickness=Math.min(7.2,Math.min(c.w,c.h)*.43);
    ctx.box(group,c.x,trunkHeight*.5,c.y,thickness,trunkHeight,
       thickness,bark);
    ctx.box(group,c.x,3,c.y,thickness*1.5,6,thickness*1.5,bark,false);
