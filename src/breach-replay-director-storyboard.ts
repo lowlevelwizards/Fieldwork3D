@@ -19,11 +19,12 @@ const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const mix=(a:number,b:number,t:number)=>a+(b-a)*t;
 const yawOf=(anchor:Pt,focus:Pt)=>Math.atan2(
   anchor.x-focus.x,anchor.y-focus.y);
-const cameraStep=8; // World units per storyboard knot (.8 s by default).
-const turnStep=7*Math.PI/180; // Calm, legible tracking: no 180° whips.
-const radiusStep=12;
+const cameraStep=12; // Minimum comfortable dolly per .8s knot.
+const turnStep=8*Math.PI/180; // Calm tracking; NEVER a whip/cut.
+const actionTurnStep=16*Math.PI/180; // Bring real action into view in time.
+const radiusStep=19;
 const minFocusRadius=30;
-const maxFocusRadius=175;
+const maxFocusRadius=300;
 
 export class ReplayDirectorStoryboard{
   private cache=new Map<number,RailShot|null>();
@@ -33,19 +34,29 @@ export class ReplayDirectorStoryboard{
   private readonly maxCache:number;
   private readonly rooms:readonly DirectorRoom[];
   private readonly physicalScene:PhysicalDirectorScene;
+  private readonly aspect:number;
+  private readonly baseSpan:number;
+  private readonly usableWidth:number;
+  private readonly usableHeight:number;
   private readonly duration:number;
   private readonly solve:(time:number)=>DirectorShot|null;
   constructor(duration:number,solve:(time:number)=>DirectorShot|null,
     options:{step?:number;maxCache?:number;rooms?:readonly DirectorRoom[];
       walls?:PhysicalDirectorScene['walls'];
       cover?:PhysicalDirectorScene['cover'];
-      doors?:PhysicalDirectorScene['doors']}={}){
+      doors?:PhysicalDirectorScene['doors'];
+      aspect?:number;baseSpan?:number;
+      usableWidth?:number;usableHeight?:number}={}){
     this.duration=duration;this.solve=solve;
     this.step=Math.max(.2,options.step??.8);
     this.maxCache=Math.max(4,options.maxCache??96);
     this.rooms=options.rooms??[];
     this.physicalScene={rooms:this.rooms,walls:options.walls??[],
       cover:options.cover,doors:options.doors};
+    this.aspect=clamp(options.aspect??1.1,.45,2.5);
+    this.baseSpan=Math.max(200,options.baseSpan??1100);
+    this.usableWidth=clamp(options.usableWidth??.78,.5,.9);
+    this.usableHeight=clamp(options.usableHeight??.76,.5,.9);
   }
   clear():void{
     this.cache.clear();this.checkpoints.clear();this.rawCache.clear();
@@ -70,10 +81,11 @@ export class ReplayDirectorStoryboard{
     }
     return !directorLineBlocked(from,to,this.physicalScene,false);
   }
-  private walk(from:Pt,desired:Pt,room:DirectorRoom|null):Pt{
+  private walk(from:Pt,desired:Pt,room:DirectorRoom|null,
+    maxStep=cameraStep):Pt{
     const d=distance(from,desired);
     if(d<.05)return from;
-    const step=Math.min(cameraStep*this.step/.8,d);
+    const step=Math.min(maxStep*this.step/.8,d);
     const angle=Math.atan2(desired.y-from.y,desired.x-from.x);
     // Try the direct dolly, then plausible small sidesteps around
     // furniture. Never leap to the newly suggested camera anchor.
@@ -92,6 +104,33 @@ export class ReplayDirectorStoryboard{
       if(score>bestScore){bestScore=score;best=point;}
     }
     return best??from;
+  }
+  /** How much of the real cast/action the current moving frame covers.
+   * The view is an overhead orthographic lens with a fixed 53-unit eye
+   * and 17-unit gaze height, NOT the tactical 1200-unit orbit.
+   * This fit follows the actual moving camera and keeps key subjects in
+   * frame while the rig tracks, pans, and dollies. */
+  private fittingZoom(shot:DirectorShot,anchor:Pt,focus:Pt):number{
+    if(!shot.framePoints?.length)return shot.zoom;
+    const yaw=yawOf(anchor,focus);
+    const tilt=Math.atan2(53-17,Math.max(1,distance(anchor,focus)));
+    const cs=Math.cos(yaw),sn=Math.sin(yaw);
+    let xExtent=0,yExtent=0;
+    for(const p of shot.framePoints){
+      const dx=p.x-focus.x,dy=p.y-focus.y;
+      const horizontal=dx*cs-dy*sn;
+      const depth=(dx*sn+dy*cs)*Math.sin(tilt);
+      xExtent=Math.max(xExtent,Math.abs(horizontal)+19);
+      // Feet and helmets: leave more vertical air above action.
+      yExtent=Math.max(yExtent,
+        Math.abs(depth)+25*Math.cos(tilt)+13);
+    }
+    const fit=Math.min(
+      this.baseSpan*this.aspect*this.usableWidth/
+        Math.max(1,2*xExtent),
+      this.baseSpan*this.usableHeight/Math.max(1,2*yExtent));
+    const limit=shot.subjects.length<=2?10.5:9.0;
+    return clamp(fit*.94,.65,limit);
   }
   /** No camera edit merely because another framewise shot scores higher.
    * Confirm an actual new majority room for three consecutive recorded
@@ -115,15 +154,34 @@ export class ReplayDirectorStoryboard{
       return {...raw,sceneStartIndex:index};
     }
     const room=this.rooms.find(r=>r.id===raw.roomId)??null;
-    const cameraAnchor=this.walk(prior.cameraAnchor,raw.cameraAnchor,room);
+    const meanSpeed=raw.motion/Math.max(1,raw.subjects.length);
+    // Catch up with operators on the move: 15-30 world units per second
+    // instead of the old sluggish 10. Slow tracking remains deliberate
+    // when the team settles and begins a room clear.
+    const dolly=cameraStep+Math.min(13,Math.max(0,meanSpeed)*.43);
+    const cameraAnchor=this.walk(prior.cameraAnchor,raw.cameraAnchor,
+      room,dolly);
     // A subject crossing immediately behind the camera must not produce
     // an 180° reorientation. Turn toward new interest gradually instead.
     const oldYaw=yawOf(prior.cameraAnchor,prior.focus);
-    const requestedDistance=distance(cameraAnchor,raw.focus);
+    // An important door or fire pair requires a balanced two-shot:
+    // the shooter remains the foreground anchor while the real target
+    // or doorway leads the frame. Ordinary tracking keeps the raw focus.
+    const attention=raw.attentionPoint&&raw.operatorPoint?{
+      x:mix(raw.operatorPoint.x,raw.attentionPoint.x,.53),
+      y:mix(raw.operatorPoint.y,raw.attentionPoint.y,.53)
+    }:raw.focus;
+    const aim=raw.attentionPoint?{
+      x:mix(raw.focus.x,attention.x,.67),
+      y:mix(raw.focus.y,attention.y,.67)
+    }:raw.focus;
+    const requestedDistance=distance(cameraAnchor,aim);
     const desiredYaw=requestedDistance<minFocusRadius?
-      oldYaw:yawOf(cameraAnchor,raw.focus);
+      oldYaw:yawOf(cameraAnchor,aim);
+    const turnLimit=(raw.attentionPoint?actionTurnStep:turnStep)*
+      this.step/.8;
     const yaw=oldYaw+clamp(delta(desiredYaw,oldYaw),
-      -turnStep*this.step/.8,turnStep*this.step/.8);
+      -turnLimit,turnLimit);
     const oldRadius=clamp(distance(prior.cameraAnchor,prior.focus),
       minFocusRadius,maxFocusRadius);
     const wantedRadius=clamp(requestedDistance,minFocusRadius,maxFocusRadius);
@@ -141,15 +199,17 @@ export class ReplayDirectorStoryboard{
         focus={...prior.focus};
     }
     const accurateYaw=yawOf(cameraAnchor,focus);
-    const currentZoom=prior.zoom,desiredZoom=raw.zoom;
-    // Pull back decisively when the squad spreads, but do not punch
-    // in or out abruptly every time the subject solver changes groups.
+    const currentZoom=prior.zoom;
+    const desiredZoom=this.fittingZoom(raw,cameraAnchor,focus);
+    // Dynamically calculate fit AFTER the move and pan, not at the
+    // historical solver position. Emergency pullbacks rescue a shooter
+    // and target from the edge; slow push-ins add visual intention.
     const zoom=clamp(desiredZoom,
-      currentZoom*Math.pow(.76,this.step/.8),
-      currentZoom*Math.pow(1.075,this.step/.8));
+      currentZoom*Math.pow(.64,this.step/.8),
+      currentZoom*Math.pow(1.15,this.step/.8));
     const currentFov=prior.fov??108,desiredFov=raw.fov??108;
     const fov=currentFov+clamp(desiredFov-currentFov,
-      -3*this.step/.8,3*this.step/.8);
+      -5*this.step/.8,9*this.step/.8);
     return {...raw,sceneStartIndex:prior.sceneStartIndex,
       roomId:prior.roomId,cameraAnchor,focus,
       yaw:(accurateYaw+2*Math.PI)%(2*Math.PI),
