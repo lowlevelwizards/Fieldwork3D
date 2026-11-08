@@ -142,6 +142,8 @@ function lerpAngle(a:number,b:number,t:number){
 export function interpolateWorkbenchPose(a:WorkbenchPose,b:WorkbenchPose,
  phase:number):WorkbenchPose{
  const t=clamp(phase,0,1);
+ if(t===0)return cloneWorkbenchPose(a);
+ if(t===1)return cloneWorkbenchPose(b);
  const eased=t*t*(3-2*t);
  const mix=(left:Vec3,right:Vec3,angle=false):Vec3=>
    [0,1,2].map(i=>angle?lerpAngle(left[i],right[i],eased):
