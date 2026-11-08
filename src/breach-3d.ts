@@ -47,6 +47,7 @@ import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planPublicStreet} from './worldgen/public-street-layout.ts';
+import {planServiceDockBumpers} from './worldgen/service-facade-program.ts';
 import {curbRampWedge,CURB_GROUND_LEVELS}
  from './rendering/curb-ramp-wedge.ts';
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
@@ -848,6 +849,27 @@ export class TacticalScene3D{
       for(const f of [-.26,.26])
         this.box(this.root,structure.x+structure.w*f,WALL_VISUAL_HEIGHT,structure.y,
           2,1.8,structure.h,frame,false);
+    }
+    // A loading/service bumper is only shown when a REAL exterior
+    // doorway faces an industrial service yard. Not a floating platform,
+    // not a false operable loading dock, and never an extra collider.
+    const dockRubber=this.solid(0x35403d,.95,'tire-rubber');
+    const dockSteel=this.solid(0x778078,.86,'industrial-steel');
+    const dockStripe=this.solid(0xc3a568,.86,'painted-metal');
+    for(const dock of planServiceDockBumpers(site)){
+      for(const side of [-1,1]){
+        const offset=side*(dock.span/2+5.0);
+        const x=dock.axis==='x'?dock.x+offset:
+          dock.x+dock.outward*3;
+        const z=dock.axis==='x'?dock.y+dock.outward*3:
+          dock.y+offset;
+        const width=dock.axis==='x'?5.5:4.7;
+        const depth=dock.axis==='x'?4.7:5.5;
+        this.box(this.root,x,9,z,width,18,depth,dockRubber,false);
+        this.box(this.root,x,17,z,width+1,2,depth+1,dockSteel,false);
+        this.box(this.root,x,5.6,z,width+1,1.7,depth+1,
+          dockStripe,false);
+      }
     }
     // Fixed architectural window overhangs are tied to physical glass spans.
     // Keep the canopy translucent for the tactical cutaway and never imply
