@@ -5,7 +5,7 @@ import {type Site,type ExteriorZone,seeded} from '../breach-site.ts';
 import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
-import {PARKING_VEHICLES,parkingStallCandidates} from './parking-stalls.ts';
+import {parkingStallCandidates} from './parking-stalls.ts';
 import {SERVICE_EDGE_FIXTURES,serviceYardEdgeCandidates} from './service-yard-layout.ts';
 import {landscapeEdgeCandidates} from './landscape-edge-program.ts';
 import {serviceFixtureInRoad} from './road-service-fixtures.ts';
@@ -93,9 +93,12 @@ export function addExteriorProperty(site:Site,seed:number):Site{
   ['tree-broadleaf','shrub-round','hedge','picnic-table','tree-scrub','mailbox','trash-bin']:
   ['planter','shrub-tall','patio-chair','dumpster','bike-rack'];
  const byZone:Partial<Record<ExteriorZone['kind'],readonly string[]>>={
-   parking:['sedan','pickup','van','suv','parking-block','parking-sign','bollard','bike-rack'],
-   driveway:residential?['sedan','pickup','suv','mailbox','trash-bin']:
-     ['van','pickup','bollard','utility-cabinet'],
+   // Current vehicle models are intentionally retired from generated maps
+   // until their silhouettes, scale, and parking semantics are rebuilt.
+   // Parking areas read as genuinely empty bays, not random cover walls.
+   parking:['parking-sign','bollard','bike-rack','planter'],
+   driveway:residential?['mailbox','trash-bin','shrub-round']:
+     ['bollard','parking-sign','planter'],
    service:industrial?['utility-cabinet','dumpster','recycling-bin','storage-tote',
       'bollard','crate','shipping-container','trash-bin','supply-cart']:
      ['dumpster','recycling-bin','trash-bin','supply-cart','bike-rack','planter'],
@@ -113,13 +116,15 @@ export function addExteriorProperty(site:Site,seed:number):Site{
   const count=zone.id.startsWith('court-')?0:
     zone.kind==='garden'?3:zone.kind==='yard'?2:2;
   for(let i=0;i<count;i++){
-   // Vehicles belong to arrival/parking zones, not a random garden plot.
+   // Props must belong to the authored land-use zone, not to a generic
+   // "outside" bucket. No legacy car family is eligible for new maps.
    const choices=byZone[zone.kind]??available;
    // First object establishes what this exterior space is *for*. Subsequent
    // objects add character; no vehicle in a garden or dumpsters at the
    // public-facing cafe seating area.
    const anchor:Partial<Record<ExteriorZone['kind'],string>>={
-     parking:'sedan',driveway:industrial?'van':'pickup',
+     parking:'parking-sign',driveway:industrial?'bollard':
+       residential?'mailbox':'planter',
      service:industrial?'utility-cabinet':'dumpster',
      patio:kind==='restaurant'?'patio-chair':'planter',
      garden:'tree-broadleaf',yard:residential?'mailbox':'planter'
@@ -127,23 +132,16 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    const item=i===0?(anchor[zone.kind]??choices[0]):
      choices[Math.floor(rng()*choices.length)];
    const asset=propDefinition(item);if(!asset)continue;
-   // Preserve true dimensions: a car never becomes smaller than an operator.
-   const parked=zone.kind==='parking'&&PARKING_VEHICLES.has(item);
-   const stalls=parked?parkingStallCandidates(zone,asset.width,asset.depth):[];
-   const w=parked&&zone.w>=zone.h?asset.depth:asset.width;
-   const h=parked&&zone.w>=zone.h?asset.width:asset.depth;
+   const w=asset.width,h=asset.depth;
    const serviceEdge=zone.kind==='service'&&SERVICE_EDGE_FIXTURES.has(item);
    const edgeSpots=serviceEdge?serviceYardEdgeCandidates(zone,w,h):[];
    if(zone.w<w+22||zone.h<h+22)continue;
    let accepted=false;
-   for(let attempt=0;attempt<(parked?stalls.length:
-      serviceEdge?edgeSpots.length:12);attempt++){
-    const slot=parked?stalls[attempt]:undefined;
+   for(let attempt=0;attempt<(serviceEdge?edgeSpots.length:12);attempt++){
     const edge=serviceEdge?edgeSpots[attempt]:undefined;
-    const x=slot?.x??edge?.x??zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
-    const y=slot?.y??edge?.y??zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
-    const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low',
-     ...(slot?{orientation:slot.orientation}:{})};
+    const x=edge?.x??zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
+    const y=edge?.y??zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
+    const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low'};
     const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
     if(x-w/2<bounds.minX+17||x+w/2>bounds.maxX-17||
       y-h/2<bounds.minY+23||y+h/2>bounds.maxY-22)continue;
