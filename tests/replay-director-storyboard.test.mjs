@@ -115,7 +115,10 @@ test('director camera film path is deterministic across seek order and rate',()=
  storyboard.sample(11.31);
  assert.deepEqual(storyboard.sample(11.31),first);
  assert.ok(storyboard.cachedKnots<=8);
- assert.ok(solves<=8,'cached knots should not be re-solved each render');
+ assert.ok(solves<45,'deterministic checkpoints keep random seeks bounded');
+ const cached=solves;
+ storyboard.sample(11.31);
+ assert.equal(solves,cached,'an unchanged playback timestamp reuses its pose');
  assert.ok(first.zoom>6,'director bypasses ordinary tactical zoom');
  assert.ok(first.pitch<20*Math.PI/180);
 });
@@ -148,4 +151,80 @@ test('cross-room cut keeps camera inside a room, never halfway into a wall',()=>
  }),{step:.8});
  assert.equal(board.sample(.2).cameraAnchor.x,70);
  assert.equal(board.sample(.6).cameraAnchor.x,205);
+});
+
+const signedAngle=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
+const room={id:'lab',x:0,y:0,w:250,h:190};
+const stablePose=(t,yaw,beatId=null,roomId='lab')=>({
+ focus:{x:114+t*1.3,y:94},
+ cameraAnchor:{x:114+t*1.3+Math.sin(yaw)*50,
+   y:94+Math.cos(yaw)*50},
+ zoom:11,pitch:17*Math.PI/180,yaw,roomId,beatId,
+ actorsFramed:2,shotType:beatId?'contact':'travel',
+ kind:beatId?'action':'squad',subjects:['rook'],
+ doorId:null,score:60,occluded:0,motion:24
+});
+test('frequent 180-degree raw solver reversals no longer whip the camera',()=>{
+ const director=new ReplayDirectorStoryboard(16,
+  t=>stablePose(t,Math.floor(t/.8)%2?Math.PI:0),{
+   step:.8,maxCache:12,rooms:[room]});
+ let previous=null;
+ for(let i=0;i<18;i++){
+   const p=director.sample(i*.8);
+   if(previous)assert.ok(Math.abs(signedAngle(p.yaw,previous.yaw))<
+      9*Math.PI/180,
+     'one recorded knot may not whip around on a score reversal');
+   assert.ok(p.cameraAnchor.x>room.x&&
+     p.cameraAnchor.x<room.x+room.w&&
+     p.cameraAnchor.y>room.y&&
+     p.cameraAnchor.y<room.y+room.h,
+     'real camera must remain inside the occupied room');
+   const physical=Math.atan2(
+     p.cameraAnchor.x-p.focus.x,p.cameraAnchor.y-p.focus.y);
+   assert.ok(Math.abs(signedAngle(physical,p.yaw))<.001,
+     'rendered camera position must agree with the planned yaw');
+   previous=p;
+ }
+});
+test('one firefight keeps its established camera side throughout the exchange',()=>{
+ const director=new ReplayDirectorStoryboard(6,t=>stablePose(
+  t,Math.floor(t/.8)%2?Math.PI:0,'fight:17'),
+  {step:.8,rooms:[room]});
+ const first=director.sample(0);
+ for(let t=.8;t<5;t+=.8){
+   const shot=director.sample(t);
+   assert.ok(Math.abs(signedAngle(shot.yaw,first.yaw))<.001,
+    'same recorded combat beat must not reorient after each shot');
+ }
+});
+test('a dramatically different action is an intentional edit, never a fast spin',()=>{
+ const director=new ReplayDirectorStoryboard(4,
+  t=>stablePose(t,t<.8?0:Math.PI,t<.8?null:'fight:19'),{
+   step:.8,rooms:[room]});
+ const early=director.sample(.2),late=director.sample(.6);
+ assert.ok(Math.abs(signedAngle(early.yaw,0))<.001);
+ assert.ok(Math.abs(signedAngle(late.yaw,Math.PI))<.001);
+ assert.ok(Math.abs(signedAngle(late.yaw,early.yaw))>3,
+  'an establishing cut is allowed; fast in-between spinning is not');
+});
+test('a one-knot room boundary flicker cannot force two camera cuts',()=>{
+ const rooms=[room,{id:'next',x:250,y:0,w:220,h:190}];
+ const director=new ReplayDirectorStoryboard(4,t=>
+  stablePose(t,0, null,Math.floor(t/.8)===1?'next':'lab'),{
+   step:.8,rooms});
+ assert.equal(director.sample(0).roomId,'lab');
+ assert.equal(director.sample(.8).roomId,'lab');
+ assert.equal(director.sample(1.6).roomId,'lab');
+});
+test('gunshots against different nearby targets stay in one cinematic fight',()=>{
+ const mixed=[
+  shot(1,5,'rook','hostile'),
+  shot(2,5.45,'rook','enemy-2'),
+  shot(3,5.8,'hostile','rook')
+ ];
+ const episodes=buildDirectorFilmBeats(mixed,[],
+  frame,doors,friendly,()=>true);
+ assert.equal(episodes.length,1,
+  'one fight should not trigger a new camera setup for every target');
+ assert.equal(episodes[0].last,5.8);
 });
