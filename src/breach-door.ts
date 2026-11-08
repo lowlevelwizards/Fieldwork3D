@@ -395,12 +395,12 @@ export function doorClear(d:Door):boolean{
  * A blocked sidestep leaves the door blocked as usual.
  */
 export function initialOpeningYieldCandidate(d:Door,actor:Pt,
-  maxStep=1.4):Pt|null{
+  maxStep=2.4):Pt|null{
  const fraction=d.openFraction??0;
  if(!d.open||d.kind==='sliding'||d.kind==='shutter'||d.wedged||
-    fraction>=.36||(d.pushTarget??1)>1.01)return null;
+    fraction>=.96||(d.pushTarget??1)>1.01)return null;
  const leaf=doorLeafSegment(d);
- const future=doorLeafSegment({...d,openFraction:Math.min(.50,fraction+.065)});
+ const future=doorLeafSegment({...d,openFraction:Math.min(1.03,fraction+.065)});
  const before=pointToSegment(actor,leaf),after=pointToSegment(actor,future);
  const clearance=OPERATOR_RADIUS+1;
  // Only a shoulder near the sweep's edge may yield. Never displace an
