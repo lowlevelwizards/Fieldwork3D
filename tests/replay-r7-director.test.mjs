@@ -56,7 +56,8 @@ test('door stack and path are detected while path overlay is off',()=>{
  assert.equal(result.doorId,'D-1');
  assert.equal(result.actorsFramed,4);
  assert.ok(result.focus.x>100,'Camera should lead toward approaching door');
- assert.ok(result.pitch>=20*Math.PI/180&&result.pitch<=44*Math.PI/180);
+ assert.ok(result.pitch>=15*Math.PI/180&&result.pitch<=80*Math.PI/180);
+ assert.ok(result.zoom<=6,'wide overhead composition is the default');
 });
 test('future cue anticipates only known friendly participant, no enemy positions',()=>{
  const events=[
@@ -132,8 +133,9 @@ test('director frames the front of the stacked door rather than its rear wall',(
  const cameraSide={x:Math.sin(shot.yaw),y:Math.cos(shot.yaw)};
  assert.ok(cameraSide.x*normal.x+cameraSide.y*normal.y>.75,
   'door should be filmed from the operator side, near its face normal');
- assert.ok(shot.pitch<=49*Math.PI/180+1e-7,
-  'stack shot should seek a low, graphic, close perspective');
+ assert.ok(shot.pitch>=15*Math.PI/180,
+  'a room-level camera films from an elevated position, not a face-level POV');
+ assert.ok(shot.zoom<=6,'stack coverage must retain breathing room');
  assert.ok(shot.focus.x>100&&shot.focus.x<160,
   'door and its stacked team must both influence composition');
 });
@@ -213,10 +215,10 @@ test('an active moving WATCH blends movement direction with deliberate gaze',()=
  const cameraSide={x:Math.sin(shot.yaw),y:Math.cos(shot.yaw)};
  assert.ok(cameraSide.y>.38&&cameraSide.x<-.1,
   'the camera should be behind the WATCH but retain the direction of travel');
- assert.ok(shot.pitch<=38*Math.PI/180,
-  'moving WATCH should be filmed at low over-the-shoulder angles');
- assert.ok(shot.zoom>6,
-  'a compact moving pair should be closer than the old tactical zoom cap');
+ assert.ok(shot.pitch>=15*Math.PI/180,
+  'an overhead lens should keep WATCH and movement legible');
+ assert.ok(shot.zoom<=6&&shot.zoom>=.65,
+  'full team needs breathable zoom, not a cropped close-up');
 });
 test('an authored future WATCH influences direction before becoming active',()=>{
  const positions=[{x:100,y:100},{x:111,y:108},
@@ -279,5 +281,5 @@ test('a planned door action can pull interest before its order activates',()=>{
   {intents:stripped,upcoming:null,maxZoom:9.5});
  assert.ok(before.focus.x>without.focus.x+2,
   'an unactivated but authored doorway action must shift interest ahead');
- assert.ok(before.zoom>6,'a close moving shot should stay intimate');
+ assert.ok(before.zoom<=6,'an upcoming door action must not demand a backpack close-up');
 });
