@@ -47,6 +47,8 @@ import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
 import {planPublicStreet} from './worldgen/public-street-layout.ts';
+import {curbRampWedge,CURB_GROUND_LEVELS}
+ from './rendering/curb-ramp-wedge.ts';
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {conditionFloorPixels,effectiveCondition} from './worldgen/condition-visual.ts';
@@ -884,10 +886,37 @@ export class TacticalScene3D{
     // Sidewalk/path/curb/ramp markings overlap by design, but their top
     // planes must not coincide. Distinct narrow finish elevations prevent
     // moire and flashing without changing the tactical ground collider.
-    for(const mark of planPropertySurfaces(site))
+    // True low curb and sloping cut (visual only; movement stays 2D).
+    // The sidewalk geometry has a matching hole for the cut, so the ramp
+    // isn't buried beneath a full-height slab or rendered coplanar with it.
+    const curbMaterial=new THREE.MeshStandardMaterial({
+      color:age(0xa6a399,'concrete'),roughness:.96,
+      metalness:0,flatShading:true,side:THREE.DoubleSide});
+    this.mats.push(curbMaterial);
+    for(const mark of planPropertySurfaces(site)){
+      if(mark.kind==='curb-ramp'){
+        const wedge=curbRampWedge(mark,site.entrySide??'south');
+        const geom=new THREE.BufferGeometry();
+        geom.setAttribute('position',new THREE.Float32BufferAttribute(wedge.vertices,3));
+        geom.setIndex(wedge.indices);
+        geom.computeVertexNormals();
+        const ramp=new THREE.Mesh(geom,curbMaterial);
+        ramp.castShadow=false;ramp.receiveShadow=true;
+        this.root.add(ramp);
+        continue;
+      }
+      if(mark.kind==='curb-edge'){
+        const thickness=CURB_GROUND_LEVELS.sidewalk-
+          CURB_GROUND_LEVELS.road;
+        this.box(this.root,mark.x,
+          (CURB_GROUND_LEVELS.sidewalk+CURB_GROUND_LEVELS.road)/2,
+          mark.y,mark.width,thickness,mark.depth,curbMaterial,false);
+        continue;
+      }
       this.box(this.root,mark.x,propertySurfaceCenterHeight(mark.kind),
         mark.y,mark.width,PROPERTY_SURFACE_THICKNESS,
         mark.depth,this.solid(age(surfaceColor[mark.kind],'concrete')),false);
+    }
     // The public carriageway runs along the LOT boundary, not up the
     // pedestrian approach to the front door. One street layout also owns
     // sidewalks, curb cuts and worldgen street-exclusion checks.
