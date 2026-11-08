@@ -20,7 +20,7 @@ export function doorInteraction(request:InteractionRequest):InteractionVerdict{
  if((action==='open'||action==='kick')&&d.wedged)return deny('obstructed');
  if(action==='open'&&d.jammed)return deny('obstructed');
  if(action==='open'&&d.locked)return deny('locked');
- if(action==='close'&&!d.open)return deny('already-closed');
+ if(action==='close'&&!d.open&&(d.openFraction??0)<.08)return deny('already-closed');
  if(action==='hold'&&d.open)return deny('already-open');
  if((action==='open'||action==='push')&&d.heldBy&&d.heldBy!==actorId)
    return deny('held');
