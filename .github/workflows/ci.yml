@@ -21,6 +21,11 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Physical interactions Nov8 — verify previous production Pages before release
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-physical-interactions-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       - name: Physical interactions Nov8 — doors, locks, stance and critical live motor
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-physical-interactions-') }}
         run: |
