@@ -2957,7 +2957,15 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       a.autoSidestep=null;
       rotate(a,n.facing??a.heading,dt);
     }else if(a.nav.length){
-      const facing=autoSidestepFacing(a.autoSidestep,a.p,a.nav[0],
+      // Clearance glides may move laterally even while the original
+      // nav point remains straight ahead. Test the actual resolved motor
+      // displacement before declaring the sidestep finished.
+      const moved=d(a.p,a.priorP)>.15&&a.velocity>1.5;
+      const motorNext=moved?{
+        x:a.p.x+(a.p.x-a.priorP.x),
+        y:a.p.y+(a.p.y-a.priorP.y)
+      }:a.nav[0];
+      const facing=autoSidestepFacing(a.autoSidestep,a.p,motorNext,
         n.p,s.seconds,
         a.pace!=='run'&&!a.squeeze&&!visibleThreat&&!a.traversal&&
         !a.aimInstruction&&
