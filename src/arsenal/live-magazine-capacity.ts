@@ -73,6 +73,6 @@ export function fitMagazineInventory(owner:string,weapon:WeaponId,
 export function magazineAlert(loaded:number,capacity:number):
  'normal'|'low'|'empty'{
  if(loaded<=0)return 'empty';
- return loaded<=Math.min(10,Math.max(1,Math.ceil(capacity*.25)))?
+ return loaded<=Math.min(10,Math.max(1,Math.floor(capacity*.25)))?
   'low':'normal';
 }
