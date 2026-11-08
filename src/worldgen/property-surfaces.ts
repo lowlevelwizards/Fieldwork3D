@@ -123,15 +123,9 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
          zone.w*.72,1.6);
      }
    }
-   if(zone.kind==='garden'){
-     const edge=Math.min(zone.w*.15,14);
-     if(broad)for(const n of [-1,1])
-       add(zone,'garden-border',zone.x,zone.y+n*(zone.h/2-edge/2),
-         zone.w*.88,edge);
-     else for(const n of [-1,1])
-       add(zone,'garden-border',zone.x+n*(zone.w/2-edge/2),zone.y,
-         edge,zone.h*.88);
-   }
+   // The old garden-border drew full-length dark strips even when every
+   // proposed plant had been rejected. Actual beds are added below from
+   // accepted fixtures only; no phantom flowerbeds or solid green ribbons.
    if(zone.kind==='service')add(zone,'service-pad',
      zone.x,zone.y,zone.w*.77,zone.h*.74);
    if(zone.kind==='patio'){
