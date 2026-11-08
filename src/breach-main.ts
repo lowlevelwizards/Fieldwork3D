@@ -2110,7 +2110,31 @@ function updateContext(){
   });
   const paletteChoices=choices.filter(choice=>choice.group!=='state');
   // The four persistent toggles have their own stationary bar above the HUD.
-  // Reconcile buttons in-place: avoid tearing down the menu when a toggle changes.
+  // Bubbles follow the selected operator, while their commands still target
+  // the focused door / node / watch exactly as before.
+  const actorAnchor=worldToScreen(a.p,24);
+  const menuTop=Math.max(8,
+    (document.querySelector<HTMLElement>('.top')?.getBoundingClientRect().bottom??62)+8);
+  const menuHudTop=ui.quickStates.getBoundingClientRect().top;
+  const bubbleBounds=contextLayout==='bubbles'?bubblePlacement({
+    anchorX:actorAnchor.x,anchorY:actorAnchor.y,
+    viewportWidth:cssW,top:menuTop,hudTop:menuHudTop,
+  }):null;
+  // Tiny landscape/edge cases use the dock rather than laying bubbles over
+  // the persistent HUD or outside the visible canvas.
+  const effectiveLayout:ContextLayout=contextLayout==='bubbles'&&!bubbleBounds?
+    'dock':contextLayout;
+  if(ui.context.dataset.layout!==effectiveLayout){
+    ui.context.dataset.layout=effectiveLayout;
+    if(effectiveLayout==='dock')
+      ui.tacticalHud.insertBefore(ui.context,ui.quickStates);
+    else document.body.append(ui.context);
+    paletteMotion.hide();contextTether.hidden=true;
+    ui.context.style.transform='';
+    contextActionsSignature='';lastPlacementKey='';
+    paletteWidth=0;paletteHeight=0;
+  }
+  // Reconcile buttons in-place: never create a second action dispatcher.
   const identity=(door?'door:'+door.id:node?'node:'+node.id:
     selectedWatch?'active-watch':'here')+'/'+selected;
   const contextChanged=contextSignature!==identity;
@@ -2144,7 +2168,7 @@ function updateContext(){
     if(contextHeading.textContent!==text)contextHeading.textContent=text;
     contextHeading.title=scope;
   }
-  const actionSignature=identity+'/'+paletteChoices.map(c=>
+  const actionSignature=effectiveLayout+'/'+identity+'/'+paletteChoices.map(c=>
     c.id+':'+c.label+':'+c.group+':'+!!c.disabled+':'+!!c.pressed).join('|');
   const actionChanged=contextActionsSignature!==actionSignature;
   if(actionChanged){
@@ -2186,7 +2210,11 @@ function updateContext(){
     // contextual action must never reorder the fixed command slots.
     // 'advanced' is only a semantic group now: render those commands
     // alongside primary orders instead of inside a height-changing drawer.
-    buckets[choice.group==='advanced'?'primary':choice.group].append(button);
+    // In the two auditions, all contextual buttons share one stable visual
+    // group, including a distinguishable destructive button.
+    const destination=effectiveLayout==='floating'?
+      buckets[choice.group==='advanced'?'primary':choice.group]:buckets.primary;
+    destination.append(button);
   }
   for(const btn of ui.context.querySelectorAll<HTMLButtonElement>('button[data-action]')){
     if(!wanted.has(btn.dataset.action??''))btn.remove();
@@ -2194,6 +2222,22 @@ function updateContext(){
   buckets.state.hidden=!buckets.state.childElementCount;
   buckets.destructive.hidden=!buckets.destructive.childElementCount;
   ui.context.classList.toggle('door-menu',!!door);
+  if(effectiveLayout==='bubbles'){
+    const bubbles=bubbleSlots(paletteChoices.length);
+    const buttons=Array.from(buckets.primary.querySelectorAll<HTMLButtonElement>(
+      'button[data-action]'));
+    for(let index=0;index<buttons.length;index++){
+      const offset=bubbles[index]??{x:0,y:0};
+      buttons[index].style.left='calc(50% + '+offset.x+'px)';
+      buttons[index].style.top='calc(50% + '+offset.y+'px)';
+    }
+  }else{
+    for(const button of ui.context.querySelectorAll<HTMLButtonElement>(
+      'button[data-action]')){
+      button.style.removeProperty('left');
+      button.style.removeProperty('top');
+    }
+  }
   }
   if(paletteExit){paletteExit.cancel();paletteExit=null;}
   ui.context.hidden=false;
@@ -2204,6 +2248,22 @@ function updateContext(){
   ui.context.dataset.door=door?.id??'';
   ui.context.setAttribute('aria-label',door?
     'Door actions':'Selected position actions and operator settings');
+  if(effectiveLayout==='dock'){
+    paletteMotion.hide();contextTether.hidden=true;
+    ui.context.style.transform='';
+    return;
+  }
+  if(effectiveLayout==='bubbles'&&bubbleBounds){
+    const key=[identity,actionSignature,
+      Math.round(bubbleBounds.x/3),Math.round(bubbleBounds.y/3)].join('|');
+    if(!paletteMotion.active||key!==lastPlacementKey){
+      lastPlacementKey=key;
+      paletteMotion.set(bubbleBounds.x,bubbleBounds.y,
+        actorAnchor.x,actorAnchor.y);
+    }
+    contextTether.hidden=true;
+    return;
+  }
   // Keep the full operator bodies, selected route, and tap targets visible.
   // Don't inspect concealed enemies: context placement must not leak intel.
   const target=door?doorCenter(door):node?.p??selectedWatch??a.p;
