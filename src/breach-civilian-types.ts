@@ -66,8 +66,16 @@ export function setCivilianState(c:CivilianActor,
     c.state==='wounded')return false;
  if(c.state===state)return true;
  c.state=state;c.stateSince=now;c.velocity=0;
- if(state==='incapacitated'||state==='compliant'||state==='wounded'){
+ if(state==='incapacitated'||state==='compliant'||state==='wounded'||
+    state==='escorted'){
+  // An explicitly secured or followed person cannot keep a former
+  // panic/refuge route. A successful interaction must not begin by
+  // walking toward a stale hiding place or honoring an old retry pause.
   c.goal=null;c.nav=[];
+ }
+ if(state==='compliant'||state==='escorted'){
+  c.blockedTime=0;c.retryAt=now;c.dwellUntil=now;
+  if(state==='escorted')c.lastEscortRouteAt=-100;
  }
  return true;
 }

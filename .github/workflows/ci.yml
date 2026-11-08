@@ -1771,6 +1771,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-action-tracking-') }}
         run: |
           node --experimental-strip-types --test tests/replay-director-action-follow.test.mjs tests/replay-director-continuous.test.mjs tests/replay-director-physical.test.mjs tests/replay-director-storyboard.test.mjs tests/replay-director-wide-coverage.test.mjs tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
+      - name: Living Encounters R2 — physical civilian custody, states and replay
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/living-encounters-civilians-r2-') }}
+        run: |
+          node --experimental-strip-types --test tests/living-encounters-r2-civilian-transition.test.mjs tests/civilian-r2-release-matrix.test.mjs tests/civilian-release-field-smoke.test.mjs tests/civilian-r2-presentation.test.mjs tests/civilian-r2-routines.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
