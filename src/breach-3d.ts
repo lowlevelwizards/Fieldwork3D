@@ -1680,7 +1680,9 @@ export class TacticalScene3D{
     const director=this.replayDirectorCameraAnchor&&this.view.mode==='iso'?
       this.replayDirectorCameraAnchor:null;
     this.target.set(this.view.focus.x,director?12:0,this.view.focus.y);
-    const angle=this.view.yaw;
+    const angle=director?
+      Math.atan2(director.x-this.target.x,director.y-this.target.z):
+      this.view.yaw;
     if(director){
       const planar=Math.hypot(director.x-this.target.x,
         director.y-this.target.z);
