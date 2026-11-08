@@ -52,6 +52,7 @@ export type DirectorShot=CinematicShot&{
   wideCoverage?:boolean;
   compositionQuality?:import('./breach-replay-director-projection.ts').DirectorCompositionQuality;
   subjectVisibility?:number;subjectReadable?:boolean;
+  foregroundOperatorPoints?:Pt[];
   /** HOLD/REFRAME/TRACK/CUT derived from storyboard decision. */
   cameraDecision?:string
 };
@@ -211,5 +212,6 @@ export function composeReplayDirectorShot(time:number,
       'supporting operator cutaway: primary occluded',
     wideCoverage,compositionQuality:physical.compositionQuality,
     subjectVisibility:physical.subjectVisibility,
-    subjectReadable:physical.subjectReadable};
+    subjectReadable:physical.subjectReadable,
+    foregroundOperatorPoints:friends.map(a=>a.p)};
 }
