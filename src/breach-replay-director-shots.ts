@@ -46,6 +46,7 @@ export type DirectorShot=CinematicShot&{
   /** Perspective can legitimately fail to cover all required subjects.
    * Never misreport a failed two-shot as successful. */
   wideCoverage?:boolean;
+  compositionQuality?:import('./breach-replay-director-projection.ts').DirectorCompositionQuality;
   /** HOLD/REFRAME/TRACK/CUT derived from storyboard decision. */
   cameraDecision?:string
 };
@@ -116,7 +117,10 @@ export function composeReplayDirectorShot(time:number,
     followDirection:direction,
     doorPoint:plan.kind==='door'?door?.mid??null:null,
     doorNormal:plan.kind==='door'?door?.normal??null:null,
-    targetWeight:isContact?270:isDoor?210:125
+    targetWeight:isContact?270:isDoor?210:125,
+    composition:{treatment:plan.kind,
+      baseSpan,usableWidth:context.usableWidth??.78,
+      usableHeight:context.usableHeight??.76}
   },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
   const legalRequired=required.filter(p=>
     !directorLineBlocked(physical.cameraAnchor,p,
@@ -165,5 +169,6 @@ export function composeReplayDirectorShot(time:number,
     editorialId:plan.id,editorialKind:plan.kind,
     editorialPriority:plan.priority,primaryActorId:primary.id,
     requiredPoints:mandatory,actionAxis:direction,
-    editReason:plan.reason,wideCoverage};
+    editReason:plan.reason,wideCoverage,
+    compositionQuality:physical.compositionQuality};
 }

@@ -95,6 +95,8 @@ import {buildDirectorFilmBeats,directorFilmBeatAt,directorFilmPair,
   type DirectorFilmBeat} from './breach-replay-director-film.ts';
 import {ReplayDirectorStoryboard}
   from './breach-replay-director-storyboard.ts';
+import {buildDirectorTempoEdits,directorTempoJump,
+  type DirectorTempoEdit} from './breach-replay-director-tempo.ts';
 import {buildDirectorPlanIndex,directorIntentsAt,
   type DirectorPlanIndex} from './breach-replay-director-intent.ts';
 import {buildDirectorFutureCues,directorFutureAt,
@@ -961,6 +963,9 @@ let replayDirectorPlanIndex:DirectorPlanIndex=new Map();
 let replayDirectorFilmBeats:DirectorFilmBeat[]=[];
 let replayDirectorEntries:DirectorEntryEvent[]=[];
 let replayDirectorStoryboard:ReplayDirectorStoryboard|null=null;
+let replayDirectorTempoEdits:DirectorTempoEdit[]=[];
+let replayDirectorEditNoticeUntil=0;
+let replayDirectorEditNoticeSeconds=0;
 let replayDirectorTarget:DirectorShot|null=null;
 let replayPlanScope:'all'|'selected'|'none'='selected';
 let replayPlanVersion:'active'|'original'='active';
@@ -4793,6 +4798,8 @@ function rebuildReplayEventIndex():void{
     shot=>historicalShotVisible(shot));
   replayDirectorEntries=buildDirectorEntryEvents(
     recorder.frames,doors,friendlies);
+  replayDirectorTempoEdits=buildDirectorTempoEdits(recorder.frames,
+    recorder.executionEvents,recorder.events,friendlies);
   // The director knows the whole finished film. Fixed knots are lazily
   // solved from historical samples, independent of FPS or seek direction.
   replayDirectorStoryboard=new ReplayDirectorStoryboard(recorder.duration,t=>{
@@ -4876,7 +4883,12 @@ function advanceReplayCamera(dt:number,instant=false):void{
         '\\nDECISION '+(target.cameraDecision??'framing')+
         '\\nREASON '+(target.editReason??'—')+
         '\\nTARGET '+(target.requiredPoints?.length??0)+
-        ' REQUIRED / WIDE '+(target.wideCoverage?'FIT':'CROP');
+        ' REQUIRED / WIDE '+(target.wideCoverage?'FIT':'CROP')+
+        '\\nCOMPOSITION '+(target.compositionQuality?
+          target.compositionQuality.score.toFixed(1)+' / OTS '+
+          (target.compositionQuality.shoulderReadable?'CLEAR':'FALLBACK'):
+          'LEGACY')+
+        '\\nTEMPO '+replayDirectorTempoEdits.length+' EDITS';
     }
     // No reactive hold/reorientation race and no frame-rate-dependent
     // orbit damping. The camera follows the precomputed film-time path.
@@ -5316,7 +5328,9 @@ function updateReplayHud(){
   const status=replayQuickVideo.active?'● RECORDING':
     replayIncidentPlayback?.loop?'INCIDENT LOOP':
     replayIncidentPlayback?'WATCHING MOMENT':
-    replayLoopEnabled?'A/B LOOP':'';
+    replayLoopEnabled?'A/B LOOP':
+    replayCameraMode==='director'&&performance.now()<replayDirectorEditNoticeUntil?
+      'DIRECTOR EDIT · +'+replayDirectorEditNoticeSeconds.toFixed(1)+'S':'';
   ui.replayStatusChip.textContent=status;
   ui.replayStatusChip.hidden=!status;
   syncReplayEventFeed();
@@ -7784,9 +7798,20 @@ function tick(now:number){
       const loop=replayLoopEnabled?
         makeReplayLoop(replayLoopIn,replayLoopOut,recorder.duration):null;
       const step=advanceReplayLoop(replayTime,dt*replayRateEffective,loop,recorder.duration);
-      replayTime=step.time;
+      // Source-time editing is enabled ONLY for ordinary 1x Director
+      // playback. No edits during loops, manual stepping, bodycam,
+      // incident study, alternate speeds or real-time video capture.
+      const trim=!loop&&replayCameraMode==='director'&&
+        replayRate===1&&!replayQuickVideo.active?
+        directorTempoJump(replayDirectorTempoEdits,
+          previousReplayTime,step.time):null;
+      replayTime=trim?trim.sourceEnd:step.time;
+      if(trim){
+        replayDirectorEditNoticeSeconds=trim.sourceEnd-trim.sourceStart;
+        replayDirectorEditNoticeUntil=performance.now()+1850;
+      }
       applyReplayFrameAt(replayTime);
-      if(step.wrapped)stopReplaySounds();
+      if(step.wrapped||trim)stopReplaySounds();
       else playReplayAudioBetween(previousReplayTime,replayTime);
       if(!loop&&replayTime>=recorder.duration)replayPlaying=false;
     }

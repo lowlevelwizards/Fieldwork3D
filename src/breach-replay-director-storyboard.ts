@@ -9,7 +9,7 @@ import type {DirectorRoom} from './breach-replay-cinematic-director.ts';
 import {directorCameraLegal,directorLineBlocked}
   from './breach-replay-director-physical.ts';
 import type {PhysicalDirectorScene} from './breach-replay-director-physical.ts';
-import {directorOrthoFittingZoom}
+import {directorOrthoFittingZoom,directorCompositionQuality}
   from './breach-replay-director-projection.ts';
 
 type Pt={x:number;y:number};
@@ -222,7 +222,22 @@ export class ReplayDirectorStoryboard{
     const fit=directorOrthoFittingZoom(prior.cameraAnchor,
       prior.focus,raw.requiredPoints,this.aspect,this.baseSpan,
       this.usableWidth,this.usableHeight,10,.92);
-    return prior.zoom<=fit*1.04;
+    if(prior.zoom>fit*1.04)return false;
+    // A point can be geometrically visible yet hidden by a foreground
+    // silhouette. Judge the established frame with the SAME evaluator
+    // that produced the competing R9 shot, not a second focus heuristic.
+    if(raw.operatorPoint&&raw.editorialKind){
+      const quality=directorCompositionQuality(prior.cameraAnchor,
+        prior.focus,raw.operatorPoint,
+        raw.requiredPoints.length>1?raw.requiredPoints[1]:null,
+        raw.actionAxis??{x:1,y:0},raw.editorialKind,
+        'ortho',this.aspect,this.baseSpan,prior.zoom,
+        prior.fov??108,this.usableWidth,this.usableHeight);
+      if(!quality.primaryReadable||!quality.targetReadable)return false;
+      if(raw.compositionQuality&&
+        raw.compositionQuality.score-quality.score>12)return false;
+    }
+    return true;
   }
   /** No camera edit merely because another framewise shot scores higher.
    * Confirm an actual new majority room for three consecutive recorded
@@ -300,10 +315,19 @@ export class ReplayDirectorStoryboard{
     // request to orbit, pan or zoom continually toward fresh suggestions.
     // Keep the established frame steady until actors actually move or
     // a real recorded action becomes the subject.
-    if(!action&&!traveling&&raw.motion<9)
+    if(!action&&!traveling&&raw.motion<9){
+      // A newly authored doorway approach can be meaningful even while
+      // the breacher is temporarily still. Avoid trapping the camera on
+      // the previous unrelated subject for the rest of the scene.
+      const interest=!sameStory&&
+        (raw.editorialPriority??0)>(prior.editorialPriority??0)+1.2&&
+        index-(prior.sceneStartIndex??0)>=Math.ceil(1.5/this.step);
+      if(interest)return {...raw,sceneStartIndex:index,
+        cameraDecision:'cut:quiet-new-interest'};
       return {...prior,sceneStartIndex:prior.sceneStartIndex,
         motion:raw.motion,actionWeight:0,
         cameraDecision:'hold:quiet'};
+    }
     const dolly=cameraStep+Math.min(34,
       Math.max(0,meanSpeed)*.74)+
       (action?7:0);

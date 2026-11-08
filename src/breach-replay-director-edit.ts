@@ -108,10 +108,9 @@ export function selectDirectorEditorialShot(
   if(!primary){
     const movers=friends.filter(a=>{
       const i=intent(a.id);
-      return (i?.speed??a.velocity??0)>7||
-        (!!i&&i.route.length>1&&
-          distance(i.position,i.route.at(-1)!)>17&&
-          ['travel','approach'].includes(i.kind));
+      const actual=i?.speed??a.velocity??0;
+      return actual>7||(actual>3.5&&!!i&&i.route.length>1&&
+        ['travel','approach'].includes(i.kind));
     });
     if(movers.length){
       primary=movers.slice().sort((a,b)=>{

@@ -5,7 +5,9 @@
  */
 import type {DirectorRoom,DirectorWall} from './breach-replay-cinematic-director.ts';
 import type {Door,Obstacle} from './breach-core.ts';
-import {directorPerspectiveCovers}
+import {directorPerspectiveCovers,directorOrthoFittingZoom,
+  directorCompositionQuality,type DirectorCompositionTreatment,
+  type DirectorCompositionQuality}
   from './breach-replay-director-projection.ts';
 
 export type PhysicalPoint={x:number;y:number};
@@ -28,11 +30,13 @@ export type PhysicalDirectorRequest={
   /** Filming across the threshold normal yields the door's front face. */
   doorPoint?:PhysicalPoint|null;
   doorNormal?:PhysicalPoint|null;
+  composition?:{treatment:DirectorCompositionTreatment;baseSpan:number;
+    usableWidth:number;usableHeight:number};
 };
 export type PhysicalDirectorView={
   cameraAnchor:PhysicalPoint;focus:PhysicalPoint;
   roomId:string|null;fov:number;targetVisible:boolean;
-  occluded:number
+  occluded:number;compositionQuality?:DirectorCompositionQuality
 };
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const distance=(a:PhysicalPoint,b:PhysicalPoint)=>
@@ -142,6 +146,16 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     const yaw=req.preferredYaw+a*Math.PI/12;
     for(const r of radius)add({x:req.operator.x+Math.sin(yaw)*r,
       y:req.operator.y+Math.cos(yaw)*r});
+  }
+  // Explicit shoulder offsets supplement, never replace, the legal
+  // 360-degree and room-grid searches. Both sides must be considered.
+  if(req.composition?.treatment==='engage'&&req.followDirection){
+    const d=req.followDirection,n=Math.hypot(d.x,d.y)||1;
+    const fx=d.x/n,fy=d.y/n;
+    for(const back of [54,72,90])for(const side of [-1,1])
+      for(const lateral of [22,34])add({
+        x:req.operator.x-fx*back-fy*lateral*side,
+        y:req.operator.y-fy*back+fx*lateral*side});
   }
   if(room){
     for(let a=1;a<=8;a++)for(let b=1;b<=8;b++)
@@ -258,12 +272,33 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       (forwardOffset>0?Math.min(110,forwardOffset*1.65):0)-
       Math.max(0,fov-107)*7-
       Math.max(0,visible.length?0:120);
-    const proposal={cameraAnchor:p,focus,roomId:room?.id??null,
+    const proposal:PhysicalDirectorView={cameraAnchor:p,focus,roomId:room?.id??null,
       fov:clamp(Math.max(96,fov),96,116),targetVisible,
       occluded:req.subjectPoints.length-visible.length+
         (req.target&&!targetVisible?1:0)};
-    candidates.push({score:candidate,view:proposal});
-    if(candidate>score){score=candidate;best=proposal;}
+    let rankedScore=candidate;
+    if(req.composition){
+      const c=req.composition;
+      const zoom=directorOrthoFittingZoom(p,focus,
+        req.requiredPoints??[req.operator],aspect,c.baseSpan,
+        c.usableWidth,c.usableHeight,8,.8);
+      const quality=directorCompositionQuality(p,focus,req.operator,
+        targetVisible?req.target??null:null,
+        req.followDirection??{x:1,y:0},c.treatment,'ortho',
+        aspect,c.baseSpan,zoom,proposal.fov,
+        c.usableWidth,c.usableHeight);
+      proposal.compositionQuality=quality;
+      // Coverage remains paramount. A back-of-head that conceals a real
+      // target is not an acceptable OTS even if point LOS is clear.
+      if(targetVisible&&req.target&&!quality.targetReadable)
+        rankedScore-=420;
+      if(!quality.primaryReadable)rankedScore-=230;
+      rankedScore+=(quality.score-80)*2.6;
+      if(quality.shoulderReadable&&c.treatment==='engage')
+        rankedScore+=36;
+    }
+    candidates.push({score:rankedScore,view:proposal});
+    if(rankedScore>score){score=rankedScore;best=proposal;}
   }
   // Only inspect the strongest small set with the REAL WIDE projection.
   // The old FOV estimate could request 150 degrees then clamp to 116
