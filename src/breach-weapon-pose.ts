@@ -277,7 +277,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
           // Buttplate now nests into the outer padded chest contour. Hard
           // lower limits still prevent tunnelling into the torso center;
           // short-stock gets additional underarm clearance.
-          if(sz<(stockless?4.90:mode==='short'?6.00:5.90))continue;
+          if(sz<(stockless?4.10:mode==='short'?4.65:4.55))continue;
           const px=sx+right[0],py=sy+right[1],pz=sz+right[2];
           const lx=sx+left[0],ly=sy+left[1],lz=sz+left[2];
           const rd=Math.hypot(px-1,py-4,pz-7);
