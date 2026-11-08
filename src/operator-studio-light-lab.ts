@@ -56,7 +56,7 @@ export const APPROVED_GRAPHIC_LIGHTING:Readonly<StudioLightLabSettings>={
  ...DEFAULT_STUDIO_LIGHT_LAB,
  toon:3,rim:'dual',gradient:'piece-rose',shadow:'plum-plus',
  celProfile:'graphic',celLow:.60,celHigh:.86,
- rimAmount:.85,rimWidth:2.5,rimCoverage:.55,
+ rimAmount:.42,rimWidth:2.0,rimCoverage:.40,
  rimFabricOpacity:0,rimSkinOpacity:0
 };
 /** Avoid optional URL or UI settings accidentally reactivating rejected
