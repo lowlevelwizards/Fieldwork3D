@@ -22,7 +22,7 @@ export type StudioLightLabSettings={
  rimCoverage:number;
  /** Relaxation of the light-facing/slant gate for the localized hard glint. */
  rimAngleLooseness:number;
- /** Broad external-silhouette ink, independent of the hard glint. */
+ /** R7.16 hard-edged, backlit ink INSIDE existing voxel faces. */
  rimFabricWidth:number;
  rimFabricOpacity:number;
  rimFabricBacklight:number;

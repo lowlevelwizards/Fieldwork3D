@@ -138,9 +138,12 @@ test('R7.15 soft equipment is included without turning lenses into outlines',()=
  assert.match(head,/fieldworkStudioSoftGear=true/);
  assert.match(gear,/armorFabric,gearFabric,packFabric,trim/);
  assert.match(kit,/\[trim,seam,patchMaterial\]/);
- const bleed=read('src/operator-studio-edge-bleed.ts');
- assert.match(bleed,/side:THREE\.BackSide/);
- assert.match(bleed,/depthTest:true,depthWrite:false/);
- assert.match(bleed,/disposeStudioEdgeBleed/);
- assert.doesNotMatch(bleed,/localStorage|sessionStorage/);
+ const material=read('src/operator-studio-graphic-lighting.ts');
+ assert.match(material,/fwSoftBorder/);
+ assert.match(material,/fwSoftBand/);
+ assert.match(material,/fwSkinTint/);
+ assert.match(material,/fwRearNormal/);
+ assert.doesNotMatch(material,/applyStudioEdgeBleed|clearStudioEdgeBleed|disposeStudioEdgeBleed/);
+ assert.doesNotMatch(material,/gl_Position=projectionMatrix\*view/);
+ assert.doesNotMatch(material,/localStorage|sessionStorage/);
 });
