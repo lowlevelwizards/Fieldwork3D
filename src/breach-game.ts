@@ -722,15 +722,16 @@ export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
  * Using the selected waypoint's world position avoids context buttons that
  * appear available but target the unrelated final route endpoint. */
 export function planNearbyInteraction(s:Session,id:string,
- action:'push'|'open-window'|'close-window',afterNodeId?:number):boolean{
+ action:'push'|'open-window'|'close-window',afterNodeId?:number,
+ pushPoint?:Pt):boolean{
  const a=party(s,id);if(!a||!canEdit(s))return false;
  const insertion=afterNodeId===undefined?-1:
    a.plan.findIndex(n=>n.id===afterNodeId);
  if(afterNodeId!==undefined&&insertion<0)return false;
  const at=insertion>=0?a.plan[insertion].p:finalPoint(a);
- const queue=(objectId:string)=>edit(s,a,()=>{
+ const queue=(objectId:string,pushDirection?:Pt)=>edit(s,a,()=>{
    const order:PlanNode={id:s.nextId++,kind:'interact',p:clone(at),
-     objectId,interaction:action};
+     objectId,interaction:action,pushDirection};
    if(insertion>=0)a.plan.splice(insertion+1,0,order);
    else a.plan.push(order);
  });
@@ -740,7 +741,13 @@ export function planNearbyInteraction(s:Session,id:string,
        canRelocateCover(c.o)&&c.distance<Math.max(c.o.w,c.o.h)/2+43)
      .sort((x,y)=>x.distance-y.distance||x.index-y.index);
    const item=candidates[0];if(!item)return false;
-   return queue('prop:'+item.index);
+   const toward={x:item.o.x-at.x,y:item.o.y-at.y};
+   const base=Math.atan2(toward.y,toward.x);
+   const chosen=pushPoint&&d(pushPoint,{x:item.o.x,y:item.o.y})>4?
+     Math.atan2(pushPoint.y-item.o.y,pushPoint.x-item.o.x):base;
+   const delta=angleDifference(base,chosen);
+   const yaw=base+clamp(delta,-Math.PI*4/9,Math.PI*4/9);
+   return queue('prop:'+item.index,{x:Math.cos(yaw),y:Math.sin(yaw)});
  }
  const target=s.windows.filter(w=>w.operable&&!w.shattered&&
    d(at,{x:w.x,y:w.y})<54&&w.open===(action==='close-window'))
@@ -2875,10 +2882,20 @@ function runOrders(s:Session,a:TeamActor,dt:number){
       const dx=o.x-a.p.x,dy=o.y-a.p.y,
         length=Math.hypot(dx,dy)||1;
       const amount=coverPushDistance(o);
-      const pushed={x:o.x+dx/length*amount,y:o.y+dy/length*amount};
-      if(!movePhysicalProp(s,index,pushed)){
+      const direction=n.pushDirection??{x:dx/length,y:dy/length};
+      const mag=Math.hypot(direction.x,direction.y)||1;
+      // Move the real collider a short swept increment per fixed tick.
+      // Visuals, replay, firing cover and pathfinding see the same position.
+      const duration=Math.max(.45,amount/28);
+      const part=Math.max(0,Math.min(dt,duration-a.actionTimer));
+      const distance=amount*part/duration;
+      const pushed={x:o.x+direction.x/mag*distance,
+        y:o.y+direction.y/mag*distance};
+      if(part>.0001&&!movePhysicalProp(s,index,pushed)){
         failCurrentOrder(s,a,n,'OBJECT OBSTRUCTED');return;
       }
+      a.velocity=0;a.actionTimer+=dt;
+      if(a.actionTimer<duration)return;
       notify(s,a.name+' PUSHED '+(o.fixture??'OBJECT'));
     }else if(kind==='window'){
       // A pane cannot swing shut through somebody currently occupying the
