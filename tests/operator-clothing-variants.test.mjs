@@ -31,6 +31,7 @@ test('field webbing physically presents more rig magazines than light rig',()=>{
  assert.equal(r.visualKit.magazines.rig.filter(x=>x.visible).length,4);
  const heavy=setEquipmentChoice(kit,'rig','rig-full');
  poseOperator(r,pose(heavy,mags),0);
- assert.equal(r.visualKit.magazines.rig.filter(x=>x.visible).length,7);
+ assert.equal(r.visualKit.magazines.rig.filter(x=>x.visible).length,4,
+  'legacy fallback has only four physical generic chest cells, no side fakes');
  r.dispose();
 });
