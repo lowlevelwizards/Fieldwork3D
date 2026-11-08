@@ -163,3 +163,33 @@ test('M4A1 manual constraints do not affect running or other weapon families',()
    M4A1_AUTHORED_SHORT.targets.stock);
  }finally{rig.dispose();}
 });
+
+test('elbows and wrists travel continuously across the whole authored fold',()=>{
+ const rig=createOperatorRig('author-transition','blue');
+ try{
+  let previous=null;
+  for(let step=0;step<=20;step++){
+   const t=step/20;
+   poseOperator(rig,rigPose('short',t),0);
+   const joints=rig.arms.map(arm=>elbowFor(arm));
+   const hands=rig.arms.map(arm=>arm.hand.position.clone());
+   if(previous){
+    for(let i=0;i<2;i++){
+     const elbowStep=joints[i].distanceTo(previous.joints[i]);
+     const wristStep=hands[i].distanceTo(previous.hands[i]);
+     assert.ok(elbowStep<4.5,
+       'elbow flipped during M4A1 short-stock at '+t+
+       ' arm '+i+': step '+elbowStep);
+     assert.ok(wristStep<2.5,
+       'wrist jumped during M4A1 short-stock at '+t+
+       ' arm '+i+': step '+wristStep);
+    }
+   }
+   previous={joints,hands};
+   for(const arm of rig.arms){
+    close(arm.upper.scale.y,10,1e-4);
+    close(arm.lower.scale.y,10,1e-4);
+   }
+  }
+ }finally{rig.dispose();}
+});
