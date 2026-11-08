@@ -117,7 +117,12 @@ export function passageScheduledStep(a:PassageActor,doors:readonly Door[],
  physicallyClear:(from:Pt,to:Pt)=>boolean):Pt{
  const slot=a.plannedPassage;
  const door=slot&&doors.find(d=>d.id===slot.doorId);
- if(!door||!a.active||distance(a.p,doorCenter(door))>170)return step;
+ if(!door||!a.active||!a.goal||
+    distance(a.p,doorCenter(door))>170||
+    // Future planned entry is not a reason to freeze pre-entry STACK,
+    // SYNC, LOOK or door manipulation movements. That creates a
+    // dependency deadlock in the otherwise atomic squad entry template.
+    side(a.goal,door)*slot!.fromSide>=-4)return step;
  const before=side(a.p,door)*slot!.fromSide;
  const advance=before-side(step,door)*slot!.fromSide;
  if(advance<=.025||before< -15)return step;
