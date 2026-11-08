@@ -22,3 +22,18 @@ export function retreatDoorClosureEligible(
  }
  return true;
 }
+
+/** Routine occupants may close a recently used door while settling after a
+ * real local journey. No blind door-spamming, no reopening locked geometry,
+ * and no attempt while another actor is clearing the passage. */
+export function routineDoorClosureEligible(actor:Pt,door:Door,
+ now:number,lastCloseAt:number,nearbyActiveActors:readonly Pt[]):boolean{
+ if(!retreatDoorClosureEligible(actor,door,now,lastCloseAt,
+   false,null)||now-lastCloseAt<12)return false;
+ const m={x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2};
+ if(Math.hypot(actor.x-m.x,actor.y-m.y)>55)return false;
+ if(door.locked||door.jammed)return false;
+ if(nearbyActiveActors.some(p=>Math.hypot(p.x-m.x,p.y-m.y)<40))
+   return false;
+ return true;
+}
