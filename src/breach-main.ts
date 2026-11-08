@@ -3381,10 +3381,15 @@ function paths(){
       replayPlanScope==='selected'&&a.id!==selected))continue;
     const c=colorFor(a.id);
     const {nodes:plan,origin}=replayPlanFor(a);
+    const muted=!replaying&&a.id!==selected;
     const activeTarget=activeWatchTarget(a);
-    if(activeTarget&&(!replaying||replayPlanVersion==='active'))drawActiveWatchMarker(a.p,
-      a.id===selected&&selectedActiveWatch&&draggingNode?
-        draggingNode:activeTarget,c,a.id===selected,a.name);
+    if(activeTarget&&(!replaying||replayPlanVersion==='active')){
+      draw.save();draw.globalAlpha=muted?.30:1;
+      drawActiveWatchMarker(a.p,
+        a.id===selected&&selectedActiveWatch&&draggingNode?
+          draggingNode:activeTarget,c,a.id===selected,a.name);
+      draw.restore();
+    }
     const visual=orderVisualScopes(plan,{
       watch:a.aimInstruction?.mode==='track',pace:a.pace,
       posture:a.posture,fire:a.firePolicy
@@ -3402,7 +3407,7 @@ function paths(){
           from=node.p;
         }
       }
-      draw.strokeStyle=c;draw.globalAlpha=a.id===selected?.88:.40;
+      draw.strokeStyle=c;draw.globalAlpha=a.id===selected?.94:muted?.18:.40;
       draw.lineWidth=a.id===selected?2.6:1.6;
       draw.setLineDash([8,4]);draw.stroke();draw.setLineDash([]);
       draw.globalAlpha=1;
@@ -3445,6 +3450,7 @@ function paths(){
           previous=node.p;
       }
     }
+    draw.save();draw.globalAlpha=muted?.32:1;
     for(let i=0;i<plan.length;i++){
       const n=plan[i],selectedNow=a.id===selected&&selectedNode===n.id;
       const semantics=visual[i];
@@ -3531,6 +3537,7 @@ function paths(){
           point.x+11,point.y-9);
       }
     }
+    draw.restore();
     // A suppression order issued HERE belongs to the operator, not a node.
     if(a.id===selected&&a.firePolicy==='suppress'&&a.suppressPoint){
       draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
@@ -3693,18 +3700,22 @@ function renderProjectedPlans(){
       replayPlanScope==='selected'&&a.id!==selected))continue;
     const {nodes:plan,origin}=replayPlanFor(a);
     const color=colorFor(a.id);
+    const muted=!replaying&&a.id!==selected;
     const activeTarget=activeWatchTarget(a);
-    if(activeTarget&&(!replaying||replayPlanVersion==='active'))drawActiveWatchMarker(
-      worldToScreen(a.p,8),
-      worldToScreen(a.id===selected&&selectedActiveWatch&&draggingNode?
-        draggingNode:activeTarget,12),
-      color,a.id===selected,a.name);
+    if(activeTarget&&(!replaying||replayPlanVersion==='active')){
+      draw.save();draw.globalAlpha=muted?.30:1;
+      drawActiveWatchMarker(worldToScreen(a.p,8),
+        worldToScreen(a.id===selected&&selectedActiveWatch&&draggingNode?
+          draggingNode:activeTarget,12),color,a.id===selected,a.name);
+      draw.restore();
+    }
     let previous=origin;
     const visual=orderVisualScopes(plan,{
       watch:a.aimInstruction?.mode==='track',pace:a.pace,
       posture:a.posture,fire:a.firePolicy
     });
     let visualIndex=0;
+    draw.save();
     for(const n of plan){
       const semantics=visual[visualIndex++];
       const cachedRoute=n.kind==='move'||n.kind==='door'?
@@ -3722,7 +3733,7 @@ function renderProjectedPlans(){
         for(const projected of projectedSteps)
           draw.lineTo(projected.x,projected.y);
         draw.strokeStyle=color;
-        draw.globalAlpha=a.id===selected?.94:.50;
+        draw.globalAlpha=a.id===selected?.96:muted?.18:.50;
         draw.lineWidth=n.kind==='pie'?3:
           semantics.before.watch&&a.id===selected?3.6:2.4;
         const narrowOnly=n.kind==='move'&&!!cachedRoute?.narrowOnly;
@@ -3733,6 +3744,7 @@ function renderProjectedPlans(){
           narrowOnly?[2,4]:[7,4]);
         draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
       }
+      draw.globalAlpha=muted?.32:1;
       const selectedNow=a.id===selected&&selectedNode===n.id;
       const point=worldToScreen(selectedNow&&draggingNode&&!draggingWatchTarget&&n.kind!=='flash'?
         draggingNode:n.p,8);
@@ -3841,6 +3853,7 @@ function renderProjectedPlans(){
       }
       if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
     }
+    draw.restore();
     const pawn=worldToScreen(a.p,32),ground=worldToScreen(a.p,1);
     const squadIndex=team(state).findIndex(member=>member.id===a.id);
     const labelSpread=state.site?[
