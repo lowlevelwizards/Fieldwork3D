@@ -31,6 +31,11 @@ const STUDIO_SHADOW_PALETTES:Record<StudioShadowColor,
  'plum-noir':{ground:0x473755,fill:0xd5a3ed},
  dusk:{ground:0x686986,fill:0x9b9fbf}
 };
+/** Shared values for Studio, Arsenal and tactical presentation.
+ * Does not expose Studio render quality or shadow resolution. */
+export function studioShadowPalette(name:StudioShadowColor){
+ return STUDIO_SHADOW_PALETTES[name];
+}
 export function requestedStudioShadowColor(search:string):StudioShadowColor{
  const v=new URLSearchParams(search).get('operatorShadowColor');
  return v==='steel'||v==='slate'||v==='plum'||v==='dusk'||
