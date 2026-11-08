@@ -89,7 +89,7 @@ import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-in
 import {buildReplayDirectorCues,replayCameraTarget,easeReplayCamera,
   type ReplayCameraMode,type ReplayDirectorCue}
   from './breach-replay-director.ts';
-import {cinematicReplayShot,easeCinematicReplayShot}
+import {easeCinematicReplayShot}
   from './breach-replay-cinematic-director.ts';
 import {buildDirectorPlanIndex,directorIntentsAt,
   type DirectorPlanIndex} from './breach-replay-director-intent.ts';
