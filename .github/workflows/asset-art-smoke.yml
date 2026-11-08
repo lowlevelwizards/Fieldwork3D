@@ -5,6 +5,8 @@ on:
       - 'src/worldgen/asset-character-visuals.ts'
       - 'src/worldgen/fixture-visuals.ts'
       - 'src/breach-3d.ts'
+      - 'src/worldgen/road-service-fixtures.ts'
+      - 'tests/replay-prop-stability-20261108.test.mjs'
       - 'tests/map-29-architecture-hardware.test.mjs'
       - 'src/worldgen/detailed-fixture-visuals.ts'
       - 'src/worldgen/asset-review.ts'
@@ -26,6 +28,6 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Fixture geometry and scale regression
-        run: node --experimental-strip-types --test tests/map-21-asset-character-pass.test.mjs tests/map-17-vehicles.test.mjs tests/map-04-fixture-renderer.test.mjs tests/map-01-asset-registry.test.mjs tests/map-22-asset-audit.test.mjs
+        run: node --experimental-strip-types --test tests/map-21-asset-character-pass.test.mjs tests/map-17-vehicles.test.mjs tests/map-04-fixture-renderer.test.mjs tests/map-01-asset-registry.test.mjs tests/map-22-asset-audit.test.mjs tests/replay-prop-stability-20261108.test.mjs
       - name: Typecheck
         run: npm run check
