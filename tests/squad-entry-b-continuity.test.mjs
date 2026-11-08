@@ -145,5 +145,16 @@ test('B21: player WATCH on a stack waypoint is never commandeered by generated c
    reviewed=true;break;
   }
   assert.ok(reviewed,'the follower must actually execute a crossed-room MOVE');
+  // B21 previously ended during crossing and did not check the decisive
+  // arrival handoff. The generated entry's fixed look must NOT overwrite
+  // an explicit WATCH when its MOVE completes.
+  for(let tick=0;tick<1500&&follower.plan.some(n=>n.id===entry.id);tick++)
+   stepSession(s,1/30);
+  assert.ok(!follower.plan.some(n=>n.id===entry.id),
+   'the generated entry must finish rather than remain held indefinitely');
+  assert.equal(follower.aimInstruction?.mode,'track',
+   'generated clearing must not overwrite player WATCH on arrival');
+  assert.equal(follower.aimInstruction?.source,undefined);
+  assert.deepEqual(follower.aimInstruction?.point,watched);
  }finally{activateSite(null);}
 });

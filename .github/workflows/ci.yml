@@ -1748,6 +1748,16 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/replay-director-continuous-camera-') }}
         run: |
           node --experimental-strip-types --test tests/replay-director-continuous.test.mjs tests/replay-director-storyboard.test.mjs tests/replay-director-physical.test.mjs tests/replay-director-wide-coverage.test.mjs tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
+      - name: Phase A Release 1 — real four-person squad flow and WATCH protection
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/phase-a-squad-flow-') }}
+        run: |
+          node --experimental-strip-types --test tests/phase-a-stack-geometry.test.mjs tests/squad-flow-a1.test.mjs tests/doorway-convoy-flow.test.mjs tests/squad-entry-b-sectors.test.mjs tests/squad-entry-b-continuity.test.mjs tests/tactical-integration-04-squad-planning.test.mjs tests/breach-149.test.mjs
+          node --experimental-strip-types scripts/audit-squad-entry-b.mjs
+      - name: Phase A Release 1 — previously served Pages build
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/phase-a-squad-flow-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       - name: Phase A A3 — physical shot pressure and fire safety
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/phase-a-danger-evidence-') }}
         run: |
