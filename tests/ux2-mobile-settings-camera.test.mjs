@@ -17,7 +17,7 @@ test('settings has its own reachable 44px close affordance',()=>{
 test('choosing a camera view or fit returns to map, focus and aria state',()=>{
  assert.match(main,/function closeMissionSettings\(returnFocus=true\)/);
  assert.match(main,/collapseTacticalSheets\(null\)/);
- assert.match(main,/if\(returnFocus\)ui\.moreOrders\.focus\(\)/);
+ assert.match(main,/if\(returnFocus\)ui\.siteSettingsToggle\.focus\(\)/);
  assert.match(main,/if\(opening\)tacticalSheetNavigation\.focusFirst\(\)/);
  assert.match(main,/function chooseCameraView\(mode:ViewMode\)\{/);
  for(const mode of ['iso','top','plan2d'])
