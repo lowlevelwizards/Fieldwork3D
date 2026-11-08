@@ -43,12 +43,18 @@ export function reservedParkingBay(
  const long=broad?zone.w:zone.h,short=broad?zone.h:zone.w;
  if(slots<2||long<132||short<55)return null;
  const stride=long/slots;
+ const bayWidth=Math.min(stride*.64,42);
  const lane=arrivalAccessLane(site,zone);
  const transverse=broad?lane?.x:lane?.y;
+ // Clearance is about the real reserved bay and pedestrian path, NOT
+ // 80% of the entire stall spacing. That old estimate accidentally
+ // eliminated both bays on compact east/west parking lots.
+ const laneWidth=broad?lane?.w:lane?.h;
+ const required=bayWidth/2+(laneWidth??24)/2+7;
  const candidates=Array.from({length:slots},(_,i)=>({
   i,pos:(i+.5)*stride-long/2+(broad?zone.x:zone.y)
  })).filter(p=>transverse===undefined||
-   Math.abs(p.pos-transverse)>stride*.8);
+   Math.abs(p.pos-transverse)>required);
  candidates.sort((a,b)=>
   Math.abs(a.pos-(transverse??(broad?zone.x:zone.y)))-
   Math.abs(b.pos-(transverse??(broad?zone.x:zone.y)))||
@@ -57,5 +63,5 @@ export function reservedParkingBay(
  const side:1|-1=selected.pos<(transverse??(broad?zone.x:zone.y))?1:-1;
  return {x:broad?selected.pos:zone.x,
   y:broad?zone.y:selected.pos,
-  bayWidth:Math.min(stride*.64,42),short,broad,side};
+  bayWidth,short,broad,side};
 }
