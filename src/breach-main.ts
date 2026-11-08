@@ -4675,6 +4675,8 @@ function advanceReplayCamera(dt:number,instant=false):void{
     stage.view.focus=shot.focus;stage.view.zoom=shot.zoom;
     stage.view.yaw=shot.yaw;stage.view.pitch=shot.pitch;
     stage.setReplayDirectorFocus(shot.focus);
+    stage.setReplayDirectorSubjects(actors.filter(a=>a.side==='blue'&&
+      target.subjects.includes(a.id)).map(a=>a.p));
     return;
   }
   stage.setReplayDirectorFocus(null);
