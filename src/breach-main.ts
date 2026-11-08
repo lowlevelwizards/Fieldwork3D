@@ -7135,8 +7135,17 @@ function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
  * Routes, doors and order handles compete by explicit geometry, never by
  * separate first-match handlers or unseen world information. */
 function tacticalPickAt(screen:Pt,pointerKind:string):TacticalPick|null{
-  if(state.phase!=='planning'||replaying)return null;
+  if(replaying)return null;
   const touch=pointerKind==='touch',pen=pointerKind==='pen';
+  // GO/PAUSE still permit direct operator selection. The rest of the
+  // planning surface is deliberately non-interactive while executing.
+  if(state.phase!=='planning'){
+    return resolveTacticalPick(team(state).filter(a=>a.health>0).map(a=>({
+      kind:'operator' as const,owner:a.id,
+      distancePx:distance(worldToScreen(a.p,viewMode==='plan2d'?0:24),screen),
+      corePx:touch?18:pen?16:14,haloPx:touch?30:pen?25:21
+    })),selected);
+  }
   const hits:TacticalPick[]=[];
   const actor=uid(selected);
   for(const unit of team(state)){
@@ -7418,6 +7427,11 @@ function releasePointer(e:PointerEvent,cancelled=false){
       (point,height)=>worldToScreen(point,viewMode==='plan2d'?0:height),
       historicalShotVisible,e.pointerType==='touch'?30:22);
     if(hit)selectReplayShot(hit);
+  }
+  if(!cancelled&&!replaying&&state.phase!=='planning'&&
+     activePointers.size===1&&!p.moved&&p.mode==='undecided'&&
+     p.pick?.kind==='operator'&&p.pick.owner){
+    selectUnit(p.pick.owner);
   }
   if(!cancelled&&state.phase==='planning'&&!replaying&&activePointers.size===1){
     if((looking||flashMode||firePlacement||evacMode)&&
