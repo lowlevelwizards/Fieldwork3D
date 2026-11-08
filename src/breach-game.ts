@@ -62,6 +62,7 @@ import {interpretSound,soundResponse,soundPriority}
   from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
+import {canAutoShove} from './breach-traversal-surfaces.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
 import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
 import {damageCover} from './breach-reactive-cover.ts';
@@ -653,9 +654,40 @@ export function plannedWindowRoute(s:Session,from:Pt,to:Pt,
    traversalRouteLength(from,ordinary)/53)return null;
  return [...portal.approachPath,portal.crossing.landing,...portal.exitPath];
 }
+/** An explicit straight gesture through ONE known light object may remain
+ * authored. Other blocked samples (walls, unknown cover, doors) still reject.
+ * The motor must physically reach and shove the same known object later. */
+function knownShoveCrossing(s:Session,from:Pt,to:Pt):number|null{
+ if(!intelPassable(from,s.intel,SQUEEZE_RADIUS)||
+    !intelPassable(to,s.intel,SQUEEZE_RADIUS))return null;
+ const span=d(from,to);
+ if(span<3)return null;
+ for(let index=0;index<s.coverState.length;index++){
+   const obstacle=s.coverState[index];
+   if(!s.intel.cover.has(index)||!canAutoShove(obstacle)||
+      !canRelocateCover(obstacle)||
+      !segmentHitsBox(from,to,{...obstacle,
+        w:obstacle.w+2,h:obstacle.h+2}))continue;
+   const allowance={...obstacle,
+     w:obstacle.w+SQUEEZE_RADIUS*2+4,
+     h:obstacle.h+SQUEEZE_RADIUS*2+4};
+   let otherObstruction=false;
+   for(let i=1,n=Math.ceil(span/4);i<n;i++){
+     const t=i/n,p={x:from.x+(to.x-from.x)*t,
+       y:from.y+(to.y-from.y)*t};
+     if(!intelPassable(p,s.intel,SQUEEZE_RADIUS)&&
+        !segmentHitsBox(p,p,allowance)){
+       otherObstruction=true;break;
+     }
+   }
+   if(!otherObstruction)return index;
+ }
+ return null;
+}
 function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
  const world=knownWindowWorld(s);
- return !!probeObstacleCrossing(from,to,world)||
+ return knownShoveCrossing(s,from,to)!==null||
+   !!probeObstacleCrossing(from,to,world)||
    !!probeWindowPortalRoute(from,to,world,
      (a,b)=>routeWithSqueezeIntel(s.intel,a,b));
 }
@@ -829,6 +861,9 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
     if(!Number.isFinite(point.x)||!Number.isFinite(point.y)){
       clipped=true;break;
     }
+    if(!last&&!intelPassable(point,s.intel,SQUEEZE_RADIUS)&&
+       intelPassable(stroke[stroke.length-1],s.intel,SQUEEZE_RADIUS)&&
+       knownTraversal(s,previousInput,stroke[stroke.length-1]))continue;
     const span=d(previousInput,point);
     const steps=Math.max(1,Math.ceil(span/3));
     let lastClear=previousInput,firstBlocked:Pt|null=null;
@@ -2089,6 +2124,27 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     if(s.seconds<a.retryRouteAt){a.velocity=0;return false;}
     a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
       cachedEnemyRoute(s,a.p,p,true);
+    if(!a.nav.length&&a.side==='blue'){
+      // A known small object that the player drew THROUGH is a contextual
+      // crossing, not a permanently impassable destination. Approach its
+      // near edge using ordinary world-truth navigation; only body contact
+      // can actually move it. Nothing is learned about hidden furniture.
+      const index=knownShoveCrossing(s,a.p,p);
+      if(index!==null){
+        const obstacle=s.coverState[index];
+        const dx=p.x-a.p.x,dy=p.y-a.p.y;
+        const span=Math.hypot(dx,dy)||1;
+        const ux=dx/span,uy=dy/span;
+        const setback=(Math.abs(ux)*obstacle.w+
+          Math.abs(uy)*obstacle.h)/2+OPERATOR_RADIUS+5;
+        const staging={x:obstacle.x-ux*setback,
+          y:obstacle.y-uy*setback};
+        const path=d(a.p,staging)<5?[]:
+          routeWithSqueezeWorld(a.p,staging,s.doors);
+        if(d(a.p,staging)<5||path.length)
+          a.nav=[...path,p];
+      }
+    }
     if(!a.nav.length){
       // A failed route is a stationary brace, not phantom walking speed.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
