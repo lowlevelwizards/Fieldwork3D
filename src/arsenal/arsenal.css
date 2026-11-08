@@ -299,3 +299,30 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
 .arsenal-wb-finish-help{margin:0;font:600 12px/1.45 var(--fw-font-action);
  color:var(--fw-text-warm)}
 .arsenal-wb-finish-help[hidden]{display:none}
+
+/* R7.14 — reversible, opt-in weapon Lighting Lab in the existing Workbench.
+   Controls live in the scrollable editor panel, not across the 3D viewport. */
+.arsenal-lighting-lab{border:1px solid #8da89a;border-radius:8px;
+ background:#1d302b;color:#eff2e6;padding:0;min-width:0}
+.arsenal-lighting-lab>summary{cursor:pointer;list-style:none;
+ padding:13px;font:750 14px/1.2 var(--fw-font-menu);letter-spacing:.06em}
+.arsenal-lighting-lab>summary::-webkit-details-marker{display:none}
+.arsenal-lighting-lab[open]>summary{border-bottom:1px solid #445d53}
+.arsenal-lighting-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:11px;padding:13px}
+.arsenal-lighting-controls label{display:flex;flex-direction:column;gap:6px;
+ min-width:0;color:#e5dec5;font:650 11px/1.25 var(--fw-font-action)}
+.arsenal-lighting-controls select{display:block;width:100%;min-height:39px;
+ border:1px solid #6c8279;border-radius:5px;padding:8px;background:#273a34;
+ color:#f6e8d0;font:600 12px var(--fw-font-action)}
+.arsenal-lighting-controls .arsenal-lighting-range{grid-column:1/-1;
+ display:grid;grid-template-columns:1fr auto;align-items:center;gap:5px 10px}
+.arsenal-lighting-range output{color:#f4d49c;font-variant-numeric:tabular-nums}
+.arsenal-lighting-range input{grid-column:1/-1;accent-color:#dfc18f;
+ width:100%;min-height:30px;touch-action:pan-x}
+.arsenal-lighting-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
+.arsenal-lighting-actions button{flex:1;min-height:43px;padding:9px;
+ border:1px solid #a5a893;border-radius:5px;background:#334e42;
+ color:#f9e9c8;font:700 12px var(--fw-font-action)}
+.arsenal-lighting-controls small{grid-column:1/-1;color:#a9bcb0;
+ line-height:1.45}
