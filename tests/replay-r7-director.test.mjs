@@ -56,7 +56,7 @@ test('door stack and path are detected while path overlay is off',()=>{
  assert.equal(result.doorId,'D-1');
  assert.equal(result.actorsFramed,4);
  assert.ok(result.focus.x>100,'Camera should lead toward approaching door');
- assert.ok(result.pitch>=35*Math.PI/180&&result.pitch<=60*Math.PI/180);
+ assert.ok(result.pitch>=20*Math.PI/180&&result.pitch<=44*Math.PI/180);
 });
 test('future cue anticipates only known friendly participant, no enemy positions',()=>{
  const events=[
@@ -171,4 +171,110 @@ test('scheduler follows a breach through entry and releases old door immediately
  assert.deepEqual(scheduler.choose(.7,{...departure,
   focus:{x:273,y:89}}).focus,{x:273,y:89},
   'tracking must keep updating without another hard cut');
+});
+
+test('moving operators win the camera over a separate idle element',()=>{
+ const positions=[{x:42,y:60},{x:54,y:75},
+  {x:177,y:64},{x:189,y:78}];
+ const f=frame(4,positions,(id,i)=>i<2?[]:[
+  {id:1,kind:'move',p:{x:237,y:64+i*6}},
+  {id:2,kind:'move',p:{x:292,y:67+i*6}}
+ ]);
+ for(let i=0;i<4;i++)f.actors[i].velocity=i<2?0:36;
+ const intents=directorIntentsAt(f,new Map(),[],4,friendlies);
+ const actors=ids.map((id,i)=>({id,side:'blue',health:3,
+  heading:0,p:positions[i],velocity:f.actors[i].velocity}));
+ const shot=composeReplayDirectorShot(4,actors,[],[],1,0,1100,
+  {intents,upcoming:null,maxZoom:9.5});
+ assert.deepEqual(shot.subjects,['ash','vale'],
+  'the separate advancing element should become the shot');
+ assert.equal(shot.shotType,'travel');
+ assert.ok(shot.motion>40);
+ assert.ok(shot.focus.x>180,
+  'the director needs to follow live movement instead of watching idle actors');
+});
+test('an active moving WATCH blends movement direction with deliberate gaze',()=>{
+ const location=[{x:100,y:100},{x:111,y:110}];
+ const f=frame(5,location,()=>[
+  {id:1,kind:'move',p:{x:181,y:100}},
+  {id:2,kind:'move',p:{x:226,y:100}}
+ ]);
+ f.actors.forEach(a=>{
+  a.velocity=36;
+  a.aimInstruction={mode:'track',point:{x:a.p.x,y:a.p.y-100}};
+ });
+ const intents=directorIntentsAt(f,new Map(),[],5,friendlies);
+ assert.deepEqual(intents[0].watchDirection,{x:0,y:-1});
+ const actors=f.actors.map(a=>({id:a.id,p:a.p,
+  side:'blue',health:3,heading:0,velocity:a.velocity}));
+ const shot=composeReplayDirectorShot(5,actors,[],[],1,0,1100,
+  {intents,upcoming:null,maxZoom:9.5});
+ const cameraSide={x:Math.sin(shot.yaw),y:Math.cos(shot.yaw)};
+ assert.ok(cameraSide.y>.38&&cameraSide.x<-.1,
+  'the camera should be behind the WATCH but retain the direction of travel');
+ assert.ok(shot.pitch<=38*Math.PI/180,
+  'moving WATCH should be filmed at low over-the-shoulder angles');
+ assert.ok(shot.zoom>6,
+  'a compact moving pair should be closer than the old tactical zoom cap');
+});
+test('an authored future WATCH influences direction before becoming active',()=>{
+ const positions=[{x:100,y:100},{x:111,y:108}];
+ const planned=(id,i)=>[
+  {id:1,kind:'move',p:{x:142,y:100+i*8}},
+  {id:2,kind:'move',p:{x:179,y:100+i*8},
+    aimMode:'track',aimLabel:'watch',
+    aimPoint:{x:179,y:-40}},
+  {id:3,kind:'move',p:{x:245,y:100+i*8}}
+ ];
+ const f=frame(2,positions,planned);
+ f.actors.forEach(a=>a.velocity=25);
+ const intents=directorIntentsAt(f,new Map(),[],2,friendlies);
+ assert.equal(intents[0].watchDirection,null,
+  'upcoming WATCH is not an already executing order');
+ assert.equal(intents[0].plannedAttention.kind,'watch');
+ assert.ok(intents[0].plannedAttention.distance>50);
+ const actors=f.actors.map(a=>({id:a.id,p:a.p,
+  side:'blue',health:3,heading:0,velocity:a.velocity}));
+ const ctx={intents,upcoming:null,maxZoom:9.5};
+ const anticipated=composeReplayDirectorShot(2,actors,[],[],1,0,1100,ctx);
+ const plain=directorIntentsAt(frame(2,positions,(id,i)=>[
+  {id:1,kind:'move',p:{x:142,y:100+i*8}},
+  {id:2,kind:'move',p:{x:179,y:100+i*8}},
+  {id:3,kind:'move',p:{x:245,y:100+i*8}}
+ ]),new Map(),[],2,friendlies);
+ const baseline=composeReplayDirectorShot(2,actors,[],[],1,0,1100,
+  {...ctx,intents:plain});
+ const watchFacing={x:Math.sin(anticipated.yaw),
+  y:Math.cos(anticipated.yaw)};
+ const travelFacing={x:Math.sin(baseline.yaw),
+  y:Math.cos(baseline.yaw)};
+ assert.ok(watchFacing.y>travelFacing.y+.12,
+  'the director should begin anticipating the upcoming authored WATCH');
+ assert.ok(anticipated.focus.x>100&&anticipated.focus.x<155,
+  'anticipation must not leave the moving squad out of frame');
+});
+test('a planned door action can pull interest before its order activates',()=>{
+ const positions=[{x:49,y:90},{x:59,y:104}];
+ const planned=(id,i)=>[
+  {id:1,kind:'move',p:{x:96,y:90+i*10}},
+  {id:2,kind:'move',p:{x:142,y:90+i*10}},
+  {id:3,kind:'door',p:{x:190,y:95},doorId:'D-2'}
+ ];
+ const f=frame(2,positions,planned);
+ f.actors.forEach(a=>a.velocity=26);
+ const actors=f.actors.map(a=>({id:a.id,p:a.p,
+  side:'blue',health:3,heading:0,velocity:a.velocity}));
+ const intents=directorIntentsAt(f,new Map(),[],2,friendlies);
+ assert.equal(intents[0].plannedAttention.kind,'action');
+ const before=composeReplayDirectorShot(2,actors,[],[],1,0,1100,
+  {intents,upcoming:null,maxZoom:9.5});
+ const stripped=directorIntentsAt(frame(2,positions,(id,i)=>[
+  {id:1,kind:'move',p:{x:96,y:90+i*10}},
+  {id:2,kind:'move',p:{x:142,y:90+i*10}}
+ ]),new Map(),[],2,friendlies);
+ const without=composeReplayDirectorShot(2,actors,[],[],1,0,1100,
+  {intents:stripped,upcoming:null,maxZoom:9.5});
+ assert.ok(before.focus.x>without.focus.x+2,
+  'an unactivated but authored doorway action must shift interest ahead');
+ assert.ok(before.zoom>6,'a close moving shot should stay intimate');
 });
