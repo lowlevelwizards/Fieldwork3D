@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;overflow:hidden"><canvas id="scene"></canvas>
+<script type="module">
+import * as THREE from 'three';
+import {MiniatureFocusPass} from '../../src/rendering/miniature-focus-pass.ts';
+const width=390,height=844;
+const renderer=new THREE.WebGLRenderer({canvas:document.getElementById('scene'),
+  antialias:true,alpha:false,powerPreference:'high-performance'});
+renderer.setPixelRatio(1);renderer.setSize(width,height,false);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.05;
+const scene=new THREE.Scene();
+scene.background=new THREE.Color('#1a3334');
+const camera=new THREE.OrthographicCamera(-195,195,422,-422,.1,1000);
+camera.position.set(0,0,300);camera.lookAt(0,0,0);
+scene.add(new THREE.AmbientLight(0xffffff,1.8));
+const light=new THREE.DirectionalLight(0xe9e6d2,2.1);
+light.position.set(3,4,25);scene.add(light);
+// Fixed photometric reference: lit standard materials, non-tone-mapped
+// emissive/fog-like panels, and crisp high-contrast corner geometry.
+const background=new THREE.Mesh(new THREE.PlaneGeometry(390,844),
+ new THREE.MeshStandardMaterial({color:0x385b49,roughness:.96}));
+background.position.z=-9;scene.add(background);
+const patch=new THREE.Mesh(new THREE.PlaneGeometry(95,95),
+ new THREE.MeshBasicMaterial({color:0x97a2bc,toneMapped:false}));
+patch.position.set(0,0,1);scene.add(patch);
+for(let i=0;i<9;i++){
+ const stripe=new THREE.Mesh(new THREE.PlaneGeometry(4,130),
+   new THREE.MeshBasicMaterial({color:i%2?0x98a99b:0x6f8c7e,
+      toneMapped:false}));
+ stripe.position.set(-185+i*9,375,3);
+ scene.add(stripe);
+}
+const accent=new THREE.Mesh(new THREE.BoxGeometry(40,35,10),
+ new THREE.MeshStandardMaterial({color:0xb07253,roughness:.7}));
+accent.position.set(65,-110,2);scene.add(accent);
+const pass=new MiniatureFocusPass(renderer);
+const rect={left:70,top:150,right:320,bottom:694};
+const decision={active:true,radiusPx:6,strength:.8,reason:'test'};
+window.miniatureFixtureDraw=(mode)=>{
+ if(mode==='off'){renderer.render(scene,camera);return;}
+ pass.render(scene,camera,{...decision,strength:mode==='zero'?0:.8},
+   rect,width,height,[],null);
+};
+window.miniatureFixtureDraw('off');
+window.miniatureFixtureReady=true;
+</script>
+</body></html>

@@ -7,6 +7,7 @@ on:
       - 'src/breach-main.ts'
       - 'tests/miniature-focus-*.test.mjs'
       - 'scripts/smoke-miniature-focus.mjs'
+      - 'tests/fixtures/miniature-focus-framebuffer.html'
       - '.github/workflows/miniature-focus-smoke.yml'
 permissions:
   contents: read
@@ -15,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   miniature-smoke:
-    if: ${{ startsWith(github.head_ref, 'feature/breach-miniature-focus-') || startsWith(github.head_ref, 'feature/miniature-focus-') }}
+    if: ${{ startsWith(github.head_ref, 'feature/breach-miniature-focus-') || startsWith(github.head_ref, 'feature/miniature-focus-') || startsWith(github.head_ref, 'fix/miniature-focus-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:

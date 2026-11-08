@@ -85,5 +85,38 @@ try{
   if(frames[2].hdr&&frames[0].frame.equals(frames[2].frame))
     throw Error('Focus debug mask did not reach the final WebGL canvas');
   console.log('MF-1 direct fallback, opt-in scene and mask smoke passed');
+  // Static scene: test native color parity and actual optical output rather
+  // than trusting a dynamic game screenshot or a shader-compile-only test.
+  const fixture=await browser.newPage({viewport:{width:390,height:844},
+    deviceScaleFactor:1});
+  const gpuErrors=[];
+  fixture.on('pageerror',e=>gpuErrors.push(e.message));
+  fixture.on('console',m=>{
+    if(m.type()==='error'&&
+      /WebGLProgram|Shader Error|INVALID_OPERATION|compile|linker/i.test(m.text()))
+      gpuErrors.push(m.text());
+  });
+  try{
+    await fixture.goto(origin+'/tests/fixtures/miniature-focus-framebuffer.html',
+      {waitUntil:'domcontentloaded'});
+    await fixture.waitForFunction(()=>window.miniatureFixtureReady===true,
+      null,{timeout:30000});
+    const center={x:157,y:388,width:76,height:68};
+    const corner={x:2,y:2,width:100,height:105};
+    const shot=async box=>fixture.screenshot({clip:box});
+    const centerOff=await shot(center);
+    const cornerOff=await shot(corner);
+    await fixture.evaluate(()=>window.miniatureFixtureDraw('zero'));
+    if(!centerOff.equals(await shot(center))||
+       !cornerOff.equals(await shot(corner)))
+      throw Error('MF-2 zero-strength pass altered original framebuffer colors');
+    await fixture.evaluate(()=>window.miniatureFixtureDraw('focus'));
+    if(!centerOff.equals(await shot(center)))
+      throw Error('MF-2 changed protected center brightness/tone');
+    if(cornerOff.equals(await shot(corner)))
+      throw Error('MF-2 blur is still invisible on a textured periphery');
+    if(gpuErrors.length)throw Error('MF-2 WebGL errors: '+gpuErrors.join(' | '));
+    console.log('MF-2 frozen-scene center parity, no color flicker, visible optical edge passed');
+  }finally{await fixture.close();}
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

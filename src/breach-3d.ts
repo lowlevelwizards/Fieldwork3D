@@ -23,8 +23,9 @@ import {graphicsBudget} from './breach-graphics-budget.ts';
 import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
  miniatureFocusDecision,type MiniatureFocusMode,type MiniatureFocusView}
  from './rendering/miniature-focus-config.ts';
-import {miniatureProtectedRect,type FocusPoint,type FocusRect}
+import {miniatureStableFocusRect,type FocusPoint}
  from './rendering/miniature-focus-mask.ts';
+import {MINIATURE_FOCUS_MAX_ANCHORS} from './rendering/miniature-focus-pass.ts';
 import {MiniatureFocusPass,type MiniatureFocusDebug}
  from './rendering/miniature-focus-pass.ts';
 import {projectedOperatorHeightPx,operatorShadowDetail,
@@ -168,8 +169,9 @@ export class TacticalScene3D{
   private miniFocusInputActive=false;
   private miniFocusRecovery=1;
   private readonly miniFocusProjection=new THREE.Vector3();
-  private readonly miniFocusPoints:FocusPoint[]=Array.from(
-    {length:8},()=>({x:0,y:0}));
+  private readonly miniFocusAnchorPool:FocusPoint[]=Array.from(
+    {length:MINIATURE_FOCUS_MAX_ANCHORS},()=>({x:0,y:0}));
+  private readonly miniFocusVisibleAnchors:FocusPoint[]=[];
   private lastFogSignature='';
   private lastMemoryFogSignature='';
   private lastMemoryFogSession:Session|null=null;
@@ -238,33 +240,39 @@ export class TacticalScene3D{
     else this.miniFocusRecovery=Math.min(1,
       this.miniFocusRecovery+Math.max(0,dt)/.18);
   }
-  /** Conservative projection of known site bounds, unless an omniscient
-   * replay director may safely protect its explicitly featured friendlies.
-   * An invalid or behind-camera projection disables blur for that frame.
+  /** Protect only actors that have actually been disclosed for this view.
+   * Hidden enemies never contribute their positions to the focus effect.
+   * Actor models stay sharp even when the camera frames one near the edge.
+   * Over-capacity fails closed to the native image rather than hiding a
+   * thirteenth visible person's face/equipment behind blur.
    */
-  private miniatureFocusRect(camera:THREE.Camera,
-    director:boolean,omniscient:boolean):FocusRect|null{
-    const subjects=director&&omniscient&&
-      this.replayDirectorSubjects.length>0?
-      this.replayDirectorSubjects:null;
-    const bounds=activeWorldBounds();
-    const count=subjects?Math.min(4,subjects.length)*2:8;
-    for(let i=0;i<count;i++){
-      const p=subjects?subjects[i>>1]:null;
-      const x=p?.x??((i&1)?bounds.maxX:bounds.minX);
-      const z=p?.y??((i&2)?bounds.maxY:bounds.minY);
-      const height=subjects?(i&1?42:0):(i&4?42:0);
-      const projected=this.miniFocusProjection.set(x,height,z).project(camera);
-      if(!Number.isFinite(projected.x)||!Number.isFinite(projected.y)||
-         !Number.isFinite(projected.z)||
-         projected.z<-1||projected.z>1)return null;
-      this.miniFocusPoints[i].x=(projected.x+1)*this.width/2;
-      this.miniFocusPoints[i].y=(1-projected.y)*this.height/2;
-    }
-    return miniatureProtectedRect(this.miniFocusPoints.slice(0,count),
-      this.width,this.height,subjects?48:32);
+  private miniatureFocusAnchors(camera:THREE.Camera):readonly FocusPoint[]|null{
+    const output=this.miniFocusVisibleAnchors;
+    output.length=0;
+    const add=(p:THREE.Vector3):boolean=>{
+      const clip=this.miniFocusProjection.copy(p).project(camera);
+      if(!Number.isFinite(clip.x)||!Number.isFinite(clip.y)||
+         !Number.isFinite(clip.z))return false;
+      if(clip.z<-1||clip.z>1)return true;
+      const x=(clip.x+1)*this.width/2,y=(1-clip.y)*this.height/2;
+      // Offscreen actors cannot be affected by the current framebuffer.
+      if(x< -90||x>this.width+90||
+         y< -100||y>this.height+100)return true;
+      if(output.length>=MINIATURE_FOCUS_MAX_ANCHORS)return false;
+      const point=this.miniFocusAnchorPool[output.length];
+      point.x=x;point.y=y;
+      output.push(point);
+      return true;
+    };
+    for(const o of this.actors.values())
+      if(o.root.visible&&!add(o.root.position))return null;
+    for(const rig of this.civilianRigs.values())
+      if(rig.root.visible&&!add(rig.root.position))return null;
+    if(this.rescueFigure?.visible&&
+      !add(this.rescueFigure.position))return null;
+    return output;
   }
-  private renderMiniatureFocus(camera:THREE.Camera,omniscient:boolean):void{
+  private renderMiniatureFocus(camera:THREE.Camera):void{
     if(this.miniFocusMode==='off'&&!this.miniFocusDebug){
       this.renderer.render(this.scene,camera);return;
     }
@@ -278,11 +286,12 @@ export class TacticalScene3D{
       view!=='floor-plan'&&this.quality.mode!=='performance'&&
       (this.miniFocusMode!=='replay'||this.miniFocusIsReplay);
     const rect=potentiallyEnabled||this.miniFocusDebug?
-      this.miniatureFocusRect(camera,director,omniscient):null;
+      miniatureStableFocusRect(this.width,this.height):null;
+    const anchors=rect?this.miniatureFocusAnchors(camera):null;
     const decision=miniatureFocusDecision({
       mode:this.miniFocusMode,view,quality:this.quality.mode,
-      protectedRegionValid:!!rect,gesturesActive:this.miniFocusInputActive,
-      capable:true,
+      protectedRegionValid:!!rect&&anchors!==null,
+      gesturesActive:this.miniFocusInputActive,capable:true,
     });
     if(!decision.active&&!this.miniFocusDebug){
       this.renderer.render(this.scene,camera);return;
@@ -290,7 +299,7 @@ export class TacticalScene3D{
     decision.strength*=this.miniFocusRecovery;
     if(!this.miniFocusPass)this.miniFocusPass=new MiniatureFocusPass(this.renderer);
     this.miniFocusPass.render(this.scene,camera,decision,rect,
-      this.width,this.height,this.miniFocusDebug);
+      this.width,this.height,anchors??[],this.miniFocusDebug);
   }
   inspectMiniatureFocus(){
     return {mode:this.miniFocusMode,debug:this.miniFocusDebug,
@@ -2941,7 +2950,7 @@ export class TacticalScene3D{
       for(const child of cameraOwner.chest.children)hide(child);
       cameraOwner.head.traverse(hide);
     }
-    try{this.renderMiniatureFocus(camera,omniscient);}
+    try{this.renderMiniatureFocus(camera);}
     finally{
       for(const [mesh,visible] of masked)mesh.visible=visible;
       this.bodycamLastQa={
