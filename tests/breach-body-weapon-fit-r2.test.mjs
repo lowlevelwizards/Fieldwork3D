@@ -44,9 +44,9 @@ function shown(r){
 }
 test('active aim stock stays below a natural firing-side shoulder seat',()=>{
  const ready=stockPocket('ready'),ads=stockPocket('ads');
- assert.ok(ready.x>=3&&ready.z>=7.8);
+ assert.ok(ready.x>4.6&&ready.z>4.9&&ready.z<5.6);
  assert.ok(ads.y<=6.2,'ADS stock too high on neck');
- assert.ok(ads.y<8&&ads.z>ANATOMY.shoulderRight.z);
+ assert.ok(ads.y<8&&ads.z<ANATOMY.shoulderRight.z);
  assert.ok(ads.x>ready.x,'ADS stock must remain in front of armor');
 });
 test('AR/AK fallback and authored contact positions start ahead of magwell',()=>{
@@ -66,15 +66,16 @@ test('AR/AK fallback and authored contact positions start ahead of magwell',()=>
 });
 test('short-stock keeps outward firing elbow corridor without arm stretching',()=>{
  const pole=elbowCorridor('short',1);
- assert.ok(pole.z>12,'right elbow should be beyond weapon');
+ assert.ok(pole.z>7.8&&pole.z<9,
+   'firing elbow should move only slightly outboard');
  const r=createOperatorRig('short-right','blue');
  try{
   poseOperator(r,pose(2,{handlingOverride:'short'}),0);
   assert.ok(r.arms.every(a=>Math.abs(a.upper.scale.y-10)<1e-5&&
     Math.abs(a.lower.scale.y-10)<1e-5));
   const right=joint(r.arms[1]);
-  assert.ok(right.z>r.weapon.position.z-.7,
-    'firing elbow is trapped inside receiver side');
+  assert.ok(right.x>ANATOMY.shoulderRight.x-.5,
+    'firing elbow must not flap backward past shoulder');
  }finally{r.dispose();}
 });
 test('hip and legs retarget with upper body while planted feet remain planted',()=>{

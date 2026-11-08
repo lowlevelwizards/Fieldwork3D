@@ -25,7 +25,7 @@ test('167: stock contact uses the actual rear face of the visible stock',()=>{
      .applyEuler(fit.rotation).add(fit.origin);
    assert.ok(butt.distanceTo(fit.stock)<1e-7,
      'visible buttplate and claimed stock contact must coincide');
-   assert.ok(fit.stock.z>=(mode==='short'?6.60:6.35),
+   assert.ok(fit.stock.z>=4.15,
      weapon+' '+mode+' sends buttplate inside the torso');
    assert.ok(Number.isFinite(fit.contactError));
    assert.ok(fit.stockError<3,
@@ -34,15 +34,15 @@ test('167: stock contact uses the actual rear face of the visible stock',()=>{
  }
 });
 
-test('167: underarm short-stock contact is below and outside ready pocket',()=>{
+test('167: short-stock butt remains on front chest while folding down',()=>{
  const ready=stockPocket('ready'),short=stockPocket('short');
- assert.ok(short.y<ready.y-5);
- assert.ok(short.z>ready.z+.25);
- assert.ok(short.x<ready.x-2);
+ assert.ok(short.y<ready.y-.5);
+ assert.ok(Math.abs(short.z-ready.z)<.5);
+ assert.ok(short.x<ready.x-.25&&short.x>3.8);
  const fitR=fitWeaponPose({weapon:'carbine',handling:'ready',yaw:0,recoil:0});
  const fitS=fitWeaponPose({weapon:'carbine',handling:'short',yaw:0,recoil:0});
- assert.ok(fitS.stock.y<fitR.stock.y-5);
- assert.ok(fitS.stock.z>fitR.stock.z+.25);
+ assert.ok(fitS.stock.y<fitR.stock.y-.5);
+ assert.ok(Math.abs(fitS.stock.z-fitR.stock.z)<1.25);
 });
 
 test('167: elbows use compact shoulder-relative bend corridors',()=>{
@@ -79,7 +79,7 @@ test('167: live Lab buttons expose animated, interruptible contact diagnostics',
  assert.match(lab,/fromWeapon:\{/);
  assert.match(lab,/performance\.now\(\)\/1000-labSwitch\.since/);
  const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
- assert.match(rig,/blendSnapshot:activeTransition\?\.fromWeapon/);
+ assert.match(rig,/activeTransition\?\.fromWeapon/);
  assert.match(lab,/BUTTPLATE GAP/);
  assert.match(lab,/ELBOW SPREAD/);
  assert.match(lab,/handlingBlend/);

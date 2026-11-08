@@ -7,7 +7,8 @@
 import * as THREE from 'three';
 import {solveTwoBone,ARM_LIMITS,intersectsTorso,
  type LimbSolution} from './breach-ik.ts';
-import {anatomicalElbowCost} from './breach-anatomy.ts';
+import {anatomicalElbowCost,carryElbowViolation}
+ from './breach-anatomy.ts';
 import {armorArmIntrusion,armorElbowPole}
  from './breach-arm-armor-clearance.ts';
 import {lowReadyFamilyFit,lowReadyElbowPole}
@@ -149,6 +150,38 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
  let solved=solveTwoBone(shoulder,wrist,10,10,preferredPole,
    ARM_LIMITS,req.neutral?undefined:previousBend,
    scratch.arms[armIndex]);
+ // A collision-free pose cannot escape through the back of the shoulder.
+ // All paths, including the early continuity/preview exits, use the same
+ // bounded forward/down hemisphere. Re-solve exact bone lengths: do not
+ // move an already solved elbow independently of the wrist.
+ const finish=(solution:LimbSolution,dynamic:DynamicArmFit|null,
+   used:FallbackArmResult['used']):FallbackArmResult=>{
+   if(req.neutral||req.down||req.surrender||
+      (req.mode!=='carry'&&req.mode!=='aim'))
+     return {solution,dynamic,used};
+   const measure=(limb:LimbSolution)=>
+     carryElbowViolation(shoulder,limb.joint,side);
+   if(measure(solution)<.001)return {solution,dynamic,used};
+   let best=solution,bestScore=measure(solution)*100+
+     anatomicalElbowCost(shoulder,solution.joint,solution.effector,
+       side,req.outboardFiring);
+   const poles:readonly [number,number,number][]=[
+     [5,-9,side*1.2],[7,-7,side*.7],
+     [4,-9,side*3],[6,-6,side*2],[3,-7,side*.25]
+   ];
+   for(const [x,y,z] of poles){
+     const candidate=solveTwoBone(shoulder,wrist,10,10,
+       new THREE.Vector3(x,y,z),ARM_LIMITS);
+     if(!candidate.reached)continue;
+     const score=measure(candidate)*100+
+       anatomicalElbowCost(shoulder,candidate.joint,
+         candidate.effector,side,req.outboardFiring)+
+       armorArmIntrusion(shoulder,candidate.joint,candidate.effector,
+         req.legacyFront)*.08;
+     if(score<bestScore-.001){best=candidate;bestScore=score;}
+   }
+   return {solution:best,dynamic,used};
+ };
  // Lab-only authored retargets must not snap between discrete
  // finite candidate families halfway through a pose. Use one smooth pole
  // throughout the blend, with a bounded, continuous outboard correction
@@ -181,7 +214,7 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
      solved=solveTwoBone(shoulder,wrist,10,10,pole,ARM_LIMITS,
        previousBend,scratch.arms[armIndex]);
    }
-   return {solution:solved,dynamic:null,used:'authored'};
+   return finish(solved,null,'authored');
  }
  let dynamicAccepted=false;
  if(req.sourceContinuity&&envelope&&solved.reached){
@@ -189,7 +222,7 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
      solved.joint,solved.effector,envelope).valid;
  }
  if(dynamicAccepted)
-   return {solution:solved,dynamic:null,used:'authored'};
+   return finish(solved,null,'authored');
  let dynamic:DynamicArmFit|null=null;
  if(envelope&&!req.neutral&&!req.down&&!req.surrender&&!req.firing){
    dynamic=solveV3DynamicArm({
@@ -204,7 +237,7 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
      allowVisualOverlap:req.allowVisualOverlap
    });
    if(dynamic.solution)
-     return {solution:dynamic.solution,dynamic,used:'dynamic'};
+     return finish(dynamic.solution,dynamic,'dynamic');
  }
  if(!req.neutral&&!req.down&&!req.surrender){
    const score=(candidate:LimbSolution)=>armorArmIntrusion(
@@ -231,10 +264,10 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
      if(alternateScore+.015<bestScore){
        solved=alternate;bestScore=alternateScore;
      }
-     return {solution:solved,dynamic,used:'legacy'};
+     return finish(solved,dynamic,'legacy');
    }
  }
- return {solution:solved,dynamic,used:'generic'};
+ return finish(solved,dynamic,'generic');
 }
 
 /** Smooth a bend direction ON the 10+10 arm's shoulder-to-wrist circle.

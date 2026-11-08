@@ -22,8 +22,8 @@ const rigPose=(mode)=>({
 test('169: stock sits forward and on firing side with correct buttplate length',()=>{
  for(const mode of modes){
   const p=stockPocket(mode);
-  assert.ok(p.z>=7.75&&p.z<=(mode==='short'?11:8.25),
-    'stock moved into torso or too far outside '+mode);
+  assert.ok(p.z>=4.9&&p.z<=5.6,
+    'stock left the front torso contact zone '+mode);
   if(mode!=='short')assert.ok(p.x>2.5,'armor needs forward seat '+mode);
   for(const weapon of weapons){
    const fit=fitWeaponPose({weapon,handling:mode,yaw:0,recoil:0});
@@ -32,13 +32,13 @@ test('169: stock sits forward and on firing side with correct buttplate length',
    const rear=new THREE.Vector3(g.stockX*g.lengthScale,0,0)
      .applyEuler(fit.rotation).add(fit.origin);
    assert.ok(fit.stock.distanceTo(rear)<1e-6);
-   assert.ok(fit.stock.z>=(mode==='short'?6.60:6.35));
+   assert.ok(fit.stock.z>=4.15);
    assert.ok(fit.stockError<3);
    assert.ok(Number.isFinite(fit.contactError));
   }
  }
- assert.ok(stockPocket('short').z>stockPocket('ready').z+.25);
- assert.ok(stockPocket('short').y<stockPocket('ready').y-5);
+ assert.ok(Math.abs(stockPocket('short').z-stockPocket('ready').z)<.5);
+ assert.ok(stockPocket('short').y<stockPocket('ready').y-.5);
 });
 
 test('169: independent elbows are driven by authored profiles and blend inputs',()=>{
@@ -49,7 +49,7 @@ test('169: independent elbows are driven by authored profiles and blend inputs',
   assert.ok(right.z+left.z>.05,
     'firing elbow must have greater outward bias than support '+mode);
   const relaxed={...p,firingElbowFlare:p.firingElbowFlare+.35};
-  assert.ok(elbowCorridor(mode,1,relaxed).z>right.z+.3);
+  assert.ok(elbowCorridor(mode,1,relaxed).z>right.z+.08);
   assert.equal(elbowCorridor(mode,-1,relaxed).z,left.z);
   assert.ok(Math.abs(right.z)<(mode==='short'?14:9)&&
     Math.abs(left.z)<9);

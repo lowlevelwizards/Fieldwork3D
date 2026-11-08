@@ -70,14 +70,14 @@ test('stage 1: short-stock firing elbow is preferred outside the receiver',()=>{
  const trapped={x:5,y:-3,z:7};
  assert.ok(anatomicalElbowCost(shoulder,outboard,wrist,1,true)<
    anatomicalElbowCost(shoulder,trapped,wrist,1,true));
- assert.ok(stockPocket('short').z>stockPocket('ads').z+2);
+ assert.ok(Math.abs(stockPocket('short').z-stockPocket('ads').z)<.5);
 });
 test('stage 1: ADS keeps stock external to shoulder with bounded eye fit',()=>{
  const rig=createOperatorRig('stage1-ads','blue');
  try{
   poseOperator(rig,pose('ads'),0);
   assert.ok(stockPocket('ads').x>ANATOMY.shoulderRight.x+2);
-  assert.ok(stockPocket('ads').z>ANATOMY.shoulderRight.z);
+  assert.ok(stockPocket('ads').z<ANATOMY.shoulderRight.z);
   assert.ok(Number.isFinite(rig.eyeError));
   assert.ok(rig.head.position.y>5,'sight alignment must not crush the neck');
  }finally{rig.dispose();}

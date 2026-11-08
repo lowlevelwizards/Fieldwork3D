@@ -47,6 +47,7 @@ import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,
 import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor,equipmentStockPush} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
+import {blendedHandlingProfile} from './breach-handling-transition.ts';
 import type {HandlingTransition} from './breach-handling-transition.ts';
 import {sampleHandlingTransition,sampleCarryTransition}
  from './breach-pose-transition-director.ts';
@@ -90,7 +91,7 @@ import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
 import {weaponPresentationSockets} from './breach-weapon-presentation.ts';
 import {resolveWeaponAssembly,sameWeaponConfiguration,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
-import {weaponGrips,clampReach,
+import {weaponGrips,clampReach,shortStockSourceHandling,
   fitWeaponPose,type WeaponFit,type Handling,type HandlingIntent}
   from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
@@ -134,6 +135,7 @@ export type OperatorPose={
   handlingTransition?:HandlingTransition;
   obstruction?:boolean;friendlyNear?:boolean;
   clearanceRetraction?:number;clearanceBlocked?:boolean;
+  shortCompression?:number;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   gait?:'walk'|'run'|'pie'|'squeeze';
   /** 0-1 motor-owned vault phase, also restored during replay. */
@@ -1050,8 +1052,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     throwAge,throwActive,doorAge,doorActive,handOwners}=actionState;
   // The transition director is the sole owner of handling history and
   // interpolation; the rig remains only the final pose renderer.
-  const {active:activeTransition,authoredLabSwitch,profile}=
-    sampleHandlingTransition(r,p,handling);
+  const sample=sampleHandlingTransition(r,p,handling);
+  // Wall proximity owns the short-stock transition, not a second timed
+  // pose jump. The weapon, shoulders and elbow poles share one progress.
+  const nearingWall=handling==='short'&&
+    p.shortCompression!==undefined;
+  const activeTransition=nearingWall?undefined:sample.active;
+  const authoredLabSwitch=sample.authoredLabSwitch;
+  const profile=nearingWall?
+    blendedHandlingProfile(
+      shortStockSourceHandling(p.aimBlend??(p.aiming?1:0),moving,
+        p.weapon,!!p.friendlyNear),
+      'short',p.shortCompression!,p.weapon):sample.profile;
   // Explicit laboratory stances can shift the chest/weight. Live combat
   // retains the authoritative shot-time muzzle/chest transform until the
   // equivalent shot-time balance transform is integrated.
@@ -1417,6 +1429,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     configuration:p.weaponConfiguration,
     yaw:relativeYaw,
     recoil,clearanceRetraction:p.clearanceRetraction,
+    shortCompression:p.shortCompression,
+    shortFrom:shortStockSourceHandling(
+      p.aimBlend??(p.aiming?1:0),moving,p.weapon,!!p.friendlyNear),
     relaxedLowReady,
     swayYaw:motion.weaponYaw*freeMotion,
     swayPitch:motion.weaponPitch*freeMotion,
@@ -1427,10 +1442,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       p.handlingIntent==='run'||p.handlingIntent==='traverse'||
       p.handlingIntent==='reload'||p.handlingIntent==='treat'?0:
       p.aimBlend??(p.aiming?1:0),
-    blendFrom:authoredLabSwitch?undefined:activeTransition?.from,
-    blendAlpha:authoredLabSwitch?undefined:activeTransition?
+    blendFrom:authoredLabSwitch||p.shortCompression!==undefined?
+      undefined:activeTransition?.from,
+    blendAlpha:authoredLabSwitch||p.shortCompression!==undefined?
+      undefined:activeTransition?
       lowReadyBlendPhase(activeTransition.alpha):undefined,
-    blendSnapshot:authoredLabSwitch?undefined:activeTransition?.fromWeapon});
+    blendSnapshot:authoredLabSwitch||p.shortCompression!==undefined?
+      undefined:activeTransition?.fromWeapon});
   // Small, deterministic rifle manipulation is permissible in the Lab
   // only while reloading: never alters shot-time muzzle or live aiming.
   // It pivots about the seated stock so the firing wrist can clear gear.

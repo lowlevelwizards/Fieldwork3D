@@ -5,7 +5,8 @@
 import * as THREE from 'three';
 import type {WeaponId} from './breach-combat.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
-import {fitWeaponPose,handlingPose,weaponGrips} from './breach-weapon-pose.ts';
+import {fitWeaponPose,handlingPose,weaponGrips,
+  shortStockSourceHandling} from './breach-weapon-pose.ts';
 import {equipmentStockPush} from './breach-anatomy.ts';
 import {legRestRise} from './breach-leg-geometry.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
@@ -15,6 +16,7 @@ export type MuzzleInput={x:number;z:number;heading:number;
   weaponConfiguration?:WeaponConfiguration;
   recoil:number;obstruction?:boolean;friendlyNear?:boolean;
   threatRange?:number|null;clearanceRetraction?:number;
+  shortCompression?:number;
   posture?:'stand'|'crouch';
   equipment?:EquipmentLoadout};
 export const MUZZLE_TIP=19.5;
@@ -27,6 +29,9 @@ export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
   const fit=fitWeaponPose({weapon:p.weapon,handling,configuration,
     yaw:-p.weaponYaw+p.heading,recoil:p.recoil*6,
     aimBlend:p.aim,clearanceRetraction:p.clearanceRetraction,
+    shortCompression:p.shortCompression,
+    shortFrom:shortStockSourceHandling(p.aim,Math.min(1,p.velocity/72),
+      p.weapon,!!p.friendlyNear),
     armorPush:equipmentStockPush(p.equipment)});
   const grip=weaponGrips(p.weapon,configuration);
   const assembly=configuration?resolveWeaponAssembly(configuration):null;

@@ -13,31 +13,24 @@ export const ANATOMY={
   headRest:{x:0,y:10,z:0},
   neutralHip:LEG_HIP_HEIGHT+LEG_REST_RISE,
 } as const;
-/** The stock rests on the *outside* padded firing shoulder, ahead of the
- * bare mannequin's upper-pec surface. This gives fitted armor/rigs front
- * clearance without driving the butt through the center of the torso.
- * Shot-time muzzle geometry and the live model call this same authority.
- * Short-stock releases the shoulder contact and tucks to the right underarm. */
-/** A deterministic forward seat behind the shoulder/upper vest.
- * Armor changes the physical stock socket, NOT only the cosmetic model.
- * Shot-time muzzle and rendering both sample this exact scalar.
- */
+/** Shared stock seat on the FRONT surface of the upper chest (X≈5),
+ * just inside the firing shoulder. Armor increases forward stand-off,
+ * not lateral distance. The old near-Z=10 short-stock underarm socket
+ * detached the butt from the body and drove elbows behind the shoulder.
+ * Shot-time muzzle and visible weapon use identical physical seats. */
 export const equipmentStockPush=(equipment?:EquipmentLoadout):number=>
   equipment?.slots.armor==='armor-carrier'?.90:
   equipment?.slots.armor==='armor-soft'?.43:0;
 export function stockPocket(mode:Handling,forwardPush=0):Anchor3{
  const xPush=Math.max(0,Math.min(1.25,forwardPush));
   switch(mode){
-    case 'high':return {x:2.65+xPush,y:5.45,z:7.83};
-    case 'low':return {x:2.85+xPush,y:3.0,z:7.85};
-    case 'ready':return {x:3.10+xPush,y:4.5,z:7.87};
-    // Short-stock: tuck the butt under the firing arm, OUTSIDE the right
-    // shoulder rather than centering the receiver against the sternum.
-    // +Z is the firing/right side in the legacy anatomical frame.
-    // The exact same rigid fit feeds live presentation and shot-time muzzle.
-    case 'short':return {x:-.90+xPush*.45,y:-2.2,z:10.35};
-    case 'point':return {x:3.75+xPush,y:5.35,z:7.95};
-    case 'ads':return {x:3.62+xPush,y:5.92,z:8.04};
+    case 'high':return {x:4.75+xPush,y:5.30,z:5.20};
+    case 'low':return {x:4.65+xPush,y:3.15,z:5.20};
+    case 'ready':return {x:4.85+xPush,y:4.45,z:5.20};
+    // Fold the firearm down against the same front upper-torso contour.
+    case 'short':return {x:4.35+xPush,y:3.55,z:5.35};
+    case 'point':return {x:5.05+xPush,y:5.20,z:5.25};
+    case 'ads':return {x:5.10+xPush,y:5.65,z:5.30};
   }
 }
 /** Target for a two-bone elbow. The rig converts this anatomical point to a
@@ -50,23 +43,21 @@ export function elbowCorridor(mode:Handling,side:-1|1,
   const tuck=Math.max(0,Math.min(1,profile.elbowTuck));
   const flare=side===-1?profile.supportElbowFlare:
     profile.firingElbowFlare;
-  // Short-stocking holds the firing elbow outside the receiver, not
-  // trapped between stock, trigger hand and the vest. This is a POLE
-  // preference; the IK/clearance solver still enforces the real contacts.
+  // A short outward/back adjustment, never the old wide underarm wing.
   if(mode==='short'&&side===1)
-    return {x:4.45,y:-4.6,z:13.0+(flare-1.10)};
+    return {x:4.3,y:-2.65,z:8.45+(flare-.74)*.35};
   return {x:5-tuck*.55+(side===-1?.15:0),
     y:-7.5-1.2*tuck,z:side*(8.0-.55*tuck+flare)};
 }
 /** Soft anatomical preference shared by dynamic and fallback IK.
  * Hard armor, hand contacts and bone lengths always remain authoritative. */
 export function anatomicalElbowCost(shoulder:Anchor3,elbow:Anchor3,
- wrist:Anchor3,side:-1|1,outboardFiring=false):number{
+ _wrist:Anchor3,side:-1|1,outboardFiring=false):number{
  const outward=side*(elbow.z-shoulder.z);
  const forward=elbow.x-shoulder.x;
  const drop=shoulder.y-elbow.y;
  const shortGap=outboardFiring&&side===1?
-   Math.max(0,Math.max(shoulder.z,wrist.z)+.65-elbow.z):0;
+   Math.max(0,1.0-(elbow.z-shoulder.z)):0;
  return Math.max(0,-outward-.8)*1.05+
    Math.max(0,outward-5.8)*.65+
    Math.max(0,-forward-1.4)*.65+
@@ -74,6 +65,20 @@ export function anatomicalElbowCost(shoulder:Anchor3,elbow:Anchor3,
    Math.max(0,.65-drop)*1.45+
    Math.max(0,drop-10)*.32+
    shortGap*1.75;
+}
+/** Forward/down carry corridor. Zero means an acceptable elbow; a wrist
+ * that cannot be solved here reports a constraint failure rather than
+ * being solved with a winging, backward limb. */
+export function carryElbowViolation(shoulder:Anchor3,elbow:Anchor3,
+ side:-1|1):number{
+ const rear=Math.max(0,shoulder.x-elbow.x-.45);
+ const raised=Math.max(0,elbow.y-shoulder.y+.15);
+ const flare=side*(elbow.z-shoulder.z);
+ const wing=Math.max(0,flare-6.0);
+ // The support arm naturally reaches IN toward a right-shouldered gun;
+ // rearward and excessive outward winging remain disallowed.
+ const cross=Math.max(0,-flare-(side===-1?5.8:2.7));
+ return rear+raised+wing+cross;
 }
 export function anchorGap(a:Anchor3,b:Anchor3){
   return Math.hypot(a.x-b.x,a.y-b.y,a.z-b.z);

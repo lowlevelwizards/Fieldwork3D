@@ -4,17 +4,14 @@ import {stockPocket,elbowCorridor} from '../src/breach-anatomy.ts';
 import {HANDLING_PROFILES} from '../src/breach-handling-profiles.ts';
 import {fitWeaponPose} from '../src/breach-weapon-pose.ts';
 import {readFileSync} from 'node:fs';
-test('177: firing-side buttplate seats outside fitted chest and beneath arm when short',()=>{
+test('177: buttplate seats on chest front without lateral short-stock teleport',()=>{
  for(const mode of ['high','low','ready','point','ads','short']){
   const p=stockPocket(mode);
-  if(mode==='short'){
-   // The short-stock butt is under the firing armpit, not planted into
-   // the normal upper-pec shoulder seat.
-   assert.ok(p.z>9.7&&p.z<11);
-  }else assert.ok(p.z>=7.75&&p.z<=8.25);
+  assert.ok(p.x>4.2&&p.x<5.2);
+  assert.ok(p.z>4.9&&p.z<5.6);
   const fit=fitWeaponPose({weapon:'carbine',handling:mode,
    yaw:0,recoil:0});
-  assert.ok(fit.stock.z<(mode==='short'?11:8.5));
+  assert.ok(fit.stock.z<6.5);
   assert.ok(fit.stockError<3);
  }
  const src=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');

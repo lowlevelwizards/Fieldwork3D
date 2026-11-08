@@ -2131,7 +2131,7 @@ export class TacticalScene3D{
         weaponYaw:drawActor.weaponYaw,weapon:actor.weapon,
          weaponConfiguration:actor.weaponConfiguration,
         equipment:actor.equipment,aim:actor.aim,velocity:actor.velocity,recoil:actor.recoil,
-        posture:actor.posture,threatRange
+        posture:actor.posture,threatRange,friendlyNear:friendlyAhead
       },s.doors);
       const lightOn=!!actor.weaponLightOn&&actor.health>0&&
         actor.weaponConfiguration?.slots.light==='light-compact'&&object.root.visible;
@@ -2239,6 +2239,8 @@ export class TacticalScene3D{
         threatRange,
         obstruction:clearance.obstruction,
         clearanceRetraction:clearance.retraction,
+        shortCompression:handlingIntent==='squeeze'?1:
+          clearance.obstruction?clearance.compression:undefined,
         clearanceBlocked:clearance.blocked,
         hitRegion:actor.lastHitRegion,hitYaw:actor.lastHitYaw,
         hitSeverity:actor.lastHitSeverity,downPose:actor.downPose,

@@ -25,7 +25,12 @@ export const GRIPS:Record<WeaponId,WeaponGrip>=Object.fromEntries(
  })) as Record<WeaponId,WeaponGrip>;
 export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
  handling?:Handling,relaxedWeight=0):WeaponGrip=>{
- if(!configuration||configuration.weapon!==id)return GRIPS[id];
+ if(!configuration||configuration.weapon!==id){
+  const base=GRIPS[id];
+  // Classic weapon IDs use the same compact receiver/magwell hold.
+  // Previously only modular builds brought the support palm inward.
+  return handling==='short'?{...base,supportX:Math.min(base.supportX,1.35)}:base;
+ }
  const a=resolveWeaponAssembly(configuration);
  // The low-ready grip is presentation-only, not a shot-time muzzle change.
  const low=handling==='low'?lowReadyFamilyFit(configuration):null;
@@ -38,11 +43,13 @@ export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
  const baseline=contact?supportContactAt(contact.support,.32):null;
  const supportX=low?Math.max(low.minSupportX,
    a.supportX-low.supportBack*w):
+   handling==='short'?Math.min(a.supportX,1.35):
    Math.max(a.supportX,baseline?.x??a.supportX);
  return {lengthScale:a.lengthScale,stockX:a.stockX,
   primaryX:a.primaryX,primaryY:a.primaryY,
   supportX,supportY:low?
     a.supportY-(low?.supportDown??0)*w:
+    handling==='short'?a.supportY:
     baseline?.y??a.supportY};
 };
 export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage'|'squeeze'|'entry'|'stack'|'reload'|'treat'|'traverse';
@@ -84,6 +91,12 @@ export function handlingPose(input:{aim:number;moving:number;
     return input.previous;
   return next;
 }
+/** Shared unblocked source of a progressively compressed stock. */
+export function shortStockSourceHandling(aim:number,moving:number,
+ weapon:WeaponId,friendlyNear=false):Handling{
+ return handlingPose({aim:moving>.48?0:aim,moving,obstruction:false,
+  friendlyNear,weapon});
+}
 export function clampReach(from:THREE.Vector3,target:THREE.Vector3,
   length:number):THREE.Vector3{
   const delta=target.clone().sub(from);
@@ -107,8 +120,11 @@ export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
   /** Fire direction in chest-local space. */
   yaw:number;recoil:number;aimBlend?:number;
   swayYaw?:number;swayPitch?:number;
-  /** Underarm pull-back for a physically blocked muzzle. */
+  /** Legacy authored pull-back; live wall handling now uses compression. */
   clearanceRetraction?:number;
+  /** Wall proximity 0..1; omitted for manually authored full short-stock. */
+  shortCompression?:number;
+  shortFrom?:Handling;
   /** Exact equipment-driven stock seat shared with shot-time muzzle. */
   armorPush?:number;
   /** Visual-only low-ready blend; never set by shot-time muzzle code. */
@@ -120,6 +136,46 @@ export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
  * spikes. Only the winning solution becomes Three.js geometry.
  */
 export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
+  // Progressive short-stock: rotate one rigid firearm from the source hold
+  // around its torso contact, progressively moving the support palm to
+  // the near handguard/magwell. The elbow is solved independently from the
+  // interpolated wrist; neither hand is detached from the weapon transform.
+  if(input.handling==='short'&&input.shortCompression!==undefined){
+    const q=clamp(input.shortCompression,0,1),t=q*q*(3-2*q);
+    const clean={...input,shortCompression:undefined,
+      clearanceRetraction:0,blendFrom:undefined,
+      blendSnapshot:undefined,blendAlpha:undefined};
+    if(t<1){
+      const source=input.shortFrom&&input.shortFrom!=='short'?
+        input.shortFrom:'ready';
+      const from=fitWeaponPose({...clean,handling:source});
+      if(t<=0)return {...from,handling:'short'};
+      const to=fitWeaponPose({...clean,handling:'short'});
+      const origin=from.origin.clone().lerp(to.origin,t);
+      const q0=new THREE.Quaternion().setFromEuler(from.rotation)
+        .slerp(new THREE.Quaternion().setFromEuler(to.rotation),t);
+      const rotation=new THREE.Euler().setFromQuaternion(q0,'XYZ');
+      const first=weaponGrips(input.weapon,input.configuration,source);
+      const last=weaponGrips(input.weapon,input.configuration,'short');
+      const point=(a:number,b:number,y:number,z:number)=>
+        new THREE.Vector3((a+(b-a)*t)*last.lengthScale,y,z)
+          .applyEuler(rotation).add(origin);
+      const stock=point(first.stockX,last.stockX,0,0);
+      const primary=point(first.primaryX,last.primaryX,
+        first.primaryY+(last.primaryY-first.primaryY)*t,1.8);
+      const support=point(first.supportX,last.supportX,
+        first.supportY+(last.supportY-first.supportY)*t,-1.6);
+      const rightGap=Math.max(0,primary.distanceTo(
+        new THREE.Vector3(1,4,7))-LIMIT);
+      const leftGap=Math.max(0,support.distanceTo(
+        new THREE.Vector3(1,4,-7))-LIMIT);
+      return {...to,origin,rotation,stock,primary,support,
+        handling:'short',twoHanded:rightGap===0&&leftGap===0,
+        primaryReachable:rightGap===0,contactError:rightGap+leftGap,
+        stockError:from.stockError*(1-t)+to.stockError*t};
+    }
+    return fitWeaponPose({...clean,handling:'short'});
+  }
   if((input.blendFrom||input.blendSnapshot)&&input.blendAlpha!==undefined){
     const from=input.blendSnapshot??fitWeaponPose({...input,
       handling:input.blendFrom!,blendFrom:undefined,
@@ -226,7 +282,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
           // Buttplate now nests into the outer padded chest contour. Hard
           // lower limits still prevent tunnelling into the torso center;
           // short-stock gets additional underarm clearance.
-          if(sz<(stockless?4.90:mode==='short'?6.60:6.35))continue;
+          if(sz<(stockless?4.10:mode==='short'?4.65:4.55))continue;
           const px=sx+right[0],py=sy+right[1],pz=sz+right[2];
           const lx=sx+left[0],ly=sy+left[1],lz=sz+left[2];
           const rd=Math.hypot(px-1,py-4,pz-7);
@@ -247,7 +303,9 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     }
   }
   const b=best!;
-  // Apply a single rigid slide to the stock AND both physical hand sockets.
+  // Legacy explicit clearance (manual callers only). Live approach uses
+  // the progressive shortCompression path above, without a sudden slide.
+  // Apply a single rigid slide to stock and both contact sockets.
   const retract=input.handling==='short'?
     clamp(input.clearanceRetraction??0,0,3.4):0;
   const stock=new THREE.Vector3(b.sx-retract,b.sy,b.sz);
