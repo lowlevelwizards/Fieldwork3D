@@ -21,7 +21,7 @@ try{
  ]});
  try{
   const frames=[];
-  for(const variant of ['off','subtle','mask','band','default']){
+  for(const variant of ['off','subtle','mask','band','attention','default']){
    const page=await browser.newPage({viewport:{width:390,height:844},
      deviceScaleFactor:1.5,hasTouch:true,isMobile:true});
    const errors=[];
@@ -35,7 +35,8 @@ try{
     const params=variant==='off'?'&focusFx=off':
      variant==='subtle'?'&focusFx=subtle':
      variant==='mask'?'&focusFx=subtle&focusDebug=mask':
-     variant==='band'?'&focusFx=subtle&focusDebug=band':'';
+     variant==='band'?'&focusFx=subtle&focusDebug=band':
+     variant==='attention'?'&focusFx=subtle&focusDebug=attention':'';
     await page.goto(origin+'/breach.html?quick=1&seed=23'+params,
       {waitUntil:'domcontentloaded'});
     await page.locator('#breach3dCanvas').waitFor({
@@ -128,7 +129,14 @@ try{
     await fixture.evaluate(()=>window.miniatureFixtureDraw('focus'));
     if(!firstOn.equals(await shot(corner)))
       throw Error('MF-3 same frame changed between identical render calls');
-    if(gpuErrors.length)throw Error('MF-3 WebGL errors: '+gpuErrors.join(' | '));
+    // The protected region must exactly reproduce the native scene,
+    // even though the rest of the frame remains miniaturized.
+    await fixture.evaluate(()=>window.miniatureFixtureDraw('attention'));
+    if(!cornerOff.equals(await shot(corner)))
+      throw Error('MF-4 tactical attention did not completely protect the active patch');
+    if(bottomOff.equals(await shot(bottom)))
+      throw Error('MF-4 attention mask incorrectly disabled the whole lens');
+    if(gpuErrors.length)throw Error('MF-4 WebGL errors: '+gpuErrors.join(' | '));
     await fixture.evaluate(()=>window.miniatureFixtureDraw('band'));
     if(centerOff.equals(await shot(center)))
       throw Error('MF-3 debug band not rendered');

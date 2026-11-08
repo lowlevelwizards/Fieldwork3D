@@ -23,7 +23,9 @@ test('Gestures do NOT turn the frame effect off; unsafe view presets still do',(
    {capable:false},{protectedRegionValid:false},
    {mode:'replay',view:'tactical'}])
   assert.equal(decision(patch).active,false,JSON.stringify(patch));
- assert.equal(decision({mode:'strong'}).strength,.94);
+ assert.equal(decision({mode:'strong'}).strength,.86);
+ assert.ok(decision({mode:'subtle'}).radiusPx<4);
+ assert.ok(decision({mode:'subtle'}).strength<.7);
  assert.equal(decision({view:'director'}).centerY,.54);
  assert.equal(decision({mode:'replay',view:'director'}).active,true);
 });

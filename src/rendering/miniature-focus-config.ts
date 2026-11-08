@@ -44,13 +44,13 @@ export function miniatureFocusDecision(input:{
  // Camera gestures MUST NOT bypass the effect: doing so made MF-2 pop
  // from a composited frame to a different image on every gesture.
  return {
-  active:true,radiusPx:strong?9:6,
-  strength:strong?.94:.82,
+  active:true,radiusPx:strong?7.1:3.6,
+  strength:strong?.86:.62,
   centerY:replay?.54:.56,
   innerHalfHeight:strong?.11:.15,
   outerHalfHeight:strong?.30:.34,
-  saturation:strong?1.065:1.045,
-  contrast:strong?1.035:1.02,
+  saturation:strong?1.045:1.02,
+  contrast:strong?1.02:1.005,
   reason:strong?'photographic-replay':'photographic-live'
  };
 }
