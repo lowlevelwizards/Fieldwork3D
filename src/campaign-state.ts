@@ -3,8 +3,9 @@ import type {OperationKind} from './breach-operations.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import type {RosterState} from './breach-roster.ts';
 import {initialWardrobe,readWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
-import {WEAPONS as COMBAT_WEAPONS} from './breach-combat.ts';
-import {magazineKit,type MagazineItem} from './breach-magazines.ts';
+import type {MagazineItem} from './breach-magazines.ts';
+import {liveMagazineCapacity,standardReserveRounds,freshMagazineIssue,
+ fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
 import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
  from './equipment-magazine-persistence.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
@@ -94,18 +95,14 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
   composure:'Calm Under Pressure',handling:'Fast Hands'};
  const issue=issueWeaponPreset(['ar-m4a1','ak-ak105','ar-m16a4','ak-ak74m'][i%4]);
  const weapon=issue.weapon;
- const capacity=COMBAT_WEAPONS[weapon].capacity;
- const reserve=COMBAT_WEAPONS[weapon].reserve;
+ const ammo=freshMagazineIssue(id,weapon,issue.weaponConfiguration);
  return {id,callsign:id.toUpperCase(),background:['Patrol','Reconnaissance','Security','Emergency Response'][i%4],
   appearanceSeed:hash(seed+i+83),wardrobe:initialWardrobe(),
   skills:values(hash(seed+i*313),'skill'),
   experience:Object.fromEntries(SKILL_NAMES.map(k=>[k,0])) as ShootingSkills,
   aptitudes:aptitude,trait:traitNames[strongest],distinctions:[],
   missions:0,successful:0,injuries:0,recoveryDays:0,status:'available',
-  weapon,magazine:capacity,reserve,shotsFired:0,joinedDay:1,
-   magazines:weapon==='shotgun'?[]:
-    magazineKit(id,weapon,reserve,COMBAT_WEAPONS[weapon].capacity),
-   loadedMagazineId:id+'/'+weapon+'/loaded',
+  weapon,...ammo,shotsFired:0,joinedDay:1,
    loadout:initialEquipmentLoadout(weapon),
    medicalSupplies:kitMedicalSupplies(initialEquipmentLoadout(weapon)),
    weaponConfiguration:issue.weaponConfiguration,
@@ -192,26 +189,29 @@ export function readCampaign(raw:string|null):CampaignState|null{
   const weapons=Object.fromEntries(WEAPONS.map(weapon=>
    [weapon,Number.isInteger(c.inventory?.weapons?.[weapon])&&
     c.inventory.weapons[weapon]>=0?c.inventory.weapons[weapon]:0])) as Record<CampaignOperator['weapon'],number>;
-  const operators=c.operators.map(o=>({...o,
-    magazines:readPersistentMagazines(o.id,o.weapon,o.reserve,
-     (o as {magazines?:unknown}).magazines),
+  const operators=c.operators.map(o=>{
+   const config=resolveIssuedOrLegacy(readWeaponConfiguration(
+    (o as {weaponConfiguration?:unknown}).weaponConfiguration,o.weapon),o.weapon,
+    starterWeaponPreset(o.id));
+   const reserve=Number.isFinite(o.reserve)?Math.max(0,Math.floor(o.reserve)):0;
+   const parsed=readPersistentMagazines(o.id,o.weapon,reserve,
+    (o as {magazines?:unknown}).magazines,
+    300);
+   const fitted=fitMagazineInventory(o.id,o.weapon,config,o.magazine,reserve,parsed);
+   return {...o,...fitted,
     loadedMagazineId:readLoadedMagazineId(o.id,o.weapon,
-     (o as {loadedMagazineId?:unknown}).loadedMagazineId,
-     readPersistentMagazines(o.id,o.weapon,o.reserve,
-      (o as {magazines?:unknown}).magazines)),
+     (o as {loadedMagazineId?:unknown}).loadedMagazineId,fitted.magazines),
    loadout:readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon),
    wardrobe:readWardrobe((o as {wardrobe?:unknown}).wardrobe),
    medicalSupplies:normalizedMedicalSupplies((o as {medicalSupplies?:unknown}).medicalSupplies,
     kitMedicalSupplies(readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon))),
-    weaponConfiguration:resolveIssuedOrLegacy(readWeaponConfiguration(
-     (o as {weaponConfiguration?:unknown}).weaponConfiguration,o.weapon),o.weapon,
-     starterWeaponPreset(o.id)),
+    weaponConfiguration:config,
    armorCondition:normalizedArmorCondition((o as {armorCondition?:unknown}).armorCondition,
     readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon)),
    trait:typeof o.trait==='string'?o.trait:'Experienced Operator',
    distinctions:Array.isArray(o.distinctions)?
     o.distinctions.filter((x):x is string=>typeof x==='string').slice(0,32):[]
-  }));
+  };});
   return reconcileCampaignWeaponOwnership({...c,squadIds:chosen,operators,inventory:{weapons,
       serializedWeapons:(c.inventory as {serializedWeapons?:unknown})?.serializedWeapons as SerializedWeapon[]|undefined,
      attachments:readAttachmentStock((c.inventory as {attachments?:unknown})?.attachments)},
@@ -359,15 +359,16 @@ export function resupplyOperator(c:CampaignState,id:string):CampaignState{
  if(c.activeContractId)return c;
  const o=c.operators.find(m=>m.id===id&&m.status!=='lost'&&m.status!=='retired');
  if(!o)return c;
- const weapon=COMBAT_WEAPONS[o.weapon];
- const needed=Math.max(0,weapon.capacity-o.magazine)+Math.max(0,weapon.reserve-o.reserve);
+ const capacity=liveMagazineCapacity(o.weapon,o.weaponConfiguration);
+ const target=standardReserveRounds(o.weapon,o.weaponConfiguration);
+ const needed=Math.max(0,capacity-o.magazine)+Math.max(0,target-o.reserve);
  const rounds=Math.min(c.supplies.ammo,needed);
  if(rounds<=0)return c;
- const toMag=Math.min(rounds,Math.max(0,weapon.capacity-o.magazine));
+ const toMag=Math.min(rounds,Math.max(0,capacity-o.magazine));
  return {...c,supplies:{...c.supplies,ammo:c.supplies.ammo-rounds},
   operators:c.operators.map(m=>m.id===id?{...m,
    magazine:m.magazine+toMag,reserve:m.reserve+rounds-toMag,
-    magazines:addReserveRounds(m.id,m.weapon,m.magazines,rounds-toMag)}:m)};
+    magazines:addReserveRounds(m.id,m.weapon,m.magazines,rounds-toMag,capacity)}:m)};
 }
 
 export const TACTICAL_SLOTS=['rook','moss','ash','vale'] as const;
@@ -445,7 +446,8 @@ export function equipCampaignWeaponPreset(c:CampaignState,id:string,presetId:str
  if(sameWeaponConfiguration(next,o.weaponConfiguration))return c;
  const attachments=returnAttachments(c.inventory.attachments,o.weaponConfiguration,next);
  return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>m.id===id?
-  {...m,weaponConfiguration:next}:m)};
+  {...m,weaponConfiguration:next,
+   ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)};
 }
 export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
  slot:FamilyPartSlot,partId:string):CampaignState{
@@ -456,7 +458,8 @@ export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
  if(sameWeaponConfiguration(next,o.weaponConfiguration))return c;
  const attachments=returnAttachments(c.inventory.attachments,o.weaponConfiguration,next);
  return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>m.id===id?
-  {...m,weaponConfiguration:next}:m)};
+  {...m,weaponConfiguration:next,
+   ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)};
 }
 /** Player-authorized buy-and-equip is all-or-nothing. */
 export function purchaseAndEquipWeaponAttachment(c:CampaignState,id:string,
@@ -560,10 +563,12 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
  return {...swapped,inventory:{...swapped.inventory,attachments},
   operators:swapped.operators.map(o=>o.id===id?{
    ...o,weaponConfiguration:desired,
+   ...fitMagazineInventory(o.id,o.weapon,desired,o.magazine,o.reserve,o.magazines),
    loadout:readEquipmentLoadout(preset.kit,preset.weapon),
    medicalSupplies:normalizedMedicalSupplies(o.medicalSupplies,
     kitMedicalSupplies(readEquipmentLoadout(preset.kit,preset.weapon))),
-   magazines:stageMagazines(o.magazines,preset.kit),
+   magazines:stageMagazines(fitMagazineInventory(o.id,o.weapon,desired,
+    o.magazine,o.reserve,o.magazines).magazines,preset.kit),
    armorCondition:clampArmorToKit(o.armorCondition,preset.kit)}:o)};
 }
 export function deleteCampaignKitPreset(c:CampaignState,presetId:string):CampaignState{

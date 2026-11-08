@@ -22,13 +22,14 @@ export type StudioLightLabSettings={
  rimCoverage:number;
  /** Relaxation of the light-facing/slant gate for the localized hard glint. */
  rimAngleLooseness:number;
- /** Broad external-silhouette ink, independent of the hard glint. */
+ /** R7.17 softer, cream-colored glints on the BRIGHTEST front-lit mesh edges.
+  * These use the weapon glint mask, never back-facing silhouette lighting. */
  rimFabricWidth:number;
  rimFabricOpacity:number;
- rimFabricBacklight:number;
+ rimFabricLightThreshold:number;
  rimSkinWidth:number;
  rimSkinOpacity:number;
- rimSkinBacklight:number;
+ rimSkinLightThreshold:number;
  rimSkinWarmth:number;
  /** Debug the exact highlight mask rather than recoloring the surface. */
  rimDebugMask:boolean;
@@ -41,8 +42,8 @@ export const DEFAULT_STUDIO_LIGHT_LAB:Readonly<StudioLightLabSettings>={
  toon:0,rim:'off',gradient:'current',shadow:'neutral',
  celProfile:'graphic',celLow:.70,celHigh:.84,rimAmount:.85,
  rimWidth:2.5,rimCoverage:.55,rimAngleLooseness:1.25,
- rimFabricWidth:2.8,rimFabricOpacity:.16,rimFabricBacklight:.7,
- rimSkinWidth:2.6,rimSkinOpacity:.24,rimSkinBacklight:.8,rimSkinWarmth:1.0,
+ rimFabricWidth:2.8,rimFabricOpacity:.16,rimFabricLightThreshold:.65,
+ rimSkinWidth:2.6,rimSkinOpacity:.24,rimSkinLightThreshold:.65,rimSkinWarmth:1.0,
  rimDebugMask:false,lightAzimuth:0,allSurfaces:true
 };
 function clampCutoff(value:string|null,defaultValue:number):number{
@@ -78,10 +79,10 @@ export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
   rimAngleLooseness:DEFAULT_STUDIO_LIGHT_LAB.rimAngleLooseness,
   rimFabricWidth:DEFAULT_STUDIO_LIGHT_LAB.rimFabricWidth,
   rimFabricOpacity:DEFAULT_STUDIO_LIGHT_LAB.rimFabricOpacity,
-  rimFabricBacklight:DEFAULT_STUDIO_LIGHT_LAB.rimFabricBacklight,
+  rimFabricLightThreshold:DEFAULT_STUDIO_LIGHT_LAB.rimFabricLightThreshold,
   rimSkinWidth:DEFAULT_STUDIO_LIGHT_LAB.rimSkinWidth,
   rimSkinOpacity:DEFAULT_STUDIO_LIGHT_LAB.rimSkinOpacity,
-  rimSkinBacklight:DEFAULT_STUDIO_LIGHT_LAB.rimSkinBacklight,
+  rimSkinLightThreshold:DEFAULT_STUDIO_LIGHT_LAB.rimSkinLightThreshold,
   rimSkinWarmth:DEFAULT_STUDIO_LIGHT_LAB.rimSkinWarmth,
   rimDebugMask:false,lightAzimuth:0,
   allSurfaces:true
@@ -105,10 +106,10 @@ export function effectiveStudioLightLab(
   rimAngleLooseness:THREECLAMP(settings.rimAngleLooseness,.75,2,1.25),
   rimFabricWidth:THREECLAMP(settings.rimFabricWidth,1,4,2.8),
   rimFabricOpacity:THREECLAMP(settings.rimFabricOpacity,0,.35,.16),
-  rimFabricBacklight:THREECLAMP(settings.rimFabricBacklight,0,1.5,.7),
+  rimFabricLightThreshold:THREECLAMP(settings.rimFabricLightThreshold,0,1,.65),
   rimSkinWidth:THREECLAMP(settings.rimSkinWidth,1,4,2.6),
   rimSkinOpacity:THREECLAMP(settings.rimSkinOpacity,0,.45,.24),
-  rimSkinBacklight:THREECLAMP(settings.rimSkinBacklight,0,1.5,.8),
+  rimSkinLightThreshold:THREECLAMP(settings.rimSkinLightThreshold,0,1,.65),
   rimSkinWarmth:THREECLAMP(settings.rimSkinWarmth,.5,1.5,1),
   rimDebugMask:settings.rimDebugMask===true,
   lightAzimuth:THREECLAMP(settings.lightAzimuth,-180,180,0),

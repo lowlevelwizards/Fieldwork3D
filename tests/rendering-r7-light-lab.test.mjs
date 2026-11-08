@@ -53,8 +53,8 @@ test('R7.10 Lighting Lab presents only usable user-selected choices',()=>{
  assert.match(html,/Saturated plum/);
  assert.match(html,/PREVIEW WITH WEAPON/);
  for(const id of ['studioRimWidth','studioRimCoverage','studioRimAngle',
-  'studioRimFabricWidth','studioRimFabric','studioRimFabricBacklight',
-  'studioRimSkinWidth','studioRimSkin','studioRimSkinBacklight',
+  'studioRimFabricWidth','studioRimFabric','studioRimFabricLightThreshold',
+  'studioRimSkinWidth','studioRimSkin','studioRimSkinLightThreshold',
   'studioRimSkinWarmth','studioLightAzimuth','studioRimMask'])
   assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(html,/OPEN 3D ARSENAL LIGHTING LAB/);
@@ -101,23 +101,23 @@ test('R7.15 hard/gear/skin settings are independent, clamped and preview-only',(
  assert.equal(d.rimAngleLooseness,1.25);
  assert.equal(d.rimFabricWidth,2.8);
  assert.equal(d.rimFabricOpacity,.16);
- assert.equal(d.rimFabricBacklight,.7);
+ assert.equal(d.rimFabricLightThreshold,.65);
  assert.equal(d.rimSkinWidth,2.6);
  assert.equal(d.rimSkinOpacity,.24);
- assert.equal(d.rimSkinBacklight,.8);
+ assert.equal(d.rimSkinLightThreshold,.65);
  assert.equal(d.rimSkinWarmth,1);
  const constrained=effectiveStudioLightLab({...d,rimWidth:99,
   rimAngleLooseness:99,rimFabricWidth:-5,rimFabricOpacity:10,
-  rimFabricBacklight:10,rimSkinWidth:12,rimSkinOpacity:10,
-  rimSkinBacklight:-1,rimSkinWarmth:50});
+  rimFabricLightThreshold:10,rimSkinWidth:12,rimSkinOpacity:10,
+  rimSkinLightThreshold:-1,rimSkinWarmth:50});
  assert.equal(constrained.rimWidth,4);
  assert.equal(constrained.rimAngleLooseness,2);
  assert.equal(constrained.rimFabricWidth,1);
  assert.equal(constrained.rimFabricOpacity,.35);
- assert.equal(constrained.rimFabricBacklight,1.5);
+ assert.equal(constrained.rimFabricLightThreshold,1);
  assert.equal(constrained.rimSkinWidth,4);
  assert.equal(constrained.rimSkinOpacity,.45);
- assert.equal(constrained.rimSkinBacklight,0);
+ assert.equal(constrained.rimSkinLightThreshold,0);
  assert.equal(constrained.rimSkinWarmth,1.5);
  assert.deepEqual(effectiveStudioLightLab(constrained,true),d);
  const grid=read('src/operator-appearance-grid.ts');
@@ -125,7 +125,7 @@ test('R7.15 hard/gear/skin settings are independent, clamped and preview-only',(
  assert.match(grid,/previous\.rimSkinWarmth===settings\.rimSkinWarmth/);
  const arsenal=read('src/arsenal/lighting-lab.ts');
  for(const name of ['GLINT ANGLE WINDOW','GEAR EDGE WIDTH',
-  'GEAR BACKLIGHT BIAS','SKIN EDGE WIDTH','SKIN BACKLIGHT BIAS',
+  'GEAR LIGHT SELECTIVITY','SKIN EDGE WIDTH','SKIN LIGHT SELECTIVITY',
   'SKIN WARMTH'])assert.ok(arsenal.includes(name));
 });
 test('R7.15 soft equipment is included without turning lenses into outlines',()=>{
@@ -138,9 +138,14 @@ test('R7.15 soft equipment is included without turning lenses into outlines',()=
  assert.match(head,/fieldworkStudioSoftGear=true/);
  assert.match(gear,/armorFabric,gearFabric,packFabric,trim/);
  assert.match(kit,/\[trim,seam,patchMaterial\]/);
- const bleed=read('src/operator-studio-edge-bleed.ts');
- assert.match(bleed,/side:THREE\.BackSide/);
- assert.match(bleed,/depthTest:true,depthWrite:false/);
- assert.match(bleed,/disposeStudioEdgeBleed/);
- assert.doesNotMatch(bleed,/localStorage|sessionStorage/);
+ const material=read('src/operator-studio-graphic-lighting.ts');
+ assert.match(material,/fwSoftBorder/);
+ assert.match(material,/fwSoftBand/);
+ assert.match(material,/fwSkinTint/);
+ assert.match(material,/fwSoftLightPeak/);
+ assert.match(material,/fwTravel\*fwSingleEdge/);
+ assert.doesNotMatch(material,/fwRearNormal|fwSoftBackGate|fwRearKey/);
+ assert.doesNotMatch(material,/applyStudioEdgeBleed|clearStudioEdgeBleed|disposeStudioEdgeBleed/);
+ assert.doesNotMatch(material,/gl_Position=projectionMatrix\*view/);
+ assert.doesNotMatch(material,/localStorage|sessionStorage/);
 });

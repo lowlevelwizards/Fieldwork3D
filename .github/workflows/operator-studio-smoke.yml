@@ -5,7 +5,6 @@ on:
       - 'operator-studio.html'
       - 'src/operator-studio.ts'
       - 'src/operator-studio-graphic-lighting.ts'
-      - 'src/operator-studio-edge-bleed.ts'
       - 'src/operator-wardrobe-head-visuals.ts'
       - 'src/operator-wardrobe-gear-visuals.ts'
       - 'src/operator-visual-kit.ts'
@@ -54,6 +53,16 @@ jobs:
       - name: Rendering R7.13 — white rim real WebGL mobile comparison
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/r713-') || startsWith(github.head_ref, 'feature/lighting-r714-')) }}
         run: node scripts/smoke-operator-r713-rim.mjs
+      - name: Rendering R7.17 — light-facing cream and skin glints, real mobile WebGL
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/r717-frontlit-') }}
+        run: |
+          node scripts/smoke-operator-r715-bleed.mjs
+          node scripts/smoke-arsenal-lighting-r714.mjs
+      - name: Rendering R7.16 — surface-bound gear/skin bands and Arsenal real WebGL
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/r716-surface-bound-') }}
+        run: |
+          node scripts/smoke-operator-r715-bleed.mjs
+          node scripts/smoke-arsenal-lighting-r714.mjs
       - name: Rendering R7.15 — backlit gear/skin 3D silhouette and Arsenal mobile smoke
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/lighting-r715-') }}
         run: |

@@ -1,8 +1,10 @@
 /** Arsenal V2 Stage 7a: pure Campaign quote + all-or-nothing commit.
  * Body changes remain appearance-only under the existing class-based economy.
- * No weapon class, serial, ammo, magazine, service-history or kit mutation.
+ * Existing rounds, serials, service history and weapon class remain owned;
+ * a smaller authored magazine conservatively repacks the current rounds.
  */
 import type {CampaignState} from '../campaign-state.ts';
+import {fitMagazineInventory} from './live-magazine-capacity.ts';
 import {WEAPON_ATTACHMENT_SLOTS,sameWeaponConfiguration,
  type WeaponConfiguration} from '../equipment-weapon-assemblies.ts';
 import {attachmentPrice,returnAttachments} from '../equipment-weapon-inventory.ts';
@@ -63,6 +65,8 @@ export function commitCampaignArsenalEdit(c:CampaignState,operatorId:string,
  return {state:{...c,funds:c.funds-quote.cost,
   inventory:{...c.inventory,attachments:{...quote.stockAfter}},
   operators:c.operators.map(o=>o.id===operatorId?
-   {...o,weaponConfiguration:quote.nextConfiguration!}:o)},
+   {...o,weaponConfiguration:quote.nextConfiguration!,
+    ...fitMagazineInventory(o.id,o.weapon,quote.nextConfiguration!,
+     o.magazine,o.reserve,o.magazines)}:o)},
   quote};
 }

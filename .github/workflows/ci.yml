@@ -182,6 +182,14 @@ jobs:
           node --experimental-strip-types --test tests/weapon-arsenal-r4.test.mjs tests/weapon-families-01.test.mjs tests/weapon-geometry-r2-silhouettes.test.mjs tests/weapon-geometry-r3-refinement.test.mjs tests/weapon-geometry-r31-polish.test.mjs tests/weapon-geometry-r32-anatomy.test.mjs tests/weapon-geometry-r33-axes.test.mjs
           node --experimental-strip-types --test tests/equipment-19-01-weapon-assemblies.test.mjs tests/equipment-19-08-campaign-attachment-stock.test.mjs tests/equipment-19-09-campaign-armory.test.mjs tests/weapon-workbench-mobile-sockets.test.mjs
           npm run build
+      - name: Rendering R7.17 — brightest-edge fabric and skin glints
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/r717-frontlit-') }}
+        run: |
+          node --experimental-strip-types --test tests/rendering-r79-graphic-auditions.test.mjs tests/rendering-r7-light-lab.test.mjs tests/rendering-r7-toon-composition.test.mjs tests/operator-pose-cavity-r5.test.mjs
+      - name: Rendering R7.16 — on-surface gear/skin band contracts
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/r716-surface-bound-') }}
+        run: |
+          node --experimental-strip-types --test tests/rendering-r79-graphic-auditions.test.mjs tests/rendering-r7-light-lab.test.mjs tests/rendering-r7-toon-composition.test.mjs tests/operator-pose-cavity-r5.test.mjs
       - name: Rendering R7.15 — soft silhouettes and hard-glint contract
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/lighting-r715-') }}
         run: |
@@ -1700,6 +1708,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/uop-body-arm-weapon-fit-r2') }}
         run: |
           node --experimental-strip-types --test tests/breach-body-weapon-fit-r2.test.mjs tests/breach-armor-stock-parity-r2.test.mjs tests/breach-pose-strategy.test.mjs tests/breach-stance-continuity.test.mjs tests/breach-short-stock-outboard.test.mjs tests/breach-pose-v3-support-grip.test.mjs tests/breach-168.test.mjs tests/breach-169.test.mjs tests/breach-177.test.mjs tests/breach-120.test.mjs tests/breach-171.test.mjs
+      - name: Physical magazine ammo and HUD critical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/real-mag-capacity-ammo-hud-') }}
+        run: |
+          node --experimental-strip-types --test tests/arsenal-live-magazine-capacity-hud.test.mjs tests/breach-136.test.mjs tests/arsenal-v2-quickplay-adapter.test.mjs tests/arsenal-v2-campaign-adapter.test.mjs tests/equipment-16-quickplay-magazines.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
