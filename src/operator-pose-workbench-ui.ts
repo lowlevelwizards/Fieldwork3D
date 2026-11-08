@@ -402,16 +402,78 @@ for(const button of document.querySelectorAll<HTMLButtonElement>('[data-view]'))
  });
 }
 weaponPicker.addEventListener('change',()=>{
- rebaseFromReady(weaponPicker.value);
- notify('Fresh ready pose loaded. Running and gameplay were not changed.');
+ const next=weaponPicker.value;storeEdited();
+ restorePreset(next);
+ notify('Switched weapon. Individual poses retained; no battle changes.');
 });
+const walk=(delta:number)=>{
+ const index=PRESET_CATALOG.findIndex(p=>p.id===edited.preset);
+ const selected=PRESET_CATALOG[
+  (index+delta+PRESET_CATALOG.length)%PRESET_CATALOG.length];
+ storeEdited();restorePreset(selected.id);
+};
+get<HTMLButtonElement>('wbPrev').addEventListener('click',()=>walk(-1));
+get<HTMLButtonElement>('wbNext').addEventListener('click',()=>walk(1));
 get<HTMLButtonElement>('wbReset').addEventListener('click',()=>{
- rebaseFromReady(weaponPicker.value);
- notify('Reset to the actual ready pose. Move STOCK to start the tuck.');
+ const id=edited.preset;rebaseFromReady(id);
+ storeEdited(true);follow.checked=true;
+ notify('Reset to ready. Original references remain available.');
+});
+get<HTMLButtonElement>('wbLoadReference').addEventListener('click',()=>{
+ const id=edited.preset,original=AUTHORED_SHORT_REFERENCES[id];
+ if(!original)return;
+ rebaseFromReady(id,original);
+ library.entries[id]={pose:cloneWorkbenchPose(original),
+  quality:'reference'};
+ follow.checked=false;renderLibraryStatus();
+ notify('Exact original '+id+' human reference restored.');
+});
+get<HTMLButtonElement>('wbCaptureSource').addEventListener('click',()=>{
+ storeEdited();pinnedSource=cloneWorkbenchPose(edited);
+ sourceControl.value='current';
+ sourceStatus.textContent='Captured '+edited.preset+
+  ' · stays pinned while you browse';
+ notify('Transfer source captured. Pick another weapon to retarget.');
+});
+sourceControl.addEventListener('change',()=>{
+ sourceStatus.textContent=sourceControl.value==='references'?
+  'Source: original M4A1 and AKM, selected by family':
+  pinnedSource?'Source: pinned '+pinnedSource.preset:
+   'Capture a source pose first';
+});
+get<HTMLButtonElement>('wbApplyAll').addEventListener('click',()=>{
+ try{
+  storeEdited();
+  const seed=sourcePose();
+  const {created,skipped}=applyToAllWeapons(
+   library,seed,replaceGenerated.checked);
+  const current=edited.preset;restorePreset(current);
+  const info=created+' weapons seeded / updated; '+skipped+
+   ' preserved. Original references and tuned exceptions are protected.';
+  bulkStatus.textContent=info;notify(info);
+ }catch(error){notify(error instanceof Error?error.message:String(error));}
+});
+get<HTMLButtonElement>('wbTransferSelected').addEventListener('click',()=>{
+ try{
+  const id=edited.preset,previous=library.entries[id];
+  if(previous?.quality==='reference'||previous?.quality==='tuned'){
+   notify('Protected pose: select a weapon without hand-tuned edits.');
+   return;
+  }
+  const input=sourcePose(),source=input==='references'?
+   referenceForPreset(id):input;
+  const transferred=transferPoseToWeapon(source,id);
+  library.entries[id]={pose:transferred,quality:'generated',
+   from:source.preset};
+  restorePreset(id);follow.checked=false;
+  notify('Transferred '+source.preset+' → '+id+
+   '. Tune its independent grips and elbows as needed.');
+ }catch(error){notify(error instanceof Error?error.message:String(error));}
 });
 get<HTMLButtonElement>('wbSnap').addEventListener('click',()=>{
  snapWorkbenchHandsToGun(edited,activeConfiguration);
  follow.checked=true;endPreview();applyAndRenderTargets();
+ storeEdited(true);
  if(selection==='firingHand'||selection==='supportHand')refreshSelection();
  notify('Hand targets snapped to the actual rigid weapon grip sockets.');
 });
