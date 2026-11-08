@@ -50,6 +50,14 @@ definitions.push(
 );
 definitions.push({id:'public-bench',category:'exterior',width:45,depth:21,
  height:26,solid:true,cover:'low',rooms:['parking','patio','yard']});
+// Separate, recognizable commercial fixtures. Neither reuses electrical
+// cabinet geometry, and both are real collision/cover assets when placed.
+definitions.push(
+ {id:'vending-machine',category:'exterior',width:29,depth:24,height:44,
+  solid:true,cover:'high',rooms:['parking','patio','service-yard']},
+ {id:'wayfinding-sign',category:'exterior',width:18,depth:10,height:48,
+  solid:true,cover:'low',rooms:['parking','patio','yard']}
+);
 definitions.push({id:'window-boards',category:'security',width:52,depth:10,
  height:36,solid:true,cover:'high',rooms:['yard','garden','parking','service-yard']});
 definitions.push(
