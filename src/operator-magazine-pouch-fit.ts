@@ -50,8 +50,8 @@ export function seatMagazineInPouch(
  // One case may hold multiple real magazines, in genuinely separate
  // depthwise lanes. Never stack two models on exactly the same socket.
  const lane=pouch.slots?.[pouch.slot??slot]??0;
- const insideBack=pouch.x-pouch.depth*.5+.10;
- const insideFront=pouch.x+pouch.depth*.5-.10;
+ const insideBack=pouch.x-pouch.depth*.5+.06;
+ const insideFront=pouch.x+pouch.depth*.5-.06;
  const centerX=(insideBack+insideFront)*.5+lane;
  const originX=centerX-(minX+maxX)*.5;
  if(originX+minX<insideBack-.001||originX+maxX>insideFront+.001)
