@@ -25,7 +25,7 @@ test('stroke sampling and hit sizes are screen-space, not world zoom dependent',
 test('only one command long-press controller remains; failed targeting can retry',()=>{
   assert.doesNotMatch(main,/contextHoldTimer/);
   assert.match(main,/installTouchCommandHelp\(button\)/);
-  assert.match(main,/if\(accepted\)tacticalFeedback\.emit\(p\.moved\?'command':'select'/);
+  assert.match(main,/if\(accepted\)tacticalFeedback\.emit\(p\.dragCommitted\?'command':'select'/);
   assert.match(main,/if\(committed\)looking=false/);
   assert.match(main,/p.mode==='targetPreview'\|\|p.mode==='undecided'/);
   assert.match(main,/if\(looking\|\|flashMode\|\|firePlacement\|\|evacMode\)/);
