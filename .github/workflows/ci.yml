@@ -1728,6 +1728,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-forward-gaze-') }}
         run: |
           node --experimental-strip-types --test tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
+      - name: Replay director storyboard — fight, breach, room-camera and seek gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-storyboard-') }}
+        run: |
+          node --experimental-strip-types --test tests/replay-director-storyboard.test.mjs tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
