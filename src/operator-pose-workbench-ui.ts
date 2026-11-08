@@ -10,7 +10,7 @@ import {
  WORKBENCH_TARGETS,captureWorkbenchPose,cloneWorkbenchPose,
  weaponWorkbenchContacts,snapWorkbenchHandsToGun,applyWorkbenchPose,
  interpolateWorkbenchPose,readWorkbenchPose,
- type WorkbenchPose,type WorkbenchTarget,type WorkbenchReport,type Vec3
+ type WorkbenchPose,type WorkbenchTarget,type Vec3
 } from './operator-pose-workbench.ts';
 
 type Selection=WorkbenchTarget|'torso'|'weaponRotation';
@@ -314,7 +314,7 @@ canvas.addEventListener('pointermove',event=>{
    snapWorkbenchHandsToGun(edited,activeConfiguration);
   if(dragging==='firingHand'||dragging==='supportHand')
    follow.checked=false;
-  endPreview();refreshSelection();applyAndRenderTargets();
+  endPreview();syncAxisValues();applyAndRenderTargets();
  }
  event.preventDefault();
 },true);
