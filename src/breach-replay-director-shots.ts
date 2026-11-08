@@ -162,7 +162,7 @@ function wallCost(center:Pt,yaw:number,subjects:readonly Pt[],
   }
   return {blocked,roomClearance:distToRoom};
 }
-export function composeReplayDirectorShot(time:number,
+export function composeReplayDirectorShot(_time:number,
   actors:readonly DirectorActor[],rooms:readonly DirectorRoom[],
   walls:readonly DirectorWall[],aspect:number,
   currentYaw:number,baseSpan:number,
