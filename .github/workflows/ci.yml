@@ -1829,6 +1829,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: Replay Director R9.3 — contact offset critical regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/replay-director-contact-offset-r93-') }}
+        run: |
+          node --experimental-strip-types --test tests/replay-director-r93-contact-offset.test.mjs tests/replay-director-r92-contact-stability.test.mjs tests/replay-director-r91-shot-integrity.test.mjs tests/replay-director-r9-composition-tempo.test.mjs tests/replay-director-r8-editorial.test.mjs tests/replay-director-storyboard.test.mjs tests/replay-director-physical.test.mjs tests/replay-director-action-pacing.test.mjs tests/replay-director-continuous.test.mjs tests/replay-director-wide-coverage.test.mjs
+      - name: Replay Director R9.3 — public Pages baseline release checkpoint
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/replay-director-contact-offset-r93-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
