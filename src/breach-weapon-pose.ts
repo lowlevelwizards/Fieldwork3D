@@ -5,7 +5,7 @@ import {WEAPON_PLATFORMS,resolveWeaponAssembly,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import * as THREE from 'three';
 import {stockPocket,anchorGap} from './breach-anatomy.ts';
-import {M4A1_AUTHORED_SHORT,authoredShortPhase}
+import {authoredShortPhase}
  from './breach-authored-m4a1-short-stock.ts';
 import {shortStockReference,sameAuthoredReferenceBuild,
  transferShortStockPose} from './breach-authored-short-stock.ts';
@@ -219,46 +219,8 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       contactError:phase*(primaryGap+supportGap),
       stockError:stock.distanceTo(new THREE.Vector3(...requestedStock))};
   }
-  // The short-stock butt is pulled BACK from the ordinary shoulder socket
-  // into an independent underarm/waist contact. Gradually lower the muzzle
-  // while moving the support palm back to the receiver/magwell. Both hands
-  // remain on the same rigid firearm; IK uses each interpolated wrist.
-  if(input.handling==='short'&&input.shortCompression!==undefined){
-    const q=clamp(input.shortCompression,0,1),t=q*q*(3-2*q);
-    const clean={...input,shortCompression:undefined,
-      clearanceRetraction:0,blendFrom:undefined,
-      blendSnapshot:undefined,blendAlpha:undefined};
-    if(t<1){
-      const source=input.shortFrom&&input.shortFrom!=='short'?
-        input.shortFrom:'ready';
-      const from=fitWeaponPose({...clean,handling:source});
-      if(t<=0)return {...from,handling:'short'};
-      const to=fitWeaponPose({...clean,handling:'short'});
-      const origin=from.origin.clone().lerp(to.origin,t);
-      const q0=new THREE.Quaternion().setFromEuler(from.rotation)
-        .slerp(new THREE.Quaternion().setFromEuler(to.rotation),t);
-      const rotation=new THREE.Euler().setFromQuaternion(q0,'XYZ');
-      const first=weaponGrips(input.weapon,input.configuration,source);
-      const last=weaponGrips(input.weapon,input.configuration,'short');
-      const point=(a:number,b:number,y:number,z:number)=>
-        new THREE.Vector3((a+(b-a)*t)*last.lengthScale,y,z)
-          .applyEuler(rotation).add(origin);
-      const stock=point(first.stockX,last.stockX,0,0);
-      const primary=point(first.primaryX,last.primaryX,
-        first.primaryY+(last.primaryY-first.primaryY)*t,1.8);
-      const support=point(first.supportX,last.supportX,
-        first.supportY+(last.supportY-first.supportY)*t,-1.6);
-      const rightGap=Math.max(0,primary.distanceTo(
-        new THREE.Vector3(1,4,7))-LIMIT);
-      const leftGap=Math.max(0,support.distanceTo(
-        new THREE.Vector3(1,4,-7))-LIMIT);
-      return {...to,origin,rotation,stock,primary,support,
-        handling:'short',twoHanded:rightGap===0&&leftGap===0,
-        primaryReachable:rightGap===0,contactError:rightGap+leftGap,
-        stockError:from.stockError*(1-t)+to.stockError*t};
-    }
-    return fitWeaponPose({...clean,handling:'short'});
-  }
+  // SHORT has already returned through the authored rigid-weapon path.
+  // Only ordinary ready/aim/low/high carries reach the legacy fitter.
   if((input.blendFrom||input.blendSnapshot)&&input.blendAlpha!==undefined){
     const from=input.blendSnapshot??fitWeaponPose({...input,
       handling:input.blendFrom!,blendFrom:undefined,
@@ -388,8 +350,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   // Legacy explicit clearance (manual callers only). Live approach uses
   // the progressive shortCompression path above, without a sudden slide.
   // Apply a single rigid slide to stock and both contact sockets.
-  const retract=input.handling==='short'?
-    clamp(input.clearanceRetraction??0,0,3.4):0;
+  const retract=0;
   const stock=new THREE.Vector3(b.sx-retract,b.sy,b.sz);
   const primary=new THREE.Vector3(
     b.sx+b.primary[0]-retract,b.sy+b.primary[1],b.sz+b.primary[2]);
@@ -401,7 +362,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   // independent hand or stock teleportation occurs.
   // Compare the physical buttstock against a stable operator anatomy point,
   // not a reference synthesized from the stock itself (always zero).
-  const pocket=input.aimBlend===undefined||input.handling==='short'||
+  const pocket=input.aimBlend===undefined||
     input.handling==='low'?
     lowReadyPocket(stockPocket(input.handling,input.armorPush),relaxed,relaxedWeight):{
       x:stockPocket('ready',input.armorPush).x+
