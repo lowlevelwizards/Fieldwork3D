@@ -110,9 +110,10 @@ export function applyStudioEdgeBleed(root:THREE.Object3D,mesh:THREE.Mesh,
  if(!bounds||bounds.isEmpty())return false;
  // A cap, pack and tiny strap should not all receive an identical huge
  // extrusion. Clamp at practical voxel scale to protect contacts and seams.
- const span=bounds.getSize(new THREE.Vector3());
- const smallest=Math.max(.10,Math.min(span.x,span.y,span.z));
- const extrusion=Math.min(.85,Math.max(.08,smallest*.08*width));
+ // This outline material is shared by meshes using the same fabric/skin
+ // source. Keep the extrusion uniform per role so one mesh cannot overwrite
+ // its sibling's width; material reuse also avoids shader recompilation.
+ const extrusion=Math.min(.85,Math.max(.08,.20*width));
  const cache=cacheFor(root);
  let variants=cache.get(source);
  if(!variants){variants=new Map();cache.set(source,variants);}
