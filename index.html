@@ -84,6 +84,14 @@
         <button id="uiHelp" type="button" aria-label="Show contextual help">? HELP</button>
         <button id="uiSoundToggle" type="button" aria-pressed="true">UI SOUND ON</button>
       </div>
+      <div class="context-layout-settings" role="group" aria-label="Contextual action placement">
+        <strong>CONTEXT CONTROLS</strong>
+        <div class="context-layout-options">
+          <button type="button" data-context-layout="dock" aria-pressed="true">DOCK</button>
+          <button type="button" data-context-layout="floating" aria-pressed="false">FLOAT · SMART</button>
+        </div>
+        <p class="site-settings-hint">Floating uses a quiet edge only when it leaves the tactical view clear. Otherwise actions return to the Dock automatically.</p>
+      </div>
       <div class="site-settings-row" role="group" aria-label="Live game audio experiment">
         <button id="liveMixToggle" type="button" aria-pressed="true">TEST MIX ON</button>
         <button id="roomAudioToggle" type="button" aria-pressed="true">ROOM ACOUSTICS ON</button>
