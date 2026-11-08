@@ -4,6 +4,12 @@ on:
     paths:
       - 'operator-studio.html'
       - 'src/operator-studio.ts'
+      - 'src/operator-studio-graphic-lighting.ts'
+      - 'src/operator-studio-light-lab.ts'
+      - 'src/arsenal/viewport.ts'
+      - 'src/arsenal/lighting-lab.ts'
+      - 'src/arsenal/workbench-screen.ts'
+      - 'scripts/smoke-arsenal-lighting-r714.mjs'
       - 'src/operator-studio-toon-lighting.ts'
       - 'src/operator-visual-kit.ts'
       - 'scripts/smoke-operator-r7-shader.mjs'
@@ -41,8 +47,11 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/r7-stylized-') || startsWith(github.head_ref, 'feature/r79-') || startsWith(github.head_ref, 'feature/r710-') || startsWith(github.head_ref, 'feature/r711-') || startsWith(github.head_ref, 'feature/r712-')) }}
         run: node scripts/smoke-operator-r7-shader.mjs
       - name: Rendering R7.13 — white rim real WebGL mobile comparison
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/r713-') }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/r713-') || startsWith(github.head_ref, 'feature/lighting-r714-')) }}
         run: node scripts/smoke-operator-r713-rim.mjs
+      - name: Rendering R7.14 — actual Arsenal weapon 3D shader mobile smoke
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/lighting-r714-') }}
+        run: node scripts/smoke-arsenal-lighting-r714.mjs
       - name: PASGT P5/P6/P7 actual WebGL material / fit captures
         if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/pasgt-p5-') || startsWith(github.head_ref, 'feature/pasgt-p6-') || startsWith(github.head_ref, 'feature/pasgt-p7-')) }}
         run: node scripts/pasgt-p5-visual-capture.mjs
