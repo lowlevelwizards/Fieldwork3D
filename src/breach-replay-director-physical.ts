@@ -325,7 +325,10 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     const dir=req.followDirection;
     const mag=dir?Math.hypot(dir.x,dir.y):0;
     const forward=dir&&mag>.01?{x:dir.x/mag,y:dir.y/mag}:null;
-    const lateral=req.composition?.treatment==='engage'?54:15;
+    // Camera-side neutrality: the original +54 ideal silently favored
+    // one shoulder even when that side faced a wall. Both shoulders
+    // compete on actual visible content, not a preselected preference.
+    const lateral=req.composition?.treatment==='engage'?0:15;
     const ideal=forward?{
       x:req.operator.x-forward.x*78-forward.y*lateral,
       y:req.operator.y-forward.y*78+forward.x*lateral}:null;
@@ -346,7 +349,8 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     // outside the lens is never an acceptable successful composition.
     const candidate=essentialVisible.length*310-
       (mandatory.length-essentialVisible.length)*450+
-      visible.length*9+
+      visible.length*(req.composition?.treatment==='door'||
+        req.composition?.treatment==='entry'?22:9)+
       (targetVisible?(req.targetWeight??155):0)-
       (req.target&&!targetVisible?100:0)-
       doorPenalty-
@@ -434,8 +438,21 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
           kind:'furniture' as const}];
       })
     ];
-    for(const candidate of candidates.slice()
-      .sort((a,b)=>b.score-a.score).slice(0,24)){
+    const sorted=candidates.slice().sort((a,b)=>b.score-a.score);
+    // Preserve BOTH shoulder candidates in the optical occupancy audit.
+    // A best-24 filter sorted by a generic following score can eliminate
+    // the only wall-free shoulder before its screen image is inspected.
+    const shortlisted=new Set(sorted.slice(0,20));
+    if(req.target&&req.followDirection){
+      const signed=(p:PhysicalPoint)=>{
+        const d=req.followDirection!;
+        return d.x*(p.y-req.operator.y)-d.y*(p.x-req.operator.x);
+      };
+      for(const side of [-1,1])for(const candidate of sorted.filter(c=>
+        signed(c.view.cameraAnchor)*side>12).slice(0,7))
+        shortlisted.add(candidate);
+    }
+    for(const candidate of shortlisted){
       const v=candidate.view;
       const zoom=directorOrthoFittingZoom(v.cameraAnchor,v.focus,
         req.requiredPoints??[req.operator],aspect,
@@ -448,9 +465,23 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
         req.composition.safeFrame);
       candidate.score-=
         Math.max(0,fg.door-.30)*660+
-        Math.max(0,fg.wall-.63)*260+
+        Math.max(0,fg.wall-.55)*390+
         Math.max(0,fg.furniture-.69)*120+
         Math.max(0,fg.subjectMask-.42)*95;
+      if(req.target&&candidate.view.targetVisible){
+        const target=directorForegroundOccupancy(v.cameraAnchor,v.focus,
+          req.target,surfaces,'ortho',aspect,req.composition.baseSpan,
+          zoom,v.fov,req.composition.safeFrame);
+        // This distinguishes a shoulder looking INTO the encounter from
+        // one whose view is largely a near wall/door. Do not favor an
+        // opposite shoulder if either actor vanishes behind its masonry.
+        candidate.score-=Math.max(0,target.subjectMask-.12)*1150+
+          Math.max(0,target.door-.18)*560+
+          Math.max(0,target.wall-.38)*380;
+        if(candidate.view.compositionQuality?.targetReadable&&
+           target.subjectMask<.14&&target.door<.24)
+          candidate.score+=185;
+      }
     }
     // Never let an unconvincing backpack view defeat a verified two-shot
     // merely through generic follow-camera or visible-teammate rewards.
@@ -458,7 +489,8 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       candidates.filter(c=>c.view.targetVisible&&
         c.view.compositionQuality?.targetReadable&&
         c.view.compositionQuality.primaryReadable):[];
-    const ranked=(clear.length?clear:candidates)
+    const ranked=(clear.length?
+      clear.filter(c=>shortlisted.has(c)):Array.from(shortlisted))
       .sort((a,b)=>b.score-a.score);
     best=ranked[0]?.view??best;
     score=ranked[0]?.score??score;
