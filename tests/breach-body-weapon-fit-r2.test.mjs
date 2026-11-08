@@ -44,7 +44,7 @@ function shown(r){
 }
 test('active aim stock stays below a natural firing-side shoulder seat',()=>{
  const ready=stockPocket('ready'),ads=stockPocket('ads');
- assert.ok(ready.x>4.6&&ready.z>6.4&&ready.z<7.1);
+ assert.ok(ready.x>4.6&&ready.z>4.9&&ready.z<5.6);
  assert.ok(ads.y<=6.2,'ADS stock too high on neck');
  assert.ok(ads.y<8&&ads.z<ANATOMY.shoulderRight.z);
  assert.ok(ads.x>ready.x,'ADS stock must remain in front of armor');

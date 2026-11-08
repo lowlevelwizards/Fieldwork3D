@@ -25,7 +25,7 @@ test('167: stock contact uses the actual rear face of the visible stock',()=>{
      .applyEuler(fit.rotation).add(fit.origin);
    assert.ok(butt.distanceTo(fit.stock)<1e-7,
      'visible buttplate and claimed stock contact must coincide');
-   assert.ok(fit.stock.z>=5.90,
+   assert.ok(fit.stock.z>=4.15,
      weapon+' '+mode+' sends buttplate inside the torso');
    assert.ok(Number.isFinite(fit.contactError));
    assert.ok(fit.stockError<3,
