@@ -64,7 +64,9 @@ export function setCivilianState(c:CivilianActor,
  if(condition==='incapacitated'&&state!=='incapacitated')return false;
  if(condition==='injured'&&state==='routine'&&
     c.state==='wounded')return false;
- if(c.state===state)return true;
+ // An explicit FOLLOW may reassign a person already escorted by another
+ // operator. Re-entering that state must clear the old escort route too.
+ if(c.state===state&&state!=='escorted')return true;
  c.state=state;c.stateSince=now;c.velocity=0;
  if(state==='incapacitated'||state==='compliant'||state==='wounded'||
     state==='escorted'){
