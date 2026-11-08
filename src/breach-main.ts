@@ -2259,7 +2259,9 @@ function updateContext(){
   if(effectiveLayout==='bubbles'&&bubbleBounds){
     const key=[identity,actionSignature,
       Math.round(bubbleBounds.x/3),Math.round(bubbleBounds.y/3)].join('|');
-    if(!paletteMotion.active||key!==lastPlacementKey){
+    // Never move a touch target while the player holds a command.
+    if(contextPointerIds.size===0&&
+      (!paletteMotion.active||key!==lastPlacementKey)){
       lastPlacementKey=key;
       paletteMotion.set(bubbleBounds.x,bubbleBounds.y,
         actorAnchor.x,actorAnchor.y);
