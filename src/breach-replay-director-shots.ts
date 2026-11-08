@@ -102,6 +102,11 @@ export function composeReplayDirectorShot(time:number,
     friends.find(a=>a.id===id)).filter((a):a is DirectorActor=>!!a)];
   const featured=included.slice(0,Math.max(1,context.maxSubjects??4));
   const direction=unit(plan.actionDirection);
+  const movementIntent=context.intents.find(i=>i.actorId===primary.id);
+  // Move alongside the true route, even while the operator's active
+  // LOOK or WATCH leads the photographed content in another direction.
+  const movementDirection=plan.kind==='follow'&&movementIntent?
+    unit(movementIntent.direction):direction;
   const door=plan.door;
   // Camera looks toward the selected editorial subject's action, not
   // toward the numerical average of all four squad members.
@@ -129,7 +134,8 @@ export function composeReplayDirectorShot(time:number,
     // target silhouette coverage test.
     target:plan.target,
     preferredYaw:Math.atan2(-direction.x,-direction.y),
-    followDirection:direction,
+    followDirection:movementDirection,
+    motionSpeed:movementIntent?.speed??primary.velocity??0,
     // Entry and stack photographs deserve the door's full front face
     // just as much as the act of opening it.
     doorPoint:isDoor?door?.mid??null:null,
@@ -222,7 +228,7 @@ export function composeReplayDirectorShot(time:number,
     fov:physical.fov,operatorPoint:{...hero.p},
     framePoints:points,
     attentionPoint:hero===primary?plan.target??door?.mid??null:null,
-    followDirection:direction,
+    followDirection:movementDirection,
     firstEntry:plan.firstEntry,
     actionWeight:isContact?1:isDoor?.85:
       plan.kind==='follow'?.5:0,
