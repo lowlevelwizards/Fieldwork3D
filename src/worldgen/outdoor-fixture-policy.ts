@@ -5,6 +5,7 @@
 import type {Site,ExteriorZone} from '../breach-site.ts';
 import type {Pt} from '../breach-core.ts';
 import {planPublicStreet} from './public-street-layout.ts';
+import {reservedParkingBay} from './parking-stalls.ts';
 
 const housing=new Set(['house','townhouse']);
 const publicPremises=new Set(['retail','restaurant','clinic','motel']);
@@ -46,6 +47,21 @@ export function frontageEdgeCandidates(
  if(!frontageFixtures.has(fixture)||zone.id!=='arrival-forecourt')
    return null;
  const entry=site.entrySide??'south';
+ // A parking sign identifies a real authored bay, never a random post at
+ // the front property corners. No canonical bay -> no sign.
+ if(fixture==='parking-sign'&&zone.kind==='parking'&&
+    site.doors&&site.entrance){
+   const bay=reservedParkingBay({
+     entrySide:site.entrySide,doors:site.doors,entrance:site.entrance
+   },zone);
+   if(!bay)return [];
+   const sign=entry==='south'||entry==='east'?1:-1;
+   const across=entry==='north'||entry==='south'?'y':'x';
+   const edge=across==='y'?
+     zone.y-sign*(zone.h/2-h/2-10):
+     zone.x-sign*(zone.w/2-w/2-10);
+   return [across==='y'?{x:bay.x,y:edge}:{x:edge,y:bay.y}];
+ }
  const across=entry==='north'||entry==='south'?'y':'x';
  const along=across==='y'?'x':'y';
  const sign=entry==='north'||entry==='west'?-1:1;
