@@ -713,7 +713,7 @@ export function planNearbyInteraction(s:Session,id:string,
  if(action==='push'){
    const candidates=s.coverState.map((o,index)=>({o,index,
      distance:d(at,{x:o.x,y:o.y})})).filter(c=>
-       canRelocateCover(c.o)&&c.distance<Math.max(o.w,o.h)/2+43)
+       canRelocateCover(c.o)&&c.distance<Math.max(c.o.w,c.o.h)/2+43)
      .sort((x,y)=>x.distance-y.distance||x.index-y.index);
    const item=candidates[0];if(!item)return false;
    return queue('prop:'+item.index);
