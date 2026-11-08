@@ -16,7 +16,7 @@ export function doorInteraction(request:InteractionRequest):InteractionVerdict{
  if(!doorReachable(actorPosition,d))return deny('out-of-reach');
  if(action==='inspect')return allowed;
  if(action==='kick'&&d.kind==='shutter')return deny('unsupported');
- if(action==='open'&&d.open)return deny('already-open');
+ if(action==='open'&&d.open&&(d.openFraction??1)>=.98)return deny('already-open');
  if((action==='open'||action==='kick')&&d.wedged)return deny('obstructed');
  if(action==='open'&&d.jammed)return deny('obstructed');
  if(action==='open'&&d.locked)return deny('locked');
@@ -24,7 +24,7 @@ export function doorInteraction(request:InteractionRequest):InteractionVerdict{
  if(action==='hold'&&d.open)return deny('already-open');
  if((action==='open'||action==='push')&&d.heldBy&&d.heldBy!==actorId)
    return deny('held');
- if(action==='push'&&!d.open)return deny('already-closed');
+ if(action==='push'&&!d.open&&(d.openFraction??0)<.08)return deny('already-closed');
  if(action==='hold'&&d.heldBy&&d.heldBy!==actorId)return deny('held');
  return allowed;
 }
