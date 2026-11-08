@@ -211,9 +211,14 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       new THREE.Vector3(...authored.targets[name]);
     const primaryGap=primary.distanceTo(elbowTarget('firingHand'));
     const supportGap=support.distanceTo(elbowTarget('supportHand'));
+    // A grip socket can lie near the authored wrist while still being
+    // unreachable by a real 10+10 arm. Never advertise "two handed" or
+    // "reachable" solely from hand-to-metal contact error.
+    const rightReach=primary.distanceTo(new THREE.Vector3(1,4,7))<=LIMIT;
+    const leftReach=support.distanceTo(new THREE.Vector3(1,4,-7))<=LIMIT;
     return {origin,rotation,stock,primary,support,handling:'short',
-      twoHanded:primaryGap<1.5&&supportGap<1.5,
-      primaryReachable:primaryGap<1.5,
+      twoHanded:primaryGap<1.5&&supportGap<1.5&&rightReach&&leftReach,
+      primaryReachable:primaryGap<1.5&&rightReach,
       // Report any gap rather than forcing the author's wrists to follow
       // a different inferred socket. The pose was approved visually.
       contactError:phase*(primaryGap+supportGap),
