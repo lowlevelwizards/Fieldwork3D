@@ -159,7 +159,10 @@ test('cross-room cut keeps camera inside a room, never halfway into a wall',()=>
   subjects:['rook'],doorId:'door-a',score:50,occluded:0,motion:20
  }),{step:.8});
  assert.equal(board.sample(.2).cameraAnchor.x,70);
- assert.equal(board.sample(.6).cameraAnchor.x,205);
+ assert.equal(board.sample(.6).cameraAnchor.x,70,
+  'first room change proposal cannot trigger an instant cut');
+ assert.equal(board.sample(3.2).cameraAnchor.x,205,
+  'confirmed room transition is a single purposeful scene change');
 });
 
 const signedAngle=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
