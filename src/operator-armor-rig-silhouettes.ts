@@ -528,7 +528,7 @@ export function createChestRigSilhouettes(chest:THREE.Group,
   // Two substantial front cells and a small high organizer distinguish
   // the complete micro harness from the flat three-cell carrier placard.
   for(const z of [-1.65,1.65])
-   pouch(g,pocketFabric,pocketFabric,8.54,-2.14,z,2.85,2.80,.91);
+   pouch(g,pocketFabric,pocketFabric,8.54,-2.14,z,3.22,2.80,.91);
   box(g,webbing,8.35,.06,0,.29,.70,5.36);
   for(const s of [-1,1])
    pouch(g,pocketFabric,pocketFabric,7.75,-2.62,s*4.60,2.26,1.52,.77,false);
