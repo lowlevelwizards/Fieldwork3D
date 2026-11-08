@@ -438,13 +438,18 @@ export function composeReplayDirectorShot(_time:number,
   // camera must not clip heads, feet or the advancing element.
   const visibleTargets=[...subjects.map(a=>a.p),
     ...(target&&physical.targetVisible?[target]:[])];
+  // Match the REAL in-room overhead position: as the team gets closer
+  // to the rig, its projection gets steeper. Fit at that elevation
+  // instead of pretending the camera is still a flat 17° shoulder POV.
+  const planar=dist(physical.cameraAnchor,physical.focus);
+  const orthoTilt=Math.atan2(53-17,Math.max(1,planar));
   const fit=projectedBounds(visibleTargets,physical.focus,realYaw,
-    52*Math.PI/180,aspect,baseSpan,6.4,
+    orthoTilt,aspect,baseSpan,6.4,
     Math.min(.82,usableWidth),Math.min(.76,usableHeight));
   const wideZoom=clamp(Math.min(6.0,fit.zoom*.91),.7,6);
   return {...best,focus:physical.focus,
     cameraAnchor:physical.cameraAnchor,
-    zoom:wideZoom,pitch:52*Math.PI/180,
+    zoom:wideZoom,pitch:orthoTilt,
     yaw:(realYaw+2*Math.PI)%(2*Math.PI),
     roomId:physical.roomId,occluded:physical.occluded,
     fov:physical.fov,operatorPoint:{...operator.p}};
