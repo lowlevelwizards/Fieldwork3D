@@ -398,13 +398,22 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           for(const x of [-w*.29,w*.29])
             ctx.box(group,c.x+x,H*.45,c.y,2.7,H*.90,2.7,post);
           ctx.box(group,c.x,H*.78,c.y,w,H*.29,3.2,face,false);
-          ctx.box(group,c.x,H*.79,c.y+d*.20,w*.62,2.2,1.1,glyph,false);
-          const arrowX=c.x+w*.23,arrowY=H*.79;
-          const up=ctx.box(group,arrowX,arrowY+3,c.y+d*.26,
-            w*.27,2.0,1.2,glyph,false);
-          const down=ctx.box(group,arrowX,arrowY-3,c.y+d*.26,
-            w*.27,2.0,1.2,glyph,false);
-          up.rotation.z=-.67;down.rotation.z=.67;
+          // Blocky pedestrian-door pictogram and a large rightward
+          // directional arrow remain distinct even at low tactical zoom.
+          ctx.box(group,c.x-w*.25,H*.78,c.y+d*.233,
+            w*.22,H*.16,1.2,glyph,false);
+          ctx.box(group,c.x-w*.25,H*.83,c.y+d*.256,
+            w*.26,1.3,1.2,glyph,false);
+          ctx.box(group,c.x-w*.205,H*.76,c.y+d*.27,
+            1.0,1.2,1.0,post,false);
+          ctx.box(group,c.x+w*.12,H*.79,c.y+d*.24,
+            w*.35,2.7,1.3,glyph,false);
+          const arrowX=c.x+w*.28,arrowY=H*.79;
+          for(const dir of [-1,1]){
+            const tip=ctx.box(group,arrowX,arrowY+dir*2.35,c.y+d*.26,
+              w*.22,1.9,1.2,glyph,false);
+            tip.rotation.z=dir<0?.62:-.62;
+          }
           ctx.box(group,c.x,H*.95,c.y,w+1,1.5,3.8,post,false);
         }else if(fixture==='trash-bin'){
           ctx.box(group,c.x,(asset?.height??23)*.45,c.y,
@@ -475,10 +484,22 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
             ctx.box(group,c.x+w*sx,6.9,c.y,
               w*.11,.7,d*.52,safety,false);
         }else if(fixture==='parking-sign'){
+          // Bold recognizable parking 'P' on an enamel-blue reserve sign,
+          // not a vague yellow dash or a billboard-sized icon.
           const height=asset?.height??44;
+          const plate=visualCtx.solid(0x456b79,.85,'painted-metal');
+          const ink=visualCtx.solid(0xd5d8ca,.74,'painted-metal');
           ctx.box(group,c.x,height*.5,c.y,2,height,2,dark);
-          ctx.box(group,c.x,height*.79,c.y,w*.9,13,1,enamel,false);
-          ctx.box(group,c.x,height*.79,c.y+.9,w*.55,1.8,.7,safety,false);
+          ctx.box(group,c.x,height*.80,c.y,w,13,1.2,plate,false);
+          ctx.box(group,c.x-w*.18,height*.81,c.y+.88,
+            1.5,7.5,.85,ink,false);
+          ctx.box(group,c.x+w*.025,height*.88,c.y+.88,
+            w*.39,1.45,.85,ink,false);
+          ctx.box(group,c.x+w*.025,height*.80,c.y+.88,
+            w*.39,1.4,.85,ink,false);
+          ctx.box(group,c.x+w*.20,height*.84,c.y+.88,
+            1.35,3.8,.85,ink,false);
+          ctx.box(group,c.x,height*.96,c.y,w+.5,1.3,2,dark,false);
         }else if(fixture==='street-lamp'){
           // Street-standard stepped pole with a cantilever luminaire
           // facing the carriageway (+Z in the front-facing local frame).
