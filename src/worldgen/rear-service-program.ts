@@ -20,7 +20,11 @@ export function planRearServiceMarks(zones:readonly ExteriorZone[]):RearServiceM
      y-depth/2<zone.y-zone.h/2+4||y+depth/2>zone.y+zone.h/2-4)return;
    out.push({id:zone.id+':'+kind,zoneId:zone.id,kind,x,y,width,depth});
   };
-  add('clear-route',0,0,long*.78,Math.min(18,short*.24));
+  // The protected pedestrian/service route travels OUT from the actual
+  // facade across the short yard dimension, leaving loading and refuse
+  // work areas on either side of it. Running this lane lengthwise would
+  // consume the entire narrow property and exclude nearly every dumpster.
+  add('clear-route',0,0,Math.min(24,long*.14),short*.80);
   add('loading-zone',-long*.24,-short*.29,Math.min(53,long*.28),Math.min(22,short*.27));
   add('waste-collection',long*.25,short*.28,Math.min(46,long*.25),Math.min(22,short*.27));
   if(long>145)add('maintenance-bay',long*.08,-short*.31,Math.min(35,long*.20),Math.min(22,short*.26));
