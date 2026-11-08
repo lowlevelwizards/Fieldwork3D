@@ -481,7 +481,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x,height*.79,c.y+.9,w*.55,1.8,.7,safety,false);
         }else if(fixture==='street-lamp'){
           // Street-standard stepped pole with a cantilever luminaire
-          // facing the carriageway (-Z in the front-facing local frame).
+          // facing the carriageway (+Z in the front-facing local frame).
           // No extra real-time light sources or per-frame shadow updates.
           const height=asset?.height??97;
           const pole=visualCtx.solid(0x606f6a,.8,'industrial-steel');
@@ -491,11 +491,11 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x,height*.33,c.y,5.0,height*.63,5,pole);
           ctx.box(group,c.x,height*.80,c.y,3.8,height*.39,3.8,pole);
           const arm=ctx.box(group,c.x,height*.955,
-            c.y-d*.57,3.5,3.7,d*1.40,pole,false);
+            c.y+d*.57,3.5,3.7,d*1.40,pole,false);
           arm.rotation.x=-.13;
-          ctx.box(group,c.x,height*.98,c.y-d*1.23,
+          ctx.box(group,c.x,height*.98,c.y+d*1.23,
             13,3.3,8,crown,false);
-          ctx.box(group,c.x,height*.954,c.y-d*1.23,
+          ctx.box(group,c.x,height*.954,c.y+d*1.23,
             11.5,1.0,7.2,diffuser,false);
           ctx.box(group,c.x,height*.46,c.y,5.7,2.2,5.7,crown,false);
         }else if(fixture==='bike-rack'){
