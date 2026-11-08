@@ -19,6 +19,12 @@ import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 import {replayActorVisible,replayActorDisclosed,replayCivilianDisclosed,
   type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
+import {requestedMiniatureFocus,miniatureFocusDecision,
+ type MiniatureFocusView} from './rendering/miniature-focus-config.ts';
+import {miniatureProtectedRect,type FocusPoint,type FocusRect}
+ from './rendering/miniature-focus-mask.ts';
+import {MiniatureFocusPass,type MiniatureFocusDebug}
+ from './rendering/miniature-focus-pass.ts';
 import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
  from './operator-shadow-quality.ts';
@@ -145,6 +151,20 @@ export class TacticalScene3D{
   private readonly quality=graphicsBudget(
     new URLSearchParams(location.search).get('quality'),
     navigator.maxTouchPoints>0);
+  /** Opt-in, presentation only. The default path remains direct render. */
+  private readonly miniFocusMode=requestedMiniatureFocus(
+    new URLSearchParams(location.search).get('focusFx'));
+  private readonly miniFocusDebug:MiniatureFocusDebug=(()=>{
+    const d=new URLSearchParams(location.search).get('focusDebug');
+    return d==='mask'||d==='protected'?d:null;
+  })();
+  private miniFocusPass:MiniatureFocusPass|null=null;
+  private miniFocusIsReplay=false;
+  private miniFocusInputActive=false;
+  private miniFocusRecovery=1;
+  private readonly miniFocusProjection=new THREE.Vector3();
+  private readonly miniFocusPoints:FocusPoint[]=Array.from(
+    {length:8},()=>({x:0,y:0}));
   private lastFogSignature='';
   private lastMemoryFogSignature='';
   private lastMemoryFogSession:Session|null=null;
@@ -196,6 +216,72 @@ export class TacticalScene3D{
     return this.physicalDirectorActive?
       (this.replayDirectorLens==='wide'?
         this.directorCamera:this.directorOrthoCamera):this.camera;
+  }
+  /** Main loop supplies only view/interaction state, never actor intel. */
+  setMiniatureFocusContext(replaying:boolean,interacting:boolean,dt:number):void{
+    this.miniFocusIsReplay=replaying;
+    this.miniFocusInputActive=interacting;
+    if(interacting)this.miniFocusRecovery=0;
+    else this.miniFocusRecovery=Math.min(1,
+      this.miniFocusRecovery+Math.max(0,dt)/.18);
+  }
+  /** Conservative projection of known site bounds, unless an omniscient
+   * replay director may safely protect its explicitly featured friendlies.
+   * An invalid or behind-camera projection disables blur for that frame.
+   */
+  private miniatureFocusRect(camera:THREE.Camera,
+    director:boolean,omniscient:boolean):FocusRect|null{
+    const subjects=director&&omniscient&&
+      this.replayDirectorSubjects.length>0?
+      this.replayDirectorSubjects:null;
+    const bounds=activeWorldBounds();
+    const count=subjects?Math.min(4,subjects.length)*2:8;
+    for(let i=0;i<count;i++){
+      const p=subjects?subjects[i>>1]:null;
+      const x=p?.x??((i&1)?bounds.maxX:bounds.minX);
+      const z=p?.y??((i&2)?bounds.maxY:bounds.minY);
+      const height=subjects?(i&1?42:0):(i&4?42:0);
+      const projected=this.miniFocusProjection.set(x,height,z).project(camera);
+      if(!Number.isFinite(projected.x)||!Number.isFinite(projected.y)||
+         !Number.isFinite(projected.z)||
+         projected.z<-1||projected.z>1)return null;
+      this.miniFocusPoints[i].x=(projected.x+1)*this.width/2;
+      this.miniFocusPoints[i].y=(1-projected.y)*this.height/2;
+    }
+    return miniatureProtectedRect(this.miniFocusPoints.slice(0,count),
+      this.width,this.height,subjects?48:32);
+  }
+  private renderMiniatureFocus(camera:THREE.Camera,omniscient:boolean):void{
+    if(this.miniFocusMode==='off'&&!this.miniFocusDebug){
+      this.renderer.render(this.scene,camera);return;
+    }
+    const director=this.miniFocusIsReplay&&this.physicalDirectorActive;
+    const view:MiniatureFocusView=
+      camera===this.bodycamCamera?'bodycam':
+      this.view.mode==='top'?'top':
+      this.view.mode==='plan2d'?'floor-plan':
+      director?'director':this.miniFocusIsReplay?'free-replay':'tactical';
+    const potentiallyEnabled=view!=='bodycam'&&view!=='top'&&
+      view!=='floor-plan'&&this.quality.mode!=='performance'&&
+      (this.miniFocusMode!=='replay'||this.miniFocusIsReplay);
+    const rect=potentiallyEnabled||this.miniFocusDebug?
+      this.miniatureFocusRect(camera,director,omniscient):null;
+    const decision=miniatureFocusDecision({
+      mode:this.miniFocusMode,view,quality:this.quality.mode,
+      protectedRegionValid:!!rect,gesturesActive:this.miniFocusInputActive,
+      capable:true,
+    });
+    if(!decision.active&&!this.miniFocusDebug){
+      this.renderer.render(this.scene,camera);return;
+    }
+    decision.strength*=this.miniFocusRecovery;
+    if(!this.miniFocusPass)this.miniFocusPass=new MiniatureFocusPass(this.renderer);
+    this.miniFocusPass.render(this.scene,camera,decision,rect,
+      this.width,this.height,this.miniFocusDebug);
+  }
+  inspectMiniatureFocus(){
+    return {mode:this.miniFocusMode,debug:this.miniFocusDebug,
+      ...this.miniFocusPass?.getDiagnostics()};
   }
   /** Default: in-room orthographic. WIDE is a deliberate A/B preview,
    * never changes the tactical camera, replay footage or simulation. */
@@ -1647,7 +1733,11 @@ export class TacticalScene3D{
     };
   }
   setMode(mode:ViewMode){
-    if(mode==='plan2d')this.replayBodycam=null;
+    if(mode==='plan2d'){
+      this.replayBodycam=null;
+      this.miniFocusPass?.dispose();
+      this.miniFocusPass=null;
+    }
     this.view.mode=mode;
     if(mode==='top')this.view.pitch=Math.PI/2;
     else if(mode==='iso')this.view.pitch=55*Math.PI/180;
@@ -2793,7 +2883,7 @@ export class TacticalScene3D{
       for(const child of cameraOwner.chest.children)hide(child);
       cameraOwner.head.traverse(hide);
     }
-    try{this.renderer.render(this.scene,camera);}
+    try{this.renderMiniatureFocus(camera,omniscient);}
     finally{
       for(const [mesh,visible] of masked)mesh.visible=visible;
       this.bodycamLastQa={
