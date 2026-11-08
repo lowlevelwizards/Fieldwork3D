@@ -53,7 +53,10 @@ export function createModernHelmetCoverLayers(parent:THREE.Group,shell:string):
  const scrimMaterial=new THREE.MeshStandardMaterial({
   color:OPERATOR_SOLID_FAMILIES['forest-green'],roughness:1,flatShading:true,vertexColors:true
  });
- for(const m of [fabric,binding,scrimMaterial])enableBakedGearAO(m);
+ for(const m of [fabric,binding,scrimMaterial]){
+  m.userData.fieldworkStudioSoftGear=true;
+  enableBakedGearAO(m);
+ }
  const fitted=hidden(parent),loose=hidden(parent),band=hidden(parent),
   net=hidden(parent),sparse=hidden(parent),field=hidden(parent);
  meshed(fitted,modernHelmetCoverVolumes(shell),fabric,'H1-fitted-cloth');
