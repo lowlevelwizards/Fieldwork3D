@@ -76,7 +76,7 @@ export function readRoster(raw:string|null):RosterState{
     starterWeaponPreset(base.id));
    const reserve=finite(f.reserve,0,300,base.reserve);
    const parsed=readPersistentMagazines(base.id,weapon,reserve,f.magazines,
-    Math.max(WEAPONS[weapon].capacity,liveMagazineCapacity(weapon,config)));
+    300);
    const fitted=fitMagazineInventory(base.id,weapon,config,
     finite(f.magazine,0,300,base.magazine),reserve,parsed);
    const magazines=fitted.magazines;
