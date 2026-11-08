@@ -2522,12 +2522,17 @@ export class TacticalScene3D{
       // Never apply hidden live leaf motion over remembered personal state.
       const shownFraction=personal?fraction:
         (omniscient||directlyObserved)?(replayProgress??fraction):fraction;
+      const previousFraction=!replay&&(omniscient||directlyObserved)?
+        renderFrame?.previousDoors?.[door.id]:undefined;
+      const drawFraction=previousFraction===undefined?shownFraction:
+        previousFraction+(shownFraction-previousFraction)*
+          Math.max(0,Math.min(1,renderFrame?.alpha??1));
       if(door.kind==='shutter'){
         object.leaf.rotation.y=0;
-        object.leaf.position.y=shownFraction*37;
+        object.leaf.position.y=drawFraction*37;
       }else if(door.kind==='sliding'){
         object.leaf.rotation.y=0;
-        object.leaf.position.x=shownFraction*
+        object.leaf.position.x=drawFraction*
           Math.hypot(door.b.x-door.a.x,door.b.y-door.a.y)*(door.slideDirection??1);
       }else{
         const age=s.seconds-(door.lastKickAt??-100);
@@ -2535,7 +2540,7 @@ export class TacticalScene3D{
           Math.sin(age*76)*.045*(1-age/.34):0;
         // A failed kick visibly rattles the leaf in its frame; the hinge
         // yaw remains authoritative for collision, LOS and navigation.
-        object.leaf.rotation.y=(door.swing??-1)*shownFraction*1.54+wobble;
+        object.leaf.rotation.y=(door.swing??-1)*drawFraction*1.54+wobble;
       }
       // A solid open leaf is still geometry. In orthographic Director
       // a door between the camera and a friendly fades as a very light
@@ -2545,7 +2550,7 @@ export class TacticalScene3D{
       const leafCut=physicalDirector&&this.replayDirectorLens==='ortho'&&
         !['glazed','french','screen','mesh-gate'].includes(door.style??'')&&
         subjects.some(p=>wallOccludesFriendly(
-          doorLeafSegment({...door,openFraction:shownFraction}),
+          doorLeafSegment({...door,openFraction:drawFraction}),
           p,{x:fromCamera.x,y:fromCamera.z},maxCutDistance));
       if(leafCut||object.leaf.userData.directorCutMaterials){
         object.leaf.userData.directorCutMaterials=true;
