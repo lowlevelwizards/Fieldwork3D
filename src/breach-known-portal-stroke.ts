@@ -22,7 +22,7 @@ export function knownPortalStrokeRoute(from:Pt,to:Pt,blocked:Pt,
  const points=[from,...route];
  let traveled=0;
  for(let i=1;i<points.length;i++)traveled+=distance(points[i-1],points[i]);
- if(traveled>straight+Math.min(48,Math.max(20,straight*.35)))return false;
+ if(traveled>straight+Math.min(48,Math.max(24,straight*.45)))return false;
  return portals.some(portal=>{
    if(side(from,portal)*side(to,portal)>=0)return false;
    if(pointToSegment(blocked,portal)>18)return false;
