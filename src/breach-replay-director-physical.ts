@@ -272,7 +272,7 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       (forwardOffset>0?Math.min(110,forwardOffset*1.65):0)-
       Math.max(0,fov-107)*7-
       Math.max(0,visible.length?0:120);
-    const proposal={cameraAnchor:p,focus,roomId:room?.id??null,
+    const proposal:PhysicalDirectorView={cameraAnchor:p,focus,roomId:room?.id??null,
       fov:clamp(Math.max(96,fov),96,116),targetVisible,
       occluded:req.subjectPoints.length-visible.length+
         (req.target&&!targetVisible?1:0)};
