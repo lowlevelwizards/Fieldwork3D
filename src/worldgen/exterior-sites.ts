@@ -49,7 +49,10 @@ export function addExteriorProperty(site:Site,seed:number):Site{
   const thickness=Math.min(maxLength,Math.max(24,gap-18));
   // Arrival pavement starts at the facade, not floating halfway across
   // a deep setback; the actual public door must meet its outside approach.
-  const nearFacade=id==='arrival-forecourt';
+  // Industrial rear service yards must touch the rear facade, not float
+  // halfway across the open property where a loading door cannot reach.
+  const nearFacade=id==='arrival-forecourt'||
+    (id==='rear-property'&&zoneKind==='service');
   const inset=7;
   const c=side==='north'?minY-(nearFacade?thickness/2+inset:gap/2):
     side==='south'?maxY+(nearFacade?thickness/2+inset:gap/2):
