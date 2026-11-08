@@ -48,7 +48,8 @@ import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
 import {localDetour} from './breach-cooperation.ts';
-import {friendlyPassingStep,nearOccupiedFriendlyGoal} from './breach-friendly-traffic.ts';
+import {friendlyPassingStep,nearOccupiedFriendlyGoal,
+  friendlyArrivalSettleTarget} from './breach-friendly-traffic.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
 import {executionStatus,type MotorPause,type ExecutionIssue,
@@ -2829,10 +2830,22 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     if(n.pivot&&!a.squeeze)rotate(a,angle(a.p,n.pivot),dt);
     return;
   }
+  const friendlyPeers=n.kind==='move'?
+    s.operators.filter(b=>b!==a&&b.health>0&&b.side===a.side)
+      .map(b=>b.p):[];
+  // Avoid finishing two authored MOVE destinations inside one friendly
+  // body diameter. Make the *last moving operator* take a small, legal
+  // settle step; never push or move someone whose own order is complete.
+  const settle=n.kind==='move'?friendlyArrivalSettleTarget(
+    a.p,n.p,friendlyPeers,(from,to)=>
+      passable(to,OPERATOR_RADIUS)&&sweptBodyClear(from,to,s.doors)):null;
+  if(settle){
+    approach(a,settle,dt,s,.72);
+    return;
+  }
   const at=near(a.p,n.p,5)||(
     n.kind==='move'&&nearOccupiedFriendlyGoal(a.p,n.p,
-      s.operators.filter(b=>b!==a&&b.health>0&&b.side===a.side)
-        .map(b=>b.p),(from,to)=>sweptBodyClear(from,to,s.doors)));
+      friendlyPeers,(from,to)=>sweptBodyClear(from,to,s.doors)));
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
     // Running cancels WATCH rather than merely suspending it.
     if(interruptsWatch(n,a.pace))a.aimInstruction=null;
