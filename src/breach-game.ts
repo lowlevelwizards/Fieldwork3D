@@ -105,9 +105,11 @@ import {newAwareness,addObservation,visibleObservation,
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {passageWait,passageFollowerStep,approachingNarrowThreshold,
-  type PassageActor,type PassageLease}
+import {passageWait,passageFollowerStep,passageScheduledStep,
+  approachingNarrowThreshold,type PassageActor,type PassageLease}
   from './breach-passage.ts';
+import {planDoorSchedule,pendingPassageSlot,type PassageSchedule}
+  from './breach-passage-plan.ts';
 import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
@@ -310,6 +312,18 @@ export type Session=Omit<TacticalState,'operators'> & {
   intelCarrierId:string|null;};
 // The elective enemy-planning budget is mission-local and never serialized.
 const aiSchedulers=new WeakMap<Session,AiWorkScheduler>();
+/** Planning authority for GO-time ordering; never edits PlanNode[].
+ * A new GO after a tactical pause recomputes the remaining crossing
+ * schedule. The running sequence is stable between those checkpoints. */
+const passageSchedules=new WeakMap<Session,PassageSchedule>();
+function ensurePassageSchedule(s:Session):PassageSchedule{
+ const old=passageSchedules.get(s);
+ if(old)return old;
+ const schedule=planDoorSchedule(s.operators,s.doors,
+   (from,to)=>legalMoveRoute(s,from,to));
+ passageSchedules.set(s,schedule);
+ return schedule;
+}
 const tacticalRoutes=new WeakMap<Session,TacticalRouteCache>();
 const perceptionBySession=new WeakMap<Session,PerceptionPairCache>();
 /** Exact-authority cache: geometry epoch and precise leaf state fully
@@ -1268,7 +1282,7 @@ export function planSquadEntry(s:Session,doorId:string){
 /** Tactical WAIT: hold for the minimum interval, and continue only after
  * any visible living contact has been absent for that entire interval.
  * Legacy holdClear nodes execute identically for old plans/replays. */
-export function planWaitAt(s:Session,id:string,seconds=.5,
+export function planWaitAt(s:Session,id:string,seconds=1,
   origin:'here'|'end'='here',afterNodeId?:number){
   const a=party(s,id);if(!a||!canEdit(s))return false;
   const after=afterNodeId===undefined?-1:
@@ -1413,7 +1427,7 @@ export function planMedicalTreatment(s:Session,id:string,patientId:string):boole
    patientId:patient.id,woundId:wound.id});
  });
 }
-export function planWait(s:Session,id:string,seconds=.5){
+export function planWait(s:Session,id:string,seconds=1){
   const a=party(s,id);return a?addNode(s,id,'wait',finalPoint(a),
     {duration:clamp(seconds,.3,6)}):false;
 }
@@ -1694,8 +1708,14 @@ export function posture(s:Session,id:string){
   a.posture=a.posture==='stand'?'crouch':'stand';return true;
 }
 export function toggling(s:Session){
-  if(s.phase==='planning'){s.phase='running';s.started=true;}
-  else if(s.phase==='running'){s.phase='planning';s.timesPaused++;}
+  if(s.phase==='planning'){
+    // Calculate ALL participants and their earliest doorway arrivals
+    // before the first motor tick, not when they crowd the doorway.
+    passageSchedules.delete(s);
+    ensurePassageSchedule(s);
+    s.passageLeases={};
+    s.phase='running';s.started=true;
+  }else if(s.phase==='running'){s.phase='planning';s.timesPaused++;}
 }
 export function notify(s:Session,event:string){
   if(s.events.at(-1)===event)return;
@@ -2058,6 +2078,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // and the planned squad sequence becomes unpredictable.
   // Only one operator owns a narrow threshold at a time. This is a
   // transient execution pause, not a new waypoint or permanent yield.
+  const scheduled=ensurePassageSchedule(s);
   const traffic:PassageActor[]=s.operators.map(unit=>{
     const order=unit.plan[0];
     const traveling=!!order&&
@@ -2071,10 +2092,16 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       goal:unit===a?p:traveling?(unit.nav.at(-1)??order!.p):null,
       health:unit.health,blockedTime:unit.blockedTime,
       active:unit===a||traveling,
+      plannedPassage:pendingPassageSlot(unit.p,
+        scheduled.get(unit.id),s.doors),
     };
   });
   const passageActor=traffic.find(unit=>unit.id===a.id)!;
-  const negotiatedMove=passageFollowerStep(passageActor,s.doors,traffic,move);
+  const sequencedMove=passageScheduledStep(passageActor,s.doors,traffic,
+    move,(from,to)=>passable(to,OPERATOR_RADIUS)&&
+      sweptBodyClear(from,to,s.doors));
+  const negotiatedMove=passageFollowerStep(passageActor,s.doors,traffic,
+    sequencedMove);
   // A partly free stride moves on this tick instead of stopping and
   // repeatedly re-accelerating. A fully consumed gap still enters the
   // existing WAIT state, with its unchanged warnings/lease semantics.
@@ -2905,7 +2932,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
     if(contact)a.motorPause='contact';
     a.waitRemaining=contact?0:a.waitRemaining+dt;
     a.velocity=0;
-    if(a.waitRemaining>=(n.duration??.5))pop(a);
+    if(a.waitRemaining>=(n.duration??(n.kind==='wait'?1:.5)))pop(a);
     return;
   }
   if(n.kind==='sync'){
