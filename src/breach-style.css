@@ -2399,3 +2399,16 @@ body.replaying #replayTopHud *{-webkit-tap-highlight-color:transparent}
 @media(prefers-reduced-motion:reduce){
   .replay-rail,.replay-panel,.replay-choice-pop{transition:none!important}
 }
+
+
+/* Direct operator chips in Analyze replace the last iOS select on the
+ * main replay viewing path. */
+.replay-actor-controls #replayInspectActor[hidden],
+.replay-actor-controls #replayInspectFollow[hidden]{display:none!important}
+.replay-actor-choices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:4px;width:100%}
+.replay-actor-choices button{min-width:0;min-height:39px;padding:5px 2px;
+  border-radius:6px;border:1px solid #6d8877;background:#2d4539;
+  color:#e9eadc;font:700 11px "Saira Condensed",sans-serif}
+.replay-actor-choices button[aria-pressed="true"]{background:#b09c6e;
+  border-color:#e0cd9a;color:#152721}
