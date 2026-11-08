@@ -1,9 +1,7 @@
-/** Build 179: a single non-blocking environmental contact query for the
- * visible barrel and shot-time ballistics. Never moves an actor or changes
- * locomotion: the operator manipulates the gun, not their collision capsule.
- * Sweep the *rigid physical barrel tip* from the chest/body reference,
- * using the same height-aware walls, open leaves and cover as ballistics.
- */
+/** Continuous, deterministic clearance of the actual rigid gun.
+ * Approach distance starts folding the weapon BEFORE the muzzle touches a
+ * wall. Live rendering and shot-time ballistics consume this same result.
+ * Never moves the operator, changes a path or teleports muzzle geometry. */
 import {COVER,WALLS,type Door,type Obstacle,type Segment,
   type Pt} from './breach-core.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
@@ -11,37 +9,71 @@ import {muzzleAtShot,type MuzzleInput,type MuzzleSample}
   from './breach-muzzle.ts';
 export type ClearanceResult={
   obstruction:boolean;blocked:boolean;retraction:number;
+  /** 0..1 wall-proximity-driven rifle fold: same as visible short-stock. */
+  compression:number;
   blocker:FireBlock;muzzle:MuzzleSample;
 };
-/** 3.4 is the maximum valid underarm retraction supported by fitWeaponPose.
- * Never retract the barrel beyond that rigid hand/stock solution. */
-const RETRACTION_STEPS=[0,1.15,2.35,3.4] as const;
-/** Returns the first viable rigid gun fit, never an ad hoc muzzle clamp.
- * All fits use the same weapon stock, grip, transform and barrel axis.
- * A blocked final result suppresses shooting rather than moving bullets
- * through the wall or getting the operator stuck in a doorway.
+/** Lead distance gives the elbows room to fold before contact; the rear
+ * margin finishes compression when the free muzzle would penetrate. */
+export const SHORT_STOCK_APPROACH_LEAD=14;
+export const SHORT_STOCK_REAR_MARGIN=7;
+const MAX_LEGACY_RETRACTION=3.4;
+const clamp=(v:number)=>Math.max(0,Math.min(1,v));
+/** Search the first blocker along the ACTUAL direction of the ready barrel,
+ * including closed door leaves and height-aware furniture. This is bounded:
+ * one long probe, five distance refinements only when something is near.
+ * No per-frame state or unrecorded smoothing (replay seek stays pure).
  */
 export function weaponClearance(input:MuzzleInput,
   doors:readonly Door[],cover:readonly Obstacle[]=COVER,
   walls:readonly Segment[]=WALLS):ClearanceResult{
   const from:Pt={x:input.x,y:input.z};
-  const check=(muzzle:MuzzleSample):FireBlock=>
-    assessFireLane(from,muzzle.y,{x:muzzle.x,y:muzzle.z},
-      muzzle.y,cover,walls,doors,[],'weapon').blocker;
+  const check=(tip:Pt,height:number):FireBlock=>
+    assessFireLane(from,height,tip,height,cover,walls,doors,[],'weapon').blocker;
   const ready=muzzleAtShot({...input,obstruction:false,
-    clearanceRetraction:0});
-  let blocker=check(ready);
-  if(blocker==='clear')return {obstruction:false,blocked:false,
-    retraction:0,blocker,muzzle:ready};
-  let candidate=ready;
-  for(const retraction of RETRACTION_STEPS){
-    candidate=muzzleAtShot({...input,obstruction:true,
-      clearanceRetraction:retraction});
-    blocker=check(candidate);
-    if(blocker==='clear')return {obstruction:true,blocked:false,
-      retraction,blocker,muzzle:candidate};
+    clearanceRetraction:0,shortCompression:undefined});
+  const vx=ready.x-input.x,vy=ready.z-input.z;
+  const barrel=Math.hypot(vx,vy);
+  if(barrel<.001)return {obstruction:false,blocked:false,
+    compression:0,retraction:0,blocker:'clear',muzzle:ready};
+  const dx=vx/barrel,dy=vy/barrel;
+  const horizon=barrel+SHORT_STOCK_APPROACH_LEAD;
+  const at=(d:number):Pt=>({x:from.x+dx*d,y:from.y+dy*d});
+  const horizonHit=check(at(horizon),ready.y);
+  if(horizonHit==='clear')
+    return {obstruction:false,blocked:false,compression:0,
+      retraction:0,blocker:'clear',muzzle:ready};
+  // Bracket the first obstructing point along the rigid barrel axis.
+  // A constant 5 refinements keeps expensive material tests bounded.
+  let low=0,high=horizon;
+  for(let i=0;i<5;i++){
+    const middle=(low+high)*.5;
+    if(check(at(middle),ready.y)==='clear')low=middle;
+    else high=middle;
   }
-  return {obstruction:true,blocked:true,
-    retraction:RETRACTION_STEPS[RETRACTION_STEPS.length-1],
-    blocker,muzzle:candidate};
+  const distanceToObstacle=high;
+  const start=barrel+SHORT_STOCK_APPROACH_LEAD;
+  const total=SHORT_STOCK_APPROACH_LEAD+SHORT_STOCK_REAR_MARGIN;
+  const proximity=clamp((start-distanceToObstacle)/total);
+  // A very far contact inside the approximation tolerance is not a pose
+  // change. Once contact approaches, progress changes continuously rather
+  // than jumping from one discrete 1.15-unit slide to another.
+  if(proximity<=.001)
+    return {obstruction:false,blocked:false,compression:0,
+      retraction:0,blocker:'clear',muzzle:ready};
+  let blocker:FireBlock='clear',candidate=ready,compression=proximity;
+  // If the preferred comfortable fold still intersects geometry, deepen
+  // it only as far as required. The final blocked state forbids ignition.
+  for(const extra of [0,.12,.28,.48,1] as const){
+    compression=clamp(proximity+extra);
+    candidate=muzzleAtShot({...input,obstruction:true,
+      shortCompression:compression,clearanceRetraction:0});
+    blocker=check({x:candidate.x,y:candidate.z},candidate.y);
+    if(blocker==='clear')return {obstruction:true,blocked:false,
+      compression,retraction:compression*MAX_LEGACY_RETRACTION,
+      blocker,muzzle:candidate};
+    if(compression>=1)break;
+  }
+  return {obstruction:true,blocked:true,compression:1,
+    retraction:MAX_LEGACY_RETRACTION,blocker,muzzle:candidate};
 }
