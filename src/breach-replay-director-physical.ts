@@ -471,6 +471,35 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
         req.operator,surfaces,'ortho',aspect,
         req.composition.baseSpan,zoom,v.fov,
         req.composition.safeFrame);
+      if(req.composition.treatment==='door'||
+         req.composition.treatment==='entry'||
+         req.composition.treatment==='follow'){
+        // Count DISTINCT readable miniatures, not just actor centers
+        // intersecting the viewport. Four stacked helmets in one column
+        // should never beat a clear two- or three-operator doorway shot.
+        const visibleXs:number[]=[];
+        for(const actor of req.subjectPoints){
+          if(!directorSubjectVisibility(v.cameraAnchor,actor,scene).readable)
+            continue;
+          const actorQuality=directorCompositionQuality(v.cameraAnchor,
+            v.focus,actor,null,
+            req.followDirection??{x:1,y:0},
+            req.composition.treatment,'ortho',aspect,
+            req.composition.baseSpan,zoom,v.fov,
+            req.composition.usableWidth,req.composition.usableHeight,
+            req.composition.safeFrame);
+          if(actorQuality.primaryReadable)
+            visibleXs.push(actorQuality.primaryScreenX);
+        }
+        visibleXs.sort((a,b)=>a-b);
+        let distinct=0,last=-Infinity;
+        for(const x of visibleXs)if(x-last>.13){
+          distinct++;last=x;
+        }
+        const bonus=req.composition.treatment==='follow'?12:24;
+        candidate.score+=Math.max(0,distinct-1)*bonus-
+          Math.max(0,visibleXs.length-distinct)*11;
+      }
       candidate.score-=
         Math.max(0,fg.door-.30)*660+
         Math.max(0,fg.wall-.55)*390+
