@@ -3,7 +3,7 @@
  */
 import {type Site,type ExteriorZone} from '../breach-site.ts';
 import {arrivalAccessLane} from './property-access-lane.ts';
-import {parkingStallCount} from './parking-stalls.ts';
+import {parkingStallCount,reservedParkingBay} from './parking-stalls.ts';
 import {planRearServiceMarks} from './rear-service-program.ts';
 import {planPublicStreet,type StreetRect} from './public-street-layout.ts';
 export type SurfaceKind='path'|'driveway-stripe'|'parking-divider'|
@@ -39,7 +39,7 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
        zoneId:publicZone.id,kind,x:r.x,y:r.y,
        width:r.width,depth:r.depth});
    };
-   if(street.sidewalk)addStreet('sidewalk',street.sidewalk);
+   for(const strip of street.sidewalkPieces)addStreet('sidewalk',strip);
    if(street.approach)addStreet('path',street.approach);
    for(const curb of street.curb)addStreet('curb-edge',curb);
    if(street.curbRamp)addStreet('curb-ramp',street.curbRamp);
@@ -92,41 +92,23 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
        }
      }
      const slots=parkingStallCount(zone);
-     // A clearly marked reserved parking bay joins the real door approach,
-     // but leaves a separate striped transfer aisle beside the parked car.
-     // This is illustrative geometry, not a declaration of ADA compliance.
-     const long=broad?zone.w:zone.h,short=broad?zone.h:zone.w;
-     if(slots>=2&&long>=132&&short>=55){
-       const stride=long/slots;
-       const lane=arrivalAccessLane(site,zone);
-       const transverse=broad?lane?.x:lane?.y;
-       const candidates=Array.from({length:slots},(_,i)=>({
-         i,pos:(i+.5)*stride-long/2+(broad?zone.x:zone.y)
-       })).filter(p=>transverse===undefined||
-         Math.abs(p.pos-transverse)>stride*.8);
-       candidates.sort((a,b)=>
-         Math.abs(a.pos-(transverse??(broad?zone.x:zone.y)))-
-         Math.abs(b.pos-(transverse??(broad?zone.x:zone.y)))||
-         a.i-b.i);
-       const reserved=candidates[0];
-       if(reserved){
-         const x=broad?reserved.pos:zone.x,y=broad?zone.y:reserved.pos;
-         const bayWidth=Math.min(stride*.64,42);
-         if(broad){
-           add(zone,'reserved-parking',x,y,bayWidth,short*.55);
-           const side=reserved.pos<(transverse??zone.x)?1:-1;
-           const aisleX=x+side*(bayWidth/2+5);
-           for(let n=-1;n<=1;n++)
-             add(zone,'access-hatch',aisleX+n*3.5,y,1.5,short*.48);
-           add(zone,'stall-end-line',x,zone.y-short*.36,bayWidth*.87,1.7);
-         }else{
-           add(zone,'reserved-parking',x,y,short*.55,bayWidth);
-           const side=reserved.pos<(transverse??zone.y)?1:-1;
-           const aisleY=y+side*(bayWidth/2+5);
-           for(let n=-1;n<=1;n++)
-             add(zone,'access-hatch',x,aisleY+n*3.5,short*.48,1.5);
-           add(zone,'stall-end-line',zone.x-short*.36,y,1.7,bayWidth*.87);
-         }
+     // The marker and its sign must reference the SAME selected bay.
+     // Still illustrative, not a declaration of accessibility compliance.
+     const reserved=reservedParkingBay(site,zone);
+     if(reserved){
+       const {x,y,bayWidth,short,broad,side}=reserved;
+       if(broad){
+         add(zone,'reserved-parking',x,y,bayWidth,short*.55);
+         const aisleX=x+side*(bayWidth/2+5);
+         for(let n=-1;n<=1;n++)
+           add(zone,'access-hatch',aisleX+n*3.5,y,1.5,short*.48);
+         add(zone,'stall-end-line',x,zone.y-short*.36,bayWidth*.87,1.7);
+       }else{
+         add(zone,'reserved-parking',x,y,short*.55,bayWidth);
+         const aisleY=y+side*(bayWidth/2+5);
+         for(let n=-1;n<=1;n++)
+           add(zone,'access-hatch',x,aisleY+n*3.5,short*.48,1.5);
+         add(zone,'stall-end-line',zone.x-short*.36,y,1.7,bayWidth*.87);
        }
      }
      for(let i=1;i<slots;i++){

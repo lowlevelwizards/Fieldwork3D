@@ -145,10 +145,18 @@ export function addExteriorProperty(site:Site,seed:number):Site{
      preferred:choices[Math.floor(rng()*choices.length)];
    const asset=propDefinition(item);if(!asset)continue;
    const footprint=landscapePhysicalFootprint(item,asset.width,asset.depth);
-   const w=footprint.w,h=footprint.h;
+   // Public fixtures face the actual street and keep the same physical
+   // footprint as their rotated mesh on all four building orientations.
+   const facesStreet=zone.id==='arrival-forecourt'&&
+     ['mailbox','parking-sign','public-bench','bike-rack'].includes(item);
+   const orientation=facesStreet?
+     entry==='east'?1:entry==='north'?2:entry==='west'?3:0:0;
+   const quarterTurn=orientation%2===1;
+   const w=quarterTurn?footprint.h:footprint.w;
+   const h=quarterTurn?footprint.w:footprint.h;
    const streetSpots=frontageEdgeCandidates(site,zone,item,w,h);
    const serviceEdge=zone.kind==='service'&&SERVICE_EDGE_FIXTURES.has(item);
-   const edgeSpots=serviceEdge?serviceYardEdgeCandidates(zone,w,h):[];
+   const edgeSpots=serviceEdge?serviceYardEdgeCandidates(zone,w,h,item):[];
    if(zone.w<w+22||zone.h<h+22)continue;
    let accepted=false;
    const fixed=streetSpots??(serviceEdge?edgeSpots:null);
@@ -156,7 +164,8 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     const edge=fixed?.[attempt];
     const x=edge?.x??zone.x+(rng()-.5)*Math.max(0,zone.w-w-20);
     const y=edge?.y??zone.y+(rng()-.5)*Math.max(0,zone.h-h-18);
-    const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low'};
+    const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low',
+      ...(facesStreet?{orientation}:{})};
     const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
     if(x-w/2<bounds.minX+17||x+w/2>bounds.maxX-17||
       y-h/2<bounds.minY+23||y+h/2>bounds.maxY-22)continue;
