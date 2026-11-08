@@ -153,8 +153,15 @@ export class TacticalScene3D{
   private lastBodycamSampleTime:number|null=null;
   private replayXrayOn=false;
   private replayDirectorFocus:Pt|null=null;
+  private replayDirectorSubjects:Pt[]=[];
   setReplayDirectorFocus(p:Pt|null):void{
     this.replayDirectorFocus=p?{...p}:null;
+    if(!p)this.replayDirectorSubjects=[];
+  }
+  setReplayDirectorSubjects(subjects:readonly Pt[]):void{
+    // Friendly positions only. Never pass enemy coordinates to the renderer
+    // to guide cinematic architecture.
+    this.replayDirectorSubjects=subjects.slice(0,4).map(p=>({...p}));
   }
   /** Presentation-only wall transparency: recorded sight still governs actors. */
   setReplayXray(enabled:boolean):void{
