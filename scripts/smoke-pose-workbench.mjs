@@ -125,9 +125,11 @@ try{
   const full=JSON.parse(await page.locator('#poseJson').inputValue());
   if(full.version!==2||full.kind!=='fieldwork-pose-library'||
     full.entries['ar-m16a1']?.quality!=='tuned'||
-    full.entries['ar-m4a1']?.quality!=='reference'||
+    full.entries['ar-m4a1']?.quality!=='tuned'||
     full.entries['ak-akm']?.quality!=='reference')
-   throw Error('Library export lost reference or per-weapon editing status');
+   throw Error('Library export lost AK reference or hand-tuned M4/M16 status: '+
+    JSON.stringify(Object.fromEntries(
+     ['ar-m4a1','ak-akm','ar-m16a1'].map(id=>[id,full.entries[id]?.quality]))));
   await page.locator('#wbSaveLibrary').click();
   await page.locator('#wbReset').click();
   await page.locator('#wbLoadLibrary').click();
