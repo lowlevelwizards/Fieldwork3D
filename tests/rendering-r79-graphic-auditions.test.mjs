@@ -38,7 +38,8 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  const uniform=cube(fabric);
  root.add(weapon,buckle,uniform);
  assert.equal(studioContourEligible(receiver,receiver.material),true);
- assert.equal(studioContourEligible(buckle,metal),true);
+ assert.equal(studioContourEligible(buckle,metal),false,
+  'loose metal fittings no longer produce artificial rim glints');
  assert.equal(studioContourEligible(uniform,fabric),false);
  const render=applyStudioGraphicLighting(root,look({rim:'dual',rimAmount:.80}));
  assert.equal(render.weapons,1);
@@ -90,7 +91,7 @@ test('R7.13 visible near-white lit rim stays on surfaces with no halo',()=>{
  assert.ok(receiver.material instanceof THREE.MeshStandardMaterial);
  disposeStudioGraphicLighting(root);
 });
-test('R7.18 bare helmets and explicitly authored shell covers, never general fabric or skin',()=>{
+test('R7.19 no glints on bare helmets, shell covers, or attached metal',()=>{
  const shell=new THREE.MeshStandardMaterial({color:0x34373a});
  const cloth=new THREE.MeshStandardMaterial({color:0x988d77});
  cloth.userData.fieldworkFabric=true;
@@ -99,8 +100,11 @@ test('R7.18 bare helmets and explicitly authored shell covers, never general fab
  headwear.userData.fieldworkStudioBareShellMaterial=null;
  assert.equal(studioContourEligible(head,shell),false);
  headwear.userData.fieldworkStudioBareShellMaterial=shell;
- assert.equal(studioContourEligible(head,shell),true);
+ assert.equal(studioContourEligible(head,shell),false);
  assert.equal(studioContourEligible(cover,cloth),false);
+ const bracket=cube(new THREE.MeshStandardMaterial({metalness:.85}));
+ headwear.add(bracket);
+ assert.equal(studioContourEligible(bracket,bracket.material),false);
  const lenses=cube(new THREE.MeshStandardMaterial({transparent:true,opacity:.5}));
  assert.equal(studioContourEligible(lenses,lenses.material),false);
 });
@@ -193,7 +197,7 @@ test('R7.12 original Look restores with direct-light rim disabled',()=>{
  assert.equal(ensureStudioPieceGradient(new THREE.BufferGeometry()),false);
 });
 
-test('R7.18 three real cel bands, white glints only on hard shells',()=>{
+test('R7.19 three cel bands and glints restricted to weapon surfaces',()=>{
  const root=new THREE.Group();
  const skin=new THREE.MeshStandardMaterial({color:0x55372c});
  skin.userData.fieldworkStudioSkin=true;
@@ -204,12 +208,15 @@ test('R7.18 three real cel bands, white glints only on hard shells',()=>{
  cover.userData.fieldworkStudioSoftGear=true;
  cover.userData.fieldworkStudioHelmetShellCover=true;
  const head=cube(skin),shirt=cube(cloth),steel=cube(metal),helmet=cube(cover);
- root.add(head,shirt,steel,helmet);
+ const weapon=new THREE.Group();
+ weapon.userData.fieldworkWeaponPresentation=true;
+ weapon.add(steel);
+ root.add(head,shirt,weapon,helmet);
  const audition=look({toon:3,rim:'dual',gradient:'piece-rose',
   shadow:'plum-plus',celLow:.6,celHigh:.86,
   rimFabricOpacity:1,rimSkinOpacity:1});
  applyStudioGraphicLighting(root,audition);
- assert.equal(studioContourEligible(helmet,cover),true);
+ assert.equal(studioContourEligible(helmet,cover),false);
  assert.equal(studioContourEligible(shirt,cloth),false);
  assert.equal(studioContourEligible(head,skin),false);
  const hc=shader();head.material.onBeforeCompile(hc,null);
@@ -219,7 +226,9 @@ test('R7.18 three real cel bands, white glints only on hard shells',()=>{
  assert.equal(hc.uniforms.fieldworkRimStrength,undefined);
  assert.equal(cc.uniforms.fieldworkRimStrength,undefined);
  assert.ok(mc.uniforms.fieldworkRimStrength);
- assert.ok(cap.uniforms.fieldworkRimStrength);
+ assert.equal(mc.uniforms.fieldworkRimStrength.value,.85,
+  'explicit lab experiment still allows a brighter glint');
+ assert.equal(cap.uniforms.fieldworkRimStrength,undefined);
  assert.match(hc.fragmentShader,/fieldworkCelMidTone/);
  assert.match(hc.fragmentShader,/fieldworkCelHighCutoff/);
  assert.match(hc.fragmentShader,/fieldworkCelHighlightTone/);
