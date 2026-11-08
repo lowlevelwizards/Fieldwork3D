@@ -15,7 +15,9 @@ export function chooseCombatAction(s:CombatContext):CombatAction{
  if(s.suppression>retreatPressure&&s.morale<retreatMorale)
   return 'withdraw';
  if(s.ammunition<=0)return 'reload';
- if(!s.laneClear)return 'reposition';
+ // Real danger outranks searching for a better muzzle lane. Otherwise a
+ // heavily suppressed actor repeatedly steps out of cover just to fire.
  if(s.suppression>holdPressure)return 'hold';
+ if(!s.laneClear)return 'reposition';
  return 'engage';
 }

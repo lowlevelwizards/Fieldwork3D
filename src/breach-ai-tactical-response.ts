@@ -16,3 +16,14 @@ export function contactTactic(action:CombatAction|null,
    holdFire:true,mayReposition:true};
  return {seekCover:false,withdraw:false,holdFire:false,mayReposition:false};
 }
+
+/** HOLD can seek cover, but never discard an active cover destination on
+ * every decision tick. Retrying expensive route selection is bounded by the
+ * caller's existing defense deadline. This only applies to hostiles; blue
+ * operators retain full authorship of their plan and movement.
+ */
+export function shouldSeekHoldCover(action:CombatAction|null,
+ hasDestination:boolean,now:number,retryAt:number):boolean{
+ return action==='hold'&&!hasDestination&&
+   Number.isFinite(now)&&Number.isFinite(retryAt)&&now>=retryAt;
+}
