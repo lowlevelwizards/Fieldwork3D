@@ -1,7 +1,6 @@
-/** Stage 1B mannequin-only posing. Combat pose/movement/footstep targets
- * remain authoritative. This gives the unarmed Lab a true neutral reference
- * without moving contacts, changing limb lengths or modifying IK solvers.
- * Coordinates are legacy chest +X forward; renderer adapter is unchanged.
+/** Unarmed reference wrists and elbows with a shared operator rest hip.
+ * Footstep contacts and the existing two-bone solver remain authoritative.
+ * Coordinates are legacy chest +X forward.
  */
 import * as THREE from 'three';
 import {LEG_REST_RISE,legRestRise} from './breach-leg-geometry.ts';
