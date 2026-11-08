@@ -1716,6 +1716,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/replay-director-door-handoff-') }}
         run: |
           node --experimental-strip-types --test tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
+      - name: Bottom-seated real magazine pouch fit — critical regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/magazines-bottom-seated-') }}
+        run: |
+          node --experimental-strip-types --test tests/operator-magazine-dedicated-pouch-bottom-fit.test.mjs tests/operator-rig-r7-magazine-readability.test.mjs tests/operator-rig-actual-magazine-pouch-fit.test.mjs tests/operator-armor-r1-integration.test.mjs tests/operator-armor-rig-release-b.test.mjs tests/operator-harness-magazine.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
