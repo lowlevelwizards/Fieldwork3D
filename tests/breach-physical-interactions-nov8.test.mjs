@@ -75,7 +75,8 @@ test('basic lockpick handles a mechanical latch but cannot bypass physical barri
 test('stack context prefers high ready without overriding true obstruction',()=>{
  const base={aim:0,moving:.2,obstruction:false,
   friendlyNear:false,intent:'stack',weapon:'carbine'};
- assert.equal(handlingPose(base),'high');
+ assert.equal(handlingPose(base),'ready');
+ assert.equal(handlingPose({...base,friendlyNear:true}),'high');
  assert.equal(handlingPose({...base,obstruction:true}),'short');
  assert.equal(handlingPose({...base,aim:.9,intent:'engage'}),'ads');
 });
