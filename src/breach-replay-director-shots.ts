@@ -24,6 +24,8 @@ export type DirectorShotContext={
 export type DirectorShot=CinematicShot&{
   shotType:DirectorShotType;subjects:string[];doorId:string|null;
   score:number;occluded:number;motion:number;
+  /** Stable film beat identifier; an ongoing exchange is one camera setup. */
+  beatId:string|null;
   /** Actual director-only camera position in the map's X/Z plane. */
   cameraAnchor:Pt
 };
@@ -390,6 +392,7 @@ export function composeReplayDirectorShot(_time:number,
           doorId:doorBeat?.doorId??relevantDoor?.id??null,
           score,occluded:wall.blocked,
           motion:subjects.reduce((v,a)=>v+speedFor(a,context),0),
+          beatId:context.beat?.id??null,
           cameraAnchor:wall.camera};
       }
     }

@@ -1732,6 +1732,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-storyboard-') }}
         run: |
           node --experimental-strip-types --test tests/replay-director-storyboard.test.mjs tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
+      - name: Replay director anti-whip — fixed beats and in-room film rails
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/replay-director-stop-whipping-') }}
+        run: |
+          node --experimental-strip-types --test tests/replay-director-storyboard.test.mjs tests/replay-r7-director.test.mjs tests/replay-r5-direct-viewer.test.mjs tests/replay-r3-director.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

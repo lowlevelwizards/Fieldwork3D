@@ -37,7 +37,6 @@ export function buildDirectorFilmBeats(
     Number.isFinite(s.recordedAt)&&Number.isFinite(s.start.x)&&
     Number.isFinite(s.end.x)).slice().sort((a,b)=>
       a.recordedAt-b.recordedAt||a.id-b.id);
-  const previous=new Map<string,DirectorFilmBeat>();
   for(const shot of ordered){
     // An accurate shooter/target pair is taken from actual recorded
     // actor positions, not from a missed round's impact coordinate.
@@ -47,12 +46,17 @@ export function buildDirectorFilmBeats(
     const friendly=friendlies.has(shot.shooterId)?shot.shooterId:
       shot.targetId&&friendlies.has(shot.targetId)?shot.targetId:null;
     if(!friendly)continue;
-    const pair=[shot.shooterId,shot.targetId??'impact'].sort().join(':');
-    const existing=previous.get(pair);
-    if(existing&&shot.recordedAt-existing.last<=1.15){
+    // Keep a whole nearby firefight on ONE camera setup. Multiple
+    // hostiles, alternately firing teammates, or a burst with changing
+    // targets must never cause a new shot/camera side every few frames.
+    const existing=[...beats].reverse().find(b=>b.kind==='fight'&&
+      shot.recordedAt-b.last<=1.6&&
+      (b.actorId===friendly||b.shooterId===shot.shooterId||
+        b.targetId===shot.targetId||b.targetId===shot.shooterId)&&
+      dist(b.shooter,shooter)<255);
+    if(existing){
       existing.last=shot.recordedAt;
-      existing.end=shot.recordedAt+1.05;
-      // Retain the first decisive shot as the established composition.
+      existing.end=shot.recordedAt+1.15;
       continue;
     }
     const t=shot.recordedAt;
@@ -62,7 +66,7 @@ export function buildDirectorFilmBeats(
       shooterId:shot.shooterId,targetId:shot.targetId,
       shooter,target,doorId:null
     };
-    beats.push(beat);previous.set(pair,beat);
+    beats.push(beat);
   }
   for(const event of events){
     if(event.kind!=='door'&&event.kind!=='flash'&&
