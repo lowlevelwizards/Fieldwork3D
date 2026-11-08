@@ -85,7 +85,7 @@ export function studioLightLabFromQuery(search:string):StudioLightLabSettings{
     'operatorShadowColor','operatorRimAmount','operatorCelLow']
   .some(k=>p.has(k)))return approvedGraphicLighting();
  return {
-  toon:toon?2:0,
+  toon,
   rim:rim==='off'?'off':'dual',
   gradient:gradient==='current'?'current':
    gradient==='piece-rose'?'piece-rose':'piece',
