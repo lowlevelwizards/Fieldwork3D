@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1d2d29">
+<title>Fieldwork / Pose Workbench</title>
+<style>
+:root{color-scheme:dark;--bg:#1b2b27;--panel:#263b35;--panel2:#314940;--line:#6a8072;--ink:#e6eadc;--muted:#b4c2b5;--gold:#d4b17c;--accent:#cbd7a2;--warn:#e49f80}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:"Saira Condensed","Arial Narrow",system-ui,sans-serif;font-size:14px}
+body{display:flex;flex-direction:column;height:100dvh}
+header{z-index:5;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;padding-top:max(10px,env(safe-area-inset-top));background:#192924;border-bottom:1px solid var(--line)}
+header strong{font-size:19px;letter-spacing:.05em}
+header a{color:var(--gold);font-weight:700;text-decoration:none;white-space:nowrap}
+header small{color:var(--muted);display:block;letter-spacing:.055em;font-size:10px}
+#stage{flex:1 1 auto;min-height:195px;position:relative;background:#c4c5bd;touch-action:none}
+#preview{display:block;width:100%;height:100%;touch-action:none;outline:0}
+#viewButtons{position:absolute;top:8px;left:8px;display:flex;gap:5px;z-index:1}
+#viewButtons button{padding:7px 9px;background:#213a32df}
+#stageLegend{position:absolute;right:8px;top:10px;max-width:47%;padding:7px 9px;border-radius:5px;background:#1b302bdc;color:#eff2dc;font-size:11px;text-align:right}
+#stageHelp{position:absolute;left:8px;bottom:9px;padding:6px 8px;border-radius:5px;background:#1b302bce;color:#eff2dc;font-size:11px;max-width:85%}
+#editor{height:47dvh;min-height:260px;flex-shrink:0;overflow-y:auto;overscroll-behavior:contain;background:var(--bg);border-top:2px solid #829f8a;padding:11px 12px calc(16px + env(safe-area-inset-bottom));scrollbar-color:#668278 var(--bg)}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 9px}
+.field{display:flex;align-items:center;gap:6px;min-width:0;flex:1}
+.field label{color:var(--muted);font-size:12px;letter-spacing:.07em;white-space:nowrap;font-weight:700}
+button,select,input,textarea{font:inherit}
+button,select{min-height:39px;color:var(--ink);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-weight:700}
+button{cursor:pointer}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--gold)}
+button[aria-pressed="true"],button.is-active{background:var(--gold);color:#172922;border-color:#efd9ad}
+select{min-width:0;max-width:100%;flex:1}
+#wbTargets{display:flex;gap:5px;overflow-x:auto;scrollbar-width:thin;white-space:nowrap;padding-bottom:7px}
+#wbTargets button{min-width:max-content;min-height:39px;flex-shrink:0}
+#targetTitle{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:4px 0 8px}
+#targetTitle strong{font-size:17px;color:var(--gold)}
+#targetTitle small{color:var(--muted);font-size:11px;max-width:65%;text-align:right}
+#xyzControls{display:grid;gap:7px;margin-bottom:10px}
+.xyz{display:grid;grid-template-columns:32px minmax(0,1fr) 69px;gap:8px;align-items:center}
+.xyz label{font-size:13px;color:var(--gold);font-weight:800}
+.xyz input[type=range]{width:100%;height:24px;accent-color:var(--gold);margin:0;touch-action:pan-y}
+.xyz input[type=number]{width:69px;padding:5px 4px;background:#304a42;color:#e8ede2;border:1px solid #648173;border-radius:5px;text-align:right;font-variant-numeric:tabular-nums}
+#readout{background:#172820;border:1px solid #4a6456;border-radius:6px;padding:8px 10px;white-space:pre-wrap;font:12px/1.4 ui-monospace,Menlo,monospace;min-height:42px}
+#readout[data-warning=true]{color:#ffcaab;border-color:#b87861}
+.checkline{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--muted)}
+.checkline input{width:18px;height:18px;accent-color:var(--gold)}
+details{background:#21362f;border:1px solid #5a7766;border-radius:7px;margin-top:9px}
+details summary{cursor:pointer;padding:10px;color:var(--gold);font-weight:800}
+.detailsBody{padding:0 9px 11px;display:grid;gap:9px}
+.detailsBody p{margin:0;color:var(--muted);font-size:12px;line-height:1.4}
+#blend{width:100%;accent-color:var(--gold);height:25px}
+.actions{display:flex;gap:6px;flex-wrap:wrap}
+.actions button{flex:1 0 115px}
+button.primary{background:var(--gold);color:#1d2d29}
+textarea{width:100%;height:125px;min-height:85px;resize:vertical;padding:9px;font:11px/1.4 ui-monospace,Menlo,monospace;background:#11221e;border:1px solid #5b7467;color:#e6eadc;border-radius:5px}
+#status{min-height:18px;display:block;color:var(--accent);font-size:12px;margin:5px 0}
+noscript{position:absolute;top:15%;left:8%;right:8%;background:#1c312a;padding:15px;color:white}
+@media(min-width:800px){#editor{height:340px;max-height:52dvh;padding:16px max(20px,calc((100vw - 980px)/2))}.xyz{grid-template-columns:60px 1fr 90px}header{padding-left:24px;padding-right:24px}}
+@media(max-height:680px){#editor{height:55dvh;min-height:235px}#stage{min-height:130px}header{padding-top:6px;padding-bottom:6px}}
+</style>
+</head>
+<body>
+<header><div><strong>FIELDWORK / POSE WORKBENCH</strong><small>MANUAL IK AUTHORING · LAB-ONLY · DOES NOT CHANGE BATTLE POSES</small></div><nav><a href="./operator-lab.html?tab=poses">← OPERATOR LAB</a></nav></header>
+<section id="stage" aria-label="Interactive 3D operator pose">
+<canvas id="preview" aria-label="3D operator pose with draggable joint targets"></canvas>
+<div id="viewButtons" role="group" aria-label="Camera views"><button type="button" data-view="front">FRONT</button><button type="button" data-view="side">SIDE</button><button type="button" data-view="iso">3/4</button></div>
+<output id="stageLegend">LOCAL XYZ · X FORWARD · Y UP · Z RIGHT</output>
+<div id="stageHelp">Tap a colored handle to select · Drag to move in screen plane · Pinch/orbit away from handles</div>
+</section>
+<main id="editor">
+<div class="row">
+<div class="field"><label for="wbWeapon">WEAPON</label><select id="wbWeapon"><option value="ar-m4a1">M4A1</option><option value="ak-akm">AKM</option><option value="hk-mp5a3">MP5A3</option><option value="shotgun">SHOTGUN</option></select></div>
+<button type="button" id="wbReset">START FROM READY</button>
+</div>
+<div id="wbTargets" role="group" aria-label="Editable pose targets">
+<button type="button" data-target="stock">STOCK</button>
+<button type="button" data-target="firingShoulder">R SHOULDER</button>
+<button type="button" data-target="supportShoulder">L SHOULDER</button>
+<button type="button" data-target="firingHand">R HAND</button>
+<button type="button" data-target="supportHand">L HAND</button>
+<button type="button" data-target="firingElbow">R ELBOW</button>
+<button type="button" data-target="supportElbow">L ELBOW</button>
+<button type="button" data-target="torso">UPPER BODY</button>
+<button type="button" data-target="weaponRotation">GUN ANGLE</button>
+</div>
+<div id="targetTitle"><strong id="wbSelected">STOCK</strong><small id="wbAxisHint">Buttplate location · chest-local coordinates</small></div>
+<div id="xyzControls" role="group" aria-label="XYZ target controls"></div>
+<div class="row"><label class="checkline"><input id="wbFollow" type="checkbox" checked>MOVE HAND TARGETS WITH RIFLE</label><button type="button" id="wbSnap">SNAP HANDS TO GRIPS</button></div>
+<output id="readout" aria-live="polite">Loading actual operator rig…</output>
+<output id="status" aria-live="polite"></output>
+<details id="wbPreviewDetails"><summary>READY → YOUR POSE · TRANSITION PREVIEW</summary>
+<div class="detailsBody">
+<p>Scrub from the original ready pose into your authored pose. Both hands, both elbow guides, shoulders, stock, weapon orientation and torso interpolate together. This is a preview only.</p>
+<div class="row"><label for="blend">BLEND</label><input id="blend" type="range" min="0" max="100" step="1" value="100"><output id="blendValue">100%</output></div>
+<div class="actions"><button type="button" id="wbAnimate">PLAY TRANSITION</button><button type="button" id="wbEnd">EDIT FINAL POSE</button></div>
+</div></details>
+<details open><summary>EXPORT / IMPORT / SAVE</summary><div class="detailsBody">
+<p>Export the actual authored XYZ positions as JSON. Paste it back here to restore, or copy it into ChatGPT so the pose can become an approved game animation later. Saved poses stay local to this browser.</p>
+<div class="actions"><button class="primary" type="button" id="wbCopy">COPY POSE JSON</button><button type="button" id="wbExport">SHOW JSON</button><button type="button" id="wbSave">SAVE LOCALLY</button><button type="button" id="wbLoad">LOAD SAVED</button></div>
+<textarea id="poseJson" spellcheck="false" aria-label="Pose recipe JSON for export and import" placeholder="Exported pose JSON appears here. You can also paste JSON here and tap Import."></textarea>
+<div class="actions"><button type="button" id="wbImport">IMPORT PASTED JSON</button><button type="button" id="wbDownload">DOWNLOAD JSON</button></div>
+</div></details>
+</main>
+<noscript>JavaScript is required to display the 3D operator pose editor.</noscript>
+<script type="module" src="./src/operator-pose-workbench-ui.ts"></script>
+</body>
+</html>
