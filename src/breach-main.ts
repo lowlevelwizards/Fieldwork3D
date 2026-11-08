@@ -1,3 +1,4 @@
+import {matchActiveTouchPointers} from './breach-touch-recovery.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {
   W,H,activeWorldBounds,WALLS,COVER,GRID,doorCenter,doorLeafSegment,activateSite,
@@ -1879,9 +1880,59 @@ let cursor:Pt|null=null;
 let previewHover=false;
 let trace:Pt[]|null=null;
 const activePointers=new Map<number,{x:number;y:number;startX:number;startY:number;
-  wasUnit:boolean;nodeId:number|null;
+  pointerType:string;wasUnit:boolean;nodeId:number|null;
   mode:'undecided'|'route'|'pan'|'node'|'watchTarget'|'activeWatch'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti'|'targetPreview';moved:boolean}>();
 let pinchDistance=0,panMid:Pt|null=null;
+/** Rebase the surviving pointers after a normal lift or a missing iOS lift. */
+function settleCameraPointers():void{
+  if(activePointers.size>=2){
+    const pts=[...activePointers.values()].slice(0,2);
+    pinchDistance=distance({x:pts[0].x,y:pts[0].y},
+      {x:pts[1].x,y:pts[1].y});
+    panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
+  }else{
+    panMid=null;pinchDistance=0;
+    if(activePointers.size===1){
+      const remaining=[...activePointers.values()][0];
+      if(remaining.mode==='cameraMulti'){
+        // A lifted second finger must never leave the survivor in pinch.
+        remaining.mode=viewMode==='plan2d'||!stage?'cameraPan':'cameraOrbit';
+        remaining.moved=true;
+        remaining.startX=remaining.x;remaining.startY=remaining.y;
+      }
+    }
+  }
+}
+/**
+ * iOS can drop a pointerup/lostcapture after a rapid pinch or an interrupted
+ * touch. TouchEvent.touches is the browser's independent active-contact list;
+ * reconcile ONLY surplus pointers, never synthesize a waypoint or a tap.
+ * Touch identifiers aren't interchangeable with PointerEvent.pointerId, so
+ * match by proximity instead of comparing their numeric IDs.
+ */
+function reconcileCanvasTouches(event:TouchEvent):void{
+  const touchPointers=new Map([...activePointers].filter(
+    ([,pointer])=>pointer.pointerType==='touch'));
+  const live=Array.from(event.touches,t=>({x:t.clientX,y:t.clientY}));
+  if(touchPointers.size<=live.length)return;
+  // A one-finger tactical tap/drag is completed on pointerup. Don't erase
+  // it ahead of that event merely because touchend arrived first.
+  if(touchPointers.size===1&&live.length===0&&
+    !['cameraMulti','cameraOrbit','cameraPan'].includes(
+      [...touchPointers.values()][0].mode))return;
+  const retained=matchActiveTouchPointers(touchPointers,live);
+  let pruned=false;
+  for(const id of touchPointers.keys()){
+    if(retained.has(id))continue;
+    activePointers.delete(id);
+    if(canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);
+    pruned=true;
+  }
+  if(!pruned)return;
+  trace=null;draggingNode=null;draggingWatchTarget=false;
+  settleCameraPointers();
+  probeCameraGesture('touch-recovered');
+}
 function probeCameraGesture(phase:string):void{
   if(!import.meta.env.DEV)return;
   canvas.dataset.gesturePhase=phase;
@@ -7105,7 +7156,7 @@ canvas.addEventListener('pointerdown',e=>{
   if(cameraModeInput){
     const orbit=viewMode!=='plan2d'&&e.button===2;
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
-      startX:e.clientX,startY:e.clientY,wasUnit:false,nodeId:null,
+      startX:e.clientX,startY:e.clientY,pointerType:e.pointerType,wasUnit:false,nodeId:null,
       mode:orbit?'cameraOrbit':'cameraPan',moved:false});
   }else{
     const contextual=looking||flashMode||!!firePlacement||!!evacMode;
@@ -7158,7 +7209,7 @@ canvas.addEventListener('pointerdown',e=>{
           'Drag this waypoint to move it. LOOK checks briefly; WATCH persists.',4200);
     }else if(hit)selectUnit(hit.id);
     activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
-      startX:e.clientX,startY:e.clientY,wasUnit:!!hit&&!node,
+      startX:e.clientX,startY:e.clientY,pointerType:e.pointerType,wasUnit:!!hit&&!node,
       nodeId:node?.id??null,
       mode:node?.marker==='activeWatch'?'activeWatch':
         node?.marker==='watch'?'watchTarget':node?'node':'undecided',moved:false});
@@ -7437,32 +7488,18 @@ function releasePointer(e:PointerEvent,cancelled=false){
   trace=null;draggingNode=null;draggingWatchTarget=false;
   activePointers.delete(e.pointerId);
   if(e.pointerType==='touch')previewHover=false;
-  if(activePointers.size>=2){
-    // Rebase a new pinch pair immediately when one of three fingers leaves.
-    // A stale midpoint/gap otherwise causes a huge camera jump on the next move.
-    const pts=[...activePointers.values()].slice(0,2);
-    pinchDistance=distance({x:pts[0].x,y:pts[0].y},
-      {x:pts[1].x,y:pts[1].y});
-    panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-  }else{
-    panMid=null;pinchDistance=0;
-    if(activePointers.size===1){
-      const remaining=[...activePointers.values()][0];
-      if(remaining.mode==='cameraMulti'){
-        // Pinch → orbit: explicitly transfer gesture ownership to the one
-        // remaining finger; otherwise it can remain trapped in cameraMulti.
-        remaining.mode=viewMode==='plan2d'||!stage?'cameraPan':'cameraOrbit';
-        remaining.moved=true;
-        remaining.startX=remaining.x;remaining.startY=remaining.y;
-      }
-    }
-  }
+  settleCameraPointers();
   probeCameraGesture('up');
   updateHud();
 }
 canvas.addEventListener('pointerup',e=>releasePointer(e));
 canvas.addEventListener('pointercancel',e=>releasePointer(e,true));
 canvas.addEventListener('lostpointercapture',e=>releasePointer(e,true));
+// A second, independent touch stream repairs missing mobile pointer releases
+// without waiting for a page reload. Run in capture phase so the next camera
+// move cannot see a ghost second finger.
+for(const name of ['touchstart','touchmove','touchend','touchcancel'] as const)
+  window.addEventListener(name,reconcileCanvasTouches,{capture:true,passive:true});
 function clearTacticalGestureState():void{
   activePointers.clear();trace=null;
   panMid=null;pinchDistance=0;draggingWatchTarget=false;draggingNode=null;
