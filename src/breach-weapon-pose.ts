@@ -115,8 +115,9 @@ export function handlingPose(input:{aim:number;moving:number;
   if(input.aim>=.82)return 'ads';
   if(input.aim>=.20)return 'point';
   let next:Handling='ready';
-  if((input.intent==='door'||input.intent==='stack'||
-      input.intent==='entry')&&input.friendlyNear)next='high';
+  if(input.intent==='stack'||
+     (input.intent==='door'||input.intent==='entry')&&input.friendlyNear)
+      next='high';
   else if(input.intent==='entry'||input.intent==='stack'||
           input.intent==='door'||input.intent==='pie'||
           input.intent==='look'||input.intent==='hold'||
