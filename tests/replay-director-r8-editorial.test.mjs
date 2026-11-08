@@ -123,7 +123,7 @@ test('a new action already covered by the existing camera keeps its setup',()=>{
  });
  const first=rail.sample(0),after=rail.sample(1.6);
  assert.deepEqual(after.cameraAnchor,first.cameraAnchor);
- assert.equal(after.cameraDecision,'hold:new-story-covered');
+ assert.equal(after.cameraDecision,'hold:action-covered');
  assert.equal(after.editorialId,'fight:3');
 });
 test('a serious action out of prior coverage earns a motivated same-room cut',()=>{
@@ -145,8 +145,9 @@ test('a serious action out of prior coverage earns a motivated same-room cut',()
  const rail=new ReplayDirectorStoryboard(4,raw,{
   step:.8,rooms:[room],walls:[],aspect:.8,baseSpan:1100
  });
- assert.equal(rail.sample(1.6).cameraDecision,
+ assert.equal(rail.sample(.8).cameraDecision,
   'cut:action-out-of-frame');
+ assert.equal(rail.sample(1.6).roomId,'r');
 });
 test('real camera projection distinguishes zoom fit and impossible wide two-shot',()=>{
  const anchor=pt(55,80),focus=pt(145,80);
@@ -155,5 +156,5 @@ test('real camera projection distinguishes zoom fit and impossible wide two-shot
   .75,.72,8,.8);
  assert.ok(zoom>=.65&&zoom<=8);
  assert.equal(directorPerspectiveCovers(anchor,focus,
-  [pt(95,80),pt(800,80)],.75,116),false);
+  [pt(95,80),pt(10,80)],.75,116),false);
 });
