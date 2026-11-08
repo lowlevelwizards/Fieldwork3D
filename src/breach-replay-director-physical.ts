@@ -68,8 +68,9 @@ export function directorCameraLegal(p:PhysicalPoint,
   }else if(scene.rooms.some(r=>inside(p,r,0)))return false;
   if(scene.walls.some(w=>segmentDistance(p,w.a,w.b)<8.5))return false;
   if((scene.doors??[]).some(d=>segmentDistance(p,d.a,d.b)<7))return false;
-  if((scene.cover??[]).some(o=>p.x>=o.x-6&&p.x<=o.x+o.w+6&&
-    p.y>=o.y-6&&p.y<=o.y+o.h+6))return false;
+  // Cover coordinates are center-based, unlike the room rectangles.
+  if((scene.cover??[]).some(o=>Math.abs(p.x-o.x)<=o.w/2+7&&
+    Math.abs(p.y-o.y)<=o.h/2+7))return false;
   return true;
 }
 export function directorOperatorRoom(p:PhysicalPoint,
