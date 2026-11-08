@@ -1640,9 +1640,11 @@ function quietTacticalSpace(){
     // Protect where the operator actually looks, plus a fan on either side.
     const track=actor.aimInstruction?.mode==='track'?
       actor.aimInstruction.point:undefined;
+    const fixed=actor.aimInstruction?.mode==='fixed'?
+      actor.aimInstruction.angle:undefined;
     const angles=track?
       [Math.atan2(track.y-actor.p.y,track.x-actor.p.x)]:
-      [actor.aim];
+      [fixed??actor.heading];
     for(const base of angles)for(const offset of [-.35,0,.35]){
       const yaw=base+offset;
       const end={x:actor.p.x+Math.cos(yaw)*225,
@@ -1660,6 +1662,10 @@ function quietTacticalSpace(){
         protectedPaths.push({
           a:screen,b:worldToScreen(point.aimPoint,8),
         });
+      }else if(point.facing!==undefined){
+        const end={x:point.p.x+Math.cos(point.facing)*220,
+          y:point.p.y+Math.sin(point.facing)*220};
+        protectedPaths.push({a:screen,b:worldToScreen(end,8)});
       }
       previous=point.p;
     }
