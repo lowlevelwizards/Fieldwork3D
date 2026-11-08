@@ -1208,7 +1208,7 @@ export class TacticalScene3D{
         .93,'furniture-wood');
       const slag=this.solid(age(0x4c5955,'industrial-steel',variant),
         .85,'industrial-steel');
-      for(let j=0;j<5;j++){
+      for(let j=0;j<3;j++){
         const sx=(j%3-1)*visual.w*.105,sz=(Math.floor(j/3)-.5)*visual.h*.15;
         const width=Math.max(3.2,visual.w*(j%2?.16:.20));
         const depth=Math.max(3.2,visual.h*(j%2?.18:.20));
@@ -2024,7 +2024,7 @@ export class TacticalScene3D{
       const cover=s.coverState[item.index];
       const exteriorSetDressing=physicalDirector&&item.kind==='cover'&&
         s.intel.mode==='exterior-known'&&!!cover&&
-        exteriorBriefedAt(s.site,{x:cover.x,y:cover.y});
+        exteriorBriefedAt(s.site??undefined,{x:cover.x,y:cover.y});
       // The Director can frame already-briefed outdoor objects without
       // making them pop into existence mid-shot. Live tactical discovery,
       // personal bodycam evidence and all interior cover remain unchanged.
