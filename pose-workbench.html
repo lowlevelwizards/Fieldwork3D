@@ -53,6 +53,14 @@ details summary{cursor:pointer;padding:10px;color:var(--gold);font-weight:800}
 button.primary{background:var(--gold);color:#1d2d29}
 textarea{width:100%;height:125px;min-height:85px;resize:vertical;padding:9px;font:11px/1.4 ui-monospace,Menlo,monospace;background:#11221e;border:1px solid #5b7467;color:#e6eadc;border-radius:5px}
 #status{min-height:18px;display:block;color:var(--accent);font-size:12px;margin:5px 0}
+#wbLibraryStats{font-size:12px;color:var(--accent);display:block;line-height:1.35}
+#wbPresetStatus{font-size:12px;color:var(--gold);font-weight:800;letter-spacing:.04em}
+#wbLibraryDetails{border-color:#95a988;background:#23392f}
+#wbLibraryDetails summary{font-size:15px}
+#wbLibraryDetails select{min-width:100px}
+#wbLibraryDetails .checkline{min-height:35px}
+#wbBulkStatus{font-size:12px;color:var(--muted);line-height:1.35}
+
 noscript{position:absolute;top:15%;left:8%;right:8%;background:#1c312a;padding:15px;color:white}
 @media(min-width:800px){#editor{height:340px;max-height:52dvh;padding:16px max(20px,calc((100vw - 980px)/2))}.xyz{grid-template-columns:60px 1fr 90px}header{padding-left:24px;padding-right:24px}}
 @media(max-height:680px){#editor{height:55dvh;min-height:235px}#stage{min-height:130px}header{padding-top:6px;padding-bottom:6px}}
@@ -68,9 +76,23 @@ noscript{position:absolute;top:15%;left:8%;right:8%;background:#1c312a;padding:1
 </section>
 <main id="editor">
 <div class="row">
-<div class="field"><label for="wbWeapon">WEAPON</label><select id="wbWeapon"><option value="ar-m4a1">M4A1</option><option value="ak-akm">AKM</option><option value="hk-mp5a3">MP5A3</option><option value="shotgun">SHOTGUN</option></select></div>
+<div class="field"><label for="wbWeapon">WEAPON</label><select id="wbWeapon"><option value="ar-m4a1">M4A1</option><option value="ak-akm">AKM</option></select></div>
+<button type="button" id="wbPrev" aria-label="Previous weapon">◀</button>
+<button type="button" id="wbNext" aria-label="Next weapon">▶</button>
 <button type="button" id="wbReset">START FROM READY</button>
 </div>
+<div class="row"><output id="wbPresetStatus">M4A1 · HUMAN REFERENCE</output>
+<button type="button" id="wbLoadReference">LOAD HUMAN REFERENCE</button></div>
+<details id="wbLibraryDetails" open><summary>POSE LIBRARY · APPLY TO ALL WEAPONS</summary>
+<div class="detailsBody">
+<output id="wbLibraryStats">2 human references · 0 transferred drafts</output>
+<p>Pick a source and apply a transferable short-stock starting pose to every compatible weapon preset. Each weapon gets its own editable copy, with hands adapted to its real grips. Your manually tuned poses and the two original references are protected.</p>
+<div class="row"><div class="field"><label for="wbTransferSource">SOURCE</label><select id="wbTransferSource"><option value="references">M4A1 + AKM references (nearest family)</option><option value="current">MY CAPTURED POSE</option></select></div><button type="button" id="wbCaptureSource">CAPTURE CURRENT AS SOURCE</button></div><output id="wbSourceStatus">Source: the two authored references</output>
+<div class="actions"><button type="button" class="primary" id="wbApplyAll">APPLY TO ALL · KEEP TUNED</button><button type="button" id="wbTransferSelected">APPLY SOURCE TO SELECTED</button></div>
+<label class="checkline"><input type="checkbox" id="wbReplaceGenerated">Replace existing automatically transferred drafts (never overwrite tuned poses)</label>
+<output id="wbBulkStatus">The results are workbench drafts, not battle animations.</output>
+<div class="actions"><button type="button" id="wbExportLibrary">EXPORT ENTIRE LIBRARY</button><button type="button" id="wbSaveLibrary">SAVE ENTIRE LIBRARY</button><button type="button" id="wbLoadLibrary">LOAD ENTIRE LIBRARY</button></div>
+</div></details>
 <div id="wbTargets" role="group" aria-label="Editable pose targets">
 <button type="button" data-target="stock">STOCK</button>
 <button type="button" data-target="firingShoulder">R SHOULDER</button>
@@ -94,10 +116,10 @@ noscript{position:absolute;top:15%;left:8%;right:8%;background:#1c312a;padding:1
 <div class="actions"><button type="button" id="wbAnimate">PLAY TRANSITION</button><button type="button" id="wbEnd">EDIT FINAL POSE</button></div>
 </div></details>
 <details open><summary>EXPORT / IMPORT / SAVE</summary><div class="detailsBody">
-<p>Export the actual authored XYZ positions as JSON. Paste it back here to restore, or copy it into ChatGPT so the pose can become an approved game animation later. Saved poses stay local to this browser.</p>
+<p>Export this weapon's exact authored XYZ positions as version 1 JSON. The entire library uses version 2 JSON, preserving separate poses and edits per weapon. Paste either format back here to import. These drafts do not affect gameplay.</p>
 <div class="actions"><button class="primary" type="button" id="wbCopy">COPY POSE JSON</button><button type="button" id="wbExport">SHOW JSON</button><button type="button" id="wbSave">SAVE LOCALLY</button><button type="button" id="wbLoad">LOAD SAVED</button></div>
 <textarea id="poseJson" spellcheck="false" aria-label="Pose recipe JSON for export and import" placeholder="Exported pose JSON appears here. You can also paste JSON here and tap Import."></textarea>
-<div class="actions"><button type="button" id="wbImport">IMPORT PASTED JSON</button><button type="button" id="wbDownload">DOWNLOAD JSON</button></div>
+<div class="actions"><button type="button" id="wbImport">IMPORT POSE OR LIBRARY JSON</button><button type="button" id="wbDownload">DOWNLOAD JSON</button></div>
 </div></details>
 </main>
 <noscript>JavaScript is required to display the 3D operator pose editor.</noscript>

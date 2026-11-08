@@ -92,6 +92,58 @@ try{
   await page.locator('#wbWeapon').selectOption('ak-akm');
   await page.waitForFunction(()=>
    document.querySelector('#preview')?.dataset.workbenchWeapon==='rifle');
+  if(!(await page.locator('#wbPresetStatus').innerText())
+    .includes('HUMAN REFERENCE'))
+   throw Error('Original AKM reference was not loaded');
+  await page.locator('#wbApplyAll').click();
+  if(!(await page.locator('#wbLibraryStats').innerText())
+    .includes('transferred drafts'))
+   throw Error('Full-catalog bulk transfer did not finish');
+  await page.locator('#wbWeapon').selectOption('ar-m16a1');
+  await page.waitForFunction(()=>
+    document.querySelector('#preview')?.dataset.workbenchWeapon==='rifle');
+  if(!(await page.locator('#wbPresetStatus').innerText())
+    .includes('TRANSFER DRAFT'))
+   throw Error('M16 must be its own retargeted draft');
+  const m16Stock=page.locator('#xyzControls input[type=range]').first();
+  const startM16=Number(await m16Stock.inputValue());
+  await m16Stock.evaluate(e=>{
+   e.value=String(Number(e.value)-2);
+   e.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  const tunedX=Number(await m16Stock.inputValue());
+  if(tunedX>=startM16)throw Error('Could not tune generated M16 draft');
+  await page.locator('#wbWeapon').selectOption('ar-m4a1');
+  await page.locator('#wbWeapon').selectOption('ar-m16a1');
+  if(Math.abs(Number(await page.locator(
+    '#xyzControls input[type=range]').first().inputValue())-tunedX)>.001)
+   throw Error('M16 individual edit lost after weapon switch');
+  if(!(await page.locator('#wbPresetStatus').innerText())
+    .includes('YOUR TUNED POSE'))
+   throw Error('Adjusted weapon was not marked tuned');
+  await page.locator('#wbExportLibrary').click();
+  const full=JSON.parse(await page.locator('#poseJson').inputValue());
+  if(full.version!==2||full.kind!=='fieldwork-pose-library'||
+    full.entries['ar-m16a1']?.quality!=='tuned'||
+    full.entries['ar-m4a1']?.quality!=='tuned'||
+    full.entries['ak-akm']?.quality!=='reference')
+   throw Error('Library export lost AK reference or hand-tuned M4/M16 status: '+
+    JSON.stringify(Object.fromEntries(
+     ['ar-m4a1','ak-akm','ar-m16a1'].map(id=>[id,full.entries[id]?.quality]))));
+  await page.locator('#wbSaveLibrary').click();
+  await page.locator('#wbReset').click();
+  await page.locator('#wbLoadLibrary').click();
+  await page.locator('#wbExportLibrary').click();
+  if(JSON.stringify(JSON.parse(await page.locator(
+    '#poseJson').inputValue()))!==JSON.stringify(full))
+   throw Error('Complete pose library save/load failed');
+  await page.locator('#wbCaptureSource').click();
+  await page.locator('#wbWeapon').selectOption('hk-mp5k');
+  await page.locator('#wbTransferSelected').click();
+  if(!(await page.locator('#wbPresetStatus').innerText())
+    .includes('TRANSFER DRAFT'))
+   throw Error('Pinned-source individual weapon transfer failed');
+  await page.screenshot({path:output+'/phone-all-weapons.png'});
   if(errors.length)throw Error('Runtime errors: '+errors.join('; '));
   console.log('Pose Workbench iPhone WebGL PASS',JSON.stringify({
    targets:9,preset:recipe.preset,blend:'0.400',weaponSwitch:'ak-akm'

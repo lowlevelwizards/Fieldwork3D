@@ -5,9 +5,11 @@ on:
       - 'pose-workbench.html'
       - 'operator-lab.html'
       - 'src/operator-pose-workbench.ts'
+      - 'src/operator-pose-library.ts'
       - 'src/operator-pose-workbench-ui.ts'
       - 'scripts/smoke-pose-workbench.mjs'
       - 'tests/operator-pose-workbench.test.mjs'
+      - 'tests/operator-pose-library-transfer.test.mjs'
       - '.github/workflows/operator-pose-workbench-smoke.yml'
   workflow_dispatch:
 permissions:
@@ -22,7 +24,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/operator-pose-workbench.test.mjs
+      - run: node --experimental-strip-types --test tests/operator-pose-workbench.test.mjs tests/operator-pose-library-transfer.test.mjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: npx playwright install --with-deps chromium
       - run: node scripts/smoke-pose-workbench.mjs

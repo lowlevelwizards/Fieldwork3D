@@ -3,9 +3,11 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator} from './breach-operator-rig.ts';
 import type {OperatorRig,OperatorPose} from './breach-operator-rig.ts';
-import type {WeaponId} from './breach-combat.ts';
-import {initialWeaponConfiguration,selectWeaponFamilyPreset,
- type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {AUTHORED_SHORT_REFERENCES,PRESET_CATALOG,PRESET_IDS,
+ applyToAllWeapons,newPoseLibrary,parsePoseLibrary,referenceForPreset,
+ specForPreset,transferPoseToWeapon,type PoseLibrary}
+ from './operator-pose-library.ts';
 import {
  WORKBENCH_TARGETS,captureWorkbenchPose,cloneWorkbenchPose,
  snapWorkbenchHandsToGun,applyWorkbenchPose,
@@ -31,6 +33,79 @@ const follow=get<HTMLInputElement>('wbFollow');
 const previewSlider=get<HTMLInputElement>('blend');
 const previewValue=get<HTMLOutputElement>('blendValue');
 const jsonField=get<HTMLTextAreaElement>('poseJson');
+const libraryStats=get<HTMLOutputElement>('wbLibraryStats');
+const presetStatus=get<HTMLOutputElement>('wbPresetStatus');
+const bulkStatus=get<HTMLOutputElement>('wbBulkStatus');
+const sourceControl=get<HTMLSelectElement>('wbTransferSource');
+const sourceStatus=get<HTMLOutputElement>('wbSourceStatus');
+const replaceGenerated=get<HTMLInputElement>('wbReplaceGenerated');
+const libraryKey='fieldwork.operator-pose-library.v2';
+let library:PoseLibrary=newPoseLibrary();
+try{
+ const previous=localStorage.getItem(libraryKey);
+ if(previous)library=parsePoseLibrary(previous);
+}catch{library=newPoseLibrary();}
+let pinnedSource:WorkbenchPose|null=null;
+function syncCatalog(){
+ weaponPicker.replaceChildren();
+ const groups=new Map<string,HTMLOptGroupElement>();
+ for(const preset of PRESET_CATALOG){
+  const groupName=preset.family.toUpperCase();
+  let group=groups.get(groupName);
+  if(!group){
+   group=document.createElement('optgroup');
+   group.label=groupName;
+   groups.set(groupName,group);weaponPicker.append(group);
+  }
+  const option=document.createElement('option');
+  option.value=preset.id;option.textContent=preset.name;
+  group.append(option);
+ }
+}
+function renderLibraryStatus(){
+ const entries=Object.values(library.entries);
+ const references=entries.filter(e=>e.quality==='reference').length;
+ const tuned=entries.filter(e=>e.quality==='tuned').length;
+ const generated=entries.filter(e=>e.quality==='generated').length;
+ libraryStats.textContent=PRESET_CATALOG.length+
+  ' weapons · '+references+' references · '+tuned+
+  ' hand-tuned · '+generated+' transferred drafts';
+ const entry=library.entries[edited?.preset??''];
+ const statusName=entry?.quality==='reference'?'HUMAN REFERENCE':
+   entry?.quality==='tuned'?'YOUR TUNED POSE':
+   entry?.quality==='generated'?'TRANSFER DRAFT':'UNSAVED READY';
+ presetStatus.textContent=(edited?.preset??'')+' · '+statusName;
+ get<HTMLButtonElement>('wbLoadReference').disabled=
+  !AUTHORED_SHORT_REFERENCES[edited?.preset??''];
+ for(const option of Array.from(weaponPicker.options)){
+  const row=library.entries[option.value];
+  const preset=PRESET_CATALOG.find(x=>x.id===option.value);
+  option.textContent=(row?.quality==='reference'?'★ ':
+   row?.quality==='tuned'?'✓ ':row?'~ ':'· ')+
+   (preset?.name??option.value);
+ }
+ if(edited)weaponPicker.value=edited.preset;
+}
+function storeEdited(tuned=false){
+ if(!edited)return;
+ const previous=library.entries[edited.preset];
+ library.entries[edited.preset]={pose:cloneWorkbenchPose(edited),
+  quality:tuned?'tuned':previous?.quality??'tuned',
+  ...(previous?.from?{from:previous.from}:{})};
+ renderLibraryStatus();
+}
+function restorePreset(id:string){
+ const entry=library.entries[id];
+ rebaseFromReady(id,entry?.pose);
+ follow.checked=!entry;
+ renderLibraryStatus();
+}
+function sourcePose():WorkbenchPose|'references'{
+ if(sourceControl.value==='references')return 'references';
+ if(!pinnedSource)throw Error('Capture a source pose first');
+ return pinnedSource;
+}
+
 const targetNames:Record<Selection,string>={
  stock:'STOCK / BUTTPLATE',
  supportShoulder:'LEFT SHOULDER',
@@ -137,15 +212,8 @@ const toLocal=(point:THREE.Vector3)=>rig.chest.worldToLocal(point.clone());
 const toWorld=(point:readonly number[])=>rig.chest.localToWorld(v(point));
 const round=(value:number)=>Math.round(value*100)/100;
 function notify(message:string){status.textContent=message;}
-function presetOptions(preset:string):{weapon:WeaponId;configuration?:WeaponConfiguration}{
- if(preset==='shotgun')return {weapon:'shotgun'};
- const weapon:WeaponId=preset.startsWith('ar-')?'carbine':
-   preset.startsWith('ak-')?'rifle':'smg';
- return {weapon,configuration:selectWeaponFamilyPreset(
-   initialWeaponConfiguration(weapon),preset)};
-}
 function rebaseFromReady(preset:string,retain?:WorkbenchPose){
- const spec=presetOptions(preset);
+ const spec=specForPreset(preset);
  activeConfiguration=spec.configuration;
  const input:OperatorPose={
   x:0,z:0,heading:0,travelYaw:0,seconds:1,stride:0,velocity:0,
@@ -184,6 +252,7 @@ function updateValue(key:Selection,index:number,numberValue:number){
   snapWorkbenchHandsToGun(edited,activeConfiguration);
  if(key==='supportHand'||key==='firingHand')follow.checked=false;
  endPreview();syncAxisValues();applyAndRenderTargets();
+ storeEdited(true);
 }
 function syncAxisValues(){
  const array=getArray(edited,selection);
@@ -315,6 +384,7 @@ canvas.addEventListener('pointermove',event=>{
   if(dragging==='firingHand'||dragging==='supportHand')
    follow.checked=false;
   endPreview();syncAxisValues();applyAndRenderTargets();
+  storeEdited(true);
  }
  event.preventDefault();
 },true);
@@ -332,16 +402,78 @@ for(const button of document.querySelectorAll<HTMLButtonElement>('[data-view]'))
  });
 }
 weaponPicker.addEventListener('change',()=>{
- rebaseFromReady(weaponPicker.value);
- notify('Fresh ready pose loaded. Running and gameplay were not changed.');
+ const next=weaponPicker.value;storeEdited();
+ restorePreset(next);
+ notify('Switched weapon. Individual poses retained; no battle changes.');
 });
+const walk=(delta:number)=>{
+ const index=PRESET_CATALOG.findIndex(p=>p.id===edited.preset);
+ const selected=PRESET_CATALOG[
+  (index+delta+PRESET_CATALOG.length)%PRESET_CATALOG.length];
+ storeEdited();restorePreset(selected.id);
+};
+get<HTMLButtonElement>('wbPrev').addEventListener('click',()=>walk(-1));
+get<HTMLButtonElement>('wbNext').addEventListener('click',()=>walk(1));
 get<HTMLButtonElement>('wbReset').addEventListener('click',()=>{
- rebaseFromReady(weaponPicker.value);
- notify('Reset to the actual ready pose. Move STOCK to start the tuck.');
+ const id=edited.preset;rebaseFromReady(id);
+ storeEdited(true);follow.checked=true;
+ notify('Reset to ready. Original references remain available.');
+});
+get<HTMLButtonElement>('wbLoadReference').addEventListener('click',()=>{
+ const id=edited.preset,original=AUTHORED_SHORT_REFERENCES[id];
+ if(!original)return;
+ rebaseFromReady(id,original);
+ library.entries[id]={pose:cloneWorkbenchPose(original),
+  quality:'reference'};
+ follow.checked=false;renderLibraryStatus();
+ notify('Exact original '+id+' human reference restored.');
+});
+get<HTMLButtonElement>('wbCaptureSource').addEventListener('click',()=>{
+ storeEdited();pinnedSource=cloneWorkbenchPose(edited);
+ sourceControl.value='current';
+ sourceStatus.textContent='Captured '+edited.preset+
+  ' · stays pinned while you browse';
+ notify('Transfer source captured. Pick another weapon to retarget.');
+});
+sourceControl.addEventListener('change',()=>{
+ sourceStatus.textContent=sourceControl.value==='references'?
+  'Source: original M4A1 and AKM, selected by family':
+  pinnedSource?'Source: pinned '+pinnedSource.preset:
+   'Capture a source pose first';
+});
+get<HTMLButtonElement>('wbApplyAll').addEventListener('click',()=>{
+ try{
+  storeEdited();
+  const seed=sourcePose();
+  const {created,skipped}=applyToAllWeapons(
+   library,seed,replaceGenerated.checked);
+  const current=edited.preset;restorePreset(current);
+  const info=created+' weapons seeded / updated; '+skipped+
+   ' preserved. Original references and tuned exceptions are protected.';
+  bulkStatus.textContent=info;notify(info);
+ }catch(error){notify(error instanceof Error?error.message:String(error));}
+});
+get<HTMLButtonElement>('wbTransferSelected').addEventListener('click',()=>{
+ try{
+  const id=edited.preset,previous=library.entries[id];
+  if(previous?.quality==='reference'||previous?.quality==='tuned'){
+   notify('Protected pose: select a weapon without hand-tuned edits.');
+   return;
+  }
+  const input=sourcePose(),source=input==='references'?
+   referenceForPreset(id):input;
+  const transferred=transferPoseToWeapon(source,id);
+  library.entries[id]={pose:transferred,quality:'generated',
+   from:source.preset};
+  restorePreset(id);follow.checked=false;
+  notify('Transferred '+source.preset+' → '+id+
+   '. Tune its independent grips and elbows as needed.');
+ }catch(error){notify(error instanceof Error?error.message:String(error));}
 });
 get<HTMLButtonElement>('wbSnap').addEventListener('click',()=>{
  snapWorkbenchHandsToGun(edited,activeConfiguration);
  follow.checked=true;endPreview();applyAndRenderTargets();
+ storeEdited(true);
  if(selection==='firingHand'||selection==='supportHand')refreshSelection();
  notify('Hand targets snapped to the actual rigid weapon grip sockets.');
 });
@@ -361,6 +493,39 @@ get<HTMLButtonElement>('wbEnd').addEventListener('click',()=>{
  endPreview();applyAndRenderTargets();
 });
 const serialized=()=>JSON.stringify(edited,null,2);
+const exportLibrary=()=>{storeEdited();return JSON.stringify(library,null,2);};
+function downloadText(content:string,name:string){
+ const blob=new Blob([content],{type:'application/json'});
+ const url=URL.createObjectURL(blob);
+ const link=document.createElement('a');
+ link.href=url;link.download=name;
+ document.body.append(link);link.click();link.remove();
+ URL.revokeObjectURL(url);
+}
+function importLibrary(content:string){
+ const loaded=parsePoseLibrary(content);
+ library=loaded;syncCatalog();
+ restorePreset(library.entries[edited.preset]?edited.preset:'ar-m4a1');
+ notify('Imported '+Object.keys(library.entries).length+
+  ' independent weapon poses. No live gameplay changes.');
+}
+get<HTMLButtonElement>('wbExportLibrary').addEventListener('click',()=>{
+ jsonField.value=exportLibrary();
+ notify('Full v2 pose library JSON exported. Copy or download below.');
+});
+get<HTMLButtonElement>('wbSaveLibrary').addEventListener('click',()=>{
+ try{
+  localStorage.setItem(libraryKey,exportLibrary());
+  notify('All independent weapon poses saved locally.');
+ }catch{notify('Storage unavailable. Export library JSON instead.');}
+});
+get<HTMLButtonElement>('wbLoadLibrary').addEventListener('click',()=>{
+ try{
+  const saved=localStorage.getItem(libraryKey);
+  if(!saved)throw Error('No saved pose library found');
+  importLibrary(saved);
+ }catch(error){notify(error instanceof Error?error.message:String(error));}
+});
 get<HTMLButtonElement>('wbExport').addEventListener('click',()=>{
  jsonField.value=serialized();notify('Final authored pose JSON shown below.');
 });
@@ -376,39 +541,49 @@ get<HTMLButtonElement>('wbCopy').addEventListener('click',async()=>{
 });
 const saveKey='fieldwork.operator-pose-workbench.v1';
 get<HTMLButtonElement>('wbSave').addEventListener('click',()=>{
- try{localStorage.setItem(saveKey,serialized());
-  notify('Saved locally in this browser.');
- }catch{notify('Local storage unavailable. Use COPY POSE JSON instead.');}
+ try{
+  storeEdited();
+  localStorage.setItem(libraryKey,exportLibrary());
+  localStorage.setItem(saveKey,serialized());
+  notify('Saved current pose and complete weapon library locally.');
+ }catch{notify('Storage unavailable. Copy pose or library JSON instead.');}
 });
 get<HTMLButtonElement>('wbLoad').addEventListener('click',()=>{
  try{
-  const saved=localStorage.getItem(saveKey);
+  const saved=localStorage.getItem(libraryKey)||
+   localStorage.getItem(saveKey);
   if(!saved)throw Error('No saved pose found');
   importPose(saved);
  }catch(error){notify(error instanceof Error?error.message:String(error));}
 });
 function importPose(source:string){
+ const parsed:unknown=JSON.parse(source);
+ if(parsed&&typeof parsed==='object'&&
+  (parsed as {version?:number}).version===2){
+  importLibrary(source);return;
+ }
  const pose=readWorkbenchPose(source);
- if(!['ar-m4a1','ak-akm','hk-mp5a3','shotgun'].includes(pose.preset))
-  throw Error('Unsupported weapon preset: '+pose.preset);
- if(presetOptions(pose.preset).weapon!==pose.weapon)
-  throw Error('Weapon family and preset do not match');
+ if(!PRESET_IDS.has(pose.preset)||
+  specForPreset(pose.preset).weapon!==pose.weapon)
+  throw Error('Weapon family / preset mismatch');
+ storeEdited();
+ library.entries[pose.preset]={pose:cloneWorkbenchPose(pose),
+  quality:'tuned'};
  rebaseFromReady(pose.preset,pose);
- follow.checked=false;
- notify('Imported valid authored targets; no automatic IK correction applied.');
+ follow.checked=false;renderLibraryStatus();
+ notify('Imported v1 pose for '+pose.preset+'; other drafts retained.');
 }
 get<HTMLButtonElement>('wbImport').addEventListener('click',()=>{
  try{importPose(jsonField.value);}
  catch(error){notify(error instanceof Error?error.message:String(error));}
 });
 get<HTMLButtonElement>('wbDownload').addEventListener('click',()=>{
- const blob=new Blob([serialized()],{type:'application/json'});
- const url=URL.createObjectURL(blob);
- const link=document.createElement('a');
- link.href=url;link.download='fieldwork-short-stock-pose.json';
- document.body.append(link);link.click();link.remove();
- URL.revokeObjectURL(url);
- notify('Pose recipe exported.');
+ const content=jsonField.value||serialized();
+ const isBundle=(()=>{try{return JSON.parse(content).version===2;}
+  catch{return false;}})();
+ downloadText(content,isBundle?'fieldwork-pose-library.json':
+  'fieldwork-'+edited.preset+'-pose.json');
+ notify(isBundle?'Downloaded all poses.':'Downloaded current pose.');
 });
 function resize(){
  const width=Math.max(1,stage.clientWidth),
@@ -442,10 +617,11 @@ function tick(now:number){
  requestAnimationFrame(tick);
 }
 try{
- rebaseFromReady('ar-m4a1');
+ syncCatalog();
+ restorePreset('ar-m4a1');
  setSelection('stock');
  resize();
- notify('Sculpt a static pose: select a handle, move XYZ, then copy the JSON.');
+ notify('M4A1 and AKM references ready. Apply to all to generate editable weapon drafts.');
  requestAnimationFrame(tick);
 }catch(error){
  notify('POSE WORKBENCH FAILED: '+(error instanceof Error?error.message:String(error)));
