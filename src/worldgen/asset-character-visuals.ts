@@ -579,9 +579,16 @@ export function renderCharacterFixture(group:THREE.Group,c:Obstacle,
        }
      }
    }else if(fixture==='planter'){
-     b(0,H*.23,0,w*.80,H*.46,d*.78,red);
-     b(0,H*.46,0,w*.91,2,d*.88,wood);
-     b(0,H*.65,0,w*.35,H*.35,d*.35,steel);
+     // A legible heavy planter with recessed soil, crisp concrete rim and
+     // card foliage, instead of three green stone-like spheres on a metal box.
+     const pot=ctx.solid(variation===1?0x8a8a7a:0x7e8178,.95,'concrete');
+     const rim=ctx.solid(0xaaa99b,.90,'concrete');
+     const soil=ctx.solid(0x42483b,1,'earth');
+     b(0,H*.235,0,w*.82,H*.47,d*.82,pot);
+     b(0,H*.47,0,w*.94,2.0,d*.94,rim);
+     b(0,H*.475,0,w*.72,.9,d*.73,soil,false);
+     for(const x of [-w*.33,w*.33])
+       b(x,2.3,0,2.8,4.6,d*.71,pot,false);
      // Shared low-cost alpha-cutout foliage matches shrubs and trees;
      // these leaves stay visual-only, with no false tactical obstruction.
      renderPlanterFoliageCards(group,c,index);
