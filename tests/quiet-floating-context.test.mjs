@@ -19,7 +19,7 @@ test('projected operators and meaningful empty-room footprints are hard exclusio
   assert.equal(quietFloatingPocket({...o,
     protectedRects:[{x:0,y:0,w:430,h:680}]}),null);
   const p=quietFloatingPocket({...o,
-    protectedRects:[{x:0,y:90,w:180,h:570}]}),
+    protectedRects:[{x:0,y:90,w:180,h:570}]});
   assert.ok(p);
   assert.equal(p.x,430-224-8);
 });
