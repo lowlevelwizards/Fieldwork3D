@@ -247,6 +247,9 @@
 <output id="replayBodycamStatus" class="replay-bodycam-status" hidden
   aria-live="off">RECONSTRUCTED BODYCAM · SHARED ARCHITECTURE</output>
 <div id="replayRail" class="replay-rail" hidden role="group" aria-label="Replay viewing tools">
+  <button id="replayRailToggle" class="replay-rail-toggle" type="button"
+    aria-label="Collapse replay side controls" aria-expanded="true"
+    title="Collapse replay side controls">‹</button>
   <div class="replay-rail-choice">
     <button id="replayViewTrigger" type="button" aria-expanded="false"
       aria-controls="replayViewChoices" aria-label="Perspective: ISO">▱<small>ISO</small></button>
@@ -268,14 +271,25 @@
   <div class="replay-rail-choice">
     <button id="replaySpeedTrigger" type="button" aria-expanded="false"
       aria-controls="replaySpeedChoices" aria-label="Playback speed: 1×">⏵<small>1×</small></button>
-    <div id="replaySpeedChoices" class="replay-choice-pop" hidden role="group" aria-label="Choose playback speed">
-      <button type="button" data-speed-choice="0.25">0.25×</button>
-      <button type="button" data-speed-choice="0.5">0.5×</button>
-      <button type="button" data-speed-choice="0.75">0.75×</button>
-      <button type="button" data-speed-choice="1">1×</button>
-      <button type="button" data-speed-choice="1.5">1.5×</button>
-      <button type="button" data-speed-choice="2">2×</button>
-      <button type="button" data-speed-choice="4">4×</button>
+    <div id="replaySpeedChoices" class="replay-choice-pop replay-speed-pop" hidden
+      role="group" aria-label="Playback speed">
+      <div class="replay-speed-head"><span>PLAYBACK RATE</span>
+        <output id="replaySpeedValue" for="replaySpeedRange">1×</output></div>
+      <input id="replaySpeedRange" type="range" min="0" max="11" step="1"
+        value="3" aria-label="Replay playback speed, magnetic detents"
+        aria-valuetext="1×" style="--speed-progress:27.2727%"/>
+      <div id="replaySpeedTicks" class="replay-speed-ticks" aria-hidden="true">
+        <i></i><i></i><i></i><i class="major"></i><i></i>
+        <i class="major"></i><i></i><i class="major"></i>
+        <i></i><i></i><i></i><i class="major"></i>
+      </div>
+      <div class="replay-speed-presets" role="group" aria-label="Common replay speeds">
+        <button type="button" data-speed-choice="1">1×</button>
+        <button type="button" data-speed-choice="1.5">1.5×</button>
+        <button type="button" data-speed-choice="2">2×</button>
+        <button type="button" data-speed-choice="4">4×</button>
+      </div>
+      <span class="replay-speed-hint">DRAG TO SET · LARGE MARKS SNAP TO COMMON SPEEDS</span>
     </div>
   </div>
   <div class="replay-direct-tools" role="group" aria-label="Replay visualization toggles">
