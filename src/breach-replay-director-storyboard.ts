@@ -12,9 +12,11 @@ export class ReplayDirectorStoryboard{
   private cache=new Map<number,DirectorShot|null>();
   private readonly step:number;
   private readonly maxCache:number;
-  constructor(private readonly duration:number,
-    private readonly solve:(time:number)=>DirectorShot|null,
+  private readonly duration:number;
+  private readonly solve:(time:number)=>DirectorShot|null;
+  constructor(duration:number,solve:(time:number)=>DirectorShot|null,
     options:{step?:number;maxCache?:number}={}){
+    this.duration=duration;this.solve=solve;
     this.step=options.step??.8;
     this.maxCache=options.maxCache??96;
   }
@@ -54,12 +56,7 @@ export class ReplayDirectorStoryboard{
       yaw:(from.yaw+angleDelta(to.yaw,from.yaw)*p+
         2*Math.PI)%(2*Math.PI),
       pitch:mix(from.pitch,to.pitch),
-      cameraAnchor,
-      // Maintain conservative fit through shot transitions; if either
-      // endpoint needs more space, don't crop a key participant.
-      ...(from.shotType==='contact'||to.shotType==='contact'?{
-        zoom:Math.min(mix(from.zoom,to.zoom),
-          Math.max(from.zoom,to.zoom))}:null)
+      cameraAnchor
     };
   }
 }
