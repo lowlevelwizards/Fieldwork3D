@@ -7,7 +7,7 @@ import {canonicalRootOrientation,LEGACY_FRAME_YAW,
   createCanonicalAttachment} from './operator-axis-convention.ts';
 import {neutralMannequinWrist,neutralMannequinElbowPole}
  from './operator-mannequin-pose.ts';
-import {alignSegment,solveTwoBone,LEG_LIMITS} from './breach-ik.ts';
+import {alignSegment,solveTwoBone,LEG_LIMITS,ARM_LIMITS} from './breach-ik.ts';
 import {idleLifeAt} from './breach-idle-life.ts';
 import {lowReadyFamilyFit,lowReadyElbowPole}
  from './breach-low-ready-family-fit.ts';
@@ -48,6 +48,8 @@ import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor,equipmentStockPush} from './breach-anatomy.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile} from './breach-handling-transition.ts';
+import {M4A1_AUTHORED_SHORT,isAuthoredM4A1,authoredShortPhase}
+ from './breach-authored-m4a1-short-stock.ts';
 import type {HandlingTransition} from './breach-handling-transition.ts';
 import {sampleHandlingTransition,sampleCarryTransition}
  from './breach-pose-transition-director.ts';
@@ -1050,6 +1052,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   });
   const {treatmentActive,reloadActive,reloadProgress,reloadMode,
     throwAge,throwActive,doorAge,doorActive,handOwners}=actionState;
+  // The user's precise static M4A1 underarm pose takes ownership of the
+  // *entire two-arm hold*. It cannot be followed by the old elbow candidate
+  // search or the auto-short-stock stock pocket. Reload/interaction releases
+  // retain their own action-specific IK as before.
+  const manualShort=handling==='short'&&
+    isAuthoredM4A1(p.weapon,p.weaponConfiguration)&&
+    !p.unarmedPreview&&!p.down&&!p.surrender&&!reloadActive&&
+    !treatmentActive&&!throwActive&&!doorActive&&
+    handOwners.left==='weapon'&&handOwners.right==='weapon';
   // The transition director is the sole owner of handling history and
   // interpolation; the rig remains only the final pose renderer.
   const sample=sampleHandlingTransition(r,p,handling);
@@ -1057,9 +1068,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // pose jump. The weapon, shoulders and elbow poles share one progress.
   const nearingWall=handling==='short'&&
     p.shortCompression!==undefined;
-  const activeTransition=nearingWall?undefined:sample.active;
-  const authoredLabSwitch=sample.authoredLabSwitch;
-  const profile=nearingWall?
+  const manualRaw=manualShort?
+    p.shortCompression??(p.handlingOverride==='short'&&
+      sample.active?.to==='short'?sample.active.alpha:1):undefined;
+  // Never blend the same M4A1 from two transition directors. Physical wall
+  // proximity and the Lab stance scrub both use the one authored progress.
+  const activeTransition=nearingWall||manualShort?undefined:sample.active;
+  const authoredLabSwitch=manualShort?false:sample.authoredLabSwitch;
+  const profile=manualShort?
+    blendedHandlingProfile(
+      shortStockSourceHandling(p.aimBlend??(p.aiming?1:0),moving,
+        p.weapon,!!p.friendlyNear),
+      'short',manualRaw!,p.weapon):
+    nearingWall?
     blendedHandlingProfile(
       shortStockSourceHandling(p.aimBlend??(p.aiming?1:0),moving,
         p.weapon,!!p.friendlyNear),
@@ -1427,9 +1448,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }else r.root.userData.lowReadyPoseReport=null;
   let fit=reloadSeed?.fit??coupled?.fit??fitWeaponPose({weapon:p.weapon,handling,
     configuration:p.weaponConfiguration,
-    yaw:relativeYaw,
+    // Explicit Lab short-stock is the exact XYZ pose exported from the
+    // Workbench, without the automatic director's small facing offset.
+    // Live actor-relative yaw remains the shared shot/render authority.
+    yaw:manualShort&&p.handlingOverride==='short'?0:relativeYaw,
     recoil,clearanceRetraction:p.clearanceRetraction,
-    shortCompression:p.shortCompression,
+    shortCompression:manualRaw??p.shortCompression,
     shortFrom:shortStockSourceHandling(
       p.aimBlend??(p.aiming?1:0),moving,p.weapon,!!p.friendlyNear),
     relaxedLowReady,
@@ -1601,12 +1625,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // presentation. An unresolved coordinated pose has no paired elbow:
   // its real destination is the accepted dynamic/legacy fallback.
   const authoredDestinationFit=fit;
-  const authoredBridge=authoredLabSwitch&&
+  const authoredBridge=!manualShort&&authoredLabSwitch&&
     !!activeTransition?.authoredFrom&&activeTransition.alpha<1;
   if(authoredBridge)
     fit=interpolateWeaponCarry(activeTransition!.authoredFrom!,fit,
       activeTransition!.alpha);
-  const carryTransition=sampleCarryTransition(r,p,fit,!!coupled);
+  const carryTransition=manualShort?
+    {fit,active:false,alpha:1,bends:null}:
+    sampleCarryTransition(r,p,fit,!!coupled);
   fit=carryTransition.fit;
   const carryTransitionActive=carryTransition.active;
   const carryTransitionAlpha=carryTransition.alpha;
@@ -1832,8 +1858,80 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     reachError:number;violations:string[];
     evaluations:number;softScale:number;
   }>|null=diagnosticsEnabled?[]:null;
+  // The base hold is calculated from the very same ready/aim source used
+  // by shot-time geometry. No previous-frame elbow memory; replay is pure.
+  const manualPhase=manualShort?authoredShortPhase(manualRaw):0;
+  const manualSource=manualShort?
+    shortStockSourceHandling(p.aimBlend??(p.aiming?1:0),moving,
+      p.weapon,!!p.friendlyNear):'ready';
+  const manualSourceFit=manualShort?fitWeaponPose({
+    weapon:p.weapon,configuration:p.weaponConfiguration,
+    handling:manualSource,
+    yaw:p.handlingOverride==='short'?0:relativeYaw,recoil,
+    armorPush:equipmentStockPush(p.equipment),
+    aimBlend:p.handlingOverride?undefined:
+      p.aimBlend??(p.aiming?1:0)}):null;
+  // Stored Euler and XYZ targets are **exactly** the user's Lab export.
+  // In a moving scene rotate wrist/bend targets around the stock when
+  // facing relative to the chest changes; shoulders remain anatomical.
+  const authoredPoint=(key:'supportHand'|'firingHand'|
+      'supportElbow'|'firingElbow')=>{
+    const start=new THREE.Vector3(...M4A1_AUTHORED_SHORT.targets.stock);
+    return new THREE.Vector3(...M4A1_AUTHORED_SHORT.targets[key])
+      .sub(start).applyAxisAngle(P(0,1,0),
+        p.handlingOverride==='short'?0:relativeYaw).add(start);
+  };
+  if(manualShort&&p.handlingOverride==='short'&&physicalSpeed<.2){
+    // Match the static workbench silhouette without altering the battle's
+    // upper-body recoil/turn authority. This tiny torso adjustment only
+    // runs for the explicitly selected stationary Lab stance.
+    const angles=M4A1_AUTHORED_SHORT.torso;
+    r.chest.rotation.x=THREE.MathUtils.lerp(r.chest.rotation.x,
+      THREE.MathUtils.degToRad(angles[0]),manualPhase);
+    r.chest.rotation.y=THREE.MathUtils.lerp(r.chest.rotation.y,
+      THREE.MathUtils.degToRad(angles[1]),manualPhase);
+    r.chest.rotation.z=THREE.MathUtils.lerp(r.chest.rotation.z,
+      THREE.MathUtils.degToRad(angles[2]),manualPhase);
+  }
+  r.root.userData.authoredM4ShortStock=manualShort?{
+    progress:manualPhase,preset:M4A1_AUTHORED_SHORT.preset,
+    handTargets:'manual',solver:'single-two-bone',
+    stock:fit.stock.toArray()}:null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
+    if(manualShort&&manualSourceFit){
+      const startShoulder=shoulderFor(i);
+      const targetShoulder=new THREE.Vector3(
+        ...M4A1_AUTHORED_SHORT.targets[
+          i===0?'supportShoulder':'firingShoulder']);
+      const shoulder=startShoulder.clone().lerp(targetShoulder,manualPhase);
+      const oldWrist=i===0?manualSourceFit.support:
+        manualSourceFit.primary;
+      const requested=authoredPoint(i===0?'supportHand':'firingHand');
+      const wrist=oldWrist.clone().lerp(requested,manualPhase);
+      const normalProfile=handlingProfile(manualSource,p.weapon);
+      const natural=elbowCorridor(manualSource,
+        sign as -1|1,normalProfile);
+      const elbowGuide=P(natural.x,natural.y,natural.z).lerp(
+        authoredPoint(i===0?'supportElbow':'firingElbow'),manualPhase);
+      // This is the SAME simple 10+10 IK as the workbench. The author's
+      // elbow is a bend POLE, never an independently displaced joint.
+      // No armor re-ranking, no backward-elbow hemisphere guard, no
+      // legacy fallback or second IK pass can override the result.
+      const solved=solveTwoBone(shoulder,wrist,10,10,
+        elbowGuide.sub(shoulder),ARM_LIMITS);
+      r.elbowSpread[i]=Math.max(0,
+        sign*(solved.joint.z-shoulder.z));
+      arm.bend.copy(solved.bendPlane);
+      arm.outOfReach=!solved.reached;
+      alignSegment(arm.upper,shoulder,solved.joint,scratch.sides[i]);
+      alignSegment(arm.lower,solved.joint,solved.effector,scratch.sides[i]);
+      arm.hand.position.copy(solved.effector);
+      arm.hand.rotation.set(0,fit.rotation.y,0);
+      r.gripError=Math.max(r.gripError,
+        solved.effector.distanceTo(i===0?fit.support:fit.primary));
+      continue;
+    }
     const shoulder=shoulderFor(i);
     const sourceArm=authoredLabSwitch?
       activeTransition?.authoredArms?.[i]:undefined;

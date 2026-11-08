@@ -4,6 +4,8 @@ import * as THREE from 'three';
 import {ANATOMY,stockPocket,carryElbowViolation}
  from '../src/breach-anatomy.ts';
 import {muzzleAtShot} from '../src/breach-muzzle.ts';
+import {M4A1_AUTHORED_SHORT}
+ from '../src/breach-authored-m4a1-short-stock.ts';
 import {weaponClearance} from '../src/breach-weapon-clearance.ts';
 import {fitWeaponPose,weaponGrips}
  from '../src/breach-weapon-pose.ts';
@@ -48,8 +50,9 @@ test('normal stocks shoulder at the front; SHORT tucks beside the waist',()=>{
    'tuck must move outside right ribs beneath the armpit');
  const fit=fitWeaponPose({weapon:carbine,configuration,
    handling:'short',yaw:0,recoil:0});
- assert.ok(fit.stock.distanceTo(V(short.x,short.y,short.z))<2,
-   'buttplate must match real underarm socket');
+ assert.ok(fit.stock.distanceTo(
+   new THREE.Vector3(...M4A1_AUTHORED_SHORT.targets.stock))<1e-6,
+   'M4A1 buttplate must exactly match user-authored pose, not old socket');
 });
 test('wall fold is a continuous rigid gun transform with sliding grip',()=>{
  const input={weapon:carbine,configuration,handling:'short',
@@ -63,16 +66,14 @@ test('wall fold is a continuous rigid gun transform with sliding grip',()=>{
     fit.stock.y<=lastButtY+.01&&fit.stock.z>=lastButtZ-.01,
     'butt must move rearward, downward and outside: '+progress);
   lastButtX=fit.stock.x;lastButtY=fit.stock.y;lastButtZ=fit.stock.z;
+  // The rigid gun keeps its *physical* ready grip sockets; the
+  // approved operator's independent wrist targets can differ. Never
+  // silently move the authored wrist to an old short-stock socket.
   const grips=weaponGrips(carbine,configuration,'ready');
-  const shortGrips=weaponGrips(carbine,configuration,'short');
-  const ease=progress*progress*(3-2*progress);
-  const supportX=(grips.supportX*(1-ease)+shortGrips.supportX*ease)*
-    shortGrips.lengthScale;
-  const supportY=grips.supportY*(1-ease)+shortGrips.supportY*ease;
-  const actual=V(supportX,supportY,-1.6)
-    .applyEuler(fit.rotation).add(fit.origin);
+  const actual=V(grips.supportX*grips.lengthScale,
+    grips.supportY,-1.6).applyEuler(fit.rotation).add(fit.origin);
   assert.ok(actual.distanceTo(fit.support)<1e-6,
-    'support wrist detached from gun at '+progress);
+    'rigid support grip socket detached from gun at '+progress);
   const sample=muzzleAtShot({...base,obstruction:true,
     shortCompression:progress});
   assert.ok(sample.y<=lastZ+.01,'barrel must fold downward');
@@ -120,10 +121,14 @@ test('short-stock and run keep both elbows forward/down without stretching',()=>
    poseOperator(rig,state,0);
    for(const [index,arm] of rig.arms.entries()){
     const joint=armJoint(arm),shoulder=armShoulder(arm,joint);
-    assert.ok(carryElbowViolation(shoulder,joint,index===0?-1:1)<.075,
-      'elbow flapped behind shoulder in '+state.handlingOverride+
-        ' progress '+(state.shortCompression??'full')+
-        ' arm '+index+': '+JSON.stringify(joint.toArray()));
+    // The user-approved short-stock intentionally draws the firing arm
+    // rearward under the armpit; normal running/ready must still honor the
+    // forward/down corridor. The independent authored-pose regression
+    // checks exact manual elbow positions instead of rejecting them here.
+    if(state.handlingOverride!=='short')
+     assert.ok(carryElbowViolation(shoulder,joint,index===0?-1:1)<.075,
+       'elbow flapped behind shoulder in '+state.handlingOverride+
+       ' arm '+index+': '+JSON.stringify(joint.toArray()));
     assert.ok(Math.abs(arm.upper.scale.y-10)<1e-6);
     assert.ok(Math.abs(arm.lower.scale.y-10)<1e-6);
    }

@@ -4,6 +4,8 @@ import {WEAPON_PLATFORMS,resolveWeaponAssembly,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import * as THREE from 'three';
 import {stockPocket,anchorGap} from './breach-anatomy.ts';
+import {M4A1_AUTHORED_SHORT,isAuthoredM4A1,authoredShortPhase}
+ from './breach-authored-m4a1-short-stock.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
 import {lowReadyFamilyFit,lowReadyPocket} from './breach-low-ready-family-fit.ts';
 import {riflePoseContacts,supportContactAt}
@@ -136,6 +138,51 @@ export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
  * spikes. Only the winning solution becomes Three.js geometry.
  */
 export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
+  // Exact M4A1 manual-authoring track. No old short-stock candidate search:
+  // the weapon and shot-time barrel share this single rigid interpolation.
+  // Every joint target lives in the corresponding operator-rig manual track.
+  // Do not extrapolate this pose to unreviewed carbine builds.
+  if(input.handling==='short'&&isAuthoredM4A1(
+    input.weapon,input.configuration)){
+    const phase=authoredShortPhase(input.shortCompression);
+    const source=input.shortFrom&&input.shortFrom!=='short'?
+      input.shortFrom:'ready';
+    const from=fitWeaponPose({...input,handling:source,
+      shortCompression:undefined,clearanceRetraction:0,
+      blendFrom:undefined,blendSnapshot:undefined,blendAlpha:undefined});
+    if(phase<=0)return {...from,handling:'short'};
+    const data=weaponGrips(input.weapon,input.configuration,'ready');
+    const deg=THREE.MathUtils.degToRad;
+    const angles=M4A1_AUTHORED_SHORT.weaponRotation;
+    const targetRotation=new THREE.Euler(deg(angles[0]),
+      input.yaw+deg(angles[1]),deg(angles[2]),'XYZ');
+    const requestedStock=M4A1_AUTHORED_SHORT.targets.stock;
+    const targetStock=new THREE.Vector3(...requestedStock);
+    const stockLocal=new THREE.Vector3(data.stockX*data.lengthScale,0,0);
+    const targetOrigin=targetStock.sub(
+      stockLocal.clone().applyEuler(targetRotation));
+    const origin=from.origin.clone().lerp(targetOrigin,phase);
+    const q=new THREE.Quaternion().setFromEuler(from.rotation)
+      .slerp(new THREE.Quaternion().setFromEuler(targetRotation),phase);
+    const rotation=new THREE.Euler().setFromQuaternion(q,'XYZ');
+    const point=(x:number,y:number,z:number)=>
+      new THREE.Vector3(x*data.lengthScale,y,z)
+        .applyEuler(rotation).add(origin);
+    const stock=point(data.stockX,0,0);
+    const primary=point(data.primaryX,data.primaryY,1.8);
+    const support=point(data.supportX,data.supportY,-1.6);
+    const elbowTarget=(name:'firingHand'|'supportHand')=>
+      new THREE.Vector3(...M4A1_AUTHORED_SHORT.targets[name]);
+    const primaryGap=primary.distanceTo(elbowTarget('firingHand'));
+    const supportGap=support.distanceTo(elbowTarget('supportHand'));
+    return {origin,rotation,stock,primary,support,handling:'short',
+      twoHanded:primaryGap<1.5&&supportGap<1.5,
+      primaryReachable:primaryGap<1.5,
+      // Report any gap rather than forcing the author's wrists to follow
+      // a different inferred socket. The pose was approved visually.
+      contactError:phase*(primaryGap+supportGap),
+      stockError:stock.distanceTo(new THREE.Vector3(...requestedStock))};
+  }
   // The short-stock butt is pulled BACK from the ordinary shoulder socket
   // into an independent underarm/waist contact. Gradually lower the muzzle
   // while moving the support palm back to the receiver/magwell. Both hands
