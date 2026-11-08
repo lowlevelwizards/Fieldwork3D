@@ -263,8 +263,8 @@ export class ReplayDirectorStoryboard{
     if(!physical.readable)return false;
     const quality=directorCompositionQuality(prior.cameraAnchor,
       prior.focus,raw.operatorPoint,
-      raw.editorialKind==='engage'&&raw.requiredPoints?.length>1?
-        raw.requiredPoints[1]:null,
+      raw.editorialKind==='engage'&&(raw.requiredPoints?.length??0)>1?
+        raw.requiredPoints![1]:null,
       raw.actionAxis??{x:1,y:0},
       raw.editorialKind??'follow',
       'ortho',this.aspect,this.baseSpan,prior.zoom,
