@@ -8028,9 +8028,7 @@ function tick(now:number){
   const studioOccludesTactical=!!studioOverlay&&!studioOverlay.hidden&&
    !replayQuickVideo.active;
   if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
-    stage.setMiniatureFocusContext(replaying,
-      activePointers.size>0||!!draggingNode||draggingWatchTarget||
-      looking||flashMode||!!firePlacement||!!evacMode,dt);
+    stage.setMiniatureFocusContext(replaying,dt);
   if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
     stage.update(state,selected,dt,doorFocusId,
       replaying&&replayOmniscient,replaying?replayPresentation:null,
