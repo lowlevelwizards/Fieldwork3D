@@ -916,6 +916,9 @@ export class TacticalScene3D{
       'stall-end-line':0xc9c2a6,
       'loading-zone':0x9f9685,'maintenance-bay':0x7e877d,
       'waste-collection':0x696f65,'clear-route':0x8b8c7d,
+      'planting-bed':0x504b3e,'planting-edge':0x827961,
+      'waste-bay-line':0xcdb677,'utility-bay-line':0xa6b8a8,
+      'loading-bay-line':0xbeb59b,
     };
     // Exterior ground markings are legible construction details, not cover.
     // Sidewalk/path/curb/ramp markings overlap by design, but their top
@@ -950,7 +953,9 @@ export class TacticalScene3D{
       }
       this.box(this.root,mark.x,propertySurfaceCenterHeight(mark.kind),
         mark.y,mark.width,PROPERTY_SURFACE_THICKNESS,
-        mark.depth,this.solid(age(surfaceColor[mark.kind],'concrete')),false);
+        mark.depth,this.solid(age(surfaceColor[mark.kind],
+          mark.kind==='planting-bed'?'packed-earth':
+          mark.kind==='planting-edge'?'gravel':'concrete')),false);
     }
     // The public carriageway runs along the LOT boundary, not up the
     // pedestrian approach to the front door. One street layout also owns
