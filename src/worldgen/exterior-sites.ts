@@ -148,7 +148,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    const w=footprint.w,h=footprint.h;
    const streetSpots=frontageEdgeCandidates(site,zone,item,w,h);
    const serviceEdge=zone.kind==='service'&&SERVICE_EDGE_FIXTURES.has(item);
-   const edgeSpots=serviceEdge?serviceYardEdgeCandidates(zone,w,h):[];
+   const edgeSpots=serviceEdge?serviceYardEdgeCandidates(zone,w,h,item):[];
    if(zone.w<w+22||zone.h<h+22)continue;
    let accepted=false;
    const fixed=streetSpots??(serviceEdge?edgeSpots:null);
