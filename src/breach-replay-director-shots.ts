@@ -130,8 +130,10 @@ export function composeReplayDirectorShot(time:number,
     target:plan.target,
     preferredYaw:Math.atan2(-direction.x,-direction.y),
     followDirection:direction,
-    doorPoint:plan.kind==='door'?door?.mid??null:null,
-    doorNormal:plan.kind==='door'?door?.normal??null:null,
+    // Entry and stack photographs deserve the door's full front face
+    // just as much as the act of opening it.
+    doorPoint:isDoor?door?.mid??null:null,
+    doorNormal:isDoor?door?.normal??null:null,
     targetWeight:isContact?270:isDoor?210:125,
     actionLines:isContact?context.actionLines:undefined,
     composition:{treatment:plan.kind,
@@ -176,10 +178,15 @@ export function composeReplayDirectorShot(time:number,
       {rooms,walls,doors:context.doors,cover:context.cover}))];
   const safeWidth=clip(context.usableWidth??.78,.5,.92);
   const safeHeight=clip(context.usableHeight??.77,.5,.9);
+  // A little more geography in hallway/door shots, without flattening
+  // all of R9.3's compelling intimate two-person exchanges.
+  const treatmentZoom=isContact?8:isDoor?7.35:
+    plan.kind==='follow'?7.25:7.0;
   const zoom=directorOrthoFittingZoom(physical.cameraAnchor,
     physical.focus,points,aspect,baseSpan,
     safeWidth,safeHeight,
-    Math.min(featured.length>2?7.4:8,context.maxZoom??14),
+    Math.min(featured.length>2?
+      Math.min(7.25,treatmentZoom):treatmentZoom,context.maxZoom??14),
     .81,context.safeFrame);
   const yaw=Math.atan2(physical.cameraAnchor.x-physical.focus.x,
     physical.cameraAnchor.y-physical.focus.y);
