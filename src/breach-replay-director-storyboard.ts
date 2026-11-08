@@ -301,11 +301,13 @@ export class ReplayDirectorStoryboard{
     const establishedLegible=this.subjectLegible(prior,raw);
     const rawLegible=raw.subjectReadable!==false&&
       raw.compositionQuality?.primaryReadable!==false;
+    const verifiedRecovery=raw.subjectReadable===true&&
+      raw.compositionQuality?.primaryReadable!==false;
     const entering=!!raw.firstEntry&&raw.shotType==='entry';
     // Hard integrity outranks scene residence and aesthetic continuity.
     // If action has LEFT the existing image, use the legal, newly
     // solved rig at the next fixed knot rather than tracking empty walls.
-    if(!establishedLegible&&rawLegible&&
+    if(!establishedLegible&&verifiedRecovery&&
       index-(prior.sceneStartIndex??0)>=1){
       return {...raw,sceneStartIndex:index,
         cameraDecision:'cut:restore-visible-subject'};
@@ -364,7 +366,7 @@ export class ReplayDirectorStoryboard{
     // Keep the established frame steady until actors actually move or
     // a real recorded action becomes the subject.
     if(!action&&!traveling&&raw.motion<9){
-      if(!covered&&rawLegible&&
+      if(!covered&&verifiedRecovery&&
         index-(prior.sceneStartIndex??0)>=Math.ceil(1/this.step))
         return {...raw,sceneStartIndex:index,
           cameraDecision:'cut:quiet-recover-action'};
