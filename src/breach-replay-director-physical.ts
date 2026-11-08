@@ -17,6 +17,10 @@ export type PhysicalDirectorRequest={
   operator:PhysicalPoint;focus:PhysicalPoint;
   subjectPoints:readonly PhysicalPoint[];
   target?:PhysicalPoint|null;preferredYaw:number;
+  /** Travel/weapon direction: prefer a follow rig behind the active actor. */
+  followDirection?:PhysicalPoint|null;
+  /** Action LOS outranks merely including an unrelated supporting actor. */
+  targetWeight?:number;
 };
 export type PhysicalDirectorView={
   cameraAnchor:PhysicalPoint;focus:PhysicalPoint;
@@ -90,10 +94,10 @@ export function directorOperatorRoom(p:PhysicalPoint,
 /** Perspective audition: generous over-the-shoulder height and lens,
  * framing the full squad rather than cropping on the nearest backpack.
  * Walls still prevent impossible cross-room two-shots. */
-function requiredFov(anchor:PhysicalPoint,focus:PhysicalPoint,
+export function directorRequiredFov(anchor:PhysicalPoint,focus:PhysicalPoint,
   pts:readonly PhysicalPoint[],aspect=1.1):number{
   const dx=focus.x-anchor.x,dz=focus.y-anchor.y;
-  const dx3=dx,dy3=-24,dz3=dz;
+  const dx3=dx,dy3=-26,dz3=dz;
   const length=Math.hypot(dx3,dy3,dz3)||1;
   const fwd={x:dx3/length,y:dy3/length,z:dz3/length};
   const horizontal=Math.hypot(fwd.x,fwd.z)||1;
@@ -102,7 +106,7 @@ function requiredFov(anchor:PhysicalPoint,focus:PhysicalPoint,
     y:horizontal,z:-fwd.y*fwd.z/horizontal};
   let half=0;
   for(const p of pts)for(const h of [5,23,38]){
-    const v={x:p.x-anchor.x,y:h-42,z:p.y-anchor.y};
+    const v={x:p.x-anchor.x,y:h-44,z:p.y-anchor.y};
     const depth=v.x*fwd.x+v.y*fwd.y+v.z*fwd.z;
     if(depth<3)return 150;
     const x=Math.abs(v.x*right.x+v.z*right.z);
@@ -110,7 +114,7 @@ function requiredFov(anchor:PhysicalPoint,focus:PhysicalPoint,
     half=Math.max(half,Math.atan2(x*1.27,depth*Math.max(.65,aspect)),
       Math.atan2(y*1.22,depth));
   }
-  return Math.max(96,half*360/Math.PI);
+  return Math.max(82,half*360/Math.PI);
 }
 export function physicalDirectorView(req:PhysicalDirectorRequest,
   scene:PhysicalDirectorScene,aspect=1.1):PhysicalDirectorView{
@@ -167,7 +171,7 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       !directorLineBlocked(p,pt,scene));
     const fits=[...visible,
       ...(targetVisible&&req.target?[req.target]:[])];
-    const fov=requiredFov(p,focus,fits,aspect);
+    const fov=directorRequiredFov(p,focus,fits,aspect);
     const yaw=Math.atan2(p.x-focus.x,p.y-focus.y);
     // Coverage first. Full squad outweighs a pretty angle or a single
     // target, and wide framing wins over intimate backpack closeups.
@@ -175,17 +179,31 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       x:visible.reduce((v,a)=>v+a.x,0)/visible.length,
       y:visible.reduce((v,a)=>v+a.y,0)/visible.length
     }:req.operator;
-    const candidate=visible.length*46+
-      (targetVisible?30:0)-
-      (req.target&&!targetVisible?6:0)-
-      Math.abs(angleDelta(yaw,req.preferredYaw))*14-
-      Math.abs(distance(p,groupCenter)-75)*.19-
+    const dir=req.followDirection;
+    const mag=dir?Math.hypot(dir.x,dir.y):0;
+    const forward=dir&&mag>.01?{x:dir.x/mag,y:dir.y/mag}:null;
+    const ideal=forward?{
+      x:req.operator.x-forward.x*66-forward.y*12,
+      y:req.operator.y-forward.y*66+forward.x*12}:null;
+    const forwardOffset=forward?
+      (p.x-req.operator.x)*forward.x+
+      (p.y-req.operator.y)*forward.y:0;
+    // The protagonist and actual line of action are editorial priorities.
+    // A fourth teammate behind a wall must not displace a visible
+    // shooter/target or front-on door shot.
+    const candidate=visible.length*32+
+      (targetVisible?(req.targetWeight??115):0)-
+      (req.target&&!targetVisible?24:0)-
+      Math.abs(angleDelta(yaw,req.preferredYaw))*8-
+      Math.abs(distance(p,groupCenter)-75)*.13-
+      (ideal?distance(p,ideal)*.34:0)-
+      (forwardOffset>4?Math.min(48,forwardOffset*.7):0)-
       Math.max(0,fov-112)*3-
       Math.max(0,visible.length?0:120);
     if(candidate>score){
       score=candidate;
       best={cameraAnchor:p,focus,roomId:room?.id??null,
-        fov:clamp(fov,96,116),targetVisible,
+        fov:clamp(fov,82,116),targetVisible,
         occluded:req.subjectPoints.length-visible.length+
           (req.target&&!targetVisible?1:0)};
     }
