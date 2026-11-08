@@ -27,7 +27,8 @@ test('all unsafe views and performance preset bypass the pass',()=>{
    {capable:false},{protectedRegionValid:false},
    {mode:'replay',view:'tactical'}])
    assert.equal(decision(patch).active,false,JSON.stringify(patch));
- assert.equal(decision({view:'director'}).radiusPx,2);
+ assert.equal(decision({view:'director'}).radiusPx,4.8);
+ assert.equal(decision({view:'tactical'}).radiusPx,3.2);
  assert.equal(decision({mode:'replay',view:'director'}).active,true);
 });
 test('conservative rectangle clips to viewport and rejects broken projection',()=>{
