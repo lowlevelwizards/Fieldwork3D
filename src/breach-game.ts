@@ -674,27 +674,36 @@ export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
     a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
   });
 }
-/** Queue an actual physical action at the end of the authored route. */
+/** Queue a physical fixture interaction at the route end or selected waypoint.
+ * Using the selected waypoint's world position avoids context buttons that
+ * appear available but target the unrelated final route endpoint. */
 export function planNearbyInteraction(s:Session,id:string,
- action:'push'|'open-window'|'close-window'):boolean{
+ action:'push'|'open-window'|'close-window',afterNodeId?:number):boolean{
  const a=party(s,id);if(!a||!canEdit(s))return false;
- const at=finalPoint(a);
+ const insertion=afterNodeId===undefined?-1:
+   a.plan.findIndex(n=>n.id===afterNodeId);
+ if(afterNodeId!==undefined&&insertion<0)return false;
+ const at=insertion>=0?a.plan[insertion].p:finalPoint(a);
+ const queue=(objectId:string)=>edit(s,a,()=>{
+   const order:PlanNode={id:s.nextId++,kind:'interact',p:clone(at),
+     objectId,interaction:action};
+   if(insertion>=0)a.plan.splice(insertion+1,0,order);
+   else a.plan.push(order);
+ });
  if(action==='push'){
    const candidates=s.coverState.map((o,index)=>({o,index,
      distance:d(at,{x:o.x,y:o.y})})).filter(c=>
-       canRelocateCover(c.o)&&c.distance<Math.max(c.o.w,c.o.h)/2+43)
+       canRelocateCover(c.o)&&c.distance<Math.max(o.w,o.h)/2+43)
      .sort((x,y)=>x.distance-y.distance||x.index-y.index);
    const item=candidates[0];if(!item)return false;
-   return addNode(s,id,'interact',at,{
-     objectId:'prop:'+item.index,interaction:action});
+   return queue('prop:'+item.index);
  }
  const target=s.windows.filter(w=>w.operable&&!w.shattered&&
    d(at,{x:w.x,y:w.y})<54&&w.open===(action==='close-window'))
    .sort((x,y)=>d(at,{x:x.x,y:x.y})-
      d(at,{x:y.x,y:y.y}))[0];
  if(!target)return false;
- return addNode(s,id,'interact',at,{
-   objectId:'window:'+target.id,interaction:action});
+ return queue('window:'+target.id);
 }
 /** Explicit authored civilian interaction: no distant or fog-granted
  * command. The target's current physical position is rechecked on GO. */
@@ -1393,12 +1402,17 @@ export function planCivilianRelease(s:Session,id:string):boolean{
      objectId:c.id,interaction:'release-civilian'});
  });
 }
-export function planMedicalTreatment(s:Session,id:string,patientId:string):boolean{
+export function planMedicalTreatment(s:Session,id:string,patientId:string,
+ afterNodeId?:number):boolean{
  const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
  if(!a||!patient||patient.side!==a.side||!canEdit(s))return false;
  const wound=mostUrgentWound(patient.medical);
  if(!wound||!treatmentSupplyForWound(wound,a.medicalSupplies))return false;
- const at=finalPoint(a),distance=d(at,patient.p);
+ const insertion=afterNodeId===undefined?-1:
+   a.plan.findIndex(n=>n.id===afterNodeId);
+ if(afterNodeId!==undefined&&insertion<0)return false;
+ const at=insertion>=0?a.plan[insertion].p:finalPoint(a);
+ const distance=d(at,patient.p);
  let goal=at;
  if(distance>26){
   const theta=angle(patient.p,at);
@@ -1408,9 +1422,12 @@ export function planMedicalTreatment(s:Session,id:string,patientId:string):boole
      !routeWithSqueezeIntel(s.intel,at,goal).length)return false;
  }
  return edit(s,a,()=>{
-  if(distance>26)a.plan.push({id:s.nextId++,kind:'move',p:clone(goal)});
-  a.plan.push({id:s.nextId++,kind:'treat',p:clone(goal),
+  const orders:PlanNode[]=[];
+  if(distance>26)orders.push({id:s.nextId++,kind:'move',p:clone(goal)});
+  orders.push({id:s.nextId++,kind:'treat',p:clone(goal),
    patientId:patient.id,woundId:wound.id});
+  if(insertion>=0)a.plan.splice(insertion+1,0,...orders);
+  else a.plan.push(...orders);
  });
 }
 export function planWait(s:Session,id:string,seconds=.5){
