@@ -12,6 +12,7 @@ on:
       - 'src/operator-studio-light-lab.ts'
       - 'src/breach-graphic-world-lighting.ts'
       - 'scripts/smoke-rendering-r718-parity.mjs'
+      - 'scripts/smoke-rendering-r718-breach.mjs'
       - 'src/arsenal/viewport.ts'
       - 'src/arsenal/lighting-lab.ts'
       - 'src/arsenal/workbench-screen.ts'
@@ -60,6 +61,7 @@ jobs:
         run: |
           node scripts/smoke-rendering-r718-parity.mjs
           node scripts/smoke-arsenal-lighting-r714.mjs
+          node scripts/smoke-rendering-r718-breach.mjs
       - name: Rendering R7.17 — light-facing cream and skin glints, real mobile WebGL
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/r717-frontlit-') }}
         run: |
