@@ -308,7 +308,7 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
         // exclusively from the existing physical Obstacle footprint.
       }else if(['mailbox','trash-bin','bollard','hydrant','utility-cabinet',
         'parking-block','parking-sign','street-lamp','bike-rack',
-        'vending-machine','wayfinding-sign'].includes(fixture)){
+        'vending-machine','wayfinding-sign','screened-dumpster'].includes(fixture)){
         const enamel=ctx.solid(0x777f79,.72,'metal');
         const dark=ctx.solid(0x343c3b,.86);
         const safety=ctx.solid(0xae8e52,.78);
@@ -324,6 +324,34 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x,top-5,c.y+d*.461,w*.76,5.5,.9,dark,false);
           ctx.box(group,c.x,top-4.9,c.y+d*.515,w*.58,3.7,.6,enamel,false);
           ctx.box(group,c.x+w*.45,top-2,c.y,1.7,7,1.6,signal,false);
+        }else if(fixture==='screened-dumpster'){
+          // One physical refuse-bay footprint: low steel skip sheltered by
+          // three slatted privacy walls with an unmistakable open service
+          // mouth on +Z. No invisible extra enclosure colliders.
+          const H=asset?.height??38;
+          const slat=visualCtx.solid(0x777863,.91,'wood');
+          const steel=visualCtx.solid(0x4a605a,.86,'painted-metal');
+          const inner=visualCtx.solid(0x303b39,.9,'industrial-steel');
+          for(const x of [-w*.46,w*.46])
+            for(const z of [-d*.43,d*.21])
+              ctx.box(group,c.x+x,H*.43,c.y+z,2.7,H*.85,3.0,steel);
+          for(const y of [8,15,22,29,36]){
+            ctx.box(group,c.x,y,c.y-d*.46,w*.97,4,2.2,slat,false);
+            for(const side of [-1,1])
+              ctx.box(group,c.x+side*w*.46,y,c.y-d*.105,
+                2.2,4,d*.70,slat,false);
+          }
+          ctx.box(group,c.x,H*.38,c.y+d*.04,
+            w*.73,H*.68,d*.58,steel);
+          ctx.box(group,c.x,H*.74,c.y+d*.04,
+            w*.76,3.3,d*.61,inner,false);
+          ctx.box(group,c.x,H*.77,c.y-d*.12,
+            w*.73,2.7,d*.34,inner,false);
+          ctx.box(group,c.x,H*.30,c.y+d*.35,
+            w*.38,H*.14,1.2,slat,false);
+          for(const sign of [-1,1])
+            ctx.box(group,c.x+sign*w*.35,3,c.y+d*.29,
+              4.3,4.2,4.1,inner,false);
         }else if(fixture==='vending-machine'){
           // A real commercial vending cabinet, visually independent of
           // electrical infrastructure: bright product display, keypad,
