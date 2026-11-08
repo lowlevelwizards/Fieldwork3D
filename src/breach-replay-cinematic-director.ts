@@ -6,7 +6,9 @@
 import type {ReplayCameraActor,ReplayCameraPoint,ReplayDirectorCue}
   from './breach-replay-director.ts';
 
-export type DirectorActor=ReplayCameraActor&{heading?:number};
+export type DirectorActor=ReplayCameraActor&{
+  heading?:number;velocity?:number
+};
 export type DirectorRoom={id?:string;x:number;y:number;w:number;h:number};
 export type DirectorWall={a:ReplayCameraPoint;b:ReplayCameraPoint};
 export type CinematicShot={
@@ -134,7 +136,7 @@ export function easeCinematicReplayShot(
   const focusRate=distance>75?6.2:distance>35?4.6:3.2;
   const f=instant?1:1-Math.exp(-clamp(dt,0,.1)*focusRate);
   const z=instant?1:1-Math.exp(-clamp(dt,0,.1)*2.4);
-  const r=instant?1:1-Math.exp(-clamp(dt,0,.1)*1.8);
+  const r=instant?1:1-Math.exp(-clamp(dt,0,.1)*2.45);
   const yaw=current.yaw+angleDelta(target.yaw,current.yaw)*r;
   return {
     ...target,
