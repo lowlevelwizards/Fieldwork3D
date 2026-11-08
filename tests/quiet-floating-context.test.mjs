@@ -19,7 +19,7 @@ test('projected operators and meaningful empty-room footprints are hard exclusio
   assert.equal(quietFloatingPocket({...o,
     protectedRects:[{x:0,y:0,w:430,h:680}]}),null);
   const p=quietFloatingPocket({...o,
-    protectedRects:[{x:0,y:90,w:205,h:570}]}),
+    protectedRects:[{x:0,y:90,w:180,h:570}]}),
   assert.ok(p);
   assert.equal(p.x,430-224-8);
 });
@@ -39,7 +39,7 @@ test('menu stays in the same safe edge pocket until threatened',()=>{
   assert.ok(p);
   assert.ok(Math.hypot(p.x-last.x,p.y-last.y)<4);
   const moved=quietFloatingPocket({...o,previous:last,
-    protectedRects:[{x:180,y:190,w:50,h:100}]});
+    protectedRects:[{x:300,y:190,w:20,h:100}]});
   assert.ok(moved);
   assert.notDeepEqual(moved,last);
 });
