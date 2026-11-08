@@ -36,6 +36,17 @@ test('handles and a visible door do not lose near ties to selected route',()=>{
    assert.equal(selection?.kind,kind);
  }
 });
+test('a line under a directly touched operator or door cannot steal the tap',()=>{
+ for(const object of [
+  hit('operator',18,22,'moss'),
+  hit('door',10,12,undefined,{doorId:'threshold'})
+ ]){
+  const chosen=resolveTacticalPick([
+   hit('route',0,14,'rook',{routeIndex:2}),object
+  ],'rook');
+  assert.equal(chosen?.kind,object.kind);
+ }
+});
 test('selected route retains crossings, foreign route is selection-only',()=>{
  const selected=resolveTacticalPick([
    hit('route',7,8,'moss',{routeIndex:1}),
