@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
 const css=readFileSync(new URL('../src/breach-style.css',import.meta.url),'utf8');
 
-test('per-operator colors reach squad buttons and the stationary action dock',()=>{
+test('per-operator colors reach squad controls, Dock, and the optional floating tether',()=>{
   for(const [id,color] of Object.entries({
     rook:'#a2d4ca',moss:'#b9c6a0',ash:'#dfb992',vale:'#b7b1d9'
   })){
@@ -14,7 +14,7 @@ test('per-operator colors reach squad buttons and the stationary action dock',()
   assert.match(main,/paintOperatorAccent\(button,id\)/);
   assert.match(main,/paintOperatorAccent\(ui\.quickStates,selected\)/);
   assert.match(main,/paintOperatorAccent\(ui\.context,selected\)/);
-  assert.doesNotMatch(main,/contextTether/);
+  assert.match(main,/paintOperatorAccent\(contextTether,selected\)/);
 });
 test('squad selection and tactical control accents use the operator variable',()=>{
   assert.match(css,/\.bar \.unit strong\{color:var\(--operator-accent\)\}/);
