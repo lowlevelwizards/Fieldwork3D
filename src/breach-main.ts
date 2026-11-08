@@ -99,8 +99,9 @@ import {buildDirectorFutureCues,directorFutureAt,
   type DirectorFutureCue} from './breach-replay-director-events.ts';
 import {composeReplayDirectorShot,type DirectorShot}
   from './breach-replay-director-shots.ts';
-import {ReplayDirectorScheduler}
-  from './breach-replay-director-scheduler.ts';
+import {buildDirectorEntryEvents,directorFirstEntryAt,
+  type DirectorEntryEvent}
+  from './breach-replay-director-crossings.ts';
 import {clusterReplayTimeline,replayTimelineBins} from './breach-replay-timeline-markers.ts';
 import {replayFeedPosition} from './breach-replay-feed-window.ts';
 import {REPLAY_SPEED_STOPS,speedIndex,speedFromIndex,smoothReplaySpeed}
@@ -956,8 +957,8 @@ let replayDirectorCues:ReplayDirectorCue[]=[];
 let replayDirectorFuture:DirectorFutureCue[]=[];
 let replayDirectorPlanIndex:DirectorPlanIndex=new Map();
 let replayDirectorFilmBeats:DirectorFilmBeat[]=[];
+let replayDirectorEntries:DirectorEntryEvent[]=[];
 let replayDirectorStoryboard:ReplayDirectorStoryboard|null=null;
-const replayDirectorScheduler=new ReplayDirectorScheduler();
 let replayDirectorTarget:DirectorShot|null=null;
 let replayPlanScope:'all'|'selected'|'none'='selected';
 let replayPlanVersion:'active'|'original'='active';
@@ -4481,7 +4482,7 @@ function seekReplay(t:number){
   if(replayQuickVideo.active)replayQuickVideo.stop();
   stopReplaySounds();
   replayTime=Math.max(0,Math.min(recorder.duration,t));
-  replayDirectorScheduler.reset();replayDirectorTarget=null;
+  replayDirectorTarget=null;
   
   stage?.resetReplayBodycamSmoothing();
   applyReplayFrameAt(replayTime);advanceReplayCamera(0,true);
@@ -4773,6 +4774,9 @@ function rebuildReplayEventIndex():void{
     recorder.ballistics.shots,replayEventIndex.all,
     t=>recorder.at(t),doors,friendlies,
     shot=>historicalShotVisible(shot));
+  // Actual 20 Hz positions, never guessed majority-room transitions.
+  replayDirectorEntries=buildDirectorEntryEvents(
+    recorder.frames,doors,friendlies);
   // The director knows the whole finished film. Fixed knots are lazily
   // solved from historical samples, independent of FPS or seek direction.
   replayDirectorStoryboard=new ReplayDirectorStoryboard(recorder.duration,t=>{
@@ -4786,12 +4790,23 @@ function rebuildReplayEventIndex():void{
     const intents=directorIntentsAt(frame,replayDirectorPlanIndex,
       doors,t,friendlies);
     const beat=directorFilmBeatAt(t,replayDirectorFilmBeats);
+    // A friendly's known future action may guide anticipation, but
+    // undisclosed opponents and future target coordinates must not.
+    const opposite=beat?.kind==='fight'?
+      (beat.actorId===beat.shooterId?
+        beat.targetId:beat.shooterId):null;
+    const canShowPair=beat?.kind==='fight'&&t>=beat.first&&
+      (!opposite||friendlies.has(opposite)||replayOmniscient||
+      !replayContactObserverId&&!!frame.knowledge?.
+        visibleActorIds.includes(opposite));
     return composeReplayDirectorShot(t,actors,
       state.site?.rooms??[],state.site?.walls??[],
       cssW/Math.max(1,cssH),0,
       stage?.replayCameraBaseSpan()??1100,{
         intents,upcoming:directorFutureAt(t,replayDirectorFuture),
-        beat,actionPair:beat?directorFilmPair(beat,frame):null,
+        beat,actionPair:canShowPair&&beat?
+          directorFilmPair(beat,frame):null,
+        entry:directorFirstEntryAt(t,replayDirectorEntries),
         doors:frame.doors,cover:frame.coverState,
         usableWidth:cssW<500?.75:.85,
         usableHeight:cssH<520?.68:.81,maxZoom:14
@@ -4799,11 +4814,15 @@ function rebuildReplayEventIndex():void{
   },{step:.8,maxCache:96,rooms:state.site?.rooms??[],
     walls:state.site?.walls??[],cover:state.site?.cover??[],
     doors:state.site?.doors??[],
+    sceneAt:t=>{
+      const sample=recorder.at(t);
+      return {doors:sample?.doors??[],cover:sample?.coverState??[]};
+    },
     aspect:cssW/Math.max(1,cssH),
     baseSpan:stage?.replayCameraBaseSpan()??1100,
     usableWidth:cssW<500?.75:.83,
     usableHeight:cssH<520?.69:.77});
-  replayDirectorScheduler.reset();replayDirectorTarget=null;
+  replayDirectorTarget=null;
   
   replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
   replayIncidents=indexReplayIncidents(replayEventIndex.all,recorder.duration);
@@ -4838,7 +4857,12 @@ function advanceReplayCamera(dt:number,instant=false):void{
         '\\nLENS '+replayDirectorLens.toUpperCase()+
         '\\nZOOM '+target.zoom.toFixed(2)+
         ' / OCC '+target.occluded+
-        '\\nROOM '+(target.roomId??'—');
+        '\\nROOM '+(target.roomId??'—')+
+        '\\nSHOT '+(target.editorialId??'legacy')+
+        '\\nDECISION '+(target.cameraDecision??'framing')+
+        '\\nREASON '+(target.editReason??'—')+
+        '\\nTARGET '+(target.requiredPoints?.length??0)+
+        ' REQUIRED / WIDE '+(target.wideCoverage?'FIT':'CROP');
     }
     // No reactive hold/reorientation race and no frame-rate-dependent
     // orbit damping. The camera follows the precomputed film-time path.
@@ -5375,7 +5399,7 @@ function enterReplay(){
   replayDirectorCues=[];
   replayDirectorPlanIndex=buildDirectorPlanIndex(recorder.plans.revisions);
   replayDirectorFuture=[];replayDirectorTarget=null;
-  replayDirectorScheduler.reset();
+  
   replayBookmarks=[];replayBookmarkCounter=0;
   replayPlanScope='none';replayPlanVersion='active';
   replayNameTags=true;replayTraceMode='off';replayGhostMode='off';
@@ -5440,10 +5464,11 @@ function exitReplay(){
   replaying=false;replayPlaying=false;replayPresentation=null;
   replayEventIndex=null;replayDirectorCues=[];replayCameraMode='free';
   replayDirectorPlanIndex=new Map();replayDirectorFuture=[];
-  replayDirectorFilmBeats=[];replayDirectorStoryboard=null;
+  replayDirectorFilmBeats=[];replayDirectorEntries=[];
+  replayDirectorStoryboard=null;
   stage?.setReplayDirectorCameraAnchor(null);
   replayDirectorTarget=null;
-  replayDirectorScheduler.reset();
+  
   replayChapters=[];replayBookmarks=[];
   replayIncidents=[];replayFeaturedIncidents=[];
   replaySquadEntries=[];selectedReplaySquadEntry=null;
@@ -6006,7 +6031,7 @@ ui.replayDirectDirector.addEventListener('click',()=>{
   replayCameraMode=replayCameraMode==='director'?'free':'director';
   replayFollow=false;
   replayDirectorTarget=null;
-  replayDirectorScheduler.reset();
+  
   advanceReplayCamera(1/60,false);updateReplayHud();
 });
 ui.replayDirectLens.addEventListener('click',()=>{
