@@ -13,7 +13,7 @@ import {
   planNearbyInteraction,planAim,planWatch,retargetActiveWatch,
   setFirePolicy,planWait,plannedControl,planDoorFlash,
   planSync,movePlanNode,finalPoint,backOne,
-  insertPlanNode,clearPlan,undoPlan,redoPlan,
+  clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,liveVisibility,
   planReload,reloadNow,planFlash,moveFlashTarget,
   equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,planCasualtyTransport,
@@ -29,10 +29,10 @@ import {createBreach2DProjectedOverlays} from './breach-2d-projected-overlays.ts
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {executionStatus} from './breach-execution-state.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
-import {tacticalHitProfile,shouldAppendStrokePoint,simplifyStrokePoints}
+import {shouldAppendStrokePoint,simplifyStrokePoints}
  from './ui/touch-hit-targets.ts';
-import {resolveTacticalPick,screenSegmentDistance,
-  type TacticalPick} from './ui/tactical-target-resolver.ts';
+import type {TacticalPick} from './ui/tactical-target-resolver.ts';
+import {pickTacticalTarget,insertTacticalRouteWaypoint} from './breach-tactical-picking.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {aimTargetFromTap,insideTacticalBounds} from './ui/aim-target.ts';
 import {interruptsWatch,angleDifference} from './breach-plan.ts';
@@ -60,7 +60,6 @@ import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 import {lightControlState} from './equipment-weapon-light-ui.ts';
 import type {SiteScale} from './breach-site.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {routeLineHit} from './breach-route-edit.ts';
 import {createBreachAudioController} from './breach-audio-controller.ts';
 import {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
 import {createBreachReplayTimelineController}
@@ -2807,87 +2806,13 @@ function pointerAimWorld(e:PointerEvent,height=24):Pt{
    stage.screenToWorldAtHeight(e.clientX,e.clientY,height)??
      pointerWorld(e):pointerWorld(e);
 }
-/** One shared screen-space picker for the visible planning surface.
- * Routes, doors and order handles compete by explicit geometry, never by
- * separate first-match handlers or unseen world information. */
+/** Read-only semantic picking; gesture controller owns pointer mechanics. */
 function tacticalPickAt(screen:Pt,pointerKind:string):TacticalPick|null{
-  if(replaying)return null;
-  const touch=pointerKind==='touch',pen=pointerKind==='pen';
-  // GO/PAUSE still permit direct operator selection. The rest of the
-  // planning surface is deliberately non-interactive while executing.
-  if(state.phase!=='planning'){
-    return resolveTacticalPick(team(state).filter(a=>a.health>0).map(a=>({
-      kind:'operator' as const,owner:a.id,
-      distancePx:distance(worldToScreen(a.p,viewMode==='plan2d'?0:24),screen),
-      corePx:touch?18:pen?16:14,haloPx:touch?30:pen?25:21
-    })),selected);
-  }
-  const hits:TacticalPick[]=[];
-  const actor=uid(selected);
-  for(const unit of team(state)){
-    if(unit.health<=0)continue;
-    const here=worldToScreen(unit.p,viewMode==='plan2d'?0:24);
-    // A 44 px direct finger target is generous without an invisible 60 px
-    // magnetic halo that steals floor taps beside a stacked teammate.
-    hits.push({kind:'operator',owner:unit.id,distancePx:distance(here,screen),
-      corePx:touch?22:pen?18:15});
-    const problem=executionProblemStatus(unit);
-    if(problem?.orderId!=null){
-      const marker=executionMarkerPoint(unit,viewMode!=='plan2d');
-      const point=viewMode==='plan2d'?worldToScreen(marker,0):marker;
-      hits.push({kind:'problem',owner:unit.id,nodeId:problem.orderId,
-        distancePx:distance(point,screen),corePx:touch?15:12,haloPx:19});
-    }
-    const active=activeWatchTarget(unit);
-    if(active){
-      hits.push({kind:'activeWatch',owner:unit.id,
-        distancePx:distance(worldToScreen(active,12),screen),
-        corePx:touch?17:pen?15:12,
-        haloPx:unit.id===selected&&touch?24:undefined});
-    }
-    for(const node of unit.plan){
-      const here=worldToScreen(node.p,8);
-      const selectedHandle=unit.id===selected&&node.id===selectedNode;
-      hits.push({kind:'node',owner:unit.id,nodeId:node.id,
-        distancePx:distance(here,screen),
-        corePx:touch?(unit.id===selected?19:17):pen?16:13,
-        haloPx:selectedHandle&&touch?24:undefined});
-      if(node.aimPoint&&node.aimMode==='track')
-        hits.push({kind:'watch',owner:unit.id,nodeId:node.id,
-          distancePx:distance(worldToScreen(node.aimPoint,12),screen),
-          corePx:touch?17:pen?15:12,
-          haloPx:selectedHandle&&touch?23:undefined});
-      if(node.aimPoint&&node.kind==='flash')
-        hits.push({kind:'flash',owner:unit.id,nodeId:node.id,
-          distancePx:distance(worldToScreen(node.aimPoint,12),screen),
-          corePx:touch?17:pen?15:12});
-    }
-    const hit=routeLineHit(unit.p,unit.plan,screen,
-      point=>worldToScreen(point,4),
-      unit.id===selected?(touch?14:pen?12:10):(touch?8:pen?7:6),
-      (from,to)=>displayRouteCache.get(from,to,state.intel,true).points);
-    if(hit)hits.push({kind:'route',owner:unit.id,
-      routeIndex:hit.index,routePoint:hit.point,
-      distancePx:hit.distancePx,corePx:unit.id===selected?
-        (touch?14:pen?12:10):(touch?8:pen?7:6)});
-  }
-  // Known doors only. The painted leaf and visible door selector own the
-  // tap, not a cluster of broad, overlapping circles around the threshold.
-  // Interaction reach is checked at commit using the selected command origin.
-  if(actor)for(const door of state.doors){
-    if(!doorKnown(state.intel,door.id))continue;
-    const fraction=liveVisibility(state,doorCenter(door))?
-      (door.openFraction??(door.open?1:0)):
-      (state.intel.doorMemory.get(door.id)??0);
-    const leaf=doorLeafSegment({...door,openFraction:fraction});
-    const a=worldToScreen(leaf.a,10),b=worldToScreen(leaf.b,10);
-    const center=worldToScreen(doorCenter(door),12);
-    const gap=Math.min(screenSegmentDistance(screen,a,b),
-      Math.max(0,distance(screen,center)-4));
-    hits.push({kind:'door',doorId:door.id,distancePx:gap,
-      corePx:touch?(door.id===doorFocusId?15:12):pen?11:9});
-  }
-  return resolveTacticalPick(hits,selected);
+ return pickTacticalTarget({
+  screen,pointerKind,state,replaying,selected,selectedNode,doorFocusId,
+  viewMode,worldToScreen,executionProblemStatus,executionMarkerPoint,
+  displayRouteCache
+ });
 }
 function adoptPointerOwner(p:{pick?:TacticalPick|null}):void{
   const owner=p.pick?.owner;
@@ -2970,28 +2895,25 @@ tacticalGestures.install({
     fitZoom(z*Math.exp(-e.deltaY*.001),e.clientX,e.clientY);
   }
 });
-/** Insert precisely where the player tapped the existing routed line.
- * The original plan before and after the inserted node stays intact. */
+/** A route tap commits once; presentation feedback stays with the app. */
 function insertAtRouteLine(screen:Pt,pointerKind:string):boolean{
-  const actor=uid(selected);
-  if(!actor||state.phase!=='planning')return false;
-  const hit=routeLineHit(actor.p,actor.plan,screen,
-    point=>worldToScreen(point,4),tacticalHitProfile(pointerKind).route,
-    (from,to)=>displayRouteCache.get(from,to,state.intel,true).points);
-  if(!hit){canvas.dataset.lastRouteTap='miss:'+actor.plan.length+'/'+selected;return false;}
-  canvas.dataset.lastRouteTap='route:'+hit.index;
-  const id=state.nextId;
-  if(!insertPlanNode(state,selected,hit.index,hit.point)){
-    canvas.dataset.lastRouteTap='blocked:'+hit.index;
-    rejectAt(hit.point,'CANNOT INSERT WAYPOINT HERE');
-    return true; // This was a route tap, not a new destination order.
-  }
-  canvas.dataset.lastRouteTap='inserted:'+hit.index;
-  lastAuthoringAt=performance.now();
-  tacticalFeedback.emit('node',hit.point);
-  teach('route-inserted','Waypoint inserted. Drag to reposition, or add LOOK / WATCH.',4100);
-  selectedNode=id;doorFocusId=null;paletteController.invalidate();
-  return true;
+ const result=insertTacticalRouteWaypoint({
+   state,selected,screen,pointerKind,worldToScreen,displayRouteCache
+ });
+ if(result.status==='miss'){
+   canvas.dataset.lastRouteTap='miss:'+(uid(selected)?.plan.length??0)+'/'+selected;
+   return false;
+ }
+ canvas.dataset.lastRouteTap=result.status+':'+result.index;
+ if(result.status==='blocked'){
+   rejectAt(result.point,'CANNOT INSERT WAYPOINT HERE');
+   return true;
+ }
+ lastAuthoringAt=performance.now();
+ tacticalFeedback.emit('node',result.point);
+ teach('route-inserted','Waypoint inserted. Drag to reposition, or add LOOK / WATCH.',4100);
+ selectedNode=result.nodeId;doorFocusId=null;paletteController.invalidate();
+ return true;
 }
 /** Map gestures have resolved; this is the gameplay-only commit boundary. */
 function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
