@@ -7,8 +7,8 @@ import {propDefinition} from './worldgen/asset-catalog.ts';
  * Raised masonry sills remain low cover and still stop crouched fire. */
 export const coverHeight=(c:Obstacle)=>
   c.toppled?7:
-  c.fixture==='glass-barrier'?39:
-  c.fixture==='window-sill'?14:
+  c.fixture==='glass-barrier'?(c.topHeight??39):
+  c.fixture==='window-sill'?(c.topHeight??14):
   (c.fixture&&propDefinition(c.fixture)?.height)||(c.low?12:27);
 export const eyeHeight=(crouched:boolean)=>crouched?15:32;
 export const aimHeight=(crouched:boolean)=>crouched?11:32;
