@@ -682,7 +682,18 @@ export class TacticalScene3D{
   private readonly wearTextures=new Map<WearKind,THREE.DataTexture>();
   private readonly signMaterials=new Map<string,THREE.MeshBasicMaterial>();
   private readonly groundOverlays=new Map<PixelOverlay,THREE.MeshBasicMaterial>();
+  // Scene reconciliation runs every RAF. Reuse transient membership sets
+  // instead of allocating five new Sets (and temporary mapped arrays).
+  private readonly frameActorIds=new Set<string>();
+  private readonly frameCivilianIds=new Set<string>();
+  private readonly frameShotIds=new Set<number>();
+  private readonly frameMagazineIds=new Set<number>();
+  private readonly frameGrenadeIds=new Set<number>();
+  private readonly frameFlashIds=new Set<number>();
   private windowGlass=new Map<string,THREE.Mesh>();
+  /** Scratch index rebuilt from current session data; never hold prior
+   * replay snapshots or a site's mutable window array across frames. */
+  private readonly frameWindowsById=new Map<string,Session['windows'][number]>();
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
   private coverGroups=new Map<number,THREE.Group>();
@@ -925,6 +936,7 @@ export class TacticalScene3D{
     this.wallMaterials.clear();
     this.walls.length=0;this.wallFade.clear();
     this.doors.clear();this.windowGlass.clear();
+    this.frameWindowsById.clear();
     if(this.windowShards)this.windowShards.count=0;
     this.observedDoorGlass.clear();
     this.currentWear=[];this.objectWear=[];
@@ -2347,8 +2359,15 @@ export class TacticalScene3D{
       this.effects.add(this.windowShards);
     }
     let shardCount=0;
+    // Larger generated sites have many panes. An ephemeral index avoids
+    // scanning the entire window list once per rendered pane.
+    const indexWindows=this.windowGlass.size>8&&s.windows.length>8;
+    this.frameWindowsById.clear();
+    if(indexWindows)for(const pane of s.windows)
+      this.frameWindowsById.set(pane.id,pane);
     for(const [id,glass] of this.windowGlass){
-      const current=s.windows.find(w=>w.id===id);
+      const current=indexWindows?this.frameWindowsById.get(id):
+        s.windows.find(w=>w.id===id);
       const seen=personalWindows&&replayDisclosurePolicy?.observerId?
         replayWindowHistory?.at(s.seconds,replayDisclosurePolicy.observerId,id):
         null;
@@ -2608,14 +2627,16 @@ export class TacticalScene3D{
     }
     // Switching procedurally generated sites may change hostile counts.
     // Hide cached actors absent from the new encounter.
-    const current=new Set(s.operators.map(a=>a.id));
+    const current=this.frameActorIds;current.clear();
+    for(const actor of s.operators)current.add(actor.id);
     for(const [id,object] of this.actors)if(!current.has(id)){
       object.root.visible=false;object.status.visible=false;
       for(const shadow of object.contactShadows)shadow.visible=false;
     }
     // Civilian meshes are created only once visibly encountered, then
     // reused; unrevealed people cannot leak through walls or player fog.
-    const present=new Set(s.civilians.map(c=>c.id));
+    const present=this.frameCivilianIds;present.clear();
+    for(const civil of s.civilians)present.add(civil.id);
     for(const [id,rig] of this.civilianRigs){
       if(present.has(id))continue;
       this.scene.remove(rig.root);this.civilianRigs.delete(id);
@@ -2974,7 +2995,7 @@ export class TacticalScene3D{
     if(casingDirty)casingDraw.instanceMatrix.needsUpdate=true;
     // 079: One persistent, ID-keyed effect per actual simulation shot.
     // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
-    const active=new Set<number>();
+    const active=this.frameShotIds;active.clear();
     let visibleShots=0;
     // Dense bursts keep their newest effects; older traces are cosmetic.
     for(let index=s.shots.length-1;index>=0;index--){
@@ -3107,7 +3128,7 @@ export class TacticalScene3D{
       if(markDraw.instanceColor)markDraw.instanceColor.needsUpdate=true;
     }
     // Retained physical magazines, grenades in flight and expanding flashes.
-    const activeMag=new Set<number>();
+    const activeMag=this.frameMagazineIds;activeMag.clear();
     for(const mag of s.dropped){
       activeMag.add(mag.id);
       let mesh=this.discarded.get(mag.id);
@@ -3123,7 +3144,7 @@ export class TacticalScene3D{
       mesh.rotation.set(.2*Math.min(1,t*8),mag.id*2.13,
         Math.min(1,t*4)*Math.PI*.40);
     }
-    const liveGrenades=new Set<number>();
+    const liveGrenades=this.frameGrenadeIds;liveGrenades.clear();
     for(const grenade of s.grenades){
       liveGrenades.add(grenade.id);
       let mesh=this.thrown.get(grenade.id);
@@ -3137,7 +3158,7 @@ export class TacticalScene3D{
       mesh.position.set(grenade.p.x,path?.height??(1+20*4*t*(1-t)),
         grenade.p.y);
     }
-    const liveBursts=new Set<number>();
+    const liveBursts=this.frameFlashIds;liveBursts.clear();
     for(const burst of s.flashBursts){
       liveBursts.add(burst.id);
       let mesh=this.detonations.get(burst.id);
@@ -3178,49 +3199,58 @@ export class TacticalScene3D{
     // Do not repaint/re-upload an identical visibility texture every 55ms
     // while operators are stationary in planning. Quantized pose and intel
     // changes make the key; real LOS is still computed by the fog renderer.
-    const memorySignature=fogMemoryFingerprint({
-      mode:s.intel.mode,seed:s.site?.seed??null,
-      seenRevision:s.seenGroundRevision,
-      rooms:s.intel.rooms.size,walls:s.intel.walls.size,
-      doors:s.intel.doors.size,cover:s.intel.cover.size
-    });
-    const fogSignature=omniscient?'omniscient':fogFingerprint({
-      mode:s.intel.mode,seed:s.site?.seed??null,
-      seenCount:s.seenGround.size,seenRevision:s.seenGroundRevision,
-      revision:s.objectRevision,
-      actors:team(s).filter(a=>a.health>0).map(a=>({
-        id:a.id,x:a.p.x,y:a.p.y,heading:a.heading,
-        posture:a.posture,health:a.health
-      })),
-      doors:s.doors.map(d=>({id:d.id,fraction:d.openFraction??(d.open?1:0)}))
-    });
-    // Two sessions may have identical knowledge counts but different sites.
+    // Fingerprints allocate a per-actor/door signature. Compute them
+    // only when the fog repaint cadence permits a change, never on the
+    // intervening 60Hz scene frames. Session swaps bypass the cadence.
     const sessionChanged=this.lastFogSession!==s;
-    if(!omniscient&&(sessionChanged||
-        this.fogAt>=(this.quality.mode==='quality'?.055:.10)||this.fogAt<0)&&
-        (sessionChanged||fogSignature!==this.lastFogSignature)){
-      this.fogAt=0;this.lastFogSignature=fogSignature;
-      this.lastFogSession=s;
-      if(this.fogLegacy){
-        paintFogMask(this.fogContext,s,this.fogDiagnostic);
-        this.fogMemoryPaints++;this.fogSightPaints++;
-      }else{
-        if(this.lastMemoryFogSession!==s||
-           this.lastMemoryFogSignature!==memorySignature){
-          paintFogMemory(this.fogMemoryContext,s,this.fogDiagnostic);
-          this.lastMemoryFogSignature=memorySignature;
-          this.lastMemoryFogSession=s;
-          this.fogMemoryPaints++;
+    const fogDue=!omniscient&&(sessionChanged||
+      this.fogAt>=(this.quality.mode==='quality'?.055:.10)||this.fogAt<0);
+    if(fogDue){
+      const fogSignature=fogFingerprint({
+        mode:s.intel.mode,seed:s.site?.seed??null,
+        seenCount:s.seenGround.size,seenRevision:s.seenGroundRevision,
+        revision:s.objectRevision,
+        actors:team(s).filter(a=>a.health>0).map(a=>({
+          id:a.id,x:a.p.x,y:a.p.y,heading:a.heading,
+          posture:a.posture,health:a.health
+        })),
+        doors:s.doors.map(d=>({
+          id:d.id,fraction:d.openFraction??(d.open?1:0)
+        }))
+      });
+      // Two sessions may have identical knowledge counts but different sites.
+      if(sessionChanged||fogSignature!==this.lastFogSignature){
+        this.fogAt=0;this.lastFogSignature=fogSignature;
+        this.lastFogSession=s;
+        if(this.fogLegacy){
+          paintFogMask(this.fogContext,s,this.fogDiagnostic);
+          this.fogMemoryPaints++;this.fogSightPaints++;
+        }else{
+          // Static exploration memory is even less volatile than sight.
+          // Avoid building its key unless a visibility redraw is needed.
+          const memorySignature=fogMemoryFingerprint({
+            mode:s.intel.mode,seed:s.site?.seed??null,
+            seenRevision:s.seenGroundRevision,
+            rooms:s.intel.rooms.size,walls:s.intel.walls.size,
+            doors:s.intel.doors.size,cover:s.intel.cover.size
+          });
+          if(this.lastMemoryFogSession!==s||
+             this.lastMemoryFogSignature!==memorySignature){
+            paintFogMemory(this.fogMemoryContext,s,this.fogDiagnostic);
+            this.lastMemoryFogSignature=memorySignature;
+            this.lastMemoryFogSession=s;
+            this.fogMemoryPaints++;
+          }
+          this.fogContext.setTransform(1,0,0,1,0,0);
+          this.fogContext.globalCompositeOperation='source-over';
+          this.fogContext.clearRect(0,0,
+            this.fogCanvas.width,this.fogCanvas.height);
+          this.fogContext.drawImage(this.fogMemoryCanvas,0,0);
+          paintFogVisibility(this.fogContext,s);
+          this.fogSightPaints++;
         }
-        this.fogContext.setTransform(1,0,0,1,0,0);
-        this.fogContext.globalCompositeOperation='source-over';
-        this.fogContext.clearRect(0,0,
-          this.fogCanvas.width,this.fogCanvas.height);
-        this.fogContext.drawImage(this.fogMemoryCanvas,0,0);
-        paintFogVisibility(this.fogContext,s);
-        this.fogSightPaints++;
+        this.fogTexture.needsUpdate=true;
       }
-      this.fogTexture.needsUpdate=true;
     }else if(omniscient)this.fogAt=-1;
     const dynamicShadows=s.phase==='running'||
       ((s.phase==='won'||s.phase==='lost')&&

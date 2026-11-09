@@ -8282,19 +8282,22 @@ function tick(now:number){
       const m=frameMeter.summary();
       perfOverlay.textContent='JS '+m.p50.toFixed(1)+'ms · P95 '+
         m.p95.toFixed(1)+' · MAX '+m.worst.toFixed(1)+
-        '\\nRAF GAP P50 '+m.rafP50.toFixed(1)+'ms · P95 '+
+        '\nRAF GAP P50 '+m.rafP50.toFixed(1)+'ms · P95 '+
         m.rafP95.toFixed(1)+'ms'+
-        '\\nSIM+REC '+m.simulation.toFixed(1)+'ms / '+m.steps.toFixed(1)+
+        '\nSIM+REC '+m.simulation.toFixed(1)+'ms / '+m.steps.toFixed(1)+
         ' ticks · REC '+m.recording.toFixed(1)+'ms · SCENE '+m.scene.toFixed(1)+'ms'+
-        '\\nSYNC '+m.sceneUpdate.toFixed(1)+'ms · RENDER '+m.render.toFixed(1)+'ms'+
-        '\\nFILM '+recorder.frames.length+' frames · '+
+        '\nSYNC '+m.sceneUpdate.toFixed(1)+'ms · RENDER '+m.render.toFixed(1)+'ms'+
+        '\nCUM FOG M/S '+(stats?.fogMemoryPaints??0)+'/'+
+          (stats?.fogSightPaints??0)+' · SHADOW REF/REUSE '+
+          (stats?.shadowRefreshes??0)+'/'+(stats?.shadowReuses??0)+
+        '\nFILM '+recorder.frames.length+' frames · '+
         recorder.motion.stepEventCount+' step events'+
-        '\\nDOM '+document.getElementsByTagName('*').length+
+        '\nDOM '+document.getElementsByTagName('*').length+
         ' · ACTION RINGS '+physicalActionRings.size+
         ' · SITE MATS '+(stats?.siteMaterialCount??0)+
-        '\\nOVERLAY '+m.overlay.toFixed(1)+'ms · DRAWS '+
+        '\nOVERLAY '+m.overlay.toFixed(1)+'ms · DRAWS '+
         m.draws.toFixed(0)+' · TRI '+m.triangles.toFixed(0)+
-        (simPhaseCosts&&simPhaseCosts.size?'\\nHOT SIM '+
+        (simPhaseCosts&&simPhaseCosts.size?'\nHOT SIM '+
           [...simPhaseCosts].sort((a,b)=>b[1]-a[1]).slice(0,2)
             .map(([name,ms])=>name+' '+ms.toFixed(1)+'ms').join(' / '):'');
     }
