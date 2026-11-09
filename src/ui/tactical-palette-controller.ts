@@ -12,6 +12,15 @@ import {contextActionChoices,type ContextAction,type ContextOptions}
   from './context-actions.ts';
 import {installPalettePointerGuard} from './palette-pointer-guard.ts';
 
+export function availablePaletteActions(watchSelected:boolean,options:ContextOptions):ContextAction[]{
+  return watchSelected?[
+    {id:'ctxWatch',label:'RETARGET',group:'primary',pressed:true,
+      title:'Choose a new point for this active WATCH'},
+    {id:'ctxDelete',label:'DELETE WATCH',group:'destructive',
+      title:'Stop tracking this point; leave movement orders unchanged'}
+  ]:contextActionChoices(options);
+}
+
 export type PaletteContext={
   state:Session;actor:TeamActor;selected:string;
   node:TeamActor['plan'][number]|undefined;
@@ -75,14 +84,7 @@ export function createTacticalPaletteController(config:{
     syncLayoutButtons();
     config.onLayoutChange?.();
   });
-  function availableActions(watchSelected:boolean,options:ContextOptions):ContextAction[]{
-    return watchSelected?[
-      {id:'ctxWatch',label:'RETARGET',group:'primary',pressed:true,
-        title:'Choose a new point for this active WATCH'},
-      {id:'ctxDelete',label:'DELETE WATCH',group:'destructive',
-        title:'Stop tracking this point; leave movement orders unchanged'}
-    ]:contextActionChoices(options);
-  }
+  const availableActions=availablePaletteActions;
   function invalidate(){
     contextSignature='';actionSignature='';lastPlacementKey='';
   }
