@@ -606,6 +606,8 @@ export class TacticalScene3D{
   private impactDecalMesh:THREE.InstancedMesh|null=null;
   private impactDecalMatrix=new THREE.Object3D();
   private bloodCameraDirection=new THREE.Vector3();
+  /** Scratch positions for ground blood occlusion, rebuilt every frame. */
+  private readonly frameVisibleBloodBlockers:Pt[]=[];
   private impactDecalColor=new THREE.Color();
 
   private casingMesh:THREE.InstancedMesh|null=null;
@@ -990,6 +992,7 @@ export class TacticalScene3D{
     this.walls.length=0;this.wallFade.clear();
     this.doors.clear();this.windowGlass.clear();
     this.frameWindowsById.clear();
+    this.frameVisibleBloodBlockers.length=0;
     if(this.windowShards)this.windowShards.count=0;
     this.observedDoorGlass.clear();
     this.currentWear=[];this.objectWear=[];
@@ -3176,8 +3179,13 @@ export class TacticalScene3D{
     const bloodCamera=opticalCamera.position;
     const orthoBlood=opticalCamera instanceof THREE.OrthographicCamera;
     opticalCamera.getWorldDirection(this.bloodCameraDirection).negate();
-    const visibleBloodBlockers=s.operators.filter(a=>
-      this.actors.get(a.id)?.root.visible).map(a=>a.p);
+    const visibleBloodBlockers=this.frameVisibleBloodBlockers;
+    visibleBloodBlockers.length=0;
+    if(s.impactMarks.length){
+      for(const actor of s.operators)
+        if(this.actors.get(actor.id)?.root.visible)
+          visibleBloodBlockers.push(actor.p);
+    }
     let markCount=0;
     for(const mark of s.impactMarks){
       if(replayDisclosurePolicy?.mode==='operator')continue;
