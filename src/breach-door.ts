@@ -309,8 +309,14 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
  * the operator. A blocked hinge never enables ghosting through the leaf.
  */
 export type BodyDoorContact={doorId:string;advanced:boolean};
+/** A traffic controller may veto ONLY incidental body-driven closing.
+ * Explicit CLOSE orders and opening/hinge swing collision remain unchanged. */
+export type BodyDoorPressurePolicy={
+ deferClosing?:(door:Door)=>boolean;
+};
 export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
-  dt:number,actors:readonly Pt[]):BodyDoorContact|null{
+  dt:number,actors:readonly Pt[],
+  policy:BodyDoorPressurePolicy={}):BodyDoorContact|null{
   const length=dist(from,to);
   if(length<.0001)return null;
   const steps=Math.max(1,Math.ceil(length/2));
@@ -331,6 +337,11 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
     const pressure=vx*openingX+vy*openingY;
     if(Math.abs(pressure)<Math.hypot(vx,vy)*.12)continue;
     const closing=pressure<0;
+    // Two friendlies can press opposite faces on consecutive motor ticks.
+    // Refuse a *body-driven* CLOSE while another squad member is actively
+    // using the aperture; their opening pressure then wins naturally.
+    // Reject this candidate before mutating hinge velocity or open state.
+    if(closing&&policy.deferClosing?.(door))continue;
     if(!closing&&(door.openFraction??0)>=PUSHED_OPEN_LIMIT-.001)continue;
     const before=pointToSegment(from,panel);
     // The capsule must be near the *actual rotating leaf*.
