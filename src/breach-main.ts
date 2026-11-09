@@ -5,7 +5,7 @@ import {
 } from './breach-core.ts';
 import {
   type Session,type TeamActor,
-  newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
+  newSession,team,enemies,isSeen,missionText,debrief,
   operationBriefing,availableDeployments,selectDeployment,
   planMove,planMoveStroke,planNearbyInteraction,
   planCivilianInteraction,planAim,planWatch,
@@ -71,7 +71,7 @@ import type {LightingMode} from './equipment-site-lighting.ts';
 import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
-import {shotVisibility,contactFade} from './breach-presentation.ts';
+import {shotVisibility} from './breach-presentation.ts';
 import {heardIntensity} from './breach-acoustics.ts';
 import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
 import {defaultSoundPack,readSoundPack,SOUND_STORAGE_KEY} from './sound-catalog.ts';
@@ -117,8 +117,6 @@ import {featuredReplaySquadEntries,measureReplaySquadDoorEntry,
   type ReplaySquadEntryReview} from './breach-replay-squad-entry.ts';
 import {incidentPlaybackWindow} from './breach-replay-incident-playback.ts';
 import {makeReplayLoop} from './breach-replay-loop.ts';
-import {replayActorDisclosed,replayCivilianDisclosed}
-  from './breach-replay-visibility.ts';
 import {operatorContactEventKnown,operatorContactAvailable}
   from './breach-replay-contact-lens.ts';
 import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
@@ -195,8 +193,6 @@ import {TacticalFeedback} from './ui/tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './ui/contextual-teaching.ts';
 import {recoveryAdviceFor} from './ui/recovery-guidance.ts';
-import {civilianPose} from './breach-civilian-pose.ts';
-import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 
 const el=<T extends HTMLElement>(id:string)=>{
   const node=document.getElementById(id);

@@ -1,0 +1,27 @@
+name: Breach 2D Renderer Critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-main.ts'
+      - 'src/breach-2d-*.ts'
+      - 'tests/breach-2d-renderer-extraction.test.mjs'
+      - '.github/workflows/breach-2d-renderer-critical.yml'
+permissions:
+  contents: read
+jobs:
+  render-invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Floor Plan draw order, fog and projected route regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/breach-2d-renderer-extraction.test.mjs \
+            tests/breach-fog-visibility.test.mjs \
+            tests/fog-interior-occlusion-regression.test.mjs \
+            tests/fog-exterior-facade-regression.test.mjs \
+            tests/breach-p7-projected-route-cache.test.mjs
