@@ -2015,6 +2015,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: Fog exterior apertures — unseen doors/windows and visibility regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/fog-unseen-exterior-apertures-') }}
+        run: |
+          node --experimental-strip-types --test tests/fog-exterior-unseen-apertures-regression.test.mjs tests/fog-exterior-facade-regression.test.mjs tests/fog-interior-occlusion-regression.test.mjs tests/visibility-08-closed-door-seals.test.mjs tests/visibility-11-fog-domain.test.mjs tests/breach-fog-visibility.test.mjs
+      - name: Fog exterior apertures — production Pages preflight
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/fog-unseen-exterior-apertures-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
