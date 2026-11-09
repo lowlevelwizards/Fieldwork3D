@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {ReplayBodycamController} from '../src/breach-replay-bodycam-controller.ts';
+test('recorded bodycam activation requires replay and eligible observer',()=>{
+ const cam=new ReplayBodycamController();
+ const calls=[];
+ const stage={setReplayBodycam:(value)=>calls.push(value)};
+ assert.equal(cam.start(true,stage,null),null);
+ cam.observers=['rook','sparrow'];
+ assert.equal(cam.start(false,stage,null),null);
+ assert.equal(cam.start(true,stage,'unknown'),'rook');
+ assert.equal(cam.apply(stage,'rook'),true);
+ assert.equal(calls.at(-1).mount,'chest');
+ assert.equal(cam.toggleMount(stage,'rook'),true);
+ assert.equal(calls.at(-1).mount,'helmet');
+ cam.reset(stage);
+ assert.equal(cam.active,false);
+ assert.deepEqual(cam.observers,[]);
+ assert.equal(calls.at(-1),null);
+});
