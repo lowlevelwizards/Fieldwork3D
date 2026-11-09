@@ -5,7 +5,7 @@ import {installTouchCommandHelp as bindTouchCommandHelp}
  from './ui/touch-command-help.ts';
 import {
   W,H,activeWorldBounds,
-  doorCenter,doorLeafSegment,type Pt,} from './breach-core.ts';
+  doorCenter,type Pt,} from './breach-core.ts';
 import {
   type Session,
   type TeamActor,team,enemies,isSeen,
