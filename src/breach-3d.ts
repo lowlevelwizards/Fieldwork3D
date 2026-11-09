@@ -4,8 +4,8 @@ import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
 import {SiteMaterialLifetime} from './rendering/site-material-lifetime.ts';
 import {buildSiteMicroDebrisMeshes} from './rendering/breach-site-micro-debris.ts';
-import {SITE_PROPERTY_SURFACE_COLORS,SITE_EXTERIOR_ZONE_COLORS}
- from './rendering/breach-site-surface-policy.ts';
+import {buildSiteExterior} from './rendering/breach-site-exterior-builder.ts';
+
 import {APPROVED_GRAPHIC_LIGHTING}
  from './operator-studio-light-lab.ts';
 import {STUDIO_INSPECTION_LIGHT,STUDIO_KEY_DIRECTION,studioShadowPalette}
@@ -14,15 +14,14 @@ import {applyStudioGraphicLighting}
  from './operator-studio-graphic-lighting.ts';
 import {applyWorldGraphicLighting} from './breach-graphic-world-lighting.ts';
 import {BreachCombatEffectsPresenter} from './rendering/breach-combat-effects-presenter.ts';
-import {propertySurfaceCenterHeight,PROPERTY_SURFACE_THICKNESS,
-  exteriorZoneRenderLift} from './rendering/property-surface-elevation.ts';
+import {presentActor,presentCivilian,presentDecor,resolveDoorPresentation}
+ from './rendering/breach-3d-disclosure-presenter.ts';
+
 import {windowShardPose,WINDOW_SHARDS_PER_PANE}
  from './rendering/window-shatter-presentation.ts';
 import {createCivilianRig,updateCivilianRig,type CivilianRig}
  from './breach-civilian-visuals.ts';
-import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
-import {replayActorVisible,replayActorDisclosed,replayCivilianDisclosed,
-  type ReplayDisclosure} from './breach-replay-visibility.ts';
+import {type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
  miniatureFocusDecision,type MiniatureFocusMode,type MiniatureFocusView}
@@ -41,28 +40,27 @@ import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
  from './operator-shadow-quality.ts';
 import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
-import {roomPixelSurface,zonePixelSurface,wallPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
+import {roomPixelSurface,wallPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
 import {wearFinish} from './rendering/wear-finish.ts';
 import {doubleSidedWallWear} from './rendering/wear-wall-geometry.ts';
 import {ageMaterialColor} from './rendering/condition-materials.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-visuals.ts';
 import {isArchitecturalSillCover} from './worldgen/architectural-cover-visuals.ts';
-import {planFacadeAwnings} from './worldgen/facade-awnings.ts';
+
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
 import {exteriorBriefedAt,accessibleExteriorWall} from './breach-site-footprint.ts';
 import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
 import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
   from './rendering/breach-shadow-controller.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
-import {planPropertySurfaces} from './worldgen/property-surfaces.ts';
-import {planPublicStreet} from './worldgen/public-street-layout.ts';
-import {planServiceDockBumpers} from './worldgen/service-facade-program.ts';
-import {curbRampWedge,CURB_GROUND_LEVELS}
- from './rendering/curb-ramp-wedge.ts';
+
+
+
+
 import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
 import {conditionFloorPixels,effectiveCondition} from './worldgen/condition-visual.ts';
-import {outdoorVisualCondition} from './worldgen/outdoor-condition.ts';
+
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
 import {planObjectWear,type ObjectWear} from './worldgen/object-wear.ts';
 import {planExposureWear} from './worldgen/wear-exposure.ts';
@@ -74,7 +72,7 @@ import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
-import {pixelOverlay,overlayForZone,type PixelOverlay} from './rendering/pixel-overlays.ts';
+import {pixelOverlay,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,doorLeafSegment,activeSite,
   type Pt,type Door,type Segment} from './breach-core.ts';
@@ -113,7 +111,7 @@ import {sampleBodycamSocket,applyBodycamCamera,smoothBodycamSample,
   type BodycamSetting,type BodycamSample} from './breach-replay-bodycam.ts';
 import type {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
 import type {ReplayWindowKnowledgeHistory} from './breach-replay-window-knowledge.ts';
-import {personalDecorVisible,personalCoverVisible}
+import {personalCoverVisible}
   from './breach-replay-personal-visibility.ts';
 import {interpolatedActor,type RenderFrame}
   from './breach-frame-interpolation.ts';
@@ -1083,138 +1081,15 @@ export class TacticalScene3D{
     const finishCondition=effectiveCondition(site);
     const age=(hex:number,surface:PixelSurface|undefined,variation=0)=>
       ageMaterialColor(hex,surface,finishCondition,variation);
-    const outdoors=outdoorVisualCondition(site);
-    const earth=this.solid(age(site.layout==='courtyard'?0x69825e:0x607a58,'grass'),.9,'grass');
-    const bounds=site.bounds??{minX:0,minY:0,maxX:W,maxY:H};
-    const bw=bounds.maxX-bounds.minX,bh=bounds.maxY-bounds.minY;
-    this.plane(this.root,(bounds.minX+bounds.maxX)/2,
-      (bounds.minY+bounds.maxY)/2,bw,bh,-2,earth);
-    const zoneColor=SITE_EXTERIOR_ZONE_COLORS;
-    for(const zone of site.exteriorZones??[]){
-      const ground=zonePixelSurface(zone.kind,outdoors);
-      const lift=exteriorZoneRenderLift(zone.id);
-      this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.45+lift,
-        this.solid(age(zoneColor[zone.kind],ground),.91,ground));
-      // One cheap repeated layer per relevant exterior zone, no dynamic allocation.
-      const overlay=overlayForZone(outdoors,zone.kind);
-      if(overlay){
-        const mark=this.plane(this.root,zone.x,zone.y,zone.w,zone.h,-1.42+lift,
-          this.groundOverlayMaterial(overlay));
-        mark.castShadow=false;mark.receiveShadow=false;
-      }
-    }
-    // Structural roofs are open-slat and translucent for tabletop cutaway.
-    // Actual support posts are the collidable obstacles in site.cover.
-    for(const structure of site.structures??[]){
-      if(!['entry-canopy','porch-roof','service-awning'].includes(structure.kind))
-        continue;
-      const frame=this.solid(structure.kind==='service-awning'?0x59615e:
-        structure.kind==='porch-roof'?0x86755d:0x727c76,.83,'wood');
-      const roofMat=new THREE.MeshBasicMaterial({color:0x8b917e,transparent:true,
-        opacity:.16,depthWrite:false,side:THREE.DoubleSide});
-      const roof=this.box(this.root,structure.x,WALL_VISUAL_HEIGHT+1,structure.y,
-        structure.w,1.2,structure.h,roofMat,false);
-      roof.castShadow=false;roof.receiveShadow=false;
-      this.box(this.root,structure.x,WALL_VISUAL_HEIGHT-.5,structure.y-structure.h/2,
-        structure.w,2.5,2.5,frame,false);
-      this.box(this.root,structure.x,WALL_VISUAL_HEIGHT-.5,structure.y+structure.h/2,
-        structure.w,2.5,2.5,frame,false);
-      this.box(this.root,structure.x-structure.w/2,WALL_VISUAL_HEIGHT-.5,structure.y,
-        2.5,2.5,structure.h,frame,false);
-      this.box(this.root,structure.x+structure.w/2,WALL_VISUAL_HEIGHT-.5,structure.y,
-        2.5,2.5,structure.h,frame,false);
-      for(const f of [-.26,.26])
-        this.box(this.root,structure.x+structure.w*f,WALL_VISUAL_HEIGHT,structure.y,
-          2,1.8,structure.h,frame,false);
-    }
-    // A loading/service bumper is only shown when a REAL exterior
-    // doorway faces an industrial service yard. Not a floating platform,
-    // not a false operable loading dock, and never an extra collider.
-    const dockRubber=this.solid(0x35403d,.95,'tire-rubber');
-    const dockSteel=this.solid(0x778078,.86,'industrial-steel');
-    const dockStripe=this.solid(0xc3a568,.86,'painted-metal');
-    for(const dock of planServiceDockBumpers(site)){
-      for(const side of [-1,1]){
-        const offset=side*(dock.span/2+5.0);
-        const x=dock.axis==='x'?dock.x+offset:
-          dock.x+dock.outward*3;
-        const z=dock.axis==='x'?dock.y+dock.outward*3:
-          dock.y+offset;
-        const width=dock.axis==='x'?5.5:4.7;
-        const depth=dock.axis==='x'?4.7:5.5;
-        this.box(this.root,x,9,z,width,18,depth,dockRubber,false);
-        this.box(this.root,x,17,z,width+1,2,depth+1,dockSteel,false);
-        this.box(this.root,x,5.6,z,width+1,1.7,depth+1,
-          dockStripe,false);
-      }
-    }
-    // Fixed architectural window overhangs are tied to physical glass spans.
-    // Keep the canopy translucent for the tactical cutaway and never imply
-    // an elevated traversable surface or a new line-of-fire barrier.
-    const awningRoof=new THREE.MeshStandardMaterial({color:0x85867a,
-      roughness:.87,metalness:.08,transparent:true,opacity:.33,
-      depthWrite:false,side:THREE.DoubleSide});
-    const awningEdge=this.solid(0x5f6e6a,.83,'painted-metal');
-    for(const awning of planFacadeAwnings(site)){
-      const roof=this.box(this.root,awning.x,DOOR_CLEAR_VISUAL_HEIGHT+2.5,awning.y,
-        awning.w,1.5,awning.h,awningRoof,false);
-      roof.castShadow=false;roof.receiveShadow=false;
-      const vertical=awning.w<awning.h;
-      const edgeOffset=vertical?awning.w/2:awning.h/2;
-      if(vertical){
-        for(const x of [awning.x-edgeOffset,awning.x+edgeOffset])
-          this.box(this.root,x,DOOR_CLEAR_VISUAL_HEIGHT+1.8,awning.y,2,2.2,awning.h,awningEdge,false);
-      }else{
-        for(const y of [awning.y-edgeOffset,awning.y+edgeOffset])
-          this.box(this.root,awning.x,DOOR_CLEAR_VISUAL_HEIGHT+1.8,y,awning.w,2.2,2,awningEdge,false);
-      }
-    }
-    const surfaceColor=SITE_PROPERTY_SURFACE_COLORS;
-    // Exterior ground markings are legible construction details, not cover.
-    // Sidewalk/path/curb/ramp markings overlap by design, but their top
-    // planes must not coincide. Distinct narrow finish elevations prevent
-    // moire and flashing without changing the tactical ground collider.
-    // True low curb and sloping cut (visual only; movement stays 2D).
-    // The sidewalk geometry has a matching hole for the cut, so the ramp
-    // isn't buried beneath a full-height slab or rendered coplanar with it.
-    const curbMaterial=this.siteMaterials.track(new THREE.MeshStandardMaterial({
-      color:age(0xa6a399,'concrete'),roughness:.96,
-      metalness:0,flatShading:true,side:THREE.DoubleSide}));
-    for(const mark of planPropertySurfaces(site)){
-      if(mark.kind==='curb-ramp'){
-        const wedge=curbRampWedge(mark,site.entrySide??'south');
-        const geom=new THREE.BufferGeometry();
-        geom.setAttribute('position',new THREE.Float32BufferAttribute(wedge.vertices,3));
-        geom.setIndex(wedge.indices);
-        geom.computeVertexNormals();
-        const ramp=new THREE.Mesh(geom,curbMaterial);
-        ramp.castShadow=false;ramp.receiveShadow=true;
-        this.root.add(ramp);
-        continue;
-      }
-      if(mark.kind==='curb-edge'){
-        const thickness=CURB_GROUND_LEVELS.sidewalk-
-          CURB_GROUND_LEVELS.road;
-        this.box(this.root,mark.x,
-          (CURB_GROUND_LEVELS.sidewalk+CURB_GROUND_LEVELS.road)/2,
-          mark.y,mark.width,thickness,mark.depth,curbMaterial,false);
-        continue;
-      }
-      this.box(this.root,mark.x,propertySurfaceCenterHeight(mark.kind),
-        mark.y,mark.width,PROPERTY_SURFACE_THICKNESS,
-        mark.depth,this.solid(age(surfaceColor[mark.kind],
-          mark.kind==='planting-bed'?'packed-earth':
-          mark.kind==='planting-edge'?'gravel':'concrete')),false);
-    }
-    // The public carriageway runs along the LOT boundary, not up the
-    // pedestrian approach to the front door. One street layout also owns
-    // sidewalks, curb cuts and worldgen street-exclusion checks.
-    const street=planPublicStreet(site);
-    if(street){
-      const road=this.solid(age(0x595d59,'asphalt'),.94,'asphalt');
-      this.box(this.root,street.road.x,-1.41,street.road.y,
-        street.road.width,.24,street.road.depth,road,false);
-    }
+    buildSiteExterior(site,{
+      root:this.root,
+      box:(...args)=>this.box(...args),
+      plane:(...args)=>this.plane(...args),
+      solid:(...args)=>this.solid(...args),
+      overlay:kind=>this.groundOverlayMaterial(kind),
+      track:material=>this.siteMaterials.track(material),
+      age:(hex,surface)=>age(hex,surface)
+    });
     this.objectWear=[...planObjectWear(site),...planExposureWear(site)];
     const marksOn=(owner:ObjectWear['owner'],index:number)=>
       this.objectWear.filter(m=>m.owner===owner&&m.index===index);
@@ -2586,12 +2461,9 @@ export class TacticalScene3D{
     for(const opening of this.architecturalOpenings)
       opening.obj.visible=architecturalOpeningKnown(s,opening.opening,omniscient);
     for(const detail of this.observedDetails){
-      const p=detail.position;
       // Object positions are site-static: precompute tile keys at build time.
-      detail.obj.visible=personalDecorVisible(
-        omniscient||s.seenGround.has(detail.microKey)||
-          s.seenGround.has(detail.fineKey)||liveVisibility(s,p),
-        bodycamAudition,personalGroundEvidence,p);
+      detail.obj.visible=presentDecor(s,detail,omniscient,
+        bodycamAudition,personalGroundEvidence);
       this.staticBatches.setVisible(detail.obj,detail.obj.visible);
     }
     // Director cuts walls around its actual historical friendly focal group,
@@ -2648,39 +2520,28 @@ export class TacticalScene3D{
       object.root.visible=physicalDirector||
         spatialSurfaceKnown(s,'door',door.id,omniscient);
       this.staticBatches.setVisible(object.root,object.root.visible);
-      // Personal review uses the LAST individually observed leaf state.
-      // An unseen opening/kick cannot magically update this perspective.
+      // Resolve remembered/personal door state separately from cutaways.
       const personal=replayDisclosurePolicy?.mode==='operator';
       const observed=personal&&replayDoorHistory?
         replayDoorHistory.at(s.seconds,replayDisclosurePolicy.observerId,door.id):
         null;
       const directlyObserved=!personal&&liveVisibility(s,doorCenter(door));
-      if(!personal&&(omniscient||directlyObserved)){
+      const visual=resolveDoorPresentation({
+        door,personal,observed,omniscient,directlyObserved,
+        rememberedOpen:s.intel.doorMemory.get(door.id)??0,
+        rememberedGlass:this.observedDoorGlass.get(door.id),
+        replayFraction:replay?.doors[door.id],
+        previousFraction:renderFrame?.previousDoors?.[door.id],
+        renderAlpha:renderFrame?.alpha,
+        replaying:!!replay,hasRenderFrame:!!renderFrame
+      });
+      if(visual.remember){
         this.observedDoorOpen.set(door.id,door.openFraction??(door.open?1:0));
         this.observedDoorGlass.set(door.id,!!door.glassShattered);
       }
-      if(object.glassPane)
-        object.glassPane.visible=personal?
-          !(observed?.glassShattered??false):
-          replay||renderFrame?
-            !(omniscient||directlyObserved?!!door.glassShattered:false):
-            !(this.observedDoorGlass.get(door.id)??false);
-      object.wedge.visible=personal?
-        !!observed?.wedged:
-        door.wedged===true&&(omniscient||directlyObserved);
-      const fraction=personal?(observed?.openFraction??0):
-        omniscient||directlyObserved?
-        (door.openFraction??(door.open?1:0)):
-        (s.intel.doorMemory.get(door.id)??0);
-      const replayProgress=replay?.doors[door.id];
-      // Never apply hidden live leaf motion over remembered personal state.
-      const shownFraction=personal?fraction:
-        (omniscient||directlyObserved)?(replayProgress??fraction):fraction;
-      const previousFraction=!replay&&(omniscient||directlyObserved)?
-        renderFrame?.previousDoors?.[door.id]:undefined;
-      const drawFraction=previousFraction===undefined?shownFraction:
-        previousFraction+(shownFraction-previousFraction)*
-          Math.max(0,Math.min(1,renderFrame?.alpha??1));
+      if(object.glassPane)object.glassPane.visible=visual.glassVisible;
+      object.wedge.visible=visual.wedgeVisible;
+      const drawFraction=visual.fraction;
       if(door.kind==='shutter'){
         object.leaf.rotation.y=0;
         object.leaf.position.y=drawFraction*37;
@@ -2771,11 +2632,7 @@ export class TacticalScene3D{
       this.scene.remove(rig.root);this.civilianRigs.delete(id);
     }
     for(const civil of s.civilians){
-      const visible=replayDisclosurePolicy?.mode==='operator'?
-        replayCivilianDisclosed(s,civil.id,replayDisclosurePolicy):
-        civilianPresentationVisible(civil,
-          civil.replayVisible!==undefined,omniscient,
-          liveVisibility(s,civil.p));
+      const visible=presentCivilian(s,civil,omniscient,replayDisclosurePolicy);
       let rig=this.civilianRigs.get(civil.id);
       if(!visible&&!rig)continue;
       if(!rig){
@@ -2805,9 +2662,7 @@ export class TacticalScene3D{
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
     for(const actor of s.operators){
-      const visible=replayDisclosurePolicy?
-        replayActorDisclosed(s,actor,replayDisclosurePolicy):
-        replayActorVisible(s,actor,omniscient);
+      const visible=presentActor(s,actor,omniscient,replayDisclosurePolicy);
       // Spawn full 3D rigs only when needed. Enemy AI, LOS and simulation
       // always exist; hidden actors incur no model construction on mobile.
       if(!visible&&!this.actors.has(actor.id))continue;
