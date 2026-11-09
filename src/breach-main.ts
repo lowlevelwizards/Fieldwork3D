@@ -528,22 +528,8 @@ missionController.bindDeployment({
   onSelected:()=>{recorder=missionController.recordInitial(state);},
   reducedMotion:()=>reducedMotionMedia.matches
 });
-function restoreFavoriteMission(saved:FavoriteMission):void{
-  if(campaignMode==='mission'){
-    showUiHelp('FAVORITES PLAY AS QUICK PLAY PRACTICE',3400);return;
-  }
-  const start=structuredClone(saved.start);
-  campaignMode='quick';
-  reset(start.variant,start.seed,start.missionType,
-    missionController.restartRequest(start).prebuiltSite,undefined,false,start);
-  missionController.restoreStartingSetup(state,start,entry=>
-    console.warn('[Favorite mission] Saved entry no longer valid',entry));
-  replayLibrary.activateFavorite(saved.id);
-  recorder=missionController.recordInitial(state);
-  closeMissionSettings(false);
-  layout();updateHud();
-  showUiHelp('FAVORITE LOADED · ORIGINAL MISSION SETUP',3800);
-}
+const restoreFavoriteMission=(saved:FavoriteMission):void=>
+  quickPlayController.restoreFavorite(saved);
 function refreshDeployment():void{
   missionController.refreshDeployment(state,replaying);
 }
@@ -2760,7 +2746,17 @@ const quickPlayController=createBreachQuickPlayController({
         recorder.motion.presentation(0,state.operators.map(a=>a.id)));
     render();
   },
-  hideMenu:()=>campaignScreen.hide(),showBriefing:showMissionBriefing
+  hideMenu:()=>campaignScreen.hide(),showBriefing:showMissionBriefing,
+  restoreFavoriteStart:start=>{
+    reset(start.variant,start.seed,start.missionType,
+      missionController.restartRequest(start).prebuiltSite,undefined,false,start);
+    missionController.restoreStartingSetup(state,start,entry=>
+      console.warn('[Favorite mission] Saved entry no longer valid',entry));
+    recorder=missionController.recordInitial(state);
+    closeMissionSettings(false);
+  },
+  activateFavorite:id=>replayLibrary.activateFavorite(id),
+  showHelp:showUiHelp
 });
 const launchQuickPlay=()=>quickPlayController.launch();
 /** Campaign Arsenal drafts are always re-quoted against live ownership and credits.

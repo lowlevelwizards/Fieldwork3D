@@ -2,6 +2,8 @@
  * Session creation, rendering, camera and campaign routing remain delegated.
  */
 import {team,type Session} from './breach-game.ts';
+import type {FavoriteMission} from './breach-mission-favorites.ts';
+import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {Site,SiteScale} from './breach-site.ts';
 import type {TacticalScene3D,ViewMode} from './breach-3d.ts';
 import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
@@ -22,6 +24,9 @@ export type QuickPlayControllerHooks={
   renderFirstFrame:()=>void;
   hideMenu:()=>void;
   showBriefing:()=>void;
+  restoreFavoriteStart:(start:MissionStartSnapshot)=>void;
+  activateFavorite:(id:string)=>void;
+  showHelp:(message:string,duration:number)=>void;
 };
 export function createBreachQuickPlayController(config:QuickPlayControllerHooks){
  const el=<T extends HTMLElement>(id:string):T=>{
@@ -236,7 +241,19 @@ async function launchQuickPlay(){
     console.error('[Quick Play startup]',error);
   }
 }
+ function restoreFavorite(saved:FavoriteMission):void{
+   if(config.getMode()==='mission'){
+     config.showHelp('FAVORITES PLAY AS QUICK PLAY PRACTICE',3400);return;
+   }
+   const start=structuredClone(saved.start);
+   config.setMode('quick');
+   config.restoreFavoriteStart(start);
+   config.activateFavorite(saved.id);
+   config.layout();config.refreshHud();
+   config.showHelp('FAVORITE LOADED · ORIGINAL MISSION SETUP',3800);
+ }
  return {
+   restoreFavorite,
    launch:launchQuickPlay,
    get busy(){return quickPlayBusy;},
    cancel:()=>quickPlayCancelButton.click()
