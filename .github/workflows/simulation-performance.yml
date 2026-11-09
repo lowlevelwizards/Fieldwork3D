@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'scripts/bench-breach-performance.mjs'
+      - 'scripts/bench-breach-round-lifetime.mjs'
+      - 'tests/breach-round-lifetime-events.test.mjs'
       - '.github/workflows/simulation-performance.yml'
       - 'src/breach-game.ts'
       - 'src/breach-ground-view.ts'
@@ -48,7 +50,9 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Simulation workload profiles (host CPU, not device FPS)
         run: node --experimental-strip-types scripts/bench-breach-performance.mjs
+      - name: Long-round recorder retention and latency (host only)
+        run: node --expose-gc --experimental-strip-types scripts/bench-breach-round-lifetime.mjs --seconds=120
       - name: Critical AI, muzzle and effects regressions
-        run: node --experimental-strip-types --test tests/breach-120.test.mjs tests/breach-133.test.mjs tests/breach-defense-performance.test.mjs tests/breach-perf.test.mjs tests/perf-window-effects.test.mjs tests/breach-142c.test.mjs tests/breach-ground-view-performance.test.mjs tests/breach-intel-discovery-performance.test.mjs tests/breach-route-heap-performance.test.mjs tests/breach-spatial-index-performance.test.mjs tests/dnav-r8-contact-performance.test.mjs tests/breach-fog-ray-broadphase-performance.test.mjs tests/breach-fog-sparse-memory-performance.test.mjs tests/breach-fog-visibility.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-tactical-route-cache-performance.test.mjs tests/breach-perception-cache-performance.test.mjs tests/breach-p7-fog-layer-performance.test.mjs tests/breach-p7-projected-route-cache.test.mjs tests/breach-p7-replay-sharing.test.mjs tests/dnav-r6-movement-quality.test.mjs
+        run: node --experimental-strip-types --test tests/breach-120.test.mjs tests/breach-133.test.mjs tests/breach-defense-performance.test.mjs tests/breach-perf.test.mjs tests/perf-window-effects.test.mjs tests/breach-142c.test.mjs tests/breach-ground-view-performance.test.mjs tests/breach-intel-discovery-performance.test.mjs tests/breach-route-heap-performance.test.mjs tests/breach-spatial-index-performance.test.mjs tests/dnav-r8-contact-performance.test.mjs tests/breach-fog-ray-broadphase-performance.test.mjs tests/breach-fog-sparse-memory-performance.test.mjs tests/breach-fog-visibility.test.mjs tests/breach-ai-work-scheduler-performance.test.mjs tests/breach-tactical-route-cache-performance.test.mjs tests/breach-perception-cache-performance.test.mjs tests/breach-p7-fog-layer-performance.test.mjs tests/breach-p7-projected-route-cache.test.mjs tests/breach-p7-replay-sharing.test.mjs tests/breach-round-lifetime-events.test.mjs tests/breach-186.test.mjs tests/dnav-r6-movement-quality.test.mjs
       - name: Typecheck and production bundle
         run: npm run check && npx vite build
