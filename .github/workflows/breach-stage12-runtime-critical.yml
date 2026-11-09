@@ -1,0 +1,38 @@
+name: Breach Stage 12 Runtime Loop Critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-main.ts'
+      - 'src/breach-runtime-loop.ts'
+      - 'tests/breach-runtime-loop-step12.test.mjs'
+      - 'tests/breach-fixed-clock.test.mjs'
+      - '.github/workflows/breach-stage12-runtime-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: breach-stage12-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  runtime-critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Critical fixed-step, replay, rendering and runtime instrumentation checks
+        run: |
+          node --experimental-strip-types --test \
+            tests/breach-runtime-loop-step12.test.mjs \
+            tests/breach-fixed-clock.test.mjs \
+            tests/breach-pause-motion.test.mjs \
+            tests/physical-action-rings-lifecycle.test.mjs \
+            tests/runtime-perf-diagnostics.test.mjs \
+            tests/sight-cost-overlay-p10.test.mjs \
+            tests/replay-timeline-controller-step5.test.mjs \
+            tests/replay-r2-recording.test.mjs
+      - name: Production build and typecheck
+        run: npm run build
