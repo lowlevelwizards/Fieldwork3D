@@ -1,6 +1,5 @@
 import {createBreachCanvasGestureController,type TacticalPointer}
  from './breach-canvas-gesture-controller.ts';
-import {installPalettePointerGuard} from './ui/palette-pointer-guard.ts';
 import {installTouchCommandHelp as bindTouchCommandHelp}
  from './ui/touch-command-help.ts';
 import {
@@ -33,10 +32,8 @@ import {createBreach2DProjectedOverlays} from './breach-2d-projected-overlays.ts
 import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
  type MiniatureFocusMode} from './rendering/miniature-focus-config.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
-import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
 import {PhysicalActionRings} from './ui/physical-action-rings.ts';
 import {executionStatus} from './breach-execution-state.ts';
-import {compactExecutionStatus} from './ui/tactical-hud-density.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
 import {tacticalHitProfile,shouldAppendStrokePoint,simplifyStrokePoints}
  from './ui/touch-hit-targets.ts';
@@ -113,8 +110,8 @@ import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
   from './breach-replay-bodycam-controls.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
-import {injuryOf,WEAPONS} from './breach-combat.ts';
-import {liveMagazineCapacity,magazineAlert,fitMagazineInventory}
+import {WEAPONS} from './breach-combat.ts';
+import {fitMagazineInventory}
  from './arsenal/live-magazine-capacity.ts';
 
 import {stageMagazines,magazineSpace,type MagazineLocation} from './equipment-magazine-placement.ts';
@@ -174,14 +171,8 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
-import {contextActionChoices} from './ui/context-actions.ts';
-import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide}
-  from './breach-context-placement.ts';
-import {PaletteMotion} from './ui/palette-motion.ts';
-import {TacticalFeedback} from './ui/tactical-feedback.ts';
-import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
-  from './ui/contextual-teaching.ts';
-import {recoveryAdviceFor} from './ui/recovery-guidance.ts';
+import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
+import {createTacticalPaletteController} from './ui/tactical-palette-controller.ts';
 
 const el=<T extends HTMLElement>(id:string)=>{
   const node=document.getElementById(id);
@@ -194,7 +185,8 @@ feedbackLayer.id='tacticalFeedback';
 feedbackLayer.setAttribute('aria-hidden','true');
 document.body.append(feedbackLayer);
 const feedbackDraw=feedbackLayer.getContext('2d');
-const tacticalFeedback=new TacticalFeedback();
+const hudController=createTacticalHudController();
+const tacticalFeedback=hudController.feedback;
 const ctx=canvas.getContext('2d');
 if(!ctx)throw Error('Canvas 2D unavailable');
 const draw:CanvasRenderingContext2D=ctx;
@@ -1458,133 +1450,41 @@ operationsToggle.addEventListener('click',()=>{
 });
 let selected='rook';
 let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
-let looking=false,flashMode=false,pushMode=false;
+let flashMode=false,pushMode=false;
 let firePlacement:'suppress'|null=null;
-let lookMode:'look'|'watch'='look';
-// The stationary dock remains the reliable default; Smart Floating may only
-// occupy a verified quiet edge pocket, never the "least bad" map position.
-const FLOAT_PREF='fieldwork3d.ui.contextLayout';
-let contextPlacement:'dock'|'floating'='dock';
-try{contextPlacement=localStorage.getItem(FLOAT_PREF)==='floating'?'floating':'dock';}
-catch{/* Optional browser preference. */}
-const contextLayoutButtons=Array.from(document.querySelectorAll<HTMLButtonElement>(
-  '[data-context-layout]'));
-function syncContextPlacement(){
-  for(const button of contextLayoutButtons)
-    button.setAttribute('aria-pressed',
-      String(button.dataset.contextLayout===contextPlacement));
-}
-let contextSignature='';
-let contextActionsSignature='';
-let lastContextSide:MenuSide|null=null;
-let lastAuthoringAt=0;
-const paletteMotion=new PaletteMotion();
+// One presentation owner for dock/floating palette, touch pointer guard,
+ // context command buttons, and screen-space obstruction avoidance.
 const reducedMotionMedia=matchMedia('(prefers-reduced-motion: reduce)');
-let paletteWidth=0,paletteHeight=0;
-let lastPlacementKey='';
-const contextPointerIds=installPalettePointerGuard(ui.context).active;
-let tetherBrightUntil=0;
-let paletteExit:Animation|null=null;
-const contextTether=document.createElement('div');
-contextTether.id='contextTether';
-contextTether.setAttribute('aria-hidden','true');
-document.body.append(contextTether);
-ui.context.dataset.layout='dock';
-ui.tacticalHud.insertBefore(ui.context,ui.quickStates);
-function setContextPresentation(mode:'dock'|'floating'){
-  if(ui.context.dataset.layout===mode)return;
-  paletteExit?.cancel();paletteExit=null;
-  paletteMotion.hide();contextTether.hidden=true;
-  ui.context.dataset.layout=mode;
-  if(mode==='dock'){
-    ui.tacticalHud.insertBefore(ui.context,ui.quickStates);
-  }else document.body.append(ui.context);
-  ui.context.style.transform='';
-  contextActionsSignature='';lastPlacementKey='';
-  paletteWidth=0;paletteHeight=0;
-}
-syncContextPlacement();
-for(const button of contextLayoutButtons)button.addEventListener('click',()=>{
-  const next=button.dataset.contextLayout==='floating'?'floating':'dock';
-  if(next===contextPlacement)return;
-  contextPlacement=next;
-  try{localStorage.setItem(FLOAT_PREF,next);}
-  catch{/* Optional browser preference. */}
-  syncContextPlacement();
-  updateContext();
+let lastAuthoringAt=0;
+const paletteController=createTacticalPaletteController({
+  context:ui.context,quickStates:ui.quickStates,tacticalHud:ui.tacticalHud,
+  play:ui.play,briefingPanel:ui.briefingPanel,siteSettings:ui.siteSettings,
+  hint:ui.hint,feed:ui.feed,
+  worldToScreen:(p,z)=>worldToScreen(p,z),
+  routePoints:(from,to)=>displayRouteCache.get(from,to,state.intel,true).points,
+  iconFor:tacticalIconForState,makeIcon:tacticalIcon,
+  installHelp:button=>installTouchCommandHelp(button),
+  onLayoutChange:()=>updateContext()
 });
-function hideContextPalette(){
-  lastPlacementKey='';
-  // Docked commands never leave an invisible touch surface over the map.
-  // Bubbles also dismiss immediately when the map enters target mode.
-  const exclusive=!ui.siteSettings.hidden||!ui.briefingPanel.hidden;
-  if(contextPlacement!=='floating'||!paletteMotion.active){
-    paletteExit?.cancel();paletteExit=null;
-    paletteMotion.hide();contextTether.hidden=true;
-    ui.context.hidden=true;ui.context.style.pointerEvents='none';
-    return;
-  }
-  paletteMotion.hide();contextTether.hidden=true;
-  ui.context.style.pointerEvents='none';
-  if(reducedMotionMedia.matches||exclusive){
-    paletteExit?.cancel();paletteExit=null;
-    ui.context.hidden=true;return;
-  }
-  paletteExit?.cancel();
-  paletteExit=ui.context.animate([
-    {opacity:1,scale:1},{opacity:0,scale:.96}
-  ],{duration:115,easing:'ease-in',fill:'forwards'});
-  const exit=paletteExit;
-  exit.onfinish=()=>{
-    if(!paletteMotion.active){ui.context.hidden=true;exit.cancel();}
-    if(paletteExit===exit)paletteExit=null;
-  };
-}
-function advanceContextPalette(dt:number){
-  if(ui.context.hidden||!paletteMotion.active){contextTether.hidden=true;return;}
-  const reduced=reducedMotionMedia.matches;
-  paletteMotion.step(dt,reduced);
-  const x=paletteMotion.x.position,y=paletteMotion.y.position;
-  ui.context.style.transform='translate3d('+x.toFixed(2)+'px,'+
-    y.toFixed(2)+'px,0)';
-  const w=paletteWidth,h=paletteHeight;
-  const ax=paletteMotion.anchorX,ay=paletteMotion.anchorY;
-  const bx=Math.max(x,Math.min(ax,x+w));
-  const by=Math.max(y,Math.min(ay,y+h));
-  const dx=bx-ax,dy=by-ay,length=Math.hypot(dx,dy);
-  const visible=ui.context.dataset.layout==='floating'&&length>24&&!reduced;
-  contextTether.hidden=!visible;
-  if(visible){
-    // At long distance use only a nearby pointer instead of cutting
-    // straight across the entire tactical board.
-    const short=length>390,segment=short?45:length;
-    const vx=dx/length,vy=dy/length;
-    const sx=short?bx-vx*segment:ax,sy=short?by-vy*segment:ay;
-    contextTether.style.left=sx+'px';contextTether.style.top=sy+'px';
-    contextTether.style.width=segment+'px';
-    contextTether.style.opacity=performance.now()<tetherBrightUntil?'.75':
-      length>390?'.32':length>210?'.22':'.43';
-    contextTether.style.transform='rotate('+Math.atan2(dy,dx)+'rad)';
-  }
-}
+function hideContextPalette():void{paletteController.hide();}
+function advanceContextPalette(dt:number):void{paletteController.advance(dt);}
 const auditRouteMode=new URLSearchParams(location.search).has('audit');
 let selectedNode:number|null=null;
 // Executed WATCH has no queued waypoint, but its targeting handle is selectable.
 let selectedActiveWatch=false;
 let doorMenuDismissedId:string|null=null;
 let flashDoorId:string|null=null;
-let armedOrigin:'here'|'end'='end';
 let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
 let draggingWatchTarget=false;
 function cancelTargeting(){
-  const hadTarget=looking||flashMode||pushMode||!!firePlacement||!!evacMode;
+  const hadTarget=hudController.facing.looking||flashMode||pushMode||!!firePlacement||!!evacMode;
   if(hadTarget){
     const actor=uid(selected);
     if(actor)tacticalFeedback.emit('cancel',actor.p,'CANCELLED');
   }
-  looking=false;flashMode=false;pushMode=false;firePlacement=null;flashDoorId=null;
-  evacMode=null;contextSignature='';updateHud();
+  hudController.facing.looking=false;flashMode=false;pushMode=false;firePlacement=null;flashDoorId=null;
+  evacMode=null;paletteController.invalidate();updateHud();
 }
 
 const audioController=createBreachAudioController({
@@ -1675,7 +1575,7 @@ function cameraMode(mode:ViewMode){
     ['top',ui.viewTop],['plan2d',ui.view2d]] as const){
     button.setAttribute('aria-pressed',String(m===viewMode));
   }
-  contextSignature='';updateHud();
+  paletteController.invalidate();updateHud();
 }
 function turnCamera(shift:number){
   if(stage&&viewMode!=='plan2d'){
@@ -1686,56 +1586,25 @@ const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   hideWeaponChooser();
-  audioController.uiClickTone('select');selected=id;looking=false;pushMode=false;evacMode=null;
+  audioController.uiClickTone('select');selected=id;hudController.facing.looking=false;pushMode=false;evacMode=null;
   selectedNode=null;selectedActiveWatch=false;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
-// Progressive tips stay out of the player's way and never inspect game intel.
-const teaching=new ContextualTeaching(
-  key=>{try{return localStorage.getItem('fieldwork3d.ui.teach.v2.'+key)==='1';}
-    catch{return false;}},
-  key=>{try{localStorage.setItem('fieldwork3d.ui.teach.v2.'+key,'1');}
-    catch{/* In-memory familiarity remains valid without browser storage. */}}
-);
-teaching.offer('planning-start',
-  'Tap the floor to draw a route. Select a waypoint to LOOK, WATCH or WAIT.',
-  performance.now(),6200);
-function teach(key:string,description:string,duration=4200){
-  teaching.offer(key,description,performance.now(),duration);
+// The HUD controller owns transient guidance, instructional tips, and
+// LOOK/WATCH arming. Only planning rules can commit the resulting orders.
+function teach(key:string,description:string,duration=4200):void{
+  hudController.teach(key,description,duration);
 }
-let helpText='',helpUntil=0;
-function showUiHelp(text:string,duration=4200){
-  if(!text)return;
-  helpText=text;helpUntil=performance.now()+duration;
+function showUiHelp(text:string,duration=4200):void{
+  hudController.showHelp(text,duration);
 }
-function discoverAction(action:string,description:string){
-  teach('action-'+action,description,3600);
+function discoverAction(action:string,description:string):void{
+  hudController.discoverAction(action,description);
 }
-
-// Long-press explanation and synthetic-click suppression belong to the UI layer.
 const installTouchCommandHelp=(button:HTMLButtonElement)=>
   bindTouchCommandHelp(button,showUiHelp,updateHud);
-
-function message(){
-  if(replaying)return 'MISSION FILM · ORBIT, PAN, ZOOM AND SCRUB FREELY';
-  if(flashMode)return 'FLASH: tap a target, or CANCEL to back out.';
-  if(pushMode)return 'PUSH: tap or drag a direction away from the selected object (±80°). CANCEL to exit.';
-  if(state.phase==='planning'){
-    if(looking)return lookMode==='watch'?
-      'WATCH ARMED · TAP A POINT · CANCEL/BACK TO EXIT. Replaces prior WATCH; RUN or interactions end tracking.':
-      'LOOK ARMED · TAP ANY DIRECTION · CANCEL/BACK TO EXIT. Replaces prior WATCH.';
-    if(selectedActiveWatch)return 'WATCH TARGET · DRAG THE RING TO RETARGET · DELETE WATCH TO RELEASE.';
-    if(selectedNode!==null)return 'Waypoint: LOOK changes direction · WATCH tracks a point · choose another to replace · UNDO reverses it.';
-    return 'Tap a route line to insert a waypoint · tap a node to edit or delete.';
-  }
-  if(state.phase==='running')return 'Executing. Pause to change your plan.';
-  return state.phase==='won'?'Station secured. Review your report.':
-    'Team lost. Review the debrief and try another approach.';
-}
-function armFacing(mode:'look'|'watch'){
-  looking=!looking||lookMode!==mode;
-  lookMode=mode;
-  armedOrigin=selectedNode===null?'here':'end';
+function armFacing(mode:'look'|'watch'):void{
+  hudController.toggleFacing(mode,selectedNode);
   updateHud();
 }
 /** The tray never competes with the expanded TOOLS panel or GO/BACK. */
@@ -1768,7 +1637,7 @@ function selectedPlanNode(){
 /** The actor itself is HERE. Selected plan nodes own subsequent orders;
  * a door tap brings up ONLY door actions. No redundant HERE/END buttons. */
 function updateContext(){
-  if(state.phase!=='planning'||replaying||looking||flashMode||pushMode||firePlacement||
+  if(state.phase!=='planning'||replaying||hudController.facing.looking||flashMode||pushMode||firePlacement||
      !ui.briefingPanel.hidden||
      draggingNode||trace||
      !ui.siteSettings.hidden){
@@ -1810,12 +1679,7 @@ function updateContext(){
       liveVisibility(state,c.p)&&distance(finalPoint(a),c.p)<34)
     .sort((x,y)=>distance(finalPoint(a),x.p)-
       distance(finalPoint(a),y.p))[0]??null;
-  const choices:ReturnType<typeof contextActionChoices>=selectedWatch?[
-    {id:'ctxWatch',label:'RETARGET',group:'primary',
-      pressed:true,title:'Choose a new point for this active WATCH'},
-    {id:'ctxDelete',label:'DELETE WATCH',group:'destructive',
-      title:'Stop tracking this point; leave movement orders unchanged'}
-  ]:contextActionChoices({
+  const choices=paletteController.availableActions(!!selectedWatch,{
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     nearMovable,nearWindow,treatTargetName:treatTarget?.name,
     nearDoor:!door&&!!nearbyDoor,
@@ -1834,219 +1698,12 @@ function updateContext(){
     availableTools:door?equippedEntryMethods(a.equipment)
       .filter(method=>entryToolVerdict(door,method).allowed):[],
     nodeKind:node?.kind,nodeMoveMode:node?.moveMode,aimLabel:node?.aimLabel,
-    watchActive,
-    nodeFirePolicy:node?.firePolicyState,
+    watchActive,nodeFirePolicy:node?.firePolicyState
   });
-  const paletteChoices=choices.filter(choice=>choice.group!=='state');
-  // The two layouts use the very same buttons and action handler.
-  setContextPresentation(contextPlacement);
-  // Reconcile buttons in-place: never create a second action dispatcher.
-  const identity=(door?'door:'+door.id:node?'node:'+node.id:
-    selectedWatch?'active-watch':'here')+'/'+selected;
-  const contextChanged=contextSignature!==identity;
-  if(contextChanged){
-    contextActionsSignature='';
-    contextSignature=identity;
-    ui.context.replaceChildren();
-    const heading=document.createElement('div');
-    heading.className='fw-context-heading';
-    heading.setAttribute('aria-live','off');
-    ui.context.append(heading);
-    // Keep the complete small command set visible in one predictable grid.
-    // An expanding MORE ACTIONS drawer changed the menu's hitbox mid-plan.
-    const primary=document.createElement('div');primary.className='context-primary';
-    const secondary=document.createElement('div');secondary.className='context-state';
-    const destructive=document.createElement('div');destructive.className='context-danger';
-    ui.context.append(primary,secondary,destructive);
-  }
-  const contextHeading=ui.context.querySelector<HTMLElement>('.fw-context-heading');
-  if(contextHeading){
-    const nodeIndex=node?a.plan.findIndex(n=>n.id===node.id)+1:0;
-    const title=door?'DOOR · '+(door.open?'OPEN':'CLOSED'):
-      node?('WAYPOINT '+String(nodeIndex).padStart(2,'0')):
-      selectedWatch?'WATCH TARGET':'OPERATOR / HERE';
-    const scope=door?'Door interactions':
-      node?'Orders queued at this waypoint':
-      selectedWatch?'Drag the ring to reposition or DELETE WATCH to release':
-      'Orders for the selected operator';
-    const text=a.name.toUpperCase()+' · '+title;
-    if(contextHeading.textContent!==text)contextHeading.textContent=text;
-    contextHeading.title=scope;
-  }
-  const actionSignature=contextPlacement+'/'+identity+'/'+paletteChoices.map(c=>
-    c.id+':'+c.label+':'+c.group+':'+!!c.disabled+':'+!!c.pressed).join('|');
-  const actionChanged=contextActionsSignature!==actionSignature;
-  if(actionChanged){
-  contextActionsSignature=actionSignature;
-  const buckets:Record<string,HTMLElement>={
-    primary:ui.context.querySelector<HTMLElement>('.context-primary')!,
-    state:ui.context.querySelector<HTMLElement>('.context-state')!,
-    destructive:ui.context.querySelector<HTMLElement>('.context-danger')!
-  };
-  const wanted=new Set<string>();
-  for(const choice of paletteChoices){
-    wanted.add(choice.id);
-    let button=ui.context.querySelector<HTMLButtonElement>(
-      'button[data-action="'+choice.id+'"]');
-    if(!button){
-      button=document.createElement('button');
-      button.type='button';button.dataset.action=choice.id;
-    }
-    const iconKey=tacticalIconForState(choice.id,choice.label);
-    if(button.dataset.icon!==iconKey){
-      button.querySelector('.ui-icon')?.remove();
-      button.prepend(tacticalIcon(iconKey));
-      button.dataset.icon=iconKey;
-    }
-    let label=button.querySelector<HTMLElement>('.command-label');
-    if(!label){
-      label=document.createElement('span');label.className='command-label';
-      button.append(label);
-    }
-    if(label.textContent!==choice.label)label.textContent=choice.label;
-    button.setAttribute('aria-label',choice.label);
-    button.title=choice.title??choice.label;
-    installTouchCommandHelp(button);
-    button.disabled=!!choice.disabled;
-    if(choice.pressed===undefined)button.removeAttribute('aria-pressed');
-    else button.setAttribute('aria-pressed',String(choice.pressed));
-    button.classList.toggle('danger',choice.group==='destructive');
-    // Reconcile DOM order as well as membership: a newly available
-    // contextual action must never reorder the fixed command slots.
-    // 'advanced' is only a semantic group now: render those commands
-    // alongside primary orders instead of inside a height-changing drawer.
-    // Original floating groups DELETE separately; Dock includes every
-    // contextual command in the same stationary grid.
-    const destination=contextPlacement==='floating'?
-      buckets[choice.group==='advanced'?'primary':choice.group]:buckets.primary;
-    destination.append(button);
-  }
-  for(const btn of ui.context.querySelectorAll<HTMLButtonElement>('button[data-action]')){
-    if(!wanted.has(btn.dataset.action??''))btn.remove();
-  }
-  buckets.state.hidden=!buckets.state.childElementCount;
-  buckets.destructive.hidden=!buckets.destructive.childElementCount;
-  ui.context.classList.toggle('door-menu',!!door);
-  }
-  if(paletteExit){paletteExit.cancel();paletteExit=null;}
-  ui.context.hidden=false;
-  ui.context.style.pointerEvents='auto';
-  if(contextChanged&&!reducedMotionMedia.matches)
-    ui.context.animate([{opacity:.78,scale:.96},{opacity:1,scale:1}],
-      {duration:160,easing:'cubic-bezier(.2,.8,.2,1)'});
-  ui.context.dataset.door=door?.id??'';
-  ui.context.setAttribute('aria-label',door?
-    'Door actions':'Selected position actions and operator settings');
-  if(contextPlacement==='dock'){
-    paletteMotion.hide();contextTether.hidden=true;
-    ui.context.style.transform='';
-    return;
-  }
-  // Keep the full operator bodies, selected route, and tap targets visible.
-  // Don't inspect concealed enemies: context placement must not leak intel.
-  const target=door?doorCenter(door):node?.p??selectedWatch??a.p;
-  const anchor=worldToScreen(target,door?15:node?8:selectedWatch?12:24);
-  // Re-measure DOM only when contents change; reading offset dimensions every
-  // animation frame forces avoidable synchronous layout on mobile browsers.
-  const measure=contextChanged||actionChanged||paletteWidth<=0||paletteHeight<=0;
-  if(measure){paletteWidth=ui.context.offsetWidth;paletteHeight=ui.context.offsetHeight;}
-  const w=paletteWidth,h=paletteHeight;
-  const header=document.querySelector<HTMLElement>('.top');
-  const nav=document.querySelector<HTMLElement>('.bar');
-  const minY=Math.max(8,(header?.getBoundingClientRect().bottom??62)+8);
-  const hudTop=!ui.quickStates.hidden?
-    ui.quickStates.getBoundingClientRect().top:
-    (nav?.getBoundingClientRect().top??ui.play.getBoundingClientRect().top);
-  const maxY=Math.max(minY+h,hudTop-10);
-  // Lightweight dirty key: only meaningfully changed screen geometry may
-  // trigger the expensive avoid-zone and candidate placement calculations.
-  // The existing palette holds its pocket through incidental frame updates.
-  const unitKey=team(state).map(unit=>{
-    const point=worldToScreen(unit.p,8);
-    return unit.id+':'+Math.round(point.x/6)+','+Math.round(point.y/6)+
-      ':'+unit.plan.map(n=>Math.round(n.p.x/3)+','+
-      Math.round(n.p.y/3)+','+n.kind).join(';');
-  }).join('|');
-  const placementKey=[identity,actionSignature,Math.round(anchor.x/6),
-    Math.round(anchor.y/6),Math.round(cssW),Math.round(cssH),
-    Math.round(minY/3),Math.round(maxY/3),w,h,unitKey].join('|');
-  if(paletteMotion.active&&!contextChanged&&!actionChanged&&
-     (contextPointerIds.size>0||placementKey===lastPlacementKey))return;
-  lastPlacementKey=placementKey;
-  const avoid:AvoidRect[]=[{x:anchor.x-38,y:anchor.y-38,
-    w:76,h:76,weight:3}];
-  for(const unit of team(state)){
-    const feet=worldToScreen(unit.p,0),head=worldToScreen(unit.p,30);
-    avoid.push({x:Math.min(feet.x,head.x)-29,
-      y:Math.min(feet.y,head.y)-17,
-      w:Math.abs(head.x-feet.x)+58,
-      h:Math.abs(head.y-feet.y)+34,weight:3});
-  }
-  // Known visible contacts also deserve clear sightlines. Hidden enemies must
-  // never enter the placement heuristic (that would leak fog-of-war intel).
-  for(const hostile of enemies(state)){
-    if(hostile.health<=0||!isSeen(state,hostile))continue;
-    const p=worldToScreen(hostile.p,20);
-    avoid.push({x:p.x-31,y:p.y-38,w:62,h:76,weight:4});
-  }
-  const paths:ScreenPath[]=[];
-  // Avoid all friendly-authored routes, not only the selected unit's plan.
-  // Teammates and their paths remain known even behind current fog.
-  for(const friendly of team(state)){
-    let previous=friendly.p;
-    for(const waypoint of friendly.plan){
-      if(waypoint.kind==='move'||waypoint.kind==='door'){
-        // Match the actual visible navigated polyline, not a straight
-        // authored-endpoint chord that may cut across walls and doors.
-        const routed=displayRouteCache.get(previous,waypoint.p,
-          state.intel,true).points;
-        let segmentStart=previous;
-        for(const point of routed){
-          paths.push({a:worldToScreen(segmentStart,8),
-            b:worldToScreen(point,8)});
-          segmentStart=point;
-        }
-        previous=waypoint.p;
-      }
-      const p=worldToScreen(waypoint.p,8);
-      avoid.push({x:p.x-19,y:p.y-19,w:38,h:38,
-        weight:friendly.id===selected?2:1.3});
-    }
-  }
-  for(const overlay of [ui.hint,ui.feed]){
-    if(overlay.hidden||!overlay.getClientRects().length)continue;
-    const r=overlay.getBoundingClientRect();
-    avoid.push({x:r.left-7,y:r.top-7,w:r.width+14,h:r.height+14});
-  }
-  // Protect the next-tap region, not just the selected node itself.
-  // The palette should choose unused screen space away from the editing lane.
-  const activeEditing=performance.now()-lastAuthoringAt<1150;
-  const radius=cssW<=600?(activeEditing?148:118):100;
-  const actorPoint=worldToScreen(a.p,8);
-  const lastPoint=worldToScreen(finalPoint(a),8);
-  const editingZones=[
-    {x:anchor.x-radius,y:anchor.y-radius,w:radius*2,h:radius*2},
-    {x:lastPoint.x-90,y:lastPoint.y-90,w:180,h:180},
-    {x:actorPoint.x-75,y:actorPoint.y-75,w:150,h:150},
-  ];
-  const vx=lastPoint.x-actorPoint.x,vy=lastPoint.y-actorPoint.y;
-  const length=Math.hypot(vx,vy);
-  const dir=length>35?{x:vx/length,y:vy/length}:{x:0,y:-1};
-  const corridor={a:anchor,b:{
-    x:anchor.x+dir.x*(activeEditing?245:190),
-    y:anchor.y+dir.y*(activeEditing?245:190)}};
-  const placement=placeContextMenu({
-    anchor,width:w,height:h,viewportWidth:cssW,
-    top:minY,bottom:maxY,avoid,paths,preferredSide:lastContextSide,
-    authoring:editingZones,corridor,
-    minClearance:cssW<=600?(activeEditing?142:112):100,
-    preferredPosition:paletteMotion.active?
-      {x:paletteMotion.targetX,y:paletteMotion.targetY}:null,
+  paletteController.show({
+    state,actor:a,selected,node,selectedWatch,door,actions:choices,
+    width:cssW,height:cssH,lastAuthoringAt
   });
-  lastContextSide=placement.side;
-  paletteMotion.set(placement.x,placement.y,anchor.x,anchor.y);
-  // Keep the actual menu hit target in its visually interpolated position.
-  // Geometry measurement uses offsetWidth/Height (unaffected by transforms).
 }
 // One shared long-press handler is installed on each actual command button.
 // Duplicating a second timer on the palette caused conflicting 450/540ms holds.
@@ -2108,16 +1765,16 @@ const handleContextAction=(event:MouseEvent)=>{
       break;
     }
     case 'ctxSuppress':
-      firePlacement='suppress';looking=false;flashMode=false;
+      firePlacement='suppress';hudController.facing.looking=false;flashMode=false;
       tacticalFeedback.emit('armed',node?.p??a.p,'SUPPRESS READY');
       audioController.uiClickTone('select');updateHud();return;
     case 'ctxFlash':
       if(state.flashRemaining>0){flashMode=true;flashDoorId=null;
-        looking=false;firePlacement=null;}
+        hudController.facing.looking=false;firePlacement=null;}
       break;
     case 'ctxLook':
       armFacing('look');
-      if(looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP A DIRECTION');
+      if(hudController.facing.looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP A DIRECTION');
       audioController.uiClickTone('select');return;
     case 'ctxDoor':{
       const available=focusedDoor(a,node);
@@ -2128,7 +1785,7 @@ const handleContextAction=(event:MouseEvent)=>{
     }
     case 'ctxWatch':
       armFacing('watch');
-      if(looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP WATCH TARGET');
+      if(hudController.facing.looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP WATCH TARGET');
       audioController.uiClickTone('select');return;
     case 'ctxWait':{
       if(node?.kind==='wait')setWaitDuration(state,selected,node.id,1);
@@ -2152,7 +1809,7 @@ const handleContextAction=(event:MouseEvent)=>{
         state.events.push('CANNOT PLAN RELOAD');
       break;
     case 'ctxPush':
-      pushMode=true;looking=false;flashMode=false;firePlacement=null;
+      pushMode=true;hudController.facing.looking=false;flashMode=false;firePlacement=null;
       tacticalFeedback.emit('armed',node?.p??a.p,'PUSH DIRECTION');
       showUiHelp('TAP OR DRAG AWAY FROM THE OBJECT TO CHOOSE PUSH DIRECTION',3600);
       audioController.uiClickTone('select');updateHud();return;
@@ -2175,7 +1832,7 @@ const handleContextAction=(event:MouseEvent)=>{
     }
     case 'ctxDoorFlash':
       if(!door){state.events.push('SELECT A DOOR FIRST');break;}
-      flashDoorId=door.id;flashMode=true;looking=false;
+      flashDoorId=door.id;flashMode=true;hudController.facing.looking=false;
       doorFocusId=null;doorMenuDismissedId=door.id;break;
     case 'ctxDelete':
       if(selectedActiveWatch)removeActiveWatch(state,selected);
@@ -2191,98 +1848,25 @@ const handleContextAction=(event:MouseEvent)=>{
       doorFocusId=null;doorMenuDismissedId=door?.id??null;break;
   }
   const failed=state.events.length>beforeErrors;
-  audioController.uiClickTone(failed?'warning':'command');
-  const lastFailure=failed?state.events.at(-1)??'ACTION BLOCKED':'';
-  tacticalFeedback.emit(failed?'error':'command',
+  hudController.completeAction(
     door?doorCenter(door):node?.p??a.p,
-    failed?(recoveryAdviceFor(lastFailure)?.marker??'BLOCKED'):
-      button.querySelector('.command-label')?.textContent??'');
+    failed?state.events.at(-1)??'ACTION BLOCKED':null,
+    button.querySelector('.command-label')?.textContent??'',
+    isFailure=>audioController.uiClickTone(isFailure?'warning':'command'));
   updateHud();
 };
 ui.context.addEventListener('click',handleContextAction);
 ui.quickStates.addEventListener('click',handleContextAction);
-// World-first event hierarchy: never read unobserved enemy state or persist
-// old critical messages indefinitely. Only existing player-facing events.
-const executionNoticeFeed=new ExecutionNoticeFeed();
-function updateUiNotice(node:HTMLElement,events:string[],phase:string){
-  const notice=executionNoticeFeed.update(events,phase,performance.now());
-  node.hidden=!notice||replaying;
-  if(!notice||replaying){
-    node.removeAttribute('data-notice-key');
-    return;
-  }
-  const key=notice.born+'|'+notice.label+'|'+notice.text;
-  if(node.dataset.noticeKey!==key){
-    const label=document.createElement('strong');
-    label.className='fw-notice-label';
-    label.textContent=notice.label;
-    const body=document.createElement('span');
-    body.className='fw-notice-body';
-    const description=document.createElement('span');
-    description.className='fw-notice-content';
-    description.textContent=notice.text;
-    body.append(description);
-    if(notice.recovery){
-      const next=document.createElement('span');
-      next.className='fw-notice-recovery';
-      next.textContent=notice.recovery;
-      body.append(next);
-    }
-    node.replaceChildren(label,body);
-    node.dataset.noticeKey=key;
-  }
-  node.dataset.severity=notice.severity;
-  node.classList.toggle('critical',notice.severity==='danger');
-}
-function updateQuickStates(){
-  const actor=uid(selected);
-  const shown=state.phase==='planning'&&!replaying&&!!actor&&actor.health>0;
-  ui.quickStates.hidden=!shown;
-  // Keep secondary sheets above the *whole* HUD, not just its bottom row.
-  const height=Math.ceil(ui.tacticalHud.getBoundingClientRect().height);
-  const value=height+'px';
-  if(document.documentElement.style.getPropertyValue('--tactical-hud-height')!==value)
-    document.documentElement.style.setProperty('--tactical-hud-height',value);
-  if(!shown||!actor)return;
-  const node=selectedPlanNode();
-  const index=node?actor.plan.findIndex(n=>n.id===node.id)+1:0;
-  const scopeText=node?'WAYPOINT '+String(index).padStart(2,'0'):
-    selectedActiveWatch&&activeWatchTarget(actor)?'WATCH TARGET':'OPERATOR / HERE';
-  ui.quickScope.textContent=actor.name.toUpperCase()+' · '+scopeText+
-    (actor.aimInstruction?.mode==='track'&&actor.pace!=='run'?' · WATCH ACTIVE':'');
-  ui.quickScope.title=node?
-    'Commands apply when '+actor.name+' reaches waypoint '+index:
-    selectedActiveWatch&&activeWatchTarget(actor)?
-      'The active WATCH point can be dragged or deleted from its marker':
-      'Commands apply to '+actor.name+' at their current position';
-  ui.quickStates.setAttribute('aria-label',actor.name+' · '+scopeText+' commands');
-  const current=plannedControl(state,selected,node?.id);
-  const choices=contextActionChoices({
-    door:false,node:!!node,flashRemaining:state.flashRemaining,
-    posture:current.posture,pace:current.pace,
-    firePolicy:node?.firePolicyState??actor.firePolicy,
-    reserve:actor.reserve,magazine:actor.magazine
-  }).filter(c=>c.group==='state');
-  for(const choice of choices){
-    const button=ui.quickStates.querySelector<HTMLButtonElement>(
-      'button[data-action="'+choice.id+'"]');
-    if(!button)continue;
-    const iconKey=tacticalIconForState(choice.id,choice.label);
-    if(button.dataset.icon!==iconKey){
-      button.querySelector('.ui-icon')?.remove();
-      button.prepend(tacticalIcon(iconKey));
-      button.dataset.icon=iconKey;
-    }
-    const label=button.querySelector<HTMLElement>('.command-label');
-    if(label&&label.textContent!==choice.label)label.textContent=choice.label;
-    button.title=choice.title??choice.label;
-    installTouchCommandHelp(button);
-    button.setAttribute('aria-label',(node?'Waypoint: ':'Operator: ')+
-      choice.label+'. '+(choice.title??''));
-    button.disabled=!!choice.disabled;
-    if(choice.pressed===undefined)button.removeAttribute('aria-pressed');
-    else button.setAttribute('aria-pressed',String(choice.pressed));
-  }
+function updateQuickStates():void{
+  const actor=uid(selected)??null;
+  hudController.renderQuickStates({
+    state,replaying,actor,node:selectedPlanNode(),
+    selectedActiveWatch,watchTargetPresent:!!(actor&&activeWatchTarget(actor)),
+    quickStates:ui.quickStates,tacticalHud:ui.tacticalHud,scopeElement:ui.quickScope,
+    iconFor:tacticalIconForState,icon:tacticalIcon,
+    installHelp:installTouchCommandHelp,
+    plannedControl:(nodeId)=>plannedControl(state,selected,nodeId)
+  });
 }
 const siteIdentityOutput=el<HTMLOutputElement>('siteIdentity');
 const blockedEpisode=new Map<string,string>();
@@ -2412,7 +1996,7 @@ function updateHud(){
   if(repeat)repeat.hidden=!state.site?.training;
   paintOperatorAccent(ui.quickStates,selected);
   paintOperatorAccent(ui.context,selected);
-  paintOperatorAccent(contextTether,selected);
+  paintOperatorAccent(paletteController.tether,selected);
   updateQuickStates();
   if(medicalButton){
    const patient=medicalCandidate(selected);
@@ -2450,41 +2034,11 @@ function updateHud(){
   operationsToggle.hidden=campaignMode!=='quick'||state.phase!=='planning'||replaying;
   operationsToggle.disabled=operationsToggle.hidden;
   if(operationsToggle.hidden)operationsBoard.hidden=true;
-  ui.phase.textContent=replaying?'REPLAY':
-    state.phase==='planning'?(state.started?'PAUSED':'PLANNING'):
-    state.phase==='running'?'EXECUTING':
-    state.phase==='won'?'COMPLETE':'FAILED';
-  ui.phase.classList.toggle('live',state.phase==='running');
-  ui.phase.classList.toggle('done',state.phase==='won'||state.phase==='lost');
-  const seconds=Math.floor(state.seconds);
-  ui.clock.textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+
-    String(seconds%60).padStart(2,'0');
-  const primaryMode=state.phase==='running'?'pause':
-    state.phase==='planning'?'go':'reset';
-  if(ui.play.dataset.mode!==primaryMode){
-    const previousMode=ui.play.dataset.mode;
-    ui.play.dataset.mode=primaryMode;
-    const label=document.createElement('span');
-    label.textContent=primaryMode==='go'?'GO':
-      primaryMode==='pause'?'PAUSE':'RESET';
-    label.className='go-label';
-    ui.play.replaceChildren(tacticalIcon(primaryMode),label);
-    ui.play.setAttribute('aria-label',primaryMode==='go'?'Execute plan':
-      primaryMode==='pause'?'Pause execution':'Reset encounter');
-    if(previousMode&&!reducedMotionMedia.matches){
-      ui.play.animate([
-        {transform:'scale(.93)',filter:'brightness(1.14)'},
-        {transform:'scale(1.055)',filter:'brightness(1.25)',offset:.43},
-        {transform:'scale(1)',filter:'brightness(1)'}
-      ],{duration:295,easing:'cubic-bezier(.16,.85,.25,1)'});
-      ui.phase.animate([
-        {opacity:.65,transform:'translateY(3px)'},
-        {opacity:1,transform:'translateY(-2px)',offset:.55},
-        {opacity:1,transform:'translateY(0)'}
-      ],{duration:300,easing:'ease-out'});
-    }
-  }
-  ui.play.classList.toggle('running',state.phase==='running');
+  hudController.renderPhase({
+    phase:state.phase,started:state.started,replaying,seconds:state.seconds,
+    phaseNode:ui.phase,clock:ui.clock,play:ui.play,
+    reducedMotion:reducedMotionMedia.matches,icon:tacticalIcon
+  });
   const active=uid(selected);
   if(navPanel){
     navPanel.textContent=team(state).map(a=>a.name+'  '+
@@ -2550,15 +2104,10 @@ function updateHud(){
   const flashLabel='FLASH ×'+state.flashRemaining;
   if(ui.flash.textContent!==flashLabel)
     ui.flash.replaceChildren(tacticalIcon('flash'),document.createTextNode(flashLabel));
-  const activeTargetMode=state.phase!=='planning'||replaying?'':looking?
-    lookMode.toUpperCase():flashMode?'FLASH':firePlacement?
-    firePlacement.toUpperCase():'';
-  ui.cancelTarget.hidden=!activeTargetMode;
-  if(activeTargetMode){
-    ui.cancelTarget.textContent='✕ CANCEL '+activeTargetMode;
-    ui.cancelTarget.setAttribute('aria-label','Cancel '+activeTargetMode+' targeting');
-  }
-  ui.hint.dataset.targetMode=activeTargetMode;
+  hudController.renderTargetMode({
+    cancelTarget:ui.cancelTarget,hint:ui.hint,
+    phase:state.phase,replaying,flashMode,firePlacement
+  });
   ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
   ui.loadout.disabled=campaignMode==='mission'||state.phase!=='planning'||replaying;
   if(ui.loadout.disabled&&!weaponChooser.hidden)hideWeaponChooser();
@@ -2617,78 +2166,13 @@ function updateHud(){
     }
   }
   for(const id of squadIds){
-    const a=uid(id),button=ui[id];
-    paintOperatorAccent(button,id);
-    button.hidden=!a;
-    const title=button.querySelector('strong');
-    if(title&&a)title.textContent=a.name;
-    button.classList.toggle('selected',id===selected);
-    button.classList.toggle('down',!a||a.health<=0);
-    button.title=a?WEAPONS[a.weapon].label+' • '+
-      injuryOf(a.injuryStage).toUpperCase():'NO OPERATOR';
-    button.classList.toggle('loading',!!a&&a.reload>0);
-    button.style.setProperty('--reload-progress',
-      ((a?.reload??0)>0?Math.round(100*(1-a!.reload/
-        (WEAPONS[a!.weapon].reload*(a!.injuryStage===2?1.5:
-          a!.injuryStage===1?1.1:1)))):0)+'%');
-    const ammo=ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'];
-    const capacity=a?liveMagazineCapacity(a.weapon,a.weaponConfiguration):0;
-    const alert=a?magazineAlert(a.magazine,capacity):'normal';
-    ammo.dataset.ammo=alert;
-    ammo.textContent=a?String(a.magazine).padStart(2,'0')+' / '+a.reserve+
-      (a.reload>0?' ↻':''):'--';
-    ammo.title=a?`${a.magazine} / ${capacity} loaded · ${a.reserve} reserve rounds`:'';
-    button.setAttribute('aria-pressed',String(id===selected));
-    ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'].textContent=
-      !a?'--':a.health<=0?'DOWN':
-      a.injuryStage===2?'HEAVY':a.injuryStage===1?'HURT':'OK';
-    // Compact visual condition, with full text retained for accessibility.
-    const condition=!a?'missing':a.health<=0?'down':
-      a.injuryStage===2?'heavy':a.injuryStage===1?'hurt':'healthy';
-    const fill=condition==='down'?0:condition==='heavy'?34:
-      condition==='hurt'?67:100;
-    button.style.setProperty('--health-fill',fill+'%');
-    button.style.setProperty('--health-color',
-      condition==='heavy'?'#c77f68':condition==='hurt'?'#d0ad76':'#91b5a5');
-    button.dataset.condition=condition;
-    // One quiet, persistent state line in each EXISTING operator card.
-    // Its data comes from the motor and authored orders only; there is no
-    // live enemy-intel lookup and no new permanent tactical control.
-    let stateLine=button.querySelector<HTMLElement>('.unit-execution');
-    if(!stateLine){
-      stateLine=document.createElement('span');
-      stateLine.className='unit-execution';button.append(stateLine);
-    }
-    const execution=a?executionStatus(a,{
-      phase:state.phase==='planning'&&state.started?'running':state.phase,
-      doors:state.doors,peers:team(state)
-    }):null;
-    const status=compactExecutionStatus(execution,{
-      selected:id===selected,
-      phase:state.phase==='running'?'execution':
-        state.phase==='planning'?'planning':
-        replaying?'replay':'debrief',
-      down:!a||a.health<=0
+    hudController.renderOperatorCard({
+      state,replaying,selected,id,actor:uid(id),
+      button:ui[id],
+      ammo:ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'],
+      hp:ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'],
+      paintAccent:paintOperatorAccent
     });
-    stateLine.hidden=!status.visible;
-    stateLine.textContent=status.label;
-    stateLine.dataset.kind=execution?.kind??'idle';
-    stateLine.dataset.priority=status.priority;
-    button.dataset.executionVisible=String(status.visible);
-    stateLine.title=status.detail;
-    if(execution?.progress!==undefined){
-      stateLine.dataset.progress='true';
-      stateLine.style.setProperty('--execution-progress',
-        Math.round(execution.progress*100)+'%');
-    }else{
-      stateLine.removeAttribute('data-progress');
-      stateLine.style.removeProperty('--execution-progress');
-    }
-    button.setAttribute('aria-label',a?
-      a.name+', '+condition+', '+a.magazine+' of '+capacity+
-      ' rounds loaded, '+a.reserve+' reserve'+(a.reload>0?', reloading':'')+
-      '. '+(execution?.label??'IDLE')+'. '+(execution?.detail??''):
-      id+', unavailable');
   }
   // Show the site as a place, not as a raw procedural generation dump.
   const siteHeader=document.querySelector<HTMLElement>('.ident strong');
@@ -2699,26 +2183,13 @@ function updateHud(){
     (state.intel.mode==='floor-plan'?state.site.roomCount:'?')+' KNOWN ROOMS':
     'TACTICAL TRAINING';
   if(siteHeader)siteHeader.title=state.site?.name??'Cutwoods';
-  updateUiNotice(ui.feed,state.events,state.phase);
-  const now=performance.now();
-  const hasHelp=now<helpUntil;
-  const tip=teaching.current(now);
-  const targeting=looking||flashMode||!!firePlacement||!!evacMode;
-  const phase:HudPhase=replaying?'replay':
-    state.phase==='planning'?(targeting?'targeting':'planning'):
-    state.phase==='running'?'execution':'debrief';
-  const severity=ui.feed.hidden?'normal':ui.feed.dataset.severity;
-  const urgency:HudUrgency=severity==='warning'||severity==='contact'||
-    severity==='danger'?severity:'normal';
-  const presentation=resolveHudPresentation({
-    phase,urgency,explicitHelp:hasHelp,coaching:!!tip,targetPrompt:targeting
+  hudController.renderNotice(ui.feed,state.events,state.phase,replaying);
+  hudController.renderGuidance({
+    replaying,phase:state.phase,flashMode,pushMode,
+    selectedNode,selectedActiveWatch,
+    firePlacement:!!firePlacement,evacMode:!!evacMode,
+    feed:ui.feed,hint:ui.hint
   });
-  document.body.dataset.hudPhase=phase;
-  document.body.dataset.hudUrgency=urgency;
-  ui.hint.dataset.hintKind=hasHelp?'help':targeting?'target':'coach';
-  ui.hint.textContent=hasHelp?helpText:targeting?message():
-    presentation.showCoaching?(tip?.text??''):message();
-  ui.hint.hidden=!presentation.showGuidance;
   updateContext();
   const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
   ui.mission.textContent=(state.phase==='planning'?
@@ -2773,7 +2244,7 @@ function historicalShotVisible(shot:RecordedShot):boolean{
 const route2D=createBreach2DRouteOverlays({
  draw,line,circle,uid,colorFor,displayRouteCache,
  getFrame:()=>({state,replaying,selected,selectedNode,selectedActiveWatch,
-  draggingNode,draggingWatchTarget,trace,cursor,looking,replayPlanVersion,
+  draggingNode,draggingWatchTarget,trace,cursor,looking:hudController.facing.looking,replayPlanVersion,
   replayPlanScope,recorder})
 });
 /** Gold denotes actual historically observed cells for the selected operator.
@@ -2844,8 +2315,8 @@ function render(){
  * the attempted world point; no hidden geometry or actors are inspected. */
 function rejectAt(pt:Pt,reason:string){
   state.events.push(reason);
-  tacticalFeedback.emit('error',pt,recoveryAdviceFor(reason)?.marker??'INVALID');
-  audioController.uiClickTone('warning');
+  hudController.rejectAttempt(pt,reason,
+    ()=>audioController.uiClickTone('warning'));
 }
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
@@ -2889,36 +2360,36 @@ function useSelectedGround(pt:Pt){
     }
     updateHud();return;
   }
-  if(looking){
+  if(hudController.facing.looking){
     const placedId=state.nextId;
-    const retargetingActive=lookMode==='watch'&&selectedActiveWatch;
+    const retargetingActive=hudController.facing.lookMode==='watch'&&selectedActiveWatch;
     const actor=uid(selected);
     const source=retargetingActive?actor?.p:selectedNode!==null?
       actor?.plan.find(node=>node.id===selectedNode)?.p:
-      actor?(armedOrigin==='here'?actor.p:finalPoint(actor)):null;
+      actor?(hudController.facing.armedOrigin==='here'?actor.p:finalPoint(actor)):null;
     const target=source?aimTargetFromTap(source,pt):null;
     const committed=!!target&&(retargetingActive?
       retargetActiveWatch(state,selected,target):
-      lookMode==='watch'?
-        planWatch(state,selected,target,selectedNode??undefined,armedOrigin):
-        planAim(state,selected,'free',target,selectedNode??undefined,'look',armedOrigin));
+      hudController.facing.lookMode==='watch'?
+        planWatch(state,selected,target,selectedNode??undefined,hudController.facing.armedOrigin):
+        planAim(state,selected,'free',target,selectedNode??undefined,'look',hudController.facing.armedOrigin));
     if(!committed){
       rejectAt(pt,target?'AIM ORDER UNAVAILABLE':
         'AIM DIRECTION UNAVAILABLE · TAP AWAY FROM THE OPERATOR');
       showUiHelp('CHOOSE A LOOK / WATCH DIRECTION, OR CANCEL',3200);
     }
     else{
-      tacticalFeedback.emit('command',target!,lookMode==='watch'?'WATCH':'LOOK');
-      audioController.playOrderCue(lookMode==='watch'?'orders.watch':'orders.look');
+      tacticalFeedback.emit('command',target!,hudController.facing.lookMode==='watch'?'WATCH':'LOOK');
+      audioController.playOrderCue(hudController.facing.lookMode==='watch'?'orders.watch':'orders.look');
       if(!retargetingActive&&selectedNode===null){
         selectedNode=placedId;selectedActiveWatch=false;
       }
-      teach(lookMode==='watch'?'watch-placed':'look-placed',
-        lookMode==='watch'?
+      teach(hudController.facing.lookMode==='watch'?'watch-placed':'look-placed',
+        hudController.facing.lookMode==='watch'?
           'WATCH stays on that point while moving. Drag its ring to adjust.':
           'LOOK checks that direction briefly, then returns to the route.',4100);
     }
-    if(committed)looking=false;
+    if(committed)hudController.facing.looking=false;
     updateHud();return;
   }
   const beforeRoute=uid(selected)?finalPoint(uid(selected)!):pt;
@@ -3810,7 +3281,7 @@ function enterReplay(){
   finishedSession=state;replaying=true;
   replayPlayback.reset();replayPlayback.play();
   replayCamera.reset(stage);
-  replayKnowledge.omniscient=false;looking=false;flashMode=false;
+  replayKnowledge.omniscient=false;hudController.facing.looking=false;flashMode=false;
   replayKnowledge.observerId=null;
   replayBodycam.active=false;replayBodycam.mount='chest';
   // Selective CUTAWAY is a harmless presentation default: only blocking
@@ -4513,7 +3984,7 @@ function reset(next=state.variant,siteSeed?:number,
     restartStart?.scale??requestedSiteScale,missionOverride,
     prebuiltSite,{risk:encounterRisk,enableCivilians:civilianPreview,
    enableIncidentIntent:true});
-  executionNoticeFeed.reset();
+  hudController.resetNotices();
   state.lightingMode=restartStart?.lightingMode??selectedLightingMode;
   if(campaignMode==='quick')persistentRoster=freshQuickPlayRoster(persistentRoster);
   applyRequestedCondition(state);
@@ -4526,7 +3997,7 @@ function reset(next=state.variant,siteSeed?:number,
   missionStart=captureMissionStart(state,requestedSiteScale);
   flashDoorId=null;
   if(!deferScene)stage?.applySite(state.site??null);
-  selected='rook';looking=false;
+  selected='rook';hudController.facing.looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
   tacticalGestures.clear();cursor=null;trace=null;zoom=1;panX=panY=0;
   fog2D.invalidate();audioController.resetLive();
@@ -4938,7 +4409,7 @@ ui.back.addEventListener('click',()=>{
   audioController.uiClickTone('select');
   // BACK must always escape an unfinished targeting gesture first.
   // It cannot accidentally remove an unrelated prior waypoint.
-  if(looking||flashMode||firePlacement||evacMode){cancelTargeting();return;}
+  if(hudController.facing.looking||flashMode||firePlacement||evacMode){cancelTargeting();return;}
   if(selectedActiveWatch){
     selectedActiveWatch=false;updateHud();return;
   }
@@ -5024,12 +4495,12 @@ function casualtyActionButton(label:string,action:(target:TeamActor)=>void){
 }
 dragButton=casualtyActionButton('DRAG',target=>{
  evacMode={patientId:target.id,mode:'drag'};
- looking=false;flashMode=false;firePlacement=null;
+ hudController.facing.looking=false;flashMode=false;firePlacement=null;
  showUiHelp('TAP DESTINATION FOR CASUALTY DRAG',5500);
 });
 carryButton=casualtyActionButton('CARRY',target=>{
  evacMode={patientId:target.id,mode:'carry'};
- looking=false;flashMode=false;firePlacement=null;
+ hudController.facing.looking=false;flashMode=false;firePlacement=null;
  showUiHelp('TAP DESTINATION FOR CASUALTY CARRY',5500);
 });
 retrieveButton=casualtyActionButton('RECOVER',target=>{
@@ -5051,7 +4522,7 @@ ui.cancelTarget.addEventListener('click',cancelTargeting);
 ui.flash.addEventListener('click',()=>{
   if(state.phase!=='planning')return;
   flashMode=!flashMode;flashDoorId=null;
-  looking=false;
+  hudController.facing.looking=false;
   updateHud();
 });
 ui.sync.addEventListener('click',()=>{planSync(state);audioController.playOrderCue('orders.sync');updateHud();});
@@ -5156,7 +4627,7 @@ ui.play.addEventListener('click',()=>{
   if(state.phase==='won'||state.phase==='lost'){
    if(!returnAfterCampaignMission())reset();
   }else{
-    looking=false;pushMode=false;
+    hudController.facing.looking=false;pushMode=false;
     if(state.phase==='planning'){
       if(!state.started)
         missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
@@ -5384,8 +4855,8 @@ function restorePointerSelection(p:{selectionBefore?:{
 tacticalGestures.install({
   is3D:()=>!!stage&&viewMode!=='plan2d',
   isPlanning:()=>state.phase==='planning',
-  isLooking:()=>!!looking,
-  targetArmed:()=>!!(looking||flashMode||pushMode||firePlacement||evacMode),
+  isLooking:()=>!!hudController.facing.looking,
+  targetArmed:()=>!!(hudController.facing.looking||flashMode||pushMode||firePlacement||evacMode),
   world:pointerWorld,
   aimWorld:pointerAimWorld,
   pick:tacticalPickAt,
@@ -5459,13 +4930,13 @@ function insertAtRouteLine(screen:Pt,pointerKind:string):boolean{
   lastAuthoringAt=performance.now();
   tacticalFeedback.emit('node',hit.point);
   teach('route-inserted','Waypoint inserted. Drag to reposition, or add LOOK / WATCH.',4100);
-  selectedNode=id;doorFocusId=null;contextSignature='';
+  selectedNode=id;doorFocusId=null;paletteController.invalidate();
   return true;
 }
 /** Map gestures have resolved; this is the gameplay-only commit boundary. */
 function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
   cancelled:boolean,pointerCount:number):void{
-  const pt=looking?pointerAimWorld(e):
+  const pt=hudController.facing.looking?pointerAimWorld(e):
     p.mode==='activeWatch'||p.mode==='watchTarget'?
       pointerAimWorld(e,12):pointerWorld(e);
   // During replay, a deliberate single tap on a friendly miniature
@@ -5499,7 +4970,7 @@ function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
     selectUnit(p.pick.owner);
   }
   if(!cancelled&&state.phase==='planning'&&!replaying&&pointerCount===1){
-    if((looking||flashMode||pushMode||firePlacement||evacMode)&&
+    if((hudController.facing.looking||flashMode||pushMode||firePlacement||evacMode)&&
        (p.mode==='targetPreview'||p.mode==='undecided')){
       // A brief iPhone tap often travels a few pixels without entering
       // targetPreview. Always commit an armed target on release, even then.
@@ -5507,7 +4978,7 @@ function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
       // LOOK/WATCH are directions and may deliberately point across an
       // unseen door or beyond the property; other commands still require a
       // point inside the real procedural site bounds, not legacy W/H.
-      if(looking||insideTacticalBounds(pt,activeWorldBounds()))
+      if(hudController.facing.looking||insideTacticalBounds(pt,activeWorldBounds()))
         useSelectedGround(pt);
       else showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
     }else if(p.mode==='activeWatch'){
@@ -5883,10 +5354,10 @@ function tick(now:number){
       (!authoringPointer||!['cameraMulti','cameraOrbit','cameraPan'].includes(
         authoringPointer.mode))&&cursor.x>=0&&cursor.y>=0&&
       cursor.x<=W&&cursor.y<=H;
-    const orderMode=looking?lookMode:flashMode?'flash':
+    const orderMode=hudController.facing.looking?hudController.facing.lookMode:flashMode?'flash':
       firePlacement??evacMode?.mode;
-    const origin=looking?
-      (selectedPlanNode()?.p??(armedOrigin==='here'?actor?.p:
+    const origin=hudController.facing.looking?
+      (selectedPlanNode()?.p??(hudController.facing.armedOrigin==='here'?actor?.p:
         actor?finalPoint(actor):undefined)):
       actor?finalPoint(actor):undefined;
     const preview:TacticalOrderPreview|undefined=canPreview&&actor&&origin&&
