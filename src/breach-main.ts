@@ -882,6 +882,8 @@ let savedReplayPreviousRecorder:MissionRecorder|null=null;
 let activeSavedReplayId:string|null=null;
 const savedRecordingIds=new WeakMap<MissionRecorder,string>();
 let replayEntrySource:'debrief'|'library'='debrief';
+// Title-screen origin survives saved replay playback and library return.
+let replayLibraryReturnToMenu=false;
 let replayPresentation:ReplayPresentation|null=null;
 let finishedSession:Session|null=null;
 const replayKnowledge=new ReplayKnowledgeController();
@@ -5468,7 +5470,13 @@ const replayLibrary=createReplayLibraryUi({
 const renderSavedReplayLibrary=()=>replayLibrary.render();
 const replayLibraryFailure=(error:unknown)=>replayLibrary.failure(error);
 const showSavedReplayLibrary=()=>replayLibrary.show();
-const hideSavedReplayLibrary=()=>replayLibrary.hide();
+const hideSavedReplayLibrary=(restoreMenu=true)=>{
+  replayLibrary.hide();
+  if(restoreMenu&&replayLibraryReturnToMenu){
+    replayLibraryReturnToMenu=false;
+    campaignMode='menu';campaignScreen.entry(!!campaign);
+  }
+};
 async function saveCurrentReplay():Promise<void>{
   if(replayLibrary.busy||recorder.frames.length<2)return;
   if(activeSavedReplayId||savedRecordingIds.has(recorder)){
@@ -5508,7 +5516,7 @@ async function playSavedReplay(id:string):Promise<void>{
     // Preserve the current live recorder and return to it on replay exit.
     savedReplayPreviousRecorder=recorder;
     recorder=stored;
-    hideSavedReplayLibrary();
+    hideSavedReplayLibrary(false);
     closeMissionSettings(false);
     replayEntrySource='library';enterReplay();
     if(replaying){
@@ -5532,12 +5540,14 @@ async function playSavedReplay(id:string):Promise<void>{
       savedReplayPreviousRecorder=null;
     }
     replayLibraryFailure(error);
+    if(replayLibraryReturnToMenu&&ui.replayLibraryDialog.hidden)
+      showSavedReplayLibrary();
   }
   finally{replayLibrary.busy=false;}
 }
 ui.openReplayLibrary.addEventListener('click',showSavedReplayLibrary);
-ui.closeReplayLibrary.addEventListener('click',hideSavedReplayLibrary);
-ui.replayLibraryBackdrop.addEventListener('click',hideSavedReplayLibrary);
+ui.closeReplayLibrary.addEventListener('click',()=>hideSavedReplayLibrary());
+ui.replayLibraryBackdrop.addEventListener('click',()=>hideSavedReplayLibrary());
 ui.saveReplayDebrief.addEventListener('click',()=>{void saveCurrentReplay();});
 ui.replaySaveArchive.addEventListener('click',()=>{void saveCurrentReplay();});
 
@@ -6509,6 +6519,10 @@ const campaignScreen=new CampaignScreen({
  },
  continueCampaign:()=>showCampaignHome(),
  quickPlay:()=>{void launchQuickPlay();},
+ openReplayLibrary:()=>{
+  replayLibraryReturnToMenu=true;
+  campaignScreen.hide();showSavedReplayLibrary();
+ },
  chooseContract:(id)=>{
   if(!campaign)return;
   const next=acceptContract(campaign,id);
@@ -6863,6 +6877,8 @@ ui.restart.addEventListener('click',async()=>{
       confirmLabel:'RESTART MISSION',danger:true
     }))return;
   restartMission();
+  closeMissionSettings(false);
+  showMissionBriefing();
 });
 window.addEventListener('keydown',e=>{
   // Global game shortcuts must never fire while the player edits a name,
