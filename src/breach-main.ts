@@ -4973,7 +4973,8 @@ function advanceReplayCamera(dt:number,instant=false):void{
         replayDirectorGradeBucket=gradeBucket;
         replayDirectorGradeKey=gradeKey;
         const grade=replayDirectorGrade;
-        ui.replayFollowStatus.dataset.grade=grade.grade+' · '+grade.score;
+        ui.replayFollowStatus.dataset.grade=grade.grade+
+          (grade.confidence==='limited'?'?':'')+' · '+grade.score;
         ui.replayFollowStatus.title='DIRECTOR SELF-GRADE '+
           grade.grade+' ('+grade.score+'/100) · '+grade.summary+
           ' · '+grade.decision;
@@ -4987,6 +4988,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
         (replayDirectorGrade?'\nSELF-GRADE '+
           replayDirectorGrade.grade+' · '+
           replayDirectorGrade.score+'/100'+
+          '\nMODEL CONFIDENCE '+replayDirectorGrade.confidence+
           '\nASSESSMENT '+replayDirectorGrade.summary+
           '\nVISIBLE HERO '+replayDirectorGrade.subjectVisible+
           ' / ENEMY '+replayDirectorGrade.targetVisible+
