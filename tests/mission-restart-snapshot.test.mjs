@@ -68,5 +68,9 @@ test('RESTART and debrief RETRY use the same path; NEW SITE remains random',()=>
  assert.match(source,/ui\.retry\.addEventListener\('click',[^\n]*restartMission\(\)/);
  assert.match(source,/ui\.variant\.addEventListener\('click',[\s\S]*?reset\(state\.variant\+1\)/);
  assert.match(source,/function restartMission\(\):void\{/);
- assert.match(source,/siteForMissionRestart\(start\)/);
+ const owner=readFileSync(new URL('../src/breach-mission-controller.ts',import.meta.url),'utf8');
+ assert.match(source,/missionController\.restartSnapshot\(state\)/);
+ assert.match(source,/missionController\.restartRequest\(start\)/);
+ assert.match(source,/missionController\.restoreStartingSetup\(state,start/);
+ assert.match(owner,/siteForMissionRestart\(start\)/);
 });

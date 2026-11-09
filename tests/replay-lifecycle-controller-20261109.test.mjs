@@ -7,7 +7,7 @@ test('Director prepares archived film only after recorded mission state and site
  assert.ok(enter.includes('replayCamera.reset(stage)'));
  assert.ok(enter.includes('replayPlayback.reset()'));
  assert.ok(enter.indexOf('stage?.applySite(state.site??null)')<enter.indexOf('rebuildReplayEventIndex()'));
- assert.ok(enter.indexOf('state=newSession(')<enter.indexOf('rebuildReplayEventIndex()'));
+ assert.ok(enter.indexOf('state=missionController.createReplaySession(')<enter.indexOf('rebuildReplayEventIndex()'));
 });
 test('replay exit delegates lifetime cleanup to its owners',()=>{
  const exit=source.slice(source.indexOf('function exitReplay(){'),source.indexOf('async function renderSavedReplayLibrary'));
