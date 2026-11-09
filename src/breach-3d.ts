@@ -121,7 +121,6 @@ import {interpolatedActor,type RenderFrame}
 export type ViewMode='iso'|'top'|'plan2d';
 export type ViewState={mode:ViewMode;yaw:number;zoom:number;pitch:number;focus:Pt};
 const color=(hex:number)=>new THREE.Color(hex);
-const v=(p:Pt,y=0)=>new THREE.Vector3(p.x,y,p.y);
 const mat=(hex:number,roughness=.9)=>new THREE.MeshStandardMaterial({
   color:hex,roughness,flatShading:true,
 });
