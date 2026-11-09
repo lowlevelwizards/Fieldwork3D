@@ -165,6 +165,8 @@ export function composeReplayDirectorShots(time:number,
       discoveryStrength:plan.discoveryStrength??0,
       attentionPoint:plan.discoveryStrength?plan.interest:null}
   },{rooms,walls,doors:context.doors,cover:context.cover},aspect,3);
+  // No approved legal shoulder: let the storyboard hold its existing shot.
+  if(!physicals.length)return [];
   let physical=physicals[0];
   // If the nominated protagonist is truly invisible, the final fallback
   // is another historically recorded friendly. This is a cutaway, not
@@ -184,7 +186,7 @@ export function composeReplayDirectorShots(time:number,
           usableHeight:context.usableHeight??.76,
           safeFrame:context.safeFrame}
       },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
-      if(recovered.subjectReadable&&
+      if(recovered&&recovered.subjectReadable&&
         (recovered.subjectVisibility??0)>(physical.subjectVisibility??0)+.12){
         hero=alternate;physical=recovered;break;
       }
