@@ -1,0 +1,37 @@
+name: Breach Mission Lifecycle Step 8 Critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-main.ts'
+      - 'src/breach-mission-controller.ts'
+      - 'tests/breach-mission-controller-step8.test.mjs'
+      - 'tests/mission-restart-snapshot.test.mjs'
+      - 'tests/replay-lifecycle-controller-20261109.test.mjs'
+      - '.github/workflows/breach-mission-step8-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: breach-mission-step8-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  mission-critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Mission creation, restart, deployment, replay and cleanup regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/breach-mission-controller-step8.test.mjs \
+            tests/mission-restart-snapshot.test.mjs \
+            tests/mission-deployment-r2.test.mjs \
+            tests/replay-lifecycle-controller-20261109.test.mjs \
+            tests/replay-playback-controller-step5.test.mjs \
+            tests/breach-scene-memory-lifecycle-p6.test.mjs
+      - name: Production TypeScript check and bundle
+        run: npm run build
