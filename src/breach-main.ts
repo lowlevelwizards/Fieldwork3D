@@ -1,4 +1,5 @@
-import {matchActiveTouchPointers} from './breach-touch-recovery.ts';
+import {createBreachCanvasGestureController,type TacticalPointer}
+ from './breach-canvas-gesture-controller.ts';
 import {
   W,H,activeWorldBounds,WALLS,doorCenter,doorLeafSegment,activateSite,
   type Pt,
@@ -34,9 +35,9 @@ import {PhysicalActionRings} from './ui/physical-action-rings.ts';
 import {executionStatus} from './breach-execution-state.ts';
 import {compactExecutionStatus} from './ui/tactical-hud-density.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
-import {tacticalHitProfile,shouldAppendStrokePoint,
-  simplifyStrokePoints} from './ui/touch-hit-targets.ts';
-import {resolveTacticalPick,screenSegmentDistance,watchDragReady,
+import {tacticalHitProfile,shouldAppendStrokePoint,simplifyStrokePoints}
+ from './ui/touch-hit-targets.ts';
+import {resolveTacticalPick,screenSegmentDistance,
   type TacticalPick} from './ui/tactical-target-resolver.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {aimTargetFromTap,insideTacticalBounds} from './ui/aim-target.ts';
@@ -1824,68 +1825,10 @@ let viewScale=1,ox=0,oy=0,zoom=1,panX=0,panY=0;
 let cursor:Pt|null=null;
 let previewHover=false;
 let trace:Pt[]|null=null;
-const activePointers=new Map<number,{x:number;y:number;startX:number;startY:number;
-  pointerType:string;wasUnit:boolean;nodeId:number|null;
-  pick?:TacticalPick|null;dragCommitted?:boolean;
-  selectionBefore?:{owner:string;node:number|null;watch:boolean;door:string|null};
-  mode:'undecided'|'route'|'pan'|'node'|'watchTarget'|'activeWatch'|'pivot'|'sweep'|'cameraOrbit'|'cameraPan'|'cameraMulti'|'targetPreview';moved:boolean}>();
-let pinchDistance=0,panMid:Pt|null=null;
-/** Rebase the surviving pointers after a normal lift or a missing iOS lift. */
-function settleCameraPointers():void{
-  if(activePointers.size>=2){
-    const pts=[...activePointers.values()].slice(0,2);
-    pinchDistance=distance({x:pts[0].x,y:pts[0].y},
-      {x:pts[1].x,y:pts[1].y});
-    panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-  }else{
-    panMid=null;pinchDistance=0;
-    if(activePointers.size===1){
-      const remaining=[...activePointers.values()][0];
-      if(remaining.mode==='cameraMulti'){
-        // A lifted second finger must never leave the survivor in pinch.
-        remaining.mode=viewMode==='plan2d'||!stage?'cameraPan':'cameraOrbit';
-        remaining.moved=true;
-        remaining.startX=remaining.x;remaining.startY=remaining.y;
-      }
-    }
-  }
-}
-/**
- * iOS can drop a pointerup/lostcapture after a rapid pinch or an interrupted
- * touch. TouchEvent.touches is the browser's independent active-contact list;
- * reconcile ONLY surplus pointers, never synthesize a waypoint or a tap.
- * Touch identifiers aren't interchangeable with PointerEvent.pointerId, so
- * match by proximity instead of comparing their numeric IDs.
- */
-function reconcileCanvasTouches(event:TouchEvent):void{
-  const touchPointers=new Map([...activePointers].filter(
-    ([,pointer])=>pointer.pointerType==='touch'));
-  const live=Array.from(event.touches,t=>({x:t.clientX,y:t.clientY}));
-  if(touchPointers.size<=live.length)return;
-  // A one-finger tactical tap/drag is completed on pointerup. Don't erase
-  // it ahead of that event merely because touchend arrived first.
-  if(touchPointers.size===1&&live.length===0&&
-    !['cameraMulti','cameraOrbit','cameraPan'].includes(
-      [...touchPointers.values()][0].mode))return;
-  const retained=matchActiveTouchPointers(touchPointers,live);
-  let pruned=false;
-  for(const id of touchPointers.keys()){
-    if(retained.has(id))continue;
-    activePointers.delete(id);
-    if(canvas.hasPointerCapture(id))canvas.releasePointerCapture(id);
-    pruned=true;
-  }
-  if(!pruned)return;
-  trace=null;draggingNode=null;draggingWatchTarget=false;
-  settleCameraPointers();
-  probeCameraGesture('touch-recovered');
-}
-function probeCameraGesture(phase:string):void{
-  if(!import.meta.env.DEV)return;
-  canvas.dataset.gesturePhase=phase;
-  canvas.dataset.gestureCount=String(activePointers.size);
-  canvas.dataset.gestureModes=[...activePointers.values()].map(p=>p.mode).join(',');
-}
+// Pointer state, pinch continuity and iOS missing-release recovery now live in
+// the input controller. The read-only pointer map is used for HUD previews.
+const tacticalGestures=createBreachCanvasGestureController(canvas);
+const activePointers=tacticalGestures.activePointers;
 const colors:Record<string,string>={
   rook:'#a2d4ca',moss:'#b9c6a0',ash:'#dfb992',vale:'#b7b1d9',
 };
@@ -5077,7 +5020,7 @@ function reset(next=state.variant,siteSeed?:number,
   if(!deferScene)stage?.applySite(state.site??null);
   selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
-  cursor=null;trace=null;zoom=1;panX=panY=0;
+  tacticalGestures.clear();cursor=null;trace=null;zoom=1;panX=panY=0;
   fog2D.invalidate();lastSoundShotId=0;lastEventAudio='';
   lastFootstepSoundTime=0;
   recorder=new MissionRecorder();recorder.capture(state,true);
@@ -5934,149 +5877,64 @@ function restorePointerSelection(p:{selectionBefore?:{
   selectedNode=prior.node;selectedActiveWatch=prior.watch;
   doorFocusId=prior.door;
 }
-canvas.addEventListener('contextmenu',e=>e.preventDefault());
-canvas.addEventListener('pointerenter',e=>{
-  if(e.pointerType!=='touch'){previewHover=true;cursor=pointerWorld(e);}
-});
-canvas.addEventListener('pointerleave',()=>{previewHover=false;});
-canvas.addEventListener('pointerdown',e=>{
-  e.preventDefault();canvas.setPointerCapture(e.pointerId);
-  const pt=looking?pointerAimWorld(e):pointerWorld(e);
-  cursor=pt;
-  if(e.pointerType==='touch')previewHover=false;
-  // Explicit camera interaction does NOT select units or place orders.
-  // Touch defaults to direct orbit on empty ground after a drag threshold.
-  // Desktop retains RMB orbit, MMB/Shift pan; plain clicks still plan.
-  const cameraModeInput=e.button===1||e.shiftKey||
-    (viewMode!=='plan2d'&&e.button===2);
-  if(cameraModeInput){
-    const orbit=viewMode!=='plan2d'&&e.button===2;
-    activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
-      startX:e.clientX,startY:e.clientY,pointerType:e.pointerType,wasUnit:false,nodeId:null,
-      mode:orbit?'cameraOrbit':'cameraPan',moved:false});
-  }else{
-    const contextual=looking||flashMode||pushMode||!!firePlacement||!!evacMode;
-    const pick=contextual?null:tacticalPickAt({x:e.clientX,y:e.clientY},
-      e.pointerType);
-    const handle=pick?.kind==='activeWatch'?'activeWatch':
-      pick?.kind==='watch'?'watchTarget':
-      pick&&['node','flash','problem'].includes(pick.kind)?'node':'undecided';
-    activePointers.set(e.pointerId,{x:e.clientX,y:e.clientY,
-      startX:e.clientX,startY:e.clientY,pointerType:e.pointerType,
-      wasUnit:pick?.kind==='operator',nodeId:pick?.nodeId??null,
-      pick,mode:handle,moved:false,dragCommitted:false,
-      selectionBefore:{owner:selected,node:selectedNode,
-        watch:selectedActiveWatch,door:doorFocusId}});
-
-  }
-  if(activePointers.size>=2){
-    // Cancel any tentative route gesture when a second finger arrives.
-    // The remaining finger is never retroactively treated as a map tap.
-    for(const pointer of activePointers.values()){
-      if(pointer.dragCommitted)restorePointerSelection(pointer);
-      pointer.mode='cameraMulti';pointer.dragCommitted=false;
-    }
-    const pts=[...activePointers.values()];
-    pinchDistance=distance({x:pts[0].x,y:pts[0].y},
-      {x:pts[1].x,y:pts[1].y});
-    panMid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-    trace=null;draggingNode=null;draggingWatchTarget=false;
-  }
-  probeCameraGesture('down');
-});
-canvas.addEventListener('pointermove',e=>{
-  const p=activePointers.get(e.pointerId);
-  cursor=looking?pointerAimWorld(e):
-    p&&(p.mode==='activeWatch'||p.mode==='watchTarget')?
-      pointerAimWorld(e,12):pointerWorld(e);
-  if(!p)return;
-  e.preventDefault();
-  const dx=e.clientX-p.x,dy=e.clientY-p.y;
-  p.x=e.clientX;p.y=e.clientY;
-  if(Math.hypot(e.clientX-p.startX,e.clientY-p.startY)>
-     tacticalHitProfile(e.pointerType).dragStart)p.moved=true;
-  if(activePointers.size>=2){
-    const pts=[...activePointers.values()].slice(0,2);
-    const gap=distance({x:pts[0].x,y:pts[0].y},
-      {x:pts[1].x,y:pts[1].y});
-    const mid={x:(pts[0].x+pts[1].x)/2,y:(pts[0].y+pts[1].y)/2};
-    if(stage&&viewMode!=='plan2d'){
-      if(replaying&&replayCamera.mode!=='free'){
-        chooseReplayCamera('free');replayCamera.follow=false;updateReplayHud();
-      }
-      if(panMid)stage.panBetween(panMid.x,panMid.y,mid.x,mid.y);
-      if(pinchDistance>8)stage.zoomAt(gap/pinchDistance,mid.x,mid.y);
-      // Two fingers have ONLY pan/pinch behavior: never rotate accidentally.
-    }else{
-      if(panMid){panX+=mid.x-panMid.x;panY+=mid.y-panMid.y;}
-      if(pinchDistance>8)zoom=clamp(zoom*gap/pinchDistance,.65,4.8);
-      layout();
-    }
-    pinchDistance=gap;panMid=mid;return;
-  }
-  if(p.mode==='cameraOrbit'&&stage&&viewMode!=='plan2d'){
+// The input controller owns DOM pointer events, camera gesture arbitration and
+// interruption cleanup. This scene retains semantic picking and plan edits.
+tacticalGestures.install({
+  is3D:()=>!!stage&&viewMode!=='plan2d',
+  isPlanning:()=>state.phase==='planning',
+  isLooking:()=>!!looking,
+  targetArmed:()=>!!(looking||flashMode||pushMode||firePlacement||evacMode),
+  world:pointerWorld,
+  aimWorld:pointerAimWorld,
+  pick:tacticalPickAt,
+  selection:()=>({owner:selected,node:selectedNode,watch:selectedActiveWatch,
+    door:doorFocusId}),
+  restoreSelection:restorePointerSelection,
+  activateEdit:activatePointerEdit,
+  adoptOwner:adoptPointerOwner,
+  cursor:point=>{cursor=point;},
+  hover:(active,point)=>{previewHover=active;if(point)cursor=point;},
+  clearDrag:()=>{trace=null;draggingNode=null;draggingWatchTarget=false;},
+  dragNode:(point,watch)=>{draggingNode=point;draggingWatchTarget=watch;},
+  traceRoute:(screen,point)=>{
+    if(!trace)trace=[{...uid(selected)!.p}];
+    if(shouldAppendStrokePoint(worldToScreen(trace.at(-1)!,8),screen))
+      trace.push({...point});
+  },
+  orbit:(dx,dy)=>{
     if(replaying&&replayCamera.mode!=='free'){
       chooseReplayCamera('free');replayCamera.follow=false;updateReplayHud();
     }
-    stage.orbit(dx,dy);
-    probeCameraGesture('orbit');
+    stage?.orbit(dx,dy);
     for(const [mode,button] of [['iso',ui.viewIso],
       ['top',ui.viewTop],['plan2d',ui.view2d]] as const)
-      button.setAttribute('aria-pressed',String(mode===stage.view.mode));
-    return;
-  }
-  if(p.mode==='cameraPan'){
+      button.setAttribute('aria-pressed',String(mode===stage?.view.mode));
+  },
+  pan:(dx,dy)=>{
     if(replaying&&replayCamera.mode!=='free'){
       chooseReplayCamera('free');replayCamera.follow=false;updateReplayHud();
     }
     if(stage&&viewMode!=='plan2d')stage.pan(dx,dy);
     else{panX+=dx;panY+=dy;layout();}
-    return;
-  }
-  if(p.mode==='cameraMulti')return;
-  // While a command is armed, one-finger dragging previews its target.
-  // Two fingers still exclusively pan/pinch and never author an order.
-  if(p.mode==='undecided'&&e.pointerType==='touch'&&p.moved&&
-     (looking||flashMode||pushMode||!!firePlacement||!!evacMode)){
-    p.mode='targetPreview';
-    return;
-  }
-  if(p.mode==='targetPreview')return;
-  // On touch a drag starting in empty space or the map ground orbits.
-  // Tapping that same spot still creates a waypoint; dragging from a
-  // selected operator or node keeps its deliberate tactical editing semantics.
-  if(p.mode==='undecided'&&e.pointerType==='touch'&&p.moved&&
-     !(state.phase==='planning'&&p.wasUnit)){
-    if(viewMode==='plan2d'||!stage){
-      // Empty-ground drags pan Floor Plan rather than becoming dead input.
-      // A drag starting on a unit remains owned by route authoring.
-      p.mode='cameraPan';panX+=dx;panY+=dy;layout();
+  },
+  pinch:(previous,current,ratio)=>{
+    if(stage&&viewMode!=='plan2d'){
+      if(replaying&&replayCamera.mode!=='free'){
+        chooseReplayCamera('free');replayCamera.follow=false;updateReplayHud();
+      }
+      if(previous)stage.panBetween(previous.x,previous.y,current.x,current.y);
+      if(ratio!==1)stage.zoomAt(ratio,current.x,current.y);
     }else{
-      p.mode='cameraOrbit';stage.orbit(dx,dy);
+      if(previous){panX+=current.x-previous.x;panY+=current.y-previous.y;}
+      if(ratio!==1)zoom=clamp(zoom*ratio,.65,4.8);
+      layout();
     }
-    return;
-  }
-  if(p.mode==='activeWatch'||p.mode==='watchTarget'){
-    const travel=Math.hypot(e.clientX-p.startX,e.clientY-p.startY);
-    if(watchDragReady(travel,e.pointerType)&&
-      (p.mode==='activeWatch'||p.nodeId!==null)){
-      if(!p.dragCommitted)activatePointerEdit(p);
-      p.dragCommitted=true;draggingNode=cursor;draggingWatchTarget=true;
-    }
-    return;
-  }
-  if(p.mode==='node'&&p.moved&&p.nodeId!==null){
-    if(!p.dragCommitted)activatePointerEdit(p);
-    p.dragCommitted=true;draggingWatchTarget=false;draggingNode=cursor;return;
-  }
-  if(state.phase==='planning'&&p.wasUnit&&p.moved){
-    if(!p.dragCommitted)adoptPointerOwner(p);
-    p.dragCommitted=true;p.mode='route';
-    if(!trace)trace=[{...uid(selected)!.p}];
-    if(shouldAppendStrokePoint(worldToScreen(trace.at(-1)!,8),
-       {x:e.clientX,y:e.clientY}))trace.push({...cursor});
-  }else if(p.moved&&e.pointerType==='mouse'&&(e.buttons&4)){
-    panX+=dx;panY+=dy;layout();
+  },
+  release:commitPointerRelease,
+  complete:updateHud,
+  wheel:e=>{
+    const z=stage&&viewMode!=='plan2d'?stage.view.zoom:zoom;
+    fitZoom(z*Math.exp(-e.deltaY*.001),e.clientX,e.clientY);
   }
 });
 /** Insert precisely where the player tapped the existing routed line.
@@ -6102,10 +5960,9 @@ function insertAtRouteLine(screen:Pt,pointerKind:string):boolean{
   selectedNode=id;doorFocusId=null;contextSignature='';
   return true;
 }
-function releasePointer(e:PointerEvent,cancelled=false){
-  const p=activePointers.get(e.pointerId);if(!p)return;
-  if(cancelled&&p.dragCommitted)restorePointerSelection(p);
-  if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
+/** Map gestures have resolved; this is the gameplay-only commit boundary. */
+function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
+  cancelled:boolean,pointerCount:number):void{
   const pt=looking?pointerAimWorld(e):
     p.mode==='activeWatch'||p.mode==='watchTarget'?
       pointerAimWorld(e,12):pointerWorld(e);
@@ -6114,7 +5971,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
   // never steal camera focus. Avoid interpreting the same tap as a shot.
   let tappedReplayOperator=false;
   if(!cancelled&&replaying&&!replayBodycam.active&&
-     activePointers.size===1&&!p.moved&&p.mode==='undecided'){
+     pointerCount===1&&!p.moved&&p.mode==='undecided'){
     const finger={x:e.clientX,y:e.clientY};
     const nearest=team(state).filter(actor=>actor.health>0)
       .map(actor=>({id:actor.id,d:distance(
@@ -6126,7 +5983,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
     }
   }
   if(!tappedReplayOperator&&!cancelled&&replaying&&replayTraceMode!=='off'&&
-    activePointers.size===1&&!p.moved&&p.mode==='undecided'){
+    pointerCount===1&&!p.moved&&p.mode==='undecided'){
     const hit=shotScreenHit(recorder.ballistics.between(
       Math.max(0,replayPlayback.time-3),replayPlayback.time),replayPlayback.time,
       {x:e.clientX,y:e.clientY},
@@ -6135,11 +5992,11 @@ function releasePointer(e:PointerEvent,cancelled=false){
     if(hit)selectReplayShot(hit);
   }
   if(!cancelled&&!replaying&&state.phase!=='planning'&&
-     activePointers.size===1&&!p.moved&&p.mode==='undecided'&&
+     pointerCount===1&&!p.moved&&p.mode==='undecided'&&
      p.pick?.kind==='operator'&&p.pick.owner){
     selectUnit(p.pick.owner);
   }
-  if(!cancelled&&state.phase==='planning'&&!replaying&&activePointers.size===1){
+  if(!cancelled&&state.phase==='planning'&&!replaying&&pointerCount===1){
     if((looking||flashMode||pushMode||firePlacement||evacMode)&&
        (p.mode==='targetPreview'||p.mode==='undecided')){
       // A brief iPhone tap often travels a few pixels without entering
@@ -6268,36 +6125,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
 
     }
   }
-  trace=null;draggingNode=null;draggingWatchTarget=false;
-  activePointers.delete(e.pointerId);
-  if(e.pointerType==='touch')previewHover=false;
-  settleCameraPointers();
-  probeCameraGesture('up');
-  updateHud();
 }
-canvas.addEventListener('pointerup',e=>releasePointer(e));
-canvas.addEventListener('pointercancel',e=>releasePointer(e,true));
-canvas.addEventListener('lostpointercapture',e=>releasePointer(e,true));
-// A second, independent touch stream repairs missing mobile pointer releases
-// without waiting for a page reload. Run in capture phase so the next camera
-// move cannot see a ghost second finger.
-for(const name of ['touchstart','touchmove','touchend','touchcancel'] as const)
-  window.addEventListener(name,reconcileCanvasTouches,{capture:true,passive:true});
-function clearTacticalGestureState():void{
-  activePointers.clear();trace=null;
-  panMid=null;pinchDistance=0;draggingWatchTarget=false;draggingNode=null;
-}
-window.addEventListener('blur',clearTacticalGestureState);
-window.addEventListener('pagehide',clearTacticalGestureState);
-document.addEventListener('visibilitychange',()=>{
-  if(document.hidden)clearTacticalGestureState();
-});
-// Prevent iOS Safari's native page-scale gesture from competing with our
-// Two-finger world pan/zoom while the canvas owns the gesture.
-for(const gesture of ['gesturestart','gesturechange','gestureend']){
-  canvas.addEventListener(gesture,e=>e.preventDefault(),{passive:false});
-}
-canvas.addEventListener('contextmenu',e=>e.preventDefault());
 window.addEventListener('resize',layout);
 // The Settings trigger lives in the collapsible Tools drawer. Settings
 // therefore owns an always-visible close action, and camera changes return
@@ -6445,11 +6273,6 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   else ui.siteSettingsToggle.focus();
   updateContext();
 });
-canvas.addEventListener('wheel',e=>{
-  e.preventDefault();
-  const z=stage&&viewMode!=='plan2d'?stage.view.zoom:zoom;
-  fitZoom(z*Math.exp(-e.deltaY*.001),e.clientX,e.clientY);
-},{passive:false});
 // Opt-in developer overlay: add ?perf=1 to measure render and simulation
 // without polling DOM/layout or allocating objects in the normal game loop.
 const perfOverlay=new URLSearchParams(location.search).has('perf')?
