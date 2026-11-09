@@ -84,6 +84,18 @@ const traversalCopy=(op:TraverseOpportunity|null):TraverseOpportunity|null=>
     landing:position(op.landing),destination:position(op.destination)}:null;
 const shotCopy=(shot:ShotEvent):ShotEvent=>({...shot,
   start:position(shot.start),end:position(shot.end)});
+/** Live event rings are capped; replay keeps every unique event. Their IDs
+ * are monotonically appended, so jump directly to the unrecorded suffix
+ * instead of walking 240/500 old entries sixty times a second. */
+function firstUnrecorded(events:readonly {id:number}[],lastId:number):number{
+  let lo=0,hi=events.length;
+  while(lo<hi){
+    const mid=(lo+hi)>>>1;
+    if(events[mid].id<=lastId)lo=mid+1;
+    else hi=mid;
+  }
+  return lo;
+}
 export function snapshot(s:Session,seenGround?:string[],
   unchangedWorld?:Pick<ReplayFrame,'windows'|'coverState'>,
   previouslyDiscovered:ReadonlySet<string>=new Set(),
@@ -231,15 +243,23 @@ export class MissionRecorder{
     // This runs at 60Hz even though the outcome film is only 20Hz.
     // Recording step starts here avoids tying animation to render FPS.
     this.motion.record(s.seconds,s.operators,s.doors);
-    for(const e of s.battleEvents)if(e.id>this.lastEventId){
-      this.events.push({...e,p:e.p?position(e.p):undefined});
-      this.lastEventId=e.id;
-    }
-    for(const e of s.executionEvents)if(e.id>this.lastExecutionEventId){
-      // All execution events belong to friendly, already-known actors.
-      this.executionEvents.push({...e,p:position(e.p)});
-      this.lastExecutionEventId=e.id;
-    }
+    const battle=s.battleEvents;
+    if(battle.length&&battle[battle.length-1].id>this.lastEventId)
+      for(let i=firstUnrecorded(battle,this.lastEventId);i<battle.length;i++){
+        const e=battle[i];
+        this.events.push({...e,p:e.p?position(e.p):undefined});
+        this.lastEventId=e.id;
+      }
+    const execution=s.executionEvents;
+    if(execution.length&&execution[execution.length-1].id>
+       this.lastExecutionEventId)
+      for(let i=firstUnrecorded(execution,this.lastExecutionEventId);
+          i<execution.length;i++){
+        const e=execution[i];
+        // All execution events belong to friendly, already-known actors.
+        this.executionEvents.push({...e,p:position(e.p)});
+        this.lastExecutionEventId=e.id;
+      }
     // R3: execution transitions are authoritative tactical history. Do not
     // silently delete the oldest 900 entries: Plan-vs-Reality, chapter
     // navigation, and eventual archive export require the complete timeline.
