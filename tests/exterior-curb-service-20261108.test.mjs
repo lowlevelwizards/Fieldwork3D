@@ -108,9 +108,9 @@ test('parking signs use the SAME reserved stall as bay paint on every frontage',
 });
 
 test('new curved curb appearance does not change movement/collision at all',()=>{
- const source=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
+ const source=readFileSync(new URL('../src/rendering/breach-site-exterior-builder.ts',import.meta.url),'utf8');
  assert.match(source,/curbRampWedge\(mark,site\.entrySide\?\?'south'\)/);
  assert.match(source,/new THREE\.BufferGeometry\(\)/);
- assert.match(source,/this\.root\.add\(ramp\)/);
+ assert.match(source,/host\.root\.add\(ramp\)/);
  assert.doesNotMatch(source,/world\.addObstacle\(ramp\)/);
 });
