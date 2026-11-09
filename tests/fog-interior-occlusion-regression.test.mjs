@@ -87,9 +87,9 @@ test('an enclosed courtyard stays unknown while an open shipping court is outsid
  assert.ok(rects.some(r=>205>r.x&&205<r.x+r.w&&
    205>r.y&&205<r.y+r.h));
 });
-test('3D overlays unknown interior props instead of depth-revealing them',()=>{
+test('3D covers hidden ground without drawing over nearer known geometry',()=>{
  const code=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
- assert.match(code,/map:this\.fogTexture,transparent:true,depthTest:false,opacity:1/);
+ assert.match(code,/map:this\.fogTexture,transparent:true,depthTest:true,opacity:1/);
  assert.match(code,/this\.smoothFog\.renderOrder=1000;/);
  assert.match(code,/this\.exteriorKnownFog\.renderOrder=1000;/);
  assert.match(code,/wall\.mesh\.renderOrder=surfaceTransparent\?1001:0;/);
