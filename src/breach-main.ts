@@ -2142,14 +2142,22 @@ function focusedDoor(a:TeamActor,node:ReturnType<typeof selectedPlanNode>){
     doorKnown(state.intel,d.id)&&
     points.some(p=>doorReachable(p,d)));
   if(explicit)return explicit;
-  return state.doors.filter(d=>doorKnown(state.intel,d.id)&&
-    d.id!==doorMenuDismissedId&&points.some(p=>
-    doorReachable(p,d)))
-    .sort((x,y)=>{
-      const dx=Math.min(...points.map(p=>distance(p,doorCenter(x))));
-      const dy=Math.min(...points.map(p=>distance(p,doorCenter(y))));
-      return dx-dy;
-    })[0];
+  // A single pass preserves the stable first-door tie break without
+  // allocating and sorting every reachable door on context refresh.
+  let closest:typeof state.doors[number]|undefined;
+  let closestDistance=Infinity;
+  for(const door of state.doors){
+    if(door.id===doorMenuDismissedId||!doorKnown(state.intel,door.id)||
+       !points.some(p=>doorReachable(p,door)))continue;
+    const center=doorCenter(door);
+    let range=Infinity;
+    for(const point of points)range=Math.min(range,distance(point,center));
+    if(range<closestDistance){
+      closest=door;
+      closestDistance=range;
+    }
+  }
+  return closest;
 }
 function selectedPlanNode(){
   return uid(selected)?.plan.find(n=>n.id===selectedNode);
@@ -7983,6 +7991,7 @@ function tick(now:number){
   const dt=Math.min(.08,frameGap/1000);last=now;
   if(quickPlayBusy||((campaignMode==='menu'||campaignMode==='home')&&!replaying)){
    accum=0;previousRenderActors=null;previousRenderDoors=null;
+   physicalActionRings.clear();
    requestAnimationFrame(tick);return;
   }
   let simSteps=0;
@@ -8206,12 +8215,18 @@ function tick(now:number){
     // this never mutates cover, reveals unknown obstacles, or guarantees travel.
     if(pushMode&&state.phase==='planning'&&!replaying&&actor){
       const from=selectedPlanNode()?.p??finalPoint(actor);
-      const candidate=state.coverState.map((object,index)=>({
-        object,index,range:distance(from,{x:object.x,y:object.y})
-      })).filter(item=>canRelocateCover(item.object)&&
-        state.intel.cover.has(item.index)&&
-        item.range<Math.max(item.object.w,item.object.h)/2+43)
-        .sort((a,b)=>a.range-b.range||a.index-b.index)[0];
+      // Find the nearest known movable cover in one pass. Sorting and
+      // allocating a candidate array every RAF is unnecessary here.
+      let candidate:{object:(typeof state.coverState)[number];index:number;range:number}|undefined;
+      for(let index=0;index<state.coverState.length;index++){
+        const object=state.coverState[index];
+        if(!state.intel.cover.has(index)||!canRelocateCover(object))continue;
+        const range=distance(from,{x:object.x,y:object.y});
+        if(range>=Math.max(object.w,object.h)/2+43)continue;
+        if(!candidate||range<candidate.range){
+          candidate={object,index,range};
+        }
+      }
       if(candidate){
         const obj=candidate.object,center={x:obj.x,y:obj.y};
         const base=Math.atan2(obj.y-from.y,obj.x-from.x);

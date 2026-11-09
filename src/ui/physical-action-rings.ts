@@ -12,7 +12,10 @@ type RingActor={
 type RingDoor={id:string;style?:string};
 export class PhysicalActionRings {
   private readonly rings=new Map<string,HTMLDivElement>();
-  constructor(private readonly doc:Pick<Document,'createElement'|'body'>=document){}
+  private readonly doc:Pick<Document,'createElement'|'body'>;
+  constructor(doc:Pick<Document,'createElement'|'body'>=document){
+    this.doc=doc;
+  }
   get size(){return this.rings.size;}
   update(actors:readonly RingActor[],doors:readonly RingDoor[],
     live:boolean,project:(point:Point)=>Point):void{
@@ -44,18 +47,24 @@ export class PhysicalActionRings {
         ring.append(label);this.doc.body.append(ring);
         this.rings.set(actor.id,ring);
       }
-      ring.hidden=!show;
-      ring.style.display=show?'flex':'none';
+      // Preserve the low-write DOM update optimization from main (#1133).
+      if(ring.hidden===show)ring.hidden=!show;
+      const display=show?'flex':'none';
+      if(ring.style.display!==display)ring.style.display=display;
       if(!show)continue;
       const reinforced=doors.find(d=>d.id===order?.doorId)?.style==='reinforced';
       const progress=treating?actor.treatmentProgress:
         Math.min(1,actor.actionTimer/(reinforced?8.5:5.5));
       const pct=Math.round(Math.max(0,Math.min(1,progress))*100);
       const point=project(actor.p);
-      ring.style.left=(point.x-21)+'px';
-      ring.style.top=(point.y-57)+'px';
-      ring.style.background='conic-gradient(#ddc69e '+(pct*3.6)+
-        'deg,rgba(65,87,77,.86) 0deg)';
+      const left=(point.x-21)+'px',top=(point.y-57)+'px';
+      if(ring.style.left!==left)ring.style.left=left;
+      if(ring.style.top!==top)ring.style.top=top;
+      if(ring.dataset.progressPct!==String(pct)){
+        ring.style.background='conic-gradient(#ddc69e '+(pct*3.6)+
+          'deg,rgba(65,87,77,.86) 0deg)';
+        ring.dataset.progressPct=String(pct);
+      }
       const label=ring.firstElementChild;
       const text=(treating?'MED':'PICK')+' '+pct+'%';
       if(label&&label.textContent!==text)label.textContent=text;

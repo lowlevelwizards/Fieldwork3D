@@ -8,7 +8,7 @@ function fakeDocument(){
     body:{append(node){nodes.push(node);node.attached=true;}},
     createElement(tag){
       const children=[];
-      const node={tag,style:{},hidden:false,attached:false,removed:false,
+      const node={tag,style:{},dataset:{},hidden:false,attached:false,removed:false,
         textContent:'',
         append(child){children.push(child);},
         get firstElementChild(){return children[0]??null;},
@@ -39,6 +39,7 @@ test('ten thousand active frames reuse one ring and one label',()=>{
   assert.equal(all.length,2,'one parent and one child, not one pair per RAF');
   assert.equal(rings.size,1);
   assert.equal(nodes[0].firstElementChild.textContent,'PICK 50%');
+  assert.equal(nodes[0].dataset.progressPct,'50');
   assert.equal(nodes[0].style.left,'119px');
   assert.equal(nodes[0].style.top,'53px');
 });
