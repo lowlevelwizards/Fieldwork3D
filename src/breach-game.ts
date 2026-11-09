@@ -3,6 +3,7 @@ import {pathFor,edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan}
  from './breach-plan-authoring.ts';
 import {simulationPhaseMark,advanceTransientSimulationEffects,
  recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
+import {reconcileEnemyIntent,reconcileEnemyPosture} from './breach-ai-reconciliation.ts';
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
  from './breach-combat-reactions.ts';
 import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts';
@@ -78,7 +79,7 @@ import {damageCover} from './breach-reactive-cover.ts';
 import {materialResponse} from './breach-impact-responses.ts';
 import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
-import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
+import {type AIIntent} from './breach-ai-policy.ts';
 import {scanEnemySoundEvidence}
   from './breach-ai-acoustic-perception.ts';
 import {registerSessionWorldGeometry} from './breach-world-context.ts';
@@ -90,7 +91,6 @@ import {newSuspicion,observeSuspicion,
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {TacticalRouteCache} from './breach-tactical-route-cache.ts';
 import {PerceptionPairCache} from './breach-perception-cache.ts';
-import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
@@ -112,7 +112,6 @@ import {retreatDoorClosureEligible,routineDoorClosureEligible}
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic,shouldSeekHoldCover}
  from './breach-ai-tactical-response.ts';
-import {directionalCoverFrom} from './breach-cover-direction.ts';
 import {reportToListener,type TacticalReport} from './breach-communication.ts';
 import {groupResponse,type GroupRole} from './breach-ai-coordination.ts';
 import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
@@ -3306,9 +3305,6 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
   }
   const strongest=scanEnemySoundEvidence(s,a);
-  // Intention selection reads only acquired observations, not hidden positions.
-  const belief=bestBelief(a.awareness);
-  const recentNoise=hasRecentSound(s.seconds,a.lastNoiseAt);
   // A faint noise can turn a head without becoming an indefinitely
   // actionable contact. Do not replace it with a psychic search target.
   if(!visible.length&&!a.contacted&&a.alert==='suspicious'&&a.heard){
@@ -3320,27 +3316,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     if(s.seconds>=a.alertUntil){a.alert='idle';a.heard=null;}
   }
-  if(!visible.length)a.combatChoice=chooseCombatAction({
-    visible:false,remembered:!!belief,ammunition:a.magazine,
-    laneClear:false,suppression:a.suppression,morale:a.morale,temperament:a.personality});
-  a.intent=chooseAiIntent(a.intent,{
-    visible:visible.length>0,hasBelief:!!belief,recentSound:recentNoise,
-    suppression:a.suppression,morale:a.morale,
-    temperament:a.personality},s.seconds);
-  if(!visible.length){
-    if(belief&&belief.lastAt>=s.seconds-24)
-      a.contact=clone(belief.estimate);
-    else if(!recentNoise){
-      a.contact=null;a.heard=null;a.contacted=false;
-      if(a.alert==='investigating')a.alert='idle';
-      // Defensive postures may linger after contact, but cease indefinite
-      // armed-cover alert when the evidence and suppression have truly faded.
-      if(a.alert==='cover'&&a.suspicion.stage==='unaware'&&
-         a.suppression<.08&&!a.retreatPoint){
-        a.alert='idle';a.defense=null;
-      }
-    }
-  }
+  reconcileEnemyIntent(s,a,visible.length);
   if(visible.length){
     a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
     const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
@@ -3440,34 +3416,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.alert!=='retreat'&&a.alert!=='cover'){
     a.alert='investigating';a.contact=a.heard??a.contact;
   }
-  // AI posture is a defensive choice rather than a permanent character
-  // property. Cautious or suppressed defenders duck behind real cover;
-  // advancing or unsuppressed engaging enemies stand back up to fire.
-  const threat=visible[0]?.p??a.heard??a.contact??a.watch;
-  let desiredPosture=a.posture;
-  if(threat&&a.velocity<15&&
-    directionalCoverFrom(threat,a.p,COVER).crouched&&
-    (a.suppression>.26||a.personality==='cautious'||
-     a.alert==='cover'||a.combatChoice==='hold'))
-    desiredPosture='crouch';
-  else if(a.velocity>20||a.suppression<.12||a.alert==='engaging')
-    desiredPosture='stand';
-  const settled=settledEnemyPosture(a.posture,desiredPosture,
-    s.seconds,a.postureChangedAt??-100);
-  if(settled!==a.posture){a.posture=settled;a.postureChangedAt=s.seconds;}
-  // Crouching behind chest-high furniture can make a visible contact
-  // impossible to shoot. Stand up when that alone restores the muzzle lane.
-  if(a.posture==='crouch'&&visible.length){
-    const b=visible[0],height=aimHeight(b.posture==='crouch');
-    const low=assessFireLane(a.p,18,b.p,height,COVER,WALLS,s.doors);
-    const high=assessFireLane(a.p,26,b.p,height,COVER,WALLS,s.doors);
-    if(low.blocker==='cover'&&high.blocker==='clear'){
-      // The only exception to pose dwell: a verified clear higher muzzle.
-      a.posture=settledEnemyPosture(a.posture,'stand',s.seconds,
-        a.postureChangedAt??-100,true);
-      a.postureChangedAt=s.seconds;
-    }
-  }
+  reconcileEnemyPosture(s,a,visible);
   const noiseDisposition=strongest?
     soundResponse(strongest.kind,strongest.intensity):'ignore';
   if(strongest&&noiseDisposition==='orient'&&!visible.length&&
