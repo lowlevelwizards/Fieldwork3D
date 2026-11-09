@@ -183,8 +183,8 @@ import {magazineKit,
 import {liveMagazineCapacity,freshMagazineIssue}
  from './arsenal/live-magazine-capacity.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
-import {CASING_LIMIT,IMPACT_MARK_LIMIT,BLOOD_MARK_LIMIT,
-  type EjectedCasing} from './breach-effects.ts';
+import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
+import {CASING_LIMIT,type EjectedCasing} from './breach-effects.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {chooseFall,hitRegion,type WoundRegion,type FallPose}
   from './breach-wounds.ts';
@@ -4080,21 +4080,6 @@ function shatterStruckDoorGlass(s:Session,
 /** Keep decorative evidence bounded separately from authoritative hits.
  * Nearby blood spatters merge rather than creating dozens of overlapping
  * translucent meshes during sustained automatic fire. */
-function retainImpactMark(s:Session,mark:ImpactMark){
- if(mark.surface==='blood'){
-  const existing=s.impactMarks.find(other=>other.surface==='blood'&&
-    d(other.p,mark.p)<6);
-  if(existing){existing.age=0;return;}
-  const blood=s.impactMarks.filter(other=>other.surface==='blood');
-  if(blood.length>=BLOOD_MARK_LIMIT){
-   const oldest=s.impactMarks.findIndex(other=>other.surface==='blood');
-   if(oldest>=0)s.impactMarks.splice(oldest,1);
-  }
- }
- s.impactMarks.push(mark);
- if(s.impactMarks.length>IMPACT_MARK_LIMIT)
-  s.impactMarks.splice(0,s.impactMarks.length-IMPACT_MARK_LIMIT);
-}
 /** Commit impacts only for the actual shot path, never aim/LOS queries. */
 function shatterStruckWindows(s:Session,paneHits:readonly number[],force:number){
  for(const index of new Set(paneHits)){
