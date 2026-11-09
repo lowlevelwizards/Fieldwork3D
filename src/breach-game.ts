@@ -11,6 +11,7 @@ import {
   W,H,WALLS,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,route,passable,activateSite,
   segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,
   pointToSegment,staticWallBlocksRay,someCoverAlongRay,activeGeometryRevision,
+  activeWorldBounds,
 } from './breach-core.ts';
 import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
@@ -60,6 +61,7 @@ import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {captureMotionFrameOrigins,buildMotionFrameProposals}
  from './breach-motion-frame-input.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
+import {releaseEmbeddedCover} from './breach-cover-release.ts';
 import {executionStatus,type MotorPause,type ExecutionIssue,
   type ExecutionStatus} from './breach-execution-state.ts';
 import {executionTransition,type ExecutionEvent} from './breach-execution-events.ts';
@@ -2049,6 +2051,18 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const wallRelease=releaseStaticWallOverlap(a.p,p,s.doors,dt*50);
   if(wallRelease){
     a.priorP=clone(a.p);a.p=wallRelease;
+    a.velocity=0;a.squeeze=false;a.squeezeTime=0;
+    a.blockedTime=0;a.lastBlocker='clear';
+    a.nav=[];a.retryRouteAt=0;return true;
+  }
+  // The render/prop shuffle can leave a body a fraction inside a table or
+  // jamb-adjacent cabinet. A normal swept passable() rejects every step
+  // until it is fully outside, making the operator impossible to unstick.
+  // Permit ONLY a sampled, monotonic exit from the *existing* overlap.
+  const coverRelease=releaseEmbeddedCover(a.p,p,COVER,WALLS,
+    s.doors,activeWorldBounds(),dt*45);
+  if(coverRelease){
+    a.priorP=clone(a.p);a.p=coverRelease;
     a.velocity=0;a.squeeze=false;a.squeezeTime=0;
     a.blockedTime=0;a.lastBlocker='clear';
     a.nav=[];a.retryRouteAt=0;return true;
