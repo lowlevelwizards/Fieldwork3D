@@ -5022,12 +5022,17 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     advanceDoor(door,h,doorOccupants);
   }
   mark('doors');
-  s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
-  s.shots=s.shots.filter(a=>(a.age+=h)<.40);
-  s.noise=s.noise.filter(n=>s.seconds-n.time<4);
+  // Effects are usually empty between firefights; the old filters
+  // allocated five fresh empty arrays on every authoritative 60Hz tick.
+  // Nonempty collections retain the same age increments and expiry gates.
+  if(s.sparks.length)s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
+  if(s.shots.length)s.shots=s.shots.filter(a=>(a.age+=h)<.40);
+  if(s.noise.length)s.noise=s.noise.filter(n=>s.seconds-n.time<4);
   for(const magazine of s.dropped)magazine.age+=h;
-  s.impactMarks=s.impactMarks.filter(mark=>(mark.age+=h)<24);
-  s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
+  if(s.impactMarks.length)
+    s.impactMarks=s.impactMarks.filter(mark=>(mark.age+=h)<24);
+  if(s.flashBursts.length)
+    s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
   stepFlashbangs(s,h);
   mark('aging-effects');
   advanceVisualAwareness(s,h);
