@@ -14,7 +14,8 @@ test('Stage 11 uses a single mission screen coordinator without changing mission
  assert.doesNotMatch(main,/function syncBriefingCard\(/);
  assert.doesNotMatch(main,/createTacticalSheetNavigation\(/);
  assert.match(screens,/createTacticalSheetNavigation\(/);
- assert.doesNotMatch(screens,/newSession\(|campaign=|stepSession\(/);
+ assert.doesNotMatch(screens,/newSession\(|stepSession\(|resolveOperation\(/);
+ assert.doesNotMatch(screens,/localStorage\.setItem\(['"]fieldwork3d\.campaign/);
  assert.match(navigation,/focusFirst/);
  assert.match(navigation,/event\.key==='Escape'/);
 });
