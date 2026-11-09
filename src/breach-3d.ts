@@ -627,7 +627,8 @@ export class TacticalScene3D{
   private roofMaterial:THREE.MeshStandardMaterial|null=null;
   private intelSurfaces:{obj:THREE.Object3D;kind:'wall'|'cover';
     index:number}[]=[];
-  private observedDetails:{obj:THREE.Object3D;position:Pt}[]=[];
+  private observedDetails:{obj:THREE.Object3D;position:Pt;
+    microKey:string;fineKey:string}[]=[];
   private architecturalOpenings:{obj:THREE.Object3D;opening:WideOpening}[]=[];
   private wallMaterials=new Set<THREE.Material>();
   private effects=new THREE.Group();
@@ -1814,7 +1815,9 @@ export class TacticalScene3D{
         break;
       }
       this.root.add(prop);
-      this.observedDetails.push({obj:prop,position:{x:detail.x,y:detail.y}});
+      this.observedDetails.push({obj:prop,position:{x:detail.x,y:detail.y},
+        microKey:'micro:'+Math.floor(detail.x/10)+','+Math.floor(detail.y/10),
+        fineKey:'fine:'+Math.floor(detail.x/20)+','+Math.floor(detail.y/20)});
     }
     // Story props are discovered individually. Entering a room never
     // reveals its contents outside an operator's observed cone.
@@ -1868,7 +1871,9 @@ export class TacticalScene3D{
       }
       }
       this.root.add(prop);
-      this.observedDetails.push({obj:prop,position:{x:detail.x,y:detail.y}});
+      this.observedDetails.push({obj:prop,position:{x:detail.x,y:detail.y},
+        microKey:'micro:'+Math.floor(detail.x/10)+','+Math.floor(detail.y/10),
+        fineKey:'fine:'+Math.floor(detail.x/20)+','+Math.floor(detail.y/20)});
     }
     // Important: avoid visual-only furniture outside authoritative cover.
   }
@@ -2502,11 +2507,10 @@ export class TacticalScene3D{
       opening.obj.visible=architecturalOpeningKnown(s,opening.opening,omniscient);
     for(const detail of this.observedDetails){
       const p=detail.position;
-      const micro='micro:'+Math.floor(p.x/10)+','+Math.floor(p.y/10);
-      const fine='fine:'+Math.floor(p.x/20)+','+Math.floor(p.y/20);
+      // Object positions are site-static: precompute tile keys at build time.
       detail.obj.visible=personalDecorVisible(
-        omniscient||s.seenGround.has(micro)||
-          s.seenGround.has(fine)||liveVisibility(s,p),
+        omniscient||s.seenGround.has(detail.microKey)||
+          s.seenGround.has(detail.fineKey)||liveVisibility(s,p),
         bodycamAudition,personalGroundEvidence,p);
       this.staticBatches.setVisible(detail.obj,detail.obj.visible);
     }
@@ -2648,7 +2652,7 @@ export class TacticalScene3D{
         door.kind!=='shutter'&&door.kind!=='sliding'&&
         object.root.visible&&s.phase==='planning'&&
         (!focused||!!reachable)&&
-        (liveVisibility(s,doorCenter(door))||
+        (directlyObserved||
          knownAt(s,doorCenter(door).x,doorCenter(door).y)||
          doorKnown(s.intel,door.id));
       for(const part of object.halo.children){
