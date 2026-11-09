@@ -3698,7 +3698,9 @@ function tick(now:number){
     stage.setMiniatureFocusContext(replaying,dt);
   if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
     stage.update(state,selected,dt,doorFocusId,
-      replaying&&replayKnowledge.omniscient,replaying?replayPresentation:null,
+      replaying&&replayKnowledge.omniscient&&
+        !replayCamera.directorCamDisclosure(),
+      replaying?replayPresentation:null,
       !replaying&&state.phase==='running'&&previousRenderActors?
         {previous:previousRenderActors,previousDoors:previousRenderDoors??undefined,
           alpha:Math.min(1,accum*60)}:null,
@@ -3707,10 +3709,15 @@ function tick(now:number){
         state.phase==='running'?
           state.seconds-(1-Math.min(1,accum*60))/60:
           state.seconds),state.operators.map(a=>a.id),false):null,
-      replaying?replayKnowledge.disclosure():null,
+      // Director CAM uses personal sight only for its rendered view.
+      // The replay-wide TEAM/FULL preference is never silently mutated.
+      replaying?(replayCamera.directorCamDisclosure()??
+        replayKnowledge.disclosure()):null,
       replaying?replayKnowledge.doorHistory:null,
-      replaying&&replayKnowledge.observerId?
-        replayKnowledge.personalGround?.at(replayPlayback.time,replayKnowledge.observerId)??null:
+      replaying&&(replayCamera.directorCamActor??
+        replayKnowledge.observerId)?
+        replayKnowledge.personalGround?.at(replayPlayback.time,
+          replayCamera.directorCamActor??replayKnowledge.observerId!)??null:
         null,
       replaying?replayKnowledge.windowHistory:null);
   const overlayBegin=perfOverlay?performance.now():0;
