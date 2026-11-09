@@ -39,9 +39,10 @@ test('3D retains qualified façades while the ground fog respects scene depth',(
  assert.match(scene,/const surfaceTransparent=translucent\|\|knownFacade/);
  assert.match(scene,/material\.transparent=surfaceTransparent/);
  assert.match(scene,/wall\.mesh\.renderOrder=surfaceTransparent\?1001:0/);
- assert.match(scene,/promoteFacadeDetails\(frame\);[\s\S]*?promoteFacadeDetails\(leaf\);/);
- assert.match(scene,/publicWindow=!opening\.interior&&accessibleExteriorWall\(site,edge\)/);
- assert.match(scene,/if\(publicWindow\)\{[\s\S]*?promoteFacadeDetails\(group\)/);
+ const openings=readFileSync(new URL('../src/rendering/breach-site-openings-builder.ts',import.meta.url),'utf8');
+ assert.match(openings,/host\.promoteFacadeDetails\(frame\);[\s\S]*?host\.promoteFacadeDetails\(leaf\);/);
+ assert.match(openings,/publicWindow=!opening\.interior&&accessibleExteriorWall\(site,edge\)/);
+ assert.match(openings,/if\(publicWindow\)\{[\s\S]*?host\.promoteFacadeDetails\(group\)/);
  assert.match(scene,/node\.renderOrder=1002/);
  assert.match(scene,/this\.siteMaterials\.track\(original\.clone\(\)\)/);
  assert.match(scene,/map:this\.fogTexture,transparent:true,depthTest:true,opacity:1/);
