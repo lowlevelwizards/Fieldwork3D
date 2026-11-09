@@ -1997,6 +1997,15 @@ jobs:
       - name: P7 — camera projection and combat frame allocation regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/scene-frame-p7-') }}
         run: node --experimental-strip-types --test tests/breach-scene-frame-p7.test.mjs
+      - name: Fog interior regression — critical compositing, site domains and door seals
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/fog-interior-occlusion-') }}
+        run: |
+          node --experimental-strip-types --test tests/fog-interior-occlusion-regression.test.mjs tests/breach-fog-visibility.test.mjs tests/breach-p7-fog-layer-performance.test.mjs tests/visibility-11-fog-domain.test.mjs tests/visibility-08-closed-door-seals.test.mjs
+      - name: Fog repair release gate — previous live Pages matches main
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/fog-interior-occlusion-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
