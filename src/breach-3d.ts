@@ -1987,17 +1987,17 @@ export class TacticalScene3D{
       const mesh=this.box(this.root,(p1.x+p2.x)/2,WALL_VISUAL_HEIGHT/2,
         (p1.y+p2.y)/2,len+3,WALL_VISUAL_HEIGHT,9,this.solid(i===4?0x81877d:0xb4a991));
       mesh.rotation.y=-Math.atan2(dz,dx);
-      this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2},segment});
+      this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2},segment,index:i,exterior:i<5});
       // Dark skirting separates the wall footprint from similar floor values.
       const skirting=this.box(this.root,mesh.position.x,2,mesh.position.z,
         len+4,4,12,this.solid(0x36453f),false);
       skirting.rotation.y=mesh.rotation.y;
-       this.walls.push({mesh:skirting,mid:{x:mesh.position.x,y:mesh.position.z},segment});
+       this.walls.push({mesh:skirting,mid:{x:mesh.position.x,y:mesh.position.z},segment,index:i,exterior:i<5});
       // A dark, legible wall cap communicates height in either camera mode.
       const cap=this.box(this.root,mesh.position.x,WALL_VISUAL_HEIGHT+.3,
         mesh.position.z,
         len+4,2,11,this.solid(0x51483a),false);cap.rotation.y=mesh.rotation.y;
-      this.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z},segment});
+      this.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z},segment,index:i,exterior:i<5});
     }
     for(const x of [209,502]){
       const pane=this.box(this.root,x+25,16,99,51,21,2,glass,false);
