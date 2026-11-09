@@ -1,7 +1,7 @@
-/** Visual architecture dimensions in the same world units as door models.
- * Keep aperture styling legible at the standing operator eye line (32u),
- * with doors at 51u and structural walls at 56u. This does NOT change
- * collision, bullets, visibility or traversal eligibility by itself.
+/** Shared architecture dimensions in the same world units as door models.
+ * Keep aperture styling legible at the standing eye line (32u), with
+ * doors at 51u and walls at 56u. Generation, rendering, cover height and
+ * climb clearance must use compatible physical aperture dimensions.
  */
 import type {WindowStyle} from './breach-site.ts';
 export const WINDOW_SILL_VISUAL_DEFAULT=14;
