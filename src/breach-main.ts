@@ -1,26 +1,23 @@
-import {createBreachCanvasGestureController,type TacticalPointer}
+import {
+  createBreachCanvasGestureController,type TacticalPointer}
  from './breach-canvas-gesture-controller.ts';
 import {installTouchCommandHelp as bindTouchCommandHelp}
  from './ui/touch-command-help.ts';
 import {
-  W,H,activeWorldBounds,doorCenter,doorLeafSegment,
-  type Pt,
-} from './breach-core.ts';
+  W,H,activeWorldBounds,
+  doorCenter,doorLeafSegment,type Pt,} from './breach-core.ts';
 import {
-  type Session,type TeamActor,
-  team,enemies,isSeen,missionText,
-  operationBriefing,
-  planMove,planMoveStroke,planNearbyInteraction,
-  planCivilianInteraction,planAim,planWatch,
-  retargetActiveWatch,removeActiveWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
-  plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
-  planSync,movePlanNode,
-  finalPoint,doorAtNode,backOne,
-  deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
+  type Session,
+  type TeamActor,team,enemies,isSeen,
+  missionText,operationBriefing,planMove,planMoveStroke,
+  planNearbyInteraction,planAim,planWatch,retargetActiveWatch,
+  setFirePolicy,planWait,plannedControl,planDoorFlash,
+  planSync,movePlanNode,finalPoint,backOne,
+  insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,liveVisibility,
   planReload,reloadNow,planFlash,moveFlashTarget,
-  equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,planEntryTool,
-  planCasualtyTransport,planRecoverMedical,planCivilianRelease,
+  equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,planCasualtyTransport,
+  planRecoverMedical
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {createBreach2DWorldRenderer} from './breach-2d-world-renderer.ts';
@@ -57,7 +54,7 @@ import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
 import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
-import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
+import {entryToolVerdict} from './breach-entry-tools.ts';
 import {mostUrgentWound} from './breach-medical-wounds.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 import {lightControlState} from './equipment-weapon-light-ui.ts';
