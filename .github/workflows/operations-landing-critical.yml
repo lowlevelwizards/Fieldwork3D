@@ -1,0 +1,28 @@
+name: Operations Landing — Critical Navigation
+on:
+  pull_request:
+    paths:
+      - 'src/campaign-ui.ts'
+      - 'src/campaign-style.css'
+      - 'src/breach-main.ts'
+      - 'tests/operations-landing-navigation.test.mjs'
+      - '.github/workflows/operations-landing-critical.yml'
+permissions:
+  contents: read
+concurrency:
+  group: operations-landing-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  navigation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Critical entry, replay archive and restart contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/operations-landing-navigation.test.mjs \
+            tests/mission-restart-snapshot.test.mjs \
+            tests/replay-r3-archive.test.mjs
