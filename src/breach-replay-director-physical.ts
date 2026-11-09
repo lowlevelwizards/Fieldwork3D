@@ -218,85 +218,30 @@ export function physicalDirectorCandidates(req:PhysicalDirectorRequest,
   const room=directorOperatorRoom(req.operator,scene.rooms);
   // Prefer a roomy, elevated three-quarter composition. A camera
   // planted against a helmet is never an acceptable wide shot.
-  const radius=[50,66,82,98,116];
   const anchors:PhysicalPoint[]=[];
   const add=(p:PhysicalPoint)=>{if(directorCameraLegal(p,room,scene)&&
     distance(p,req.operator)>=40&&distance(p,req.operator)<145&&
     distance(p,req.focus)>=32&&
     req.subjectPoints.every(subject=>distance(p,subject)>=35))
     anchors.push(p);};
-  // Search around the actual friendly actor, not a focus point across
-  // a wall in a different room. The full 360° set always contains a
-  // location behind the preferred shoulder, if one is walkable.
-  for(let a=0;a<24;a++){
-    const yaw=req.preferredYaw+a*Math.PI/12;
-    for(const r of radius)add({x:req.operator.x+Math.sin(yaw)*r,
-      y:req.operator.y+Math.cos(yaw)*r});
-  }
-  // Explicit shoulder offsets supplement, never replace, the legal
-  // 360-degree and room-grid searches. Both sides must be considered.
-  if(req.composition?.treatment==='engage'&&req.followDirection){
-    const d=req.followDirection,n=Math.hypot(d.x,d.y)||1;
-    const fx=d.x/n,fy=d.y/n;
-    // A 15-unit shoulder offset produces the centered-backpack failure.
-    // Audition both genuine lateral shoulders and near-profile cameras.
-    // All positions still pass the same room/wall/leaf clearance gates.
-    for(const back of [18,42,66,88])for(const side of [-1,1])
-      for(const lateral of [36,54,74])add({
-        x:req.operator.x-fx*back-fy*lateral*side,
+  // R10.2: construct ONLY two rear-lateral shoulder families. Never
+  // search a 360-degree orbit or a room grid and hope to filter later.
+  const direction=req.followDirection??{
+    x:req.focus.x-req.operator.x,y:req.focus.y-req.operator.y};
+  const magnitude=Math.hypot(direction.x,direction.y)||1;
+  const fx=direction.x/magnitude,fy=direction.y/magnitude;
+  for(const side of [-1,1])for(const back of [22,32,44,58,72])
+    for(const lateral of [38,48,60,74,88]){
+      if(lateral<back*.48)continue;
+      add({x:req.operator.x-fx*back-fy*lateral*side,
         y:req.operator.y-fy*back+fx*lateral*side});
-  }
-  if(req.composition?.treatment==='follow'&&req.followDirection&&
-     (req.motionSpeed??0)>6){
-    const d=req.followDirection,n=Math.hypot(d.x,d.y)||1;
-    const fx=d.x/n,fy=d.y/n;
-    // Traveling beside the team: lateral dolly with some look-ahead.
-    // These remain candidates in the EXISTING legal solver, not a new
-    // camera state machine or permission to cut.
-    for(const along of [-45,-25,0])for(const side of [-1,1])
-      for(const lateral of [52,78,104])add({
-        x:req.operator.x+fx*along-fy*lateral*side,
-        y:req.operator.y+fy*along+fx*lateral*side});
-  }
-  if(room){
-    for(let a=1;a<=8;a++)for(let b=1;b<=8;b++)
-      add({x:room.x+room.w*a/9,y:room.y+room.h*b/9});
-  }
-  // Cramped rooms occasionally have no candidate with a 35-unit
-  // standoff from EVERY teammate. Relax only the shoulder margin, never
-  // actual wall/door/fixture geometry; prefer a legal establishing frame
-  // over placing the lens inside the selected operator's backpack.
-  if(!anchors.length){
-    const relaxed:PhysicalPoint[]=[];
-    const addRelaxed=(p:PhysicalPoint)=>{
-      if(directorCameraLegal(p,room,scene)&&
-         distance(p,req.operator)>=29&&
-         req.subjectPoints.every(subject=>distance(p,subject)>=20)&&
-         !directorLineBlocked(p,req.operator,scene))
-        relaxed.push(p);
-    };
-    if(room){
-      for(let x=1;x<=12;x++)for(let y=1;y<=12;y++)
-        addRelaxed({x:room.x+room.w*x/13,
-          y:room.y+room.h*y/13});
-    }else for(let i=0;i<24;i++){
-      const yaw=req.preferredYaw+i*Math.PI/12;
-      for(const radius of [31,40,52])
-        addRelaxed({x:req.operator.x+Math.sin(yaw)*radius,
-          y:req.operator.y+Math.cos(yaw)*radius});
     }
-    relaxed.sort((a,b)=>{
-      const direction=req.followDirection;
-      const ahead=(p:PhysicalPoint)=>direction?
-        (p.x-req.operator.x)*direction.x+
-        (p.y-req.operator.y)*direction.y:0;
-      const score=(p:PhysicalPoint)=>
-        distance(p,req.operator)*.45-
-        Math.max(0,ahead(p))*1.8;
-      return score(b)-score(a);
-    });
-    anchors.push(...relaxed.slice(0,36));
-  }
+  // A tight space can support a shorter shoulder without permitting
+  // front/profile/orbit alternatives.
+  if(!anchors.length)for(const side of [-1,1])
+    for(const back of [18,24,30])for(const lateral of [32,38,44])
+      add({x:req.operator.x-fx*back-fy*lateral*side,
+        y:req.operator.y-fy*back+fx*lateral*side});
   if(!anchors.length){
     // R10 approved rig cannot be staged. Do not synthesize an arbitrary
     // camera inside a wall or directly on top of an operator.
@@ -472,19 +417,9 @@ export function physicalDirectorCandidates(req:PhysicalDirectorRequest,
       })
     ];
     const sorted=candidates.slice().sort((a,b)=>b.score-a.score);
-    // Preserve BOTH shoulder candidates in the optical occupancy audit.
-    // A best-24 filter sorted by a generic following score can eliminate
-    // the only wall-free shoulder before its screen image is inspected.
-    const shortlisted=new Set(sorted.slice(0,20));
-    if(req.target&&req.followDirection){
-      const signed=(p:PhysicalPoint)=>{
-        const d=req.followDirection!;
-        return d.x*(p.y-req.operator.y)-d.y*(p.x-req.operator.x);
-      };
-      for(const side of [-1,1])for(const candidate of sorted.filter(c=>
-        signed(c.view.cameraAnchor)*side>12).slice(0,7))
-        shortlisted.add(candidate);
-    }
+    // All generated candidates are shoulders. Audit ALL of them before
+    // ranking; unrestricted preselection previously lost the good side.
+    const shortlisted=new Set(sorted);
     auditedCandidates=Array.from(shortlisted);
     for(const candidate of shortlisted){
       const v=candidate.view;
