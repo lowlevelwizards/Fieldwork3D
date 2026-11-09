@@ -2,6 +2,7 @@ import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
   from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
+import {SiteMaterialLifetime} from './rendering/site-material-lifetime.ts';
 import {APPROVED_GRAPHIC_LIGHTING}
  from './operator-studio-light-lab.ts';
 import {STUDIO_INSPECTION_LIGHT,STUDIO_KEY_DIRECTION,studioShadowPalette}
@@ -637,6 +638,8 @@ export class TacticalScene3D{
   private idleLifeSeconds=0;private idleLifeSession:Session|null=null;
   private sun:THREE.DirectionalLight;
   private mats:THREE.Material[]=[];
+  // Unlike shared palettes, site-specific materials are released on every rebuild.
+  private readonly siteMaterials=new SiteMaterialLifetime<THREE.Material>();
   // Shared render resources persist between sites; repeated site rebuilds
   // must not leak another material and geometry per identical fixture.
   private solidCache=new Map<string,THREE.MeshStandardMaterial>();
@@ -905,6 +908,7 @@ export class TacticalScene3D{
    */
   applySite(site:Site|null){
     this.staticBatches.clear();
+    this.siteMaterials.reset();
     this.shadowUpdates.invalidate();
     for(const texture of this.sitePatinaTextures)texture.dispose();
     for(const material of this.sitePatinaMaterials)material.dispose();
@@ -1146,10 +1150,9 @@ export class TacticalScene3D{
     // True low curb and sloping cut (visual only; movement stays 2D).
     // The sidewalk geometry has a matching hole for the cut, so the ramp
     // isn't buried beneath a full-height slab or rendered coplanar with it.
-    const curbMaterial=new THREE.MeshStandardMaterial({
+    const curbMaterial=this.siteMaterials.track(new THREE.MeshStandardMaterial({
       color:age(0xa6a399,'concrete'),roughness:.96,
-      metalness:0,flatShading:true,side:THREE.DoubleSide});
-    this.mats.push(curbMaterial);
+      metalness:0,flatShading:true,side:THREE.DoubleSide}));
     for(const mark of planPropertySurfaces(site)){
       if(mark.kind==='curb-ramp'){
         const wedge=curbRampWedge(mark,site.entrySide??'south');
@@ -1389,9 +1392,9 @@ export class TacticalScene3D{
     const doorMat=this.solid(age(theme.door,'door-wood'),.88,'door-wood'),
       doorTrim=this.solid(age(theme.trim,'painted-wood'),.9,'painted-wood');
     const metal=this.solid(0x586665,.78,'industrial-steel');
-    const doorGlass=new THREE.MeshStandardMaterial({color:0xa8c2bf,roughness:.24,
-      transparent:true,opacity:.29,depthWrite:false,side:THREE.DoubleSide});
-    this.mats.push(doorGlass);
+    const doorGlass=this.siteMaterials.track(new THREE.MeshStandardMaterial({
+      color:0xa8c2bf,roughness:.24,transparent:true,opacity:.29,
+      depthWrite:false,side:THREE.DoubleSide}));
     for(const [doorIndex,sourceDoor] of site.doors.entries()){
       const door=initDoor(sourceDoor,doorIndex);
       const length=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
