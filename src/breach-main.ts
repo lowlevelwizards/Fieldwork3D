@@ -61,11 +61,8 @@ import {createBriefingCardModel,type BriefingReport,type BriefingTab}
  from './briefing/briefing-view-model.ts';
 import {sessionIntelligenceReview} from './briefing/briefing-after-action.ts';
 import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
-import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
- from './quick-play-generation.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
-import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {mostUrgentWound} from './breach-medical-wounds.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 import {lightControlState} from './equipment-weapon-light-ui.ts';
@@ -123,7 +120,6 @@ import {formatMissionPacing} from './breach-mission-pacing.ts';
 import {formatCombatReview} from './breach-combat-review.ts';
 import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
  serializeQuickPlayCosmetics} from './breach-roster.ts';
-import {familyPreset} from './equipment-weapon-families.ts';
 import {readCampaign,resolveOperation,tacticalSlotOperator,type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
@@ -135,8 +131,7 @@ import './breach-style.css';
 import './ui/ux-r1-sheets.css';
 import './ui/ux-r3-hud.css';
 import './ui/fieldwork-action-toast.css';
-import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
-import {confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
+import {confirmFieldworkAction} from './ui/fieldwork-controls.ts';
 import {createTacticalSheetNavigation} from './ui/tactical-sheet-navigation.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
