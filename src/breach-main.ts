@@ -1,14 +1,13 @@
 import {matchActiveTouchPointers} from './breach-touch-recovery.ts';
-import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {
-  W,H,activeWorldBounds,WALLS,COVER,GRID,doorCenter,doorLeafSegment,activateSite,
-  type Pt,type Segment,
+  W,H,activeWorldBounds,WALLS,doorCenter,doorLeafSegment,activateSite,
+  type Pt,
 } from './breach-core.ts';
 import {
   type Session,type TeamActor,
-  newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
+  newSession,team,enemies,isSeen,missionText,debrief,
   operationBriefing,availableDeployments,selectDeployment,
-  planMove,planMoveStroke,plannedWindowRoute,planNearbyInteraction,
+  planMove,planMoveStroke,planNearbyInteraction,
   planCivilianInteraction,planAim,planWatch,
   retargetActiveWatch,removeActiveWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
@@ -16,11 +15,17 @@ import {
   finalPoint,doorAtNode,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,liveVisibility,
-  planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
+  planReload,reloadNow,planFlash,moveFlashTarget,
   equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,planEntryTool,
   planCasualtyTransport,planRecoverMedical,planCivilianRelease,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
+import {createBreach2DWorldRenderer} from './breach-2d-world-renderer.ts';
+import {createBreach2DActorRenderer} from './breach-2d-actor-renderer.ts';
+import {createBreach2DVisibilityRenderer} from './breach-2d-visibility-renderer.ts';
+import {createBreach2DReplayOverlays} from './breach-2d-replay-overlays.ts';
+import {createBreach2DRouteOverlays} from './breach-2d-route-overlays.ts';
+import {createBreach2DProjectedOverlays} from './breach-2d-projected-overlays.ts';
 import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
  type MiniatureFocusMode} from './rendering/miniature-focus-config.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
@@ -33,7 +38,6 @@ import {tacticalHitProfile,shouldAppendStrokePoint,
   simplifyStrokePoints} from './ui/touch-hit-targets.ts';
 import {resolveTacticalPick,screenSegmentDistance,watchDragReady,
   type TacticalPick} from './ui/tactical-target-resolver.ts';
-import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {aimTargetFromTap,insideTacticalBounds} from './ui/aim-target.ts';
 import {interruptsWatch,angleDifference} from './breach-plan.ts';
@@ -56,9 +60,6 @@ import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
  from './quick-play-generation.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
-import {weaponClearance} from './breach-weapon-clearance.ts';
-import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
- from './equipment-weapon-light-beam.ts';
 import {WeaponWorkbenchPreview,type WeaponWorkbenchViewState} from './equipment-weapon-workbench.ts';
 import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
@@ -67,11 +68,10 @@ import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 import {lightControlState} from './equipment-weapon-light-ui.ts';
 import type {SiteScale} from './breach-site.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
-import {spatialSurfaceState,shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
+import {shotVisibility} from './breach-presentation.ts';
 import {heardIntensity} from './breach-acoustics.ts';
 import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
 import {defaultSoundPack,readSoundPack,SOUND_STORAGE_KEY} from './sound-catalog.ts';
@@ -109,7 +109,6 @@ import {inspectRecordedShot,shotScreenHit,adjacentRecordedShot}
 import {serializeReplayReport} from './breach-replay-export-json.ts';
 import {ReplaySoundTimeline,replayDoorSoundId} from './breach-replay-audio.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
-import {sampleReplayGhosts} from './breach-replay-ghosts.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 import {buildReplayExecutionInsights} from './breach-replay-debrief.ts';
 import {indexReplayIncidents,featuredReplayIncidents,type ReplayIncident}
@@ -118,8 +117,6 @@ import {featuredReplaySquadEntries,measureReplaySquadDoorEntry,
   type ReplaySquadEntryReview} from './breach-replay-squad-entry.ts';
 import {incidentPlaybackWindow} from './breach-replay-incident-playback.ts';
 import {makeReplayLoop} from './breach-replay-loop.ts';
-import {replayActorDisclosed,replayCivilianDisclosed}
-  from './breach-replay-visibility.ts';
 import {operatorContactEventKnown,operatorContactAvailable}
   from './breach-replay-contact-lens.ts';
 import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
@@ -155,7 +152,7 @@ import {validateStudioAppearanceEdits,applyStudioRosterEdits,
  applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- sameWeaponConfiguration,weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
+ weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
 import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,familyPreset,proposeFamilyPartChange,type FamilyPartSlot} from './equipment-weapon-families.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {newCampaign,readCampaign,acceptContract,resolveOperation,
@@ -196,11 +193,6 @@ import {TacticalFeedback} from './ui/tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './ui/contextual-teaching.ts';
 import {recoveryAdviceFor} from './ui/recovery-guidance.ts';
-import {paintFogMask,maskBounds,FOG_WIDTH,FOG_HEIGHT}
-  from './breach-fog-mask.ts';
-import {paintReplayPersonalGround} from './breach-replay-ground-overlay.ts';
-import {civilianPose} from './breach-civilian-pose.ts';
-import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 
 const el=<T extends HTMLElement>(id:string)=>{
   const node=document.getElementById(id);
@@ -910,7 +902,7 @@ function startReplayBodycam():boolean{
   closeReplayShotInspector();
   cameraMode('iso');
   applyReplayBodycamMount();
-  fogStamp=-1;return true;
+  fog2D.invalidate();return true;
 }
 let replayAnalysis=false;
 const replayCamera=new ReplayCameraController();
@@ -1672,16 +1664,7 @@ function cancelTargeting(){
   looking=false;flashMode=false;pushMode=false;firePlacement=null;flashDoorId=null;
   evacMode=null;contextSignature='';updateHud();
 }
-const fogCanvas=document.createElement('canvas');
-fogCanvas.width=FOG_WIDTH;fogCanvas.height=FOG_HEIGHT;
-const fogContext=fogCanvas.getContext('2d');
-if(!fogContext)throw Error('Fog canvas unavailable');
-const replayGroundCanvas=document.createElement('canvas');
-const replayGroundContext=replayGroundCanvas.getContext('2d');
-if(!replayGroundContext)throw Error('Replay ground canvas unavailable');
-let fogStamp=-1;
-let fogSession:Session|null=null;
-let fogIntelMode='';let fogSeenRevision=-1;
+
 let audio:AudioContext|null=null;
 let videoAudioDestination:MediaStreamAudioDestinationNode|null=null;
 const LIVE_MIX_PREF='fieldwork3d.sound.live-mix';
@@ -2465,7 +2448,7 @@ const handleContextAction=(event:MouseEvent)=>{
       const value=current.posture==='stand'?'crouch':'stand';
       if(node)setNodeControl(state,selected,node.id,'postureState',value);
       else posture(state,selected);
-      fogStamp=-1;break;
+      fog2D.invalidate();break;
     }
     case 'ctxPace':{
       const value=current.pace==='walk'?'run':'walk';
@@ -3064,239 +3047,9 @@ function line(a:Pt,b:Pt,color:string,width:number){
 function circle(x:number,y:number,r:number,color:string){
   draw.beginPath();draw.arc(x,y,r,0,2*Math.PI);draw.fillStyle=color;draw.fill();
 }
-function noise(x:number,y:number){const v=Math.sin(x*123.31+y*98.717)*43897.44;return v-Math.floor(v);}
-function terrain(){
-  rect(0,0,W,H,'#2c3733');
-  // A deterministic, low-contrast base, not another terrain simulation.
-  for(let y=6;y<H;y+=17)for(let x=6;x<W;x+=17){
-    const n=noise(x,y);
-    if(n>.56)rect(x+3*n,y+2*n,2+n*3,2,n>.85?'#435348':'#35453d');
-  }
-  if(state.site){
-    const site=state.site;
-    // Exterior access follows this actual generated entrance, not a
-    // decorative road still pointing at the obsolete fixed station.
-    const x=site.entrance.x,y=site.entrance.y;
-    draw.fillStyle='#514e43';draw.beginPath();
-    draw.moveTo(x-52,H);draw.lineTo(x+52,H);
-    draw.lineTo(x+34,y-21);draw.lineTo(x-34,y-21);
-    draw.closePath();draw.fill();
-    for(const room of site.rooms){
-      if(spatialSurfaceState(state,'room',room.id,replaying&&replayKnowledge.omniscient)==='unknown')continue;
-      const palette=['#666558','#526b66','#77705c','#58605a'];
-      rect(room.x+2,room.y+2,room.w-4,room.h-4,
-        room.kind==='hall'?'#4a5c55':palette[room.tone]);
-      draw.strokeStyle='#b9b09b18';draw.lineWidth=.8;
-      for(let a=room.x+15;a<room.x+room.w-10;a+=25)
-        for(let b=room.y+15;b<room.y+room.h-10;b+=25)
-          draw.strokeRect(a,b,25,25);
-    }
-    draw.strokeStyle='rgba(161,192,175,.06)';
-    for(let a=0;a<=W;a+=GRID*2)
-      line({x:a,y:0},{x:a,y:H},'rgba(161,192,175,.045)',.6);
-    for(let b=0;b<=H;b+=GRID*2)
-      line({x:0,y:b},{x:W,y:b},'rgba(161,192,175,.045)',.6);
-    return;
-  }
-  // Dirt service road leading to the lower door.
-  draw.fillStyle='#4a4840';draw.beginPath();
-  draw.moveTo(230,H);draw.lineTo(400,H);
-  draw.lineTo(352,534);draw.lineTo(271,534);draw.closePath();draw.fill();
-  draw.strokeStyle='#585648';draw.lineWidth=9;draw.beginPath();
-  draw.moveTo(268,H);draw.lineTo(294,536);
-  draw.moveTo(363,H);draw.lineTo(324,536);draw.stroke();
-  for(let y=540;y<H;y+=14)for(let x=230;x<400;x+=13){
-    const n=noise(x*.7,y*.3);
-    if(n>.6)circle(x+4*n,y+3*n,1.4,'#676251');
-  }
-  // Outside boundary and an overhead planning-grid.
-  draw.strokeStyle='rgba(159,182,165,.08)';draw.lineWidth=1;
-  for(let x=0;x<=W;x+=GRID*2)line({x,y:0},{x,y:H},'rgba(161,192,175,.055)',.6);
-  for(let y=0;y<=H;y+=GRID*2)line({x:0,y},{x:W,y},'rgba(161,192,175,.055)',.6);
-  rect(113,101,268,430,'#555247');
-  rect(383,101,206,430,'#4d5753');
-  // Floor wear, tiles and loose clutter — only enough for level recognition.
-  for(let x=121;x<591;x+=24)for(let y=110;y<529;y+=24){
-    draw.strokeStyle='#c5bca018';draw.lineWidth=1;
-    draw.strokeRect(x,y,24,24);
-    if(noise(x*.21,y*.17)>.8)rect(x+4,y+6,5,3,'#a49b7955');
-  }
-  // Entry threshold, inner doorway and exit-facing mat.
-  rect(269,524,69,23,'#3e4b49');
-  rect(374,298,16,54,'#374643');
-  rect(278,549,51,10,'#707164');
-  // Yard: sparse barrels, netting and access stairs.
-  rect(175,570,65,23,'#515f55');
-  rect(184,577,48,5,'#84917c');
-  for(const [x,y] of [[170,653],[470,654],[543,701],[107,652]]){
-    circle(x,y,10,'#4f5e57');circle(x,y,6,'#2c3b39');
-  }
-  // Quiet exterior rust / earth patches.
-  for(const [x,y,r] of [[85,441,28],[558,548,33],[74,221,35],[525,694,24]]){
-    draw.fillStyle='rgba(112,106,78,.15)';
-    draw.beginPath();draw.ellipse(x,y,r,r*.52,.4,0,Math.PI*2);draw.fill();
-  }
-}
-function furniture(){
-  for(const [i,c] of COVER.entries()){
-    if(spatialSurfaceState(state,'cover',i,replaying&&replayKnowledge.omniscient)==='unknown')continue;
-    if(c.toppled){
-      // Low, collapsed silhouette rather than a standing furniture block.
-      draw.save();draw.globalAlpha=.84;
-      rect(c.x-c.w/2,c.y-c.h/2,c.w,c.h,'#756f57');
-      draw.strokeStyle='#d5ae7d';draw.lineWidth=2.4;
-      draw.beginPath();
-      draw.moveTo(c.x-c.w/2+3,c.y+c.h/2-3);
-      draw.lineTo(c.x+c.w/2-3,c.y-c.h/2+3);
-      draw.stroke();draw.restore();
-      continue;
-    }
-    draw.fillStyle='#0f1b1c66';
-    draw.fillRect(c.x-c.w/2+6,c.y-c.h/2+7,c.w,c.h);
-    rect(c.x-c.w/2,c.y-c.h/2,c.w,c.h,c.low?'#81725b':'#485552');
-    rect(c.x-c.w/2+4,c.y-c.h/2+4,c.w-8,c.h-8,c.low?'#60594b':'#394440');
-    draw.strokeStyle='#a995777e';draw.lineWidth=2;
-    draw.strokeRect(c.x-c.w/2+4,c.y-c.h/2+4,c.w-8,c.h-8);
-    line({x:c.x-c.w/2+8,y:c.y},{x:c.x+c.w/2-8,y:c.y},'#9d907348',2);
-  }
-  if(state.site)return;
-  // Furniture silhouettes reinforce sightline decisions.
-  rect(170,140,35,22,'#51564c');rect(224,460,51,22,'#424b47');
-  rect(438,303,32,38,'#505a52');rect(516,337,50,14,'#343f3e');
-  circle(544,151,11,'#726d58');circle(544,151,7,'#494e46');
-}
-function wallShape(a:Pt,b:Pt){
-  line({x:a.x+3,y:a.y+5},{x:b.x+3,y:b.y+5},'#0b181bd9',17);
-  line(a,b,'#292f30',16);line(a,b,'#a39c86',7);
-  line({x:a.x,y:a.y-2},{x:b.x,y:b.y-2},'#d5c9a962',1.4);
-}
-function architecture(){
-  for(const [i,wall] of WALLS.entries())if(
-    spatialSurfaceState(state,'wall',i,replaying&&replayKnowledge.omniscient)!=='unknown')
-    wallShape(wall.a,wall.b);
-  // Closed doors obscure sight and movement; opened doors have an arc.
-  for(const door of state.doors){
-    if(spatialSurfaceState(state,'door',door.id,replaying&&replayKnowledge.omniscient)==='unknown')continue;
-    const a=door.a,b=door.b,center=doorCenter(door);
-    // Personal contact review consumes the last door state this operator
-    // actually witnessed. Never substitute today's door state after a rewind.
-    const personalDoor=replaying&&replayKnowledge.observerId?
-      replayKnowledge.doorHistory?.at(replayPlayback.time,replayKnowledge.observerId,door.id):null;
-    const visuallyOpen=replaying&&replayKnowledge.observerId?
-      (personalDoor?.openFraction??0):
-      liveVisibility(state,center)?
-        (door.openFraction??(door.open?1:0)):
-        (state.intel.doorMemory.get(door.id)??0);
-    // Every known hinged door has a true-to-geometry swing preview
-    // before selection, so an entry side can be chosen from the briefing.
-    if(state.phase==='planning'&&door.kind!=='sliding'&&door.kind!=='shutter'){
-      const hinge=door.hinge==='b'?door.b:door.a;
-      const end=doorLeafSegment({...door,openFraction:1}).b;
-      draw.save();draw.globalAlpha=.62;
-      line(hinge,end,'#d2ad7459',2);
-      circle(hinge.x,hinge.y,4.2,'#f7d39c');
-      draw.setLineDash([3,4]);draw.strokeStyle='#ecd5a47a';draw.lineWidth=1.3;
-      draw.beginPath();
-      for(let i=0;i<=8;i++){
-        const tip=doorLeafSegment({...door,openFraction:i/8}).b;
-        if(i===0)draw.moveTo(tip.x,tip.y);else draw.lineTo(tip.x,tip.y);
-      }
-      draw.stroke();draw.setLineDash([]);draw.restore();
-    }
-    if(replaying&&replayKnowledge.observerId?
-      !!personalDoor?.wedged:door.wedged){
-      circle(center.x,center.y,4.5,'#e8b36d');
-      line({x:center.x-5,y:center.y+6},{x:center.x+5,y:center.y+6},'#33271b',2);
-    }
-    if(visuallyOpen<.14){
-      line(a,b,'#1c2727',15);
-      line(a,b,'#b5a17a',8);
-      circle(a.x,a.y,3,'#ead0a0');circle(b.x,b.y,3,'#ead0a0');
-      draw.save();draw.translate(center.x,center.y);
-      draw.fillStyle='#e4d1a2';draw.font='700 11px "Saira Condensed",sans-serif';
-      draw.textAlign='center';draw.fillText('Ⅱ',0,3);draw.restore();
-    }else{
-      // Remember only the last witnessed angle, never offscreen changes.
-      const leaf=doorLeafSegment({...door,openFraction:visuallyOpen});
-      line(leaf.a,leaf.b,'#c2b08a',7);
-      circle(leaf.a.x,leaf.a.y,3,'#f0d8a9');
-    }
-  }
-  const selectedDoor=state.doors.find(d=>
-    d.id===doorFocusId&&doorKnown(state.intel,d.id));
-  if(selectedDoor&&state.phase==='planning'){
-    const hinge=selectedDoor.hinge==='b'?selectedDoor.b:selectedDoor.a;
-    const swept=doorLeafSegment({...selectedDoor,openFraction:1});
-    const current=doorLeafSegment(selectedDoor);
-    draw.save();draw.globalAlpha=.36;draw.strokeStyle='#e7c995';
-    draw.fillStyle='#d9b57b17';draw.setLineDash([5,5]);
-    draw.beginPath();draw.moveTo(hinge.x,hinge.y);
-    for(let i=0;i<=16;i++){
-      const leaf=doorLeafSegment({...selectedDoor,openFraction:i/16});
-      draw.lineTo(leaf.b.x,leaf.b.y);
-    }
-    draw.closePath();draw.fill();draw.stroke();draw.setLineDash([]);
-    line(current.a,current.b,'#f4dba9',6);
-    line(swept.a,swept.b,'#f4dba9',5);
-    draw.restore();
-  }
-  // Narrow window markers (not navigable openings).
-  if(state.site)return;
-  for(const x of [211,501]){
-    line({x,y:97},{x:x+52,y:97},'#8bb6af',4);
-    line({x,y:94},{x:x+52,y:94},'#d4d5bb',2);
-  }
-}
-function conical(a:TeamActor,radius=110){
-  const a0=a.heading-.93,a1=a.heading+.93;
-  draw.beginPath();draw.moveTo(a.p.x,a.p.y);
-  draw.arc(a.p.x,a.p.y,radius,a0,a1);
-  draw.closePath();
-  draw.fillStyle=a.id===selected?'rgba(172,217,206,.075)':'rgba(178,199,168,.035)';
-  draw.fill();
-}
 /** Show the provisional segment neighbors while dragging an existing move
  * waypoint. It is deliberately a neutral DRAFT, not a promised walkable path.
  * It never probes hidden navigation state or mutates the authored plan. */
-function draftRouteNeighbors(){
-  const actor=uid(selected);
-  if(!actor||selectedNode===null||!draggingNode||draggingWatchTarget)return null;
-  const index=actor.plan.findIndex(n=>n.id===selectedNode);
-  if(index<0||!['move','door'].includes(actor.plan[index].kind))return null;
-  const prior=actor.plan.slice(0,index).reverse().find(n=>
-    n.kind==='move'||n.kind==='door')?.p??actor.p;
-  const next=actor.plan.slice(index+1).find(n=>
-    n.kind==='move'||n.kind==='door')?.p??null;
-  return {prior,point:draggingNode,next};
-}
-/** Persistent active WATCH cue, independent of consumed route nodes.
- * Both Floor Plan and 3D overlay call this with coordinates in their own
- * projection. Every teammate's active target is visible, selected is bright.
- */
-function drawActiveWatchMarker(from:Pt,to:Pt,color:string,highlight:boolean,
-  callsign:string){
-  draw.save();
-  draw.globalAlpha=highlight?.94:.67;
-  draw.strokeStyle=color;draw.fillStyle=color;
-  draw.lineWidth=highlight?2.4:1.6;
-  draw.setLineDash([4,6]);draw.beginPath();
-  draw.moveTo(from.x,from.y);draw.lineTo(to.x,to.y);draw.stroke();
-  draw.setLineDash([]);
-  const radius=highlight?12:10;
-  draw.beginPath();draw.arc(to.x,to.y,radius,0,Math.PI*2);draw.stroke();
-  draw.beginPath();draw.moveTo(to.x-radius-5,to.y);
-  draw.lineTo(to.x-radius+2,to.y);draw.moveTo(to.x+radius-2,to.y);
-  draw.lineTo(to.x+radius+5,to.y);
-  draw.moveTo(to.x,to.y-radius-5);draw.lineTo(to.x,to.y-radius+2);
-  draw.moveTo(to.x,to.y+radius-2);draw.lineTo(to.x,to.y+radius+5);
-  draw.stroke();
-  draw.beginPath();draw.arc(to.x,to.y,2.8,0,Math.PI*2);draw.fill();
-  draw.font='700 12px "Saira Condensed",sans-serif';
-  draw.textAlign='left';
-  draw.fillText(highlight?'WATCH · '+callsign:'WATCH',
-    to.x+radius+8,to.y-radius-4);
-  draw.restore();
-}
 /** Persistent order failure anchors use only the operator's own observed
  * motor and authored waypoint; they cannot reveal unseen map geometry.
  */
@@ -3314,238 +3067,12 @@ function executionMarkerPoint(a:TeamActor,projected:boolean):Pt{
   }
   return {x:a.p.x+15,y:a.p.y-25};
 }
-function drawExecutionProblem(a:TeamActor,projected:boolean){
-  const status=executionProblemStatus(a);
-  if(!status)return;
-  const at=executionMarkerPoint(a,projected);
-  draw.save();
-  if(a.id===selected){
-    const node=a.plan.find(n=>n.id===status.orderId);
-    if(node){
-      const target=projected?worldToScreen(node.p,8):node.p;
-      draw.strokeStyle='#e4ac88';draw.globalAlpha=.58;
-      draw.lineWidth=1.3;draw.setLineDash([3,5]);
-      draw.beginPath();draw.moveTo(at.x,at.y);
-      draw.lineTo(target.x,target.y);draw.stroke();draw.setLineDash([]);
-    }
-  }
-  draw.globalAlpha=.98;
-  draw.fillStyle='#a65b48';draw.strokeStyle='#e9b28f';draw.lineWidth=1.7;
-  draw.beginPath();draw.arc(at.x,at.y,9,0,Math.PI*2);
-  draw.fill();draw.stroke();
-  draw.fillStyle='#fff0d8';draw.font='800 12px "Saira Condensed",sans-serif';
-  draw.textAlign='center';draw.textBaseline='middle';
-  draw.fillText('!',at.x,at.y+.25);
-  draw.restore();
-}
-/** Authored historical orders, not recomputed motor navigation. */
-function replayPlanFor(a:TeamActor){
-  const initial=replaying&&replayPlanVersion==='original'?
-    recorder.plans.initial(a.id):null;
-  return {nodes:initial?.nodes??a.plan,
-    origin:initial?.origin??a.p};
-}
-function paths(){
-  for(const a of team(state)){
-    if(a.health<=0&&(!replaying||replayPlanVersion!=='original'))continue;
-    if(replaying&&(replayPlanScope==='none'||
-      replayPlanScope==='selected'&&a.id!==selected))continue;
-    const c=colorFor(a.id);
-    const {nodes:plan,origin}=replayPlanFor(a);
-    const muted=!replaying&&a.id!==selected;
-    const activeTarget=activeWatchTarget(a);
-    if(activeTarget&&(!replaying||replayPlanVersion==='active')){
-      draw.save();draw.globalAlpha=muted?.30:1;
-      drawActiveWatchMarker(a.p,
-        a.id===selected&&selectedActiveWatch&&draggingNode?
-          draggingNode:activeTarget,c,a.id===selected,a.name);
-      draw.restore();
-    }
-    const visual=orderVisualScopes(plan,{
-      watch:a.aimInstruction?.mode==='track',pace:a.pace,
-      posture:a.posture,fire:a.firePolicy
-    });
-    if(plan.length){
-      draw.beginPath();draw.moveTo(origin.x,origin.y);
-      let from=origin;
-      for(const node of plan){
-        if(node.kind==='move'||node.kind==='door'){
-          const course=displayRouteCache.get(from,node.p,state.intel,state.phase==='planning').points;
-          for(const p of course)draw.lineTo(p.x,p.y);
-          from=node.p;
-        }else if(node.kind==='pie'&&node.arc?.length){
-          for(const p of node.arc)draw.lineTo(p.x,p.y);
-          from=node.p;
-        }
-      }
-      draw.strokeStyle=c;draw.globalAlpha=a.id===selected?.94:muted?.18:.40;
-      draw.lineWidth=a.id===selected?2.6:1.6;
-      draw.setLineDash([8,4]);draw.stroke();draw.setLineDash([]);
-      draw.globalAlpha=1;
-    }
-    if(a.id===selected){
-      let previous=a.p;
-      for(let i=0;i<plan.length;i++){
-        const node=plan[i];
-        if(node.kind==='move'||node.kind==='door'){
-          // A longer, amber dash reads as RUN without needing another label.
-          if(visual[i].before.pace==='run'){
-            const steps=displayRouteCache.get(previous,node.p,state.intel,
-              state.phase==='planning').points;
-            draw.save();draw.strokeStyle='#f0ce8e';draw.globalAlpha=.68;
-            draw.lineWidth=2.2;draw.setLineDash([11,3]);draw.beginPath();
-            draw.moveTo(previous.x,previous.y);
-            for(const p of steps)draw.lineTo(p.x,p.y);
-            draw.stroke();draw.restore();
-          }
-          previous=node.p;
-        }else if(node.kind==='pie')previous=node.p;
-      }
-    }
-    // Selected WATCH instructions remain readable throughout the route they
-    // govern, without cluttering unselected operators' plans.
-    if(a.id===selected){
-      let previous=a.p;
-      for(let i=0;i<plan.length;i++){
-        const node=plan[i];
-        if((node.kind==='move'||node.kind==='door')&&visual[i].before.watch){
-          const course=displayRouteCache.get(previous,node.p,state.intel,
-            state.phase==='planning').points;
-          draw.save();draw.strokeStyle='#e6c990';draw.globalAlpha=.73;
-          draw.lineWidth=3.2;draw.setLineDash([3,6]);draw.beginPath();
-          draw.moveTo(previous.x,previous.y);
-          for(const point of course)draw.lineTo(point.x,point.y);
-          draw.stroke();draw.restore();
-        }
-        if(node.kind==='move'||node.kind==='door'||node.kind==='pie')
-          previous=node.p;
-      }
-    }
-    draw.save();draw.globalAlpha=muted?.32:1;
-    for(let i=0;i<plan.length;i++){
-      const n=plan[i],selectedNow=a.id===selected&&selectedNode===n.id;
-      const semantics=visual[i];
-      const point=selectedNow&&draggingNode&&!draggingWatchTarget&&n.kind!=='flash'?
-        draggingNode:n.p;
-      circle(point.x,point.y,selectedNow?10:7,
-        selectedNow?'#ecd29f':n.kind==='move'?c:'#c8ae7f');
-      circle(point.x,point.y,3,'#263836');
-      draw.textAlign='center';draw.fillStyle='#111e20';
-      draw.font='700 12px "Saira Condensed",sans-serif';
-      draw.fillText(String(i+1),point.x,point.y+3.1);
-      if(n.facing!==undefined){
-        const end={x:point.x+Math.cos(n.facing)*40,
-          y:point.y+Math.sin(n.facing)*40};
-        line(point,end,c,2.1);circle(end.x,end.y,2.2,c);
-      }
-      if(n.aimMode==='track'&&n.aimPoint){
-        const watched=selectedNow&&draggingWatchTarget&&draggingNode?
-          draggingNode:n.aimPoint;
-        line(point,watched,c,1.8);
-        circle(watched.x,watched.y,selectedNow?9:7,c);
-        circle(watched.x,watched.y,3,'#203732');
-        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillStyle='#e8cba2';
-        draw.fillText('WATCH',point.x+12,point.y-12);
-      }else if(n.aimMode==='fixed'||(n.aimMode==='free'&&n.facing!==undefined)){
-        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillStyle='#d5e8de';
-        draw.fillText(n.aimLabel==='strafe'?'HOLD DIR':'LOOK',
-          point.x+12,point.y-12);
-      }
-      if(semantics.watchEnds&&n.facing===undefined){
-        draw.textAlign='left';draw.font='bold 11px "Saira Condensed",sans-serif';
-        draw.fillStyle='#ead5ad';
-        draw.fillText('AUTO',point.x+12,point.y-12);
-      }
-      if(semantics.suppressionPoint){
-        const target=semantics.suppressionPoint;
-        draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
-        draw.setLineDash([4,4]);draw.beginPath();
-        draw.moveTo(point.x,point.y);draw.lineTo(target.x,target.y);draw.stroke();
-        draw.setLineDash([]);draw.beginPath();
-        draw.arc(target.x,target.y,20,0,Math.PI*2);draw.stroke();
-        draw.restore();
-      }
-      if(n.kind==='flash'&&n.aimPoint){
-        const path=flashTrajectory(state,a,n);
-        const landing=selectedNow&&draggingNode?draggingNode:n.aimPoint;
-        const points=path?.points??[n.p,landing];
-        draw.strokeStyle='#f3c67e';draw.lineWidth=2.5;
-        draw.setLineDash([5,5]);draw.beginPath();
-        draw.moveTo(points[0].x,points[0].y);
-        for(const p of points.slice(1))draw.lineTo(p.x,p.y);
-        draw.stroke();draw.setLineDash([]);
-        draw.strokeStyle='#f0af55';draw.lineWidth=2;
-        draw.beginPath();draw.arc(landing.x,landing.y,26,0,Math.PI*2);draw.stroke();
-        circle(landing.x,landing.y,selectedNow?11:9,'#dca053');
-        draw.fillStyle='#1d2624';draw.font='600 12px "Work Sans",sans-serif';
-        draw.textAlign='center';draw.fillText('F',landing.x,landing.y+4);
-      }
-      if(n.kind==='move'&&n.moveMode==='strafe'){
-        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillStyle='#b8e7dd';
-        draw.fillText('HOLD DIR',point.x+12,point.y-11);
-      }
-      if(n.kind==='pie'&&n.pivot&&n.arc?.length){
-        draw.save();
-        draw.strokeStyle=c;draw.lineWidth=3.2;
-        draw.setLineDash([4,3]);draw.beginPath();
-        const first=plan[i-1]?.p??origin;
-        draw.moveTo(first.x,first.y);
-        for(const step of n.arc)draw.lineTo(step.x,step.y);
-        draw.stroke();draw.setLineDash([]);
-        line(point,n.pivot,'#d6b18b83',1.1);
-        draw.fillStyle='#eacda0';draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillText(n.pieSide==='cw'?'PIE ↷':'PIE ↶',point.x+12,point.y-11);
-        draw.restore();
-      }
-      if(n.kind==='door'||n.kind==='wait'||n.kind==='holdClear'||n.kind==='sync'){
-        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillStyle='#e7c797';
-        draw.fillText(n.kind==='door'?(n.method??'open').toUpperCase():
-          n.kind==='wait'||n.kind==='holdClear'?'◷ WAIT':n.kind.toUpperCase(),
-          point.x+11,point.y-9);
-      }
-    }
-    draw.restore();
-    // A suppression order issued HERE belongs to the operator, not a node.
-    if(a.id===selected&&a.firePolicy==='suppress'&&a.suppressPoint){
-      draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
-      draw.setLineDash([4,4]);draw.beginPath();
-      draw.moveTo(a.p.x,a.p.y);
-      draw.lineTo(a.suppressPoint.x,a.suppressPoint.y);draw.stroke();
-      draw.setLineDash([]);draw.beginPath();
-      draw.arc(a.suppressPoint.x,a.suppressPoint.y,20,0,Math.PI*2);
-      draw.stroke();draw.restore();
-    }
-  }
-  const draft=draftRouteNeighbors();
-  if(draft){
-    draw.save();draw.strokeStyle='#d5cb9d';draw.globalAlpha=.75;
-    draw.lineWidth=2;draw.setLineDash([5,5]);
-    draw.beginPath();draw.moveTo(draft.prior.x,draft.prior.y);
-    draw.lineTo(draft.point.x,draft.point.y);
-    if(draft.next)draw.lineTo(draft.next.x,draft.next.y);
-    draw.stroke();draw.setLineDash([]);draw.fillStyle='#d5cb9d';
-    draw.font='700 11px "Saira Condensed",sans-serif';
-    draw.fillText('DRAFT',draft.point.x+13,draft.point.y-14);
-    draw.restore();
-  }
-  if(trace&&trace.length>=1&&cursor){
-    draw.beginPath();draw.moveTo(trace[0].x,trace[0].y);
-    [...trace.slice(1),cursor].forEach(p=>draw.lineTo(p.x,p.y));
-    draw.strokeStyle='#e4c998';draw.lineWidth=3;draw.stroke();
-  }else if(cursor&&state.phase==='planning'){
-    const a=uid(selected);
-    if(a&&a.health>0&&cursor.x>=0&&cursor.x<W&&cursor.y>=0&&cursor.y<H){
-      const start=a.plan.at(-1)?.p??a.p;
-      draw.setLineDash([3,7]);line(start,cursor,
-        looking?'#d8ad79':'rgba(193,219,213,.30)',1.4);
-      draw.setLineDash([]);
-    }
-  }
-}
+const actor2D=createBreach2DActorRenderer({
+ draw,rect,line,circle,colorFor,worldToScreen,
+ replayKnowledge,executionProblemStatus,executionMarkerPoint,
+ getFrame:()=>({state,replaying,selected,replayPlanScope,replayNameTags,
+  replayContactMarkers,replayObjectiveMarkers,replayAnalysis,viewMode})
+});
 /** Bounded forensic overlay; complete shot evidence stays in recorder. */
 function historicalShotVisible(shot:RecordedShot):boolean{
   // Shot endpoints and impacts reveal more than the confirmed observer's
@@ -3555,722 +3082,45 @@ function historicalShotVisible(shot:RecordedShot):boolean{
   const frame=recorder.at(shot.recordedAt);
   return !!frame?.knowledge?.visibleActorIds.includes(shot.shooterId);
 }
-function renderReplayBallistics(projected:boolean):void{
-  if(!replaying||replayTraceMode==='off')return;
-  const windowSeconds=replayTraceMode==='selected'?10:3;
-  const recent=recorder.ballistics.between(
-    Math.max(0,replayPlayback.time-windowSeconds),replayPlayback.time,
-    replayTraceMode==='selected'?selected:undefined);
-  // Cap only the rendered strokes, not the permanent shot history.
-  draw.save();draw.lineWidth=1.8;
-  for(const shot of recent.slice(-128)){
-    if(!historicalShotVisible(shot))continue;
-    const from=projected?
-      worldToScreen(shot.start,shot.muzzleHeight??16):shot.start;
-    const to=projected?
-      worldToScreen(shot.end,shot.impactHeight??7):shot.end;
-    draw.globalAlpha=.83-.49*Math.min(1,
-      (replayPlayback.time-shot.recordedAt)/windowSeconds);
-    draw.strokeStyle=shot.side==='blue'?'#e8c985':'#d88d75';
-    draw.setLineDash(shot.hit?[]:[4,4]);
-    draw.beginPath();draw.moveTo(from.x,from.y);
-    draw.lineTo(to.x,to.y);draw.stroke();
-    draw.setLineDash([]);
-    draw.fillStyle=shot.hit?'#efc2a0':'#b5a998';
-    draw.beginPath();draw.arc(to.x,to.y,shot.hit?4:2.5,0,Math.PI*2);
-    draw.fill();
-  }
-  const selectedShot=selectedReplayShotId===null?null:
-    recorder.ballistics.shots.find(s=>s.id===selectedReplayShotId);
-  if(selectedShot&&historicalShotVisible(selectedShot)){
-    const a=projected?worldToScreen(selectedShot.start,selectedShot.muzzleHeight??16):selectedShot.start;
-    const b=projected?worldToScreen(selectedShot.end,selectedShot.impactHeight??7):selectedShot.end;
-    draw.save();draw.globalAlpha=1;draw.strokeStyle='#f5e8b3';draw.lineWidth=3;
-    draw.setLineDash([]);draw.beginPath();draw.moveTo(a.x,a.y);
-    draw.lineTo(b.x,b.y);draw.stroke();
-    draw.fillStyle='#fff0a6';draw.beginPath();draw.arc(b.x,b.y,6,0,Math.PI*2);
-    draw.fill();draw.restore();
-  }
-  draw.restore();
-}
-/** Ghost sprites are intentionally abstract and share the operator palette. */
-/** Replay R3: actual recorded route — not authored waypoints. */
-/** Camera-follow selection is a spatial affordance, not just a HUD label.
- * The ring sits on the actual historical friendly; no enemy data is used. */
-function renderReplayFollowMarker(projected:boolean):void{
-  if(!replaying||!replayNameTags||replayCamera.mode!=='operator'||replayBodycam.active)return;
-  const actor=team(state).find(a=>a.id===replayCamera.followId&&a.health>0);
-  if(!actor)return;
-  const point=projected?worldToScreen(actor.p,21):actor.p;
-  if(!Number.isFinite(point.x)||!Number.isFinite(point.y))return;
-  const px=projected?1:1/Math.max(.3,viewScale);
-  const radius=22*px;
-  const pulse=1.5*Math.sin(replayPlayback.time*2.2);
-  draw.save();
-  draw.lineWidth=3*px;
-  draw.strokeStyle='#1b302b';
-  draw.beginPath();draw.arc(point.x,point.y,radius+2*px,0,Math.PI*2);
-  draw.stroke();
-  draw.lineWidth=2.3*px;
-  draw.strokeStyle='#f0d394';
-  draw.beginPath();draw.arc(point.x,point.y,radius+pulse*px,0,Math.PI*2);
-  draw.stroke();
-  draw.fillStyle='#f5e4bb';
-  draw.font='700 '+(11*px)+'px "Saira Condensed",sans-serif';
-  draw.textAlign='center';
-  draw.fillText('FOLLOW · '+actor.name.toUpperCase(),
-    point.x,point.y-(radius+10*px));
-  draw.restore();
-}
-function renderReplayMovementHistory(projected:boolean):void{
-  if(!replaying||replayTrailMode==='off'||!replayMovementHistory)return;
-  draw.save();draw.globalAlpha=.58;draw.lineWidth=2.15;draw.setLineDash([]);
-  for(const a of team(state)){
-    const trail=replayMovementHistory.segment(a.id,replayPlayback.time,
-      replayTrailMode==='recent'?15:Infinity,350);
-    if(trail.length<2)continue;
-    draw.strokeStyle=colorFor(a.id);draw.beginPath();
-    for(let i=0;i<trail.length;i++){
-      const p=projected?worldToScreen(trail[i].p,2):trail[i].p;
-      if(i===0)draw.moveTo(p.x,p.y);else draw.lineTo(p.x,p.y);
-    }
-    draw.stroke();
-  }
-  draw.restore();
-}
-function renderReplayGhosts(projected:boolean):void{
-  if(!replaying||replayGhostMode==='off')return;
-  const ids=new Set(replayGhostMode==='selected'?[selected]:
-    team(state).map(a=>a.id));
-  const ghosts=sampleReplayGhosts(recorder,replayPlayback.time,ids);
-  draw.save();draw.lineWidth=1.5;
-  for(const ghost of ghosts){
-    const p=projected?worldToScreen(ghost.p,20):ghost.p;
-    draw.save();
-    draw.translate(p.x,p.y);draw.rotate(ghost.heading);
-    draw.globalAlpha=.34/(1+ghost.ageSeconds*.28);
-    draw.strokeStyle=colorFor(ghost.actorId);
-    draw.fillStyle=colorFor(ghost.actorId);
-    // Simple body-and-weapon symbol; never creates another expensive rig.
-    draw.strokeRect(-7,-5,14,10);
-    draw.fillRect(4,-2,8,4);
-    draw.restore();
-  }
-  draw.restore();
-}
-function renderProjectedPlans(){
-  if(!stage)return;
-  // Compare exact camera matrices; active zoom/orbit easing invalidates
-  // immediately, while unchanged path projections are reused.
-  projectedRouteCache.beginFrame(stage.camera,cssW,cssH);
-  draw.setTransform(dpr,0,0,dpr,0,0);
-  draw.clearRect(0,0,cssW,cssH);
-  for(const a of team(state)){
-    if(a.health<=0&&(!replaying||replayPlanVersion!=='original'))continue;
-    if(replaying&&(replayPlanScope==='none'||
-      replayPlanScope==='selected'&&a.id!==selected))continue;
-    const {nodes:plan,origin}=replayPlanFor(a);
-    const color=colorFor(a.id);
-    const muted=!replaying&&a.id!==selected;
-    const activeTarget=activeWatchTarget(a);
-    if(activeTarget&&(!replaying||replayPlanVersion==='active')){
-      draw.save();draw.globalAlpha=muted?.30:1;
-      drawActiveWatchMarker(worldToScreen(a.p,8),
-        worldToScreen(a.id===selected&&selectedActiveWatch&&draggingNode?
-          draggingNode:activeTarget,12),color,a.id===selected,a.name);
-      draw.restore();
-    }
-    let previous=origin;
-    const visual=orderVisualScopes(plan,{
-      watch:a.aimInstruction?.mode==='track',pace:a.pace,
-      posture:a.posture,fire:a.firePolicy
-    });
-    let visualIndex=0;
-    draw.save();
-    for(const n of plan){
-      const semantics=visual[visualIndex++];
-      const cachedRoute=n.kind==='move'||n.kind==='door'?
-        displayRouteCache.get(previous,n.p,state.intel,state.phase==='planning',
-          (from,to,ordinary)=>plannedWindowRoute(state,from,to,ordinary),
-          state.objectRevision):null;
-      const steps=n.kind==='pie'?n.arc??[]:cachedRoute?.points??[];
-      if(steps.length){
-        draw.beginPath();
-        const start=worldToScreen(previous,4);
-        draw.moveTo(start.x,start.y);
-        const projectedSteps=cachedRoute?
-          projectedRouteCache.get(steps,4,p=>worldToScreen(p,4)):
-          steps.map(p=>worldToScreen(p,4));
-        for(const projected of projectedSteps)
-          draw.lineTo(projected.x,projected.y);
-        draw.strokeStyle=color;
-        draw.globalAlpha=a.id===selected?.96:muted?.18:.50;
-        draw.lineWidth=n.kind==='pie'?3:
-          semantics.before.watch&&a.id===selected?3.6:2.4;
-        const narrowOnly=n.kind==='move'&&!!cachedRoute?.narrowOnly;
-        // Narrow routes use a finer dash without another overlay.
-        draw.setLineDash(n.kind==='pie'?[3,3]:
-          semantics.before.watch&&a.id===selected?[3,5]:
-          semantics.before.pace==='run'?[12,3]:
-          narrowOnly?[2,4]:[7,4]);
-        draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
-      }
-      draw.globalAlpha=muted?.32:1;
-      const selectedNow=a.id===selected&&selectedNode===n.id;
-      const point=worldToScreen(selectedNow&&draggingNode&&!draggingWatchTarget&&n.kind!=='flash'?
-        draggingNode:n.p,8);
-      const invalidDrag=selectedNow&&draggingNode&&!draggingWatchTarget&&
-        !intelPassable(draggingNode,state.intel,SQUEEZE_RADIUS);
-      circle(point.x,point.y,selectedNow?11:7,
-        invalidDrag?'#df8070':selectedNow?'#ecd29f':color);
-      circle(point.x,point.y,3,'#233b39');
-      draw.fillStyle='#142829';draw.font='700 12px "Saira Condensed",sans-serif';
-      draw.textAlign='center';draw.fillText(String(plan.indexOf(n)+1),
-        point.x,point.y+3);
-      if(n.facing!==undefined){
-        const aim=worldToScreen({x:n.p.x+Math.cos(n.facing)*38,
-          y:n.p.y+Math.sin(n.facing)*38},8);
-        line(point,aim,color,2);
-        circle(aim.x,aim.y,3,color);
-      }
-      if(n.aimMode==='track'&&n.aimPoint){
-        const watched=selectedNow&&draggingWatchTarget&&draggingNode?
-          draggingNode:n.aimPoint;
-        const target=worldToScreen(watched,12);
-        line(point,target,color,1.8);
-        circle(target.x,target.y,8,color);
-        circle(target.x,target.y,3,'#264039');
-        draw.fillStyle='#f1d7a4';draw.textAlign='left';
-        draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillText('WATCH',point.x+12,point.y-13);
-      }else if(n.aimMode==='fixed'||(n.aimMode==='free'&&n.facing!==undefined)){
-        draw.fillStyle='#d2eee4';draw.textAlign='left';
-        draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillText(n.aimLabel==='strafe'?'HOLD DIR':'LOOK',
-          point.x+12,point.y-13);
-      }
-      if(n.kind==='move'&&n.moveMode==='strafe'){
-        draw.fillStyle='#e0f7e9';draw.textAlign='left';
-        draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillText('HOLD DIR',point.x+13,point.y-12);
-      }
-      if(semantics.watchEnds&&n.facing===undefined){
-        draw.fillStyle='#ead5ad';draw.textAlign='left';
-        draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillText('AUTO',point.x+12,point.y-14);
-      }
-      if(semantics.suppressionPoint){
-        const target=worldToScreen(semantics.suppressionPoint,7);
-        draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
-        draw.setLineDash([4,4]);draw.beginPath();
-        draw.moveTo(point.x,point.y);draw.lineTo(target.x,target.y);draw.stroke();
-        draw.setLineDash([]);draw.beginPath();
-        draw.arc(target.x,target.y,20,0,Math.PI*2);draw.stroke();
-        draw.fillStyle='#e9a883';draw.textAlign='center';
-        draw.font='700 11px "Work Sans",sans-serif';
-        draw.fillText('SUP',target.x,target.y-24);
-        draw.restore();
-      }
-      if(n.kind==='flash'&&n.aimPoint){
-        const path=flashTrajectory(state,a,n);
-        const landing=selectedNow&&draggingNode?draggingNode:n.aimPoint;
-        const points=path?.points??[n.p,landing];
-        draw.strokeStyle='#f0bd77';draw.lineWidth=2.2;
-        draw.setLineDash([4,5]);draw.beginPath();
-        const start=worldToScreen(points[0],7);draw.moveTo(start.x,start.y);
-        for(const q of points.slice(1)){
-          const project=worldToScreen(q,7);draw.lineTo(project.x,project.y);
-        }
-        draw.stroke();draw.setLineDash([]);
-        const screen=worldToScreen(landing,7);
-        draw.strokeStyle='#f1c17e';draw.beginPath();
-        draw.arc(screen.x,screen.y,16,0,Math.PI*2);draw.stroke();
-        circle(screen.x,screen.y,selectedNow?11:9,'#c88d4e');
-        draw.fillStyle='#182b2c';draw.textAlign='center';
-        draw.font='700 12px "Saira Condensed",sans-serif';draw.fillText('F',screen.x,screen.y+3);
-      }
-      if(n.kind==='door'){
-        draw.fillStyle='#e2ca9f';draw.textAlign='left';
-        draw.font='700 12px "Saira Condensed",sans-serif';
-        const door=state.doors.find(d=>d.id===n.doorId);
-        draw.fillText((n.method??'open').toUpperCase()+
-          ((n.method??'open')==='open'?(door?.swing===1?' ↷':' ↶'):''),
-          point.x+12,point.y-11);
-      }
-      if(n.kind==='pie'&&n.pivot){
-        const pivot=worldToScreen(n.pivot,12);
-        circle(pivot.x,pivot.y,7,'#e2b476');
-        circle(pivot.x,pivot.y,3,'#24322f');
-        line(point,pivot,'#e3b37c8a',1.5);
-        draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.fillStyle='#e3bb87';
-        draw.fillText('PIVOT '+Math.round(n.pieDegrees??54)+'°',
-          pivot.x+10,pivot.y-12);
-      }
-      if(n.kind==='pie'&&n.arc?.length&&a.id===selected){
-        const finish=worldToScreen(n.arc.at(-1)!,8);
-        draw.strokeStyle='#f0d3a4';draw.lineWidth=1.8;
-        draw.strokeRect(finish.x-8,finish.y-8,16,16);
-      }
-      if(n.kind==='wait'||n.kind==='holdClear'){
-        draw.fillStyle='#e5c58e';draw.font='600 12px "Work Sans",sans-serif';
-        draw.fillText('◷ WAIT',point.x+12,point.y-14);
-      }
-      if(n.postureState||n.paceState||n.firePolicyState){
-        draw.font='600 11px "Work Sans",sans-serif';draw.fillStyle='#a2d7c9';
-        draw.fillText([n.postureState?.toUpperCase(),
-          n.paceState?.toUpperCase(),n.firePolicyState?.toUpperCase()]
-          .filter(Boolean).join(' · '),point.x+12,point.y+18);
-      }
-      if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
-    }
-    draw.restore();
-    const pawn=worldToScreen(a.p,32),ground=worldToScreen(a.p,1);
-    const squadIndex=team(state).findIndex(member=>member.id===a.id);
-    const labelSpread=state.site?[
-      {x:-27,y:-17},{x:27,y:-17},
-      {x:-27,y:-36},{x:27,y:-36},
-    ][squadIndex]??{x:0,y:-9}:{x:0,y:-9};
-    draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
-    draw.fillStyle=color;
-    if(!replaying&&(a.id===selected||a.injuryStage>0||replayCamera.follow&&
-      replayCamera.followId===a.id))
-      draw.fillText(a.name,pawn.x+labelSpread.x,pawn.y+labelSpread.y);
-    if(a.id===selected){
-      draw.strokeStyle='#e9d6b1';draw.lineWidth=2.1;
-      draw.beginPath();draw.arc(ground.x,ground.y,14,0,Math.PI*2);draw.stroke();
-    }
-    if(a.suppression>.53){
-      draw.font='700 11px "Saira Condensed",sans-serif';draw.fillStyle='#e5bc92';
-      draw.fillText('SUPPRESSED',pawn.x,pawn.y-23);
-    }
-    if(a.id===selected&&a.firePolicy==='suppress'&&a.suppressPoint){
-      const target=worldToScreen(a.suppressPoint,7);
-      draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
-      draw.setLineDash([4,4]);draw.beginPath();
-      draw.moveTo(ground.x,ground.y);draw.lineTo(target.x,target.y);
-      draw.stroke();draw.setLineDash([]);draw.beginPath();
-      draw.arc(target.x,target.y,20,0,Math.PI*2);draw.stroke();draw.restore();
-    }
-  }
-  // Recorded operator labels are independent of route visibility.
-  if(replaying&&replayNameTags)for(const member of team(state)){
-    const pawn=worldToScreen(member.p,32);
-    draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
-    draw.fillStyle=colorFor(member.id);
-    draw.fillText(member.name,pawn.x,pawn.y-23);
-  }
-  // Screen-space icons stay readable regardless of ortho pitch or zoom.
-  for(const hostile of enemies(state)){
-    if(replaying?!replayActorDisclosed(state,hostile,replayKnowledge.disclosure()):
-      !liveVisibility(state,hostile.p))continue;
-    const ground=worldToScreen(hostile.p,1);
-    // Do not paint projected blood/bodies over the finished 3D scene:
-    // Canvas2D cannot depth-test against walls, packs or door leaves.
-    // The grounded miniature and actual world-space floor stain carry DOWN.
-    if(hostile.health>0&&(!replaying||replayContactMarkers)){
-      draw.strokeStyle='#e2a18b';draw.lineWidth=1.6;
-      draw.beginPath();draw.arc(ground.x,ground.y,12,0,Math.PI*2);draw.stroke();
-    }
-  }
-  for(const member of team(state)){
-    const pawn=worldToScreen(member.p,33);
-    if(member.health===1){
-      draw.fillStyle='#e6a485';draw.fillRect(pawn.x-10,pawn.y+1,20,3);
-    }
-  }
-  // Door shapes communicate door identity. Only show a selector when the
-  // selected operator or its planned endpoint can actually interact.
-  const active=uid(selected);
-  if(!replaying)for(const door of state.doors){
-    const visibility=doorVisibility(state,door);
-    if(!visibility.known||!active||active.health<=0)continue;
-    const node=selectedPlanNode();
-    const physicallyReachable=team(state).some(actor=>
-      actor.health>0&&doorReachable(actor.p,door));
-    const plannedReachable=!!node&&doorReachable(node.p,door);
-    if(!physicallyReachable&&!plannedReachable)continue;
-    const p=worldToScreen(doorCenter(door),12);
-    const chosen=doorFocusId===door.id;
-    draw.save();
-    draw.strokeStyle=chosen?'#ffe08b':
-      physicallyReachable?'#f5e8cd96':'#c3d5c06c';
-    draw.lineWidth=chosen?2.4:1.2;
-    if(!physicallyReachable)draw.setLineDash([2,3]);
-    draw.beginPath();draw.arc(p.x,p.y,chosen?10:6,0,Math.PI*2);draw.stroke();
-    draw.restore();
-  }
-  const draft=draftRouteNeighbors();
-  if(draft){
-    const p=worldToScreen(draft.prior,8);
-    const q=worldToScreen(draft.point,8);
-    draw.save();draw.strokeStyle='#d5cb9d';draw.globalAlpha=.8;
-    draw.lineWidth=2;draw.setLineDash([5,5]);
-    draw.beginPath();draw.moveTo(p.x,p.y);draw.lineTo(q.x,q.y);
-    if(draft.next){
-      const next=worldToScreen(draft.next,8);
-      draw.lineTo(next.x,next.y);
-    }
-    draw.stroke();draw.setLineDash([]);draw.fillStyle='#d5cb9d';
-    draw.font='700 12px "Saira Condensed",sans-serif';
-    draw.fillText('DRAFT',q.x+13,q.y-14);draw.restore();
-  }
-  // Physical muzzle flashes, tracers and impacts are rendered exclusively
-  // by Three.js in 3D modes so depth testing never draws them over actors.
-  // Unknown enemies stay unrendered; only grounded last-known reports show.
-  for(const hostile of enemies(state)){
-    if(replaying&&(!replayContactMarkers||replayKnowledge.observerId))continue;
-    if(isSeen(state,hostile)||hostile.health<=0)continue;
-    const memory=lastKnown(state,hostile.id);
-    if(!memory||state.seconds-memory.at>25)continue;
-    const where=worldToScreen(memory.p,12);
-    draw.font='700 17px "Saira Condensed",sans-serif';draw.textAlign='center';
-    draw.fillStyle='#e6bb9d';
-    draw.fillText(memory.status==='heard'?'~':'?',where.x,where.y);
-  }
-  if(trace&&trace.length>1){
-    draw.beginPath();
-    const first=worldToScreen(trace[0],8);
-    draw.moveTo(first.x,first.y);
-    for(const point of trace.slice(1)){
-      const screen=worldToScreen(point,8);
-      draw.lineTo(screen.x,screen.y);
-    }
-    draw.strokeStyle='#f0cd96';draw.lineWidth=3;draw.stroke();
-  }
-  if((!replaying||replayObjectiveMarkers)&&
-    state.mission!=='clear'&&state.mission!=='done'){
-    const target=worldToScreen(state.mission==='secure'?
-      state.scenario.objective:state.scenario.extract,9);
-    draw.strokeStyle='#e8d5a6';draw.lineWidth=2;
-    draw.beginPath();draw.arc(target.x,target.y,17,0,2*Math.PI);draw.stroke();
-    draw.fillStyle='#e8d5a6';draw.font='700 12px "Saira Condensed",sans-serif';
-    draw.fillText(state.mission.toUpperCase(),target.x,target.y-23);
-  }
-  renderReplayMovementHistory(true);
-  renderReplayGhosts(true);
-  renderReplayBallistics(true);
-  renderReplayFollowMarker(true);
-  if(!replaying||replayAnalysis)
-    for(const a of team(state))drawExecutionProblem(a,true);
-}
+const route2D=createBreach2DRouteOverlays({
+ draw,line,circle,uid,colorFor,displayRouteCache,
+ getFrame:()=>({state,replaying,selected,selectedNode,selectedActiveWatch,
+  draggingNode,draggingWatchTarget,trace,cursor,looking,replayPlanVersion,
+  replayPlanScope,recorder})
+});
 /** Gold denotes actual historically observed cells for the selected operator.
  * Shared geometry/doors/people remain shared and are NEVER claimed as POV.
  * Render only in the Floor Plan view; no speculative real-time raycasts.
  */
-function renderReplayPersonalGround():void{
-  if(!replaying||!replayKnowledge.groundLensOn||viewMode!=='plan2d'||
-    !replayKnowledge.observerId||!replayKnowledge.personalGround)return;
-  const observed=replayKnowledge.personalGround.at(
-    replayPlayback.time,replayKnowledge.observerId);
-  if(!observed)return;
-  if(replayKnowledge.groundCacheObserver!==replayKnowledge.observerId||
-     replayKnowledge.groundCacheCount!==observed.size||
-     replayKnowledge.groundCacheSite!==state.site){
-    paintReplayPersonalGround(replayGroundContext!,state.site,observed);
-    replayKnowledge.groundCacheObserver=replayKnowledge.observerId;
-    replayKnowledge.groundCacheCount=observed.size;
-    replayKnowledge.groundCacheSite=state.site;
-  }
-  const b=maskBounds(state.site);
-  draw.drawImage(replayGroundCanvas,b.minX,b.minY,
-    b.maxX-b.minX,b.maxY-b.minY);
-}
-function fog(){
-  if(replaying&&replayKnowledge.omniscient)return;
-  if(fogStamp<0||fogSession!==state||fogIntelMode!==state.intel.mode||
-    fogSeenRevision!==state.seenGroundRevision||
-    state.seconds<fogStamp||state.seconds-fogStamp>.055){
-    fogStamp=state.seconds;fogSession=state;fogIntelMode=state.intel.mode;
-    fogSeenRevision=state.seenGroundRevision;
-    paintFogMask(fogContext!,state,
-      new URLSearchParams(location.search).get('fogDebug')==='palette'?
-        'palette':'normal');
-  }
-  draw.drawImage(fogCanvas,0,0,W,H);
-}
-function missionMarkers(){
-  if(replaying&&!replayObjectiveMarkers)return;
-  if(state.rescue&&!state.civilians.some(c=>c.rescueTarget)&&
-     liveVisibility(state,state.rescue.p)){
-    const p=state.rescue.p;
-    draw.strokeStyle='#eed9ad';draw.lineWidth=2.2;
-    draw.beginPath();draw.arc(p.x,p.y,13,0,Math.PI*2);draw.stroke();
-    draw.fillStyle='#ebdfc0';draw.textAlign='center';
-    draw.font='700 12px "Saira Condensed",sans-serif';draw.fillText('CIV',p.x,p.y-18);
-  }
-  const p=state.mission==='extract'?state.scenario.extract:state.scenario.objective;
-  if(state.mission==='clear'||state.mission==='done'||
-    !liveVisibility(state,p))return;
-  draw.strokeStyle='#d8cc98';draw.lineWidth=2;
-  draw.beginPath();draw.arc(p.x,p.y,33,0,Math.PI*2);draw.stroke();
-  draw.fillStyle='#e1d1a2';draw.font='600 12px "Work Sans",sans-serif';
-  draw.textAlign='center';
-  draw.fillText(state.mission==='secure'?'SECURE':'EXTRACT',p.x,p.y-39);
-}
-function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
-  // Personal observation is not shared civilian intel. Old films omit the
-  // observer evidence and must fail closed, not re-evaluate future LOS.
-  if(replaying&&replayKnowledge.observerId){
-    if(!replayCivilianDisclosed(state,c.id,replayKnowledge.disclosure()))return;
-  }else if(!civilianPresentationVisible(c,replaying,replayKnowledge.omniscient,
-       liveVisibility(state,c.p)))return;
-  const coats=['#766e62','#637d75','#82726b','#667985'];
-  const trousers=['#454c4b','#61574d','#4e5664'];
-  const coat=coats[(c.appearanceSeed>>>0)%coats.length];
-  const pants=trousers[(c.appearanceSeed>>>4)%trousers.length];
-  draw.save();draw.translate(c.p.x,c.p.y);draw.rotate(c.heading);
-  const pose=civilianPose(c);
-  if(pose==='down'||pose==='carried'||pose==='dragged'){
-    draw.globalAlpha=pose==='carried'?.96:.83;
-    rect(-10,-6,23,12,coat);rect(7,-5,8,10,'#ba9880');
-  }else{
-    rect(-12,-6,7,5,pants);rect(-12,1,7,5,pants);
-    rect(-7,-8,16,16,coat);
-    rect(7,-4.5,9,9,'#b9997e');
-    if(pose==='compliant'){
-      rect(2,-16,5,9,'#b9997e');rect(2,7,5,9,'#b9997e');
-    }else if(pose==='hide'||pose==='injured'||pose==='seated'){
-      rect(-5,-11,7,3,'#b9997e');rect(-5,8,7,3,'#b9997e');
-    }else{
-      const swing=pose==='run'?
-        Math.sin(state.seconds*13+c.appearanceSeed)*3:
-        pose==='walk'?Math.sin(state.seconds*8+c.appearanceSeed)*1.5:
-        pose==='injured-walk'?
-          Math.sin(state.seconds*5+c.appearanceSeed)*.9:0;
-      rect(-5+swing,-12,8,4,'#b9997e');
-      rect(-5-swing,8,8,4,'#b9997e');
-    }
-  }
-  draw.restore();
-}
-function sprite(a:TeamActor){
-  if(a.side==='red'&&!(replaying&&replayKnowledge.omniscient)){
-    const visible=replaying?replayActorDisclosed(state,a,replayKnowledge.disclosure()):
-      a.health>0?isSeen(state,a):liveVisibility(state,a.p);
-    if(!visible){
-      const memory=lastKnown(state,a.id);
-      if(!replayKnowledge.observerId&&memory&&a.health>0&&state.seconds-memory.at<25){
-        draw.fillStyle=memory.status==='heard'?'#e6bb828e':'#d19d837e';
-        draw.font='700 16px "Saira Condensed",sans-serif';draw.textAlign='center';
-        draw.fillText(memory.status==='heard'?'~':'?',memory.p.x,memory.p.y);
-        if(memory.status==='heard'){
-          draw.strokeStyle='#c9af7c4b';draw.lineWidth=1;
-          draw.beginPath();draw.arc(memory.p.x,memory.p.y,30,0,Math.PI*2);draw.stroke();
-        }
-      }
-      return;
-    }
-  }
-  const friendly=a.side==='blue',c=friendly?colorFor(a.id):'#d3917b';
-  if(a.health<=0){
-    draw.save();draw.translate(a.p.x,a.p.y);
-    draw.rotate(a.heading);
-    rect(-13,-4,29,8,'#574d49');rect(-3,-9,5,18,'#a46556');
-    draw.restore();
-    draw.fillStyle='#7e363092';draw.beginPath();
-    draw.ellipse(a.p.x,a.p.y,13,6,a.heading,0,2*Math.PI);draw.fill();
-    return;
-  }
-  if(friendly&&(a.id===selected)&&
-     (!replaying||replayPlanScope!=='none')){
-    draw.strokeStyle='#e8d6b1';draw.lineWidth=1.6;
-    draw.beginPath();draw.arc(a.p.x,a.p.y,16,0,2*Math.PI);draw.stroke();
-    conical(a);
-  }
-  const impactAge=state.seconds-a.lastHitAt;
-  const flinch=impactAge>=0&&impactAge<.28?1-impactAge/.28:0;
-  const firing=state.shots.some(shot=>shot.shooterId===a.id&&
-    shot.age<.11&&shotVisibility(state,shot).flash);
-  draw.save();
-  draw.translate(a.p.x-flinch*2.3,a.p.y+flinch*1.7);
-  draw.rotate(a.heading+flinch*.14+
-    (a.injuryStage===2?.14:a.injuryStage===1?.04:0));
-  circle(0,2,11,'#0d1b20af');circle(0,0,9.2,friendly?'#4b756f':'#794a43');
-  // Body and alternating leg extension are driven by actual travel.
-  const gait=Math.sin(state.seconds*15+Math.floor(a.p.x*.15))*
-    Math.min(1,a.velocity/70)*(a.injuryStage===2?2.1:3.5);
-  rect(-9,-7+gait,9,5,friendly?'#304842':'#4b3633');
-  rect(-9,2-gait,9,5,friendly?'#304842':'#4b3633');
-  rect(-7,-5,14,10,c);
-  rect(-10,-4,5,8,friendly?'#45625d':'#563e39');
-  circle(4,0,3.8,friendly?'#d3dac1':'#d0a58a');
-  rect(firing?2:5,-2,
-    a.weapon==='smg'?13:a.weapon==='rifle'?23:a.weapon==='shotgun'?20:18,
-    a.weapon==='shotgun'?5:4,'#1a2527');
-  rect(firing?17:20,-1,6,2,'#a2a9a1');
-  draw.restore();
-  if(a.traversal){
-    // Floor Plan has no vertical axis; retain a small physical crossing
-    // indicator instead of making the operator vanish behind low furniture.
-    const t=a.traversalElapsed/Math.max(.001,a.traversal.duration);
-    draw.save();
-    draw.strokeStyle='#e8cc8e';draw.lineWidth=2.2;
-    draw.globalAlpha=.75;
-    draw.beginPath();draw.arc(a.p.x,a.p.y,15,-Math.PI/2,
-      -Math.PI/2+Math.PI*2*Math.max(0,Math.min(1,t)));draw.stroke();
-    draw.globalAlpha=1;draw.textAlign='center';
-    draw.fillStyle='#f5dca0';
-    draw.font='700 10px "Saira Condensed",sans-serif';
-    draw.fillText(a.traversal.kind.toUpperCase(),a.p.x,a.p.y-36);
-    draw.restore();
-  }
-  if(friendly){
-    draw.textAlign='center';draw.font='700 12px "Saira Condensed",sans-serif';
-    draw.fillStyle=c;
-    if(!replaying||replayNameTags)draw.fillText(a.name,a.p.x,a.p.y-21);
-    if(a.aimInstruction?.mode==='track'&&a.pace!=='run'){
-      draw.fillStyle='#f0cd96';draw.font='700 11px "Saira Condensed",sans-serif';
-      draw.fillText('PIE ACTIVE',a.p.x,a.p.y-33);
-    }
-    if(a.suppression>.53){
-      draw.fillStyle='#eac69d';draw.font='700 11px "Saira Condensed",sans-serif';
-      draw.fillText('SUPP',a.p.x,a.p.y-43);
-    }
-    if(a.health===1){draw.fillStyle='#e7a886';
-      draw.fillRect(a.p.x-8,a.p.y+13,16,2);}
-  }else{
-    // The enemy is still drawn; only the optional red tactical outline
-    // disappears when replay contact markers are disabled.
-    if(!replaying||replayContactMarkers){
-      draw.strokeStyle='#f0c5a4';draw.lineWidth=1.4;
-      draw.strokeRect(a.p.x-12,a.p.y-12,24,24);
-    }
-    // Enemy names are intentionally never shown.
-  }
-}
-function contacts(){
-  if(replaying&&replayAnalysis&&replayContactMarkers)
-    for(const a of enemies(state)){
-    if(a.health<=0)continue;
-    const start=viewMode==='plan2d'?a.p:worldToScreen(a.p,22);
-    const focus=a.contact??a.watch;
-    if(focus){
-      const end=viewMode==='plan2d'?focus:worldToScreen(focus,22);
-      draw.save();draw.strokeStyle='#e4ae78';draw.lineWidth=1.7;
-      draw.setLineDash([5,4]);draw.beginPath();
-      draw.moveTo(start.x,start.y);draw.lineTo(end.x,end.y);
-      draw.stroke();draw.setLineDash([]);draw.restore();
-    }
-    if(a.defense){
-      const p=viewMode==='plan2d'?a.defense:worldToScreen(a.defense,5);
-      draw.strokeStyle='#d6b986';draw.lineWidth=2;
-      draw.strokeRect(p.x-8,p.y-8,16,16);
-    }
-  }
-  for(const m of state.dropped){
-    rect(m.p.x-3,m.p.y-1,6,2,'#202e2d');
-  }
-  for(const g of state.grenades){
-    circle(g.p.x,g.p.y,3,'#a7b4a0');
-  }
-  for(const b of state.flashBursts){
-    draw.globalAlpha=Math.max(0,1-b.age/.7)*.85;
-    circle(b.p.x,b.p.y,13+48*b.age,'#f6edcc');
-    draw.globalAlpha=1;
-  }
-  for(const shot of state.shots){
-    // Shot geometry can expose an unconfirmed enemy position in a personal
-    // contact review; team-wide ballistic evidence is disabled in this mode.
-    if(replaying&&replayKnowledge.observerId)continue;
-    const visibility=replaying&&replayKnowledge.omniscient?
-      {trace:true,flash:true,impact:true}:shotVisibility(state,shot);
-    const fade=contactFade(shot.age,.40);
-    draw.globalAlpha=fade;
-    if(visibility.trace&&shot.age<.23)
-      line(shot.start,shot.end,
-        shot.side==='blue'?'#f6db9d':'#f2a087',2.3);
-    if(visibility.flash&&shot.age<.12)
-      circle(shot.start.x,shot.start.y,4+fade*4,'#f4dbb0');
-    if(visibility.impact){
-      const color=shot.surface==='blood'?'#b46859':
-        shot.surface==='metal'?'#f1cf91':
-        shot.surface==='wood'?'#e9ba7e':'#dfc8a4';
-      circle(shot.end.x,shot.end.y,shot.hit?5:3.7,color);
-      if(shot.hit){
-        draw.fillStyle='#efb19c';draw.font='700 12px "Saira Condensed",sans-serif';
-        draw.textAlign='center';
-        // Physical impacts carry the outcome without a floating DOWN label.
-      }
-    }
-    draw.globalAlpha=1;
-  }
-}
-function endMessage(){
-  if(!replaying&&(state.phase==='won'||state.phase==='lost')){
-    // The HTML debrief owns the readable text and restart buttons.
-    draw.fillStyle='#101c1f88';draw.fillRect(0,0,W,H);
-  }
-}
+const fog2D=createBreach2DVisibilityRenderer({
+ draw,getState:()=>state,isReplaying:()=>replaying,getViewMode:()=>viewMode,
+ replayKnowledge,replayPlayback,
+ debugPalette:new URLSearchParams(location.search).get('fogDebug')==='palette'
+});
 // Blood and bullet decals are part of the floor, not HUD sprites.
 // Render beneath architecture AND fog so marks cannot float over walls
 // or leak into an unrevealed room.
 /** Shared 3D/2D light footprint, shaded beneath architecture and fog. */
-let beam2DBlockers:Segment[]=[];
-let beam2DBlockerTick=-1,beam2DSite=-1,beam2DRevision=-1;
-const beam2DHistory=new Map<string,{x:number;y:number;yaw:number;tick:number;
- config:TeamActor['weaponConfiguration'];footprint:Pt[]}>();
-function renderLightingMood2D(){
- const mood=lightingPresentation(state.lightingMode);
- if(mood.floorTint<=0)return;
- draw.save();
- draw.fillStyle='rgba(2,7,11,'+mood.floorTint+')';
- draw.fillRect(-9,-9,W+18,H+18);
- draw.restore();
-}
-function renderWeaponLights2D(){
- const active=state.operators.filter(a=>a.health>0&&a.weaponLightOn&&
-  a.weaponConfiguration?.slots.light==='light-compact');
- if(!active.length)return;
- const tick=Math.floor(state.seconds*8),site=state.site?.seed??-1;
- if(tick!==beam2DBlockerTick||site!==beam2DSite||
-  state.objectRevision!==beam2DRevision){
-  beam2DBlockers=lightBeamBlockers(WALLS,state.doors,COVER);
-  beam2DBlockerTick=tick;beam2DSite=site;
-  beam2DRevision=state.objectRevision;
- }
- draw.save();draw.fillStyle='rgba(183,240,205,.12)';
- for(const actor of active){
-  if(actor.side==='red'&&!replayActorDisclosed(state,actor,
-      replaying?replayKnowledge.disclosure():{mode:'squad'}))continue;
-  const previous=beam2DHistory.get(actor.id);
-  const yaw=actor.weaponYaw;
-  if(!previous||previous.tick!==tick||!sameWeaponConfiguration(previous.config,actor.weaponConfiguration)||
-   Math.hypot(previous.x-actor.p.x,previous.y-actor.p.y)>.7||
-   Math.abs(Math.atan2(Math.sin(previous.yaw-yaw),Math.cos(previous.yaw-yaw)))>.025){
-   const muzzle=weaponClearance({x:actor.p.x,z:actor.p.y,
-    heading:actor.heading,weaponYaw:yaw,weapon:actor.weapon,
-    weaponConfiguration:actor.weaponConfiguration,
-    equipment:actor.equipment,aim:actor.aim,
-    velocity:actor.velocity,recoil:actor.recoil,posture:actor.posture},
-    state.doors).muzzle;
-   const from=weaponLightEmitter(muzzle,actor.weaponConfiguration!);
-   beam2DHistory.set(actor.id,{x:actor.p.x,y:actor.p.y,yaw,tick,
-    config:actor.weaponConfiguration,
-    footprint:lightBeamFootprint(from,muzzle.yaw,beam2DBlockers)});
-  }
-  const polygon=beam2DHistory.get(actor.id)!.footprint;
-  draw.beginPath();draw.moveTo(polygon[0].x,polygon[0].y);
-  for(let i=1;i<polygon.length;i++)draw.lineTo(polygon[i].x,polygon[i].y);
-  draw.closePath();draw.fill();
- }
- draw.restore();
-}
-function renderGroundMarks(){
-  for(const mark of state.impactMarks){
-    if(!(replaying&&replayKnowledge.omniscient)&&!liveVisibility(state,mark.p))continue;
-    const radius=mark.surface==='blood'?
-      confinedGroundRadius(mark.p,4,state.site?.walls??WALLS):2.5;
-    if(radius<.5)continue;
-    draw.globalAlpha=Math.max(.18,.78-mark.age*.023);
-    circle(mark.p.x,mark.p.y,radius,
-      mark.surface==='blood'?'#914a44':
-      mark.surface==='wood'?'#42332a':
-      mark.surface==='stone'?'#363936':
-      mark.surface==='metal'?'#262e30':'#4e4b40');
-    draw.globalAlpha=1;
-  }
- }
+const world2D=createBreach2DWorldRenderer({
+ draw,rect,line,circle,getState:()=>state,isReplaying:()=>replaying,
+ getDoorFocusId:()=>doorFocusId,replayKnowledge,replayPlayback
+});
+const replay2D=createBreach2DReplayOverlays({
+ draw,worldToScreen,colorFor,historicalShotVisible,
+ replayPlayback,replayCamera,replayBodycam,
+ getFrame:()=>({state,replaying,selected,recorder,selectedReplayShotId,
+  replayTraceMode,replayTrailMode,replayGhostMode,replayNameTags,viewScale,
+  replayMovementHistory})
+});
+const projected2D=createBreach2DProjectedOverlays({
+ draw,line,circle,uid,worldToScreen,colorFor,selectedPlanNode,
+ displayRouteCache,projectedRouteCache,drawExecutionProblem:actor2D.drawExecutionProblem,
+ replayKnowledge,replayCamera,route2D,replay2D,
+ getFrame:()=>({state,replaying,selected,selectedNode,selectedActiveWatch,
+  draggingNode,draggingWatchTarget,trace,replayPlanVersion,replayPlanScope,
+  replayNameTags,replayContactMarkers,replayObjectiveMarkers,replayAnalysis,
+  doorFocusId,stage,cssW,cssH,dpr})
+});
 function render(){
   if(stage&&viewMode!=='plan2d'){
     if(stage.isReplayBodycamActive()){
@@ -4281,7 +3131,7 @@ function render(){
       draw.clearRect(0,0,cssW,cssH);
       return;
     }
-    renderProjectedPlans();return;
+    projected2D.renderProjectedPlans();return;
   }
   draw.setTransform(dpr,0,0,dpr,0,0);
   draw.fillStyle='#141e20';draw.fillRect(0,0,cssW,cssH);
@@ -4289,15 +3139,15 @@ function render(){
   draw.save();
   draw.translate(ox,oy);draw.scale(viewScale,viewScale);
   draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
-  terrain();furniture();renderGroundMarks();renderLightingMood2D();renderWeaponLights2D();
-  architecture();fog();renderReplayPersonalGround();missionMarkers();
-  paths();renderReplayMovementHistory(false);
-  for(const a of state.civilians)civilianSprite(a);
-  for(const a of state.operators)sprite(a);
+  world2D.terrain();world2D.furniture();world2D.renderGroundMarks();world2D.renderLightingMood2D();world2D.renderWeaponLights2D();
+  world2D.architecture();fog2D.renderFog();fog2D.renderPersonalGround();actor2D.missionMarkers();
+  route2D.paths();replay2D.renderReplayMovementHistory(false);
+  for(const a of state.civilians)actor2D.civilianSprite(a);
+  for(const a of state.operators)actor2D.sprite(a);
   if(!replaying||replayAnalysis)
-    for(const a of team(state))drawExecutionProblem(a,false);
-  contacts();renderReplayGhosts(false);renderReplayBallistics(false);
-  renderReplayFollowMarker(false);endMessage();
+    for(const a of team(state))actor2D.drawExecutionProblem(a,false);
+  actor2D.contacts();replay2D.renderReplayGhosts(false);replay2D.renderReplayBallistics(false);
+  replay2D.renderReplayFollowMarker(false);actor2D.endMessage();
   draw.strokeStyle='#d4dac64f';draw.lineWidth=2;
   draw.strokeRect(0,0,W,H);
   draw.restore();
@@ -4474,7 +3324,7 @@ function applyReplayFrameAt(t:number){
   replayPresentation=frame.presentation??null;
   applyReplayFrame(state,frame);
   // Scrubbed time can move backwards: invalidate cached fog/effect time.
-  fogStamp=-1;
+  fog2D.invalidate();
 }
 function seekReplay(t:number){
   ui.replayClusterMenu.hidden=true;
@@ -5440,7 +4290,7 @@ function exitReplay(){
   ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
   closeReplayChoices();
   if(finishedSession)state=finishedSession;
-  finishedSession=null;fogStamp=-1;
+  finishedSession=null;fog2D.invalidate();
   if(savedReplayPreviousRecorder){
     recorder=savedReplayPreviousRecorder;
     savedReplayPreviousRecorder=null;
@@ -5819,7 +4669,7 @@ function changeReplaySight(mode:'team'|'full'|'operator'):void{
     replayKnowledge.groundLensOn=false;replayKnowledge.observerId=null;
     replayKnowledge.omniscient=mode==='full';
   }
-  fogStamp=-1;
+  fog2D.invalidate();
   rebuildReplayEventIndex();
   renderReplayEventMarkers();renderReplayEventFeed();
   refreshReplayShotInspector();updateReplayHud();
@@ -5832,7 +4682,7 @@ function followReplayOperator(id:string):void{
   chooseReplayCamera('operator');replayCamera.follow=true;
   if(replayKnowledge.observerId){
     replayKnowledge.observerId=replayBodycam.observers.includes(id)?id:null;
-    fogStamp=-1;rebuildReplayEventIndex();
+    fog2D.invalidate();rebuildReplayEventIndex();
     renderReplayEventMarkers();renderReplayEventFeed();
   }
   advanceReplayCamera(0,true);
@@ -5881,7 +4731,7 @@ ui.replayDirectBodycam.addEventListener('click',()=>{
     replayKnowledge.observerId=replayCamera.followId;
     if(!startReplayBodycam())return;
   }
-  fogStamp=-1;rebuildReplayEventIndex();
+  fog2D.invalidate();rebuildReplayEventIndex();
   renderReplayEventMarkers();renderReplayEventFeed();
   updateReplayHud();
 });
@@ -5895,7 +4745,7 @@ ui.replaySight.addEventListener('click',()=>{
   stopReplayBodycam();
   replayKnowledge.groundLensOn=false;
   replayKnowledge.observerId=null;
-  replayKnowledge.omniscient=!replayKnowledge.omniscient;fogStamp=-1;
+  replayKnowledge.omniscient=!replayKnowledge.omniscient;fog2D.invalidate();
   rebuildReplayEventIndex();
   renderReplayEventMarkers();renderReplayEventFeed();
   refreshReplayShotInspector();updateReplayHud();
@@ -5947,7 +4797,7 @@ if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
       stage?.setReplayBodycam(null);
       replayKnowledge.observerId=null;
       replayKnowledge.omniscient=false;
-      fogStamp=-1;
+      fog2D.invalidate();
       if(replaying)updateReplayHud();
     },
     diagnostic:()=>stage?.inspectReplayBodycamQa()??null,
@@ -6053,7 +4903,7 @@ ui.replayContactLens.addEventListener('click',()=>{
     replayCamera.followId=replayKnowledge.observerId;
     closeReplayShotInspector();
   }
-  fogStamp=-1;
+  fog2D.invalidate();
   rebuildReplayEventIndex();
   renderReplayEventMarkers();renderReplayEventFeed();
   refreshReplayShotInspector();updateReplayHud();
@@ -6228,7 +5078,7 @@ function reset(next=state.variant,siteSeed?:number,
   selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
-  fogStamp=-1;lastSoundShotId=0;lastEventAudio='';
+  fog2D.invalidate();lastSoundShotId=0;lastEventAudio='';
   lastFootstepSoundTime=0;
   recorder=new MissionRecorder();recorder.capture(state,true);
   tacticalFeedback.clear();
@@ -6759,7 +5609,7 @@ ui.flash.addEventListener('click',()=>{
 });
 ui.sync.addEventListener('click',()=>{planSync(state);playOrderCue('orders.sync');updateHud();});
 ui.stance.addEventListener('click',()=>{
-  posture(state,selected);playOrderCue('orders.stance');fogStamp=-1;updateHud();
+  posture(state,selected);playOrderCue('orders.stance');fog2D.invalidate();updateHud();
 });
 ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
 ui.siteLighting.textContent='LIGHTING · '+selectedLightingMode.toUpperCase();
