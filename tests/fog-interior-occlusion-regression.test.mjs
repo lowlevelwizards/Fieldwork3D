@@ -80,12 +80,12 @@ test('an enclosed courtyard stays unknown while an open shipping court is outsid
    room('E',280,140,40,150)];
  const site={seed:22,rooms:border,
   bounds:{minX:0,minY:0,maxX:450,maxY:450}};
- assert.equal(exteriorBriefedAt(site,{x:210,y:210}),true);
+ assert.equal(exteriorBriefedAt(site,{x:205,y:205}),true);
  const enclosed={...site,rooms:[...border,room('S',100,290,220,40)]};
- assert.equal(exteriorBriefedAt(enclosed,{x:210,y:210}),false);
+ assert.equal(exteriorBriefedAt(enclosed,{x:205,y:205}),false);
  const rects=exteriorKnownFogRects(enclosed);
- assert.ok(rects.some(r=>210>r.x&&210<r.x+r.w&&
-   210>r.y&&210<r.y+r.h));
+ assert.ok(rects.some(r=>205>r.x&&205<r.x+r.w&&
+   205>r.y&&205<r.y+r.h));
 });
 test('3D overlays unknown interior props instead of depth-revealing them',()=>{
  const code=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
