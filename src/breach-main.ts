@@ -7984,6 +7984,7 @@ function tick(now:number){
    requestAnimationFrame(tick);return;
   }
   let simSteps=0;
+  let recordingMs=0;
   const simPhaseCosts=perfOverlay?new Map<string,number>():null;
   if(!replaying&&state.phase==='running'){
     const budget=fixedStepBudget(accum,dt);
@@ -7996,7 +7997,11 @@ function tick(now:number){
         (name,ms)=>simPhaseCosts.set(name,
           (simPhaseCosts.get(name)??0)+ms):undefined);
       simSteps++;
-      recorder.capture(state,isMissionTerminal(state));
+      if(perfOverlay){
+        const beforeRecording=performance.now();
+        recorder.capture(state,isMissionTerminal(state));
+        recordingMs+=performance.now()-beforeRecording;
+      }else recorder.capture(state,isMissionTerminal(state));
     }
   }else{accum=0;previousRenderActors=null;previousRenderDoors=null;}
   if(replaying&&replayPlaying){
@@ -8185,7 +8190,7 @@ function updatePhysicalActionRings(){
       !replaying?recorder.motion.presentation(Math.max(0,
         state.phase==='running'?
           state.seconds-(1-Math.min(1,accum*60))/60:
-          state.seconds),state.operators.map(a=>a.id)):null,
+          state.seconds),state.operators.map(a=>a.id),false):null,
       replaying?replayDisclosure():null,
       replaying?replayDoorHistory:null,
       replaying&&replayContactObserverId?
@@ -8280,7 +8285,7 @@ function updatePhysicalActionRings(){
     const end=performance.now(),stats=stage?.performanceStats();
     frameMeter.add({frame:end-perfStart,cadence:frameGap,sim:perfRenderStart-perfStart,
       scene:overlayBegin-perfRenderStart,overlay:end-overlayBegin,
-      steps:simSteps,draws:stats?.calls??0,triangles:stats?.triangles??0});
+      recording:recordingMs,steps:simSteps,draws:stats?.calls??0,triangles:stats?.triangles??0});
     // The optional diagnostics must not sort rolling samples every RAF:
     // that would contaminate the very hitch measurements they report.
     if(Math.floor(now/750)!==Math.floor((now-dt*1000)/750)){
@@ -8289,8 +8294,10 @@ function updatePhysicalActionRings(){
         m.p95.toFixed(1)+' · MAX '+m.worst.toFixed(1)+
         '\\nRAF GAP P50 '+m.rafP50.toFixed(1)+'ms · P95 '+
         m.rafP95.toFixed(1)+'ms'+
-        '\\nSIM '+m.simulation.toFixed(1)+'ms / '+m.steps.toFixed(1)+
-        ' ticks · SCENE '+m.scene.toFixed(1)+'ms'+
+        '\\nSIM+REC '+m.simulation.toFixed(1)+'ms / '+m.steps.toFixed(1)+
+        ' ticks · REC '+m.recording.toFixed(1)+'ms · SCENE '+m.scene.toFixed(1)+'ms'+
+        '\\nFILM '+recorder.frames.length+' frames · '+
+        recorder.motion.stepEventCount+' step events'+
         '\\nOVERLAY '+m.overlay.toFixed(1)+'ms · DRAWS '+
         m.draws.toFixed(0)+' · TRI '+m.triangles.toFixed(0)+
         (simPhaseCosts&&simPhaseCosts.size?'\\nHOT SIM '+
