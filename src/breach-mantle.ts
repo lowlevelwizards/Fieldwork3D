@@ -293,7 +293,7 @@ export function probeWindowPortalRoute(from:Pt,to:Pt,world:CrossingWorld,
  */
 export function hasClimbableWindowOpening(window:WindowState):boolean{
  if(window.treatment==='bars'||window.treatment==='boarded'||
-    window.style==='wire')return false;
+    window.style==='wire'||window.style==='clerestory')return false;
  if(window.width<25)return false;
  const sill=window.sillHeight??14,head=window.headHeight??38;
  return sill<=30&&head-sill>=18;
