@@ -105,8 +105,7 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     windows.push({id:'W'+windows.length,x:item.p.x,y:item.p.y,
       width:half*2,vertical:item.vertical,style,
       sillHeight:fullHeight?0:clerestory?28:style==='awning'?19:undefined,
-      headHeight:fullHeight||clerestory||style==='awning'?
-        windowVisualHeadHeight(style):undefined});
+      headHeight:windowVisualHeadHeight(style)});
     usedFacades.add(facade(item.p));
   }
   const walls:Segment[]=[];
@@ -128,7 +127,10 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     w:opening.vertical?10:opening.width,
     h:opening.vertical?opening.width:10,
     low:(opening.sillHeight??14)<25,
-    fixture:opening.sillHeight===0?'glass-barrier':'window-sill'});
+    fixture:opening.sillHeight===0?'glass-barrier':'window-sill',
+    topHeight:opening.sillHeight===0?
+      (opening.headHeight??windowVisualHeadHeight(opening.style)):
+      (opening.sillHeight??14)});
   // Exterior furnishing belongs exclusively to addExteriorProperty.
   // The old second frontage pass spawned a generic 'vehicle' for most
   // archetypes and an unattached 'bench' for clinics, independently of
@@ -143,7 +145,10 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
     w:opening.vertical?10:opening.width,
     h:opening.vertical?opening.width:10,
     low:(opening.sillHeight??14)<25,
-    fixture:opening.sillHeight===0?'glass-barrier':'window-sill'
+    fixture:opening.sillHeight===0?'glass-barrier':'window-sill',
+    topHeight:opening.sillHeight===0?
+      (opening.headHeight??windowVisualHeadHeight(opening.style)):
+      (opening.sillHeight??14)
   }));
   const physical={...glazed,cover:[
     ...glazed.cover.filter(obstacle=>
