@@ -1,0 +1,29 @@
+name: Breach Pointer Gesture Critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-main.ts'
+      - 'src/breach-canvas-gesture-controller.ts'
+      - 'src/breach-touch-recovery.ts'
+      - 'tests/breach-canvas-gestures.test.mjs'
+      - '.github/workflows/breach-pointer-gesture-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: breach-pointer-gesture-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  gesture-critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Pointer, camera and iOS recovery regressions
+        run: node --experimental-strip-types --test tests/breach-canvas-gestures.test.mjs tests/breach-touch-recovery.test.mjs tests/ux2-pointer-hit-targets.test.mjs
+      - name: Production TypeScript and build
+        run: npm run build
