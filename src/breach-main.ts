@@ -173,6 +173,8 @@ import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
 import {FrameMeter} from './breach-perf.ts';
+import {drainSightDiagnostics,setSightDiagnosticsEnabled}
+ from './breach-sight-cost-counters.ts';
 import {formatAfterAction} from './breach-after-action.ts';
 import {formatMissionPacing} from './breach-mission-pacing.ts';
 import {formatCombatReview} from './breach-combat-review.ts';
@@ -7983,6 +7985,9 @@ if(perfOverlay){
     'pointer-events:none;white-space:pre;max-width:50vw';
   document.body.append(perfOverlay);
 }
+// Sight instrumentation is opt-in only. Normal mission loops never record
+// counters, and neither gameplay nor replay reads these diagnostics.
+setSightDiagnosticsEnabled(!!perfOverlay);
 const frameMeter=perfOverlay?new FrameMeter():null;
 const physicalActionRings=new PhysicalActionRings();
 function tick(now:number){
@@ -8280,6 +8285,7 @@ function tick(now:number){
     // that would contaminate the very hitch measurements they report.
     if(Math.floor(now/750)!==Math.floor((now-dt*1000)/750)){
       const m=frameMeter.summary();
+      const sight=drainSightDiagnostics();
       perfOverlay.textContent='JS '+m.p50.toFixed(1)+'ms · P95 '+
         m.p95.toFixed(1)+' · MAX '+m.worst.toFixed(1)+
         '\nRAF GAP P50 '+m.rafP50.toFixed(1)+'ms · P95 '+
@@ -8290,6 +8296,11 @@ function tick(now:number){
         '\nCUM FOG M/S '+(stats?.fogMemoryPaints??0)+'/'+
           (stats?.fogSightPaints??0)+' · SHADOW REF/REUSE '+
           (stats?.shadowRefreshes??0)+'/'+(stats?.shadowReuses??0)+
+        '\nSIGHT (750ms) '+sight.liveQueries+' Q / '+
+          sight.liveOcclusionProbes+' LOS / '+sight.liveHits+
+          ' HIT · FULL '+sight.fullViewQueries+
+        '\nPERSONAL '+sight.personalQueries+' Q / '+
+          sight.personalOcclusionProbes+' LOS'+
         '\nFILM '+recorder.frames.length+' frames · '+
         recorder.motion.stepEventCount+' step events'+
         '\nDOM '+document.getElementsByTagName('*').length+
