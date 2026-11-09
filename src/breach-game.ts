@@ -133,7 +133,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
 import {routeWithSqueezeIntel,routeWithSqueezeWorld,recoverNormalLane}
   from './breach-squeeze-route.ts';
 import {knownPortalStrokeRoute} from './breach-known-portal-stroke.ts';
-import {probeObstacleCrossing,probeWindowCrossing,probeWindowPortalRoute,
+import {probeObstacleCrossing,probeWindowPortalRoute,
   canOpenWindowForClimb,preferTraversal,sampleTraversal,traversalRouteLength,
   traversalStepClear,type TraverseOpportunity}
   from './breach-mantle.ts';
@@ -2098,7 +2098,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
         a.lastTraversalAt=s.seconds;return true;
       }
     }
-    const world=traversalWorld(s,a),fit=traversalFitness(a);
+    const world=traversalWorld(s,a);
     // Validate the LOCAL aperture, not the distant waypoint.
     // Window probes intentionally reject spans greater than 180 units.
     // The initial probe already selected an eligible obstacle and landing.
