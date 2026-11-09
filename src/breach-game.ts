@@ -23,7 +23,7 @@ import {
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
-import {entryDoorState,entryClearanceForLook,stackApproachPositions}
+import {entryClearanceForLook,stackApproachPositions}
  from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
@@ -125,6 +125,7 @@ import {passageWait,passageFollowerStep,passageScheduledStep,
   from './breach-passage.ts';
 import {incidentalCloseWouldBlockTeammate}
   from './breach-door-pressure-arbitration.ts';
+import {advanceWaitOrder} from './breach-order-wait.ts';
 import {planDoorSchedule,pendingPassageSlot,type PassageSchedule}
   from './breach-passage-plan.ts';
 import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
@@ -3198,41 +3199,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   const held=aimHeading(a);
   if(held!==null)rotate(a,held,dt);
   if(n.kind==='holdClear'||n.kind==='wait'){
-    // A squad-entry WAIT is released only after the assigned doorway is
-    // physically open enough for real passage. Ordinary authored WAIT
-    // retains its previous contact-hold semantics.
-    if(n.kind==='wait'&&n.doorId){
-      const doorway=s.doors.find(d=>d.id===n.doorId);
-      const gate=entryDoorState(doorway);
-      if(gate!=='ready'){
-        a.velocity=0;a.waitRemaining=0;a.actionTimer+=dt;
-        // A genuinely blocked entry is not silently abandoned. Alert once,
-        // retain editable orders, and never force the squad through geometry.
-        if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5){
-          // A stuck hinge is physically observable when the operator tries
-          // to enter. Report the blockage without revealing the identity or
-          // position of any undiscovered prop behind the door. This is an
-          // explanation, never permission to bypass the leaf or alter orders.
-          const stalledSwing=!!doorway&&doorway.open&&
-            (doorway.openFraction??0)<.98&&
-            doorSwingBlocked(doorway,
-              Math.min(1,(doorway.openFraction??0)+.07),[]);
-          notify(s,a.name+' ENTRY WAIT · '+
-            (gate==='missing'?'DOOR MISSING':
-             stalledSwing?'DOOR SWING OBSTRUCTED · CHECK ENTRY':
-             'DOOR NOT CLEAR'));
-        }
-        return;
-      }
-      a.actionTimer=0;
-    }
-    // Remain briefly settled and hold on any live visual contact.
-    const contact=enemies(s).some(e=>e.health>0&&inSight(a,e,s));
-    if(contact)a.motorPause='contact';
-    a.waitRemaining=contact?0:a.waitRemaining+dt;
-    a.velocity=0;
-    if(a.waitRemaining>=(n.duration??(n.kind==='wait'?1:.5)))pop(a);
-    return;
+    advanceWaitOrder(s,a,n,dt,inSight,notify,pop);return;
   }
   if(n.kind==='sync'){
     a.syncReady=n.syncCode??'A';

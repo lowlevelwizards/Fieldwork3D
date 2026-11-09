@@ -27,6 +27,9 @@ jobs:
             tests/breach-roadmap2-site-mobility.test.mjs \
             tests/breach-roadmap2-visibility-contract.test.mjs \
             tests/breach-roadmap2-debrief-extraction.test.mjs \
+            tests/breach-roadmap2-site-builder.test.mjs \
+            tests/breach-roadmap2-door-pressure.test.mjs \
+            tests/breach-roadmap2-order-wait.test.mjs \
             tests/breach-physical-interactions-nov8.test.mjs \
             tests/doorway-right-of-way-session.test.mjs \
             tests/breach-fog-visibility.test.mjs \
