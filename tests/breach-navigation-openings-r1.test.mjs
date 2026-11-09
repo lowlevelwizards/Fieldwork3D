@@ -5,7 +5,7 @@ import {passageDeadlockRetreatTarget,passageIdleYieldStep}
   from '../src/breach-passage.ts';
 import {windowVisualHeadHeight,SERVING_COUNTER_VISUAL_HEIGHT}
   from '../src/breach-opening-proportions.ts';
-import {eyeHeight} from '../src/breach-cover-height.ts';
+import {eyeHeight,coverHeight} from '../src/breach-cover-height.ts';
 import {WALL_VISUAL_HEIGHT,DOOR_CLEAR_VISUAL_HEIGHT}
   from '../src/breach-door-proportions.ts';
 
@@ -76,5 +76,17 @@ test('window authoring and renderer share proportional heights without planar ov
  assert.match(windows,/windowVisualHeadHeight\(style\)/);
  assert.match(src,/SERVING_COUNTER_VISUAL_HEIGHT/);
  assert.match(src,/baseTop-1\.05,6,/);
- assert.match(movement,/probeObstacleCrossing\(a\.p,planned\.landing,world,fit\)/);
+ assert.match(movement,/traversalStepClear\(a\.p,planned\.landing,planned,world\)/);
+ assert.match(movement,/landingClear/);
+ assert.match(src,/height\+1\.15,6\.2/);
+});
+
+test('physical window and counter cover heights match modeled proportions',()=>{
+ assert.equal(coverHeight({x:0,y:0,w:30,h:10,fixture:'window-sill',
+   topHeight:SERVING_COUNTER_VISUAL_HEIGHT}),SERVING_COUNTER_VISUAL_HEIGHT);
+ assert.equal(coverHeight({x:0,y:0,w:30,h:10,fixture:'window-sill'}),
+   14,'ordinary legacy window sills retain original cover height');
+ assert.equal(coverHeight({x:0,y:0,w:30,h:10,fixture:'glass-barrier',
+   topHeight:windowVisualHeadHeight('storefront')}),
+   windowVisualHeadHeight('storefront'));
 });
