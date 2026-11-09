@@ -2589,8 +2589,9 @@ export class TacticalScene3D{
           if(!(original instanceof THREE.MeshStandardMaterial))return;
           if(!child.userData.directorCutMat){
             if(!leafCut||original.transparent)return;
-            const clone=original.clone();
-            this.mats.push(clone);
+            // The cutaway clone belongs to this site's door leaf, not the
+            // persistent material palette. Release it on the next map swap.
+            const clone=this.siteMaterials.track(original.clone());
             child.material=clone;
             child.userData.directorCutMat=clone;
           }
