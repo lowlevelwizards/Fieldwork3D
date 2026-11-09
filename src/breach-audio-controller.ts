@@ -18,6 +18,7 @@ import {withFieldworkLiveMix} from './breach-live-sound-pack.ts';
 import {acousticResponseForCue} from './breach-audio-environment.ts';
 import {ReplaySoundTimeline,replayDoorSoundId}
   from './breach-replay-audio.ts';
+import {liveAudioCuesForEvent} from './breach-audio-event-cues.ts';
 import {replayAudioListener,replayBodycamPan}
   from './breach-replay-bodycam-controls.ts';
 
@@ -276,33 +277,10 @@ export function createBreachAudioController(config:{
     const event=state.events.at(-1)??'';
     if(!replaying&&event!==lastEventAudio){
       const source=liveEventAudioPosition(event,state,selected);
-      if(event.includes('OPENED')||event.includes('CLOSING')){
-        if(!playLiveEventCue(event.includes('CLOSING')?
-          'doors.close':'doors.open',source))playTone(160,.16);
-      }
-      if(event.includes('KICK RESISTED')){
-        if(!playLiveEventCue('doors.kick',source))playTone(90,.25,true);
-        playLiveEventCue('doors.kick_resisted',source,.30);
-      }
-      if(event.includes('FORCED OPEN')){
-        if(!playLiveEventCue('doors.kick',source))playTone(90,.25,true);
-        playLiveEventCue('doors.forced_open',source,.33);
-      }
-      if(event.includes('KICKED')){
-        if(!playLiveEventCue('doors.kick',source))playTone(90,.25,true);
-      }
-      if(event.includes('FLASH DETONATED')){
-        if(!playLiveEventCue('combat.flash',source))playTone(1350,.65,true);
-      }
-      if(event.includes('RELOADED')){
-        if(!playLiveEventCue('equipment.reload',source))playTone(280,.09);
-      }
-      if(event.includes('FLASH OUT')){
-        if(!playLiveEventCue('equipment.flash_throw',source))
-          playTone(420,.07);
-      }
-      if(event.includes('SURRENDERED')){
-        if(!playLiveEventCue('people.surrender',source))playTone(210,.22);
+      for(const cue of liveAudioCuesForEvent(event)){
+        if(!playLiveEventCue(cue.id,source,cue.scale)&&cue.fallback)
+          playTone(cue.fallback[0],cue.fallback[1],
+            cue.fallback[2]??false);
       }
     }
     lastEventAudio=event;
