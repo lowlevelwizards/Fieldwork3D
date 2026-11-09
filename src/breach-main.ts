@@ -3944,6 +3944,19 @@ function releaseMissionPresentation():void{
   replaying=false;replayPlayback.pause();finishedSession=null;
   replayLibrary.resetSession();
   replayEventIndex=null;
+  // Old film indexes and storyboard closures can retain entire sessions.
+  // Clear them on EVERY replacement, including direct Quick Play restarts.
+  replayPresentation=null;
+  replayMovementHistory=null;
+  replayChapters=[];replayBookmarks=[];
+  replayIncidents=[];replayFeaturedIncidents=[];
+  replaySquadEntries=[];selectedReplaySquadEntry=null;
+  selectedReplayIncidentId=null;
+  replayDirector.reset();
+  replayKnowledge.reset();
+  replayBodycam.observers=[];replayBodycam.groundObservers.clear();
+  audioController.endReplay();
+  recordedOperation=null;
   operationsBoard.hidden=true;
   hideWeaponChooser();
   flashMode=false;document.body.classList.remove('replaying');
