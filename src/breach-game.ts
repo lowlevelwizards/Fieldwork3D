@@ -4929,6 +4929,17 @@ export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  battleEvent(s,'interaction',null,to,'FURNITURE MOVED');
  return true;
 }
+/** Live bodies that can resist any door swing. Updated only after a
+ * physical opening-yield changes a position during this door phase.
+ * No stale position or actor is ever reused across simulation ticks. */
+function liveDoorOccupants(s:Session):Pt[]{
+  const positions:Pt[]=[];
+  for(const operator of s.operators)
+    if(operator.health>0)positions.push(operator.p);
+  for(const civilian of s.civilians)
+    if(civilian.health>0)positions.push(civilian.p);
+  return positions;
+}
 /** Optional phase timings used by the offline benchmark, never required by play. */
 export type StepPhaseProbe=(phase:string,elapsedMs:number)=>void;
 export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
@@ -4969,6 +4980,10 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     }else battleEvent(s,'wound',casualty,casualty.p,
       casualty.name+' WOUND DETERIORATING');
   }
+  // Door leaves sample all live bodies, but normal ticks do not move any
+  // body during the door phase. Build the positions once per fixed tick,
+  // refreshing only if a real opening-yield actually relocated an operator.
+  let doorOccupants=liveDoorOccupants(s);
   for(const door of s.doors){
     if(door.heldBy){
       const holder=s.operators.find(a=>a.id===door.heldBy);
@@ -4976,6 +4991,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
          holder.nav.length>0||!doorReachable(holder.p,door))
         door.heldBy=null;
     }
+    let yielded=false;
     // An operator just inside the initial sweep may yield a small REAL
     // step before the leaf advances. This is not an actor-collision bypass:
     // static geometry, other leaves and opposing bodies must all remain solid.
@@ -4996,12 +5012,11 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
            }))continue;
         actor.priorP=clone(actor.p);
         actor.p=candidate;
+        yielded=true;
       }
     }
-    advanceDoor(door,h,[
-      ...s.operators.filter(a=>a.health>0).map(a=>a.p),
-      ...s.civilians.filter(c=>c.health>0).map(c=>c.p)
-    ]);
+    if(yielded)doorOccupants=liveDoorOccupants(s);
+    advanceDoor(door,h,doorOccupants);
   }
   mark('doors');
   s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
