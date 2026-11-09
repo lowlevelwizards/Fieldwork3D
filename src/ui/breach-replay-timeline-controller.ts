@@ -5,7 +5,7 @@
 import type {ReplayPlaybackController}
   from '../breach-replay-playback-controller.ts';
 import type {TimeSample} from '../breach-replay-transport.ts';
-import {REPLAY_SPEED_STOPS,speedFromIndex,speedIndex}
+import {REPLAY_SPEED_STOPS,speedFromIndex}
   from '../breach-replay-speed.ts';
 
 export type ReplayTimelineElements={
