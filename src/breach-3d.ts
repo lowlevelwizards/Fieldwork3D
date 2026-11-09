@@ -211,7 +211,10 @@ export class TacticalScene3D{
   /** Counts submitted WebGL work; GPU timings require a separate timer. */
   performanceStats(){
     const info=this.renderer.info.render;
+    // Renderer-managed GPU resource *counts*, not VRAM byte estimates.
+    const memory=this.renderer.info.memory;
     return {calls:info.calls,triangles:info.triangles,
+      geometryCount:memory.geometries,textureCount:memory.textures,
       staticBatch:this.staticBatches.stats(),
       siteMaterialCount:this.siteMaterials.size,
       actorRigCount:this.actors.size,
