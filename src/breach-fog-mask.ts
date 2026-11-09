@@ -100,11 +100,23 @@ export function paintFogMemory(ctx:CanvasRenderingContext2D,s:Session,
       ctx.lineTo(b.x,b.y);ctx.stroke();
     }
   }
-  // Group every remembered tile into one combined path per knowledge
-  // level. Blurring each rect separately caused visible staircase corners,
-  // overlapping alpha seams and checkerboard patterns after zooming.
-  // These visual paths do NOT modify actual sight or persistent knowledge.
-  const fineVisible:Pt[]=[];
+  // Full View must clear the map outright, not leave a translucent tint
+  // in 2D while 3D hides its fog mesh. It grants no new gameplay knowledge.
+  if(s.intel.mode==='full-view'){
+    ctx.globalCompositeOperation='destination-out';
+    ctx.filter='none';ctx.fillStyle='#fff';
+    ctx.fillRect(bounds.minX,bounds.minY,
+      bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
+    ctx.restore();
+    return;
+  }
+  // Fog states: unknown = opaque, blueprint = 60% tint, explored = 45%
+  // tint, live LOS = clear. Fine (20u) and micro (10u) exploration overlap
+  // heavily. They MUST be drawn in ONE destination-out path: drawing each
+  // as a separate 55%-erase pass multiplies their alpha and leaves nearly
+  // all previously visited interiors transparent.
+  const EXPLORED_ERASE=.55,BLUEPRINT_ERASE=.40;
+  const exploredFine:Pt[]=[];
   const blueprint:Pt[]=[];
   for(let row=Math.floor(bounds.minY/20);row<Math.ceil(bounds.maxY/20);row++)
     for(let col=Math.floor(bounds.minX/20);col<Math.ceil(bounds.maxX/20);col++){
@@ -112,33 +124,31 @@ export function paintFogMemory(ctx:CanvasRenderingContext2D,s:Session,
       const fineSeen=s.seenGround.has('fine:'+col+','+row);
       const level=intelFogLevel(s.intel,s.site,p,false,fineSeen);
       if(level===2)continue;
-      // Exterior Known is already clipped by exact building footprints.
-      if(s.intel.mode==='exterior-known'&&s.site&&!fineSeen&&level===1)continue;
-      if(s.intel.mode==='floor-plan'&&!fineSeen)blueprint.push({x:col*20,y:row*20});
-      else fineVisible.push({x:col*20,y:row*20});
-    }
-  ctx.filter='blur(2.8px)';
-  ctx.fillStyle='rgba(255,255,255,.76)';
-  if(fineVisible.length){
-    ctx.beginPath();
-    for(const p of fineVisible)ctx.rect(p.x,p.y,20,20);
-    ctx.fill();
+      // Floor-plan briefing is a separate *lower* information level; the
+      // exploration pass compensates for its retained tint below.
+      if(s.intel.mode==='floor-plan')blueprint.push({x:col*20,y:row*20});
+      if(fineSeen)exploredFine.push({x:col*20,y:row*20});
   }
-  // Known floor-plan geometry remains legible without revealing hidden props.
-  ctx.fillStyle='rgba(255,255,255,.48)';
+  // Briefed plan geometry is readable but never equivalent to sight.
   if(blueprint.length){
+    ctx.filter='blur(2.8px)';
+    ctx.fillStyle='rgba(255,255,255,'+BLUEPRINT_ERASE+')';
     ctx.beginPath();
     for(const p of blueprint)ctx.rect(p.x,p.y,20,20);
     ctx.fill();
   }
-  // Micro-memory is a continuous union before feathering, not hundreds
-  // of independently blurred pixel blocks.
+  // Merge every fine + micro tile into a single filled path, so overlapping
+  // exploration cannot repeatedly erase fog. On Floor Plan the prebriefed
+  // 40% erase already happened; a further 25% erase produces the SAME final
+  // 45%-opaque explored tint as the other modes (.60 * .75 = .45).
   ctx.filter='blur(3px)';
-  ctx.fillStyle='rgba(255,255,255,.76)';
+  const exploredErase=s.intel.mode==='floor-plan'?.25:EXPLORED_ERASE;
+  ctx.fillStyle='rgba(255,255,255,'+exploredErase+')';
   ctx.beginPath();
+  for(const p of exploredFine)ctx.rect(p.x,p.y,20,20);
   const microCount=forEachRememberedMicroCell(s.seenGround,bounds,
     (col,row)=>ctx.rect(col*10,row*10,10,10));
-  if(microCount)ctx.fill();
+  if(exploredFine.length||microCount)ctx.fill();
   ctx.restore();
 }
 /** Live directional sight is the only high-frequency fog component. It
