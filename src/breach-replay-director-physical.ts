@@ -596,7 +596,22 @@ export function physicalDirectorCandidates(req:PhysicalDirectorRequest,
     return back>=18&&lateral>=32&&lateral>=back*.42;
   };
   const shoulders=auditedCandidates.filter(c=>shoulder(c.view))
-    .sort((a,b)=>b.score-a.score);
+    .map(c=>{
+      // The correct shoulder exposes the ACTION, not the route.
+      // Require the subject and reward clear disclosed target optics.
+      const q=c.view.compositionQuality;
+      const targetClear=!req.target||(c.view.targetVisible&&
+        q?.targetReadable===true);
+      const attention=req.composition?.attentionPoint;
+      const attentionClear=!attention||(
+        !directorLineBlocked(c.view.cameraAnchor,attention,scene)&&
+        directorAttentionVisible(c.view.cameraAnchor,c.view.focus,
+          attention,'ortho',aspect,req.composition!.baseSpan,
+          7,c.view.fov,req.composition!.safeFrame));
+      return {...c,score:c.score+
+        (targetClear?500:-900)+(attentionClear?180:-350)+
+        (q?.shoulderReadable?120:-160)};
+    }).sort((a,b)=>b.score-a.score);
   if(!shoulders.length){
     // No valid approved camera: preserve the established rail rather
     // than allowing the old unrestricted search to invent a new angle.
