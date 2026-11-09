@@ -14,7 +14,9 @@ test('main menu does not generate a throwaway procedural map',()=>{
  assert.match(main,/campaignMode==='menu'\?undefined:initialSiteSeed/);
  assert.match(main,/quickPlay:\(\)=>\{void launchQuickPlay\(\);\}/);
  assert.match(main,/reset\(state\.variant,seed,undefined,generated\.site,undefined,true\)/);
- assert.match(main,/prebuiltSite,\{risk:encounterRisk\}/);
+ // Extra encounter options are compatible as long as the generated site
+ // and selected risk are still passed to the authoritative session.
+ assert.match(main,/prebuiltSite,\{risk:encounterRisk(?:,|\})/);
 });
 
 test('Quick Play preserves the Map Lab progress language and real checkpoints',()=>{
