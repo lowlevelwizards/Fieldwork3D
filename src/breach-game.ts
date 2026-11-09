@@ -1994,7 +1994,13 @@ function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
      (!ordinary.length||portal.duration+.12<
       traversalRouteLength(a.p,ordinary)/53))
    return {op:portal.crossing,approachPath:portal.approachPath};
- const op=probeObstacleCrossing(a.p,goal,world,fit);
+ // A distant waypoint is not an invalid vault intention. Probe the first
+ // nearby obstacle on the authored direction, then keep the original goal.
+ const span=d(a.p,goal);
+ const probe=span>170?{x:a.p.x+(goal.x-a.p.x)*170/span,
+   y:a.p.y+(goal.y-a.p.y)*170/span}:goal;
+ const candidate=probeObstacleCrossing(a.p,probe,world,fit);
+ const op=candidate?{...candidate,destination:clone(goal)}:null;
  if(!op||!s.intel.cover.has(op.obstacleIndex)||
     !preferTraversal(a.p,goal,op,ordinary))return null;
  const approachPath=routeWithSqueezeWorld(a.p,op.approach,s.doors);
@@ -2095,9 +2101,12 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     const world=traversalWorld(s,a),fit=traversalFitness(a);
     // Validate the LOCAL aperture, not the distant waypoint.
     // Window probes intentionally reject spans greater than 180 units.
+    // Recheck the LOCAL takeoff-to-landing crossing, not the distant
+    // authored destination. Longer move orders otherwise fail the <=180u
+    // probe at the moment the vault is supposed to begin.
     const validated=planned.windowId?
       probeWindowCrossing(a.p,planned.landing,world,fit):
-      probeObstacleCrossing(a.p,p,world,fit);
+      probeObstacleCrossing(a.p,planned.landing,world,fit);
     if(validated&&validated.obstacleIndex===planned.obstacleIndex&&
        d(validated.landing,planned.landing)<5&&
        d(validated.approach,a.p)<4){
