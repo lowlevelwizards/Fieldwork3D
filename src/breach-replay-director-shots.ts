@@ -127,14 +127,16 @@ export function composeReplayDirectorShots(time:number,
     y:primary.p.y+direction.y*56};
   const isContact=plan.kind==='engage';
   const isDoor=plan.kind==='door'||plan.kind==='entry';
+  // R10.0: a single action-leading shoulder rig. The focus stays in
+  // FRONT of the acting operator, never at the squad centroid.
   const focus=mix(primary.p,anchor,
-    isContact?.50:isDoor?.59:.37);
+    isContact?.72:isDoor?.73:.66);
   const required=plan.required.slice();
   // Optional teammates affect composition only when there is enough
   // room; they must never displace an actual shooter-target pair.
   const optional=plan.optional.filter(p=>dist(p,primary.p)<145);
   const fitSubjects=[...required,...optional.slice(
-    0,isContact?0:isDoor?2:3)];
+    0,isContact?0:isDoor?1:1)];
   if((plan.discoveryStrength??0)>0&&plan.interest)
     fitSubjects.push(plan.interest);
   let hero=primary;
@@ -197,7 +199,7 @@ export function composeReplayDirectorShots(time:number,
   for(const [index,view] of physicals.entries()){
     const d=unit({x:view.focus.x-view.cameraAnchor.x,
       y:view.focus.y-view.cameraAnchor.y});
-    const shifts=index===0&&hero===primary? [0,-1,1]:[0];
+    const shifts=[0]; // No independent left/right framing inventions.
     for(const side of shifts){
       const offset=isContact?12:isDoor?10:14;
       const proposedFocus={x:view.focus.x-d.y*side*offset,
@@ -220,8 +222,8 @@ export function composeReplayDirectorShots(time:number,
   const safeHeight=clip(context.usableHeight??.77,.5,.9);
   // A little more geography in hallway/door shots, without flattening
   // all of R9.3's compelling intimate two-person exchanges.
-  const treatmentZoom=isContact?8:isDoor?7.35:
-    plan.kind==='follow'?7.25:7.0;
+  const treatmentZoom=isContact?7.5:isDoor?7.0:
+    plan.kind==='follow'?7.0:6.8;
   const zoom=directorOrthoFittingZoom(physical.cameraAnchor,
     physical.focus,points,aspect,baseSpan,
     safeWidth,safeHeight,
@@ -288,7 +290,7 @@ export function composeReplayDirectorShots(time:number,
       if(decision.legal)results.push(built);
     }
   }
-  // Score comparable proposals, not a fixed shoulder/center preference.
+  // Rank only the approved shoulder rig's legal alternatives.
   return results.sort((a,b)=>(b.decisionScore??-Infinity)-
     (a.decisionScore??-Infinity)||
     (a.cameraAnchor.x-b.cameraAnchor.x)||
