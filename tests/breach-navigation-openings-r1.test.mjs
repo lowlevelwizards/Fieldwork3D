@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {releaseEmbeddedCover} from '../src/breach-cover-release.ts';
-import {passageDeadlockRetreatTarget} from '../src/breach-passage.ts';
+import {passageDeadlockRetreatTarget,passageIdleYieldStep}
+  from '../src/breach-passage.ts';
 import {windowVisualHeadHeight,SERVING_COUNTER_VISUAL_HEIGHT}
   from '../src/breach-opening-proportions.ts';
 import {eyeHeight} from '../src/breach-cover-height.ts';
@@ -39,6 +40,21 @@ test('retreat belongs to one stalled claimant, not two competing squeezes',()=>{
    'ordinary brief pauses are not deadlocks');
  assert.equal(passageDeadlockRetreatTarget(b,[door],candidates,()=>false),
    null,'physical swept clearance always vetoes the recovery');
+});
+test('idle doorway occupancy yields smoothly without moving a planned holder',()=>{
+ const door={id:'D',a:p(90,100),b:p(126,100),open:true,
+  openedAt:0,openFraction:1};
+ const idle={id:'IDLE',p:p(108,100),goal:null,active:false,
+  health:100,blockedTime:0,side:'blue'};
+ const approach={id:'MOVE',p:p(108,76),goal:p(108,140),
+  active:true,health:100,blockedTime:0,side:'blue'};
+ const output=passageIdleYieldStep(idle,[door],[approach],()=>true);
+ assert.ok(output);
+ assert.ok(output.y>idle.p.y,'idle squadmate clears away from approaching side');
+ assert.equal(passageIdleYieldStep({...idle,active:true},[door],[approach],
+   ()=>true),null,'a deliberate moving operator is not auto-relocated');
+ assert.equal(passageIdleYieldStep(idle,[door],[approach],()=>false),
+   null,'an obstructed stationary operator must not teleport');
 });
 test('openings clear standing eye height while staying under the wall crown',()=>{
  const styles=['standard','tall','picture','bay','industrial',
