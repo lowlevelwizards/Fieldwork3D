@@ -59,13 +59,13 @@ export class ReplayDirectorController{
  rebuild({recorder,eventIndex,state,observerId,omniscient,isShotVisible,
    width,height,headerBottom,dockPixels,baseSpan}:DirectorBuildContext):void{
   // Only disclosed historical events are eligible for the director.
-  this.cues=buildReplayDirectorCues(replayEventIndex.all);
+  this.cues=buildReplayDirectorCues(eventIndex.all);
   const friendlies=new Set(team(state).map(a=>a.id));
-  this.future=buildDirectorFutureCues(replayEventIndex.all,
+  this.future=buildDirectorFutureCues(eventIndex.all,
     friendlies);
   const doors=state.site?.doors??[];
   this.filmBeats=buildDirectorFilmBeats(
-    recorder.ballistics.shots,replayEventIndex.all,
+    recorder.ballistics.shots,eventIndex.all,
     t=>recorder.at(t),doors,friendlies,
     shot=>isShotVisible(shot));
   this.entries=buildDirectorEntryEvents(
