@@ -1,0 +1,35 @@
+name: Breach Audio Controller Step 6 Critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-main.ts'
+      - 'src/breach-audio-controller.ts'
+      - 'src/breach-audio-event-cues.ts'
+      - 'tests/breach-audio-controller-step6.test.mjs'
+      - '.github/workflows/breach-audio-step6-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: breach-audio-step6-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  audio-critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Audio controller, replay sound and acoustic regression tests
+        run: |
+          node --experimental-strip-types --test \
+            tests/breach-audio-controller-step6.test.mjs \
+            tests/replay-r2-audio.test.mjs \
+            tests/breach-live-audio-environment.test.mjs \
+            tests/breach-sound-tactile-variation.test.mjs \
+            tests/replay-r2-video.test.mjs
+      - name: Production typecheck and build
+        run: npm run build
