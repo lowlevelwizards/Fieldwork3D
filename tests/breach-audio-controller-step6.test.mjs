@@ -123,9 +123,10 @@ test('UI toggles attach once and update pressed labels without tactical main log
 test('battle audio and replay synchronization are not implemented in main',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const controller=readFileSync(new URL('../src/breach-audio-controller.ts',import.meta.url),'utf8');
+  const runtime=readFileSync(new URL('../src/breach-runtime-loop.ts',import.meta.url),'utf8');
  assert.match(main,/createBreachAudioController\(\{/);
- assert.match(main,/audioController\.consumeLiveFrame\(/);
- assert.match(main,/audioController\.playReplayBetween\(/);
+ assert.match(runtime,/audioController\.consumeLiveFrame\(/);
+ assert.match(runtime,/audioController\.playReplayBetween\(/);
  assert.match(main,/audioController\.beginReplay\(/);
  assert.match(main,/audioController\.bindSettings\(/);
  assert.doesNotMatch(main,/function playReplayAudioBetween\(/);

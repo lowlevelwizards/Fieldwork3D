@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
 const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
-const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+const runtime=readFileSync(new URL('../src/breach-runtime-loop.ts',import.meta.url),'utf8');
 const siteSwap=scene.slice(scene.indexOf('  applySite(site:Site|null){'),
   scene.indexOf('  /** Only site-static boxes',scene.indexOf('  applySite(site:Site|null){')));
 
@@ -31,11 +31,11 @@ test('site teardown removes civilian roots without disposing shared geometry',()
 test('opt-in diagnostics report retained actor and civilian rigs',()=>{
   assert.match(scene,/actorRigCount:this\.actors\.size/);
   assert.match(scene,/civilianRigCount:this\.civilianRigs\.size/);
-  assert.match(main,/stats\?\.actorRigCount/);
-  assert.match(main,/stats\?\.civilianRigCount/);
+  assert.match(runtime,/stats\?\.actorRigCount/);
+  assert.match(runtime,/stats\?\.civilianRigCount/);
   assert.match(scene,/geometryCount:memory\.geometries,textureCount:memory\.textures/);
-  assert.match(main,/stats\?\.geometryCount/);
-  assert.match(main,/stats\?\.textureCount/);
+  assert.match(runtime,/stats\?\.geometryCount/);
+  assert.match(runtime,/stats\?\.textureCount/);
 });
 
 test('site swaps discard obsolete weapon-light blockers and pose caches',()=>{
