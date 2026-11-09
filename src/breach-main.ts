@@ -960,7 +960,7 @@ let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
 catch(error){console.warn('3D unavailable; reverting to tactical plan',error);
   viewMode='plan2d';}
-/** All camera-mode writes go through one transition with availability checks. */
+/** All camera mode writes pass through the same availability policy. */
 function chooseReplayCamera(mode:Parameters<ReplayCameraController['selectMode']>[0]):void{
   replayCamera.selectMode(mode,viewMode as ReplayPerspective,!!stage,replayBodycamOn);
 }
@@ -1990,8 +1990,9 @@ function cameraMode(mode:ViewMode){
     if(viewMode!=='plan2d')replayGroundLensOn=false;
     // Resolve follow/director compatibility for every perspective-change path,
     // including personal ground review and legacy advanced-view actions.
-    chooseReplayCamera(replayCamera.mode);
-    replayCamera.follow=chooseReplayCamera(=='operator');
+    chooseReplayCamera(resolvedReplayCamera(replayCamera.mode,
+      viewMode as ReplayPerspective,!!stage,replayBodycamOn));
+    
   }
   if(stage){stage.setMode(viewMode);stage.updateCamera(1);}
   for(const [m,button] of [['iso',ui.viewIso],
@@ -5068,16 +5069,16 @@ function populateReplayCameraChoices():void{
 function updateReplayHud(){
   ui.replaySeek.value=String(Math.round(replayPlayback.time*60));
   ui.replayMiniPlay.textContent=replayPlayback.playing?'Ⅱ':'▶';
-  const following=chooseReplayCamera(=='operator'&&
-    team(state).some(actor=>actor.id===replayCamera.followId&&actor.health>0));
+  const following=replayCamera.mode==='operator'&&
+    team(state).some(actor=>actor.id===replayCamera.followId&&actor.health>0);
   const followingName=team(state).find(actor=>actor.id===replayCamera.followId)?.name??
     replayCamera.followId;
   ui.replayFollowStatus.textContent=replayBodycamOn?
     'BODYCAM · '+followingName.toUpperCase():following?
     'FOLLOWING · '+followingName.toUpperCase():
-    chooseReplayCamera(=='director'?
+    replayCamera.mode==='director'?
       'DIRECTOR · '+(replayDirector.target?.shotType.toUpperCase()??'SQUAD') :
-    replayCamera.mode==='squad'?'FOLLOWING · SQUAD':'FREE CAMERA');
+    replayCamera.mode==='squad'?'FOLLOWING · SQUAD':'FREE CAMERA';
   ui.replayFollowStatus.dataset.following=String(following||replayBodycamOn);
   ui.replayClock.textContent=formatReplayTime(replayPlayback.time)+' / '+
     formatReplayTime(recorder.duration)+
@@ -5160,15 +5161,15 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
     String(replayTraceMode!=='off'));
   // Both director lenses keep walls opaque but cut away the ceiling.
   // The tactical X-ray toggle must not influence either film audition.
-  ui.replayDirectXray.disabled=chooseReplayCamera(=='director');
+  ui.replayDirectXray.disabled=replayCamera.mode==='director';
   ui.replayDirectXray.setAttribute('aria-pressed',
     String(replayCamera.mode!=='director'&&replayXrayOn));
-  ui.replayDirectXray.title=chooseReplayCamera(=='director'?
-    'Director: solid walls, removed ceiling); wall X-ray unavailable':
+  ui.replayDirectXray.title=replayCamera.mode==='director'?
+    'Director: solid walls, removed ceiling; wall X-ray unavailable':
     replayXrayOn?'Selective Cutaway on: fade only blocking walls':
       'Selective Cutaway off: retain normal architectural opacity';
   ui.replayDirectDirector.setAttribute('aria-pressed',
-    String(chooseReplayCamera(=='director')));
+    String(replayCamera.mode==='director'));
   ui.replayDirectLens.hidden=replayCamera.mode!=='director';
   ui.replayDirectLens.setAttribute('aria-pressed',
     String(replayCamera.lens==='wide'));
@@ -5193,7 +5194,7 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
   ui.replayDirectMount.hidden=!replayBodycamOn;
   ui.replayDirectMount.querySelector('small')!.textContent=replayBodycamMount==='chest'?'CHEST':'HEAD';
   ui.replayDirectMount.setAttribute('aria-label','Bodycam mount: '+replayBodycamMount);
-  ui.replayDirectFree.hidden=chooseReplayCamera(=='free'&&!replayBodycamOn);
+  ui.replayDirectFree.hidden=replayCamera.mode==='free'&&!replayBodycamOn;
   ui.replayDirectFree.querySelector('small')!.textContent=replayBodycamOn?'EXIT':'FREE';
   ui.replayDirectFree.setAttribute('aria-label',replayBodycamOn?'Exit Bodycam camera':'Free camera');
   ui.replayContactLens.disabled=!replayHasContactEvidence;
@@ -5236,10 +5237,10 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
     b.setAttribute('aria-pressed',String(b.dataset.viewChoice===viewMode));
   ui.replayView.disabled=replayBodycamOn;
   ui.replayFollow.textContent=replayCamera.follow?'FOLLOW '+replayCamera.followId.toUpperCase():'FOLLOW';
-  ui.replaySquad.textContent=chooseReplayCamera(=='squad'?'SQUAD ON':'FOLLOW SQUAD');
-  ui.replayDirector.textContent=chooseReplayCamera(=='director'?'DIRECTOR ON':'DIRECTOR OFF');
-  ui.replayQuickCamera.value=chooseReplayCamera(=='operator'?
-    'operator:'+replayCamera.followId:replayCamera.mode);
+  ui.replaySquad.textContent=replayCamera.mode==='squad'?'SQUAD ON':'FOLLOW SQUAD';
+  ui.replayDirector.textContent=replayCamera.mode==='director'?'DIRECTOR ON':'DIRECTOR OFF';
+  ui.replayQuickCamera.value=replayCamera.mode==='operator'?
+    'operator:'+replayCamera.followId:replayCamera.mode;
   for(const option of ui.replayQuickCamera.options){
     const value=option.value;
     const mode:ReplayCameraChoice=value.startsWith('operator:')?'operator':
@@ -5250,10 +5251,10 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
   ui.replayQuickCamera.disabled=replayBodycamOn;
   if(team(state).some(a=>a.id===selected))ui.replayInspectActor.value=selected;
   for(const b of ui.replayInspectActorButtons.querySelectorAll<HTMLButtonElement>('[data-follow-actor]'))
-    b.setAttribute('aria-pressed',String(chooseReplayCamera(=='operator'&&
-      b.dataset.followActor===replayCamera.followId)));
-  ui.replaySquad.setAttribute('aria-pressed',String(chooseReplayCamera(=='squad')));
-  ui.replayDirector.setAttribute('aria-pressed',String(chooseReplayCamera(=='director')));
+    b.setAttribute('aria-pressed',String(replayCamera.mode==='operator'&&
+      b.dataset.followActor===replayCamera.followId));
+  ui.replaySquad.setAttribute('aria-pressed',String(replayCamera.mode==='squad'));
+  ui.replayDirector.setAttribute('aria-pressed',String(replayCamera.mode==='director'));
   ui.replaySquad.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
   ui.replayDirector.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
   ui.replayFollow.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
@@ -5287,8 +5288,8 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
     replayPlayback.incident?.loop?'INCIDENT LOOP':
     replayPlayback.incident?'WATCHING MOMENT':
     replayPlayback.loopEnabled?'A/B LOOP':
-    chooseReplayCamera(=='director'&&performance.now()<replayDirector.editNoticeUntil?
-      'DIRECTOR EDIT · +'+replayDirector.editNoticeSeconds.toFixed(1)+'S':'');
+    replayCamera.mode==='director'&&performance.now()<replayDirector.editNoticeUntil?
+      'DIRECTOR EDIT · +'+replayDirector.editNoticeSeconds.toFixed(1)+'S':'';
   ui.replayStatusChip.textContent=status;
   ui.replayStatusChip.hidden=!status;
   syncReplayEventFeed();
@@ -5832,16 +5833,16 @@ ui.replayQuickView.addEventListener('change',()=>{
   const next=ui.replayQuickView.value as ReplayPerspective;
   if(!['iso','top','plan2d'].includes(next))return;
   cameraMode(next);
-  chooseReplayCamera(replayCamera.mode);
-  replayCamera.follow=chooseReplayCamera(=='operator');
+  chooseReplayCamera(resolvedReplayCamera(replayCamera.mode,next,!!stage,replayBodycamOn));
+  
   updateReplayHud();
 });
 ui.replayInspectActor.addEventListener('change',()=>{
   const id=ui.replayInspectActor.value;
   if(!team(state).some(a=>a.id===id))return;
   selected=id;
-  if(chooseReplayCamera(=='operator'){
-    replayCamera.followId=id);advanceReplayCamera(0,true);
+  if(replayCamera.mode==='operator'){
+    replayCamera.followId=id;advanceReplayCamera(0,true);
   }
   updateReplayHud();
 });
@@ -6242,8 +6243,9 @@ ui.replayBodycamMount.addEventListener('click',()=>{
 ui.replayView.addEventListener('click',()=>{
   if(replayBodycamOn)stopReplayBodycam();
   cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
-  chooseReplayCamera(replayCamera.mode);
-  replayCamera.follow=chooseReplayCamera(=='operator');
+  chooseReplayCamera(resolvedReplayCamera(replayCamera.mode,
+    viewMode as ReplayPerspective,!!stage,replayBodycamOn));
+  
   updateReplayHud();
 });
 const jumpReplayEvent=(forward:boolean)=>{
@@ -7779,10 +7781,10 @@ function tick(now:number){
   }else{accum=0;previousRenderActors=null;previousRenderDoors=null;}
   if(replaying&&replayPlayback.playing){
     const playbackStep=replayPlayback.advance(dt,recorder.duration,{
-      director:chooseReplayCamera(=='director',
+      director:replayCamera.mode==='director',
       videoActive:replayQuickVideo.active,
       tempoEdits:replayDirector.tempoEdits
-    }));
+    });
     if(playbackStep){
       if(playbackStep.trimmedSeconds>0){
         replayDirector.editNoticeSeconds=playbackStep.trimmedSeconds;
