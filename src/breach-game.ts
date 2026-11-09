@@ -4,6 +4,7 @@ import {pathFor,edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan}
 import {simulationPhaseMark,advanceTransientSimulationEffects,
  recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
 import {reconcileEnemyIntent,reconcileEnemyPosture} from './breach-ai-reconciliation.ts';
+import {sampleActorMotorStride} from './breach-actor-motor-stride.ts';
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
  from './breach-combat-reactions.ts';
 import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts';
@@ -34,7 +35,7 @@ import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
 import {encounterReactionDelay,perceptualReadiness,
   encounterReactionPhase} from './breach-encounter-readiness.ts';
-import {WEAPONS,injuryOf,injurySpeed,injuryReload,
+import {WEAPONS,injuryOf,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
@@ -2157,36 +2158,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const next=a.nav[0],gap=d(a.p,next);
   if(gap<3){a.nav.shift();return false;}
   const direction=angle(a.p,next);
-  // Explicit LOOK/WATCH, running, room-clearing sector looks and true
-  // narrow-body squeezes retain complete facing authority.
-  const canAutoSidestep=a.side==='blue'&&a.health>0&&
-    a.pace!=='run'&&!a.squeeze&&!a.traversal&&!a.traversalPending&&
-    !a.aimInstruction&&!approachingNarrowThreshold(a.p,p,s.doors)&&
-    (a.plan[0]?.kind==='move'||a.plan[0]?.kind==='door')&&
-    a.plan[0]?.moveMode!=='sprint'&&
-    a.plan[0]?.moveMode!=='strafe'&&
-    a.plan[0]?.aimMode!=='track'&&
-    a.plan[0]?.aimMode!=='fixed'&&a.plan[0]?.facing===undefined;
-  // Ordinary cautious travel must fit within achievable step cadence.
-  // Running retains the faster existing speed via the pace multiplier.
-  const movingSpeed=a.side==='blue'?53:48;
-  const suppression=clamp(1-a.suppression*.4,.45,1);
-  const requested=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*
-    speedScale*injurySpeed(a.injuryStage)*(a.loadMovementScale??1);
-  // A lateral shuffle cannot use the same stride speed as forward running.
-  // Scale the limit continuously for diagonal travel, preserving ordinary
-  // forward movement and crouch/injury speed reductions.
-  const lateral=Math.abs(Math.sin(direction-a.heading));
-  const sideLimit=(38+37*(1-lateral*lateral))*
-    (a.posture==='crouch'?.58:1)*injurySpeed(a.injuryStage)*
-    (a.loadMovementScale??1);
-  // Narrow travel is genuine slow sideways movement, not a global
-  // reduction to actor collision radius or a high-speed clipping shortcut.
-  const desired=Math.min(requested,sideLimit,a.squeeze?16:Infinity);
-  a.velocity+=(desired-a.velocity)*Math.min(1,dt*6);
-  const advance=Math.min(gap,a.velocity*dt);
-  let move={x:a.p.x+Math.cos(direction)*advance,
-    y:a.p.y+Math.sin(direction)*advance};
+  const {canAutoSidestep,move:initialMove}=sampleActorMotorStride(
+    a,s,p,direction,dt,gap,speedScale);
+  let move=initialMove;
   // Resolve right-of-way BEFORE automatic door-opening, hinge pressure or
   // movement. Otherwise every teammate can start a competing OPEN action
   // and the planned squad sequence becomes unpredictable.
