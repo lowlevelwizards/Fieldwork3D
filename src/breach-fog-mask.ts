@@ -4,7 +4,7 @@ import {W,H,WALLS,type Pt} from './breach-core.ts';
 import type {Site,WorldBounds} from './breach-site.ts';
 import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
-import {exteriorBriefedAt,accessibleExteriorWall} from './breach-site-footprint.ts';
+import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
 import {forEachRememberedMicroCell} from './breach-fog-memory.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
@@ -71,34 +71,13 @@ export function paintFogMemory(ctx:CanvasRenderingContext2D,s:Session,
     for(const room of s.site.rooms)
       ctx.fillRect(room.x,room.y,room.w,room.h);
     ctx.globalCompositeOperation='destination-out';
-    // The upper 3D fog curtain must not hide publicly known facade walls,
-    // glazing and front doors. A slim perimeter aperture displays their
-    // physical silhouettes without opening up the rooms behind them.
-    ctx.strokeStyle='#fff';
-    ctx.lineWidth=11;
-    for(const wall of WALLS){
-      if(!accessibleExteriorWall(s.site,wall))continue;
-      ctx.beginPath();ctx.moveTo(wall.a.x,wall.a.y);
-      ctx.lineTo(wall.b.x,wall.b.y);ctx.stroke();
-    }
-    for(const door of s.doors){
-      if(!accessibleExteriorWall(s.site,door))continue;
-      ctx.beginPath();ctx.moveTo(door.a.x,door.a.y);
-      ctx.lineTo(door.b.x,door.b.y);ctx.stroke();
-    }
-    // Window openings are gaps in WALLS, so their exterior frames need
-    // their own narrow aperture in the high concealment layer.
-    for(const window of s.site.windows??[]){
-      if(window.interior)continue;
-      const half=window.width/2;
-      const a=window.vertical?
-        {x:window.x,y:window.y-half}:{x:window.x-half,y:window.y};
-      const b=window.vertical?
-        {x:window.x,y:window.y+half}:{x:window.x+half,y:window.y};
-      if(!accessibleExteriorWall(s.site,{a,b}))continue;
-      ctx.beginPath();ctx.moveTo(a.x,a.y);
-      ctx.lineTo(b.x,b.y);ctx.stroke();
-    }
+    // Do NOT cut opacity away along known façades. Public walls, doors and
+    // windows have their own 3D foreground presentation, but their existence
+    // is not evidence that an operator saw any floor just INSIDE them.
+    // Cutting 11-unit strips here previously leaked unknown floor/shadows,
+    // even with no friendly in sight of a window or doorway. The only
+    // interior clearing comes from remembered geometric LOS and the live
+    // directional polygon below.
   }
   // Full View must clear the map outright, not leave a translucent tint
   // in 2D while 3D hides its fog mesh. It grants no new gameplay knowledge.
