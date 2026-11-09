@@ -8,6 +8,7 @@ const tests=[
  'tests/breach-roadmap3-scenarios.test.mjs',
  'tests/breach-roadmap3-combat-effects.test.mjs',
  'tests/breach-roadmap3-context-commands.test.mjs',
+ 'tests/breach-roadmap3-3d-disclosure.test.mjs',
  'tests/breach-roadmap2-deterministic.test.mjs',
  'tests/breach-roadmap2-site-mobility.test.mjs',
  'tests/breach-roadmap2-visibility-contract.test.mjs',

@@ -14,15 +14,15 @@ import {applyStudioGraphicLighting}
  from './operator-studio-graphic-lighting.ts';
 import {applyWorldGraphicLighting} from './breach-graphic-world-lighting.ts';
 import {BreachCombatEffectsPresenter} from './rendering/breach-combat-effects-presenter.ts';
+import {presentActor,presentCivilian,presentDecor,resolveDoorPresentation}
+ from './rendering/breach-3d-disclosure-presenter.ts';
 import {propertySurfaceCenterHeight,PROPERTY_SURFACE_THICKNESS,
   exteriorZoneRenderLift} from './rendering/property-surface-elevation.ts';
 import {windowShardPose,WINDOW_SHARDS_PER_PANE}
  from './rendering/window-shatter-presentation.ts';
 import {createCivilianRig,updateCivilianRig,type CivilianRig}
  from './breach-civilian-visuals.ts';
-import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
-import {replayActorVisible,replayActorDisclosed,replayCivilianDisclosed,
-  type ReplayDisclosure} from './breach-replay-visibility.ts';
+import {type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
  miniatureFocusDecision,type MiniatureFocusMode,type MiniatureFocusView}
@@ -113,7 +113,7 @@ import {sampleBodycamSocket,applyBodycamCamera,smoothBodycamSample,
   type BodycamSetting,type BodycamSample} from './breach-replay-bodycam.ts';
 import type {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
 import type {ReplayWindowKnowledgeHistory} from './breach-replay-window-knowledge.ts';
-import {personalDecorVisible,personalCoverVisible}
+import {personalCoverVisible}
   from './breach-replay-personal-visibility.ts';
 import {interpolatedActor,type RenderFrame}
   from './breach-frame-interpolation.ts';
@@ -2588,10 +2588,8 @@ export class TacticalScene3D{
     for(const detail of this.observedDetails){
       const p=detail.position;
       // Object positions are site-static: precompute tile keys at build time.
-      detail.obj.visible=personalDecorVisible(
-        omniscient||s.seenGround.has(detail.microKey)||
-          s.seenGround.has(detail.fineKey)||liveVisibility(s,p),
-        bodycamAudition,personalGroundEvidence,p);
+      detail.obj.visible=presentDecor(s,detail,omniscient,
+        bodycamAudition,personalGroundEvidence);
       this.staticBatches.setVisible(detail.obj,detail.obj.visible);
     }
     // Director cuts walls around its actual historical friendly focal group,
@@ -2648,39 +2646,28 @@ export class TacticalScene3D{
       object.root.visible=physicalDirector||
         spatialSurfaceKnown(s,'door',door.id,omniscient);
       this.staticBatches.setVisible(object.root,object.root.visible);
-      // Personal review uses the LAST individually observed leaf state.
-      // An unseen opening/kick cannot magically update this perspective.
+      // Resolve remembered/personal door state separately from cutaways.
       const personal=replayDisclosurePolicy?.mode==='operator';
       const observed=personal&&replayDoorHistory?
         replayDoorHistory.at(s.seconds,replayDisclosurePolicy.observerId,door.id):
         null;
       const directlyObserved=!personal&&liveVisibility(s,doorCenter(door));
-      if(!personal&&(omniscient||directlyObserved)){
+      const visual=resolveDoorPresentation({
+        door,personal,observed,omniscient,directlyObserved,
+        rememberedOpen:s.intel.doorMemory.get(door.id)??0,
+        rememberedGlass:this.observedDoorGlass.get(door.id),
+        replayFraction:replay?.doors[door.id],
+        previousFraction:renderFrame?.previousDoors?.[door.id],
+        renderAlpha:renderFrame?.alpha,
+        replaying:!!replay,hasRenderFrame:!!renderFrame
+      });
+      if(visual.remember){
         this.observedDoorOpen.set(door.id,door.openFraction??(door.open?1:0));
         this.observedDoorGlass.set(door.id,!!door.glassShattered);
       }
-      if(object.glassPane)
-        object.glassPane.visible=personal?
-          !(observed?.glassShattered??false):
-          replay||renderFrame?
-            !(omniscient||directlyObserved?!!door.glassShattered:false):
-            !(this.observedDoorGlass.get(door.id)??false);
-      object.wedge.visible=personal?
-        !!observed?.wedged:
-        door.wedged===true&&(omniscient||directlyObserved);
-      const fraction=personal?(observed?.openFraction??0):
-        omniscient||directlyObserved?
-        (door.openFraction??(door.open?1:0)):
-        (s.intel.doorMemory.get(door.id)??0);
-      const replayProgress=replay?.doors[door.id];
-      // Never apply hidden live leaf motion over remembered personal state.
-      const shownFraction=personal?fraction:
-        (omniscient||directlyObserved)?(replayProgress??fraction):fraction;
-      const previousFraction=!replay&&(omniscient||directlyObserved)?
-        renderFrame?.previousDoors?.[door.id]:undefined;
-      const drawFraction=previousFraction===undefined?shownFraction:
-        previousFraction+(shownFraction-previousFraction)*
-          Math.max(0,Math.min(1,renderFrame?.alpha??1));
+      if(object.glassPane)object.glassPane.visible=visual.glassVisible;
+      object.wedge.visible=visual.wedgeVisible;
+      const drawFraction=visual.fraction;
       if(door.kind==='shutter'){
         object.leaf.rotation.y=0;
         object.leaf.position.y=drawFraction*37;
@@ -2771,11 +2758,7 @@ export class TacticalScene3D{
       this.scene.remove(rig.root);this.civilianRigs.delete(id);
     }
     for(const civil of s.civilians){
-      const visible=replayDisclosurePolicy?.mode==='operator'?
-        replayCivilianDisclosed(s,civil.id,replayDisclosurePolicy):
-        civilianPresentationVisible(civil,
-          civil.replayVisible!==undefined,omniscient,
-          liveVisibility(s,civil.p));
+      const visible=presentCivilian(s,civil,omniscient,replayDisclosurePolicy);
       let rig=this.civilianRigs.get(civil.id);
       if(!visible&&!rig)continue;
       if(!rig){
@@ -2805,9 +2788,7 @@ export class TacticalScene3D{
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
     for(const actor of s.operators){
-      const visible=replayDisclosurePolicy?
-        replayActorDisclosed(s,actor,replayDisclosurePolicy):
-        replayActorVisible(s,actor,omniscient);
+      const visible=presentActor(s,actor,omniscient,replayDisclosurePolicy);
       // Spawn full 3D rigs only when needed. Enemy AI, LOS and simulation
       // always exist; hidden actors incur no model construction on mobile.
       if(!visible&&!this.actors.has(actor.id))continue;
