@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
 
 const html=read('index.html'),css=read('src/breach-style.css'),
- main=read('src/breach-main.ts');
+ main=read('src/breach-main.ts'),screens=read('src/ui/breach-mission-screens.ts');
 test('UI2-3: one card with no-scroll overview and non-overlapping footer',()=>{
  assert.match(html,/id="briefingOverview"/);
  assert.match(html,/id="briefingIntelView" hidden/);
@@ -25,13 +25,13 @@ test('UI4-7: optional intel uses explicit tabs and authoritative mission contrac
   assert.ok(html.includes('id="'+id+'"'),id);
  for(const tab of ['threat','site','case','contract'])
   assert.ok(html.includes('data-briefing-tab="'+tab+'"'));
- assert.match(main,/setBriefingView\('brief'\);\s+updateHud\(\)/);
- assert.match(main,/ui\.briefingBody\.textContent=brief\.objective/);
- assert.match(main,/ui\.briefingCondition\.textContent=brief\.condition/);
- assert.match(main,/ui\.briefingExtraction\.textContent=brief\.extraction/);
+ assert.match(screens,/setBriefingView\('brief'\);\s+config\.refreshHud\(\)/);
+ assert.match(screens,/ui\.briefingBody\.textContent=brief\.objective/);
+ assert.match(screens,/ui\.briefingCondition\.textContent=brief\.condition/);
+ assert.match(screens,/ui\.briefingExtraction\.textContent=brief\.extraction/);
  assert.match(main,/ui\.briefingEntryControls\.append\(deploymentButton\)/);
- assert.match(main,/if\(state===briefingRenderedSession&&dossier===briefingRenderedDossier/);
- assert.match(main,/tacticalSheetNavigation\.focusFirst\(\)/);
+ assert.match(screens,/if\(state===briefingRenderedSession&&dossier===briefingRenderedDossier/);
+ assert.match(screens,/tacticalSheetNavigation\.focusFirst\(\)/);
 });
 test('UI5-6: tactile feedback stays reduced-motion safe and shield stack remains correct',()=>{
  assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
