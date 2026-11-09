@@ -1,3 +1,8 @@
+import {validPieArc} from './breach-maneuvers.ts';
+import {pathFor,edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan}
+ from './breach-plan-authoring.ts';
+import {simulationPhaseMark,advanceTransientSimulationEffects,
+ recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
  from './breach-combat-reactions.ts';
 import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts';
@@ -16,11 +21,10 @@ import {
 import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
   type AimMode,type AimInstruction,
-  makeHistory,copyNodes,record,undo,redo,modifyNode,lastPoint,
+  makeHistory,copyNodes,modifyNode,lastPoint,
   type FirePolicy,
   length,targetAngle,angleDifference,type PieSide,interruptsWatch,
 } from './breach-plan.ts';
-import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {entryClearanceForLook,stackApproachPositions}
  from './breach-entry-coordination.ts';
@@ -62,9 +66,9 @@ import {captureMotionFrameOrigins,buildMotionFrameProposals}
  from './breach-motion-frame-input.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
 import {releaseEmbeddedMotorActor} from './breach-locomotion-clearance.ts';
-import {executionStatus,type MotorPause,type ExecutionIssue,
+import {type MotorPause,type ExecutionIssue,
   type ExecutionStatus} from './breach-execution-state.ts';
-import {executionTransition,type ExecutionEvent} from './breach-execution-events.ts';
+import {type ExecutionEvent} from './breach-execution-events.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
 import {canAutoShove} from './breach-traversal-surfaces.ts';
@@ -745,29 +749,6 @@ function knownPortalGesture(s:Session,from:Pt,to:Pt,blocked:Pt):boolean{
    legalMoveRoute(s,from,to));
 }
 export const finalPoint=(a:TeamActor)=>lastPoint(a.p,a.plan);
-function pathFor(a:TeamActor){
-  const points:Pt[]=[];let from=a.p;
-  for(const n of a.plan){
-    if(n.kind==='move'||n.kind==='door'){
-      const segment=routeWithSqueezeWorld(from,n.p,[]);
-      if(!segment.length)continue;
-      points.push(...segment);from=n.p;
-    }else if(n.kind==='pie'&&n.arc?.length){
-      points.push(...n.arc);from=n.arc[n.arc.length-1];
-    }
-  }
-  a.path=points;
-  a.activeNode=-1;a.nav=[];a.autoSidestep=null;
-  a.waitRemaining=0;a.actionTimer=0;
-  a.syncReady=null;a.pieIndex=0;
-}
-function edit(s:Session,a:TeamActor,fn:()=>void){
-  if(!canEdit(s))return false;
-  const before=copyNodes(a.plan);
-  fn();
-  record(a.history,before);pathFor(a);
-  return true;
-}
 export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
   extra:Partial<PlanNode>={}):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
@@ -1067,24 +1048,6 @@ export function doorAtNode(s:Session,id:string,doorId:string,method:DoorMethod,n
   });
 }
 
-/** Recalculate dependent pie arcs when an earlier waypoint changes. */
-function validEditedPlan(s:Session,start:Pt,proposed:PlanNode[]){
-  let from=start;
-  for(const n of proposed){
-  if(n.kind==='pie'){
-      if(!n.pivot||!n.pieSide)return false;
-      const arc=validPieArc(from,n.pivot,n.pieSide,s.doors,n.pieDegrees??54);
-      if(!arc.length)return false;
-      n.arc=arc;n.p=clone(arc[arc.length-1]);from=n.p;
-    }else if(n.kind==='move'||n.kind==='door'){
-      if(n.kind==='move'?!intelPassable(n.p,s.intel,SQUEEZE_RADIUS)||
-        !routeWithSqueezeIntel(s.intel,from,n.p).length:
-        !passable(n.p)||!route(from,n.p).length)return false;
-      from=n.p;
-    }
-  }
-  return true;
-}
 export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
   const a=party(s,id);if(!a||!canEdit(s))return false;
   const proposed=copyNodes(a.plan);
@@ -1562,47 +1525,11 @@ export function planSync(s:Session,participantIds?:readonly string[]){
 export function clearPlan(s:Session,id:string){
   const a=party(s,id);return a?edit(s,a,()=>{a.plan=[];}):false;
 }
-/** Exact-match squad transactions only apply while no participant's
- * authored orders have changed. Otherwise ordinary per-actor undo wins. */
-function squadPlansMatch(s:Session,group:SquadPlanTransaction,
- key:'before'|'after',direction:'undo'|'redo'):boolean{
- return group.members.every(id=>{
-   const a=party(s,id);
-   return !!a&&JSON.stringify(a.plan)===JSON.stringify(group[key][id])&&
-     (direction==='undo'?a.history.undo.length:a.history.redo.length)>0;
- });
-}
 export function undoPlan(s:Session,id:string){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const group=s.squadEntryUndo;
-  if(group&&group.members.includes(id)&&squadPlansMatch(s,group,'after','undo')){
-    for(const member of group.members){
-      const peer=party(s,member)!;
-      const previous=undo(peer.history,peer.plan)!;
-      peer.plan=previous;pathFor(peer);
-    }
-    s.squadEntryUndo=null;s.squadEntryRedo=group;
-    return true;
-  }
-  s.squadEntryUndo=null;s.squadEntryRedo=null;
-  const previous=undo(a.history,a.plan);if(!previous)return false;
-  a.plan=previous;pathFor(a);return true;
+ return undoAuthoredPlan(s,id,party);
 }
 export function redoPlan(s:Session,id:string){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const group=s.squadEntryRedo;
-  if(group&&group.members.includes(id)&&squadPlansMatch(s,group,'before','redo')){
-    for(const member of group.members){
-      const peer=party(s,member)!;
-      const next=redo(peer.history,peer.plan)!;
-      peer.plan=next;pathFor(peer);
-    }
-    s.squadEntryRedo=null;s.squadEntryUndo=group;
-    return true;
-  }
-  s.squadEntryUndo=null;s.squadEntryRedo=null;
-  const next=redo(a.history,a.plan);if(!next)return false;
-  a.plan=next;pathFor(a);return true;
+ return redoAuthoredPlan(s,id,party);
 }
 /** The weapon, hand and world share one magazine identity.
  * Ammo moves only at timed detach/insert events, never on animation startup. */
@@ -4847,13 +4774,7 @@ function liveDoorOccupants(s:Session):Pt[]{
 export type StepPhaseProbe=(phase:string,elapsedMs:number)=>void;
 export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   if(s.phase!=='running')return;
-  let perfStart=probe?performance.now():0;
-  const mark=(phase:string)=>{
-    if(!probe)return;
-    const now=performance.now();
-    probe(phase,now-perfStart);
-    perfStart=now;
-  };
+  const mark=simulationPhaseMark(probe);
   const h=clamp(dt,0,1/30);
   s.seconds+=h;
   for(const operator of s.operators)operator.treatmentActive=false;
@@ -4922,17 +4843,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     advanceDoor(door,h,doorOccupants);
   }
   mark('doors');
-  // Effects are usually empty between firefights; the old filters
-  // allocated five fresh empty arrays on every authoritative 60Hz tick.
-  // Nonempty collections retain the same age increments and expiry gates.
-  if(s.sparks.length)s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
-  if(s.shots.length)s.shots=s.shots.filter(a=>(a.age+=h)<.40);
-  if(s.noise.length)s.noise=s.noise.filter(n=>s.seconds-n.time<4);
-  for(const magazine of s.dropped)magazine.age+=h;
-  if(s.impactMarks.length)
-    s.impactMarks=s.impactMarks.filter(mark=>(mark.age+=h)<24);
-  if(s.flashBursts.length)
-    s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
+  advanceTransientSimulationEffects(s,h);
   stepFlashbangs(s,h);
   mark('aging-effects');
   advanceVisualAwareness(s,h);
@@ -5148,22 +5059,8 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   mark('fire');
   mission(s,h);
   mark('mission');
-  // Record only changed player-visible states after the authoritative tick.
-  // This is observational: no actor motion or tactical orders are changed.
-  const friendly=team(s);
-  for(const unit of friendly){
-    const status=executionStatus(unit,{
-      phase:s.phase,doors:s.doors,peers:friendly
-    });
-    const change=executionTransition(unit.executionLastStatus,status,unit.name);
-    unit.executionLastStatus=status;
-    if(!change)continue;
-    s.executionEvents.push({
-      id:s.nextExecutionId++,t:s.seconds,actor:unit.id,
-      p:clone(unit.p),...change
-    });
-    if(s.executionEvents.length>240)s.executionEvents.shift();
-  }
+  recordSimulationExecutionOutcomes(s);
+
 }
 export function operationBriefing(s:Session){
   const brief=operationBrief(s.missionType);

@@ -16,13 +16,13 @@ import {applyStudioGraphicLighting}
  from './operator-studio-graphic-lighting.ts';
 import {applyWorldGraphicLighting} from './breach-graphic-world-lighting.ts';
 import {BreachCombatEffectsPresenter} from './rendering/breach-combat-effects-presenter.ts';
-import {presentActor,presentCivilian,presentDecor,resolveDoorPresentation}
+import {presentActor,presentDecor,resolveDoorPresentation}
  from './rendering/breach-3d-disclosure-presenter.ts';
 
 import {windowShardPose,WINDOW_SHARDS_PER_PANE}
  from './rendering/window-shatter-presentation.ts';
-import {createCivilianRig,updateCivilianRig,type CivilianRig}
- from './breach-civilian-visuals.ts';
+import {type CivilianRig} from './breach-civilian-visuals.ts';
+import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
 import {type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
@@ -2313,34 +2313,10 @@ export class TacticalScene3D{
       }
       // Ground sweep is visible from the briefing, not only after stacking.
     }
-    // Switching procedurally generated sites may change hostile counts.
-    // Hide cached actors absent from the new encounter.
-    const current=this.frameActorIds;current.clear();
-    for(const actor of s.operators)current.add(actor.id);
-    for(const [id,object] of this.actors)if(!current.has(id)){
-      object.root.visible=false;object.status.visible=false;
-      for(const shadow of object.contactShadows)shadow.visible=false;
-    }
-    // Civilian meshes are created only once visibly encountered, then
-    // reused; unrevealed people cannot leak through walls or player fog.
-    const present=this.frameCivilianIds;present.clear();
-    for(const civil of s.civilians)present.add(civil.id);
-    for(const [id,rig] of this.civilianRigs){
-      if(present.has(id))continue;
-      this.scene.remove(rig.root);this.civilianRigs.delete(id);
-    }
-    for(const civil of s.civilians){
-      const visible=presentCivilian(s,civil,omniscient,replayDisclosurePolicy);
-      let rig=this.civilianRigs.get(civil.id);
-      if(!visible&&!rig)continue;
-      if(!rig){
-        rig=createCivilianRig(civil);
-        this.civilianRigs.set(civil.id,rig);
-        this.scene.add(rig.root);
-      }
-      updateCivilianRig(rig,civil,s.seconds);
-      rig.root.visible=visible;
-    }
+    reconcileSceneActorLifetimes(s,{
+      scene:this.scene,actors:this.actors,civilianRigs:this.civilianRigs,
+      actorIds:this.frameActorIds,civilianIds:this.frameCivilianIds
+    },omniscient,replayDisclosurePolicy);
     if(s.rescue&&!s.civilians.some(c=>c.rescueTarget)){
       if(!this.rescueFigure){
         this.rescueFigure=new THREE.Group();
