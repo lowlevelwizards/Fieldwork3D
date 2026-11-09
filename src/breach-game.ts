@@ -55,6 +55,8 @@ import {beginAutoSidestep,autoSidestepFacing,type AutoSidestep}
 import {friendlyPassingStep,nearOccupiedFriendlyGoal,
   friendlyArrivalSettleTarget} from './breach-friendly-traffic.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
+import {captureMotionFrameOrigins,buildMotionFrameProposals}
+ from './breach-motion-frame-input.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
 import {executionStatus,type MotorPause,type ExecutionIssue,
   type ExecutionStatus} from './breach-execution-state.ts';
@@ -105,7 +107,7 @@ import {groupResponse,type GroupRole} from './breach-ai-coordination.ts';
 import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
 import {coverMoveDeadline,coverMoveCommitted}
   from './breach-ai-position-commitment.ts';
-import {moraleResponse,witnessShock} from './breach-ai-morale.ts';
+import {moraleResponse,witnessShock,countNearbyEnemyAllies} from './breach-ai-morale.ts';
 import {newAwareness,addObservation,visibleObservation,
  ageAwareness,clearObservedPosition,bestBelief,
  type ActorAwareness} from './breach-awareness.ts';
@@ -5020,12 +5022,17 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     advanceDoor(door,h,doorOccupants);
   }
   mark('doors');
-  s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
-  s.shots=s.shots.filter(a=>(a.age+=h)<.40);
-  s.noise=s.noise.filter(n=>s.seconds-n.time<4);
+  // Effects are usually empty between firefights; the old filters
+  // allocated five fresh empty arrays on every authoritative 60Hz tick.
+  // Nonempty collections retain the same age increments and expiry gates.
+  if(s.sparks.length)s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
+  if(s.shots.length)s.shots=s.shots.filter(a=>(a.age+=h)<.40);
+  if(s.noise.length)s.noise=s.noise.filter(n=>s.seconds-n.time<4);
   for(const magazine of s.dropped)magazine.age+=h;
-  s.impactMarks=s.impactMarks.filter(mark=>(mark.age+=h)<24);
-  s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
+  if(s.impactMarks.length)
+    s.impactMarks=s.impactMarks.filter(mark=>(mark.age+=h)<24);
+  if(s.flashBursts.length)
+    s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
   stepFlashbangs(s,h);
   mark('aging-effects');
   advanceVisualAwareness(s,h);
@@ -5045,8 +5052,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   mark('belief-aging');
   // Capture immutable actor origins before any movement or enemy routine runs.
   // Final positions are reconciled together after the fixed-tick actor loop.
-  const motionStart=new Map([...s.operators,...s.civilians]
-    .map(a=>[a.id,clone(a.p)]));
+  const motionStart=captureMotionFrameOrigins(s.operators,s.civilians);
   for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
@@ -5070,9 +5076,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       // Nearby members of the same encounter group can steady resolve.
       // Do not pay an extra ally scan every tick for calm defenders.
       const peerSupport=(a.suppression>.25||a.morale<.65)?
-        enemies(s).filter(other=>other!==a&&other.health>0&&
-          other.encounterGroupId===a.encounterGroupId&&
-          d(other.p,a.p)<130).length:0;
+        countNearbyEnemyAllies(a,s.operators):0;
       const resolve=moraleResponse(a.morale,a.suppression,
         a.injuryStage,a.personality,{nearbyAllies:peerSupport});
       if(resolve==='withdraw'&&a.alert!=='retreat'){
@@ -5165,14 +5169,8 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
         (from,to)=>cachedEnemyRoute(s,from,to,true));
     }
   }
-  const proposals=[
-    ...s.operators.map(a=>({id:a.id,side:a.side,
-      from:motionStart.get(a.id)??a.p,to:a.p,alive:a.health>0,
-      carried:!!a.carriedById})),
-    ...s.civilians.map(c=>({id:c.id,side:'neutral' as const,
-      from:motionStart.get(c.id)??c.p,to:c.p,
-      alive:c.health>0||!!c.carriedById,carried:!!c.carriedById}))
-  ];
+  const proposals=buildMotionFrameProposals(
+    s.operators,s.civilians,motionStart);
   const decisions=resolveMovementFrame(proposals,p=>{
     if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors);
     const a=s.operators.find(unit=>unit.id===p.id)!;
