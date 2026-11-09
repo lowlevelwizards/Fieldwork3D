@@ -3343,7 +3343,7 @@ function exitReplay(){
   ui.replayPanel.hidden=true;
   ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
   closeReplayChoices();
-  if(finishedSession)state=finishedSession;
+  if(finishedSession)state=missionController.resumeLiveSession(finishedSession);
   finishedSession=null;fog2D.invalidate();
   replayLibrary.afterReplayExit();
   stage?.applySite(state.site??null);
