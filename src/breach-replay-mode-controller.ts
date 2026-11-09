@@ -25,7 +25,7 @@ export type ReplayModeControllerHooks={
  camera:ReplayCameraController;
  knowledge:ReplayKnowledgeController;
  bodycam:ReplayBodycamController;
- analysis:ReturnType<typeof createBreachReplayAnalysisController>;
+ getAnalysis:()=>ReturnType<typeof createBreachReplayAnalysisController>;
  ui:{replayPanel:HTMLElement;replayTopHud:HTMLElement;
    replayRail:HTMLElement;replaySeek:HTMLInputElement};
  resetTargeting:()=>void;
@@ -68,12 +68,12 @@ export function createReplayModeController(config:ReplayModeControllerHooks){
   config.knowledge.groundCacheCount=-1;
   config.knowledge.groundCacheSite=null;
   config.camera.director.indexPlans(recorder.plans.revisions);
-  config.analysis.startSession();
+  config.getAnalysis().startSession();
   config.resetReplayOptions();
   config.setMovementHistory(new ReplayMovementHistory(recorder.frames,
     team(live).map(a=>a.id)));
   config.beginAudio(recorder);
-  config.analysis.showReplayToolTab(null);
+  config.getAnalysis().showReplayToolTab(null);
   config.setSession(config.createReplaySession(recorder,live));
   const state=config.getSession();
   config.camera.followId=team(state)[0]?.id??'rook';
@@ -87,14 +87,14 @@ export function createReplayModeController(config:ReplayModeControllerHooks){
   config.getStage()?.applySite(state.site??null);
   config.getStage()?.setReplayBodycam(null);
   config.rebuildEventIndex();
-  config.analysis.rebuildReplaySquadEntries();
+  config.getAnalysis().rebuildReplaySquadEntries();
   document.body.classList.add('replaying');
   config.ui.replayPanel.hidden=false;
   config.ui.replayTopHud.hidden=false;config.ui.replayRail.hidden=false;
-  config.analysis.setReplayRailCollapsed(false);
-  config.analysis.setReplayDockCollapsed(false);
+  config.getAnalysis().setReplayRailCollapsed(false);
+  config.getAnalysis().setReplayDockCollapsed(false);
   config.ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
-  config.analysis.renderReplayEventMarkers();
+  config.getAnalysis().renderReplayEventMarkers();
   config.seekReplay(0);config.updateHud();
   return true;
  }
@@ -109,13 +109,13 @@ export function createReplayModeController(config:ReplayModeControllerHooks){
   config.bodycam.groundObservers.clear();
   config.setReplaying(false);
   config.clearReplayPresentation();
-  config.analysis.reset();
+  config.getAnalysis().reset();
   config.knowledge.reset();
   config.setMovementHistory(null);config.endAudio();
   document.body.classList.remove('replaying');
   config.ui.replayPanel.hidden=true;
   config.ui.replayTopHud.hidden=true;config.ui.replayRail.hidden=true;
-  config.analysis.closeReplayChoices();
+  config.getAnalysis().closeReplayChoices();
   const finished=config.getFinishedSession();
   if(finished)config.setSession(config.resumeLiveSession(finished));
   config.setFinishedSession(null);
