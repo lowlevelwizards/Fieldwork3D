@@ -37,7 +37,7 @@ export function addServiceHatches(site:Site,seed:number):Site{
   cover.push({x:candidate.p.x,y:candidate.p.y,
    w:Math.abs(candidate.wall.a.x-candidate.wall.b.x)<1?10:width,
    h:Math.abs(candidate.wall.a.x-candidate.wall.b.x)<1?width:10,
-   low:true,fixture:'window-sill'});
+   low:true,fixture:'window-sill',topHeight:24});
   walls=cut.walls;added++;
  }
  void seed;
