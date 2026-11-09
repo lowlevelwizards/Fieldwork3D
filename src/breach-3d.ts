@@ -649,6 +649,7 @@ export class TacticalScene3D{
     anchorX:number|null;anchorY:number|null
   }|null=null;
   private pickPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+  private aimPlane=new THREE.Plane(new THREE.Vector3(0,1,0),-24);
   private ray=new THREE.Raycaster();
   /** Pointer projection is synchronous. Reuse math vectors across touch
    * updates and HUD projection rather than allocating every query. */
@@ -2366,6 +2367,20 @@ export class TacticalScene3D{
     if(!this.ray.ray.intersectPlane(this.pickPlane,point))return null;
     if(!Number.isFinite(point.x)||!Number.isFinite(point.z))return null;
     // The caller receives its own point, never a mutable scratch reference.
+    return {x:point.x,y:point.z};
+  }
+  /** A screen-space LOOK/WATCH target is a direction through the tapped
+   * pixel, not necessarily a ground point. A tap on a raised miniature,
+   * door leaf or counter should not jump across the map when projected to
+   * ground. No object picking or hidden-actor knowledge is involved. */
+  screenToWorldAtHeight(sx:number,sy:number,height:number):Pt|null{
+    if(this.view.mode==='plan2d'||!Number.isFinite(height))return null;
+    this.screenNdc.set(sx/this.width*2-1,1-sy/this.height*2);
+    this.ray.setFromCamera(this.screenNdc,this.projectionCamera);
+    this.aimPlane.constant=-height;
+    const point=this.screenIntersection;
+    if(!this.ray.ray.intersectPlane(this.aimPlane,point))return null;
+    if(!Number.isFinite(point.x)||!Number.isFinite(point.z))return null;
     return {x:point.x,y:point.z};
   }
   project(p:Pt,y=4):Pt{
