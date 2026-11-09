@@ -35,6 +35,7 @@ import {resolveTacticalPick,screenSegmentDistance,watchDragReady,
   type TacticalPick} from './ui/tactical-target-resolver.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
+import {aimTargetFromTap,insideTacticalBounds} from './ui/aim-target.ts';
 import {interruptsWatch,angleDifference} from './breach-plan.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
@@ -4428,17 +4429,23 @@ function useSelectedGround(pt:Pt){
   if(looking){
     const placedId=state.nextId;
     const retargetingActive=lookMode==='watch'&&selectedActiveWatch;
-    const committed=retargetingActive?
-      retargetActiveWatch(state,selected,pt):
+    const actor=uid(selected);
+    const source=retargetingActive?actor?.p:selectedNode!==null?
+      actor?.plan.find(node=>node.id===selectedNode)?.p:
+      actor?(armedOrigin==='here'?actor.p:finalPoint(actor)):null;
+    const target=source?aimTargetFromTap(source,pt):null;
+    const committed=!!target&&(retargetingActive?
+      retargetActiveWatch(state,selected,target):
       lookMode==='watch'?
-        planWatch(state,selected,pt,selectedNode??undefined,armedOrigin):
-        planAim(state,selected,'free',pt,selectedNode??undefined,'look',armedOrigin);
+        planWatch(state,selected,target,selectedNode??undefined,armedOrigin):
+        planAim(state,selected,'free',target,selectedNode??undefined,'look',armedOrigin));
     if(!committed){
-      rejectAt(pt,'AIM TOO CLOSE · TAP FARTHER FROM THE OPERATOR OR WAYPOINT');
-      showUiHelp('AIM TOO CLOSE · TAP FARTHER AWAY, OR CANCEL',3200);
+      rejectAt(pt,target?'AIM ORDER UNAVAILABLE':
+        'AIM DIRECTION UNAVAILABLE · TAP AWAY FROM THE OPERATOR');
+      showUiHelp('CHOOSE A LOOK / WATCH DIRECTION, OR CANCEL',3200);
     }
     else{
-      tacticalFeedback.emit('command',pt,lookMode==='watch'?'WATCH':'LOOK');
+      tacticalFeedback.emit('command',target!,lookMode==='watch'?'WATCH':'LOOK');
       playOrderCue(lookMode==='watch'?'orders.watch':'orders.look');
       if(!retargetingActive&&selectedNode===null){
         selectedNode=placedId;selectedActiveWatch=false;
@@ -7373,6 +7380,14 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Digit0'&&!e.repeat)ui.cameraFit.click();
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
+/** Aim can be placed through the rendered silhouette of a door, enemy,
+ * window or counter, whether or not that object is known. This reads only
+ * the camera ray: never query hidden actors to snap a LOOK/WATCH marker. */
+function pointerAimWorld(e:PointerEvent,height=24):Pt{
+ return stage&&viewMode!=='plan2d'?
+   stage.screenToWorldAtHeight(e.clientX,e.clientY,height)??
+     pointerWorld(e):pointerWorld(e);
+}
 /** One shared screen-space picker for the visible planning surface.
  * Routes, doors and order handles compete by explicit geometry, never by
  * separate first-match handlers or unseen world information. */
@@ -7483,7 +7498,7 @@ canvas.addEventListener('pointerenter',e=>{
 canvas.addEventListener('pointerleave',()=>{previewHover=false;});
 canvas.addEventListener('pointerdown',e=>{
   e.preventDefault();canvas.setPointerCapture(e.pointerId);
-  const pt=pointerWorld(e);
+  const pt=looking?pointerAimWorld(e):pointerWorld(e);
   cursor=pt;
   if(e.pointerType==='touch')previewHover=false;
   // Explicit camera interaction does NOT select units or place orders.
@@ -7528,7 +7543,9 @@ canvas.addEventListener('pointerdown',e=>{
 });
 canvas.addEventListener('pointermove',e=>{
   const p=activePointers.get(e.pointerId);
-  cursor=pointerWorld(e);
+  cursor=looking?pointerAimWorld(e):
+    p&&(p.mode==='activeWatch'||p.mode==='watchTarget')?
+      pointerAimWorld(e,12):pointerWorld(e);
   if(!p)return;
   e.preventDefault();
   const dx=e.clientX-p.x,dy=e.clientY-p.y;
@@ -7646,7 +7663,9 @@ function releasePointer(e:PointerEvent,cancelled=false){
   const p=activePointers.get(e.pointerId);if(!p)return;
   if(cancelled&&p.dragCommitted)restorePointerSelection(p);
   if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
-  const pt=pointerWorld(e);
+  const pt=looking?pointerAimWorld(e):
+    p.mode==='activeWatch'||p.mode==='watchTarget'?
+      pointerAimWorld(e,12):pointerWorld(e);
   // During replay, a deliberate single tap on a friendly miniature
   // follows that operator. Two-finger gestures, camera drags, and scrubbing
   // never steal camera focus. Avoid interpreting the same tap as a shot.
@@ -7683,18 +7702,27 @@ function releasePointer(e:PointerEvent,cancelled=false){
       // A brief iPhone tap often travels a few pixels without entering
       // targetPreview. Always commit an armed target on release, even then.
       // CameraMulti/cancelled pointers remain excluded.
-      if(pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H)useSelectedGround(pt);
+      // LOOK/WATCH are directions and may deliberately point across an
+      // unseen door or beyond the property; other commands still require a
+      // point inside the real procedural site bounds, not legacy W/H.
+      if(looking||insideTacticalBounds(pt,activeWorldBounds()))
+        useSelectedGround(pt);
       else showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
     }else if(p.mode==='activeWatch'){
       adoptPointerOwner(p);
-      const accepted=!p.dragCommitted||retargetActiveWatch(state,selected,pt);
+      const target=aimTargetFromTap(uid(selected)?.p??pt,pt);
+      const accepted=!p.dragCommitted||
+        (!!target&&retargetActiveWatch(state,selected,target));
       if(!accepted)rejectAt(pt,'WATCH TARGET TOO CLOSE OR INVALID');
       selectedNode=null;selectedActiveWatch=true;doorFocusId=null;
       if(accepted)tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
         p.dragCommitted?'WATCH RETARGETED':undefined);
     }else if(p.mode==='watchTarget'&&p.nodeId!==null){
       adoptPointerOwner(p);
-      const accepted=!p.dragCommitted||planWatch(state,selected,pt,p.nodeId);
+      const node=uid(selected)?.plan.find(n=>n.id===p.nodeId);
+      const target=node?aimTargetFromTap(node.p,pt):null;
+      const accepted=!p.dragCommitted||
+        (!!target&&planWatch(state,selected,target,p.nodeId));
       if(!accepted)rejectAt(pt,'WATCH TARGET UNAVAILABLE');
       selectedNode=p.nodeId;doorFocusId=null;
       if(accepted)tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
@@ -7761,7 +7789,7 @@ function releasePointer(e:PointerEvent,cancelled=false){
           (watchKept?' · WATCH KEPT':''),3200);
       }
       doorFocusId=null;
-    }else if(!p.moved&&pt.x>=0&&pt.y>=0&&pt.x<=W&&pt.y<=H){
+    }else if(!p.moved&&insideTacticalBounds(pt,activeWorldBounds())){
       // The hit was captured at pointer-down, but no selection/order was
       // committed before the gesture resolved. Camera gestures never reach
       // this branch and a tap can produce only one semantic outcome.
