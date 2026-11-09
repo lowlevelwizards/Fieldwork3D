@@ -618,6 +618,11 @@ export class TacticalScene3D{
   private thrown=new Map<number,THREE.Mesh>();
   private detonations=new Map<number,THREE.Mesh>();
   private tracerAxis=new THREE.Vector3(0,1,0);
+  /** Shot visuals copy these values into meshes immediately. Scratch vectors
+   * avoid three new Vector3 allocations per visible shot per render frame. */
+  private readonly shotStart=new THREE.Vector3();
+  private readonly shotEnd=new THREE.Vector3();
+  private readonly shotFlight=new THREE.Vector3();
   private readonly shoeWorldPoint=new THREE.Vector3();
   private tracerGeometry=new THREE.CylinderGeometry(.65,.65,1,6);
   private impactGeometry=new THREE.IcosahedronGeometry(1,1);
@@ -3112,9 +3117,11 @@ export class TacticalScene3D{
         effect={root,line,impact,chips,material,impactMaterial};
         this.effectCache.set(shot.id,effect);
       }
-      const start=v(shot.start,shot.muzzleHeight??15),
-        end=v(shot.end,shot.impactHeight??12);
-      const flight=end.clone().sub(start);
+      const start=this.shotStart.set(
+        shot.start.x,shot.muzzleHeight??15,shot.start.y);
+      const end=this.shotEnd.set(
+        shot.end.x,shot.impactHeight??12,shot.end.y);
+      const flight=this.shotFlight.copy(end).sub(start);
       effect.line.position.copy(start).addScaledVector(flight,.5);
       effect.line.scale.set(1,flight.length(),1);
       effect.line.quaternion.setFromUnitVectors(
