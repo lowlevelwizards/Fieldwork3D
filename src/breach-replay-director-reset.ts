@@ -315,6 +315,7 @@ export class ReplayDirectorStoryboard{
       (prior.editorialId!==best.editorialId||
        prior.roomId!==best.roomId);
     const newContact=best.shotType==='contact'&&
+      !!best.contactTargetPoint&&
       (prior.shotType!=='contact'||
        prior.editorialId!==best.editorialId);
     const newDiscovery=(best.discoveryStrength??0)>.25&&
@@ -326,10 +327,16 @@ export class ReplayDirectorStoryboard{
     // A valid established shoulder is the default. Different editorial
     // labels, grades, and tiny score gains are not reasons to cut. Follow
     // the person and smoothly update the aim within this one shot grammar.
-    if(following&&(!newInformation||
-       sameSubject&&sameRoom||
-       (best.editorialPriority??0)<
-         (retained?.editorialPriority??0)+1.4)){
+    const rivalImportance=(best.editorialPriority??0)-
+      (retained?.editorialPriority??0);
+    const rivalMoving=best.motion>7&&
+      (retained?.motion??0)<4.5;
+    const differentRoom=best.roomId!==prior.roomId;
+    // Handoff only when another actor is genuinely more informative.
+    // A higher-scored pose of the same person is NOT a new shot.
+    if(following&&(sameSubject&&sameRoom||
+      !newInformation&&(elapsed<3.0||
+        rivalImportance<1.4&&!rivalMoving&&!differentRoom))){
       return {...following,sceneStartIndex:prior.sceneStartIndex,
         cameraDecision:following.cameraDecision??'hold:committed-shot'};
     }
