@@ -8297,6 +8297,8 @@ function tick(now:number){
         ' · SITE MATS '+(stats?.siteMaterialCount??0)+
         ' · RIGS A/C '+(stats?.actorRigCount??0)+'/'+
           (stats?.civilianRigCount??0)+
+        ' · GEO/TEX '+(stats?.geometryCount??0)+'/'+
+          (stats?.textureCount??0)+
         '\nOVERLAY '+m.overlay.toFixed(1)+'ms · DRAWS '+
         m.draws.toFixed(0)+' · TRI '+m.triangles.toFixed(0)+
         (simPhaseCosts&&simPhaseCosts.size?'\nHOT SIM '+
