@@ -3,7 +3,14 @@
 export type FrameMeasures={frame:number;cadence?:number;sim:number;scene:number;overlay:number;recording?:number;steps:number;draws:number;triangles:number};
 export class FrameMeter{
   private samples:FrameMeasures[]=[];
-  add(value:FrameMeasures){this.samples.push(value);if(this.samples.length>120)this.samples.shift();}
+  private next=0;
+  /** Fixed-capacity rolling sample window. Replacing the oldest slot avoids
+   * shifting 119 entries every RAF when the optional perf overlay is active. */
+  add(value:FrameMeasures){
+    if(this.samples.length<120){this.samples.push(value);return;}
+    this.samples[this.next]=value;
+    this.next=(this.next+1)%120;
+  }
   summary(){
     const data=this.samples;
     const series=(key:keyof FrameMeasures)=>data.map(s=>s[key]??0).sort((a,b)=>a-b);
