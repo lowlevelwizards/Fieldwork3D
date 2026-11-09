@@ -2101,16 +2101,17 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     const world=traversalWorld(s,a),fit=traversalFitness(a);
     // Validate the LOCAL aperture, not the distant waypoint.
     // Window probes intentionally reject spans greater than 180 units.
-    // Recheck the LOCAL takeoff-to-landing crossing, not the distant
-    // authored destination. Longer move orders otherwise fail the <=180u
-    // probe at the moment the vault is supposed to begin.
-    const validated=planned.windowId?
-      probeWindowCrossing(a.p,planned.landing,world,fit):
-      probeObstacleCrossing(a.p,planned.landing,world,fit);
-    if(validated&&validated.obstacleIndex===planned.obstacleIndex&&
-       d(validated.landing,planned.landing)<5&&
-       d(validated.approach,a.p)<4){
-      a.traversal={...validated,approach:clone(a.p)};
+    // The initial probe already selected an eligible obstacle and landing.
+    // At takeoff, revalidate that exact crossing against CURRENT geometry,
+    // pane state and all landing occupants. Re-probing from the approach
+    // toward the distant authored goal can fail solely due to a changed
+    // ray length and lose otherwise reliable vaults.
+    const landingClear=!world.actors.some(position=>
+      d(position,planned.landing)<OPERATOR_RADIUS*2+3);
+    const verified=d(planned.approach,a.p)<4&&landingClear&&
+      traversalStepClear(a.p,planned.landing,planned,world);
+    if(verified){
+      a.traversal={...planned,approach:clone(a.p)};
       a.traversalElapsed=0;a.traversalElevation=0;
       a.traversalRetreating=false;
       a.traversalPending=null;a.nav=[];a.velocity=0;
