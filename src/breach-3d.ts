@@ -77,7 +77,7 @@ import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
 import {pixelOverlay,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,doorLeafSegment,activeSite,
-  type Pt,type Door,type Segment} from './breach-core.ts';
+  type Pt,type Segment} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {handlingIntentForMovement,teammateAheadForHandling}
   from './breach-handling-context.ts';
@@ -100,8 +100,6 @@ import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse}
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET,
   WALL_VISUAL_HEIGHT,DOOR_CLEAR_VISUAL_HEIGHT,DOOR_LEAF_VISUAL_HEIGHT} from './breach-door-proportions.ts';
-import {windowVisualHeadHeight,SERVING_COUNTER_VISUAL_HEIGHT}
-  from './breach-opening-proportions.ts';
 import {paintFogMask,paintFogMemory,paintFogVisibility,occupiedFogRooms,
   FOG_WIDTH,FOG_HEIGHT,maskSize,type FogDiagnostic}
   from './breach-fog-mask.ts';
