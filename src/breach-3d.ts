@@ -5,6 +5,8 @@ import * as THREE from 'three';
 import {SiteMaterialLifetime} from './rendering/site-material-lifetime.ts';
 import {buildSiteMicroDebrisMeshes} from './rendering/breach-site-micro-debris.ts';
 import {buildSiteExterior} from './rendering/breach-site-exterior-builder.ts';
+import {buildArchitecturalOpenings,buildSiteDoors,buildSiteWindows,doorSweepArc,
+ type SiteOpeningsHost} from './rendering/breach-site-openings-builder.ts';
 
 import {APPROVED_GRAPHIC_LIGHTING}
  from './operator-studio-light-lab.ts';
@@ -75,7 +77,7 @@ import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
 import {pixelOverlay,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,doorLeafSegment,activeSite,
-  type Pt,type Door,type Segment} from './breach-core.ts';
+  type Pt,type Segment} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {handlingIntentForMovement,teammateAheadForHandling}
   from './breach-handling-context.ts';
@@ -98,8 +100,6 @@ import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse}
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET,
   WALL_VISUAL_HEIGHT,DOOR_CLEAR_VISUAL_HEIGHT,DOOR_LEAF_VISUAL_HEIGHT} from './breach-door-proportions.ts';
-import {windowVisualHeadHeight,SERVING_COUNTER_VISUAL_HEIGHT}
-  from './breach-opening-proportions.ts';
 import {paintFogMask,paintFogMemory,paintFogVisibility,occupiedFogRooms,
   FOG_WIDTH,FOG_HEIGHT,maskSize,type FogDiagnostic}
   from './breach-fog-mask.ts';
@@ -125,31 +125,6 @@ const color=(hex:number)=>new THREE.Color(hex);
 const mat=(hex:number,roughness=.9)=>new THREE.MeshStandardMaterial({
   color:hex,roughness,flatShading:true,
 });
-/** Blueprint-style ground sweep, fixed to the actual hinge and opening side. */
-function doorSweepArc(door:Door,length:number):THREE.Group{
-  const group=new THREE.Group(),points:THREE.Vector3[]=[];
-  const hinge=door.hinge==='b'?length/2:-length/2;
-  const sign=door.hinge==='b'?-1:1;
-  const reach=Math.max(0,length-DOOR_PANEL_END_RECESS);
-  for(let i=0;i<=24;i++){
-    const angle=(door.swing??-1)*1.54*i/24;
-    points.push(new THREE.Vector3(
-      hinge+sign*reach*Math.cos(angle),1.7,
-      -sign*reach*Math.sin(angle)));
-  }
-  const material=new THREE.LineDashedMaterial({
-    color:0xf5d68e,transparent:true,opacity:.9,
-    dashSize:5,gapSize:4,depthTest:true,depthWrite:false});
-  const stroke=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),material);
-  stroke.computeLineDistances();group.add(stroke);
-  const hingeDot=new THREE.Mesh(
-    new THREE.CircleGeometry(3,12),
-    new THREE.MeshBasicMaterial({color:0xffdb8b,side:THREE.DoubleSide,depthWrite:false}));
-  hingeDot.rotation.x=-Math.PI/2;
-  hingeDot.position.set(hinge,1.75,0);group.add(hingeDot);
-  group.visible=false;
-  return group;
-}
 export class TacticalScene3D{
   private readonly hemisphere=new THREE.HemisphereLight(
    STUDIO_INSPECTION_LIGHT.sky,studioShadowPalette('plum-plus').ground,1.20);
@@ -1303,205 +1278,25 @@ export class TacticalScene3D{
          individualCap,false);
       cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z},segment:wall,index,exterior});
     }
-    const archMaterial=this.solid(theme.trim);
-    for(const opening of site.openings??[]){
-      const width=Math.hypot(opening.a.x-opening.b.x,opening.a.y-opening.b.y);
-      const p={x:(opening.a.x+opening.b.x)/2,y:(opening.a.y+opening.b.y)/2};
-      const group=new THREE.Group();group.position.set(p.x,0,p.y);
-      group.rotation.y=Math.abs(opening.a.x-opening.b.x)<1?-Math.PI/2:0;
-      for(const side of [-1,1])this.box(group,side*width/2,DOOR_CLEAR_VISUAL_HEIGHT/2,0,
-        4,DOOR_CLEAR_VISUAL_HEIGHT,10,archMaterial);
-      this.box(group,0,DOOR_CLEAR_VISUAL_HEIGHT+2,0,
-        width+4,4,11,archMaterial);
-      if(opening.kind==='serving'){
-        // Counter surface sits just below the standing operator's eye line
-        // rather than at the old knee-high sill. Upper trim rests on the
-        // slab without coincident faces or a duplicate cover render mesh.
-        const height=SERVING_COUNTER_VISUAL_HEIGHT;
-        this.box(group,0,height/2,0,width,height,10,archMaterial);
-        this.box(group,0,height+1.15,6.2,width+3,2,10,
-          archMaterial,false);
-      }
-      this.root.add(group);
-      this.architecturalOpenings.push({obj:group,opening});
-    }
-    const doorMat=this.solid(age(theme.door,'door-wood'),.88,'door-wood'),
-      doorTrim=this.solid(age(theme.trim,'painted-wood'),.9,'painted-wood');
+    const openingHost:SiteOpeningsHost={
+      root:this.root,
+      box:(...args)=>this.box(...args),
+      solid:(...args)=>this.solid(...args),
+      age:(hex,surface)=>age(hex,surface),
+      track:material=>this.siteMaterials.track(material),
+      addSurfaceWear:(...args)=>this.addSurfaceWear(...args),
+      marksOn,promoteFacadeDetails,
+      registerArch:(opening,obj)=>this.architecturalOpenings.push({opening,obj}),
+      registerDoor:(id,visual)=>this.doors.set(id,visual),
+      recordDoorGlass:(id,value)=>this.observedDoorGlass.set(id,value),
+      recordDoorOpen:(id,value)=>this.observedDoorOpen.set(id,value),
+      registerGlass:(id,glass)=>this.windowGlass.set(id,glass),
+      registerWallSurface:(obj,index)=>this.intelSurfaces.push({obj,kind:'wall',index})
+    };
+    buildArchitecturalOpenings(site,openingHost,this.solid(theme.trim));
+    const doorTrim=this.solid(age(theme.trim,'painted-wood'),.9,'painted-wood');
     const metal=this.solid(0x586665,.78,'industrial-steel');
-    const doorGlass=this.siteMaterials.track(new THREE.MeshStandardMaterial({
-      color:0xa8c2bf,roughness:.24,transparent:true,opacity:.29,
-      depthWrite:false,side:THREE.DoubleSide}));
-    for(const [doorIndex,sourceDoor] of site.doors.entries()){
-      const door=initDoor(sourceDoor,doorIndex);
-      const length=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
-      const p=doorCenter(door);
-      const root=new THREE.Group();root.position.set(p.x,0,p.y);
-      root.rotation.y=-Math.atan2(door.b.y-door.a.y,door.b.x-door.a.x);
-      const frame=new THREE.Group();root.add(frame);
-      const profile=doorProportions(door);
-      // Preserve the full structural opening: jambs are mounted outside
-      // the walkable interval, instead of projecting into the threshold.
-      const jambX=length/2+profile.jambWidth/2-DOOR_FRAME_INSET;
-      const jambSides=door.pairedWith?
-        [door.hinge==='b'?1:-1]:[-1,1];
-      for(const side of jambSides){
-        this.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,0,
-          profile.jambWidth,DOOR_CLEAR_VISUAL_HEIGHT,profile.jambDepth,doorTrim);
-        // Small face rebate keeps the chunky iconography without two
-        // massive offset bars dominating the aperture.
-        this.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,
-          profile.jambDepth/2+1.25,profile.casingWidth,
-          DOOR_CLEAR_VISUAL_HEIGHT-3,
-          profile.casingDepth,doorTrim,false);
-      }
-      this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight/2,0,
-        length+2*profile.jambWidth,
-        profile.headerHeight,profile.headerDepth,doorTrim);
-      this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.5,1.50,
-        length+2*profile.jambWidth+1,
-        1.1,profile.headerDepth+.8,doorTrim,false);
-      const threshold=this.box(frame,0,.275,0,length,
-        profile.thresholdHeight,profile.thresholdDepth,doorTrim,false);
-      const leaf=new THREE.Group();
-      let glassPane:THREE.Mesh|undefined;
-      const invert=door.hinge==='b';
-      leaf.position.x=door.kind==='shutter'||door.kind==='sliding'?0:invert?length/2:-length/2;
-      // Actual hinge barrels identify the swing side without requiring
-      // a user to inspect a top-down arrow on every doorway.
-      if(door.kind!=='shutter'&&door.kind!=='sliding')for(const y of [9,24,42])
-        this.box(frame,invert?length/2:-length/2,y,0,
-          profile.hingeDiameter,5.2,profile.hingeDepth,metal,false);
-      root.add(leaf);
-      if(door.kind==='shutter'){
-        for(let y=2;y<DOOR_LEAF_VISUAL_HEIGHT;y+=5)
-          this.box(leaf,0,y,0,length-3,4.7,4,metal,false);
-        this.box(frame,0,WALL_VISUAL_HEIGHT,0,length+10,9,13,metal,false);
-        for(const side of [-1,1])
-          this.box(frame,side*length*.49,WALL_VISUAL_HEIGHT/2,2.1,
-          2,WALL_VISUAL_HEIGHT-2,4,metal,false); // shutter runners
-        this.box(leaf,0,4,2.5,length*.37,2,1.4,doorTrim,false); // lower pull
-      }else{
-        if(door.kind==='sliding'){
-          this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+2,1.6,
-            length*2.1,3,6,metal,false);
-          this.box(frame,0,1,1.6,length*2.1,1.3,4,metal,false);
-        }
-        const style=door.style??'wood';
-        const panel=style==='wood'?doorMat:style==='exit'?
-          this.solid(0x996c53,.78,'painted-metal'):style==='reinforced'?
-          this.solid(0x53615e,.78,'industrial-steel'):this.solid(0x72817d,.78,'painted-metal');
-        const middle=door.kind==='sliding'?0:(invert?-1:1)*length/2;
-        if(style==='mesh-gate'){
-          const frameMaterial=this.solid(0x586665,.8,'industrial-steel');
-          for(const sign of [-1,1])this.box(leaf,middle+sign*(length/2-2),
-            DOOR_LEAF_VISUAL_HEIGHT/2,0,3,DOOR_LEAF_VISUAL_HEIGHT,3,
-            frameMaterial,false);
-          for(const y of [3,DOOR_LEAF_VISUAL_HEIGHT-3])this.box(leaf,middle,y,0,length-4,3,3,frameMaterial,false);
-          for(let x=-length/2+7;x<length/2-3;x+=9)
-            this.box(leaf,middle+x,DOOR_LEAF_VISUAL_HEIGHT/2,0,
-              1,DOOR_LEAF_VISUAL_HEIGHT-6,1,frameMaterial,false);
-          for(const y of [11,25,39])this.box(leaf,middle,y,0,length-6,1,1,frameMaterial,false);
-        }else if(style==='french'||style==='screen'){
-          for(const sign of [-1,1])
-            this.box(leaf,middle+sign*(length/2-3),
-              DOOR_LEAF_VISUAL_HEIGHT/2,0,
-              3.2,DOOR_LEAF_VISUAL_HEIGHT,profile.leafThickness,metal,false);
-          for(const y of [3,DOOR_LEAF_VISUAL_HEIGHT-3])this.box(leaf,middle,y,0,length-4,
-              3.4,profile.leafThickness,metal,false);
-          if(style==='french'){
-            const pane=this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
-              length-8,DOOR_LEAF_VISUAL_HEIGHT-8,1,doorGlass,false);
-            pane.castShadow=false;glassPane=pane;
-            for(const y of [15,32])this.box(leaf,middle,y,0,length-5,2,3,metal,false);
-            this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,2,
-              DOOR_LEAF_VISUAL_HEIGHT-7,3,metal,false);
-          }else{
-            for(let x=-length/2+5;x<length/2-2;x+=7)
-              this.box(leaf,middle+x,DOOR_LEAF_VISUAL_HEIGHT/2,0,.9,
-                DOOR_LEAF_VISUAL_HEIGHT-8,1,metal,false);
-          }
-        }else if(style==='glazed'){
-          const pane=this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
-              length-8,DOOR_LEAF_VISUAL_HEIGHT-8,1,doorGlass,false);
-          pane.castShadow=false;glassPane=pane;
-          for(const sign of [-1,1])
-            this.box(leaf,middle+sign*(length/2-3),
-              DOOR_LEAF_VISUAL_HEIGHT/2,0,
-              3.2,DOOR_LEAF_VISUAL_HEIGHT,profile.leafThickness,metal,false);
-          for(const y of [3,DOOR_LEAF_VISUAL_HEIGHT-3])this.box(leaf,middle,y,0,length-4,
-              3.8,profile.leafThickness,metal,false);
-          this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
-            length-5,2.3,3,metal,false);
-        }else this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
-          length-4,DOOR_LEAF_VISUAL_HEIGHT,
-          profile.leafThickness,panel);
-        if(style==='wood'){
-          // Quiet manufactured two-panel door joinery; no floorboard motif.
-          const inset=this.solid(theme.door,.9,'painted-wood');
-          for(const y of [12,26,40]){
-            this.box(leaf,middle,y,
-              profile.leafThickness/2+.16,length*.64,10,.7,inset,false);
-            for(const sx of [-1,1])
-              this.box(leaf,middle+sx*length*.32,y,
-                profile.leafThickness/2+.24,1,10,.7,doorTrim,false);
-          }
-        }
-        for(const sign of [-1,1]){
-          // Hardware sits against the panel face, not at the old slab depth.
-          const z=sign*(profile.leafThickness/2+1.05);
-          const handleX=(invert?-1:1)*length*.70;
-          this.box(leaf,handleX,18,z,3,5,1.9,metal,false);
-          this.box(leaf,handleX+(invert?2:-2),18,z*1.12,4,1.4,1.6,metal,false);
-          this.box(leaf,handleX,13,z,1,1.3,1.7,metal,false);
-        }
-        if(style==='steel'||style==='reinforced'){
-          for(const y of style==='reinforced'?[6,17,28]:[8,28])
-            this.box(leaf,middle,y,2.5,length*.78,2.2,1.2,metal,false);
-        }
-        if(style==='louvered'){
-          for(let y=7;y<DOOR_LEAF_VISUAL_HEIGHT-4;y+=4)this.box(leaf,middle,y,3,length*.77,1.2,1.4,metal,false);
-        }
-        if(style==='barn'){
-          for(const x of [-length*.31,length*.31])
-            this.box(leaf,middle+x,DOOR_LEAF_VISUAL_HEIGHT/2,3,2.5,
-              DOOR_LEAF_VISUAL_HEIGHT-8,3,metal,false);
-          this.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,3,
-            length*.84,3,2,metal,false);
-        }
-        if(style==='fire')this.box(leaf,middle,17,4,length*.66,2.5,3.5,metal,false);
-        if(style==='reinforced')
-          for(const x of [-length*.30,length*.30])
-            this.box(leaf,middle+x,DOOR_LEAF_VISUAL_HEIGHT/2,2.5,2,
-              DOOR_LEAF_VISUAL_HEIGHT-7,1.4,metal,false);
-        if(style==='exit'){
-          const bar=this.solid(0xc5ad88);
-          this.box(leaf,middle,18,3.6,length*.75,2.2,3.2,bar,false);
-          for(const x of [-length*.29,length*.29])
-            this.box(leaf,middle+x,16.5,4,2,4,3.1,metal,false);
-        }
-      }
-      for(const mark of marksOn('door',doorIndex)){
-        const middle=(door.hinge==='b'?-1:1)*length/2;
-        this.addSurfaceWear(leaf,mark,middle+(mark.u-.5)*(length-8),
-          7+mark.v*(DOOR_LEAF_VISUAL_HEIGHT-14),profile.leafThickness/2+.27,
-          door.style==='wood'?'door-wood':'painted-metal');
-      }
-      const halo=door.kind==='sliding'?new THREE.Group():doorSweepArc(door,length);
-      root.add(halo);
-      this.root.add(root);
-      const wedge=this.box(frame,0,1.9,6,6,2.7,6,metal,false);
-      wedge.visible=false;
-      if(accessibleExteriorWall(site,door)){
-        // Public doors are façade elements, including jambs, closed leaf
-        // and hardware. Their stored/observed state is STILL authoritative.
-        // Do not promote the planning halo or undiscovered interior props.
-        promoteFacadeDetails(frame);
-        promoteFacadeDetails(leaf);
-      }
-      this.doors.set(door.id,{root,leaf,frame,halo,threshold,wedge,glassPane});
-      this.observedDoorGlass.set(door.id,!!door.glassShattered);
-      this.observedDoorOpen.set(door.id,door.openFraction??0);
-    }
+    buildSiteDoors(site,openingHost,{theme,doorTrim,metal});
     const fixtureCtx:FixtureVisualContext={
       box:(parent,x,y,z,w,h,d,material,cast)=>
         this.box(parent,x,y,z,w,h,d,material,cast),
@@ -1567,104 +1362,7 @@ export class TacticalScene3D{
       this.mats.push(this.windowPaneMaterial);
     }
     const paneMat=this.windowPaneMaterial;
-    for(const opening of site.windows??[]){
-      const group=new THREE.Group();
-      group.position.set(opening.x,0,opening.y);
-      group.rotation.y=opening.vertical?-Math.PI/2:0;
-      const style=opening.style??'standard';
-      // Window families retain the SAME underlying structural aperture,
-      // low sill and true planar glass for shots/visibility.
-      const baseTop=opening.sillHeight??14;
-      const glassTop=opening.headHeight??windowVisualHeadHeight(style);
-      const glassHeight=Math.max(1,glassTop-baseTop);
-      const trim=opening.interior?this.solid(0x4f605f,.66,'painted-metal'):
-        ['industrial','wire','clerestory','storefront'].includes(style)?metal:
-        style==='picture'?this.solid(0x627c79):doorTrim;
-      if(baseTop>0)this.box(group,0,baseTop/2,0,opening.width,baseTop,9,wallMat);
-      const actualTop=glassTop;
-      if(actualTop<WALL_VISUAL_HEIGHT)this.box(group,0,
-        (actualTop+WALL_VISUAL_HEIGHT)/2,0,opening.width,
-        WALL_VISUAL_HEIGHT-actualTop,9,wallMat);
-      // Place the trim BELOW the pane's bottom edge and in front of its
-      // surface. Overlapping transparent glass/mullion faces used to shimmer.
-      if(baseTop>0)this.box(group,0,baseTop-1.05,6,
-        opening.width+3,2,10,trim,false); // sill projection
-      const glass=this.box(group,0,baseTop+glassHeight/2,0,
-        opening.width-3,glassHeight,1,paneMat,false);
-      glass.castShadow=false;
-      this.windowGlass.set(opening.id,glass);
-      if(opening.treatment==='bars'){
-        const bars=this.solid(0x586866,.64,'metal');
-        for(const frac of [-.32,-.1,.12,.34])
-          this.box(group,frac*opening.width,
-            baseTop+glassHeight/2,2,1.8,glassHeight+1,2.2,bars,false);
-        for(const y of [baseTop+3,glassTop-3])
-          this.box(group,0,y,2,opening.width-3,1.7,2.2,bars,false);
-      }
-      if(opening.treatment==='open-curtains'){
-        const fabric=this.solid(0x8f8779,.95,'fabric');
-        for(const side of [-1,1]){
-          this.box(group,side*(opening.width/2-4),
-            baseTop+glassHeight/2,3,
-            6,glassHeight*.91,3,fabric,false);
-          this.box(group,side*(opening.width/2-4),
-            baseTop+glassHeight*.17,3.2,6,1.7,3.7,doorTrim,false);
-        }
-      }
-
-      for(const x of [-opening.width/2,opening.width/2])
-        this.box(group,x,baseTop+glassHeight/2,0,3,
-          glassHeight+2,9,trim,false);
-      // Architectural divisions remain thin mullions, never extra cover.
-      if(style==='standard'||style==='bay')
-        this.box(group,0,baseTop+glassHeight*.48,2.3,
-          opening.width-4,2.4,2.2,trim,false);
-      if(style==='industrial'||style==='wire'||style==='storefront'){
-        for(const f of style==='storefront'?[-.25,.25]:[-.28,0,.28])
-          this.box(group,f*opening.width,baseTop+glassHeight/2,2.3,
-            1.6,glassHeight,2.4,trim,false);
-      }
-      if(style==='wire'){
-        for(const y of [baseTop+4,baseTop+10,baseTop+16,baseTop+22])
-          if(y<actualTop-2)this.box(group,0,y,2.3,opening.width-4,.8,1.4,trim,false);
-      }
-      if(style==='storefront')
-        this.box(group,0,baseTop+glassHeight*.51,2.3,
-          opening.width-4,1.8,2.1,trim,false);
-      if(style==='awning'){
-        this.box(group,0,actualTop-2,2.3,opening.width-4,2,2.4,trim,false);
-        this.box(group,0,baseTop+glassHeight*.50,2.3,
-          opening.width-4,1,1.5,trim,false);
-      }
-      if(style==='tall'||style==='clerestory')
-        this.box(group,0,baseTop+1,2.3,opening.width,1.6,2.4,trim,false);
-      if(style==='bay'){
-        // A shallow projecting frame; the gameplay glass remains central.
-        this.box(group,-opening.width*.37,baseTop+glassHeight/2,-2.3,
-          2.5,glassHeight,5,trim,false);
-        this.box(group,opening.width*.37,baseTop+glassHeight/2,-2.3,
-          2.5,glassHeight,5,trim,false);
-        this.box(group,0,baseTop,-2.3,opening.width,2,5,trim,false);
-        this.box(group,0,actualTop,-2.3,opening.width,2,5,trim,false);
-      }
-      const half=opening.width/2;
-      const edge=opening.vertical?
-        {a:{x:opening.x,y:opening.y-half},
-         b:{x:opening.x,y:opening.y+half}}:
-        {a:{x:opening.x-half,y:opening.y},
-         b:{x:opening.x+half,y:opening.y}};
-      const publicWindow=!opening.interior&&accessibleExteriorWall(site,edge);
-      if(publicWindow){
-        promoteFacadeDetails(group);
-        group.userData.fogFacade=true;
-      }
-      const nearest=site.walls.findIndex(w=>
-        Math.hypot(w.a.x-opening.x,w.a.y-opening.y)<38||
-        Math.hypot(w.b.x-opening.x,w.b.y-opening.y)<38);
-      if(nearest>=0||publicWindow)
-        this.intelSurfaces.push({obj:group,kind:'wall',index:nearest});
-      this.root.add(group);
-    }
+    buildSiteWindows(site,openingHost,{paneMat,wallMat,doorTrim,metal});
     // Wall-mounted art and electrical hardware inherit room visibility.
     // They do not add collision, cover or new sightline blockers.
     const wallPaper=this.solid(0xb8ad8e,.97,'paper'),wallFrame=this.solid(0x615246,.9,'wood');

@@ -18,8 +18,9 @@ test('173: 60 Hz pose interpolates continuously across 180-degree wrap',()=>{
 });
 test('173: render never advances simulation or adds another foot-placement writer',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+ const runtime=readFileSync(new URL('../src/breach-runtime-loop.ts',import.meta.url),'utf8');
  const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
- assert.match(main,/previousRenderActors=renderSnapshot\(state\.operators\)/);
+ assert.match(runtime,/previousRenderActors=renderSnapshot\(state\.operators\)/);
  assert.match(scene,/interpolatedActor\(actor,renderFrame\)/);
  assert.match(scene,/shotHeading:drawActor.weaponYaw/);
 });

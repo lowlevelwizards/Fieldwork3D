@@ -59,6 +59,7 @@ test('tactical palette looks up windows and patients at selected waypoint',()=>{
   const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
   assert.match(main,/const at=node\?\.p\?\?finalPoint\(a\)/);
   assert.match(main,/treatTargetName:treatTarget\?\.name/);
-  assert.match(main,/planNearbyInteraction\(state,selected,\s*nearby\.open\?'close-window':'open-window',node\?\.id\)/);
-  assert.match(main,/planMedicalTreatment\(state,selected,patient\.id,node\?\.id\)/);
+  const commands=readFileSync(new URL('../src/breach-tactical-context-command.ts',import.meta.url),'utf8');
+  assert.match(commands,/planNearbyInteraction\(state,selected,\s*nearby\.open\?'close-window':'open-window',node\?\.id\)/);
+  assert.match(commands,/planMedicalTreatment\(state,selected,patient\.id,node\?\.id\)/);
 });
