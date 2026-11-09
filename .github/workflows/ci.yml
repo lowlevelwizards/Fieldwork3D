@@ -2038,6 +2038,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-input-movement-openings-') }}
         run: |
           node --experimental-strip-types --test tests/breach-aim-target-r1.test.mjs tests/breach-navigation-openings-r1.test.mjs tests/doorway-right-of-way-session.test.mjs tests/doorway-planned-sequence.test.mjs tests/breach-mantle-contract.test.mjs tests/breach-mantle-session.test.mjs tests/render-architectural-sills.test.mjs tests/architecture-03-service-hatches.test.mjs
+      - name: Operations landing — restart, saved replay and title navigation
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operations-landing-r1-') }}
+        run: |
+          node --experimental-strip-types --test tests/operations-landing-navigation.test.mjs tests/mission-restart-snapshot.test.mjs tests/replay-r3-archive.test.mjs
       - name: Production build and typecheck
         run: npm run build
       - name: Breach R1 — previous live Pages checkpoint
