@@ -8225,7 +8225,9 @@ function updatePhysicalActionRings(){
         null,
       replaying?replayWindowHistory:null);
   const overlayBegin=perfOverlay?performance.now():0;
+  const sceneUpdateEnd=perfOverlay?performance.now():0;
   if(!studioOccludesTactical)render();
+  const renderEnd=perfOverlay?performance.now():0;
   if(replaying&&replayQuickVideo.active){
     replayQuickVideo.drawFrame(
       stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayTime,
@@ -8317,7 +8319,9 @@ function updatePhysicalActionRings(){
   if(frameMeter&&perfOverlay){
     const end=performance.now(),stats=stage?.performanceStats();
     frameMeter.add({frame:end-perfStart,cadence:frameGap,sim:perfRenderStart-perfStart,
-      scene:overlayBegin-perfRenderStart,overlay:end-overlayBegin,
+      scene:overlayBegin-perfRenderStart,
+      sceneUpdate:sceneUpdateEnd-perfRenderStart,
+      render:renderEnd-sceneUpdateEnd,overlay:end-overlayBegin,
       recording:recordingMs,steps:simSteps,draws:stats?.calls??0,triangles:stats?.triangles??0});
     // The optional diagnostics must not sort rolling samples every RAF:
     // that would contaminate the very hitch measurements they report.
@@ -8329,6 +8333,7 @@ function updatePhysicalActionRings(){
         m.rafP95.toFixed(1)+'ms'+
         '\\nSIM+REC '+m.simulation.toFixed(1)+'ms / '+m.steps.toFixed(1)+
         ' ticks · REC '+m.recording.toFixed(1)+'ms · SCENE '+m.scene.toFixed(1)+'ms'+
+        '\\nSYNC '+m.sceneUpdate.toFixed(1)+'ms · RENDER '+m.render.toFixed(1)+'ms'+
         '\\nFILM '+recorder.frames.length+' frames · '+
         recorder.motion.stepEventCount+' step events'+
         '\\nOVERLAY '+m.overlay.toFixed(1)+'ms · DRAWS '+
