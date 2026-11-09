@@ -17,6 +17,7 @@ type Pt={x:number;y:number};
 export type DirectorGradeLetter='S'|'A'|'B'|'C'|'D'|'E'|'F';
 export type DirectorShotGrade={
   grade:DirectorGradeLetter;score:number;summary:string;
+  confidence:'high'|'limited';
   subjectVisible:boolean;targetVisible:boolean;
   attentionVisible:boolean;supportVisible:number;
   discovery:DirectorDiscovery;
@@ -71,8 +72,16 @@ export function gradeActualDirectorShot(ctx:DirectorGradeContext):DirectorShotGr
     .78,.76,ctx.safeFrame,
     current.actors.filter(a=>friendlies.has(a.id)&&a.id!==hero?.id)
       .map(a=>a.p));
+  const opticalHero=hero?directorSubjectVisibility(
+    shot.cameraAnchor,operator,scene):null;
   const subjectVisible=!!hero&&quality.primaryCoverage>=.48&&
-    directorSubjectVisibility(shot.cameraAnchor,operator,scene).readable;
+    !!opticalHero?.readable;
+  // The renderer can cut walls away while this cheap model still treats
+  // their original plan-segments as opaque. A projected on-screen actor
+  // rejected solely by geometric rays must not be reported as a certain F.
+  const confidence:DirectorShotGrade['confidence']=
+    !!hero&&quality.primaryCoverage>=.48&&!opticalHero?.readable?
+      'limited':'high';
   const wantsEnemy=shot.shotType==='contact'&&!!shot.contactTargetPoint;
   const targetVisible=!!enemyPoint&&quality.targetReadable&&
     directorSubjectVisibility(shot.cameraAnchor,enemyPoint,scene).readable&&
@@ -146,7 +155,9 @@ export function gradeActualDirectorShot(ctx:DirectorGradeContext):DirectorShotGr
   score=clamp(Math.round(score),0,100);
   const grade=directorGradeLetter(score);
   let summary:string;
-  if(!subjectVisible&&!targetVisible&&supportVisible===0&&
+  if(confidence==='limited'&&!subjectVisible)
+    summary='Visibility-model disagreement; verify actual image';
+  else if(!subjectVisible&&!targetVisible&&supportVisible===0&&
     !attentionVisible)summary='No readable subject';
   else if(!subjectVisible&&supportVisible>0)
     summary='Supporting cast readable; featured subject missing';
@@ -159,7 +170,7 @@ export function gradeActualDirectorShot(ctx:DirectorGradeContext):DirectorShotGr
   else if(opening&&attentionVisible)summary='Readable doorway and action direction';
   else if(supportVisible>0)summary='Readable squad geography';
   else summary='Subject framed; limited action context';
-  return {grade,score,summary,subjectVisible,targetVisible,
+  return {grade,score,summary,confidence,subjectVisible,targetVisible,
     attentionVisible,supportVisible,discovery,
     decision:shot.cameraDecision??'establish'};
 }
