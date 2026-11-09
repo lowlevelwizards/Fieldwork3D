@@ -50,8 +50,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+  presentation-knowledge-p7:
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/presentation-knowledge-p7-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: P7 critical fog, known surfaces, doors and scene lifetime
+        run: |
+          node --experimental-strip-types --test tests/presentation-knowledge-only-p7.test.mjs tests/presentation-detail-keys-and-door-sight-p7.test.mjs tests/visibility-04-surface.test.mjs tests/visibility-08-closed-door-seals.test.mjs tests/breach-fog-visibility.test.mjs tests/breach-scene-memory-lifecycle-p6.test.mjs tests/replay-r2-recording.test.mjs
+      - name: Production build and TypeScript check
+        run: npm run build
+      - name: Previous public Pages build checkpoint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
   verify:
-    if: ${{ github.event_name != 'pull_request' || !(startsWith(github.head_ref, 'perf/runtime-lifecycle-') || startsWith(github.head_ref, 'perf/sim-replay-hotpaths-')) }}
+    if: ${{ github.event_name != 'pull_request' || !(startsWith(github.head_ref, 'perf/runtime-lifecycle-') || startsWith(github.head_ref, 'perf/sim-replay-hotpaths-') || startsWith(github.head_ref, 'perf/presentation-knowledge-p7-')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
