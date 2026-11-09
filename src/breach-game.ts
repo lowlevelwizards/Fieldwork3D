@@ -78,6 +78,7 @@ import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
 import {scanEnemySoundEvidence}
   from './breach-ai-acoustic-perception.ts';
+import {registerSessionWorldGeometry} from './breach-world-context.ts';
 import {scanEnemyVisualEvidence} from './breach-ai-visual-evidence.ts';
 import {soundResponse} from './breach-sound-evidence.ts';
 import {newSuspicion,observeSuspicion,
@@ -612,6 +613,7 @@ export function newSession(index=0,siteSeed?:number,
   if(state.missionType==='intel'||state.missionType==='rescue'||
      state.missionType==='hold')state.mission='secure';
   COVER.splice(0,COVER.length,...state.coverState);
+  registerSessionWorldGeometry(state);
   observe(state);
   return state;
 }
