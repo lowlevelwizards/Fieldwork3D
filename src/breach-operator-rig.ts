@@ -1,6 +1,7 @@
 /** 109–113. Deliberately simple box anatomy and independently articulated limbs.
  * The battle motor remains authoritative. IK is presentation-only. */
 import * as THREE from 'three';
+import {updateOperatorSlingPose} from './breach-operator-sling-pose.ts';
 import {CORE_TORSO_CONTACT} from './operator-garment-contact-surface.ts';
 import {operatorPixelTextures,type PixelSurface} from './rendering/pixel-materials.ts';
 import {canonicalRootOrientation,LEGACY_FRAME_YAW,
@@ -2210,35 +2211,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const inverse=r.legacyFrame.getWorldQuaternion(scratch.inverse).invert();
     r.droppedGun.quaternion.copy(inverse.multiply(orientation));
   }
-  // Fabric loop follows the exact solved weapon rather than floating as a
-  // rigid receiver part. The same deterministic calculation works in replay.
-  const slingEquipped=p.weaponConfiguration?.slots.sling==='sling-two-point'&&
-   !p.surrender;
-  for(const mesh of r.slingStraps)mesh.visible=!!slingEquipped;
-  if(slingEquipped){
-   const gun=r.droppedGun.visible?r.droppedGun:r.weapon;
-   const scale=r.weapon.scale.x;
-   let rear:THREE.Vector3,front:THREE.Vector3;
-   if(r.droppedGun.visible){
-    r.root.updateMatrixWorld(true);
-    rear=r.chest.worldToLocal(gun.localToWorld(P(-9,-.4,3)));
-    front=r.chest.worldToLocal(gun.localToWorld(P(10,-.4,3)));
-   }else{
-    rear=P(-9*scale,-.4,3).applyEuler(gun.rotation).add(gun.position);
-    front=P(10*scale,-.4,3).applyEuler(gun.rotation).add(gun.position);
-   }
-   const sway=Math.sin(p.stride*Math.PI*2)*Math.min(1,physicalSpeed/80)*.6;
-   const points=[rear,P(-2.5,4.5,10.1),P(1.5+sway,-5.8,11.5),front];
-   const vertical=scratch.vertical;
-   for(let i=0;i<r.slingStraps.length;i++){
-    const start=points[i],end=points[i+1];
-    const delta=scratch.slingDelta.copy(end).sub(start),length=delta.length();
-    const mesh=r.slingStraps[i];
-    mesh.position.copy(start).addScaledVector(delta,.5);
-    mesh.scale.set(1,Math.max(.1,length),1);
-    mesh.quaternion.setFromUnitVectors(vertical,delta.normalize());
-   }
-  }
+  updateOperatorSlingPose(r,p,physicalSpeed,
+    scratch.vertical,scratch.slingDelta);
   if(p.unarmedPreview){
     r.weapon.visible=false;r.droppedGun.visible=false;
     r.magazineHand.visible=false;r.magazineInserted.visible=false;

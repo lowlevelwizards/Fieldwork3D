@@ -3,7 +3,7 @@
  * acquired evidence without learning hidden positions from presentation.
  */
 import type {Session,TeamActor} from './breach-game.ts';
-import {WALLS} from './breach-core.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
 import {interpretSound,soundResponse,soundPriority}
  from './breach-sound-evidence.ts';
 import {addObservation} from './breach-awareness.ts';
@@ -16,7 +16,7 @@ export function scanEnemySoundEvidence(s:Session,a:TeamActor):
   if(sound.id!==undefined?sound.id<=a.lastNoiseExaminedId:
     sound.time<=a.lastNoiseExaminedAt)continue;
   if(s.seconds-sound.time>1)continue;
-  const evidence=interpretSound(sound,a.id,a.p,s.doors,WALLS,s.windows);
+  const evidence=interpretSound(sound,a.id,a.p,s.doors,sessionWorldGeometry(s).walls,s.windows);
   if(evidence){
    addObservation(a.awareness,{id:'audio/'+a.id+'/'+evidence.id,
     observerId:a.id,source:'auditory',at:evidence.at,
