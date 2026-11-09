@@ -4,7 +4,8 @@
  * Inside a room the rig walks, pans and zooms at bounded rates; if an
  * obstruction prevents travel it holds its position instead of cutting.
  */
-import type {DirectorShot} from './breach-replay-director-shots.ts';
+import {directorShoulderSide,type DirectorShot}
+  from './breach-replay-director-shots.ts';
 import type {DirectorRoom} from './breach-replay-cinematic-director.ts';
 import {directorCameraLegal,directorLineBlocked,directorSubjectVisibility}
   from './breach-replay-director-physical.ts';
@@ -82,7 +83,8 @@ export class ReplayDirectorStoryboard{
     const shots:DirectorShot[]=Array.isArray(value)?[...value]:
       value?[value as DirectorShot]:[];
     // Compatibility: the old callback returns one valid candidate.
-    const unique=shots.filter((s,j)=>shots.findIndex(other=>
+    const unique=shots.filter(s=>!s.operatorPoint||!s.actionAxis||
+      directorShoulderSide(s)!==0).filter((s,j)=>shots.findIndex(other=>
       other.editorialId===s.editorialId&&
       distance(other.cameraAnchor,s.cameraAnchor)<.1&&
       distance(other.focus,s.focus)<.1)===j);
@@ -334,7 +336,7 @@ export class ReplayDirectorStoryboard{
     return score.legal&&score.heroVisible?
       clamp((score.score-60)*.11,-2,4):-3;
   }
-  private plan(raw:DirectorShot|null,prior:RailShot|null,
+  private planUnchecked(raw:DirectorShot|null,prior:RailShot|null,
     index:number):RailShot|null{
     this.activateScene(index);
     const sceneCtx={scene:this.physicalScene,aspect:this.aspect,
@@ -601,6 +603,21 @@ export class ReplayDirectorStoryboard{
       cameraDecision:traveling?'track:subject-motion':
         action?'reframe:action':'hold:composition'};
   }
+  /** The editor's HOLD and TRACK decisions are not exemptions from
+   * the one approved rig. Reject invalid legacy camera positions and
+   * recover to the current valid shoulder when one exists. */
+  private plan(indexRaw:DirectorShot|null,prior:RailShot|null,
+    index:number):RailShot|null{
+    const valid=(s:RailShot|null)=>!!s&&
+      (!s.operatorPoint||!s.actionAxis||directorShoulderSide(s)!==0);
+    const safePrior=valid(prior)?prior:null;
+    const planned=this.planUnchecked(indexRaw,safePrior,index);
+    if(valid(planned))return planned;
+    if(indexRaw&&valid(indexRaw))
+      return {...indexRaw,sceneStartIndex:index,
+        cameraDecision:'cut:restore-approved-shoulder'};
+    return safePrior;
+  }
   private remember(index:number,shot:RailShot|null):void{
     this.cache.set(index,shot);
     while(this.cache.size>this.maxCache)
@@ -647,10 +664,15 @@ export class ReplayDirectorStoryboard{
     const focus={x:mix(from.focus.x,to.focus.x,p),
       y:mix(from.focus.y,to.focus.y,p)};
     const yaw=yawOf(cameraAnchor,focus);
-    return {...(p<.5?from:to),cameraAnchor,focus,
+    const interpolated={...(p<.5?from:to),cameraAnchor,focus,
       zoom:mix(from.zoom,to.zoom,p),
       fov:mix(from.fov??108,to.fov??108,p),
       yaw:(yaw+2*Math.PI)%(2*Math.PI),
       pitch:mix(from.pitch,to.pitch,p)};
+    // Even interpolation between two approved shoulders can pass through
+    // the operator's back or front. Cut rather than show an illegal rig.
+    return interpolated.operatorPoint&&interpolated.actionAxis&&
+      directorShoulderSide(interpolated)===0?
+      (p<.5?from:to):interpolated;
   }
 }
