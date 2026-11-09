@@ -10,7 +10,7 @@ import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
   W,H,WALLS,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,route,passable,activateSite,
   segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,
-  pointToSegment,staticWallBlocksRay,someCoverAlongRay,someCoverNearPoint,
+  pointToSegment,staticWallBlocksRay,someCoverAlongRay,
   activeGeometryRevision,
   activeWorldBounds,
 } from './breach-core.ts';
@@ -68,7 +68,7 @@ import {executionStatus,type MotorPause,type ExecutionIssue,
 import {executionTransition,type ExecutionEvent} from './breach-execution-events.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
-import {canAutoShove,isFootstepObstacle} from './breach-traversal-surfaces.ts';
+import {canAutoShove} from './breach-traversal-surfaces.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
 import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
 import {damageCover} from './breach-reactive-cover.ts';
@@ -136,7 +136,7 @@ import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
 import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
   twoSidedSqueezePressure,
   sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
-  slideAroundStaticCorner,glideAlongStaticWall,releaseStaticWallOverlap}
+  slideAroundStaticCorner,glideAlongStaticWall}
   from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld,recoverNormalLane}
   from './breach-squeeze-route.ts';
