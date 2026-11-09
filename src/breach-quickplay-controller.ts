@@ -133,7 +133,7 @@ async function launchQuickPlay(){
     await allowQuickPlayPaint();
     const stage=config.getStage();
     const sceneStart=performance.now();
-    stage?.applySite(state.site??null);
+    stage?.applySite(config.getSession().site??null);
     const sceneMs=Math.round(performance.now()-sceneStart);
     // First rendered scene would otherwise construct every friendly rig at
     // once. Spread that expensive, reusable model allocation over paint turns.
