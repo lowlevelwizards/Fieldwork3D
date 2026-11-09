@@ -2366,6 +2366,14 @@ export class TacticalScene3D{
     this.actors.set(a.id,{side:a.side,root,flash,pack,weapon,status,
       beam,beamLast:null,physical,contactShadows});
   }
+  /** Retire one effect pool without allocating a tuple/list per RAF. */
+  private retireInactiveEffectMeshes(
+    cache:Map<number,THREE.Mesh>,activeIds:ReadonlySet<number>){
+    for(const [id,mesh] of cache)if(!activeIds.has(id)){
+      this.effects.remove(mesh);mesh.geometry.dispose();
+      (mesh.material as THREE.Material).dispose();cache.delete(id);
+    }
+  }
   update(s:Session,selected:string,dt:number,
     focusedDoorId:string|null=null,omniscient=false,
     replay?:ReplayPresentation|null,
@@ -3271,14 +3279,9 @@ export class TacticalScene3D{
       (mesh.material as THREE.MeshBasicMaterial).opacity=
         Math.max(0,.78*(1-burst.age/.7));
     }
-    for(const [cache,activeIds] of [
-      [this.discarded,activeMag],[this.thrown,liveGrenades],
-      [this.detonations,liveBursts],
-    ] as [Map<number,THREE.Mesh>,Set<number>][])
-      for(const [id,mesh] of cache)if(!activeIds.has(id)){
-        this.effects.remove(mesh);mesh.geometry.dispose();
-        (mesh.material as THREE.Material).dispose();cache.delete(id);
-      }
+    this.retireInactiveEffectMeshes(this.discarded,activeMag);
+    this.retireInactiveEffectMeshes(this.thrown,liveGrenades);
+    this.retireInactiveEffectMeshes(this.detonations,liveBursts);
     for(const [id,effect] of this.effectCache){
       if(active.has(id))continue;
       this.effects.remove(effect.root);
