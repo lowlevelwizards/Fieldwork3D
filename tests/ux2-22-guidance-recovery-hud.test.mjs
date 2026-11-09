@@ -60,17 +60,22 @@ test('recovery instructions travel with prioritized warnings',()=>{
 });
 test('TOOLS and Settings hide the floating palette immediately, never after fade',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(main,/const exclusive=!ui\.orders\.classList\.contains\('compact'\)/);
- assert.match(main,/if\(reducedMotionMedia\.matches\|\|exclusive\)/);
- assert.match(main,/paletteExit\?\.cancel\(\);paletteExit=null;[\s\S]*?ui\.context\.hidden=true/);
+ const palette=readFileSync(new URL('../src/ui/tactical-palette-controller.ts',import.meta.url),'utf8');
+ assert.match(main,/!ui\.briefingPanel\.hidden/);
+ assert.match(main,/!ui\.siteSettings\.hidden/);
+ assert.match(palette,/const exclusive=!config\.siteSettings\.hidden\|\|!config\.briefingPanel\.hidden/);
+ assert.match(palette,/if\(reduced\.matches\|\|exclusive\)/);
+ assert.match(palette,/exiting\?\.cancel\(\);exiting=null;context\.hidden=true/);
 });
 test('integration only renders tips in planning, no extra permanent HUD control',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+ const hud=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
- assert.match(main,/resolveHudPresentation\(/);
- assert.match(main,/teaching\.offer\(/);
- assert.match(main,/tacticalFeedback\.emit\('error'/);
- assert.match(main,/document\.body\.dataset\.hudPhase=/);
+ assert.match(main,/hudController\.renderGuidance\(/);
+ assert.match(hud,/resolveHudPresentation\(/);
+ assert.match(hud,/teaching\.offer\(/);
+ assert.match(hud,/feedback\.emit\('error'/);
+ assert.match(hud,/document\.body\.dataset\.hudPhase=/);
  assert.match(html,/id="hint"/);
  assert.match(html,/id="feed"/);
 });
