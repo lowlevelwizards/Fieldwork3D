@@ -133,7 +133,11 @@ export function composeReplayDirectorShots(
           attentionPoint:observed??plan.interest??aim,
           followDirection:axis,firstEntry:plan.firstEntry,
           editorialId:plan.id,editorialKind:plan.kind,
-          editorialPriority:plan.priority,editReason:plan.reason,
+          editorialPriority:plan.priority,
+          subjectImportance:plan.subjectImportance??plan.priority,
+          subjectReason:plan.subjectReason,
+          editReason:plan.subjectReason?
+            plan.reason+' · '+plan.subjectReason:plan.reason,
           requiredPoints:fitting,contactTargetPoint:knownTarget,
           discoveryStrength:plan.discoveryStrength??0,
           compositionQuality:quality,
@@ -155,7 +159,9 @@ export function composeReplayDirectorShots(
         const value=optical+shoulder+clearFrame+
           quality.primaryCoverage*25+quality.score*.08-
           blocking-cost;
-        shot.decisionScore=plan.priority*100+value;
+        // Choose WHO matters before choosing WHICH shoulder looks good.
+        // A pretty idle frame must not beat a live contact elsewhere.
+        shot.decisionScore=(plan.subjectImportance??plan.priority)*100+value;
         shot.decisionReason=targetClear&&quality.targetReadable?
           'legal shoulder / disclosed action readable':
           'legal shoulder / operator and forward sightline';
@@ -299,38 +305,52 @@ export class ReplayDirectorStoryboard{
     const oldSide=directorShoulderSide(prior);
     const retained=sameActor.find(s=>
       directorShoulderSide(s)===oldSide);
-    const newEvent=(best.shotType==='contact'&&
-      prior.shotType!=='contact')||
-      (best.firstEntry&&prior.shotType!=='entry')||
-      (best.discoveryStrength??0)>.25&&
+    const importance=(shot:DirectorShot)=>
+      shot.subjectImportance??shot.editorialPriority??0;
+    const incumbentImportance=importance(retained??prior);
+    const challengerImportance=importance(best);
+    const advantage=challengerImportance-incumbentImportance;
+    const sameSubject=best.primaryActorId===prior.primaryActorId;
+    const newContact=best.shotType==='contact'&&
+      !!best.contactTargetPoint&&
+      (prior.shotType!=='contact'||!sameSubject);
+    const newEntry=!!best.firstEntry&&
+      (prior.shotType!=='entry'||!sameSubject);
+    const newDiscovery=(best.discoveryStrength??0)>.25&&
       (prior.discoveryStrength??0)<=.25;
-    // When the same operator is still the subject, side changes are
-    // forbidden while the established side remains physically workable.
-    if(retained&&!newEvent&&
-      (best.primaryActorId===prior.primaryActorId||
-       (best.editorialPriority??0)<=(retained.editorialPriority??0)+.35)){
-      const next=this.track(prior,retained,scene);
-      if(this.legal(next,scene))return {...next,
-        sceneStartIndex:prior.sceneStartIndex,
-        cameraDecision:next.cameraDecision??'hold:approved-shoulder'};
+    // High-value new INFORMATION can break an ordinary shot. It must
+    // not bounce between equally valuable ongoing firefights.
+    const urgent=(newContact||newEntry||newDiscovery)&&
+      (incumbentImportance<7.8||!retained);
+    const residence=1.25;
+    // The incumbent is re-measured from THIS recorded frame, not its
+    // historical opening score. An idle operator cannot retain an old
+    // contact/door priority after the action moves elsewhere.
+    if(retained){
+      const tracked=this.track(prior,retained,scene);
+      if(this.legal(tracked,scene)){
+        // Same person, same physical side: never make a marginal edit.
+        if(sameSubject&&!urgent)return {...tracked,
+          sceneStartIndex:prior.sceneStartIndex,
+          cameraDecision:tracked.cameraDecision??'hold:live-subject'};
+        // A competing person must earn a meaningful activity advantage.
+        // The one-second commitment suppresses setup ping-pong but
+        // never forces the camera to photograph a quiet person for ages.
+        if(!urgent&&(advantage<1.6||elapsed<residence))
+          return {...tracked,sceneStartIndex:prior.sceneStartIndex,
+            cameraDecision:'hold:incumbent-more-relevant'};
+      }
     }
-    const moreImportant=(best.editorialPriority??0)-
-      (prior.editorialPriority??0);
-    const changing=best.primaryActorId!==prior.primaryActorId||
-      best.roomId!==prior.roomId||
-      directorShoulderSide(best)!==oldSide;
-    if(changing&&!newEvent&&elapsed<2.2&&moreImportant<1.8){
-      if(retained)return {...this.track(prior,retained,scene),
-        sceneStartIndex:prior.sceneStartIndex,
-        cameraDecision:'hold:minimum-residence'};
-      if(this.legal(prior,scene))
-        return {...prior,cameraDecision:'hold:minimum-residence'};
-    }
-    // A deliberate cut is permitted for disclosed contact, a first room
-    // entry, or loss of the previous shoulder's view. Not every knot.
+    // No current legal view of the incumbent: bridge for at most a
+    // short beat, then go to the best LIVE person. Never return null.
+    if(!urgent&&elapsed<residence&&this.legal(prior,scene))
+      return {...prior,cameraDecision:'hold:brief-subject-handoff'};
     return {...best,sceneStartIndex:index,
-      cameraDecision:newEvent?'cut:new-recorded-information':
-        changing?'cut:subject-or-room':'cut:shoulder-recovery'};
+      cameraDecision:newContact?'cut:new-observed-contact':
+        newEntry?'cut:first-entrant':
+        newDiscovery?'cut:newly-observed-ground':
+        !sameSubject?'cut:more-relevant-operator':
+        'cut:new-action-axis'};
   }
   private key(index:number):Staged|null{
     const i=clamp(index,0,Math.ceil(this.duration/this.step));
@@ -359,8 +379,8 @@ export class ReplayDirectorStoryboard{
       from.primaryActorId!==to.primaryActorId||
       from.roomId!==to.roomId||
       directorShoulderSide(from)!==directorShoulderSide(to)||
-      from.editorialId!==to.editorialId||
-      from.editorialKind!==to.editorialKind||
+      // Editorial labels can change while the same actual subject
+      // continues in an unchanged shoulder position.
       !!from.contactTargetPoint!==!!to.contactTargetPoint||
       (from.discoveryStrength??0)<=.25&&
         (to.discoveryStrength??0)>.25;

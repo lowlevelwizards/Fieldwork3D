@@ -52,6 +52,8 @@ export type DirectorShot=CinematicShot&{
   /** Declarative cinematography from the only editorial authority. */
   editorialId?:string;editorialKind?:DirectorEditorialShot['kind'];
   editorialPriority?:number;primaryActorId?:string;
+  /** Current subject's actual recorded importance, NOT camera quality. */
+  subjectImportance?:number;subjectReason?:string;
   requiredPoints?:Pt[];actionAxis?:Pt|null;editReason?:string;
   /** Perspective can legitimately fail to cover all required subjects.
    * Never misreport a failed two-shot as successful. */
