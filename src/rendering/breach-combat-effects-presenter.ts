@@ -18,9 +18,14 @@ export class BreachCombatEffectsPresenter{
   private readonly frameMagazineIds=new Set<number>();
   private readonly frameGrenadeIds=new Set<number>();
   private readonly frameFlashIds=new Set<number>();
-  constructor(private readonly effects:THREE.Group,
-    private readonly mats:THREE.Material[],
-    private readonly graphicLookEnabled:boolean){}
+  private readonly effects:THREE.Group;
+  private readonly mats:THREE.Material[];
+  private readonly graphicLookEnabled:boolean;
+  constructor(effects:THREE.Group,mats:THREE.Material[],
+    graphicLookEnabled:boolean){
+    this.effects=effects;this.mats=mats;
+    this.graphicLookEnabled=graphicLookEnabled;
+  }
   stats(){return {casings:this.casingMesh?.count??0,
     magazines:this.discarded.size,grenades:this.thrown.size,
     flashes:this.detonations.size};}
