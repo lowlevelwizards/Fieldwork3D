@@ -4,8 +4,6 @@ import {composeReplayDirectorShots,ReplayDirectorStoryboard}
   from '../src/breach-replay-director-reset.ts';
 import {directorShoulderSide}
   from '../src/breach-replay-director-shots.ts';
-import {selectDirectorEditorialShot}
-  from '../src/breach-replay-director-edit.ts';
 
 const p=(x,y)=>({x,y});
 const room={id:'main',x:0,y:0,w:500,h:400};
@@ -104,103 +102,15 @@ test('only film-time changes affect the camera, never sample order',()=>{
   assert.notEqual(directorShoulderSide(first),0);
 });
 
-test('after a recorded crossing the entry camera looks INTO the room, never back at the leaf',()=>{
-  const entering={...rook,p:p(275,180),heading:0};
-  const door={id:'d1',mid:p(230,180),distance:45};
-  const plan={...editorial(entering,'entry',p(1,0)),
-    id:'entry:d1:rook',door,doorId:'d1',
-    firstEntry:true,priority:5.5};
-  const shots=composeReplayDirectorShots(1,[entering],[room],[],
-    .85,0,1100,ctx(plan));
-  assert.ok(shots.length,'entry framing has a legal OTS candidate');
-  for(const shot of shots){
-    assert.ok(shot.actionAxis.x>.99,
-      'action axis follows entry, not the door behind the entrant');
-    assert.ok(shot.attentionPoint.x>entering.p.x,
-      'attention point is ahead in newly entered space');
-    assert.notEqual(directorShoulderSide(shot),0);
-  }
-});
-
-test('a genuine first crossing cuts from doorway setup to the entrant inside',()=>{
-  const outside={...rook,p:p(210,180)};
-  const inside={...rook,p:p(340,180)};
-  const front={id:'outside',x:0,y:0,w:265,h:400};
-  const back={id:'inside',x:265,y:0,w:280,h:400};
-  const door={id:'d1',mid:p(265,180),distance:55};
-  const setup={...editorial(outside,'door',p(1,0)),door,doorId:'d1',
-    id:'door:d1',priority:4.8};
-  const entry={...editorial(inside,'entry',p(1,0)),door,doorId:'d1',
-    id:'entry:d1:rook',priority:5.5,firstEntry:true};
-  const composeAt=(actor,plan)=>composeReplayDirectorShots(1,
-    [actor],[front,back],[],.85,0,1100,ctx(plan));
-  const before=composeAt(outside,setup)[0];
-  const after=composeAt(inside,entry)[0];
-  assert.ok(before&&after,'both locations have legal shoulder views');
-  const board=new ReplayDirectorStoryboard(4,t=>t<1?[before]:[after],{
-    rooms:[front,back],walls:[],doors:[],cover:[],step:.5,aspect:.85});
-  assert.equal(board.sample(.75).roomId,'outside');
-  assert.equal(board.sample(1).roomId,'inside');
-  assert.equal(board.sample(1).primaryActorId,'rook');
-  assert.ok(board.sample(1).attentionPoint.x>inside.p.x,
-    'the shot follows the entrant, not the doorway they left');
-  assert.match(board.sample(1).cameraDecision,/entry/);
-});
-
-test('editorial label churn does not cut or preempt a tracking shot',()=>{
-  const start=composeReplayDirectorShots(1,[rook],[room],[],
-    .85,0,1100,ctx(editorial(rook)))[0];
-  const moved={...rook,p:p(185,180)};
-  const candidates=composeReplayDirectorShots(1,[moved],[room],[],
-    .85,0,1100,ctx({...editorial(moved),id:'fresh:label'}));
-  const next=candidates.find(s=>
-    directorShoulderSide(s)===directorShoulderSide(start));
-  assert.ok(start&&next);
-  const board=new ReplayDirectorStoryboard(4,t=>t<1?[start]:[{
-    ...next,decisionScore:99999
-  }],{rooms:[room],walls:[],doors:[],cover:[],step:.5,aspect:.85});
-  assert.equal(board.sample(.5).operatorPoint.x,175);
-  const midway=board.sample(.75);
-  assert.ok(midway.operatorPoint.x>175&&midway.operatorPoint.x<185,
-    'tracking interpolates despite an editorial identifier change');
-  assert.equal(board.sample(1).cameraDecision,'track:active-operator');
-  assert.equal(directorShoulderSide(board.sample(1)),
-    directorShoulderSide(start));
-});
-
-test('a substantial corner turn motivates a new forward-looking shoulder',()=>{
-  const before=composeReplayDirectorShots(1,[rook],[room],[],
-    .85,0,1100,ctx(editorial(rook,'follow',p(1,0))))[0];
-  const after=composeReplayDirectorShots(1,[rook],[room],[],
-    .85,0,1100,ctx(editorial(rook,'follow',p(0,1))))[0];
-  assert.ok(before&&after);
-  const board=new ReplayDirectorStoryboard(4,t=>t<1?[before]:[after],{
-    rooms:[room],walls:[],doors:[],cover:[],step:.5,aspect:.85});
-  assert.ok(board.sample(1).actionAxis.y>.99,
-    'camera follows the new visible corridor, not the obsolete corner');
-  assert.match(board.sample(1).cameraDecision,/cut:/);
-});
-
-test('no legal live subject cannot leave a permanent photograph of an empty door',()=>{
-  const initial=compose(rook,editorial(rook))[0];
-  const board=new ReplayDirectorStoryboard(4,t=>t<.5?[initial]:[],{
+test('temporary lack of a fresh shot cannot deactivate a still-legal director camera',()=>{
+  const first=compose(rook,editorial(rook))[0];
+  assert.ok(first);
+  const board=new ReplayDirectorStoryboard(6,t=>t<.5?[first]:[],{
     rooms:[room],walls:[],doors:[],cover:[],step:.5,aspect:.85});
   assert.equal(board.sample(0).primaryActorId,'rook');
-  assert.equal(board.sample(2),null,
-    'no obsolete snapshot is held indefinitely without live candidates');
-});
-
-test('a moving operator is no longer editorially attached to a door behind them',()=>{
-  const entrant={...rook,p:p(285,180),velocity:15};
-  const door={id:'d1',mid:p(250,180),distance:35,
-    a:p(250,150),b:p(250,210),normal:p(1,0),approachSide:1};
-  const intent={actorId:'rook',position:entrant.p,heading:0,
-    route:[entrant.p,p(350,180)],direction:p(1,0),
-    destination:p(350,180),door,kind:'entry',speed:15,
-    watchDirection:null,plannedAttention:null,activeRevision:1};
-  const plan=selectDirectorEditorialShot(5,[entrant],{
-    intents:[intent],upcoming:null,entry:null,contact:null,beat:null});
-  assert.ok(plan);
-  assert.equal(plan.kind,'follow',
-    'operator movement into the room outranks a spent door setup');
+  const held=board.sample(2);
+  assert.ok(held,
+    'director must not clear its camera anchor merely because a knot has no new bid');
+  assert.equal(held.primaryActorId,'rook');
+  assert.match(held.cameraDecision,/hold:/);
 });

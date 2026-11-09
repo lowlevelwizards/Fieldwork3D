@@ -55,19 +55,9 @@ export function selectDirectorEditorialShot(
   if(!friends.length)return null;
   const byId=(id:string|null|undefined)=>friends.find(a=>a.id===id);
   const intent=(id:string)=>e.intents.find(i=>i.actorId===id);
-  const doorIntents=e.intents.filter(i=>{
-    if(!i.door||i.door.distance>=105||
-      !['approach','stack','breach','entry'].includes(i.kind))
-      return false;
-    // After a crossing, an old queued/tagged door order can still be
-    // present in a replay snapshot. Do not follow that door BACKWARDS
-    // once the operator is visibly moving farther into the next room.
-    const toward={x:i.door.mid.x-i.position.x,
-      y:i.door.mid.y-i.position.y};
-    const dot=toward.x*i.direction.x+toward.y*i.direction.y;
-    return !(i.speed>4&&i.door.distance>14&&
-      dot<-i.door.distance*.25);
-  });
+  const doorIntents=e.intents.filter(i=>i.door&&
+    i.door.distance<105&&
+    ['approach','stack','breach','entry'].includes(i.kind));
   const strongestDoor=doorIntents.slice().sort((a,b)=>{
     const value=(i:DirectorIntent)=>(
       i.kind==='breach'?3:i.kind==='entry'?2.6:
