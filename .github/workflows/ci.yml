@@ -12,7 +12,27 @@ concurrency:
   group: fieldwork-ci-${{ github.event.pull_request.number || github.ref }}${{ startsWith(github.head_ref, 'feature/gear-baked-ao-all-') && '-ao-r1' || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  runtime-lifecycle:
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/runtime-lifecycle-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Runtime lifecycle — action rings, site materials, door geometry, replay
+        run: |
+          node --experimental-strip-types --test tests/physical-action-rings-lifecycle.test.mjs tests/breach-site-material-lifetime.test.mjs tests/door-hinge-neighborhood-cache.test.mjs tests/runtime-perf-diagnostics.test.mjs tests/breach-physical-interactions-nov8.test.mjs tests/doorway-right-of-way-session.test.mjs tests/replay-r2-recording.test.mjs
+      - name: Production build and typecheck
+        run: npm run build
+      - name: Previous live Pages build release checkpoint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
   verify:
+    if: ${{ github.event_name != 'pull_request' || !startsWith(github.head_ref, 'perf/runtime-lifecycle-') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -1872,15 +1892,6 @@ jobs:
           node --experimental-strip-types --test tests/replay-director-r96-candidate-competition.test.mjs tests/replay-director-r95-discovery-grade.test.mjs tests/replay-director-r94-cinematic.test.mjs tests/replay-director-r93-contact-offset.test.mjs tests/replay-director-r92-contact-stability.test.mjs tests/replay-director-storyboard.test.mjs tests/replay-director-physical.test.mjs
       - name: Replay Director R9.6 — previous live Pages release checkpoint
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/replay-director-r96-') }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/audit-pages-release-checkpoint.mjs
-      - name: Runtime lifecycle A/B — DOM, materials, door geometry and replay critical gate
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/runtime-lifecycle-') }}
-        run: |
-          node --experimental-strip-types --test tests/physical-action-rings-lifecycle.test.mjs tests/breach-site-material-lifetime.test.mjs tests/door-hinge-neighborhood-cache.test.mjs tests/runtime-perf-diagnostics.test.mjs tests/breach-physical-interactions-nov8.test.mjs tests/doorway-right-of-way-session.test.mjs tests/replay-r2-recording.test.mjs
-      - name: Runtime lifecycle — previous served Pages build release checkpoint
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/runtime-lifecycle-') }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
