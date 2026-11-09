@@ -705,6 +705,7 @@ export class TacticalScene3D{
   private readonly groundOverlays=new Map<PixelOverlay,THREE.MeshBasicMaterial>();
   // Scene reconciliation runs every RAF. Reuse transient membership sets
   // instead of allocating five new Sets (and temporary mapped arrays).
+  private readonly frameOccupiedRoomIds=new Set<string>();
   private readonly frameActorIds=new Set<string>();
   private readonly frameCivilianIds=new Set<string>();
   private readonly frameShotIds=new Set<number>();
@@ -2371,6 +2372,8 @@ export class TacticalScene3D{
     personalGroundEvidence:ReadonlySet<string>|null=null,
     replayWindowHistory:ReplayWindowKnowledgeHistory|null=null){
     if(this.view.mode==='plan2d')return;
+    // A single friendlies snapshot serves camera, cutaway and fog work.
+    const friendlyTeam=team(s);
     if(this.miniFocusMode!=='off'){
       this.miniFocusSession=s;
       this.miniFocusDoorId=focusedDoorId;
@@ -2495,14 +2498,16 @@ export class TacticalScene3D{
     const actorIdleSeconds=s.phase==='planning'&&!replay?
       this.idleLifeSeconds:poseSeconds;
     // The shadow map follows the active encounter to retain contact detail.
-    const shadowPoint=team(s).find(a=>a.id===selected)?.p??this.view.focus;
+    const shadowPoint=friendlyTeam.find(a=>a.id===selected)?.p??this.view.focus;
     this.sun.position.set(shadowPoint.x-145,250,shadowPoint.y+175);
     this.sun.target.position.set(shadowPoint.x,0,shadowPoint.y);
     this.sun.target.updateMatrixWorld();
     // Hide undiscovered geometry at object level, including its shadows.
     // An operator physically standing in a room can still read that room's
     // structure even when their viewing cone is pointed at one corner.
-    const occupiedRoomIds=new Set(occupiedFogRooms(s).map(room=>room.id));
+    const occupiedRoomIds=this.frameOccupiedRoomIds;
+    occupiedRoomIds.clear();
+    for(const room of occupiedFogRooms(s))occupiedRoomIds.add(room.id);
     // An in-room Director keeps structural walls solid but removes
     // ceiling slabs, as in the readable tabletop game. No camera needs
     // to hover outside the building to see a room.
@@ -2560,9 +2565,9 @@ export class TacticalScene3D{
     // rather than a potentially unrelated manually selected soldier.
     const fromCamera=this.projectionCamera.position.clone().sub(this.target);
     const pawn=this.replayDirectorFocus??
-      team(s).find(a=>a.id===selected&&a.health>0)?.p;
+      friendlyTeam.find(a=>a.id===selected&&a.health>0)?.p;
     const subjects=physicalDirector&&this.replayDirectorLens==='ortho'?
-      team(s).map(a=>a.p):this.replayDirectorSubjects.length?
+      friendlyTeam.map(a=>a.p):this.replayDirectorSubjects.length?
       this.replayDirectorSubjects:pawn?[pawn]:[];
     const maxCutDistance=Math.max(40,Math.min(150,
       90/Math.tan(Math.max(.38,this.view.pitch))));
@@ -3294,7 +3299,7 @@ export class TacticalScene3D{
         mode:s.intel.mode,seed:s.site?.seed??null,
         seenCount:s.seenGround.size,seenRevision:s.seenGroundRevision,
         revision:s.objectRevision,
-        actors:team(s).filter(a=>a.health>0).map(a=>({
+        actors:friendlyTeam.filter(a=>a.health>0).map(a=>({
           id:a.id,x:a.p.x,y:a.p.y,heading:a.heading,
           posture:a.posture,health:a.health
         })),
