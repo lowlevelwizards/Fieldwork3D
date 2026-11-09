@@ -706,6 +706,8 @@ export class TacticalScene3D{
   // Scene reconciliation runs every RAF. Reuse transient membership sets
   // instead of allocating five new Sets (and temporary mapped arrays).
   private readonly frameOccupiedRoomIds=new Set<string>();
+  /** Camera-facing cutaway direction, reused across walls and door leaves. */
+  private readonly frameCutawayDirection:Pt={x:0,y:0};
   private readonly frameActorIds=new Set<string>();
   private readonly frameCivilianIds=new Set<string>();
   private readonly frameShotIds=new Set<number>();
@@ -2563,7 +2565,9 @@ export class TacticalScene3D{
     }
     // Director cuts walls around its actual historical friendly focal group,
     // rather than a potentially unrelated manually selected soldier.
-    const fromCamera=this.projectionCamera.position.clone().sub(this.target);
+    const fromCamera=this.frameCutawayDirection;
+    fromCamera.x=this.projectionCamera.position.x-this.target.x;
+    fromCamera.y=this.projectionCamera.position.z-this.target.z;
     const pawn=this.replayDirectorFocus??
       friendlyTeam.find(a=>a.id===selected&&a.health>0)?.p;
     const subjects=physicalDirector&&this.replayDirectorLens==='ortho'?
@@ -2575,7 +2579,7 @@ export class TacticalScene3D{
       const cut=!bodycamAudition&&this.view.mode==='iso'&&
         (!physicalDirector||this.replayDirectorLens==='ortho')&&
         subjects.some(subject=>wallOccludesFriendly(
-          wall.segment,subject,{x:fromCamera.x,y:fromCamera.z},maxCutDistance));
+          wall.segment,subject,fromCamera,maxCutDistance));
       // CUTAWAY never makes the whole building transparent. Only walls
       // between the camera and the selected friendly/Director subjects fade.
       // Historical knowledge and object visibility remain authoritative.
@@ -2666,7 +2670,7 @@ export class TacticalScene3D{
         !['glazed','french','screen','mesh-gate'].includes(door.style??'')&&
         subjects.some(p=>wallOccludesFriendly(
           doorLeafSegment({...door,openFraction:drawFraction}),
-          p,{x:fromCamera.x,y:fromCamera.z},maxCutDistance));
+          p,fromCamera,maxCutDistance));
       if(leafCut||object.leaf.userData.directorCutMaterials){
         object.leaf.userData.directorCutMaterials=true;
         object.leaf.traverse(child=>{
