@@ -678,6 +678,14 @@ export class TacticalScene3D{
   private readonly wearTextures=new Map<WearKind,THREE.DataTexture>();
   private readonly signMaterials=new Map<string,THREE.MeshBasicMaterial>();
   private readonly groundOverlays=new Map<PixelOverlay,THREE.MeshBasicMaterial>();
+  // Scene reconciliation runs every RAF. Reuse transient membership sets
+  // instead of allocating five new Sets (and temporary mapped arrays).
+  private readonly frameActorIds=new Set<string>();
+  private readonly frameCivilianIds=new Set<string>();
+  private readonly frameShotIds=new Set<number>();
+  private readonly frameMagazineIds=new Set<number>();
+  private readonly frameGrenadeIds=new Set<number>();
+  private readonly frameFlashIds=new Set<number>();
   private windowGlass=new Map<string,THREE.Mesh>();
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
@@ -2604,14 +2612,16 @@ export class TacticalScene3D{
     }
     // Switching procedurally generated sites may change hostile counts.
     // Hide cached actors absent from the new encounter.
-    const current=new Set(s.operators.map(a=>a.id));
+    const current=this.frameActorIds;current.clear();
+    for(const actor of s.operators)current.add(actor.id);
     for(const [id,object] of this.actors)if(!current.has(id)){
       object.root.visible=false;object.status.visible=false;
       for(const shadow of object.contactShadows)shadow.visible=false;
     }
     // Civilian meshes are created only once visibly encountered, then
     // reused; unrevealed people cannot leak through walls or player fog.
-    const present=new Set(s.civilians.map(c=>c.id));
+    const present=this.frameCivilianIds;present.clear();
+    for(const civil of s.civilians)present.add(civil.id);
     for(const [id,rig] of this.civilianRigs){
       if(present.has(id))continue;
       this.scene.remove(rig.root);this.civilianRigs.delete(id);
@@ -2970,7 +2980,7 @@ export class TacticalScene3D{
     if(casingDirty)casingDraw.instanceMatrix.needsUpdate=true;
     // 079: One persistent, ID-keyed effect per actual simulation shot.
     // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
-    const active=new Set<number>();
+    const active=this.frameShotIds;active.clear();
     let visibleShots=0;
     // Dense bursts keep their newest effects; older traces are cosmetic.
     for(let index=s.shots.length-1;index>=0;index--){
@@ -3103,7 +3113,7 @@ export class TacticalScene3D{
       if(markDraw.instanceColor)markDraw.instanceColor.needsUpdate=true;
     }
     // Retained physical magazines, grenades in flight and expanding flashes.
-    const activeMag=new Set<number>();
+    const activeMag=this.frameMagazineIds;activeMag.clear();
     for(const mag of s.dropped){
       activeMag.add(mag.id);
       let mesh=this.discarded.get(mag.id);
@@ -3119,7 +3129,7 @@ export class TacticalScene3D{
       mesh.rotation.set(.2*Math.min(1,t*8),mag.id*2.13,
         Math.min(1,t*4)*Math.PI*.40);
     }
-    const liveGrenades=new Set<number>();
+    const liveGrenades=this.frameGrenadeIds;liveGrenades.clear();
     for(const grenade of s.grenades){
       liveGrenades.add(grenade.id);
       let mesh=this.thrown.get(grenade.id);
@@ -3133,7 +3143,7 @@ export class TacticalScene3D{
       mesh.position.set(grenade.p.x,path?.height??(1+20*4*t*(1-t)),
         grenade.p.y);
     }
-    const liveBursts=new Set<number>();
+    const liveBursts=this.frameFlashIds;liveBursts.clear();
     for(const burst of s.flashBursts){
       liveBursts.add(burst.id);
       let mesh=this.detonations.get(burst.id);
