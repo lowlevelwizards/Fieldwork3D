@@ -3174,49 +3174,58 @@ export class TacticalScene3D{
     // Do not repaint/re-upload an identical visibility texture every 55ms
     // while operators are stationary in planning. Quantized pose and intel
     // changes make the key; real LOS is still computed by the fog renderer.
-    const memorySignature=fogMemoryFingerprint({
-      mode:s.intel.mode,seed:s.site?.seed??null,
-      seenRevision:s.seenGroundRevision,
-      rooms:s.intel.rooms.size,walls:s.intel.walls.size,
-      doors:s.intel.doors.size,cover:s.intel.cover.size
-    });
-    const fogSignature=omniscient?'omniscient':fogFingerprint({
-      mode:s.intel.mode,seed:s.site?.seed??null,
-      seenCount:s.seenGround.size,seenRevision:s.seenGroundRevision,
-      revision:s.objectRevision,
-      actors:team(s).filter(a=>a.health>0).map(a=>({
-        id:a.id,x:a.p.x,y:a.p.y,heading:a.heading,
-        posture:a.posture,health:a.health
-      })),
-      doors:s.doors.map(d=>({id:d.id,fraction:d.openFraction??(d.open?1:0)}))
-    });
-    // Two sessions may have identical knowledge counts but different sites.
+    // Fingerprints allocate a per-actor/door signature. Compute them
+    // only when the fog repaint cadence permits a change, never on the
+    // intervening 60Hz scene frames. Session swaps bypass the cadence.
     const sessionChanged=this.lastFogSession!==s;
-    if(!omniscient&&(sessionChanged||
-        this.fogAt>=(this.quality.mode==='quality'?.055:.10)||this.fogAt<0)&&
-        (sessionChanged||fogSignature!==this.lastFogSignature)){
-      this.fogAt=0;this.lastFogSignature=fogSignature;
-      this.lastFogSession=s;
-      if(this.fogLegacy){
-        paintFogMask(this.fogContext,s,this.fogDiagnostic);
-        this.fogMemoryPaints++;this.fogSightPaints++;
-      }else{
-        if(this.lastMemoryFogSession!==s||
-           this.lastMemoryFogSignature!==memorySignature){
-          paintFogMemory(this.fogMemoryContext,s,this.fogDiagnostic);
-          this.lastMemoryFogSignature=memorySignature;
-          this.lastMemoryFogSession=s;
-          this.fogMemoryPaints++;
+    const fogDue=!omniscient&&(sessionChanged||
+      this.fogAt>=(this.quality.mode==='quality'?.055:.10)||this.fogAt<0);
+    if(fogDue){
+      const fogSignature=fogFingerprint({
+        mode:s.intel.mode,seed:s.site?.seed??null,
+        seenCount:s.seenGround.size,seenRevision:s.seenGroundRevision,
+        revision:s.objectRevision,
+        actors:team(s).filter(a=>a.health>0).map(a=>({
+          id:a.id,x:a.p.x,y:a.p.y,heading:a.heading,
+          posture:a.posture,health:a.health
+        })),
+        doors:s.doors.map(d=>({
+          id:d.id,fraction:d.openFraction??(d.open?1:0)
+        }))
+      });
+      // Two sessions may have identical knowledge counts but different sites.
+      if(sessionChanged||fogSignature!==this.lastFogSignature){
+        this.fogAt=0;this.lastFogSignature=fogSignature;
+        this.lastFogSession=s;
+        if(this.fogLegacy){
+          paintFogMask(this.fogContext,s,this.fogDiagnostic);
+          this.fogMemoryPaints++;this.fogSightPaints++;
+        }else{
+          // Static exploration memory is even less volatile than sight.
+          // Avoid building its key unless a visibility redraw is needed.
+          const memorySignature=fogMemoryFingerprint({
+            mode:s.intel.mode,seed:s.site?.seed??null,
+            seenRevision:s.seenGroundRevision,
+            rooms:s.intel.rooms.size,walls:s.intel.walls.size,
+            doors:s.intel.doors.size,cover:s.intel.cover.size
+          });
+          if(this.lastMemoryFogSession!==s||
+             this.lastMemoryFogSignature!==memorySignature){
+            paintFogMemory(this.fogMemoryContext,s,this.fogDiagnostic);
+            this.lastMemoryFogSignature=memorySignature;
+            this.lastMemoryFogSession=s;
+            this.fogMemoryPaints++;
+          }
+          this.fogContext.setTransform(1,0,0,1,0,0);
+          this.fogContext.globalCompositeOperation='source-over';
+          this.fogContext.clearRect(0,0,
+            this.fogCanvas.width,this.fogCanvas.height);
+          this.fogContext.drawImage(this.fogMemoryCanvas,0,0);
+          paintFogVisibility(this.fogContext,s);
+          this.fogSightPaints++;
         }
-        this.fogContext.setTransform(1,0,0,1,0,0);
-        this.fogContext.globalCompositeOperation='source-over';
-        this.fogContext.clearRect(0,0,
-          this.fogCanvas.width,this.fogCanvas.height);
-        this.fogContext.drawImage(this.fogMemoryCanvas,0,0);
-        paintFogVisibility(this.fogContext,s);
-        this.fogSightPaints++;
+        this.fogTexture.needsUpdate=true;
       }
-      this.fogTexture.needsUpdate=true;
     }else if(omniscient)this.fogAt=-1;
     const dynamicShadows=s.phase==='running'||
       ((s.phase==='won'||s.phase==='lost')&&
