@@ -11,6 +11,9 @@ import type {DirectorFilmBeat} from './breach-replay-director-film.ts';
 import type {DirectorEntryEvent} from './breach-replay-director-crossings.ts';
 import type {DirectorRecordedContact} from './breach-replay-director-contact.ts';
 import type {DirectorDiscovery} from './breach-replay-director-discovery.ts';
+import type {DirectorActionLine} from './breach-replay-director-action.ts';
+import {directorSubjectImportance}
+  from './breach-replay-director-subject.ts';
 
 export type Point={x:number;y:number};
 export type DirectorEditorialKind=
@@ -27,12 +30,16 @@ export type DirectorEditorialShot={
   firstEntry:boolean;
   /** Strength of verifiably NEW historical information in this shot. */
   discoveryStrength?:number;
+  /** Activity of the PERSON, independent of how pretty the shot is. */
+  subjectImportance?:number;subjectReason?:string;
   reason:string;
 };
 export type DirectorEditorialEvidence={
   intents:readonly DirectorIntent[];
   beat?:DirectorFilmBeat|null;
   actionPair?:{shooter:Point;target:Point}|null;
+  /** Recently recorded, disclosure-filtered shots, never predicted fire. */
+  actionLines?:readonly DirectorActionLine[];
   contact?:DirectorRecordedContact|null;
   discovery?:DirectorDiscovery|null;
   upcoming:DirectorFutureCue|null;
@@ -55,9 +62,17 @@ export function selectDirectorEditorialShot(
   if(!friends.length)return null;
   const byId=(id:string|null|undefined)=>friends.find(a=>a.id===id);
   const intent=(id:string)=>e.intents.find(i=>i.actorId===id);
-  const doorIntents=e.intents.filter(i=>i.door&&
-    i.door.distance<105&&
-    ['approach','stack','breach','entry'].includes(i.kind));
+  const doorIntents=e.intents.filter(i=>{
+    if(!i.door||i.door.distance>=105||
+      !['approach','stack','breach','entry'].includes(i.kind))return false;
+    // A historical planned door is not a live subject once its actor
+    // has crossed and is actively moving farther into the room.
+    const toward={x:i.door.mid.x-i.position.x,
+      y:i.door.mid.y-i.position.y};
+    const away=toward.x*i.direction.x+toward.y*i.direction.y<
+      -i.door.distance*.25;
+    return !(away&&i.speed>4&&i.door.distance>14);
+  });
   const strongestDoor=doorIntents.slice().sort((a,b)=>{
     const value=(i:DirectorIntent)=>(
       i.kind==='breach'?3:i.kind==='entry'?2.6:
@@ -266,36 +281,47 @@ export function selectDirectorEditorialShot(
     discoveryStrength,reason};
 }
 
-/** R9.6: audition multiple true stories using the existing editorial
- * authority. Suppressed evidence only creates alternative editorial bids;
- * the main bid and all historical disclosure restrictions are unchanged.
- * Never manufacture an undisclosed target from a future film beat. */
+/** Nominate a subject from each living squad member, not only the first
+ * actor chosen by the story hierarchy. A selected VIEW never makes the
+ * person important; their actual recorded activity is the priority.
+ * One camera grammar remains in charge of staging all selected people.
+ */
 export function directorEditorialCandidates(time:number,
   actors:readonly DirectorActor[],e:DirectorEditorialEvidence,
-  limit=3):DirectorEditorialShot[]{
-  const proposals:DirectorEditorialShot[]=[];
-  const add=(actorsHere:readonly DirectorActor[],
+  limit=5):DirectorEditorialShot[]{
+  const friends=actors.filter(a=>a.side==='blue'&&a.health>0&&
+    Number.isFinite(a.p.x)&&Number.isFinite(a.p.y));
+  const proposals=new Map<string,DirectorEditorialShot>();
+  const add=(people:readonly DirectorActor[],
     evidence:DirectorEditorialEvidence)=>{
-    const shot=selectDirectorEditorialShot(time,actorsHere,evidence);
-    if(shot&&!proposals.some(p=>
-      p.kind===shot.kind&&p.primaryActorId===shot.primaryActorId&&
-      p.doorId===shot.doorId))
-      proposals.push(shot);
+    const candidate=selectDirectorEditorialShot(time,people,evidence);
+    if(!candidate)return;
+    const actor=friends.find(a=>a.id===candidate.primaryActorId);
+    if(!actor)return;
+    const importance=directorSubjectImportance(time,actor,e);
+    const rated={...candidate,subjectImportance:importance.score,
+      subjectReason:importance.reason};
+    const previous=proposals.get(actor.id);
+    // A named action beats an ordinary idle/travel setup for the SAME
+    // operator. Do not produce competing angles for the same person.
+    if(!previous||rated.priority>previous.priority)
+      proposals.set(actor.id,rated);
   };
-  add(actors,e);
-  const quiet={...e,beat:null,contact:null,upcoming:null,entry:null};
-  add(actors,quiet);
-  add(actors,{...quiet,discovery:null});
-  // Moving teammates are not automatically minor characters: a second
-  // operator may offer the better view of the currently known geography.
-  for(const actor of actors.filter(a=>a.side==='blue'&&a.health>0)){
-    const moving=e.intents.find(i=>i.actorId===actor.id&&
-      (i.speed>6||i.watchDirection||i.door));
-    if(!moving)continue;
-    add([actor],{...quiet,discovery:null,
-      intents:e.intents.filter(i=>i.actorId===actor.id)});
+  add(friends,e);
+  for(const actor of friends){
+    add([actor],{...e,
+      intents:e.intents.filter(i=>i.actorId===actor.id),
+      beat:e.beat?.actorId===actor.id?e.beat:null,
+      actionPair:e.beat?.actorId===actor.id?e.actionPair:null,
+      contact:e.contact?.observerId===actor.id?e.contact:null,
+      discovery:e.discovery?.observerId===actor.id?e.discovery:null,
+      entry:e.entry?.actorId===actor.id?e.entry:null,
+      upcoming:e.upcoming?.actorId===actor.id?e.upcoming:null
+    });
   }
-  return proposals.sort((a,b)=>b.priority-a.priority||
-    a.primaryActorId.localeCompare(b.primaryActorId)||
-    a.id.localeCompare(b.id)).slice(0,Math.max(1,Math.min(4,limit)));
+  return [...proposals.values()].sort((a,b)=>
+    (b.subjectImportance??0)-(a.subjectImportance??0)||
+    b.priority-a.priority||
+    a.primaryActorId.localeCompare(b.primaryActorId))
+    .slice(0,Math.max(1,Math.min(5,limit)));
 }
