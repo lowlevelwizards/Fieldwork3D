@@ -103,78 +103,49 @@ export class CampaignScreen{
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-landing');
   const hero=node('header','campaign-landing-hero');
-  const masthead=node('div','campaign-landing-masthead');
-  masthead.append(node('span','','FW / VERDIGRIS'),
-   node('span','','FIELD OPERATIONS · 001'));
+  const masthead=node('div','campaign-landing-masthead','VERDIGRIS');
   const plan=node('div','campaign-landing-plan');
   plan.setAttribute('aria-hidden','true');
-  // Decorative architectural schematic, never actual mission intelligence.
+  // Quiet architectural texture, not a pretend tactical route or mission intel.
   plan.innerHTML=[
    '<svg viewBox="0 0 540 340" xmlns="http://www.w3.org/2000/svg" fill="none">',
-   '<defs><pattern id="fw-landing-grid" width="22" height="22" patternUnits="userSpaceOnUse">',
-   '<path d="M22 0H0V22" stroke="#8aa69a" stroke-opacity=".15" stroke-width=".7"/></pattern></defs>',
+   '<defs><pattern id="fw-landing-grid" width="24" height="24" patternUnits="userSpaceOnUse">',
+   '<path d="M24 0H0V24" stroke="#8aa69a" stroke-opacity=".1" stroke-width=".7"/></pattern></defs>',
    '<rect width="540" height="340" fill="url(#fw-landing-grid)"/>',
-   '<g transform="translate(83 24) rotate(-7 196 145)">',
-   '<path d="M58 28H384V265H58Z" fill="#879c87" fill-opacity=".09" stroke="#718b7c" stroke-width="7"/>',
-   '<path d="M190 28V113M190 154V265M58 137H120M160 137H315M355 137H384M287 28V89M287 119V137M286 137V213M286 246V265" stroke="#8ba594" stroke-width="5"/>',
-   '<path d="M58 80H126V137M190 210H286M286 81H384" stroke="#607d72" stroke-width="4"/>',
-   '<path d="M58 176V214M58 231V265M348 265H376" stroke="#b3b998" stroke-width="7"/>',
-   '<path d="M190 112A42 42 0 0 1 232 154M315 137A40 40 0 0 1 355 177" stroke="#b0bd9c" stroke-width="1.5" stroke-dasharray="3 5"/>',
-   '<path d="M58 265L18 296M384 137L425 137" stroke="#d6bc79" stroke-width="2" stroke-dasharray="5 5"/>',
-   '<path d="M10 296H65M425 117V156" stroke="#d6bc79" stroke-width="2"/>',
-   '<path d="M86 254L134 206L206 175L315 173" stroke="#d9cb8d" stroke-width="2.5" stroke-dasharray="7 5"/>',
-   '<path d="M134 206L155 164L173 207Z" fill="#d0c28b" fill-opacity=".12" stroke="#cdbd80"/>',
-   '<circle cx="86" cy="254" r="10" fill="#d9cb8d"/><circle cx="86" cy="254" r="19" stroke="#d9cb8d"/>',
-   '<circle cx="111" cy="279" r="7" fill="#9aaca1"/><circle cx="136" cy="291" r="7" fill="#9aaca1"/>',
-   '<circle cx="315" cy="173" r="5" fill="#d9cb8d"/>',
-   '<g fill="#9ab09e" font-size="10" font-family="monospace" letter-spacing="2">',
-   '<text x="71" y="61">01</text><text x="220" y="61">02</text><text x="320" y="164">03</text>',
-   '<text x="218" y="234">04</text><text x="393" y="252">N</text></g></g></svg>'
+   '<g transform="translate(83 24) rotate(-7 196 145)" stroke-linecap="square">',
+   '<path d="M58 28H384V265H58Z" fill="#879c87" fill-opacity=".045" stroke="#718b7c" stroke-width="6"/>',
+   '<path d="M190 28V113M190 154V265M58 137H120M160 137H315M355 137H384M287 28V89M287 119V137M286 137V213M286 246V265" stroke="#809d8d" stroke-width="4"/>',
+   '<path d="M58 80H126V137M190 210H286M286 81H384" stroke="#607d72" stroke-width="3"/>',
+   '<path d="M58 176V214M58 231V265M348 265H376" stroke="#b1bdac" stroke-width="5"/>',
+   '<path d="M190 112A42 42 0 0 1 232 154M315 137A40 40 0 0 1 355 177" stroke="#9cad91" stroke-opacity=".5" stroke-width="1.5"/>',
+   '</g></svg>'
   ].join('');
-  const heroCopy=node('div','campaign-landing-copy');
-  heroCopy.append(node('span','campaign-landing-kicker','TACTICAL / PERSISTENT / HUMAN'),
-   node('h1','','FIELDWORK'),
+  const copy=node('div','campaign-landing-copy');
+  copy.append(node('h1','','FIELDWORK'),
    node('div','campaign-landing-subtitle','FIELD OPERATIONS'),
    node('p','','One unit. Every deployment leaves a history.'));
-  hero.append(masthead,plan,heroCopy);
-  const divider=node('div','campaign-landing-divider');
-  divider.append(node('span','','SELECT OPERATION'),node('span','','01 — 02'));
+  hero.append(masthead,plan,copy);
   const actions=node('nav','campaign-landing-actions');
   actions.setAttribute('aria-label','Start playing');
-  const campaignAction=button('',hasSave?
-   this.handlers.continueCampaign:this.handlers.newCampaign,
-   'campaign-landing-card campaign-landing-primary');
-  campaignAction.append(node('span','campaign-landing-card-index','01 / CAMPAIGN'),
-   node('strong','',hasSave?'CONTINUE CAMPAIGN':'NEW CAMPAIGN'),
-   node('span','campaign-landing-card-caption',
-    'Persistent operators, equipment and consequences.'),
-   node('span','campaign-landing-arrow','↗'));
-  const quickAction=button('',this.handlers.quickPlay,
-   'campaign-landing-card campaign-landing-quick');
-  quickAction.append(node('span','campaign-landing-card-index','02 / TACTICAL SANDBOX'),
-   node('strong','','QUICK PLAY'),
-   node('span','campaign-landing-card-caption',
-    'Fresh mission. No campaign consequences.'),
-   node('span','campaign-landing-arrow','↗'));
-  actions.append(campaignAction,quickAction);
-  const utility=node('div','campaign-landing-utility');
-  if(hasSave){
-   const fresh=button('',this.handlers.newCampaign,'campaign-landing-link');
-   fresh.append(node('strong','','NEW CAMPAIGN'),
-    node('span','','Start another unit'));
-   utility.append(fresh);
-  }
-  const library=button('',this.handlers.openReplayLibrary,'campaign-landing-link');
-  library.append(node('strong','','REPLAY LIBRARY'),
-   node('span','','Watch recorded operations'));
-  const arsenal=node('a','campaign-landing-link');
+  actions.append(
+   button(hasSave?'CONTINUE CAMPAIGN':'NEW CAMPAIGN',
+    hasSave?this.handlers.continueCampaign:this.handlers.newCampaign,
+    'campaign-landing-card campaign-landing-primary'),
+   button('QUICK PLAY',this.handlers.quickPlay,
+    'campaign-landing-card campaign-landing-quick')
+  );
+  const utility=node('nav','campaign-landing-utility');
+  utility.setAttribute('aria-label','Other destinations');
+  if(hasSave)utility.append(button('NEW CAMPAIGN',this.handlers.newCampaign,
+   'campaign-landing-link'));
+  utility.append(button('REPLAY LIBRARY',this.handlers.openReplayLibrary,
+   'campaign-landing-link'));
+  const arsenal=node('a','campaign-landing-link','ARSENAL');
   arsenal.href='./arsenal.html';
-  arsenal.append(node('strong','','ARSENAL'),
-   node('span','','Weapon workbench'));
-  utility.append(library,arsenal);
+  utility.append(arsenal);
   const footer=node('footer','campaign-landing-footer');
   const labs=node('details','campaign-landing-labs');
-  labs.append(node('summary','','LABS / DEVELOPMENT WORKBENCHES'));
+  labs.append(node('summary','','LABS'));
   const labLinks=node('div','campaign-landing-lab-links');
   for(const [name,href] of [
    ['OPERATOR LAB','./operator-lab.html'],
@@ -187,15 +158,12 @@ export class CampaignScreen{
   }
   labs.append(labLinks);
   const saves=node('details','campaign-save-management campaign-landing-saves');
-  saves.append(node('summary','','MANAGE SAVES / IMPORT'));
+  saves.append(node('summary','','SAVES / IMPORT'));
   saves.append(node('p','campaign-note',
    'Import an exported campaign save to continue on this device.'));
   saves.append(this.importPicker());
   footer.append(labs,saves);
-  const footnote=node('div','campaign-landing-footnote');
-  footnote.append(node('span','','VERDIGRIS / FIELDWORK'),
-   node('span','','QUICK PLAY RESETS HEALTH & EQUIPMENT'));
-  main.append(hero,divider,actions,utility,footer,footnote);
+  main.append(hero,actions,utility,footer);
   this.root.append(main);
  }
  home(c:CampaignState){
