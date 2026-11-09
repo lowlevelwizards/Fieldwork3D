@@ -21,6 +21,7 @@ import {
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {createBreach2DWorldRenderer} from './breach-2d-world-renderer.ts';
+import {createBreach2DVisibilityRenderer} from './breach-2d-visibility-renderer.ts';
 import {createBreach2DReplayOverlays} from './breach-2d-replay-overlays.ts';
 import {createBreach2DRouteOverlays} from './breach-2d-route-overlays.ts';
 import {createBreach2DProjectedOverlays} from './breach-2d-projected-overlays.ts';
@@ -193,9 +194,6 @@ import {TacticalFeedback} from './ui/tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './ui/contextual-teaching.ts';
 import {recoveryAdviceFor} from './ui/recovery-guidance.ts';
-import {paintFogMask,maskBounds,FOG_WIDTH,FOG_HEIGHT}
-  from './breach-fog-mask.ts';
-import {paintReplayPersonalGround} from './breach-replay-ground-overlay.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 
@@ -907,7 +905,7 @@ function startReplayBodycam():boolean{
   closeReplayShotInspector();
   cameraMode('iso');
   applyReplayBodycamMount();
-  fogStamp=-1;return true;
+  fog2D.invalidate();return true;
 }
 let replayAnalysis=false;
 const replayCamera=new ReplayCameraController();
@@ -1669,16 +1667,7 @@ function cancelTargeting(){
   looking=false;flashMode=false;pushMode=false;firePlacement=null;flashDoorId=null;
   evacMode=null;contextSignature='';updateHud();
 }
-const fogCanvas=document.createElement('canvas');
-fogCanvas.width=FOG_WIDTH;fogCanvas.height=FOG_HEIGHT;
-const fogContext=fogCanvas.getContext('2d');
-if(!fogContext)throw Error('Fog canvas unavailable');
-const replayGroundCanvas=document.createElement('canvas');
-const replayGroundContext=replayGroundCanvas.getContext('2d');
-if(!replayGroundContext)throw Error('Replay ground canvas unavailable');
-let fogStamp=-1;
-let fogSession:Session|null=null;
-let fogIntelMode='';let fogSeenRevision=-1;
+
 let audio:AudioContext|null=null;
 let videoAudioDestination:MediaStreamAudioDestinationNode|null=null;
 const LIVE_MIX_PREF='fieldwork3d.sound.live-mix';
@@ -2462,7 +2451,7 @@ const handleContextAction=(event:MouseEvent)=>{
       const value=current.posture==='stand'?'crouch':'stand';
       if(node)setNodeControl(state,selected,node.id,'postureState',value);
       else posture(state,selected);
-      fogStamp=-1;break;
+      fog2D.invalidate();break;
     }
     case 'ctxPace':{
       const value=current.pace==='walk'?'run':'walk';
@@ -3132,37 +3121,11 @@ const route2D=createBreach2DRouteOverlays({
  * Shared geometry/doors/people remain shared and are NEVER claimed as POV.
  * Render only in the Floor Plan view; no speculative real-time raycasts.
  */
-function renderReplayPersonalGround():void{
-  if(!replaying||!replayKnowledge.groundLensOn||viewMode!=='plan2d'||
-    !replayKnowledge.observerId||!replayKnowledge.personalGround)return;
-  const observed=replayKnowledge.personalGround.at(
-    replayPlayback.time,replayKnowledge.observerId);
-  if(!observed)return;
-  if(replayKnowledge.groundCacheObserver!==replayKnowledge.observerId||
-     replayKnowledge.groundCacheCount!==observed.size||
-     replayKnowledge.groundCacheSite!==state.site){
-    paintReplayPersonalGround(replayGroundContext!,state.site,observed);
-    replayKnowledge.groundCacheObserver=replayKnowledge.observerId;
-    replayKnowledge.groundCacheCount=observed.size;
-    replayKnowledge.groundCacheSite=state.site;
-  }
-  const b=maskBounds(state.site);
-  draw.drawImage(replayGroundCanvas,b.minX,b.minY,
-    b.maxX-b.minX,b.maxY-b.minY);
-}
-function fog(){
-  if(replaying&&replayKnowledge.omniscient)return;
-  if(fogStamp<0||fogSession!==state||fogIntelMode!==state.intel.mode||
-    fogSeenRevision!==state.seenGroundRevision||
-    state.seconds<fogStamp||state.seconds-fogStamp>.055){
-    fogStamp=state.seconds;fogSession=state;fogIntelMode=state.intel.mode;
-    fogSeenRevision=state.seenGroundRevision;
-    paintFogMask(fogContext!,state,
-      new URLSearchParams(location.search).get('fogDebug')==='palette'?
-        'palette':'normal');
-  }
-  draw.drawImage(fogCanvas,0,0,W,H);
-}
+const fog2D=createBreach2DVisibilityRenderer({
+ draw,getState:()=>state,isReplaying:()=>replaying,getViewMode:()=>viewMode,
+ replayKnowledge,replayPlayback,
+ debugPalette:new URLSearchParams(location.search).get('fogDebug')==='palette'
+});
 function missionMarkers(){
   if(replaying&&!replayObjectiveMarkers)return;
   if(state.rescue&&!state.civilians.some(c=>c.rescueTarget)&&
@@ -3419,7 +3382,7 @@ function render(){
   draw.translate(ox,oy);draw.scale(viewScale,viewScale);
   draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
   world2D.terrain();world2D.furniture();world2D.renderGroundMarks();world2D.renderLightingMood2D();world2D.renderWeaponLights2D();
-  world2D.architecture();fog();renderReplayPersonalGround();missionMarkers();
+  world2D.architecture();fog2D.renderFog();fog2D.renderPersonalGround();missionMarkers();
   route2D.paths();replay2D.renderReplayMovementHistory(false);
   for(const a of state.civilians)civilianSprite(a);
   for(const a of state.operators)sprite(a);
@@ -3603,7 +3566,7 @@ function applyReplayFrameAt(t:number){
   replayPresentation=frame.presentation??null;
   applyReplayFrame(state,frame);
   // Scrubbed time can move backwards: invalidate cached fog/effect time.
-  fogStamp=-1;
+  fog2D.invalidate();
 }
 function seekReplay(t:number){
   ui.replayClusterMenu.hidden=true;
@@ -4569,7 +4532,7 @@ function exitReplay(){
   ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
   closeReplayChoices();
   if(finishedSession)state=finishedSession;
-  finishedSession=null;fogStamp=-1;
+  finishedSession=null;fog2D.invalidate();
   if(savedReplayPreviousRecorder){
     recorder=savedReplayPreviousRecorder;
     savedReplayPreviousRecorder=null;
@@ -4948,7 +4911,7 @@ function changeReplaySight(mode:'team'|'full'|'operator'):void{
     replayKnowledge.groundLensOn=false;replayKnowledge.observerId=null;
     replayKnowledge.omniscient=mode==='full';
   }
-  fogStamp=-1;
+  fog2D.invalidate();
   rebuildReplayEventIndex();
   renderReplayEventMarkers();renderReplayEventFeed();
   refreshReplayShotInspector();updateReplayHud();
@@ -4961,7 +4924,7 @@ function followReplayOperator(id:string):void{
   chooseReplayCamera('operator');replayCamera.follow=true;
   if(replayKnowledge.observerId){
     replayKnowledge.observerId=replayBodycam.observers.includes(id)?id:null;
-    fogStamp=-1;rebuildReplayEventIndex();
+    fog2D.invalidate();rebuildReplayEventIndex();
     renderReplayEventMarkers();renderReplayEventFeed();
   }
   advanceReplayCamera(0,true);
@@ -5010,7 +4973,7 @@ ui.replayDirectBodycam.addEventListener('click',()=>{
     replayKnowledge.observerId=replayCamera.followId;
     if(!startReplayBodycam())return;
   }
-  fogStamp=-1;rebuildReplayEventIndex();
+  fog2D.invalidate();rebuildReplayEventIndex();
   renderReplayEventMarkers();renderReplayEventFeed();
   updateReplayHud();
 });
@@ -5024,7 +4987,7 @@ ui.replaySight.addEventListener('click',()=>{
   stopReplayBodycam();
   replayKnowledge.groundLensOn=false;
   replayKnowledge.observerId=null;
-  replayKnowledge.omniscient=!replayKnowledge.omniscient;fogStamp=-1;
+  replayKnowledge.omniscient=!replayKnowledge.omniscient;fog2D.invalidate();
   rebuildReplayEventIndex();
   renderReplayEventMarkers();renderReplayEventFeed();
   refreshReplayShotInspector();updateReplayHud();
@@ -5076,7 +5039,7 @@ if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
       stage?.setReplayBodycam(null);
       replayKnowledge.observerId=null;
       replayKnowledge.omniscient=false;
-      fogStamp=-1;
+      fog2D.invalidate();
       if(replaying)updateReplayHud();
     },
     diagnostic:()=>stage?.inspectReplayBodycamQa()??null,
@@ -5182,7 +5145,7 @@ ui.replayContactLens.addEventListener('click',()=>{
     replayCamera.followId=replayKnowledge.observerId;
     closeReplayShotInspector();
   }
-  fogStamp=-1;
+  fog2D.invalidate();
   rebuildReplayEventIndex();
   renderReplayEventMarkers();renderReplayEventFeed();
   refreshReplayShotInspector();updateReplayHud();
@@ -5357,7 +5320,7 @@ function reset(next=state.variant,siteSeed?:number,
   selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
   cursor=null;trace=null;zoom=1;panX=panY=0;
-  fogStamp=-1;lastSoundShotId=0;lastEventAudio='';
+  fog2D.invalidate();lastSoundShotId=0;lastEventAudio='';
   lastFootstepSoundTime=0;
   recorder=new MissionRecorder();recorder.capture(state,true);
   tacticalFeedback.clear();
@@ -5888,7 +5851,7 @@ ui.flash.addEventListener('click',()=>{
 });
 ui.sync.addEventListener('click',()=>{planSync(state);playOrderCue('orders.sync');updateHud();});
 ui.stance.addEventListener('click',()=>{
-  posture(state,selected);playOrderCue('orders.stance');fogStamp=-1;updateHud();
+  posture(state,selected);playOrderCue('orders.stance');fog2D.invalidate();updateHud();
 });
 ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
 ui.siteLighting.textContent='LIGHTING · '+selectedLightingMode.toUpperCase();
