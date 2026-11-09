@@ -10,7 +10,8 @@ import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
   W,H,WALLS,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,route,passable,activateSite,
   segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,
-  pointToSegment,staticWallBlocksRay,someCoverAlongRay,activeGeometryRevision,
+  pointToSegment,staticWallBlocksRay,someCoverAlongRay,someCoverNearPoint,
+  activeGeometryRevision,
   activeWorldBounds,
 } from './breach-core.ts';
 import {
@@ -69,7 +70,7 @@ import {interpretSound,soundResponse,soundPriority}
   from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
-import {canAutoShove} from './breach-traversal-surfaces.ts';
+import {canAutoShove,isFootstepObstacle} from './breach-traversal-surfaces.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
 import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
 import {damageCover} from './breach-reactive-cover.ts';
@@ -2067,8 +2068,15 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // jamb-adjacent cabinet. A normal swept passable() rejects every step
   // until it is fully outside, making the operator impossible to unstick.
   // Permit ONLY a sampled, monotonic exit from the *existing* overlap.
-  const coverRelease=releaseEmbeddedCover(a.p,p,COVER,WALLS,
-    s.doors,activeWorldBounds(),dt*45);
+  // Most ticks are ordinary walking: avoid scanning/allocating all
+  // furniture unless the shared spatial index reports actual penetration.
+  const embeddedCover=someCoverNearPoint(a.p,OPERATOR_RADIUS+1,o=>
+    isFootstepObstacle(o)&&
+    Math.abs(a.p.x-o.x)<o.w/2+OPERATOR_RADIUS&&
+    Math.abs(a.p.y-o.y)<o.h/2+OPERATOR_RADIUS);
+  const coverRelease=embeddedCover?
+    releaseEmbeddedCover(a.p,p,COVER,WALLS,
+      s.doors,activeWorldBounds(),dt*45):null;
   if(coverRelease){
     a.priorP=clone(a.p);a.p=coverRelease;
     a.velocity=0;a.squeeze=false;a.squeezeTime=0;
