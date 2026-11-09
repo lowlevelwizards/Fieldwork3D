@@ -2067,6 +2067,25 @@ function doorClosingContested(s:Session,actor:TeamActor,door:Door):boolean{
     },door);
   });
 }
+/** Real body-contact recovery for loose clutter, even when route search
+ * cannot build a path through two adjacent chairs. Shared with walking.
+ * Does not bypass walls, door leaves, other actors, or authored orders.
+ */
+function tryAutoClearClutter(s:Session,a:TeamActor,to:Pt):boolean{
+ if(a.side!=='blue'||s.seconds-a.lastAutoShoveAt<=.38)return false;
+ const moved=autoShoveLightCover(s.coverState,a.p,to,WALLS,s.doors,
+   s.operators.filter(other=>other!==a&&other.health>0).map(other=>other.p));
+ if(moved===null)return false;
+ a.lastAutoShoveAt=s.seconds;a.velocity=0;
+ a.nav=[];a.retryRouteAt=0;a.blockedTime=0;
+ s.objectRevision++;
+ COVER.splice(0,COVER.length,...s.coverState);
+ const prop=s.coverState[moved],where={x:prop.x,y:prop.y};
+ hear(s,where,prop.toppled?95:40,'furniture');
+ if(prop.toppled)battleEvent(s,'interaction',a,where,
+   a.name+' KNOCKED OVER '+(prop.fixture??'CLUTTER').toUpperCase());
+ return true;
+}
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // The simulation frame, not rendering, advances and validates traversal.
   if(tickTraversal(a,s,dt))return true;
@@ -2188,6 +2207,17 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
         s.operators.filter(o=>o.health>0).map(o=>o.p),{
           deferClosing:door=>doorClosingContested(s,a,door)
         });
+    }
+    // When two chairs interlock there may be no navigable path, so the
+    // ordinary collision branch cannot run. Probe only a real, short
+    // goal-directed body step; no furniture may be shifted at a distance.
+    if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
+       s.seconds-a.lastAutoShoveAt>.38&&goalDistance>2){
+      const distance=Math.min(4,goalDistance);
+      const contactProbe={x:a.p.x+(p.x-a.p.x)/goalDistance*distance,
+        y:a.p.y+(p.y-a.p.y)/goalDistance*distance};
+      if(diagnoseMovement(a.p,contactProbe,s.doors).blocker==='furniture'&&
+         tryAutoClearClutter(s,a,contactProbe))return true;
     }
     if(s.seconds<a.retryRouteAt){a.velocity=0;return false;}
     a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
@@ -2529,25 +2559,8 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     }
   }
   const traversable=a.squeeze?narrowClear:normalClear;
-  if(!traversable&&!blocking&&a.side==='blue'&&
-     s.seconds-a.lastAutoShoveAt>.38){
-    const moved=autoShoveLightCover(s.coverState,a.p,desiredMove,
-      WALLS,s.doors,s.operators.filter(other=>other!==a&&
-        other.health>0).map(other=>other.p));
-    if(moved!==null){
-      a.lastAutoShoveAt=s.seconds;a.velocity=0;
-      a.nav=[];a.retryRouteAt=0;a.blockedTime=0;
-      // All movement, visibility and rendering systems see the SAME
-      // physical cover after its swept displacement.
-      s.objectRevision++;
-      COVER.splice(0,COVER.length,...s.coverState);
-      const prop=s.coverState[moved],where={x:prop.x,y:prop.y};
-      hear(s,where,prop.toppled?95:40,'furniture');
-      if(prop.toppled)battleEvent(s,'interaction',a,where,
-        a.name+' KNOCKED OVER '+(prop.fixture??'CLUTTER').toUpperCase());
-      return true;
-    }
-  }
+  if(!traversable&&!blocking&&
+     tryAutoClearClutter(s,a,desiredMove))return true;
   if(!traversable&&!blocking){
     const escape=escapeOpenDoorOverlap(a.p,p,s.doors,dt*45);
     if(escape){

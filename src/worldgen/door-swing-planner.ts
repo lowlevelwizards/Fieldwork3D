@@ -91,8 +91,42 @@ function openedSide(door:Door):1|-1{
  const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
  return dx*(p.y-m.y)-dy*(p.x-m.x)>=0?1:-1;
 }
+/** Match the live hinge collision envelope when ranking door choices.
+ * Sparse decorative samples used to miss desks between sampled angles,
+ * choosing a door which the authoritative motor could only open partway.
+ * Early hinge-frame contact below .12 is intentionally ignored, as in the
+ * live motor; otherwise all doors appear blocked by their own jamb.
+ */
+function blockedSwingPenalty(site:Site,door:Door):number{
+ const hinge=door.hinge==='b'?door.b:door.a;
+ const reach=distance(door.a,door.b)+2;
+ const walls=site.walls.filter(w=>pointSegmentDistance(hinge,w)<=reach);
+ const cover=site.cover.filter(o=>{
+  const dx=Math.max(0,Math.abs(o.x-hinge.x)-o.w/2);
+  const dy=Math.max(0,Math.abs(o.y-hinge.y)-o.h/2);
+  return dx*dx+dy*dy<=reach*reach;
+ });
+ const steps=Math.max(1,Math.ceil(reach*1.54/2));
+ for(let step=Math.max(1,Math.ceil(steps*.14));step<=steps;step++){
+  const fraction=step/steps;
+  const leaf=doorLeafSegment({...door,open:true,openFraction:fraction});
+  for(const t of [.35,.55,.75,.94,.99]){
+   const p={x:leaf.a.x+(leaf.b.x-leaf.a.x)*t,
+    y:leaf.a.y+(leaf.b.y-leaf.a.y)*t};
+   if(walls.some(w=>pointSegmentDistance(p,w)<1.25)||
+      cover.some(o=>Math.abs(o.x-p.x)<o.w/2+1.25&&
+        Math.abs(o.y-p.y)<o.h/2+1.25)){
+    // An actual stop before a full useful opening must beat a preferred
+    // swing direction. Never move or delete mandatory furniture to fix it.
+    return 800+(1-fraction)*400;
+   }
+  }
+ }
+ return 0;
+}
 function choiceScore(site:Site,door:Door,preferred:1|-1):number{
- return arcPenalty(site,door)+(openedSide(door)===preferred?0:60);
+ return blockedSwingPenalty(site,door)+arcPenalty(site,door)+
+  (openedSide(door)===preferred?0:60);
 }
 export function planDoorSwings(site:Site):Site{
  const proposed=site.doors.map(d=>({...d}));

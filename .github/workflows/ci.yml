@@ -2038,12 +2038,21 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-input-movement-openings-') }}
         run: |
           node --experimental-strip-types --test tests/breach-aim-target-r1.test.mjs tests/breach-navigation-openings-r1.test.mjs tests/doorway-right-of-way-session.test.mjs tests/doorway-planned-sequence.test.mjs tests/breach-mantle-contract.test.mjs tests/breach-mantle-session.test.mjs tests/render-architectural-sills.test.mjs tests/architecture-03-service-hatches.test.mjs
+      - name: Door desk and chair gridlock — focused physical regression gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/door-desk-chair-gridlock-') }}
+        run: |
+          node --experimental-strip-types --test tests/door-desk-chair-gridlock-nov9.test.mjs tests/worldgen-32-03-door-swing.test.mjs tests/breach-doorway-map-clearance.test.mjs tests/breach-traversal-foundation.test.mjs tests/breach-traversal-recovery.test.mjs
       - name: Door counterpressure R1 — critical live hinge and squad passage regressions
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/breach-door-pressure-pingpong-') }}
         run: |
           node --experimental-strip-types --test tests/door-pressure-counterflow-r1.test.mjs tests/coupled-door-contact.test.mjs tests/door-leaf-overlap-recovery.test.mjs tests/doorway-right-of-way-session.test.mjs tests/doorway-planned-sequence.test.mjs
       - name: Production build and typecheck
         run: npm run build
+      - name: Door/desk/chair fix — verify live Pages checkpoint before release
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/door-desk-chair-gridlock-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       - name: Door counterpressure R1 — previous live Pages checkpoint
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/breach-door-pressure-pingpong-') }}
         env:
