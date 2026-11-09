@@ -786,7 +786,12 @@ const missionScreens=createBreachMissionScreens({
  getSession:()=>state,getCampaign:()=>campaign,getMode:()=>campaignMode,
  isReplaying:()=>replaying,briefingPreviewEnabled,
  getEntryId:()=>missionController.entryId,
- hideWeaponChooser,closeSiteChoice,hideContextPalette,
+ hideWeaponChooser,hideContextPalette,
+ getLighting:()=>selectedLightingMode,setLighting:v=>{selectedLightingMode=v;},
+ getScale:()=>requestedSiteScale,setScale:v=>{requestedSiteScale=v;},
+ getIntel:()=>selectedIntelMode,setIntel:v=>{selectedIntelMode=v;},
+ lightingModes:LIGHTING_MODES,intelPreferenceKey:INTEL_PREFERENCE_KEY,
+ showHelp:showUiHelp,refreshHud:updateHud,
  renderOperationsBoard,updateContext
 });
 const tacticalSheetNavigation=missionScreens.navigation;
@@ -2944,70 +2949,7 @@ ui.stance.addEventListener('click',()=>{
   posture(state,selected);audioController.playOrderCue('orders.stance');fog2D.invalidate();updateHud();
 });
 ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
-ui.siteLighting.textContent='LIGHTING · '+selectedLightingMode.toUpperCase();
-ui.siteLighting.addEventListener('click',()=>{
-  if(replaying||state.started||state.phase!=='planning'){
-    showUiHelp('CHOOSE LIGHTING BEFORE DEPLOYMENT');return;
-  }
-  const current=LIGHTING_MODES.indexOf(selectedLightingMode);
-  selectedLightingMode=LIGHTING_MODES[(current+1)%LIGHTING_MODES.length];
-  state.lightingMode=selectedLightingMode;
-  ui.siteLighting.textContent='LIGHTING · '+selectedLightingMode.toUpperCase();
-  const url=new URL(location.href);
-  if(selectedLightingMode==='day')url.searchParams.delete('lighting');
-  else url.searchParams.set('lighting',selectedLightingMode);
-  history.replaceState(null,'',url.href);
-  updateHud();
-});
-ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
-// Explicit, touch-friendly choices for next-site rules. This chooser only
-// updates future generation settings and never mutates the active mission.
-const siteChoicePopup=document.createElement('div');
-siteChoicePopup.className='fw-site-choice';
-let siteChoiceOwner:HTMLButtonElement|null=null;
-function closeSiteChoice(){
- siteChoicePopup.remove();
- siteChoiceOwner?.setAttribute('aria-expanded','false');
- siteChoiceOwner=null;
-}
-function openSiteChoices(button:HTMLButtonElement,label:string,
- choices:readonly {value:string;label:string;description:string}[],
- selectedValue:string,choose:(value:string)=>void){
- if(siteChoiceOwner===button){closeSiteChoice();return;}
- closeSiteChoice();
- siteChoiceOwner=button;
- button.setAttribute('aria-expanded','true');
- siteChoicePopup.replaceChildren();
- const heading=document.createElement('strong');
- heading.textContent=label+' · NEXT SITE';
- siteChoicePopup.append(heading);
- for(const choice of choices){
-  const option=document.createElement('button');
-  option.type='button';option.className='fw-site-choice-option';
-  option.setAttribute('aria-pressed',String(choice.value===selectedValue));
-  const name=document.createElement('strong');name.textContent=choice.label;
-  const detail=document.createElement('small');detail.textContent=choice.description;
-  option.append(name,detail);
-  option.addEventListener('click',()=>{choose(choice.value);closeSiteChoice();});
-  siteChoicePopup.append(option);
- }
- button.insertAdjacentElement('afterend',siteChoicePopup);
-}
-ui.siteSize.addEventListener('click',()=>{
- if(replaying||campaignMode==='mission')return;
- openSiteChoices(ui.siteSize,'BUILDING SIZE',[
-  {value:'small',label:'SMALL',description:'Shorter operation · compact site'},
-  {value:'medium',label:'MEDIUM',description:'Balanced layout and encounter'},
-  {value:'large',label:'LARGE',description:'Larger, more involved operation'}
- ],requestedSiteScale,selected=>{
-  requestedSiteScale=selected as SiteScale;
-  ui.siteSize.textContent='NEXT SITE SIZE · '+selected.toUpperCase();
-  const url=new URL(location.href);
-  url.searchParams.set('scale',selected);
-  history.replaceState(null,'',url.href);
-  showUiHelp('NEXT SITE SIZE SET · CURRENT SITE UNCHANGED',2300);
- });
-});
+missionScreens.bindSitePreferences();
 ui.variant.addEventListener('click',async()=>{
   if(replaying||campaignMode==='mission')return;
   if((state.started||team(state).some(a=>a.plan.length>0))&&
@@ -3017,22 +2959,6 @@ ui.variant.addEventListener('click',async()=>{
       confirmLabel:'GENERATE NEW SITE',danger:true
     }))return;
   reset(state.variant+1);
-});
-ui.intelMode.addEventListener('click',()=>{
- if(replaying||campaignMode==='mission')return;
- openSiteChoices(ui.intelMode,'INTELLIGENCE',[
-  {value:'true-blind',label:'TRUE BLIND',description:'Discover the environment during play'},
-  {value:'exterior-known',label:'EXTERIOR KNOWN',description:'Exterior known · interior unexplored'},
-  {value:'floor-plan',label:'FLOOR PLAN',description:'Building plan known · threats unknown'},
-  {value:'full-view',label:'FULL VIEW',description:'Sandbox-style full site knowledge'}
- ],selectedIntelMode,selected=>{
-  if(!INTEL_MODES.includes(selected as IntelMode))return;
-  selectedIntelMode=selected as IntelMode;
-  try{localStorage.setItem(INTEL_PREFERENCE_KEY,selectedIntelMode);}
-  catch{/* Preferences are optional in restricted browsing contexts. */}
-  showUiHelp('NEXT SITE INTEL SET · CURRENT KNOWLEDGE UNCHANGED',3000);
-  updateHud();
- });
 });
 ui.retry.addEventListener('click',()=>{if(campaignMode!=='mission')restartMission();});
 ui.next.addEventListener('click',()=>{if(!returnAfterCampaignMission())reset(state.variant+1);});

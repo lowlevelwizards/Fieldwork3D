@@ -6,6 +6,9 @@ import type {CampaignState} from '../campaign-state.ts';
 import {createBriefingCardModel,type BriefingReport,type BriefingTab}
  from '../briefing/briefing-view-model.ts';
 import {createTacticalSheetNavigation} from './tactical-sheet-navigation.ts';
+import {INTEL_MODES,type IntelMode} from '../breach-intel.ts';
+import type {SiteScale} from '../breach-site.ts';
+import type {LightingMode} from '../equipment-site-lighting.ts';
 export type MissionScreensElements={
  briefingBody:HTMLElement;
  briefingCampaignContext:HTMLElement;
@@ -33,6 +36,9 @@ export type MissionScreensElements={
  briefingType:HTMLElement;
  siteSettings:HTMLElement;
  siteSettingsToggle:HTMLButtonElement;
+ siteLighting:HTMLButtonElement;
+ siteSize:HTMLButtonElement;
+ intelMode:HTMLButtonElement;
 };
 export type MissionScreensHooks={
  ui:MissionScreensElements;
@@ -41,11 +47,48 @@ export type MissionScreensHooks={
  getMode:()=> 'menu'|'home'|'mission'|'quick';
  isReplaying:()=>boolean;briefingPreviewEnabled:boolean;
  getEntryId:()=>string;hideWeaponChooser:()=>void;
- closeSiteChoice:()=>void;hideContextPalette:()=>void;
+ hideContextPalette:()=>void;
+ getLighting:()=>LightingMode;setLighting:(value:LightingMode)=>void;
+ getScale:()=>SiteScale;setScale:(value:SiteScale)=>void;
+ getIntel:()=>IntelMode;setIntel:(value:IntelMode)=>void;
+ lightingModes:readonly LightingMode[];intelPreferenceKey:string;
+ showHelp:(message:string,duration?:number)=>void;refreshHud:()=>void;
  renderOperationsBoard:()=>void;updateContext:()=>void;
 };
 export function createBreachMissionScreens(config:MissionScreensHooks){
  const ui=config.ui;
+const siteChoicePopup=document.createElement('div');
+siteChoicePopup.className='fw-site-choice';
+let siteChoiceOwner:HTMLButtonElement|null=null;
+function closeSiteChoice(){
+ siteChoicePopup.remove();
+ siteChoiceOwner?.setAttribute('aria-expanded','false');
+ siteChoiceOwner=null;
+}
+function openSiteChoices(button:HTMLButtonElement,label:string,
+ choices:readonly {value:string;label:string;description:string}[],
+ selectedValue:string,choose:(value:string)=>void){
+ if(siteChoiceOwner===button){closeSiteChoice();return;}
+ closeSiteChoice();
+ siteChoiceOwner=button;
+ button.setAttribute('aria-expanded','true');
+ siteChoicePopup.replaceChildren();
+ const heading=document.createElement('strong');
+ heading.textContent=label+' · NEXT SITE';
+ siteChoicePopup.append(heading);
+ for(const choice of choices){
+  const option=document.createElement('button');
+  option.type='button';option.className='fw-site-choice-option';
+  option.setAttribute('aria-pressed',String(choice.value===selectedValue));
+  const name=document.createElement('strong');name.textContent=choice.label;
+  const detail=document.createElement('small');detail.textContent=choice.description;
+  option.append(name,detail);
+  option.addEventListener('click',()=>{choose(choice.value);closeSiteChoice();});
+  siteChoicePopup.append(option);
+ }
+ button.insertAdjacentElement('afterend',siteChoicePopup);
+}
+
 const tacticalSheetNavigation=createTacticalSheetNavigation({
  settings:ui.siteSettings,squad:config.operationsBoard,briefing:ui.briefingPanel
 },()=>{collapseTacticalSheets(null);config.updateContext();});
@@ -56,7 +99,7 @@ function collapseTacticalSheets(except:'squad'|'weapon'|'settings'|'briefing'|nu
  if(except!=='settings'){
   ui.siteSettings.hidden=true;
   ui.siteSettingsToggle.setAttribute('aria-expanded','false');
-  config.closeSiteChoice();
+  closeSiteChoice();
  }
  if(except!=='briefing'){
   ui.briefingPanel.hidden=true;
@@ -164,7 +207,62 @@ function setBriefingView(mode:'brief'|'intel'):void{
  ui.briefingIntelToggle.setAttribute('aria-expanded',String(intel));
  if(intel)setBriefingIntelTab('threat');
 }
+ function bindSitePreferences():void{
+ui.siteLighting.textContent='LIGHTING · '+config.getLighting().toUpperCase();
+ui.siteLighting.addEventListener('click',()=>{
+  if(config.isReplaying()||config.getSession().started||config.getSession().phase!=='planning'){
+    config.showHelp('CHOOSE LIGHTING BEFORE DEPLOYMENT');return;
+  }
+  const current=config.lightingModes.indexOf(config.getLighting());
+  config.setLighting(config.lightingModes[(current+1)%config.lightingModes.length]);
+  config.getSession().lightingMode=config.getLighting();
+  ui.siteLighting.textContent='LIGHTING · '+config.getLighting().toUpperCase();
+  const url=new URL(location.href);
+  if(config.getLighting()==='day')url.searchParams.delete('lighting');
+  else url.searchParams.set('lighting',config.getLighting());
+  history.replaceState(null,'',url.href);
+  config.refreshHud();
+});
+ui.siteSize.textContent='MAP SIZE · '+config.getScale().toUpperCase();
+// Explicit, touch-friendly choices for next-site rules. This chooser only
+// updates future generation settings and never mutates the active mission.
+
+ui.siteSize.addEventListener('click',()=>{
+ if(config.isReplaying()||config.getMode()==='mission')return;
+ openSiteChoices(ui.siteSize,'BUILDING SIZE',[
+  {value:'small',label:'SMALL',description:'Shorter operation · compact site'},
+  {value:'medium',label:'MEDIUM',description:'Balanced layout and encounter'},
+  {value:'large',label:'LARGE',description:'Larger, more involved operation'}
+ ],config.getScale(),selected=>{
+  config.setScale(selected as SiteScale);
+  ui.siteSize.textContent='NEXT SITE SIZE · '+selected.toUpperCase();
+  const url=new URL(location.href);
+  url.searchParams.set('scale',selected);
+  history.replaceState(null,'',url.href);
+  config.showHelp('NEXT SITE SIZE SET · CURRENT SITE UNCHANGED',2300);
+ });
+});
+
+ui.intelMode.addEventListener('click',()=>{
+ if(config.isReplaying()||config.getMode()==='mission')return;
+ openSiteChoices(ui.intelMode,'INTELLIGENCE',[
+  {value:'true-blind',label:'TRUE BLIND',description:'Discover the environment during play'},
+  {value:'exterior-known',label:'EXTERIOR KNOWN',description:'Exterior known · interior unexplored'},
+  {value:'floor-plan',label:'FLOOR PLAN',description:'Building plan known · threats unknown'},
+  {value:'full-view',label:'FULL VIEW',description:'Sandbox-style full site knowledge'}
+ ],config.getIntel(),selected=>{
+  if(!INTEL_MODES.includes(selected as IntelMode))return;
+  config.setIntel(selected as IntelMode);
+  try{localStorage.setItem(config.intelPreferenceKey,config.getIntel());}
+  catch{/* Preferences are optional in restricted browsing contexts. */}
+  config.showHelp('NEXT SITE INTEL SET · CURRENT KNOWLEDGE UNCHANGED',3000);
+  config.refreshHud();
+ });
+});
+
+ }
  return {
+  bindSitePreferences,
   navigation:tacticalSheetNavigation,collapse:collapseTacticalSheets,
   syncBriefingCard,setBriefingIntelTab,setBriefingView
  };
