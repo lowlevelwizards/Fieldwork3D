@@ -119,7 +119,9 @@ export class ReplayDirectorController{
         usableHeight:height<520?.68:.81,maxZoom:14,
         safeFrame:directorSafeFrame
       };
-    const stories=directorEditorialCandidates(t,actors,directorContext,2);
+    // Compare current recorded action across the whole squad. The
+    // compositor still stages only the same approved OTS shot family.
+    const stories=directorEditorialCandidates(t,actors,directorContext,5);
     const proposals=stories.flatMap(editorial=>composeReplayDirectorShots(
       t,actors,state.site?.rooms??[],state.site?.walls??[],
       width/Math.max(1,height),0,baseSpan,
