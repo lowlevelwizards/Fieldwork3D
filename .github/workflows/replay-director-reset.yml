@@ -1,0 +1,21 @@
+name: Replay director clean-slate shoulder tests
+on:
+  pull_request:
+    paths:
+      - 'src/breach-replay-director-reset.ts'
+      - 'src/breach-main.ts'
+      - 'tests/replay-director-reset.test.mjs'
+      - '.github/workflows/replay-director-reset.yml'
+permissions:
+  contents: read
+jobs:
+  shoulder-invariants:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Deterministic shoulder, disclosure and camera handoff
+        run: node --experimental-strip-types --test tests/replay-director-reset.test.mjs tests/replay-director-r101-shoulder-invariant.test.mjs
