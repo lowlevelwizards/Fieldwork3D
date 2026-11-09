@@ -149,6 +149,7 @@ test('replay presentation does not overwrite living mission start/deployment',()
    const film=h.controller.createReplaySession(recorder,s);
    assert.notEqual(film,s);
    assert.equal(film.site?.seed,s.site?.seed);
+   assert.equal(h.controller.resumeLiveSession(s),s);
    assert.equal(h.controller.start,snapshot);
    assert.equal(h.controller.entryId,'FRONT');
  }finally{activateSite(null);}
@@ -161,6 +162,7 @@ test('main delegates lifecycle to one owner and keeps gameplay authoritative',()
    /missionController\.restoreStartingSetup\(/,
    /missionController\.captureBeforeExecution\(/,
    /missionController\.createReplaySession\(/,
+   /missionController\.resumeLiveSession\(/,
    /missionController\.refreshDeployment\(/]){
    assert.match(main,pattern);
  }
