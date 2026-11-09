@@ -8295,6 +8295,8 @@ function tick(now:number){
         '\nDOM '+document.getElementsByTagName('*').length+
         ' · ACTION RINGS '+physicalActionRings.size+
         ' · SITE MATS '+(stats?.siteMaterialCount??0)+
+        ' · RIGS A/C '+(stats?.actorRigCount??0)+'/'+
+          (stats?.civilianRigCount??0)+
         '\nOVERLAY '+m.overlay.toFixed(1)+'ms · DRAWS '+
         m.draws.toFixed(0)+' · TRI '+m.triangles.toFixed(0)+
         (simPhaseCosts&&simPhaseCosts.size?'\nHOT SIM '+
