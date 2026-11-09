@@ -3325,6 +3325,90 @@ if(perfOverlay){
 setSightDiagnosticsEnabled(!!perfOverlay);
 const frameMeter=perfOverlay?new FrameMeter():null;
 const physicalActionRings=new PhysicalActionRings();
+/** Authoring previews and blocker feedback stay with tactical presentation;
+ * the scheduler invokes them once per rendered/active frame. */
+function drawTacticalFrameFeedback(studioOccludesTactical:boolean):void{
+  // One local, intelligible pulse per distinct blocked episode.
+  for(const actor of team(state)){
+    const old=blockedEpisode.get(actor.id);
+    if(actor.blockedTime<.3||actor.lastBlocker==='clear'){
+      blockedEpisode.delete(actor.id);continue;
+    }
+    if(actor.blockedTime>=.95&&(old!==actor.lastBlocker)){
+      blockedEpisode.set(actor.id,actor.lastBlocker);
+      if(!replaying)tacticalFeedback.emit('error',actor.p,
+        actor.lastBlocker==='furniture'?'OBSTRUCTED':actor.lastBlocker);
+    }
+  }
+  if(feedbackDraw&&!studioOccludesTactical){
+    feedbackDraw.setTransform(dpr,0,0,dpr,0,0);
+    feedbackDraw.clearRect(0,0,cssW,cssH);
+    const actor=uid(selected);
+    const authoringPointer=activePointers.size===1?
+      [...activePointers.values()][0]:null;
+    const canPreview=state.phase==='planning'&&!replaying&&
+      !!cursor&&(previewHover||!!authoringPointer)&&
+      (!authoringPointer||!['cameraMulti','cameraOrbit','cameraPan'].includes(
+        authoringPointer.mode))&&cursor.x>=0&&cursor.y>=0&&
+      cursor.x<=W&&cursor.y<=H;
+    const orderMode=hudController.facing.looking?hudController.facing.lookMode:flashMode?'flash':
+      firePlacement??evacMode?.mode;
+    const origin=hudController.facing.looking?
+      (selectedPlanNode()?.p??(hudController.facing.armedOrigin==='here'?actor?.p:
+        actor?finalPoint(actor):undefined)):
+      actor?finalPoint(actor):undefined;
+    const preview:TacticalOrderPreview|undefined=canPreview&&actor&&origin&&
+      orderMode?{origin,direction:cursor!,mode:orderMode}:undefined;
+    tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
+      performance.now(),preview,reducedMotionMedia.matches);
+    // Direction-only preview of an authored furniture push. The authoritative
+    // simulation still decides how far the real object can move on contact;
+    // this never mutates cover, reveals unknown obstacles, or guarantees travel.
+    if(pushMode&&state.phase==='planning'&&!replaying&&actor){
+      const from=selectedPlanNode()?.p??finalPoint(actor);
+      // Find the nearest known movable cover in one pass. Sorting and
+      // allocating a candidate array every RAF is unnecessary here.
+      let candidate:{object:(typeof state.coverState)[number];index:number;range:number}|undefined;
+      for(let index=0;index<state.coverState.length;index++){
+        const object=state.coverState[index];
+        if(!state.intel.cover.has(index)||!canRelocateCover(object))continue;
+        const range=distance(from,{x:object.x,y:object.y});
+        if(range>=Math.max(object.w,object.h)/2+43)continue;
+        if(!candidate||range<candidate.range){
+          candidate={object,index,range};
+        }
+      }
+      if(candidate){
+        const obj=candidate.object,center={x:obj.x,y:obj.y};
+        const base=Math.atan2(obj.y-from.y,obj.x-from.x);
+        const aimed=canPreview&&cursor&&distance(cursor,center)>4?
+          Math.atan2(cursor.y-center.y,cursor.x-center.x):base;
+        const yaw=base+Math.max(-Math.PI*4/9,Math.min(Math.PI*4/9,
+          angleDifference(base,aimed)));
+        const dist=Math.max(7,coverPushDistance(obj));
+        const end={x:obj.x+Math.cos(yaw)*dist,
+          y:obj.y+Math.sin(yaw)*dist};
+        const startPx=worldToScreen(center,13),endPx=worldToScreen(end,13);
+        feedbackDraw.save();
+        feedbackDraw.strokeStyle='#e4c998';feedbackDraw.fillStyle='#e4c998';
+        feedbackDraw.lineWidth=2.4;feedbackDraw.setLineDash([5,4]);
+        feedbackDraw.beginPath();feedbackDraw.arc(startPx.x,startPx.y,15,
+          0,Math.PI*2);feedbackDraw.stroke();
+        feedbackDraw.setLineDash([]);
+        feedbackDraw.beginPath();feedbackDraw.moveTo(startPx.x,startPx.y);
+        feedbackDraw.lineTo(endPx.x,endPx.y);feedbackDraw.stroke();
+        const direction=Math.atan2(endPx.y-startPx.y,endPx.x-startPx.x);
+        feedbackDraw.beginPath();feedbackDraw.moveTo(endPx.x,endPx.y);
+        for(const side of [-1,1])
+          feedbackDraw.lineTo(endPx.x-Math.cos(direction+side*.48)*13,
+            endPx.y-Math.sin(direction+side*.48)*13);
+        feedbackDraw.closePath();feedbackDraw.fill();
+        feedbackDraw.restore();
+      }
+    }
+  }
+
+}
 function tick(now:number){
   const perfStart=perfOverlay?performance.now():0;
   const frameGap=Math.max(0,now-last);
@@ -3430,85 +3514,7 @@ function tick(now:number){
     if(replayPlayback.time>=recorder.duration)replayQuickVideo.finishAtEnd();
     else if(!replayPlayback.playing)replayQuickVideo.stop();
   }
-  // One local, intelligible pulse per distinct blocked episode.
-  for(const actor of team(state)){
-    const old=blockedEpisode.get(actor.id);
-    if(actor.blockedTime<.3||actor.lastBlocker==='clear'){
-      blockedEpisode.delete(actor.id);continue;
-    }
-    if(actor.blockedTime>=.95&&(old!==actor.lastBlocker)){
-      blockedEpisode.set(actor.id,actor.lastBlocker);
-      if(!replaying)tacticalFeedback.emit('error',actor.p,
-        actor.lastBlocker==='furniture'?'OBSTRUCTED':actor.lastBlocker);
-    }
-  }
-  if(feedbackDraw&&!studioOccludesTactical){
-    feedbackDraw.setTransform(dpr,0,0,dpr,0,0);
-    feedbackDraw.clearRect(0,0,cssW,cssH);
-    const actor=uid(selected);
-    const authoringPointer=activePointers.size===1?
-      [...activePointers.values()][0]:null;
-    const canPreview=state.phase==='planning'&&!replaying&&
-      !!cursor&&(previewHover||!!authoringPointer)&&
-      (!authoringPointer||!['cameraMulti','cameraOrbit','cameraPan'].includes(
-        authoringPointer.mode))&&cursor.x>=0&&cursor.y>=0&&
-      cursor.x<=W&&cursor.y<=H;
-    const orderMode=hudController.facing.looking?hudController.facing.lookMode:flashMode?'flash':
-      firePlacement??evacMode?.mode;
-    const origin=hudController.facing.looking?
-      (selectedPlanNode()?.p??(hudController.facing.armedOrigin==='here'?actor?.p:
-        actor?finalPoint(actor):undefined)):
-      actor?finalPoint(actor):undefined;
-    const preview:TacticalOrderPreview|undefined=canPreview&&actor&&origin&&
-      orderMode?{origin,direction:cursor!,mode:orderMode}:undefined;
-    tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
-      performance.now(),preview,reducedMotionMedia.matches);
-    // Direction-only preview of an authored furniture push. The authoritative
-    // simulation still decides how far the real object can move on contact;
-    // this never mutates cover, reveals unknown obstacles, or guarantees travel.
-    if(pushMode&&state.phase==='planning'&&!replaying&&actor){
-      const from=selectedPlanNode()?.p??finalPoint(actor);
-      // Find the nearest known movable cover in one pass. Sorting and
-      // allocating a candidate array every RAF is unnecessary here.
-      let candidate:{object:(typeof state.coverState)[number];index:number;range:number}|undefined;
-      for(let index=0;index<state.coverState.length;index++){
-        const object=state.coverState[index];
-        if(!state.intel.cover.has(index)||!canRelocateCover(object))continue;
-        const range=distance(from,{x:object.x,y:object.y});
-        if(range>=Math.max(object.w,object.h)/2+43)continue;
-        if(!candidate||range<candidate.range){
-          candidate={object,index,range};
-        }
-      }
-      if(candidate){
-        const obj=candidate.object,center={x:obj.x,y:obj.y};
-        const base=Math.atan2(obj.y-from.y,obj.x-from.x);
-        const aimed=canPreview&&cursor&&distance(cursor,center)>4?
-          Math.atan2(cursor.y-center.y,cursor.x-center.x):base;
-        const yaw=base+Math.max(-Math.PI*4/9,Math.min(Math.PI*4/9,
-          angleDifference(base,aimed)));
-        const dist=Math.max(7,coverPushDistance(obj));
-        const end={x:obj.x+Math.cos(yaw)*dist,
-          y:obj.y+Math.sin(yaw)*dist};
-        const startPx=worldToScreen(center,13),endPx=worldToScreen(end,13);
-        feedbackDraw.save();
-        feedbackDraw.strokeStyle='#e4c998';feedbackDraw.fillStyle='#e4c998';
-        feedbackDraw.lineWidth=2.4;feedbackDraw.setLineDash([5,4]);
-        feedbackDraw.beginPath();feedbackDraw.arc(startPx.x,startPx.y,15,
-          0,Math.PI*2);feedbackDraw.stroke();
-        feedbackDraw.setLineDash([]);
-        feedbackDraw.beginPath();feedbackDraw.moveTo(startPx.x,startPx.y);
-        feedbackDraw.lineTo(endPx.x,endPx.y);feedbackDraw.stroke();
-        const direction=Math.atan2(endPx.y-startPx.y,endPx.x-startPx.x);
-        feedbackDraw.beginPath();feedbackDraw.moveTo(endPx.x,endPx.y);
-        for(const side of [-1,1])
-          feedbackDraw.lineTo(endPx.x-Math.cos(direction+side*.48)*13,
-            endPx.y-Math.sin(direction+side*.48)*13);
-        feedbackDraw.closePath();feedbackDraw.fill();
-        feedbackDraw.restore();
-      }
-    }
-  }
+  drawTacticalFrameFeedback(studioOccludesTactical);
   updateContext();advanceContextPalette(dt);
   if(frameMeter&&perfOverlay){
     const end=performance.now(),stats=stage?.performanceStats();
