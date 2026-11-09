@@ -127,6 +127,7 @@ import {passageWait,passageFollowerStep,passageScheduledStep,
 import {incidentalCloseWouldBlockTeammate}
   from './breach-door-pressure-arbitration.ts';
 import {advanceWaitOrder} from './breach-order-wait.ts';
+import {executeTacticalUtilityOrder} from './breach-order-utility.ts';
 import {planDoorSchedule,pendingPassageSlot,type PassageSchedule}
   from './breach-passage-plan.ts';
 import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
@@ -2708,6 +2709,8 @@ function failCurrentOrder(s:Session,a:TeamActor,n:PlanNode,reason:string){
   a.velocity=0;
 }
 function clearCurrentOrderIssue(a:TeamActor){a.orderIssue=null;}
+const utilityOrderHooks={pop,notify,beginReload,
+ fail:failCurrentOrder,clearIssue:clearCurrentOrderIssue,rotate,battleEvent};
 function runOrders(s:Session,a:TeamActor,dt:number){
   // Player-authored positions are sacred. Traffic steering only moves the
   // actor who requested movement, never a stationary friend or held stack.
@@ -3202,58 +3205,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(n.kind==='holdClear'||n.kind==='wait'){
     advanceWaitOrder(s,a,n,dt,inSight,notify,pop);return;
   }
-  if(n.kind==='sync'){
-    a.syncReady=n.syncCode??'A';
-    // Only actors still carrying this code participate. An undone
-    // companion order must not create a permanent one-sided deadlock.
-    const code=a.syncReady;
-    const peers=team(s).filter(x=>x.health>0&&
-      (x.syncReady===code||x.plan.some(order=>
-        order.kind==='sync'&&order.syncCode===code)));
-    if(peers.every(x=>x.syncReady===code)){
-      // Clear all participants in the same fixed simulation tick.
-      for(const teammate of peers)pop(teammate);
-      notify(s,'GO CODE '+(n.syncCode??'A'));
-    }
-    return;
-  }
-  if(n.kind==='reload'){
-    // The authored order owns one reload, not an endless sequence of
-    // refills when the final available magazine isn't completely full.
-    if(a.actionTimer>0&&a.reload===0){pop(a);return;}
-    if(a.actionTimer===0){
-      if(a.magazine>=liveMagazineCapacity(a.weapon,a.weaponConfiguration)){pop(a);return;}
-      if(a.reload>0){a.velocity=0;return;}
-      if(!beginReload(s,a)){
-        failCurrentOrder(s,a,n,'RELOAD UNAVAILABLE · CHECK AMMO');return;
-      }
-      clearCurrentOrderIssue(a);
-      a.actionTimer=dt;
-    }
-    return;
-  }
-  if(n.kind==='flash'){
-    if(!n.aimPoint||s.flashRemaining<=0||a.flashCharges<=0){
-      failCurrentOrder(s,a,n,'FLASH UNAVAILABLE');return;
-    }
-    const trajectory=validateThrow(a.p,n.aimPoint,s.doors);
-    if(!trajectory.valid){
-      failCurrentOrder(s,a,n,'FLASH BLOCKED — '+
-        (trajectory.reason??'CHECK TRAJECTORY'));return;
-    }
-    clearCurrentOrderIssue(a);a.velocity=0;rotate(a,angle(a.p,n.aimPoint),dt);
-    a.actionTimer+=dt;
-    if(a.actionTimer>=.3){
-      s.flashRemaining--;a.flashCharges--;a.lastThrowAt=s.seconds;
-      s.grenades.push({id:s.nextEffectId++,p:clone(a.p),
-        from:clone(a.p),to:clone(n.aimPoint),age:0,fuse:1.15,
-        path:trajectory});
-      battleEvent(s,'flash',a,a.p,a.name+' FLASH OUT');
-      notify(s,a.name+' FLASH OUT');
-      pop(a);
-    }
-    return;
-  }
+  if(executeTacticalUtilityOrder(s,a,n,dt,utilityOrderHooks))return;
   if(n.kind==='door'){
     const door=s.doors.find(d=>d.id===n.doorId);
     if(!door){
