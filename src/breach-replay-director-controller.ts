@@ -42,6 +42,8 @@ export class ReplayDirectorController{
  filmBeats:DirectorFilmBeat[]=[];
  entries:DirectorEntryEvent[]=[];
  storyboard:ReplayDirectorStoryboard|null=null;
+ subjectTimeline:ReplayDirectorSubjectTimeline|null=null;
+ camEligibleObservers:readonly string[]=[];
  tempoEdits:DirectorTempoEdit[]=[];
  editNoticeUntil=0;editNoticeSeconds=0;
  target:DirectorShot|null=null;
