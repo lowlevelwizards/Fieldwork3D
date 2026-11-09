@@ -18,6 +18,7 @@ import {interpolateWeaponCarry,lowReadyBlendPhase}
 import {createOperatorPoseScratch,type OperatorPoseScratch}
   from './breach-operator-pose-scratch.ts';
 import type {WeaponId} from './breach-combat.ts';
+import {resolvePoseLocomotionFrame} from './breach-pose-locomotion-frame.ts';
 import {advanceFootsteps,createFootstepScheduler,validatedReplayFeet,
   type FootstepScheduler,type FootTarget,type FootstepInput}
   from './breach-footsteps.ts';
@@ -1005,22 +1006,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
   const buckle=p.down&&!p.surrender?smooth(downProgress/.48):0;
   const kneel=p.surrender?smooth(downProgress/.65):0;
-  const physicalSpeed=p.blocked?0:p.velocity;
-  const moving=p.down?0:Math.min(1,physicalSpeed/72);
-  const direction=p.travelYaw??(r.lastPose?
-    Math.atan2(p.z-r.lastPose.z,p.x-r.lastPose.x):p.heading);
-  const travel=moving>.14?direction:p.heading;
-  // Tactical strafing and reverse movement keep the pelvis oriented toward
-  // the threat; translation is not the same thing as facing.
-  const lateral=Math.abs(Math.sin(travel-p.heading))>.52;
-  const reverse=Math.cos(travel-p.heading)<-.4;
-  const hipTarget=moving>.22&&!lateral&&!reverse?travel:p.heading;
-  // Do not rotate the pelvis yet: the fixed-step foot contacts are needed
-  // before the one authoritative root heading can be selected.
-  // Fixed-step recorded acceleration replaces render-rate velocity deltas.
-  const braking=clamp(-(p.acceleration??0)/180,-1,1);
-  const crouch=p.posture==='crouch'?8:
-    8*clamp(p.interactionCrouch??0,0,1);
+  const {physicalSpeed,moving,direction,hipTarget,braking,crouch}=
+    resolvePoseLocomotionFrame(p,r.lastPose);
   r.hip.position.y=LEG_HIP_HEIGHT-crouch;
   r.chest.position.y=26-crouch;
   // Low traversal carries a rearward pelvis and counterbalanced thorax.
