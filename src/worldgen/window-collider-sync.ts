@@ -4,6 +4,7 @@
  */
 import type {Site} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
+import {windowVisualHeadHeight} from '../breach-opening-proportions.ts';
 export function synchronizeWindowBarriers<T extends Pick<Site,'windows'|'cover'>>(site:T):T{
  const staticCover=site.cover.filter(o=>o.fixture!=='window-sill'&&
   o.fixture!=='glass-barrier');
@@ -12,7 +13,10 @@ export function synchronizeWindowBarriers<T extends Pick<Site,'windows'|'cover'>
   w:window.vertical?10:window.width,
   h:window.vertical?window.width:10,
   low:(window.sillHeight??14)<25,
-  fixture:window.sillHeight===0?'glass-barrier':'window-sill'
+  fixture:window.sillHeight===0?'glass-barrier':'window-sill',
+  topHeight:window.sillHeight===0?
+    (window.headHeight??windowVisualHeadHeight(window.style)):
+    (window.sillHeight??14)
  }));
  return {...site,cover:[...staticCover,...barriers]};
 }
