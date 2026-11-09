@@ -3,6 +3,9 @@ import {pathFor,edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan}
  from './breach-plan-authoring.ts';
 import {simulationPhaseMark,advanceTransientSimulationEffects,
  recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
+import {reconcileEnemyIntent,reconcileEnemyPosture} from './breach-ai-reconciliation.ts';
+import {sampleActorMotorStride} from './breach-actor-motor-stride.ts';
+import {segmentImpact,strikeSurface} from './breach-ballistic-resolution.ts';
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
  from './breach-combat-reactions.ts';
 import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts';
@@ -33,12 +36,12 @@ import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
 import {encounterReactionDelay,perceptualReadiness,
   encounterReactionPhase} from './breach-encounter-readiness.ts';
-import {WEAPONS,injuryOf,injurySpeed,injuryReload,
+import {WEAPONS,injuryOf,injuryReload,
   woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
   from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {segmentHitsBox} from './breach-ray.ts';
-import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
+import {aimHeight} from './breach-cover-height.ts';
 import {microKeyAt} from './breach-fog-memory.ts';
 import {groundView,groundViewCandidate} from './breach-ground-view.ts';
 import {sightDiagnosticsEnabled,sightDiagnosticCounts}
@@ -73,12 +76,11 @@ import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
 import {canAutoShove} from './breach-traversal-surfaces.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
-import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
 import {damageCover} from './breach-reactive-cover.ts';
 import {materialResponse} from './breach-impact-responses.ts';
 import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
-import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
+import {type AIIntent} from './breach-ai-policy.ts';
 import {scanEnemySoundEvidence}
   from './breach-ai-acoustic-perception.ts';
 import {registerSessionWorldGeometry} from './breach-world-context.ts';
@@ -90,7 +92,6 @@ import {newSuspicion,observeSuspicion,
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {TacticalRouteCache} from './breach-tactical-route-cache.ts';
 import {PerceptionPairCache} from './breach-perception-cache.ts';
-import {settledEnemyPosture} from './breach-ai-posture.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo} from './breach-ai-investigation.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
@@ -112,7 +113,6 @@ import {retreatDoorClosureEligible,routineDoorClosureEligible}
 import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
 import {contactTactic,shouldSeekHoldCover}
  from './breach-ai-tactical-response.ts';
-import {directionalCoverFrom} from './breach-cover-direction.ts';
 import {reportToListener,type TacticalReport} from './breach-communication.ts';
 import {groupResponse,type GroupRole} from './breach-ai-coordination.ts';
 import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
@@ -2158,36 +2158,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   const next=a.nav[0],gap=d(a.p,next);
   if(gap<3){a.nav.shift();return false;}
   const direction=angle(a.p,next);
-  // Explicit LOOK/WATCH, running, room-clearing sector looks and true
-  // narrow-body squeezes retain complete facing authority.
-  const canAutoSidestep=a.side==='blue'&&a.health>0&&
-    a.pace!=='run'&&!a.squeeze&&!a.traversal&&!a.traversalPending&&
-    !a.aimInstruction&&!approachingNarrowThreshold(a.p,p,s.doors)&&
-    (a.plan[0]?.kind==='move'||a.plan[0]?.kind==='door')&&
-    a.plan[0]?.moveMode!=='sprint'&&
-    a.plan[0]?.moveMode!=='strafe'&&
-    a.plan[0]?.aimMode!=='track'&&
-    a.plan[0]?.aimMode!=='fixed'&&a.plan[0]?.facing===undefined;
-  // Ordinary cautious travel must fit within achievable step cadence.
-  // Running retains the faster existing speed via the pace multiplier.
-  const movingSpeed=a.side==='blue'?53:48;
-  const suppression=clamp(1-a.suppression*.4,.45,1);
-  const requested=movingSpeed*(a.posture==='crouch'?.58:1)*suppression*
-    speedScale*injurySpeed(a.injuryStage)*(a.loadMovementScale??1);
-  // A lateral shuffle cannot use the same stride speed as forward running.
-  // Scale the limit continuously for diagonal travel, preserving ordinary
-  // forward movement and crouch/injury speed reductions.
-  const lateral=Math.abs(Math.sin(direction-a.heading));
-  const sideLimit=(38+37*(1-lateral*lateral))*
-    (a.posture==='crouch'?.58:1)*injurySpeed(a.injuryStage)*
-    (a.loadMovementScale??1);
-  // Narrow travel is genuine slow sideways movement, not a global
-  // reduction to actor collision radius or a high-speed clipping shortcut.
-  const desired=Math.min(requested,sideLimit,a.squeeze?16:Infinity);
-  a.velocity+=(desired-a.velocity)*Math.min(1,dt*6);
-  const advance=Math.min(gap,a.velocity*dt);
-  let move={x:a.p.x+Math.cos(direction)*advance,
-    y:a.p.y+Math.sin(direction)*advance};
+  const {canAutoSidestep,move:initialMove}=sampleActorMotorStride(
+    a,s,p,direction,dt,gap,speedScale);
+  let move=initialMove;
   // Resolve right-of-way BEFORE automatic door-opening, hinge pressure or
   // movement. Otherwise every teammate can start a competing OPEN action
   // and the planned squad sequence becomes unpredictable.
@@ -3306,9 +3279,6 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
   }
   const strongest=scanEnemySoundEvidence(s,a);
-  // Intention selection reads only acquired observations, not hidden positions.
-  const belief=bestBelief(a.awareness);
-  const recentNoise=hasRecentSound(s.seconds,a.lastNoiseAt);
   // A faint noise can turn a head without becoming an indefinitely
   // actionable contact. Do not replace it with a psychic search target.
   if(!visible.length&&!a.contacted&&a.alert==='suspicious'&&a.heard){
@@ -3320,27 +3290,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     if(s.seconds>=a.alertUntil){a.alert='idle';a.heard=null;}
   }
-  if(!visible.length)a.combatChoice=chooseCombatAction({
-    visible:false,remembered:!!belief,ammunition:a.magazine,
-    laneClear:false,suppression:a.suppression,morale:a.morale,temperament:a.personality});
-  a.intent=chooseAiIntent(a.intent,{
-    visible:visible.length>0,hasBelief:!!belief,recentSound:recentNoise,
-    suppression:a.suppression,morale:a.morale,
-    temperament:a.personality},s.seconds);
-  if(!visible.length){
-    if(belief&&belief.lastAt>=s.seconds-24)
-      a.contact=clone(belief.estimate);
-    else if(!recentNoise){
-      a.contact=null;a.heard=null;a.contacted=false;
-      if(a.alert==='investigating')a.alert='idle';
-      // Defensive postures may linger after contact, but cease indefinite
-      // armed-cover alert when the evidence and suppression have truly faded.
-      if(a.alert==='cover'&&a.suspicion.stage==='unaware'&&
-         a.suppression<.08&&!a.retreatPoint){
-        a.alert='idle';a.defense=null;
-      }
-    }
-  }
+  reconcileEnemyIntent(s,a,visible.length);
   if(visible.length){
     a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
     const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
@@ -3440,34 +3390,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.alert!=='retreat'&&a.alert!=='cover'){
     a.alert='investigating';a.contact=a.heard??a.contact;
   }
-  // AI posture is a defensive choice rather than a permanent character
-  // property. Cautious or suppressed defenders duck behind real cover;
-  // advancing or unsuppressed engaging enemies stand back up to fire.
-  const threat=visible[0]?.p??a.heard??a.contact??a.watch;
-  let desiredPosture=a.posture;
-  if(threat&&a.velocity<15&&
-    directionalCoverFrom(threat,a.p,COVER).crouched&&
-    (a.suppression>.26||a.personality==='cautious'||
-     a.alert==='cover'||a.combatChoice==='hold'))
-    desiredPosture='crouch';
-  else if(a.velocity>20||a.suppression<.12||a.alert==='engaging')
-    desiredPosture='stand';
-  const settled=settledEnemyPosture(a.posture,desiredPosture,
-    s.seconds,a.postureChangedAt??-100);
-  if(settled!==a.posture){a.posture=settled;a.postureChangedAt=s.seconds;}
-  // Crouching behind chest-high furniture can make a visible contact
-  // impossible to shoot. Stand up when that alone restores the muzzle lane.
-  if(a.posture==='crouch'&&visible.length){
-    const b=visible[0],height=aimHeight(b.posture==='crouch');
-    const low=assessFireLane(a.p,18,b.p,height,COVER,WALLS,s.doors);
-    const high=assessFireLane(a.p,26,b.p,height,COVER,WALLS,s.doors);
-    if(low.blocker==='cover'&&high.blocker==='clear'){
-      // The only exception to pose dwell: a verified clear higher muzzle.
-      a.posture=settledEnemyPosture(a.posture,'stand',s.seconds,
-        a.postureChangedAt??-100,true);
-      a.postureChangedAt=s.seconds;
-    }
-  }
+  reconcileEnemyPosture(s,a,visible);
   const noiseDisposition=strongest?
     soundResponse(strongest.kind,strongest.intensity):'ignore';
   if(strongest&&noiseDisposition==='orient'&&!visible.length&&
@@ -3770,82 +3693,6 @@ function distributeReports(s:Session){
 function random(s:Session){
   s.rng=(Math.imul(s.rng,1664525)+1013904223)>>>0;
   return s.rng/4294967296;
-}
-function segmentImpact(from:Pt,to:Pt,segment:{a:Pt;b:Pt}):number|null{
-  const dx=to.x-from.x,dy=to.y-from.y;
-  const ex=segment.b.x-segment.a.x,ey=segment.b.y-segment.a.y;
-  const determinant=dx*ey-dy*ex;
-  if(Math.abs(determinant)<1e-7)return null;
-  const fx=segment.a.x-from.x,fy=segment.a.y-from.y;
-  const t=(fx*ey-fy*ex)/determinant;
-  const u=(fx*dy-fy*dx)/determinant;
-  return t>=0&&t<=1&&u>=0&&u<=1?t:null;
-}
-/** One ordered hit query for both collision and actual projectiles.
- * energy=0 preserves original rigid muzzle/cover obstruction checks.
- */
-function strikeSurface(from:Pt,aimed:Pt,s:Session,
-  fromZ=22,toZ=22,energy=0):{
-  end:Pt;surface:ShotEvent['surface'];penetrated:number[];remaining:number;
-  paneHits:number[];glassDoorHits:{index:number;fraction:number}[];
-  coverHits:{index:number;fraction:number}[];
-  materialHits:{fraction:number;material:MaterialId}[]}{
-  const hits:BarrierHit[]=[];
-  const glassDoorHits:{index:number;fraction:number}[]=[];
-  for(const wall of WALLS){
-    const t=segmentImpact(from,aimed,wall);
-    if(t!==null)hits.push({fraction:t,material:'brick',thickness:10});
-  }
-  for(const [index,door] of s.doors.entries()){
-    if(door.style==='mesh-gate'||door.style==='screen')continue; // fine mesh transmits most bullets
-    const isGlass=['glazed','french'].includes(door.style??'');
-    if(isGlass&&door.glassShattered)continue;
-    const leaf=doorLeafSegment(door);
-    const t=segmentImpact(from,aimed,leaf);
-    if(t!==null&&isGlass)glassDoorHits.push({index,fraction:t});
-    if(t!==null)hits.push({fraction:t,
-      material:door.kind==='shutter'?'steel':
-        ['glazed','french'].includes(door.style??'')?'glass':'hardwood',
-      thickness:door.kind==='shutter'?10:
-        ['glazed','french'].includes(door.style??'')?1:3});
-  }
-  for(const [index,box] of COVER.entries()){
-    if(['chain-link-fence','iron-fence'].includes(box.fixture??''))continue;
-    // Full-height window glass has both a body collider and a pane event.
-    // Counting both would make thin glass absorb bullet energy twice.
-    if(box.fixture==='glass-barrier'&&s.windows.some(w=>
-      w.sillHeight===0&&Math.hypot(w.x-box.x,w.y-box.y)<1))continue;
-    const t=coverImpactFraction(from,aimed,fromZ,toZ,box);
-    if(t===null)continue;
-    hits.push({fraction:t,
-      material:box.material??materialForFixture(box.fixture),
-      thickness:Math.min(4,Math.max(1,Math.min(box.w,box.h)*.08)),
-      coverIndex:index});
-  }
-  const paneHits:{index:number;fraction:number}[]=[];
-  for(const [index,window] of s.windows.entries()){
-    if(window.shattered||window.open)continue;
-    const t=segmentImpact(from,aimed,windowPaneSegment(window));
-    if(t===null)continue;
-    const height=fromZ+(toZ-fromZ)*t;
-    if(height<(window.sillHeight??14)||height>(window.headHeight??32))continue;
-    hits.push({fraction:t,material:'glass',thickness:1});
-    paneHits.push({index,fraction:t});
-  }
-  const outcome=resolvePenetration(hits,energy);
-  const t=outcome.stoppedAt??1;
-  const surface=outcome.stoppedMaterial?
-    MATERIALS[outcome.stoppedMaterial].impact:'dust';
-  return {end:{x:from.x+(aimed.x-from.x)*t,
-    y:from.y+(aimed.y-from.y)*t},surface,
-    penetrated:outcome.penetrated,remaining:outcome.remaining,
-    paneHits:paneHits.filter(p=>p.fraction<=t+.00001).map(p=>p.index),
-    glassDoorHits:glassDoorHits.filter(p=>p.fraction<=t+.00001),
-    coverHits:hits.filter(h=>h.coverIndex!==undefined&&
-      h.fraction<=t+.00001).map(h=>({index:h.coverIndex!,fraction:h.fraction})),
-    materialHits:hits.filter(h=>h.fraction<=t+.00001)
-      .sort((a,b)=>a.fraction-b.fraction).map(h=>({fraction:h.fraction,
-      material:h.material}))};
 }
 /** Distinct pre-target penetration events leave physical evidence. */
 function emitMaterialEvents(s:Session,from:Pt,to:Pt,
