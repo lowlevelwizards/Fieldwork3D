@@ -201,8 +201,8 @@ const campaignScreen=new CampaignScreen({
  },
  importSave:(raw)=>{
   const next=importCampaign(raw);
-  if(!next){window.alert('The selected file is not a valid Fieldwork model.campaign save.');return;}
-  if(model.campaign&&!window.confirm('Replace the saved model.campaign with this import?'))return;
+  if(!next){window.alert('The selected file is not a valid Fieldwork campaign save.');return;}
+  if(model.campaign&&!window.confirm('Replace the saved campaign with this import?'))return;
   model.campaign=next;config.saveCampaign();showCampaignHome();
  }
 });
