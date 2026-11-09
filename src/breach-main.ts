@@ -5359,8 +5359,9 @@ function renderReplayEventMarkers():void{
 }
 function enterReplay(){
   if(replaying||recorder.frames.length<2)return;
-  finishedSession=state;replaying=true;replayPlayback.playing=true;replayPlayback.time=0;
-  replayPlayback.rate=1;replayPlayback.effectiveRate=1;
+  finishedSession=state;replaying=true;
+  replayPlayback.reset();replayPlayback.playing=true;
+  replayCamera.reset(stage);
   replayOmniscient=false;looking=false;flashMode=false;
   replayContactObserverId=null;
   replayBodycamOn=false;replayBodycamMount='chest';
@@ -5381,11 +5382,8 @@ function enterReplay(){
     new PersonalGroundHistory(recorder.personalGround):null;
   replayGroundLensOn=false;replayGroundCacheObserver=null;
   replayGroundCacheCount=-1;replayGroundCacheSite=null;
-  replayCamera.follow=false;replayAnalysis=false;replayCamera.followId='rook';
-  chooseReplayCamera('free');replayCamera.lens='ortho';
-  replayDirector.cues=[];
+  replayAnalysis=false;
   replayDirector.indexPlans(recorder.plans.revisions);
-  replayDirector.future=[];replayDirector.target=null;
   
   replayBookmarks=[];replayBookmarkCounter=0;
   replayPlanScope='none';replayPlanVersion='active';
@@ -5393,13 +5391,11 @@ function enterReplay(){
   replayObjectiveMarkers=true;replayOverlaySignature='';
   replayTraceMode='off';replayGhostMode='off';
   replayTrailMode='off';
-  replayPlayback.loopIn=null;replayPlayback.loopOut=null;replayPlayback.loopEnabled=false;
   replayPreset='clean';replayMomentsView='highlights';
   replayFeedFollowing=false;replayFeedActiveKey=null;
   ui.replayFeedFollow.setAttribute('aria-pressed','false');
   ui.replayFeedFollow.textContent='FOLLOW TIME OFF';
   closeReplayShotInspector();
-  rebuildReplayEventIndex();
   replayMovementHistory=new ReplayMovementHistory(recorder.frames,
     team(finishedSession).map(a=>a.id));
   replaySoundTimeline=new ReplaySoundTimeline(recorder.ballistics.shots,
@@ -5429,6 +5425,9 @@ function enterReplay(){
     bodycamHasPersonalGround(recorder.personalGround,id)));
   stage?.applySite(state.site??null);
   stage?.setReplayBodycam(null);
+  // The Director must build against the actual recorded site, not the prior
+  // live session (which may be a different map when loading a saved replay).
+  rebuildReplayEventIndex();
   // One-time historical index; only recorded friendly coordinates and
   // recorded door geometry, never current world positions or hidden AI.
   replaySquadEntries=featuredReplaySquadEntries(recorder.frames,
@@ -5447,16 +5446,11 @@ function exitReplay(){
   if(replayQuickVideo.active)replayQuickVideo.stop();
   stopReplayBodycam();replayBodycamObservers=[];
   replayXrayOn=false;stage?.setReplayXray(false);
-  stage?.setReplayDirectorFocus(null);
-  stage?.setReplayDirectorCameraAnchor(null);
+  replayCamera.reset(stage);
+  replayPlayback.reset();
   replayBodycamGroundObservers.clear();
-  replaying=false;replayPlayback.playing=false;replayPresentation=null;
-  replayEventIndex=null;replayDirector.cues=[];chooseReplayCamera('free');
-  replayDirector.planIndex=new Map();replayDirector.future=[];
-  replayDirector.filmBeats=[];replayDirector.entries=[];
-  replayDirector.storyboard=null;
-  stage?.setReplayDirectorCameraAnchor(null);
-  replayDirector.target=null;
+  replaying=false;replayPresentation=null;
+  replayEventIndex=null;
   
   replayChapters=[];replayBookmarks=[];
   replayIncidents=[];replayFeaturedIncidents=[];
@@ -5468,11 +5462,10 @@ function exitReplay(){
   replayPersonalGroundHistory=null;replayGroundLensOn=false;
   replayGroundCacheObserver=null;replayGroundCacheCount=-1;
   replayGroundCacheSite=null;
-  selectedReplayIncidentId=null;replayPlayback.incident=null;
+  selectedReplayIncidentId=null;
   ui.replayIncidentDetails.hidden=true;
   closeReplayShotInspector();
   replaySoundTimeline=null;replayMovementHistory=null;stopReplaySounds();
-  replayPlayback.loopIn=null;replayPlayback.loopOut=null;replayPlayback.loopEnabled=false;
   ui.replayFeed.replaceChildren();
   ui.replayDebriefMoments.replaceChildren();
   ui.replayObserverTransitions.replaceChildren();
