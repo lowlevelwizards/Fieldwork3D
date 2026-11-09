@@ -4,10 +4,10 @@
  */
 import {listSavedReplays,loadSavedReplay,deleteSavedReplay,
   setSavedReplayFavorite,getSavedReplayBookmarks,saveReplayArchive}
-  from './breach-replay-library.ts';
+  from '../breach-replay-library.ts';
 import {exportPortableReplay,importPortableReplay,REPLAY_FILE_SUFFIX}
-  from './breach-replay-portable.ts';
-import {formatReplayTime} from './breach-replay-transport.ts';
+  from '../breach-replay-portable.ts';
+import {formatReplayTime} from '../breach-replay-transport.ts';
 
 type UiRefs={
  replayLibraryDialog:HTMLElement;replayLibraryStatus:HTMLElement;
