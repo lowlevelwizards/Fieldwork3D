@@ -35,8 +35,11 @@ export function scoreDirectorCandidate(
     shot.editorialKind??'follow',lens,ctx.aspect,ctx.baseSpan,
     shot.zoom,shot.fov??108,.78,.76,ctx.safeFrame,
     shot.foregroundOperatorPoints??[]);
-  const heroVisible=quality.primaryReadable&&
-    directorSubjectVisibility(shot.cameraAnchor,hero,ctx.scene).readable;
+  const physicalHero=directorSubjectVisibility(
+    shot.cameraAnchor,hero,ctx.scene);
+  // A deliberately cropped shoulder is not an invisible operator.
+  const heroVisible=quality.primaryCoverage>=.48&&
+    physicalHero.fraction>=.43;
   const targetVisible=!!target&&quality.targetReadable&&
     directorSubjectVisibility(shot.cameraAnchor,target,ctx.scene).readable&&
     !directorLineBlocked(shot.cameraAnchor,target,ctx.scene);
