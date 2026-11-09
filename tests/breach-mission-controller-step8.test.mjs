@@ -172,11 +172,13 @@ test('main delegates lifecycle to one owner and keeps gameplay authoritative',()
    main.indexOf('function mountMissionSession('));
  for(const teardown of [
    'replayDirector.reset()','audioController.endReplay()',
-   'replayKnowledge.reset()','physicalActionRings.clear()',
+   'replayKnowledge.reset()','runtimeLoop.resetPresentation()',
    'replayMovementHistory=null']){
    assert.ok(release.includes(teardown),'missing teardown '+teardown);
  }
  assert.match(release,/campaignFlow\.resetOutcome\(\)/);
+  const runtime=readFileSync(new URL('../src/breach-runtime-loop.ts',import.meta.url),'utf8');
+  assert.match(runtime,/physicalActionRings\.clear\(\)/);
  const flow=readFileSync(new URL('../src/breach-campaign-flow.ts',import.meta.url),'utf8');
  assert.match(flow,/recordedOperation=null/);
  assert.match(controller,/newSession\(/);

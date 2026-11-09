@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+const runtime=readFileSync(new URL('../src/breach-runtime-loop.ts',import.meta.url),'utf8');
 const palette=readFileSync(new URL('../src/ui/tactical-palette-controller.ts',import.meta.url),'utf8');
 const css=readFileSync(new URL('../src/breach-style.css',import.meta.url),'utf8');
 
@@ -21,7 +22,8 @@ test('classic Floating uses original spring and route-aware placement, not Smart
   assert.match(palette,/new PaletteMotion\(\)/);
   assert.match(palette,/const result=placeContextMenu\(\{/);
   assert.match(palette,/tether\.style\.transform='rotate\('/);
-  assert.match(main,/advanceContextPalette\(dt\)/);
+  assert.match(runtime,/config\.advanceContextPalette\(dt\)/);
+  assert.match(main,/advanceContextPalette,/);
   assert.match(palette,/heldPointers\.size>0\|\|placementKey===lastPlacementKey/);
   assert.doesNotMatch(main,/quietFloatingPocket|quietTacticalSpace|quietReadyAt/);
   assert.doesNotMatch(css,/Smart floating|data-layout="bubbles"/);

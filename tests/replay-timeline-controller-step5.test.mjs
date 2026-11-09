@@ -105,8 +105,10 @@ test('playback and timeline responsibilities are no longer implemented inline in
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const playback=readFileSync(new URL('../src/breach-replay-playback-controller.ts',import.meta.url),'utf8');
  const timeline=readFileSync(new URL('../src/ui/breach-replay-timeline-controller.ts',import.meta.url),'utf8');
+  const runtime=readFileSync(new URL('../src/breach-runtime-loop.ts',import.meta.url),'utf8');
  assert.match(main,/createBreachReplayTimelineController\(\{/);
- assert.match(main,/replayPlayback\.advanceAndApply\(/);
+ assert.match(runtime,/replayPlayback\.advanceAndApply\(/);
+  assert.match(main,/playback:replayPlayback/);
  assert.match(main,/replayPlayback\.applyRecordedFrame\(/);
  assert.doesNotMatch(main,/function applyReplayFrameAt\(/);
  assert.doesNotMatch(main,/ui\.replayPlay\.addEventListener\(/);
