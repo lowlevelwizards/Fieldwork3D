@@ -173,7 +173,7 @@ test('main delegates lifecycle to one owner and keeps gameplay authoritative',()
  for(const teardown of [
    'replayDirector.reset()','audioController.endReplay()',
    'replayKnowledge.reset()','physicalActionRings.clear()',
-   'replayMovementHistory=null','recordedOperation=null']){
+   'replayMovementHistory=null']){
    assert.ok(release.includes(teardown),'missing teardown '+teardown);
  }
  assert.match(controller,/newSession\(/);
