@@ -114,6 +114,24 @@ export function activateSite(next:Site|null){
   // Runtime displacements never mutate the seed-derived site data.
 }
 export const activeSite=()=>site;
+/** Synchronous temporary geometry scope for offline audits / tools.
+ * Restore the EXACT previous live walls and displaced cover, not merely
+ * the seed-derived site layout. A prior mission may have moved furniture.
+ * Never cross an await boundary: simulation geometry remains module-global
+ * until the longer-term session context migration.
+ */
+export function withTemporarySiteGeometry<T>(next:Site|null,action:()=>T):T{
+ const previousSite=site;
+ const previousWalls=[...WALLS],previousCover=[...COVER];
+ activateSite(next);
+ try{return action();}
+ finally{
+  activateSite(previousSite);
+  WALLS.splice(0,WALLS.length,...previousWalls);
+  COVER.splice(0,COVER.length,...previousCover);
+ }
+}
+
 export const initialDoors=():Door[]=>
   (site?.doors??[
     {id:'FRONT',a:{x:282,y:532},b:{x:324,y:532},open:false,openedAt:-1},
