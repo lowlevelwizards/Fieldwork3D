@@ -28,7 +28,10 @@ export class ReplayCameraController{
  lens:'ortho'|'wide'='ortho';
  selectMode(wanted:ReplayCameraMode,view:ReplayPerspective,
     hasScene:boolean,bodycamActive:boolean):ReplayCameraMode{
-   this.mode=resolvedReplayCamera(wanted,view,hasScene,bodycamActive);
+   const available=resolvedReplayCamera(wanted,view,hasScene,bodycamActive);
+   // A camera mode is not active merely because a UI button requested it.
+   // The Director requires a prepared historical film to become selectable.
+   this.mode=available==='director'&&!this.director.storyboard?'free':available;
    this.follow=this.mode==='operator';
    if(this.mode!=='director')this.director.target=null;
    return this.mode;
@@ -53,9 +56,16 @@ export class ReplayCameraController{
     this.director.target=target;
     
     if(!target){
+      // A missing/invalid filmed shot cannot leave the UI in Director mode
+      // while the scene silently falls back to the ordinary projection.
+      this.mode='free';this.follow=false;
       this.director.grade=null;
       delete replayFollowStatus.dataset.grade;
+      replayFollowStatus.title='Director unavailable: no valid recorded shot';
       stage.setReplayDirectorCameraAnchor(null);
+      stage.setReplayDirectorFocus(null);
+      stage.setReplayDirectorSubjects([]);
+      if(debugPanel)debugPanel.hidden=true;
       return;
     }
     // Grade the ACTUAL held/tracked camera, not the raw staging candidate.

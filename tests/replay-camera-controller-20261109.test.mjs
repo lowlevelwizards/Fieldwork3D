@@ -8,6 +8,8 @@ test('replay camera controller owns mode, follows only operator mode, and resets
   assert.equal(camera.follow,true);
   assert.equal(camera.selectMode('director','plan2d',true,false),'free');
   assert.equal(camera.follow,false);
+  assert.equal(camera.selectMode('director','iso',true,false),'free');
+  camera.director.storyboard={sample:()=>null};
   assert.equal(camera.selectMode('director','iso',true,false),'director');
   camera.director.gradeKey='stale';
   camera.reset();
