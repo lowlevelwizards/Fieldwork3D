@@ -3,14 +3,14 @@
  * is captured before the next site activation, since breach-core retains
  * module-scoped active geometry for compatibility.
  */
-import {activateSite} from '../../src/breach-core.ts';
+import {withTemporarySiteGeometry} from '../../src/breach-core.ts';
 import {newSession,planMove,stepSession,team} from '../../src/breach-game.ts';
 
 const round=value=>Number(value.toFixed(5));
 export function runBreachScenario(seed,{ticks=90,dt=1/60}={}){
+ return withTemporarySiteGeometry(null,()=>{
  const session=newSession(0,seed,'full-view','small');
  const actors=team(session);
- try{
   const objective=session.site?.objective;
   const accepted=objective?actors.map(a=>Boolean(planMove(session,a.id,objective))):[];
   session.phase='running';
@@ -33,7 +33,5 @@ export function runBreachScenario(seed,{ticks=90,dt=1/60}={}){
    }
   }
   return {seed,accepted,samples};
- }finally{
-  activateSite(null);
- }
+ });
 }
