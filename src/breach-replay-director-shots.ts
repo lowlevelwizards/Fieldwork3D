@@ -72,6 +72,22 @@ export type DirectorShot=CinematicShot&{
   decisionAlternatives?:Array<{id:string;score:number;reason:string;
     viewpoint:string;framing:string}>
 };
+/** R10.1 invariant: every final camera must be behind and well to
+ * the side of the operator's ACTION axis, not merely their route. */
+export function directorShoulderSide(shot:Pick<DirectorShot,
+  'cameraAnchor'|'operatorPoint'|'actionAxis'>):number{
+  const actor=shot.operatorPoint,axis=shot.actionAxis;
+  if(!actor||!axis)return 0;
+  const n=Math.hypot(axis.x,axis.y);
+  if(n<.001)return 0;
+  const dx=axis.x/n,dy=axis.y/n;
+  const rx=shot.cameraAnchor.x-actor.x;
+  const ry=shot.cameraAnchor.y-actor.y;
+  const back=-(rx*dx+ry*dy);
+  const lateral=rx*dy-ry*dx;
+  return back>=18&&Math.abs(lateral)>=32&&
+    Math.abs(lateral)>=back*.42?Math.sign(lateral):0;
+}
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const mix=(a:Pt,b:Pt,t:number):Pt=>({
   x:a.x+(b.x-a.x)*t,y:a.y+(b.y-a.y)*t});
@@ -150,7 +166,7 @@ export function composeReplayDirectorShots(time:number,
     // target silhouette coverage test.
     target:plan.target,
     preferredYaw:Math.atan2(-direction.x,-direction.y),
-    followDirection:movementDirection,
+    followDirection:direction,
     motionSpeed:movementIntent?.speed??primary.velocity??0,
     // Entry and stack photographs deserve the door's full front face
     // just as much as the act of opening it.
@@ -292,8 +308,9 @@ export function composeReplayDirectorShots(time:number,
       if(decision.legal)results.push(built);
     }
   }
+  // Final camera candidates must satisfy the same invariant as playback.
   // Rank only the approved shoulder rig's legal alternatives.
-  return results.sort((a,b)=>(b.decisionScore??-Infinity)-
+  return results.filter(s=>directorShoulderSide(s)!==0).sort((a,b)=>(b.decisionScore??-Infinity)-
     (a.decisionScore??-Infinity)||
     (a.cameraAnchor.x-b.cameraAnchor.x)||
     (a.cameraAnchor.y-b.cameraAnchor.y)).slice(0,7);
