@@ -5,8 +5,6 @@ import type {MissionRecorder} from './breach-replay.ts';
 import type {DisplayRouteCache} from './breach-route-cache.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
-import {intelPassable} from './breach-intel.ts';
-import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 export type Route2DFrame={
  state:Session;replaying:boolean;selected:string;selectedNode:number|null;
  selectedActiveWatch:boolean;draggingNode:Pt|null;draggingWatchTarget:boolean;

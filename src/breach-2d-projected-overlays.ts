@@ -31,6 +31,7 @@ export type Projected2DFrame={
 export function createBreach2DProjectedOverlays(config:{
  draw:CanvasRenderingContext2D;
  line:(a:Pt,b:Pt,color:string,width:number)=>void;
+ uid:(id:string)=>TeamActor|undefined;
  circle:(x:number,y:number,r:number,color:string)=>void;
  worldToScreen:(p:Pt,height?:number)=>Pt;
  colorFor:(id:string)=>string;
@@ -44,7 +45,7 @@ export function createBreach2DProjectedOverlays(config:{
  route2D:ReturnType<typeof createBreach2DRouteOverlays>;
  replay2D:ReturnType<typeof createBreach2DReplayOverlays>;
 }){
- const {draw,line,circle,worldToScreen,colorFor,getFrame,selectedPlanNode,
+ const {draw,line,circle,uid,worldToScreen,colorFor,getFrame,selectedPlanNode,
    displayRouteCache,projectedRouteCache,drawExecutionProblem,replayKnowledge,
    replayCamera,route2D,replay2D}=config;
  const {draftRouteNeighbors,drawActiveWatchMarker,replayPlanFor}=route2D;

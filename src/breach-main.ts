@@ -7,7 +7,7 @@ import {
   type Session,type TeamActor,
   newSession,team,enemies,isSeen,lastKnown,missionText,debrief,
   operationBriefing,availableDeployments,selectDeployment,
-  planMove,planMoveStroke,plannedWindowRoute,planNearbyInteraction,
+  planMove,planMoveStroke,planNearbyInteraction,
   planCivilianInteraction,planAim,planWatch,
   retargetActiveWatch,removeActiveWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
   plannedControl,setNodeControl,setStartPace,planReloadAt,planDoorFlash,
@@ -15,7 +15,7 @@ import {
   finalPoint,doorAtNode,backOne,
   deletePlanNode,insertPlanNode,clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,stepSession,liveVisibility,
-  planReload,reloadNow,planFlash,moveFlashTarget,flashTrajectory,
+  planReload,reloadNow,planFlash,moveFlashTarget,
   equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,planEntryTool,
   planCasualtyTransport,planRecoverMedical,planCivilianRelease,
 } from './breach-game.ts';
@@ -36,7 +36,6 @@ import {tacticalHitProfile,shouldAppendStrokePoint,
   simplifyStrokePoints} from './ui/touch-hit-targets.ts';
 import {resolveTacticalPick,screenSegmentDistance,watchDragReady,
   type TacticalPick} from './ui/tactical-target-resolver.ts';
-import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {aimTargetFromTap,insideTacticalBounds} from './ui/aim-target.ts';
 import {interruptsWatch,angleDifference} from './breach-plan.ts';
@@ -70,7 +69,7 @@ import type {LightingMode} from './equipment-site-lighting.ts';
 import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
-import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
+import {shotVisibility,contactFade} from './breach-presentation.ts';
 import {heardIntensity} from './breach-acoustics.ts';
 import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
 import {defaultSoundPack,readSoundPack,SOUND_STORAGE_KEY} from './sound-catalog.ts';
@@ -3129,9 +3128,6 @@ const route2D=createBreach2DRouteOverlays({
   draggingNode,draggingWatchTarget,trace,cursor,looking,replayPlanVersion,
   replayPlanScope,recorder})
 });
-const draftRouteNeighbors=()=>route2D.draftRouteNeighbors();
-const drawActiveWatchMarker=route2D.drawActiveWatchMarker;
-const replayPlanFor=route2D.replayPlanFor;
 /** Gold denotes actual historically observed cells for the selected operator.
  * Shared geometry/doors/people remain shared and are NEVER claimed as POV.
  * Render only in the Floor Plan view; no speculative real-time raycasts.
@@ -3396,7 +3392,7 @@ const replay2D=createBreach2DReplayOverlays({
   replayMovementHistory})
 });
 const projected2D=createBreach2DProjectedOverlays({
- draw,line,circle,worldToScreen,colorFor,selectedPlanNode,
+ draw,line,circle,uid,worldToScreen,colorFor,selectedPlanNode,
  displayRouteCache,projectedRouteCache,drawExecutionProblem,
  replayKnowledge,replayCamera,route2D,replay2D,
  getFrame:()=>({state,replaying,selected,selectedNode,selectedActiveWatch,
