@@ -42,6 +42,8 @@ export type MissionScreensElements={
  siteLighting:HTMLButtonElement;
  siteSize:HTMLButtonElement;
  intelMode:HTMLButtonElement;
+ restart:HTMLButtonElement;
+ variant:HTMLButtonElement;
  uiHelp:HTMLButtonElement;
  briefingClose:HTMLButtonElement;
  cameraFit:HTMLButtonElement;
@@ -344,6 +346,35 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
 });
 
  }
+ function syncMissionPhase():void{
+  const phase=config.getSession().phase;
+  if(phase!=='planning'){
+    ui.briefingPanel.hidden=true;config.operationsBoard.hidden=true;
+  }
+  config.operationsToggle.hidden=
+    config.getMode()!=='quick'||phase!=='planning'||config.isReplaying();
+  config.operationsToggle.disabled=config.operationsToggle.hidden;
+  if(config.operationsToggle.hidden)config.operationsBoard.hidden=true;
+ }
+ function syncNextSiteControls():void{
+  const campaignMission=config.getMode()==='mission';
+  ui.variant.textContent='NEW SITE';
+  ui.variant.disabled=campaignMission;
+  ui.siteSize.disabled=campaignMission;
+  ui.intelMode.disabled=campaignMission;
+  ui.restart.disabled=campaignMission;
+  const returnButton=document.getElementById('campaignReturnButton') as HTMLButtonElement|null;
+  if(returnButton)returnButton.disabled=
+    campaignMission&&config.getSession().phase==='running';
+  ui.intelMode.textContent='NEXT SITE INTEL · '+
+    config.getIntel().replaceAll('-', ' ').toUpperCase();
+  ui.intelMode.disabled=campaignMission||config.isReplaying();
+  ui.intelMode.title=campaignMission?
+    'Campaign intelligence is defined by the active contract':
+    'Applies to your next new site; current mission stays unchanged';
+  ui.siteSize.textContent='NEXT SITE SIZE · '+config.getScale().toUpperCase();
+  ui.siteSize.disabled=campaignMission||config.isReplaying();
+ }
  function bindSitePreferences():void{
 ui.siteLighting.textContent='LIGHTING · '+config.getLighting().toUpperCase();
 ui.siteLighting.addEventListener('click',()=>{
@@ -399,7 +430,8 @@ ui.intelMode.addEventListener('click',()=>{
 
  }
  return {
-  bindSitePreferences,bindMenus,
+  bindSitePreferences,bindMenus,syncMissionPhase,syncNextSiteControls,
+  syncSheets:()=>tacticalSheetNavigation.sync(),
   closeSettings:closeMissionSettings,showBriefing:showMissionBriefing,
   navigation:tacticalSheetNavigation,collapse:collapseTacticalSheets,
   syncBriefingCard,setBriefingIntelTab,setBriefingView

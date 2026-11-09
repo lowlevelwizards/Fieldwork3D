@@ -736,7 +736,7 @@ const operationsBoardController=createBreachOperationsBoardController({
  getMode:()=>campaignMode,isReplaying:()=>replaying,
  saveRoster,applyRoster:()=>applyRosterIdentity(state,persistentRoster),
  refreshHud:updateHud,
- syncSheets:()=>tacticalSheetNavigation.sync(),
+ syncSheets:()=>missionScreens.syncSheets(),
  history:operationHistory,
  enterTrainingRange:()=>{
    campaignMode='quick';lastRangeTrial=null;
@@ -799,7 +799,6 @@ const missionScreens=createBreachMissionScreens({
  getFocusMode:()=>stage?.getMiniatureFocusMode(),
  setFocusMode:mode=>stage?.setMiniatureFocusMode(mode)
 });
-const tacticalSheetNavigation=missionScreens.navigation;
 const collapseTacticalSheets=missionScreens.collapse;
 const closeMissionSettings=missionScreens.closeSettings;
 const showMissionBriefing=missionScreens.showBriefing;
@@ -1383,13 +1382,8 @@ function updateHud(){
   recordCompletedOperation();
   refreshDeployment();
   const brief=operationBriefing(state);
-  syncBriefingCard();
-  if(state.phase!=='planning'){
-    ui.briefingPanel.hidden=true;operationsBoard.hidden=true;
-  }
-  operationsToggle.hidden=campaignMode!=='quick'||state.phase!=='planning'||replaying;
-  operationsToggle.disabled=operationsToggle.hidden;
-  if(operationsToggle.hidden)operationsBoard.hidden=true;
+  missionScreens.syncBriefingCard();
+  missionScreens.syncMissionPhase();
   hudController.renderPhase({
     phase:state.phase,started:state.started,replaying,seconds:state.seconds,
     phaseNode:ui.phase,clock:ui.clock,play:ui.play,
@@ -1441,22 +1435,7 @@ function updateHud(){
       document.createTextNode(stanceLabel));
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
-  ui.variant.textContent='NEW SITE';
-  ui.variant.disabled=campaignMode==='mission';
-  ui.siteSize.disabled=campaignMode==='mission';
-  ui.intelMode.disabled=campaignMode==='mission';
-  ui.restart.disabled=campaignMode==='mission';
-  const homeButton=document.getElementById('campaignReturnButton') as HTMLButtonElement|null;
-  if(homeButton)homeButton.disabled=campaignMode==='mission'&&state.phase==='running';
-  ui.loadout.disabled=campaignMode==='mission';
-  // These selectors configure the *next* site; they never reset current knowledge.
-  ui.intelMode.textContent='NEXT SITE INTEL · '+selectedIntelMode.replaceAll('-', ' ').toUpperCase();
-  ui.intelMode.disabled=campaignMode==='mission'||replaying;
-  ui.intelMode.title=campaignMode==='mission'?
-    'Campaign intelligence is defined by the active contract':
-    'Applies to your next new site; current mission stays unchanged';
-  ui.siteSize.textContent='NEXT SITE SIZE · '+requestedSiteScale.toUpperCase();
-  ui.siteSize.disabled=campaignMode==='mission'||replaying;
+  missionScreens.syncNextSiteControls();
   const flashLabel='FLASH ×'+state.flashRemaining;
   if(ui.flash.textContent!==flashLabel)
     ui.flash.replaceChildren(tacticalIcon('flash'),document.createTextNode(flashLabel));
