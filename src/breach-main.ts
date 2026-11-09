@@ -5009,6 +5009,11 @@ function advanceReplayCamera(dt:number,instant=false):void{
         ' REQUIRED / WIDE '+(target.wideCoverage?'FIT':'CROP')+
         '\\nSELECTED UTILITY '+(target.decisionScore?.toFixed(1)??'—')+
         ' / '+(target.decisionReason??'—')+
+        '\\nANGLE '+(target.decisionBreakdown?.viewpoint??'unknown')+
+        ' / FRAME '+(target.decisionBreakdown?.framing??'unknown')+
+        '\\nRUNNER-UPS '+(target.decisionAlternatives?.map(c=>
+          c.id+' '+c.score.toFixed(1)+' ('+c.viewpoint+'/'+c.framing+
+          ': '+c.reason+')').join(' | ')??'none')+
         '\\nCOMPOSITION '+(target.compositionQuality?
           target.compositionQuality.score.toFixed(1)+' / OTS '+
           (target.compositionQuality.shoulderReadable?'CLEAR':'FALLBACK'):
