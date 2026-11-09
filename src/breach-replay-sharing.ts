@@ -8,7 +8,7 @@
  * This is an incremental, deliberately reversible compression stage. No
  * lossy quantization, change to 20Hz capture, or simulation re-execution.
  */
-import type {ReplayFrame} from './breach-replay.ts';
+import type {ReplayFrame,ReplayActorFrame} from './breach-replay.ts';
 
 export const REPLAY_FULL_KEYFRAME_INTERVAL=40;
 
@@ -40,10 +40,28 @@ function sameValue(a:unknown,b:unknown):boolean{
   return count===otherCount;
 }
 
+/** Capture-side value reuse. Unlike sharing after cloning, this avoids
+ * allocating temporary deep copies for unchanged authored state on every
+ * moving frame. The caller skips reuse on independent keyframes. */
+export function reuseFrozenReplayValue<T>(
+  live:T,prior:T|undefined,clone:()=>T
+):T{
+  return prior!==undefined&&sameValue(live,prior)?prior:clone();
+}
+
 const shareableFields=[
   'doors','shots','casings','dropped','impactMarks','grenades',
   'flashBursts','intel','known','rescue','objective','knowledge'
 ] as const satisfies readonly (keyof ReplayFrame)[];
+
+/** Actor state changes every step, but loadout, route and treatment facts
+ * often remain identical for minutes. Share those immutable subtrees too;
+ * otherwise every moving pose retains redundant deep copies in the film. */
+const shareableActorFields=[
+  'plan','spareMagazines','medical','medicalSupplies',
+  'weaponConfiguration','skills','aimInstruction',
+  'watch','defense','traversal'
+] as const satisfies readonly (keyof ReplayActorFrame)[];
 
 export type ReplaySharingStats={
   sharedActors:number;sharedFields:number;fullKeyframes:number;
@@ -60,7 +78,16 @@ export function shareUnchangedReplayFrame(
   }
   for(let i=0;i<frame.actors.length;i++){
     const older=prior.actors[i],current=frame.actors[i];
-    if(older?.id===current.id&&sameValue(older,current)){
+    if(older?.id!==current.id)continue;
+    // Compare values rather than live object identity: a route or kit can be
+    // edited in place, and no previous frame may observe that future change.
+    for(const key of shareableActorFields){
+      if(sameValue(older[key],current[key])){
+        (current as unknown as Record<string,unknown>)[key]=older[key];
+        if(stats)stats.sharedFields++;
+      }
+    }
+    if(sameValue(older,current)){
       frame.actors[i]=older;
       if(stats)stats.sharedActors++;
     }

@@ -16,3 +16,17 @@ test('186: replay travel yaw is historical, not latest/future direction',()=>{
   assert.deepEqual(rec.presentation(1/60,['a']).feet,
     rec.presentation(1/60,['a']).feet);
 });
+
+test('186: live motion presentation skips historical door seeks without changing actor poses',()=>{
+  const rec=new ReplayMotionRecorder();
+  rec.record(0,[actor(170,170)],[{id:'D1',open:false,openFraction:0}]);
+  rec.record(1/60,[actor(171,170)],[{id:'D1',open:true,openFraction:.5}]);
+  const historical=rec.presentation(1/60,['a']);
+  const live=rec.presentation(1/60,['a'],false);
+  assert.equal(historical.doors.D1,.5);
+  assert.deepEqual(live.doors,{});
+  assert.deepEqual(live.feet,historical.feet);
+  assert.deepEqual(live.travelYaw,historical.travelYaw);
+  assert.deepEqual(live.pelvisYaw,historical.pelvisYaw);
+  assert.deepEqual(live.acceleration,historical.acceleration);
+});

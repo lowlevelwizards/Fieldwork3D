@@ -1,6 +1,6 @@
 /** Optional and allocation-bounded CPU frame measurements.
  * GPU work is asynchronous: renderer statistics are counts, NOT GPU milliseconds. */
-export type FrameMeasures={frame:number;cadence?:number;sim:number;scene:number;overlay:number;steps:number;draws:number;triangles:number};
+export type FrameMeasures={frame:number;cadence?:number;sim:number;scene:number;overlay:number;recording?:number;steps:number;draws:number;triangles:number};
 export class FrameMeter{
   private samples:FrameMeasures[]=[];
   add(value:FrameMeasures){this.samples.push(value);if(this.samples.length>120)this.samples.shift();}
@@ -14,7 +14,7 @@ export class FrameMeter{
       rafP50:percentile(series('cadence'),.5),
       rafP95:percentile(series('cadence'),.95),
       worst:percentile(series('frame'),1),
-      simulation:avg('sim'),scene:avg('scene'),overlay:avg('overlay'),
+      simulation:avg('sim'),recording:avg('recording'),scene:avg('scene'),overlay:avg('overlay'),
       steps:avg('steps'),draws:avg('draws'),triangles:avg('triangles')};
   }
 }

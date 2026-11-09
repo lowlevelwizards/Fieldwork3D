@@ -67,3 +67,60 @@ test('20Hz recording retains random-access sample and replayed operator outcomes
  const middle=recorder.sample(recorder.duration*.5);
  assert.ok(middle&&middle.actors.every(a=>Number.isFinite(a.heading)));
 });
+
+test('moving actors share stable nested state without merging different poses or authored changes',()=>{
+ const s=newSession(0),prior=snapshot(s),actor=s.operators[0];
+ actor.p.x+=1;
+ const next=snapshot(s);
+ shareUnchangedReplayFrame(prior,next,1);
+ assert.notStrictEqual(next.actors[0],prior.actors[0]);
+ for(const key of ['plan','spareMagazines','medical','medicalSupplies',
+   'weaponConfiguration','skills','aimInstruction','watch','defense','traversal']){
+   assert.strictEqual(next.actors[0][key],prior.actors[0][key],key);
+ }
+ // The live actor may now be edited, but must not mutate earlier film data.
+ actor.plan.push({kind:'move',p:{x:100,y:110}});
+ actor.skills={...actor.skills};
+ const authored=snapshot(s);
+ shareUnchangedReplayFrame(next,authored,2);
+ assert.notStrictEqual(authored.actors[0].plan,next.actors[0].plan);
+ assert.deepEqual(prior.actors[0].plan,[]);
+ assert.deepEqual(next.actors[0].plan,[]);
+ assert.strictEqual(authored.actors[0].skills,next.actors[0].skills);
+ const keyframe=snapshot(s);
+ shareUnchangedReplayFrame(authored,keyframe,REPLAY_FULL_KEYFRAME_INTERVAL);
+ assert.notStrictEqual(keyframe.actors[0].plan,authored.actors[0].plan);
+ assert.deepEqual(keyframe.actors[0],authored.actors[0]);
+ const playback=newSession(0);
+ applyReplayFrame(playback,authored);
+ assert.equal(playback.operators[0].plan.length,1);
+});
+
+test('capture-side sharing avoids new plan and kit clones between independent keyframes',()=>{
+ const s=newSession(0),rec=new MissionRecorder();
+ rec.capture(s,true);
+ const start=s.operators[0].p.x;
+ for(let i=1;i<=REPLAY_FULL_KEYFRAME_INTERVAL;i++){
+   s.seconds=i*.051;
+   s.operators[0].p.x=start+i*.05;
+   rec.capture(s);
+ }
+ assert.equal(rec.frames.length,REPLAY_FULL_KEYFRAME_INTERVAL+1);
+ const first=rec.frames[0].actors[0];
+ const moving=rec.frames[1].actors[0];
+ assert.notStrictEqual(first,moving);
+ for(const key of ['plan','skills','spareMagazines','medical','medicalSupplies',
+   'weaponConfiguration'])
+   assert.strictEqual(moving[key],first[key],
+     'unchanged '+key+' must be reused before any clone');
+ const keyframe=rec.frames[REPLAY_FULL_KEYFRAME_INTERVAL].actors[0];
+ for(const key of ['plan','skills','spareMagazines','medical','medicalSupplies',
+   'weaponConfiguration']){
+   if(first[key]!==undefined)
+     assert.notStrictEqual(keyframe[key],rec.frames.at(-2).actors[0][key],
+       'keyframe '+key+' must own an independent copy');
+ }
+ assert.equal(first.p.x,start);
+ assert.equal(moving.p.x,start+.05);
+ assert.equal(keyframe.p.x,start+REPLAY_FULL_KEYFRAME_INTERVAL*.05);
+});
