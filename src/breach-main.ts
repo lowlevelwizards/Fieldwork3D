@@ -120,6 +120,7 @@ import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
 import {createTacticalPaletteController} from './ui/tactical-palette-controller.ts';
+import {dispatchTacticalContextCommand} from './breach-tactical-context-command.ts';
 
 const el=<T extends HTMLElement>(id:string)=>{
   const node=document.getElementById(id);
@@ -1007,7 +1008,8 @@ function updateContext(){
 // One shared long-press handler is installed on each actual command button.
 // Duplicating a second timer on the palette caused conflicting 450/540ms holds.
 const handleContextAction=(event:MouseEvent)=>{
-  const button=(event.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
+  const button=(event.target as HTMLElement).closest<HTMLButtonElement>(
+    'button[data-action]');
   if(!button||state.phase!=='planning')return;
   const action=button.dataset.action;
   if(action)discoverAction(action,button.title);
@@ -1016,53 +1018,21 @@ const handleContextAction=(event:MouseEvent)=>{
   const beforeErrors=state.events.length;
   const node=selectedPlanNode();
   const door=doorFocusId?focusedDoor(a,node):undefined;
-  const current=plannedControl(state,selected,node?.id);
-  if(door&&action?.startsWith('ctxTool-')){
-    const method=action.slice('ctxTool-'.length) as EntryTool;
-    const nearNode=node&&distance(node.p,doorCenter(door))<=43;
-    if(!planEntryTool(state,selected,door.id,method,
-      nearNode?node.id:undefined))
-      state.events.push('EQUIPPED TOOL CANNOT OPERATE THIS DOOR');
-    doorFocusId=null;doorMenuDismissedId=door.id;
-    updateHud();return;
-  }
-  switch(action){
-    case 'ctxFire':{
-      const active=node?.firePolicyState??a.firePolicy;
-      const policy=active==='engage'?'hold':
-        active==='hold'?'return':'engage';
-      setFirePolicy(state,selected,policy,node?.id);
-      break;
+  const result=dispatchTacticalContextCommand({
+    state,selected,actor:a,node,door,action:action??'',
+    selectedActiveWatch,
+    medicalCandidate:at=>medicalCandidate(selected,at)
+  });
+  if(result.handled){
+    if(result.clearSelection){
+      selectedNode=null;selectedActiveWatch=false;
     }
-    case 'ctxSecureCivilian':
-    case 'ctxFollowCivilian':{
-      const civ=state.civilians.filter(c=>c.health>0&&
-        liveVisibility(state,c.p)&&
-        distance(finalPoint(a),c.p)<34)
-        .sort((x,y)=>distance(finalPoint(a),x.p)-
-          distance(finalPoint(a),y.p))[0];
-      const mode=action==='ctxSecureCivilian'?'secure':'follow';
-      if(!civ||!planCivilianInteraction(state,selected,civ.id,mode))
-        state.events.push('CIVILIAN INTERACTION NOT REACHABLE');
-      break;
-    }
-    case 'ctxReleaseCivilian':
-      if(!planCivilianRelease(state,selected))
-        state.events.push('NO CIVILIAN TRANSPORT TO RELEASE');
-      break;
-    case 'ctxDragCivilian':
-    case 'ctxCarryCivilian':{
-      const civ=state.civilians.filter(c=>c.health<=0&&
-        (!c.carriedById||c.carriedById===a.id)&&
-        liveVisibility(state,c.p)&&distance(finalPoint(a),c.p)<34)
-        .sort((x,y)=>distance(finalPoint(a),x.p)-
-          distance(finalPoint(a),y.p))[0];
-      if(!civ||!planCasualtyTransport(state,selected,civ.id,
-         state.scenario.extract,
-         action==='ctxCarryCivilian'?'carry':'drag'))
-        state.events.push('CIVILIAN TRANSPORT ROUTE NOT AVAILABLE');
-      break;
-    }
+    if(result.clearDoorFocus)doorFocusId=null;
+    if(result.dismissDoorId!==undefined)
+      doorMenuDismissedId=result.dismissDoorId;
+    if(result.invalidateFog)fog2D.invalidate();
+    if(result.skipFeedback){updateHud();return;}
+  }else switch(action){
     case 'ctxSuppress':
       firePlacement='suppress';hudController.facing.looking=false;flashMode=false;
       tacticalFeedback.emit('armed',node?.p??a.p,'SUPPRESS READY');
@@ -1073,78 +1043,30 @@ const handleContextAction=(event:MouseEvent)=>{
       break;
     case 'ctxLook':
       armFacing('look');
-      if(hudController.facing.looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP A DIRECTION');
+      if(hudController.facing.looking)tacticalFeedback.emit('armed',
+        node?.p??a.p,'TAP A DIRECTION');
       audioController.uiClickTone('select');return;
     case 'ctxDoor':{
       const available=focusedDoor(a,node);
       if(!available){state.events.push('NO KNOWN DOOR IN REACH');break;}
       doorFocusId=available.id;doorMenuDismissedId=null;
-      audioController.uiClickTone('select');
-      updateHud();return;
+      audioController.uiClickTone('select');updateHud();return;
     }
     case 'ctxWatch':
       armFacing('watch');
-      if(hudController.facing.looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP WATCH TARGET');
+      if(hudController.facing.looking)tacticalFeedback.emit('armed',
+        node?.p??a.p,'TAP WATCH TARGET');
       audioController.uiClickTone('select');return;
-    case 'ctxWait':{
-      if(node?.kind==='wait')setWaitDuration(state,selected,node.id,1);
-      else planWaitAt(state,selected,1,node?'end':'here',node?.id);
-      break;
-    }
-    case 'ctxStance':{
-      const value=current.posture==='stand'?'crouch':'stand';
-      if(node)setNodeControl(state,selected,node.id,'postureState',value);
-      else posture(state,selected);
-      fog2D.invalidate();break;
-    }
-    case 'ctxPace':{
-      const value=current.pace==='walk'?'run':'walk';
-      if(node)setNodeControl(state,selected,node.id,'paceState',value);
-      else setStartPace(state,selected,value);
-      break;
-    }
-    case 'ctxReload':
-      if(!planReloadAt(state,selected,node?.id))
-        state.events.push('CANNOT PLAN RELOAD');
-      break;
     case 'ctxPush':
-      pushMode=true;hudController.facing.looking=false;flashMode=false;firePlacement=null;
+      pushMode=true;hudController.facing.looking=false;flashMode=false;
+      firePlacement=null;
       tacticalFeedback.emit('armed',node?.p??a.p,'PUSH DIRECTION');
       showUiHelp('TAP OR DRAG AWAY FROM THE OBJECT TO CHOOSE PUSH DIRECTION',3600);
       audioController.uiClickTone('select');updateHud();return;
-    case 'ctxTreat':{
-      const patient=medicalCandidate(selected,node?.p??finalPoint(a));
-      if(!patient||!planMedicalTreatment(state,selected,patient.id,node?.id))
-        state.events.push('NO REACHABLE PATIENT WITH SUITABLE SUPPLIES');
-      break;
-    }
-    case 'ctxWindow':{
-      const at=node?.p??finalPoint(a);
-      const nearby=state.windows.filter(w=>w.operable&&!w.shattered&&
-        distance(at,{x:w.x,y:w.y})<54)
-        .sort((x,y)=>distance(at,{x:x.x,y:x.y})-
-          distance(at,{x:y.x,y:y.y}))[0];
-      if(!nearby||!planNearbyInteraction(state,selected,
-        nearby.open?'close-window':'open-window',node?.id))
-        state.events.push('NO OPERABLE WINDOW IN REACH');
-      break;
-    }
     case 'ctxDoorFlash':
       if(!door){state.events.push('SELECT A DOOR FIRST');break;}
       flashDoorId=door.id;flashMode=true;hudController.facing.looking=false;
       doorFocusId=null;doorMenuDismissedId=door.id;break;
-    case 'ctxDelete':
-      if(selectedActiveWatch)removeActiveWatch(state,selected);
-      else if(node)deletePlanNode(state,selected,node.id);
-      selectedNode=null;selectedActiveWatch=false;doorFocusId=null;break;
-    case 'ctxOpen':
-    case 'ctxClose':
-    case 'ctxKick':
-      if(door&&!doorAtNode(state,selected,door.id,
-        action==='ctxOpen'?'open':action==='ctxClose'?'close':'kick',
-        node&&distance(node.p,doorCenter(door))<=43?node.id:undefined))
-        state.events.push('DOOR NOT REACHABLE FROM THAT POINT');
-      doorFocusId=null;doorMenuDismissedId=door?.id??null;break;
   }
   const failed=state.events.length>beforeErrors;
   hudController.completeAction(
