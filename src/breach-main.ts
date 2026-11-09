@@ -8,7 +8,7 @@ import {
 } from './breach-core.ts';
 import {
   type Session,type TeamActor,
-  team,enemies,isSeen,missionText,debrief,
+  team,enemies,isSeen,missionText,
   operationBriefing,
   planMove,planMoveStroke,planNearbyInteraction,
   planCivilianInteraction,planAim,planWatch,
@@ -55,7 +55,6 @@ import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
-import {sessionIntelligenceReview} from './briefing/briefing-after-action.ts';
 import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
@@ -104,9 +103,6 @@ import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
-import {formatAfterAction} from './breach-after-action.ts';
-import {formatMissionPacing} from './breach-mission-pacing.ts';
-import {formatCombatReview} from './breach-combat-review.ts';
 import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
  serializeQuickPlayCosmetics} from './breach-roster.ts';
 import {readCampaign,tacticalSlotOperator,type CampaignState} from './campaign-state.ts';
@@ -119,6 +115,7 @@ import './ui/ux-r3-hud.css';
 import './ui/fieldwork-action-toast.css';
 import {confirmFieldworkAction} from './ui/fieldwork-controls.ts';
 import {createBreachMissionScreens} from './ui/breach-mission-screens.ts';
+import {renderMissionDebrief} from './ui/breach-mission-debrief.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
@@ -1322,47 +1319,10 @@ function updateHud(){
     '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
   ui.next.textContent=campaignMode==='mission'?'RETURN TO BASE':'NEXT ARRANGEMENT';
   ui.retry.disabled=campaignMode==='mission';
-  if(!ui.debrief.hidden){
-    ui.debriefIntelBlock.hidden=!state.operationDossier;
-    ui.debriefIntelText.textContent=state.operationDossier?
-      sessionIntelligenceReview(state):'';
-    const stats=debrief(state);
-    ui.debriefTitle.textContent=state.phase==='won'?'OPERATION COMPLETE':'MISSION FAILED';
-    ui.debriefGrade.textContent=stats.grade+' · '+stats.score;
-    ui.debriefSurvivors.textContent=stats.survived+' / '+team(state).length;
-    ui.debriefAccuracy.textContent=stats.accuracy+'%';
-    ui.debriefObjective.textContent=stats.objective?
-     'OBJECTIVE SECURED':'OBJECTIVE NOT COMPLETED';
-    ui.debriefStats.textContent=
-      'OPERATION: '+brief.name.toUpperCase()+'\nGRADE: '+stats.grade+
-      ' · SCORE '+stats.score+'\nTIME: '+stats.time+'s'+
-      '\nOBJECTIVE: '+(stats.objective?'SECURED':'NOT COMPLETED')+
-      '\nSURVIVORS: '+stats.survived+'/'+team(state).length+
-      '\nSHOTS: '+stats.shots+' | HITS: '+stats.hits+
-      ' | ACCURACY: '+stats.accuracy+'%'+
-      '\nCASUALTIES: '+stats.casualties+' · PAUSES: '+stats.pauses+
-      '\n'+stats.squad.map(o=>o.name+' '+(o.survived?
-        o.injury?'WOUNDED':'ACTIVE':'DOWN')+' · '+o.fired+' RDS').join('\n')+
-      '\nOPERATIONS LOGGED: '+operationHistory().length+
-      '\n\nMISSION PACING\n'+formatMissionPacing(recorder.events)+
-      '\n\nCOMBAT REVIEW\n'+formatCombatReview(recorder.frames,recorder.events,
-      recorder.ballistics.shots)+
-      '\n\nTACTICAL TIMELINE\n'+formatAfterAction(recorder.events,10);
-    if(stats.rescueStatus!=='none')
-      ui.debriefStats.textContent+='\nCIVILIAN RESCUE: '+
-        stats.rescueStatus.toUpperCase().replaceAll('-',' ');
-    if(campaignMode==='mission'&&campaign?.history.length){
-     const recent=campaign.history[campaign.history.length-1];
-     const lines=recent.gains?.flatMap(person=>{
-      const member=campaign?.operators.find(m=>m.id===person.id);
-      const improvements=Object.entries(person.gains)
-       .filter(([,gain])=>(gain??0)>0)
-       .map(([skill,gain])=>skill.replace(/([A-Z])/g,' $1')+' +'+((gain??0)*100).toFixed(1));
-      return improvements.length?[((member?.callsign??person.id)+': '+improvements.join(', '))]:[];
-     })??[];
-     if(lines.length)ui.debriefStats.textContent+='\n\nCAREER DEVELOPMENT\n'+lines.join('\n');
-    }
-  }
+  if(!ui.debrief.hidden)renderMissionDebrief({
+    ui,state,brief,recorder,campaign,campaignMode,
+    operationsLogged:operationHistory().length
+  });
   for(const id of squadIds){
     hudController.renderOperatorCard({
       state,replaying,selected,id,actor:uid(id),
