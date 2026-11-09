@@ -89,7 +89,7 @@ test('real generated outdoor props stay out of the street, not just utilities',(
 });
 
 test('3D renderer shares roadway geometry and never paints a drive from the door',()=>{
- const source=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
+ const source=readFileSync(new URL('../src/rendering/breach-site-exterior-builder.ts',import.meta.url),'utf8');
  assert.match(source,/const street=planPublicStreet\(site\)/);
  assert.match(source,/street\.road\.width,\.24,street\.road\.depth/);
  assert.doesNotMatch(source,/Math\.abs\(site\.entrance\.x-edge\)\+10/);
