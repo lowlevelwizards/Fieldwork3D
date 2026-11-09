@@ -1,12 +1,24 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-test('saved-replay DOM rendering is owned by the replay library UI module',()=>{
+test('replay presentation and file handling are isolated from the tactical entrypoint',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- const library=readFileSync(new URL('../src/ui/breach-replay-library-ui.ts',import.meta.url),'utf8');
- assert.ok(main.includes('createReplayLibraryUi({'));
- assert.ok(!main.includes("const fragment=document.createDocumentFragment();\n    for(const item of entries)"));
- assert.ok(library.includes('async function renderSavedReplayLibrary()'));
- assert.ok(library.includes('async function importSavedReplayFile('));
- assert.ok(library.includes('async function exportSavedReplayFile('));
+ const controller=readFileSync(new URL('../src/ui/breach-replay-library-controller.ts',import.meta.url),'utf8');
+ const view=readFileSync(new URL('../src/ui/breach-replay-library-ui.ts',import.meta.url),'utf8');
+ assert.match(main,/createBreachReplayLibraryController\(\{/);
+ assert.doesNotMatch(main,/createReplayLibraryUi\(\{/);
+ assert.doesNotMatch(main,/function renderFavoriteMissions\(/);
+ assert.doesNotMatch(main,/async function playSavedReplay\(/);
+ assert.doesNotMatch(main,/async function saveCurrentReplay\(/);
+ assert.doesNotMatch(main,/ui\.replayExportJson\.addEventListener\(/);
+ assert.match(controller,/createReplayLibraryUi\(\{/);
+ assert.match(controller,/function favoriteCurrentMission\(/);
+ assert.match(controller,/async function playSavedReplay\(/);
+ assert.match(controller,/async function saveCurrentReplay\(/);
+ assert.match(controller,/function afterReplayExit\(/);
+ assert.match(controller,/function exportJsonReport\(/);
+ assert.match(view,/async function renderSavedReplayLibrary\(/);
+ assert.match(view,/async function importSavedReplayFile\(/);
+ assert.match(view,/async function exportSavedReplayFile\(/);
+ assert.match(view,/replayLibraryRenderGeneration/);
 });
