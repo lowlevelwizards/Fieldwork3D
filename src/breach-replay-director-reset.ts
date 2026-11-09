@@ -340,30 +340,9 @@ export class ReplayDirectorStoryboard{
       return {...following,sceneStartIndex:prior.sceneStartIndex,
         cameraDecision:following.cameraDecision??'hold:committed-shot'};
     }
-    const better=(best.editorialPriority??0)-
-      (retained?.editorialPriority??prior.editorialPriority??0);
     const lostPreviousSubject=!sameActor.length||!following;
-    const meaningfulChange=!sameSubject||!sameRoom||
-      (best.actionAxis&&prior.actionAxis&&
-       best.actionAxis.x*prior.actionAxis.x+
-       best.actionAxis.y*prior.actionAxis.y<.82)||
-      better>=1.4;
-    const residence=3.0;
-    // A new disclosed contact or actual threshold crossing takes priority
-    // over the residence rule. Losing the current subject/shoulder also
-    // demands prompt recovery; staying is not proof of continuity.
-    if(!newInformation&&!lostPreviousSubject&&elapsed<residence){
-      return {...following!,sceneStartIndex:prior.sceneStartIndex,
-        cameraDecision:'hold:no-meaningful-edit'};
-    }
-    if(!newInformation&&!meaningfulChange&&following)
-      return {...following,sceneStartIndex:prior.sceneStartIndex,
-        cameraDecision:'hold:no-meaningful-edit'};
-    // For an ordinary editorial handoff (not a reveal or lost frame),
-    // insist on enough residence to make the change intelligible.
-    if(!newInformation&&following&&elapsed<residence)
-      return {...following,sceneStartIndex:prior.sceneStartIndex,
-        cameraDecision:'hold:shot-commitment'};
+    // When the previous actor is no longer in any viable setup, allow
+    // only a short bridge; the frame must follow CURRENT recorded action.
     if(!newInformation&&lostPreviousSubject&&elapsed<1.0&&
       this.legal(prior,scene))
       return {...prior,cameraDecision:'hold:short-edit-bridge'};
@@ -400,10 +379,9 @@ export class ReplayDirectorStoryboard{
     const cut=from.sceneStartIndex!==to.sceneStartIndex||
       from.primaryActorId!==to.primaryActorId||
       from.roomId!==to.roomId||
-      directorShoulderSide(from)!==directorShoulderSide(to)||
-      // Editorial labels are not edits. A tracked setup can change from
-      // stack to entry or follow while its actual shoulder remains stable.
-      false;
+      // Editorial labels are not edits: a tracked setup can change
+      // from stack to entry without changing its actual shoulder.
+      directorShoulderSide(from)!==directorShoulderSide(to);
     // Never pre-reveal the next beat by transitioning early.
     if(cut)return from;
     const p=clamp(fraction,0,1);
