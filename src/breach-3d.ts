@@ -2461,7 +2461,6 @@ export class TacticalScene3D{
     for(const opening of this.architecturalOpenings)
       opening.obj.visible=architecturalOpeningKnown(s,opening.opening,omniscient);
     for(const detail of this.observedDetails){
-      const p=detail.position;
       // Object positions are site-static: precompute tile keys at build time.
       detail.obj.visible=presentDecor(s,detail,omniscient,
         bodycamAudition,personalGroundEvidence);
