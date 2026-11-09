@@ -36,6 +36,8 @@ import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {microKeyAt} from './breach-fog-memory.ts';
 import {groundView,groundViewCandidate} from './breach-ground-view.ts';
+import {sightDiagnosticsEnabled,sightDiagnosticCounts}
+ from './breach-sight-cost-counters.ts';
 import {cachedActorGroundView} from './breach-live-visual-candidates.ts';
 import {notePersonalGround} from './breach-replay-personal-ground.ts';
 import {assessFireLane,fireLaneReachable,type FireBlock} from './breach-fire-safety.ts';
@@ -5327,20 +5329,30 @@ export function knownAt(s:Session,x:number,y:number){
 export function observerPointVisible(
   s:Session,observer:TeamActor,p:Pt
 ):boolean{
-  return observer.side==='blue'&&observer.health>0&&
-    groundViewCandidate(cachedActorGroundView(observer),p.x,p.y)&&
-    unobstructed(observer.p,p,s,observer.posture==='crouch');
+  if(sightDiagnosticsEnabled)sightDiagnosticCounts.personalQueries++;
+  if(observer.side!=='blue'||observer.health<=0||
+     !groundViewCandidate(cachedActorGroundView(observer),p.x,p.y))
+    return false;
+  if(sightDiagnosticsEnabled)sightDiagnosticCounts.personalOcclusionProbes++;
+  return unobstructed(observer.p,p,s,observer.posture==='crouch');
 }
 export function liveVisibility(s:Session,p:Pt){
-  if(s.intel.mode==='full-view')return true;
-  // Sight checks can run hundreds of times per render. Reuse the same
-  // exact-candidate field-of-view policy as terrain exploration and avoid
-  // repeated hypot/atan2. Recompute the cached pose immediately whenever
-  // an actor moves or turns; never memoize the LOS/occlusion result itself.
+  if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveQueries++;
+  if(s.intel.mode==='full-view'){
+    if(sightDiagnosticsEnabled)sightDiagnosticCounts.fullViewQueries++;
+    return true;
+  }
+  // Count potential LOS work only for opt-in diagnostics. Every real
+  // occlusion query remains authoritative; these are not sight caches.
+  // The normal path pays only the disabled Boolean checks.
   for(const a of s.operators){
     if(a.side!=='blue'||a.health<=0)continue;
-    if(groundViewCandidate(cachedActorGroundView(a),p.x,p.y)&&
-       unobstructed(a.p,p,s,a.posture==='crouch'))return true;
+    if(!groundViewCandidate(cachedActorGroundView(a),p.x,p.y))continue;
+    if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveOcclusionProbes++;
+    if(unobstructed(a.p,p,s,a.posture==='crouch')){
+      if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveHits++;
+      return true;
+    }
   }
   return false;
 }

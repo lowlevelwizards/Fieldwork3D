@@ -107,8 +107,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+  sight-diagnostics-p10:
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/sight-diagnostics-p10-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: P10 critical visibility counter isolation and fog/POV parity
+        run: |
+          node --experimental-strip-types --test tests/sight-cost-counters-p10.test.mjs tests/sight-cost-overlay-p10.test.mjs tests/live-visual-candidate-p8.test.mjs tests/runtime-hotpaths-visibility-door.test.mjs tests/breach-fog-visibility.test.mjs tests/visibility-08-closed-door-seals.test.mjs tests/replay-r43-personal-visibility.test.mjs
+      - name: Production build and TypeScript check
+        run: npm run build
+      - name: Previous live Pages build checkpoint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
   verify:
-    if: ${{ github.event_name != 'pull_request' || !(startsWith(github.head_ref, 'perf/runtime-lifecycle-') || startsWith(github.head_ref, 'perf/sim-replay-hotpaths-') || startsWith(github.head_ref, 'perf/presentation-knowledge-p7-') || startsWith(github.head_ref, 'perf/live-visibility-candidate-p8-') || startsWith(github.head_ref, 'perf/simulation-frame-p9-')) }}
+    if: ${{ github.event_name != 'pull_request' || !(startsWith(github.head_ref, 'perf/runtime-lifecycle-') || startsWith(github.head_ref, 'perf/sim-replay-hotpaths-') || startsWith(github.head_ref, 'perf/presentation-knowledge-p7-') || startsWith(github.head_ref, 'perf/live-visibility-candidate-p8-') || startsWith(github.head_ref, 'perf/simulation-frame-p9-') || startsWith(github.head_ref, 'perf/sight-diagnostics-p10-')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
