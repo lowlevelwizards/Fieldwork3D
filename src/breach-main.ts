@@ -51,6 +51,7 @@ import {BreachMissionController,type MissionTransition} from './breach-mission-c
 import {createBreachQuickPlayController} from './breach-quickplay-controller.ts';
 import {createBreachCampaignFlow} from './breach-campaign-flow.ts';
 import {createOperatorStudioBridge} from './operator-studio-bridge.ts';
+import {createBreachEquipmentEditorBridge} from './breach-equipment-editor-bridge.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
@@ -819,44 +820,21 @@ function rememberQuickWorkbenchView(){
 /** Full Arsenal editor uses the same pure draft and resolver as the standalone gallery.
  * Quick Play commits remain in the transient roster; weapon/kit progress is not saved.
  */
-async function openQuickArsenal(id:string){
- if(state.phase!=='planning'||replaying||campaignMode!=='quick')return;
- const member=persistentRoster.members.find(m=>m.id===id);
- if(!member)return;
- try{
-  const [{arsenalRecipeFromLegacy},{openArsenalWorkbench},
-   {applyQuickPlayArsenalEdit,quoteQuickPlayArsenalEdit}]=await Promise.all([
-    import('./arsenal/recipes.ts'),import('./arsenal/workbench-screen.ts'),
-    import('./arsenal/quickplay-adapter.ts')]);
-  if(state.phase!=='planning'||replaying||campaignMode!=='quick')return;
-  const current=persistentRoster.members.find(m=>m.id===id);
-  const recipe=current&&arsenalRecipeFromLegacy(current.weaponConfiguration);
-  if(!current||!recipe){showUiHelp('THIS WEAPON USES THE LEGACY LOADOUT EDITOR',3000);return;}
-  openArsenalWorkbench({id:'equipped-quick-'+id,name:current.callsign,recipe},undefined,{
-   mode:'quick',applyLabel:'APPLY TO OPERATOR',
-   quote:r=>{
-    const result=quoteQuickPlayArsenalEdit(persistentRoster,id,r);
-    return {...result,canCommit:result.valid};
-   },
-   onApply:nextRecipe=>{
-    if(state.phase!=='planning'||replaying||campaignMode!=='quick')
-     return {ok:false,message:'Equipment changes are only available before deployment'};
-    const next=applyQuickPlayArsenalEdit(persistentRoster,id,nextRecipe);
-    if(next===persistentRoster&&
-     !persistentRoster.members.some(m=>m.id===id))
-     return {ok:false,message:'Operator is unavailable'};
-    persistentRoster=next;
-    applyRosterIdentity(state,persistentRoster);
-    expandedQuickKit=id;expandedQuickWeapon=id;
-    expandedQuickLoadoutGroup='weapon';
-    renderOperationsBoard();updateHud();
-    return {ok:true};
-   }
-  });
- }catch{
-  showUiHelp('ARSENAL UNAVAILABLE · EXISTING LOADOUT EDITOR STILL WORKS',4000);
- }
-}
+const equipmentEditor=createBreachEquipmentEditorBridge({
+ getRoster:()=>persistentRoster,setRoster:value=>{persistentRoster=value;},
+ getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},
+ getSession:()=>state,getMode:()=>campaignMode,isReplaying:()=>replaying,
+ saveCampaign,showHelp:showUiHelp,
+ onQuickApplied:id=>{
+   applyRosterIdentity(state,persistentRoster);
+   expandedQuickKit=id;expandedQuickWeapon=id;
+   expandedQuickLoadoutGroup='weapon';
+   renderOperationsBoard();updateHud();
+ },
+ onCampaignApplied:()=>showCampaignHome()
+});
+const openQuickArsenal=equipmentEditor.openQuickArsenal;
+const openCampaignArsenal=equipmentEditor.openCampaignArsenal;
 function renderOperationsBoard(){
  const priorScroll=operationsBoard.scrollTop;
  rememberQuickWorkbenchView();
@@ -3256,39 +3234,6 @@ const launchQuickPlay=()=>quickPlayController.launch();
 /** Campaign Arsenal drafts are always re-quoted against live ownership and credits.
  * The existing editor remains usable until the new UI completes its cutover.
  */
-async function openCampaignArsenal(id:string){
- if(!campaign||campaign.activeContractId)return;
- try{
-  const [{arsenalRecipeFromLegacy},{openArsenalWorkbench},
-   {quoteCampaignArsenalEdit,commitCampaignArsenalEdit}]=await Promise.all([
-    import('./arsenal/recipes.ts'),import('./arsenal/workbench-screen.ts'),
-    import('./arsenal/campaign-adapter.ts')]);
-  const member=campaign?.operators.find(o=>o.id===id&&o.status!=='retired'&&o.status!=='lost');
-  if(!campaign||campaign.activeContractId||!member)return;
-  const recipe=arsenalRecipeFromLegacy(member.weaponConfiguration);
-  if(!recipe){showUiHelp('THIS WEAPON USES THE LEGACY ARMORY',3000);return;}
-  openArsenalWorkbench({id:'equipped-campaign-'+id,name:member.callsign,recipe},undefined,{
-   mode:'campaign',applyLabel:'EQUIP WEAPON',
-   quote:r=>campaign?quoteCampaignArsenalEdit(campaign,id,r):
-    {valid:false,canCommit:false,reason:'Campaign unavailable'},
-   onApply:r=>{
-    if(!campaign)return {ok:false,message:'Campaign unavailable'};
-    const before=campaign;
-    const result=commitCampaignArsenalEdit(before,id,r);
-    if(!result.quote.canCommit)
-     return {ok:false,message:result.quote.reason??'Cannot equip this build'};
-    if(result.state===before)return {ok:true};
-    campaign=result.state;
-    if(!saveCampaign()){
-     campaign=before;return {ok:false,message:'Could not save Campaign. No equipment was changed.'};
-    }
-    showCampaignHome();return {ok:true};
-   }
-  });
- }catch{
-  showUiHelp('ARSENAL UNAVAILABLE · EXISTING ARMORY STILL WORKS',4000);
- }
-}
 const campaignFlow=createBreachCampaignFlow({
   getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},saveCampaign,
   getMode:()=>campaignMode,setMode:mode=>{campaignMode=mode;},
