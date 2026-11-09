@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {releaseEmbeddedCover} from '../src/breach-cover-release.ts';
 import {passageDeadlockRetreatTarget,passageIdleYieldStep}
   from '../src/breach-passage.ts';
+import {twoSidedSqueezePressure} from '../src/breach-navigation.ts';
 import {windowVisualHeadHeight,SERVING_COUNTER_VISUAL_HEIGHT}
   from '../src/breach-opening-proportions.ts';
 import {eyeHeight,coverHeight} from '../src/breach-cover-height.ts';
@@ -40,6 +41,17 @@ test('retreat belongs to one stalled claimant, not two competing squeezes',()=>{
    'ordinary brief pauses are not deadlocks');
  assert.equal(passageDeadlockRetreatTarget(b,[door],candidates,()=>false),
    null,'physical swept clearance always vetoes the recovery');
+});
+test('a single furniture-side obstruction cannot trigger surprise squeeze',()=>{
+ const from=p(250,600),to=p(252,600);
+ const block=(id,y)=>({id,a:p(245,y),b:p(257,y),
+   open:false,openedAt:0,openFraction:0});
+ assert.equal(twoSidedSqueezePressure(from,to,[]),false);
+ assert.equal(twoSidedSqueezePressure(from,to,[block('ONE',610)]),
+   false,'one-sided graze should use ordinary slide or detour');
+ assert.equal(twoSidedSqueezePressure(from,to,
+   [block('NORTH',610),block('SOUTH',590)]),
+   true,'two-sided narrow passage permits oriented squeeze');
 });
 test('idle doorway occupancy yields smoothly without moving a planned holder',()=>{
  const door={id:'D',a:p(90,100),b:p(126,100),open:true,
