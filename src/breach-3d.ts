@@ -687,6 +687,9 @@ export class TacticalScene3D{
   private readonly frameGrenadeIds=new Set<number>();
   private readonly frameFlashIds=new Set<number>();
   private windowGlass=new Map<string,THREE.Mesh>();
+  /** Scratch index rebuilt from current session data; never hold prior
+   * replay snapshots or a site's mutable window array across frames. */
+  private readonly frameWindowsById=new Map<string,Session['windows'][number]>();
   private windowShards:THREE.InstancedMesh|null=null;
   private readonly shardMatrix=new THREE.Object3D();
   private coverGroups=new Map<number,THREE.Group>();
@@ -2351,8 +2354,15 @@ export class TacticalScene3D{
       this.effects.add(this.windowShards);
     }
     let shardCount=0;
+    // Larger generated sites have many panes. An ephemeral index avoids
+    // scanning the entire window list once per rendered pane.
+    const indexWindows=this.windowGlass.size>8&&s.windows.length>8;
+    this.frameWindowsById.clear();
+    if(indexWindows)for(const pane of s.windows)
+      this.frameWindowsById.set(pane.id,pane);
     for(const [id,glass] of this.windowGlass){
-      const current=s.windows.find(w=>w.id===id);
+      const current=indexWindows?this.frameWindowsById.get(id):
+        s.windows.find(w=>w.id===id);
       const seen=personalWindows&&replayDisclosurePolicy?.observerId?
         replayWindowHistory?.at(s.seconds,replayDisclosurePolicy.observerId,id):
         null;
