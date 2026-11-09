@@ -4814,7 +4814,7 @@ function rebuildReplayEventIndex():void{
 /** Runtime only bridges the camera controller to the current replay view. */
 function advanceReplayCamera(dt:number,instant=false):void{
   replayCamera.advance({
-    dt,instant,replaying,stage,viewMode,state,recorder,replayPlayback.time,
+    dt,instant,replaying,stage,viewMode,state,recorder,replayTime:replayPlayback.time,
     replayContactObserverId,replayOmniscient,cssW,cssH,
     replayFollowStatus:ui.replayFollowStatus,debugPanel:replayDirectorDebugPanel
   });
