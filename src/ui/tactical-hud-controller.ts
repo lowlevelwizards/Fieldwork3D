@@ -108,7 +108,7 @@ export function createTacticalHudController(){
     node:TeamActor['plan'][number]|undefined;
     selectedActiveWatch:boolean;watchTargetPresent:boolean;
     iconFor:(id:string,label:string)=>string;
-    icon:(key:string)=>HTMLElement;
+    icon:(key:string)=>SVGSVGElement;
     installHelp:(button:HTMLButtonElement)=>void;
   }):void{
     const {state,actor,node,quickStates}=input;
@@ -183,7 +183,7 @@ export function createTacticalHudController(){
     phase:Session['phase'];started:boolean;replaying:boolean;seconds:number;
     phaseNode:HTMLElement;clock:HTMLElement;play:HTMLButtonElement;
     reducedMotion:boolean;
-    icon:(key:string)=>HTMLElement;
+    icon:(key:string)=>SVGSVGElement;
   }):void{
     config.phaseNode.textContent=config.replaying?'REPLAY':
       config.phase==='planning'?(config.started?'PAUSED':'PLANNING'):
