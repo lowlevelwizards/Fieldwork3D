@@ -17,6 +17,7 @@
     "audit:r8-modes": "node --experimental-strip-types scripts/audit-r8-modes.mjs",
     "audit:realism": "node --experimental-strip-types scripts/audit-realism-release.mjs",
     "bench:operator-lighting": "node --experimental-strip-types scripts/bench-operator-lighting.mjs",
+    "bench:round-lifetime": "node --experimental-strip-types scripts/bench-breach-round-lifetime.mjs",
     "build": "tsc --noEmit && vite build && node scripts/stamp-pages.mjs",
     "preview": "vite preview --host 0.0.0.0"
   },
