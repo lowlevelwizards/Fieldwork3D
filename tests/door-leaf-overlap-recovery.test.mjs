@@ -50,15 +50,22 @@ test('normal capsule does not become the tiny hinge collider while door opens',(
    previous=current;
  }
 });
-test('contact from the closing side never pushes the hinge farther open',()=>{
- const d=make(),b=basis(d);
- const wrong=b.point(b.open,14),against=b.point(b.open,-14);
- assert.equal(pressDoorOnBodyAttempt(wrong,against,[d],1/60,[wrong]),null);
- assert.equal(d.openFraction,1);
- const right=b.point(b.open,-14),toward=b.point(b.open,14);
- const result=pressDoorOnBodyAttempt(right,toward,[d],1/60,[right]);
- assert.equal(result?.doorId,d.id);
- assert.equal(result?.advanced,true);
+test('reverse-face solo pressure closes, opposite face continues to open',()=>{
+ const door=make(),basisAt=basis(door);
+ const closer=basisAt.point(basisAt.open,14);
+ const intoDoor=basisAt.point(basisAt.open,-14);
+ const closing=pressDoorOnBodyAttempt(closer,intoDoor,[door],1/60,[closer]);
+ assert.equal(closing?.doorId,door.id);
+ assert.equal(door.open,false,'solo incidental closing is intentional');
+ assert.ok(door.openFraction<=1,'closing pressure cannot push further open');
+ // Verify opening pressure independently, before the first door is latched.
+ const openingDoor=make(),openingBasis=basis(openingDoor);
+ const opener=openingBasis.point(openingBasis.open,-14);
+ const through=openingBasis.point(openingBasis.open,14);
+ const opening=pressDoorOnBodyAttempt(opener,through,[openingDoor],1/60,[opener]);
+ assert.equal(opening?.doorId,openingDoor.id);
+ assert.equal(opening?.advanced,true);
+ assert.equal(openingDoor.open,true);
 });
 test('overlapped operator cannot travel along inside leaf; bounded escape increases clearance',()=>{
  const d=make(),b=basis(d),from=b.mid;

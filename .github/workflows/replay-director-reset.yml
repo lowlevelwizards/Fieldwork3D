@@ -3,8 +3,11 @@ on:
   pull_request:
     paths:
       - 'src/breach-replay-director-reset.ts'
+      - 'src/breach-replay-*-controller.ts'
       - 'src/breach-main.ts'
       - 'tests/replay-director-reset.test.mjs'
+      - 'tests/replay-*-controller-20261109.test.mjs'
+      - 'tests/replay-lifecycle-controller-20261109.test.mjs'
       - '.github/workflows/replay-director-reset.yml'
 permissions:
   contents: read
@@ -17,5 +20,13 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - name: Deterministic shoulder, disclosure and camera handoff
-        run: node --experimental-strip-types --test tests/replay-director-reset.test.mjs tests/replay-director-r101-shoulder-invariant.test.mjs
+      - name: Deterministic shoulder, disclosure, camera and replay controller transitions
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-director-reset.test.mjs \
+            tests/replay-director-r101-shoulder-invariant.test.mjs \
+            tests/replay-bodycam-controller-20261109.test.mjs \
+            tests/replay-camera-controller-20261109.test.mjs \
+            tests/replay-knowledge-controller-20261109.test.mjs \
+            tests/replay-lifecycle-controller-20261109.test.mjs \
+            tests/replay-playback-controller-20261109.test.mjs

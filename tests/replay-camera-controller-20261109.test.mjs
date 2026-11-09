@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {ReplayCameraController} from '../src/breach-replay-camera-controller.ts';
+test('replay camera controller owns mode, follows only operator mode, and resets director',()=>{
+  const camera=new ReplayCameraController();
+  assert.equal(camera.mode,'free');
+  assert.equal(camera.selectMode('operator','iso',true,false),'operator');
+  assert.equal(camera.follow,true);
+  assert.equal(camera.selectMode('director','plan2d',true,false),'free');
+  assert.equal(camera.follow,false);
+  assert.equal(camera.selectMode('director','iso',true,false),'free');
+  camera.director.storyboard={sample:()=>null};
+  assert.equal(camera.selectMode('director','iso',true,false),'director');
+  camera.director.gradeKey='stale';
+  camera.reset();
+  assert.equal(camera.mode,'free');
+  assert.equal(camera.follow,false);
+  assert.equal(camera.director.gradeKey,'');
+  assert.equal(camera.director.target,null);
+  assert.equal(camera.director.storyboard,null);
+});
