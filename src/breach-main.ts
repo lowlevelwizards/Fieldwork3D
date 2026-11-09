@@ -4,7 +4,7 @@ import {installPalettePointerGuard} from './ui/palette-pointer-guard.ts';
 import {installTouchCommandHelp as bindTouchCommandHelp}
  from './ui/touch-command-help.ts';
 import {
-  W,H,activeWorldBounds,WALLS,doorCenter,doorLeafSegment,activateSite,
+  W,H,activeWorldBounds,doorCenter,doorLeafSegment,activateSite,
   type Pt,
 } from './breach-core.ts';
 import {
@@ -74,14 +74,7 @@ import type {LightingMode} from './equipment-site-lighting.ts';
 import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
-import {shotVisibility} from './breach-presentation.ts';
-import {heardIntensity} from './breach-acoustics.ts';
-import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
-import {defaultSoundPack,readSoundPack,SOUND_STORAGE_KEY} from './sound-catalog.ts';
-import {playPackSound} from './sound-synth.ts';
-import {hashString} from './sound-live-tactility.ts';
-import {withFieldworkLiveMix} from './breach-live-sound-pack.ts';
-import {acousticResponseForCue} from './breach-audio-environment.ts';
+import {createBreachAudioController} from './breach-audio-controller.ts';
 import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
 import {MissionRecorder} from './breach-replay.ts';
@@ -106,7 +99,6 @@ import {buildReplayChapters,addReplayBookmark,adjacentReplayChapter,
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import {inspectRecordedShot,shotScreenHit,adjacentRecordedShot}
   from './breach-replay-shot-inspector.ts';
-import {ReplaySoundTimeline,replayDoorSoundId} from './breach-replay-audio.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 import {buildReplayExecutionInsights} from './breach-replay-debrief.ts';
@@ -117,7 +109,7 @@ import {featuredReplaySquadEntries,measureReplaySquadDoorEntry,
 import {operatorContactEventKnown,operatorContactAvailable}
   from './breach-replay-contact-lens.ts';
 import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
-  bodycamDisclosureLabel,replayAudioListener,replayBodycamPan}
+  bodycamDisclosureLabel}
   from './breach-replay-bodycam-controls.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -789,7 +781,6 @@ function recordCompletedOperation(){
 let replaying=false;
 const replayPlayback=new ReplayPlaybackController();
 let replayEventIndex:ReplayEventIndex|null=null;
-let replaySoundTimeline:ReplaySoundTimeline|null=null;
 let replayChapters:ReplayChapter[]=[];
 let replayIncidents:ReplayIncident[]=[];
 let replayFeaturedIncidents:ReplayIncident[]=[];
@@ -798,10 +789,9 @@ let selectedReplaySquadEntry:string|null=null;
 let selectedReplayIncidentId:string|null=null;
 let replayBookmarks:ReplayBookmark[]=[];
 let replayBookmarkCounter=0;
-let replaySoundEnabled=true;
 const replayQuickVideo=new ReplayQuickVideo(
   (blob,mime)=>{
-    videoAudioDestination=null;
+    audioController.endVideoCapture();
     const url=URL.createObjectURL(blob);
     const anchor=document.createElement('a');
     anchor.href=url;
@@ -814,7 +804,7 @@ const replayQuickVideo=new ReplayQuickVideo(
   },
   reason=>{
     console.warn('[Replay Video]',reason);
-    videoAudioDestination=null;
+    audioController.endVideoCapture();
     ui.replayExportVideo.textContent='VIDEO 20S';
     showUiHelp(reason,3600);
   }
@@ -1597,154 +1587,13 @@ function cancelTargeting(){
   evacMode=null;contextSignature='';updateHud();
 }
 
-let audio:AudioContext|null=null;
-let videoAudioDestination:MediaStreamAudioDestinationNode|null=null;
-const LIVE_MIX_PREF='fieldwork3d.sound.live-mix';
-const ROOM_AUDIO_PREF='fieldwork3d.sound.room-acoustics';
-let liveMixEnabled=true,roomAudioEnabled=true;
-try{
- liveMixEnabled=localStorage.getItem(LIVE_MIX_PREF)!=='off';
- roomAudioEnabled=localStorage.getItem(ROOM_AUDIO_PREF)!=='off';
-}catch{/* Private browsing still auditions the mix with safe defaults. */}
-let approvedSoundPack=liveMixEnabled?
-  withFieldworkLiveMix(readSoundPack()):defaultSoundPack();
-function refreshSoundPack(){
- const base=readSoundPack();
- approvedSoundPack=liveMixEnabled?withFieldworkLiveMix(base):defaultSoundPack();
-}
-window.addEventListener('storage',event=>{
- if(event.key===LIVE_MIX_PREF){
-  liveMixEnabled=event.newValue!=='off';refreshSoundPack();
- }else if(event.key===ROOM_AUDIO_PREF)roomAudioEnabled=event.newValue!=='off';
- else if(event.key===SOUND_STORAGE_KEY)refreshSoundPack();
+const audioController=createBreachAudioController({
+  getContext:()=>({
+    state,selected,bodycamActive:replayBodycam.active,
+    observerId:replayKnowledge.observerId
+  }),
+  showUiHelp
 });
-const replaySoundNodes=new Set<OscillatorNode>();
-const replaySoundBuffers=new Set<AudioBufferSourceNode>();
-function stopReplaySounds():void{
-  for(const node of replaySoundNodes){
-    try{node.stop();}catch{/* Ended nodes are already silent. */}
-  }
-  replaySoundNodes.clear();
-  for(const source of replaySoundBuffers){
-    try{source.stop();}catch{/* Already stopped. */}
-  }
-  replaySoundBuffers.clear();
-}
-let lastSoundShotId=0,lastEventAudio='';
-let lastFootstepSoundTime=0;
-let liveAudioVariationCounter=0;
-const playTone=(frequency:number,decay:number,noise=false,
-  level=1,pan=0,replayCue=false)=>{
-  try{
-    if(!audio)return;
-    const osc=audio.createOscillator(),gain=audio.createGain();
-    osc.type=noise?'sawtooth':'triangle';osc.frequency.value=frequency;
-    gain.gain.setValueAtTime(.065*Math.max(.02,level),audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+decay);
-    osc.connect(gain);
-    if(typeof audio.createStereoPanner==='function'){
-      const stereo=audio.createStereoPanner();
-      stereo.pan.value=Math.max(-1,Math.min(1,pan));
-      gain.connect(stereo);stereo.connect(audio.destination);
-      if(replayCue&&videoAudioDestination)stereo.connect(videoAudioDestination);
-    }else{
-      gain.connect(audio.destination);
-      if(replayCue&&videoAudioDestination)gain.connect(videoAudioDestination);
-    }
-    if(replayCue){
-      replaySoundNodes.add(osc);
-      osc.onended=()=>replaySoundNodes.delete(osc);
-    }
-    osc.start();osc.stop(audio.currentTime+decay+.01);
-  }catch{/* Audio must never interrupt control. */}
-};
-/** Shared sound-pack bridge: the game only plays a cue when the actual
- * simulation / UI already emitted the corresponding event. Unknown cue IDs
- * retain the earlier generic tone; individually disabled cues stay silent.
- * Replay sources remain cancellable on pause / seek / export.
- */
-function playApprovedCue(id:string,level=1,pan=0,replayCue=false,
- rate=1,sourcePosition?:Pt,variationSeed?:number):boolean{
- if(!audio)return false;
- // Pure room presentation. Source geometry is read once per emitted event.
- // AI hearing and replay evidence are deliberately unaffected.
- const listener=replayCue&&replayBodycam.active?
-  (replayKnowledge.observerId?
-    replayAudioListener(team(state),selected,replayKnowledge.observerId)?.p:
-    undefined):uid(selected)?.p;
- const acoustics=roomAudioEnabled&&sourcePosition?
-  acousticResponseForCue(state.site??undefined,sourcePosition,id,
-   listener,state.doors,WALLS):null;
- return playPackSound(audio,id,{
-  level,pan,rate,acoustics,liveTactile:liveMixEnabled,
-  variationSeed:liveMixEnabled?(variationSeed??++liveAudioVariationCounter):undefined,
-  output:replayCue?videoAudioDestination:null,
-  onSource:replayCue?(source)=>{
-    replaySoundBuffers.add(source);
-    const previous=source.onended;
-    source.onended=(event)=>{
-      previous?.call(source,event);
-      replaySoundBuffers.delete(source);
-    };
-  }:undefined
- },approvedSoundPack);
-}
-/** Human-command sounds are event-driven; no movement tick ever emits them. */
-function liveEventAudioPosition(event:string):Pt|undefined{
- const door=state.doors.find(d=>event.startsWith(d.id+' '));
- if(door)return doorCenter(door);
- if(event.includes('FLASH DETONATED'))return state.flashBursts.at(-1)?.p;
- const actor=state.operators.find(a=>event.startsWith(a.name+' '));
- return actor?.p??uid(selected)?.p;
-}
-/** Playback loudness and stereo position follow the real event origin.
- * No new AI/detection events and no HUD disclosure of hidden source positions. */
-function playLiveEventCue(id:string,source?:Pt,scale=1):boolean{
- const listener=uid(selected)?.p;
- if(!source||!listener)return playApprovedCue(id,scale,0,false,1,source);
- const radius=id==='combat.flash'?420:
-  id.startsWith('doors.')?265:
-  id.startsWith('equipment.')?145:190;
- const level=heardIntensity(source,listener,radius,state.doors,WALLS);
- if(level<.025)return true;
- return playApprovedCue(id,Math.max(.02,level*scale),clamp(
-  (source.x-listener.x)/210,-1,1),false,1,source);
-}
-function playOrderCue(id:string){
- if(!uiSoundEnabled)return;
- unlockAudio();playApprovedCue(id,.25);
-}
-// Separate, low-volume UI cues reuse the existing unlocked WebAudio context.
-let uiSoundEnabled=true,lastUiCue=0;
-try{uiSoundEnabled=localStorage.getItem('fieldwork3d.ui.sound')!=='off';}
-catch{/* Storage is optional. */}
-function uiClickTone(kind:'select'|'command'|'go'|'pause'|'warning'){
-  if(!uiSoundEnabled)return;
-  const now=performance.now();if(now-lastUiCue<75)return;
-  lastUiCue=now;
-  unlockAudio();
-  try{
-    if(!audio||audio.state!=='running')return;
-    if(playApprovedCue('ui.'+(kind==='command'?'confirm':kind),.30))return;
-    const frequencies={select:480,command:610,go:330,pause:255,warning:170};
-    const oscillator=audio.createOscillator(),gain=audio.createGain();
-    oscillator.type=kind==='go'?'triangle':'sine';
-    oscillator.frequency.setValueAtTime(frequencies[kind],audio.currentTime);
-    if(kind==='go')oscillator.frequency.exponentialRampToValueAtTime(
-      240,audio.currentTime+.14);
-    const duration=kind==='go'?.15:kind==='pause'?.085:.055;
-    gain.gain.setValueAtTime(kind==='go'?.018:.010,audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+duration);
-    oscillator.connect(gain);gain.connect(audio.destination);
-    oscillator.start();oscillator.stop(audio.currentTime+duration+.015);
-  }catch{/* UI feedback never blocks interaction. */}
-}
-function unlockAudio(){
-  try{
-    if(!audio&&typeof AudioContext!=='undefined')audio=new AudioContext();
-    if(audio?.state==='suspended')void audio.resume();
-  }catch{/* WebAudio may be unavailable in embedded browsers. */}
-}
 
 let last=performance.now(),accum=0,hudAt=0;
 let previousRenderActors:Record<string,RenderActor>|null=null;
@@ -1837,7 +1686,7 @@ const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   hideWeaponChooser();
-  uiClickTone('select');selected=id;looking=false;pushMode=false;evacMode=null;
+  audioController.uiClickTone('select');selected=id;looking=false;pushMode=false;evacMode=null;
   selectedNode=null;selectedActiveWatch=false;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
@@ -2261,7 +2110,7 @@ const handleContextAction=(event:MouseEvent)=>{
     case 'ctxSuppress':
       firePlacement='suppress';looking=false;flashMode=false;
       tacticalFeedback.emit('armed',node?.p??a.p,'SUPPRESS READY');
-      uiClickTone('select');updateHud();return;
+      audioController.uiClickTone('select');updateHud();return;
     case 'ctxFlash':
       if(state.flashRemaining>0){flashMode=true;flashDoorId=null;
         looking=false;firePlacement=null;}
@@ -2269,18 +2118,18 @@ const handleContextAction=(event:MouseEvent)=>{
     case 'ctxLook':
       armFacing('look');
       if(looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP A DIRECTION');
-      uiClickTone('select');return;
+      audioController.uiClickTone('select');return;
     case 'ctxDoor':{
       const available=focusedDoor(a,node);
       if(!available){state.events.push('NO KNOWN DOOR IN REACH');break;}
       doorFocusId=available.id;doorMenuDismissedId=null;
-      uiClickTone('select');
+      audioController.uiClickTone('select');
       updateHud();return;
     }
     case 'ctxWatch':
       armFacing('watch');
       if(looking)tacticalFeedback.emit('armed',node?.p??a.p,'TAP WATCH TARGET');
-      uiClickTone('select');return;
+      audioController.uiClickTone('select');return;
     case 'ctxWait':{
       if(node?.kind==='wait')setWaitDuration(state,selected,node.id,1);
       else planWaitAt(state,selected,1,node?'end':'here',node?.id);
@@ -2306,7 +2155,7 @@ const handleContextAction=(event:MouseEvent)=>{
       pushMode=true;looking=false;flashMode=false;firePlacement=null;
       tacticalFeedback.emit('armed',node?.p??a.p,'PUSH DIRECTION');
       showUiHelp('TAP OR DRAG AWAY FROM THE OBJECT TO CHOOSE PUSH DIRECTION',3600);
-      uiClickTone('select');updateHud();return;
+      audioController.uiClickTone('select');updateHud();return;
     case 'ctxTreat':{
       const patient=medicalCandidate(selected,node?.p??finalPoint(a));
       if(!patient||!planMedicalTreatment(state,selected,patient.id,node?.id))
@@ -2342,7 +2191,7 @@ const handleContextAction=(event:MouseEvent)=>{
       doorFocusId=null;doorMenuDismissedId=door?.id??null;break;
   }
   const failed=state.events.length>beforeErrors;
-  uiClickTone(failed?'warning':'command');
+  audioController.uiClickTone(failed?'warning':'command');
   const lastFailure=failed?state.events.at(-1)??'ACTION BLOCKED':'';
   tacticalFeedback.emit(failed?'error':'command',
     door?doorCenter(door):node?.p??a.p,
@@ -2996,7 +2845,7 @@ function render(){
 function rejectAt(pt:Pt,reason:string){
   state.events.push(reason);
   tacticalFeedback.emit('error',pt,recoveryAdviceFor(reason)?.marker??'INVALID');
-  uiClickTone('warning');
+  audioController.uiClickTone('warning');
 }
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
@@ -3006,7 +2855,7 @@ function useSelectedGround(pt:Pt){
     if(!accepted)rejectAt(pt,'NO PUSHABLE OBJECT IN REACH');
     else{
       pushMode=false;tacticalFeedback.emit('command',pt,'PUSH');
-      uiClickTone('command');
+      audioController.uiClickTone('command');
     }
     updateHud();return;
   }
@@ -3022,7 +2871,7 @@ function useSelectedGround(pt:Pt){
     if(!accepted)rejectAt(pt,'INVALID SUPPRESSION POINT');
     else{
       tacticalFeedback.emit('command',pt,'SUPPRESS');
-      uiClickTone('command');firePlacement=null;
+      audioController.uiClickTone('command');firePlacement=null;
     }
     updateHud();return;
   }
@@ -3034,7 +2883,7 @@ function useSelectedGround(pt:Pt){
     if(!accepted)rejectAt(pt,'FLASH TARGET BLOCKED / OUT OF RANGE');
     else{
       tacticalFeedback.emit('command',pt,'FLASH');
-      uiClickTone('command');
+      audioController.uiClickTone('command');
       selectedNode=flashDoorId?state.nextId-1:id;
       flashMode=false;flashDoorId=null;
     }
@@ -3060,7 +2909,7 @@ function useSelectedGround(pt:Pt){
     }
     else{
       tacticalFeedback.emit('command',target!,lookMode==='watch'?'WATCH':'LOOK');
-      playOrderCue(lookMode==='watch'?'orders.watch':'orders.look');
+      audioController.playOrderCue(lookMode==='watch'?'orders.watch':'orders.look');
       if(!retargetingActive&&selectedNode===null){
         selectedNode=placedId;selectedActiveWatch=false;
       }
@@ -3082,7 +2931,7 @@ function useSelectedGround(pt:Pt){
     selectedActiveWatch=false;
     selectedNode=uid(selected)?.plan.at(-1)?.id??null;
     tacticalFeedback.emit('route',pt,undefined,beforeRoute);
-    playOrderCue('orders.waypoint');
+    audioController.playOrderCue('orders.waypoint');
     teach('waypoint-created',
       'Waypoint added. Drag to move it; choose LOOK / WATCH, or DELETE.',4900);
   }
@@ -3094,76 +2943,13 @@ function clockText(t:number){
   return String(Math.floor(seconds/60)).padStart(2,'0')+':'+
     String(seconds%60).padStart(2,'0');
 }
-/** Only continuous playback crosses sound timestamps; seeks never audition
- * an accumulated event backlog. All cues use the shared unlocked context. */
-function playReplayAudioBetween(start:number,end:number):void{
-  if(!replaying||!replaySoundEnabled||!replaySoundTimeline||
-    !audio||audio.state!=='running'||end<=start)return;
-  if(replayPlayback.rate>2)return; // Rapid scan is deliberately quiet.
-  // First-person audio follows the recorded operator, not a teammate.
-  const listenerActor=replayBodycam.active&&!replayKnowledge.observerId?null:
-    replayAudioListener(team(state),selected,
-      replayBodycam.active?replayKnowledge.observerId:null);
-  if(replayBodycam.active&&!listenerActor)return;
-  const listener=listenerActor?.p;
-  const rateScale=Math.max(.5,Math.min(2,1/replayPlayback.rate));
-  for(const event of replaySoundTimeline.between(start,end,7)){
-    const p=event.p;
-    const level=p&&listener?heardIntensity(p,listener,
-      event.kind==='gunshot'?WEAPONS[event.weapon??'carbine'].noise:150,
-      state.doors,WALLS):.35;
-    if(level<.025)continue;
-    const pan=p&&listener?
-      (replayBodycam.active&&listenerActor?
-        replayBodycamPan(p,listenerActor):(p.x-listener.x)/210):0;
-    if(event.kind==='gunshot'){
-      const cue=weaponAudioCue(event.weapon??'carbine',event.suppressed);
-      if(!playApprovedCue('weapons.'+(event.weapon??'carbine')+
-        (event.suppressed?'_suppressed':''),level,pan,true,1/rateScale,
-         p??undefined,hashString(event.id))){
-        playTone(cue.crackHz,cue.crackSeconds*rateScale,true,level,pan,true);
-        playTone(cue.bodyHz,cue.bodySeconds*rateScale,false,
-          level*cue.bodyLevel,pan,true);
-      }
-      // Do not play exact-hit confirmation: the team may not have perceived it.
-    }else{
-      const tones={door:[160,.16],flash:[1350,.65],
-        reload:[280,.09],interaction:[210,.12],
-        surrender:[210,.22]} as const;
-      const [hz,length]=tones[event.kind];
-      const soundId={door:replayDoorSoundId(event.description),flash:'combat.flash',
-        reload:'equipment.reload',interaction:'',surrender:'people.surrender'
-      }[event.kind];
-      if(!soundId||!playApprovedCue(soundId,Math.min(level,.7),
-        pan,true,1/rateScale,p??undefined,hashString(event.id)))
-        playTone(hz,length*rateScale,event.kind==='flash',
-          Math.min(level,.7),pan,true);
-    }
-  }
-  // 60 Hz-authored touchdown positions already exist in the motion track.
-  const ids=team(state).map(a=>a.id);
-  const touches=recorder.motion.touchdownsBetween(start,end,ids);
-  for(const touch of touches.slice(-6)){
-    const level=listener?heardIntensity(touch.position,listener,
-      36,state.doors,WALLS):.2;
-    if(level<.025)continue;
-    const pan=listener?
-      (replayBodycam.active&&listenerActor?
-        replayBodycamPan(touch.position,listenerActor):
-        (touch.position.x-listener.x)/210):0;
-    if(!playApprovedCue('movement.boot',level*.20,pan,true,1/rateScale,
-       touch.position,hashString(touch.id+'|'+touch.foot+'|'+touch.at.toFixed(3))))
-      playTone(touch.foot===0?62:67,.055*rateScale,true,
-        level*.12,pan,true);
-  }
-}
 /** Reapply recorded outcomes after timeline navigation, then refresh dependent
  * camera/audio/visibility presentation. The playback controller owns samples.
  */
 function presentReplayAtCurrentTime():void{
   ui.replayClusterMenu.hidden=true;
   if(replayQuickVideo.active)replayQuickVideo.stop();
-  stopReplaySounds();
+  audioController.stopReplaySounds();
   replayDirector.target=null;
   stage?.resetReplayBodycamSmoothing();
   const frame=replayPlayback.applyRecordedFrame(recorder,state);
@@ -3443,7 +3229,7 @@ function startReplayIncident(loop:boolean):void{
   // Incident start is already positioned by the transport controller.
   // Do not call seekReplay here: seeking cancels incident playback.
   presentReplayAtCurrentTime();
-  unlockAudio();
+  audioController.unlock();
   showReplayToolTab(null);
   updateReplayHud();
 }
@@ -3802,8 +3588,8 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
   ui.replayLoopToggle.setAttribute('aria-pressed',String(replayPlayback.loopEnabled));
   ui.replayExportVideo.textContent=replayQuickVideo.active?'STOP VIDEO':'VIDEO 20S';
   ui.replaySpeed.disabled=replayQuickVideo.active;
-  ui.replaySound.textContent=replaySoundEnabled?'SOUND ON':'SOUND OFF';
-  ui.replaySound.setAttribute('aria-pressed',String(replaySoundEnabled));
+  ui.replaySound.textContent=audioController.replaySoundEnabled?'SOUND ON':'SOUND OFF';
+  ui.replaySound.setAttribute('aria-pressed',String(audioController.replaySoundEnabled));
   ui.replaySpeed.title='Playback speed '+replayPlayback.rate+'× · Tap to change';
   ui.replaySpeed.setAttribute('aria-label',
     'Playback speed '+replayPlayback.rate+' times. Tap to select next speed');
@@ -4051,9 +3837,8 @@ function enterReplay(){
   closeReplayShotInspector();
   replayMovementHistory=new ReplayMovementHistory(recorder.frames,
     team(finishedSession).map(a=>a.id));
-  replaySoundTimeline=new ReplaySoundTimeline(recorder.ballistics.shots,
-    recorder.events);
-  unlockAudio();
+  audioController.beginReplay(recorder);
+  audioController.unlock();
   showReplayToolTab(null);
   const recordedSite=recorder.manifest?.site;
   state=newSession(recorder.manifest?.variant??finishedSession.variant,
@@ -4113,7 +3898,7 @@ function exitReplay(){
   selectedReplayIncidentId=null;
   ui.replayIncidentDetails.hidden=true;
   closeReplayShotInspector();
-  replaySoundTimeline=null;replayMovementHistory=null;stopReplaySounds();
+  replayMovementHistory=null;audioController.endReplay();
   ui.replayFeed.replaceChildren();
   ui.replayDebriefMoments.replaceChildren();
   ui.replayObserverTransitions.replaceChildren();
@@ -4191,7 +3976,8 @@ const replayTimeline=createBreachReplayTimelineController({
   duration:()=>recorder.duration,
   samples:()=>recorder.frames,
   isVideoActive:()=>replayQuickVideo.active,
-  seek:seekReplay,stopAudio:stopReplaySounds,unlockAudio,
+  seek:seekReplay,stopAudio:()=>audioController.stopReplaySounds(),
+  unlockAudio:()=>audioController.unlock(),
   refreshHud:updateReplayHud,showHelp:showUiHelp
 });
 ui.replayMore.addEventListener('click',()=>
@@ -4339,12 +4125,7 @@ ui.replayShotNext.addEventListener('click',()=>{
     true,historicalShotVisible);
   if(next)selectReplayShot(next);
 });
-ui.replaySound.addEventListener('click',()=>{
-  replaySoundEnabled=!replaySoundEnabled;
-  if(!replaySoundEnabled)stopReplaySounds();
-  else unlockAudio();
-  updateReplayHud();
-});
+audioController.bindReplayMute(ui.replaySound,updateReplayHud);
 function changeReplaySight(mode:'team'|'full'|'operator'):void{
   if(mode==='operator'){
     if(!replayKnowledge.hasContactEvidence)return;
@@ -4696,15 +4477,14 @@ ui.replayExportVideo.addEventListener('click',()=>{
   if(replayQuickVideo.active){
     replayQuickVideo.stop();ui.replayExportVideo.textContent='VIDEO 20S';return;
   }
-  unlockAudio();
-  videoAudioDestination=audio?.state==='running'&&replaySoundEnabled?
-    audio.createMediaStreamDestination():null;
+  audioController.unlock();
+  const videoAudioStream=audioController.beginVideoCapture();
   if(replayPlayback.time>=recorder.duration-.2)seekReplay(0);
   replayPlayback.prepareVideoExport();
   const started=replayQuickVideo.start(replayPlayback.time,
-    {width:cssW,height:cssH},videoAudioDestination?.stream??null);
+    {width:cssW,height:cssH},videoAudioStream);
   if(!started){
-    videoAudioDestination=null;
+    audioController.endVideoCapture();
     showUiHelp('VIDEO CAPTURE NOT SUPPORTED IN THIS BROWSER',4200);
     return;
   }
@@ -4749,8 +4529,7 @@ function reset(next=state.variant,siteSeed?:number,
   selected='rook';looking=false;
   selectedNode=null;doorFocusId=null;draggingNode=null;
   tacticalGestures.clear();cursor=null;trace=null;zoom=1;panX=panY=0;
-  fog2D.invalidate();lastSoundShotId=0;lastEventAudio='';
-  lastFootstepSoundTime=0;
+  fog2D.invalidate();audioController.resetLive();
   recorder=new MissionRecorder();recorder.capture(state,true);
   tacticalFeedback.clear();
   if(!deferScene){layout();updateHud();}
@@ -5156,7 +4935,7 @@ campaignBackButton.addEventListener('click',()=>{
 });
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
 ui.back.addEventListener('click',()=>{
-  uiClickTone('select');
+  audioController.uiClickTone('select');
   // BACK must always escape an unfinished targeting gesture first.
   // It cannot accidentally remove an unrelated prior waypoint.
   if(looking||flashMode||firePlacement||evacMode){cancelTargeting();return;}
@@ -5187,18 +4966,18 @@ ui.clear.addEventListener('click',async()=>{
  if(clearPlan(state,targetId)){
    selectedNode=null;
    showUiHelp('ROUTE CLEARED · UNDO TO RESTORE',3000);
-   playOrderCue('ui.cancel');updateHud();
+   audioController.playOrderCue('ui.cancel');updateHud();
  }
 });
-ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;playOrderCue('orders.undo');updateHud();});
-ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;playOrderCue('orders.redo');updateHud();});
-ui.wait.addEventListener('click',()=>{planWait(state,selected,1);playOrderCue('orders.wait');updateHud();});
+ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;audioController.playOrderCue('orders.undo');updateHud();});
+ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;audioController.playOrderCue('orders.redo');updateHud();});
+ui.wait.addEventListener('click',()=>{planWait(state,selected,1);audioController.playOrderCue('orders.wait');updateHud();});
 fieldLightButton=document.createElement('button');
 fieldLightButton.type='button';fieldLightButton.textContent='WEAPON LIGHT';
 fieldLightButton.setAttribute('aria-label','Toggle selected operator weapon light');
 fieldLightButton.addEventListener('click',()=>{
  if(replaying)return;
- toggleWeaponLight(state,selected);playOrderCue('equipment.flashlight_click');updateHud();
+ toggleWeaponLight(state,selected);audioController.playOrderCue('equipment.flashlight_click');updateHud();
 });
 ui.siteSettings.append(fieldLightButton);
 const leaveRangeButton=document.createElement('button');
@@ -5275,9 +5054,9 @@ ui.flash.addEventListener('click',()=>{
   looking=false;
   updateHud();
 });
-ui.sync.addEventListener('click',()=>{planSync(state);playOrderCue('orders.sync');updateHud();});
+ui.sync.addEventListener('click',()=>{planSync(state);audioController.playOrderCue('orders.sync');updateHud();});
 ui.stance.addEventListener('click',()=>{
-  posture(state,selected);playOrderCue('orders.stance');fog2D.invalidate();updateHud();
+  posture(state,selected);audioController.playOrderCue('orders.stance');fog2D.invalidate();updateHud();
 });
 ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
 ui.siteLighting.textContent='LIGHTING · '+selectedLightingMode.toUpperCase();
@@ -5373,7 +5152,7 @@ ui.intelMode.addEventListener('click',()=>{
 ui.retry.addEventListener('click',()=>{if(campaignMode!=='mission')restartMission();});
 ui.next.addEventListener('click',()=>{if(!returnAfterCampaignMission())reset(state.variant+1);});
 ui.play.addEventListener('click',()=>{
-  unlockAudio();uiClickTone(state.phase==='running'?'pause':'go');
+  audioController.unlock();audioController.uiClickTone(state.phase==='running'?'pause':'go');
   if(state.phase==='won'||state.phase==='lost'){
    if(!returnAfterCampaignMission())reset();
   }else{
@@ -5436,7 +5215,7 @@ window.addEventListener('keydown',e=>{
     return;
   }
   if(e.code==='Space'&&!e.repeat){
-    e.preventDefault();unlockAudio();
+    e.preventDefault();audioController.unlock();
     if(state.phase==='won'||state.phase==='lost'){
       if(!returnAfterCampaignMission())reset();
     }else{
@@ -5947,38 +5726,10 @@ for(const button of miniatureFocusButtons)button.addEventListener('click',()=>{
  syncMiniatureFocusPreference();
 });
 syncMiniatureFocusPreference();
-const liveMixToggle=el<HTMLButtonElement>('liveMixToggle');
-const roomAudioToggle=el<HTMLButtonElement>('roomAudioToggle');
-function updateAudioLabButtons(){
- liveMixToggle.textContent=liveMixEnabled?'TEST MIX ON':'TEST MIX OFF';
- liveMixToggle.setAttribute('aria-pressed',String(liveMixEnabled));
- roomAudioToggle.textContent=roomAudioEnabled?'ROOM ACOUSTICS ON':'ROOM ACOUSTICS OFF';
- roomAudioToggle.setAttribute('aria-pressed',String(roomAudioEnabled));
-}
-updateAudioLabButtons();
-liveMixToggle.addEventListener('click',()=>{
- liveMixEnabled=!liveMixEnabled;refreshSoundPack();
- try{localStorage.setItem(LIVE_MIX_PREF,liveMixEnabled?'on':'off');}
- catch{/* Optional preference persistence. */}
- updateAudioLabButtons();
- showUiHelp(liveMixEnabled?'APPROVED SOUND LAB MIX ACTIVE':'TEST MIX OFF · ORIGINAL GAME AUDIO ACTIVE',2400);
-});
-roomAudioToggle.addEventListener('click',()=>{
- roomAudioEnabled=!roomAudioEnabled;
- try{localStorage.setItem(ROOM_AUDIO_PREF,roomAudioEnabled?'on':'off');}
- catch{/* Optional preference persistence. */}
- updateAudioLabButtons();
- showUiHelp(roomAudioEnabled?'ROOM ACOUSTICS ENABLED':'ROOM ACOUSTICS OFF · DRY SOURCE AUDIO',2400);
-});
-ui.uiSoundToggle.textContent=uiSoundEnabled?'UI SOUND ON':'UI SOUND OFF';
-ui.uiSoundToggle.setAttribute('aria-pressed',String(uiSoundEnabled));
-ui.uiSoundToggle.addEventListener('click',()=>{
-  uiSoundEnabled=!uiSoundEnabled;
-  ui.uiSoundToggle.textContent=uiSoundEnabled?'UI SOUND ON':'UI SOUND OFF';
-  ui.uiSoundToggle.setAttribute('aria-pressed',String(uiSoundEnabled));
-  try{localStorage.setItem('fieldwork3d.ui.sound',uiSoundEnabled?'on':'off');}
-  catch{/* Optional setting persistence. */}
-  if(uiSoundEnabled)uiClickTone('select');
+audioController.bindSettings({
+  liveMix:el<HTMLButtonElement>('liveMixToggle'),
+  roomAudio:el<HTMLButtonElement>('roomAudioToggle'),
+  uiSound:ui.uiSoundToggle
 });
 ui.uiHelp.addEventListener('click',()=>{
   closeMissionSettings();
@@ -6056,103 +5807,14 @@ function tick(now:number){
         replayPresentation=playbackStep.frame.presentation??null;
         fog2D.invalidate();
       }
-      if(playbackStep.resetAudio)stopReplaySounds();
-      else playReplayAudioBetween(playbackStep.previousTime,playbackStep.time);
-      if(playbackStep.finishedIncident)stopReplaySounds();
+      if(playbackStep.resetAudio)audioController.stopReplaySounds();
+      else audioController.playReplayBetween(playbackStep.previousTime,
+        playbackStep.time,recorder,replayPlayback.rate);
+      if(playbackStep.finishedIncident)audioController.stopReplaySounds();
     }
   }
   if(replaying)advanceReplayCamera(dt);
-  // 079: shot IDs are monotonic, unlike the short-lived shot array length.
-  // A new shot can arrive on exactly the tick an old shot expires.
-  // Track the newest three audible shots without a per-frame filter/slice.
-  const freshShots:typeof state.shots=[];
-  let newestShotId=lastSoundShotId;
-  for(const shot of state.shots){
-    if(shot.id<=lastSoundShotId)continue;
-    if(shot.id>newestShotId)newestShotId=shot.id;
-    if(audio&&!replaying){
-      if(freshShots.length===3)freshShots.shift();
-      freshShots.push(shot);
-    }
-  }
-  if(audio&&!replaying)for(const shot of freshShots){
-    const firingActor=state.operators.find(a=>a.id===shot.shooterId);
-    const weapon=firingActor?.weapon??'carbine';
-    const listener=uid(selected)?.p;
-    const level=listener?heardIntensity(shot.start,listener,
-      WEAPONS[weapon].noise,state.doors,WALLS):1;
-    if(level<.01)continue; // Outside acoustic range is genuinely quiet.
-    const pan=listener?(shot.start.x-listener.x)/210:0;
-    const cue=weaponAudioCue(weapon,
-      firingActor?.weaponConfiguration?.slots.muzzle==='muzzle-suppressor');
-    if(!playApprovedCue('weapons.'+weapon+
-      (firingActor?.weaponConfiguration?.slots.muzzle==='muzzle-suppressor'?
-      '_suppressed':''),level,pan,false,1,shot.start,shot.id)){
-      playTone(cue.crackHz,cue.crackSeconds,true,level,pan);
-      playTone(cue.bodyHz,cue.bodySeconds,false,level*cue.bodyLevel,pan);
-    }
-    // Never play the exact-hit cue merely because a hidden shot hit.
-    // An operator must see the impact or be close enough to hear it.
-    const impactLevel=listener?heardIntensity(shot.end,listener,
-      88,state.doors,WALLS):0;
-    if(shot.hit&&audibleImpact(shotVisibility(state,shot).impact,
-        impactLevel))
-      if(!playApprovedCue('impacts.body_hit',
-        level*Math.max(.22,impactLevel),pan,false,1,shot.end,shot.id+197))
-        playTone(shot.down?75:225,shot.down?.25:.10,
-          shot.down,level*Math.max(.22,impactLevel),pan);
-  }
-  lastSoundShotId=newestShotId;
-  // One restrained boot thud per recorded physical touchdown; never an
-  // independent timed walking loop, and never an audio burst on resume.
-  if(!replaying&&state.phase==='running'){
-    const from=Math.max(lastFootstepSoundTime,state.seconds-.16);
-    if(audio?.state==='running'){
-      const ids=team(state).map(a=>a.id);
-      for(const touch of recorder.motion.touchdownsBetween(
-        from,state.seconds,ids).slice(-5)){
-        const listener=uid(selected)?.p;
-        const level=listener?heardIntensity(touch.position,listener,
-          36,state.doors,WALLS):.24;
-        if(level<.025)continue;
-        const pan=listener?(touch.position.x-listener.x)/210:0;
-        if(!playApprovedCue('movement.boot',level*.20,pan,false,1,
-           touch.position,hashString(touch.id+'|'+touch.foot+'|'+touch.at.toFixed(3))))
-          playTone(touch.foot===0?62:67,.055,true,level*.12,pan);
-      }
-    }
-  }
-  lastFootstepSoundTime=state.seconds;
-  const event=state.events.at(-1)??'';
-  // Event origin is used only for audio; never as newly revealed intel.
-  const eventSource=!replaying&&event!==lastEventAudio?
-   liveEventAudioPosition(event):undefined;
-  if(!replaying&&event!==lastEventAudio&&
-      (event.includes('OPENED')||event.includes('CLOSING')))
-    {if(!playLiveEventCue(event.includes('CLOSING')?'doors.close':'doors.open',
-      eventSource))
-      playTone(160,.16);}
-  if(!replaying&&event!==lastEventAudio&&event.includes('KICK RESISTED')){
-    // Every real kick should play the approved kick sound, with its own
-    // secondary latch/body outcome at reduced level.
-    if(!playLiveEventCue('doors.kick',eventSource))playTone(90,.25,true);
-    playLiveEventCue('doors.kick_resisted',eventSource,.30);
-  }
-  if(!replaying&&event!==lastEventAudio&&event.includes('FORCED OPEN')){
-    if(!playLiveEventCue('doors.kick',eventSource))playTone(90,.25,true);
-    playLiveEventCue('doors.forced_open',eventSource,.33);
-  }
-  if(!replaying&&event!==lastEventAudio&&event.includes('KICKED'))
-    {if(!playLiveEventCue('doors.kick',eventSource))playTone(90,.25,true);}
-  if(!replaying&&event!==lastEventAudio&&event.includes('FLASH DETONATED'))
-    {if(!playLiveEventCue('combat.flash',eventSource))playTone(1350,.65,true);}
-  if(!replaying&&event!==lastEventAudio&&event.includes('RELOADED'))
-    {if(!playLiveEventCue('equipment.reload',eventSource))playTone(280,.09);}
-  if(!replaying&&event!==lastEventAudio&&event.includes('FLASH OUT'))
-    {if(!playLiveEventCue('equipment.flash_throw',eventSource))playTone(420,.07);}
-  if(!replaying&&event!==lastEventAudio&&event.includes('SURRENDERED'))
-    {if(!playLiveEventCue('people.surrender',eventSource))playTone(210,.22);}
-  lastEventAudio=event;
+  audioController.consumeLiveFrame(state,recorder,selected,replaying);
   // Execution's full HUD reconciliation is DOM-heavy; explicit commands
   // still call updateHud() immediately, while live status refreshes ~5.5Hz.
   if(now-hudAt>(state.phase==='running'?180:120)){
