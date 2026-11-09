@@ -27,6 +27,8 @@ export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   wedged?:boolean;wedgeOwnerId?:string;}
 export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
   fixture?:string;material?:import('./breach-materials.ts').MaterialId;
+  /** Authoritative cover top in world units (e.g. a service counter or sill). */
+  topHeight?:number;
   /** Render-only deterministic trim selection; ignored by collision and AI. */
   artVariant?:number;
   /** Cardinal local-facing turn, with w/h already representing rotated tactical bounds. */
