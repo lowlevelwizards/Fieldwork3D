@@ -55,6 +55,8 @@ import {beginAutoSidestep,autoSidestepFacing,type AutoSidestep}
 import {friendlyPassingStep,nearOccupiedFriendlyGoal,
   friendlyArrivalSettleTarget} from './breach-friendly-traffic.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
+import {captureMotionFrameOrigins,buildMotionFrameProposals}
+ from './breach-motion-frame-input.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
 import {executionStatus,type MotorPause,type ExecutionIssue,
   type ExecutionStatus} from './breach-execution-state.ts';
@@ -5045,8 +5047,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   mark('belief-aging');
   // Capture immutable actor origins before any movement or enemy routine runs.
   // Final positions are reconciled together after the fixed-tick actor loop.
-  const motionStart=new Map([...s.operators,...s.civilians]
-    .map(a=>[a.id,clone(a.p)]));
+  const motionStart=captureMotionFrameOrigins(s.operators,s.civilians);
   for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
@@ -5165,14 +5166,8 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
         (from,to)=>cachedEnemyRoute(s,from,to,true));
     }
   }
-  const proposals=[
-    ...s.operators.map(a=>({id:a.id,side:a.side,
-      from:motionStart.get(a.id)??a.p,to:a.p,alive:a.health>0,
-      carried:!!a.carriedById})),
-    ...s.civilians.map(c=>({id:c.id,side:'neutral' as const,
-      from:motionStart.get(c.id)??c.p,to:c.p,
-      alive:c.health>0||!!c.carriedById,carried:!!c.carriedById}))
-  ];
+  const proposals=buildMotionFrameProposals(
+    s.operators,s.civilians,motionStart);
   const decisions=resolveMovementFrame(proposals,p=>{
     if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors);
     const a=s.operators.find(unit=>unit.id===p.id)!;
