@@ -63,7 +63,16 @@ export class ReplayCameraController{
    replayContactObserverId,replayOmniscient,cssW,cssH,replayFollowStatus,
    debugPanel}:ReplayCameraContext):void{
 
-  if(!replaying||!stage||viewMode==='plan2d')return;
+  if(!replaying||!stage)return;
+  if(viewMode==='plan2d'){
+    // The 3D scene clears its camera on leaving ISO. Clear our applied
+    // mount too, or returning to ISO may wrongly think CAM is installed.
+    if(this.directorCamActor){
+      stage.setReplayBodycam(null);
+      this.directorCamActor=null;this.appliedCamMount=null;
+    }
+    return;
+  }
   const actors=state.operators.map(a=>({
     id:a.id,p:a.p,side:a.side,health:a.health,heading:a.heading
   }));
