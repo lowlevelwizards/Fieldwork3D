@@ -97,7 +97,8 @@ export type BodyProfile='normal'|'squeeze';
 // A deliberate sideways profile remains a real three-point body sweep,
 // with just enough give for the clearance of a jacket/soft gear.
 export const SQUEEZE_RADIUS=3.8;
-export const squeezeFacing=(travelYaw:number)=>travelYaw-Math.PI/2;\n/** Genuine tight gaps press from BOTH sides. A single table corner or wall
+export const squeezeFacing=(travelYaw:number)=>travelYaw-Math.PI/2;
+/** Genuine tight gaps press from BOTH sides. A single table corner or wall
  * graze should trigger wall glide / corner slide / route repair, not make
  * the operator randomly turn their shoulders sideways. */
 export function twoSidedSqueezePressure(from:Pt,to:Pt,doors:Door[]):boolean{
