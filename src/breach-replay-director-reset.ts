@@ -220,8 +220,8 @@ export class ReplayDirectorStoryboard{
   private candidates(index:number):DirectorShot[]{
     if(this.bids.has(index))return this.bids.get(index)!;
     const found=this.solve(Math.min(this.duration,index*this.step));
-    const shots=(Array.isArray(found)?[...found]:found?[found]:[])
-      as DirectorShot[];
+    const shots:DirectorShot[]=Array.isArray(found)?[...found]:
+      found?[found as DirectorShot]:[];
     const valid=shots.filter(s=>
       !s.operatorPoint||!s.actionAxis||directorShoulderSide(s)!==0)
       .sort((a,b)=>(b.decisionScore??b.editorialPriority??0)-
