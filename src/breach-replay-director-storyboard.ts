@@ -9,6 +9,7 @@ import type {DirectorRoom} from './breach-replay-cinematic-director.ts';
 import {directorCameraLegal,directorLineBlocked,directorSubjectVisibility}
   from './breach-replay-director-physical.ts';
 import type {PhysicalDirectorScene} from './breach-replay-director-physical.ts';
+import {scoreDirectorCandidate} from './breach-replay-director-decision.ts';
 import {directorOrthoFittingZoom,directorCompositionQuality,
   type DirectorSafeFrame}
   from './breach-replay-director-projection.ts';
@@ -33,6 +34,7 @@ export class ReplayDirectorStoryboard{
   private cache=new Map<number,RailShot|null>();
   private checkpoints=new Map<number,RailShot|null>();
   private rawCache=new Map<number,DirectorShot|null>();
+  private bidsCache=new Map<number,DirectorShot[]>();
   private readonly step:number;
   private readonly maxCache:number;
   private readonly rooms:readonly DirectorRoom[];
@@ -45,8 +47,8 @@ export class ReplayDirectorStoryboard{
   private readonly usableHeight:number;
   private readonly safeFrame?:DirectorSafeFrame;
   private readonly duration:number;
-  private readonly solve:(time:number)=>DirectorShot|null;
-  constructor(duration:number,solve:(time:number)=>DirectorShot|null,
+  private readonly solve:(time:number)=>DirectorShot|readonly DirectorShot[]|null;
+  constructor(duration:number,solve:(time:number)=>DirectorShot|readonly DirectorShot[]|null,
     options:{step?:number;maxCache?:number;rooms?:readonly DirectorRoom[];
       walls?:PhysicalDirectorScene['walls'];
       cover?:PhysicalDirectorScene['cover'];
@@ -70,12 +72,29 @@ export class ReplayDirectorStoryboard{
   }
   clear():void{
     this.cache.clear();this.checkpoints.clear();this.rawCache.clear();
+    this.bidsCache.clear();
   }
   get cachedKnots():number{return this.cache.size;}
+  private bids(index:number):DirectorShot[]{
+    const i=Math.max(0,Math.min(Math.ceil(this.duration/this.step),index));
+    if(this.bidsCache.has(i))return this.bidsCache.get(i)!;
+    const value=this.solve(Math.min(this.duration,i*this.step));
+    const shots:DirectorShot[]=Array.isArray(value)?[...value]:
+      value?[value as DirectorShot]:[];
+    // Compatibility: the old callback returns one valid candidate.
+    const unique=shots.filter((s,j)=>shots.findIndex(other=>
+      other.editorialId===s.editorialId&&
+      distance(other.cameraAnchor,s.cameraAnchor)<.1&&
+      distance(other.focus,s.focus)<.1)===j);
+    this.bidsCache.set(i,unique.slice(0,16));
+    while(this.bidsCache.size>this.maxCache)
+      this.bidsCache.delete(this.bidsCache.keys().next().value!);
+    return this.bidsCache.get(i)!;
+  }
   private raw(index:number):DirectorShot|null{
     const i=Math.max(0,Math.min(Math.ceil(this.duration/this.step),index));
     if(this.rawCache.has(i))return this.rawCache.get(i)!;
-    const pose=this.solve(Math.min(this.duration,i*this.step));
+    const pose=this.bids(i)[0]??null;
     this.rawCache.set(i,pose);
     while(this.rawCache.size>this.maxCache)
       this.rawCache.delete(this.rawCache.keys().next().value!);
@@ -292,9 +311,37 @@ export class ReplayDirectorStoryboard{
   private plan(raw:DirectorShot|null,prior:RailShot|null,
     index:number):RailShot|null{
     this.activateScene(index);
+    const sceneCtx={scene:this.physicalScene,aspect:this.aspect,
+      baseSpan:this.baseSpan,safeFrame:this.safeFrame};
+    const ranked=this.bids(index).map(shot=>({
+      shot,quality:scoreDirectorCandidate(shot,sceneCtx,prior)
+    })).filter(b=>b.quality.legal)
+      .sort((a,b)=>b.quality.score-a.quality.score||
+        (a.shot.editorialId??'').localeCompare(b.shot.editorialId??''));
+    raw=ranked[0]?.shot??raw;
     if(!prior)return raw?{...raw,sceneStartIndex:index,
       cameraDecision:'establish'}:null;
     if(!raw)return {...prior,cameraDecision:'hold:no-evidence'};
+    // The established camera must be a REAL competing option, not just
+    // a hold heuristic. Re-score its current optics against the current
+    // editorial hero/attention without pretending that the old shot
+    // still depicts last knot's actors or target.
+    const held={...raw,roomId:prior.roomId,
+      cameraAnchor:prior.cameraAnchor,focus:prior.focus,
+      yaw:prior.yaw,zoom:prior.zoom,fov:prior.fov,
+      pitch:prior.pitch};
+    const heldQuality=scoreDirectorCandidate(held,sceneCtx,prior);
+    if(heldQuality.legal&&heldQuality.heroVisible&&
+      (!raw.contactTargetPoint||heldQuality.targetVisible)&&
+      (!raw.discoveryStrength||heldQuality.attentionVisible)&&
+      heldQuality.score>=(ranked[0]?.quality.score??0)-3&&
+      raw.roomId===prior.roomId){
+      return {...held,sceneStartIndex:prior.sceneStartIndex,
+        decisionScore:heldQuality.score,
+        decisionReason:'held camera competes within 3 utility points',
+        decisionBreakdown:heldQuality,
+        cameraDecision:'hold:competitive-composition'};
+    }
     const sameStory=!!raw.editorialId&&
       raw.editorialId===prior.editorialId;
     const covered=this.coversPrior(prior,raw);
