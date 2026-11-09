@@ -71,7 +71,11 @@ export function composeReplayDirectorShots(
   if(!actor)return [];
   const intent=context.intents.find(i=>i.actorId===actor.id);
   const knownTarget=plan.kind==='engage'?plan.target:null;
-  const doorway=plan.kind==='door'||plan.kind==='entry'?
+  // The door is a useful setup, but once the first operator has crossed
+  // the threshold it is BEHIND the action. Follow the entrant's current
+  // movement / attention into the room, never look back at the old leaf.
+  const doorway=plan.kind==='door'||
+    (plan.kind==='entry'&&!plan.firstEntry)?
     plan.door?.mid??plan.target:null;
   const observed=knownTarget??doorway;
   // The action axis overrides the route when looking, watching or
@@ -241,19 +245,24 @@ export class ReplayDirectorStoryboard{
     return directorCameraLegal(shot.cameraAnchor,room,scene)&&
       (!actor||!directorLineBlocked(shot.cameraAnchor,actor,scene));
   }
+  /** A held shot may TRACK a real operator, but it must never silently
+   * teleport to a fresh candidate. Returning null means a motivated edit
+   * is necessary; no obsolete actor coordinates may be reused. */
   private track(prior:Staged,next:DirectorShot,
-    scene:PhysicalDirectorScene):DirectorShot{
+    scene:PhysicalDirectorScene):DirectorShot|null{
     if(!next.operatorPoint||!prior.operatorPoint||
-      next.primaryActorId!==prior.primaryActorId)return next;
+      next.primaryActorId!==prior.primaryActorId||
+      next.roomId!==prior.roomId)return null;
     const d={x:next.operatorPoint.x-prior.operatorPoint.x,
       y:next.operatorPoint.y-prior.operatorPoint.y};
     const moved=length(d);
     const aligned=!!prior.actionAxis&&!!next.actionAxis&&
       prior.actionAxis.x*next.actionAxis.x+
-      prior.actionAxis.y*next.actionAxis.y>.88;
-    // Static actions do not trigger an incessant camera re-aim.
-    // Moving actors carry the same camera rig with them when legal.
-    if(!aligned||moved>90)return next;
+      prior.actionAxis.y*next.actionAxis.y>.82;
+    // A substantial corner turn needs a NEW look into the new space.
+    // Do not pretend the old shoulder can remain legal while rotating
+    // through the subject, or snap to a new camera without recording a cut.
+    if(!aligned||moved>90)return null;
     const tracked={...next,
       cameraAnchor:{x:prior.cameraAnchor.x+d.x,
         y:prior.cameraAnchor.y+d.y},
@@ -265,11 +274,10 @@ export class ReplayDirectorStoryboard{
     const hero=directorSubjectVisibility(tracked.cameraAnchor,
       next.operatorPoint,scene);
     const focusPoint=next.contactTargetPoint??next.attentionPoint;
-    // Never retain the old side if its view of the new action is lost.
     if(!this.legal(tracked,scene)||!hero.readable||
       focusPoint&&next.shotType==='contact'&&
       directorLineBlocked(tracked.cameraAnchor,focusPoint,scene))
-      return next;
+      return null;
     const quality=directorCompositionQuality(
       tracked.cameraAnchor,tracked.focus,next.operatorPoint,
       next.contactTargetPoint??null,next.actionAxis??{x:1,y:0},
@@ -277,60 +285,87 @@ export class ReplayDirectorStoryboard{
       this.options.aspect??1.1,this.options.baseSpan??1100,
       tracked.zoom,108,this.options.usableWidth??.8,
       this.options.usableHeight??.76,this.options.safeFrame);
-    if(quality.primaryCoverage<.7||
-      next.contactTargetPoint&&!quality.targetReadable)return next;
+    if(quality.primaryCoverage<.73||
+      next.contactTargetPoint&&!quality.targetReadable)return null;
     return {...tracked,compositionQuality:quality,
-      cameraDecision:moved>2?'track:operator':'hold:stable-shoulder'};
+      cameraDecision:moved>2?'track:active-operator':
+        'hold:readable-action'};
   }
   private select(index:number,prior:Staged|null):Staged|null{
     const scene=this.scene(index);
     const candidates=this.candidates(index).filter(s=>this.legal(s,scene));
     if(!candidates.length){
-      return prior&&this.legal(prior,scene)?
-        {...prior,cameraDecision:'hold:no-legal-new-shot'}:null;
+      // A legal camera coordinate alone does not imply anybody is still
+      // standing in front of it. Never hold an empty door forever.
+      return prior&&index-prior.sceneStartIndex<=1&&
+        this.legal(prior,scene)?
+        {...prior,cameraDecision:'hold:brief-camera-gap'}:null;
     }
     const best=candidates[0];
     if(!prior)return {...best,sceneStartIndex:index,
       cameraDecision:'establish:shoulder'};
     const elapsed=(index-prior.sceneStartIndex)*this.step;
+    const side=directorShoulderSide(prior);
     const sameActor=candidates.filter(s=>
       s.primaryActorId===prior.primaryActorId&&
       s.roomId===prior.roomId);
-    const oldSide=directorShoulderSide(prior);
-    const retained=sameActor.find(s=>
-      directorShoulderSide(s)===oldSide);
-    const newEvent=(best.shotType==='contact'&&
-      prior.shotType!=='contact')||
-      (best.firstEntry&&prior.shotType!=='entry')||
-      (best.discoveryStrength??0)>.25&&
+    const retained=sameActor.find(s=>directorShoulderSide(s)===side);
+    const following=retained?this.track(prior,retained,scene):null;
+    const isEntry=!!best.firstEntry&&best.shotType==='entry'&&
+      (prior.editorialId!==best.editorialId||
+       prior.roomId!==best.roomId);
+    const newContact=best.shotType==='contact'&&
+      (prior.shotType!=='contact'||
+       prior.editorialId!==best.editorialId);
+    const newDiscovery=(best.discoveryStrength??0)>.25&&
       (prior.discoveryStrength??0)<=.25;
-    // When the same operator is still the subject, side changes are
-    // forbidden while the established side remains physically workable.
-    if(retained&&!newEvent&&
-      (best.primaryActorId===prior.primaryActorId||
-       (best.editorialPriority??0)<=(retained.editorialPriority??0)+.35)){
-      const next=this.track(prior,retained,scene);
-      if(this.legal(next,scene))return {...next,
-        sceneStartIndex:prior.sceneStartIndex,
-        cameraDecision:next.cameraDecision??'hold:approved-shoulder'};
+    const newInformation=isEntry||newContact||newDiscovery;
+    const sameSubject=best.primaryActorId===prior.primaryActorId;
+    const sameRoom=best.roomId===prior.roomId;
+
+    // A valid established shoulder is the default. Different editorial
+    // labels, grades, and tiny score gains are not reasons to cut. Follow
+    // the person and smoothly update the aim within this one shot grammar.
+    if(following&&(!newInformation||
+       sameSubject&&sameRoom||
+       (best.editorialPriority??0)<
+         (retained?.editorialPriority??0)+1.4)){
+      return {...following,sceneStartIndex:prior.sceneStartIndex,
+        cameraDecision:following.cameraDecision??'hold:committed-shot'};
     }
-    const moreImportant=(best.editorialPriority??0)-
-      (prior.editorialPriority??0);
-    const changing=best.primaryActorId!==prior.primaryActorId||
-      best.roomId!==prior.roomId||
-      directorShoulderSide(best)!==oldSide;
-    if(changing&&!newEvent&&elapsed<2.2&&moreImportant<1.8){
-      if(retained)return {...this.track(prior,retained,scene),
-        sceneStartIndex:prior.sceneStartIndex,
-        cameraDecision:'hold:minimum-residence'};
-      if(this.legal(prior,scene))
-        return {...prior,cameraDecision:'hold:minimum-residence'};
+    const better=(best.editorialPriority??0)-
+      (retained?.editorialPriority??prior.editorialPriority??0);
+    const lostPreviousSubject=!sameActor.length||!following;
+    const meaningfulChange=!sameSubject||!sameRoom||
+      (best.actionAxis&&prior.actionAxis&&
+       best.actionAxis.x*prior.actionAxis.x+
+       best.actionAxis.y*prior.actionAxis.y<.82)||
+      better>=1.4;
+    const residence=3.0;
+    // A new disclosed contact or actual threshold crossing takes priority
+    // over the residence rule. Losing the current subject/shoulder also
+    // demands prompt recovery; staying is not proof of continuity.
+    if(!newInformation&&!lostPreviousSubject&&elapsed<residence){
+      return {...following!,sceneStartIndex:prior.sceneStartIndex,
+        cameraDecision:'hold:no-meaningful-edit'};
     }
-    // A deliberate cut is permitted for disclosed contact, a first room
-    // entry, or loss of the previous shoulder's view. Not every knot.
+    if(!newInformation&&!meaningfulChange&&following)
+      return {...following,sceneStartIndex:prior.sceneStartIndex,
+        cameraDecision:'hold:no-meaningful-edit'};
+    // For an ordinary editorial handoff (not a reveal or lost frame),
+    // insist on enough residence to make the change intelligible.
+    if(!newInformation&&following&&elapsed<residence)
+      return {...following,sceneStartIndex:prior.sceneStartIndex,
+        cameraDecision:'hold:shot-commitment'};
+    if(!newInformation&&lostPreviousSubject&&elapsed<1.0&&
+      this.legal(prior,scene))
+      return {...prior,cameraDecision:'hold:short-edit-bridge'};
     return {...best,sceneStartIndex:index,
-      cameraDecision:newEvent?'cut:new-recorded-information':
-        changing?'cut:subject-or-room':'cut:shoulder-recovery'};
+      cameraDecision:isEntry?'cut:follow-through-entry':
+        newContact?'cut:new-contact':
+        newDiscovery?'cut:newly-seen-ground':
+        lostPreviousSubject?'cut:recover-live-action':
+        'cut:meaningful-action-change'};
   }
   private key(index:number):Staged|null{
     const i=clamp(index,0,Math.ceil(this.duration/this.step));
@@ -359,11 +394,9 @@ export class ReplayDirectorStoryboard{
       from.primaryActorId!==to.primaryActorId||
       from.roomId!==to.roomId||
       directorShoulderSide(from)!==directorShoulderSide(to)||
-      from.editorialId!==to.editorialId||
-      from.editorialKind!==to.editorialKind||
-      !!from.contactTargetPoint!==!!to.contactTargetPoint||
-      (from.discoveryStrength??0)<=.25&&
-        (to.discoveryStrength??0)>.25;
+      // Editorial labels are not edits. A tracked setup can change from
+      // stack to entry or follow while its actual shoulder remains stable.
+      false;
     // Never pre-reveal the next beat by transitioning early.
     if(cut)return from;
     const p=clamp(fraction,0,1);
