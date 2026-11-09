@@ -80,9 +80,9 @@ test('an enclosed courtyard stays unknown while an open shipping court is outsid
  const site={seed:22,rooms:border,
   bounds:{minX:0,minY:0,maxX:450,maxY:450}};
  assert.equal(exteriorBriefedAt(site,{x:210,y:210}),true);
- site.rooms=[...border,room('S',100,290,220,40)];
- assert.equal(exteriorBriefedAt(site,{x:210,y:210}),false);
- const rects=exteriorKnownFogRects(site);
+ const enclosed={...site,rooms:[...border,room('S',100,290,220,40)]};
+ assert.equal(exteriorBriefedAt(enclosed,{x:210,y:210}),false);
+ const rects=exteriorKnownFogRects(enclosed);
  assert.ok(rects.some(r=>210>r.x&&210<r.x+r.w&&
    210>r.y&&210<r.y+r.h));
 });
