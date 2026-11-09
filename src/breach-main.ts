@@ -8245,12 +8245,18 @@ function updatePhysicalActionRings(){
     // this never mutates cover, reveals unknown obstacles, or guarantees travel.
     if(pushMode&&state.phase==='planning'&&!replaying&&actor){
       const from=selectedPlanNode()?.p??finalPoint(actor);
-      const candidate=state.coverState.map((object,index)=>({
-        object,index,range:distance(from,{x:object.x,y:object.y})
-      })).filter(item=>canRelocateCover(item.object)&&
-        state.intel.cover.has(item.index)&&
-        item.range<Math.max(item.object.w,item.object.h)/2+43)
-        .sort((a,b)=>a.range-b.range||a.index-b.index)[0];
+      // Find the nearest known movable cover in one pass. Sorting and
+      // allocating a candidate array every RAF is unnecessary here.
+      let candidate:{object:(typeof state.coverState)[number];index:number;range:number}|undefined;
+      for(let index=0;index<state.coverState.length;index++){
+        const object=state.coverState[index];
+        if(!state.intel.cover.has(index)||!canRelocateCover(object))continue;
+        const range=distance(from,{x:object.x,y:object.y});
+        if(range>=Math.max(object.w,object.h)/2+43)continue;
+        if(!candidate||range<candidate.range){
+          candidate={object,index,range};
+        }
+      }
       if(candidate){
         const obj=candidate.object,center={x:obj.x,y:obj.y};
         const base=Math.atan2(obj.y-from.y,obj.x-from.x);
