@@ -198,7 +198,7 @@ export function composeReplayDirectorShots(time:number,
   // Only the strongest angle gets two gentle framing alternatives;
   // the physical solver already audited the other angles. A competing
   // focus never moves the camera through a wall or changes disclosure.
-  for(const [index,view] of physicals.entries()){
+  for(const view of physicals){
     const d=unit({x:view.focus.x-view.cameraAnchor.x,
       y:view.focus.y-view.cameraAnchor.y});
     const shifts=[0]; // No independent left/right framing inventions.
