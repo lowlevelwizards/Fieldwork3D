@@ -5,6 +5,9 @@
 import {spawnSync} from 'node:child_process';
 import {existsSync} from 'node:fs';
 const tests=[
+ 'tests/breach-roadmap4-plan-authoring.test.mjs',
+ 'tests/breach-roadmap4-simulation-phases.test.mjs',
+ 'tests/breach-roadmap4-actor-presentation.test.mjs',
  'tests/breach-roadmap3-scenarios.test.mjs',
  'tests/breach-roadmap3-combat-effects.test.mjs',
  'tests/breach-roadmap3-context-commands.test.mjs',
