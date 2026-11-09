@@ -2,6 +2,7 @@
 import type {Site,Room} from '../breach-site.ts';
 import type {Pt} from '../breach-core.ts';
 import {cutWallAperture} from './architectural-assembly.ts';
+import {SERVING_COUNTER_VISUAL_HEIGHT} from '../breach-opening-proportions.ts';
 const compatible=new Set(['dining|kitchen','kitchen|service','checkout|sales',
  'reception|waiting','lobby|reception','office|sales','sales|stockroom']);
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -37,7 +38,7 @@ export function addServiceHatches(site:Site,seed:number):Site{
   cover.push({x:candidate.p.x,y:candidate.p.y,
    w:Math.abs(candidate.wall.a.x-candidate.wall.b.x)<1?10:width,
    h:Math.abs(candidate.wall.a.x-candidate.wall.b.x)<1?width:10,
-   low:true,fixture:'window-sill',topHeight:24});
+   low:true,fixture:'window-sill',topHeight:SERVING_COUNTER_VISUAL_HEIGHT});
   walls=cut.walls;added++;
  }
  void seed;
