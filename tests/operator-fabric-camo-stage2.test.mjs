@@ -142,7 +142,7 @@ test('Lab keeps its picker, Campaign and Quick Play open the canonical Studio',(
   'Quick Play delegates its appearance editor to the Studio bridge');
  // Legacy in-card Quick Play customization remains available; removing it
  // belongs to the separate UX cleanup. Reference Kits use Studio's own editor.
- assert.match(quick,/document\.getElementById\('openOperatorStudio'\)/);
+ assert.match(quick,/const openOperatorStudio=studioBridge\.open/);
  assert.doesNotMatch(studio,/createWardrobeFabricCamoPicker/);
  assert.match(studio,/fabricCamoChoices\(channel,outfit\)/);
  assert.match(studio,/addCamoSwatches\(group,choices,pattern/);
