@@ -312,7 +312,7 @@ export class ReplayDirectorStoryboard{
     const retained=sameActor.find(s=>directorShoulderSide(s)===side);
     const following=retained?this.track(prior,retained,scene):null;
     const isEntry=!!best.firstEntry&&best.shotType==='entry'&&
-      (prior.editorialId!==best.editorialId||
+      (!prior.firstEntry||prior.editorialId!==best.editorialId||
        prior.roomId!==best.roomId);
     const newContact=best.shotType==='contact'&&
       !!best.contactTargetPoint&&
