@@ -26,7 +26,7 @@ export function createTacticalPaletteController(config:{
   worldToScreen:(p:Pt,z:number)=>Pt;
   routePoints:(a:Pt,b:Pt)=>readonly Pt[];
   iconFor:(id:string,label:string)=>string;
-  makeIcon:(id:string)=>HTMLElement;
+  makeIcon:(id:string)=>SVGSVGElement;
   installHelp:(button:HTMLButtonElement)=>void;
   onLayoutChange?:()=>void;
 }){
