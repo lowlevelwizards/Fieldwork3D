@@ -52,8 +52,7 @@ import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
 import type {Site} from './breach-site.ts';
 import {captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam,
   type MissionStartSnapshot} from './breach-mission-restart.ts';
-import {readFavoriteMissions,addFavoriteMission,removeFavoriteMission,
-  writeFavoriteMissions,type FavoriteMission} from './breach-mission-favorites.ts';
+import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
 import {createBriefingCardModel,type BriefingReport,type BriefingTab}
@@ -90,11 +89,8 @@ import {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
 import {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 import {ReplayBodycamController} from './breach-replay-bodycam-controller.ts';
 import {ReplayCameraController} from './breach-replay-camera-controller.ts';
-import {captureReplayArchive,restoreReplayArchive} from './breach-replay-archive.ts';
-import {createReplayLibraryUi} from './ui/breach-replay-library-ui.ts';
-import {saveReplayArchive,loadSavedReplay,
-  getSavedReplayBookmarks,saveReplayBookmarks}
-  from './breach-replay-library.ts';
+import {createBreachReplayLibraryController}
+  from './ui/breach-replay-library-controller.ts';
 import {stepReplaySample,stepReplayPresentation,formatReplayTime}
   from './breach-replay-transport.ts';
 import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-index.ts';
@@ -110,7 +106,6 @@ import {buildReplayChapters,addReplayBookmark,adjacentReplayChapter,
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import {inspectRecordedShot,shotScreenHit,adjacentRecordedShot}
   from './breach-replay-shot-inspector.ts';
-import {serializeReplayReport} from './breach-replay-export-json.ts';
 import {ReplaySoundTimeline,replayDoorSoundId} from './breach-replay-audio.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
@@ -689,18 +684,6 @@ let deployOptions:ReturnType<typeof availableDeployments>=[];
 let selectedEntry='FRONT';
 let missionStart:MissionStartSnapshot=captureMissionStart(
  state,requestedSiteScale,selectedEntry);
-const FAVORITE_MISSIONS_STORAGE='fieldwork3d.favorite-missions.v1';
-let activeFavoriteId:string|null=null;
-function favoriteMissions():FavoriteMission[]{
-  try{return readFavoriteMissions(localStorage.getItem(FAVORITE_MISSIONS_STORAGE));}
-  catch{return [];}
-}
-function persistFavoriteMissions(history:FavoriteMission[]):boolean{
-  try{
-    localStorage.setItem(FAVORITE_MISSIONS_STORAGE,writeFavoriteMissions(history));
-    return true;
-  }catch{return false;}
-}
 function restoreFavoriteMission(saved:FavoriteMission):void{
   if(campaignMode==='mission'){
     showUiHelp('FAVORITES PLAY AS QUICK PLAY PRACTICE',3400);return;
@@ -715,47 +698,11 @@ function restoreFavoriteMission(saved:FavoriteMission):void{
     if(selectDeployment(state,start.entryId))selectedEntry=start.entryId;
     else console.warn('[Favorite mission] Saved entry no longer valid',start.entryId);
   }
-  missionStart=start;activeFavoriteId=saved.id;
+  missionStart=start;replayLibrary.activateFavorite(saved.id);
   recorder=new MissionRecorder();recorder.capture(state,true);
   closeMissionSettings(false);
   layout();updateHud();
   showUiHelp('FAVORITE LOADED · ORIGINAL MISSION SETUP',3800);
-}
-function renderFavoriteMissions():void{
-  const list=ui.favoriteMissionsList;
-  const entries=favoriteMissions().slice().reverse();
-  const fragment=document.createDocumentFragment();
-  if(!entries.length){
-    const empty=document.createElement('p');empty.className='favorite-empty';
-    empty.textContent='Favorite an operation from its debrief to play it again later.';
-    fragment.append(empty);
-  }
-  for(const saved of entries){
-    const row=document.createElement('div');row.className='favorite-mission-entry';
-    row.setAttribute('role','listitem');
-    const info=document.createElement('div');info.className='favorite-mission-name';
-    const title=document.createElement('strong');title.textContent=saved.label;
-    const caption=document.createElement('span');
-    caption.textContent=saved.start.missionType.toUpperCase()+
-      ' · '+(saved.start.site?.scale??'standard').toUpperCase();
-    info.append(title,caption);
-    const play=document.createElement('button');play.type='button';
-    play.textContent='PLAY';play.disabled=campaignMode==='mission';
-    play.title='Start an independent Quick Play rematch';
-    play.addEventListener('click',()=>restoreFavoriteMission(saved));
-    const remove=document.createElement('button');remove.type='button';
-    remove.textContent='×';remove.setAttribute('aria-label',
-      'Delete favorite '+saved.label);
-    remove.addEventListener('click',()=>{
-      if(!persistFavoriteMissions(removeFavoriteMission(favoriteMissions(),saved.id))){
-        showUiHelp('COULD NOT UPDATE FAVORITES',2900);return;
-      }
-      if(activeFavoriteId===saved.id)activeFavoriteId=null;
-      renderFavoriteMissions();updateHud();
-    });
-    row.append(info,play,remove);fragment.append(row);
-  }
-  list.replaceChildren(fragment);
 }
 function refreshDeployment(){
  if(deploymentState!==state){
@@ -874,12 +821,6 @@ const replayQuickVideo=new ReplayQuickVideo(
     showUiHelp(reason,3600);
   }
 );
-let savedReplayPreviousRecorder:MissionRecorder|null=null;
-let activeSavedReplayId:string|null=null;
-const savedRecordingIds=new WeakMap<MissionRecorder,string>();
-let replayEntrySource:'debrief'|'library'='debrief';
-// Title-screen origin survives saved replay playback and library return.
-let replayLibraryReturnToMenu=false;
 let replayPresentation:ReplayPresentation|null=null;
 let finishedSession:Session|null=null;
 const replayKnowledge=new ReplayKnowledgeController();
@@ -2781,12 +2722,9 @@ function updateHud(){
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
   ui.debrief.hidden=replaying||(state.phase!=='won'&&state.phase!=='lost');
-  const replayIsSaved=!!savedRecordingIds.get(recorder);
-  ui.saveReplayDebrief.disabled=replayLibrary.busy||replayIsSaved;
-  ui.saveReplayDebrief.textContent=replayIsSaved?'REPLAY SAVED':'SAVE REPLAY';
-  ui.saveReplayDebrief.disabled=recorder.frames.length<2||replayLibrary.busy;
+  replayLibrary.syncSavedButtons();
   ui.favoriteMission.disabled=!state.site;
-  ui.favoriteMission.textContent=activeFavoriteId?
+  ui.favoriteMission.textContent=replayLibrary.activeFavoriteId?
     '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
   ui.next.textContent=campaignMode==='mission'?'RETURN TO BASE':'NEXT ARRANGEMENT';
   ui.retry.disabled=campaignMode==='mission';
@@ -4002,7 +3940,7 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
     button.setAttribute('aria-pressed',String(button.dataset.replayPreset===replayPreset));
   ui.replayPresetStatus.textContent=replayPreset==='custom'?'CUSTOM SETTINGS':'';
   ui.replayShareToggle.textContent=replayQuickVideo.active?'■ STOP VIDEO':'SAVE / SHARE';
-  const replaySaved=!!(activeSavedReplayId||savedRecordingIds.get(recorder));
+  const replaySaved=!!(replayLibrary.activeSavedReplayId||replayLibrary.isRecorderSaved(recorder));
   ui.replaySaveArchive.disabled=replayLibrary.busy||replaySaved;
   ui.replaySaveArchive.textContent=replaySaved?'SAVED TO LIBRARY':'SAVE REPLAY';
   ui.replayShareToggle.setAttribute('aria-label',replayQuickVideo.active?
@@ -4194,139 +4132,53 @@ function exitReplay(){
   closeReplayChoices();
   if(finishedSession)state=finishedSession;
   finishedSession=null;fog2D.invalidate();
-  if(savedReplayPreviousRecorder){
-    recorder=savedReplayPreviousRecorder;
-    savedReplayPreviousRecorder=null;
-  }
-  activeSavedReplayId=null;
+  replayLibrary.afterReplayExit();
   stage?.applySite(state.site??null);
   updateHud();
-  if(replayEntrySource==='library'){
-    replayEntrySource='debrief';showSavedReplayLibrary();
-  }
 }
 /** Replay Library: load metadata only until a recording is selected.
  * No campaign result, equipment persistence, or live session is modified.
  */
-const replayLibrary=createReplayLibraryUi({
+const replayLibrary=createBreachReplayLibraryController({
   ui:{
     replayLibraryDialog:ui.replayLibraryDialog,
     replayLibraryStatus:ui.replayLibraryStatus,
     replayLibraryList:ui.replayLibraryList,
     replayLibraryBackdrop:ui.replayLibraryBackdrop,
     replayImportButton:ui.replayImportButton,
-    replayImportInput:ui.replayImportInput
+    replayImportInput:ui.replayImportInput,
+    openReplayLibrary:ui.openReplayLibrary,
+    closeReplayLibrary:ui.closeReplayLibrary,
+    saveReplayDebrief:ui.saveReplayDebrief,
+    replaySaveArchive:ui.replaySaveArchive,
+    favoriteMission:ui.favoriteMission,
+    favoriteMissionsList:ui.favoriteMissionsList,
+    replayExportJson:ui.replayExportJson
   },
-  showUiHelp,playSavedReplay:(id)=>{void playSavedReplay(id);},
-  closeMissionSettings,isReplaying:()=>replaying
-});
-const renderSavedReplayLibrary=()=>replayLibrary.render();
-const replayLibraryFailure=(error:unknown)=>replayLibrary.failure(error);
-const showSavedReplayLibrary=()=>replayLibrary.show();
-const hideSavedReplayLibrary=(restoreMenu=true)=>{
-  replayLibrary.hide();
-  if(restoreMenu&&replayLibraryReturnToMenu){
-    replayLibraryReturnToMenu=false;
+  showUiHelp,closeMissionSettings,isReplaying:()=>replaying,
+  getRecorder:()=>recorder,
+  setRecorder:value=>{recorder=value;},
+  getBookmarks:()=>replayBookmarks,
+  applyLoadedBookmarks:marks=>{
+    replayBookmarks=marks;
+    replayBookmarkCounter=Math.max(marks.length,
+      ...marks.map(mark=>Number(mark.id.match(/bookmark-(\d+)/)?.[1]??0)));
+    renderReplayChapters();
+  },
+  enterReplay,exitReplay,refreshHud:updateHud,
+  getFavoriteDraft:()=>state.site?{
+    start:missionStart,
+    label:state.site.name+' · '+state.missionType.toUpperCase()
+  }:null,
+  playFavorite:restoreFavoriteMission,
+  canPlayFavorite:()=>campaignMode!=='mission',
+  hideCampaignScreen:()=>campaignScreen.hide(),
+  returnToCampaignMenu:()=>{
     campaignMode='menu';campaignScreen.entry(!!campaign);
   }
-};
-async function saveCurrentReplay():Promise<void>{
-  if(replayLibrary.busy||recorder.frames.length<2)return;
-  if(activeSavedReplayId||savedRecordingIds.has(recorder)){
-    showUiHelp('REPLAY ALREADY SAVED TO LIBRARY',2800);return;
-  }
-  replayLibrary.busy=true;
-  ui.saveReplayDebrief.disabled=true;ui.replaySaveArchive.disabled=true;
-  try{
-    const id='replay-'+Date.now().toString(36)+'-'+
-      Math.random().toString(36).slice(2,9);
-    const archive=captureReplayArchive(recorder,id,Date.now());
-    await saveReplayArchive(archive);
-    savedRecordingIds.set(recorder,id);
-    if(replaying)activeSavedReplayId=id;
-    if(replayBookmarks.length)await saveReplayBookmarks(id,replayBookmarks);
-    showUiHelp('FULL REPLAY SAVED TO DEVICE LIBRARY',3400);
-    if(!ui.replayLibraryDialog.hidden)await renderSavedReplayLibrary();
-  }catch(error){replayLibraryFailure(error);}
-  finally{
-    replayLibrary.busy=false;
-    const saved=!!(activeSavedReplayId||savedRecordingIds.get(recorder));
-    ui.saveReplayDebrief.disabled=saved;ui.replaySaveArchive.disabled=saved;
-    if(saved){
-      ui.saveReplayDebrief.textContent='REPLAY SAVED';
-      ui.replaySaveArchive.textContent='SAVED TO LIBRARY';
-    }
-  }
-}
-async function playSavedReplay(id:string):Promise<void>{
-  if(replayLibrary.busy||replaying)return;
-  replayLibrary.busy=true;
-  try{
-    const archived=await loadSavedReplay(id);
-    const stored=restoreReplayArchive(archived);
-    if(stored.frames.length<2)throw Error('Replay recording has no film');
-    const savedMarks=await getSavedReplayBookmarks(id);
-    // Preserve the current live recorder and return to it on replay exit.
-    savedReplayPreviousRecorder=recorder;
-    recorder=stored;
-    hideSavedReplayLibrary(false);
-    closeMissionSettings(false);
-    replayEntrySource='library';enterReplay();
-    if(replaying){
-      activeSavedReplayId=id;
-      replayBookmarks=savedMarks;
-      replayBookmarkCounter=Math.max(savedMarks.length,
-        ...savedMarks.map(mark=>Number(mark.id.match(/bookmark-(\d+)/)?.[1]??0)));
-      renderReplayChapters();
-    }
-    if(!replaying){
-      recorder=savedReplayPreviousRecorder;savedReplayPreviousRecorder=null;
-      throw Error('Could not open saved replay');
-    }
-    showUiHelp('PLAYING SAVED OPERATION · ORIGINAL MISSION UNCHANGED',3800);
-  }catch(error){
-    activeSavedReplayId=null;
-    // A failed import must never leave the current mission's film replaced.
-    if(replaying)exitReplay();
-    if(savedReplayPreviousRecorder){
-      recorder=savedReplayPreviousRecorder;
-      savedReplayPreviousRecorder=null;
-    }
-    replayLibraryFailure(error);
-    if(replayLibraryReturnToMenu&&ui.replayLibraryDialog.hidden)
-      showSavedReplayLibrary();
-  }
-  finally{replayLibrary.busy=false;}
-}
-ui.openReplayLibrary.addEventListener('click',showSavedReplayLibrary);
-ui.closeReplayLibrary.addEventListener('click',()=>hideSavedReplayLibrary());
-ui.replayLibraryBackdrop.addEventListener('click',()=>hideSavedReplayLibrary());
-ui.saveReplayDebrief.addEventListener('click',()=>{void saveCurrentReplay();});
-ui.replaySaveArchive.addEventListener('click',()=>{void saveCurrentReplay();});
-
-ui.watchReplay.addEventListener('click',()=>{
-  replayEntrySource='debrief';enterReplay();
 });
-ui.favoriteMission.addEventListener('click',()=>{
-  if(!state.site)return;
-  const favorites=favoriteMissions();
-  if(activeFavoriteId&&favorites.some(item=>item.id===activeFavoriteId)){
-    showUiHelp('MISSION ALREADY IN FAVORITES',2700);return;
-  }
-  const id='favorite-'+Date.now().toString(36)+'-'+
-    Math.random().toString(36).slice(2,9);
-  const label=state.site.name+' · '+state.missionType.toUpperCase();
-  try{
-    if(!persistFavoriteMissions(addFavoriteMission(
-      favorites,missionStart,id,label,Date.now())))
-      throw Error('Storage unavailable');
-    activeFavoriteId=id;
-    renderFavoriteMissions();updateHud();
-    showUiHelp('MISSION SAVED TO FAVORITES',3200);
-  }catch(error){
-    console.warn('[Favorite mission]',error);
-    showUiHelp('COULD NOT SAVE FAVORITE · CHECK LOCAL STORAGE',3500);
-  }
+ui.watchReplay.addEventListener('click',()=>{
+  replayLibrary.markDebriefEntry();enterReplay();
 });
 ui.replayPlay.addEventListener('click',()=>{
   if(replayPlayback.time>=recorder.duration)seekReplay(0);
@@ -4518,13 +4370,7 @@ ui.replayBookmark.addEventListener('click',()=>{
   replayBookmarks=addReplayBookmark(replayBookmarks,replayPlayback.time,recorder.duration,
     id,'MARK '+String(replayBookmarkCounter).padStart(2,'0'));
   renderReplayChapters();
-  if(activeSavedReplayId){
-    const replayId=activeSavedReplayId;
-    void saveReplayBookmarks(replayId,replayBookmarks).then(()=>{
-      if(activeSavedReplayId===replayId)
-        showUiHelp('BOOKMARK SAVED TO REPLAY LIBRARY',2400);
-    }).catch(error=>replayLibraryFailure(error));
-  }else showUiHelp('BOOKMARK ADDED · SAVE REPLAY TO PRESERVE',2800);
+  void replayLibrary.persistCurrentBookmarks();
 });
 ui.replayShotClose.addEventListener('click',closeReplayShotInspector);
 ui.replayShotFocus.addEventListener('click',focusReplayShot);
@@ -4926,33 +4772,13 @@ ui.replayExportVideo.addEventListener('click',()=>{
     'Recording replay video with audio':'Recording replay video without audio';
   updateReplayHud();
 });
-ui.replayExportJson.addEventListener('click',()=>{
-  try{
-    const report=serializeReplayReport(recorder);
-    const blob=new Blob([report],{type:'application/json;charset=utf-8'});
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    const seed=recorder.manifest?.site?.seed??'mission';
-    a.href=url;a.download='fieldwork-breach-'+seed+'-'+
-      Math.round(recorder.duration)+'s-report.json';
-    document.body.append(a);a.click();a.remove();
-    // iOS WebKit may need the object URL until after navigation begins.
-    setTimeout(()=>URL.revokeObjectURL(url),1000);
-    showUiHelp('FULL-RECONSTRUCTION JSON REPORT EXPORTED',2500);
-  }catch(error){
-    console.warn('[Replay JSON export]',error);
-    showUiHelp('JSON EXPORT UNAVAILABLE',3500);
-  }
-});
 ui.replayExit.addEventListener('click',exitReplay);
 function reset(next=state.variant,siteSeed?:number,
  missionOverride?:Session['missionType'],prebuiltSite?:Site,
  encounterRisk?:1|2|3,deferScene=false,
  restartStart?:MissionStartSnapshot){
   replaying=false;replayPlayback.playing=false;finishedSession=null;
-  savedReplayPreviousRecorder=null;
-  hideSavedReplayLibrary();
-  activeFavoriteId=null;
+  replayLibrary.resetSession();
   replayEventIndex=null;
   operationsBoard.hidden=true;
   hideWeaponChooser();
@@ -5272,10 +5098,7 @@ const campaignScreen=new CampaignScreen({
  },
  continueCampaign:()=>showCampaignHome(),
  quickPlay:()=>{void launchQuickPlay();},
- openReplayLibrary:()=>{
-  replayLibraryReturnToMenu=true;
-  campaignScreen.hide();showSavedReplayLibrary();
- },
+ openReplayLibrary:()=>replayLibrary.openFromMenu(),
  chooseContract:(id)=>{
   if(!campaign)return;
   const next=acceptContract(campaign,id);
@@ -6113,7 +5936,7 @@ function selectMissionSettingsTab(tab:string){
  if(title)title.textContent=tab==='environment'?'ENVIRONMENT':
   tab==='preferences'?'PREFERENCES':'MISSION';
 }
-renderFavoriteMissions();
+replayLibrary.renderFavorites();
 for(const button of missionSettingsTabs)button.addEventListener('click',()=>{
  selectMissionSettingsTab(button.dataset.siteTab??'mission');
 });
