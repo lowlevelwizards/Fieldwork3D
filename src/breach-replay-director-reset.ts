@@ -133,7 +133,11 @@ export function composeReplayDirectorShots(
           attentionPoint:observed??plan.interest??aim,
           followDirection:axis,firstEntry:plan.firstEntry,
           editorialId:plan.id,editorialKind:plan.kind,
-          editorialPriority:plan.priority,editReason:plan.reason,
+          editorialPriority:plan.priority,
+          subjectImportance:plan.subjectImportance??plan.priority,
+          subjectReason:plan.subjectReason,
+          editReason:plan.subjectReason?
+            plan.reason+' · '+plan.subjectReason:plan.reason,
           requiredPoints:fitting,contactTargetPoint:knownTarget,
           discoveryStrength:plan.discoveryStrength??0,
           compositionQuality:quality,
@@ -155,7 +159,9 @@ export function composeReplayDirectorShots(
         const value=optical+shoulder+clearFrame+
           quality.primaryCoverage*25+quality.score*.08-
           blocking-cost;
-        shot.decisionScore=plan.priority*100+value;
+        // Choose WHO matters before choosing WHICH shoulder looks good.
+        // A pretty idle frame must not beat a live contact elsewhere.
+        shot.decisionScore=(plan.subjectImportance??plan.priority)*100+value;
         shot.decisionReason=targetClear&&quality.targetReadable?
           'legal shoulder / disclosed action readable':
           'legal shoulder / operator and forward sightline';
