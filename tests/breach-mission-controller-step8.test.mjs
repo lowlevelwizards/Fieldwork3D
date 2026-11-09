@@ -168,6 +168,14 @@ test('main delegates lifecycle to one owner and keeps gameplay authoritative',()
  }
  assert.doesNotMatch(main,/newSession\(/);
  assert.doesNotMatch(main,/selectDeployment\(/);
+ const release=main.slice(main.indexOf('function releaseMissionPresentation():void{'),
+   main.indexOf('function mountMissionSession('));
+ for(const teardown of [
+   'replayDirector.reset()','audioController.endReplay()',
+   'replayKnowledge.reset()','physicalActionRings.clear()',
+   'replayMovementHistory=null','recordedOperation=null']){
+   assert.ok(release.includes(teardown),'missing teardown '+teardown);
+ }
  assert.match(controller,/newSession\(/);
  assert.match(controller,/selectDeployment\(/);
  assert.match(controller,/restoreMissionStartingTeam\(/);
