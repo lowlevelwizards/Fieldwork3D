@@ -14,7 +14,9 @@ import type {DirectorRecordedContact} from './breach-replay-director-contact.ts'
 import type {DirectorDiscovery} from './breach-replay-director-discovery.ts';
 import {selectDirectorEditorialShot,type DirectorEditorialShot}
   from './breach-replay-director-edit.ts';
-import {physicalDirectorView,directorLineBlocked}
+import {scoreDirectorCandidate,type DirectorDecisionScore}
+  from './breach-replay-director-decision.ts';
+import {physicalDirectorView,physicalDirectorCandidates,directorLineBlocked}
   from './breach-replay-director-physical.ts';
 import {directorOrthoFittingZoom,directorPerspectiveCovers,
   directorCompositionQuality,type DirectorSafeFrame}
@@ -62,7 +64,13 @@ export type DirectorShot=CinematicShot&{
   /** Actual newly discovered ground / sightline during this beat. */
   discoveryStrength?:number;
   /** HOLD/REFRAME/TRACK/CUT derived from storyboard decision. */
-  cameraDecision?:string
+  cameraDecision?:string;
+  /** Predicted utility is separate from the actual post-render grade. */
+  decisionScore?:number;decisionReason?:string;
+  decisionBreakdown?:DirectorDecisionScore;
+  /** Losing bids remain visible in dev diagnostics, never in game intel. */
+  decisionAlternatives?:Array<{id:string;score:number;reason:string;
+    viewpoint:string;framing:string}>
 };
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const mix=(a:Pt,b:Pt,t:number):Pt=>({
@@ -90,18 +98,18 @@ function shotType(plan:DirectorEditorialShot,
     }
   }
 }
-export function composeReplayDirectorShot(time:number,
+export function composeReplayDirectorShots(time:number,
   actors:readonly DirectorActor[],rooms:readonly DirectorRoom[],
   walls:readonly DirectorWall[],aspect:number,
   _currentYaw:number,baseSpan:number,
-  context:DirectorShotContext):DirectorShot|null{
+  context:DirectorShotContext):DirectorShot[]{
   const friends=actors.filter(a=>a.side==='blue'&&a.health>0&&
     Number.isFinite(a.p.x)&&Number.isFinite(a.p.y));
   const plan=context.editorial??selectDirectorEditorialShot(time,
     friends,context);
-  if(!plan)return null;
+  if(!plan)return [];
   const primary=friends.find(a=>a.id===plan.primaryActorId);
-  if(!primary)return null;
+  if(!primary)return [];
   const included=[primary,...plan.secondaryActorIds.map(id=>
     friends.find(a=>a.id===id)).filter((a):a is DirectorActor=>!!a)];
   const featured=included.slice(0,Math.max(1,context.maxSubjects??4));
@@ -130,7 +138,7 @@ export function composeReplayDirectorShot(time:number,
   if((plan.discoveryStrength??0)>0&&plan.interest)
     fitSubjects.push(plan.interest);
   let hero=primary;
-  let physical=physicalDirectorView({
+  let physicals=physicalDirectorCandidates({
     operator:primary.p,focus,
     // Every foreground teammate may hide the enemy, not just featured
     // actors participating in this editorial beat.
@@ -154,7 +162,8 @@ export function composeReplayDirectorShot(time:number,
       safeFrame:context.safeFrame,
       discoveryStrength:plan.discoveryStrength??0,
       attentionPoint:plan.discoveryStrength?plan.interest:null}
-  },{rooms,walls,doors:context.doors,cover:context.cover},aspect);
+  },{rooms,walls,doors:context.doors,cover:context.cover},aspect,3);
+  let physical=physicals[0];
   // If the nominated protagonist is truly invisible, the final fallback
   // is another historically recorded friendly. This is a cutaway, not
   // license to reveal undisclosed combatants or shoot through solid walls.
@@ -179,7 +188,24 @@ export function composeReplayDirectorShot(time:number,
       }
     }
   }
-  const activeRequired=hero===primary?required:[hero.p];
+  if(hero!==primary)physicals=[physical];
+  const scene={rooms,walls,doors:context.doors,cover:context.cover};
+  const results:DirectorShot[]=[];
+  // Only the strongest angle gets two gentle framing alternatives;
+  // the physical solver already audited the other angles. A competing
+  // focus never moves the camera through a wall or changes disclosure.
+  for(const [index,view] of physicals.entries()){
+    const d=unit({x:view.focus.x-view.cameraAnchor.x,
+      y:view.focus.y-view.cameraAnchor.y});
+    const shifts=index===0&&hero===primary? [0,-1,1]:[0];
+    for(const side of shifts){
+      const offset=isContact?12:isDoor?10:14;
+      const proposedFocus={x:view.focus.x-d.y*side*offset,
+        y:view.focus.y+d.x*side*offset};
+      const physical={...view,focus:side&&
+        !directorLineBlocked(view.cameraAnchor,proposedFocus,scene)?
+        proposedFocus:view.focus};
+      const activeRequired=hero===primary?required:[hero.p];
   const legalRequired=activeRequired.filter(p=>
     !directorLineBlocked(physical.cameraAnchor,p,
       {rooms,walls,doors:context.doors,cover:context.cover}));
@@ -220,7 +246,7 @@ export function composeReplayDirectorShot(time:number,
     physical.cameraAnchor,physical.focus,mandatory,aspect,
     physical.fov,Math.min(.89,safeWidth+.1),
     Math.min(.9,safeHeight+.1),context.safeFrame);
-  return {focus:physical.focus,zoom,
+  const built:DirectorShot={focus:physical.focus,zoom,
     yaw:(yaw+Math.PI*2)%(Math.PI*2),pitch:tilt,
     roomId:physical.roomId,actorsFramed:featured.length,
     kind:isContact||plan.kind==='door'?'action':'squad',
@@ -254,4 +280,26 @@ export function composeReplayDirectorShot(time:number,
     foregroundOperatorPoints:friends.map(a=>a.p),
     contactTargetPoint:isContact?plan.target:null,
     discoveryStrength:plan.discoveryStrength??0};
+      const decision=scoreDirectorCandidate(built,{
+        scene,aspect,baseSpan,safeFrame:context.safeFrame});
+      built.decisionScore=decision.score;
+      built.decisionReason=decision.reason;
+      built.decisionBreakdown=decision;
+      if(decision.legal)results.push(built);
+    }
+  }
+  // Score comparable proposals, not a fixed shoulder/center preference.
+  return results.sort((a,b)=>(b.decisionScore??-Infinity)-
+    (a.decisionScore??-Infinity)||
+    (a.cameraAnchor.x-b.cameraAnchor.x)||
+    (a.cameraAnchor.y-b.cameraAnchor.y)).slice(0,7);
+}
+/** Compatibility API used by legacy benchmarks and single-shot callers. */
+export function composeReplayDirectorShot(time:number,
+  actors:readonly DirectorActor[],rooms:readonly DirectorRoom[],
+  walls:readonly DirectorWall[],aspect:number,
+  currentYaw:number,baseSpan:number,
+  context:DirectorShotContext):DirectorShot|null{
+  return composeReplayDirectorShots(time,actors,rooms,walls,aspect,
+    currentYaw,baseSpan,context)[0]??null;
 }

@@ -213,8 +213,8 @@ export function directorRequiredFov(anchor:PhysicalPoint,focus:PhysicalPoint,
   }
   return Math.max(82,half*360/Math.PI);
 }
-export function physicalDirectorView(req:PhysicalDirectorRequest,
-  scene:PhysicalDirectorScene,aspect=1.1):PhysicalDirectorView{
+export function physicalDirectorCandidates(req:PhysicalDirectorRequest,
+  scene:PhysicalDirectorScene,aspect=1.1,limit=4):PhysicalDirectorView[]{
   const room=directorOperatorRoom(req.operator,scene.rooms);
   // Prefer a roomy, elevated three-quarter composition. A camera
   // planted against a helmet is never an acceptable wide shot.
@@ -305,8 +305,8 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
       y:clamp(req.operator.y,
         room.y+Math.min(11,room.h*.24),room.y+room.h-Math.min(11,room.h*.24))}:
       {...req.operator};
-    return {cameraAnchor:fallback,focus:{...req.operator},
-      roomId:room?.id??null,fov:112,targetVisible:false,occluded:0};
+    return [{cameraAnchor:fallback,focus:{...req.operator},
+      roomId:room?.id??null,fov:112,targetVisible:false,occluded:0}];
   }
   let best:PhysicalDirectorView|null=null,score=-Infinity;
   const candidates:{view:PhysicalDirectorView;score:number}[]=[];
@@ -577,28 +577,53 @@ export function physicalDirectorView(req:PhysicalDirectorRequest,
     best=ranked[0]?.view??best;
     score=ranked[0]?.score??score;
   }
-  // The camera rig is common to ORTHO and WIDE. Confirm the strongest
-  // shots in real perspective before opting for one with a cropped cast.
+  // Return several already audited legal angles, without a second search.
+  // First result retains the original perspective-coverage preference.
+  let first:PhysicalDirectorView|null=null;
   if(best&&req.requiredPoints?.length){
     const clear=req.target&&req.composition?.treatment==='engage'?
       auditedCandidates.filter(c=>c.view.targetVisible&&
         c.view.compositionQuality?.targetReadable&&
         c.view.compositionQuality.primaryReadable):[];
     const ranked=(clear.length?clear:auditedCandidates)
-      .sort((a,b)=>b.score-a.score);
+      .slice().sort((a,b)=>b.score-a.score);
     for(const proposal of ranked.slice(0,16)){
       if(proposal.score<score-200)break;
       if(directorPerspectiveCovers(proposal.view.cameraAnchor,
         proposal.view.focus,req.requiredPoints,aspect,
-        proposal.view.fov,.90,.89,req.composition?.safeFrame))
-        return proposal.view;
+        proposal.view.fov,.90,.89,req.composition?.safeFrame)){
+        first=proposal.view;break;
+      }
     }
   }
-  // No legal WIDE two-shot exists: retain the highest-ranked, legal
-  // ORTHO candidate. Never accept a hidden subject merely because the
-  // perspective-audition lens cannot fit the full two-shot.
-  return best??{cameraAnchor:anchors[0],focus:{...req.operator},
+  const fallback=best??{cameraAnchor:anchors[0],focus:{...req.operator},
     roomId:room?.id??null,fov:112,targetVisible:false,
     occluded:req.subjectPoints.length,
     subjectVisibility:0,subjectReadable:false};
+  const views:PhysicalDirectorView[]=[];
+  const put=(v:PhysicalDirectorView)=>{
+    if(!views.some(old=>distance(old.cameraAnchor,v.cameraAnchor)<1))
+      views.push(v);
+  };
+  put(first??fallback);
+  const ranked=auditedCandidates.slice().sort((a,b)=>b.score-a.score);
+  // Avoid a silently baked-in shoulder preference in tight rooms.
+  if(req.target&&req.followDirection){
+    const signed=(p:PhysicalPoint)=>{
+      const d=req.followDirection!;
+      return d.x*(p.y-req.operator.y)-d.y*(p.x-req.operator.x);
+    };
+    const firstSide=Math.sign(signed(views[0].cameraAnchor));
+    const opposing=ranked.find(c=>
+      Math.sign(signed(c.view.cameraAnchor))===-firstSide&&
+      c.view.subjectReadable);
+    if(opposing)put(opposing.view);
+  }
+  for(const candidate of ranked)put(candidate.view);
+  return views.slice(0,Math.max(1,Math.min(limit,6)));
+}
+/** Backward-compatible one-winner API for other director integrations. */
+export function physicalDirectorView(req:PhysicalDirectorRequest,
+  scene:PhysicalDirectorScene,aspect=1.1):PhysicalDirectorView{
+  return physicalDirectorCandidates(req,scene,aspect,1)[0];
 }

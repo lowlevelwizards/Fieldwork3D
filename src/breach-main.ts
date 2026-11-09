@@ -99,6 +99,8 @@ import {ReplayDirectorStoryboard}
   from './breach-replay-director-storyboard.ts';
 import {directorRecordedContact}
   from './breach-replay-director-contact.ts';
+import {directorEditorialCandidates}
+  from './breach-replay-director-edit.ts';
 import {directorRecentAction}
   from './breach-replay-director-action.ts';
 import {directorRecordedDiscovery}
@@ -113,7 +115,7 @@ import {buildDirectorPlanIndex,directorIntentsAt,
   type DirectorPlanIndex} from './breach-replay-director-intent.ts';
 import {buildDirectorFutureCues,directorFutureAt,
   type DirectorFutureCue} from './breach-replay-director-events.ts';
-import {composeReplayDirectorShot,type DirectorShot}
+import {composeReplayDirectorShots,type DirectorShot}
   from './breach-replay-director-shots.ts';
 import {buildDirectorEntryEvents,directorFirstEntryAt,
   type DirectorEntryEvent}
@@ -4879,10 +4881,7 @@ function rebuildReplayEventIndex():void{
     // Never use a missed bullet's impact coordinate as a human target.
     // FULL SIGHT may frame a physically present recorded enemy; TEAM and
     // OPERATOR views require actual historical actor observation.
-    return composeReplayDirectorShot(t,actors,
-      state.site?.rooms??[],state.site?.walls??[],
-      cssW/Math.max(1,cssH),0,
-      stage?.replayCameraBaseSpan()??1100,{
+    const directorContext={
         intents,upcoming:directorFutureAt(t,replayDirectorFuture),
         beat,contact,
         discovery:directorRecordedDiscovery(frame,
@@ -4896,7 +4895,16 @@ function rebuildReplayEventIndex():void{
         usableWidth:cssW<500?.75:.85,
         usableHeight:cssH<520?.68:.81,maxZoom:14,
         safeFrame:directorSafeFrame
-      });
+      };
+    const stories=directorEditorialCandidates(t,actors,directorContext,2);
+    const proposals=stories.flatMap(editorial=>composeReplayDirectorShots(
+      t,actors,state.site?.rooms??[],state.site?.walls??[],
+      cssW/Math.max(1,cssH),0,stage?.replayCameraBaseSpan()??1100,
+      {...directorContext,editorial}));
+    // At most ten measured alternatives at a fixed film-time knot;
+    // this is not a new render-frame search or a hidden-world query.
+    return proposals.sort((a,b)=>(b.decisionScore??-Infinity)-
+      (a.decisionScore??-Infinity)).slice(0,10);
   },{step:.5,maxCache:96,rooms:state.site?.rooms??[],
     walls:state.site?.walls??[],cover:state.site?.cover??[],
     doors:state.site?.doors??[],
@@ -4965,7 +4973,8 @@ function advanceReplayCamera(dt:number,instant=false):void{
         replayDirectorGradeBucket=gradeBucket;
         replayDirectorGradeKey=gradeKey;
         const grade=replayDirectorGrade;
-        ui.replayFollowStatus.dataset.grade=grade.grade+' · '+grade.score;
+        ui.replayFollowStatus.dataset.grade=grade.grade+
+          (grade.confidence==='limited'?'?':'')+' · '+grade.score;
         ui.replayFollowStatus.title='DIRECTOR SELF-GRADE '+
           grade.grade+' ('+grade.score+'/100) · '+grade.summary+
           ' · '+grade.decision;
@@ -4979,6 +4988,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
         (replayDirectorGrade?'\nSELF-GRADE '+
           replayDirectorGrade.grade+' · '+
           replayDirectorGrade.score+'/100'+
+          '\nMODEL CONFIDENCE '+replayDirectorGrade.confidence+
           '\nASSESSMENT '+replayDirectorGrade.summary+
           '\nVISIBLE HERO '+replayDirectorGrade.subjectVisible+
           ' / ENEMY '+replayDirectorGrade.targetVisible+
@@ -4999,6 +5009,13 @@ function advanceReplayCamera(dt:number,instant=false):void{
         '\\nREASON '+(target.editReason??'—')+
         '\\nTARGET '+(target.requiredPoints?.length??0)+
         ' REQUIRED / WIDE '+(target.wideCoverage?'FIT':'CROP')+
+        '\\nSELECTED UTILITY '+(target.decisionScore?.toFixed(1)??'—')+
+        ' / '+(target.decisionReason??'—')+
+        '\\nANGLE '+(target.decisionBreakdown?.viewpoint??'unknown')+
+        ' / FRAME '+(target.decisionBreakdown?.framing??'unknown')+
+        '\\nRUNNER-UPS '+(target.decisionAlternatives?.map(c=>
+          c.id+' '+c.score.toFixed(1)+' ('+c.viewpoint+'/'+c.framing+
+          ': '+c.reason+')').join(' | ')??'none')+
         '\\nCOMPOSITION '+(target.compositionQuality?
           target.compositionQuality.score.toFixed(1)+' / OTS '+
           (target.compositionQuality.shoulderReadable?'CLEAR':'FALLBACK'):

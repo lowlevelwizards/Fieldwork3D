@@ -9,6 +9,7 @@ import type {DirectorRoom} from './breach-replay-cinematic-director.ts';
 import {directorCameraLegal,directorLineBlocked,directorSubjectVisibility}
   from './breach-replay-director-physical.ts';
 import type {PhysicalDirectorScene} from './breach-replay-director-physical.ts';
+import {scoreDirectorCandidate} from './breach-replay-director-decision.ts';
 import {directorOrthoFittingZoom,directorCompositionQuality,
   type DirectorSafeFrame}
   from './breach-replay-director-projection.ts';
@@ -33,6 +34,7 @@ export class ReplayDirectorStoryboard{
   private cache=new Map<number,RailShot|null>();
   private checkpoints=new Map<number,RailShot|null>();
   private rawCache=new Map<number,DirectorShot|null>();
+  private bidsCache=new Map<number,DirectorShot[]>();
   private readonly step:number;
   private readonly maxCache:number;
   private readonly rooms:readonly DirectorRoom[];
@@ -45,8 +47,8 @@ export class ReplayDirectorStoryboard{
   private readonly usableHeight:number;
   private readonly safeFrame?:DirectorSafeFrame;
   private readonly duration:number;
-  private readonly solve:(time:number)=>DirectorShot|null;
-  constructor(duration:number,solve:(time:number)=>DirectorShot|null,
+  private readonly solve:(time:number)=>DirectorShot|readonly DirectorShot[]|null;
+  constructor(duration:number,solve:(time:number)=>DirectorShot|readonly DirectorShot[]|null,
     options:{step?:number;maxCache?:number;rooms?:readonly DirectorRoom[];
       walls?:PhysicalDirectorScene['walls'];
       cover?:PhysicalDirectorScene['cover'];
@@ -70,12 +72,29 @@ export class ReplayDirectorStoryboard{
   }
   clear():void{
     this.cache.clear();this.checkpoints.clear();this.rawCache.clear();
+    this.bidsCache.clear();
   }
   get cachedKnots():number{return this.cache.size;}
+  private bids(index:number):DirectorShot[]{
+    const i=Math.max(0,Math.min(Math.ceil(this.duration/this.step),index));
+    if(this.bidsCache.has(i))return this.bidsCache.get(i)!;
+    const value=this.solve(Math.min(this.duration,i*this.step));
+    const shots:DirectorShot[]=Array.isArray(value)?[...value]:
+      value?[value as DirectorShot]:[];
+    // Compatibility: the old callback returns one valid candidate.
+    const unique=shots.filter((s,j)=>shots.findIndex(other=>
+      other.editorialId===s.editorialId&&
+      distance(other.cameraAnchor,s.cameraAnchor)<.1&&
+      distance(other.focus,s.focus)<.1)===j);
+    this.bidsCache.set(i,unique.slice(0,16));
+    while(this.bidsCache.size>this.maxCache)
+      this.bidsCache.delete(this.bidsCache.keys().next().value!);
+    return this.bidsCache.get(i)!;
+  }
   private raw(index:number):DirectorShot|null{
     const i=Math.max(0,Math.min(Math.ceil(this.duration/this.step),index));
     if(this.rawCache.has(i))return this.rawCache.get(i)!;
-    const pose=this.solve(Math.min(this.duration,i*this.step));
+    const pose=this.bids(i)[0]??null;
     this.rawCache.set(i,pose);
     while(this.rawCache.size>this.maxCache)
       this.rawCache.delete(this.rawCache.keys().next().value!);
@@ -289,12 +308,89 @@ export class ReplayDirectorStoryboard{
     return this.raw(index-1)?.roomId===raw.roomId&&
       this.raw(index-2)?.roomId===raw.roomId;
   }
+  /** Bounded two-knot coverage preview. Only already-authored FRIENDLY
+   * travel in the same room can influence the earlier camera angle.
+   * Never score future hostiles, discovery, room entry or an unseen
+   * interaction: those must first become historically disclosed.
+   * This small continuity preference cannot cause an early cut. */
+  private nextKnownFriendlyCoverage(shot:DirectorShot,
+    future:readonly DirectorShot[]):number{
+    if(shot.contactTargetPoint||(shot.discoveryStrength??0)>0||
+      shot.shotType==='contact'||shot.shotType==='entry')return 0;
+    const same=future.find(f=>
+      f.editorialId===shot.editorialId&&
+      f.primaryActorId===shot.primaryActorId&&
+      f.roomId===shot.roomId&&
+      !f.contactTargetPoint&&!f.attentionPoint&&
+      !(f.discoveryStrength??0)&&
+      (f.shotType==='travel'||f.shotType==='overwatch'));
+    if(!same)return 0;
+    const later={...same,roomId:shot.roomId,
+      cameraAnchor:shot.cameraAnchor,focus:shot.focus,zoom:shot.zoom,
+      fov:shot.fov};
+    const score=scoreDirectorCandidate(later,{
+      scene:this.physicalScene,aspect:this.aspect,
+      baseSpan:this.baseSpan,safeFrame:this.safeFrame},shot);
+    return score.legal&&score.heroVisible?
+      clamp((score.score-60)*.11,-2,4):-3;
+  }
   private plan(raw:DirectorShot|null,prior:RailShot|null,
     index:number):RailShot|null{
     this.activateScene(index);
+    const sceneCtx={scene:this.physicalScene,aspect:this.aspect,
+      baseSpan:this.baseSpan,safeFrame:this.safeFrame};
+    const bids=this.bids(index);
+    // A small, deterministic two-knot horizon considers whether the
+    // current angle will still show the same already-known friendly
+    // shortly afterward. Never inspect future hostile coordinates.
+    const future=bids.length>1&&
+      (index+1)*this.step<=this.duration?
+      this.bids(index+1):[];
+    const ranked=bids.map(shot=>{
+      const quality=scoreDirectorCandidate(shot,sceneCtx,prior);
+      const temporal=this.nextKnownFriendlyCoverage(shot,future);
+      return {shot,quality,temporal,
+        total:quality.score+temporal};
+    }).filter(b=>b.quality.legal)
+      .sort((a,b)=>b.total-a.total||
+        (a.shot.editorialId??'').localeCompare(b.shot.editorialId??''));
+    raw=ranked[0]?{
+      ...ranked[0].shot,
+      decisionScore:ranked[0].quality.score,
+      decisionReason:ranked[0].quality.reason+
+        (ranked[0].temporal?' / next-friendly '+ranked[0].temporal.toFixed(1):''),
+      decisionBreakdown:ranked[0].quality,
+      decisionAlternatives:ranked.slice(1,4).map(c=>({
+        id:c.shot.editorialId??c.shot.shotType,
+        score:Math.round(c.total*10)/10,
+        reason:c.quality.reason,
+        viewpoint:c.quality.viewpoint,
+        framing:c.quality.framing
+      }))
+    }:raw;
     if(!prior)return raw?{...raw,sceneStartIndex:index,
       cameraDecision:'establish'}:null;
     if(!raw)return {...prior,cameraDecision:'hold:no-evidence'};
+    // The established camera must be a REAL competing option, not just
+    // a hold heuristic. Re-score its current optics against the current
+    // editorial hero/attention without pretending that the old shot
+    // still depicts last knot's actors or target.
+    const held={...raw,roomId:prior.roomId,
+      cameraAnchor:prior.cameraAnchor,focus:prior.focus,
+      yaw:prior.yaw,zoom:prior.zoom,fov:prior.fov,
+      pitch:prior.pitch};
+    const heldQuality=scoreDirectorCandidate(held,sceneCtx,prior);
+    if(heldQuality.legal&&heldQuality.heroVisible&&
+      (!raw.contactTargetPoint||heldQuality.targetVisible)&&
+      (!raw.discoveryStrength||heldQuality.attentionVisible)&&
+      heldQuality.score>=(ranked[0]?.quality.score??0)-3&&
+      raw.roomId===prior.roomId){
+      return {...held,sceneStartIndex:prior.sceneStartIndex,
+        decisionScore:heldQuality.score,
+        decisionReason:'held camera competes within 3 utility points',
+        decisionBreakdown:heldQuality,
+        cameraDecision:'hold:competitive-composition'};
+    }
     const sameStory=!!raw.editorialId&&
       raw.editorialId===prior.editorialId;
     const covered=this.coversPrior(prior,raw);

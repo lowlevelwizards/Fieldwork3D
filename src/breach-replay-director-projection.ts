@@ -94,6 +94,8 @@ export function directorPerspectiveCovers(
 export type DirectorCompositionTreatment='engage'|'follow'|'door'|'entry'|'settle'|'establish';
 export type DirectorCompositionQuality={
   primaryReadable:boolean;targetReadable:boolean;shoulderReadable:boolean;
+  /** Fraction of the actor envelope within the playable camera frame. */
+  primaryCoverage:number;
   targetOverlap:number;thirdsError:number;leadError:number;
   headroomError:number;score:number;shoulderSide:-1|0|1;
   /** Actual projected horizontal clearance (NDC), not world LOS. */
@@ -171,6 +173,10 @@ export function directorCompositionQuality(
   const leadError=screenDir>.02?
     Math.max(0,pCenter+.12):screenDir<-.02?
       Math.max(0,.12-pCenter):0;
+  const viewport={minX:left,maxX:right,minY:bottom,maxY:top};
+  const primaryCoverage=Number.isFinite(pCenter)&&op.z>=-1&&op.z<=1?
+    Math.min(1,boxOverlap(primary,viewport)/
+      Math.max(.00001,boxArea(primary))):0;
   const primaryReadable=Number.isFinite(pCenter)&&
     primary.minX>=left&&primary.maxX<=right&&
     primary.minY>=bottom&&primary.maxY<=top;
@@ -242,7 +248,7 @@ export function directorCompositionQuality(
     (target&&targetReadable?18:0)+
     (target&&shoulderReadable&&contact?5:0);
   return {primaryReadable,targetReadable,shoulderReadable,
-    targetOverlap,thirdsError,leadError,headroomError,
+    primaryCoverage,targetOverlap,thirdsError,leadError,headroomError,
     score,shoulderSide,targetHorizontalGap,primaryScreenX:pCenter,
     targetScreenX};
 }
