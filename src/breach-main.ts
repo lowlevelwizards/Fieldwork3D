@@ -2221,7 +2221,8 @@ const world2D=createBreach2DWorldRenderer({
 const replay2D=createBreach2DReplayOverlays({
  draw,worldToScreen,colorFor,historicalShotVisible,
  replayPlayback,replayCamera,replayBodycam,
- getFrame:()=>({state,replaying,selected,recorder,replayAnalysisUi.selectedReplayShotId,
+ getFrame:()=>({state,replaying,selected,recorder,
+   selectedReplayShotId:replayAnalysisUi.selectedReplayShotId,
   replayTraceMode,replayTrailMode,replayGhostMode,replayNameTags,viewScale,
   replayMovementHistory})
 });
