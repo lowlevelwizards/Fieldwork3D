@@ -58,14 +58,17 @@ export class BreachMissionController{
   private deploymentOptions:ReturnType<typeof availableDeployments>=[];
   private controls:DeploymentControls|null=null;
 
-  constructor(private readonly hooks:{
+  private readonly hooks:{
     preferences:()=>MissionPreferences;
     randomSeed:()=>number;
     refreshQuickRoster:()=>void;
     applyRoster:(session:Session)=>void;
     applyCampaign:(session:Session)=>void;
     buildDossier:(session:Session,risk?:1|2|3)=>OperationDossierV1|undefined;
-  }){}
+  };
+  constructor(hooks:BreachMissionController['hooks']){
+    this.hooks=hooks;
+  }
 
   get entryId(){return this.selectedInsertion;}
   get start():MissionStartSnapshot{
