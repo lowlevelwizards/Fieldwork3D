@@ -29,8 +29,6 @@ import {createBreach2DVisibilityRenderer} from './breach-2d-visibility-renderer.
 import {createBreach2DReplayOverlays} from './breach-2d-replay-overlays.ts';
 import {createBreach2DRouteOverlays} from './breach-2d-route-overlays.ts';
 import {createBreach2DProjectedOverlays} from './breach-2d-projected-overlays.ts';
-import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
- type MiniatureFocusMode} from './rendering/miniature-focus-config.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {PhysicalActionRings} from './ui/physical-action-rings.ts';
 import {executionStatus} from './breach-execution-state.ts';
@@ -57,7 +55,6 @@ import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
-import type {BriefingTab} from './briefing/briefing-view-model.ts';
 import {sessionIntelligenceReview} from './briefing/briefing-after-action.ts';
 import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
@@ -792,10 +789,20 @@ const missionScreens=createBreachMissionScreens({
  getIntel:()=>selectedIntelMode,setIntel:v=>{selectedIntelMode=v;},
  lightingModes:LIGHTING_MODES,intelPreferenceKey:INTEL_PREFERENCE_KEY,
  showHelp:showUiHelp,refreshHud:updateHud,
- renderOperationsBoard,updateContext
+ renderOperationsBoard,updateContext,
+ renderFavorites:()=>replayLibrary.renderFavorites(),
+ changeCamera:cameraMode,
+ fitCamera:()=>{
+   if(stage&&viewMode!=='plan2d')stage.resetCamera();
+   else{zoom=1;panX=0;panY=0;layout();}
+ },
+ getFocusMode:()=>stage?.getMiniatureFocusMode(),
+ setFocusMode:mode=>stage?.setMiniatureFocusMode(mode)
 });
 const tacticalSheetNavigation=missionScreens.navigation;
 const collapseTacticalSheets=missionScreens.collapse;
+const closeMissionSettings=missionScreens.closeSettings;
+const showMissionBriefing=missionScreens.showBriefing;
 
 let selected='rook';
 let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
@@ -3432,123 +3439,11 @@ function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
   }
 }
 window.addEventListener('resize',layout);
-// The Settings trigger lives in the collapsible Tools drawer. Settings
-// therefore owns an always-visible close action, and camera changes return
-// immediately to the map without leaving a hidden trigger focused.
-const closeSiteSettingsButton=el<HTMLButtonElement>('closeSiteSettings');
-function closeMissionSettings(returnFocus=true){
-  if(ui.siteSettings.hidden)return;
-  collapseTacticalSheets(null);
-  if(returnFocus)ui.siteSettingsToggle.focus();
-  updateContext();
-}
-closeSiteSettingsButton.addEventListener('click',()=>{
- closeMissionSettings();tacticalSheetNavigation.sync();
-});
-const missionSettingsTabs=Array.from(ui.siteSettings.querySelectorAll<HTMLButtonElement>(
- '[data-site-tab]'));
-const missionSettingsPanels=Array.from(ui.siteSettings.querySelectorAll<HTMLElement>(
- '[data-site-panel]'));
-function selectMissionSettingsTab(tab:string){
- for(const button of missionSettingsTabs)
-  button.setAttribute('aria-pressed',String(button.dataset.siteTab===tab));
- for(const panel of missionSettingsPanels)
-  panel.hidden=panel.dataset.sitePanel!==tab;
- const title=ui.siteSettings.querySelector<HTMLElement>('.site-settings-heading strong');
- if(title)title.textContent=tab==='environment'?'ENVIRONMENT':
-  tab==='preferences'?'PREFERENCES':'MISSION';
-}
-replayLibrary.renderFavorites();
-for(const button of missionSettingsTabs)button.addEventListener('click',()=>{
- selectMissionSettingsTab(button.dataset.siteTab??'mission');
-});
-function chooseCameraView(mode:ViewMode){
-  cameraMode(mode);
-  closeMissionSettings();
-}
-ui.viewIso.addEventListener('click',()=>chooseCameraView('iso'));
-ui.viewTop.addEventListener('click',()=>chooseCameraView('top'));
-ui.view2d.addEventListener('click',()=>chooseCameraView('plan2d'));
-ui.cameraFit.addEventListener('click',()=>{
-  if(stage&&viewMode!=='plan2d')stage.resetCamera();
-  else{zoom=1;panX=0;panY=0;layout();}
-  closeMissionSettings();
-  updateContext();
-});
-function showMissionBriefing(){
-  if(state.phase!=='planning'||replaying||!state.site)return;
-  // Always open on the five-second overview; details are optional.
-  setBriefingView('brief');
-  updateHud();
-  collapseTacticalSheets('briefing');
-  ui.briefingPanel.hidden=false;
-  ui.briefingToggle.setAttribute('aria-expanded','true');
-  tacticalSheetNavigation.sync();tacticalSheetNavigation.focusFirst();
-  updateContext();
-}
-ui.briefingToggle.addEventListener('click',showMissionBriefing);
-ui.briefingIntelToggle.addEventListener('click',()=>{
- const opening=ui.briefingIntelView.hidden;
- setBriefingView(opening?'intel':'brief');
-});
-for(const button of ui.briefingPanel.querySelectorAll<HTMLButtonElement>(
- '[data-briefing-tab]')){
- button.addEventListener('click',()=>setBriefingIntelTab(
-  button.dataset.briefingTab as BriefingTab));
-}
-ui.briefingClose.addEventListener('click',()=>{
-  ui.briefingPanel.hidden=true;
-  ui.briefingToggle.setAttribute('aria-expanded','false');
-  tacticalSheetNavigation.sync();
-  updateContext();
-});
-// Shelved graphics experiment: the controls remain in source for future
-// development but are hidden. Only explicit ?focusFx developer URLs opt in.
-const miniatureFocusButtons=Array.from(
- ui.siteSettings.querySelectorAll<HTMLButtonElement>('[data-miniature-focus]'));
-function storedMiniatureFocus():string|null{
- try{return localStorage.getItem(MINIATURE_FOCUS_STORAGE_KEY);}
- catch{return null;}
-}
-let miniatureFocusSetting:MiniatureFocusMode=stage?.getMiniatureFocusMode()??
- initialMiniatureFocusMode(
-   new URLSearchParams(location.search).get('focusFx'),storedMiniatureFocus());
-function syncMiniatureFocusPreference():void{
- for(const button of miniatureFocusButtons){
-   const active=button.dataset.miniatureFocus===miniatureFocusSetting;
-   button.setAttribute('aria-pressed',String(active));
- }
-}
-for(const button of miniatureFocusButtons)button.addEventListener('click',()=>{
- const value=button.dataset.miniatureFocus;
- if(value!=='off'&&value!=='subtle'&&value!=='strong'&&value!=='replay')return;
- miniatureFocusSetting=value;
- stage?.setMiniatureFocusMode(value);
- try{localStorage.setItem(MINIATURE_FOCUS_STORAGE_KEY,value);}
- catch{/* Preference remains active for this session without storage. */}
- syncMiniatureFocusPreference();
-});
-syncMiniatureFocusPreference();
+missionScreens.bindMenus();
 audioController.bindSettings({
   liveMix:el<HTMLButtonElement>('liveMixToggle'),
   roomAudio:el<HTMLButtonElement>('roomAudioToggle'),
   uiSound:ui.uiSoundToggle
-});
-ui.uiHelp.addEventListener('click',()=>{
-  closeMissionSettings();
-  showUiHelp('Tap a route line to insert a waypoint · LOOK = brief check · WATCH = keep watching as you move · Hold a command for help.',8500);
-  updateHud();
-});
-ui.siteSettingsToggle.addEventListener('click',()=>{
-  const opening=ui.siteSettings.hidden;
-  collapseTacticalSheets(opening?'settings':null);
-  ui.siteSettings.hidden=!opening;
-  ui.siteSettingsToggle.setAttribute('aria-expanded',String(opening));
-  if(opening)selectMissionSettingsTab('mission');
-  tacticalSheetNavigation.sync();
-  if(opening)tacticalSheetNavigation.focusFirst();
-  else ui.siteSettingsToggle.focus();
-  updateContext();
 });
 // Opt-in developer overlay: add ?perf=1 to measure render and simulation
 // without polling DOM/layout or allocating objects in the normal game loop.

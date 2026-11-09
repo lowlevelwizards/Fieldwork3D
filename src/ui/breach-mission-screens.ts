@@ -9,6 +9,9 @@ import {createTacticalSheetNavigation} from './tactical-sheet-navigation.ts';
 import {INTEL_MODES,type IntelMode} from '../breach-intel.ts';
 import type {SiteScale} from '../breach-site.ts';
 import type {LightingMode} from '../equipment-site-lighting.ts';
+import type {ViewMode} from '../breach-3d.ts';
+import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
+ type MiniatureFocusMode} from '../rendering/miniature-focus-config.ts';
 export type MissionScreensElements={
  briefingBody:HTMLElement;
  briefingCampaignContext:HTMLElement;
@@ -39,6 +42,12 @@ export type MissionScreensElements={
  siteLighting:HTMLButtonElement;
  siteSize:HTMLButtonElement;
  intelMode:HTMLButtonElement;
+ uiHelp:HTMLButtonElement;
+ briefingClose:HTMLButtonElement;
+ cameraFit:HTMLButtonElement;
+ view2d:HTMLButtonElement;
+ viewTop:HTMLButtonElement;
+ viewIso:HTMLButtonElement;
 };
 export type MissionScreensHooks={
  ui:MissionScreensElements;
@@ -53,6 +62,10 @@ export type MissionScreensHooks={
  getIntel:()=>IntelMode;setIntel:(value:IntelMode)=>void;
  lightingModes:readonly LightingMode[];intelPreferenceKey:string;
  showHelp:(message:string,duration?:number)=>void;refreshHud:()=>void;
+ renderFavorites:()=>void;
+ changeCamera:(mode:ViewMode)=>void;fitCamera:()=>void;
+ getFocusMode:()=>MiniatureFocusMode|undefined;
+ setFocusMode:(mode:MiniatureFocusMode)=>void;
  renderOperationsBoard:()=>void;updateContext:()=>void;
 };
 export function createBreachMissionScreens(config:MissionScreensHooks){
@@ -207,6 +220,130 @@ function setBriefingView(mode:'brief'|'intel'):void{
  ui.briefingIntelToggle.setAttribute('aria-expanded',String(intel));
  if(intel)setBriefingIntelTab('threat');
 }
+ function requireCloseButton():HTMLButtonElement{
+  const node=document.getElementById('closeSiteSettings');
+  if(!(node instanceof HTMLButtonElement))
+    throw Error('Missing mission Settings close button');
+  return node;
+ }
+function closeMissionSettings(returnFocus=true){
+  if(ui.siteSettings.hidden)return;
+  collapseTacticalSheets(null);
+  if(returnFocus)ui.siteSettingsToggle.focus();
+  config.updateContext();
+}
+function showMissionBriefing(){
+  if(config.getSession().phase!=='planning'||config.isReplaying()||!config.getSession().site)return;
+  // Always open on the five-second overview; details are optional.
+  setBriefingView('brief');
+  config.refreshHud();
+  collapseTacticalSheets('briefing');
+  ui.briefingPanel.hidden=false;
+  ui.briefingToggle.setAttribute('aria-expanded','true');
+  tacticalSheetNavigation.sync();tacticalSheetNavigation.focusFirst();
+  config.updateContext();
+}
+ function bindMenus():void{
+// The Settings trigger lives in the collapsible Tools drawer. Settings
+// therefore owns an always-visible close action, and camera changes return
+// immediately to the map without leaving a hidden trigger focused.
+const closeSiteSettingsButton=requireCloseButton();
+
+closeSiteSettingsButton.addEventListener('click',()=>{
+ closeMissionSettings();tacticalSheetNavigation.sync();
+});
+const missionSettingsTabs=Array.from(ui.siteSettings.querySelectorAll<HTMLButtonElement>(
+ '[data-site-tab]'));
+const missionSettingsPanels=Array.from(ui.siteSettings.querySelectorAll<HTMLElement>(
+ '[data-site-panel]'));
+function selectMissionSettingsTab(tab:string){
+ for(const button of missionSettingsTabs)
+  button.setAttribute('aria-pressed',String(button.dataset.siteTab===tab));
+ for(const panel of missionSettingsPanels)
+  panel.hidden=panel.dataset.sitePanel!==tab;
+ const title=ui.siteSettings.querySelector<HTMLElement>('.site-settings-heading strong');
+ if(title)title.textContent=tab==='environment'?'ENVIRONMENT':
+  tab==='preferences'?'PREFERENCES':'MISSION';
+}
+config.renderFavorites();
+for(const button of missionSettingsTabs)button.addEventListener('click',()=>{
+ selectMissionSettingsTab(button.dataset.siteTab??'mission');
+});
+function chooseCameraView(mode:ViewMode){
+  config.changeCamera(mode);
+  closeMissionSettings();
+}
+ui.viewIso.addEventListener('click',()=>chooseCameraView('iso'));
+ui.viewTop.addEventListener('click',()=>chooseCameraView('top'));
+ui.view2d.addEventListener('click',()=>chooseCameraView('plan2d'));
+ui.cameraFit.addEventListener('click',()=>{
+  config.fitCamera();
+  closeMissionSettings();
+  config.updateContext();
+});
+
+ui.briefingToggle.addEventListener('click',showMissionBriefing);
+ui.briefingIntelToggle.addEventListener('click',()=>{
+ const opening=ui.briefingIntelView.hidden;
+ setBriefingView(opening?'intel':'brief');
+});
+for(const button of ui.briefingPanel.querySelectorAll<HTMLButtonElement>(
+ '[data-briefing-tab]')){
+ button.addEventListener('click',()=>setBriefingIntelTab(
+  button.dataset.briefingTab as BriefingTab));
+}
+ui.briefingClose.addEventListener('click',()=>{
+  ui.briefingPanel.hidden=true;
+  ui.briefingToggle.setAttribute('aria-expanded','false');
+  tacticalSheetNavigation.sync();
+  config.updateContext();
+});
+// Shelved graphics experiment: the controls remain in source for future
+// development but are hidden. Only explicit ?focusFx developer URLs opt in.
+const miniatureFocusButtons=Array.from(
+ ui.siteSettings.querySelectorAll<HTMLButtonElement>('[data-miniature-focus]'));
+function storedMiniatureFocus():string|null{
+ try{return localStorage.getItem(MINIATURE_FOCUS_STORAGE_KEY);}
+ catch{return null;}
+}
+let miniatureFocusSetting:MiniatureFocusMode=config.getFocusMode()??
+ initialMiniatureFocusMode(
+   new URLSearchParams(location.search).get('focusFx'),storedMiniatureFocus());
+function syncMiniatureFocusPreference():void{
+ for(const button of miniatureFocusButtons){
+   const active=button.dataset.miniatureFocus===miniatureFocusSetting;
+   button.setAttribute('aria-pressed',String(active));
+ }
+}
+for(const button of miniatureFocusButtons)button.addEventListener('click',()=>{
+ const value=button.dataset.miniatureFocus;
+ if(value!=='off'&&value!=='subtle'&&value!=='strong'&&value!=='replay')return;
+ miniatureFocusSetting=value;
+ config.setFocusMode(value);
+ try{localStorage.setItem(MINIATURE_FOCUS_STORAGE_KEY,value);}
+ catch{/* Preference remains active for this session without storage. */}
+ syncMiniatureFocusPreference();
+});
+syncMiniatureFocusPreference();
+
+ui.uiHelp.addEventListener('click',()=>{
+  closeMissionSettings();
+  config.showHelp('Tap a route line to insert a waypoint · LOOK = brief check · WATCH = keep watching as you move · Hold a command for help.',8500);
+  config.refreshHud();
+});
+ui.siteSettingsToggle.addEventListener('click',()=>{
+  const opening=ui.siteSettings.hidden;
+  collapseTacticalSheets(opening?'settings':null);
+  ui.siteSettings.hidden=!opening;
+  ui.siteSettingsToggle.setAttribute('aria-expanded',String(opening));
+  if(opening)selectMissionSettingsTab('mission');
+  tacticalSheetNavigation.sync();
+  if(opening)tacticalSheetNavigation.focusFirst();
+  else ui.siteSettingsToggle.focus();
+  config.updateContext();
+});
+
+ }
  function bindSitePreferences():void{
 ui.siteLighting.textContent='LIGHTING · '+config.getLighting().toUpperCase();
 ui.siteLighting.addEventListener('click',()=>{
@@ -262,7 +399,8 @@ ui.intelMode.addEventListener('click',()=>{
 
  }
  return {
-  bindSitePreferences,
+  bindSitePreferences,bindMenus,
+  closeSettings:closeMissionSettings,showBriefing:showMissionBriefing,
   navigation:tacticalSheetNavigation,collapse:collapseTacticalSheets,
   syncBriefingCard,setBriefingIntelTab,setBriefingView
  };
