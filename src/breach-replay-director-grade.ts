@@ -48,8 +48,11 @@ export function gradeActualDirectorShot(ctx:DirectorGradeContext):DirectorShotGr
   const discovery=directorRecordedDiscovery(current,previous,friendlies);
   const scene:PhysicalDirectorScene={rooms:ctx.rooms,walls:ctx.walls,
     doors:current.doors,cover:current.coverState};
+  // Do not call a frame empty just because the nominated hero is down or
+  // no longer photographed. A visible supporting actor is still content.
   const hero=current.actors.find(a=>a.id===shot.primaryActorId&&a.health>0)
-    ??current.actors.find(a=>a.id===shot.subjects[0]&&a.health>0);
+    ??current.actors.find(a=>shot.subjects.includes(a.id)&&a.health>0)
+    ??current.actors.find(a=>friendlies.has(a.id)&&a.health>0);
   const operator=hero?.p??shot.operatorPoint??shot.cameraAnchor;
   const enemies=current.actors.filter(a=>!friendlies.has(a.id)&&
     visibleHostiles.has(a.id)&&(
@@ -68,12 +71,23 @@ export function gradeActualDirectorShot(ctx:DirectorGradeContext):DirectorShotGr
     .78,.76,ctx.safeFrame,
     current.actors.filter(a=>friendlies.has(a.id)&&a.id!==hero?.id)
       .map(a=>a.p));
-  const subjectVisible=!!hero&&quality.primaryReadable&&
+  const subjectVisible=!!hero&&quality.primaryCoverage>=.48&&
     directorSubjectVisibility(shot.cameraAnchor,operator,scene).readable;
   const wantsEnemy=shot.shotType==='contact'&&!!shot.contactTargetPoint;
   const targetVisible=!!enemyPoint&&quality.targetReadable&&
     directorSubjectVisibility(shot.cameraAnchor,enemyPoint,scene).readable&&
-    !directorLineBlocked(shot.cameraAnchor,enemyPoint,scene);
+    !directorLineBlocked(shot.cameraAnchor,enemyPoint,scene)||
+    // A non-contact shot can still show a currently disclosed suspect.
+    // No future coordinates or actors outside historical knowledge enter.
+    !shot.contactTargetPoint&&enemies.slice(0,5).some(enemy=>{
+      const q=directorCompositionQuality(shot.cameraAnchor,shot.focus,
+        operator,enemy.p,shot.actionAxis??{x:1,y:0},
+        shot.editorialKind??'follow',ctx.lens,ctx.aspect,ctx.baseSpan,
+        shot.zoom,shot.fov??108,.78,.76,ctx.safeFrame);
+      return q.targetReadable&&
+        directorSubjectVisibility(shot.cameraAnchor,enemy.p,scene).readable&&
+        !directorLineBlocked(shot.cameraAnchor,enemy.p,scene);
+    });
   const attention=shot.attentionPoint??(shot.discoveryStrength?
     {x:operator.x+(shot.actionAxis?.x??1)*65,
      y:operator.y+(shot.actionAxis?.y??0)*65}:null);
@@ -90,7 +104,7 @@ export function gradeActualDirectorShot(ctx:DirectorGradeContext):DirectorShotGr
       actor.p,null,shot.actionAxis??{x:1,y:0},
       shot.editorialKind??'follow',ctx.lens,ctx.aspect,ctx.baseSpan,
       shot.zoom,shot.fov??108,.78,.76,ctx.safeFrame);
-    if(q.primaryReadable&&directorSubjectVisibility(
+    if(q.primaryCoverage>=.52&&directorSubjectVisibility(
       shot.cameraAnchor,actor.p,scene).readable)supportVisible++;
   }
   const opening=shot.shotType==='entry'||shot.shotType==='breach'||
@@ -107,7 +121,7 @@ export function gradeActualDirectorShot(ctx:DirectorGradeContext):DirectorShotGr
     score+=attentionVisible?7:0;
   }
   if(newInformation){
-    if(targetVisible||attentionVisible&&subjectVisible)
+    if(targetVisible||attentionVisible)
       score+=Math.round(18*discovery.strength);
     else score-=22;
   }
@@ -115,16 +129,27 @@ export function gradeActualDirectorShot(ctx:DirectorGradeContext):DirectorShotGr
   score+=Math.min(supportVisible,2)*(newInformation?1:5);
   if(shot.shotType==='contact'&&targetVisible&&
     quality.targetHorizontalGap>=.045)score+=8;
-  // No decorative grade inflation for a blank wall or a masked opponent.
-  if(!subjectVisible&&!targetVisible)score=Math.min(score,18);
-  else if(!subjectVisible)score=Math.min(score,43);
+  // Grade what is actually visible, not just the nominated protagonist.
+  // True empty frames still fail; readable supporting cast and relevant
+  // POV/discovery views cannot automatically collapse to an F.
+  if(!subjectVisible&&supportVisible>0)
+    score+=Math.min(2,supportVisible)*13;
+  if(!subjectVisible&&!targetVisible&&!attentionVisible&&
+    supportVisible===0)score=Math.min(score,18);
+  else if(!subjectVisible&&supportVisible===0&&!targetVisible)
+    score=Math.min(score,43);
+  else if(!subjectVisible&&!targetVisible)
+    score=Math.min(score,73);
   if(wantsEnemy&&!targetVisible)score=Math.min(score,55);
   if(newInformation&&!targetVisible&&!attentionVisible)
     score=Math.min(score,40);
   score=clamp(Math.round(score),0,100);
   const grade=directorGradeLetter(score);
   let summary:string;
-  if(!subjectVisible&&!targetVisible)summary='No readable subject';
+  if(!subjectVisible&&!targetVisible&&supportVisible===0&&
+    !attentionVisible)summary='No readable subject';
+  else if(!subjectVisible&&supportVisible>0)
+    summary='Supporting cast readable; featured subject missing';
   else if(wantsEnemy&&!targetVisible)summary='Enemy obscured or outside frame';
   else if(newInformation&&!targetVisible&&!attentionVisible)
     summary='Discovery happening outside the frame';
