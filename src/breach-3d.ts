@@ -214,6 +214,8 @@ export class TacticalScene3D{
     return {calls:info.calls,triangles:info.triangles,
       staticBatch:this.staticBatches.stats(),
       siteMaterialCount:this.siteMaterials.size,
+      actorRigCount:this.actors.size,
+      civilianRigCount:this.civilianRigs.size,
       shadowRefreshes:this.shadowUpdates.refreshes,
       shadowReuses:this.shadowUpdates.reuses,
       shadowLodTransitions:this.shadowLodTransitions,
