@@ -1,0 +1,35 @@
+name: Breach Stage 11 Mission Screens Critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-main.ts'
+      - 'src/ui/breach-mission-screens.ts'
+      - 'tests/breach-mission-screens-step11.test.mjs'
+      - 'tests/operations-landing-navigation.test.mjs'
+      - 'tests/briefing-ui-v3-layout.test.mjs'
+      - 'tests/miniature-focus-preferences.test.mjs'
+      - '.github/workflows/breach-stage11-mission-screens-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: breach-stage11-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  screen-critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Critical briefing, settings, camera, and sheet navigation regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/breach-mission-screens-step11.test.mjs \
+            tests/operations-landing-navigation.test.mjs \
+            tests/briefing-ui-v3-layout.test.mjs \
+            tests/miniature-focus-preferences.test.mjs \
+            tests/briefing-card-v3.test.mjs

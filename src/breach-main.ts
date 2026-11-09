@@ -29,8 +29,6 @@ import {createBreach2DVisibilityRenderer} from './breach-2d-visibility-renderer.
 import {createBreach2DReplayOverlays} from './breach-2d-replay-overlays.ts';
 import {createBreach2DRouteOverlays} from './breach-2d-route-overlays.ts';
 import {createBreach2DProjectedOverlays} from './breach-2d-projected-overlays.ts';
-import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
- type MiniatureFocusMode} from './rendering/miniature-focus-config.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {PhysicalActionRings} from './ui/physical-action-rings.ts';
 import {executionStatus} from './breach-execution-state.ts';
@@ -57,8 +55,6 @@ import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
-import {createBriefingCardModel,type BriefingReport,type BriefingTab}
- from './briefing/briefing-view-model.ts';
 import {sessionIntelligenceReview} from './briefing/briefing-after-action.ts';
 import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
@@ -129,7 +125,7 @@ import './ui/ux-r1-sheets.css';
 import './ui/ux-r3-hud.css';
 import './ui/fieldwork-action-toast.css';
 import {confirmFieldworkAction} from './ui/fieldwork-controls.ts';
-import {createTacticalSheetNavigation} from './ui/tactical-sheet-navigation.ts';
+import {createBreachMissionScreens} from './ui/breach-mission-screens.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
@@ -740,7 +736,7 @@ const operationsBoardController=createBreachOperationsBoardController({
  getMode:()=>campaignMode,isReplaying:()=>replaying,
  saveRoster,applyRoster:()=>applyRosterIdentity(state,persistentRoster),
  refreshHud:updateHud,
- syncSheets:()=>tacticalSheetNavigation.sync(),
+ syncSheets:()=>missionScreens.syncSheets(),
  history:operationHistory,
  enterTrainingRange:()=>{
    campaignMode='quick';lastRangeTrial=null;
@@ -751,37 +747,32 @@ const operationsBoardController=createBreachOperationsBoardController({
  openArsenal:id=>{void openQuickArsenal(id);},showHelp:showUiHelp
 });
 const renderOperationsBoard=operationsBoardController.render;
-const tacticalSheetNavigation=createTacticalSheetNavigation({
- settings:ui.siteSettings,squad:operationsBoard,briefing:ui.briefingPanel
-},()=>{collapseTacticalSheets(null);updateContext();});
-/** Only one major tactical sheet owns the viewport and touch focus at a time. */
-function collapseTacticalSheets(except:'squad'|'weapon'|'settings'|'briefing'|null){
- if(except!=='squad')operationsBoard.hidden=true;
- if(except!=='weapon')hideWeaponChooser();
- if(except!=='settings'){
-  ui.siteSettings.hidden=true;
-  ui.siteSettingsToggle.setAttribute('aria-expanded','false');
-  closeSiteChoice();
- }
- if(except!=='briefing'){
-  ui.briefingPanel.hidden=true;
-  ui.briefingToggle.setAttribute('aria-expanded','false');
- }
- tacticalSheetNavigation.sync();
-}
-operationsToggle.addEventListener('click',()=>{
- if(state.phase!=='planning'||replaying)return;
- const opening=operationsBoard.hidden;
- collapseTacticalSheets(opening?'squad':null);
- operationsBoard.hidden=!opening;
- if(opening){
-  hideContextPalette();
-  renderOperationsBoard();
- }
- tacticalSheetNavigation.sync();
- if(opening)tacticalSheetNavigation.focusFirst();
- updateContext();
+
+const missionScreens=createBreachMissionScreens({
+ ui,operationsBoard,operationsToggle,
+ getSession:()=>state,getCampaign:()=>campaign,getMode:()=>campaignMode,
+ isReplaying:()=>replaying,briefingPreviewEnabled,
+ getEntryId:()=>missionController.entryId,
+ hideWeaponChooser,hideContextPalette,
+ getLighting:()=>selectedLightingMode,setLighting:v=>{selectedLightingMode=v;},
+ getScale:()=>requestedSiteScale,setScale:v=>{requestedSiteScale=v;},
+ getIntel:()=>selectedIntelMode,setIntel:v=>{selectedIntelMode=v;},
+ lightingModes:LIGHTING_MODES,intelPreferenceKey:INTEL_PREFERENCE_KEY,
+ showHelp:showUiHelp,refreshHud:updateHud,
+ renderOperationsBoard,updateContext,
+ renderFavorites:()=>replayLibrary.renderFavorites(),
+ changeCamera:cameraMode,
+ fitCamera:()=>{
+   if(stage&&viewMode!=='plan2d')stage.resetCamera();
+   else{zoom=1;panX=0;panY=0;layout();}
+ },
+ getFocusMode:()=>stage?.getMiniatureFocusMode(),
+ setFocusMode:mode=>stage?.setMiniatureFocusMode(mode)
 });
+const collapseTacticalSheets=missionScreens.collapse;
+const closeMissionSettings=missionScreens.closeSettings;
+const showMissionBriefing=missionScreens.showBriefing;
+
 let selected='rook';
 let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
 let flashMode=false,pushMode=false;
@@ -1224,90 +1215,6 @@ function medicalCandidate(id:string,origin?:Pt){
   return wound&&treatmentSupplyForWound(wound,a.medicalSupplies);
  }).sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0]??null;
 }
-/** V3: render only when mission identity or roster changes; never on each frame. */
-let briefingRenderedSession:Session|null=null;
-let briefingRenderedDossier:Session['operationDossier'];
-let briefingRenderedRoster='';
-let briefingRenderedEntry='';
-function renderBriefingReports(root:HTMLElement,reports:readonly BriefingReport[]):void{
- const fragment=document.createDocumentFragment();
- if(!reports.length){
-  const message=document.createElement('p');message.className='fw-brief-v3-report-empty';
-  message.textContent='No additional verified reports available.';
-  fragment.append(message);
- }
- for(const report of reports){
-  const article=document.createElement('article');article.className='fw-brief-v3-report';
-  const meta=document.createElement('div');meta.className='fw-brief-v3-report-meta';
-  meta.textContent=report.source.toUpperCase()+' · '+report.confidence.toUpperCase();
-  const body=document.createElement('p');body.textContent=report.text;
-  article.append(meta,body);fragment.append(article);
- }
- root.replaceChildren(fragment);
-}
-function syncBriefingCard():void{
- const dossier=briefingPreviewEnabled?state.operationDossier:undefined;
- const names=team(state).map(actor=>actor.name).join(' · ');
- if(state===briefingRenderedSession&&dossier===briefingRenderedDossier&&
-    names===briefingRenderedRoster&&missionController.entryId===briefingRenderedEntry)return;
- briefingRenderedSession=state;
- briefingRenderedDossier=dossier;
- briefingRenderedRoster=names;
- briefingRenderedEntry=missionController.entryId;
- const brief=operationBriefing(state);
- const model=createBriefingCardModel(state.missionType,brief,dossier);
- ui.briefingTitle.textContent=model.title;
- ui.briefingType.textContent=model.missionLabel.toUpperCase();
- ui.briefingLocation.textContent=model.siteLabel;
- ui.briefingPrimary.textContent=model.primary;
- ui.briefingSituationBlock.hidden=false;
- ui.briefingSituation.textContent=model.situation;
- ui.briefingThreat.textContent=model.threat.value;
- ui.briefingLayout.textContent=model.layout;
- const steps=document.createDocumentFragment();
- model.steps.forEach((step,index)=>{
-  const cell=document.createElement('div');cell.className='fw-brief-v3-step';
-  const head=document.createElement('strong');
-  head.textContent=String(index+1).padStart(2,'0')+' / '+step.action;
-  const subtitle=document.createElement('small');subtitle.textContent=step.detail;
-  cell.append(head,subtitle);steps.append(cell);
- });
- ui.briefingSteps.replaceChildren(steps);
- // Full authority remains available under ORDERS, never re-authored by prose.
- ui.briefingBody.textContent=brief.objective;
- ui.briefingCondition.textContent=brief.condition;
- ui.briefingExtraction.textContent=brief.extraction;
- ui.briefingSite.textContent=model.siteLabel+' · '+model.layout;
- ui.briefingCaseContext.textContent=model.situation+
-   (model.caseContext?'\n\n'+model.caseContext:'');
- const job=campaignMode==='mission'&&campaign?.activeContractId?
-   campaign.contracts.find(c=>c.id===campaign!.activeContractId):undefined;
- ui.briefingCampaignContext.textContent=[
-   model.campaignLabel??(job?
-     job.region.toUpperCase()+' · RISK '+job.risk+' · '+job.title:''),
-   model.followUp??''
- ].filter(Boolean).join('\n');
- ui.briefingRoster.textContent=brief.squad+' OPERATORS · '+names;
- renderBriefingReports(ui.briefingIntel,model.reports.threat);
- renderBriefingReports(ui.briefingSiteReports,model.reports.site);
- renderBriefingReports(ui.briefingCaseReports,model.reports.case);
-}
-function setBriefingIntelTab(tab:BriefingTab):void{
- for(const control of ui.briefingPanel.querySelectorAll<HTMLButtonElement>(
-   '[data-briefing-tab]'))
-  control.setAttribute('aria-pressed',String(control.dataset.briefingTab===tab));
- for(const section of ui.briefingPanel.querySelectorAll<HTMLElement>(
-   '[data-briefing-section]'))
-  section.hidden=section.dataset.briefingSection!==tab;
-}
-function setBriefingView(mode:'brief'|'intel'):void{
- const intel=mode==='intel';
- ui.briefingOverview.hidden=intel;
- ui.briefingIntelView.hidden=!intel;
- ui.briefingIntelToggle.textContent=intel?'BACK TO BRIEF':'VIEW INTEL';
- ui.briefingIntelToggle.setAttribute('aria-expanded',String(intel));
- if(intel)setBriefingIntelTab('threat');
-}
 
 function updateHud(){
   if(!replaying&&state.phase==='planning')recorder.capturePlanning(state);
@@ -1361,13 +1268,8 @@ function updateHud(){
   recordCompletedOperation();
   refreshDeployment();
   const brief=operationBriefing(state);
-  syncBriefingCard();
-  if(state.phase!=='planning'){
-    ui.briefingPanel.hidden=true;operationsBoard.hidden=true;
-  }
-  operationsToggle.hidden=campaignMode!=='quick'||state.phase!=='planning'||replaying;
-  operationsToggle.disabled=operationsToggle.hidden;
-  if(operationsToggle.hidden)operationsBoard.hidden=true;
+  missionScreens.syncBriefingCard();
+  missionScreens.syncMissionPhase();
   hudController.renderPhase({
     phase:state.phase,started:state.started,replaying,seconds:state.seconds,
     phaseNode:ui.phase,clock:ui.clock,play:ui.play,
@@ -1419,22 +1321,7 @@ function updateHud(){
       document.createTextNode(stanceLabel));
   ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
   ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
-  ui.variant.textContent='NEW SITE';
-  ui.variant.disabled=campaignMode==='mission';
-  ui.siteSize.disabled=campaignMode==='mission';
-  ui.intelMode.disabled=campaignMode==='mission';
-  ui.restart.disabled=campaignMode==='mission';
-  const homeButton=document.getElementById('campaignReturnButton') as HTMLButtonElement|null;
-  if(homeButton)homeButton.disabled=campaignMode==='mission'&&state.phase==='running';
-  ui.loadout.disabled=campaignMode==='mission';
-  // These selectors configure the *next* site; they never reset current knowledge.
-  ui.intelMode.textContent='NEXT SITE INTEL · '+selectedIntelMode.replaceAll('-', ' ').toUpperCase();
-  ui.intelMode.disabled=campaignMode==='mission'||replaying;
-  ui.intelMode.title=campaignMode==='mission'?
-    'Campaign intelligence is defined by the active contract':
-    'Applies to your next new site; current mission stays unchanged';
-  ui.siteSize.textContent='NEXT SITE SIZE · '+requestedSiteScale.toUpperCase();
-  ui.siteSize.disabled=campaignMode==='mission'||replaying;
+  missionScreens.syncNextSiteControls();
   const flashLabel='FLASH ×'+state.flashRemaining;
   if(ui.flash.textContent!==flashLabel)
     ui.flash.replaceChildren(tacticalIcon('flash'),document.createTextNode(flashLabel));
@@ -2934,70 +2821,7 @@ ui.stance.addEventListener('click',()=>{
   posture(state,selected);audioController.playOrderCue('orders.stance');fog2D.invalidate();updateHud();
 });
 ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
-ui.siteLighting.textContent='LIGHTING · '+selectedLightingMode.toUpperCase();
-ui.siteLighting.addEventListener('click',()=>{
-  if(replaying||state.started||state.phase!=='planning'){
-    showUiHelp('CHOOSE LIGHTING BEFORE DEPLOYMENT');return;
-  }
-  const current=LIGHTING_MODES.indexOf(selectedLightingMode);
-  selectedLightingMode=LIGHTING_MODES[(current+1)%LIGHTING_MODES.length];
-  state.lightingMode=selectedLightingMode;
-  ui.siteLighting.textContent='LIGHTING · '+selectedLightingMode.toUpperCase();
-  const url=new URL(location.href);
-  if(selectedLightingMode==='day')url.searchParams.delete('lighting');
-  else url.searchParams.set('lighting',selectedLightingMode);
-  history.replaceState(null,'',url.href);
-  updateHud();
-});
-ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
-// Explicit, touch-friendly choices for next-site rules. This chooser only
-// updates future generation settings and never mutates the active mission.
-const siteChoicePopup=document.createElement('div');
-siteChoicePopup.className='fw-site-choice';
-let siteChoiceOwner:HTMLButtonElement|null=null;
-function closeSiteChoice(){
- siteChoicePopup.remove();
- siteChoiceOwner?.setAttribute('aria-expanded','false');
- siteChoiceOwner=null;
-}
-function openSiteChoices(button:HTMLButtonElement,label:string,
- choices:readonly {value:string;label:string;description:string}[],
- selectedValue:string,choose:(value:string)=>void){
- if(siteChoiceOwner===button){closeSiteChoice();return;}
- closeSiteChoice();
- siteChoiceOwner=button;
- button.setAttribute('aria-expanded','true');
- siteChoicePopup.replaceChildren();
- const heading=document.createElement('strong');
- heading.textContent=label+' · NEXT SITE';
- siteChoicePopup.append(heading);
- for(const choice of choices){
-  const option=document.createElement('button');
-  option.type='button';option.className='fw-site-choice-option';
-  option.setAttribute('aria-pressed',String(choice.value===selectedValue));
-  const name=document.createElement('strong');name.textContent=choice.label;
-  const detail=document.createElement('small');detail.textContent=choice.description;
-  option.append(name,detail);
-  option.addEventListener('click',()=>{choose(choice.value);closeSiteChoice();});
-  siteChoicePopup.append(option);
- }
- button.insertAdjacentElement('afterend',siteChoicePopup);
-}
-ui.siteSize.addEventListener('click',()=>{
- if(replaying||campaignMode==='mission')return;
- openSiteChoices(ui.siteSize,'BUILDING SIZE',[
-  {value:'small',label:'SMALL',description:'Shorter operation · compact site'},
-  {value:'medium',label:'MEDIUM',description:'Balanced layout and encounter'},
-  {value:'large',label:'LARGE',description:'Larger, more involved operation'}
- ],requestedSiteScale,selected=>{
-  requestedSiteScale=selected as SiteScale;
-  ui.siteSize.textContent='NEXT SITE SIZE · '+selected.toUpperCase();
-  const url=new URL(location.href);
-  url.searchParams.set('scale',selected);
-  history.replaceState(null,'',url.href);
-  showUiHelp('NEXT SITE SIZE SET · CURRENT SITE UNCHANGED',2300);
- });
-});
+missionScreens.bindSitePreferences();
 ui.variant.addEventListener('click',async()=>{
   if(replaying||campaignMode==='mission')return;
   if((state.started||team(state).some(a=>a.plan.length>0))&&
@@ -3007,22 +2831,6 @@ ui.variant.addEventListener('click',async()=>{
       confirmLabel:'GENERATE NEW SITE',danger:true
     }))return;
   reset(state.variant+1);
-});
-ui.intelMode.addEventListener('click',()=>{
- if(replaying||campaignMode==='mission')return;
- openSiteChoices(ui.intelMode,'INTELLIGENCE',[
-  {value:'true-blind',label:'TRUE BLIND',description:'Discover the environment during play'},
-  {value:'exterior-known',label:'EXTERIOR KNOWN',description:'Exterior known · interior unexplored'},
-  {value:'floor-plan',label:'FLOOR PLAN',description:'Building plan known · threats unknown'},
-  {value:'full-view',label:'FULL VIEW',description:'Sandbox-style full site knowledge'}
- ],selectedIntelMode,selected=>{
-  if(!INTEL_MODES.includes(selected as IntelMode))return;
-  selectedIntelMode=selected as IntelMode;
-  try{localStorage.setItem(INTEL_PREFERENCE_KEY,selectedIntelMode);}
-  catch{/* Preferences are optional in restricted browsing contexts. */}
-  showUiHelp('NEXT SITE INTEL SET · CURRENT KNOWLEDGE UNCHANGED',3000);
-  updateHud();
- });
 });
 ui.retry.addEventListener('click',()=>{if(campaignMode!=='mission')restartMission();});
 ui.next.addEventListener('click',()=>{if(!returnAfterCampaignMission())reset(state.variant+1);});
@@ -3496,123 +3304,11 @@ function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
   }
 }
 window.addEventListener('resize',layout);
-// The Settings trigger lives in the collapsible Tools drawer. Settings
-// therefore owns an always-visible close action, and camera changes return
-// immediately to the map without leaving a hidden trigger focused.
-const closeSiteSettingsButton=el<HTMLButtonElement>('closeSiteSettings');
-function closeMissionSettings(returnFocus=true){
-  if(ui.siteSettings.hidden)return;
-  collapseTacticalSheets(null);
-  if(returnFocus)ui.siteSettingsToggle.focus();
-  updateContext();
-}
-closeSiteSettingsButton.addEventListener('click',()=>{
- closeMissionSettings();tacticalSheetNavigation.sync();
-});
-const missionSettingsTabs=Array.from(ui.siteSettings.querySelectorAll<HTMLButtonElement>(
- '[data-site-tab]'));
-const missionSettingsPanels=Array.from(ui.siteSettings.querySelectorAll<HTMLElement>(
- '[data-site-panel]'));
-function selectMissionSettingsTab(tab:string){
- for(const button of missionSettingsTabs)
-  button.setAttribute('aria-pressed',String(button.dataset.siteTab===tab));
- for(const panel of missionSettingsPanels)
-  panel.hidden=panel.dataset.sitePanel!==tab;
- const title=ui.siteSettings.querySelector<HTMLElement>('.site-settings-heading strong');
- if(title)title.textContent=tab==='environment'?'ENVIRONMENT':
-  tab==='preferences'?'PREFERENCES':'MISSION';
-}
-replayLibrary.renderFavorites();
-for(const button of missionSettingsTabs)button.addEventListener('click',()=>{
- selectMissionSettingsTab(button.dataset.siteTab??'mission');
-});
-function chooseCameraView(mode:ViewMode){
-  cameraMode(mode);
-  closeMissionSettings();
-}
-ui.viewIso.addEventListener('click',()=>chooseCameraView('iso'));
-ui.viewTop.addEventListener('click',()=>chooseCameraView('top'));
-ui.view2d.addEventListener('click',()=>chooseCameraView('plan2d'));
-ui.cameraFit.addEventListener('click',()=>{
-  if(stage&&viewMode!=='plan2d')stage.resetCamera();
-  else{zoom=1;panX=0;panY=0;layout();}
-  closeMissionSettings();
-  updateContext();
-});
-function showMissionBriefing(){
-  if(state.phase!=='planning'||replaying||!state.site)return;
-  // Always open on the five-second overview; details are optional.
-  setBriefingView('brief');
-  updateHud();
-  collapseTacticalSheets('briefing');
-  ui.briefingPanel.hidden=false;
-  ui.briefingToggle.setAttribute('aria-expanded','true');
-  tacticalSheetNavigation.sync();tacticalSheetNavigation.focusFirst();
-  updateContext();
-}
-ui.briefingToggle.addEventListener('click',showMissionBriefing);
-ui.briefingIntelToggle.addEventListener('click',()=>{
- const opening=ui.briefingIntelView.hidden;
- setBriefingView(opening?'intel':'brief');
-});
-for(const button of ui.briefingPanel.querySelectorAll<HTMLButtonElement>(
- '[data-briefing-tab]')){
- button.addEventListener('click',()=>setBriefingIntelTab(
-  button.dataset.briefingTab as BriefingTab));
-}
-ui.briefingClose.addEventListener('click',()=>{
-  ui.briefingPanel.hidden=true;
-  ui.briefingToggle.setAttribute('aria-expanded','false');
-  tacticalSheetNavigation.sync();
-  updateContext();
-});
-// Shelved graphics experiment: the controls remain in source for future
-// development but are hidden. Only explicit ?focusFx developer URLs opt in.
-const miniatureFocusButtons=Array.from(
- ui.siteSettings.querySelectorAll<HTMLButtonElement>('[data-miniature-focus]'));
-function storedMiniatureFocus():string|null{
- try{return localStorage.getItem(MINIATURE_FOCUS_STORAGE_KEY);}
- catch{return null;}
-}
-let miniatureFocusSetting:MiniatureFocusMode=stage?.getMiniatureFocusMode()??
- initialMiniatureFocusMode(
-   new URLSearchParams(location.search).get('focusFx'),storedMiniatureFocus());
-function syncMiniatureFocusPreference():void{
- for(const button of miniatureFocusButtons){
-   const active=button.dataset.miniatureFocus===miniatureFocusSetting;
-   button.setAttribute('aria-pressed',String(active));
- }
-}
-for(const button of miniatureFocusButtons)button.addEventListener('click',()=>{
- const value=button.dataset.miniatureFocus;
- if(value!=='off'&&value!=='subtle'&&value!=='strong'&&value!=='replay')return;
- miniatureFocusSetting=value;
- stage?.setMiniatureFocusMode(value);
- try{localStorage.setItem(MINIATURE_FOCUS_STORAGE_KEY,value);}
- catch{/* Preference remains active for this session without storage. */}
- syncMiniatureFocusPreference();
-});
-syncMiniatureFocusPreference();
+missionScreens.bindMenus();
 audioController.bindSettings({
   liveMix:el<HTMLButtonElement>('liveMixToggle'),
   roomAudio:el<HTMLButtonElement>('roomAudioToggle'),
   uiSound:ui.uiSoundToggle
-});
-ui.uiHelp.addEventListener('click',()=>{
-  closeMissionSettings();
-  showUiHelp('Tap a route line to insert a waypoint · LOOK = brief check · WATCH = keep watching as you move · Hold a command for help.',8500);
-  updateHud();
-});
-ui.siteSettingsToggle.addEventListener('click',()=>{
-  const opening=ui.siteSettings.hidden;
-  collapseTacticalSheets(opening?'settings':null);
-  ui.siteSettings.hidden=!opening;
-  ui.siteSettingsToggle.setAttribute('aria-expanded',String(opening));
-  if(opening)selectMissionSettingsTab('mission');
-  tacticalSheetNavigation.sync();
-  if(opening)tacticalSheetNavigation.focusFirst();
-  else ui.siteSettingsToggle.focus();
-  updateContext();
 });
 // Opt-in developer overlay: add ?perf=1 to measure render and simulation
 // without polling DOM/layout or allocating objects in the normal game loop.
