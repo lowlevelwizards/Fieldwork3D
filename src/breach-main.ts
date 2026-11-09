@@ -48,6 +48,11 @@ import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
  rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
 import type {Site} from './breach-site.ts';
 import {BreachMissionController,type MissionTransition} from './breach-mission-controller.ts';
+import {createBreachQuickPlayController} from './breach-quickplay-controller.ts';
+import {createBreachCampaignFlow} from './breach-campaign-flow.ts';
+import {createOperatorStudioBridge} from './operator-studio-bridge.ts';
+import {createBreachEquipmentEditorBridge} from './breach-equipment-editor-bridge.ts';
+import {createBreachOperationsBoardController} from './breach-operations-board-controller.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
@@ -56,13 +61,8 @@ import {createBriefingCardModel,type BriefingReport,type BriefingTab}
  from './briefing/briefing-view-model.ts';
 import {sessionIntelligenceReview} from './briefing/briefing-after-action.ts';
 import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
-import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
- from './quick-play-generation.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
-import {WeaponWorkbenchPreview,type WeaponWorkbenchViewState} from './equipment-weapon-workbench.ts';
-import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
-import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {mostUrgentWound} from './breach-medical-wounds.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 import {lightControlState} from './equipment-weapon-light-ui.ts';
@@ -72,8 +72,6 @@ import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
 import {createBreachAudioController} from './breach-audio-controller.ts';
-import {parseOperationHistory,addOperationRecord,
-  type OperationRecord} from './breach-operations.ts';
 import {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
 import {createBreachReplayTimelineController}
   from './ui/breach-replay-timeline-controller.ts';
@@ -103,7 +101,7 @@ import {WEAPONS} from './breach-combat.ts';
 import {fitMagazineInventory}
  from './arsenal/live-magazine-capacity.ts';
 
-import {stageMagazines,magazineSpace,type MagazineLocation} from './equipment-magazine-placement.ts';
+import {stageMagazines} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
 import {canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {INTEL_MODES,doorKnown,
@@ -119,45 +117,19 @@ import {formatAfterAction} from './breach-after-action.ts';
 import {formatMissionPacing} from './breach-mission-pacing.ts';
 import {formatCombatReview} from './breach-combat-review.ts';
 import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
-  serializeQuickPlayCosmetics,
-  resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
- configureRosterWeapon,configureRosterWeaponPreset,configureRosterWeaponBodyPart,
- renameRosterMember} from './breach-roster.ts';
-import {validateStudioAppearanceEdits,applyStudioRosterEdits,
- applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
-import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
-import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
-import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,familyPreset,proposeFamilyPartChange,type FamilyPartSlot} from './equipment-weapon-families.ts';
-import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
-import {newCampaign,readCampaign,acceptContract,resolveOperation,
- purchaseAmmo,purchaseMedical,resupplyOperator,resupplyMedicalOperator,treatOperator,
- hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
- retireOperator,equipCampaignGear,moveCampaignMagazine,
- equipCampaignWeaponAttachment,purchaseAndEquipWeaponAttachment,
- equipCampaignWeaponPreset,equipCampaignWeaponFamilyPart,
- saveCampaignKitPreset,applyCampaignKitPreset,
- deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
- setCampaignWardrobe,
- repairCampaignArmor,serviceCampaignWeapon,purchaseFlash,
- type CampaignState,type CampaignReport} from './campaign-state.ts';
+ serializeQuickPlayCosmetics} from './breach-roster.ts';
+import {readCampaign,tacticalSlotOperator,type CampaignState} from './campaign-state.ts';
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
-import {CampaignScreen} from './campaign-ui.ts';
-import {exportCampaign,importCampaign} from './campaign-persistence.ts';
-import {careerEventsForOperation} from './campaign-history.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
 import './ui/ux-r1-sheets.css';
 import './ui/ux-r3-hud.css';
 import './ui/fieldwork-action-toast.css';
-import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
-import {confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
+import {confirmFieldworkAction} from './ui/fieldwork-controls.ts';
 import {createTacticalSheetNavigation} from './ui/tactical-sheet-navigation.ts';
-import {buildQuickLoadoutGroups,loadoutGroupForSlot,
- type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
@@ -475,125 +447,17 @@ function saveCampaign():boolean{
  try{localStorage.setItem(CAMPAIGN_KEY,JSON.stringify(campaign));return true;}
  catch{console.warn('Campaign save unavailable');return false;}
 }
-/** Embedded Studio keeps the live mission mounted. The game remains the
- * sole authority for campaign/Quick Play writes; the iframe edits a draft. */
-let studioMode:'quick'|'campaign'='quick';
-let studioSelected='rook';
-let studioOverlay:HTMLDivElement|null=null;
-let studioFrame:HTMLIFrameElement|null=null;
-/** Keep one warm Studio context for short returns; release it after a bounded
- * hidden interval to avoid retaining two WebGL contexts indefinitely on iOS.
- * The iframe never owns tactical simulation or authoritative roster state. */
-const STUDIO_WARM_RETAIN_MS=60_000;
-let studioReady=false,studioOpenEpoch=0,studioInitSentEpoch=-1;
-let studioReleaseTimer:ReturnType<typeof setTimeout>|null=null;
-function sendStudioInit(){
- if(!studioOverlay||studioOverlay.hidden||
-    studioInitSentEpoch===studioOpenEpoch)return;
- studioInitSentEpoch=studioOpenEpoch;
- if(!studioFrame?.contentWindow)return;
- const people=studioMode==='campaign'?
-  campaign?.operators.filter(o=>o.status!=='retired'&&o.status!=='lost')??[]:
-  persistentRoster.members;
- studioFrame.contentWindow.postMessage({
-  type:'fw-studio-init',mode:studioMode,selected:studioSelected,
-  members:people.map(p=>({
-   id:p.id,callsign:p.callsign,appearanceSeed:p.appearanceSeed,
-   loadout:p.loadout,wardrobe:p.wardrobe,
-   weapon:p.weapon,weaponConfiguration:p.weaponConfiguration
-  })),
-  readonly:studioMode==='campaign'?!!campaign?.activeContractId:
-   state.phase!=='planning'||replaying
- },location.origin);
-}
-function closeOperatorStudio(){
- if(!studioOverlay||studioOverlay.hidden)return;
- studioOverlay.hidden=true;
- studioFrame?.contentWindow?.postMessage({type:'fw-studio-suspend'},location.origin);
- if(studioReleaseTimer!==null)clearTimeout(studioReleaseTimer);
- studioReleaseTimer=setTimeout(()=>{
-  studioReleaseTimer=null;
-  if(!studioOverlay?.hidden||!studioFrame)return;
-  studioFrame.src='about:blank';
-  studioReady=false;studioInitSentEpoch=-1;
- },STUDIO_WARM_RETAIN_MS);
-}
-function openOperatorStudio(id?:string,requestedMode?:'quick'|'campaign'){
- studioMode=requestedMode??(campaignMode==='home'||campaignMode==='mission'?
-  'campaign':'quick');
- if(studioMode==='campaign'&&!campaign)return;
- if(!studioOverlay){
-  studioOverlay=document.createElement('div');
-  studioOverlay.id='operatorStudioOverlay';studioOverlay.hidden=true;
-  studioFrame=document.createElement('iframe');
-  studioFrame.title='Fieldwork Operator Studio';
-  studioOverlay.append(studioFrame);document.body.append(studioOverlay);
-  studioFrame.onload=()=>{
-   if(studioOverlay&&!studioOverlay.hidden)sendStudioInit();
-  };
- }
- studioSelected=id??(studioMode==='campaign'?campaign?.operators[0]?.id:'rook')??'rook';
- if(studioReleaseTimer!==null){
-  clearTimeout(studioReleaseTimer);studioReleaseTimer=null;
- }
- studioOpenEpoch++;
- studioOverlay.hidden=false;
- const url=new URL('./operator-studio.html',location.href);
- url.searchParams.set('embedded','1');url.searchParams.set('mode',studioMode);
- url.searchParams.set('operator',studioSelected);
- // A hidden frame still owns the already compiled rig and GPU resources.
- // Send fresh authoritative roster/readonly state rather than navigate it.
- if(!studioFrame!.getAttribute('src')||
-    studioFrame!.getAttribute('src')==='about:blank'){
-  studioReady=false;
-  studioFrame!.src=url.href;
- }else if(studioReady)sendStudioInit();
-}
-document.getElementById('openOperatorStudio')?.addEventListener('click',()=>
- openOperatorStudio(selected,'quick'));
-window.addEventListener('message',event=>{
- if(!studioFrame?.contentWindow||event.source!==studioFrame.contentWindow||
-    event.origin!==location.origin||!event.data||typeof event.data!=='object')return;
- const msg=event.data as {type?:string;id?:unknown;
-  wardrobe?:unknown;entries?:unknown};
- if(msg.type==='fw-studio-ready'){
-  studioReady=true;sendStudioInit();return;
- }
- if(msg.type==='fw-studio-close'){closeOperatorStudio();return;}
- const batch=msg.type==='fw-studio-commit-batch';
- if(!batch&&msg.type!=='fw-studio-commit')return;
- const edits=validateStudioAppearanceEdits(batch?msg.entries:
-  [{id:msg.id,wardrobe:msg.wardrobe}]);
- let ok=false;
- if(edits&&studioMode==='quick'&&state.phase==='planning'&&!replaying){
-  const next=applyStudioRosterEdits(persistentRoster,edits);
-  if(next){
-   const previous=persistentRoster;persistentRoster=next;
-   ok=saveRoster();
-   if(ok){applyRosterIdentity(state,persistentRoster);
-    renderOperationsBoard();updateHud();}
-   else persistentRoster=previous;
-  }
- }else if(edits&&studioMode==='campaign'&&campaign&&!campaign.activeContractId){
-  const next=applyStudioCampaignEdits(campaign,edits);
-  if(next){
-   const previous=campaign;campaign=next;
-   ok=saveCampaign();
-   if(ok)showCampaignHome();
-   else campaign=previous;
-  }
- }
- if(edits?.length)studioSelected=edits[0].id;
- if(batch){
-  studioFrame.contentWindow.postMessage({
-   type:'fw-studio-batch-saved',ids:edits?.map(e=>e.id)??[],ok
-  },location.origin);
- }else{
-  studioFrame.contentWindow.postMessage({
-   type:'fw-studio-saved',id:msg.id,ok
-  },location.origin);
- }
+const studioBridge=createOperatorStudioBridge({
+  getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},
+  getRoster:()=>persistentRoster,setRoster:value=>{persistentRoster=value;},
+  getMode:()=>campaignMode,getSelected:()=>selected,
+  getSession:()=>state,isReplaying:()=>replaying,
+  saveRoster,saveCampaign,
+  applyQuickRoster:()=>applyRosterIdentity(state,persistentRoster),
+  onQuickSaved:()=>{renderOperationsBoard();updateHud();},
+  onCampaignSaved:()=>showCampaignHome()
 });
+const openOperatorStudio=studioBridge.open;
 function applyCampaignSkills(session:Session){
  if(campaignMode!=='mission'||!campaign)return;
  for(const a of team(session)){
@@ -664,77 +528,13 @@ missionController.bindDeployment({
   onSelected:()=>{recorder=missionController.recordInitial(state);},
   reducedMotion:()=>reducedMotionMedia.matches
 });
-function restoreFavoriteMission(saved:FavoriteMission):void{
-  if(campaignMode==='mission'){
-    showUiHelp('FAVORITES PLAY AS QUICK PLAY PRACTICE',3400);return;
-  }
-  const start=structuredClone(saved.start);
-  campaignMode='quick';
-  reset(start.variant,start.seed,start.missionType,
-    missionController.restartRequest(start).prebuiltSite,undefined,false,start);
-  missionController.restoreStartingSetup(state,start,entry=>
-    console.warn('[Favorite mission] Saved entry no longer valid',entry));
-  replayLibrary.activateFavorite(saved.id);
-  recorder=missionController.recordInitial(state);
-  closeMissionSettings(false);
-  layout();updateHud();
-  showUiHelp('FAVORITE LOADED · ORIGINAL MISSION SETUP',3800);
-}
+const restoreFavoriteMission=(saved:FavoriteMission):void=>
+  quickPlayController.restoreFavorite(saved);
 function refreshDeployment():void{
   missionController.refreshDeployment(state,replaying);
 }
-const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
-let recordedOperation:Session|null=null;
-function operationHistory():OperationRecord[]{
-  try{return parseOperationHistory(localStorage.getItem(OPERATION_HISTORY_KEY));}
-  catch{return [];}
-}
-function recordCompletedOperation(){
-  if(replaying||recordedOperation===state||!state.started||
-    (state.phase!=='won'&&state.phase!=='lost'))return;
-  recordedOperation=state;
-  if(campaignMode==='mission'&&campaign?.activeContractId){
-   const members=team(state);
-   const careerId=(slotId:string)=>tacticalSlotOperator(campaign!,slotId)?.id??slotId;
-   const mapping=Object.fromEntries(members.map(a=>[a.id,careerId(a.id)]));
-   const stats=debrief(state);
-   const result:CampaignReport={
-    id:'operation-'+campaign.activeContractId,contractId:campaign.activeContractId,
-    day:campaign.day,outcome:state.phase==='won'?'success':'failure',
-    grade:stats.grade,elapsed:stats.time,
-    participatingIds:members.map(a=>careerId(a.id)),
-    casualties:members.filter(a=>a.health<=0).map(a=>careerId(a.id)),
-    stabilizedIds:stats.stabilizedCasualties.map(careerId),
-    criticalIds:stats.criticalCasualties.map(careerId),
-    evacuatedIds:stats.evacuatedCasualties.map(careerId),
-    medicalRemaining:Object.fromEntries(members.map(a=>[
-     careerId(a.id),{...a.medicalSupplies}])),
-    objective:stats.objective,
-    flashUsed:state.battleEvents.filter(e=>e.kind==='flash'&&
-     e.actor!==undefined&&e.text.endsWith('FLASH OUT')).length,
-    events:careerEventsForOperation(campaign,'operation-'+campaign.activeContractId,state.battleEvents,mapping),
-    performance:members.map(a=>({
-     id:careerId(a.id),shots:a.shots,hits:a.hits,pointShots:a.pointShots,
-     aimedShots:a.aimedShots,longHits:a.longHits,injuryStage:a.injuryStage,
-     survived:a.health>0,magazine:a.magazine,reserve:a.reserve,
-     armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
-     spareMagazines:a.spareMagazines.map(m=>({...m})),
-     loadedMagazineId:a.insertedMagazineId
-    }))
-   };
-   campaign=resolveOperation(campaign,result);saveCampaign();return;
-  }
-  const stats=debrief(state);
-  const record:OperationRecord={
-    seed:state.site?.seed??state.variant,
-    kind:state.missionType,
-    outcome:state.phase==='won'?'success':'failure',
-    grade:stats.grade,elapsed:stats.time,casualties:stats.casualties
-  };
-  try{localStorage.setItem(OPERATION_HISTORY_KEY,
-    JSON.stringify(addOperationRecord(operationHistory(),record)));}
-  catch{/* Private mode may reject local storage. Game still works. */}
-}
+const operationHistory=()=>campaignFlow.operationHistory();
+const recordCompletedOperation=()=>campaignFlow.recordCompletedOperation();
 let replaying=false;
 const replayPlayback=new ReplayPlaybackController();
 
@@ -917,463 +717,40 @@ function showWeaponChooser(){
 weaponChooser.addEventListener('keydown',event=>{
  if(event.key==='Escape'){event.preventDefault();hideWeaponChooser();ui.loadout.focus();}
 });
-// One operator expanded at a time in the mobile preparation sheet.
-let expandedQuickOperator:string|null=null;
-let expandedQuickKit:string|null=null;
-let expandedQuickLoadoutGroup:QuickLoadoutGroup='weapon';
-let expandedQuickWeapon:string|null=null;
-/** Keep the intentional classic fallback open across part/weapon rerenders. */
-const expandedClassicWeaponControls=new Set<string>();
-let quickWorkbench:WeaponWorkbenchPreview|null=null;
-let quickWorkbenchId:string|null=null;
-const selectedQuickWeaponSockets=new Map<string,WorkbenchSocket>();
-const savedQuickWorkbenchViews=new Map<string,WeaponWorkbenchViewState>();
-const resetQuickWorkbenchViews=new Set<string>();
-function rememberQuickWorkbenchView(){
- if(!quickWorkbench||!quickWorkbenchId||
-  resetQuickWorkbenchViews.has(quickWorkbenchId))return;
- const pose=quickWorkbench.getViewState();
- if(pose)savedQuickWorkbenchViews.set(quickWorkbenchId,pose);
-}
 /** Full Arsenal editor uses the same pure draft and resolver as the standalone gallery.
  * Quick Play commits remain in the transient roster; weapon/kit progress is not saved.
  */
-async function openQuickArsenal(id:string){
- if(state.phase!=='planning'||replaying||campaignMode!=='quick')return;
- const member=persistentRoster.members.find(m=>m.id===id);
- if(!member)return;
- try{
-  const [{arsenalRecipeFromLegacy},{openArsenalWorkbench},
-   {applyQuickPlayArsenalEdit,quoteQuickPlayArsenalEdit}]=await Promise.all([
-    import('./arsenal/recipes.ts'),import('./arsenal/workbench-screen.ts'),
-    import('./arsenal/quickplay-adapter.ts')]);
-  if(state.phase!=='planning'||replaying||campaignMode!=='quick')return;
-  const current=persistentRoster.members.find(m=>m.id===id);
-  const recipe=current&&arsenalRecipeFromLegacy(current.weaponConfiguration);
-  if(!current||!recipe){showUiHelp('THIS WEAPON USES THE LEGACY LOADOUT EDITOR',3000);return;}
-  openArsenalWorkbench({id:'equipped-quick-'+id,name:current.callsign,recipe},undefined,{
-   mode:'quick',applyLabel:'APPLY TO OPERATOR',
-   quote:r=>{
-    const result=quoteQuickPlayArsenalEdit(persistentRoster,id,r);
-    return {...result,canCommit:result.valid};
-   },
-   onApply:nextRecipe=>{
-    if(state.phase!=='planning'||replaying||campaignMode!=='quick')
-     return {ok:false,message:'Equipment changes are only available before deployment'};
-    const next=applyQuickPlayArsenalEdit(persistentRoster,id,nextRecipe);
-    if(next===persistentRoster&&
-     !persistentRoster.members.some(m=>m.id===id))
-     return {ok:false,message:'Operator is unavailable'};
-    persistentRoster=next;
-    applyRosterIdentity(state,persistentRoster);
-    expandedQuickKit=id;expandedQuickWeapon=id;
-    expandedQuickLoadoutGroup='weapon';
-    renderOperationsBoard();updateHud();
-    return {ok:true};
-   }
-  });
- }catch{
-  showUiHelp('ARSENAL UNAVAILABLE · EXISTING LOADOUT EDITOR STILL WORKS',4000);
- }
-}
-function renderOperationsBoard(){
- const priorScroll=operationsBoard.scrollTop;
- rememberQuickWorkbenchView();
- quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
- operationsBoard.replaceChildren();
- const heading=document.createElement('div');
- heading.className='fw-squad-sheet-header';
- const title=document.createElement('strong');
- title.textContent='SQUAD';heading.append(title);
- const close=document.createElement('button');
- close.type='button';close.textContent='CLOSE';
- close.addEventListener('click',()=>{
- operationsBoard.hidden=true;tacticalSheetNavigation.sync();operationsToggle.focus();
+const equipmentEditor=createBreachEquipmentEditorBridge({
+ getRoster:()=>persistentRoster,setRoster:value=>{persistentRoster=value;},
+ getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},
+ getSession:()=>state,getMode:()=>campaignMode,isReplaying:()=>replaying,
+ saveCampaign,showHelp:showUiHelp,
+ onQuickApplied:id=>{
+   applyRosterIdentity(state,persistentRoster);
+   operationsBoardController.onQuickApplied(id);updateHud();
+ },
+ onCampaignApplied:()=>showCampaignHome()
 });
- heading.append(close);
- const more=document.createElement('details');more.className='fw-squad-more';
- const moreLabel=document.createElement('summary');moreLabel.textContent='MORE';
- more.append(moreLabel);
- const range=document.createElement('button');range.type='button';
- range.textContent='TEST RANGE';range.title='Nonpersistent equipment range';
- range.addEventListener('click',()=>{
-  if(state.phase!=='planning'||replaying)return;
-  operationsBoard.hidden=true;tacticalSheetNavigation.sync();
-  campaignMode='quick';lastRangeTrial=null;
-  reset(state.variant,undefined,undefined,equipmentTrainingSite());
-  showUiHelp('TEST RANGE · USE SUPPRESS TO FIRE AT TARGET PLATES',6500);
- });
- more.append(range);heading.append(more);operationsBoard.append(heading);
- const history=operationHistory();
- const intro=document.createElement('p');
- intro.className='fw-squad-intro';
- intro.textContent=persistentRoster.members.length+' OPERATORS · FRESH GEAR EACH ROUND'+
-  (history.length?' · LAST '+(history.at(-1)?.grade??'—'):'');
- operationsBoard.append(intro);
- for(const member of persistentRoster.members){
-  const card=document.createElement('details');
-  card.dataset.squadCard=member.id;
-  card.className='fw-squad-card';
-  card.dataset.operatorId=member.id;
-  card.open=expandedQuickOperator===member.id;
-  card.addEventListener('toggle',()=>{
-   if(card.open){
-    expandedQuickOperator=member.id;
-    for(const other of operationsBoard.querySelectorAll<HTMLDetailsElement>(
-     'details[data-squad-card]')){
-     if(other!==card&&other.open)other.open=false;
-    }
-   }else if(expandedQuickOperator===member.id)expandedQuickOperator=null;
-  });
-  const name=document.createElement('summary');
-  const identity=document.createElement('strong');identity.textContent=member.callsign.toUpperCase();
-  const status=document.createElement('small');status.textContent=member.weapon.toUpperCase()+' · READY';
-  name.append(identity,status);card.append(name);
-  const details=document.createElement('p');
-  details.className='fw-squad-summary';
-  details.textContent=member.magazine+' / '+member.reserve+' RDS · '+
-   member.magazines.length+' SPARE MAGS · FULL HEALTH';
-  card.append(details);
-  const actions=document.createElement('div');
-
-  actions.className='fw-squad-actions';
-  const loadoutAction=document.createElement('button');
-  loadoutAction.type='button';loadoutAction.textContent='LOADOUT';
-  loadoutAction.setAttribute('aria-label','Edit equipment for '+member.callsign);
-  loadoutAction.addEventListener('click',()=>{
-   const opening=!kit.open;kit.open=opening;
-   expandedQuickKit=opening?member.id:null;
-   if(opening){expandedQuickWeapon=member.id;weaponEditor.open=true;}
-   if(opening)kit.scrollIntoView({block:'nearest',behavior:'smooth'});
-  });
-  const look=document.createElement('button');
-  look.type='button';look.textContent='APPEARANCE';
-  look.setAttribute('aria-label','Customize '+member.callsign+' in Operator Studio');
-  look.addEventListener('click',()=>{
-   operationsBoard.hidden=true;tacticalSheetNavigation.sync();
-   openOperatorStudio(member.id,'quick');
-  });
-  const rename=document.createElement('button');
-  rename.type='button';rename.textContent='CALLSIGN';
-  rename.addEventListener('click',async()=>{
-   if(state.phase!=='planning'||replaying)return;
-   const next=await promptFieldworkText({
-    title:'EDIT CALLSIGN',value:member.callsign,
-    label:'CALLSIGN',maxLength:24,confirmLabel:'SAVE NAME'});
-   if(next===null||state.phase!=='planning'||replaying)return;
-   persistentRoster=renameRosterMember(persistentRoster,member.id,next);
-   const saved=saveRoster();applyRosterIdentity(state,persistentRoster);
-   if(saved)showFieldworkActionFeedback('CALLSIGN UPDATED · '+next.toUpperCase());
-   renderOperationsBoard();updateHud();
-  });
-  actions.append(loadoutAction,look,rename);
-  card.append(actions);
-  const kit=document.createElement('details');
-  kit.open=expandedQuickKit===member.id;
-  kit.addEventListener('toggle',()=>{if(kit.open)expandedQuickKit=member.id;
-   else if(expandedQuickKit===member.id)expandedQuickKit=null;});
-  const kitTitle=document.createElement('summary');
-  kitTitle.textContent='LOADOUT · '+member.weapon.toUpperCase();
-  kit.append(kitTitle);
-  const loadout=buildQuickLoadoutGroups(kit,expandedQuickLoadoutGroup,group=>{
-   expandedQuickLoadoutGroup=group;
-  });
-  // Arsenal is the primary builder. Direct factory and socket controls remain
-  // behind one accessible fallback for class-only or unsupported weapons.
-  const modelHint=document.createElement('small');
-  modelHint.className='fw-weapon-section-label';
-  modelHint.textContent='WEAPON · ARSENAL';
-  loadout.field('weapon').append(modelHint);
-  const arsenalAction=document.createElement('button');arsenalAction.type='button';
-  arsenalAction.className='fw-button fw-arsenal-open';
-  arsenalAction.textContent='OPEN ARSENAL · FULL WORKBENCH';
-  arsenalAction.disabled=state.phase!=='planning'||replaying||
-   !member.weaponConfiguration.build;
-  arsenalAction.addEventListener('click',()=>{void openQuickArsenal(member.id);});
-  loadout.field('weapon').append(arsenalAction);
-  const legacyControls=document.createElement('details');
-  legacyControls.className='fw-legacy-weapon-controls';
-  legacyControls.open=!member.weaponConfiguration.build||
-   expandedClassicWeaponControls.has(member.id);
-  const legacyTitle=document.createElement('summary');
-  legacyTitle.textContent='ADVANCED · CLASSIC WEAPON CONTROLS';
-  const legacyNote=document.createElement('p');legacyNote.className='fw-weapon-helper';
-  legacyNote.textContent='Direct factory and socket options for unsupported builds or troubleshooting.';
-  legacyControls.append(legacyTitle,legacyNote);
-  const activePreset=member.weaponConfiguration.build?
-   matchingFamilyPreset(member.weaponConfiguration.build):undefined;
-  const factoryLabel=document.createElement('strong');
-  factoryLabel.className='fw-weapon-section-label';
-  factoryLabel.textContent='3D WEAPON MODEL';
-  const factoryBrowser=createWeaponPresetBrowser({
-   selectedId:activePreset?.id,
-   selectedFamily:member.weaponConfiguration.build?.family,
-   onSelect:presetId=>{
-    if(state.phase!=='planning'||replaying)return;
-    const preset=familyPreset(presetId);if(!preset)return;
-    let next=persistentRoster;
-    if(member.weapon!==preset.weapon)next=equipRoster(next,member.id,preset.weapon);
-    next=configureRosterWeaponPreset(next,member.id,presetId);
-    const selected=next.members.find(m=>m.id===member.id);
-    if(!selected?.weaponConfiguration.build)return;
-    persistentRoster=next;
-    selectedQuickWeaponSockets.delete(member.id);
-    savedQuickWorkbenchViews.delete(member.id);resetQuickWorkbenchViews.add(member.id);
-    saveRoster();applyRosterIdentity(state,persistentRoster);
-    expandedQuickKit=member.id;expandedQuickWeapon=member.id;
-    expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
-   }
-  });
-  legacyControls.append(factoryLabel,factoryBrowser);
-  const resupply=document.createElement('button');resupply.type='button';
-  resupply.className='fw-squad-resupply';resupply.textContent='RESUPPLY';
-  resupply.addEventListener('click',()=>{
-   if(state.phase!=='planning'||replaying)return;
-   persistentRoster=resupplyRoster(persistentRoster,member.id);
-   saveRoster();applyRosterIdentity(state,persistentRoster);
-   expandedQuickKit=member.id;expandedQuickLoadoutGroup='weapon';
-   renderOperationsBoard();updateHud();
-  });
-  loadout.field('weapon').append(resupply);
-  for(const slot of LOADOUT_SLOTS){
-   if(slot==='primary')continue; // Existing NEXT WEAPON action stays authoritative.
-   const row=document.createElement('label');
-   row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0';
-   const label=document.createElement('span');
-   label.textContent=slot.toUpperCase();label.style.fontSize='10px';
-   const select=document.createElement('select');
-   select.setAttribute('aria-label',slot+' for '+member.callsign);
-   select.style.cssText='max-width:65%;min-height:40px;touch-action:manipulation;background:#243530;color:#e5e9d8;border-radius:7px;padding:6px';
-   for(const item of itemsForSlot(slot)){
-    const option=document.createElement('option');
-    option.value=item.id;option.textContent=item.name;select.append(option);
-   }
-   select.value=member.loadout.slots[slot];
-   select.addEventListener('change',()=>{
-    if(state.phase!=='planning'||replaying)return;
-    persistentRoster=equipRosterGear(persistentRoster,member.id,slot,select.value);
-    const saved=saveRoster();applyRosterIdentity(state,persistentRoster);
-    if(saved){
-     const chosen=itemsForSlot(slot).find(item=>item.id===select.value);
-     showFieldworkActionFeedback(member.callsign+' · '+
-      (chosen?.name??slot.toUpperCase())+' EQUIPPED');
-    }
-    expandedQuickKit=member.id;renderOperationsBoard();updateHud();
-   });
-   row.className='fw-equipment-choice';
-   row.append(label,select);loadout.field(loadoutGroupForSlot(slot)).append(row);
-  }
-  // Factory body furniture and rail accessories share one spatial workbench.
-  const weaponEditor=document.createElement('details');
-  weaponEditor.className='fw-weapon-editor';
-  weaponEditor.open=expandedQuickWeapon===member.id;
-  const socketRows=new Map<WorkbenchSocket,HTMLElement>();
-  const workbenchHost=document.createElement('div');
-  workbenchHost.style.cssText='min-width:0;max-width:100%;width:100%;margin:8px 0';
-  const socketPanel=document.createElement('div');
-  socketPanel.className='fw-weapon-socket-panel';
-  const socketHeading=document.createElement('strong');
-  socketHeading.className='fw-weapon-section-label';
-  const socketNote=document.createElement('p');
-  socketNote.className='fw-weapon-helper';
-  socketNote.textContent='Tap a white dot on the weapon to edit this part.';
-  socketPanel.append(socketHeading,socketNote);
-  socketPanel.hidden=true; // Selects remain authoritative but choices live beside the model.
-  const initialSocket:WorkbenchSocket=member.weaponConfiguration.build?'body-receiver':'optic';
-  let selectedSocket:WorkbenchSocket=
-   selectedQuickWeaponSockets.get(member.id)??initialSocket;
-  const showSocket=(slot:WorkbenchSocket)=>{
-   const select=socketRows.get(slot)?.querySelector<HTMLSelectElement>('select');
-   if(!select)return;
-   selectedSocket=slot;
-   selectedQuickWeaponSockets.set(member.id,slot);
-   quickWorkbench?.showSocketChoices(slot,select);
-  };
-  const syncWorkbench=()=>{
-   const active=kit.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open;
-   if(!active){if(quickWorkbenchId===member.id){
-    rememberQuickWorkbenchView();
-    quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
-   }return;}
-   if(quickWorkbenchId===member.id)return;
-   rememberQuickWorkbenchView();
-   quickWorkbench?.dispose();quickWorkbench=null;
-   quickWorkbenchId=member.id;
-   quickWorkbench=new WeaponWorkbenchPreview(workbenchHost,
-    member.weaponConfiguration,slot=>showSocket(slot));
-   const view=resetQuickWorkbenchViews.has(member.id)?
-    null:savedQuickWorkbenchViews.get(member.id);
-   if(view)quickWorkbench.restoreViewState(view);
-   resetQuickWorkbenchViews.delete(member.id);
-   const saved=selectedQuickWeaponSockets.get(member.id);
-   if(saved&&socketRows.has(saved))showSocket(saved);
-   else quickWorkbench.setActiveSlot(initialSocket,false);
-  };
-  legacyControls.addEventListener('toggle',()=>{
-   if(legacyControls.open)expandedClassicWeaponControls.add(member.id);
-   else expandedClassicWeaponControls.delete(member.id);
-   syncWorkbench();
-  });
-  weaponEditor.addEventListener('toggle',()=>{
-   if(weaponEditor.open)expandedQuickWeapon=member.id;
-   else if(expandedQuickWeapon===member.id)expandedQuickWeapon=null;
-   syncWorkbench();
-  });
-  kit.addEventListener('toggle',syncWorkbench);
-  loadout.group.weapon.addEventListener('toggle',syncWorkbench);
-  const weaponTitle=document.createElement('summary');
-  weaponTitle.textContent='WEAPON WORKBENCH · TAP PART TO EDIT';
-  weaponEditor.append(weaponTitle,workbenchHost,socketPanel);
-  for(const slot of WEAPON_ATTACHMENT_SLOTS){
-   if(member.weaponConfiguration.build&&slot==='stock')continue;
-   const row=document.createElement('label');
-   row.className='fw-weapon-socket-row';
-   const label=document.createElement('span');label.textContent=slot.toUpperCase();
-   const select=document.createElement('select');
-   select.setAttribute('aria-label',slot+' attachment for '+member.callsign);
-   for(const part of Object.values(WEAPON_ATTACHMENTS)){
-    if(part.slot!==slot||!weaponAttachmentAllowed(
-     member.weaponConfiguration,slot,part.id))continue;
-    const option=document.createElement('option');
-    option.value=part.id;option.textContent=part.name;select.append(option);
-   }
-   select.value=member.weaponConfiguration.slots[slot];
-   select.disabled=state.phase!=='planning'||replaying;
-   select.addEventListener('focus',()=>quickWorkbenchId===member.id&&
-    quickWorkbench?.setActiveSlot(slot));
-   select.addEventListener('change',()=>{
-    if(state.phase!=='planning'||replaying)return;
-    persistentRoster=configureRosterWeapon(persistentRoster,member.id,slot,select.value);
-    saveRoster();applyRosterIdentity(state,persistentRoster);
-    expandedQuickKit=member.id;expandedQuickWeapon=member.id;
-    expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
-   });
-   row.append(label,select);row.hidden=slot!==initialSocket;
-   socketRows.set(slot,row);socketPanel.append(row);
-  }
-  const build=member.weaponConfiguration.build;
-  if(build)for(const slot of FAMILY_PART_SLOTS){
-   const socket=('body-'+slot) as WorkbenchSocket;
-   const row=document.createElement('label');
-   row.className='fw-weapon-socket-row';
-   const label=document.createElement('span');label.textContent=slot.toUpperCase();
-   const select=document.createElement('select');
-   select.setAttribute('aria-label',slot+' body part for '+member.callsign);
-   const length=FAMILY_PARTS[build.parts.barrel]?.length;
-   for(const part of Object.values(FAMILY_PARTS)){
-    if(part.slot!==slot||part.family!==build.family)continue;
-    const receiver=slot==='receiver'?part.id:build.parts.receiver;
-    if(!compatibleFamilyPart(receiver,slot,part.id,member.weapon,length))continue;
-    const option=document.createElement('option');
-    option.value=part.id;option.textContent=part.name;select.append(option);
-   }
-   select.value=build.parts[slot];
-   select.disabled=state.phase!=='planning'||replaying;
-   select.addEventListener('focus',()=>quickWorkbenchId===member.id&&
-    quickWorkbench?.setActiveSlot(socket));
-   select.addEventListener('change',async()=>{
-    if(state.phase!=='planning'||replaying)return;
-    const proposal=proposeFamilyPartChange(build,member.weapon,
-     slot as FamilyPartSlot,select.value);
-    if(!proposal.valid){select.value=build.parts[slot];return;}
-    const dependent=proposal.replacements.filter(x=>x.slot!==slot);
-    if(dependent.length){
-     if(!await confirmFieldworkAction({
-      title:'Replace incompatible parts?',
-      message:'Changing '+slot+' will also replace: '+
-       dependent.map(x=>FAMILY_PARTS[x.from]?.name+' → '+
-        FAMILY_PARTS[x.to]?.name).join('; '),
-      confirmLabel:'APPLY CHANGES'
-     })){select.value=build.parts[slot];return;}
-    }
-    if(slot==='receiver'||slot==='barrel')
-     resetQuickWorkbenchViews.add(member.id);
-    persistentRoster=configureRosterWeaponBodyPart(persistentRoster,member.id,
-     slot as FamilyPartSlot,select.value);
-    saveRoster();applyRosterIdentity(state,persistentRoster);
-    expandedQuickKit=member.id;expandedQuickWeapon=member.id;
-    expandedQuickLoadoutGroup='weapon';renderOperationsBoard();updateHud();
-   });
-   row.append(label,select);row.hidden=socket!==initialSocket;
-   socketRows.set(socket,row);socketPanel.append(row);
-  }
-  if(!socketRows.has(selectedSocket)){
-   selectedQuickWeaponSockets.delete(member.id);
-   selectedSocket=initialSocket;
-  }
-  const measured=resolveWeaponAssembly(member.weaponConfiguration);
-  const properties=document.createElement('p');
-  properties.style.cssText='font-size:10px;opacity:.75;line-height:1.55';
-  properties.textContent='ASSEMBLED MASS '+measured.massKg.toFixed(2)+' KG · BALANCE '+
-   measured.balanceX.toFixed(1)+' · MUZZLE EXTENSION '+
-   (measured.muzzleX-19.5).toFixed(1)+' UNITS';
-  const diag=document.createElement('details');diag.className='fw-loadout-diagnostics';
-  const diagTitle=document.createElement('summary');diagTitle.textContent='WEAPON MEASUREMENTS';
-  diag.append(diagTitle,properties);weaponEditor.append(diag);
-  legacyControls.append(weaponEditor);
-  loadout.field('weapon').append(legacyControls);
-  const carrying=carryCapacityReport(member.loadout,member.magazines);
-  const carryItems=carrying.placements.filter(p=>p.kind!=='magazine');
-  if(carryItems.length){
-   const note=document.createElement('p');
-   note.style.cssText='font-size:10px;opacity:.78;margin:10px 0';
-   note.textContent='PHYSICAL CARRY · '+carryItems.map(p=>
-    p.kind.toUpperCase()+' '+p.location.toUpperCase()+' / '+
-    p.accessSeconds.toFixed(2)+'s').join(' · ');
-   const carryDetails=document.createElement('details');carryDetails.className='fw-loadout-diagnostics';
-   const summary=document.createElement('summary');summary.textContent='CARRY TIMINGS';
-   carryDetails.append(summary,note);loadout.field('carry').append(carryDetails);
-  }
-  const carried=member.weapon==='shotgun'?[]:
-   stageMagazines(member.magazines,member.loadout);
-  if(carried.length){
-   const heading=document.createElement('strong');
-   heading.textContent='MAGAZINE LOCATIONS';
-   heading.style.cssText='display:block;font-size:11px;margin:14px 0 6px';
-   const magSection=document.createElement('details');magSection.className='fw-loadout-diagnostics';
-   const magTitle=document.createElement('summary');magTitle.textContent='MAGAZINE LOCATIONS';
-   magSection.append(magTitle);
-   const capacity=magazineSpace(member.loadout);
-   const where:MagazineLocation[]=['rig','belt','pocket','backpack','overflow'];
-   for(const [index,mag] of carried.entries()){
-    const row=document.createElement('label');
-    row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0';
-    const label=document.createElement('span');
-    label.textContent='MAG '+(index+1)+' · '+mag.rounds+' RDS';
-    label.style.fontSize='10px';row.append(label);
-    const select=document.createElement('select');
-    select.setAttribute('aria-label','Magazine '+(index+1)+' location for '+member.callsign);
-    select.style.cssText='max-width:65%;min-height:40px;touch-action:manipulation;background:#243530;color:#e5e9d8;border-radius:7px;padding:6px';
-    for(const loc of where){
-     const option=document.createElement('option');option.value=loc;
-     option.textContent=loc.toUpperCase();
-     option.disabled=loc!=='overflow'&&loc!==mag.location&&
-      carried.filter(m=>m.location===loc).length>=capacity[loc];
-     select.append(option);
-    }
-    select.value=mag.location;
-    select.addEventListener('change',()=>{
-     if(state.phase!=='planning'||replaying)return;
-     persistentRoster=moveRosterMagazine(persistentRoster,member.id,
-      mag.id,select.value as MagazineLocation);
-     saveRoster();applyRosterIdentity(state,persistentRoster);
-     expandedQuickKit=member.id;renderOperationsBoard();updateHud();
-    });
-    row.className='fw-equipment-choice';row.append(select);magSection.append(row);
-   }
-   loadout.field('carry').append(magSection);
-  }
-  card.append(kit);operationsBoard.append(card);
-  // A newly opened details subtree can report zero width on iOS until
-  // it is attached and laid out. Initialize after paint, not only on toggle.
-  if(kit.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open)
-   requestAnimationFrame(()=>{if(kit.isConnected)syncWorkbench();});
- }
- const hint=document.createElement('p');
- hint.textContent='Select an operator to edit. Close to resume planning.';
- operationsBoard.append(hint);
- operationsBoard.scrollTop=priorScroll;
-}
+const openQuickArsenal=equipmentEditor.openQuickArsenal;
+const openCampaignArsenal=equipmentEditor.openCampaignArsenal;
+const operationsBoardController=createBreachOperationsBoardController({
+ board:operationsBoard,toggleButton:operationsToggle,
+ getSession:()=>state,getRoster:()=>persistentRoster,
+ setRoster:value=>{persistentRoster=value;},
+ getMode:()=>campaignMode,isReplaying:()=>replaying,
+ saveRoster,applyRoster:()=>applyRosterIdentity(state,persistentRoster),
+ refreshHud:updateHud,
+ syncSheets:()=>tacticalSheetNavigation.sync(),
+ history:operationHistory,
+ enterTrainingRange:()=>{
+   campaignMode='quick';lastRangeTrial=null;
+   reset(state.variant,undefined,undefined,equipmentTrainingSite());
+   showUiHelp('TEST RANGE · USE SUPPRESS TO FIRE AT TARGET PLATES',6500);
+ },
+ openStudio:id=>openOperatorStudio(id,'quick'),
+ openArsenal:id=>{void openQuickArsenal(id);},showHelp:showUiHelp
+});
+const renderOperationsBoard=operationsBoardController.render;
 const tacticalSheetNavigation=createTacticalSheetNavigation({
  settings:ui.siteSettings,squad:operationsBoard,briefing:ui.briefingPanel
 },()=>{collapseTacticalSheets(null);updateContext();});
@@ -3303,7 +2680,7 @@ function releaseMissionPresentation():void{
   replayKnowledge.reset();
   replayBodycam.observers=[];replayBodycam.groundObservers.clear();
   audioController.endReplay();
-  recordedOperation=null;
+  campaignFlow.resetOutcome();
   operationsBoard.hidden=true;
   hideWeaponChooser();
   flashMode=false;document.body.classList.remove('replaying');
@@ -3356,383 +2733,51 @@ function restartMission():void{
 /* Quick Play uses Map Lab-style progress checkpoints. Percentages represent
  * completed work, not predicted time; expensive 3D mesh creation remains
  * synchronous, but the status is painted immediately before it begins. */
-let quickPlayBusy=false;
-let quickPlayRun=0;
-let quickPlayWorker:Worker|null=null;
-let quickPlayReject:((reason:Error)=>void)|null=null;
-let quickPlayClockTimer:ReturnType<typeof setInterval>|null=null;
-let quickPlayStarted=0,quickPlayLastUpdate=0,quickPlayPercent=0;
-const quickPlayPanel=el<HTMLElement>('quickPlayProgress');
-const quickPlayBar=el<HTMLProgressElement>('quickPlayBar');
-const quickPlayPercentText=el<HTMLOutputElement>('quickPlayPercent');
-const quickPlayStageText=el<HTMLElement>('quickPlayStage');
-const quickPlayDetailText=el<HTMLElement>('quickPlayDetail');
-const quickPlayClockText=el<HTMLElement>('quickPlayClock');
-const quickPlayCancelButton=el<HTMLButtonElement>('quickPlayCancel');
-function quickPlayCheckpoint(value:number,stageName:string,detail:string){
-  quickPlayPercent=Math.max(quickPlayPercent,Math.min(100,Math.round(value)));
-  quickPlayBar.value=quickPlayPercent;
-  quickPlayPercentText.textContent=quickPlayPercent+'%';
-  quickPlayStageText.textContent=stageName;
-  quickPlayDetailText.textContent=detail;
-  quickPlayLastUpdate=performance.now();
-}
-function quickPlayClockTick(){
-  const elapsed=Math.floor((performance.now()-quickPlayStarted)/1000);
-  const quiet=Math.floor((performance.now()-quickPlayLastUpdate)/1000);
-  quickPlayClockText.textContent=elapsed+'s elapsed'+
-    (quickPlayBusy&&quiet>10?' · Still working on this stage':'');
-}
-function finishQuickPlayClock(){
-  if(quickPlayClockTimer!==null){
-    clearInterval(quickPlayClockTimer);quickPlayClockTimer=null;
-  }
-}
-const allowQuickPlayPaint=()=>new Promise<void>(resolve=>
-  requestAnimationFrame(()=>setTimeout(resolve,0)));
-quickPlayCancelButton.addEventListener('click',()=>{
-  if(quickPlayPanel.dataset.state==='error'){
-    quickPlayPanel.hidden=true;return;
-  }
-  if(!quickPlayBusy||quickPlayCancelButton.hidden)return;
-  ++quickPlayRun;
-  quickPlayReject?.(new Error('Quick Play loading cancelled'));
-  quickPlayReject=null;
-  quickPlayWorker?.terminate();quickPlayWorker=null;
-  quickPlayBusy=false;finishQuickPlayClock();
-  quickPlayPanel.hidden=true;
-});
-async function launchQuickPlay(){
-  if(quickPlayBusy)return;
-  const id=++quickPlayRun,priorMode=campaignMode;
-  const seed=randomSiteSeed(),scale=requestedSiteScale;
-  quickPlayBusy=true;quickPlayPercent=0;
-  quickPlayPanel.hidden=false;quickPlayPanel.dataset.state='running';
-  quickPlayCancelButton.hidden=false;quickPlayCancelButton.textContent='CANCEL';
-  quickPlayStarted=performance.now();quickPlayLastUpdate=quickPlayStarted;
-  quickPlayCheckpoint(0,'Starting tactical sandbox',
-    'Preparing '+scale+' site · seed '+seed);
-  quickPlayClockTick();
-  finishQuickPlayClock();quickPlayClockTimer=setInterval(quickPlayClockTick,1000);
-  try{
-    await allowQuickPlayPaint();
-    if(id!==quickPlayRun)return;
-    const generated=await new Promise<Extract<QuickPlayGenerationResponse,
-       {kind:'done'}>>((resolve,reject)=>{
-      quickPlayReject=reject;
-      const worker=new Worker(new URL('./quick-play-worker.ts',import.meta.url),
-        {type:'module'});
-      quickPlayWorker=worker;
-      quickPlayCheckpoint(3,'Starting architecture worker',
-        'Planning a reproducible tactical environment');
-      worker.onmessage=(event:MessageEvent<QuickPlayGenerationResponse>)=>{
-        const message=event.data;
-        if(id!==quickPlayRun||message.id!==id)return;
-        if(message.kind==='progress'){
-          quickPlayCheckpoint(message.percent,message.stage,message.detail);
-          return;
-        }
-        worker.terminate();quickPlayWorker=null;quickPlayReject=null;
-        if(message.kind==='error')reject(new Error(message.message));
-        else resolve(message);
-      };
-      worker.onerror=event=>{
-        event.preventDefault();
-        worker.terminate();quickPlayWorker=null;quickPlayReject=null;
-        reject(new Error('Architecture worker stopped unexpectedly'));
-      };
-      const request:QuickPlayGenerationRequest={id,seed,scale};
-      worker.postMessage(request);
-    });
-    if(id!==quickPlayRun)return;
-    quickPlayCancelButton.hidden=true;
-    quickPlayCheckpoint(76,'Preparing tactical session',
-      'Creating squad, navigation, intel and encounter state');
-    await allowQuickPlayPaint();
-    if(id!==quickPlayRun)return;
-    const sessionStart=performance.now();
-    campaignMode='quick';
-    // Reuse the completed site rather than compiling the same map again.
-    reset(state.variant,seed,undefined,generated.site,undefined,true);
-    const sessionMs=Math.round(performance.now()-sessionStart);
-    quickPlayCheckpoint(86,'Building 3D environment',
-      'Generating room meshes, fixtures, materials and static batches');
-    await allowQuickPlayPaint();
-    const sceneStart=performance.now();
-    stage?.applySite(state.site??null);
-    const sceneMs=Math.round(performance.now()-sceneStart);
-    // First rendered scene would otherwise construct every friendly rig at
-    // once. Spread that expensive, reusable model allocation over paint turns.
-    const operatorStart=performance.now();
-    const initialTeam=team(state),operatorStageMs:number[]=[];
-    for(let i=0;i<initialTeam.length;i++){
-      quickPlayCheckpoint(88+Math.floor(6*i/initialTeam.length),
-        'Preparing operator models',
-        initialTeam[i].name+' · '+(i+1)+' / '+initialTeam.length);
-      await allowQuickPlayPaint();
-      if(id!==quickPlayRun)return;
-      const modelStart=performance.now();
-      stage?.prepareOperatorModel(initialTeam[i]);
-      const modelMs=Math.round(performance.now()-modelStart);
-      operatorStageMs.push(modelMs);
-      quickPlayDetailText.textContent=initialTeam[i].name+' ready in '+
-        (modelMs/1000).toFixed(2)+'s · '+(i+1)+' / '+initialTeam.length;
-    }
-    const operatorMs=Math.round(performance.now()-operatorStart);
-    quickPlayCheckpoint(95,'Preparing tactical controls',
-      'Fitting the camera and updating the mission HUD');
-    await allowQuickPlayPaint();
-    if(id!==quickPlayRun)return;
-    const hudStart=performance.now();
-    layout();updateHud();
-    const hudMs=Math.round(performance.now()-hudStart);
-    // Shader preparation can use KHR_parallel_shader_compile on capable
-    // browsers. It does not pre-render the game or upload the whole wardrobe.
-    // Keep an A/B opt-out: ?gpuWarmup=0 allows identical-seed comparisons.
-    let shaderPreparationMs=0;
-    if(stage&&viewMode!=='plan2d'&&
-       new URLSearchParams(location.search).get('gpuWarmup')!=='0'){
-      quickPlayCheckpoint(96,'Preparing GPU programs',
-        'Warming visible materials before the first 3D draw');
-      await allowQuickPlayPaint();
-      if(id!==quickPlayRun)return;
-      const shaderStart=performance.now();
-      try{
-        await stage.renderer.compileAsync(stage.scene,stage.camera);
-      }catch(error){
-        // A failed async warmup must never prevent the ordinary first frame.
-        console.warn('[Quick Play shader preparation fallback]',error);
-      }
-      shaderPreparationMs=Math.round(performance.now()-shaderStart);
-      if(id!==quickPlayRun)return;
-    }
-    // The first WebGL render is the last major synchronous initialization
-    // step (costume materials, visibility, fog, shadow atlas and shaders).
-    // Keep the loading mask up while it runs and measure its real duration.
-    quickPlayCheckpoint(97,'Rendering first 3D frame',
-      'Applying uniforms, fog, lighting and GPU materials');
-    await allowQuickPlayPaint();
-    if(id!==quickPlayRun)return;
-    const firstFrameStart=performance.now();
-    if(stage&&viewMode!=='plan2d'){
+const quickPlayController=createBreachQuickPlayController({
+  randomSeed:randomSiteSeed,getScale:()=>requestedSiteScale,
+  getMode:()=>campaignMode,setMode:mode=>{campaignMode=mode;},
+  getSession:()=>state,
+  startSession:(seed,site)=>reset(state.variant,seed,undefined,site,undefined,true),
+  getStage:()=>stage,getViewMode:()=>viewMode,
+  layout,refreshHud:updateHud,
+  renderFirstFrame:()=>{
+    if(stage&&viewMode!=='plan2d')
       stage.update(state,selected,0,doorFocusId,false,null,null,
         recorder.motion.presentation(0,state.operators.map(a=>a.id)));
-    }
     render();
-    const firstFrameMs=Math.round(performance.now()-firstFrameStart);
-    quickPlayCheckpoint(99,'Revealing tactical scene',
-      'First render completed · preparing controls');
-    campaignScreen.hide();
-    await allowQuickPlayPaint();
-    if(id!==quickPlayRun)return;
-    const totalMs=Math.round(performance.now()-quickPlayStarted);
-    quickPlayCheckpoint(100,'TACTICAL SANDBOX READY',
-      (state.site?.name??'Site')+' · '+state.operators.length+' actors');
-    quickPlayPanel.dataset.state='ready';
-    quickPlayClockText.textContent=(totalMs/1000).toFixed(1)+'s total · map '+
-      (generated.generationMs/1000).toFixed(1)+'s · 3D '+
-      (sceneMs/1000).toFixed(1)+'s · operators '+
-      (operatorMs/1000).toFixed(1)+'s · frame '+
-      (firstFrameMs/1000).toFixed(1)+'s';
-    console.info('[Quick Play startup]',{
-      seed,scale,generationMs:generated.generationMs,sessionMs,sceneMs,
-      operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs,
-      shaderPreparationMs
-    });
-    // Now that an actual complete frame exists behind the overlay, allow
-    // live RAF updates. Never declare READY before the render has returned.
-    quickPlayBusy=false;
-    finishQuickPlayClock();
-    // The prior 1400ms READY hold made an already prepared game look frozen.
-    // Let the resumed gameplay loop paint a frame behind the mask, then
-    // release it on the next paint turn with no artificial countdown.
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{
-      if(id===quickPlayRun&&!quickPlayBusy&&
-         quickPlayPanel.dataset.state==='ready')
-        {
-          quickPlayPanel.hidden=true;
-          showMissionBriefing();
-        }
-    }));
-  }catch(error){
-    if(id!==quickPlayRun)return;
-    quickPlayWorker?.terminate();quickPlayWorker=null;quickPlayReject=null;
-    campaignMode=priorMode;quickPlayBusy=false;finishQuickPlayClock();
-    quickPlayPanel.dataset.state='error';quickPlayCancelButton.hidden=false;
-    quickPlayCancelButton.textContent='BACK';
-    quickPlayStageText.textContent='TACTICAL SANDBOX FAILED';
-    quickPlayDetailText.textContent=error instanceof Error?error.message:String(error);
-    quickPlayClockText.textContent='Stopped · return to menu and retry';
-    console.error('[Quick Play startup]',error);
-  }
-}
-const campaignBackButton=document.createElement('button');
-campaignBackButton.type='button';campaignBackButton.id='campaignReturnButton';
-campaignBackButton.textContent='OPERATIONS ROOM';
-campaignBackButton.setAttribute('aria-label','Return to campaign operations room');
-ui.siteSettings.append(campaignBackButton);
+  },
+  hideMenu:()=>campaignScreen.hide(),showBriefing:showMissionBriefing,
+  restoreFavoriteStart:start=>{
+    reset(start.variant,start.seed,start.missionType,
+      missionController.restartRequest(start).prebuiltSite,undefined,false,start);
+    missionController.restoreStartingSetup(state,start,entry=>
+      console.warn('[Favorite mission] Saved entry no longer valid',entry));
+    recorder=missionController.recordInitial(state);
+    closeMissionSettings(false);
+  },
+  activateFavorite:id=>replayLibrary.activateFavorite(id),
+  showHelp:showUiHelp
+});
+const launchQuickPlay=()=>quickPlayController.launch();
 /** Campaign Arsenal drafts are always re-quoted against live ownership and credits.
  * The existing editor remains usable until the new UI completes its cutover.
  */
-async function openCampaignArsenal(id:string){
- if(!campaign||campaign.activeContractId)return;
- try{
-  const [{arsenalRecipeFromLegacy},{openArsenalWorkbench},
-   {quoteCampaignArsenalEdit,commitCampaignArsenalEdit}]=await Promise.all([
-    import('./arsenal/recipes.ts'),import('./arsenal/workbench-screen.ts'),
-    import('./arsenal/campaign-adapter.ts')]);
-  const member=campaign?.operators.find(o=>o.id===id&&o.status!=='retired'&&o.status!=='lost');
-  if(!campaign||campaign.activeContractId||!member)return;
-  const recipe=arsenalRecipeFromLegacy(member.weaponConfiguration);
-  if(!recipe){showUiHelp('THIS WEAPON USES THE LEGACY ARMORY',3000);return;}
-  openArsenalWorkbench({id:'equipped-campaign-'+id,name:member.callsign,recipe},undefined,{
-   mode:'campaign',applyLabel:'EQUIP WEAPON',
-   quote:r=>campaign?quoteCampaignArsenalEdit(campaign,id,r):
-    {valid:false,canCommit:false,reason:'Campaign unavailable'},
-   onApply:r=>{
-    if(!campaign)return {ok:false,message:'Campaign unavailable'};
-    const before=campaign;
-    const result=commitCampaignArsenalEdit(before,id,r);
-    if(!result.quote.canCommit)
-     return {ok:false,message:result.quote.reason??'Cannot equip this build'};
-    if(result.state===before)return {ok:true};
-    campaign=result.state;
-    if(!saveCampaign()){
-     campaign=before;return {ok:false,message:'Could not save Campaign. No equipment was changed.'};
-    }
-    showCampaignHome();return {ok:true};
-   }
-  });
- }catch{
-  showUiHelp('ARSENAL UNAVAILABLE · EXISTING ARMORY STILL WORKS',4000);
- }
-}
-const campaignScreen=new CampaignScreen({
- newCampaign:async()=>{
-  if(campaign&&!await confirmFieldworkAction({
-   title:'Start a new campaign?',
-   message:'This replaces the active local campaign. Export a save first if you want to preserve it.',
-   confirmLabel:'START NEW CAMPAIGN',danger:true
-  }))return;
-  campaign=newCampaign(randomSiteSeed());
-  saveCampaign();showCampaignHome();
- },
- continueCampaign:()=>showCampaignHome(),
- quickPlay:()=>{void launchQuickPlay();},
- openReplayLibrary:()=>replayLibrary.openFromMenu(),
- chooseContract:(id)=>{
-  if(!campaign)return;
-  const next=acceptContract(campaign,id);
-  if(next===campaign)return;
-  campaign=next;saveCampaign();deployCampaignContract();
- },
- resumeContract:()=>deployCampaignContract(),
- buyAmmo:()=>{if(campaign){campaign=purchaseAmmo(campaign);saveCampaign();showCampaignHome();}},
- buyMedical:()=>{if(campaign){campaign=purchaseMedical(campaign);saveCampaign();showCampaignHome();}},
- buyFlash:()=>{if(campaign){campaign=purchaseFlash(campaign);saveCampaign();showCampaignHome();}},
- resupply:(id)=>{if(campaign){campaign=resupplyOperator(campaign,id);saveCampaign();showCampaignHome();}},
- resupplyMedical:(id)=>{if(campaign){
-  campaign=resupplyMedicalOperator(campaign,id);saveCampaign();showCampaignHome();}},
- treat:(id)=>{if(campaign){campaign=treatOperator(campaign,id);saveCampaign();showCampaignHome();}},
- recruit:()=>{if(campaign){campaign=hireRecruit(campaign);saveCampaign();showCampaignHome();}},
- assignSlot:(slot,id)=>{if(campaign){campaign=assignOperatorToSlot(campaign,slot,id);
-  saveCampaign();showCampaignHome();}},
- buyWeapon:(weapon)=>{if(campaign){campaign=buyWeapon(campaign,weapon);saveCampaign();showCampaignHome();}},
- equipWeapon:(id,weapon)=>{if(campaign){campaign=equipCampaignWeapon(campaign,id,weapon);
-  saveCampaign();showCampaignHome();}},
- repairArmor:(id)=>{if(campaign){campaign=repairCampaignArmor(campaign,id);
-  saveCampaign();showCampaignHome();}},
- serviceWeapon:(id)=>{if(campaign){campaign=serviceCampaignWeapon(campaign,id);
-  saveCampaign();showCampaignHome();}},
- equipGear:(id,slot,itemId)=>{if(campaign){
-  campaign=equipCampaignGear(campaign,id,slot,itemId);
-  saveCampaign();showCampaignHome();}},
- equipWeaponPreset:(id,presetId)=>{if(campaign&&!campaign.activeContractId){
-  const preset=familyPreset(presetId);
-  const member=campaign.operators.find(o=>o.id===id);
-  if(!preset||!member)return;
-  let next=campaign;
-  if(member.weapon!==preset.weapon){
-   if((campaign.inventory.weapons[preset.weapon]??0)<1)return;
-   next=equipCampaignWeapon(next,id,preset.weapon);
-   if(next===campaign)return;
-  }
-  next=equipCampaignWeaponPreset(next,id,presetId);
-  if(next===campaign)return;
-  campaign=next;saveCampaign();showCampaignHome();}},
- equipWeaponFamilyPart:(id,slot,partId)=>{if(campaign){
-  campaign=equipCampaignWeaponFamilyPart(campaign,id,slot,partId);
-  saveCampaign();showCampaignHome();}},
- equipAttachment:(id,slot,partId,acquire)=>{if(campaign){
-  campaign=acquire?
-   purchaseAndEquipWeaponAttachment(campaign,id,slot,partId):
-   equipCampaignWeaponAttachment(campaign,id,slot,partId);
-  saveCampaign();showCampaignHome();}},
- moveMagazine:(id,magazineId,location)=>{if(campaign){
-  campaign=moveCampaignMagazine(campaign,id,magazineId,location);
-  saveCampaign();showCampaignHome();}},
- saveKitPreset:(id,name)=>{if(campaign){campaign=saveCampaignKitPreset(campaign,id,name);
-  saveCampaign();showCampaignHome();}},
- applyKitPreset:(id,presetId)=>{if(campaign){campaign=applyCampaignKitPreset(campaign,id,presetId);
-  saveCampaign();showCampaignHome();}},
- deleteKitPreset:(presetId)=>{if(campaign){campaign=deleteCampaignKitPreset(campaign,presetId);
-  saveCampaign();showCampaignHome();}},
- renameOperator:(id,callsign)=>{if(campaign){campaign=renameCampaignOperator(campaign,id,callsign);
-  saveCampaign();showCampaignHome();}},
- cycleAppearance:(id)=>{if(campaign){campaign=cycleCampaignAppearance(campaign,id);
-  saveCampaign();showCampaignHome();}},
- setWardrobe:(id,look)=>{if(campaign){
-  campaign=setCampaignWardrobe(campaign,id,look);
-  saveCampaign();showCampaignHome();}},
- openStudio:(id)=>openOperatorStudio(id,'campaign'),
- openArsenal:(id)=>{void openCampaignArsenal(id);},
- exportSave:()=>{
-  if(!campaign)return;
-  const blob=new Blob([exportCampaign(campaign)],{type:'application/json'});
-  const href=URL.createObjectURL(blob),link=document.createElement('a');
-  link.href=href;link.download='fieldwork-'+campaign.id+'.json';
-  document.body.append(link);link.click();link.remove();
-  window.setTimeout(()=>URL.revokeObjectURL(href),1000);
- },
- retire:(id)=>{
-  if(!campaign||!window.confirm('Retire this operator from active service? Their career record will remain.'))return;
-  campaign=retireOperator(campaign,id);saveCampaign();showCampaignHome();
- },
- importSave:(raw)=>{
-  const next=importCampaign(raw);
-  if(!next){window.alert('The selected file is not a valid Fieldwork campaign save.');return;}
-  if(campaign&&!window.confirm('Replace the saved campaign with this import?'))return;
-  campaign=next;saveCampaign();showCampaignHome();
- }
+const campaignFlow=createBreachCampaignFlow({
+  getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},saveCampaign,
+  getMode:()=>campaignMode,setMode:mode=>{campaignMode=mode;},
+  getIntel:()=>selectedIntelMode,setIntel:value=>{selectedIntelMode=value;},
+  getScale:()=>requestedSiteScale,setScale:value=>{requestedSiteScale=value;},
+  getSession:()=>state,isReplaying:()=>replaying,siteSize:ui.siteSize,siteSettings:ui.siteSettings,
+  randomSeed:randomSiteSeed,
+  resetContract:job=>reset(0,job.seed,job.kind,undefined,job.risk),
+  launchQuickPlay,openReplayLibrary:()=>replayLibrary.openFromMenu(),
+  openStudio:id=>openOperatorStudio(id,'campaign'),
+  openArsenal:id=>{void openCampaignArsenal(id);},
+  showBriefing:showMissionBriefing
 });
-function showCampaignHome(){
- if(!campaign)return;
- campaignMode='home';campaignScreen.home(campaign);
-}
-function deployCampaignContract(){
- if(!campaign?.activeContractId)return;
- const job=campaign.contracts.find(k=>k.id===campaign!.activeContractId);
- if(!job)return;
- campaignMode='mission';
- selectedIntelMode=job.intel==='unknown'?'true-blind':
-  job.intel==='scouted'?'exterior-known':'floor-plan';
- requestedSiteScale=job.scale;
- ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
- reset(0,job.seed,job.kind,undefined,job.risk);
- campaignScreen.hide();
- showMissionBriefing();
-}
-function returnAfterCampaignMission(){
- if(campaignMode==='mission'&&(state.phase==='won'||state.phase==='lost')){
-  showCampaignHome();return true;
- }
- return false;
-}
-campaignBackButton.addEventListener('click',()=>{
- if(campaignMode==='mission'&&state.phase==='running')return;
- if(campaign)showCampaignHome();
- else{campaignMode='menu';campaignScreen.entry(false);}
-});
+const campaignScreen=campaignFlow.screen;
+const showCampaignHome=campaignFlow.showHome;
+const returnAfterCampaignMission=campaignFlow.returnAfterMission;
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
 ui.back.addEventListener('click',()=>{
   audioController.uiClickTone('select');
@@ -4558,7 +3603,7 @@ function tick(now:number){
   const perfStart=perfOverlay?performance.now():0;
   const frameGap=Math.max(0,now-last);
   const dt=Math.min(.08,frameGap/1000);last=now;
-  if(quickPlayBusy||((campaignMode==='menu'||campaignMode==='home')&&!replaying)){
+  if(quickPlayController.busy||((campaignMode==='menu'||campaignMode==='home')&&!replaying)){
    accum=0;previousRenderActors=null;previousRenderDoors=null;
    physicalActionRings.clear();
    requestAnimationFrame(tick);return;
@@ -4619,7 +3664,7 @@ function tick(now:number){
   const perfRenderStart=perfOverlay?performance.now():0;
   // The Studio is an opaque full-screen view. Skip only hidden rendering,
   // never fixed-step gameplay or authoritative replay/simulation state.
-  const studioOccludesTactical=!!studioOverlay&&!studioOverlay.hidden&&
+  const studioOccludesTactical=studioBridge.visible&&
    !replayQuickVideo.active;
   if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
     stage.setMiniatureFocusContext(replaying,dt);

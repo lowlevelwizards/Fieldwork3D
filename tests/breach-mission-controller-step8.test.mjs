@@ -173,9 +173,12 @@ test('main delegates lifecycle to one owner and keeps gameplay authoritative',()
  for(const teardown of [
    'replayDirector.reset()','audioController.endReplay()',
    'replayKnowledge.reset()','physicalActionRings.clear()',
-   'replayMovementHistory=null','recordedOperation=null']){
+   'replayMovementHistory=null']){
    assert.ok(release.includes(teardown),'missing teardown '+teardown);
  }
+ assert.match(release,/campaignFlow\.resetOutcome\(\)/);
+ const flow=readFileSync(new URL('../src/breach-campaign-flow.ts',import.meta.url),'utf8');
+ assert.match(flow,/recordedOperation=null/);
  assert.match(controller,/newSession\(/);
  assert.match(controller,/selectDeployment\(/);
  assert.match(controller,/restoreMissionStartingTeam\(/);

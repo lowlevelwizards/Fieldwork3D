@@ -9,7 +9,9 @@ test('operations board actions use bounded persistent state and do not force mis
  const ammo={...r,members:r.members.map(m=>m.id==='moss'?
    {...m,magazine:1,reserve:0}:m)};
  const restored=readRoster(JSON.stringify(resupplyRoster(ammo,'moss')));
- assert.equal(restored.members.find(m=>m.id==='moss').magazine,10);
- assert.equal(restored.members.find(m=>m.id==='moss').reserve,30);
+ assert.equal(restored.members.find(m=>m.id==='moss').magazine,
+   r.members.find(m=>m.id==='moss').magazine);
+ assert.equal(restored.members.find(m=>m.id==='moss').reserve,
+   r.members.find(m=>m.id==='moss').reserve);
  assert.equal(ammo.members.find(m=>m.id==='moss').reserve,0);
 });

@@ -60,10 +60,10 @@ test('Campaign Save All retains inventory and refuses active operation changes',
  assert.equal(applyStudioCampaignEdits(campaign,[{id:'ghost',wardrobe:look('acu-shirt')}]),null);
 });
 test('game owns the atomic one-write protocol and Studio labels all dirty looks',()=>{
- const parent=source('../src/breach-main.ts'),studio=source('../src/operator-studio.ts');
+ const parent=source('../src/operator-studio-bridge.ts'),studio=source('../src/operator-studio.ts');
  assert.match(parent,/msg.type==='fw-studio-commit-batch'/);
- assert.match(parent,/applyStudioRosterEdits\(persistentRoster,edits\)/);
- assert.match(parent,/applyStudioCampaignEdits\(campaign,edits\)/);
+ assert.match(parent,/applyStudioRosterEdits\(config\.getRoster\(\),edits\)/);
+ assert.match(parent,/applyStudioCampaignEdits\(currentCampaign,edits\)/);
  assert.match(parent,/event.origin!==location.origin/);
  assert.match(parent,/type:'fw-studio-batch-saved'/);
  assert.match(studio,/type:'fw-studio-commit-batch'/);

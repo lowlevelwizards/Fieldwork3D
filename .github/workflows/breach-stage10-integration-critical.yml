@@ -1,0 +1,43 @@
+name: Breach Stage 10 Integration Critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-main.ts'
+      - 'src/breach-quickplay-controller.ts'
+      - 'src/breach-campaign-flow.ts'
+      - 'src/operator-studio-bridge.ts'
+      - 'src/breach-equipment-editor-bridge.ts'
+      - 'src/breach-operations-board-controller.ts'
+      - 'tests/quick-play-startup-progress.test.mjs'
+      - 'tests/operator-studio-save-all-stage511.test.mjs'
+      - 'tests/breach-mission-controller-step8.test.mjs'
+      - '.github/workflows/breach-stage10-integration-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: breach-stage10-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  integration-critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Critical Quick Play, Campaign, Studio, Arsenal, favorites and operations checks
+        run: |
+          node --experimental-strip-types --test \
+            tests/quick-play-startup-progress.test.mjs \
+            tests/operator-studio-save-all-stage511.test.mjs \
+            tests/lw-operations-board.test.mjs \
+            tests/replay-r3-mission-favorites.test.mjs \
+            tests/arsenal-v2-quickplay-adapter.test.mjs \
+            tests/arsenal-v2-campaign-adapter.test.mjs \
+            tests/campaign-12.test.mjs \
+            tests/breach-mission-controller-step8.test.mjs
+      - name: Production typecheck and build
+        run: npm run build
