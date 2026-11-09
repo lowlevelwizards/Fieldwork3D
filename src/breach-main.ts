@@ -2625,6 +2625,8 @@ ui.replaySquad.addEventListener('click',()=>{
 });
 ui.replayDirector.addEventListener('click',()=>{
   if(replayBodycam.active)stopReplayBodycam();
+  if(replayCamera.lens==='cam'&&viewMode!=='iso'&&stage)
+    cameraMode('iso');
   chooseReplayCamera(replayCamera.mode==='director'?'free':'director');
   replayCamera.follow=false;advanceReplayCamera(0,true);updateReplayHud();
 });
