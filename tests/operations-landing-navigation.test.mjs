@@ -33,8 +33,13 @@ test('restart from Settings dismisses the sheet then reopens the briefing',()=>{
 
 test('replay library retains title-menu provenance through playback',()=>{
  const main=source('breach-main.ts');
- assert.match(main,/openReplayLibrary:\(\)=>\{\s*replayLibraryReturnToMenu=true;\s*campaignScreen\.hide\(\);showSavedReplayLibrary\(\);/);
- assert.match(main,/hideSavedReplayLibrary\(false\);[\s\S]*?replayEntrySource='library';enterReplay\(\);/);
- assert.match(main,/if\(restoreMenu&&replayLibraryReturnToMenu\)\{[\s\S]*?campaignScreen\.entry\(!!campaign\);/);
- assert.match(main,/if\(replayEntrySource==='library'\)\{[\s\S]*?showSavedReplayLibrary\(\);/);
+ const library=source('ui/breach-replay-library-controller.ts');
+ assert.match(main,/openReplayLibrary:\(\)=>replayLibrary\.openFromMenu\(\)/);
+ assert.match(main,/replayLibrary\.afterReplayExit\(\)/);
+ assert.match(main,/returnToCampaignMenu:\(\)=>\{/);
+ assert.match(library,/function openFromMenu\(\):void\{/);
+ assert.match(library,/returnToMenu=true;\s*config\.hideCampaignScreen\(\);\s*show\(\);/);
+ assert.match(library,/hide\(false\);[\s\S]*?entrySource='library';\s*config\.enterReplay\(\);/);
+ assert.match(library,/if\(restoreMenu&&returnToMenu\)\{[\s\S]*?config\.returnToCampaignMenu\(\);/);
+ assert.match(library,/if\(entrySource==='library'\)\{[\s\S]*?show\(\);/);
 });
