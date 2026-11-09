@@ -3,7 +3,7 @@ import {createBreachCanvasGestureController,type TacticalPointer}
 import {installTouchCommandHelp as bindTouchCommandHelp}
  from './ui/touch-command-help.ts';
 import {
-  W,H,activeWorldBounds,doorCenter,doorLeafSegment,activateSite,
+  W,H,activeWorldBounds,doorCenter,doorLeafSegment,
   type Pt,
 } from './breach-core.ts';
 import {
