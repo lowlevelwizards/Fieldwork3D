@@ -22,7 +22,8 @@ import {ReplayDoorObservationRecorder}
   from './breach-replay-door-knowledge.ts';
 import {ReplayWindowObservationRecorder}
   from './breach-replay-window-knowledge.ts';
-import {shareUnchangedReplayFrame,type ReplaySharingStats}
+import {shareUnchangedReplayFrame,reuseFrozenReplayValue,
+  REPLAY_FULL_KEYFRAME_INTERVAL,type ReplaySharingStats}
   from './breach-replay-sharing.ts';
 import type {TraverseOpportunity} from './breach-mantle.ts';
 import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
@@ -99,11 +100,16 @@ function firstUnrecorded(events:readonly {id:number}[],lastId:number):number{
 export function snapshot(s:Session,seenGround?:string[],
   unchangedWorld?:Pick<ReplayFrame,'windows'|'coverState'>,
   previouslyDiscovered:ReadonlySet<string>=new Set(),
-  observerBodies:Map<string,Set<string>>=new Map()):ReplayFrame{
+  observerBodies:Map<string,Set<string>>=new Map(),
+  previousActors?:readonly ReplayActorFrame[]):ReplayFrame{
+  const actorBefore=previousActors?
+    new Map(previousActors.map(a=>[a.id,a])):null;
   return {
     t:s.seconds,phase:s.phase,mission:s.mission,
-    actors:s.operators.map(a=>({id:a.id,p:position(a.p),
-      plan:copyNodes(a.plan),
+    actors:s.operators.map(a=>{
+      const prior=actorBefore?.get(a.id);
+      return {id:a.id,p:position(a.p),
+      plan:reuseFrozenReplayValue(a.plan,prior?.plan,()=>copyNodes(a.plan)),
       heading:a.heading,health:a.health,velocity:a.velocity,
       squeeze:a.squeeze,squeezeYaw:a.squeezeYaw,squeezeTime:a.squeezeTime,
       traversal:traversalCopy(a.traversal),
@@ -113,7 +119,8 @@ export function snapshot(s:Session,seenGround?:string[],
       turning:a.turning,posture:a.posture,pace:a.pace,alert:a.alert,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
       insertedMagazineId:a.insertedMagazineId,
-      spareMagazines:a.spareMagazines.map(m=>({...m})),
+      spareMagazines:reuseFrozenReplayValue(a.spareMagazines,
+        prior?.spareMagazines,()=>a.spareMagazines.map(m=>({...m}))),
       reloadMode:a.reloadMode,reloadStartedAt:a.reloadStartedAt,
       reloadDuration:a.reloadDuration,
       reloadRemoved:a.reloadRemoved,reloadInserted:a.reloadInserted,
@@ -126,10 +133,14 @@ export function snapshot(s:Session,seenGround?:string[],
       lastHitSeverity:a.lastHitSeverity,downPose:a.downPose,
        downClearance:a.downClearance,
       flashUntil:a.flashUntil,suppression:a.suppression,
-      weapon:a.weapon,weaponConfiguration:a.weaponConfiguration?
-        structuredClone(a.weaponConfiguration):undefined,
-       injuryStage:a.injuryStage,medical:copyMedicalCondition(a.medical),
-       medicalSupplies:{...a.medicalSupplies},
+      weapon:a.weapon,weaponConfiguration:reuseFrozenReplayValue(
+        a.weaponConfiguration,prior?.weaponConfiguration,
+        ()=>a.weaponConfiguration?
+          structuredClone(a.weaponConfiguration):undefined),
+       injuryStage:a.injuryStage,medical:reuseFrozenReplayValue(
+         a.medical,prior?.medical,()=>copyMedicalCondition(a.medical)),
+       medicalSupplies:reuseFrozenReplayValue(a.medicalSupplies,
+         prior?.medicalSupplies,()=>({...a.medicalSupplies})),
        lastTreatmentAt:a.lastTreatmentAt,
        lastTreatmentTargetId:a.lastTreatmentTargetId,
        treatmentActive:a.treatmentActive,treatmentProgress:a.treatmentProgress,
@@ -144,12 +155,14 @@ export function snapshot(s:Session,seenGround?:string[],
       stride:a.stride,
       weaponYaw:a.weaponYaw,stability:a.stability,recoil:a.recoil,
       lastShotAt:a.lastShotAt,fireMode:a.fireMode,burstCount:a.burstCount,
-      skills:{...a.skills},
+      skills:reuseFrozenReplayValue(a.skills,prior?.skills,
+        ()=>({...a.skills})),
       surrendered:a.surrendered,defense:a.defense?position(a.defense):null,
       watch:a.watch?position(a.watch):null,
       aimInstruction:a.aimInstruction?{...a.aimInstruction,
         point:a.aimInstruction.point?position(a.aimInstruction.point):undefined}:null,
-      intentKind:a.intent?.kind,awarenessCount:Object.keys(a.awareness.contacts).length})),
+      intentKind:a.intent?.kind,awarenessCount:Object.keys(a.awareness.contacts).length};
+    }),
     civilianHarmEvents:s.civilianHarmEvents.map(e=>({
       ...e,p:position(e.p)
     })),
@@ -282,8 +295,12 @@ export class MissionRecorder{
       last.seenGround:undefined;
     const unchangedWorld=last&&last.objectRevision===s.objectRevision?
       last:undefined;
+    // A complete independent keyframe every 40 samples is necessary for
+    // random-access recovery. Between keyframes, reuse only equal values.
+    const priorActors=last&&this.frames.length%
+      REPLAY_FULL_KEYFRAME_INTERVAL!==0?last.actors:undefined;
     const frame=snapshot(s,remembered,unchangedWorld,this.discoveredBodies,
-      this.discoveredByObserver);
+      this.discoveredByObserver,priorActors);
     for(const id of frame.knowledge?.discoveredBodyIds??[])
       this.discoveredBodies.add(id);
     for(const actor of frame.actors)
