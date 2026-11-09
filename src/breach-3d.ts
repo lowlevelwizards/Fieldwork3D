@@ -12,8 +12,8 @@ import {STUDIO_INSPECTION_LIGHT,STUDIO_KEY_DIRECTION,studioShadowPalette}
  from './operator-studio-lighting.ts';
 import {applyStudioGraphicLighting}
  from './operator-studio-graphic-lighting.ts';
-import {applyWorldGraphicLighting,enableWorldGraphicMaterial}
- from './breach-graphic-world-lighting.ts';
+import {applyWorldGraphicLighting} from './breach-graphic-world-lighting.ts';
+import {BreachCombatEffectsPresenter} from './rendering/breach-combat-effects-presenter.ts';
 import {propertySurfaceCenterHeight,PROPERTY_SURFACE_THICKNESS,
   exteriorZoneRenderLift} from './rendering/property-surface-elevation.ts';
 import {windowShardPose,WINDOW_SHARDS_PER_PANE}
@@ -94,10 +94,9 @@ import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {armedPrecontactStyle} from './breach-idle-life.ts';
 import {WEAPONS} from './breach-combat.ts';
-import {casingAt,CASING_LIMIT,IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
+import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse}
  from './breach-combat-cues.ts';
-import {sampleThrow} from './breach-flash.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET,
   WALL_VISUAL_HEIGHT,DOOR_CLEAR_VISUAL_HEIGHT,DOOR_LEAF_VISUAL_HEIGHT} from './breach-door-proportions.ts';
@@ -612,14 +611,8 @@ export class TacticalScene3D{
   private bloodCameraDirection=new THREE.Vector3();
   private impactDecalColor=new THREE.Color();
 
-  private casingMesh:THREE.InstancedMesh|null=null;
-  private casingIds:number[]=[];
-  private casingMatrix=new THREE.Object3D();
   private rescueFigure:THREE.Group|null=null;
   private civilianRigs=new Map<string,CivilianRig>();
-  private discarded=new Map<number,THREE.Mesh>();
-  private thrown=new Map<number,THREE.Mesh>();
-  private detonations=new Map<number,THREE.Mesh>();
   private tracerAxis=new THREE.Vector3(0,1,0);
   /** Shot visuals copy these values into meshes immediately. Scratch vectors
    * avoid three new Vector3 allocations per visible shot per render frame. */
@@ -666,6 +659,8 @@ export class TacticalScene3D{
   private idleLifeSeconds=0;private idleLifeSession:Session|null=null;
   private sun:THREE.DirectionalLight;
   private mats:THREE.Material[]=[];
+  private readonly combatEffects=new BreachCombatEffectsPresenter(
+    this.effects,this.mats,this.graphicLookEnabled);
   // Unlike shared palettes, site-specific materials are released on every rebuild.
   private readonly siteMaterials=new SiteMaterialLifetime<THREE.Material>();
   // Shared render resources persist between sites; repeated site rebuilds
@@ -714,9 +709,6 @@ export class TacticalScene3D{
   private readonly frameActorIds=new Set<string>();
   private readonly frameCivilianIds=new Set<string>();
   private readonly frameShotIds=new Set<number>();
-  private readonly frameMagazineIds=new Set<number>();
-  private readonly frameGrenadeIds=new Set<number>();
-  private readonly frameFlashIds=new Set<number>();
   private windowGlass=new Map<string,THREE.Mesh>();
   /** Scratch index rebuilt from current session data; never hold prior
    * replay snapshots or a site's mutable window array across frames. */
@@ -1012,20 +1004,12 @@ export class TacticalScene3D{
     this.architecturalOpenings.length=0;
     this.observedDoorOpen.clear();
     if(this.impactDecalMesh)this.impactDecalMesh.count=0;
-    if(this.casingMesh)this.casingMesh.count=0;
-    this.casingIds.length=0;
+    this.combatEffects.reset();
     for(const effect of this.effectCache.values()){
       this.effects.remove(effect.root);
       effect.material.dispose();effect.impactMaterial.dispose();
     }
     this.effectCache.clear();
-    for(const cache of [this.discarded,this.thrown,this.detonations]){
-      for(const mesh of cache.values()){
-        this.effects.remove(mesh);mesh.geometry.dispose();
-        (mesh.material as THREE.Material).dispose();
-      }
-      cache.clear();
-    }
     // Resize fog in the same authoritative coordinates used by nav/camera.
     const bounds=site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
     const fogSize=maskSize(site);
@@ -3094,50 +3078,8 @@ export class TacticalScene3D{
           (object.physical.feet[i].swinging?.74:1)*pulse);
       }
     }
-    if(!this.casingMesh){
-      // One scene-lit brass material keeps the pooled instancing and zero
-      // casing shadows. Deeper copper/gold, rather than flat yellow paint.
-      // The graphic world's three-band lighting can shade it at no extra draw.
-      const brass=new THREE.MeshStandardMaterial({
-        color:0xb38d59,roughness:.48,metalness:.52,flatShading:true});
-      if(this.graphicLookEnabled)enableWorldGraphicMaterial(brass);
-      this.mats.push(brass);
-      this.casingMesh=new THREE.InstancedMesh(
-        new THREE.CylinderGeometry(.75,.75,3.1,6),brass,CASING_LIMIT);
-      this.casingMesh.castShadow=false;
-      this.casingMesh.receiveShadow=false;
-      this.casingMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      this.casingMesh.frustumCulled=false;
-      this.effects.add(this.casingMesh);
-    }
-    const casingDraw=this.casingMesh;
-    let casingCount=0,casingDirty=false;
-    for(const brass of s.casings){
-      // Casing positions could reveal a shooter who was never confirmed
-      // by the selected observer. Contact review has no shot forensics.
-      if(replayDisclosurePolicy?.mode==='operator')continue;
-      if(!omniscient&&!liveVisibility(s,{x:brass.x,y:brass.z}))continue;
-      if(casingCount>=CASING_LIMIT)break;
-      // Full ballistic + bounce motion ends comfortably before two seconds.
-      // Settled cartridges retain their previous instance matrices.
-      if(this.casingIds[casingCount]!==brass.id||
-         s.seconds-brass.at<2){
-        const p=casingAt(brass,s.seconds);
-        this.casingMatrix.position.set(p.x,p.y,p.z);
-        this.casingMatrix.rotation.set(.9,p.rotation,1.2);
-        const factor=brass.weapon==='shotgun'?1.45:
-          brass.weapon==='smg'?.73:brass.weapon==='rifle'?1.2:1;
-        this.casingMatrix.scale.set(factor,factor,factor);
-        this.casingMatrix.updateMatrix();
-        casingDraw.setMatrixAt(casingCount,this.casingMatrix.matrix);
-        casingDirty=true;
-      }
-      this.casingIds[casingCount++]=brass.id;
-    }
-    if(casingDraw.count!==casingCount)casingDirty=true;
-    casingDraw.count=casingCount;
-    this.casingIds.length=casingCount;
-    if(casingDirty)casingDraw.instanceMatrix.needsUpdate=true;
+    this.combatEffects.update(s,omniscient,
+      replayDisclosurePolicy?.mode==='operator',p=>liveVisibility(s,p));
     // 079: One persistent, ID-keyed effect per actual simulation shot.
     // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
     const active=this.frameShotIds;active.clear();
@@ -3274,60 +3216,6 @@ export class TacticalScene3D{
       markDraw.instanceMatrix.needsUpdate=true;
       if(markDraw.instanceColor)markDraw.instanceColor.needsUpdate=true;
     }
-    // Retained physical magazines, grenades in flight and expanding flashes.
-    const activeMag=this.frameMagazineIds;activeMag.clear();
-    for(const mag of s.dropped){
-      activeMag.add(mag.id);
-      let mesh=this.discarded.get(mag.id);
-      if(!mesh){
-        mesh=new THREE.Mesh(new THREE.BoxGeometry(6,1.5,3),
-          new THREE.MeshStandardMaterial({color:0x313b37,roughness:.75}));
-        this.discarded.set(mag.id,mesh);this.effects.add(mesh);
-      }
-      const t=Math.min(1.5,mag.age);
-      mesh.position.set(mag.p.x+Math.sin(mag.id)*t*3.5,
-        Math.max(1.1,7+10*t-27*t*t),mag.p.y+
-          Math.cos(mag.id)*t*2.7);
-      mesh.rotation.set(.2*Math.min(1,t*8),mag.id*2.13,
-        Math.min(1,t*4)*Math.PI*.40);
-    }
-    const liveGrenades=this.frameGrenadeIds;liveGrenades.clear();
-    for(const grenade of s.grenades){
-      liveGrenades.add(grenade.id);
-      let mesh=this.thrown.get(grenade.id);
-      if(!mesh){
-        mesh=new THREE.Mesh(new THREE.IcosahedronGeometry(2.7,0),
-          new THREE.MeshStandardMaterial({color:0x879184,roughness:.75}));
-        this.thrown.set(grenade.id,mesh);this.effects.add(mesh);
-      }
-      const t=Math.min(1,grenade.age/.55);
-      const path=grenade.path?sampleThrow(grenade.path,t):null;
-      mesh.position.set(grenade.p.x,path?.height??(1+20*4*t*(1-t)),
-        grenade.p.y);
-    }
-    const liveBursts=this.frameFlashIds;liveBursts.clear();
-    for(const burst of s.flashBursts){
-      liveBursts.add(burst.id);
-      let mesh=this.detonations.get(burst.id);
-      if(!mesh){
-        mesh=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),
-          new THREE.MeshBasicMaterial({color:0xfff1c7,transparent:true,
-            opacity:.8,depthWrite:false}));
-        this.detonations.set(burst.id,mesh);this.effects.add(mesh);
-      }
-      mesh.position.set(burst.p.x,13,burst.p.y);
-      mesh.scale.setScalar(5+70*burst.age);
-      (mesh.material as THREE.MeshBasicMaterial).opacity=
-        Math.max(0,.78*(1-burst.age/.7));
-    }
-    for(const [cache,activeIds] of [
-      [this.discarded,activeMag],[this.thrown,liveGrenades],
-      [this.detonations,liveBursts],
-    ] as [Map<number,THREE.Mesh>,Set<number>][])
-      for(const [id,mesh] of cache)if(!activeIds.has(id)){
-        this.effects.remove(mesh);mesh.geometry.dispose();
-        (mesh.material as THREE.Material).dispose();cache.delete(id);
-      }
     for(const [id,effect] of this.effectCache){
       if(active.has(id))continue;
       this.effects.remove(effect.root);

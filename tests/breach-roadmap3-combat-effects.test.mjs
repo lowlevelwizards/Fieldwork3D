@@ -1,0 +1,32 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {BreachCombatEffectsPresenter} from '../src/rendering/breach-combat-effects-presenter.ts';
+const point={x:100,y:150};
+const state=()=>({seconds:0,casings:[],dropped:[],grenades:[],flashBursts:[]});
+test('loose combat visuals are pooled and cleaned up at expiry and site reset',()=>{
+ const root=new THREE.Group(),p=new BreachCombatEffectsPresenter(root,[],false);
+ const s=state(),allow=()=>true;
+ s.dropped.push({id:10,p:point,age:0});
+ s.grenades.push({id:11,p:point,age:0,path:null});
+ s.flashBursts.push({id:12,p:point,age:0});
+ p.update(s,true,false,allow);
+ assert.deepEqual(p.stats(),{casings:0,magazines:1,grenades:1,flashes:1});
+ const before=root.children.length;
+ p.update(s,true,false,allow);
+ assert.equal(root.children.length,before);
+ s.dropped=[];s.grenades=[];s.flashBursts=[];
+ p.update(s,true,false,allow);
+ assert.deepEqual(p.stats(),{casings:0,magazines:0,grenades:0,flashes:0});
+ p.reset();
+ assert.equal(root.children.length,1,'pooled casing draw remains');
+});
+test('personal replay prevents casing leaks; visible batches reuse their matrix buffer',()=>{
+ const root=new THREE.Group(),p=new BreachCombatEffectsPresenter(root,[],false);
+ const s=state();
+ s.casings.push({id:2,at:0,weapon:'carbine',side:'blue',x:100,z:150,y:10,heading:0});
+ p.update(s,false,false,()=>false);assert.equal(p.stats().casings,0);
+ p.update(s,true,false,()=>false);assert.equal(p.stats().casings,1);
+ p.update(s,true,true,()=>true);assert.equal(p.stats().casings,0);
+ p.reset();assert.equal(p.stats().casings,0);
+});
