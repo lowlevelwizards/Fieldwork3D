@@ -50,18 +50,18 @@ async function openQuickArsenal(id:string){
 }
 
 async function openCampaignArsenal(id:string){
- if(!config.getCampaign()||config.getCampaign().activeContractId)return;
+ if(!config.getCampaign()||config.getCampaign()?.activeContractId)return;
  try{
   const [{arsenalRecipeFromLegacy},{openArsenalWorkbench},
    {quoteCampaignArsenalEdit,commitCampaignArsenalEdit}]=await Promise.all([
     import('./arsenal/recipes.ts'),import('./arsenal/workbench-screen.ts'),
-    import('./arsenal/config.getCampaign()-adapter.ts')]);
+    import('./arsenal/campaign-adapter.ts')]);
   const current=config.getCampaign();
   const member=current?.operators.find(o=>o.id===id&&o.status!=='retired'&&o.status!=='lost');
   if(!current||current.activeContractId||!member)return;
   const recipe=arsenalRecipeFromLegacy(member.weaponConfiguration);
   if(!recipe){config.showHelp('THIS WEAPON USES THE LEGACY ARMORY',3000);return;}
-  openArsenalWorkbench({id:'equipped-config.getCampaign()-'+id,name:member.callsign,recipe},undefined,{
+  openArsenalWorkbench({id:'equipped-campaign-'+id,name:member.callsign,recipe},undefined,{
    mode:'campaign',applyLabel:'EQUIP WEAPON',
    quote:r=>{const current=config.getCampaign();return current?quoteCampaignArsenalEdit(current,id,r):
     {valid:false,canCommit:false,reason:'Campaign unavailable'};},
