@@ -2141,14 +2141,22 @@ function focusedDoor(a:TeamActor,node:ReturnType<typeof selectedPlanNode>){
     doorKnown(state.intel,d.id)&&
     points.some(p=>doorReachable(p,d)));
   if(explicit)return explicit;
-  return state.doors.filter(d=>doorKnown(state.intel,d.id)&&
-    d.id!==doorMenuDismissedId&&points.some(p=>
-    doorReachable(p,d)))
-    .sort((x,y)=>{
-      const dx=Math.min(...points.map(p=>distance(p,doorCenter(x))));
-      const dy=Math.min(...points.map(p=>distance(p,doorCenter(y))));
-      return dx-dy;
-    })[0];
+  // A single pass preserves the stable first-door tie break without
+  // allocating and sorting every reachable door on context refresh.
+  let closest:typeof state.doors[number]|undefined;
+  let closestDistance=Infinity;
+  for(const door of state.doors){
+    if(door.id===doorMenuDismissedId||!doorKnown(state.intel,door.id)||
+       !points.some(p=>doorReachable(p,door)))continue;
+    const center=doorCenter(door);
+    let range=Infinity;
+    for(const point of points)range=Math.min(range,distance(point,center));
+    if(range<closestDistance){
+      closest=door;
+      closestDistance=range;
+    }
+  }
+  return closest;
 }
 function selectedPlanNode(){
   return uid(selected)?.plan.find(n=>n.id===selectedNode);
