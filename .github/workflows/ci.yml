@@ -1875,6 +1875,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: Runtime lifecycle A/B — DOM, materials, door geometry and replay critical gate
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/runtime-lifecycle-') }}
+        run: |
+          node --experimental-strip-types --test tests/physical-action-rings-lifecycle.test.mjs tests/breach-site-material-lifetime.test.mjs tests/door-hinge-neighborhood-cache.test.mjs tests/runtime-perf-diagnostics.test.mjs tests/breach-physical-interactions-nov8.test.mjs tests/doorway-right-of-way-session.test.mjs tests/replay-r2-recording.test.mjs
+      - name: Runtime lifecycle — previous served Pages build release checkpoint
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/runtime-lifecycle-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
