@@ -5431,7 +5431,7 @@ window.addEventListener('keydown',e=>{
       const direction:-1|1=e.code==='ArrowLeft'?-1:1;
       if(e.ctrlKey||e.metaKey)jumpReplayEvent(direction>0);
       else if(e.shiftKey){replayPlayback.pause();seekReplay(replayPlayback.time+direction);}
-      else stepReplay('frame',direction);
+      else replayTimeline.step('frame',direction);
     }
     return;
   }
