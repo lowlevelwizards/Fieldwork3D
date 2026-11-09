@@ -13,7 +13,7 @@ const messages=read('src/quick-play-generation.ts');
 const site=read('src/breach-site.ts');
 
 test('main menu does not generate a throwaway procedural map',()=>{
- assert.match(main,/campaignMode==='menu'\?undefined:initialSiteSeed/);
+ assert.match(main,/withoutSite:legacyStudy\|\|campaignMode==='menu',initial:true/);
  assert.match(campaign,/quickPlay:\(\)=>\{void config.launchQuickPlay\(\);\}/);
  assert.match(loader,/config\.startSession\(seed,generated\.site\)/);
  assert.match(main,/startSession:\(seed,site\)=>reset\(state\.variant,seed,undefined,site,undefined,true\)/);
@@ -47,7 +47,7 @@ test('heavy worldgen stays in a dedicated worker and final map is reused',()=>{
  assert.match(messages,/kind:'done'/);
  assert.match(worker,/generationMs:Math\.round\(performance\.now\(\)-started\)/);
  assert.match(loader,/stage\?\.applySite\(config\.getSession\(\)\.site\?\?null\)/);
- assert.match(main,/if\(!deferScene\)stage\?\.applySite/);
+ assert.match(main,/if\(!transition\.deferScene\)stage\?\.applySite/);
 });
 
 test('worker cancellation, errors and startup timings are surfaced',()=>{
