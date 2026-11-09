@@ -37,7 +37,8 @@ test('explored fine and micro footprints are composited once, not erased twice',
  assert.equal(paths[0].style,'rgba(255,255,255,0.55)');
  assert.ok(paths[0].rects.some(r=>r[0]===120&&r[1]===120&&r[2]===20));
  assert.ok(paths[0].rects.some(r=>r[0]===120&&r[1]===120&&r[2]===10));
- assert.equal(1-.55,.45,'remembered regions retain a substantial fog tint');
+ assert.ok(Math.abs((1-.55)-.45)<1e-9,
+   'remembered regions retain a substantial fog tint');
 });
 test('floor plan reveals briefing geometry without promoting it to live sight',()=>{
  const {ctx,calls}=recorder();
