@@ -2619,7 +2619,8 @@ export class TacticalScene3D{
       const observed=personal&&replayDoorHistory?
         replayDoorHistory.at(s.seconds,replayDisclosurePolicy.observerId,door.id):
         null;
-      const directlyObserved=!personal&&liveVisibility(s,doorCenter(door));
+      const doorPoint=doorCenter(door);
+      const directlyObserved=!personal&&liveVisibility(s,doorPoint);
       if(!personal&&(omniscient||directlyObserved)){
         this.observedDoorOpen.set(door.id,door.openFraction??(door.open?1:0));
         this.observedDoorGlass.set(door.id,!!door.glassShattered);
@@ -2704,7 +2705,7 @@ export class TacticalScene3D{
         object.root.visible&&s.phase==='planning'&&
         (!focused||!!reachable)&&
         (directlyObserved||
-         knownAt(s,doorCenter(door).x,doorCenter(door).y)||
+         knownAt(s,doorPoint.x,doorPoint.y)||
          doorKnown(s.intel,door.id));
       for(const part of object.halo.children){
         const material=(part as THREE.Mesh).material as
