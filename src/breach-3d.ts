@@ -213,6 +213,7 @@ export class TacticalScene3D{
     const info=this.renderer.info.render;
     return {calls:info.calls,triangles:info.triangles,
       staticBatch:this.staticBatches.stats(),
+      siteMaterialCount:this.siteMaterials.size,
       shadowRefreshes:this.shadowUpdates.refreshes,
       shadowReuses:this.shadowUpdates.reuses,
       shadowLodTransitions:this.shadowLodTransitions,

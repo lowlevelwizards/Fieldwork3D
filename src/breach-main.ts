@@ -8259,6 +8259,9 @@ function tick(now:number){
         ' ticks · REC '+m.recording.toFixed(1)+'ms · SCENE '+m.scene.toFixed(1)+'ms'+
         '\\nFILM '+recorder.frames.length+' frames · '+
         recorder.motion.stepEventCount+' step events'+
+        '\\nDOM '+document.getElementsByTagName('*').length+
+        ' · ACTION RINGS '+physicalActionRings.size+
+        ' · SITE MATS '+(stats?.siteMaterialCount??0)+
         '\\nOVERLAY '+m.overlay.toFixed(1)+'ms · DRAWS '+
         m.draws.toFixed(0)+' · TRI '+m.triangles.toFixed(0)+
         (simPhaseCosts&&simPhaseCosts.size?'\\nHOT SIM '+
