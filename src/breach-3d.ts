@@ -85,7 +85,7 @@ import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter,LIGHT_BEAM_SAMPL
 import {type Site,type Room,type WideOpening} from './breach-site.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {type Session,type TeamActor,team,knownAt,liveVisibility} from './breach-game.ts';
-import {spatialSurfaceState,shotVisibility,architecturalOpeningKnown} from './breach-presentation.ts';
+import {spatialSurfaceKnown,shotVisibility,architecturalOpeningKnown} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable,initDoor} from './breach-door.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
@@ -2470,14 +2470,14 @@ export class TacticalScene3D{
       this.roofMaterial.opacity=opaque?1:.21;
     }
     for(const [id,roof] of this.roofGroups){
-      const known=spatialSurfaceState(s,'room',id,omniscient)!=='unknown';
+      const known=spatialSurfaceKnown(s,'room',id,omniscient);
       roof.visible=physicalDirector?false:
         bodycamAudition?known:
         roofShouldShow(omniscient,known,occupiedRoomIds.has(id));
     }
     for(const item of this.intelSurfaces){
-      const squadKnown=spatialSurfaceState(s,item.kind,
-        item.index,omniscient)!=='unknown';
+      const squadKnown=spatialSurfaceKnown(s,item.kind,
+        item.index,omniscient);
       // Physically blocking structural WALLS never disappear in a POV.
       // Only decorative/cover meshes use recorded personal ground memory.
       // This is not omniscient actor knowledge: these are actual opaque
@@ -2556,7 +2556,7 @@ export class TacticalScene3D{
       const object=this.doors.get(door.id);
       if(!object)continue;
       object.root.visible=physicalDirector||
-        spatialSurfaceState(s,'door',door.id,omniscient)!=='unknown';
+        spatialSurfaceKnown(s,'door',door.id,omniscient);
       this.staticBatches.setVisible(object.root,object.root.visible);
       // Personal review uses the LAST individually observed leaf state.
       // An unseen opening/kick cannot magically update this perspective.
