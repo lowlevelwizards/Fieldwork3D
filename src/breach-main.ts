@@ -84,21 +84,21 @@ import {withFieldworkLiveMix} from './breach-live-sound-pack.ts';
 import {acousticResponseForCue} from './breach-audio-environment.ts';
 import {parseOperationHistory,addOperationRecord,
   type OperationRecord} from './breach-operations.ts';
-import {MissionRecorder,applyReplayFrame} from './breach-replay.ts';
+import {MissionRecorder} from './breach-replay.ts';
 import {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
+import {createBreachReplayTimelineController}
+  from './ui/breach-replay-timeline-controller.ts';
 import {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 import {ReplayBodycamController} from './breach-replay-bodycam-controller.ts';
 import {ReplayCameraController} from './breach-replay-camera-controller.ts';
 import {createBreachReplayLibraryController}
   from './ui/breach-replay-library-controller.ts';
-import {stepReplaySample,stepReplayPresentation,formatReplayTime}
-  from './breach-replay-transport.ts';
+import {formatReplayTime} from './breach-replay-transport.ts';
 import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-index.ts';
 import {clusterReplayTimeline,replayTimelineBins} from './breach-replay-timeline-markers.ts';
 import {replayFeedPosition} from './breach-replay-feed-window.ts';
-import {REPLAY_SPEED_STOPS,speedIndex,speedFromIndex}
-  from './breach-replay-speed.ts';
-import {toggleReplaySurface,resolvedReplayCamera,isReplaySpeed,
+import {REPLAY_SPEED_STOPS,speedIndex} from './breach-replay-speed.ts';
+import {toggleReplaySurface,resolvedReplayCamera,
   type ReplaySurface,type ReplayCameraChoice,type ReplayPerspective}
   from './breach-replay-ui-state.ts';
 import {buildReplayChapters,addReplayBookmark,adjacentReplayChapter,
@@ -114,8 +114,6 @@ import {indexReplayIncidents,featuredReplayIncidents,type ReplayIncident}
   from './breach-replay-incidents.ts';
 import {featuredReplaySquadEntries,measureReplaySquadDoorEntry,
   type ReplaySquadEntryReview} from './breach-replay-squad-entry.ts';
-import {incidentPlaybackWindow} from './breach-replay-incident-playback.ts';
-import {makeReplayLoop} from './breach-replay-loop.ts';
 import {operatorContactEventKnown,operatorContactAvailable}
   from './breach-replay-contact-lens.ts';
 import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
@@ -3159,27 +3157,27 @@ function playReplayAudioBetween(start:number,end:number):void{
         level*.12,pan,true);
   }
 }
-function applyReplayFrameAt(t:number){
-  const frame=recorder.sample(t);
-  if(!frame)return;
-  replayPresentation=frame.presentation??null;
-  applyReplayFrame(state,frame);
-  // Scrubbed time can move backwards: invalidate cached fog/effect time.
-  fog2D.invalidate();
-}
-function seekReplay(t:number){
+/** Reapply recorded outcomes after timeline navigation, then refresh dependent
+ * camera/audio/visibility presentation. The playback controller owns samples.
+ */
+function presentReplayAtCurrentTime():void{
   ui.replayClusterMenu.hidden=true;
-  // Direct navigation deliberately exits a bounded incident film.
-  replayPlayback.incident=null;
   if(replayQuickVideo.active)replayQuickVideo.stop();
   stopReplaySounds();
-  replayPlayback.time=Math.max(0,Math.min(recorder.duration,t));
   replayDirector.target=null;
-  
   stage?.resetReplayBodycamSmoothing();
-  applyReplayFrameAt(replayPlayback.time);advanceReplayCamera(0,true);
+  const frame=replayPlayback.applyRecordedFrame(recorder,state);
+  if(frame){
+    replayPresentation=frame.presentation??null;
+    fog2D.invalidate();
+  }
+  advanceReplayCamera(0,true);
   if(!ui.replayFeed.hidden)renderReplayEventFeed();
   updateReplayHud();
+}
+function seekReplay(t:number):void{
+  replayPlayback.seek(t,recorder.duration);
+  presentReplayAtCurrentTime();
 }
 /** Replay event feed and navigation share the same disclosure boundary. */
 function replayEventKnown(e:ReplayIndexedEvent):boolean{
@@ -3239,7 +3237,7 @@ function selectReplayShot(shot:RecordedShot):void{
   if(!historicalShotVisible(shot))return;
   selectedReplayShotId=shot.id;
   replayTraceMode='recent';
-  replayPlayback.playing=false;seekReplay(shot.recordedAt);
+  replayPlayback.pause();seekReplay(shot.recordedAt);
   showReplayToolTab('layers');
   const layers=ui.replayExtra.querySelector<HTMLDetailsElement>(
     '[data-replay-group="layers"]');
@@ -3249,7 +3247,7 @@ function selectReplayShot(shot:RecordedShot):void{
 function focusReplayShot():void{
   const shot=currentReplayShot();
   if(!shot)return;
-  chooseReplayCamera('free');replayCamera.follow=false;replayPlayback.playing=false;
+  chooseReplayCamera('free');replayCamera.follow=false;replayPlayback.pause();
   if(stage&&viewMode!=='plan2d'){
     stage.view.focus={...shot.end};
     stage.view.zoom=Math.max(stage.view.zoom,1.7);
@@ -3274,7 +3272,7 @@ function renderReplayChapters():void{
     button.dataset.kind=entry.kind;
     button.textContent=formatReplayTime(entry.t)+' · '+entry.label;
     button.addEventListener('click',()=>{
-      replayPlayback.playing=false;seekReplay(entry.t);
+      replayPlayback.pause();seekReplay(entry.t);
     });
     fragment.append(button);
   }
@@ -3323,7 +3321,7 @@ function renderObserverSightTransitions():void{
     button.append(time,target);
     button.title=event.targetId+' · '+event.kind;
     button.addEventListener('click',()=>{
-      replayPlayback.playing=false;selected=observer;replayCamera.followId=observer;
+      replayPlayback.pause();selected=observer;replayCamera.followId=observer;
       seekReplay(event.t);
     });
     fragment.append(button);
@@ -3359,7 +3357,7 @@ function renderReplaySquadEntries():void{
     button.addEventListener('click',()=>{
       if(entry.firstCrossingAt===null)return;
       selectedReplaySquadEntry=entry.doorId;
-      replayPlayback.playing=false;
+      replayPlayback.pause();
       seekReplay(Math.max(0,entry.firstCrossingAt-.6));
       renderReplaySquadEntries();
     });
@@ -3389,7 +3387,7 @@ function renderReplayDebrief():void{
     description.textContent=incident.summary;
     button.append(stamp,description);
     button.addEventListener('click',()=>{
-      replayPlayback.playing=false;
+      replayPlayback.pause();
       selectedReplayIncidentId=incident.id;
       const friendly=incident.actorIds.find(id=>
         team(state).some(a=>a.id===id));
@@ -3419,7 +3417,7 @@ function renderReplayDebrief():void{
       'NO RECORDED RESOLUTION':stall.seconds.toFixed(1)+'S');
     button.append(stamp,detail);
     button.addEventListener('click',()=>{
-      replayPlayback.playing=false;selectedReplayIncidentId=null;
+      replayPlayback.pause();selectedReplayIncidentId=null;
       if(team(state).some(a=>a.id===stall.actor)){
         selected=stall.actor;replayCamera.followId=stall.actor;
       }
@@ -3439,16 +3437,12 @@ function renderReplayDebrief():void{
 function startReplayIncident(loop:boolean):void{
   const incident=replayIncidents.find(i=>i.id===selectedReplayIncidentId);
   if(!incident)return;
-  const range=incidentPlaybackWindow(incident,recorder.duration);
-  if(!range){
+  if(!replayPlayback.startIncident(incident,recorder.duration,loop)){
     showUiHelp('INCIDENT TOO SHORT TO PLAY',2500);return;
   }
-  replayPlayback.playing=false;
-  seekReplay(range.start);
-  replayPlayback.incident={range,loop};
-  // A/B and incident playback are mutually exclusive control surfaces.
-  replayPlayback.loopEnabled=false;
-  replayPlayback.rate=1;replayPlayback.effectiveRate=1;replayPlayback.playing=true;
+  // Incident start is already positioned by the transport controller.
+  // Do not call seekReplay here: seeking cancels incident playback.
+  presentReplayAtCurrentTime();
   unlockAudio();
   showReplayToolTab(null);
   updateReplayHud();
@@ -3474,7 +3468,7 @@ function rebuildReplayEventIndex():void{
   replayIncidents=indexReplayIncidents(replayEventIndex.all,recorder.duration);
   replayFeaturedIncidents=featuredReplayIncidents(replayIncidents,5);
   selectedReplayIncidentId=null;
-  replayPlayback.incident=null;
+  replayPlayback.clearIncident();
   renderReplayChapters();
   renderReplayDebrief();
 }
@@ -3519,7 +3513,7 @@ function renderReplayEventFeed():void{
     button.textContent=formatReplayTime(event.t)+' · '+
       event.kind.toUpperCase()+' · '+event.text;
     button.addEventListener('click',()=>{
-      replayPlayback.playing=false;seekReplay(event.t);
+      replayPlayback.pause();seekReplay(event.t);
       if(event.kind==='shot'){
         const shot=recorder.ballistics.shots.find(s=>
           Math.abs(s.recordedAt-event.t)<.17&&s.shooterId===event.actor&&
@@ -3796,7 +3790,7 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
     b.disabled=replayQuickVideo.active;
     b.setAttribute('aria-pressed',String(Number(b.dataset.speedChoice)===replayPlayback.rate));
   }
-  const loop=makeReplayLoop(replayPlayback.loopIn,replayPlayback.loopOut,recorder.duration);
+  const loop=replayPlayback.loopRange(recorder.duration);
   ui.replayLoopIn.textContent=replayPlayback.loopIn===null?'SET LOOP IN':
     'IN '+formatReplayTime(replayPlayback.loopIn);
   ui.replayLoopOut.textContent=replayPlayback.loopOut===null?'SET LOOP OUT':
@@ -4000,7 +3994,7 @@ function renderReplayEventMarkers():void{
     marker.addEventListener('click',()=>{
       closeReplayCluster(false);
       if(members.length===1){
-        replayPlayback.playing=false;seekReplay(members[0].t);return;
+        replayPlayback.pause();seekReplay(members[0].t);return;
       }
       const heading=document.createElement('strong');
       heading.textContent=members.length+' EVENTS · '+
@@ -4011,7 +4005,7 @@ function renderReplayEventMarkers():void{
         choice.type='button';choice.textContent=formatReplayTime(event.t)+
           ' · '+event.kind.toUpperCase()+' · '+event.text;
         choice.addEventListener('click',()=>{
-          replayPlayback.playing=false;seekReplay(event.t);
+          replayPlayback.pause();seekReplay(event.t);
           ui.replayClusterMenu.hidden=true;
           marker.focus();
         });
@@ -4028,7 +4022,7 @@ function renderReplayEventMarkers():void{
 function enterReplay(){
   if(replaying||recorder.frames.length<2)return;
   finishedSession=state;replaying=true;
-  replayPlayback.reset();replayPlayback.playing=true;
+  replayPlayback.reset();replayPlayback.play();
   replayCamera.reset(stage);
   replayKnowledge.omniscient=false;looking=false;flashMode=false;
   replayKnowledge.observerId=null;
@@ -4180,40 +4174,25 @@ const replayLibrary=createBreachReplayLibraryController({
 ui.watchReplay.addEventListener('click',()=>{
   replayLibrary.markDebriefEntry();enterReplay();
 });
-ui.replayPlay.addEventListener('click',()=>{
-  if(replayPlayback.time>=recorder.duration)seekReplay(0);
-  replayPlayback.playing=!replayPlayback.playing;
-  if(replayPlayback.playing)unlockAudio();else stopReplaySounds();
-  updateReplayHud();
-});
-ui.replayBack.addEventListener('click',()=>seekReplay(replayPlayback.time-10));
-ui.replayForward.addEventListener('click',()=>seekReplay(replayPlayback.time+10));
-const stepReplay=(kind:'sample'|'frame',direction:-1|1)=>{
-  replayPlayback.playing=false;
-  seekReplay(kind==='sample'?
-    stepReplaySample(recorder.frames,replayPlayback.time,direction):
-    stepReplayPresentation(replayPlayback.time,recorder.duration,direction));
-};
-ui.replayPrevFrame.addEventListener('click',()=>stepReplay('frame',-1));
-ui.replayNextFrame.addEventListener('click',()=>stepReplay('frame',1));
-ui.replayPrevSample.addEventListener('click',()=>stepReplay('sample',-1));
-ui.replayNextSample.addEventListener('click',()=>stepReplay('sample',1));
-ui.replayLoopIn.addEventListener('click',()=>{
-  replayPlayback.loopIn=replayPlayback.time;
-  if(replayPlayback.loopOut!==null&&replayPlayback.loopOut-replayPlayback.loopIn<.35)replayPlayback.loopOut=null;
-  replayPlayback.loopEnabled=false;updateReplayHud();
-});
-ui.replayLoopOut.addEventListener('click',()=>{
-  if(replayPlayback.loopIn===null)replayPlayback.loopIn=0;
-  const proposal=makeReplayLoop(replayPlayback.loopIn,replayPlayback.time,recorder.duration);
-  if(!proposal){
-    showUiHelp('LOOP OUT MUST BE AT LEAST 0.35S AFTER IN',3300);return;
-  }
-  replayPlayback.loopOut=proposal.end;replayPlayback.loopEnabled=true;updateReplayHud();
-});
-ui.replayLoopToggle.addEventListener('click',()=>{
-  if(!makeReplayLoop(replayPlayback.loopIn,replayPlayback.loopOut,recorder.duration))return;
-  replayPlayback.loopEnabled=!replayPlayback.loopEnabled;updateReplayHud();
+const replayTimeline=createBreachReplayTimelineController({
+  ui:{
+    replayPlay:ui.replayPlay,replayMiniPlay:ui.replayMiniPlay,
+    replayBack:ui.replayBack,replayForward:ui.replayForward,
+    replayPrevFrame:ui.replayPrevFrame,replayNextFrame:ui.replayNextFrame,
+    replayPrevSample:ui.replayPrevSample,replayNextSample:ui.replayNextSample,
+    replayLoopIn:ui.replayLoopIn,replayLoopOut:ui.replayLoopOut,
+    replayLoopToggle:ui.replayLoopToggle,
+    replaySpeedChoices:ui.replaySpeedChoices,
+    replaySpeedRange:ui.replaySpeedRange,replaySpeedValue:ui.replaySpeedValue,
+    replayQuickSpeed:ui.replayQuickSpeed,replaySpeed:ui.replaySpeed,
+    replaySeek:ui.replaySeek,replayClusterMenu:ui.replayClusterMenu
+  },
+  playback:replayPlayback,
+  duration:()=>recorder.duration,
+  samples:()=>recorder.frames,
+  isVideoActive:()=>replayQuickVideo.active,
+  seek:seekReplay,stopAudio:stopReplaySounds,unlockAudio,
+  refreshHud:updateReplayHud,showHelp:showUiHelp
 });
 ui.replayMore.addEventListener('click',()=>
   toggleReplayPanel('analyze',ui.replayMore));
@@ -4239,26 +4218,6 @@ for(const b of ui.replaySightChoices.querySelectorAll<HTMLButtonElement>('[data-
     closeReplayChoices();
   });
 }
-for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-speed-choice]')){
-  b.addEventListener('click',()=>{
-    ui.replayQuickSpeed.value=b.dataset.speedChoice??'1';
-    ui.replayQuickSpeed.dispatchEvent(new Event('change'));
-  });
-}
-ui.replaySpeedRange.addEventListener('input',()=>{
-  const rate=speedFromIndex(Number(ui.replaySpeedRange.value));
-  ui.replaySpeedValue.textContent=rate+'×';
-  ui.replaySpeedRange.setAttribute('aria-valuetext',rate+'×');
-  ui.replaySpeedRange.style.setProperty('--speed-progress',
-    (Number(ui.replaySpeedRange.value)/
-      (REPLAY_SPEED_STOPS.length-1)*100)+'%');
-});
-ui.replaySpeedRange.addEventListener('change',()=>{
-  if(replayQuickVideo.active)return;
-  ui.replayQuickSpeed.value=String(speedFromIndex(
-    Number(ui.replaySpeedRange.value)));
-  ui.replayQuickSpeed.dispatchEvent(new Event('change'));
-});
 document.addEventListener('pointerdown',e=>{
   if(!(e.target instanceof Node)||ui.replayRail.contains(e.target))return;
   closeReplayChoices();
@@ -4266,12 +4225,6 @@ document.addEventListener('pointerdown',e=>{
 ui.replayDockToggle.addEventListener('click',()=>setReplayDockCollapsed(!replayDockCollapsed));
 ui.replayRailToggle.addEventListener('click',()=>
   setReplayRailCollapsed(!replayRailCollapsed));
-ui.replayMiniPlay.addEventListener('click',()=>ui.replayPlay.click());
-ui.replayQuickSpeed.addEventListener('change',()=>{
-  const rate=Number(ui.replayQuickSpeed.value);
-  if(!isReplaySpeed(rate)||replayQuickVideo.active)return;
-  stopReplaySounds();replayPlayback.rate=rate;updateReplayHud();
-});
 ui.replayQuickView.addEventListener('change',()=>{
   if(replayBodycam.active)return;
   const next=ui.replayQuickView.value as ReplayPerspective;
@@ -4341,7 +4294,7 @@ ui.replayIncidentLoop.addEventListener('click',()=>startReplayIncident(true));
 ui.replayIncidentInvestigate.addEventListener('click',()=>{
   const incident=replayIncidents.find(i=>i.id===selectedReplayIncidentId);
   if(!incident)return;
-  replayPlayback.playing=false;seekReplay(incident.start);
+  replayPlayback.pause();seekReplay(incident.start);
   const actor=incident.actorIds.find(id=>team(state).some(a=>a.id===id));
   if(actor)selected=actor;
   const preset=incident.kind==='movement'||incident.kind==='door'||
@@ -4354,16 +4307,16 @@ ui.replayIncidentInvestigate.addEventListener('click',()=>{
   if(layers)layers.open=true;
 });
 ui.replayIncidentClose.addEventListener('click',()=>{
-  replayPlayback.incident=null;selectedReplayIncidentId=null;
+  replayPlayback.clearIncident();selectedReplayIncidentId=null;
   renderReplayDebrief();
 });
 ui.replayPrevChapter.addEventListener('click',()=>{
   const chapter=adjacentReplayChapter(replayChapters,replayPlayback.time,false);
-  if(chapter){replayPlayback.playing=false;seekReplay(chapter.t);}
+  if(chapter){replayPlayback.pause();seekReplay(chapter.t);}
 });
 ui.replayNextChapter.addEventListener('click',()=>{
   const chapter=adjacentReplayChapter(replayChapters,replayPlayback.time,true);
-  if(chapter){replayPlayback.playing=false;seekReplay(chapter.t);}
+  if(chapter){replayPlayback.pause();seekReplay(chapter.t);}
 });
 ui.replayBookmark.addEventListener('click',()=>{
   const id='bookmark-'+(++replayBookmarkCounter);
@@ -4391,16 +4344,6 @@ ui.replaySound.addEventListener('click',()=>{
   if(!replaySoundEnabled)stopReplaySounds();
   else unlockAudio();
   updateReplayHud();
-});
-ui.replaySpeed.addEventListener('click',()=>{
-  ui.replayQuickSpeed.value=String(speedFromIndex(
-    (speedIndex(replayPlayback.rate)+1)%REPLAY_SPEED_STOPS.length));
-  ui.replayQuickSpeed.dispatchEvent(new Event('change'));
-});
-ui.replaySeek.addEventListener('input',()=>{
-  ui.replayClusterMenu.hidden=true;
-  replayPlayback.playing=false;
-  seekReplay(Number(ui.replaySeek.value)/60);
 });
 function changeReplaySight(mode:'team'|'full'|'operator'):void{
   if(mode==='operator'){
@@ -4525,7 +4468,7 @@ if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
       replayKnowledge.observerId=observer.id;
       replayKnowledge.omniscient=false;
       replayKnowledge.groundLensOn=false;
-      replayPlayback.playing=false;
+      replayPlayback.pause();
       chooseReplayCamera('free');
       selected=observer.id;
       replayCamera.followId=observer.id;
@@ -4538,7 +4481,7 @@ if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
     },
     seek(time){
       if(!replaying||!Number.isFinite(time))return false;
-      replayPlayback.playing=false;
+      replayPlayback.pause();
       seekReplay(Math.max(0,Math.min(time,recorder.duration)));
       return true;
     },
@@ -4689,7 +4632,7 @@ ui.replayView.addEventListener('click',()=>{
 const jumpReplayEvent=(forward:boolean)=>{
   const item=forward?replayEventIndex?.next(replayPlayback.time):
     replayEventIndex?.previous(replayPlayback.time);
-  if(item){replayPlayback.playing=false;seekReplay(item.t);}
+  if(item){replayPlayback.pause();seekReplay(item.t);}
 };
 ui.replayPrevEvent.addEventListener('click',()=>jumpReplayEvent(false));
 ui.replayNextEvent.addEventListener('click',()=>jumpReplayEvent(true));
@@ -4757,8 +4700,7 @@ ui.replayExportVideo.addEventListener('click',()=>{
   videoAudioDestination=audio?.state==='running'&&replaySoundEnabled?
     audio.createMediaStreamDestination():null;
   if(replayPlayback.time>=recorder.duration-.2)seekReplay(0);
-  replayPlayback.rate=1;replayPlayback.effectiveRate=1;
-  replayPlayback.loopEnabled=false;replayPlayback.loopIn=null;replayPlayback.loopOut=null;
+  replayPlayback.prepareVideoExport();
   const started=replayQuickVideo.start(replayPlayback.time,
     {width:cssW,height:cssH},videoAudioDestination?.stream??null);
   if(!started){
@@ -4766,7 +4708,7 @@ ui.replayExportVideo.addEventListener('click',()=>{
     showUiHelp('VIDEO CAPTURE NOT SUPPORTED IN THIS BROWSER',4200);
     return;
   }
-  replayPlayback.playing=true;
+  replayPlayback.play();
   ui.replayExportVideo.textContent='STOP VIDEO';
   ui.replayExportVideo.title=replayQuickVideo.audioTrackCount?
     'Recording replay video with audio':'Recording replay video without audio';
@@ -4777,7 +4719,7 @@ function reset(next=state.variant,siteSeed?:number,
  missionOverride?:Session['missionType'],prebuiltSite?:Site,
  encounterRisk?:1|2|3,deferScene=false,
  restartStart?:MissionStartSnapshot){
-  replaying=false;replayPlayback.playing=false;finishedSession=null;
+  replaying=false;replayPlayback.pause();finishedSession=null;
   replayLibrary.resetSession();
   replayEventIndex=null;
   operationsBoard.hidden=true;
@@ -5481,16 +5423,14 @@ window.addEventListener('keydown',e=>{
   if(replaying){
     if(e.code==='Space'&&!e.repeat&&!(
       target instanceof HTMLElement&&target.closest('button,[role="button"]'))){
-      e.preventDefault();replayPlayback.playing=!replayPlayback.playing;
-      if(replayPlayback.playing)unlockAudio();else stopReplaySounds();
-      updateReplayHud();
+      e.preventDefault();replayTimeline.togglePlay();
     }
     if((e.code==='ArrowLeft'||e.code==='ArrowRight')&&!(
       target instanceof HTMLElement&&target.closest('button,summary,[role="button"]'))){
       e.preventDefault();
       const direction:-1|1=e.code==='ArrowLeft'?-1:1;
       if(e.ctrlKey||e.metaKey)jumpReplayEvent(direction>0);
-      else if(e.shiftKey){replayPlayback.playing=false;seekReplay(replayPlayback.time+direction);}
+      else if(e.shiftKey){replayPlayback.pause();seekReplay(replayPlayback.time+direction);}
       else stepReplay('frame',direction);
     }
     return;
@@ -6102,7 +6042,7 @@ function tick(now:number){
     }
   }else{accum=0;previousRenderActors=null;previousRenderDoors=null;}
   if(replaying&&replayPlayback.playing){
-    const playbackStep=replayPlayback.advance(dt,recorder.duration,{
+    const playbackStep=replayPlayback.advanceAndApply(dt,recorder,state,{
       director:replayCamera.mode==='director',
       videoActive:replayQuickVideo.active,
       tempoEdits:replayDirector.tempoEdits
@@ -6112,7 +6052,10 @@ function tick(now:number){
         replayDirector.editNoticeSeconds=playbackStep.trimmedSeconds;
         replayDirector.editNoticeUntil=performance.now()+1850;
       }
-      applyReplayFrameAt(playbackStep.time);
+      if(playbackStep.frame){
+        replayPresentation=playbackStep.frame.presentation??null;
+        fog2D.invalidate();
+      }
       if(playbackStep.resetAudio)stopReplaySounds();
       else playReplayAudioBetween(playbackStep.previousTime,playbackStep.time);
       if(playbackStep.finishedIncident)stopReplaySounds();
