@@ -1,0 +1,33 @@
+name: Fog contour critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-fog-mask.ts'
+      - 'src/breach-fog-contours.ts'
+      - 'tests/fog-contour-smoothing.test.mjs'
+      - '.github/workflows/fog-contour-critical.yml'
+
+jobs:
+  fog-critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Fog boundary, occlusion and visibility regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/fog-contour-smoothing.test.mjs \
+            tests/fog-interior-occlusion-regression.test.mjs \
+            tests/fog-exterior-unseen-apertures-regression.test.mjs \
+            tests/breach-p7-fog-layer-performance.test.mjs \
+            tests/breach-fog-visibility.test.mjs \
+            tests/visibility-11-fog-domain.test.mjs \
+            tests/visibility-08-closed-door-seals.test.mjs
+      - name: Verify previous production Pages checkpoint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs

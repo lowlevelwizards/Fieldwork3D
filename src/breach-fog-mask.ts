@@ -7,6 +7,8 @@ import {intelFogLevel} from './breach-intel.ts';
 import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
 import {forEachRememberedMicroCell} from './breach-fog-memory.ts';
+import {traceFogCellContours,appendSmoothFogContours,type FogCell}
+  from './breach-fog-contours.ts';
 export const FOG_WIDTH=320,FOG_HEIGHT=370;
 /** Display-only supersampling. Cap expanded sites to protect mobile VRAM. */
 export const MAX_FOG_TEXTURE_EDGE=1280;
@@ -120,14 +122,52 @@ export function paintFogMemory(ctx:CanvasRenderingContext2D,s:Session,
   // exploration cannot repeatedly erase fog. On Floor Plan the prebriefed
   // 40% erase already happened; a further 25% erase produces the SAME final
   // 45%-opaque explored tint as the other modes (.60 * .75 = .45).
-  ctx.filter='blur(3px)';
+  // Exact cell membership remains authoritative; round only the displayed
+  // contour instead of blurring unknown ground into explored ground.
+  ctx.filter='none';
   const exploredErase=s.intel.mode==='floor-plan'?.25:EXPLORED_ERASE;
   ctx.fillStyle='rgba(255,255,255,'+exploredErase+')';
-  ctx.beginPath();
-  for(const p of exploredFine)ctx.rect(p.x,p.y,20,20);
+  const microCells:FogCell[]=[];
   const microCount=forEachRememberedMicroCell(s.seenGround,bounds,
-    (col,row)=>ctx.rect(col*10,row*10,10,10));
-  if(exploredFine.length||microCount)ctx.fill();
+    (col,row)=>microCells.push({col,row}));
+  if(exploredFine.length||microCount){
+    // Reconstruct the outer boundary from the SAME fine/micro cells. This
+    // affects presentation alone: original rectangular knowledge clips the
+    // rounded shape, so an interpolated concavity cannot reveal unknown tiles.
+    const canSmooth=typeof ctx.clip==='function'&&
+      typeof ctx.quadraticCurveTo==='function'&&
+      microCount+exploredFine.length*4<=12000;
+    let smoothed=false;
+    if(canSmooth){
+      const cells:FogCell[]=microCells.slice();
+      for(const p of exploredFine){
+        const col=p.x/10,row=p.y/10;
+        cells.push({col,row},{col:col+1,row},
+          {col,row:row+1},{col:col+1,row:row+1});
+      }
+      const contours=traceFogCellContours(cells);
+      if(contours.length){
+        ctx.save();
+        ctx.beginPath();
+        for(const p of exploredFine)ctx.rect(p.x,p.y,20,20);
+        for(const p of microCells)ctx.rect(p.col*10,p.row*10,10,10);
+        ctx.clip();
+        ctx.beginPath();
+        appendSmoothFogContours(ctx,contours);
+        ctx.fill('evenodd');
+        ctx.restore();
+        smoothed=true;
+      }
+    }
+    if(!smoothed){
+      // Old exact-mask fallback for limited canvas implementations or huge
+      // maps; it never changes explored memory or LOS behavior.
+      ctx.beginPath();
+      for(const p of exploredFine)ctx.rect(p.x,p.y,20,20);
+      for(const p of microCells)ctx.rect(p.col*10,p.row*10,10,10);
+      ctx.fill();
+    }
+  }
   ctx.restore();
 }
 /** Live directional sight is the only high-frequency fog component. It
@@ -138,9 +178,9 @@ export function paintFogVisibility(ctx:CanvasRenderingContext2D,s:Session){
   ctx.save();
   ctx.setTransform(sx,0,0,sy,-bounds.minX*sx,-bounds.minY*sy);
   ctx.globalCompositeOperation='destination-out';
-  // Keep actual directional line-of-sight polygons exact; a light edge
-  // feather is display-only and cannot grant tactical information.
-  ctx.filter='blur(2px)';
+  // Live directional LOS is already vector geometry. Native raster
+  // antialiasing keeps its edge crisp; no Gaussian halo through walls.
+  ctx.filter='none';
   ctx.fillStyle='#fff';
   ctx.beginPath();
   let polygonCount=0;
