@@ -29,6 +29,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/replay-director-reset.test.mjs \
+            tests/replay-director-cam.test.mjs \
             tests/replay-director-r101-shoulder-invariant.test.mjs \
             tests/replay-bodycam-controller-20261109.test.mjs \
             tests/replay-camera-controller-20261109.test.mjs \
