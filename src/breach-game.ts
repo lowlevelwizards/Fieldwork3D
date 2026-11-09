@@ -36,6 +36,7 @@ import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,aimHeight} from './breach-cover-height.ts';
 import {microKeyAt} from './breach-fog-memory.ts';
 import {groundView,groundViewCandidate} from './breach-ground-view.ts';
+import {cachedActorGroundView} from './breach-live-visual-candidates.ts';
 import {notePersonalGround} from './breach-replay-personal-ground.ts';
 import {assessFireLane,fireLaneReachable,type FireBlock} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
@@ -5329,19 +5330,18 @@ export function observerPointVisible(
   s:Session,observer:TeamActor,p:Pt
 ):boolean{
   return observer.side==='blue'&&observer.health>0&&
-    d(observer.p,p)<240&&
-    Math.abs(angleDifference(observer.heading,angle(observer.p,p)))<1.15&&
+    groundViewCandidate(cachedActorGroundView(observer),p.x,p.y)&&
     unobstructed(observer.p,p,s,observer.posture==='crouch');
 }
 export function liveVisibility(s:Session,p:Pt){
   if(s.intel.mode==='full-view')return true;
-  // Called for many props, decals and doors on every render. Iterating the
-  // authoritative roster directly avoids allocating team(s) for every ray.
-  // Keep the SAME range, cone and occlusion gates for fog-of-war integrity.
+  // Sight checks can run hundreds of times per render. Reuse the same
+  // exact-candidate field-of-view policy as terrain exploration and avoid
+  // repeated hypot/atan2. Recompute the cached pose immediately whenever
+  // an actor moves or turns; never memoize the LOS/occlusion result itself.
   for(const a of s.operators){
     if(a.side!=='blue'||a.health<=0)continue;
-    if(d(a.p,p)<240&&
-       Math.abs(angleDifference(a.heading,angle(a.p,p)))<1.15&&
+    if(groundViewCandidate(cachedActorGroundView(a),p.x,p.y)&&
        unobstructed(a.p,p,s,a.posture==='crouch'))return true;
   }
   return false;
