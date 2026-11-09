@@ -97,7 +97,7 @@ import {buildReplayDirectorCues,replayCameraTarget,easeReplayCamera,
 import {buildDirectorFilmBeats,directorFilmBeatAt,directorFilmPair,
   type DirectorFilmBeat} from './breach-replay-director-film.ts';
 import {ReplayDirectorStoryboard}
-  from './breach-replay-director-storyboard.ts';
+  from './breach-replay-director-reset.ts';
 import {directorRecordedContact}
   from './breach-replay-director-contact.ts';
 import {directorEditorialCandidates}
@@ -116,8 +116,9 @@ import {buildDirectorPlanIndex,directorIntentsAt,
   type DirectorPlanIndex} from './breach-replay-director-intent.ts';
 import {buildDirectorFutureCues,directorFutureAt,
   type DirectorFutureCue} from './breach-replay-director-events.ts';
-import {composeReplayDirectorShots,type DirectorShot}
-  from './breach-replay-director-shots.ts';
+import {composeReplayDirectorShots}
+  from './breach-replay-director-reset.ts';
+import type {DirectorShot} from './breach-replay-director-shots.ts';
 import {buildDirectorEntryEvents,directorFirstEntryAt,
   type DirectorEntryEvent}
   from './breach-replay-director-crossings.ts';
