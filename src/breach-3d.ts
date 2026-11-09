@@ -943,6 +943,14 @@ export class TacticalScene3D{
     for(const rig of this.civilianRigs.values())this.scene.remove(rig.root);
     this.civilianRigs.clear();
     if(this.rescueFigure)this.rescueFigure.visible=false;
+    // A new layout can reuse the same seed, object revision and light tick.
+    // Drop old beam obstruction geometry and force surviving friendly beams
+    // to resample LOS before they appear on the replacement site.
+    this.beamBlockerTick=-1;this.beamBlockerSite=-1;
+    this.beamBlockerRevision=-1;this.beamBlockers=[];
+    for(const actor of this.actors.values()){
+      actor.beam.visible=false;actor.beamLast=null;
+    }
     this.staticBatches.clear();
     this.siteMaterials.reset();
     this.shadowUpdates.invalidate();
