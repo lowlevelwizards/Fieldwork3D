@@ -359,7 +359,11 @@ export class ReplayDirectorStoryboard{
       from.primaryActorId!==to.primaryActorId||
       from.roomId!==to.roomId||
       directorShoulderSide(from)!==directorShoulderSide(to)||
-      from.editorialKind!==to.editorialKind;
+      from.editorialId!==to.editorialId||
+      from.editorialKind!==to.editorialKind||
+      !!from.contactTargetPoint!==!!to.contactTargetPoint||
+      (from.discoveryStrength??0)<=.25&&
+        (to.discoveryStrength??0)>.25;
     // Never pre-reveal the next beat by transitioning early.
     if(cut)return from;
     const p=clamp(fraction,0,1);
