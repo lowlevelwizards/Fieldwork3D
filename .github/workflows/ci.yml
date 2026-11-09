@@ -31,8 +31,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+  sim-replay-hotpaths:
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/sim-replay-hotpaths-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: C1–C3 critical visibility, doorway, replay and archive regressions
+        run: |
+          node --experimental-strip-types --test tests/runtime-hotpaths-visibility-door.test.mjs tests/runtime-hotpaths-door-occupants.test.mjs tests/runtime-hotpaths-replay-plan-index.test.mjs tests/breach-fog-visibility.test.mjs tests/visibility-08-closed-door-seals.test.mjs tests/doorway-right-of-way-session.test.mjs tests/breach-physical-interactions-nov8.test.mjs tests/replay-r2-recording.test.mjs tests/replay-r3-archive.test.mjs
+      - name: Production build and TypeScript check
+        run: npm run build
+      - name: Verify the previous live Pages build before release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
   verify:
-    if: ${{ github.event_name != 'pull_request' || !startsWith(github.head_ref, 'perf/runtime-lifecycle-') }}
+    if: ${{ github.event_name != 'pull_request' || !(startsWith(github.head_ref, 'perf/runtime-lifecycle-') || startsWith(github.head_ref, 'perf/sim-replay-hotpaths-')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
