@@ -64,7 +64,7 @@ export type BreachRuntimeLoopHooks={
  audio:ReturnType<typeof createBreachAudioController>;
 };
 export function createBreachRuntimeLoop(config:BreachRuntimeLoopHooks){
- let last=performance.now(),accum=0,hudAt=0,running=false;
+ let last=performance.now(),accum=0,hudAt=0,running=false,frameQueued=false;
  let previousRenderActors:Record<string,RenderActor>|null=null;
  let previousRenderDoors:Record<string,number>|null=null;
 
@@ -97,7 +97,14 @@ if(perfOverlay){
 setSightDiagnosticsEnabled(!!perfOverlay);
 const frameMeter=perfOverlay?new FrameMeter():null;
 const physicalActionRings=new PhysicalActionRings();
+/** Idempotent RAF registration: fast stop/start cannot queue two frames. */
+ function scheduleFrame():void{
+  if(frameQueued)return;
+  frameQueued=true;
+  requestAnimationFrame(tick);
+ }
 function tick(now:number){
+  frameQueued=false;
   if(!running)return;
   const state=config.getSession(),recorder=config.getRecorder(),
     replaying=config.isReplaying(),selected=config.getSelected();
@@ -115,7 +122,7 @@ function tick(now:number){
   if(frameMode==='suspended'){
    accum=0;previousRenderActors=null;previousRenderDoors=null;
    physicalActionRings.clear();
-   requestAnimationFrame(tick);return;
+   scheduleFrame();return;
   }
   let simSteps=0;
   let recordingMs=0;
@@ -264,7 +271,7 @@ function tick(now:number){
     awarenessPanel.textContent=inspected?awarenessDebugLine(inspected):
       'No selected actor';
   }
-  requestAnimationFrame(tick);
+  scheduleFrame();
 }
  /** Reset render-only leftovers across mission/replay transitions. */
  function resetPresentation():void{
@@ -274,7 +281,7 @@ function tick(now:number){
  }
  function start():void{
   if(running)return;
-  running=true;last=performance.now();requestAnimationFrame(tick);
+  running=true;last=performance.now();scheduleFrame();
  }
  function stop():void{
   running=false;resetPresentation();

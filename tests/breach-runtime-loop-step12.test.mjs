@@ -94,6 +94,10 @@ test('runtime remains sole RAF owner; suspension skips rendering, replay advance
    assert.ok(events.includes('replay-camera'));
    assert.ok(events.indexOf('replay-advance')<events.indexOf('render'));
    runtime.stop();
+   runtime.start();
+   assert.equal(frames.length,1,
+     'restart must reuse the already queued RAF, never add a second');
+   runtime.stop();
    const pending=frames.shift();
    pending?.(performance.now()+66);
    assert.equal(frames.length,0,'stopped RAF may not queue another frame');
