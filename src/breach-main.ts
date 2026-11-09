@@ -50,6 +50,7 @@ import type {Site} from './breach-site.ts';
 import {BreachMissionController,type MissionTransition} from './breach-mission-controller.ts';
 import {createBreachQuickPlayController} from './breach-quickplay-controller.ts';
 import {createBreachCampaignFlow} from './breach-campaign-flow.ts';
+import {createOperatorStudioBridge} from './operator-studio-bridge.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
@@ -125,8 +126,6 @@ import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
   resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
  configureRosterWeapon,configureRosterWeaponPreset,configureRosterWeaponBodyPart,
  renameRosterMember} from './breach-roster.ts';
-import {validateStudioAppearanceEdits,applyStudioRosterEdits,
- applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
@@ -465,125 +464,17 @@ function saveCampaign():boolean{
  try{localStorage.setItem(CAMPAIGN_KEY,JSON.stringify(campaign));return true;}
  catch{console.warn('Campaign save unavailable');return false;}
 }
-/** Embedded Studio keeps the live mission mounted. The game remains the
- * sole authority for campaign/Quick Play writes; the iframe edits a draft. */
-let studioMode:'quick'|'campaign'='quick';
-let studioSelected='rook';
-let studioOverlay:HTMLDivElement|null=null;
-let studioFrame:HTMLIFrameElement|null=null;
-/** Keep one warm Studio context for short returns; release it after a bounded
- * hidden interval to avoid retaining two WebGL contexts indefinitely on iOS.
- * The iframe never owns tactical simulation or authoritative roster state. */
-const STUDIO_WARM_RETAIN_MS=60_000;
-let studioReady=false,studioOpenEpoch=0,studioInitSentEpoch=-1;
-let studioReleaseTimer:ReturnType<typeof setTimeout>|null=null;
-function sendStudioInit(){
- if(!studioOverlay||studioOverlay.hidden||
-    studioInitSentEpoch===studioOpenEpoch)return;
- studioInitSentEpoch=studioOpenEpoch;
- if(!studioFrame?.contentWindow)return;
- const people=studioMode==='campaign'?
-  campaign?.operators.filter(o=>o.status!=='retired'&&o.status!=='lost')??[]:
-  persistentRoster.members;
- studioFrame.contentWindow.postMessage({
-  type:'fw-studio-init',mode:studioMode,selected:studioSelected,
-  members:people.map(p=>({
-   id:p.id,callsign:p.callsign,appearanceSeed:p.appearanceSeed,
-   loadout:p.loadout,wardrobe:p.wardrobe,
-   weapon:p.weapon,weaponConfiguration:p.weaponConfiguration
-  })),
-  readonly:studioMode==='campaign'?!!campaign?.activeContractId:
-   state.phase!=='planning'||replaying
- },location.origin);
-}
-function closeOperatorStudio(){
- if(!studioOverlay||studioOverlay.hidden)return;
- studioOverlay.hidden=true;
- studioFrame?.contentWindow?.postMessage({type:'fw-studio-suspend'},location.origin);
- if(studioReleaseTimer!==null)clearTimeout(studioReleaseTimer);
- studioReleaseTimer=setTimeout(()=>{
-  studioReleaseTimer=null;
-  if(!studioOverlay?.hidden||!studioFrame)return;
-  studioFrame.src='about:blank';
-  studioReady=false;studioInitSentEpoch=-1;
- },STUDIO_WARM_RETAIN_MS);
-}
-function openOperatorStudio(id?:string,requestedMode?:'quick'|'campaign'){
- studioMode=requestedMode??(campaignMode==='home'||campaignMode==='mission'?
-  'campaign':'quick');
- if(studioMode==='campaign'&&!campaign)return;
- if(!studioOverlay){
-  studioOverlay=document.createElement('div');
-  studioOverlay.id='operatorStudioOverlay';studioOverlay.hidden=true;
-  studioFrame=document.createElement('iframe');
-  studioFrame.title='Fieldwork Operator Studio';
-  studioOverlay.append(studioFrame);document.body.append(studioOverlay);
-  studioFrame.onload=()=>{
-   if(studioOverlay&&!studioOverlay.hidden)sendStudioInit();
-  };
- }
- studioSelected=id??(studioMode==='campaign'?campaign?.operators[0]?.id:'rook')??'rook';
- if(studioReleaseTimer!==null){
-  clearTimeout(studioReleaseTimer);studioReleaseTimer=null;
- }
- studioOpenEpoch++;
- studioOverlay.hidden=false;
- const url=new URL('./operator-studio.html',location.href);
- url.searchParams.set('embedded','1');url.searchParams.set('mode',studioMode);
- url.searchParams.set('operator',studioSelected);
- // A hidden frame still owns the already compiled rig and GPU resources.
- // Send fresh authoritative roster/readonly state rather than navigate it.
- if(!studioFrame!.getAttribute('src')||
-    studioFrame!.getAttribute('src')==='about:blank'){
-  studioReady=false;
-  studioFrame!.src=url.href;
- }else if(studioReady)sendStudioInit();
-}
-document.getElementById('openOperatorStudio')?.addEventListener('click',()=>
- openOperatorStudio(selected,'quick'));
-window.addEventListener('message',event=>{
- if(!studioFrame?.contentWindow||event.source!==studioFrame.contentWindow||
-    event.origin!==location.origin||!event.data||typeof event.data!=='object')return;
- const msg=event.data as {type?:string;id?:unknown;
-  wardrobe?:unknown;entries?:unknown};
- if(msg.type==='fw-studio-ready'){
-  studioReady=true;sendStudioInit();return;
- }
- if(msg.type==='fw-studio-close'){closeOperatorStudio();return;}
- const batch=msg.type==='fw-studio-commit-batch';
- if(!batch&&msg.type!=='fw-studio-commit')return;
- const edits=validateStudioAppearanceEdits(batch?msg.entries:
-  [{id:msg.id,wardrobe:msg.wardrobe}]);
- let ok=false;
- if(edits&&studioMode==='quick'&&state.phase==='planning'&&!replaying){
-  const next=applyStudioRosterEdits(persistentRoster,edits);
-  if(next){
-   const previous=persistentRoster;persistentRoster=next;
-   ok=saveRoster();
-   if(ok){applyRosterIdentity(state,persistentRoster);
-    renderOperationsBoard();updateHud();}
-   else persistentRoster=previous;
-  }
- }else if(edits&&studioMode==='campaign'&&campaign&&!campaign.activeContractId){
-  const next=applyStudioCampaignEdits(campaign,edits);
-  if(next){
-   const previous=campaign;campaign=next;
-   ok=saveCampaign();
-   if(ok)showCampaignHome();
-   else campaign=previous;
-  }
- }
- if(edits?.length)studioSelected=edits[0].id;
- if(batch){
-  studioFrame.contentWindow.postMessage({
-   type:'fw-studio-batch-saved',ids:edits?.map(e=>e.id)??[],ok
-  },location.origin);
- }else{
-  studioFrame.contentWindow.postMessage({
-   type:'fw-studio-saved',id:msg.id,ok
-  },location.origin);
- }
+const studioBridge=createOperatorStudioBridge({
+  getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},
+  getRoster:()=>persistentRoster,setRoster:value=>{persistentRoster=value;},
+  getMode:()=>campaignMode,getSelected:()=>selected,
+  getSession:()=>state,isReplaying:()=>replaying,
+  saveRoster,saveCampaign,
+  applyQuickRoster:()=>applyRosterIdentity(state,persistentRoster),
+  onQuickSaved:()=>{renderOperationsBoard();updateHud();},
+  onCampaignSaved:()=>showCampaignHome()
 });
+const openOperatorStudio=studioBridge.open;
 function applyCampaignSkills(session:Session){
  if(campaignMode!=='mission'||!campaign)return;
  for(const a of team(session)){
@@ -4300,7 +4191,7 @@ function tick(now:number){
   const perfRenderStart=perfOverlay?performance.now():0;
   // The Studio is an opaque full-screen view. Skip only hidden rendering,
   // never fixed-step gameplay or authoritative replay/simulation state.
-  const studioOccludesTactical=!!studioOverlay&&!studioOverlay.hidden&&
+  const studioOccludesTactical=studioBridge.visible&&
    !replayQuickVideo.active;
   if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
     stage.setMiniatureFocusContext(replaying,dt);
