@@ -2209,11 +2209,20 @@ export class TacticalScene3D{
         this.view.focus.x,17,this.view.focus.y);
       const aspect=this.width/this.height;
       const span=this.replayCameraBaseSpan()/Math.max(.65,this.view.zoom);
-      this.directorOrthoCamera.left=-span*aspect/2;
-      this.directorOrthoCamera.right=span*aspect/2;
-      this.directorOrthoCamera.top=span/2;
-      this.directorOrthoCamera.bottom=-span/2;
-      this.directorOrthoCamera.updateProjectionMatrix();
+      // Recomputing a projection matrix at 60Hz is wasted work while the
+      // framing is static; the pose still updates each camera tick.
+      const left=-span*aspect/2,right=span*aspect/2;
+      const top=span/2,bottom=-span/2;
+      if(this.directorOrthoCamera.left!==left||
+         this.directorOrthoCamera.right!==right||
+         this.directorOrthoCamera.top!==top||
+         this.directorOrthoCamera.bottom!==bottom){
+        this.directorOrthoCamera.left=left;
+        this.directorOrthoCamera.right=right;
+        this.directorOrthoCamera.top=top;
+        this.directorOrthoCamera.bottom=bottom;
+        this.directorOrthoCamera.updateProjectionMatrix();
+      }
       this.directorOrthoCamera.updateMatrixWorld(true);
       // Optional wide-perspective audition uses the SAME legal room and
       // shot timeline, but a more elevated, wider lens for group coverage.
@@ -2221,9 +2230,12 @@ export class TacticalScene3D{
       this.directorCamera.up.set(0,1,0);
       this.directorCamera.lookAt(
         this.view.focus.x,18,this.view.focus.y);
-      this.directorCamera.aspect=aspect;
-      this.directorCamera.fov=this.replayDirectorLensFov;
-      this.directorCamera.updateProjectionMatrix();
+      if(this.directorCamera.aspect!==aspect||
+         this.directorCamera.fov!==this.replayDirectorLensFov){
+        this.directorCamera.aspect=aspect;
+        this.directorCamera.fov=this.replayDirectorLensFov;
+        this.directorCamera.updateProjectionMatrix();
+      }
       this.directorCamera.updateMatrixWorld(true);
     }
     const aspect=this.width/this.height;
@@ -2233,9 +2245,14 @@ export class TacticalScene3D{
     // A yaw-invariant fit avoids breathing/scale changes while orbiting.
     const baseSpan=Math.max(820,(diagonal+66)/aspect);
     const span=baseSpan/this.view.zoom;
-    this.camera.left=-span*aspect/2;this.camera.right=span*aspect/2;
-    this.camera.top=span/2;this.camera.bottom=-span/2;
-    this.camera.updateProjectionMatrix();
+    const left=-span*aspect/2,right=span*aspect/2;
+    const top=span/2,bottom=-span/2;
+    if(this.camera.left!==left||this.camera.right!==right||
+       this.camera.top!==top||this.camera.bottom!==bottom){
+      this.camera.left=left;this.camera.right=right;
+      this.camera.top=top;this.camera.bottom=bottom;
+      this.camera.updateProjectionMatrix();
+    }
     this.camera.updateMatrixWorld(true);
     // Lightweight observability for touch regression tests and camera QA.
     const signature=[
