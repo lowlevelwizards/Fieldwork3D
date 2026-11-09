@@ -1789,7 +1789,8 @@ function advanceReplayCamera(dt:number,instant=false):void{
   replayCamera.advance({
     dt,instant,replaying,stage,viewMode,state,recorder,replayTime:replayPlayback.time,
     replayContactObserverId:replayKnowledge.observerId,
-    replayOmniscient:replayKnowledge.omniscient,cssW,cssH,
+    replayOmniscient:replayKnowledge.omniscient,
+    manualBodycamActive:replayBodycam.active,cssW,cssH,
     replayFollowStatus:ui.replayFollowStatus,debugPanel:replayDirectorDebugPanel
   });
 }
@@ -1851,9 +1852,13 @@ function updateReplayHud(){
     team(state).some(actor=>actor.id===replayCamera.followId&&actor.health>0);
   const followingName=team(state).find(actor=>actor.id===replayCamera.followId)?.name??
     replayCamera.followId;
+  const autoCam=replayCamera.mode==='director'&&replayCamera.lens==='cam';
+  const camId=autoCam?replayCamera.directorCamActor:null;
+  const camName=team(state).find(a=>a.id===camId)?.name??camId;
   ui.replayFollowStatus.textContent=replayBodycam.active?
     'BODYCAM · '+followingName.toUpperCase():following?
     'FOLLOWING · '+followingName.toUpperCase():
+    autoCam?'DIRECTOR CAM · '+(camName?.toUpperCase()??'NO RECORDED VIEW'):
     replayCamera.mode==='director'?
       'DIRECTOR · '+(replayDirector.target?.shotType.toUpperCase()??'SQUAD') :
     replayCamera.mode==='squad'?'FOLLOWING · SQUAD':'FREE CAMERA';
@@ -1950,16 +1955,16 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
     String(replayCamera.mode==='director'));
   ui.replayDirectLens.hidden=replayCamera.mode!=='director';
   ui.replayDirectLens.setAttribute('aria-pressed',
-    String(replayCamera.lens==='wide'));
+    String(replayCamera.lens!=='ortho'));
+  const lensLabel=replayCamera.lens.toUpperCase();
+  const camAvailable=replayDirector.camEligibleObservers.length>0;
   ui.replayDirectLens.setAttribute('aria-label',
-    'Director camera lens: '+(replayCamera.lens==='ortho'?
-      'in-room orthographic; audition wide perspective':
-      'wide perspective audition; return to orthographic'));
-  ui.replayDirectLens.title=replayCamera.lens==='ortho'?
-    'ORTHO — in-room orthographic; tap to preview wide perspective':
-    'WIDE — wide in-room perspective audition; tap for orthographic';
-  ui.replayDirectLens.querySelector('small')!.textContent=
-    replayCamera.lens==='ortho'?'ORTHO':'WIDE';
+    'Director lens: '+lensLabel+'. Tap to choose the next view');
+  ui.replayDirectLens.title=camAvailable?
+    'Director lens '+lensLabel+' · ORTHO / WIDE / CAM':
+    'Director lens '+lensLabel+
+      ' · reconstructed CAM needs recorded personal sight evidence';
+  ui.replayDirectLens.querySelector('small')!.textContent=lensLabel;
   const canBodycam=!!stage&&replayBodycam.observers.includes(replayCamera.followId);
   ui.replayDirectBodycam.hidden=!replayBodycam.active&&replayCamera.mode!=='operator';
   ui.replayDirectBodycam.title=canBodycam?
@@ -1969,9 +1974,16 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
   ui.replayDirectBodycam.setAttribute('aria-pressed',String(replayBodycam.active));
   ui.replayDirectBodycam.querySelector('small')!.textContent=replayBodycam.active?'EXIT':'CAM';
   ui.replayDirectBodycam.setAttribute('aria-label',replayBodycam.active?'Exit Bodycam':'Enter Bodycam');
-  ui.replayDirectMount.hidden=!replayBodycam.active;
-  ui.replayDirectMount.querySelector('small')!.textContent=replayBodycam.mount==='chest'?'CHEST':'HEAD';
-  ui.replayDirectMount.setAttribute('aria-label','Bodycam mount: '+replayBodycam.mount);
+  ui.replayDirectMount.hidden=!replayBodycam.active&&!autoCam;
+  const activeMount=autoCam?replayCamera.camMount:replayBodycam.mount;
+  ui.replayDirectMount.querySelector('small')!.textContent=
+    activeMount==='chest'?'CHEST':'HEAD';
+  ui.replayDirectMount.setAttribute('aria-label',
+    (autoCam?'Director CAM':'Bodycam')+' mount: '+
+    activeMount+'. Tap to switch head or chest');
+  ui.replayDirectMount.title=autoCam?
+    'Director CAM mount · follows every selected operator':
+    'Bodycam head/chest mount';
   ui.replayDirectFree.hidden=replayCamera.mode==='free'&&!replayBodycam.active;
   ui.replayDirectFree.querySelector('small')!.textContent=replayBodycam.active?'EXIT':'FREE';
   ui.replayDirectFree.setAttribute('aria-label',replayBodycam.active?'Exit Bodycam camera':'Free camera');
@@ -1995,11 +2007,19 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
   ui.replayBodycam.setAttribute('aria-pressed',String(replayBodycam.active));
   ui.replayBodycamMount.disabled=!replayBodycam.active;
   ui.replayBodycamMount.textContent='MOUNT '+replayBodycam.mount.toUpperCase();
-  ui.replayBodycamStatus.hidden=!replayBodycam.active;
-  if(replayBodycam.active&&replayKnowledge.observerId)
+  ui.replayBodycamStatus.hidden=!replayBodycam.active&&!autoCam;
+  if(autoCam&&camId){
+    ui.replayBodycamStatus.textContent='DIRECTOR · '+
+      bodycamDisclosureLabel(camId,replayCamera.camMount,
+        replayBodycam.groundObservers.has(camId));
+  }else if(replayBodycam.active&&replayKnowledge.observerId){
     ui.replayBodycamStatus.textContent=bodycamDisclosureLabel(
       replayKnowledge.observerId,replayBodycam.mount,
       replayBodycam.groundObservers.has(replayKnowledge.observerId));
+  }else if(autoCam){
+    ui.replayBodycamStatus.textContent=
+      'DIRECTOR CAM · NO RECORDED PERSONAL CAMERA AVAILABLE';
+  }
   ui.replayGroundLens.textContent=replayKnowledge.groundLensOn?
     'GROUND: PERSONAL':'GROUND: OFF';
   ui.replayGroundLens.setAttribute('aria-pressed',
@@ -2356,9 +2376,12 @@ ui.replayDirectDirector.addEventListener('click',()=>{
 });
 ui.replayDirectLens.addEventListener('click',()=>{
   if(!replaying||replayCamera.mode!=='director')return;
-  replayCamera.lens=replayCamera.lens==='ortho'?'wide':'ortho';
-  // Same exact film timestamp, room and camera anchor: honest A/B
-  // comparison of projection/framing, without a reactive shot recut.
+  replayCamera.lens=replayCamera.lens==='ortho'?'wide':
+    replayCamera.lens==='wide'&&replayDirector.camEligibleObservers.length?
+      'cam':'ortho';
+  // Mount is a viewer preference, not a director edit. No recorded
+  // subject changes just because the lens changes.
+  if(replayCamera.lens==='cam'&&viewMode!=='iso'&&stage)cameraMode('iso');
   advanceReplayCamera(0,true);
   updateReplayHud();
 });
@@ -2377,7 +2400,12 @@ ui.replayDirectBodycam.addEventListener('click',()=>{
   replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
   updateReplayHud();
 });
-ui.replayDirectMount.addEventListener('click',()=>ui.replayBodycamMount.click());
+ui.replayDirectMount.addEventListener('click',()=>{
+  if(replayCamera.mode==='director'&&replayCamera.lens==='cam'){
+    replayCamera.camMount=replayCamera.camMount==='chest'?'helmet':'chest';
+    advanceReplayCamera(0,true);updateReplayHud();
+  }else ui.replayBodycamMount.click();
+});
 ui.replayDirectFree.addEventListener('click',()=>{
   if(replayBodycam.active)stopReplayBodycam();
   chooseReplayCamera('free');replayCamera.follow=false;
