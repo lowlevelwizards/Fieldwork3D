@@ -4902,10 +4902,7 @@ function rebuildReplayEventIndex():void{
           directorFilmPair(beat,frame):null,
         actionLines:directorRecentAction(recorder.ballistics.between(
           Math.max(0,t-.72),t),t,historicalShotVisible),
-        // Keep the FIRST entrant as the subject while the team crosses
-        // and establishes itself inside. Door interaction is setup;
-        // the next room, not the open door, is the payoff.
-        entry:directorFirstEntryAt(t,replayDirectorEntries,2.2,3.0),
+        entry:directorFirstEntryAt(t,replayDirectorEntries,2.2,1.4),
         doors:frame.doors,cover:frame.coverState,
         usableWidth:cssW<500?.75:.85,
         usableHeight:cssH<520?.68:.81,maxZoom:14,
