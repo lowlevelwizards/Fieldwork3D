@@ -12,9 +12,12 @@ import {directorFilmBeatAt} from './breach-replay-director-film.ts';
 import {resolvedReplayCamera,type ReplayPerspective}
   from './breach-replay-ui-state.ts';
 import {ReplayDirectorController} from './breach-replay-director-controller.ts';
+import type {ReplayDisclosure} from './breach-replay-visibility.ts';
+import type {BodycamMount} from './breach-replay-bodycam-controller.ts';
 
 export type ReplayCameraContext={
  dt:number;instant?:boolean;replaying:boolean;
+ manualBodycamActive?:boolean;
  stage:TacticalScene3D|null;viewMode:ViewMode;
  state:Session;recorder:MissionRecorder;replayTime:number;
  replayContactObserverId:string|null;replayOmniscient:boolean;
@@ -25,7 +28,17 @@ export class ReplayCameraController{
  readonly director=new ReplayDirectorController();
  mode:ReplayCameraMode='free';
  follow=false;followId='rook';
- lens:'ortho'|'wide'='ortho';
+ lens:'ortho'|'wide'|'cam'='ortho';
+ camMount:BodycamMount='chest';
+ /** The one operator whose historical model the renderer is currently using. */
+ directorCamActor:string|null=null;
+ camDecision:string|null=null;
+ private appliedCamMount:BodycamMount|null=null;
+ directorCamDisclosure():ReplayDisclosure|null{
+   return this.mode==='director'&&this.lens==='cam'&&
+     this.directorCamActor?
+     {mode:'operator',observerId:this.directorCamActor}:null;
+ }
  selectMode(wanted:ReplayCameraMode,view:ReplayPerspective,
     hasScene:boolean,bodycamActive:boolean):ReplayCameraMode{
    const available=resolvedReplayCamera(wanted,view,hasScene,bodycamActive);
@@ -38,10 +51,13 @@ export class ReplayCameraController{
  }
  reset(stage:TacticalScene3D|null=null):void{
    this.mode='free';this.follow=false;this.followId='rook';this.lens='ortho';
+   this.camMount='chest';this.directorCamActor=null;
+   this.camDecision=null;this.appliedCamMount=null;
    this.director.reset();
    stage?.setReplayDirectorCameraAnchor(null);
    stage?.setReplayDirectorFocus(null);
    stage?.setReplayDirectorSubjects([]);
+   stage?.setReplayBodycam(null);
  }
  advance({dt,instant=false,replaying,stage,viewMode,state,recorder,replayTime,
    replayContactObserverId,replayOmniscient,cssW,cssH,replayFollowStatus,
@@ -52,6 +68,60 @@ export class ReplayCameraController{
     id:a.id,p:a.p,side:a.side,health:a.health,heading:a.heading
   }));
   if(this.mode==='director'){
+    if(this.lens==='cam'){
+      // Separate SUBJECT timeline: no room geometry, legal shoulder,
+      // projection grade or OTS fallback can decide whether CAM activates.
+      const chosen=this.director.subjectTimeline?.sample(replayTime)??null;
+      const eligible=this.director.camEligibleObservers;
+      const actorId=chosen?.actorId??(
+        this.directorCamActor&&eligible.includes(this.directorCamActor)?
+          this.directorCamActor:
+        actors.find(a=>a.side==='blue'&&a.health>0&&
+          eligible.includes(a.id))?.id??null);
+      this.camDecision=chosen?.cutReason??'hold:recorded-operator';
+      this.director.target=null;
+      this.director.grade=null;delete replayFollowStatus.dataset.grade;
+      stage.setReplayDirectorCameraAnchor(null);
+      stage.setReplayDirectorFocus(null);
+      stage.setReplayDirectorSubjects([]);
+      if(!actorId){
+        // No personal evidence: stay in Director with an explicit status.
+        // Never silently switch to free or expose squad/full-sight actors.
+        if(this.directorCamActor)stage.setReplayBodycam(null);
+        this.directorCamActor=null;this.appliedCamMount=null;
+        replayFollowStatus.title='Director CAM unavailable: no recorded personal sight';
+        if(debugPanel)debugPanel.hidden=true;
+        return;
+      }
+      if(actorId!==this.directorCamActor||
+         this.camMount!==this.appliedCamMount){
+        // Reuse the exact helmet/chest socket, owner mask and smoothing
+        // from manual Bodycam. A new actor is a HARD camera cut.
+        stage.setReplayBodycam({actorId,mount:this.camMount,
+          stabilization:'balanced',fov:95});
+        this.appliedCamMount=this.camMount;
+      }
+      this.directorCamActor=actorId;
+      replayFollowStatus.title='RECONSTRUCTED DIRECTOR CAM · '+
+        actorId.toUpperCase()+' · '+this.camMount.toUpperCase()+
+        ' · '+(chosen?.reason??'recorded perspective')+
+        ' · '+this.camDecision;
+      if(debugPanel){
+        debugPanel.hidden=false;
+        debugPanel.textContent='DIRECTOR CAM · '+
+          actorId.toUpperCase()+' · '+this.camMount.toUpperCase()+
+          '\\nSUBJECT '+(chosen?.reason??'recorded perspective')+
+          '\\nDECISION '+this.camDecision+
+          '\\nNO CINEMATIC CAMERA STAGING';
+      }
+      return;
+    }
+    // Leaving CAM restores the unchanged ORTHO/WIDE presenter.
+    if(this.directorCamActor){
+      stage.setReplayBodycam(null);
+      this.directorCamActor=null;this.appliedCamMount=null;
+      this.camDecision=null;
+    }
     const target=this.director.storyboard?.sample(replayTime)??null;
     this.director.target=target;
     
@@ -163,6 +233,13 @@ export class ReplayCameraController{
   }
   stage.setReplayDirectorCameraAnchor(null);
   stage.setReplayDirectorFocus(null);
+  if(this.directorCamActor){
+    // Manual Bodycam owns its own mount; do not clear it when a user
+    // explicitly switches from auto CAM to manual first-person mode.
+    if(!manualBodycamActive)stage.setReplayBodycam(null);
+    this.directorCamActor=null;this.appliedCamMount=null;
+    this.camDecision=null;
+  }
   this.director.grade=null;
   delete replayFollowStatus.dataset.grade;
   replayFollowStatus.title='Replay camera';
