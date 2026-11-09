@@ -5,7 +5,8 @@ import {doorCenter,doorLeafSegment,pointToSegment,OPERATOR_RADIUS,
 import type {PassageSlot} from './breach-passage-plan.ts';
 export type PassageActor={id:string;p:Pt;goal:Pt|null;health:number;
   blockedTime:number;active:boolean;side?:Side;
-  plannedPassage?:PassageSlot|null};
+  plannedPassage?:PassageSlot|null;
+  waitSeconds?:number;squeezing?:boolean};
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const side=(p:Pt,d:Door)=>{
   const m=doorCenter(d),dx=d.b.x-d.a.x,dy=d.b.y-d.a.y;
@@ -377,6 +378,94 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
   if(atOpposingEntry(actor,cluster,intendedStep))return true;
  }
  return false;
+}
+/** A rare mutual stall needs ONE deterministic loser, not simultaneous
+ * squeeze/replan cycles. Give the less-advanced actor a temporary, physically
+ * verified retreat point on the side it approached from. The caller adds the
+ * point to transient motor navigation, never to authored orders. Ordinary
+ * flowing stacks do not qualify, even if a follower briefly waits.
+ */
+export function passageDeadlockRetreatTarget(actor:PassageActor,
+ doors:readonly Door[],actors:readonly PassageActor[],
+ physicallyClear:(from:Pt,to:Pt)=>boolean):Pt|null{
+ if(!actor.active||!actor.goal||actor.health<=0||
+   (actor.waitSeconds??0)<1.25)return null;
+ for(const door of doors){
+  const width=distance(door.a,door.b);
+  if(width>60||distance(actor.p,doorCenter(door))>40||
+    !crossingDoor(actor,door))continue;
+  const peers=actors.filter(other=>other.id!==actor.id&&
+    other.health>0&&other.side===actor.side&&other.goal&&
+    distance(other.p,doorCenter(door))<40&&
+    (inDoorway(other,door)||crossingDoor(other,door))&&
+    ((other.waitSeconds??0)>.75||other.blockedTime>.9));
+  if(!peers.length)continue;
+  // A body that has actually cleared farther through a threshold wins.
+  // Match order is independent of the actor array and the simulation tick.
+  const advancement=(unit:PassageActor)=>{
+    const direction=Math.sign(side(unit.goal!,door));
+    return side(unit.p,door)*(direction||1);
+  };
+  const winner=[actor,...peers].sort((a,b)=>
+    advancement(b)-advancement(a)||a.id.localeCompare(b.id))[0];
+  if(winner.id===actor.id)continue;
+  const len=width||1,tx=(door.b.x-door.a.x)/len,
+    ty=(door.b.y-door.a.y)/len,nx=-ty,ny=tx;
+  // A retreat must go AGAINST the destination side of the threshold.
+  const retreat=-Math.sign(side(actor.goal,door))||
+    Math.sign(side(actor.p,door))||1;
+  const startSide=side(actor.p,door);
+  for(const depth of [29,22,15]){
+   for(const offset of [0,9,-9,16,-16]){
+    const candidate={x:actor.p.x+nx*retreat*depth+tx*offset,
+      y:actor.p.y+ny*retreat*depth+ty*offset};
+    // Do not invent a detour that starts inside a wall, moves a body through
+    // furniture, approaches its target, or pushes a teammate deeper.
+    if(Math.abs(side(candidate,door))<Math.abs(startSide)+8||
+       distance(candidate,winner.p)<distance(actor.p,winner.p)+3||
+       !physicallyClear(actor.p,candidate))continue;
+    return candidate;
+   }
+  }
+ }
+ return null;
+}
+/** A genuinely idle teammate may be physically standing in the doorway.
+ * Make a tiny real step AWAY from a nearby active teammate's approach,
+ * rather than treating that stationary actor as a permanent lane owner.
+ * The caller must enforce real swept collision; no planned move or WATCH is
+ * rewritten. This is for idle operators only, not authored HOLD/WAIT.
+ */
+export function passageIdleYieldStep(idle:PassageActor,
+ doors:readonly Door[],actors:readonly PassageActor[],
+ physicallyClear:(from:Pt,to:Pt)=>boolean,maxStep=1.4):Pt|null{
+ if(idle.active||idle.goal||idle.health<=0)return null;
+ const step=Math.max(.15,Math.min(1.4,maxStep));
+ for(const door of doors){
+  const width=distance(door.a,door.b);
+  if(width>60||!inDoorway(idle,door))continue;
+  const mid=doorCenter(door);
+  const approaching=actors.filter(a=>a.id!==idle.id&&a.active&&
+    a.health>0&&a.goal&&a.side===idle.side&&
+    crossingDoor(a,door)&&distance(a.p,mid)<45)
+   .sort((a,b)=>distance(a.p,mid)-distance(b.p,mid)||
+      a.id.localeCompare(b.id))[0];
+  if(!approaching)continue;
+  const nx=-(door.b.y-door.a.y)/width,
+    ny=(door.b.x-door.a.x)/width;
+  const separation=side(idle.p,door)-side(approaching.p,door);
+  const sign=separation>=0?1:-1;
+  for(const direction of [sign,-sign]){
+   const at={x:idle.p.x+nx*direction*step,
+     y:idle.p.y+ny*direction*step};
+   // A yield must clear the aisle and not nudge the idle operator toward
+   // an approaching teammate or through a new obstacle.
+   if(distance(at,approaching.p)<distance(idle.p,approaching.p)+.1||
+      !physicallyClear(idle.p,at))continue;
+   return at;
+  }
+ }
+ return null;
 }
 /** Existing passage reservations manage spacing near narrow openings.
  * Do not add cosmetic friendly sidestepping that drives a later follower

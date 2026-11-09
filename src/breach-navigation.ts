@@ -98,6 +98,20 @@ export type BodyProfile='normal'|'squeeze';
 // with just enough give for the clearance of a jacket/soft gear.
 export const SQUEEZE_RADIUS=3.8;
 export const squeezeFacing=(travelYaw:number)=>travelYaw-Math.PI/2;
+/** Genuine tight gaps press from BOTH sides. A single table corner or wall
+ * graze should trigger wall glide / corner slide / route repair, not make
+ * the operator randomly turn their shoulders sideways. */
+export function twoSidedSqueezePressure(from:Pt,to:Pt,doors:Door[]):boolean{
+ const dx=to.x-from.x,dy=to.y-from.y;
+ const len=Math.hypot(dx,dy);
+ if(len<.05)return false;
+ const nx=-dy/len,ny=dx/len;
+ const mid={x:(from.x+to.x)/2,y:(from.y+to.y)/2};
+ const lateral=OPERATOR_RADIUS+2;
+ const left={x:mid.x+nx*lateral,y:mid.y+ny*lateral};
+ const right={x:mid.x-nx*lateral,y:mid.y-ny*lateral};
+ return !bodyClear(left,doors)&&!bodyClear(right,doors);
+}
 /** Once shoulders are turned, remain narrow until there is real full-body
  * space both here and immediately ahead. Without a lookahead, the model
  * flickers between normal and squeeze at consecutive narrow grid cells.

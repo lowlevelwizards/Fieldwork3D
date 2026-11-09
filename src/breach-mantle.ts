@@ -9,6 +9,7 @@
 import {type Obstacle,type Door,type Pt,type Segment,
  OPERATOR_RADIUS,pointToSegment,doorLeafSegment} from './breach-core.ts';
 import {coverHeight} from './breach-cover-height.ts';
+import {windowVisualHeadHeight} from './breach-opening-proportions.ts';
 import {isFootstepObstacle,traversalSurface} from './breach-traversal-surfaces.ts';
 import type {WindowState} from './breach-windows.ts';
 
@@ -293,9 +294,10 @@ export function probeWindowPortalRoute(from:Pt,to:Pt,world:CrossingWorld,
  */
 export function hasClimbableWindowOpening(window:WindowState):boolean{
  if(window.treatment==='bars'||window.treatment==='boarded'||
-    window.style==='wire')return false;
+    window.style==='wire'||window.style==='clerestory')return false;
  if(window.width<25)return false;
- const sill=window.sillHeight??14,head=window.headHeight??38;
+ const sill=window.sillHeight??14,
+   head=window.headHeight??windowVisualHeadHeight(window.style);
  return sill<=30&&head-sill>=18;
 }
 export function canClimbWindow(window:WindowState):boolean{

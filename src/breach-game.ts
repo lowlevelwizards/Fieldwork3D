@@ -10,7 +10,9 @@ import {
   type Pt,type Operator,type TacticalState,type Door,type Side,
   W,H,WALLS,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,route,passable,activateSite,
   segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,
-  pointToSegment,staticWallBlocksRay,someCoverAlongRay,activeGeometryRevision,
+  pointToSegment,staticWallBlocksRay,someCoverAlongRay,someCoverNearPoint,
+  activeGeometryRevision,
+  activeWorldBounds,
 } from './breach-core.ts';
 import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
@@ -60,6 +62,7 @@ import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {captureMotionFrameOrigins,buildMotionFrameProposals}
  from './breach-motion-frame-input.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
+import {releaseEmbeddedCover} from './breach-cover-release.ts';
 import {executionStatus,type MotorPause,type ExecutionIssue,
   type ExecutionStatus} from './breach-execution-state.ts';
 import {executionTransition,type ExecutionEvent} from './breach-execution-events.ts';
@@ -67,7 +70,7 @@ import {interpretSound,soundResponse,soundPriority}
   from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
-import {canAutoShove} from './breach-traversal-surfaces.ts';
+import {canAutoShove,isFootstepObstacle} from './breach-traversal-surfaces.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
 import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
 import {damageCover} from './breach-reactive-cover.ts';
@@ -117,6 +120,7 @@ import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
 import {passageWait,passageFollowerStep,passageScheduledStep,
+  passageDeadlockRetreatTarget,passageIdleYieldStep,
   approachingNarrowThreshold,type PassageActor,type PassageLease}
   from './breach-passage.ts';
 import {planDoorSchedule,pendingPassageSlot,type PassageSchedule}
@@ -124,13 +128,14 @@ import {planDoorSchedule,pendingPassageSlot,type PassageSchedule}
 import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
+  twoSidedSqueezePressure,
   sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
   slideAroundStaticCorner,glideAlongStaticWall,releaseStaticWallOverlap}
   from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld,recoverNormalLane}
   from './breach-squeeze-route.ts';
 import {knownPortalStrokeRoute} from './breach-known-portal-stroke.ts';
-import {probeObstacleCrossing,probeWindowCrossing,probeWindowPortalRoute,
+import {probeObstacleCrossing,probeWindowPortalRoute,
   canOpenWindowForClimb,preferTraversal,sampleTraversal,traversalRouteLength,
   traversalStepClear,type TraverseOpportunity}
   from './breach-mantle.ts';
@@ -1991,7 +1996,13 @@ function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
      (!ordinary.length||portal.duration+.12<
       traversalRouteLength(a.p,ordinary)/53))
    return {op:portal.crossing,approachPath:portal.approachPath};
- const op=probeObstacleCrossing(a.p,goal,world,fit);
+ // A distant waypoint is not an invalid vault intention. Probe the first
+ // nearby obstacle on the authored direction, then keep the original goal.
+ const span=d(a.p,goal);
+ const probe=span>170?{x:a.p.x+(goal.x-a.p.x)*170/span,
+   y:a.p.y+(goal.y-a.p.y)*170/span}:goal;
+ const candidate=probeObstacleCrossing(a.p,probe,world,fit);
+ const op=candidate?{...candidate,destination:clone(goal)}:null;
  if(!op||!s.intel.cover.has(op.obstacleIndex)||
     !preferTraversal(a.p,goal,op,ordinary))return null;
  const approachPath=routeWithSqueezeWorld(a.p,op.approach,s.doors);
@@ -2053,6 +2064,25 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
     a.blockedTime=0;a.lastBlocker='clear';
     a.nav=[];a.retryRouteAt=0;return true;
   }
+  // The render/prop shuffle can leave a body a fraction inside a table or
+  // jamb-adjacent cabinet. A normal swept passable() rejects every step
+  // until it is fully outside, making the operator impossible to unstick.
+  // Permit ONLY a sampled, monotonic exit from the *existing* overlap.
+  // Most ticks are ordinary walking: avoid scanning/allocating all
+  // furniture unless the shared spatial index reports actual penetration.
+  const embeddedCover=someCoverNearPoint(a.p,OPERATOR_RADIUS+1,o=>
+    isFootstepObstacle(o)&&
+    Math.abs(a.p.x-o.x)<o.w/2+OPERATOR_RADIUS&&
+    Math.abs(a.p.y-o.y)<o.h/2+OPERATOR_RADIUS);
+  const coverRelease=embeddedCover?
+    releaseEmbeddedCover(a.p,p,COVER,WALLS,
+      s.doors,activeWorldBounds(),dt*45):null;
+  if(coverRelease){
+    a.priorP=clone(a.p);a.p=coverRelease;
+    a.velocity=0;a.squeeze=false;a.squeezeTime=0;
+    a.blockedTime=0;a.lastBlocker='clear';
+    a.nav=[];a.retryRouteAt=0;return true;
+  }
   if(a.traversalPending&&d(a.p,a.traversalPending.approach)<3.3){
     const planned=a.traversalPending;
     if(planned.windowId){
@@ -2077,16 +2107,20 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
         a.lastTraversalAt=s.seconds;return true;
       }
     }
-    const world=traversalWorld(s,a),fit=traversalFitness(a);
+    const world=traversalWorld(s,a);
     // Validate the LOCAL aperture, not the distant waypoint.
     // Window probes intentionally reject spans greater than 180 units.
-    const validated=planned.windowId?
-      probeWindowCrossing(a.p,planned.landing,world,fit):
-      probeObstacleCrossing(a.p,p,world,fit);
-    if(validated&&validated.obstacleIndex===planned.obstacleIndex&&
-       d(validated.landing,planned.landing)<5&&
-       d(validated.approach,a.p)<4){
-      a.traversal={...validated,approach:clone(a.p)};
+    // The initial probe already selected an eligible obstacle and landing.
+    // At takeoff, revalidate that exact crossing against CURRENT geometry,
+    // pane state and all landing occupants. Re-probing from the approach
+    // toward the distant authored goal can fail solely due to a changed
+    // ray length and lose otherwise reliable vaults.
+    const landingClear=!world.actors.some(position=>
+      d(position,planned.landing)<OPERATOR_RADIUS*2+3);
+    const verified=d(planned.approach,a.p)<4&&landingClear&&
+      traversalStepClear(a.p,planned.landing,planned,world);
+    if(verified){
+      a.traversal={...planned,approach:clone(a.p)};
       a.traversalElapsed=0;a.traversalElevation=0;
       a.traversalRetreating=false;
       a.traversalPending=null;a.nav=[];a.velocity=0;
@@ -2233,6 +2267,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       goal:unit===a?(unit.nav.at(-1)??order?.p??p):
         traveling?(unit.nav.at(-1)??order!.p):null,
       health:unit.health,blockedTime:unit.blockedTime,
+      waitSeconds:unit.passageWaitSeconds,squeezing:unit.squeeze,
       active:unit===a||traveling,
       plannedPassage:pendingPassageSlot(unit.p,
         scheduled.get(unit.id),s.doors),
@@ -2252,6 +2287,22 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
        noForwardRoom?move:negotiatedMove)||noForwardRoom){
     a.motorPause='passage';a.velocity=0;a.blockedTime=0;
     a.passageWaitSeconds+=dt;
+    // After both claimants have genuinely stalled, only the less-advanced
+    // operator backs out. One candidate gets the lane; the other receives a
+    // real, swept retreat route, not another simultaneous squeeze attempt.
+    // Ordinary convoy pauses never qualify. Preserve authored orders.
+    if(!a.traversal&&!a.traversalPending){
+      const retreat=passageDeadlockRetreatTarget(
+        {...passageActor,waitSeconds:a.passageWaitSeconds},
+        s.doors,traffic,(from,to)=>sweptBodyClear(from,to,s.doors)||
+          (a.squeeze&&sweptProfileClear(from,to,s.doors,
+             a.squeezeYaw,'squeeze')));
+      if(retreat){
+        a.nav.unshift(retreat);a.passageWaitSeconds=0;
+        a.retryRouteAt=0;a.recoveryAttempts=0;
+        return true;
+      }
+    }
     // A normal stack is allowed to wait. Warn only when two or more
     // friendly operators have remained stalled in the same passage for
     // several seconds. Never reorder their independently authored plans.
@@ -2433,7 +2484,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       return true;
     }
   }
-  if(!normalClear&&narrowClear&&!a.squeeze){
+  if(!normalClear&&narrowClear&&!a.squeeze&&
+     (approachingNarrowThreshold(a.p,p,s.doors)||
+      twoSidedSqueezePressure(a.p,desiredMove,s.doors))){
     a.squeeze=true;a.squeezeYaw=sidewaysYaw;a.squeezeTime=0;
     a.velocity=0;
     // Alignment is a real, short stationary transition, not a teleport.
@@ -5109,6 +5162,34 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     }
     if(a.side==='blue'){
       runOrders(s,a,h);
+      // A teammate with NO authored orders shouldn't permanently plug an
+      // otherwise usable threshold. Give the idle soldier a genuine small,
+      // collision-checked step away from an approaching friendly. Keep
+      // explicit WAIT, WATCH, STACK and authored positions untouched.
+      if(!a.plan.length&&!a.nav.length&&!a.traversal&&
+         !a.traversalPending&&!a.aimInstruction&&!a.carryingId){
+        const nearby=s.operators.filter(b=>b!==a&&b.side==='blue'&&
+          b.health>0&&b.plan[0]?.kind==='move'&&
+          d(a.p,b.p)<75);
+        if(nearby.length){
+          const idle:PassageActor={
+            id:a.id,side:a.side,p:a.p,goal:null,
+            health:a.health,blockedTime:a.blockedTime,active:false
+          };
+          const peers:PassageActor[]=nearby.map(b=>({
+            id:b.id,side:b.side,p:b.p,
+            goal:b.nav.at(-1)??b.plan[0]!.p,health:b.health,
+            blockedTime:b.blockedTime,active:true
+          }));
+          const yieldStep=passageIdleYieldStep(idle,s.doors,peers,
+            (from,to)=>sweptBodyClear(from,to,s.doors),h*45);
+          if(yieldStep&&!s.operators.some(b=>b!==a&&b.health>0&&
+              d(b.p,yieldStep)<13&&d(b.p,yieldStep)<d(b.p,a.p)-.01)){
+            a.p=yieldStep;a.velocity=d(a.priorP,a.p)/Math.max(h,.0001);
+            a.motorPause='passage';
+          }
+        }
+      }
       // Incoming *actual hits* provide coarse directional evidence even
       // before the flanking shooter enters the operator's vision cone.
       // A brief gaze override never removes a WATCH or changes a MOVE.
