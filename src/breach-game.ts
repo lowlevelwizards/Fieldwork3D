@@ -127,6 +127,7 @@ import {planDoorSchedule,pendingPassageSlot,type PassageSchedule}
 import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
   from './breach-nav-diagnostics.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
+  twoSidedSqueezePressure,
   sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
   slideAroundStaticCorner,glideAlongStaticWall,releaseStaticWallOverlap}
   from './breach-navigation.ts';
@@ -2475,7 +2476,9 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       return true;
     }
   }
-  if(!normalClear&&narrowClear&&!a.squeeze){
+  if(!normalClear&&narrowClear&&!a.squeeze&&
+     (approachingNarrowThreshold(a.p,p,s.doors)||
+      twoSidedSqueezePressure(a.p,desiredMove,s.doors))){
     a.squeeze=true;a.squeezeYaw=sidewaysYaw;a.squeezeTime=0;
     a.velocity=0;
     // Alignment is a real, short stationary transition, not a teleport.
