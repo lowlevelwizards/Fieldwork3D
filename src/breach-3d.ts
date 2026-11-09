@@ -817,15 +817,17 @@ export class TacticalScene3D{
     this.fogTexture.minFilter=THREE.LinearFilter;
     this.fogTexture.magFilter=THREE.LinearFilter;
     const fogMat=new THREE.MeshBasicMaterial({
-      map:this.fogTexture,transparent:true,depthTest:true,opacity:1,
+      map:this.fogTexture,transparent:true,depthTest:false,opacity:1,
       depthWrite:false,toneMapped:false,side:THREE.DoubleSide});
     this.mats.push(fogMat);
     this.smoothFog=new THREE.Mesh(new THREE.PlaneGeometry(W,H),fogMat);
     this.smoothFog.rotation.x=-Math.PI/2;
-    // Ground-space LOS mask, not a roof. The 3D unknown tint leaves a faint
-    // known-plan silhouette, never live actors or undiscovered cover.
-    // Opaque walls depth-test against it; translucent near-wall cutaways
-    // draw after it so their outlines cannot disappear into solid black.
+    // Ground-space LOS mask, not an elevated roof. The fog composites
+    // AFTER the opaque scene without a depth test: otherwise furnishings,
+    // raised floor details and tall walls punch straight through unknown
+    // ground fog just because they sit above its Y=1.05 plane. The texture
+    // alone determines disclosure; known cutaway walls render at 1001.
+    // Keep the sheet on the GROUND to avoid isometric parallax/displacement.
     this.smoothFog.position.set(W/2,1.05,H/2);
     this.smoothFog.renderOrder=1000;
     this.smoothFog.frustumCulled=false;
@@ -838,9 +840,9 @@ export class TacticalScene3D{
     this.exteriorKnownFog.frustumCulled=false;
     this.exteriorKnownFog.visible=false;
     this.scene.add(this.exteriorKnownFog);
-    // Ground-aligned fog is the sole map-space concealment layer.
-    // Raised horizontal fog sheets suffer isometric parallax: they appear
-    // skewed away from room footprints and black out exterior terrain.
+    // Ground-aligned fog is the sole map-space concealment layer. Using
+    // screen-over composition at ground coordinates occludes raised props
+    // without relocating the mask onto parallax-prone elevated sheets.
     this.resize(innerWidth,innerHeight);
   }
   private groundOverlayMaterial(kind:PixelOverlay){
