@@ -595,6 +595,12 @@ export function physicalDirectorCandidates(req:PhysicalDirectorRequest,
   };
   const shoulders=auditedCandidates.filter(c=>shoulder(c.view))
     .sort((a,b)=>b.score-a.score);
+  if(!shoulders.length){
+    // No valid approved camera: preserve the established rail rather
+    // than allowing the old unrestricted search to invent a new angle.
+    // Returning no bid is intentional; the storyboard can hold.
+    return [];
+  }
   if(shoulders.length){
     // Preserve the same visibility/foreground auditing already performed.
     // A missing contact is never preferable to a clear, disclosed pair.
