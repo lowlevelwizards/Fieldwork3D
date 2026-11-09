@@ -5320,12 +5320,26 @@ export function observerPointVisible(
 }
 export function liveVisibility(s:Session,p:Pt){
   if(s.intel.mode==='full-view')return true;
-  return team(s).some(a=>a.health>0&&d(a.p,p)<240&&
-    Math.abs(angleDifference(a.heading,angle(a.p,p)))<1.15&&
-    unobstructed(a.p,p,s,a.posture==='crouch'));
+  // Called for many props, decals and doors on every render. Iterating the
+  // authoritative roster directly avoids allocating team(s) for every ray.
+  // Keep the SAME range, cone and occlusion gates for fog-of-war integrity.
+  for(const a of s.operators){
+    if(a.side!=='blue'||a.health<=0)continue;
+    if(d(a.p,p)<240&&
+       Math.abs(angleDifference(a.heading,angle(a.p,p)))<1.15&&
+       unobstructed(a.p,p,s,a.posture==='crouch'))return true;
+  }
+  return false;
 }
 export function nearestDoor(s:Session,p:Pt):Door|null{
-  const items=s.doors.filter(door=>!door.open&&d(p,doorCenter(door))<35);
-  items.sort((x,y)=>d(p,doorCenter(x))-d(p,doorCenter(y)));
-  return items[0]??null;
+  // Preserve the existing stable first-door tie break without sorting
+  // and allocating a candidate list on each contextual door query.
+  let nearest:Door|null=null;
+  let best=35;
+  for(const door of s.doors){
+    if(door.open)continue;
+    const distance=d(p,doorCenter(door));
+    if(distance<best){best=distance;nearest=door;}
+  }
+  return nearest;
 }
