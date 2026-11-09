@@ -211,9 +211,14 @@ export class TacticalScene3D{
   /** Counts submitted WebGL work; GPU timings require a separate timer. */
   performanceStats(){
     const info=this.renderer.info.render;
+    // Renderer-managed GPU resource *counts*, not VRAM byte estimates.
+    const memory=this.renderer.info.memory;
     return {calls:info.calls,triangles:info.triangles,
+      geometryCount:memory.geometries,textureCount:memory.textures,
       staticBatch:this.staticBatches.stats(),
       siteMaterialCount:this.siteMaterials.size,
+      actorRigCount:this.actors.size,
+      civilianRigCount:this.civilianRigs.size,
       shadowRefreshes:this.shadowUpdates.refreshes,
       shadowReuses:this.shadowUpdates.reuses,
       shadowLodTransitions:this.shadowLodTransitions,
@@ -582,7 +587,7 @@ export class TacticalScene3D{
   private fogTexture!:THREE.CanvasTexture;
   private smoothFog!:THREE.Mesh;
   private exteriorKnownFog!:THREE.Mesh;
-  private actors=new Map<string,{root:THREE.Group;flash:THREE.Mesh;
+  private actors=new Map<string,{side:TeamActor['side'];root:THREE.Group;flash:THREE.Mesh;
     beam:THREE.Mesh;beamLast:{x:number;y:number;yaw:number;tick:number}|null;
     pack:THREE.Mesh;
     weapon:THREE.Group;status:THREE.Mesh;physical:OperatorRig;
@@ -919,6 +924,36 @@ export class TacticalScene3D{
    * camera remain alive, avoiding a WebGL context restart on each site.
    */
   applySite(site:Site|null){
+    this.staticBatches.clear();
+    // Friendly rigs survive map changes for responsive load-in. Hostile
+    // models belong to the outgoing encounter and otherwise accumulate
+    // indefinitely as procedural sites create new hostile actor IDs.
+    for(const [id,actor] of this.actors){
+      if(actor.side==='blue')continue;
+      this.scene.remove(actor.root,actor.status,actor.beam,
+        ...actor.contactShadows);
+      // The physical rig owns its meshes and the flash attached to weapon.
+      actor.physical.dispose();
+      // Scene-owned status, beam and contact shadows are independent meshes.
+      for(const mesh of [actor.status,actor.beam,...actor.contactShadows]){
+        mesh.geometry.dispose();
+        (mesh.material as THREE.Material).dispose();
+      }
+      this.actors.delete(id);
+    }
+    // Civilians share module-level geometry/material resources; retire only
+    // the scene nodes, never the shared resources themselves.
+    for(const rig of this.civilianRigs.values())this.scene.remove(rig.root);
+    this.civilianRigs.clear();
+    if(this.rescueFigure)this.rescueFigure.visible=false;
+    // A new layout can reuse the same seed, object revision and light tick.
+    // Drop old beam obstruction geometry and force surviving friendly beams
+    // to resample LOS before they appear on the replacement site.
+    this.beamBlockerTick=-1;this.beamBlockerSite=-1;
+    this.beamBlockerRevision=-1;this.beamBlockers=[];
+    for(const actor of this.actors.values()){
+      actor.beam.visible=false;actor.beamLast=null;
+    }
     this.staticBatches.clear();
     this.siteMaterials.reset();
     this.shadowUpdates.invalidate();
@@ -2276,7 +2311,7 @@ export class TacticalScene3D{
       shadow.rotation.x=-Math.PI/2;shadow.position.y=.15;
       this.scene.add(shadow);return shadow;
     });
-    this.actors.set(a.id,{root,flash,pack,weapon,status,
+    this.actors.set(a.id,{side:a.side,root,flash,pack,weapon,status,
       beam,beamLast:null,physical,contactShadows});
   }
   update(s:Session,selected:string,dt:number,
@@ -2589,8 +2624,9 @@ export class TacticalScene3D{
           if(!(original instanceof THREE.MeshStandardMaterial))return;
           if(!child.userData.directorCutMat){
             if(!leafCut||original.transparent)return;
-            const clone=original.clone();
-            this.mats.push(clone);
+            // The cutaway clone belongs to this site's door leaf, not the
+            // persistent material palette. Release it on the next map swap.
+            const clone=this.siteMaterials.track(original.clone());
             child.material=clone;
             child.userData.directorCutMat=clone;
           }
