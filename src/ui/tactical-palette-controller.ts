@@ -8,7 +8,9 @@ import {finalPoint} from '../breach-game.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide}
   from '../breach-context-placement.ts';
 import {PaletteMotion} from './palette-motion.ts';
-import type {ContextAction} from './context-actions.ts';
+import {contextActionChoices,type ContextAction,type ContextOptions}
+  from './context-actions.ts';
+import {installPalettePointerGuard} from './palette-pointer-guard.ts';
 
 export type PaletteContext={
   state:Session;actor:TeamActor;selected:string;
@@ -37,7 +39,7 @@ export function createTacticalPaletteController(config:{
     '[data-context-layout]'));
   const motion=new PaletteMotion();
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-  const heldPointers=new Set<number>();
+  const heldPointers=installPalettePointerGuard(context).active;
   const tether=document.createElement('div');
   tether.id='contextTether';
   tether.setAttribute('aria-hidden','true');
@@ -73,6 +75,17 @@ export function createTacticalPaletteController(config:{
     syncLayoutButtons();
     config.onLayoutChange?.();
   });
+  function availableActions(watchSelected:boolean,options:ContextOptions):ContextAction[]{
+    return watchSelected?[
+      {id:'ctxWatch',label:'RETARGET',group:'primary',pressed:true,
+        title:'Choose a new point for this active WATCH'},
+      {id:'ctxDelete',label:'DELETE WATCH',group:'destructive',
+        title:'Stop tracking this point; leave movement orders unchanged'}
+    ]:contextActionChoices(options);
+  }
+  function invalidate(){
+    contextSignature='';actionSignature='';lastPlacementKey='';
+  }
   function hide(){
     lastPlacementKey='';
     const exclusive=!config.siteSettings.hidden||!config.briefingPanel.hidden;
@@ -303,7 +316,7 @@ export function createTacticalPaletteController(config:{
     motion.set(result.x,result.y,anchor.x,anchor.y);
   }
   return {
-    hide,show,advance,heldPointers,
+    hide,show,advance,heldPointers,availableActions,invalidate,
     get tether(){return tether;},
     get placement(){return placement;},
     get active(){return motion.active;},
