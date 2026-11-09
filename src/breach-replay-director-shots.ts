@@ -67,7 +67,10 @@ export type DirectorShot=CinematicShot&{
   cameraDecision?:string;
   /** Predicted utility is separate from the actual post-render grade. */
   decisionScore?:number;decisionReason?:string;
-  decisionBreakdown?:DirectorDecisionScore
+  decisionBreakdown?:DirectorDecisionScore;
+  /** Losing bids remain visible in dev diagnostics, never in game intel. */
+  decisionAlternatives?:Array<{id:string;score:number;reason:string;
+    viewpoint:string;framing:string}>
 };
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const mix=(a:Pt,b:Pt,t:number):Pt=>({
