@@ -382,7 +382,7 @@
 .campaign-shell.campaign-landing .campaign-landing-primary:hover{background:#bfd0b6}
 .campaign-shell.campaign-landing .campaign-landing-quick:hover{background:#324d40}
 .campaign-landing-utility{
- display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
  margin-top:23px;border-top:1px solid #50685b9c;border-bottom:1px solid #50685b9c;
 }
 .campaign-shell.campaign-landing .campaign-landing-link{
