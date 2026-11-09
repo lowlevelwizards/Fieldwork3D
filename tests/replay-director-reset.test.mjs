@@ -101,3 +101,16 @@ test('only film-time changes affect the camera, never sample order',()=>{
   assert.deepEqual(second,first);
   assert.notEqual(directorShoulderSide(first),0);
 });
+
+test('temporary lack of a fresh shot cannot deactivate a still-legal director camera',()=>{
+  const first=compose(rook,editorial(rook))[0];
+  assert.ok(first);
+  const board=new ReplayDirectorStoryboard(6,t=>t<.5?[first]:[],{
+    rooms:[room],walls:[],doors:[],cover:[],step:.5,aspect:.85});
+  assert.equal(board.sample(0).primaryActorId,'rook');
+  const held=board.sample(2);
+  assert.ok(held,
+    'director must not clear its camera anchor merely because a knot has no new bid');
+  assert.equal(held.primaryActorId,'rook');
+  assert.match(held.cameraDecision,/hold:/);
+});
