@@ -2500,7 +2500,8 @@ export class TacticalScene3D{
     const actorIdleSeconds=s.phase==='planning'&&!replay?
       this.idleLifeSeconds:poseSeconds;
     // The shadow map follows the active encounter to retain contact detail.
-    const shadowPoint=friendlyTeam.find(a=>a.id===selected)?.p??this.view.focus;
+    const selectedActor=friendlyTeam.find(a=>a.id===selected);
+    const shadowPoint=selectedActor?.p??this.view.focus;
     this.sun.position.set(shadowPoint.x-145,250,shadowPoint.y+175);
     this.sun.target.position.set(shadowPoint.x,0,shadowPoint.y);
     this.sun.target.updateMatrixWorld();
@@ -2569,7 +2570,7 @@ export class TacticalScene3D{
     fromCamera.x=this.projectionCamera.position.x-this.target.x;
     fromCamera.y=this.projectionCamera.position.z-this.target.z;
     const pawn=this.replayDirectorFocus??
-      friendlyTeam.find(a=>a.id===selected&&a.health>0)?.p;
+      (selectedActor&&selectedActor.health>0?selectedActor.p:undefined);
     const subjects=physicalDirector&&this.replayDirectorLens==='ortho'?
       friendlyTeam.map(a=>a.p):this.replayDirectorSubjects.length?
       this.replayDirectorSubjects:pawn?[pawn]:[];
@@ -2605,7 +2606,6 @@ export class TacticalScene3D{
     }
     // The selected endpoint is stable across this entire render. Do not
     // rebuild team/plan arrays once per door on large generated sites.
-    const selectedActor=s.operators.find(a=>a.side==='blue'&&a.id===selected);
     const selectedEndpoint=selectedActor?.plan.at(-1)?.p;
     for(const door of s.doors){
       const object=this.doors.get(door.id);
@@ -2767,6 +2767,9 @@ export class TacticalScene3D{
         (omniscient||liveVisibility(s,s.rescue.p));
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
+    // Shadow detail depends on the shared camera and viewport, not actors.
+    const shadowDetail=operatorShadowDetail(
+      projectedOperatorHeightPx(this.camera,this.height),this.quality.mode);
     for(const actor of s.operators){
       const visible=replayDisclosurePolicy?
         replayActorDisclosed(s,actor,replayDisclosurePolicy):
@@ -2894,8 +2897,6 @@ export class TacticalScene3D{
       }
       // The quality tier is selected from screen pixels, not absolute world
       // distance. No new directional light or actor-specific shadow map.
-      const px=projectedOperatorHeightPx(this.camera,this.height);
-      const shadowDetail=operatorShadowDetail(px,this.quality.mode);
       object.physical.root.userData.fieldworkCavityQuality=
         cavityQualityForDetail(shadowDetail);
       // Shared, bounded inventory projection for both visible containers.
