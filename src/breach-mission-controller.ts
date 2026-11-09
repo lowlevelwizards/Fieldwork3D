@@ -242,6 +242,14 @@ export class BreachMissionController{
         ],{duration:180,easing:'ease-out'});
     });
   }
+  /** Leaving a replay restores the original site's authoritative core
+   * geometry, not merely the 3D mesh. This matters when an archived replay
+   * came from a completely different mission.
+   */
+  resumeLiveSession(live:Session):Session{
+    activateSite(live.site??null);
+    return live;
+  }
   /** Explicitly forget view cache when exiting a live tactical session. */
   releasePresentation():void{
     this.deploymentSession=null;
