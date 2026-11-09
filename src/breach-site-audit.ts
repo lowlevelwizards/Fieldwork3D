@@ -1,7 +1,7 @@
 /** Integrated seed audit for procedural encounters. No renderer required.
  * Runs in deterministic world space; a CLI can exercise thousands of maps
  * without incurring browser startup on every CI run. */
-import {activateSite,passable,route,type Pt} from './breach-core.ts';
+import {activateSite,withTemporarySiteGeometry,passable,route,type Pt} from './breach-core.ts';
 import {generateSite,type SiteScale,type Site} from './breach-site.ts';
 import {ordinaryDoorOpeningWidth} from './breach-door-proportions.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
@@ -51,8 +51,8 @@ export function auditGeneratedSite(seed:number,scale:SiteScale='standard'):SiteA
 }
 /** Audit an already-generated site without constructing the entire map twice. */
 export function auditSite(site:Site):SiteAudit{
+ return withTemporarySiteGeometry(site,()=>{
   const seed=site.seed;
-  activateSite(site);
   const errors:string[]=[];
   const operationalRouteIssues:OperationalRouteIssue[]=[];
   let humanJourneys:JourneyAudit={checkedLegs:0,issues:[],inspected:[]};
@@ -172,4 +172,5 @@ export function auditSite(site:Site):SiteAudit{
     sightlineQuality:site.rooms.filter(r=>r.kind==='room').map(r=>assessRoomSightlines(site,r)),
     ballisticQuality:site.rooms.filter(r=>r.kind==='room').map(r=>assessRoomBallisticCover(site,r)),errors};
   return {...base,compositeQuality:scoreCompositeQuality(base)};
+ });
 }
