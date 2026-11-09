@@ -637,6 +637,8 @@ export class TacticalScene3D{
   private wallMaterials=new Set<THREE.Material>();
   private effects=new THREE.Group();
   private target=new THREE.Vector3(339,0,413);
+  /** Render-only occlusion direction; reused between frames. */
+  private readonly frameCameraOffset=new THREE.Vector3();
   private currentElev=55*Math.PI/180;
   private readonly minZoom=.65;
   private readonly maxZoom=6.0;
@@ -2558,7 +2560,8 @@ export class TacticalScene3D{
     }
     // Director cuts walls around its actual historical friendly focal group,
     // rather than a potentially unrelated manually selected soldier.
-    const fromCamera=this.projectionCamera.position.clone().sub(this.target);
+    const fromCamera=this.frameCameraOffset
+      .copy(this.projectionCamera.position).sub(this.target);
     const pawn=this.replayDirectorFocus??
       team(s).find(a=>a.id===selected&&a.health>0)?.p;
     const subjects=physicalDirector&&this.replayDirectorLens==='ortho'?
