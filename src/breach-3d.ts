@@ -2757,6 +2757,11 @@ export class TacticalScene3D{
         (omniscient||liveVisibility(s,s.rescue.p));
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
+    // The camera, viewport and quality tier are fixed across this update.
+    // Calculate the shared operator shadow budget once, not per miniature.
+    const shadowDetail=operatorShadowDetail(
+      projectedOperatorHeightPx(this.camera,this.height),this.quality.mode);
+    const cavityQuality=cavityQualityForDetail(shadowDetail);
     for(const actor of s.operators){
       const visible=replayDisclosurePolicy?
         replayActorDisclosed(s,actor,replayDisclosurePolicy):
@@ -2884,10 +2889,7 @@ export class TacticalScene3D{
       }
       // The quality tier is selected from screen pixels, not absolute world
       // distance. No new directional light or actor-specific shadow map.
-      const px=projectedOperatorHeightPx(this.camera,this.height);
-      const shadowDetail=operatorShadowDetail(px,this.quality.mode);
-      object.physical.root.userData.fieldworkCavityQuality=
-        cavityQualityForDetail(shadowDetail);
+      object.physical.root.userData.fieldworkCavityQuality=cavityQuality;
       // Shared, bounded inventory projection for both visible containers.
       const carried=actor.equipment?
        carryPlacementLedger(actor.equipment,actor.spareMagazines):[];
