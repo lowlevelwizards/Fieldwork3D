@@ -626,7 +626,7 @@ function renderReplayEventMarkers():void{
   ui.replayMarks.append(fragment);
 }
 
- function rebuildReplayEventIndex():void{
+ function rebuildReplayEventIndex():ReplayEventIndex{
    const recorder=config.getRecorder();
    replayEventIndex=new ReplayEventIndex(recorder.events,
      recorder.executionEvents,replayEventKnown);
@@ -635,7 +635,8 @@ function renderReplayEventMarkers():void{
    replayFeaturedIncidents=featuredReplayIncidents(replayIncidents,5);
    selectedReplayIncidentId=null;replayPlayback.clearIncident();
    renderReplayChapters();renderReplayDebrief();
- }
+    return replayEventIndex;
+  }
  function rebuildReplaySquadEntries():void{
    const recorder=config.getRecorder();
    replaySquadEntries=featuredReplaySquadEntries(recorder.frames,
@@ -678,6 +679,11 @@ function renderReplayEventMarkers():void{
    ui.replayObserverTransitions.replaceChildren();
    ui.replayObserverTransitions.hidden=true;ui.replayDebriefInfo.textContent='';
    showReplayToolTab(null);closeReplayChoices();closeReplayCluster(false);
+ }
+ function jumpEvent(forward:boolean):void{
+   const item=forward?replayEventIndex?.next(replayPlayback.time):
+     replayEventIndex?.previous(replayPlayback.time);
+   if(item){replayPlayback.pause();config.seek(item.t);}
  }
  function bindReplayUi():void{
 ui.replayMore.addEventListener('click',()=>
@@ -779,13 +785,8 @@ ui.replayShotNext.addEventListener('click',()=>{
     true,config.shotVisible);
   if(next)selectReplayShot(next);
 });
-const jumpReplayEvent=(forward:boolean)=>{
-  const item=forward?replayEventIndex?.next(replayPlayback.time):
-    replayEventIndex?.previous(replayPlayback.time);
-  if(item){replayPlayback.pause();config.seek(item.t);}
-};
-ui.replayPrevEvent.addEventListener('click',()=>jumpReplayEvent(false));
-ui.replayNextEvent.addEventListener('click',()=>jumpReplayEvent(true));
+ui.replayPrevEvent.addEventListener('click',()=>jumpEvent(false));
+ui.replayNextEvent.addEventListener('click',()=>jumpEvent(true));
  }
  return {
    get replayEventIndex(){return replayEventIndex;},
@@ -801,7 +802,7 @@ ui.replayNextEvent.addEventListener('click',()=>jumpReplayEvent(true));
    get replayToolTab(){return replayToolTab;},
    get replayPreset(){return replayPreset;},
    set replayPreset(value:ReplayPreset){replayPreset=value;},
-   startSession,reset,bindReplayUi,rebuildReplayEventIndex,
+   startSession,reset,bindReplayUi,jumpEvent,rebuildReplayEventIndex,
    rebuildReplaySquadEntries,restoreBookmarks,addBookmark,
    renderReplayChapters,renderReplayDebrief,renderReplaySquadEntries,
    renderReplayEventFeed,syncReplayEventFeed,renderReplayEventMarkers,
