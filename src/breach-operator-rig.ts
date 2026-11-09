@@ -2,6 +2,7 @@
  * The battle motor remains authoritative. IK is presentation-only. */
 import * as THREE from 'three';
 import {updateOperatorSlingPose} from './breach-operator-sling-pose.ts';
+import {applyOperatorTraumaPose,finishOperatorPoseFrame} from './breach-pose-frame-finalizer.ts';
 import {CORE_TORSO_CONTACT} from './operator-garment-contact-surface.ts';
 import {operatorPixelTextures,type PixelSurface} from './rendering/pixel-materials.ts';
 import {canonicalRootOrientation,LEGACY_FRAME_YAW,
@@ -68,7 +69,7 @@ import {headwearCamoTexture,headwearDetailTexture} from './operator-headwear-mat
 import type {HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {garmentBoxUV,wardrobeFabricCamoTexture} from './operator-fabric-camo-materials.ts';
 import {enableBakedGearAO} from './operator-baked-gear-ao.ts';
-import {createOperatorPoseCavity,updateOperatorPoseCavity,
+import {createOperatorPoseCavity,
  type OperatorPoseCavity} from './operator-pose-cavity-lighting.ts';
 import {mapSkinReceiverAtlas,headwearCastShadowAtlas,collarCastShadowAtlas,
  authoredCollarShadowBoxes} from './operator-baked-shadow-maps.ts';
@@ -2169,26 +2170,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       }
     }
   }
-  // The pose system is the final writer for actor tilts and reactions.
-  // The scene controls XY world placement only, not anatomy or weapon pose.
-  if(p.flashActive&&!p.down){
-    r.legacyRoll+=.10*Math.sin(p.seconds*24);
-    r.root.quaternion.copy(
-      canonicalRootOrientation(r.legacyPitch,r.legacyYaw,r.legacyRoll));
-  }
-  if(p.surrender)r.chest.rotation.x=.15;
-  else if(p.down){
-    // Spine and neck settle independently; the fall isn't a single
-    // rigid mannequin tipping around the operator origin.
-    r.chest.rotation.x=-.18*Math.sin(Math.PI*downProgress)-.05;
-    r.head.rotation.z=.13*Math.sin(Math.PI*downProgress);
-  }
-  // Wounds do not leave an incapacitated actor standing in the old
-  // locomotion/ready pose. Final angles are deterministic from the hit.
-  if(p.down){
-    r.chest.rotation.y=0;
-    r.head.rotation.x=0;
-  }
+  applyOperatorTraumaPose(r,p,downProgress);
   if(r.droppedGun.visible){
     // The world-space gun begins exactly in the last held grip and travels
     // continuously to the ground, horizontal beside the operator.
@@ -2213,15 +2195,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   updateOperatorSlingPose(r,p,physicalSpeed,
     scratch.vertical,scratch.slingDelta);
-  if(p.unarmedPreview){
-    r.weapon.visible=false;r.droppedGun.visible=false;
-    r.magazineHand.visible=false;r.magazineInserted.visible=false;
-    r.detachedMagazine.visible=false;
-    for(const sling of r.slingStraps)sling.visible=false;
-  }
-  // Shader uniforms follow the existing IK without CPU ray tracing.
-  updateOperatorPoseCavity(r.poseCavity,r.arms,r.elbowSpread,
-   p.posture,p.stride,p.down,
-   Number(r.root.userData.fieldworkCavityQuality??1));
-  r.lastPose={...p};r.lastTime=p.seconds;
+  finishOperatorPoseFrame(r,p);
+
 }
