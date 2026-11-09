@@ -78,9 +78,10 @@ import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
 import {scanEnemySoundEvidence}
   from './breach-ai-acoustic-perception.ts';
+import {scanEnemyVisualEvidence} from './breach-ai-visual-evidence.ts';
 import {soundResponse} from './breach-sound-evidence.ts';
-import {newSuspicion,observeSuspicion,advanceSuspicion,
-  maintainVisualContact,exhaustSuspicionSearch,type SuspicionMemory}
+import {newSuspicion,observeSuspicion,
+  exhaustSuspicionSearch,type SuspicionMemory}
   from './breach-ai-suspicion.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {TacticalRouteCache} from './breach-tactical-route-cache.ts';
@@ -3384,27 +3385,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
   }
   if(!a.watch)a.watch=watchPoint(a.p,s.doors);
-  const visible=team(s).filter(b=>inSight(a,b,s));
-  // First acquisition is a real visual observation; seeing the same actor
-  // on subsequent ticks is not a fresh independent suspicion event.
-  const visualId=visible[0]?.id??null;
-  if(visualId!==a.lastVisualSuspicionId){
-    a.lastVisualSuspicionId=visualId;
-    if(visualId)observeSuspicion(a.suspicion,{
-      id:'visual/'+visualId+'/'+Math.round(s.seconds*60),
-      at:s.seconds,kind:'contact',cause:'confirmed-sight'
-    });
-  }
-  advanceSuspicion(a.suspicion,s.seconds,dt,
-    a.alert==='investigating'&&!!a.contact);
-  // Sustained *confirmed* sight is fresh information without extra contact
-  // events. Keep alarm current until vision really breaks.
-  if(visualId)maintainVisualContact(a.suspicion,s.seconds);
-  if(visible.length&&a.encounterReactionUntil===Number.POSITIVE_INFINITY){
-    a.encounterReactionStartedAt=s.seconds;
-    a.encounterReactionUntil=s.seconds+encounterReactionDelay(
-      a.encounterReadiness??'attentive',a.id);
-  }
+  const visible=scanEnemyVisualEvidence(s,a,dt,inSight);
   // A guard on the other side of a window can have confirmed sight but
   // an unusable short-stock muzzle. Try the same small backstep available
   // to blue BEFORE normal cover doctrine decides to hold fire forever.

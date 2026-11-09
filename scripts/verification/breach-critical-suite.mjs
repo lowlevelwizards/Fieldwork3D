@@ -11,6 +11,7 @@ const tests=[
  'tests/breach-roadmap3-3d-disclosure.test.mjs',
  'tests/breach-roadmap3-site-exterior.test.mjs',
  'tests/breach-roadmap3-order-utility.test.mjs',
+ 'tests/breach-roadmap3-ai-visual.test.mjs',
  'tests/breach-roadmap2-deterministic.test.mjs',
  'tests/breach-roadmap2-site-mobility.test.mjs',
  'tests/breach-roadmap2-visibility-contract.test.mjs',
