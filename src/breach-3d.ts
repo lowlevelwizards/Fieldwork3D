@@ -936,6 +936,11 @@ export class TacticalScene3D{
       }
       this.actors.delete(id);
     }
+    // Civilians share module-level geometry/material resources; retire only
+    // the scene nodes, never the shared resources themselves.
+    for(const rig of this.civilianRigs.values())this.scene.remove(rig.root);
+    this.civilianRigs.clear();
+    if(this.rescueFigure)this.rescueFigure.visible=false;
     this.staticBatches.clear();
     this.siteMaterials.reset();
     this.shadowUpdates.invalidate();
