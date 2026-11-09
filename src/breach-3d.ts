@@ -1493,7 +1493,7 @@ export class TacticalScene3D{
         // slab without coincident faces or a duplicate cover render mesh.
         const height=SERVING_COUNTER_VISUAL_HEIGHT;
         this.box(group,0,height/2,0,width,height,10,archMaterial);
-        this.box(group,0,height+1,6.2,width+3,2,10,
+        this.box(group,0,height+1.15,6.2,width+3,2,10,
           archMaterial,false);
       }
       this.root.add(group);
