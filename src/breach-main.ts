@@ -32,10 +32,8 @@ import {createBreach2DProjectedOverlays} from './breach-2d-projected-overlays.ts
 import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
  type MiniatureFocusMode} from './rendering/miniature-focus-config.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
-import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
 import {PhysicalActionRings} from './ui/physical-action-rings.ts';
 import {executionStatus} from './breach-execution-state.ts';
-import {compactExecutionStatus} from './ui/tactical-hud-density.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
 import {tacticalHitProfile,shouldAppendStrokePoint,simplifyStrokePoints}
  from './ui/touch-hit-targets.ts';
@@ -112,8 +110,8 @@ import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
   from './breach-replay-bodycam-controls.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
-import {injuryOf,WEAPONS} from './breach-combat.ts';
-import {liveMagazineCapacity,magazineAlert,fitMagazineInventory}
+import {WEAPONS} from './breach-combat.ts';
+import {fitMagazineInventory}
  from './arsenal/live-magazine-capacity.ts';
 
 import {stageMagazines,magazineSpace,type MagazineLocation} from './equipment-magazine-placement.ts';
@@ -1859,39 +1857,6 @@ const handleContextAction=(event:MouseEvent)=>{
 };
 ui.context.addEventListener('click',handleContextAction);
 ui.quickStates.addEventListener('click',handleContextAction);
-// World-first event hierarchy: never read unobserved enemy state or persist
-// old critical messages indefinitely. Only existing player-facing events.
-const executionNoticeFeed=new ExecutionNoticeFeed();
-function updateUiNotice(node:HTMLElement,events:string[],phase:string){
-  const notice=executionNoticeFeed.update(events,phase,performance.now());
-  node.hidden=!notice||replaying;
-  if(!notice||replaying){
-    node.removeAttribute('data-notice-key');
-    return;
-  }
-  const key=notice.born+'|'+notice.label+'|'+notice.text;
-  if(node.dataset.noticeKey!==key){
-    const label=document.createElement('strong');
-    label.className='fw-notice-label';
-    label.textContent=notice.label;
-    const body=document.createElement('span');
-    body.className='fw-notice-body';
-    const description=document.createElement('span');
-    description.className='fw-notice-content';
-    description.textContent=notice.text;
-    body.append(description);
-    if(notice.recovery){
-      const next=document.createElement('span');
-      next.className='fw-notice-recovery';
-      next.textContent=notice.recovery;
-      body.append(next);
-    }
-    node.replaceChildren(label,body);
-    node.dataset.noticeKey=key;
-  }
-  node.dataset.severity=notice.severity;
-  node.classList.toggle('critical',notice.severity==='danger');
-}
 function updateQuickStates():void{
   const actor=uid(selected)??null;
   hudController.renderQuickStates({
@@ -2201,78 +2166,13 @@ function updateHud(){
     }
   }
   for(const id of squadIds){
-    const a=uid(id),button=ui[id];
-    paintOperatorAccent(button,id);
-    button.hidden=!a;
-    const title=button.querySelector('strong');
-    if(title&&a)title.textContent=a.name;
-    button.classList.toggle('selected',id===selected);
-    button.classList.toggle('down',!a||a.health<=0);
-    button.title=a?WEAPONS[a.weapon].label+' • '+
-      injuryOf(a.injuryStage).toUpperCase():'NO OPERATOR';
-    button.classList.toggle('loading',!!a&&a.reload>0);
-    button.style.setProperty('--reload-progress',
-      ((a?.reload??0)>0?Math.round(100*(1-a!.reload/
-        (WEAPONS[a!.weapon].reload*(a!.injuryStage===2?1.5:
-          a!.injuryStage===1?1.1:1)))):0)+'%');
-    const ammo=ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'];
-    const capacity=a?liveMagazineCapacity(a.weapon,a.weaponConfiguration):0;
-    const alert=a?magazineAlert(a.magazine,capacity):'normal';
-    ammo.dataset.ammo=alert;
-    ammo.textContent=a?String(a.magazine).padStart(2,'0')+' / '+a.reserve+
-      (a.reload>0?' ↻':''):'--';
-    ammo.title=a?`${a.magazine} / ${capacity} loaded · ${a.reserve} reserve rounds`:'';
-    button.setAttribute('aria-pressed',String(id===selected));
-    ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'].textContent=
-      !a?'--':a.health<=0?'DOWN':
-      a.injuryStage===2?'HEAVY':a.injuryStage===1?'HURT':'OK';
-    // Compact visual condition, with full text retained for accessibility.
-    const condition=!a?'missing':a.health<=0?'down':
-      a.injuryStage===2?'heavy':a.injuryStage===1?'hurt':'healthy';
-    const fill=condition==='down'?0:condition==='heavy'?34:
-      condition==='hurt'?67:100;
-    button.style.setProperty('--health-fill',fill+'%');
-    button.style.setProperty('--health-color',
-      condition==='heavy'?'#c77f68':condition==='hurt'?'#d0ad76':'#91b5a5');
-    button.dataset.condition=condition;
-    // One quiet, persistent state line in each EXISTING operator card.
-    // Its data comes from the motor and authored orders only; there is no
-    // live enemy-intel lookup and no new permanent tactical control.
-    let stateLine=button.querySelector<HTMLElement>('.unit-execution');
-    if(!stateLine){
-      stateLine=document.createElement('span');
-      stateLine.className='unit-execution';button.append(stateLine);
-    }
-    const execution=a?executionStatus(a,{
-      phase:state.phase==='planning'&&state.started?'running':state.phase,
-      doors:state.doors,peers:team(state)
-    }):null;
-    const status=compactExecutionStatus(execution,{
-      selected:id===selected,
-      phase:state.phase==='running'?'execution':
-        state.phase==='planning'?'planning':
-        replaying?'replay':'debrief',
-      down:!a||a.health<=0
+    hudController.renderOperatorCard({
+      state,replaying,selected,id,actor:uid(id),
+      button:ui[id],
+      ammo:ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'],
+      hp:ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'],
+      paintAccent:paintOperatorAccent
     });
-    stateLine.hidden=!status.visible;
-    stateLine.textContent=status.label;
-    stateLine.dataset.kind=execution?.kind??'idle';
-    stateLine.dataset.priority=status.priority;
-    button.dataset.executionVisible=String(status.visible);
-    stateLine.title=status.detail;
-    if(execution?.progress!==undefined){
-      stateLine.dataset.progress='true';
-      stateLine.style.setProperty('--execution-progress',
-        Math.round(execution.progress*100)+'%');
-    }else{
-      stateLine.removeAttribute('data-progress');
-      stateLine.style.removeProperty('--execution-progress');
-    }
-    button.setAttribute('aria-label',a?
-      a.name+', '+condition+', '+a.magazine+' of '+capacity+
-      ' rounds loaded, '+a.reserve+' reserve'+(a.reload>0?', reloading':'')+
-      '. '+(execution?.label??'IDLE')+'. '+(execution?.detail??''):
-      id+', unavailable');
   }
   // Show the site as a place, not as a raw procedural generation dump.
   const siteHeader=document.querySelector<HTMLElement>('.ident strong');
@@ -2283,7 +2183,7 @@ function updateHud(){
     (state.intel.mode==='floor-plan'?state.site.roomCount:'?')+' KNOWN ROOMS':
     'TACTICAL TRAINING';
   if(siteHeader)siteHeader.title=state.site?.name??'Cutwoods';
-  updateUiNotice(ui.feed,state.events,state.phase);
+  hudController.renderNotice(ui.feed,state.events,state.phase,replaying);
   hudController.renderGuidance({
     replaying,phase:state.phase,flashMode,pushMode,
     selectedNode,selectedActiveWatch,
@@ -4084,7 +3984,7 @@ function reset(next=state.variant,siteSeed?:number,
     restartStart?.scale??requestedSiteScale,missionOverride,
     prebuiltSite,{risk:encounterRisk,enableCivilians:civilianPreview,
    enableIncidentIntent:true});
-  executionNoticeFeed.reset();
+  hudController.resetNotices();
   state.lightingMode=restartStart?.lightingMode??selectedLightingMode;
   if(campaignMode==='quick')persistentRoster=freshQuickPlayRoster(persistentRoster);
   applyRequestedCondition(state);
