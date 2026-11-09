@@ -5,7 +5,8 @@ import {doorCenter,doorLeafSegment,pointToSegment,OPERATOR_RADIUS,
 import type {PassageSlot} from './breach-passage-plan.ts';
 export type PassageActor={id:string;p:Pt;goal:Pt|null;health:number;
   blockedTime:number;active:boolean;side?:Side;
-  plannedPassage?:PassageSlot|null};
+  plannedPassage?:PassageSlot|null;
+  waitSeconds?:number;squeezing?:boolean};
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const side=(p:Pt,d:Door)=>{
   const m=doorCenter(d),dx=d.b.x-d.a.x,dy=d.b.y-d.a.y;
@@ -377,6 +378,57 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
   if(atOpposingEntry(actor,cluster,intendedStep))return true;
  }
  return false;
+}
+/** A rare mutual stall needs ONE deterministic loser, not simultaneous
+ * squeeze/replan cycles. Give the less-advanced actor a temporary, physically
+ * verified retreat point on the side it approached from. The caller adds the
+ * point to transient motor navigation, never to authored orders. Ordinary
+ * flowing stacks do not qualify, even if a follower briefly waits.
+ */
+export function passageDeadlockRetreatTarget(actor:PassageActor,
+ doors:readonly Door[],actors:readonly PassageActor[],
+ physicallyClear:(from:Pt,to:Pt)=>boolean):Pt|null{
+ if(!actor.active||!actor.goal||actor.health<=0||
+   (actor.waitSeconds??0)<1.25)return null;
+ for(const door of doors){
+  const width=distance(door.a,door.b);
+  if(width>60||distance(actor.p,doorCenter(door))>40||
+    !crossingDoor(actor,door))continue;
+  const peers=actors.filter(other=>other.id!==actor.id&&
+    other.health>0&&other.side===actor.side&&other.goal&&
+    distance(other.p,doorCenter(door))<40&&
+    (inDoorway(other,door)||crossingDoor(other,door))&&
+    ((other.waitSeconds??0)>.75||other.blockedTime>.9));
+  if(!peers.length)continue;
+  // A body that has actually cleared farther through a threshold wins.
+  // Match order is independent of the actor array and the simulation tick.
+  const advancement=(unit:PassageActor)=>{
+    const direction=Math.sign(side(unit.goal!,door));
+    return side(unit.p,door)*(direction||1);
+  };
+  const winner=[actor,...peers].sort((a,b)=>
+    advancement(b)-advancement(a)||a.id.localeCompare(b.id))[0];
+  if(winner.id===actor.id)continue;
+  const len=width||1,tx=(door.b.x-door.a.x)/len,
+    ty=(door.b.y-door.a.y)/len,nx=-ty,ny=tx;
+  // A retreat must go AGAINST the destination side of the threshold.
+  const retreat=-Math.sign(side(actor.goal,door))||
+    Math.sign(side(actor.p,door))||1;
+  const startSide=side(actor.p,door);
+  for(const depth of [29,22,15]){
+   for(const offset of [0,9,-9,16,-16]){
+    const candidate={x:actor.p.x+nx*retreat*depth+tx*offset,
+      y:actor.p.y+ny*retreat*depth+ty*offset};
+    // Do not invent a detour that starts inside a wall, moves a body through
+    // furniture, approaches its target, or pushes a teammate deeper.
+    if(Math.abs(side(candidate,door))<Math.abs(startSide)+8||
+       distance(candidate,winner.p)<distance(actor.p,winner.p)+3||
+       !physicallyClear(actor.p,candidate))continue;
+    return candidate;
+   }
+  }
+ }
+ return null;
 }
 /** Existing passage reservations manage spacing near narrow openings.
  * Do not add cosmetic friendly sidestepping that drives a later follower
