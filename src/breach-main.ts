@@ -4788,7 +4788,8 @@ function rebuildReplayEventIndex():void{
 function advanceReplayCamera(dt:number,instant=false):void{
   replayCamera.advance({
     dt,instant,replaying,stage,viewMode,state,recorder,replayTime:replayPlayback.time,
-    replayKnowledge.observerId,replayKnowledge.omniscient,cssW,cssH,
+    replayContactObserverId:replayKnowledge.observerId,
+    replayOmniscient:replayKnowledge.omniscient,cssW,cssH,
     replayFollowStatus:ui.replayFollowStatus,debugPanel:replayDirectorDebugPanel
   });
 }
