@@ -40,7 +40,7 @@ import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
  from './operator-shadow-quality.ts';
 import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
-import {roomPixelSurface,zonePixelSurface,wallPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
+import {roomPixelSurface,wallPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
 import {wearFinish} from './rendering/wear-finish.ts';
 import {doubleSidedWallWear} from './rendering/wear-wall-geometry.ts';
 import {ageMaterialColor} from './rendering/condition-materials.ts';
@@ -72,7 +72,7 @@ import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
-import {pixelOverlay,overlayForZone,type PixelOverlay} from './rendering/pixel-overlays.ts';
+import {pixelOverlay,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,doorLeafSegment,activeSite,
   type Pt,type Door,type Segment} from './breach-core.ts';
