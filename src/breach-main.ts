@@ -4,7 +4,7 @@ import {installPalettePointerGuard} from './ui/palette-pointer-guard.ts';
 import {installTouchCommandHelp as bindTouchCommandHelp}
  from './ui/touch-command-help.ts';
 import {
-  W,H,activeWorldBounds,WALLS,doorCenter,doorLeafSegment,activateSite,
+  W,H,activeWorldBounds,doorCenter,doorLeafSegment,activateSite,
   type Pt,
 } from './breach-core.ts';
 import {
@@ -3589,7 +3589,7 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
   ui.replayExportVideo.textContent=replayQuickVideo.active?'STOP VIDEO':'VIDEO 20S';
   ui.replaySpeed.disabled=replayQuickVideo.active;
   ui.replaySound.textContent=audioController.replaySoundEnabled?'SOUND ON':'SOUND OFF';
-  ui.replaySound.setAttribute('aria-pressed',String(replaySoundEnabled));
+  ui.replaySound.setAttribute('aria-pressed',String(audioController.replaySoundEnabled));
   ui.replaySpeed.title='Playback speed '+replayPlayback.rate+'× · Tap to change';
   ui.replaySpeed.setAttribute('aria-label',
     'Playback speed '+replayPlayback.rate+' times. Tap to select next speed');
@@ -3976,7 +3976,8 @@ const replayTimeline=createBreachReplayTimelineController({
   duration:()=>recorder.duration,
   samples:()=>recorder.frames,
   isVideoActive:()=>replayQuickVideo.active,
-  seek:seekReplay,stopAudio:stopReplaySounds,unlockAudio,
+  seek:seekReplay,stopAudio:()=>audioController.stopReplaySounds(),
+  unlockAudio:()=>audioController.unlock(),
   refreshHud:updateReplayHud,showHelp:showUiHelp
 });
 ui.replayMore.addEventListener('click',()=>
