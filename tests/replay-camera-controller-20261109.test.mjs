@@ -19,3 +19,24 @@ test('replay camera controller owns mode, follows only operator mode, and resets
   assert.equal(camera.director.target,null);
   assert.equal(camera.director.storyboard,null);
 });
+test('missing Director shot safely returns to free camera and clears its scene anchor',()=>{
+  const controller=new ReplayCameraController();
+  controller.director.storyboard={sample:()=>null};
+  assert.equal(controller.selectMode('director','iso',true,false),'director');
+  const calls=[];
+  const stage={
+    setReplayDirectorCameraAnchor:(value)=>calls.push(['anchor',value]),
+    setReplayDirectorFocus:(value)=>calls.push(['focus',value]),
+    setReplayDirectorSubjects:(value)=>calls.push(['subjects',value])
+  };
+  const status={dataset:{grade:'A'},title:'old'};
+  controller.advance({
+    dt:1/60,instant:true,replaying:true,stage,viewMode:'iso',
+    state:{operators:[]},recorder:{},replayTime:1,
+    replayContactObserverId:null,replayOmniscient:false,
+    cssW:390,cssH:844,replayFollowStatus:status,debugPanel:null
+  });
+  assert.equal(controller.mode,'free');
+  assert.equal(status.dataset.grade,undefined);
+  assert.deepEqual(calls,[['anchor',null],['focus',null],['subjects',[]]]);
+});

@@ -136,6 +136,10 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Replay controller extraction — critical mode, playback and historical evidence gates
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'refactor/breach-replay-controllers-') }}
+        run: |
+          node --experimental-strip-types --test tests/replay-camera-controller-20261109.test.mjs tests/replay-playback-controller-20261109.test.mjs tests/replay-knowledge-controller-20261109.test.mjs tests/replay-bodycam-controller-20261109.test.mjs tests/replay-lifecycle-controller-20261109.test.mjs tests/replay-library-ui-extraction-20261109.test.mjs tests/replay-r2-recording.test.mjs tests/replay-r3-archive.test.mjs
       - name: Physical interactions Nov8 — verify previous production Pages before release
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-physical-interactions-') }}
         env:

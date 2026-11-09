@@ -10,7 +10,7 @@ test('Director prepares archived film only after recorded mission state and site
  assert.ok(enter.indexOf('state=newSession(')<enter.indexOf('rebuildReplayEventIndex()'));
 });
 test('replay exit delegates lifetime cleanup to its owners',()=>{
- const exit=source.slice(source.indexOf('function exitReplay(){'),source.indexOf('async function renderSavedReplayLibrary'));
+ const exit=source.slice(source.indexOf('function exitReplay(){'),source.indexOf('const replayLibrary=createReplayLibraryUi'));
  assert.ok(exit.includes('replayCamera.reset(stage)'));
  assert.ok(exit.includes('replayPlayback.reset()'));
  assert.ok(!exit.includes('replayDirector.storyboard=null'));
