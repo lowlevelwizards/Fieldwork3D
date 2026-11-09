@@ -77,33 +77,24 @@ import {parseOperationHistory,addOperationRecord,
 import {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
 import {createBreachReplayTimelineController}
   from './ui/breach-replay-timeline-controller.ts';
+import {createBreachReplayAnalysisController}
+  from './ui/breach-replay-analysis-controller.ts';
 import {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 import {ReplayBodycamController} from './breach-replay-bodycam-controller.ts';
 import {ReplayCameraController} from './breach-replay-camera-controller.ts';
 import {createBreachReplayLibraryController}
   from './ui/breach-replay-library-controller.ts';
 import {formatReplayTime} from './breach-replay-transport.ts';
-import {ReplayEventIndex,type ReplayIndexedEvent} from './breach-replay-event-index.ts';
-import {clusterReplayTimeline,replayTimelineBins} from './breach-replay-timeline-markers.ts';
-import {replayFeedPosition} from './breach-replay-feed-window.ts';
 import {REPLAY_SPEED_STOPS,speedIndex} from './breach-replay-speed.ts';
-import {toggleReplaySurface,resolvedReplayCamera,
-  type ReplaySurface,type ReplayCameraChoice,type ReplayPerspective}
+import {resolvedReplayCamera,type ReplayCameraChoice,type ReplayPerspective}
   from './breach-replay-ui-state.ts';
-import {buildReplayChapters,addReplayBookmark,adjacentReplayChapter,
-  type ReplayChapter,type ReplayBookmark} from './breach-replay-chapters.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
-import {inspectRecordedShot,shotScreenHit,adjacentRecordedShot}
-  from './breach-replay-shot-inspector.ts';
+import {shotScreenHit} from './breach-replay-shot-inspector.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
-import {buildReplayExecutionInsights} from './breach-replay-debrief.ts';
-import {indexReplayIncidents,featuredReplayIncidents,type ReplayIncident}
-  from './breach-replay-incidents.ts';
-import {featuredReplaySquadEntries,measureReplaySquadDoorEntry,
-  type ReplaySquadEntryReview} from './breach-replay-squad-entry.ts';
-import {operatorContactEventKnown,operatorContactAvailable}
-  from './breach-replay-contact-lens.ts';
+import {measureReplaySquadDoorEntry,type ReplaySquadEntryReview}
+  from './breach-replay-squad-entry.ts';
+import {operatorContactAvailable} from './breach-replay-contact-lens.ts';
 import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
   bodycamDisclosureLabel}
   from './breach-replay-bodycam-controls.ts';
@@ -746,15 +737,7 @@ function recordCompletedOperation(){
 }
 let replaying=false;
 const replayPlayback=new ReplayPlaybackController();
-let replayEventIndex:ReplayEventIndex|null=null;
-let replayChapters:ReplayChapter[]=[];
-let replayIncidents:ReplayIncident[]=[];
-let replayFeaturedIncidents:ReplayIncident[]=[];
-let replaySquadEntries:ReplaySquadEntryReview[]=[];
-let selectedReplaySquadEntry:string|null=null;
-let selectedReplayIncidentId:string|null=null;
-let replayBookmarks:ReplayBookmark[]=[];
-let replayBookmarkCounter=0;
+
 const replayQuickVideo=new ReplayQuickVideo(
   (blob,mime)=>{
     audioController.endVideoCapture();
@@ -798,7 +781,7 @@ function startReplayBodycam():boolean{
   replayKnowledge.omniscient=false;replayKnowledge.groundLensOn=false;
   chooseReplayCamera('free');replayCamera.follow=false;
   selected=next;replayCamera.followId=next;
-  closeReplayShotInspector();
+  replayAnalysisUi.closeReplayShotInspector();
   cameraMode('iso');
   applyReplayBodycamMount();
   fog2D.invalidate();return true;
@@ -815,7 +798,7 @@ let replayTraceMode:'off'|'recent'|'selected'='off';
 let replayGhostMode:'off'|'selected'|'squad'='off';
 let replayTrailMode:'off'|'recent'|'full'='off';
 let replayMovementHistory:ReplayMovementHistory|null=null;
-let selectedReplayShotId:number|null=null;
+
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
@@ -2241,7 +2224,8 @@ const world2D=createBreach2DWorldRenderer({
 const replay2D=createBreach2DReplayOverlays({
  draw,worldToScreen,colorFor,historicalShotVisible,
  replayPlayback,replayCamera,replayBodycam,
- getFrame:()=>({state,replaying,selected,recorder,selectedReplayShotId,
+ getFrame:()=>({state,replaying,selected,recorder,
+   selectedReplayShotId:replayAnalysisUi.selectedReplayShotId,
   replayTraceMode,replayTrailMode,replayGhostMode,replayNameTags,viewScale,
   replayMovementHistory})
 });
@@ -2383,11 +2367,6 @@ function useSelectedGround(pt:Pt){
   updateHud();
 }
 function isMissionTerminal(s:Session){return s.phase==='won'||s.phase==='lost';}
-function clockText(t:number){
-  const seconds=Math.floor(Math.max(0,t));
-  return String(Math.floor(seconds/60)).padStart(2,'0')+':'+
-    String(seconds%60).padStart(2,'0');
-}
 /** Reapply recorded outcomes after timeline navigation, then refresh dependent
  * camera/audio/visibility presentation. The playback controller owns samples.
  */
@@ -2403,284 +2382,16 @@ function presentReplayAtCurrentTime():void{
     fog2D.invalidate();
   }
   advanceReplayCamera(0,true);
-  if(!ui.replayFeed.hidden)renderReplayEventFeed();
+  if(!ui.replayFeed.hidden)replayAnalysisUi.renderReplayEventFeed();
   updateReplayHud();
 }
 function seekReplay(t:number):void{
   replayPlayback.seek(t,recorder.duration);
   presentReplayAtCurrentTime();
 }
-/** Replay event feed and navigation share the same disclosure boundary. */
-function replayEventKnown(e:ReplayIndexedEvent):boolean{
-  if(replayKnowledge.observerId){
-    const recorded=recorder.at(e.t)?.knowledge??null;
-    return operatorContactEventKnown(e,recorded,replayKnowledge.observerId,
-      new Set(team(state).map(a=>a.id)));
-  }
-  if(replayKnowledge.omniscient||e.kind==='objective')return true;
-  if(team(state).some(a=>a.id===e.actor))return true;
-  const frame=recorder.at(e.t);
-  if(!frame)return false;
-  if(frame.knowledge)return !!e.actor&&
-    frame.knowledge.visibleActorIds.includes(e.actor);
-  // Older recordings lack recorded visibility. Keep the guarded prior fallback.
-  const p=e.p;
-  return !!p&&(frame.seenGround.includes(
-    Math.floor(p.x/40)+','+Math.floor(p.y/40))||
-    frame.seenGround.includes(
-      'fine:'+Math.floor(p.x/20)+','+Math.floor(p.y/20)));
-}
-/** Shot investigation never introduces unrecorded future information. */
-function currentReplayShot():RecordedShot|null{
-  return selectedReplayShotId===null?null:
-    recorder.ballistics.shots.find(s=>s.id===selectedReplayShotId)??null;
-}
-function closeReplayShotInspector():void{
-  selectedReplayShotId=null;
-  ui.replayShotInspector.hidden=true;
-}
-function refreshReplayShotInspector():void{
-  const shot=currentReplayShot();
-  if(!shot||!historicalShotVisible(shot)){
-    closeReplayShotInspector();return;
-  }
-  const knowledge=recorder.at(shot.recordedAt)?.knowledge??null;
-  const detail=inspectRecordedShot(shot,knowledge,replayKnowledge.omniscient);
-  ui.replayShotInspector.hidden=false;
-  ui.replayShotTitle.textContent='SHOT '+detail.id+' · '+
-    formatReplayTime(detail.time);
-  ui.replayShotDetails.textContent=
-    detail.shooterId.toUpperCase()+' · '+detail.weapon.toUpperCase()+'\n'+
-    (detail.targetId?('TARGET '+detail.targetId.toUpperCase()+' · '+
-      (detail.hit?'HIT':'MISS')+
-      (detail.healthAfter!==null?' · HP '+detail.healthBefore+
-        ' → '+detail.healthAfter:'')):
-      'TARGET DETAILS UNCONFIRMED')+'\n'+
-    'IMPACT '+detail.end.x.toFixed(0)+', '+detail.end.y.toFixed(0)+
-    (detail.surface?' · '+detail.surface.toUpperCase():'');
-  const all=recorder.ballistics.shots;
-  ui.replayShotPrev.disabled=!adjacentRecordedShot(all,shot.id,false,
-    historicalShotVisible);
-  ui.replayShotNext.disabled=!adjacentRecordedShot(all,shot.id,true,
-    historicalShotVisible);
-}
-function selectReplayShot(shot:RecordedShot):void{
-  if(!historicalShotVisible(shot))return;
-  selectedReplayShotId=shot.id;
-  replayTraceMode='recent';
-  replayPlayback.pause();seekReplay(shot.recordedAt);
-  showReplayToolTab('layers');
-  const layers=ui.replayExtra.querySelector<HTMLDetailsElement>(
-    '[data-replay-group="layers"]');
-  if(layers)layers.open=true;
-  refreshReplayShotInspector();
-}
-function focusReplayShot():void{
-  const shot=currentReplayShot();
-  if(!shot)return;
-  chooseReplayCamera('free');replayCamera.follow=false;replayPlayback.pause();
-  if(stage&&viewMode!=='plan2d'){
-    stage.view.focus={...shot.end};
-    stage.view.zoom=Math.max(stage.view.zoom,1.7);
-    stage.updateCamera(1);
-  }else{
-    const projected=worldToScreen(shot.end);
-    panX+=cssW/2-projected.x;panY+=cssH/2-projected.y;
-    layout();
-  }
-  updateReplayHud();
-}
-/** Rebuild chapter buttons only on replay entry, intel change or bookmark. */
-function renderReplayChapters():void{
-  const fragment=document.createDocumentFragment();
-  const entries=[
-    ...replayChapters.map(c=>({t:c.t,label:c.label,kind:'chapter'})),
-    ...replayBookmarks.map(b=>({t:b.t,label:b.label,kind:'bookmark'}))
-  ].sort((a,b)=>a.t-b.t);
-  for(const entry of entries){
-    const button=document.createElement('button');
-    button.type='button';button.className='replay-chapter-item';
-    button.dataset.kind=entry.kind;
-    button.textContent=formatReplayTime(entry.t)+' · '+entry.label;
-    button.addEventListener('click',()=>{
-      replayPlayback.pause();seekReplay(entry.t);
-    });
-    fragment.append(button);
-  }
-  ui.replayChapterList.replaceChildren(fragment);
-}
-/** At most a short horizontal row: every item is a real, disclosed fact.
- * Movement inspection enables existing planned/actual overlays without
- * changing the recorded film or issuing any gameplay orders.
- */
-function renderReplayIncidentFocus():void{
-  const incident=replayIncidents.find(i=>i.id===selectedReplayIncidentId);
-  ui.replayIncidentDetails.hidden=!incident;
-  if(!incident)return;
-  ui.replayIncidentTitle.textContent=formatReplayTime(incident.start)+' · '+
-    incident.label;
-  ui.replayIncidentSummary.textContent=incident.summary;
-}
-/** Sparse personal observation events are independent of team battle feed.
- * Importantly a lost contact contains no guessed position or threat state.
- */
-function renderObserverSightTransitions():void{
-  const observer=replayKnowledge.observerId;
-  const mount=ui.replayObserverTransitions;
-  mount.hidden=!observer;
-  if(!observer){mount.replaceChildren();return;}
-  const transitions=replayKnowledge.sightIndex?.forObserver(observer)??[];
-  const fragment=document.createDocumentFragment();
-  if(!transitions.length){
-    const empty=document.createElement('span');
-    empty.className='replay-observer-empty';
-    empty.textContent='NO PERSONAL CONTACT TRANSITIONS RECORDED';
-    fragment.append(empty);
-  }
-  for(const event of transitions.slice(0,16)){
-    const button=document.createElement('button');
-    button.type='button';
-    button.className='replay-debrief-moment';
-    button.dataset.kind=event.kind;
-    const time=document.createElement('span');
-    time.className='time';
-    time.textContent=formatReplayTime(event.t)+' · '+
-      (event.kind==='visible-at-start'?'ALREADY VISIBLE':
-        event.kind==='acquired'?'CONTACT ACQUIRED':'CONTACT LOST');
-    const target=document.createElement('span');
-    target.className='detail';target.textContent=event.targetId;
-    button.append(time,target);
-    button.title=event.targetId+' · '+event.kind;
-    button.addEventListener('click',()=>{
-      replayPlayback.pause();selected=observer;replayCamera.followId=observer;
-      seekReplay(event.t);
-    });
-    fragment.append(button);
-  }
-  mount.replaceChildren(fragment);
-}
-/** R4.4: only recorded friendly threshold crossing facts. No inferred
- * breach timing, synchronized intent, or knowledge of unseen enemies.
- */
-function renderReplaySquadEntries():void{
-  const host=ui.replaySquadEntryList;
-  const panel=ui.replaySquadEntryPanel;
-  panel.hidden=replaySquadEntries.length===0;
-  if(panel.hidden){host.replaceChildren();return;}
-  const fragment=document.createDocumentFragment();
-  for(const entry of replaySquadEntries){
-    const count=entry.crossings.filter(c=>c.crossedAt!==null).length;
-    const button=document.createElement('button');
-    button.type='button';button.className='replay-entry-review-item';
-    button.setAttribute('aria-pressed',
-      String(entry.doorId===selectedReplaySquadEntry));
-    const title=document.createElement('strong');
-    title.textContent=entry.doorId+' · '+count+'/'+entry.crossings.length+
-      ' CROSSED'+(entry.spreadSeconds===null?'': ' · '+
-      entry.spreadSeconds.toFixed(1)+'S SPREAD');
-    const details=document.createElement('small');
-    details.textContent=entry.crossings.map(c=>
-      c.actorId.toUpperCase()+' '+
-      (c.crossedAt===null?(c.alreadyBeyond?'ALREADY PAST':'NOT RECORDED'):
-        formatReplayTime(c.crossedAt))).join(' · ');
-    button.title='Measured crossings only · '+details.textContent;
-    button.append(title,details);
-    button.addEventListener('click',()=>{
-      if(entry.firstCrossingAt===null)return;
-      selectedReplaySquadEntry=entry.doorId;
-      replayPlayback.pause();
-      seekReplay(Math.max(0,entry.firstCrossingAt-.6));
-      renderReplaySquadEntries();
-    });
-    fragment.append(button);
-  }
-  host.replaceChildren(fragment);
-}
-function renderReplayDebrief():void{
-  const stalls=buildReplayExecutionInsights(recorder.executionEvents,
-    recorder.duration,5).filter(x=>
-      (!replayKnowledge.observerId||x.actor===replayKnowledge.observerId)&&
-      (x.end===null||(x.seconds??0)>=2))
-    .slice(0,2);
-  const fragment=document.createDocumentFragment();
-  for(const incident of replayFeaturedIncidents){
-    const button=document.createElement('button');
-    button.type='button';button.className='replay-debrief-moment';
-    button.dataset.kind=incident.kind;
-    button.setAttribute('aria-pressed',
-      String(incident.id===selectedReplayIncidentId));
-    button.title=incident.label+' · '+incident.summary;
-    const stamp=document.createElement('span');
-    stamp.className='time';
-    stamp.textContent=formatReplayTime(incident.start)+' · '+incident.label;
-    const description=document.createElement('span');
-    description.className='detail';
-    description.textContent=incident.summary;
-    button.append(stamp,description);
-    button.addEventListener('click',()=>{
-      replayPlayback.pause();
-      selectedReplayIncidentId=incident.id;
-      const friendly=incident.actorIds.find(id=>
-        team(state).some(a=>a.id===id));
-      if(friendly){selected=friendly;replayCamera.followId=friendly;}
-      if(incident.kind==='movement'){
-        replayAnalysis=true;replayPlanScope='selected';
-        replayPlanVersion='active';replayTrailMode='recent';
-      }
-      seekReplay(incident.start);
-      renderReplayDebrief();
-    });
-    fragment.append(button);
-  }
-  for(const stall of stalls.filter(x=>!replayFeaturedIncidents.some(i=>
-    i.kind==='movement'&&i.actorIds.includes(x.actor)&&
-    x.t>=i.start-.5&&x.t<=i.end+.5))){
-    const button=document.createElement('button');
-    button.type='button';button.className='replay-debrief-moment';
-    button.dataset.kind='movement';
-    button.title=stall.detail;
-    const stamp=document.createElement('span');
-    stamp.className='time';
-    stamp.textContent=formatReplayTime(stall.t)+' · ORDER INTERRUPTION';
-    const detail=document.createElement('span');
-    detail.className='detail';
-    detail.textContent=stall.detail+' · '+(stall.seconds===null?
-      'NO RECORDED RESOLUTION':stall.seconds.toFixed(1)+'S');
-    button.append(stamp,detail);
-    button.addEventListener('click',()=>{
-      replayPlayback.pause();selectedReplayIncidentId=null;
-      if(team(state).some(a=>a.id===stall.actor)){
-        selected=stall.actor;replayCamera.followId=stall.actor;
-      }
-      replayAnalysis=true;replayPlanScope='selected';
-      replayPlanVersion='active';replayTrailMode='recent';
-      seekReplay(stall.t);renderReplayDebrief();
-    });
-    fragment.append(button);
-  }
-  ui.replayDebriefMoments.replaceChildren(fragment);
-  ui.replayDebriefInfo.textContent=replayFeaturedIncidents.length?
-    replayFeaturedIncidents.length+' KEY INCIDENTS':
-    'NO DISCLOSED INCIDENTS';
-  renderReplayIncidentFocus();
-  renderObserverSightTransitions();
-}
-function startReplayIncident(loop:boolean):void{
-  const incident=replayIncidents.find(i=>i.id===selectedReplayIncidentId);
-  if(!incident)return;
-  if(!replayPlayback.startIncident(incident,recorder.duration,loop)){
-    showUiHelp('INCIDENT TOO SHORT TO PLAY',2500);return;
-  }
-  // Incident start is already positioned by the transport controller.
-  // Do not call seekReplay here: seeking cancels incident playback.
-  presentReplayAtCurrentTime();
-  audioController.unlock();
-  showReplayToolTab(null);
-  updateReplayHud();
-}
+
 function rebuildReplayEventIndex():void{
-  replayEventIndex=new ReplayEventIndex(recorder.events,
-    recorder.executionEvents,e=>replayEventKnown(e));
+  const eventIndex=replayAnalysisUi.rebuildReplayEventIndex();
   // The Director controller owns historical camera evidence and the film.
   const headerBottom=Math.max(65,
     ui.replayTopHud.getBoundingClientRect().bottom,
@@ -2690,18 +2401,11 @@ function rebuildReplayEventIndex():void{
     Math.min(205,cssH*.235):
     Math.max(cssH-dockRect.top,Math.min(205,cssH*.235));
   replayDirector.rebuild({
-    recorder,eventIndex:replayEventIndex,state,
+    recorder,eventIndex,state,
     observerId:replayKnowledge.observerId,omniscient:replayKnowledge.omniscient,
     isShotVisible:historicalShotVisible,width:cssW,height:cssH,
     headerBottom,dockPixels,baseSpan:stage?.replayCameraBaseSpan()??1100
   });
-  replayChapters=buildReplayChapters(replayEventIndex.all,recorder.duration);
-  replayIncidents=indexReplayIncidents(replayEventIndex.all,recorder.duration);
-  replayFeaturedIncidents=featuredReplayIncidents(replayIncidents,5);
-  selectedReplayIncidentId=null;
-  replayPlayback.clearIncident();
-  renderReplayChapters();
-  renderReplayDebrief();
 }
 /** Runtime only bridges the camera controller to the current replay view. */
 function advanceReplayCamera(dt:number,instant=false):void{
@@ -2712,213 +2416,17 @@ function advanceReplayCamera(dt:number,instant=false):void{
     replayFollowStatus:ui.replayFollowStatus,debugPanel:replayDirectorDebugPanel
   });
 }
-const replayFeedKinds:Record<string,readonly string[]>={
-  all:[],
-  combat:['shot','impact','wound','down','flash','surrender'],
-  orders:['started','blocked','resumed','completed','door','reload','interaction'],
-  contacts:['intel'],
-  objectives:['objective']
-};
-let replayFeedEvents:readonly ReplayIndexedEvent[]=[];
-let replayFeedRangeStart=0,replayFeedRangeEnd=0;
-let replayFeedActiveKey:string|null=null;
-let replayFeedFollowing=false;
-function scrollReplayFeedSelection():void{
-  ui.replayFeed.querySelector<HTMLElement>('.selected')?.
-    scrollIntoView({block:'nearest'});
-}
-function renderReplayEventFeed():void{
-  if(ui.replayFeed.hidden||!replayEventIndex)return;
-  const allowed=replayFeedKinds[ui.replayFeedFilter.value]??[];
-  replayFeedEvents=replayEventIndex.all.filter(event=>
-    !allowed.length||allowed.includes(event.kind));
-  const position=replayFeedPosition(replayFeedEvents,replayPlayback.time);
-  replayFeedRangeStart=position.start;replayFeedRangeEnd=position.end;
-  replayFeedActiveKey=replayFeedEvents[position.focusIndex]?.key??null;
-  const fragment=document.createDocumentFragment();
-  for(const event of replayFeedEvents.slice(position.start,position.end)){
-    const button=document.createElement('button');
-    button.type='button';button.className='replay-feed-item';
-    button.dataset.kind=event.kind;button.dataset.eventKey=event.key;
-    button.classList.toggle('selected',event.key===replayFeedActiveKey);
-    button.textContent=formatReplayTime(event.t)+' · '+
-      event.kind.toUpperCase()+' · '+event.text;
-    button.addEventListener('click',()=>{
-      replayPlayback.pause();seekReplay(event.t);
-      if(event.kind==='shot'){
-        const shot=recorder.ballistics.shots.find(s=>
-          Math.abs(s.recordedAt-event.t)<.17&&s.shooterId===event.actor&&
-          historicalShotVisible(s));
-        if(shot)selectReplayShot(shot);
-      }
-    });
-    fragment.append(button);
-  }
-  ui.replayFeed.replaceChildren(fragment);
-  ui.replayFeedInfo.textContent=replayFeedEvents.length+
-    ' KNOWN EVENTS · SHOWING '+(replayFeedEvents.length?position.start+1:0)+
-    '–'+position.end;
-  if(replayFeedFollowing)scrollReplayFeedSelection();
-}
-function syncReplayEventFeed():void{
-  if(ui.replayFeed.hidden||!replayEventIndex)return;
-  const position=replayFeedPosition(replayFeedEvents,replayPlayback.time);
-  const key=replayFeedEvents[position.focusIndex]?.key??null;
-  if(replayFeedFollowing&&position.focusIndex>=0&&
-     (position.focusIndex<replayFeedRangeStart||
-      position.focusIndex>=replayFeedRangeEnd)){
-    renderReplayEventFeed();return;
-  }
-  if(key===replayFeedActiveKey)return;
-  replayFeedActiveKey=key;
-  for(const button of ui.replayFeed.querySelectorAll<HTMLButtonElement>('[data-event-key]'))
-    button.classList.toggle('selected',button.dataset.eventKey===key);
-  if(replayFeedFollowing)scrollReplayFeedSelection();
-}
-/** One tool surface at a time; never let advanced controls grow the dock. */
-type ReplayToolTab='layers'|'export'|'events';
-type ReplayPreset='clean'|'movement'|'combat'|'visibility'|'custom';
-let replayToolTab:ReplayToolTab|null=null;
-let replaySurface:ReplaySurface='none';
-let replaySurfaceOpener:HTMLButtonElement|null=null;
-let replayClusterOpener:HTMLButtonElement|null=null;
-function closeReplaySurface(restoreFocus=true):void{
-  const focusWasInside=ui.replayDrawer.contains(document.activeElement);
-  const opener=replaySurfaceOpener??ui.replayMore;
-  showReplayToolTab(null);
-  replaySurfaceOpener=null;
-  if(restoreFocus&&focusWasInside&&opener.isConnected)
-    opener.focus({preventScroll:true});
-}
-function closeReplayCluster(restoreFocus=true):void{
-  const focusWasInside=ui.replayClusterMenu.contains(document.activeElement);
-  ui.replayClusterMenu.hidden=true;
-  ui.replayClusterMenu.replaceChildren();
-  const opener=replayClusterOpener;
-  replayClusterOpener=null;
-  if(restoreFocus&&focusWasInside&&opener?.isConnected)
-    opener.focus({preventScroll:true});
-}
-let replayMomentsView:'highlights'|'events'='highlights';
-let replayPreset:ReplayPreset='clean';
-function setReplayMomentsView(view:'highlights'|'events'):void{
-  replayMomentsView=view;
-  ui.replayHighlights.hidden=view!=='highlights';
-  ui.replayAllEvents.hidden=view!=='events';
-  const active=replaySurface==='moments'&&view==='events';
-  ui.replayFeed.hidden=!active;
-  ui.replayFeedFilter.hidden=!active;
-  ui.replayFeedInfo.hidden=!active;
-  for(const b of ui.replayFeedPanel.querySelectorAll<HTMLButtonElement>('[data-moments-view]'))
-    b.setAttribute('aria-pressed',String(b.dataset.momentsView===view));
-  if(active)renderReplayEventFeed();
-}
-let replayDockCollapsed=false;
-type ReplayChoiceKey='view'|'sight'|'speed'|'overlay';
-const replayChoices={
-  view:{trigger:ui.replayViewTrigger,menu:ui.replayViewChoices},
-  sight:{trigger:ui.replaySightTrigger,menu:ui.replaySightChoices},
-  speed:{trigger:ui.replaySpeedTrigger,menu:ui.replaySpeedChoices},
-  overlay:{trigger:ui.replayOverlayTrigger,menu:ui.replayOverlayChoices}
-};
-let replayRailCollapsed=false;
-let replayOverlaySignature='';
-/** One fast signature gate: replay transport refreshes every frame; overlay
- * controls should update only when a visibility preference changes. */
-function syncReplayOverlayChoices():void{
-  const signature=[
-    replayNameTags,replayContactMarkers,
-    replayPlanScope,replayObjectiveMarkers].join('|');
-  if(signature===replayOverlaySignature)return;
-  replayOverlaySignature=signature;
-  const states:Record<string,boolean>={
-    names:replayNameTags,contacts:replayContactMarkers,
-    plans:replayPlanScope!=='none',objectives:replayObjectiveMarkers};
-  for(const button of ui.replayOverlayChoices
-    .querySelectorAll<HTMLButtonElement>('[data-overlay-choice]')){
-    const key=button.dataset.overlayChoice??'';
-    if(!(key in states))continue;
-    const value=states[key];
-    button.textContent=key.toUpperCase()+' '+(value?'ON':'OFF');
-    button.setAttribute('aria-pressed',String(value));
-  }
-  const cleared=Object.values(states).every(v=>!v);
-  ui.replayOverlayTrigger.dataset.cleared=String(cleared);
-  ui.replayOverlayTrigger.title=cleared?'Show replay overlays':
-    'Show or hide replay overlays';
-}
+
 function clearReplayPresentation():void{
   replayNameTags=false;replayContactMarkers=false;
   replayPlanScope='none';replayObjectiveMarkers=false;
   replayAnalysis=false;replayTraceMode='off';
   replayGhostMode='off';replayTrailMode='off';
-  replayKnowledge.groundLensOn=false;selectedReplayShotId=null;
+  replayKnowledge.groundLensOn=false;replayAnalysisUi.selectedReplayShotId=null;
 }
-function setReplayRailCollapsed(collapsed:boolean):void{
-  replayRailCollapsed=collapsed;
-  closeReplayChoices();
-  ui.replayRail.dataset.collapsed=String(collapsed);
-  ui.replayRailToggle.textContent=collapsed?'›':'‹';
-  const description=collapsed?'Expand replay side controls':
-    'Collapse replay side controls';
-  ui.replayRailToggle.setAttribute('aria-label',description);
-  ui.replayRailToggle.title=description;
-  ui.replayRailToggle.setAttribute('aria-expanded',String(!collapsed));
-}
-function closeReplayChoices():void{
-  for(const {trigger,menu} of Object.values(replayChoices)){
-    menu.hidden=true;
-    trigger.setAttribute('aria-expanded','false');
-  }
-}
-function toggleReplayChoice(key:ReplayChoiceKey):void{
-  const {trigger,menu}=replayChoices[key];
-  const open=menu.hidden;
-  closeReplayChoices();
-  menu.hidden=!open;
-  trigger.setAttribute('aria-expanded',String(open));
-}
-function setReplayDockCollapsed(collapsed:boolean):void{
-  replayDockCollapsed=collapsed;
-  if(collapsed)showReplayToolTab(null);
-  ui.replayPanel.dataset.collapsed=String(collapsed);
-  ui.replayDockToggle.textContent=collapsed?'⌃':'⌄';
-  ui.replayDockToggle.title=collapsed?'Expand replay timeline':'Minimize replay timeline';
-  ui.replayDockToggle.setAttribute('aria-label',ui.replayDockToggle.title);
-  ui.replayDockToggle.setAttribute('aria-expanded',String(!collapsed));
-  ui.replayMiniPlay.hidden=!collapsed;
-  ui.replayMiniPlay.textContent=replayPlayback.playing?'Ⅱ':'▶';
-}
-function showReplayToolTab(tab:ReplayToolTab|null):void{
-  replayToolTab=tab;
-  replaySurface=tab===null?'none':tab==='events'?'moments':tab==='export'?'share':'analyze';
-  const analyze=replaySurface==='analyze',share=replaySurface==='share';
-  ui.replayDrawer.hidden=replaySurface==='none';
-  ui.replayDrawerTitle.textContent=replaySurface==='moments'?'MOMENTS':
-    share?'SAVE / SHARE':'ANALYZE';
-  ui.replayExtra.hidden=!(analyze||share);
-  ui.replayFeedPanel.hidden=replaySurface!=='moments';
-  ui.replayPresets.hidden=!analyze;
-  ui.replayActorControls.hidden=!analyze;
-  ui.replayMore.setAttribute('aria-expanded',String(analyze));
-  ui.replayFeedToggle.setAttribute('aria-expanded',String(replaySurface==='moments'));
-  ui.replayShareToggle.setAttribute('aria-expanded',String(share));
-  for(const group of ui.replayExtra.querySelectorAll<HTMLElement>('[data-replay-group]'))
-    group.hidden=share?group.dataset.replayGroup!=='export':
-      !analyze||group.dataset.replayGroup==='export';
-  setReplayMomentsView(replayMomentsView);
-}
-function toggleReplayPanel(surface:Exclude<ReplaySurface,'none'>,
-  opener:HTMLButtonElement):void{
-  const next=toggleReplaySurface(replaySurface,surface);
-  if(next==='none'){closeReplaySurface(false);return;}
-  replaySurfaceOpener=opener;
-  setReplayDockCollapsed(false);
-  showReplayToolTab(next==='moments'?'events':
-    next==='share'?'export':'layers');
-}
-function applyReplayPreset(next:Exclude<ReplayPreset,'custom'>):void{
-  replayPreset=next;
+
+function applyReplayPreset(next:'clean'|'movement'|'combat'|'visibility'):void{
+  replayAnalysisUi.replayPreset=next;
   if(next==='clean'){
     clearReplayPresentation();
   }else if(next==='movement'){
@@ -3002,7 +2510,7 @@ function updateReplayHud(){
   .querySelectorAll<HTMLButtonElement>('[data-overlay-choice]')){
   b.addEventListener('click',()=>{
     const choice=b.dataset.overlayChoice;
-    replayPreset='custom';
+    replayAnalysisUi.replayPreset='custom';
     if(choice==='names')replayNameTags=!replayNameTags;
     else if(choice==='contacts')replayContactMarkers=!replayContactMarkers;
     else if(choice==='plans')replayPlanScope=
@@ -3014,7 +2522,7 @@ function updateReplayHud(){
       replayPlanScope='selected';replayObjectiveMarkers=true;
     }
     updateReplayHud();
-    if(choice==='clear'||choice==='show')closeReplayChoices();
+    if(choice==='clear'||choice==='show')replayAnalysisUi.closeReplayChoices();
   });
 }
 for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-speed-choice]')){
@@ -3155,24 +2663,24 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
   ui.replayPlans.textContent='PLANS '+replayPlanScope.toUpperCase();
   ui.replayPlanVersion.textContent='PLAN '+replayPlanVersion.toUpperCase();
   ui.replayNames.textContent=replayNameTags?'NAMES ON':'NAMES OFF';
-  syncReplayOverlayChoices();
+  replayAnalysisUi.syncReplayOverlayChoices();
   ui.replayTraces.textContent='TRACES '+replayTraceMode.toUpperCase();
   ui.replayGhosts.textContent='GHOSTS '+replayGhostMode.toUpperCase();
   ui.replayTrails.textContent='ACTUAL PATH '+replayTrailMode.toUpperCase();
   ui.replayPlans.setAttribute('aria-pressed',String(replayPlanScope!=='none'));
   ui.replayNames.setAttribute('aria-pressed',String(replayNameTags));
   for(const button of ui.replayPresets.querySelectorAll<HTMLButtonElement>('[data-replay-preset]'))
-    button.setAttribute('aria-pressed',String(button.dataset.replayPreset===replayPreset));
-  ui.replayPresetStatus.textContent=replayPreset==='custom'?'CUSTOM SETTINGS':'';
+    button.setAttribute('aria-pressed',String(button.dataset.replayPreset===replayAnalysisUi.replayPreset));
+  ui.replayPresetStatus.textContent=replayAnalysisUi.replayPreset==='custom'?'CUSTOM SETTINGS':'';
   ui.replayShareToggle.textContent=replayQuickVideo.active?'■ STOP VIDEO':'SAVE / SHARE';
   const replaySaved=!!(replayLibrary.activeSavedReplayId||replayLibrary.isRecorderSaved(recorder));
   ui.replaySaveArchive.disabled=replayLibrary.busy||replaySaved;
   ui.replaySaveArchive.textContent=replaySaved?'SAVED TO LIBRARY':'SAVE REPLAY';
   ui.replayShareToggle.setAttribute('aria-label',replayQuickVideo.active?
     'Stop replay video recording':'Open replay save and share');
-  ui.replayPrevEvent.disabled=!replayEventIndex?.previous(replayPlayback.time);
-  ui.replayNextEvent.disabled=!replayEventIndex?.next(replayPlayback.time);
-  const event=replayEventIndex?.latest(replayPlayback.time+.14);
+  ui.replayPrevEvent.disabled=!replayAnalysisUi.replayEventIndex?.previous(replayPlayback.time);
+  ui.replayNextEvent.disabled=!replayAnalysisUi.replayEventIndex?.next(replayPlayback.time);
+  const event=replayAnalysisUi.replayEventIndex?.latest(replayPlayback.time+.14);
   ui.replayEventText.textContent=event&&replayPlayback.time-event.t<6.5?
     formatReplayTime(event.t)+' · '+event.text:
     replayPlayback.time<.5?'TAP AN OPERATOR TO FOLLOW · PLAYBACK STARTING':
@@ -3185,71 +2693,12 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
       'DIRECTOR EDIT · +'+replayDirector.editNoticeSeconds.toFixed(1)+'S':'';
   ui.replayStatusChip.textContent=status;
   ui.replayStatusChip.hidden=!status;
-  syncReplayEventFeed();
+  replayAnalysisUi.syncReplayEventFeed();
 }
 /** Display compact clusters, not dozens of overlapping tap targets.
  * The scrubber and event navigation remain the accessible interactions.
  */
-function renderReplayEventMarkers():void{
-  ui.replayMarks.replaceChildren();
-  ui.replayClusterMenu.hidden=true;
-  ui.replayClusterMenu.replaceChildren();
-  const duration=recorder.duration;
-  if(duration<=0)return;
-  const width=ui.replayMarks.clientWidth||ui.replaySeek.clientWidth||320;
-  const bins=replayTimelineBins(width);
-  const events=replayEventIndex?.markers??[];
-  const clusters=clusterReplayTimeline(events,duration,width);
-  const byBin=new Map<number,ReplayIndexedEvent[]>();
-  for(const event of events){
-    if(!Number.isFinite(event.t))continue;
-    const bin=Math.min(bins-1,Math.max(0,Math.floor(event.t/duration*bins)));
-    const list=byBin.get(bin);
-    if(list)list.push(event);else byBin.set(bin,[event]);
-  }
-  const fragment=document.createDocumentFragment();
-  for(const cluster of clusters){
-    const members=byBin.get(cluster.index)??[];
-    if(!members.length)continue;
-    const marker=document.createElement('button');
-    marker.type='button';
-    marker.className='replay-mark replay-mark-'+cluster.kind;
-    marker.style.left=((cluster.index+.5)/bins*100).toFixed(3)+'%';
-    marker.dataset.cluster=String(members.length>1);
-    marker.title=members.length+' event'+(members.length===1?'':'s')+
-      ' near '+clockText(cluster.time);
-    marker.setAttribute('aria-label',members.length===1?
-      'Go to '+formatReplayTime(members[0].t)+': '+members[0].text:
-      'Choose among '+members.length+' recorded events near '+
-        formatReplayTime(cluster.time));
-    marker.addEventListener('click',()=>{
-      closeReplayCluster(false);
-      if(members.length===1){
-        replayPlayback.pause();seekReplay(members[0].t);return;
-      }
-      const heading=document.createElement('strong');
-      heading.textContent=members.length+' EVENTS · '+
-        formatReplayTime(cluster.time);
-      ui.replayClusterMenu.append(heading);
-      for(const event of members){
-        const choice=document.createElement('button');
-        choice.type='button';choice.textContent=formatReplayTime(event.t)+
-          ' · '+event.kind.toUpperCase()+' · '+event.text;
-        choice.addEventListener('click',()=>{
-          replayPlayback.pause();seekReplay(event.t);
-          ui.replayClusterMenu.hidden=true;
-          marker.focus();
-        });
-        ui.replayClusterMenu.append(choice);
-      }
-      replayClusterOpener=marker;
-      ui.replayClusterMenu.hidden=false;
-      ui.replayClusterMenu.querySelector('button')?.focus({preventScroll:true});
-    });
-    fragment.append(marker);
-  }
-  ui.replayMarks.append(fragment);
-}
+
 function enterReplay(){
   if(replaying||recorder.frames.length<2)return;
   finishedSession=state;replaying=true;
@@ -3269,22 +2718,18 @@ function enterReplay(){
   replayAnalysis=false;
   replayDirector.indexPlans(recorder.plans.revisions);
   
-  replayBookmarks=[];replayBookmarkCounter=0;
+  replayAnalysisUi.startSession();
   replayPlanScope='none';replayPlanVersion='active';
   replayNameTags=true;replayContactMarkers=true;
-  replayObjectiveMarkers=true;replayOverlaySignature='';
+  replayObjectiveMarkers=true;
   replayTraceMode='off';replayGhostMode='off';
   replayTrailMode='off';
-  replayPreset='clean';replayMomentsView='highlights';
-  replayFeedFollowing=false;replayFeedActiveKey=null;
-  ui.replayFeedFollow.setAttribute('aria-pressed','false');
-  ui.replayFeedFollow.textContent='FOLLOW TIME OFF';
-  closeReplayShotInspector();
+
   replayMovementHistory=new ReplayMovementHistory(recorder.frames,
     team(finishedSession).map(a=>a.id));
   audioController.beginReplay(recorder);
   audioController.unlock();
-  showReplayToolTab(null);
+  replayAnalysisUi.showReplayToolTab(null);
   state=missionController.createReplaySession(recorder,finishedSession);
   replayCamera.followId=team(state)[0]?.id??'rook';
   populateReplayCameraChoices();
@@ -3301,16 +2746,13 @@ function enterReplay(){
   rebuildReplayEventIndex();
   // One-time historical index; only recorded friendly coordinates and
   // recorded door geometry, never current world positions or hidden AI.
-  replaySquadEntries=featuredReplaySquadEntries(recorder.frames,
-    team(state).map(a=>a.id),recorder.duration,3);
-  selectedReplaySquadEntry=null;
-  renderReplaySquadEntries();
+  replayAnalysisUi.rebuildReplaySquadEntries();
   document.body.classList.add('replaying');
   ui.replayPanel.hidden=false;
   ui.replayTopHud.hidden=false;ui.replayRail.hidden=false;
-  setReplayRailCollapsed(false);setReplayDockCollapsed(false);
+  replayAnalysisUi.setReplayRailCollapsed(false);replayAnalysisUi.setReplayDockCollapsed(false);
   ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
-  renderReplayEventMarkers();seekReplay(0);updateHud();
+  replayAnalysisUi.renderReplayEventMarkers();seekReplay(0);updateHud();
 }
 function exitReplay(){
   if(!replaying)return;
@@ -3321,27 +2763,13 @@ function exitReplay(){
   replayPlayback.reset();
   replayBodycam.groundObservers.clear();
   replaying=false;replayPresentation=null;
-  replayEventIndex=null;
-  
-  replayChapters=[];replayBookmarks=[];
-  replayIncidents=[];replayFeaturedIncidents=[];
-  replaySquadEntries=[];selectedReplaySquadEntry=null;
-  renderReplaySquadEntries();
+  replayAnalysisUi.reset();
   replayKnowledge.reset();
-  selectedReplayIncidentId=null;
-  ui.replayIncidentDetails.hidden=true;
-  closeReplayShotInspector();
   replayMovementHistory=null;audioController.endReplay();
-  ui.replayFeed.replaceChildren();
-  ui.replayDebriefMoments.replaceChildren();
-  ui.replayObserverTransitions.replaceChildren();
-  ui.replayObserverTransitions.hidden=true;
-  ui.replayDebriefInfo.textContent='';
-  showReplayToolTab(null);
   document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
-  closeReplayChoices();
+  replayAnalysisUi.closeReplayChoices();
   if(finishedSession)state=missionController.resumeLiveSession(finishedSession);
   finishedSession=null;fog2D.invalidate();
   replayLibrary.afterReplayExit();
@@ -3370,13 +2798,8 @@ const replayLibrary=createBreachReplayLibraryController({
   showUiHelp,closeMissionSettings,isReplaying:()=>replaying,
   getRecorder:()=>recorder,
   setRecorder:value=>{recorder=value;},
-  getBookmarks:()=>replayBookmarks,
-  applyLoadedBookmarks:marks=>{
-    replayBookmarks=marks;
-    replayBookmarkCounter=Math.max(marks.length,
-      ...marks.map(mark=>Number(mark.id.match(/bookmark-(\d+)/)?.[1]??0)));
-    renderReplayChapters();
-  },
+  getBookmarks:()=>replayAnalysisUi.replayBookmarks,
+  applyLoadedBookmarks:marks=>replayAnalysisUi.restoreBookmarks(marks),
   enterReplay,exitReplay,refreshHud:updateHud,
   getFavoriteDraft:()=>state.site?{
     start:missionController.start,
@@ -3413,37 +2836,40 @@ const replayTimeline=createBreachReplayTimelineController({
   unlockAudio:()=>audioController.unlock(),
   refreshHud:updateReplayHud,showHelp:showUiHelp
 });
-ui.replayMore.addEventListener('click',()=>
-  toggleReplayPanel('analyze',ui.replayMore));
-ui.replayShareToggle.addEventListener('click',()=>{
-  if(replayQuickVideo.active){ui.replayExportVideo.click();return;}
-  toggleReplayPanel('share',ui.replayShareToggle);
+
+const replayAnalysisUi=createBreachReplayAnalysisController({
+ ui,playback:replayPlayback,camera:replayCamera,knowledge:replayKnowledge,
+ getRecorder:()=>recorder,getSession:()=>state,shotVisible:historicalShotVisible,
+ seek:seekReplay,presentCurrent:presentReplayAtCurrentTime,refreshHud:updateReplayHud,
+ selectActor:id=>{selected=id;},
+ enableMovementAnalysis:()=>{
+   replayAnalysis=true;replayPlanScope='selected';
+   replayPlanVersion='active';replayTrailMode='recent';
+ },
+ markRecentTrace:()=>{replayTraceMode='recent';},
+ applyPreset:applyReplayPreset,
+ getOverlayState:()=>({
+   names:replayNameTags,contacts:replayContactMarkers,
+   plans:replayPlanScope!=='none',objectives:replayObjectiveMarkers
+ }),
+ isVideoActive:()=>replayQuickVideo.active,
+ persistBookmarks:()=>replayLibrary.persistCurrentBookmarks(),
+ unlockAudio:()=>audioController.unlock(),showHelp:showUiHelp,
+ focusShot:shot=>{
+   chooseReplayCamera('free');replayCamera.follow=false;replayPlayback.pause();
+   if(stage&&viewMode!=='plan2d'){
+     stage.view.focus={...shot.end};
+     stage.view.zoom=Math.max(stage.view.zoom,1.7);
+     stage.updateCamera(1);
+   }else{
+     const projected=worldToScreen(shot.end);
+     panX+=cssW/2-projected.x;panY+=cssH/2-projected.y;
+     layout();
+   }
+   updateReplayHud();
+ }
 });
-for(const [key,{trigger}] of Object.entries(replayChoices) as
-  Array<[ReplayChoiceKey,{trigger:HTMLButtonElement;menu:HTMLElement}]>){
-  trigger.addEventListener('click',()=>toggleReplayChoice(key));
-}
-for(const b of ui.replayViewChoices.querySelectorAll<HTMLButtonElement>('[data-view-choice]')){
-  b.addEventListener('click',()=>{
-    ui.replayQuickView.value=b.dataset.viewChoice??'iso';
-    ui.replayQuickView.dispatchEvent(new Event('change'));
-    closeReplayChoices();
-  });
-}
-for(const b of ui.replaySightChoices.querySelectorAll<HTMLButtonElement>('[data-sight-choice]')){
-  b.addEventListener('click',()=>{
-    ui.replayDirectSight.value=b.dataset.sightChoice??'team';
-    ui.replayDirectSight.dispatchEvent(new Event('change'));
-    closeReplayChoices();
-  });
-}
-document.addEventListener('pointerdown',e=>{
-  if(!(e.target instanceof Node)||ui.replayRail.contains(e.target))return;
-  closeReplayChoices();
-});
-ui.replayDockToggle.addEventListener('click',()=>setReplayDockCollapsed(!replayDockCollapsed));
-ui.replayRailToggle.addEventListener('click',()=>
-  setReplayRailCollapsed(!replayRailCollapsed));
+replayAnalysisUi.bindReplayUi();
 ui.replayQuickView.addEventListener('change',()=>{
   if(replayBodycam.active)return;
   const next=ui.replayQuickView.value as ReplayPerspective;
@@ -3490,74 +2916,7 @@ ui.replayQuickCamera.addEventListener('change',()=>{
   chooseReplayCamera(mode);replayCamera.follow=mode==='operator';
   advanceReplayCamera(0,true);updateReplayHud();
 });
-for(const button of ui.replayPresets.querySelectorAll<HTMLButtonElement>('[data-replay-preset]'))
-  button.addEventListener('click',()=>{
-    const p=button.dataset.replayPreset;
-    if(p==='clean'||p==='movement'||p==='combat'||p==='visibility')applyReplayPreset(p);
-  });
-for(const button of ui.replayFeedPanel.querySelectorAll<HTMLButtonElement>('[data-moments-view]'))
-  button.addEventListener('click',()=>setReplayMomentsView(
-    button.dataset.momentsView==='events'?'events':'highlights'));
-ui.replayFeedToggle.addEventListener('click',()=>
-  toggleReplayPanel('moments',ui.replayFeedToggle));
-ui.replayDrawerClose.addEventListener('click',()=>closeReplaySurface());
-ui.replayFeedFilter.addEventListener('change',renderReplayEventFeed);
-ui.replayFeedFollow.addEventListener('click',()=>{
-  replayFeedFollowing=!replayFeedFollowing;
-  ui.replayFeedFollow.setAttribute('aria-pressed',String(replayFeedFollowing));
-  ui.replayFeedFollow.textContent=replayFeedFollowing?'FOLLOW TIME ON':'FOLLOW TIME OFF';
-  if(replayFeedFollowing)renderReplayEventFeed();
-});
-ui.replayIncidentWatch.addEventListener('click',()=>startReplayIncident(false));
-ui.replayIncidentLoop.addEventListener('click',()=>startReplayIncident(true));
-ui.replayIncidentInvestigate.addEventListener('click',()=>{
-  const incident=replayIncidents.find(i=>i.id===selectedReplayIncidentId);
-  if(!incident)return;
-  replayPlayback.pause();seekReplay(incident.start);
-  const actor=incident.actorIds.find(id=>team(state).some(a=>a.id===id));
-  if(actor)selected=actor;
-  const preset=incident.kind==='movement'||incident.kind==='door'||
-    incident.kind==='orders'?'movement':
-    incident.kind==='contact'?'visibility':'combat';
-  applyReplayPreset(preset);
-  showReplayToolTab('layers');
-  const layers=ui.replayExtra.querySelector<HTMLDetailsElement>(
-    '[data-replay-group="layers"]');
-  if(layers)layers.open=true;
-});
-ui.replayIncidentClose.addEventListener('click',()=>{
-  replayPlayback.clearIncident();selectedReplayIncidentId=null;
-  renderReplayDebrief();
-});
-ui.replayPrevChapter.addEventListener('click',()=>{
-  const chapter=adjacentReplayChapter(replayChapters,replayPlayback.time,false);
-  if(chapter){replayPlayback.pause();seekReplay(chapter.t);}
-});
-ui.replayNextChapter.addEventListener('click',()=>{
-  const chapter=adjacentReplayChapter(replayChapters,replayPlayback.time,true);
-  if(chapter){replayPlayback.pause();seekReplay(chapter.t);}
-});
-ui.replayBookmark.addEventListener('click',()=>{
-  const id='bookmark-'+(++replayBookmarkCounter);
-  replayBookmarks=addReplayBookmark(replayBookmarks,replayPlayback.time,recorder.duration,
-    id,'MARK '+String(replayBookmarkCounter).padStart(2,'0'));
-  renderReplayChapters();
-  void replayLibrary.persistCurrentBookmarks();
-});
-ui.replayShotClose.addEventListener('click',closeReplayShotInspector);
-ui.replayShotFocus.addEventListener('click',focusReplayShot);
-ui.replayShotPrev.addEventListener('click',()=>{
-  const s=currentReplayShot();
-  const prev=s&&adjacentRecordedShot(recorder.ballistics.shots,s.id,
-    false,historicalShotVisible);
-  if(prev)selectReplayShot(prev);
-});
-ui.replayShotNext.addEventListener('click',()=>{
-  const s=currentReplayShot();
-  const next=s&&adjacentRecordedShot(recorder.ballistics.shots,s.id,
-    true,historicalShotVisible);
-  if(next)selectReplayShot(next);
-});
+
 audioController.bindReplayMute(ui.replaySound,updateReplayHud);
 function changeReplaySight(mode:'team'|'full'|'operator'):void{
   if(mode==='operator'){
@@ -3568,7 +2927,7 @@ function changeReplaySight(mode:'team'|'full'|'operator'):void{
     if(!next)return;
     replayKnowledge.observerId=next;
     replayKnowledge.omniscient=false;
-    closeReplayShotInspector();
+    replayAnalysisUi.closeReplayShotInspector();
     if(replayBodycam.active)applyReplayBodycamMount();
   }else{
     if(replayBodycam.active)stopReplayBodycam();
@@ -3577,8 +2936,8 @@ function changeReplaySight(mode:'team'|'full'|'operator'):void{
   }
   fog2D.invalidate();
   rebuildReplayEventIndex();
-  renderReplayEventMarkers();renderReplayEventFeed();
-  refreshReplayShotInspector();updateReplayHud();
+  replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
+  replayAnalysisUi.refreshReplayShotInspector();updateReplayHud();
 }
 function followReplayOperator(id:string):void{
   if(!replaying||!team(state).some(a=>a.id===id&&a.health>0))return;
@@ -3589,7 +2948,7 @@ function followReplayOperator(id:string):void{
   if(replayKnowledge.observerId){
     replayKnowledge.observerId=replayBodycam.observers.includes(id)?id:null;
     fog2D.invalidate();rebuildReplayEventIndex();
-    renderReplayEventMarkers();renderReplayEventFeed();
+    replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
   }
   advanceReplayCamera(0,true);
   updateReplayHud();
@@ -3600,7 +2959,7 @@ ui.replayDirectSight.addEventListener('change',()=>{
     changeReplaySight(mode);
 });
 ui.replayDirectTracers.addEventListener('click',()=>{
-  replayPreset='custom';
+  replayAnalysisUi.replayPreset='custom';
   replayTraceMode=replayTraceMode==='off'?'recent':'off';
   updateReplayHud();
 });
@@ -3638,7 +2997,7 @@ ui.replayDirectBodycam.addEventListener('click',()=>{
     if(!startReplayBodycam())return;
   }
   fog2D.invalidate();rebuildReplayEventIndex();
-  renderReplayEventMarkers();renderReplayEventFeed();
+  replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
   updateReplayHud();
 });
 ui.replayDirectMount.addEventListener('click',()=>ui.replayBodycamMount.click());
@@ -3653,8 +3012,8 @@ ui.replaySight.addEventListener('click',()=>{
   replayKnowledge.observerId=null;
   replayKnowledge.omniscient=!replayKnowledge.omniscient;fog2D.invalidate();
   rebuildReplayEventIndex();
-  renderReplayEventMarkers();renderReplayEventFeed();
-  refreshReplayShotInspector();updateReplayHud();
+  replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
+  replayAnalysisUi.refreshReplayShotInspector();updateReplayHud();
 });
 /** Only Vite DEVELOPMENT + explicit QA query can access this hook.
  * Production builds strip it; normal replay has NO Bodycam button yet.
@@ -3807,12 +3166,12 @@ ui.replayContactLens.addEventListener('click',()=>{
     replayKnowledge.omniscient=false;
     selected=replayKnowledge.observerId;
     replayCamera.followId=replayKnowledge.observerId;
-    closeReplayShotInspector();
+    replayAnalysisUi.closeReplayShotInspector();
   }
   fog2D.invalidate();
   rebuildReplayEventIndex();
-  renderReplayEventMarkers();renderReplayEventFeed();
-  refreshReplayShotInspector();updateReplayHud();
+  replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
+  replayAnalysisUi.refreshReplayShotInspector();updateReplayHud();
 });
 ui.replayGroundLens.addEventListener('click',()=>{
   if(replayBodycam.active)stopReplayBodycam();
@@ -3827,8 +3186,8 @@ ui.replayBodycam.addEventListener('click',()=>{
   if(replayBodycam.active)stopReplayBodycam();
   else if(!startReplayBodycam())return;
   rebuildReplayEventIndex();
-  renderReplayEventMarkers();renderReplayEventFeed();
-  refreshReplayShotInspector();updateReplayHud();
+  replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
+  replayAnalysisUi.refreshReplayShotInspector();updateReplayHud();
 });
 ui.replayBodycamMount.addEventListener('click',()=>{
   if(!replayBodycam.active)return;
@@ -3843,13 +3202,7 @@ ui.replayView.addEventListener('click',()=>{
   
   updateReplayHud();
 });
-const jumpReplayEvent=(forward:boolean)=>{
-  const item=forward?replayEventIndex?.next(replayPlayback.time):
-    replayEventIndex?.previous(replayPlayback.time);
-  if(item){replayPlayback.pause();seekReplay(item.t);}
-};
-ui.replayPrevEvent.addEventListener('click',()=>jumpReplayEvent(false));
-ui.replayNextEvent.addEventListener('click',()=>jumpReplayEvent(true));
+
 ui.replayFollow.addEventListener('click',()=>{
   if(replayBodycam.active)stopReplayBodycam();
   if(replayCamera.follow){
@@ -3871,11 +3224,11 @@ ui.replayDirector.addEventListener('click',()=>{
   replayCamera.follow=false;advanceReplayCamera(0,true);updateReplayHud();
 });
 ui.replayAnalysis.addEventListener('click',()=>{
-  replayPreset='custom';
+  replayAnalysisUi.replayPreset='custom';
   replayAnalysis=!replayAnalysis;updateReplayHud();
 });
 ui.replayPlans.addEventListener('click',()=>{
-  replayPreset='custom';
+  replayAnalysisUi.replayPreset='custom';
   replayPlanScope=replayPlanScope==='selected'?'all':
     replayPlanScope==='all'?'none':'selected';
   updateReplayHud();
@@ -3884,24 +3237,24 @@ ui.replayNames.addEventListener('click',()=>{
   replayNameTags=!replayNameTags;updateReplayHud();
 });
 ui.replayPlanVersion.addEventListener('click',()=>{
-  replayPreset='custom';
+  replayAnalysisUi.replayPreset='custom';
   replayPlanVersion=replayPlanVersion==='active'?'original':'active';
   updateReplayHud();
 });
 ui.replayTraces.addEventListener('click',()=>{
-  replayPreset='custom';
+  replayAnalysisUi.replayPreset='custom';
   replayTraceMode=replayTraceMode==='off'?'recent':
     replayTraceMode==='recent'?'selected':'off';
   updateReplayHud();
 });
 ui.replayGhosts.addEventListener('click',()=>{
-  replayPreset='custom';
+  replayAnalysisUi.replayPreset='custom';
   replayGhostMode=replayGhostMode==='off'?'selected':
     replayGhostMode==='selected'?'squad':'off';
   updateReplayHud();
 });
 ui.replayTrails.addEventListener('click',()=>{
-  replayPreset='custom';
+  replayAnalysisUi.replayPreset='custom';
   replayTrailMode=replayTrailMode==='off'?'recent':
     replayTrailMode==='recent'?'full':'off';
   updateReplayHud();
@@ -3943,15 +3296,9 @@ function releaseMissionPresentation():void{
   }
   replaying=false;replayPlayback.pause();finishedSession=null;
   replayLibrary.resetSession();
-  replayEventIndex=null;
-  // Old film indexes and storyboard closures can retain entire sessions.
-  // Clear them on EVERY replacement, including direct Quick Play restarts.
-  replayPresentation=null;
+  // Clear old recording indexes and UI selections on every replacement.
+  replayAnalysisUi.reset();replayPresentation=null;
   replayMovementHistory=null;
-  replayChapters=[];replayBookmarks=[];
-  replayIncidents=[];replayFeaturedIncidents=[];
-  replaySquadEntries=[];selectedReplaySquadEntry=null;
-  selectedReplayIncidentId=null;
   replayDirector.reset();
   replayKnowledge.reset();
   replayBodycam.observers=[];replayBodycam.groundObservers.clear();
@@ -3962,7 +3309,7 @@ function releaseMissionPresentation():void{
   flashMode=false;document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
-  closeReplayChoices();
+  replayAnalysisUi.closeReplayChoices();
   hudController.resetNotices();
   blockedEpisode.clear();
   physicalActionRings.clear();
@@ -4639,8 +3986,8 @@ window.addEventListener('keydown',e=>{
      !(target instanceof HTMLElement&&target.closest(
        '[role="dialog"],[role="alertdialog"],textarea,[contenteditable="true"]'))){
     e.preventDefault();
-    if(!ui.replayClusterMenu.hidden)closeReplayCluster();
-    else if(replayToolTab!==null)closeReplaySurface();
+    if(!ui.replayClusterMenu.hidden)replayAnalysisUi.closeReplayCluster();
+    else if(replayAnalysisUi.replayToolTab!==null)replayAnalysisUi.closeReplaySurface();
     else exitReplay();
     return;
   }
@@ -4657,7 +4004,7 @@ window.addEventListener('keydown',e=>{
       target instanceof HTMLElement&&target.closest('button,summary,[role="button"]'))){
       e.preventDefault();
       const direction:-1|1=e.code==='ArrowLeft'?-1:1;
-      if(e.ctrlKey||e.metaKey)jumpReplayEvent(direction>0);
+      if(e.ctrlKey||e.metaKey)replayAnalysisUi.jumpEvent(direction>0);
       else if(e.shiftKey){replayPlayback.pause();seekReplay(replayPlayback.time+direction);}
       else replayTimeline.step('frame',direction);
     }
@@ -4936,7 +4283,7 @@ function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
       {x:e.clientX,y:e.clientY},
       (point,height)=>worldToScreen(point,viewMode==='plan2d'?0:height),
       historicalShotVisible,e.pointerType==='touch'?30:22);
-    if(hit)selectReplayShot(hit);
+    if(hit)replayAnalysisUi.selectReplayShot(hit);
   }
   if(!cancelled&&!replaying&&state.phase!=='planning'&&
      pointerCount===1&&!p.moved&&p.mode==='undecided'&&
