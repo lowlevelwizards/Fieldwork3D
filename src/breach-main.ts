@@ -8055,8 +8055,18 @@ function tick(now:number){
   if(replaying)advanceReplayCamera(dt);
   // 079: shot IDs are monotonic, unlike the short-lived shot array length.
   // A new shot can arrive on exactly the tick an old shot expires.
-  const fresh=state.shots.filter(shot=>shot.id>lastSoundShotId);
-  if(audio&&!replaying)for(const shot of fresh.slice(-3)){
+  // Track the newest three audible shots without a per-frame filter/slice.
+  const freshShots:typeof state.shots=[];
+  let newestShotId=lastSoundShotId;
+  for(const shot of state.shots){
+    if(shot.id<=lastSoundShotId)continue;
+    if(shot.id>newestShotId)newestShotId=shot.id;
+    if(audio&&!replaying){
+      if(freshShots.length===3)freshShots.shift();
+      freshShots.push(shot);
+    }
+  }
+  if(audio&&!replaying)for(const shot of freshShots){
     const firingActor=state.operators.find(a=>a.id===shot.shooterId);
     const weapon=firingActor?.weapon??'carbine';
     const listener=uid(selected)?.p;
@@ -8083,7 +8093,7 @@ function tick(now:number){
         playTone(shot.down?75:225,shot.down?.25:.10,
           shot.down,level*Math.max(.22,impactLevel),pan);
   }
-  if(fresh.length)lastSoundShotId=fresh.at(-1)!.id;
+  lastSoundShotId=newestShotId;
   // One restrained boot thud per recorded physical touchdown; never an
   // independent timed walking loop, and never an audio burst on resume.
   if(!replaying&&state.phase==='running'){
@@ -8168,7 +8178,9 @@ function tick(now:number){
         null,
       replaying?replayWindowHistory:null);
   const overlayBegin=perfOverlay?performance.now():0;
+  const sceneUpdateEnd=perfOverlay?performance.now():0;
   if(!studioOccludesTactical)render();
+  const renderEnd=perfOverlay?performance.now():0;
   if(replaying&&replayQuickVideo.active){
     replayQuickVideo.drawFrame(
       stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayTime,
@@ -8260,7 +8272,9 @@ function tick(now:number){
   if(frameMeter&&perfOverlay){
     const end=performance.now(),stats=stage?.performanceStats();
     frameMeter.add({frame:end-perfStart,cadence:frameGap,sim:perfRenderStart-perfStart,
-      scene:overlayBegin-perfRenderStart,overlay:end-overlayBegin,
+      scene:overlayBegin-perfRenderStart,
+      sceneUpdate:sceneUpdateEnd-perfRenderStart,
+      render:renderEnd-sceneUpdateEnd,overlay:end-overlayBegin,
       recording:recordingMs,steps:simSteps,draws:stats?.calls??0,triangles:stats?.triangles??0});
     // The optional diagnostics must not sort rolling samples every RAF:
     // that would contaminate the very hitch measurements they report.
@@ -8272,6 +8286,7 @@ function tick(now:number){
         m.rafP95.toFixed(1)+'ms'+
         '\\nSIM+REC '+m.simulation.toFixed(1)+'ms / '+m.steps.toFixed(1)+
         ' ticks · REC '+m.recording.toFixed(1)+'ms · SCENE '+m.scene.toFixed(1)+'ms'+
+        '\\nSYNC '+m.sceneUpdate.toFixed(1)+'ms · RENDER '+m.render.toFixed(1)+'ms'+
         '\\nFILM '+recorder.frames.length+' frames · '+
         recorder.motion.stepEventCount+' step events'+
         '\\nDOM '+document.getElementsByTagName('*').length+

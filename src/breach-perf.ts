@@ -1,9 +1,16 @@
 /** Optional and allocation-bounded CPU frame measurements.
  * GPU work is asynchronous: renderer statistics are counts, NOT GPU milliseconds. */
-export type FrameMeasures={frame:number;cadence?:number;sim:number;scene:number;overlay:number;recording?:number;steps:number;draws:number;triangles:number};
+export type FrameMeasures={frame:number;cadence?:number;sim:number;scene:number;sceneUpdate?:number;render?:number;overlay:number;recording?:number;steps:number;draws:number;triangles:number};
 export class FrameMeter{
   private samples:FrameMeasures[]=[];
-  add(value:FrameMeasures){this.samples.push(value);if(this.samples.length>120)this.samples.shift();}
+  private next=0;
+  /** Fixed-capacity rolling sample window. Replacing the oldest slot avoids
+   * shifting 119 entries every RAF when the optional perf overlay is active. */
+  add(value:FrameMeasures){
+    if(this.samples.length<120){this.samples.push(value);return;}
+    this.samples[this.next]=value;
+    this.next=(this.next+1)%120;
+  }
   summary(){
     const data=this.samples;
     const series=(key:keyof FrameMeasures)=>data.map(s=>s[key]??0).sort((a,b)=>a-b);
@@ -14,7 +21,7 @@ export class FrameMeter{
       rafP50:percentile(series('cadence'),.5),
       rafP95:percentile(series('cadence'),.95),
       worst:percentile(series('frame'),1),
-      simulation:avg('sim'),recording:avg('recording'),scene:avg('scene'),overlay:avg('overlay'),
+      simulation:avg('sim'),recording:avg('recording'),scene:avg('scene'),sceneUpdate:avg('sceneUpdate'),render:avg('render'),overlay:avg('overlay'),
       steps:avg('steps'),draws:avg('draws'),triangles:avg('triangles')};
   }
 }
