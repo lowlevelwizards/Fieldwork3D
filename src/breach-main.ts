@@ -1,8 +1,7 @@
 import {matchActiveTouchPointers} from './breach-touch-recovery.ts';
-import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {
-  W,H,activeWorldBounds,WALLS,COVER,GRID,doorCenter,doorLeafSegment,activateSite,
-  type Pt,type Segment,
+  W,H,activeWorldBounds,WALLS,doorCenter,doorLeafSegment,activateSite,
+  type Pt,
 } from './breach-core.ts';
 import {
   type Session,type TeamActor,
@@ -57,9 +56,6 @@ import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
  from './quick-play-generation.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
-import {weaponClearance} from './breach-weapon-clearance.ts';
-import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter}
- from './equipment-weapon-light-beam.ts';
 import {WeaponWorkbenchPreview,type WeaponWorkbenchViewState} from './equipment-weapon-workbench.ts';
 import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
@@ -68,11 +64,10 @@ import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 import {lightControlState} from './equipment-weapon-light-ui.ts';
 import type {SiteScale} from './breach-site.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
-import {spatialSurfaceState,shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
+import {shotVisibility,doorVisibility,contactFade} from './breach-presentation.ts';
 import {heardIntensity} from './breach-acoustics.ts';
 import {weaponAudioCue,audibleImpact} from './breach-combat-audio.ts';
 import {defaultSoundPack,readSoundPack,SOUND_STORAGE_KEY} from './sound-catalog.ts';
@@ -156,7 +151,7 @@ import {validateStudioAppearanceEdits,applyStudioRosterEdits,
  applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
- sameWeaponConfiguration,weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
+ weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
 import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,familyPreset,proposeFamilyPartChange,type FamilyPartSlot} from './equipment-weapon-families.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {newCampaign,readCampaign,acceptContract,resolveOperation,
