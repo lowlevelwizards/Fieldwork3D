@@ -5,6 +5,11 @@ on:
       - 'src/breach-replay-director-reset.ts'
       - 'src/breach-replay-*-controller.ts'
       - 'src/breach-main.ts'
+      - 'src/breach-replay-camera-controller.ts'
+      - 'src/breach-replay-director-controller.ts'
+      - 'src/breach-replay-director-subject-timeline.ts'
+      - 'index.html'
+      - 'tests/replay-director-cam.test.mjs'
       - 'tests/replay-director-reset.test.mjs'
       - 'tests/replay-*-controller-20261109.test.mjs'
       - 'tests/replay-lifecycle-controller-20261109.test.mjs'
@@ -24,6 +29,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/replay-director-reset.test.mjs \
+            tests/replay-director-cam.test.mjs \
             tests/replay-director-r101-shoulder-invariant.test.mjs \
             tests/replay-bodycam-controller-20261109.test.mjs \
             tests/replay-camera-controller-20261109.test.mjs \
