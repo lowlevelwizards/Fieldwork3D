@@ -1,6 +1,8 @@
 import {validPieArc} from './breach-maneuvers.ts';
 import {pathFor,edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan}
  from './breach-plan-authoring.ts';
+import {simulationPhaseMark,advanceTransientSimulationEffects,
+ recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
  from './breach-combat-reactions.ts';
 import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts';
@@ -64,9 +66,9 @@ import {captureMotionFrameOrigins,buildMotionFrameProposals}
  from './breach-motion-frame-input.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
 import {releaseEmbeddedMotorActor} from './breach-locomotion-clearance.ts';
-import {executionStatus,type MotorPause,type ExecutionIssue,
+import {type MotorPause,type ExecutionIssue,
   type ExecutionStatus} from './breach-execution-state.ts';
-import {executionTransition,type ExecutionEvent} from './breach-execution-events.ts';
+import {type ExecutionEvent} from './breach-execution-events.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
 import {canAutoShove} from './breach-traversal-surfaces.ts';
@@ -4772,13 +4774,7 @@ function liveDoorOccupants(s:Session):Pt[]{
 export type StepPhaseProbe=(phase:string,elapsedMs:number)=>void;
 export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   if(s.phase!=='running')return;
-  let perfStart=probe?performance.now():0;
-  const mark=(phase:string)=>{
-    if(!probe)return;
-    const now=performance.now();
-    probe(phase,now-perfStart);
-    perfStart=now;
-  };
+  const mark=simulationPhaseMark(probe);
   const h=clamp(dt,0,1/30);
   s.seconds+=h;
   for(const operator of s.operators)operator.treatmentActive=false;
@@ -4847,17 +4843,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     advanceDoor(door,h,doorOccupants);
   }
   mark('doors');
-  // Effects are usually empty between firefights; the old filters
-  // allocated five fresh empty arrays on every authoritative 60Hz tick.
-  // Nonempty collections retain the same age increments and expiry gates.
-  if(s.sparks.length)s.sparks=s.sparks.filter(a=>(a.age+=h)<.20);
-  if(s.shots.length)s.shots=s.shots.filter(a=>(a.age+=h)<.40);
-  if(s.noise.length)s.noise=s.noise.filter(n=>s.seconds-n.time<4);
-  for(const magazine of s.dropped)magazine.age+=h;
-  if(s.impactMarks.length)
-    s.impactMarks=s.impactMarks.filter(mark=>(mark.age+=h)<24);
-  if(s.flashBursts.length)
-    s.flashBursts=s.flashBursts.filter(b=>(b.age+=h)<.70);
+  advanceTransientSimulationEffects(s,h);
   stepFlashbangs(s,h);
   mark('aging-effects');
   advanceVisualAwareness(s,h);
@@ -5073,22 +5059,8 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   mark('fire');
   mission(s,h);
   mark('mission');
-  // Record only changed player-visible states after the authoritative tick.
-  // This is observational: no actor motion or tactical orders are changed.
-  const friendly=team(s);
-  for(const unit of friendly){
-    const status=executionStatus(unit,{
-      phase:s.phase,doors:s.doors,peers:friendly
-    });
-    const change=executionTransition(unit.executionLastStatus,status,unit.name);
-    unit.executionLastStatus=status;
-    if(!change)continue;
-    s.executionEvents.push({
-      id:s.nextExecutionId++,t:s.seconds,actor:unit.id,
-      p:clone(unit.p),...change
-    });
-    if(s.executionEvents.length>240)s.executionEvents.shift();
-  }
+  recordSimulationExecutionOutcomes(s);
+
 }
 export function operationBriefing(s:Session){
   const brief=operationBrief(s.missionType);
