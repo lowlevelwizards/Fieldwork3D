@@ -12,7 +12,6 @@ import type {IntelMode} from './breach-intel.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import {MissionRecorder} from './breach-replay.ts';
-import type {ReplayManifest} from './breach-replay-manifest.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import {
   captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam,
@@ -182,6 +181,14 @@ export class BreachMissionController{
   }
   /** Refresh the UI from session state, not inferred scene geometry. */
   refreshDeployment(session:Session,replaying:boolean):void{
+    // Replay uses a temporary presentation Session. It must not consume
+    // or reset the insertion selected for the paused live mission.
+    if(replaying){
+      if(this.controls){
+        this.controls.button.hidden=true;this.controls.button.disabled=true;
+      }
+      return;
+    }
     if(this.deploymentSession!==session){
       this.deploymentSession=session;
       this.selectedInsertion='FRONT';
