@@ -72,8 +72,6 @@ import {renderSnapshot,type RenderActor}
   from './breach-frame-interpolation.ts';
 import {routeLineHit} from './breach-route-edit.ts';
 import {createBreachAudioController} from './breach-audio-controller.ts';
-import {parseOperationHistory,addOperationRecord,
-  type OperationRecord} from './breach-operations.ts';
 import {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
 import {createBreachReplayTimelineController}
   from './ui/breach-replay-timeline-controller.ts';
@@ -120,11 +118,10 @@ import {formatMissionPacing} from './breach-mission-pacing.ts';
 import {formatCombatReview} from './breach-combat-review.ts';
 import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
  serializeQuickPlayCosmetics} from './breach-roster.ts';
-import {readCampaign,resolveOperation,tacticalSlotOperator,type CampaignState,type CampaignReport} from './campaign-state.ts';
+import {readCampaign,tacticalSlotOperator,type CampaignState} from './campaign-state.ts';
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
-import {careerEventsForOperation} from './campaign-history.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import './breach-style.css';
@@ -550,58 +547,8 @@ function restoreFavoriteMission(saved:FavoriteMission):void{
 function refreshDeployment():void{
   missionController.refreshDeployment(state,replaying);
 }
-const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
-let recordedOperation:Session|null=null;
-function operationHistory():OperationRecord[]{
-  try{return parseOperationHistory(localStorage.getItem(OPERATION_HISTORY_KEY));}
-  catch{return [];}
-}
-function recordCompletedOperation(){
-  if(replaying||recordedOperation===state||!state.started||
-    (state.phase!=='won'&&state.phase!=='lost'))return;
-  recordedOperation=state;
-  if(campaignMode==='mission'&&campaign?.activeContractId){
-   const members=team(state);
-   const careerId=(slotId:string)=>tacticalSlotOperator(campaign!,slotId)?.id??slotId;
-   const mapping=Object.fromEntries(members.map(a=>[a.id,careerId(a.id)]));
-   const stats=debrief(state);
-   const result:CampaignReport={
-    id:'operation-'+campaign.activeContractId,contractId:campaign.activeContractId,
-    day:campaign.day,outcome:state.phase==='won'?'success':'failure',
-    grade:stats.grade,elapsed:stats.time,
-    participatingIds:members.map(a=>careerId(a.id)),
-    casualties:members.filter(a=>a.health<=0).map(a=>careerId(a.id)),
-    stabilizedIds:stats.stabilizedCasualties.map(careerId),
-    criticalIds:stats.criticalCasualties.map(careerId),
-    evacuatedIds:stats.evacuatedCasualties.map(careerId),
-    medicalRemaining:Object.fromEntries(members.map(a=>[
-     careerId(a.id),{...a.medicalSupplies}])),
-    objective:stats.objective,
-    flashUsed:state.battleEvents.filter(e=>e.kind==='flash'&&
-     e.actor!==undefined&&e.text.endsWith('FLASH OUT')).length,
-    events:careerEventsForOperation(campaign,'operation-'+campaign.activeContractId,state.battleEvents,mapping),
-    performance:members.map(a=>({
-     id:careerId(a.id),shots:a.shots,hits:a.hits,pointShots:a.pointShots,
-     aimedShots:a.aimedShots,longHits:a.longHits,injuryStage:a.injuryStage,
-     survived:a.health>0,magazine:a.magazine,reserve:a.reserve,
-     armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
-     spareMagazines:a.spareMagazines.map(m=>({...m})),
-     loadedMagazineId:a.insertedMagazineId
-    }))
-   };
-   campaign=resolveOperation(campaign,result);saveCampaign();return;
-  }
-  const stats=debrief(state);
-  const record:OperationRecord={
-    seed:state.site?.seed??state.variant,
-    kind:state.missionType,
-    outcome:state.phase==='won'?'success':'failure',
-    grade:stats.grade,elapsed:stats.time,casualties:stats.casualties
-  };
-  try{localStorage.setItem(OPERATION_HISTORY_KEY,
-    JSON.stringify(addOperationRecord(operationHistory(),record)));}
-  catch{/* Private mode may reject local storage. Game still works. */}
-}
+const operationHistory=()=>campaignFlow.operationHistory();
+const recordCompletedOperation=()=>campaignFlow.recordCompletedOperation();
 let replaying=false;
 const replayPlayback=new ReplayPlaybackController();
 
@@ -2747,7 +2694,7 @@ function releaseMissionPresentation():void{
   replayKnowledge.reset();
   replayBodycam.observers=[];replayBodycam.groundObservers.clear();
   audioController.endReplay();
-  recordedOperation=null;
+  campaignFlow.resetOutcome();
   operationsBoard.hidden=true;
   hideWeaponChooser();
   flashMode=false;document.body.classList.remove('replaying');
@@ -2824,7 +2771,7 @@ const campaignFlow=createBreachCampaignFlow({
   getMode:()=>campaignMode,setMode:mode=>{campaignMode=mode;},
   getIntel:()=>selectedIntelMode,setIntel:value=>{selectedIntelMode=value;},
   getScale:()=>requestedSiteScale,setScale:value=>{requestedSiteScale=value;},
-  getSession:()=>state,siteSize:ui.siteSize,siteSettings:ui.siteSettings,
+  getSession:()=>state,isReplaying:()=>replaying,siteSize:ui.siteSize,siteSettings:ui.siteSettings,
   randomSeed:randomSiteSeed,
   resetContract:job=>reset(0,job.seed,job.kind,undefined,job.risk),
   launchQuickPlay,openReplayLibrary:()=>replayLibrary.openFromMenu(),

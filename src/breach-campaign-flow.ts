@@ -2,6 +2,12 @@
  * All Campaign actions continue using campaign-state and campaign-persistence.
  */
 import {CampaignScreen} from './campaign-ui.ts';
+import {team,debrief} from './breach-game.ts';
+import {parseOperationHistory,addOperationRecord,type OperationRecord}
+  from './breach-operations.ts';
+import {careerEventsForOperation} from './campaign-history.ts';
+import {resolveOperation,tacticalSlotOperator,type CampaignReport}
+  from './campaign-state.ts';
 import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
   resupplyOperator,resupplyMedicalOperator,treatOperator,hireRecruit,
   assignOperatorToSlot,buyWeapon,equipCampaignWeapon,repairCampaignArmor,
@@ -24,7 +30,7 @@ export type CampaignFlowHooks={
  getMode:()=>CampaignMode;setMode:(value:CampaignMode)=>void;
  getIntel:()=>IntelMode;setIntel:(value:IntelMode)=>void;
  getScale:()=>SiteScale;setScale:(value:SiteScale)=>void;
- getSession:()=>Session;
+ getSession:()=>Session;isReplaying:()=>boolean;
  siteSize:HTMLButtonElement;siteSettings:HTMLElement;randomSeed:()=>number;
  resetContract:(job:CampaignState['contracts'][number])=>void;
  launchQuickPlay:()=>void|Promise<void>;openReplayLibrary:()=>void;
@@ -42,6 +48,61 @@ export function createBreachCampaignFlow(config:CampaignFlowHooks){
    get scale(){return config.getScale();},
    set scale(next:SiteScale){config.setScale(next);}
  };
+const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
+let recordedOperation:Session|null=null;
+function operationHistory():OperationRecord[]{
+  try{return parseOperationHistory(localStorage.getItem(OPERATION_HISTORY_KEY));}
+  catch{return [];}
+}
+function recordCompletedOperation(){
+ const state=config.getSession();
+ const currentCampaign=config.getCampaign();
+  if(config.isReplaying()||recordedOperation===state||!state.started||
+    (state.phase!=='won'&&state.phase!=='lost'))return;
+  recordedOperation=state;
+  if(config.getMode()==='mission'&&currentCampaign?.activeContractId){
+   const members=team(state);
+   const careerId=(slotId:string)=>tacticalSlotOperator(currentCampaign!,slotId)?.id??slotId;
+   const mapping=Object.fromEntries(members.map(a=>[a.id,careerId(a.id)]));
+   const stats=debrief(state);
+   const result:CampaignReport={
+    id:'operation-'+currentCampaign.activeContractId,contractId:currentCampaign.activeContractId,
+    day:currentCampaign.day,outcome:state.phase==='won'?'success':'failure',
+    grade:stats.grade,elapsed:stats.time,
+    participatingIds:members.map(a=>careerId(a.id)),
+    casualties:members.filter(a=>a.health<=0).map(a=>careerId(a.id)),
+    stabilizedIds:stats.stabilizedCasualties.map(careerId),
+    criticalIds:stats.criticalCasualties.map(careerId),
+    evacuatedIds:stats.evacuatedCasualties.map(careerId),
+    medicalRemaining:Object.fromEntries(members.map(a=>[
+     careerId(a.id),{...a.medicalSupplies}])),
+    objective:stats.objective,
+    flashUsed:state.battleEvents.filter(e=>e.kind==='flash'&&
+     e.actor!==undefined&&e.text.endsWith('FLASH OUT')).length,
+    events:careerEventsForOperation(currentCampaign,'operation-'+currentCampaign.activeContractId,state.battleEvents,mapping),
+    performance:members.map(a=>({
+     id:careerId(a.id),shots:a.shots,hits:a.hits,pointShots:a.pointShots,
+     aimedShots:a.aimedShots,longHits:a.longHits,injuryStage:a.injuryStage,
+     survived:a.health>0,magazine:a.magazine,reserve:a.reserve,
+     armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
+     spareMagazines:a.spareMagazines.map(m=>({...m})),
+     loadedMagazineId:a.insertedMagazineId
+    }))
+   };
+   config.setCampaign(resolveOperation(currentCampaign,result));config.saveCampaign();return;
+  }
+  const stats=debrief(state);
+  const record:OperationRecord={
+    seed:state.site?.seed??state.variant,
+    kind:state.missionType,
+    outcome:state.phase==='won'?'success':'failure',
+    grade:stats.grade,elapsed:stats.time,casualties:stats.casualties
+  };
+  try{localStorage.setItem(OPERATION_HISTORY_KEY,
+    JSON.stringify(addOperationRecord(operationHistory(),record)));}
+  catch{/* Private mode may reject local storage. Game still works. */}
+}
+
  const backButton=document.createElement('button');
  backButton.type='button';backButton.id='campaignReturnButton';
  backButton.textContent='OPERATIONS ROOM';
@@ -174,7 +235,8 @@ backButton.addEventListener('click',()=>{
  else{model.mode='menu';campaignScreen.entry(false);}
 });
 
- return {screen:campaignScreen,showHome:showCampaignHome,
+ return {screen:campaignScreen,operationHistory,recordCompletedOperation,
+   resetOutcome:()=>{recordedOperation=null;},showHome:showCampaignHome,
    deployContract:deployCampaignContract,
    returnAfterMission:returnAfterCampaignMission};
 }
