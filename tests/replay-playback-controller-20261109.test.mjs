@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {ReplayPlaybackController} from '../src/breach-replay-playback-controller.ts';
+test('historical replay playback owns time, speed, loop and reset',()=>{
+ const playback=new ReplayPlaybackController();
+ playback.playing=true;
+ const step=playback.advance(.25,5,{director:false,videoActive:false,tempoEdits:[]});
+ assert.ok(step);
+ assert.equal(step.previousTime,0);
+ assert.ok(step.time>0&&step.time<1);
+ assert.equal(step.finishedIncident,false);
+ playback.loopIn=1;playback.loopOut=2;playback.loopEnabled=true;
+ playback.time=1.95;
+ const looped=playback.advance(.5,5,{director:false,videoActive:false,tempoEdits:[]});
+ assert.ok(looped);
+ assert.ok(looped.time>=1&&looped.time<=2);
+ playback.reset();
+ assert.equal(playback.time,0);
+ assert.equal(playback.playing,false);
+ assert.equal(playback.incident,null);
+ assert.equal(playback.loopEnabled,false);
+});
