@@ -31,7 +31,7 @@ test('exterior window locations must be physically on reachable perimeter',()=>{
  assert.equal(accessibleExteriorWall(site,exteriorWindow),true);
  assert.equal(accessibleExteriorWall(site,internalWindow),false);
 });
-test('3D foreground restores only qualified façades after the unchanged fog layer',()=>{
+test('3D retains qualified façades while the ground fog respects scene depth',()=>{
  const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  assert.match(scene,/import \{exteriorBriefedAt,accessibleExteriorWall\}/);
  assert.match(scene,/const exterior=accessibleExteriorWall\(site,wall\)/);
@@ -44,5 +44,5 @@ test('3D foreground restores only qualified façades after the unchanged fog lay
  assert.match(scene,/if\(publicWindow\)\{[\s\S]*?promoteFacadeDetails\(group\)/);
  assert.match(scene,/node\.renderOrder=1002/);
  assert.match(scene,/this\.siteMaterials\.track\(original\.clone\(\)\)/);
- assert.match(scene,/map:this\.fogTexture,transparent:true,depthTest:false,opacity:1/);
+ assert.match(scene,/map:this\.fogTexture,transparent:true,depthTest:true,opacity:1/);
 });
