@@ -298,8 +298,10 @@ export function physicalDirectorCandidates(req:PhysicalDirectorRequest,
     anchors.push(...relaxed.slice(0,36));
   }
   if(!anchors.length){
-    // Truly impossible physical placement: preserve the old safe
-    // fallback without inventing passage through a solid wall.
+    // R10 approved rig cannot be staged. Do not synthesize an arbitrary
+    // camera inside a wall or directly on top of an operator.
+    if(req.composition)return [];
+    // Legacy non-cinematic callers retain their original fallback.
     const fallback=room?{x:clamp(req.operator.x,
       room.x+Math.min(11,room.w*.24),room.x+room.w-Math.min(11,room.w*.24)),
       y:clamp(req.operator.y,
@@ -576,6 +578,39 @@ export function physicalDirectorCandidates(req:PhysicalDirectorRequest,
       .sort((a,b)=>b.score-a.score);
     best=ranked[0]?.view??best;
     score=ranked[0]?.score??score;
+  }
+  // R10: approved rig 01. The audience looks OVER and substantially
+  // BESIDE the acting operator, into their action. No front-facing,
+  // profile or arbitrary orbit is an eligible cinematic treatment.
+  // If no legal shoulder exists, the caller receives the safest
+  // available fallback rather than permission to cross a solid wall.
+  const axis=req.followDirection??{
+    x:req.focus.x-req.operator.x,y:req.focus.y-req.operator.y};
+  const axisLength=Math.hypot(axis.x,axis.y)||1;
+  const dx=axis.x/axisLength,dy=axis.y/axisLength;
+  const shoulder=(v:PhysicalDirectorView)=>{
+    const rx=v.cameraAnchor.x-req.operator.x;
+    const ry=v.cameraAnchor.y-req.operator.y;
+    const back=-(rx*dx+ry*dy);
+    const lateral=Math.abs(rx*dy-ry*dx);
+    return back>=18&&lateral>=32&&lateral>=back*.42;
+  };
+  const shoulders=auditedCandidates.filter(c=>shoulder(c.view))
+    .sort((a,b)=>b.score-a.score);
+  if(!shoulders.length){
+    // No valid approved camera: preserve the established rail rather
+    // than allowing the old unrestricted search to invent a new angle.
+    // Returning no bid is intentional; the storyboard can hold.
+    return [];
+  }
+  if(shoulders.length){
+    // Preserve the same visibility/foreground auditing already performed.
+    // A missing contact is never preferable to a clear, disclosed pair.
+    const clear=req.target?shoulders.filter(c=>
+      c.view.targetVisible&&c.view.compositionQuality?.targetReadable):[];
+    auditedCandidates=clear.length?clear:shoulders;
+    best=auditedCandidates[0].view;
+    score=auditedCandidates[0].score;
   }
   // Return several already audited legal angles, without a second search.
   // First result retains the original perspective-coverage preference.
