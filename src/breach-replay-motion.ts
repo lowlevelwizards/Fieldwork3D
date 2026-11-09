@@ -201,7 +201,9 @@ export class ReplayMotionRecorder{
     return out.sort((a,b)=>a.at-b.at);
   }
   direction(id:string):number|undefined{return this.actors.get(id)?.travelYaw;}
-  presentation(time:number,ids:readonly string[]):ReplayPresentation{
+  /** Live poses need feet and facing but never historical door playback.
+   * Do not seek every door timeline on every tactical render frame. */
+  presentation(time:number,ids:readonly string[],includeDoors=true):ReplayPresentation{
     const feet:Record<string,ReplayFeet>={};
     const travelYaw:Record<string,number>={};
     const pelvisYaw:Record<string,number>={};
@@ -239,7 +241,7 @@ export class ReplayMotionRecorder{
       pelvisYaw[id]=a.yaw+angular(a.yaw,b.yaw)*blend;
     }
     const doors:Record<string,number>={};
-    for(const [id,events] of this.doors){
+    if(includeDoors)for(const [id,events] of this.doors){
       let lo=0,hi=events.length-1;
       while(lo<hi){
         const mid=Math.ceil((lo+hi)/2);
