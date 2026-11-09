@@ -298,8 +298,10 @@ export function physicalDirectorCandidates(req:PhysicalDirectorRequest,
     anchors.push(...relaxed.slice(0,36));
   }
   if(!anchors.length){
-    // Truly impossible physical placement: preserve the old safe
-    // fallback without inventing passage through a solid wall.
+    // R10 approved rig cannot be staged. Do not synthesize an arbitrary
+    // camera inside a wall or directly on top of an operator.
+    if(req.composition)return [];
+    // Legacy non-cinematic callers retain their original fallback.
     const fallback=room?{x:clamp(req.operator.x,
       room.x+Math.min(11,room.w*.24),room.x+room.w-Math.min(11,room.w*.24)),
       y:clamp(req.operator.y,
