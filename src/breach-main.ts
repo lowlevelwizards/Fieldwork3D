@@ -8,8 +8,8 @@ import {
 } from './breach-core.ts';
 import {
   type Session,type TeamActor,
-  newSession,team,enemies,isSeen,missionText,debrief,
-  operationBriefing,availableDeployments,selectDeployment,
+  team,enemies,isSeen,missionText,debrief,
+  operationBriefing,
   planMove,planMoveStroke,planNearbyInteraction,
   planCivilianInteraction,planAim,planWatch,
   retargetActiveWatch,removeActiveWatch,setFirePolicy,planWait,planWaitAt,setWaitDuration,
@@ -47,8 +47,8 @@ import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
  rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
 import type {Site} from './breach-site.ts';
-import {captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam,
-  type MissionStartSnapshot} from './breach-mission-restart.ts';
+import {BreachMissionController,type MissionTransition} from './breach-mission-controller.ts';
+import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
@@ -108,7 +108,6 @@ import {operatorContactEventKnown,operatorContactAvailable}
 import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
   bodycamDisclosureLabel}
   from './breach-replay-bodycam-controls.ts';
-import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {fitMagazineInventory}
@@ -446,11 +445,6 @@ const requestedConditionParam=startupParams.get('condition');
 const requestedCondition=requestedConditionParam!==null&&
   Number.isFinite(Number(requestedConditionParam))?
   Math.max(0,Math.min(100,Number(requestedConditionParam))):null;
-function applyRequestedCondition(session:Session){
-  if(requestedCondition===null||!session.site)return;
-  session.site={...session.site,conditionLevel:requestedCondition};
-  activateSite(session.site);
-}
 const LIGHTING_MODES:LightingMode[]=['day','evening','night','blackout','emergency'];
 let selectedLightingMode:LightingMode=
   LIGHTING_MODES.find(mode=>mode===startupParams.get('lighting'))??'day';
@@ -610,9 +604,9 @@ window.addEventListener('message',event=>{
   },location.origin);
  }
 });
-function applyCampaignSkills(){
+function applyCampaignSkills(session:Session){
  if(campaignMode!=='mission'||!campaign)return;
- for(const a of team(state)){
+ for(const a of team(session)){
   const m=tacticalSlotOperator(campaign,a.id);
   if(m){
    a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
@@ -640,32 +634,46 @@ function applyCampaignSkills(){
    }
   }
  }
- if(!state.started){
-  const squad=team(state);
+ if(!session.started){
+  const squad=team(session);
   const issued=allocateFlashSupply(squad.map(a=>a.flashCharges),campaign.supplies.flash);
   squad.forEach((a,i)=>{a.flashCharges=issued[i];});
-  state.flashRemaining=issued.reduce((n,qty)=>n+qty,0);
+  session.flashRemaining=issued.reduce((n,qty)=>n+qty,0);
  }
 }
-// The front menu needs no procedural site. Generate exactly once when a mode starts.
-let state:Session=newSession(0,legacyStudy||campaignMode==='menu'?undefined:initialSiteSeed,
-  selectedIntelMode,requestedSiteScale,undefined,undefined,
-  {enableCivilians:civilianPreview,enableIncidentIntent:true});
-state.lightingMode=selectedLightingMode;
-applyRequestedCondition(state);
-applyRosterIdentity(state,persistentRoster);
-applyCampaignSkills();
-state.operationDossier=buildPreviewDossier(state);
-let recorder=new MissionRecorder();recorder.capture(state,true);
+// One lifetime owner: creation, initial snapshots, deployment staging,
+// restart/favorite restoration, and replay presentation sessions.
+const missionController=new BreachMissionController({
+  preferences:()=>({
+    legacyStudy,civilianPreview,requestedCondition,
+    selectedIntelMode,requestedSiteScale,selectedLightingMode,
+    mode:campaignMode
+  }),
+  randomSeed:randomSiteSeed,
+  refreshQuickRoster:()=>{
+    persistentRoster=freshQuickPlayRoster(persistentRoster);
+  },
+  applyRoster:session=>applyRosterIdentity(session,persistentRoster),
+  applyCampaign:applyCampaignSkills,
+  buildDossier:buildPreviewDossier
+});
+// Front menu intentionally has no site; Quick Play and fixed study are
+// initialized exactly once, using the ordinary authoritative session factory.
+let state:Session=missionController.create({
+  variant:0,seed:initialSiteSeed,
+  withoutSite:legacyStudy||campaignMode==='menu',initial:true
+});
+let recorder=missionController.recordInitial(state);
 const deploymentButton=document.createElement('button');
 deploymentButton.type='button';deploymentButton.id='deploymentChoice';
 deploymentButton.setAttribute('aria-label','Cycle available insertion points');
 ui.briefingEntryControls.append(deploymentButton);
-let deploymentState:Session|null=null;
-let deployOptions:ReturnType<typeof availableDeployments>=[];
-let selectedEntry='FRONT';
-let missionStart:MissionStartSnapshot=captureMissionStart(
- state,requestedSiteScale,selectedEntry);
+missionController.bindDeployment({
+  button:deploymentButton,label:ui.briefingEntryLabel,
+  getSession:()=>state,isReplaying:()=>replaying,
+  onSelected:()=>{recorder=missionController.recordInitial(state);},
+  reducedMotion:()=>reducedMotionMedia.matches
+});
 function restoreFavoriteMission(saved:FavoriteMission):void{
   if(campaignMode==='mission'){
     showUiHelp('FAVORITES PLAY AS QUICK PLAY PRACTICE',3400);return;
@@ -673,51 +681,18 @@ function restoreFavoriteMission(saved:FavoriteMission):void{
   const start=structuredClone(saved.start);
   campaignMode='quick';
   reset(start.variant,start.seed,start.missionType,
-    siteForMissionRestart(start),undefined,false,start);
-  restoreMissionStartingTeam(state,start);
-  selectedEntry='FRONT';
-  if(start.entryId!=='FRONT'){
-    if(selectDeployment(state,start.entryId))selectedEntry=start.entryId;
-    else console.warn('[Favorite mission] Saved entry no longer valid',start.entryId);
-  }
-  missionStart=start;replayLibrary.activateFavorite(saved.id);
-  recorder=new MissionRecorder();recorder.capture(state,true);
+    missionController.restartRequest(start).prebuiltSite,undefined,false,start);
+  missionController.restoreStartingSetup(state,start,entry=>
+    console.warn('[Favorite mission] Saved entry no longer valid',entry));
+  replayLibrary.activateFavorite(saved.id);
+  recorder=missionController.recordInitial(state);
   closeMissionSettings(false);
   layout();updateHud();
   showUiHelp('FAVORITE LOADED · ORIGINAL MISSION SETUP',3800);
 }
-function refreshDeployment(){
- if(deploymentState!==state){
-  deploymentState=state;selectedEntry='FRONT';
-  deployOptions=availableDeployments(state).filter(c=>c.id!=='FRONT');
- }
- const editable=state.phase==='planning'&&!state.started&&!replaying&&
-  team(state).every(a=>a.plan.length===0);
- deploymentButton.hidden=!state.site||state.started||deployOptions.length===0;
- deploymentButton.disabled=!editable;
- deploymentButton.textContent='CHANGE ENTRY';
- ui.briefingEntryLabel.textContent=selectedEntry==='FRONT'?
-   'FRONT ENTRANCE':selectedEntry.toUpperCase().replaceAll('-', ' ');
- deploymentButton.title=editable?'Cycle physically verified exterior entry points':
-  'Select the insertion before plotting routes or starting GO';
+function refreshDeployment():void{
+  missionController.refreshDeployment(state,replaying);
 }
-deploymentButton.addEventListener('click',()=>{
- refreshDeployment();
- if(deploymentButton.disabled)return;
- const ids=['FRONT',...deployOptions.map(c=>c.id)];
- const next=ids[(ids.indexOf(selectedEntry)+1)%ids.length];
- if(selectDeployment(state,next)){
-  selectedEntry=next;
-  if(state.operationDossier)state.operationDossier.identity.entryId=next;
-  missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
-  recorder=new MissionRecorder();recorder.capture(state,true);
-  refreshDeployment();
-  if(!reducedMotionMedia.matches)ui.briefingEntryLabel.animate([
-    {opacity:.5,transform:'translateY(2px)'},
-    {opacity:1,transform:'translateY(0)'}
-  ],{duration:180,easing:'ease-out'});
- }
-});
 const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
 let recordedOperation:Session|null=null;
 function operationHistory():OperationRecord[]{
