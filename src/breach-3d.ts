@@ -121,7 +121,6 @@ import {interpolatedActor,type RenderFrame}
 export type ViewMode='iso'|'top'|'plan2d';
 export type ViewState={mode:ViewMode;yaw:number;zoom:number;pitch:number;focus:Pt};
 const color=(hex:number)=>new THREE.Color(hex);
-const v=(p:Pt,y=0)=>new THREE.Vector3(p.x,y,p.y);
 const mat=(hex:number,roughness=.9)=>new THREE.MeshStandardMaterial({
   color:hex,roughness,flatShading:true,
 });
@@ -618,6 +617,11 @@ export class TacticalScene3D{
   private thrown=new Map<number,THREE.Mesh>();
   private detonations=new Map<number,THREE.Mesh>();
   private tracerAxis=new THREE.Vector3(0,1,0);
+  /** Shot visuals copy these values into meshes immediately. Scratch vectors
+   * avoid three new Vector3 allocations per visible shot per render frame. */
+  private readonly shotStart=new THREE.Vector3();
+  private readonly shotEnd=new THREE.Vector3();
+  private readonly shotFlight=new THREE.Vector3();
   private readonly shoeWorldPoint=new THREE.Vector3();
   private tracerGeometry=new THREE.CylinderGeometry(.65,.65,1,6);
   private impactGeometry=new THREE.IcosahedronGeometry(1,1);
@@ -636,9 +640,20 @@ export class TacticalScene3D{
   private currentElev=55*Math.PI/180;
   private readonly minZoom=.65;
   private readonly maxZoom=6.0;
-  private lastCameraStatus='';
+  /** Camera QA DOM state is only refreshed when its inputs change.
+   * Do not format, join and allocate a status string on every render. */
+  private lastCameraStatus:{
+    mode:ViewMode;zoom:number;yaw:number;pitch:number;
+    focusX:number;focusY:number;lens:string;
+    anchorX:number|null;anchorY:number|null
+  }|null=null;
   private pickPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
   private ray=new THREE.Raycaster();
+  /** Pointer projection is synchronous. Reuse math vectors across touch
+   * updates and HUD projection rather than allocating every query. */
+  private readonly screenNdc=new THREE.Vector2();
+  private readonly screenIntersection=new THREE.Vector3();
+  private readonly screenProjection=new THREE.Vector3();
   private width=1;private height=1;private fogAt=-1;
   private terminalPoseSeconds=0;private terminalSessionStamp=-1;
   /** Presentation clock alone runs on pause; simulation/replay stay frozen. */
@@ -2209,11 +2224,20 @@ export class TacticalScene3D{
         this.view.focus.x,17,this.view.focus.y);
       const aspect=this.width/this.height;
       const span=this.replayCameraBaseSpan()/Math.max(.65,this.view.zoom);
-      this.directorOrthoCamera.left=-span*aspect/2;
-      this.directorOrthoCamera.right=span*aspect/2;
-      this.directorOrthoCamera.top=span/2;
-      this.directorOrthoCamera.bottom=-span/2;
-      this.directorOrthoCamera.updateProjectionMatrix();
+      // Recomputing a projection matrix at 60Hz is wasted work while the
+      // framing is static; the pose still updates each camera tick.
+      const left=-span*aspect/2,right=span*aspect/2;
+      const top=span/2,bottom=-span/2;
+      if(this.directorOrthoCamera.left!==left||
+         this.directorOrthoCamera.right!==right||
+         this.directorOrthoCamera.top!==top||
+         this.directorOrthoCamera.bottom!==bottom){
+        this.directorOrthoCamera.left=left;
+        this.directorOrthoCamera.right=right;
+        this.directorOrthoCamera.top=top;
+        this.directorOrthoCamera.bottom=bottom;
+        this.directorOrthoCamera.updateProjectionMatrix();
+      }
       this.directorOrthoCamera.updateMatrixWorld(true);
       // Optional wide-perspective audition uses the SAME legal room and
       // shot timeline, but a more elevated, wider lens for group coverage.
@@ -2221,9 +2245,12 @@ export class TacticalScene3D{
       this.directorCamera.up.set(0,1,0);
       this.directorCamera.lookAt(
         this.view.focus.x,18,this.view.focus.y);
-      this.directorCamera.aspect=aspect;
-      this.directorCamera.fov=this.replayDirectorLensFov;
-      this.directorCamera.updateProjectionMatrix();
+      if(this.directorCamera.aspect!==aspect||
+         this.directorCamera.fov!==this.replayDirectorLensFov){
+        this.directorCamera.aspect=aspect;
+        this.directorCamera.fov=this.replayDirectorLensFov;
+        this.directorCamera.updateProjectionMatrix();
+      }
       this.directorCamera.updateMatrixWorld(true);
     }
     const aspect=this.width/this.height;
@@ -2233,20 +2260,33 @@ export class TacticalScene3D{
     // A yaw-invariant fit avoids breathing/scale changes while orbiting.
     const baseSpan=Math.max(820,(diagonal+66)/aspect);
     const span=baseSpan/this.view.zoom;
-    this.camera.left=-span*aspect/2;this.camera.right=span*aspect/2;
-    this.camera.top=span/2;this.camera.bottom=-span/2;
-    this.camera.updateProjectionMatrix();
+    const left=-span*aspect/2,right=span*aspect/2;
+    const top=span/2,bottom=-span/2;
+    if(this.camera.left!==left||this.camera.right!==right||
+       this.camera.top!==top||this.camera.bottom!==bottom){
+      this.camera.left=left;this.camera.right=right;
+      this.camera.top=top;this.camera.bottom=bottom;
+      this.camera.updateProjectionMatrix();
+    }
     this.camera.updateMatrixWorld(true);
-    // Lightweight observability for touch regression tests and camera QA.
-    const signature=[
-      this.view.mode,this.view.zoom.toFixed(3),this.view.yaw.toFixed(3),
-      this.view.pitch.toFixed(3),this.view.focus.x.toFixed(2),
-      this.view.focus.y.toFixed(2),this.replayDirectorLens,
-      this.replayDirectorCameraAnchor?.x.toFixed(2)??'—',
-      this.replayDirectorCameraAnchor?.y.toFixed(2)??'—',
-    ].join('|');
-    if(signature!==this.lastCameraStatus){
-      this.lastCameraStatus=signature;
+    // Camera debug attributes are only needed when input state changes.
+    // Keep numerical snapshots so static frames allocate no signature array.
+    const previous=this.lastCameraStatus;
+    const anchorX=this.replayDirectorCameraAnchor?.x??null;
+    const anchorY=this.replayDirectorCameraAnchor?.y??null;
+    if(!previous||previous.mode!==this.view.mode||
+       previous.zoom!==this.view.zoom||previous.yaw!==this.view.yaw||
+       previous.pitch!==this.view.pitch||
+       previous.focusX!==this.view.focus.x||
+       previous.focusY!==this.view.focus.y||
+       previous.lens!==this.replayDirectorLens||
+       previous.anchorX!==anchorX||previous.anchorY!==anchorY){
+      this.lastCameraStatus={
+        mode:this.view.mode,zoom:this.view.zoom,yaw:this.view.yaw,
+        pitch:this.view.pitch,focusX:this.view.focus.x,
+        focusY:this.view.focus.y,lens:this.replayDirectorLens,
+        anchorX,anchorY
+      };
       this.canvas.dataset.cameraMode=this.view.mode;
       this.canvas.dataset.cameraZoom=this.view.zoom.toFixed(3);
       this.canvas.dataset.cameraYaw=this.view.yaw.toFixed(3);
@@ -2263,15 +2303,17 @@ export class TacticalScene3D{
   }
   screenToWorld(sx:number,sy:number):Pt|null{
     if(this.view.mode==='plan2d')return null;
-    const ndc=new THREE.Vector2(sx/this.width*2-1,1-sy/this.height*2);
-    this.ray.setFromCamera(ndc,this.projectionCamera);
-    const p=new THREE.Vector3();
-    if(!this.ray.ray.intersectPlane(this.pickPlane,p))return null;
-    if(!Number.isFinite(p.x)||!Number.isFinite(p.z))return null;
-    return {x:p.x,y:p.z};
+    this.screenNdc.set(sx/this.width*2-1,1-sy/this.height*2);
+    this.ray.setFromCamera(this.screenNdc,this.projectionCamera);
+    const point=this.screenIntersection;
+    if(!this.ray.ray.intersectPlane(this.pickPlane,point))return null;
+    if(!Number.isFinite(point.x)||!Number.isFinite(point.z))return null;
+    // The caller receives its own point, never a mutable scratch reference.
+    return {x:point.x,y:point.z};
   }
   project(p:Pt,y=4):Pt{
-    const world=v(p,y).project(this.projectionCamera);
+    const world=this.screenProjection.set(p.x,y,p.y)
+      .project(this.projectionCamera);
     return {x:(world.x+1)*this.width/2,
       y:(1-world.y)*this.height/2};
   }
@@ -3078,9 +3120,11 @@ export class TacticalScene3D{
         effect={root,line,impact,chips,material,impactMaterial};
         this.effectCache.set(shot.id,effect);
       }
-      const start=v(shot.start,shot.muzzleHeight??15),
-        end=v(shot.end,shot.impactHeight??12);
-      const flight=end.clone().sub(start);
+      const start=this.shotStart.set(
+        shot.start.x,shot.muzzleHeight??15,shot.start.y);
+      const end=this.shotEnd.set(
+        shot.end.x,shot.impactHeight??12,shot.end.y);
+      const flight=this.shotFlight.copy(end).sub(start);
       effect.line.position.copy(start).addScaledVector(flight,.5);
       effect.line.scale.set(1,flight.length(),1);
       effect.line.quaternion.setFromUnitVectors(

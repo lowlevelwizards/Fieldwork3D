@@ -1956,6 +1956,9 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/long-round-memory-p6-') }}
         run: |
           node --experimental-strip-types --test tests/breach-scene-memory-lifecycle-p6.test.mjs tests/breach-site-material-lifetime.test.mjs tests/quick-play-startup-progress.test.mjs
+      - name: P7 — camera projection and combat frame allocation regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/scene-frame-p7-') }}
+        run: node --experimental-strip-types --test tests/breach-scene-frame-p7.test.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build
