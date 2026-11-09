@@ -83,8 +83,7 @@ import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 import {measureReplaySquadDoorEntry,type ReplaySquadEntryReview}
   from './breach-replay-squad-entry.ts';
 import {operatorContactAvailable} from './breach-replay-contact-lens.ts';
-import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
-  bodycamDisclosureLabel}
+import {bodycamDisclosureLabel}
   from './breach-replay-bodycam-controls.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {WEAPONS} from './breach-combat.ts';
@@ -1849,7 +1848,7 @@ const replayModeController=createReplayModeController({
  resumeLiveSession:live=>missionController.resumeLiveSession(live),
  playback:replayPlayback,camera:replayCamera,
  knowledge:replayKnowledge,bodycam:replayBodycam,
- analysis:replayAnalysisUi,
+ getAnalysis:()=>replayAnalysisUi,
  ui:{replayPanel:ui.replayPanel,replayTopHud:ui.replayTopHud,
    replayRail:ui.replayRail,replaySeek:ui.replaySeek},
  resetTargeting:()=>{hudController.facing.looking=false;flashMode=false;},
