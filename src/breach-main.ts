@@ -48,6 +48,7 @@ import {createOperatorStudioBridge} from './operator-studio-bridge.ts';
 import {createBreachEquipmentEditorBridge} from './breach-equipment-editor-bridge.ts';
 import {createBreachOperationsBoardController} from './breach-operations-board-controller.ts';
 import {createBreachRuntimeLoop} from './breach-runtime-loop.ts';
+import {createReplayModeController} from './breach-replay-mode-controller.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
@@ -1838,83 +1839,41 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
  * The scrubber and event navigation remain the accessible interactions.
  */
 
-function enterReplay(){
-  if(replaying||recorder.frames.length<2)return;
-  finishedSession=state;replaying=true;
-  replayPlayback.reset();replayPlayback.play();
-  replayCamera.reset(stage);
-  replayKnowledge.omniscient=false;hudController.facing.looking=false;flashMode=false;
-  replayKnowledge.observerId=null;
-  replayBodycam.active=false;replayBodycam.mount='chest';
-  // Selective CUTAWAY is a harmless presentation default: only blocking
-  // walls fade. The visible control can turn it off at any time.
-  replayXrayOn=true;stage?.setReplayXray(true);
-  replayBodycam.observers=[];replayBodycam.groundObservers.clear();
-  replayKnowledge.prepare(recorder);
-  replayKnowledge.omniscient=false;
-  replayKnowledge.groundLensOn=false;replayKnowledge.groundCacheObserver=null;
-  replayKnowledge.groundCacheCount=-1;replayKnowledge.groundCacheSite=null;
-  replayAnalysis=false;
-  replayDirector.indexPlans(recorder.plans.revisions);
-  
-  replayAnalysisUi.startSession();
-  replayPlanScope='none';replayPlanVersion='active';
-  replayNameTags=true;replayContactMarkers=true;
-  replayObjectiveMarkers=true;
-  replayTraceMode='off';replayGhostMode='off';
-  replayTrailMode='off';
-
-  replayMovementHistory=new ReplayMovementHistory(recorder.frames,
-    team(finishedSession).map(a=>a.id));
-  audioController.beginReplay(recorder);
-  audioController.unlock();
-  replayAnalysisUi.showReplayToolTab(null);
-  state=missionController.createReplaySession(recorder,finishedSession);
-  replayCamera.followId=team(state)[0]?.id??'rook';
-  populateReplayCameraChoices();
-  populateReplayInspectActors();
-  replayBodycam.observers=bodycamEligibleObserverIds(
-    recorder.frames.find(f=>!!f.knowledge?.operatorVisibleActorIds)?.knowledge,
-    team(state).map(a=>a.id));
-  replayBodycam.groundObservers=new Set(replayBodycam.observers.filter(id=>
-    bodycamHasPersonalGround(recorder.personalGround,id)));
-  stage?.applySite(state.site??null);
-  stage?.setReplayBodycam(null);
-  // The Director must build against the actual recorded site, not the prior
-  // live session (which may be a different map when loading a saved replay).
-  rebuildReplayEventIndex();
-  // One-time historical index; only recorded friendly coordinates and
-  // recorded door geometry, never current world positions or hidden AI.
-  replayAnalysisUi.rebuildReplaySquadEntries();
-  document.body.classList.add('replaying');
-  ui.replayPanel.hidden=false;
-  ui.replayTopHud.hidden=false;ui.replayRail.hidden=false;
-  replayAnalysisUi.setReplayRailCollapsed(false);replayAnalysisUi.setReplayDockCollapsed(false);
-  ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
-  replayAnalysisUi.renderReplayEventMarkers();seekReplay(0);updateHud();
-}
-function exitReplay(){
-  if(!replaying)return;
-  if(replayQuickVideo.active)replayQuickVideo.stop();
-  stopReplayBodycam();replayBodycam.observers=[];
-  replayXrayOn=false;stage?.setReplayXray(false);
-  replayCamera.reset(stage);
-  replayPlayback.reset();
-  replayBodycam.groundObservers.clear();
-  replaying=false;replayPresentation=null;
-  replayAnalysisUi.reset();
-  replayKnowledge.reset();
-  replayMovementHistory=null;audioController.endReplay();
-  document.body.classList.remove('replaying');
-  ui.replayPanel.hidden=true;
-  ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
-  replayAnalysisUi.closeReplayChoices();
-  if(finishedSession)state=missionController.resumeLiveSession(finishedSession);
-  finishedSession=null;fog2D.invalidate();
-  replayLibrary.afterReplayExit();
-  stage?.applySite(state.site??null);
-  updateHud();
-}
+const replayModeController=createReplayModeController({
+ getSession:()=>state,setSession:next=>{state=next;},
+ getFinishedSession:()=>finishedSession,
+ setFinishedSession:next=>{finishedSession=next;},
+ isReplaying:()=>replaying,setReplaying:next=>{replaying=next;},
+ getRecorder:()=>recorder,getStage:()=>stage,
+ createReplaySession:(film,live)=>missionController.createReplaySession(film,live),
+ resumeLiveSession:live=>missionController.resumeLiveSession(live),
+ playback:replayPlayback,camera:replayCamera,
+ knowledge:replayKnowledge,bodycam:replayBodycam,
+ analysis:replayAnalysisUi,
+ ui:{replayPanel:ui.replayPanel,replayTopHud:ui.replayTopHud,
+   replayRail:ui.replayRail,replaySeek:ui.replaySeek},
+ resetTargeting:()=>{hudController.facing.looking=false;flashMode=false;},
+ resetReplayOptions:()=>{
+   replayAnalysis=false;replayPlanScope='none';replayPlanVersion='active';
+   replayNameTags=true;replayContactMarkers=true;replayObjectiveMarkers=true;
+   replayTraceMode='off';replayGhostMode='off';replayTrailMode='off';
+ },
+ setXray:enabled=>{replayXrayOn=enabled;stage?.setReplayXray(enabled);},
+ setMovementHistory:next=>{replayMovementHistory=next;},
+ clearReplayPresentation:()=>{replayPresentation=null;},
+ beginAudio:film=>{audioController.beginReplay(film);audioController.unlock();},
+ endAudio:()=>audioController.endReplay(),
+ stopVideo:()=>{if(replayQuickVideo.active)replayQuickVideo.stop();},
+ stopBodycam:()=>stopReplayBodycam(),
+ populateCameraChoices:populateReplayCameraChoices,
+ populateInspectActors:populateReplayInspectActors,
+ rebuildEventIndex:rebuildReplayEventIndex,
+ seekReplay,invalidateFog:()=>fog2D.invalidate(),
+ afterReplayExit:()=>replayLibrary.afterReplayExit(),
+ updateHud
+});
+function enterReplay(){replayModeController.enterReplay();}
+function exitReplay(){replayModeController.exitReplay();}
 /** Replay Library: load metadata only until a recording is selected.
  * No campaign result, equipment persistence, or live session is modified.
  */
