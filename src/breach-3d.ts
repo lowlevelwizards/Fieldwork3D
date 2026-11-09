@@ -99,6 +99,8 @@ import {sampleThrow} from './breach-flash.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET,
   WALL_VISUAL_HEIGHT,DOOR_CLEAR_VISUAL_HEIGHT,DOOR_LEAF_VISUAL_HEIGHT} from './breach-door-proportions.ts';
+import {windowVisualHeadHeight,SERVING_COUNTER_VISUAL_HEIGHT}
+  from './breach-opening-proportions.ts';
 import {paintFogMask,paintFogMemory,paintFogVisibility,occupiedFogRooms,
   FOG_WIDTH,FOG_HEIGHT,maskSize,type FogDiagnostic}
   from './breach-fog-mask.ts';
@@ -1486,8 +1488,13 @@ export class TacticalScene3D{
       this.box(group,0,DOOR_CLEAR_VISUAL_HEIGHT+2,0,
         width+4,4,11,archMaterial);
       if(opening.kind==='serving'){
-        this.box(group,0,10,0,width,20,10,archMaterial);
-        this.box(group,0,20.5,3,width+3,2,12,archMaterial,false);
+        // Counter surface sits just below the standing operator's eye line
+        // rather than at the old knee-high sill. Upper trim rests on the
+        // slab without coincident faces or a duplicate cover render mesh.
+        const height=SERVING_COUNTER_VISUAL_HEIGHT;
+        this.box(group,0,height/2,0,width,height,10,archMaterial);
+        this.box(group,0,height+1,6.2,width+3,2,10,
+          archMaterial,false);
       }
       this.root.add(group);
       this.architecturalOpenings.push({obj:group,opening});
@@ -1742,19 +1749,20 @@ export class TacticalScene3D{
       // Window families retain the SAME underlying structural aperture,
       // low sill and true planar glass for shots/visibility.
       const baseTop=opening.sillHeight??14;
-      const glassTop=style==='tall'?37:style==='picture'||style==='storefront'?39:
-        style==='industrial'?27:style==='clerestory'?39:
-        style==='awning'?35:style==='wire'?34:32;
-      const glassHeight=(opening.headHeight??glassTop)-baseTop;
+      const glassTop=opening.headHeight??windowVisualHeadHeight(style);
+      const glassHeight=Math.max(1,glassTop-baseTop);
       const trim=opening.interior?this.solid(0x4f605f,.66,'painted-metal'):
         ['industrial','wire','clerestory','storefront'].includes(style)?metal:
         style==='picture'?this.solid(0x627c79):doorTrim;
       if(baseTop>0)this.box(group,0,baseTop/2,0,opening.width,baseTop,9,wallMat);
-      const actualTop=opening.headHeight??glassTop;
+      const actualTop=glassTop;
       if(actualTop<WALL_VISUAL_HEIGHT)this.box(group,0,
         (actualTop+WALL_VISUAL_HEIGHT)/2,0,opening.width,
         WALL_VISUAL_HEIGHT-actualTop,9,wallMat);
-      if(baseTop>0)this.box(group,0,baseTop+.1,4,opening.width+3,2,12,trim,false); // sill projection
+      // Place the trim BELOW the pane's bottom edge and in front of its
+      // surface. Overlapping transparent glass/mullion faces used to shimmer.
+      if(baseTop>0)this.box(group,0,baseTop-1.05,6,
+        opening.width+3,2,10,trim,false); // sill projection
       const glass=this.box(group,0,baseTop+glassHeight/2,0,
         opening.width-3,glassHeight,1,paneMat,false);
       glass.castShadow=false;
@@ -1783,25 +1791,27 @@ export class TacticalScene3D{
           glassHeight+2,9,trim,false);
       // Architectural divisions remain thin mullions, never extra cover.
       if(style==='standard'||style==='bay')
-        this.box(group,0,baseTop+glassHeight*.48,1,
+        this.box(group,0,baseTop+glassHeight*.48,2.3,
           opening.width-4,2.4,2.2,trim,false);
       if(style==='industrial'||style==='wire'||style==='storefront'){
         for(const f of style==='storefront'?[-.25,.25]:[-.28,0,.28])
-          this.box(group,f*opening.width,baseTop+glassHeight/2,1,
+          this.box(group,f*opening.width,baseTop+glassHeight/2,2.3,
             1.6,glassHeight,2.4,trim,false);
       }
       if(style==='wire'){
         for(const y of [baseTop+4,baseTop+10,baseTop+16,baseTop+22])
-          if(y<actualTop-2)this.box(group,0,y,1.8,opening.width-4,.8,1.4,trim,false);
+          if(y<actualTop-2)this.box(group,0,y,2.3,opening.width-4,.8,1.4,trim,false);
       }
       if(style==='storefront')
-        this.box(group,0,baseTop+glassHeight*.51,1,opening.width-4,1.8,2.1,trim,false);
+        this.box(group,0,baseTop+glassHeight*.51,2.3,
+          opening.width-4,1.8,2.1,trim,false);
       if(style==='awning'){
-        this.box(group,0,actualTop-2,1,opening.width-4,2,2.4,trim,false);
-        this.box(group,0,baseTop+glassHeight*.50,1,opening.width-4,1,1.5,trim,false);
+        this.box(group,0,actualTop-2,2.3,opening.width-4,2,2.4,trim,false);
+        this.box(group,0,baseTop+glassHeight*.50,2.3,
+          opening.width-4,1,1.5,trim,false);
       }
       if(style==='tall'||style==='clerestory')
-        this.box(group,0,baseTop+1,1,opening.width,1.6,2.4,trim,false);
+        this.box(group,0,baseTop+1,2.3,opening.width,1.6,2.4,trim,false);
       if(style==='bay'){
         // A shallow projecting frame; the gameplay glass remains central.
         this.box(group,-opening.width*.37,baseTop+glassHeight/2,-2.3,
@@ -1809,7 +1819,7 @@ export class TacticalScene3D{
         this.box(group,opening.width*.37,baseTop+glassHeight/2,-2.3,
           2.5,glassHeight,5,trim,false);
         this.box(group,0,baseTop,-2.3,opening.width,2,5,trim,false);
-        this.box(group,0,glassTop,-2.3,opening.width,2,5,trim,false);
+        this.box(group,0,actualTop,-2.3,opening.width,2,5,trim,false);
       }
       const half=opening.width/2;
       const edge=opening.vertical?
