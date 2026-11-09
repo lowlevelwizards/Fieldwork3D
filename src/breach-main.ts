@@ -77,6 +77,8 @@ import {parseOperationHistory,addOperationRecord,
 import {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
 import {createBreachReplayTimelineController}
   from './ui/breach-replay-timeline-controller.ts';
+import {createBreachReplayAnalysisController}
+  from './ui/breach-replay-analysis-controller.ts';
 import {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 import {ReplayBodycamController} from './breach-replay-bodycam-controller.ts';
 import {ReplayCameraController} from './breach-replay-camera-controller.ts';
@@ -90,7 +92,8 @@ import type {RecordedShot} from './breach-replay-ballistics.ts';
 import {shotScreenHit} from './breach-replay-shot-inspector.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
-import {measureReplaySquadDoorEntry} from './breach-replay-squad-entry.ts';
+import {measureReplaySquadDoorEntry,type ReplaySquadEntryReview}
+  from './breach-replay-squad-entry.ts';
 import {operatorContactAvailable} from './breach-replay-contact-lens.ts';
 import {bodycamEligibleObserverIds,bodycamHasPersonalGround,
   bodycamDisclosureLabel}
@@ -2364,11 +2367,6 @@ function useSelectedGround(pt:Pt){
   updateHud();
 }
 function isMissionTerminal(s:Session){return s.phase==='won'||s.phase==='lost';}
-function clockText(t:number){
-  const seconds=Math.floor(Math.max(0,t));
-  return String(Math.floor(seconds/60)).padStart(2,'0')+':'+
-    String(seconds%60).padStart(2,'0');
-}
 /** Reapply recorded outcomes after timeline navigation, then refresh dependent
  * camera/audio/visibility presentation. The playback controller owns samples.
  */
