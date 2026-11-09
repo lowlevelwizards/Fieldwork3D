@@ -25,6 +25,7 @@ import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
  type MiniatureFocusMode} from './rendering/miniature-focus-config.ts';
 import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {ExecutionNoticeFeed} from './ui/execution-feedback.ts';
+import {PhysicalActionRings} from './ui/physical-action-rings.ts';
 import {executionStatus} from './breach-execution-state.ts';
 import {compactExecutionStatus} from './ui/tactical-hud-density.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
@@ -7983,12 +7984,14 @@ if(perfOverlay){
   document.body.append(perfOverlay);
 }
 const frameMeter=perfOverlay?new FrameMeter():null;
+const physicalActionRings=new PhysicalActionRings();
 function tick(now:number){
   const perfStart=perfOverlay?performance.now():0;
   const frameGap=Math.max(0,now-last);
   const dt=Math.min(.08,frameGap/1000);last=now;
   if(quickPlayBusy||((campaignMode==='menu'||campaignMode==='home')&&!replaying)){
    accum=0;previousRenderActors=null;previousRenderDoors=null;
+   physicalActionRings.clear();
    requestAnimationFrame(tick);return;
   }
   let simSteps=0;
@@ -8052,8 +8055,7 @@ function tick(now:number){
   if(replaying)advanceReplayCamera(dt);
   // 079: shot IDs are monotonic, unlike the short-lived shot array length.
   // A new shot can arrive on exactly the tick an old shot expires.
-  // Retain only the newest three audible shot candidates without building
-  // a filtered array and then slicing it on every animation frame.
+  // Track the newest three audible shots without a per-frame filter/slice.
   const freshShots:typeof state.shots=[];
   let newestShotId=lastSoundShotId;
   for(const shot of state.shots){
@@ -8147,59 +8149,10 @@ function tick(now:number){
   if(now-hudAt>(state.phase==='running'?180:120)){
     updateHud();if(replaying)updateReplayHud();hudAt=now;
   }
-  // Reusable world-anchored action rings. This is a view of authoritative
-// progress, never a second animation clock or a separate action timer.
-const physicalActionRings=new Map<string,HTMLDivElement>();
-function updatePhysicalActionRings(){
-  for(const actor of team(state)){
-    let ring=physicalActionRings.get(actor.id);
-    if(!ring){
-      ring=document.createElement('div');
-      ring.style.cssText='position:fixed;pointer-events:none;z-index:18;'+
-        'width:42px;height:42px;border-radius:50%;'+
-        'display:flex;align-items:center;justify-content:center;'+
-        'box-shadow:0 0 0 1px rgba(220,202,158,.45);'+
-        'font:700 9px Saira Condensed,sans-serif;color:#e8dfc6';
-      const label=document.createElement('span');
-      label.style.cssText='background:#1d302a;border-radius:50%;'+
-        'width:32px;height:32px;display:flex;align-items:center;'+
-        'justify-content:center;text-align:center';
-      ring.append(label);document.body.append(ring);
-      physicalActionRings.set(actor.id,ring);
-    }
-    const order=actor.plan[0];
-    const picking=order?.kind==='tool'&&order.toolMethod==='pick'&&
-      actor.actionTimer>0&&actor.lastDoorId===order.doorId;
-    const treating=actor.treatmentActive&&actor.treatmentProgress>0;
-    const show=!replaying&&state.phase==='running'&&actor.health>0&&
-      (picking||treating);
-    // Avoid redundant DOM writes on every RAF when action visibility
-    // has not changed. Hidden rings still update immediately on transitions.
-    if(ring.hidden===show)ring.hidden=!show;
-    const display=show?'flex':'none';
-    if(ring.style.display!==display)ring.style.display=display;
-    if(!show)continue;
-    const progress=treating?actor.treatmentProgress:
-      Math.min(1,actor.actionTimer/((
-        state.doors.find(d=>d.id===order?.doorId)?.style==='reinforced')?
-        8.5:5.5));
-    const pct=Math.round(Math.max(0,Math.min(1,progress))*100);
-    const point=worldToScreen(actor.p,viewMode==='plan2d'?14:34);
-    const left=(point.x-21)+'px',top=(point.y-57)+'px';
-    if(ring.style.left!==left)ring.style.left=left;
-    if(ring.style.top!==top)ring.style.top=top;
-    const previousPct=ring.dataset.progressPct;
-    if(previousPct!==String(pct)){
-      ring.style.background='conic-gradient(#ddc69e '+(pct*3.6)+
-        'deg,rgba(65,87,77,.86) 0deg)';
-      ring.dataset.progressPct=String(pct);
-    }
-    const label=ring.firstElementChild;
-    if(label&&label.textContent!==(treating?'MED':'PICK')+' '+pct+'%')
-      label.textContent=(treating?'MED':'PICK')+' '+pct+'%';
-  }
-}
-  updatePhysicalActionRings();
+  // The manager owns its DOM nodes for the lifetime of this view.
+  physicalActionRings.update(team(state),state.doors,
+    !replaying&&state.phase==='running',
+    p=>worldToScreen(p,viewMode==='plan2d'?14:34));
   const perfRenderStart=perfOverlay?performance.now():0;
   // The Studio is an opaque full-screen view. Skip only hidden rendering,
   // never fixed-step gameplay or authoritative replay/simulation state.
@@ -8339,6 +8292,9 @@ function updatePhysicalActionRings(){
           (stats?.shadowRefreshes??0)+'/'+(stats?.shadowReuses??0)+
         '\nFILM '+recorder.frames.length+' frames · '+
         recorder.motion.stepEventCount+' step events'+
+        '\nDOM '+document.getElementsByTagName('*').length+
+        ' · ACTION RINGS '+physicalActionRings.size+
+        ' · SITE MATS '+(stats?.siteMaterialCount??0)+
         '\nOVERLAY '+m.overlay.toFixed(1)+'ms · DRAWS '+
         m.draws.toFixed(0)+' · TRI '+m.triangles.toFixed(0)+
         (simPhaseCosts&&simPhaseCosts.size?'\nHOT SIM '+
