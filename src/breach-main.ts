@@ -200,8 +200,6 @@ import {recoveryAdviceFor} from './ui/recovery-guidance.ts';
 import {paintFogMask,maskBounds,FOG_WIDTH,FOG_HEIGHT}
   from './breach-fog-mask.ts';
 import {paintReplayPersonalGround} from './breach-replay-ground-overlay.ts';
-import {PersonalGroundHistory} from './breach-replay-personal-ground.ts';
-import {ReplayDoorKnowledgeHistory} from './breach-replay-door-knowledge.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 
