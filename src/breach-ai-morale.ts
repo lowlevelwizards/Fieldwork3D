@@ -20,3 +20,24 @@ export function witnessShock(distance:number,unobstructed:boolean):number{
  if(!unobstructed||distance>160)return 0;
  return .08+.12*(1-distance/160);
 }
+
+/** Nearby allies from the same encounter group steady an active enemy.
+ * This is intentionally separate from AI choice: callers keep the old
+ * "only when suppressed or shaken" gate and its exact <130 threshold.
+ * Iterate the roster directly; no per-enemy filtered array at 60 Hz.
+ */
+export type MoralePeer={
+  side:'blue'|'red';health:number;encounterGroupId?:string;
+  p:{x:number;y:number}
+};
+export function countNearbyEnemyAllies(
+ actor:MoralePeer,roster:readonly MoralePeer[]
+):number{
+ let nearby=0;
+ for(const other of roster){
+   if(other===actor||other.side!=='red'||other.health<=0||
+      other.encounterGroupId!==actor.encounterGroupId)continue;
+   if(Math.hypot(other.p.x-actor.p.x,other.p.y-actor.p.y)<130)nearby++;
+ }
+ return nearby;
+}

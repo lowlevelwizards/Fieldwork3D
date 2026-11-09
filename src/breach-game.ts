@@ -107,7 +107,7 @@ import {groupResponse,type GroupRole} from './breach-ai-coordination.ts';
 import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
 import {coverMoveDeadline,coverMoveCommitted}
   from './breach-ai-position-commitment.ts';
-import {moraleResponse,witnessShock} from './breach-ai-morale.ts';
+import {moraleResponse,witnessShock,countNearbyEnemyAllies} from './breach-ai-morale.ts';
 import {newAwareness,addObservation,visibleObservation,
  ageAwareness,clearObservedPosition,bestBelief,
  type ActorAwareness} from './breach-awareness.ts';
@@ -5071,9 +5071,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       // Nearby members of the same encounter group can steady resolve.
       // Do not pay an extra ally scan every tick for calm defenders.
       const peerSupport=(a.suppression>.25||a.morale<.65)?
-        enemies(s).filter(other=>other!==a&&other.health>0&&
-          other.encounterGroupId===a.encounterGroupId&&
-          d(other.p,a.p)<130).length:0;
+        countNearbyEnemyAllies(a,s.operators):0;
       const resolve=moraleResponse(a.morale,a.suppression,
         a.injuryStage,a.personality,{nearbyAllies:peerSupport});
       if(resolve==='withdraw'&&a.alert!=='retreat'){
