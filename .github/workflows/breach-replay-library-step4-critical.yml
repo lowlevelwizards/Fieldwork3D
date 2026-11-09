@@ -1,0 +1,35 @@
+name: Breach Replay Library Step 4 Critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-main.ts'
+      - 'src/ui/breach-replay-library-controller.ts'
+      - 'src/ui/breach-replay-library-ui.ts'
+      - 'tests/replay-library-controller-step4.test.mjs'
+      - 'tests/replay-library-ui-extraction-20261109.test.mjs'
+      - '.github/workflows/breach-replay-library-step4-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: breach-replay-library-step4-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  library-critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Replay library navigation, favorites, archive and UI boundaries
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-library-controller-step4.test.mjs \
+            tests/replay-library-ui-extraction-20261109.test.mjs \
+            tests/replay-r3-library.test.mjs \
+            tests/replay-r3-archive.test.mjs
+      - name: Production typecheck and build
+        run: npm run build
