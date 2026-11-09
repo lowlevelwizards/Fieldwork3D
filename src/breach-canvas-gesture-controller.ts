@@ -56,7 +56,7 @@ export function createBreachCanvasGestureController(canvas:HTMLCanvasElement){
   let installed=false;
   let callbacks:TacticalCanvasGestureCallbacks|null=null;
   const probe=(phase:string)=>{
-    if(!import.meta.env.DEV)return;
+    if(!import.meta.env?.DEV)return;
     canvas.dataset.gesturePhase=phase;
     canvas.dataset.gestureCount=String(activePointers.size);
     canvas.dataset.gestureModes=[...activePointers.values()].map(p=>p.mode).join(',');
@@ -204,16 +204,24 @@ export function createBreachCanvasGestureController(canvas:HTMLCanvasElement){
       cb.pan(dx,dy);
     }
   };
+  const releasing=new Set<number>();
   const pointerRelease=(e:PointerEvent,cancelled=false)=>{
     const cb=callbacks,p=activePointers.get(e.pointerId);
-    if(!cb||!p)return;
-    if(cancelled&&p.dragCommitted)cb.restoreSelection(p);
-    if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
-    cb.release(e,p,cancelled,activePointers.size);
-    cb.clearDrag();
-    activePointers.delete(e.pointerId);
-    if(e.pointerType==='touch')cb.hover(false);
-    settle();probe('up');cb.complete();
+    if(!cb||!p||releasing.has(e.pointerId))return;
+    // Releasing capture can synchronously dispatch lostpointercapture.
+    // Never dispatch the same order twice or leave a ghost contact behind.
+    releasing.add(e.pointerId);
+    try{
+      if(cancelled&&p.dragCommitted)cb.restoreSelection(p);
+      if(canvas.hasPointerCapture(e.pointerId))canvas.releasePointerCapture(e.pointerId);
+      cb.release(e,p,cancelled,activePointers.size);
+    }finally{
+      cb.clearDrag();
+      activePointers.delete(e.pointerId);
+      if(e.pointerType==='touch')cb.hover(false);
+      settle();probe('up');cb.complete();
+      releasing.delete(e.pointerId);
+    }
   };
   const pointerEnter=(e:PointerEvent)=>{
     if(e.pointerType!=='touch')callbacks?.hover(true,callbacks.world(e));
