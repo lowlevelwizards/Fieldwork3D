@@ -815,19 +815,25 @@ export class TacticalScene3D{
     if(!memoryContext)throw Error('Fog memory canvas unavailable');
     this.fogMemoryContext=memoryContext;
     this.fogTexture=new THREE.CanvasTexture(this.fogCanvas);
+    // Canvas pixels are authored as CSS/sRGB colors. Without this the GPU
+    // interprets their values as linear and re-encodes them, turning the
+    // intended dark #122022 concealment into a bright blue-grey sheet.
+    this.fogTexture.colorSpace=THREE.SRGBColorSpace;
     this.fogTexture.minFilter=THREE.LinearFilter;
     this.fogTexture.magFilter=THREE.LinearFilter;
     const fogMat=new THREE.MeshBasicMaterial({
-      map:this.fogTexture,transparent:true,depthTest:false,opacity:1,
+      map:this.fogTexture,transparent:true,depthTest:true,opacity:1,
       depthWrite:false,toneMapped:false,side:THREE.DoubleSide});
     this.mats.push(fogMat);
     this.smoothFog=new THREE.Mesh(new THREE.PlaneGeometry(W,H),fogMat);
     this.smoothFog.rotation.x=-Math.PI/2;
-    // Ground-space LOS mask, not an elevated roof. The fog composites
-    // AFTER the opaque scene without a depth test: otherwise furnishings,
-    // raised floor details and tall walls punch straight through unknown
-    // ground fog just because they sit above its Y=1.05 plane. The texture
-    // alone determines disclosure; known cutaway walls render at 1001.
+    // Ground-space LOS mask, not a floating translucent roof. Keep ordinary
+    // camera depth testing even though the sheet draws late: the prior
+    // depthTest:false composited unknown interior pixels over *nearer* squad
+    // members, doors and architecture, producing giant false overhead slabs
+    // that sliced through the player on low-angle/rotated cameras.
+    // Undiscovered raised geometry is hidden by the object-intel gates;
+    // known solids naturally occlude the ground fog where physically nearer.
     // Keep the sheet on the GROUND to avoid isometric parallax/displacement.
     this.smoothFog.position.set(W/2,1.05,H/2);
     this.smoothFog.renderOrder=1000;
@@ -841,9 +847,9 @@ export class TacticalScene3D{
     this.exteriorKnownFog.frustumCulled=false;
     this.exteriorKnownFog.visible=false;
     this.scene.add(this.exteriorKnownFog);
-    // Ground-aligned fog is the sole map-space concealment layer. Using
-    // screen-over composition at ground coordinates occludes raised props
-    // without relocating the mask onto parallax-prone elevated sheets.
+    // Ground-aligned fog is the sole map-space concealment layer. Depth
+    // testing makes physical view occlusion authoritative; forced screen
+    // compositing would hide nearby operators outside the covered footprint.
     this.resize(innerWidth,innerHeight);
   }
   private groundOverlayMaterial(kind:PixelOverlay){
@@ -2639,10 +2645,9 @@ export class TacticalScene3D{
           this.replayXrayOn?0.19:0.38);
       this.wallFade.set(wall.mesh,opacity);
       const translucent=opacity<.995;
-      // In the prior repair, fog is drawn without a depth test after
-      // geometry; this buried the exterior walls a nearby operator sees.
-      // Public/observed perimeter walls alone join the transparent pass
-      // AFTER fog. Interior partitions never receive this exception.
+      // Known exterior wall surfaces retain their foreground/cutaway
+      // rendering policy. The ground-aligned fog itself now depth-tests:
+      // unknown interiors stay covered without crossing visible silhouettes.
       const knownFacade=wall.exterior&&!omniscient&&!bodycamAudition&&
         spatialSurfaceKnown(s,'wall',wall.index);
       const surfaceTransparent=translucent||knownFacade;
