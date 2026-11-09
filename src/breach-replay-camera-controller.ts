@@ -59,7 +59,8 @@ export class ReplayCameraController{
    stage?.setReplayDirectorSubjects([]);
    stage?.setReplayBodycam(null);
  }
- advance({dt,instant=false,replaying,stage,viewMode,state,recorder,replayTime,
+ advance({dt,instant=false,replaying,manualBodycamActive=false,
+   stage,viewMode,state,recorder,replayTime,
    replayContactObserverId,replayOmniscient,cssW,cssH,replayFollowStatus,
    debugPanel}:ReplayCameraContext):void{
 
@@ -119,9 +120,9 @@ export class ReplayCameraController{
         debugPanel.hidden=false;
         debugPanel.textContent='DIRECTOR CAM · '+
           actorId.toUpperCase()+' · '+this.camMount.toUpperCase()+
-          '\\nSUBJECT '+(chosen?.reason??'recorded perspective')+
-          '\\nDECISION '+this.camDecision+
-          '\\nNO CINEMATIC CAMERA STAGING';
+          '\nSUBJECT '+(chosen?.reason??'recorded perspective')+
+          '\nDECISION '+this.camDecision+
+          '\nNO CINEMATIC CAMERA STAGING';
       }
       return;
     }
