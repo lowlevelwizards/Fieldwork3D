@@ -57,8 +57,7 @@ import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
-import {createBriefingCardModel,type BriefingReport,type BriefingTab}
- from './briefing/briefing-view-model.ts';
+import type {BriefingTab} from './briefing/briefing-view-model.ts';
 import {sessionIntelligenceReview} from './briefing/briefing-after-action.ts';
 import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
 import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
@@ -129,7 +128,7 @@ import './ui/ux-r1-sheets.css';
 import './ui/ux-r3-hud.css';
 import './ui/fieldwork-action-toast.css';
 import {confirmFieldworkAction} from './ui/fieldwork-controls.ts';
-import {createTacticalSheetNavigation} from './ui/tactical-sheet-navigation.ts';
+import {createBreachMissionScreens} from './ui/breach-mission-screens.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
@@ -751,37 +750,48 @@ const operationsBoardController=createBreachOperationsBoardController({
  openArsenal:id=>{void openQuickArsenal(id);},showHelp:showUiHelp
 });
 const renderOperationsBoard=operationsBoardController.render;
-const tacticalSheetNavigation=createTacticalSheetNavigation({
- settings:ui.siteSettings,squad:operationsBoard,briefing:ui.briefingPanel
-},()=>{collapseTacticalSheets(null);updateContext();});
-/** Only one major tactical sheet owns the viewport and touch focus at a time. */
-function collapseTacticalSheets(except:'squad'|'weapon'|'settings'|'briefing'|null){
- if(except!=='squad')operationsBoard.hidden=true;
- if(except!=='weapon')hideWeaponChooser();
- if(except!=='settings'){
-  ui.siteSettings.hidden=true;
-  ui.siteSettingsToggle.setAttribute('aria-expanded','false');
-  closeSiteChoice();
- }
- if(except!=='briefing'){
-  ui.briefingPanel.hidden=true;
-  ui.briefingToggle.setAttribute('aria-expanded','false');
- }
- tacticalSheetNavigation.sync();
-}
-operationsToggle.addEventListener('click',()=>{
- if(state.phase!=='planning'||replaying)return;
- const opening=operationsBoard.hidden;
- collapseTacticalSheets(opening?'squad':null);
- operationsBoard.hidden=!opening;
- if(opening){
-  hideContextPalette();
-  renderOperationsBoard();
- }
- tacticalSheetNavigation.sync();
- if(opening)tacticalSheetNavigation.focusFirst();
- updateContext();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const missionScreens=createBreachMissionScreens({
+ ui,operationsBoard,operationsToggle,
+ getSession:()=>state,getCampaign:()=>campaign,getMode:()=>campaignMode,
+ isReplaying:()=>replaying,briefingPreviewEnabled,
+ getEntryId:()=>missionController.entryId,
+ hideWeaponChooser,closeSiteChoice,hideContextPalette,
+ renderOperationsBoard,updateContext
 });
+const tacticalSheetNavigation=missionScreens.navigation;
+const collapseTacticalSheets=missionScreens.collapse;
+
 let selected='rook';
 let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
 let flashMode=false,pushMode=false;
@@ -1224,90 +1234,90 @@ function medicalCandidate(id:string,origin?:Pt){
   return wound&&treatmentSupplyForWound(wound,a.medicalSupplies);
  }).sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0]??null;
 }
-/** V3: render only when mission identity or roster changes; never on each frame. */
-let briefingRenderedSession:Session|null=null;
-let briefingRenderedDossier:Session['operationDossier'];
-let briefingRenderedRoster='';
-let briefingRenderedEntry='';
-function renderBriefingReports(root:HTMLElement,reports:readonly BriefingReport[]):void{
- const fragment=document.createDocumentFragment();
- if(!reports.length){
-  const message=document.createElement('p');message.className='fw-brief-v3-report-empty';
-  message.textContent='No additional verified reports available.';
-  fragment.append(message);
- }
- for(const report of reports){
-  const article=document.createElement('article');article.className='fw-brief-v3-report';
-  const meta=document.createElement('div');meta.className='fw-brief-v3-report-meta';
-  meta.textContent=report.source.toUpperCase()+' · '+report.confidence.toUpperCase();
-  const body=document.createElement('p');body.textContent=report.text;
-  article.append(meta,body);fragment.append(article);
- }
- root.replaceChildren(fragment);
-}
-function syncBriefingCard():void{
- const dossier=briefingPreviewEnabled?state.operationDossier:undefined;
- const names=team(state).map(actor=>actor.name).join(' · ');
- if(state===briefingRenderedSession&&dossier===briefingRenderedDossier&&
-    names===briefingRenderedRoster&&missionController.entryId===briefingRenderedEntry)return;
- briefingRenderedSession=state;
- briefingRenderedDossier=dossier;
- briefingRenderedRoster=names;
- briefingRenderedEntry=missionController.entryId;
- const brief=operationBriefing(state);
- const model=createBriefingCardModel(state.missionType,brief,dossier);
- ui.briefingTitle.textContent=model.title;
- ui.briefingType.textContent=model.missionLabel.toUpperCase();
- ui.briefingLocation.textContent=model.siteLabel;
- ui.briefingPrimary.textContent=model.primary;
- ui.briefingSituationBlock.hidden=false;
- ui.briefingSituation.textContent=model.situation;
- ui.briefingThreat.textContent=model.threat.value;
- ui.briefingLayout.textContent=model.layout;
- const steps=document.createDocumentFragment();
- model.steps.forEach((step,index)=>{
-  const cell=document.createElement('div');cell.className='fw-brief-v3-step';
-  const head=document.createElement('strong');
-  head.textContent=String(index+1).padStart(2,'0')+' / '+step.action;
-  const subtitle=document.createElement('small');subtitle.textContent=step.detail;
-  cell.append(head,subtitle);steps.append(cell);
- });
- ui.briefingSteps.replaceChildren(steps);
- // Full authority remains available under ORDERS, never re-authored by prose.
- ui.briefingBody.textContent=brief.objective;
- ui.briefingCondition.textContent=brief.condition;
- ui.briefingExtraction.textContent=brief.extraction;
- ui.briefingSite.textContent=model.siteLabel+' · '+model.layout;
- ui.briefingCaseContext.textContent=model.situation+
-   (model.caseContext?'\n\n'+model.caseContext:'');
- const job=campaignMode==='mission'&&campaign?.activeContractId?
-   campaign.contracts.find(c=>c.id===campaign!.activeContractId):undefined;
- ui.briefingCampaignContext.textContent=[
-   model.campaignLabel??(job?
-     job.region.toUpperCase()+' · RISK '+job.risk+' · '+job.title:''),
-   model.followUp??''
- ].filter(Boolean).join('\n');
- ui.briefingRoster.textContent=brief.squad+' OPERATORS · '+names;
- renderBriefingReports(ui.briefingIntel,model.reports.threat);
- renderBriefingReports(ui.briefingSiteReports,model.reports.site);
- renderBriefingReports(ui.briefingCaseReports,model.reports.case);
-}
-function setBriefingIntelTab(tab:BriefingTab):void{
- for(const control of ui.briefingPanel.querySelectorAll<HTMLButtonElement>(
-   '[data-briefing-tab]'))
-  control.setAttribute('aria-pressed',String(control.dataset.briefingTab===tab));
- for(const section of ui.briefingPanel.querySelectorAll<HTMLElement>(
-   '[data-briefing-section]'))
-  section.hidden=section.dataset.briefingSection!==tab;
-}
-function setBriefingView(mode:'brief'|'intel'):void{
- const intel=mode==='intel';
- ui.briefingOverview.hidden=intel;
- ui.briefingIntelView.hidden=!intel;
- ui.briefingIntelToggle.textContent=intel?'BACK TO BRIEF':'VIEW INTEL';
- ui.briefingIntelToggle.setAttribute('aria-expanded',String(intel));
- if(intel)setBriefingIntelTab('threat');
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function updateHud(){
   if(!replaying&&state.phase==='planning')recorder.capturePlanning(state);
