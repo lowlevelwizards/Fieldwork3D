@@ -78,9 +78,10 @@ import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
 import {scanEnemySoundEvidence}
   from './breach-ai-acoustic-perception.ts';
+import {scanEnemyVisualEvidence} from './breach-ai-visual-evidence.ts';
 import {soundResponse} from './breach-sound-evidence.ts';
-import {newSuspicion,observeSuspicion,advanceSuspicion,
-  maintainVisualContact,exhaustSuspicionSearch,type SuspicionMemory}
+import {newSuspicion,observeSuspicion,
+  exhaustSuspicionSearch,type SuspicionMemory}
   from './breach-ai-suspicion.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {TacticalRouteCache} from './breach-tactical-route-cache.ts';
@@ -127,6 +128,7 @@ import {passageWait,passageFollowerStep,passageScheduledStep,
 import {incidentalCloseWouldBlockTeammate}
   from './breach-door-pressure-arbitration.ts';
 import {advanceWaitOrder} from './breach-order-wait.ts';
+import {executeTacticalUtilityOrder} from './breach-order-utility.ts';
 import {planDoorSchedule,pendingPassageSlot,type PassageSchedule}
   from './breach-passage-plan.ts';
 import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
@@ -2708,6 +2710,8 @@ function failCurrentOrder(s:Session,a:TeamActor,n:PlanNode,reason:string){
   a.velocity=0;
 }
 function clearCurrentOrderIssue(a:TeamActor){a.orderIssue=null;}
+const utilityOrderHooks={pop,notify,beginReload,
+ fail:failCurrentOrder,clearIssue:clearCurrentOrderIssue,rotate,battleEvent};
 function runOrders(s:Session,a:TeamActor,dt:number){
   // Player-authored positions are sacred. Traffic steering only moves the
   // actor who requested movement, never a stationary friend or held stack.
@@ -3202,58 +3206,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   if(n.kind==='holdClear'||n.kind==='wait'){
     advanceWaitOrder(s,a,n,dt,inSight,notify,pop);return;
   }
-  if(n.kind==='sync'){
-    a.syncReady=n.syncCode??'A';
-    // Only actors still carrying this code participate. An undone
-    // companion order must not create a permanent one-sided deadlock.
-    const code=a.syncReady;
-    const peers=team(s).filter(x=>x.health>0&&
-      (x.syncReady===code||x.plan.some(order=>
-        order.kind==='sync'&&order.syncCode===code)));
-    if(peers.every(x=>x.syncReady===code)){
-      // Clear all participants in the same fixed simulation tick.
-      for(const teammate of peers)pop(teammate);
-      notify(s,'GO CODE '+(n.syncCode??'A'));
-    }
-    return;
-  }
-  if(n.kind==='reload'){
-    // The authored order owns one reload, not an endless sequence of
-    // refills when the final available magazine isn't completely full.
-    if(a.actionTimer>0&&a.reload===0){pop(a);return;}
-    if(a.actionTimer===0){
-      if(a.magazine>=liveMagazineCapacity(a.weapon,a.weaponConfiguration)){pop(a);return;}
-      if(a.reload>0){a.velocity=0;return;}
-      if(!beginReload(s,a)){
-        failCurrentOrder(s,a,n,'RELOAD UNAVAILABLE · CHECK AMMO');return;
-      }
-      clearCurrentOrderIssue(a);
-      a.actionTimer=dt;
-    }
-    return;
-  }
-  if(n.kind==='flash'){
-    if(!n.aimPoint||s.flashRemaining<=0||a.flashCharges<=0){
-      failCurrentOrder(s,a,n,'FLASH UNAVAILABLE');return;
-    }
-    const trajectory=validateThrow(a.p,n.aimPoint,s.doors);
-    if(!trajectory.valid){
-      failCurrentOrder(s,a,n,'FLASH BLOCKED — '+
-        (trajectory.reason??'CHECK TRAJECTORY'));return;
-    }
-    clearCurrentOrderIssue(a);a.velocity=0;rotate(a,angle(a.p,n.aimPoint),dt);
-    a.actionTimer+=dt;
-    if(a.actionTimer>=.3){
-      s.flashRemaining--;a.flashCharges--;a.lastThrowAt=s.seconds;
-      s.grenades.push({id:s.nextEffectId++,p:clone(a.p),
-        from:clone(a.p),to:clone(n.aimPoint),age:0,fuse:1.15,
-        path:trajectory});
-      battleEvent(s,'flash',a,a.p,a.name+' FLASH OUT');
-      notify(s,a.name+' FLASH OUT');
-      pop(a);
-    }
-    return;
-  }
+  if(executeTacticalUtilityOrder(s,a,n,dt,utilityOrderHooks))return;
   if(n.kind==='door'){
     const door=s.doors.find(d=>d.id===n.doorId);
     if(!door){
@@ -3432,27 +3385,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
   }
   if(!a.watch)a.watch=watchPoint(a.p,s.doors);
-  const visible=team(s).filter(b=>inSight(a,b,s));
-  // First acquisition is a real visual observation; seeing the same actor
-  // on subsequent ticks is not a fresh independent suspicion event.
-  const visualId=visible[0]?.id??null;
-  if(visualId!==a.lastVisualSuspicionId){
-    a.lastVisualSuspicionId=visualId;
-    if(visualId)observeSuspicion(a.suspicion,{
-      id:'visual/'+visualId+'/'+Math.round(s.seconds*60),
-      at:s.seconds,kind:'contact',cause:'confirmed-sight'
-    });
-  }
-  advanceSuspicion(a.suspicion,s.seconds,dt,
-    a.alert==='investigating'&&!!a.contact);
-  // Sustained *confirmed* sight is fresh information without extra contact
-  // events. Keep alarm current until vision really breaks.
-  if(visualId)maintainVisualContact(a.suspicion,s.seconds);
-  if(visible.length&&a.encounterReactionUntil===Number.POSITIVE_INFINITY){
-    a.encounterReactionStartedAt=s.seconds;
-    a.encounterReactionUntil=s.seconds+encounterReactionDelay(
-      a.encounterReadiness??'attentive',a.id);
-  }
+  const visible=scanEnemyVisualEvidence(s,a,dt,inSight);
   // A guard on the other side of a window can have confirmed sight but
   // an unusable short-stock muzzle. Try the same small backstep available
   // to blue BEFORE normal cover doctrine decides to hold fire forever.
