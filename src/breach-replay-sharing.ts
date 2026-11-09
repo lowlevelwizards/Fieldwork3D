@@ -40,6 +40,15 @@ function sameValue(a:unknown,b:unknown):boolean{
   return count===otherCount;
 }
 
+/** Capture-side value reuse. Unlike sharing after cloning, this avoids
+ * allocating temporary deep copies for unchanged authored state on every
+ * moving frame. The caller skips reuse on independent keyframes. */
+export function reuseFrozenReplayValue<T>(
+  live:T,prior:T|undefined,clone:()=>T
+):T{
+  return prior!==undefined&&sameValue(live,prior)?prior:clone();
+}
+
 const shareableFields=[
   'doors','shots','casings','dropped','impactMarks','grenades',
   'flashBursts','intel','known','rescue','objective','knowledge'
