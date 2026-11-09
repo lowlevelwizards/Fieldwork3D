@@ -5441,13 +5441,17 @@ export function knownAt(s:Session,x:number,y:number){
  * but deliberately does NOT grant full-view or shared-team knowledge.
  * Used only at authoritative recording time for personal civilian evidence.
  */
+/** Shared friendly ground-FOV precheck. Geometry/LOS and acquired actor
+ * awareness remain separate authoritative decisions, not renderer hints. */
+function friendlyGroundSightCandidate(observer:TeamActor,p:Pt):boolean{
+  return observer.side==='blue'&&observer.health>0&&
+    groundViewCandidate(cachedActorGroundView(observer),p.x,p.y);
+}
 export function observerPointVisible(
   s:Session,observer:TeamActor,p:Pt
 ):boolean{
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.personalQueries++;
-  if(observer.side!=='blue'||observer.health<=0||
-     !groundViewCandidate(cachedActorGroundView(observer),p.x,p.y))
-    return false;
+  if(!friendlyGroundSightCandidate(observer,p))return false;
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.personalOcclusionProbes++;
   return unobstructed(observer.p,p,s,observer.posture==='crouch');
 }
@@ -5461,8 +5465,7 @@ export function liveVisibility(s:Session,p:Pt){
   // occlusion query remains authoritative; these are not sight caches.
   // The normal path pays only the disabled Boolean checks.
   for(const a of s.operators){
-    if(a.side!=='blue'||a.health<=0)continue;
-    if(!groundViewCandidate(cachedActorGroundView(a),p.x,p.y))continue;
+    if(!friendlyGroundSightCandidate(a,p))continue;
     if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveOcclusionProbes++;
     if(unobstructed(a.p,p,s,a.posture==='crouch')){
       if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveHits++;
