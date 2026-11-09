@@ -28,6 +28,20 @@ export function coverPresentation(s:Session,index:number,omniscient=false):
 export type SpatialSurfaceKind='wall'|'room'|'door'|'cover';
 export type SpatialSurfaceState='unknown'|'briefed'|'remembered'|
  'visible';
+/** Knowledge-only predicate for callers that merely gate scene geometry.
+ * Unlike spatialSurfaceState(), this performs zero live LOS rays and never
+ * upgrades an unknown surface into a known one. Exact same !unknown result.
+ * Keep the full classification for code that needs visible vs remembered.
+ */
+export function spatialSurfaceKnown(s:Session,kind:SpatialSurfaceKind,
+ key:number|string,omniscient=false):boolean{
+ if(omniscient||s.intel.mode==='full-view')return true;
+ if(kind==='cover')return s.intel.cover.has(Number(key))&&
+   !!COVER[Number(key)];
+ if(kind==='room')return s.intel.rooms.has(String(key));
+ if(kind==='wall')return s.intel.walls.has(Number(key));
+ return s.intel.doors.has(String(key));
+}
 export function spatialSurfaceState(s:Session,kind:SpatialSurfaceKind,
  key:number|string,omniscient=false):SpatialSurfaceState{
  if(omniscient||s.intel.mode==='full-view')return 'visible';
