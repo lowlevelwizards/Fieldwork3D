@@ -10,6 +10,8 @@ import {buildDirectorFilmBeats,directorFilmBeatAt,directorFilmPair,
   type DirectorFilmBeat} from './breach-replay-director-film.ts';
 import {ReplayDirectorStoryboard,composeReplayDirectorShots}
   from './breach-replay-director-reset.ts';
+import {ReplayDirectorSubjectTimeline}
+  from './breach-replay-director-subject-timeline.ts';
 import {directorRecordedContact} from './breach-replay-director-contact.ts';
 import {directorEditorialCandidates} from './breach-replay-director-edit.ts';
 import {directorRecentAction} from './breach-replay-director-action.ts';
@@ -52,6 +54,7 @@ export class ReplayDirectorController{
  reset():void{
    this.cues=[];this.future=[];this.planIndex=new Map();
    this.filmBeats=[];this.entries=[];this.storyboard=null;
+   this.subjectTimeline=null;this.camEligibleObservers=[];
    this.tempoEdits=[];this.editNoticeUntil=0;this.editNoticeSeconds=0;
    this.target=null;this.grade=null;this.gradeBucket=-1;
    this.gradeKey='';this.safeFrame=null;
@@ -77,7 +80,8 @@ export class ReplayDirectorController{
   this.grade=null;this.gradeBucket=-1;this.gradeKey='';
   // The director knows the whole finished film. Fixed knots are lazily
   // solved from historical samples, independent of FPS or seek direction.
-  this.storyboard=new ReplayDirectorStoryboard(recorder.duration,t=>{
+  const evidenceAt=(t:number)=>{
+
     const frame=recorder.at(t);
     if(!frame)return null;
     const actors=frame.actors.map(a=>({
@@ -119,9 +123,27 @@ export class ReplayDirectorController{
         usableHeight:height<520?.68:.81,maxZoom:14,
         safeFrame:directorSafeFrame
       };
-    // Compare current recorded action across the whole squad. The
-    // compositor still stages only the same approved OTS shot family.
     const stories=directorEditorialCandidates(t,actors,directorContext,5);
+    return {actors,directorContext,stories};
+  };
+  // Camera choice is irrelevant to this film-time subject auction.
+  // Personal camera eligibility comes only from recorded operator sight,
+  // never a newly simulated line of sight.
+  const eligible=new Set<string>();
+  for(const frame of recorder.frames)
+    for(const id of Object.keys(frame.knowledge?.operatorVisibleActorIds??{}))
+      if(friendlies.has(id))eligible.add(id);
+  this.camEligibleObservers=[...eligible].sort();
+  this.subjectTimeline=eligible.size?
+    new ReplayDirectorSubjectTimeline(recorder.duration,t=>
+      evidenceAt(t)?.stories.filter(s=>eligible.has(s.primaryActorId))??[],
+      {step:.5,minResidence:1.5,switchAdvantage:1.6}):null;
+  // The established OTS storyboard is untouched by the CAM presentation.
+  // Both camera modes consume the same historical editorial evidence.
+  this.storyboard=new ReplayDirectorStoryboard(recorder.duration,t=>{
+    const data=evidenceAt(t);
+    if(!data)return null;
+    const {actors,directorContext,stories}=data;
     const proposals=stories.flatMap(editorial=>composeReplayDirectorShots(
       t,actors,state.site?.rooms??[],state.site?.walls??[],
       width/Math.max(1,height),0,baseSpan,
