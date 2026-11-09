@@ -1,0 +1,30 @@
+name: Breach Architecture — Critical Integration
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: breach-architecture-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  critical:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/architecture-roadmap-2-') || startsWith(github.head_ref, 'refactor/architecture-roadmap3-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Curated authoritative scenario and architecture regressions
+        run: node scripts/verification/breach-critical-suite.mjs
+      - name: Production TypeScript and asset build
+        run: npm run build
+      - name: Verify previous Pages build is successfully served
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
