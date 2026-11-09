@@ -1,3 +1,4 @@
+import {validPieArc} from './breach-maneuvers.ts';
 import {pathFor,edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan}
  from './breach-plan-authoring.ts';
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
