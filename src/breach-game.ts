@@ -12,7 +12,6 @@ import {
   segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,
   pointToSegment,staticWallBlocksRay,someCoverAlongRay,
   activeGeometryRevision,
-  activeWorldBounds,
 } from './breach-core.ts';
 import {
   type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
@@ -168,7 +167,7 @@ import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-
 import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
  from './equipment-weapon-handling.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
-import {BALLISTICS,approachAngle,readyMode,shotYaw,
+import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
   rayHitsActor,muzzleEndpoint,recoverWeapon,type FiringMode} from './breach-ballistics.ts';
 import {shotDispersionCone} from './breach-shot-ignition.ts';
 import {chooseDefense,chooseFiringDefense,watchPoint,
