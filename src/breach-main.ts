@@ -400,7 +400,7 @@ const ui={
   replayExit:el<HTMLButtonElement>('replayExit'),
   replayPrevEvent:el<HTMLButtonElement>('replayPrevEvent'),
   replayNextEvent:el<HTMLButtonElement>('replayNextEvent'),
-  replayCamera.follow:el<HTMLButtonElement>('replayCamera.follow'),
+  replayFollow:el<HTMLButtonElement>('replayFollow'),
   replaySquad:el<HTMLButtonElement>('replaySquad'),
   replayDirector:el<HTMLButtonElement>('replayDirector'),
   replayAnalysis:el<HTMLButtonElement>('replayAnalysis'),
@@ -5237,7 +5237,7 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
   for(const b of ui.replayViewChoices.querySelectorAll<HTMLButtonElement>('[data-view-choice]'))
     b.setAttribute('aria-pressed',String(b.dataset.viewChoice===viewMode));
   ui.replayView.disabled=replayBodycamOn;
-  ui.replayCamera.follow.textContent=replayCamera.follow?'FOLLOW '+replayCamera.followId.toUpperCase():'FOLLOW';
+  ui.replayFollow.textContent=replayCamera.follow?'FOLLOW '+replayCamera.followId.toUpperCase():'FOLLOW';
   ui.replaySquad.textContent=replayCamera.mode==='squad'?'SQUAD ON':'FOLLOW SQUAD';
   ui.replayDirector.textContent=replayCamera.mode==='director'?'DIRECTOR ON':'DIRECTOR OFF';
   ui.replayQuickCamera.value=replayCamera.mode==='operator'?
@@ -5258,7 +5258,7 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
   ui.replayDirector.setAttribute('aria-pressed',String(replayCamera.mode==='director'));
   ui.replaySquad.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
   ui.replayDirector.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
-  ui.replayCamera.follow.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
+  ui.replayFollow.disabled=viewMode==='plan2d'||!stage||replayBodycamOn;
   ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
   ui.replayPlans.textContent='PLANS '+replayPlanScope.toUpperCase();
   ui.replayPlanVersion.textContent='PLAN '+replayPlanVersion.toUpperCase();
@@ -5289,8 +5289,8 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
     replayIncidentPlayback?.loop?'INCIDENT LOOP':
     replayIncidentPlayback?'WATCHING MOMENT':
     replayLoopEnabled?'A/B LOOP':
-    replayCamera.mode==='director'&&performance.now()<replayDirectorEditNoticeUntil?
-      'DIRECTOR EDIT · +'+replayDirectorEditNoticeSeconds.toFixed(1)+'S':'';
+    replayCamera.mode==='director'&&performance.now()<replayDirector.editNoticeUntil?
+      'DIRECTOR EDIT · +'+replayDirector.editNoticeSeconds.toFixed(1)+'S':'';
   ui.replayStatusChip.textContent=status;
   ui.replayStatusChip.hidden=!status;
   syncReplayEventFeed();
@@ -6256,7 +6256,7 @@ const jumpReplayEvent=(forward:boolean)=>{
 };
 ui.replayPrevEvent.addEventListener('click',()=>jumpReplayEvent(false));
 ui.replayNextEvent.addEventListener('click',()=>jumpReplayEvent(true));
-ui.replayCamera.follow.addEventListener('click',()=>{
+ui.replayFollow.addEventListener('click',()=>{
   if(replayBodycamOn)stopReplayBodycam();
   if(replayCamera.follow){
     const i=squadIds.indexOf(replayCamera.followId as typeof squadIds[number]);
@@ -7808,8 +7808,8 @@ function tick(now:number){
           previousReplayTime,step.time):null;
       replayTime=trim?trim.sourceEnd:step.time;
       if(trim){
-        replayDirectorEditNoticeSeconds=trim.sourceEnd-trim.sourceStart;
-        replayDirectorEditNoticeUntil=performance.now()+1850;
+        replayDirector.editNoticeSeconds=trim.sourceEnd-trim.sourceStart;
+        replayDirector.editNoticeUntil=performance.now()+1850;
       }
       applyReplayFrameAt(replayTime);
       if(step.wrapped||trim)stopReplaySounds();
