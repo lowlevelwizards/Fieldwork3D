@@ -119,10 +119,12 @@ import {newAwareness,addObservation,visibleObservation,
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {crossingDoor,passageWait,passageFollowerStep,passageScheduledStep,
+import {passageWait,passageFollowerStep,passageScheduledStep,
   passageDeadlockRetreatTarget,passageIdleYieldStep,
   approachingNarrowThreshold,type PassageActor,type PassageLease}
   from './breach-passage.ts';
+import {incidentalCloseWouldBlockTeammate}
+  from './breach-door-pressure-arbitration.ts';
 import {planDoorSchedule,pendingPassageSlot,type PassageSchedule}
   from './breach-passage-plan.ts';
 import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
@@ -2055,18 +2057,6 @@ function tickTraversal(a:TeamActor,s:Session,dt:number):boolean{
  * for incidental body-pressure CLOSE; explicit door orders keep authority.
  * Check the peer's active order and its REAL destination, not a near motor
  * step or hidden enemy intel. Idle teammates don't lock the leaf open. */
-function doorClosingContested(s:Session,actor:TeamActor,door:Door):boolean{
-  return s.operators.some(peer=>{
-    if(peer===actor||peer.side!==actor.side||peer.health<=0)return false;
-    const order=peer.plan[0];
-    if(!order||!['move','door','sync'].includes(order.kind))return false;
-    const goal=peer.nav.at(-1)??order.p;
-    return crossingDoor({
-      id:peer.id,p:peer.p,goal,side:peer.side,
-      active:true,health:peer.health,blockedTime:peer.blockedTime
-    },door);
-  });
-}
 /** Real body-contact recovery for loose clutter, even when route search
  * cannot build a path through two adjacent chairs. Shared with walking.
  * Does not bypass walls, door leaves, other actors, or authored orders.
@@ -2205,7 +2195,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
         y:a.p.y+(p.y-a.p.y)/goalDistance*probeLength};
       pressDoorOnBodyAttempt(a.p,probe,s.doors,dt,
         s.operators.filter(o=>o.health>0).map(o=>o.p),{
-          deferClosing:door=>doorClosingContested(s,a,door)
+          deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door)
         });
     }
     // When two chairs interlock there may be no navigable path, so the
@@ -2461,7 +2451,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // when it cannot (wall/actor), existing collision and recovery remain.
   const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
     s.operators.filter(o=>o.health>0).map(o=>o.p),{
-      deferClosing:door=>doorClosingContested(s,a,door)
+      deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door)
     });
   // The physical transition requires a valid oriented three-point torso
   // sweep; normal clearance remains the preference whenever it fits.
