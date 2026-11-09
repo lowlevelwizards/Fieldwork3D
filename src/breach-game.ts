@@ -167,8 +167,9 @@ import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-
 import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
  from './equipment-weapon-handling.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
-import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
-  rayHitsActor,muzzleEndpoint,recoverWeapon,handlingInstability,type FiringMode} from './breach-ballistics.ts';
+import {BALLISTICS,approachAngle,readyMode,shotYaw,
+  rayHitsActor,muzzleEndpoint,recoverWeapon,type FiringMode} from './breach-ballistics.ts';
+import {shotDispersionCone} from './breach-shot-ignition.ts';
 import {chooseDefense,chooseFiringDefense,watchPoint,
   reachableInvestigation} from './breach-defense.ts';
 import {advanceRescueEscort,type RescueEscort} from './breach-rescue-escort.ts';
@@ -4377,14 +4378,8 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   const priorBurst=s.seconds-a.lastShotAt<.48;
   const proposedBurst=priorBurst?a.burstCount+1:1;
-  const cone=(dispersion(a.weapon,mode,a.stability,moving,
-    a.suppression,a.injuryStage,a.recoil)+
-    handlingInstability(a.turning,a.velocity,a.recoil,a.stability))*
-    (2-skillMultiplier(mode==='point'?a.skills.pointShooting:
-      range>weapon.optimalRange?a.skills.longRange:a.skills.precision,.28))*
-     sightSpreadScale(mods,mode,range);
-  // Shot direction is the firearm's physical yaw at ignition. Sampling
-  // happens *before* muzzle construction, not as an invisible post-shot roll.
+  // Roll ordering is authoritative. The pure ignition policy never calls RNG.
+  const cone=shotDispersionCone(a,mode,range,moving,mods,weapon.optimalRange);
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
