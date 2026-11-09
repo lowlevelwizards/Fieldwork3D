@@ -306,7 +306,9 @@ export class ReplayDirectorStoryboard{
       (prior.discoveryStrength??0)<=.25;
     // When the same operator is still the subject, side changes are
     // forbidden while the established side remains physically workable.
-    if(retained&&!newEvent){
+    if(retained&&!newEvent&&
+      (best.primaryActorId===prior.primaryActorId||
+       (best.editorialPriority??0)<=(retained.editorialPriority??0)+.35)){
       const next=this.track(prior,retained,scene);
       if(this.legal(next,scene))return {...next,
         sceneStartIndex:prior.sceneStartIndex,
