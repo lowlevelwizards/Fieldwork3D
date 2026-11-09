@@ -8052,8 +8052,19 @@ function tick(now:number){
   if(replaying)advanceReplayCamera(dt);
   // 079: shot IDs are monotonic, unlike the short-lived shot array length.
   // A new shot can arrive on exactly the tick an old shot expires.
-  const fresh=state.shots.filter(shot=>shot.id>lastSoundShotId);
-  if(audio&&!replaying)for(const shot of fresh.slice(-3)){
+  // Retain only the newest three audible shot candidates without building
+  // a filtered array and then slicing it on every animation frame.
+  const freshShots:typeof state.shots=[];
+  let newestShotId=lastSoundShotId;
+  for(const shot of state.shots){
+    if(shot.id<=lastSoundShotId)continue;
+    if(shot.id>newestShotId)newestShotId=shot.id;
+    if(audio&&!replaying){
+      if(freshShots.length===3)freshShots.shift();
+      freshShots.push(shot);
+    }
+  }
+  if(audio&&!replaying)for(const shot of freshShots){
     const firingActor=state.operators.find(a=>a.id===shot.shooterId);
     const weapon=firingActor?.weapon??'carbine';
     const listener=uid(selected)?.p;
@@ -8080,7 +8091,7 @@ function tick(now:number){
         playTone(shot.down?75:225,shot.down?.25:.10,
           shot.down,level*Math.max(.22,impactLevel),pan);
   }
-  if(fresh.length)lastSoundShotId=fresh.at(-1)!.id;
+  lastSoundShotId=newestShotId;
   // One restrained boot thud per recorded physical touchdown; never an
   // independent timed walking loop, and never an audio burst on resume.
   if(!replaying&&state.phase==='running'){
