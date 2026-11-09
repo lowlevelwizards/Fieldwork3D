@@ -69,8 +69,27 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+  live-visibility-candidate-p8:
+    if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'perf/live-visibility-candidate-p8-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: P8 critical FOV, fog, personal replay and optical LOS regressions
+        run: |
+          node --experimental-strip-types --test tests/live-visual-candidate-p8.test.mjs tests/breach-ground-view-performance.test.mjs tests/runtime-hotpaths-visibility-door.test.mjs tests/breach-fog-visibility.test.mjs tests/visibility-03-optics.test.mjs tests/visibility-08-closed-door-seals.test.mjs tests/replay-r42-operator-sight.test.mjs tests/replay-r43-personal-visibility.test.mjs tests/equipment-26-03-sight-lighting.test.mjs
+      - name: Production build and TypeScript check
+        run: npm run build
+      - name: Previous Pages production release checkpoint
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
   verify:
-    if: ${{ github.event_name != 'pull_request' || !(startsWith(github.head_ref, 'perf/runtime-lifecycle-') || startsWith(github.head_ref, 'perf/sim-replay-hotpaths-') || startsWith(github.head_ref, 'perf/presentation-knowledge-p7-')) }}
+    if: ${{ github.event_name != 'pull_request' || !(startsWith(github.head_ref, 'perf/runtime-lifecycle-') || startsWith(github.head_ref, 'perf/sim-replay-hotpaths-') || startsWith(github.head_ref, 'perf/presentation-knowledge-p7-') || startsWith(github.head_ref, 'perf/live-visibility-candidate-p8-')) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

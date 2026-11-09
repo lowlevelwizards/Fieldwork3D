@@ -10,7 +10,13 @@ export function groundView(x:number,y:number,heading:number):GroundView{
 }
 export function groundViewCandidate(view:GroundView,x:number,y:number):boolean{
   const dx=x-view.x,dy=y-view.y,distSquared=dx*dx+dy*dy;
-  if(distSquared>=RADIUS_SQUARED)return false;
+  // A point constructed on the 240-unit circle can round to a slightly
+  // smaller squared distance while Math.hypot still returns exactly 240.
+  // Fall back to the original strict radial test *only* at that numerical
+  // boundary so neither gameplay sight nor terrain memory leaks a sliver.
+  if(Math.abs(distSquared-RADIUS_SQUARED)<1e-7){
+    if(Math.hypot(dx,dy)>=240)return false;
+  }else if(distSquared>=RADIUS_SQUARED)return false;
   // atan2(0,0) historically points east; keep that rare exact-center
   // behavior so the optimization never reveals a previously blind tile.
   if(distSquared===0)return view.forwardX>0&&
