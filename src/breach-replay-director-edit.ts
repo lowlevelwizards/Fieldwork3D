@@ -265,3 +265,37 @@ export function selectDirectorEditorialShot(
     actionDirection,required,optional,firstEntry,
     discoveryStrength,reason};
 }
+
+/** R9.6: audition multiple true stories using the existing editorial
+ * authority. Suppressed evidence only creates alternative editorial bids;
+ * the main bid and all historical disclosure restrictions are unchanged.
+ * Never manufacture an undisclosed target from a future film beat. */
+export function directorEditorialCandidates(time:number,
+  actors:readonly DirectorActor[],e:DirectorEditorialEvidence,
+  limit=3):DirectorEditorialShot[]{
+  const proposals:DirectorEditorialShot[]=[];
+  const add=(actorsHere:readonly DirectorActor[],
+    evidence:DirectorEditorialEvidence)=>{
+    const shot=selectDirectorEditorialShot(time,actorsHere,evidence);
+    if(shot&&!proposals.some(p=>
+      p.kind===shot.kind&&p.primaryActorId===shot.primaryActorId&&
+      p.doorId===shot.doorId))
+      proposals.push(shot);
+  };
+  add(actors,e);
+  const quiet={...e,beat:null,contact:null,upcoming:null,entry:null};
+  add(actors,quiet);
+  add(actors,{...quiet,discovery:null});
+  // Moving teammates are not automatically minor characters: a second
+  // operator may offer the better view of the currently known geography.
+  for(const actor of actors.filter(a=>a.side==='blue'&&a.health>0)){
+    const moving=e.intents.find(i=>i.actorId===actor.id&&
+      (i.speed>6||i.watchDirection||i.door));
+    if(!moving)continue;
+    add([actor],{...quiet,discovery:null,
+      intents:e.intents.filter(i=>i.actorId===actor.id)});
+  }
+  return proposals.sort((a,b)=>b.priority-a.priority||
+    a.primaryActorId.localeCompare(b.primaryActorId)||
+    a.id.localeCompare(b.id)).slice(0,Math.max(1,Math.min(4,limit)));
+}
