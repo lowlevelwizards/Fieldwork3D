@@ -36,7 +36,7 @@ test('opt-in diagnostics report retained actor and civilian rigs',()=>{
 });
 
 test('site swaps discard obsolete weapon-light blockers and pose caches',()=>{
-  assert.match(siteSwap,/this\\.beamBlockerTick=-1;this\\.beamBlockerSite=-1/);
-  assert.match(siteSwap,/this\\.beamBlockerRevision=-1;this\\.beamBlockers=\\[\\]/);
-  assert.match(siteSwap,/actor\\.beam\\.visible=false;actor\\.beamLast=null/);
+  assert.match(siteSwap,/this\.beamBlockerTick=-1;this\.beamBlockerSite=-1/);
+  assert.match(siteSwap,/this\.beamBlockerRevision=-1;this\.beamBlockers=\[\]/);
+  assert.match(siteSwap,/actor\.beam\.visible=false;actor\.beamLast=null/);
 });
