@@ -67,3 +67,31 @@ test('20Hz recording retains random-access sample and replayed operator outcomes
  const middle=recorder.sample(recorder.duration*.5);
  assert.ok(middle&&middle.actors.every(a=>Number.isFinite(a.heading)));
 });
+
+test('moving actors share stable nested state without merging different poses or authored changes',()=>{
+ const s=newSession(0),prior=snapshot(s),actor=s.operators[0];
+ actor.p.x+=1;
+ const next=snapshot(s);
+ shareUnchangedReplayFrame(prior,next,1);
+ assert.notStrictEqual(next.actors[0],prior.actors[0]);
+ for(const key of ['plan','spareMagazines','medical','medicalSupplies',
+   'weaponConfiguration','skills','aimInstruction','watch','defense','traversal']){
+   assert.strictEqual(next.actors[0][key],prior.actors[0][key],key);
+ }
+ // The live actor may now be edited, but must not mutate earlier film data.
+ actor.plan.push({kind:'move',p:{x:100,y:110}});
+ actor.skills={...actor.skills};
+ const authored=snapshot(s);
+ shareUnchangedReplayFrame(next,authored,2);
+ assert.notStrictEqual(authored.actors[0].plan,next.actors[0].plan);
+ assert.deepEqual(prior.actors[0].plan,[]);
+ assert.deepEqual(next.actors[0].plan,[]);
+ assert.strictEqual(authored.actors[0].skills,next.actors[0].skills);
+ const keyframe=snapshot(s);
+ shareUnchangedReplayFrame(authored,keyframe,REPLAY_FULL_KEYFRAME_INTERVAL);
+ assert.notStrictEqual(keyframe.actors[0].plan,authored.actors[0].plan);
+ assert.deepEqual(keyframe.actors[0],authored.actors[0]);
+ const playback=newSession(0);
+ applyReplayFrame(playback,authored);
+ assert.equal(playback.operators[0].plan.length,1);
+});
