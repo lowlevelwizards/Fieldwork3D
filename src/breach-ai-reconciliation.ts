@@ -1,7 +1,7 @@
 /** AI perception-to-intent and posture reconciliation. This never peeks
  * at unseen actors; the calling decision phase supplies only confirmed targets.
  */
-import {WALLS,COVER} from './breach-core.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {bestBelief} from './breach-awareness.ts';
 import {chooseAiIntent,hasRecentSound} from './breach-ai-policy.ts';
@@ -39,9 +39,10 @@ export function reconcileEnemyIntent(s:Session,a:TeamActor,visibleCount:number):
 export function reconcileEnemyPosture(s:Session,a:TeamActor,
  visible:readonly TeamActor[]):void{
  const threat=visible[0]?.p??a.heard??a.contact??a.watch;
+ const {walls,cover}=sessionWorldGeometry(s);
   let desiredPosture=a.posture;
   if(threat&&a.velocity<15&&
-    directionalCoverFrom(threat,a.p,COVER).crouched&&
+    directionalCoverFrom(threat,a.p,cover).crouched&&
     (a.suppression>.26||a.personality==='cautious'||
      a.alert==='cover'||a.combatChoice==='hold'))
     desiredPosture='crouch';
@@ -54,8 +55,8 @@ export function reconcileEnemyPosture(s:Session,a:TeamActor,
   // impossible to shoot. Stand up when that alone restores the muzzle lane.
   if(a.posture==='crouch'&&visible.length){
     const b=visible[0],height=aimHeight(b.posture==='crouch');
-    const low=assessFireLane(a.p,18,b.p,height,COVER,WALLS,s.doors);
-    const high=assessFireLane(a.p,26,b.p,height,COVER,WALLS,s.doors);
+    const low=assessFireLane(a.p,18,b.p,height,cover,walls,s.doors);
+    const high=assessFireLane(a.p,26,b.p,height,cover,walls,s.doors);
     if(low.blocker==='cover'&&high.blocker==='clear'){
       // The only exception to pose dwell: a verified clear higher muzzle.
       a.posture=settledEnemyPosture(a.posture,'stand',s.seconds,

@@ -17,6 +17,14 @@ export type SessionWorldGeometry={
  readonly initializedAtRevision:number;
 };
 const contexts=new WeakMap<Session,SessionWorldGeometry>();
+/** The view is owned by its Session. Only the cover snapshot remains live
+ * and mutable: it carries physical damage and furniture relocation.
+ * Wall segments are snapshots and must never be used as a global binding.
+ */
+export function worldGeometryForQuery(s:Session):Pick<SessionWorldGeometry,'walls'|'cover'>{
+ const {walls,cover}=sessionWorldGeometry(s);
+ return {walls,cover};
+}
 /** Called once on authoritative session creation, after cover state is set. */
 export function registerSessionWorldGeometry(s:Session):SessionWorldGeometry{
  const existing=contexts.get(s);if(existing)return existing;
