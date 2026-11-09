@@ -3,6 +3,9 @@ import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
 import {SiteMaterialLifetime} from './rendering/site-material-lifetime.ts';
+import {buildSiteMicroDebrisMeshes} from './rendering/breach-site-micro-debris.ts';
+import {SITE_PROPERTY_SURFACE_COLORS,SITE_EXTERIOR_ZONE_COLORS}
+ from './rendering/breach-site-surface-policy.ts';
 import {APPROVED_GRAPHIC_LIGHTING}
  from './operator-studio-light-lab.ts';
 import {STUDIO_INSPECTION_LIGHT,STUDIO_KEY_DIRECTION,studioShadowPalette}
@@ -51,7 +54,7 @@ import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
 import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
   from './rendering/breach-shadow-controller.ts';
 import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
-import {planPropertySurfaces,type SurfaceKind} from './worldgen/property-surfaces.ts';
+import {planPropertySurfaces} from './worldgen/property-surfaces.ts';
 import {planPublicStreet} from './worldgen/public-street-layout.ts';
 import {planServiceDockBumpers} from './worldgen/service-facade-program.ts';
 import {curbRampWedge,CURB_GROUND_LEVELS}
@@ -66,7 +69,6 @@ import {planExposureWear} from './worldgen/wear-exposure.ts';
 import {planActivityWear} from './worldgen/wear-sources.ts';
 import {planHistoryWear} from './worldgen/surface-history.ts';
 import {planThresholdTrafficWear} from './worldgen/threshold-traffic-wear.ts';
-import {planMicroDebris,type DebrisKind} from './worldgen/micro-debris.ts';
 import {planInteriorFragments,type InteriorFragment} from './worldgen/interior-fragments.ts';
 import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
 import {wearPixels} from './rendering/pixel-decals.ts';
@@ -1088,29 +1090,9 @@ export class TacticalScene3D{
     this.staticBatches.flush(this.root);
   }
   private buildMicroDebris(site:Site){
-    const debris=planMicroDebris(site);
-    const kinds:readonly DebrisKind[]=['stone','leaf','weed','flake'];
-    const colors={stone:0x908f80,leaf:0x8f825d,weed:0x60774d,flake:0xc4b9a3};
-    const obj=new THREE.Object3D();
-    for(const kind of kinds){
-      const picks=debris.filter(d=>d.kind===kind);
-      if(!picks.length)continue;
-      const geometry=new THREE.BoxGeometry(1,1,1);
-      const material=this.solid(colors[kind],1,kind==='weed'?'foliage':
-        kind==='stone'?'gravel':'paper');
-      const mesh=new THREE.InstancedMesh(geometry,material,picks.length);
-      mesh.castShadow=false;mesh.receiveShadow=false;
-      picks.forEach((d,i)=>{
-        obj.position.set(d.x,kind==='weed'?.5:-1.02,d.y);
-        obj.rotation.set(0,d.angle,0);
-        obj.scale.set(kind==='weed'?.6:d.size,kind==='weed'?d.size*1.2:.32,
-          kind==='weed'?.6:d.size*.55);
-        obj.updateMatrix();mesh.setMatrixAt(i,obj.matrix);
-      });
-      mesh.instanceMatrix.needsUpdate=true;
-      mesh.frustumCulled=false;
+    for(const mesh of buildSiteMicroDebrisMeshes(site,
+      (hex,roughness,surface)=>this.solid(hex,roughness,surface)))
       this.root.add(mesh);
-    }
   }
   private buildGenerated(site:Site){
     const theme=buildingTheme(site.archetype,site.seed);
@@ -1123,8 +1105,7 @@ export class TacticalScene3D{
     const bw=bounds.maxX-bounds.minX,bh=bounds.maxY-bounds.minY;
     this.plane(this.root,(bounds.minX+bounds.maxX)/2,
       (bounds.minY+bounds.maxY)/2,bw,bh,-2,earth);
-    const zoneColor={yard:0x70895e,patio:0x8b877a,driveway:0x737774,
-      service:0x7f827b,garden:0x788d61,parking:0x676c6b} as const;
+    const zoneColor=SITE_EXTERIOR_ZONE_COLORS;
     for(const zone of site.exteriorZones??[]){
       const ground=zonePixelSurface(zone.kind,outdoors);
       const lift=exteriorZoneRenderLift(zone.id);
@@ -1204,21 +1185,7 @@ export class TacticalScene3D{
           this.box(this.root,awning.x,DOOR_CLEAR_VISUAL_HEIGHT+1.8,y,awning.w,2.2,2,awningEdge,false);
       }
     }
-    const surfaceColor:Record<SurfaceKind,number>={
-      path:0x919182,'driveway-stripe':0x858575,
-      'parking-divider':0xd6caa9,'garden-border':0x4c5843,
-      'service-pad':0x6c7069,'patio-paver':0x8b8578,
-      'drainage-grate':0x394d50,
-      sidewalk:0x92918b,'curb-edge':0x5c605e,
-      'curb-ramp':0xb1aca0,'crosswalk-stripe':0xd8d2be,
-      'reserved-parking':0x4f7880,'access-hatch':0xe2dfc9,
-      'stall-end-line':0xc9c2a6,
-      'loading-zone':0x9f9685,'maintenance-bay':0x7e877d,
-      'waste-collection':0x696f65,'clear-route':0x8b8c7d,
-      'planting-bed':0x504b3e,'planting-edge':0x827961,
-      'waste-bay-line':0xcdb677,'utility-bay-line':0xa6b8a8,
-      'loading-bay-line':0xbeb59b,
-    };
+    const surfaceColor=SITE_PROPERTY_SURFACE_COLORS;
     // Exterior ground markings are legible construction details, not cover.
     // Sidewalk/path/curb/ramp markings overlap by design, but their top
     // planes must not coincide. Distinct narrow finish elevations prevent
