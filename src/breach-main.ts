@@ -7866,8 +7866,8 @@ ui.briefingClose.addEventListener('click',()=>{
   tacticalSheetNavigation.sync();
   updateContext();
 });
-// Live graphics preference. Buttons apply immediately, without resetting
-// mission/replay or rebuilding the WebGL scene.
+// Shelved graphics experiment: the controls remain in source for future
+// development but are hidden. Only explicit ?focusFx developer URLs opt in.
 const miniatureFocusButtons=Array.from(
  ui.siteSettings.querySelectorAll<HTMLButtonElement>('[data-miniature-focus]'));
 function storedMiniatureFocus():string|null{

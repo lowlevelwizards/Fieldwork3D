@@ -163,12 +163,14 @@ export class TacticalScene3D{
   private readonly quality=graphicsBudget(
     new URLSearchParams(location.search).get('quality'),
     navigator.maxTouchPoints>0);
-  /** Subtle is the default; explicit Off always uses the direct renderer. */
+  /** Shelved: default direct rendering, including old saved Subtle/Strong. */
   private miniFocusMode=initialMiniatureFocusMode(
     new URLSearchParams(location.search).get('focusFx'),
     (()=>{try{return localStorage.getItem(MINIATURE_FOCUS_STORAGE_KEY);}
       catch{return null;}})());
   private readonly miniFocusDebug:MiniatureFocusDebug=(()=>{
+    // Standalone focusDebug must never invoke the shelved GPU pipeline.
+    if(this.miniFocusMode==='off')return null;
     const d=new URLSearchParams(location.search).get('focusDebug');
     return d==='mask'||d==='protected'||d==='band'||d==='attention'?d:null;
   })();
@@ -261,6 +263,7 @@ export class TacticalScene3D{
    * renderer whenever the camera moved caused the brightness flicker.
    * dt is only for optional replay-director's slow focus bias. */
   setMiniatureFocusContext(replaying:boolean,dt:number):void{
+    if(this.miniFocusMode==='off')return;
     if(replaying!==this.miniFocusIsReplay)
       this.miniFocusCenterY=replaying?.54:.56;
     this.miniFocusIsReplay=replaying;
@@ -490,7 +493,8 @@ export class TacticalScene3D{
       this.miniatureFrameRoomCoverage(camera,s));
   }
   private renderMiniatureFocus(camera:THREE.Camera):void{
-    if(this.miniFocusMode==='off'&&!this.miniFocusDebug){
+    // Native renderer: no blur target, framebuffer copy or attention upload.
+    if(this.miniFocusMode==='off'){
       this.renderer.render(this.scene,camera);return;
     }
     const director=this.miniFocusIsReplay&&this.physicalDirectorActive;
@@ -2269,9 +2273,11 @@ export class TacticalScene3D{
     personalGroundEvidence:ReadonlySet<string>|null=null,
     replayWindowHistory:ReplayWindowKnowledgeHistory|null=null){
     if(this.view.mode==='plan2d')return;
-    this.miniFocusSession=s;
-    this.miniFocusDoorId=focusedDoorId;
-    this.miniFocusSelectedId=selected;
+    if(this.miniFocusMode!=='off'){
+      this.miniFocusSession=s;
+      this.miniFocusDoorId=focusedDoorId;
+      this.miniFocusSelectedId=selected;
+    }
     const bodycamAudition=!!this.replayBodycam&&
       replayDisclosurePolicy?.mode==='operator'&&
       replayDisclosurePolicy.observerId===this.replayBodycam.actorId;

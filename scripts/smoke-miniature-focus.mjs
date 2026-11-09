@@ -61,29 +61,25 @@ try{
         await page.locator('[data-site-tab="preferences"]').click();
       };
       await openPreferences();
-      if(await page.locator('[data-miniature-focus="subtle"]')
+      if(await page.locator('.miniature-focus-preference').isVisible())
+        throw Error('Shelved focus controls remain visible');
+      if(await page.locator('[data-miniature-focus="off"]')
         .getAttribute('aria-pressed')!=='true')
-        throw Error('Subtle is not selected by default');
-      await page.locator('[data-miniature-focus="off"]').click();
-      if(await page.evaluate(()=>localStorage.getItem(
-        'fieldwork3d.graphics.miniature-focus'))!=='off')
-        throw Error('Off setting was not saved');
+        throw Error('Shelved focus default is not Off');
+      // Returning devices may have Subtle or Strong stored from the
+      // experiment. Neither must reactivate the pass.
+      await page.evaluate(()=>localStorage.setItem(
+        'fieldwork3d.graphics.miniature-focus','strong'));
       await page.reload({waitUntil:'domcontentloaded'});
       await page.waitForFunction(()=>document.querySelector('#phase')?.
         textContent?.includes('PLANNING'),null,{timeout:50000});
       await openPreferences();
       if(await page.locator('[data-miniature-focus="off"]')
         .getAttribute('aria-pressed')!=='true')
-        throw Error('Saved Off choice was not restored after reload');
-      await page.locator('[data-miniature-focus="strong"]').click();
-      if(await page.evaluate(()=>localStorage.getItem(
-        'fieldwork3d.graphics.miniature-focus'))!=='strong')
-        throw Error('Strong setting was not saved');
-      await page.locator('[data-miniature-focus="replay"]').click();
-      if(await page.evaluate(()=>localStorage.getItem(
-        'fieldwork3d.graphics.miniature-focus'))!=='replay')
-        throw Error('Replay Only setting was not saved');
-      console.log('MF-3 default, Strong, Replay Only and saved Preferences passed');
+        throw Error('Old saved Strong reactivated shelved focus');
+      if(await page.locator('.miniature-focus-preference').isVisible())
+        throw Error('Shelved controls became visible after reload');
+      console.log('MF-shelved: Off default, saved Strong ignored, UI hidden');
     }
     console.log('MF-1 '+variant+' WebGL frame succeeded; HDR support='+hdr);
    }finally{await page.close();}

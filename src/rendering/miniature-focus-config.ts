@@ -9,15 +9,18 @@ export type FocusDecision={
  saturation:number;contrast:number;reason:string;
 };
 export const MINIATURE_FOCUS_STORAGE_KEY='fieldwork3d.graphics.miniature-focus';
+/** Shelved MF-1–4 experiment. Historical saved preferences must NOT
+ * silently reactivate the costly pass. Only explicit developer URLs
+ * ?focusFx=subtle|strong|replay may opt in for future A/B comparisons.
+ */
+export const MINIATURE_FOCUS_SHELVED=true;
 export function requestedMiniatureFocus(value:string|null):MiniatureFocusMode{
- if(value===null)return 'subtle';
+ if(value===null)return 'off';
  return value==='subtle'||value==='strong'||value==='replay'?value:'off';
 }
-/** Explicit URL override supports A/B comparison; ordinary visits use
- * saved preference and default to Subtle. Unknown values fail closed. */
 export function initialMiniatureFocusMode(query:string|null,
- stored:string|null):MiniatureFocusMode{
- return requestedMiniatureFocus(query??stored);
+ _stored:string|null):MiniatureFocusMode{
+ return query===null?'off':requestedMiniatureFocus(query);
 }
 /** Guard is the *canvas*, not the playable map. Intentional full-frame lens
  * may soften world geometry; 2D controls and overlays are drawn separately.

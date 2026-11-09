@@ -8,12 +8,16 @@ const decision=(patch={})=>miniatureFocusDecision({
  mode:'subtle',view:'tactical',quality:'balanced',
  protectedRegionValid:true,capable:true,gesturesActive:false,...patch
 });
-test('Subtle default, persistent preference, URL override, Strong mode',()=>{
- assert.equal(requestedMiniatureFocus(null),'subtle');
- assert.equal(initialMiniatureFocusMode(null,'off'),'off');
+test('Shelved focus is off even for returning players with stored settings',()=>{
+ assert.equal(requestedMiniatureFocus(null),'off');
+ for(const saved of [null,'off','subtle','strong','replay','garbage'])
+   assert.equal(initialMiniatureFocusMode(null,saved),'off');
+ assert.equal(initialMiniatureFocusMode('off','strong'),'off');
+ // Preserve an explicit diagnostic opt-in for future development.
  assert.equal(initialMiniatureFocusMode('strong','off'),'strong');
- assert.equal(initialMiniatureFocusMode(null,'replay'),'replay');
- assert.equal(initialMiniatureFocusMode(null,'garbage'),'off');
+ assert.equal(initialMiniatureFocusMode('subtle','strong'),'subtle');
+ assert.equal(initialMiniatureFocusMode('replay','off'),'replay');
+ assert.equal(initialMiniatureFocusMode('garbage','strong'),'off');
 });
 test('Gestures do NOT turn the frame effect off; unsafe view presets still do',()=>{
  assert.equal(decision({gesturesActive:true}).active,true);
