@@ -8154,8 +8154,11 @@ function updatePhysicalActionRings(){
     const treating=actor.treatmentActive&&actor.treatmentProgress>0;
     const show=!replaying&&state.phase==='running'&&actor.health>0&&
       (picking||treating);
-    ring.hidden=!show;
-    ring.style.display=show?'flex':'none';
+    // Avoid redundant DOM writes on every RAF when action visibility
+    // has not changed. Hidden rings still update immediately on transitions.
+    if(ring.hidden===show)ring.hidden=!show;
+    const display=show?'flex':'none';
+    if(ring.style.display!==display)ring.style.display=display;
     if(!show)continue;
     const progress=treating?actor.treatmentProgress:
       Math.min(1,actor.actionTimer/((
@@ -8163,10 +8166,15 @@ function updatePhysicalActionRings(){
         8.5:5.5));
     const pct=Math.round(Math.max(0,Math.min(1,progress))*100);
     const point=worldToScreen(actor.p,viewMode==='plan2d'?14:34);
-    ring.style.left=(point.x-21)+'px';
-    ring.style.top=(point.y-57)+'px';
-    ring.style.background='conic-gradient(#ddc69e '+(pct*3.6)+
-      'deg,rgba(65,87,77,.86) 0deg)';
+    const left=(point.x-21)+'px',top=(point.y-57)+'px';
+    if(ring.style.left!==left)ring.style.left=left;
+    if(ring.style.top!==top)ring.style.top=top;
+    const previousPct=ring.dataset.progressPct;
+    if(previousPct!==String(pct)){
+      ring.style.background='conic-gradient(#ddc69e '+(pct*3.6)+
+        'deg,rgba(65,87,77,.86) 0deg)';
+      ring.dataset.progressPct=String(pct);
+    }
     const label=ring.firstElementChild;
     if(label&&label.textContent!==(treating?'MED':'PICK')+' '+pct+'%')
       label.textContent=(treating?'MED':'PICK')+' '+pct+'%';
