@@ -2,6 +2,7 @@
 import {sweptBodyClear,bodyClear} from './breach-navigation.ts';
 import {doorCenter,route,pointToSegment,
   doorYaw,doorLeafSegment,WALLS,COVER,activeSite,initialDoors,
+  activeGeometryRevision,
   pointToSegment as distanceToWall,
   OPERATOR_RADIUS,type Door,type Pt,type Segment,type Obstacle} from './breach-core.ts';
 export {doorYaw,doorLeafSegment};
@@ -224,6 +225,26 @@ export function hingeSweepNeighborhood(d:Door,
   })
  };
 }
+/** Door-level static broadphase cache. Dynamic people and the animated leaf
+ * are deliberately never cached. Geometry mutators advance the world revision;
+ * a door edited in a lab also invalidates on hinge/endpoint movement.
+ * Weak keys allow old missions to be garbage collected.
+ */
+const hingeSweepCache=new WeakMap<Door,{
+  revision:number;ax:number;ay:number;bx:number;by:number;
+  hinge:Door['hinge'];value:ReturnType<typeof hingeSweepNeighborhood>;
+}>();
+export function cachedHingeSweepNeighborhood(d:Door){
+  const revision=activeGeometryRevision();
+  const old=hingeSweepCache.get(d);
+  if(old&&old.revision===revision&&old.ax===d.a.x&&old.ay===d.a.y&&
+     old.bx===d.b.x&&old.by===d.b.y&&old.hinge===d.hinge)
+    return old.value;
+  const value=hingeSweepNeighborhood(d,WALLS,COVER);
+  hingeSweepCache.set(d,{revision,ax:d.a.x,ay:d.a.y,
+    bx:d.b.x,by:d.b.y,hinge:d.hinge,value});
+  return value;
+}
 /** Test every segment of the hinge sweep against architecture, not merely
  * the last frame; a leaf may not tunnel through a thin doorstop or fixture. */
 export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], actorRadius=OPERATOR_RADIUS){
@@ -235,7 +256,7 @@ export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], act
  if(!registered.some(real=>real.id===d.id))return false;
  const current=d.openFraction??(d.open?1:0);
  const steps=doorSweepSteps(d,next);
- const nearby=hingeSweepNeighborhood(d,WALLS,COVER);
+ const nearby=cachedHingeSweepNeighborhood(d);
  for(let step=1;step<=steps;step++){
   const fraction=current+(next-current)*step/steps;
   const leaf=doorLeafSegment({...d,openFraction:fraction});
