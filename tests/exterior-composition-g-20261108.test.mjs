@@ -95,7 +95,7 @@ test('ground details are visually distinct, with controlled depth hierarchy',()=
    propertySurfaceCenterHeight('planting-edge'));
  assert.ok(propertySurfaceCenterHeight('planting-edge')<
    propertySurfaceCenterHeight('utility-bay-line'));
- const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
+ const scene=readFileSync(new URL('../src/rendering/breach-site-exterior-builder.ts',import.meta.url),'utf8');
  for(const kind of ['planting-bed','planting-edge','waste-bay-line',
     'utility-bay-line','loading-bay-line'])
   assert.ok(scene.includes("'"+kind+"'"),kind);
