@@ -78,6 +78,7 @@ import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
 import {scanEnemySoundEvidence}
   from './breach-ai-acoustic-perception.ts';
+import {soundResponse} from './breach-sound-evidence.ts';
 import {newSuspicion,observeSuspicion,advanceSuspicion,
   maintainVisualContact,exhaustSuspicionSearch,type SuspicionMemory}
   from './breach-ai-suspicion.ts';
