@@ -635,7 +635,13 @@ export class TacticalScene3D{
   private currentElev=55*Math.PI/180;
   private readonly minZoom=.65;
   private readonly maxZoom=6.0;
-  private lastCameraStatus='';
+  /** Camera QA DOM state is only refreshed when its inputs change.
+   * Do not format, join and allocate a status string on every render. */
+  private lastCameraStatus:{
+    mode:ViewMode;zoom:number;yaw:number;pitch:number;
+    focusX:number;focusY:number;lens:string;
+    anchorX:number|null;anchorY:number|null
+  }|null=null;
   private pickPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
   private ray=new THREE.Raycaster();
   /** Pointer projection is synchronous. Reuse math vectors across touch
@@ -2254,16 +2260,24 @@ export class TacticalScene3D{
       this.camera.updateProjectionMatrix();
     }
     this.camera.updateMatrixWorld(true);
-    // Lightweight observability for touch regression tests and camera QA.
-    const signature=[
-      this.view.mode,this.view.zoom.toFixed(3),this.view.yaw.toFixed(3),
-      this.view.pitch.toFixed(3),this.view.focus.x.toFixed(2),
-      this.view.focus.y.toFixed(2),this.replayDirectorLens,
-      this.replayDirectorCameraAnchor?.x.toFixed(2)??'—',
-      this.replayDirectorCameraAnchor?.y.toFixed(2)??'—',
-    ].join('|');
-    if(signature!==this.lastCameraStatus){
-      this.lastCameraStatus=signature;
+    // Camera debug attributes are only needed when input state changes.
+    // Keep numerical snapshots so static frames allocate no signature array.
+    const previous=this.lastCameraStatus;
+    const anchorX=this.replayDirectorCameraAnchor?.x??null;
+    const anchorY=this.replayDirectorCameraAnchor?.y??null;
+    if(!previous||previous.mode!==this.view.mode||
+       previous.zoom!==this.view.zoom||previous.yaw!==this.view.yaw||
+       previous.pitch!==this.view.pitch||
+       previous.focusX!==this.view.focus.x||
+       previous.focusY!==this.view.focus.y||
+       previous.lens!==this.replayDirectorLens||
+       previous.anchorX!==anchorX||previous.anchorY!==anchorY){
+      this.lastCameraStatus={
+        mode:this.view.mode,zoom:this.view.zoom,yaw:this.view.yaw,
+        pitch:this.view.pitch,focusX:this.view.focus.x,
+        focusY:this.view.focus.y,lens:this.replayDirectorLens,
+        anchorX,anchorY
+      };
       this.canvas.dataset.cameraMode=this.view.mode;
       this.canvas.dataset.cameraZoom=this.view.zoom.toFixed(3);
       this.canvas.dataset.cameraYaw=this.view.yaw.toFixed(3);
