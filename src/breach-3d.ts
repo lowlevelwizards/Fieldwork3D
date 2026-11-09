@@ -931,6 +931,7 @@ export class TacticalScene3D{
     this.wallMaterials.clear();
     this.walls.length=0;this.wallFade.clear();
     this.doors.clear();this.windowGlass.clear();
+    this.frameWindowsById.clear();
     if(this.windowShards)this.windowShards.count=0;
     this.observedDoorGlass.clear();
     this.currentWear=[];this.objectWear=[];
