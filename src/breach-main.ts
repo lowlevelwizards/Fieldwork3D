@@ -1,5 +1,8 @@
 import {createBreachCanvasGestureController,type TacticalPointer}
  from './breach-canvas-gesture-controller.ts';
+import {installPalettePointerGuard} from './ui/palette-pointer-guard.ts';
+import {installTouchCommandHelp as bindTouchCommandHelp}
+ from './ui/touch-command-help.ts';
 import {
   W,H,activeWorldBounds,WALLS,doorCenter,doorLeafSegment,activateSite,
   type Pt,
@@ -1550,7 +1553,7 @@ const paletteMotion=new PaletteMotion();
 const reducedMotionMedia=matchMedia('(prefers-reduced-motion: reduce)');
 let paletteWidth=0,paletteHeight=0;
 let lastPlacementKey='';
-const contextPointerIds=new Set<number>();
+const contextPointerIds=installPalettePointerGuard(ui.context).active;
 let tetherBrightUntil=0;
 let paletteExit:Animation|null=null;
 const contextTether=document.createElement('div');
@@ -1635,17 +1638,6 @@ function advanceContextPalette(dt:number){
     contextTether.style.transform='rotate('+Math.atan2(dy,dx)+'rad)';
   }
 }
-// While a command finger is down, freeze the palette's pocket so it cannot
-// slip out from under the touch. This does not block camera or map rendering.
-ui.context.addEventListener('pointerdown',event=>{
-  if((event.target as HTMLElement).closest('button'))
-    contextPointerIds.add(event.pointerId);
-});
-for(const type of ['pointerup','pointercancel'] as const)
-  window.addEventListener(type,event=>{
-    contextPointerIds.delete(event.pointerId);
-  },{capture:true});
-window.addEventListener('blur',()=>contextPointerIds.clear());
 const auditRouteMode=new URLSearchParams(location.search).has('audit');
 let selectedNode:number|null=null;
 // Executed WATCH has no queued waypoint, but its targeting handle is selectable.
@@ -1932,41 +1924,9 @@ function discoverAction(action:string,description:string){
   teach('action-'+action,description,3600);
 }
 
-/** A hold shows the current action's description without executing that order.
- * Touch and pen only: desktop pointer hover keeps ordinary title tooltips. */
-function installTouchCommandHelp(button:HTMLButtonElement){
- if(button.dataset.touchHelpInstalled==='true')return;
- button.dataset.touchHelpInstalled='true';
- let timer:ReturnType<typeof setTimeout>|null=null;
- let consumed=false,startX=0,startY=0;
- const clear=()=>{if(timer!==null){clearTimeout(timer);timer=null;}};
- const explain=()=>{
-  const description=button.title||button.getAttribute('aria-label')||button.textContent;
-  if(description){
-   consumed=true;showUiHelp(description,5700);updateHud();
-  }
- };
- button.addEventListener('pointerdown',event=>{
-  if(event.pointerType==='mouse'||button.disabled)return;
-  clear();consumed=false;startX=event.clientX;startY=event.clientY;
-  timer=setTimeout(()=>{timer=null;explain();},540);
- });
- button.addEventListener('pointermove',event=>{
-  if(Math.hypot(event.clientX-startX,event.clientY-startY)>14)clear();
- });
- button.addEventListener('pointerup',clear);
- button.addEventListener('pointercancel',()=>{clear();consumed=false;});
- button.addEventListener('lostpointercapture',clear);
- button.addEventListener('pointerleave',clear);
- button.addEventListener('click',event=>{
-  if(!consumed)return;
-  consumed=false;event.preventDefault();event.stopImmediatePropagation();
- },true);
- button.addEventListener('contextmenu',event=>{
-  if(event instanceof PointerEvent&&event.pointerType==='mouse')return;
-  event.preventDefault();clear();explain();
- });
-}
+// Long-press explanation and synthetic-click suppression belong to the UI layer.
+const installTouchCommandHelp=(button:HTMLButtonElement)=>
+  bindTouchCommandHelp(button,showUiHelp,updateHud);
 
 function message(){
   if(replaying)return 'MISSION FILM · ORBIT, PAN, ZOOM AND SCRUB FREELY';
