@@ -430,6 +430,43 @@ export function passageDeadlockRetreatTarget(actor:PassageActor,
  }
  return null;
 }
+/** A genuinely idle teammate may be physically standing in the doorway.
+ * Make a tiny real step AWAY from a nearby active teammate's approach,
+ * rather than treating that stationary actor as a permanent lane owner.
+ * The caller must enforce real swept collision; no planned move or WATCH is
+ * rewritten. This is for idle operators only, not authored HOLD/WAIT.
+ */
+export function passageIdleYieldStep(idle:PassageActor,
+ doors:readonly Door[],actors:readonly PassageActor[],
+ physicallyClear:(from:Pt,to:Pt)=>boolean,maxStep=1.4):Pt|null{
+ if(idle.active||idle.goal||idle.health<=0)return null;
+ const step=Math.max(.15,Math.min(1.4,maxStep));
+ for(const door of doors){
+  const width=distance(door.a,door.b);
+  if(width>60||!inDoorway(idle,door))continue;
+  const mid=doorCenter(door);
+  const approaching=actors.filter(a=>a.id!==idle.id&&a.active&&
+    a.health>0&&a.goal&&a.side===idle.side&&
+    crossingDoor(a,door)&&distance(a.p,mid)<45)
+   .sort((a,b)=>distance(a.p,mid)-distance(b.p,mid)||
+      a.id.localeCompare(b.id))[0];
+  if(!approaching)continue;
+  const nx=-(door.b.y-door.a.y)/width,
+    ny=(door.b.x-door.a.x)/width;
+  const separation=side(idle.p,door)-side(approaching.p,door);
+  const sign=separation>=0?1:-1;
+  for(const direction of [sign,-sign]){
+   const at={x:idle.p.x+nx*direction*step,
+     y:idle.p.y+ny*direction*step};
+   // A yield must clear the aisle and not nudge the idle operator toward
+   // an approaching teammate or through a new obstacle.
+   if(distance(at,approaching.p)<distance(idle.p,approaching.p)+.1||
+      !physicallyClear(idle.p,at))continue;
+   return at;
+  }
+ }
+ return null;
+}
 /** Existing passage reservations manage spacing near narrow openings.
  * Do not add cosmetic friendly sidestepping that drives a later follower
  * into the jamb; neither geometry nor opposing-body collision is relaxed.
