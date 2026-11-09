@@ -20,6 +20,7 @@ export type DirectorDecisionScore={
   score:number;story:number;readability:number;composition:number;
   continuity:number;legal:boolean;reason:string;
   heroVisible:boolean;attentionVisible:boolean;targetVisible:boolean;
+  viewpoint:'front'|'rear'|'side';framing:'left'|'center'|'right';
 };
 export function scoreDirectorCandidate(
   shot:DirectorShot,ctx:DirectorDecisionContext,
@@ -98,6 +99,17 @@ export function scoreDirectorCandidate(
   if(wantsTarget&&!targetVisible)score=Math.min(score,47);
   if(wantsAttention&&!attentionVisible)score=Math.min(score,52);
   if(!legal)score=-Infinity;
+  const axis=shot.actionAxis??{x:1,y:0};
+  const axisMag=Math.hypot(axis.x,axis.y)||1;
+  const viewDelta={x:shot.cameraAnchor.x-hero.x,
+    y:shot.cameraAnchor.y-hero.y};
+  const viewMag=Math.hypot(viewDelta.x,viewDelta.y)||1;
+  const facing=(viewDelta.x*axis.x+viewDelta.y*axis.y)/
+    (viewMag*axisMag);
+  const viewpoint=facing>.4?'front' as const:
+    facing<-.4?'rear' as const:'side' as const;
+  const framing=quality.primaryScreenX>.16?'right' as const:
+    quality.primaryScreenX<-.16?'left' as const:'center' as const;
   const reason=!legal?'illegal camera placement':
     wantsTarget&&!targetVisible?'disclosed contact is not readable':
     wantsAttention&&!attentionVisible?'attention falls outside useful image':
@@ -106,5 +118,5 @@ export function scoreDirectorCandidate(
     'readable story with spatial continuity';
   return {score:Math.round(score*10)/10,story,readability,
     composition,continuity,legal,reason,
-    heroVisible,attentionVisible,targetVisible};
+    heroVisible,attentionVisible,targetVisible,viewpoint,framing};
 }
