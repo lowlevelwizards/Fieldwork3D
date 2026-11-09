@@ -56,7 +56,7 @@ try{
   // Exercise the actual main-menu button. The earlier smoke below enters
   // via ?quick=1, bypassing the reset and first-frame path that can crash.
   const menuSeed=await home.locator('#siteIdentity').getAttribute('data-site-seed');
-  await home.locator('.campaign-entry-actions button').filter({hasText:'QUICK PLAY'}).click();
+  await home.locator('.campaign-landing-actions button').filter({hasText:'QUICK PLAY'}).click();
   await home.waitForFunction(previous=>{
     const overlay=document.querySelector('.campaign-screen');
     const seed=document.querySelector('#siteIdentity')?.getAttribute('data-site-seed');
@@ -279,7 +279,9 @@ try{
     await restartConfirmation.click();
     await phone.locator('.fw-confirm-backdrop').waitFor({state:'hidden'});
   }
-  await phone.locator('#closeSiteSettings').click();
+  await phone.locator('#siteSettings').waitFor({state:'hidden'});
+  await phone.locator('#briefingPanel').waitFor({state:'visible'});
+  await phone.locator('#briefingClose').click();
   const doorPoint=screen(301,505);
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
   // A reachable door remains selectable even if a tiny leaf overlaps the
@@ -307,7 +309,9 @@ try{
     await restartConfirmationSecond.click();
     await phone.locator('.fw-confirm-backdrop').waitFor({state:'hidden'});
   }
-  await phone.locator('#closeSiteSettings').click();
+  await phone.locator('#siteSettings').waitFor({state:'hidden'});
+  await phone.locator('#briefingPanel').waitFor({state:'visible'});
+  await phone.locator('#briefingClose').click();
   await phone.touchscreen.tap(doorPoint.x,doorPoint.y);
   // Directly tapping the closed doorway must also expose entry actions,
   // even when no movement waypoint has been authored yet.
