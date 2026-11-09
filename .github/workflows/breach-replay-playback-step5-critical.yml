@@ -1,0 +1,39 @@
+name: Breach Replay Playback Step 5 Critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-main.ts'
+      - 'src/breach-replay-playback-controller.ts'
+      - 'src/ui/breach-replay-timeline-controller.ts'
+      - 'tests/replay-playback-controller-step5.test.mjs'
+      - 'tests/replay-timeline-controller-step5.test.mjs'
+      - '.github/workflows/breach-replay-playback-step5-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: breach-replay-playback-step5-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  playback-critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Historical playback, timeline, loop and incident regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/replay-playback-controller-step5.test.mjs \
+            tests/replay-timeline-controller-step5.test.mjs \
+            tests/replay-playback-controller-20261109.test.mjs \
+            tests/replay-r2-transport.test.mjs \
+            tests/replay-r3-loop.test.mjs \
+            tests/replay-r41-incident-playback.test.mjs \
+            tests/replay-r7-speed.test.mjs \
+            tests/replay-lifecycle-controller-20261109.test.mjs
+      - name: Production TypeScript and build
+        run: npm run build
