@@ -23,7 +23,7 @@ import {
 } from './breach-plan.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
-import {entryDoorState,entryClearanceForLook,stackApproachPositions}
+import {entryClearanceForLook,stackApproachPositions}
  from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
@@ -47,7 +47,7 @@ import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
 import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,
-  initialOpeningYieldCandidate,pressDoorOnBodyAttempt,doorSwingBlocked,
+  initialOpeningYieldCandidate,pressDoorOnBodyAttempt,
   doorWouldStrikeActors,
   autoDoorAtBodyContact,canAutoOpenEnRoute} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
@@ -66,8 +66,6 @@ import {releaseEmbeddedCover} from './breach-cover-release.ts';
 import {executionStatus,type MotorPause,type ExecutionIssue,
   type ExecutionStatus} from './breach-execution-state.ts';
 import {executionTransition,type ExecutionEvent} from './breach-execution-events.ts';
-import {interpretSound,soundResponse,soundPriority}
-  from './breach-sound-evidence.ts';
 import {relocateCover,canRelocateCover,coverPushDistance,
   autoShoveLightCover} from './breach-movable-cover.ts';
 import {canAutoShove,isFootstepObstacle} from './breach-traversal-surfaces.ts';
@@ -78,6 +76,9 @@ import {materialResponse} from './breach-impact-responses.ts';
 import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {chooseAiIntent,hasRecentSound,type AIIntent} from './breach-ai-policy.ts';
+import {scanEnemySoundEvidence}
+  from './breach-ai-acoustic-perception.ts';
+import {soundResponse} from './breach-sound-evidence.ts';
 import {newSuspicion,observeSuspicion,advanceSuspicion,
   maintainVisualContact,exhaustSuspicionSearch,type SuspicionMemory}
   from './breach-ai-suspicion.ts';
@@ -119,10 +120,13 @@ import {newAwareness,addObservation,visibleObservation,
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {crossingDoor,passageWait,passageFollowerStep,passageScheduledStep,
+import {passageWait,passageFollowerStep,passageScheduledStep,
   passageDeadlockRetreatTarget,passageIdleYieldStep,
   approachingNarrowThreshold,type PassageActor,type PassageLease}
   from './breach-passage.ts';
+import {incidentalCloseWouldBlockTeammate}
+  from './breach-door-pressure-arbitration.ts';
+import {advanceWaitOrder} from './breach-order-wait.ts';
 import {planDoorSchedule,pendingPassageSlot,type PassageSchedule}
   from './breach-passage-plan.ts';
 import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
@@ -180,8 +184,8 @@ import {magazineKit,
 import {liveMagazineCapacity,freshMagazineIssue}
  from './arsenal/live-magazine-capacity.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
-import {CASING_LIMIT,IMPACT_MARK_LIMIT,BLOOD_MARK_LIMIT,
-  type EjectedCasing} from './breach-effects.ts';
+import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
+import {CASING_LIMIT,type EjectedCasing} from './breach-effects.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {chooseFall,hitRegion,type WoundRegion,type FallPose}
   from './breach-wounds.ts';
@@ -2055,18 +2059,6 @@ function tickTraversal(a:TeamActor,s:Session,dt:number):boolean{
  * for incidental body-pressure CLOSE; explicit door orders keep authority.
  * Check the peer's active order and its REAL destination, not a near motor
  * step or hidden enemy intel. Idle teammates don't lock the leaf open. */
-function doorClosingContested(s:Session,actor:TeamActor,door:Door):boolean{
-  return s.operators.some(peer=>{
-    if(peer===actor||peer.side!==actor.side||peer.health<=0)return false;
-    const order=peer.plan[0];
-    if(!order||!['move','door','sync'].includes(order.kind))return false;
-    const goal=peer.nav.at(-1)??order.p;
-    return crossingDoor({
-      id:peer.id,p:peer.p,goal,side:peer.side,
-      active:true,health:peer.health,blockedTime:peer.blockedTime
-    },door);
-  });
-}
 /** Real body-contact recovery for loose clutter, even when route search
  * cannot build a path through two adjacent chairs. Shared with walking.
  * Does not bypass walls, door leaves, other actors, or authored orders.
@@ -2205,7 +2197,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
         y:a.p.y+(p.y-a.p.y)/goalDistance*probeLength};
       pressDoorOnBodyAttempt(a.p,probe,s.doors,dt,
         s.operators.filter(o=>o.health>0).map(o=>o.p),{
-          deferClosing:door=>doorClosingContested(s,a,door)
+          deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door)
         });
     }
     // When two chairs interlock there may be no navigable path, so the
@@ -2461,7 +2453,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // when it cannot (wall/actor), existing collision and recovery remain.
   const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
     s.operators.filter(o=>o.health>0).map(o=>o.p),{
-      deferClosing:door=>doorClosingContested(s,a,door)
+      deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door)
     });
   // The physical transition requires a valid oriented three-point torso
   // sweep; normal clearance remains the preference whenever it fits.
@@ -3208,41 +3200,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   const held=aimHeading(a);
   if(held!==null)rotate(a,held,dt);
   if(n.kind==='holdClear'||n.kind==='wait'){
-    // A squad-entry WAIT is released only after the assigned doorway is
-    // physically open enough for real passage. Ordinary authored WAIT
-    // retains its previous contact-hold semantics.
-    if(n.kind==='wait'&&n.doorId){
-      const doorway=s.doors.find(d=>d.id===n.doorId);
-      const gate=entryDoorState(doorway);
-      if(gate!=='ready'){
-        a.velocity=0;a.waitRemaining=0;a.actionTimer+=dt;
-        // A genuinely blocked entry is not silently abandoned. Alert once,
-        // retain editable orders, and never force the squad through geometry.
-        if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5){
-          // A stuck hinge is physically observable when the operator tries
-          // to enter. Report the blockage without revealing the identity or
-          // position of any undiscovered prop behind the door. This is an
-          // explanation, never permission to bypass the leaf or alter orders.
-          const stalledSwing=!!doorway&&doorway.open&&
-            (doorway.openFraction??0)<.98&&
-            doorSwingBlocked(doorway,
-              Math.min(1,(doorway.openFraction??0)+.07),[]);
-          notify(s,a.name+' ENTRY WAIT · '+
-            (gate==='missing'?'DOOR MISSING':
-             stalledSwing?'DOOR SWING OBSTRUCTED · CHECK ENTRY':
-             'DOOR NOT CLEAR'));
-        }
-        return;
-      }
-      a.actionTimer=0;
-    }
-    // Remain briefly settled and hold on any live visual contact.
-    const contact=enemies(s).some(e=>e.health>0&&inSight(a,e,s));
-    if(contact)a.motorPause='contact';
-    a.waitRemaining=contact?0:a.waitRemaining+dt;
-    a.velocity=0;
-    if(a.waitRemaining>=(n.duration??(n.kind==='wait'?1:.5)))pop(a);
-    return;
+    advanceWaitOrder(s,a,n,dt,inSight,notify,pop);return;
   }
   if(n.kind==='sync'){
     a.syncReady=n.syncCode??'A';
@@ -3514,39 +3472,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
          requestClearFireStep(s,a,target,'muzzle'))return;
     }
   }
-  // Every unheard event is considered once. Multiple same-tick sounds survive.
-  let strongest:ReturnType<typeof interpretSound>=null;
-  for(const sound of s.noise){
-    if(sound.id!==undefined?sound.id<=a.lastNoiseExaminedId:
-      sound.time<=a.lastNoiseExaminedAt)continue;
-    if(s.seconds-sound.time>1)continue;
-    const evidence=interpretSound(sound,a.id,a.p,s.doors,WALLS,s.windows);
-    if(evidence){
-      addObservation(a.awareness,{id:'audio/'+a.id+'/'+evidence.id,
-        observerId:a.id,source:'auditory',at:evidence.at,
-        estimate:evidence.estimate,uncertainty:evidence.uncertainty,
-        kind:evidence.kind});
-      const disposition=soundResponse(evidence.kind,evidence.intensity);
-      if(disposition!=='ignore')observeSuspicion(a.suspicion,{
-        id:'sound/'+evidence.id,at:evidence.at,
-        kind:disposition==='alarm'?'alarm':
-          disposition==='investigate'?'investigate':'orient',
-        intensity:evidence.intensity,cause:evidence.kind
-      });
-      const urgency=soundPriority(disposition);
-      const prior=strongest?soundPriority(
-        soundResponse(strongest.kind,strongest.intensity)):-1;
-      if(urgency>0&&(urgency>prior||
-         urgency===prior&&evidence.intensity>strongest!.intensity))
-        strongest=evidence;
-    }
-  }
-  const newestNoise=s.noise.at(-1);
-  if(newestNoise){
-    a.lastNoiseExaminedId=Math.max(a.lastNoiseExaminedId,
-      newestNoise.id??a.lastNoiseExaminedId);
-    a.lastNoiseExaminedAt=Math.max(a.lastNoiseExaminedAt,newestNoise.time);
-  }
+  const strongest=scanEnemySoundEvidence(s,a);
   // Intention selection reads only acquired observations, not hidden positions.
   const belief=bestBelief(a.awareness);
   const recentNoise=hasRecentSound(s.seconds,a.lastNoiseAt);
@@ -4155,21 +4081,6 @@ function shatterStruckDoorGlass(s:Session,
 /** Keep decorative evidence bounded separately from authoritative hits.
  * Nearby blood spatters merge rather than creating dozens of overlapping
  * translucent meshes during sustained automatic fire. */
-function retainImpactMark(s:Session,mark:ImpactMark){
- if(mark.surface==='blood'){
-  const existing=s.impactMarks.find(other=>other.surface==='blood'&&
-    d(other.p,mark.p)<6);
-  if(existing){existing.age=0;return;}
-  const blood=s.impactMarks.filter(other=>other.surface==='blood');
-  if(blood.length>=BLOOD_MARK_LIMIT){
-   const oldest=s.impactMarks.findIndex(other=>other.surface==='blood');
-   if(oldest>=0)s.impactMarks.splice(oldest,1);
-  }
- }
- s.impactMarks.push(mark);
- if(s.impactMarks.length>IMPACT_MARK_LIMIT)
-  s.impactMarks.splice(0,s.impactMarks.length-IMPACT_MARK_LIMIT);
-}
 /** Commit impacts only for the actual shot path, never aim/LOS queries. */
 function shatterStruckWindows(s:Session,paneHits:readonly number[],force:number){
  for(const index of new Set(paneHits)){
