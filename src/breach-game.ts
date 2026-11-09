@@ -119,6 +119,7 @@ import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
 import {passageWait,passageFollowerStep,passageScheduledStep,
+  passageDeadlockRetreatTarget,
   approachingNarrowThreshold,type PassageActor,type PassageLease}
   from './breach-passage.ts';
 import {planDoorSchedule,pendingPassageSlot,type PassageSchedule}
@@ -2247,6 +2248,7 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
       goal:unit===a?(unit.nav.at(-1)??order?.p??p):
         traveling?(unit.nav.at(-1)??order!.p):null,
       health:unit.health,blockedTime:unit.blockedTime,
+      waitSeconds:unit.passageWaitSeconds,squeezing:unit.squeeze,
       active:unit===a||traveling,
       plannedPassage:pendingPassageSlot(unit.p,
         scheduled.get(unit.id),s.doors),
@@ -2266,6 +2268,22 @@ function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
        noForwardRoom?move:negotiatedMove)||noForwardRoom){
     a.motorPause='passage';a.velocity=0;a.blockedTime=0;
     a.passageWaitSeconds+=dt;
+    // After both claimants have genuinely stalled, only the less-advanced
+    // operator backs out. One candidate gets the lane; the other receives a
+    // real, swept retreat route, not another simultaneous squeeze attempt.
+    // Ordinary convoy pauses never qualify. Preserve authored orders.
+    if(!a.traversal&&!a.traversalPending){
+      const retreat=passageDeadlockRetreatTarget(
+        {...passageActor,waitSeconds:a.passageWaitSeconds},
+        s.doors,traffic,(from,to)=>sweptBodyClear(from,to,s.doors)||
+          (a.squeeze&&sweptProfileClear(from,to,s.doors,
+             a.squeezeYaw,'squeeze')));
+      if(retreat){
+        a.nav.unshift(retreat);a.passageWaitSeconds=0;
+        a.retryRouteAt=0;a.recoveryAttempts=0;
+        return true;
+      }
+    }
     // A normal stack is allowed to wait. Warn only when two or more
     // friendly operators have remained stalled in the same passage for
     // several seconds. Never reorder their independently authored plans.
