@@ -2006,6 +2006,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
+      - name: Exterior facade fog — perimeter, partitions, doors and memory regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/fog-exterior-facade-') }}
+        run: |
+          node --experimental-strip-types --test tests/fog-exterior-facade-regression.test.mjs tests/fog-interior-occlusion-regression.test.mjs tests/visibility-11-fog-domain.test.mjs tests/breach-fog-visibility.test.mjs tests/visibility-08-closed-door-seals.test.mjs
+      - name: Exterior facade release gate — previous Pages must be live
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/fog-exterior-facade-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       # npm run build already invokes tsc --noEmit; no duplicate Typecheck step.
       - name: Production build and typecheck
         run: npm run build

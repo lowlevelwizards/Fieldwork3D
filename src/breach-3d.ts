@@ -46,7 +46,7 @@ import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-
 import {isArchitecturalSillCover} from './worldgen/architectural-cover-visuals.ts';
 import {planFacadeAwnings} from './worldgen/facade-awnings.ts';
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
-import {exteriorBriefedAt} from './breach-site-footprint.ts';
+import {exteriorBriefedAt,accessibleExteriorWall} from './breach-site-footprint.ts';
 import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
 import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
   from './rendering/breach-shadow-controller.ts';
@@ -625,7 +625,8 @@ export class TacticalScene3D{
   private readonly shoeWorldPoint=new THREE.Vector3();
   private tracerGeometry=new THREE.CylinderGeometry(.65,.65,1,6);
   private impactGeometry=new THREE.IcosahedronGeometry(1,1);
-  private walls:{mesh:THREE.Mesh;mid:Pt;segment:Segment}[]=[];
+  private walls:{mesh:THREE.Mesh;mid:Pt;segment:Segment;
+    index:number;exterior:boolean}[]=[];
   private wallFade=new Map<THREE.Mesh,number>();
   private readonly roofGroups=new Map<string,THREE.Group>();
   private roofMaterial:THREE.MeshStandardMaterial|null=null;
@@ -1390,11 +1391,35 @@ export class TacticalScene3D{
     const wallMat=this.solid(age(theme.wall,wallPixelSurface(site.archetype)),.94,wallPixelSurface(site.archetype)),
       capMat=this.solid(theme.cap,.94,'concrete');
     const skirting=this.solid(theme.trim,.91,'painted-wood');
+    // These known exterior frames must compose AFTER the ground-aligned
+    // concealment overlay. Clone shared opaque materials once per site:
+    // otherwise promoting a window sill would also expose interior props.
+    // Every clone is retired by siteMaterials.reset() on mission swap.
+    const facadeMaterialCache=new Map<THREE.Material,THREE.Material>();
+    const promoteFacadeDetails=(group:THREE.Object3D)=>{
+      group.traverse(node=>{
+        if(!(node instanceof THREE.Mesh)||Array.isArray(node.material))return;
+        const original=node.material;
+        if(!original.transparent){
+          let material=facadeMaterialCache.get(original);
+          if(!material){
+            material=this.siteMaterials.track(original.clone());
+            material.transparent=true;
+            material.needsUpdate=true;
+            facadeMaterialCache.set(original,material);
+          }
+          node.material=material;
+        }
+        node.userData.fogFacade=true;
+        node.renderOrder=1002;
+      });
+    };
     for(const [index,wall] of site.walls.entries()){
       const group=new THREE.Group();this.root.add(group);
       this.intelSurfaces.push({obj:group,kind:'wall',index});
       const {a,b}=wall,len=Math.hypot(b.x-a.x,b.y-a.y);
       if(len<5)continue;
+      const exterior=accessibleExteriorWall(site,wall);
       const x=(a.x+b.x)/2,z=(a.y+b.y)/2;
       const angle=-Math.atan2(b.y-a.y,b.x-a.x);
       const individualWall=wallMat.clone();
@@ -1423,7 +1448,12 @@ export class TacticalScene3D{
         wearMesh.castShadow=false;wearMesh.receiveShadow=false;
         body.add(wearMesh);
       }
-      this.walls.push({mesh:body,mid:{x,y:z},segment:wall});
+      this.walls.push({mesh:body,mid:{x,y:z},segment:wall,index,exterior});
+      // These child textures are already transparent, but would otherwise
+      // draw BEFORE the fog and disappear from the restored façade.
+      if(exterior)body.traverse(child=>{
+        if(child!==body&&child instanceof THREE.Mesh)child.renderOrder=1002;
+      });
       for(const mark of marksOn('wall',index))
         this.addSurfaceWear(body,mark,(mark.u-.5)*len,(mark.v-.5)*(WALL_VISUAL_HEIGHT-8),
           mark.face==='back'?-4.6:4.6,wallPixelSurface(site.archetype));
@@ -1431,12 +1461,12 @@ export class TacticalScene3D{
        this.wallMaterials.add(individualFoot);
        const foot=this.box(group,x,2,z,len,4,12,individualFoot,false);
        foot.rotation.y=angle;
-       this.walls.push({mesh:foot,mid:{x,y:z},segment:wall});
+       this.walls.push({mesh:foot,mid:{x,y:z},segment:wall,index,exterior});
       const individualCap=capMat.clone();
       this.wallMaterials.add(individualCap);
       const cap=this.box(group,x,WALL_VISUAL_HEIGHT+.3,z,len,2,11,
          individualCap,false);
-      cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z},segment:wall});
+      cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z},segment:wall,index,exterior});
     }
     const archMaterial=this.solid(theme.trim);
     for(const opening of site.openings??[]){
@@ -1621,6 +1651,13 @@ export class TacticalScene3D{
       this.root.add(root);
       const wedge=this.box(frame,0,1.9,6,6,2.7,6,metal,false);
       wedge.visible=false;
+      if(accessibleExteriorWall(site,door)){
+        // Public doors are façade elements, including jambs, closed leaf
+        // and hardware. Their stored/observed state is STILL authoritative.
+        // Do not promote the planning halo or undiscovered interior props.
+        promoteFacadeDetails(frame);
+        promoteFacadeDetails(leaf);
+      }
       this.doors.set(door.id,{root,leaf,frame,halo,threshold,wedge,glassPane});
       this.observedDoorGlass.set(door.id,!!door.glassShattered);
       this.observedDoorOpen.set(door.id,door.openFraction??0);
@@ -1767,10 +1804,22 @@ export class TacticalScene3D{
         this.box(group,0,baseTop,-2.3,opening.width,2,5,trim,false);
         this.box(group,0,glassTop,-2.3,opening.width,2,5,trim,false);
       }
+      const half=opening.width/2;
+      const edge=opening.vertical?
+        {a:{x:opening.x,y:opening.y-half},
+         b:{x:opening.x,y:opening.y+half}}:
+        {a:{x:opening.x-half,y:opening.y},
+         b:{x:opening.x+half,y:opening.y}};
+      const publicWindow=!opening.interior&&accessibleExteriorWall(site,edge);
+      if(publicWindow){
+        promoteFacadeDetails(group);
+        group.userData.fogFacade=true;
+      }
       const nearest=site.walls.findIndex(w=>
         Math.hypot(w.a.x-opening.x,w.a.y-opening.y)<38||
         Math.hypot(w.b.x-opening.x,w.b.y-opening.y)<38);
-      if(nearest>=0)this.intelSurfaces.push({obj:group,kind:'wall',index:nearest});
+      if(nearest>=0||publicWindow)
+        this.intelSurfaces.push({obj:group,kind:'wall',index:nearest});
       this.root.add(group);
     }
     // Wall-mounted art and electrical hardware inherit room visibility.
@@ -1938,17 +1987,17 @@ export class TacticalScene3D{
       const mesh=this.box(this.root,(p1.x+p2.x)/2,WALL_VISUAL_HEIGHT/2,
         (p1.y+p2.y)/2,len+3,WALL_VISUAL_HEIGHT,9,this.solid(i===4?0x81877d:0xb4a991));
       mesh.rotation.y=-Math.atan2(dz,dx);
-      this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2},segment});
+      this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2},segment,index:i,exterior:i<5});
       // Dark skirting separates the wall footprint from similar floor values.
       const skirting=this.box(this.root,mesh.position.x,2,mesh.position.z,
         len+4,4,12,this.solid(0x36453f),false);
       skirting.rotation.y=mesh.rotation.y;
-       this.walls.push({mesh:skirting,mid:{x:mesh.position.x,y:mesh.position.z},segment});
+       this.walls.push({mesh:skirting,mid:{x:mesh.position.x,y:mesh.position.z},segment,index:i,exterior:i<5});
       // A dark, legible wall cap communicates height in either camera mode.
       const cap=this.box(this.root,mesh.position.x,WALL_VISUAL_HEIGHT+.3,
         mesh.position.z,
         len+4,2,11,this.solid(0x51483a),false);cap.rotation.y=mesh.rotation.y;
-      this.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z},segment});
+      this.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z},segment,index:i,exterior:i<5});
     }
     for(const x of [209,502]){
       const pane=this.box(this.root,x+25,16,99,51,21,2,glass,false);
@@ -2533,6 +2582,11 @@ export class TacticalScene3D{
       // walls physically surrounding the in-room camera. Leaving them
       // missing would make even a perspective shot see through the map.
       const cover=s.coverState[item.index];
+      // The window opening is a physical public facade even if the
+      // nearest full-wall segment is too far away to serve as its intel ID.
+      const knownFacade=item.kind==='wall'&&
+        item.obj.userData.fogFacade===true&&
+        s.intel.mode==='exterior-known';
       const exteriorSetDressing=physicalDirector&&item.kind==='cover'&&
         s.intel.mode==='exterior-known'&&!!cover&&
         exteriorBriefedAt(s.site??undefined,{x:cover.x,y:cover.y});
@@ -2540,7 +2594,7 @@ export class TacticalScene3D{
       // making them pop into existence mid-shot. Live tactical discovery,
       // personal bodycam evidence and all interior cover remain unchanged.
       item.obj.visible=item.kind==='wall'&&physicalDirector?true:
-        exteriorSetDressing?true:
+        knownFacade||exteriorSetDressing?true:
         item.kind==='cover'?
           personalCoverVisible(squadKnown,bodycamAudition,personalGroundEvidence,
             cover??null):squadKnown;
@@ -2585,16 +2639,23 @@ export class TacticalScene3D{
           this.replayXrayOn?0.19:0.38);
       this.wallFade.set(wall.mesh,opacity);
       const translucent=opacity<.995;
+      // In the prior repair, fog is drawn without a depth test after
+      // geometry; this buried the exterior walls a nearby operator sees.
+      // Public/observed perimeter walls alone join the transparent pass
+      // AFTER fog. Interior partitions never receive this exception.
+      const knownFacade=wall.exterior&&!omniscient&&!bodycamAudition&&
+        spatialSurfaceKnown(s,'wall',wall.index);
+      const surfaceTransparent=translucent||knownFacade;
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
-      if(material.transparent!==translucent){
-        material.transparent=translucent;
+      if(material.transparent!==surfaceTransparent){
+        material.transparent=surfaceTransparent;
         material.depthWrite=!translucent;material.needsUpdate=true;
       }
       material.opacity=opacity;
       const patina=wall.mesh.userData.patinaMaterial as THREE.MeshBasicMaterial|undefined;
       if(patina)patina.opacity=Math.max(physicalDirector?.08:.24,
         1-(1-opacity)*1.226);
-      wall.mesh.renderOrder=translucent?1001:0;
+      wall.mesh.renderOrder=surfaceTransparent?1001:0;
     }
     // The selected endpoint is stable across this entire render. Do not
     // rebuild team/plan arrays once per door on large generated sites.
@@ -2670,8 +2731,9 @@ export class TacticalScene3D{
           if(!(child instanceof THREE.Mesh))return;
           const original=child.material;
           if(!(original instanceof THREE.MeshStandardMaterial))return;
+          const facade=child.userData.fogFacade===true;
           if(!child.userData.directorCutMat){
-            if(!leafCut||original.transparent)return;
+            if(!leafCut||(original.transparent&&!facade))return;
             // The cutaway clone belongs to this site's door leaf, not the
             // persistent material palette. Release it on the next map swap.
             const clone=this.siteMaterials.track(original.clone());
@@ -2679,13 +2741,15 @@ export class TacticalScene3D{
             child.userData.directorCutMat=clone;
           }
           const local=child.userData.directorCutMat as THREE.MeshStandardMaterial;
-          if(local.transparent!==leafCut){
-            local.transparent=leafCut;
+          const needsTransparency=leafCut||facade;
+          if(local.transparent!==needsTransparency||
+             local.depthWrite===leafCut){
+            local.transparent=needsTransparency;
             local.depthWrite=!leafCut;
             local.needsUpdate=true;
           }
           local.opacity=leafCut?.12:1;
-          child.renderOrder=leafCut?1001:0;
+          child.renderOrder=leafCut?1001:facade?1002:0;
         });
       }
       const reachable=selectedActor&&selectedActor.health>0&&

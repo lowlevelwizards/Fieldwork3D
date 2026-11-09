@@ -92,6 +92,7 @@ test('3D overlays unknown interior props instead of depth-revealing them',()=>{
  assert.match(code,/map:this\.fogTexture,transparent:true,depthTest:false,opacity:1/);
  assert.match(code,/this\.smoothFog\.renderOrder=1000;/);
  assert.match(code,/this\.exteriorKnownFog\.renderOrder=1000;/);
- assert.match(code,/wall\.mesh\.renderOrder=translucent\?1001:0;/);
+ assert.match(code,/wall\.mesh\.renderOrder=surfaceTransparent\?1001:0;/);
+ assert.match(code,/surfaceTransparent=translucent\|\|knownFacade/);
  assert.match(code,/exteriorKnownFogRects\(site\)/);
 });
