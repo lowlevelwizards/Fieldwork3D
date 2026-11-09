@@ -49,6 +49,7 @@ import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
 import type {Site} from './breach-site.ts';
 import {BreachMissionController,type MissionTransition} from './breach-mission-controller.ts';
 import {createBreachQuickPlayController} from './breach-quickplay-controller.ts';
+import {createBreachCampaignFlow} from './breach-campaign-flow.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
@@ -131,22 +132,10 @@ import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
  weaponAttachmentAllowed} from './equipment-weapon-assemblies.ts';
 import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart,familyPreset,proposeFamilyPartChange,type FamilyPartSlot} from './equipment-weapon-families.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
-import {newCampaign,readCampaign,acceptContract,resolveOperation,
- purchaseAmmo,purchaseMedical,resupplyOperator,resupplyMedicalOperator,treatOperator,
- hireRecruit,assignOperatorToSlot,tacticalSlotOperator,buyWeapon,equipCampaignWeapon,
- retireOperator,equipCampaignGear,moveCampaignMagazine,
- equipCampaignWeaponAttachment,purchaseAndEquipWeaponAttachment,
- equipCampaignWeaponPreset,equipCampaignWeaponFamilyPart,
- saveCampaignKitPreset,applyCampaignKitPreset,
- deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,
- setCampaignWardrobe,
- repairCampaignArmor,serviceCampaignWeapon,purchaseFlash,
- type CampaignState,type CampaignReport} from './campaign-state.ts';
+import {readCampaign,resolveOperation,tacticalSlotOperator,type CampaignState,type CampaignReport} from './campaign-state.ts';
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
-import {CampaignScreen} from './campaign-ui.ts';
-import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
@@ -3373,11 +3362,6 @@ const quickPlayController=createBreachQuickPlayController({
   hideMenu:()=>campaignScreen.hide(),showBriefing:showMissionBriefing
 });
 const launchQuickPlay=()=>quickPlayController.launch();
-const campaignBackButton=document.createElement('button');
-campaignBackButton.type='button';campaignBackButton.id='campaignReturnButton';
-campaignBackButton.textContent='OPERATIONS ROOM';
-campaignBackButton.setAttribute('aria-label','Return to campaign operations room');
-ui.siteSettings.append(campaignBackButton);
 /** Campaign Arsenal drafts are always re-quoted against live ownership and credits.
  * The existing editor remains usable until the new UI completes its cutover.
  */
@@ -3414,132 +3398,22 @@ async function openCampaignArsenal(id:string){
   showUiHelp('ARSENAL UNAVAILABLE · EXISTING ARMORY STILL WORKS',4000);
  }
 }
-const campaignScreen=new CampaignScreen({
- newCampaign:async()=>{
-  if(campaign&&!await confirmFieldworkAction({
-   title:'Start a new campaign?',
-   message:'This replaces the active local campaign. Export a save first if you want to preserve it.',
-   confirmLabel:'START NEW CAMPAIGN',danger:true
-  }))return;
-  campaign=newCampaign(randomSiteSeed());
-  saveCampaign();showCampaignHome();
- },
- continueCampaign:()=>showCampaignHome(),
- quickPlay:()=>{void launchQuickPlay();},
- openReplayLibrary:()=>replayLibrary.openFromMenu(),
- chooseContract:(id)=>{
-  if(!campaign)return;
-  const next=acceptContract(campaign,id);
-  if(next===campaign)return;
-  campaign=next;saveCampaign();deployCampaignContract();
- },
- resumeContract:()=>deployCampaignContract(),
- buyAmmo:()=>{if(campaign){campaign=purchaseAmmo(campaign);saveCampaign();showCampaignHome();}},
- buyMedical:()=>{if(campaign){campaign=purchaseMedical(campaign);saveCampaign();showCampaignHome();}},
- buyFlash:()=>{if(campaign){campaign=purchaseFlash(campaign);saveCampaign();showCampaignHome();}},
- resupply:(id)=>{if(campaign){campaign=resupplyOperator(campaign,id);saveCampaign();showCampaignHome();}},
- resupplyMedical:(id)=>{if(campaign){
-  campaign=resupplyMedicalOperator(campaign,id);saveCampaign();showCampaignHome();}},
- treat:(id)=>{if(campaign){campaign=treatOperator(campaign,id);saveCampaign();showCampaignHome();}},
- recruit:()=>{if(campaign){campaign=hireRecruit(campaign);saveCampaign();showCampaignHome();}},
- assignSlot:(slot,id)=>{if(campaign){campaign=assignOperatorToSlot(campaign,slot,id);
-  saveCampaign();showCampaignHome();}},
- buyWeapon:(weapon)=>{if(campaign){campaign=buyWeapon(campaign,weapon);saveCampaign();showCampaignHome();}},
- equipWeapon:(id,weapon)=>{if(campaign){campaign=equipCampaignWeapon(campaign,id,weapon);
-  saveCampaign();showCampaignHome();}},
- repairArmor:(id)=>{if(campaign){campaign=repairCampaignArmor(campaign,id);
-  saveCampaign();showCampaignHome();}},
- serviceWeapon:(id)=>{if(campaign){campaign=serviceCampaignWeapon(campaign,id);
-  saveCampaign();showCampaignHome();}},
- equipGear:(id,slot,itemId)=>{if(campaign){
-  campaign=equipCampaignGear(campaign,id,slot,itemId);
-  saveCampaign();showCampaignHome();}},
- equipWeaponPreset:(id,presetId)=>{if(campaign&&!campaign.activeContractId){
-  const preset=familyPreset(presetId);
-  const member=campaign.operators.find(o=>o.id===id);
-  if(!preset||!member)return;
-  let next=campaign;
-  if(member.weapon!==preset.weapon){
-   if((campaign.inventory.weapons[preset.weapon]??0)<1)return;
-   next=equipCampaignWeapon(next,id,preset.weapon);
-   if(next===campaign)return;
-  }
-  next=equipCampaignWeaponPreset(next,id,presetId);
-  if(next===campaign)return;
-  campaign=next;saveCampaign();showCampaignHome();}},
- equipWeaponFamilyPart:(id,slot,partId)=>{if(campaign){
-  campaign=equipCampaignWeaponFamilyPart(campaign,id,slot,partId);
-  saveCampaign();showCampaignHome();}},
- equipAttachment:(id,slot,partId,acquire)=>{if(campaign){
-  campaign=acquire?
-   purchaseAndEquipWeaponAttachment(campaign,id,slot,partId):
-   equipCampaignWeaponAttachment(campaign,id,slot,partId);
-  saveCampaign();showCampaignHome();}},
- moveMagazine:(id,magazineId,location)=>{if(campaign){
-  campaign=moveCampaignMagazine(campaign,id,magazineId,location);
-  saveCampaign();showCampaignHome();}},
- saveKitPreset:(id,name)=>{if(campaign){campaign=saveCampaignKitPreset(campaign,id,name);
-  saveCampaign();showCampaignHome();}},
- applyKitPreset:(id,presetId)=>{if(campaign){campaign=applyCampaignKitPreset(campaign,id,presetId);
-  saveCampaign();showCampaignHome();}},
- deleteKitPreset:(presetId)=>{if(campaign){campaign=deleteCampaignKitPreset(campaign,presetId);
-  saveCampaign();showCampaignHome();}},
- renameOperator:(id,callsign)=>{if(campaign){campaign=renameCampaignOperator(campaign,id,callsign);
-  saveCampaign();showCampaignHome();}},
- cycleAppearance:(id)=>{if(campaign){campaign=cycleCampaignAppearance(campaign,id);
-  saveCampaign();showCampaignHome();}},
- setWardrobe:(id,look)=>{if(campaign){
-  campaign=setCampaignWardrobe(campaign,id,look);
-  saveCampaign();showCampaignHome();}},
- openStudio:(id)=>openOperatorStudio(id,'campaign'),
- openArsenal:(id)=>{void openCampaignArsenal(id);},
- exportSave:()=>{
-  if(!campaign)return;
-  const blob=new Blob([exportCampaign(campaign)],{type:'application/json'});
-  const href=URL.createObjectURL(blob),link=document.createElement('a');
-  link.href=href;link.download='fieldwork-'+campaign.id+'.json';
-  document.body.append(link);link.click();link.remove();
-  window.setTimeout(()=>URL.revokeObjectURL(href),1000);
- },
- retire:(id)=>{
-  if(!campaign||!window.confirm('Retire this operator from active service? Their career record will remain.'))return;
-  campaign=retireOperator(campaign,id);saveCampaign();showCampaignHome();
- },
- importSave:(raw)=>{
-  const next=importCampaign(raw);
-  if(!next){window.alert('The selected file is not a valid Fieldwork campaign save.');return;}
-  if(campaign&&!window.confirm('Replace the saved campaign with this import?'))return;
-  campaign=next;saveCampaign();showCampaignHome();
- }
+const campaignFlow=createBreachCampaignFlow({
+  getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},saveCampaign,
+  getMode:()=>campaignMode,setMode:mode=>{campaignMode=mode;},
+  getIntel:()=>selectedIntelMode,setIntel:value=>{selectedIntelMode=value;},
+  getScale:()=>requestedSiteScale,setScale:value=>{requestedSiteScale=value;},
+  getSession:()=>state,siteSize:ui.siteSize,siteSettings:ui.siteSettings,
+  randomSeed:randomSiteSeed,
+  resetContract:job=>reset(0,job.seed,job.kind,undefined,job.risk),
+  launchQuickPlay,openReplayLibrary:()=>replayLibrary.openFromMenu(),
+  openStudio:id=>openOperatorStudio(id,'campaign'),
+  openArsenal:id=>{void openCampaignArsenal(id);},
+  showBriefing:showMissionBriefing
 });
-function showCampaignHome(){
- if(!campaign)return;
- campaignMode='home';campaignScreen.home(campaign);
-}
-function deployCampaignContract(){
- if(!campaign?.activeContractId)return;
- const job=campaign.contracts.find(k=>k.id===campaign!.activeContractId);
- if(!job)return;
- campaignMode='mission';
- selectedIntelMode=job.intel==='unknown'?'true-blind':
-  job.intel==='scouted'?'exterior-known':'floor-plan';
- requestedSiteScale=job.scale;
- ui.siteSize.textContent='MAP SIZE · '+requestedSiteScale.toUpperCase();
- reset(0,job.seed,job.kind,undefined,job.risk);
- campaignScreen.hide();
- showMissionBriefing();
-}
-function returnAfterCampaignMission(){
- if(campaignMode==='mission'&&(state.phase==='won'||state.phase==='lost')){
-  showCampaignHome();return true;
- }
- return false;
-}
-campaignBackButton.addEventListener('click',()=>{
- if(campaignMode==='mission'&&state.phase==='running')return;
- if(campaign)showCampaignHome();
- else{campaignMode='menu';campaignScreen.entry(false);}
-});
+const campaignScreen=campaignFlow.screen;
+const showCampaignHome=campaignFlow.showHome;
+const returnAfterCampaignMission=campaignFlow.returnAfterMission;
 ui.rook.addEventListener('click',()=>selectUnit('rook'));
 ui.back.addEventListener('click',()=>{
   audioController.uiClickTone('select');
