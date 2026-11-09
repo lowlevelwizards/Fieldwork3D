@@ -62,7 +62,7 @@ import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {captureMotionFrameOrigins,buildMotionFrameProposals}
  from './breach-motion-frame-input.ts';
 import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
-import {releaseEmbeddedCover} from './breach-cover-release.ts';
+import {releaseEmbeddedMotorActor} from './breach-locomotion-clearance.ts';
 import {executionStatus,type MotorPause,type ExecutionIssue,
   type ExecutionStatus} from './breach-execution-state.ts';
 import {executionTransition,type ExecutionEvent} from './breach-execution-events.ts';
@@ -2083,36 +2083,7 @@ function tryAutoClearClutter(s:Session,a:TeamActor,to:Pt):boolean{
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
   // The simulation frame, not rendering, advances and validates traversal.
   if(tickTraversal(a,s,dt))return true;
-  // If an operator became fractionally embedded in plain wall clearance,
-  // move outward through actual swept samples BEFORE any route/squeeze
-  // decisions. This never deletes the authored route or forces a pivot
-  // toward the wall to begin reversing.
-  const wallRelease=releaseStaticWallOverlap(a.p,p,s.doors,dt*50);
-  if(wallRelease){
-    a.priorP=clone(a.p);a.p=wallRelease;
-    a.velocity=0;a.squeeze=false;a.squeezeTime=0;
-    a.blockedTime=0;a.lastBlocker='clear';
-    a.nav=[];a.retryRouteAt=0;return true;
-  }
-  // The render/prop shuffle can leave a body a fraction inside a table or
-  // jamb-adjacent cabinet. A normal swept passable() rejects every step
-  // until it is fully outside, making the operator impossible to unstick.
-  // Permit ONLY a sampled, monotonic exit from the *existing* overlap.
-  // Most ticks are ordinary walking: avoid scanning/allocating all
-  // furniture unless the shared spatial index reports actual penetration.
-  const embeddedCover=someCoverNearPoint(a.p,OPERATOR_RADIUS+1,o=>
-    isFootstepObstacle(o)&&
-    Math.abs(a.p.x-o.x)<o.w/2+OPERATOR_RADIUS&&
-    Math.abs(a.p.y-o.y)<o.h/2+OPERATOR_RADIUS);
-  const coverRelease=embeddedCover?
-    releaseEmbeddedCover(a.p,p,COVER,WALLS,
-      s.doors,activeWorldBounds(),dt*45):null;
-  if(coverRelease){
-    a.priorP=clone(a.p);a.p=coverRelease;
-    a.velocity=0;a.squeeze=false;a.squeezeTime=0;
-    a.blockedTime=0;a.lastBlocker='clear';
-    a.nav=[];a.retryRouteAt=0;return true;
-  }
+  if(releaseEmbeddedMotorActor(a,p,s.doors,dt))return true;
   if(a.traversalPending&&d(a.p,a.traversalPending.approach)<3.3){
     const planned=a.traversalPending;
     if(planned.windowId){
