@@ -36,7 +36,7 @@ test('retreat belongs to one stalled claimant, not two competing squeezes',()=>{
  const retreat=passageDeadlockRetreatTarget(b,[door],candidates,()=>true);
  assert.ok(retreat);
  assert.ok(retreat.y>b.p.y,'loser backs away from its desired side');
- assert.equal(passageDeadlockRetreatTarget(b,[door],
+ assert.equal(passageDeadlockRetreatTarget({...b,waitSeconds:.3},[door],
    [a,{...b,waitSeconds:.3}],()=>true),null,
    'ordinary brief pauses are not deadlocks');
  assert.equal(passageDeadlockRetreatTarget(b,[door],candidates,()=>false),
