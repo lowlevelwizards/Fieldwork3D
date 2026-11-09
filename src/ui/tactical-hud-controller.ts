@@ -7,7 +7,7 @@ import {TacticalFeedback,type FeedbackPoint} from './tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './contextual-teaching.ts';
 import {recoveryAdviceFor} from './recovery-guidance.ts';
-import type {Session,type TeamActor} from '../breach-game.ts';
+import type {Session,TeamActor} from '../breach-game.ts';
 
 export type FacingMode='look'|'watch';
 export type TacticalGuidanceInput={
