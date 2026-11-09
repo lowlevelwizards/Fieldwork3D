@@ -33,6 +33,9 @@ test('opt-in diagnostics report retained actor and civilian rigs',()=>{
   assert.match(scene,/civilianRigCount:this\.civilianRigs\.size/);
   assert.match(main,/stats\?\.actorRigCount/);
   assert.match(main,/stats\?\.civilianRigCount/);
+  assert.match(scene,/geometryCount:memory\.geometries,textureCount:memory\.textures/);
+  assert.match(main,/stats\?\.geometryCount/);
+  assert.match(main,/stats\?\.textureCount/);
 });
 
 test('site swaps discard obsolete weapon-light blockers and pose caches',()=>{
