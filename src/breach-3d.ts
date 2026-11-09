@@ -638,6 +638,11 @@ export class TacticalScene3D{
   private lastCameraStatus='';
   private pickPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0);
   private ray=new THREE.Raycaster();
+  /** Pointer projection is synchronous. Reuse math vectors across touch
+   * updates and HUD projection rather than allocating every query. */
+  private readonly screenNdc=new THREE.Vector2();
+  private readonly screenIntersection=new THREE.Vector3();
+  private readonly screenProjection=new THREE.Vector3();
   private width=1;private height=1;private fogAt=-1;
   private terminalPoseSeconds=0;private terminalSessionStamp=-1;
   /** Presentation clock alone runs on pause; simulation/replay stay frozen. */
@@ -2258,15 +2263,17 @@ export class TacticalScene3D{
   }
   screenToWorld(sx:number,sy:number):Pt|null{
     if(this.view.mode==='plan2d')return null;
-    const ndc=new THREE.Vector2(sx/this.width*2-1,1-sy/this.height*2);
-    this.ray.setFromCamera(ndc,this.projectionCamera);
-    const p=new THREE.Vector3();
-    if(!this.ray.ray.intersectPlane(this.pickPlane,p))return null;
-    if(!Number.isFinite(p.x)||!Number.isFinite(p.z))return null;
-    return {x:p.x,y:p.z};
+    this.screenNdc.set(sx/this.width*2-1,1-sy/this.height*2);
+    this.ray.setFromCamera(this.screenNdc,this.projectionCamera);
+    const point=this.screenIntersection;
+    if(!this.ray.ray.intersectPlane(this.pickPlane,point))return null;
+    if(!Number.isFinite(point.x)||!Number.isFinite(point.z))return null;
+    // The caller receives its own point, never a mutable scratch reference.
+    return {x:point.x,y:point.z};
   }
   project(p:Pt,y=4):Pt{
-    const world=v(p,y).project(this.projectionCamera);
+    const world=this.screenProjection.set(p.x,y,p.y)
+      .project(this.projectionCamera);
     return {x:(world.x+1)*this.width/2,
       y:(1-world.y)*this.height/2};
   }
