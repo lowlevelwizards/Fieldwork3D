@@ -1890,11 +1890,11 @@ function syncBriefingCard():void{
  const dossier=briefingPreviewEnabled?state.operationDossier:undefined;
  const names=team(state).map(actor=>actor.name).join(' · ');
  if(state===briefingRenderedSession&&dossier===briefingRenderedDossier&&
-    names===briefingRenderedRoster&&selectedEntry===briefingRenderedEntry)return;
+    names===briefingRenderedRoster&&missionController.entryId===briefingRenderedEntry)return;
  briefingRenderedSession=state;
  briefingRenderedDossier=dossier;
  briefingRenderedRoster=names;
- briefingRenderedEntry=selectedEntry;
+ briefingRenderedEntry=missionController.entryId;
  const brief=operationBriefing(state);
  const model=createBriefingCardModel(state.missionType,brief,dossier);
  ui.briefingTitle.textContent=model.title;
@@ -3286,19 +3286,7 @@ function enterReplay(){
   audioController.beginReplay(recorder);
   audioController.unlock();
   showReplayToolTab(null);
-  const recordedSite=recorder.manifest?.site;
-  state=newSession(recorder.manifest?.variant??finishedSession.variant,
-    recorder.manifest?.site?.seed??finishedSession.site?.seed,
-    recorder.manifest?.intelMode??finishedSession.intel.mode,
-    recorder.manifest?.site?.scale??finishedSession.site?.scale??'standard',
-    recorder.manifest?.missionType,
-    recordedSite?structuredClone(recordedSite):undefined);
-  state.lightingMode=recorder.manifest?.lightingMode??finishedSession.lightingMode;
-  state.operationDossier=recorder.manifest?.dossier?
-    structuredClone(recorder.manifest.dossier):undefined;
-  applyRequestedCondition(state);
-  applyRosterIdentity(state,persistentRoster);
-  applyReplayActorIdentity(state,recorder.manifest);
+  state=missionController.createReplaySession(recorder,finishedSession);
   replayCamera.followId=team(state)[0]?.id??'rook';
   populateReplayCameraChoices();
   populateReplayInspectActors();
@@ -3392,7 +3380,7 @@ const replayLibrary=createBreachReplayLibraryController({
   },
   enterReplay,exitReplay,refreshHud:updateHud,
   getFavoriteDraft:()=>state.site?{
-    start:missionStart,
+    start:missionController.start,
     label:state.site.name+' · '+state.missionType.toUpperCase()
   }:null,
   playFavorite:restoreFavoriteMission,
@@ -3941,10 +3929,19 @@ ui.replayExportVideo.addEventListener('click',()=>{
   updateReplayHud();
 });
 ui.replayExit.addEventListener('click',exitReplay);
-function reset(next=state.variant,siteSeed?:number,
- missionOverride?:Session['missionType'],prebuiltSite?:Site,
- encounterRisk?:1|2|3,deferScene=false,
- restartStart?:MissionStartSnapshot){
+/** A mission transition is an ordered release → creation → mount.
+ * The lifecycle controller owns Session construction, snapshots, and recording;
+ * the presentation owners release only their own graphics, UI and sound.
+ */
+function releaseMissionPresentation():void{
+  if(replayQuickVideo.active)replayQuickVideo.stop();
+  if(replaying){
+    stopReplayBodycam();
+    replayCamera.reset(stage);
+    replayKnowledge.reset();
+    audioController.endReplay();
+    replayXrayOn=false;stage?.setReplayXray(false);
+  }
   replaying=false;replayPlayback.pause();finishedSession=null;
   replayLibrary.resetSession();
   replayEventIndex=null;
@@ -3954,50 +3951,48 @@ function reset(next=state.variant,siteSeed?:number,
   ui.replayPanel.hidden=true;
   ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
   closeReplayChoices();
-  state=newSession(next,legacyStudy?undefined:
-    siteSeed??randomSiteSeed(),restartStart?.intelMode??selectedIntelMode,
-    restartStart?.scale??requestedSiteScale,missionOverride,
-    prebuiltSite,{risk:encounterRisk,enableCivilians:civilianPreview,
-   enableIncidentIntent:true});
   hudController.resetNotices();
-  state.lightingMode=restartStart?.lightingMode??selectedLightingMode;
-  if(campaignMode==='quick')persistentRoster=freshQuickPlayRoster(persistentRoster);
-  applyRequestedCondition(state);
-  applyRosterIdentity(state,persistentRoster);
-  applyCampaignSkills();
-  // One resolved story per mission; restart restores the saved artifact.
-  state.operationDossier=restartStart?.dossier?
-    structuredClone(restartStart.dossier):
-    buildPreviewDossier(state,encounterRisk);
-  missionStart=captureMissionStart(state,requestedSiteScale);
+  blockedEpisode.clear();
+  physicalActionRings.clear();
+  missionController.releasePresentation();
+}
+function mountMissionSession(transition:MissionTransition):void{
+  state=transition.session;
   flashDoorId=null;
-  if(!deferScene)stage?.applySite(state.site??null);
+  if(!transition.deferScene)stage?.applySite(state.site??null);
   selected='rook';hudController.facing.looking=false;
-  selectedNode=null;doorFocusId=null;draggingNode=null;
+  selectedNode=null;selectedActiveWatch=false;
+  doorFocusId=null;draggingNode=null;draggingWatchTarget=false;
   tacticalGestures.clear();cursor=null;trace=null;zoom=1;panX=panY=0;
   fog2D.invalidate();audioController.resetLive();
-  recorder=new MissionRecorder();recorder.capture(state,true);
+  recorder=transition.recorder;
   tacticalFeedback.clear();
-  if(!deferScene){layout();updateHud();}
+  if(!transition.deferScene){layout();updateHud();}
 }
-/** Repeat the exact resolved site and the same briefing/insertion.
- * newSession resets living actors, doors, fog, AI, objectives and orders.
- * It must never regenerate a different layout or use next-site preferences.
+function reset(next=state.variant,siteSeed?:number,
+  missionOverride?:Session['missionType'],prebuiltSite?:Site,
+  encounterRisk?:1|2|3,deferScene=false,
+  restartStart?:MissionStartSnapshot):void{
+  missionController.transition(state,{
+    variant:next,seed:siteSeed,missionOverride,prebuiltSite,
+    risk:encounterRisk,deferScene,restartStart
+  },{
+    beforeReplace:releaseMissionPresentation,
+    mount:mountMissionSession
+  });
+}
+/** RESTART and debrief RETRY restore the same resolved site, squad and
+ * insertion snapshot. NEW SITE deliberately creates a new session instead.
  */
 function restartMission():void{
- // Before first GO, preserve any last-minute kit/entry changes, not orders.
- const start=state.started?missionStart:
-   captureMissionStart(state,requestedSiteScale,selectedEntry);
- reset(start.variant,start.seed,start.missionType,
-   siteForMissionRestart(start),undefined,false,start);
- restoreMissionStartingTeam(state,start);
- if(start.entryId!=='FRONT'){
-  if(selectDeployment(state,start.entryId))selectedEntry=start.entryId;
-  else console.warn('[Restart mission] Original entry no longer valid',start.entryId);
- }
- missionStart=start;
- recorder=new MissionRecorder();recorder.capture(state,true);
- layout();updateHud();
+  const start=missionController.restartSnapshot(state);
+  const request=missionController.restartRequest(start);
+  reset(request.variant,request.seed,request.missionOverride,
+    request.prebuiltSite,undefined,false,start);
+  missionController.restoreStartingSetup(state,start,entry=>
+    console.warn('[Restart mission] Original entry no longer valid',entry));
+  recorder=missionController.recordInitial(state);
+  layout();updateHud();
 }
 /* Quick Play uses Map Lab-style progress checkpoints. Percentages represent
  * completed work, not predicted time; expensive 3D mesh creation remains
@@ -4603,11 +4598,7 @@ ui.play.addEventListener('click',()=>{
    if(!returnAfterCampaignMission())reset();
   }else{
     hudController.facing.looking=false;pushMode=false;
-    if(state.phase==='planning'){
-      if(!state.started)
-        missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
-      recorder.capture(state,true);
-    }
+    missionController.captureBeforeExecution(state,recorder);
     toggling(state);updateHud();
   }
 });
@@ -4665,11 +4656,7 @@ window.addEventListener('keydown',e=>{
     if(state.phase==='won'||state.phase==='lost'){
       if(!returnAfterCampaignMission())reset();
     }else{
-      if(state.phase==='planning'){
-        if(!state.started)
-          missionStart=captureMissionStart(state,requestedSiteScale,selectedEntry);
-        recorder.capture(state,true);
-      }
+      missionController.captureBeforeExecution(state,recorder);
       toggling(state);
     }
     updateHud();
