@@ -97,13 +97,21 @@ export function auditTacticalMobility(site:AuditSite,maxDoors=32):MobilityAudit{
    }
   }
   if(door.kind==='hinged'||door.kind===undefined){
-   const leaf=doorLeafSegment({...door,openFraction:.73});
-   const blocked=[.43,.60,.78,.93].some(t=>{
-    const p={x:leaf.a.x+(leaf.b.x-leaf.a.x)*t,
-      y:leaf.a.y+(leaf.b.y-leaf.a.y)*t};
-    return (site.walls??[]).some(w=>pointToSegment(p,w)<1.25)||
-      site.cover.some(o=>boxGap(p,o)<1.25);
-   });
+   // A single partly-open pose can miss a desk that interrupts the arc
+   // earlier or later. Sample the SAME moving leaf and clearance used by
+   // the door motor; skip the hinge's unavoidable early jamb contact.
+   const sweepSteps=Math.max(16,Math.ceil(width*1.54/2));
+   const blocked=Array.from({length:sweepSteps},(_,i)=>(i+1)/sweepSteps)
+    .some(fraction=>{
+     if(fraction<.14)return false;
+     const leaf=doorLeafSegment({...door,open:true,openFraction:fraction});
+     return [.35,.55,.75,.94,.99].some(t=>{
+      const p={x:leaf.a.x+(leaf.b.x-leaf.a.x)*t,
+       y:leaf.a.y+(leaf.b.y-leaf.a.y)*t};
+      return (site.walls??[]).some(w=>pointToSegment(p,w)<1.25)||
+       site.cover.some(o=>boxGap(p,o)<1.25);
+     });
+    });
    if(blocked)issues.push({doorId:door.id,kind:'blocked-swing'});
   }
  }
