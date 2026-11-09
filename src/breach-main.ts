@@ -5528,7 +5528,13 @@ async function playSavedReplay(id:string):Promise<void>{
   }
   finally{replayLibrary.busy=false;}
 }
-er('click',()=>{
+ui.openReplayLibrary.addEventListener('click',showSavedReplayLibrary);
+ui.closeReplayLibrary.addEventListener('click',hideSavedReplayLibrary);
+ui.replayLibraryBackdrop.addEventListener('click',hideSavedReplayLibrary);
+ui.saveReplayDebrief.addEventListener('click',()=>{void saveCurrentReplay();});
+ui.replaySaveArchive.addEventListener('click',()=>{void saveCurrentReplay();});
+
+ui.watchReplay.addEventListener('click',()=>{
   replayEntrySource='debrief';enterReplay();
 });
 ui.favoriteMission.addEventListener('click',()=>{
