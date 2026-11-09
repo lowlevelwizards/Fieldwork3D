@@ -124,7 +124,7 @@ const campaignScreen=new CampaignScreen({
  setWardrobe:(id,look)=>{if(model.campaign){
   model.campaign=setCampaignWardrobe(model.campaign,id,look);
   config.saveCampaign();showCampaignHome();}},
- openStudio:(id)=>openOperatorStudio(id,'model.campaign'),
+ openStudio:(id)=>config.openStudio(id),
  openArsenal:(id)=>{void config.openArsenal(id);},
  exportSave:()=>{
   if(!model.campaign)return;
