@@ -95,3 +95,32 @@ test('moving actors share stable nested state without merging different poses or
  applyReplayFrame(playback,authored);
  assert.equal(playback.operators[0].plan.length,1);
 });
+
+test('capture-side sharing avoids new plan and kit clones between independent keyframes',()=>{
+ const s=newSession(0),rec=new MissionRecorder();
+ rec.capture(s,true);
+ const start=s.operators[0].p.x;
+ for(let i=1;i<=REPLAY_FULL_KEYFRAME_INTERVAL;i++){
+   s.seconds=i*.051;
+   s.operators[0].p.x=start+i*.05;
+   rec.capture(s);
+ }
+ assert.equal(rec.frames.length,REPLAY_FULL_KEYFRAME_INTERVAL+1);
+ const first=rec.frames[0].actors[0];
+ const moving=rec.frames[1].actors[0];
+ assert.notStrictEqual(first,moving);
+ for(const key of ['plan','skills','spareMagazines','medical','medicalSupplies',
+   'weaponConfiguration'])
+   assert.strictEqual(moving[key],first[key],
+     'unchanged '+key+' must be reused before any clone');
+ const keyframe=rec.frames[REPLAY_FULL_KEYFRAME_INTERVAL].actors[0];
+ for(const key of ['plan','skills','spareMagazines','medical','medicalSupplies',
+   'weaponConfiguration']){
+   if(first[key]!==undefined)
+     assert.notStrictEqual(keyframe[key],rec.frames.at(-2).actors[0][key],
+       'keyframe '+key+' must own an independent copy');
+ }
+ assert.equal(first.p.x,start);
+ assert.equal(moving.p.x,start+.05);
+ assert.equal(keyframe.p.x,start+REPLAY_FULL_KEYFRAME_INTERVAL*.05);
+});
