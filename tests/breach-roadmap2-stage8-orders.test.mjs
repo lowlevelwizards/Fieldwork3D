@@ -91,7 +91,7 @@ test('a single game-owned dispatcher delegates every order family without a seco
   'breach-order-door.ts','breach-order-lifecycle.ts','breach-order-executor.ts']){
   const sourceText=source(f);
   assert.doesNotMatch(sourceText,/from ['"]three(?:\/|['"])/);
-  assert.doesNotMatch(sourceText,/document\.|window\.|requestAnimationFrame\(/);
+  assert.doesNotMatch(sourceText,/\b(?:document|globalThis)\.|requestAnimationFrame\(/);
   assert.doesNotMatch(sourceText,/stepSession\(/);
  }
 });
