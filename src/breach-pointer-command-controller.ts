@@ -49,6 +49,11 @@ export type PointerCommandPort={
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:PointerEvent,
  p:TacticalPointer,cancelled:boolean,pointerCount:number):void{
+  // A cancelled pointer, multi-touch gesture or camera-only drag is never
+  // an order or selection, even when it ends on an otherwise valid floor.
+  if(cancelled||pointerCount!==1||
+    p.mode==='cameraMulti'||p.mode==='cameraOrbit'||p.mode==='cameraPan')
+    return;
   const pt=port.hudController.facing.looking?port.pointerAimWorld(e):
     p.mode==='activeWatch'||p.mode==='watchTarget'?
       port.pointerAimWorld(e,12):port.pointerWorld(e);
