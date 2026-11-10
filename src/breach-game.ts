@@ -2054,7 +2054,7 @@ export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
     ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
  if(!moved)return false;
  s.objectRevision++;
- COVER.splice(0,COVER.length,...s.coverState);
+ publishSessionCoverToActiveSite(s);
  hear(s,to,65,'furniture');
  battleEvent(s,'interaction',null,to,'FURNITURE MOVED');
  return true;
