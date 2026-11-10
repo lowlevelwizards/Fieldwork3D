@@ -10,7 +10,9 @@ test('breach-game delegates all physical approach movement to one motor',()=>{
  const motor=source('breach-actor-motor.ts');
  assert.match(game,/return advanceActorMotor\(a,p,dt,s,motorHooks,speedScale\)/);
  assert.match(game,/advanceMotorTraversal\(a,s,dt,motorHooks\)/);
- assert.match(game,/motorTraversalWorld\(s,a\)/);
+ const motion=source('breach-simulation-motion-phase.ts');
+ assert.match(game,/advanceSimulationMotion\(s,h,origins,motionSimulationPhasePort\)/);
+ assert.match(motion,/motorTraversalWorld\(s,a\)/);
  assert.doesNotMatch(game,/function tickTraversal\(/);
  assert.doesNotMatch(game,/function tryAutoClearClutter\(/);
  assert.doesNotMatch(game,/function desiredTraverse\(/);
