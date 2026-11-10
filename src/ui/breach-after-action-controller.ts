@@ -169,7 +169,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      replayHighlightMoments(s.recorder),s.recorder,(moment)=>{
        root.dispatchEvent(new CustomEvent('fw-after-action-replay',{
          bubbles:true,detail:{surface:'highlights',time:moment.at,
-           highlightId:moment.id}
+           end:moment.end,highlightId:moment.id}
        }));
      });
    else if(s.tab==='timeline'){

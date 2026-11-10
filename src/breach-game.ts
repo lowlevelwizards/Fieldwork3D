@@ -3138,8 +3138,9 @@ function mission(s:Session,dt:number){
       s.missionType==='intel'?'DOCUMENTS RECOVERED':
       s.missionType==='capture'?'TARGET SECURED':'OBJECTIVE SECURED';
     notify(s,verb+' — EXTRACT');
-    battleEvent(s,'objective',atObjective[0]??null,s.scenario.objective,verb,
-      {action:'objective-secure',objectId:s.missionType});
+    battleEvent(s,'objective',null,s.scenario.objective,verb,
+      {action:'objective-secure',objectId:s.missionType,
+       contributorId:atObjective[0]?.id});
   }else if((s.missionType==='hold'||s.missionType==='intel')&&
     s.mission==='secure'){
     s.holdTime=Math.max(0,s.holdTime-dt*.6);

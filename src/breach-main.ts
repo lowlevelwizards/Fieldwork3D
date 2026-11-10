@@ -1652,7 +1652,8 @@ ui.watchReplay.addEventListener('click',()=>{
 });
 ui.debrief.addEventListener('fw-after-action-replay',event=>{
  const detail=(event as CustomEvent<{
-   surface:string;contactId?:string;shotId?:number|null;time:number
+   surface:string;contactId?:string;shotId?:number|null;time:number;
+   end?:number
  }>).detail;
  if(!detail||replaying)return;
  const request=makeAfterActionLaunchRequest(recorder,detail);

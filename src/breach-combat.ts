@@ -61,4 +61,4 @@ export type BattleEvent={id:number;t:number;kind:'shot'|'wound'|'down'|'flash'|
   'interaction';actor?:string;p?:Pt;text:string;
   meta?:{action?:'spot'|'door-open'|'door-forced'|'door-close'|
     'door-resisted'|'door-blocked'|'window-open'|'window-traverse'|
-    'objective-secure'|'door-impact';objectId?:string;targetId?:string};};
+    'objective-secure'|'door-impact';objectId?:string;targetId?:string;contributorId?:string};};

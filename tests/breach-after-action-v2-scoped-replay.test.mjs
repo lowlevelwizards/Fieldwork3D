@@ -29,3 +29,9 @@ test('contact clip uses recorded first and last shot, no fabricated timestamps',
   surface:'combat',contactId:'guard',shotId:2,time:12}).range,
   {start:12,end:12});
 });
+
+test('highlight clip preserves the entire bounded recorded incident',()=>{
+ const rec={duration:50,ballistics:{shots:[]}};
+ assert.deepEqual(makeAfterActionLaunchRequest(rec,
+  {surface:'highlights',time:12,end:21}).range,{start:12,end:21});
+});

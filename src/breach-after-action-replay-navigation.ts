@@ -3,7 +3,8 @@
  */
 import type {MissionRecorder} from './breach-replay.ts';
 export type AfterActionReplayAnchor={
-  surface:string;contactId?:string;shotId?:number|null;time:number
+  surface:string;contactId?:string;shotId?:number|null;time:number;
+  end?:number
 };
 export type AfterActionLaunchRequest={
   range:{start:number;end:number};label:string;
@@ -21,7 +22,8 @@ export function makeAfterActionLaunchRequest(
    rec.ballistics.shots.find(s=>s.id===anchor.shotId)??null;
  const first=found?found.recordedAt:match[0]?.recordedAt??anchor.time;
  const last=found?found.recordedAt:
-   match.at(-1)?.recordedAt??anchor.time;
+   match.at(-1)?.recordedAt??(anchor.end!==undefined&&finite(anchor.end)?
+     Math.max(anchor.time,anchor.end):anchor.time);
  const low=Math.max(0,Math.min(first,last,rec.duration));
  const high=Math.min(rec.duration,Math.max(first,last,low));
  return {

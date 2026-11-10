@@ -98,7 +98,8 @@ export function buildAfterActionReport(rec:MissionRecorder):AfterActionReport{
       const combat=downed.length*12+damaging*2+armor;
       const recon=intel*2;
       // Do not infer successful interactions from prose-only legacy door events.
-      const actions=rec.events.filter(e=>e.actor===a.id&&e.meta?.action);
+      const actions=rec.events.filter(e=>e.meta?.action&&
+        (e.actor===a.id||e.meta.contributorId===a.id));
       const count=(kind:string)=>actions.filter(e=>e.meta?.action===kind).length;
       const doorsOpened=count('door-open'),doorsForced=count('door-forced');
       const windowsTraversed=count('window-traverse');
