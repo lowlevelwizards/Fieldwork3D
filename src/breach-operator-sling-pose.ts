@@ -3,7 +3,8 @@
  * changes authoritative muzzle, ammunition, pose or collision.
  */
 import * as THREE from 'three';
-import type {OperatorRig,OperatorPose} from './breach-operator-rig.ts';
+import type {OperatorRig} from './breach-operator-rig.ts';
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
 const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 export function updateOperatorSlingPose(
  r:Pick<OperatorRig,'slingStraps'|'droppedGun'|'weapon'|'root'|'chest'>,
