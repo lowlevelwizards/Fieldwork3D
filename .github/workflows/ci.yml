@@ -2061,6 +2061,11 @@ jobs:
           node --experimental-strip-types --test tests/door-pressure-counterflow-r1.test.mjs tests/coupled-door-contact.test.mjs tests/door-leaf-overlap-recovery.test.mjs tests/doorway-right-of-way-session.test.mjs tests/doorway-planned-sequence.test.mjs
       - name: Production build and typecheck
         run: npm run build
+      - name: Quick Play production release preflight (no deployment)
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/quickplay-scenario-door-swing-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       - name: Door/desk/chair fix — verify live Pages checkpoint before release
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/door-desk-chair-gridlock-') }}
         env:
