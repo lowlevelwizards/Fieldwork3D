@@ -2,7 +2,7 @@
  * personally observed sight evidence. Both sides use the exact same LOS
  * contract; contact belief is never inferred from presentation fog.
  */
-import {angleDifference,length} from './breach-plan.ts';
+import {angleDifference,length,targetAngle} from './breach-plan.ts';
 import {visualGain,advanceSight} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import {perceptualReadiness} from './breach-encounter-readiness.ts';
@@ -10,6 +10,7 @@ import {addObservation,visibleObservation} from './breach-awareness.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 type SightTest=(observer:TeamActor,target:TeamActor,session:Session)=>boolean;
 const d=length;
+const angle=targetAngle;
 
 export function advanceActorSightProgress(s:Session,dt:number,geometricallyVisible:SightTest){
  // One scene sample per simulation-time bucket, never one raycast per sight pair.
