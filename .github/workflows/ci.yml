@@ -136,6 +136,10 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Quick Play scenario / door swing critical regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/quickplay-scenario-door-swing-') }}
+        run: |
+          node --experimental-strip-types --test tests/quick-play-door-swing-preview.test.mjs tests/quick-play-scenario-generator.test.mjs tests/quick-play-startup-progress.test.mjs tests/civilian-b7-rescue-session.test.mjs tests/door-hinge-neighborhood-cache.test.mjs
       - name: Physical interactions Nov8 — verify previous production Pages before release
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-physical-interactions-') }}
         env:
