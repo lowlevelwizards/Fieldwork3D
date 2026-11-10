@@ -28,7 +28,17 @@ export type PlanNode={
   entryDoorId?:string;
   firePolicyState?:FirePolicy;firePoint?:Pt;fireTargetId?:string;
 };
-export type PlanHistory={undo:PlanNode[][];redo:PlanNode[][]};
+/** Non-route commands share the same undo/redo timeline as waypoint orders. */
+export type PlanControlSnapshot={
+  posture:'stand'|'crouch';pace:'walk'|'run';firePolicy:FirePolicy;
+  suppressPoint:Pt|null;focusTargetId:string|null;haltOnContact:boolean;
+  aimInstruction:AimInstruction|null;
+};
+export type PlanHistory={
+  undo:PlanNode[][];redo:PlanNode[][];
+  /** Optional for archived/legacy history objects; aligned with undo/redo. */
+  undoControls?:PlanControlSnapshot[];redoControls?:PlanControlSnapshot[];
+};
 export const copyNodes=(nodes:PlanNode[]):PlanNode[]=>
   nodes.map(n=>({...n,p:{...n.p},
     pivot:n.pivot?{...n.pivot}:undefined,
@@ -36,7 +46,7 @@ export const copyNodes=(nodes:PlanNode[]):PlanNode[]=>
     pushDirection:n.pushDirection?{...n.pushDirection}:undefined,
     firePoint:n.firePoint?{...n.firePoint}:undefined,
     arc:n.arc?.map(p=>({...p}))}));
-export const makeHistory=():PlanHistory=>({undo:[],redo:[]});
+export const makeHistory=():PlanHistory=>({undo:[],redo:[],undoControls:[],redoControls:[]});
 export function record(history:PlanHistory,prior:PlanNode[]){
   history.undo.push(copyNodes(prior));
   if(history.undo.length>40)history.undo.shift();

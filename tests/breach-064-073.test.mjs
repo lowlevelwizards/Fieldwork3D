@@ -55,8 +55,8 @@ test('066-068: camera and presentation cannot mutate tactical time',()=>{
   assert.match(content,/class TacticalScene3D/);
   assert.match(content,/OrthographicCamera/);
   assert.match(content,/mode:'iso'/);
-  assert.match(content,/paintFogMask\(this\.fogContext,s\)/);
-  assert.match(content,/isSeen\(s,actor\)/);
+  assert.match(content,/paintFogMask\(this\.fogContext,s,this\.fogDiagnostic\)/);
+  assert.match(content,/liveVisibility/);
   assert.deepEqual(team(s)[0].p,first);
   stepSession(s,1/60);assert.equal(s.seconds,0);
   toggling(s);stepSession(s,1/60);
@@ -68,7 +68,7 @@ test('064,067: controls are contextual, accessible and camera-aware',()=>{
   for(const id of ['contextTools','viewIso','viewTop','view2d',
     'cameraFit','siteSettingsToggle','redo','advancedOrders'])
     assert.ok(html.includes('id="'+id+'"'),'missing '+id);
-  assert.match(main,/doorAtNode\(state,selected/);
+  assert.match(main,/dispatchTacticalContextCommand/);
   assert.match(main,/stage\.screenToWorld/);
   assert.match(main,/renderProjectedPlans\(\)/);
   assert.match(main,/planAim\(state,selected/);

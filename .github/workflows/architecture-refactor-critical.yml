@@ -68,6 +68,10 @@ jobs:
         if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage12-') }}
         run: |
           node --experimental-strip-types --test tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-roadmap3-world-context.test.mjs tests/breach-roadmap4-world-geometry.test.mjs tests/breach-roadmap2-geometry-scope.test.mjs tests/door-hinge-neighborhood-cache.test.mjs tests/breach-roadmap2-stage1-contracts.test.mjs tests/breach-roadmap2-stage2-physical-integrity.test.mjs tests/breach-roadmap2-stage3-knowledge.test.mjs tests/breach-roadmap4-ballistic-resolution.test.mjs tests/breach-171.test.mjs tests/breach-179.test.mjs
+      - name: Closeout Stage 1 — plan transactions, synchronized commands and fog-of-war parity
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage1-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-closeout-stage1-plan-authoring.test.mjs tests/breach-roadmap4-plan-authoring.test.mjs tests/breach-here-watch-continuity.test.mjs tests/breach-stroke-safe-cutoff.test.mjs tests/breach-063.test.mjs tests/breach-064-073.test.mjs tests/tactical-integration-04-squad-planning.test.mjs tests/breach-roadmap2-stage3-knowledge.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-fog-visibility.test.mjs tests/fog-interior-occlusion-regression.test.mjs tests/breach-roadmap3-context-commands.test.mjs
       - name: Architecture dependency boundary check
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production TypeScript and asset build

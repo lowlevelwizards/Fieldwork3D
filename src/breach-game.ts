@@ -1,8 +1,9 @@
 import {createCombatFiringPipeline} from './breach-firing-pipeline.ts';
 import {advanceActorSightProgress,observeActorContactEvidence} from './breach-visual-acquisition.ts';
 import {createEnemyDecisionController} from './breach-enemy-decision-controller.ts';
-import {validPieArc} from './breach-maneuvers.ts';
-import {edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan} from './breach-plan-authoring.ts';
+import {edit,validEditedPlan,validKnownPieArc,knownDoorApproach,
+ atomicTeamEdit,sealPlanHistoryForExecution,undoAuthoredPlan,redoAuthoredPlan}
+ from './breach-plan-authoring.ts';
 import {simulationPhaseMark,advanceTransientSimulationEffects,recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
 
 import {advanceActorMotor} from './breach-actor-motor.ts';
@@ -19,7 +20,7 @@ import {incomingHitFacing} from './breach-combat-reactions.ts';
  * Legacy 052 entrypoints remain in breach-core for comparison/tests only.
  */
 import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,} from './breach-core.ts';
-import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
+import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions} from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
@@ -41,7 +42,7 @@ import {type FireBlock} from './breach-fire-safety.ts';
 
 
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {initDoor,advanceDoor,doorReachable,doorApproach,initialOpeningYieldCandidate} from './breach-door.ts';
+import {initDoor,advanceDoor,doorReachable,initialOpeningYieldCandidate} from './breach-door.ts';
 
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool} from './equipment-entry-tools.ts';
@@ -249,6 +250,9 @@ export type SquadPlanTransaction={
  members:string[];
  before:Record<string,PlanNode[]>;
  after:Record<string,PlanNode[]>;
+ controlsBefore?:Record<string,PlanControlSnapshot>;
+ controlsAfter?:Record<string,PlanControlSnapshot>;
+ undoDepth?:Record<string,number>;
 };
 export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];civilians:CivilianActor[];
@@ -681,7 +685,9 @@ export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
   const a=party(s,id);if(!a||!canEdit(s))return false;
   if(kind==='move'&&!intelPassable(p,s.intel,SQUEEZE_RADIUS))return false;
   if(kind==='move'&&!legalMoveRoute(s,finalPoint(a),p).length)return false;
-  if(kind==='door'&&(!sessionWorldGeometry(s).passable(p)||!sessionWorldGeometry(s).route(finalPoint(a),p).length))return false;
+  if(kind==='door'&&(!extra.doorId||!doorKnown(s.intel,extra.doorId)||
+    !intelPassable(p,s.intel,SQUEEZE_RADIUS)||
+    !routeWithSqueezeIntel(s.intel,finalPoint(a),p).length))return false;
   return edit(s,a,()=>{
     a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
   });
@@ -706,7 +712,8 @@ export function planNearbyInteraction(s:Session,id:string,
  if(action==='push'){
    const candidates=s.coverState.map((o,index)=>({o,index,
      distance:d(at,{x:o.x,y:o.y})})).filter(c=>
-       canRelocateCover(c.o)&&c.distance<Math.max(c.o.w,c.o.h)/2+43)
+       s.intel.cover.has(c.index)&&canRelocateCover(c.o)&&
+       c.distance<Math.max(c.o.w,c.o.h)/2+43)
      .sort((x,y)=>x.distance-y.distance||x.index-y.index);
    const item=candidates[0];if(!item)return false;
    const toward={x:item.o.x-at.x,y:item.o.y-at.y};
@@ -871,7 +878,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
              {a:points[i-1],b:points[i]})>9&&
            pointToSegment(doorCenter(door),
              {a:prior,b:node.p})>9)continue;
-        const staging=doorApproach(prior,door,sessionWorldGeometry(s));
+        const staging=knownDoorApproach(s,prior,door);
         if(!staging)continue;
         expanded.push({id:s.nextId+expanded.length,kind:'door',
           p:clone(staging),doorId:door.id,method:'open'});
@@ -882,7 +889,9 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
   }
   // The entire replacement stroke (including implicit door actions) is
   // ONE undoable transaction. A rejected stroke leaves the old route intact.
-  return edit(s,a,()=>{
+  const codes=new Set(replaceExisting?
+    a.plan.filter(n=>n.kind==='sync'&&n.syncCode).map(n=>n.syncCode!):[]);
+  return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{
     if(replaceExisting)a.plan=retainedWatch?[retainedWatch,...expanded]:expanded;
     else a.plan.push(...expanded);
     s.nextId+=expanded.length;
@@ -890,7 +899,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
       outcome.clipped=clipped;
       outcome.endpoint=clone(expanded.at(-1)!.p);
     }
-  });
+  }));
 }
 export function setStrafe(s:Session,id:string,nodeId:number):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
@@ -906,21 +915,31 @@ export function setStrafe(s:Session,id:string,nodeId:number):boolean{
     }
   });
 }
-/** Remove exactly one final queued order (not the whole plan or its path). */
+/** Removal of a coordinated SYNC is itself a team transaction.
+ * Other participants never retain a stranded wait when HERE redraw,
+ * DELETE, CLEAR or BACK removes the link. */
+function editRemovingSync(s:Session,a:TeamActor,codes:Set<string>,
+ change:()=>boolean):boolean{
+ const linked=team(s).filter(peer=>peer!==a&&peer.health>0&&
+   peer.plan.some(n=>n.kind==='sync'&&!!n.syncCode&&codes.has(n.syncCode)));
+ if(!linked.length)return change();
+ return atomicTeamEdit(s,[a,...linked],()=>{
+  if(!change())return false;
+  for(const peer of linked)
+   if(!edit(s,peer,()=>{
+    peer.plan=peer.plan.filter(n=>
+      n.kind!=='sync'||!n.syncCode||!codes.has(n.syncCode));
+   }))return false;
+  return true;
+ });
+}
+/** BACK removes one last instruction and its coordinated SYNC link. */
 export function backOne(s:Session,id:string){
-  const a=party(s,id);
-  if(!a||!canEdit(s)||!a.plan.length)return false;
-  const tail=a.plan.at(-1)!;
-  // A shared sync must not leave the partner waiting for an absent code.
-  if(tail.kind==='sync'&&tail.syncCode){
-    for(const partner of team(s)){
-      if(partner===a)continue;
-      const index=partner.plan.findIndex(n=>
-        n.kind==='sync'&&n.syncCode===tail.syncCode);
-      if(index>=0)edit(s,partner,()=>{partner.plan.splice(index,1);});
-    }
-  }
-  return edit(s,a,()=>{a.plan.pop();});
+ const a=party(s,id);
+ if(!a||!canEdit(s)||!a.plan.length)return false;
+ const tail=a.plan.at(-1)!;
+ const codes=new Set(tail.kind==='sync'&&tail.syncCode?[tail.syncCode]:[]);
+ return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan.pop();}));
 }
 /** The player chooses a world-space pivot; doors are no longer special. */
 export function planPieAt(s:Session,id:string,pivot:Pt,side:PieSide,degrees=54,
@@ -931,7 +950,7 @@ export function planPieAt(s:Session,id:string,pivot:Pt,side:PieSide,degrees=54,
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<=0&&afterNodeId!==undefined)return false;
   const start=index===0?a.p:a.plan[index-1].p;
-  const arc=validPieArc(start,pivot,side,s.doors,degrees,sessionWorldGeometry(s));
+  const arc=validKnownPieArc(s,start,pivot,side,degrees);
   if(!arc.length)return false;
   if(afterNodeId===undefined)return addNode(s,id,'pie',arc[arc.length-1],{
     pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
@@ -961,7 +980,7 @@ export function editPie(s:Session,id:string,nodeId:number,
 /** Context-aware door action at a selected planned position. */
 export function doorAtNode(s:Session,id:string,doorId:string,method:DoorMethod,nodeId?:number){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
-  if(!a||!door||!canEdit(s))return false;
+  if(!a||!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
   if(nodeId===undefined){
     if(!doorReachable(finalPoint(a),door))return planDoor(s,id,doorId,method);
     return addNode(s,id,'door',finalPoint(a),{doorId,method});
@@ -1002,12 +1021,14 @@ export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
   return edit(s,a,()=>{a.plan=proposed;});
 }
 export function deletePlanNode(s:Session,id:string,nodeId:number){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const index=a.plan.findIndex(n=>n.id===nodeId);
-  if(index<0)return false;
-  const proposed=copyNodes(a.plan);proposed.splice(index,1);
-  if(!validEditedPlan(s,a.p,proposed))return false;
-  return edit(s,a,()=>{a.plan=proposed;});
+ const a=party(s,id);if(!a||!canEdit(s))return false;
+ const index=a.plan.findIndex(n=>n.id===nodeId);
+ if(index<0)return false;
+ const removed=a.plan[index];
+ const proposed=copyNodes(a.plan);proposed.splice(index,1);
+ if(!validEditedPlan(s,a.p,proposed))return false;
+ const codes=new Set(removed.kind==='sync'&&removed.syncCode?[removed.syncCode]:[]);
+ return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan=proposed;}));
 }
 export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
   const a=party(s,id);if(!a||!canEdit(s))return false;
@@ -1072,15 +1093,13 @@ export function retargetActiveWatch(s:Session,id:string,target:Pt):boolean{
   if(!a||!canEdit(s)||a.aimInstruction?.mode!=='track'||
      !Number.isFinite(target.x)||!Number.isFinite(target.y)||
      d(a.p,target)<2)return false;
-  a.aimInstruction={mode:'track',point:clone(target)};
-  return true;
+  return edit(s,a,()=>{a.aimInstruction={mode:'track',point:clone(target)};});
 }
 /** DELETE on an active WATCH releases tracking; the path stays untouched. */
 export function removeActiveWatch(s:Session,id:string):boolean{
   const a=party(s,id);
   if(!a||!canEdit(s)||a.aimInstruction?.mode!=='track')return false;
-  a.aimInstruction=null;
-  return true;
+  return edit(s,a,()=>{a.aimInstruction=null;});
 }
 /** Release an existing WATCH using an explicit AUTO transition. */
 export function releaseWatch(s:Session,id:string,nodeId?:number,
@@ -1108,7 +1127,8 @@ function pairedLeaves(s:Session,door:Door):Door[]{
 export function planEntryTool(s:Session,id:string,doorId:string,
  method:EntryTool,nodeId?:number):boolean{
  const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
- if(!a||!door||!canEdit(s)||!canUseEntryTool(a.equipment,method)||
+ if(!a||!door||!canEdit(s)||!doorKnown(s.intel,doorId)||
+  !canUseEntryTool(a.equipment,method)||
   !entryToolVerdict(door,method).allowed||
   (method==='wedge'&&a.wedgeRemaining<1))return false;
  if(nodeId!==undefined){
@@ -1118,14 +1138,14 @@ export function planEntryTool(s:Session,id:string,doorId:string,
    id:s.nextId++,kind:'tool',doorId,toolMethod:method,
    p:clone(a.plan[index].p)});});
  }
- const position=doorApproach(finalPoint(a),door,sessionWorldGeometry(s));
+ const position=knownDoorApproach(s,finalPoint(a),door);
  if(!position)return false;
  return addNode(s,id,'tool',position,{doorId,toolMethod:method});
 }
 export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
-  if(!a||!door||!canEdit(s))return false;
-  const position=doorApproach(finalPoint(a),door,sessionWorldGeometry(s));
+  if(!a||!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
+  const position=knownDoorApproach(s,finalPoint(a),door);
   return !!position&&addNode(s,id,'door',position,{doorId,method});
 }
 /** Plan an actual reserved stack position on the same approach side.
@@ -1133,7 +1153,7 @@ export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
  */
 export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
-  if(!a||!door||!canEdit(s))return false;
+  if(!a||!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
   const index=afterNodeId===undefined?a.plan.length:
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<=0&&afterNodeId!==undefined)return false;
@@ -1174,111 +1194,69 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
  * so players can adjust a tight site individually.
  */
 export function planStackTeam(s:Session,doorId:string){
-  if(!canEdit(s))return false;
-  let count=0;
-  for(const a of team(s))if(a.health>0&&planStack(s,a.id,doorId))count++;
-  if(count)notify(s,'STACK '+count+' / '+team(s).filter(a=>a.health>0).length);
+ if(!canEdit(s)||!doorKnown(s.intel,doorId))return false;
+ const members=team(s).filter(a=>a.health>0);
+ let count=0;
+ const ok=atomicTeamEdit(s,members,()=>{
+  for(const a of members)if(planStack(s,a.id,doorId))count++;
   return count>0;
+ });
+ if(ok)notify(s,'STACK '+count+' / '+members.length);
+ return ok;
 }
 /** Coordinated entry: reserve distinct stack positions, synchronize at
  * a shared go-code, open the door with the lead, then feed others through
  * at staggered intervals. Tactical pathfinding remains authoritative.
  */
 export function planSquadEntry(s:Session,doorId:string){
-  const door=s.doors.find(d=>d.id===doorId);
-  if(!door||!canEdit(s))return false;
-  const alive=team(s).filter(a=>a.health>0);
-  if(!alive.length)return false;
-  const start=finalPoint(alive[0]);
-  // Planning may use only legitimately known geometry, never hidden enemies.
-  const slots=entryLanes(door,start,alive.length,p=>
-    sessionWorldGeometry(s).passable(p)&&!!routeWithIntel(s.intel,start,p).length);
-  if(slots.length!==alive.length){
-    notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
-    return false;
+ const door=s.doors.find(d=>d.id===doorId);
+ if(!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
+ const alive=team(s).filter(a=>a.health>0);
+ if(!alive.length)return false;
+ const start=finalPoint(alive[0]);
+ // Predicted entry geometry sees only discovered walls and furniture.
+ // Actual doorway passage and clearance remain the live motor's authority.
+ const slots=entryLanes(door,start,alive.length,p=>
+   intelPassable(p,s.intel,SQUEEZE_RADIUS)&&
+   !!routeWithSqueezeIntel(s.intel,start,p).length);
+ if(slots.length!==alive.length){
+  notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
+  return false;
+ }
+ for(let i=0;i<alive.length;i++){
+  if(!routeWithSqueezeIntel(s.intel,finalPoint(alive[i]),slots[i].point).length){
+   notify(s,'SQUAD ENTRY BLOCKED · CHECK ROUTE');
+   return false;
   }
-  // The preview's destinations are preflighted before any actor is edited.
-  for(let i=0;i<alive.length;i++){
-    if(!routeWithIntel(s.intel,finalPoint(alive[i]),slots[i].point).length){
-      notify(s,'SQUAD ENTRY BLOCKED · CHECK ROUTE');
-      return false;
-    }
-  }
-  // PlanStack, Sync, Door, Wait and Move each validate independently. All
-  // those operations must commit together or restore the exact old plans,
-  // histories and temporary planning state. Earlier behavior could strand
-  // one or more teammates with partial ENTRY/SYNC instructions on failure.
-  const originals=alive.map(a=>({
-    actor:a,plan:copyNodes(a.plan),
-    history:{undo:a.history.undo.map(copyNodes),
-      redo:a.history.redo.map(copyNodes)},
-    path:a.path.map(clone),nav:a.nav.map(clone),
-    activeNode:a.activeNode,waitRemaining:a.waitRemaining,
-    actionTimer:a.actionTimer,syncReady:a.syncReady,pieIndex:a.pieIndex
-  }));
-  const initialId=s.nextId,initialSync=s.syncCode;
-  const rollback=()=>{
-    for(const before of originals){
-      const a=before.actor;
-      a.plan=before.plan;a.history=before.history;
-      a.path=before.path;a.nav=before.nav;
-      a.activeNode=before.activeNode;
-      a.waitRemaining=before.waitRemaining;
-      a.actionTimer=before.actionTimer;
-      a.syncReady=before.syncReady;a.pieIndex=before.pieIndex;
-    }
-    s.nextId=initialId;s.syncCode=initialSync;
-    return false;
-  };
-  for(const a of alive){
-    if(!a.plan.some(n=>n.stackDoorId===doorId)&&
-       !planStack(s,a.id,doorId))return rollback();
-  }
-  if(!planSync(s,alive.map(a=>a.id)))return rollback();
+ }
+ const committed=atomicTeamEdit(s,alive,()=>{
+  for(const a of alive)
+   if(!a.plan.some(n=>n.stackDoorId===doorId)&&
+     !planStack(s,a.id,doorId))return false;
+  if(!planSync(s,alive.map(a=>a.id)))return false;
   const lead=alive[0];
-  if(!planDoor(s,lead.id,doorId,'open'))return rollback();
+  if(!planDoor(s,lead.id,doorId,'open'))return false;
   for(let i=0;i<alive.length;i++){
-    const a=alive[i],slot=slots[i];
-    if(i>0){
-      // A generated entry gate waits for ACTUAL door clearance, not an
-      // additional artificial .3s after clearance. Existing passage
-      // reservations and swept-body checks provide real follower spacing.
-      // Only this synthesized gate gets duration zero; a player's explicit
-      // WAIT still retains its chosen .3-6 second duration.
-      if(!planWait(s,a.id,.3))return rollback();
-      const gate=a.plan.at(-1);
-      if(gate?.kind!=='wait')return rollback();
-      gate.doorId=doorId;gate.duration=0;
-    }
-    if(!planMove(s,a.id,slot.point)){
-      notify(s,a.name+' ENTRY ROUTE UNAVAILABLE');
-      return rollback();
-    }
-    const arrival=a.plan.at(-1);
-    if(arrival?.kind!=='move'||
-       !planAim(s,a.id,'fixed',slot.look,arrival.id,'look'))
-      return rollback();
-    // Only this authored template may start facing the selected sector
-    // during the same MOVE, once its real body clears the door plane.
-    // Manual LOOK/MOVE plans never gain this marker automatically.
-    const assigned=a.plan.find(n=>n.id===arrival.id);
-    if(!assigned)return rollback();
-    assigned.entryDoorId=doorId;
+   const a=alive[i],slot=slots[i];
+   if(i>0){
+    // A generated zero-duration gate is never an ordinary player WAIT.
+    if(!planWait(s,a.id,.3))return false;
+    const gate=a.plan.at(-1);
+    if(gate?.kind!=='wait')return false;
+    gate.doorId=doorId;gate.duration=0;
+   }
+   if(!planMove(s,a.id,slot.point))return false;
+   const arrival=a.plan.at(-1);
+   if(arrival?.kind!=='move'||
+     !planAim(s,a.id,'fixed',slot.look,arrival.id,'look'))return false;
+   const assigned=a.plan.find(n=>n.id===arrival.id);
+   if(!assigned)return false;
+   assigned.entryDoorId=doorId;
   }
-  // Collapse the many internal authoring steps into ONE undo entry per
-  // participant. A single UNDO/REDO of any unchanged squad entry restores
-  // the entire original coordinated plan instead of orphaning a sync code.
-  const transaction:SquadPlanTransaction={members:alive.map(a=>a.id),
-    before:Object.fromEntries(originals.map(b=>[b.actor.id,copyNodes(b.plan)])),
-    after:Object.fromEntries(alive.map(a=>[a.id,copyNodes(a.plan)]))};
-  for(const original of originals){
-    const a=original.actor;
-    a.history.undo=[...original.history.undo,copyNodes(original.plan)].slice(-40);
-    a.history.redo=[];
-  }
-  s.squadEntryUndo=transaction;s.squadEntryRedo=null;
-  notify(s,'SQUAD ENTRY READY · DISTINCT LANES · GO TO EXECUTE');
   return true;
+ });
+ if(committed)notify(s,'SQUAD ENTRY READY · DISTINCT LANES · GO TO EXECUTE');
+ return committed;
 }
 /** Tactical WAIT: hold for the minimum interval, and continue only after
  * any visible living contact has been absent for that entire interval.
@@ -1338,7 +1316,7 @@ export function setNodeControl(s:Session,id:string,nodeId:number,
 }
 export function setStartPace(s:Session,id:string,pace:'walk'|'run'){
   const a=party(s,id);if(!a||!canEdit(s))return false;
-  a.pace=pace;return true;
+  return edit(s,a,()=>{a.pace=pace;});
 }
 export function plannedControl(s:Session,id:string,nodeId?:number){
   const a=party(s,id);if(!a)return {posture:'stand' as Posture,
@@ -1441,16 +1419,21 @@ export function planWait(s:Session,id:string,seconds=1){
     {duration:clamp(seconds,.3,6)}):false;
 }
 export function planSync(s:Session,participantIds?:readonly string[]){
-  if(!canEdit(s))return false;
-  const participants=team(s).filter(a=>a.health>0&&
-    (!participantIds||participantIds.includes(a.id)));
-  if(!participants.length)return false;
+ if(!canEdit(s))return false;
+ const participants=team(s).filter(a=>a.health>0&&
+   (!participantIds||participantIds.includes(a.id)));
+ if(!participants.length)return false;
+ return atomicTeamEdit(s,participants,()=>{
   const code='B'+(++s.syncCode);
   return participants.every(a=>addNode(s,a.id,'sync',finalPoint(a),
     {syncCode:code}));
+ });
 }
 export function clearPlan(s:Session,id:string){
-  const a=party(s,id);return a?edit(s,a,()=>{a.plan=[];}):false;
+ const a=party(s,id);if(!a)return false;
+ const codes=new Set(a.plan.filter(n=>n.kind==='sync'&&n.syncCode)
+   .map(n=>n.syncCode!));
+ return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan=[];}));
 }
 export function undoPlan(s:Session,id:string){
  return undoAuthoredPlan(s,id,party);
@@ -1550,8 +1533,16 @@ function snapFlashTarget(s:Session,from:Pt,target:Pt,doors:Door[],
       choices.push({x:target.x+Math.cos(angle)*r,
         y:target.y+Math.sin(angle)*r});
     }
-  return choices.find(p=>sessionWorldGeometry(s).passable(p,3.5)&&
-    validateThrow(from,p,doors,opened,sessionWorldGeometry(s)).valid)??null;
+  // Editing may consider only observed structures and remembered door states.
+  // True geometry is checked again by flashTrajectory during execution.
+  const world=sessionWorldGeometry(s);
+  const knownWalls=world.walls.filter((_,i)=>s.intel.walls.has(i));
+  const knownDoors=doors.filter(d=>doorKnown(s.intel,d.id)).map(d=>{
+   const remembered=s.intel.doorMemory.get(d.id)??0;
+   return {...d,open:remembered>=.72,openFraction:remembered};
+  });
+  return choices.find(p=>intelPassable(p,s.intel,3.5)&&
+    validateThrow(from,p,knownDoors,opened,{walls:knownWalls}).valid)??null;
 }
 /** Two team-wide flashbangs per mission. Throwing is an authored timed order. */
 export function planFlash(s:Session,id:string,target:Pt):boolean{
@@ -1582,9 +1573,9 @@ export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<0)return false;
   const start=index>0?a.plan[index-1].p:a.p;
-  const approached=doorReachable(start,door)?clone(start):doorApproach(start,door,sessionWorldGeometry(s));
-  if(!approached||!sessionWorldGeometry(s).passable(approached)||
-     !sessionWorldGeometry(s).route(start,approached).length)return false;
+  const approached=doorReachable(start,door)?clone(start):knownDoorApproach(s,start,door);
+  if(!approached||!intelPassable(approached,s.intel,SQUEEZE_RADIUS)||
+     !routeWithSqueezeIntel(s.intel,start,approached).length)return false;
   const before=a.plan.slice(0,index);
   const opened=before.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??'');
@@ -1675,11 +1666,11 @@ export function toggleWeaponLight(s:Session,id:string):boolean{
 }
 export function toggleContactRule(s:Session,id:string){
   const a=party(s,id);if(!a||!canEdit(s))return false;
-  a.haltOnContact=!a.haltOnContact;return true;
+  return edit(s,a,()=>{a.haltOnContact=!a.haltOnContact;});
 }
 export function posture(s:Session,id:string){
   const a=party(s,id);if(!a||!canEdit(s))return false;
-  a.posture=a.posture==='stand'?'crouch':'stand';return true;
+  return edit(s,a,()=>{a.posture=a.posture==='stand'?'crouch':'stand';});
 }
 export function toggling(s:Session){
   if(s.phase==='planning'){
@@ -1688,6 +1679,7 @@ export function toggling(s:Session){
     passageSchedules.delete(s);
     ensurePassageSchedule(s);
     s.passageLeases={};
+    sealPlanHistoryForExecution(s);
     s.phase='running';s.started=true;
   }else if(s.phase==='running'){s.phase='planning';s.timesPaused++;}
 }

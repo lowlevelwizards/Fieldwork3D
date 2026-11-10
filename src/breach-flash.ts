@@ -4,7 +4,7 @@ import {doorBlocksRay,WALLS,segmentsCross,doorCenter,type Pt,type Door} from './
 export type ThrowPath={points:Pt[];mode:'direct'|'doorway'|'bank';valid:boolean;
   reason?:string;via?:Pt};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
-const blocked=(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry)=>{
+const blocked=(from:Pt,to:Pt,doors:Door[],world?:Pick<SessionWorldGeometry,'walls'>)=>{
   const seg={a:from,b:to};
   return (world?.walls??WALLS).some(w=>segmentsCross(seg,w))||
     doorBlocksRay(doors,seg);
@@ -13,7 +13,7 @@ const blocked=(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry)=>{
  * their teammate without demanding pixel-perfect doorframe placement. Every
  * release and doorway segment is still validated against solid geometry. */
 export function validateThrow(from:Pt,to:Pt,doors:Door[],
-  plannedOpen:string[]=[],world?:SessionWorldGeometry):ThrowPath{
+  plannedOpen:string[]=[],world?:Pick<SessionWorldGeometry,'walls'>):ThrowPath{
   const range=dist(from,to);
   if(range<12||range>215)return {points:[from,to],mode:'direct',
     valid:false,reason:'OUT OF THROW RANGE'};
