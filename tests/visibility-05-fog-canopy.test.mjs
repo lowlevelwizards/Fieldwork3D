@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {paintFogMask} from '../src/breach-fog-mask.ts';
+import {paintFogMask,UNKNOWN_FOG_COLOR} from '../src/breach-fog-mask.ts';
 function fakeContext(){
  const calls=[],ctx={
   canvas:{width:120,height:120},filter:'none',
@@ -27,7 +27,8 @@ test('VIS-05: intersecting building room modules remain dark in Exterior Known',
    ]}
  };
  paintFogMask(ctx,s);
- const cover=calls.filter(c=>c[1]==='source-over'&&c[2]==='#000'&&c[5]===55);
+ const cover=calls.filter(c=>c[1]==='source-over'&&
+  c[2]===UNKNOWN_FOG_COLOR&&c[5]===55);
  assert.ok(cover.some(c=>c[3]===0&&c[4]===0));
  assert.ok(cover.some(c=>c[3]===35&&c[4]===35));
  assert.ok(calls.some(c=>c[1]==='destination-out'&&c[3]<0));

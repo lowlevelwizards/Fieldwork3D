@@ -30,7 +30,9 @@ test('intel modes only reveal legitimately briefed exterior openings',()=>{
 });
 test('rendered architectural opening groups are explicitly gated',()=>{
  const code=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
- assert.match(code,/this\.architecturalOpenings\.push\(\{obj:group,opening\}\)/);
+ const builder=readFileSync(new URL(
+   '../src/rendering/breach-site-openings-builder.ts',import.meta.url),'utf8');
+ assert.match(builder,/host\.registerArch\(opening,group\)/);
  assert.match(code,/opening\.obj\.visible=architecturalOpeningKnown/);
 });
 test('fog texture is supersampled but capped for mobile',()=>{
@@ -39,10 +41,13 @@ test('fog texture is supersampled but capped for mobile',()=>{
  assert.ok(large.width<=MAX_FOG_TEXTURE_EDGE);
  assert.ok(large.height<=MAX_FOG_TEXTURE_EDGE);
 });
-test('remembered fog cells feather as a union rather than blurred rectangles',()=>{
+test('remembered fog cells smooth within exact exploration boundaries without disclosure leaks',()=>{
  const code=readFileSync(new URL('../src/breach-fog-mask.ts',import.meta.url),'utf8');
  assert.match(code,/ctx\.rect\(p\.x,p\.y,20,20\)/);
- assert.match(code,/if\(microCount\)ctx\.fill\(\)/);
+ assert.match(code,/forEachRememberedMicroCell\(s\.seenGround,bounds/);
+ assert.match(code,/appendSmoothFogContours\(ctx,contours\)/);
+ assert.match(code,/ctx\.clip\(\)/);
+ assert.match(code,/if\(!smoothed\)\{/);
  assert.match(code,/if\(polygonCount\)ctx\.fill\(\)/);
  assert.doesNotMatch(code,/ctx\.filter='blur\(1\.5px\)'/);
 });

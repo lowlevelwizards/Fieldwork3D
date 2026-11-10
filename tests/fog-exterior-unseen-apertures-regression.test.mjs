@@ -74,8 +74,12 @@ test('3D façade foreground stays while the interior fog no longer has slots',()
  const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  const fog=readFileSync(new URL('../src/breach-fog-mask.ts',import.meta.url),'utf8');
  assert.match(scene,/const knownFacade=wall.exterior/);
- assert.match(scene,/promoteFacadeDetails\(frame\);/);
- assert.match(scene,/promoteFacadeDetails\(group\);/);
+ const openings=readFileSync(new URL(
+   '../src/rendering/breach-site-openings-builder.ts',import.meta.url),'utf8');
+ assert.match(openings,/host\.promoteFacadeDetails\(frame\);/);
+ assert.match(openings,/host\.promoteFacadeDetails\(leaf\);/);
+ assert.match(openings,/if\(publicWindow\)\{[\s\S]*?host\.promoteFacadeDetails\(group\)/);
+ assert.match(openings,/publicWindow=!opening\.interior&&accessibleExteriorWall\(site,edge\)/);
  assert.match(scene,/this\.exteriorKnownFog\.visible=clippedExteriorFog/);
  assert.doesNotMatch(fog,/ctx\.lineWidth=11|ctx\.stroke\(\)/);
 });
