@@ -2813,3 +2813,10 @@ body.replaying .replay-follow-status[data-grade]::after{
  padding:9px 12px;background:#b8b393;border:1px solid #d8cfaa;
  border-radius:5px;color:#21322c;text-decoration:none;
  font:700 12px var(--ui-display)}
+
+/* Opt-in 3D, no animation RAF: historical equipment only, no invented hits. */
+.fw-after-model{display:grid;place-items:center;background:#192b26;
+  min-height:240px;border:1px solid #536d60;border-radius:6px;
+  padding:2px;color:#acbcaf;text-align:center;font:700 12px var(--ui-display)}
+.fw-after-model-canvas{display:block;max-width:100%;border-radius:4px;cursor:grab}
+.fw-after-model-canvas:active{cursor:grabbing}

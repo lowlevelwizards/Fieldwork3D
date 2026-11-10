@@ -7,12 +7,17 @@ import type {MissionRecorder} from '../breach-replay.ts';
 import {renderCombatReport} from './breach-after-action-combat.ts';
 import {renderAfterActionHighlights} from './breach-after-action-highlights.ts';
 import {replayHighlightMoments} from '../breach-highlight-frames.ts';
+let activeModel:HTMLElement|null=null;
+let stopModel:(()=>void)|null=null;
+let modelRequest=0;
+function disposeModel(){modelRequest++;stopModel?.();stopModel=null;activeModel=null;}
 
 export type AfterActionTab='overview'|'squad'|'combat'|'highlights'|'timeline';
 type State={
   recorder:MissionRecorder;report:AfterActionReport;tab:AfterActionTab;
   selectedOperator:string|null;selectedContact:string|null;
   selectedShotId:number|null;contactSide:'red'|'blue';paperBack:boolean;
+  inspectionMode:'paper'|'3d';
   scroll:Partial<Record<AfterActionTab,number>>;
   showIntel:boolean;
 };
@@ -115,7 +120,8 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
  if(!state||state.recorder!==rec){
    state={recorder:rec,report:buildAfterActionReport(rec),tab:'overview',
      selectedOperator:null,selectedContact:null,selectedShotId:null,
-     contactSide:'red',paperBack:false,scroll:{},showIntel:options.showIntel};
+     contactSide:'red',paperBack:false,inspectionMode:'paper',
+     scroll:{},showIntel:options.showIntel};
    owners.set(root,state);
    for(const tabButton of safeNav.querySelectorAll<HTMLButtonElement>('[data-after-tab]')){
      tabButton.addEventListener('click',()=>{
@@ -144,13 +150,14 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    else if(s.tab==='squad')screen=squad(s,choose);
    else if(s.tab==='combat')screen=renderCombatReport(s.report,{
      selectedContact:s.selectedContact,selectedShotId:s.selectedShotId,
-     side:s.contactSide,back:s.paperBack
+     side:s.contactSide,back:s.paperBack,inspectionMode:s.inspectionMode
    },{
      chooseContact:(id)=>{s.selectedContact=id;s.selectedShotId=null;draw();},
      chooseShot:(id)=>{s.selectedShotId=id;draw();},
      chooseSide:(side)=>{s.contactSide=side;s.selectedContact=null;
        s.selectedShotId=null;draw();},
      chooseView:(back)=>{s.paperBack=back;draw();},
+     chooseMode:(mode)=>{s.inspectionMode=mode;draw();},
      viewReplay:(contact,shot)=>{
        root.dispatchEvent(new CustomEvent('fw-after-action-replay',{
          bubbles:true,detail:{surface:'combat',contactId:contact.id,
@@ -174,7 +181,22 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      screen.append(make('h2','fw-after-heading',s.tab.toUpperCase()),
        make('p','fw-after-muted','Detailed encounter review will appear here.'));
    }
+   disposeModel();
    safeContent.replaceChildren(screen);
+   const modelHost=screen.querySelector<HTMLElement>('[data-after-model]');
+   if(modelHost){
+     const chosen=s.recorder.manifest?.actors.find(a=>
+       a.id===s.selectedContact);
+     if(chosen){
+       const token=++modelRequest;
+       activeModel=modelHost;
+       void import('./breach-after-action-model.ts').then(module=>{
+         if(modelRequest!==token||!modelHost.isConnected||activeModel!==modelHost)return;
+         stopModel=module.mountAfterActionModel(modelHost,chosen);
+       }).catch(()=>{if(modelHost.isConnected)
+         modelHost.textContent='3D VIEW UNAVAILABLE ON THIS DEVICE';});
+     }
+   }
    safeContent.scrollTop=s.scroll[s.tab]??0;
  }
  draw();

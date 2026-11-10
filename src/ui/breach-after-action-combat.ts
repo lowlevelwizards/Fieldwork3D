@@ -5,10 +5,11 @@ import type {AfterActionReport,ContactAfterAction,ReportShot}
  from '../breach-after-action-report.ts';
 import {renderHitPaperDoll} from './breach-hit-paper-doll.ts';
 type View={selectedContact:string|null;selectedShotId:number|null;
- side:'red'|'blue';back:boolean};
+ side:'red'|'blue';back:boolean;inspectionMode:'paper'|'3d'};
 type Actions={
  chooseContact:(id:string|null)=>void;chooseShot:(id:number|null)=>void;
  chooseSide:(side:'red'|'blue')=>void;chooseView:(back:boolean)=>void;
+ chooseMode:(mode:'paper'|'3d')=>void;
  viewReplay:(contact:ContactAfterAction,shot:ReportShot|null)=>void;
 };
 const node=(tag:string,cls='',text?:string)=>{
@@ -67,12 +68,29 @@ export function renderCombatReport(
      ' · '+contact.shots.length+' RECORDED TARGETED SHOTS'));
  const holder=node('div','fw-after-combat-split');
  const left=node('div','fw-after-panel');
+ const modeButtons=node('div','fw-after-combat-switch');
+ for(const mode of ['paper','3d'] as const){
+   const b=btn(mode==='paper'?'2D PAPER DOLL':'3D MODEL',
+     ()=>act.chooseMode(mode),'fw-after-link');
+   b.setAttribute('aria-pressed',String(view.inspectionMode===mode));
+   modeButtons.append(b);
+ }
+ left.append(modeButtons);
  const toggle=node('div','fw-after-combat-switch');
  for(const back of [false,true]){
    const b=btn(back?'BACK':'FRONT',()=>act.chooseView(back),'fw-after-link');
    b.setAttribute('aria-pressed',String(view.back===back));toggle.append(b);
  }
- left.append(toggle,renderHitPaperDoll(contact,view.selectedShotId,view.back));
+ if(view.inspectionMode==='paper')
+   left.append(toggle,renderHitPaperDoll(contact,view.selectedShotId,view.back));
+ else{
+   const model=node('div','fw-after-model');
+   model.dataset.afterModel=contact.id;
+   model.textContent='LOADING HISTORICAL CHARACTER RIG…';
+   left.append(model,node('p','fw-after-muted',
+     'ROTATE TO INSPECT THE HISTORICAL UNIFORM AND EQUIPMENT. '+
+     'EXACT ANATOMICAL MARKERS ARE NOT RECORDED FOR THESE SHOTS.'));
+ }
  if(contact.shots.length){
    const selected=contact.shots.find(s=>s.id===view.selectedShotId)??null;
    left.append(btn('VIEW REPLAY · LOOPED BODYCAM',()=>act.viewReplay(contact,selected)));
