@@ -1,3 +1,4 @@
+import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** Breach 063: deliberate, bounded corner-clearing arcs.
  * Arc geometry is always validated against the same collision walls as live movement.
  */
@@ -18,17 +19,17 @@ export const pieArc=(start:Pt,pivot:Pt,side:PieSide,degrees=PIE_DEGREES):Pt[]=>{
     return {x:pivot.x+Math.cos(a)*r,y:pivot.y+Math.sin(a)*r};
   });
 };
-export function validPieArc(start:Pt,pivot:Pt,side:PieSide,doors:Door[],degrees=PIE_DEGREES):Pt[]{
+export function validPieArc(start:Pt,pivot:Pt,side:PieSide,doors:Door[],degrees=PIE_DEGREES,world?:SessionWorldGeometry):Pt[]{
   const points=pieArc(start,pivot,side,degrees);
-  if(!points.length||!passable(start))return [];
+  if(!points.length||!(world?world.passable(start):passable(start)))return [];
   let last=start;
   for(const p of points){
-    if(!passable(p))return [];
+    if(!(world?world.passable(p):passable(p)))return [];
     const path={a:last,b:p};
-    if(WALLS.some(w=>segmentsCross(path,w)))return [];
+    if((world?.walls??WALLS).some(w=>segmentsCross(path,w)))return [];
     if(doors.some(door=>!door.open&&segmentsCross(path,door)))return [];
     // This also verifies the same motor's local A* traversal is available.
-    if(!route(last,p).length)return [];
+    if(!(world?world.route(last,p):route(last,p)).length)return [];
     last=p;
   }
   return points;
