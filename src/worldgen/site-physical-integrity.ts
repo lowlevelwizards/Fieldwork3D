@@ -26,7 +26,6 @@ export type PhysicalIntegrityReport={
  warnings:PhysicalIntegrityFinding[];
 };
 const finite=(p:Pt)=>Number.isFinite(p.x)&&Number.isFinite(p.y);
-const point=(p:Pt)=>p.x.toFixed(2)+','+p.y.toFixed(2);
 const length=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const hasObstructingWall=(p:Pt,walls:readonly Segment[])=>
  walls.some(w=>pointToSegment(p,w)<1.1);
