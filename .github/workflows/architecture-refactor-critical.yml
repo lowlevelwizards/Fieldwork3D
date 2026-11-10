@@ -22,9 +22,13 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Curated authoritative scenario and architecture regressions
         run: node scripts/verification/breach-critical-suite.mjs
+      - name: Stage 2 full generated-site physical-integrity matrix (four orientations, eleven archetypes, five scales)
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage2-') }}
+        run: node --experimental-strip-types scripts/audit-roadmap2-physical-integrity.mjs 44 all
       - name: Architecture dependency boundary check
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production TypeScript and asset build
+        if: ${{ always() }}
         run: npm run build
       - name: Verify previous Pages build is successfully served
         env:

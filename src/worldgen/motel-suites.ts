@@ -31,7 +31,10 @@ export function partitionMotelGuestUnits(site:Site):Site{
   rooms.push(sleep);
   const ids=[sleepId,bathId];
   if(!compact){
+   // A shallow side bay belongs to the sleeping room's L-shaped floor.
+   // It is not a second, independently occupiable guest bedroom.
    const side:Room={...room,id:room.id+'-SIDE',unitId,
+    zoneId:sleep.zoneId??sleep.id,kind:'hall',purpose:'closet',
     x:room.x+bathWidth,y:room.y,w:room.w-bathWidth,h:bathDepth};
    rooms.push(side);
    ids.push(side.id);

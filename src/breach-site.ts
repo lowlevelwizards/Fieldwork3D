@@ -92,6 +92,7 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    {...encounterContext,incidentId:chooseGenerationIncidentIntent(
      seed,kind,mission,encounterContext.incidentId)??undefined}:
    {...encounterContext,incidentId:undefined};
+ let failures:string[]=[];
  let best:Site|undefined;
  let bestGrade:ReturnType<typeof measureSiteCompleteness>|undefined;
  let firstSuccess=-1;
@@ -133,8 +134,13 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    if(grade.score===0&&!sampleDiversity)return candidate;
    if(sampleDiversity&&firstSuccess>=0&&attempt===firstSuccess+1)
      return best!;
-  }catch{/* Retry a different authored physical grammar when disconnected. */}
+  }catch(error){
+   // Preserve useful failure evidence for offline diagnosis. Retry decisions
+   // remain unchanged; do not silently hide why all variants failed.
+   failures.push(error instanceof Error?error.message:String(error));
+  }
  }
  if(best)return best;
- throw new Error('Cannot generate connected '+kind+' site for seed '+seed);
+ throw new Error('Cannot generate connected '+kind+' site for seed '+seed+
+  (failures.length?' (last: '+failures.at(-1)+')':''));
 }

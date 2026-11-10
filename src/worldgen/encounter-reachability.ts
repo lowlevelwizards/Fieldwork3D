@@ -2,7 +2,7 @@
  * capacity limits established by encounter placement to salvage a bad point.
  */
 import type {Site,Room} from '../breach-site.ts';
-import {activeSite,activateSite,passable,route,type Pt} from '../breach-core.ts';
+import {withTemporarySiteGeometry,passable,route,type Pt} from '../breach-core.ts';
 import type {EncounterActorSpec} from './encounter-types.ts';
 import {clearOfInsertion,roomOccupancyCapacity} from './encounter-spawn-safety.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -15,14 +15,12 @@ export function stabilizeEncounterReachability(site:Site,
  // The placement solver has already routed candidates on compact maps.
  if(site.scale!=='expanded'&&site.scale!=='large')
   return {actors:actors.map(a=>({...a})),rehomed:0};
- const previous=activeSite();
  const occupied:{p:Pt;room?:Room}[]=[];
  const placed:EncounterActorSpec[]=[];
  const start=site.spawn[0];
  const reachable=new Map<string,boolean>();
  let rehomed=0;
- activateSite(site);
- try{
+ withTemporarySiteGeometry(site,()=>{
   const valid=(p:Pt,outdoor:boolean)=>{
    if(!clearOfInsertion(site,p,outdoor)||!passable(p))return false;
    const key=p.x.toFixed(2)+':'+p.y.toFixed(2);
@@ -66,7 +64,7 @@ export function stabilizeEncounterReachability(site:Site,
      roomId:room?.id,zoneId:room?(room.zoneId??room.id):actor.zoneId,
      ...(p!==actor.position?{routine:undefined}:{})});
   }
- }finally{activateSite(previous);}
+ });
  const ids=new Map(placed.map(a=>[a.id,a]));
  return {actors:actors.flatMap(a=>ids.has(a.id)?[ids.get(a.id)!]:[]),
    rehomed};

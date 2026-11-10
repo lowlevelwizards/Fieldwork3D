@@ -3,7 +3,7 @@
  * a crowd forms. Route checks are deferred to selected rooms (bounded on mobile).
  */
 import type {Site,Room} from '../breach-site.ts';
-import {activeSite,activateSite,passable,route,pointToSegment,type Pt}
+import {withTemporarySiteGeometry,passable,route,pointToSegment,type Pt}
  from '../breach-core.ts';
 import type {EncounterActorSpec,EncounterGroup,EncounterProfile}
   from './encounter-types.ts';
@@ -67,9 +67,7 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
   .map(r=>({r,k:rng()})).sort((a,b)=>a.k-b.k)
   .slice(0,22).map(x=>x.r);
  const anchors:Anchor[]=[];
- const previous=activeSite();
- activateSite(site);
- try{
+ withTemporarySiteGeometry(site,()=>{
   for(const room of rooms){
    // Only the prepared encounter profile ranks cover-bearing positions.
    // All other profiles retain ordinary everyday activity placement.
@@ -89,7 +87,7 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
    anchors.push({room,p:anchor,capacity:roomOccupancyCapacity(room,site.cover),
      choices});
   }
- }finally{activateSite(previous);}
+ });
  const verified=new Map<string,boolean>();
  const routeLimit=Math.min(14,Math.max(5,Math.ceil(planned.length*1.5)));
  let routeChecks=0;
@@ -98,12 +96,10 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
   if(known!==undefined)return known;
   if(routeChecks>=routeLimit)return false;
   routeChecks++;
-  const prior=activeSite();
-  activateSite(site);
-  try{
-   const ok=!!route(site.spawn[0],anchor.p).length;
-   verified.set(anchor.room.id,ok);return ok;
-  }finally{activateSite(prior);}
+  const ok=withTemporarySiteGeometry(site,()=>
+    !!route(site.spawn[0],anchor.p).length);
+  verified.set(anchor.room.id,ok);
+  return ok;
  };
  const placed=new Map<string,EncounterActorSpec>();
  const used=new Map<string,number>();

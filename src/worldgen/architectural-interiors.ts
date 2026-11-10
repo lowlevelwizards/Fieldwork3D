@@ -4,11 +4,22 @@
  */
 import type {Site} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
+import {circulationReservations,overlapsCirculationReservation}
+ from './circulation-reservations.ts';
 const lowUses=new Set(['living','dining','sales','lobby','office','waiting','reception','cubicles']);
 const columnUses=new Set(['bay','loading','storage','aisle','workshop','equipment','service']);
 const near=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function addArchitecturalInteriors(site:Site,seed:number):Site{
  const cover=site.cover.slice();
+ // Architectural half-walls are solid, not decorative. Office cubicle
+ // seams need a continuous through-lane; apartment rooms also need an actual
+ // operator approach to every open arch (there is no hinged Door to keep
+ // such a passage clear). Ordinary furnishings already honor these lanes.
+ // Limit the tighter structural rule to the affected building programs so
+ // unrelated seeded missions retain their established geometry.
+ const protectedWalkLanes=['office','apartment'].includes(site.archetype??'')?
+  circulationReservations(site).filter(l=>
+    site.archetype==='apartment'||l.kind==='through-route'):[];
  const critical=[...site.spawn,...site.enemies,site.entrance,site.objective,site.extract];
  let lowCount=0,columnCount=0;
  for(const [i,room] of site.rooms.entries()){
@@ -33,6 +44,7 @@ export function addArchitecturalInteriors(site:Site,seed:number):Site{
     fixture:isLow?'half-wall':'support-column',material:isLow?'brick':'concrete'};
    if(x-w/2<=room.x+10||x+w/2>=room.x+room.w-10||
       y-h/2<=room.y+10||y+h/2>=room.y+room.h-10)continue;
+   if(overlapsCirculationReservation(obj,protectedWalkLanes,room.id))continue;
    if(site.doors.some(d=>near({x,y},{x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<54))continue;
    if((site.windows??[]).some(p=>near({x,y},{x:p.x,y:p.y})<35))continue;
    if(critical.some(p=>Math.abs(p.x-x)<w/2+22&&Math.abs(p.y-y)<h/2+22))continue;

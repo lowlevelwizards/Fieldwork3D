@@ -217,6 +217,8 @@ function perimeterPositions(room:Room,w:number,h:number):Pt[]{
 export function furnishRooms(site:Site,seed:number):Site{
  const rng=seeded(seed^0x4f012f32);
  const reservedCirculation=circulationReservations(site);
+ const mandatoryThroughRoutes=reservedCirculation.filter(r=>
+   r.kind==='through-route'&&['apartment','townhouse','motel','office'].includes(site.archetype??''));
  // Preserve architectural sills and outdoor fixtures while furnishing interiors.
  const output:Obstacle[]=[...site.cover];
  const furnishingIssues:NonNullable<Site['furnishingIssues']>=[];
@@ -409,8 +411,11 @@ export function furnishRooms(site:Site,seed:number):Site{
       room,[...output,...placed],w*h))continue;
     // Required groups retain access to this space; reject optional
     // extras that would eat an everyday pedestrian approach.
-    if(i>=essential.length&&overlapsCirculationReservation(
-      candidate,reservedCirculation,room.id))continue;
+    // Mandatory fixtures may approach an entry wall but cannot sever the
+    // only walking lane between two openings.
+    if(overlapsCirculationReservation(candidate,
+      i<essential.length?mandatoryThroughRoutes:reservedCirculation,room.id))
+      continue;
     if(site.doors.some(d=>Math.hypot(p.x-(d.a.x+d.b.x)/2,p.y-(d.a.y+d.b.y)/2)<Math.max(compact?39:54,Math.max(w,h)/2+(compact?19:30))))continue;
     if((site.openings??[]).some(o=>Math.hypot(p.x-(o.a.x+o.b.x)/2,
       p.y-(o.a.y+o.b.y)/2)<Math.max(65,Math.max(w,h)/2+32)))continue;

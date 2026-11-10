@@ -4,13 +4,14 @@
  * No path search or mutable global state is involved.
  */
 import type {Site,Room} from '../breach-site.ts';
-import type {Obstacle,Pt} from '../breach-core.ts';
 import {functionalSpacePlan} from './functional-space.ts';
+import {pointToSegment,type Obstacle,type Pt} from '../breach-core.ts';
 export type CirculationReservation={
  roomId:string;kind:'door-approach'|'through-route';
  from:Pt;to:Pt;radius:number;
 };
-type SiteGeometry=Pick<Site,'rooms'|'doors'|'openings'>;
+type SiteGeometry=Pick<Site,'rooms'|'doors'|'openings'> &
+ Partial<Pick<Site,'archetype'|'walls'>>;
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const inBounds=(p:Pt,r:Room,margin=1)=>p.x>=r.x+margin&&
  p.x<=r.x+r.w-margin&&p.y>=r.y+margin&&p.y<=r.y+r.h-margin;
@@ -26,9 +27,43 @@ function roomPortal(room:Room,mid:Pt):Pt|null{
  }
  return null;
 }
+/** The compiler emits no Door for a same-zone, open-plan room seam.
+ * These are still real passages: without a reservation, the first bank of
+ * desks can wall off the adjoining cubicle cells from the rest of the office.
+ * Only synthesize a seam when its midpoint has no authoritative wall.
+ */
+function openPlanSeams(site:SiteGeometry):{a:Pt;b:Pt}[]{
+ if(!['office','apartment','townhouse'].includes(site.archetype??'')||
+   !site.walls)return [];
+ const rooms=site.rooms.filter(r=>r.kind==='room'&&
+   r.zoneId?.startsWith('ZONE-'));
+ const seams:{a:Pt;b:Pt}[]=[];
+ const clear=(p:Pt)=>!site.walls!.some(w=>pointToSegment(p,w)<2);
+ for(let i=0;i<rooms.length;i++)for(let j=i+1;j<rooms.length;j++){
+  const a=rooms[i],b=rooms[j];
+  if(a.zoneId!==b.zoneId)continue;
+  let midpoint:Pt|undefined,along:'x'|'y'|undefined,span=0;
+  if(Math.abs(a.x+a.w-b.x)<.1||Math.abs(b.x+b.w-a.x)<.1){
+   const lo=Math.max(a.y,b.y),hi=Math.min(a.y+a.h,b.y+b.h);
+   span=hi-lo;midpoint={x:Math.abs(a.x+a.w-b.x)<.1?b.x:a.x,
+    y:(lo+hi)/2};along='y';
+  }else if(Math.abs(a.y+a.h-b.y)<.1||Math.abs(b.y+b.h-a.y)<.1){
+   const lo=Math.max(a.x,b.x),hi=Math.min(a.x+a.w,b.x+b.w);
+   span=hi-lo;midpoint={x:(lo+hi)/2,
+    y:Math.abs(a.y+a.h-b.y)<.1?b.y:a.y};along='x';
+  }
+  if(!midpoint||!along||span<48||!clear(midpoint))continue;
+  const half=Math.min(24,span/4);
+  seams.push({a:{...midpoint,[along]:midpoint[along]-half},
+   b:{...midpoint,[along]:midpoint[along]+half}});
+ }
+ return seams;
+}
 export function circulationReservations(site:SiteGeometry):CirculationReservation[]{
  const result:CirculationReservation[]=[];
- const portals=[...site.doors,...(site.openings??[])];
+ const realPortals=[...site.doors,...(site.openings??[])];
+ const seams=openPlanSeams(site);
+ const portals=[...realPortals,...seams];
  for(const room of site.rooms){
   if(room.kind==='hall')continue;
   const access:Pt[]=[];
@@ -38,14 +73,28 @@ export function circulationReservations(site:SiteGeometry):CirculationReservatio
    const inside=roomPortal(room,mid);
    if(!inside||!inBounds(inside,room))continue;
    access.push(inside);
+   const from={x:clamp(mid.x,room.x+4,room.x+room.w-4),
+    y:clamp(mid.y,room.y+4,room.y+room.h-4)};
    result.push({roomId:room.id,kind:'door-approach',
-    from:{x:clamp(mid.x,room.x+4,room.x+room.w-4),
-      y:clamp(mid.y,room.y+4,room.y+room.h-4)},
-    to:inside,radius:17});
+    from,to:inside,radius:17});
+   // Keep the opening usable even when a room has only one connection.
+   // Unlike ordinary door-approach guidance, this reservation also applies
+   // to mandatory desks/fixtures; it is actual continuous open floor.
+   if(seams.includes(portal))result.push({roomId:room.id,
+    kind:'through-route',from,to:inside,radius:17});
   }
   // A primary public-through room should not become an accidental solid
   // storage maze. A narrow center spine is an advisory optional-prop budget.
-  if(access.length>=2&&functionalSpacePlan(room).routePriority===3){
+  // Keep the established primary-public-flow contracts unchanged, while
+  // protecting new bedroom-to-service routes only in the family types where
+  // the physical audit uncovered otherwise sealed interiors. Avoid shifting
+  // unrelated seeded garage/clinic/combat scenarios (Stage 1 goldens).
+  const extra=(site.archetype==='apartment'&&
+    ['kitchen','living'].includes(room.purpose??''))||
+   (site.archetype==='townhouse'&&room.purpose==='living')||
+   (site.archetype==='office'&&['office','cubicles','meeting'].includes(room.purpose??''))||
+   (site.archetype==='motel'&&room.purpose==='guest');
+  if(access.length>=2&&(functionalSpacePlan(room).routePriority===3||extra)){
    const center={x:room.x+room.w/2,y:room.y+room.h/2};
    for(const from of access)result.push({
     roomId:room.id,kind:'through-route',from,to:center,radius:12});
