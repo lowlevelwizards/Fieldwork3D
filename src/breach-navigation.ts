@@ -1,3 +1,4 @@
+import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** Deterministic actor body clearance and swept collision.
  * An OPENING door is a pushable obstacle, not a rigid wall. A closed leaf
  * still blocks entry, but an actor already inside its capsule may escape.
@@ -9,19 +10,19 @@ const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const leafGap=(p:Pt,d:Door)=>pointToSegment(p,doorLeafSegment(d));
 /** Open leaves are still solid. The door motor can swing them out of the
  * way, but a body cannot ghost through a panel at an intermediate angle. */
-export function bodyClear(p:Pt,doors:Door[],radius=OPERATOR_RADIUS){
-  if(!passable(p,radius))return false;
+export function bodyClear(p:Pt,doors:Door[],radius=OPERATOR_RADIUS,world?:SessionWorldGeometry){
+  if(!(world?world.passable(p,radius):passable(p,radius)))return false;
   return !doors.some(door=>leafGap(p,door)<radius+1);
 }
 export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
-  radius=OPERATOR_RADIUS){
+  radius=OPERATOR_RADIUS,world?:SessionWorldGeometry){
   const steps=Math.max(1,Math.ceil(distance(from,to)/4));
   const trapped=doors.filter(door=>leafGap(from,door)<radius+1);
   for(let i=1;i<=steps;i++){
     const f=i/steps;
     const at={x:from.x+(to.x-from.x)*f,
       y:from.y+(to.y-from.y)*f};
-    if(!passable(at,radius))return false;
+    if(!(world?world.passable(at,radius):passable(at,radius)))return false;
     for(const door of doors){
       const gap=leafGap(at,door);
       if(gap>=radius+1)continue;
@@ -44,7 +45,7 @@ export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
  * penetration, or opposing-actor push. Authored orders remain intact.
  */
 export function escapeOpenDoorOverlap(from:Pt,goal:Pt,doors:Door[],
-  maxStep=1.5):Pt|null{
+  maxStep=1.5,world?:SessionWorldGeometry):Pt|null{
   const trapped=doors.filter(door=>
     door.kind!=='sliding'&&door.kind!=='shutter'&&
     leafGap(from,door)<OPERATOR_RADIUS+1-.01);
@@ -59,7 +60,7 @@ export function escapeOpenDoorOverlap(from:Pt,goal:Pt,doors:Door[],
   for(const heading of angles){
     const candidate={x:from.x+Math.cos(heading)*step,
       y:from.y+Math.sin(heading)*step};
-    if(!sweptBodyClear(from,candidate,doors))continue;
+    if(!sweptBodyClear(from,candidate,doors,OPERATOR_RADIUS,world))continue;
     const gains=trapped.map(door=>leafGap(candidate,door)-leafGap(from,door));
     if(gains.some(gain=>gain<-.001))continue;
     const gain=Math.min(...gains);
@@ -76,17 +77,17 @@ export function escapeOpenDoorOverlap(from:Pt,goal:Pt,doors:Door[],
 /** Foot contacts have independent geometry from actor capsule traffic.
  * Even a pushable open door cannot accept a planted foot inside its leaf.
  * This is presentation only; it never changes the authoritative route. */
-export function footAnchorClear(p:Pt,doors:readonly Door[]):boolean{
-  return passable(p,2.25)&&!doors.some(door=>
+export function footAnchorClear(p:Pt,doors:readonly Door[],world?:SessionWorldGeometry):boolean{
+  return (world?world.passable(p,2.25):passable(p,2.25))&&!doors.some(door=>
     pointToSegment(p,doorLeafSegment(door))<3.3);
 }
 /** A foot cannot stay planted across a wall or swing through a door
  * just because its endpoint is on valid floor. */
 export function footAnchorReachable(from:Pt,p:Pt,
-  doors:readonly Door[]):boolean{
-  if(!footAnchorClear(p,doors))return false;
+  doors:readonly Door[],world?:SessionWorldGeometry):boolean{
+  if(!footAnchorClear(p,doors,world))return false;
   const link={a:from,b:p};
-  return !WALLS.some(w=>segmentsCross(link,w))&&
+  return !(world?.walls??WALLS).some(w=>segmentsCross(link,w))&&
     !doors.some(door=>segmentsCross(link,doorLeafSegment(door)));
 }
 
@@ -101,7 +102,7 @@ export const squeezeFacing=(travelYaw:number)=>travelYaw-Math.PI/2;
 /** Genuine tight gaps press from BOTH sides. A single table corner or wall
  * graze should trigger wall glide / corner slide / route repair, not make
  * the operator randomly turn their shoulders sideways. */
-export function twoSidedSqueezePressure(from:Pt,to:Pt,doors:Door[]):boolean{
+export function twoSidedSqueezePressure(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry):boolean{
  const dx=to.x-from.x,dy=to.y-from.y;
  const len=Math.hypot(dx,dy);
  if(len<.05)return false;
@@ -110,19 +111,19 @@ export function twoSidedSqueezePressure(from:Pt,to:Pt,doors:Door[]):boolean{
  const lateral=OPERATOR_RADIUS+2;
  const left={x:mid.x+nx*lateral,y:mid.y+ny*lateral};
  const right={x:mid.x-nx*lateral,y:mid.y-ny*lateral};
- return !bodyClear(left,doors)&&!bodyClear(right,doors);
+ return !bodyClear(left,doors,OPERATOR_RADIUS,world)&&!bodyClear(right,doors,OPERATOR_RADIUS,world);
 }
 /** Once shoulders are turned, remain narrow until there is real full-body
  * space both here and immediately ahead. Without a lookahead, the model
  * flickers between normal and squeeze at consecutive narrow grid cells.
  * This never grants movement: the next tick still checks its own sweep. */
-export function squeezeExitClear(from:Pt,to:Pt,doors:Door[],lead=12){
+export function squeezeExitClear(from:Pt,to:Pt,doors:Door[],lead=12,world?:SessionWorldGeometry){
  const dx=to.x-from.x,dy=to.y-from.y;
  const length=Math.hypot(dx,dy);
  if(length<.04)return false;
  const ahead={x:to.x+dx/length*lead,y:to.y+dy/length*lead};
- return bodyClear(from,doors)&&bodyClear(to,doors)&&
-   sweptBodyClear(from,ahead,doors);
+ return bodyClear(from,doors,OPERATOR_RADIUS,world)&&bodyClear(to,doors,OPERATOR_RADIUS,world)&&
+   sweptBodyClear(from,ahead,doors,OPERATOR_RADIUS,world);
 }
 export function profileSamples(p:Pt,heading:number,
   profile:BodyProfile){
@@ -135,13 +136,13 @@ export function profileSamples(p:Pt,heading:number,
   ];
 }
 export function profileClear(p:Pt,doors:Door[],heading:number,
-  profile:BodyProfile='normal'){
+  profile:BodyProfile='normal',world?:SessionWorldGeometry){
   return profileSamples(p,heading,profile).every(sample=>
-    bodyClear(sample.position,doors,sample.radius));
+    bodyClear(sample.position,doors,sample.radius,world));
 }
 export function sweptProfileClear(from:Pt,to:Pt,doors:Door[],
-  heading:number,profile:BodyProfile='normal'){
-  if(profile==='normal')return sweptBodyClear(from,to,doors);
+  heading:number,profile:BodyProfile='normal',world?:SessionWorldGeometry){
+  if(profile==='normal')return sweptBodyClear(from,to,doors,OPERATOR_RADIUS,world);
   const steps=Math.max(1,Math.ceil(distance(from,to)/2.5));
   for(let i=1;i<=steps;i++){
     const t=i/steps,at={x:from.x+(to.x-from.x)*t,
@@ -153,7 +154,7 @@ export function sweptProfileClear(from:Pt,to:Pt,doors:Door[],
     const current=profileSamples(at,heading,'squeeze');
     for(let j=0;j<current.length;j++){
       const sample=current[j],startSample=start[j];
-      if(!passable(sample.position,sample.radius))return false;
+      if(!(world?world.passable(sample.position,sample.radius):passable(sample.position,sample.radius)))return false;
       for(const door of doors){
         const gap=leafGap(sample.position,door),before=leafGap(startSample.position,door);
         if(gap<sample.radius+1&&
@@ -173,7 +174,7 @@ export function sweptProfileClear(from:Pt,to:Pt,doors:Door[],
  * No route nodes are edited and no collision radius is relaxed.
  */
 export function slideAroundStaticCorner(from:Pt,intended:Pt,toward:Pt,
-  doors:Door[]):Pt|null{
+  doors:Door[],world?:SessionWorldGeometry):Pt|null{
  const speed=distance(from,intended);
  if(speed<.05)return null;
  const aim=Math.atan2(intended.y-from.y,intended.x-from.x);
@@ -187,7 +188,7 @@ export function slideAroundStaticCorner(from:Pt,intended:Pt,toward:Pt,
    const gain=goalBefore-distance(candidate,toward);
    // Never choose an arbitrary away-then-back oscillation. The ordinary
    // world-truth replan still handles paths requiring a larger detour.
-   if(gain<=.07||!sweptBodyClear(from,candidate,doors))continue;
+   if(gain<=.07||!sweptBodyClear(from,candidate,doors,OPERATOR_RADIUS,world))continue;
    const score=gain-Math.abs(turn)*.015;
    if(score>bestScore){best=candidate;bestScore=score;}
  }
@@ -203,12 +204,12 @@ export function slideAroundStaticCorner(from:Pt,intended:Pt,toward:Pt,
  * does not require first rotating the shoulders INTO the wall.
  */
 export function glideAlongStaticWall(from:Pt,intended:Pt,
-  doors:Door[]):Pt|null{
+  doors:Door[],world?:SessionWorldGeometry):Pt|null{
  const dx=intended.x-from.x,dy=intended.y-from.y;
  const step=Math.hypot(dx,dy);
  if(step<.04)return null;
  let best:Pt|null=null,bestMovement=-Infinity;
- for(const wall of WALLS){
+ for(const wall of (world?.walls??WALLS)){
    const vx=wall.b.x-wall.a.x,vy=wall.b.y-wall.a.y;
    const len=Math.hypot(vx,vy);
    if(len<.001)continue;
@@ -251,7 +252,7 @@ export function glideAlongStaticWall(from:Pt,intended:Pt,
      x:from.x+tx*glide+outwardX*correction,
      y:from.y+ty*glide+outwardY*correction
    };
-   if(!sweptBodyClear(from,candidate,doors))continue;
+   if(!sweptBodyClear(from,candidate,doors,OPERATOR_RADIUS,world))continue;
    // The chosen tangent must still make meaningful progress in the
    // direction of the CURRENT navigation step. At a corner, a long but
    // nearly perpendicular slide can otherwise appear as successful
@@ -272,9 +273,9 @@ export function glideAlongStaticWall(from:Pt,intended:Pt,
  * through the wall, a door leaf, or a solid prop.
  */
 export function releaseStaticWallOverlap(from:Pt,goal:Pt,
- doors:Door[],maxStep=1.3):Pt|null{
+ doors:Door[],maxStep=1.3,world?:SessionWorldGeometry):Pt|null{
  const r=OPERATOR_RADIUS+1;
- const overlaps=WALLS.filter(w=>pointToSegment(from,w)<r-.01);
+ const overlaps=(world?.walls??WALLS).filter(w=>pointToSegment(from,w)<r-.01);
  if(!overlaps.length)return null;
  const step=Math.max(.15,Math.min(1.4,maxStep));
  const aim=Math.atan2(goal.y-from.y,goal.x-from.x);
@@ -291,12 +292,12 @@ export function releaseStaticWallOverlap(from:Pt,goal:Pt,
      const t=i/4,at={x:from.x+(candidate.x-from.x)*t,
        y:from.y+(candidate.y-from.y)*t};
      // Near-zero-radius check maintains bounds and furniture identity.
-     if(!passable(at,0)){valid=false;break;}
+     if(!(world?world.passable(at,0):passable(at,0))){valid=false;break;}
      // Check furniture at the same full operator radius.
      // A temporarily overlapping wall must never grant cover ghosting.
-     const wallBlocked=WALLS.some(w=>
+     const wallBlocked=(world?.walls??WALLS).some(w=>
        !overlaps.includes(w)&&pointToSegment(at,w)<r-.001);
-     const coverBlocked=COVER.some(o=>isFootstepObstacle(o)&&
+     const coverBlocked=(world?.cover??COVER).some(o=>isFootstepObstacle(o)&&
        Math.abs(at.x-o.x)<o.w/2+OPERATOR_RADIUS&&
        Math.abs(at.y-o.y)<o.h/2+OPERATOR_RADIUS);
      if(wallBlocked||coverBlocked){valid=false;break;}
