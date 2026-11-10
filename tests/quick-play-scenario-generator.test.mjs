@@ -72,7 +72,7 @@ test('one explicit building and mission reach the real architecture and session'
 
 test('quick play UI and worker preserve the mission contract without leaking counts',()=>{
  const source=path=>readFileSync(new URL('../src/'+path,import.meta.url),'utf8');
- assert.match(source('campaign-ui.ts'),/CUSTOMIZE QUICK PLAY/);
+ assert.match(source('campaign-ui.ts'),/button\('QUICK PLAY',this\.handlers\.quickPlay/);
  assert.match(source('breach-main.ts'),/startSession:\(seed,site,mission\)=>reset/);
  assert.match(source('quick-play-worker.ts'),/mission:req\.mission/);
  assert.match(source('quick-play-worker.ts'),/archetype:req\.archetype/);
