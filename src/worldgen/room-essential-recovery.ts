@@ -8,6 +8,8 @@ import type {Obstacle,Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {fixtureServiceClear,requiresServiceApproach} from './fixture-service-clearance.ts';
+import {circulationReservations,overlapsCirculationReservation}
+ from './circulation-reservations.ts';
 type Input=Pick<Site,'rooms'|'doors'|'openings'|'spawn'|'enemies'|'objective'|'extract'>;
 export type RecoveryIssue={roomId:string;fixture:string;reason:string};
 const inside=(o:Obstacle,r:Room)=>o.x>r.x&&o.x<r.x+r.w&&o.y>r.y&&o.y<r.y+r.h;
@@ -41,6 +43,8 @@ function recoverPass(site:Input,initial:readonly Obstacle[],
   groups.set(id,[...(groups.get(id)??[]),room]);
  }
  const reserved=[...site.spawn,...site.enemies,site.objective,site.extract];
+ const mandatoryThroughRoutes=circulationReservations(site)
+  .filter(lane=>lane.kind==='through-route');
  let recovered=0;
  for(const [zone,rooms] of groups){
   const role=rooms[0]?.purpose??'storage';
@@ -110,6 +114,8 @@ function recoverPass(site:Input,initial:readonly Obstacle[],
         if(pos.x-w/2<room.x+9||pos.x+w/2>room.x+room.w-9||
           pos.y-h/2<room.y+9||pos.y+h/2>room.y+room.h-9)return false;
         if(retained.some(o=>collides(o,placed)))return false;
+        if(overlapsCirculationReservation(placed,
+          mandatoryThroughRoutes,room.id))return false;
         if(!fixtureServiceClear(room,placed,retained))return false;
         const withPlaced=[...retained,placed];
         return retained.every(existing=>{
