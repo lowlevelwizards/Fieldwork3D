@@ -12,6 +12,13 @@ test('E5-B2 generated neutrals are seeded, bounded and never armed',()=>{
   const site=generateSite(seed,'small',undefined,
     {seed,mission:'intel',premise:'routine',risk:1});
   const a=site.encounter.neutrals??[];
+  const expected=civilianBudget(site,seed,site.encounter.premise,
+    site.encounter.mission);
+  assert.ok(site.encounter.diagnostics.notes.includes(
+    'civilian population: requested '+expected+', placed '+a.length));
+  if(expected>0&&!a.length)assert.ok(
+    site.encounter.diagnostics.notes.some(n=>n.includes(
+      'no civilian placement met physical clearance')));
   const b=planCivilians(site,site.encounter.actors,seed,
     site.encounter.premise,site.encounter.mission);
   assert.deepEqual(a,b);
