@@ -1,8 +1,9 @@
 import {createCombatFiringPipeline} from './breach-firing-pipeline.ts';
 import {advanceActorSightProgress,observeActorContactEvidence} from './breach-visual-acquisition.ts';
 import {createEnemyDecisionController} from './breach-enemy-decision-controller.ts';
-import {validPieArc} from './breach-maneuvers.ts';
-import {edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan} from './breach-plan-authoring.ts';
+import {edit,validEditedPlan,validKnownPieArc,knownDoorApproach,
+ atomicTeamEdit,sealPlanHistoryForExecution,undoAuthoredPlan,redoAuthoredPlan}
+ from './breach-plan-authoring.ts';
 import {simulationPhaseMark,advanceTransientSimulationEffects,recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
 
 import {advanceActorMotor} from './breach-actor-motor.ts';
@@ -19,7 +20,7 @@ import {incomingHitFacing} from './breach-combat-reactions.ts';
  * Legacy 052 entrypoints remain in breach-core for comparison/tests only.
  */
 import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,} from './breach-core.ts';
-import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
+import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions} from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
@@ -249,6 +250,8 @@ export type SquadPlanTransaction={
  members:string[];
  before:Record<string,PlanNode[]>;
  after:Record<string,PlanNode[]>;
+ controlsBefore?:Record<string,PlanControlSnapshot>;
+ controlsAfter?:Record<string,PlanControlSnapshot>;
 };
 export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];civilians:CivilianActor[];
@@ -681,7 +684,9 @@ export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
   const a=party(s,id);if(!a||!canEdit(s))return false;
   if(kind==='move'&&!intelPassable(p,s.intel,SQUEEZE_RADIUS))return false;
   if(kind==='move'&&!legalMoveRoute(s,finalPoint(a),p).length)return false;
-  if(kind==='door'&&(!sessionWorldGeometry(s).passable(p)||!sessionWorldGeometry(s).route(finalPoint(a),p).length))return false;
+  if(kind==='door'&&(!extra.doorId||!doorKnown(s.intel,extra.doorId)||
+    !intelPassable(p,s.intel,SQUEEZE_RADIUS)||
+    !routeWithSqueezeIntel(s.intel,finalPoint(a),p).length))return false;
   return edit(s,a,()=>{
     a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
   });
@@ -706,7 +711,8 @@ export function planNearbyInteraction(s:Session,id:string,
  if(action==='push'){
    const candidates=s.coverState.map((o,index)=>({o,index,
      distance:d(at,{x:o.x,y:o.y})})).filter(c=>
-       canRelocateCover(c.o)&&c.distance<Math.max(c.o.w,c.o.h)/2+43)
+       s.intel.cover.has(c.index)&&canRelocateCover(c.o)&&
+       c.distance<Math.max(c.o.w,c.o.h)/2+43)
      .sort((x,y)=>x.distance-y.distance||x.index-y.index);
    const item=candidates[0];if(!item)return false;
    const toward={x:item.o.x-at.x,y:item.o.y-at.y};
@@ -871,7 +877,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
              {a:points[i-1],b:points[i]})>9&&
            pointToSegment(doorCenter(door),
              {a:prior,b:node.p})>9)continue;
-        const staging=doorApproach(prior,door,sessionWorldGeometry(s));
+        const staging=knownDoorApproach(s,prior,door);
         if(!staging)continue;
         expanded.push({id:s.nextId+expanded.length,kind:'door',
           p:clone(staging),doorId:door.id,method:'open'});
@@ -931,7 +937,7 @@ export function planPieAt(s:Session,id:string,pivot:Pt,side:PieSide,degrees=54,
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<=0&&afterNodeId!==undefined)return false;
   const start=index===0?a.p:a.plan[index-1].p;
-  const arc=validPieArc(start,pivot,side,s.doors,degrees,sessionWorldGeometry(s));
+  const arc=validKnownPieArc(s,start,pivot,side,degrees);
   if(!arc.length)return false;
   if(afterNodeId===undefined)return addNode(s,id,'pie',arc[arc.length-1],{
     pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
@@ -961,7 +967,7 @@ export function editPie(s:Session,id:string,nodeId:number,
 /** Context-aware door action at a selected planned position. */
 export function doorAtNode(s:Session,id:string,doorId:string,method:DoorMethod,nodeId?:number){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
-  if(!a||!door||!canEdit(s))return false;
+  if(!a||!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
   if(nodeId===undefined){
     if(!doorReachable(finalPoint(a),door))return planDoor(s,id,doorId,method);
     return addNode(s,id,'door',finalPoint(a),{doorId,method});
@@ -1072,15 +1078,13 @@ export function retargetActiveWatch(s:Session,id:string,target:Pt):boolean{
   if(!a||!canEdit(s)||a.aimInstruction?.mode!=='track'||
      !Number.isFinite(target.x)||!Number.isFinite(target.y)||
      d(a.p,target)<2)return false;
-  a.aimInstruction={mode:'track',point:clone(target)};
-  return true;
+  return edit(s,a,()=>{a.aimInstruction={mode:'track',point:clone(target)};});
 }
 /** DELETE on an active WATCH releases tracking; the path stays untouched. */
 export function removeActiveWatch(s:Session,id:string):boolean{
   const a=party(s,id);
   if(!a||!canEdit(s)||a.aimInstruction?.mode!=='track')return false;
-  a.aimInstruction=null;
-  return true;
+  return edit(s,a,()=>{a.aimInstruction=null;});
 }
 /** Release an existing WATCH using an explicit AUTO transition. */
 export function releaseWatch(s:Session,id:string,nodeId?:number,
@@ -1108,7 +1112,8 @@ function pairedLeaves(s:Session,door:Door):Door[]{
 export function planEntryTool(s:Session,id:string,doorId:string,
  method:EntryTool,nodeId?:number):boolean{
  const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
- if(!a||!door||!canEdit(s)||!canUseEntryTool(a.equipment,method)||
+ if(!a||!door||!canEdit(s)||!doorKnown(s.intel,doorId)||
+  !canUseEntryTool(a.equipment,method)||
   !entryToolVerdict(door,method).allowed||
   (method==='wedge'&&a.wedgeRemaining<1))return false;
  if(nodeId!==undefined){
@@ -1118,14 +1123,14 @@ export function planEntryTool(s:Session,id:string,doorId:string,
    id:s.nextId++,kind:'tool',doorId,toolMethod:method,
    p:clone(a.plan[index].p)});});
  }
- const position=doorApproach(finalPoint(a),door,sessionWorldGeometry(s));
+ const position=knownDoorApproach(s,finalPoint(a),door);
  if(!position)return false;
  return addNode(s,id,'tool',position,{doorId,toolMethod:method});
 }
 export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
-  if(!a||!door||!canEdit(s))return false;
-  const position=doorApproach(finalPoint(a),door,sessionWorldGeometry(s));
+  if(!a||!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
+  const position=knownDoorApproach(s,finalPoint(a),door);
   return !!position&&addNode(s,id,'door',position,{doorId,method});
 }
 /** Plan an actual reserved stack position on the same approach side.
@@ -1133,7 +1138,7 @@ export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
  */
 export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
-  if(!a||!door||!canEdit(s))return false;
+  if(!a||!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
   const index=afterNodeId===undefined?a.plan.length:
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<=0&&afterNodeId!==undefined)return false;
@@ -1338,7 +1343,7 @@ export function setNodeControl(s:Session,id:string,nodeId:number,
 }
 export function setStartPace(s:Session,id:string,pace:'walk'|'run'){
   const a=party(s,id);if(!a||!canEdit(s))return false;
-  a.pace=pace;return true;
+  return edit(s,a,()=>{a.pace=pace;});
 }
 export function plannedControl(s:Session,id:string,nodeId?:number){
   const a=party(s,id);if(!a)return {posture:'stand' as Posture,
@@ -1582,9 +1587,9 @@ export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<0)return false;
   const start=index>0?a.plan[index-1].p:a.p;
-  const approached=doorReachable(start,door)?clone(start):doorApproach(start,door,sessionWorldGeometry(s));
-  if(!approached||!sessionWorldGeometry(s).passable(approached)||
-     !sessionWorldGeometry(s).route(start,approached).length)return false;
+  const approached=doorReachable(start,door)?clone(start):knownDoorApproach(s,start,door);
+  if(!approached||!intelPassable(approached,s.intel,SQUEEZE_RADIUS)||
+     !routeWithSqueezeIntel(s.intel,start,approached).length)return false;
   const before=a.plan.slice(0,index);
   const opened=before.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??'');
@@ -1675,11 +1680,11 @@ export function toggleWeaponLight(s:Session,id:string):boolean{
 }
 export function toggleContactRule(s:Session,id:string){
   const a=party(s,id);if(!a||!canEdit(s))return false;
-  a.haltOnContact=!a.haltOnContact;return true;
+  return edit(s,a,()=>{a.haltOnContact=!a.haltOnContact;});
 }
 export function posture(s:Session,id:string){
   const a=party(s,id);if(!a||!canEdit(s))return false;
-  a.posture=a.posture==='stand'?'crouch':'stand';return true;
+  return edit(s,a,()=>{a.posture=a.posture==='stand'?'crouch':'stand';});
 }
 export function toggling(s:Session){
   if(s.phase==='planning'){
@@ -1688,6 +1693,7 @@ export function toggling(s:Session){
     passageSchedules.delete(s);
     ensurePassageSchedule(s);
     s.passageLeases={};
+    sealPlanHistoryForExecution(s);
     s.phase='running';s.started=true;
   }else if(s.phase==='running'){s.phase='planning';s.timesPaused++;}
 }
