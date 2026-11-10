@@ -92,7 +92,11 @@ export function buildAfterActionReport(rec:MissionRecorder):AfterActionReport{
       const fired=shots.filter(s=>s.shooterId===a.id);
       const status=finalById.get(a.id);
       const downed=fired.filter(s=>s.down&&s.targetId&&hostiles.some(c=>c.id===s.targetId));
-      const intel=rec.events.filter(e=>e.actor===a.id&&e.kind==='intel').length;
+      const notices=rec.events.filter(e=>e.actor===a.id&&e.kind==='intel');
+      // Never score the same identified contact repeatedly for spot flicker.
+      const targets=new Set(notices.filter(e=>e.meta?.action==='spot'&&
+        e.meta.targetId).map(e=>e.meta!.targetId));
+      const intel=targets.size+notices.filter(e=>!e.meta?.targetId).length;
       const damaging=fired.filter(s=>s.outcome==='damaging').length;
       const armor=fired.filter(s=>s.outcome==='armor-stopped').length;
       const combat=downed.length*12+damaging*2+armor;

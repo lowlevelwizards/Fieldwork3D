@@ -6,7 +6,7 @@ import {makeAfterActionLaunchRequest}
  from '../src/breach-after-action-replay-navigation.ts';
 test('scoped bodycam clip scrubs inside boundary and survives unclip/reclip',()=>{
  const p=new ReplayPlaybackController();
- assert.equal(p.startIncident({start:10,end:11},50,true),true);
+ assert.equal(p.startIncident({start:10,end:11},50,true,true),true);
  assert.deepEqual(p.incident.range,{start:7,end:16});
  p.seek(13,50);assert.equal(p.time,13);
  assert.ok(p.incident,'scrub inside clip retains looping');
@@ -34,4 +34,11 @@ test('highlight clip preserves the entire bounded recorded incident',()=>{
  const rec={duration:50,ballistics:{shots:[]}};
  assert.deepEqual(makeAfterActionLaunchRequest(rec,
   {surface:'highlights',time:12,end:21}).range,{start:12,end:21});
+});
+
+test('ordinary incident seeking retains existing non-scoped semantics',()=>{
+ const p=new ReplayPlaybackController();
+ assert.equal(p.startIncident({start:10,end:11},50,true),true);
+ p.seek(25,50);
+ assert.equal(p.incident,null);assert.equal(p.time,25);
 });

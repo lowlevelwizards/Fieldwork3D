@@ -29,7 +29,7 @@ export type PlaybackFrameStep=PlaybackStep&{frame:ReplayFrame|null};
 
 export class ReplayPlaybackController{
  playing=false;time=0;rate=1;effectiveRate=1;
- incident:{range:ReplayLoopRange;loop:boolean}|null=null;
+ incident:{range:ReplayLoopRange;loop:boolean;scoped:boolean}|null=null;
  savedIncidentRange:ReplayLoopRange|null=null;
  loopIn:number|null=null;loopOut:number|null=null;
  loopEnabled=false;
@@ -48,10 +48,10 @@ export class ReplayPlaybackController{
    const wanted=clampReplayTime(time,duration);
    // Scoped clips remain explicitly bounded even if a full-timeline slider
    // sends a seek outside the clip. UNCLIP is the only exit from the range.
-   this.time=this.incident?.loop?
+   this.time=this.incident?.scoped?
      Math.min(this.incident.range.end,Math.max(this.incident.range.start,wanted)):
      wanted;
-   if(!this.incident?.loop)this.incident=null;
+   if(!this.incident?.scoped)this.incident=null;
    return this.time;
  }
  stepTarget(kind:'sample'|'frame',direction:-1|1,
@@ -99,11 +99,11 @@ export class ReplayPlaybackController{
  }
  /** Start a bounded incident watch or repeat; the caller handles audio/UI. */
  startIncident(incident: {start:number;end:number},duration:number,
-   loop:boolean):boolean{
+   loop:boolean,scoped=false):boolean{
    const range=incidentPlaybackWindow(incident,duration);
    if(!range)return false;
    this.seek(range.start,duration);
-   this.incident={range,loop};
+   this.incident={range,loop,scoped};
    this.savedIncidentRange=range;
    this.loopEnabled=false;
    this.rate=1;this.effectiveRate=1;this.playing=true;
@@ -119,7 +119,7 @@ export class ReplayPlaybackController{
  reclipIncident():boolean{
    const range=this.savedIncidentRange;if(!range)return false;
    this.time=Math.max(range.start,Math.min(range.end,this.time));
-   this.incident={range,loop:true};return true;
+   this.incident={range,loop:true,scoped:true};return true;
  }
  /** A video export is authored at 1x and must not inherit a tactical loop. */
  prepareVideoExport():void{

@@ -1671,7 +1671,7 @@ ui.debrief.addEventListener('fw-after-action-replay',event=>{
    replayCamera.lens='ortho';chooseReplayCamera('free');
    showUiHelp('NO RECORDED BODYCAM · TACTICAL REPLAY',3000);
  }
- replayPlayback.startIncident(request.range,recorder.duration,true);
+ replayPlayback.startIncident(request.range,recorder.duration,true,true);
  presentReplayAtCurrentTime();audioController.unlock();
  ui.afterActionClipHud.hidden=false;
  ui.afterActionClipLabel.textContent=request.label+' · LOOP';
