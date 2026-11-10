@@ -1,3 +1,4 @@
+import {advanceActorSightProgress,observeActorContactEvidence} from './breach-visual-acquisition.ts';
 import {createEnemyDecisionController} from './breach-enemy-decision-controller.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan} from './breach-plan-authoring.ts';
@@ -23,7 +24,7 @@ import {stackApproachPositions} from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
-import {perceptualReadiness} from './breach-encounter-readiness.ts';
+
 import {WEAPONS,injuryOf,injuryReload,woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent} from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {segmentHitsBox} from './breach-ray.ts';
@@ -88,9 +89,9 @@ import {type GroupRole} from './breach-ai-coordination.ts';
 
 
 import {moraleResponse,witnessShock,countNearbyEnemyAllies} from './breach-ai-morale.ts';
-import {newAwareness,addObservation,visibleObservation,ageAwareness,clearObservedPosition,type ActorAwareness} from './breach-awareness.ts';
-import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
-import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
+import {newAwareness,ageAwareness,clearObservedPosition,type ActorAwareness} from './breach-awareness.ts';
+import {confirmedSight} from './breach-visual-perception.ts';
+
 import type {LightingMode} from './equipment-site-lighting.ts';
 import {passageIdleYieldStep,type PassageActor,type PassageLease} from './breach-passage.ts';
 
@@ -1723,42 +1724,13 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
  return geometricallyVisible(a,b,s)&&confirmedSight(a.awareness.visualProgress[b.id]??0);
 }
-function advanceVisualAwareness(s:Session,dt:number){
- // One scene sample per simulation-time bucket, never one raycast per sight pair.
- const lighting=actorLightingLevels(s);
- for(const observer of s.operators){
-  if(observer.health<=0)continue;
-  for(const subject of s.operators){
-   if(subject.side===observer.side||subject.health<=0)continue;
-   const visible=geometricallyVisible(observer,subject,s);
-   const signal=visible?visualGain(d(observer.p,subject.p),
-    angleDifference(observer.heading,angle(observer.p,subject.p)),
-    subject.velocity>10,subject.posture==='crouch')*
-    lightVisibilityGain(lighting.get(subject.id)??1)*
-    (subject.weaponLightOn&&subject.weaponConfiguration?.slots.light==='light-compact'?1.18:1)*
-    (observer.side==='red'?perceptualReadiness(
-      observer.encounterReadiness??'attentive'):1):0;
-   const old=observer.awareness.visualProgress[subject.id]??0;
-   observer.awareness.visualProgress[subject.id]=advanceSight(old,dt,signal,visible);
-  }
- }
-}
 export const isSeen=(s:Session,target:TeamActor)=>
   s.intel.mode==='full-view'||team(s).some(a=>inSight(a,target,s));
 export function lastKnown(s:Session,id:string){
   return s.known.get(id)??null;
 }
 function observe(s:Session){
-  // Every actor receives independent sightings; this never shares enemy truth.
-  if(s.seconds===0||Math.floor(s.seconds*10)!==Math.floor((s.seconds-1/60)*10))
-    for(const observer of s.operators){
-      if(observer.health<=0)continue;
-      for(const subject of s.operators){
-        if(subject.side===observer.side||!inSight(observer,subject,s))continue;
-        addObservation(observer.awareness,visibleObservation(
-          observer.id,subject.id,subject.p,s.seconds));
-      }
-    }
+  observeActorContactEvidence(s,inSight);
   const updateGround=s.intelObservedAt<0||
     s.seconds-s.intelObservedAt>=.14;
   if(updateGround){
@@ -2834,7 +2806,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   advanceTransientSimulationEffects(s,h);
   stepFlashbangs(s,h);
   mark('aging-effects');
-  advanceVisualAwareness(s,h);
+  advanceActorSightProgress(s,h,geometricallyVisible);
   mark('visual-awareness');
   for(const actor of s.operators){
     if(actor.health<=0)continue;
