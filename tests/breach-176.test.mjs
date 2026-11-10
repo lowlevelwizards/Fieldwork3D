@@ -26,7 +26,7 @@ test('176: head has distinct remaining aim authority, footsteps requested only w
  assert.equal(moving.needsFootTurn,false);
 });
 test('176: rig uses one chest/head turning authority after pelvis rotation',()=>{
- const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
+ const rig=readFileSync(new URL('../src/breach-operator-animation-controller.ts',import.meta.url),'utf8');
  assert.match(rig,/const turn=turnHierarchy\(/);
  assert.doesNotMatch(rig,/const lookTwist=/);
  assert.doesNotMatch(rig,/const torsoDelta=/);
