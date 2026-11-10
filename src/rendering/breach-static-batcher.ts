@@ -94,7 +94,13 @@ export class StaticSceneBatches{
   stats(){return {original:this.originalMeshes,instances:this.instancedMeshes,
     avoided:this.drawCallsAvoided};}
   clear(){
-    for(const batch of this.batches)batch.mesh.parent?.remove(batch.mesh);
+    for(const batch of this.batches){
+      batch.mesh.parent?.remove(batch.mesh);
+      // InstancedMesh owns an independent GPU instance buffer. Detaching it
+      // from the graph does not release that allocation on a site swap.
+      // This signals disposal WITHOUT disposing shared box geometry/material.
+      batch.mesh.dispose();
+    }
     this.batches.length=0;this.eligible.length=0;this.owners.clear();
     this.originalMeshes=0;this.instancedMeshes=0;this.drawCallsAvoided=0;
   }
