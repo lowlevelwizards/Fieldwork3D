@@ -11,12 +11,15 @@ const columnUses=new Set(['bay','loading','storage','aisle','workshop','equipmen
 const near=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function addArchitecturalInteriors(site:Site,seed:number):Site{
  const cover=site.cover.slice();
- // Office dividers are physical collision, not soft dressing. Reserve the
- // continuous hall-to-cubicle and same-zone open-plan lanes before placing
- // any half-wall; later furniture placement already honors these corridors.
- // Limit this new rule to office programs to retain established seed goldens.
- const officeWalkLanes=site.archetype==='office'?
-  circulationReservations(site).filter(l=>l.kind==='through-route'):[];
+ // Architectural half-walls are solid, not decorative. Office cubicle
+ // seams need a continuous through-lane; apartment rooms also need an actual
+ // operator approach to every open arch (there is no hinged Door to keep
+ // such a passage clear). Ordinary furnishings already honor these lanes.
+ // Limit the tighter structural rule to the affected building programs so
+ // unrelated seeded missions retain their established geometry.
+ const protectedWalkLanes=['office','apartment'].includes(site.archetype??'')?
+  circulationReservations(site).filter(l=>
+    site.archetype==='apartment'||l.kind==='through-route'):[];
  const critical=[...site.spawn,...site.enemies,site.entrance,site.objective,site.extract];
  let lowCount=0,columnCount=0;
  for(const [i,room] of site.rooms.entries()){
@@ -41,7 +44,7 @@ export function addArchitecturalInteriors(site:Site,seed:number):Site{
     fixture:isLow?'half-wall':'support-column',material:isLow?'brick':'concrete'};
    if(x-w/2<=room.x+10||x+w/2>=room.x+room.w-10||
       y-h/2<=room.y+10||y+h/2>=room.y+room.h-10)continue;
-   if(overlapsCirculationReservation(obj,officeWalkLanes,room.id))continue;
+   if(overlapsCirculationReservation(obj,protectedWalkLanes,room.id))continue;
    if(site.doors.some(d=>near({x,y},{x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<54))continue;
    if((site.windows??[]).some(p=>near({x,y},{x:p.x,y:p.y})<35))continue;
    if(critical.some(p=>Math.abs(p.x-x)<w/2+22&&Math.abs(p.y-y)<h/2+22))continue;
