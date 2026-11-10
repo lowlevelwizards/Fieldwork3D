@@ -5,6 +5,9 @@ import {preferSelectedHit,shouldAppendStrokePoint,
   tacticalHitProfile} from '../src/ui/touch-hit-targets.ts';
 import {placeContextMenu,pathOverlapsRect} from '../src/breach-context-placement.ts';
 const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+const pointer=readFileSync(new URL('../src/breach-pointer-command-controller.ts',import.meta.url),'utf8');
+const gestures=readFileSync(new URL('../src/breach-canvas-gesture-controller.ts',import.meta.url),'utf8');
+const palette=readFileSync(new URL('../src/ui/tactical-palette-controller.ts',import.meta.url),'utf8');
 test('selected waypoint retains ownership within a small distance margin',()=>{
   const hits=[{owner:'moss',distancePx:12,id:1},
     {owner:'rook',distancePx:16,id:2}];
@@ -17,25 +20,25 @@ test('stroke sampling and hit sizes are screen-space, not world zoom dependent',
   assert.equal(shouldAppendStrokePoint({x:10,y:10},{x:20,y:10}),false);
   assert.equal(shouldAppendStrokePoint({x:10,y:10},{x:23,y:10}),true);
   assert.ok(tacticalHitProfile('touch').waypoint>tacticalHitProfile('mouse').waypoint);
-  assert.match(main,/!\(state.phase==='planning'&&p.wasUnit\)/);
-  assert.match(main,/p.mode='cameraPan';panX\+=dx;panY\+=dy;layout\(\)/);
-  assert.match(main,/worldToScreen\(unit\.p,viewMode==='plan2d'\?0:24\)/);
+  assert.match(gestures,/!\(cb\.isPlanning\(\)&&p\.wasUnit\)/);
+  assert.match(gestures,/p\.mode=cb\.is3D\(\)\?'cameraOrbit':'cameraPan'/);
+  assert.match(pointer,/port\.worldToScreen\(actor\.p,port\.viewMode==='plan2d'\?0:24\)/);
   assert.match(main,/shouldAppendStrokePoint\(worldToScreen/);
 });
 test('only one command long-press controller remains; failed targeting can retry',()=>{
   assert.doesNotMatch(main,/contextHoldTimer/);
   assert.match(main,/installTouchCommandHelp\(button\)/);
-  assert.match(main,/if\(accepted\)tacticalFeedback\.emit\(p\.dragCommitted\?'command':'select'/);
-  assert.match(main,/if\(committed\)looking=false/);
-  assert.match(main,/p.mode==='targetPreview'\|\|p.mode==='undecided'/);
-  assert.match(main,/if\(looking\|\|flashMode\|\|firePlacement\|\|evacMode\)/);
+  assert.match(pointer,/if\(accepted\)port\.tacticalFeedback\.emit\(p\.dragCommitted\?'command':'select'/);
+  assert.match(main,/if\(committed\)hudController\.facing\.looking=false/);
+  assert.match(pointer,/p\.mode==='targetPreview'\|\|p\.mode==='undecided'/);
+  assert.match(pointer,/port\.hudController\.facing\.looking\|\|insideTacticalBounds/);
   assert.doesNotMatch(main,/case 'ctxReleaseWatch'/);
   assert.match(main,/if\(\!accepted\)rejectAt\(pt,'INVALID SUPPRESSION POINT'\)/);
 });
 test('unchanged palette keeps its position; existing pocket is an explicit candidate',()=>{
   const source=readFileSync(new URL('../src/breach-context-placement.ts',import.meta.url),'utf8');
-  assert.match(main,/placementKey===lastPlacementKey/);
-  assert.match(main,/contextPointerIds\.size>0/);
+  assert.match(palette,/placementKey===lastPlacementKey/);
+  assert.match(palette,/contextPointerIds\.size>0/);
   assert.match(main,/displayRouteCache\.get\(previous,waypoint\.p,/);
   assert.match(source,/preferredPosition\?\.x\?\?xMin/);
   const prior={x:20,y:120},anchor={x:200,y:300};
@@ -49,5 +52,5 @@ test('unchanged palette keeps its position; existing pocket is an explicit candi
 test('on-map states are armed, accepted or rejected without conflating them',()=>{
   assert.match(main,/tacticalFeedback\.emit\('armed',/);
   assert.match(main,/tacticalFeedback\.emit\('cancel',/);
-  assert.match(main,/if\(!accepted\)rejectAt\(pt,'WATCH TARGET UNAVAILABLE'\)/);
+  assert.match(pointer,/if\(!accepted\)port\.rejectAt\(pt,'WATCH TARGET UNAVAILABLE'\)/);
 });
