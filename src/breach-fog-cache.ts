@@ -29,3 +29,22 @@ export function fogMemoryFingerprint(state:{
   return [state.mode,state.seed??'none',state.seenRevision,
     state.rooms,state.walls,state.doors,state.cover].join('|');
 }
+
+/** One live fog signature for Canvas2D and Three.js. No new LOS work.
+ * Time and session identity are independent: renderers compare the latter
+ * themselves so two sites with identical seed/actor data never share fog.
+ */
+import type {Session} from './breach-game.ts';
+export function fogSessionFingerprint(s:Session):string{
+ return fogFingerprint({
+   mode:s.intel.mode,seed:s.site?.seed??null,
+   seenCount:s.seenGround.size,seenRevision:s.seenGroundRevision,
+   revision:s.objectRevision,
+   actors:s.operators.filter(a=>a.side==='blue'&&a.health>0).map(a=>({
+     id:a.id,x:a.p.x,y:a.p.y,heading:a.heading,
+     posture:a.posture,health:a.health
+   })),
+   doors:s.doors.map(d=>({id:d.id,
+     fraction:d.openFraction??(d.open?1:0)}))
+ });
+}

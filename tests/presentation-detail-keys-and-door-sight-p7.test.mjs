@@ -9,9 +9,13 @@ test('site-static decorative tile keys are computed once at creation',()=>{
   assert.equal((scene.match(/fineKey:'fine:'\+Math\.floor\(detail\.x\/20\)/g)||[]).length,2);
   const render=scene.slice(scene.indexOf('    for(const detail of this.observedDetails){'),
     scene.indexOf('    // Director cuts walls',scene.indexOf('    for(const detail of this.observedDetails){')));
-  assert.match(render,/s\.seenGround\.has\(detail\.microKey\)/);
-  assert.match(render,/s\.seenGround\.has\(detail\.fineKey\)/);
+  assert.match(render,/detail\.obj\.visible=presentDecor\(s,detail,omniscient/);
+  const presenter=readFileSync(new URL(
+    '../src/rendering/breach-3d-disclosure-presenter.ts',import.meta.url),'utf8');
+  assert.match(presenter,/s\.seenGround\.has\(detail\.microKey\)/);
+  assert.match(presenter,/s\.seenGround\.has\(detail\.fineKey\)/);
   assert.doesNotMatch(render,/Math\.floor\(p\.(?:x|y)\/(?:10|20)\)/);
+  assert.doesNotMatch(presenter,/Math\.floor\(p\.(?:x|y)\/(?:10|20)\)/);
 });
 test('a door uses its existing directly-observed sight result for the halo',()=>{
   const start=scene.indexOf('    for(const door of s.doors){');

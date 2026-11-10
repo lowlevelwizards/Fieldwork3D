@@ -5,7 +5,8 @@ import {WALLS,COVER,activeWorldBounds,pointToSegment,route,type Door,type Pt,
   type Segment,someWallNearPoint,someCoverNearPoint} from './breach-core.ts';
 import type {Site} from './breach-site.ts';
 import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
-import {insideSiteFootprint,exteriorBriefedAt,accessibleExteriorWall} from './breach-site-footprint.ts';
+import {insideSiteFootprint,accessibleExteriorWall} from './breach-site-footprint.ts';
+import {groundKnowledgeAt,groundFogLevel} from './breach-ground-knowledge.ts';
 export type IntelMode='true-blind'|'exterior-known'|'floor-plan'|'full-view';
 export type IntelState={
  mode:IntelMode;
@@ -122,11 +123,7 @@ export const routeWithIntel=(intel:IntelState,from:Pt,to:Pt)=>
  route(from,to,p=>intelPassable(p,intel));
 export function intelFogLevel(intel:IntelState,site:Site|undefined,
   p:Pt,currentlyVisible:boolean,everSeen:boolean){
- if(intel.mode==='full-view'||currentlyVisible)return 0;
- if(everSeen)return 1;
- if(intel.mode==='floor-plan')return 1;
- if(intel.mode==='exterior-known'&&exteriorBriefedAt(site,p))return 1;
- return 2;
+ return groundFogLevel(groundKnowledgeAt(intel.mode,site,p,currentlyVisible,everSeen));
 }
 export const intelSnapshot=(intel:IntelState)=>({
  mode:intel.mode,walls:[...intel.walls],doors:[...intel.doors],

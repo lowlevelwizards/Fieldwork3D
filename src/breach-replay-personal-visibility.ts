@@ -2,16 +2,12 @@
  * camera's discovered prop/cover set. Only authoritative fine/micro replay
  * samples are precise enough for this view. No historical LOS recomputation.
  */
+import {preciseGroundEvidenceAt} from './breach-ground-knowledge.ts';
 import type {Pt} from './breach-core.ts';
 export function personalGroundEvidenceAt(
-  discovered:ReadonlySet<string>|null|undefined,
-  p:Pt
+  discovered:ReadonlySet<string>|null|undefined,p:Pt
 ):boolean{
-  if(!discovered||!Number.isFinite(p.x)||!Number.isFinite(p.y))
-    return false;
-  const micro='micro:'+Math.floor(p.x/10)+','+Math.floor(p.y/10);
-  const fine='fine:'+Math.floor(p.x/20)+','+Math.floor(p.y/20);
-  return discovered.has(micro)||discovered.has(fine);
+  return preciseGroundEvidenceAt(discovered,p);
 }
 /** Structural walls/doors are separate physical occluders: disappearing
  * unknown walls would open an X-ray line to the next room. Never use this

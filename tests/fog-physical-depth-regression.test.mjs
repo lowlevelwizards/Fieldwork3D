@@ -56,6 +56,9 @@ test('hidden room geometry does not become revealed when depth-tested',()=>{
  assert.equal(spatialSurfaceKnown(s,'wall',1),true);
  assert.equal(roofShouldShow(false,false,false),false);
  assert.match(scene,/item\.obj\.visible=item\.kind==='wall'&&physicalDirector\?true:/);
- assert.match(scene,/personalDecorVisible\(/);
+ const presenter=readFileSync(new URL(
+   '../src/rendering/breach-3d-disclosure-presenter.ts',import.meta.url),'utf8');
+ assert.match(scene,/detail\.obj\.visible=presentDecor\(s,detail,omniscient/);
+ assert.match(presenter,/return personalDecorVisible\(/);
  assert.match(scene,/this\.staticBatches\.setVisible\(detail\.obj,detail\.obj\.visible\)/);
 });

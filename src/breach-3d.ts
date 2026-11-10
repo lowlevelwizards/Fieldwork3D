@@ -104,7 +104,7 @@ import {paintFogMask,paintFogMemory,paintFogVisibility,occupiedFogRooms,
   FOG_WIDTH,FOG_HEIGHT,maskSize,type FogDiagnostic}
   from './breach-fog-mask.ts';
 import {exteriorKnownFogRects,fogUvAt} from './breach-fog-domain.ts';
-import {fogFingerprint,fogMemoryFingerprint} from './breach-fog-cache.ts';
+import {fogSessionFingerprint,fogMemoryFingerprint} from './breach-fog-cache.ts';
 import {wallOccludesFriendly,transitionWallOpacity} from './breach-camera-occlusion.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {sampleBodycamSocket,applyBodycamCamera,smoothBodycamSample,
@@ -2770,18 +2770,7 @@ export class TacticalScene3D{
     const fogDue=!omniscient&&(sessionChanged||
       this.fogAt>=(this.quality.mode==='quality'?.055:.10)||this.fogAt<0);
     if(fogDue){
-      const fogSignature=fogFingerprint({
-        mode:s.intel.mode,seed:s.site?.seed??null,
-        seenCount:s.seenGround.size,seenRevision:s.seenGroundRevision,
-        revision:s.objectRevision,
-        actors:team(s).filter(a=>a.health>0).map(a=>({
-          id:a.id,x:a.p.x,y:a.p.y,heading:a.heading,
-          posture:a.posture,health:a.health
-        })),
-        doors:s.doors.map(d=>({
-          id:d.id,fraction:d.openFraction??(d.open?1:0)
-        }))
-      });
+      const fogSignature=fogSessionFingerprint(s);
       // Two sessions may have identical knowledge counts but different sites.
       if(sessionChanged||fogSignature!==this.lastFogSignature){
         this.fogAt=0;this.lastFogSignature=fogSignature;

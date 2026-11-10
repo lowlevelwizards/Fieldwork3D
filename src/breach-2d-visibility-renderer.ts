@@ -5,6 +5,7 @@
 import {W,H} from './breach-core.ts';
 import type {Session} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
+import {fogSessionFingerprint} from './breach-fog-cache.ts';
 import {paintFogMask,maskBounds,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 import {paintReplayPersonalGround} from './breach-replay-ground-overlay.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
@@ -27,7 +28,8 @@ const replayGroundContext=replayGroundCanvas.getContext('2d');
 if(!replayGroundContext)throw Error('Replay ground canvas unavailable');
 let fogStamp=-1;
 let fogSession:Session|null=null;
-let fogIntelMode='';let fogSeenRevision=-1;
+let fogSignature='';
+let fogMode='';let fogSeenRevision=-1;
 function renderReplayPersonalGround():void{
   const state=getState(),replaying=isReplaying(),viewMode=getViewMode();
   if(!replaying||!replayKnowledge.groundLensOn||viewMode!=='plan2d'||
@@ -49,15 +51,26 @@ function renderReplayPersonalGround():void{
 }
 function fog(){
   const state=getState(),replaying=isReplaying();
-  if(replaying&&replayKnowledge.omniscient)return;
-  if(fogStamp<0||fogSession!==state||fogIntelMode!==state.intel.mode||
+  if(replaying&&replayKnowledge.omniscient){
+    // Returning from unrestricted playback to squad sight must rebuild the
+    // mask even when the recorded timestamp has not changed.
+    fogStamp=-1;fogSignature='';
+    return;
+  }
+  const nextSignature=fogSessionFingerprint(state);
+  // Preserve the existing ~18 Hz active-play repaint budget. A paused
+  // mission can change aim or open a door at the SAME simulation timestamp;
+  // only that stationary-time mutation should bypass the cadence. Mode,
+  // discovery and session swaps must always invalidate immediately.
+  const mustRedraw=fogStamp<0||fogSession!==state||
+    fogMode!==state.intel.mode||
     fogSeenRevision!==state.seenGroundRevision||
-    state.seconds<fogStamp||state.seconds-fogStamp>.055){
-    fogStamp=state.seconds;fogSession=state;fogIntelMode=state.intel.mode;
-    fogSeenRevision=state.seenGroundRevision;
-    paintFogMask(fogContext!,state,
-      debugPalette?
-        'palette':'normal');
+    state.seconds<fogStamp||state.seconds-fogStamp>.055||
+    (state.seconds===fogStamp&&fogSignature!==nextSignature);
+  if(mustRedraw){
+    fogStamp=state.seconds;fogSession=state;fogSignature=nextSignature;
+    fogMode=state.intel.mode;fogSeenRevision=state.seenGroundRevision;
+    paintFogMask(fogContext!,state,debugPalette?'palette':'normal');
   }
   draw.drawImage(fogCanvas,0,0,W,H);
 }

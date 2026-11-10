@@ -116,7 +116,9 @@ export function replayActorDisclosed(
       recordedObserverCanSee(sample,policy.observerId,a.id)===true;
   if(sample)return sample.visibleActorIds.includes(a.id)||
     (a.health<=0&&sample.discoveredBodyIds.includes(a.id));
-  return a.health>0?isSeen(s,a):liveVisibility(s,a.p);
+  // Legacy/corrupt archive missing a recorded sample must fail CLOSED.
+  // Never reconstruct past actor sight from present simulation geometry.
+  return false;
 }
 /** Existing callers keep their exact legacy boolean contract. */
 export function replayActorVisible(
