@@ -100,7 +100,9 @@ test('generated site is built deterministically without mutating authoritative s
   assert.ok(a.root.children.length>0);
   assert.equal(a.roofGroups.size,site.rooms.length);
   assert.equal(a.coverGroups.size,site.cover.length);
-  assert.equal(a.intelSurfaces.filter(x=>x.kind==='wall').length,site.walls.length);
+  const structuralWallIndices=new Set(a.intelSurfaces.filter(x=>x.kind==='wall').map(x=>x.index));
+  for(let i=0;i<site.walls.length;i++)assert.ok(structuralWallIndices.has(i),
+   'each authoritative wall must be registered even with additional window surfaces');
   assert.equal(a.intelSurfaces.filter(x=>x.kind==='cover').length,site.cover.length);
   assert.equal(a.doors.size,site.doors.length);
   assert.equal(a.observedDoorOpen.size,site.doors.length);
