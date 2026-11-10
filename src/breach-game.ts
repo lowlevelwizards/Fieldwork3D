@@ -868,7 +868,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
              {a:points[i-1],b:points[i]})>9&&
            pointToSegment(doorCenter(door),
              {a:prior,b:node.p})>9)continue;
-        const staging=doorApproach(prior,door);
+        const staging=doorApproach(prior,door,sessionWorldGeometry(s));
         if(!staging)continue;
         expanded.push({id:s.nextId+expanded.length,kind:'door',
           p:clone(staging),doorId:door.id,method:'open'});
@@ -1115,14 +1115,14 @@ export function planEntryTool(s:Session,id:string,doorId:string,
    id:s.nextId++,kind:'tool',doorId,toolMethod:method,
    p:clone(a.plan[index].p)});});
  }
- const position=doorApproach(finalPoint(a),door);
+ const position=doorApproach(finalPoint(a),door,sessionWorldGeometry(s));
  if(!position)return false;
  return addNode(s,id,'tool',position,{doorId,toolMethod:method});
 }
 export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
   if(!a||!door||!canEdit(s))return false;
-  const position=doorApproach(finalPoint(a),door);
+  const position=doorApproach(finalPoint(a),door,sessionWorldGeometry(s));
   return !!position&&addNode(s,id,'door',position,{doorId,method});
 }
 /** Plan an actual reserved stack position on the same approach side.
@@ -1579,7 +1579,7 @@ export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<0)return false;
   const start=index>0?a.plan[index-1].p:a.p;
-  const approached=doorReachable(start,door)?clone(start):doorApproach(start,door);
+  const approached=doorReachable(start,door)?clone(start):doorApproach(start,door,sessionWorldGeometry(s));
   if(!approached||!sessionWorldGeometry(s).passable(approached)||
      !sessionWorldGeometry(s).route(start,approached).length)return false;
   const before=a.plan.slice(0,index);
@@ -2140,7 +2140,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       }
     }
     if(yielded)doorOccupants=liveDoorOccupants(s);
-    advanceDoor(door,h,doorOccupants);
+    advanceDoor(door,h,doorOccupants,sessionWorldGeometry(s));
   }
   mark('doors');
   advanceTransientSimulationEffects(s,h);
