@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 8: explicit authoritative door OPEN/CLOSE/KICK/HOLD order,
  * including real sweep impact and repeated bounded kick attempts.
  */
@@ -91,7 +92,7 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
               for(const distance of [18,12,7,3]){
                 const dest={x:struck.p.x+dir.x*distance,
                   y:struck.p.y+dir.y*distance};
-                if(!sweptBodyClear(struck.p,dest,s.doors)||
+                if(!sweptBodyClear(struck.p,dest,s.doors,8,sessionWorldGeometry(s))||
                    s.operators.some(other=>other!==struck&&
                      other.health>0&&d(other.p,dest)<13)||
                    s.civilians.some(other=>other.health>0&&
