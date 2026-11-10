@@ -28,6 +28,9 @@ jobs:
       - name: Stage 3 full visibility, fog and historical disclosure regression sweep
         if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage3-') }}
         run: node scripts/verification/breach-stage3-visibility-suite.mjs
+      - name: Stage 4 replay, pointer and feedback composition regression sweep
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage4-') }}
+        run: node scripts/verification/breach-stage4-composition-suite.mjs
       - name: Architecture dependency boundary check
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production TypeScript and asset build
