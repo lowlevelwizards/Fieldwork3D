@@ -19,6 +19,10 @@ export type EncounterContext = {
   mission?:OperationKind;
   /** Only Campaign supplies a contract risk. */
   risk?:1|2|3;
+  /** Quick Play adjusts population only, not AI intelligence or accuracy. */
+  presence?:'light'|'typical'|'heavy';
+  /** Ambient bystanders are separate from mandatory rescue objectives. */
+  civilianPolicy?:'scenario'|'on'|'off';
   /** Future inspector override; the default always derives from identity. */
   premise?:EncounterPremise;
   /** Developer opt-in until B5–B8 are physically and visually integrated. */
