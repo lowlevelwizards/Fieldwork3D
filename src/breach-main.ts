@@ -112,6 +112,7 @@ import {renderMissionDebrief} from './ui/breach-mission-debrief.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
+import {createBreachTacticalFrameFeedbackController} from './ui/breach-tactical-frame-feedback-controller.ts';
 import {createBreachReplayHudController} from './ui/breach-replay-hud-controller.ts';
 import {createTacticalPaletteController} from './ui/tactical-palette-controller.ts';
 import {dispatchTacticalContextCommand} from './breach-tactical-context-command.ts';
@@ -1084,7 +1085,15 @@ function updateQuickStates():void{
   });
 }
 const siteIdentityOutput=el<HTMLOutputElement>('siteIdentity');
-const blockedEpisode=new Map<string,string>();
+const frameFeedbackController=createBreachTacticalFrameFeedbackController({
+ snapshot:()=>({
+   state,replaying,selected,feedbackDraw,dpr,cssW,cssH,activePointers,
+   cursor,previewHover,hudController,flashMode,firePlacement,evacMode,
+   pushMode,uid,selectedPlanNode,tacticalFeedback,worldToScreen,
+   reducedMotion:reducedMotionMedia.matches
+ }),
+ warn:()=>audioController.uiClickTone('warning')
+});
 let fieldLightButton:HTMLButtonElement|null=null;
 let medicalButton:HTMLButtonElement|null=null;
 let dragButton:HTMLButtonElement|null=null;
@@ -1388,10 +1397,8 @@ function render(){
 }
 /** Rejected authoring orders keep the existing plan intact and mark only
  * the attempted world point; no hidden geometry or actors are inspected. */
-function rejectAt(pt:Pt,reason:string){
-  state.events.push(reason);
-  hudController.rejectAttempt(pt,reason,
-    ()=>audioController.uiClickTone('warning'));
+function rejectAt(pt:Pt,reason:string):void{
+ frameFeedbackController.rejectAt(pt,reason);
 }
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
@@ -2197,7 +2204,7 @@ function releaseMissionPresentation():void{
   ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
   replayAnalysisUi.closeReplayChoices();
   hudController.resetNotices();
-  blockedEpisode.clear();
+  frameFeedbackController.reset();
   runtimeLoop.resetPresentation();
   missionController.releasePresentation();
 }
@@ -2684,88 +2691,8 @@ audioController.bindSettings({
 /** Authoring previews and blocker feedback stay with tactical presentation;
  * the scheduler invokes them once per rendered/active frame. */
 function drawTacticalFrameFeedback(studioOccludesTactical:boolean):void{
-  // One local, intelligible pulse per distinct blocked episode.
-  for(const actor of team(state)){
-    const old=blockedEpisode.get(actor.id);
-    if(actor.blockedTime<.3||actor.lastBlocker==='clear'){
-      blockedEpisode.delete(actor.id);continue;
-    }
-    if(actor.blockedTime>=.95&&(old!==actor.lastBlocker)){
-      blockedEpisode.set(actor.id,actor.lastBlocker);
-      if(!replaying)tacticalFeedback.emit('error',actor.p,
-        actor.lastBlocker==='furniture'?'OBSTRUCTED':actor.lastBlocker);
-    }
-  }
-  if(feedbackDraw&&!studioOccludesTactical){
-    feedbackDraw.setTransform(dpr,0,0,dpr,0,0);
-    feedbackDraw.clearRect(0,0,cssW,cssH);
-    const actor=uid(selected);
-    const authoringPointer=activePointers.size===1?
-      [...activePointers.values()][0]:null;
-    const canPreview=state.phase==='planning'&&!replaying&&
-      !!cursor&&(previewHover||!!authoringPointer)&&
-      (!authoringPointer||!['cameraMulti','cameraOrbit','cameraPan'].includes(
-        authoringPointer.mode))&&cursor.x>=0&&cursor.y>=0&&
-      cursor.x<=W&&cursor.y<=H;
-    const orderMode=hudController.facing.looking?hudController.facing.lookMode:flashMode?'flash':
-      firePlacement??evacMode?.mode;
-    const origin=hudController.facing.looking?
-      (selectedPlanNode()?.p??(hudController.facing.armedOrigin==='here'?actor?.p:
-        actor?finalPoint(actor):undefined)):
-      actor?finalPoint(actor):undefined;
-    const preview:TacticalOrderPreview|undefined=canPreview&&actor&&origin&&
-      orderMode?{origin,direction:cursor!,mode:orderMode}:undefined;
-    tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
-      performance.now(),preview,reducedMotionMedia.matches);
-    // Direction-only preview of an authored furniture push. The authoritative
-    // simulation still decides how far the real object can move on contact;
-    // this never mutates cover, reveals unknown obstacles, or guarantees travel.
-    if(pushMode&&state.phase==='planning'&&!replaying&&actor){
-      const from=selectedPlanNode()?.p??finalPoint(actor);
-      // Find the nearest known movable cover in one pass. Sorting and
-      // allocating a candidate array every RAF is unnecessary here.
-      let candidate:{object:(typeof state.coverState)[number];index:number;range:number}|undefined;
-      for(let index=0;index<state.coverState.length;index++){
-        const object=state.coverState[index];
-        if(!state.intel.cover.has(index)||!canRelocateCover(object))continue;
-        const range=distance(from,{x:object.x,y:object.y});
-        if(range>=Math.max(object.w,object.h)/2+43)continue;
-        if(!candidate||range<candidate.range){
-          candidate={object,index,range};
-        }
-      }
-      if(candidate){
-        const obj=candidate.object,center={x:obj.x,y:obj.y};
-        const base=Math.atan2(obj.y-from.y,obj.x-from.x);
-        const aimed=canPreview&&cursor&&distance(cursor,center)>4?
-          Math.atan2(cursor.y-center.y,cursor.x-center.x):base;
-        const yaw=base+Math.max(-Math.PI*4/9,Math.min(Math.PI*4/9,
-          angleDifference(base,aimed)));
-        const dist=Math.max(7,coverPushDistance(obj));
-        const end={x:obj.x+Math.cos(yaw)*dist,
-          y:obj.y+Math.sin(yaw)*dist};
-        const startPx=worldToScreen(center,13),endPx=worldToScreen(end,13);
-        feedbackDraw.save();
-        feedbackDraw.strokeStyle='#e4c998';feedbackDraw.fillStyle='#e4c998';
-        feedbackDraw.lineWidth=2.4;feedbackDraw.setLineDash([5,4]);
-        feedbackDraw.beginPath();feedbackDraw.arc(startPx.x,startPx.y,15,
-          0,Math.PI*2);feedbackDraw.stroke();
-        feedbackDraw.setLineDash([]);
-        feedbackDraw.beginPath();feedbackDraw.moveTo(startPx.x,startPx.y);
-        feedbackDraw.lineTo(endPx.x,endPx.y);feedbackDraw.stroke();
-        const direction=Math.atan2(endPx.y-startPx.y,endPx.x-startPx.x);
-        feedbackDraw.beginPath();feedbackDraw.moveTo(endPx.x,endPx.y);
-        for(const side of [-1,1])
-          feedbackDraw.lineTo(endPx.x-Math.cos(direction+side*.48)*13,
-            endPx.y-Math.sin(direction+side*.48)*13);
-        feedbackDraw.closePath();feedbackDraw.fill();
-        feedbackDraw.restore();
-      }
-    }
-  }
-
+ frameFeedbackController.draw(studioOccludesTactical);
 }
-
 
 // The runtime owns RAF cadence; the host supplies live state and presentation boundaries.
 const runtimeLoop=createBreachRuntimeLoop({
