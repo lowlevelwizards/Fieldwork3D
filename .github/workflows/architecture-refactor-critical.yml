@@ -60,6 +60,10 @@ jobs:
         if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage10-') }}
         run: |
           node --experimental-strip-types --test tests/breach-roadmap2-stage10-combat.test.mjs tests/gameplay-g3-fire-lanes.test.mjs tests/breach-171.test.mjs tests/breach-179.test.mjs tests/breach-muzzle-lane-hotfix.test.mjs tests/breach-two-sided-fire-recovery.test.mjs tests/breach-roadmap2-impact-evidence.test.mjs tests/breach-roadmap3-shot-ignition.test.mjs tests/breach-roadmap4-ballistic-resolution.test.mjs tests/civilian-b5b-ballistics.test.mjs tests/civilian-c3c-harm-attribution.test.mjs tests/civilian-d2-fire-safety.test.mjs tests/phase-a-shot-pressure.test.mjs tests/equipment-09-armor.test.mjs tests/lw-glass-impact.test.mjs tests/lw-penetration.test.mjs tests/replay-r2-ballistics.test.mjs
+      - name: Stage 11 operator frame, rig, IK, replay and handling ownership parity
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage11-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-roadmap2-stage11-animation.test.mjs tests/breach-unified-pose-stability.test.mjs tests/breach-pose-transition-director.test.mjs tests/breach-pose-v3-coordinated.test.mjs tests/breach-ik-scratch-performance.test.mjs tests/breach-pose-v3-reload-replay.test.mjs tests/breach-coupled-rig-smoke.test.mjs tests/breach-roadmap2-pose-locomotion.test.mjs tests/breach-pose-v3-action-matrix.test.mjs tests/operator-lab-unified-poses.test.mjs tests/breach-171.test.mjs tests/breach-179.test.mjs
       - name: Architecture dependency boundary check
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production TypeScript and asset build

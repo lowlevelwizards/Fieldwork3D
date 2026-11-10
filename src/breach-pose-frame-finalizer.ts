@@ -3,7 +3,8 @@
  */
 import {canonicalRootOrientation} from './operator-axis-convention.ts';
 import {updateOperatorPoseCavity} from './operator-pose-cavity-lighting.ts';
-import type {OperatorRig,OperatorPose} from './breach-operator-rig.ts';
+import type {OperatorRig} from './breach-operator-rig.ts';
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
 export function applyOperatorTraumaPose(r:OperatorRig,p:OperatorPose,
  downProgress:number):void{
   // The pose system is the final writer for actor tilts and reactions.

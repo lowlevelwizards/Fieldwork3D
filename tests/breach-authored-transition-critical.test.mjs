@@ -8,7 +8,7 @@ const text=(file)=>readFileSync(new URL(file,import.meta.url),'utf8');
 
 test('Lab snapshots the rendered stance and does not re-enter generic mid-transition fit',()=>{
  const lab=text('../src/breach-operator-lab.ts');
- const rig=text('../src/breach-operator-rig.ts');
+ const rig=text('../src/breach-operator-animation-controller.ts');
  const director=text('../src/breach-pose-director.ts');
  assert.match(lab,/rig\.root\.userData\.presentedWeaponFit/);
  assert.match(lab,/authoredFrom:presented\?/);

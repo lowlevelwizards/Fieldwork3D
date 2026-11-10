@@ -23,10 +23,12 @@ test('172: unstable clearance never triggers simultaneous recovery steps',()=>{
 });
 test('172: no rig or IK path is allowed to secretly replace contacts',()=>{
  const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
+ const lower=readFileSync(new URL('../src/breach-operator-lower-body.ts',import.meta.url),'utf8');
  assert.doesNotMatch(rig,/shoe\.recovery/);
  assert.doesNotMatch(rig,/const safe=safePlantPoint/);
  assert.doesNotMatch(rig,/rawTargets\.map/);
- assert.match(rig,/const targets:\[FootTarget,FootTarget\]=/);
+ assert.match(lower,/const targets:\[FootTarget,FootTarget\]=/);
+ assert.doesNotMatch(lower,/shoe\.recovery|const safe=safePlantPoint|rawTargets\.map/);
  const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  assert.doesNotMatch(scene,/Math\.hypot\(other\.p\.x-pt\.x/);
 });

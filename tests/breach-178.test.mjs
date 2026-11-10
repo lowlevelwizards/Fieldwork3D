@@ -25,7 +25,7 @@ test('178: passive pose hysteresis avoids chattering but never blocks danger',()
    previous:'low',heldFor:0}),'point');
 });
 test('178: live and shot-time barrel use same close-range selection criteria',()=>{
- const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
+ const rig=readFileSync(new URL('../src/breach-operator-animation-controller.ts',import.meta.url),'utf8');
  const director=readFileSync(new URL('../src/breach-pose-director.ts',import.meta.url),'utf8');
  const muzzle=readFileSync(new URL('../src/breach-muzzle.ts',import.meta.url),'utf8');
  const transition=readFileSync(new URL('../src/breach-pose-transition-director.ts',import.meta.url),'utf8');

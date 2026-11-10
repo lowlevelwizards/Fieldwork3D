@@ -7,6 +7,8 @@ on:
       - 'src/breach-footsteps.ts'
       - 'src/breach-ik.ts'
       - 'src/breach-operator-rig.ts'
+      - 'src/breach-operator-animation-*.ts'
+      - 'src/breach-operator-lower-body.ts'
       - 'src/breach-operator-lab.ts'
       - 'src/breach-lab-tracks.ts'
       - 'src/breach-locomotion.ts'

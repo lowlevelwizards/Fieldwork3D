@@ -39,11 +39,12 @@ test('skin, haircut, and color overrides round-trip and reject invalid values',(
 test('identity studio edits do not add equipment or anatomy mutations',()=>{
  const studio=readFileSync(new URL('../src/operator-studio.ts',import.meta.url),'utf8');
  const kit=readFileSync(new URL('../src/operator-visual-kit.ts',import.meta.url),'utf8');
- const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
+ const rig=readFileSync(new URL('../src/breach-operator-appearance.ts',import.meta.url),'utf8');
  assert.match(studio,/SKIN TONE/);
  assert.match(studio,/HAIRCUT/);
  assert.match(studio,/HAIR COLOR/);
  assert.match(kit,/HAIR_STYLE_IDS\[i\]===hairStyle/);
- assert.match(rig,/r\.colors\.set\(r\.skinMaterial/);
+ assert.match(rig,/for\(const skinMaterial of \[r.skinMaterial,r.faceSkinMaterial/);
+ assert.match(rig,/r\.colors\.set\(skinMaterial,new THREE.Color\(SKIN_TONES\[complexion\]\.hex\)\)/);
  assert.doesNotMatch(studio,/setEquipmentChoice\(.*'skinTone'/);
 });
