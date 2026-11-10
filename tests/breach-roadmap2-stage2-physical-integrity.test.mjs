@@ -10,6 +10,8 @@ import {auditSitePhysicalIntegrity}
  from '../src/worldgen/site-physical-integrity.ts';
 import {auditTacticalMobility}
  from '../src/worldgen/tactical-mobility-audit.ts';
+import {circulationReservations,overlapsCirculationReservation}
+ from '../src/worldgen/circulation-reservations.ts';
 
 const has=(report,code,entity)=>report.blocking.some(f=>
  f.code===code&&(!entity||f.entity===entity));
@@ -98,6 +100,22 @@ test('default-scale townhouse, apartment, and office room clusters are reachable
    })),spawn:site.spawn[0]});
  }
  assert.equal(failures.length,0,JSON.stringify(failures));
+});
+
+test('fixed office partitions preserve open-plan operator corridors',()=>{
+ const site=generateSite(37,'standard');
+ const lanes=circulationReservations(site).filter(l=>
+  l.kind==='through-route'&&
+  site.rooms.some(r=>r.id===l.roomId&&r.purpose==='cubicles'));
+ assert.ok(lanes.length,'office must reserve its open-plan cubicle passages');
+ for(const [i,o] of site.cover.entries()){
+  if(o.fixture!=='half-wall')continue;
+  const room=site.rooms.find(r=>r.purpose==='cubicles'&&
+   o.x>r.x&&o.x<r.x+r.w&&o.y>r.y&&o.y<r.y+r.h);
+  if(!room)continue;
+  assert.equal(overlapsCirculationReservation(o,lanes,room.id),false,
+   'fixed half-wall '+i+' cannot block cubicle circulation in '+room.id);
+ }
 });
 
 test('large professional office wings must connect all functional rooms',()=>{
