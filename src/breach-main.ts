@@ -179,6 +179,7 @@ const ui={
   tacticalHud:el<HTMLElement>('tacticalHud'),
   cancelTarget:el<HTMLButtonElement>('cancelTarget'),
   siteSettingsToggle:el<HTMLButtonElement>('siteSettingsToggle'),
+  quickPlaySetup:el<HTMLButtonElement>('quickPlaySetup'),
   siteSize:el<HTMLButtonElement>('siteSize'),
   siteLighting:el<HTMLButtonElement>('siteLighting'),
   siteSettings:el<HTMLElement>('siteSettings'),
@@ -1121,6 +1122,7 @@ function medicalCandidate(id:string,origin?:Pt){
 }
 
 function updateHud(){
+  ui.quickPlaySetup.hidden=campaignMode!=='quick'||replaying;
   if(!replaying&&state.phase==='planning')recorder.capturePlanning(state);
   const identity=currentSiteIdentity(state.site,campaignMode==='quick');
   if(siteIdentityOutput.textContent!==identity.text)
@@ -2303,7 +2305,18 @@ const quickPlayController=createBreachQuickPlayController({
   activateFavorite:id=>replayLibrary.activateFavorite(id),
   showHelp:showUiHelp
 });
-const launchQuickPlay=()=>quickPlayController.launch();
+/** Enter Quick Play through its scenario creator, never directly regenerate. */
+const launchQuickPlay=()=>quickPlayController.customize();
+function returnToQuickPlayGenerator(){
+  if(campaignMode!=='quick'||replaying||quickPlayController.busy)return;
+  // Opening the creator does not discard the current mission, routes or replay.
+  const cameFromSettings=!ui.siteSettings.hidden;
+  closeMissionSettings(false);
+  // Return keyboard focus to a visible control if Settings was the origin.
+  if(cameFromSettings)ui.siteSettingsToggle.focus();
+  quickPlayController.customize();
+}
+ui.quickPlaySetup.addEventListener('click',returnToQuickPlayGenerator);
 /** Campaign Arsenal drafts are always re-quoted against live ownership and credits.
  * The existing editor remains usable until the new UI completes its cutover.
  */
@@ -2315,7 +2328,7 @@ const campaignFlow=createBreachCampaignFlow({
   getSession:()=>state,isReplaying:()=>replaying,siteSize:ui.siteSize,siteSettings:ui.siteSettings,
   randomSeed:randomSiteSeed,
   resetContract:job=>reset(0,job.seed,job.kind,undefined,job.risk),
-  launchQuickPlay,customizeQuickPlay:()=>quickPlayController.customize(),
+  launchQuickPlay,
   openReplayLibrary:()=>replayLibrary.openFromMenu(),
   openStudio:id=>openOperatorStudio(id,'campaign'),
   openArsenal:id=>{void openCampaignArsenal(id);},
@@ -2453,6 +2466,7 @@ ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updat
 missionScreens.bindSitePreferences();
 ui.variant.addEventListener('click',async()=>{
   if(replaying||campaignMode==='mission')return;
+  if(campaignMode==='quick'){returnToQuickPlayGenerator();return;}
   if((state.started||team(state).some(a=>a.plan.length>0))&&
     !await confirmFieldworkAction({
       title:'Generate a new site?',
@@ -2462,11 +2476,18 @@ ui.variant.addEventListener('click',async()=>{
   reset(state.variant+1);
 });
 ui.retry.addEventListener('click',()=>{if(campaignMode!=='mission')restartMission();});
-ui.next.addEventListener('click',()=>{if(!returnAfterCampaignMission())reset(state.variant+1);});
+ui.next.addEventListener('click',()=>{
+  if(returnAfterCampaignMission())return;
+  if(campaignMode==='quick')returnToQuickPlayGenerator();
+  else reset(state.variant+1);
+});
 ui.play.addEventListener('click',()=>{
   audioController.unlock();audioController.uiClickTone(state.phase==='running'?'pause':'go');
   if(state.phase==='won'||state.phase==='lost'){
-   if(!returnAfterCampaignMission())reset();
+   if(!returnAfterCampaignMission()){
+     if(campaignMode==='quick')returnToQuickPlayGenerator();
+     else reset();
+   }
   }else{
     hudController.facing.looking=false;pushMode=false;
     missionController.captureBeforeExecution(state,recorder);
@@ -2489,7 +2510,7 @@ window.addEventListener('keydown',e=>{
   // Global game shortcuts must never fire while the player edits a name,
   // operates a dialog, or navigates Campaign / the front menu.
   if(e.isComposing||e.altKey||campaignMode==='menu'||campaignMode==='home')return;
-  if(document.querySelector('.fw-confirm-backdrop'))return;
+  if(document.querySelector('.fw-confirm-backdrop')||quickPlayController.configuring)return;
   const target=e.target;
   // Escape is handled before the usual input guard so a focused replay
   // range/button can dismiss its panel; native select popups keep Escape.
@@ -2525,7 +2546,10 @@ window.addEventListener('keydown',e=>{
   if(e.code==='Space'&&!e.repeat){
     e.preventDefault();audioController.unlock();
     if(state.phase==='won'||state.phase==='lost'){
-      if(!returnAfterCampaignMission())reset();
+      if(!returnAfterCampaignMission()){
+        if(campaignMode==='quick')returnToQuickPlayGenerator();
+        else reset();
+      }
     }else{
       missionController.captureBeforeExecution(state,recorder);
       toggling(state);
@@ -2727,7 +2751,8 @@ function drawTacticalFrameFeedback(studioOccludesTactical:boolean):void{
 // The runtime owns RAF cadence; the host supplies live state and presentation boundaries.
 const runtimeLoop=createBreachRuntimeLoop({
  getSession:()=>state,getRecorder:()=>recorder,getMode:()=>campaignMode,
- isReplaying:()=>replaying,isQuickPlayBusy:()=>quickPlayController.busy,
+ isReplaying:()=>replaying,
+ isQuickPlayBusy:()=>quickPlayController.busy||quickPlayController.configuring,
  getSelected:()=>selected,getSelectedActor:()=>uid(selected),
  getDoorFocusId:()=>doorFocusId,getStage:()=>stage,getViewMode:()=>viewMode,
  isMissionTerminal,isStudioVisible:()=>studioBridge.visible,

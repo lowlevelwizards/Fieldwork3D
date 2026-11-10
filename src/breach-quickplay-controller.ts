@@ -73,7 +73,8 @@ const allowQuickPlayPaint=()=>new Promise<void>(resolve=>
   requestAnimationFrame(()=>setTimeout(resolve,0)));
 quickPlayCancelButton.addEventListener('click',()=>{
   if(quickPlayPanel.dataset.state==='error'){
-    quickPlayPanel.hidden=true;return;
+    quickPlayPanel.hidden=true;
+    configurator.open();return;
   }
   if(!quickPlayBusy||quickPlayCancelButton.hidden)return;
   ++quickPlayRun;
@@ -82,6 +83,8 @@ quickPlayCancelButton.addEventListener('click',()=>{
   quickPlayWorker?.terminate();quickPlayWorker=null;
   quickPlayBusy=false;finishQuickPlayClock();
   quickPlayPanel.hidden=true;
+  // Cancel returns to the scenario creator, keeping the old mission intact.
+  configurator.open();
 });
 const configurator=createQuickPlayConfigurator({
   randomSeed:config.randomSeed,
@@ -252,7 +255,7 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
     quickPlayCancelButton.textContent='BACK';
     quickPlayStageText.textContent='TACTICAL SANDBOX FAILED';
     quickPlayDetailText.textContent=error instanceof Error?error.message:String(error);
-    quickPlayClockText.textContent='Stopped · return to menu and retry';
+    quickPlayClockText.textContent='Stopped · return to scenario generator';
     console.error('[Quick Play startup]',error);
   }
 }
@@ -271,6 +274,7 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
    restoreFavorite,
    launch:launchQuickPlay,
    customize:()=>{if(!quickPlayBusy)configurator.open();},
+   get configuring(){return configurator.isOpen;},
    get busy(){return quickPlayBusy;},
    cancel:()=>quickPlayCancelButton.click()
  };
