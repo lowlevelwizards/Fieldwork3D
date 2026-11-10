@@ -1,7 +1,8 @@
 /** Owns floor, architecture, physical light and decal drawing.
  * Only reads live or historically disclosed presentation state.
  */
-import {W,H,GRID,WALLS,COVER,doorCenter,doorLeafSegment,type Pt,type Segment} from './breach-core.ts';
+import {W,H,GRID,doorCenter,doorLeafSegment,type Pt,type Segment} from './breach-core.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
 import {type Session,type TeamActor,liveVisibility,isSeen} from './breach-game.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 import {previewKnownDoorSwing} from './breach-door-swing-preview.ts';
@@ -108,7 +109,7 @@ function terrain(){
 function furniture(){
   const state=getState();
   const replaying=isReplaying();
-  for(const [i,c] of COVER.entries()){
+  for(const [i,c] of sessionWorldGeometry(state).cover.entries()){
     if(spatialSurfaceState(state,'cover',i,replaying&&replayKnowledge.omniscient)==='unknown')continue;
     if(c.toppled){
       // Low, collapsed silhouette rather than a standing furniture block.
@@ -154,7 +155,7 @@ function architecture(){
       .map(c=>c.p)
   ]:[];
   const swingPreviews=new Map<string,ReturnType<typeof previewKnownDoorSwing>>();
-  for(const [i,wall] of WALLS.entries())if(
+  for(const [i,wall] of sessionWorldGeometry(state).walls.entries())if(
     spatialSurfaceState(state,'wall',i,replaying&&replayKnowledge.omniscient)!=='unknown')
     wallShape(wall.a,wall.b);
   // Closed doors obscure sight and movement; opened doors have an arc.
@@ -254,10 +255,17 @@ function architecture(){
     line({x,y:94},{x:x+52,y:94},'#d4d5bb',2);
   }
 }
-let beam2DBlockers:Segment[]=[];
-let beam2DBlockerTick=-1,beam2DSite=-1,beam2DRevision=-1;
-const beam2DHistory=new Map<string,{x:number;y:number;yaw:number;tick:number;
- config:TeamActor['weaponConfiguration'];footprint:Pt[]}>();
+/** A renderer may be reused for live/replay/restart. Cache ownership follows
+ * Session identity, not seed, tick, actor ID, or whichever site is global.
+ * Weak keys ensure that retired missions do not accumulate light history.
+ */
+type Beam2DHistory={x:number;y:number;yaw:number;tick:number;
+ config:TeamActor['weaponConfiguration'];footprint:Pt[]};
+type Beam2DSessionCache={
+ tick:number;revision:number;doorSignature:string;blockers:Segment[];
+ history:Map<string,Beam2DHistory>;
+};
+const beam2DBySession=new WeakMap<Session,Beam2DSessionCache>();
 function renderLightingMood2D(){
   const state=getState();
  const mood=lightingPresentation(state.lightingMode);
@@ -268,39 +276,53 @@ function renderLightingMood2D(){
  draw.restore();
 }
 function renderWeaponLights2D(){
-  const state=getState();
-  const replaying=isReplaying();
+ const state=getState(),replaying=isReplaying();
  const active=state.operators.filter(a=>a.health>0&&a.weaponLightOn&&
   a.weaponConfiguration?.slots.light==='light-compact');
  if(!active.length)return;
- const tick=Math.floor(state.seconds*8),site=state.site?.seed??-1;
- if(tick!==beam2DBlockerTick||site!==beam2DSite||
-  state.objectRevision!==beam2DRevision){
-  beam2DBlockers=lightBeamBlockers(WALLS,state.doors,COVER);
-  beam2DBlockerTick=tick;beam2DSite=site;
-  beam2DRevision=state.objectRevision;
+ const world=sessionWorldGeometry(state);
+ const tick=Math.floor(state.seconds*8),revision=world.revision;
+ // A seek can rewind to the same tick and object revision but a different
+ // door aperture. Door state is part of the optical cache dependency.
+ const doorSignature=state.doors.map(d=>d.id+':'+
+  (d.openFraction??(d.open?1:0)).toFixed(5)+':'+
+  (d.glassShattered?1:0)+':'+(d.wedged?1:0)).join('|');
+ let cached=beam2DBySession.get(state);
+ if(!cached){
+  cached={tick:-1,revision:-1,doorSignature:'',blockers:[],
+   history:new Map()};
+  beam2DBySession.set(state,cached);
+ }
+ if(cached.tick!==tick||cached.revision!==revision||
+    cached.doorSignature!==doorSignature){
+  cached.blockers=lightBeamBlockers(world.walls,state.doors,world.cover);
+  cached.tick=tick;cached.revision=revision;
+  cached.doorSignature=doorSignature;
+  cached.history.clear();
  }
  draw.save();draw.fillStyle='rgba(183,240,205,.12)';
  for(const actor of active){
   if(actor.side==='red'&&!replayActorDisclosed(state,actor,
       replaying?replayKnowledge.disclosure():{mode:'squad'}))continue;
-  const previous=beam2DHistory.get(actor.id);
+  const previous=cached.history.get(actor.id);
   const yaw=actor.weaponYaw;
-  if(!previous||previous.tick!==tick||!sameWeaponConfiguration(previous.config,actor.weaponConfiguration)||
+  if(!previous||previous.tick!==tick||
+   !sameWeaponConfiguration(previous.config,actor.weaponConfiguration)||
    Math.hypot(previous.x-actor.p.x,previous.y-actor.p.y)>.7||
-   Math.abs(Math.atan2(Math.sin(previous.yaw-yaw),Math.cos(previous.yaw-yaw)))>.025){
+   Math.abs(Math.atan2(Math.sin(previous.yaw-yaw),
+     Math.cos(previous.yaw-yaw)))>.025){
    const muzzle=weaponClearance({x:actor.p.x,z:actor.p.y,
     heading:actor.heading,weaponYaw:yaw,weapon:actor.weapon,
     weaponConfiguration:actor.weaponConfiguration,
     equipment:actor.equipment,aim:actor.aim,
     velocity:actor.velocity,recoil:actor.recoil,posture:actor.posture},
-    state.doors).muzzle;
+    state.doors,world.cover,world.walls).muzzle;
    const from=weaponLightEmitter(muzzle,actor.weaponConfiguration!);
-   beam2DHistory.set(actor.id,{x:actor.p.x,y:actor.p.y,yaw,tick,
+   cached.history.set(actor.id,{x:actor.p.x,y:actor.p.y,yaw,tick,
     config:actor.weaponConfiguration,
-    footprint:lightBeamFootprint(from,muzzle.yaw,beam2DBlockers)});
+    footprint:lightBeamFootprint(from,muzzle.yaw,cached.blockers)});
   }
-  const polygon=beam2DHistory.get(actor.id)!.footprint;
+  const polygon=cached.history.get(actor.id)!.footprint;
   draw.beginPath();draw.moveTo(polygon[0].x,polygon[0].y);
   for(let i=1;i<polygon.length;i++)draw.lineTo(polygon[i].x,polygon[i].y);
   draw.closePath();draw.fill();
@@ -313,7 +335,7 @@ function renderGroundMarks(){
   for(const mark of state.impactMarks){
     if(!(replaying&&replayKnowledge.omniscient)&&!liveVisibility(state,mark.p))continue;
     const radius=mark.surface==='blood'?
-      confinedGroundRadius(mark.p,4,state.site?.walls??WALLS):2.5;
+      confinedGroundRadius(mark.p,4,sessionWorldGeometry(state).walls):2.5;
     if(radius<.5)continue;
     draw.globalAlpha=Math.max(.18,.78-mark.age*.023);
     circle(mark.p.x,mark.p.y,radius,
@@ -325,6 +347,13 @@ function renderGroundMarks(){
   }
  }
 
+ /** Read-only diagnostic of bounded, session-owned visual cache. */
+ function inspectLightCache(session:Session){
+  const cache=beam2DBySession.get(session);
+  return cache?{tick:cache.tick,revision:cache.revision,
+   doorSignature:cache.doorSignature,lights:cache.history.size,
+   blockers:cache.blockers.length}:null;
+ }
  return {terrain,furniture,architecture,renderLightingMood2D,
-   renderWeaponLights2D,renderGroundMarks};
+   renderWeaponLights2D,renderGroundMarks,inspectLightCache};
 }

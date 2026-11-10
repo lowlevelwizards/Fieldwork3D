@@ -10,6 +10,7 @@ import type {ReplayKnowledgeController} from './breach-replay-knowledge-controll
 import type {ReplayBodycamController} from './breach-replay-bodycam-controller.ts';
 import type {createBreachReplayAnalysisController} from './ui/breach-replay-analysis-controller.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
+import {adoptPresentationWorldSession} from './breach-world-context.ts';
 import {bodycamEligibleObserverIds,bodycamHasPersonalGround}
  from './breach-replay-bodycam-controls.ts';
 
@@ -76,6 +77,9 @@ export function createReplayModeController(config:ReplayModeControllerHooks){
   config.getAnalysis().showReplayToolTab(null);
   config.setSession(config.createReplaySession(recorder,live));
   const state=config.getSession();
+  // Replay becomes the displayed geometry only at the actual UI handoff.
+  // Building the historical session never mutates the live presentation.
+  adoptPresentationWorldSession(state);
   config.camera.followId=team(state)[0]?.id??'rook';
   config.populateCameraChoices();
   config.populateInspectActors();

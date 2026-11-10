@@ -8,7 +8,7 @@
  */
 import type {Session} from './breach-game.ts';
 import {
- W,H,WALLS,COVER,activeSite,activeGeometryRevision,pointToSegment,segmentsCross,
+ W,H,WALLS,activeGeometryRevision,pointToSegment,segmentsCross,
  doorBlocksRay,route,OPERATOR_RADIUS,type Pt,type Segment,type Obstacle,
  type Door
 } from './breach-core.ts';
@@ -40,12 +40,6 @@ export type SessionWorldGeometry={
  isClear(from:Pt,to:Pt,doors:readonly Door[],ignoreDoors?:boolean):boolean;
 };
 const contexts=new WeakMap<Session,SessionWorldGeometry>();
-/** Global compatibility adapter tracks presentation ownership only. */
-let presentationSession:Session|null=null;
-export function setPresentationWorldSession(s:Session):void{
- presentationSession=s;
-}
-
 const defaultBounds:WorldBounds={minX:0,minY:0,maxX:W,maxY:H};
 const pointInCover=(p:Pt,o:Obstacle,r=0)=>
  Math.abs(p.x-o.x)<o.w/2+r&&Math.abs(p.y-o.y)<o.h/2+r;
@@ -134,20 +128,16 @@ export function worldGeometryForQuery(s:Session):
  return {walls:context.walls,cover:context.cover};
 }
 
-/** Presentation-only synchronization for the legacy active-site adapter.
- * Applying a physical change to a background/replay Session must NOT overwrite
- * the visible active site or its mutable global compatibility arrays.
- * Call only after a committed cover mutation, not on every simulation tick.
- */
-export function publishSessionCoverToActiveSite(s:Session):void{
- if(presentationSession!==s||
-    (activeSite()??null)!==(s.site??null))return;
- COVER.splice(0,COVER.length,...s.coverState);
-}
-
 /** Rewinding immutable replay frames may restore the same revision number.
  * Invalidate local broadphase without changing the recorded simulation epoch.
  */
 export function invalidateSessionWorldGeometry(s:Session):void{
  sessionWorldGeometry(s).invalidate();
 }
+
+/** Legacy import compatibility, backed entirely by the presentation layer.
+ * This physical world module never activates or publishes a global site.
+ */
+export {setPresentationWorldSession,adoptPresentationWorldSession,
+ withDetachedPresentationWorld,publishSessionCoverToActiveSite}
+ from './breach-presentation-world-ownership.ts';
