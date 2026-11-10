@@ -51,7 +51,7 @@ export function resolveMotorCollision(
   const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
     s.operators.filter(o=>o.health>0).map(o=>o.p),{
       deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door)
-    });
+    },world);
   // The physical transition requires a valid oriented three-point torso
   // sweep; normal clearance remains the preference whenever it fits.
   const normalClear=sweptBodyClear(a.p,desiredMove,s.doors,OPERATOR_RADIUS,world);
