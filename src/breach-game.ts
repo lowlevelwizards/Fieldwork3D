@@ -4,15 +4,17 @@ import {createEnemyDecisionController} from './breach-enemy-decision-controller.
 import {edit,validEditedPlan,validKnownPieArc,knownDoorApproach,
  atomicTeamEdit,sealPlanHistoryForExecution,undoAuthoredPlan,redoAuthoredPlan}
  from './breach-plan-authoring.ts';
-import {simulationPhaseMark,advanceTransientSimulationEffects,recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
+import {advanceSimulationTick,type SimulationPhasePort} from './breach-simulation-phases.ts';
+import {advanceMedicalDoorPhase} from './breach-simulation-medical-door-phase.ts';
+import {advanceBeliefAgingPhase} from './breach-simulation-belief-phase.ts';
+import {advanceSimulationActors,type ActorSimulationPhasePort} from './breach-simulation-actor-phase.ts';
+import {advanceSimulationMotion,type MotionSimulationPhasePort} from './breach-simulation-motion-phase.ts';
 
 import {advanceActorMotor} from './breach-actor-motor.ts';
 import {createOrderExecutor} from './breach-order-executor.ts';
-import {rotate} from './breach-order-lifecycle.ts';
-import {advanceMotorTraversal,motorTraversalWorld} from './breach-motor-traversal.ts';
+import {advanceMotorTraversal} from './breach-motor-traversal.ts';
 import type {ActorMotorHooks} from './breach-motor-contract.ts';
 
-import {incomingHitFacing} from './breach-combat-reactions.ts';
 
 /**
  * Fieldwork Breach 053–062: authoritative, fixed-step tactical session.
@@ -42,15 +44,13 @@ import {type FireBlock} from './breach-fire-safety.ts';
 
 
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {initDoor,advanceDoor,doorReachable,initialOpeningYieldCandidate} from './breach-door.ts';
+import {initDoor,doorReachable} from './breach-door.ts';
 
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool} from './equipment-entry-tools.ts';
 
 import {type AutoSidestep} from './breach-auto-sidestep.ts';
 
-import {resolveMovementFrame} from './breach-movement-authority.ts';
-import {captureMotionFrameOrigins,buildMotionFrameProposals} from './breach-motion-frame-input.ts';
 
 import {type MotorPause,type ExecutionIssue,type ExecutionStatus} from './breach-execution-state.ts';
 import {type ExecutionEvent} from './breach-execution-events.ts';
@@ -76,8 +76,6 @@ import {PerceptionPairCache} from './breach-perception-cache.ts';
 
 
 import {createCivilian,setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
-import {stepCivilianMovement} from './breach-civilian-movement.ts';
-import {stepCivilianResponse} from './breach-civilian-response.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
 
@@ -90,19 +88,18 @@ import {type TacticalReport} from './breach-communication.ts';
 import {type GroupRole} from './breach-ai-coordination.ts';
 
 
-import {moraleResponse,witnessShock,countNearbyEnemyAllies} from './breach-ai-morale.ts';
-import {newAwareness,ageAwareness,clearObservedPosition,type ActorAwareness} from './breach-awareness.ts';
+import {newAwareness,type ActorAwareness} from './breach-awareness.ts';
 import {confirmedSight} from './breach-visual-perception.ts';
 
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {passageIdleYieldStep,type PassageActor,type PassageLease} from './breach-passage.ts';
+import {type PassageLease} from './breach-passage.ts';
 
 import {planDoorSchedule,type PassageSchedule} from './breach-passage-plan.ts';
 import {projectReachableGoal,type Blocker} from './breach-nav-diagnostics.ts';
-import {sweptBodyClear,sweptProfileClear,SQUEEZE_RADIUS} from './breach-navigation.ts';
+import {sweptBodyClear,SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld} from './breach-squeeze-route.ts';
 import {knownPortalStrokeRoute} from './breach-known-portal-stroke.ts';
-import {probeObstacleCrossing,probeWindowPortalRoute,canOpenWindowForClimb,sampleTraversal,traversalRouteLength,traversalStepClear,type TraverseOpportunity} from './breach-mantle.ts';
+import {probeObstacleCrossing,probeWindowPortalRoute,canOpenWindowForClimb,traversalRouteLength,type TraverseOpportunity} from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
 import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
@@ -112,7 +109,7 @@ import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 
 import {stabilizationSummary} from './breach-casualty-status.ts';
 import {type TransportMode} from './breach-casualty-transport.ts';
-import {civilianTransportEligible,dropCivilianCustody,proposedCivilianTransportStep,reconcileCivilianTransportFrame} from './breach-civilian-transport.ts';
+import {civilianTransportEligible} from './breach-civilian-transport.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 
 import {DEFAULT_SKILLS,type ShootingSkills} from './breach-skills.ts';
@@ -131,9 +128,8 @@ import {liveMagazineCapacity,freshMagazineIssue} from './arsenal/live-magazine-c
 
 
 import {type EjectedCasing} from './breach-effects.ts';
-import {wallSafeFall} from './breach-ground-geometry.ts';
 import {type WoundRegion,type FallPose} from './breach-wounds.ts';
-import {newMedicalCondition,advanceMedicalCondition,mostUrgentWound,type MedicalCondition} from './breach-medical-wounds.ts';
+import {newMedicalCondition,mostUrgentWound,type MedicalCondition} from './breach-medical-wounds.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
@@ -2054,307 +2050,38 @@ export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  battleEvent(s,'interaction',null,to,'FURNITURE MOVED');
  return true;
 }
-/** Live bodies that can resist any door swing. Updated only after a
- * physical opening-yield changes a position during this door phase.
- * No stale position or actor is ever reused across simulation ticks. */
-function liveDoorOccupants(s:Session):Pt[]{
-  const positions:Pt[]=[];
-  for(const operator of s.operators)
-    if(operator.health>0)positions.push(operator.p);
-  for(const civilian of s.civilians)
-    if(civilian.health>0)positions.push(civilian.p);
-  return positions;
-}
-/** Optional phase timings used by the offline benchmark, never required by play. */
+/** Game-specific executor ports. Mechanics have dedicated phase owners;
+ * this facade only provides session-specific AI and order services. */
+const actorSimulationPhasePort:ActorSimulationPhasePort={
+ notify,battleEvent,unobstructed,
+ defensivePosition:(a,threat,s)=>runEnemyAi.defensivePosition(a,threat,s),
+ decideEnemy:(s,a,h)=>runEnemyAi.decide(s,a,h),
+ runFriendly:runOrders
+};
+const motionSimulationPhasePort:MotionSimulationPhasePort={
+ canSee:unobstructed,
+ routeTo:(s,from,to)=>cachedEnemyRoute(s,from,to,true)
+};
+const medicalDoorPhasePort={notify,battleEvent};
+const simulationPhasePort:SimulationPhasePort={
+ medicalDoors:(s,h)=>advanceMedicalDoorPhase(s,h,medicalDoorPhasePort),
+ flashbangs:stepFlashbangs,
+ visualAwareness:(s,h)=>advanceActorSightProgress(s,h,geometricallyVisible),
+ beliefAging:(s,h)=>advanceBeliefAgingPhase(s,h,unobstructed),
+ actorActions:(s,h,markActor)=>advanceSimulationActors(s,h,actorSimulationPhasePort,markActor),
+ motion:(s,h,origins)=>advanceSimulationMotion(s,h,origins,motionSimulationPhasePort),
+ contacts:resolveCloseContact,
+ reports:s=>runEnemyAi.distributeReports(s),
+ observe,
+ fire:(s,h)=>{for(const a of s.operators)runCombat.fire(s,a,h);},
+ mission
+};
+/** The only public entry into authoritative session evolution. UI and replay
+ * never call the phase director; clock clamp is unchanged from the baseline. */
 export type StepPhaseProbe=(phase:string,elapsedMs:number)=>void;
-export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
-  if(s.phase!=='running')return;
-  const mark=simulationPhaseMark(probe);
-  const h=clamp(dt,0,1/30);
-  s.seconds+=h;
-  for(const operator of s.operators)operator.treatmentActive=false;
-  // Medical state advances on the authoritative fixed tick only.
-  for(const casualty of s.operators){
-    if(casualty.carryingId&&casualty.health<=0){
-      const civil=s.civilians.find(c=>c.id===casualty.carryingId);
-      if(civil)dropCivilianCustody(civil,casualty);
-      else {
-        const patient=s.operators.find(o=>o.id===casualty.carryingId);
-        if(patient)patient.carriedById=null;
-        casualty.carryingId=null;
-      }
-    }
-    if(casualty.health<=0)continue;
-    const loss=advanceMedicalCondition(casualty.medical,h);
-    if(loss<=0)continue;
-    casualty.injuryStage=Math.min(3,casualty.injuryStage+loss);
-    casualty.health=Math.max(0,4-casualty.injuryStage);
-    if(casualty.health<=0){
-      casualty.lastDownAt=s.seconds;
-      const fall=wallSafeFall(casualty.p,casualty.heading,'slump',sessionWorldGeometry(s).walls);
-      casualty.downPose=fall.pose;casualty.downClearance=fall.space;
-      casualty.plan=[];casualty.nav=[];casualty.path=[];casualty.velocity=0;
-      notify(s,casualty.name+' DOWN — UNCONTROLLED BLEEDING');
-      battleEvent(s,'down',casualty,casualty.p,casualty.name+' DOWN');
-    }else battleEvent(s,'wound',casualty,casualty.p,
-      casualty.name+' WOUND DETERIORATING');
-  }
-  // Door leaves sample all live bodies, but normal ticks do not move any
-  // body during the door phase. Build the positions once per fixed tick,
-  // refreshing only if a real opening-yield actually relocated an operator.
-  let doorOccupants=liveDoorOccupants(s);
-  for(const door of s.doors){
-    if(door.heldBy){
-      const holder=s.operators.find(a=>a.id===door.heldBy);
-      if(!holder||holder.health<=0||holder.plan.length>0||
-         holder.nav.length>0||!doorReachable(holder.p,door))
-        door.heldBy=null;
-    }
-    let yielded=false;
-    // An operator just inside the initial sweep may yield a small REAL
-    // step before the leaf advances. This is not an actor-collision bypass:
-    // static geometry, other leaves and opposing bodies must all remain solid.
-    if(door.open&&(door.openFraction??0)<.96&&
-       (door.pushTarget??1)<=1.01){
-      for(const actor of s.operators){
-        if(actor.health<=0)continue;
-        const candidate=initialOpeningYieldCandidate(door,actor.p);
-        if(!candidate||!sweptBodyClear(actor.p,candidate,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))||
-           s.operators.some(other=>{
-             if(other===actor||other.health<=0)return false;
-             const before=d(other.p,actor.p),after=d(other.p,candidate);
-             // Friendly passage allows shoulder contact, but auto-yield
-             // must never deepen an existing shared-body overlap.
-             if(other.side===actor.side)
-               return after<16&&after<before-.01;
-             return after<11;
-           }))continue;
-        actor.priorP=clone(actor.p);
-        actor.p=candidate;
-        yielded=true;
-      }
-    }
-    if(yielded)doorOccupants=liveDoorOccupants(s);
-    advanceDoor(door,h,doorOccupants,sessionWorldGeometry(s));
-  }
-  mark('doors');
-  advanceTransientSimulationEffects(s,h);
-  stepFlashbangs(s,h);
-  mark('aging-effects');
-  advanceActorSightProgress(s,h,geometricallyVisible);
-  mark('visual-awareness');
-  for(const actor of s.operators){
-    if(actor.health<=0)continue;
-    ageAwareness(actor.awareness,h,s.seconds);
-    for(const belief of Object.values(actor.awareness.contacts)){
-      // Only direct vision of the *estimated floor position* can disprove it.
-      if((actor.awareness.visualProgress[belief.id]??0)>.95)continue;
-      if(s.seconds-belief.lastAt<.65||d(actor.p,belief.estimate)>235)continue;
-      if(Math.abs(angleDifference(actor.heading,angle(actor.p,belief.estimate)))>.90)continue;
-      if(unobstructed(actor.p,belief.estimate,s,actor.posture==='crouch'))
-        clearObservedPosition(actor.awareness,belief.id);
-    }
-  }
-  mark('belief-aging');
-  // Capture immutable actor origins before any movement or enemy routine runs.
-  // Final positions are reconciled together after the fixed-tick actor loop.
-  const motionStart=captureMotionFrameOrigins(s.operators,s.civilians);
-  for(const a of s.operators){
-    if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
-    a.fireCd=Math.max(0,a.fireCd-h);
-    if(a.side==='red'&&a.health>0){
-      a.morale=Math.min(1,a.morale+h*.006-
-        (a.suppression>.65?h*.075:0));
-      // Only a visible nearby casualty affects this actor's resolve.
-      for(const fallen of s.operators){
-        if(fallen===a||fallen.side!==a.side||fallen.health>0||
-           fallen.surrendered||fallen.lastDownAt<=a.lastMoraleEventAt)continue;
-        const distance=d(a.p,fallen.p);
-        const visible=distance<160&&
-          Math.abs(angleDifference(a.heading,angle(a.p,fallen.p)))<1.25&&
-          unobstructed(a.p,fallen.p,s,false);
-        const shock=witnessShock(distance,visible);
-        if(shock>0){
-          a.morale=Math.max(0,a.morale-shock);
-          a.lastMoraleEventAt=Math.max(a.lastMoraleEventAt,fallen.lastDownAt);
-        }
-      }
-      // Nearby members of the same encounter group can steady resolve.
-      // Do not pay an extra ally scan every tick for calm defenders.
-      const peerSupport=(a.suppression>.25||a.morale<.65)?
-        countNearbyEnemyAllies(a,s.operators):0;
-      const resolve=moraleResponse(a.morale,a.suppression,
-        a.injuryStage,a.personality,{nearbyAllies:peerSupport});
-      if(resolve==='withdraw'&&a.alert!=='retreat'){
-        const threat=a.contact??a.heard??a.watch;
-        if(threat){
-          a.retreatPoint=runEnemyAi.defensivePosition(a,threat,s);
-          if(a.retreatPoint){a.alert='retreat';a.nav=[];}
-        }
-      }
-      if(resolve==='surrender'){
-        a.surrendered=true;a.health=0;a.injuryStage=3;
-        a.lastDownAt=s.seconds;
-        const fall=wallSafeFall(a.p,a.heading,'slump',sessionWorldGeometry(s).walls);
-        a.downPose=fall.pose;a.downClearance=fall.space;
-        a.velocity=0;a.nav=[];a.plan=[];
-        a.reload=0;a.reloadMode=null;
-        notify(s,a.name+' SURRENDERED');
-        battleEvent(s,'surrender',a,a.p,a.name+' SURRENDERED');
-      }
-    }
-    a.suppression=Math.max(0,a.suppression-h*.17);
-    a.priorP=clone(a.p);
-    if(a.health<=0)continue;
-    if((a.doorStunUntil??0)>s.seconds){
-      // Retain authored orders; no movement or firing while physically stunned.
-      a.velocity=0;a.motorPause='contact';
-      continue;
-    }
-    if(a.side==='blue'){
-      runOrders(s,a,h);
-      // A teammate with NO authored orders shouldn't permanently plug an
-      // otherwise usable threshold. Give the idle soldier a genuine small,
-      // collision-checked step away from an approaching friendly. Keep
-      // explicit WAIT, WATCH, STACK and authored positions untouched.
-      if(!a.plan.length&&!a.nav.length&&!a.traversal&&
-         !a.traversalPending&&!a.aimInstruction&&!a.carryingId){
-        const nearby=s.operators.filter(b=>b!==a&&b.side==='blue'&&
-          b.health>0&&b.plan[0]?.kind==='move'&&
-          d(a.p,b.p)<75);
-        if(nearby.length){
-          const idle:PassageActor={
-            id:a.id,side:a.side,p:a.p,goal:null,
-            health:a.health,blockedTime:a.blockedTime,active:false
-          };
-          const peers:PassageActor[]=nearby.map(b=>({
-            id:b.id,side:b.side,p:b.p,
-            goal:b.nav.at(-1)??b.plan[0]!.p,health:b.health,
-            blockedTime:b.blockedTime,active:true
-          }));
-          const yieldStep=passageIdleYieldStep(idle,s.doors,peers,
-            (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),h*45);
-          if(yieldStep&&!s.operators.some(b=>b!==a&&b.health>0&&
-              d(b.p,yieldStep)<13&&d(b.p,yieldStep)<d(b.p,a.p)-.01)){
-            a.p=yieldStep;a.velocity=d(a.priorP,a.p)/Math.max(h,.0001);
-            a.motorPause='passage';
-          }
-        }
-      }
-      // Incoming *actual hits* provide coarse directional evidence even
-      // before the flanking shooter enters the operator's vision cone.
-      // A brief gaze override never removes a WATCH or changes a MOVE.
-      const hitDirection=incomingHitFacing(a.heading,a.lastHitYaw,
-        s.seconds-a.lastHitAt,{
-          busy:!!a.traversal||!!a.squeeze||!!a.carryingId||
-            a.pace==='run'||a.treatmentActive||
-            a.plan[0]?.kind==='treat'
-        });
-      // Orders may rotate toward their authored gaze earlier this tick.
-      // Reaction uses a stronger one-second turn so opposing turn rates
-      // cannot cancel each other and leave the operator facing away.
-      if(hitDirection!==null)rotate(a,hitDirection,h*1.85);
-    }else runEnemyAi.decide(s,a,h);
-    if(probe)mark('operator-'+a.id);
-  }
-  mark('actor-loop');
-  // Authoritative coupled body proposal, before hard-actor resolution.
-  const coupledBodyStarts=new Map<string,Pt>();
-  for(const carrier of s.operators){
-    if(!carrier.carryingId)continue;
-    const civil=s.civilians.find(c=>c.id===carrier.carryingId&&
-      c.carriedById===carrier.id);
-    if(!civil)continue;
-    const from=motionStart.get(carrier.id)??carrier.p;
-    const bodyFrom=motionStart.get(civil.id)??civil.p;
-    const others=[
-      ...s.operators.filter(o=>o!==carrier&&o.health>0).map(o=>o.p),
-      ...s.civilians.filter(c=>c!==civil).map(c=>c.p)
-    ];
-    const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
-      carrier.heading,civil.transportMode??carrier.plan[0]?.transportMode??'drag',
-      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),others,h*36);
-    if(!next){
-      carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];
-      civil.p=clone(bodyFrom);civil.velocity=0;
-      continue;
-    }
-    coupledBodyStarts.set(carrier.id,clone(bodyFrom));
-    civil.priorP=clone(bodyFrom);civil.p=next;civil.velocity=0;
-  }
-  // Propose civilian motion before the shared fixed-tick authority pass.
-  // Both teams see the same original pre-motion positions for hard bodies.
-  if(s.civilians.length){
-    const nearby=[...s.operators.filter(a=>a.health>0),
-      ...s.civilians.filter(c=>c.health>0)];
-    for(const civil of s.civilians){
-      stepCivilianResponse(civil,s.seconds,h,{
-        noise:s.noise,people:s.operators,doors:s.doors,walls:sessionWorldGeometry(s).walls,
-        windows:s.windows,
-        canSee:(from,to)=>unobstructed(from,to,s,false),
-        canReach:(from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),
-        routeTo:(from,to)=>cachedEnemyRoute(s,from,to,true),
-        isCrowded:p=>s.operators.some(o=>o.health>0&&d(o.p,p)<22)||
-          s.civilians.some(c=>c.id!==civil.id&&d(c.p,p)<22)
-      });
-      stepCivilianMovement(civil,s.seconds,h,
-        (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),
-        (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20),
-        (from,to)=>cachedEnemyRoute(s,from,to,true));
-    }
-  }
-  const proposals=buildMotionFrameProposals(
-    s.operators,s.civilians,motionStart);
-  const decisions=resolveMovementFrame(proposals,p=>{
-    if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s));
-    const a=s.operators.find(unit=>unit.id===p.id)!;
-    return a.traversal?
-      traversalStepClear(p.from,p.to,a.traversal,motorTraversalWorld(s,a)):
-      a.squeeze?sweptProfileClear(p.from,p.to,s.doors,a.squeezeYaw,'squeeze',sessionWorldGeometry(s)):sweptBodyClear(p.from,p.to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s));
-  });
-  reconcileCivilianTransportFrame(proposals,decisions,
-    s.civilians.filter(c=>!!c.carriedById).map(c=>({
-      carrierId:c.carriedById!,bodyId:c.id
-    })));
-  for(const decision of decisions){
-    if(!decision.blocked)continue;
-    const civil=s.civilians.find(unit=>unit.id===decision.id);
-    if(civil){
-      civil.p=clone(decision.point);civil.priorP=clone(decision.point);
-      civil.velocity=0;civil.blockedTime+=h;
-      continue;
-    }
-    const a=s.operators.find(unit=>unit.id===decision.id)!;
-    a.p=clone(decision.point);
-    const start=coupledBodyStarts.get(a.id);
-    if(start&&a.carryingId){
-      const body=s.civilians.find(c=>c.id===a.carryingId&&
-        c.carriedById===a.id);
-      if(body){body.p=clone(start);body.priorP=clone(start);}
-    }
-    a.priorP=clone(decision.point);a.velocity=0;
-    if(a.traversal){
-      a.traversalElapsed=Math.min(a.traversal.duration,Math.max(0,
-        a.traversalElapsed+(a.traversalRetreating?h*1.15:-h)));
-      a.traversalElevation=sampleTraversal(a.traversal,
-        a.traversalElapsed).elevation;
-    }
-    a.blockedTime+=h;a.lastBlocker=decision.blocked==='actor'?'actor':'route';
-  }
-  for(const a of s.operators)a.stride+=d(a.p,a.priorP);
-  resolveCloseContact(s);
-  mark('civilian-motion');
-  mark('contacts');
-  runEnemyAi.distributeReports(s);
-  mark('reports');
-  observe(s);
-  mark('observe-intel');
-  for(const a of s.operators)runCombat.fire(s,a,h);
-  mark('fire');
-  mission(s,h);
-  mark('mission');
-  recordSimulationExecutionOutcomes(s);
-
+export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe):void{
+ if(s.phase!=='running')return;
+ advanceSimulationTick(s,clamp(dt,0,1/30),simulationPhasePort,probe);
 }
 export function operationBriefing(s:Session){
   const brief=operationBrief(s.missionType);

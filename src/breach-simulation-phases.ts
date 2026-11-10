@@ -1,8 +1,10 @@
-/** Deterministic fixed-tick phase support. These helpers only advance
- * simulation-owned state; the runtime loop schedules the 60Hz tick.
- * Keep phase order in breach-game.ts authoritative while extracting owners.
+/** The sole ordered phase director for authoritative fixed-tick simulation.
+ * The runtime owns the 60 Hz schedule; stepSession owns phase entry and clamp.
+ * No rendering/replay code may tick this director independently.
  */
 import type {Session,StepPhaseProbe} from './breach-game.ts';
+import type {Pt} from './breach-core.ts';
+import {captureMotionFrameOrigins} from './breach-motion-frame-input.ts';
 import {executionStatus} from './breach-execution-state.ts';
 import {executionTransition} from './breach-execution-events.ts';
 export function simulationPhaseMark(probe?:StepPhaseProbe):(phase:string)=>void{
@@ -45,4 +47,63 @@ export function recordSimulationExecutionOutcomes(s:Session):void{
     });
     if(s.executionEvents.length>240)s.executionEvents.shift();
   }
+}
+
+/** Explicit schedule, append-only event drain LAST. Changing this order is
+ * gameplay-affecting and requires reviewing the frozen outcome fingerprints.
+ * The final event drain is intentionally outside the performance labels.
+ */
+export const SIMULATION_PHASE_SEQUENCE=Object.freeze([
+ 'doors','aging-effects','visual-awareness','belief-aging','actor-loop',
+ 'civilian-motion','contacts','reports','observe-intel','fire','mission',
+ 'execution-events'
+] as const);
+
+export type SimulationPhasePort={
+ medicalDoors:(s:Session,h:number)=>void;
+ flashbangs:(s:Session,h:number)=>void;
+ visualAwareness:(s:Session,h:number)=>void;
+ beliefAging:(s:Session,h:number)=>void;
+ actorActions:(s:Session,h:number,markActor?:((id:string)=>void))=>void;
+ motion:(s:Session,h:number,origins:ReadonlyMap<string,Pt>)=>void;
+ contacts:(s:Session)=>void;
+ reports:(s:Session)=>void;
+ observe:(s:Session)=>void;
+ fire:(s:Session,h:number)=>void;
+ mission:(s:Session,h:number)=>void;
+};
+/** One clock advance, one deterministic sequence. The actor origin snapshot
+ * is taken AFTER medical/door/belief phases and BEFORE any actor movement.
+ * Reports precede observation; observation precedes firing; mission outcomes
+ * precede execution-status events and external recorder capture.
+ */
+export function advanceSimulationTick(s:Session,h:number,
+ port:SimulationPhasePort,probe?:StepPhaseProbe):void{
+ const mark=simulationPhaseMark(probe);
+ s.seconds+=h;
+ port.medicalDoors(s,h);
+ mark('doors');
+ advanceTransientSimulationEffects(s,h);
+ port.flashbangs(s,h);
+ mark('aging-effects');
+ port.visualAwareness(s,h);
+ mark('visual-awareness');
+ port.beliefAging(s,h);
+ mark('belief-aging');
+ const motionStart=captureMotionFrameOrigins(s.operators,s.civilians);
+ port.actorActions(s,h,probe?id=>mark('operator-'+id):undefined);
+ mark('actor-loop');
+ port.motion(s,h,motionStart);
+ mark('civilian-motion');
+ port.contacts(s);
+ mark('contacts');
+ port.reports(s);
+ mark('reports');
+ port.observe(s);
+ mark('observe-intel');
+ port.fire(s,h);
+ mark('fire');
+ port.mission(s,h);
+ mark('mission');
+ recordSimulationExecutionOutcomes(s);
 }
