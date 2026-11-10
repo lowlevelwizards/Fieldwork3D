@@ -2,7 +2,8 @@
  * No authoritative planning or camera sight runs from a pointer preview.
  */
 import {team,planWatch,retargetActiveWatch,movePlanNode,moveFlashTarget,planMoveStroke,finalPoint,type Session,type TeamActor} from './breach-game.ts';
-import {doorCenter,activeWorldBounds,type Pt} from './breach-core.ts';
+import {doorCenter,type Pt} from './breach-core.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {TacticalPointer} from './breach-canvas-gesture-controller.ts';
 import type {TacticalPick} from './ui/tactical-target-resolver.ts';
 import type {MissionRecorder} from './breach-replay.ts';
@@ -97,7 +98,7 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       // LOOK/WATCH are directions and may deliberately point across an
       // unseen door or beyond the property; other commands still require a
       // point inside the real procedural site bounds, not legacy W/H.
-      if(port.hudController.facing.looking||insideTacticalBounds(pt,activeWorldBounds()))
+      if(port.hudController.facing.looking||insideTacticalBounds(pt,sessionWorldGeometry(port.state).bounds))
         port.useSelectedGround(pt);
       else port.showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
     }else if(p.mode==='activeWatch'){
@@ -181,7 +182,7 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
           (watchKept?' · WATCH KEPT':''),3200);
       }
       port.doorFocusId=null;
-    }else if(!p.moved&&insideTacticalBounds(pt,activeWorldBounds())){
+    }else if(!p.moved&&insideTacticalBounds(pt,sessionWorldGeometry(port.state).bounds)){
       // The hit was captured at pointer-down, but no selection/order was
       // committed before the gesture resolved. Camera gestures never reach
       // this branch and a tap can produce only one semantic outcome.
