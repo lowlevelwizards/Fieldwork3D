@@ -24,9 +24,14 @@ test('site-owned materials are released once across repeated site changes',()=>{
 });
 test('site-specific curb and door glass materials are not retained by shared palette',()=>{
   const source=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
+  const builder=readFileSync(new URL('../src/rendering/breach-site-scene-builder.ts',import.meta.url),'utf8');
+  const exterior=readFileSync(new URL('../src/rendering/breach-site-exterior-builder.ts',import.meta.url),'utf8');
+  const openings=readFileSync(new URL('../src/rendering/breach-site-openings-builder.ts',import.meta.url),'utf8');
   assert.match(source,/applySite\(site:Site\|null\)\{[\s\S]*?this\.siteMaterials\.reset\(\)/);
-  assert.match(source,/const curbMaterial=this\.siteMaterials\.track\(/);
-  assert.match(source,/const doorGlass=this\.siteMaterials\.track\(/);
+  assert.match(builder,/track:material=>host\.siteMaterials\.track\(material\)/);
+  assert.match(exterior,/const curbMaterial=host\.track\(/);
+  assert.match(openings,/const doorGlass=host\.track\(/);
   assert.doesNotMatch(source,/this\.mats\.push\(curbMaterial\)/);
   assert.doesNotMatch(source,/this\.mats\.push\(doorGlass\)/);
+  assert.doesNotMatch(builder,/host\.mats\.push\(curbMaterial\|doorGlass\)/);
 });
