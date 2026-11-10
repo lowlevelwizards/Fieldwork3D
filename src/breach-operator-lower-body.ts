@@ -2,7 +2,8 @@
  * Visual IK cannot teleport planted feet, modify motor position, or decide a
  * new footfall. Replay uses recorded targets, not accumulated render state.
  */
-import type {OperatorRig,OperatorPose} from './breach-operator-rig.ts';
+import type {OperatorRig} from './breach-operator-rig.ts';
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import type {OperatorPoseScratch} from './breach-operator-pose-scratch.ts';
 import {advanceFootsteps,validatedReplayFeet,type FootstepInput,type FootTarget}
  from './breach-footsteps.ts';
