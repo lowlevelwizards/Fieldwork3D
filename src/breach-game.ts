@@ -1548,7 +1548,7 @@ function snapFlashTarget(s:Session,from:Pt,target:Pt,doors:Door[],
         y:target.y+Math.sin(angle)*r});
     }
   return choices.find(p=>sessionWorldGeometry(s).passable(p,3.5)&&
-    validateThrow(from,p,doors,opened).valid)??null;
+    validateThrow(from,p,doors,opened,sessionWorldGeometry(s)).valid)??null;
 }
 /** Two team-wide flashbangs per mission. Throwing is an authored timed order. */
 export function planFlash(s:Session,id:string,target:Pt):boolean{
@@ -1616,7 +1616,7 @@ export function flashTrajectory(s:Session,a:TeamActor,node:PlanNode):ThrowPath|n
   const index=a.plan.findIndex(n=>n.id===node.id);
   const open=a.plan.slice(0,index).filter(n=>n.kind==='door'&&
     (n.method==='open'||n.method==='kick')).map(n=>n.doorId??'');
-  return validateThrow(node.p,node.aimPoint,s.doors,open);
+  return validateThrow(node.p,node.aimPoint,s.doors,open,sessionWorldGeometry(s));
 }
 function battleEvent(s:Session,kind:BattleEvent['kind'],a:TeamActor|null,p:Pt,text:string,
   meta?:BattleEvent['meta']){
