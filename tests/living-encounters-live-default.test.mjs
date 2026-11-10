@@ -4,11 +4,14 @@ import {readFileSync} from 'node:fs';
 import {newSession} from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
 const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+const missionController=readFileSync(
+ new URL('../src/breach-mission-controller.ts',import.meta.url),'utf8');
 
 test('LE-live: ordinary Quick Play/Campaign defaults civilians on, retains URL opt-out',()=>{
  assert.match(main,/const civilianPreview=startupParams\.get\('civilians'\)!=='0'/);
- assert.equal((main.match(/enableCivilians:civilianPreview/g)??[]).length,2);
- assert.match(main,/enableIncidentIntent:true/);
+ assert.match(main,/legacyStudy,civilianPreview,requestedCondition/);
+ assert.match(missionController,/enableCivilians:prefs\.civilianPreview/);
+ assert.match(missionController,/enableIncidentIntent:true/);
 });
 
 test('LE-live: real seeded encounter generates neutral actors without adding hostiles',()=>{

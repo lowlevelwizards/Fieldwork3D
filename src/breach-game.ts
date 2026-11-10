@@ -513,8 +513,8 @@ export function newSession(index=0,siteSeed?:number,
     for(let i=operators.length-1;i>=0;i--)
       if(operators[i].side==='red')operators.splice(i,1);
   }
-  // Neutrals are disabled in production until physical damage, models,
-  // mission semantics and replay have completed their separate stages.
+  // Civilian activation is an explicit session policy. The current UI opts
+  // in by default, while old tests/replays and ?civilians=0 stay empty.
   const civilians=encounterContext.enableCivilians?
     (site?.encounter?.neutrals??[]).map(createCivilian):[];
   if(site)for(const person of civilians)
