@@ -82,7 +82,13 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
      p.pick?.kind==='operator'&&p.pick.owner){
     port.selectUnit(p.pick.owner);
   }
-  if(!cancelled&&port.state.phase==='planning'&&!port.replaying&&pointerCount===1){
+  // A surviving finger from a pinch/camera gesture is never a tactical tap.
+  // Gesture cancellation is owned by the gesture controller; this boundary
+  // independently refuses camera-mode releases even if moved is false.
+  const cameraRelease=p.mode==='cameraMulti'||p.mode==='cameraOrbit'||
+    p.mode==='cameraPan';
+  if(!cancelled&&!cameraRelease&&port.state.phase==='planning'&&
+     !port.replaying&&pointerCount===1){
     if((port.hudController.facing.looking||port.flashMode||port.pushMode||port.firePlacement||port.evacMode)&&
        (p.mode==='targetPreview'||p.mode==='undecided')){
       // A brief iPhone tap often travels a few pixels without entering
