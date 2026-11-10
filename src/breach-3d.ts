@@ -15,7 +15,8 @@ import {applyStudioGraphicLighting}
  from './operator-studio-graphic-lighting.ts';
 import {applyWorldGraphicLighting} from './breach-graphic-world-lighting.ts';
 import {BreachCombatEffectsPresenter} from './rendering/breach-combat-effects-presenter.ts';
-import {presentActor,presentDecor,resolveDoorPresentation}
+import {presentActor,presentDecor,presentArchitecturalOpening,
+  presentUnrecordedRescueMarker,resolveDoorPresentation}
  from './rendering/breach-3d-disclosure-presenter.ts';
 
 import {windowShardPose,WINDOW_SHARDS_PER_PANE}
@@ -72,7 +73,7 @@ import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter,LIGHT_BEAM_SAMPL
 import {type Site,type Room,type WideOpening} from './breach-site.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {type Session,type TeamActor,team,knownAt,liveVisibility} from './breach-game.ts';
-import {spatialSurfaceKnown,shotVisibility,architecturalOpeningKnown} from './breach-presentation.ts';
+import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
@@ -1395,6 +1396,8 @@ export class TacticalScene3D{
       this.miniFocusDoorId=focusedDoorId;
       this.miniFocusSelectedId=selected;
     }
+    // Personal disclosure is observer-scoped, never camera-mount-scoped.
+    const personalDisclosure=replayDisclosurePolicy?.mode==='operator';
     const bodycamAudition=!!this.replayBodycam&&
       replayDisclosurePolicy?.mode==='operator'&&
       replayDisclosurePolicy.observerId===this.replayBodycam.actorId;
@@ -1555,7 +1558,7 @@ export class TacticalScene3D{
       const knownFacade=item.kind==='wall'&&
         item.obj.userData.fogFacade===true&&
         s.intel.mode==='exterior-known';
-      const exteriorSetDressing=physicalDirector&&item.kind==='cover'&&
+      const exteriorSetDressing=!personalDisclosure&&physicalDirector&&item.kind==='cover'&&
         s.intel.mode==='exterior-known'&&!!cover&&
         exteriorBriefedAt(s.site??undefined,{x:cover.x,y:cover.y});
       // The Director can frame already-briefed outdoor objects without
@@ -1564,17 +1567,18 @@ export class TacticalScene3D{
       item.obj.visible=item.kind==='wall'&&physicalDirector?true:
         knownFacade||exteriorSetDressing?true:
         item.kind==='cover'?
-          personalCoverVisible(squadKnown,bodycamAudition,personalGroundEvidence,
+          personalCoverVisible(squadKnown,personalDisclosure,personalGroundEvidence,
             cover??null):squadKnown;
     }
     // Unlike the room's floor, decorative props must be individually
     // seen (or remembered at their own position) before they are rendered.
     for(const opening of this.architecturalOpenings)
-      opening.obj.visible=architecturalOpeningKnown(s,opening.opening,omniscient);
+      opening.obj.visible=presentArchitecturalOpening(s,opening.opening,
+        omniscient,replayDisclosurePolicy,personalGroundEvidence);
     for(const detail of this.observedDetails){
       // Object positions are site-static: precompute tile keys at build time.
       detail.obj.visible=presentDecor(s,detail,omniscient,
-        bodycamAudition,personalGroundEvidence);
+        personalDisclosure,personalGroundEvidence);
       this.staticBatches.setVisible(detail.obj,detail.obj.visible);
     }
     // Director cuts walls around its actual historical friendly focal group,
@@ -1744,8 +1748,8 @@ export class TacticalScene3D{
       }
       // Squad-wide rescue markers cannot appear as a witnessed person
       // within an uncompleted first-person history.
-      this.rescueFigure.visible=!bodycamAudition&&
-        (omniscient||liveVisibility(s,s.rescue.p));
+      this.rescueFigure.visible=presentUnrecordedRescueMarker(s,omniscient,
+        replayDisclosurePolicy);
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
     for(const actor of s.operators){
@@ -2021,7 +2025,7 @@ export class TacticalScene3D{
       }
     }
     this.combatEffects.update(s,omniscient,
-      replayDisclosurePolicy?.mode==='operator',p=>liveVisibility(s,p));
+      personalDisclosure,p=>liveVisibility(s,p));
     // 079: One persistent, ID-keyed effect per actual simulation shot.
     // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
     const active=this.frameShotIds;active.clear();
