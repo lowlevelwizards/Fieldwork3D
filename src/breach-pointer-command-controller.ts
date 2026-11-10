@@ -138,7 +138,7 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       if(chosen)port.tacticalFeedback.emit('node',chosen.p);
     }else if(p.mode==='route'&&port.trace&&
       distance(port.trace[0],pt)>16){
-      // The finger port.trace is a high-frequency preview, NOT one order per
+      // The finger trace is a high-frequency preview, NOT one order per
       // input sample. Preserve meaningful screen-space bends and reject
       // simplifications that would cut across KNOWN obstacles. Unseen
       // obstacles remain undisclosed to the plan author.
@@ -192,8 +192,8 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
           port.doorFocusId=door.id;port.selectedNode=null;port.selectedActiveWatch=false;
           port.doorMenuDismissedId=null;
           port.tacticalFeedback.emit('select',doorCenter(door));
-          port.teach('door-port.selected',
-            'Door port.selected. Choose OPEN, KICK or another available action.',4700);
+          port.teach('door-selected',
+            'Door selected. Choose OPEN, KICK or another available action.',4700);
         }else if(door){
           port.showUiHelp('NO DOOR ACTION IN REACH · PLAN AN APPROACH',2200);
         }
