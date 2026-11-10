@@ -252,6 +252,7 @@ export type SquadPlanTransaction={
  after:Record<string,PlanNode[]>;
  controlsBefore?:Record<string,PlanControlSnapshot>;
  controlsAfter?:Record<string,PlanControlSnapshot>;
+ undoDepth?:Record<string,number>;
 };
 export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];civilians:CivilianActor[];
@@ -1532,8 +1533,16 @@ function snapFlashTarget(s:Session,from:Pt,target:Pt,doors:Door[],
       choices.push({x:target.x+Math.cos(angle)*r,
         y:target.y+Math.sin(angle)*r});
     }
-  return choices.find(p=>sessionWorldGeometry(s).passable(p,3.5)&&
-    validateThrow(from,p,doors,opened,sessionWorldGeometry(s)).valid)??null;
+  // Editing may consider only observed structures and remembered door states.
+  // True geometry is checked again by flashTrajectory during execution.
+  const world=sessionWorldGeometry(s);
+  const knownWalls=world.walls.filter((_,i)=>s.intel.walls.has(i));
+  const knownDoors=doors.filter(d=>doorKnown(s.intel,d.id)).map(d=>{
+   const remembered=s.intel.doorMemory.get(d.id)??0;
+   return {...d,open:remembered>=.72,openFraction:remembered};
+  });
+  return choices.find(p=>intelPassable(p,s.intel,3.5)&&
+    validateThrow(from,p,knownDoors,opened,{walls:knownWalls}).valid)??null;
 }
 /** Two team-wide flashbangs per mission. Throwing is an authored timed order. */
 export function planFlash(s:Session,id:string,target:Pt):boolean{
