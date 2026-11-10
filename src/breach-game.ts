@@ -18,7 +18,7 @@ import {incomingHitFacing} from './breach-combat-reactions.ts';
  * Author intent is editable PlanNode[]; motor navigation is transient.
  * Legacy 052 entrypoints remain in breach-core for comparison/tests only.
  */
-import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,initialDoors,newTacticalState,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,} from './breach-core.ts';
+import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,} from './breach-core.ts';
 import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions} from './breach-entry-coordination.ts';
@@ -62,7 +62,7 @@ import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {type AIIntent} from './breach-ai-policy.ts';
 
-import {registerSessionWorldGeometry,sessionWorldGeometry} from './breach-world-context.ts';
+import {registerSessionWorldGeometry,sessionWorldGeometry,publishSessionCoverToActiveSite} from './breach-world-context.ts';
 
 
 import {newSuspicion,type SuspicionMemory} from './breach-ai-suspicion.ts';
@@ -730,7 +730,7 @@ export function planCivilianInteraction(s:Session,id:string,
     !liveVisibility(s,civil.p))return false;
  const from=finalPoint(a);
  if(d(from,civil.p)>34||
-    !sweptBodyClear(from,civil.p,s.doors,5.5))return false;
+    !sweptBodyClear(from,civil.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
  if(action==='follow'&&(!civil.rescueTarget||s.mission!=='extract'))
    return false;
  return addNode(s,id,'interact',from,{
@@ -1720,7 +1720,8 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
   return cache.get(a,b,s.seconds,
     s.objectRevision+'/'+sessionWorldGeometry(s).revision,s.doors,()=>
       !exposure(a.p,b.p,s.doors,
-        b.posture==='crouch',a.posture==='crouch',true).blocked);
+        b.posture==='crouch',a.posture==='crouch',true,
+        sessionWorldGeometry(s).walls,sessionWorldGeometry(s).cover).blocked);
 }
 /** Confirmed vision is acquired over simulated time; rendering never grants sight. */
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
@@ -1852,7 +1853,7 @@ function mission(s:Session,dt:number){
       const desired=rescueFollowGoal(escort);
       const path=cachedEnemyRoute(s,rescuePerson.p,desired,true);
       const next=path.find(p=>d(p,rescuePerson.p)>10);
-      if(next&&sweptBodyClear(rescuePerson.p,next,s.doors)){
+      if(next&&sweptBodyClear(rescuePerson.p,next,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))){
         rescuePerson.goal=clone(next);
         rescuePerson.state='escorted';
       }else rescuePerson.goal=null;
@@ -1865,7 +1866,7 @@ function mission(s:Session,dt:number){
     const escort=team(s).find(a=>a.id===prior&&a.health>0);
     if(prior&&escort){
       s.rescue=advanceRescueEscort(s.rescue,escort.p,dt,
-        (from,to)=>sweptBodyClear(from,to,s.doors,5.5));
+        (from,to)=>sweptBodyClear(from,to,s.doors,5.5,sessionWorldGeometry(s)));
       if(!s.rescue.following)notify(s,'ESCORT SEPARATED — RETURN TO PERSON');
     }else if(prior){
       s.rescue={...s.rescue,following:null,trail:[]};
@@ -1874,7 +1875,7 @@ function mission(s:Session,dt:number){
     if(!s.rescue.following){
       const rescuer=team(s).find(a=>a.health>0&&
         near(a.p,s.rescue!.p,26)&&
-        sweptBodyClear(a.p,s.rescue!.p,s.doors,5.5));
+        sweptBodyClear(a.p,s.rescue!.p,s.doors,5.5,sessionWorldGeometry(s)));
       if(rescuer){
         s.rescue={...s.rescue,following:rescuer.id,
           trail:[clone(s.rescue.p),clone(rescuer.p)]};
@@ -1902,7 +1903,7 @@ function mission(s:Session,dt:number){
   const objectivePoint=rescuePerson?rescuePerson.p:s.scenario.objective;
   const atObjective=team(s).filter(a=>a.health>0&&
     near(a.p,objectivePoint,36)&&
-    sweptBodyClear(a.p,objectivePoint,s.doors,4));
+    sweptBodyClear(a.p,objectivePoint,s.doors,4,sessionWorldGeometry(s)));
   const objectiveReached=atObjective.length>0;
   if(s.mission==='secure'&&objectiveReached&&
      (s.missionType!=='rescue'||!rescuePerson||
@@ -2028,7 +2029,7 @@ function resolveCloseContact(s:Session){
       const ux=(b.p.x-a.p.x)/gap,uy=(b.p.y-a.p.y)/gap;
       for(const shift of [16,10,5]){
         const pushed={x:b.p.x+ux*shift,y:b.p.y+uy*shift};
-        if(!sweptBodyClear(b.p,pushed,s.doors))continue;
+        if(!sweptBodyClear(b.p,pushed,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)))continue;
         if(s.operators.some(o=>o!==a&&o!==b&&o.health>0&&
           d(o.p,pushed)<11))continue;
         b.priorP=clone(b.p);b.p=pushed;break;
@@ -2123,7 +2124,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       for(const actor of s.operators){
         if(actor.health<=0)continue;
         const candidate=initialOpeningYieldCandidate(door,actor.p);
-        if(!candidate||!sweptBodyClear(actor.p,candidate,s.doors)||
+        if(!candidate||!sweptBodyClear(actor.p,candidate,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))||
            s.operators.some(other=>{
              if(other===actor||other.health<=0)return false;
              const before=d(other.p,actor.p),after=d(other.p,candidate);
@@ -2237,7 +2238,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
             blockedTime:b.blockedTime,active:true
           }));
           const yieldStep=passageIdleYieldStep(idle,s.doors,peers,
-            (from,to)=>sweptBodyClear(from,to,s.doors),h*45);
+            (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),h*45);
           if(yieldStep&&!s.operators.some(b=>b!==a&&b.health>0&&
               d(b.p,yieldStep)<13&&d(b.p,yieldStep)<d(b.p,a.p)-.01)){
             a.p=yieldStep;a.velocity=d(a.priorP,a.p)/Math.max(h,.0001);
@@ -2277,7 +2278,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     ];
     const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
       carrier.heading,civil.transportMode??carrier.plan[0]?.transportMode??'drag',
-      (from,to)=>sweptBodyClear(from,to,s.doors),others,h*36);
+      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),others,h*36);
     if(!next){
       carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];
       civil.p=clone(bodyFrom);civil.velocity=0;
@@ -2296,13 +2297,13 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
         noise:s.noise,people:s.operators,doors:s.doors,walls:sessionWorldGeometry(s).walls,
         windows:s.windows,
         canSee:(from,to)=>unobstructed(from,to,s,false),
-        canReach:(from,to)=>sweptBodyClear(from,to,s.doors),
+        canReach:(from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),
         routeTo:(from,to)=>cachedEnemyRoute(s,from,to,true),
         isCrowded:p=>s.operators.some(o=>o.health>0&&d(o.p,p)<22)||
           s.civilians.some(c=>c.id!==civil.id&&d(c.p,p)<22)
       });
       stepCivilianMovement(civil,s.seconds,h,
-        (from,to)=>sweptBodyClear(from,to,s.doors),
+        (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),
         (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20),
         (from,to)=>cachedEnemyRoute(s,from,to,true));
     }
@@ -2310,12 +2311,11 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   const proposals=buildMotionFrameProposals(
     s.operators,s.civilians,motionStart);
   const decisions=resolveMovementFrame(proposals,p=>{
-    if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors);
+    if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s));
     const a=s.operators.find(unit=>unit.id===p.id)!;
     return a.traversal?
       traversalStepClear(p.from,p.to,a.traversal,motorTraversalWorld(s,a)):
-      a.squeeze?sweptProfileClear(p.from,p.to,s.doors,
-        a.squeezeYaw,'squeeze'):sweptBodyClear(p.from,p.to,s.doors);
+      a.squeeze?sweptProfileClear(p.from,p.to,s.doors,a.squeezeYaw,'squeeze',sessionWorldGeometry(s)):sweptBodyClear(p.from,p.to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s));
   });
   reconcileCivilianTransportFrame(proposals,decisions,
     s.civilians.filter(c=>!!c.carriedById).map(c=>({
