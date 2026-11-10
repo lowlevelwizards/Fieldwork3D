@@ -22,11 +22,11 @@ import {doorReachable} from './breach-door.ts';
 export type PointerCommandPort={
  readonly state:Session;readonly replaying:boolean;
  readonly replayBodycam:Pick<ReplayBodycamController,'active'>;
- readonly replayTraceMode:string;readonly port.viewMode:'plan2d'|'iso'|'top';readonly recorder:MissionRecorder;
+ readonly replayTraceMode:string;readonly viewMode:'plan2d'|'iso'|'top';readonly recorder:MissionRecorder;
  readonly replayPlayback:ReplayPlaybackController;
  readonly replayAnalysisUi:ReturnType<typeof createBreachReplayAnalysisController>;
  readonly hudController:ReturnType<typeof createTacticalHudController>;
- readonly port.selected:string;selectedNode:number|null;
+ readonly selected:string;selectedNode:number|null;
  selectedActiveWatch:boolean;doorFocusId:string|null;doorMenuDismissedId:string|null;
  readonly flashMode:boolean;readonly pushMode:boolean;
  readonly firePlacement:string|null;
