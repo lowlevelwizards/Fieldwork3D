@@ -1,7 +1,7 @@
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
  */
-import {OPERATOR_RADIUS,doorLeafSegment,type Pt} from './breach-core.ts';
+import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
 import {incidentalCloseWouldBlockTeammate}
