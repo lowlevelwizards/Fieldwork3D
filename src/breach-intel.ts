@@ -41,7 +41,7 @@ export function exteriorWall(site:Site|undefined,wall:Segment){
 }
 export function initialIntel(mode:IntelMode,site:Site|undefined,
   doors:Door[],world?:SessionWorldGeometry):IntelState{
- const bound=ownerWorld(intel,world);
+ const bound=world;
  const walls=bound?.walls??WALLS,cover=bound?.cover??COVER;
  const intel:IntelState={mode,walls:new Set(),doors:new Set(),
    cover:new Set(),rooms:new Set(),doorMemory:new Map()};
