@@ -76,7 +76,7 @@ function contactReviews(rec:MissionRecorder,side:'red'|'blue',shots:ReportShot[]
         e.meta?.action==='spot'&&e.meta.targetId===a.id)
         .sort((x,y)=>x.t-y.t||x.id-y.id)[0]?.t??null,
       shots:targetShots,finalShotId:finalShot?.id??null
-    };
+    } satisfies ContactAfterAction;
   }).sort((a,b)=>
     (a.resolvedAt??Infinity)-(b.resolvedAt??Infinity)||
     a.id.localeCompare(b.id));
