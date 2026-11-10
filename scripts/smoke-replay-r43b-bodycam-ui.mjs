@@ -43,6 +43,15 @@ try{
     textContent==='PLANNING'&&!!document.querySelector('#breach3dCanvas'),
     null,{timeout:60000});
   await page.locator('#play').click();
+  // Playback needs historical observer samples, not merely two recorder
+  // frames. On software WebGL a just-started 20 Hz film may contain no
+  // personal-sight evidence and legitimately disable Bodycam.
+  await page.waitForFunction(()=>{
+    const text=document.querySelector('#clock')?.textContent??'00:00';
+    const parts=text.split(':').map(Number);
+    return parts.length===2&&parts.every(Number.isFinite)&&
+      parts[0]*60+parts[1]>=2;
+  },null,{timeout:30000});
   let open=false;
   for(let i=0;i<9&&!open;i++){
     await page.waitForTimeout(600);
@@ -54,7 +63,15 @@ try{
   const bodycam=page.locator('#replayBodycam');
   const mount=page.locator('#replayBodycamMount');
   check(await bodycam.isVisible()&&await bodycam.isEnabled(),
-    'New recording should offer reconstructed Bodycam');
+    'A >2s recorded mission must offer Bodycam; diagnostic '+
+      JSON.stringify(await page.evaluate(()=>({
+       clock:document.querySelector('#clock')?.textContent,
+       phase:document.querySelector('#phase')?.textContent,
+       contactDisabled:document.querySelector('#replayContactLens')?.disabled,
+       sightDisabled:document.querySelector('#replaySightTrigger')?.disabled,
+       bodycamDisabled:document.querySelector('#replayBodycam')?.disabled,
+       bodycamText:document.querySelector('#replayBodycam')?.textContent
+      }))));
   check(await mount.isDisabled(),'Mount should be unavailable until enabled');
   await bodycam.click();
   check((await bodycam.getAttribute('aria-pressed'))==='true',
