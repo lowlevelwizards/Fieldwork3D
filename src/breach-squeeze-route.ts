@@ -1,3 +1,4 @@
+import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** Normal routes win when available. Narrow fallback remains constrained
  * by the known map: never reveal hidden walls or furniture while planning. */
 import {type Pt,route,passable,type Door,OPERATOR_RADIUS,
@@ -131,15 +132,15 @@ export function routeWithSqueezeIntel(intel:IntelState,from:Pt,to:Pt):Pt[]{
 }
 /** Collision-truth replan after contact or a known obstruction.
  * Open door leaves use the same rule as the ordinary motor. */
-const worldCanStand=(doors:Door[])=>(p:Pt,r:number)=>
-  passable(p,r)&&!doors.some(d=>d.open&&(d.openFraction??0)>=.72&&
+const worldCanStand=(doors:Door[],world?:SessionWorldGeometry)=>(p:Pt,r:number)=>
+  (world?world.passable(p,r):passable(p,r))&&!doors.some(d=>d.open&&(d.openFraction??0)>=.72&&
     pointToSegment(p,doorLeafSegment(d))<r+1);
 /** For motor recovery: a true full-body detour, never a narrow fallback.
  * Its result is transient navigation, not an authored path change. */
-export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
- const canStand=worldCanStand(doors);
+export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry):Pt[]{
+ const canStand=worldCanStand(doors,world);
  if(!canStand(to,OPERATOR_RADIUS))return [];
- const physical=(a:Pt,b:Pt)=>sweptProfileClear(a,b,doors,0,'normal');
+ const physical=(a:Pt,b:Pt)=>sweptProfileClear(a,b,doors,0,'normal',world);
  const standard=route(from,to,p=>canStand(p,OPERATOR_RADIUS));
  if(standard.length&&routeSwept(from,standard,physical))
    return preferRoomyPath(from,to,standard,canStand,
@@ -188,8 +189,8 @@ export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
  * few short, swept local escapes before authorizing a squeeze. Each recovery
  * then rejoins a real normal-body route; no waypoint/goal is modified.
  * Bounded to avoid route-search spikes in genuine narrow corridors. */
-export function recoverNormalLane(from:Pt,to:Pt,doors:Door[]):Pt[]{
- const direct=routeWithNormalWorld(from,to,doors);
+export function recoverNormalLane(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry):Pt[]{
+ const direct=routeWithNormalWorld(from,to,doors,world);
  if(direct.length)return direct;
  const dist=Math.hypot(to.x-from.x,to.y-from.y);
  if(dist<12)return [];
@@ -202,8 +203,8 @@ export function recoverNormalLane(from:Pt,to:Pt,doors:Door[]):Pt[]{
      for(const sign of [1,-1]){
        const escape={x:from.x+sx*lateral*sign-fx*back,
          y:from.y+sy*lateral*sign-fy*back};
-       if(!sweptProfileClear(from,escape,doors,0,'normal'))continue;
-       const onward=routeWithNormalWorld(escape,to,doors);
+       if(!sweptProfileClear(from,escape,doors,0,'normal',world))continue;
+       const onward=routeWithNormalWorld(escape,to,doors,world);
        if(!onward.length)continue;
        if(Math.hypot(escape.x-from.x,escape.y-from.y)+
           courseLength(escape,onward)>dist*1.75+40)continue;
@@ -213,17 +214,17 @@ export function recoverNormalLane(from:Pt,to:Pt,doors:Door[]):Pt[]{
  }
  return [];
 }
-export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[]):Pt[]{
+export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry):Pt[]{
  // Open hinged leaves are pushable; ordinary motion must remain eligible.
- const normal=routeWithNormalWorld(from,to,doors);
+ const normal=routeWithNormalWorld(from,to,doors,world);
  if(normal.length)return normal;
- const canStand=worldCanStand(doors);
+ const canStand=worldCanStand(doors,world);
  const narrow=narrowRoute(from,to,canStand);
  let previous=from;
  for(const point of narrow){
    const heading=squeezeFacing(Math.atan2(
      point.y-previous.y,point.x-previous.x));
-   if(!sweptProfileClear(previous,point,doors,heading,'squeeze'))
+   if(!sweptProfileClear(previous,point,doors,heading,'squeeze',world))
      return [];
    previous=point;
  }
