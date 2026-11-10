@@ -43,6 +43,8 @@ import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {segmentHitsBox} from './breach-ray.ts';
 import {aimHeight} from './breach-cover-height.ts';
 import {microKeyAt} from './breach-fog-memory.ts';
+import {forEachGroundSightCandidate} from './breach-ground-discovery.ts';
+import {coarseGroundEvidenceAt} from './breach-ground-knowledge.ts';
 import {groundView,groundViewCandidate} from './breach-ground-view.ts';
 import {sightDiagnosticsEnabled,sightDiagnosticCounts}
  from './breach-sight-cost-counters.ts';
@@ -1854,39 +1856,23 @@ function observe(s:Session){
       const beforeGroundSize=s.seenGround.size;
       const sight=groundView(blue.p.x,blue.p.y,blue.heading);
       const bounds=s.site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
-      const minX=Math.max(Math.floor(bounds.minX/20),Math.floor((blue.p.x-240)/20));
-      const maxX=Math.min(Math.ceil(bounds.maxX/20)-1,Math.floor((blue.p.x+240)/20));
-      const minY=Math.max(Math.floor(bounds.minY/20),Math.floor((blue.p.y-240)/20));
-      const maxY=Math.min(Math.ceil(bounds.maxY/20)-1,Math.floor((blue.p.y+240)/20));
-      for(let row=minY;row<=maxY;row++)
-        for(let col=minX;col<=maxX;col++){
-          const x=col*20+10,y=row*20+10;
-          if(!groundViewCandidate(sight,x,y))continue;
-          const p={x,y};
-          if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))continue;
-          const fine='fine:'+col+','+row;
-          s.seenGround.add(fine);
-          notePersonalGround(s,blue.id,s.seconds,fine);
-          // Keep legacy coarse memories for knownAt and existing intel UI.
-          const coarse=Math.floor(p.x/40)+','+Math.floor(p.y/40);
-          s.seenGround.add(coarse);
-          notePersonalGround(s,blue.id,s.seconds,coarse);
-        }
-      // Fine independent explored footprints: 10-unit samples capture the
-      // visible margins of corners that 20-unit center samples missed.
-      // Stored in replay snapshots alongside the legacy coarse keys.
-      const x0=Math.max(Math.floor(bounds.minX/10),Math.floor((blue.p.x-240)/10));
-      const x1=Math.min(Math.ceil(bounds.maxX/10)-1,Math.floor((blue.p.x+240)/10));
-      const y0=Math.max(Math.floor(bounds.minY/10),Math.floor((blue.p.y-240)/10));
-      const y1=Math.min(Math.ceil(bounds.maxY/10)-1,Math.floor((blue.p.y+240)/10));
-      for(let row=y0;row<=y1;row++)for(let col=x0;col<=x1;col++){
-        const x=col*10+5,y=row*10+5;
-        if(!groundViewCandidate(sight,x,y))continue;
-        if(!unobstructed(blue.p,{x,y},s,blue.posture==='crouch'))continue;
+      // Preserve the exact historical ordering of fine and micro samples,
+      // and keep occlusion / memory mutation in authoritative simulation.
+      forEachGroundSightCandidate(sight,bounds,20,(col,row,p)=>{
+        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))return;
+        const fine='fine:'+col+','+row;
+        s.seenGround.add(fine);
+        notePersonalGround(s,blue.id,s.seconds,fine);
+        const coarse=Math.floor(p.x/40)+','+Math.floor(p.y/40);
+        s.seenGround.add(coarse);
+        notePersonalGround(s,blue.id,s.seconds,coarse);
+      });
+      forEachGroundSightCandidate(sight,bounds,10,(col,row,p)=>{
+        if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))return;
         const micro=microKeyAt(col,row);
         s.seenGround.add(micro);
         notePersonalGround(s,blue.id,s.seconds,micro);
-      }
+      });
       if(s.seenGround.size!==beforeGroundSize)s.seenGroundRevision++;
     }
     for(const e of enemies(s)){
@@ -4989,7 +4975,7 @@ export function debrief(s:Session){
 }
 export function knownAt(s:Session,x:number,y:number){
   if(s.intel.mode==='full-view')return true;
-  return s.seenGround.has(Math.floor(x/40)+','+Math.floor(y/40));
+  return coarseGroundEvidenceAt(s.seenGround,{x,y});
 }
 /** Confirmed geometric *point* sight for individual friendly observers.
  * This matches liveVisibility's distance, facing and occlusion contract,

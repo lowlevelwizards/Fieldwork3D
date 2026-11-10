@@ -1,5 +1,6 @@
 import {COVER,WALLS,type Pt,doorCenter,type Door} from './breach-core.ts';
 import type {WideOpening} from './breach-site.ts';
+import {preciseGroundEvidenceAt} from './breach-ground-knowledge.ts';
 import {accessibleExteriorWall} from './breach-site-footprint.ts';
 import {type Session,type ShotEvent,liveVisibility,knownAt} from './breach-game.ts';
 
@@ -88,9 +89,7 @@ export function architecturalOpeningKnown(s:Session,opening:WideOpening,
  for(const sign of [-1,1]){
    const p={x:middle.x+nx*8*sign,y:middle.y+ny*8*sign};
    if(liveVisibility(s,p))return true;
-   if(s.seenGround.has('micro:'+Math.floor(p.x/10)+','+Math.floor(p.y/10))||
-      s.seenGround.has('fine:'+Math.floor(p.x/20)+','+Math.floor(p.y/20)))
-     return true;
+   if(preciseGroundEvidenceAt(s.seenGround,p))return true;
  }
  return false;
 }

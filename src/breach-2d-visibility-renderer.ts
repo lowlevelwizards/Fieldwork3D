@@ -5,6 +5,7 @@
 import {W,H} from './breach-core.ts';
 import type {Session} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
+import {fogSessionFingerprint} from './breach-fog-cache.ts';
 import {paintFogMask,maskBounds,FOG_WIDTH,FOG_HEIGHT} from './breach-fog-mask.ts';
 import {paintReplayPersonalGround} from './breach-replay-ground-overlay.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
@@ -27,7 +28,7 @@ const replayGroundContext=replayGroundCanvas.getContext('2d');
 if(!replayGroundContext)throw Error('Replay ground canvas unavailable');
 let fogStamp=-1;
 let fogSession:Session|null=null;
-let fogIntelMode='';let fogSeenRevision=-1;
+let fogSignature='';
 function renderReplayPersonalGround():void{
   const state=getState(),replaying=isReplaying(),viewMode=getViewMode();
   if(!replaying||!replayKnowledge.groundLensOn||viewMode!=='plan2d'||
@@ -49,19 +50,21 @@ function renderReplayPersonalGround():void{
 }
 function fog(){
   const state=getState(),replaying=isReplaying();
-  if(replaying&&replayKnowledge.omniscient)return;
-  if(fogStamp<0||fogSession!==state||fogIntelMode!==state.intel.mode||
-    fogSeenRevision!==state.seenGroundRevision||
+  if(replaying&&replayKnowledge.omniscient){
+    // Returning from unrestricted playback to squad sight must rebuild the
+    // mask even when the recorded timestamp has not changed.
+    fogStamp=-1;fogSignature='';
+    return;
+  }
+  const nextSignature=fogSessionFingerprint(state);
+  if(fogStamp<0||fogSession!==state||fogSignature!==nextSignature||
     state.seconds<fogStamp||state.seconds-fogStamp>.055){
-    fogStamp=state.seconds;fogSession=state;fogIntelMode=state.intel.mode;
-    fogSeenRevision=state.seenGroundRevision;
-    paintFogMask(fogContext!,state,
-      debugPalette?
-        'palette':'normal');
+    fogStamp=state.seconds;fogSession=state;fogSignature=nextSignature;
+    paintFogMask(fogContext!,state,debugPalette?'palette':'normal');
   }
   draw.drawImage(fogCanvas,0,0,W,H);
 }
 
  return {renderPersonalGround:renderReplayPersonalGround,renderFog:fog,
-   invalidate:()=>{fogStamp=-1;}};
+   invalidate:()=>{fogStamp=-1;fogSignature='';}};
 }
