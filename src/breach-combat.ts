@@ -1,5 +1,5 @@
 /** Builds 099–102: data-driven weapon, injury and exposure authority. */
-import {COVER,WALLS,segmentsCross,doorBlocksSightRay,type Pt,type Door,type Obstacle} from './breach-core.ts';
+import {COVER,WALLS,segmentsCross,doorBlocksSightRay,type Pt,type Door,type Obstacle,type Segment} from './breach-core.ts';
 import {segmentHitsBox} from './breach-ray.ts';
 import {coverImpactFraction,eyeHeight,aimHeight} from './breach-cover-height.ts';
 export type Injury='healthy'|'injured'|'heavy'|'incapacitated';
@@ -31,12 +31,13 @@ const segmentBox=(a:Pt,b:Pt,box:Obstacle)=>segmentHitsBox(a,b,box);
 export type Exposure={blocked:boolean;soft:boolean;hard:boolean;penalty:number;
   material:'stone'|'wood'|'metal'|'dust'};
 export function exposure(from:Pt,to:Pt,doors:Door[],
-  targetCrouched=false,shooterCrouched=false,visionOnly=false):Exposure{
+  targetCrouched=false,shooterCrouched=false,visionOnly=false,
+  walls:readonly Segment[]=WALLS,coverObjects:readonly Obstacle[]=COVER):Exposure{
   const ray={a:from,b:to};
-  if(WALLS.some(w=>segmentsCross(ray,w))||doorBlocksSightRay(doors,ray))
+  if(walls.some(w=>segmentsCross(ray,w))||doorBlocksSightRay(doors,ray))
     return {blocked:true,soft:false,hard:true,penalty:1,material:'stone'};
   let hard=false,soft=false,material:Exposure['material']='dust';
-  for(const cover of COVER){
+  for(const cover of coverObjects){
     // Physical glass intercepts bullets but is transparent to human vision.
     if(['chain-link-fence','iron-fence'].includes(cover.fixture??'')||
       (visionOnly&&cover.fixture==='glass-barrier'))continue;
@@ -48,10 +49,11 @@ export function exposure(from:Pt,to:Pt,doors:Door[],
   }
   return {blocked:hard,soft,hard,penalty:hard?1:soft?.15:0,material};
 }
-export function nearCover(p:Pt,threat:Pt){
+export function nearCover(p:Pt,threat:Pt,
+  covers:readonly Obstacle[]=COVER){
   // Direction matters: a cover object protects only if it lies between the
   // defending soldier and the suspected shooter.
-  return COVER.some(c=>{
+  return covers.some(c=>{
     const near=Math.hypot(p.x-c.x,p.y-c.y)<Math.max(c.w,c.h)*.95+22;
     return near&&segmentBox(threat,p,c);
   });

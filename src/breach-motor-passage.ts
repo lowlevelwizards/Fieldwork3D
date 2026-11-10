@@ -1,7 +1,8 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: one narrow threshold claimant at a time. Schedules and
  * lease state are owned by the authoritative session, not new globals.
  */
-import {OPERATOR_RADIUS,passable,type Pt} from './breach-core.ts';
+import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {passageWait,passageFollowerStep,passageScheduledStep,
  passageDeadlockRetreatTarget,type PassageActor}
@@ -14,6 +15,7 @@ export function negotiateMotorPassage(
  a:TeamActor,p:Pt,initialMove:Pt,dt:number,s:Session,
  hooks:ActorMotorHooks):{paused:boolean;move:Pt}{
  let move=initialMove;
+ const world=sessionWorldGeometry(s);
   // Resolve right-of-way BEFORE automatic door-opening, hinge pressure or
   // movement. Otherwise every teammate can start a competing OPEN action
   // and the planned squad sequence becomes unpredictable.
@@ -44,8 +46,8 @@ export function negotiateMotorPassage(
   });
   const passageActor=traffic.find(unit=>unit.id===a.id)!;
   const sequencedMove=passageScheduledStep(passageActor,s.doors,traffic,
-    move,(from,to)=>passable(to,OPERATOR_RADIUS)&&
-      sweptBodyClear(from,to,s.doors));
+    move,(from,to)=>world.passable(to,OPERATOR_RADIUS)&&
+      sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
   const negotiatedMove=passageFollowerStep(passageActor,s.doors,traffic,
     sequencedMove);
   // A partly free stride moves on this tick instead of stopping and
@@ -65,7 +67,7 @@ export function negotiateMotorPassage(
         {...passageActor,waitSeconds:a.passageWaitSeconds},
         s.doors,traffic,(from,to)=>sweptBodyClear(from,to,s.doors)||
           (a.squeeze&&sweptProfileClear(from,to,s.doors,
-             a.squeezeYaw,'squeeze')));
+             a.squeezeYaw,'squeeze',world)));
       if(retreat){
         a.nav.unshift(retreat);a.passageWaitSeconds=0;
         a.retryRouteAt=0;a.recoveryAttempts=0;

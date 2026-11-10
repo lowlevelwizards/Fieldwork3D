@@ -1,10 +1,11 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Roadmap 2 / Stage 9 — authoritative enemy AI decisions and report delivery.
  * Only enemy observation evidence can produce an AI contact. All navigation,
  * shot clearance, cover and events still use the game's physical authority.
  * Preserve evaluation order, reaction latency and seeded random behavior.
  */
 import type {Session,TeamActor} from './breach-game.ts';
-import {type Pt,COVER,WALLS,OPERATOR_RADIUS,doorCenter} from './breach-core.ts';
+import {type Pt,OPERATOR_RADIUS,doorCenter} from './breach-core.ts';
 import {targetAngle,angleDifference,length} from './breach-plan.ts';
 import {rotate} from './breach-order-lifecycle.ts';
 import type {BattleEvent} from './breach-combat.ts';
@@ -74,7 +75,7 @@ function electiveAiWork(s:Session,a:TeamActor,kind:string):boolean{
 function defensivePosition(a:TeamActor,from:Pt,s:Session):Pt|null{
   const others=enemies(s).map(other=>({id:other.id,p:other.p,
     health:other.health,defense:other.defense}));
-  return chooseDefense(a.p,from,s.doors,others,a.id);
+  return chooseDefense(a.p,from,s.doors,others,a.id,{},sessionWorldGeometry(s));
 }
 /** Firing reposition differs from a safe withdrawal. It must actually
  * expose a legal muzzle lane to the confirmed visible opponent. */
@@ -82,23 +83,24 @@ function firingPosition(a:TeamActor,target:TeamActor,s:Session):Pt|null{
   const others=enemies(s).map(other=>({id:other.id,p:other.p,
     health:other.health,defense:other.defense}));
   return chooseFiringDefense(a.p,target.p,s.doors,others,a.id,
-    aimHeight(target.posture==='crouch'));
+    aimHeight(target.posture==='crouch'),sessionWorldGeometry(s));
 }
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
+ const world=sessionWorldGeometry(s);
   if(a.health<=0||a.surrendered)return;
   // The same local clearance motor is available to red and blue, but
   // never outranks a defensive withdrawal or interrupts a timed traversal.
   if(a.fireRetreatTarget){
     const goal=a.fireRetreatTarget;
     if(a.alert==='retreat'||s.seconds>a.fireRetreatUntil||
-       d(a.p,goal)<3||!sweptBodyClear(a.p,goal,s.doors)){
+       d(a.p,goal)<3||!sweptBodyClear(a.p,goal,s.doors,OPERATOR_RADIUS,world)){
       a.fireRetreatTarget=null;a.nav=[];
     }else{
       approach(a,goal,dt,s,.64);
       return;
     }
   }
-  if(!a.watch)a.watch=watchPoint(a.p,s.doors);
+  if(!a.watch)a.watch=watchPoint(a.p,s.doors,world);
   const visible=scanEnemyVisualEvidence(s,a,dt,inSight);
   // A guard on the other side of a window can have confirmed sight but
   // an unusable short-stock muzzle. Try the same small backstep available
@@ -113,7 +115,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
         aim:a.aim,posture:a.posture,velocity:0,recoil:a.recoil,
         threatRange:d(a.p,target.p)
-      },s.doors);
+      },s.doors,world.cover,world.walls);
       if(check.blocked&&
          (check.blocker==='wall'||check.blocker==='cover')&&
          requestClearFireStep(s,a,target,'muzzle'))return;
@@ -162,7 +164,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     // repeatedly attempting blocked shots. Reposition has a cooldown.
     const friends=enemies(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
     const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
-      b.p,aimHeight(b.posture==='crouch'),COVER,WALLS,s.doors,friends);
+      b.p,aimHeight(b.posture==='crouch'),world.cover,world.walls,s.doors,friends);
     a.combatChoice=chooseCombatAction({visible:true,remembered:true,
       laneClear:lane.blocker==='clear',ammunition:a.magazine,
       suppression:a.suppression,morale:a.morale,temperament:a.personality});
@@ -417,7 +419,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
           a.velocity=0;return;
         }
         const goal=reachableInvestigation(a.p,a.contact,
-          (from,to)=>cachedEnemyRoute(s,from,to));
+          (from,to)=>cachedEnemyRoute(s,from,to),p=>world.passable(p));
         if(goal)a.nav=cachedEnemyRoute(s,a.p,goal);
         else{a.alert='cover';a.contact=null;a.defense=null;}
       }
@@ -432,7 +434,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(!a.searchOrigin){
         a.searchOrigin=clone(a.contact);
         a.searchQueue=searchCandidates(a.searchOrigin,
-          belief?.uncertainty??65,s.site?.rooms??[],s.doors,COVER);
+          belief?.uncertainty??65,s.site?.rooms??[],s.doors,world.cover);
       }
       if(a.searchPauseUntil===0)
         a.searchPauseUntil=s.seconds+tempo.inspectSeconds;
@@ -449,7 +451,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         const candidate=a.searchQueue.shift()!;
         if(d(candidate,a.p)<24)continue;
         next=reachableInvestigation(a.p,candidate,
-          (from,to)=>cachedEnemyRoute(s,from,to));
+          (from,to)=>cachedEnemyRoute(s,from,to),p=>world.passable(p));
       }
       a.nav=[];
       if(next){
@@ -478,13 +480,14 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
 }
 /** A verbal warning only reaches physically audible allies; no team hive mind. */
 function distributeReports(s:Session){
+ const world=sessionWorldGeometry(s);
  for(const report of s.reports){
   if(s.seconds-report.at>1.5)continue;
   const newlyInformed:string[]=[];
   for(const recipient of enemies(s)){
    if(recipient.health<=0||report.deliveredTo.includes(recipient.id))continue;
    const observation=reportToListener(report,recipient.id,recipient.p,
-     s.doors,WALLS,s.seconds);
+     s.doors,world.walls,s.seconds);
    if(!observation)continue;
    report.deliveredTo.push(recipient.id);
    newlyInformed.push(recipient.id);

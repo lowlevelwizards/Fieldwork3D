@@ -1,8 +1,9 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 8: conditional locomotion, lasting WATCH/LOOK aim, PIE
  * progression and waypoint arrival. Motion is still delegated to the
  * authoritative Stage 7 physical motor.
  */
-import {OPERATOR_RADIUS,passable,type Pt} from './breach-core.ts';
+import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {targetAngle,interruptsWatch} from './breach-plan.ts';
@@ -56,14 +57,15 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   // settle step; never push or move someone whose own order is complete.
   const settle=n.kind==='move'?friendlyArrivalSettleTarget(
     a.p,n.p,friendlyPeers,(from,to)=>
-      passable(to,OPERATOR_RADIUS)&&sweptBodyClear(from,to,s.doors)):null;
+      sessionWorldGeometry(s).passable(to,OPERATOR_RADIUS)&&
+      sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))):null;
   if(settle){
     approach(a,settle,dt,s,.72);
     return true;
   }
   const at=near(a.p,n.p,5)||(
     n.kind==='move'&&nearOccupiedFriendlyGoal(a.p,n.p,
-      friendlyPeers,(from,to)=>sweptBodyClear(from,to,s.doors)));
+      friendlyPeers,(from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))));
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
     // Running cancels WATCH rather than merely suspending it.
     if(interruptsWatch(n,a.pace))a.aimInstruction=null;

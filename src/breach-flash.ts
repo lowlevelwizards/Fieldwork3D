@@ -1,18 +1,19 @@
+import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** Build 097: authored grenade trajectory and open-door corner routes. */
 import {doorBlocksRay,WALLS,segmentsCross,doorCenter,type Pt,type Door} from './breach-core.ts';
 export type ThrowPath={points:Pt[];mode:'direct'|'doorway'|'bank';valid:boolean;
   reason?:string;via?:Pt};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
-const blocked=(from:Pt,to:Pt,doors:Door[])=>{
+const blocked=(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry)=>{
   const seg={a:from,b:to};
-  return WALLS.some(w=>segmentsCross(seg,w))||
+  return (world?.walls??WALLS).some(w=>segmentsCross(seg,w))||
     doorBlocksRay(doors,seg);
 };
 /** Compact shoulder-side release offsets let a rear operator lob around
  * their teammate without demanding pixel-perfect doorframe placement. Every
  * release and doorway segment is still validated against solid geometry. */
 export function validateThrow(from:Pt,to:Pt,doors:Door[],
-  plannedOpen:string[]=[]):ThrowPath{
+  plannedOpen:string[]=[],world?:SessionWorldGeometry):ThrowPath{
   const range=dist(from,to);
   if(range<12||range>215)return {points:[from,to],mode:'direct',
     valid:false,reason:'OUT OF THROW RANGE'};
@@ -28,10 +29,10 @@ export function validateThrow(from:Pt,to:Pt,doors:Door[],
     for(const along of [0,5,-5]){
       const candidate={x:from.x+side.x*lateral+forward.x*along,
         y:from.y+side.y*lateral+forward.y*along};
-      if(!blocked(from,candidate,available))releases.push(candidate);
+      if(!blocked(from,candidate,available,world))releases.push(candidate);
     }
   for(const release of releases)
-    if(!blocked(release,to,available))
+    if(!blocked(release,to,available,world))
       return {points:dist(from,release)<.01?[from,to]:
         [from,release,to],mode:'direct',valid:true};
   // Route through the free center of the actual opening, then try a
@@ -50,7 +51,7 @@ export function validateThrow(from:Pt,to:Pt,doors:Door[],
         y:center.y+tangent.y*offset};
       for(const release of releases){
         if(dist(release,via)>152||dist(to,via)>178||
-          blocked(release,via,available))continue;
+          blocked(release,via,available,world))continue;
         const towards=(to.x-via.x)*normal.x+(to.y-via.y)*normal.y>=0?1:-1;
         const hooks:Pt[]=[via];
         for(const depth of [15,27,37])
@@ -60,7 +61,7 @@ export function validateThrow(from:Pt,to:Pt,doors:Door[],
               y:via.y+normal.y*depth*towards+tangent.y*sideways});
           }
         for(const hook of hooks){
-          if(blocked(via,hook,available)||blocked(hook,to,available))continue;
+          if(blocked(via,hook,available,world)||blocked(hook,to,available,world))continue;
           const total=dist(from,release)+dist(release,via)+
             dist(via,hook)+dist(hook,to);
           if(total>282||total>=score)continue;

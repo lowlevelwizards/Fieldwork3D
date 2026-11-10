@@ -1,3 +1,4 @@
+import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** Physical hinges, handles, and deterministic door clearance. */
 import {sweptBodyClear,bodyClear} from './breach-navigation.ts';
 import {doorCenter,route,pointToSegment,
@@ -61,9 +62,9 @@ export function canAutoOpenEnRoute(plan:{
  return candidateDoorId!==plan.doorId||(plan.method??'open')==='open';
 }
 export function autoDoorAtBodyContact(from:Pt,to:Pt,
- doors:readonly Door[]):Door|undefined{
+ doors:readonly Door[],world?:SessionWorldGeometry):Door|undefined{
  const touching=doors.filter(d=>{
-   if((d.open&&doorClear(d))||!doorReachable(from,d))
+   if((d.open&&doorClear(d,world))||!doorReachable(from,d))
      return false;
    const leaf=doorLeafSegment(d);
    const before=pointToSegment(from,leaf),after=pointToSegment(to,leaf);
@@ -77,7 +78,7 @@ export function autoDoorAtBodyContact(from:Pt,to:Pt,
    pointToSegment(to,doorLeafSegment(a))-
    pointToSegment(to,doorLeafSegment(b))||a.id.localeCompare(b.id))[0];
 }
-export function doorApproach(from:Pt,d:Door):Pt|null{
+export function doorApproach(from:Pt,d:Door,world?:SessionWorldGeometry):Pt|null{
   const m=doorCenter(d),len=dist(d.a,d.b)||1;
   const t={x:(d.b.x-d.a.x)/len,y:(d.b.y-d.a.y)/len};
   const n={x:-t.y,y:t.x};
@@ -104,8 +105,8 @@ export function doorApproach(from:Pt,d:Door):Pt|null{
   // can choose a reachable handle position on the far side of the swung
   // leaf, forcing a silly detour or wall scrape just to approach a door.
   const staged=candidates.flatMap((point,index)=>{
-    if(!bodyClear(point,[d])||!doorReachable(point,d))return [];
-    const waypoints=route(from,point,p=>bodyClear(p,[d]));
+    if(!bodyClear(point,[d],OPERATOR_RADIUS,world)||!doorReachable(point,d))return [];
+    const waypoints=route(from,point,p=>bodyClear(p,[d],OPERATOR_RADIUS,world));
     if(!waypoints.length)return [];
     let previous=from,pathLength=0;
     for(const waypoint of waypoints){
@@ -232,31 +233,34 @@ export function hingeSweepNeighborhood(d:Door,
  */
 const hingeSweepCache=new WeakMap<Door,{
   revision:number;ax:number;ay:number;bx:number;by:number;
-  hinge:Door['hinge'];value:ReturnType<typeof hingeSweepNeighborhood>;
+  hinge:Door['hinge'];scope?:SessionWorldGeometry;
+  value:ReturnType<typeof hingeSweepNeighborhood>;
 }>();
-export function cachedHingeSweepNeighborhood(d:Door){
-  const revision=activeGeometryRevision();
+export function cachedHingeSweepNeighborhood(d:Door,world?:SessionWorldGeometry){
+  const revision=world?.revision??activeGeometryRevision();
   const old=hingeSweepCache.get(d);
-  if(old&&old.revision===revision&&old.ax===d.a.x&&old.ay===d.a.y&&
+  if(old&&old.scope===world&&old.revision===revision&&old.ax===d.a.x&&old.ay===d.a.y&&
      old.bx===d.b.x&&old.by===d.b.y&&old.hinge===d.hinge)
     return old.value;
-  const value=hingeSweepNeighborhood(d,WALLS,COVER);
+  const value=hingeSweepNeighborhood(d,world?.walls??WALLS,world?.cover??COVER);
   hingeSweepCache.set(d,{revision,ax:d.a.x,ay:d.a.y,
-    bx:d.b.x,by:d.b.y,hinge:d.hinge,value});
+    bx:d.b.x,by:d.b.y,hinge:d.hinge,scope:world,value});
   return value;
 }
 /** Test every segment of the hinge sweep against architecture, not merely
  * the last frame; a leaf may not tunnel through a thin doorstop or fixture. */
-export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], actorRadius=OPERATOR_RADIUS){
+export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], actorRadius=OPERATOR_RADIUS,
+ world?:SessionWorldGeometry){
  if(d.kind==='shutter')return false;
  if(doorWouldStrikeActors(d,next,actors,actorRadius))return true;
  if(d.kind==='sliding')return false;
  // Standalone lab fixtures have no corresponding architectural model.
- const registered=activeSite()?.doors??initialDoors();
+ const registered=world?(world.site?.doors??initialDoors()):
+   (activeSite()?.doors??initialDoors());
  if(!registered.some(real=>real.id===d.id))return false;
  const current=d.openFraction??(d.open?1:0);
  const steps=doorSweepSteps(d,next);
- const nearby=cachedHingeSweepNeighborhood(d);
+ const nearby=cachedHingeSweepNeighborhood(d,world);
  for(let step=1;step<=steps;step++){
   const fraction=current+(next-current)*step/steps;
   const leaf=doorLeafSegment({...d,openFraction:fraction});
@@ -270,7 +274,8 @@ export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], act
  }
  return false;
 }
-export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
+export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[],
+ world?:SessionWorldGeometry){
   if(d.wedged)d.open=false;
   // Fixed internal substeps prevent a paused or coarse test tick from
   // overshooting a hinge and keep old half-second door timings intact.
@@ -294,7 +299,7 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[]){
         // leaving them overlapping an otherwise solid collision panel.
         // doorWouldStrikeActors already allows rotation AWAY from a
         // touched/overlapping body, but never deeper into its capsule.
-        actors,OPERATOR_RADIUS);
+        actors,OPERATOR_RADIUS,world);
     d.openFraction=blocked?current:next;
     d.angularVelocity=blocked||next===0||(d.open&&next>=target)?0:velocity;
     if(blocked||next>=.98)d.kickImpulse=0;
@@ -316,7 +321,7 @@ export type BodyDoorPressurePolicy={
 };
 export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   dt:number,actors:readonly Pt[],
-  policy:BodyDoorPressurePolicy={}):BodyDoorContact|null{
+  policy:BodyDoorPressurePolicy={},world?:SessionWorldGeometry):BodyDoorContact|null{
   const length=dist(from,to);
   if(length<.0001)return null;
   const steps=Math.max(1,Math.ceil(length/2));
@@ -387,7 +392,7 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   else door.pushTarget=PUSHED_OPEN_LIMIT;
   // Door motion gets a small share of this very simulation tick. The main
   // global motor subsequently handles normal animation and swept obstacles.
-  advanceDoor(door,Math.min(Math.max(0,dt),1/60),actors);
+  advanceDoor(door,Math.min(Math.max(0,dt),1/60),actors,world);
   return {doorId:door.id,
     advanced:Math.abs((door.openFraction??0)-initial)>.0001};
 }
@@ -396,7 +401,7 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
  * they vary with hinge end, panel length, sliding direction and frame.
  * Keep the lift height rule for shutters (vertical collision geometry).
  */
-export function doorClear(d:Door):boolean{
+export function doorClear(d:Door,world?:SessionWorldGeometry):boolean{
  if(!d.open)return false;
  const fraction=d.openFraction??1;
  if(d.kind==='shutter')return fraction>=.72;
@@ -415,8 +420,9 @@ export function doorClear(d:Door):boolean{
   const center={x:m.x+tangent.x*along,y:m.y+tangent.y*along};
   const from={x:center.x-normal.x*depth,y:center.y-normal.y*depth};
   const to={x:center.x+normal.x*depth,y:center.y+normal.y*depth};
-  if(bodyClear(from,[d])&&bodyClear(to,[d])&&
-    sweptBodyClear(from,to,[d]))return true;
+  if(bodyClear(from,[d],OPERATOR_RADIUS,world)&&
+    bodyClear(to,[d],OPERATOR_RADIUS,world)&&
+    sweptBodyClear(from,to,[d],OPERATOR_RADIUS,world))return true;
  }
  return false;
 }

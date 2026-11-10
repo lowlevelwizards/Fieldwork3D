@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: authoritative body-collision response and recovery.
  * A full-radius swept motion is preferred; squeeze is only a physical
  * narrow passage, never a generalized avoidance bypass.
@@ -28,6 +29,7 @@ import {d,clone,angle,clamp,type ActorMotorHooks} from './breach-motor-contract.
 export function resolveMotorCollision(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
  canAutoSidestep:boolean,closed:boolean,hooks:ActorMotorHooks):boolean{
+ const world=sessionWorldGeometry(s);
   // Allies may brush and pass one another: their bodies never hard-block
   // authored routes. Only an opposing actor is a physical traffic barrier.
   const blocking=s.operators.find(b=>b!==a&&b.health>0&&
@@ -42,21 +44,21 @@ export function resolveMotorCollision(
   const desiredMove=approachingNarrowThreshold(a.p,p,s.doors)?move:
     friendlyPassingStep(a.p,move,next,friendlyPositions,
       (from,to)=>a.squeeze?sweptProfileClear(from,to,s.doors,
-        a.squeezeYaw,'squeeze'):sweptBodyClear(from,to,s.doors));
+        a.squeezeYaw,'squeeze',world):sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
   // Resolve the physical body's intended step against the actual leaf
   // BEFORE evaluating movement clearance. The hinge may yield right now;
   // when it cannot (wall/actor), existing collision and recovery remain.
   const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
     s.operators.filter(o=>o.health>0).map(o=>o.p),{
       deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door)
-    });
+    },world);
   // The physical transition requires a valid oriented three-point torso
   // sweep; normal clearance remains the preference whenever it fits.
-  const normalClear=sweptBodyClear(a.p,desiredMove,s.doors);
+  const normalClear=sweptBodyClear(a.p,desiredMove,s.doors,OPERATOR_RADIUS,world);
   const travelHeading=angle(a.p,desiredMove);
   const sidewaysYaw=squeezeFacing(travelHeading);
   const narrowClear=sweptProfileClear(a.p,desiredMove,s.doors,
-    sidewaysYaw,'squeeze');
+    sidewaysYaw,'squeeze',world);
   // An incidental near-miss with a prop or wall is NOT an order to
   // rotate the entire body into a squeeze. First look for a genuine
   // full-shoulder route around it (often just a short sidestep). This is
@@ -67,10 +69,10 @@ export function resolveMotorCollision(
     // Failed comfort searches must not restart the world-truth recovery
     // clock; it needs uninterrupted stall time to escalate blocked moves.
     a.lastNormalLaneProbeAt=s.seconds;
-    const fullLane=recoverNormalLane(a.p,p,s.doors);
+    const fullLane=recoverNormalLane(a.p,p,s.doors,world);
     if(fullLane.length&&d(fullLane[0],next)>6&&
        d(fullLane[0],a.p)>3&&
-       sweptBodyClear(a.p,fullLane[0],s.doors)){
+       sweptBodyClear(a.p,fullLane[0],s.doors,OPERATOR_RADIUS,world)){
       const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
         s.seconds,canAutoSidestep);
       if(side)a.autoSidestep=side;
@@ -86,7 +88,7 @@ export function resolveMotorCollision(
   // slightly INTO the wall. Avoid rotating into a squeeze facing while
   // simply walking parallel to a solid wall or reversing alongside it.
   if(!normalClear&&!blocking&&!closed){
-    const glide=glideAlongStaticWall(a.p,desiredMove,s.doors);
+    const glide=glideAlongStaticWall(a.p,desiredMove,s.doors,world);
     if(glide){
       const old=clone(a.p);
       a.priorP=old;a.p=glide;
@@ -116,7 +118,7 @@ export function resolveMotorCollision(
         a.heading=angle(old,glide);
       a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
       a.recoveryAttempts=0;
-      if(a.squeeze&&bodyClear(a.p,s.doors)){
+      if(a.squeeze&&bodyClear(a.p,s.doors,OPERATOR_RADIUS,world)){
         a.squeeze=false;a.squeezeTime=0;
       }
       return true;
@@ -124,7 +126,7 @@ export function resolveMotorCollision(
   }
   if(!normalClear&&narrowClear&&!a.squeeze&&
      (approachingNarrowThreshold(a.p,p,s.doors)||
-      twoSidedSqueezePressure(a.p,desiredMove,s.doors))){
+      twoSidedSqueezePressure(a.p,desiredMove,s.doors,world))){
     a.squeeze=true;a.squeezeYaw=sidewaysYaw;a.squeezeTime=0;
     a.velocity=0;
     // Alignment is a real, short stationary transition, not a teleport.
@@ -132,7 +134,7 @@ export function resolveMotorCollision(
   }
   if(a.squeeze){
     a.squeezeYaw=sidewaysYaw;
-    if(normalClear&&squeezeExitClear(a.p,desiredMove,s.doors)){
+    if(normalClear&&squeezeExitClear(a.p,desiredMove,s.doors,12,world)){
       a.squeeze=false;a.squeezeTime=0;
     }else{
       // The body visibly turns to the SAME angle used by oriented collision
@@ -149,7 +151,7 @@ export function resolveMotorCollision(
   if(!traversable&&!blocking&&
      tryAutoClearClutter(s,a,desiredMove,hooks))return true;
   if(!traversable&&!blocking){
-    const escape=escapeOpenDoorOverlap(a.p,p,s.doors,dt*45);
+    const escape=escapeOpenDoorOverlap(a.p,p,s.doors,dt*45,world);
     if(escape){
       a.priorP=clone(a.p);a.p=escape;a.velocity=0;
       a.blockedTime=0;a.lastBlocker='door';
@@ -161,8 +163,8 @@ export function resolveMotorCollision(
   // Furniture corners should be brushed around, not treated as hard jams.
   // Every candidate remains a real swept, full-size body movement.
   if(!traversable&&!a.squeeze&&!blocking&&!closed&&
-     diagnoseMovement(a.p,desiredMove,s.doors).blocker==='furniture'){
-    const slide=slideAroundStaticCorner(a.p,desiredMove,next,s.doors);
+     diagnoseMovement(a.p,desiredMove,s.doors,[],8,world).blocker==='furniture'){
+    const slide=slideAroundStaticCorner(a.p,desiredMove,next,s.doors,world);
     if(slide){
       const old=clone(a.p);
       const side=beginAutoSidestep(old,next,slide,a.heading,p,
@@ -179,7 +181,7 @@ export function resolveMotorCollision(
     recoveryAction(blocking?'actor':a.lastBlocker,a.blockedTime,
       s.seconds-a.lastNavRepairAt,a.recoveryAttempts)==='detour'){
     const candidate=localDetour(a.p,next,s.doors,s.operators
-      .filter(o=>o!==a&&o.health>0).map(o=>o.p));
+      .filter(o=>o!==a&&o.health>0).map(o=>o.p),8,world);
     if(candidate&&d(candidate,p)<d(a.p,p)+12&&
       (!a.nav.length||d(candidate,a.nav[0])>12)){
       const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
@@ -210,7 +212,7 @@ export function resolveMotorCollision(
     a.lastBlocker=blockedStepCause(
       diagnoseMovement(a.p,desiredMove,s.doors,
         s.operators.filter(b=>b!==a&&b.side!==a.side&&b.health>0)
-        .map(b=>b.p)).blocker,!!blocking,closed);
+        .map(b=>b.p),8,world).blocker,!!blocking,closed);
     if(a.side==='blue'&&a.lastBlocker==='furniture'){
       const newlyKnown=discoverContactCover(s.intel,a.p,13);
       if(newlyKnown.length){
@@ -236,7 +238,7 @@ export function resolveMotorCollision(
       // not only the incomplete player-intel route that may run through
       // an undiscovered door frame. The authored final goal is unchanged.
       const repaired=a.side==='red'?hooks.cachedEnemyRoute(s,a.p,p,true):
-        routeWithSqueezeWorld(a.p,p,s.doors);
+        routeWithSqueezeWorld(a.p,p,s.doors,world);
       if(repaired.length){a.nav=repaired;a.retryRouteAt=0;}
       else if(a.side==='blue'){
         a.nav=routeWithSqueezeIntel(s.intel,a.p,p);

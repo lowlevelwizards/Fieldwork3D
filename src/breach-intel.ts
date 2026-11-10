@@ -1,3 +1,4 @@
+import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** 140: Player intelligence is not the same as physical world truth.
  * Architecture may be prebriefed; cover and moving objects are only known
  * after observation. All modes share the same discovered state. */
@@ -13,6 +14,16 @@ export type IntelState={
  walls:Set<number>;doors:Set<string>;cover:Set<number>;
  rooms:Set<string>;doorMemory:Map<string,number>;
 };
+/** Each live intel snapshot reads only its owning world. Weak binding
+ * stays out of serialized fog/replay schemas and permits old sessions to GC.
+ */
+const intelWorlds=new WeakMap<IntelState,SessionWorldGeometry>();
+export function bindIntelWorld(intel:IntelState,world:SessionWorldGeometry):void{
+ intelWorlds.set(intel,world);
+}
+export const intelWorldGeometry=(intel:IntelState)=>intelWorlds.get(intel);
+const ownerWorld=(intel:IntelState,world?:SessionWorldGeometry)=>
+ world??intelWorlds.get(intel);
 export const INTEL_MODES:readonly IntelMode[]=[
  'true-blind','exterior-known','floor-plan','full-view'];
 export function insideBuilding(site:Site|undefined,p:Pt):boolean{
@@ -30,20 +41,22 @@ export function exteriorWall(site:Site|undefined,wall:Segment){
    insideBuilding(site,{x:m.x-perp.x,y:m.y-perp.y});
 }
 export function initialIntel(mode:IntelMode,site:Site|undefined,
-  doors:Door[]):IntelState{
+  doors:Door[],world?:SessionWorldGeometry):IntelState{
+ const bound=world;
+ const walls=bound?.walls??WALLS,cover=bound?.cover??COVER;
  const intel:IntelState={mode,walls:new Set(),doors:new Set(),
    cover:new Set(),rooms:new Set(),doorMemory:new Map()};
  if(mode==='full-view'){
-   WALLS.forEach((_,i)=>intel.walls.add(i));
+   walls.forEach((_,i)=>intel.walls.add(i));
    doors.forEach(d=>intel.doors.add(d.id));
-   COVER.forEach((_,i)=>intel.cover.add(i));
+   cover.forEach((_,i)=>intel.cover.add(i));
    site?.rooms.forEach(r=>intel.rooms.add(r.id));
  }else if(mode==='floor-plan'){
-   WALLS.forEach((_,i)=>intel.walls.add(i));
+   walls.forEach((_,i)=>intel.walls.add(i));
    doors.forEach(d=>intel.doors.add(d.id));
    site?.rooms.forEach(r=>intel.rooms.add(r.id));
  }else if(mode==='exterior-known'){
-   WALLS.forEach((w,i)=>{if(accessibleExteriorWall(site,w))intel.walls.add(i)});
+   walls.forEach((w,i)=>{if(accessibleExteriorWall(site,w))intel.walls.add(i)});
    doors.forEach(d=>{
      if(accessibleExteriorWall(site,d))intel.doors.add(d.id);
    });
@@ -51,7 +64,8 @@ export function initialIntel(mode:IntelMode,site:Site|undefined,
  return intel;
 }
 export function observeIntel(intel:IntelState,site:Site|undefined,
-  doors:Door[],visible:(p:Pt)=>boolean){
+  doors:Door[],visible:(p:Pt)=>boolean,world?:SessionWorldGeometry){
+ const walls=world?.walls??WALLS,cover=world?.cover??COVER;
  const observesSegment=(seg:Segment)=>{
    const dx=seg.b.x-seg.a.x,dy=seg.b.y-seg.a.y;
    const n=Math.max(1,Math.hypot(dx,dy));
@@ -65,7 +79,7 @@ export function observeIntel(intel:IntelState,site:Site|undefined,
  };
  // Structural/fixture knowledge is monotonic. Once discovered, it cannot
  // improve by re-running 3-9 LOS rays every observation interval.
- WALLS.forEach((w,i)=>{
+ walls.forEach((w,i)=>{
    if(!intel.walls.has(i)&&observesSegment(w))intel.walls.add(i);
  });
  doors.forEach(d=>{
@@ -74,7 +88,7 @@ export function observeIntel(intel:IntelState,site:Site|undefined,
      intel.doorMemory.set(d.id,d.openFraction??(d.open?1:0));
    }
  });
- COVER.forEach((o,i)=>{
+ cover.forEach((o,i)=>{
    if(intel.cover.has(i))return;
    // Exposed sample points are outside the collidable/occluding box.
    const x=o.w/2+2.5,y=o.h/2+2.5;
@@ -93,9 +107,11 @@ export function observeIntel(intel:IntelState,site:Site|undefined,
  });
 }
 /** Direct physical contact reveals only the touched furniture, never remote cover. */
-export function discoverContactCover(intel:IntelState,at:Pt,reach=12){
+export function discoverContactCover(intel:IntelState,at:Pt,reach=12,
+ world?:SessionWorldGeometry){
+ const cover=ownerWorld(intel,world)?.cover??COVER;
  const found:number[]=[];
- COVER.forEach((o,i)=>{
+ cover.forEach((o,i)=>{
    const dx=Math.max(0,Math.abs(at.x-o.x)-o.w/2);
    const dy=Math.max(0,Math.abs(at.y-o.y)-o.h/2);
    if(Math.hypot(dx,dy)<=reach&&!intel.cover.has(i)){
@@ -108,18 +124,23 @@ export const wallKnown=(intel:IntelState,i:number)=>intel.walls.has(i);
 export const doorKnown=(intel:IntelState,id:string)=>intel.doors.has(id);
 export const coverKnown=(intel:IntelState,i:number)=>intel.cover.has(i);
 export const roomKnown=(intel:IntelState,id:string)=>intel.rooms.has(id);
-export function intelPassable(p:Pt,intel:IntelState,clearance=8):boolean{
- const bounds=activeWorldBounds();
+export function intelPassable(p:Pt,intel:IntelState,clearance=8,
+ world?:SessionWorldGeometry):boolean{
+ world=ownerWorld(intel,world);
+ const bounds=world?.bounds??activeWorldBounds();
  if(p.x<bounds.minX+13||p.y<bounds.minY+20||
    p.x>bounds.maxX-13||p.y>bounds.maxY-13)return false;
- if(someWallNearPoint(p,clearance+1,(w,i)=>intel.walls.has(i)&&
+ if((world?.someWallNearPoint.bind(world)??someWallNearPoint)(p,clearance+1,(w,i)=>intel.walls.has(i)&&
    pointToSegment(p,w)<clearance+1))return false;
- if(someCoverNearPoint(p,clearance,(o,i)=>isFootstepObstacle(o)&&intel.cover.has(i)&&
+ if((world?.someCoverNearPoint.bind(world)??someCoverNearPoint)(p,clearance,(o,i)=>isFootstepObstacle(o)&&intel.cover.has(i)&&
    Math.abs(p.x-o.x)<o.w/2+clearance&&
    Math.abs(p.y-o.y)<o.h/2+clearance))return false;
  return true;
 }
-export const routeWithIntel=(intel:IntelState,from:Pt,to:Pt)=>
+export const routeWithIntel=(intel:IntelState,from:Pt,to:Pt,
+ world?:SessionWorldGeometry)=>
+ (world??intelWorlds.get(intel))?
+ (world??intelWorlds.get(intel))!.route(from,to,p=>intelPassable(p,intel,8,world)):
  route(from,to,p=>intelPassable(p,intel));
 export function intelFogLevel(intel:IntelState,site:Site|undefined,
   p:Pt,currentlyVisible:boolean,everSeen:boolean){

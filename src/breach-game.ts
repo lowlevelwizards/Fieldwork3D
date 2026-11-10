@@ -18,7 +18,7 @@ import {incomingHitFacing} from './breach-combat-reactions.ts';
  * Author intent is editable PlanNode[]; motor navigation is transient.
  * Legacy 052 entrypoints remain in breach-core for comparison/tests only.
  */
-import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,WALLS,COVER,initialDoors,newTacticalState,route,passable,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,staticWallBlocksRay,someCoverAlongRay,activeGeometryRevision} from './breach-core.ts';
+import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,} from './breach-core.ts';
 import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions} from './breach-entry-coordination.ts';
@@ -62,7 +62,7 @@ import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {type AIIntent} from './breach-ai-policy.ts';
 
-import {registerSessionWorldGeometry} from './breach-world-context.ts';
+import {registerSessionWorldGeometry,sessionWorldGeometry,publishSessionCoverToActiveSite,setPresentationWorldSession} from './breach-world-context.ts';
 
 
 import {newSuspicion,type SuspicionMemory} from './breach-ai-suspicion.ts';
@@ -122,7 +122,7 @@ import {advanceRescueEscort,type RescueEscort} from './breach-rescue-escort.ts';
 import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployment.ts';
 import {operationBrief,assessOperation,type OperationKind} from './breach-operations.ts';
 
-import {initialIntel,observeIntel,routeWithIntel,intelPassable,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
+import {initialIntel,bindIntelWorld,observeIntel,routeWithIntel,intelPassable,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
 
 import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
 import {magazineKit,reloadDuration as reloadTiming,type MagazineItem,type ReloadMode} from './breach-magazines.ts';
@@ -302,9 +302,9 @@ function cachedEnemyRoute(s:Session,from:Pt,to:Pt,physicalDoors=false):Pt[]{
     door.id,door.kind,door.open,door.openFraction,
     door.hinge,door.swing,door.slideDirection
   ].join(':')).join(';'):'static';
-  return cache.get(from,to,activeGeometryRevision(),
+  return cache.get(from,to,sessionWorldGeometry(s).revision,
     Math.round(s.seconds*60),leafSignature,()=>
-      physicalDoors?routeWithSqueezeWorld(from,to,s.doors):route(from,to));
+      physicalDoors?routeWithSqueezeWorld(from,to,s.doors,sessionWorldGeometry(s)):sessionWorldGeometry(s).route(from,to));
 }
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
@@ -541,6 +541,8 @@ export function newSession(index=0,siteSeed?:number,
      state.missionType==='hold')state.mission='secure';
   COVER.splice(0,COVER.length,...state.coverState);
   registerSessionWorldGeometry(state);
+  setPresentationWorldSession(state);
+  bindIntelWorld(state.intel,sessionWorldGeometry(state));
   observe(state);
   return state;
 }
@@ -548,7 +550,7 @@ export function newSession(index=0,siteSeed?:number,
  * Reset remembered fog: the default front must not remain pre-revealed.
  */
 export function availableDeployments(s:Session):DeploymentChoice[]{
- return s.site?verifiedDeploymentChoices(s.site):[];
+ return s.site?verifiedDeploymentChoices(s.site,sessionWorldGeometry(s)):[];
 }
 export function selectDeployment(s:Session,id:string):boolean{
  if(!s.site||s.started||s.phase!=='planning'||team(s).some(a=>a.plan.length))
@@ -556,7 +558,7 @@ export function selectDeployment(s:Session,id:string):boolean{
  const choice=id==='FRONT'?null:availableDeployments(s).find(c=>c.id===id);
  if(id!=='FRONT'&&!choice)return false;
  const positions=choice?.spots??s.site.spawn;
- if(positions.length<team(s).length||!team(s).every((_,i)=>passable(positions[i],8)))
+ if(positions.length<team(s).length||!team(s).every((_,i)=>sessionWorldGeometry(s).passable(positions[i],8)))
   return false;
  team(s).forEach((a,i)=>{
   a.p=clone(positions[i]);a.priorP=clone(positions[i]);
@@ -564,7 +566,8 @@ export function selectDeployment(s:Session,id:string):boolean{
   a.heading=angle(a.p,choice?.approach??s.site!.entrance);
   a.weaponYaw=a.heading;
  });
- s.intel=initialIntel(s.intel.mode,s.site,s.doors);
+ s.intel=initialIntel(s.intel.mode,s.site,s.doors,sessionWorldGeometry(s));
+ bindIntelWorld(s.intel,sessionWorldGeometry(s));
  s.seenGround.clear();s.seenGroundRevision++;s.known.clear();
  s.squadEntryUndo=null;s.squadEntryRedo=null;
  observe(s);
@@ -583,7 +586,7 @@ export const canEdit=(s:Session)=>s.phase==='planning';
 function knownWindowWorld(s:Session){
  const cover=s.coverState.filter((_,i)=>s.intel.cover.has(i));
  return {
-  cover,walls:WALLS.filter((_,i)=>s.intel.walls.has(i)),
+  cover,walls:sessionWorldGeometry(s).walls.filter((_,i)=>s.intel.walls.has(i)),
   doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
   windows:s.windows.filter(w=>s.intel.cover.has(s.coverState.findIndex(o=>
     (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
@@ -614,7 +617,7 @@ function knownShoveCrossing(s:Session,from:Pt,to:Pt):number|null{
  // A shove cannot be used to disguise an ordinary known wall or a latched
  // door, even when its sample is inside the expanded furniture envelope.
  const segment={a:from,b:to};
- if(WALLS.some((wall,index)=>s.intel.walls.has(index)&&
+ if(sessionWorldGeometry(s).walls.some((wall,index)=>s.intel.walls.has(index)&&
     segmentsCross(segment,wall)))return null;
  if(s.doors.some(door=>doorKnown(s.intel,door.id)&&
     doorBlocksSegment(door,segment)))return null;
@@ -678,7 +681,7 @@ export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
   const a=party(s,id);if(!a||!canEdit(s))return false;
   if(kind==='move'&&!intelPassable(p,s.intel,SQUEEZE_RADIUS))return false;
   if(kind==='move'&&!legalMoveRoute(s,finalPoint(a),p).length)return false;
-  if(kind==='door'&&(!passable(p)||!route(finalPoint(a),p).length))return false;
+  if(kind==='door'&&(!sessionWorldGeometry(s).passable(p)||!sessionWorldGeometry(s).route(finalPoint(a),p).length))return false;
   return edit(s,a,()=>{
     a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
   });
@@ -730,7 +733,7 @@ export function planCivilianInteraction(s:Session,id:string,
     !liveVisibility(s,civil.p))return false;
  const from=finalPoint(a);
  if(d(from,civil.p)>34||
-    !sweptBodyClear(from,civil.p,s.doors,5.5))return false;
+    !sweptBodyClear(from,civil.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
  if(action==='follow'&&(!civil.rescueTarget||s.mission!=='extract'))
    return false;
  return addNode(s,id,'interact',from,{
@@ -868,7 +871,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
              {a:points[i-1],b:points[i]})>9&&
            pointToSegment(doorCenter(door),
              {a:prior,b:node.p})>9)continue;
-        const staging=doorApproach(prior,door);
+        const staging=doorApproach(prior,door,sessionWorldGeometry(s));
         if(!staging)continue;
         expanded.push({id:s.nextId+expanded.length,kind:'door',
           p:clone(staging),doorId:door.id,method:'open'});
@@ -928,7 +931,7 @@ export function planPieAt(s:Session,id:string,pivot:Pt,side:PieSide,degrees=54,
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<=0&&afterNodeId!==undefined)return false;
   const start=index===0?a.p:a.plan[index-1].p;
-  const arc=validPieArc(start,pivot,side,s.doors,degrees);
+  const arc=validPieArc(start,pivot,side,s.doors,degrees,sessionWorldGeometry(s));
   if(!arc.length)return false;
   if(afterNodeId===undefined)return addNode(s,id,'pie',arc[arc.length-1],{
     pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
@@ -1115,14 +1118,14 @@ export function planEntryTool(s:Session,id:string,doorId:string,
    id:s.nextId++,kind:'tool',doorId,toolMethod:method,
    p:clone(a.plan[index].p)});});
  }
- const position=doorApproach(finalPoint(a),door);
+ const position=doorApproach(finalPoint(a),door,sessionWorldGeometry(s));
  if(!position)return false;
  return addNode(s,id,'tool',position,{doorId,toolMethod:method});
 }
 export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
   if(!a||!door||!canEdit(s))return false;
-  const position=doorApproach(finalPoint(a),door);
+  const position=doorApproach(finalPoint(a),door,sessionWorldGeometry(s));
   return !!position&&addNode(s,id,'door',position,{doorId,method});
 }
 /** Plan an actual reserved stack position on the same approach side.
@@ -1189,7 +1192,7 @@ export function planSquadEntry(s:Session,doorId:string){
   const start=finalPoint(alive[0]);
   // Planning may use only legitimately known geometry, never hidden enemies.
   const slots=entryLanes(door,start,alive.length,p=>
-    passable(p)&&!!routeWithIntel(s.intel,start,p).length);
+    sessionWorldGeometry(s).passable(p)&&!!routeWithIntel(s.intel,start,p).length);
   if(slots.length!==alive.length){
     notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
     return false;
@@ -1538,7 +1541,7 @@ export function advanceReload(s:Session,a:TeamActor,dt:number){
 }
 /** A tap near a jamb is aiming intent, not a demand for subpixel precision.
  * Snap only to a small, genuinely walkable/throw-reachable nearby patch. */
-function snapFlashTarget(from:Pt,target:Pt,doors:Door[],
+function snapFlashTarget(s:Session,from:Pt,target:Pt,doors:Door[],
   opened:string[]):Pt|null{
   const choices:Pt[]=[target];
   for(const r of [5,9,13,17])
@@ -1547,8 +1550,8 @@ function snapFlashTarget(from:Pt,target:Pt,doors:Door[],
       choices.push({x:target.x+Math.cos(angle)*r,
         y:target.y+Math.sin(angle)*r});
     }
-  return choices.find(p=>passable(p,3.5)&&
-    validateThrow(from,p,doors,opened).valid)??null;
+  return choices.find(p=>sessionWorldGeometry(s).passable(p,3.5)&&
+    validateThrow(from,p,doors,opened,sessionWorldGeometry(s)).valid)??null;
 }
 /** Two team-wide flashbangs per mission. Throwing is an authored timed order. */
 export function planFlash(s:Session,id:string,target:Pt):boolean{
@@ -1560,7 +1563,7 @@ export function planFlash(s:Session,id:string,target:Pt):boolean{
   if(queued>=s.flashRemaining||a.plan.filter(n=>n.kind==='flash').length>=a.flashCharges)return false;
   const plannedOpen=a.plan.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??'');
-  const landing=snapFlashTarget(start,target,s.doors,plannedOpen);
+  const landing=snapFlashTarget(s,start,target,s.doors,plannedOpen);
   if(!landing)return false;
   return addNode(s,id,'flash',start,{aimPoint:clone(landing)});
 }
@@ -1579,15 +1582,15 @@ export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<0)return false;
   const start=index>0?a.plan[index-1].p:a.p;
-  const approached=doorReachable(start,door)?clone(start):doorApproach(start,door);
-  if(!approached||!passable(approached)||
-     !route(start,approached).length)return false;
+  const approached=doorReachable(start,door)?clone(start):doorApproach(start,door,sessionWorldGeometry(s));
+  if(!approached||!sessionWorldGeometry(s).passable(approached)||
+     !sessionWorldGeometry(s).route(start,approached).length)return false;
   const before=a.plan.slice(0,index);
   const opened=before.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??'');
   const needsOpen=!opened.includes(doorId)&&
     (s.intel.doorMemory.get(doorId)??0)<.72;
-  const landing=snapFlashTarget(approached,target,s.doors,
+  const landing=snapFlashTarget(s,approached,target,s.doors,
     needsOpen?[...opened,doorId]:opened);
   if(!landing)return false;
   return edit(s,a,()=>{
@@ -1607,7 +1610,7 @@ export function moveFlashTarget(s:Session,id:string,nodeId:number,p:Pt){
   const index=a.plan.indexOf(candidate);
   const opened=a.plan.slice(0,index).filter(n=>n.kind==='door'&&
     (n.method==='open'||n.method==='kick')).map(n=>n.doorId??'');
-  const landing=snapFlashTarget(candidate.p,p,s.doors,opened);
+  const landing=snapFlashTarget(s,candidate.p,p,s.doors,opened);
   if(!landing)return false;
   return edit(s,a,()=>{candidate.aimPoint=clone(landing);});
 }
@@ -1616,7 +1619,7 @@ export function flashTrajectory(s:Session,a:TeamActor,node:PlanNode):ThrowPath|n
   const index=a.plan.findIndex(n=>n.id===node.id);
   const open=a.plan.slice(0,index).filter(n=>n.kind==='door'&&
     (n.method==='open'||n.method==='kick')).map(n=>n.doorId??'');
-  return validateThrow(node.p,node.aimPoint,s.doors,open);
+  return validateThrow(node.p,node.aimPoint,s.doors,open,sessionWorldGeometry(s));
 }
 function battleEvent(s:Session,kind:BattleEvent['kind'],a:TeamActor|null,p:Pt,text:string,
   meta?:BattleEvent['meta']){
@@ -1698,11 +1701,11 @@ function hear(s:Session,p:Pt,radius:number,kind:string){
 }
 function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   const ray={a,b};
-  if(staticWallBlocksRay(ray))return false;
+  if(sessionWorldGeometry(s).staticWallBlocksRay(ray))return false;
   if(doorBlocksSightRay(s.doors,ray))return false;
   // The broadphase only excludes distant static obstacles; the final
   // slab and optical tests remain authoritative at any framerate.
-  return !someCoverAlongRay(a,b,o=>coverBlocksOpticalSight(o,lowBlocks)&&
+  return !sessionWorldGeometry(s).someCoverAlongRay(a,b,o=>coverBlocksOpticalSight(o,lowBlocks)&&
     segmentHitsBox(a,b,o));
 }
 /** Physical geometry visibility, independently of acquisition time. */
@@ -1718,9 +1721,10 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
   // This remains exact through mid-tick door interactions, actor movement,
   // crouching and cover damage. Neither fog nor awareness is cached.
   return cache.get(a,b,s.seconds,
-    s.objectRevision+'/'+activeGeometryRevision(),s.doors,()=>
+    s.objectRevision+'/'+sessionWorldGeometry(s).revision,s.doors,()=>
       !exposure(a.p,b.p,s.doors,
-        b.posture==='crouch',a.posture==='crouch',true).blocked);
+        b.posture==='crouch',a.posture==='crouch',true,
+        sessionWorldGeometry(s).walls,sessionWorldGeometry(s).cover).blocked);
 }
 /** Confirmed vision is acquired over simulated time; rendering never grants sight. */
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
@@ -1852,7 +1856,7 @@ function mission(s:Session,dt:number){
       const desired=rescueFollowGoal(escort);
       const path=cachedEnemyRoute(s,rescuePerson.p,desired,true);
       const next=path.find(p=>d(p,rescuePerson.p)>10);
-      if(next&&sweptBodyClear(rescuePerson.p,next,s.doors)){
+      if(next&&sweptBodyClear(rescuePerson.p,next,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))){
         rescuePerson.goal=clone(next);
         rescuePerson.state='escorted';
       }else rescuePerson.goal=null;
@@ -1865,7 +1869,7 @@ function mission(s:Session,dt:number){
     const escort=team(s).find(a=>a.id===prior&&a.health>0);
     if(prior&&escort){
       s.rescue=advanceRescueEscort(s.rescue,escort.p,dt,
-        (from,to)=>sweptBodyClear(from,to,s.doors,5.5));
+        (from,to)=>sweptBodyClear(from,to,s.doors,5.5,sessionWorldGeometry(s)));
       if(!s.rescue.following)notify(s,'ESCORT SEPARATED — RETURN TO PERSON');
     }else if(prior){
       s.rescue={...s.rescue,following:null,trail:[]};
@@ -1874,7 +1878,7 @@ function mission(s:Session,dt:number){
     if(!s.rescue.following){
       const rescuer=team(s).find(a=>a.health>0&&
         near(a.p,s.rescue!.p,26)&&
-        sweptBodyClear(a.p,s.rescue!.p,s.doors,5.5));
+        sweptBodyClear(a.p,s.rescue!.p,s.doors,5.5,sessionWorldGeometry(s)));
       if(rescuer){
         s.rescue={...s.rescue,following:rescuer.id,
           trail:[clone(s.rescue.p),clone(rescuer.p)]};
@@ -1902,7 +1906,7 @@ function mission(s:Session,dt:number){
   const objectivePoint=rescuePerson?rescuePerson.p:s.scenario.objective;
   const atObjective=team(s).filter(a=>a.health>0&&
     near(a.p,objectivePoint,36)&&
-    sweptBodyClear(a.p,objectivePoint,s.doors,4));
+    sweptBodyClear(a.p,objectivePoint,s.doors,4,sessionWorldGeometry(s)));
   const objectiveReached=atObjective.length>0;
   if(s.mission==='secure'&&objectiveReached&&
      (s.missionType!=='rescue'||!rescuePerson||
@@ -1997,7 +2001,7 @@ function stepFlashbangs(s:Session,h:number){
       const dist=d(a.p,g.to);
       if(dist>105)continue;
       const ray={a:g.to,b:a.p};
-      const blocked=WALLS.some(w=>segmentsCross(ray,w))||
+      const blocked=sessionWorldGeometry(s).walls.some(w=>segmentsCross(ray,w))||
         doorBlocksRay(s.doors,ray);
       if(blocked)continue;
       const duration=2.8*(1-dist/140);
@@ -2028,7 +2032,7 @@ function resolveCloseContact(s:Session){
       const ux=(b.p.x-a.p.x)/gap,uy=(b.p.y-a.p.y)/gap;
       for(const shift of [16,10,5]){
         const pushed={x:b.p.x+ux*shift,y:b.p.y+uy*shift};
-        if(!sweptBodyClear(b.p,pushed,s.doors))continue;
+        if(!sweptBodyClear(b.p,pushed,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)))continue;
         if(s.operators.some(o=>o!==a&&o!==b&&o.health>0&&
           d(o.p,pushed)<11))continue;
         b.priorP=clone(b.p);b.p=pushed;break;
@@ -2048,12 +2052,12 @@ function resolveCloseContact(s:Session){
 /** Shared gameplay action; physical object selection is based on its ID. */
 export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  if(s.phase==='won'||s.phase==='lost')return false;
- const moved=relocateCover(s.coverState,index,to,WALLS,s.doors,
+ const moved=relocateCover(s.coverState,index,to,sessionWorldGeometry(s).walls,s.doors,
    [...s.operators.filter(a=>a.health>0).map(a=>a.p),
     ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
  if(!moved)return false;
  s.objectRevision++;
- COVER.splice(0,COVER.length,...s.coverState);
+ publishSessionCoverToActiveSite(s);
  hear(s,to,65,'furniture');
  battleEvent(s,'interaction',null,to,'FURNITURE MOVED');
  return true;
@@ -2095,7 +2099,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     casualty.health=Math.max(0,4-casualty.injuryStage);
     if(casualty.health<=0){
       casualty.lastDownAt=s.seconds;
-      const fall=wallSafeFall(casualty.p,casualty.heading,'slump',WALLS);
+      const fall=wallSafeFall(casualty.p,casualty.heading,'slump',sessionWorldGeometry(s).walls);
       casualty.downPose=fall.pose;casualty.downClearance=fall.space;
       casualty.plan=[];casualty.nav=[];casualty.path=[];casualty.velocity=0;
       notify(s,casualty.name+' DOWN — UNCONTROLLED BLEEDING');
@@ -2123,7 +2127,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       for(const actor of s.operators){
         if(actor.health<=0)continue;
         const candidate=initialOpeningYieldCandidate(door,actor.p);
-        if(!candidate||!sweptBodyClear(actor.p,candidate,s.doors)||
+        if(!candidate||!sweptBodyClear(actor.p,candidate,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))||
            s.operators.some(other=>{
              if(other===actor||other.health<=0)return false;
              const before=d(other.p,actor.p),after=d(other.p,candidate);
@@ -2139,7 +2143,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       }
     }
     if(yielded)doorOccupants=liveDoorOccupants(s);
-    advanceDoor(door,h,doorOccupants);
+    advanceDoor(door,h,doorOccupants,sessionWorldGeometry(s));
   }
   mark('doors');
   advanceTransientSimulationEffects(s,h);
@@ -2199,7 +2203,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       if(resolve==='surrender'){
         a.surrendered=true;a.health=0;a.injuryStage=3;
         a.lastDownAt=s.seconds;
-        const fall=wallSafeFall(a.p,a.heading,'slump',WALLS);
+        const fall=wallSafeFall(a.p,a.heading,'slump',sessionWorldGeometry(s).walls);
         a.downPose=fall.pose;a.downClearance=fall.space;
         a.velocity=0;a.nav=[];a.plan=[];
         a.reload=0;a.reloadMode=null;
@@ -2237,7 +2241,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
             blockedTime:b.blockedTime,active:true
           }));
           const yieldStep=passageIdleYieldStep(idle,s.doors,peers,
-            (from,to)=>sweptBodyClear(from,to,s.doors),h*45);
+            (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),h*45);
           if(yieldStep&&!s.operators.some(b=>b!==a&&b.health>0&&
               d(b.p,yieldStep)<13&&d(b.p,yieldStep)<d(b.p,a.p)-.01)){
             a.p=yieldStep;a.velocity=d(a.priorP,a.p)/Math.max(h,.0001);
@@ -2277,7 +2281,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     ];
     const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
       carrier.heading,civil.transportMode??carrier.plan[0]?.transportMode??'drag',
-      (from,to)=>sweptBodyClear(from,to,s.doors),others,h*36);
+      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),others,h*36);
     if(!next){
       carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];
       civil.p=clone(bodyFrom);civil.velocity=0;
@@ -2293,16 +2297,16 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       ...s.civilians.filter(c=>c.health>0)];
     for(const civil of s.civilians){
       stepCivilianResponse(civil,s.seconds,h,{
-        noise:s.noise,people:s.operators,doors:s.doors,walls:WALLS,
+        noise:s.noise,people:s.operators,doors:s.doors,walls:sessionWorldGeometry(s).walls,
         windows:s.windows,
         canSee:(from,to)=>unobstructed(from,to,s,false),
-        canReach:(from,to)=>sweptBodyClear(from,to,s.doors),
+        canReach:(from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),
         routeTo:(from,to)=>cachedEnemyRoute(s,from,to,true),
         isCrowded:p=>s.operators.some(o=>o.health>0&&d(o.p,p)<22)||
           s.civilians.some(c=>c.id!==civil.id&&d(c.p,p)<22)
       });
       stepCivilianMovement(civil,s.seconds,h,
-        (from,to)=>sweptBodyClear(from,to,s.doors),
+        (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),
         (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20),
         (from,to)=>cachedEnemyRoute(s,from,to,true));
     }
@@ -2310,12 +2314,11 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   const proposals=buildMotionFrameProposals(
     s.operators,s.civilians,motionStart);
   const decisions=resolveMovementFrame(proposals,p=>{
-    if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors);
+    if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s));
     const a=s.operators.find(unit=>unit.id===p.id)!;
     return a.traversal?
       traversalStepClear(p.from,p.to,a.traversal,motorTraversalWorld(s,a)):
-      a.squeeze?sweptProfileClear(p.from,p.to,s.doors,
-        a.squeezeYaw,'squeeze'):sweptBodyClear(p.from,p.to,s.doors);
+      a.squeeze?sweptProfileClear(p.from,p.to,s.doors,a.squeezeYaw,'squeeze',sessionWorldGeometry(s)):sweptBodyClear(p.from,p.to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s));
   });
   reconcileCivilianTransportFrame(proposals,decisions,
     s.civilians.filter(c=>!!c.carriedById).map(c=>({

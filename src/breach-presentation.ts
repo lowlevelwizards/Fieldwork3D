@@ -1,4 +1,5 @@
-import {COVER,WALLS,type Pt,doorCenter,type Door} from './breach-core.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
+import {type Pt,doorCenter,type Door} from './breach-core.ts';
 import type {WideOpening} from './breach-site.ts';
 import {preciseGroundEvidenceAt} from './breach-ground-knowledge.ts';
 import {accessibleExteriorWall} from './breach-site-footprint.ts';
@@ -15,7 +16,7 @@ export function coverPresentation(s:Session,index:number,omniscient=false):
   'unknown'|'remembered'|'visible'{
   if(omniscient)return 'visible';
   if(!s.intel.cover.has(index))return 'unknown';
-  const o=COVER[index];
+  const o=s.coverState[index];
   if(!o)return 'unknown';
   const hx=o.w/2+2,hy=o.h/2+2;
   return [
@@ -38,7 +39,7 @@ export function spatialSurfaceKnown(s:Session,kind:SpatialSurfaceKind,
  key:number|string,omniscient=false):boolean{
  if(omniscient||s.intel.mode==='full-view')return true;
  if(kind==='cover')return s.intel.cover.has(Number(key))&&
-   !!COVER[Number(key)];
+   !!s.coverState[Number(key)];
  if(kind==='room')return s.intel.rooms.has(String(key));
  if(kind==='wall')return s.intel.walls.has(Number(key));
  return s.intel.doors.has(String(key));
@@ -58,7 +59,7 @@ export function spatialSurfaceState(s:Session,kind:SpatialSurfaceKind,
  if(kind==='wall'){
   const i=Number(key);
   if(!s.intel.walls.has(i))return 'unknown';
-  const wall=WALLS[i];
+  const wall=sessionWorldGeometry(s).walls[i];
   if(wall&&liveVisibility(s,{x:(wall.a.x+wall.b.x)/2,
     y:(wall.a.y+wall.b.y)/2}))return 'visible';
   return s.intel.mode==='floor-plan'||s.intel.mode==='exterior-known'?

@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 8: one fixed-tick tactical order dispatcher.
  * Branch priority is exactly the former breach-game.runOrders priority:
  * traversal -> defensive movement -> contact -> node activation -> special
@@ -46,7 +47,7 @@ export function createOrderExecutor(port:OrderExecutionPort){
   if(a.fireRetreatTarget){
     const goal=a.fireRetreatTarget;
     if(s.seconds>a.fireRetreatUntil||d(a.p,goal)<3||
-       !sweptBodyClear(a.p,goal,s.doors)){
+       !sweptBodyClear(a.p,goal,s.doors,8,sessionWorldGeometry(s))){
       a.fireRetreatTarget=null;a.nav=[];
     }else{
       port.approach(a,goal,dt,s,.64);

@@ -1,3 +1,4 @@
+import {setPresentationWorldSession,publishSessionCoverToActiveSite} from './breach-world-context.ts';
 /** One owner for tactical session lifetimes and deployment preparation.
  * Session creation and insertion validity remain in breach-game.ts. This
  * controller sequences snapshots, resources, and transitions; it does NOT
@@ -106,6 +107,7 @@ export class BreachMissionController{
     if(condition===null||!session.site)return;
     session.site={...session.site,conditionLevel:condition};
     activateSite(session.site);
+    publishSessionCoverToActiveSite(session);
   }
   /** Resource release always precedes construction; presenter setup only
    * occurs after the fresh session and recording are fully assigned. */
@@ -248,6 +250,8 @@ export class BreachMissionController{
    */
   resumeLiveSession(live:Session):Session{
     activateSite(live.site??null);
+    setPresentationWorldSession(live);
+    publishSessionCoverToActiveSite(live);
     return live;
   }
   /** Explicitly forget view cache when exiting a live tactical session. */

@@ -1,7 +1,8 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: all attempted/active traversal follows the same fixed-tick
  * geometry and landing reservations. Never grants physical pass-through.
  */
-import {WALLS,OPERATOR_RADIUS,passable,type Pt} from './breach-core.ts';
+import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld} from './breach-squeeze-route.ts';
 import {probeWindowPortalRoute,canOpenWindowForClimb,
@@ -11,13 +12,13 @@ import {manipulateWindow} from './breach-windows.ts';
 import {d,clone,angle,type ActorMotorHooks} from './breach-motor-contract.ts';
 
 export const motorTraversalWorld=(s:Session,a:TeamActor)=>({
- cover:s.coverState,walls:WALLS,doors:s.doors,windows:s.windows,
+ cover:s.coverState,walls:sessionWorldGeometry(s).walls,doors:s.doors,windows:s.windows,
  // A teammate in the air already owns their landing. The next member of
  // the stack may approach, but must not launch into that reserved spot.
  actors:s.operators.filter(other=>other!==a&&other.health>0)
    .flatMap(o=>[o.p,...(o.traversal?[o.traversal.landing]:
      o.traversalPending?[o.traversalPending.landing]:[])]),
- canStand:(p:Pt)=>passable(p)
+ canStand:(p:Pt)=>sessionWorldGeometry(s).passable(p)
 });
 const traversalFitness=(a:TeamActor)=>({
  pace:a.pace,injury:Math.min(3,Math.max(0,a.injuryStage)) as 0|1|2|3,
@@ -34,7 +35,7 @@ function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
    ...world,
    windows:world.windows.map(w=>
      canOpenWindowForClimb(w)?{...w,open:true}:w)
- },(from,to)=>routeWithSqueezeWorld(from,to,s.doors),fit);
+ },(from,to)=>routeWithSqueezeWorld(from,to,s.doors,sessionWorldGeometry(s)),fit);
  if(portal&&s.intel.cover.has(portal.crossing.obstacleIndex)&&
      (!ordinary.length||portal.duration+.12<
       traversalRouteLength(a.p,ordinary)/53))
@@ -48,7 +49,7 @@ function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
  const op=candidate?{...candidate,destination:clone(goal)}:null;
  if(!op||!s.intel.cover.has(op.obstacleIndex)||
     !preferTraversal(a.p,goal,op,ordinary))return null;
- const approachPath=routeWithSqueezeWorld(a.p,op.approach,s.doors);
+ const approachPath=routeWithSqueezeWorld(a.p,op.approach,s.doors,sessionWorldGeometry(s));
  return approachPath.length?{op,approachPath}:
    d(a.p,op.approach)<3?{op,approachPath:[op.approach]}:null;
 }

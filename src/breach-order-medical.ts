@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 8: deterministic medical supply recovery, treatment and
  * physical casualty transport. Neutral bodies remain on shared frame arbiter.
  */
@@ -83,7 +84,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
         approach(a,goal,dt,s,.70);return true;
       }
       if(civil&&(!liveVisibility(s,civil.p)||
-         !sweptBodyClear(a.p,civil.p,s.doors,5.5))){
+         !sweptBodyClear(a.p,civil.p,s.doors,5.5,sessionWorldGeometry(s)))){
         failCurrentOrder(s,a,n,'CASUALTY NOT IN PHYSICAL REACH');return true;
       }
       a.velocity=0;a.actionTimer+=dt;
@@ -124,7 +125,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     const people=s.operators.filter(o=>o!==a&&o!==patient&&o.health>0)
      .map(o=>o.p);
     if(!transportIsClear(patient.p,attached,
-      (from,to)=>sweptBodyClear(from,to,s.doors),people)){
+      (from,to)=>sweptBodyClear(from,to,s.doors,8,sessionWorldGeometry(s)),people)){
       a.p=before;a.velocity=0;a.nav=[];return true;
     }
     patient.priorP=clone(patient.p);patient.p=attached;

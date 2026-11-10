@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
   from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
@@ -61,7 +62,7 @@ import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
 import {pixelOverlay,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
-import {W,H,activeWorldBounds,WALLS,COVER,doorCenter,doorLeafSegment,activeSite,type Pt,type Segment} from './breach-core.ts';
+import {W,H,activeWorldBounds,WALLS,doorCenter,doorLeafSegment,activeSite,type Pt,type Segment} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {handlingIntentForMovement,teammateAheadForHandling}
   from './breach-handling-context.ts';
@@ -1846,7 +1847,7 @@ export class TacticalScene3D{
        const tick=Math.floor(s.seconds*8),siteSeed=s.site?.seed??-1;
        if(tick!==this.beamBlockerTick||siteSeed!==this.beamBlockerSite||
           this.beamBlockerRevision!==s.objectRevision){
-        this.beamBlockers=lightBeamBlockers(WALLS,s.doors,COVER);
+        this.beamBlockers=lightBeamBlockers(sessionWorldGeometry(s).walls,s.doors,sessionWorldGeometry(s).cover);
         this.beamBlockerTick=tick;this.beamBlockerSite=siteSeed;
         this.beamBlockerRevision=s.objectRevision;
        }

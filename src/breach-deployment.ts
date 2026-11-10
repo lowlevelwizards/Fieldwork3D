@@ -1,3 +1,4 @@
+import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** R2: optional external staging that is genuinely reachable in physical
  * world geometry. This NEVER routes through hidden interior rooms.
  * Call with the matching Site activated in breach-core.
@@ -14,14 +15,15 @@ export type DeploymentChoice={
 };
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 function verify(site:Site,id:string,kind:DeploymentChoice['kind'],
- status:DeploymentChoice['status'],segment:{a:Pt;b:Pt}):
+ status:DeploymentChoice['status'],segment:{a:Pt;b:Pt},world?:SessionWorldGeometry):
  DeploymentChoice|null{
  if(!accessibleExteriorWall(site,segment)||!site.spawn[0])return null;
  const len=distance(segment.a,segment.b);if(len<1)return null;
  const tangent={x:(segment.b.x-segment.a.x)/len,
   y:(segment.b.y-segment.a.y)/len};
  const mid={x:(segment.a.x+segment.b.x)/2,y:(segment.a.y+segment.b.y)/2};
- const outside=(p:Pt)=>passable(p,8)&&exteriorBriefedAt(site,p);
+ const standing=(p:Pt,r:number)=>(world?world.passable(p,r):passable(p,r));
+ const outside=(p:Pt)=>standing(p,8)&&exteriorBriefedAt(site,p);
  if(!outside(site.spawn[0]))return null;
  for(const sign of [1,-1]){
   const normal={x:-tangent.y*sign,y:tangent.x*sign};
@@ -30,8 +32,9 @@ function verify(site:Site,id:string,kind:DeploymentChoice['kind'],
    y:mid.y+normal.y*depth+tangent.y*lateral});
   const approach=point(37),inside=point(-27);
   if(insideSiteFootprint(site,approach)||
-    !insideSiteFootprint(site,inside)||!passable(inside,5.5)||
-    !outside(approach)||!route(site.spawn[0],approach,outside).length)
+    !insideSiteFootprint(site,inside)||!standing(inside,5.5)||
+    !outside(approach)||!(world?world.route(site.spawn[0],approach,outside):
+     route(site.spawn[0],approach,outside)).length)
    continue;
   const spots=[point(41,-16),point(41,16),
    point(63,-16),point(63,16)] as [Pt,Pt,Pt,Pt];
@@ -49,7 +52,7 @@ function verify(site:Site,id:string,kind:DeploymentChoice['kind'],
  }
  return null;
 }
-export function verifiedDeploymentChoices(site:Site):DeploymentChoice[]{
+export function verifiedDeploymentChoices(site:Site,world?:SessionWorldGeometry):DeploymentChoice[]{
  const result:DeploymentChoice[]=[],consumed=new Set<string>();
  for(const door of site.doors){
   if(consumed.has(door.id))continue;
@@ -57,7 +60,7 @@ export function verifiedDeploymentChoices(site:Site):DeploymentChoice[]{
   if(door.pairedWith)consumed.add(door.pairedWith);
   const kind=door.id==='FRONT'?'primary':
    door.kind==='shutter'?'shutter':'secondary';
-  const entry=verify(site,door.id,kind,'door',door);
+  const entry=verify(site,door.id,kind,'door',door,world);
   if(entry)result.push(entry);
  }
  for(const w of initializeWindows(site.windows??[])){
@@ -68,7 +71,7 @@ export function verifiedDeploymentChoices(site:Site):DeploymentChoice[]{
   const segment=w.vertical?
    {a:{x:w.x,y:w.y-h},b:{x:w.x,y:w.y+h}}:
    {a:{x:w.x-h,y:w.y},b:{x:w.x+h,y:w.y}};
-  const entry=verify(site,w.id,'window',status,segment);
+  const entry=verify(site,w.id,'window',status,segment,world);
   if(!entry)continue;
   // A reachable exterior staging mat is NOT sufficient: this particular
   // sill also has to satisfy the authoritative motor's climb contract.
@@ -76,7 +79,7 @@ export function verifiedDeploymentChoices(site:Site):DeploymentChoice[]{
     y:w.y+(w.y-entry.approach.y)*27/37};
   const crossing=probeWindowCrossing(entry.approach,inside,{
     cover:site.cover,walls:site.walls,doors:site.doors,
-    windows:[{...w,open:true}],canStand:p=>passable(p,8)});
+    windows:[{...w,open:true}],canStand:p=>world?world.passable(p,8):passable(p,8)});
   if(crossing)result.push(entry);
  }
  return result;

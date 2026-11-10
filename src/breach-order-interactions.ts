@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 8: civilian custody/escort, physical prop pushing and window
  * actions. Target/reach checks are unchanged and failed orders remain.
  */
@@ -46,9 +47,9 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       const person=s.civilians.find(c=>c.id===n.objectId);
       if(!person||person.health<=0||
          d(a.p,person.p)>32||
-         !sweptBodyClear(a.p,person.p,s.doors,5.5)||
+         !sweptBodyClear(a.p,person.p,s.doors,5.5,sessionWorldGeometry(s))||
          (person.rescueTarget&&!canSecureRescuePerson(person,a,
-           (from,to)=>sweptBodyClear(from,to,s.doors,5.5)))||
+           (from,to)=>sweptBodyClear(from,to,s.doors,5.5,sessionWorldGeometry(s))))||
          !liveVisibility(s,person.p)){
         failCurrentOrder(s,a,n,'CIVILIAN NOT IN PHYSICAL REACH');return true;
       }

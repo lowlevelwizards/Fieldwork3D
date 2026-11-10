@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: handle physical closed leaves and intentional automatic
  * opens before body contact. Explicit authored DOOR actions retain priority.
  */
@@ -41,16 +42,16 @@ export function handleMotorDoor(
     if(!doorReachable(a.p,door))return false;
     return doorBlocksSegment(door,{a:a.p,b:next})||
       doorBlocksSegment(door,{a:a.p,b:p});
-  })??autoDoorAtBodyContact(a.p,move,automaticCandidates);
+  })??autoDoorAtBodyContact(a.p,move,automaticCandidates,sessionWorldGeometry(s));
   if(doorAhead){
     // A cautious defender should operate a door from a real clear stance,
     // not repeatedly crowd its swing while touching the handle.
     if(a.side==='red'&&!doorAhead.open&&a.actionTimer===0&&
        doorWouldStrikeActors({...doorAhead,openFraction:0},.46,
          [a.p],OPERATOR_RADIUS+1)){
-      const staged=doorApproach(a.p,doorAhead);
+      const staged=doorApproach(a.p,doorAhead,sessionWorldGeometry(s));
       if(staged&&d(staged,a.p)>5&&d(staged,a.p)<50&&
-         sweptBodyClear(a.p,staged,s.doors)){
+         sweptBodyClear(a.p,staged,s.doors,8,sessionWorldGeometry(s))){
         a.nav.unshift(staged);a.velocity=0;
         a.motorPause='door-opening';return {paused:true,closed:false};
       }

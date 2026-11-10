@@ -1,8 +1,9 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Ordered physical projectile ray resolution: one authoritative world query
  * shared by firing lane checks and committed projectile impacts.
  * This module never spends ammo, selects targets, or mutates the Session.
  */
-import {WALLS,COVER,doorLeafSegment,type Pt} from './breach-core.ts';
+import {doorLeafSegment,type Pt} from './breach-core.ts';
 import type {Session,ShotEvent} from './breach-game.ts';
 import {coverImpactFraction} from './breach-cover-height.ts';
 import {resolvePenetration,type BarrierHit} from './breach-penetration.ts';
@@ -27,6 +28,7 @@ export function strikeSurface(from:Pt,aimed:Pt,s:Session,
   paneHits:number[];glassDoorHits:{index:number;fraction:number}[];
   coverHits:{index:number;fraction:number}[];
   materialHits:{fraction:number;material:MaterialId}[]}{
+  const {walls:WALLS,cover:COVER}=sessionWorldGeometry(s);
   const hits:BarrierHit[]=[];
   const glassDoorHits:{index:number;fraction:number}[]=[];
   for(const wall of WALLS){
