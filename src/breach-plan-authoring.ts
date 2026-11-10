@@ -42,7 +42,7 @@ export function pathFor(a:TeamActor,s?:Session){
  for(const n of a.plan){
   if(n.kind==='move'||n.kind==='door'){
    const segment=s?routeWithSqueezeIntel(s.intel,from,n.p):
-     routeWithSqueezeWorld(from,n.p);
+     routeWithSqueezeWorld(from,n.p,[]);
    if(!segment.length)continue;
    points.push(...segment);from=n.p;
   }else if(n.kind==='pie'&&n.arc?.length){
