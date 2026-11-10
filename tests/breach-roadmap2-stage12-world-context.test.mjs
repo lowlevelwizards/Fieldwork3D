@@ -76,10 +76,12 @@ test('Stage 12: moving furniture invalidates only its own session index',()=>{
 test('Stage 12: authoritative world module cannot mutate global activation',()=>{
  const code=readFileSync(new URL('../src/breach-world-context.ts',import.meta.url),'utf8');
  assert.doesNotMatch(code,/\bactivateSite\s*\(/);
- const physical=code.slice(0,code.indexOf('export function publishSessionCoverToActiveSite'));
- assert.doesNotMatch(physical,/\bCOVER\.splice\s*\(/);
- assert.match(code,/if\(presentationSession!==s\|\|/);
- assert.match(code,/export function publishSessionCoverToActiveSite/);
+ assert.doesNotMatch(code,/\bCOVER\.splice\s*\(/);
+ const presentation=readFileSync(new URL(
+   '../src/breach-presentation-world-ownership.ts',import.meta.url),'utf8');
+ assert.match(presentation,/if\(presentationSession!==s\|\|/);
+ assert.match(presentation,/export function publishSessionCoverToActiveSite/);
+ assert.match(code,/export \{setPresentationWorldSession,adoptPresentationWorldSession,/);
  assert.doesNotMatch(code,/\bstepSession\s*\(/);
  assert.doesNotMatch(code,/Math\.random\s*\(/);
  assert.match(code,/new WeakMap<Session,SessionWorldGeometry>/);
