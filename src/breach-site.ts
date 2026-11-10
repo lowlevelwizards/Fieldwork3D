@@ -78,8 +78,10 @@ export const seeded=(seed:number)=>{
  */
 export function generateSite(seed:number,scale:SiteScale='standard',
  onProgress?:(phase:'layout'|'furnishing'|'scoring',attempt:number)=>void,
- encounterContext:EncounterContext={}):Site{
- const kind=(['house','townhouse','apartment','retail','office',
+ encounterContext:EncounterContext={},
+ generationOptions:{archetype?:BuildingArchetype}={}):Site{
+ const kind=generationOptions.archetype??
+   (['house','townhouse','apartment','retail','office',
   'garage','warehouse','restaurant','motel','utility','clinic'] as const)
   [(seed>>>0)%11];
  // Keep one semantic building identity and a reproducible sequence of
