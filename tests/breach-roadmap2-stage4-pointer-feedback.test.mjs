@@ -134,3 +134,24 @@ test('replay seek displays recorded frame and invalidates fog without ticking li
  controller.seekReplay(.25);
  assert.deepEqual(observed,{t:.25},'rewinding cannot retain future film presentation');
 });
+
+test('known reachable door tap enters exactly one contextual door selection',()=>{
+ const f=pointerFixture();
+ const actor={id:'rook',side:'blue',health:100,p:{x:202,y:218},plan:[]};
+ f.port.state.operators.push(actor);
+ const door={id:'D-TEST',open:false,openFraction:0,
+  a:{x:202,y:200},b:{x:202,y:220}};
+ f.port.state.doors.push(door);
+ f.port.state.intel.mode='full-view';
+ f.port.uid=id=>id==='rook'?actor:undefined;
+ f.port.teach=(key,message)=>f.actions.push('teach:'+key+':'+message);
+ const pointer={...f.pointer,pick:{kind:'door',doorId:'D-TEST'}};
+ dispatchTacticalPointerRelease(f.port,f.event,pointer,false,1);
+ assert.equal(f.port.doorFocusId,'D-TEST');
+ assert.equal(f.port.selectedNode,null);
+ assert.equal(f.actions.filter(a=>a.startsWith('teach:')).length,1);
+ assert.match(f.actions.join(' '),/teach:door-selected:Door selected/);
+ f.actions.length=0;
+ dispatchTacticalPointerRelease(f.port,f.event,pointer,true,1);
+ assert.deepEqual(f.actions,[],'cancel cannot focus a door or issue a command');
+});
