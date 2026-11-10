@@ -102,6 +102,21 @@ test('identity, geometry, and physical obstruction have independent failures',()
  assert.ok(has(auditSitePhysicalIntegrity(duplicate),'duplicate-door','FRONT'));
 });
 
+test('independent solid fixtures cannot overlap without a named diagnostic',()=>{
+ const site=generateSite(6,'small');
+ const first={x:site.objective.x+80,y:site.objective.y+80,
+  w:40,h:24,fixture:'desk'};
+ const second={...first,x:first.x+5,fixture:'workbench'};
+ const broken={...site,cover:[...site.cover,first,second]};
+ const audit=auditSitePhysicalIntegrity(broken);
+ assert.ok(audit.warnings.some(f=>f.code==='furniture-overlap'&&
+  f.entity==='cover:'+(broken.cover.length-2)+'+'+(broken.cover.length-1)),
+  'two physical furniture footprints must be reported with source indices');
+ assert.ok(!auditSitePhysicalIntegrity(site).warnings.some(f=>
+  f.code==='furniture-overlap'&&f.entity===audit.warnings.at(-1)?.entity),
+  'the injected overlap must not be attributed to the original site');
+});
+
 test('window appearance requires matching authoritative physical collider',()=>{
  const site=generateSite(8,'small');
  assert.ok(site.windows?.length,'sample must actually contain windows');
