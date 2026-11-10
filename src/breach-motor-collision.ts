@@ -181,7 +181,7 @@ export function resolveMotorCollision(
     recoveryAction(blocking?'actor':a.lastBlocker,a.blockedTime,
       s.seconds-a.lastNavRepairAt,a.recoveryAttempts)==='detour'){
     const candidate=localDetour(a.p,next,s.doors,s.operators
-      .filter(o=>o!==a&&o.health>0).map(o=>o.p));
+      .filter(o=>o!==a&&o.health>0).map(o=>o.p),8,world);
     if(candidate&&d(candidate,p)<d(a.p,p)+12&&
       (!a.nav.length||d(candidate,a.nav[0])>12)){
       const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
