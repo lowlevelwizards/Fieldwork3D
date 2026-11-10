@@ -1,5 +1,5 @@
-/** Optional, mobile-first Quick Play generator screen.
- * The landing page's one-tap QUICK PLAY remains the primary entry.
+/** Primary Quick Play entry and reusable in-mission scenario creator.
+ * Opening the overlay never replaces the live tactical session.
  */
 import {defaultQuickPlaySettings,QUICK_PLAY_BUILDINGS,
  QUICK_PLAY_MISSIONS,type QuickPlaySettings,
@@ -205,6 +205,7 @@ export function createQuickPlayConfigurator(options:{
   open(){previouslyFocused=document.activeElement instanceof HTMLElement?
      document.activeElement:null;backdrop.hidden=false;close.focus();},
   close:hide,
+  get isOpen(){return !backdrop.hidden;},
   getSettings:()=>({...settings,buildings:[...settings.buildings]})
  };
 }
