@@ -102,6 +102,13 @@ test('Stage 3: personal replay gates cover and decor independent of Bodycam mode
  assert.equal(presentDecor(s,detail,false,true,known),true);
  const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  assert.match(scene,/personalCoverVisible\(squadKnown,personalDisclosure/);
+ const twoD=readFileSync(new URL('../src/breach-2d-actor-renderer.ts',import.meta.url),'utf8');
+ assert.match(twoD,/presentUnrecordedRescueMarker\(state/);
+ assert.doesNotMatch(readFileSync(new URL('../src/rendering/breach-3d-disclosure-presenter.ts',
+   import.meta.url),'utf8').slice(
+    readFileSync(new URL('../src/rendering/breach-3d-disclosure-presenter.ts',
+      import.meta.url),'utf8').indexOf('if(bodycam)return personalDecorVisible')),
+   /if\(bodycam\)liveVisibility/);
  assert.match(scene,/personalDisclosure,personalGroundEvidence\)/);
  assert.match(scene,/presentArchitecturalOpening\(s,opening\.opening/);
  assert.match(scene,/const personalDisclosure=replayDisclosurePolicy\?\.mode==='operator'/);
