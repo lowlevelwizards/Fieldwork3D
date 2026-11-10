@@ -178,8 +178,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        make('p','fw-after-muted','Expand intelligence and full report below.'));
    }else{
      screen=make('section','fw-after-section');
-     screen.append(make('h2','fw-after-heading',s.tab.toUpperCase()),
-       make('p','fw-after-muted','Detailed encounter review will appear here.'));
+     screen.append(make('p','fw-after-empty','REPORT SECTION UNAVAILABLE'));
    }
    disposeModel();
    safeContent.replaceChildren(screen);
