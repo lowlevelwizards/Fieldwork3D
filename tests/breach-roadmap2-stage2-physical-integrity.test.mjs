@@ -76,7 +76,8 @@ test('default-scale townhouse, apartment, and office room clusters are reachable
    const near=p=>p.x>=r.x-1&&p.x<=r.x+r.w+1&&
     p.y>=r.y-1&&p.y<=r.y+r.h+1;
    return {room:r,neighbors:site.rooms.filter(adjacent).map(q=>({
-     id:q.id,purpose:q.purpose,unitId:q.unitId,zoneId:q.zoneId
+     id:q.id,purpose:q.purpose,unitId:q.unitId,zoneId:q.zoneId,
+     x:q.x,y:q.y,w:q.w,h:q.h
    })),portals:[...site.doors,...(site.openings??[])]
     .filter(d=>near(mid(d))).map(d=>({id:d.id,a:d.a,b:d.b})),
     cover:site.cover.filter(o=>o.x>=r.x-22&&o.x<=r.x+r.w+22&&
@@ -85,7 +86,12 @@ test('default-scale townhouse, apartment, and office room clusters are reachable
    };
   });
   failures.push({seed,archetype:site.archetype,
-   rooms:broken.map(f=>f.entity),details});
+   rooms:broken.map(f=>f.entity),details,
+   allRooms:site.rooms.map(r=>({id:r.id,kind:r.kind,purpose:r.purpose,
+     zoneId:r.zoneId,x:r.x,y:r.y,w:r.w,h:r.h})),
+   allPortals:[...site.doors,...(site.openings??[])].map(d=>({
+     id:d.id,a:d.a,b:d.b
+   })),spawn:site.spawn[0]});
  }
  assert.equal(failures.length,0,JSON.stringify(failures));
 });
