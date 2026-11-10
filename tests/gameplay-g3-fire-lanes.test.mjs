@@ -26,7 +26,10 @@ test('friendly body still blocks the lane regardless of penetrable cover',()=>{
 });
 test('simulation uses shared acquisition and ignition ballistic lane contract',()=>{
  const game=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
- assert.match(game,/return fireLaneReachable\(lane,preview,candidate\.p\)/);
- assert.match(game,/if\(!fireLaneReachable\(lane,laneTrace,target\.p\)\)/);
- assert.match(game,/WEAPONS\[a\.weapon\]\.penetration/);
+ const pipeline=readFileSync(new URL('../src/breach-firing-pipeline.ts',import.meta.url),'utf8');
+ const resolution=readFileSync(new URL('../src/breach-shot-resolution.ts',import.meta.url),'utf8');
+ assert.match(game,/runCombat\.fire\(s,a,h\)/);
+ assert.match(pipeline,/return fireLaneReachable\(lane,preview,candidate\.p\)/);
+ assert.match(resolution,/if\(!fireLaneReachable\(lane,laneTrace,target\.p\)\)/);
+ assert.match(pipeline,/WEAPONS\[a\.weapon\]\.penetration/);
 });
