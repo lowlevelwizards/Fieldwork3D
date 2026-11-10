@@ -73,7 +73,7 @@ test('179: renderer and combat use the same clearance, no motor displacement',()
  const resolver=readFileSync(
    new URL('../src/breach-shot-resolution.ts',import.meta.url),'utf8');
  const rig=readFileSync(
-   new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
+   new URL('../src/breach-operator-animation-controller.ts',import.meta.url),'utf8');
  assert.match(render,/obstruction:clearance.obstruction/);
  assert.match(render,/clearanceRetraction:clearance.retraction/);
  assert.match(gameplay,/runCombat\.fire\(s,a,h\)/);
