@@ -7,7 +7,7 @@ import {furnishRooms} from './worldgen/room-furnishing.ts';
 import {assignRoomProgram} from './worldgen/room-assignment.ts';
 import {programRooms} from './worldgen/building-programs.ts';
 import {correctPublicEntrance} from './worldgen/public-entrance.ts';
-import {activeSite,activateSite,passable,route} from './breach-core.ts';
+import {withTemporarySiteGeometry,passable,route} from './breach-core.ts';
 import {addOpenPlanTransitions} from './worldgen/open-plan.ts';
 import {addServiceHatches,enforceServiceHatchBarriers} from './worldgen/service-hatches.ts';
 import {dressSite} from './worldgen/environment-dresser.ts';
@@ -54,16 +54,12 @@ function reachable(site:Site):boolean{
     site.enemies.map(p=>p.x+','+p.y).join(';');
   const known=routeCheckCache.get(key);
   if(known!==undefined)return known;
-  const previous=activeSite();
-  let valid=false;
-  activateSite(site);
-  try{
-    // Critical route is authoritative, but expensive A* should only execute
-    // once for a reproducible seed/room-program candidate.
-    valid=[...site.spawn,...site.enemies,site.objective].every(p=>passable(p))&&
-      [site.objective,...site.enemies].every(p=>passable(p)&&
-        route(site.spawn[0],p).length>0);
-  }finally{activateSite(previous);}
+  // Preserve the previous mission's displaced furniture while evaluating a
+  // candidate in a nested, synchronous geometry scope.
+  const valid=withTemporarySiteGeometry(site,()=>
+    [...site.spawn,...site.enemies,site.objective].every(p=>passable(p))&&
+    [site.objective,...site.enemies].every(p=>passable(p)&&
+      route(site.spawn[0],p).length>0));
   if(routeCheckCache.size>=512)routeCheckCache.clear();
   routeCheckCache.set(key,valid);
   return valid;
