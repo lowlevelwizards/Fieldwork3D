@@ -25,8 +25,24 @@ test('all eleven building programs have finite, traversable physical sites',()=>
   const snapshot=structuredClone(site);
   const audit=auditSitePhysicalIntegrity(site);
   types.add(audit.archetype);
+  const affected=audit.blocking.filter(issue=>issue.code==='unreachable-room');
+  const topology=affected.map(issue=>{
+   const room=site.rooms.find(r=>r.id===issue.entity);
+   const touches=portal=>{
+    const m={x:(portal.a.x+portal.b.x)/2,y:(portal.a.y+portal.b.y)/2};
+    return room&&m.x>=room.x-.1&&m.x<=room.x+room.w+.1&&
+      m.y>=room.y-.1&&m.y<=room.y+room.h+.1;
+   };
+   return {room,doors:site.doors.filter(touches),
+    openings:(site.openings??[]).filter(touches),
+    cover:site.cover.filter(o=>room&&o.x>=room.x&&o.x<=room.x+room.w&&
+      o.y>=room.y&&o.y<=room.y+room.h).map(o=>({
+       fixture:o.fixture,x:o.x,y:o.y,w:o.w,h:o.h
+      }))};
+  });
   assert.equal(audit.blocking.length,0,
-   'seed '+seed+' ('+audit.archetype+'): '+JSON.stringify(audit.blocking));
+   'seed '+seed+' ('+audit.archetype+'): '+
+    JSON.stringify({issues:audit.blocking,topology,allDoors:site.doors}));
   assert.equal(audit.checkedRooms,
    site.rooms.filter(r=>r.kind==='room').length);
   assert.equal(audit.checkedDoors,site.doors.length);
