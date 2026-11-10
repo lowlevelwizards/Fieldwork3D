@@ -11,7 +11,7 @@ import {kitMedicalSupplies,transferMedicalSupply,spendMedicalSupply}
 import {treatmentSupplyForWound,treatmentDuration}
  from './breach-medical-treatment.ts';
 import {stabilizeWound} from './breach-medical-wounds.ts';
-import {dropCivilianCustody} from './breach-civilian-transport.ts';
+import {dropCivilianCustody,takeCivilianCustody} from './breach-civilian-transport.ts';
 import {casualtyTrailingPosition,transportIsClear}
  from './breach-casualty-transport.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
