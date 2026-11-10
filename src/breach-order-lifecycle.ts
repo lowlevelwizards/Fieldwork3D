@@ -66,13 +66,13 @@ export function failCurrentOrder(s:Session,a:TeamActor,n:PlanNode,reason:string,
 }
 export function clearCurrentOrderIssue(a:TeamActor){a.orderIssue=null;}
 
-export function beginOrder(a:TeamActor,n:PlanNode,doors:readonly Door[]):void{
+export function beginOrder(a:TeamActor,n:PlanNode,doors:Door[]):void{
  if(a.activeNode===n.id)return;
  a.activeNode=n.id;a.nav=[];a.autoSidestep=null;
  a.waitRemaining=0;a.actionTimer=0;
  a.orderIssue=null;
  if(interruptsWatch(n,a.pace))a.aimInstruction=null;
- if(bodyClear(a.p,[...doors])){
+ if(bodyClear(a.p,doors)){
    a.squeeze=false;a.squeezeTime=0;
  }
  a.pieIndex=0;
