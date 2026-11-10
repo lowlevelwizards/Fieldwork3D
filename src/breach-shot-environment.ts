@@ -18,7 +18,6 @@ type ShotEnvironmentPorts={
   actor:TeamActor|null,p:Pt,message:string)=>void;
 };
 const d=(a:Pt,b:Pt)=>length(a,b);
-const clone=(p:Pt):Pt=>({...p});
 
 /** Construct once within the combat pipeline; no per-tick allocations. */
 export function createShotEnvironmentCommitter(
