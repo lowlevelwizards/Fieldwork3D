@@ -1538,7 +1538,7 @@ export function advanceReload(s:Session,a:TeamActor,dt:number){
 }
 /** A tap near a jamb is aiming intent, not a demand for subpixel precision.
  * Snap only to a small, genuinely walkable/throw-reachable nearby patch. */
-function snapFlashTarget(from:Pt,target:Pt,doors:Door[],
+function snapFlashTarget(s:Session,from:Pt,target:Pt,doors:Door[],
   opened:string[]):Pt|null{
   const choices:Pt[]=[target];
   for(const r of [5,9,13,17])
@@ -1560,7 +1560,7 @@ export function planFlash(s:Session,id:string,target:Pt):boolean{
   if(queued>=s.flashRemaining||a.plan.filter(n=>n.kind==='flash').length>=a.flashCharges)return false;
   const plannedOpen=a.plan.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??'');
-  const landing=snapFlashTarget(start,target,s.doors,plannedOpen);
+  const landing=snapFlashTarget(s,start,target,s.doors,plannedOpen);
   if(!landing)return false;
   return addNode(s,id,'flash',start,{aimPoint:clone(landing)});
 }
@@ -1587,7 +1587,7 @@ export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
     .map(n=>n.doorId??'');
   const needsOpen=!opened.includes(doorId)&&
     (s.intel.doorMemory.get(doorId)??0)<.72;
-  const landing=snapFlashTarget(approached,target,s.doors,
+  const landing=snapFlashTarget(s,approached,target,s.doors,
     needsOpen?[...opened,doorId]:opened);
   if(!landing)return false;
   return edit(s,a,()=>{
@@ -1607,7 +1607,7 @@ export function moveFlashTarget(s:Session,id:string,nodeId:number,p:Pt){
   const index=a.plan.indexOf(candidate);
   const opened=a.plan.slice(0,index).filter(n=>n.kind==='door'&&
     (n.method==='open'||n.method==='kick')).map(n=>n.doorId??'');
-  const landing=snapFlashTarget(candidate.p,p,s.doors,opened);
+  const landing=snapFlashTarget(s,candidate.p,p,s.doors,opened);
   if(!landing)return false;
   return edit(s,a,()=>{candidate.aimPoint=clone(landing);});
 }
