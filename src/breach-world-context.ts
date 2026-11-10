@@ -38,6 +38,12 @@ export type SessionWorldGeometry={
  isClear(from:Pt,to:Pt,doors:readonly Door[],ignoreDoors?:boolean):boolean;
 };
 const contexts=new WeakMap<Session,SessionWorldGeometry>();
+/** Global compatibility adapter tracks presentation ownership only. */
+let presentationSession:Session|null=null;
+export function setPresentationWorldSession(s:Session):void{
+ presentationSession=s;
+}
+
 const defaultBounds:WorldBounds={minX:0,minY:0,maxX:W,maxY:H};
 const pointInCover=(p:Pt,o:Obstacle,r=0)=>
  Math.abs(p.x-o.x)<o.w/2+r&&Math.abs(p.y-o.y)<o.h/2+r;
@@ -128,6 +134,7 @@ export function worldGeometryForQuery(s:Session):
  * Call only after a committed cover mutation, not on every simulation tick.
  */
 export function publishSessionCoverToActiveSite(s:Session):void{
- if((activeSite()??null)!==(s.site??null))return;
+ if(presentationSession!==s||
+    (activeSite()??null)!==(s.site??null))return;
  COVER.splice(0,COVER.length,...s.coverState);
 }
