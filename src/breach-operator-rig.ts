@@ -1,38 +1,28 @@
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
 /** 109–113. Deliberately simple box anatomy and independently articulated limbs.
  * The battle motor remains authoritative. IK is presentation-only. */
 import * as THREE from 'three';
 import {CORE_TORSO_CONTACT} from './operator-garment-contact-surface.ts';
 import {operatorPixelTextures,type PixelSurface} from './rendering/pixel-materials.ts';
 import {canonicalRootOrientation,LEGACY_FRAME_YAW,createCanonicalAttachment} from './operator-axis-convention.ts';
-import {type PrecontactStyle} from './breach-idle-life.ts';
 import type {WeaponId} from './breach-combat.ts';
 import {createFootstepScheduler,type FootstepScheduler}
   from './breach-footsteps.ts';
-import type {ReplayFeet} from './breach-replay-motion.ts';
 import {BOOT_FOREFOOT_OFFSET} from './breach-gait-geometry.ts';
 import {operatorMotionTraits} from './breach-operator-personality.ts';
 import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_HEIGHT} from './breach-leg-geometry.ts';
-import {type BashRole} from './breach-contact-reactions.ts';
-import {type ReloadMode} from './breach-magazines.ts';
-import {type V3ReloadCorridorProfile,type V3MagazinePalm} from './breach-pose-v3-reload-choreography.ts';
-import {type V3ReloadHold} from './breach-pose-v3-reload-weapon.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import type {HandlingTransition} from './breach-handling-transition.ts';
-import {type FallPose,type WoundRegion}
-  from './breach-wounds.ts';
-import type {EquipmentLoadout} from './equipment-loadouts.ts';
-import {type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {enableBakedGearAO} from './operator-baked-gear-ao.ts';
 import {createOperatorPoseCavity,type OperatorPoseCavity} from './operator-pose-cavity-lighting.ts';
 import {mapSkinReceiverAtlas,headwearCastShadowAtlas,collarCastShadowAtlas} from './operator-baked-shadow-maps.ts';
-import type {CarryLocation,CarryPlacement} from './equipment-carry-placement.ts';
 import {createOperatorVisualKit,type OperatorVisualKit} from './operator-visual-kit.ts';
 import {createGarmentFitAnchors,type GarmentFitAnchors}
  from './operator-garment-fit.ts';
 import {createOperatorEquipmentDetails,type OperatorEquipmentDetails} from './operator-equipment-details.ts';
 import {type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
-import {type Handling,type HandlingIntent}
+import {type Handling}
   from './breach-weapon-pose.ts';
 type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
   ankleLink:THREE.Mesh;
@@ -40,73 +30,6 @@ type Foot={upper:THREE.Mesh;lower:THREE.Mesh;shoe:THREE.Mesh;
   bend:THREE.Vector3;outOfReach:boolean;};
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh;hand:THREE.Mesh;
   bend:THREE.Vector3;outOfReach:boolean};
-export type OperatorPose={
-  /** V3 whole-arm fitting; enabled by the live tactical renderer. */
-  poseV3Preview?:boolean;
-  /** Diagnostic-only: compare against the original strict contact budget. */
-  poseV3StrictContact?:boolean;
-  /** V4 rifle, hand, magazine and controls; enabled for live reloads. */
-  poseV4ReloadPreview?:boolean;
-  /** False in live gameplay: skip Lab-only debug arrays and snapshots. */
-  poseDiagnostics?:boolean;
-  /** Opt-in Lab reload corridor comparison; never read by game simulation. */
-  poseV3ReloadCorridor?:V3ReloadCorridorProfile;
-  /** B19 fixed-profile offline handling audition; only read in V3 Lab. */
-  poseV3ReloadHold?:V3ReloadHold;
-  /** B22 magazine-body grip, explicitly Lab-only and replay-time pure. */
-  poseV3MagazinePalm?:V3MagazinePalm;
-  x:number;z:number;heading:number;velocity:number;seconds:number;
-  stride:number;posture:'stand'|'crouch';injury:number;weapon:WeaponId;
-  /** Authoritative travel direction; optional until motion sampling is wired. */
-  travelYaw?:number;
-  /** Presentation-only clock advances during tactical pause, never the motor. */
-  idleLifeSeconds?:number;
-  /** Render-only, static armed pre-contact nuance. Never changes handling. */
-  precontact?:PrecontactStyle;
-  /** Render-only reconstructed feet and pose: no accumulated render state. */
-  replayFeet?:ReplayFeet;deterministic?:boolean;pelvisYaw?:number;
-  reload:number;reloadDuration:number;reloadMode?:ReloadMode|null;
-  reloadRemoved?:boolean;reloadInserted?:boolean;lastThrowAt:number;
-  lastDoorAt:number;doorPoint?:{x:number;y:number};
-  doorMethod?:'open'|'close'|'kick'|'hold';down:boolean;
-  lastBashAt?:number;bashRole?:BashRole;
-  surrender:boolean;aiming:boolean;firing:boolean;turning:number;
-  /** Lab preview only: choose an exact stock/weapon readiness posture. */
-  handlingOverride?:Handling;
-  handlingIntent?:HandlingIntent;threatRange?:number|null;
-  handlingTransition?:HandlingTransition;
-  obstruction?:boolean;friendlyNear?:boolean;
-  clearanceRetraction?:number;clearanceBlocked?:boolean;
-  shortCompression?:number;
-  blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
-  gait?:'walk'|'run'|'pie'|'squeeze';
-  /** 0-1 motor-owned vault phase, also restored during replay. */
-  traversalProgress?:number;
-  equipment?:EquipmentLoadout;flashCharges?:number;
-  medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
-  magazineCarryLocations?:readonly CarryLocation[];
-  /** Simulation-owned IDs and actual stowage, used for V4 handoff ONLY. */
-  magazineCarryItems?:readonly Pick<CarryPlacement,'id'|'kind'|'location'>[];
-  reloadSelectedMagazineId?:string|null;
-  weaponConfiguration?:WeaponConfiguration;
-  weaponLightOn?:boolean;
-  treatmentActive?:boolean;treatmentProgress?:number;
-  lockpickActive?:boolean;lockpickProgress?:number;
-  interactionCrouch?:number;
-  treatmentPoint?:{x:number;y:number};
-  /** Opt-in to contact-position weight transfer for lab candidate only. */
-  hybridSupport?:boolean;
-  acceleration?:number;
-  aimBlend?:number;recoil?:number;shotHeading?:number;
-  hitFade?:number;hitAge?:number;downProgress?:number;flashActive?:boolean;
-  hitRegion?:WoundRegion;hitYaw?:number;hitSeverity?:number;
-  downPose?:FallPose;downClearance?:number;
-  appearanceSeed?:number;
-  faceStyle?:'blank'|'quiet'|'graphic';
-  /** Only used in the Wardrobe Lab; never propagated to battle actors. */
-  unarmedPreview?:boolean;
-  wardrobe?:WardrobeOptions;
-};
 export type OperatorRig={
   /** Public space: -Z forward / +X right. Legacy animation is internal. */
   root:THREE.Group;
@@ -455,4 +378,5 @@ export function createOperatorRig(id:string,side:'blue'|'red',
 }
 
 /** Compatibility entrypoint. All pose evaluation is presentation-owned. */
+export type {OperatorPose} from './breach-operator-animation-contract.ts';
 export {poseOperator} from './breach-operator-animation-controller.ts';
