@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 import {createShotResolver} from './breach-shot-resolution.ts';
 import {createShotEnvironmentCommitter} from './breach-shot-environment.ts';
 /** Roadmap 2 / Stage 10 — unified authoritative firing & damage pipeline.
@@ -10,7 +11,7 @@ import {rotate} from './breach-order-lifecycle.ts';
 import {segmentImpact,strikeSurface} from './breach-ballistic-resolution.ts';
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep} from './breach-combat-reactions.ts';
 
-import {type Pt,WALLS,COVER,segmentsCross,pointToSegment} from './breach-core.ts';
+import {type Pt,segmentsCross,pointToSegment} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {aimHeight} from './breach-cover-height.ts';
@@ -145,7 +146,7 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
    if(observedCivilianFireLane(s,a,from,clearance.muzzle.y,
      target.p,height))return false;
    return assessFireLane(from,clearance.muzzle.y,target.p,height,
-      COVER,WALLS,s.doors,friends).blocker==='clear';
+      sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,s.doors,friends).blocker==='clear';
  };
  const next=kind==='friendly'?
    chooseFriendlyLaneStep(a.p,aimYaw,clearBody,legalShot):
@@ -187,7 +188,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   if(observedCivilianFireLane(s,a,from,muzzle.y,far,14)){
     civilianShotWithheld(s,a);return;
   }
-  if(assessFireLane(from,muzzle.y,far,14,COVER,WALLS,s.doors,
+  if(assessFireLane(from,muzzle.y,far,14,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,s.doors,
     friends).blocker==='friendly')return;
   const impact=strikeSurface(from,far,s,muzzle.y,14,
     WEAPONS[a.weapon].penetration);
@@ -244,7 +245,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   battleEvent(s,'shot',a,a.p,a.name+' SUPPRESSING AREA');
   for(const e of enemies(s)){
     if(e.health<=0||d(e.p,impact.end)>50)continue;
-    if(WALLS.some(w=>segmentsCross({a:impact.end,b:e.p},w)))continue;
+    if(sessionWorldGeometry(s).walls.some(w=>segmentsCross({a:impact.end,b:e.p},w)))continue;
     e.suppression=Math.min(1,e.suppression+.16);
     e.morale=Math.max(0,e.morale-.025);
   }
@@ -324,7 +325,7 @@ function fire(s:Session,a:TeamActor,dt:number){
       other.side===a.side).map(other=>other.p);
     const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
       candidate.p,aimHeight(candidate.posture==='crouch'),
-      COVER,WALLS,s.doors,friends);
+      sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,s.doors,friends);
     if(lane.blocker==='clear')return true;
     if(lane.blocker!=='cover')return false;
     // Candidate selection uses the SAME physical penetration model as
@@ -379,7 +380,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     const muzzleHeight=a.posture==='crouch'?18:26;
     const targetHeight=aimHeight(target.posture==='crouch');
     const lane=assessFireLane(a.p,muzzleHeight,target.p,targetHeight,
-      COVER,WALLS,s.doors,friends);
+      sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,s.doors,friends);
     if(lane.blocker==='friendly'&&!observedCivilianFireLane(
        s,a,a.p,muzzleHeight,target.p,targetHeight)){
       if(requestClearFireStep(s,a,target,'friendly'))return;
