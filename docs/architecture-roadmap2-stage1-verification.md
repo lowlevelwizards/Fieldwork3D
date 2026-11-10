@@ -5,17 +5,17 @@ animation-side gameplay authority, no World Context migration. The goal is to
 build trustworthy regression evidence *before* invasive refactors in Stages 2–12.
 
 Baseline: main after Roadmap 4 Batch C, commit
-\`6baddf359c214958777c28ac0f5f28d8b2d73e30\`.
+`6baddf359c214958777c28ac0f5f28d8b2d73e30`.
 Stage 1 closure PR: #1188.
 
 ## Responsibilities and boundaries
 
-- Authoritative simulation remains \`stepSession(s,1/60)\` in \`breach-game.ts\`.
+- Authoritative simulation remains `stepSession(s,1/60)` in `breach-game.ts`.
 - Real game APIs author commands and perform replay/restart.
-- \`tests/fixtures/breach-stage1-contract-runner.mjs\` owns only deterministic
+- `tests/fixtures/breach-stage1-contract-runner.mjs` owns only deterministic
   setup, scripts, fixed-clock calls, finite-state checks, replay capture,
   canonical state observation, and a SHA-256 outcome fingerprint.
-- \`withTemporarySiteGeometry\` restores any displaced active mission on success
+- `withTemporarySiteGeometry` restores any displaced active mission on success
   or failure, including nested use. The legacy seed harness now respects it.
 - Snapshot contracts use actor IDs, positions, health, wounds, plans, motion,
   weapons, AI evidence, doors, sight knowledge, civilians, event sequence,
@@ -41,10 +41,10 @@ Stage 1 closure PR: #1188.
 **Frozen SHA-256 outcomes**, captured on the pre-refactor engine and asserted
 alongside independent behavioral outcomes in the critical suite:
 
-- Hinged entry: \`f0300241e8134d1a65c5e71fd22c827447e96128a92bb82c2bd64958c02f895c\`
-- Reload + wound: \`59dcd49b07911987d44ef1366b25c00f4b9eba1abc80db293a89f4c0f8c3117e\`
-- Combat + AI: \`1e2d24ad275fb9600eac4da91ea01e23fe180468e8133f7a65120adef746b9a3\`
-- Civilian rescue/replay: \`32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136\`
+- Hinged entry: `f0300241e8134d1a65c5e71fd22c827447e96128a92bb82c2bd64958c02f895c`
+- Reload + wound: `59dcd49b07911987d44ef1366b25c00f4b9eba1abc80db293a89f4c0f8c3117e`
+- Combat + AI: `1e2d24ad275fb9600eac4da91ea01e23fe180468e8133f7a65120adef746b9a3`
+- Civilian rescue/replay: `32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136`
 
 **Do not automatically refresh these baselines.** When an engine feature
 intentionally changes simulation outcomes, compare recorded states/events,
@@ -54,17 +54,17 @@ explain why and approve the exact new baseline in the corresponding PR.
 
 Fast critical integration test (also run by unified architecture CI):
 
-\`\`\`sh
+```sh
 node scripts/verification/breach-critical-suite.mjs
 npm run build
-\`\`\`
+```
 
 Dedicated 20-second-per-scenario live + replay soak (opt-in, not a permanent
 quick-PR dependency):
 
-\`\`\`sh
+```sh
 node --experimental-strip-types --test tests/breach-roadmap2-stage1-soak.test.mjs
-\`\`\`
+```
 
 The opt-in soak exercises 1,200 authoritative ticks for the hinged entry and
 armed contact sites **twice each**, with recorder capture enabled. It checks

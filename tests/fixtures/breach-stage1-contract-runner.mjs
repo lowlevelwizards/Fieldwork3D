@@ -52,7 +52,7 @@ export function stage1Snapshot(s){
    shot.id,shot.shooterId,shot.targetId,pt(shot.end),
    shot.hit,shot.down
   ]),
-  battle:s.battleEvents.map(e=>[e.id,e.kind,e.actorId??null]),
+  battle:s.battleEvents.map(e=>[e.id,e.kind,e.actor??null]),
   executions:s.executionEvents.map(e=>[e.id,e.status??e.kind??null]),
   cover:s.coverState.map(c=>[n(c.x),n(c.y),n(c.w),n(c.h)]),
   objective:pt(s.scenario.objective),extract:pt(s.scenario.extract),
@@ -112,7 +112,7 @@ export function runStage1Scenario({
    first:checkpoints[0],last:checkpoints.at(-1),
    recorder,phase:s.phase,mission:s.mission,
    shotsFired:s.nextShotId-1,events:s.battleEvents.map(e=>({
-    id:e.id,kind:e.kind,actorId:e.actorId??null
+    id:e.id,kind:e.kind,actorId:e.actor??null
    })),liveGroundSize:s.seenGround.size};
  });
 }
