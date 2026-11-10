@@ -1,22 +1,34 @@
 /** Unified presentation disclosure. Never modifies simulation knowledge.
  * In particular, physical camera cutaways cannot reveal unseen objects.
  */
-import {liveVisibility,type Session,type TeamActor} from '../breach-game.ts';
+import {liveVisibility,isSeen,type Session,type TeamActor} from '../breach-game.ts';
 import type {Door,Pt} from '../breach-core.ts';
 import type {CivilianActor} from '../breach-civilian-types.ts';
-import {replayActorVisible,replayActorDisclosed,replayCivilianDisclosed,
+import {replayActorDisclosed,replayCivilianDisclosed,recordedReplayKnowledge,
  type ReplayDisclosure} from '../breach-replay-visibility.ts';
 import {civilianPresentationVisible} from '../breach-civilian-visibility.ts';
 import {personalDecorVisible} from '../breach-replay-personal-visibility.ts';
 
 export function presentActor(s:Session,a:TeamActor,omniscient:boolean,
  policy:ReplayDisclosure|null):boolean{
- return policy?replayActorDisclosed(s,a,policy):replayActorVisible(s,a,omniscient);
+ if(policy)return replayActorDisclosed(s,a,policy);
+ // A live game has no historical sample. Keep its authoritative current
+ // actor sight separate from replay's intentionally fail-closed evidence.
+ return omniscient||a.side==='blue'||(a.health>0?
+   isSeen(s,a):liveVisibility(s,a.p));
 }
 export function presentCivilian(s:Session,c:CivilianActor,omniscient:boolean,
  policy:ReplayDisclosure|null):boolean{
- return policy?.mode==='operator'?replayCivilianDisclosed(s,c.id,policy):
-  civilianPresentationVisible(c,c.replayVisible!==undefined,
+ if(policy){
+   if(policy.mode==='full')return true;
+   if(policy.mode==='operator')return replayCivilianDisclosed(s,c.id,policy);
+   // Historical squad films with a knowledge sample use it exclusively.
+   // Older films may have a recorded per-civilian visibleAtCapture value;
+   // never fill a missing historical sample with present-time live LOS.
+   return recordedReplayKnowledge(s)?
+     replayCivilianDisclosed(s,c.id,policy):c.replayVisible===true;
+ }
+ return civilianPresentationVisible(c,false,
    omniscient,liveVisibility(s,c.p));
 }
 export function presentDecor(s:Session,detail:{

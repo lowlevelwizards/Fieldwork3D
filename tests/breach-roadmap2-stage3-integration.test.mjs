@@ -13,6 +13,8 @@ import {applyReplayKnowledge,replayActorDisclosed,
 import {PersonalGroundHistory} from '../src/breach-replay-personal-ground.ts';
 import {personalGroundEvidenceAt,personalCoverVisible}
   from '../src/breach-replay-personal-visibility.ts';
+import {presentActor,presentCivilian}
+  from '../src/rendering/breach-3d-disclosure-presenter.ts';
 
 test('Full View is a display override, never a personal observer grant',()=>{
  try{
@@ -75,11 +77,12 @@ test('2D fog actually refreshes paused sight/doors but respects active cadence',
       id:'TEST',a:{x:300,y:200},b:{x:300,y:240},
       open:false,openedAt:-1
     }]};
-  const replayKnowledge={omniscient:false,groundLensOn:false,
+  let replaying=false;
+ const replayKnowledge={omniscient:false,groundLensOn:false,
     observerId:null,personalGround:null};
   const renderer=createBreach2DVisibilityRenderer({
     draw:{drawImage(){}},getState:()=>state,
-    isReplaying:()=>false,getViewMode:()=> 'plan2d',
+    isReplaying:()=>replaying,getViewMode:()=> 'plan2d',
     replayKnowledge,replayPlayback:{time:0},debugPalette:false
   });
   const ctx=contexts[0];
@@ -94,6 +97,7 @@ test('2D fog actually refreshes paused sight/doors but respects active cadence',
   assert.equal(ctx.paintCount,door,'active simulation respects repaint budget');
   state.seconds=.08;renderer.renderFog();
   assert.ok(ctx.paintCount>door,'elapsed active time repaints');
+  replaying=true;
   replayKnowledge.omniscient=true;
   renderer.renderFog();
   const omni=ctx.paintCount;
@@ -147,4 +151,38 @@ test('a remembered object never reveals its moved current replay position',()=>{
  assert.equal(personalCoverVisible(true,true,recorded,{x:155,y:55}),false);
  assert.equal(personalCoverVisible(true,true,null,{x:55,y:55}),false);
  assert.equal(personalCoverVisible(true,false,null,{x:155,y:55}),true);
+});
+
+test('3D live models use live team sight, not missing replay evidence',()=>{
+ try{
+  const s=newSession(0,9,'full-view','small');
+  const hostile=s.operators.find(a=>a.side==='red');
+  assert.ok(hostile);
+  applyReplayKnowledge(s,null);
+  assert.equal(presentActor(s,hostile,false,null),true,
+    'live Full View remains visible without a replay snapshot');
+  assert.equal(presentActor(s,hostile,false,{mode:'squad'}),false,
+    'replay squad still fails closed without historical evidence');
+  assert.equal(presentActor(s,hostile,true,{mode:'full'}),true);
+ }finally{activateSite(null);}
+});
+test('historical civilians use recorded observations, never fresh LOS',()=>{
+ try{
+  const s=newSession(0,9,'full-view','small');
+  const c={id:'film-civilian',replayVisible:true,p:{x:180,y:200}};
+  applyReplayKnowledge(s,null);
+  assert.equal(presentCivilian(s,c,false,{mode:'squad'}),true,
+    'old recorded visibleAtCapture remains valid evidence');
+  c.replayVisible=undefined;
+  assert.equal(presentCivilian(s,c,false,{mode:'squad'}),false,
+    'missing old film observations must fail closed');
+  applyReplayKnowledge(s,{visibleActorIds:[],
+    visibleCivilianIds:[],discoveredBodyIds:[]});
+  c.replayVisible=true;
+  assert.equal(presentCivilian(s,c,false,{mode:'squad'}),false,
+    'explicitly unseen in current frame outranks stale model flag');
+  assert.equal(presentCivilian(s,c,false,{mode:'full'}),true);
+  assert.equal(presentCivilian(s,c,false,null),true,
+    'live tactical Full View still displays civilians');
+ }finally{activateSite(null);}
 });
