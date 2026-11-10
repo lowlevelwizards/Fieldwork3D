@@ -1,6 +1,7 @@
 import {
   createBreachCanvasGestureController,type TacticalPointer}
  from './breach-canvas-gesture-controller.ts';
+import {dispatchTacticalPointerRelease} from './breach-pointer-command-controller.ts';
 import {installTouchCommandHelp as bindTouchCommandHelp}
  from './ui/touch-command-help.ts';
 import {
@@ -2653,169 +2654,25 @@ function insertAtRouteLine(screen:Pt,pointerKind:string):boolean{
 }
 /** Map gestures have resolved; this is the gameplay-only commit boundary. */
 function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
-  cancelled:boolean,pointerCount:number):void{
-  const pt=hudController.facing.looking?pointerAimWorld(e):
-    p.mode==='activeWatch'||p.mode==='watchTarget'?
-      pointerAimWorld(e,12):pointerWorld(e);
-  // During replay, a deliberate single tap on a friendly miniature
-  // follows that operator. Two-finger gestures, camera drags, and scrubbing
-  // never steal camera focus. Avoid interpreting the same tap as a shot.
-  let tappedReplayOperator=false;
-  if(!cancelled&&replaying&&!replayBodycam.active&&
-     pointerCount===1&&!p.moved&&p.mode==='undecided'){
-    const finger={x:e.clientX,y:e.clientY};
-    const nearest=team(state).filter(actor=>actor.health>0)
-      .map(actor=>({id:actor.id,d:distance(
-        worldToScreen(actor.p,viewMode==='plan2d'?0:24),finger)}))
-      .sort((a,b)=>a.d-b.d)[0];
-    if(nearest&&nearest.d<=(e.pointerType==='touch'?36:26)){
-      tappedReplayOperator=true;
-      followReplayOperator(nearest.id);
-    }
-  }
-  if(!tappedReplayOperator&&!cancelled&&replaying&&replayTraceMode!=='off'&&
-    pointerCount===1&&!p.moved&&p.mode==='undecided'){
-    const hit=shotScreenHit(recorder.ballistics.between(
-      Math.max(0,replayPlayback.time-3),replayPlayback.time),replayPlayback.time,
-      {x:e.clientX,y:e.clientY},
-      (point,height)=>worldToScreen(point,viewMode==='plan2d'?0:height),
-      historicalShotVisible,e.pointerType==='touch'?30:22);
-    if(hit)replayAnalysisUi.selectReplayShot(hit);
-  }
-  if(!cancelled&&!replaying&&state.phase!=='planning'&&
-     pointerCount===1&&!p.moved&&p.mode==='undecided'&&
-     p.pick?.kind==='operator'&&p.pick.owner){
-    selectUnit(p.pick.owner);
-  }
-  if(!cancelled&&state.phase==='planning'&&!replaying&&pointerCount===1){
-    if((hudController.facing.looking||flashMode||pushMode||firePlacement||evacMode)&&
-       (p.mode==='targetPreview'||p.mode==='undecided')){
-      // A brief iPhone tap often travels a few pixels without entering
-      // targetPreview. Always commit an armed target on release, even then.
-      // CameraMulti/cancelled pointers remain excluded.
-      // LOOK/WATCH are directions and may deliberately point across an
-      // unseen door or beyond the property; other commands still require a
-      // point inside the real procedural site bounds, not legacy W/H.
-      if(hudController.facing.looking||insideTacticalBounds(pt,activeWorldBounds()))
-        useSelectedGround(pt);
-      else showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
-    }else if(p.mode==='activeWatch'){
-      adoptPointerOwner(p);
-      const target=aimTargetFromTap(uid(selected)?.p??pt,pt);
-      const accepted=!p.dragCommitted||
-        (!!target&&retargetActiveWatch(state,selected,target));
-      if(!accepted)rejectAt(pt,'WATCH TARGET TOO CLOSE OR INVALID');
-      selectedNode=null;selectedActiveWatch=true;doorFocusId=null;
-      if(accepted)tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
-        p.dragCommitted?'WATCH RETARGETED':undefined);
-    }else if(p.mode==='watchTarget'&&p.nodeId!==null){
-      adoptPointerOwner(p);
-      const node=uid(selected)?.plan.find(n=>n.id===p.nodeId);
-      const target=node?aimTargetFromTap(node.p,pt):null;
-      const accepted=!p.dragCommitted||
-        (!!target&&planWatch(state,selected,target,p.nodeId));
-      if(!accepted)rejectAt(pt,'WATCH TARGET UNAVAILABLE');
-      selectedNode=p.nodeId;doorFocusId=null;
-      if(accepted)tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
-        p.dragCommitted?'WATCH UPDATED':undefined);
-    }else if(p.mode==='node'&&p.nodeId!==null){
-      adoptPointerOwner(p);
-      if(p.dragCommitted){
-        const moving=uid(selected)?.plan.find(node=>node.id===p.nodeId);
-        const moved=moving?.kind==='flash'?
-          moveFlashTarget(state,selected,p.nodeId,pt):
-          movePlanNode(state,selected,p.nodeId,pt);
-        if(!moved){
-          const chosen=uid(selected)?.plan.find(n=>n.id===p.nodeId);
-          const origin=uid(selected)?.p??pt;
-          rejectAt(pt,orderFailureText(origin,pt,{
-            // The failure message must use the SAME narrow-body clearance
-            // rules as planning. Otherwise reachable squeeze positions are
-            // incorrectly reported as having "insufficient clearance".
-            canStand:at=>intelPassable(at,state.intel,SQUEEZE_RADIUS),
-            routeTo:(a,b)=>routeWithSqueezeIntel(state.intel,a,b),
-            remainingPlanValid:chosen?.kind==='move'?false:undefined
-          }));
-        }
-      }
-      selectedNode=p.nodeId;doorFocusId=null;
-      const chosen=uid(selected)?.plan.find(n=>n.id===p.nodeId);
-      if(chosen)tacticalFeedback.emit('node',chosen.p);
-    }else if(p.mode==='route'&&trace&&
-      distance(trace[0],pt)>16){
-      // The finger trace is a high-frequency preview, NOT one order per
-      // input sample. Preserve meaningful screen-space bends and reject
-      // simplifications that would cut across KNOWN obstacles. Unseen
-      // obstacles remain undisclosed to the plan author.
-      const points=simplifyStrokePoints([...trace,pt],
-        point=>worldToScreen(point,8),15,(from,to)=>{
-          const span=distance(from,to);
-          const steps=Math.max(1,Math.ceil(span/4));
-          for(let i=1;i<steps;i++){
-            const t=i/steps;
-            if(!intelPassable({x:from.x+(to.x-from.x)*t,
-               y:from.y+(to.y-from.y)*t},state.intel,SQUEEZE_RADIUS))
-              return false;
-          }
-          return true;
-        });
-      // A stroke that starts on the operator's HERE marker REPLACES the
-      // queued plan, even when it contains several waypoints. Appending
-      // still happens via taps and gestures on the existing route end.
-      // planMoveStroke records the entire replacement as one undoable edit.
-      const strokeOutcome={clipped:false,endpoint:pt};
-      if(!planMoveStroke(state,selected,points.slice(1),false,true,strokeOutcome))
-        rejectAt(pt,'NO WALKABLE STROKE · PREVIOUS ROUTE KEPT');
-      else{
-        selectedActiveWatch=false;
-        selectedNode=uid(selected)?.plan.filter(n=>n.kind==='move')
-          .at(-1)?.id??null;
-        const watchKept=uid(selected)?.plan.some(n=>n.aimMode==='track')||
-          uid(selected)?.aimInstruction?.mode==='track';
-        if(strokeOutcome.clipped)
-          tacticalFeedback.emit('node',strokeOutcome.endpoint);
-        showUiHelp((strokeOutcome.clipped?
-          'ROUTE ENDS AT LAST CLEAR POINT · UNDO TO RESTORE':
-          'ROUTE REPLACED FROM HERE · UNDO TO RESTORE')+
-          (watchKept?' · WATCH KEPT':''),3200);
-      }
-      doorFocusId=null;
-    }else if(!p.moved&&insideTacticalBounds(pt,activeWorldBounds())){
-      // The hit was captured at pointer-down, but no selection/order was
-      // committed before the gesture resolved. Camera gestures never reach
-      // this branch and a tap can produce only one semantic outcome.
-      const pick=p.pick;
-      if(pick?.kind==='operator'&&pick.owner){
-        selectUnit(pick.owner);
-        tacticalFeedback.emit('select',uid(pick.owner)?.p??pt);
-      }else if(pick?.kind==='door'&&pick.doorId){
-        const door=state.doors.find(d=>d.id===pick.doorId&&
-          doorKnown(state.intel,d.id));
-        const actor=uid(selected),node=selectedPlanNode();
-        const origins=actor?(node?[node.p]:[finalPoint(actor),actor.p]):[];
-        if(door&&origins.some(origin=>doorReachable(origin,door))){
-          doorFocusId=door.id;selectedNode=null;selectedActiveWatch=false;
-          doorMenuDismissedId=null;
-          tacticalFeedback.emit('select',doorCenter(door));
-          teach('door-selected',
-            'Door selected. Choose OPEN, KICK or another available action.',4700);
-        }else if(door){
-          showUiHelp('NO DOOR ACTION IN REACH · PLAN AN APPROACH',2200);
-        }
-      }else if(pick?.kind==='route'&&pick.owner){
-        if(pick.owner!==selected){
-          // First touch on another operator's line is selection only.
-          selectUnit(pick.owner);
-          tacticalFeedback.emit('select',uid(pick.owner)?.p??pt);
-        }else{
-          insertAtRouteLine({x:e.clientX,y:e.clientY},e.pointerType);
-        }
-      }else if(!pick){
-        doorFocusId=null;useSelectedGround(pt);
-      }
-
-    }
-  }
+ cancelled:boolean,pointerCount:number):void{
+ dispatchTacticalPointerRelease({
+ get state(){return state;},get replaying(){return replaying;},
+ replayBodycam,get replayTraceMode(){return replayTraceMode;},
+ get recorder(){return recorder;},replayPlayback,replayAnalysisUi,
+ hudController,get selected(){return selected;},
+ get selectedNode(){return selectedNode;},set selectedNode(v){selectedNode=v;},
+ get selectedActiveWatch(){return selectedActiveWatch;},
+ set selectedActiveWatch(v){selectedActiveWatch=v;},
+ get doorFocusId(){return doorFocusId;},set doorFocusId(v){doorFocusId=v;},
+ get doorMenuDismissedId(){return doorMenuDismissedId;},
+ set doorMenuDismissedId(v){doorMenuDismissedId=v;},
+ get flashMode(){return flashMode;},get pushMode(){return pushMode;},
+ get firePlacement(){return firePlacement;},get evacMode(){return evacMode;},
+ get trace(){return trace;},tacticalFeedback,pointerAimWorld,pointerWorld,
+ worldToScreen,followReplayOperator,historicalShotVisible,selectUnit,
+ useSelectedGround,showUiHelp,adoptPointerOwner,uid,rejectAt,teach,
+ insertAtRouteLine,selectedPlanNode
+},e,p,cancelled,pointerCount);
 }
 window.addEventListener('resize',layout);
 missionScreens.bindMenus();
