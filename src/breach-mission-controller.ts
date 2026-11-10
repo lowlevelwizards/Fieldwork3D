@@ -1,3 +1,4 @@
+import {setPresentationWorldSession} from './breach-world-context.ts';
 /** One owner for tactical session lifetimes and deployment preparation.
  * Session creation and insertion validity remain in breach-game.ts. This
  * controller sequences snapshots, resources, and transitions; it does NOT
@@ -248,6 +249,7 @@ export class BreachMissionController{
    */
   resumeLiveSession(live:Session):Session{
     activateSite(live.site??null);
+    setPresentationWorldSession(live);
     return live;
   }
   /** Explicitly forget view cache when exiting a live tactical session. */
