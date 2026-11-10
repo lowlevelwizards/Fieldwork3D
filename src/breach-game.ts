@@ -888,7 +888,9 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
   }
   // The entire replacement stroke (including implicit door actions) is
   // ONE undoable transaction. A rejected stroke leaves the old route intact.
-  return edit(s,a,()=>{
+  const codes=new Set(replaceExisting?
+    a.plan.filter(n=>n.kind==='sync'&&n.syncCode).map(n=>n.syncCode!):[]);
+  return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{
     if(replaceExisting)a.plan=retainedWatch?[retainedWatch,...expanded]:expanded;
     else a.plan.push(...expanded);
     s.nextId+=expanded.length;
@@ -896,7 +898,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
       outcome.clipped=clipped;
       outcome.endpoint=clone(expanded.at(-1)!.p);
     }
-  });
+  }));
 }
 export function setStrafe(s:Session,id:string,nodeId:number):boolean{
   const a=party(s,id);if(!a||!canEdit(s))return false;
@@ -912,21 +914,31 @@ export function setStrafe(s:Session,id:string,nodeId:number):boolean{
     }
   });
 }
-/** Remove exactly one final queued order (not the whole plan or its path). */
+/** Removal of a coordinated SYNC is itself a team transaction.
+ * Other participants never retain a stranded wait when HERE redraw,
+ * DELETE, CLEAR or BACK removes the link. */
+function editRemovingSync(s:Session,a:TeamActor,codes:Set<string>,
+ change:()=>boolean):boolean{
+ const linked=team(s).filter(peer=>peer!==a&&peer.health>0&&
+   peer.plan.some(n=>n.kind==='sync'&&!!n.syncCode&&codes.has(n.syncCode)));
+ if(!linked.length)return change();
+ return atomicTeamEdit(s,[a,...linked],()=>{
+  if(!change())return false;
+  for(const peer of linked)
+   if(!edit(s,peer,()=>{
+    peer.plan=peer.plan.filter(n=>
+      n.kind!=='sync'||!n.syncCode||!codes.has(n.syncCode));
+   }))return false;
+  return true;
+ });
+}
+/** BACK removes one last instruction and its coordinated SYNC link. */
 export function backOne(s:Session,id:string){
-  const a=party(s,id);
-  if(!a||!canEdit(s)||!a.plan.length)return false;
-  const tail=a.plan.at(-1)!;
-  // A shared sync must not leave the partner waiting for an absent code.
-  if(tail.kind==='sync'&&tail.syncCode){
-    for(const partner of team(s)){
-      if(partner===a)continue;
-      const index=partner.plan.findIndex(n=>
-        n.kind==='sync'&&n.syncCode===tail.syncCode);
-      if(index>=0)edit(s,partner,()=>{partner.plan.splice(index,1);});
-    }
-  }
-  return edit(s,a,()=>{a.plan.pop();});
+ const a=party(s,id);
+ if(!a||!canEdit(s)||!a.plan.length)return false;
+ const tail=a.plan.at(-1)!;
+ const codes=new Set(tail.kind==='sync'&&tail.syncCode?[tail.syncCode]:[]);
+ return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan.pop();}));
 }
 /** The player chooses a world-space pivot; doors are no longer special. */
 export function planPieAt(s:Session,id:string,pivot:Pt,side:PieSide,degrees=54,
@@ -1008,12 +1020,14 @@ export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
   return edit(s,a,()=>{a.plan=proposed;});
 }
 export function deletePlanNode(s:Session,id:string,nodeId:number){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const index=a.plan.findIndex(n=>n.id===nodeId);
-  if(index<0)return false;
-  const proposed=copyNodes(a.plan);proposed.splice(index,1);
-  if(!validEditedPlan(s,a.p,proposed))return false;
-  return edit(s,a,()=>{a.plan=proposed;});
+ const a=party(s,id);if(!a||!canEdit(s))return false;
+ const index=a.plan.findIndex(n=>n.id===nodeId);
+ if(index<0)return false;
+ const removed=a.plan[index];
+ const proposed=copyNodes(a.plan);proposed.splice(index,1);
+ if(!validEditedPlan(s,a.p,proposed))return false;
+ const codes=new Set(removed.kind==='sync'&&removed.syncCode?[removed.syncCode]:[]);
+ return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan=proposed;}));
 }
 export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
   const a=party(s,id);if(!a||!canEdit(s))return false;
@@ -1415,7 +1429,10 @@ export function planSync(s:Session,participantIds?:readonly string[]){
  });
 }
 export function clearPlan(s:Session,id:string){
-  const a=party(s,id);return a?edit(s,a,()=>{a.plan=[];}):false;
+ const a=party(s,id);if(!a)return false;
+ const codes=new Set(a.plan.filter(n=>n.kind==='sync'&&n.syncCode)
+   .map(n=>n.syncCode!));
+ return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan=[];}));
 }
 export function undoPlan(s:Session,id:string){
  return undoAuthoredPlan(s,id,party);
