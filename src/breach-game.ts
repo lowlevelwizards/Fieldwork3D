@@ -18,7 +18,7 @@ import {incomingHitFacing} from './breach-combat-reactions.ts';
  * Author intent is editable PlanNode[]; motor navigation is transient.
  * Legacy 052 entrypoints remain in breach-core for comparison/tests only.
  */
-import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,WALLS,COVER,initialDoors,newTacticalState,route,passable,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,staticWallBlocksRay,someCoverAlongRay,activeGeometryRevision} from './breach-core.ts';
+import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,initialDoors,newTacticalState,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,} from './breach-core.ts';
 import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions} from './breach-entry-coordination.ts';
@@ -62,7 +62,7 @@ import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {type AIIntent} from './breach-ai-policy.ts';
 
-import {registerSessionWorldGeometry} from './breach-world-context.ts';
+import {registerSessionWorldGeometry,sessionWorldGeometry} from './breach-world-context.ts';
 
 
 import {newSuspicion,type SuspicionMemory} from './breach-ai-suspicion.ts';
@@ -302,9 +302,9 @@ function cachedEnemyRoute(s:Session,from:Pt,to:Pt,physicalDoors=false):Pt[]{
     door.id,door.kind,door.open,door.openFraction,
     door.hinge,door.swing,door.slideDirection
   ].join(':')).join(';'):'static';
-  return cache.get(from,to,activeGeometryRevision(),
+  return cache.get(from,to,sessionWorldGeometry(s).revision,
     Math.round(s.seconds*60),leafSignature,()=>
-      physicalDoors?routeWithSqueezeWorld(from,to,s.doors):route(from,to));
+      physicalDoors?routeWithSqueezeWorld(from,to,s.doors,sessionWorldGeometry(s)):sessionWorldGeometry(s).route(from,to));
 }
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
@@ -556,7 +556,7 @@ export function selectDeployment(s:Session,id:string):boolean{
  const choice=id==='FRONT'?null:availableDeployments(s).find(c=>c.id===id);
  if(id!=='FRONT'&&!choice)return false;
  const positions=choice?.spots??s.site.spawn;
- if(positions.length<team(s).length||!team(s).every((_,i)=>passable(positions[i],8)))
+ if(positions.length<team(s).length||!team(s).every((_,i)=>sessionWorldGeometry(s).passable(positions[i],8)))
   return false;
  team(s).forEach((a,i)=>{
   a.p=clone(positions[i]);a.priorP=clone(positions[i]);
@@ -583,7 +583,7 @@ export const canEdit=(s:Session)=>s.phase==='planning';
 function knownWindowWorld(s:Session){
  const cover=s.coverState.filter((_,i)=>s.intel.cover.has(i));
  return {
-  cover,walls:WALLS.filter((_,i)=>s.intel.walls.has(i)),
+  cover,walls:sessionWorldGeometry(s).walls.filter((_,i)=>s.intel.walls.has(i)),
   doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
   windows:s.windows.filter(w=>s.intel.cover.has(s.coverState.findIndex(o=>
     (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
@@ -614,7 +614,7 @@ function knownShoveCrossing(s:Session,from:Pt,to:Pt):number|null{
  // A shove cannot be used to disguise an ordinary known wall or a latched
  // door, even when its sample is inside the expanded furniture envelope.
  const segment={a:from,b:to};
- if(WALLS.some((wall,index)=>s.intel.walls.has(index)&&
+ if(sessionWorldGeometry(s).walls.some((wall,index)=>s.intel.walls.has(index)&&
     segmentsCross(segment,wall)))return null;
  if(s.doors.some(door=>doorKnown(s.intel,door.id)&&
     doorBlocksSegment(door,segment)))return null;
@@ -678,7 +678,7 @@ export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
   const a=party(s,id);if(!a||!canEdit(s))return false;
   if(kind==='move'&&!intelPassable(p,s.intel,SQUEEZE_RADIUS))return false;
   if(kind==='move'&&!legalMoveRoute(s,finalPoint(a),p).length)return false;
-  if(kind==='door'&&(!passable(p)||!route(finalPoint(a),p).length))return false;
+  if(kind==='door'&&(!sessionWorldGeometry(s).passable(p)||!sessionWorldGeometry(s).route(finalPoint(a),p).length))return false;
   return edit(s,a,()=>{
     a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
   });
@@ -1189,7 +1189,7 @@ export function planSquadEntry(s:Session,doorId:string){
   const start=finalPoint(alive[0]);
   // Planning may use only legitimately known geometry, never hidden enemies.
   const slots=entryLanes(door,start,alive.length,p=>
-    passable(p)&&!!routeWithIntel(s.intel,start,p).length);
+    sessionWorldGeometry(s).passable(p)&&!!routeWithIntel(s.intel,start,p).length);
   if(slots.length!==alive.length){
     notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
     return false;
@@ -1547,7 +1547,7 @@ function snapFlashTarget(from:Pt,target:Pt,doors:Door[],
       choices.push({x:target.x+Math.cos(angle)*r,
         y:target.y+Math.sin(angle)*r});
     }
-  return choices.find(p=>passable(p,3.5)&&
+  return choices.find(p=>sessionWorldGeometry(s).passable(p,3.5)&&
     validateThrow(from,p,doors,opened).valid)??null;
 }
 /** Two team-wide flashbangs per mission. Throwing is an authored timed order. */
@@ -1580,8 +1580,8 @@ export function planDoorFlash(s:Session,id:string,doorId:string,target:Pt,
   if(index<0)return false;
   const start=index>0?a.plan[index-1].p:a.p;
   const approached=doorReachable(start,door)?clone(start):doorApproach(start,door);
-  if(!approached||!passable(approached)||
-     !route(start,approached).length)return false;
+  if(!approached||!sessionWorldGeometry(s).passable(approached)||
+     !sessionWorldGeometry(s).route(start,approached).length)return false;
   const before=a.plan.slice(0,index);
   const opened=before.filter(n=>n.kind==='door'&&(n.method==='open'||n.method==='kick'))
     .map(n=>n.doorId??'');
@@ -1698,11 +1698,11 @@ function hear(s:Session,p:Pt,radius:number,kind:string){
 }
 function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   const ray={a,b};
-  if(staticWallBlocksRay(ray))return false;
+  if(sessionWorldGeometry(s).staticWallBlocksRay(ray))return false;
   if(doorBlocksSightRay(s.doors,ray))return false;
   // The broadphase only excludes distant static obstacles; the final
   // slab and optical tests remain authoritative at any framerate.
-  return !someCoverAlongRay(a,b,o=>coverBlocksOpticalSight(o,lowBlocks)&&
+  return !sessionWorldGeometry(s).someCoverAlongRay(a,b,o=>coverBlocksOpticalSight(o,lowBlocks)&&
     segmentHitsBox(a,b,o));
 }
 /** Physical geometry visibility, independently of acquisition time. */
@@ -1718,7 +1718,7 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
   // This remains exact through mid-tick door interactions, actor movement,
   // crouching and cover damage. Neither fog nor awareness is cached.
   return cache.get(a,b,s.seconds,
-    s.objectRevision+'/'+activeGeometryRevision(),s.doors,()=>
+    s.objectRevision+'/'+sessionWorldGeometry(s).revision,s.doors,()=>
       !exposure(a.p,b.p,s.doors,
         b.posture==='crouch',a.posture==='crouch',true).blocked);
 }
@@ -1997,7 +1997,7 @@ function stepFlashbangs(s:Session,h:number){
       const dist=d(a.p,g.to);
       if(dist>105)continue;
       const ray={a:g.to,b:a.p};
-      const blocked=WALLS.some(w=>segmentsCross(ray,w))||
+      const blocked=sessionWorldGeometry(s).walls.some(w=>segmentsCross(ray,w))||
         doorBlocksRay(s.doors,ray);
       if(blocked)continue;
       const duration=2.8*(1-dist/140);
@@ -2048,7 +2048,7 @@ function resolveCloseContact(s:Session){
 /** Shared gameplay action; physical object selection is based on its ID. */
 export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  if(s.phase==='won'||s.phase==='lost')return false;
- const moved=relocateCover(s.coverState,index,to,WALLS,s.doors,
+ const moved=relocateCover(s.coverState,index,to,sessionWorldGeometry(s).walls,s.doors,
    [...s.operators.filter(a=>a.health>0).map(a=>a.p),
     ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
  if(!moved)return false;
@@ -2095,7 +2095,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     casualty.health=Math.max(0,4-casualty.injuryStage);
     if(casualty.health<=0){
       casualty.lastDownAt=s.seconds;
-      const fall=wallSafeFall(casualty.p,casualty.heading,'slump',WALLS);
+      const fall=wallSafeFall(casualty.p,casualty.heading,'slump',sessionWorldGeometry(s).walls);
       casualty.downPose=fall.pose;casualty.downClearance=fall.space;
       casualty.plan=[];casualty.nav=[];casualty.path=[];casualty.velocity=0;
       notify(s,casualty.name+' DOWN — UNCONTROLLED BLEEDING');
@@ -2199,7 +2199,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       if(resolve==='surrender'){
         a.surrendered=true;a.health=0;a.injuryStage=3;
         a.lastDownAt=s.seconds;
-        const fall=wallSafeFall(a.p,a.heading,'slump',WALLS);
+        const fall=wallSafeFall(a.p,a.heading,'slump',sessionWorldGeometry(s).walls);
         a.downPose=fall.pose;a.downClearance=fall.space;
         a.velocity=0;a.nav=[];a.plan=[];
         a.reload=0;a.reloadMode=null;
@@ -2293,7 +2293,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       ...s.civilians.filter(c=>c.health>0)];
     for(const civil of s.civilians){
       stepCivilianResponse(civil,s.seconds,h,{
-        noise:s.noise,people:s.operators,doors:s.doors,walls:WALLS,
+        noise:s.noise,people:s.operators,doors:s.doors,walls:sessionWorldGeometry(s).walls,
         windows:s.windows,
         canSee:(from,to)=>unobstructed(from,to,s,false),
         canReach:(from,to)=>sweptBodyClear(from,to,s.doors),
