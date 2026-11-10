@@ -1,4 +1,5 @@
-import {setPresentationWorldSession,publishSessionCoverToActiveSite} from './breach-world-context.ts';
+import {adoptPresentationWorldSession,withDetachedPresentationWorld,
+ publishSessionCoverToActiveSite,setPresentationWorldSession} from './breach-world-context.ts';
 /** One owner for tactical session lifetimes and deployment preparation.
  * Session creation and insertion validity remain in breach-game.ts. This
  * controller sequences snapshots, resources, and transitions; it does NOT
@@ -101,6 +102,8 @@ export class BreachMissionController{
     this.currentStart=captureMissionStart(session,prefs.requestedSiteScale);
     this.deploymentSession=null;
     this.deploymentOptions=[];
+    // The actual mission is adopted only after creation and roster edits.
+    adoptPresentationWorldSession(session);
     return session;
   }
   private applyRequestedCondition(session:Session,condition:number|null):void{
@@ -167,6 +170,9 @@ export class BreachMissionController{
   /** The replay gets a distinct read-only presentation session. Never
    * mutate this controller's live start snapshot or selected entry. */
   createReplaySession(recorder:MissionRecorder,live:Session):Session{
+   // Historical sessions are built without stealing the live mission's
+   // process-global compatibility geometry or presentation owner.
+   return withDetachedPresentationWorld(()=>{
     const manifest=recorder.manifest;
     const site=manifest?.site;
     const session=newSession(manifest?.variant??live.variant,
@@ -183,6 +189,7 @@ export class BreachMissionController{
     this.hooks.applyRoster(session);
     applyReplayActorIdentity(session,manifest);
     return session;
+   });
   }
   /** Refresh the UI from session state, not inferred scene geometry. */
   refreshDeployment(session:Session,replaying:boolean):void{
@@ -249,14 +256,13 @@ export class BreachMissionController{
    * came from a completely different mission.
    */
   resumeLiveSession(live:Session):Session{
-    activateSite(live.site??null);
-    setPresentationWorldSession(live);
-    publishSessionCoverToActiveSite(live);
+    adoptPresentationWorldSession(live);
     return live;
   }
   /** Explicitly forget view cache when exiting a live tactical session. */
   releasePresentation():void{
     this.deploymentSession=null;
     this.deploymentOptions=[];
+    setPresentationWorldSession(null);
   }
 }
