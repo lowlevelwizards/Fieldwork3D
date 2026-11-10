@@ -115,7 +115,7 @@ import {civilianTransportEligible,dropCivilianCustody,proposedCivilianTransportS
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 
 import {DEFAULT_SKILLS,type ShootingSkills} from './breach-skills.ts';
-import {shotYaw,type FiringMode} from './breach-ballistics.ts';
+import {type FiringMode} from './breach-ballistics.ts';
 
 
 import {advanceRescueEscort,type RescueEscort} from './breach-rescue-escort.ts';
@@ -131,7 +131,7 @@ import {liveMagazineCapacity,freshMagazineIssue} from './arsenal/live-magazine-c
 
 import {type EjectedCasing} from './breach-effects.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
-import {hitRegion,type WoundRegion,type FallPose} from './breach-wounds.ts';
+import {type WoundRegion,type FallPose} from './breach-wounds.ts';
 import {newMedicalCondition,advanceMedicalCondition,mostUrgentWound,type MedicalCondition} from './breach-medical-wounds.ts';
 
 export type Posture='stand'|'crouch';
