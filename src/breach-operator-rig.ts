@@ -2,6 +2,7 @@ import type {OperatorPose} from './breach-operator-animation-contract.ts';
 /** 109–113. Deliberately simple box anatomy and independently articulated limbs.
  * The battle motor remains authoritative. IK is presentation-only. */
 import * as THREE from 'three';
+import {resetOperatorPoseOutput} from './breach-operator-pose-output.ts';
 import {CORE_TORSO_CONTACT} from './operator-garment-contact-surface.ts';
 import {operatorPixelTextures,type PixelSurface} from './rendering/pixel-materials.ts';
 import {canonicalRootOrientation,LEGACY_FRAME_YAW,createCanonicalAttachment} from './operator-axis-convention.ts';
@@ -336,7 +337,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
       obj.material instanceof THREE.MeshStandardMaterial)
       colors.set(obj.material,obj.material.color.clone());
   });
-  return {root,camoIdentity:id,legacyFrame,headCanonicalFrame,
+  const rig:OperatorRig={root,camoIdentity:id,legacyFrame,headCanonicalFrame,
     legacyYaw:0,legacyPitch:0,legacyRoll:0,
     hip,chest,head,weapon,droppedGun,feet,arms,pack,
     bodycamChest,bodycamHelmet,
@@ -363,6 +364,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     lastHandling:null,lastHandlingAt:-100,autoHandling:null,
     elbowSpread:[0,0],legGap:[0,0],
     dispose:()=>{
+      resetOperatorPoseOutput(rig);
       // All shortened variants must be released, even if not selected at
       // the moment of disposal. They are not scene children themselves.
       const geometries=new Set<THREE.BufferGeometry>();
@@ -375,6 +377,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
       }});
       for(const geo of geometries)geo.dispose();
       weaponLensMaterial.dispose();}};
+  return rig;
 }
 
 /** Compatibility entrypoint. All pose evaluation is presentation-owned. */
