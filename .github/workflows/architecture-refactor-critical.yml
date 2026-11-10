@@ -76,6 +76,10 @@ jobs:
         if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage2-') }}
         run: |
           node --experimental-strip-types --test tests/breach-closeout-stage2-simulation-phases.test.mjs tests/breach-roadmap4-simulation-phases.test.mjs tests/breach-roadmap2-stage1-contracts.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-roadmap2-stage8-orders.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/breach-roadmap2-stage10-combat.test.mjs tests/breach-roadmap2-stage3-knowledge.test.mjs tests/replay-r2-recording.test.mjs tests/replay-r2-ballistics.test.mjs tests/replay-r3-archive.test.mjs tests/sim-frame-origin-proposal-p9.test.mjs
+      - name: Closeout Stage 3 — same-seed view parity, bounded scene resources and disclosure
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage3-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-closeout-stage3-presentation.test.mjs tests/breach-roadmap3-3d-disclosure.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-roadmap2-stage3-knowledge.test.mjs tests/breach-roadmap2-stage3-integration.test.mjs tests/breach-fog-visibility.test.mjs tests/breach-fog-ray-broadphase-performance.test.mjs tests/breach-p7-fog-layer-performance.test.mjs tests/breach-roadmap2-visibility-contract.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/fog-interior-occlusion-regression.test.mjs tests/breach-scene-memory-lifecycle-p6.test.mjs tests/breach-site-material-lifetime.test.mjs tests/breach-scene-frame-p7.test.mjs tests/replay-r43-personal-visibility.test.mjs tests/replay-r43b-video-disclosure.test.mjs tests/visibility-10-architectural-fog.test.mjs
       - name: Architecture dependency boundary check
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production TypeScript and asset build
