@@ -53,3 +53,56 @@ No changes to movement speed, collision radii, cover destructibility,
 AI knowledge, shot penetration, civilian policy, deterministic RNG, fog-of-war,
 render visual style, replay format, or weapon/magazine logic. No automatic
 fingerprint rebaselining.
+
+## Completed ownership map and implementation detail
+
+| Concern | Owner / explicit transport |
+| --- | --- |
+| Mission walls and bounds | `SessionWorldGeometry` WeakMap, structural snapshot and live `s.site` metadata |
+| Breakable/relocatable cover | Exact `s.coverState` array, local revision-based spatial index, forced invalidation on replay seek |
+| Routefinding | World-aware A* passability, normal / squeeze paths, motor route cache and physical repair |
+| Body, door and furniture | Scoped swept body and profile, hinge sweep cache, door pressure, step recovery, clutter shove |
+| Mission intel | Non-serialized weak binding from `IntelState` to owning world; observed cover/walls and fog remain independent |
+| Enemy response | Scoped defense, search, communication acoustics, tactical fire lane and muzzle clearance |
+| Combat | Scoped wall and cover penetration, ballistic interception, fire safety, environmental effects and harm attribution |
+| Authoring | Session-aware deployment selection, PIE, movement / medical / door / flashbang instructions |
+| Replay and session switch | Keep replay cover array identity, invalidate broadphase when seeking, restore active live presentation mirror |
+| Graphics | Session surface disclosure and light-blocking consult the same owning wall and cover snapshots |
+| Legacy compatibility | Direct `WALLS` / `COVER` and site activation remain for isolated preview / offline utilities; **only the matching active presentation Session may publish cover** |
+
+### Mutation and cache contracts
+- All authoritative cover mutation remains on `s.coverState`, bumping
+  `s.objectRevision` for motion and material damage.
+- Unlike the simulation revision, a replay seek may set that revision
+  backward or to an equal value; `invalidateSessionWorldGeometry(s)`
+  rebuilds the private broadphase after restoring the *same* cover array.
+- Hinge sweep caching keys by both world identity and that world's own
+  revision, plus mutable hinge endpoints and orientation. Other sessions
+  cannot invalidate a mission's hinge geometry by activating a map.
+- `publishSessionCoverToActiveSite` is explicitly a presentation
+  compatibility adapter, guarded by both the active Session identity
+  and site identity. It is never used to decide collisions or shots.
+- Session intel is bound through a WeakMap, not serialized or stored as a
+  direct geometry field in replay archives. Restoring intel explicitly
+  rebinds it to the Session's world.
+
+### Verification evidence
+The Stage 12 critical CI gate performs frozen Stage 1 combat, civilian,
+WAIT, medical and door-outcome regression sweeps alongside:
+- Interleaved active missions with independent deterministic 60 Hz results
+- Site switches / synchronous temporary geometry audits
+- Independent cover movement and per-session revision invalidation
+- Confirmed ballistics and hinge broadphase stability after another map activation
+- Replay seek with intact cover-array identity, separate public cover mirror and
+  refreshed intel lookup
+- Two sessions sharing the **same Site object** with separate physical
+  cover state; background mutations cannot publish to the active view
+
+Existing architecture, motor, animation, mission lifecycle, passage,
+performance and production gates must also pass without rebaselining goldens.
+
+## Future cleanup
+A subsequent isolated compatibility-removal project can migrate the
+remaining old map previews and editor-only helpers off the global adapter.
+It must **not** change the now-established Session simulation interface or
+silently alter legacy tools before their dependencies are audited.
