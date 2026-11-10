@@ -1179,111 +1179,69 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
  * so players can adjust a tight site individually.
  */
 export function planStackTeam(s:Session,doorId:string){
-  if(!canEdit(s))return false;
-  let count=0;
-  for(const a of team(s))if(a.health>0&&planStack(s,a.id,doorId))count++;
-  if(count)notify(s,'STACK '+count+' / '+team(s).filter(a=>a.health>0).length);
+ if(!canEdit(s)||!doorKnown(s.intel,doorId))return false;
+ const members=team(s).filter(a=>a.health>0);
+ let count=0;
+ const ok=atomicTeamEdit(s,members,()=>{
+  for(const a of members)if(planStack(s,a.id,doorId))count++;
   return count>0;
+ });
+ if(ok)notify(s,'STACK '+count+' / '+members.length);
+ return ok;
 }
 /** Coordinated entry: reserve distinct stack positions, synchronize at
  * a shared go-code, open the door with the lead, then feed others through
  * at staggered intervals. Tactical pathfinding remains authoritative.
  */
 export function planSquadEntry(s:Session,doorId:string){
-  const door=s.doors.find(d=>d.id===doorId);
-  if(!door||!canEdit(s))return false;
-  const alive=team(s).filter(a=>a.health>0);
-  if(!alive.length)return false;
-  const start=finalPoint(alive[0]);
-  // Planning may use only legitimately known geometry, never hidden enemies.
-  const slots=entryLanes(door,start,alive.length,p=>
-    sessionWorldGeometry(s).passable(p)&&!!routeWithIntel(s.intel,start,p).length);
-  if(slots.length!==alive.length){
-    notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
-    return false;
+ const door=s.doors.find(d=>d.id===doorId);
+ if(!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
+ const alive=team(s).filter(a=>a.health>0);
+ if(!alive.length)return false;
+ const start=finalPoint(alive[0]);
+ // Predicted entry geometry sees only discovered walls and furniture.
+ // Actual doorway passage and clearance remain the live motor's authority.
+ const slots=entryLanes(door,start,alive.length,p=>
+   intelPassable(p,s.intel,SQUEEZE_RADIUS)&&
+   !!routeWithSqueezeIntel(s.intel,start,p).length);
+ if(slots.length!==alive.length){
+  notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
+  return false;
+ }
+ for(let i=0;i<alive.length;i++){
+  if(!routeWithSqueezeIntel(s.intel,finalPoint(alive[i]),slots[i].point).length){
+   notify(s,'SQUAD ENTRY BLOCKED · CHECK ROUTE');
+   return false;
   }
-  // The preview's destinations are preflighted before any actor is edited.
-  for(let i=0;i<alive.length;i++){
-    if(!routeWithIntel(s.intel,finalPoint(alive[i]),slots[i].point).length){
-      notify(s,'SQUAD ENTRY BLOCKED · CHECK ROUTE');
-      return false;
-    }
-  }
-  // PlanStack, Sync, Door, Wait and Move each validate independently. All
-  // those operations must commit together or restore the exact old plans,
-  // histories and temporary planning state. Earlier behavior could strand
-  // one or more teammates with partial ENTRY/SYNC instructions on failure.
-  const originals=alive.map(a=>({
-    actor:a,plan:copyNodes(a.plan),
-    history:{undo:a.history.undo.map(copyNodes),
-      redo:a.history.redo.map(copyNodes)},
-    path:a.path.map(clone),nav:a.nav.map(clone),
-    activeNode:a.activeNode,waitRemaining:a.waitRemaining,
-    actionTimer:a.actionTimer,syncReady:a.syncReady,pieIndex:a.pieIndex
-  }));
-  const initialId=s.nextId,initialSync=s.syncCode;
-  const rollback=()=>{
-    for(const before of originals){
-      const a=before.actor;
-      a.plan=before.plan;a.history=before.history;
-      a.path=before.path;a.nav=before.nav;
-      a.activeNode=before.activeNode;
-      a.waitRemaining=before.waitRemaining;
-      a.actionTimer=before.actionTimer;
-      a.syncReady=before.syncReady;a.pieIndex=before.pieIndex;
-    }
-    s.nextId=initialId;s.syncCode=initialSync;
-    return false;
-  };
-  for(const a of alive){
-    if(!a.plan.some(n=>n.stackDoorId===doorId)&&
-       !planStack(s,a.id,doorId))return rollback();
-  }
-  if(!planSync(s,alive.map(a=>a.id)))return rollback();
+ }
+ const committed=atomicTeamEdit(s,alive,()=>{
+  for(const a of alive)
+   if(!a.plan.some(n=>n.stackDoorId===doorId)&&
+     !planStack(s,a.id,doorId))return false;
+  if(!planSync(s,alive.map(a=>a.id)))return false;
   const lead=alive[0];
-  if(!planDoor(s,lead.id,doorId,'open'))return rollback();
+  if(!planDoor(s,lead.id,doorId,'open'))return false;
   for(let i=0;i<alive.length;i++){
-    const a=alive[i],slot=slots[i];
-    if(i>0){
-      // A generated entry gate waits for ACTUAL door clearance, not an
-      // additional artificial .3s after clearance. Existing passage
-      // reservations and swept-body checks provide real follower spacing.
-      // Only this synthesized gate gets duration zero; a player's explicit
-      // WAIT still retains its chosen .3-6 second duration.
-      if(!planWait(s,a.id,.3))return rollback();
-      const gate=a.plan.at(-1);
-      if(gate?.kind!=='wait')return rollback();
-      gate.doorId=doorId;gate.duration=0;
-    }
-    if(!planMove(s,a.id,slot.point)){
-      notify(s,a.name+' ENTRY ROUTE UNAVAILABLE');
-      return rollback();
-    }
-    const arrival=a.plan.at(-1);
-    if(arrival?.kind!=='move'||
-       !planAim(s,a.id,'fixed',slot.look,arrival.id,'look'))
-      return rollback();
-    // Only this authored template may start facing the selected sector
-    // during the same MOVE, once its real body clears the door plane.
-    // Manual LOOK/MOVE plans never gain this marker automatically.
-    const assigned=a.plan.find(n=>n.id===arrival.id);
-    if(!assigned)return rollback();
-    assigned.entryDoorId=doorId;
+   const a=alive[i],slot=slots[i];
+   if(i>0){
+    // A generated zero-duration gate is never an ordinary player WAIT.
+    if(!planWait(s,a.id,.3))return false;
+    const gate=a.plan.at(-1);
+    if(gate?.kind!=='wait')return false;
+    gate.doorId=doorId;gate.duration=0;
+   }
+   if(!planMove(s,a.id,slot.point))return false;
+   const arrival=a.plan.at(-1);
+   if(arrival?.kind!=='move'||
+     !planAim(s,a.id,'fixed',slot.look,arrival.id,'look'))return false;
+   const assigned=a.plan.find(n=>n.id===arrival.id);
+   if(!assigned)return false;
+   assigned.entryDoorId=doorId;
   }
-  // Collapse the many internal authoring steps into ONE undo entry per
-  // participant. A single UNDO/REDO of any unchanged squad entry restores
-  // the entire original coordinated plan instead of orphaning a sync code.
-  const transaction:SquadPlanTransaction={members:alive.map(a=>a.id),
-    before:Object.fromEntries(originals.map(b=>[b.actor.id,copyNodes(b.plan)])),
-    after:Object.fromEntries(alive.map(a=>[a.id,copyNodes(a.plan)]))};
-  for(const original of originals){
-    const a=original.actor;
-    a.history.undo=[...original.history.undo,copyNodes(original.plan)].slice(-40);
-    a.history.redo=[];
-  }
-  s.squadEntryUndo=transaction;s.squadEntryRedo=null;
-  notify(s,'SQUAD ENTRY READY · DISTINCT LANES · GO TO EXECUTE');
   return true;
+ });
+ if(committed)notify(s,'SQUAD ENTRY READY · DISTINCT LANES · GO TO EXECUTE');
+ return committed;
 }
 /** Tactical WAIT: hold for the minimum interval, and continue only after
  * any visible living contact has been absent for that entire interval.
@@ -1446,13 +1404,15 @@ export function planWait(s:Session,id:string,seconds=1){
     {duration:clamp(seconds,.3,6)}):false;
 }
 export function planSync(s:Session,participantIds?:readonly string[]){
-  if(!canEdit(s))return false;
-  const participants=team(s).filter(a=>a.health>0&&
-    (!participantIds||participantIds.includes(a.id)));
-  if(!participants.length)return false;
+ if(!canEdit(s))return false;
+ const participants=team(s).filter(a=>a.health>0&&
+   (!participantIds||participantIds.includes(a.id)));
+ if(!participants.length)return false;
+ return atomicTeamEdit(s,participants,()=>{
   const code='B'+(++s.syncCode);
   return participants.every(a=>addNode(s,a.id,'sync',finalPoint(a),
     {syncCode:code}));
+ });
 }
 export function clearPlan(s:Session,id:string){
   const a=party(s,id);return a?edit(s,a,()=>{a.plan=[];}):false;
