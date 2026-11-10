@@ -44,6 +44,7 @@ test('identity studio edits do not add equipment or anatomy mutations',()=>{
  assert.match(studio,/HAIRCUT/);
  assert.match(studio,/HAIR COLOR/);
  assert.match(kit,/HAIR_STYLE_IDS\[i\]===hairStyle/);
- assert.match(rig,/r\.colors\.set\(r\.skinMaterial/);
+ assert.match(rig,/for\(const skinMaterial of \[r.skinMaterial,r.faceSkinMaterial/);
+ assert.match(rig,/r\.colors\.set\(skinMaterial,new THREE.Color\(SKIN_TONES\[complexion\]\.hex\)\)/);
  assert.doesNotMatch(studio,/setEquipmentChoice\(.*'skinTone'/);
 });
