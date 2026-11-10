@@ -4,7 +4,9 @@ import {createEnemyDecisionController} from './breach-enemy-decision-controller.
 import {edit,validEditedPlan,validKnownPieArc,knownDoorApproach,
  atomicTeamEdit,sealPlanHistoryForExecution,undoAuthoredPlan,redoAuthoredPlan}
  from './breach-plan-authoring.ts';
-import {simulationPhaseMark,advanceTransientSimulationEffects,recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
+import {advanceSimulationTick,type SimulationPhasePort} from './breach-simulation-phases.ts';
+import {advanceMedicalDoorPhase} from './breach-simulation-medical-door-phase.ts';
+import {advanceBeliefAgingPhase} from './breach-simulation-belief-phase.ts';
 
 import {advanceActorMotor} from './breach-actor-motor.ts';
 import {createOrderExecutor} from './breach-order-executor.ts';
@@ -42,7 +44,7 @@ import {type FireBlock} from './breach-fire-safety.ts';
 
 
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {initDoor,advanceDoor,doorReachable,initialOpeningYieldCandidate} from './breach-door.ts';
+import {initDoor,doorReachable} from './breach-door.ts';
 
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool} from './equipment-entry-tools.ts';
@@ -50,7 +52,7 @@ import {canUseEntryTool} from './equipment-entry-tools.ts';
 import {type AutoSidestep} from './breach-auto-sidestep.ts';
 
 import {resolveMovementFrame} from './breach-movement-authority.ts';
-import {captureMotionFrameOrigins,buildMotionFrameProposals} from './breach-motion-frame-input.ts';
+import {buildMotionFrameProposals} from './breach-motion-frame-input.ts';
 
 import {type MotorPause,type ExecutionIssue,type ExecutionStatus} from './breach-execution-state.ts';
 import {type ExecutionEvent} from './breach-execution-events.ts';
@@ -91,7 +93,7 @@ import {type GroupRole} from './breach-ai-coordination.ts';
 
 
 import {moraleResponse,witnessShock,countNearbyEnemyAllies} from './breach-ai-morale.ts';
-import {newAwareness,ageAwareness,clearObservedPosition,type ActorAwareness} from './breach-awareness.ts';
+import {newAwareness,type ActorAwareness} from './breach-awareness.ts';
 import {confirmedSight} from './breach-visual-perception.ts';
 
 import type {LightingMode} from './equipment-site-lighting.ts';
@@ -133,7 +135,7 @@ import {liveMagazineCapacity,freshMagazineIssue} from './arsenal/live-magazine-c
 import {type EjectedCasing} from './breach-effects.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {type WoundRegion,type FallPose} from './breach-wounds.ts';
-import {newMedicalCondition,advanceMedicalCondition,mostUrgentWound,type MedicalCondition} from './breach-medical-wounds.ts';
+import {newMedicalCondition,mostUrgentWound,type MedicalCondition} from './breach-medical-wounds.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
@@ -2054,111 +2056,12 @@ export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  battleEvent(s,'interaction',null,to,'FURNITURE MOVED');
  return true;
 }
-/** Live bodies that can resist any door swing. Updated only after a
- * physical opening-yield changes a position during this door phase.
- * No stale position or actor is ever reused across simulation ticks. */
-function liveDoorOccupants(s:Session):Pt[]{
-  const positions:Pt[]=[];
-  for(const operator of s.operators)
-    if(operator.health>0)positions.push(operator.p);
-  for(const civilian of s.civilians)
-    if(civilian.health>0)positions.push(civilian.p);
-  return positions;
-}
 /** Optional phase timings used by the offline benchmark, never required by play. */
 export type StepPhaseProbe=(phase:string,elapsedMs:number)=>void;
-export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
-  if(s.phase!=='running')return;
-  const mark=simulationPhaseMark(probe);
-  const h=clamp(dt,0,1/30);
-  s.seconds+=h;
-  for(const operator of s.operators)operator.treatmentActive=false;
-  // Medical state advances on the authoritative fixed tick only.
-  for(const casualty of s.operators){
-    if(casualty.carryingId&&casualty.health<=0){
-      const civil=s.civilians.find(c=>c.id===casualty.carryingId);
-      if(civil)dropCivilianCustody(civil,casualty);
-      else {
-        const patient=s.operators.find(o=>o.id===casualty.carryingId);
-        if(patient)patient.carriedById=null;
-        casualty.carryingId=null;
-      }
-    }
-    if(casualty.health<=0)continue;
-    const loss=advanceMedicalCondition(casualty.medical,h);
-    if(loss<=0)continue;
-    casualty.injuryStage=Math.min(3,casualty.injuryStage+loss);
-    casualty.health=Math.max(0,4-casualty.injuryStage);
-    if(casualty.health<=0){
-      casualty.lastDownAt=s.seconds;
-      const fall=wallSafeFall(casualty.p,casualty.heading,'slump',sessionWorldGeometry(s).walls);
-      casualty.downPose=fall.pose;casualty.downClearance=fall.space;
-      casualty.plan=[];casualty.nav=[];casualty.path=[];casualty.velocity=0;
-      notify(s,casualty.name+' DOWN — UNCONTROLLED BLEEDING');
-      battleEvent(s,'down',casualty,casualty.p,casualty.name+' DOWN');
-    }else battleEvent(s,'wound',casualty,casualty.p,
-      casualty.name+' WOUND DETERIORATING');
-  }
-  // Door leaves sample all live bodies, but normal ticks do not move any
-  // body during the door phase. Build the positions once per fixed tick,
-  // refreshing only if a real opening-yield actually relocated an operator.
-  let doorOccupants=liveDoorOccupants(s);
-  for(const door of s.doors){
-    if(door.heldBy){
-      const holder=s.operators.find(a=>a.id===door.heldBy);
-      if(!holder||holder.health<=0||holder.plan.length>0||
-         holder.nav.length>0||!doorReachable(holder.p,door))
-        door.heldBy=null;
-    }
-    let yielded=false;
-    // An operator just inside the initial sweep may yield a small REAL
-    // step before the leaf advances. This is not an actor-collision bypass:
-    // static geometry, other leaves and opposing bodies must all remain solid.
-    if(door.open&&(door.openFraction??0)<.96&&
-       (door.pushTarget??1)<=1.01){
-      for(const actor of s.operators){
-        if(actor.health<=0)continue;
-        const candidate=initialOpeningYieldCandidate(door,actor.p);
-        if(!candidate||!sweptBodyClear(actor.p,candidate,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))||
-           s.operators.some(other=>{
-             if(other===actor||other.health<=0)return false;
-             const before=d(other.p,actor.p),after=d(other.p,candidate);
-             // Friendly passage allows shoulder contact, but auto-yield
-             // must never deepen an existing shared-body overlap.
-             if(other.side===actor.side)
-               return after<16&&after<before-.01;
-             return after<11;
-           }))continue;
-        actor.priorP=clone(actor.p);
-        actor.p=candidate;
-        yielded=true;
-      }
-    }
-    if(yielded)doorOccupants=liveDoorOccupants(s);
-    advanceDoor(door,h,doorOccupants,sessionWorldGeometry(s));
-  }
-  mark('doors');
-  advanceTransientSimulationEffects(s,h);
-  stepFlashbangs(s,h);
-  mark('aging-effects');
-  advanceActorSightProgress(s,h,geometricallyVisible);
-  mark('visual-awareness');
-  for(const actor of s.operators){
-    if(actor.health<=0)continue;
-    ageAwareness(actor.awareness,h,s.seconds);
-    for(const belief of Object.values(actor.awareness.contacts)){
-      // Only direct vision of the *estimated floor position* can disprove it.
-      if((actor.awareness.visualProgress[belief.id]??0)>.95)continue;
-      if(s.seconds-belief.lastAt<.65||d(actor.p,belief.estimate)>235)continue;
-      if(Math.abs(angleDifference(actor.heading,angle(actor.p,belief.estimate)))>.90)continue;
-      if(unobstructed(actor.p,belief.estimate,s,actor.posture==='crouch'))
-        clearObservedPosition(actor.awareness,belief.id);
-    }
-  }
-  mark('belief-aging');
-  // Capture immutable actor origins before any movement or enemy routine runs.
-  // Final positions are reconciled together after the fixed-tick actor loop.
-  const motionStart=captureMotionFrameOrigins(s.operators,s.civilians);
+/** Timed AI, squad order and morale work. The phase director owns when
+ * this runs; each subsystem retains its established per-actor mechanics. */
+function advanceSimulationActors(s:Session,h:number,
+ markActor?:(id:string)=>void):void{
   for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
@@ -2255,9 +2158,14 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       // cannot cancel each other and leave the operator facing away.
       if(hitDirection!==null)rotate(a,hitDirection,h*1.85);
     }else runEnemyAi.decide(s,a,h);
-    if(probe)mark('operator-'+a.id);
+    if(markActor)markActor(a.id);
   }
-  mark('actor-loop');
+}
+/** Coupled actor/civilian proposals and authoritative movement arbitration.
+ * All physical decisions still use the owning SessionWorldGeometry.
+ */
+function advanceSimulationMotion(s:Session,h:number,
+ motionStart:ReadonlyMap<string,Pt>):void{
   // Authoritative coupled body proposal, before hard-actor resolution.
   const coupledBodyStarts=new Map<string,Pt>();
   for(const carrier of s.operators){
@@ -2342,19 +2250,27 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     a.blockedTime+=h;a.lastBlocker=decision.blocked==='actor'?'actor':'route';
   }
   for(const a of s.operators)a.stride+=d(a.p,a.priorP);
-  resolveCloseContact(s);
-  mark('civilian-motion');
-  mark('contacts');
-  runEnemyAi.distributeReports(s);
-  mark('reports');
-  observe(s);
-  mark('observe-intel');
-  for(const a of s.operators)runCombat.fire(s,a,h);
-  mark('fire');
-  mission(s,h);
-  mark('mission');
-  recordSimulationExecutionOutcomes(s);
-
+}
+const medicalDoorPhasePort={notify,battleEvent};
+const simulationPhasePort:SimulationPhasePort={
+ medicalDoors:(s,h)=>advanceMedicalDoorPhase(s,h,medicalDoorPhasePort),
+ flashbangs:stepFlashbangs,
+ visualAwareness:(s,h)=>advanceActorSightProgress(s,h,geometricallyVisible),
+ beliefAging:(s,h)=>advanceBeliefAgingPhase(s,h,unobstructed),
+ actorActions:advanceSimulationActors,
+ motion:advanceSimulationMotion,
+ contacts:resolveCloseContact,
+ reports:s=>runEnemyAi.distributeReports(s),
+ observe,
+ fire:(s,h)=>{for(const a of s.operators)runCombat.fire(s,a,h);},
+ mission
+};
+/** The only public entry into authoritative session evolution. UI and replay
+ * never call the phase director; clock clamp is unchanged from the baseline. */
+export type StepPhaseProbe=(phase:string,elapsedMs:number)=>void;
+export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe):void{
+ if(s.phase!=='running')return;
+ advanceSimulationTick(s,clamp(dt,0,1/30),simulationPhasePort,probe);
 }
 export function operationBriefing(s:Session){
   const brief=operationBrief(s.missionType);
