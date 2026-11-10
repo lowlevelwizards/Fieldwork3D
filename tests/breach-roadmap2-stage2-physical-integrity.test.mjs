@@ -56,6 +56,40 @@ test('all eleven building programs have finite, traversable physical sites',()=>
  assert.equal(types.size,11,'missing an archetype from matrix');
 });
 
+test('default-scale townhouse, apartment, and office room clusters are reachable',()=>{
+ const failures=[];
+ for(const seed of [1,2,37]){
+  const site=generateSite(seed,'standard');
+  const audit=auditSitePhysicalIntegrity(site);
+  const broken=audit.blocking.filter(f=>f.code==='unreachable-room');
+  if(!broken.length)continue;
+  const details=broken.slice(0,4).map(issue=>{
+   const r=site.rooms.find(room=>room.id===issue.entity);
+   if(!r)return {id:issue.entity};
+   const mid=portal=>({x:(portal.a.x+portal.b.x)/2,
+    y:(portal.a.y+portal.b.y)/2});
+   const adjacent=other=>other!==r&&(
+    Math.abs(other.x-r.x-r.w)<.1||Math.abs(r.x-other.x-other.w)<.1?
+      Math.min(other.y+other.h,r.y+r.h)>Math.max(other.y,r.y)+24:
+    (Math.abs(other.y-r.y-r.h)<.1||Math.abs(r.y-other.y-other.h)<.1)&&
+      Math.min(other.x+other.w,r.x+r.w)>Math.max(other.x,r.x)+24);
+   const near=p=>p.x>=r.x-1&&p.x<=r.x+r.w+1&&
+    p.y>=r.y-1&&p.y<=r.y+r.h+1;
+   return {room:r,neighbors:site.rooms.filter(adjacent).map(q=>({
+     id:q.id,purpose:q.purpose,unitId:q.unitId,zoneId:q.zoneId
+   })),portals:[...site.doors,...(site.openings??[])]
+    .filter(d=>near(mid(d))).map(d=>({id:d.id,a:d.a,b:d.b})),
+    cover:site.cover.filter(o=>o.x>=r.x-22&&o.x<=r.x+r.w+22&&
+      o.y>=r.y-22&&o.y<=r.y+r.h+22)
+     .map(o=>({fixture:o.fixture,x:o.x,y:o.y,w:o.w,h:o.h}))
+   };
+  });
+  failures.push({seed,archetype:site.archetype,
+   rooms:broken.map(f=>f.entity),details});
+ }
+ assert.equal(failures.length,0,JSON.stringify(failures));
+});
+
 test('large professional office wings must connect all functional rooms',()=>{
  for(const seed of [15,37]){
   const site=generateSite(seed,'large');
