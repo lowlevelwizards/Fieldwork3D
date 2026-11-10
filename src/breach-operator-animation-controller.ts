@@ -1,3 +1,4 @@
+import {sampleOperatorFootContacts,applyOperatorLegIK} from './breach-operator-lower-body.ts';
 import {beginOperatorAnimationFrame,sampleOperatorTurnAngles} from './breach-operator-animation-frame.ts';
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 /** Roadmap 2 Stage 11: presentation-only operator pose orchestrator.
@@ -11,7 +12,7 @@ import {applyOperatorTraumaPose,finishOperatorPoseFrame} from './breach-pose-fra
 import {canonicalRootOrientation} from './operator-axis-convention.ts';
 import {neutralMannequinWrist,neutralMannequinElbowPole}
  from './operator-mannequin-pose.ts';
-import {alignSegment,solveTwoBone,LEG_LIMITS,ARM_LIMITS} from './breach-ik.ts';
+import {alignSegment,solveTwoBone,ARM_LIMITS} from './breach-ik.ts';
 import {idleLifeAt} from './breach-idle-life.ts';
 import {lowReadyFamilyFit,lowReadyElbowPole}
  from './breach-low-ready-family-fit.ts';
@@ -20,11 +21,9 @@ import {poseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
 import {interpolateWeaponCarry,lowReadyBlendPhase}
  from './breach-low-ready-transition.ts';
 import {resolvePoseLocomotionFrame} from './breach-pose-locomotion-frame.ts';
-import {advanceFootsteps,validatedReplayFeet,type FootTarget,type FootstepInput}
-  from './breach-footsteps.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
 import {packInertia} from './breach-gear-inertia.ts';
-import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_SIDE,LEG_HIP_HEIGHT,LEG_ANKLE_HEIGHT,legRestRise} from './breach-leg-geometry.ts';
+import {LEG_HIP_HEIGHT,legRestRise} from './breach-leg-geometry.ts';
 import {turnHierarchy} from './breach-turn-hierarchy.ts';
 import {contactReaction} from './breach-contact-reactions.ts';
 import {kickMotion} from './breach-door-actions.ts';
@@ -82,20 +81,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Build 119: the footstep scheduler owns world contacts. The IK renderer
   // consumes its targets but must never relocate a planted anchor.
   const travelYaw=p.travelYaw??direction;
-  const gaitInput:FootstepInput={
-    time:p.seconds,position:{x:p.x,y:p.z},rootYaw:-p.heading,
-    travelYaw,facingYaw:p.heading,speed:physicalSpeed,turning:p.turning,
-    posture:p.posture,injury:p.injury,down:p.down,
-    cautious:p.aiming&&moving<.35,blocked:p.blocked,
-    gait:p.gait,
-    footAllowed:p.footAllowed,
-  };
-  // The step scheduler is the SOLE writer of foot contacts, including
-  // clearance recovery. IK below solves toward these positions; it does
-  // not silently substitute its own position or restart a step.
-  const targets:[FootTarget,FootTarget]=p.replayFeet?
-    validatedReplayFeet(gaitInput,p.replayFeet):
-    advanceFootsteps(r.footsteps,gaitInput);
+  const targets=sampleOperatorFootContacts(r,p,physicalSpeed,moving,travelYaw);
   const kickAge=p.seconds-p.lastDoorAt;
   const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
     kickMotion(kickAge):null;
@@ -299,67 +285,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // canonicalRoot * legacyFrame(+90 Y) = original Euler(pitch,yaw,roll).
   r.root.quaternion.copy(
     canonicalRootOrientation(r.legacyPitch,r.legacyYaw,r.legacyRoll));
-  const bodyInverse=scratch.bodyInverse.setFromEuler(
-    scratch.bodyEuler.set(r.legacyPitch,r.legacyYaw,r.legacyRoll,'XYZ')).invert();
-  for(let i=0;i<2;i++){
-    const foot=r.feet[i],sign=i===0?-1:1,target=targets[i];
-    const hipLocal=scratch.hips[i].set(0,r.hip.position.y,
-      r.hip.position.z+sign*LEG_HIP_SIDE);
-    const anchor=target.position;
-    foot.anchor.set(anchor.x,LEG_ANKLE_HEIGHT,anchor.y);
-    // Replay seeks must never inherit a pole fallback from another time.
-    if(p.deterministic)foot.bend.set(1,0,0);
-    foot.swinging=!target.contact;
-    const targetWorld=scratch.targets[i].set(target.position.x,
-      LEG_ANKLE_HEIGHT+target.height,target.position.y);
-    if(i===1&&kick){
-      const motion=smooth((kick.progress-.30)/.23)*
-        (1-smooth((kick.progress-.67)/.25));
-      if(p.doorPoint){
-        const dx=p.x-p.doorPoint.x,dz=p.z-p.doorPoint.y;
-        const gap=Math.hypot(dx,dz)||1;
-        // The boot IK solves toward the door's REAL leaf, not a generic
-        // forward kick animation that can miss the panel entirely.
-        const contact=scratch.kickContact.set(p.doorPoint.x+dx/gap*1.5,9,
-          p.doorPoint.y+dz/gap*1.5);
-        targetWorld.lerp(contact,motion);
-      }else{
-        targetWorld.x+=Math.cos(p.heading)*kick.reach;
-        targetWorld.z+=Math.sin(p.heading)*kick.reach;
-        targetWorld.y+=kick.lift;
-      }
-      foot.swinging=true;
-    }
-    const relative=scratch.relative[i].copy(targetWorld)
-      .sub(scratch.rootPoint.set(p.x,r.root.position.y,p.z))
-      .applyQuaternion(bodyInverse);
-    const leg=solveTwoBone(hipLocal,relative,LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,
-      scratch.legPoles[i],LEG_LIMITS,foot.bend,scratch.legs[i]);
-    // An unreachable leg reports a gap. Never move the boot independently
-    // of its contact schedule: recoveries are requested by the scheduler.
-    foot.bend.copy(leg.bendPlane);
-    foot.outOfReach=!leg.reached;
-    // The boot follows the scheduled contact, so report the anatomical
-    // ankle separation for tuning rather than silently hiding it.
-    r.legGap[i]=leg.effector.distanceTo(relative);
-    // Contact remains in world space. Unreachable limbs report a constraint
-    // violation instead of spinning the knee or teleporting their boot.
-    alignSegment(foot.upper,hipLocal,leg.joint,scratch.sides[i]);
-    alignSegment(foot.lower,leg.joint,leg.effector,scratch.sides[i]);
-    // Final small reach extension is represented by a boot-colored
-    // articulated ankle cuff, never a floating shoe or stretched shin.
-    // The original two-bone segment lengths remain unchanged.
-    foot.ankleLink.visible=r.legGap[i]>.10;
-    if(foot.ankleLink.visible)
-      alignSegment(foot.ankleLink,leg.effector,relative,scratch.sides[i]);
-    foot.shoe.position.copy(relative);
-    const pitch=target.pitch??0;
-    foot.shoe.rotation.z=pitch;
-    // The shoe's world-space anchor remains authoritative even while its
-    // visual box rocks around the local center.
-    // A boot rotates only during its scheduled swing, not with the pelvis.
-    foot.shoe.rotation.y=target.worldYaw-headingYaw;
-  }
+  applyOperatorLegIK(r,p,scratch,targets,kick,headingYaw,smooth);
   // Build 120: stock, both grips and forearm targets share a single rigid
   // firearm transform. The fit searches reachable posture before limb IK.
   const config=p.weaponConfiguration?.weapon===p.weapon?
