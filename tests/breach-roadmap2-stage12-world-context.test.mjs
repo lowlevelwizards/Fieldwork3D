@@ -8,7 +8,8 @@ import {strikeSurface} from '../src/breach-ballistic-resolution.ts';
 import {cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {activateSite,WALLS,COVER,withTemporarySiteGeometry}
  from '../src/breach-core.ts';
-import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {sessionWorldGeometry,publishSessionCoverToActiveSite,
+ setPresentationWorldSession} from '../src/breach-world-context.ts';
 
 const newWorld=seed=>newSession(0,seed,'full-view','small');
 
@@ -152,4 +153,23 @@ test('Stage 12: fixed-step outcomes of live mission are unaffected by another ac
  };
  try{assert.deepEqual(run(true),run(false));}
  finally{activateSite(null);}
+});
+
+test('Stage 12: same Site shared by two sessions never aliases visual publication',()=>{
+ try{
+  const a=newWorld(7);
+  const b=newSession(0,undefined,'full-view','small','hold',a.site);
+  assert.strictEqual(a.site,b.site);
+  const published=JSON.stringify(COVER);
+  const first=a.coverState[0];
+  first.x+=25;a.objectRevision++;
+  publishSessionCoverToActiveSite(a);
+  assert.equal(JSON.stringify(COVER),published,
+   'background Session must not publish even if site identity matches');
+  setPresentationWorldSession(a);
+  activateSite(a.site);
+  publishSessionCoverToActiveSite(a);
+  assert.equal(COVER[0].x,first.x);
+  assert.notEqual(b.coverState[0].x,first.x);
+ }finally{activateSite(null);}
 });
