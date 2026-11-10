@@ -70,13 +70,15 @@ test('179: renderer and combat use the same clearance, no motor displacement',()
    new URL('../src/breach-game.ts',import.meta.url),'utf8');
  const firing=readFileSync(
    new URL('../src/breach-firing-pipeline.ts',import.meta.url),'utf8');
+ const resolver=readFileSync(
+   new URL('../src/breach-shot-resolution.ts',import.meta.url),'utf8');
  const rig=readFileSync(
    new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
  assert.match(render,/obstruction:clearance.obstruction/);
  assert.match(render,/clearanceRetraction:clearance.retraction/);
  assert.match(gameplay,/runCombat\.fire\(s,a,h\)/);
- assert.match(firing,/if\(sightClearance.blocked\)/);
- assert.match(firing,/if\(shotClearance.blocked\)/);
+ assert.match(resolver,/if\(sightClearance.blocked\)/);
+ assert.match(resolver,/if\(shotClearance.blocked\)/);
  assert.match(firing,/if\(clearance.blocked\)return/);
  assert.match(rig,/clearanceRetraction:p.clearanceRetraction/);
  assert.doesNotMatch(render,/obstruction:!isClear/);
