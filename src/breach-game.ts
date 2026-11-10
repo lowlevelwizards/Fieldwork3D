@@ -550,7 +550,7 @@ export function newSession(index=0,siteSeed?:number,
  * Reset remembered fog: the default front must not remain pre-revealed.
  */
 export function availableDeployments(s:Session):DeploymentChoice[]{
- return s.site?verifiedDeploymentChoices(s.site):[];
+ return s.site?verifiedDeploymentChoices(s.site,sessionWorldGeometry(s)):[];
 }
 export function selectDeployment(s:Session,id:string):boolean{
  if(!s.site||s.started||s.phase!=='planning'||team(s).some(a=>a.plan.length))
@@ -931,7 +931,7 @@ export function planPieAt(s:Session,id:string,pivot:Pt,side:PieSide,degrees=54,
     a.plan.findIndex(n=>n.id===afterNodeId)+1;
   if(index<=0&&afterNodeId!==undefined)return false;
   const start=index===0?a.p:a.plan[index-1].p;
-  const arc=validPieArc(start,pivot,side,s.doors,degrees);
+  const arc=validPieArc(start,pivot,side,s.doors,degrees,sessionWorldGeometry(s));
   if(!arc.length)return false;
   if(afterNodeId===undefined)return addNode(s,id,'pie',arc[arc.length-1],{
     pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
