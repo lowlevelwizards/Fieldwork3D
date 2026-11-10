@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: handle physical closed leaves and intentional automatic
  * opens before body contact. Explicit authored DOOR actions retain priority.
  */
@@ -50,7 +51,7 @@ export function handleMotorDoor(
          [a.p],OPERATOR_RADIUS+1)){
       const staged=doorApproach(a.p,doorAhead);
       if(staged&&d(staged,a.p)>5&&d(staged,a.p)<50&&
-         sweptBodyClear(a.p,staged,s.doors)){
+         sweptBodyClear(a.p,staged,s.doors,8,sessionWorldGeometry(s))){
         a.nav.unshift(staged);a.velocity=0;
         a.motorPause='door-opening';return {paused:true,closed:false};
       }
