@@ -358,7 +358,11 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
  }
  function syncNextSiteControls():void{
   const campaignMission=config.getMode()==='mission';
-  ui.variant.textContent='NEW SITE';
+  const quickPlay=config.getMode()==='quick';
+  // Quick Play size and building selection live in the scenario creator.
+  // Do not show a competing size control that its worker will not read.
+  ui.siteSize.hidden=quickPlay;
+  ui.variant.textContent=quickPlay?'SCENARIO GENERATOR':'NEW SITE';
   ui.variant.disabled=campaignMission;
   ui.siteSize.disabled=campaignMission;
   ui.intelMode.disabled=campaignMission;
