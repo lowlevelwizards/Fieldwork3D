@@ -72,8 +72,6 @@ import {ReplayBodycamController} from './breach-replay-bodycam-controller.ts';
 import {ReplayCameraController} from './breach-replay-camera-controller.ts';
 import {createBreachReplayLibraryController}
   from './ui/breach-replay-library-controller.ts';
-import {formatReplayTime} from './breach-replay-transport.ts';
-import {REPLAY_SPEED_STOPS,speedIndex} from './breach-replay-speed.ts';
 import {resolvedReplayCamera,type ReplayCameraChoice,type ReplayPerspective}
   from './breach-replay-ui-state.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
@@ -83,8 +81,6 @@ import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 import {measureReplaySquadDoorEntry,type ReplaySquadEntryReview}
   from './breach-replay-squad-entry.ts';
 import {operatorContactAvailable} from './breach-replay-contact-lens.ts';
-import {bodycamDisclosureLabel}
-  from './breach-replay-bodycam-controls.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {fitMagazineInventory}
