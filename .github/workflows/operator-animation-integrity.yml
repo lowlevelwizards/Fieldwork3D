@@ -4,6 +4,7 @@ on:
     paths:
       - 'src/breach-operator-rig.ts'
       - 'src/breach-operator-animation-*.ts'
+      - 'src/breach-operator-pose-output.ts'
       - 'src/breach-operator-appearance.ts'
       - 'src/breach-operator-lower-body.ts'
       - 'src/breach-pose-director.ts'
@@ -36,7 +37,7 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - name: Focused animation and barrel regressions
-        run: node --experimental-strip-types --test tests/breach-17*.test.mjs tests/breach-roadmap2-stage11-animation.test.mjs tests/breach-operator-static-render-performance.test.mjs tests/breach-static-batching-performance.test.mjs tests/breach-shadow-update-policy-performance.test.mjs tests/breach-ik-scratch-performance.test.mjs tests/operator-visual-fit.test.mjs tests/operator-d2-facewear-pose-colors-r4.test.mjs
+        run: node --experimental-strip-types --test tests/breach-17*.test.mjs tests/breach-roadmap2-stage11-animation.test.mjs tests/breach-closeout-stage4-pose-output.test.mjs tests/breach-operator-static-render-performance.test.mjs tests/breach-static-batching-performance.test.mjs tests/breach-shadow-update-policy-performance.test.mjs tests/breach-ik-scratch-performance.test.mjs tests/operator-visual-fit.test.mjs tests/operator-d2-facewear-pose-colors-r4.test.mjs
       - name: Verify Vite runtime bundle
         run: npx vite build
       - name: Typecheck full repository (may expose unrelated main-branch regressions)
