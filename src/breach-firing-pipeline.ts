@@ -1,3 +1,4 @@
+import {createShotEnvironmentCommitter} from './breach-shot-environment.ts';
 /** Roadmap 2 / Stage 10 — unified authoritative firing & damage pipeline.
  * Extraction preserves original 60 Hz call order, seeded RNG draws, shot
  * identity, ammunition, civilian safety, penetration and replay evidence.
@@ -8,17 +9,17 @@ import {rotate} from './breach-order-lifecycle.ts';
 import {segmentImpact,strikeSurface} from './breach-ballistic-resolution.ts';
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep} from './breach-combat-reactions.ts';
 import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts';
-import {type Pt,WALLS,COVER,segmentsCross,doorCenter,pointToSegment} from './breach-core.ts';
+import {type Pt,WALLS,COVER,segmentsCross,pointToSegment} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
 import {WEAPONS,injuryOf,woundSeverity,nearCover} from './breach-combat.ts';
 import {aimHeight} from './breach-cover-height.ts';
 import {assessFireLane,fireLaneReachable} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
-import {type MaterialId} from './breach-materials.ts';
-import {damageCover} from './breach-reactive-cover.ts';
-import {materialResponse} from './breach-impact-responses.ts';
-import {damageWindow,windowPaneSegment} from './breach-windows.ts';
+
+
+
+import {windowPaneSegment} from './breach-windows.ts';
 import {type CivilianActor} from './breach-civilian-types.ts';
 import {firstCivilianAlongRay,applyCivilianBulletHit} from './breach-civilian-ballistics.ts';
 import {knownCivilianInFireLane} from './breach-civilian-fire-safety.ts';
@@ -69,86 +70,10 @@ function random(s:Session){
   s.rng=(Math.imul(s.rng,1664525)+1013904223)>>>0;
   return s.rng/4294967296;
 }
-/** Distinct pre-target penetration events leave physical evidence. */
-function emitMaterialEvents(s:Session,from:Pt,to:Pt,
- hits:readonly {fraction:number;material:MaterialId}[],
- maximum=1){
- const unique=new Set<string>();
- for(const hit of hits){
-  if(hit.fraction>maximum+.00001||hit.fraction>=.9999)continue;
-  const p={x:from.x+(to.x-from.x)*hit.fraction,
-    y:from.y+(to.y-from.y)*hit.fraction};
-  const key=Math.round(p.x/3)+','+Math.round(p.y/3);
-  if(unique.has(key))continue;unique.add(key);
-  const response=materialResponse(hit.material);
-  retainImpactMark(s,{id:s.nextEffectId++,p,
-    surface:response.visual,age:0,height:20});
-  if(response.sound!=='glass')
-    hear(s,p,response.radius,'impact-'+response.sound);
- }
-
-}
-/** Mutate only struck cover, never the planning ray or visual renderer. */
-function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number}[],
- force:number,maxFraction=1){
- const touched=new Set<number>();
- for(const h of hits){
-  if(h.fraction>maxFraction+.00001||touched.has(h.index))continue;
-  touched.add(h.index);
-  const piece=s.coverState[h.index];if(!piece)continue;
-  const result=damageCover(piece,force);
-  if(result==='immune')continue;
-  s.objectRevision++;
-  if(result==='collapsed'){
-    battleEvent(s,'impact',null,{x:piece.x,y:piece.y},
-      (piece.fixture??'FURNITURE').toUpperCase()+' COLLAPSED');
-    // Nearby defenders perceive their own cover crumbling. Uninformed
-    // distant guards are not globally told the new geometry.
-    for(const defender of enemies(s)){
-      if(defender.health<=0)continue;
-      const near=d(defender.p,{x:piece.x,y:piece.y})<
-        Math.max(piece.w,piece.h)+34;
-      if(near){
-        defender.defense=null;defender.defenseUntil=s.seconds;
-        defender.nav=[];defender.suppression=Math.min(1,
-          defender.suppression+.12);
-      }
-    }
-  }
- }
- if(touched.size)COVER.splice(0,COVER.length,...s.coverState);
-}
-/** Persist actual glass-door damage only after a fired projectile. The metal
- * frame and physical leaf remain operational; only glazing shatters. */
-function shatterStruckDoorGlass(s:Session,
- hits:readonly {index:number;fraction:number}[],maxFraction=1){
- for(const hit of hits){
-  if(hit.fraction>maxFraction+.00001)continue;
-  const door=s.doors[hit.index];
-  if(!door||door.glassShattered||
-     !['glazed','french'].includes(door.style??''))continue;
-  door.glassShattered=true;s.objectRevision++;
-  const at=doorCenter(door);
-  hear(s,at,175,'glass');
-  battleEvent(s,'impact',null,at,'GLASS DOOR SHATTERED');
- }
-}
-/** Keep decorative evidence bounded separately from authoritative hits.
- * Nearby blood spatters merge rather than creating dozens of overlapping
- * translucent meshes during sustained automatic fire. */
-/** Commit impacts only for the actual shot path, never aim/LOS queries. */
-function shatterStruckWindows(s:Session,paneHits:readonly number[],force:number){
- for(const index of new Set(paneHits)){
-  const window=s.windows[index];
-  if(!window||!damageWindow(window,force))continue;
-  s.objectRevision++;
-  hear(s,{x:window.x,y:window.y},170,'glass');
-  if(window.shattered&&window.shatteredAt===undefined)
-    window.shatteredAt=s.seconds;
-  if(window.shattered)battleEvent(s,'impact',null,
-    {x:window.x,y:window.y},'GLASS SHATTERED');
- }
-}
+/** Shared post-ignition impact authority. Aim and LOS never call these. */
+ const {emitMaterialEvents,damageStruckCover,
+  shatterStruckDoorGlass,shatterStruckWindows}=
+    createShotEnvironmentCommitter({enemies,hear,battleEvent});
 /** A known civilian can veto a shot without becoming a hidden contact.
  * Physical impacts are still tested against every real neutral after firing. */
 function observedCivilianFireLane(s:Session,a:TeamActor,from:Pt,
