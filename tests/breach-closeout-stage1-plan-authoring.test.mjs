@@ -19,7 +19,7 @@ const empty={
 };
 const session=(extra={},mode='full-view')=>
  newSession(0,undefined,mode,'standard','hold',{...empty,...extra});
-const plans=s=>team(s).map(a=>structuredClone(a.plan));
+const plans=s=>team(s).map(a=>JSON.parse(JSON.stringify(a.plan)));
 const ordered=fn=>{try{return fn();}finally{activateSite(null);}};
 test('Stage 1: no-op base commands do not record history or burn IDs',()=>ordered(()=>{
  const s=session(),a=team(s)[0],id=s.nextId;
