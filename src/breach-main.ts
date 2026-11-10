@@ -5,7 +5,7 @@ import {dispatchTacticalPointerRelease} from './breach-pointer-command-controlle
 import {installTouchCommandHelp as bindTouchCommandHelp}
  from './ui/touch-command-help.ts';
 import {
-  W,H,activeWorldBounds,
+  W,H,
   doorCenter,type Pt,} from './breach-core.ts';
 import {
   type Session,
@@ -838,7 +838,7 @@ function layout(){
   canvas.style.width=cssW+'px';canvas.style.height=cssH+'px';
   stage?.resize(cssW,cssH);
   const available=Math.max(240,cssH-(cssH<500?85:172));
-  const bounds=activeWorldBounds();
+  const bounds=state.site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
   const width=bounds.maxX-bounds.minX,height=bounds.maxY-bounds.minY;
   const fit=Math.min((cssW-20)/width,available/height);
   viewScale=fit*zoom;
