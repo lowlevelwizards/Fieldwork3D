@@ -3,7 +3,7 @@
  * presentation-only: it never consumes inventory or changes simulation.
  * One call per pose evaluation, shared by legacy/V3/V4 rig branches.
  */
-import type {OperatorPose} from './breach-operator-rig.ts';
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import {resolvePoseContactOwners} from './breach-pose-contacts.ts';
 
 export type PoseActionSource=Pick<OperatorPose,
