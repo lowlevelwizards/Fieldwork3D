@@ -5,6 +5,8 @@ import {buildAfterActionReport,type AfterActionReport,
   type OperatorAfterAction} from '../breach-after-action-report.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import {renderCombatReport} from './breach-after-action-combat.ts';
+import {renderAfterActionHighlights} from './breach-after-action-highlights.ts';
+import {replayHighlightMoments} from '../breach-highlight-frames.ts';
 
 export type AfterActionTab='overview'|'squad'|'combat'|'highlights'|'timeline';
 type State={
@@ -156,6 +158,13 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        }));
      }
    });
+   else if(s.tab==='highlights')screen=renderAfterActionHighlights(
+     replayHighlightMoments(s.recorder),s.recorder,(moment)=>{
+       root.dispatchEvent(new CustomEvent('fw-after-action-replay',{
+         bubbles:true,detail:{surface:'highlights',time:moment.at,
+           highlightId:moment.id}
+       }));
+     });
    else if(s.tab==='timeline'){
      screen=make('section','fw-after-section');
      screen.append(make('h2','fw-after-heading','TACTICAL RECORD'),
@@ -180,4 +189,14 @@ export function afterActionSnapshot(root:HTMLElement):{
  if(current)s.scroll[s.tab]=current.scrollTop;
  return {tab:s.tab,operatorId:s.selectedOperator,contactId:s.selectedContact,
    scroll:{...s.scroll}};
+}
+
+/** Rebuild when a replay visit has captured new authentic frames. */
+export function refreshAfterActionWorkspace(root:HTMLElement):void{
+ const s=owners.get(root);if(!s)return;
+ const active=root.querySelector<HTMLElement>('#afterActionBody');
+ const button=root.querySelector<HTMLButtonElement>(
+   '[data-after-tab="'+s.tab+'"]');
+ if(active)s.scroll[s.tab]=active.scrollTop;
+ button?.click();
 }

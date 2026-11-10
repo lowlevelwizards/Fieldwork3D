@@ -54,6 +54,9 @@ export type BreachRuntimeLoopHooks={
  advanceContextPalette:(dt:number)=>void;
  renderFrame:()=>void;
  drawTacticalFrameFeedback:(studioOccludesTactical:boolean)=>void;
+ /** Optional post-round one-frame capture; no live-game GPU work. */
+ captureHighlightFrame?:(scene:HTMLCanvasElement|null,
+   overlay:HTMLCanvasElement,time:number,perspective:string)=>void;
  worldToScreen:(point:Pt,offset:number)=>Pt;
  canvas:HTMLCanvasElement;
  playback:ReplayPlaybackController;
@@ -212,6 +215,12 @@ function tick(now:number){
   const sceneUpdateEnd=perfOverlay?performance.now():0;
   if(!studioOccludesTactical)config.renderFrame();
   const renderEnd=perfOverlay?performance.now():0;
+  if(replaying&&!studioOccludesTactical&&config.captureHighlightFrame)
+    config.captureHighlightFrame(stage&&viewMode!=='plan2d'?stage.canvas:null,
+      canvas,replayPlayback.time,
+      replayCamera.mode==='director'&&replayCamera.lens==='cam'?
+        'RECONSTRUCTED DIRECTOR CAM':viewMode==='plan2d'?
+        'TACTICAL PLAN':'REPLAY '+replayCamera.mode.toUpperCase());
   if(replaying&&replayQuickVideo.active){
     replayQuickVideo.drawFrame(
       stage&&viewMode!=='plan2d'?stage.canvas:null,canvas,replayPlayback.time,

@@ -51,6 +51,9 @@ import {createBreachRuntimeLoop} from './breach-runtime-loop.ts';
 import {createReplayModeController} from './breach-replay-mode-controller.ts';
 import {afterActionSnapshot} from './ui/breach-after-action-controller.ts';
 import {makeAfterActionLaunchRequest} from './breach-after-action-replay-navigation.ts';
+import {highlightCapture} from './breach-highlight-capture.ts';
+import {replayHighlightMoments} from './breach-highlight-frames.ts';
+import {refreshAfterActionWorkspace} from './ui/breach-after-action-controller.ts';
 import {createBreachReplayPresentationController} from './breach-replay-presentation-controller.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
@@ -1601,6 +1604,7 @@ function exitReplay(){
  if(returning){
    afterActionReturn=null;
    ui.afterActionClipHud.hidden=true;
+   refreshAfterActionWorkspace(ui.debrief);
    // The after-action workspace remains mounted while replay is active;
    // returning to the finished session restores its tab, selection and scroll.
    updateHud();
@@ -1644,6 +1648,7 @@ const replayLibrary=createBreachReplayLibraryController({
 });
 ui.watchReplay.addEventListener('click',()=>{
   replayLibrary.markDebriefEntry();enterReplay();
+ if(replaying)highlightCapture.queue(recorder,replayHighlightMoments(recorder));
 });
 ui.debrief.addEventListener('fw-after-action-replay',event=>{
  const detail=(event as CustomEvent<{
@@ -1656,6 +1661,7 @@ ui.debrief.addEventListener('fw-after-action-replay',event=>{
  replayLibrary.markDebriefEntry();enterReplay();
  if(!replaying)return;
  afterActionReturn=origin;
+ highlightCapture.queue(recorder,replayHighlightMoments(recorder));
  if(stage&&viewMode==='plan2d')cameraMode('iso');
  replayCamera.camMount='chest';replayCamera.lens='cam';
  if(stage&&replayDirector.camEligibleObservers.length){
@@ -2727,7 +2733,10 @@ const runtimeLoop=createBreachRuntimeLoop({
  setReplayPresentation:value=>{replayPresentation=value;},
  invalidateFog:()=>fog2D.invalidate(),advanceReplayCamera,
  updateHud,updateReplayHud,updateContext,advanceContextPalette,
- renderFrame:render,drawTacticalFrameFeedback,worldToScreen,
+ renderFrame:render,drawTacticalFrameFeedback,
+ captureHighlightFrame:(scene,overlay,time,perspective)=>
+   highlightCapture.frame(recorder,scene,overlay,time,perspective),
+ worldToScreen,
  canvas,playback:replayPlayback,camera:replayCamera,
  knowledge:replayKnowledge,bodycam:replayBodycam,video:replayQuickVideo,
  audio:audioController

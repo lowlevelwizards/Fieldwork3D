@@ -2795,3 +2795,21 @@ body.replaying .replay-follow-status[data-grade]::after{
  min-height:38px;border:1px solid #d8cfaa;border-radius:4px;
  font:700 12px var(--ui-display);padding:7px 11px}
 @media(max-width:450px){.fw-clip-hud{top:calc(68px + env(safe-area-inset-top))}}
+
+/* Highlight cards: earned tactical significance, separately verified stills. */
+.fw-highlight-card{border:1px solid #566e5f;background:#1c302a;
+ border-radius:7px;padding:10px;display:grid;gap:6px}
+.fw-highlight-card img{width:100%;max-height:300px;object-fit:contain;
+ background:#101e1a;border-radius:4px}
+.fw-highlight-card h3{margin:0;font:700 15px var(--ui-display);
+ color:#e4d8b9}
+.fw-highlight-card p{margin:0;font:12px/1.45 var(--ui-font)}
+.fw-highlight-placeholder{background:#273b32;min-height:82px;
+ display:grid;place-items:center;text-align:center;padding:12px;
+ border:1px dashed #647865;color:#96a89b;font:700 12px var(--ui-display)}
+.fw-highlight-actions{display:flex;flex-wrap:wrap;gap:8px}
+.fw-highlight-actions button,.fw-highlight-actions a{
+ display:inline-flex;align-items:center;min-height:41px;margin:0;
+ padding:9px 12px;background:#b8b393;border:1px solid #d8cfaa;
+ border-radius:5px;color:#21322c;text-decoration:none;
+ font:700 12px var(--ui-display)}
