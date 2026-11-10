@@ -177,7 +177,7 @@ export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[],world?:SessionWo
        return [lateral,{...to}];
    }
  }
- const relief=localDetour(from,to,doors,[]);
+ const relief=localDetour(from,to,doors,[],8,world);
  if(!relief||!fineSweep(from,relief))return [];
  if(fineSweep(relief,to))return [relief,{...to}];
  const tail=route(relief,to,p=>canStand(p,OPERATOR_RADIUS));
