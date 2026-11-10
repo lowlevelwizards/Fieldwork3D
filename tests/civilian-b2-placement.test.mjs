@@ -54,3 +54,29 @@ test('E5-B2 vacant, defended, and rescue pre-migration do not duplicate targets'
   assert.equal(civilianBudget(site,3,premise,'intel'),0);
  }
 });
+
+test('E5 civilian presence: active occupied sites have an encounter floor, not guaranteed placement',()=>{
+ const site={training:false,scale:'small',
+  identity:{activity:'normal',condition:'occupied'}};
+ const activePremises=['routine','disturbance','incident'];
+ for(const premise of activePremises)for(let seed=1;seed<=48;seed++){
+  assert.ok(civilianBudget(site,seed,premise,'clear')>=1,
+   'occupied '+premise+' seed '+seed+' should request at least one bystander');
+  assert.ok(civilianBudget(site,seed,premise,'clear')<=2);
+ }
+ const busy={...site,identity:{...site.identity,activity:'busy'}};
+ for(let seed=1;seed<=48;seed++)
+  assert.ok(civilianBudget(busy,seed,'guarded','clear')>=1);
+ const quiet={...site,identity:{...site.identity,activity:'quiet'}};
+ assert.ok(Array.from({length:48},(_,i)=>
+  civilianBudget(quiet,i+1,'routine','clear')).some(n=>n===0),
+  'quiet occupied premises may still be empty');
+ const vacant={...site,identity:{...site.identity,condition:'vacant'}};
+ assert.ok(Array.from({length:48},(_,i)=>
+  civilianBudget(vacant,i+1,'routine','clear')).some(n=>n===0),
+  'vacant condition must not imply civilian presence');
+ for(const premise of ['vacant','defensive','after-hours'])
+  assert.equal(civilianBudget(site,17,premise,'clear'),0);
+ assert.equal(civilianBudget(site,17,'routine','rescue'),0);
+ assert.equal(civilianBudget({...site,training:true},17,'routine','clear'),0);
+});
