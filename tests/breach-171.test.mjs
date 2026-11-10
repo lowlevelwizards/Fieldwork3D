@@ -34,6 +34,9 @@ test('171: projectile direction equals the actual solved world barrel axis',()=>
 });
 test('171: simulation shots consume physical muzzle yaw and gate excessive relative aim',()=>{
  const game=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
- assert.match(game,/const yaw=muzzle.yaw/);
- assert.match(game,/angleDifference\(a.heading,a.weaponYaw\)/);
+ const firing=readFileSync(new URL('../src/breach-firing-pipeline.ts',import.meta.url),'utf8');
+ assert.match(game,/runCombat\.fire\(s,a,h\)/);
+ const resolver=readFileSync(new URL('../src/breach-shot-resolution.ts',import.meta.url),'utf8');
+ assert.match(resolver,/const yaw=muzzle.yaw/);
+ assert.match(firing,/angleDifference\(a.heading,a.weaponYaw\)/);
 });
