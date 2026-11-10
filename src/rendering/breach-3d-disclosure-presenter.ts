@@ -39,8 +39,11 @@ export function presentDecor(s:Session,detail:{
 },omniscient:boolean,bodycam:boolean,
  evidence:ReadonlySet<string>|null):boolean{
  const p=detail.position;
+ // Historical personal snapshots must not perform a NEW live LOS query.
+ // This also avoids filling the tactical sight cache while replay seeking.
+ if(bodycam)return personalDecorVisible(false,true,evidence,p);
  return personalDecorVisible(omniscient||s.seenGround.has(detail.microKey)||
-  s.seenGround.has(detail.fineKey)||liveVisibility(s,p),bodycam,evidence,p);
+  s.seenGround.has(detail.fineKey)||liveVisibility(s,p),false,evidence,p);
 }
 export type DoorPresentationInput={
  door:Door;personal:boolean;omniscient:boolean;directlyObserved:boolean;
