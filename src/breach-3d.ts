@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
   from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
@@ -1846,7 +1847,7 @@ export class TacticalScene3D{
        const tick=Math.floor(s.seconds*8),siteSeed=s.site?.seed??-1;
        if(tick!==this.beamBlockerTick||siteSeed!==this.beamBlockerSite||
           this.beamBlockerRevision!==s.objectRevision){
-        this.beamBlockers=lightBeamBlockers(WALLS,s.doors,COVER);
+        this.beamBlockers=lightBeamBlockers(sessionWorldGeometry(s).walls,s.doors,sessionWorldGeometry(s).cover);
         this.beamBlockerTick=tick;this.beamBlockerSite=siteSeed;
         this.beamBlockerRevision=s.objectRevision;
        }
