@@ -9,6 +9,7 @@ import {formatMissionPacing} from '../breach-mission-pacing.ts';
 import {formatCombatReview} from '../breach-combat-review.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import type {CampaignState} from '../campaign-state.ts';
+import {renderAfterActionWorkspace} from './breach-after-action-controller.ts';
 type DebriefUi={
  debriefIntelBlock:HTMLElement;debriefIntelText:HTMLElement;
  debriefTitle:HTMLElement;debriefGrade:HTMLElement;
@@ -47,6 +48,9 @@ export function renderMissionDebrief(input:{
       '\n\nCOMBAT REVIEW\n'+formatCombatReview(recorder.frames,recorder.events,
       recorder.ballistics.shots)+
       '\n\nTACTICAL TIMELINE\n'+formatAfterAction(recorder.events,10);
+    const root=ui.debriefStats.closest<HTMLElement>('#debrief');
+    if(root)renderAfterActionWorkspace(root,recorder,
+      {showIntel:!!state.operationDossier});
     if(stats.rescueStatus!=='none')
       ui.debriefStats.textContent+='\nCIVILIAN RESCUE: '+
         stats.rescueStatus.toUpperCase().replaceAll('-',' ');
