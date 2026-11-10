@@ -2066,7 +2066,7 @@ jobs:
       - name: Production build and typecheck
         run: npm run build
       - name: Quick Play production release preflight (no deployment)
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/quickplay-scenario-door-swing-') }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/quickplay-scenario-door-swing-') || startsWith(github.head_ref, 'feature/quickplay-generator-navigation-')) }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
