@@ -53,6 +53,9 @@ jobs:
       - name: Stage 7 full motor, doorway, collision, squeeze, traversal and recovery sweep
         if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage7-') }}
         run: node scripts/verification/breach-stage7-motor-suite.mjs
+      - name: Stage 8 complete tactical orders, medical, civilian, door and replay sweep
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage8-') }}
+        run: node scripts/verification/breach-stage8-order-suite.mjs
       - name: Architecture dependency boundary check
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production TypeScript and asset build
