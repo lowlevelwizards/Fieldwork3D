@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator} from './breach-operator-rig.ts';
-import type {OperatorRig,OperatorPose} from './breach-operator-rig.ts';
+import type {OperatorRig} from './breach-operator-rig.ts';
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {AUTHORED_SHORT_REFERENCES,PRESET_CATALOG,PRESET_IDS,
  applyToAllWeapons,newPoseLibrary,parsePoseLibrary,referenceForPreset,
