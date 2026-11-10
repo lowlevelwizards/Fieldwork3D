@@ -8,7 +8,7 @@
  */
 import type {Session} from './breach-game.ts';
 import {
- W,H,WALLS,activeGeometryRevision,pointToSegment,segmentsCross,
+ W,H,WALLS,COVER,activeSite,activeGeometryRevision,pointToSegment,segmentsCross,
  doorBlocksRay,route,OPERATOR_RADIUS,type Pt,type Segment,type Obstacle,
  type Door
 } from './breach-core.ts';
@@ -120,4 +120,14 @@ export function worldGeometryForQuery(s:Session):
  Pick<SessionWorldGeometry,'walls'|'cover'>{
  const context=sessionWorldGeometry(s);
  return {walls:context.walls,cover:context.cover};
+}
+
+/** Presentation-only synchronization for the legacy active-site adapter.
+ * Applying a physical change to a background/replay Session must NOT overwrite
+ * the visible active site or its mutable global compatibility arrays.
+ * Call only after a committed cover mutation, not on every simulation tick.
+ */
+export function publishSessionCoverToActiveSite(s:Session):void{
+ if((activeSite()??null)!==(s.site??null))return;
+ COVER.splice(0,COVER.length,...s.coverState);
 }
