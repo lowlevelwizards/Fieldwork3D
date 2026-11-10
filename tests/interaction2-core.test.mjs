@@ -38,7 +38,7 @@ test('only one command long-press controller remains; failed targeting can retry
 test('unchanged palette keeps its position; existing pocket is an explicit candidate',()=>{
   const source=readFileSync(new URL('../src/breach-context-placement.ts',import.meta.url),'utf8');
   assert.match(palette,/placementKey===lastPlacementKey/);
-  assert.match(palette,/contextPointerIds\.size>0/);
+  assert.match(palette,/heldPointers\.size>0/);
   assert.match(main,/displayRouteCache\.get\(previous,waypoint\.p,/);
   assert.match(source,/preferredPosition\?\.x\?\?xMin/);
   const prior={x:20,y:120},anchor={x:200,y:300};
