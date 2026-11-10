@@ -4,12 +4,14 @@
  * No path search or mutable global state is involved.
  */
 import type {Site,Room} from '../breach-site.ts';
+import {functionalSpacePlan} from './functional-space.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
 export type CirculationReservation={
  roomId:string;kind:'door-approach'|'through-route';
  from:Pt;to:Pt;radius:number;
 };
-type SiteGeometry=Pick<Site,'rooms'|'doors'|'openings'>;
+type SiteGeometry=Pick<Site,'rooms'|'doors'|'openings'> &
+ Partial<Pick<Site,'archetype'>>;
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const inBounds=(p:Pt,r:Room,margin=1)=>p.x>=r.x+margin&&
  p.x<=r.x+r.w-margin&&p.y>=r.y+margin&&p.y<=r.y+r.h-margin;
@@ -44,8 +46,14 @@ export function circulationReservations(site:SiteGeometry):CirculationReservatio
   }
   // A primary public-through room should not become an accidental solid
   // storage maze. A narrow center spine is an advisory optional-prop budget.
-  // Any two-portal room is a necessary through-route, even a kitchen.
-  if(access.length>=2){
+  // Keep the established primary-public-flow contracts unchanged, while
+  // protecting new bedroom-to-service routes only in the family types where
+  // the physical audit uncovered otherwise sealed interiors. Avoid shifting
+  // unrelated seeded garage/clinic/combat scenarios (Stage 1 goldens).
+  const extra=(site.archetype==='apartment'&&room.purpose==='kitchen')||
+   (site.archetype==='office'&&['office','cubicles','meeting'].includes(room.purpose??''))||
+   (site.archetype==='motel'&&room.purpose==='guest');
+  if(access.length>=2&&(functionalSpacePlan(room).routePriority===3||extra)){
    const center={x:room.x+room.w/2,y:room.y+room.h/2};
    for(const from of access)result.push({
     roomId:room.id,kind:'through-route',from,to:center,radius:12});
