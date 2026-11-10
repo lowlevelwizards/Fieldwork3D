@@ -136,6 +136,10 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      - name: Quick Play scenario / door swing critical regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/quickplay-scenario-door-swing-') }}
+        run: |
+          node --experimental-strip-types --test tests/quick-play-door-swing-preview.test.mjs tests/quick-play-scenario-generator.test.mjs tests/quick-play-startup-progress.test.mjs tests/civilian-b7-rescue-session.test.mjs tests/door-hinge-neighborhood-cache.test.mjs
       - name: Physical interactions Nov8 — verify previous production Pages before release
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-physical-interactions-') }}
         env:
@@ -1900,6 +1904,15 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-planned-door-sequence-') }}
         run: |
           node --experimental-strip-types --test tests/doorway-planned-sequence.test.mjs tests/doorway-right-of-way.test.mjs tests/doorway-right-of-way-session.test.mjs tests/doorway-convoy-flow.test.mjs tests/squad-flow-a1.test.mjs tests/squad-entry-b-continuity.test.mjs tests/tactical-integration-04-squad-planning.test.mjs tests/tactical-integration-10-entry-gate.test.mjs tests/breach-137.test.mjs tests/breach-137-1.test.mjs
+      - name: Civilian frequency — occupied budget and safe placement regression
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-civilian-encounter-frequency-') }}
+        run: |
+          node --experimental-strip-types --test tests/civilian-b2-placement.test.mjs tests/civilian-c5-site-occupation.test.mjs tests/living-encounters-live-default.test.mjs tests/civilian-release-field-smoke.test.mjs
+      - name: Civilian frequency — production Pages release checkpoint
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/breach-civilian-encounter-frequency-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       - name: Living Encounters live civilians — focused release gate
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/living-encounters-live-') }}
         run: |
@@ -2052,6 +2065,11 @@ jobs:
           node --experimental-strip-types --test tests/breach-after-action-v2-evidence.test.mjs tests/breach-after-action-v2-scoped-replay.test.mjs tests/replay-r41-incident-playback.test.mjs tests/replay-r2-json-report.test.mjs tests/replay-r3-archive.test.mjs tests/breach-roadmap2-debrief-extraction.test.mjs
       - name: Production build and typecheck
         run: npm run build
+      - name: Quick Play production release preflight (no deployment)
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/quickplay-scenario-door-swing-') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
       - name: Door/desk/chair fix — verify live Pages checkpoint before release
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/door-desk-chair-gridlock-') }}
         env:

@@ -1,7 +1,9 @@
 # E5-D R2 preview release / mobile acceptance boundary
 
-R2 is an **opt-in civilian preview**. New casualty transport and behavior are only
-enabled when the developer preview is active; the normal default remains civilian-free.
+R2 was originally an **opt-in civilian preview**. As of the November 8 live
+field-test activation, standard Quick Play and Campaign opt in by default;
+`?civilians=0` remains the rollback switch. Legacy sessions and old replays
+may still be civilian-free. This document's R2 device gates remain applicable.
 
 Automated release gates:
 - Focused R2 transport, replay, collisions, navigation and animation tests.

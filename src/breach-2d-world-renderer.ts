@@ -2,7 +2,9 @@
  * Only reads live or historically disclosed presentation state.
  */
 import {W,H,GRID,WALLS,COVER,doorCenter,doorLeafSegment,type Pt,type Segment} from './breach-core.ts';
-import {type Session,type TeamActor,liveVisibility} from './breach-game.ts';
+import {type Session,type TeamActor,liveVisibility,isSeen} from './breach-game.ts';
+import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
+import {previewKnownDoorSwing} from './breach-door-swing-preview.ts';
 import {spatialSurfaceState} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
@@ -142,6 +144,16 @@ function architecture(){
   const state=getState();
   const replaying=isReplaying();
   const doorFocusId=getDoorFocusId();
+  // Only disclosed people are admissible for tactical swing warnings.
+  // Historical playback never samples live actor truth to predict contacts.
+  const disclosedPeople=!replaying&&state.phase==='planning'?[
+    ...state.operators.filter(a=>a.health>0&&
+      (a.side==='blue'||isSeen(state,a))).map(a=>a.p),
+    ...state.civilians.filter(c=>c.health>0&&
+      civilianPresentationVisible(c,false,false,liveVisibility(state,c.p)))
+      .map(c=>c.p)
+  ]:[];
+  const swingPreviews=new Map<string,ReturnType<typeof previewKnownDoorSwing>>();
   for(const [i,wall] of WALLS.entries())if(
     spatialSurfaceState(state,'wall',i,replaying&&replayKnowledge.omniscient)!=='unknown')
     wallShape(wall.a,wall.b);
@@ -158,18 +170,24 @@ function architecture(){
       liveVisibility(state,center)?
         (door.openFraction??(door.open?1:0)):
         (state.intel.doorMemory.get(door.id)??0);
-    // Every known hinged door has a true-to-geometry swing preview
-    // before selection, so an entry side can be chosen from the briefing.
-    if(state.phase==='planning'&&door.kind!=='sliding'&&door.kind!=='shutter'){
+    // Known door direction remains legible at ordinary mobile zoom.
+    // Warning colors are driven ONLY by people already disclosed to the team.
+    if(!replaying&&state.phase==='planning'&&
+       door.kind!=='sliding'&&door.kind!=='shutter'){
       const hinge=door.hinge==='b'?door.b:door.a;
-      const end=doorLeafSegment({...door,openFraction:1}).b;
-      draw.save();draw.globalAlpha=.62;
-      line(hinge,end,'#d2ad7459',2);
-      circle(hinge.x,hinge.y,4.2,'#f7d39c');
-      draw.setLineDash([3,4]);draw.strokeStyle='#ecd5a47a';draw.lineWidth=1.3;
+      const preview=previewKnownDoorSwing(door,disclosedPeople);
+      swingPreviews.set(door.id,preview);
+      const color=preview.tone==='blocked'?'#e76a59':
+        preview.tone==='restricted'?'#e9a04a':
+        preview.tone==='near'?'#ebc45a':'#ecd5a4';
+      draw.save();
+      draw.globalAlpha=.94;
+      circle(hinge.x,hinge.y,3.5,'#f7d39c');
+      draw.setLineDash([4,3.5]);draw.strokeStyle=color;
+      draw.lineWidth=door.id===doorFocusId?2.5:1.85;
       draw.beginPath();
-      for(let i=0;i<=8;i++){
-        const tip=doorLeafSegment({...door,openFraction:i/8}).b;
+      for(let i=0;i<=16;i++){
+        const tip=doorLeafSegment({...door,openFraction:i/16}).b;
         if(i===0)draw.moveTo(tip.x,tip.y);else draw.lineTo(tip.x,tip.y);
       }
       draw.stroke();draw.setLineDash([]);draw.restore();
@@ -195,20 +213,38 @@ function architecture(){
   }
   const selectedDoor=state.doors.find(d=>
     d.id===doorFocusId&&doorKnown(state.intel,d.id));
-  if(selectedDoor&&state.phase==='planning'){
+  if(selectedDoor&&state.phase==='planning'&&!replaying&&
+     selectedDoor.kind!=='sliding'&&selectedDoor.kind!=='shutter'){
     const hinge=selectedDoor.hinge==='b'?selectedDoor.b:selectedDoor.a;
-    const swept=doorLeafSegment({...selectedDoor,openFraction:1});
+    const preview=swingPreviews.get(selectedDoor.id)??
+      previewKnownDoorSwing(selectedDoor,disclosedPeople);
     const current=doorLeafSegment(selectedDoor);
-    draw.save();draw.globalAlpha=.36;draw.strokeStyle='#e7c995';
-    draw.fillStyle='#d9b57b17';draw.setLineDash([5,5]);
+    const predicted=doorLeafSegment({...selectedDoor,
+      openFraction:preview.reachable});
+    const warning=preview.tone==='blocked'?'#e76a59':
+      preview.tone==='restricted'?'#e9a04a':
+      preview.tone==='near'?'#ebc45a':'#e7c995';
+    // The filled ghost is only shown on focus: never cover a whole room
+    // with bright diagnostics while the player is reading the map.
+    draw.save();
+    draw.globalAlpha=.48;draw.fillStyle=warning+'29';
+    draw.strokeStyle=warning;draw.lineWidth=2;
+    draw.setLineDash([5,4]);
     draw.beginPath();draw.moveTo(hinge.x,hinge.y);
-    for(let i=0;i<=16;i++){
-      const leaf=doorLeafSegment({...selectedDoor,openFraction:i/16});
+    for(let i=0;i<=20;i++){
+      const leaf=doorLeafSegment({...selectedDoor,
+        openFraction:preview.reachable*i/20});
       draw.lineTo(leaf.b.x,leaf.b.y);
     }
     draw.closePath();draw.fill();draw.stroke();draw.setLineDash([]);
     line(current.a,current.b,'#f4dba9',6);
-    line(swept.a,swept.b,'#f4dba9',5);
+    // Predicted resting leaf, not a fabricated full-90-degree opening.
+    line(predicted.a,predicted.b,warning,5);
+    if(preview.contact!==null){
+      const contact=doorLeafSegment({...selectedDoor,
+        openFraction:preview.contact}).b;
+      circle(contact.x,contact.y,3.8,warning);
+    }
     draw.restore();
   }
   // Narrow window markers (not navigable openings).

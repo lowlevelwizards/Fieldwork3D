@@ -15,8 +15,8 @@ const site=read('src/breach-site.ts');
 test('main menu does not generate a throwaway procedural map',()=>{
  assert.match(main,/withoutSite:legacyStudy\|\|campaignMode==='menu',initial:true/);
  assert.match(campaign,/quickPlay:\(\)=>\{void config.launchQuickPlay\(\);\}/);
- assert.match(loader,/config\.startSession\(seed,generated\.site\)/);
- assert.match(main,/startSession:\(seed,site\)=>reset\(state\.variant,seed,undefined,site,undefined,true\)/);
+ assert.match(loader,/config\.startSession\(seed,generated\.site,recipe\.mission\)/);
+ assert.match(main,/startSession:\(seed,site,mission\)=>reset\(state\.variant,seed,mission,site,undefined,true\)/);
  // Extra encounter options are compatible as long as the generated site
  // and selected risk are still passed to the authoritative session.
  assert.match(main,/prebuiltSite,\s*risk:encounterRisk/);

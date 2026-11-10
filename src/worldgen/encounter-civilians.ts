@@ -45,7 +45,9 @@ const visitRole=(site:Site):CivilianSpec['role']=>{
 const maxScale=(scale:Site['scale'])=>
   scale==='small'?2:scale==='expanded'||scale==='large'?6:4;
 export function civilianBudget(site:Site,seed:number,
-  premise:EncounterPremise,mission:OperationKind):number{
+  premise:EncounterPremise,mission:OperationKind,
+  policy:'scenario'|'on'|'off'='scenario'):number{
+  if(policy==='off')return 0;
   // Real rescue targets will be migrated from their legacy marker in B7.
   // Do not create a duplicate objective person in this early batch.
   if(site.training||mission==='rescue'||
@@ -54,9 +56,17 @@ export function civilianBudget(site:Site,seed:number,
   const rng=encounterRng(seed,34),cap=maxScale(site.scale);
   const occupancy=site.identity?.activity==='busy'?3:
     site.identity?.activity==='quiet'?1:2;
-  // Zero is a normal seeded outcome; even a busy site has a strict cap.
-  return Math.min(cap,Math.floor(rng()*(occupancy+1))+
-    (site.identity?.activity==='busy'&&rng()>.76?1:0));
+  const sampled=Math.floor(rng()*(occupancy+1))+
+    (site.identity?.activity==='busy'&&rng()>.76?1:0);
+  // A nominally occupied, active location should not repeatedly generate
+  // empty rooms solely because of a zero population roll. Quiet, hideout and
+  // guarded encounters still allow emptiness; vacant, defensive, after-hours,
+  // training and rescue retain their explicit no-bystander contracts.
+  const inhabited=site.identity?.condition!=='vacant'&&(
+    site.identity?.activity==='busy'||
+    (site.identity?.activity==='normal'&&
+      ['routine','disturbance','incident'].includes(premise)));
+  return Math.min(cap,Math.max(policy==='on'||inhabited?1:0,sampled));
 }
 function within(p:Pt,r:Room):boolean{
   return p.x>=r.x+22&&p.x<=r.x+r.w-22&&
@@ -74,8 +84,9 @@ function localLegClear(from:Pt,to:Pt,
 }
 export function planCivilians(site:Site,
   hostiles:readonly EncounterActorSpec[],seed:number,
-  premise:EncounterPremise,mission:OperationKind):CivilianSpec[]{
-  const desired=civilianBudget(site,seed,premise,mission);
+  premise:EncounterPremise,mission:OperationKind,
+  policy:'scenario'|'on'|'off'='scenario'):CivilianSpec[]{
+  const desired=civilianBudget(site,seed,premise,mission,policy);
   if(desired<=0)return [];
   const rng=encounterRng(seed,35);
   const occupied=hostiles.map(a=>a.position);
@@ -115,7 +126,13 @@ export function planCivilians(site:Site,
           {x:c.x,y:c.y-c.h/2-24},
           {x:c.x,y:c.y+c.h/2+24});
       }
-      for(const [u,v] of [[.5,.5],[.34,.50],[.66,.5],[.5,.34],[.5,.66]]){
+      // Broad interior samples recover usable floor in offset/furnished
+      // rooms without weakening any spacing, insertion or route gate.
+      for(const [u,v] of [
+        [.5,.5],[.34,.50],[.66,.5],[.5,.34],[.5,.66],
+        [.25,.25],[.75,.25],[.25,.75],[.75,.75],
+        [.25,.5],[.75,.5],[.5,.25],[.5,.75]
+      ]){
         candidates.push({x:room.x+room.w*u,y:room.y+room.h*v});
       }
       const legal=(p:Pt)=>
