@@ -10,13 +10,14 @@ import {passable,route,pointToSegment,withTemporarySiteGeometry,
 import {auditTacticalMobility} from './tactical-mobility-audit.ts';
 import {auditFixtureService} from './fixture-service-clearance.ts';
 import {assessRoomContracts,ROOM_CONTRACTS} from './room-contracts.ts';
+import {isFootstepObstacle} from '../breach-traversal-surfaces.ts';
 
 export type PhysicalIntegrityFinding={
  code:'invalid-geometry'|'invalid-position'|'unreachable-position'|
   'duplicate-door'|'blocked-portal'|'missing-window-collider'|
   'unreachable-room'|'blocked-swing'|'blocked-flow'|
   'tight-approach'|'blocked-approach'|'pinched-threshold'|
-  'blocked-service-face'|'missing-essential';
+  'blocked-service-face'|'missing-essential'|'furniture-overlap';
  entity:string;
  detail:string;
 };
@@ -64,6 +65,32 @@ export function auditSitePhysicalIntegrity(site:Site):PhysicalIntegrityReport{
   if(!Number.isFinite(o.x)||!Number.isFinite(o.y)||
     !Number.isFinite(o.w)||!Number.isFinite(o.h)||o.w<=0||o.h<=0)
    add('blocking','invalid-geometry','cover:'+i,'nonfinite or nonpositive footprint');
+ // True footprint overlap between independent, solid furnishings is
+ // never a matter of renderer scale. Skip authored window/structural layers:
+ // their AABB often intentionally coincide with a wall or another layer.
+ // Keep this diagnostic advisory until generated-site cases are triaged;
+ // do not delete mandatory furniture to make a warning disappear.
+ const architectural=new Set(['window-sill','glass-barrier','half-wall',
+  'support-column','low-wall','chain-link-fence','iron-fence','fence']);
+ for(let i=0;i<site.cover.length;i++){
+  const a=site.cover[i];
+  if(architectural.has(a.fixture??'')||!isFootstepObstacle(a)||
+    !Number.isFinite(a.w)||a.w<=0||a.h<=0)continue;
+  for(let j=i+1;j<site.cover.length;j++){
+   const b=site.cover[j];
+   if(architectural.has(b.fixture??'')||!isFootstepObstacle(b)||
+     !Number.isFinite(b.w)||b.w<=0||b.h<=0)continue;
+   const x=Math.min(a.x+a.w/2,b.x+b.w/2)-
+     Math.max(a.x-a.w/2,b.x-b.w/2);
+   const y=Math.min(a.y+a.h/2,b.y+b.h/2)-
+     Math.max(a.y-a.h/2,b.y-b.h/2);
+   const area=x*y,smallest=Math.min(a.w*a.h,b.w*b.h);
+   if(x>4&&y>4&&area>smallest*.12)
+    add('warning','furniture-overlap','cover:'+i+'+'+j,
+     (a.fixture??'unknown')+' overlaps '+(b.fixture??'unknown')+
+     ' ('+Math.round(area/Math.max(1,smallest)*100)+'% of smaller footprint)');
+  }
+ }
  const ids=new Set<string>();
  for(const door of site.doors){
   if(ids.has(door.id))add('blocking','duplicate-door',door.id,'door id repeats');
