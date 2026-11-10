@@ -1,0 +1,66 @@
+name: Closeout Stage 6 — Browser Integration Acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/closeout-stage6-browser.yml'
+      - '.github/workflows/architecture-refactor-critical.yml'
+      - 'scripts/smoke-closeout-stage6.mjs'
+      - 'tests/breach-closeout-stage6-integration.test.mjs'
+      - 'src/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: breach-closeout-stage6-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  tactical-flow:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/closeout-stage6-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Real WebGL tactical mission, replay, restart and editor navigation on phone and desktop
+        run: node scripts/smoke-closeout-stage6.mjs
+      - name: Capture Stage 6 tactical acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage6-tactical-phone-desktop
+          path: artifacts/closeout-stage6/
+          if-no-files-found: warn
+          retention-days: 14
+
+  replay-and-lab:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/closeout-stage6-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Replay Bodycam historical viewing and restoration
+        run: node scripts/smoke-replay-r43b-bodycam-ui.mjs
+      - name: Unified Operator Lab real WebGL pose/weapon equipment inspection
+        run: node scripts/smoke-operator-lab-unified.mjs
+      - name: Retain replay and pose acceptance captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage6-replay-and-pose-browser
+          path: |
+            artifacts/replay-r43b-bodycam/
+            operator-lab-pose-captures/
+          if-no-files-found: warn
+          retention-days: 14

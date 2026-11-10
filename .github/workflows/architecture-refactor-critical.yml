@@ -88,6 +88,10 @@ jobs:
         if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage5-') }}
         run: |
           node --experimental-strip-types --test tests/breach-closeout-stage5-world-isolation.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-roadmap3-world-context.test.mjs tests/breach-roadmap4-world-geometry.test.mjs tests/breach-roadmap2-geometry-scope.test.mjs tests/breach-roadmap2-stage1-contracts.test.mjs tests/mission-restart-snapshot.test.mjs tests/replay-lifecycle-controller-20261109.test.mjs tests/replay-playback-controller-20261109.test.mjs tests/breach-roadmap2-stage4-pointer-feedback.test.mjs tests/breach-closeout-stage3-presentation.test.mjs tests/replay-r3-archive.test.mjs tests/breach-roadmap2-stage3-knowledge.test.mjs tests/breach-roadmap2-stage6-site-builder.test.mjs
+      - name: Closeout Stage 6 — all five stages and real lifecycle integration
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage6-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-closeout-stage1-plan-authoring.test.mjs tests/breach-closeout-stage2-simulation-phases.test.mjs tests/breach-closeout-stage3-presentation.test.mjs tests/breach-closeout-stage4-pose-output.test.mjs tests/breach-closeout-stage5-world-isolation.test.mjs tests/breach-closeout-stage6-integration.test.mjs tests/replay-r44-real-session.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-scene-memory-lifecycle-p6.test.mjs tests/breach-site-material-lifetime.test.mjs tests/mission-restart-snapshot.test.mjs tests/breach-mission-controller-step8.test.mjs tests/replay-lifecycle-controller-20261109.test.mjs tests/quick-play-scenario-generator.test.mjs tests/breach-roadmap3-3d-disclosure.test.mjs tests/visibility-10-architectural-fog.test.mjs tests/breach-roadmap2-stage1-contracts.test.mjs
       - name: Architecture dependency boundary check
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production TypeScript and asset build
