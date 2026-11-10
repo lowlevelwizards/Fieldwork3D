@@ -63,7 +63,7 @@ import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
 import {pixelOverlay,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
-import {W,H,activeWorldBounds,WALLS,doorCenter,doorLeafSegment,activeSite,type Pt,type Segment} from './breach-core.ts';
+import {W,H,WALLS,doorCenter,doorLeafSegment,activeSite,type Pt,type Segment} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {handlingIntentForMovement,teammateAheadForHandling}
   from './breach-handling-context.ts';
@@ -455,7 +455,7 @@ export class TacticalScene3D{
     }
     this.miniFocusAttention.update(
       this.width,this.height,elapsed,polygons,discs);
-    const overviewZoom=activeSite()?1.48:1.25;
+    const overviewZoom=this.displayedSite?1.48:1.25;
     return focusZoomMultiplier(
       this.view.zoom/overviewZoom,
       this.miniatureFrameRoomCoverage(camera,s));
@@ -534,6 +534,13 @@ export class TacticalScene3D{
   readonly view:ViewState={mode:'iso',yaw:Math.PI/4,zoom:1.25,
     pitch:55*Math.PI/180,
     focus:{x:W/2,y:H/2}};
+  /** Camera framing follows the displayed site, not temporary editor or
+   * replay construction global activation.
+   */
+  private displayedSite:Site|null=activeSite();
+  private get displayedBounds(){
+    return this.displayedSite?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+  }
   readonly canvas:HTMLCanvasElement;
   private root=new THREE.Group();
   private readonly staticBatches=new StaticSceneBatches();
@@ -740,7 +747,7 @@ export class TacticalScene3D{
     if(this.graphicLookEnabled)
      this.graphicWorldMaterialCount=
       applyWorldGraphicLighting(this.root).materials;
-    if(activeSite())this.view.zoom=1.48;
+    if(this.displayedSite)this.view.zoom=1.48;
     // Architectural silhouettes remain visible (as in the 2D map), but
     // unknown cells are strongly darkened. Unseen soldiers and door states
     // are separately visibility-gated, so a huge opaque 'roof' is unnecessary.
@@ -920,6 +927,7 @@ export class TacticalScene3D{
    * camera remain alive, avoiding a WebGL context restart on each site.
    */
   applySite(site:Site|null){
+    this.displayedSite=site;
     this.staticBatches.clear();
     // Friendly rigs survive map changes for responsive load-in. Hostile
     // models belong to the outgoing encounter and otherwise accumulate
@@ -1070,7 +1078,7 @@ export class TacticalScene3D{
       coverVisualStates:scene.coverVisualStates
     };
   }
-  private buildWorld(site=activeSite()){
+  private buildWorld(site=this.displayedSite){
     buildSiteWorld(site,this.siteBuildPort());
   }
   resize(w:number,h:number){
@@ -1155,10 +1163,10 @@ export class TacticalScene3D{
   }
   /** A reset is a predictable full-board fit, independent of unit selection. */
   resetCamera(){
-    const bounds=activeWorldBounds();
+    const bounds=this.displayedBounds;
     this.view.focus={x:(bounds.minX+bounds.maxX)/2,
       y:(bounds.minY+bounds.maxY)/2};this.view.yaw=Math.PI/4;
-    this.view.zoom=activeSite()?1.48:1.25;
+    this.view.zoom=this.displayedSite?1.48:1.25;
     this.view.pitch=this.view.mode==='top'?Math.PI/2:55*Math.PI/180;
     this.updateCamera(1);
   }
@@ -1180,11 +1188,11 @@ export class TacticalScene3D{
   private shiftFocus(dx:number,dy:number){
     const marginX=140,marginY=150;
     this.view.focus.x=THREE.MathUtils.clamp(
-      this.view.focus.x+dx,activeWorldBounds().minX-marginX,
-      activeWorldBounds().maxX+marginX);
+      this.view.focus.x+dx,this.displayedBounds.minX-marginX,
+      this.displayedBounds.maxX+marginX);
     this.view.focus.y=THREE.MathUtils.clamp(
-      this.view.focus.y+dy,activeWorldBounds().minY-marginY,
-      activeWorldBounds().maxY+marginY);
+      this.view.focus.y+dy,this.displayedBounds.minY-marginY,
+      this.displayedBounds.maxY+marginY);
     this.updateCamera(0);
   }
   /**
@@ -1206,7 +1214,7 @@ export class TacticalScene3D{
   /** The same world-size basis used by the ortho camera, for accurate
    * close-up framing independent of map size and mobile aspect ratio. */
   replayCameraBaseSpan():number{
-    const b=activeWorldBounds();
+    const b=this.displayedBounds;
     const diagonal=Math.hypot(b.maxX-b.minX,b.maxY-b.minY);
     return Math.max(820,(diagonal+66)/(this.width/Math.max(1,this.height)));
   }
@@ -1266,7 +1274,7 @@ export class TacticalScene3D{
       this.directorCamera.updateMatrixWorld(true);
     }
     const aspect=this.width/this.height;
-    const bounds=activeWorldBounds();
+    const bounds=this.displayedBounds;
     const diagonal=Math.hypot(bounds.maxX-bounds.minX,
       bounds.maxY-bounds.minY);
     // A yaw-invariant fit avoids breathing/scale changes while orbiting.
