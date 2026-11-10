@@ -65,7 +65,7 @@ test('nearby wall never disguises a furniture collision as a wall glide',()=>{
  }
 });
 test('the motor reports resolved, not imagined wall-glide and corner-slide speed',()=>{
- const motor=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
+ const motor=readFileSync(new URL('../src/breach-motor-collision.ts',import.meta.url),'utf8');
  assert.match(motor,/a\.velocity=d\(old,glide\)\/Math\.max\(dt,\.0001\)/);
  assert.match(motor,/a\.velocity=d\(old,slide\)\/Math\.max\(dt,\.0001\)/);
 });
@@ -125,8 +125,10 @@ test('HERE replacement clips at known world bounds and keeps undo intact',()=>{
 });
 test('the touch gesture uses HERE replacement, not route-append',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(main,/planMoveStroke\(state,selected,points\.slice\(1\),false,true,strokeOutcome\)/);
- assert.match(main,/ROUTE REPLACED FROM HERE · UNDO TO RESTORE/);
+ const commands=readFileSync(new URL('../src/breach-pointer-command-controller.ts',import.meta.url),'utf8');
+ assert.match(main,/dispatchTacticalPointerRelease/);
+ assert.match(commands,/planMoveStroke\(port\.state,port\.selected,points\.slice\(1\),false,true,strokeOutcome\)/);
+ assert.match(commands,/ROUTE REPLACED FROM HERE · UNDO TO RESTORE/);
 });
 test('window classification distinguishes standard sash from fixed and unsafe glazing',()=>{
  const fresh=initializeWindows([
