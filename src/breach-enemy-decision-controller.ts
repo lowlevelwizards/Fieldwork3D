@@ -4,8 +4,8 @@
  * Preserve evaluation order, reaction latency and seeded random behavior.
  */
 import type {Session,TeamActor} from './breach-game.ts';
-import {type Pt,COVER,WALLS,OPERATOR_RADIUS,doorCenter,length} from './breach-core.ts';
-import {targetAngle,angleDifference} from './breach-plan.ts';
+import {type Pt,COVER,WALLS,OPERATOR_RADIUS,doorCenter} from './breach-core.ts';
+import {targetAngle,angleDifference,length} from './breach-plan.ts';
 import {rotate} from './breach-order-lifecycle.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import {encounterReactionDelay,encounterReactionPhase} from './breach-encounter-readiness.ts';
