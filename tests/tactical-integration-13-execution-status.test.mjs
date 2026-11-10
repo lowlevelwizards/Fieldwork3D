@@ -69,9 +69,11 @@ test('unavailable entry tool is retained and reported once, never silently poppe
 });
 test('operator cards expose a compact status and accessible reason, without new tactical orders',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+ const hud=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
  const css=readFileSync(new URL('../src/breach-style.css',import.meta.url),'utf8');
  assert.match(main,/executionStatus\(a,/);
- assert.match(main,/stateLine\.dataset\.kind=execution\?\.kind/);
- assert.match(main,/\.unit-execution/);
+ assert.match(hud,/executionStatus\(a,/);
+ assert.match(hud,/stateLine\.dataset\.kind=execution\?\.kind/);
+ assert.match(hud,/\.unit-execution/);
  assert.match(css,/unit-execution\[data-kind="blocked"\]/);
 });
