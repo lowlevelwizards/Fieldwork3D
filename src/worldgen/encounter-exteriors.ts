@@ -1,7 +1,7 @@
 /** Optional physically valid exterior occupancy: no free teleport, no
  * automatic front-door ambush, and no off-map spawn. */
 import type {Site,ExteriorZone} from '../breach-site.ts';
-import {activateSite,activeSite,passable,route,segmentsCross,type Pt} from '../breach-core.ts';
+import {withTemporarySiteGeometry,passable,route,segmentsCross,type Pt} from '../breach-core.ts';
 import {exteriorSpawnAllowed} from './encounter-spawn-safety.ts';
 import type {EncounterActorSpec,EncounterPremise} from './encounter-types.ts';
 import {encounterRng} from './encounter-rng.ts';
@@ -26,9 +26,7 @@ export function assignExteriorOccupants(site:Site,actors:EncounterActorSpec[],
   {x:z.x-z.w*.22,y:z.y},{x:z.x,y:z.y+z.h*.22},
   {x:z.x,y:z.y-z.h*.22}
  ];
- const previous=activeSite();
- activateSite(site);
- try{
+ withTemporarySiteGeometry(site,()=>{
   let count=0,attempts=0;
   for(const {z} of preferred){
    if(count>=maxExterior||attempts>=7)break;
@@ -51,6 +49,6 @@ export function assignExteriorOccupants(site:Site,actors:EncounterActorSpec[],
     count++;break;
    }
   }
- }finally{activateSite(previous);}
+ });
  return exterior;
 }
