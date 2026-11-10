@@ -44,6 +44,16 @@ const drawing=()=>{
  return {draw,walls,furniture,polygons};
 };
 const camera=()=>readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
+test('Stage 5: physical geometry module does not own active presentation',()=>{
+ const world=readFileSync(new URL('../src/breach-world-context.ts',import.meta.url),'utf8');
+ const presenter=readFileSync(new URL(
+  '../src/breach-presentation-world-ownership.ts',import.meta.url),'utf8');
+ assert.doesNotMatch(world,/\bactivateSite\s*\(/);
+ assert.doesNotMatch(world,/\bCOVER\.splice\s*\(/);
+ assert.match(presenter,/withDetachedPresentationWorld/);
+ assert.match(presenter,/adoptPresentationWorldSession/);
+ assert.match(presenter,/publishSessionCoverToActiveSite/);
+});
 test('Stage 5: background mission creation restores live global geometry and owner',()=>{
  try{
   const live=session(7);
