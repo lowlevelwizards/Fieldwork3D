@@ -20,6 +20,15 @@ import {captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam}
  from '../src/breach-mission-restart.ts';
 import {MissionRecorder,applyReplayFrame} from '../src/breach-replay.ts';
 
+// The authoring serializer materializes optional keys with undefined after
+// undo/redo. Compare the actual serialized command contract, not object shape.
+const authoredPlan=plan=>JSON.parse(JSON.stringify(plan));
+const GOLDENS=Object.freeze({
+ door:'f0300241e8134d1a65c5e71fd22c827447e96128a92bb82c2bd64958c02f895c',
+ medical:'59dcd49b07911987d44ef1366b25c00f4b9eba1abc80db293a89f4c0f8c3117e',
+ combat:'1e2d24ad275fb9600eac4da91ea01e23fe180468e8133f7a65120adef746b9a3',
+ civilian:'32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136'
+});
 function authorDoorEntry(s){
  const [rook,moss]=team(s);
  assert.equal(planWaitAt(s,rook.id,1,'here'),true);
@@ -30,16 +39,16 @@ test('authored transactions undo/redo without changing the running clock or losi
  withTemporarySiteGeometry(null,()=>{
   const s=newSession(0,undefined,'full-view','small','hold',stage1DoorSite());
   const a=team(s)[0];
-  const initial=structuredClone(a.plan);
+  const initial=authoredPlan(a.plan);
   assert.ok(planWaitAt(s,a.id,.5,'here'));
   const waiting=structuredClone(a.plan);
   assert.ok(planMove(s,a.id,{x:296,y:373}));
   const planned=structuredClone(a.plan);
   assert.ok(planned.some(n=>n.kind==='move'));
-  assert.ok(undoPlan(s,a.id));assert.deepEqual(a.plan,waiting);
-  assert.ok(undoPlan(s,a.id));assert.deepEqual(a.plan,initial);
-  assert.ok(redoPlan(s,a.id));assert.deepEqual(a.plan,waiting);
-  assert.ok(redoPlan(s,a.id));assert.deepEqual(a.plan,planned);
+  assert.ok(undoPlan(s,a.id));assert.deepEqual(authoredPlan(a.plan),waiting);
+  assert.ok(undoPlan(s,a.id));assert.deepEqual(authoredPlan(a.plan),initial);
+  assert.ok(redoPlan(s,a.id));assert.deepEqual(authoredPlan(a.plan),waiting);
+  assert.ok(redoPlan(s,a.id));assert.deepEqual(authoredPlan(a.plan),planned);
   assert.equal(s.seconds,0);
   toggling(s);
   for(let i=0;i<90;i++)stepSession(s,1/60);
@@ -62,7 +71,7 @@ test('door entry with WAIT and competing teammates has repeatable physical outco
  assert.ok(first.checkpoints.some(frame=>frame.actors.some(a=>a.completedOrders>0)),
   'a genuine ordered WAIT or movement action must complete');
  assert.ok(first.checkpoints.at(-1).seconds>6.9);
- console.log('STAGE1_DOOR_GOLDEN',first.fingerprint);
+ assert.equal(first.fingerprint,GOLDENS.door,'door baseline changed');
 });
 test('reload and wound deterioration are actually advanced by 60 Hz simulation',()=>{
  const make=()=>runStage1Scenario({
@@ -86,7 +95,7 @@ test('reload and wound deterioration are actually advanced by 60 Hz simulation',
  assert.ok(injured.health<first.first.actors.find(a=>a.id==='moss').health);
  assert.ok(first.events.some(e=>e.kind==='reload'));
  assert.ok(first.events.some(e=>e.kind==='wound'));
- console.log('STAGE1_MEDICAL_GOLDEN',first.fingerprint);
+ assert.equal(first.fingerprint,GOLDENS.medical,'reload/wound baseline changed');
 });
 test('live opposing actors produce actual projectiles and update AI evidence',()=>{
  const setup=s=>{
@@ -113,8 +122,7 @@ test('live opposing actors produce actual projectiles and update AI evidence',()
  assert.ok(first.last.actors.some(a=>a.side==='red'&&
     (a.alert!=='idle'||a.shots>0||a.noiseId>0)),
    'enemy must react through real perception/decision execution');
- console.log('STAGE1_COMBAT_GOLDEN',first.fingerprint,
-  'shots',first.shotsFired);
+ assert.equal(first.fingerprint,GOLDENS.combat,'combat/AI baseline changed');
 });
 test('enemy hearing records authentic evidence rather than inventing target sight',()=>{
  const results=runStage1Scenario({
@@ -146,7 +154,7 @@ test('civilian rescue targets survive simulation and are recorded as real entiti
  assert.ok(first.recorder.frames[0].civilians.some(c=>c.id===target[0].id));
  assert.ok(first.recorder.frames.at(-1).civilians.some(c=>c.id===target[0].id));
  assert.equal(first.recorder.completeness.complete,true);
- console.log('STAGE1_CIVILIAN_GOLDEN',first.fingerprint);
+ assert.equal(first.fingerprint,GOLDENS.civilian,'civilian/replay baseline changed');
 });
 test('objective and all-operators-down reach independently expected terminal phases',()=>{
  const won=runStage1Scenario({site:stage1CompletionSite(),mission:'clear',
