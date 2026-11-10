@@ -131,7 +131,7 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  ];
  const aimYaw=angle(a.p,target.p),range=d(a.p,target.p);
  const clearBody=(candidate:Pt)=>
-   sweptBodyClear(a.p,candidate,s.doors)&&
+   sweptBodyClear(a.p,candidate,s.doors,8,sessionWorldGeometry(s))&&
    people.every(p=>pointToSegment(p,{a:a.p,b:candidate})>=20);
  const legalShot=(candidate:Pt)=>{
    const clearance=weaponClearance({
@@ -139,7 +139,7 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
      weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
      aim:a.aim,posture:a.posture,velocity:0,recoil:a.recoil,
      threatRange:range
-   },s.doors);
+   },s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
    if(clearance.blocked)return false;
    const from={x:clearance.muzzle.x,y:clearance.muzzle.z};
    const height=aimHeight(target.posture==='crouch');
@@ -178,7 +178,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const proposedYaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
   const clearance=weaponClearance({x:a.p.x,z:a.p.y,
     heading:a.heading,weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
-    velocity:a.velocity,recoil:a.recoil},s.doors);
+    velocity:a.velocity,recoil:a.recoil},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
   if(clearance.blocked)return;
   const muzzle=clearance.muzzle;
   const yaw=muzzle.yaw;
@@ -349,7 +349,7 @@ function fire(s:Session,a:TeamActor,dt:number){
         weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
         equipment:a.equipment,aim:0,posture:a.posture,
         velocity:0,recoil:0
-      },s.doors);
+      },s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
       const blocked=probe(a.heading).obstruction;
       a.clearLookBearing=null;
       if(blocked){
