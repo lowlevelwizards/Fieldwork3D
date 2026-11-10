@@ -21,6 +21,7 @@ const intelWorlds=new WeakMap<IntelState,SessionWorldGeometry>();
 export function bindIntelWorld(intel:IntelState,world:SessionWorldGeometry):void{
  intelWorlds.set(intel,world);
 }
+export const intelWorldGeometry=(intel:IntelState)=>intelWorlds.get(intel);
 const ownerWorld=(intel:IntelState,world?:SessionWorldGeometry)=>
  world??intelWorlds.get(intel);
 export const INTEL_MODES:readonly IntelMode[]=[
