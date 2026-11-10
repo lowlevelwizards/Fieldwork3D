@@ -14,6 +14,15 @@ export type IntelState={
  walls:Set<number>;doors:Set<string>;cover:Set<number>;
  rooms:Set<string>;doorMemory:Map<string,number>;
 };
+/** Each live intel snapshot reads only its owning world. Weak binding
+ * stays out of serialized fog/replay schemas and permits old sessions to GC.
+ */
+const intelWorlds=new WeakMap<IntelState,SessionWorldGeometry>();
+export function bindIntelWorld(intel:IntelState,world:SessionWorldGeometry):void{
+ intelWorlds.set(intel,world);
+}
+const ownerWorld=(intel:IntelState,world?:SessionWorldGeometry)=>
+ world??intelWorlds.get(intel);
 export const INTEL_MODES:readonly IntelMode[]=[
  'true-blind','exterior-known','floor-plan','full-view'];
 export function insideBuilding(site:Site|undefined,p:Pt):boolean{
@@ -32,7 +41,8 @@ export function exteriorWall(site:Site|undefined,wall:Segment){
 }
 export function initialIntel(mode:IntelMode,site:Site|undefined,
   doors:Door[],world?:SessionWorldGeometry):IntelState{
- const walls=world?.walls??WALLS,cover=world?.cover??COVER;
+ const bound=ownerWorld(intel,world);
+ const walls=bound?.walls??WALLS,cover=bound?.cover??COVER;
  const intel:IntelState={mode,walls:new Set(),doors:new Set(),
    cover:new Set(),rooms:new Set(),doorMemory:new Map()};
  if(mode==='full-view'){
@@ -98,7 +108,7 @@ export function observeIntel(intel:IntelState,site:Site|undefined,
 /** Direct physical contact reveals only the touched furniture, never remote cover. */
 export function discoverContactCover(intel:IntelState,at:Pt,reach=12,
  world?:SessionWorldGeometry){
- const cover=world?.cover??COVER;
+ const cover=ownerWorld(intel,world)?.cover??COVER;
  const found:number[]=[];
  cover.forEach((o,i)=>{
    const dx=Math.max(0,Math.abs(at.x-o.x)-o.w/2);
@@ -115,6 +125,7 @@ export const coverKnown=(intel:IntelState,i:number)=>intel.cover.has(i);
 export const roomKnown=(intel:IntelState,id:string)=>intel.rooms.has(id);
 export function intelPassable(p:Pt,intel:IntelState,clearance=8,
  world?:SessionWorldGeometry):boolean{
+ world=ownerWorld(intel,world);
  const bounds=world?.bounds??activeWorldBounds();
  if(p.x<bounds.minX+13||p.y<bounds.minY+20||
    p.x>bounds.maxX-13||p.y>bounds.maxY-13)return false;
@@ -127,7 +138,8 @@ export function intelPassable(p:Pt,intel:IntelState,clearance=8,
 }
 export const routeWithIntel=(intel:IntelState,from:Pt,to:Pt,
  world?:SessionWorldGeometry)=>
- world?world.route(from,to,p=>intelPassable(p,intel,8,world)):
+ (world??intelWorlds.get(intel))?
+ (world??intelWorlds.get(intel))!.route(from,to,p=>intelPassable(p,intel,8,world)):
  route(from,to,p=>intelPassable(p,intel));
 export function intelFogLevel(intel:IntelState,site:Site|undefined,
   p:Pt,currentlyVisible:boolean,everSeen:boolean){
