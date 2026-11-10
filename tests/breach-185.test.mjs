@@ -3,9 +3,11 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {turnHierarchy} from '../src/breach-turn-hierarchy.ts';
 test('185: exactly one final pelvis/root yaw assignment in rig pose',()=>{
-  const s=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
+  const s=readFileSync(new URL('../src/breach-operator-animation-controller.ts',import.meta.url),'utf8');
   const pose=s.slice(s.indexOf('export function poseOperator('));
-  assert.equal((pose.match(/r\.root\.rotation\.y=/g)||[]).length,1);
+  assert.equal((pose.match(/r\.root\.rotation\.y=/g)||[]).length,0);
+  assert.equal((pose.match(/r\.legacyYaw=/g)||[]).length,1);
+  assert.equal((pose.match(/r\.root\.quaternion\.copy\(/g)||[]).length,1);
   assert.match(pose,/const scheduledYaw=p\.pelvisYaw/);
   assert.match(pose,/const turn=turnHierarchy/);
 });
