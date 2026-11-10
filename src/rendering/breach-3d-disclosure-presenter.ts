@@ -7,7 +7,10 @@ import type {CivilianActor} from '../breach-civilian-types.ts';
 import {replayActorDisclosed,replayCivilianDisclosed,recordedReplayKnowledge,
  type ReplayDisclosure} from '../breach-replay-visibility.ts';
 import {civilianPresentationVisible} from '../breach-civilian-visibility.ts';
-import {personalDecorVisible} from '../breach-replay-personal-visibility.ts';
+import {personalDecorVisible,personalGroundEvidenceAt} from '../breach-replay-personal-visibility.ts';
+import {architecturalOpeningKnown} from '../breach-presentation.ts';
+import {accessibleExteriorWall} from '../breach-site-footprint.ts';
+import type {WideOpening} from '../breach-site.ts';
 
 export function presentActor(s:Session,a:TeamActor,omniscient:boolean,
  policy:ReplayDisclosure|null):boolean{
@@ -61,4 +64,38 @@ export function resolveDoorPresentation(x:DoorPresentationInput){
  const wedgeVisible=x.personal?!!x.observed?.wedged:
   x.door.wedged===true&&direct;
  return {fraction:draw,glassVisible,wedgeVisible,remember:direct};
+}
+
+/** Historical personal disclosure applies to all camera lenses. Known public
+ * architecture remains available; unseen interior thresholds require the
+ * selected observer's recorded fine/micro ground evidence.
+ */
+export function presentArchitecturalOpening(s:Session,opening:WideOpening,
+ omniscient:boolean,policy:ReplayDisclosure|null,
+ evidence:ReadonlySet<string>|null):boolean{
+ if(policy?.mode!=='operator')return architecturalOpeningKnown(s,opening,omniscient);
+ if(s.intel.mode==='full-view'||s.intel.mode==='floor-plan')return true;
+ if(s.intel.mode==='exterior-known'&&
+   accessibleExteriorWall(s.site??undefined,opening))return true;
+ const dx=opening.b.x-opening.a.x,dy=opening.b.y-opening.a.y;
+ const length=Math.hypot(dx,dy);
+ if(length<.001)return false;
+ const mx=(opening.a.x+opening.b.x)/2,my=(opening.a.y+opening.b.y)/2;
+ const nx=-dy/length,ny=dx/length;
+ return [-1,1].some(sign=>personalGroundEvidenceAt(evidence,{
+  x:mx+nx*8*sign,y:my+ny*8*sign
+ }));
+}
+/** A fallback rescue mesh has no archived civilian identity: never reconstruct
+ * it in historical squad/personal films from contemporary live sight.
+ */
+export function presentUnrecordedRescueMarker(s:Session,omniscient:boolean,
+ policy:ReplayDisclosure|null):boolean{
+ if(policy)return policy.mode==='full';
+ return omniscient||liveVisibility(s,s.rescue!.p);
+}
+/** Shared transient-geometry disclosure for all Three.js camera modes. */
+export function presentTransientEvidence(p:Pt,omniscient:boolean,
+ personal:boolean,visibleAt:(point:Pt)=>boolean):boolean{
+ return !personal&&(omniscient||visibleAt(p));
 }
