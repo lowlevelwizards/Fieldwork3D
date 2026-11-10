@@ -118,7 +118,9 @@ test('063: undo after paired BACK cannot deadlock a lone synchronization',()=>{
   assert.ok(backOne(s,'rook'));
   assert.ok(undoPlan(s,'rook'));
   assert.equal(team(s)[0].plan[0].kind,'sync');
-  assert.equal(team(s)[1].plan.length,0);
+  assert.ok(team(s).every(a=>a.plan[0]?.kind==='sync'),
+    'undo now restores the entire coordinated SYNC transaction');
   toggling(s);run(s,.2);
-  assert.equal(team(s)[0].plan.length,0,'orphan code safely releases');
+  assert.ok(team(s).every(a=>a.plan.length===0),
+    'restored squad synchronization releases all participants together');
 });
