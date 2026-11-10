@@ -12,15 +12,20 @@ const scales=choice==='all'?['small','medium','large']:
 const cases=[],byArchetype=new Map(),byOrientation=new Map();
 let warnings=0,failures=0,checkedRooms=0,checkedDoors=0;
 for(const scale of scales)for(let seed=0;seed<count;seed++){
- const site=generateSite(seed,scale);
- const audit=auditSitePhysicalIntegrity(site);
- checkedRooms+=audit.checkedRooms;checkedDoors+=audit.checkedDoors;
- warnings+=audit.warnings.length;failures+=Number(audit.blocking.length>0);
- const key=site.archetype??'unknown',orientation=site.entrySide??'unknown';
- byArchetype.set(key,(byArchetype.get(key)??0)+1);
- byOrientation.set(orientation,(byOrientation.get(orientation)??0)+1);
- if(audit.blocking.length)cases.push({seed,scale,archetype:key,
-  errors:audit.blocking});
+ try{
+  const site=generateSite(seed,scale);
+  const audit=auditSitePhysicalIntegrity(site);
+  checkedRooms+=audit.checkedRooms;checkedDoors+=audit.checkedDoors;
+  warnings+=audit.warnings.length;failures+=Number(audit.blocking.length>0);
+  const key=site.archetype??'unknown',orientation=site.entrySide??'unknown';
+  byArchetype.set(key,(byArchetype.get(key)??0)+1);
+  byOrientation.set(orientation,(byOrientation.get(orientation)??0)+1);
+  if(audit.blocking.length)cases.push({seed,scale,archetype:key,
+   errors:audit.blocking});
+ }catch(error){
+  failures++;
+  cases.push({seed,scale,error:String(error)});
+ }
 }
 console.log(JSON.stringify({
  matrix:{seedsPerScale:count,scales,samples:count*scales.length},
