@@ -34,6 +34,7 @@ import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
 import {retreatDoorClosureEligible,routineDoorClosureEligible} from './breach-ai-door-response.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
+import {sweptBodyClear} from './breach-navigation.ts';
 
 /** The authoritative simulation owns the motor, shot/geometry, visibility and
  * event ports. The AI owns observation response, tactical commitments and
@@ -531,5 +532,5 @@ function distributeReports(s:Session){
  }
 }
 
- return {decide:enemyDecisions,distributeReports};
+ return {decide:enemyDecisions,distributeReports,defensivePosition};
 }
