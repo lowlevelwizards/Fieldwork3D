@@ -22,8 +22,8 @@ be regenerated merely to turn CI green**.
 | Phase ordering | 280+ line `stepSession` interleaving mechanics and marks | `breach-simulation-phases.ts` single ordered sequence |
 | Medical and door leaves | Inline in `stepSession` | `breach-simulation-medical-door-phase.ts` |
 | Contact-belief expiration | Inline in `stepSession` | `breach-simulation-belief-phase.ts` |
-| Squad order, AI, morale | Inline in `stepSession` | `advanceSimulationActors` typed phase callback, existing dedicated order/AI executors |
-| Civilian/actor motion, hard-body resolution | Inline in `stepSession` | `advanceSimulationMotion` typed callback using session world geometry |
+| Squad order, AI, morale | Inline in `stepSession` | `breach-simulation-actor-phase.ts` via typed `ActorSimulationPhasePort`, existing order/AI executors |
+| Civilian/actor motion, hard-body resolution | Inline in `stepSession` | `breach-simulation-motion-phase.ts` via typed `MotionSimulationPhasePort` and Session geometry |
 | Effect aging and flashbangs | Inline | Consecutive ordered callbacks; transient aging stays in phase module |
 | Reports, observed intel, fire, mission | Inline | Explicit consecutive phase slots |
 | Execution status evidence | Tail of `stepSession` | Last step of the phase director, after mission |
@@ -55,6 +55,11 @@ The sequence is **not interchangeable**. For instance:
 - Execution-status events use the post-mission time and post-combat actor
   state; replay capture only sees a completed tick
 - A pause or replay frame must never trigger the phase director
+
+Actor policy and physical movement now live in dedicated phase modules. The
+`breach-game.ts` facade retains only typed service adapters to existing AI,
+order execution, cached routefinding and LOS functions; it does not contain
+another per-tick phase sequence.
 
 The existing opt-in performance marks retain their historical names:
 `doors`, `aging-effects`, `visual-awareness`, `belief-aging`,
