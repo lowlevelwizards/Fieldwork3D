@@ -1,10 +1,11 @@
 import {validPieArc} from './breach-maneuvers.ts';
-import {pathFor,edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan}
- from './breach-plan-authoring.ts';
+import {edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan} from './breach-plan-authoring.ts';
 import {simulationPhaseMark,advanceTransientSimulationEffects,
  recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
 import {reconcileEnemyIntent,reconcileEnemyPosture} from './breach-ai-reconciliation.ts';
 import {advanceActorMotor} from './breach-actor-motor.ts';
+import {createOrderExecutor} from './breach-order-executor.ts';
+import {rotate} from './breach-order-lifecycle.ts';
 import {advanceMotorTraversal,motorTraversalWorld} from './breach-motor-traversal.ts';
 import type {ActorMotorHooks} from './breach-motor-contract.ts';
 import {segmentImpact,strikeSurface} from './breach-ballistic-resolution.ts';
@@ -16,23 +17,10 @@ import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts'
  * Author intent is editable PlanNode[]; motor navigation is transient.
  * Legacy 052 entrypoints remain in breach-core for comparison/tests only.
  */
-import {
-  type Pt,type Operator,type TacticalState,type Door,type Side,
-  W,H,WALLS,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,route,passable,activateSite,
-  segmentsCross,doorCenter,doorBlocksSegment,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,
-  pointToSegment,staticWallBlocksRay,someCoverAlongRay,
-  activeGeometryRevision,
-} from './breach-core.ts';
-import {
-  type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,
-  type AimMode,type AimInstruction,
-  makeHistory,copyNodes,modifyNode,lastPoint,
-  type FirePolicy,
-  length,targetAngle,angleDifference,type PieSide,interruptsWatch,
-} from './breach-plan.ts';
+import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,WALLS,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,route,passable,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,staticWallBlocksRay,someCoverAlongRay,activeGeometryRevision} from './breach-core.ts';
+import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
-import {entryClearanceForLook,stackApproachPositions}
- from './breach-entry-coordination.ts';
+import {stackApproachPositions} from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
@@ -56,13 +44,13 @@ import {assessFireLane,fireLaneReachable,type FireBlock} from './breach-fire-saf
 import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,initialOpeningYieldCandidate,doorWouldStrikeActors} from './breach-door.ts';
+import {initDoor,advanceDoor,doorReachable,doorApproach,initialOpeningYieldCandidate,doorWouldStrikeActors} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
-import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
+import {canUseEntryTool} from './equipment-entry-tools.ts';
 
-import {autoSidestepFacing,type AutoSidestep} from './breach-auto-sidestep.ts';
-import {nearOccupiedFriendlyGoal,friendlyArrivalSettleTarget} from './breach-friendly-traffic.ts';
+import {type AutoSidestep} from './breach-auto-sidestep.ts';
+
 import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {captureMotionFrameOrigins,buildMotionFrameProposals}
  from './breach-motion-frame-input.ts';
@@ -70,12 +58,12 @@ import {captureMotionFrameOrigins,buildMotionFrameProposals}
 import {type MotorPause,type ExecutionIssue,
   type ExecutionStatus} from './breach-execution-state.ts';
 import {type ExecutionEvent} from './breach-execution-events.ts';
-import {relocateCover,canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
+import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
 import {canAutoShove} from './breach-traversal-surfaces.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
 import {damageCover} from './breach-reactive-cover.ts';
 import {materialResponse} from './breach-impact-responses.ts';
-import {manipulateWindow,damageWindow,windowPaneSegment} from './breach-windows.ts';
+import {damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {type AIIntent} from './breach-ai-policy.ts';
 import {scanEnemySoundEvidence}
@@ -98,8 +86,7 @@ import {createCivilian,setCivilianState,type CivilianActor} from './breach-civil
 import {stepCivilianMovement} from './breach-civilian-movement.ts';
 import {stepCivilianResponse} from './breach-civilian-response.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
-import {canSecureRescuePerson,rescueEscortSeparated,rescueFollowGoal}
-  from './breach-civilian-mission.ts';
+import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
 import {firstCivilianAlongRay,applyCivilianBulletHit}
   from './breach-civilian-ballistics.ts';
 import {knownCivilianInFireLane} from './breach-civilian-fire-safety.ts';
@@ -122,13 +109,11 @@ import {newAwareness,addObservation,visibleObservation,
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {passageIdleYieldStep,approachingNarrowThreshold,type PassageActor,type PassageLease} from './breach-passage.ts';
+import {passageIdleYieldStep,type PassageActor,type PassageLease} from './breach-passage.ts';
 
-import {advanceWaitOrder} from './breach-order-wait.ts';
-import {executeTacticalUtilityOrder} from './breach-order-utility.ts';
 import {planDoorSchedule,type PassageSchedule} from './breach-passage-plan.ts';
 import {projectReachableGoal,type Blocker} from './breach-nav-diagnostics.ts';
-import {bodyClear,sweptBodyClear,sweptProfileClear,SQUEEZE_RADIUS} from './breach-navigation.ts';
+import {sweptBodyClear,sweptProfileClear,SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld} from './breach-squeeze-route.ts';
 import {knownPortalStrokeRoute} from './breach-known-portal-stroke.ts';
 import {probeObstacleCrossing,probeWindowPortalRoute,canOpenWindowForClimb,sampleTraversal,traversalRouteLength,traversalStepClear,type TraverseOpportunity} from './breach-mantle.ts';
@@ -136,20 +121,12 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
 import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
-import {kitMedicalSupplies,spendMedicalSupply,transferMedicalSupply,
- medicalSupplyCount,type FieldMedicalSupplies}
- from './equipment-medical-supplies.ts';
-import {treatmentSupplyForWound,treatmentDuration}
- from './breach-medical-treatment.ts';
-import {equipmentRetrievalSeconds}
- from './equipment-carry-placement.ts';
-import {initialEquipmentLoadout} from './equipment-loadouts.ts';
+import {kitMedicalSupplies,medicalSupplyCount,type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
+import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
+
 import {stabilizationSummary} from './breach-casualty-status.ts';
-import {casualtyTrailingPosition,transportIsClear,type TransportMode}
- from './breach-casualty-transport.ts';
-import {civilianTransportEligible,takeCivilianCustody,dropCivilianCustody,
- proposedCivilianTransportStep,reconcileCivilianTransportFrame}
- from './breach-civilian-transport.ts';
+import {type TransportMode} from './breach-casualty-transport.ts';
+import {civilianTransportEligible,dropCivilianCustody,proposedCivilianTransportStep,reconcileCivilianTransportFrame} from './breach-civilian-transport.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
  from './equipment-weapon-handling.ts';
@@ -172,15 +149,13 @@ import {magazineKit,
   from './breach-magazines.ts';
 import {liveMagazineCapacity,freshMagazineIssue}
  from './arsenal/live-magazine-capacity.ts';
-import {KICK_DURATION} from './breach-door-actions.ts';
+
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {CASING_LIMIT,type EjectedCasing} from './breach-effects.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {chooseFall,hitRegion,type WoundRegion,type FallPose}
   from './breach-wounds.ts';
-import {newMedicalCondition,registerWound,advanceMedicalCondition,
- stabilizeWound,mostUrgentWound,type MedicalCondition}
- from './breach-medical-wounds.ts';
+import {newMedicalCondition,registerWound,advanceMedicalCondition,mostUrgentWound,type MedicalCondition} from './breach-medical-wounds.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
@@ -1877,706 +1852,15 @@ const motorHooks:ActorMotorHooks={
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
  return advanceActorMotor(a,p,dt,s,motorHooks,speedScale);
 }
-function rotate(a:TeamActor,goal:number,dt:number){
-  const delta=angleDifference(a.heading,goal);
-  const turn=clamp(delta,-dt*6,dt*6);
-  a.heading+=turn;a.turning=Math.abs(delta);
-  return Math.abs(delta)<.075;
-}
-/** Aim targets are recomputed after EVERY movement tick, not on waypoint entry. */
-function aimHeading(a:TeamActor):number|null{
-  const instruction=a.aimInstruction;
-  if(!instruction)return null;
-  if(instruction.mode==='free')return null;
-  if(instruction.mode==='fixed')return instruction.angle??a.heading;
-  if(!instruction.point||d(a.p,instruction.point)<2)return a.heading;
-  return angle(a.p,instruction.point);
-}
-function applyAimNode(a:TeamActor,n:PlanNode){
-  // The clearing angle belongs to the OPTIONAL generated entry template.
-  // A player's explicit persistent WATCH on the stack takes precedence
-  // through arrival; merely reaching an entry MOVE must not cancel it.
-  if(n.entryDoorId&&n.aimMode==='fixed'&&
-     a.aimInstruction?.mode==='track'&&
-     a.aimInstruction.source!=='stack')return;
-  if(n.aimMode==='free')a.aimInstruction=null;
-  else if(n.aimMode==='track'&&n.aimPoint)
-    a.aimInstruction={mode:'track',point:clone(n.aimPoint),
-      // A player can change a stack waypoint into WATCH. Only the untouched
-      // template's PIE-labelled stack pivot may yield to an entry sector.
-      ...(n.stackDoorId&&n.aimLabel==='pie'?{source:'stack' as const}:{})};
-  else if(n.aimMode==='fixed'&&n.facing!==undefined)
-    a.aimInstruction={mode:'fixed',angle:n.facing};
-  else if(n.facing!==undefined)
-    a.aimInstruction={mode:'fixed',angle:n.facing};
-}
-function pop(a:TeamActor){
-  if(a.plan.length)a.completedOrders++;
-  a.plan.shift();a.activeNode=-1;a.nav=[];a.autoSidestep=null;
-  a.waitRemaining=0;
-  a.actionTimer=0;a.syncReady=null;a.pieIndex=0;
-  a.orderIssue=null;a.motorPause=null;
-  a.passageWaitSeconds=0;a.passageStallReported=false;pathFor(a);
-}
-/** Explicitly report failure without silently consuming the player's order.
- * Re-evaluate the precondition each tick; changing world state can clear
- * the issue. Repeated identical failures never flood the event feed.
- */
-function failCurrentOrder(s:Session,a:TeamActor,n:PlanNode,reason:string){
-  if(a.orderIssue?.nodeId!==n.id||a.orderIssue.reason!==reason){
-    notify(s,a.name+' '+reason);
-    a.orderIssue={nodeId:n.id,reason,since:s.seconds};
-  }
-  a.velocity=0;
-}
-function clearCurrentOrderIssue(a:TeamActor){a.orderIssue=null;}
-const utilityOrderHooks={pop,notify,beginReload,
- fail:failCurrentOrder,clearIssue:clearCurrentOrderIssue,rotate,battleEvent};
-function runOrders(s:Session,a:TeamActor,dt:number){
-  // Player-authored positions are sacred. Traffic steering only moves the
-  // actor who requested movement, never a stationary friend or held stack.
-  const n=a.plan[0];
-  a.motorPause=null;
-  // An airborne crossing must reach a verified landing before combat pause,
-  // waypoint completion, or fresh orders can resume.
-  if(a.traversal){advanceMotorTraversal(a,s,dt,motorHooks);return;}
-  // A short, validated muzzle-clearance step never edits the player's plan.
-  // Complete or expire it before resuming the original waypoint motor.
-  if(a.fireRetreatTarget){
-    const goal=a.fireRetreatTarget;
-    if(s.seconds>a.fireRetreatUntil||d(a.p,goal)<3||
-       !sweptBodyClear(a.p,goal,s.doors)){
-      a.fireRetreatTarget=null;a.nav=[];
-    }else{
-      approach(a,goal,dt,s,.64);
-      return;
-    }
-  }
-  // A confirmed visible threat can temporarily interrupt authored attention.
-  // This is reactive execution only; it never modifies the player's plan.
-  const visibleThreat=enemies(s).filter(e=>e.health>0&&inSight(a,e,s))
-    .sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
-  if(a.carryingId&&
-     (n?.kind!=='evacuate'||n.patientId!==a.carryingId)&&
-     (n?.interaction!=='release-civilian'||n.objectId!==a.carryingId)){
-    const civil=s.civilians.find(c=>c.id===a.carryingId);
-    if(civil)dropCivilianCustody(civil,a);
-    else {
-      const prior=s.operators.find(o=>o.id===a.carryingId);
-      if(prior)prior.carriedById=null;
-      a.carryingId=null;
-    }
-  }
-  if(a.haltOnContact){
-    const threat=visibleThreat;
-    if(threat){
-      a.motorPause='contact';
-      a.velocity=0;rotate(a,angle(a.p,threat.p),dt);return;
-    }
-  }
-  if(!n||a.health<=0){
-    if(a.squeeze&&bodyClear(a.p,s.doors)){
-      a.squeeze=false;a.squeezeTime=0;
-    }
-    a.velocity=Math.max(0,a.velocity-dt*160);
-    const held=visibleThreat?angle(a.p,visibleThreat.p):aimHeading(a);
-    if(a.health>0&&held!==null)rotate(a,held,dt);
-    return;
-  }
-  if(a.activeNode!==n.id){
-    a.activeNode=n.id;a.nav=[];a.autoSidestep=null;
-    a.waitRemaining=0;a.actionTimer=0;
-    a.orderIssue=null;
-    // Physical interactions and running terminate sustained WATCH, never
-    // silently resume it when the operator returns to walking.
-    if(interruptsWatch(n,a.pace))a.aimInstruction=null;
-    // A waypoint inside a pinch is not permission to expand the torso.
-    if(bodyClear(a.p,s.doors)){
-      a.squeeze=false;a.squeezeTime=0;
-    }
-    a.pieIndex=0;
-  }
-  if(n.kind==='tool'){
-    const door=s.doors.find(door=>door.id===n.doorId);
-    const method=n.toolMethod;
-    if(!door||!method||!canUseEntryTool(a.equipment,method)||
-       (method==='wedge'&&a.wedgeRemaining<1)){
-      failCurrentOrder(s,a,n,'ENTRY TOOL UNAVAILABLE');return;
-    }
-    if(!doorReachable(a.p,door)){
-      const approachPoint=doorApproach(a.p,door);
-      if(approachPoint){clearCurrentOrderIssue(a);approach(a,approachPoint,dt,s,.66);}
-      else failCurrentOrder(s,a,n,'ENTRY TOOL CANNOT REACH');
-      return;
-    }
-    const verdict=entryToolVerdict(door,method);
-    if(!verdict.allowed){
-      failCurrentOrder(s,a,n,'ENTRY TOOL BLOCKED · '+verdict.reason);return;
-    }
-    clearCurrentOrderIssue(a);a.velocity=0;rotate(a,angle(a.p,doorCenter(door)),dt);
-    if(a.actionTimer===0){a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
-      a.lastDoorMethod='open';}
-    // Tool retrieval from a backpack or inaccessible overflow is slower
-    // than a belt mount. Wedge removal still uses the required tool.
-    const access=method==='pick'?0:equipmentRetrievalSeconds(
-      a.equipment??initialEquipmentLoadout(a.weapon),a.spareMagazines,'utility');
-    // A hit interrupts fine hand manipulation without consuming a tool.
-    if(method==='pick'&&s.seconds-a.lastHitAt<.35){
-      a.actionTimer=0;return;
-    }
-    a.actionTimer+=dt;
-    if(a.actionTimer<verdict.seconds+(Number.isFinite(access)?access:0))return;
-    if(method==='wedge'){
-      door.wedged=true;door.wedgeOwnerId=a.id;
-      a.wedgeRemaining--;
-    }else if(method==='unwedge'){
-      door.wedged=false;
-      const owner=s.operators.find(o=>o.id===door.wedgeOwnerId);
-      if(owner&&canUseEntryTool(owner.equipment,'wedge'))
-       owner.wedgeRemaining=Math.min(issuedWedges(owner.equipment),
-        owner.wedgeRemaining+1);
-      door.wedgeOwnerId=undefined;
-    }
-    else if(method==='pick'){
-      // Picking operates the lock rather than destroying the frame.
-      door.locked=false;door.open=true;door.openedAt=s.seconds;
-      door.pushTarget=1;
-    }else{
-      door.latchIntegrity=Math.max(-1,(door.latchIntegrity??1)-verdict.damage);
-      if((door.latchIntegrity??0)<=0){
-        door.locked=false;door.jammed=false;door.heldBy=null;
-        door.forced=true;door.open=true;door.openedAt=s.seconds;
-      }
-    }
-    s.objectRevision++;
-    hear(s,doorCenter(door),verdict.noise,method);
-    const label=method.toUpperCase()+(method==='pick'?' · UNLOCKED':
-      door.open?' · FORCED OPEN':
-      method==='wedge'?' · SECURED':method==='unwedge'?' · REMOVED':
-      ' · FRAME DAMAGED');
-    notify(s,door.id+' '+label);battleEvent(s,'door',a,doorCenter(door),door.id+' '+label);
-    pop(a);return;
-  }
-  if(n.kind==='recover-medical'){
-    const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
-    if(!patient||patient.health>0){pop(a);return;}
-    if(!near(a.p,patient.p,27)){
-      const dir=angle(patient.p,a.p);
-      approach(a,{x:patient.p.x+Math.cos(dir)*21,
-        y:patient.p.y+Math.sin(dir)*21},dt,s,.66);return;
-    }
-    // Reaching a casualty's pouch and stowing the recovered item each
-    // incur the actual kit container access time; no instant inventory swap.
-    const fromTime=equipmentRetrievalSeconds(
-      patient.equipment??initialEquipmentLoadout(patient.weapon),
-      patient.spareMagazines,'medical');
-    const toTime=equipmentRetrievalSeconds(
-      a.equipment??initialEquipmentLoadout(a.weapon),
-      a.spareMagazines,'medical');
-    if(!Number.isFinite(fromTime)||!Number.isFinite(toTime)){
-      failCurrentOrder(s,a,n,'MEDICAL STORAGE UNAVAILABLE');return;
-    }
-    clearCurrentOrderIssue(a);a.velocity=0;a.actionTimer+=dt;
-    if(a.actionTimer>=1.35+fromTime+toTime){
-      const transferred=transferMedicalSupply(patient.medicalSupplies,
-        a.medicalSupplies,kitMedicalSupplies(a.equipment));
-      if(transferred){
-        notify(s,a.name+' RECOVERED '+transferred.toUpperCase());
-        battleEvent(s,'interaction',a,patient.p,
-          a.name+' RECOVERED '+transferred.toUpperCase());
-      }
-      pop(a);
-    }
-    return;
-  }
-  if(n.kind==='evacuate'){
-    const civil=s.civilians.find(c=>c.id===n.patientId);
-    const friendly=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
-    const patient=friendly??civil;
-    if(!patient||patient===a||patient.health>0||
-       (friendly&&friendly.surrendered)){
-      if(civil&&civil.carriedById===a.id)dropCivilianCustody(civil,a);
-      else if(friendly)friendly.carriedById=null;
-      a.carryingId=null;pop(a);return;
-    }
-    if(patient.carriedById&&patient.carriedById!==a.id){
-      failCurrentOrder(s,a,n,'CASUALTY ALREADY IN TRANSPORT');return;
-    }
-    const mode=n.transportMode??'drag';
-    if(a.carryingId!==patient.id){
-      if(!near(a.p,patient.p,24)){
-        const theta=angle(patient.p,a.p);
-        const goal={x:patient.p.x+Math.cos(theta)*19,
-          y:patient.p.y+Math.sin(theta)*19};
-        approach(a,goal,dt,s,.70);return;
-      }
-      if(civil&&(!liveVisibility(s,civil.p)||
-         !sweptBodyClear(a.p,civil.p,s.doors,5.5))){
-        failCurrentOrder(s,a,n,'CASUALTY NOT IN PHYSICAL REACH');return;
-      }
-      a.velocity=0;a.actionTimer+=dt;
-      if(a.actionTimer>=(mode==='drag'?.85:1.45)){
-        if(civil){
-          if(!takeCivilianCustody(civil,a,mode)){
-            failCurrentOrder(s,a,n,'CASUALTY TRANSPORT UNAVAILABLE');return;
-          }
-          if(civil.rescueTarget&&s.rescue){
-            s.rescue.following=null;s.rescue.p=clone(civil.p);
-          }
-        }else{
-          a.carryingId=patient.id;patient.carriedById=a.id;
-        }
-        a.actionTimer=0;clearCurrentOrderIssue(a);
-        notify(s,a.name+' '+mode.toUpperCase()+'ING '+
-          ('name' in patient?patient.name:'CIVILIAN'));
-      }
-      return;
-    }
-    if(near(a.p,n.p,8)){
-      // Keep valid custody until the objective can acknowledge extraction.
-      if(civil?.rescueTarget&&s.mission==='extract'&&
-         near(a.p,s.scenario.extract,37)){
-        // Keep custody until the physically trailing body enters extraction.
-        a.velocity=0;return;
-      }
-      if(civil)dropCivilianCustody(civil,a);
-      else patient.carriedById=null;
-      a.carryingId=null;
-      notify(s,('name' in patient?patient.name:'CIVILIAN')+' RELEASED');
-      pop(a);return;
-    }
-    const before=clone(a.p);
-    approach(a,n.p,dt,s,mode==='drag'?.48:.38);
-    if(civil)return; // Neutral body motion commits with the carrier later.
-    const attached=casualtyTrailingPosition(before,a.p,a.heading,mode);
-    const people=s.operators.filter(o=>o!==a&&o!==patient&&o.health>0)
-     .map(o=>o.p);
-    if(!transportIsClear(patient.p,attached,
-      (from,to)=>sweptBodyClear(from,to,s.doors),people)){
-      a.p=before;a.velocity=0;a.nav=[];return;
-    }
-    patient.priorP=clone(patient.p);patient.p=attached;
-    patient.velocity=0;return;
-  }
-  if(n.kind==='treat'){
-    const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
-    const wound=patient?.medical.wounds.find(w=>w.id===n.woundId);
-    if(!patient||!wound||wound.stabilized||wound.bleeding<=0){pop(a);return;}
-    const supply=treatmentSupplyForWound(wound,a.medicalSupplies);
-    if(!supply){
-      failCurrentOrder(s,a,n,'MEDICAL SUPPLY UNAVAILABLE');return;
-    }
-    clearCurrentOrderIssue(a);
-    if(!near(a.p,patient.p,27)){
-      const direction=angle(patient.p,a.p);
-      const destination={x:patient.p.x+Math.cos(direction)*21,
-        y:patient.p.y+Math.sin(direction)*21};
-      a.actionTimer=0;approach(a,destination,dt,s,.58);return;
-    }
-    a.velocity=0;rotate(a,angle(a.p,patient.p),dt);
-    if(s.seconds-a.lastHitAt<.35){a.actionTimer=0;return;}
-    if(a.actionTimer===0){
-      a.lastTreatmentAt=s.seconds;a.lastTreatmentTargetId=patient.id;
-    }
-    const access=equipmentRetrievalSeconds(
-      a.equipment??initialEquipmentLoadout(a.weapon),a.spareMagazines,'medical');
-    const duration=treatmentDuration(supply)+(Number.isFinite(access)?access:0);
-    a.actionTimer+=dt;
-    a.treatmentActive=true;
-    a.treatmentProgress=Math.min(1,a.actionTimer/duration);
-    if(a.actionTimer>=duration){
-      if(stabilizeWound(patient.medical,wound.id)){
-        spendMedicalSupply(a.medicalSupplies,supply);
-        battleEvent(s,'interaction',a,patient.p,
-          a.name+' STABILIZED '+patient.name);
-        notify(s,a.name+' STABILIZED '+patient.name);
-      }
-      pop(a);
-    }
-    return;
-  }
-  if(n.kind==='interact'){
-    if(!n.objectId||!n.interaction){
-      failCurrentOrder(s,a,n,'INTERACTION TARGET UNAVAILABLE');return;
-    }
-    if(!near(a.p,n.p,7)){
-      approach(a,n.p,dt,s,.65);return;
-    }
-    if(n.interaction==='release-civilian'){
-      const person=s.civilians.find(c=>c.id===n.objectId);
-      if(!person||!dropCivilianCustody(person,a)){
-        failCurrentOrder(s,a,n,'CIVILIAN NOT IN CUSTODY');return;
-      }
-      if(person.rescueTarget&&s.rescue){
-        s.rescue.following=null;s.rescue.p=clone(person.p);
-      }
-      notify(s,'PERSON RELEASED — REASSIGN TO CONTINUE');
-      clearCurrentOrderIssue(a);pop(a);return;
-    }
-    if(n.objectId.startsWith('civ:')&&
-       (n.interaction==='secure-civilian'||
-        n.interaction==='follow-civilian')){
-      const person=s.civilians.find(c=>c.id===n.objectId);
-      if(!person||person.health<=0||
-         d(a.p,person.p)>32||
-         !sweptBodyClear(a.p,person.p,s.doors,5.5)||
-         (person.rescueTarget&&!canSecureRescuePerson(person,a,
-           (from,to)=>sweptBodyClear(from,to,s.doors,5.5)))||
-         !liveVisibility(s,person.p)){
-        failCurrentOrder(s,a,n,'CIVILIAN NOT IN PHYSICAL REACH');return;
-      }
-      if(n.interaction==='follow-civilian'){
-        if(!person.rescueTarget||s.missionType!=='rescue'||
-           s.mission!=='extract'||!s.rescue){
-          failCurrentOrder(s,a,n,'ESCORT NOT AVAILABLE');return;
-        }
-        if(!setCivilianState(person,'escorted',s.seconds)){
-          failCurrentOrder(s,a,n,'PERSON CANNOT FOLLOW');return;
-        }
-        person.following=a.id;
-        s.rescue.following=a.id;s.rescue.p=clone(person.p);
-        notify(s,a.name+' ESCORTING PERSON');
-      }else{
-        if(!setCivilianState(person,'compliant',s.seconds)){
-          failCurrentOrder(s,a,n,'PERSON NEEDS ASSISTANCE');return;
-        }
-        person.following=null;
-        if(person.rescueTarget&&s.rescue)s.rescue.following=null;
-        notify(s,a.name+' SECURED CIVILIAN');
-      }
-      clearCurrentOrderIssue(a);pop(a);return;
-    }
-    const [kind,id]=n.objectId.split(':');
-    if(kind==='prop'&&n.interaction==='push'){
-      const index=Number(id),o=s.coverState[index];
-      if(!o||!canRelocateCover(o)||d(a.p,{x:o.x,y:o.y})>
-        Math.max(o.w,o.h)/2+43){
-        failCurrentOrder(s,a,n,'OBJECT UNAVAILABLE');return;
-      }
-      const dx=o.x-a.p.x,dy=o.y-a.p.y,
-        length=Math.hypot(dx,dy)||1;
-      const amount=coverPushDistance(o);
-      const direction=n.pushDirection??{x:dx/length,y:dy/length};
-      const mag=Math.hypot(direction.x,direction.y)||1;
-      // Move the real collider a short swept increment per fixed tick.
-      // Visuals, replay, firing cover and pathfinding see the same position.
-      const duration=Math.max(.45,amount/28);
-      const part=Math.max(0,Math.min(dt,duration-a.actionTimer));
-      const distance=amount*part/duration;
-      const pushed={x:o.x+direction.x/mag*distance,
-        y:o.y+direction.y/mag*distance};
-      if(part>.0001&&!movePhysicalProp(s,index,pushed)){
-        failCurrentOrder(s,a,n,'OBJECT OBSTRUCTED');return;
-      }
-      a.velocity=0;a.actionTimer+=dt;
-      if(a.actionTimer<duration)return;
-      notify(s,a.name+' PUSHED '+(o.fixture??'OBJECT'));
-    }else if(kind==='window'){
-      // A pane cannot swing shut through somebody currently occupying the
-      // opening. Preserve this CLOSE order until their landing completes.
-      if(n.interaction==='close-window'&&s.operators.some(o=>o.health>0&&
-         o.traversal?.windowId===id)){
-        a.motorPause='window-clearance';a.velocity=0;a.actionTimer=0;return;
-      }
-      const window=s.windows.find(w=>w.id===id);
-      if(window&&
-         (n.interaction==='open-window'&&window.open||
-          n.interaction==='close-window'&&!window.open)){
-        pop(a);return; // Already in the state the player requested.
-      }
-      if(window&&d(a.p,{x:window.x,y:window.y})<54&&
-         manipulateWindow(window,n.interaction==='open-window'?'open':'close')){
-        s.objectRevision++;
-        hear(s,{x:window.x,y:window.y},85,'window');
-        notify(s,a.name+' MOVED WINDOW');
-        battleEvent(s,'interaction',a,a.p,a.name+' MOVED WINDOW');
-      }else{
-        failCurrentOrder(s,a,n,'WINDOW UNAVAILABLE');return;
-      }
-    }
-    clearCurrentOrderIssue(a);pop(a);return;
-  }
-  if(n.kind==='pie'){
-    // Running abandons the cautious corner sweep for ordinary fast travel.
-    // The same run override also releases a previously persistent PIE look.
-    if(a.pace==='run'){
-      a.aimInstruction=null;
-      if(near(a.p,n.p,5)){pop(a);return;}
-      approach(a,n.p,dt,s,1.40);
-      if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
-      return;
-    }
-    const arc=n.arc??[];
-    const point=arc[a.pieIndex];
-    if(!point){pop(a);return;}
-    if(near(a.p,point,3.7)){
-      a.pieIndex++;a.nav=[];a.velocity=Math.min(a.velocity,32);
-      if(a.pieIndex>=arc.length){pop(a);return;}
-    }else{
-      // Pieing advances along the physical arc, gun always oriented
-      // toward the doorway pivot rather than tangential travel.
-      approach(a,point,dt,s,.44);
-    }
-    if(n.pivot&&!a.squeeze)rotate(a,angle(a.p,n.pivot),dt);
-    return;
-  }
-  const friendlyPeers=n.kind==='move'?
-    s.operators.filter(b=>b!==a&&b.health>0&&b.side===a.side)
-      .map(b=>b.p):[];
-  // Avoid finishing two authored MOVE destinations inside one friendly
-  // body diameter. Make the *last moving operator* take a small, legal
-  // settle step; never push or move someone whose own order is complete.
-  const settle=n.kind==='move'?friendlyArrivalSettleTarget(
-    a.p,n.p,friendlyPeers,(from,to)=>
-      passable(to,OPERATOR_RADIUS)&&sweptBodyClear(from,to,s.doors)):null;
-  if(settle){
-    approach(a,settle,dt,s,.72);
-    return;
-  }
-  const at=near(a.p,n.p,5)||(
-    n.kind==='move'&&nearOccupiedFriendlyGoal(a.p,n.p,
-      friendlyPeers,(from,to)=>sweptBodyClear(from,to,s.doors)));
-  if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
-    // Running cancels WATCH rather than merely suspending it.
-    if(interruptsWatch(n,a.pace))a.aimInstruction=null;
-    // A persistent tracking/PIE stance stays cautious on every segment,
-    // not only on explicitly marked strafe nodes.
-    const running=n.moveMode==='sprint'||a.pace==='run';
-    const tracking=!running&&(a.aimInstruction?.mode==='track'||
-      n.aimMode==='track');
-    const cautious=!running&&(n.moveMode==='strafe'||tracking);
-    // Running temporarily suspends tracking but never deletes WATCH.
-    approach(a,n.p,dt,s,running?1.40:cautious?.70:1);
-    // Unmodified movement follows its route, while an explicit fixed STRAFE
-    // or PIE/TRACK instruction persists until LOOK releases it.
-    // While wedged sideways, the physical shoulder axis has priority
-    // over target tracking. The authored look resumes on exit.
-    if(a.squeeze)return;
-    const clearedEntryLook=!running&&n.kind==='move'&&
-      !!n.entryDoorId&&n.aimMode==='fixed'&&n.facing!==undefined&&
-      entryClearanceForLook(s.doors.find(door=>door.id===n.entryDoorId),
-        a.p,n.p);
-    // A generated STACK pivot watches its door until the operator is
-    // physically through. Only then does that template gaze yield to
-    // the already-authored entry sector. Explicit WATCH has no 'stack'
-    // provenance and retains priority; visible threats still win.
-    const handoff=clearedEntryLook&&
-      (a.aimInstruction===null||a.aimInstruction?.source==='stack');
-    const held=!running&&visibleThreat?angle(a.p,visibleThreat.p):
-      handoff?n.facing!:
-      running&&a.aimInstruction?.mode==='track'?null:aimHeading(a);
-    if(held!==null){
-      a.autoSidestep=null;
-      rotate(a,held,dt);
-    }else if(n.kind==='move'&&n.moveMode==='strafe'){
-      a.autoSidestep=null;
-      rotate(a,n.facing??a.heading,dt);
-    }else if(a.nav.length){
-      // Clearance glides may move laterally even while the original
-      // nav point remains straight ahead. Test the actual resolved motor
-      // displacement before declaring the sidestep finished.
-      const moved=d(a.p,a.priorP)>.15&&a.velocity>1.5;
-      const motorNext=moved?{
-        x:a.p.x+(a.p.x-a.priorP.x),
-        y:a.p.y+(a.p.y-a.priorP.y)
-      }:a.nav[0];
-      const facing=autoSidestepFacing(a.autoSidestep,a.p,motorNext,
-        n.p,s.seconds,
-        a.pace!=='run'&&!a.squeeze&&!visibleThreat&&!a.traversal&&
-        !a.aimInstruction&&
-        !approachingNarrowThreshold(a.p,n.p,s.doors));
-      if(facing===null)a.autoSidestep=null;
-      rotate(a,facing??angle(a.p,a.nav[0]),dt);
-    }
-    return;
-  }
-  a.velocity=Math.max(0,a.velocity-dt*180);
-  if(at){
-    if(n.postureState)a.posture=n.postureState;
-    if(n.paceState)a.pace=n.paceState;
-    if(interruptsWatch(n,a.pace))a.aimInstruction=null;
-    if(n.firePolicyState){
-      a.firePolicy=n.firePolicyState;
-      a.suppressPoint=n.firePoint?clone(n.firePoint):null;
-      a.focusTargetId=n.fireTargetId??null;
-    }
-  }
-  // Apply an authored look/pie/strafe instruction once we actually arrive
-  // at its waypoint, then keep it active through every later movement.
-  if(n.kind==='move'||n.kind==='look'){
-    if(!interruptsWatch(n,a.pace))applyAimNode(a,n);
-    if(n.aimMode==='free'&&n.facing!==undefined){
-      // LOOK deliberately orients at this node, then releases any tracking
-      // or fixed strafe constraint. The next move faces the travel direction.
-      if(!rotate(a,n.facing,dt))return;
-      // Briefly settle the sightline, allowing normal time-based acquisition.
-      if(!visibleThreat&&a.waitRemaining<.22){
-        a.waitRemaining+=dt;return;
-      }
-    }else{
-      const held=visibleThreat?angle(a.p,visibleThreat.p):aimHeading(a);
-      if(held!==null)rotate(a,held,dt);
-    }
-    pop(a);return;
-  }
-  if(n.facing!==undefined&&!rotate(a,n.facing,dt))return;
-  // Door/wait/sync orders should not cancel a persistent look/track intent.
-  const held=aimHeading(a);
-  if(held!==null)rotate(a,held,dt);
-  if(n.kind==='holdClear'||n.kind==='wait'){
-    advanceWaitOrder(s,a,n,dt,inSight,notify,pop);return;
-  }
-  if(executeTacticalUtilityOrder(s,a,n,dt,utilityOrderHooks))return;
-  if(n.kind==='door'){
-    const door=s.doors.find(d=>d.id===n.doorId);
-    if(!door){
-      failCurrentOrder(s,a,n,'DOOR MISSING');return;
-    }
-    if((n.method==='close'&&!door.open)||
-       (n.method!=='close'&&n.method!=='kick'&&n.method!=='hold'&&
-        door.open&&(door.openFraction??1)>=.98)){
-      // The requested state already exists: legitimate completion.
-      pop(a);return;
-    }
-    const interaction=doorInteraction({target:door,actorId:a.id,
-      actorPosition:a.p,action:n.method??'open'});
-    // A deliberately exhausted kick sequence is terminal until its order
-    // is edited. Never replay the last kick every fixed update.
-    if(a.orderIssue?.nodeId===n.id&&n.method==='kick'&&
-       /KICK RESISTED|KICK BLOCKED/.test(a.orderIssue.reason)&&!door.open){
-      a.velocity=0;return;
-    }
-    if(!interaction.allowed&&a.actionTimer===0){
-      failCurrentOrder(s,a,n,'DOOR BLOCKED · '+
-        (interaction.reason??'UNAVAILABLE').toUpperCase());
-      return;
-    }
-    clearCurrentOrderIssue(a);
-    const required=n.method==='kick'?KICK_DURATION:
-      n.method==='hold'?1.3:n.method==='close'?.75:.78;
-    if(a.actionTimer===0){
-      a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
-      a.lastDoorMethod=n.method??'open';
-    }
-    a.actionTimer+=dt;
-    if(n.method==='kick'&&a.actionTimer>=required*.53&&
-       a.actionTimer-dt<required*.53){
-      if(!door.open){
-        const outcome=kickDoor(door,a.p);
-        door.lastKickAt=s.seconds;
-        if(outcome.opened){
-          door.openedAt=s.seconds;
-          // Kicks into an occupied sweep impact the actual body. A validated
-          // displacement clears room for the hinge; pinned actors remain solid.
-          const impactLeaf=doorLeafSegment({...door,openFraction:.60});
-          for(const struck of s.operators){
-            if(struck===a||struck.health<=0||
-               !doorWouldStrikeActors({...door,openFraction:0},.60,
-                 [struck.p],OPERATOR_RADIUS+1))continue;
-            const along=Math.max(0,Math.min(1,(
-              (struck.p.x-impactLeaf.a.x)*(impactLeaf.b.x-impactLeaf.a.x)+
-              (struck.p.y-impactLeaf.a.y)*(impactLeaf.b.y-impactLeaf.a.y))/
-              Math.max(1,d(impactLeaf.a,impactLeaf.b)**2)));
-            const closest={x:impactLeaf.a.x+
-              (impactLeaf.b.x-impactLeaf.a.x)*along,
-              y:impactLeaf.a.y+(impactLeaf.b.y-impactLeaf.a.y)*along};
-            const dx=struck.p.x-closest.x,dy=struck.p.y-closest.y;
-            const mag=Math.hypot(dx,dy)||1;
-            const lx=impactLeaf.b.x-impactLeaf.a.x,
-              ly=impactLeaf.b.y-impactLeaf.a.y;
-            const length=Math.hypot(lx,ly)||1;
-            // First try the real radial impact, then a short slip along
-            // either edge when the defender is pinned against furniture.
-            // Every candidate is swept and other characters remain solid.
-            const directions=[
-              {x:dx/mag,y:dy/mag},
-              {x:lx/length,y:ly/length},
-              {x:-lx/length,y:-ly/length}
-            ];
-            let displaced=false;
-            for(const dir of directions){
-              for(const distance of [18,12,7,3]){
-                const dest={x:struck.p.x+dir.x*distance,
-                  y:struck.p.y+dir.y*distance};
-                if(!sweptBodyClear(struck.p,dest,s.doors)||
-                   s.operators.some(other=>other!==struck&&
-                     other.health>0&&d(other.p,dest)<13)||
-                   s.civilians.some(other=>other.health>0&&
-                     d(other.p,dest)<13))continue;
-                struck.priorP=clone(struck.p);struck.p=dest;
-                displaced=true;break;
-              }
-              if(displaced)break;
-            }
-            struck.doorStunUntil=Math.max(struck.doorStunUntil??0,
-              s.seconds+.85);
-            struck.lastBashAt=s.seconds;struck.lastBashRole='receive';
-            struck.fireCd=Math.max(struck.fireCd,.85);
-            struck.aim=Math.max(0,struck.aim-.7);
-            struck.velocity=0;struck.nav=[];
-            battleEvent(s,'door',a,struck.p,
-              struck.name+' STRUCK BY DOOR');
-          }
-        }
-        hear(s,doorCenter(door),340,'kick');
-        const result=!outcome.pushSide?'WRONG SIDE · CANNOT KICK INWARD':
-          outcome.opened?'FORCED OPEN':'KICK RESISTED';
-        notify(s,door.id+' '+result);
-        battleEvent(s,'door',a,doorCenter(door),door.id+' '+result);
-        if(!outcome.pushSide){
-          failCurrentOrder(s,a,n,'KICK BLOCKED · WRONG SIDE');return;
-        }
-      }
-    }
-    if(a.actionTimer>=required){
-      if(n.method==='kick'){
-        // Keep kicking automatically until the latch yields, but avoid
-        // an endless loop for a held or physically impossible opening.
-        if(!door.open&&(door.kicks??0)<8){
-          a.actionTimer=0;return;
-        }
-        if(!door.open){
-          failCurrentOrder(s,a,n,'KICK RESISTED · CHECK ENTRY SIDE');return;
-        }
-        pop(a);return;
-      }
-      if(n.method==='hold'){
-        if(door.open){
-          failCurrentOrder(s,a,n,'DOOR MUST BE CLOSED TO HOLD');return;
-        }else{
-          for(const leaf of pairedLeaves(s,door))leaf.heldBy=a.id;
-          notify(s,door.id+' HELD CLOSED · BRACED');
-          battleEvent(s,'door',a,doorCenter(door),door.id+' BRACED');
-        }
-        pop(a);return;
-      }
-      if(n.method==='close'){
-        for(const leaf of pairedLeaves(s,door)){
-          leaf.heldBy=null;leaf.open=false;leaf.openedAt=s.seconds;
-        }
-        hear(s,doorCenter(door),90,'door');
-        notify(s,door.id+' CLOSING');
-        battleEvent(s,'door',a,doorCenter(door),door.id+' CLOSING');
-      }else{
-        if(pairedLeaves(s,door).some(leaf=>leaf.heldBy)){
-          failCurrentOrder(s,a,n,'DOOR BRACED SHUT');return;
-        }
-        for(const leaf of pairedLeaves(s,door)){
-          const wasOpening=leaf.open;
-          leaf.open=true;leaf.openedAt=s.seconds;
-          // Reopening an ajar leaf must continue from its physical angle.
-          // Never zero moving hinge velocity or rewind the panel.
-          leaf.pushTarget=Math.max(1,leaf.pushTarget??1);
-          if(!wasOpening)leaf.angularVelocity=0;
-        }
-        hear(s,doorCenter(door),145,'door');
-        notify(s,door.id+' OPENED');
-        battleEvent(s,'door',a,doorCenter(door),door.id+' OPENED');
-      }
-      pop(a);
-    }
-  }
-}
+/** Authoritative 60 Hz session keeps the clock, gameplay side effects and
+ * stable navigation/visibility services; order handlers own execution.
+ * Create once: no per-frame callback allocations or second state machine. */
+const runOrders=createOrderExecutor({
+ approach,
+ advanceTraversal:(a,s,dt)=>advanceMotorTraversal(a,s,dt,motorHooks),
+ notify,hear,battleEvent,inSight,liveVisibility,pairedLeaves,
+ movePhysicalProp,beginReload
+});
 function defensivePosition(a:TeamActor,from:Pt,s:Session):Pt|null{
   const others=enemies(s).map(other=>({id:other.id,p:other.p,
     health:other.health,defense:other.defense}));
