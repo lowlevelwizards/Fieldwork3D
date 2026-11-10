@@ -80,7 +80,7 @@ async function accept(name,context){
   // GO / PAUSE must keep the real world and command stream alive.
   await page.locator('#play').click();
   await page.waitForFunction(()=>document.querySelector('#phase')?.
-   textContent==='RUNNING',null,{timeout:20000});
+   textContent==='EXECUTING',null,{timeout:20000});
   // Software WebGL can compile the first few frames slowly in CI.
   // Require real SIMULATION time instead of an arbitrary wall-clock sleep.
   await page.waitForFunction(()=>
@@ -88,7 +88,7 @@ async function accept(name,context){
    null,{timeout:30000});
   await page.locator('#play').click();
   await page.waitForFunction(()=>document.querySelector('#phase')?.
-   textContent!=='RUNNING',null,{timeout:15000});
+   textContent==='PAUSED',null,{timeout:15000});
   const paused=await metrics(page);
   check(paused.clock!=='00:00','Mission clock did not advance: '+name);
   // Use actual recorded frames; an empty recorder must never fabricate a film.
