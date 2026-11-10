@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Roadmap 2 Stage 7: narrow authoritative motor coordinator.
  * Called only from breach-game's fixed 60 Hz session step. It owns no
  * global clock, doesn't change authored orders, and never touches rendering.
@@ -19,7 +20,7 @@ export function advanceActorMotor(
  speedScale=1):boolean{
  // Do not interrupt a continuous physical traversal with route search.
  if(advanceMotorTraversal(a,s,dt,hooks))return true;
- if(releaseEmbeddedMotorActor(a,p,s.doors,dt))return true;
+ if(releaseEmbeddedMotorActor(a,p,s.doors,dt,sessionWorldGeometry(s)))return true;
  if(prepareMotorTraversal(a,p,dt,s,hooks))return true;
 
  const readiness=prepareMotorRoute(a,p,dt,s,hooks);
