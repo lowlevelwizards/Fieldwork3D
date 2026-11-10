@@ -49,7 +49,7 @@ jobs:
       - name: Stage 6 generated and legacy site construction, registration and resource lifetime
         if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage6-') }}
         run: |
-          node --experimental-strip-types --test tests/breach-roadmap2-stage6-site-builder.test.mjs tests/breach-roadmap2-site-builder.test.mjs tests/breach-site-material-lifetime.test.mjs tests/breach-scene-memory-lifecycle-p6.test.mjs tests/map-04-fixture-renderer.test.mjs tests/breach-roadmap3-site-exterior.test.mjs tests/visibility-10-architectural-fog.test.mjs tests/fog-exterior-facade-regression.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/breach-roadmap2-stage2-physical-integrity.test.mjs tests/breach-roadmap2-stage3-integration.test.mjs tests/door-hinge-neighborhood-cache.test.mjs tests/breach-083-088.test.mjs
+          node --experimental-strip-types --test tests/breach-roadmap2-stage6-site-builder.test.mjs tests/breach-roadmap2-site-builder.test.mjs tests/breach-site-material-lifetime.test.mjs tests/breach-scene-memory-lifecycle-p6.test.mjs tests/map-04-fixture-renderer.test.mjs tests/breach-roadmap3-site-exterior.test.mjs tests/visibility-10-architectural-fog.test.mjs tests/fog-exterior-facade-regression.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/breach-roadmap2-stage2-physical-integrity.test.mjs tests/breach-roadmap2-stage3-integration.test.mjs tests/door-hinge-neighborhood-cache.test.mjs
       - name: Architecture dependency boundary check
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production TypeScript and asset build
