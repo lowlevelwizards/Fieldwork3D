@@ -43,7 +43,8 @@ import {studioUsesClothesOnly,studioUsesVisibleFace} from './operator-studio-pre
 import {studioCameraFocusForWardrobe,studioFocusEasing,clampStudioCameraZoom,
  STUDIO_FULL_FIT,STUDIO_MIN_ZOOM,STUDIO_MAX_ZOOM}
  from './operator-studio-camera-focus.ts';
-import {createOperatorRig,poseOperator,type OperatorRig,type OperatorPose} from './breach-operator-rig.ts';
+import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import {studioArmedIdleAt} from './operator-studio-armed-idle.ts';
 import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
 import type {WeaponId} from './breach-combat.ts';
