@@ -102,6 +102,22 @@ test('default-scale townhouse, apartment, and office room clusters are reachable
  assert.equal(failures.length,0,JSON.stringify(failures));
 });
 
+test('apartment fixed partitions preserve doorless room approaches',()=>{
+ const site=generateSite(35,'standard');
+ assert.ok(site.openings?.length,'regression seed must have real open passages');
+ const lanes=circulationReservations(site);
+ assert.ok(lanes.some(l=>l.kind==='door-approach'),
+  'apartment must reserve room-side walking approaches');
+ for(const [i,o] of site.cover.entries()){
+  if(o.fixture!=='half-wall')continue;
+  const room=site.rooms.find(r=>r.kind==='room'&&
+   o.x>r.x&&o.x<r.x+r.w&&o.y>r.y&&o.y<r.y+r.h);
+  if(!room)continue;
+  assert.equal(overlapsCirculationReservation(o,lanes,room.id),false,
+   'fixed half-wall '+i+' cannot obstruct apartment entry in '+room.id);
+ }
+});
+
 test('fixed office partitions preserve open-plan operator corridors',()=>{
  const site=generateSite(37,'standard');
  const lanes=circulationReservations(site).filter(l=>
