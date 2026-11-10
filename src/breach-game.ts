@@ -541,6 +541,7 @@ export function newSession(index=0,siteSeed?:number,
      state.missionType==='hold')state.mission='secure';
   COVER.splice(0,COVER.length,...state.coverState);
   registerSessionWorldGeometry(state);
+  bindIntelWorld(state.intel,sessionWorldGeometry(state));
   observe(state);
   return state;
 }
@@ -564,7 +565,8 @@ export function selectDeployment(s:Session,id:string):boolean{
   a.heading=angle(a.p,choice?.approach??s.site!.entrance);
   a.weaponYaw=a.heading;
  });
- s.intel=initialIntel(s.intel.mode,s.site,s.doors);
+ s.intel=initialIntel(s.intel.mode,s.site,s.doors,sessionWorldGeometry(s));
+ bindIntelWorld(s.intel,sessionWorldGeometry(s));
  s.seenGround.clear();s.seenGroundRevision++;s.known.clear();
  s.squadEntryUndo=null;s.squadEntryRedo=null;
  observe(s);
