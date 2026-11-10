@@ -12,11 +12,9 @@ import {advanceSimulationMotion,type MotionSimulationPhasePort} from './breach-s
 
 import {advanceActorMotor} from './breach-actor-motor.ts';
 import {createOrderExecutor} from './breach-order-executor.ts';
-import {rotate} from './breach-order-lifecycle.ts';
-import {advanceMotorTraversal,motorTraversalWorld} from './breach-motor-traversal.ts';
+import {advanceMotorTraversal} from './breach-motor-traversal.ts';
 import type {ActorMotorHooks} from './breach-motor-contract.ts';
 
-import {incomingHitFacing} from './breach-combat-reactions.ts';
 
 /**
  * Fieldwork Breach 053–062: authoritative, fixed-step tactical session.
@@ -53,8 +51,6 @@ import {canUseEntryTool} from './equipment-entry-tools.ts';
 
 import {type AutoSidestep} from './breach-auto-sidestep.ts';
 
-import {resolveMovementFrame} from './breach-movement-authority.ts';
-import {buildMotionFrameProposals} from './breach-motion-frame-input.ts';
 
 import {type MotorPause,type ExecutionIssue,type ExecutionStatus} from './breach-execution-state.ts';
 import {type ExecutionEvent} from './breach-execution-events.ts';
@@ -80,8 +76,6 @@ import {PerceptionPairCache} from './breach-perception-cache.ts';
 
 
 import {createCivilian,setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
-import {stepCivilianMovement} from './breach-civilian-movement.ts';
-import {stepCivilianResponse} from './breach-civilian-response.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
 
@@ -94,19 +88,18 @@ import {type TacticalReport} from './breach-communication.ts';
 import {type GroupRole} from './breach-ai-coordination.ts';
 
 
-import {moraleResponse,witnessShock,countNearbyEnemyAllies} from './breach-ai-morale.ts';
 import {newAwareness,type ActorAwareness} from './breach-awareness.ts';
 import {confirmedSight} from './breach-visual-perception.ts';
 
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {passageIdleYieldStep,type PassageActor,type PassageLease} from './breach-passage.ts';
+import {type PassageLease} from './breach-passage.ts';
 
 import {planDoorSchedule,type PassageSchedule} from './breach-passage-plan.ts';
 import {projectReachableGoal,type Blocker} from './breach-nav-diagnostics.ts';
-import {sweptBodyClear,sweptProfileClear,SQUEEZE_RADIUS} from './breach-navigation.ts';
+import {sweptBodyClear,SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld} from './breach-squeeze-route.ts';
 import {knownPortalStrokeRoute} from './breach-known-portal-stroke.ts';
-import {probeObstacleCrossing,probeWindowPortalRoute,canOpenWindowForClimb,sampleTraversal,traversalRouteLength,traversalStepClear,type TraverseOpportunity} from './breach-mantle.ts';
+import {probeObstacleCrossing,probeWindowPortalRoute,canOpenWindowForClimb,traversalRouteLength,type TraverseOpportunity} from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
 import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
@@ -116,7 +109,7 @@ import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 
 import {stabilizationSummary} from './breach-casualty-status.ts';
 import {type TransportMode} from './breach-casualty-transport.ts';
-import {civilianTransportEligible,proposedCivilianTransportStep,reconcileCivilianTransportFrame} from './breach-civilian-transport.ts';
+import {civilianTransportEligible} from './breach-civilian-transport.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 
 import {DEFAULT_SKILLS,type ShootingSkills} from './breach-skills.ts';
@@ -135,7 +128,6 @@ import {liveMagazineCapacity,freshMagazineIssue} from './arsenal/live-magazine-c
 
 
 import {type EjectedCasing} from './breach-effects.ts';
-import {wallSafeFall} from './breach-ground-geometry.ts';
 import {type WoundRegion,type FallPose} from './breach-wounds.ts';
 import {newMedicalCondition,mostUrgentWound,type MedicalCondition} from './breach-medical-wounds.ts';
 
