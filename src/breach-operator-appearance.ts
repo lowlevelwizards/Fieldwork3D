@@ -2,7 +2,8 @@
  * Caches only appearance fingerprints; never solves motion, fires, moves actors
  * or updates replay/simulation state.
  */
-import type {OperatorRig,OperatorPose} from './breach-operator-rig.ts';
+import type {OperatorRig} from './breach-operator-rig.ts';
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import type {OperatorRig,OperatorPose} from './breach-operator-rig.ts';
 import * as THREE from 'three';
 import {operatorPixelTextures} from './rendering/pixel-materials.ts';
