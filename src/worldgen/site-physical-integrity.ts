@@ -38,8 +38,14 @@ const portalBlocked=(s:{a:Pt;b:Pt},walls:readonly Segment[])=>[.3,.5,.7]
  * A clear-looking point is insufficient: it must connect to the insertion.
  */
 function roomSamples(room:Site['rooms'][number]):Pt[]{
- return [[.5,.5],[.27,.27],[.73,.27],[.27,.73],[.73,.73],
-  [.5,.27],[.5,.73],[.27,.5],[.73,.5]].map(([x,y])=>({
+ const first=[[.5,.5],[.27,.27],[.73,.27],[.27,.73],[.73,.73],
+  [.5,.27],[.5,.73],[.27,.5],[.73,.5]];
+ // A desk/bed can occupy every sparse diagnostic point while a real
+ // traversable lane still runs beside it. Inspect the remaining operator-
+ // sized room floor on a denser, bounded lattice before declaring failure.
+ const fractions=[.14,.26,.38,.5,.62,.74,.86];
+ const all=[...first,...fractions.flatMap(y=>fractions.map(x=>[x,y]))];
+ return all.map(([x,y])=>({
    x:room.x+room.w*x,y:room.y+room.h*y
  }));
 }
@@ -124,9 +130,12 @@ export function auditSitePhysicalIntegrity(site:Site):PhysicalIntegrityReport{
     checkedRooms++;
     // Distinguish a missing navigable room from a furnishing issue: every
     // candidate point is checked against real walls and real cover.
-    if(!roomSamples(room).some(reachable))
+    const samples=roomSamples(room);
+    const legal=samples.filter(p=>finite(p)&&passable(p));
+    if(!legal.some(reachable))
      add('blocking','unreachable-room',room.id,
-       'no operator-sized sample has a route from insertion');
+       'no route from insertion across '+legal.length+
+       ' operator-sized clear samples in '+room.w+'x'+room.h+' room');
    }
   });
  }
