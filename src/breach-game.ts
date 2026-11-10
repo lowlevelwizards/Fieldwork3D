@@ -4,7 +4,9 @@ import {pathFor,edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan}
 import {simulationPhaseMark,advanceTransientSimulationEffects,
  recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
 import {reconcileEnemyIntent,reconcileEnemyPosture} from './breach-ai-reconciliation.ts';
-import {sampleActorMotorStride} from './breach-actor-motor-stride.ts';
+import {advanceActorMotor} from './breach-actor-motor.ts';
+import {advanceMotorTraversal,motorTraversalWorld} from './breach-motor-traversal.ts';
+import type {ActorMotorHooks} from './breach-motor-contract.ts';
 import {segmentImpact,strikeSurface} from './breach-ballistic-resolution.ts';
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
  from './breach-combat-reactions.ts';
@@ -54,28 +56,21 @@ import {assessFireLane,fireLaneReachable,type FireBlock} from './breach-fire-saf
 import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,
-  initialOpeningYieldCandidate,pressDoorOnBodyAttempt,
-  doorWouldStrikeActors,
-  autoDoorAtBodyContact,canAutoOpenEnRoute} from './breach-door.ts';
+import {initDoor,advanceDoor,doorReachable,doorApproach,kickDoor,initialOpeningYieldCandidate,doorWouldStrikeActors} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
-import {localDetour} from './breach-cooperation.ts';
-import {beginAutoSidestep,autoSidestepFacing,type AutoSidestep}
-  from './breach-auto-sidestep.ts';
-import {friendlyPassingStep,nearOccupiedFriendlyGoal,
-  friendlyArrivalSettleTarget} from './breach-friendly-traffic.ts';
+
+import {autoSidestepFacing,type AutoSidestep} from './breach-auto-sidestep.ts';
+import {nearOccupiedFriendlyGoal,friendlyArrivalSettleTarget} from './breach-friendly-traffic.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {captureMotionFrameOrigins,buildMotionFrameProposals}
  from './breach-motion-frame-input.ts';
-import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
-import {releaseEmbeddedMotorActor} from './breach-locomotion-clearance.ts';
+
 import {type MotorPause,type ExecutionIssue,
   type ExecutionStatus} from './breach-execution-state.ts';
 import {type ExecutionEvent} from './breach-execution-events.ts';
-import {relocateCover,canRelocateCover,coverPushDistance,
-  autoShoveLightCover} from './breach-movable-cover.ts';
+import {relocateCover,canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {canAutoShove} from './breach-traversal-surfaces.ts';
 import {materialForFixture,MATERIALS,type MaterialId} from './breach-materials.ts';
 import {damageCover} from './breach-reactive-cover.ts';
@@ -127,30 +122,16 @@ import {newAwareness,addObservation,visibleObservation,
 import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
-import {passageWait,passageFollowerStep,passageScheduledStep,
-  passageDeadlockRetreatTarget,passageIdleYieldStep,
-  approachingNarrowThreshold,type PassageActor,type PassageLease}
-  from './breach-passage.ts';
-import {incidentalCloseWouldBlockTeammate}
-  from './breach-door-pressure-arbitration.ts';
+import {passageIdleYieldStep,approachingNarrowThreshold,type PassageActor,type PassageLease} from './breach-passage.ts';
+
 import {advanceWaitOrder} from './breach-order-wait.ts';
 import {executeTacticalUtilityOrder} from './breach-order-utility.ts';
-import {planDoorSchedule,pendingPassageSlot,type PassageSchedule}
-  from './breach-passage-plan.ts';
-import {diagnoseMovement,blockedStepCause,projectReachableGoal,type Blocker}
-  from './breach-nav-diagnostics.ts';
-import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
-  twoSidedSqueezePressure,
-  sweptProfileClear,SQUEEZE_RADIUS,escapeOpenDoorOverlap,
-  slideAroundStaticCorner,glideAlongStaticWall}
-  from './breach-navigation.ts';
-import {routeWithSqueezeIntel,routeWithSqueezeWorld,recoverNormalLane}
-  from './breach-squeeze-route.ts';
+import {planDoorSchedule,type PassageSchedule} from './breach-passage-plan.ts';
+import {projectReachableGoal,type Blocker} from './breach-nav-diagnostics.ts';
+import {bodyClear,sweptBodyClear,sweptProfileClear,SQUEEZE_RADIUS} from './breach-navigation.ts';
+import {routeWithSqueezeIntel,routeWithSqueezeWorld} from './breach-squeeze-route.ts';
 import {knownPortalStrokeRoute} from './breach-known-portal-stroke.ts';
-import {probeObstacleCrossing,probeWindowPortalRoute,
-  canOpenWindowForClimb,preferTraversal,sampleTraversal,traversalRouteLength,
-  traversalStepClear,type TraverseOpportunity}
-  from './breach-mantle.ts';
+import {probeObstacleCrossing,probeWindowPortalRoute,canOpenWindowForClimb,sampleTraversal,traversalRouteLength,traversalStepClear,type TraverseOpportunity} from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
 import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
@@ -183,8 +164,7 @@ import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployme
 import {operationBrief,assessOperation,
   type OperationKind} from './breach-operations.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
-import {initialIntel,observeIntel,discoverContactCover,routeWithIntel,intelPassable,doorKnown,
-  type IntelMode,type IntelState} from './breach-intel.ts';
+import {initialIntel,observeIntel,routeWithIntel,intelPassable,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
 import {resolveArmorImpact} from './equipment-armor.ts';
 import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
 import {magazineKit,
@@ -1888,633 +1868,14 @@ function observe(s:Session){
     }
   }
 }
-const traversalWorld=(s:Session,a:TeamActor)=>({
- cover:s.coverState,walls:WALLS,doors:s.doors,windows:s.windows,
- // A teammate in the air already owns their landing. The next member of
- // the stack may approach, but must not launch into that reserved spot.
- actors:s.operators.filter(other=>other!==a&&other.health>0)
-   .flatMap(o=>[o.p,...(o.traversal?[o.traversal.landing]:
-     o.traversalPending?[o.traversalPending.landing]:[])]),
- canStand:(p:Pt)=>passable(p)
-});
-const traversalFitness=(a:TeamActor)=>({
- pace:a.pace,injury:Math.min(3,Math.max(0,a.injuryStage)) as 0|1|2|3,
- loadFactor:1/Math.max(.55,a.loadMovementScale??1)
-});
-/** This is a transient motor decision; it does not alter an authored order.
- * Only a known, individually climbable obstacle can win over a longer walk.
- */
-function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
- const world=traversalWorld(s,a);
- const fit=traversalFitness(a);
- const ordinary=routeWithSqueezeIntel(s.intel,a.p,goal);
- const portal=probeWindowPortalRoute(a.p,goal,{
-   ...world,
-   windows:world.windows.map(w=>
-     canOpenWindowForClimb(w)?{...w,open:true}:w)
- },(from,to)=>routeWithSqueezeWorld(from,to,s.doors),fit);
- if(portal&&s.intel.cover.has(portal.crossing.obstacleIndex)&&
-     (!ordinary.length||portal.duration+.12<
-      traversalRouteLength(a.p,ordinary)/53))
-   return {op:portal.crossing,approachPath:portal.approachPath};
- // A distant waypoint is not an invalid vault intention. Probe the first
- // nearby obstacle on the authored direction, then keep the original goal.
- const span=d(a.p,goal);
- const probe=span>170?{x:a.p.x+(goal.x-a.p.x)*170/span,
-   y:a.p.y+(goal.y-a.p.y)*170/span}:goal;
- const candidate=probeObstacleCrossing(a.p,probe,world,fit);
- const op=candidate?{...candidate,destination:clone(goal)}:null;
- if(!op||!s.intel.cover.has(op.obstacleIndex)||
-    !preferTraversal(a.p,goal,op,ordinary))return null;
- const approachPath=routeWithSqueezeWorld(a.p,op.approach,s.doors);
- return approachPath.length?{op,approachPath}:
-   d(a.p,op.approach)<3?{op,approachPath:[op.approach]}:null;
-}
-function tickTraversal(a:TeamActor,s:Session,dt:number):boolean{
- const op=a.traversal;
- if(!op)return false;
- if(a.traversalRetreating&&a.traversalElapsed<=0){
-   // Back on verified ground: keep the original MOVE order, then replan.
-   a.traversal=null;a.traversalRetreating=false;
-   a.traversalElevation=0;a.nav=[];a.velocity=0;
-   a.lastTraversalAt=s.seconds;
-   a.retryRouteAt=s.seconds+.65;
-   a.blockedTime=0;
-   if(a.side==='blue')notify(s,a.name+' TRAVERSAL BLOCKED · REPLANNING');
-   return true;
- }
- if(!a.traversalRetreating&&a.traversalElapsed>=op.duration){
-   // The final full-body landing was committed on the preceding tick.
-   a.traversal=null;a.traversalElevation=0;a.nav=[];
-   a.traversalRetreating=false;
-   a.retryRouteAt=0;a.blockedTime=0;return true;
- }
- // An occupied landing or a changed door/obstacle stops the climb. After
- // half a second without forward progress, retrace the *same continuous
- // trajectory* instead of hanging in place or teleporting to the floor.
- if(a.blockedTime>.48)a.traversalRetreating=true;
- const nextElapsed=a.traversalRetreating?
-   Math.max(0,a.traversalElapsed-dt*1.15):
-   Math.min(op.duration,a.traversalElapsed+dt);
- const frame=sampleTraversal(op,nextElapsed);
- if(!traversalStepClear(a.p,frame.p,op,traversalWorld(s,a))){
-   a.velocity=0;a.blockedTime+=dt;
-   a.lastBlocker='furniture';
-   return true;
- }
- const old=clone(a.p);a.priorP=old;
- a.p=clone(frame.p);a.traversalElapsed=nextElapsed;
- a.traversalElevation=frame.elevation;
- a.velocity=d(old,a.p)/Math.max(dt,.0001);
- a.blockedTime=0;a.lastBlocker='clear';a.squeeze=false;
- // The weapon follows the actor during a vault, not a separate aim order.
- a.heading=angle(op.approach,op.landing);
- return true;
-}
-/** Closing a live hinge by brushing its reverse face must never undo the
- * opening needed by another member of the same squad. This is only consulted
- * for incidental body-pressure CLOSE; explicit door orders keep authority.
- * Check the peer's active order and its REAL destination, not a near motor
- * step or hidden enemy intel. Idle teammates don't lock the leaf open. */
-/** Real body-contact recovery for loose clutter, even when route search
- * cannot build a path through two adjacent chairs. Shared with walking.
- * Does not bypass walls, door leaves, other actors, or authored orders.
- */
-function tryAutoClearClutter(s:Session,a:TeamActor,to:Pt):boolean{
- if(a.side!=='blue'||s.seconds-a.lastAutoShoveAt<=.38)return false;
- const moved=autoShoveLightCover(s.coverState,a.p,to,WALLS,s.doors,
-   s.operators.filter(other=>other!==a&&other.health>0).map(other=>other.p));
- if(moved===null)return false;
- a.lastAutoShoveAt=s.seconds;a.velocity=0;
- a.nav=[];a.retryRouteAt=0;a.blockedTime=0;
- s.objectRevision++;
- COVER.splice(0,COVER.length,...s.coverState);
- const prop=s.coverState[moved],where={x:prop.x,y:prop.y};
- hear(s,where,prop.toppled?95:40,'furniture');
- if(prop.toppled)battleEvent(s,'interaction',a,where,
-   a.name+' KNOCKED OVER '+(prop.fixture??'CLUTTER').toUpperCase());
- return true;
-}
+/** All physical locomotion now shares one fixed-tick motor coordinator.
+ * This is deliberately the sole simulation-side port for noises, events,
+ * route cache and passage schedule. No rendered frame owns movement. */
+const motorHooks:ActorMotorHooks={
+ notify,hear,battleEvent,cachedEnemyRoute,knownShoveCrossing,ensurePassageSchedule
+};
 function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
-  // The simulation frame, not rendering, advances and validates traversal.
-  if(tickTraversal(a,s,dt))return true;
-  if(releaseEmbeddedMotorActor(a,p,s.doors,dt))return true;
-  if(a.traversalPending&&d(a.p,a.traversalPending.approach)<3.3){
-    const planned=a.traversalPending;
-    if(planned.windowId){
-      const pane=s.windows.find(w=>w.id===planned.windowId);
-      if(!pane){a.traversalPending=null;a.nav=[];return true;}
-      if(canOpenWindowForClimb(pane)){
-        // A closed standard sash is an interaction, not an impossible
-        // crossing. Pause at full-body clearance before opening it.
-        a.velocity=0;a.actionTimer+=dt;
-        if(a.actionTimer<.36)return true;
-        a.actionTimer=0;
-        if(manipulateWindow(pane,'open')){
-          s.objectRevision++;
-          hear(s,{x:pane.x,y:pane.y},85,'window');
-          notify(s,a.name+' OPENED WINDOW');
-          battleEvent(s,'interaction',a,a.p,a.name+' OPENED WINDOW');
-        }
-        return true;
-      }
-      if(!pane.open&&!pane.shattered){
-        a.traversalPending=null;a.nav=[];a.actionTimer=0;
-        a.lastTraversalAt=s.seconds;return true;
-      }
-    }
-    const world=traversalWorld(s,a);
-    // Validate the LOCAL aperture, not the distant waypoint.
-    // Window probes intentionally reject spans greater than 180 units.
-    // The initial probe already selected an eligible obstacle and landing.
-    // At takeoff, revalidate that exact crossing against CURRENT geometry,
-    // pane state and all landing occupants. Re-probing from the approach
-    // toward the distant authored goal can fail solely due to a changed
-    // ray length and lose otherwise reliable vaults.
-    const landingClear=!world.actors.some(position=>
-      d(position,planned.landing)<OPERATOR_RADIUS*2+3);
-    const verified=d(planned.approach,a.p)<4&&landingClear&&
-      traversalStepClear(a.p,planned.landing,planned,world);
-    if(verified){
-      a.traversal={...planned,approach:clone(a.p)};
-      a.traversalElapsed=0;a.traversalElevation=0;
-      a.traversalRetreating=false;
-      a.traversalPending=null;a.nav=[];a.velocity=0;
-      a.blockedTime=0;a.lastTraversalAt=s.seconds;
-      return true;
-    }
-    a.traversalPending=null;a.nav=[];a.lastTraversalAt=s.seconds;
-    a.retryRouteAt=s.seconds+.30;
-    return true;
-  }
-  if(!a.nav.length&&!a.traversalPending&&a.side==='blue'&&
-     a.plan[0]?.kind==='move'&&
-     s.seconds-a.lastTraversalAt>.55){
-    const candidate=desiredTraverse(s,a,p);
-    if(candidate){
-      a.traversalPending=candidate.op;
-      a.nav=candidate.approachPath;
-      a.retryRouteAt=0;a.recoveryAttempts=0;
-    }
-  }
-  const goalKey=Math.round(p.x*2)+':'+Math.round(p.y*2);
-  if(a.routeGoalKey!==goalKey){
-    a.autoSidestep=null;
-    a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
-    a.lastNormalLaneProbeAt=-10;
-  }
-  if(!a.nav.length){
-    // A hinge from an earlier state can leave the operator embedded in its
-    // collision capsule. Take a bounded real swept step out before route
-    // backoff; do not demand a new waypoint or let the route fail forever.
-    const escape=escapeOpenDoorOverlap(a.p,p,s.doors,dt*45);
-    if(escape){
-      a.priorP=clone(a.p);a.p=escape;a.velocity=0;
-      a.blockedTime=0;a.lastBlocker='door';
-      a.retryRouteAt=0;return true;
-    }
-    // Never execute expensive route searches every fixed tick for a proven
-    // unreachable destination. Changes of goal or recovered progress reset.
-    // A route may be temporarily unavailable solely because a swung leaf
-    // crosses its doorway. Keep attempting *physical* pressure along the
-    // player's actual goal, even during backoff. No invented path or teleport.
-    const goalDistance=d(a.p,p);
-    if(goalDistance>2){
-      const probeLength=Math.min(4,goalDistance);
-      const probe={x:a.p.x+(p.x-a.p.x)/goalDistance*probeLength,
-        y:a.p.y+(p.y-a.p.y)/goalDistance*probeLength};
-      pressDoorOnBodyAttempt(a.p,probe,s.doors,dt,
-        s.operators.filter(o=>o.health>0).map(o=>o.p),{
-          deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door)
-        });
-    }
-    // When two chairs interlock there may be no navigable path, so the
-    // ordinary collision branch cannot run. Probe only a real, short
-    // goal-directed body step; no furniture may be shifted at a distance.
-    if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
-       s.seconds-a.lastAutoShoveAt>.38&&goalDistance>2){
-      const distance=Math.min(4,goalDistance);
-      const contactProbe={x:a.p.x+(p.x-a.p.x)/goalDistance*distance,
-        y:a.p.y+(p.y-a.p.y)/goalDistance*distance};
-      if(diagnoseMovement(a.p,contactProbe,s.doors).blocker==='furniture'&&
-         tryAutoClearClutter(s,a,contactProbe))return true;
-    }
-    if(s.seconds<a.retryRouteAt){a.velocity=0;return false;}
-    a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
-      cachedEnemyRoute(s,a.p,p,true);
-    if(!a.nav.length&&a.side==='blue'){
-      // A known small object that the player drew THROUGH is a contextual
-      // crossing, not a permanently impassable destination. Approach its
-      // near edge using ordinary world-truth navigation; only body contact
-      // can actually move it. Nothing is learned about hidden furniture.
-      const index=knownShoveCrossing(s,a.p,p);
-      if(index!==null){
-        const obstacle=s.coverState[index];
-        const dx=p.x-a.p.x,dy=p.y-a.p.y;
-        const span=Math.hypot(dx,dy)||1;
-        const ux=dx/span,uy=dy/span;
-        const setback=(Math.abs(ux)*obstacle.w+
-          Math.abs(uy)*obstacle.h)/2+OPERATOR_RADIUS+5;
-        const staging={x:obstacle.x-ux*setback,
-          y:obstacle.y-uy*setback};
-        const path=d(a.p,staging)<5?[]:
-          routeWithSqueezeWorld(a.p,staging,s.doors);
-        if(d(a.p,staging)<5||path.length)
-          a.nav=[...path,p];
-      }
-    }
-    if(!a.nav.length){
-      // A failed route is a stationary brace, not phantom walking speed.
-      a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
-      a.recoveryAttempts++;
-      a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
-      // Do not turn a failed route search into a new warning every
-      // cooldown. A bounded escalation stays visible in the operator card.
-      // The motor still probes periodically so a newly open path can heal.
-      if(a.side==='blue'&&(a.recoveryAttempts===1||
-         a.recoveryAttempts===5)){
-        notify(s,a.name+(a.recoveryAttempts>=5?
-          ' NO SAFE ROUTE · ORDERS RETAINED':' CANNOT REACH · RETRYING'));
-        a.lastNavRepairAt=s.seconds;
-      }
-      return false;
-    }
-    a.retryRouteAt=0;a.recoveryAttempts=0;
-  }
-  const next=a.nav[0],gap=d(a.p,next);
-  if(gap<3){a.nav.shift();return false;}
-  const direction=angle(a.p,next);
-  const {canAutoSidestep,move:initialMove}=sampleActorMotorStride(
-    a,s,p,direction,dt,gap,speedScale);
-  let move=initialMove;
-  // Resolve right-of-way BEFORE automatic door-opening, hinge pressure or
-  // movement. Otherwise every teammate can start a competing OPEN action
-  // and the planned squad sequence becomes unpredictable.
-  // Only one operator owns a narrow threshold at a time. This is a
-  // transient execution pause, not a new waypoint or permanent yield.
-  const scheduled=ensurePassageSchedule(s);
-  const traffic:PassageActor[]=s.operators.map(unit=>{
-    const order=unit.plan[0];
-    const traveling=!!order&&
-      (order.kind==='move'||order.kind==='door'||
-       order.kind==='pie'||order.kind==='sync')&&
-      (unit.nav.length>0||d(unit.p,order.p)>7);
-    return {
-      id:unit.id,side:unit.side,p:unit.p,
-      // Only the action happening NOW competes for a doorway. A future
-      // movement after WAIT/RELOAD/etc. must not hold the reservation.
-      // Crossing intent is the active route's real destination, not
-      // today's tiny motor step. A stack-position MOVE on the same
-      // side must remain free to finish before the coordinated SYNC.
-      goal:unit===a?(unit.nav.at(-1)??order?.p??p):
-        traveling?(unit.nav.at(-1)??order!.p):null,
-      health:unit.health,blockedTime:unit.blockedTime,
-      waitSeconds:unit.passageWaitSeconds,squeezing:unit.squeeze,
-      active:unit===a||traveling,
-      plannedPassage:pendingPassageSlot(unit.p,
-        scheduled.get(unit.id),s.doors),
-    };
-  });
-  const passageActor=traffic.find(unit=>unit.id===a.id)!;
-  const sequencedMove=passageScheduledStep(passageActor,s.doors,traffic,
-    move,(from,to)=>passable(to,OPERATOR_RADIUS)&&
-      sweptBodyClear(from,to,s.doors));
-  const negotiatedMove=passageFollowerStep(passageActor,s.doors,traffic,
-    sequencedMove);
-  // A partly free stride moves on this tick instead of stopping and
-  // repeatedly re-accelerating. A fully consumed gap still enters the
-  // existing WAIT state, with its unchanged warnings/lease semantics.
-  const noForwardRoom=d(negotiatedMove,a.p)<.05&&d(move,a.p)>.05;
-  if(passageWait(passageActor,s.doors,traffic,s.passageLeases,s.seconds,
-       noForwardRoom?move:negotiatedMove)||noForwardRoom){
-    a.motorPause='passage';a.velocity=0;a.blockedTime=0;
-    a.passageWaitSeconds+=dt;
-    // After both claimants have genuinely stalled, only the less-advanced
-    // operator backs out. One candidate gets the lane; the other receives a
-    // real, swept retreat route, not another simultaneous squeeze attempt.
-    // Ordinary convoy pauses never qualify. Preserve authored orders.
-    if(!a.traversal&&!a.traversalPending){
-      const retreat=passageDeadlockRetreatTarget(
-        {...passageActor,waitSeconds:a.passageWaitSeconds},
-        s.doors,traffic,(from,to)=>sweptBodyClear(from,to,s.doors)||
-          (a.squeeze&&sweptProfileClear(from,to,s.doors,
-             a.squeezeYaw,'squeeze')));
-      if(retreat){
-        a.nav.unshift(retreat);a.passageWaitSeconds=0;
-        a.retryRouteAt=0;a.recoveryAttempts=0;
-        return true;
-      }
-    }
-    // A normal stack is allowed to wait. Warn only when two or more
-    // friendly operators have remained stalled in the same passage for
-    // several seconds. Never reorder their independently authored plans.
-    if(a.side==='blue'&&a.passageWaitSeconds>5.5&&
-       !a.passageStallReported&&
-       s.operators.some(other=>other!==a&&other.side===a.side&&
-         other.health>0&&other.motorPause==='passage'&&
-         other.passageWaitSeconds>3)){
-      a.passageStallReported=true;
-      notify(s,a.name+' PASSAGE STALLED · CHECK ROUTES');
-    }
-    return true;
-  }
-  a.passageWaitSeconds=0;a.passageStallReported=false;
-  // Rendered locomotion uses real progress, not the unconstrained desired
-  // speed. Prevent foot-skating when a convoy's available stride is short.
-  if(d(negotiatedMove,a.p)<d(move,a.p)-.001)
-    a.velocity=Math.min(a.velocity,d(negotiatedMove,a.p)/Math.max(dt,.0001));
-  move=negotiatedMove;
-  // Identify the leaf for closed-door authored handling; open hinged
-  // leaves are pushed by the coupled swept-body solver below, not by
-  // standing nearby or crossing a broad radius trigger.
-  const closedDoor=s.doors.filter(door=>
-    pointToSegment(move,doorLeafSegment(door))<24||
-    doorBlocksSegment(door,{a:a.p,b:move}))
-    .sort((u,v)=>pointToSegment(move,doorLeafSegment(u))-
-      pointToSegment(move,doorLeafSegment(v)))[0];
-  // Look ahead to the route's next node, stopping to open a door before
-  // the actor's capsule contacts the physical leaf.
-  // Crossing a physical closed door during a move implicitly attempts to
-  // open it, even if a briefed doorway missed the drawn-path insertion.
-  // Deliberate DOOR actions (including KICK) retain priority and must not
-  // be preempted by this convenience interaction.
-  const pendingDoor=a.plan[0];
-  // A route toward an authored door may cross OTHER doors. Do not let
-  // the destination DOOR node disable ordinary collision-aware opening
-  // of an intervening closed leaf; this was the G4d seeded deadlock.
-  const automaticCandidates=s.doors.filter(door=>
-    canAutoOpenEnRoute(pendingDoor,door.id,a.side==='red')).sort((left,right)=>
-      pointToSegment(a.p,doorLeafSegment(left))-
-      pointToSegment(a.p,doorLeafSegment(right))||
-      left.id.localeCompare(right.id));
-  const doorAhead=automaticCandidates.find(door=>{
-    if(door.open&&(door.openFraction??0)>=.72)return false;
-    if(!doorReachable(a.p,door))return false;
-    return doorBlocksSegment(door,{a:a.p,b:next})||
-      doorBlocksSegment(door,{a:a.p,b:p});
-  })??autoDoorAtBodyContact(a.p,move,automaticCandidates);
-  if(doorAhead){
-    // A cautious defender should operate a door from a real clear stance,
-    // not repeatedly crowd its swing while touching the handle.
-    if(a.side==='red'&&!doorAhead.open&&a.actionTimer===0&&
-       doorWouldStrikeActors({...doorAhead,openFraction:0},.46,
-         [a.p],OPERATOR_RADIUS+1)){
-      const staged=doorApproach(a.p,doorAhead);
-      if(staged&&d(staged,a.p)>5&&d(staged,a.p)<50&&
-         sweptBodyClear(a.p,staged,s.doors)){
-        a.nav.unshift(staged);a.velocity=0;
-        a.motorPause='door-opening';return true;
-      }
-    }
-    a.motorPause='door-opening';
-    const opening=doorInteraction({target:doorAhead,actorId:a.id,
-      actorPosition:a.p,action:'open'});
-    if(opening.reason==='held'||opening.reason==='locked'||
-       opening.reason==='obstructed'){
-      a.motorPause=opening.reason==='held'?'door-held':
-        opening.reason==='locked'?'door-locked':'door-obstructed';
-      a.lastBlocker='door';
-      a.velocity=0;a.blockedTime+=dt;
-      // A blocked door remains physically closed; no AI magic opening.
-      if(a.side==='red'&&a.blockedTime>1.2){
-        a.nav=[];a.alert='cover';a.contact=null;
-      }
-      return true;
-    }
-    a.velocity=0;a.actionTimer+=dt;
-    if(a.actionTimer>=.36&&!doorAhead.open){
-      doorAhead.open=true;doorAhead.openedAt=s.seconds;
-      hear(s,doorCenter(doorAhead),125,'door');
-      notify(s,a.name+' OPENED '+doorAhead.id);
-    }
-    if((doorAhead.openFraction??0)<.72)return true;
-    a.actionTimer=0;
-  }else if(a.side==='red')a.actionTimer=0;
-  const closed=!!closedDoor&&!closedDoor.open&&
-    pointToSegment(move,doorLeafSegment(closedDoor))<9.5&&
-    pointToSegment(move,doorLeafSegment(closedDoor))<
-      pointToSegment(a.p,doorLeafSegment(closedDoor))+0.001;
-  // Allies may brush and pass one another: their bodies never hard-block
-  // authored routes. Only an opposing actor is a physical traffic barrier.
-  const blocking=s.operators.find(b=>b!==a&&b.health>0&&
-    b.side!==a.side&&d(b.p,move)<11);
-  const friendlyPositions=s.operators.filter(b=>b!==a&&b.health>0&&
-    b.side===a.side).map(b=>b.p);
-  // Teammates are soft traffic, not rigid obstacles: preserve movement when
-  // there is no safe sidestep, and never force the stationary teammate away.
-  // Passage reservations supply queue spacing near narrow doors.
-  // Additional friendly steering here can put the last soldier against a
-  // jamb, causing false progress and a costly squeeze into the opening.
-  const desiredMove=approachingNarrowThreshold(a.p,p,s.doors)?move:
-    friendlyPassingStep(a.p,move,next,friendlyPositions,
-      (from,to)=>a.squeeze?sweptProfileClear(from,to,s.doors,
-        a.squeezeYaw,'squeeze'):sweptBodyClear(from,to,s.doors));
-  // Resolve the physical body's intended step against the actual leaf
-  // BEFORE evaluating movement clearance. The hinge may yield right now;
-  // when it cannot (wall/actor), existing collision and recovery remain.
-  const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
-    s.operators.filter(o=>o.health>0).map(o=>o.p),{
-      deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door)
-    });
-  // The physical transition requires a valid oriented three-point torso
-  // sweep; normal clearance remains the preference whenever it fits.
-  const normalClear=sweptBodyClear(a.p,desiredMove,s.doors);
-  const travelHeading=angle(a.p,desiredMove);
-  const sidewaysYaw=squeezeFacing(travelHeading);
-  const narrowClear=sweptProfileClear(a.p,desiredMove,s.doors,
-    sidewaysYaw,'squeeze');
-  // An incidental near-miss with a prop or wall is NOT an order to
-  // rotate the entire body into a squeeze. First look for a genuine
-  // full-shoulder route around it (often just a short sidestep). This is
-  // transient motor navigation; the player-authored waypoint stays put.
-  // Rate-limit this *physical-world* search to avoid A* churn every tick.
-  if(!normalClear&&!blocking&&!closed&&!a.traversalPending&&
-     s.seconds-a.lastNormalLaneProbeAt>.50){
-    // Failed comfort searches must not restart the world-truth recovery
-    // clock; it needs uninterrupted stall time to escalate blocked moves.
-    a.lastNormalLaneProbeAt=s.seconds;
-    const fullLane=recoverNormalLane(a.p,p,s.doors);
-    if(fullLane.length&&d(fullLane[0],next)>6&&
-       d(fullLane[0],a.p)>3&&
-       sweptBodyClear(a.p,fullLane[0],s.doors)){
-      const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
-        s.seconds,canAutoSidestep);
-      if(side)a.autoSidestep=side;
-      a.nav=fullLane;a.retryRouteAt=0;a.recoveryAttempts=0;
-      // Preserve existing WATCH facing and weapon intention; only the
-      // feet choose a different line around the obstruction.
-      a.squeeze=false;a.squeezeTime=0;
-      return true;
-    }
-  }
-  // A grazing wall is not a narrow corridor. Glide the legal tangential
-  // component at the full body radius, even when the proposed step points
-  // slightly INTO the wall. Avoid rotating into a squeeze facing while
-  // simply walking parallel to a solid wall or reversing alongside it.
-  if(!normalClear&&!blocking&&!closed){
-    const glide=glideAlongStaticWall(a.p,desiredMove,s.doors);
-    if(glide){
-      const old=clone(a.p);
-      a.priorP=old;a.p=glide;
-      // Footwork and motion cues follow resolved, not rejected movement.
-      a.velocity=d(old,glide)/Math.max(dt,.0001);
-      // A legal sideways wall glide moves the feet, not necessarily the
-      // entire upper body. Never grant passage without the existing sweep.
-      const side=beginAutoSidestep(old,next,glide,a.heading,p,
-        s.seconds,canAutoSidestep);
-      if(side)a.autoSidestep=side;
-      const heldSide=autoSidestepFacing(a.autoSidestep,old,glide,p,
-        s.seconds,canAutoSidestep);
-      // Ordinary wall-gliding faces the actual slide, not the obstructed
-      // grid waypoint. A generated squad entry that has already achieved
-      // full shoulder clearance is different: its authored clearing sector
-      // should keep rotating while the circular full-body sweep glides.
-      // Do not relax geometry, squeeze turning, or explicit WATCH priority.
-      const entry=a.plan[0];
-      const clearedEntryLook=!a.squeeze&&entry?.kind==='move'&&
-        !!entry.entryDoorId&&entry.aimMode==='fixed'&&
-        entry.facing!==undefined&&
-        entryClearanceForLook(
-          s.doors.find(door=>door.id===entry.entryDoorId),
-          glide,entry.p);
-      if(a.aimInstruction?.mode!=='track'&&!clearedEntryLook&&
-         heldSide===null)
-        a.heading=angle(old,glide);
-      a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
-      a.recoveryAttempts=0;
-      if(a.squeeze&&bodyClear(a.p,s.doors)){
-        a.squeeze=false;a.squeezeTime=0;
-      }
-      return true;
-    }
-  }
-  if(!normalClear&&narrowClear&&!a.squeeze&&
-     (approachingNarrowThreshold(a.p,p,s.doors)||
-      twoSidedSqueezePressure(a.p,desiredMove,s.doors))){
-    a.squeeze=true;a.squeezeYaw=sidewaysYaw;a.squeezeTime=0;
-    a.velocity=0;
-    // Alignment is a real, short stationary transition, not a teleport.
-    return true;
-  }
-  if(a.squeeze){
-    a.squeezeYaw=sidewaysYaw;
-    if(normalClear&&squeezeExitClear(a.p,desiredMove,s.doors)){
-      a.squeeze=false;a.squeezeTime=0;
-    }else{
-      // The body visibly turns to the SAME angle used by oriented collision
-      // before we permit movement. Otherwise traversal is visually false.
-      const remaining=angleDifference(a.heading,a.squeezeYaw);
-      a.heading+=clamp(remaining,-dt*5,dt*5);
-      a.turning=Math.abs(remaining);
-      if(Math.abs(remaining)>.12){a.velocity=0;return true;}
-      a.squeezeTime+=dt;
-      if(a.squeezeTime<.18){a.velocity=0;return true;}
-    }
-  }
-  const traversable=a.squeeze?narrowClear:normalClear;
-  if(!traversable&&!blocking&&
-     tryAutoClearClutter(s,a,desiredMove))return true;
-  if(!traversable&&!blocking){
-    const escape=escapeOpenDoorOverlap(a.p,p,s.doors,dt*45);
-    if(escape){
-      a.priorP=clone(a.p);a.p=escape;a.velocity=0;
-      a.blockedTime=0;a.lastBlocker='door';
-      // The current route is still authored and remains active. Replan
-      // its transient motor path only after physically leaving the leaf.
-      a.nav=[];a.retryRouteAt=0;return true;
-    }
-  }
-  // Furniture corners should be brushed around, not treated as hard jams.
-  // Every candidate remains a real swept, full-size body movement.
-  if(!traversable&&!a.squeeze&&!blocking&&!closed&&
-     diagnoseMovement(a.p,desiredMove,s.doors).blocker==='furniture'){
-    const slide=slideAroundStaticCorner(a.p,desiredMove,next,s.doors);
-    if(slide){
-      const old=clone(a.p);
-      const side=beginAutoSidestep(old,next,slide,a.heading,p,
-        s.seconds,canAutoSidestep);
-      if(side)a.autoSidestep=side;
-      a.priorP=old;a.p=slide;
-      a.velocity=d(old,slide)/Math.max(dt,.0001);
-      a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
-      return true;
-    }
-  }
-  // Try nearby route repair for actor jams, furniture, and door leaves.
-  if((!traversable||blocking)&&
-    recoveryAction(blocking?'actor':a.lastBlocker,a.blockedTime,
-      s.seconds-a.lastNavRepairAt,a.recoveryAttempts)==='detour'){
-    const candidate=localDetour(a.p,next,s.doors,s.operators
-      .filter(o=>o!==a&&o.health>0).map(o=>o.p));
-    if(candidate&&d(candidate,p)<d(a.p,p)+12&&
-      (!a.nav.length||d(candidate,a.nav[0])>12)){
-      const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
-        s.seconds,canAutoSidestep);
-      if(side)a.autoSidestep=side;
-      a.nav.unshift(candidate);a.lastNavRepairAt=s.seconds;
-      return true;
-    }
-  }
-  if(!closed&&!blocking&&traversable){
-    a.priorP=clone(a.p);a.p=desiredMove;a.blockedTime=0;
-    a.recoveryAttempts=0;a.retryRouteAt=0;
-    a.lastBlocker='clear';
-    if(a.side==='blue'&&s.seconds-s.movementNoiseAt>.54){
-      hear(s,a.p,a.posture==='crouch'?30:68,'footstep');
-      s.movementNoiseAt=s.seconds;
-    }
-  }else{
-    // A genuinely swinging leaf is actively clearing the path. Preserve
-    // the authored route; don't misdiagnose pressure as a stuck waypoint
-    // or start detour/replan churn while the door is actually yielding.
-    if(!blocking&&!closed&&doorContact?.advanced){
-      a.velocity=0;a.blockedTime=0;a.lastBlocker='door';
-      return true;
-    }
-    a.velocity=Math.max(0,a.velocity-dt*130);
-    a.blockedTime+=dt;
-    a.lastBlocker=blockedStepCause(
-      diagnoseMovement(a.p,desiredMove,s.doors,
-        s.operators.filter(b=>b!==a&&b.side!==a.side&&b.health>0)
-        .map(b=>b.p)).blocker,!!blocking,closed);
-    if(a.side==='blue'&&a.lastBlocker==='furniture'){
-      const newlyKnown=discoverContactCover(s.intel,a.p,13);
-      if(newlyKnown.length){
-        a.lastNavRepairAt=-10;
-        notify(s,a.name+' DISCOVERED OBSTRUCTION');
-      }
-    }
-    if(a.blockedTime>1&&a.blockedTime<1.1)
-      notify(s,a.name+' BLOCKED · '+a.lastBlocker.toUpperCase());
-    // Observe actual hinge velocity and local leaf contact; waiting for an
-    // advancing panel is not a failed route, but a stalled panel still
-    // escalates through ordinary replan/report after the bounded grace.
-    const doorMoving=a.lastBlocker==='door'&&s.doors.some(door=>
-      door.open&&!door.wedged&&!door.heldBy&&
-      Math.abs(door.angularVelocity??0)>.08&&
-      pointToSegment(desiredMove,doorLeafSegment(door))<OPERATOR_RADIUS+12);
-    const repair=recoveryAction(a.lastBlocker,a.blockedTime,
-      s.seconds-a.lastNavRepairAt,a.recoveryAttempts,{doorMoving});
-    if(repair==='replan'||repair==='report'){
-      a.lastNavRepairAt=s.seconds;
-      a.recoveryAttempts++;
-      // Once actual collision is observed, repair against real geometry,
-      // not only the incomplete player-intel route that may run through
-      // an undiscovered door frame. The authored final goal is unchanged.
-      const repaired=a.side==='red'?cachedEnemyRoute(s,a.p,p,true):
-        routeWithSqueezeWorld(a.p,p,s.doors);
-      if(repaired.length){a.nav=repaired;a.retryRouteAt=0;}
-      else if(a.side==='blue'){
-        a.nav=routeWithSqueezeIntel(s.intel,a.p,p);
-        if(!a.nav.length)
-          a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
-      }
-      if(repair==='report'&&a.side==='blue')
-        notify(s,a.name+' NO SAFE ROUTE · ORDERS RETAINED');
-    }
-    // Do not discard an authored plan just because someone is in the way.
-  }
-  return true;
+ return advanceActorMotor(a,p,dt,s,motorHooks,speedScale);
 }
 function rotate(a:TeamActor,goal:number,dt:number){
   const delta=angleDifference(a.heading,goal);
@@ -2578,7 +1939,7 @@ function runOrders(s:Session,a:TeamActor,dt:number){
   a.motorPause=null;
   // An airborne crossing must reach a verified landing before combat pause,
   // waypoint completion, or fresh orders can resume.
-  if(a.traversal){tickTraversal(a,s,dt);return;}
+  if(a.traversal){advanceMotorTraversal(a,s,dt,motorHooks);return;}
   // A short, validated muzzle-clearance step never edits the player's plan.
   // Complete or expire it before resuming the original waypoint motor.
   if(a.fireRetreatTarget){
@@ -4847,7 +4208,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
     if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors);
     const a=s.operators.find(unit=>unit.id===p.id)!;
     return a.traversal?
-      traversalStepClear(p.from,p.to,a.traversal,traversalWorld(s,a)):
+      traversalStepClear(p.from,p.to,a.traversal,motorTraversalWorld(s,a)):
       a.squeeze?sweptProfileClear(p.from,p.to,s.doors,
         a.squeezeYaw,'squeeze'):sweptBodyClear(p.from,p.to,s.doors);
   });
