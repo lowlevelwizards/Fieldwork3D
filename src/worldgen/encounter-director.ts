@@ -5,7 +5,7 @@ import type {EncounterContext,EncounterPlan,EncounterPremise,EncounterActorSpec}
 import {chooseEncounterPremise} from './encounter-premises.ts';
 import {chooseEncounterProfile} from './encounter-profiles.ts';
 import {chooseHostileBudget} from './encounter-population.ts';
-import {planCivilians} from './encounter-civilians.ts';
+import {planCivilians,civilianBudget} from './encounter-civilians.ts';
 import {hostileMinimumForContract} from './encounter-population-contract.ts';
 import {composeEncounterGroups} from './encounter-groups.ts';
 import {placeEncounterActors} from './encounter-placement.ts';
@@ -55,6 +55,7 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
      assignObjectiveSecurity(site,spatial.actors,mission),premise,seed),seed);
  // Neutral placement is separate from armed encounter groups and never
  // increases the hostileBudget or creates a red actor.
+ const neutralBudget=civilianBudget(site,seed,premise,mission);
  const neutrals=planCivilians(site,actors,seed,premise,mission);
  const rooms=site.rooms.filter(r=>r.kind==='room');
  const occupiedZones=new Set(actors.map(a=>a.zoneId).filter(Boolean)).size;
@@ -72,6 +73,9 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
    rejected:placement.rejected,fallbacks:placement.fallbacks+spatial.rehomed,
    occupiedZones,emptyZones:Math.max(0,zones.size-occupiedZones),
    notes:['encounter profile: '+profile,
+     'civilian population: requested '+neutralBudget+', placed '+neutrals.length,
+     ...(neutralBudget>0&&!neutrals.length?
+       ['no civilian placement met physical clearance and route constraints']:[]),
      ...(actors.length<target?['physical capacity reduced hostile count']:[]),
      ...(spatial.rehomed?['repositioned unreachable hostile positions']:[])]}
  };
