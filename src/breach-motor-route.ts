@@ -47,7 +47,7 @@ export function prepareMotorRoute(
       pressDoorOnBodyAttempt(a.p,probe,s.doors,dt,
         s.operators.filter(o=>o.health>0).map(o=>o.p),{
           deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door)
-        });
+        },sessionWorldGeometry(s));
     }
     // When two chairs interlock there may be no navigable path, so the
     // ordinary collision branch cannot run. Probe only a real, short
