@@ -1,5 +1,6 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Authoritative authored-plan transactions and history; movement routes are transient. */
-import {type Pt,passable,route} from './breach-core.ts';
+import {type Pt} from './breach-core.ts';
 import {copyNodes,record,undo,redo,type PlanNode} from './breach-plan.ts';
 import {routeWithSqueezeWorld,routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import {validPieArc} from './breach-maneuvers.ts';
@@ -7,11 +8,11 @@ import {intelPassable} from './breach-intel.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import type {Session,TeamActor,SquadPlanTransaction} from './breach-game.ts';
 
-export function pathFor(a:TeamActor){
+export function pathFor(a:TeamActor,s?:Session){
   const points:Pt[]=[];let from=a.p;
   for(const n of a.plan){
     if(n.kind==='move'||n.kind==='door'){
-      const segment=routeWithSqueezeWorld(from,n.p,[]);
+      const segment=routeWithSqueezeWorld(from,n.p,[],s?sessionWorldGeometry(s):undefined);
       if(!segment.length)continue;
       points.push(...segment);from=n.p;
     }else if(n.kind==='pie'&&n.arc?.length){
@@ -27,7 +28,7 @@ export function edit(s:Session,a:TeamActor,fn:()=>void){
   if(s.phase!=='planning')return false;
   const before=copyNodes(a.plan);
   fn();
-  record(a.history,before);pathFor(a);
+  record(a.history,before);pathFor(a,s);
   return true;
 }
 
@@ -37,13 +38,14 @@ export function validEditedPlan(s:Session,start:Pt,proposed:PlanNode[]){
   for(const n of proposed){
   if(n.kind==='pie'){
       if(!n.pivot||!n.pieSide)return false;
-      const arc=validPieArc(from,n.pivot,n.pieSide,s.doors,n.pieDegrees??54);
+      const arc=validPieArc(from,n.pivot,n.pieSide,s.doors,n.pieDegrees??54,sessionWorldGeometry(s));
       if(!arc.length)return false;
       n.arc=arc;n.p={...arc[arc.length-1]};from=n.p;
     }else if(n.kind==='move'||n.kind==='door'){
       if(n.kind==='move'?!intelPassable(n.p,s.intel,SQUEEZE_RADIUS)||
         !routeWithSqueezeIntel(s.intel,from,n.p).length:
-        !passable(n.p)||!route(from,n.p).length)return false;
+        !sessionWorldGeometry(s).passable(n.p)||
+        !sessionWorldGeometry(s).route(from,n.p).length)return false;
       from=n.p;
     }
   }
@@ -68,14 +70,14 @@ export function undoAuthoredPlan(s:Session,id:string,party:PartyLookup){
     for(const member of group.members){
       const peer=party(s,member)!;
       const previous=undo(peer.history,peer.plan)!;
-      peer.plan=previous;pathFor(peer);
+      peer.plan=previous;pathFor(peer,s);
     }
     s.squadEntryUndo=null;s.squadEntryRedo=group;
     return true;
   }
   s.squadEntryUndo=null;s.squadEntryRedo=null;
   const previous=undo(a.history,a.plan);if(!previous)return false;
-  a.plan=previous;pathFor(a);return true;
+  a.plan=previous;pathFor(a,s);return true;
 }
 export function redoAuthoredPlan(s:Session,id:string,party:PartyLookup){
   const a=party(s,id);if(!a||s.phase!=='planning')return false;
