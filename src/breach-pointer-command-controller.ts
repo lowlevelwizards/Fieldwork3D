@@ -22,11 +22,11 @@ import {doorReachable} from './breach-door.ts';
 export type PointerCommandPort={
  readonly state:Session;readonly replaying:boolean;
  readonly replayBodycam:Pick<ReplayBodycamController,'active'>;
- readonly replayTraceMode:string;readonly recorder:MissionRecorder;
+ readonly replayTraceMode:string;readonly port.viewMode:'plan2d'|'iso'|'top';readonly recorder:MissionRecorder;
  readonly replayPlayback:ReplayPlaybackController;
  readonly replayAnalysisUi:ReturnType<typeof createBreachReplayAnalysisController>;
  readonly hudController:ReturnType<typeof createTacticalHudController>;
- readonly selected:string;selectedNode:number|null;
+ readonly port.selected:string;selectedNode:number|null;
  selectedActiveWatch:boolean;doorFocusId:string|null;doorMenuDismissedId:string|null;
  readonly flashMode:boolean;readonly pushMode:boolean;
  readonly firePlacement:string|null;
@@ -61,7 +61,7 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
     const finger={x:e.clientX,y:e.clientY};
     const nearest=team(port.state).filter(actor=>actor.health>0)
       .map(actor=>({id:actor.id,d:distance(
-        port.worldToScreen(actor.p,viewMode==='plan2d'?0:24),finger)}))
+        port.worldToScreen(actor.p,port.viewMode==='plan2d'?0:24),finger)}))
       .sort((a,b)=>a.d-b.d)[0];
     if(nearest&&nearest.d<=(e.pointerType==='touch'?36:26)){
       tappedReplayOperator=true;
@@ -73,7 +73,7 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
     const hit=shotScreenHit(port.recorder.ballistics.between(
       Math.max(0,port.replayPlayback.time-3),port.replayPlayback.time),port.replayPlayback.time,
       {x:e.clientX,y:e.clientY},
-      (point,height)=>port.worldToScreen(point,viewMode==='plan2d'?0:height),
+      (point,height)=>port.worldToScreen(point,port.viewMode==='plan2d'?0:height),
       port.historicalShotVisible,e.pointerType==='touch'?30:22);
     if(hit)port.replayAnalysisUi.selectReplayShot(hit);
   }
@@ -96,19 +96,19 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       else port.showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
     }else if(p.mode==='activeWatch'){
       port.adoptPointerOwner(p);
-      const target=aimTargetFromTap(port.uid(selected)?.p??pt,pt);
+      const target=aimTargetFromTap(port.uid(port.selected)?.p??pt,pt);
       const accepted=!p.dragCommitted||
-        (!!target&&retargetActiveWatch(port.state,selected,target));
+        (!!target&&retargetActiveWatch(port.state,port.selected,target));
       if(!accepted)port.rejectAt(pt,'WATCH TARGET TOO CLOSE OR INVALID');
       port.selectedNode=null;port.selectedActiveWatch=true;port.doorFocusId=null;
       if(accepted)port.tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
         p.dragCommitted?'WATCH RETARGETED':undefined);
     }else if(p.mode==='watchTarget'&&p.nodeId!==null){
       port.adoptPointerOwner(p);
-      const node=port.uid(selected)?.plan.find(n=>n.id===p.nodeId);
+      const node=port.uid(port.selected)?.plan.find(n=>n.id===p.nodeId);
       const target=node?aimTargetFromTap(node.p,pt):null;
       const accepted=!p.dragCommitted||
-        (!!target&&planWatch(port.state,selected,target,p.nodeId));
+        (!!target&&planWatch(port.state,port.selected,target,p.nodeId));
       if(!accepted)port.rejectAt(pt,'WATCH TARGET UNAVAILABLE');
       port.selectedNode=p.nodeId;port.doorFocusId=null;
       if(accepted)port.tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
@@ -116,13 +116,13 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
     }else if(p.mode==='node'&&p.nodeId!==null){
       port.adoptPointerOwner(p);
       if(p.dragCommitted){
-        const moving=port.uid(selected)?.plan.find(node=>node.id===p.nodeId);
+        const moving=port.uid(port.selected)?.plan.find(node=>node.id===p.nodeId);
         const moved=moving?.kind==='flash'?
-          moveFlashTarget(port.state,selected,p.nodeId,pt):
-          movePlanNode(port.state,selected,p.nodeId,pt);
+          moveFlashTarget(port.state,port.selected,p.nodeId,pt):
+          movePlanNode(port.state,port.selected,p.nodeId,pt);
         if(!moved){
-          const chosen=port.uid(selected)?.plan.find(n=>n.id===p.nodeId);
-          const origin=port.uid(selected)?.p??pt;
+          const chosen=port.uid(port.selected)?.plan.find(n=>n.id===p.nodeId);
+          const origin=port.uid(port.selected)?.p??pt;
           port.rejectAt(pt,orderFailureText(origin,pt,{
             // The failure message must use the SAME narrow-body clearance
             // rules as planning. Otherwise reachable squeeze positions are
@@ -134,7 +134,7 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
         }
       }
       port.selectedNode=p.nodeId;port.doorFocusId=null;
-      const chosen=port.uid(selected)?.plan.find(n=>n.id===p.nodeId);
+      const chosen=port.uid(port.selected)?.plan.find(n=>n.id===p.nodeId);
       if(chosen)port.tacticalFeedback.emit('node',chosen.p);
     }else if(p.mode==='route'&&port.trace&&
       distance(port.trace[0],pt)>16){
@@ -142,7 +142,7 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       // input sample. Preserve meaningful screen-space bends and reject
       // simplifications that would cut across KNOWN obstacles. Unseen
       // obstacles remain undisclosed to the plan author.
-      const points=simplifyStrokePoints([...trace,pt],
+      const points=simplifyStrokePoints([...port.trace,pt],
         point=>port.worldToScreen(point,8),15,(from,to)=>{
           const span=distance(from,to);
           const steps=Math.max(1,Math.ceil(span/4));
@@ -159,14 +159,14 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       // still happens via taps and gestures on the existing route end.
       // planMoveStroke records the entire replacement as one undoable edit.
       const strokeOutcome={clipped:false,endpoint:pt};
-      if(!planMoveStroke(port.state,selected,points.slice(1),false,true,strokeOutcome))
+      if(!planMoveStroke(port.state,port.selected,points.slice(1),false,true,strokeOutcome))
         port.rejectAt(pt,'NO WALKABLE STROKE · PREVIOUS ROUTE KEPT');
       else{
         port.selectedActiveWatch=false;
-        port.selectedNode=port.uid(selected)?.plan.filter(n=>n.kind==='move')
+        port.selectedNode=port.uid(port.selected)?.plan.filter(n=>n.kind==='move')
           .at(-1)?.id??null;
-        const watchKept=port.uid(selected)?.plan.some(n=>n.aimMode==='track')||
-          port.uid(selected)?.aimInstruction?.mode==='track';
+        const watchKept=port.uid(port.selected)?.plan.some(n=>n.aimMode==='track')||
+          port.uid(port.selected)?.aimInstruction?.mode==='track';
         if(strokeOutcome.clipped)
           port.tacticalFeedback.emit('node',strokeOutcome.endpoint);
         port.showUiHelp((strokeOutcome.clipped?
@@ -186,19 +186,19 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       }else if(pick?.kind==='door'&&pick.doorId){
         const door=port.state.doors.find(d=>d.id===pick.doorId&&
           doorKnown(port.state.intel,d.id));
-        const actor=port.uid(selected),node=port.selectedPlanNode();
+        const actor=port.uid(port.selected),node=port.selectedPlanNode();
         const origins=actor?(node?[node.p]:[finalPoint(actor),actor.p]):[];
         if(door&&origins.some(origin=>doorReachable(origin,door))){
           port.doorFocusId=door.id;port.selectedNode=null;port.selectedActiveWatch=false;
           port.doorMenuDismissedId=null;
           port.tacticalFeedback.emit('select',doorCenter(door));
-          port.teach('door-selected',
-            'Door selected. Choose OPEN, KICK or another available action.',4700);
+          port.teach('door-port.selected',
+            'Door port.selected. Choose OPEN, KICK or another available action.',4700);
         }else if(door){
           port.showUiHelp('NO DOOR ACTION IN REACH · PLAN AN APPROACH',2200);
         }
       }else if(pick?.kind==='route'&&pick.owner){
-        if(pick.owner!==selected){
+        if(pick.owner!==port.selected){
           // First touch on another operator's line is selection only.
           port.selectUnit(pick.owner);
           port.tacticalFeedback.emit('select',port.uid(pick.owner)?.p??pt);

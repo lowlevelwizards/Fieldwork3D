@@ -15,7 +15,7 @@ export type FrameFeedbackState={
  activePointers:ReadonlyMap<number,TacticalPointer>;
  cursor:Pt|null;previewHover:boolean;
  hudController:ReturnType<typeof createTacticalHudController>;
- flashMode:boolean;firePlacement:string|null;
+ flashMode:boolean;firePlacement:'suppress'|null;
  evacMode:{patientId:string;mode:'drag'|'carry'}|null;pushMode:boolean;
  uid:(id:string)=>TeamActor|undefined;
  selectedPlanNode:()=>TeamActor['plan'][number]|undefined;

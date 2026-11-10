@@ -10,13 +10,13 @@ import {
 import {
   type Session,
   type TeamActor,team,enemies,isSeen,
-  missionText,operationBriefing,planMove,planMoveStroke,
+  missionText,operationBriefing,planMove,
   planNearbyInteraction,planAim,planWatch,retargetActiveWatch,
   setFirePolicy,planWait,plannedControl,planDoorFlash,
-  planSync,movePlanNode,finalPoint,backOne,
+  planSync,finalPoint,backOne,
   clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,liveVisibility,
-  planReload,reloadNow,planFlash,moveFlashTarget,
+  planReload,reloadNow,planFlash,
   equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,planCasualtyTransport,
   planRecoverMedical
 } from './breach-game.ts';
@@ -27,16 +27,15 @@ import {createBreach2DVisibilityRenderer} from './breach-2d-visibility-renderer.
 import {createBreach2DReplayOverlays} from './breach-2d-replay-overlays.ts';
 import {createBreach2DRouteOverlays} from './breach-2d-route-overlays.ts';
 import {createBreach2DProjectedOverlays} from './breach-2d-projected-overlays.ts';
-import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {executionStatus} from './breach-execution-state.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
-import {shouldAppendStrokePoint,simplifyStrokePoints}
+import {shouldAppendStrokePoint}
  from './ui/touch-hit-targets.ts';
 import type {TacticalPick} from './ui/tactical-target-resolver.ts';
 import {pickTacticalTarget,insertTacticalRouteWaypoint} from './breach-tactical-picking.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
-import {aimTargetFromTap,insideTacticalBounds} from './ui/aim-target.ts';
-import {interruptsWatch,angleDifference} from './breach-plan.ts';
+import {aimTargetFromTap} from './ui/aim-target.ts';
+import {interruptsWatch} from './breach-plan.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
@@ -77,7 +76,6 @@ import {createBreachReplayLibraryController}
 import {resolvedReplayCamera,type ReplayCameraChoice,type ReplayPerspective}
   from './breach-replay-ui-state.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
-import {shotScreenHit} from './breach-replay-shot-inspector.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 import {measureReplaySquadDoorEntry,type ReplaySquadEntryReview}
@@ -90,11 +88,9 @@ import {fitMagazineInventory}
 
 import {stageMagazines} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
-import {canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
+import {canRelocateCover} from './breach-movable-cover.ts';
 import {INTEL_MODES,doorKnown,
   intelPassable,type IntelMode} from './breach-intel.ts';
-import {orderFailureText} from './breach-nav-diagnostics.ts';
-import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
 import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
@@ -2647,7 +2643,7 @@ function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
  set doorMenuDismissedId(v){doorMenuDismissedId=v;},
  get flashMode(){return flashMode;},get pushMode(){return pushMode;},
  get firePlacement(){return firePlacement;},get evacMode(){return evacMode;},
- get trace(){return trace;},tacticalFeedback,pointerAimWorld,pointerWorld,
+ get trace(){return trace;},get viewMode(){return viewMode;},tacticalFeedback,pointerAimWorld,pointerWorld,
  worldToScreen,followReplayOperator,historicalShotVisible,selectUnit,
  useSelectedGround,showUiHelp,adoptPointerOwner,uid,rejectAt,teach,
  insertAtRouteLine,selectedPlanNode
