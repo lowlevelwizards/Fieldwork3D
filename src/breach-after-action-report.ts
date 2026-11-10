@@ -12,7 +12,7 @@ export type ReportShot={
   id:number;at:number;shooterId:string;targetId:string|null;
   outcome:ShotOutcome;down:boolean;region:string|null;
   precision:ForensicPrecision;damage:number|null;
-  weapon:string|null;caliber:string|null;
+  weapon:string|null;caliber:string|null;receiver:string|null;
 };
 export type OperatorAfterAction={
   id:string;name:string;rank:number;contribution:number;
@@ -54,7 +54,8 @@ export function viewShot(s:RecordedShot):ReportShot{
     precision:s.hit&&s.hitRegion?'region-only':'unknown',
     damage:finite(s.healthBefore)&&finite(s.healthAfter)?
       Math.max(0,s.healthBefore-s.healthAfter):null,
-    weapon:s.weaponAtFire??null,caliber:null
+    weapon:s.weaponAtFire??null,caliber:s.nominalCaliberAtFire??null,
+    receiver:s.receiverAtFire??null
   };
 }
 function contactReviews(rec:MissionRecorder,side:'red'|'blue',shots:ReportShot[]):ContactAfterAction[]{
@@ -71,7 +72,9 @@ function contactReviews(rec:MissionRecorder,side:'red'|'blue',shots:ReportShot[]
       resolution:resolved?.kind==='down'?'incapacitated':
         resolved?.kind==='surrender'?'surrendered':'unresolved',
       resolvedAt:resolved?.t??null,
-      firstSeenAt:null, // No target ID in historical intel observations.
+      firstSeenAt:rec.events.filter(e=>e.kind==='intel'&&
+        e.meta?.action==='spot'&&e.meta.targetId===a.id)
+        .sort((x,y)=>x.t-y.t||x.id-y.id)[0]?.t??null,
       shots:targetShots,finalShotId:finalShot?.id??null
     };
   }).sort((a,b)=>
@@ -95,16 +98,24 @@ export function buildAfterActionReport(rec:MissionRecorder):AfterActionReport{
       const combat=downed.length*12+damaging*2+armor;
       const recon=intel*2;
       // Do not infer successful interactions from prose-only legacy door events.
-      const categories={combat,recon,support:0,objective:0};
+      const actions=rec.events.filter(e=>e.actor===a.id&&e.meta?.action);
+      const count=(kind:string)=>actions.filter(e=>e.meta?.action===kind).length;
+      const doorsOpened=count('door-open'),doorsForced=count('door-forced');
+      const windowsTraversed=count('window-traverse');
+      const support=doorsOpened*2+doorsForced*4+windowsTraversed*3;
+      const objective=count('objective-secure')*8;
+      const categories={combat,recon,support,objective};
       const injury=status?.injuryStage;
       return {
-        id:a.id,name:a.name,rank:0,contribution:combat+recon,
+        id:a.id,name:a.name,rank:0,contribution:combat+recon+support+objective,
         status:!status?'unknown':status.health<=0?'incapacitated':
           injury===2?'heavy':injury===1?'wounded':'active',
         shots:fired.length,hits:fired.filter(s=>s.outcome!=='miss').length,
         damagingHits:damaging,armorStops:armor,incapacitations:downed.length,
-        contactReports:intel,doorsOpened:null,doorsForced:null,
-        windowsTraversed:null,categories
+        contactReports:intel,doorsOpened:rec.events.some(e=>!!e.meta)?doorsOpened:null,
+        doorsForced:rec.events.some(e=>!!e.meta)?doorsForced:null,
+        windowsTraversed:rec.events.some(e=>!!e.meta)?windowsTraversed:null,
+        categories
       } satisfies OperatorAfterAction;
     }).sort((a,b)=>b.contribution-a.contribution||a.id.localeCompare(b.id));
   operators.forEach((op,i)=>op.rank=i+1);

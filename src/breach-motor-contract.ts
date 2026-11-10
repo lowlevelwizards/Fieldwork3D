@@ -11,7 +11,7 @@ export type ActorMotorHooks={
   notify:(session:Session,event:string)=>void;
   hear:(session:Session,point:Pt,radius:number,kind:string)=>void;
   battleEvent:(session:Session,kind:BattleEvent['kind'],actor:TeamActor|null,
-    point:Pt,text:string)=>void;
+    point:Pt,text:string,meta?:BattleEvent['meta'])=>void;
   cachedEnemyRoute:(session:Session,from:Pt,to:Pt,physicalDoors?:boolean)=>Pt[];
   knownShoveCrossing:(session:Session,from:Pt,to:Pt)=>number|null;
   ensurePassageSchedule:(session:Session)=>PassageSchedule;
