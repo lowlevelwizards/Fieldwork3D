@@ -31,6 +31,21 @@ jobs:
       - name: Stage 4 replay, pointer and feedback composition regression sweep
         if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage4-') }}
         run: node scripts/verification/breach-stage4-composition-suite.mjs
+      - name: Stage 5 deeper deterministic, replay retention and hot-path regression sweep
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage5-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-roadmap2-stage1-soak.test.mjs tests/breach-ground-view-performance.test.mjs tests/breach-fog-ray-broadphase-performance.test.mjs tests/breach-round-lifetime-events.test.mjs tests/breach-p7-replay-sharing.test.mjs tests/doorway-right-of-way-session.test.mjs
+          node scripts/verification/breach-stage4-composition-suite.mjs
+      - name: Stage 5 performance baseline and retention contract
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage5-') }}
+        run: node scripts/verification/breach-stage5-performance-gate.mjs
+      - name: Upload Stage 5 host performance evidence (NOT device FPS)
+        if: ${{ always() && startsWith(github.head_ref, 'refactor/roadmap2-stage5-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: breach-roadmap2-stage5-host
+          path: artifacts/performance/roadmap2-stage5-host.json
+          if-no-files-found: warn
       - name: Architecture dependency boundary check
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production TypeScript and asset build
