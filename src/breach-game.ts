@@ -17,7 +17,7 @@ import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts'
  * Author intent is editable PlanNode[]; motor navigation is transient.
  * Legacy 052 entrypoints remain in breach-core for comparison/tests only.
  */
-import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,WALLS,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,route,passable,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,staticWallBlocksRay,someCoverAlongRay,activeGeometryRevision} from './breach-core.ts';
+import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,WALLS,COVER,initialDoors,newTacticalState,route,passable,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,staticWallBlocksRay,someCoverAlongRay,activeGeometryRevision} from './breach-core.ts';
 import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions} from './breach-entry-coordination.ts';
@@ -2853,7 +2853,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       if(resolve==='withdraw'&&a.alert!=='retreat'){
         const threat=a.contact??a.heard??a.watch;
         if(threat){
-          a.retreatPoint=defensivePosition(a,threat,s);
+          a.retreatPoint=runEnemyAi.defensivePosition(a,threat,s);
           if(a.retreatPoint){a.alert='retreat';a.nav=[];}
         }
       }
