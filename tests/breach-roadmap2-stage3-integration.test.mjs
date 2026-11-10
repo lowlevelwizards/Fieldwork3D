@@ -15,6 +15,11 @@ import {personalGroundEvidenceAt,personalCoverVisible}
   from '../src/breach-replay-personal-visibility.ts';
 import {presentActor,presentCivilian}
   from '../src/rendering/breach-3d-disclosure-presenter.ts';
+import {initialIntel,intelFogLevel} from '../src/breach-intel.ts';
+import {exteriorBriefedAt,accessibleExteriorWall}
+  from '../src/breach-site-footprint.ts';
+import {inspectFogPoint} from '../src/breach-visibility-diagnostics.ts';
+
 
 test('Full View is a display override, never a personal observer grant',()=>{
  try{
@@ -184,5 +189,63 @@ test('historical civilians use recorded observations, never fresh LOS',()=>{
   assert.equal(presentCivilian(s,c,false,{mode:'full'}),true);
   assert.equal(presentCivilian(s,c,false,null),true,
     'live tactical Full View still displays civilians');
+ }finally{activateSite(null);}
+});
+
+test('all eleven generated archetypes respect all four ground knowledge modes',()=>{
+ const types=new Set();
+ try{
+  for(let seed=0;seed<11;seed++){
+   const s=newSession(0,seed,'true-blind','small');
+   const site=s.site;
+   assert.ok(site?.rooms?.length,'seed '+seed+' has rooms');
+   types.add(site.archetype);
+   const interior=site.rooms.find(r=>r.kind==='room');
+   assert.ok(interior,'seed '+seed+' has an occupiable interior');
+   const inside={x:interior.x+interior.w/2,y:interior.y+interior.h/2};
+   assert.equal(exteriorBriefedAt(site,inside),false);
+   const outside=s.operators.find(a=>a.side==='blue')?.p;
+   assert.ok(outside);
+   assert.equal(exteriorBriefedAt(site,outside),true,
+     'insertion is outdoors and must remain briefable');
+   for(const mode of ['true-blind','exterior-known','floor-plan','full-view']){
+     const intel=initialIntel(mode,site,s.doors);
+     const expectedInside=mode==='full-view'?0:mode==='floor-plan'?1:2;
+     const expectedOutside=mode==='full-view'?0:
+       mode==='true-blind'?2:1;
+     assert.equal(intelFogLevel(intel,site,inside,false,false),
+       expectedInside,site.archetype+': '+mode+' interior');
+     assert.equal(intelFogLevel(intel,site,outside,false,false),
+       expectedOutside,site.archetype+': '+mode+' exterior');
+     assert.equal(intelFogLevel(intel,site,inside,true,false),0);
+     assert.equal(intelFogLevel(intel,site,inside,false,true),0===expectedInside?
+       0:1);
+     const partition=site.walls.findIndex(w=>!accessibleExteriorWall(site,w));
+     if(partition>=0&&mode==='exterior-known')
+       assert.equal(intel.walls.has(partition),false,
+         site.archetype+' internal partitions are not exterior facades');
+   }
+  }
+  assert.equal(types.size,11,'every procedural archetype is represented');
+ }finally{activateSite(null);}
+});
+test('roof occupancy cannot promote unseen interior floor into discovered fog',()=>{
+ try{
+  const s=newSession(0,37,'true-blind','small');
+  const room=s.site.rooms.find(r=>r.kind==='room'&&r.w>=65&&r.h>=65);
+  assert.ok(room);
+  const a=team(s)[0];
+  a.p={x:room.x+room.w/2,y:room.y+room.h/2};
+  a.heading=0;
+  for(const other of team(s))if(other!==a)other.health=0;
+  s.seenGround.clear();s.seenGroundRevision++;
+  const behind={x:a.p.x-16,y:a.p.y};
+  const report=inspectFogPoint(s,behind);
+  assert.equal(report.occupied,true);
+  assert.equal(report.currentlyVisible,false);
+  assert.equal(report.explored,false);
+  assert.equal(report.reason,'unknown',
+    'camera roof cutaway is not a simulation observation');
+  assert.equal(report.level,2);
  }finally{activateSite(null);}
 });
