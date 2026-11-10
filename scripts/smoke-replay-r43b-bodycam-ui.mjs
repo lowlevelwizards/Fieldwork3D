@@ -60,22 +60,28 @@ try{
   }
   check(open,'Cannot enter a Bodycam-eligible historical film');
   await page.locator('#replayMore').click();
-  const bodycam=page.locator('#replayBodycam');
-  const mount=page.locator('#replayBodycamMount');
+  // The current compact replay HUD keeps Bodycam in the DIRECT operator
+  // camera strip. The older #replayBodycam and #replayBodycamMount controls
+  // remain mounted for compatibility but are not visible user controls.
+  const follow=page.locator('#replayInspectActorButtons [data-follow-actor="rook"]');
+  await follow.click();
+  const bodycam=page.locator('#replayDirectBodycam');
+  const mount=page.locator('#replayDirectMount');
   check(await bodycam.isVisible()&&await bodycam.isEnabled(),
-    'A >2s recorded mission must offer Bodycam; diagnostic '+
+    'Operator CAM unavailable after recorded sight: '+
       JSON.stringify(await page.evaluate(()=>({
        clock:document.querySelector('#clock')?.textContent,
        phase:document.querySelector('#phase')?.textContent,
+       bodycamVisible:!document.querySelector('#replayDirectBodycam')?.hidden,
+       bodycamDisabled:document.querySelector('#replayDirectBodycam')?.disabled,
        contactDisabled:document.querySelector('#replayContactLens')?.disabled,
-       sightDisabled:document.querySelector('#replaySightTrigger')?.disabled,
-       bodycamDisabled:document.querySelector('#replayBodycam')?.disabled,
-       bodycamText:document.querySelector('#replayBodycam')?.textContent
+       followChoices:[...document.querySelectorAll(
+        '#replayInspectActorButtons button')].map(e=>e.dataset.followActor)
       }))));
-  check(await mount.isDisabled(),'Mount should be unavailable until enabled');
+  check(await mount.isHidden(),'Mount must be hidden until Bodycam is active');
   await bodycam.click();
   check((await bodycam.getAttribute('aria-pressed'))==='true',
-    'Bodycam toggle did not enable');
+    'Direct Bodycam control did not enable');
   await page.waitForFunction(()=>
     !document.querySelector('#replayBodycamStatus')?.hidden,
     null,{timeout:15000});
@@ -83,8 +89,9 @@ try{
   check(status?.includes('RECONSTRUCTED BODYCAM')&&
     status.includes('SHARED ARCHITECTURE'),
     'First-person reconstruction warning must persist');
-  check(await mount.isEnabled()&&await page.locator('#replayView').isDisabled(),
-    'Bodycam should lock incompatible camera mode controls');
+  check(await mount.isEnabled()&&await mount.isVisible()&&
+    await page.locator('#replayViewTrigger').isDisabled(),
+    'Bodycam should reveal mount and lock incompatible camera mode controls');
   const chest=await page.waitForFunction(()=>{
     const d=window.__fieldworkBodycamQa?.diagnostic();
     return d?.active?d:null;
@@ -96,8 +103,8 @@ try{
     path:'artifacts/replay-r43b-bodycam/chest.png'});
 
   await mount.click();
-  check((await mount.textContent())?.includes('HELMET'),
-    'Bodycam mount selection did not change');
+  check((await mount.textContent())?.includes('HEAD'),
+    'Direct mount did not change to head position');
   const helmet=await afterFrame(page,chest.frame,chest.owner);
   const dist=Math.hypot(...helmet.position.map(
     (v,i)=>v-chest.position[i]));
@@ -109,6 +116,9 @@ try{
   // Contact selector must reattach the camera instead of showing the old
   // operator's perspective alongside a new observer's event feed.
   const previous=helmet.frame;
+  const viewDetails=page.locator('[data-replay-group="view"]');
+  if(!await viewDetails.evaluate(el=>el.open))
+   await viewDetails.locator('summary').click();
   await page.locator('#replayContactLens').click();
   const selected=await page.locator('#replayContactLens').textContent();
   check(!selected?.includes('TEAM'),
@@ -118,13 +128,15 @@ try{
     (selected??'').toLowerCase().includes(switched.owner),
     'Bodycam camera owner and event observer diverged');
 
-  await page.locator('#replaySight').click();
+  await page.locator('#replaySightTrigger').click();
+  await page.locator('#replaySightChoices [data-sight-choice="full"]').click();
   check((await bodycam.getAttribute('aria-pressed'))==='false',
-    'Full/squad view must exit Bodycam');
+    'Full sight must exit reconstructed Bodycam');
   check(await page.locator('#replayBodycamStatus').isHidden(),
     'Perspective disclosure label must disappear on exit');
   check((await diagnostic(page))?.active===false,
     'Tactical rendering was not restored after exit');
+  await follow.click();
   await bodycam.click();
   await page.waitForFunction(()=>window.__fieldworkBodycamQa?.
     diagnostic()?.active===true,null,{timeout:30000});
