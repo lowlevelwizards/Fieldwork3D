@@ -35,6 +35,9 @@ test('all eleven building programs have finite, traversable physical sites',()=>
    };
    return {room,doors:site.doors.filter(touches),
     openings:(site.openings??[]).filter(touches),
+    nearbyCover:site.cover.filter(o=>site.doors.some(d=>touches(d)&&
+      Math.hypot(o.x-(d.a.x+d.b.x)/2,o.y-(d.a.y+d.b.y)/2)<95))
+      .map(o=>({fixture:o.fixture,x:o.x,y:o.y,w:o.w,h:o.h})),
     cover:site.cover.filter(o=>room&&o.x>=room.x&&o.x<=room.x+room.w&&
       o.y>=room.y&&o.y<=room.y+room.h).map(o=>({
        fixture:o.fixture,x:o.x,y:o.y,w:o.w,h:o.h
@@ -42,7 +45,7 @@ test('all eleven building programs have finite, traversable physical sites',()=>
   });
   assert.equal(audit.blocking.length,0,
    'seed '+seed+' ('+audit.archetype+'): '+
-    JSON.stringify({issues:audit.blocking,topology,allDoors:site.doors}));
+    JSON.stringify({issues:audit.blocking,topology,mobility:auditTacticalMobility(site),allDoors:site.doors}));
   assert.equal(audit.checkedRooms,
    site.rooms.filter(r=>r.kind==='room').length);
   assert.equal(audit.checkedDoors,site.doors.length);
