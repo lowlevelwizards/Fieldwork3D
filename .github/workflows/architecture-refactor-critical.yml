@@ -56,6 +56,10 @@ jobs:
       - name: Stage 8 complete tactical orders, medical, civilian, door and replay sweep
         if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage8-') }}
         run: node scripts/verification/breach-stage8-order-suite.mjs
+      - name: Stage 10 authoritative firing, projectile, environment and casualty regression sweep
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage10-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-roadmap2-stage10-combat.test.mjs tests/gameplay-g3-fire-lanes.test.mjs tests/breach-171.test.mjs tests/breach-179.test.mjs tests/breach-muzzle-lane-hotfix.test.mjs tests/breach-two-sided-fire-recovery.test.mjs tests/breach-roadmap2-impact-evidence.test.mjs tests/breach-roadmap3-shot-ignition.test.mjs tests/breach-roadmap4-ballistic-resolution.test.mjs tests/civilian-b5b-ballistics.test.mjs tests/civilian-c3c-harm-attribution.test.mjs tests/civilian-d2-fire-safety.test.mjs tests/phase-a-shot-pressure.test.mjs tests/equipment-09-armor.test.mjs tests/lw-glass-impact.test.mjs tests/lw-penetration.test.mjs tests/replay-r2-ballistics.test.mjs
       - name: Architecture dependency boundary check
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production TypeScript and asset build
