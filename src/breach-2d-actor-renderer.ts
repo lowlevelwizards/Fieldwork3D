@@ -7,6 +7,8 @@ import type {ViewMode} from './breach-3d.ts';
 import {replayActorDisclosed,replayCivilianDisclosed} from './breach-replay-visibility.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
+import {presentUnrecordedRescueMarker}
+ from './rendering/breach-3d-disclosure-presenter.ts';
 import {shotVisibility,contactFade} from './breach-presentation.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 export type Actor2DFrame={
@@ -69,7 +71,8 @@ function missionMarkers(){
   const {state,replaying,replayObjectiveMarkers}=getFrame();
   if(replaying&&!replayObjectiveMarkers)return;
   if(state.rescue&&!state.civilians.some(c=>c.rescueTarget)&&
-     liveVisibility(state,state.rescue.p)){
+     presentUnrecordedRescueMarker(state,replaying&&replayKnowledge.omniscient,
+       replaying?replayKnowledge.disclosure():null)){
     const p=state.rescue.p;
     draw.strokeStyle='#eed9ad';draw.lineWidth=2.2;
     draw.beginPath();draw.arc(p.x,p.y,13,0,Math.PI*2);draw.stroke();
