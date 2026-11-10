@@ -3,7 +3,7 @@
  */
 import type {Session,TeamActor} from './breach-game.ts';
 import type {BattleEvent} from './breach-combat.ts';
-import {type Pt,COVER,doorCenter} from './breach-core.ts';
+import {type Pt,doorCenter} from './breach-core.ts';
 import {length} from './breach-plan.ts';
 import {type MaterialId} from './breach-materials.ts';
 import {damageCover} from './breach-reactive-cover.ts';
@@ -69,7 +69,7 @@ function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number
     }
   }
  }
- if(touched.size)COVER.splice(0,COVER.length,...s.coverState);
+ // Only s.coverState is authoritative; session revision tracks changes.
 }
 /** Persist actual glass-door damage only after a fired projectile. The metal
  * frame and physical leaf remain operational; only glazing shatters. */
