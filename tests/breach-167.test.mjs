@@ -79,7 +79,7 @@ test('167: live Lab buttons expose animated, interruptible contact diagnostics',
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
  assert.match(lab,/fromWeapon:\{/);
  assert.match(lab,/performance\.now\(\)\/1000-labSwitch\.since/);
- const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
+ const rig=readFileSync(new URL('../src/breach-operator-animation-controller.ts',import.meta.url),'utf8');
  assert.match(rig,/activeTransition\?\.fromWeapon/);
  assert.match(lab,/BUTTPLATE GAP/);
  assert.match(lab,/ELBOW SPREAD/);
