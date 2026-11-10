@@ -5,7 +5,8 @@ import {updateOperatorAppearance} from './breach-operator-appearance.ts';
  * This is the compatibility-preserving home for the existing pose evaluation;
  * it never writes actor simulation, collision, inventory or shot ballistics.
  */
-import type {OperatorRig,OperatorPose} from './breach-operator-rig.ts';
+import type {OperatorRig} from './breach-operator-rig.ts';
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import * as THREE from 'three';
 import {updateOperatorSlingPose} from './breach-operator-sling-pose.ts';
 import {applyOperatorTraumaPose,finishOperatorPoseFrame} from './breach-pose-frame-finalizer.ts';
