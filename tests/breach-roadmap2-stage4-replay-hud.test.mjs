@@ -32,7 +32,8 @@ function fixture(){
  overlayNames.dataset.overlayChoice='names';
  overlayPlans.dataset.overlayChoice='plans';
  ui.replayOverlayChoices.querySelectorAll=()=>[overlayNames,overlayPlans];
- ui.replayPlay.dataset.mode='replayPlay'; // avoid icon construction in node
+ ui.replayPlay.dataset.mode='replayPlay'; // initial static DOM icon
+ ui.replayPlay.setAttribute('aria-label','Play replay');
  ui.replayQuickCamera.options=[];
  let names=true,plans='selected';
  const state={operators:[
@@ -106,6 +107,7 @@ test('replay HUD reads live snapshots, preserves accessibility and camera guards
  assert.equal(f.ui.replaySight.textContent,'FULL VIEW');
  assert.equal(f.ui.replayDirectXray.disabled,true);
  assert.match(f.ui.replayFollowStatus.textContent,/DIRECTOR CAM/);
+ f.ui.replayPlay.dataset.mode='pause'; // static icon already reflects play
  f.playback.rate=2;f.playback.playing=true;hud.update();
  assert.equal(f.ui.replaySpeedValue.textContent,'2×');
  assert.equal(f.ui.replayPlay.dataset.caption,'PAUSE');
