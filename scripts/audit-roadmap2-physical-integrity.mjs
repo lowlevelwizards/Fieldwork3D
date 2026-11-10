@@ -1,14 +1,14 @@
 /** Roadmap 2 Stage 2 extended generated-map physical integrity matrix.
  * node --experimental-strip-types scripts/audit-roadmap2-physical-integrity.mjs
  * node --experimental-strip-types scripts/audit-roadmap2-physical-integrity.mjs 44 all
- * all = small, medium, large. No runtime generator/renderer audit overhead.
+ * all = small, standard, medium, expanded, large. Offline only; no runtime overhead.
  */
 import {generateSite} from '../src/breach-site.ts';
 import {auditSitePhysicalIntegrity} from '../src/worldgen/site-physical-integrity.ts';
 const count=Math.min(55,Math.max(1,Number.parseInt(process.argv[2]??'44',10)||44));
 const choice=process.argv[3]??'all';
-const scales=choice==='all'?['small','medium','large']:
- [(['small','medium','large'].includes(choice)?choice:'small')];
+const scales=choice==='all'?['small','standard','medium','expanded','large']:
+ [(['small','standard','medium','expanded','large'].includes(choice)?choice:'small')];
 const cases=[],byArchetype=new Map(),byOrientation=new Map();
 let warnings=0,failures=0,checkedRooms=0,checkedDoors=0;
 for(const scale of scales)for(let seed=0;seed<count;seed++){
