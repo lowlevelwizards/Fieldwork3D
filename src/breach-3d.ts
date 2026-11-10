@@ -62,7 +62,7 @@ import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
 import {pixelOverlay,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
-import {W,H,activeWorldBounds,WALLS,COVER,doorCenter,doorLeafSegment,activeSite,type Pt,type Segment} from './breach-core.ts';
+import {W,H,activeWorldBounds,WALLS,doorCenter,doorLeafSegment,activeSite,type Pt,type Segment} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {handlingIntentForMovement,teammateAheadForHandling}
   from './breach-handling-context.ts';
