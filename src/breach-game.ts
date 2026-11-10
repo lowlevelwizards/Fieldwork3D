@@ -1,34 +1,31 @@
+import {advanceActorSightProgress,observeActorContactEvidence} from './breach-visual-acquisition.ts';
+import {createEnemyDecisionController} from './breach-enemy-decision-controller.ts';
 import {validPieArc} from './breach-maneuvers.ts';
 import {edit,validEditedPlan,undoAuthoredPlan,redoAuthoredPlan} from './breach-plan-authoring.ts';
-import {simulationPhaseMark,advanceTransientSimulationEffects,
- recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
-import {reconcileEnemyIntent,reconcileEnemyPosture} from './breach-ai-reconciliation.ts';
+import {simulationPhaseMark,advanceTransientSimulationEffects,recordSimulationExecutionOutcomes} from './breach-simulation-phases.ts';
+
 import {advanceActorMotor} from './breach-actor-motor.ts';
 import {createOrderExecutor} from './breach-order-executor.ts';
 import {rotate} from './breach-order-lifecycle.ts';
 import {advanceMotorTraversal,motorTraversalWorld} from './breach-motor-traversal.ts';
 import type {ActorMotorHooks} from './breach-motor-contract.ts';
 import {segmentImpact,strikeSurface} from './breach-ballistic-resolution.ts';
-import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
- from './breach-combat-reactions.ts';
+import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep} from './breach-combat-reactions.ts';
 import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts';
 /**
  * Fieldwork Breach 053–062: authoritative, fixed-step tactical session.
  * Author intent is editable PlanNode[]; motor navigation is transient.
  * Legacy 052 entrypoints remain in breach-core for comparison/tests only.
  */
-import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,WALLS,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,route,passable,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,staticWallBlocksRay,someCoverAlongRay,activeGeometryRevision} from './breach-core.ts';
+import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,WALLS,COVER,initialDoors,newTacticalState,route,passable,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,staticWallBlocksRay,someCoverAlongRay,activeGeometryRevision} from './breach-core.ts';
 import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions} from './breach-entry-coordination.ts';
 import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
-import {encounterReactionDelay,perceptualReadiness,
-  encounterReactionPhase} from './breach-encounter-readiness.ts';
-import {WEAPONS,injuryOf,injuryReload,
-  woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent}
-  from './breach-combat.ts';
+
+import {WEAPONS,injuryOf,injuryReload,woundSeverity,exposure,nearCover,type WeaponId,type BattleEvent} from './breach-combat.ts';
 import {validateThrow,sampleThrow,type ThrowPath} from './breach-flash.ts';
 import {segmentHitsBox} from './breach-ray.ts';
 import {aimHeight} from './breach-cover-height.ts';
@@ -36,27 +33,24 @@ import {microKeyAt} from './breach-fog-memory.ts';
 import {forEachGroundSightCandidate} from './breach-ground-discovery.ts';
 import {coarseGroundEvidenceAt} from './breach-ground-knowledge.ts';
 import {groundView,groundViewCandidate} from './breach-ground-view.ts';
-import {sightDiagnosticsEnabled,sightDiagnosticCounts}
- from './breach-sight-cost-counters.ts';
+import {sightDiagnosticsEnabled,sightDiagnosticCounts} from './breach-sight-cost-counters.ts';
 import {cachedActorGroundView} from './breach-live-visual-candidates.ts';
 import {notePersonalGround} from './breach-replay-personal-ground.ts';
 import {assessFireLane,fireLaneReachable,type FireBlock} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {initDoor,advanceDoor,doorReachable,doorApproach,initialOpeningYieldCandidate,doorWouldStrikeActors} from './breach-door.ts';
-import {doorInteraction} from './breach-interactions.ts';
+import {initDoor,advanceDoor,doorReachable,doorApproach,initialOpeningYieldCandidate} from './breach-door.ts';
+
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool} from './equipment-entry-tools.ts';
 
 import {type AutoSidestep} from './breach-auto-sidestep.ts';
 
 import {resolveMovementFrame} from './breach-movement-authority.ts';
-import {captureMotionFrameOrigins,buildMotionFrameProposals}
- from './breach-motion-frame-input.ts';
+import {captureMotionFrameOrigins,buildMotionFrameProposals} from './breach-motion-frame-input.ts';
 
-import {type MotorPause,type ExecutionIssue,
-  type ExecutionStatus} from './breach-execution-state.ts';
+import {type MotorPause,type ExecutionIssue,type ExecutionStatus} from './breach-execution-state.ts';
 import {type ExecutionEvent} from './breach-execution-events.ts';
 import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
 import {canAutoShove} from './breach-traversal-surfaces.ts';
@@ -66,48 +60,38 @@ import {materialResponse} from './breach-impact-responses.ts';
 import {damageWindow,windowPaneSegment} from './breach-windows.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {type AIIntent} from './breach-ai-policy.ts';
-import {scanEnemySoundEvidence}
-  from './breach-ai-acoustic-perception.ts';
+
 import {registerSessionWorldGeometry} from './breach-world-context.ts';
-import {scanEnemyVisualEvidence} from './breach-ai-visual-evidence.ts';
-import {soundResponse} from './breach-sound-evidence.ts';
-import {newSuspicion,observeSuspicion,
-  exhaustSuspicionSearch,type SuspicionMemory}
-  from './breach-ai-suspicion.ts';
-import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
+
+
+import {newSuspicion,type SuspicionMemory} from './breach-ai-suspicion.ts';
+
 import {TacticalRouteCache} from './breach-tactical-route-cache.ts';
 import {PerceptionPairCache} from './breach-perception-cache.ts';
-import {searchCandidates} from './breach-ai-search.ts';
-import {investigationTempo} from './breach-ai-investigation.ts';
-import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
-import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
-import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
+
+
+
+
+
 import {createCivilian,setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {stepCivilianMovement} from './breach-civilian-movement.ts';
 import {stepCivilianResponse} from './breach-civilian-response.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
-import {firstCivilianAlongRay,applyCivilianBulletHit}
-  from './breach-civilian-ballistics.ts';
+import {firstCivilianAlongRay,applyCivilianBulletHit} from './breach-civilian-ballistics.ts';
 import {knownCivilianInFireLane} from './breach-civilian-fire-safety.ts';
-import {recordCivilianHarm,attributableCivilianHarm,
-  type CivilianHarmEvent} from './breach-civilian-harm.ts';
-import {retreatDoorClosureEligible,routineDoorClosureEligible}
- from './breach-ai-door-response.ts';
-import {chooseCombatAction,type CombatAction} from './breach-ai-combat.ts';
-import {contactTactic,shouldSeekHoldCover}
- from './breach-ai-tactical-response.ts';
-import {reportToListener,type TacticalReport} from './breach-communication.ts';
-import {groupResponse,type GroupRole} from './breach-ai-coordination.ts';
-import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
-import {coverMoveDeadline,coverMoveCommitted}
-  from './breach-ai-position-commitment.ts';
+import {recordCivilianHarm,attributableCivilianHarm,type CivilianHarmEvent} from './breach-civilian-harm.ts';
+
+import {type CombatAction} from './breach-ai-combat.ts';
+import {contactTactic} from './breach-ai-tactical-response.ts';
+import {type TacticalReport} from './breach-communication.ts';
+import {type GroupRole} from './breach-ai-coordination.ts';
+
+
 import {moraleResponse,witnessShock,countNearbyEnemyAllies} from './breach-ai-morale.ts';
-import {newAwareness,addObservation,visibleObservation,
- ageAwareness,clearObservedPosition,bestBelief,
- type ActorAwareness} from './breach-awareness.ts';
-import {visualGain,advanceSight,confirmedSight} from './breach-visual-perception.ts';
-import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
+import {newAwareness,ageAwareness,clearObservedPosition,type ActorAwareness} from './breach-awareness.ts';
+import {confirmedSight} from './breach-visual-perception.ts';
+
 import type {LightingMode} from './equipment-site-lighting.ts';
 import {passageIdleYieldStep,type PassageActor,type PassageLease} from './breach-passage.ts';
 
@@ -128,33 +112,25 @@ import {stabilizationSummary} from './breach-casualty-status.ts';
 import {type TransportMode} from './breach-casualty-transport.ts';
 import {civilianTransportEligible,dropCivilianCustody,proposedCivilianTransportStep,reconcileCivilianTransportFrame} from './breach-civilian-transport.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
-import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
- from './equipment-weapon-handling.ts';
+import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale} from './equipment-weapon-handling.ts';
 import {DEFAULT_SKILLS,skillMultiplier,type ShootingSkills} from './breach-skills.ts';
-import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,
-  rayHitsActor,muzzleEndpoint,recoverWeapon,type FiringMode} from './breach-ballistics.ts';
+import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,rayHitsActor,muzzleEndpoint,recoverWeapon,type FiringMode} from './breach-ballistics.ts';
 import {shotDispersionCone} from './breach-shot-ignition.ts';
-import {chooseDefense,chooseFiringDefense,watchPoint,
-  reachableInvestigation} from './breach-defense.ts';
+
 import {advanceRescueEscort,type RescueEscort} from './breach-rescue-escort.ts';
 import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployment.ts';
-import {operationBrief,assessOperation,
-  type OperationKind} from './breach-operations.ts';
+import {operationBrief,assessOperation,type OperationKind} from './breach-operations.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {initialIntel,observeIntel,routeWithIntel,intelPassable,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
 import {resolveArmorImpact} from './equipment-armor.ts';
 import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
-import {magazineKit,
-  reloadDuration as reloadTiming,type MagazineItem,type ReloadMode}
-  from './breach-magazines.ts';
-import {liveMagazineCapacity,freshMagazineIssue}
- from './arsenal/live-magazine-capacity.ts';
+import {magazineKit,reloadDuration as reloadTiming,type MagazineItem,type ReloadMode} from './breach-magazines.ts';
+import {liveMagazineCapacity,freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
 
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {CASING_LIMIT,type EjectedCasing} from './breach-effects.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
-import {chooseFall,hitRegion,type WoundRegion,type FallPose}
-  from './breach-wounds.ts';
+import {chooseFall,hitRegion,type WoundRegion,type FallPose} from './breach-wounds.ts';
 import {newMedicalCondition,registerWound,advanceMedicalCondition,mostUrgentWound,type MedicalCondition} from './breach-medical-wounds.ts';
 
 export type Posture='stand'|'crouch';
@@ -302,7 +278,6 @@ export type Session=Omit<TacticalState,'operators'> & {
   captureTarget:string|null;captureSecured:boolean;
   intelCarrierId:string|null;};
 // The elective enemy-planning budget is mission-local and never serialized.
-const aiSchedulers=new WeakMap<Session,AiWorkScheduler>();
 /** Planning authority for GO-time ordering; never edits PlanNode[].
  * A new GO after a tactical pause recomputes the remaining crossing
  * schedule. The running sequence is stable between those checkpoints. */
@@ -329,15 +304,6 @@ function cachedEnemyRoute(s:Session,from:Pt,to:Pt,physicalDoors=false):Pt[]{
   return cache.get(from,to,activeGeometryRevision(),
     Math.round(s.seconds*60),leafSignature,()=>
       physicalDoors?routeWithSqueezeWorld(from,to,s.doors):route(from,to));
-}
-function electiveAiWork(s:Session,a:TeamActor,kind:string):boolean{
-  let scheduler=aiSchedulers.get(s);
-  if(!scheduler){
-    scheduler=new AiWorkScheduler(2,
-      s.operators.filter(actor=>actor.side==='red').map(actor=>actor.id));
-    aiSchedulers.set(s,scheduler);
-  }
-  return scheduler.allow(a.id,kind,Math.round(s.seconds*60));
 }
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
@@ -1758,42 +1724,13 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
  return geometricallyVisible(a,b,s)&&confirmedSight(a.awareness.visualProgress[b.id]??0);
 }
-function advanceVisualAwareness(s:Session,dt:number){
- // One scene sample per simulation-time bucket, never one raycast per sight pair.
- const lighting=actorLightingLevels(s);
- for(const observer of s.operators){
-  if(observer.health<=0)continue;
-  for(const subject of s.operators){
-   if(subject.side===observer.side||subject.health<=0)continue;
-   const visible=geometricallyVisible(observer,subject,s);
-   const signal=visible?visualGain(d(observer.p,subject.p),
-    angleDifference(observer.heading,angle(observer.p,subject.p)),
-    subject.velocity>10,subject.posture==='crouch')*
-    lightVisibilityGain(lighting.get(subject.id)??1)*
-    (subject.weaponLightOn&&subject.weaponConfiguration?.slots.light==='light-compact'?1.18:1)*
-    (observer.side==='red'?perceptualReadiness(
-      observer.encounterReadiness??'attentive'):1):0;
-   const old=observer.awareness.visualProgress[subject.id]??0;
-   observer.awareness.visualProgress[subject.id]=advanceSight(old,dt,signal,visible);
-  }
- }
-}
 export const isSeen=(s:Session,target:TeamActor)=>
   s.intel.mode==='full-view'||team(s).some(a=>inSight(a,target,s));
 export function lastKnown(s:Session,id:string){
   return s.known.get(id)??null;
 }
 function observe(s:Session){
-  // Every actor receives independent sightings; this never shares enemy truth.
-  if(s.seconds===0||Math.floor(s.seconds*10)!==Math.floor((s.seconds-1/60)*10))
-    for(const observer of s.operators){
-      if(observer.health<=0)continue;
-      for(const subject of s.operators){
-        if(subject.side===observer.side||!inSight(observer,subject,s))continue;
-        addObservation(observer.awareness,visibleObservation(
-          observer.id,subject.id,subject.p,s.seconds));
-      }
-    }
+  observeActorContactEvidence(s,inSight);
   const updateGround=s.intelObservedAt<0||
     s.seconds-s.intelObservedAt>=.14;
   if(updateGround){
@@ -1861,466 +1798,11 @@ const runOrders=createOrderExecutor({
  notify,hear,battleEvent,inSight,liveVisibility,pairedLeaves,
  movePhysicalProp,beginReload
 });
-function defensivePosition(a:TeamActor,from:Pt,s:Session):Pt|null{
-  const others=enemies(s).map(other=>({id:other.id,p:other.p,
-    health:other.health,defense:other.defense}));
-  return chooseDefense(a.p,from,s.doors,others,a.id);
-}
-/** Firing reposition differs from a safe withdrawal. It must actually
- * expose a legal muzzle lane to the confirmed visible opponent. */
-function firingPosition(a:TeamActor,target:TeamActor,s:Session):Pt|null{
-  const others=enemies(s).map(other=>({id:other.id,p:other.p,
-    health:other.health,defense:other.defense}));
-  return chooseFiringDefense(a.p,target.p,s.doors,others,a.id,
-    aimHeight(target.posture==='crouch'));
-}
-function enemyDecisions(s:Session,a:TeamActor,dt:number){
-  if(a.health<=0||a.surrendered)return;
-  // The same local clearance motor is available to red and blue, but
-  // never outranks a defensive withdrawal or interrupts a timed traversal.
-  if(a.fireRetreatTarget){
-    const goal=a.fireRetreatTarget;
-    if(a.alert==='retreat'||s.seconds>a.fireRetreatUntil||
-       d(a.p,goal)<3||!sweptBodyClear(a.p,goal,s.doors)){
-      a.fireRetreatTarget=null;a.nav=[];
-    }else{
-      approach(a,goal,dt,s,.64);
-      return;
-    }
-  }
-  if(!a.watch)a.watch=watchPoint(a.p,s.doors);
-  const visible=scanEnemyVisualEvidence(s,a,dt,inSight);
-  // A guard on the other side of a window can have confirmed sight but
-  // an unusable short-stock muzzle. Try the same small backstep available
-  // to blue BEFORE normal cover doctrine decides to hold fire forever.
-  if(visible.length&&a.velocity<10&&a.magazine>0&&
-     (a.encounterReactionUntil??0)<=s.seconds&&
-     a.alert!=='retreat'&&!a.fireRetreatTarget){
-    const target=visible[0],yaw=angle(a.p,target.p);
-    if(Math.abs(angleDifference(a.heading,yaw))<.90){
-      const check=weaponClearance({
-        x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:yaw,
-        weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
-        aim:a.aim,posture:a.posture,velocity:0,recoil:a.recoil,
-        threatRange:d(a.p,target.p)
-      },s.doors);
-      if(check.blocked&&
-         (check.blocker==='wall'||check.blocker==='cover')&&
-         requestClearFireStep(s,a,target,'muzzle'))return;
-    }
-  }
-  const strongest=scanEnemySoundEvidence(s,a);
-  // A faint noise can turn a head without becoming an indefinitely
-  // actionable contact. Do not replace it with a psychic search target.
-  if(!visible.length&&!a.contacted&&a.alert==='suspicious'&&a.heard){
-    // Continue collecting physical evidence while orienting. Only an
-    // actually heard NEW event interrupts this head-turn, not distant
-    // hidden gunfire or a globally visible noise event.
-    if(s.seconds<a.alertUntil&&!strongest){
-      a.velocity=0;rotate(a,angle(a.p,a.heard),dt);return;
-    }
-    if(s.seconds>=a.alertUntil){a.alert='idle';a.heard=null;}
-  }
-  reconcileEnemyIntent(s,a,visible.length);
-  if(visible.length){
-    a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
-    const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
-    // A fresh surprise first makes the defender orient. The observed target
-    // may update WATCH, but no cover sprint or radio report happens before
-    // they register contact. Firing remains gated through READY.
-    if(encounterReactionPhase(s.seconds,a.encounterReactionStartedAt,
-        a.encounterReactionUntil)==='orient'){
-      a.contact=clone(b.p);a.watch=clone(b.p);
-      a.contacted=true;a.alert='suspicious';a.velocity=0;
-      rotate(a,angle(a.p,b.p),dt);return;
-    }
-    a.contact=clone(b.p);a.alertUntil=s.seconds+3;a.contacted=true;
-    if(s.seconds-a.lastReportAt>5){
-      s.reports.push({id:s.nextReportId++,senderId:a.id,at:s.seconds,
-        origin:clone(a.p),estimate:clone(b.p),uncertainty:35,deliveredTo:[]});
-      if(s.reports.length>16)s.reports.shift();
-      a.lastReportAt=s.seconds;
-      hear(s,a.p,220,'warning');
-      battleEvent(s,'intel',a,a.p,a.name+' WARNED NEARBY DEFENDERS');
-    }
-    a.watch=clone(b.p);
-    // Reaction to direct fire follows actual suppression/morale thresholds;
-    // high pressure alone no longer forces every personality to sprint.
-    // Any cover movement remains physically verified by the motor below.
-    // An eye-level contact may be behind solid cover at muzzle height.
-    // Reposition to an actual firing lane instead of staring at it while
-    // repeatedly attempting blocked shots. Reposition has a cooldown.
-    const friends=enemies(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
-    const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
-      b.p,aimHeight(b.posture==='crouch'),COVER,WALLS,s.doors,friends);
-    a.combatChoice=chooseCombatAction({visible:true,remembered:true,
-      laneClear:lane.blocker==='clear',ammunition:a.magazine,
-      suppression:a.suppression,morale:a.morale,temperament:a.personality});
-    if(a.combatChoice==='withdraw'&&a.alert!=='retreat'){
-      const safe=defensivePosition(a,b.p,s);
-      const tactic=contactTactic(a.combatChoice,!!safe&&d(safe,a.p)>11);
-      if(tactic.withdraw&&safe){
-        a.retreatPoint=safe;a.alert='retreat';a.nav=[];
-        a.defenseUntil=s.seconds+3;
-      }else{
-        // No physically reachable retreat: stop advancing and keep
-        // watch instead of attempting an impossible escape.
-        a.alert='cover';a.nav=[];a.defense=null;
-      }
-    }
-    if(a.combatChoice==='hold'&&a.alert!=='retreat'){
-      // HOLD is not permission to repeatedly cancel and replan movement.
-      // Keep an already chosen position; if none exists, request a new
-      // physically validated cover spot only on a bounded cooldown.
-      if(a.alert!=='cover'&&!a.defense)a.nav=[];
-      a.alert='cover';
-      if(shouldSeekHoldCover(a.combatChoice,!!a.defense,
-           s.seconds,a.defenseUntil)){
-        const safe=defensivePosition(a,b.p,s);
-        a.defenseUntil=s.seconds+2.5;
-        if(safe&&d(safe,a.p)>15){
-          a.defense=safe;a.nav=[];
-          a.defenseUntil=coverMoveDeadline(s.seconds,d(a.p,safe));
-        }
-      }
-    }
-    const committed=coverMoveCommitted(a.alert==='cover'&&!!a.defense,
-      a.defense?d(a.p,a.defense):0,s.seconds,a.defenseUntil);
-    const initiative=a.combatChoice==='engage'&&
-      pressureAdvanceOpportunity({
-        personality:a.personality,directSight:true,
-        clearFireLane:lane.blocker==='clear',range:d(a.p,b.p),
-        suppression:a.suppression,morale:a.morale,
-        nearbyAllies:enemies(s).filter(o=>o!==a&&o.health>0&&
-          o.encounterGroupId===a.encounterGroupId&&d(o.p,a.p)<150).length,
-        secondsSinceLastMove:s.seconds-a.lastFireRepositionAt
-      });
-    if((a.combatChoice==='reposition'||initiative)&&
-      a.alert!=='retreat'&&!committed&&
-      s.seconds-a.lastFireRepositionAt>(initiative?6:2.6)){
-      const candidate=firingPosition(a,b,s);
-      a.lastFireRepositionAt=s.seconds;
-      // An aggressive advance must actually shorten the distance to a
-      // directly seen contact. The candidate's firearm lane and motor
-      // path have already passed the existing physical validation.
-      const closesDistance=candidate&&
-        d(candidate,b.p)<d(a.p,b.p)-18;
-      if(candidate&&d(candidate,a.p)>15&&
-         (!initiative||closesDistance)){
-        a.defense=candidate;a.alert='cover';a.nav=[];
-        a.defenseUntil=coverMoveDeadline(s.seconds,d(a.p,candidate));
-      }
-    }
-    const maneuvering=coverMoveCommitted(a.alert==='cover'&&!!a.defense,
-      a.defense?d(a.p,a.defense):0,s.seconds,a.defenseUntil);
-    if(a.alert!=='retreat'&&!maneuvering&&
-       a.combatChoice!=='hold'&&a.combatChoice!=='withdraw'){
-      a.alert='engaging';a.nav=[];
-    }
-  }else if(s.seconds>a.alertUntil&&a.alert!=='idle'&&
-    a.alert!=='retreat'&&a.alert!=='cover'){
-    a.alert='investigating';a.contact=a.heard??a.contact;
-  }
-  reconcileEnemyPosture(s,a,visible);
-  const noiseDisposition=strongest?
-    soundResponse(strongest.kind,strongest.intensity):'ignore';
-  if(strongest&&noiseDisposition==='orient'&&!visible.length&&
-     !a.contacted&&a.alert!=='retreat'){
-    a.heard=clone(strongest.estimate);a.alert='suspicious';
-    a.alertUntil=s.seconds+1.15;a.velocity=0;
-    rotate(a,angle(a.p,a.heard),dt);
-    return;
-  }
-  if(strongest&&noiseDisposition!=='orient'&&
-     a.encounterReactionUntil===Number.POSITIVE_INFINITY){
-    a.encounterReactionStartedAt=s.seconds;
-    a.encounterReactionUntil=s.seconds+encounterReactionDelay(
-      a.encounterReadiness??'attentive',a.id);
-  }
-  if(strongest&&!visible.length&&a.alert!=='retreat'){
-    a.lastNoiseAt=strongest.at;
-    const heard=strongest.estimate;
-    a.heard=heard;a.contact=heard;a.watch=clone(heard);
-    a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
-    a.defense=null;
-    a.alertUntil=s.seconds+(a.personality==='aggressor'?.5:1.4);
-    a.contacted=true;
-    const needsCover=a.personality==='cautious'||
-      (a.personality==='guard'&&a.morale<.65);
-    if(needsCover){
-      a.retreatPoint=defensivePosition(a,heard,s);
-      a.alert=a.retreatPoint?'retreat':'cover';a.nav=[];
-    }else a.alert='investigating';
-    rotate(a,angle(a.p,heard),dt);
-  }
-  // The designated capture target has a different *purpose*, not secret
-  // knowledge. Only real direct sight or its own recent audible warning
-  // can provoke a move toward an already physically validated safe point.
-  const threatEstimate=visible[0]?.p??(
-    a.suspicion.stage==='alerted'?(a.heard??a.contact):null);
-  const heardAlarm=a.lastNoiseAt>=0&&
-    s.seconds-a.lastNoiseAt<6&&a.suspicion.stage==='alerted';
-  if(captureTargetMayWithdraw({
-    mission:s.missionType,role:a.encounterRole,
-    confirmedSight:visible.length>0,heardAlarm,
-    hasEstimate:!!threatEstimate,
-    isAlreadyWithdrawing:a.alert==='retreat',
-    secondsSinceAttempt:s.seconds-a.lastMissionEvadeAt
-  })&&threatEstimate){
-    a.lastMissionEvadeAt=s.seconds;
-    const safe=defensivePosition(a,threatEstimate,s);
-    if(safe&&d(safe,a.p)>15&&
-       d(safe,threatEstimate)>d(a.p,threatEstimate)+15){
-      a.retreatPoint=safe;a.alert='retreat';a.nav=[];
-      a.combatChoice='withdraw';
-    }
-  }
-  if(a.flashUntil>s.seconds){
-    a.velocity=0;a.aim=0;a.alert='cover';return;
-  }
-  // An anonymous sound or secondhand report isn't an instantaneous
-  // navigation command. First orient toward the uncertain estimate; direct
-  // visual contact or retreat preempts this brief assessment.
-  if(!visible.length&&a.alert==='investigating'&&a.contact&&
-     a.lastNoiseAt>=0){
-    const tempo=investigationTempo(a.personality,
-      bestBelief(a.awareness)?.uncertainty??65);
-    if(s.seconds-a.lastNoiseAt<tempo.orientSeconds){
-      a.velocity=0;rotate(a,angle(a.p,a.contact),dt);return;
-    }
-  }
-  // Quiet functional activities use bounded, collision-checked local journeys.
-  // Combat reports, seen contacts, or sounds immediately interrupt the routine.
-  if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.encounterRoutine?.length){
-    if(s.seconds<(a.routinePauseUntil??0)){a.velocity=0;return;}
-    const visit=a.routineIndex??0;
-    const index=visit%a.encounterRoutine.length;
-    const target=a.encounterRoutine[index];
-    if(d(a.p,target)<13){
-      // A settled occupant may quietly close a nearby hinged leaf after a
-      // real journey. Other travelers retain priority over the doorway.
-      if(visit%3===1){
-        const inUse=s.operators.filter(other=>other!==a&&other.health>0&&
-          (other.velocity>5||other.nav.length>0)).map(other=>other.p);
-        const door=s.doors.find(candidate=>
-          routineDoorClosureEligible(a.p,candidate,s.seconds,
-            a.lastEnemyDoorCloseAt,inUse)&&
-          !doorWouldStrikeActors(candidate,0,[a.p],OPERATOR_RADIUS));
-        if(door&&doorInteraction({target:door,actorId:a.id,
-          actorPosition:a.p,action:'close'}).allowed){
-          door.open=false;door.openedAt=s.seconds;
-          a.lastEnemyDoorCloseAt=s.seconds;
-          hear(s,doorCenter(door),62,'door');
-          battleEvent(s,'door',a,doorCenter(door),
-            a.name+' CLOSED '+door.id+' AFTER ROUTINE');
-        }
-      }
-      a.routineIndex=visit+1;
-      a.routinePauseUntil=s.seconds+routineDwellSeconds(a.id,
-        a.encounterActivity??'idle',index,visit);
-      a.nav=[];a.velocity=0;
-      return;
-    }
-    if(!a.nav.length){
-      if(!electiveAiWork(s,a,'routine-route')){
-        a.velocity=0;return;
-      }
-      a.nav=cachedEnemyRoute(s,a.p,target);
-    }
-    if(!a.nav.length){
-      a.routineIndex=visit+1;
-      a.routinePauseUntil=s.seconds+4;a.velocity=0;return;
-    }
-    approach(a,target,dt,s,.52);return;
-  }
-  // Unprepared occupants do not automatically run to combat positions.
-  // Any credible sound or visual contact above interrupts this inactivity.
-  if(!a.contacted&&!a.contact&&a.alert==='idle'&&
-    (a.encounterReadiness==='relaxed'||a.encounterReadiness==='unaware')){
-    a.velocity=0;return;
-  }
-  if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.watch){
-    if(a.defense===null&&s.seconds>=a.defenseUntil&&
-       electiveAiWork(s,a,'idle-defense')){
-      a.defense=defensivePosition(a,a.watch,s);
-      a.defenseUntil=s.seconds+2;
-    }
-    if(a.defense&&d(a.p,a.defense)>11){
-      if(!a.nav.length){
-        if(!electiveAiWork(s,a,'idle-route')){
-          a.velocity=0;rotate(a,angle(a.p,a.watch),dt);return;
-        }
-        a.nav=cachedEnemyRoute(s,a.p,a.defense);
-      }
-      if(!a.nav.length){
-        a.defense=null;a.defenseUntil=s.seconds+.7;
-      }else{
-        approach(a,a.defense,dt,s,.62);
-        if(a.nav.length&&!a.squeeze)rotate(a,angle(a.p,a.nav[0]),dt);
-        return;
-      }
-    }
-    rotate(a,angle(a.p,a.watch),dt);
-  }
-  if(a.alert==='retreat'&&a.retreatPoint){
-    if(d(a.p,a.retreatPoint)>9){
-      approach(a,a.retreatPoint,dt,s);
-      if(a.nav.length&&!a.squeeze)rotate(a,angle(a.p,a.nav[0]),dt);
-    }else{
-      a.alert='cover';a.retreatPoint=null;a.nav=[];
-      notify(s,a.name+' TOOK COVER');
-      // Only upon REAL physical arrival, and only after a genuinely
-      // observed/alarmed retreat, try to close an open nearby door.
-      // Closing uses the same interaction gate and physical hinge motor
-      // as an authored player action, with no teleport or instant sealing.
-      const candidate=s.doors.find(door=>retreatDoorClosureEligible(
-        a.p,door,s.seconds,a.lastEnemyDoorCloseAt,
-        visible.length>0,a.contact??a.heard));
-      if(candidate&&doorInteraction({target:candidate,actorId:a.id,
-           actorPosition:a.p,action:'close'}).allowed){
-        candidate.open=false;candidate.openedAt=s.seconds;
-        a.lastEnemyDoorCloseAt=s.seconds;
-        hear(s,doorCenter(candidate),90,'door');
-        battleEvent(s,'door',a,doorCenter(candidate),
-          a.name+' CLOSED '+candidate.id+' AFTER RETREAT');
-      }
-    }
-    return;
-  }
-  // WATCH anchors a firing sector; SUPPORT moves into its nearby
-  // complementary defensive position. Both know only the reported estimate.
-  // Direct vision or severe suppression always overrides the role.
-  if((a.coordinationRole==='watch'||a.coordinationRole==='support')&&
-     s.seconds<a.coordinationUntil&&!visible.length&&a.suppression<.65){
-    a.alert='cover';
-    if(a.defense&&d(a.p,a.defense)>10)
-      approach(a,a.defense,dt,s,a.coordinationRole==='support'?.82:.65);
-    else if(a.watch)rotate(a,angle(a.p,a.watch),dt);
-    return;
-  }
-  if(a.contact){
-    rotate(a,angle(a.p,a.contact),dt);
-    if(a.alert==='investigating'&&d(a.p,a.contact)>40){
-      // Noise gives a region to investigate, never a magic target.
-      if(!a.nav.length){
-        if(!electiveAiWork(s,a,'investigation-route')){
-          a.velocity=0;return;
-        }
-        const goal=reachableInvestigation(a.p,a.contact,
-          (from,to)=>cachedEnemyRoute(s,from,to));
-        if(goal)a.nav=cachedEnemyRoute(s,a.p,goal);
-        else{a.alert='cover';a.contact=null;a.defense=null;}
-      }
-      if(a.nav.length&&a.contact)approach(a,a.nav.at(-1)??a.contact,dt,s,
-        investigationTempo(a.personality,
-          bestBelief(a.awareness)?.uncertainty??65).approachScale);
-    }
-    if(a.alert==='investigating'&&a.contact&&d(a.p,a.contact)<35){
-      const belief=bestBelief(a.awareness);
-      const tempo=investigationTempo(a.personality,
-        belief?.uncertainty??65);
-      if(!a.searchOrigin){
-        a.searchOrigin=clone(a.contact);
-        a.searchQueue=searchCandidates(a.searchOrigin,
-          belief?.uncertainty??65,s.site?.rooms??[],s.doors,COVER);
-      }
-      if(a.searchPauseUntil===0)
-        a.searchPauseUntil=s.seconds+tempo.inspectSeconds;
-      // Examine this location before selecting another. Strictly bound
-      // reachability checks to avoid a pathfinding spike on contact.
-      if(s.seconds<a.searchPauseUntil){
-        a.velocity=0;rotate(a,angle(a.p,a.contact),dt);return;
-      }
-      if(!electiveAiWork(s,a,'search-expand')){
-        a.velocity=0;return;
-      }
-      let next:Pt|null=null,checks=0;
-      while(a.searchQueue.length&&!next&&checks++<2){
-        const candidate=a.searchQueue.shift()!;
-        if(d(candidate,a.p)<24)continue;
-        next=reachableInvestigation(a.p,candidate,
-          (from,to)=>cachedEnemyRoute(s,from,to));
-      }
-      a.nav=[];
-      if(next){
-        a.contact=clone(next);
-        // Inspect only after arriving at the next search point.
-        a.searchPauseUntil=0;
-      }else if(!a.searchQueue.length){
-        a.alert='cover';a.contact=null;a.searchOrigin=null;
-        exhaustSuspicionSearch(a.suspicion,s.seconds);
-        a.searchPauseUntil=0;
-        a.defense=defensivePosition(a,a.heard??a.p,s);
-        a.defenseUntil=s.seconds+6;
-      }else{
-        // Keep the current estimate; inspect the remaining candidates on
-        // another fixed simulation tick instead of looping through all.
-        a.velocity=0;
-      }
-    }
-  }
-  if(a.alert==='cover'&&a.defense&&d(a.p,a.defense)>10){
-    if(!a.nav.length)a.nav=cachedEnemyRoute(s,a.p,a.defense);
-    if(a.nav.length)approach(a,a.defense,dt,s,.7);
-    else{a.defense=null;a.defenseUntil=s.seconds+.8;}
-  }
-  if(!a.contact&&a.watch)rotate(a,angle(a.p,a.watch),dt);
-}
-/** A verbal warning only reaches physically audible allies; no team hive mind. */
-function distributeReports(s:Session){
- for(const report of s.reports){
-  if(s.seconds-report.at>1.5)continue;
-  const newlyInformed:string[]=[];
-  for(const recipient of enemies(s)){
-   if(recipient.health<=0||report.deliveredTo.includes(recipient.id))continue;
-   const observation=reportToListener(report,recipient.id,recipient.p,
-     s.doors,WALLS,s.seconds);
-   if(!observation)continue;
-   report.deliveredTo.push(recipient.id);
-   newlyInformed.push(recipient.id);
-   addObservation(recipient.awareness,observation);
-   observeSuspicion(recipient.suspicion,{
-     id:observation.id,at:s.seconds,kind:'report',
-     cause:'heard-verbal-warning'
-   });
-   if(recipient.intent?.kind!=='engage'){
-    recipient.heard=clone(observation.estimate);
-    recipient.contact=clone(observation.estimate);
-    recipient.lastNoiseAt=s.seconds;
-    recipient.contacted=true;
-    recipient.alert='investigating';
-    recipient.nav=[];
-   }
-  }
-  // A report may reach another ally on a later tick. The earlier
-  // investigator keeps their role; only newcomers receive fresh orders.
-  // Never coordinate an actor who did not actually hear the report.
-  if(!newlyInformed.length)continue;
-  const listeners=enemies(s).filter(a=>a.health>0&&
-    report.deliveredTo.includes(a.id));
-  const prior=stableCoordination(listeners,s.seconds);
-  const roles=groupResponse(listeners.map(a=>({id:a.id,p:a.p})),
-    report.estimate,{...(report.assignedRoles??{}),...prior});
-  report.assignedRoles=roles;report.coordinated=true;
-  for(const a of listeners){
-   if(!newlyInformed.includes(a.id))continue;
-   a.coordinationRole=roles[a.id];
-   const heard=a.awareness.observations.find(observation=>
-     observation.id==='report/'+report.id+'/'+a.id);
-   a.coordinationUntil=renewCoordinationUntil(s.seconds,a.coordinationUntil,
-     roles[a.id],heard?.uncertainty??report.uncertainty);
-   const covering=roles[a.id]==='watch'||roles[a.id]==='support';
-   if(covering&&a.intent?.kind!=='engage'){
-     a.watch=clone(report.estimate);
-     // Existing cover selection considers friendly defender occupancy;
-     // this avoids assigning everyone to the same local cover spot.
-     a.defense=defensivePosition(a,report.estimate,s);
-     a.defenseUntil=Math.min(a.coordinationUntil,s.seconds+7);
-     a.alert='cover';a.nav=[];
-   }
-  }
- }
-}
+/** Single enemy decision port; execution continues on the existing 60 Hz clock. */
+const runEnemyAi=createEnemyDecisionController({
+ approach,cachedEnemyRoute,requestClearFireStep,inSight,
+ enemies,hear,notify,battleEvent
+});
 function random(s:Session){
   s.rng=(Math.imul(s.rng,1664525)+1013904223)>>>0;
   return s.rng/4294967296;
@@ -3324,7 +2806,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   advanceTransientSimulationEffects(s,h);
   stepFlashbangs(s,h);
   mark('aging-effects');
-  advanceVisualAwareness(s,h);
+  advanceActorSightProgress(s,h,geometricallyVisible);
   mark('visual-awareness');
   for(const actor of s.operators){
     if(actor.health<=0)continue;
@@ -3371,7 +2853,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       if(resolve==='withdraw'&&a.alert!=='retreat'){
         const threat=a.contact??a.heard??a.watch;
         if(threat){
-          a.retreatPoint=defensivePosition(a,threat,s);
+          a.retreatPoint=runEnemyAi.defensivePosition(a,threat,s);
           if(a.retreatPoint){a.alert='retreat';a.nav=[];}
         }
       }
@@ -3437,7 +2919,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
       // Reaction uses a stronger one-second turn so opposing turn rates
       // cannot cancel each other and leave the operator facing away.
       if(hitDirection!==null)rotate(a,hitDirection,h*1.85);
-    }else enemyDecisions(s,a,h);
+    }else runEnemyAi.decide(s,a,h);
     if(probe)mark('operator-'+a.id);
   }
   mark('actor-loop');
@@ -3529,7 +3011,7 @@ export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe){
   resolveCloseContact(s);
   mark('civilian-motion');
   mark('contacts');
-  distributeReports(s);
+  runEnemyAi.distributeReports(s);
   mark('reports');
   observe(s);
   mark('observe-intel');
