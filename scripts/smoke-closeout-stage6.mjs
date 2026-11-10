@@ -81,7 +81,11 @@ async function accept(name,context){
   await page.locator('#play').click();
   await page.waitForFunction(()=>document.querySelector('#phase')?.
    textContent==='RUNNING',null,{timeout:20000});
-  await settle(1150);
+  // Software WebGL can compile the first few frames slowly in CI.
+  // Require real SIMULATION time instead of an arbitrary wall-clock sleep.
+  await page.waitForFunction(()=>
+   document.querySelector('#clock')?.textContent!=='00:00',
+   null,{timeout:30000});
   await page.locator('#play').click();
   await page.waitForFunction(()=>document.querySelector('#phase')?.
    textContent!=='RUNNING',null,{timeout:15000});
@@ -129,6 +133,10 @@ async function accept(name,context){
    null,{timeout:40000});
   check(await page.locator('#replayPanel').isHidden(),
    'Restart leaked historical replay HUD: '+name);
+  // Restart returns to briefing by design; acknowledge the insertion
+  // briefing before interacting with the map's mission preferences.
+  if(await page.locator('#briefingPanel').isVisible())
+   await page.locator('#briefingClose').click();
   // The generator is a non-destructive side trip from the tactical mission.
   await page.locator('#siteSettingsToggle').click();
   await page.locator('#siteSettings:visible').waitFor();
