@@ -6,9 +6,6 @@ import {SiteMaterialLifetime} from './rendering/site-material-lifetime.ts';
 import {buildSiteWorld,finalizeStaticSiteBatches,type SiteSceneBuildPort}
  from './rendering/breach-site-scene-builder.ts';
 
-
-
-
 import {APPROVED_GRAPHIC_LIGHTING}
  from './operator-studio-light-lab.ts';
 import {STUDIO_INSPECTION_LIGHT,STUDIO_KEY_DIRECTION,studioShadowPalette}
@@ -46,19 +43,11 @@ import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} fro
 
 import {wearFinish} from './rendering/wear-finish.ts';
 
-
-
-
-
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
 import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
 import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
   from './rendering/breach-shadow-controller.ts';
-
-
-
-
 
 import {type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
@@ -66,11 +55,6 @@ import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
 import {type ObjectWear} from './worldgen/object-wear.ts';
-
-
-
-
-
 
 import {wearPixels} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
