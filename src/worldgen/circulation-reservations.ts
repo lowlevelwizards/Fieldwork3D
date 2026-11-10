@@ -32,8 +32,9 @@ function roomPortal(room:Room,mid:Pt):Pt|null{
  * desks can wall off the adjoining cubicle cells from the rest of the office.
  * Only synthesize a seam when its midpoint has no authoritative wall.
  */
-function openOfficeSeams(site:SiteGeometry):{a:Pt;b:Pt}[]{
- if(site.archetype!=='office'||!site.walls)return [];
+function openPlanSeams(site:SiteGeometry):{a:Pt;b:Pt}[]{
+ if(!['office','apartment','townhouse'].includes(site.archetype??'')||
+   !site.walls)return [];
  const rooms=site.rooms.filter(r=>r.kind==='room'&&
    r.zoneId?.startsWith('ZONE-'));
  const seams:{a:Pt;b:Pt}[]=[];
@@ -61,7 +62,7 @@ function openOfficeSeams(site:SiteGeometry):{a:Pt;b:Pt}[]{
 export function circulationReservations(site:SiteGeometry):CirculationReservation[]{
  const result:CirculationReservation[]=[];
  const realPortals=[...site.doors,...(site.openings??[])];
- const seams=openOfficeSeams(site);
+ const seams=openPlanSeams(site);
  const portals=[...realPortals,...seams];
  for(const room of site.rooms){
   if(room.kind==='hall')continue;
@@ -88,7 +89,9 @@ export function circulationReservations(site:SiteGeometry):CirculationReservatio
   // protecting new bedroom-to-service routes only in the family types where
   // the physical audit uncovered otherwise sealed interiors. Avoid shifting
   // unrelated seeded garage/clinic/combat scenarios (Stage 1 goldens).
-  const extra=(site.archetype==='apartment'&&room.purpose==='kitchen')||
+  const extra=(site.archetype==='apartment'&&
+    ['kitchen','living'].includes(room.purpose??''))||
+   (site.archetype==='townhouse'&&room.purpose==='living')||
    (site.archetype==='office'&&['office','cubicles','meeting'].includes(room.purpose??''))||
    (site.archetype==='motel'&&room.purpose==='guest');
   if(access.length>=2&&(functionalSpacePlan(room).routePriority===3||extra)){
