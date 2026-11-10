@@ -2,8 +2,7 @@
  * personally observed sight evidence. Both sides use the exact same LOS
  * contract; contact belief is never inferred from presentation fog.
  */
-import {length} from './breach-core.ts';
-import {angleDifference} from './breach-plan.ts';
+import {angleDifference,length} from './breach-plan.ts';
 import {visualGain,advanceSight} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import {perceptualReadiness} from './breach-encounter-readiness.ts';
