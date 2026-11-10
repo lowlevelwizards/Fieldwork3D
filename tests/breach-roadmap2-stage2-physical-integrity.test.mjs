@@ -56,6 +56,32 @@ test('all eleven building programs have finite, traversable physical sites',()=>
  assert.equal(types.size,11,'missing an archetype from matrix');
 });
 
+test('large professional office wings must connect all functional rooms',()=>{
+ for(const seed of [15,37]){
+  const site=generateSite(seed,'large');
+  const audit=auditSitePhysicalIntegrity(site);
+  const unreachable=audit.blocking.filter(i=>i.code==='unreachable-room');
+  const evidence=unreachable.map(issue=>{
+   const room=site.rooms.find(r=>r.id===issue.entity);
+   if(!room)return {id:issue.entity};
+   const nearby=(p,d=10)=>p.x>=room.x-d&&p.x<=room.x+room.w+d&&
+     p.y>=room.y-d&&p.y<=room.y+room.h+d;
+   const touches=(portal)=>{
+    const p={x:(portal.a.x+portal.b.x)/2,y:(portal.a.y+portal.b.y)/2};
+    return nearby(p,1);
+   };
+   return {room,
+    portals:[...site.doors.filter(touches),...(site.openings??[]).filter(touches)],
+    nearbyCover:site.cover.filter(o=>nearby(o,95)).map(o=>({
+      x:o.x,y:o.y,w:o.w,h:o.h,fixture:o.fixture
+    }))
+   };
+  });
+  assert.equal(unreachable.length,0,
+   'office seed '+seed+' disconnected: '+JSON.stringify({unreachable,evidence}));
+ }
+});
+
 test('identity, geometry, and physical obstruction have independent failures',()=>{
  const site=generateSite(7,'small');
  const front=site.doors.find(d=>d.id==='FRONT');
