@@ -11,7 +11,7 @@ import {createFootstepScheduler,type FootstepScheduler}
 import {BOOT_FOREFOOT_OFFSET} from './breach-gait-geometry.ts';
 import {operatorMotionTraits} from './breach-operator-personality.ts';
 import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_HEIGHT} from './breach-leg-geometry.ts';
-import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
+import type {HandlingProfile} from './breach-handling-profiles.ts';
 import type {HandlingTransition} from './breach-handling-transition.ts';
 import {garmentBoxUV} from './operator-fabric-camo-materials.ts';
 import {enableBakedGearAO} from './operator-baked-gear-ao.ts';
