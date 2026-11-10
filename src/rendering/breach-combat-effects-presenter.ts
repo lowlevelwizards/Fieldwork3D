@@ -8,6 +8,10 @@ import type {Pt} from '../breach-core.ts';
 import {casingAt,CASING_LIMIT} from '../breach-effects.ts';
 import {sampleThrow} from '../breach-flash.ts';
 import {enableWorldGraphicMaterial} from '../breach-graphic-world-lighting.ts';
+import {presentTransientEvidence} from './breach-3d-disclosure-presenter.ts';
+/** Retain at most this many dropped-magazine visual meshes. The physical
+ * inventory, evidence and replay history remain unmodified. */
+export const MAX_DROPPED_MAGAZINE_VISUALS=64;
 export class BreachCombatEffectsPresenter{
   private casingMesh:THREE.InstancedMesh|null=null;
   private casingIds:number[]=[];
@@ -94,14 +98,22 @@ export class BreachCombatEffectsPresenter{
     if(casingDirty)casingDraw.instanceMatrix.needsUpdate=true;
     // Retained physical magazines, grenades in flight and expanding flashes.
     const activeMag=this.frameMagazineIds;activeMag.clear();
-    for(const mag of s.dropped){
+    // Dropped magazines persist in the authoritative world; presentation
+    // only retains recent models, not an unbounded mesh for every reload.
+    for(let i=Math.max(0,s.dropped.length-MAX_DROPPED_MAGAZINE_VISUALS);
+      i<s.dropped.length;i++){
+      const mag=s.dropped[i];
       activeMag.add(mag.id);
+      const visible=presentTransientEvidence(mag.p,omniscient,personal,visibleAt);
       let mesh=this.discarded.get(mag.id);
+      if(!visible&&!mesh)continue;
       if(!mesh){
         mesh=new THREE.Mesh(new THREE.BoxGeometry(6,1.5,3),
           new THREE.MeshStandardMaterial({color:0x313b37,roughness:.75}));
         this.discarded.set(mag.id,mesh);this.effects.add(mesh);
       }
+      mesh.visible=visible;
+      if(!visible)continue;
       const t=Math.min(1.5,mag.age);
       mesh.position.set(mag.p.x+Math.sin(mag.id)*t*3.5,
         Math.max(1.1,7+10*t-27*t*t),mag.p.y+
@@ -112,12 +124,16 @@ export class BreachCombatEffectsPresenter{
     const liveGrenades=this.frameGrenadeIds;liveGrenades.clear();
     for(const grenade of s.grenades){
       liveGrenades.add(grenade.id);
+      const visible=presentTransientEvidence(grenade.p,omniscient,personal,visibleAt);
       let mesh=this.thrown.get(grenade.id);
+      if(!visible&&!mesh)continue;
       if(!mesh){
         mesh=new THREE.Mesh(new THREE.IcosahedronGeometry(2.7,0),
           new THREE.MeshStandardMaterial({color:0x879184,roughness:.75}));
         this.thrown.set(grenade.id,mesh);this.effects.add(mesh);
       }
+      mesh.visible=visible;
+      if(!visible)continue;
       const t=Math.min(1,grenade.age/.55);
       const path=grenade.path?sampleThrow(grenade.path,t):null;
       mesh.position.set(grenade.p.x,path?.height??(1+20*4*t*(1-t)),
@@ -126,13 +142,17 @@ export class BreachCombatEffectsPresenter{
     const liveBursts=this.frameFlashIds;liveBursts.clear();
     for(const burst of s.flashBursts){
       liveBursts.add(burst.id);
+      const visible=presentTransientEvidence(burst.p,omniscient,personal,visibleAt);
       let mesh=this.detonations.get(burst.id);
+      if(!visible&&!mesh)continue;
       if(!mesh){
         mesh=new THREE.Mesh(new THREE.SphereGeometry(1,12,8),
           new THREE.MeshBasicMaterial({color:0xfff1c7,transparent:true,
             opacity:.8,depthWrite:false}));
         this.detonations.set(burst.id,mesh);this.effects.add(mesh);
       }
+      mesh.visible=visible;
+      if(!visible)continue;
       mesh.position.set(burst.p.x,13,burst.p.y);
       mesh.scale.setScalar(5+70*burst.age);
       (mesh.material as THREE.MeshBasicMaterial).opacity=
