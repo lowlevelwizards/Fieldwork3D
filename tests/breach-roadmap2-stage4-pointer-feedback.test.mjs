@@ -142,6 +142,7 @@ test('known reachable door tap enters exactly one contextual door selection',()=
  const door={id:'D-TEST',open:false,openFraction:0,
   a:{x:202,y:200},b:{x:202,y:220}};
  f.port.state.doors.push(door);
+ f.port.state.intel.doors.add('D-TEST');
  f.port.state.intel.mode='full-view';
  f.port.uid=id=>id==='rook'?actor:undefined;
  f.port.teach=(key,message)=>f.actions.push('teach:'+key+':'+message);
