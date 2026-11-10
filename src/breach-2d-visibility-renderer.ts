@@ -76,5 +76,5 @@ function fog(){
 }
 
  return {renderPersonalGround:renderReplayPersonalGround,renderFog:fog,
-   invalidate:()=>{fogStamp=-1;fogSignature='';}};
+   invalidate:()=>{fogStamp=-1;}};
 }
