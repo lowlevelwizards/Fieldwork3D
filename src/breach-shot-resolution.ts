@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Roadmap 2 / Stage 10: authoritative confirmed-target shot resolution.
  * Called only after live acquisition and ready-mode eligibility. Retains the
  * identical physical muzzle, safety tests, RNG ordering and casualty effects.
@@ -12,7 +13,6 @@ import {weaponHandlingModifiers} from './equipment-weapon-handling.ts';
 import type {createShotEnvironmentCommitter} from './breach-shot-environment.ts';
 import {segmentImpact,strikeSurface} from './breach-ballistic-resolution.ts';
 import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts';
-import {WALLS,COVER} from './breach-core.ts';
 import {length} from './breach-plan.ts';
 import {injuryOf,woundSeverity,nearCover} from './breach-combat.ts';
 import {aimHeight} from './breach-cover-height.ts';
@@ -66,6 +66,7 @@ export function createShotResolver(ports:ShotResolverPorts){
  function commitShot(s:Session,a:TeamActor,target:TeamActor,
   ctx:ShotCommitContext):void{
   const {mode,range,moving,mods,weapon,profile}=ctx;
+  const {walls:WALLS,cover:COVER}=sessionWorldGeometry(s);
   // The eyes may have a contact even when the muzzle cannot safely fire.
   // Hold the shot rather than dumping ammunition into adjacent cover or
   // risking a friendly operator standing in the near firing corridor.
@@ -144,7 +145,7 @@ export function createShotResolver(ports:ShotResolverPorts){
   a.lastShotAt=s.seconds;
   const hitRadius=Math.max(4.2,10.5-
     (target.posture==='crouch'?1.7:0)-
-    (nearCover(target.p,a.p)?2:0));
+    (nearCover(target.p,a.p,COVER)?2:0));
   const candidateHit=rayHitsActor(muzzlePoint,yaw,target.p,hitRadius);
   const muzzleRange=d(muzzlePoint,target.p);
   const far=muzzleEndpoint(muzzlePoint,yaw,Math.max(muzzleRange+38,170));
