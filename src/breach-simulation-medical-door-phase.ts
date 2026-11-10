@@ -12,6 +12,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
+const clone=(p:Pt):Pt=>({x:p.x,y:p.y});
 export type MedicalDoorPhasePort={
  notify:(s:Session,message:string)=>void;
  battleEvent:(s:Session,kind:BattleEvent['kind'],actor:TeamActor|null,
