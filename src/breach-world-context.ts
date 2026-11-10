@@ -8,7 +8,7 @@
  */
 import type {Session} from './breach-game.ts';
 import {
- W,H,WALLS,COVER,activeGeometryRevision,pointToSegment,segmentsCross,
+ W,H,WALLS,activeGeometryRevision,pointToSegment,segmentsCross,
  doorBlocksRay,route,OPERATOR_RADIUS,type Pt,type Segment,type Obstacle,
  type Door
 } from './breach-core.ts';
