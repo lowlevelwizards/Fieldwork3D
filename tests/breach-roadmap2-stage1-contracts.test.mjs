@@ -72,6 +72,7 @@ test('door entry with WAIT and competing teammates has repeatable physical outco
   'a genuine ordered WAIT or movement action must complete');
  assert.ok(first.checkpoints.at(-1).seconds>6.9);
  assert.equal(first.fingerprint,GOLDENS.door,'door baseline changed');
+ console.log('STAGE1_DOOR_OUTCOME',JSON.stringify(first.last.actors.filter(a=>a.side==='blue').map(a=>({id:a.id,p:a.position,completed:a.completedOrders,remaining:a.order.length}))));
 });
 test('reload and wound deterioration are actually advanced by 60 Hz simulation',()=>{
  const make=()=>runStage1Scenario({
@@ -123,6 +124,7 @@ test('live opposing actors produce actual projectiles and update AI evidence',()
     (a.alert!=='idle'||a.shots>0||a.noiseId>0)),
    'enemy must react through real perception/decision execution');
  assert.equal(first.fingerprint,GOLDENS.combat,'combat/AI baseline changed');
+ console.log('STAGE1_COMBAT_OUTCOME',JSON.stringify({events:first.events,health:first.last.actors.map(a=>[a.id,a.health,a.hits,a.shots])}));
 });
 test('enemy hearing records authentic evidence rather than inventing target sight',()=>{
  const results=runStage1Scenario({
