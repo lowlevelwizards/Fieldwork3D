@@ -1,10 +1,11 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Build 090–091: deterministic mission film, independent of the live motor.
  * We capture authoritative simulation outcomes at 20 Hz and never re-simulate
  * past actions. Rewind, scrubbing and speed changes cannot alter an outcome.
  */
 import {liveVisibility,type Session,type TeamActor,type ShotEvent,type DroppedMagazine,type FlashGrenade,type FlashBurst,type ImpactMark} from './breach-game.ts';
 import {COVER,type Door,type Pt} from './breach-core.ts';
-import {intelSnapshot,intelRestore} from './breach-intel.ts';
+import {intelSnapshot,intelRestore,bindIntelWorld} from './breach-intel.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import type {ExecutionEvent} from './breach-execution-events.ts';
 import {copyMedicalCondition,newMedicalCondition} from './breach-medical-wounds.ts';
@@ -461,6 +462,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   s.scenario.objective=position(f.objective);
   s.seenGround=new Set(f.seenGround);
   s.intel=f.intel?intelRestore(f.intel):s.intel;
+  bindIntelWorld(s.intel,sessionWorldGeometry(s));
   s.intelObservedAt=f.t;
   s.known=new Map(f.known.map(([id,c])=>[id,
     {p:position(c.p),at:c.at,status:c.status}]));
