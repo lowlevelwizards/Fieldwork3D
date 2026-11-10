@@ -5,7 +5,6 @@
  */
 import type {Site,Room} from '../breach-site.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
-import {functionalSpacePlan} from './functional-space.ts';
 export type CirculationReservation={
  roomId:string;kind:'door-approach'|'through-route';
  from:Pt;to:Pt;radius:number;
@@ -45,7 +44,8 @@ export function circulationReservations(site:SiteGeometry):CirculationReservatio
   }
   // A primary public-through room should not become an accidental solid
   // storage maze. A narrow center spine is an advisory optional-prop budget.
-  if(access.length>=2&&functionalSpacePlan(room).routePriority===3){
+  // Any two-portal room is a necessary through-route, even a kitchen.
+  if(access.length>=2){
    const center={x:room.x+room.w/2,y:room.y+room.h/2};
    for(const from of access)result.push({
     roomId:room.id,kind:'through-route',from,to:center,radius:12});
