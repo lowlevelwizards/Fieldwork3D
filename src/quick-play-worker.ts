@@ -12,7 +12,8 @@ scope.onmessage=({data:req})=>{
   const progress=(percent:number,stage:string,detail:string)=>
     scope.postMessage({id:req.id,kind:'progress',percent,stage,detail});
   try{
-    progress(6,'Selecting building profile','Seed '+req.seed+' · '+req.scale);
+    progress(6,'Selecting building profile',req.archetype+' · '+req.scale+
+      ' · seed '+req.seed);
     const site=generateSite(req.seed>>>0,req.scale,(phase,attempt)=>{
       const percent=12+Math.min(5,attempt)*10+
         (phase==='layout'?0:phase==='furnishing'?4:8);
@@ -20,10 +21,13 @@ scope.onmessage=({data:req})=>{
         phase==='furnishing'?'Placing furniture and surfaces':
         'Checking routes and site quality',
         'Layout candidate '+(attempt+1)+' / 6');
-    },{enableIncidentIntent:true});
+    },{
+      enableIncidentIntent:true,mission:req.mission,
+      presence:req.presence,civilianPolicy:req.civilians
+    },{archetype:req.archetype});
     progress(70,'Finalizing site and encounter',
       site.rooms.length+' rooms · '+site.doors.length+
-      ' doors · '+site.enemies.length+' contacts');
+      ' doors · encounter ready');
     scope.postMessage({id:req.id,kind:'done',site,
       generationMs:Math.round(performance.now()-started)});
   }catch(error){
