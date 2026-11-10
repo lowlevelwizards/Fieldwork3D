@@ -72,6 +72,10 @@ jobs:
         if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage1-') }}
         run: |
           node --experimental-strip-types --test tests/breach-closeout-stage1-plan-authoring.test.mjs tests/breach-roadmap4-plan-authoring.test.mjs tests/breach-here-watch-continuity.test.mjs tests/breach-stroke-safe-cutoff.test.mjs tests/breach-063.test.mjs tests/breach-064-073.test.mjs tests/tactical-integration-04-squad-planning.test.mjs tests/breach-roadmap2-stage3-knowledge.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-fog-visibility.test.mjs tests/fog-interior-occlusion-regression.test.mjs tests/breach-roadmap3-context-commands.test.mjs
+      - name: Closeout Stage 2 — ordered 60 Hz phases, event and replay parity
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage2-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-closeout-stage2-simulation-phases.test.mjs tests/breach-roadmap4-simulation-phases.test.mjs tests/breach-roadmap2-stage1-contracts.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-roadmap2-stage8-orders.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/breach-roadmap2-stage10-combat.test.mjs tests/breach-roadmap2-stage3-knowledge.test.mjs tests/replay-r2-recording.test.mjs tests/replay-r2-ballistics.test.mjs tests/replay-r3-archive.test.mjs tests/sim-frame-origin-proposal-p9.test.mjs
       - name: Architecture dependency boundary check
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production TypeScript and asset build
