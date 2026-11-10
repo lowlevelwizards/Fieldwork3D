@@ -62,7 +62,7 @@ import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {initializeWindows,type WindowState} from './breach-windows.ts';
 import {type AIIntent} from './breach-ai-policy.ts';
 
-import {registerSessionWorldGeometry,sessionWorldGeometry,publishSessionCoverToActiveSite} from './breach-world-context.ts';
+import {registerSessionWorldGeometry,sessionWorldGeometry,publishSessionCoverToActiveSite,setPresentationWorldSession} from './breach-world-context.ts';
 
 
 import {newSuspicion,type SuspicionMemory} from './breach-ai-suspicion.ts';
@@ -541,6 +541,7 @@ export function newSession(index=0,siteSeed?:number,
      state.missionType==='hold')state.mission='secure';
   COVER.splice(0,COVER.length,...state.coverState);
   registerSessionWorldGeometry(state);
+  setPresentationWorldSession(state);
   bindIntelWorld(state.intel,sessionWorldGeometry(state));
   observe(state);
   return state;
