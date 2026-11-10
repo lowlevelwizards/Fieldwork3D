@@ -347,6 +347,13 @@ function renderGroundMarks(){
   }
  }
 
+ /** Read-only diagnostic of bounded, session-owned visual cache. */
+ function inspectLightCache(session:Session){
+  const cache=beam2DBySession.get(session);
+  return cache?{tick:cache.tick,revision:cache.revision,
+   doorSignature:cache.doorSignature,lights:cache.history.size,
+   blockers:cache.blockers.length}:null;
+ }
  return {terrain,furniture,architecture,renderLightingMood2D,
-   renderWeaponLights2D,renderGroundMarks};
+   renderWeaponLights2D,renderGroundMarks,inspectLightCache};
 }
