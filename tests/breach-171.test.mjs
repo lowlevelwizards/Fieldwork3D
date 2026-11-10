@@ -36,6 +36,7 @@ test('171: simulation shots consume physical muzzle yaw and gate excessive relat
  const game=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
  const firing=readFileSync(new URL('../src/breach-firing-pipeline.ts',import.meta.url),'utf8');
  assert.match(game,/runCombat\.fire\(s,a,h\)/);
- assert.match(firing,/const yaw=muzzle.yaw/);
+ const resolver=readFileSync(new URL('../src/breach-shot-resolution.ts',import.meta.url),'utf8');
+ assert.match(resolver,/const yaw=muzzle.yaw/);
  assert.match(firing,/angleDifference\(a.heading,a.weaponYaw\)/);
 });
