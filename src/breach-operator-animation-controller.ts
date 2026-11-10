@@ -83,6 +83,7 @@ const OPERATOR_CLOTH_PALETTE=[0x6f9185,0x80826b,0x8e846e,0x687c8d,
 const OPERATOR_VEST_PALETTE=[0x43504b,0x545a47,0x535550,0x46595a,
  0x5a5544,0x415a51,0x636056,0x465354] as const;
 
+type GarmentSegmentCut='full'|'bloused'|'cuffed';
 function setSegmentCut(mesh:THREE.Mesh,cut:GarmentSegmentCut){
  const shapes=mesh.userData.garmentSegmentGeometries as
   Record<GarmentSegmentCut,THREE.BoxGeometry>|undefined;
