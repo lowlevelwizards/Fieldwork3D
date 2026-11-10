@@ -8,6 +8,7 @@ const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8')
 const pointer=readFileSync(new URL('../src/breach-pointer-command-controller.ts',import.meta.url),'utf8');
 const gestures=readFileSync(new URL('../src/breach-canvas-gesture-controller.ts',import.meta.url),'utf8');
 const palette=readFileSync(new URL('../src/ui/tactical-palette-controller.ts',import.meta.url),'utf8');
+const route2D=readFileSync(new URL('../src/breach-2d-route-overlays.ts',import.meta.url),'utf8');
 test('selected waypoint retains ownership within a small distance margin',()=>{
   const hits=[{owner:'moss',distancePx:12,id:1},
     {owner:'rook',distancePx:16,id:2}];
@@ -39,7 +40,7 @@ test('unchanged palette keeps its position; existing pocket is an explicit candi
   const source=readFileSync(new URL('../src/breach-context-placement.ts',import.meta.url),'utf8');
   assert.match(palette,/placementKey===lastPlacementKey/);
   assert.match(palette,/heldPointers\.size>0/);
-  assert.match(main,/displayRouteCache\.get\(previous,waypoint\.p,/);
+  assert.match(route2D,/displayRouteCache\.get\(previous,node\.p,/);
   assert.match(source,/preferredPosition\?\.x\?\?xMin/);
   const prior={x:20,y:120},anchor={x:200,y:300};
   const pos=placeContextMenu({anchor,width:120,height:120,
