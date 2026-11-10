@@ -372,8 +372,9 @@ export class TacticalScene3D{
     if(!this.miniFocusIsReplay){
       for(const friendly of team(s)){
         if(friendly.health<=0)continue;
+        const world=sessionWorldGeometry(s);
         const polygon=visionPolygon(friendly.p,friendly.heading,240,
-          undefined,s.doors,friendly.posture==='crouch');
+          world.walls,s.doors,friendly.posture==='crouch',world.cover);
         const projected:FocusPoint[]=[];
         for(const p of polygon){
           const xy=this.miniatureScreenPoint(camera,p.x,p.y,13);
