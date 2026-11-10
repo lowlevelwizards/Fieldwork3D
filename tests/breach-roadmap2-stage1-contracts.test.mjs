@@ -18,7 +18,7 @@ import {registerWound} from '../src/breach-medical-wounds.ts';
 import {generateSite} from '../src/breach-site.ts';
 import {captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam}
  from '../src/breach-mission-restart.ts';
-import {MissionRecorder,applyReplayFrame} from '../src/breach-replay.ts';
+import {applyReplayFrame} from '../src/breach-replay.ts';
 
 // The authoring serializer materializes optional keys with undefined after
 // undo/redo. Compare the actual serialized command contract, not object shape.
@@ -73,7 +73,8 @@ test('door entry with WAIT and competing teammates has repeatable physical outco
  assert.ok(first.checkpoints.at(-1).seconds>6.9);
  for(const id of ['rook','moss'])assert.ok(first.last.actors.find(a=>a.id===id).position[1]>300,
    id+' must actually cross the threshold, not merely open the door');
- assert.equal(first.fingerprint,GOLDENS.door,'door outcome baseline drifted');});
+ assert.equal(first.fingerprint,GOLDENS.door,'door outcome baseline drifted');
+});
 
 test('head-on passage traffic resolves without a door-leaf open/close ping-pong',()=>{
  const site=stage1DoorSite();

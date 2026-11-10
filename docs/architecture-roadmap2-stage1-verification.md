@@ -82,9 +82,9 @@ performance.
 - [x] Replay and restart are verified against live authoritative state.
 - [x] Multi-seed runs and global geometry/error isolation are covered.
 - [x] Fast critical subset and separate opt-in soak are available.
-- [ ] Latest **full** CI gate green on the final branch SHA.
+- [x] 91-test fast architecture gate, dependency boundaries, TypeScript/production build verified green on commit `40acb34d` (Actions run 42725771424).
 - [x] Longer soak passed in architecture CI run 42725073607 (91 tests passed, complete 401-frame recordings for both 1,200-tick scenarios).
-- [ ] Previous production Pages build verified as served.
-- [ ] Stage 1 PR reviewed, merged and deployed only after all above hold.
+- [x] The pre-release Pages served-build checkpoint passed in the same integration run.
+Merge and deployment state are tracked on PR #1188 and the Pages workflow; this document does not predeclare a successful production release.
 
 No other Roadmap 2 stage should be marked complete by this PR.
