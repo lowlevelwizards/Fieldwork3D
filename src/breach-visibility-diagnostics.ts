@@ -8,8 +8,7 @@ import {exteriorAt} from './breach-intel.ts';
 import {preciseGroundEvidenceAt,groundKnowledgeAt,groundFogLevel}
  from './breach-ground-knowledge.ts';
 import {occupiedFogRooms} from './breach-fog-mask.ts';
-export type FogReason='currently-visible'|'occupied-structure'|
-  'explored'|'briefed'|'unknown';
+export type FogReason='currently-visible'|'explored'|'briefed'|'unknown';
 export function inspectFogPoint(s:Session,p:Pt){
   const currentlyVisible=liveVisibility(s,p);
   const explored=preciseGroundEvidenceAt(s.seenGround,p);
