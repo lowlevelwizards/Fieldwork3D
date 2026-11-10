@@ -2,7 +2,7 @@
  * No fallbacks that force someone into an unsafe room or door opening.
  * Uses a distinct RNG lane so adding civilians does not re-roll hostiles. */
 import type {Site,Room} from '../breach-site.ts';
-import {activeSite,activateSite,passable,pointToSegment,route,type Pt}
+import {withTemporarySiteGeometry,passable,pointToSegment,route,type Pt}
  from '../breach-core.ts';
 import type {OperationKind} from '../breach-operations.ts';
 import type {CivilianSpec,EncounterActorSpec,EncounterPremise}
@@ -89,9 +89,7 @@ export function planCivilians(site:Site,
     }))
     .sort((a,b)=>b.order-a.order||a.room.id.localeCompare(b.room.id))
     .map(x=>x.room);
-  const prior=activeSite();
-  activateSite(site);
-  try{
+  withTemporarySiteGeometry(site,()=>{
     let checkedRoutes=0;
     for(const room of rooms){
       if(neutrals.length>=desired||checkedRoutes>=Math.max(8,desired*4))break;
@@ -169,6 +167,6 @@ export function planCivilians(site:Site,
        if(!placed)break;
       }
     }
-  }finally{activateSite(prior);}
+  });
   return neutrals;
 }
