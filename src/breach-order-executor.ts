@@ -55,7 +55,7 @@ export function createOrderExecutor(port:OrderExecutionPort){
   }
   // A confirmed visible threat can temporarily interrupt authored attention.
   // This is reactive execution only; it never modifies the player's plan.
-  const visibleThreat=enemies(s).filter(e=>e.health>0&&port.inSight(a,e,s))
+  const visibleThreat=s.operators.filter(e=>e.side==='red').filter(e=>e.health>0&&port.inSight(a,e,s))
     .sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
   if(a.carryingId&&
      (n?.kind!=='evacuate'||n.patientId!==a.carryingId)&&
