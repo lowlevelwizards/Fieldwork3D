@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
  */
@@ -27,7 +28,7 @@ export function prepareMotorRoute(
     // A hinge from an earlier state can leave the operator embedded in its
     // collision capsule. Take a bounded real swept step out before route
     // backoff; do not demand a new waypoint or let the route fail forever.
-    const escape=escapeOpenDoorOverlap(a.p,p,s.doors,dt*45);
+    const escape=escapeOpenDoorOverlap(a.p,p,s.doors,dt*45,sessionWorldGeometry(s));
     if(escape){
       a.priorP=clone(a.p);a.p=escape;a.velocity=0;
       a.blockedTime=0;a.lastBlocker='door';
@@ -78,7 +79,7 @@ export function prepareMotorRoute(
         const staging={x:obstacle.x-ux*setback,
           y:obstacle.y-uy*setback};
         const path=d(a.p,staging)<5?[]:
-          routeWithSqueezeWorld(a.p,staging,s.doors);
+          routeWithSqueezeWorld(a.p,staging,s.doors,sessionWorldGeometry(s));
         if(d(a.p,staging)<5||path.length)
           a.nav=[...path,p];
       }
