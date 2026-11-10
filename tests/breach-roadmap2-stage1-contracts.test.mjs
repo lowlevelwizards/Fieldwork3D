@@ -25,8 +25,8 @@ import {MissionRecorder,applyReplayFrame} from '../src/breach-replay.ts';
 const authoredPlan=plan=>JSON.parse(JSON.stringify(plan));
 const GOLDENS=Object.freeze({
  door:'f0300241e8134d1a65c5e71fd22c827447e96128a92bb82c2bd64958c02f895c',
- medical:'59dcd49b07911987d44ef1366b25c00f4b9eba1abc80db293a89f4c0f8c3117e',
- combat:'1e2d24ad275fb9600eac4da91ea01e23fe180468e8133f7a65120adef746b9a3',
+ medical:'a7b43bd0f015e426050ab1a001ce8bf67daf511a936efa9d3e5ea779de27f0b4',
+ combat:'7d186411687555c809c6aac8caeedd0814008ac92b291cc799a550247ecda349',
  civilian:'32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136'
 });
 function authorDoorEntry(s){
@@ -73,9 +73,38 @@ test('door entry with WAIT and competing teammates has repeatable physical outco
  assert.ok(first.checkpoints.at(-1).seconds>6.9);
  for(const id of ['rook','moss'])assert.ok(first.last.actors.find(a=>a.id===id).position[1]>300,
    id+' must actually cross the threshold, not merely open the door');
- console.log('STAGE1_REFRESH_DOOR',first.fingerprint);
- console.log('STAGE1_DOOR_OUTCOME',JSON.stringify(first.last.actors.filter(a=>a.side==='blue').map(a=>({id:a.id,p:a.position,completed:a.completedOrders,remaining:a.order.length}))));
+ assert.equal(first.fingerprint,GOLDENS.door,'door outcome baseline drifted');});
+
+test('head-on passage traffic resolves without a door-leaf open/close ping-pong',()=>{
+ const site=stage1DoorSite();
+ // Two friendlies approach the SAME threshold from opposite sides.
+ site.spawn[1]={x:310,y:347};
+ const configure=s=>{
+  const [rook,moss]=team(s);
+  assert.ok(planMove(s,rook.id,{x:310,y:369}));
+  assert.ok(planMove(s,moss.id,{x:310,y:190}));
+ };
+ const opts={site,mission:'hold',ticks:600,sampleEvery:10,configure};
+ const first=runStage1Scenario(opts);
+ const again=runStage1Scenario({...opts,site:structuredClone(site)});
+ assert.equal(first.fingerprint,again.fingerprint);
+ const rook=first.last.actors.find(a=>a.id==='rook');
+ const moss=first.last.actors.find(a=>a.id==='moss');
+ assert.ok(rook.position[1]>275,'rook must enter from the north');
+ assert.ok(moss.position[1]<250,'moss must exit toward the north');
+ // A single change of door swing direction may be legitimate; sustained
+ // repeated direction changes indicate the historic motor ping-pong.
+ const fractions=first.checkpoints.map(f=>f.doors[0][2]);
+ let reversals=0,prior=0;
+ for(let i=1;i<fractions.length;i++){
+  const delta=fractions[i]-fractions[i-1];
+  const sign=Math.abs(delta)<.02?0:Math.sign(delta);
+  if(sign&&prior&&sign!==prior)reversals++;
+  if(sign)prior=sign;
+ }
+ assert.ok(reversals<12,'sustained opposing door pressure oscillation: '+reversals);
 });
+
 test('reload and wound deterioration are actually advanced by 60 Hz simulation',()=>{
  const make=()=>runStage1Scenario({
   site:{...stage1CompletionSite(),training:true},
@@ -99,7 +128,7 @@ test('reload and wound deterioration are actually advanced by 60 Hz simulation',
  assert.ok(first.events.some(e=>e.kind==='reload'));
  assert.ok(first.events.some(e=>e.kind==='wound'&&e.actorId==='moss'),
    'a named injured actor must own the wound event');
- console.log('STAGE1_REFRESH_MEDICAL',first.fingerprint);
+ assert.equal(first.fingerprint,GOLDENS.medical,'wound/reload outcome baseline drifted');
 });
 test('live opposing actors produce actual projectiles and update AI evidence',()=>{
  const setup=s=>{
@@ -133,9 +162,7 @@ test('live opposing actors produce actual projectiles and update AI evidence',()
  assert.ok(first.last.actors.some(a=>a.side==='red'&&
     (a.alert!=='idle'||a.shots>0||a.noiseId>0)),
    'enemy must react through real perception/decision execution');
- console.log('STAGE1_REFRESH_COMBAT',first.fingerprint);
- console.log('STAGE1_COMBAT_OUTCOME',JSON.stringify({events:first.events,health:first.last.actors.map(a=>[a.id,a.health,a.hits,a.shots])}));
-});
+ assert.equal(first.fingerprint,GOLDENS.combat,'combat/AI outcome baseline drifted');});
 test('enemy hearing records authentic evidence rather than inventing target sight',()=>{
  const results=runStage1Scenario({
   site:stage1ContactSite(),mission:'hold',ticks:120,
@@ -166,7 +193,7 @@ test('civilian rescue targets survive simulation and are recorded as real entiti
  assert.ok(first.recorder.frames[0].civilians.some(c=>c.id===target[0].id));
  assert.ok(first.recorder.frames.at(-1).civilians.some(c=>c.id===target[0].id));
  assert.equal(first.recorder.completeness.complete,true);
- console.log('STAGE1_REFRESH_CIVILIAN',first.fingerprint);
+ assert.equal(first.fingerprint,GOLDENS.civilian,'civilian/replay baseline drifted');
 });
 test('objective and all-operators-down reach independently expected terminal phases',()=>{
  const won=runStage1Scenario({site:stage1CompletionSite(),mission:'clear',

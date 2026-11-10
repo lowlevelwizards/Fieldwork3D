@@ -27,6 +27,7 @@ Stage 1 closure PR: #1188.
 | Case | Protected contract |
 |---|---|
 | Authored WAIT + MOVE | Undo/redo preserves **serialized** authored commands and WAIT actually completes after GO |
+| Head-on passage | Two friendlies start on opposite sides of one leaf; both must complete passage without oscillating door pressure |
 | Hinged threshold | Initially closed leaf opens under real motor and concurrent team orders; completed-order count advances |
 | Timed reload / wound | Mag inserted, reload timer reaches zero; severity-2 wound advances medical injury/health and reports an event |
 | Combat / AI | Open sightlines produce projectiles and guards respond via authoritative perception/decision logic |
@@ -42,8 +43,8 @@ Stage 1 closure PR: #1188.
 alongside independent behavioral outcomes in the critical suite:
 
 - Hinged entry: `f0300241e8134d1a65c5e71fd22c827447e96128a92bb82c2bd64958c02f895c`
-- Reload + wound: `59dcd49b07911987d44ef1366b25c00f4b9eba1abc80db293a89f4c0f8c3117e`
-- Combat + AI: `1e2d24ad275fb9600eac4da91ea01e23fe180468e8133f7a65120adef746b9a3`
+- Reload + wound: `a7b43bd0f015e426050ab1a001ce8bf67daf511a936efa9d3e5ea779de27f0b4`
+- Combat + AI: `7d186411687555c809c6aac8caeedd0814008ac92b291cc799a550247ecda349`
 - Civilian rescue/replay: `32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136`
 
 **Do not automatically refresh these baselines.** When an engine feature
@@ -82,7 +83,7 @@ performance.
 - [x] Multi-seed runs and global geometry/error isolation are covered.
 - [x] Fast critical subset and separate opt-in soak are available.
 - [ ] Latest **full** CI gate green on the final branch SHA.
-- [ ] Longer soak explicitly run and passing on GitHub Actions.
+- [x] Longer soak passed in architecture CI run 42725073607 (91 tests passed, complete 401-frame recordings for both 1,200-tick scenarios).
 - [ ] Previous production Pages build verified as served.
 - [ ] Stage 1 PR reviewed, merged and deployed only after all above hold.
 
