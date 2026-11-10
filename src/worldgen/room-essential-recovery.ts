@@ -10,7 +10,8 @@ import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {fixtureServiceClear,requiresServiceApproach} from './fixture-service-clearance.ts';
 import {circulationReservations,overlapsCirculationReservation}
  from './circulation-reservations.ts';
-type Input=Pick<Site,'rooms'|'doors'|'openings'|'spawn'|'enemies'|'objective'|'extract'>;
+type Input=Pick<Site,'rooms'|'doors'|'openings'|'spawn'|'enemies'|'objective'|'extract'> &
+ Partial<Pick<Site,'archetype'>>;
 export type RecoveryIssue={roomId:string;fixture:string;reason:string};
 const inside=(o:Obstacle,r:Room)=>o.x>r.x&&o.x<r.x+r.w&&o.y>r.y&&o.y<r.y+r.h;
 const collides=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+5&&
@@ -44,7 +45,8 @@ function recoverPass(site:Input,initial:readonly Obstacle[],
  }
  const reserved=[...site.spawn,...site.enemies,site.objective,site.extract];
  const mandatoryThroughRoutes=circulationReservations(site)
-  .filter(lane=>lane.kind==='through-route');
+  .filter(lane=>lane.kind==='through-route'&&
+    ['apartment','motel','office'].includes(site.archetype??''));
  let recovered=0;
  for(const [zone,rooms] of groups){
   const role=rooms[0]?.purpose??'storage';
