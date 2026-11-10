@@ -114,7 +114,7 @@ import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 
 import {stabilizationSummary} from './breach-casualty-status.ts';
 import {type TransportMode} from './breach-casualty-transport.ts';
-import {civilianTransportEligible,dropCivilianCustody,proposedCivilianTransportStep,reconcileCivilianTransportFrame} from './breach-civilian-transport.ts';
+import {civilianTransportEligible,proposedCivilianTransportStep,reconcileCivilianTransportFrame} from './breach-civilian-transport.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 
 import {DEFAULT_SKILLS,type ShootingSkills} from './breach-skills.ts';
@@ -2056,8 +2056,6 @@ export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  battleEvent(s,'interaction',null,to,'FURNITURE MOVED');
  return true;
 }
-/** Optional phase timings used by the offline benchmark, never required by play. */
-export type StepPhaseProbe=(phase:string,elapsedMs:number)=>void;
 /** Timed AI, squad order and morale work. The phase director owns when
  * this runs; each subsystem retains its established per-actor mechanics. */
 function advanceSimulationActors(s:Session,h:number,
