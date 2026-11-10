@@ -16,6 +16,7 @@ import {resolvedReplayCamera,type ReplayCameraChoice,type ReplayPerspective}
 import {bodycamDisclosureLabel} from '../breach-replay-bodycam-controls.ts';
 import {tacticalIcon} from './tactical-icons.ts';
 export type ReplayHudElements={
+ replayOverlayChoices:HTMLElement;
  replayAnalysis:HTMLButtonElement;
  replayBodycam:HTMLButtonElement;
  replayBodycamMount:HTMLButtonElement;
@@ -250,7 +251,7 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
     'PERSONAL CONTACTS / LAST-SEEN DOORS · MAP/PROPS REMAIN SQUAD KNOWLEDGE. SHOT PATHS HIDDEN.';
   ui.replayGroundLens.disabled=!replayKnowledge.observerId||
     !replayKnowledge.personalGround||replayBodycam.active;
-  ui.replayBodycam.disabled=!stage||!replaying||
+  ui.replayBodycam.disabled=!stageAvailable||!replaying||
     replayBodycam.observers.length===0;
   ui.replayBodycam.textContent=replayBodycam.active?'BODYCAM ON':'BODYCAM OFF';
   ui.replayBodycam.setAttribute('aria-pressed',String(replayBodycam.active));
@@ -302,9 +303,9 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
       b.dataset.followActor===replayCamera.followId));
   ui.replaySquad.setAttribute('aria-pressed',String(replayCamera.mode==='squad'));
   ui.replayDirector.setAttribute('aria-pressed',String(replayCamera.mode==='director'));
-  ui.replaySquad.disabled=viewMode==='plan2d'||!stage||replayBodycam.active;
-  ui.replayDirector.disabled=viewMode==='plan2d'||!stage||replayBodycam.active;
-  ui.replayFollow.disabled=viewMode==='plan2d'||!stage||replayBodycam.active;
+  ui.replaySquad.disabled=viewMode==='plan2d'||!stageAvailable||replayBodycam.active;
+  ui.replayDirector.disabled=viewMode==='plan2d'||!stageAvailable||replayBodycam.active;
+  ui.replayFollow.disabled=viewMode==='plan2d'||!stageAvailable||replayBodycam.active;
   ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
   ui.replayPlans.textContent='PLANS '+replayPlanScope.toUpperCase();
   ui.replayPlanVersion.textContent='PLAN '+replayPlanVersion.toUpperCase();
