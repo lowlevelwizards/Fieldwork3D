@@ -22,7 +22,9 @@ test('JSON report round-trips mission identity and transparent completeness',()=
   assert.equal(report.shots.length,1);
   assert.equal(report.shots[0].end.x,8);
   const parsed=JSON.parse(serializeReplayReport(recorder));
-  assert.equal(parsed.schemaVersion,1);
+  assert.equal(parsed.schemaVersion,2);
+  assert.equal(parsed.shots[0].precision,'region-only');
+  assert.ok('nominalCaliberAtFire' in parsed.shots[0]);
   assert.equal(parsed.operators.find(a=>a.id==='rook')?.shotsFired,1);
   assert.equal(parsed.completeness.complete,true);
 });
