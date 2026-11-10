@@ -27,7 +27,7 @@ adapter and its consumers**:
 | Tactical tap boundary checked `activeWorldBounds()` | Validate against pointer port's session geometry |
 | 2D layout read global bounds | Read current session's site bounds or base training bounds |
 | Scene camera reset, pan, zoom/fit, mini-focus reused global bounds | Scene owns `displayedSite` after `applySite()`; all camera bounds come from that owner |
-| Creating a historical replay mutated the live global geometry adapter | Synchronous, exception-safe `withDetachedPresentationWorld` scope restores site, exact walls/cover and previous presentation owner |
+| Creating a historical replay mutated the live global geometry adapter | `breach-presentation-world-ownership.ts` owns a synchronous, exception-safe `withDetachedPresentationWorld` scope restoring site, exact walls/cover and previous presentation owner |
 | Replay view activation was implicit in session creation | `enterReplay` explicitly adopts historical session; `exitReplay` restores live via mission controller |
 | Leaving tactical presentation kept an old owner token | `releasePresentation` clears the publication owner |
 
@@ -65,7 +65,7 @@ presentation unchanged.
 
 ## Retained compatibility / constraints
 
-The legacy `WALLS/COVER` arrays and `activeSite()` still exist for older
+The physical `breach-world-context.ts` never imports or calls `activateSite` and only re-exports the dedicated presentation owner for legacy consumers.\n\nThe legacy `WALLS/COVER` arrays and `activeSite()` still exist for older
 training-site fixtures, map generators and standalone single-site tools.
 `newSession` retains its legacy activation semantics for direct existing
 callers. **Background tactical Sessions must use the explicit detached
