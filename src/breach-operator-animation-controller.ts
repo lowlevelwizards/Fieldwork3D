@@ -1,3 +1,4 @@
+import {beginOperatorAnimationFrame,sampleOperatorTurnAngles} from './breach-operator-animation-frame.ts';
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 /** Roadmap 2 Stage 11: presentation-only operator pose orchestrator.
  * This is the compatibility-preserving home for the existing pose evaluation;
@@ -18,8 +19,6 @@ import type {CoupledLowReadySolution} from './breach-coupled-low-ready.ts';
 import {poseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
 import {interpolateWeaponCarry,lowReadyBlendPhase}
  from './breach-low-ready-transition.ts';
-import {createOperatorPoseScratch,type OperatorPoseScratch}
-  from './breach-operator-pose-scratch.ts';
 import {resolvePoseLocomotionFrame} from './breach-pose-locomotion-frame.ts';
 import {advanceFootsteps,validatedReplayFeet,type FootTarget,type FootstepInput}
   from './breach-footsteps.ts';
@@ -64,31 +63,10 @@ function approach(v:number,target:number,rate:number,dt:number){
   return v+clamp(diff(v,target),-rate*dt,rate*dt);
 }
 const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
-const poseMath=new WeakMap<OperatorRig,OperatorPoseScratch>();
-/** Unmodified turn targets are the ONLY history used for live yaw smoothing.
- * The rendered chest/head also receive procedural and fitting offsets, so
- * smoothing from their final Euler angles feeds those offsets back every frame.
- * Keep the base turn state separate and reset it on seek/spawn discontinuities.
- */
-const baseTurnAngles=new WeakMap<OperatorRig,{chest:number;head:number}>();
-
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const diagnosticsEnabled=p.poseDiagnostics!==false;
-  // Reconstruct source visibility from the authoritative inventory for
-  // EVERY timestamp. A previous render must never make a pickup socket
-  // disappear when replay seeks to the same or an earlier frame.
-  const previouslyHiddenV4=r.root.userData.reloadV4HiddenSource as
-    THREE.Mesh|undefined;
-  if(previouslyHiddenV4)previouslyHiddenV4.visible=true;
-  r.root.userData.reloadV4HiddenSource=null;
-  let scratch=poseMath.get(r);
-  if(!scratch){scratch=createOperatorPoseScratch();poseMath.set(r,scratch);}
-  const discontinuity=dt<0||r.lastTime>p.seconds+.03||
-    p.seconds-r.lastTime>1.2;
-  if(discontinuity){
-    r.lastTime=p.seconds;dt=0;
-  }
-  dt=clamp(dt,0,.08);
+  const {scratch,discontinuity,dt:frameDt}=beginOperatorAnimationFrame(r,p,dt);
+  dt=frameDt;
   const clothing=updateOperatorAppearance(r,p);
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
@@ -193,19 +171,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // Never smooth from r.chest.rotation.y. Later body sway, stance and
   // coordinated IK add offsets to that Euler, which must not persist as
   // the next frame's starting point.
-  let turns=baseTurnAngles.get(r);
-  if(!turns){
-    turns={chest:turn.chestYaw,head:turn.headYaw};
-    baseTurnAngles.set(r,turns);
-  }
-  if(p.deterministic||discontinuity||!r.lastPose){
-    turns.chest=turn.chestYaw;
-    turns.head=turn.headYaw;
-  }else{
-    turns.chest=approach(turns.chest,turn.chestYaw,
-      p.aiming?7.5:5.8,dt);
-    turns.head=approach(turns.head,turn.headYaw,10.0,dt);
-  }
+  const turns=sampleOperatorTurnAngles(r,p,turn,dt,discontinuity);
   r.chest.rotation.y=turns.chest;
   const idleLife=idleLifeAt(p.idleLifeSeconds??p.seconds,
     p.appearanceSeed??0,{speed:physicalSpeed,aiming:p.aiming||
