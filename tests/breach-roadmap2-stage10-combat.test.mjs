@@ -36,7 +36,7 @@ test('firing evaluates clearance, friendlies and observed civilian safety before
  assert.match(resolution,/fireLaneReachable\(lane,laneTrace,target.p\)/);
  assert.match(resolution,/const proposedYaw=shotYaw\(a.weaponYaw,cone,random\(s\),random\(s\)\)/);
  assert.match(resolution,/const yaw=muzzle.yaw/);
- assert.match(pipeline,/sweptBodyClear\(a.p,candidate,s.doors\)/);
+ assert.match(pipeline,/sweptBodyClear\(a.p,candidate,s.doors,8,sessionWorldGeometry\(s\)\)/);
 });
 
 test('physical bullet effects commit health, cover, doors, glass, suppression and replay',()=>{
