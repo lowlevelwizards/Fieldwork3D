@@ -1,7 +1,7 @@
 /** Integrated seed audit for procedural encounters. No renderer required.
  * Runs in deterministic world space; a CLI can exercise thousands of maps
  * without incurring browser startup on every CI run. */
-import {activateSite,withTemporarySiteGeometry,passable,route,type Pt} from './breach-core.ts';
+import {withTemporarySiteGeometry,passable,route,type Pt} from './breach-core.ts';
 import {generateSite,type SiteScale,type Site} from './breach-site.ts';
 import {ordinaryDoorOpeningWidth} from './breach-door-proportions.ts';
 import {assessArchitecture} from './worldgen/architecture-quality.ts';
@@ -59,7 +59,7 @@ export function auditSite(site:Site):SiteAudit{
   let verifiedEntries:DeploymentChoice[]=[];
   let routeFriction:RouteFriction=measureRouteFriction(site.spawn[0]??{x:0,y:0},
     site.objective,[],()=>false);
-  try{
+  {
     if(site.spawn.length!==4)errors.push('expected four operator spawns');
     const minHostiles=site.encounter?hostileMinimumForContract({
       mission:site.encounter.mission,premise:site.encounter.premise,
@@ -137,7 +137,7 @@ export function auditSite(site:Site):SiteAudit{
     if(site.enemyHeadings && (site.enemyHeadings.length!==site.enemies.length||
       site.enemyHeadings.some(h=>!Number.isFinite(h))))
       errors.push('invalid enemy orientations');
-  }finally{activateSite(null);}
+  }
   const roomFill=site.rooms.filter(r=>r.kind==='room').map(room=>({
     id:room.id,role:room.purpose??'untyped',
     areaM2:Math.round(room.w*room.h/400*10)/10,
