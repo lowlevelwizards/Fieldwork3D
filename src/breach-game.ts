@@ -42,7 +42,7 @@ import {type FireBlock} from './breach-fire-safety.ts';
 
 
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {initDoor,advanceDoor,doorReachable,doorApproach,initialOpeningYieldCandidate} from './breach-door.ts';
+import {initDoor,advanceDoor,doorReachable,initialOpeningYieldCandidate} from './breach-door.ts';
 
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool} from './equipment-entry-tools.ts';
