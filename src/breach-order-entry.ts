@@ -1,3 +1,4 @@
+import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 8: authored door-tool use and access/lock/latch timings.
  * This consumes a node only on real successful completion.
  */
@@ -28,7 +29,7 @@ export function createEntryOrderHandler(port:OrderExecutionPort){
       failCurrentOrder(s,a,n,'ENTRY TOOL UNAVAILABLE');return true;
     }
     if(!doorReachable(a.p,door)){
-      const approachPoint=doorApproach(a.p,door);
+      const approachPoint=doorApproach(a.p,door,sessionWorldGeometry(s));
       if(approachPoint){clearCurrentOrderIssue(a);approach(a,approachPoint,dt,s,.66);}
       else failCurrentOrder(s,a,n,'ENTRY TOOL CANNOT REACH');
       return true;
