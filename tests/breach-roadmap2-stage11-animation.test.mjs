@@ -56,6 +56,7 @@ test('frame scratch is reused and backward/long seeks discard frame dt',()=>{
  const rig=createOperatorRig('stage11-frame','blue',true);
  try{
   const p={...pose};
+  rig.lastTime=p.seconds;
   const a=beginOperatorAnimationFrame(rig,p,1/60);
   const b=beginOperatorAnimationFrame(rig,p,1/60);
   assert.strictEqual(a.scratch,b.scratch);
