@@ -44,9 +44,21 @@ function recoverPass(site:Input,initial:readonly Obstacle[],
   groups.set(id,[...(groups.get(id)??[]),room]);
  }
  const reserved=[...site.spawn,...site.enemies,site.objective,site.extract];
- const mandatoryThroughRoutes=circulationReservations(site)
-  .filter(lane=>lane.kind==='through-route'&&
-    ['apartment','motel','office'].includes(site.archetype??''));
+ const guarded=['apartment','townhouse','motel','office']
+  .includes(site.archetype??'');
+ const mandatoryCirculation=circulationReservations(site).filter(lane=>{
+  if(!guarded)return false;
+  if(lane.kind==='through-route')return true;
+  // A footprint can miss a point-radius doorway check but still seal the
+  // short interior approach: this was allowing a real bed to block D4.
+  const room=site.rooms.find(r=>r.id===lane.roomId);
+  return (site.archetype==='townhouse'&&
+    ['bedroom','living','study'].includes(room?.purpose??''))||
+   (site.archetype==='apartment'&&
+    ['bedroom','living','kitchen'].includes(room?.purpose??''))||
+   (site.archetype==='office'&&
+    ['cubicles','office','meeting'].includes(room?.purpose??''));
+ });
  let recovered=0;
  for(const [zone,rooms] of groups){
   const role=rooms[0]?.purpose??'storage';
@@ -117,7 +129,7 @@ function recoverPass(site:Input,initial:readonly Obstacle[],
           pos.y-h/2<room.y+9||pos.y+h/2>room.y+room.h-9)return false;
         if(retained.some(o=>collides(o,placed)))return false;
         if(overlapsCirculationReservation(placed,
-          mandatoryThroughRoutes,room.id))return false;
+          mandatoryCirculation,room.id))return false;
         if(!fixtureServiceClear(room,placed,retained))return false;
         const withPlaced=[...retained,placed];
         return retained.every(existing=>{
