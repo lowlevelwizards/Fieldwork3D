@@ -1,3 +1,4 @@
+import {publishSessionCoverToActiveSite} from './breach-world-context.ts';
 /** Stage 10: physical environmental damage & evidence after real fired rays.
  * Not a sight/aim evaluator. All mutations are authoritative Session state.
  */
@@ -69,7 +70,7 @@ function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number
     }
   }
  }
- // Only s.coverState is authoritative; session revision tracks changes.
+ if(touched.size)publishSessionCoverToActiveSite(s);
 }
 /** Persist actual glass-door damage only after a fired projectile. The metal
  * frame and physical leaf remain operational; only glazing shatters. */
