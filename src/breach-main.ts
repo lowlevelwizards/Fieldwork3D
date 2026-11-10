@@ -2310,7 +2310,10 @@ const launchQuickPlay=()=>quickPlayController.customize();
 function returnToQuickPlayGenerator(){
   if(campaignMode!=='quick'||replaying||quickPlayController.busy)return;
   // Opening the creator does not discard the current mission, routes or replay.
+  const cameFromSettings=!ui.siteSettings.hidden;
   closeMissionSettings(false);
+  // Return keyboard focus to a visible control if Settings was the origin.
+  if(cameFromSettings)ui.siteSettingsToggle.focus();
   quickPlayController.customize();
 }
 ui.quickPlaySetup.addEventListener('click',returnToQuickPlayGenerator);
