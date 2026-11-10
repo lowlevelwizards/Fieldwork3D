@@ -26,6 +26,8 @@ export type SessionWorldGeometry={
  readonly initializedAtRevision:number;
  /** Changes only for this mission; ignores global activation and other games. */
  readonly revision:number;
+ /** Mark a frame seek/restore that changes cover without a new physical tick. */
+ invalidate():void;
  passable(point:Pt,clearance?:number):boolean;
  route(from:Pt,to:Pt,canStand?:(point:Pt)=>boolean):Pt[];
  someWallNearPoint(point:Pt,radius:number,
@@ -63,18 +65,22 @@ export function registerSessionWorldGeometry(s:Session):SessionWorldGeometry{
  const cover=s.coverState;
  const bounds=site?.bounds??defaultBounds;
  let epoch=0;
+ let invalidated=false;
  let lastRevision=s.objectRevision;
  let lastLength=cover.length;
  let index=new TacticalGeometryIndex(walls,cover);
  const indexed=()=>{
-  if(lastRevision!==s.objectRevision||lastLength!==cover.length){
+  if(invalidated||lastRevision!==s.objectRevision||lastLength!==cover.length){
+   invalidated=false;
    index=new TacticalGeometryIndex(walls,cover);
    lastRevision=s.objectRevision;lastLength=cover.length;epoch++;
   }
   return index;
  };
  const context:SessionWorldGeometry={
-  site,walls,cover,bounds,initializedAtRevision:activeGeometryRevision(),
+  get site(){return s.site??null;},walls,cover,bounds,
+  initializedAtRevision:activeGeometryRevision(),
+  invalidate(){invalidated=true;},
   get revision(){indexed();return epoch;},
   someWallNearPoint(p,r,matches){
    return indexed().someWall(pointBounds(p,r),matches);
@@ -137,4 +143,11 @@ export function publishSessionCoverToActiveSite(s:Session):void{
  if(presentationSession!==s||
     (activeSite()??null)!==(s.site??null))return;
  COVER.splice(0,COVER.length,...s.coverState);
+}
+
+/** Rewinding immutable replay frames may restore the same revision number.
+ * Invalidate local broadphase without changing the recorded simulation epoch.
+ */
+export function invalidateSessionWorldGeometry(s:Session):void{
+ sessionWorldGeometry(s).invalidate();
 }
