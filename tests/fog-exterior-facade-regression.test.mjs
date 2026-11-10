@@ -33,8 +33,9 @@ test('exterior window locations must be physically on reachable perimeter',()=>{
 });
 test('3D retains qualified façades while the ground fog respects scene depth',()=>{
  const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
- assert.match(scene,/import \{exteriorBriefedAt,accessibleExteriorWall\}/);
- assert.match(scene,/const exterior=accessibleExteriorWall\(site,wall\)/);
+ const builder=readFileSync(new URL('../src/rendering/breach-site-scene-builder.ts',import.meta.url),'utf8');
+ assert.match(scene,/import \{exteriorBriefedAt\}/);
+ assert.match(builder,/const exterior=accessibleExteriorWall\(site,wall\)/);
  assert.match(scene,/wall\.exterior&&!omniscient&&!bodycamAudition&&[\s\S]*?spatialSurfaceKnown\(s,'wall',wall\.index\)/);
  assert.match(scene,/const surfaceTransparent=translucent\|\|knownFacade/);
  assert.match(scene,/material\.transparent=surfaceTransparent/);
@@ -43,7 +44,7 @@ test('3D retains qualified façades while the ground fog respects scene depth',(
  assert.match(openings,/host\.promoteFacadeDetails\(frame\);[\s\S]*?host\.promoteFacadeDetails\(leaf\);/);
  assert.match(openings,/publicWindow=!opening\.interior&&accessibleExteriorWall\(site,edge\)/);
  assert.match(openings,/if\(publicWindow\)\{[\s\S]*?host\.promoteFacadeDetails\(group\)/);
- assert.match(scene,/node\.renderOrder=1002/);
- assert.match(scene,/this\.siteMaterials\.track\(original\.clone\(\)\)/);
+ assert.match(builder,/node\.renderOrder=1002/);
+ assert.match(builder,/host\.siteMaterials\.track\(original\.clone\(\)\)/);
  assert.match(scene,/map:this\.fogTexture,transparent:true,depthTest:true,opacity:1/);
 });

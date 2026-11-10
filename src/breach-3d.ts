@@ -3,10 +3,8 @@ import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
 import {SiteMaterialLifetime} from './rendering/site-material-lifetime.ts';
-import {buildSiteMicroDebrisMeshes} from './rendering/breach-site-micro-debris.ts';
-import {buildSiteExterior} from './rendering/breach-site-exterior-builder.ts';
-import {buildArchitecturalOpenings,buildSiteDoors,buildSiteWindows,doorSweepArc,
- type SiteOpeningsHost} from './rendering/breach-site-openings-builder.ts';
+import {buildSiteWorld,finalizeStaticSiteBatches,type SiteSceneBuildPort}
+ from './rendering/breach-site-scene-builder.ts';
 
 import {APPROVED_GRAPHIC_LIGHTING}
  from './operator-studio-light-lab.ts';
@@ -42,42 +40,28 @@ import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
  from './operator-shadow-quality.ts';
 import {PixelTextureLibrary,mapBoxPixelUV,mapPlanePixelUV,type PixelSurface} from './rendering/pixel-materials.ts';
-import {roomPixelSurface,wallPixelSurface,fixturePixelSurface} from './worldgen/pixel-surface-selection.ts';
+
 import {wearFinish} from './rendering/wear-finish.ts';
-import {doubleSidedWallWear} from './rendering/wear-wall-geometry.ts';
-import {ageMaterialColor} from './rendering/condition-materials.ts';
-import {renderFixtureVisual,type FixtureVisualContext} from './worldgen/fixture-visuals.ts';
-import {isArchitecturalSillCover} from './worldgen/architectural-cover-visuals.ts';
 
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
-import {exteriorBriefedAt,accessibleExteriorWall} from './breach-site-footprint.ts';
+import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
 import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
   from './rendering/breach-shadow-controller.ts';
-import {buildingTheme,roomFloor} from './worldgen/building-palettes.ts';
 
-
-
-
-import {planEnvironmentalWear,type WearKind,type WearMark} from './worldgen/environment-wear.ts';
+import {type WearKind,type WearMark} from './worldgen/environment-wear.ts';
 import {summarizeWear} from './worldgen/wear-diagnostics.ts';
-import {conditionFloorPixels,effectiveCondition} from './worldgen/condition-visual.ts';
+import {conditionFloorPixels} from './worldgen/condition-visual.ts';
 
 import {conditionWallPixels} from './worldgen/condition-wall.ts';
-import {planObjectWear,type ObjectWear} from './worldgen/object-wear.ts';
-import {planExposureWear} from './worldgen/wear-exposure.ts';
-import {planActivityWear} from './worldgen/wear-sources.ts';
-import {planHistoryWear} from './worldgen/surface-history.ts';
-import {planThresholdTrafficWear} from './worldgen/threshold-traffic-wear.ts';
-import {planInteriorFragments,type InteriorFragment} from './worldgen/interior-fragments.ts';
-import {visibleSurfaceHeight} from './worldgen/decoration-anchors.ts';
+import {type ObjectWear} from './worldgen/object-wear.ts';
+
 import {wearPixels} from './rendering/pixel-decals.ts';
 import {wearOpacityBucket,WEAR_ALPHA_BANDS} from './rendering/wear-opacity.ts';
 import {pixelSign,type PixelSignKind} from './rendering/pixel-signage.ts';
 import {pixelOverlay,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
-import {W,H,activeWorldBounds,WALLS,COVER,initialDoors,doorCenter,doorLeafSegment,activeSite,
-  type Pt,type Segment} from './breach-core.ts';
+import {W,H,activeWorldBounds,WALLS,COVER,doorCenter,doorLeafSegment,activeSite,type Pt,type Segment} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {handlingIntentForMovement,teammateAheadForHandling}
   from './breach-handling-context.ts';
@@ -89,7 +73,7 @@ import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {type Session,type TeamActor,team,knownAt,liveVisibility} from './breach-game.ts';
 import {spatialSurfaceKnown,shotVisibility,architecturalOpeningKnown} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
-import {handlePoint,doorReachable,initDoor} from './breach-door.ts';
+import {handlePoint,doorReachable} from './breach-door.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {armedPrecontactStyle} from './breach-idle-life.ts';
@@ -98,8 +82,7 @@ import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse}
  from './breach-combat-cues.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
-import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET,
-  WALL_VISUAL_HEIGHT,DOOR_CLEAR_VISUAL_HEIGHT,DOOR_LEAF_VISUAL_HEIGHT} from './breach-door-proportions.ts';
+import {WALL_VISUAL_HEIGHT} from './breach-door-proportions.ts';
 import {paintFogMask,paintFogMemory,paintFogVisibility,occupiedFogRooms,
   FOG_WIDTH,FOG_HEIGHT,maskSize,type FogDiagnostic}
   from './breach-fog-mask.ts';
@@ -1024,7 +1007,7 @@ export class TacticalScene3D{
     this.exteriorKnownFog.geometry=geometry;
     this.fogTexture.needsUpdate=true;
     this.buildWorld(site);
-    if(site)this.buildStaticBatches();
+    if(site)finalizeStaticSiteBatches(this.siteBuildPort());
     if(this.graphicLookEnabled)
      this.graphicWorldMaterialCount=
       applyWorldGraphicLighting(this.root).materials;
@@ -1033,625 +1016,53 @@ export class TacticalScene3D{
     this.lastMemoryFogSignature='';this.lastMemoryFogSession=null;
     this.resetCamera();
   }
-  /** Only site-static boxes owned by independently revealed props and door
-   * frame roots are instanced. Cutaway walls, thresholds, animated leaves,
-   * movable fixtures, glass and decals retain their existing meshes. */
-  private buildStaticBatches(){
-    this.root.updateWorldMatrix(true,true);
-    for(const detail of this.observedDetails)
-      this.staticBatches.collect(detail.obj,detail.obj,
-        this.sharedBoxGeometries);
-    for(const door of this.doors.values())
-      this.staticBatches.collect(door.root,door.frame,
-        this.sharedBoxGeometries,new Set([door.threshold,door.wedge]));
-    this.staticBatches.flush(this.root);
-  }
-  private buildMicroDebris(site:Site){
-    for(const mesh of buildSiteMicroDebrisMeshes(site,
-      (hex,roughness,surface)=>this.solid(hex,roughness,surface)))
-      this.root.add(mesh);
-  }
-  private buildGenerated(site:Site){
-    const theme=buildingTheme(site.archetype,site.seed);
-    const finishCondition=effectiveCondition(site);
-    const age=(hex:number,surface:PixelSurface|undefined,variation=0)=>
-      ageMaterialColor(hex,surface,finishCondition,variation);
-    buildSiteExterior(site,{
-      root:this.root,
-      box:(...args)=>this.box(...args),
-      plane:(...args)=>this.plane(...args),
-      solid:(...args)=>this.solid(...args),
-      overlay:kind=>this.groundOverlayMaterial(kind),
-      track:material=>this.siteMaterials.track(material),
-      age:(hex,surface)=>age(hex,surface)
-    });
-    this.objectWear=[...planObjectWear(site),...planExposureWear(site)];
-    const marksOn=(owner:ObjectWear['owner'],index:number)=>
-      this.objectWear.filter(m=>m.owner===owner&&m.index===index);
-    this.buildMicroDebris(site);
-    const decorativeRoomGroups=new Map<string,THREE.Group>();
-    for(const room of site.rooms){
-      const group=new THREE.Group();
-      decorativeRoomGroups.set(room.id,group);this.root.add(group);
-      // A floor remains physically present. Only the actual vision/memory
-      // mask reveals its cells, never an entire rectangular room at once.
-      const floorType=roomPixelSurface(site.archetype,room.purpose??room.kind);
-      const base=this.solid(room.kind==='hall'?theme.hall:
-        roomFloor(theme,room.purpose,room.tone),.92,floorType);
-      // Connected blueprint cells make one continuous physical floor surface.
-      // Legacy floor inset stays unchanged for historical visual parity.
-      const floorInset=site.programLocked?0:2;
-      this.box(group,room.x+room.w/2,-.8,room.y+room.h/2,
-        room.w-floorInset,1.6,room.h-floorInset,base,false);
-      // One whole-surface spatial aging field: rooms transform before decals.
-      // Each room uses a small seeded map, with edge/fixture influences.
-      if(effectiveCondition(site)>0){
-        const texture=new THREE.DataTexture(conditionFloorPixels(site,room),64,64,THREE.RGBAFormat);
-        texture.colorSpace=THREE.SRGBColorSpace;
-        texture.magFilter=THREE.NearestFilter;
-        texture.minFilter=THREE.LinearMipmapLinearFilter;
-        texture.generateMipmaps=true;texture.needsUpdate=true;
-        const material=new THREE.MeshBasicMaterial({map:texture,transparent:true,
-          depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1,
-          side:THREE.DoubleSide});
-        this.sitePatinaTextures.push(texture);this.sitePatinaMaterials.push(material);
-        this.patinaRoomSurfaces.push({room,texture});
-        const overlay=this.plane(group,room.x+room.w/2,room.y+room.h/2,
-          room.w-floorInset,room.h-floorInset,.04,material);
-        overlay.castShadow=false;overlay.receiveShadow=false;
-      }
-      // Pixel tile/board joints are already in the shared repeating texture.
-      // Avoid redundant grout meshes and draw calls.
-    }
-    // Sparse, instanced fragments collect against physical room boundaries.
-    // These are tiny render-only fragments, never new cover or navigation.
-    const fragments=planInteriorFragments(site);
-    const fragmentMaterial=this.solid(0x9b8e78,.98,'gravel');
-    const fragmentGeometry=new THREE.BoxGeometry(1,1,1);
-    const transform=new THREE.Object3D();
-    // Group fragment instances once, instead of rescanning the complete
-    // fragment list for every separate floor rectangle on large maps.
-    const fragmentsByRoom=new Map<string,typeof fragments>();
-    for(const fragment of fragments){
-      const group=fragmentsByRoom.get(fragment.roomId)??[];
-      group.push(fragment);fragmentsByRoom.set(fragment.roomId,group);
-    }
-    for(const room of site.rooms){
-      const entries=fragmentsByRoom.get(room.id)??[];
-      if(!entries.length)continue;
-      const group=decorativeRoomGroups.get(room.id);if(!group)continue;
-      const batch=new THREE.InstancedMesh(fragmentGeometry,fragmentMaterial,entries.length);
-      const fragmentColors:Record<InteriorFragment['kind'],number>={
-        flake:0xb6a893,dust:0x8b816d,plaster:0xc9bbaa,
-        leaf:0x647257,paper:0xe3dccc,glass:0x8fbac0,
-      };
-      batch.frustumCulled=false;batch.castShadow=false;batch.receiveShadow=false;
-      for(const [i,f] of entries.entries()){
-        transform.position.set(f.x,.65,f.y);
-        transform.rotation.set(0,f.angle,0);
-        transform.scale.set(f.size,.5,f.size*.6);
-        transform.updateMatrix();batch.setMatrixAt(i,transform.matrix);
-        batch.setColorAt(i,new THREE.Color(fragmentColors[f.kind]));
-      }
-      batch.instanceMatrix.needsUpdate=true;
-      if(batch.instanceColor)batch.instanceColor.needsUpdate=true;
-      group.add(batch);
-    }
-    if(!fragments.length)fragmentGeometry.dispose();
-    // Condition-dependent floor patina stays inside its room's fog group.
-    // Decals are decorative only; they create no collision or cover.
-    const wearColor:Record<WearKind,number>={
-      dust:0x92816c,stain:0x655e4b,scrape:0xb2ae9e,scuff:0x444d47,
-      oil:0x373834,grease:0x4e4538,rust:0xa2693f,chip:0xbab0a0,
-      crack:0x4c4a43,scratch:0xd1cab7,drip:0x6e7771,mud:0x6b5641,
-      footprint:0x655647,mineral:0xd3cec1,fade:0xc6bfaa,
-      soot:0x343c39,moss:0x59714e,'paint-peel':0xbdb19f,
-      fray:0xc4b9aa,abrade:0x918878,
+  /** Scene lifecycle owns all resources; builders receive only the current
+   * site's collections and mesh factories, never the live simulation. */
+  private siteBuildPort():SiteSceneBuildPort{
+    const scene=this;
+    return {
+      root:scene.root,
+      box:(...args)=>scene.box(...args),
+      plane:(...args)=>scene.plane(...args),
+      solid:(...args)=>scene.solid(...args),
+      groundOverlayMaterial:kind=>scene.groundOverlayMaterial(kind),
+      signMaterial:(...args)=>scene.signMaterial(...args),
+      addSurfaceWear:(...args)=>scene.addSurfaceWear(...args),
+      staticBatches:scene.staticBatches,
+      sharedBoxGeometries:scene.sharedBoxGeometries,
+      siteMaterials:scene.siteMaterials,
+      mats:scene.mats,
+      walls:scene.walls,
+      doors:scene.doors,
+      observedDoorOpen:scene.observedDoorOpen,
+      observedDoorGlass:scene.observedDoorGlass,
+      windowGlass:scene.windowGlass,
+      architecturalOpenings:scene.architecturalOpenings,
+      intelSurfaces:scene.intelSurfaces,
+      observedDetails:scene.observedDetails,
+      roofGroups:scene.roofGroups,
+      get roofMaterial(){return scene.roofMaterial;},
+      set roofMaterial(value){scene.roofMaterial=value;},
+      get windowPaneMaterial(){return scene.windowPaneMaterial;},
+      set windowPaneMaterial(value){scene.windowPaneMaterial=value;},
+      patinaRoomSurfaces:scene.patinaRoomSurfaces,
+      patinaWallSurfaces:scene.patinaWallSurfaces,
+      sitePatinaTextures:scene.sitePatinaTextures,
+      sitePatinaMaterials:scene.sitePatinaMaterials,
+      wallMaterials:scene.wallMaterials,
+      wearMaterials:scene.wearMaterials,
+      wearTextures:scene.wearTextures,
+      wearBoost:scene.wearBoost,
+      get currentWear(){return scene.currentWear;},
+      set currentWear(value){scene.currentWear=value;},
+      get objectWear(){return scene.objectWear;},
+      set objectWear(value){scene.objectWear=value;},
+      coverGroups:scene.coverGroups,
+      coverVisualStates:scene.coverVisualStates
     };
-    this.currentWear=[...planEnvironmentalWear(site),...planActivityWear(site),
-      ...planHistoryWear(site),...planThresholdTrafficWear(site)];
-    for(const detail of this.currentWear){
-      const roomGroup=decorativeRoomGroups.get(detail.roomId);
-      if(!roomGroup)continue;
-      const bucket=wearOpacityBucket(detail.opacity);
-      const wearKey=detail.kind+':'+bucket;
-      let material=this.wearMaterials.get(wearKey);
-      if(!material){
-        let texture=this.wearTextures.get(detail.kind);
-        if(!texture){
-          texture=new THREE.DataTexture(wearPixels(detail.kind),32,32,THREE.RGBAFormat);
-          texture.colorSpace=THREE.SRGBColorSpace;
-          texture.magFilter=THREE.NearestFilter;
-          texture.minFilter=THREE.LinearMipmapLinearFilter;
-          texture.generateMipmaps=true;
-          texture.needsUpdate=true;
-          this.wearTextures.set(detail.kind,texture);
-        }
-        material=new THREE.MeshBasicMaterial({
-          color:wearColor[detail.kind],map:texture,transparent:true,
-          opacity:Math.min(1,WEAR_ALPHA_BANDS[bucket]*this.wearBoost),
-          depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1,
-          side:THREE.DoubleSide});
-        this.wearMaterials.set(wearKey,material);
-        this.mats.push(material);
-      }
-      const patch=this.plane(roomGroup,detail.x,detail.y,
-        detail.width,detail.depth,.09,material);
-      patch.rotation.z=detail.rotation;
-      patch.castShadow=false;patch.receiveShadow=false;
-    }
-    // Light, room-aware roof slabs for known but unoccupied interiors.
-    // Unknown rooms have NO roof geometry exposed above the ground fog.
-    if(!this.roofMaterial){
-      this.roofMaterial=new THREE.MeshStandardMaterial({
-        color:theme.cap,roughness:.95,transparent:true,
-        opacity:.21,depthWrite:false,side:THREE.DoubleSide});
-      this.mats.push(this.roofMaterial);
-    }else this.roofMaterial.color.setHex(theme.cap);
-    // Camera cutaway roofs are independent of fog-of-war discovery.
-    // Removing one to see a friendly does NOT reveal unseen floor cells.
-    for(const room of site.rooms){
-      const roof=new THREE.Group();
-      roof.visible=false;this.root.add(roof);
-      this.roofGroups.set(room.id,roof);
-      this.box(roof,room.x+room.w/2,WALL_VISUAL_HEIGHT+3,room.y+room.h/2,
-        Math.max(12,room.w+2),2,Math.max(12,room.h+2),
-        this.roofMaterial,false).receiveShadow=false;
-    }
-    const wallMat=this.solid(age(theme.wall,wallPixelSurface(site.archetype)),.94,wallPixelSurface(site.archetype)),
-      capMat=this.solid(theme.cap,.94,'concrete');
-    const skirting=this.solid(theme.trim,.91,'painted-wood');
-    // These known exterior frames must compose AFTER the ground-aligned
-    // concealment overlay. Clone shared opaque materials once per site:
-    // otherwise promoting a window sill would also expose interior props.
-    // Every clone is retired by siteMaterials.reset() on mission swap.
-    const facadeMaterialCache=new Map<THREE.Material,THREE.Material>();
-    const promoteFacadeDetails=(group:THREE.Object3D)=>{
-      group.traverse(node=>{
-        if(!(node instanceof THREE.Mesh)||Array.isArray(node.material))return;
-        const original=node.material;
-        if(!original.transparent){
-          let material=facadeMaterialCache.get(original);
-          if(!material){
-            material=this.siteMaterials.track(original.clone());
-            material.transparent=true;
-            material.needsUpdate=true;
-            facadeMaterialCache.set(original,material);
-          }
-          node.material=material;
-        }
-        node.userData.fogFacade=true;
-        node.renderOrder=1002;
-      });
-    };
-    for(const [index,wall] of site.walls.entries()){
-      const group=new THREE.Group();this.root.add(group);
-      this.intelSurfaces.push({obj:group,kind:'wall',index});
-      const {a,b}=wall,len=Math.hypot(b.x-a.x,b.y-a.y);
-      if(len<5)continue;
-      const exterior=accessibleExteriorWall(site,wall);
-      const x=(a.x+b.x)/2,z=(a.y+b.y)/2;
-      const angle=-Math.atan2(b.y-a.y,b.x-a.x);
-      const individualWall=wallMat.clone();
-      this.wallMaterials.add(individualWall);
-      const body=this.box(group,x,WALL_VISUAL_HEIGHT/2,z,
-        len,WALL_VISUAL_HEIGHT,9,individualWall);
-      body.rotation.y=angle;
-      // Whole-wall weathering follows the actual structural wall mesh.
-      // Both faces share one deterministic texture, while a single instance
-      // controls opacity during close-camera cutaways.
-      if(effectiveCondition(site)>0){
-        const texture=new THREE.DataTexture(conditionWallPixels(site,index),64,64,THREE.RGBAFormat);
-        texture.colorSpace=THREE.SRGBColorSpace;
-        texture.magFilter=THREE.NearestFilter;
-        texture.minFilter=THREE.LinearMipmapLinearFilter;
-        texture.generateMipmaps=true;texture.needsUpdate=true;
-        const material=new THREE.MeshBasicMaterial({map:texture,transparent:true,
-          depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1,
-          side:THREE.DoubleSide});
-        this.sitePatinaTextures.push(texture);this.sitePatinaMaterials.push(material);
-        this.patinaWallSurfaces.push({index,texture});
-        body.userData.patinaMaterial=material;
-        // A single mesh carries front and rear patina. Unlike two separate
-        // transparent planes this submits one WebGL draw for each wall.
-        const wearMesh=new THREE.Mesh(doubleSidedWallWear(len,WALL_VISUAL_HEIGHT-.4),material);
-        wearMesh.castShadow=false;wearMesh.receiveShadow=false;
-        body.add(wearMesh);
-      }
-      this.walls.push({mesh:body,mid:{x,y:z},segment:wall,index,exterior});
-      // These child textures are already transparent, but would otherwise
-      // draw BEFORE the fog and disappear from the restored façade.
-      if(exterior)body.traverse(child=>{
-        if(child!==body&&child instanceof THREE.Mesh)child.renderOrder=1002;
-      });
-      for(const mark of marksOn('wall',index))
-        this.addSurfaceWear(body,mark,(mark.u-.5)*len,(mark.v-.5)*(WALL_VISUAL_HEIGHT-8),
-          mark.face==='back'?-4.6:4.6,wallPixelSurface(site.archetype));
-      const individualFoot=skirting.clone();
-       this.wallMaterials.add(individualFoot);
-       const foot=this.box(group,x,2,z,len,4,12,individualFoot,false);
-       foot.rotation.y=angle;
-       this.walls.push({mesh:foot,mid:{x,y:z},segment:wall,index,exterior});
-      const individualCap=capMat.clone();
-      this.wallMaterials.add(individualCap);
-      const cap=this.box(group,x,WALL_VISUAL_HEIGHT+.3,z,len,2,11,
-         individualCap,false);
-      cap.rotation.y=angle;this.walls.push({mesh:cap,mid:{x,y:z},segment:wall,index,exterior});
-    }
-    const openingHost:SiteOpeningsHost={
-      root:this.root,
-      box:(...args)=>this.box(...args),
-      solid:(...args)=>this.solid(...args),
-      age:(hex,surface)=>age(hex,surface),
-      track:material=>this.siteMaterials.track(material),
-      addSurfaceWear:(...args)=>this.addSurfaceWear(...args),
-      marksOn,promoteFacadeDetails,
-      registerArch:(opening,obj)=>this.architecturalOpenings.push({opening,obj}),
-      registerDoor:(id,visual)=>this.doors.set(id,visual),
-      recordDoorGlass:(id,value)=>this.observedDoorGlass.set(id,value),
-      recordDoorOpen:(id,value)=>this.observedDoorOpen.set(id,value),
-      registerGlass:(id,glass)=>this.windowGlass.set(id,glass),
-      registerWallSurface:(obj,index)=>this.intelSurfaces.push({obj,kind:'wall',index})
-    };
-    buildArchitecturalOpenings(site,openingHost,this.solid(theme.trim));
-    const doorTrim=this.solid(age(theme.trim,'painted-wood'),.9,'painted-wood');
-    const metal=this.solid(0x586665,.78,'industrial-steel');
-    buildSiteDoors(site,openingHost,{theme,doorTrim,metal});
-    const fixtureCtx:FixtureVisualContext={
-      box:(parent,x,y,z,w,h,d,material,cast)=>
-        this.box(parent,x,y,z,w,h,d,material,cast),
-      solid:(hex,roughness,surface)=>this.solid(age(hex,surface),roughness,surface),
-    };
-    site.cover.forEach((c,i)=>{
-      const group=new THREE.Group();this.root.add(group);
-      this.coverGroups.set(i,group);
-      this.intelSurfaces.push({obj:group,kind:'cover',index:i});
-      // The aperture renderer already creates the sill/parapet. Its cover
-      // footprint still blocks passage; do not place a second box on it.
-      if(isArchitecturalSillCover(site,c))return;
-      // Build models in local coordinates, so rotating a chair also rotates
-      // its back, legs and surface wear around its actual center.
-      group.position.set(c.x,0,c.y);
-      group.rotation.y=(c.orientation??0)*Math.PI/2;
-      const turned=(c.orientation??0)%2===1;
-      const visual={...c,x:0,y:0,w:turned?c.h:c.w,h:turned?c.w:c.h};
-      const intact=new THREE.Group(),debris=new THREE.Group();
-      group.add(intact,debris);
-      debris.visible=false;
-      this.coverVisualStates.set(i,{intact,debris});
-      // Five deterministic condition tones prevent furniture from looking
-      // as though every object aged uniformly at precisely the same rate.
-      const variant=((i%5)-2)/2;
-      const localCtx:FixtureVisualContext={...fixtureCtx,
-        solid:(hex,roughness,surface)=>this.solid(age(hex,surface,variant),roughness,surface)};
-      renderFixtureVisual(intact,visual,i,localCtx,
-        this.solid(age(theme.wood,'furniture-wood',variant),.9,'furniture-wood'),
-        this.solid(age(0x465958,'metal',variant),.8,'metal'),
-        this.solid(age(0x70715e,'fabric',variant),.9,'fabric'),
-        this.solid(age(0x586665,'industrial-steel',variant),.78,'industrial-steel'));
-      for(const mark of marksOn('fixture',i)){
-        const height=visibleSurfaceHeight(c.fixture??'crate');
-        if(height<8)continue;
-        this.addSurfaceWear(intact,mark,(mark.u-.5)*visual.w,
-          Math.min(height-2,Math.max(3,mark.v*height)),visual.h/2+.8,
-          fixturePixelSurface(c.fixture));
-      }
-      // Destruction never scales a complete shelving/cabinet silhouette into
-      // a miniature. A collapsed fixture becomes low, irregular remnants
-      // centered on the ACTUAL reduced physical footprint instead.
-      const residue=this.solid(age(theme.wood,'furniture-wood',variant),
-        .93,'furniture-wood');
-      const slag=this.solid(age(0x4c5955,'industrial-steel',variant),
-        .85,'industrial-steel');
-      for(let j=0;j<3;j++){
-        const sx=(j%3-1)*visual.w*.105,sz=(Math.floor(j/3)-.5)*visual.h*.15;
-        const width=Math.max(3.2,visual.w*(j%2?.16:.20));
-        const depth=Math.max(3.2,visual.h*(j%2?.18:.20));
-        const height=2.3+(j%3)*1.3;
-        const fragment=this.box(debris,sx,height/2+.35,sz,
-          width,height,depth,j%2?slag:residue,false);
-        fragment.rotation.y=(j%2?-.22:.27);
-        fragment.castShadow=false;
-      }
-    });
-    // Glass does not impede sight; the low sill does impede traversal.
-    if(!this.windowPaneMaterial){
-      this.windowPaneMaterial=new THREE.MeshStandardMaterial({
-        color:0xa7bdb9,roughness:.25,transparent:true,opacity:.35,
-        side:THREE.DoubleSide,depthWrite:false});
-      this.mats.push(this.windowPaneMaterial);
-    }
-    const paneMat=this.windowPaneMaterial;
-    buildSiteWindows(site,openingHost,{paneMat,wallMat,doorTrim,metal});
-    // Wall-mounted art and electrical hardware inherit room visibility.
-    // They do not add collision, cover or new sightline blockers.
-    const wallPaper=this.solid(0xb8ad8e,.97,'paper'),wallFrame=this.solid(0x615246,.9,'wood');
-    const wallMetal=this.solid(0x697b79,.81,'metal'),wallDark=this.solid(0x343e3c,.82,'metal');
-    const wallRed=this.solid(0xa66f57,.92,'paper');
-    for(const detail of site.wallDetails??[]){
-      if(!decorativeRoomGroups.has(detail.roomId))continue;
-      const prop=new THREE.Group();
-      prop.position.set(detail.x,detail.height,detail.y);
-      prop.rotation.y=detail.angle;
-      const w=detail.width,h=detail.depth;
-      switch(detail.kind){
-      case 'poster': case 'picture': case 'noticeboard':
-        this.box(prop,0,0,0,w,h,.9,
-          detail.kind==='noticeboard'?wallFrame:wallPaper,false);
-        this.box(prop,0,0,.65,w-2,h-2,.5,
-          detail.kind==='poster'?wallRed:
-          detail.kind==='noticeboard'?wallPaper:wallMetal,false);
-        this.box(prop,-w*.12,h*.14,.99,w*.45,1,.15,wallPaper,false);
-        // A single shared texture communicates print/layout without extra geometry.
-        const printed=new THREE.Mesh(new THREE.PlaneGeometry(w-3,h-3),
-          this.signMaterial(detail.kind,site.seed));
-        printed.position.z=1.18;prop.add(printed);
-        break;
-      case 'menu-board':case 'promotion-sign':case 'business-sign':
-      case 'wayfinding-sign':case 'safety-sign':{
-        const pixelKind=detail.kind==='menu-board'?'menu':
-          detail.kind==='promotion-sign'?'sale':
-          detail.kind==='business-sign'?'business':
-          detail.kind==='safety-sign'?'safety':'wayfinding';
-        const base=detail.kind==='safety-sign'?wallRed:
-          detail.kind==='menu-board'?wallDark:wallMetal;
-        this.box(prop,0,0,0,w,h,1.6,base,false);
-        this.box(prop,0,0,1,w-2,h-2,.4,wallPaper,false);
-        const front=new THREE.Mesh(new THREE.PlaneGeometry(w-3,h-3),
-          this.signMaterial(pixelKind,site.seed+detail.roomId.length));
-        front.position.z=1.25;prop.add(front);
-        break;
-      }
-      case 'exit-sign':
-        this.box(prop,0,0,0,w,h,1.3,wallRed,false);
-        this.box(prop,0,0,.8,w*.67,2,.3,wallPaper,false);
-        const exitGraphic=new THREE.Mesh(new THREE.PlaneGeometry(w-2,h-2),
-          this.signMaterial('exit'));
-        exitGraphic.position.z=1.05;prop.add(exitGraphic);
-        break;
-      case 'light-switch':
-        this.box(prop,0,0,0,w,h,1.3,wallPaper,false);
-        this.box(prop,0,0,1,1.4,3,.8,wallDark,false);
-        break;
-      case 'breaker-panel': case 'electrical-box':
-        this.box(prop,0,0,0,w,h,3,wallMetal,false);
-        this.box(prop,w*.25,0,1.8,1.5,h*.6,1,wallDark,false);
-        if(detail.kind==='breaker-panel')
-          for(const y of [-5,0,5])
-            this.box(prop,-w*.16,y,2.2,w*.35,1.5,.7,wallDark,false);
-        break;
-      }
-      this.root.add(prop);
-      this.observedDetails.push({obj:prop,position:{x:detail.x,y:detail.y},
-        microKey:'micro:'+Math.floor(detail.x/10)+','+Math.floor(detail.y/10),
-        fineKey:'fine:'+Math.floor(detail.x/20)+','+Math.floor(detail.y/20)});
-    }
-    // Story props are discovered individually. Entering a room never
-    // reveals its contents outside an operator's observed cone.
-    const smallWood=this.solid(0x9a8669,.91,'wood'),smallPaper=this.solid(0xb8b4a0,.97,'paper');
-    const smallGreen=this.solid(0x5f7b51,.94,'foliage'),smallClay=this.solid(0x947b60,.92,'concrete');
-    for(const detail of site.dressing??[]){
-      if(!decorativeRoomGroups.has(detail.roomId))continue;
-      const prop=new THREE.Group();
-      prop.position.set(detail.x,detail.elevation,detail.y);
-      prop.rotation.y=detail.angle;
-      switch(detail.kind){
-      case 'mug':
-        this.box(prop,0,2,0,5,4,5,smallClay,false);break;
-      case 'books':
-        for(let i=0;i<3;i++)this.box(prop,i*4-4,1.5,0,3,3,10,smallWood,false);
-        break;
-      case 'papers':
-        this.box(prop,0,.35,0,12,.7,9,smallPaper,false);break;
-      case 'tools':
-        this.box(prop,0,1.5,0,13,2,3,smallWood,false);
-        this.box(prop,3,1.5,3,3,3,7,smallPaper,false);break;
-      case 'packages':{
-        this.box(prop,0,5,0,11,10,9,smallWood,false);
-        const label=new THREE.Mesh(new THREE.PlaneGeometry(7,5),
-          this.signMaterial('package',site.seed));
-        label.position.set(0,6,4.61);prop.add(label);break;
-      }
-      case 'plant':
-        this.box(prop,0,4,0,8,8,8,smallClay,false);
-        this.box(prop,0,12,0,11,9,11,smallGreen,false);break;
-      case 'lamp':
-        this.box(prop,0,8,0,2,16,2,smallWood,false);
-        this.box(prop,0,17,0,12,7,12,smallPaper,false);break;
-      case 'floor-lamp':
-        this.box(prop,0,.8,0,10,1.6,10,smallWood,false);
-        this.box(prop,0,15,0,2,29,2,smallWood,false);
-        this.box(prop,0,31,0,13,9,13,smallPaper,false);break;
-      case 'rug': case 'bedside-rug': case 'bath-mat':
-      case 'welcome-mat': case 'runner':{
-        const palette=detail.kind==='bath-mat'?0x728b83:
-          detail.kind==='runner'?0x8a7c63:
-          detail.kind==='welcome-mat'?0x635646:
-          detail.kind==='bedside-rug'?0x8a7865:0x93765e;
-        const textile=this.solid(palette,.95,'fabric');
-        const border=this.solid(0xc1b295,.95,'fabric');
-        const w=detail.width??42,d=detail.depth??24;
-        this.box(prop,0,.11,0,w,.22,d,textile,false);
-        if(w>16&&d>12)this.box(prop,0,.23,0,w-4,.08,d-4,border,false);
-        if(w>21&&d>15)this.box(prop,0,.28,0,w-8,.08,d-8,textile,false);
-        break;
-      }
-      }
-      this.root.add(prop);
-      this.observedDetails.push({obj:prop,position:{x:detail.x,y:detail.y},
-        microKey:'micro:'+Math.floor(detail.x/10)+','+Math.floor(detail.y/10),
-        fineKey:'fine:'+Math.floor(detail.x/20)+','+Math.floor(detail.y/20)});
-    }
-    // Important: avoid visual-only furniture outside authoritative cover.
   }
   private buildWorld(site=activeSite()){
-    const earth=this.solid(0x34443e),road=this.solid(0x5d6358);
-    const gravel=this.solid(0x6c7061),floorA=this.solid(0x817d6b);
-    const floorB=this.solid(0x526b68),timber=this.solid(0x4b4437);
-    const metal=this.solid(0x525e5d,.62),rust=this.solid(0x715e4d);
-    const roof=this.solid(0x515d58),glass=this.solid(0x748b83,.18);
-    if(site){this.buildGenerated(site);return;}
-    this.plane(this.root,W/2,H/2,W,H,-2,earth);
-    this.box(this.root,303,-1,630,124,1,215,road,false);
-    this.box(this.root,294,-.15,643,7,.2,178,gravel,false);
-    this.box(this.root,355,-.15,643,8,.2,178,gravel,false);
-    // Two genuinely distinct interior floor constructions.
-    this.box(this.root,247,-.65,316,270,1.5,432,floorA,false);
-    this.box(this.root,485,-.65,316,207,1.5,432,floorB,false);
-    const tile=this.solid(0x9a9683);
-    const grout:Pt[]=[];
-    for(let x=122;x<580;x+=28)for(let z=114;z<523;z+=28)
-      grout.push({x,y:z});
-    const strips=new THREE.InstancedMesh(
-      new THREE.BoxGeometry(27,.10,1),tile,grout.length);
-    const transform=new THREE.Object3D();
-    grout.forEach((p,i)=>{
-      transform.position.set(p.x,-.05,p.y);transform.updateMatrix();
-      strips.setMatrixAt(i,transform.matrix);
-    });
-    strips.instanceMatrix.needsUpdate=true;strips.receiveShadow=true;
-    this.root.add(strips);
-    const crossGrout=new THREE.InstancedMesh(
-      new THREE.BoxGeometry(1,.10,27),tile,grout.length);
-    grout.forEach((p,i)=>{
-      transform.position.set(p.x,-.04,p.y);transform.updateMatrix();
-      crossGrout.setMatrixAt(i,transform.matrix);
-    });
-    crossGrout.instanceMatrix.needsUpdate=true;
-    crossGrout.receiveShadow=true;this.root.add(crossGrout);
-    // Each wall is one real mesh. Simulation geometry remains authoritative.
-    for(let i=0;i<WALLS.length;i++){
-      const segment=WALLS[i];
-      const p1=segment.a,p2=segment.b;
-      const dx=p2.x-p1.x,dz=p2.y-p1.y;
-      const len=Math.hypot(dx,dz);
-      const mesh=this.box(this.root,(p1.x+p2.x)/2,WALL_VISUAL_HEIGHT/2,
-        (p1.y+p2.y)/2,len+3,WALL_VISUAL_HEIGHT,9,this.solid(i===4?0x81877d:0xb4a991));
-      mesh.rotation.y=-Math.atan2(dz,dx);
-      this.walls.push({mesh,mid:{x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2},segment,index:i,exterior:i<5});
-      // Dark skirting separates the wall footprint from similar floor values.
-      const skirting=this.box(this.root,mesh.position.x,2,mesh.position.z,
-        len+4,4,12,this.solid(0x36453f),false);
-      skirting.rotation.y=mesh.rotation.y;
-       this.walls.push({mesh:skirting,mid:{x:mesh.position.x,y:mesh.position.z},segment,index:i,exterior:i<5});
-      // A dark, legible wall cap communicates height in either camera mode.
-      const cap=this.box(this.root,mesh.position.x,WALL_VISUAL_HEIGHT+.3,
-        mesh.position.z,
-        len+4,2,11,this.solid(0x51483a),false);cap.rotation.y=mesh.rotation.y;
-      this.walls.push({mesh:cap,mid:{x:mesh.position.x,y:mesh.position.z},segment,index:i,exterior:i<5});
-    }
-    for(const x of [209,502]){
-      const pane=this.box(this.root,x+25,16,99,51,21,2,glass,false);
-      this.box(this.root,x+25,28,97,56,2,5,timber,false);
-      this.box(this.root,x+25,4,97,56,2,5,timber,false);
-      pane.castShadow=false;
-    }
-    // 080: Doorways are real stateful meshes, not slabs that disappear.
-    const doorMat=this.solid(0xab8655),doorTrim=this.solid(0xe0c28c);
-    const thresholdMat=this.solid(0xc19b5c);
-    for(const [doorIndex,sourceDoor] of initialDoors().entries()){
-      const door=initDoor(sourceDoor,doorIndex);
-      const width=Math.hypot(door.a.x-door.b.x,door.a.y-door.b.y);
-      const p=doorCenter(door);
-      const group=new THREE.Group();group.position.set(p.x,0,p.y);
-      group.rotation.y=-Math.atan2(door.b.y-door.a.y,door.b.x-door.a.x);
-      const frame=new THREE.Group();group.add(frame);
-      const profile=doorProportions(door);
-      const jambX=width/2+profile.jambWidth/2-DOOR_FRAME_INSET;
-      for(const side of [-1,1]){
-        this.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,0,
-          profile.jambWidth,DOOR_CLEAR_VISUAL_HEIGHT,profile.jambDepth,doorTrim);
-        this.box(frame,side*jambX,DOOR_CLEAR_VISUAL_HEIGHT/2,
-          profile.jambDepth/2+1.25,profile.casingWidth,
-          DOOR_CLEAR_VISUAL_HEIGHT-3,
-          profile.casingDepth,doorTrim,false);
-      }
-      this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight/2,0,
-        width+2*profile.jambWidth,
-        profile.headerHeight,profile.headerDepth,doorTrim);
-      this.box(frame,0,DOOR_CLEAR_VISUAL_HEIGHT+profile.headerHeight+.5,1.50,
-        width+2*profile.jambWidth+1,
-        1.1,profile.headerDepth+.8,doorTrim,false);
-      const threshold=this.box(frame,0,.275,0,width,
-        profile.thresholdHeight,profile.thresholdDepth,thresholdMat,false);
-      const hinge=new THREE.Group();hinge.position.x=door.hinge==='b'?width/2:-width/2;
-      group.add(hinge);
-      this.box(hinge,(door.hinge==='b'?-1:1)*width/2,
-        DOOR_LEAF_VISUAL_HEIGHT/2,0,
-        width-2*DOOR_PANEL_END_RECESS,DOOR_LEAF_VISUAL_HEIGHT,profile.leafThickness,doorMat);
-      for(const side of [-1,1])
-        this.box(hinge,(door.hinge==='b'?-1:1)*width*.7,18,
-          side*(profile.leafThickness/2+1),3,4,2,doorTrim,false);
-      const halo=doorSweepArc(door,width);
-      group.add(halo);
-      this.root.add(group);
-      const wedge=this.box(frame,0,1.9,6,6,2.7,6,thresholdMat,false);
-      wedge.visible=false;
-      this.doors.set(door.id,{root:group,leaf:hinge,frame,halo,threshold,wedge});
-      this.observedDoorOpen.set(door.id,0);
-    }
-    // Furniture height matches cover classification: low crates vs high cabinets.
-    for(let i=0;i<COVER.length;i++){
-      const c=COVER[i],height=c.low?11:27;
-      this.box(this.root,c.x,height/2,c.y,c.w,height,c.h,
-        i%3===0?metal:i%3===1?timber:rust);
-      if(c.low){
-        this.box(this.root,c.x,height+1,c.y,c.w-5,2,c.h-5,roof,false);
-        for(let j=0;j<3;j++)
-          this.box(this.root,c.x-c.w/3+j*c.w/3,height+2,c.y,
-            2,3,c.h-4,timber,false);
-      }else{
-        for(let j=0;j<3;j++)
-          this.box(this.root,c.x-c.w/3+j*c.w/3,height*.55,c.y+c.h/2+.8,
-            1,8,2,metal,false);
-      }
-    }
-    // Authored practical scenery beyond the collision boxes.
-    const objects=[
-      [190,143,32,17,12],[232,458,44,13,19],[440,306,21,25,20],
-      [510,340,48,12,16],[175,570,62,14,26],[489,653,46,16,33],
-    ];
-    for(const [x,z,w,h,d] of objects){
-      this.box(this.root,x,h/2,z,w,h,d,timber);
-      this.box(this.root,x,h+.5,z,w+2,1,d+2,metal,false);
-    }
-    // Yard fence with actual posts, worn cross rails, perimeter clutter.
-    for(const x of [62,608])for(let z=90;z<=560;z+=45){
-      this.box(this.root,x,11,z,4,22,4,timber);
-      if(z<545)this.box(this.root,x,13,z+22,2,2,44,rust,false);
-    }
-    const barrel=this.solid(0x6b7369),barrelTop=this.solid(0x343c39);
-    for(const [x,z] of [[170,653],[473,654],[545,701],[102,656],
-      [116,557],[548,574]]){
-      const cyl=new THREE.Mesh(new THREE.CylinderGeometry(10,10,20,9),barrel);
-      cyl.position.set(x,10,z);cyl.castShadow=true;this.root.add(cyl);
-      const top=new THREE.Mesh(new THREE.CylinderGeometry(10.1,10.1,2,9),barrelTop);
-      top.position.set(x,21,z);this.root.add(top);
-    }
-    // Small intentional vegetation grouped around the outside boundaries.
-    const foliage=[this.solid(0x526749),this.solid(0x64724d),
-      this.solid(0x4b5f4b)],stem=this.solid(0x565546);
-    for(let i=0;i<105;i++){
-      const x=15+((i*73)%607),z=21+((i*129)%697);
-      if(x>107&&x<595&&z>98&&z<545)continue;
-      if(Math.abs(x-303)<73&&z>525)continue;
-      const m=this.box(this.root,x,3.5,z,2,7,2,stem,false);
-      const bush=new THREE.Mesh(new THREE.IcosahedronGeometry(1,0),
-        foliage[i%3]);bush.position.set(x,9,z);
-      bush.scale.set(6+(i%5)*2,6+(i%4)*2,7+(i%3)*2);
-      bush.castShadow=i%4===0;this.root.add(bush);
-      void m;
-    }
-    // Exterior hardware makes the station identifiable as a real place.
-    const pole=this.solid(0x655e4d);
-    for(const [x,z] of [[84,150],[603,510]]){
-      this.box(this.root,x,52,z,5,104,5,pole);
-      this.box(this.root,x,98,z,37,3,3,timber);
-    }
-    // A translucent roof lip gives silhouette without covering any rooms.
-    const lip=this.box(this.root,352,36,100,474,5,18,roof,false);
-    lip.castShadow=false;
-    this.box(this.root,348,35,535,460,3,13,roof,false);
+    buildSiteWorld(site,this.siteBuildPort());
   }
   resize(w:number,h:number){
     this.width=Math.max(1,w);this.height=Math.max(1,h);

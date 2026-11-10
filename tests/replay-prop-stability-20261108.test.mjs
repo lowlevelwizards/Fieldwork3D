@@ -26,7 +26,9 @@ test('fixed utility cabinets never occupy the actual street footprint',()=>{
 
 test('a collapsed shelf renders as debris rather than scaled intact geometry',()=>{
  const code=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
- assert.match(code,/renderFixtureVisual\(intact,visual,i,localCtx,/);
+ const builder=readFileSync(new URL('../src/rendering/breach-site-scene-builder.ts',import.meta.url),'utf8');
+ assert.match(builder,/renderFixtureVisual\(intact,visual,i,localCtx,/);
+ assert.match(builder,/host\.coverVisualStates\.set\(i,\{intact,debris\}\)/);
  assert.match(code,/visuals\.intact\.visible=!collapsed/);
  assert.match(code,/visuals\.debris\.visible=collapsed/);
  assert.match(code,/group\.scale\.set\(collapsed\?1:transform\.scaleX,/);

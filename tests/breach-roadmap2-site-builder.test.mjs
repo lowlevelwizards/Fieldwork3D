@@ -10,8 +10,10 @@ test('site material policy remains a complete color catalog',()=>{
   assert.ok(Number.isInteger(SITE_PROPERTY_SURFACE_COLORS[kind]));
 });
 test('scene delegates deterministic micro-debris geometry instead of duplicating it',()=>{
- const scene=source('breach-3d.ts'),builder=source('rendering/breach-site-micro-debris.ts');
- assert.match(scene,/buildSiteMicroDebrisMeshes\(site/);
+ const scene=source('breach-3d.ts'),siteBuilder=source('rendering/breach-site-scene-builder.ts'),
+  builder=source('rendering/breach-site-micro-debris.ts');
+ assert.match(scene,/buildSiteWorld\(site,this\.siteBuildPort\(\)\)/);
+ assert.match(siteBuilder,/buildSiteMicroDebrisMeshes\(site/);
  assert.doesNotMatch(scene,/planMicroDebris\(site\)/);
  assert.match(builder,/planMicroDebris\(site\)/);
  assert.match(builder,/new THREE.InstancedMesh/);

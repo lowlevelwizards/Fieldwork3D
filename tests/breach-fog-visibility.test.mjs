@@ -39,7 +39,9 @@ test('3D fog stays ground-aligned and hides unobserved object details',()=>{
  assert.match(code,/exteriorKnownFogRects\(site\)/);
  assert.match(code,/wallOccludesFriendly/);
  assert.match(code,/transitionWallOpacity/);
- assert.match(code,/this\.observedDetails\.push/);
+ const builder=readFileSync(new URL('../src/rendering/breach-site-scene-builder.ts',import.meta.url),'utf8');
+ assert.match(builder,/host\.observedDetails\.push/);
+ assert.match(code,/for\(const detail of this\.observedDetails\)/);
  assert.doesNotMatch(code,/roomFogRoofs|overheadFog/);
  assert.match(code,/if\(!omniscient&&!liveVisibility\(s,mark\.p\)\)continue;/);
 });
