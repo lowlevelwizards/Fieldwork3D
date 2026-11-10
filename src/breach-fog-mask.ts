@@ -1,6 +1,7 @@
 /** One low-resolution, softly filtered fog mask shared by 2D and 3D.
  * The fog presentation never changes detection or player intelligence. */
-import {W,H,type Pt} from './breach-core.ts';
+import {W,H,WALLS,COVER,type Pt} from './breach-core.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {Site,WorldBounds} from './breach-site.ts';
 import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
@@ -183,11 +184,17 @@ export function paintFogVisibility(ctx:CanvasRenderingContext2D,s:Session){
   ctx.filter='none';
   ctx.fillStyle='#fff';
   ctx.beginPath();
+  // Both 2D floor plan and 3D fog use the SAME session-owned optical
+  // geometry. Global WALLS/COVER follow whichever site was last activated,
+  // which may be a different mission or a replay being inspected.
+  const world=s.coverState?sessionWorldGeometry(s):null;
+  const walls=world?.walls??s.site?.walls??WALLS;
+  const cover=world?.cover??s.site?.cover??COVER;
   let polygonCount=0;
   for(const a of team(s)){
     if(a.health<=0)continue;
-    const poly=visionPolygon(a.p,a.heading,240,undefined,s.doors,
-      a.posture==='crouch');
+    const poly=visionPolygon(a.p,a.heading,240,walls,s.doors,
+      a.posture==='crouch',cover);
     if(poly.length<3)continue;
     ctx.moveTo(poly[0].x,poly[0].y);
     for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i].x,poly[i].y);
