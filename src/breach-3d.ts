@@ -901,6 +901,21 @@ export class TacticalScene3D{
     mesh.rotation.x=-Math.PI/2;mesh.position.set(x,y,z);
     mesh.receiveShadow=true;parent.add(mesh);return mesh;
   }
+  /** Release a stale hostile rig on a site swap OR a replay seek with a
+   * different actor roster. Hidden-yet-existing hostiles remain pooled.
+   * Never dispose the four persistent friendly operators' rig resources.
+   */
+  private retireHostileActor(id:string):void{
+    const actor=this.actors.get(id);
+    if(!actor||actor.side==='blue')return;
+    this.scene.remove(actor.root,actor.status,actor.beam,...actor.contactShadows);
+    actor.physical.dispose();
+    for(const mesh of [actor.status,actor.beam,...actor.contactShadows]){
+      mesh.geometry.dispose();
+      (mesh.material as THREE.Material).dispose();
+    }
+    this.actors.delete(id);
+  }
   /** New mission replaces *only* architectural meshes. Soldiers and
    * camera remain alive, avoiding a WebGL context restart on each site.
    */
@@ -911,16 +926,7 @@ export class TacticalScene3D{
     // indefinitely as procedural sites create new hostile actor IDs.
     for(const [id,actor] of this.actors){
       if(actor.side==='blue')continue;
-      this.scene.remove(actor.root,actor.status,actor.beam,
-        ...actor.contactShadows);
-      // The physical rig owns its meshes and the flash attached to weapon.
-      actor.physical.dispose();
-      // Scene-owned status, beam and contact shadows are independent meshes.
-      for(const mesh of [actor.status,actor.beam,...actor.contactShadows]){
-        mesh.geometry.dispose();
-        (mesh.material as THREE.Material).dispose();
-      }
-      this.actors.delete(id);
+      this.retireHostileActor(id);
     }
     // Civilians share module-level geometry/material resources; retire only
     // the scene nodes, never the shared resources themselves.
@@ -1732,7 +1738,8 @@ export class TacticalScene3D{
     }
     reconcileSceneActorLifetimes(s,{
       scene:this.scene,actors:this.actors,civilianRigs:this.civilianRigs,
-      actorIds:this.frameActorIds,civilianIds:this.frameCivilianIds
+      actorIds:this.frameActorIds,civilianIds:this.frameCivilianIds,
+      retireMissingHostile:id=>this.retireHostileActor(id)
     },omniscient,replayDisclosurePolicy);
     if(s.rescue&&!s.civilians.some(c=>c.rescueTarget)){
       if(!this.rescueFigure){
