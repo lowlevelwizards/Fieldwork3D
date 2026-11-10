@@ -1,3 +1,4 @@
+import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** Build 098: room defense positions, spacing and threat-oriented watches. */
 import {COVER,WALLS,activeSite,passable,route,doorCenter,type Door,type Pt} from './breach-core.ts';
 import {assessFireLane} from './breach-fire-safety.ts';
@@ -6,22 +7,22 @@ import {coverScore} from './breach-defense-scoring.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type Defender={id:string;p:Pt;health:number;defense:Pt|null};
-export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[]):Pt[]{
+export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[],world?:SessionWorldGeometry):Pt[]{
   void threat;
   const options:Pt[]=[];
   const candidates=new Set<string>();
   const consider=(p:Pt,max=220)=>{
     const key=Math.round(p.x)+','+Math.round(p.y);
-    if(candidates.has(key)||dist(origin,p)>max||!passable(p))return;
+    if(candidates.has(key)||dist(origin,p)>max||!(world?world.passable(p):passable(p)))return;
     // Defense is an immediate local maneuver, not a full-building mission.
     // A full A* route for EVERY corner/cover candidate caused >5 second
     // pauses when all defenders chose their first position on unpause.
     // Require a valid swept physical corridor instead. Pursuit/search still
     // use authoritative routed navigation when moving across rooms.
-    if(!sweptBodyClear(origin,p,doors))return;
+    if(!sweptBodyClear(origin,p,doors,8,world))return;
     candidates.add(key);options.push(p);
   };
-  for(const c of COVER){
+  for(const c of (world?.cover??COVER)){
     for(const q of [{x:c.x-c.w/2-19,y:c.y},{x:c.x+c.w/2+19,y:c.y},
       {x:c.x,y:c.y-c.h/2-19},{x:c.x,y:c.y+c.h/2+19}]){
       consider(q);
@@ -29,7 +30,7 @@ export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[]):Pt[]{
   }
   // Derive actual room corners rather than assuming a fixed 640x740
   // floor-plan. This also works with corridor and archetype sites.
-  const site=activeSite();
+  const site=world?world.site:activeSite();
   const rooms=site?.rooms??[{x:112,y:100,w:478,h:432}];
   for(const room of rooms){
     const margin=29;
@@ -49,22 +50,23 @@ export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[]):Pt[]{
       consider(q,195);
     }
   }
-  if(passable(origin))consider(origin);
+  if(world?world.passable(origin):passable(origin))consider(origin);
   return options;
 }
 export type DefenseOptions={requireFiringLane?:boolean;targetHeight?:number};
 export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
-  others:Defender[],selfId:string,policy:DefenseOptions={}):Pt|null{
-  const options=defenseCandidates(origin,threat,doors);
+  others:Defender[],selfId:string,policy:DefenseOptions={},
+ world?:SessionWorldGeometry):Pt|null{
+  const options=defenseCandidates(origin,threat,doors,world);
   let best:Pt|null=null,score=-Infinity;
   for(const p of options){
     const occupancy=others.filter(a=>a.id!==selfId&&a.health>0)
       .reduce((n,a)=>n+(dist(p,a.defense??a.p)<35?190:0),0);
-    const protectedSpot=directionalCoverFrom(threat,p,COVER).crouched;
+    const protectedSpot=directionalCoverFrom(threat,p,world?.cover??COVER).crouched;
     // Cover is only useful if the defender can still bring the muzzle
     // above or around it. Eye-level sight does not guarantee a firing lane.
     const lane=assessFireLane(p,26,threat,
-      policy.targetHeight??32,COVER,WALLS,doors,
+      policy.targetHeight??32,world?.cover??COVER,world?.walls??WALLS,doors,
       others.filter(o=>o.id!==selfId&&o.health>0).map(o=>o.p));
     const firingValue=lane.blocker==='clear';
     // When actually repositioning to shoot a visible opponent, a point
@@ -83,7 +85,7 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
       protected:protectedSpot,shotClear:firingValue,travel:dist(origin,p),
       range:dist(p,threat),allyConflict:occupancy>0,
       nearDoor:doorHazard>25,
-      approachExposed:!directionalCoverFrom(threat,origin,COVER).crouched&&
+      approachExposed:!directionalCoverFrom(threat,origin,world?.cover??COVER).crouched&&
         dist(origin,p)>85
     })+span+facing;
     if(value>score){score=value;best=p;}
@@ -95,12 +97,13 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
  * retry after the existing cooldown instead of pacing between blind spots.
  */
 export function chooseFiringDefense(origin:Pt,threat:Pt,doors:Door[],
- others:Defender[],selfId:string,targetHeight=32):Pt|null{
+ others:Defender[],selfId:string,targetHeight=32,
+ world?:SessionWorldGeometry):Pt|null{
  return chooseDefense(origin,threat,doors,others,selfId,
-  {requireFiringLane:true,targetHeight});
+  {requireFiringLane:true,targetHeight},world);
 }
-export function watchPoint(p:Pt,doors:Door[]):Pt|null{
-  const room=activeSite()?.rooms.find(r=>
+export function watchPoint(p:Pt,doors:Door[],world?:SessionWorldGeometry):Pt|null{
+  const room=(world?world.site:activeSite())?.rooms.find(r=>
     p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h);
   const adjacent=room?doors.filter(door=>{
     const center=doorCenter(door);
@@ -115,7 +118,8 @@ export function watchPoint(p:Pt,doors:Door[]):Pt|null{
 /** Search a few legal points around a noisy estimate, never omniscient
  * access to the hidden source. Avoid pursuing a location inside cover. */
 export function reachableInvestigation(origin:Pt,target:Pt,
-  routeFor:(from:Pt,to:Pt)=>Pt[]=route):Pt|null{
+  routeFor:(from:Pt,to:Pt)=>Pt[]=route,
+ canStand:(p:Pt)=>boolean=passable):Pt|null{
   const options=[target];
   for(const distance of [17,35,55])
     for(let i=0;i<8;i++){
@@ -124,7 +128,7 @@ export function reachableInvestigation(origin:Pt,target:Pt,
         y:target.y+Math.sin(angle)*distance});
     }
   for(const point of options){
-    if(!passable(point))continue;
+    if(!canStand(point))continue;
     if(routeFor(origin,point).length)return point;
   }
   return null;
