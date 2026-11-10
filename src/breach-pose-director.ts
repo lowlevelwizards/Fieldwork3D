@@ -3,7 +3,7 @@
  * presentation handling and delegates time-sampled hand ownership; it does
  * not advance transitions, move limbs, or write weapon/muzzle transforms.
  */
-import type {OperatorPose} from './breach-operator-rig.ts';
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import {resolveOperatorActionState} from './breach-pose-action-state.ts';
 import {handlingPose,type Handling} from './breach-weapon-pose.ts';
 
