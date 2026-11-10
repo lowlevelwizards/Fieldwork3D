@@ -45,7 +45,9 @@ const visitRole=(site:Site):CivilianSpec['role']=>{
 const maxScale=(scale:Site['scale'])=>
   scale==='small'?2:scale==='expanded'||scale==='large'?6:4;
 export function civilianBudget(site:Site,seed:number,
-  premise:EncounterPremise,mission:OperationKind):number{
+  premise:EncounterPremise,mission:OperationKind,
+  policy:'scenario'|'on'|'off'='scenario'):number{
+  if(policy==='off')return 0;
   // Real rescue targets will be migrated from their legacy marker in B7.
   // Do not create a duplicate objective person in this early batch.
   if(site.training||mission==='rescue'||
@@ -64,7 +66,7 @@ export function civilianBudget(site:Site,seed:number,
     site.identity?.activity==='busy'||
     (site.identity?.activity==='normal'&&
       ['routine','disturbance','incident'].includes(premise)));
-  return Math.min(cap,Math.max(inhabited?1:0,sampled));
+  return Math.min(cap,Math.max(policy==='on'||inhabited?1:0,sampled));
 }
 function within(p:Pt,r:Room):boolean{
   return p.x>=r.x+22&&p.x<=r.x+r.w-22&&
@@ -82,8 +84,9 @@ function localLegClear(from:Pt,to:Pt,
 }
 export function planCivilians(site:Site,
   hostiles:readonly EncounterActorSpec[],seed:number,
-  premise:EncounterPremise,mission:OperationKind):CivilianSpec[]{
-  const desired=civilianBudget(site,seed,premise,mission);
+  premise:EncounterPremise,mission:OperationKind,
+  policy:'scenario'|'on'|'off'='scenario'):CivilianSpec[]{
+  const desired=civilianBudget(site,seed,premise,mission,policy);
   if(desired<=0)return [];
   const rng=encounterRng(seed,35);
   const occupied=hostiles.map(a=>a.position);

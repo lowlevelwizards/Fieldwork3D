@@ -65,7 +65,10 @@ function reachable(site:Site):boolean{
   return valid;
 }
 export function applyArchetype(site:Site,seed:number):Site{
-  const archetype=BUILDING_ARCHETYPES[(seed>>>0)%BUILDING_ARCHETYPES.length];
+  // An explicitly compiled building identity must not be overridden by the
+  // seed during furnishing. Legacy callers without an identity still use
+  // the original seed-selected default.
+  const archetype=site.archetype??BUILDING_ARCHETYPES[(seed>>>0)%BUILDING_ARCHETYPES.length];
   const build=(assignments:Map<string,string>):Site=>{
     const rooms=site.rooms.map(r=>({...r,purpose:r.kind==='hall'?
       'hallway':assignments.get(r.id)??'storage'}));

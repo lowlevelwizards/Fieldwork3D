@@ -2221,7 +2221,7 @@ const quickPlayController=createBreachQuickPlayController({
   randomSeed:randomSiteSeed,getScale:()=>requestedSiteScale,
   getMode:()=>campaignMode,setMode:mode=>{campaignMode=mode;},
   getSession:()=>state,
-  startSession:(seed,site)=>reset(state.variant,seed,undefined,site,undefined,true),
+  startSession:(seed,site,mission)=>reset(state.variant,seed,mission,site,undefined,true),
   getStage:()=>stage,getViewMode:()=>viewMode,
   layout,refreshHud:updateHud,
   renderFirstFrame:()=>{
@@ -2254,7 +2254,8 @@ const campaignFlow=createBreachCampaignFlow({
   getSession:()=>state,isReplaying:()=>replaying,siteSize:ui.siteSize,siteSettings:ui.siteSettings,
   randomSeed:randomSiteSeed,
   resetContract:job=>reset(0,job.seed,job.kind,undefined,job.risk),
-  launchQuickPlay,openReplayLibrary:()=>replayLibrary.openFromMenu(),
+  launchQuickPlay,customizeQuickPlay:()=>quickPlayController.customize(),
+  openReplayLibrary:()=>replayLibrary.openFromMenu(),
   openStudio:id=>openOperatorStudio(id,'campaign'),
   openArsenal:id=>{void openCampaignArsenal(id);},
   showBriefing:showMissionBriefing

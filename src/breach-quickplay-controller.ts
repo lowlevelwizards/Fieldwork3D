@@ -5,6 +5,9 @@ import {team,type Session} from './breach-game.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {Site,SiteScale} from './breach-site.ts';
+import type {OperationKind} from './breach-operations.ts';
+import {resolveQuickPlaySettings,type QuickPlaySettings} from './quick-play-settings.ts';
+import {createQuickPlayConfigurator} from './ui/quick-play-configurator.ts';
 import type {TacticalScene3D,ViewMode} from './breach-3d.ts';
 import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
   from './quick-play-generation.ts';
@@ -16,7 +19,7 @@ export type QuickPlayControllerHooks={
   getMode:()=>CampaignMode;
   setMode:(value:CampaignMode)=>void;
   getSession:()=>Session;
-  startSession:(seed:number,site:Site)=>void;
+  startSession:(seed:number,site:Site,mission:OperationKind)=>void;
   getStage:()=>TacticalScene3D|null;
   getViewMode:()=>ViewMode;
   layout:()=>void;
@@ -80,10 +83,21 @@ quickPlayCancelButton.addEventListener('click',()=>{
   quickPlayBusy=false;finishQuickPlayClock();
   quickPlayPanel.hidden=true;
 });
-async function launchQuickPlay(){
+const configurator=createQuickPlayConfigurator({
+  randomSeed:config.randomSeed,
+  onGenerate:settings=>{void launchQuickPlay(settings);}
+});
+async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettings()){
   if(quickPlayBusy)return;
+  if(!settings.buildings.length){configurator.open();return;}
+  let recipe:ReturnType<typeof resolveQuickPlaySettings>;
+  try{recipe=resolveQuickPlaySettings(settings,config.randomSeed());}
+  catch(error){
+    config.showHelp(error instanceof Error?error.message:String(error),4000);
+    configurator.open();return;
+  }
   const id=++quickPlayRun,priorMode=config.getMode();
-  const seed=config.randomSeed(),scale=config.getScale();
+  const seed=recipe.seed,scale=recipe.scale;
   quickPlayBusy=true;quickPlayPercent=0;
   quickPlayPanel.hidden=false;quickPlayPanel.dataset.state='running';
   quickPlayCancelButton.hidden=false;quickPlayCancelButton.textContent='CANCEL';
@@ -119,7 +133,7 @@ async function launchQuickPlay(){
         worker.terminate();quickPlayWorker=null;quickPlayReject=null;
         reject(new Error('Architecture worker stopped unexpectedly'));
       };
-      const request:QuickPlayGenerationRequest={id,seed,scale};
+      const request:QuickPlayGenerationRequest={id,...recipe};
       worker.postMessage(request);
     });
     if(id!==quickPlayRun)return;
@@ -131,7 +145,7 @@ async function launchQuickPlay(){
     const sessionStart=performance.now();
     config.setMode('quick');
     // Reuse the completed site rather than compiling the same map again.
-    config.startSession(seed,generated.site);
+    config.startSession(seed,generated.site,recipe.mission);
     const sessionMs=Math.round(performance.now()-sessionStart);
     quickPlayCheckpoint(86,'Building 3D environment',
       'Generating room meshes, fixtures, materials and static batches');
@@ -202,7 +216,7 @@ async function launchQuickPlay(){
     if(id!==quickPlayRun)return;
     const totalMs=Math.round(performance.now()-quickPlayStarted);
     quickPlayCheckpoint(100,'TACTICAL SANDBOX READY',
-      (config.getSession().site?.name??'Site')+' · '+config.getSession().operators.length+' actors');
+      (config.getSession().site?.name??'Site')+' · squad ready');
     quickPlayPanel.dataset.state='ready';
     quickPlayClockText.textContent=(totalMs/1000).toFixed(1)+'s total · map '+
       (generated.generationMs/1000).toFixed(1)+'s · 3D '+
@@ -210,7 +224,8 @@ async function launchQuickPlay(){
       (operatorMs/1000).toFixed(1)+'s · frame '+
       (firstFrameMs/1000).toFixed(1)+'s';
     console.info('[Quick Play startup]',{
-      seed,scale,generationMs:generated.generationMs,sessionMs,sceneMs,
+      seed,scale,building:recipe.archetype,mission:recipe.mission,
+      generationMs:generated.generationMs,sessionMs,sceneMs,
       operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs,
       shaderPreparationMs
     });
@@ -255,6 +270,7 @@ async function launchQuickPlay(){
  return {
    restoreFavorite,
    launch:launchQuickPlay,
+   customize:()=>{if(!quickPlayBusy)configurator.open();},
    get busy(){return quickPlayBusy;},
    cancel:()=>quickPlayCancelButton.click()
  };

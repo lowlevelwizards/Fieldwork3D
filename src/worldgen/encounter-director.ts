@@ -55,8 +55,10 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
      assignObjectiveSecurity(site,spatial.actors,mission),premise,seed),seed);
  // Neutral placement is separate from armed encounter groups and never
  // increases the hostileBudget or creates a red actor.
- const neutralBudget=civilianBudget(site,seed,premise,mission);
- const neutrals=planCivilians(site,actors,seed,premise,mission);
+ const neutralBudget=civilianBudget(site,seed,premise,mission,
+   context.civilianPolicy);
+ const neutrals=planCivilians(site,actors,seed,premise,mission,
+   context.civilianPolicy);
  const rooms=site.rooms.filter(r=>r.kind==='room');
  const occupiedZones=new Set(actors.map(a=>a.zoneId).filter(Boolean)).size;
  const zones=new Set(rooms.map(r=>r.zoneId??r.id));
