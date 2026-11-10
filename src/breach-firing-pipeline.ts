@@ -58,7 +58,6 @@ export type CombatFiringPorts={
 };
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
-const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const angle=(a:Pt,b:Pt)=>targetAngle(a,b);
 
 /** A single controller created once, with immutable ports. The session owns
