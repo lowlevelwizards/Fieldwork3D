@@ -10,6 +10,7 @@ import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import * as THREE from 'three';
 import {updateOperatorSlingPose} from './breach-operator-sling-pose.ts';
 import {applyOperatorTraumaPose,finishOperatorPoseFrame} from './breach-pose-frame-finalizer.ts';
+import {commitOperatorPoseOutput} from './breach-operator-pose-output.ts';
 import {canonicalRootOrientation} from './operator-axis-convention.ts';
 import {neutralMannequinWrist,neutralMannequinElbowPole}
  from './operator-mannequin-pose.ts';
@@ -1175,5 +1176,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   updateOperatorSlingPose(r,p,physicalSpeed,
     scratch.vertical,scratch.slingDelta);
   finishOperatorPoseFrame(r,p);
+  // One final pose commit, after all anatomy, weapon, trauma and sling stages.
+  commitOperatorPoseOutput(r,p);
 
 }
