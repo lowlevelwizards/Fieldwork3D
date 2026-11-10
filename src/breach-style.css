@@ -2687,3 +2687,136 @@ body.replaying .replay-follow-status[data-grade]::after{
   display:block;font:700 10px/1 "Saira Condensed",sans-serif;
   color:#e9cfa1;letter-spacing:.11em;white-space:nowrap
 }
+
+
+/* After Action V2: dedicated compact field-notebook workspace.
+ * One scroll owner, persistent actions, readable iPhone tap targets.
+ */
+.debrief.fw-debrief-v2{top:50%;width:min(910px,calc(100vw - 20px));
+  height:min(95dvh,920px);max-height:95dvh;box-sizing:border-box;
+  padding:12px 14px;display:flex;flex-direction:column;gap:8px;
+  overflow:hidden;text-align:left;border-radius:9px;z-index:18}
+.debrief.fw-debrief-v2[hidden]{display:none}
+.fw-debrief-v2>strong{text-align:left;font-size:19px}
+.fw-debrief-v2 .fw-after-action-stats{margin:0}
+.fw-debrief-v2>.fw-after-action-objective{margin:0;font-size:12px;text-align:left}
+.fw-after-tabs{display:flex;flex-shrink:0;gap:4px;overflow-x:auto;
+  scrollbar-width:thin;padding:2px 0 6px}
+.fw-debrief-v2 .fw-after-tabs button{margin:0;background:#223631;
+  color:#ced6c8;border:1px solid #5b746b;flex:1 0 auto;
+  min-width:70px;min-height:41px;padding:7px 8px;font:700 11px var(--ui-display)}
+.fw-debrief-v2 .fw-after-tabs button[aria-pressed=true]{
+  color:#f2e5c9;background:#476052;border-color:#d3c69c}
+.fw-after-body{overflow-y:auto;overscroll-behavior:contain;min-height:0;
+  flex:1;scrollbar-width:thin;padding:4px 1px 18px}
+.fw-after-section{display:grid;gap:13px}
+.fw-after-caption{color:#9daea4;font:600 11px var(--ui-display);
+  letter-spacing:.09em;margin:0}
+.fw-after-muted{color:#a2b2a7;font:12px/1.5 var(--ui-font)}
+.fw-after-heading{font:700 18px var(--ui-display);margin:2px 0 3px}
+.fw-after-rank-list,.fw-after-detail{display:grid;gap:7px}
+.fw-debrief-v2 .fw-after-person,
+.fw-debrief-v2 .fw-after-link{display:flex;align-items:center;
+  justify-content:space-between;gap:10px;width:100%;padding:10px 12px;
+  color:#e5ddcb;background:#1e342e;border:1px solid #587366;
+  border-radius:6px;text-align:left;margin:0;min-height:55px;
+  font:600 13px var(--ui-font)}
+.fw-after-person small,.fw-after-link small{display:block;color:#a9bdb0;
+  font:11px/1.5 var(--ui-font)}
+.fw-after-rank{color:#dcc7a1;font:700 20px var(--ui-display)}
+.fw-after-score{color:#e8d9b7;font:700 21px var(--ui-display)}
+.fw-after-pair{display:flex;gap:10px;justify-content:space-between;
+  border-bottom:1px solid #4b6356;padding:5px 0;font:12px var(--ui-font)}
+.fw-after-pair span:last-child{font-weight:700;text-align:right}
+.fw-after-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.fw-after-panel{background:#1c312c;border:1px solid #4c645a;
+  border-radius:7px;padding:11px;min-width:0}
+.fw-after-panel h3{margin:0 0 8px;font:700 14px var(--ui-display)}
+.fw-after-bars{display:flex;gap:4px;flex-wrap:wrap}
+.fw-after-bars span{font:700 10px var(--ui-display);color:#d2d9ce;
+  padding:5px 7px;background:#385246;border-radius:3px}
+.fw-after-detail summary{color:#e2d6b8;font:700 13px var(--ui-display)}
+.fw-after-detail p{margin:8px 0;font:12px/1.55 var(--ui-font)}
+.fw-after-empty{color:#b2bbae;padding:15px;border:1px dashed #62766c}
+.fw-debrief-v2>.fw-after-action-detail{overflow-y:auto;flex:1;min-height:0}
+.fw-debrief-v2>.fw-after-action-detail[hidden]{display:none}
+.fw-after-footer{flex-shrink:0;display:flex;flex-wrap:wrap;gap:5px;
+  border-top:1px solid #53695e;padding-top:7px;justify-content:center}
+.fw-debrief-v2 .fw-after-footer button{margin:0;min-height:39px;
+  font:700 11px var(--ui-display);padding:8px 10px}
+@media(max-width:600px){
+ .debrief.fw-debrief-v2{width:calc(100vw - 12px);height:calc(100dvh - 22px);
+  max-height:calc(100dvh - 22px);padding:10px;top:50%}
+ .fw-debrief-v2 .fw-after-tabs button{min-width:78px}
+ .fw-after-grid{grid-template-columns:1fr}
+ .fw-debrief-v2 .fw-after-footer button{flex:1 1 auto;font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .fw-debrief-v2 *{scroll-behavior:auto!important}
+}
+
+/* V2 forensic viewer: schematic body rail, readable shot-by-shot ledger. */
+.fw-after-combat-switch{display:flex;gap:6px;flex-wrap:wrap}
+.fw-debrief-v2 .fw-after-combat-switch .fw-after-link{
+  flex:1;min-height:40px;font-size:11px}
+.fw-after-combat-switch [aria-pressed=true]{background:#546d59;
+  border-color:#cbb88e;color:#f8e4c8}
+.fw-after-combat-split{display:grid;grid-template-columns:minmax(180px,320px) 1fr;
+  gap:12px;align-items:start}
+.fw-hit-paper{text-align:center}
+.fw-hit-paper svg{display:block;width:100%;max-height:320px;margin:auto}
+.fw-hit-selected{display:block;font:700 12px var(--ui-display);
+ color:#e4c1a2;line-height:1.5;margin-top:8px}
+.fw-after-shot-list{display:grid;gap:6px;max-height:460px;overflow-y:auto}
+.fw-debrief-v2 .fw-after-shot{display:grid;gap:2px;text-align:left;
+ margin:0;min-height:62px;padding:8px 10px;background:#20362f;
+ border:1px solid #526c60;border-radius:5px;color:#e5dfcc}
+.fw-debrief-v2 .fw-after-shot[data-selected=true]{
+ background:#445b4c;border-color:#e0bd8d}
+.fw-after-shot b{font:700 14px var(--ui-display)}
+.fw-after-shot span{font:600 12px var(--ui-font)}
+.fw-after-shot small{color:#afbdaf;font:11px/1.35 var(--ui-font)}
+@media(max-width:650px){
+ .fw-after-combat-split{grid-template-columns:1fr}
+ .fw-after-shot-list{max-height:none;overflow:visible}
+ .fw-hit-paper svg{max-height:250px}
+}
+
+/* Scoped replay controls deliberately separate from the ordinary replay rail. */
+.fw-clip-hud{position:fixed;z-index:24;top:calc(81px + env(safe-area-inset-top));
+ left:50%;transform:translateX(-50%);display:flex;gap:7px;
+ align-items:center;justify-content:center;padding:5px 8px;
+ border:1px solid #a0af98;border-radius:6px;background:#132521ed;
+ color:#e5d8b9;max-width:calc(100vw - 22px)}
+.fw-clip-hud[hidden]{display:none}
+.fw-clip-hud output{font:700 11px var(--ui-display);white-space:nowrap;
+ overflow:hidden;text-overflow:ellipsis}
+.fw-clip-hud button{background:#b8b393;color:#20302e;
+ min-height:38px;border:1px solid #d8cfaa;border-radius:4px;
+ font:700 12px var(--ui-display);padding:7px 11px}
+@media(max-width:450px){.fw-clip-hud{top:calc(68px + env(safe-area-inset-top))}}
+
+/* Highlight cards: earned tactical significance, separately verified stills. */
+.fw-highlight-card{border:1px solid #566e5f;background:#1c302a;
+ border-radius:7px;padding:10px;display:grid;gap:6px}
+.fw-highlight-card img{width:100%;max-height:300px;object-fit:contain;
+ background:#101e1a;border-radius:4px}
+.fw-highlight-card h3{margin:0;font:700 15px var(--ui-display);
+ color:#e4d8b9}
+.fw-highlight-card p{margin:0;font:12px/1.45 var(--ui-font)}
+.fw-highlight-placeholder{background:#273b32;min-height:82px;
+ display:grid;place-items:center;text-align:center;padding:12px;
+ border:1px dashed #647865;color:#96a89b;font:700 12px var(--ui-display)}
+.fw-highlight-actions{display:flex;flex-wrap:wrap;gap:8px}
+.fw-highlight-actions button,.fw-highlight-actions a{
+ display:inline-flex;align-items:center;min-height:41px;margin:0;
+ padding:9px 12px;background:#b8b393;border:1px solid #d8cfaa;
+ border-radius:5px;color:#21322c;text-decoration:none;
+ font:700 12px var(--ui-display)}
+
+/* Opt-in 3D, no animation RAF: historical equipment only, no invented hits. */
+.fw-after-model{display:grid;place-items:center;background:#192b26;
+  min-height:240px;border:1px solid #536d60;border-radius:6px;
+  padding:2px;color:#acbcaf;text-align:center;font:700 12px var(--ui-display)}
+.fw-after-model-canvas{display:block;max-width:100%;border-radius:4px;cursor:grab}
+.fw-after-model-canvas:active{cursor:grabbing}

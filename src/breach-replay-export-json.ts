@@ -12,7 +12,7 @@ export function buildReplayReport(recording:MissionRecorder){
   const timeline=[
     ...recording.events.map(e=>({
       id:'battle:'+e.id,t:e.t,kind:e.kind,actorId:e.actor??null,
-      position:e.p??null,text:e.text
+      position:e.p??null,text:e.text,meta:e.meta??null
     })),
     ...recording.executionEvents.map(e=>({
       id:'execution:'+e.id,t:e.t,kind:e.kind,actorId:e.actor,
@@ -21,7 +21,7 @@ export function buildReplayReport(recording:MissionRecorder){
   ].sort((a,b)=>a.t-b.t||a.id.localeCompare(b.id));
   return {
     format:'fieldwork-breach-report',
-    schemaVersion:1,
+    schemaVersion:2,
     disclosure:'full-reconstruction',
     replaySchemaVersion:manifest?.schemaVersion??1,
     mission:{
@@ -50,7 +50,12 @@ export function buildReplayReport(recording:MissionRecorder){
       end:{...s.end,height:s.impactHeight??null},
       hit:s.hit,down:s.down,surface:s.surface??null,
       healthBefore:s.healthBefore,healthAfter:s.healthAfter,
-      hitRegion:s.hitRegion??null,mode:s.mode??null
+      hitRegion:s.hitRegion??null,mode:s.mode??null,
+      weaponAtFire:s.weaponAtFire??null,
+      receiverAtFire:s.receiverAtFire??null,familyAtFire:s.familyAtFire??null,
+      nominalCaliberAtFire:s.nominalCaliberAtFire??null,
+      caliberEvidence:s.nominalCaliberAtFire?'visual-preset':'unavailable',
+      precision:'region-only' as const
     })),
     planRevisions:recording.plans.revisions,
     events:timeline

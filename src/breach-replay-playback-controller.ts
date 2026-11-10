@@ -29,13 +29,15 @@ export type PlaybackFrameStep=PlaybackStep&{frame:ReplayFrame|null};
 
 export class ReplayPlaybackController{
  playing=false;time=0;rate=1;effectiveRate=1;
- incident:{range:ReplayLoopRange;loop:boolean}|null=null;
+ incident:{range:ReplayLoopRange;loop:boolean;scoped:boolean}|null=null;
+ savedIncidentRange:ReplayLoopRange|null=null;
  loopIn:number|null=null;loopOut:number|null=null;
  loopEnabled=false;
 
  reset():void{
    this.playing=false;this.time=0;this.rate=1;this.effectiveRate=1;
-   this.incident=null;this.loopIn=null;this.loopOut=null;this.loopEnabled=false;
+   this.incident=null;this.savedIncidentRange=null;
+   this.loopIn=null;this.loopOut=null;this.loopEnabled=false;
  }
  pause():void{this.playing=false;}
  play():void{this.playing=true;}
@@ -43,8 +45,13 @@ export class ReplayPlaybackController{
  atEnd(duration:number):boolean{return this.time>=duration;}
  /** Seeking exits an incident but deliberately preserves play/pause status. */
  seek(time:number,duration:number):number{
-   this.incident=null;
-   this.time=clampReplayTime(time,duration);
+   const wanted=clampReplayTime(time,duration);
+   // Scoped clips remain explicitly bounded even if a full-timeline slider
+   // sends a seek outside the clip. UNCLIP is the only exit from the range.
+   this.time=this.incident?.scoped?
+     Math.min(this.incident.range.end,Math.max(this.incident.range.start,wanted)):
+     wanted;
+   if(!this.incident?.scoped)this.incident=null;
    return this.time;
  }
  stepTarget(kind:'sample'|'frame',direction:-1|1,
@@ -92,21 +99,33 @@ export class ReplayPlaybackController{
  }
  /** Start a bounded incident watch or repeat; the caller handles audio/UI. */
  startIncident(incident: {start:number;end:number},duration:number,
-   loop:boolean):boolean{
+   loop:boolean,scoped=false):boolean{
    const range=incidentPlaybackWindow(incident,duration);
    if(!range)return false;
    this.seek(range.start,duration);
-   this.incident={range,loop};
+   this.incident={range,loop,scoped};
+   this.savedIncidentRange=range;
    this.loopEnabled=false;
    this.rate=1;this.effectiveRate=1;this.playing=true;
    return true;
  }
- clearIncident():void{this.incident=null;}
+ clearIncident():void{this.incident=null;this.savedIncidentRange=null;}
+ /** Return to full film without losing the originating debrief address. */
+ unclipIncident():boolean{
+   if(!this.incident)return false;
+   this.savedIncidentRange=this.incident.range;
+   this.incident=null;return true;
+ }
+ reclipIncident():boolean{
+   const range=this.savedIncidentRange;if(!range)return false;
+   this.time=Math.max(range.start,Math.min(range.end,this.time));
+   this.incident={range,loop:true,scoped:true};return true;
+ }
  /** A video export is authored at 1x and must not inherit a tactical loop. */
  prepareVideoExport():void{
    this.rate=1;this.effectiveRate=1;
    this.loopEnabled=false;this.loopIn=null;this.loopOut=null;
-   this.incident=null;
+   this.incident=null;this.savedIncidentRange=null;
  }
  /** Only recorded outcomes are ever applied; no historical simulation tick. */
  applyRecordedFrame(recorder:MissionRecorder,state:Session):ReplayFrame|null{

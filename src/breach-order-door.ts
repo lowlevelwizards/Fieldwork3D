@@ -108,14 +108,17 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
             struck.aim=Math.max(0,struck.aim-.7);
             struck.velocity=0;struck.nav=[];
             battleEvent(s,'door',a,struck.p,
-              struck.name+' STRUCK BY DOOR');
+              struck.name+' STRUCK BY DOOR',
+              {action:'door-impact',objectId:door.id,targetId:struck.id});
           }
         }
         hear(s,doorCenter(door),340,'kick');
         const result=!outcome.pushSide?'WRONG SIDE · CANNOT KICK INWARD':
           outcome.opened?'FORCED OPEN':'KICK RESISTED';
         notify(s,door.id+' '+result);
-        battleEvent(s,'door',a,doorCenter(door),door.id+' '+result);
+        battleEvent(s,'door',a,doorCenter(door),door.id+' '+result,
+          {action:!outcome.pushSide?'door-blocked':outcome.opened?
+            'door-forced':'door-resisted',objectId:door.id});
         if(!outcome.pushSide){
           failCurrentOrder(s,a,n,'KICK BLOCKED · WRONG SIDE');return true;
         }
@@ -149,7 +152,8 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         }
         hear(s,doorCenter(door),90,'door');
         notify(s,door.id+' CLOSING');
-        battleEvent(s,'door',a,doorCenter(door),door.id+' CLOSING');
+        battleEvent(s,'door',a,doorCenter(door),door.id+' CLOSING',
+          {action:'door-close',objectId:door.id});
       }else{
         if(pairedLeaves(s,door).some(leaf=>leaf.heldBy)){
           failCurrentOrder(s,a,n,'DOOR BRACED SHUT');return true;
@@ -164,7 +168,8 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         }
         hear(s,doorCenter(door),145,'door');
         notify(s,door.id+' OPENED');
-        battleEvent(s,'door',a,doorCenter(door),door.id+' OPENED');
+        battleEvent(s,'door',a,doorCenter(door),door.id+' OPENED',
+          {action:'door-open',objectId:door.id});
       }
       pop(a);
     }

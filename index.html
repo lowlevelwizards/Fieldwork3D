@@ -233,6 +233,14 @@
     <div><span>ACCURACY</span><strong id="debriefAccuracy">—</strong></div>
   </div>
   <p class="fw-after-action-objective" id="debriefObjective"></p>
+  <nav id="afterActionTabs" class="fw-after-tabs" aria-label="After-action report sections">
+    <button type="button" data-after-tab="overview" aria-pressed="true">OVERVIEW</button>
+    <button type="button" data-after-tab="squad" aria-pressed="false">SQUAD</button>
+    <button type="button" data-after-tab="combat" aria-pressed="false">COMBAT</button>
+    <button type="button" data-after-tab="highlights" aria-pressed="false">HIGHLIGHTS</button>
+    <button type="button" data-after-tab="timeline" aria-pressed="false">TIMELINE</button>
+  </nav>
+  <div id="afterActionBody" class="fw-after-body" aria-live="polite"></div>
   <details class="fw-after-action-detail" id="debriefIntelBlock" hidden>
     <summary>INTELLIGENCE REVIEW / BRIEFED VS. OBSERVED</summary>
     <p id="debriefIntelText"></p>
@@ -241,11 +249,13 @@
     <summary>FULL REPORT / TACTICAL TIMELINE</summary>
     <p id="debriefStats"></p>
   </details>
-  <button id="watchReplay" type="button">WATCH REPLAY</button>
-  <button id="saveReplayDebrief" type="button">SAVE REPLAY</button>
-  <button id="favoriteMission" type="button">☆ FAVORITE MISSION</button>
-  <button id="retry" type="button">RETRY MISSION</button>
-  <button id="next" type="button">NEXT ARRANGEMENT</button>
+  <footer class="fw-after-footer">
+    <button id="watchReplay" type="button">WATCH REPLAY</button>
+    <button id="saveReplayDebrief" type="button">SAVE REPLAY</button>
+    <button id="favoriteMission" type="button">☆ FAVORITE MISSION</button>
+    <button id="retry" type="button">RETRY MISSION</button>
+    <button id="next" type="button">NEXT ARRANGEMENT</button>
+  </footer>
 </section>
 <div id="replayLibraryBackdrop" class="replay-library-backdrop" hidden></div>
 <section id="replayLibraryDialog" class="replay-library-dialog" hidden
@@ -263,6 +273,10 @@
   <output id="replayLibraryStatus" class="replay-library-status" aria-live="polite"></output>
   <div id="replayLibraryList" class="replay-library-list" role="list"></div>
 </section>
+<div id="afterActionClipHud" class="fw-clip-hud" hidden aria-label="Scoped replay controls">
+  <output id="afterActionClipLabel">INCIDENT · LOOP</output>
+  <button id="afterActionClipToggle" type="button">UNCLIP</button>
+</div>
 <div id="replayTopHud" class="replay-top-hud" hidden>
   <output id="replayFollowStatus" class="replay-follow-status" aria-live="polite">FREE CAMERA</output>
   <button id="replayExit" type="button" aria-label="Exit replay" title="Exit replay">×</button>

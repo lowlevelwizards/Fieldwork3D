@@ -66,6 +66,8 @@ export function advanceMotorTraversal(a:TeamActor,s:Session,dt:number,hooks:Acto
    return true;
  }
  if(!a.traversalRetreating&&a.traversalElapsed>=op.duration){
+   if(op.windowId)hooks.battleEvent(s,'interaction',a,a.p,
+     a.name+' TRAVERSED WINDOW',{action:'window-traverse',objectId:op.windowId});
    // The final full-body landing was committed on the preceding tick.
    a.traversal=null;a.traversalElevation=0;a.nav=[];
    a.traversalRetreating=false;
@@ -113,7 +115,8 @@ export function prepareMotorTraversal(
           s.objectRevision++;
           hooks.hear(s,{x:pane.x,y:pane.y},85,'window');
           hooks.notify(s,a.name+' OPENED WINDOW');
-          hooks.battleEvent(s,'interaction',a,a.p,a.name+' OPENED WINDOW');
+          hooks.battleEvent(s,'interaction',a,a.p,a.name+' OPENED WINDOW',
+            {action:'window-open',objectId:pane.id});
         }
         return true;
       }

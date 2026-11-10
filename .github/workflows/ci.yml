@@ -2059,6 +2059,10 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/breach-door-pressure-pingpong-') }}
         run: |
           node --experimental-strip-types --test tests/door-pressure-counterflow-r1.test.mjs tests/coupled-door-contact.test.mjs tests/door-leaf-overlap-recovery.test.mjs tests/doorway-right-of-way-session.test.mjs tests/doorway-planned-sequence.test.mjs
+      - name: After Action V2 focused evidence, replay and archive checks
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/after-action-v2-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-after-action-v2-evidence.test.mjs tests/breach-after-action-v2-scoped-replay.test.mjs tests/replay-r41-incident-playback.test.mjs tests/replay-r2-json-report.test.mjs tests/replay-r3-archive.test.mjs tests/breach-roadmap2-debrief-extraction.test.mjs
       - name: Production build and typecheck
         run: npm run build
       - name: Quick Play production release preflight (no deployment)

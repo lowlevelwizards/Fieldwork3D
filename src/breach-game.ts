@@ -1617,9 +1617,10 @@ export function flashTrajectory(s:Session,a:TeamActor,node:PlanNode):ThrowPath|n
     (n.method==='open'||n.method==='kick')).map(n=>n.doorId??'');
   return validateThrow(node.p,node.aimPoint,s.doors,open);
 }
-function battleEvent(s:Session,kind:BattleEvent['kind'],a:TeamActor|null,p:Pt,text:string){
+function battleEvent(s:Session,kind:BattleEvent['kind'],a:TeamActor|null,p:Pt,text:string,
+  meta?:BattleEvent['meta']){
   s.battleEvents.push({id:s.nextBattleId++,kind,t:s.seconds,
-    actor:a?.id,p:clone(p),text});
+    actor:a?.id,p:clone(p),text,...(meta?{meta}:{})});
   if(s.battleEvents.length>500)s.battleEvents.shift();
 }
 export function equipWeaponChoice(s:Session,id:string,next:WeaponId):boolean{
@@ -1772,7 +1773,8 @@ function observe(s:Session){
         const old=s.known.get(e.id);
         if(!old||s.seconds-old.at>.20){
           notify(s,'CONTACT '+e.name);
-          battleEvent(s,'intel',blue,blue.p,blue.name+' SPOTTED '+e.name);
+          battleEvent(s,'intel',blue,blue.p,blue.name+' SPOTTED '+e.name,
+            {action:'spot',targetId:e.id});
         }
         s.known.set(e.id,{p:clone(e.p),at:s.seconds,status:'seen'});
         s.spotted.add(e.id);e.lastSpotted=clone(e.p);
@@ -2616,7 +2618,9 @@ function mission(s:Session,dt:number){
       s.missionType==='intel'?'DOCUMENTS RECOVERED':
       s.missionType==='capture'?'TARGET SECURED':'OBJECTIVE SECURED';
     notify(s,verb+' — EXTRACT');
-    battleEvent(s,'objective',null,s.scenario.objective,verb);
+    battleEvent(s,'objective',null,s.scenario.objective,verb,
+      {action:'objective-secure',objectId:s.missionType,
+       contributorId:atObjective[0]?.id});
   }else if((s.missionType==='hold'||s.missionType==='intel')&&
     s.mission==='secure'){
     s.holdTime=Math.max(0,s.holdTime-dt*.6);

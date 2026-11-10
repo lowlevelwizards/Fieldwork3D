@@ -49,6 +49,11 @@ import {createBreachEquipmentEditorBridge} from './breach-equipment-editor-bridg
 import {createBreachOperationsBoardController} from './breach-operations-board-controller.ts';
 import {createBreachRuntimeLoop} from './breach-runtime-loop.ts';
 import {createReplayModeController} from './breach-replay-mode-controller.ts';
+import {afterActionSnapshot} from './ui/breach-after-action-controller.ts';
+import {makeAfterActionLaunchRequest} from './breach-after-action-replay-navigation.ts';
+import {highlightCapture} from './breach-highlight-capture.ts';
+import {replayHighlightMoments} from './breach-highlight-frames.ts';
+import {refreshAfterActionWorkspace} from './ui/breach-after-action-controller.ts';
 import {createBreachReplayPresentationController} from './breach-replay-presentation-controller.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
@@ -178,6 +183,9 @@ const ui={
   siteLighting:el<HTMLButtonElement>('siteLighting'),
   siteSettings:el<HTMLElement>('siteSettings'),
   replayMore:el<HTMLButtonElement>('replayMore'),
+  afterActionClipHud:el<HTMLElement>('afterActionClipHud'),
+  afterActionClipLabel:el<HTMLElement>('afterActionClipLabel'),
+  afterActionClipToggle:el<HTMLButtonElement>('afterActionClipToggle'),
   replayShareToggle:el<HTMLButtonElement>('replayShareToggle'),
   replayQuickView:el<HTMLSelectElement>('replayQuickView'),
   replayQuickCamera:el<HTMLSelectElement>('replayQuickCamera'),
@@ -1589,7 +1597,19 @@ const replayModeController=createReplayModeController({
  updateHud
 });
 function enterReplay(){replayModeController.enterReplay();}
-function exitReplay(){replayModeController.exitReplay();}
+let afterActionReturn:ReturnType<typeof afterActionSnapshot>=null;
+function exitReplay(){
+ const returning=afterActionReturn!==null;
+ replayModeController.exitReplay();
+ if(returning){
+   afterActionReturn=null;
+   ui.afterActionClipHud.hidden=true;
+   refreshAfterActionWorkspace(ui.debrief);
+   // The after-action workspace remains mounted while replay is active;
+   // returning to the finished session restores its tab, selection and scroll.
+   updateHud();
+ }
+}
 /** Replay Library: load metadata only until a recording is selected.
  * No campaign result, equipment persistence, or live session is modified.
  */
@@ -1628,6 +1648,47 @@ const replayLibrary=createBreachReplayLibraryController({
 });
 ui.watchReplay.addEventListener('click',()=>{
   replayLibrary.markDebriefEntry();enterReplay();
+ if(replaying)highlightCapture.queue(recorder,replayHighlightMoments(recorder));
+});
+ui.debrief.addEventListener('fw-after-action-replay',event=>{
+ const detail=(event as CustomEvent<{
+   surface:string;contactId?:string;shotId?:number|null;time:number;
+   end?:number
+ }>).detail;
+ if(!detail||replaying)return;
+ const request=makeAfterActionLaunchRequest(recorder,detail);
+ if(!request)return;
+ const origin=afterActionSnapshot(ui.debrief);
+ replayLibrary.markDebriefEntry();enterReplay();
+ if(!replaying)return;
+ afterActionReturn=origin;
+ highlightCapture.queue(recorder,replayHighlightMoments(recorder));
+ if(stage&&viewMode==='plan2d')cameraMode('iso');
+ replayCamera.camMount='chest';replayCamera.lens='cam';
+ if(stage&&replayDirector.camEligibleObservers.length){
+   chooseReplayCamera('director');
+ }else{
+   replayCamera.lens='ortho';chooseReplayCamera('free');
+   showUiHelp('NO RECORDED BODYCAM · TACTICAL REPLAY',3000);
+ }
+ replayPlayback.startIncident(request.range,recorder.duration,true,true);
+ presentReplayAtCurrentTime();audioController.unlock();
+ ui.afterActionClipHud.hidden=false;
+ ui.afterActionClipLabel.textContent=request.label+' · LOOP';
+ ui.afterActionClipToggle.textContent='UNCLIP';
+ updateReplayHud();
+});
+ui.afterActionClipToggle.addEventListener('click',()=>{
+ if(!replaying||!afterActionReturn)return;
+ if(replayPlayback.incident){
+   replayPlayback.unclipIncident();
+   ui.afterActionClipToggle.textContent='RECLIP';
+   ui.afterActionClipLabel.textContent='FULL REPLAY';
+ }else if(replayPlayback.reclipIncident()){
+   ui.afterActionClipToggle.textContent='UNCLIP';
+   ui.afterActionClipLabel.textContent='INCIDENT · LOOP';
+ }
+ presentReplayAtCurrentTime();
 });
 const replayTimeline=createBreachReplayTimelineController({
   ui:{
@@ -2674,7 +2735,10 @@ const runtimeLoop=createBreachRuntimeLoop({
  setReplayPresentation:value=>{replayPresentation=value;},
  invalidateFog:()=>fog2D.invalidate(),advanceReplayCamera,
  updateHud,updateReplayHud,updateContext,advanceContextPalette,
- renderFrame:render,drawTacticalFrameFeedback,worldToScreen,
+ renderFrame:render,drawTacticalFrameFeedback,
+ captureHighlightFrame:(scene,overlay,time,perspective)=>
+   highlightCapture.frame(recorder,scene,overlay,time,perspective),
+ worldToScreen,
  canvas,playback:replayPlayback,camera:replayCamera,
  knowledge:replayKnowledge,bodycam:replayBodycam,video:replayQuickVideo,
  audio:audioController

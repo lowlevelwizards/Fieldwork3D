@@ -4,10 +4,18 @@
  */
 import type {Session,ShotEvent} from './breach-game.ts';
 import type {WeaponId} from './breach-combat.ts';
+import {FAMILY_PARTS} from './equipment-weapon-families.ts';
 export type RecordedShot=ShotEvent & {
-  recordedAt:number;weaponAtFire?:WeaponId;suppressedAtFire?:boolean
+  recordedAt:number;weaponAtFire?:WeaponId;suppressedAtFire?:boolean;
+  receiverAtFire?:string;familyAtFire?:string;
+  /** Visual preset caliber; firing mechanics remain class-based. */
+  nominalCaliberAtFire?:string
 };
 const position=(p:{x:number;y:number})=>({x:p.x,y:p.y});
+const nominalCaliber:Record<string,string>={
+  stanag:'5.56×45 mm',ak762:'7.62×39 mm',ak545:'5.45×39 mm',
+  hk762:'7.62×51 mm',hk556:'5.56×45 mm',hk9:'9×19 mm'
+};
 
 export class ReplayBallisticsRecorder{
   readonly shots:RecordedShot[]=[];
@@ -23,6 +31,10 @@ export class ReplayBallisticsRecorder{
       this.shots.push({
         ...shot,start:position(shot.start),end:position(shot.end),
         weaponAtFire:shooter?.weapon,
+        receiverAtFire:shooter?.weaponConfiguration?.build?.parts.receiver,
+        familyAtFire:shooter?.weaponConfiguration?.build?.family,
+        nominalCaliberAtFire:nominalCaliber[
+          FAMILY_PARTS[shooter?.weaponConfiguration?.build?.parts.receiver??'']?.feed??''],
         suppressedAtFire:shooter?.weaponConfiguration?.slots.muzzle===
           'muzzle-suppressor',
         recordedAt:Number.isFinite(recordedAt)?recordedAt:s.seconds
