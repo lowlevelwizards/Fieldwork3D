@@ -29,6 +29,7 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;
+ customizeQuickPlay:()=>void;
  openReplayLibrary:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
  buyAmmo:()=>void;buyMedical:()=>void;buyFlash:()=>void;
@@ -137,6 +138,8 @@ export class CampaignScreen{
   const utility=node('nav','campaign-landing-utility');
   utility.setAttribute('aria-label','Other destinations');
   if(hasSave)utility.append(button('NEW CAMPAIGN',this.handlers.newCampaign,
+   'campaign-landing-link'));
+  utility.append(button('CUSTOMIZE QUICK PLAY',this.handlers.customizeQuickPlay,
    'campaign-landing-link'));
   utility.append(button('REPLAY LIBRARY',this.handlers.openReplayLibrary,
    'campaign-landing-link'));
