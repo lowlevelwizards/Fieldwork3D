@@ -91,10 +91,15 @@ test('transition log is sparse, typed, friendly-only and replay captures it',()=
  }finally{activateSite(null);}
 });
 test('both 2D and projected views draw persistent issue markers; replay uses the same log',()=>{
- const c=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(c,/drawExecutionProblem\(a,true\)/);
- assert.match(c,/drawExecutionProblem\(a,false\)/);
- assert.match(c,/executionMarkerPoint\(unit,viewMode!=='plan2d'\)/);
- assert.match(c,/recorder\.executionEvents\.filter/);
- assert.match(c,/executionProblemStatus\(unit\)\?\.orderId===candidate\.id/);
+ const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+ const renderer=readFileSync(new URL('../src/breach-2d-actor-renderer.ts',import.meta.url),'utf8');
+ const projected=readFileSync(new URL('../src/breach-2d-projected-overlays.ts',import.meta.url),'utf8');
+ const picking=readFileSync(new URL('../src/breach-tactical-picking.ts',import.meta.url),'utf8');
+ const replay=readFileSync(new URL('../src/breach-replay.ts',import.meta.url),'utf8');
+ assert.match(main,/actor2D\.drawExecutionProblem\(a,false\)/);
+ assert.match(renderer,/const status=executionProblemStatus\(a\)/);
+ assert.match(projected,/drawExecutionProblem\(a,true\)/);
+ assert.match(picking,/executionMarkerPoint\(unit,viewMode!=='plan2d'\)/);
+ assert.match(picking,/nodeId:problem\.orderId/);
+ assert.match(replay,/this\.executionEvents\.push/);
 });
