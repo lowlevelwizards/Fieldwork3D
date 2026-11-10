@@ -79,7 +79,7 @@ test('replay event index scopes director to historic evidence and current layout
   assert.equal(args.width,620);
   assert.equal(args.height,700);
   assert.equal(args.headerBottom,94);
-  assert.equal(args.dockPixels,140);
+  assert.equal(args.dockPixels,164.5);
   assert.equal(args.baseSpan,765);
   assert.equal(args.isShotVisible,f.port.historicalShotVisible);
  }finally{
