@@ -77,7 +77,11 @@ test('default-scale townhouse, apartment, and office room clusters are reachable
     p.y>=r.y-1&&p.y<=r.y+r.h+1;
    return {room:r,neighbors:site.rooms.filter(adjacent).map(q=>({
      id:q.id,purpose:q.purpose,unitId:q.unitId,zoneId:q.zoneId,
-     x:q.x,y:q.y,w:q.w,h:q.h
+     x:q.x,y:q.y,w:q.w,h:q.h,
+     cover:site.cover.filter(o=>o.x>q.x-14&&o.x<q.x+q.w+14&&
+       o.y>q.y-14&&o.y<q.y+q.h+14).map(o=>({
+         fixture:o.fixture,x:o.x,y:o.y,w:o.w,h:o.h
+       }))
    })),portals:[...site.doors,...(site.openings??[])]
     .filter(d=>near(mid(d))).map(d=>({id:d.id,a:d.a,b:d.b})),
     cover:site.cover.filter(o=>o.x>=r.x-22&&o.x<=r.x+r.w+22&&
