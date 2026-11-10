@@ -72,7 +72,7 @@ export function createShotResolver(ports:ShotResolverPorts){
   // risking a friendly operator standing in the near firing corridor.
   const sightClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:a.weaponYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
-    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors);
+    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
   if(sightClearance.blocked){
     a.lastFireBlock=sightClearance.blocker;
     if(sightClearance.blocker==='wall'||sightClearance.blocker==='cover')
@@ -113,7 +113,7 @@ export function createShotResolver(ports:ShotResolverPorts){
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
-    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors);
+    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
   if(shotClearance.blocked){
     a.lastFireBlock=shotClearance.blocker;return;
   }
