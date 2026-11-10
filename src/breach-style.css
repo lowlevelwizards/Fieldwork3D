@@ -2754,3 +2754,30 @@ body.replaying .replay-follow-status[data-grade]::after{
 @media(prefers-reduced-motion:reduce){
  .fw-debrief-v2 *{scroll-behavior:auto!important}
 }
+
+/* V2 forensic viewer: schematic body rail, readable shot-by-shot ledger. */
+.fw-after-combat-switch{display:flex;gap:6px;flex-wrap:wrap}
+.fw-debrief-v2 .fw-after-combat-switch .fw-after-link{
+  flex:1;min-height:40px;font-size:11px}
+.fw-after-combat-switch [aria-pressed=true]{background:#546d59;
+  border-color:#cbb88e;color:#f8e4c8}
+.fw-after-combat-split{display:grid;grid-template-columns:minmax(180px,320px) 1fr;
+  gap:12px;align-items:start}
+.fw-hit-paper{text-align:center}
+.fw-hit-paper svg{display:block;width:100%;max-height:320px;margin:auto}
+.fw-hit-selected{display:block;font:700 12px var(--ui-display);
+ color:#e4c1a2;line-height:1.5;margin-top:8px}
+.fw-after-shot-list{display:grid;gap:6px;max-height:460px;overflow-y:auto}
+.fw-debrief-v2 .fw-after-shot{display:grid;gap:2px;text-align:left;
+ margin:0;min-height:62px;padding:8px 10px;background:#20362f;
+ border:1px solid #526c60;border-radius:5px;color:#e5dfcc}
+.fw-debrief-v2 .fw-after-shot[data-selected=true]{
+ background:#445b4c;border-color:#e0bd8d}
+.fw-after-shot b{font:700 14px var(--ui-display)}
+.fw-after-shot span{font:600 12px var(--ui-font)}
+.fw-after-shot small{color:#afbdaf;font:11px/1.35 var(--ui-font)}
+@media(max-width:650px){
+ .fw-after-combat-split{grid-template-columns:1fr}
+ .fw-after-shot-list{max-height:none;overflow:visible}
+ .fw-hit-paper svg{max-height:250px}
+}

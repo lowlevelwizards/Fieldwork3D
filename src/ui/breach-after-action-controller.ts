@@ -4,11 +4,13 @@
 import {buildAfterActionReport,type AfterActionReport,
   type OperatorAfterAction} from '../breach-after-action-report.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
+import {renderCombatReport} from './breach-after-action-combat.ts';
 
 export type AfterActionTab='overview'|'squad'|'combat'|'highlights'|'timeline';
 type State={
   recorder:MissionRecorder;report:AfterActionReport;tab:AfterActionTab;
   selectedOperator:string|null;selectedContact:string|null;
+  selectedShotId:number|null;contactSide:'red'|'blue';paperBack:boolean;
   scroll:Partial<Record<AfterActionTab,number>>;
   showIntel:boolean;
 };
@@ -109,7 +111,8 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
  let state=owners.get(root);
  if(!state||state.recorder!==rec){
    state={recorder:rec,report:buildAfterActionReport(rec),tab:'overview',
-     selectedOperator:null,selectedContact:null,scroll:{},showIntel:options.showIntel};
+     selectedOperator:null,selectedContact:null,selectedShotId:null,
+     contactSide:'red',paperBack:false,scroll:{},showIntel:options.showIntel};
    owners.set(root,state);
    for(const tabButton of nav.querySelectorAll<HTMLButtonElement>('[data-after-tab]')){
      tabButton.addEventListener('click',()=>{
@@ -136,6 +139,22 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    let screen:HTMLElement;
    if(s.tab==='overview')screen=overview(s,change,id=>choose(id));
    else if(s.tab==='squad')screen=squad(s,choose);
+   else if(s.tab==='combat')screen=renderCombatReport(s.report,{
+     selectedContact:s.selectedContact,selectedShotId:s.selectedShotId,
+     side:s.contactSide,back:s.paperBack
+   },{
+     chooseContact:(id)=>{s.selectedContact=id;s.selectedShotId=null;draw();},
+     chooseShot:(id)=>{s.selectedShotId=id;draw();},
+     chooseSide:(side)=>{s.contactSide=side;s.selectedContact=null;
+       s.selectedShotId=null;draw();},
+     chooseView:(back)=>{s.paperBack=back;draw();},
+     viewReplay:(contact,shot)=>{
+       root.dispatchEvent(new CustomEvent('fw-after-action-replay',{
+         bubbles:true,detail:{surface:'combat',contactId:contact.id,
+           shotId:shot?.id??null,time:shot?.at??contact.resolvedAt??0}
+       }));
+     }
+   });
    else if(s.tab==='timeline'){
      screen=make('section','fw-after-section');
      screen.append(make('h2','fw-after-heading','TACTICAL RECORD'),
