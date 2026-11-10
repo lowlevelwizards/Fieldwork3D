@@ -29,6 +29,7 @@ if(!replayGroundContext)throw Error('Replay ground canvas unavailable');
 let fogStamp=-1;
 let fogSession:Session|null=null;
 let fogSignature='';
+let fogMode='';let fogSeenRevision=-1;
 function renderReplayPersonalGround():void{
   const state=getState(),replaying=isReplaying(),viewMode=getViewMode();
   if(!replaying||!replayKnowledge.groundLensOn||viewMode!=='plan2d'||
@@ -57,9 +58,18 @@ function fog(){
     return;
   }
   const nextSignature=fogSessionFingerprint(state);
-  if(fogStamp<0||fogSession!==state||fogSignature!==nextSignature||
-    state.seconds<fogStamp||state.seconds-fogStamp>.055){
+  // Preserve the existing ~18 Hz active-play repaint budget. A paused
+  // mission can change aim or open a door at the SAME simulation timestamp;
+  // only that stationary-time mutation should bypass the cadence. Mode,
+  // discovery and session swaps must always invalidate immediately.
+  const mustRedraw=fogStamp<0||fogSession!==state||
+    fogMode!==state.intel.mode||
+    fogSeenRevision!==state.seenGroundRevision||
+    state.seconds<fogStamp||state.seconds-fogStamp>.055||
+    (state.seconds===fogStamp&&fogSignature!==nextSignature);
+  if(mustRedraw){
     fogStamp=state.seconds;fogSession=state;fogSignature=nextSignature;
+    fogMode=state.intel.mode;fogSeenRevision=state.seenGroundRevision;
     paintFogMask(fogContext!,state,debugPalette?'palette':'normal');
   }
   draw.drawImage(fogCanvas,0,0,W,H);
