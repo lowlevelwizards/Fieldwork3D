@@ -3,7 +3,8 @@
  * baseline chest/head yaw smoothing. Never writes game simulation state.
  */
 import * as THREE from 'three';
-import type {OperatorRig,OperatorPose} from './breach-operator-rig.ts';
+import type {OperatorRig} from './breach-operator-rig.ts';
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import {createOperatorPoseScratch,type OperatorPoseScratch}
  from './breach-operator-pose-scratch.ts';
 
