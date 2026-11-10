@@ -9,11 +9,15 @@ import {createCivilianRig,updateCivilianRig,type CivilianRig}
  from '../breach-civilian-visuals.ts';
 export type FrameActorVisual={
  root:THREE.Group;status:THREE.Mesh;contactShadows:THREE.Mesh[];
+ side?:string;
 };
 export type ActorSceneReconciliationHost<T extends FrameActorVisual>={
  scene:THREE.Scene;actors:Map<string,T>;
  civilianRigs:Map<string,CivilianRig>;
  actorIds:Set<string>;civilianIds:Set<string>;
+ /** Host owns GPU/rig teardown; only orphaned hostiles may be retired.
+  * Preloaded friendly rigs intentionally survive for the next session. */
+ retireMissingHostile?:(id:string)=>void;
 };
 export function reconcileSceneActorLifetimes<T extends FrameActorVisual>(
  s:Session,host:ActorSceneReconciliationHost<T>,omniscient:boolean,
@@ -22,6 +26,10 @@ export function reconcileSceneActorLifetimes<T extends FrameActorVisual>(
  const current=host.actorIds;current.clear();
  for(const actor of s.operators)current.add(actor.id);
  for(const [id,object] of actors)if(!current.has(id)){
+   if(object.side==='red'&&host.retireMissingHostile){
+     host.retireMissingHostile(id);
+     continue;
+   }
    object.root.visible=false;object.status.visible=false;
    for(const shadow of object.contactShadows)shadow.visible=false;
  }
