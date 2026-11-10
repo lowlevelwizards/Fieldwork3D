@@ -4,7 +4,8 @@
  * or ballistics. Deterministic replay does not consume render history.
  */
 import * as THREE from 'three';
-import type {OperatorRig,OperatorPose} from './breach-operator-rig.ts';
+import type {OperatorRig} from './breach-operator-rig.ts';
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import type {Handling,WeaponFit} from './breach-weapon-pose.ts';
 import {handlingProfile,type HandlingProfile} from './breach-handling-profiles.ts';
 import {blendedHandlingProfile,type HandlingTransition}
