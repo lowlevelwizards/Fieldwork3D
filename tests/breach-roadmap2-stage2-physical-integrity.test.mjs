@@ -60,7 +60,7 @@ test('all eleven building programs have finite, traversable physical sites',()=>
 
 test('default-scale townhouse, apartment, and office room clusters are reachable',()=>{
  const failures=[];
- for(const seed of [1,2,37]){
+ for(const seed of [1,2,35,37]){
   const site=generateSite(seed,'standard');
   const audit=auditSitePhysicalIntegrity(site);
   const broken=audit.blocking.filter(f=>f.code==='unreachable-room');
