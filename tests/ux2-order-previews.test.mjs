@@ -38,13 +38,18 @@ test('WATCH shows a point target; flash and suppress have distinct areas',()=>{
  const suppress=previewCalls('suppress');
  assert.ok(suppress.some(c=>c.method==='arc'&&c.args[2]===22));
 });
-test('mobile drag targets use existing validated order action; two fingers cancel',()=>{
+test('mobile drag targets retain gesture, command and preview separation',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(main,/p\.mode='targetPreview'/);
- assert.match(main,/if\(p\.mode==='targetPreview'\)\{/);
- assert.match(main,/useSelectedGround\(pt\)/);
- assert.match(main,/if\(activePointers\.size>=2\)/);
- assert.match(main,/pointer\.mode='cameraMulti'/);
- assert.match(main,/p\.mode==='cameraMulti'\)return/);
- assert.match(main,/const preview:TacticalOrderPreview\|undefined=/);
+ const gestures=readFileSync(new URL('../src/breach-canvas-gesture-controller.ts',import.meta.url),'utf8');
+ const pointer=readFileSync(new URL('../src/breach-pointer-command-controller.ts',import.meta.url),'utf8');
+ const feedback=readFileSync(new URL('../src/ui/breach-tactical-frame-feedback-controller.ts',import.meta.url),'utf8');
+ assert.match(gestures,/p\.mode='targetPreview'/);
+ assert.match(gestures,/if\(p\.mode==='targetPreview'\)return/);
+ assert.match(pointer,/p\.mode==='targetPreview'\|\|p\.mode==='undecided'/);
+ assert.match(pointer,/port\.useSelectedGround\(pt\)/);
+ assert.match(gestures,/if\(activePointers\.size>=2\)/);
+ assert.match(gestures,/pointer\.mode='cameraMulti'/);
+ assert.match(pointer,/p\.mode==='cameraMulti'/);
+ assert.match(feedback,/const preview:TacticalOrderPreview\|undefined=/);
+ assert.match(main,/dispatchTacticalPointerRelease\(/);
 });

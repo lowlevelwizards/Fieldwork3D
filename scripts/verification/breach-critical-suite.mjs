@@ -9,6 +9,8 @@ const tests=[
  'tests/breach-roadmap2-stage2-physical-integrity.test.mjs',
  'tests/breach-roadmap2-stage3-knowledge.test.mjs',
  'tests/breach-roadmap2-stage3-integration.test.mjs',
+ 'tests/breach-roadmap2-stage4-replay-hud.test.mjs',
+ 'tests/breach-roadmap2-stage4-replay-presentation.test.mjs',
  'tests/breach-roadmap4-ai-reconciliation.test.mjs',
  'tests/breach-roadmap4-world-geometry.test.mjs',
  'tests/breach-roadmap4-motor-stride.test.mjs',

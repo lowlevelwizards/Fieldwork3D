@@ -1,6 +1,7 @@
 import {
   createBreachCanvasGestureController,type TacticalPointer}
  from './breach-canvas-gesture-controller.ts';
+import {dispatchTacticalPointerRelease} from './breach-pointer-command-controller.ts';
 import {installTouchCommandHelp as bindTouchCommandHelp}
  from './ui/touch-command-help.ts';
 import {
@@ -9,13 +10,13 @@ import {
 import {
   type Session,
   type TeamActor,team,enemies,isSeen,
-  missionText,operationBriefing,planMove,planMoveStroke,
+  missionText,operationBriefing,planMove,
   planNearbyInteraction,planAim,planWatch,retargetActiveWatch,
   setFirePolicy,planWait,plannedControl,planDoorFlash,
-  planSync,movePlanNode,finalPoint,backOne,
+  planSync,finalPoint,backOne,
   clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,liveVisibility,
-  planReload,reloadNow,planFlash,moveFlashTarget,
+  planReload,reloadNow,planFlash,
   equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,planCasualtyTransport,
   planRecoverMedical
 } from './breach-game.ts';
@@ -26,16 +27,15 @@ import {createBreach2DVisibilityRenderer} from './breach-2d-visibility-renderer.
 import {createBreach2DReplayOverlays} from './breach-2d-replay-overlays.ts';
 import {createBreach2DRouteOverlays} from './breach-2d-route-overlays.ts';
 import {createBreach2DProjectedOverlays} from './breach-2d-projected-overlays.ts';
-import type {TacticalOrderPreview} from './ui/tactical-feedback.ts';
 import {executionStatus} from './breach-execution-state.ts';
 import {currentSiteIdentity} from './ui/current-site-identity.ts';
-import {shouldAppendStrokePoint,simplifyStrokePoints}
+import {shouldAppendStrokePoint}
  from './ui/touch-hit-targets.ts';
 import type {TacticalPick} from './ui/tactical-target-resolver.ts';
 import {pickTacticalTarget,insertTacticalRouteWaypoint} from './breach-tactical-picking.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
-import {aimTargetFromTap,insideTacticalBounds} from './ui/aim-target.ts';
-import {interruptsWatch,angleDifference} from './breach-plan.ts';
+import {aimTargetFromTap} from './ui/aim-target.ts';
+import {interruptsWatch} from './breach-plan.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
@@ -49,6 +49,7 @@ import {createBreachEquipmentEditorBridge} from './breach-equipment-editor-bridg
 import {createBreachOperationsBoardController} from './breach-operations-board-controller.ts';
 import {createBreachRuntimeLoop} from './breach-runtime-loop.ts';
 import {createReplayModeController} from './breach-replay-mode-controller.ts';
+import {createBreachReplayPresentationController} from './breach-replay-presentation-controller.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
@@ -72,19 +73,14 @@ import {ReplayBodycamController} from './breach-replay-bodycam-controller.ts';
 import {ReplayCameraController} from './breach-replay-camera-controller.ts';
 import {createBreachReplayLibraryController}
   from './ui/breach-replay-library-controller.ts';
-import {formatReplayTime} from './breach-replay-transport.ts';
-import {REPLAY_SPEED_STOPS,speedIndex} from './breach-replay-speed.ts';
 import {resolvedReplayCamera,type ReplayCameraChoice,type ReplayPerspective}
   from './breach-replay-ui-state.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
-import {shotScreenHit} from './breach-replay-shot-inspector.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 import {measureReplaySquadDoorEntry,type ReplaySquadEntryReview}
   from './breach-replay-squad-entry.ts';
 import {operatorContactAvailable} from './breach-replay-contact-lens.ts';
-import {bodycamDisclosureLabel}
-  from './breach-replay-bodycam-controls.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {fitMagazineInventory}
@@ -92,11 +88,9 @@ import {fitMagazineInventory}
 
 import {stageMagazines} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
-import {canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
+import {canRelocateCover} from './breach-movable-cover.ts';
 import {INTEL_MODES,doorKnown,
   intelPassable,type IntelMode} from './breach-intel.ts';
-import {orderFailureText} from './breach-nav-diagnostics.ts';
-import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
 import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
@@ -115,6 +109,8 @@ import {renderMissionDebrief} from './ui/breach-mission-debrief.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
+import {createBreachTacticalFrameFeedbackController} from './ui/breach-tactical-frame-feedback-controller.ts';
+import {createBreachReplayHudController} from './ui/breach-replay-hud-controller.ts';
 import {createTacticalPaletteController} from './ui/tactical-palette-controller.ts';
 import {dispatchTacticalContextCommand} from './breach-tactical-context-command.ts';
 
@@ -1086,7 +1082,15 @@ function updateQuickStates():void{
   });
 }
 const siteIdentityOutput=el<HTMLOutputElement>('siteIdentity');
-const blockedEpisode=new Map<string,string>();
+const frameFeedbackController=createBreachTacticalFrameFeedbackController({
+ snapshot:()=>({
+   state,replaying,selected,feedbackDraw,dpr,cssW,cssH,activePointers,
+   cursor,previewHover,hudController,flashMode,firePlacement,evacMode,
+   pushMode,uid,selectedPlanNode,tacticalFeedback,worldToScreen,
+   reducedMotion:reducedMotionMedia.matches
+ }),
+ warn:()=>audioController.uiClickTone('warning')
+});
 let fieldLightButton:HTMLButtonElement|null=null;
 let medicalButton:HTMLButtonElement|null=null;
 let dragButton:HTMLButtonElement|null=null;
@@ -1390,10 +1394,8 @@ function render(){
 }
 /** Rejected authoring orders keep the existing plan intact and mark only
  * the attempted world point; no hidden geometry or actors are inspected. */
-function rejectAt(pt:Pt,reason:string){
-  state.events.push(reason);
-  hudController.rejectAttempt(pt,reason,
-    ()=>audioController.uiClickTone('warning'));
+function rejectAt(pt:Pt,reason:string):void{
+ frameFeedbackController.rejectAt(pt,reason);
 }
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
@@ -1489,52 +1491,12 @@ function isMissionTerminal(s:Session){return s.phase==='won'||s.phase==='lost';}
 /** Reapply recorded outcomes after timeline navigation, then refresh dependent
  * camera/audio/visibility presentation. The playback controller owns samples.
  */
-function presentReplayAtCurrentTime():void{
-  ui.replayClusterMenu.hidden=true;
-  if(replayQuickVideo.active)replayQuickVideo.stop();
-  audioController.stopReplaySounds();
-  replayDirector.target=null;
-  stage?.resetReplayBodycamSmoothing();
-  const frame=replayPlayback.applyRecordedFrame(recorder,state);
-  if(frame){
-    replayPresentation=frame.presentation??null;
-    fog2D.invalidate();
-  }
-  advanceReplayCamera(0,true);
-  if(!ui.replayFeed.hidden)replayAnalysisUi.renderReplayEventFeed();
-  updateReplayHud();
-}
-function seekReplay(t:number):void{
-  replayPlayback.seek(t,recorder.duration);
-  presentReplayAtCurrentTime();
-}
-
-function rebuildReplayEventIndex():void{
-  const eventIndex=replayAnalysisUi.rebuildReplayEventIndex();
-  // The Director controller owns historical camera evidence and the film.
-  const headerBottom=Math.max(65,
-    ui.replayTopHud.getBoundingClientRect().bottom,
-    document.querySelector('.top')?.getBoundingClientRect().bottom??0);
-  const dockRect=ui.replayPanel.getBoundingClientRect();
-  const dockPixels=ui.replayPanel.hidden||dockRect.height<40?
-    Math.min(205,cssH*.235):
-    Math.max(cssH-dockRect.top,Math.min(205,cssH*.235));
-  replayDirector.rebuild({
-    recorder,eventIndex,state,
-    observerId:replayKnowledge.observerId,omniscient:replayKnowledge.omniscient,
-    isShotVisible:historicalShotVisible,width:cssW,height:cssH,
-    headerBottom,dockPixels,baseSpan:stage?.replayCameraBaseSpan()??1100
-  });
-}
-/** Runtime only bridges the camera controller to the current replay view. */
+let replayPresentationController:ReturnType<typeof createBreachReplayPresentationController>|null=null;
+function presentReplayAtCurrentTime():void{replayPresentationController?.presentReplayAtCurrentTime();}
+function seekReplay(t:number):void{replayPresentationController?.seekReplay(t);}
+function rebuildReplayEventIndex():void{replayPresentationController?.rebuildReplayEventIndex();}
 function advanceReplayCamera(dt:number,instant=false):void{
-  replayCamera.advance({
-    dt,instant,replaying,stage,viewMode,state,recorder,replayTime:replayPlayback.time,
-    replayContactObserverId:replayKnowledge.observerId,
-    replayOmniscient:replayKnowledge.omniscient,
-    manualBodycamActive:replayBodycam.active,cssW,cssH,
-    replayFollowStatus:ui.replayFollowStatus,debugPanel:replayDirectorDebugPanel
-  });
+ replayPresentationController?.advanceReplayCamera(dt,instant);
 }
 
 function clearReplayPresentation():void{
@@ -1587,253 +1549,8 @@ function populateReplayCameraChoices():void{
     ui.replayQuickCamera.append(option);
   }
 }
-function updateReplayHud(){
-  ui.replaySeek.value=String(Math.round(replayPlayback.time*60));
-  ui.replayMiniPlay.textContent=replayPlayback.playing?'Ⅱ':'▶';
-  const following=replayCamera.mode==='operator'&&
-    team(state).some(actor=>actor.id===replayCamera.followId&&actor.health>0);
-  const followingName=team(state).find(actor=>actor.id===replayCamera.followId)?.name??
-    replayCamera.followId;
-  const autoCam=replayCamera.mode==='director'&&replayCamera.lens==='cam';
-  const camId=autoCam?replayCamera.directorCamActor:null;
-  const camName=team(state).find(a=>a.id===camId)?.name??camId;
-  ui.replayFollowStatus.textContent=replayBodycam.active?
-    'BODYCAM · '+followingName.toUpperCase():following?
-    'FOLLOWING · '+followingName.toUpperCase():
-    autoCam?'DIRECTOR CAM · '+(camName?.toUpperCase()??'NO RECORDED VIEW'):
-    replayCamera.mode==='director'?
-      'DIRECTOR · '+(replayDirector.target?.shotType.toUpperCase()??'SQUAD') :
-    replayCamera.mode==='squad'?'FOLLOWING · SQUAD':'FREE CAMERA';
-  ui.replayFollowStatus.dataset.following=String(following||replayBodycam.active);
-  ui.replayClock.textContent=formatReplayTime(replayPlayback.time)+' / '+
-    formatReplayTime(recorder.duration)+
-    (recorder.completeness.complete?'':' · PARTIAL');
-  ui.replaySeek.setAttribute('aria-valuetext',
-    formatReplayTime(replayPlayback.time)+' of '+formatReplayTime(recorder.duration));
-  ui.replayPlay.dataset.caption=replayPlayback.playing?'PAUSE':'PLAY';
-  const playbackIcon=replayPlayback.playing?'pause':'replayPlay';
-  if(ui.replayPlay.dataset.mode!==playbackIcon){
-    ui.replayPlay.dataset.mode=playbackIcon;
-    ui.replayPlay.replaceChildren(tacticalIcon(playbackIcon));
-    ui.replayPlay.setAttribute('aria-label',replayPlayback.playing?'Pause replay':'Play replay');
-    ui.replayPlay.title=replayPlayback.playing?'Pause replay':'Play replay';
-  }
-  ui.replaySpeed.textContent=replayPlayback.rate+'×';
-  ui.replayQuickSpeed.value=String(replayPlayback.rate);
-  ui.replayQuickSpeed.disabled=replayQuickVideo.active;
-  ui.replaySpeedTrigger.querySelector('small')!.textContent=replayPlayback.rate+'×';
-  ui.replaySpeedTrigger.setAttribute('aria-label','Playback speed '+replayPlayback.rate+' times');
-  ui.replaySpeedTrigger.disabled=replayQuickVideo.active;
-  ui.replaySpeedRange.disabled=replayQuickVideo.active;
-  ui.replaySpeedRange.value=String(speedIndex(replayPlayback.rate));
-  ui.replaySpeedRange.setAttribute('aria-valuetext',replayPlayback.rate+'×');
-  ui.replaySpeedRange.style.setProperty('--speed-progress',
-    (speedIndex(replayPlayback.rate)/(REPLAY_SPEED_STOPS.length-1)*100)+'%');
-  ui.replaySpeedValue.textContent=replayPlayback.rate+'×';
-  for(const b of ui.replayOverlayChoices
-  .querySelectorAll<HTMLButtonElement>('[data-overlay-choice]')){
-  b.addEventListener('click',()=>{
-    const choice=b.dataset.overlayChoice;
-    replayAnalysisUi.replayPreset='custom';
-    if(choice==='names')replayNameTags=!replayNameTags;
-    else if(choice==='contacts')replayContactMarkers=!replayContactMarkers;
-    else if(choice==='plans')replayPlanScope=
-      replayPlanScope==='none'?'selected':'none';
-    else if(choice==='objectives')replayObjectiveMarkers=!replayObjectiveMarkers;
-    else if(choice==='clear')clearReplayPresentation();
-    else if(choice==='show'){
-      replayNameTags=true;replayContactMarkers=true;
-      replayPlanScope='selected';replayObjectiveMarkers=true;
-    }
-    updateReplayHud();
-    if(choice==='clear'||choice==='show')replayAnalysisUi.closeReplayChoices();
-  });
-}
-for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-speed-choice]')){
-    b.disabled=replayQuickVideo.active;
-    b.setAttribute('aria-pressed',String(Number(b.dataset.speedChoice)===replayPlayback.rate));
-  }
-  const loop=replayPlayback.loopRange(recorder.duration);
-  ui.replayLoopIn.textContent=replayPlayback.loopIn===null?'SET LOOP IN':
-    'IN '+formatReplayTime(replayPlayback.loopIn);
-  ui.replayLoopOut.textContent=replayPlayback.loopOut===null?'SET LOOP OUT':
-    'OUT '+formatReplayTime(replayPlayback.loopOut);
-  ui.replayLoopToggle.textContent=replayPlayback.loopEnabled?'LOOP ON':'LOOP OFF';
-  ui.replayLoopToggle.disabled=!loop||replayQuickVideo.active;
-  ui.replayLoopIn.disabled=replayQuickVideo.active;
-  ui.replayLoopOut.disabled=replayQuickVideo.active;
-  ui.replayLoopToggle.setAttribute('aria-pressed',String(replayPlayback.loopEnabled));
-  ui.replayExportVideo.textContent=replayQuickVideo.active?'STOP VIDEO':'VIDEO 20S';
-  ui.replaySpeed.disabled=replayQuickVideo.active;
-  ui.replaySound.textContent=audioController.replaySoundEnabled?'SOUND ON':'SOUND OFF';
-  ui.replaySound.setAttribute('aria-pressed',String(audioController.replaySoundEnabled));
-  ui.replaySpeed.title='Playback speed '+replayPlayback.rate+'× · Tap to change';
-  ui.replaySpeed.setAttribute('aria-label',
-    'Playback speed '+replayPlayback.rate+' times. Tap to select next speed');
-  ui.replaySight.textContent=replayKnowledge.omniscient?'FULL VIEW':'TEAM SIGHT';
-  const replaySightMode=replayKnowledge.observerId?'operator':
-    replayKnowledge.omniscient?'full':'team';
-  ui.replayDirectSight.value=replaySightMode;
-  ui.replaySightTrigger.querySelector('small')!.textContent=replaySightMode.toUpperCase();
-  ui.replaySightTrigger.setAttribute('aria-label','Visibility: '+replaySightMode+' sight');
-  for(const b of ui.replaySightChoices.querySelectorAll<HTMLButtonElement>('[data-sight-choice]')){
-    b.setAttribute('aria-pressed',String(b.dataset.sightChoice===replaySightMode));
-    b.disabled=b.dataset.sightChoice==='operator'&&!replayKnowledge.hasContactEvidence;
-  }
-  ui.replayDirectSight.querySelector<HTMLOptionElement>('option[value="operator"]')!
-    .disabled=!replayKnowledge.hasContactEvidence;
-  ui.replayDirectTracers.setAttribute('aria-pressed',
-    String(replayTraceMode!=='off'));
-  // Both director lenses keep walls opaque but cut away the ceiling.
-  // The tactical X-ray toggle must not influence either film audition.
-  ui.replayDirectXray.disabled=replayCamera.mode==='director';
-  ui.replayDirectXray.setAttribute('aria-pressed',
-    String(replayCamera.mode!=='director'&&replayXrayOn));
-  ui.replayDirectXray.title=replayCamera.mode==='director'?
-    'Director: solid walls, removed ceiling; wall X-ray unavailable':
-    replayXrayOn?'Selective Cutaway on: fade only blocking walls':
-      'Selective Cutaway off: retain normal architectural opacity';
-  ui.replayDirectDirector.setAttribute('aria-pressed',
-    String(replayCamera.mode==='director'));
-  ui.replayDirectLens.hidden=replayCamera.mode!=='director';
-  ui.replayDirectLens.setAttribute('aria-pressed',
-    String(replayCamera.lens!=='ortho'));
-  const lensLabel=replayCamera.lens.toUpperCase();
-  const camAvailable=replayDirector.camEligibleObservers.length>0;
-  ui.replayDirectLens.setAttribute('aria-label',
-    'Director lens: '+lensLabel+'. Tap to choose the next view');
-  ui.replayDirectLens.title=camAvailable?
-    'Director lens '+lensLabel+' · ORTHO / WIDE / CAM':
-    'Director lens '+lensLabel+
-      ' · reconstructed CAM needs recorded personal sight evidence';
-  ui.replayDirectLens.querySelector('small')!.textContent=lensLabel;
-  const canBodycam=!!stage&&replayBodycam.observers.includes(replayCamera.followId);
-  ui.replayDirectBodycam.hidden=!replayBodycam.active&&replayCamera.mode!=='operator';
-  ui.replayDirectBodycam.title=canBodycam?
-    'Reconstructed operator camera from recorded observation evidence':
-    'This replay lacks recorded personal sight evidence for this operator';
-  ui.replayDirectBodycam.disabled=!replayBodycam.active&&!canBodycam;
-  ui.replayDirectBodycam.setAttribute('aria-pressed',String(replayBodycam.active));
-  ui.replayDirectBodycam.querySelector('small')!.textContent=replayBodycam.active?'EXIT':'CAM';
-  ui.replayDirectBodycam.setAttribute('aria-label',replayBodycam.active?'Exit Bodycam':'Enter Bodycam');
-  ui.replayDirectMount.hidden=!replayBodycam.active&&!autoCam;
-  const activeMount=autoCam?replayCamera.camMount:replayBodycam.mount;
-  ui.replayDirectMount.querySelector('small')!.textContent=
-    activeMount==='chest'?'CHEST':'HEAD';
-  ui.replayDirectMount.setAttribute('aria-label',
-    (autoCam?'Director CAM':'Bodycam')+' mount: '+
-    activeMount+'. Tap to switch head or chest');
-  ui.replayDirectMount.title=autoCam?
-    'Director CAM mount · follows every selected operator':
-    'Bodycam head/chest mount';
-  ui.replayDirectFree.hidden=replayCamera.mode==='free'&&!replayBodycam.active;
-  ui.replayDirectFree.querySelector('small')!.textContent=replayBodycam.active?'EXIT':'FREE';
-  ui.replayDirectFree.setAttribute('aria-label',replayBodycam.active?'Exit Bodycam camera':'Free camera');
-  ui.replayContactLens.disabled=!replayKnowledge.hasContactEvidence;
-  ui.replayContactLens.textContent=replayKnowledge.observerId?
-    'CONTACTS: '+replayKnowledge.observerId.toUpperCase():'CONTACTS: TEAM';
-  ui.replayContactLens.title=replayKnowledge.hasContactEvidence?
-    'Only confirmed enemy contacts and own activity; team map remains shared':
-    'This recording has no individual operator contact evidence';
-  ui.replayContactNote.hidden=!replayKnowledge.observerId;
-  ui.replayContactNote.textContent=replayBodycam.active?
-    'RECONSTRUCTED FIRST PERSON · PERSONAL CONTACTS · STRUCTURAL MAP FROM SHARED RECORDING.':
-    replayKnowledge.groundLensOn?
-    'GOLD CELLS: INDIVIDUALLY OBSERVED FLOOR · WORLD OBJECTS STILL SQUAD STATE · 2D ONLY.':
-    'PERSONAL CONTACTS / LAST-SEEN DOORS · MAP/PROPS REMAIN SQUAD KNOWLEDGE. SHOT PATHS HIDDEN.';
-  ui.replayGroundLens.disabled=!replayKnowledge.observerId||
-    !replayKnowledge.personalGround||replayBodycam.active;
-  ui.replayBodycam.disabled=!stage||!replaying||
-    replayBodycam.observers.length===0;
-  ui.replayBodycam.textContent=replayBodycam.active?'BODYCAM ON':'BODYCAM OFF';
-  ui.replayBodycam.setAttribute('aria-pressed',String(replayBodycam.active));
-  ui.replayBodycamMount.disabled=!replayBodycam.active;
-  ui.replayBodycamMount.textContent='MOUNT '+replayBodycam.mount.toUpperCase();
-  ui.replayBodycamStatus.hidden=!replayBodycam.active&&!autoCam;
-  if(autoCam&&camId){
-    ui.replayBodycamStatus.textContent='DIRECTOR · '+
-      bodycamDisclosureLabel(camId,replayCamera.camMount,
-        replayBodycam.groundObservers.has(camId));
-  }else if(replayBodycam.active&&replayKnowledge.observerId){
-    ui.replayBodycamStatus.textContent=bodycamDisclosureLabel(
-      replayKnowledge.observerId,replayBodycam.mount,
-      replayBodycam.groundObservers.has(replayKnowledge.observerId));
-  }else if(autoCam){
-    ui.replayBodycamStatus.textContent=
-      'DIRECTOR CAM · NO RECORDED PERSONAL CAMERA AVAILABLE';
-  }
-  ui.replayGroundLens.textContent=replayKnowledge.groundLensOn?
-    'GROUND: PERSONAL':'GROUND: OFF';
-  ui.replayGroundLens.setAttribute('aria-pressed',
-    String(replayKnowledge.groundLensOn));
-  ui.replayView.textContent=viewMode.toUpperCase();
-  ui.replayQuickView.value=viewMode;
-  ui.replayQuickView.disabled=replayBodycam.active;
-  ui.replayViewTrigger.querySelector('small')!.textContent=
-    viewMode==='plan2d'?'PLAN':viewMode.toUpperCase();
-  ui.replayViewTrigger.setAttribute('aria-label','Perspective: '+viewMode);
-  ui.replayViewTrigger.disabled=replayBodycam.active;
-  for(const b of ui.replayViewChoices.querySelectorAll<HTMLButtonElement>('[data-view-choice]'))
-    b.setAttribute('aria-pressed',String(b.dataset.viewChoice===viewMode));
-  ui.replayView.disabled=replayBodycam.active;
-  ui.replayFollow.textContent=replayCamera.follow?'FOLLOW '+replayCamera.followId.toUpperCase():'FOLLOW';
-  ui.replaySquad.textContent=replayCamera.mode==='squad'?'SQUAD ON':'FOLLOW SQUAD';
-  ui.replayDirector.textContent=replayCamera.mode==='director'?'DIRECTOR ON':'DIRECTOR OFF';
-  ui.replayQuickCamera.value=replayCamera.mode==='operator'?
-    'operator:'+replayCamera.followId:replayCamera.mode;
-  for(const option of ui.replayQuickCamera.options){
-    const value=option.value;
-    const mode:ReplayCameraChoice=value.startsWith('operator:')?'operator':
-      value as ReplayCameraChoice;
-    option.disabled=resolvedReplayCamera(mode,viewMode as ReplayPerspective,
-      !!stage,replayBodycam.active)!==mode;
-  }
-  ui.replayQuickCamera.disabled=replayBodycam.active;
-  if(team(state).some(a=>a.id===selected))ui.replayInspectActor.value=selected;
-  for(const b of ui.replayInspectActorButtons.querySelectorAll<HTMLButtonElement>('[data-follow-actor]'))
-    b.setAttribute('aria-pressed',String(replayCamera.mode==='operator'&&
-      b.dataset.followActor===replayCamera.followId));
-  ui.replaySquad.setAttribute('aria-pressed',String(replayCamera.mode==='squad'));
-  ui.replayDirector.setAttribute('aria-pressed',String(replayCamera.mode==='director'));
-  ui.replaySquad.disabled=viewMode==='plan2d'||!stage||replayBodycam.active;
-  ui.replayDirector.disabled=viewMode==='plan2d'||!stage||replayBodycam.active;
-  ui.replayFollow.disabled=viewMode==='plan2d'||!stage||replayBodycam.active;
-  ui.replayAnalysis.textContent=replayAnalysis?'ANALYSIS ON':'ANALYSIS';
-  ui.replayPlans.textContent='PLANS '+replayPlanScope.toUpperCase();
-  ui.replayPlanVersion.textContent='PLAN '+replayPlanVersion.toUpperCase();
-  ui.replayNames.textContent=replayNameTags?'NAMES ON':'NAMES OFF';
-  replayAnalysisUi.syncReplayOverlayChoices();
-  ui.replayTraces.textContent='TRACES '+replayTraceMode.toUpperCase();
-  ui.replayGhosts.textContent='GHOSTS '+replayGhostMode.toUpperCase();
-  ui.replayTrails.textContent='ACTUAL PATH '+replayTrailMode.toUpperCase();
-  ui.replayPlans.setAttribute('aria-pressed',String(replayPlanScope!=='none'));
-  ui.replayNames.setAttribute('aria-pressed',String(replayNameTags));
-  for(const button of ui.replayPresets.querySelectorAll<HTMLButtonElement>('[data-replay-preset]'))
-    button.setAttribute('aria-pressed',String(button.dataset.replayPreset===replayAnalysisUi.replayPreset));
-  ui.replayPresetStatus.textContent=replayAnalysisUi.replayPreset==='custom'?'CUSTOM SETTINGS':'';
-  ui.replayShareToggle.textContent=replayQuickVideo.active?'■ STOP VIDEO':'SAVE / SHARE';
-  const replaySaved=!!(replayLibrary.activeSavedReplayId||replayLibrary.isRecorderSaved(recorder));
-  ui.replaySaveArchive.disabled=replayLibrary.busy||replaySaved;
-  ui.replaySaveArchive.textContent=replaySaved?'SAVED TO LIBRARY':'SAVE REPLAY';
-  ui.replayShareToggle.setAttribute('aria-label',replayQuickVideo.active?
-    'Stop replay video recording':'Open replay save and share');
-  ui.replayPrevEvent.disabled=!replayAnalysisUi.replayEventIndex?.previous(replayPlayback.time);
-  ui.replayNextEvent.disabled=!replayAnalysisUi.replayEventIndex?.next(replayPlayback.time);
-  const event=replayAnalysisUi.replayEventIndex?.latest(replayPlayback.time+.14);
-  ui.replayEventText.textContent=event&&replayPlayback.time-event.t<6.5?
-    formatReplayTime(event.t)+' · '+event.text:
-    replayPlayback.time<.5?'TAP AN OPERATOR TO FOLLOW · PLAYBACK STARTING':
-    'NO RECENT RECORDED ACTION';
-  const status=replayQuickVideo.active?'● RECORDING':
-    replayPlayback.incident?.loop?'INCIDENT LOOP':
-    replayPlayback.incident?'WATCHING MOMENT':
-    replayPlayback.loopEnabled?'A/B LOOP':
-    replayCamera.mode==='director'&&performance.now()<replayDirector.editNoticeUntil?
-      'DIRECTOR EDIT · +'+replayDirector.editNoticeSeconds.toFixed(1)+'S':'';
-  ui.replayStatusChip.textContent=status;
-  ui.replayStatusChip.hidden=!status;
-  replayAnalysisUi.syncReplayEventFeed();
-}
+let replayHudController:ReturnType<typeof createBreachReplayHudController>|null=null;
+function updateReplayHud():void{replayHudController?.update();}
 /** Display compact clusters, not dozens of overlapping tap targets.
  * The scrubber and event navigation remain the accessible interactions.
  */
@@ -1966,6 +1683,43 @@ const replayAnalysisUi=createBreachReplayAnalysisController({
    updateReplayHud();
  }
 });
+replayPresentationController=createBreachReplayPresentationController(()=>({
+ ui,replayQuickVideo,audioController,replayDirector,
+ get stage(){return stage;},replayPlayback,
+ get recorder(){return recorder;},get state(){return state;},
+ get replayPresentation(){return replayPresentation;},
+ set replayPresentation(v){replayPresentation=v;},
+ fog2D,replayAnalysisUi,updateReplayHud,replayKnowledge,
+ get cssW(){return cssW;},get cssH(){return cssH;},replayCamera,
+ get replaying(){return replaying;},get viewMode(){return viewMode;},
+ replayBodycam,replayDirectorDebugPanel,historicalShotVisible
+}));
+replayHudController=createBreachReplayHudController({
+ ui,snapshot:()=>({
+   state,recorder,replayPlayback,replayCamera,replayKnowledge,replayBodycam,
+   videoActive:replayQuickVideo.active,
+   library:replayLibrary,analysisUi:replayAnalysisUi,viewMode,
+   stageAvailable:!!stage,selected,replaying,
+   replayXrayOn,replayTraceMode,replayGhostMode,replayTrailMode,
+   replayPlanScope,replayPlanVersion,replayNameTags,replayAnalysis,
+   audioSoundEnabled:audioController.replaySoundEnabled
+ }),
+ onOverlayChoice:choice=>{
+   replayAnalysisUi.replayPreset='custom';
+   if(choice==='names')replayNameTags=!replayNameTags;
+   else if(choice==='contacts')replayContactMarkers=!replayContactMarkers;
+   else if(choice==='plans')replayPlanScope=
+     replayPlanScope==='none'?'selected':'none';
+   else if(choice==='objectives')replayObjectiveMarkers=!replayObjectiveMarkers;
+   else if(choice==='clear')clearReplayPresentation();
+   else if(choice==='show'){
+     replayNameTags=true;replayContactMarkers=true;
+     replayPlanScope='selected';replayObjectiveMarkers=true;
+   }
+   if(choice==='clear'||choice==='show')replayAnalysisUi.closeReplayChoices();
+ }
+});
+replayHudController.bind();
 replayAnalysisUi.bindReplayUi();
 ui.replayQuickView.addEventListener('change',()=>{
   if(replayBodycam.active)return;
@@ -2418,7 +2172,7 @@ function releaseMissionPresentation():void{
   ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
   replayAnalysisUi.closeReplayChoices();
   hudController.resetNotices();
-  blockedEpisode.clear();
+  frameFeedbackController.reset();
   runtimeLoop.resetPresentation();
   missionController.releasePresentation();
 }
@@ -2875,169 +2629,25 @@ function insertAtRouteLine(screen:Pt,pointerKind:string):boolean{
 }
 /** Map gestures have resolved; this is the gameplay-only commit boundary. */
 function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
-  cancelled:boolean,pointerCount:number):void{
-  const pt=hudController.facing.looking?pointerAimWorld(e):
-    p.mode==='activeWatch'||p.mode==='watchTarget'?
-      pointerAimWorld(e,12):pointerWorld(e);
-  // During replay, a deliberate single tap on a friendly miniature
-  // follows that operator. Two-finger gestures, camera drags, and scrubbing
-  // never steal camera focus. Avoid interpreting the same tap as a shot.
-  let tappedReplayOperator=false;
-  if(!cancelled&&replaying&&!replayBodycam.active&&
-     pointerCount===1&&!p.moved&&p.mode==='undecided'){
-    const finger={x:e.clientX,y:e.clientY};
-    const nearest=team(state).filter(actor=>actor.health>0)
-      .map(actor=>({id:actor.id,d:distance(
-        worldToScreen(actor.p,viewMode==='plan2d'?0:24),finger)}))
-      .sort((a,b)=>a.d-b.d)[0];
-    if(nearest&&nearest.d<=(e.pointerType==='touch'?36:26)){
-      tappedReplayOperator=true;
-      followReplayOperator(nearest.id);
-    }
-  }
-  if(!tappedReplayOperator&&!cancelled&&replaying&&replayTraceMode!=='off'&&
-    pointerCount===1&&!p.moved&&p.mode==='undecided'){
-    const hit=shotScreenHit(recorder.ballistics.between(
-      Math.max(0,replayPlayback.time-3),replayPlayback.time),replayPlayback.time,
-      {x:e.clientX,y:e.clientY},
-      (point,height)=>worldToScreen(point,viewMode==='plan2d'?0:height),
-      historicalShotVisible,e.pointerType==='touch'?30:22);
-    if(hit)replayAnalysisUi.selectReplayShot(hit);
-  }
-  if(!cancelled&&!replaying&&state.phase!=='planning'&&
-     pointerCount===1&&!p.moved&&p.mode==='undecided'&&
-     p.pick?.kind==='operator'&&p.pick.owner){
-    selectUnit(p.pick.owner);
-  }
-  if(!cancelled&&state.phase==='planning'&&!replaying&&pointerCount===1){
-    if((hudController.facing.looking||flashMode||pushMode||firePlacement||evacMode)&&
-       (p.mode==='targetPreview'||p.mode==='undecided')){
-      // A brief iPhone tap often travels a few pixels without entering
-      // targetPreview. Always commit an armed target on release, even then.
-      // CameraMulti/cancelled pointers remain excluded.
-      // LOOK/WATCH are directions and may deliberately point across an
-      // unseen door or beyond the property; other commands still require a
-      // point inside the real procedural site bounds, not legacy W/H.
-      if(hudController.facing.looking||insideTacticalBounds(pt,activeWorldBounds()))
-        useSelectedGround(pt);
-      else showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
-    }else if(p.mode==='activeWatch'){
-      adoptPointerOwner(p);
-      const target=aimTargetFromTap(uid(selected)?.p??pt,pt);
-      const accepted=!p.dragCommitted||
-        (!!target&&retargetActiveWatch(state,selected,target));
-      if(!accepted)rejectAt(pt,'WATCH TARGET TOO CLOSE OR INVALID');
-      selectedNode=null;selectedActiveWatch=true;doorFocusId=null;
-      if(accepted)tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
-        p.dragCommitted?'WATCH RETARGETED':undefined);
-    }else if(p.mode==='watchTarget'&&p.nodeId!==null){
-      adoptPointerOwner(p);
-      const node=uid(selected)?.plan.find(n=>n.id===p.nodeId);
-      const target=node?aimTargetFromTap(node.p,pt):null;
-      const accepted=!p.dragCommitted||
-        (!!target&&planWatch(state,selected,target,p.nodeId));
-      if(!accepted)rejectAt(pt,'WATCH TARGET UNAVAILABLE');
-      selectedNode=p.nodeId;doorFocusId=null;
-      if(accepted)tacticalFeedback.emit(p.dragCommitted?'command':'select',pt,
-        p.dragCommitted?'WATCH UPDATED':undefined);
-    }else if(p.mode==='node'&&p.nodeId!==null){
-      adoptPointerOwner(p);
-      if(p.dragCommitted){
-        const moving=uid(selected)?.plan.find(node=>node.id===p.nodeId);
-        const moved=moving?.kind==='flash'?
-          moveFlashTarget(state,selected,p.nodeId,pt):
-          movePlanNode(state,selected,p.nodeId,pt);
-        if(!moved){
-          const chosen=uid(selected)?.plan.find(n=>n.id===p.nodeId);
-          const origin=uid(selected)?.p??pt;
-          rejectAt(pt,orderFailureText(origin,pt,{
-            // The failure message must use the SAME narrow-body clearance
-            // rules as planning. Otherwise reachable squeeze positions are
-            // incorrectly reported as having "insufficient clearance".
-            canStand:at=>intelPassable(at,state.intel,SQUEEZE_RADIUS),
-            routeTo:(a,b)=>routeWithSqueezeIntel(state.intel,a,b),
-            remainingPlanValid:chosen?.kind==='move'?false:undefined
-          }));
-        }
-      }
-      selectedNode=p.nodeId;doorFocusId=null;
-      const chosen=uid(selected)?.plan.find(n=>n.id===p.nodeId);
-      if(chosen)tacticalFeedback.emit('node',chosen.p);
-    }else if(p.mode==='route'&&trace&&
-      distance(trace[0],pt)>16){
-      // The finger trace is a high-frequency preview, NOT one order per
-      // input sample. Preserve meaningful screen-space bends and reject
-      // simplifications that would cut across KNOWN obstacles. Unseen
-      // obstacles remain undisclosed to the plan author.
-      const points=simplifyStrokePoints([...trace,pt],
-        point=>worldToScreen(point,8),15,(from,to)=>{
-          const span=distance(from,to);
-          const steps=Math.max(1,Math.ceil(span/4));
-          for(let i=1;i<steps;i++){
-            const t=i/steps;
-            if(!intelPassable({x:from.x+(to.x-from.x)*t,
-               y:from.y+(to.y-from.y)*t},state.intel,SQUEEZE_RADIUS))
-              return false;
-          }
-          return true;
-        });
-      // A stroke that starts on the operator's HERE marker REPLACES the
-      // queued plan, even when it contains several waypoints. Appending
-      // still happens via taps and gestures on the existing route end.
-      // planMoveStroke records the entire replacement as one undoable edit.
-      const strokeOutcome={clipped:false,endpoint:pt};
-      if(!planMoveStroke(state,selected,points.slice(1),false,true,strokeOutcome))
-        rejectAt(pt,'NO WALKABLE STROKE · PREVIOUS ROUTE KEPT');
-      else{
-        selectedActiveWatch=false;
-        selectedNode=uid(selected)?.plan.filter(n=>n.kind==='move')
-          .at(-1)?.id??null;
-        const watchKept=uid(selected)?.plan.some(n=>n.aimMode==='track')||
-          uid(selected)?.aimInstruction?.mode==='track';
-        if(strokeOutcome.clipped)
-          tacticalFeedback.emit('node',strokeOutcome.endpoint);
-        showUiHelp((strokeOutcome.clipped?
-          'ROUTE ENDS AT LAST CLEAR POINT · UNDO TO RESTORE':
-          'ROUTE REPLACED FROM HERE · UNDO TO RESTORE')+
-          (watchKept?' · WATCH KEPT':''),3200);
-      }
-      doorFocusId=null;
-    }else if(!p.moved&&insideTacticalBounds(pt,activeWorldBounds())){
-      // The hit was captured at pointer-down, but no selection/order was
-      // committed before the gesture resolved. Camera gestures never reach
-      // this branch and a tap can produce only one semantic outcome.
-      const pick=p.pick;
-      if(pick?.kind==='operator'&&pick.owner){
-        selectUnit(pick.owner);
-        tacticalFeedback.emit('select',uid(pick.owner)?.p??pt);
-      }else if(pick?.kind==='door'&&pick.doorId){
-        const door=state.doors.find(d=>d.id===pick.doorId&&
-          doorKnown(state.intel,d.id));
-        const actor=uid(selected),node=selectedPlanNode();
-        const origins=actor?(node?[node.p]:[finalPoint(actor),actor.p]):[];
-        if(door&&origins.some(origin=>doorReachable(origin,door))){
-          doorFocusId=door.id;selectedNode=null;selectedActiveWatch=false;
-          doorMenuDismissedId=null;
-          tacticalFeedback.emit('select',doorCenter(door));
-          teach('door-selected',
-            'Door selected. Choose OPEN, KICK or another available action.',4700);
-        }else if(door){
-          showUiHelp('NO DOOR ACTION IN REACH · PLAN AN APPROACH',2200);
-        }
-      }else if(pick?.kind==='route'&&pick.owner){
-        if(pick.owner!==selected){
-          // First touch on another operator's line is selection only.
-          selectUnit(pick.owner);
-          tacticalFeedback.emit('select',uid(pick.owner)?.p??pt);
-        }else{
-          insertAtRouteLine({x:e.clientX,y:e.clientY},e.pointerType);
-        }
-      }else if(!pick){
-        doorFocusId=null;useSelectedGround(pt);
-      }
-
-    }
-  }
+ cancelled:boolean,pointerCount:number):void{
+ dispatchTacticalPointerRelease({
+ get state(){return state;},get replaying(){return replaying;},
+ replayBodycam,get replayTraceMode(){return replayTraceMode;},
+ get recorder(){return recorder;},replayPlayback,replayAnalysisUi,
+ hudController,get selected(){return selected;},
+ get selectedNode(){return selectedNode;},set selectedNode(v){selectedNode=v;},
+ get selectedActiveWatch(){return selectedActiveWatch;},
+ set selectedActiveWatch(v){selectedActiveWatch=v;},
+ get doorFocusId(){return doorFocusId;},set doorFocusId(v){doorFocusId=v;},
+ get doorMenuDismissedId(){return doorMenuDismissedId;},
+ set doorMenuDismissedId(v){doorMenuDismissedId=v;},
+ get flashMode(){return flashMode;},get pushMode(){return pushMode;},
+ get firePlacement(){return firePlacement;},get evacMode(){return evacMode;},
+ get trace(){return trace;},get viewMode(){return viewMode;},tacticalFeedback,pointerAimWorld,pointerWorld,
+ worldToScreen,followReplayOperator,historicalShotVisible,selectUnit,
+ useSelectedGround,showUiHelp,adoptPointerOwner,uid,rejectAt,teach,
+ insertAtRouteLine,selectedPlanNode
+},e,p,cancelled,pointerCount);
 }
 window.addEventListener('resize',layout);
 missionScreens.bindMenus();
@@ -3049,88 +2659,8 @@ audioController.bindSettings({
 /** Authoring previews and blocker feedback stay with tactical presentation;
  * the scheduler invokes them once per rendered/active frame. */
 function drawTacticalFrameFeedback(studioOccludesTactical:boolean):void{
-  // One local, intelligible pulse per distinct blocked episode.
-  for(const actor of team(state)){
-    const old=blockedEpisode.get(actor.id);
-    if(actor.blockedTime<.3||actor.lastBlocker==='clear'){
-      blockedEpisode.delete(actor.id);continue;
-    }
-    if(actor.blockedTime>=.95&&(old!==actor.lastBlocker)){
-      blockedEpisode.set(actor.id,actor.lastBlocker);
-      if(!replaying)tacticalFeedback.emit('error',actor.p,
-        actor.lastBlocker==='furniture'?'OBSTRUCTED':actor.lastBlocker);
-    }
-  }
-  if(feedbackDraw&&!studioOccludesTactical){
-    feedbackDraw.setTransform(dpr,0,0,dpr,0,0);
-    feedbackDraw.clearRect(0,0,cssW,cssH);
-    const actor=uid(selected);
-    const authoringPointer=activePointers.size===1?
-      [...activePointers.values()][0]:null;
-    const canPreview=state.phase==='planning'&&!replaying&&
-      !!cursor&&(previewHover||!!authoringPointer)&&
-      (!authoringPointer||!['cameraMulti','cameraOrbit','cameraPan'].includes(
-        authoringPointer.mode))&&cursor.x>=0&&cursor.y>=0&&
-      cursor.x<=W&&cursor.y<=H;
-    const orderMode=hudController.facing.looking?hudController.facing.lookMode:flashMode?'flash':
-      firePlacement??evacMode?.mode;
-    const origin=hudController.facing.looking?
-      (selectedPlanNode()?.p??(hudController.facing.armedOrigin==='here'?actor?.p:
-        actor?finalPoint(actor):undefined)):
-      actor?finalPoint(actor):undefined;
-    const preview:TacticalOrderPreview|undefined=canPreview&&actor&&origin&&
-      orderMode?{origin,direction:cursor!,mode:orderMode}:undefined;
-    tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
-      performance.now(),preview,reducedMotionMedia.matches);
-    // Direction-only preview of an authored furniture push. The authoritative
-    // simulation still decides how far the real object can move on contact;
-    // this never mutates cover, reveals unknown obstacles, or guarantees travel.
-    if(pushMode&&state.phase==='planning'&&!replaying&&actor){
-      const from=selectedPlanNode()?.p??finalPoint(actor);
-      // Find the nearest known movable cover in one pass. Sorting and
-      // allocating a candidate array every RAF is unnecessary here.
-      let candidate:{object:(typeof state.coverState)[number];index:number;range:number}|undefined;
-      for(let index=0;index<state.coverState.length;index++){
-        const object=state.coverState[index];
-        if(!state.intel.cover.has(index)||!canRelocateCover(object))continue;
-        const range=distance(from,{x:object.x,y:object.y});
-        if(range>=Math.max(object.w,object.h)/2+43)continue;
-        if(!candidate||range<candidate.range){
-          candidate={object,index,range};
-        }
-      }
-      if(candidate){
-        const obj=candidate.object,center={x:obj.x,y:obj.y};
-        const base=Math.atan2(obj.y-from.y,obj.x-from.x);
-        const aimed=canPreview&&cursor&&distance(cursor,center)>4?
-          Math.atan2(cursor.y-center.y,cursor.x-center.x):base;
-        const yaw=base+Math.max(-Math.PI*4/9,Math.min(Math.PI*4/9,
-          angleDifference(base,aimed)));
-        const dist=Math.max(7,coverPushDistance(obj));
-        const end={x:obj.x+Math.cos(yaw)*dist,
-          y:obj.y+Math.sin(yaw)*dist};
-        const startPx=worldToScreen(center,13),endPx=worldToScreen(end,13);
-        feedbackDraw.save();
-        feedbackDraw.strokeStyle='#e4c998';feedbackDraw.fillStyle='#e4c998';
-        feedbackDraw.lineWidth=2.4;feedbackDraw.setLineDash([5,4]);
-        feedbackDraw.beginPath();feedbackDraw.arc(startPx.x,startPx.y,15,
-          0,Math.PI*2);feedbackDraw.stroke();
-        feedbackDraw.setLineDash([]);
-        feedbackDraw.beginPath();feedbackDraw.moveTo(startPx.x,startPx.y);
-        feedbackDraw.lineTo(endPx.x,endPx.y);feedbackDraw.stroke();
-        const direction=Math.atan2(endPx.y-startPx.y,endPx.x-startPx.x);
-        feedbackDraw.beginPath();feedbackDraw.moveTo(endPx.x,endPx.y);
-        for(const side of [-1,1])
-          feedbackDraw.lineTo(endPx.x-Math.cos(direction+side*.48)*13,
-            endPx.y-Math.sin(direction+side*.48)*13);
-        feedbackDraw.closePath();feedbackDraw.fill();
-        feedbackDraw.restore();
-      }
-    }
-  }
-
+ frameFeedbackController.draw(studioOccludesTactical);
 }
-
 
 // The runtime owns RAF cadence; the host supplies live state and presentation boundaries.
 const runtimeLoop=createBreachRuntimeLoop({

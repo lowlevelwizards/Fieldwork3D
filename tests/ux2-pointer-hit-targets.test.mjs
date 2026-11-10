@@ -5,6 +5,7 @@ import {tacticalHitProfile} from '../src/ui/touch-hit-targets.ts';
 const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
 const picking=readFileSync(new URL('../src/breach-tactical-picking.ts',import.meta.url),'utf8');
 const gestures=readFileSync(new URL('../src/breach-canvas-gesture-controller.ts',import.meta.url),'utf8');
+const commands=readFileSync(new URL('../src/breach-pointer-command-controller.ts',import.meta.url),'utf8');
 test('finger targets are more forgiving without making mouse imprecise',()=>{
  const mouse=tacticalHitProfile('mouse');
  const touch=tacticalHitProfile('touch');
@@ -24,7 +25,7 @@ test('gesture thresholds and hit tests all use pointer type',()=>{
  assert.match(gestures,/tacticalHitProfile\(e\.pointerType\)\.dragStart/);
  assert.match(picking,/screenSegmentDistance\(screen,a,b\)/);
  assert.match(picking,/routeLineHit\(unit\.p,unit\.plan,screen/);
- assert.match(main,/insertAtRouteLine\(\{x:e\.clientX,y:e\.clientY\},e\.pointerType\)/);
+ assert.match(commands,/port\.insertAtRouteLine\(\{x:e\.clientX,y:e\.clientY\},e\.pointerType\)/);
 });
 test('two-finger camera gesture still cancels route authoring',()=>{
  assert.match(gestures,/if\(activePointers\.size>=2\)/);
