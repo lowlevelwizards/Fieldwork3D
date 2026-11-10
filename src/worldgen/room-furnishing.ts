@@ -218,7 +218,7 @@ export function furnishRooms(site:Site,seed:number):Site{
  const rng=seeded(seed^0x4f012f32);
  const reservedCirculation=circulationReservations(site);
  const mandatoryThroughRoutes=reservedCirculation.filter(r=>
-   r.kind==='through-route'&&['apartment','motel','office'].includes(site.archetype??''));
+   r.kind==='through-route'&&['apartment','townhouse','motel','office'].includes(site.archetype??''));
  // Preserve architectural sills and outdoor fixtures while furnishing interiors.
  const output:Obstacle[]=[...site.cover];
  const furnishingIssues:NonNullable<Site['furnishingIssues']>=[];
