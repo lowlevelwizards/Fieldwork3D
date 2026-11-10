@@ -108,16 +108,17 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
  const intel=root.querySelector<HTMLElement>('#debriefIntelBlock');
  const raw=root.querySelector<HTMLElement>('#debriefStats')?.parentElement;
  if(!content||!nav)return;
+ const safeContent=content,safeNav=nav;
  let state=owners.get(root);
  if(!state||state.recorder!==rec){
    state={recorder:rec,report:buildAfterActionReport(rec),tab:'overview',
      selectedOperator:null,selectedContact:null,selectedShotId:null,
      contactSide:'red',paperBack:false,scroll:{},showIntel:options.showIntel};
    owners.set(root,state);
-   for(const tabButton of nav.querySelectorAll<HTMLButtonElement>('[data-after-tab]')){
+   for(const tabButton of safeNav.querySelectorAll<HTMLButtonElement>('[data-after-tab]')){
      tabButton.addEventListener('click',()=>{
        const s=owners.get(root);if(!s)return;
-       s.scroll[s.tab]=content.scrollTop;
+       s.scroll[s.tab]=safeContent.scrollTop;
        s.tab=tabButton.dataset.afterTab as AfterActionTab;
        draw();
      });
@@ -129,12 +130,12 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
  root.classList.add('fw-debrief-v2');
  function draw():void{
    const s=owners.get(root);if(!s)return;
-   for(const tabButton of nav.querySelectorAll<HTMLButtonElement>('[data-after-tab]'))
+   for(const tabButton of safeNav.querySelectorAll<HTMLButtonElement>('[data-after-tab]'))
      tabButton.setAttribute('aria-pressed',
        String(tabButton.dataset.afterTab===s.tab));
    if(intel)intel.hidden=s.tab!=='timeline'||!s.showIntel;
    if(raw)raw.hidden=s.tab!=='timeline';
-   const change=(tab:AfterActionTab)=>{s.scroll[s.tab]=content.scrollTop;s.tab=tab;draw();};
+   const change=(tab:AfterActionTab)=>{s.scroll[s.tab]=safeContent.scrollTop;s.tab=tab;draw();};
    const choose=(id:string|null)=>{s.selectedOperator=id;s.tab='squad';draw();};
    let screen:HTMLElement;
    if(s.tab==='overview')screen=overview(s,change,id=>choose(id));
@@ -164,8 +165,8 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      screen.append(make('h2','fw-after-heading',s.tab.toUpperCase()),
        make('p','fw-after-muted','Detailed encounter review will appear here.'));
    }
-   content.replaceChildren(screen);
-   content.scrollTop=s.scroll[s.tab]??0;
+   safeContent.replaceChildren(screen);
+   safeContent.scrollTop=s.scroll[s.tab]??0;
  }
  draw();
 }
