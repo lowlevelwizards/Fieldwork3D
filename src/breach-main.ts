@@ -50,6 +50,7 @@ import {createBreachEquipmentEditorBridge} from './breach-equipment-editor-bridg
 import {createBreachOperationsBoardController} from './breach-operations-board-controller.ts';
 import {createBreachRuntimeLoop} from './breach-runtime-loop.ts';
 import {createReplayModeController} from './breach-replay-mode-controller.ts';
+import {createBreachReplayPresentationController} from './breach-replay-presentation-controller.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
@@ -1494,52 +1495,12 @@ function isMissionTerminal(s:Session){return s.phase==='won'||s.phase==='lost';}
 /** Reapply recorded outcomes after timeline navigation, then refresh dependent
  * camera/audio/visibility presentation. The playback controller owns samples.
  */
-function presentReplayAtCurrentTime():void{
-  ui.replayClusterMenu.hidden=true;
-  if(replayQuickVideo.active)replayQuickVideo.stop();
-  audioController.stopReplaySounds();
-  replayDirector.target=null;
-  stage?.resetReplayBodycamSmoothing();
-  const frame=replayPlayback.applyRecordedFrame(recorder,state);
-  if(frame){
-    replayPresentation=frame.presentation??null;
-    fog2D.invalidate();
-  }
-  advanceReplayCamera(0,true);
-  if(!ui.replayFeed.hidden)replayAnalysisUi.renderReplayEventFeed();
-  updateReplayHud();
-}
-function seekReplay(t:number):void{
-  replayPlayback.seek(t,recorder.duration);
-  presentReplayAtCurrentTime();
-}
-
-function rebuildReplayEventIndex():void{
-  const eventIndex=replayAnalysisUi.rebuildReplayEventIndex();
-  // The Director controller owns historical camera evidence and the film.
-  const headerBottom=Math.max(65,
-    ui.replayTopHud.getBoundingClientRect().bottom,
-    document.querySelector('.top')?.getBoundingClientRect().bottom??0);
-  const dockRect=ui.replayPanel.getBoundingClientRect();
-  const dockPixels=ui.replayPanel.hidden||dockRect.height<40?
-    Math.min(205,cssH*.235):
-    Math.max(cssH-dockRect.top,Math.min(205,cssH*.235));
-  replayDirector.rebuild({
-    recorder,eventIndex,state,
-    observerId:replayKnowledge.observerId,omniscient:replayKnowledge.omniscient,
-    isShotVisible:historicalShotVisible,width:cssW,height:cssH,
-    headerBottom,dockPixels,baseSpan:stage?.replayCameraBaseSpan()??1100
-  });
-}
-/** Runtime only bridges the camera controller to the current replay view. */
+let replayPresentationController:ReturnType<typeof createBreachReplayPresentationController>|null=null;
+function presentReplayAtCurrentTime():void{replayPresentationController?.presentReplayAtCurrentTime();}
+function seekReplay(t:number):void{replayPresentationController?.seekReplay(t);}
+function rebuildReplayEventIndex():void{replayPresentationController?.rebuildReplayEventIndex();}
 function advanceReplayCamera(dt:number,instant=false):void{
-  replayCamera.advance({
-    dt,instant,replaying,stage,viewMode,state,recorder,replayTime:replayPlayback.time,
-    replayContactObserverId:replayKnowledge.observerId,
-    replayOmniscient:replayKnowledge.omniscient,
-    manualBodycamActive:replayBodycam.active,cssW,cssH,
-    replayFollowStatus:ui.replayFollowStatus,debugPanel:replayDirectorDebugPanel
-  });
+ replayPresentationController?.advanceReplayCamera(dt,instant);
 }
 
 function clearReplayPresentation():void{
@@ -1726,6 +1687,17 @@ const replayAnalysisUi=createBreachReplayAnalysisController({
    updateReplayHud();
  }
 });
+replayPresentationController=createBreachReplayPresentationController(()=>({
+ ui,replayQuickVideo,audioController,replayDirector,
+ get stage(){return stage;},replayPlayback,
+ get recorder(){return recorder;},get state(){return state;},
+ get replayPresentation(){return replayPresentation;},
+ set replayPresentation(v){replayPresentation=v;},
+ fog2D,replayAnalysisUi,updateReplayHud,replayKnowledge,
+ get cssW(){return cssW;},get cssH(){return cssH;},replayCamera,
+ get replaying(){return replaying;},get viewMode(){return viewMode;},
+ replayBodycam,replayDirectorDebugPanel,historicalShotVisible
+}));
 replayHudController=createBreachReplayHudController({
  ui,snapshot:()=>({
    state,recorder,replayPlayback,replayCamera,replayKnowledge,replayBodycam,
