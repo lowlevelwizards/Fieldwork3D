@@ -3,13 +3,14 @@
  * identity, ammunition, civilian safety, penetration and replay evidence.
  */
 import type {Session,TeamActor} from './breach-game.ts';
+import type {BattleEvent} from './breach-combat.ts';
 import {rotate} from './breach-order-lifecycle.ts';
 import {segmentImpact,strikeSurface} from './breach-ballistic-resolution.ts';
 import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep} from './breach-combat-reactions.ts';
 import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts';
 import {type Pt,WALLS,COVER,segmentsCross,doorCenter,pointToSegment} from './breach-core.ts';
-import {length,angleDifference} from './breach-plan.ts';
-import {WEAPONS,injuryOf,woundSeverity,exposure,nearCover} from './breach-combat.ts';
+import {length,targetAngle,angleDifference} from './breach-plan.ts';
+import {WEAPONS,injuryOf,woundSeverity,nearCover} from './breach-combat.ts';
 import {aimHeight} from './breach-cover-height.ts';
 import {assessFireLane,fireLaneReachable} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
