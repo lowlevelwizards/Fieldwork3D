@@ -83,5 +83,7 @@ test('083–088: main page and dedicated Breach both offer four-person controls'
   assert.match(main,/stage\?\.applySite\(state\.site\?\?null\)/);
   assert.doesNotMatch(main,/ctxStackAll/);
   assert.doesNotMatch(main,/ctxEntry/); // Manual stacking is intentional.
-  assert.match(three,/private buildGenerated\(site:Site\)/);
+  const siteBuilder=readFileSync(new URL('../src/rendering/breach-site-scene-builder.ts',import.meta.url),'utf8');
+  assert.match(three,/buildSiteWorld\(site,this\.siteBuildPort\(\)\)/);
+  assert.match(siteBuilder,/export function buildGeneratedSite\(site:Site,host:SiteSceneBuildPort\)/);
 });
