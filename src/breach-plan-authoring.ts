@@ -84,7 +84,8 @@ export function edit(s:Session,a:TeamActor,fn:()=>void):boolean{
  record(a.history,before);
  pushControlUndo(a.history,controls);
  if(planChanged)pathFor(a,s);
- if(s.squadEntryUndo?.members.includes(a.id))s.squadEntryUndo=null;
+ // Keep a prior group eligible after unrelated per-actor edits are undone.
+ // A fresh edit always branches away from any prior REDO timeline.
  if(s.squadEntryRedo?.members.includes(a.id))s.squadEntryRedo=null;
  return true;
 }
@@ -221,7 +222,8 @@ export function atomicTeamEdit(s:Session,members:readonly TeamActor[],
   before:Object.fromEntries(changed.map(b=>[b.actor.id,copyNodes(b.plan)])),
   after:Object.fromEntries(changed.map(b=>[b.actor.id,copyNodes(b.actor.plan)])),
   controlsBefore:Object.fromEntries(changed.map(b=>[b.actor.id,copyControls(b.controls)])),
-  controlsAfter:Object.fromEntries(changed.map(b=>[b.actor.id,capturePlanControls(b.actor)]))
+  controlsAfter:Object.fromEntries(changed.map(b=>[b.actor.id,capturePlanControls(b.actor)])),
+  undoDepth:Object.fromEntries(changed.map(b=>[b.actor.id,b.actor.history.undo.length]))
  };
  s.squadEntryUndo=group;s.squadEntryRedo=null;
  return true;
@@ -233,7 +235,8 @@ function plansMatch(s:Session,group:SquadPlanTransaction,party:PartyLookup,
   return !!a&&same(a.plan,group[key][id])&&
    same(capturePlanControls(a),group[key==='before'?
      'controlsBefore':'controlsAfter']?.[id]??capturePlanControls(a))&&
-   (direction==='undo'?a.history.undo.length:a.history.redo.length)>0;
+   (direction==='undo'?a.history.undo.length===(group.undoDepth?.[id]??a.history.undo.length)&&a.history.undo.length>0:
+     a.history.redo.length===1);
  });
 }
 function historyStep(s:Session,a:TeamActor,direction:'undo'|'redo'):boolean{
@@ -262,7 +265,9 @@ export function undoAuthoredPlan(s:Session,id:string,party:PartyLookup):boolean{
   s.squadEntryUndo=null;s.squadEntryRedo=group;
   return true;
  }
- s.squadEntryUndo=null;s.squadEntryRedo=null;
+ // Preserve the group marker while unwinding later independent edits.
+ // Depth and exact snapshots prevent consuming the wrong transaction.
+ s.squadEntryRedo=null;
  return historyStep(s,a,'undo');
 }
 export function redoAuthoredPlan(s:Session,id:string,party:PartyLookup):boolean{
@@ -273,7 +278,7 @@ export function redoAuthoredPlan(s:Session,id:string,party:PartyLookup):boolean{
   s.squadEntryRedo=null;s.squadEntryUndo=group;
   return true;
  }
- s.squadEntryUndo=null;s.squadEntryRedo=null;
+ s.squadEntryUndo=null;
  return historyStep(s,a,'redo');
 }
 /** An execution boundary closes planning history. Pausing again edits only
