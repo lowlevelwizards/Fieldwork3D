@@ -1,18 +1,20 @@
 /** Visual-only route cache. Never trusted by the movement motor.
  * Plans, local origin cell, known topology and exact goal form the key. */
 import {type Pt,WALLS,COVER,activeSite} from './breach-core.ts';
-import {type IntelState,routeWithIntel} from './breach-intel.ts';
+import {type IntelState,routeWithIntel,intelWorldGeometry} from './breach-intel.ts';
 import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 export type DisplayRoute={points:readonly Pt[];narrowOnly:boolean};
 export function intelRouteFingerprint(intel:IntelState){
+  const world=intelWorldGeometry(intel),site=world?.site??activeSite();
   const sorted=(items:Iterable<string|number>)=>Array.from(items).sort().join(',');
   const doors=Array.from(intel.doorMemory).sort(([a],[b])=>a.localeCompare(b))
     .map(([id,angle])=>id+':'+angle.toFixed(2)).join(',');
   return [intel.mode,sorted(intel.walls),sorted(intel.cover),
-    sorted(intel.doors),doors,activeSite()?.seed??'standard',
-    activeSite()?.scale??'standard',
-    JSON.stringify(activeSite()?.bounds??null),
-    WALLS.length,COVER.length].join('|');
+    sorted(intel.doors),doors,site?.seed??'standard',
+    site?.scale??'standard',
+    JSON.stringify(world?.bounds??site?.bounds??null),
+    (world?.walls??WALLS).length,(world?.cover??COVER).length,
+    world?.revision??0].join('|');
 }
 export class DisplayRouteCache{
   private knownKey='';
