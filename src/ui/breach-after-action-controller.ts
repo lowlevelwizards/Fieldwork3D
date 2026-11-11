@@ -20,7 +20,7 @@ import type {AfterActionModelPresenter} from './breach-after-action-model.ts';
  */
 type ModelOwner={
  recorder:MissionRecorder;presenter:AfterActionModelPresenter|null;
- pending:boolean;version:number;
+ pending:boolean;unavailable:boolean;version:number;
 };
 const models=new WeakMap<HTMLElement,ModelOwner>();
 export function disposeAfterActionPresentation(root:HTMLElement):void{
@@ -35,7 +35,7 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
    disposeAfterActionPresentation(root);owner=undefined;
  }
  if(!owner){
-   owner={recorder,presenter:null,pending:false,version:0};
+   owner={recorder,presenter:null,pending:false,unavailable:false,version:0};
    models.set(root,owner);
  }
  if(!host){owner.presenter?.hide();return;}
@@ -43,6 +43,10 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
  const identities=recorder.manifest?.actors??[];
  if(!identities.length){
    host.textContent='NO RECORDED HISTORICAL MODEL';return;
+ }
+ if(owner.unavailable){
+   host.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
+   return;
  }
  if(owner.pending)return;
  owner.pending=true;
@@ -55,6 +59,7 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
    const current=root.querySelector<HTMLElement>(
      '[data-after-squad-model], [data-after-model]');
    if(!owner.presenter){
+     owner.unavailable=true;
      if(current)current.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
      return;
    }
@@ -66,7 +71,7 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
    }
  }).catch(()=>{
    if(models.get(root)!==owner||owner.version!==version)return;
-   owner.pending=false;
+   owner.pending=false;owner.unavailable=true;
    const current=root.querySelector<HTMLElement>(
      '[data-after-squad-model], [data-after-model]');
    if(current)current.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
