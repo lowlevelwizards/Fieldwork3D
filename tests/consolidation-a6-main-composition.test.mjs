@@ -171,3 +171,10 @@ test('A6 after-action replay/clip UI listeners belong to existing after-action o
  assert.match(after,/replayRequestsBound\.has\(ui\.debrief\)/);
  assert.match(after,/makeAfterActionLaunchRequest\(/);
 });
+
+test('A6 2D viewport fitting is owned by pure world presentation geometry',()=>{
+ const world=readFileSync(new URL('../src/breach-2d-world-renderer.ts',import.meta.url),'utf8');
+ assert.match(source,/fitBreach2DView\(/);
+ assert.doesNotMatch(source,/const available=Math\.max\(240,cssH/);
+ assert.match(world,/export function fitBreach2DView\(/);
+});

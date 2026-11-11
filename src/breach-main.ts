@@ -16,7 +16,7 @@ import {
   toggling,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
-import {createBreach2DWorldRenderer,renderBreachTacticalWorldFrame} from './breach-2d-world-renderer.ts';
+import {createBreach2DWorldRenderer,renderBreachTacticalWorldFrame,fitBreach2DView} from './breach-2d-world-renderer.ts';
 import {createBreach2DActorRenderer} from './breach-2d-actor-renderer.ts';
 import {createBreach2DVisibilityRenderer} from './breach-2d-visibility-renderer.ts';
 import {createBreach2DReplayOverlays} from './breach-2d-replay-overlays.ts';
@@ -444,13 +444,9 @@ function layout(){
   canvas.width=Math.round(cssW*dpr);canvas.height=Math.round(cssH*dpr);
   canvas.style.width=cssW+'px';canvas.style.height=cssH+'px';
   stage?.resize(cssW,cssH);
-  const available=Math.max(240,cssH-(cssH<500?85:172));
-  const bounds=state.site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
-  const width=bounds.maxX-bounds.minX,height=bounds.maxY-bounds.minY;
-  const fit=Math.min((cssW-20)/width,available/height);
-  viewScale=fit*zoom;
-  ox=cssW/2-(bounds.minX+bounds.maxX)*viewScale/2+panX;
-  oy=cssH/2-(bounds.minY+bounds.maxY)*viewScale/2-11+panY;
+  ({viewScale,ox,oy}=fitBreach2DView({
+    cssW,cssH,zoom,panX,panY,bounds:state.site?.bounds
+  }));
 }
 const toWorld=(x:number,y:number):Pt=>{
   if(stage&&viewMode!=='plan2d')return stage.screenToWorld(x,y)??{x:-500,y:-500};

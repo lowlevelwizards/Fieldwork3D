@@ -412,3 +412,21 @@ export function renderBreachTacticalWorldFrame(p:BreachTacticalWorldFrame):void{
   draw.restore();
 
 }
+
+/** Pure responsive 2D tactical fit. No intel, camera mutation or motor state. */
+export function fitBreach2DView(input:{
+ cssW:number;cssH:number;zoom:number;panX:number;panY:number;
+ bounds?:{minX:number;minY:number;maxX:number;maxY:number}|null;
+}):{viewScale:number;ox:number;oy:number}{
+ const {cssW,cssH,zoom,panX,panY}=input;
+ const available=Math.max(240,cssH-(cssH<500?85:172));
+ const bounds=input.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+ const width=bounds.maxX-bounds.minX,height=bounds.maxY-bounds.minY;
+ const fit=Math.min((cssW-20)/width,available/height);
+ const viewScale=fit*zoom;
+ return {
+  viewScale,
+  ox:cssW/2-(bounds.minX+bounds.maxX)*viewScale/2+panX,
+  oy:cssH/2-(bounds.minY+bounds.maxY)*viewScale/2-11+panY
+ };
+}
