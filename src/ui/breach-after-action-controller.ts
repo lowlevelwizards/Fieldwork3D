@@ -52,29 +52,6 @@ function rankedCard(op:OperatorAfterAction,click:()=>void){
  b.append(first,make('b','fw-after-score',String(op.contribution)));
  return b;
 }
-function overview(state:State,open:(tab:AfterActionTab)=>void,
-  choose:(id:string)=>void):HTMLElement{
- const section=make('section','fw-after-section');
- section.append(make('p','fw-after-caption',
-   'AFTER ACTION / FULL RECONSTRUCTION'),
-   make('h2','fw-after-heading','Squad contributions'));
- const rows=make('div','fw-after-rank-list');
- for(const op of state.report.operators)rows.append(rankedCard(op,()=>choose(op.id)));
- section.append(rows);
- const total=state.report.shots.length;
- const hostiles=state.report.hostiles;
- const panel=make('div','fw-after-panel');
- panel.append(make('h3','','OPERATION RECORD'),
-   line('Duration',time(state.report.duration)),
-   line('Total shots (both sides)',String(total)),
-   line('Hostile contacts',String(hostiles.length)),
-   line('Incapacitated',String(hostiles.filter(c=>c.resolution==='incapacitated').length)),
-   line('Surrendered',String(hostiles.filter(c=>c.resolution==='surrendered').length)));
- section.append(panel,button('EXAMINE ALL CONTACTS',()=>open('combat')));
- if(!state.report.complete)section.append(make('p','fw-after-empty',
-   'PARTIAL RECORD — counts may be incomplete.'));
- return section;
-}
 function squad(state:State,choose:(id:string|null)=>void):HTMLElement{
  const section=make('section','fw-after-section');
  section.append(make('h2','fw-after-heading','SQUAD PERFORMANCE'),
@@ -162,7 +139,6 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        String(tabButton.dataset.afterTab===s.tab));
    if(intel)intel.hidden=!s.showIntel;
    if(raw)raw.hidden=false;
-   const change=(tab:AfterActionTab)=>{s.scroll[s.tab]=safeContent.scrollTop;s.tab=tab;draw();};
    const choose=(id:string|null)=>{s.selectedOperator=id;s.tab='squad';draw();};
    let screen:HTMLElement;
    if(s.tab==='squad')screen=squad(s,choose);
