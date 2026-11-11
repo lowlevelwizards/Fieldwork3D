@@ -14,6 +14,8 @@ import {renderCombatReport} from './breach-after-action-combat.ts';
 import {renderAfterActionHighlights} from './breach-after-action-highlights.ts';
 import {replayHighlightMoments} from '../breach-highlight-frames.ts';
 import type {AfterActionModelPresenter} from './breach-after-action-model.ts';
+import {inspectForensicEvidence,type ForensicScope,
+ type ForensicEvidence} from '../breach-forensic-evidence.ts';
 
 /** Exactly one historical 3D presentation per debrief root and recording.
  * A tab/selection redraw moves its canvas, never rebuilding its rigs.
@@ -29,7 +31,8 @@ export function disposeAfterActionPresentation(root:HTMLElement):void{
  owner.version++;owner.presenter?.dispose();models.delete(root);
 }
 function presentModel(root:HTMLElement,recorder:MissionRecorder,
- host:HTMLElement|null,operatorId:string|null):void{
+ host:HTMLElement|null,operatorId:string|null,
+ evidence:ForensicEvidence|null):void{
  let owner=models.get(root);
  if(owner&&owner.recorder!==recorder){
    disposeAfterActionPresentation(root);owner=undefined;
@@ -39,7 +42,10 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
    models.set(root,owner);
  }
  if(!host){owner.presenter?.hide();return;}
- if(owner.presenter){owner.presenter.show(host,operatorId);return;}
+ if(owner.presenter){
+   owner.presenter.setEvidence(evidence);
+   owner.presenter.show(host,operatorId);return;
+ }
  const identities=recorder.manifest?.actors??[];
  if(!identities.length){
    host.textContent='NO RECORDED HISTORICAL MODEL';return;
@@ -67,6 +73,7 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
      const id=current.hasAttribute('data-after-squad-model')?
        owners.get(root)?.selectedOperator??null:
        current.dataset.afterModel??null;
+     owner.presenter.setEvidence(currentCombatEvidence(root));
      owner.presenter.show(current,id);
    }
  }).catch(()=>{
@@ -83,12 +90,23 @@ type State={
   recorder:MissionRecorder;report:AfterActionReport;tab:AfterActionTab;
   selectedOperator:string|null;selectedContact:string|null;
   selectedShotId:number|null;contactSide:'red'|'blue';paperBack:boolean;
-  inspectionMode:'paper'|'3d';selectedHighlight:string|null;
+  inspectionMode:'paper'|'3d';forensicScope:ForensicScope;
+  selectedHighlight:string|null;
   operatorRecordOpen:boolean;
   scroll:Partial<Record<AfterActionTab,number>>;
   showIntel:boolean;
 };
 const owners=new WeakMap<HTMLElement,State>();
+function currentCombatEvidence(root:HTMLElement):ForensicEvidence|null{
+ const s=owners.get(root);
+ if(!s||s.tab!=='combat'||s.inspectionMode!=='3d')return null;
+ const contacts=s.contactSide==='red'?
+   s.report.hostiles:s.report.friendlyCasualties;
+ const contact=contacts.find(c=>c.id===s.selectedContact)??
+   contacts[0]??null;
+ return contact?inspectForensicEvidence(contact,
+   s.selectedShotId,s.forensicScope):null;
+}
 const renderers=new WeakMap<HTMLElement,()=>void>();
 const bound=new WeakSet<HTMLElement>();
 const make=(tag:string,cls='',value?:string)=>{
@@ -111,6 +129,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    state={recorder:rec,report:buildAfterActionReport(rec),tab:'squad',
      selectedOperator:null,selectedContact:null,selectedShotId:null,
      contactSide:'red',paperBack:false,inspectionMode:'paper',
+     forensicScope:'cumulative',
      selectedHighlight:null,operatorRecordOpen:false,
      scroll:{},showIntel:options.showIntel};
    owners.set(root,state);
@@ -221,7 +240,8 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    }
    else if(s.tab==='combat')screen=renderCombatReport(s.report,{
      selectedContact:s.selectedContact,selectedShotId:s.selectedShotId,
-     side:s.contactSide,back:s.paperBack,inspectionMode:s.inspectionMode
+     side:s.contactSide,back:s.paperBack,inspectionMode:s.inspectionMode,
+     scope:s.forensicScope
    },{
      chooseContact:(id)=>{s.selectedContact=id;s.selectedShotId=null;draw();},
      chooseShot:(id)=>{
@@ -240,6 +260,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        s.selectedShotId=null;draw();},
      chooseView:(back)=>{s.paperBack=back;draw();},
      chooseMode:(mode)=>{s.inspectionMode=mode;draw();},
+     chooseScope:(scope)=>{s.forensicScope=scope;draw();},
      viewReplay:(contact,shot)=>{
        root.dispatchEvent(new CustomEvent('fw-after-action-replay',{
          bubbles:true,detail:{surface:'combat',contactId:contact.id,
@@ -287,7 +308,8 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    const squadHost=screen.querySelector<HTMLElement>('[data-after-squad-model]');
    const combatHost=screen.querySelector<HTMLElement>('[data-after-model]');
    presentModel(root,s.recorder,squadHost??combatHost,
-     squadHost?s.selectedOperator:combatHost?.dataset.afterModel??null);
+     squadHost?s.selectedOperator:combatHost?.dataset.afterModel??null,
+     currentCombatEvidence(root));
    safeContent.scrollTop=s.scroll[s.tab]??0;
  }
  renderers.set(root,draw);
@@ -300,6 +322,7 @@ export type AfterActionReturnContext={
  recorder:MissionRecorder;tab:AfterActionTab;operatorId:string|null;
  contactId:string|null;contactSide:'red'|'blue';shotId:number|null;
  highlightId:string|null;paperBack:boolean;inspectionMode:'paper'|'3d';
+ forensicScope?:ForensicScope;
  operatorRecordOpen:boolean;detailsOpen:boolean;detailsScroll:number;
  scroll:Partial<Record<AfterActionTab,number>>;
 };
@@ -311,6 +334,7 @@ export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|n
    contactId:s.selectedContact,contactSide:s.contactSide,
    shotId:s.selectedShotId,highlightId:s.selectedHighlight,
    paperBack:s.paperBack,inspectionMode:s.inspectionMode,
+   forensicScope:s.forensicScope,
    operatorRecordOpen:s.operatorRecordOpen,
    detailsOpen:!root.querySelector<HTMLElement>('#afterActionDetails')?.hidden,
    detailsScroll:root.querySelector<HTMLElement>('.fw-after-detail-content')?.scrollTop??0,
@@ -337,6 +361,7 @@ export function restoreAfterActionWorkspace(
  s.selectedContact=context.contactId;s.contactSide=context.contactSide;
  s.selectedShotId=context.shotId;s.selectedHighlight=context.highlightId;
  s.paperBack=context.paperBack;s.inspectionMode=context.inspectionMode;
+ s.forensicScope=context.forensicScope??'cumulative';
  s.operatorRecordOpen=context.operatorRecordOpen&&!!context.operatorId;
  s.scroll={...context.scroll};
  const detail=root.querySelector<HTMLElement>('#afterActionDetails');
