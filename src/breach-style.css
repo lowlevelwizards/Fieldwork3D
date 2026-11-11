@@ -3310,3 +3310,16 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v4-result-foot strong{font-size:9px}
  .fw-v4-result-foot>span{font-size:9px}
 }
+
+/* On portrait phones, opening a member prioritizes the selected evidence
+   above the roster; initial (unselected) view still exposes all four ranks. */
+@media(max-width:700px){
+ .fw-v4-squad.fw-v4-has-selection .fw-v4-squad-content{
+  display:flex;flex-direction:column}
+ .fw-v4-squad.fw-v4-has-selection .fw-v4-squad-focus{
+  order:-1;align-self:stretch;width:100%;box-sizing:border-box}
+ .fw-v4-squad.fw-v4-has-selection .fw-v4-rank-list{
+  width:100%;box-sizing:border-box}
+ .fw-v4-selected-overview .fw-v3-squad-name h2:focus{
+  outline:2px solid #d9c49a;outline-offset:2px}
+}
