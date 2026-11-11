@@ -38,10 +38,13 @@ export function createForensicModelOverlay(rig:OperatorRig):ForensicModelOverlay
  };
  attach('head',rig.head,[12,12,11],[0,3,0]);
  attach('torso',rig.chest,[15,17,18],[0,0,0]);
- attach('arm-left',rig.arms[0].upper,[5.8,10.8,5.8],[0,0,0]);
- attach('arm-right',rig.arms[1].upper,[5.8,10.8,5.8],[0,0,0]);
- attach('leg-left',rig.feet[0].upper,[6.3,12,6.3],[0,0,0]);
- attach('leg-right',rig.feet[1].upper,[6.3,12,6.3],[0,0,0]);
+ // IK segments are unit-height meshes scaled to the current limb length.
+ // Child overlays must have normalized Y dimensions, or they'll stretch
+ // to 100+ world units and wrap around the entire weapon.
+ attach('arm-left',rig.arms[0].upper,[5.8,.9,5.8],[0,0,0]);
+ attach('arm-right',rig.arms[1].upper,[5.8,.9,5.8],[0,0,0]);
+ attach('leg-left',rig.feet[0].upper,[6.3,.9,6.3],[0,0,0]);
+ attach('leg-right',rig.feet[1].upper,[6.3,.9,6.3],[0,0,0]);
  return {
    update(evidence){
      for(const [slot,mesh] of slots){
