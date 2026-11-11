@@ -213,7 +213,8 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        'UNKNOWN RECORDED ACTOR';
    const contacts=[...s.report.hostiles,...s.report.friendlyCasualties];
    const toContact=(event:AfterActionTimelineEvent)=>
-     contacts.find(c=>c.id===event.targetId||c.id===event.actorId)??null;
+     contacts.find(c=>c.id===event.targetId||
+       (event.category==='casualty'&&c.id===event.actorId))??null;
    const toOperator=(event:AfterActionTimelineEvent)=>
      s.report.operators.find(op=>op.id===event.actorId)??null;
    const persist=()=>timelineRenderers.get(root)?.();
