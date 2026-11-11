@@ -12,7 +12,8 @@ const modules=[
  'src/breach-shot-ignition.ts',
  'src/breach-locomotion-clearance.ts',
  'src/breach-order-utility.ts',
- 'src/breach-tactical-interaction-state.ts'
+ 'src/breach-tactical-interaction-state.ts',
+ 'src/breach-replay-presentation-options.ts'
 ];
 for(const path of modules){
  const text=readFileSync(path,'utf8');
