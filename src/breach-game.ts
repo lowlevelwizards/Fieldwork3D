@@ -1,4 +1,10 @@
+import {planAim} from './breach-plan-aim-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
+import {legalMoveRoute,knownTraversal} from './breach-known-route-authoring.ts';
+export {plannedWindowRoute} from './breach-known-route-authoring.ts';
+import {addNode,finalPoint} from './breach-plan-node-commands.ts';
+export {addNode,finalPoint} from './breach-plan-node-commands.ts';
+export {planAim,updatePlanFacing,planLook,planWatch,retargetActiveWatch,removeActiveWatch,releaseWatch} from './breach-plan-aim-commands.ts';
 export {operationBriefing,missionText,debrief} from './breach-mission-reporting.ts';
 import {team,enemies,actor,party,canEdit} from './breach-session-selectors.ts';
 export {team,enemies,actor,canEdit};
@@ -28,8 +34,8 @@ import type {ActorMotorHooks} from './breach-motor-contract.ts';
  * Author intent is editable PlanNode[]; motor navigation is transient.
  * The core retains the 052 static geometry and starter actors, not its old simulation.
  */
-import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,} from './breach-core.ts';
-import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
+import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorBlocksRay,doorBlocksSightRay,pointToSegment} from './breach-core.ts';
+import {type PlanNode,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions} from './breach-entry-coordination.ts';
 import type {Site,SiteScale} from './breach-site.ts';
@@ -62,7 +68,7 @@ import {type AutoSidestep} from './breach-auto-sidestep.ts';
 import {type MotorPause,type ExecutionIssue,type ExecutionStatus} from './breach-execution-state.ts';
 import {type ExecutionEvent} from './breach-execution-events.ts';
 import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
-import {canAutoShove} from './breach-traversal-surfaces.ts';
+
 
 
 
@@ -104,7 +110,7 @@ import {projectReachableGoal,type Blocker} from './breach-nav-diagnostics.ts';
 import {sweptBodyClear,SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld} from './breach-squeeze-route.ts';
 import {knownPortalStrokeRoute} from './breach-known-portal-stroke.ts';
-import {probeObstacleCrossing,probeWindowPortalRoute,canOpenWindowForClimb,traversalRouteLength,type TraverseOpportunity} from './breach-mantle.ts';
+import {type TraverseOpportunity} from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {kitMedicalSupplies,medicalSupplyCount,type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
@@ -352,83 +358,6 @@ export function selectDeployment(s:Session,id:string):boolean{
  notify(s,'DEPLOYMENT SET — '+(choice?.id??'FRONT'));
  return true;
 }
-/** Plan authoring can see only briefed/discovered surfaces. World-truth
- * validation runs again at execution; hidden furniture isn't exposed by
- * an unexplained path preview or a shortcut through a closed window.
- */
-function knownWindowWorld(s:Session){
- const cover=s.coverState.filter((_,i)=>s.intel.cover.has(i));
- return {
-  cover,walls:sessionWorldGeometry(s).walls.filter((_,i)=>s.intel.walls.has(i)),
-  doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
-  windows:s.windows.filter(w=>s.intel.cover.has(s.coverState.findIndex(o=>
-    (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
-    Math.hypot(o.x-w.x,o.y-w.y)<1))).map(w=>
-      canOpenWindowForClimb(w)?{...w,open:true}:w),
-  canStand:(at:Pt)=>intelPassable(at,s.intel)
- };
-}
-/** Preview only known, reachable window portals; never infer hidden rooms. */
-export function plannedWindowRoute(s:Session,from:Pt,to:Pt,
- ordinary:readonly Pt[]=routeWithSqueezeIntel(s.intel,from,to)):Pt[]|null{
- const world=knownWindowWorld(s);
- if(!world.windows.length)return null;
- const portal=probeWindowPortalRoute(from,to,world,
-   (a,b)=>routeWithSqueezeIntel(s.intel,a,b));
- if(!portal||ordinary.length&&portal.duration+.12>=
-   traversalRouteLength(from,ordinary)/53)return null;
- return [...portal.approachPath,portal.crossing.landing,...portal.exitPath];
-}
-/** An explicit straight gesture through ONE known light object may remain
- * authored. Other blocked samples (walls, unknown cover, doors) still reject.
- * The motor must physically reach and shove the same known object later. */
-function knownShoveCrossing(s:Session,from:Pt,to:Pt):number|null{
- if(!intelPassable(from,s.intel,SQUEEZE_RADIUS)||
-    !intelPassable(to,s.intel,SQUEEZE_RADIUS))return null;
- const span=d(from,to);
- if(span<3)return null;
- // A shove cannot be used to disguise an ordinary known wall or a latched
- // door, even when its sample is inside the expanded furniture envelope.
- const segment={a:from,b:to};
- if(sessionWorldGeometry(s).walls.some((wall,index)=>s.intel.walls.has(index)&&
-    segmentsCross(segment,wall)))return null;
- if(s.doors.some(door=>doorKnown(s.intel,door.id)&&
-    doorBlocksSegment(door,segment)))return null;
- for(let index=0;index<s.coverState.length;index++){
-   const obstacle=s.coverState[index];
-   if(!s.intel.cover.has(index)||!canAutoShove(obstacle)||
-      !canRelocateCover(obstacle)||
-      !segmentHitsBox(from,to,{...obstacle,
-        w:obstacle.w+2,h:obstacle.h+2}))continue;
-   const allowance={...obstacle,
-     w:obstacle.w+SQUEEZE_RADIUS*2+4,
-     h:obstacle.h+SQUEEZE_RADIUS*2+4};
-   let otherObstruction=false;
-   for(let i=1,n=Math.ceil(span/4);i<n;i++){
-     const t=i/n,p={x:from.x+(to.x-from.x)*t,
-       y:from.y+(to.y-from.y)*t};
-     if(!intelPassable(p,s.intel,SQUEEZE_RADIUS)&&
-        !segmentHitsBox(p,p,allowance)){
-       otherObstruction=true;break;
-     }
-   }
-   if(!otherObstruction)return index;
- }
- return null;
-}
-function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
- const world=knownWindowWorld(s);
- return knownShoveCrossing(s,from,to)!==null||
-   !!probeObstacleCrossing(from,to,world)||
-   !!probeWindowPortalRoute(from,to,world,
-     (a,b)=>routeWithSqueezeIntel(s.intel,a,b));
-}
-const legalMoveRoute=(s:Session,from:Pt,to:Pt):Pt[]=>{
- const ordinary=routeWithSqueezeIntel(s.intel,from,to);
- return plannedWindowRoute(s,from,to,ordinary)??(
-   ordinary.length?ordinary:knownTraversal(s,from,to)?[to]:[]);
-};
-
 /** A short, already-routable gesture may use a nearby KNOWN real portal.
  * Serving windows retain their authoritative solid sill collision.
  */
@@ -447,19 +376,6 @@ function knownPortalGesture(s:Session,from:Pt,to:Pt,blocked:Pt):boolean{
  if(!portals.some(portal=>pointToSegment(blocked,portal)<=18))return false;
  return knownPortalStrokeRoute(from,to,blocked,portals,
    legalMoveRoute(s,from,to));
-}
-export const finalPoint=(a:TeamActor)=>lastPoint(a.p,a.plan);
-export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
-  extra:Partial<PlanNode>={}):boolean{
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  if(kind==='move'&&!intelPassable(p,s.intel,SQUEEZE_RADIUS))return false;
-  if(kind==='move'&&!legalMoveRoute(s,finalPoint(a),p).length)return false;
-  if(kind==='door'&&(!extra.doorId||!doorKnown(s.intel,extra.doorId)||
-    !intelPassable(p,s.intel,SQUEEZE_RADIUS)||
-    !routeWithSqueezeIntel(s.intel,finalPoint(a),p).length))return false;
-  return edit(s,a,()=>{
-    a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
-  });
 }
 /** Queue a physical fixture interaction at the route end or selected waypoint.
  * Using the selected waypoint's world position avoids context buttons that
@@ -812,80 +728,6 @@ export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
   proposed.splice(position,0,{id:s.nextId,kind:'move',p:clone(target.point)});
   if(!validEditedPlan(s,a.p,proposed))return false;
   return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
-}
-/**
- * An aim instruction is an order, not a movement geometry.
- * Fixed holds one world heading; track continuously faces a fixed world point.
- * A selected waypoint applies its instruction on arrival, then all subsequent
- * walking inherits it until another aim instruction explicitly overrides it.
- */
-export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:number,
-  label:'look'|'watch'|'strafe'|'pie'=mode==='track'?'watch':'look',
-  origin:'end'|'here'='end'){
-  const a=party(s,id);
-  if(!a||!canEdit(s)||!Number.isFinite(target.x)||!Number.isFinite(target.y))return false;
-  const node=nodeId===undefined?undefined:a.plan.find(n=>n.id===nodeId);
-  if(nodeId!==undefined&&!node)return false;
-  const pos=node?.p??(origin==='here'?a.p:finalPoint(a));
-  if(d(pos,target)<2)return false;
-  const patch:Partial<PlanNode>=mode==='track'?
-    {aimMode:'track',facing:undefined,aimPoint:clone(target),aimLabel:label}:
-    {aimMode:mode,facing:angle(pos,target),aimPoint:undefined,aimLabel:label};
-  if(node)return edit(s,a,()=>{
-    node.aimMode=patch.aimMode;node.facing=patch.facing;
-    node.aimPoint=patch.aimPoint;node.aimLabel=patch.aimLabel;
-  });
-  if(origin==='here')return edit(s,a,()=>{
-    a.plan.unshift({id:s.nextId++,kind:'look',p:clone(a.p),...patch});
-  });
-  return addNode(s,id,'look',pos,patch);
-}
-export function updatePlanFacing(s:Session,id:string,nodeId:number,p:Pt){
-  return planAim(s,id,'fixed',p,nodeId);
-}
-export function planLook(s:Session,id:string,p:Pt,nodeId?:number){
-  const a=party(s,id);if(!a)return false;
-  const node=nodeId!==undefined?a.plan.find(n=>n.id===nodeId):a.plan.at(-1);
-  return planAim(s,id,'free',p,node?.id,'look');
-}
-/** A WATCH target is world-fixed; heading follows it during movement. */
-export function planWatch(s:Session,id:string,p:Pt,nodeId?:number,
-  origin:'here'|'end'='end'){
-  return planAim(s,id,'track',p,nodeId,'watch',origin);
-}
-/** Edit the active, already-executed WATCH while paused. Its original
- * order has left the route, so this changes persistent aim state directly
- * without inventing an extra movement waypoint or changing future orders.
- */
-export function retargetActiveWatch(s:Session,id:string,target:Pt):boolean{
-  const a=party(s,id);
-  if(!a||!canEdit(s)||a.aimInstruction?.mode!=='track'||
-     !Number.isFinite(target.x)||!Number.isFinite(target.y)||
-     d(a.p,target)<2)return false;
-  return edit(s,a,()=>{a.aimInstruction={mode:'track',point:clone(target)};});
-}
-/** DELETE on an active WATCH releases tracking; the path stays untouched. */
-export function removeActiveWatch(s:Session,id:string):boolean{
-  const a=party(s,id);
-  if(!a||!canEdit(s)||a.aimInstruction?.mode!=='track')return false;
-  return edit(s,a,()=>{a.aimInstruction=null;});
-}
-/** Release an existing WATCH using an explicit AUTO transition. */
-export function releaseWatch(s:Session,id:string,nodeId?:number,
-  origin:'here'|'end'='here'):boolean{
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const node=nodeId===undefined?undefined:a.plan.find(n=>n.id===nodeId);
-  if(nodeId!==undefined&&!node)return false;
-  if(node)return edit(s,a,()=>{
-    node.aimMode='free';node.aimPoint=undefined;
-    node.facing=undefined;node.aimLabel=undefined;
-  });
-  const pos=origin==='here'?a.p:finalPoint(a);
-  return edit(s,a,()=>{
-    const entry:PlanNode={id:s.nextId++,kind:'look',p:clone(pos),aimMode:'free'};
-    if(origin==='here')a.plan.unshift(entry);
-    else a.plan.push(entry);
-  });
 }
 /** A paired entrance is one user interaction but two collision leaves. */
 function pairedLeaves(s:Session,door:Door):Door[]{
