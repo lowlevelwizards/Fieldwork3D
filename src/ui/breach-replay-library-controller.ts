@@ -48,6 +48,9 @@ type ReplayLibraryHooks={
   canPlayFavorite:()=>boolean;
   hideCampaignScreen:()=>void;
   returnToCampaignMenu:()=>void;
+  /** Application flow owns title-menu return, not this archive controller. */
+  onLibraryOpen?:(fromMenu:boolean)=>void;
+  onLibraryClose?:(restoreMenu:boolean)=>boolean;
 };
 
 export function createBreachReplayLibraryController(config:ReplayLibraryHooks){
@@ -56,7 +59,6 @@ export function createBreachReplayLibraryController(config:ReplayLibraryHooks){
   let activeSavedReplayId:string|null=null;
   let activeFavoriteId:string|null=null;
   let entrySource:'debrief'|'library'='debrief';
-  let returnToMenu=false;
   const savedRecordingIds=new WeakMap<MissionRecorder,string>();
   const view=createReplayLibraryUi({
     ui,showUiHelp:config.showUiHelp,
@@ -65,13 +67,13 @@ export function createBreachReplayLibraryController(config:ReplayLibraryHooks){
     isReplaying:config.isReplaying
   });
   const failure=(error:unknown)=>view.failure(error);
-  const show=()=>view.show();
+  const show=(fromMenu=false)=>{
+    config.onLibraryOpen?.(fromMenu);
+    view.show();
+  };
   const hide=(restoreMenu=true)=>{
     view.hide();
-    if(restoreMenu&&returnToMenu){
-      returnToMenu=false;
-      config.returnToCampaignMenu();
-    }
+    if(config.onLibraryClose?.(restoreMenu))config.returnToCampaignMenu();
   };
   const renderFavorites=()=>{
     const list=ui.favoriteMissionsList;
@@ -204,7 +206,7 @@ export function createBreachReplayLibraryController(config:ReplayLibraryHooks){
         previousRecorder=null;
       }
       failure(error);
-      if(returnToMenu&&ui.replayLibraryDialog.hidden)show();
+      if(ui.replayLibraryDialog.hidden)show();
     }finally{view.busy=false;config.refreshHud();}
   }
   async function persistCurrentBookmarks():Promise<void>{
@@ -237,9 +239,8 @@ export function createBreachReplayLibraryController(config:ReplayLibraryHooks){
     hide();
   }
   function openFromMenu():void{
-    returnToMenu=true;
     config.hideCampaignScreen();
-    show();
+    show(true);
   }
   function exportJsonReport():void{
     try{
