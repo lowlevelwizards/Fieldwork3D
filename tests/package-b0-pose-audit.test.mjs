@@ -101,3 +101,21 @@ test('B0 must leave production animation inputs, simulation and tools untouched'
  assert.match(ci,/npm run build/);
  assert.match(ci,/upload-artifact@v4/);
 });
+
+test('B0 scans ALL source files for transform candidates and duplicate public pose output writers',()=>{
+ const report=audit();
+ assert.deepEqual(report.poseImplementations,
+  ['src/breach-operator-animation-controller.ts']);
+ assert.deepEqual(report.commitImplementations,
+  ['src/breach-operator-pose-output.ts']);
+ assert.deepEqual(report.externalCommitCallers,
+  ['src/breach-operator-animation-controller.ts']);
+ assert.ok(report.allTransformCandidates.length>report.hotspot.length,
+  'Full-source audit must include more than the ten known hotspots');
+ assert.ok(report.allTransformCandidates.some(x=>x.path==='src/operator-pose-workbench.ts'));
+ assert.ok(report.allTransformCandidates.every(x=>x.candidateLines>0));
+ assert.ok(report.moduleConsumers['src/breach-operator-animation-contract.ts'].length>0);
+ const invalid={...report,externalCommitCallers:[...report.externalCommitCallers,
+  'src/unauthorized-secondary-commit.ts']};
+ assert.throws(()=>verifyB0Architecture(invalid),/Only the canonical evaluator/);
+});
