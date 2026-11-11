@@ -88,7 +88,8 @@ test('stage 7 moves display and hint logic out of breach main, not order validat
  assert.match(main,/hudController\.renderSession\(/);
   assert.match(hud,/renderGuidance\(\{/);
  assert.match(main,/hudController\.renderQuickStates\(/);
- assert.match(main,/hudController\.completeAction\(/);
+ assert.match(hud,/completeAction\(/);
+ assert.match(main,/hudController\.bindContextActions\(/);
  assert.doesNotMatch(main,/new PaletteMotion\(/);
  assert.doesNotMatch(main,/placeContextMenu\(/);
  assert.doesNotMatch(main,/new TacticalFeedback\(/);
