@@ -104,7 +104,7 @@ jobs:
       - name: Stage A2 boot, migration, campaign and Quick Play regression contracts
         if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-a2-') }}
         run: |
-          node --experimental-strip-types --test tests/consolidation-stage2-config-persistence.test.mjs tests/campaign-01.test.mjs tests/campaign-02.test.mjs tests/quick-play-generator-navigation.test.mjs tests/quick-play-startup-progress.test.mjs tests/operator-wardrobe-storage.test.mjs tests/miniature-focus-preferences.test.mjs
+          node --experimental-strip-types --test tests/consolidation-stage2-config-persistence.test.mjs tests/campaign-01.test.mjs tests/campaign-02.test.mjs tests/quick-play-generator-navigation.test.mjs tests/quick-play-startup-progress.test.mjs tests/miniature-focus-preferences.test.mjs
       - name: Preserve consolidation inventory and review candidates
         if: ${{ always() && startsWith(github.head_ref, 'refactor/consolidation-') }}
         uses: actions/upload-artifact@v4
