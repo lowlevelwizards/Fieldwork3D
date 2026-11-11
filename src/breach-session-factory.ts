@@ -2,7 +2,7 @@
  * performs the first intel observation after this completes. Do not move
  * RNG draws or global presentation adoption across these boundaries.
  */
-import {newTacticalState,activateSite,COVER,initialDoors,type Pt} from './breach-core.ts';
+import {newTacticalState,initialWorldCover,initialWorldWalls,initialDoors,type Pt} from './breach-core.ts';
 import {length,targetAngle} from './breach-plan.ts';
 import {generateSite,seeded,type Site,type SiteScale} from './breach-site.ts';
 import type {EncounterContext} from './worldgen/encounter-types.ts';
@@ -18,7 +18,7 @@ import {civilianRefugePoints} from './breach-civilian-refuge.ts';
 import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {initializeWindows} from './breach-windows.ts';
 import {initDoor} from './breach-door.ts';
-import {registerSessionWorldGeometry,sessionWorldGeometry,setPresentationWorldSession} from './breach-world-context.ts';
+import {registerSessionWorldGeometry,sessionWorldGeometry} from './breach-world-context.ts';
 import {OBJECTIVE,EXTRACTION,SCENARIOS} from './breach-scenario-defaults.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 
@@ -36,8 +36,7 @@ export function assembleSession(index=0,siteSeed?:number,
   const site=prebuiltSite??(siteSeed===undefined?undefined:
     generateSite(siteSeed>>>0,scale,undefined,
       {...encounterContext,mission:missionOverride??encounterContext.mission}));
-  activateSite(site??null);
-  const seed=newTacticalState();
+  const seed=newTacticalState(site??null);
   const variant=((index%SCENARIOS.length)+SCENARIOS.length)%SCENARIOS.length;
   const sample=SCENARIOS[variant];
   const operators=seed.operators.map(withActions);
@@ -144,13 +143,16 @@ export function assembleSession(index=0,siteSeed?:number,
     (site?.encounter?.neutrals??[]).map(createCivilian):[];
   if(site)for(const person of civilians)
     person.refugePoints=civilianRefugePoints(site,person);
+  const initialCover=initialWorldCover(site??null).map(o=>({...o,
+    material:materialForFixture(o.fixture),
+    integrity:MATERIALS[materialForFixture(o.fixture)].integrity}));
+  const initialDoorRecords=initialDoors(site??null);
   const state:Session={...seed,operators,civilians,
     civilianHarmEvents:[],objectRevision:0,
-    coverState:COVER.map(o=>({...o,material:materialForFixture(o.fixture),
-      integrity:MATERIALS[materialForFixture(o.fixture)].integrity})),
+    coverState:initialCover,
     windows:initializeWindows(site?.windows??[]),
     passageLeases:{},squadEntryUndo:null,squadEntryRedo:null,
-    doors:initialDoors().map((d,i)=>initDoor({
+    doors:initialDoorRecords.map((d,i)=>initDoor({
       ...d,locked:d.locked??!!(site&&i>2&&i%7===0&&
         d.kind!=='shutter'&&d.id!=='FRONT')},i)),variant,nextId:1,
     scenario:{index:variant,name:site?.name??sample.name,
@@ -158,7 +160,9 @@ export function assembleSession(index=0,siteSeed?:number,
       extract:clone(site?.extract??EXTRACTION)},
     mission:'clear',noise:[],nextNoiseId:1,reports:[],nextReportId:1,shots:[],casings:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),seenGroundRevision:0,
-    intel:initialIntel(intelMode,site,initialDoors()),
+    intel:initialIntel(intelMode,site,initialDoorRecords,{
+      walls:initialWorldWalls(site??null),cover:initialCover
+    }),
     intelObservedAt:-1,timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0,site,lightingMode:'day',
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
@@ -197,9 +201,7 @@ export function assembleSession(index=0,siteSeed?:number,
   }
   if(state.missionType==='intel'||state.missionType==='rescue'||
      state.missionType==='hold')state.mission='secure';
-  COVER.splice(0,COVER.length,...state.coverState);
   registerSessionWorldGeometry(state);
-  setPresentationWorldSession(state);
   bindIntelWorld(state.intel,sessionWorldGeometry(state));
   return state;
 }

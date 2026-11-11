@@ -103,6 +103,14 @@ export const doorCenter=(d:Door):Pt=>({
   x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2});
 const BASE_WALLS=WALLS.map(w=>({a:{...w.a},b:{...w.b}}));
 const BASE_COVER=COVER.map(o=>({...o}));
+/** Immutable-by-contract training defaults, independent of active presentation.
+ * Session callers clone these values before storing mutable cover or walls.
+ * Legacy single-site tools continue to use WALLS/COVER below.
+ */
+export const initialWorldWalls=(owner:Site|null):readonly Segment[]=>
+  owner?.walls??BASE_WALLS;
+export const initialWorldCover=(owner:Site|null):readonly Obstacle[]=>
+  owner?.cover??BASE_COVER;
 let site:Site|null=null;
 /** A single geometry source drives collision, LOS, routefinding and renderers. */
 export function activateSite(next:Site|null){
@@ -132,8 +140,11 @@ export function withTemporarySiteGeometry<T>(next:Site|null,action:()=>T):T{
  }
 }
 
-export const initialDoors=():Door[]=>
-  (site?.doors??[
+/** A provided site (including explicit null) is authoritative.
+ * Omitted site retains the original single-active-site tool contract.
+ */
+export const initialDoors=(owner?:Site|null):Door[]=>
+  ((owner===undefined?site:owner)?.doors??[
     {id:'FRONT',a:{x:282,y:532},b:{x:324,y:532},open:false,openedAt:-1},
     {id:'INNER',a:{x:382,y:307},b:{x:382,y:343},open:false,openedAt:-1},
   ]).map(d=>({...d,a:{...d.a},b:{...d.b}}));
@@ -373,8 +384,8 @@ const actor=(id:string,name:string,side:Side,x:number,y:number,
   id,name,side,p:{x,y},heading,path:[],health:side==='blue'?2:1,
   shots:0,fireCd:0,aimLock:false,contacted:false,lastSpotted:null,
 });
-export const newTacticalState=():TacticalState=>({
-  phase:'planning',seconds:0,doors:initialDoors(),sparks:[],
+export const newTacticalState=(owner?:Site|null):TacticalState=>({
+  phase:'planning',seconds:0,doors:initialDoors(owner),sparks:[],
   spotted:new Set(),events:['PLAN THE ENTRY'],
   rng:10361,operators:[
     actor('rook','ROOK','blue',282,628,-Math.PI/2),

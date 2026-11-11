@@ -53,13 +53,21 @@ try{
     return parts.length===2&&parts.every(Number.isFinite)&&
       parts[0]*60+parts[1]>=2;
   },null,{timeout:30000});
-  let open=false;
-  for(let i=0;i<9&&!open;i++){
-    await page.waitForTimeout(600);
-    await page.evaluate(()=>document.querySelector('#watchReplay')?.click());
-    open=await page.locator('#replayPanel').isVisible();
-  }
-  check(open,'Cannot enter a Bodycam-eligible historical film');
+  // V4 replay authorization requires a debrief or saved-library entry.
+  // Preserve the actual two-second recorded workload and open its archive
+  // through the real library UI instead of clicking a hidden debrief control.
+  await page.waitForFunction(()=>document.querySelector('#saveReplayDebrief')?.
+   disabled===false,null,{timeout:20000});
+  await page.evaluate(()=>document.querySelector('#saveReplayDebrief')?.click());
+  await page.waitForFunction(()=>document.querySelector('#saveReplayDebrief')?.
+   textContent==='REPLAY SAVED',null,{timeout:20000});
+  await page.evaluate(()=>document.querySelector('#openReplayLibrary')?.click());
+  await page.locator('#replayLibraryList .replay-library-watch').first()
+    .waitFor({state:'visible',timeout:20000});
+  await page.locator('#replayLibraryList .replay-library-watch').first().click();
+  await page.locator('#replayPanel').waitFor({state:'visible',timeout:30000});
+  check(await page.locator('#replayPanel').isVisible(),
+   'Cannot enter saved Bodycam-eligible historical film');
   await page.locator('#replayMore').click();
   // The current compact replay HUD keeps Bodycam in the DIRECT operator
   // camera strip. The older #replayBodycam and #replayBodycamMount controls
