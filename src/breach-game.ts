@@ -19,7 +19,7 @@ import type {ActorMotorHooks} from './breach-motor-contract.ts';
 /**
  * Fieldwork Breach 053–062: authoritative, fixed-step tactical session.
  * Author intent is editable PlanNode[]; motor navigation is transient.
- * Legacy 052 entrypoints remain in breach-core for comparison/tests only.
+ * The core retains the 052 static geometry and starter actors, not its old simulation.
  */
 import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,} from './breach-core.ts';
 import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
