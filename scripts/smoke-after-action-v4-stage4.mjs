@@ -124,7 +124,7 @@ try{
    await root.locator('.fw-v3-shot-chip').nth(0).click();
    await root.locator('.fw-v4-scope-choice')
      .filter({hasText:'SELECTED SHOT'}).click();
-   await root.locator('.fw-v3-combat-figure .fw-v3-small-button')
+   await root.locator('.fw-v4-inspection-switch .fw-v3-small-button')
      .filter({hasText:'3D'}).click();
    await root.locator('.fw-v4-model-canvas')
      .waitFor({state:'attached',timeout:60000});
