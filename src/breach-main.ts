@@ -1181,6 +1181,7 @@ replayHudController=createBreachReplayHudController({
   get selected(){return selected;},set selected(v){selected=v;},
   get cssW(){return cssW;},get cssH(){return cssH;},
   replayKnowledge,replayPlayback,replayCamera,replayBodycam,replayDirector,
+  applyReplayPreset,
   replayAnalysisUi,replayQuickVideo,audio:audioController,
   stopReplayBodycam,startReplayBodycam,applyReplayBodycamMount,
   chooseReplayCamera,cameraMode,advanceReplayCamera,rebuildReplayEventIndex,
