@@ -112,6 +112,8 @@ test('V4-2: selected performance keeps squad ranks and offers explicit return to
 test('V4-2: partial evidence, injury, missing action logs are not disguised as achievements',()=>
  withDocument(()=>{
  const partial=rec();partial.completeness.complete=false;
+ // This legacy recording has no structured action metadata at all.
+ partial.events=partial.events.map(({meta,...event})=>event);
  const report=buildAfterActionReport(partial);
  const root=renderSquadView(report,null,'vale',()=>{},()=>{});
  assert.match(text(root),/PARTIAL REPLAY/);
