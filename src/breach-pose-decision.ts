@@ -108,8 +108,8 @@ export function resolveOperatorPoseDecision(
     'short',p.shortCompression!,p.weapon):sample.profile;
  const upperBody=planUpperBodyStrategy(p,{
   handling,physicalSpeed:prepared.locomotion.physicalSpeed,
-  hasModularBuild:!!(p.weaponConfiguration?.weapon===p.weapon&&
-   p.weaponConfiguration.build),
+  hasModularBuild:p.weaponConfiguration?.weapon===p.weapon&&
+   !!p.weaponConfiguration?.build,
   activeTransition:!!active,authoredLabSwitch,
   interactionWindow:action.interactionWindow
  });
