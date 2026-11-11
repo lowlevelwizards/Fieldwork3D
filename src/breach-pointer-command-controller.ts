@@ -3,7 +3,7 @@
  */
 import {team,planWatch,retargetActiveWatch,movePlanNode,moveFlashTarget,planMoveStroke,finalPoint,planNearbyInteraction,planCasualtyTransport,setFirePolicy,planDoorFlash,planFlash,planAim,planMove,type Session,type TeamActor} from './breach-game.ts';
 import {doorCenter,type Pt} from './breach-core.ts';
-import {aimTargetFromTap} from './ui/aim-target.ts';
+
 import type {TacticalInteractionState} from './breach-tactical-interaction-state.ts';
 import type {createBreachAudioController} from './breach-audio-controller.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';

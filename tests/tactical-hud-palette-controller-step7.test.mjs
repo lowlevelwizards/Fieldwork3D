@@ -75,6 +75,7 @@ test('rejection feedback derives from the user-facing error only',()=>{
 test('stage 7 moves display and hint logic out of breach main, not order validators',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const commands=readFileSync(new URL('../src/breach-tactical-context-command.ts',import.meta.url),'utf8');
+ const pointer=readFileSync(new URL('../src/breach-pointer-command-controller.ts',import.meta.url),'utf8');
  const palette=readFileSync(new URL('../src/ui/tactical-palette-controller.ts',
    import.meta.url),'utf8');
  const hud=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',
@@ -95,7 +96,8 @@ test('stage 7 moves display and hint logic out of breach main, not order validat
  for(const token of ['planWatch(state,selected','planAim(state,selected',
    'planMove(state,selected','planEntryTool(state,selected',
    'planDoorFlash(state,selected','setFirePolicy(state,selected']){
-   assert.ok((main+commands).includes(token),'game rule must remain authoritative: '+token);
+   assert.ok((main+commands+pointer).replaceAll('port.state,port.selected','state,selected').includes(token),
+     'game rule must remain authoritative: '+token);
  }
  for(const controller of [palette,hud]){
    assert.doesNotMatch(controller,/planMove\(|planWatch\(|planDoorFlash\(|stepSession\(/);

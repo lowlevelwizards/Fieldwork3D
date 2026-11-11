@@ -10,13 +10,13 @@ import {
 import {
   type Session,
   type TeamActor,team,planMove,
-  planNearbyInteraction,planAim,planWatch,retargetActiveWatch,
-  setFirePolicy,planWait,plannedControl,planDoorFlash,
+  
+  planWait,plannedControl,
   planSync,finalPoint,backOne,
   clearPlan,undoPlan,redoPlan,
   posture,toggleContactRule,toggling,
-  planReload,reloadNow,planFlash,
-  equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,planCasualtyTransport,
+  planReload,reloadNow,
+  equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,
   planRecoverMedical
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
@@ -33,7 +33,7 @@ import {shouldAppendStrokePoint}
 import type {TacticalPick} from './ui/tactical-target-resolver.ts';
 import {pickTacticalTarget,insertTacticalRouteWaypoint} from './breach-tactical-picking.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
-import {aimTargetFromTap} from './ui/aim-target.ts';
+
 
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';

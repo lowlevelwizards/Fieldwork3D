@@ -512,7 +512,7 @@ export function createTacticalHudController(
     ui,state,brief,recorder,campaign,campaignMode:mode,
     operationsLogged:operationsLogged
   });
-  for(const id of squadIds){
+  for(const id of ['rook','moss','ash','vale'] as const){
     renderOperatorCard({
       state,replaying,selected,id,actor:team(state).find(o=>o.id===id),
       button:ui[id],
