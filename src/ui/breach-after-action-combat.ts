@@ -95,7 +95,7 @@ export function renderCombatReport(
    choice.setAttribute('aria-pressed',String(view.scope===scope));
    scopeBar.append(choice);
  }
- root.append(scopeBar);
+ controls.append(scopeBar);
  const content=el('div','fw-v3-combat-focus');
  const figure=el('div','fw-v3-combat-figure');
  const figureToolbar=el('div','fw-v3-switch');
