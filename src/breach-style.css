@@ -2947,3 +2947,86 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v3-metric strong{font-size:17px}
  .fw-v3-metric span{font-size:8px}
 }
+
+
+/* V3-C: contact and shot rails scroll sideways only; focal region stays fixed. */
+.fw-v3-combat{display:flex;flex-direction:column;gap:7px;height:100%;
+ min-height:0;overflow:hidden}
+.fw-v3-combat-top{display:flex;align-items:center;justify-content:space-between}
+.fw-v3-switch{display:flex;gap:4px;justify-content:center;flex-shrink:0}
+.fw-debrief-v3 .fw-v3-small-button{margin:0;padding:5px 9px;
+ min-height:34px;border-radius:4px;border:1px solid #516d5c;
+ background:#283e33;color:#e3dac3;font:700 11px var(--ui-display)}
+.fw-v3-switch [aria-pressed=true]{background:#56694f;
+ border-color:#d6bf93;color:#fff0cd}
+.fw-v3-contact-rail{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;
+ scrollbar-width:thin;min-height:44px;flex-shrink:0;padding:1px 1px 4px;
+ scroll-snap-type:x proximity}
+.fw-debrief-v3 .fw-v3-contact-chip{margin:0;min-height:37px;flex:0 0 auto;
+ min-width:80px;max-width:145px;padding:5px 10px;
+ border:1px solid #557263;background:#243b31;color:#dcdccf;
+ border-radius:5px;font:800 12px var(--ui-display);
+ scroll-snap-align:start;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fw-v3-contact-chip[aria-pressed=true]{border-color:#d5bc90;
+ background:#526b56;color:#fff1d0}
+.fw-v3-combat-focus{min-height:0;flex:1;display:grid;
+ grid-template-columns:minmax(0,48%) minmax(0,1fr);gap:8px}
+.fw-v3-combat-figure{display:flex;flex-direction:column;align-items:center;
+ justify-content:center;min-height:0;overflow:hidden;padding:5px;
+ border:1px solid #405b4e;border-radius:7px;background:#1b3028;gap:3px}
+.fw-v3-paper{width:100%;min-height:0;flex:1;display:flex;
+ flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+.fw-v3-paper svg{display:block;height:min(39dvh,310px);
+ max-height:100%;width:auto;max-width:100%}
+.fw-v3-paper-key{margin:0;color:#b2c0ae;
+ font:700 9px/1.35 var(--ui-display);text-align:center}
+.fw-v3-combat-info{min-width:0;min-height:0;display:flex;
+ flex-direction:column;justify-content:space-between;gap:7px;padding:5px 0}
+.fw-v3-combat-name{display:grid;gap:2px}
+.fw-v3-combat-name small{color:#98aea0;font:700 10px var(--ui-display)}
+.fw-v3-combat-name h2{margin:0;font:800 clamp(19px,4vw,31px) var(--ui-display);
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fw-v3-combat-name span{font:700 11px var(--ui-display);color:#e4cda9}
+.fw-v3-shot-details{display:grid;gap:5px;min-width:0}
+.fw-v3-shot-details small{font:700 10px var(--ui-display);
+ color:#91aa9c}
+.fw-v3-shot-details h3{margin:0;color:#efe3bf;
+ font:800 clamp(17px,4vw,27px) var(--ui-display);line-height:1.1}
+.fw-v3-shot-details p{margin:0;color:#d1dbd0;
+ font:600 11px/1.35 var(--ui-font);overflow-wrap:anywhere}
+.fw-v3-shot-damage{color:#dcb89e;font:800 12px var(--ui-display)}
+.fw-debrief-v3 .fw-v3-play{display:block;width:100%;margin:0;
+ min-height:43px;border-radius:5px;border:1px solid #ddc596;
+ padding:7px;background:#cbb892;color:#21372c;font:800 13px var(--ui-display)}
+.fw-v3-shot-sequence{display:flex;gap:5px;align-items:center;min-height:45px;
+ flex-shrink:0}
+.fw-v3-shot-rail{display:flex;flex:1;min-width:0;gap:5px;
+ overflow-x:auto;scrollbar-width:thin;padding:2px 1px;scroll-snap-type:x proximity}
+.fw-debrief-v3 .fw-v3-shot-chip,.fw-debrief-v3 .fw-v3-shot-step{
+ flex:0 0 auto;min-width:36px;min-height:38px;margin:0;border-radius:5px;
+ background:#263d32;color:#ebdecb;border:1px solid #587262;
+ font:800 13px var(--ui-display);scroll-snap-align:center}
+.fw-debrief-v3 .fw-v3-shot-step{min-width:42px;font-size:20px}
+.fw-debrief-v3 .fw-v3-shot-chip[aria-pressed=true]{background:#c9ae7c;
+ color:#203128;border-color:#e7d4a7}
+.fw-v3-shot-chip[data-outcome="damaging"]{border-bottom:3px solid #bd6553}
+.fw-v3-shot-chip[data-outcome="armor-stopped"]{border-bottom:3px solid #cfbd89}
+.fw-v3-shot-chip[data-outcome="miss"]{opacity:.65}
+.fw-v3-ledger{display:grid;gap:3px}
+.fw-v3-ledger h3{font:800 15px var(--ui-display);margin:0 0 8px}
+@media(max-width:600px){
+ .fw-v3-combat-focus{grid-template-columns:minmax(0,46%) minmax(0,1fr)}
+ .fw-v3-paper svg{height:min(34dvh,255px)}
+}
+@media(max-height:680px){
+ .fw-v3-contact-rail{min-height:37px}
+ .fw-v3-paper svg{height:min(28dvh,195px)}
+ .fw-v3-shot-details{gap:2px}
+ .fw-v3-combat-info{gap:3px}
+ .fw-v3-shot-sequence{min-height:36px}
+}
+@media(prefers-reduced-motion:no-preference){
+ .fw-v3-paper-pulse{animation:fwV3Impact .19s ease-out 1}
+ @keyframes fwV3Impact{from{stroke-width:5;opacity:.35}
+ to{stroke-width:2.1;opacity:1}}
+}

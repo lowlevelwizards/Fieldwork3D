@@ -121,6 +121,24 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      operatorDetails.replaceChildren(operator?renderSquadDetails(operator):
        make('p','fw-after-muted','Select an operator to inspect their full record.'));
    }
+   const forensicDetails=root.querySelector<HTMLElement>('#afterActionContactDetail');
+   if(forensicDetails){
+     const contact=(s.contactSide==='red'?s.report.hostiles:
+       s.report.friendlyCasualties).find(c=>c.id===s.selectedContact);
+     const ledger=make('div','fw-v3-ledger');
+     if(contact){
+       ledger.append(make('h3','',contact.name+' / SHOT HISTORY'));
+       for(const shot of contact.shots){
+         const row=make('div','fw-after-pair');
+         const result=shot.outcome==='non-damaging'?'NO DAMAGE':
+           shot.outcome.replaceAll('-',' ').toUpperCase();
+         row.append(make('span','',String(shot.id)+' · '+shot.shooterId),
+           make('span','',result+' · '+(shot.region??'UNKNOWN')));
+         ledger.append(row);
+       }
+     }
+     forensicDetails.replaceChildren(ledger);
+   }
    disposeModel();
    safeContent.replaceChildren(screen);
    const modelHost=screen.querySelector<HTMLElement>('[data-after-model]');

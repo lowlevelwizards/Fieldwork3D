@@ -1,5 +1,5 @@
-/** Forensic contact browser: complete historical ledgers, not simulated kills.
- * Defaults to a lightweight 2D regional silhouette; no 3D initialized here.
+/** V3-C: focus-first combat view; horizontal contact and shot selectors.
+ * No scrolling through long forensic ledgers in the primary presentation.
  */
 import type {AfterActionReport,ContactAfterAction,ReportShot}
  from '../breach-after-action-report.ts';
@@ -12,109 +12,117 @@ type Actions={
  chooseMode:(mode:'paper'|'3d')=>void;
  viewReplay:(contact:ContactAfterAction,shot:ReportShot|null)=>void;
 };
-const node=(tag:string,cls='',text?:string)=>{
- const el=document.createElement(tag);
- if(cls)el.className=cls;
- if(text!==undefined)el.textContent=text;
- return el;
+const el=(tag:string,cls='',txt?:string)=>{
+ const x=document.createElement(tag);if(cls)x.className=cls;
+ if(txt!==undefined)x.textContent=txt;return x;
 };
-const btn=(text:string,click:()=>void,cls='fw-after-link')=>{
- const b=document.createElement('button');b.type='button';b.textContent=text;
- b.className=cls;b.addEventListener('click',click);return b;
+const button=(label:string,click:()=>void,cls='fw-v3-small-button')=>{
+ const b=document.createElement('button');b.type='button';b.className=cls;
+ b.textContent=label;b.addEventListener('click',click);return b;
 };
-const stamp=(t:number)=>Math.floor(t/60)+':'+
- String(Math.floor(t%60)).padStart(2,'0')+'.'+
- String(Math.floor(t%1*10));
-const shown=(s:string|null)=>s??'NOT RECORDED';
-const outcome=(s:ReportShot)=>s.down?'FINAL INCAPACITATING HIT':
+const stamp=(at:number)=>Math.floor(at/60)+':'+
+ String(Math.floor(at%60)).padStart(2,'0');
+const status=(c:ContactAfterAction)=>c.resolution==='surrendered'?'SURRENDERED':
+ c.resolution==='incapacitated'?'INCAPACITATED':'UNRESOLVED';
+const outcome=(s:ReportShot)=>s.down?'INCAPACITATING HIT':
  s.outcome==='armor-stopped'?'ARMOR STOP':
- s.outcome==='damaging'?'WOUND':s.outcome==='miss'?'MISS':'HIT / UNKNOWN DAMAGE';
+ s.outcome==='non-damaging'?'NO DAMAGE':
+ s.outcome==='damaging'?'WOUND':
+ s.outcome==='miss'?'MISS':'UNKNOWN DAMAGE';
+function shotDetails(s:ReportShot){
+ const part=el('div','fw-v3-shot-details');
+ part.append(el('small','',stamp(s.at)+' · SHOT #'+s.id),
+   el('h3','',outcome(s)),
+   el('p','',s.shooterId.toUpperCase()+
+     ' · '+(s.receiver??s.weapon??'UNKNOWN WEAPON')),
+   el('p','',s.region?.toUpperCase()??'NO RECORDED REGION'));
+ if(s.caliber)part.append(el('small','','NOMINAL '+s.caliber));
+ if(s.damage!==null)part.append(el('span','fw-v3-shot-damage',
+   String(s.damage)+' DAMAGE'));
+ return part;
+}
 export function renderCombatReport(
  report:AfterActionReport,view:View,act:Actions
 ):HTMLElement{
- const root=node('section','fw-after-section');
- const nav=node('div','fw-after-combat-switch');
- for(const side of ['red','blue'] as const){
-   const b=btn(side==='red'?'HOSTILES':'SQUAD CASUALTIES',
-     ()=>act.chooseSide(side),'fw-after-link');
-   b.setAttribute('aria-pressed',String(view.side===side));
-   nav.append(b);
+ const root=el('section','fw-v3-combat');
+ const all=view.side==='red'?report.hostiles:report.friendlyCasualties;
+ const active=all.find(c=>c.id===view.selectedContact)??all[0]??null;
+ const controls=el('div','fw-v3-combat-top');
+ const side=el('div','fw-v3-switch');
+ for(const kind of ['red','blue'] as const){
+   const b=button(kind==='red'?'HOSTILES':'SQUAD',
+     ()=>act.chooseSide(kind),'fw-v3-small-button');
+   b.setAttribute('aria-pressed',String(view.side===kind));side.append(b);
  }
- root.append(node('h2','fw-after-heading','COMBAT RECORD'),nav);
- const contacts=view.side==='red'?report.hostiles:report.friendlyCasualties;
- if(!view.selectedContact){
-   const list=node('div','fw-after-rank-list');
-   for(const c of contacts){
-     const label=c.name+' · '+c.resolution.toUpperCase();
-     const b=btn(label,()=>act.chooseContact(c.id),'fw-after-person');
-     b.append(node('small','',c.shots.length+' SHOTS DIRECTED AT TARGET'+
-       (c.resolvedAt===null?'':' · '+stamp(c.resolvedAt))));
-     list.append(b);
-   }
-   root.append(list);
-   if(!contacts.length)root.append(node('p','fw-after-empty',
-     view.side==='blue'?'NO RECORDED SQUAD INCAPACITATIONS.':
-       'NO RECORDED HOSTILE CONTACTS.'));
+ controls.append(side);
+ const contacts=el('div','fw-v3-contact-rail');
+ contacts.setAttribute('aria-label','Contacts');
+ for(const c of all){
+   const b=button(c.name,()=>act.chooseContact(c.id),'fw-v3-contact-chip');
+   b.setAttribute('aria-pressed',String(c.id===active?.id));
+   b.title=status(c);contacts.append(b);
+ }
+ root.append(controls,contacts);
+ if(!active){
+   root.append(el('p','fw-after-empty',view.side==='red'?
+     'NO HOSTILE CONTACTS RECORDED':'NO RECORDED SQUAD CASUALTIES'));
    return root;
  }
- const contact=contacts.find(c=>c.id===view.selectedContact);
- if(!contact){root.append(btn('‹ ALL CONTACTS',()=>act.chooseContact(null)));return root;}
- root.append(btn('‹ ALL CONTACTS',()=>act.chooseContact(null)));
- root.append(node('h2','fw-after-heading',
-   contact.name+' / '+contact.resolution.toUpperCase()),
-   node('p','fw-after-muted',
-     'FULL RECONSTRUCTION · '+(contact.resolvedAt===null?
-       'OUTCOME UNRESOLVED':stamp(contact.resolvedAt))+
-     ' · '+contact.shots.length+' RECORDED TARGETED SHOTS'));
- const holder=node('div','fw-after-combat-split');
- const left=node('div','fw-after-panel');
- const modeButtons=node('div','fw-after-combat-switch');
+ const selected=active.shots.find(s=>s.id===view.selectedShotId)??
+   active.shots.find(s=>s.id===active.finalShotId)??
+   active.shots.at(-1)??null;
+ const content=el('div','fw-v3-combat-focus');
+ const figure=el('div','fw-v3-combat-figure');
+ const figureToolbar=el('div','fw-v3-switch');
  for(const mode of ['paper','3d'] as const){
-   const b=btn(mode==='paper'?'2D PAPER DOLL':'3D MODEL',
-     ()=>act.chooseMode(mode),'fw-after-link');
-   b.setAttribute('aria-pressed',String(view.inspectionMode===mode));
-   modeButtons.append(b);
+  const b=button(mode==='paper'?'2D':'3D',()=>act.chooseMode(mode));
+  b.setAttribute('aria-pressed',String(view.inspectionMode===mode));figureToolbar.append(b);
  }
- left.append(modeButtons);
- const toggle=node('div','fw-after-combat-switch');
- for(const back of [false,true]){
-   const b=btn(back?'BACK':'FRONT',()=>act.chooseView(back),'fw-after-link');
-   b.setAttribute('aria-pressed',String(view.back===back));toggle.append(b);
+ figure.append(figureToolbar);
+ if(view.inspectionMode==='paper'){
+  const pose=el('div','fw-v3-switch');
+  for(const back of [false,true]){
+    const b=button(back?'BACK':'FRONT',()=>act.chooseView(back));
+    b.setAttribute('aria-pressed',String(view.back===back));pose.append(b);
+  }
+  figure.append(renderHitPaperDoll(active,selected?.id??null,view.back),pose);
+ }else{
+  const model=el('div','fw-after-model','LOADING HISTORICAL MODEL');
+  model.dataset.afterModel=active.id;
+  figure.append(model,el('small','fw-v3-paper-key',
+    'HISTORICAL EQUIPMENT · NO PRECISE IMPACT MARKERS'));
  }
- if(view.inspectionMode==='paper')
-   left.append(toggle,renderHitPaperDoll(contact,view.selectedShotId,view.back));
- else{
-   const model=node('div','fw-after-model');
-   model.dataset.afterModel=contact.id;
-   model.textContent='LOADING HISTORICAL CHARACTER RIG…';
-   left.append(model,node('p','fw-after-muted',
-     'ROTATE TO INSPECT THE HISTORICAL UNIFORM AND EQUIPMENT. '+
-     'EXACT ANATOMICAL MARKERS ARE NOT RECORDED FOR THESE SHOTS.'));
+ const right=el('div','fw-v3-combat-info');
+ const heading=el('div','fw-v3-combat-name');
+ heading.append(el('small','',view.side==='red'?'HOSTILE CONTACT':'SQUAD CASUALTY'),
+   el('h2','',active.name),el('span','',status(active)));
+ right.append(heading);
+ if(selected)right.append(shotDetails(selected));
+ else right.append(el('p','fw-after-muted','NO RECORDED SHOTS'));
+ right.append(button('▶ WATCH CLIP',()=>act.viewReplay(active,selected),'fw-v3-play'));
+ content.append(figure,right);root.append(content);
+ if(active.shots.length){
+   const sequence=el('div','fw-v3-shot-sequence');
+   const prev=button('‹',()=>{
+     const idx=active.shots.findIndex(s=>s.id===selected?.id);
+     const shot=active.shots[Math.max(0,idx-1)];
+     if(shot)act.chooseShot(shot.id);
+   },'fw-v3-shot-step');
+   prev.disabled=selected?.id===active.shots[0]?.id;
+   const rail=el('div','fw-v3-shot-rail');rail.setAttribute('aria-label','Shots in order');
+   for(const [i,s] of active.shots.entries()){
+     const b=button(String(i+1),()=>act.chooseShot(s.id),'fw-v3-shot-chip');
+     b.setAttribute('aria-pressed',String(s.id===selected?.id));
+     b.dataset.outcome=s.outcome;rail.append(b);
+   }
+   const next=button('›',()=>{
+     const idx=active.shots.findIndex(s=>s.id===selected?.id);
+     const shot=active.shots[Math.min(active.shots.length-1,idx+1)];
+     if(shot)act.chooseShot(shot.id);
+   },'fw-v3-shot-step');
+   next.disabled=selected?.id===active.shots.at(-1)?.id;
+   sequence.append(prev,rail,next);
+   root.append(sequence);
  }
- if(contact.shots.length){
-   const selected=contact.shots.find(s=>s.id===view.selectedShotId)??null;
-   left.append(btn('VIEW REPLAY · LOOPED BODYCAM',()=>act.viewReplay(contact,selected)));
- }
- holder.append(left);
- const list=node('div','fw-after-shot-list');
- list.append(node('p','fw-after-caption','SHOTS / RECORDED ORDER'));
- if(!contact.shots.length)list.append(node('p','fw-after-empty',
-    'No shots recorded against this contact. Resolution is based on events.'));
- for(const [i,s] of contact.shots.entries()){
-   const item=document.createElement('button');
-   item.type='button';item.className='fw-after-shot';
-   item.dataset.selected=String(s.id===view.selectedShotId);
-   item.append(node('b','',String(i+1).padStart(2,'0')+' · '+stamp(s.at)),
-     node('span','',s.shooterId.toUpperCase()+
-       ' · '+shown(s.receiver??s.weapon)+
-       (s.caliber?' · '+s.caliber+' (NOMINAL)':'')),
-     node('small','',outcome(s)+' · '+(s.region??'NO REGION').toUpperCase()+
-       (s.damage===null?'':' · DAMAGE '+s.damage)));
-   item.addEventListener('click',()=>act.chooseShot(s.id));list.append(item);
- }
- holder.append(list);root.append(holder);
- if(contact.finalShotId===null&&contact.resolution==='surrendered')
-   root.append(node('p','fw-after-muted',
-     'This contact surrendered. No incapacitating finishing shot is recorded.'));
  return root;
 }
