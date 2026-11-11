@@ -2949,6 +2949,28 @@ body.replaying .replay-follow-status[data-grade]::after{
 }
 
 
+/* V4 Stage 1: an operator's complete record belongs to Squad, not Details.
+   Keep the legacy V3 layout until Stage 2 replaces its oversized hero. */
+.fw-debrief-v3.fw-v4-record-open .fw-after-body{
+ overflow-y:auto;overscroll-behavior-y:contain}
+.fw-v4-record-expanded{height:auto;min-height:100%}
+.fw-v4-record-expanded .fw-v3-squad-focus{flex:0 0 auto;min-height:160px}
+.fw-v4-operator-record{display:grid;gap:10px;padding:12px;
+ color:#e4e0d0;background:#20352b;border:1px solid #56715e;
+ border-radius:5px}
+.fw-debrief-v3 .fw-v4-record-back{min-height:44px;justify-self:start;margin:0;
+ padding:8px 12px;border:1px solid #89937d;background:#30463b;
+ color:#eee2bf;border-radius:4px;font:800 12px var(--ui-display)}
+.fw-v4-operator-record .fw-v3-operator-details{border-bottom:0;padding-bottom:4px}
+.fw-v4-operator-record .fw-after-pair{min-height:30px;align-items:center}
+@media(min-width:750px){
+ .fw-v4-record-expanded{display:grid;align-content:start;
+  grid-template-columns:minmax(0,42%) minmax(0,1fr);gap:12px}
+ .fw-v4-record-expanded>.fw-v3-roster{grid-column:1/-1}
+ .fw-v4-record-expanded>.fw-v3-squad-focus{grid-column:1;grid-row:2}
+ .fw-v4-record-expanded>.fw-v4-operator-record{grid-column:2;grid-row:2}
+}
+
 /* V3-C: contact and shot rails scroll sideways only; focal region stays fixed. */
 .fw-v3-combat{display:flex;flex-direction:column;gap:7px;height:100%;
  min-height:0;overflow:hidden}

@@ -24,6 +24,7 @@ type State={
   selectedOperator:string|null;selectedContact:string|null;
   selectedShotId:number|null;contactSide:'red'|'blue';paperBack:boolean;
   inspectionMode:'paper'|'3d';selectedHighlight:string|null;
+  operatorRecordOpen:boolean;
   scroll:Partial<Record<AfterActionTab,number>>;
   showIntel:boolean;
 };
@@ -49,8 +50,12 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    state={recorder:rec,report:buildAfterActionReport(rec),tab:'squad',
      selectedOperator:null,selectedContact:null,selectedShotId:null,
      contactSide:'red',paperBack:false,inspectionMode:'paper',
-     selectedHighlight:null,scroll:{},showIntel:options.showIntel};
+     selectedHighlight:null,operatorRecordOpen:false,
+     scroll:{},showIntel:options.showIntel};
    owners.set(root,state);
+   // A new recording never inherits a previous mission's open report sheet.
+   const oldDetails=root.querySelector<HTMLElement>('#afterActionDetails');
+   if(oldDetails)oldDetails.hidden=true;
    root.querySelector<HTMLElement>('#afterActionIntro')?.removeAttribute('hidden');
    if(!bound.has(root)){
     bound.add(root);
@@ -100,17 +105,53 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        String(tabButton.dataset.afterTab===s.tab));
    if(intel)intel.hidden=!s.showIntel;
    if(raw)raw.hidden=false;
-   const choose=(id:string|null)=>{s.selectedOperator=id;s.tab='squad';draw();};
+   root.classList.toggle('fw-v4-record-open',s.tab==='squad'&&s.operatorRecordOpen);
+   const choose=(id:string|null)=>{
+     if(id===s.selectedOperator&&s.tab==='squad')return;
+     s.selectedOperator=id;s.operatorRecordOpen=false;s.tab='squad';draw();
+   };
    let screen:HTMLElement;
-   if(s.tab==='squad')screen=renderSquadView(s.report,s.recorder.manifest,
-     s.selectedOperator,(id)=>choose(id),()=>
-       root.querySelector<HTMLButtonElement>('#afterActionDetailsToggle')?.click());
+   if(s.tab==='squad'){
+     screen=renderSquadView(s.report,s.recorder.manifest,
+       s.selectedOperator,(id)=>choose(id),(id)=>{
+         s.selectedOperator=id;
+         s.operatorRecordOpen=true;draw();
+       });
+     if(s.operatorRecordOpen){
+       const operator=s.report.operators.find(o=>o.id===s.selectedOperator);
+       if(operator){
+         screen.classList.add('fw-v4-record-expanded');
+         const record=make('section','fw-v4-operator-record');
+         record.id='afterActionOperatorRecord';
+         record.setAttribute('aria-label','Full operator record for '+operator.name);
+         const back=make('button','fw-v4-record-back','‹ BACK TO SQUAD') as HTMLButtonElement;
+         back.type='button';
+         back.addEventListener('click',()=>{
+           s.operatorRecordOpen=false;draw();
+         });
+         record.append(back,renderSquadDetails(operator));
+         screen.insertBefore(record,
+           screen.querySelector('.fw-v3-squad-focus'));
+       }
+     }
+   }
    else if(s.tab==='combat')screen=renderCombatReport(s.report,{
      selectedContact:s.selectedContact,selectedShotId:s.selectedShotId,
      side:s.contactSide,back:s.paperBack,inspectionMode:s.inspectionMode
    },{
      chooseContact:(id)=>{s.selectedContact=id;s.selectedShotId=null;draw();},
-     chooseShot:(id)=>{s.selectedShotId=id;draw();},
+     chooseShot:(id)=>{
+       // The active default contact must become explicit as soon as a shot
+       // is selected, otherwise the origin snapshot contains an orphan shot.
+       if(id!==null){
+         const contacts=s.contactSide==='red'?
+           s.report.hostiles:s.report.friendlyCasualties;
+         const owner=contacts.find(c=>c.shots.some(shot=>shot.id===id));
+         if(!owner)return;
+         s.selectedContact=owner.id;
+       }
+       s.selectedShotId=id;draw();
+     },
      chooseSide:(side)=>{s.contactSide=side;s.selectedContact=null;
        s.selectedShotId=null;draw();},
      chooseView:(back)=>{s.paperBack=back;draw();},
@@ -135,12 +176,9 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      screen=make('section','fw-after-section');
      screen.append(make('p','fw-after-empty','REPORT SECTION UNAVAILABLE'));
    }
+   // Mission Details is a mission-level report; operator records live on Squad.
    const operatorDetails=root.querySelector<HTMLElement>('#afterActionOperatorDetail');
-   if(operatorDetails){
-     const operator=s.report.operators.find(o=>o.id===s.selectedOperator);
-     operatorDetails.replaceChildren(operator?renderSquadDetails(operator):
-       make('p','fw-after-muted','Select an operator to inspect their full record.'));
-   }
+   if(operatorDetails)operatorDetails.replaceChildren();
    const forensicDetails=root.querySelector<HTMLElement>('#afterActionContactDetail');
    if(forensicDetails){
      const contact=(s.contactSide==='red'?s.report.hostiles:
@@ -194,7 +232,8 @@ export type AfterActionReturnContext={
  recorder:MissionRecorder;tab:AfterActionTab;operatorId:string|null;
  contactId:string|null;contactSide:'red'|'blue';shotId:number|null;
  highlightId:string|null;paperBack:boolean;inspectionMode:'paper'|'3d';
- detailsOpen:boolean;scroll:Partial<Record<AfterActionTab,number>>;
+ operatorRecordOpen:boolean;detailsOpen:boolean;detailsScroll:number;
+ scroll:Partial<Record<AfterActionTab,number>>;
 };
 export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|null{
  const s=owners.get(root);if(!s)return null;
@@ -204,7 +243,9 @@ export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|n
    contactId:s.selectedContact,contactSide:s.contactSide,
    shotId:s.selectedShotId,highlightId:s.selectedHighlight,
    paperBack:s.paperBack,inspectionMode:s.inspectionMode,
+   operatorRecordOpen:s.operatorRecordOpen,
    detailsOpen:!root.querySelector<HTMLElement>('#afterActionDetails')?.hidden,
+   detailsScroll:root.querySelector<HTMLElement>('.fw-after-detail-content')?.scrollTop??0,
    scroll:{...s.scroll}};
 }
 export function restoreAfterActionWorkspace(
@@ -212,14 +253,29 @@ export function restoreAfterActionWorkspace(
 ):boolean{
  const s=owners.get(root);
  if(!s||s.recorder!==context.recorder)return false;
+ if(!(['squad','combat','highlights'] as string[]).includes(context.tab))return false;
+ if(context.operatorId!==null&&
+   !s.report.operators.some(o=>o.id===context.operatorId))return false;
+ const contactList=context.contactSide==='blue'?
+   s.report.friendlyCasualties:s.report.hostiles;
+ const contact=contactList.find(c=>c.id===context.contactId);
+ if(context.contactId!==null&&!contact)return false;
+ if(context.shotId!==null&&(!contact||
+   !contact.shots.some(shot=>shot.id===context.shotId)))return false;
+ if(context.highlightId!==null&&
+   !replayHighlightMoments(s.recorder).some(m=>m.id===context.highlightId))
+   return false;
  s.tab=context.tab;s.selectedOperator=context.operatorId;
  s.selectedContact=context.contactId;s.contactSide=context.contactSide;
  s.selectedShotId=context.shotId;s.selectedHighlight=context.highlightId;
  s.paperBack=context.paperBack;s.inspectionMode=context.inspectionMode;
+ s.operatorRecordOpen=context.operatorRecordOpen&&!!context.operatorId;
  s.scroll={...context.scroll};
  const detail=root.querySelector<HTMLElement>('#afterActionDetails');
  if(detail)detail.hidden=!context.detailsOpen;
  renderers.get(root)?.();
+ const detailsScroll=root.querySelector<HTMLElement>('.fw-after-detail-content');
+ if(detailsScroll)detailsScroll.scrollTop=context.detailsScroll;
  return true;
 }
 /** Rebuild without synthesizing tab clicks or changing the selected context. */
@@ -238,7 +294,8 @@ export type AfterActionReplayNavigationPorts={
    afterActionClipHud:HTMLElement;afterActionClipLabel:HTMLElement;
    afterActionClipToggle:HTMLButtonElement};
  getRecorder:()=>MissionRecorder;isReplaying:()=>boolean;
- markDebriefEntry:()=>void;enterReplay:()=>void;queueHighlights:()=>void;
+ markDebriefEntry:()=>void;enterReplay:()=>boolean;exitReplay:()=>void;
+ queueHighlights:()=>void;
  getStage:()=>TacticalScene3D|null;getViewMode:()=>ViewMode;
  cameraMode:(mode:ViewMode)=>void;
  camera:ReplayCameraController;director:ReplayCameraController['director'];
@@ -256,46 +313,77 @@ export function bindAfterActionReplayNavigation(port:AfterActionReplayNavigation
  const ui=port.ui;
  if(replayRequestsBound.has(ui.debrief))return;
  replayRequestsBound.add(ui.debrief);
+ const launchFailure=(message:string)=>{
+   port.showHelp(message,4000);
+   port.updateReplayHud();
+ };
+ const beginFromDebrief=(rec:MissionRecorder):boolean=>{
+   const origin=afterActionSnapshot(ui.debrief);
+   if(!origin||origin.recorder!==rec){
+     launchFailure('DEBRIEF CONTEXT UNAVAILABLE · REPLAY NOT STARTED');
+     return false;
+   }
+   port.markDebriefEntry();
+   if(!port.enterReplay()){
+     launchFailure('REPLAY UNAVAILABLE · DEBRIEF PRESERVED');
+     return false;
+   }
+   port.setReturn(origin);
+   return true;
+ };
  ui.watchReplay.addEventListener('click',()=>{
-  port.markDebriefEntry();port.enterReplay();
-  if(port.isReplaying())port.queueHighlights();
+   if(port.isReplaying())return;
+   const rec=port.getRecorder();
+   if(!beginFromDebrief(rec))return;
+   try{port.queueHighlights();}
+   catch{
+     port.exitReplay();
+     launchFailure('COULD NOT OPEN FULL REPLAY · RETURNED TO DEBRIEF');
+   }
  });
  ui.debrief.addEventListener('fw-after-action-replay',event=>{
-  const detail=(event as CustomEvent<{
-    surface:string;contactId?:string;shotId?:number|null;time:number;end?:number
-  }>).detail;
-  if(!detail||port.isReplaying())return;
-  const rec=port.getRecorder(),request=makeAfterActionLaunchRequest(rec,detail);
-  if(!request)return;
-  const origin=afterActionSnapshot(ui.debrief);
-  port.markDebriefEntry();port.enterReplay();
-  if(!port.isReplaying())return;
-  port.setReturn(origin);
-  port.queueHighlights();
-  if(port.getStage()&&port.getViewMode()==='plan2d')port.cameraMode('iso');
-  port.camera.camMount='chest';port.camera.lens='cam';
-  // Only recorded friendly observer evidence can authorize personal Bodycam.
-  const shot=detail.shotId==null?null:
-    rec.ballistics.shots.find(s=>s.id===detail.shotId)??null;
-  const shooter=shot?.shooterId??null;
-  const candidate=shooter&&port.bodycam.observers.includes(shooter)?shooter:
-    detail.contactId&&port.bodycam.observers.includes(detail.contactId)?
-      detail.contactId:null;
-  if(port.getStage()&&candidate){
-    port.knowledge.observerId=candidate;
-    if(!port.startBodycam())port.chooseCamera('director');
-  }else if(port.getStage()&&port.director.camEligibleObservers.length){
-    port.chooseCamera('director');
-  }else{
-    port.camera.lens='ortho';port.chooseCamera('free');
-    port.showHelp('BODYCAM UNAVAILABLE · TACTICAL REPLAY',3000);
-  }
-  port.playback.startIncident(request.range,rec.duration,true,true);
-  port.presentReplay();port.unlockAudio();
-  ui.afterActionClipHud.hidden=false;
-  ui.afterActionClipLabel.textContent=request.label+' · LOOP';
-  ui.afterActionClipToggle.textContent='UNCLIP';
-  port.updateReplayHud();
+   const detail=(event as CustomEvent<{
+     surface:string;contactId?:string;shotId?:number|null;time:number;end?:number
+   }>).detail;
+   if(!detail||port.isReplaying())return;
+   const rec=port.getRecorder(),request=makeAfterActionLaunchRequest(rec,detail);
+   if(!request){
+     launchFailure('RECORDED CLIP UNAVAILABLE · SELECTION PRESERVED');
+     return;
+   }
+   if(!beginFromDebrief(rec))return;
+   try{
+     port.queueHighlights();
+     if(port.getStage()&&port.getViewMode()==='plan2d')port.cameraMode('iso');
+     port.camera.camMount='chest';port.camera.lens='cam';
+     // Personal Bodycam requires a historically eligible friendly observer.
+     const shot=detail.shotId==null?null:
+       rec.ballistics.shots.find(s=>s.id===detail.shotId)??null;
+     const shooter=shot?.shooterId??null;
+     const candidate=shooter&&port.bodycam.observers.includes(shooter)?shooter:
+       detail.contactId&&port.bodycam.observers.includes(detail.contactId)?
+         detail.contactId:null;
+     if(port.getStage()&&candidate){
+       port.knowledge.observerId=candidate;
+       if(!port.startBodycam())port.chooseCamera('director');
+     }else if(port.getStage()&&port.director.camEligibleObservers.length){
+       port.chooseCamera('director');
+     }else{
+       port.camera.lens='ortho';port.chooseCamera('free');
+       port.showHelp('BODYCAM UNAVAILABLE · TACTICAL REPLAY',3000);
+     }
+     if(!port.playback.startIncident(request.range,rec.duration,true,true))
+       throw Error('Invalid incident bounds');
+     port.presentReplay();port.unlockAudio();
+     ui.afterActionClipHud.hidden=false;
+     ui.afterActionClipLabel.textContent=request.label+' · LOOP';
+     ui.afterActionClipToggle.textContent='UNCLIP';
+     port.updateReplayHud();
+   }catch{
+     // Undo partial clip entry through the existing replay lifecycle.
+     port.exitReplay();
+     launchFailure('COULD NOT OPEN CLIP · RETURNED TO DEBRIEF');
+   }
  });
  ui.afterActionClipToggle.addEventListener('click',()=>{
   if(!port.isReplaying()||!port.getReturn())return;
