@@ -124,7 +124,8 @@ test('V4-5 inspector renders every cluster member, valid filters, active card an
   ledgerOpen:true,ledgerLimit:3};
  const root=renderAfterActionTimeline({events,duration:95,width:320,
   state:model,actions,complete:false,actorName:id=>id.toUpperCase(),
-  canInspect:event=>event.shotId!==null,highlightsAvailable:true});
+  inspectLabel:event=>event.shotId!==null?'INSPECT COMBAT':
+   'INSPECT OPERATOR',highlightsAvailable:true});
  assert.match(text(root),/PARTIAL RECORDING/);
  assert.match(text(root),/BALLISTIC #100/);
  const shown=find(root,e=>e.className==='fw-v5-timeline-ledger-item');
