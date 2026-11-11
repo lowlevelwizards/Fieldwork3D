@@ -29,3 +29,12 @@ test('A6 palette owner derives authorized context actions, not the entrypoint',(
  assert.match(palette,/const civilianAtPlan=/);
  assert.match(palette,/liveVisibility\(state,c\.p\)/);
 });
+
+test('A6 entrypoint delegates session HUD formatting to existing HUD owner',()=>{
+ const hud=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
+ assert.match(source,/hudController\.renderSession\(/);
+ assert.doesNotMatch(source,/const siteSubheading=document\.querySelector/);
+ assert.doesNotMatch(source,/canvas\.dataset\.auditRoutePoints=/);
+ assert.match(hud,/function renderSession\(/);
+ assert.match(hud,/renderMissionDebrief\(/);
+});

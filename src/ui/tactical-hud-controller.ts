@@ -2,12 +2,26 @@
  * Takes authored orders and player-visible data as input; game modules remain
  * the only authority for command feasibility and execution.
  */
+import {currentSiteIdentity} from './current-site-identity.ts';
+import {compactSiteTitle} from './site-title.ts';
+import {renderMissionDebrief} from './breach-mission-debrief.ts';
+import {debriefPrimaryActionLabel} from './fieldwork-vocabulary.ts';
+import {tacticalIcon} from './tactical-icons.ts';
+import type {createBreachUiElements} from './breach-ui-elements.ts';
+import type {CampaignMode} from '../breach-app-mode.ts';
+import type {CampaignState} from '../campaign-state.ts';
+import type {MissionRecorder} from '../breach-replay.ts';
+import {activeRangeDiagnostic,rangeDiagnosticLabel,rangeTrialLabel,type RangeTrial} from '../equipment-training-diagnostics.ts';
+import {lightControlState} from '../equipment-weapon-light-ui.ts';
+import type {ViewMode} from '../breach-3d.ts';
+import type {Pt} from '../breach-core.ts';
+import type {DisplayRouteCache} from '../breach-route-cache.ts';
 import {contextActionChoices} from './context-actions.ts';
 import {TacticalFeedback,type FeedbackPoint} from './tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './contextual-teaching.ts';
 import {recoveryAdviceFor} from './recovery-guidance.ts';
-import {team,type Session,type TeamActor} from '../breach-game.ts';
+import {team,enemies,isSeen,missionText,operationBriefing,type Session,type TeamActor} from '../breach-game.ts';
 import {injuryOf,WEAPONS} from '../breach-combat.ts';
 import {liveMagazineCapacity,magazineAlert}
   from '../arsenal/live-magazine-capacity.ts';
@@ -17,6 +31,26 @@ import {ExecutionNoticeFeed} from './execution-feedback.ts';
 import {createTacticalInteractionState,
  type TacticalInteractionState} from '../breach-tactical-interaction-state.ts';
 
+/** A6: read-only HUD presentation snapshot. No command or navigation authority. */
+export type TacticalSessionPresentation={
+ state:Session;mode:CampaignMode;replaying:boolean;selected:string;
+ selectedNode:number|null;selectedActiveWatch:boolean;
+ ui:ReturnType<typeof createBreachUiElements>;
+ siteIdentityOutput:HTMLOutputElement;rangeTelemetry:HTMLElement;
+ lastRangeTrial:RangeTrial|null;
+ medicalCandidate:()=>TeamActor|null;casualty:TeamActor|null;
+ paletteTether:HTMLElement;paintOperatorAccent:(node:HTMLElement,id:string)=>void;
+ colorFor:(id:string)=>string;
+ fieldLightButton:HTMLButtonElement|null;medicalButton:HTMLButtonElement|null;
+ dragButton:HTMLButtonElement|null;carryButton:HTMLButtonElement|null;
+ retrieveButton:HTMLButtonElement|null;navPanel:HTMLOutputElement|null;
+ canvas:HTMLCanvasElement;auditRouteMode:boolean;viewMode:ViewMode;
+ cssW:number;cssH:number;worldToScreen:(p:Pt,height?:number)=>Pt;
+ displayRouteCache:DisplayRouteCache;
+ reducedMotion:boolean;weaponChooser:HTMLElement;hideWeaponChooser:()=>void;
+ favoriteActive:boolean;recorder:MissionRecorder;campaign:CampaignState|null;
+ operationsLogged:number;
+};
 export type TacticalGuidanceInput={
   replaying:boolean;phase:Session['phase'];
   selectedNode:number|null;selectedActiveWatch:boolean;
@@ -326,8 +360,172 @@ export function createTacticalHudController(
       '. '+(execution?.label??'IDLE')+'. '+(execution?.detail??''):
       id+', unavailable');
   }
+  function renderSession(input:TacticalSessionPresentation):void{
+    const {state,mode,replaying,selected,selectedNode,selectedActiveWatch,ui,
+      siteIdentityOutput,rangeTelemetry,lastRangeTrial,medicalCandidate,casualty,
+      paletteTether,paintOperatorAccent,colorFor,fieldLightButton,
+      medicalButton,dragButton,carryButton,retrieveButton,navPanel,
+      canvas,auditRouteMode,viewMode,cssW,cssH,worldToScreen,displayRouteCache,
+      reducedMotion,weaponChooser,hideWeaponChooser,favoriteActive,
+      recorder,campaign,operationsLogged}=input;
+
+  ui.quickPlaySetup.hidden=mode!=='quick'||replaying;
+  const identity=currentSiteIdentity(state.site,mode==='quick');
+  if(siteIdentityOutput.textContent!==identity.text)
+    siteIdentityOutput.textContent=identity.text;
+  if(identity.seed!==null)siteIdentityOutput.dataset.siteSeed=identity.seed;
+  else delete siteIdentityOutput.dataset.siteSeed;
+  const telemetry=activeRangeDiagnostic(state,selected);
+  rangeTelemetry.hidden=!telemetry;
+  if(telemetry){
+   const line=rangeDiagnosticLabel(telemetry)+
+    (lastRangeTrial?'\n'+rangeTrialLabel(lastRangeTrial):'');
+   if(rangeTelemetry.textContent!==line)rangeTelemetry.textContent=line;
+  }
+  const leaveRange=document.querySelector<HTMLButtonElement>(
+   '[data-equipment-range-exit]');
+  if(leaveRange)leaveRange.hidden=!state.site?.training;
+  const repeat=document.querySelector<HTMLButtonElement>('[data-range-repeat]');
+  if(repeat)repeat.hidden=!state.site?.training;
+  paintOperatorAccent(ui.quickStates,selected);
+  paintOperatorAccent(ui.context,selected);
+  paintOperatorAccent(paletteTether,selected);
+  if(medicalButton){
+   const patient=medicalCandidate();
+   medicalButton.disabled=!patient||state.phase!=='planning'||replaying;
+   medicalButton.textContent=patient?'TREAT · '+patient.name.toUpperCase():
+    'TREAT · NO SUITABLE SUPPLIES';
+   medicalButton.setAttribute('aria-label',patient?
+    'Plan medical stabilization for '+patient.name:'No treatable wound with available supplies');
+  }
+  const casualty=casualty;
+  for(const [button,mode] of [
+   [dragButton,'DRAG'],[carryButton,'CARRY'],[retrieveButton,'RECOVER']
+  ] as const){
+   if(!button)continue;
+   button.hidden=!casualty;
+   button.disabled=!casualty||state.phase!=='planning'||replaying;
+   button.textContent=casualty?mode+' · '+casualty.name.toUpperCase():mode;
+  }
+  if(fieldLightButton){
+   const selectedActor=team(state).find(a=>a.id===selected);
+   const light=lightControlState(selectedActor,state.phase,replaying);
+   if(fieldLightButton.textContent!==light.text)fieldLightButton.textContent=light.text;
+   fieldLightButton.setAttribute('aria-label',light.aria);
+   fieldLightButton.setAttribute('aria-pressed',String(light.pressed));
+   fieldLightButton.disabled=light.disabled;
+   fieldLightButton.style.borderColor=light.pressed?colorFor(selected):'';
+  }
+  const brief=operationBriefing(state);
+  renderPhase({
+    phase:state.phase,started:state.started,replaying,seconds:state.seconds,
+    phaseNode:ui.phase,clock:ui.clock,play:ui.play,
+    reducedMotion:reducedMotion,icon:tacticalIcon
+  });
+  const active=team(state).find(o=>o.id===selected);
+  if(navPanel){
+    navPanel.textContent=team(state).map(a=>a.name+'  '+
+      a.lastBlocker.toUpperCase()+
+      '  blocked '+a.blockedTime.toFixed(2)+'s\n'+
+      'nav '+a.nav.length+'  orders '+a.plan.length+
+      '  ('+a.p.x.toFixed(0)+','+a.p.y.toFixed(0)+')').join('\n');
+  }
+  canvas.dataset.navBlock=active?.lastBlocker??'clear';
+  // Read-only plan status for phone gesture regression tests.
+  canvas.dataset.planNodes=String(active?.plan.length??0);
+  canvas.dataset.selectedNode=selectedNode===null?'':String(selectedNode);
+  // Explicit browser audit mode exposes ONLY already-authored friendly routes.
+  // Use the actual rendered polyline, rather than guessing a touch coordinate
+  // from an old screenshot or hardcoded map bounds.
+  if(auditRouteMode&&active&&viewMode==='plan2d'){
+    const candidates:{x:number;y:number;clearance:number}[]=[];
+    let from=active.p;
+    const markers=[...team(state).map(unit=>worldToScreen(unit.p,8)),
+      ...active.plan.map(n=>worldToScreen(n.p,8))];
+    for(const node of active.plan){
+      if(node.kind!=='move'&&node.kind!=='door')continue;
+      const steps=displayRouteCache.get(from,node.p,state.intel,true).points;
+      let previous=from;
+      for(const point of steps){
+        for(const t of [.2,.35,.5,.65,.8]){
+          const world={x:previous.x+(point.x-previous.x)*t,
+            y:previous.y+(point.y-previous.y)*t};
+          const p=worldToScreen(world,4);
+          if(p.x<12||p.x>cssW-12||p.y<72||p.y>cssH-120)continue;
+          const clearance=markers.length?Math.min(...markers.map(q=>distance(p,q))):99;
+          if(clearance>=34)candidates.push({x:p.x,y:p.y,clearance});
+        }
+        previous=point;
+      }
+      from=node.p;
+    }
+    candidates.sort((a,b)=>b.clearance-a.clearance);
+    canvas.dataset.auditRoutePoints=JSON.stringify(candidates.slice(0,40));
+  }
+  const stanceLabel=active?.posture==='crouch'?'STAND':'CROUCH';
+  if(ui.stance.textContent!==stanceLabel)
+    ui.stance.replaceChildren(tacticalIcon(stanceLabel==='STAND'?'stand':'crouch'),
+      document.createTextNode(stanceLabel));
+  ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
+  ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
+  const flashLabel='FLASH ×'+state.flashRemaining;
+  if(ui.flash.textContent!==flashLabel)
+    ui.flash.replaceChildren(tacticalIcon('flash'),document.createTextNode(flashLabel));
+  renderTargetMode({
+    cancelTarget:ui.cancelTarget,hint:ui.hint,
+    phase:state.phase,replaying
+  });
+  ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
+  ui.loadout.disabled=mode==='mission'||state.phase!=='planning'||replaying;
+  if(ui.loadout.disabled&&!weaponChooser.hidden)hideWeaponChooser();
+  ui.flash.disabled=state.flashRemaining<=0||replaying;
+  ui.back.disabled=!targeting.isArmed&&!selectedActiveWatch&&!active?.plan.length;
+  ui.clear.disabled=!active?.plan.length||state.phase!=='planning'||replaying;
+  ui.clear.title='Clear this operator\'s route (Undo restores it)';
+  ui.undo.disabled=!(active?.history.undo.length);
+  ui.redo.disabled=!(active?.history.redo.length);
+  ui.debrief.hidden=replaying||mode==='menu'||mode==='home'||
+    (state.phase!=='won'&&state.phase!=='lost');
+  ui.favoriteMission.disabled=!state.site;
+  ui.favoriteMission.textContent=favoriteActive?
+    '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
+  ui.next.textContent=debriefPrimaryActionLabel(mode);
+  ui.retry.disabled=mode==='mission';
+  if(!ui.debrief.hidden)renderMissionDebrief({
+    ui,state,brief,recorder,campaign,campaignMode:mode,
+    operationsLogged:operationsLogged
+  });
+  for(const id of squadIds){
+    renderOperatorCard({
+      state,replaying,selected,id,actor:team(state).find(o=>o.id===id),
+      button:ui[id],
+      ammo:ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'],
+      hp:ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'],
+      paintAccent:paintOperatorAccent
+    });
+  }
+  // Show the site as a place, not as a raw procedural generation dump.
+  const siteHeader=document.querySelector<HTMLElement>('.ident strong');
+  const siteSubheading=document.querySelector<HTMLElement>('.ident small');
+  if(siteHeader)siteHeader.textContent=compactSiteTitle(state.site);
+  if(siteSubheading)siteSubheading.textContent=state.site?
+    team(state).length+' OPERATORS · '+
+    (state.intel.mode==='floor-plan'?state.site.roomCount:'?')+' KNOWN ROOMS':
+    'TACTICAL TRAINING';
+  if(siteHeader)siteHeader.title=state.site?.name??'Cutwoods';
+  renderNotice(ui.feed,state.events,state.phase,replaying);
+  renderGuidance({
+    replaying,phase:state.phase,selectedNode,selectedActiveWatch,
+    feed:ui.feed,hint:ui.hint
+  });
+  const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
+  ui.mission.textContent=(state.phase==='planning'?
+      brief.code+' • ':'')+missionText(state)+
+    (visible?' • '+visible+' CONTACT'+(visible===1?'':'S'):'');
+
+  }
   return {feedback,get facing(){return targeting.facing;},
     showHelp,teach,discoverAction,toggleFacing,
     message,renderGuidance,renderQuickStates,rejectAttempt,completeAction,
-    renderTargetMode,renderPhase,renderOperatorCard,renderNotice,resetNotices};
+    renderTargetMode,renderPhase,renderOperatorCard,renderNotice,renderSession,resetNotices};
 }

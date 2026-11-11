@@ -28,14 +28,14 @@ import {createBreach2DReplayOverlays} from './breach-2d-replay-overlays.ts';
 import {createBreach2DRouteOverlays} from './breach-2d-route-overlays.ts';
 import {createBreach2DProjectedOverlays} from './breach-2d-projected-overlays.ts';
 import {executionStatus} from './breach-execution-state.ts';
-import {currentSiteIdentity} from './ui/current-site-identity.ts';
+
 import {shouldAppendStrokePoint}
  from './ui/touch-hit-targets.ts';
 import type {TacticalPick} from './ui/tactical-target-resolver.ts';
 import {pickTacticalTarget,insertTacticalRouteWaypoint} from './breach-tactical-picking.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {aimTargetFromTap} from './ui/aim-target.ts';
-import {interruptsWatch} from './breach-plan.ts';
+
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
@@ -65,11 +65,11 @@ import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
 import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
-import {equippedEntryMethods,issuedWedges} from './equipment-entry-tools.ts';
-import {entryToolVerdict} from './breach-entry-tools.ts';
+import {issuedWedges} from './equipment-entry-tools.ts';
+
 import {mostUrgentWound} from './breach-medical-wounds.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
-import {lightControlState} from './equipment-weapon-light-ui.ts';
+
 import type {SiteScale} from './breach-site.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
 import {createBreachAudioController} from './breach-audio-controller.ts';
@@ -98,7 +98,7 @@ import {fitMagazineInventory}
 
 import {stageMagazines} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
-import {canRelocateCover} from './breach-movable-cover.ts';
+
 import {doorKnown,intelPassable,type IntelMode} from './breach-intel.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
@@ -113,9 +113,9 @@ import './ui/ux-r3-hud.css';
 import './ui/fieldwork-action-toast.css';
 import {confirmFieldworkAction} from './ui/fieldwork-controls.ts';
 import {createBreachMissionScreens} from './ui/breach-mission-screens.ts';
-import {renderMissionDebrief} from './ui/breach-mission-debrief.ts';
-import {debriefPrimaryActionLabel} from './ui/fieldwork-vocabulary.ts';
-import {compactSiteTitle} from './ui/site-title.ts';
+
+
+
 import {tacticalIcon,tacticalIconForState} from './ui/tactical-icons.ts';
 import {createBreachUiElements,requiredBreachElement as el} from './ui/breach-ui-elements.ts';
 import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
@@ -815,168 +815,26 @@ function medicalCandidate(id:string,origin?:Pt){
 function updateHud(){
   appFlow.observePhase(state.phase);
   if(state.phase!=='planning')targeting.reset();
-  ui.quickPlaySetup.hidden=appFlow.mode!=='quick'||replaying;
   if(!replaying&&state.phase==='planning')recorder.capturePlanning(state);
-  const identity=currentSiteIdentity(state.site,appFlow.mode==='quick');
-  if(siteIdentityOutput.textContent!==identity.text)
-    siteIdentityOutput.textContent=identity.text;
-  if(identity.seed!==null)siteIdentityOutput.dataset.siteSeed=identity.seed;
-  else delete siteIdentityOutput.dataset.siteSeed;
-  const telemetry=activeRangeDiagnostic(state,selected);
-  rangeTelemetry.hidden=!telemetry;
-  if(telemetry){
-   const line=rangeDiagnosticLabel(telemetry)+
-    (lastRangeTrial?'\n'+rangeTrialLabel(lastRangeTrial):'');
-   if(rangeTelemetry.textContent!==line)rangeTelemetry.textContent=line;
-  }
-  const leaveRange=document.querySelector<HTMLButtonElement>(
-   '[data-equipment-range-exit]');
-  if(leaveRange)leaveRange.hidden=!state.site?.training;
-  const repeat=document.querySelector<HTMLButtonElement>('[data-range-repeat]');
-  if(repeat)repeat.hidden=!state.site?.training;
-  paintOperatorAccent(ui.quickStates,selected);
-  paintOperatorAccent(ui.context,selected);
-  paintOperatorAccent(paletteController.tether,selected);
-  updateQuickStates();
-  if(medicalButton){
-   const patient=medicalCandidate(selected);
-   medicalButton.disabled=!patient||state.phase!=='planning'||replaying;
-   medicalButton.textContent=patient?'TREAT · '+patient.name.toUpperCase():
-    'TREAT · NO SUITABLE SUPPLIES';
-   medicalButton.setAttribute('aria-label',patient?
-    'Plan medical stabilization for '+patient.name:'No treatable wound with available supplies');
-  }
-  const casualty=casualtyCandidate(selected);
-  for(const [button,mode] of [
-   [dragButton,'DRAG'],[carryButton,'CARRY'],[retrieveButton,'RECOVER']
-  ] as const){
-   if(!button)continue;
-   button.hidden=!casualty;
-   button.disabled=!casualty||state.phase!=='planning'||replaying;
-   button.textContent=casualty?mode+' · '+casualty.name.toUpperCase():mode;
-  }
-  if(fieldLightButton){
-   const selectedActor=team(state).find(a=>a.id===selected);
-   const light=lightControlState(selectedActor,state.phase,replaying);
-   if(fieldLightButton.textContent!==light.text)fieldLightButton.textContent=light.text;
-   fieldLightButton.setAttribute('aria-label',light.aria);
-   fieldLightButton.setAttribute('aria-pressed',String(light.pressed));
-   fieldLightButton.disabled=light.disabled;
-   fieldLightButton.style.borderColor=light.pressed?colorFor(selected):'';
-  }
   recordCompletedOperation();
   refreshDeployment();
-  const brief=operationBriefing(state);
   missionScreens.syncBriefingCard();
   missionScreens.syncMissionPhase();
-  hudController.renderPhase({
-    phase:state.phase,started:state.started,replaying,seconds:state.seconds,
-    phaseNode:ui.phase,clock:ui.clock,play:ui.play,
-    reducedMotion:reducedMotionMedia.matches,icon:tacticalIcon
-  });
-  const active=uid(selected);
-  if(navPanel){
-    navPanel.textContent=team(state).map(a=>a.name+'  '+
-      a.lastBlocker.toUpperCase()+
-      '  blocked '+a.blockedTime.toFixed(2)+'s\n'+
-      'nav '+a.nav.length+'  orders '+a.plan.length+
-      '  ('+a.p.x.toFixed(0)+','+a.p.y.toFixed(0)+')').join('\n');
-  }
-  canvas.dataset.navBlock=active?.lastBlocker??'clear';
-  // Read-only plan status for phone gesture regression tests.
-  canvas.dataset.planNodes=String(active?.plan.length??0);
-  canvas.dataset.selectedNode=selectedNode===null?'':String(selectedNode);
-  // Explicit browser audit mode exposes ONLY already-authored friendly routes.
-  // Use the actual rendered polyline, rather than guessing a touch coordinate
-  // from an old screenshot or hardcoded map bounds.
-  if(auditRouteMode&&active&&viewMode==='plan2d'){
-    const candidates:{x:number;y:number;clearance:number}[]=[];
-    let from=active.p;
-    const markers=[...team(state).map(unit=>worldToScreen(unit.p,8)),
-      ...active.plan.map(n=>worldToScreen(n.p,8))];
-    for(const node of active.plan){
-      if(node.kind!=='move'&&node.kind!=='door')continue;
-      const steps=displayRouteCache.get(from,node.p,state.intel,true).points;
-      let previous=from;
-      for(const point of steps){
-        for(const t of [.2,.35,.5,.65,.8]){
-          const world={x:previous.x+(point.x-previous.x)*t,
-            y:previous.y+(point.y-previous.y)*t};
-          const p=worldToScreen(world,4);
-          if(p.x<12||p.x>cssW-12||p.y<72||p.y>cssH-120)continue;
-          const clearance=markers.length?Math.min(...markers.map(q=>distance(p,q))):99;
-          if(clearance>=34)candidates.push({x:p.x,y:p.y,clearance});
-        }
-        previous=point;
-      }
-      from=node.p;
-    }
-    candidates.sort((a,b)=>b.clearance-a.clearance);
-    canvas.dataset.auditRoutePoints=JSON.stringify(candidates.slice(0,40));
-  }
-  const stanceLabel=active?.posture==='crouch'?'STAND':'CROUCH';
-  if(ui.stance.textContent!==stanceLabel)
-    ui.stance.replaceChildren(tacticalIcon(stanceLabel==='STAND'?'stand':'crouch'),
-      document.createTextNode(stanceLabel));
-  ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
-  ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
   missionScreens.syncNextSiteControls();
-  const flashLabel='FLASH ×'+state.flashRemaining;
-  if(ui.flash.textContent!==flashLabel)
-    ui.flash.replaceChildren(tacticalIcon('flash'),document.createTextNode(flashLabel));
-  hudController.renderTargetMode({
-    cancelTarget:ui.cancelTarget,hint:ui.hint,
-    phase:state.phase,replaying
-  });
-  ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
-  ui.loadout.disabled=appFlow.mode==='mission'||state.phase!=='planning'||replaying;
-  if(ui.loadout.disabled&&!weaponChooser.hidden)hideWeaponChooser();
-  ui.flash.disabled=state.flashRemaining<=0||replaying;
-  ui.back.disabled=!targeting.isArmed&&!selectedActiveWatch&&!active?.plan.length;
-  ui.clear.disabled=!active?.plan.length||state.phase!=='planning'||replaying;
-  ui.clear.title='Clear this operator\'s route (Undo restores it)';
-  ui.undo.disabled=!(active?.history.undo.length);
-  ui.redo.disabled=!(active?.history.redo.length);
-  ui.debrief.hidden=replaying||appFlow.mode==='menu'||appFlow.mode==='home'||
-    (state.phase!=='won'&&state.phase!=='lost');
   replayLibrary.syncSavedButtons();
-  ui.favoriteMission.disabled=!state.site;
-  ui.favoriteMission.textContent=replayLibrary.activeFavoriteId?
-    '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
-  ui.next.textContent=debriefPrimaryActionLabel(appFlow.mode);
-  ui.retry.disabled=appFlow.mode==='mission';
-  if(!ui.debrief.hidden)renderMissionDebrief({
-    ui,state,brief,recorder,campaign,campaignMode:appFlow.mode,
+  updateQuickStates();
+  hudController.renderSession({
+    state,mode:appFlow.mode,replaying,selected,selectedNode,selectedActiveWatch,
+    ui,siteIdentityOutput,rangeTelemetry,lastRangeTrial,
+    medicalCandidate:()=>medicalCandidate(selected),casualty:casualtyCandidate(selected),
+    paletteTether:paletteController.tether,paintOperatorAccent,colorFor,
+    fieldLightButton,medicalButton,dragButton,carryButton,retrieveButton,navPanel,
+    canvas,auditRouteMode,viewMode,cssW,cssH,worldToScreen,displayRouteCache,
+    reducedMotion:reducedMotionMedia.matches,weaponChooser,hideWeaponChooser,
+    favoriteActive:!!replayLibrary.activeFavoriteId,recorder,campaign,
     operationsLogged:operationHistory().length
   });
-  for(const id of squadIds){
-    hudController.renderOperatorCard({
-      state,replaying,selected,id,actor:uid(id),
-      button:ui[id],
-      ammo:ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'],
-      hp:ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'],
-      paintAccent:paintOperatorAccent
-    });
-  }
-  // Show the site as a place, not as a raw procedural generation dump.
-  const siteHeader=document.querySelector<HTMLElement>('.ident strong');
-  const siteSubheading=document.querySelector<HTMLElement>('.ident small');
-  if(siteHeader)siteHeader.textContent=compactSiteTitle(state.site);
-  if(siteSubheading)siteSubheading.textContent=state.site?
-    team(state).length+' OPERATORS · '+
-    (state.intel.mode==='floor-plan'?state.site.roomCount:'?')+' KNOWN ROOMS':
-    'TACTICAL TRAINING';
-  if(siteHeader)siteHeader.title=state.site?.name??'Cutwoods';
-  hudController.renderNotice(ui.feed,state.events,state.phase,replaying);
-  hudController.renderGuidance({
-    replaying,phase:state.phase,selectedNode,selectedActiveWatch,
-    feed:ui.feed,hint:ui.hint
-  });
   updateContext();
-  const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
-  ui.mission.textContent=(state.phase==='planning'?
-      brief.code+' • ':'')+missionText(state)+
-    (visible?' • '+visible+' CONTACT'+(visible===1?'':'S'):'');
 }
 function rect(x:number,y:number,w:number,h:number,color:string){
   draw.fillStyle=color;draw.fillRect(x,y,w,h);

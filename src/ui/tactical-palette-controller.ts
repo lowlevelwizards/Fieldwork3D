@@ -3,6 +3,7 @@
  * queues or executes tactical commands. Both layouts share one DOM dispatcher.
  */
 import {doorCenter,type Door,type Pt} from '../breach-core.ts';
+const paletteDistance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 import {canRelocateCover} from '../breach-movable-cover.ts';
 import {interruptsWatch} from '../breach-plan.ts';
 import {equippedEntryMethods} from '../equipment-entry-tools.ts';
@@ -332,13 +333,12 @@ export function createTacticalPaletteController(config:{
   function showFromAuthorizedState(input:PaletteLiveInput):void{
     const {state,actor:a,selected,node,selectedWatch,nearbyDoor,door,
       width:cssW,height:cssH,lastAuthoringAt}=input;
-    const distance=(left:Pt,right:Pt)=>Math.hypot(left.x-right.x,left.y-right.y);
   const current=plannedControl(state,selected,node?.id);
   const at=node?.p??finalPoint(a);
   const nearMovable=state.coverState.some(o=>canRelocateCover(o)&&
-    distance(at,{x:o.x,y:o.y})<Math.max(o.w,o.h)/2+43);
+    paletteDistance(at,{x:o.x,y:o.y})<Math.max(o.w,o.h)/2+43);
   const nearWindow=state.windows.some(w=>w.operable&&!w.shattered&&
-    distance(at,{x:w.x,y:w.y})<54);
+    paletteDistance(at,{x:w.x,y:w.y})<54);
   const treatTarget=input.medicalCandidate(at);
   // WATCH remains active through later waypoints until LOOK or RELEASE.
   // Read the authored history, not merely this node's local modifier.
@@ -354,14 +354,14 @@ export function createTacticalPaletteController(config:{
   }
   const civilianAtPlan=state.civilians.filter(c=>
     c.health>0&&liveVisibility(state,c.p)&&
-    distance(finalPoint(a),c.p)<34)
-    .sort((x,y)=>distance(finalPoint(a),x.p)-
-      distance(finalPoint(a),y.p))[0]??null;
+    paletteDistance(finalPoint(a),c.p)<34)
+    .sort((x,y)=>paletteDistance(finalPoint(a),x.p)-
+      paletteDistance(finalPoint(a),y.p))[0]??null;
   const casualtyAtPlan=state.civilians.filter(c=>c.health<=0&&
       !c.carriedById&&
-      liveVisibility(state,c.p)&&distance(finalPoint(a),c.p)<34)
-    .sort((x,y)=>distance(finalPoint(a),x.p)-
-      distance(finalPoint(a),y.p))[0]??null;
+      liveVisibility(state,c.p)&&paletteDistance(finalPoint(a),c.p)<34)
+    .sort((x,y)=>paletteDistance(finalPoint(a),x.p)-
+      paletteDistance(finalPoint(a),y.p))[0]??null;
   const choices=availableActions(!!selectedWatch,{
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     nearMovable,nearWindow,treatTargetName:treatTarget?.name,
