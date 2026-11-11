@@ -51,7 +51,8 @@ function pointExplanation():HTMLElement{
  return el('p','fw-v4-scoring-note',
    'Contribution is a weighted summary of recorded actions, not the mission grade or Campaign XP. '+
    'Combat: incapacitations 12 pts, damaging hits 2 pts, confirmed armor stops 1 pt. '+
-   'Recon: contact reports 2 pts. Support: doors opened 2 pts, forced 4 pts, '+
+   'Recon: distinct sightings and intelligence reports 2 pts. '+
+   'Support: doors opened 2 pts, forced 4 pts, '+
    'window entries 3 pts. Objective: secured actions 8 pts.');
 }
 function scoreRank(op:OperatorAfterAction,operators:OperatorAfterAction[]){
@@ -62,6 +63,7 @@ function rankRow(op:OperatorAfterAction,operators:OperatorAfterAction[],
  selectedId:string|null,choose:(id:string|null)=>void){
  const row=action('',()=>choose(op.id),'fw-v3-roster-card fw-v4-rank-row');
  row.setAttribute('aria-pressed',String(op.id===selectedId));
+ row.setAttribute('data-after-operator-id',op.id);
  row.setAttribute('aria-label',op.name+', '+scoreRank(op,operators)+
    ' in recorded contribution, '+op.contribution+' points, '+statusName(op.status));
  const rank=el('span','fw-v4-rank-number',scoreRank(op,operators));
