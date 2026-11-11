@@ -3289,3 +3289,24 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v4-squad .fw-v4-squad-focus{padding:6px}
  .fw-v4-scoring-note{font-size:10px}
 }
+
+/* Shallow phone landscape: show every summary field on one compact band.
+   Free vertical space for the entire 2×2 rank grid, not a hidden fourth row. */
+@media(min-width:701px) and (max-height:480px){
+ .debrief.fw-debrief-v3{gap:4px;padding:7px}
+ .fw-debrief-v3 .fw-v4-mission-summary{
+  display:flex;align-items:center;gap:8px;padding:4px 8px;
+  min-height:38px}
+ .fw-v4-result-identity{flex:0 1 205px;min-width:0;gap:0}
+ .fw-v4-result-identity .fw-after-caption{display:none}
+ .fw-v4-result-identity strong{font-size:17px}
+ .fw-v4-mission-name{font-size:9px}
+ .fw-v4-result-data{flex:1 1 280px;min-width:0;gap:2px}
+ .fw-v4-result-stat{padding:1px 5px}
+ .fw-v4-result-stat>span{font-size:8px}
+ .fw-v4-result-stat>strong{font-size:14px}
+ .fw-v4-result-foot{flex:0 1 195px;display:grid;gap:2px;
+  border:0;padding:0;justify-content:start}
+ .fw-v4-result-foot strong{font-size:9px}
+ .fw-v4-result-foot>span{font-size:9px}
+}
