@@ -471,6 +471,17 @@ export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|n
  const s=owners.get(root);if(!s)return null;
  const active=root.querySelector<HTMLElement>('#afterActionBody');
  if(active)s.scroll[s.tab]=active.scrollTop;
+ // A clip can launch after the user scrolls without triggering a redraw.
+ // Read the live offsets at the exact return snapshot boundary.
+ const details=root.querySelector<HTMLElement>('#afterActionDetails');
+ if(details&&!details.hidden){
+   const rail=root.querySelector<HTMLElement>('.fw-v5-timeline-rail');
+   const group=root.querySelector<HTMLElement>('.fw-v5-timeline-group-items');
+   const ledger=root.querySelector<HTMLElement>('.fw-v5-timeline-ledger-list');
+   if(rail)s.timelineRailScroll=rail.scrollLeft;
+   if(group)s.timelineGroupScroll=group.scrollTop;
+   if(ledger)s.timelineLedgerScroll=ledger.scrollTop;
+ }
  return {recorder:s.recorder,tab:s.tab,operatorId:s.selectedOperator,
    contactId:s.selectedContact,contactSide:s.contactSide,
    shotId:s.selectedShotId,highlightId:s.selectedHighlight,
