@@ -20,3 +20,12 @@ test('A6 display toggle events are bound once by the existing replay HUD owner',
  }
  assert.match(replay,/if\(bound\)return/);
 });
+
+test('A6 palette owner derives authorized context actions, not the entrypoint',()=>{
+ const palette=readFileSync(new URL('../src/ui/tactical-palette-controller.ts',import.meta.url),'utf8');
+ assert.doesNotMatch(source,/const civilianAtPlan=/);
+ assert.doesNotMatch(source,/const nearMovable=/);
+ assert.match(palette,/showFromAuthorizedState/);
+ assert.match(palette,/const civilianAtPlan=/);
+ assert.match(palette,/liveVisibility\(state,c\.p\)/);
+});

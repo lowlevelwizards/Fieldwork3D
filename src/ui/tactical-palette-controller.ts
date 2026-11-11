@@ -3,7 +3,11 @@
  * queues or executes tactical commands. Both layouts share one DOM dispatcher.
  */
 import {doorCenter,type Door,type Pt} from '../breach-core.ts';
-import {team,enemies,isSeen,type Session,type TeamActor} from '../breach-game.ts';
+import {canRelocateCover} from '../breach-movable-cover.ts';
+import {interruptsWatch} from '../breach-plan.ts';
+import {equippedEntryMethods} from '../equipment-entry-tools.ts';
+import {entryToolVerdict} from '../breach-entry-tools.ts';
+import {team,enemies,isSeen,plannedControl,liveVisibility,type Session,type TeamActor} from '../breach-game.ts';
 import {finalPoint} from '../breach-game.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide}
   from '../breach-context-placement.ts';
@@ -27,6 +31,14 @@ export type PaletteContext={
   selectedWatch:Pt|null;door:Door|undefined;
   actions:readonly ContextAction[];
   width:number;height:number;lastAuthoringAt:number;
+};
+/** Read-only visibility-limited context inputs, never an order mutation port. */
+export type PaletteLiveInput={
+ state:Session;actor:TeamActor;selected:string;
+ node:TeamActor['plan'][number]|undefined;
+ selectedWatch:Pt|null;nearbyDoor:Door|undefined;door:Door|undefined;
+ medicalCandidate:(at:Pt)=>TeamActor|null;
+ width:number;height:number;lastAuthoringAt:number;
 };
 export function createTacticalPaletteController(config:{
   context:HTMLElement;quickStates:HTMLElement;tacticalHud:HTMLElement;
@@ -317,8 +329,67 @@ export function createTacticalPaletteController(config:{
     lastSide=result.side;
     motion.set(result.x,result.y,anchor.x,anchor.y);
   }
+  function showFromAuthorizedState(input:PaletteLiveInput):void{
+    const {state,actor:a,selected,node,selectedWatch,nearbyDoor,door,
+      width:cssW,height:cssH,lastAuthoringAt}=input;
+    const distance=(left:Pt,right:Pt)=>Math.hypot(left.x-right.x,left.y-right.y);
+  const current=plannedControl(state,selected,node?.id);
+  const at=node?.p??finalPoint(a);
+  const nearMovable=state.coverState.some(o=>canRelocateCover(o)&&
+    distance(at,{x:o.x,y:o.y})<Math.max(o.w,o.h)/2+43);
+  const nearWindow=state.windows.some(w=>w.operable&&!w.shattered&&
+    distance(at,{x:w.x,y:w.y})<54);
+  const treatTarget=input.medicalCandidate(at);
+  // WATCH remains active through later waypoints until LOOK or RELEASE.
+  // Read the authored history, not merely this node's local modifier.
+  let watchActive=a.aimInstruction?.mode==='track'&&a.pace!=='run';
+  let planPace=a.pace;
+  if(node)for(const order of a.plan){
+    if(order.paceState)planPace=order.paceState;
+    if(interruptsWatch(order,planPace))watchActive=false;
+    else if(order.aimMode==='track')watchActive=true;
+    else if(order.aimMode==='free'||order.aimMode==='fixed')
+      watchActive=false;
+    if(order.id===node.id)break;
+  }
+  const civilianAtPlan=state.civilians.filter(c=>
+    c.health>0&&liveVisibility(state,c.p)&&
+    distance(finalPoint(a),c.p)<34)
+    .sort((x,y)=>distance(finalPoint(a),x.p)-
+      distance(finalPoint(a),y.p))[0]??null;
+  const casualtyAtPlan=state.civilians.filter(c=>c.health<=0&&
+      !c.carriedById&&
+      liveVisibility(state,c.p)&&distance(finalPoint(a),c.p)<34)
+    .sort((x,y)=>distance(finalPoint(a),x.p)-
+      distance(finalPoint(a),y.p))[0]??null;
+  const choices=availableActions(!!selectedWatch,{
+    door:!!door,node:!!node,flashRemaining:state.flashRemaining,
+    nearMovable,nearWindow,treatTargetName:treatTarget?.name,
+    nearDoor:!door&&!!nearbyDoor,
+    nearCivilian:!!civilianAtPlan&&civilianAtPlan.state!=='compliant',
+    escortableCivilian:!!civilianAtPlan&&
+      civilianAtPlan.rescueTarget&&state.mission==='extract',
+    nearCivilianCasualty:!!casualtyAtPlan,
+    carryingCivilian:!!a.carryingId&&state.civilians.some(c=>
+      c.id===a.carryingId&&c.carriedById===a.id),
+    posture:current.posture,pace:current.pace,
+    firePolicy:node?.firePolicyState??a.firePolicy,
+    reserve:a.reserve,magazine:a.magazine,
+    doorOpen:!!door&&(door.openFraction??(door.open?1:0))>=.98,
+    doorPartial:!!door&&(door.openFraction??(door.open?1:0))>.08&&
+      (door.openFraction??(door.open?1:0))<.98,
+    availableTools:door?equippedEntryMethods(a.equipment)
+      .filter(method=>entryToolVerdict(door,method).allowed):[],
+    nodeKind:node?.kind,nodeMoveMode:node?.moveMode,aimLabel:node?.aimLabel,
+    watchActive,nodeFirePolicy:node?.firePolicyState
+  });
+  show({
+    state,actor:a,selected,node,selectedWatch,door,actions:choices,
+    width:cssW,height:cssH,lastAuthoringAt
+  });
+  }
   return {
-    hide,show,advance,heldPointers,availableActions,invalidate,
+    hide,show,showFromAuthorizedState,advance,heldPointers,availableActions,invalidate,
     get tether(){return tether;},
     get placement(){return placement;},
     get active(){return motion.active;},
