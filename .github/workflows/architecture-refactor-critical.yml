@@ -27,6 +27,9 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Authoritative simulation, fog, motor, replay and architecture suite
         run: node scripts/verification/breach-critical-suite.mjs
+      - name: A10 — Complete Package A0–A10 consolidation acceptance
+        if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/consolidation-') }}
+        run: node scripts/verification/package-a-closeout-suite.mjs --run
       - name: Inventory source reachability and protect compatibility candidates
         run: |
           node --test tests/consolidation-inventory.test.mjs
