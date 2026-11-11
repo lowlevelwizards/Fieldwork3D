@@ -3257,3 +3257,35 @@ body.replaying .replay-follow-status[data-grade]::after{
 @media(prefers-reduced-motion:reduce){
  .fw-v4-squad *{scroll-behavior:auto!important}
 }
+
+/* Tight portrait and shallow landscape: all four rank choices fit above
+   the fold while preserving a minimum 44 px activation height. */
+@media(max-width:360px){
+ .fw-v4-result-identity .fw-after-caption{display:none}
+ .fw-v4-result-identity strong{font-size:18px}
+ .fw-v4-mission-name{font-size:9px}
+ .fw-v4-result-identity{gap:0}
+ .fw-v4-squad-heading{gap:0;padding:0}
+ .fw-v4-squad .fw-v4-rank-list{gap:3px}
+ .fw-debrief-v3 .fw-v4-rank-row{min-height:44px;padding:4px 6px}
+}
+@media(min-width:701px) and (max-height:480px){
+ .fw-debrief-v3 .fw-v4-mission-summary{padding:4px 8px;gap:2px 8px}
+ .fw-v4-result-identity strong{font-size:18px}
+ .fw-v4-squad-heading{padding:0}
+ .fw-v4-squad-content{grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);
+  gap:5px}
+ .fw-v4-squad .fw-v4-rank-list{
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+ .fw-debrief-v3 .fw-v4-rank-row{
+  grid-template-columns:37px minmax(0,1fr) 27px;
+  gap:3px;padding:3px 4px;min-height:44px}
+ .fw-v4-rank-number{font-size:12px}
+ .fw-v4-rank-identity strong{font-size:11px}
+ .fw-v4-rank-identity small{font-size:8px}
+ .fw-v4-rank-points{min-width:26px}
+ .fw-v4-rank-points strong{font-size:16px}
+ .fw-v4-rank-points small{font-size:8px}
+ .fw-v4-squad .fw-v4-squad-focus{padding:6px}
+ .fw-v4-scoring-note{font-size:10px}
+}
