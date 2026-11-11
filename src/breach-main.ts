@@ -48,7 +48,7 @@ import {createOperatorStudioBridge} from './operator-studio-bridge.ts';
 import {createBreachEquipmentEditorBridge} from './breach-equipment-editor-bridge.ts';
 import {createBreachOperationsBoardController} from './breach-operations-board-controller.ts';
 import {createBreachRuntimeLoop} from './breach-runtime-loop.ts';
-import type {CampaignMode} from './breach-app-mode.ts';
+import {createBreachAppFlow} from './breach-app-flow.ts';
 import {parseBreachBootConfig,BREACH_LIGHTING_MODES} from './breach-boot-config.ts';
 import {loadIntelPreference,loadQuickPlayRoster,saveQuickPlayRoster,
  loadCampaignFromStorage,saveCampaignToStorage} from './breach-persistence.ts';
@@ -369,7 +369,7 @@ function buildPreviewDossier(session:Session,risk?:1|2|3){
   if(!briefingPreviewEnabled||!session.site)return undefined;
   try{
     const dossier=createOperationDossier(compileMissionFacts(session,{contractRisk:risk}));
-    return campaignMode==='mission'?
+    return appFlow.mode==='mission'?
       attachCampaignDossierContext(dossier,campaign):dossier;
   }
   catch(error){
@@ -394,8 +394,8 @@ function saveRoster():boolean{
  return saveQuickPlayRoster(persistentRoster);
 }
 let campaign:CampaignState|null=loadCampaignFromStorage();
-let campaignMode:CampaignMode=
- legacyStudy||bootConfig.quickEntry?'quick':'menu';
+const appFlow=createBreachAppFlow(
+ legacyStudy||bootConfig.quickEntry?'quick':'menu');
 function saveCampaign():boolean{
  if(!campaign)return false;
  const saved=saveCampaignToStorage(campaign);
@@ -405,7 +405,7 @@ function saveCampaign():boolean{
 const studioBridge=createOperatorStudioBridge({
   getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},
   getRoster:()=>persistentRoster,setRoster:value=>{persistentRoster=value;},
-  getMode:()=>campaignMode,getSelected:()=>selected,
+  getMode:()=>appFlow.mode,getSelected:()=>selected,
   getSession:()=>state,isReplaying:()=>replaying,
   saveRoster,saveCampaign,
   applyQuickRoster:()=>applyRosterIdentity(state,persistentRoster),
@@ -414,7 +414,7 @@ const studioBridge=createOperatorStudioBridge({
 });
 const openOperatorStudio=studioBridge.open;
 function applyCampaignSkills(session:Session){
- if(campaignMode!=='mission'||!campaign)return;
+ if(appFlow.mode!=='mission'||!campaign)return;
  for(const a of team(session)){
   const m=tacticalSlotOperator(campaign,a.id);
   if(m){
@@ -456,7 +456,7 @@ const missionController=new BreachMissionController({
   preferences:()=>({
     legacyStudy,civilianPreview,requestedCondition,
     selectedIntelMode,requestedSiteScale,selectedLightingMode,
-    mode:campaignMode
+    mode:appFlow.mode
   }),
   randomSeed:randomSiteSeed,
   refreshQuickRoster:()=>{
@@ -470,7 +470,7 @@ const missionController=new BreachMissionController({
 // initialized exactly once, using the ordinary authoritative session factory.
 let state:Session=missionController.create({
   variant:0,seed:initialSiteSeed,
-  withoutSite:legacyStudy||campaignMode==='menu',initial:true
+  withoutSite:legacyStudy||appFlow.mode==='menu',initial:true
 });
 let recorder=missionController.recordInitial(state);
 const deploymentButton=document.createElement('button');
@@ -629,7 +629,7 @@ function hideWeaponChooser(){
 }
 function showWeaponChooser(){
  const current=team(state).find(a=>a.id===selected);
- if(!current||campaignMode==='mission'||state.phase!=='planning'||replaying)return;
+ if(!current||appFlow.mode==='mission'||state.phase!=='planning'||replaying)return;
  collapseTacticalSheets('weapon');
  weaponChooser.replaceChildren();
  const label=document.createElement('div');
@@ -665,7 +665,7 @@ weaponChooser.addEventListener('keydown',event=>{
 const equipmentEditor=createBreachEquipmentEditorBridge({
  getRoster:()=>persistentRoster,setRoster:value=>{persistentRoster=value;},
  getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},
- getSession:()=>state,getMode:()=>campaignMode,isReplaying:()=>replaying,
+ getSession:()=>state,getMode:()=>appFlow.mode,isReplaying:()=>replaying,
  saveCampaign,showHelp:showUiHelp,
  onQuickApplied:id=>{
    applyRosterIdentity(state,persistentRoster);
@@ -679,13 +679,13 @@ const operationsBoardController=createBreachOperationsBoardController({
  board:operationsBoard,toggleButton:operationsToggle,
  getSession:()=>state,getRoster:()=>persistentRoster,
  setRoster:value=>{persistentRoster=value;},
- getMode:()=>campaignMode,isReplaying:()=>replaying,
+ getMode:()=>appFlow.mode,isReplaying:()=>replaying,
  saveRoster,applyRoster:()=>applyRosterIdentity(state,persistentRoster),
  refreshHud:updateHud,
  syncSheets:()=>missionScreens.syncSheets(),
  history:operationHistory,
  enterTrainingRange:()=>{
-   campaignMode='quick';lastRangeTrial=null;
+   appFlow.setMode('quick');lastRangeTrial=null;
    reset(state.variant,undefined,undefined,equipmentTrainingSite());
    showUiHelp('TEST RANGE · USE SUPPRESS TO FIRE AT TARGET PLATES',6500);
  },
@@ -696,7 +696,11 @@ const renderOperationsBoard=operationsBoardController.render;
 
 const missionScreens=createBreachMissionScreens({
  ui,operationsBoard,operationsToggle,boot:bootConfig,
- getSession:()=>state,getCampaign:()=>campaign,getMode:()=>campaignMode,
+ onPresentationChange:visible=>{
+  appFlow.briefingVisibility(visible.briefing);
+  appFlow.settingsVisibility(visible.settings);
+ },
+ getSession:()=>state,getCampaign:()=>campaign,getMode:()=>appFlow.mode,
  isReplaying:()=>replaying,briefingPreviewEnabled,
  getEntryId:()=>missionController.entryId,
  hideWeaponChooser,hideContextPalette,
@@ -1089,9 +1093,10 @@ function medicalCandidate(id:string,origin?:Pt){
 }
 
 function updateHud(){
-  ui.quickPlaySetup.hidden=campaignMode!=='quick'||replaying;
+  appFlow.observePhase(state.phase);
+  ui.quickPlaySetup.hidden=appFlow.mode!=='quick'||replaying;
   if(!replaying&&state.phase==='planning')recorder.capturePlanning(state);
-  const identity=currentSiteIdentity(state.site,campaignMode==='quick');
+  const identity=currentSiteIdentity(state.site,appFlow.mode==='quick');
   if(siteIdentityOutput.textContent!==identity.text)
     siteIdentityOutput.textContent=identity.text;
   if(identity.seed!==null)siteIdentityOutput.dataset.siteSeed=identity.seed;
@@ -1203,7 +1208,7 @@ function updateHud(){
     phase:state.phase,replaying,flashMode,firePlacement
   });
   ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
-  ui.loadout.disabled=campaignMode==='mission'||state.phase!=='planning'||replaying;
+  ui.loadout.disabled=appFlow.mode==='mission'||state.phase!=='planning'||replaying;
   if(ui.loadout.disabled&&!weaponChooser.hidden)hideWeaponChooser();
   ui.flash.disabled=state.flashRemaining<=0||replaying;
   ui.back.disabled=!active?.plan.length;
@@ -1216,10 +1221,10 @@ function updateHud(){
   ui.favoriteMission.disabled=!state.site;
   ui.favoriteMission.textContent=replayLibrary.activeFavoriteId?
     '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
-  ui.next.textContent=campaignMode==='mission'?'RETURN TO BASE':'NEXT ARRANGEMENT';
-  ui.retry.disabled=campaignMode==='mission';
+  ui.next.textContent=appFlow.mode==='mission'?'RETURN TO BASE':'NEXT ARRANGEMENT';
+  ui.retry.disabled=appFlow.mode==='mission';
   if(!ui.debrief.hidden)renderMissionDebrief({
-    ui,state,brief,recorder,campaign,campaignMode,
+    ui,state,brief,recorder,campaign,campaignMode:appFlow.mode,
     operationsLogged:operationHistory().length
   });
   for(const id of squadIds){
@@ -1562,10 +1567,15 @@ const replayModeController=createReplayModeController({
  populateInspectActors:populateReplayInspectActors,
  rebuildEventIndex:rebuildReplayEventIndex,
  seekReplay,invalidateFog:()=>fog2D.invalidate(),
- afterReplayExit:()=>replayLibrary.afterReplayExit(),
+ afterReplayExit:()=>{
+   appFlow.exitReplay();
+   replayLibrary.afterReplayExit();
+ },
  updateHud
 });
-function enterReplay(){replayModeController.enterReplay();}
+function enterReplay(source:'library'|'debrief'='debrief'){
+ if(replayModeController.enterReplay())appFlow.beginReplay(source);
+}
 let afterActionReturn:ReturnType<typeof afterActionSnapshot>=null;
 function exitReplay(){
  const returning=afterActionReturn!==null;
@@ -1603,16 +1613,18 @@ const replayLibrary=createBreachReplayLibraryController({
   setRecorder:value=>{recorder=value;},
   getBookmarks:()=>replayAnalysisUi.replayBookmarks,
   applyLoadedBookmarks:marks=>replayAnalysisUi.restoreBookmarks(marks),
-  enterReplay,exitReplay,refreshHud:updateHud,
+  enterReplay:()=>enterReplay('library'),exitReplay,refreshHud:updateHud,
   getFavoriteDraft:()=>state.site?{
     start:missionController.start,
     label:state.site.name+' · '+state.missionType.toUpperCase()
   }:null,
   playFavorite:restoreFavoriteMission,
-  canPlayFavorite:()=>campaignMode!=='mission',
+  canPlayFavorite:()=>appFlow.mode!=='mission',
   hideCampaignScreen:()=>campaignScreen.hide(),
+  onLibraryOpen:fromMenu=>{appFlow.openLibrary(fromMenu);},
+  onLibraryClose:restore=>appFlow.closeLibrary(restore),
   returnToCampaignMenu:()=>{
-    campaignMode='menu';campaignScreen.entry(!!campaign);
+    appFlow.setMode('menu');campaignScreen.entry(!!campaign);
   }
 });
 ui.watchReplay.addEventListener('click',()=>{
@@ -2208,6 +2220,7 @@ function releaseMissionPresentation():void{
 }
 function mountMissionSession(transition:MissionTransition):void{
   state=transition.session;
+  appFlow.missionMounted();
   flashDoorId=null;
   if(!transition.deferScene)stage?.applySite(state.site??null);
   selected='rook';hudController.facing.looking=false;
@@ -2248,8 +2261,9 @@ function restartMission():void{
  * completed work, not predicted time; expensive 3D mesh creation remains
  * synchronous, but the status is painted immediately before it begins. */
 const quickPlayController=createBreachQuickPlayController({
-  boot:bootConfig,randomSeed:randomSiteSeed,getScale:()=>requestedSiteScale,
-  getMode:()=>campaignMode,setMode:mode=>{campaignMode=mode;},
+  boot:bootConfig,randomSeed:randomSiteSeed,
+  onConfiguratorVisibilityChange:visible=>appFlow.creatorVisibility(visible),getScale:()=>requestedSiteScale,
+  getMode:()=>appFlow.mode,setMode:mode=>{appFlow.setMode(mode);},
   getSession:()=>state,
   startSession:(seed,site,mission)=>reset(state.variant,seed,mission,site,undefined,true),
   getStage:()=>stage,getViewMode:()=>viewMode,
@@ -2275,7 +2289,7 @@ const quickPlayController=createBreachQuickPlayController({
 /** Enter Quick Play through its scenario creator, never directly regenerate. */
 const launchQuickPlay=()=>quickPlayController.customize();
 function returnToQuickPlayGenerator(){
-  if(campaignMode!=='quick'||replaying||quickPlayController.busy)return;
+  if(appFlow.mode!=='quick'||replaying||quickPlayController.busy)return;
   // Opening the creator does not discard the current mission, routes or replay.
   const cameFromSettings=!ui.siteSettings.hidden;
   closeMissionSettings(false);
@@ -2289,7 +2303,7 @@ ui.quickPlaySetup.addEventListener('click',returnToQuickPlayGenerator);
  */
 const campaignFlow=createBreachCampaignFlow({
   getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},saveCampaign,
-  getMode:()=>campaignMode,setMode:mode=>{campaignMode=mode;},
+  getMode:()=>appFlow.mode,setMode:mode=>{appFlow.setMode(mode);},
   getIntel:()=>selectedIntelMode,setIntel:value=>{selectedIntelMode=value;},
   getScale:()=>requestedSiteScale,setScale:value=>{requestedSiteScale=value;},
   getSession:()=>state,isReplaying:()=>replaying,siteSize:ui.siteSize,siteSettings:ui.siteSettings,
@@ -2432,8 +2446,8 @@ ui.stance.addEventListener('click',()=>{
 ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
 missionScreens.bindSitePreferences();
 ui.variant.addEventListener('click',async()=>{
-  if(replaying||campaignMode==='mission')return;
-  if(campaignMode==='quick'){returnToQuickPlayGenerator();return;}
+  if(replaying||appFlow.mode==='mission')return;
+  if(appFlow.mode==='quick'){returnToQuickPlayGenerator();return;}
   if((state.started||team(state).some(a=>a.plan.length>0))&&
     !await confirmFieldworkAction({
       title:'Generate a new site?',
@@ -2442,17 +2456,17 @@ ui.variant.addEventListener('click',async()=>{
     }))return;
   reset(state.variant+1);
 });
-ui.retry.addEventListener('click',()=>{if(campaignMode!=='mission')restartMission();});
+ui.retry.addEventListener('click',()=>{if(appFlow.mode!=='mission')restartMission();});
 ui.next.addEventListener('click',()=>{
   if(returnAfterCampaignMission())return;
-  if(campaignMode==='quick')returnToQuickPlayGenerator();
+  if(appFlow.mode==='quick')returnToQuickPlayGenerator();
   else reset(state.variant+1);
 });
 ui.play.addEventListener('click',()=>{
   audioController.unlock();audioController.uiClickTone(state.phase==='running'?'pause':'go');
   if(state.phase==='won'||state.phase==='lost'){
    if(!returnAfterCampaignMission()){
-     if(campaignMode==='quick')returnToQuickPlayGenerator();
+     if(appFlow.mode==='quick')returnToQuickPlayGenerator();
      else reset();
    }
   }else{
@@ -2462,7 +2476,7 @@ ui.play.addEventListener('click',()=>{
   }
 });
 ui.restart.addEventListener('click',async()=>{
-  if(campaignMode==='mission'||replaying)return;
+  if(appFlow.mode==='mission'||replaying)return;
   if((state.started||team(state).some(a=>a.plan.length>0))&&
     !await confirmFieldworkAction({
       title:'Restart this mission?',
@@ -2476,7 +2490,7 @@ ui.restart.addEventListener('click',async()=>{
 window.addEventListener('keydown',e=>{
   // Global game shortcuts must never fire while the player edits a name,
   // operates a dialog, or navigates Campaign / the front menu.
-  if(e.isComposing||e.altKey||campaignMode==='menu'||campaignMode==='home')return;
+  if(e.isComposing||e.altKey||appFlow.mode==='menu'||appFlow.mode==='home')return;
   if(document.querySelector('.fw-confirm-backdrop')||quickPlayController.configuring)return;
   const target=e.target;
   // Escape is handled before the usual input guard so a focused replay
@@ -2514,7 +2528,7 @@ window.addEventListener('keydown',e=>{
     e.preventDefault();audioController.unlock();
     if(state.phase==='won'||state.phase==='lost'){
       if(!returnAfterCampaignMission()){
-        if(campaignMode==='quick')returnToQuickPlayGenerator();
+        if(appFlow.mode==='quick')returnToQuickPlayGenerator();
         else reset();
       }
     }else{
@@ -2553,7 +2567,7 @@ window.addEventListener('keydown',e=>{
     if(e.shiftKey)redoPlan(state,selected);
     else undoPlan(state,selected);updateHud();
   }
-  if(e.code==='KeyR'&&!e.repeat&&campaignMode!=='mission'){
+  if(e.code==='KeyR'&&!e.repeat&&appFlow.mode!=='mission'){
     e.preventDefault();
     ui.restart.click();
   }
@@ -2718,7 +2732,7 @@ function drawTacticalFrameFeedback(studioOccludesTactical:boolean):void{
 // The runtime owns RAF cadence; the host supplies live state and presentation boundaries.
 const runtimeLoop=createBreachRuntimeLoop({
  boot:bootConfig,
- getSession:()=>state,getRecorder:()=>recorder,getMode:()=>campaignMode,
+ getSession:()=>state,getRecorder:()=>recorder,getMode:()=>appFlow.mode,
  isReplaying:()=>replaying,
  isQuickPlayBusy:()=>quickPlayController.busy||quickPlayController.configuring,
  getSelected:()=>selected,getSelectedActor:()=>uid(selected),
@@ -2737,5 +2751,5 @@ const runtimeLoop=createBreachRuntimeLoop({
  audio:audioController
 });
 layout();cameraMode(viewMode);updateHud();
-if(campaignMode==='menu')campaignScreen.entry(!!campaign);
+if(appFlow.mode==='menu')campaignScreen.entry(!!campaign);
 runtimeLoop.start();

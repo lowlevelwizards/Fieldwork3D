@@ -13,7 +13,7 @@ const messages=read('src/quick-play-generation.ts');
 const site=read('src/breach-site.ts');
 
 test('main menu does not generate a throwaway procedural map',()=>{
- assert.match(main,/withoutSite:legacyStudy\|\|campaignMode==='menu',initial:true/);
+ assert.match(main,/withoutSite:legacyStudy\|\|appFlow.mode==='menu',initial:true/);
  assert.match(campaign,/quickPlay:\(\)=>\{void config.launchQuickPlay\(\);\}/);
  assert.match(loader,/config\.startSession\(seed,generated\.site,recipe\.mission\)/);
  assert.match(main,/startSession:\(seed,site,mission\)=>reset\(state\.variant,seed,mission,site,undefined,true\)/);

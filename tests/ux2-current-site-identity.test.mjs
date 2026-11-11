@@ -30,7 +30,7 @@ test('never reveal procedural campaign seed or fake a seed for training',()=>{
 test('settings present reproducible current seed, not hidden room layout in HUD',()=>{
  assert.match(html,/<output id="siteIdentity" class="site-identity"/);
  assert.match(html,/NEXT SITE SIZE/);
- assert.match(main,/currentSiteIdentity\(state.site,campaignMode==='quick'\)/);
+ assert.match(main,/currentSiteIdentity\(state.site,appFlow.mode==='quick'\)/);
  assert.match(main,/siteIdentityOutput\.dataset\.siteSeed=identity\.seed/);
  assert.match(main,/else delete siteIdentityOutput\.dataset\.siteSeed/);
  assert.match(main,/\(state\.intel\.mode==='floor-plan'\?state\.site\.roomCount:'\?'\)/);

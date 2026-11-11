@@ -63,6 +63,7 @@ function picker(title:string,values:readonly [string,string][],
 export function createQuickPlayConfigurator(options:{
  randomSeed:()=>number;
  onGenerate:(settings:QuickPlaySettings)=>void;
+ onVisibilityChange?:(visible:boolean)=>void;
 }){
  let settings=readSettings();
  let previouslyFocused:HTMLElement|null=null;
@@ -193,6 +194,7 @@ export function createQuickPlayConfigurator(options:{
  }
  function hide(){
   backdrop.hidden=true;
+  options.onVisibilityChange?.(false);
   previouslyFocused?.focus();previouslyFocused=null;
  }
  function generate(){
@@ -203,7 +205,8 @@ export function createQuickPlayConfigurator(options:{
  render();
  return {
   open(){previouslyFocused=document.activeElement instanceof HTMLElement?
-     document.activeElement:null;backdrop.hidden=false;close.focus();},
+     document.activeElement:null;backdrop.hidden=false;
+     options.onVisibilityChange?.(true);close.focus();},
   close:hide,
   get isOpen(){return !backdrop.hidden;},
   getSettings:()=>({...settings,buildings:[...settings.buildings]})
