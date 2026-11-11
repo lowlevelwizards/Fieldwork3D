@@ -14,6 +14,10 @@ import {renderCombatReport} from './breach-after-action-combat.ts';
 import {renderAfterActionHighlights} from './breach-after-action-highlights.ts';
 import {replayHighlightMoments} from '../breach-highlight-frames.ts';
 import type {AfterActionModelPresenter} from './breach-after-action-model.ts';
+import {buildAfterActionTimeline,TIMELINE_FILTERS,
+ type AfterActionTimelineEvent,type TimelineFilter}
+ from '../breach-after-action-timeline.ts';
+import {renderAfterActionTimeline} from './breach-after-action-timeline.ts';
 import {inspectForensicEvidence,type ForensicScope,
  type ForensicEvidence} from '../breach-forensic-evidence.ts';
 
@@ -95,6 +99,10 @@ type State={
   operatorRecordOpen:boolean;
   scroll:Partial<Record<AfterActionTab,number>>;
   showIntel:boolean;
+  timelineEvents:readonly AfterActionTimelineEvent[];
+  timelineFilter:TimelineFilter;timelineSelectedKey:string|null;
+  timelineClusterId:string|null;timelineLedgerOpen:boolean;
+  timelineLedgerLimit:number;timelineRailScroll:number;
 };
 const owners=new WeakMap<HTMLElement,State>();
 function currentCombatEvidence(root:HTMLElement):ForensicEvidence|null{
@@ -108,6 +116,7 @@ function currentCombatEvidence(root:HTMLElement):ForensicEvidence|null{
    s.selectedShotId,s.forensicScope):null;
 }
 const renderers=new WeakMap<HTMLElement,()=>void>();
+const timelineRenderers=new WeakMap<HTMLElement,()=>void>();
 const bound=new WeakSet<HTMLElement>();
 const make=(tag:string,cls='',value?:string)=>{
   const el=document.createElement(tag);
@@ -131,7 +140,10 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      contactSide:'red',paperBack:false,inspectionMode:'paper',
      forensicScope:'cumulative',
      selectedHighlight:null,operatorRecordOpen:false,
-     scroll:{},showIntel:options.showIntel};
+     scroll:{},showIntel:options.showIntel,
+     timelineEvents:buildAfterActionTimeline(rec),
+     timelineFilter:'all',timelineSelectedKey:null,timelineClusterId:null,
+     timelineLedgerOpen:false,timelineLedgerLimit:30,timelineRailScroll:0};
    owners.set(root,state);
    // A new recording never inherits a previous mission's open report sheet.
    const oldDetails=root.querySelector<HTMLElement>('#afterActionDetails');
@@ -150,7 +162,13 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    const open=root.querySelector<HTMLButtonElement>('#afterActionDetailsToggle');
    const close=root.querySelector<HTMLButtonElement>('#afterActionDetailsClose');
    const dismiss=()=>{if(details){details.hidden=true;open?.focus();}};
-   open?.addEventListener('click',()=>{if(details){details.hidden=false;close?.focus();}});
+   open?.addEventListener('click',()=>{
+     if(details){
+       details.hidden=false;
+       timelineRenderers.get(root)?.();
+       close?.focus();
+     }
+   });
    close?.addEventListener('click',dismiss);
    details?.addEventListener('keydown',e=>{
      if(e.key==='Escape'){e.preventDefault();dismiss();return;}
@@ -176,6 +194,79 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
  }
  root.classList.add('fw-debrief-v3');
  root.classList.remove('fw-debrief-v2');
+ const drawTimeline=():void=>{
+   const s=owners.get(root),host=root.querySelector<HTMLElement>(
+     '#afterActionTimeline');
+   if(!s||!host)return;
+   const previous=host.querySelector<HTMLElement>('.fw-v5-timeline-rail');
+   if(previous)s.timelineRailScroll=previous.scrollLeft;
+   const hidden=root.querySelector<HTMLElement>('#afterActionDetails')?.hidden;
+   if(hidden)return;
+   const actorName=(id:string):string=>
+     s.recorder.manifest?.actors.find(actor=>actor.id===id)?.name??
+       'UNKNOWN RECORDED ACTOR';
+   const contacts=[...s.report.hostiles,...s.report.friendlyCasualties];
+   const toContact=(event:AfterActionTimelineEvent)=>
+     contacts.find(c=>c.id===event.targetId||c.id===event.actorId)??null;
+   const persist=()=>timelineRenderers.get(root)?.();
+   const panel=renderAfterActionTimeline({
+     events:s.timelineEvents,duration:s.recorder.duration,
+     width:host.clientWidth||host.parentElement?.clientWidth||640,
+     complete:s.recorder.completeness.complete,
+     state:{filter:s.timelineFilter,selectedKey:s.timelineSelectedKey,
+       clusterId:s.timelineClusterId,ledgerOpen:s.timelineLedgerOpen,
+       ledgerLimit:s.timelineLedgerLimit},
+     actorName,
+     canInspect:event=>!!toContact(event),
+     highlightsAvailable:replayHighlightMoments(s.recorder).length>0,
+     actions:{
+       filter:value=>{s.timelineFilter=value;s.timelineClusterId=null;
+         s.timelineLedgerLimit=30;persist();},
+       select:key=>{
+         if(!s.timelineEvents.some(e=>e.key===key))return;
+         s.timelineSelectedKey=key;s.timelineClusterId=null;persist();
+       },
+       selectCluster:(id,key)=>{
+         s.timelineClusterId=id;s.timelineSelectedKey=key;persist();
+       },
+       ledger:open=>{s.timelineLedgerOpen=open;persist();},
+       more:()=>{s.timelineLedgerLimit+=30;persist();},
+       watch:event=>{
+         root.dispatchEvent(new CustomEvent('fw-after-action-replay',{
+           bubbles:true,detail:{surface:'timeline',time:event.t,
+             shotId:event.shotId,
+             contactId:event.shotId!==null?
+               event.targetId??undefined:undefined}
+         }));
+       },
+       inspect:event=>{
+         const contact=toContact(event);if(!contact)return;
+         s.contactSide=contact.side;s.selectedContact=contact.id;
+         s.selectedShotId=event.shotId!==null&&
+           contact.shots.some(shot=>shot.id===event.shotId)?
+             event.shotId:null;
+         s.scroll[s.tab]=safeContent.scrollTop;s.tab='combat';
+         const details=root.querySelector<HTMLElement>('#afterActionDetails');
+         if(details)details.hidden=true;
+         renderers.get(root)?.();
+         root.querySelector<HTMLButtonElement>(
+           '[data-after-tab="combat"]')?.focus({preventScroll:true});
+       },
+       highlights:()=>{
+         s.scroll[s.tab]=safeContent.scrollTop;s.tab='highlights';
+         const details=root.querySelector<HTMLElement>('#afterActionDetails');
+         if(details)details.hidden=true;
+         renderers.get(root)?.();
+         root.querySelector<HTMLButtonElement>(
+           '[data-after-tab="highlights"]')?.focus({preventScroll:true});
+       }
+     }
+   });
+   host.replaceChildren(panel);
+   const rail=host.querySelector<HTMLElement>('.fw-v5-timeline-rail');
+   if(rail)rail.scrollLeft=s.timelineRailScroll;
+ };
+ timelineRenderers.set(root,drawTimeline);
  function draw():void{
    const s=owners.get(root);if(!s)return;
    for(const tabButton of safeNav.querySelectorAll<HTMLButtonElement>('[data-after-tab]'))
@@ -285,23 +376,9 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    const operatorDetails=root.querySelector<HTMLElement>('#afterActionOperatorDetail');
    if(operatorDetails)operatorDetails.replaceChildren();
    const forensicDetails=root.querySelector<HTMLElement>('#afterActionContactDetail');
-   if(forensicDetails){
-     const contact=(s.contactSide==='red'?s.report.hostiles:
-       s.report.friendlyCasualties).find(c=>c.id===s.selectedContact);
-     const ledger=make('div','fw-v3-ledger');
-     if(contact){
-       ledger.append(make('h3','',contact.name+' / SHOT HISTORY'));
-       for(const shot of contact.shots){
-         const row=make('div','fw-after-pair');
-         const result=shot.outcome==='non-damaging'?'NO DAMAGE':
-           shot.outcome.replaceAll('-',' ').toUpperCase();
-         row.append(make('span','',String(shot.id)+' · '+shot.shooterId),
-           make('span','',result+' · '+(shot.region??'UNKNOWN')));
-         ledger.append(row);
-       }
-     }
-     forensicDetails.replaceChildren(ledger);
-   }
+   // Stage 5 retired the redundant read-only shot ledger in Mission Details.
+   // Combat's authoritative forensic inspector remains the only shot sheet.
+   if(forensicDetails)forensicDetails.replaceChildren();
    // Keep the historical renderer and cached rigs alive through tab changes
    // and replay return. Only the DOM host is replaced during UI redraws.
    safeContent.replaceChildren(screen);
@@ -311,6 +388,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      squadHost?s.selectedOperator:combatHost?.dataset.afterModel??null,
      currentCombatEvidence(root));
    safeContent.scrollTop=s.scroll[s.tab]??0;
+   drawTimeline();
  }
  renderers.set(root,draw);
  draw();
