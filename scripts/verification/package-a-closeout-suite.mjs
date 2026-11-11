@@ -32,7 +32,8 @@ export const integrationCoverage=Object.freeze([
  'tests/breach-closeout-stage6-integration.test.mjs',
  'tests/breach-roadmap2-stage3-knowledge.test.mjs',
  'tests/breach-roadmap2-stage12-world-context.test.mjs',
- 'tests/after-action-v4-stage3-persistent-models.test.mjs'
+ 'tests/after-action-v4-stage3-persistent-models.test.mjs',
+ 'tests/after-action-v4-stage4-forensic.test.mjs'
 ]);
 export const followupChecks=Object.freeze([
  'scripts/verification/breach-architecture-boundaries.mjs',
