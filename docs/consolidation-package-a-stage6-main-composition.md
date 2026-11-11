@@ -24,3 +24,9 @@
 No UI redesign, gameplay balance or command semantics, site generation, AI or physics changes, plan-authoring reimplementation, replay observer knowledge escalation, director camera scoring change, 60 Hz tick change, save/replay schema change, removal of diagnostics used by external QA, or new controller layer.
 
 **Definition of done:** The entrypoint is demonstrably composition focused, existing modules own all presentation/orchestration behavior and one-time listeners, automated source ownership guards and focused tests are green, TypeScript/build/browser checks pass, and the merged Pages stamp is publicly confirmed. A line-count reduction alone is not sufficient.
+
+## Final acceptance expansion for A6
+
+- Preserve the A5 **After Action V3** browser smoke for A6. This stage relocates the replay-entry and clip/unclip event bindings; A6 must retest that workflow, not merely rely on tactical/replay smoke.
+- Verify the now-pure 2D fit against known zoom/pan/non-origin bounds, in addition to the renderer order/Bodycam fog invariant.
+- Browser CI is Chromium/WebGL on simulated mobile and desktop sizes. Physical device/browser acceptance remains a separate follow-up; do not treat CI as an on-device test.

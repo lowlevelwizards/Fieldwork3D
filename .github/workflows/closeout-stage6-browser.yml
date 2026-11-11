@@ -30,7 +30,7 @@ jobs:
       - name: Real WebGL tactical mission, replay, restart and editor navigation on phone and desktop
         run: node scripts/smoke-closeout-stage6.mjs
       - name: A5 integrated After Action V3 phone and desktop acceptance
-        if: ${{ startsWith(github.head_ref, 'refactor/consolidation-a5-') }}
+        if: ${{ startsWith(github.head_ref, 'refactor/consolidation-a5-') || startsWith(github.head_ref, 'refactor/consolidation-a6-') }}
         run: node scripts/smoke-after-action-v3.mjs
       - name: Capture Stage 6 tactical acceptance evidence
         if: always()
