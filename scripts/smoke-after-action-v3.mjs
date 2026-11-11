@@ -116,6 +116,63 @@ try{
        unclip:()=>toggle.click()
      };
    });
+   // Verify the permanent banner against a REAL authoritative Session,
+   // not a cloned replay's inferred outcome or hardcoded placeholder values.
+   const outcomeEvidence=await page.evaluate(async()=>{
+     const [{newSession,debrief},{renderMissionDebrief}]=await Promise.all([
+       import('/src/breach-game.ts'),
+       import('/src/ui/breach-mission-debrief.ts')
+     ]);
+     const root=document.querySelector('#v3-qa');
+     const keys=['debriefIntelBlock','debriefIntelText','debriefTitle',
+       'debriefGrade','debriefSurvivors','debriefAccuracy',
+       'debriefObjective','debriefStats'];
+     const ui=Object.fromEntries(keys.map(key=>[
+       key,root.querySelector('#'+key)
+     ]));
+     const state=newSession(0,418);
+     const render=()=>{
+       const stats=debrief(state);
+       renderMissionDebrief({ui,state,brief:{name:'TEST OPERATION'},
+         recorder:window.__v4Rec,campaign:null,campaignMode:'quick',
+         operationsLogged:0});
+       return {
+         grade:ui.debriefGrade.textContent,
+         expectedGrade:stats.grade+' · '+stats.score,
+         survivors:ui.debriefSurvivors.textContent,
+         expectedSurvivors:stats.survived+' / '+stats.squad.length,
+         accuracy:ui.debriefAccuracy.textContent,
+         expectedAccuracy:stats.shots>0?stats.accuracy+'%':'—',
+         objective:ui.debriefObjective.textContent,
+         expectedObjective:stats.objective?'OBJECTIVE SECURED':'OBJECTIVE NOT COMPLETED',
+         outcome:root.querySelector('#afterActionOutcome').textContent,
+         time:root.querySelector('#afterActionMissionTime').textContent,
+         name:root.querySelector('#afterActionMissionName').textContent
+       };
+     };
+     state.phase='won';state.mission='done';state.seconds=83;
+     const won=render();
+     state.phase='lost';state.mission='clear';state.seconds=91;
+     const lost=render();
+     state.phase='won';state.mission='done';state.seconds=83;
+     render();
+     return {won,lost};
+   });
+   const accurate=record=>record.grade===record.expectedGrade&&
+     record.survivors===record.expectedSurvivors&&
+     record.accuracy===record.expectedAccuracy&&
+     record.objective===record.expectedObjective&&
+     record.name==='TEST OPERATION';
+   check(accurate(outcomeEvidence.won)&&
+     outcomeEvidence.won.outcome==='MISSION COMPLETE'&&
+     outcomeEvidence.won.time==='TIME 1:23',
+     'Success summary not derived from authoritative Session '+name+
+       ' '+JSON.stringify(outcomeEvidence.won));
+   check(accurate(outcomeEvidence.lost)&&
+     outcomeEvidence.lost.outcome==='MISSION FAILED'&&
+     outcomeEvidence.lost.time==='TIME 1:31',
+     'Failure summary not derived from authoritative Session '+name+
+       ' '+JSON.stringify(outcomeEvidence.lost));
    const root=page.locator('#v3-qa');
    check(await root.locator('[data-after-tab]').count()===3,
      'Wrong number of tabs '+name);
