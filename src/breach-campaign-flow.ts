@@ -4,8 +4,8 @@
 import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {team,debrief} from './breach-game.ts';
-import {parseOperationHistory,addOperationRecord,type OperationRecord}
-  from './breach-operations.ts';
+import type {OperationRecord} from './breach-operations.ts';
+import {loadOperationHistory,appendOperationHistory} from './breach-persistence.ts';
 import {careerEventsForOperation} from './campaign-history.ts';
 import {resolveOperation,tacticalSlotOperator,type CampaignReport}
   from './campaign-state.ts';
@@ -50,12 +50,8 @@ export function createBreachCampaignFlow(config:CampaignFlowHooks){
    get scale(){return config.getScale();},
    set scale(next:SiteScale){config.setScale(next);}
  };
-const OPERATION_HISTORY_KEY='fieldwork3d.operation-history.v1';
 let recordedOperation:Session|null=null;
-function operationHistory():OperationRecord[]{
-  try{return parseOperationHistory(localStorage.getItem(OPERATION_HISTORY_KEY));}
-  catch{return [];}
-}
+const operationHistory=()=>loadOperationHistory();
 function recordCompletedOperation(){
  const state=config.getSession();
  const currentCampaign=config.getCampaign();
@@ -100,9 +96,7 @@ function recordCompletedOperation(){
     outcome:state.phase==='won'?'success':'failure',
     grade:stats.grade,elapsed:stats.time,casualties:stats.casualties
   };
-  try{localStorage.setItem(OPERATION_HISTORY_KEY,
-    JSON.stringify(addOperationRecord(operationHistory(),record)));}
-  catch{/* Private mode may reject local storage. Game still works. */}
+  appendOperationHistory(record);
 }
 
  const backButton=document.createElement('button');
