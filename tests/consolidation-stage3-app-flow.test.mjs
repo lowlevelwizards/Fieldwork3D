@@ -145,8 +145,11 @@ test('A3: Quick Play favorite from menu library mounts a real Quick Play session
 test('A3: transitions are idempotent, invalid overlay/replay entry cannot hijack state',()=>{
  const flow=createBreachAppFlow('menu');
  assert.equal(flow.settingsVisibility(true),false);
- assert.equal(flow.beginReplay('debrief'),true); // no gameplay mutation
+ assert.equal(flow.beginReplay('debrief'),false);
  assert.equal(flow.beginReplay('library'),false);
+ assert.equal(flow.openLibrary(true),true);
+ assert.equal(flow.closeLibrary(false),false);
+ assert.equal(flow.beginReplay('library'),true);
  assert.equal(flow.openLibrary(true),false);
  assert.equal(flow.creatorVisibility(true),false);
  assert.equal(flow.exitReplay(),true);
