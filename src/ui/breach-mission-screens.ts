@@ -7,6 +7,7 @@ import {createOperationDossier} from '../briefing/briefing-composer.ts';
 import {attachCampaignDossierContext} from '../briefing/campaign-context.ts';
 import type {createBreachAudioController} from '../breach-audio-controller.ts';
 import {confirmFieldworkAction} from './fieldwork-controls.ts';
+import {disposeAfterActionPresentation} from './breach-after-action-controller.ts';
 import {team,operationBriefing,type Session} from '../breach-game.ts';
 import type {CampaignState} from '../campaign-state.ts';
 import {createBriefingCardModel,type BriefingReport,type BriefingTab}
@@ -450,6 +451,7 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   const afterActionMainMenu=document.getElementById('afterActionMainMenu') as HTMLButtonElement|null;
   afterActionMainMenu?.addEventListener('click',()=>{
    if(config.isReplaying())return;
+   disposeAfterActionPresentation(ui.debrief);
    ui.debrief.hidden=true;config.operationsBoard.hidden=true;
    closeMissionSettings(false);port.setMode('menu');
    port.campaignEntry(!!config.getCampaign());
