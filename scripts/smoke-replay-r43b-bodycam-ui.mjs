@@ -5,7 +5,7 @@ import {spawn} from 'node:child_process';
 import {mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
 
-const port=4204,url='http://127.0.0.1:'+port+'/?quick=1&seed=23&bodycamqa=1';
+const port=4204,url='http://127.0.0.1:'+port+'/?quick=1&seed=23&bodycamqa=1&a8probe=1';
 const server=spawn(process.execPath,[
   'node_modules/vite/bin/vite.js','--host','127.0.0.1',
   '--port',String(port),'--strictPort'
@@ -39,6 +39,7 @@ try{
     isMobile:true,hasTouch:true
   });
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  page.on('console',msg=>{if(msg.text().includes('[A8 probe]'))console.log(msg.text());});
   await page.goto(url,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.querySelector('#phase')?.
     textContent==='PLANNING'&&!!document.querySelector('#breach3dCanvas'),

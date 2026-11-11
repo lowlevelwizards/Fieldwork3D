@@ -37,13 +37,14 @@ async function accept(name,context){
  const errors=[],shaderErrors=[];
  page.on('pageerror',error=>errors.push(error.message));
  page.on('console',message=>{
+  if(message.text().includes('[A8 probe]'))console.log(message.text());
   if(message.type()==='error'&&
    /WebGLProgram|Shader Error|INVALID_OPERATION|compile|linker/i.test(message.text()))
    shaderErrors.push(message.text());
  });
  const before={name};
  try{
-  await page.goto(origin+'/?quick=1&seed=23',{
+  await page.goto(origin+'/?quick=1&seed=23&a8probe=1',{
    waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.querySelector('#phase')?.
    textContent==='PLANNING'&&

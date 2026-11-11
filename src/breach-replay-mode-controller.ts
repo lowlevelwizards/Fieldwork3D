@@ -51,6 +51,9 @@ export function createReplayModeController(config:ReplayModeControllerHooks){
  function enterReplay():boolean{
   if(config.isReplaying())return false;
   const recorder=config.getRecorder();
+  if(location.search.includes('a8probe=1'))console.info('[A8 probe] replay entry',
+    'frames',recorder.frames.length,'duration',recorder.duration,
+    'running',config.getSession().phase,'alreadyReplaying',config.isReplaying());
   if(recorder.frames.length<2)return false;
   const live=config.getSession(),stage=config.getStage();
   config.setFinishedSession(live);config.setReplaying(true);
@@ -100,6 +103,8 @@ export function createReplayModeController(config:ReplayModeControllerHooks){
   config.ui.replaySeek.max=String(Math.max(1,Math.ceil(recorder.duration*60)));
   config.getAnalysis().renderReplayEventMarkers();
   config.seekReplay(0);config.updateHud();
+  if(location.search.includes('a8probe=1'))console.info('[A8 probe] replay mounted',
+    'hidden',config.ui.replayPanel.hidden);
   return true;
  }
  function exitReplay():boolean{
