@@ -5,12 +5,10 @@
 import type {CampaignMode} from '../breach-app-mode.ts';
 import {debrief,team,type Session} from '../breach-game.ts';
 import {sessionIntelligenceReview} from '../briefing/briefing-after-action.ts';
-import {formatAfterAction} from '../breach-after-action.ts';
-import {formatMissionPacing} from '../breach-mission-pacing.ts';
-import {formatCombatReview} from '../breach-combat-review.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import type {CampaignState} from '../campaign-state.ts';
 import {renderAfterActionWorkspace} from './breach-after-action-controller.ts';
+import {renderStructuredMissionDetails} from './breach-after-action-mission-details.ts';
 type DebriefUi={
  debriefIntelBlock:HTMLElement;debriefIntelText:HTMLElement;
  debriefTitle:HTMLElement;debriefGrade:HTMLElement;
@@ -64,35 +62,18 @@ export function renderMissionDebrief(input:{
     ui.debriefAccuracy.textContent=stats.shots>0?stats.accuracy+'%':'—';
     ui.debriefObjective.textContent=stats.objective?
      'OBJECTIVE SECURED':'OBJECTIVE NOT COMPLETED';
+    // Keep the historical binding for older tools but retire the enormous
+    // text dump; the user-visible report is now structured and interactive.
     ui.debriefStats.textContent=
-      'MISSION: '+brief.name.toUpperCase()+'\nGRADE: '+stats.grade+
-      ' · SCORE '+stats.score+'\nTIME: '+stats.time+'s'+
-      '\nOBJECTIVE: '+(stats.objective?'SECURED':'NOT COMPLETED')+
-      '\nSURVIVORS: '+stats.survived+'/'+team(state).length+
-      '\nSHOTS: '+stats.shots+' | HITS: '+stats.hits+
-      ' | ACCURACY: '+stats.accuracy+'%'+
-      '\nCASUALTIES: '+stats.casualties+' · PAUSES: '+stats.pauses+
-      '\n'+stats.squad.map(o=>o.name+' '+(o.survived?
-        o.injury?'WOUNDED':'ACTIVE':'DOWN')+' · '+o.fired+' RDS').join('\n')+
-      '\nOPERATIONS LOGGED: '+operationsLogged+
-      '\n\nMISSION PACING\n'+formatMissionPacing(recorder.events)+
-      '\n\nCOMBAT REVIEW\n'+formatCombatReview(recorder.frames,recorder.events,
-      recorder.ballistics.shots)+
-      '\n\nTACTICAL TIMELINE\n'+formatAfterAction(recorder.events,10);
+      'GRADE '+stats.grade+' · SCORE '+stats.score+
+      ' · TIME '+stats.time+'s · '+stats.survived+
+      ' SURVIVORS · '+stats.shots+' SHOTS';
+    const structured=root?.querySelector<HTMLElement>(
+      '#afterActionMissionDetails');
+    if(structured)structured.replaceChildren(renderStructuredMissionDetails({
+      name:brief.name,stats,recorder,campaign,campaignMode,
+      operationsLogged,phase:state.phase
+    }));
     if(root)renderAfterActionWorkspace(root,recorder,
       {showIntel:!!state.operationDossier});
-    if(stats.rescueStatus!=='none')
-      ui.debriefStats.textContent+='\nCIVILIAN RESCUE: '+
-        stats.rescueStatus.toUpperCase().replaceAll('-',' ');
-    if(campaignMode==='mission'&&campaign?.history.length){
-     const recent=campaign.history[campaign.history.length-1];
-     const lines=recent.gains?.flatMap(person=>{
-      const member=campaign?.operators.find(m=>m.id===person.id);
-      const improvements=Object.entries(person.gains)
-       .filter(([,gain])=>(gain??0)>0)
-       .map(([skill,gain])=>skill.replace(/([A-Z])/g,' $1')+' +'+((gain??0)*100).toFixed(1));
-      return improvements.length?[((member?.callsign??person.id)+': '+improvements.join(', '))]:[];
-     })??[];
-     if(lines.length)ui.debriefStats.textContent+='\n\nCAREER DEVELOPMENT\n'+lines.join('\n');
-    }
 }
