@@ -6,9 +6,11 @@ on:
       - 'docs/consolidation-package-b-*.md'
       - 'scripts/verification/package-b0-pose-audit.mjs'
       - 'tests/package-b0-pose-audit.test.mjs'
+      - 'tests/package-b1-pose-decision.test.mjs'
       - '.github/workflows/package-b-pose-architecture.yml'
       - 'src/breach-operator-*.ts'
       - 'src/breach-pose-*.ts'
+      - 'src/breach-pose-decision.ts'
       - 'src/breach-unified-upper-body.ts'
       - 'src/breach-weapon-pose.ts'
       - 'src/breach-3d.ts'
@@ -40,6 +42,13 @@ jobs:
         run: |
           node --test tests/package-b0-pose-audit.test.mjs
           node scripts/verification/package-b0-pose-audit.mjs --check --json artifacts/package-b0/audit.json --markdown artifacts/package-b0/audit.md
+      - name: B1 pure pose decision, action and eligibility policy parity
+        run: |
+          node --experimental-strip-types --test \
+            tests/package-b1-pose-decision.test.mjs \
+            tests/breach-pose-action-state.test.mjs \
+            tests/breach-pose-strategy.test.mjs \
+            tests/breach-motion-short-stock-all-weapons.test.mjs
       - name: Posed frame, replay seeks, V3/V4 contacts, motion and Lab parity
         run: |
           node --experimental-strip-types --test --test-concurrency=2 \
