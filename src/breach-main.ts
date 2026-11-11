@@ -47,11 +47,11 @@ import {parseBreachBootConfig,BREACH_LIGHTING_MODES} from './breach-boot-config.
 import {loadIntelPreference,loadQuickPlayRoster,saveQuickPlayRoster,
  loadCampaignFromStorage,saveCampaignToStorage} from './breach-persistence.ts';
 import {createReplayModeController} from './breach-replay-mode-controller.ts';
-import {afterActionSnapshot} from './ui/breach-after-action-controller.ts';
-import {makeAfterActionLaunchRequest} from './breach-after-action-replay-navigation.ts';
+import {bindAfterActionReplayNavigation} from './ui/breach-after-action-controller.ts';
+
 import {highlightCapture} from './breach-highlight-capture.ts';
 import {replayHighlightMoments} from './breach-highlight-frames.ts';
-import {restoreAfterActionWorkspace} from './ui/breach-after-action-controller.ts';
+import {restoreAfterActionWorkspace,type AfterActionReturnContext} from './ui/breach-after-action-controller.ts';
 import {createBreachReplayPresentationController} from './breach-replay-presentation-controller.ts';
 import {createReplayPresentationOptions} from './breach-replay-presentation-options.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
@@ -832,7 +832,7 @@ const replayModeController=createReplayModeController({
 function enterReplay(source:'library'|'debrief'='debrief'){
  if(replayModeController.enterReplay())appFlow.beginReplay(source);
 }
-let afterActionReturn:ReturnType<typeof afterActionSnapshot>=null;
+let afterActionReturn:AfterActionReturnContext|null=null;
 function exitReplay(){
  const origin=afterActionReturn;
  const exited=replayModeController.exitReplay();
@@ -882,60 +882,18 @@ const replayLibrary=createBreachReplayLibraryController({
     appFlow.setMode('menu');campaignScreen.entry(!!campaign);
   }
 });
-ui.watchReplay.addEventListener('click',()=>{
-  replayLibrary.markDebriefEntry();enterReplay();
- if(replaying)highlightCapture.queue(recorder,replayHighlightMoments(recorder));
-});
-ui.debrief.addEventListener('fw-after-action-replay',event=>{
- const detail=(event as CustomEvent<{
-   surface:string;contactId?:string;shotId?:number|null;time:number;
-   end?:number
- }>).detail;
- if(!detail||replaying)return;
- const request=makeAfterActionLaunchRequest(recorder,detail);
- if(!request)return;
- const origin=afterActionSnapshot(ui.debrief);
- replayLibrary.markDebriefEntry();enterReplay();
- if(!replaying)return;
- afterActionReturn=origin;
- highlightCapture.queue(recorder,replayHighlightMoments(recorder));
- if(stage&&viewMode==='plan2d')cameraMode('iso');
- replayCamera.camMount='chest';replayCamera.lens='cam';
- // Prefer the recorded shooter's own bodycam when the recording supports
- // personal observation. Never select a hostile actor as an observer.
- const shot=detail.shotId==null?null:
-   recorder.ballistics.shots.find(s=>s.id===detail.shotId)??null;
- const shooter=shot?.shooterId??null;
- const candidate=shooter&&replayBodycam.observers.includes(shooter)?shooter:
-   detail.contactId&&replayBodycam.observers.includes(detail.contactId)?
-     detail.contactId:null;
- if(stage&&candidate){
-   replayKnowledge.observerId=candidate;
-   if(!startReplayBodycam())chooseReplayCamera('director');
- }else if(stage&&replayDirector.camEligibleObservers.length){
-   chooseReplayCamera('director');
- }else{
-   replayCamera.lens='ortho';chooseReplayCamera('free');
-   showUiHelp('BODYCAM UNAVAILABLE · TACTICAL REPLAY',3000);
- }
- replayPlayback.startIncident(request.range,recorder.duration,true,true);
- presentReplayAtCurrentTime();audioController.unlock();
- ui.afterActionClipHud.hidden=false;
- ui.afterActionClipLabel.textContent=request.label+' · LOOP';
- ui.afterActionClipToggle.textContent='UNCLIP';
- updateReplayHud();
-});
-ui.afterActionClipToggle.addEventListener('click',()=>{
- if(!replaying||!afterActionReturn)return;
- if(replayPlayback.incident){
-   replayPlayback.unclipIncident();
-   ui.afterActionClipToggle.textContent='RECLIP';
-   ui.afterActionClipLabel.textContent='FULL REPLAY';
- }else if(replayPlayback.reclipIncident()){
-   ui.afterActionClipToggle.textContent='UNCLIP';
-   ui.afterActionClipLabel.textContent='INCIDENT · LOOP';
- }
- presentReplayAtCurrentTime();
+bindAfterActionReplayNavigation({
+ ui, getRecorder:()=>recorder,isReplaying:()=>replaying,
+ markDebriefEntry:()=>replayLibrary.markDebriefEntry(),
+ enterReplay:()=>enterReplay(),
+ queueHighlights:()=>highlightCapture.queue(recorder,replayHighlightMoments(recorder)),
+ getStage:()=>stage,getViewMode:()=>viewMode,cameraMode,
+ camera:replayCamera,director:replayDirector,
+ bodycam:replayBodycam,knowledge:replayKnowledge,
+ startBodycam:startReplayBodycam,chooseCamera:chooseReplayCamera,
+ playback:replayPlayback,presentReplay:presentReplayAtCurrentTime,
+ unlockAudio:()=>audioController.unlock(),updateReplayHud,showHelp:showUiHelp,
+ setReturn:value=>{afterActionReturn=value;},getReturn:()=>afterActionReturn
 });
 const replayTimeline=createBreachReplayTimelineController({
   ui:{

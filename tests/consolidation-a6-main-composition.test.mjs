@@ -161,3 +161,13 @@ test('A6 weapon choice overlay renders and binds only within the existing tactic
  assert.match(hud,/equipWeaponChoice\(/);
  assert.match(hud,/chooser\.addEventListener\('keydown'/);
 });
+
+test('A6 after-action replay/clip UI listeners belong to existing after-action owner',()=>{
+ const after=readFileSync(new URL('../src/ui/breach-after-action-controller.ts',import.meta.url),'utf8');
+ assert.match(source,/bindAfterActionReplayNavigation\(/);
+ assert.doesNotMatch(source,/ui\.debrief\.addEventListener\('fw-after-action-replay'/);
+ assert.doesNotMatch(source,/ui\.afterActionClipToggle\.addEventListener/);
+ assert.match(after,/function bindAfterActionReplayNavigation\(/);
+ assert.match(after,/replayRequestsBound\.has\(ui\.debrief\)/);
+ assert.match(after,/makeAfterActionLaunchRequest\(/);
+});
