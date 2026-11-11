@@ -39,11 +39,11 @@ export function renderAfterActionTimeline(input:{
  events:readonly AfterActionTimelineEvent[];duration:number;
  width:number;complete:boolean;state:TimelineViewState;
  actions:TimelineViewActions;actorName:(id:string)=>string;
- canInspect:(e:AfterActionTimelineEvent)=>boolean;
+ inspectLabel:(e:AfterActionTimelineEvent)=>string|null;
  highlightsAvailable:boolean;
 }):HTMLElement{
  const {events,duration,state,actions,actorName,complete,
-  canInspect,highlightsAvailable}=input;
+  inspectLabel,highlightsAvailable}=input;
  const root=make('section','fw-v5-timeline');
  root.setAttribute('aria-label','Recorded mission timeline');
  const filtered=events.filter(e=>state.filter==='all'||
@@ -152,7 +152,8 @@ export function renderAfterActionTimeline(input:{
  const controls=make('div','fw-v5-timeline-actions');
  controls.append(button('▶ WATCH CLIP',()=>actions.watch(selected),
    'fw-v5-timeline-primary'));
- if(canInspect(selected))controls.append(button('INSPECT COMBAT',
+ const inspection=inspectLabel(selected);
+ if(inspection)controls.append(button(inspection,
    ()=>actions.inspect(selected)));
  if(highlightsAvailable)controls.append(button('OPEN HIGHLIGHTS',
    actions.highlights));
