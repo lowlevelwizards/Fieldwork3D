@@ -75,6 +75,27 @@ try{
      'Historical squad did not render '+label+' '+JSON.stringify(startup));
    check(await root.locator('[data-after-squad-model]').count()===1,
      'Squad historical lineup missing '+label);
+   if(width<=700&&height>=481){
+     const positions=await page.evaluate(()=>{
+       const root=document.querySelector('#v4-stage3-qa');
+       const body=root.querySelector('#afterActionBody').getBoundingClientRect();
+       const model=root.querySelector('.fw-v4-squad-model').getBoundingClientRect();
+       const rows=[...root.querySelectorAll('.fw-v4-rank-row')];
+       return {bodyBottom:body.bottom,modelTop:model.top,
+         modelBottom:model.bottom,
+         rankBottom:Math.max(...rows.map(row=>row.getBoundingClientRect().bottom)),
+         scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth};
+     });
+     check(positions.modelTop>=0&&
+       positions.modelBottom<=positions.bodyBottom+2&&
+       positions.rankBottom<=positions.bodyBottom+2&&
+       positions.scrollWidth<=positions.viewport+2,
+       'Initial real 3D lineup and all ranks must be in the phone viewport '+
+         label+' '+JSON.stringify(positions));
+   }
+   await root.screenshot({
+     path:'artifacts/after-action-v4-stage3/initial-'+label+'.png'
+   });
    await root.locator('.fw-v4-rank-row')
      .filter({hasText:'MOSS'}).click();
    check(await page.evaluate(()=>window.__v4Stage3Canvas===
