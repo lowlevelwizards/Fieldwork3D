@@ -81,7 +81,8 @@ test('A2: boot parser preserves legacy Number, repeated-key and invalid fallback
   '?seed=0','?seed=-1','?seed=4294967296','?seed=4.2',
   '?seed=Infinity','?seed=NaN','?seed=','?seed=9007199254740991'
  ])assert.equal(parseBreachBootConfig(query).requestedSeed,null,query);
- assert.equal(parseBreachBootConfig('?seed=2&seed=100').requestedSeed,100);
+ assert.equal(parseBreachBootConfig('?seed=2&seed=100').requestedSeed,2,
+  'URLSearchParams.get uses the first occurrence, matching the old entrypoint');
  assert.equal(parseBreachBootConfig('?seed=0x10').requestedSeed,16);
  assert.equal(parseBreachBootConfig('?condition=').requestedCondition,0);
  assert.equal(parseBreachBootConfig('?condition=-10').requestedCondition,0);
