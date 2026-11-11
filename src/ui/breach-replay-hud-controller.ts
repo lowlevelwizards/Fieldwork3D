@@ -91,6 +91,7 @@ export type ReplayHudSnapshot={
 export function createBreachReplayHudController(config:{
  ui:ReplayHudElements;snapshot:()=>ReplayHudSnapshot;
  onOverlayChoice:(choice:string)=>void;
+ followReplayOperator:(id:string)=>void;
  presentation:{
   options:ReturnType<typeof createReplayPresentationOptions>;
   setXray:(on:boolean)=>void;

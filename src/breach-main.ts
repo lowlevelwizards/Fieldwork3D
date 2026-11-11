@@ -121,7 +121,7 @@ import {createTacticalInteractionState} from './breach-tactical-interaction-stat
 import {createBreachTacticalFrameFeedbackController} from './ui/breach-tactical-frame-feedback-controller.ts';
 import {createBreachReplayHudController} from './ui/breach-replay-hud-controller.ts';
 import {createTacticalPaletteController} from './ui/tactical-palette-controller.ts';
-import {dispatchTacticalContextCommand} from './breach-tactical-context-command.ts';
+
 
 const canvas=el<HTMLCanvasElement>('breachCanvas');
 const feedbackLayer=document.createElement('canvas');
@@ -636,9 +636,7 @@ function teach(key:string,description:string,duration=4200):void{
 function showUiHelp(text:string,duration=4200):void{
   hudController.showHelp(text,duration);
 }
-function discoverAction(action:string,description:string):void{
-  hudController.discoverAction(action,description);
-}
+
 const installTouchCommandHelp=(button:HTMLButtonElement)=>
   bindTouchCommandHelp(button,showUiHelp,updateHud);
 function armFacing(mode:'look'|'watch'):void{
@@ -1176,6 +1174,7 @@ replayHudController=createBreachReplayHudController({
   options:replayDisplay,
   setXray:enabled=>stage?.setReplayXray(enabled)
  },
+ followReplayOperator,
  onOverlayChoice:choice=>{
    const options=replayDisplay.options;
    replayDisplay.setPreset('custom');
