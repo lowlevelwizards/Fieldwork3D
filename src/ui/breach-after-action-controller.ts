@@ -103,6 +103,7 @@ type State={
   timelineFilter:TimelineFilter;timelineSelectedKey:string|null;
   timelineClusterId:string|null;timelineLedgerOpen:boolean;
   timelineLedgerLimit:number;timelineRailScroll:number;
+  timelineGroupScroll:number;timelineLedgerScroll:number;
 };
 const owners=new WeakMap<HTMLElement,State>();
 function currentCombatEvidence(root:HTMLElement):ForensicEvidence|null{
@@ -143,7 +144,8 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      scroll:{},showIntel:options.showIntel,
      timelineEvents:buildAfterActionTimeline(rec),
      timelineFilter:'all',timelineSelectedKey:null,timelineClusterId:null,
-     timelineLedgerOpen:false,timelineLedgerLimit:30,timelineRailScroll:0};
+     timelineLedgerOpen:false,timelineLedgerLimit:30,timelineRailScroll:0,
+     timelineGroupScroll:0,timelineLedgerScroll:0};
    owners.set(root,state);
    // A new recording never inherits a previous mission's open report sheet.
    const oldDetails=root.querySelector<HTMLElement>('#afterActionDetails');
@@ -200,6 +202,10 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    if(!s||!host)return;
    const previous=host.querySelector<HTMLElement>('.fw-v5-timeline-rail');
    if(previous)s.timelineRailScroll=previous.scrollLeft;
+   const oldGroup=host.querySelector<HTMLElement>('.fw-v5-timeline-group-items');
+   if(oldGroup)s.timelineGroupScroll=oldGroup.scrollTop;
+   const oldLedger=host.querySelector<HTMLElement>('.fw-v5-timeline-ledger-list');
+   if(oldLedger)s.timelineLedgerScroll=oldLedger.scrollTop;
    const hidden=root.querySelector<HTMLElement>('#afterActionDetails')?.hidden;
    if(hidden)return;
    const actorName=(id:string):string=>
@@ -220,16 +226,27 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      canInspect:event=>!!toContact(event),
      highlightsAvailable:replayHighlightMoments(s.recorder).length>0,
      actions:{
-       filter:value=>{s.timelineFilter=value;s.timelineClusterId=null;
-         s.timelineLedgerLimit=30;persist();},
+       filter:value=>{
+         s.timelineFilter=value;s.timelineClusterId=null;
+         if(value!=='all'&&!s.timelineEvents.some(e=>
+           e.key===s.timelineSelectedKey&&e.category===value)){
+           s.timelineSelectedKey=s.timelineEvents.find(e=>e.category===value)?
+             .key??null;
+         }
+         s.timelineGroupScroll=0;s.timelineLedgerScroll=0;
+         s.timelineLedgerLimit=30;persist();
+       },
        select:key=>{
          if(!s.timelineEvents.some(e=>e.key===key))return;
          s.timelineSelectedKey=key;s.timelineClusterId=null;persist();
        },
        selectCluster:(id,key)=>{
-         s.timelineClusterId=id;s.timelineSelectedKey=key;persist();
+         s.timelineClusterId=id;s.timelineSelectedKey=key;
+         s.timelineGroupScroll=0;persist();
        },
-       ledger:open=>{s.timelineLedgerOpen=open;persist();},
+       ledger:open=>{
+         s.timelineLedgerOpen=open;s.timelineLedgerScroll=0;persist();
+       },
        more:()=>{s.timelineLedgerLimit+=30;persist();},
        watch:event=>{
          root.dispatchEvent(new CustomEvent('fw-after-action-replay',{
@@ -265,6 +282,10 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    host.replaceChildren(panel);
    const rail=host.querySelector<HTMLElement>('.fw-v5-timeline-rail');
    if(rail)rail.scrollLeft=s.timelineRailScroll;
+   const group=host.querySelector<HTMLElement>('.fw-v5-timeline-group-items');
+   if(group)group.scrollTop=s.timelineGroupScroll;
+   const ledger=host.querySelector<HTMLElement>('.fw-v5-timeline-ledger-list');
+   if(ledger)ledger.scrollTop=s.timelineLedgerScroll;
  };
  timelineRenderers.set(root,drawTimeline);
  function draw():void{
@@ -404,6 +425,7 @@ export type AfterActionReturnContext={
  timelineFilter?:TimelineFilter;timelineSelectedKey?:string|null;
  timelineClusterId?:string|null;timelineLedgerOpen?:boolean;
  timelineLedgerLimit?:number;timelineRailScroll?:number;
+ timelineGroupScroll?:number;timelineLedgerScroll?:number;
  operatorRecordOpen:boolean;detailsOpen:boolean;detailsScroll:number;
  scroll:Partial<Record<AfterActionTab,number>>;
 };
@@ -421,6 +443,8 @@ export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|n
    timelineLedgerOpen:s.timelineLedgerOpen,
    timelineLedgerLimit:s.timelineLedgerLimit,
    timelineRailScroll:s.timelineRailScroll,
+   timelineGroupScroll:s.timelineGroupScroll,
+   timelineLedgerScroll:s.timelineLedgerScroll,
    operatorRecordOpen:s.operatorRecordOpen,
    detailsOpen:!root.querySelector<HTMLElement>('#afterActionDetails')?.hidden,
    detailsScroll:root.querySelector<HTMLElement>('.fw-after-detail-content')?.scrollTop??0,
@@ -457,9 +481,12 @@ export function restoreAfterActionWorkspace(
  s.timelineSelectedKey=context.timelineSelectedKey??null;
  s.timelineClusterId=context.timelineClusterId??null;
  s.timelineLedgerOpen=context.timelineLedgerOpen??false;
- s.timelineLedgerLimit=Math.min(2000,Math.max(30,
-   context.timelineLedgerLimit??30));
+ const limit=context.timelineLedgerLimit??30;
+ s.timelineLedgerLimit=Number.isFinite(limit)?
+   Math.min(Math.max(30,s.timelineEvents.length),Math.max(30,limit)):30;
  s.timelineRailScroll=Math.max(0,context.timelineRailScroll??0);
+ s.timelineGroupScroll=Math.max(0,context.timelineGroupScroll??0);
+ s.timelineLedgerScroll=Math.max(0,context.timelineLedgerScroll??0);
  s.operatorRecordOpen=context.operatorRecordOpen&&!!context.operatorId;
  s.scroll={...context.scroll};
  const detail=root.querySelector<HTMLElement>('#afterActionDetails');
