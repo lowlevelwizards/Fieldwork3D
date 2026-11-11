@@ -1,0 +1,62 @@
+name: After Action V4 — Stage 5 Interactive Timeline and Details
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/after-action-v4-stage5.yml'
+      - 'index.html'
+      - 'src/breach-style.css'
+      - 'src/breach-after-action-timeline.ts'
+      - 'src/ui/breach-after-action-*.ts'
+      - 'src/ui/breach-mission-debrief.ts'
+      - 'scripts/smoke-after-action-v4-stage5.mjs'
+      - 'tests/after-action-v4-stage5-timeline.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: after-action-v4-stage5-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  mission-investigation:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/after-action-v4-stage5-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript and architecture contract
+        run: npm run check
+      - name: Stage 5, Stage 4, Stage 3 and navigation regression suite
+        run: |
+          node --experimental-strip-types --test \
+            tests/after-action-v4-stage5-timeline.test.mjs \
+            tests/after-action-v4-stage4-forensic.test.mjs \
+            tests/after-action-v4-stage3-persistent-models.test.mjs \
+            tests/after-action-v4-stage2-hierarchy.test.mjs \
+            tests/after-action-v4-stage1-navigation.test.mjs \
+            tests/breach-after-action-v2-evidence.test.mjs \
+            tests/breach-after-action-v2-scoped-replay.test.mjs \
+            tests/replay-r3-archive.test.mjs \
+            tests/consolidation-stage3-app-flow.test.mjs
+      - name: Production build
+        run: npm run build
+      - name: Install browser driver
+        run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Stage 5 structured Details and lossless timeline across four viewports
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/smoke-after-action-v4-stage5.mjs
+      - name: Capture investigation sheet screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: after-action-v4-stage5-investigation
+          path: artifacts/after-action-v4-stage5/
+          if-no-files-found: warn
+          retention-days: 14
