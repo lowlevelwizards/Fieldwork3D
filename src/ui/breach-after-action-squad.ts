@@ -88,7 +88,7 @@ export function renderSquadDetails(op:OperatorAfterAction):HTMLElement{
   ['RANK',String(op.rank)],['CONTRIBUTION SCORE',String(op.contribution)],
   ['SHOTS',String(op.shots)],['HITS',String(op.hits)],
   ['DAMAGING HITS',String(op.damagingHits)],
-  ['NON-DAMAGING HITS',String(op.armorStops)],
+  ['CONFIRMED ARMOR STOPS',String(op.armorStops)],
   ['INCAPACITATIONS',String(op.incapacitations)],
   ['CONTACT REPORTS',String(op.contactReports)],
   ['DOORS OPENED',op.doorsOpened===null?'NOT RECORDED':String(op.doorsOpened)],

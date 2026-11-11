@@ -16,12 +16,27 @@ type DebriefUi={
  debriefSurvivors:HTMLElement;debriefAccuracy:HTMLElement;
  debriefObjective:HTMLElement;debriefStats:HTMLElement;
 };
+const rendered=new WeakMap<HTMLElement,{
+ recorder:MissionRecorder;phase:Session['phase'];operationsLogged:number;
+ historyLength:number;campaignMode:string
+}>();
 export function renderMissionDebrief(input:{
  ui:DebriefUi;state:Session;brief:{name:string};
  recorder:MissionRecorder;campaign:CampaignState|null;
  campaignMode:'menu'|'home'|'mission'|'quick';operationsLogged:number;
 }):void{
  const {ui,state,brief,recorder,campaign,campaignMode,operationsLogged}=input;
+ const root=ui.debriefStats.closest<HTMLElement>('#debrief');
+ if(root){
+   const previous=rendered.get(root);
+   const historyLength=campaign?.history.length??0;
+   if(previous&&previous.recorder===recorder&&previous.phase===state.phase&&
+     previous.operationsLogged===operationsLogged&&
+     previous.historyLength===historyLength&&previous.campaignMode===campaignMode)
+     return;
+   rendered.set(root,{recorder,phase:state.phase,operationsLogged,
+     historyLength,campaignMode});
+ }
 
     ui.debriefIntelBlock.hidden=!state.operationDossier;
     ui.debriefIntelText.textContent=state.operationDossier?
@@ -50,7 +65,6 @@ export function renderMissionDebrief(input:{
       '\n\nCOMBAT REVIEW\n'+formatCombatReview(recorder.frames,recorder.events,
       recorder.ballistics.shots)+
       '\n\nTACTICAL TIMELINE\n'+formatAfterAction(recorder.events,10);
-    const root=ui.debriefStats.closest<HTMLElement>('#debrief');
     if(root)renderAfterActionWorkspace(root,recorder,
       {showIntel:!!state.operationDossier});
     if(stats.rescueStatus!=='none')

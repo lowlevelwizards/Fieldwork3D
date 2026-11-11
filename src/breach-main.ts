@@ -2498,6 +2498,8 @@ const afterActionMainMenu=document.getElementById('afterActionMainMenu') as HTML
 afterActionMainMenu?.addEventListener('click',()=>{
   if(replaying)return;
   ui.debrief.hidden=true;
+  operationsBoard.hidden=true;
+  closeMissionSettings(false);
   campaignMode='menu';
   campaignScreen.entry(!!campaign);
 });

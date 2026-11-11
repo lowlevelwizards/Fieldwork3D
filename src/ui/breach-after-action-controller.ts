@@ -67,7 +67,18 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    open?.addEventListener('click',()=>{if(details){details.hidden=false;close?.focus();}});
    close?.addEventListener('click',dismiss);
    details?.addEventListener('keydown',e=>{
-     if(e.key==='Escape'){e.preventDefault();dismiss();}
+     if(e.key==='Escape'){e.preventDefault();dismiss();return;}
+     if(e.key!=='Tab'||!details)return;
+     const controls=[...details.querySelectorAll<HTMLElement>(
+       'button:not([disabled]),a[href],summary')].filter(node=>
+         !node.closest('[hidden]'));
+     if(!controls.length)return;
+     const first=controls[0],last=controls[controls.length-1];
+     if(e.shiftKey&&document.activeElement===first){
+       e.preventDefault();last.focus();
+     }else if(!e.shiftKey&&document.activeElement===last){
+       e.preventDefault();first.focus();
+     }
    });
    }
  }else{
