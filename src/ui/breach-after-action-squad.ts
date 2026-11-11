@@ -16,9 +16,7 @@ function metric(value:string,label:string){
  e.append(el('strong','',value),el('span','',label));return e;
 }
 function achievement(op:OperatorAfterAction):string|null{
- if(op.status==='incapacitated')return 'INCAPACITATED';
- if(op.status==='heavy')return 'HEAVILY WOUNDED';
- if(op.status==='wounded')return 'WOUNDED IN ACTION';
+ // Health condition is displayed independently of earned distinctions.
  if(op.incapacitations>0&&op.shots>=5&&op.hits===op.shots)
    return 'MARKSMAN · PERFECT ACCURACY';
  if((op.doorsForced??0)>0)return 'ENTRY SPECIALIST';
@@ -29,7 +27,7 @@ function achievement(op:OperatorAfterAction):string|null{
  return null;
 }
 function contextMetric(op:OperatorAfterAction){
- if(op.categories.objective>0)return metric(String(op.categories.objective),'OBJECTIVE');
+ if(op.categories.objective>0)return metric(String(op.categories.objective)+' pts','OBJECTIVE CONTRIBUTION');
  if((op.doorsForced??0)>0)return metric(String(op.doorsForced),'FORCED DOORS');
  if((op.windowsTraversed??0)>0)return metric(String(op.windowsTraversed),'WINDOW ENTRIES');
  if(op.contactReports>0)return metric(String(op.contactReports),'CONTACTS');
@@ -39,7 +37,7 @@ function contextMetric(op:OperatorAfterAction){
 }
 export function renderSquadView(report:AfterActionReport,
  manifest:ReplayManifest|null,selectedId:string|null,
- choose:(id:string)=>void,more:()=>void):HTMLElement{
+ choose:(id:string)=>void,more:(id:string)=>void):HTMLElement{
  const section=el('section','fw-v3-squad');
  const operators=report.operators;
  const selected=operators.find(o=>o.id===selectedId)??operators[0]??null;
@@ -75,7 +73,7 @@ export function renderSquadView(report:AfterActionReport,
  info.append(name,metrics);
  const earned=achievement(selected);
  if(earned)info.append(el('div','fw-v3-distinction','✦ '+earned));
- info.append(action('FULL OPERATOR RECORD',more,'fw-v3-details-link'));
+ info.append(action('FULL OPERATOR RECORD',()=>more(selected.id),'fw-v3-details-link'));
  main.append(figure,info);section.append(main);
  if(!report.complete)section.append(el('p','fw-after-muted',
    'PARTIAL REPLAY · SOME CONTRIBUTIONS MAY BE UNRECORDED'));
@@ -85,7 +83,12 @@ export function renderSquadDetails(op:OperatorAfterAction):HTMLElement{
  const root=el('section','fw-v3-operator-details');
  root.append(el('h3','',op.name+' / RECORDED CONTRIBUTIONS'));
  const pairs:[string,string][]=[
-  ['RANK',String(op.rank)],['CONTRIBUTION SCORE',String(op.contribution)],
+  ['CONTRIBUTION RANK','#'+String(op.rank)],
+  ['TOTAL RECORDED CONTRIBUTION',String(op.contribution)+' pts'],
+  ['COMBAT CONTRIBUTION',String(op.categories.combat)+' pts'],
+  ['RECON CONTRIBUTION',String(op.categories.recon)+' pts'],
+  ['SUPPORT CONTRIBUTION',String(op.categories.support)+' pts'],
+  ['OBJECTIVE CONTRIBUTION',String(op.categories.objective)+' pts'],
   ['SHOTS',String(op.shots)],['HITS',String(op.hits)],
   ['DAMAGING HITS',String(op.damagingHits)],
   ['CONFIRMED ARMOR STOPS',String(op.armorStops)],
@@ -100,6 +103,6 @@ export function renderSquadDetails(op:OperatorAfterAction):HTMLElement{
   row.append(el('span','',label),el('span','',value));root.append(row);
  }
  const notice=el('p','fw-after-muted',
-  'Contribution is a retrospective summary, not the mission grade or Campaign XP.');
+  'Contribution categories are weighted points; shots, contacts and actions above are raw recorded counts. These points are not the mission score or Campaign XP.');
  root.append(notice);return root;
 }

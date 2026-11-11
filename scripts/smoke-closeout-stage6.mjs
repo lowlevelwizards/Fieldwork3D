@@ -14,19 +14,6 @@ const server=spawn(process.execPath,[
 ],{stdio:'ignore',env:{...process.env,CI:'true'}});
 const check=(x,message)=>{if(!x)throw Error(message);};
 const settle=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-async function a8ReplayClickDiagnostics(page){
- return page.evaluate(()=>({
-  attached:!!document.querySelector('#watchReplay')?.isConnected,
-  disabled:document.querySelector('#watchReplay')?.disabled,
-  detailsHidden:document.querySelector('#afterActionDetails')?.hidden,
-  debriefHidden:document.querySelector('#debrief')?.hidden,
-  ancestorInert:!!document.querySelector('#watchReplay')?.closest('[inert]'),
-  clicked:window.__a8ReplayClicks||0,
-  replayPanelHidden:document.querySelector('#replayPanel')?.hidden,
-  replayPanelVisible:getComputedStyle(document.querySelector('#replayPanel')).display,
-  phase:document.querySelector('#phase')?.textContent
- }));
-}
 let browser;
 const metrics=page=>page.evaluate(()=>({
  viewport:{width:innerWidth,height:innerHeight},
@@ -50,14 +37,13 @@ async function accept(name,context){
  const errors=[],shaderErrors=[];
  page.on('pageerror',error=>errors.push(error.message));
  page.on('console',message=>{
-  if(message.text().includes('[A8 probe]'))console.log(message.text());
   if(message.type()==='error'&&
    /WebGLProgram|Shader Error|INVALID_OPERATION|compile|linker/i.test(message.text()))
    shaderErrors.push(message.text());
  });
  const before={name};
  try{
-  await page.goto(origin+'/?quick=1&seed=23&a8probe=1',{
+  await page.goto(origin+'/?quick=1&seed=23',{
    waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.querySelector('#phase')?.
    textContent==='PLANNING'&&
@@ -105,16 +91,21 @@ async function accept(name,context){
    textContent==='PAUSED',null,{timeout:15000});
   const paused=await metrics(page);
   check(paused.clock!=='00:00','Mission clock did not advance: '+name);
-  // Use actual recorded frames; an empty recorder must never fabricate a film.
-  let opened=false;
-  await page.evaluate(()=>{window.__a8ReplayClicks=0;document.querySelector('#watchReplay')?.addEventListener('click',()=>{window.__a8ReplayClicks++},{capture:true});});
-  for(let i=0;i<8&&!opened;i++){
-   await page.evaluate(()=>document.querySelector('#watchReplay')?.click());
-   opened=await page.locator('#replayPanel').isVisible();
-   if(!opened)await settle(450);
-  }
-  if(!opened)console.log('[A8 browser diag] '+JSON.stringify(await a8ReplayClickDiagnostics(page)));
-  check(opened,'Recorded replay did not open: '+name);
+  // V4 restricts Full Replay to the real debrief workspace. An active,
+  // already recorded operation is instead opened through the legitimate
+  // Replay Library flow; no forged terminal phase or hidden debrief click.
+  await page.waitForFunction(()=>document.querySelector('#saveReplayDebrief')?.
+   disabled===false,null,{timeout:20000});
+  await page.evaluate(()=>document.querySelector('#saveReplayDebrief')?.click());
+  await page.waitForFunction(()=>document.querySelector('#saveReplayDebrief')?.
+   textContent==='REPLAY SAVED',null,{timeout:20000});
+  await page.evaluate(()=>document.querySelector('#openReplayLibrary')?.click());
+  await page.locator('#replayLibraryList .replay-library-watch').first()
+    .waitFor({state:'visible',timeout:20000});
+  await page.locator('#replayLibraryList .replay-library-watch').first().click();
+  await page.locator('#replayPanel').waitFor({state:'visible',timeout:30000});
+  const opened=await page.locator('#replayPanel').isVisible();
+  check(opened,'Saved recorded replay did not open: '+name);
   const replay=await metrics(page);
   check(replay.scrollWidth<=replay.viewport.width+2,
    'Replay horizontal overflow: '+JSON.stringify(replay));
@@ -130,6 +121,9 @@ async function accept(name,context){
   await page.locator('#replayExit').click();
   check(await page.locator('#replayPanel').isHidden(),
    'Replay exit must restore tactical controls: '+name);
+  // Library playback returns to its originating library, not the debrief.
+  if(await page.locator('#replayLibraryDialog').isVisible())
+   await page.locator('#closeReplayLibrary').click();
   const resumed=await metrics(page);
   check(resumed.phase===paused.phase,
    'Replay exit changed live mission phase: '+JSON.stringify({paused,resumed}));

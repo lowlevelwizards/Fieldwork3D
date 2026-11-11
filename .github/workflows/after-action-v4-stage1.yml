@@ -1,0 +1,57 @@
+name: After Action V4 — Stage 1 Navigation Acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/after-action-v4-stage1.yml'
+      - 'src/breach-app-flow.ts'
+      - 'src/breach-main.ts'
+      - 'src/breach-after-action-replay-navigation.ts'
+      - 'src/ui/breach-after-action-*.ts'
+      - 'src/breach-style.css'
+      - 'scripts/smoke-after-action-v3.mjs'
+      - 'tests/after-action-v4-stage1-navigation.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: after-action-v4-stage1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  navigation-and-browser:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/after-action-v4-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Compile / typecheck
+        run: npm run check
+      - name: Replay and after-action regression suite
+        run: |
+          node --experimental-strip-types --test \
+            tests/after-action-v4-stage1-navigation.test.mjs \
+            tests/breach-after-action-v2-evidence.test.mjs \
+            tests/breach-after-action-v2-scoped-replay.test.mjs \
+            tests/consolidation-stage3-app-flow.test.mjs \
+            tests/replay-library-controller-step4.test.mjs \
+            tests/consolidation-stage5-replay-presentation.test.mjs
+      - name: Install browser driver without re-downloading Chrome
+        run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Four viewport debrief return and operator record acceptance
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/smoke-after-action-v3.mjs
+      - name: Attach browser screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: after-action-v4-stage1-viewport-evidence
+          path: artifacts/after-action-v3/
+          if-no-files-found: warn
+          retention-days: 14

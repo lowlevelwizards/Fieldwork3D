@@ -5,7 +5,7 @@ import {spawn} from 'node:child_process';
 import {mkdir} from 'node:fs/promises';
 import {chromium} from 'playwright';
 
-const port=4204,url='http://127.0.0.1:'+port+'/?quick=1&seed=23&bodycamqa=1&a8probe=1';
+const port=4204,url='http://127.0.0.1:'+port+'/?quick=1&seed=23&bodycamqa=1';
 const server=spawn(process.execPath,[
   'node_modules/vite/bin/vite.js','--host','127.0.0.1',
   '--port',String(port),'--strictPort'
@@ -39,7 +39,6 @@ try{
     isMobile:true,hasTouch:true
   });
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  page.on('console',msg=>{if(msg.text().includes('[A8 probe]'))console.log(msg.text());});
   await page.goto(url,{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.querySelector('#phase')?.
     textContent==='PLANNING'&&!!document.querySelector('#breach3dCanvas'),
@@ -54,20 +53,21 @@ try{
     return parts.length===2&&parts.every(Number.isFinite)&&
       parts[0]*60+parts[1]>=2;
   },null,{timeout:30000});
-  let open=false;
-  await page.evaluate(()=>{window.__a8ReplayClicks=0;document.querySelector('#watchReplay')?.addEventListener('click',()=>{window.__a8ReplayClicks++},{capture:true});});
-  for(let i=0;i<9&&!open;i++){
-    await page.waitForTimeout(600);
-    await page.evaluate(()=>document.querySelector('#watchReplay')?.click());
-    open=await page.locator('#replayPanel').isVisible();
-  }
-  if(!open)console.log('[A8 browser diag]',await page.evaluate(()=>({
-   disabled:document.querySelector('#watchReplay')?.disabled,
-   detailsHidden:document.querySelector('#afterActionDetails')?.hidden,
-   clicks:window.__a8ReplayClicks||0,phase:document.querySelector('#phase')?.textContent,
-   panelHidden:document.querySelector('#replayPanel')?.hidden
-  })));
-  check(open,'Cannot enter a Bodycam-eligible historical film');
+  // V4 replay authorization requires a debrief or saved-library entry.
+  // Preserve the actual two-second recorded workload and open its archive
+  // through the real library UI instead of clicking a hidden debrief control.
+  await page.waitForFunction(()=>document.querySelector('#saveReplayDebrief')?.
+   disabled===false,null,{timeout:20000});
+  await page.evaluate(()=>document.querySelector('#saveReplayDebrief')?.click());
+  await page.waitForFunction(()=>document.querySelector('#saveReplayDebrief')?.
+   textContent==='REPLAY SAVED',null,{timeout:20000});
+  await page.evaluate(()=>document.querySelector('#openReplayLibrary')?.click());
+  await page.locator('#replayLibraryList .replay-library-watch').first()
+    .waitFor({state:'visible',timeout:20000});
+  await page.locator('#replayLibraryList .replay-library-watch').first().click();
+  await page.locator('#replayPanel').waitFor({state:'visible',timeout:30000});
+  check(await page.locator('#replayPanel').isVisible(),
+   'Cannot enter saved Bodycam-eligible historical film');
   await page.locator('#replayMore').click();
   // The current compact replay HUD keeps Bodycam in the DIRECT operator
   // camera strip. The older #replayBodycam and #replayBodycamMount controls

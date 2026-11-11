@@ -1,5 +1,5 @@
-/** After Action V2 link normalization. The existing replay controller owns
- * playback and session lifecycle; this only defines truthful clip targets.
+/** Truthful after-action replay anchors. The existing playback controller
+ * applies context padding exactly once and owns all transport behavior.
  */
 import type {MissionRecorder} from './breach-replay.ts';
 export type AfterActionReplayAnchor={
@@ -20,10 +20,15 @@ export function makeAfterActionLaunchRequest(
    a.recordedAt-b.recordedAt||a.id-b.id):[];
  const found=anchor.shotId==null?null:
    rec.ballistics.shots.find(s=>s.id===anchor.shotId)??null;
+ // Never anchor a clip to a different contact or silently accept an invalid ID.
+ if(anchor.shotId!=null&&(!found||
+   anchor.contactId!=null&&found.targetId!==anchor.contactId))return null;
+ if(anchor.end!==undefined&&(!finite(anchor.end)||anchor.end<anchor.time))return null;
  const first=found?found.recordedAt:match[0]?.recordedAt??anchor.time;
- const last=found?found.recordedAt:
-   match.at(-1)?.recordedAt??(anchor.end!==undefined&&finite(anchor.end)?
-     Math.max(anchor.time,anchor.end):anchor.time);
+ // Explicit incident bounds take precedence over unrelated shots on the same target.
+ const last=found?found.recordedAt:anchor.end!==undefined?anchor.end:
+   match.at(-1)?.recordedAt??anchor.time;
+ if(!finite(first)||!finite(last)||first>rec.duration||last>rec.duration)return null;
  const low=Math.max(0,Math.min(first,last,rec.duration));
  const high=Math.min(rec.duration,Math.max(first,last,low));
  return {

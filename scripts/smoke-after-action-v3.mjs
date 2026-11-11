@@ -65,7 +65,56 @@ try{
        shot(4,20,'guard','moss',false,4,4,false,'head','dust'),
        shot(5,51,'rook','sentry',true,4,4,false,'arm','blood')
      ]}};
+    window.__v4Rec=rec;
     module.renderAfterActionWorkspace(root,rec,{showIntel:false});
+   });
+   // Exercise actual buttons and after-action event binding with a stand-in
+   // replay transport. The game Session never changes in this fixture.
+   await page.evaluate(async()=>{
+     const root=document.querySelector('#v3-qa');
+     const module=window.__v3Qa;
+     const {ReplayPlaybackController}=await import('/src/breach-replay-playback-controller.ts');
+     const playback=new ReplayPlaybackController();
+     const hud=document.getElementById('afterActionClipHud');
+     const label=document.getElementById('afterActionClipLabel');
+     const toggle=document.getElementById('afterActionClipToggle');
+     let replaying=false,origin=null,failNext=false,attempts=0;
+     const messages=[];
+     const port={
+       ui:{watchReplay:root.querySelector('#watchReplay'),debrief:root,
+         afterActionClipHud:hud,afterActionClipLabel:label,
+         afterActionClipToggle:toggle},
+       getRecorder:()=>window.__v4Rec,isReplaying:()=>replaying,
+       markDebriefEntry:()=>{},
+       enterReplay:()=>{attempts++;if(failNext){failNext=false;return false;}
+         replaying=true;return true;},
+       exitReplay:()=>{
+         if(!replaying)return;
+         replaying=false;hud.hidden=true;playback.reset();
+         const saved=origin;origin=null;
+         if(saved)module.restoreAfterActionWorkspace(root,saved);
+       },
+       queueHighlights:()=>{},getStage:()=>null,getViewMode:()=> 'iso',
+       cameraMode:()=>{},camera:{camMount:'chest',lens:'cam'},
+       director:{camEligibleObservers:[]},bodycam:{observers:[]},
+       knowledge:{observerId:null},startBodycam:()=>false,
+       chooseCamera:()=>{},playback,presentReplay:()=>{},unlockAudio:()=>{},
+       updateReplayHud:()=>{},showHelp:msg=>messages.push(msg),
+       setReturn:ctx=>{origin=ctx;},getReturn:()=>origin
+     };
+     module.bindAfterActionReplayNavigation(port);
+     window.__v4Mock={
+       get state(){return {replaying,origin,attempts,
+         incident:playback.incident,clipStored:!!playback.savedIncidentRange,
+         messages:[...messages]};},
+       exit:()=>port.exitReplay(),
+       failNext:()=>{failNext=true;},
+       failIncident:()=>{
+         const start=playback.startIncident.bind(playback);
+         playback.startIncident=()=>{playback.startIncident=start;return false;};
+       },
+       unclip:()=>toggle.click()
+     };
    });
    const root=page.locator('#v3-qa');
    check(await root.locator('[data-after-tab]').count()===3,
@@ -91,8 +140,25 @@ try{
    check((await root.locator('.fw-v3-squad-name h2').textContent())==='MOSS',
      'Squad selection failed '+name);
    await root.locator('.fw-v3-details-link').click();
+   check(await root.locator('#afterActionOperatorRecord').count()===1,
+     'Operator record not opened in Squad '+name);
+   check((await root.locator('#afterActionOperatorRecord').textContent())
+     .includes('MOSS / RECORDED CONTRIBUTIONS'),
+     'Incorrect operator record '+name);
+   check(!(await root.locator('#afterActionDetails').isVisible()),
+     'Operator record wrongly opened Mission Details '+name);
+   await root.locator('#afterActionDetailsToggle').click();
+   await root.locator('#watchReplay').click();
+   check((await page.evaluate(()=>window.__v4Mock.state)).origin.operatorRecordOpen,
+     'Full replay discarded expanded operator record '+name);
+   await page.evaluate(()=>window.__v4Mock.exit());
+   check(await root.locator('#afterActionOperatorRecord').count()===1,
+     'Full replay did not restore expanded operator record '+name);
+   await root.locator('#afterActionDetailsClose').click();
+   await root.locator('.fw-v4-record-back').click();
+   await root.locator('#afterActionDetailsToggle').click();
    check(await root.locator('#afterActionDetails').isVisible(),
-     'Details unavailable '+name);
+     'Mission Details unavailable '+name);
    await root.locator('#afterActionDetailsClose').click();
    await root.locator('[data-after-tab="combat"]').click();
    check(await root.locator('.fw-v3-contact-chip').count()===2,
@@ -101,6 +167,35 @@ try{
      'Shot chips unavailable '+name);
    await fits('combat');
    await root.locator('.fw-v3-shot-chip').first().click();
+   await root.locator('.fw-v3-play').click();
+   check((await page.evaluate(()=>window.__v4Mock.state)).origin.shotId===1,
+     'Combat clip lost selected shot origin '+name);
+   check((await page.evaluate(()=>window.__v4Mock.state)).incident!==null,
+     'Selected shot did not create scoped incident '+name);
+   await page.evaluate(()=>window.__v4Mock.unclip());
+   check((await page.evaluate(()=>window.__v4Mock.state)).clipStored,
+     'Unclip lost replay return address '+name);
+   await page.evaluate(()=>window.__v4Mock.exit());
+   check(await root.locator('.fw-v3-shot-chip[aria-pressed=true]').count()===1,
+     'Combat clip did not restore shot selection '+name);
+   await page.evaluate(()=>window.__v4Mock.failNext());
+   await root.locator('.fw-v3-play').click();
+   check(!(await page.evaluate(()=>window.__v4Mock.state)).replaying,
+     'Failed clip entered replay '+name);
+   check((await page.evaluate(()=>window.__v4Mock.state)).messages.some(x=>
+     x.includes('REPLAY UNAVAILABLE')),
+     'Failed launch did not explain the error '+name);
+   check(await root.locator('.fw-v3-shot-chip[aria-pressed=true]').count()===1,
+     'Failed clip changed selected shot '+name);
+   await page.evaluate(()=>window.__v4Mock.failIncident());
+   await root.locator('.fw-v3-play').click();
+   check(!(await page.evaluate(()=>window.__v4Mock.state)).replaying,
+     'Invalid transport window stranded the user in replay '+name);
+   check((await page.evaluate(()=>window.__v4Mock.state)).messages.some(x=>
+     x.includes('COULD NOT OPEN CLIP')),
+     'Post-entry failure did not explain its rollback '+name);
+   check(await root.locator('.fw-v3-shot-chip[aria-pressed=true]').count()===1,
+     'Failed transport changed contact/shot state '+name);
    await page.evaluate(()=>{window.__v3Context=window.__v3Qa.afterActionSnapshot(
      document.querySelector('#v3-qa'));});
    await root.locator('[data-after-tab="highlights"]').click();
@@ -109,6 +204,20 @@ try{
    check(await root.locator('.fw-v3-highlight-graphic').count()>0,
      'Schematic fallback missing '+name);
    await fits('highlights');
+   await root.locator('.fw-v3-highlight-play').click();
+   check((await page.evaluate(()=>window.__v4Mock.state)).origin.tab==='highlights',
+     'Highlight clip lost originating tab '+name);
+   await page.evaluate(()=>window.__v4Mock.exit());
+   check(await root.locator('.fw-v3-highlight-chip[aria-pressed=true]').count()===1,
+     'Highlight clip lost selection '+name);
+   await root.locator('#afterActionDetailsToggle').click();
+   await root.locator('#watchReplay').click();
+   check((await page.evaluate(()=>window.__v4Mock.state)).origin.detailsOpen,
+     'Full replay failed to preserve Details and its origin '+name);
+   await page.evaluate(()=>window.__v4Mock.exit());
+   check(await root.locator('#afterActionDetails').isVisible(),
+     'Full replay failed to restore Details '+name);
+   await root.locator('#afterActionDetailsClose').click();
    const restored=await page.evaluate(()=>
      window.__v3Qa.restoreAfterActionWorkspace(
        document.querySelector('#v3-qa'),window.__v3Context));

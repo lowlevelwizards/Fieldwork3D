@@ -39,3 +39,7 @@ Migration of all standalone generators/Labs off the global adapter, or architect
 ## Implementation note
 
 B and C replace Session assembly's global activation with explicit `initialWorldWalls`, `initialWorldCover`, site-selected `initialDoors(site)`, and initial intel from those exact snapshots. `registerSessionWorldGeometry` no longer uses a prior mutable `WALLS` or the global mutation epoch. D removes replay construction's obsolete detached swap and makes condition edits Session-only; live/replay display changes still use `adoptPresentationWorldSession`. E introduces multi-session and legacy compatibility regressions. Any subsequently exposed legacy test relying on `newSession` to activate the global preview must explicitly adopt its display owner instead of reverting this live-session boundary.
+
+## Concurrent After Action V4 integration
+
+Main advanced to `2c44a4e95e7950b3a32570e0d7df5e0c58b2a334` while A8 was on its feature branch. The integrated tree is based on that V4 release and retains the updated replay authorization and debrief-controller contracts. Historical browser smoke scripts now save the recorded in-progress mission to the Replay Library and enter through its approved UI; an old hidden debrief action no longer grants unauthorized playback. No conditional debug probes or console tracing are included in the release tree. The last main Pages artifact was verified as `2c44a4e95e79-mwccrvtb`.
