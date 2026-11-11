@@ -1,6 +1,7 @@
 /** Stage 11: briefing, settings and mission sheet coordinator.
  * UI ownership only: no tactical orders, campaign persistence or mission rules.
  */
+import type {CampaignMode} from '../breach-app-mode.ts';
 import {team,operationBriefing,type Session} from '../breach-game.ts';
 import type {CampaignState} from '../campaign-state.ts';
 import {createBriefingCardModel,type BriefingReport,type BriefingTab}
@@ -55,7 +56,7 @@ export type MissionScreensHooks={
  ui:MissionScreensElements;
  operationsBoard:HTMLElement;operationsToggle:HTMLButtonElement;
  getSession:()=>Session;getCampaign:()=>CampaignState|null;
- getMode:()=> 'menu'|'home'|'mission'|'quick';
+ getMode:()=> CampaignMode;
  isReplaying:()=>boolean;briefingPreviewEnabled:boolean;
  getEntryId:()=>string;hideWeaponChooser:()=>void;
  hideContextPalette:()=>void;
