@@ -27,7 +27,7 @@ export function renderMissionDebrief(input:{
  campaignMode:CampaignMode;operationsLogged:number;
 }):void{
  const {ui,state,brief,recorder,campaign,campaignMode,operationsLogged}=input;
- const root=ui.debriefStats.closest<HTMLElement>('#debrief');
+ const root=ui.debriefStats.closest<HTMLElement>('.debrief');
  if(root){
    const previous=rendered.get(root);
    const historyLength=campaign?.history.length??0;
