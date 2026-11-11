@@ -40,10 +40,10 @@ export function createTacticalInteractionState(){
   },
   /** Read-only compatibility view for renderers and established HUD tests. */
   get facing():Readonly<{looking:boolean;lookMode:FacingTargetMode;armedOrigin:'here'|'end'}>{
-   const looking=mode.kind==='look'||mode.kind==='watch';
+   const facingMode=mode.kind==='look'||mode.kind==='watch'?mode:null;
    return Object.freeze({
-    looking,lookMode:looking?mode.kind:lastFacingMode,
-    armedOrigin:looking?mode.origin:lastOrigin
+    looking:!!facingMode,lookMode:facingMode?.kind??lastFacingMode,
+    armedOrigin:facingMode?.origin??lastOrigin
    });
   },
   /** LOOK/WATCH toggles off when the same tool is chosen twice; switching
