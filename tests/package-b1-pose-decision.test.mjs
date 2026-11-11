@@ -268,3 +268,69 @@ test('B1: shared final output remains deterministic through Lab-style poses and 
   }finally{a.dispose();b.dispose();}
  }
 });
+
+test('B1: overlapping treatment, reload, throw, door, injury and down retain one hand-action priority',()=>{
+ const overlap={reload:.8,lastThrowAt:6,lastDoorAt:6,
+  doorPoint:{x:10,y:10},treatmentActive:true};
+ const cases=[
+  {name:'treatment',delta:overlap,owner:'treatment'},
+  {name:'reload',delta:{...overlap,treatmentActive:false},owner:'reload'},
+  {name:'throw',delta:{...overlap,treatmentActive:false,reload:0},owner:'throw'},
+  {name:'door',delta:{lastDoorAt:6,doorPoint:{x:10,y:10}},owner:'door'},
+  {name:'injury',delta:{injury:2,hitRegion:'arm',hitAge:.22},owner:'injury'},
+  {name:'down',delta:{...overlap,down:true},ctx:{downProgress:.7},owner:'down'},
+  {name:'surrender',delta:{...overlap,surrender:true},ctx:{downProgress:.7},owner:'surrender'},
+  {name:'push',delta:{},ctx:{pushActive:true},owner:'push'}
+ ];
+ for(const {name,delta,ctx:extra,owner} of cases){
+  const {prepared,decision}=finish(delta,extra);
+  assert.equal(decision.action.handOwners.action,owner,name);
+  assert.deepEqual(decision.action,prepared.action,name+'/one action reader');
+ }
+});
+
+test('B1: V3/V4, strict contact, unarmed and emergency reload eligibility remain opt-in',()=>{
+ const config=selectWeaponFamilyPreset(initialWeaponConfiguration('carbine'),'ar-m4a1');
+ const common={weaponConfiguration:config,handlingOverride:'low'};
+ const preview=finish({...common,poseV3Preview:true,poseV4ReloadPreview:true,reload:.8});
+ assert.equal(preview.decision.upperBody.previewReloadSeed,true);
+ assert.equal(preview.decision.upperBody.coupledEligible,true);
+ assert.equal(preview.decision.upperBody.supportEligible,false,
+  'reload must release support arm');
+ const legacy=finish({...common,poseV3Preview:false,reload:.8});
+ assert.equal(legacy.decision.upperBody.previewReloadSeed,false);
+ assert.equal(legacy.decision.upperBody.coupledEligible,false);
+ assert.equal(legacy.decision.upperBody.coordinatedEligible,false);
+ const withStrict=finish({...common,poseV3Preview:true,poseV3StrictContact:true});
+ const withoutStrict=finish({...common,poseV3Preview:true});
+ assert.deepEqual(withStrict.decision.upperBody,withoutStrict.decision.upperBody,
+  'strict contact is a solver constraint, not a second strategy authority');
+ const unarmed=finish({...common,poseV3Preview:true,
+  handlingOverride:'ads',unarmedPreview:true});
+ assert.equal(unarmed.decision.upperBody.coordinatedEligible,false);
+ const short=finish({...common,poseV3Preview:true,handlingOverride:'short'});
+ assert.equal(short.decision.upperBody.coordinatedEligible,false);
+ assert.equal(short.decision.upperBody.supportEligible,true);
+ assert.equal(short.decision.shortStock.manual,true);
+});
+
+test('B1: deterministic replay decisions ignore passive handling history on seeks',()=>{
+ const p={...base,handlingIntent:'door',friendlyNear:true,deterministic:true};
+ const contexts=[
+  {...ctx,previousHandling:'low',previousHandlingAt:5.999,
+   previousPose:{x:11,z:30}},
+  {...ctx,previousHandling:'ready',previousHandlingAt:2,
+   previousPose:{x:200,z:300}}
+ ];
+ const a=contexts.map(c=>prepareOperatorPoseDecision(p,c));
+ assert.equal(a[0].handling,'high');
+ assert.equal(a[1].handling,'high');
+ assert.deepEqual(a[0].action,a[1].action);
+ const decisions=a.map(seed=>resolveOperatorPoseDecision(p,seed,{
+  active:undefined,authoredLabSwitch:false,
+  profile:handlingProfile('high','carbine')
+ }));
+ assert.equal(decisions[0].handling,decisions[1].handling);
+ assert.deepEqual(decisions[0].upperBody,decisions[1].upperBody);
+ assert.deepEqual(decisions[0].transition,decisions[1].transition);
+});
