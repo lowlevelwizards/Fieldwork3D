@@ -75,6 +75,7 @@ test('A4 PUSH Back always cancels before deleting selected waypoint',()=>{
  assert.match(back,/if\(targeting\.isArmed\)\{cancelTargeting\(\);return;\}/);
  assert.ok(back.indexOf('targeting.isArmed')<back.indexOf('backOne(state,selected)'));
  assert.match(back,/if\(selectedActiveWatch\)/);
+ assert.match(main,/ui\.back\.disabled=!targeting\.isArmed&&!selectedActiveWatch&&!active\?\.plan\.length/);
 });
 
 test('A4 rejection leaves push/suppress/flash/look armed; evacuation is one-shot',()=>{
