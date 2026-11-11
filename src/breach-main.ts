@@ -116,6 +116,7 @@ import {renderMissionDebrief} from './ui/breach-mission-debrief.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
+import {createTacticalInteractionState} from './breach-tactical-interaction-state.ts';
 import {createBreachTacticalFrameFeedbackController} from './ui/breach-tactical-frame-feedback-controller.ts';
 import {createBreachReplayHudController} from './ui/breach-replay-hud-controller.ts';
 import {createTacticalPaletteController} from './ui/tactical-palette-controller.ts';
@@ -132,7 +133,8 @@ feedbackLayer.id='tacticalFeedback';
 feedbackLayer.setAttribute('aria-hidden','true');
 document.body.append(feedbackLayer);
 const feedbackDraw=feedbackLayer.getContext('2d');
-const hudController=createTacticalHudController();
+const targeting=createTacticalInteractionState();
+const hudController=createTacticalHudController(targeting);
 const tacticalFeedback=hudController.feedback;
 const ctx=canvas.getContext('2d');
 if(!ctx)throw Error('Canvas 2D unavailable');
@@ -724,9 +726,6 @@ const closeMissionSettings=missionScreens.closeSettings;
 const showMissionBriefing=missionScreens.showBriefing;
 
 let selected='rook';
-let evacMode:{patientId:string;mode:'drag'|'carry'}|null=null;
-let flashMode=false,pushMode=false;
-let firePlacement:'suppress'|null=null;
 // One presentation owner for dock/floating palette, touch pointer guard,
  // context command buttons, and screen-space obstruction avoidance.
 const reducedMotionMedia=matchMedia('(prefers-reduced-motion: reduce)');
@@ -748,18 +747,16 @@ let selectedNode:number|null=null;
 // Executed WATCH has no queued waypoint, but its targeting handle is selectable.
 let selectedActiveWatch=false;
 let doorMenuDismissedId:string|null=null;
-let flashDoorId:string|null=null;
 let doorFocusId:string|null=null;
 let draggingNode:Pt|null=null;
 let draggingWatchTarget=false;
 function cancelTargeting(){
-  const hadTarget=hudController.facing.looking||flashMode||pushMode||!!firePlacement||!!evacMode;
+  const hadTarget=targeting.cancel();
   if(hadTarget){
     const actor=uid(selected);
     if(actor)tacticalFeedback.emit('cancel',actor.p,'CANCELLED');
   }
-  hudController.facing.looking=false;flashMode=false;pushMode=false;firePlacement=null;flashDoorId=null;
-  evacMode=null;paletteController.invalidate();updateHud();
+  paletteController.invalidate();updateHud();
 }
 
 const audioController=createBreachAudioController({
@@ -858,12 +855,12 @@ const uid=(id:string)=>team(state).find(o=>o.id===id);
 function selectUnit(id:string){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   hideWeaponChooser();
-  audioController.uiClickTone('select');selected=id;hudController.facing.looking=false;pushMode=false;evacMode=null;
+  audioController.uiClickTone('select');selected=id;targeting.reset();
   selectedNode=null;selectedActiveWatch=false;doorFocusId=null;
   doorMenuDismissedId=null;updateHud();
 }
-// The HUD controller owns transient guidance, instructional tips, and
-// LOOK/WATCH arming. Only planning rules can commit the resulting orders.
+// InteractionState owns temporary command arming; HUD owns guidance only.
+// Only plan authoring APIs can commit an order.
 function teach(key:string,description:string,duration=4200):void{
   hudController.teach(key,description,duration);
 }
@@ -876,7 +873,8 @@ function discoverAction(action:string,description:string):void{
 const installTouchCommandHelp=(button:HTMLButtonElement)=>
   bindTouchCommandHelp(button,showUiHelp,updateHud);
 function armFacing(mode:'look'|'watch'):void{
-  hudController.toggleFacing(mode,selectedNode);
+  if(state.phase!=='planning'||replaying)return;
+  targeting.toggleFacing(mode,selectedNode);
   updateHud();
 }
 /** The tray never competes with the expanded TOOLS panel or GO/BACK. */
@@ -982,7 +980,7 @@ function updateContext(){
 const handleContextAction=(event:MouseEvent)=>{
   const button=(event.target as HTMLElement).closest<HTMLButtonElement>(
     'button[data-action]');
-  if(!button||state.phase!=='planning')return;
+  if(!button||state.phase!=='planning'||replaying)return;
   const action=button.dataset.action;
   if(action)discoverAction(action,button.title);
   const a=uid(selected);
@@ -1006,12 +1004,11 @@ const handleContextAction=(event:MouseEvent)=>{
     if(result.skipFeedback){updateHud();return;}
   }else switch(action){
     case 'ctxSuppress':
-      firePlacement='suppress';hudController.facing.looking=false;flashMode=false;
+      targeting.armSuppress();
       tacticalFeedback.emit('armed',node?.p??a.p,'SUPPRESS READY');
       audioController.uiClickTone('select');updateHud();return;
     case 'ctxFlash':
-      if(state.flashRemaining>0){flashMode=true;flashDoorId=null;
-        hudController.facing.looking=false;firePlacement=null;}
+      if(state.flashRemaining>0)targeting.toggleFlash();
       break;
     case 'ctxLook':
       armFacing('look');
@@ -1030,14 +1027,13 @@ const handleContextAction=(event:MouseEvent)=>{
         node?.p??a.p,'TAP WATCH TARGET');
       audioController.uiClickTone('select');return;
     case 'ctxPush':
-      pushMode=true;hudController.facing.looking=false;flashMode=false;
-      firePlacement=null;
+      targeting.armPush();
       tacticalFeedback.emit('armed',node?.p??a.p,'PUSH DIRECTION');
       showUiHelp('TAP OR DRAG AWAY FROM THE OBJECT TO CHOOSE PUSH DIRECTION',3600);
       audioController.uiClickTone('select');updateHud();return;
     case 'ctxDoorFlash':
       if(!door){state.events.push('SELECT A DOOR FIRST');break;}
-      flashDoorId=door.id;flashMode=true;hudController.facing.looking=false;
+      targeting.armDoorFlash(door.id);
       doorFocusId=null;doorMenuDismissedId=door.id;break;
   }
   const failed=state.events.length>beforeErrors;
