@@ -3475,3 +3475,126 @@ body.replaying .replay-follow-status[data-grade]::after{
    min-height:30px;padding:3px 5px;font-size:10px}
  .fw-v4-combat-3d .fw-v3-shot-damage{display:none}
 }
+
+
+/* V4 Stage 5 — mission investigation, not a second debrief homepage.
+   Clusters are readable 44 px actions; every underlying event remains
+   selectable from its cluster or paged chronological ledger. */
+.fw-v5-timeline,.fw-v5-mission-details{min-width:0;color:#e4dfcf}
+.fw-v5-timeline{display:grid;gap:9px;padding:10px;
+ background:#1b3029;border:1px solid #586e5b;border-radius:7px}
+.fw-v5-timeline-heading{display:flex;align-items:baseline;
+ gap:8px;justify-content:space-between;flex-wrap:wrap}
+.fw-v5-timeline-heading h3,.fw-v5-mission-section h3{
+ font:800 17px var(--ui-display);margin:0;letter-spacing:.035em}
+.fw-v5-timeline-heading small{font:700 10px var(--ui-display);
+ color:#bdc5b3}
+.fw-v5-timeline-warning,.fw-v5-mission-warning{
+ margin:0;padding:7px;border:1px dashed #c5a36e;
+ color:#efc895;font:700 11px/1.4 var(--ui-font)}
+.fw-v5-timeline-filters{display:flex;gap:5px;flex-wrap:wrap}
+.fw-debrief-v3 .fw-v5-timeline-filter{
+ min-height:38px;margin:0;background:#293f34;border:1px solid #617768;
+ color:#d6d6c6;border-radius:4px;padding:6px 9px;
+ font:700 10px var(--ui-display)}
+.fw-debrief-v3 .fw-v5-timeline-filter[aria-pressed="true"]{
+ background:#a58b5c;border-color:#f4d5a1;color:#142620}
+.fw-v5-timeline-ruler{display:flex;align-items:center;gap:8px;min-width:0}
+.fw-v5-timeline-ruler>small{flex:0 0 auto;
+ font:800 11px var(--fw-font-data),monospace;color:#b7c9b8}
+.fw-v5-timeline-rail{overflow-x:auto;overflow-y:hidden;
+ min-width:0;flex:1;border:1px solid #627c68;border-radius:5px;
+ background:#14251e;scrollbar-width:thin;overscroll-behavior-x:contain}
+.fw-v5-timeline-track{height:75px;position:relative;
+ margin:0;box-sizing:border-box}
+.fw-v5-timeline-axis{position:absolute;top:37px;left:22px;right:22px;
+ border-top:2px solid #768b73}
+.fw-debrief-v3 .fw-v5-timeline-marker{
+ position:absolute;top:15px;transform:translateX(-50%);
+ box-sizing:border-box;display:grid;place-items:center;margin:0;
+ width:44px;height:44px;min-height:44px;min-width:44px;padding:0;
+ border:2px solid #d8c495;border-radius:50%;
+ color:#17271f;background:#c6b58d;
+ font:800 13px var(--ui-display)}
+.fw-debrief-v3 .fw-v5-timeline-marker[data-category="casualty"]{
+ border-color:#e79e8b;background:#b47660;color:white}
+.fw-debrief-v3 .fw-v5-timeline-marker[data-category="objective"]{
+ border-color:#e8d29a;background:#8f7d47;color:white}
+.fw-debrief-v3 .fw-v5-timeline-marker[data-category="contact"]{
+ border-color:#abd6c9;background:#487f70;color:white}
+.fw-debrief-v3 .fw-v5-timeline-marker[aria-pressed="true"]{
+ outline:2px solid #f5ebca;outline-offset:2px}
+.fw-v5-timeline-group{display:grid;gap:5px;
+ border:1px solid #445e51;border-radius:5px;padding:7px}
+.fw-v5-timeline-group h4,.fw-v5-timeline-inspect h4{
+ margin:0;font:800 14px var(--ui-display)}
+.fw-v5-timeline-group-items{display:grid;gap:3px;
+ overflow-y:auto;max-height:150px;overscroll-behavior:contain}
+.fw-debrief-v3 .fw-v5-timeline-cluster-event,
+.fw-debrief-v3 .fw-v5-timeline-ledger-item{
+ width:100%;text-align:left;min-height:44px;margin:0;
+ padding:8px 9px;color:#e6e0d2;background:#263d31;
+ border:1px solid #536d5c;border-radius:4px;
+ font:700 11px/1.4 var(--ui-font)}
+.fw-debrief-v3 .fw-v5-timeline-cluster-event[aria-pressed="true"],
+.fw-debrief-v3 .fw-v5-timeline-ledger-item[aria-pressed="true"]{
+ border-color:#e1c895;background:#455744}
+.fw-v5-timeline-inspect{display:grid;gap:7px;
+ border-top:1px solid #617666;padding:9px 2px 1px}
+.fw-v5-timeline-inspect-eyebrow{color:#e7c992;
+ font:800 11px var(--ui-display)}
+.fw-v5-timeline-actor{margin:0;color:#b9c5b9;
+ font:650 11px/1.45 var(--ui-font);overflow-wrap:anywhere}
+.fw-v5-timeline-step,.fw-v5-timeline-actions{
+ display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.fw-v5-timeline-step small{font:800 12px var(--fw-font-data)}
+.fw-debrief-v3 .fw-v5-timeline-button,
+.fw-debrief-v3 .fw-v5-timeline-primary,
+.fw-debrief-v3 .fw-v5-timeline-ledger-toggle,
+.fw-debrief-v3 .fw-v5-timeline-more{
+ min-height:44px;margin:0;padding:8px 10px;border-radius:5px;
+ border:1px solid #6a836e;color:#e6eadb;background:#2f493b;
+ font:750 11px var(--ui-display)}
+.fw-debrief-v3 .fw-v5-timeline-primary{
+ background:#a7946c;color:#1b291e;border-color:#eddaab}
+.fw-v5-timeline-ledger{display:grid;gap:6px;padding-top:5px}
+.fw-v5-timeline-ledger-list{display:grid;gap:4px;max-height:250px;
+ overflow-y:auto;overscroll-behavior:contain}
+.fw-v5-mission-details{display:grid;gap:10px}
+.fw-v5-mission-heading{font:800 16px var(--ui-display);
+ color:#e9d1a6;letter-spacing:.03em}
+.fw-v5-mission-section{display:grid;gap:7px;
+ border:1px solid #4f695b;border-radius:6px;padding:10px;background:#1d3128}
+.fw-v5-mission-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:6px;margin:0}
+.fw-v5-mission-field{min-width:0;border-left:2px solid #798c73;
+ padding:4px 7px;display:grid;gap:2px}
+.fw-v5-mission-field dt{font:700 10px var(--ui-display);
+ color:#b7c7b6;letter-spacing:.04em}
+.fw-v5-mission-field dd{font:800 14px var(--fw-font-data),var(--ui-display);
+ margin:0;overflow-wrap:anywhere}
+.fw-v5-mission-note{margin:0;color:#b5bfb1;font:11px/1.5 var(--ui-font)}
+.fw-debrief-v3 .fw-after-detail-actions{position:sticky;bottom:0;z-index:2;
+ margin-top:2px;padding:8px 0;background:#15251f;
+ border-top:1px solid #526959}
+@media(max-width:600px){
+ .fw-debrief-v3 .fw-after-details{padding:7px;gap:7px}
+ .fw-after-detail-content{gap:8px}
+ .fw-v5-timeline{padding:7px;gap:6px}
+ .fw-v5-timeline-heading h3{font-size:15px}
+ .fw-v5-timeline-filter{font-size:10px}
+ .fw-v5-timeline-ruler{gap:4px}
+ .fw-v5-mission-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .fw-debrief-v3 .fw-v5-timeline-filter{min-height:35px;padding:5px 7px}
+ .fw-v5-timeline-actions>.fw-v5-timeline-button,
+ .fw-v5-timeline-actions>.fw-v5-timeline-primary{flex:1}
+ .fw-v5-timeline-group-items{max-height:132px}
+}
+@media(max-height:480px){
+ .fw-debrief-v3 .fw-after-details{gap:5px;padding:6px}
+ .fw-v5-timeline{gap:5px;padding:5px}
+ .fw-v5-timeline-group-items{max-height:90px}
+ .fw-v5-timeline-track{height:62px}
+ .fw-v5-timeline-axis{top:30px}
+ .fw-debrief-v3 .fw-v5-timeline-marker{top:8px}
+}
