@@ -55,3 +55,12 @@ test('A6 ground authoring is committed by the existing pointer-command owner',()
  assert.match(pointer,/planDoorFlash\(/);
  assert.match(pointer,/setFirePolicy\(/);
 });
+
+test('A6 QA fixture does not occupy main and stays explicitly gated',()=>{
+ const qa=readFileSync(new URL('../src/breach-replay-bodycam-qa.ts',import.meta.url),'utf8');
+ assert.match(source,/if\(import\.meta\.env\.DEV&&bootConfig\.bodycamQa\)/);
+ assert.match(source,/installReplayBodycamQa\(/);
+ assert.doesNotMatch(source,/BODYCAM INDOOR ENTRY \/ QA/);
+ assert.match(qa,/BODYCAM INDOOR ENTRY \/ QA/);
+ assert.match(qa,/__fieldworkBodycamQa/);
+});

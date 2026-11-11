@@ -35,7 +35,7 @@ import {pickTacticalTarget,insertTacticalRouteWaypoint} from './breach-tactical-
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 
 
-import {SQUEEZE_RADIUS} from './breach-navigation.ts';
+
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {captureRangeTrial,type RangeTrial} from './equipment-training-diagnostics.ts';
 import type {Site} from './breach-site.ts';
@@ -78,6 +78,7 @@ import {createBreachReplayAnalysisController}
   from './ui/breach-replay-analysis-controller.ts';
 import {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 import {ReplayBodycamController} from './breach-replay-bodycam-controller.ts';
+import {installReplayBodycamQa} from './breach-replay-bodycam-qa.ts';
 import {ReplayCameraController} from './breach-replay-camera-controller.ts';
 import {createBreachReplayLibraryController}
   from './ui/breach-replay-library-controller.ts';
@@ -97,7 +98,7 @@ import {fitMagazineInventory}
 import {stageMagazines} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
 
-import {doorKnown,intelPassable,type IntelMode} from './breach-intel.ts';
+import {doorKnown,type IntelMode} from './breach-intel.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
 import {applyRosterIdentity,freshQuickPlayRoster} from './breach-roster.ts';
@@ -1422,130 +1423,16 @@ ui.replaySight.addEventListener('click',()=>{
  * Browser smoke uses historical replay disclosure, never simulated LOS.
  */
 if(import.meta.env.DEV&&bootConfig.bodycamQa){
-  type BodycamQa={
-    activate:(mount:'chest'|'helmet')=>boolean;
-    seek:(time:number)=>boolean;
-    stop:()=>void;
-    diagnostic:()=>ReturnType<TacticalScene3D['inspectReplayBodycamQa']>|null;
-    /** Read-only candidate taps; browser must author with real pointer input. */
-    routeCandidates:()=>Array<{world:Pt;screen:Pt}>;
-    planned:()=>{actorId:string;path:Pt[]}|null;
-    motionSamples:()=>Array<{at:number;p:Pt;heading:number}>;
-    prepareIndoorEntry:()=>boolean;
-    indoorEntryReview:()=>ReplaySquadEntryReview|null;
-  };
-  const qa:BodycamQa={
-    activate(mount){
-      if(!replaying||!stage||viewMode==='plan2d')return false;
-      const observer=team(state)[0];
-      if(!observer||!recorder.frames[0]?.knowledge?.operatorVisibleActorIds?.[observer.id])
-        return false;
-      replayKnowledge.observerId=observer.id;
-      replayKnowledge.omniscient=false;
-      replayKnowledge.groundLensOn=false;
-      replayPlayback.pause();
-      chooseReplayCamera('free');
-      selected=observer.id;
-      replayCamera.followId=observer.id;
-      cameraMode('iso');
-      stage.setReplayBodycam({actorId:observer.id,mount,
-        stabilization:'balanced',fov:95});
-      seekReplay(Math.min(.1,recorder.duration));
-      updateReplayHud();
-      return true;
-    },
-    seek(time){
-      if(!replaying||!Number.isFinite(time))return false;
-      replayPlayback.pause();
-      seekReplay(Math.max(0,Math.min(time,recorder.duration)));
-      return true;
-    },
-    stop(){
-      stage?.setReplayBodycam(null);
-      replayKnowledge.observerId=null;
-      replayKnowledge.omniscient=false;
-      fog2D.invalidate();
-      if(replaying)updateReplayHud();
-    },
-    diagnostic:()=>stage?.inspectReplayBodycamQa()??null,
-    routeCandidates(){
-      if(replaying||!stage||state.phase!=='planning')return [];
-      const actor=team(state)[0];if(!actor)return [];
-      const result:Array<{world:Pt;screen:Pt}>=[];
-      for(const radius of [55,78,105,42])
-        for(const bearing of [0,-.6,.6,-1.15,1.15,2.1,-2.1]){
-          const angle=actor.heading+bearing;
-          const world={x:actor.p.x+Math.cos(angle)*radius,
-            y:actor.p.y+Math.sin(angle)*radius};
-          if(!intelPassable(world,state.intel,SQUEEZE_RADIUS))continue;
-          const screen=worldToScreen(world,0);
-          if(screen.x<35||screen.x>cssW-35||
-             screen.y<85||screen.y>cssH-200)continue;
-          if(team(state).some(a=>distance(
-             worldToScreen(a.p,24),screen)<38))continue;
-          result.push({world,screen});
-        }
-      return result;
-    },
-    planned(){
-      const actor=team(state)[0];
-      return actor?{actorId:actor.id,
-        path:actor.plan.filter(n=>n.kind==='move').map(n=>({...n.p}))}:null;
-    },
-    motionSamples(){
-      const id=team(state)[0]?.id;
-      if(!id)return [];
-      return recorder.frames.flatMap(f=>{
-        const actor=f.actors.find(a=>a.id===id);
-        return actor?[{at:f.t,p:{...actor.p},heading:actor.heading}]:[];
-      });
-    },
-    prepareIndoorEntry(){
-      // Deterministic two-room indoor training fixture: two enclosed roofs,
-      // one physical hinged doorway. This still uses the real session motor,
-      // authored MOVE orders and normal MissionRecorder; no replay synthesis.
-      if(replaying||state.phase!=='planning')return false;
-      const at=(x:number,y:number):Pt=>({x,y});
-      const site:Site={
-        seed:731,name:'BODYCAM INDOOR ENTRY / QA',layout:'corridor',
-        training:true,archetype:'office',roomCount:2,
-        rooms:[
-          {id:'entry-room',x:240,y:110,w:140,h:150,
-            kind:'room',tone:.42,purpose:'lobby'},
-          {id:'inner-room',x:240,y:260,w:140,h:180,
-            kind:'room',tone:.39,purpose:'office'}
-        ],
-        walls:[
-          {a:at(240,110),b:at(380,110)},
-          {a:at(240,110),b:at(240,440)},
-          {a:at(380,110),b:at(380,440)},
-          {a:at(240,440),b:at(380,440)},
-          {a:at(240,260),b:at(290,260)},
-          {a:at(332,260),b:at(380,260)}
-        ],
-        doors:[{id:'ENTRY',a:at(290,260),b:at(332,260),
-          kind:'hinged',hinge:'a',swing:-1,open:true,openedAt:0}],
-        cover:[],windows:[],entrance:at(311,200),
-        spawn:[at(300,200),at(308,173),at(316,146),at(325,119)],
-        enemies:[],objective:at(320,400),extract:at(325,420),
-        bounds:{minX:0,minY:0,maxX:640,maxY:500}
-      };
-      reset(0,731,'hold',site);
-      const crew=team(state).slice(0,4);
-      if(crew.length!==4)return false;
-      const goals=[at(300,350),at(312,365),at(325,380),at(339,394)];
-      const accepted=crew.every((actor,i)=>
-        planMove(state,actor.id,goals[i]));
-      updateHud();return accepted;
-    },
-    indoorEntryReview(){
-      if(recorder.frames.length<2)return null;
-      return measureReplaySquadDoorEntry(recorder.frames,'ENTRY',
-        team(state).map(a=>a.id),0,recorder.duration);
-    }
-  };
-  (window as typeof window&{__fieldworkBodycamQa?:BodycamQa})
-    .__fieldworkBodycamQa=qa;
+ installReplayBodycamQa({
+  get state(){return state;},get recorder(){return recorder;},
+  get stage(){return stage;},get replaying(){return replaying;},
+  get viewMode(){return viewMode;},
+  get selected(){return selected;},set selected(value){selected=value;},
+  get cssW(){return cssW;},get cssH(){return cssH;},
+  replayKnowledge,replayCamera,replayPlayback,chooseReplayCamera,cameraMode,
+  seekReplay,updateReplayHud,updateHud,invalidateFog:()=>fog2D.invalidate(),
+  worldToScreen,resetIndoorSite:site=>reset(0,731,'hold',site)
+ });
 }
 ui.replayContactLens.addEventListener('click',()=>{
   if(!replayKnowledge.hasContactEvidence)return;
