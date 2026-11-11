@@ -3323,3 +3323,13 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v4-selected-overview .fw-v3-squad-name h2:focus{
   outline:2px solid #d9c49a;outline-offset:2px}
 }
+
+/* Stage 2 shell gains a result band: reclaim only inter-section whitespace
+   in short landscape Combat, not the hit evidence or action targets. */
+@media(min-width:701px) and (max-height:480px){
+ .fw-v3-combat{gap:2px}
+ .fw-v3-contact-rail{padding-bottom:1px}
+ .fw-v3-combat-focus{gap:5px}
+ .fw-v3-combat-info{padding:2px 0;gap:2px}
+ .fw-v3-shot-details{gap:1px}
+}
