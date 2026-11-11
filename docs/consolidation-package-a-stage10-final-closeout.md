@@ -55,3 +55,25 @@
 6. Completion recorded with evidence in this document and PR.
 
 **Physical-device acceptance:** real iPhone Safari and dedicated desktop GPU remain a separate manual gate and must not be described as completed by Chrome/WebGL CI.
+
+## Package A ownership handoff (retained, not rewritten)
+
+| Boundary | Authoritative owner | Regression evidence |
+| --- | --- | --- |
+| Initial browser composition and startup | `breach-main.ts` composes already-existing services; no new app controller tier | A6 main composition acceptance |
+| Mission lifecycle, mission restart and deployment | `breach-mission-controller.ts`, existing app flow and runtime loop | A3, A6 and Closeout Stage 6 |
+| Authored tactical targeting | `breach-tactical-interaction-state.ts` for transient LOOK/WATCH/FLASH/push/suppress/evac arming; order executors keep command authority | A4 and Closeout Stage 1 |
+| Gameplay façade | `breach-game.ts` public API; extracted Session factory and domain modules retain their own authority; `stepSession` remains the sole public tick | A7 and Closeout Stage 2 |
+| Physical geometry, intel, active visible site | Session world context owns world geometry; weakly bound intel owns observed facts; presentation adoption is explicit | A8, Closeout Stages 3 and 5 |
+| Replay state | A5 pure replay display options, separate historical replay/knowledge/playback/analysis controllers | A5, AAV4 Stage 3 and Closeout Stage 6 |
+| CI and release | changed-file/edited-test selector, curated critical suite, dedicated Chrome WebGL smoke, manual historical full suite; Pages release stamp must match | A9/A10 CI and release preflight |
+
+The ownership matrix deliberately reflects the documented boundaries of A6–A8 rather than asserting all earlier game-facade internals have already been extracted. Replay historical disclosure stays separate from cosmetic display options; a Session remains the gameplay authority, not the selected editor or renderer.
+
+## Historical compatibility and explicit deferrals
+
+- Map Lab, Asset Lab, offline fixtures, single-site training workflows and the presentation adapter retain the documented global `activateSite`, `WALLS/COVER`, and synchronous detached-scope compatibility surface. Blanket deletion would break consumers and is not A10.
+- Source inventory from A0 identifies unreferenced candidates and cycles; neither automatic reachability nor the existence of duplicated CI test references proves something is safely deletable.
+- Complete historical `npm test` remains opt-in, as do specialized long-duration/performance/graphics workflows. The A10 closeout runner validates architectural contracts, not every optional hardware/performance permutation.
+- No changes to ordered 60 Hz phases, authored planning, actor pose transforms, vision disclosure, record/replay schemas, campaign saves or historical presets.
+- AAV4 work on a separate branch may advance after the starting baseline. A10 does not merge speculative V4 changes. If `main` moves before A10 release, integrate its exact new head and rerun appropriate checks before merging.
