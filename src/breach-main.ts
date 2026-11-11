@@ -111,6 +111,7 @@ import './ui/fieldwork-action-toast.css';
 import {confirmFieldworkAction} from './ui/fieldwork-controls.ts';
 import {createBreachMissionScreens} from './ui/breach-mission-screens.ts';
 import {renderMissionDebrief} from './ui/breach-mission-debrief.ts';
+import {debriefPrimaryActionLabel} from './ui/fieldwork-vocabulary.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
@@ -1250,7 +1251,7 @@ function updateHud(){
   ui.favoriteMission.disabled=!state.site;
   ui.favoriteMission.textContent=replayLibrary.activeFavoriteId?
     '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
-  ui.next.textContent=campaignMode==='mission'?'RETURN TO BASE':'NEW MISSION';
+  ui.next.textContent=debriefPrimaryActionLabel(campaignMode);
   ui.retry.disabled=campaignMode==='mission';
   if(!ui.debrief.hidden)renderMissionDebrief({
     ui,state,brief,recorder,campaign,campaignMode,

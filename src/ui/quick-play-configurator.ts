@@ -70,18 +70,18 @@ export function createQuickPlayConfigurator(options:{
  backdrop.hidden=true;
  const dialog=node('main','fw-quick-config-dialog');
  dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');
- dialog.setAttribute('aria-label','Quick Play scenario generator');
+ dialog.setAttribute('aria-label','Quick Play mission setup');
  const header=node('header','fw-quick-config-heading');
  const identity=node('div');
- identity.append(node('small','','FIELDWORK / TACTICAL SCENARIOS'),
-   node('h2','','QUICK PLAY'));
+ identity.append(node('small','','FIELDWORK / QUICK PLAY'),
+   node('h2','','MISSION SETUP'));
  const close=command('✕ CLOSE',()=>hide(),'fw-quick-config-close');
  header.append(identity,close);
  const intro=node('p','fw-quick-config-intro',
   'Choose only what matters. Random keeps the unknowns; the same seed and settings recreate the scenario.');
  const content=node('div','fw-quick-config-content');
  const seedGroup=node('label','fw-quick-config-field fw-quick-config-seed');
- seedGroup.append(node('span','','SCENARIO SEED'));
+ seedGroup.append(node('span','','SITE SEED'));
  const seedRow=node('div','fw-quick-config-seed-row');
  const seedInput=node('input');seedInput.type='number';seedInput.min='1';
  seedInput.max='4294967295';seedInput.step='1';seedInput.placeholder='RANDOM';
