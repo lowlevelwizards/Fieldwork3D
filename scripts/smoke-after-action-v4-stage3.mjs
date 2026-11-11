@@ -134,6 +134,25 @@ try{
    await root.screenshot({
      path:'artifacts/after-action-v4-stage3/'+label+'.png'
    });
+   if(width===1280){
+     // A context can be lost by Safari/Chrome even when the mission is intact.
+     // Losing it must not make the next tab show a permanent "LOADING" label.
+     await page.evaluate(()=>window.__v4Stage3Canvas.dispatchEvent(
+       new Event('webglcontextlost',{cancelable:true})));
+     check((await root.locator('.fw-v4-squad-model').textContent())
+       .includes('3D VIEW UNAVAILABLE'),
+       'WebGL loss did not expose fallback '+label);
+     await root.locator('[data-after-tab="combat"]').click();
+     await root.locator('.fw-v3-combat-figure .fw-v3-small-button')
+       .filter({hasText:'3D'}).click();
+     check((await root.locator('[data-after-model]').textContent())
+       .includes('3D VIEW UNAVAILABLE'),
+       'Combat inherited a stale Loading label after WebGL loss '+label);
+     await root.locator('[data-after-tab="squad"]').click();
+     check((await root.locator('[data-after-squad-model]').textContent())
+       .includes('3D VIEW UNAVAILABLE'),
+       'Squad lost the fallback message after a tab change '+label);
+   }
    // A new recorder owns a new viewer; the previous context is explicitly lost.
    const replaced=await page.evaluate(async()=>{
      const root=document.querySelector('#v4-stage3-qa');
