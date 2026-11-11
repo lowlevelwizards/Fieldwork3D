@@ -22,7 +22,8 @@ test('site-bounded movement commands use procedural bounds, not legacy W/H',()=>
 test('armed directions bypass map-bound floor validation without hidden actor picking',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const stage=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
- assert.match(main,/if\(looking\|\|insideTacticalBounds\(pt,activeWorldBounds\(\)\)\)/);
+ const pointer=readFileSync(new URL('../src/breach-pointer-command-controller.ts',import.meta.url),'utf8');
+ assert.match(pointer,/if\(port\.hudController\.facing\.looking\|\|insideTacticalBounds\(pt,sessionWorldGeometry\(port\.state\)\.bounds\)\)/);
  assert.match(main,/pointerAimWorld\(e\)/);
  assert.match(main,/aimTargetFromTap\(source,pt\)/);
  assert.match(stage,/screenToWorldAtHeight\(sx:number,sy:number,height:number\)/);
