@@ -4,12 +4,16 @@
 import type {AfterActionReport,ContactAfterAction,ReportShot}
  from '../breach-after-action-report.ts';
 import {renderHitPaperDoll} from './breach-hit-paper-doll.ts';
+import {inspectForensicEvidence,type ForensicScope}
+ from '../breach-forensic-evidence.ts';
 type View={selectedContact:string|null;selectedShotId:number|null;
- side:'red'|'blue';back:boolean;inspectionMode:'paper'|'3d'};
+ side:'red'|'blue';back:boolean;inspectionMode:'paper'|'3d';
+ scope:ForensicScope};
 type Actions={
  chooseContact:(id:string|null)=>void;chooseShot:(id:number|null)=>void;
  chooseSide:(side:'red'|'blue')=>void;chooseView:(back:boolean)=>void;
  chooseMode:(mode:'paper'|'3d')=>void;
+ chooseScope:(mode:ForensicScope)=>void;
  viewReplay:(contact:ContactAfterAction,shot:ReportShot|null)=>void;
 };
 const el=(tag:string,cls='',txt?:string)=>{
@@ -36,6 +40,15 @@ function shotDetails(s:ReportShot){
    el('p','',s.shooterId.toUpperCase()+
      ' · '+(s.receiver??s.weapon??'UNKNOWN WEAPON')),
    el('p','',s.region?.toUpperCase()??'NO RECORDED REGION'));
+ if(s.region==='arm'||s.region==='leg'){
+   const side=s.anatomy?.side??'unknown';
+   part.append(el('p','fw-v4-forensic-side',side==='unknown'?
+     'LIMB SIDE UNRECORDED · CANNOT LOCALIZE':
+     side.toUpperCase()+' LIMB · TRAJECTORY PROXY'));
+ }
+ part.append(el('small','fw-v4-forensic-precision',
+   s.precision==='proxy'?'COARSE REGION · APPROXIMATE RAY PROXY':
+   'REGION ONLY · EXACT LOCATION NOT RECORDED'));
  if(s.caliber)part.append(el('small','','NOMINAL '+s.caliber));
  if(s.damage!==null)part.append(el('span','fw-v3-shot-damage',
    String(s.damage)+' DAMAGE'));
@@ -71,6 +84,18 @@ export function renderCombatReport(
  const selected=active.shots.find(s=>s.id===view.selectedShotId)??
    active.shots.find(s=>s.id===active.finalShotId)??
    active.shots.at(-1)??null;
+ const scopeBar=el('div','fw-v4-forensic-scope');
+ scopeBar.setAttribute('role','group');
+ scopeBar.setAttribute('aria-label','Injury evidence scope');
+ for(const [scope,label] of [
+   ['selected','SELECTED SHOT'],['cumulative','THROUGH SHOT']
+ ] as const){
+   const choice=button(label,()=>act.chooseScope(scope),
+     'fw-v3-small-button fw-v4-scope-choice');
+   choice.setAttribute('aria-pressed',String(view.scope===scope));
+   scopeBar.append(choice);
+ }
+ root.append(scopeBar);
  const content=el('div','fw-v3-combat-focus');
  const figure=el('div','fw-v3-combat-figure');
  const figureToolbar=el('div','fw-v3-switch');
@@ -85,12 +110,22 @@ export function renderCombatReport(
     const b=button(back?'BACK':'FRONT',()=>act.chooseView(back));
     b.setAttribute('aria-pressed',String(view.back===back));pose.append(b);
   }
-  figure.append(renderHitPaperDoll(active,selected?.id??null,view.back),pose);
+  figure.append(renderHitPaperDoll(active,selected?.id??null,view.back,
+    view.scope),pose);
  }else{
   const model=el('div','fw-after-model','LOADING HISTORICAL MODEL');
   model.dataset.afterModel=active.id;
-  figure.append(model,el('small','fw-v3-paper-key',
-    'HISTORICAL EQUIPMENT · NO PRECISE IMPACT MARKERS'));
+  const evidence=inspectForensicEvidence(active,selected?.id??null,
+    view.scope);
+  const limbCount=evidence.unknownLimb.length;
+  const legend=el('small','fw-v3-paper-key fw-v4-model-evidence-key',
+    view.scope.toUpperCase()+' · SCHEMATIC REGIONAL INJURY BANDS · '+
+    (evidence.damaged.length+' WOUND(S), '+
+     evidence.armorStops.length+' ARMOR STOP(S)')+
+    (limbCount?' · '+limbCount+' LIMB SIDE UNKNOWN':'')+
+    ' · NO PRECISE IMPACT MARKERS');
+  model.dataset.afterForensicScope=view.scope;
+  figure.append(model,legend);
  }
  const right=el('div','fw-v3-combat-info');
  const heading=el('div','fw-v3-combat-name');
@@ -113,7 +148,11 @@ export function renderCombatReport(
    for(const [i,s] of active.shots.entries()){
      const b=button(String(i+1),()=>act.chooseShot(s.id),'fw-v3-shot-chip');
      b.setAttribute('aria-pressed',String(s.id===selected?.id));
-     b.dataset.outcome=s.outcome;rail.append(b);
+     b.dataset.outcome=s.outcome;
+    b.setAttribute('aria-label','Shot '+String(i+1)+' · '+
+      outcome(s)+(s.anatomy?.side==='left'||s.anatomy?.side==='right'?
+        ' · '+s.anatomy.side.toUpperCase()+' LIMB':''));
+    rail.append(b);
    }
    const next=button('›',()=>{
      const idx=active.shots.findIndex(s=>s.id===selected?.id);
