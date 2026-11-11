@@ -51,7 +51,7 @@ try{
     });
     const rec={manifest:{actors},duration:90,
      completeness:{complete:true},frames:[{actors:actors.filter(a=>a.side==='blue')
-       .map(a=>({id:a.id,health:4,injuryStage:0}))}],
+       .map(a=>({id:a.id,health:4,injuryStage:0,suppression:0})),shots:[]}],
      events:[
        {id:1,t:10,kind:'intel',actor:'rook',p:{x:10,y:10},
         text:'CONTACT',meta:{action:'spot',targetId:'guard'}},
