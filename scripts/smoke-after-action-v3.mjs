@@ -213,12 +213,22 @@ try{
    await root.locator('.fw-v4-rank-row').first().focus();
    await root.locator('.fw-v4-rank-row').first().press('Enter');
    check(await page.evaluate(()=>
-     document.activeElement?.getAttribute('data-after-operator-id')==='rook'),
-     'Keyboard selection lost focus after Squad redraw '+name);
+     document.activeElement?.tagName==='H2'&&
+     document.activeElement?.textContent==='ROOK'),
+     'Keyboard selection did not focus selected operator heading '+name);
    await root.locator('.fw-v4-overview-back').click();
    await root.locator('.fw-v4-rank-row').filter({hasText:'MOSS'}).click();
    check((await root.locator('.fw-v3-squad-name h2').textContent())==='MOSS',
      'Squad selection failed '+name);
+   if(width<=700){
+     const visible=await page.evaluate(()=>{
+       const root=document.querySelector('#v3-qa'),body=root.querySelector('#afterActionBody');
+       const chosen=root.querySelector('.fw-v4-selected-overview');
+       return !!chosen&&chosen.getBoundingClientRect().top<
+         body.getBoundingClientRect().bottom;
+     });
+     check(visible,'Selected operator details hidden below fold '+name);
+   }
    check(await root.locator('.fw-v4-rank-row[aria-pressed=true]').count()===1,
      'Selected operator not clearly identified '+name);
    check((await root.locator('.fw-v4-selected-overview').textContent())
