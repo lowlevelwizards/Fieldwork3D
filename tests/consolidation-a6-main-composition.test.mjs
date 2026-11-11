@@ -80,3 +80,16 @@ test('A6 replay actor option creation belongs to existing replay HUD',()=>{
  assert.match(hud,/function populateInspectActors\(/);
  assert.match(hud,/function populateCameraChoices\(/);
 });
+
+test('A6 existing replay HUD owns all quick/direct/late replay button event binding',()=>{
+ const hud=readFileSync(new URL('../src/ui/breach-replay-hud-controller.ts',import.meta.url),'utf8');
+ for(const control of ['replayQuickView','replayDirectSight','replayContactLens','replayExportVideo','replayExit']){
+  assert.doesNotMatch(source,new RegExp('ui\\.'+control+'\\.addEventListener'));
+  assert.match(hud,new RegExp('config\\.ui\\.'+control+'\\.addEventListener'));
+ }
+ for(const group of ['bindQuickInteractions','bindDirectInteractions','bindLateInteractions'])
+  assert.match(source,new RegExp('replayHudController\\.'+group+'\\(\\)'));
+ assert.match(hud,/if\(quickBound\)return/);
+ assert.match(hud,/if\(directBound\)return/);
+ assert.match(hud,/if\(lateBound\)return/);
+});

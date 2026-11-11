@@ -1175,6 +1175,17 @@ replayHudController=createBreachReplayHudController({
   setXray:enabled=>stage?.setReplayXray(enabled)
  },
  followReplayOperator,
+ interactions:{
+  get state(){return state;},get recorder(){return recorder;},get stage(){return stage;},
+  get replaying(){return replaying;},get viewMode(){return viewMode;},
+  get selected(){return selected;},set selected(v){selected=v;},
+  get cssW(){return cssW;},get cssH(){return cssH;},
+  replayKnowledge,replayPlayback,replayCamera,replayBodycam,replayDirector,
+  replayAnalysisUi,replayQuickVideo,audio:audioController,
+  stopReplayBodycam,startReplayBodycam,applyReplayBodycamMount,
+  chooseReplayCamera,cameraMode,advanceReplayCamera,rebuildReplayEventIndex,
+  seekReplay,exitReplay,showUiHelp,invalidateFog:()=>fog2D.invalidate()
+ },
  onOverlayChoice:choice=>{
    const options=replayDisplay.options;
    replayDisplay.setPreset('custom');
@@ -1195,155 +1206,10 @@ replayHudController=createBreachReplayHudController({
 });
 replayHudController.bind();
 replayAnalysisUi.bindReplayUi();
-ui.replayQuickView.addEventListener('change',()=>{
-  if(replayBodycam.active)return;
-  const next=ui.replayQuickView.value as ReplayPerspective;
-  if(!['iso','top','plan2d'].includes(next))return;
-  cameraMode(next);
-  chooseReplayCamera(resolvedReplayCamera(replayCamera.mode,next,!!stage,replayBodycam.active));
-  
-  updateReplayHud();
-});
-ui.replayInspectActor.addEventListener('change',()=>{
-  const id=ui.replayInspectActor.value;
-  if(!team(state).some(a=>a.id===id))return;
-  selected=id;
-  if(replayCamera.mode==='operator'){
-    replayCamera.followId=id;advanceReplayCamera(0,true);
-  }
-  updateReplayHud();
-});
-ui.replayInspectFollow.addEventListener('click',()=>{
-  const id=ui.replayInspectActor.value;
-  if(!team(state).some(a=>a.id===id)||replayBodycam.active)return;
-  if(viewMode==='plan2d')cameraMode('iso');
-  selected=id;replayCamera.followId=id;chooseReplayCamera('operator');replayCamera.follow=true;
-  advanceReplayCamera(0,true);updateReplayHud();
-});
-ui.replayInspectMovement.addEventListener('click',()=>{
-  const id=ui.replayInspectActor.value;
-  if(!team(state).some(a=>a.id===id))return;
-  selected=id;applyReplayPreset('movement');
-});
-ui.replayQuickCamera.addEventListener('change',()=>{
-  if(replayBodycam.active)return;
-  const choice=ui.replayQuickCamera.value;
-  const mode:ReplayCameraChoice=choice.startsWith('operator:')?
-    'operator':choice as ReplayCameraChoice;
-  if(!['free','operator','squad','director'].includes(mode)||
-      resolvedReplayCamera(mode,viewMode as ReplayPerspective,!!stage,replayBodycam.active)!==mode)
-    return;
-  if(mode==='operator'){
-    const id=choice.slice('operator:'.length);
-    if(!team(state).some(a=>a.id===id))return;
-    replayCamera.followId=id;
-  }
-  chooseReplayCamera(mode);replayCamera.follow=mode==='operator';
-  advanceReplayCamera(0,true);updateReplayHud();
-});
-
+replayHudController.bindQuickInteractions();
 audioController.bindReplayMute(ui.replaySound,updateReplayHud);
-function changeReplaySight(mode:'team'|'full'|'operator'):void{
-  if(mode==='operator'){
-    if(!replayKnowledge.hasContactEvidence)return;
-    const eligible=replayBodycam.observers;
-    const next=eligible.includes(replayCamera.followId)?replayCamera.followId:
-      eligible.includes(selected)?selected:eligible[0];
-    if(!next)return;
-    replayKnowledge.observerId=next;
-    replayKnowledge.omniscient=false;
-    replayAnalysisUi.closeReplayShotInspector();
-    if(replayBodycam.active)applyReplayBodycamMount();
-  }else{
-    if(replayBodycam.active)stopReplayBodycam();
-    replayKnowledge.groundLensOn=false;replayKnowledge.observerId=null;
-    replayKnowledge.omniscient=mode==='full';
-  }
-  fog2D.invalidate();
-  rebuildReplayEventIndex();
-  replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
-  replayAnalysisUi.refreshReplayShotInspector();updateReplayHud();
-}
-function followReplayOperator(id:string):void{
-  if(!replaying||!team(state).some(a=>a.id===id&&a.health>0))return;
-  if(replayBodycam.active)stopReplayBodycam();
-  if(viewMode==='plan2d'&&stage)cameraMode('iso');
-  selected=id;replayCamera.followId=id;
-  chooseReplayCamera('operator');replayCamera.follow=true;
-  if(replayKnowledge.observerId){
-    replayKnowledge.observerId=replayBodycam.observers.includes(id)?id:null;
-    fog2D.invalidate();rebuildReplayEventIndex();
-    replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
-  }
-  advanceReplayCamera(0,true);
-  updateReplayHud();
-}
-ui.replayDirectSight.addEventListener('change',()=>{
-  const mode=ui.replayDirectSight.value;
-  if(mode==='team'||mode==='full'||mode==='operator')
-    changeReplaySight(mode);
-});
-
-
-ui.replayDirectDirector.addEventListener('click',()=>{
-  if(replayBodycam.active)stopReplayBodycam();
-  if(viewMode!=='iso'&&stage)cameraMode('iso');
-  chooseReplayCamera(replayCamera.mode==='director'?'free':'director');
-  replayCamera.follow=false;
-  replayDirector.target=null;
-  
-  advanceReplayCamera(1/60,false);updateReplayHud();
-});
-ui.replayDirectLens.addEventListener('click',()=>{
-  if(!replaying||replayCamera.mode!=='director')return;
-  replayCamera.lens=replayCamera.lens==='ortho'?'wide':
-    replayCamera.lens==='wide'&&replayDirector.camEligibleObservers.length?
-      'cam':'ortho';
-  // Mount is a viewer preference, not a director edit. No recorded
-  // subject changes just because the lens changes.
-  if(replayCamera.lens==='cam'&&viewMode!=='iso'&&stage)cameraMode('iso');
-  advanceReplayCamera(0,true);
-  updateReplayHud();
-});
-ui.replayDirectBodycam.addEventListener('click',()=>{
-  if(replayBodycam.active){
-    const returnId=replayCamera.followId;
-    stopReplayBodycam();
-    followReplayOperator(returnId);
-  }else{
-    if(replayCamera.mode!=='operator'||
-      !replayBodycam.observers.includes(replayCamera.followId))return;
-    replayKnowledge.observerId=replayCamera.followId;
-    if(!startReplayBodycam())return;
-  }
-  fog2D.invalidate();rebuildReplayEventIndex();
-  replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
-  updateReplayHud();
-});
-ui.replayDirectMount.addEventListener('click',()=>{
-  if(replayCamera.mode==='director'&&replayCamera.lens==='cam'){
-    replayCamera.camMount=replayCamera.camMount==='chest'?'helmet':'chest';
-    advanceReplayCamera(0,true);updateReplayHud();
-  }else ui.replayBodycamMount.click();
-});
-ui.replayDirectFree.addEventListener('click',()=>{
-  if(replayBodycam.active)stopReplayBodycam();
-  chooseReplayCamera('free');replayCamera.follow=false;
-  updateReplayHud();
-});
-ui.replaySight.addEventListener('click',()=>{
-  stopReplayBodycam();
-  replayKnowledge.groundLensOn=false;
-  replayKnowledge.observerId=null;
-  replayKnowledge.omniscient=!replayKnowledge.omniscient;fog2D.invalidate();
-  rebuildReplayEventIndex();
-  replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
-  replayAnalysisUi.refreshReplayShotInspector();updateReplayHud();
-});
-/** Only Vite DEVELOPMENT + explicit QA query can access this hook.
- * Production builds strip it; normal replay has NO Bodycam button yet.
- * Browser smoke uses historical replay disclosure, never simulated LOS.
- */
+function followReplayOperator(id:string):void{replayHudController?.followReplayOperator(id);}
+replayHudController.bindDirectInteractions();
 if(import.meta.env.DEV&&bootConfig.bodycamQa){
  installReplayBodycamQa({
   get state(){return state;},get recorder(){return recorder;},
@@ -1356,115 +1222,7 @@ if(import.meta.env.DEV&&bootConfig.bodycamQa){
   worldToScreen,resetIndoorSite:site=>reset(0,731,'hold',site)
  });
 }
-ui.replayContactLens.addEventListener('click',()=>{
-  if(!replayKnowledge.hasContactEvidence)return;
-  const known=recorder.frames.find(f=>
-    !!f.knowledge?.operatorVisibleActorIds)?.knowledge;
-  const ids=team(state).map(a=>a.id).filter(id=>
-    operatorContactAvailable(known,id));
-  if(!ids.length)return;
-  const at=replayKnowledge.observerId===null?-1:
-    ids.indexOf(replayKnowledge.observerId);
-  replayKnowledge.observerId=at>=ids.length-1?null:ids[at+1];
-  if(!replayKnowledge.observerId){
-    replayKnowledge.groundLensOn=false;stopReplayBodycam();
-  }else if(replayBodycam.active){
-    if(replayBodycam.observers.includes(replayKnowledge.observerId))
-      applyReplayBodycamMount();
-    else stopReplayBodycam();
-  }
-  if(replayKnowledge.observerId){
-    replayKnowledge.omniscient=false;
-    selected=replayKnowledge.observerId;
-    replayCamera.followId=replayKnowledge.observerId;
-    replayAnalysisUi.closeReplayShotInspector();
-  }
-  fog2D.invalidate();
-  rebuildReplayEventIndex();
-  replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
-  replayAnalysisUi.refreshReplayShotInspector();updateReplayHud();
-});
-ui.replayGroundLens.addEventListener('click',()=>{
-  if(replayBodycam.active)stopReplayBodycam();
-  if(!replayKnowledge.observerId||!replayKnowledge.personalGround)return;
-  replayKnowledge.groundLensOn=!replayKnowledge.groundLensOn;
-  if(replayKnowledge.groundLensOn&&viewMode!=='plan2d')cameraMode('plan2d');
-  replayKnowledge.groundCacheObserver=null;
-  replayKnowledge.groundCacheCount=-1;
-  updateReplayHud();
-});
-ui.replayBodycam.addEventListener('click',()=>{
-  if(replayBodycam.active)stopReplayBodycam();
-  else if(!startReplayBodycam())return;
-  rebuildReplayEventIndex();
-  replayAnalysisUi.renderReplayEventMarkers();replayAnalysisUi.renderReplayEventFeed();
-  replayAnalysisUi.refreshReplayShotInspector();updateReplayHud();
-});
-ui.replayBodycamMount.addEventListener('click',()=>{
-  if(!replayBodycam.active)return;
-  replayBodycam.mount=replayBodycam.mount==='chest'?'helmet':'chest';
-  applyReplayBodycamMount();updateReplayHud();
-});
-ui.replayView.addEventListener('click',()=>{
-  if(replayBodycam.active)stopReplayBodycam();
-  cameraMode(viewMode==='iso'?'top':viewMode==='top'?'plan2d':'iso');
-  chooseReplayCamera(resolvedReplayCamera(replayCamera.mode,
-    viewMode as ReplayPerspective,!!stage,replayBodycam.active));
-  
-  updateReplayHud();
-});
-
-ui.replayFollow.addEventListener('click',()=>{
-  if(replayBodycam.active)stopReplayBodycam();
-  if(replayCamera.follow){
-    const i=squadIds.indexOf(replayCamera.followId as typeof squadIds[number]);
-    if(i===squadIds.length-1)replayCamera.follow=false;
-    else replayCamera.followId=squadIds[i+1];
-  }else replayCamera.follow=true;
-  chooseReplayCamera(replayCamera.follow?'operator':'free');
-  advanceReplayCamera(0,true);updateReplayHud();
-});
-ui.replaySquad.addEventListener('click',()=>{
-  if(replayBodycam.active)stopReplayBodycam();
-  chooseReplayCamera(replayCamera.mode==='squad'?'free':'squad');
-  replayCamera.follow=false;advanceReplayCamera(0,true);updateReplayHud();
-});
-ui.replayDirector.addEventListener('click',()=>{
-  if(replayBodycam.active)stopReplayBodycam();
-  if(replayCamera.lens==='cam'&&viewMode!=='iso'&&stage)
-    cameraMode('iso');
-  chooseReplayCamera(replayCamera.mode==='director'?'free':'director');
-  replayCamera.follow=false;advanceReplayCamera(0,true);updateReplayHud();
-});
-
-
-
-
-
-
-
-ui.replayExportVideo.addEventListener('click',()=>{
-  if(replayQuickVideo.active){
-    replayQuickVideo.stop();ui.replayExportVideo.textContent='VIDEO 20S';return;
-  }
-  audioController.unlock();
-  const videoAudioStream=audioController.beginVideoCapture();
-  if(replayPlayback.time>=recorder.duration-.2)seekReplay(0);
-  replayPlayback.prepareVideoExport();
-  const started=replayQuickVideo.start(replayPlayback.time,
-    {width:cssW,height:cssH},videoAudioStream);
-  if(!started){
-    audioController.endVideoCapture();
-    showUiHelp('VIDEO CAPTURE NOT SUPPORTED IN THIS BROWSER',4200);
-    return;
-  }
-  replayPlayback.play();
-  ui.replayExportVideo.textContent='STOP VIDEO';
-  ui.replayExportVideo.title=replayQuickVideo.audioTrackCount?
-    'Recording replay video with audio':'Recording replay video without audio';
-  updateReplayHud();
-});
-ui.replayExit.addEventListener('click',exitReplay);
+replayHudController.bindLateInteractions();
 /** A mission transition is an ordered release → creation → mount.
  * The lifecycle controller owns Session construction, snapshots, and recording;
  * the presentation owners release only their own graphics, UI and sound.
