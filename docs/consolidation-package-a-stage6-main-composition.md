@@ -30,3 +30,7 @@ No UI redesign, gameplay balance or command semantics, site generation, AI or ph
 - Preserve the A5 **After Action V3** browser smoke for A6. This stage relocates the replay-entry and clip/unclip event bindings; A6 must retest that workflow, not merely rely on tactical/replay smoke.
 - Verify the now-pure 2D fit against known zoom/pan/non-origin bounds, in addition to the renderer order/Bodycam fog invariant.
 - Browser CI is Chromium/WebGL on simulated mobile and desktop sizes. Physical device/browser acceptance remains a separate follow-up; do not treat CI as an on-device test.
+
+## Final browser runner dependency repair
+
+GitHub-hosted Ubuntu runners ship with Google Chrome. A6’s browser smoke now uses Playwright’s `channel:'chrome'` only in its opt-in CI flow, with the same WebGL flags and acceptance assertions as before. This avoids the `playwright install --with-deps chromium` apt transaction that failed twice due to the hosted Ubuntu DNS mirror. Outside this CI flow, each script still uses Playwright’s normal browser selection. Fail quickly if no Chrome is preinstalled rather than silently skipping the browser gate.

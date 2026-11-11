@@ -21,7 +21,8 @@ try{
   await pause(180);
  }
  check(ready,'Vite did not start');
- browser=await chromium.launch({headless:true,args:[
+ browser=await chromium.launch({headless:true,
+  ...(process.env.FIELDWORK_CI_CHROME==='1'?{channel:'chrome'}:{}),args:[
   '--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'
  ]});
  await mkdir('artifacts/after-action-v3',{recursive:true});
