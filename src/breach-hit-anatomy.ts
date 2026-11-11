@@ -43,7 +43,10 @@ export function validHitAnatomy(
      a.lateral===null&&a.forward===null))&&
    (a.source!=='trajectory-proxy'||(
      finiteUnit(a.lateral)&&finiteUnit(a.forward)))&&
-   ((a.region==='arm'||a.region==='leg')||a.side==='unknown');
+   ((a.region==='arm'||a.region==='leg')||a.side==='unknown')&&
+   (a.side==='unknown'||(a.side==='left'?
+     finiteUnit(a.lateral)&&a.lateral<-.32:
+     finiteUnit(a.lateral)&&a.lateral>.32));
 }
 
 export function legacyAnatomy(region:WoundRegion):HitAnatomyV1{
