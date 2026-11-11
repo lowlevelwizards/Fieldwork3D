@@ -38,7 +38,7 @@ import type {RangeTrial} from './equipment-training-diagnostics.ts';
 import type {Site} from './breach-site.ts';
 import {BreachMissionController,type MissionTransition} from './breach-mission-controller.ts';
 import {createBreachQuickPlayController} from './breach-quickplay-controller.ts';
-import {createBreachCampaignFlow} from './breach-campaign-flow.ts';
+import {createBreachCampaignFlow,applyCampaignRosterToSession} from './breach-campaign-flow.ts';
 import {createOperatorStudioBridge} from './operator-studio-bridge.ts';
 import {createBreachEquipmentEditorBridge} from './breach-equipment-editor-bridge.ts';
 import {createBreachOperationsBoardController} from './breach-operations-board-controller.ts';
@@ -60,7 +60,7 @@ import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
 import {createOperationDossier} from './briefing/briefing-composer.ts';
 import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
-import {issuedWedges} from './equipment-entry-tools.ts';
+
 
 import {mostUrgentWound} from './breach-medical-wounds.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
@@ -88,20 +88,19 @@ import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {WEAPONS} from './breach-combat.ts';
-import {fitMagazineInventory}
- from './arsenal/live-magazine-capacity.ts';
 
-import {stageMagazines} from './equipment-magazine-placement.ts';
+
+
 import {doorReachable} from './breach-door.ts';
 
 import {doorKnown,type IntelMode} from './breach-intel.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
 import {applyRosterIdentity,freshQuickPlayRoster} from './breach-roster.ts';
-import {tacticalSlotOperator,type CampaignState} from './campaign-state.ts';
-import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
-import {initialArmorIntegrity} from './equipment-armor.ts';
-import {allocateFlashSupply} from './equipment-supply.ts';
+import type {CampaignState} from './campaign-state.ts';
+
+
+
 import './breach-style.css';
 import './ui/ux-r1-sheets.css';
 import './ui/ux-r3-hud.css';
@@ -190,43 +189,10 @@ const studioBridge=createOperatorStudioBridge({
   onCampaignSaved:()=>showCampaignHome()
 });
 const openOperatorStudio=studioBridge.open;
-function applyCampaignSkills(session:Session){
- if(appFlow.mode!=='mission'||!campaign)return;
- for(const a of team(session)){
-  const m=tacticalSlotOperator(campaign,a.id);
-  if(m){
-   a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
-   a.appearanceSeed=m.appearanceSeed;
-   a.wardrobe=m.wardrobe;
-   a.equipment=m.loadout;
-    a.weaponConfiguration=m.weaponConfiguration;
-    a.medicalSupplies={...m.medicalSupplies};
-    a.wedgeRemaining=issuedWedges(m.loadout);
-    a.weaponLightOn=m.weaponConfiguration.slots.light==='light-compact';
-   a.flashCharges=equippedFlashCharges(m.loadout);
-   const protection=initialArmorIntegrity(m.loadout);
-   a.armorIntegrity=Math.min(protection.torso,m.armorCondition.torso);
-   a.helmetIntegrity=Math.min(protection.head,m.armorCondition.head);
-   a.loadMovementScale=loadMovementScale(m.loadout,m.weaponConfiguration);
-   const fitted=fitMagazineInventory(a.id,a.weapon,m.weaponConfiguration,
-    m.magazine,m.reserve,m.magazines);
-   a.magazine=fitted.magazine;a.reserve=fitted.reserve;
-   a.insertedMagazineId=m.loadedMagazineId;
-   a.spareMagazines=a.weapon==='shotgun'?[]:
-    stageMagazines(fitted.magazines,m.loadout);
-   if(m.recoveryDays>0&&m.injuries>0){
-    a.injuryStage=Math.max(a.injuryStage,Math.min(2,m.injuries));
-    a.health=Math.min(a.health,4-a.injuryStage);
-   }
-  }
- }
- if(!session.started){
-  const squad=team(session);
-  const issued=allocateFlashSupply(squad.map(a=>a.flashCharges),campaign.supplies.flash);
-  squad.forEach((a,i)=>{a.flashCharges=issued[i];});
-  session.flashRemaining=issued.reduce((n,qty)=>n+qty,0);
- }
+function applyCampaignSkills(session:Session):void{
+ if(appFlow.mode==='mission'&&campaign)applyCampaignRosterToSession(session,campaign);
 }
+
 // One lifetime owner: creation, initial snapshots, deployment staging,
 // restart/favorite restoration, and replay presentation sessions.
 const missionController=new BreachMissionController({

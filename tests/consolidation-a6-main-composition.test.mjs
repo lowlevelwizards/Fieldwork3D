@@ -135,3 +135,12 @@ test('A6 the existing world renderer owns ordered 2D layers and Bodycam isolatio
  assert.match(world,/if\(stage\.isReplayBodycamActive\(\)\)/);
  assert.match(world,/world2D\.architecture\(\);fog2D\.renderFog\(\)/);
 });
+
+test('A6 Campaign roster hydration belongs to existing Campaign flow',()=>{
+ const campaign=readFileSync(new URL('../src/breach-campaign-flow.ts',import.meta.url),'utf8');
+ assert.match(source,/applyCampaignRosterToSession\(session,campaign\)/);
+ assert.doesNotMatch(source,/const fitted=fitMagazineInventory/);
+ assert.match(campaign,/export function applyCampaignRosterToSession\(/);
+ assert.match(campaign,/allocateFlashSupply\(/);
+ assert.match(campaign,/stageMagazines\(/);
+});
