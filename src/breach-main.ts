@@ -9,7 +9,7 @@ import {
   doorCenter,type Pt,} from './breach-core.ts';
 import {
   type Session,
-  type TeamActor,team,planMove,
+  type TeamActor,team,
   
   planWait,plannedControl,
   planSync,finalPoint,backOne,
@@ -87,8 +87,7 @@ import {resolvedReplayCamera,type ReplayCameraChoice,type ReplayPerspective}
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
-import {measureReplaySquadDoorEntry,type ReplaySquadEntryReview}
-  from './breach-replay-squad-entry.ts';
+
 import {operatorContactAvailable} from './breach-replay-contact-lens.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {WEAPONS} from './breach-combat.ts';
