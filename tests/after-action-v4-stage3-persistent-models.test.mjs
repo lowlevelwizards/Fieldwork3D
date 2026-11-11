@@ -35,6 +35,8 @@ test('V4-3: viewer builds at most one renderer and caches a rig per actor id',()
  assert.match(rig,/selected=operatorId/);
  assert.match(rig,/observer\?\.disconnect\(\)/);
  assert.match(rig,/renderer\.forceContextLoss\(\)/);
+ assert.match(rig,/if\(lost\)\{[\s\S]*?nextHost\.textContent='3D VIEW UNAVAILABLE/);
+ assert.match(rig,/NO RECORDED MODEL FOR THIS CONTACT/);
 });
 
 test('V4-3: Squad uses real model surface; Combat reuses it without introducing a second viewer',()=>{
@@ -57,6 +59,8 @@ test('V4-3: no historical WebGL resources survive menu exit or mission replaceme
  assert.match(main,/function releaseMissionPresentation\(\):void\{[\s\S]{0,170}disposeAfterActionPresentation\(ui\.debrief\)/);
  assert.match(sheets,/disposeAfterActionPresentation\(ui\.debrief\)/);
  assert.match(controller,/if\(owner&&owner\.recorder!==recorder\)/);
+ assert.match(controller,/unavailable:boolean/);
+ assert.match(controller,/if\(owner\.unavailable\)/);
  assert.match(controller,/owner\.version\+\+;owner\.presenter\?\.dispose\(\);models\.delete\(root\)/);
  assert.match(controller,/if\(!models\.has\(root\)&&!root\.hidden\)renderers\.get\(root\)\?\.\(\)/);
 });
