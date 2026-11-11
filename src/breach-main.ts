@@ -824,20 +824,37 @@ const replayModeController=createReplayModeController({
  },
  updateHud
 });
-function enterReplay(source:'library'|'debrief'='debrief'){
- if(replayModeController.enterReplay())appFlow.beginReplay(source);
+function enterReplay(source:'library'|'debrief'='debrief'):boolean{
+ // The flow transition must authorize the destination before playback starts.
+ // Roll back the transition if an archive cannot supply playable frames.
+ if(!appFlow.beginReplay(source))return false;
+ if(!replayModeController.enterReplay()){
+   appFlow.exitReplay();
+   return false;
+ }
+ ui.replayExit.setAttribute('aria-label',
+   source==='debrief'?'Back to Debrief':'Back to Replay Library');
+ ui.replayExit.title=source==='debrief'?'Back to Debrief':'Back to Replay Library';
+ return true;
 }
 let afterActionReturn:AfterActionReturnContext|null=null;
 function exitReplay(){
  const origin=afterActionReturn;
  const exited=replayModeController.exitReplay();
- if(exited&&origin){
-   afterActionReturn=null;
-   ui.afterActionClipHud.hidden=true;
-   // Restore directly; no synthetic tab click, no accidental lost shot.
-   restoreAfterActionWorkspace(ui.debrief,origin);
-   updateHud();
+ if(!exited)return;
+ afterActionReturn=null;
+ ui.afterActionClipHud.hidden=true;
+ ui.afterActionClipLabel.textContent='INCIDENT · LOOP';
+ ui.afterActionClipToggle.textContent='UNCLIP';
+ ui.replayExit.setAttribute('aria-label','Exit replay');
+ ui.replayExit.title='Exit replay';
+ if(origin){
+   // Recorder-identity validation prevents restoring a different mission.
+   if(!restoreAfterActionWorkspace(ui.debrief,origin)&&
+     appFlow.surface==='debrief')
+     showUiHelp('DEBRIEF RETURN CONTEXT EXPIRED · CURRENT REPORT PRESERVED',4000);
  }
+ updateHud();
 }
 /** Replay Library: load metadata only until a recording is selected.
  * No campaign result, equipment persistence, or live session is modified.
@@ -881,6 +898,7 @@ bindAfterActionReplayNavigation({
  ui, getRecorder:()=>recorder,isReplaying:()=>replaying,
  markDebriefEntry:()=>replayLibrary.markDebriefEntry(),
  enterReplay:()=>enterReplay(),
+ exitReplay,
  queueHighlights:()=>highlightCapture.queue(recorder,replayHighlightMoments(recorder)),
  getStage:()=>stage,getViewMode:()=>viewMode,cameraMode,
  camera:replayCamera,director:replayDirector,
@@ -1035,6 +1053,10 @@ function releaseMissionPresentation():void{
     audioController.endReplay();
   }
   replaying=false;replayPlayback.pause();finishedSession=null;
+  afterActionReturn=null;
+  ui.afterActionClipHud.hidden=true;
+  ui.replayExit.setAttribute('aria-label','Exit replay');
+  ui.replayExit.title='Exit replay';
   replayLibrary.resetSession();
   // Clear old recording indexes and UI selections on every replacement.
   replayAnalysisUi.reset();replayPresentation=null;
