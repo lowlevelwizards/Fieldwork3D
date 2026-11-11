@@ -17,11 +17,12 @@ type State={
   recorder:MissionRecorder;report:AfterActionReport;tab:AfterActionTab;
   selectedOperator:string|null;selectedContact:string|null;
   selectedShotId:number|null;contactSide:'red'|'blue';paperBack:boolean;
-  inspectionMode:'paper'|'3d';
+  inspectionMode:'paper'|'3d';selectedHighlight:string|null;
   scroll:Partial<Record<AfterActionTab,number>>;
   showIntel:boolean;
 };
 const owners=new WeakMap<HTMLElement,State>();
+const renderers=new WeakMap<HTMLElement,()=>void>();
 const bound=new WeakSet<HTMLElement>();
 const make=(tag:string,cls='',value?:string)=>{
   const el=document.createElement(tag);
@@ -42,7 +43,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    state={recorder:rec,report:buildAfterActionReport(rec),tab:'squad',
      selectedOperator:null,selectedContact:null,selectedShotId:null,
      contactSide:'red',paperBack:false,inspectionMode:'paper',
-     scroll:{},showIntel:options.showIntel};
+     selectedHighlight:null,scroll:{},showIntel:options.showIntel};
    owners.set(root,state);
    root.querySelector<HTMLElement>('#afterActionIntro')?.removeAttribute('hidden');
    if(!bound.has(root)){
@@ -52,7 +53,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        const s=owners.get(root);if(!s)return;
        s.scroll[s.tab]=safeContent.scrollTop;
        s.tab=tabButton.dataset.afterTab as AfterActionTab;
-       draw();
+       renderers.get(root)?.();
      });
    }
    const intro=root.querySelector<HTMLElement>('#afterActionIntro');
@@ -139,10 +140,17 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      }
      forensicDetails.replaceChildren(ledger);
    }
-   disposeModel();
+   // Reparent the existing model when only the selected shot changes.
+   // Rebuilding it on every shot was an expensive V2 regression.
+   let modelHost=screen.querySelector<HTMLElement>('[data-after-model]');
+   const previousHost=safeContent.querySelector<HTMLElement>('[data-after-model]');
+   const reuse=!!(modelHost&&previousHost&&stopModel&&
+     modelHost.dataset.afterModel===previousHost.dataset.afterModel);
+   if(reuse&&modelHost&&previousHost){
+     modelHost.replaceWith(previousHost);modelHost=previousHost;
+   }else disposeModel();
    safeContent.replaceChildren(screen);
-   const modelHost=screen.querySelector<HTMLElement>('[data-after-model]');
-   if(modelHost){
+   if(modelHost&&!reuse){
      const chosen=s.recorder.manifest?.actors.find(a=>
        a.id===s.selectedContact);
      if(chosen){
@@ -157,26 +165,48 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    }
    safeContent.scrollTop=s.scroll[s.tab]??0;
  }
+ renderers.set(root,draw);
  draw();
 }
-/** Used by scoped replay to restore the originating detail and viewport. */
-export function afterActionSnapshot(root:HTMLElement):{
- tab:AfterActionTab;operatorId:string|null;contactId:string|null;
- scroll:Partial<Record<AfterActionTab,number>>;
-}|null{
+/** Direct return context: all selections and visual modes survive clip/unclip.
+ * Recorder identity prevents a stale replay from restoring into another mission.
+ */
+export type AfterActionReturnContext={
+ recorder:MissionRecorder;tab:AfterActionTab;operatorId:string|null;
+ contactId:string|null;contactSide:'red'|'blue';shotId:number|null;
+ highlightId:string|null;paperBack:boolean;inspectionMode:'paper'|'3d';
+ detailsOpen:boolean;scroll:Partial<Record<AfterActionTab,number>>;
+};
+export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|null{
  const s=owners.get(root);if(!s)return null;
- const current=root.querySelector<HTMLElement>('#afterActionBody');
- if(current)s.scroll[s.tab]=current.scrollTop;
- return {tab:s.tab,operatorId:s.selectedOperator,contactId:s.selectedContact,
+ const active=root.querySelector<HTMLElement>('#afterActionBody');
+ if(active)s.scroll[s.tab]=active.scrollTop;
+ return {recorder:s.recorder,tab:s.tab,operatorId:s.selectedOperator,
+   contactId:s.selectedContact,contactSide:s.contactSide,
+   shotId:s.selectedShotId,highlightId:s.selectedHighlight,
+   paperBack:s.paperBack,inspectionMode:s.inspectionMode,
+   detailsOpen:!root.querySelector<HTMLElement>('#afterActionDetails')?.hidden,
    scroll:{...s.scroll}};
 }
-
-/** Rebuild when a replay visit has captured new authentic frames. */
+export function restoreAfterActionWorkspace(
+ root:HTMLElement,context:AfterActionReturnContext
+):boolean{
+ const s=owners.get(root);
+ if(!s||s.recorder!==context.recorder)return false;
+ s.tab=context.tab;s.selectedOperator=context.operatorId;
+ s.selectedContact=context.contactId;s.contactSide=context.contactSide;
+ s.selectedShotId=context.shotId;s.selectedHighlight=context.highlightId;
+ s.paperBack=context.paperBack;s.inspectionMode=context.inspectionMode;
+ s.scroll={...context.scroll};
+ const detail=root.querySelector<HTMLElement>('#afterActionDetails');
+ if(detail)detail.hidden=!context.detailsOpen;
+ renderers.get(root)?.();
+ return true;
+}
+/** Rebuild without synthesizing tab clicks or changing the selected context. */
 export function refreshAfterActionWorkspace(root:HTMLElement):void{
  const s=owners.get(root);if(!s)return;
  const active=root.querySelector<HTMLElement>('#afterActionBody');
- const button=root.querySelector<HTMLButtonElement>(
-   '[data-after-tab="'+s.tab+'"]');
  if(active)s.scroll[s.tab]=active.scrollTop;
- button?.click();
+ renderers.get(root)?.();
 }

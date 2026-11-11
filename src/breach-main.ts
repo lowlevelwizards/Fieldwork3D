@@ -53,7 +53,7 @@ import {afterActionSnapshot} from './ui/breach-after-action-controller.ts';
 import {makeAfterActionLaunchRequest} from './breach-after-action-replay-navigation.ts';
 import {highlightCapture} from './breach-highlight-capture.ts';
 import {replayHighlightMoments} from './breach-highlight-frames.ts';
-import {refreshAfterActionWorkspace} from './ui/breach-after-action-controller.ts';
+import {restoreAfterActionWorkspace} from './ui/breach-after-action-controller.ts';
 import {createBreachReplayPresentationController} from './breach-replay-presentation-controller.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
@@ -1602,14 +1602,13 @@ const replayModeController=createReplayModeController({
 function enterReplay(){replayModeController.enterReplay();}
 let afterActionReturn:ReturnType<typeof afterActionSnapshot>=null;
 function exitReplay(){
- const returning=afterActionReturn!==null;
- replayModeController.exitReplay();
- if(returning){
+ const origin=afterActionReturn;
+ const exited=replayModeController.exitReplay();
+ if(exited&&origin){
    afterActionReturn=null;
    ui.afterActionClipHud.hidden=true;
-   refreshAfterActionWorkspace(ui.debrief);
-   // The after-action workspace remains mounted while replay is active;
-   // returning to the finished session restores its tab, selection and scroll.
+   // Restore directly; no synthetic tab click, no accidental lost shot.
+   restoreAfterActionWorkspace(ui.debrief,origin);
    updateHud();
  }
 }
@@ -1668,11 +1667,22 @@ ui.debrief.addEventListener('fw-after-action-replay',event=>{
  highlightCapture.queue(recorder,replayHighlightMoments(recorder));
  if(stage&&viewMode==='plan2d')cameraMode('iso');
  replayCamera.camMount='chest';replayCamera.lens='cam';
- if(stage&&replayDirector.camEligibleObservers.length){
+ // Prefer the recorded shooter's own bodycam when the recording supports
+ // personal observation. Never select a hostile actor as an observer.
+ const shot=detail.shotId==null?null:
+   recorder.ballistics.shots.find(s=>s.id===detail.shotId)??null;
+ const shooter=shot?.shooterId??null;
+ const candidate=shooter&&replayBodycam.observers.includes(shooter)?shooter:
+   detail.contactId&&replayBodycam.observers.includes(detail.contactId)?
+     detail.contactId:null;
+ if(stage&&candidate){
+   replayKnowledge.observerId=candidate;
+   if(!startReplayBodycam())chooseReplayCamera('director');
+ }else if(stage&&replayDirector.camEligibleObservers.length){
    chooseReplayCamera('director');
  }else{
    replayCamera.lens='ortho';chooseReplayCamera('free');
-   showUiHelp('NO RECORDED BODYCAM · TACTICAL REPLAY',3000);
+   showUiHelp('BODYCAM UNAVAILABLE · TACTICAL REPLAY',3000);
  }
  replayPlayback.startIncident(request.range,recorder.duration,true,true);
  presentReplayAtCurrentTime();audioController.unlock();
