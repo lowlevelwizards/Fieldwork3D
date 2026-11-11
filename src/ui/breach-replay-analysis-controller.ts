@@ -21,6 +21,8 @@ import {toggleReplaySurface,type ReplaySurface} from '../breach-replay-ui-state.
 import type {ReplayPlaybackController} from '../breach-replay-playback-controller.ts';
 import type {ReplayCameraController} from '../breach-replay-camera-controller.ts';
 import type {ReplayKnowledgeController} from '../breach-replay-knowledge-controller.ts';
+import {createReplayPresentationOptions,type ReplayPresentationOptionsController,
+ type ReplayPreset} from '../breach-replay-presentation-options.ts';
 
 export type BreachReplayAnalysisElements={
   replayActorControls:HTMLElement;
@@ -93,13 +95,15 @@ export type BreachReplayAnalysisConfig={
  presentCurrent:()=>void;refreshHud:()=>void;
  focusShot:(shot:RecordedShot)=>void;selectActor:(id:string)=>void;
  enableMovementAnalysis:()=>void;markRecentTrace:()=>void;
- applyPreset:(preset:'clean'|'movement'|'combat'|'visibility')=>void;
+ applyPreset:(preset:Exclude<ReplayPreset,'custom'>)=>void;
+ presentationOptions?:ReplayPresentationOptionsController;
  getOverlayState:()=>{names:boolean;contacts:boolean;plans:boolean;objectives:boolean};
  isVideoActive:()=>boolean;persistBookmarks:()=>void|Promise<void>;
  unlockAudio:()=>void;showHelp:(message:string,duration:number)=>void;
 };
 export function createBreachReplayAnalysisController(config:BreachReplayAnalysisConfig){
  const ui=config.ui;
+ const presentationOptions=config.presentationOptions??createReplayPresentationOptions();
  const replayPlayback=config.playback,replayKnowledge=config.knowledge,
    replayCamera=config.camera;
  let replayEventIndex:ReplayEventIndex|null=null;
@@ -434,7 +438,6 @@ function syncReplayEventFeed():void{
 }
 /** One tool surface at a time; never let advanced controls grow the dock. */
 type ReplayToolTab='layers'|'export'|'events';
-type ReplayPreset='clean'|'movement'|'combat'|'visibility'|'custom';
 let replayToolTab:ReplayToolTab|null=null;
 let replaySurface:ReplaySurface='none';
 let replaySurfaceOpener:HTMLButtonElement|null=null;
@@ -457,7 +460,6 @@ function closeReplayCluster(restoreFocus=true):void{
     opener.focus({preventScroll:true});
 }
 let replayMomentsView:'highlights'|'events'='highlights';
-let replayPreset:ReplayPreset='clean';
 function setReplayMomentsView(view:'highlights'|'events'):void{
   replayMomentsView=view;
   ui.replayHighlights.hidden=view!=='highlights';
@@ -660,7 +662,7 @@ function renderReplayEventMarkers():void{
    replayEventIndex=null;replayChapters=[];replayIncidents=[];
    replayFeaturedIncidents=[];replaySquadEntries=[];selectedReplaySquadEntry=null;
    selectedReplayIncidentId=null;replayBookmarks=[];replayBookmarkCounter=0;
-   replayPreset='clean';replayMomentsView='highlights';
+   presentationOptions.setPreset('clean');replayMomentsView='highlights';
    replayOverlaySignature='';replayFeedEvents=[];
    replayFeedRangeStart=0;replayFeedRangeEnd=0;
    replayFeedFollowing=false;replayFeedActiveKey=null;
@@ -800,8 +802,8 @@ ui.replayNextEvent.addEventListener('click',()=>jumpEvent(true));
    get selectedReplayShotId(){return selectedReplayShotId;},
    set selectedReplayShotId(value:number|null){selectedReplayShotId=value;},
    get replayToolTab(){return replayToolTab;},
-   get replayPreset(){return replayPreset;},
-   set replayPreset(value:ReplayPreset){replayPreset=value;},
+   get replayPreset(){return presentationOptions.options.replayPreset;},
+   set replayPreset(value:ReplayPreset){presentationOptions.setPreset(value);},
    startSession,reset,bindReplayUi,jumpEvent,rebuildReplayEventIndex,
    rebuildReplaySquadEntries,restoreBookmarks,addBookmark,
    renderReplayChapters,renderReplayDebrief,renderReplaySquadEntries,
