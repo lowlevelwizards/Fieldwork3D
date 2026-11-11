@@ -282,7 +282,7 @@ export function commitTacticalGroundCommand(port:GroundCommandPort,pt:Pt):void{
   if(port.targeting.isFacing){
     const placedId=port.state.nextId;
     const retargetingActive=port.targeting.facing.lookMode==='watch'&&port.selectedActiveWatch;
-    const actor=uid(selected);
+    const actor=team(port.state).find(actor=>actor.id===port.selected);
     const source=retargetingActive?actor?.p:port.selectedNode!==null?
       actor?.plan.find(node=>node.id===port.selectedNode)?.p:
       actor?(port.targeting.facing.armedOrigin==='here'?actor.p:finalPoint(actor)):null;
@@ -311,7 +311,7 @@ export function commitTacticalGroundCommand(port:GroundCommandPort,pt:Pt):void{
     if(committed)port.targeting.reset();
     port.updateHud();return;
   }
-  const beforeRoute=uid(selected)?finalPoint(uid(selected)!):pt;
+  const beforeRoute=team(port.state).find(actor=>actor.id===port.selected)?finalPoint(team(port.state).find(actor=>actor.id===port.selected)!):pt;
   port.onAuthoring();
   if(!planMove(port.state,port.selected,pt))
     port.rejectAt(pt,!intelPassable(pt,port.state.intel)?
@@ -319,7 +319,7 @@ export function commitTacticalGroundCommand(port:GroundCommandPort,pt:Pt):void{
       'NO WALKABLE ROUTE · CHECK DOOR OR PATH');
   else{
     port.selectedActiveWatch=false;
-    port.selectedNode=uid(selected)?.plan.at(-1)?.id??null;
+    port.selectedNode=team(port.state).find(actor=>actor.id===port.selected)?.plan.at(-1)?.id??null;
     port.tacticalFeedback.emit('route',pt,undefined,beforeRoute);
     port.audio.playOrderCue('orders.waypoint');
     port.teach('waypoint-created',
