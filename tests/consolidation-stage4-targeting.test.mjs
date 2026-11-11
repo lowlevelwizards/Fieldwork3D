@@ -69,28 +69,41 @@ test('A4 PUSH Back always cancels before deleting selected waypoint',()=>{
  const plan=JSON.stringify(actor.plan);
  t.armPush();assert.equal(t.cancel(),true);
  assert.equal(JSON.stringify(actor.plan),plan);
+ // A6 correctly moved toolbar event binding out of the entrypoint.
  const main=source('src/breach-main.ts');
- const back=main.slice(main.indexOf("ui.back.addEventListener('click'"),
-   main.indexOf("ui.moss.addEventListener('click'"));
- assert.match(back,/if\(targeting\.isArmed\)\{cancelTargeting\(\);return;\}/);
- assert.ok(back.indexOf('targeting.isArmed')<back.indexOf('backOne(state,selected)'));
- assert.match(back,/if\(selectedActiveWatch\)/);
- assert.match(main,/ui\.back\.disabled=!targeting\.isArmed&&!selectedActiveWatch&&!active\?\.plan\.length/);
+ const hud=source('src/ui/tactical-hud-controller.ts');
+ assert.match(main,/hudController\.bindToolbar\(/);
+ const start=hud.indexOf("port.ui.back.addEventListener('click'");
+ assert.ok(start>=0,'BACK is bound by the tactical HUD owner');
+ const back=hud.slice(start,hud.indexOf("port.ui.clear.addEventListener",start));
+ assert.match(back,/if\(targeting\.isArmed\)\{port\.cancelTargeting\(\);return;\}/);
+ assert.ok(back.indexOf('targeting.isArmed')<back.indexOf('backOne(port.state,port.selected)'),
+  'target cancellation must precede waypoint deletion');
+ assert.match(back,/if\(port\.selectedActiveWatch\)/);
+ assert.match(hud,/ui\.back\.disabled=!targeting\.isArmed&&!selectedActiveWatch&&!active\?\.plan\.length/);
 });
-
 test('A4 rejection leaves push/suppress/flash/look armed; evacuation is one-shot',()=>{
- const main=source('src/breach-main.ts');
- const tap=main.slice(main.indexOf('function useSelectedGround('),
-  main.indexOf('const beforeRoute=',main.indexOf('function useSelectedGround(')));
+ // A6 relocated the single ground-authoring boundary into the existing
+ // pointer-command owner. Assert the same A4 commit/cancel rules there.
+ const pointer=source('src/breach-pointer-command-controller.ts');
+ const start=pointer.indexOf('export function commitTacticalGroundCommand(');
+ assert.ok(start>=0);
+ const tap=pointer.slice(start,pointer.indexOf('const beforeRoute=',start));
  for(const kind of ['pushMode','firePlacement','flashMode'])
-  assert.ok(tap.includes('if(targeting.'+kind+')'));
- assert.match(tap,/if\(targeting\.pushMode\)[\s\S]*?if\(!accepted\)rejectAt[\s\S]*?else\{\s*targeting\.reset\(\)/);
- assert.match(tap,/if\(targeting\.flashMode\)[\s\S]*?if\(!accepted\)rejectAt[\s\S]*?else\{[\s\S]*?targeting\.reset\(\)/);
- assert.match(tap,/if\(targeting\.isFacing\)[\s\S]*?if\(committed\)targeting\.reset\(\)/);
- assert.match(tap,/const evacuation=targeting\.evacMode;\s*if\(evacuation\)\{\s*targeting\.reset\(\)/);
- assert.match(tap,/planDoorFlash\(state,selected,doorId,pt\):\s*planFlash\(state,selected,pt\)/);
+  assert.ok(tap.includes('if(port.targeting.'+kind+')'));
+ const push=tap.slice(tap.indexOf('if(port.targeting.pushMode)'),
+  tap.indexOf('const evacuation='));
+ assert.match(push,/if\(!accepted\)port\.rejectAt[\s\S]*?else\{\s*port\.targeting\.reset\(\)/);
+ const suppress=tap.slice(tap.indexOf('if(port.targeting.firePlacement)'),
+  tap.indexOf('if(port.targeting.flashMode)'));
+ assert.match(suppress,/if\(!accepted\)port\.rejectAt[\s\S]*?else\{[\s\S]*?port\.targeting\.reset\(\)/);
+ const flash=tap.slice(tap.indexOf('if(port.targeting.flashMode)'),
+  tap.indexOf('if(port.targeting.isFacing)'));
+ assert.match(flash,/planDoorFlash\(port\.state,port\.selected,doorId,pt\):\s*planFlash\(port\.state,port\.selected,pt\)/);
+ assert.match(flash,/if\(!accepted\)port\.rejectAt[\s\S]*?else\{[\s\S]*?port\.targeting\.reset\(\)/);
+ assert.match(tap,/if\(port\.targeting\.isFacing\)[\s\S]*?if\(committed\)port\.targeting\.reset\(\)/);
+ assert.match(tap,/const evacuation=port\.targeting\.evacMode;\s*if\(evacuation\)\{\s*port\.targeting\.reset\(\)/);
 });
-
 test('A4 HUD derives labels, cancel affordance and hints from target state',()=>{
  const t=createTacticalInteractionState(),hud=createTacticalHudController(t);
  const cancel=fake(),hint=fake();
@@ -121,9 +134,8 @@ test('A4 all entrypoints use one owner; mission, replay, GO and selection clear 
   /targetArmed:\(\)=>targeting\.isArmed/,
   /isLooking:\(\)=>targeting\.isFacing/,
   /if\(state\.phase!=='planning'\)targeting\.reset\(\)/,
-  /targeting\.armDoorFlash\(door\.id\)/,
-  /targeting\.armEvac\(target\.id,'drag'\)/,
-  /targeting\.armEvac\(target\.id,'carry'\)/
+  /commitTacticalGroundCommand\(/,
+  /hudController\.bindToolbar\(/
  ])assert.match(main,pattern);
  for(const legacy of [/let flashMode=false/,/let evacMode:/,/let firePlacement:/,
   /hudController\.facing\.looking=false/])assert.doesNotMatch(main,legacy);
@@ -132,4 +144,10 @@ test('A4 all entrypoints use one owner; mission, replay, GO and selection clear 
  assert.doesNotMatch(pure,/\b(?:window|document|localStorage|newSession|stepSession)\b/);
  const hudSrc=source('src/ui/tactical-hud-controller.ts');
  assert.match(hudSrc,/get facing\(\)\{return targeting\.facing;\}/);
+ assert.match(hudSrc,/targeting\.armDoorFlash\(door\.id\)/);
+ assert.match(hudSrc,/targeting\.armEvac\(target\.id,'drag'\)/);
+ assert.match(hudSrc,/targeting\.armEvac\(target\.id,'carry'\)/);
+ assert.match(hudSrc,/if\(targeting\.isArmed\)\{port\.cancelTargeting\(\);return;\}/);
+ const pointer=source('src/breach-pointer-command-controller.ts');
+ assert.match(pointer,/export function commitTacticalGroundCommand\(/);
 });
