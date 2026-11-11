@@ -236,6 +236,8 @@ test('B1: one decision, one transition sample, one foot scheduler and one final 
   /\.rotation\.(?:set|copy)\s*\(/,/new WeakMap\s*\(/])
   assert.doesNotMatch(policy,marker,'B1 pure policy must not own clocks or transforms');
  assert.match(code,/const \{profile,upperBody:upperBodyPlan,poseWeight\}=decision/);
+ assert.match(code,/const \{action:actionState\}=decision/);
+ assert.doesNotMatch(code,/const \{handling,action:actionState\}=preparedDecision/);
  assert.doesNotMatch(code,/planUpperBodyStrategy\s*\(/);
  assert.doesNotMatch(code,/blendedHandlingProfile\s*\(/);
 });
