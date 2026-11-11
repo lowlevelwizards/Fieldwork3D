@@ -1,9 +1,10 @@
 /** Stage 10d: editor workbench routing against live state, preserving persistence.
  */
+import type {CampaignMode} from './breach-app-mode.ts';
 import type {RosterState} from './breach-roster.ts';
 import type {CampaignState} from './campaign-state.ts';
 import type {Session} from './breach-game.ts';
-type CampaignMode='menu'|'home'|'mission'|'quick';
+
 export type EquipmentEditorBridgeHooks={
  getRoster:()=>RosterState;setRoster:(value:RosterState)=>void;
  getCampaign:()=>CampaignState|null;setCampaign:(value:CampaignState)=>void;
