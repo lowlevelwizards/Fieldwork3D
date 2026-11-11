@@ -33,6 +33,7 @@ export type QuickPlayControllerHooks={
   restoreFavoriteStart:(start:MissionStartSnapshot)=>void;
   activateFavorite:(id:string)=>void;
   showHelp:(message:string,duration:number)=>void;
+  onConfiguratorVisibilityChange?:(visible:boolean)=>void;
 };
 export function createBreachQuickPlayController(config:QuickPlayControllerHooks){
  const el=<T extends HTMLElement>(id:string):T=>{
@@ -91,7 +92,8 @@ quickPlayCancelButton.addEventListener('click',()=>{
 });
 const configurator=createQuickPlayConfigurator({
   randomSeed:config.randomSeed,
-  onGenerate:settings=>{void launchQuickPlay(settings);}
+  onGenerate:settings=>{void launchQuickPlay(settings);},
+  onVisibilityChange:config.onConfiguratorVisibilityChange
 });
 async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettings()){
   if(quickPlayBusy)return;
