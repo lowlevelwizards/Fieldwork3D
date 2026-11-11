@@ -68,8 +68,8 @@ export function createBreachReplayLibraryController(config:ReplayLibraryHooks){
   });
   const failure=(error:unknown)=>view.failure(error);
   const show=(fromMenu=false)=>{
-    config.onLibraryOpen?.(fromMenu);
     view.show();
+    config.onLibraryOpen?.(fromMenu);
   };
   const hide=(restoreMenu=true)=>{
     view.hide();
