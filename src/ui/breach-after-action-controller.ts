@@ -230,8 +230,8 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          s.timelineFilter=value;s.timelineClusterId=null;
          if(value!=='all'&&!s.timelineEvents.some(e=>
            e.key===s.timelineSelectedKey&&e.category===value)){
-           s.timelineSelectedKey=s.timelineEvents.find(e=>e.category===value)?
-             .key??null;
+           s.timelineSelectedKey=s.timelineEvents.find(
+             e=>e.category===value)?.key??null;
          }
          s.timelineGroupScroll=0;s.timelineLedgerScroll=0;
          s.timelineLedgerLimit=30;persist();
