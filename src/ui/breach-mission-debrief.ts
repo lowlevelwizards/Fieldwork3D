@@ -27,7 +27,7 @@ export function renderMissionDebrief(input:{
  campaignMode:CampaignMode;operationsLogged:number;
 }):void{
  const {ui,state,brief,recorder,campaign,campaignMode,operationsLogged}=input;
- const root=ui.debriefStats.closest<HTMLElement>('#debrief');
+ const root=ui.debriefStats.closest<HTMLElement>('.debrief');
  if(root){
    const previous=rendered.get(root);
    const historyLength=campaign?.history.length??0;
@@ -44,11 +44,24 @@ export function renderMissionDebrief(input:{
       sessionIntelligenceReview(state):'';
     const stats=debrief(state);
     ui.debriefTitle.textContent='DEBRIEF';
-    const introTitle=document.getElementById('afterActionIntroTitle');
-    if(introTitle)introTitle.textContent=state.phase==='won'?'MISSION COMPLETE':'MISSION FAILED';
+    // These values are from authoritative mission assessment, never
+    // reconstructed from the (possibly incomplete) replay evidence.
+    const outcome=root?.querySelector<HTMLElement>('#afterActionOutcome');
+    if(outcome)outcome.textContent=state.phase==='won'?
+      'MISSION COMPLETE':'MISSION FAILED';
+    const summary=root?.querySelector<HTMLElement>('#afterActionSummary');
+    summary?.setAttribute('data-outcome',state.phase==='won'?'complete':'failed');
+    const missionName=root?.querySelector<HTMLElement>('#afterActionMissionName');
+    if(missionName)missionName.textContent=brief.name.toUpperCase();
+    const missionTime=root?.querySelector<HTMLElement>('#afterActionMissionTime');
+    if(missionTime){
+      const seconds=Math.max(0,Math.floor(stats.time));
+      missionTime.textContent='TIME '+Math.floor(seconds/60)+':'+
+        String(seconds%60).padStart(2,'0');
+    }
     ui.debriefGrade.textContent=stats.grade+' · '+stats.score;
     ui.debriefSurvivors.textContent=stats.survived+' / '+team(state).length;
-    ui.debriefAccuracy.textContent=stats.accuracy+'%';
+    ui.debriefAccuracy.textContent=stats.shots>0?stats.accuracy+'%':'—';
     ui.debriefObjective.textContent=stats.objective?
      'OBJECTIVE SECURED':'OBJECTIVE NOT COMPLETED';
     ui.debriefStats.textContent=

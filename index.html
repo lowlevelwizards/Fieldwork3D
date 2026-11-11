@@ -234,19 +234,29 @@
       <button id="afterActionMainMenu" type="button">MAIN MENU</button>
     </div>
   </header>
-  <div id="afterActionIntro" class="fw-after-intro" hidden>
-    <div class="fw-after-intro-card">
+  <section id="afterActionSummary" class="fw-v4-mission-summary"
+           aria-label="Mission outcome and performance">
+    <div class="fw-v4-result-identity">
       <span class="fw-after-caption">MISSION RESULT</span>
-      <strong id="afterActionIntroTitle">MISSION COMPLETE</strong>
-      <div class="fw-after-action-stats">
-        <div><span>GRADE</span><strong id="debriefGrade">—</strong></div>
-        <div><span>SURVIVORS</span><strong id="debriefSurvivors">—</strong></div>
-        <div><span>ACCURACY</span><strong id="debriefAccuracy">—</strong></div>
-      </div>
-      <p class="fw-after-action-objective" id="debriefObjective"></p>
-      <button id="afterActionContinue" type="button">VIEW DEBRIEF</button>
+      <strong id="afterActionOutcome">MISSION COMPLETE</strong>
+      <span id="afterActionMissionName" class="fw-v4-mission-name">MISSION</span>
     </div>
-  </div>
+    <div class="fw-v4-result-data" aria-label="Mission result metrics">
+      <div class="fw-v4-result-stat">
+        <span>GRADE / SCORE</span><strong id="debriefGrade">—</strong>
+      </div>
+      <div class="fw-v4-result-stat">
+        <span>SURVIVORS</span><strong id="debriefSurvivors">—</strong>
+      </div>
+      <div class="fw-v4-result-stat">
+        <span>ACCURACY</span><strong id="debriefAccuracy">—</strong>
+      </div>
+    </div>
+    <div class="fw-v4-result-foot">
+      <strong id="debriefObjective">OBJECTIVE STATUS UNKNOWN</strong>
+      <span id="afterActionMissionTime">TIME —</span>
+    </div>
+  </section>
   <nav id="afterActionTabs" class="fw-after-tabs" aria-label="Debrief sections">
     <button type="button" data-after-tab="squad" aria-pressed="true">SQUAD</button>
     <button type="button" data-after-tab="combat" aria-pressed="false">COMBAT</button>

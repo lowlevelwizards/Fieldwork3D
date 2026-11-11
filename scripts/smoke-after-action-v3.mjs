@@ -51,7 +51,7 @@ try{
     });
     const rec={manifest:{actors},duration:90,
      completeness:{complete:true},frames:[{actors:actors.filter(a=>a.side==='blue')
-       .map(a=>({id:a.id,health:4,injuryStage:0}))}],
+       .map(a=>({id:a.id,health:4,injuryStage:0,suppression:0})),shots:[]}],
      events:[
        {id:1,t:10,kind:'intel',actor:'rook',p:{x:10,y:10},
         text:'CONTACT',meta:{action:'spot',targetId:'guard'}},
@@ -116,12 +116,80 @@ try{
        unclip:()=>toggle.click()
      };
    });
+   // Verify the permanent banner against a REAL authoritative Session,
+   // not a cloned replay's inferred outcome or hardcoded placeholder values.
+   const outcomeEvidence=await page.evaluate(async()=>{
+     const [{newSession,debrief},{renderMissionDebrief}]=await Promise.all([
+       import('/src/breach-game.ts'),
+       import('/src/ui/breach-mission-debrief.ts')
+     ]);
+     const root=document.querySelector('#v3-qa');
+     const keys=['debriefIntelBlock','debriefIntelText','debriefTitle',
+       'debriefGrade','debriefSurvivors','debriefAccuracy',
+       'debriefObjective','debriefStats'];
+     const ui=Object.fromEntries(keys.map(key=>[
+       key,root.querySelector('#'+key)
+     ]));
+     const state=newSession(0,418);
+     const render=()=>{
+       const stats=debrief(state);
+       renderMissionDebrief({ui,state,brief:{name:'TEST OPERATION'},
+         recorder:window.__v4Rec,campaign:null,campaignMode:'quick',
+         operationsLogged:0});
+       return {
+         grade:ui.debriefGrade.textContent,
+         expectedGrade:stats.grade+' · '+stats.score,
+         survivors:ui.debriefSurvivors.textContent,
+         expectedSurvivors:stats.survived+' / '+stats.squad.length,
+         accuracy:ui.debriefAccuracy.textContent,
+         expectedAccuracy:stats.shots>0?stats.accuracy+'%':'—',
+         objective:ui.debriefObjective.textContent,
+         expectedObjective:stats.objective?'OBJECTIVE SECURED':'OBJECTIVE NOT COMPLETED',
+         outcome:root.querySelector('#afterActionOutcome').textContent,
+         time:root.querySelector('#afterActionMissionTime').textContent,
+         name:root.querySelector('#afterActionMissionName').textContent
+       };
+     };
+     state.phase='won';state.mission='done';state.seconds=83;
+     const won=render();
+     state.phase='lost';state.mission='clear';state.seconds=91;
+     const lost=render();
+     state.phase='won';state.mission='done';state.seconds=83;
+     render();
+     return {won,lost};
+   });
+   const accurate=record=>record.grade===record.expectedGrade&&
+     record.survivors===record.expectedSurvivors&&
+     record.accuracy===record.expectedAccuracy&&
+     record.objective===record.expectedObjective&&
+     record.name==='TEST OPERATION';
+   check(accurate(outcomeEvidence.won)&&
+     outcomeEvidence.won.outcome==='MISSION COMPLETE'&&
+     outcomeEvidence.won.time==='TIME 1:23',
+     'Success summary not derived from authoritative Session '+name+
+       ' '+JSON.stringify(outcomeEvidence.won));
+   check(accurate(outcomeEvidence.lost)&&
+     outcomeEvidence.lost.outcome==='MISSION FAILED'&&
+     outcomeEvidence.lost.time==='TIME 1:31',
+     'Failure summary not derived from authoritative Session '+name+
+       ' '+JSON.stringify(outcomeEvidence.lost));
    const root=page.locator('#v3-qa');
    check(await root.locator('[data-after-tab]').count()===3,
      'Wrong number of tabs '+name);
-   await root.locator('#afterActionContinue').click();
-   check(await root.locator('.fw-v3-roster-card').count()===4,
-     'Squad roster missing '+name);
+   check(await root.locator('#afterActionSummary').isVisible(),
+     'Mission outcome strip not immediately visible '+name);
+   check(await root.locator('#afterActionIntro').count()===0,
+     'Blocking result overlay still present '+name);
+   check(await root.locator('.fw-v4-rank-row').count()===4,
+     'All four operators not ranked together '+name);
+   check(await root.locator('.fw-v4-rank-row[aria-pressed=true]').count()===0,
+     'Initial Squad silently selects an operator '+name);
+   check(await root.locator('.fw-v3-miniature').count()===0,
+     'Generic 2D operator artwork remained '+name);
+   check((await root.locator('.fw-v4-rank-row').first().textContent()).includes('ROOK'),
+     'Contribution ranking not highest-first '+name);
+   check((await root.locator('.fw-v4-rank-row').nth(1).textContent()).includes('TIED #2'),
+     'Equal-score ranks appear unequal '+name);
    const layout=()=>page.evaluate(()=>{
      const root=document.querySelector('#v3-qa'),body=root.querySelector('#afterActionBody');
      return {scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth,
@@ -132,13 +200,46 @@ try{
     const metrics=await layout();
     check(metrics.scrollWidth<=metrics.viewport+2,
       'Horizontal overflow '+screen+name+' '+JSON.stringify(metrics));
-    check(metrics.contentBottom<=metrics.bodyBottom+3,
+    if(screen==='squad'){
+      const rankBottom=await root.locator('.fw-v4-rank-row').last()
+        .evaluate(node=>node.getBoundingClientRect().bottom);
+      check(rankBottom<=metrics.bodyBottom+3,
+        'Four ranked operators not visible without scrolling '+
+         name+' '+JSON.stringify({rankBottom,...metrics}));
+    }else check(metrics.contentBottom<=metrics.bodyBottom+3,
       'Content clips '+screen+name+' '+JSON.stringify(metrics));
    };
    await fits('squad');
-   await root.locator('.fw-v3-roster-card').filter({hasText:'MOSS'}).click();
+   await root.locator('.fw-v4-rank-row').first().focus();
+   await root.locator('.fw-v4-rank-row').first().press('Enter');
+   check(await page.evaluate(()=>
+     document.activeElement?.tagName==='H2'&&
+     document.activeElement?.textContent==='ROOK'),
+     'Keyboard selection did not focus selected operator heading '+name);
+   await root.locator('.fw-v4-overview-back').click();
+   await root.locator('.fw-v4-rank-row').filter({hasText:'MOSS'}).click();
    check((await root.locator('.fw-v3-squad-name h2').textContent())==='MOSS',
      'Squad selection failed '+name);
+   if(width<=700){
+     const visible=await page.evaluate(()=>{
+       const root=document.querySelector('#v3-qa'),body=root.querySelector('#afterActionBody');
+       const chosen=root.querySelector('.fw-v4-selected-overview');
+       return !!chosen&&chosen.getBoundingClientRect().top<
+         body.getBoundingClientRect().bottom;
+     });
+     check(visible,'Selected operator details hidden below fold '+name);
+   }
+   check(await root.locator('.fw-v4-rank-row[aria-pressed=true]').count()===1,
+     'Selected operator not clearly identified '+name);
+   check((await root.locator('.fw-v4-selected-overview').textContent())
+     .includes('OBJECTIVE'),
+     'Weighted category breakdown missing '+name);
+   await root.locator('.fw-v4-overview-back').click();
+   check(await root.locator('.fw-v4-rank-row[aria-pressed=true]').count()===0,
+     'All Operators did not clear selection '+name);
+   check(await root.locator('.fw-v4-team-overview').count()===1,
+     'Squad overview not restored '+name);
+   await root.locator('.fw-v4-rank-row').filter({hasText:'MOSS'}).click();
    await root.locator('.fw-v3-details-link').click();
    check(await root.locator('#afterActionOperatorRecord').count()===1,
      'Operator record not opened in Squad '+name);
@@ -161,6 +262,8 @@ try{
      'Mission Details unavailable '+name);
    await root.locator('#afterActionDetailsClose').click();
    await root.locator('[data-after-tab="combat"]').click();
+   check(await root.locator('#afterActionSummary').isVisible(),
+     'Switching tabs lost persistent mission result '+name);
    check(await root.locator('.fw-v3-contact-chip').count()===2,
      'Contacts unavailable '+name);
    check(await root.locator('.fw-v3-shot-chip').count()===3,
