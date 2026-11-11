@@ -43,7 +43,7 @@ export function plannedWindowRoute(s:Session,from:Pt,to:Pt,
 /** An explicit straight gesture through ONE known light object may remain
  * authored. Other blocked samples (walls, unknown cover, doors) still reject.
  * The motor must physically reach and shove the same known object later. */
-function knownShoveCrossing(s:Session,from:Pt,to:Pt):number|null{
+export function knownShoveCrossing(s:Session,from:Pt,to:Pt):number|null{
  if(!intelPassable(from,s.intel,SQUEEZE_RADIUS)||
     !intelPassable(to,s.intel,SQUEEZE_RADIUS))return null;
  const span=d(from,to);

@@ -1,6 +1,6 @@
 import {planAim} from './breach-plan-aim-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
-import {legalMoveRoute,knownTraversal} from './breach-known-route-authoring.ts';
+import {legalMoveRoute,knownTraversal,knownShoveCrossing} from './breach-known-route-authoring.ts';
 export {plannedWindowRoute} from './breach-known-route-authoring.ts';
 import {addNode,finalPoint} from './breach-plan-node-commands.ts';
 export {addNode,finalPoint} from './breach-plan-node-commands.ts';

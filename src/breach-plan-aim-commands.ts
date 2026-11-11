@@ -1,6 +1,6 @@
 /** LOOK/WATCH authored instructions. Keeps the active WATCH and route
  * independent and preserves the existing atomic edit semantics. */
-import type {Session,TeamActor} from './breach-game.ts';
+import type {Session} from './breach-game.ts';
 import type {Pt} from './breach-core.ts';
 import {type AimMode,type PlanNode,length,targetAngle} from './breach-plan.ts';
 import {edit} from './breach-plan-authoring.ts';
