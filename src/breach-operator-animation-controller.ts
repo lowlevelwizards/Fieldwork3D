@@ -97,13 +97,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const kickAge=p.seconds-p.lastDoorAt;
   const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
     kickMotion(kickAge):null;
-  const {handling,action:actionState}=preparedDecision;
-  const {treatmentActive,reloadActive,reloadProgress,reloadMode,
-    throwAge,throwActive,doorAge,doorActive,handOwners}=actionState;
+  const {handling}=preparedDecision;
   // The existing transition sampler remains the ONLY rig-owned historical
   // writer. B1 assembles its result into one read-only policy decision.
   const sample=sampleHandlingTransition(r,p,handling);
   const decision=resolveOperatorPoseDecision(p,preparedDecision,sample);
+  const {action:actionState}=decision;
+  const {treatmentActive,reloadActive,reloadProgress,reloadMode,
+    throwAge,throwActive,doorAge,doorActive,handOwners}=actionState;
   const {manual:manualShort,rawProgress:manualRaw}=decision.shortStock;
   const {active:activeTransition,authoredLabSwitch}=decision.transition;
   const {profile,upperBody:upperBodyPlan,poseWeight}=decision;
