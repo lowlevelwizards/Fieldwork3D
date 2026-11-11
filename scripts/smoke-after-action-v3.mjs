@@ -109,6 +109,10 @@ try{
          messages:[...messages]};},
        exit:()=>port.exitReplay(),
        failNext:()=>{failNext=true;},
+       failIncident:()=>{
+         const start=playback.startIncident.bind(playback);
+         playback.startIncident=()=>{playback.startIncident=start;return false;};
+       },
        unclip:()=>toggle.click()
      };
    });
@@ -183,6 +187,15 @@ try{
      'Failed launch did not explain the error '+name);
    check(await root.locator('.fw-v3-shot-chip[aria-pressed=true]').count()===1,
      'Failed clip changed selected shot '+name);
+   await page.evaluate(()=>window.__v4Mock.failIncident());
+   await root.locator('.fw-v3-play').click();
+   check(!(await page.evaluate(()=>window.__v4Mock.state)).replaying,
+     'Invalid transport window stranded the user in replay '+name);
+   check((await page.evaluate(()=>window.__v4Mock.state)).messages.some(x=>
+     x.includes('COULD NOT OPEN CLIP')),
+     'Post-entry failure did not explain its rollback '+name);
+   check(await root.locator('.fw-v3-shot-chip[aria-pressed=true]').count()===1,
+     'Failed transport changed contact/shot state '+name);
    await page.evaluate(()=>{window.__v3Context=window.__v3Qa.afterActionSnapshot(
      document.querySelector('#v3-qa'));});
    await root.locator('[data-after-tab="highlights"]').click();
