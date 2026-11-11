@@ -124,8 +124,13 @@ try{
        h:node.getBoundingClientRect().height})));
    check(markers.every(m=>m.w>=43&&m.h>=43),
      'Touch markers too small '+label+' '+JSON.stringify(markers));
-   await root.locator('.fw-v5-timeline-filter').filter({
-     hasText:'CONTACT'}).click();
+   const contactFilter=root.locator('.fw-v5-timeline-filter')
+     .filter({hasText:'CONTACT'});
+   await contactFilter.focus();
+   await contactFilter.press('Enter');
+   check(await page.evaluate(()=>document.activeElement?.dataset
+     .timelineFilter==='contact'),
+     'Keyboard filter lost focus after redraw '+label);
    check((await root.locator('.fw-v5-timeline-heading').textContent())
      .includes('1 OF'),
      'Contact filter lost recorded event '+label);
@@ -134,8 +139,13 @@ try{
    await root.locator('.fw-v5-timeline-ledger-toggle').click();
    check(await root.locator('.fw-v5-timeline-ledger-item').count()>=8,
      'Chronological event ledger lost events '+label);
-   await root.locator('.fw-v5-timeline-ledger-item')
-     .filter({hasText:'DAMAGING HIT'}).first().click();
+   const damageRow=root.locator('.fw-v5-timeline-ledger-item')
+     .filter({hasText:'DAMAGING HIT'}).first();
+   await damageRow.focus();
+   await damageRow.press('Enter');
+   check(await page.evaluate(()=>document.activeElement?.dataset
+     .timelineEventKey==='shot:41'),
+     'Keyboard event selection lost focus after redraw '+label);
    check((await root.locator('.fw-v5-timeline-inspect').getAttribute(
      'data-timeline-selected-key'))==='shot:41',
      'Ballistic event selection lost shot ID '+label);
