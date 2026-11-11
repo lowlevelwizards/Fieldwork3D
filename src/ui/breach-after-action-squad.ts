@@ -149,7 +149,12 @@ export function renderSquadView(report:AfterActionReport,
  for(const op of operators)
    roster.append(rankRow(op,operators,selected?.id??null,choose));
  const focus=el('div','fw-v3-squad-focus fw-v4-squad-focus');
- focus.append(selected?selectedOverview(selected,operators,choose,more):
+ const viewer=el('div','fw-v4-squad-model','LOADING RECORDED 3D OPERATORS');
+ viewer.setAttribute('data-after-squad-model','');
+ viewer.setAttribute('aria-label',selected?
+   'Historical 3D model for '+selected.name:
+   'Historical 3D models of the complete squad');
+ focus.append(viewer,selected?selectedOverview(selected,operators,choose,more):
    initialOverview(report));
  content.append(roster,focus);section.append(content);
  if(!report.complete)section.append(el('p','fw-after-muted fw-v4-partial',
