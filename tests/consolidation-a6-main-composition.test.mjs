@@ -73,3 +73,10 @@ test('A6 contextual UI dispatch binds once on HUD while game rules stay in domai
  assert.match(hud,/if\(contextActionsBound\)return/);
  assert.match(hud,/dispatchTacticalContextCommand\(/);
 });
+
+test('A6 replay actor option creation belongs to existing replay HUD',()=>{
+ const hud=readFileSync(new URL('../src/ui/breach-replay-hud-controller.ts',import.meta.url),'utf8');
+ assert.match(source,/replayHudController\?\.populateInspectActors\(/);
+ assert.match(hud,/function populateInspectActors\(/);
+ assert.match(hud,/function populateCameraChoices\(/);
+});

@@ -167,6 +167,32 @@ export function createBreachReplayHudController(config:{
     updateReplayHud();
   });
  }
+function populateInspectActors():void{
+ const ui=config.ui,state=config.snapshot().state;
+ ui.replayInspectActor.replaceChildren();
+ ui.replayInspectActorButtons.replaceChildren();
+ for(const actor of team(state)){
+  const option=document.createElement('option');
+  option.value=actor.id;option.textContent=actor.name.toUpperCase();
+  ui.replayInspectActor.append(option);
+  const button=document.createElement('button');
+  button.type='button';button.dataset.followActor=actor.id;
+  button.textContent=actor.name.toUpperCase();button.title='Follow '+actor.name;
+  button.addEventListener('click',()=>config.followReplayOperator(actor.id));
+  ui.replayInspectActorButtons.append(button);
+ }
+}
+function populateCameraChoices():void{
+ const ui=config.ui,state=config.snapshot().state;
+ for(const option of ui.replayQuickCamera.querySelectorAll('option[data-actor]'))
+   option.remove();
+ for(const actor of team(state)){
+  const option=document.createElement('option');
+  option.value='operator:'+actor.id;option.dataset.actor=actor.id;
+  option.textContent='FOLLOW '+actor.name.toUpperCase();
+  ui.replayQuickCamera.append(option);
+ }
+}
 function updateReplayHud():void{
  const ui=config.ui;
  const {state,recorder,replayPlayback,replayCamera,replayKnowledge,replayBodycam,
@@ -404,5 +430,5 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
   analysisUi.syncReplayEventFeed();
 }
 
- return {bind,update:updateReplayHud};
+ return {bind,update:updateReplayHud,populateInspectActors,populateCameraChoices};
 }

@@ -942,31 +942,8 @@ function applyReplayPreset(next:'clean'|'movement'|'combat'|'visibility'):void{
   }
   updateReplayHud();
 }
-function populateReplayInspectActors():void{
-  ui.replayInspectActor.replaceChildren();
-  ui.replayInspectActorButtons.replaceChildren();
-  for(const actor of team(state)){
-    const option=document.createElement('option');
-    option.value=actor.id;option.textContent=actor.name.toUpperCase();
-    ui.replayInspectActor.append(option);
-    const button=document.createElement('button');
-    button.type='button';button.dataset.followActor=actor.id;
-    button.textContent=actor.name.toUpperCase();
-    button.title='Follow '+actor.name;
-    button.addEventListener('click',()=>followReplayOperator(actor.id));
-    ui.replayInspectActorButtons.append(button);
-  }
-}
-function populateReplayCameraChoices():void{
-  for(const option of ui.replayQuickCamera.querySelectorAll('option[data-actor]'))
-    option.remove();
-  for(const actor of team(state)){
-    const option=document.createElement('option');
-    option.value='operator:'+actor.id;option.dataset.actor=actor.id;
-    option.textContent='FOLLOW '+actor.name.toUpperCase();
-    ui.replayQuickCamera.append(option);
-  }
-}
+function populateReplayInspectActors():void{replayHudController?.populateInspectActors();}
+function populateReplayCameraChoices():void{replayHudController?.populateCameraChoices();}
 let replayHudController:ReturnType<typeof createBreachReplayHudController>|null=null;
 function updateReplayHud():void{replayHudController?.update();}
 /** Display compact clusters, not dozens of overlapping tap targets.
