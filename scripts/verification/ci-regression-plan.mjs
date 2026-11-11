@@ -32,16 +32,41 @@ export const domains=[
 ];
 export const configuredTestPaths=()=>[...new Set([...baseline,...domains.flatMap(g=>g.tests)])].sort();
 
-export function selectCiTests(paths=[]){
+/** A10: a changed test must actually execute; non-source runtime inputs and
+ * test/CI infrastructure require the curated critical fallback rather than a
+ * misleading green check from the universal baseline alone. fileExists may be
+ * supplied by tests to model removed files without modifying the worktree.
+ */
+export function selectCiTests(paths=[],fileExists=existsSync){
  const files=[...new Set(paths)].sort(),selected=new Set(baseline),matched=[],unknown=[];
+ const changedTests=[],deletedTests=[],riskPaths=[];
  for(const group of domains)
   if(files.some(p=>group.match.test(p))){
    matched.push(group.name);
    for(const file of group.tests)selected.add(file);
   }
- for(const file of files)
-  if(file.startsWith('src/')&&!domains.some(g=>g.match.test(file)))unknown.push(file);
- return {files,tests:[...selected].sort(),domains:matched,unknown,runBroadCritical:unknown.length>0};
+ for(const file of files){
+  if(file.startsWith('src/')){
+   if(!domains.some(g=>g.match.test(file)))unknown.push(file);
+  }else if(/^tests\/.*\.test\.mjs$/.test(file)){
+   if(fileExists(file)){
+    selected.add(file);
+    changedTests.push(file);
+   }else{
+    deletedTests.push(file);
+    riskPaths.push(file);
+   }
+  }else if(
+   file.startsWith('tests/')||
+   file.startsWith('scripts/')||
+   file.startsWith('.github/')||
+   /^(?:data|public|assets|static|textures|models)\//.test(file)||
+   /^[^/]+\.(?:html|css|js|mjs|ts|tsx|json|svg|png|webp|glb|gltf)$/.test(file)
+  )riskPaths.push(file);
+ }
+ return {files,tests:[...selected].sort(),domains:matched,unknown,
+  changedTests,deletedTests,riskPaths,
+  runBroadCritical:unknown.length>0||riskPaths.length>0};
 }
 export function checkCatalog(){
  assert.equal(new Set(domains.map(g=>g.name)).size,domains.length);
@@ -57,7 +82,7 @@ function diffFiles(){
  const base=process.env.CI_BASE_REF;
  if(!base)return [];
  assert.match(base,/^[a-zA-Z0-9._/-]+$/,'Unsafe CI base ref');
- const result=spawnSync('git',['diff','--name-only','--diff-filter=ACMRT','origin/'+base+'...HEAD'],{encoding:'utf8'});
+ const result=spawnSync('git',['diff','--name-only','--diff-filter=ACMRTD','origin/'+base+'...HEAD'],{encoding:'utf8'});
  if(result.error)throw result.error;
  if(result.status!==0)throw Error('PR git diff failed: '+result.stderr);
  return result.stdout.trim().split('\n').filter(Boolean);
@@ -78,7 +103,7 @@ function main(){
   throw Error('Use --check, --list or --run [--files paths...]');
  checkCatalog();
  const plan=selectCiTests(userFiles(args)??diffFiles());
- console.log('A9 CI selection '+JSON.stringify({files:plan.files,domains:plan.domains,unknown:plan.unknown,tests:plan.tests.length,broadCritical:plan.runBroadCritical}));
+ console.log('A9 CI selection '+JSON.stringify({files:plan.files,domains:plan.domains,unknown:plan.unknown,changedTests:plan.changedTests,deletedTests:plan.deletedTests,riskPaths:plan.riskPaths,tests:plan.tests.length,broadCritical:plan.runBroadCritical}));
  if(args.includes('--list')){
   console.log(plan.tests.join('\n'));
   if(plan.runBroadCritical)console.log('scripts/verification/breach-critical-suite.mjs');

@@ -222,7 +222,13 @@ test('Stage 5: camera and layout code no longer consume mutable global bounds',(
  assert.match(scene,/this\.displayedSite=site/);
  assert.match(scene,/const bounds=this\.displayedBounds/);
  assert.doesNotMatch(main,/activeWorldBounds\(/);
- assert.match(main,/const bounds=state\.site\?\.bounds/);
+ // A6 moved responsive camera fitting into the pure 2D renderer. The
+ // composed entrypoint must explicitly pass the Session bounds, never globals.
+ assert.match(main,/fitBreach2DView\(\{/);
+ assert.match(main,/bounds:state\.site\?\.bounds/);
+ const fit=readFileSync(new URL(
+  '../src/breach-2d-world-renderer.ts',import.meta.url),'utf8');
+ assert.match(fit,/const bounds=input\.bounds\?\?/);
  assert.doesNotMatch(pointer,/activeWorldBounds\(/);
  assert.match(pointer,/sessionWorldGeometry\(port\.state\)\.bounds/);
 });

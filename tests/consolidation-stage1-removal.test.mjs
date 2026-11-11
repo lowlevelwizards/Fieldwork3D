@@ -27,7 +27,11 @@ test('A1: no alternate source-of-truth combat or authoring loop remains in geome
   assert.equal(key in core,false,'retired prototype export: '+key);
  const game=source('src/breach-game.ts');
  assert.ok(game.includes('stepSession('));
- assert.ok(game.includes('newTacticalState()'));
+ const assembly=source('src/breach-session-factory.ts');
+ assert.match(assembly,/newTacticalState\(site\?\?null\)/,
+  'Session factory owns seeded world initialization');
+ assert.doesNotMatch(game,/newTacticalState\(/,
+  'public gameplay facade must not duplicate the Session seed');
 });
 
 test('A1: unused property expansions are absent; active footprint pipeline retained',()=>{
@@ -61,6 +65,10 @@ test('A1: supported QA and compatibility toggles remain intentionally intact',()
  const world=source('src/breach-presentation-world-ownership.ts');
  assert.ok(threeD.includes("get('lighting')!=='legacy'"));
  assert.ok(main.includes('civilians=0'));
- assert.ok(main.includes('LEGACY_ROSTER_KEY'));
+ const storageKeys=source('src/breach-storage-keys.ts');
+ const persistence=source('src/breach-persistence.ts');
+ assert.match(storageKeys,/legacyRoster:'fieldwork3d\.operator-roster\.v1'/);
+ assert.match(persistence,/BREACH_STORAGE_KEYS\.legacyRoster/,
+  'legacy roster migration remains owned by persistence');
  assert.ok(world.includes('withDetachedPresentationWorld'));
 });
