@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBreachReplayHudController}
  from '../src/ui/breach-replay-hud-controller.ts';
+import {createReplayPresentationOptions}
+ from '../src/breach-replay-presentation-options.ts';
 
 /** No browser needed: the extracted HUD consumes existing DOM elements. */
 function fakeElement(){
@@ -35,7 +37,7 @@ function fixture(){
  ui.replayPlay.dataset.mode='replayPlay'; // initial static DOM icon
  ui.replayPlay.setAttribute('aria-label','Play replay');
  ui.replayQuickCamera.options=[];
- let names=true,plans='selected';
+ const presentation=createReplayPresentationOptions();
  const state={operators:[
   {id:'rook',name:'Rook',side:'blue',health:100},
   {id:'moss',name:'Moss',side:'blue',health:100}
@@ -63,15 +65,16 @@ function fixture(){
    videoActive:false,library:{activeSavedReplayId:null,busy:false,
     isRecorderSaved:()=>false},analysisUi,
    viewMode:'iso',stageAvailable:true,selected:'rook',replaying:true,
-   replayXrayOn:false,replayTraceMode:'off',replayGhostMode:'off',
-   replayTrailMode:'off',replayPlanScope:plans,
-   replayPlanVersion:'active',replayNameTags:names,replayAnalysis:false,
+   presentationOptions:presentation.options,
    audioSoundEnabled:true
   }),
   onOverlayChoice(choice){
    events.push('choice:'+choice);
-   if(choice==='names')names=!names;
-   if(choice==='plans')plans=plans==='none'?'selected':'none';
+   if(choice==='names')
+    presentation.patch({replayNameTags:!presentation.options.replayNameTags});
+   if(choice==='plans')
+    presentation.patch({replayPlanScope:presentation.options.replayPlanScope==='none'?
+      'selected':'none'});
   }
  };
  return {ui,overlayNames,overlayPlans,config,camera,knowledge,
