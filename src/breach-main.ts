@@ -1379,76 +1379,21 @@ dragButton=toolbarButtons.drag;
 carryButton=toolbarButtons.carry;
 retrieveButton=toolbarButtons.recover;
 missionScreens.bindSitePreferences();
-ui.variant.addEventListener('click',async()=>{
-  if(replaying||appFlow.mode==='mission')return;
-  if(appFlow.mode==='quick'){returnToQuickPlayGenerator();return;}
-  if((state.started||team(state).some(a=>a.plan.length>0))&&
-    !await confirmFieldworkAction({
-      title:'Generate a new site?',
-      message:'Your current routes and progress will be replaced. Your Quick Play campaign data remains separate.',
-      confirmLabel:'GENERATE NEW SITE',danger:true
-    }))return;
-  reset(state.variant+1);
-});
-ui.retry.addEventListener('click',()=>{if(appFlow.mode!=='mission')restartMission();});
-ui.next.addEventListener('click',()=>{
-  if(returnAfterCampaignMission())return;
-  if(appFlow.mode==='quick')returnToQuickPlayGenerator();
-  else reset(state.variant+1);
-});
-// Navigation is not a mission reset and may never resolve Campaign twice.
-const afterActionMainMenu=document.getElementById('afterActionMainMenu') as HTMLButtonElement|null;
-afterActionMainMenu?.addEventListener('click',()=>{
-  if(replaying)return;
-  ui.debrief.hidden=true;
-  operationsBoard.hidden=true;
-  closeMissionSettings(false);
-  appFlow.setMode('menu');
-  campaignScreen.entry(!!campaign);
-});
-ui.play.addEventListener('click',()=>{
-  audioController.unlock();audioController.uiClickTone(state.phase==='running'?'pause':'go');
-  if(state.phase==='won'||state.phase==='lost'){
-   if(!returnAfterCampaignMission()){
-     if(appFlow.mode==='quick')returnToQuickPlayGenerator();
-     else reset();
-   }
-  }else{
-    targeting.reset();
-    missionController.captureBeforeExecution(state,recorder);
-    toggling(state);updateHud();
-  }
-});
-ui.restart.addEventListener('click',async()=>{
-  if(appFlow.mode==='mission'||replaying)return;
-  if((state.started||team(state).some(a=>a.plan.length>0))&&
-    !await confirmFieldworkAction({
-      title:'Restart this mission?',
-      message:'All current orders and discoveries will be discarded.',
-      confirmLabel:'RESTART MISSION',danger:true
-    }))return;
-  restartMission();
-  closeMissionSettings(false);
-  showMissionBriefing();
+missionScreens.bindMissionActions({
+ returnToQuickPlayGenerator,returnAfterCampaignMission,
+ resetMission:variant=>reset(variant),restartMission,
+ setMode:mode=>appFlow.setMode(mode),
+ campaignEntry:active=>campaignScreen.entry(active),
+ audio:audioController,resetTargeting:()=>targeting.reset(),
+ captureBeforeExecution:()=>missionController.captureBeforeExecution(state,recorder),
+ toggleExecution:()=>toggling(state)
 });
 hudController.bindShortcuts({
  ui,getMode:()=>appFlow.mode,isQuickConfiguring:()=>quickPlayController.configuring,
  isReplaying:()=>replaying,replayAnalysisUi,replayTimeline,replayPlayback,
  exitReplay,seekReplay,selectUnit,armFacing,weaponChooser,hideWeaponChooser,
  operationsBoard,cancelTargeting,
- onExecute:()=>{
-  audioController.unlock();
-  if(state.phase==='won'||state.phase==='lost'){
-   if(!returnAfterCampaignMission()){
-    if(appFlow.mode==='quick')returnToQuickPlayGenerator();
-    else reset();
-   }
-  }else{
-   targeting.reset();missionController.captureBeforeExecution(state,recorder);
-   toggling(state);
-  }
-  updateHud();
- },
+ onExecute:()=>missionScreens.executePlay(true),
  onUndoRedo:redo=>{if(redo)redoPlan(state,selected);else undoPlan(state,selected);updateHud();},
  getViewMode:()=>viewMode,cameraMode,turnCamera
 });

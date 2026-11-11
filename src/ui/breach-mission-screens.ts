@@ -2,6 +2,8 @@
  * UI ownership only: no tactical orders, campaign persistence or mission rules.
  */
 import type {CampaignMode} from '../breach-app-mode.ts';
+import type {createBreachAudioController} from '../breach-audio-controller.ts';
+import {confirmFieldworkAction} from './fieldwork-controls.ts';
 import {team,operationBriefing,type Session} from '../breach-game.ts';
 import type {CampaignState} from '../campaign-state.ts';
 import {createBriefingCardModel,type BriefingReport,type BriefingTab}
@@ -54,6 +56,13 @@ export type MissionScreensElements={
  view2d:HTMLButtonElement;
  viewTop:HTMLButtonElement;
  viewIso:HTMLButtonElement;
+};
+export type MissionActionsHooks={
+ returnToQuickPlayGenerator:()=>void;returnAfterCampaignMission:()=>boolean;
+ resetMission:(variant?:number)=>void;restartMission:()=>void;
+ setMode:(mode:CampaignMode)=>void;campaignEntry:(hasCampaign:boolean)=>void;
+ audio:ReturnType<typeof createBreachAudioController>;
+ resetTargeting:()=>void;captureBeforeExecution:()=>void;toggleExecution:()=>void;
 };
 export type MissionScreensHooks={
  ui:MissionScreensElements;
@@ -389,6 +398,69 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   ui.siteSize.textContent='NEXT SITE SIZE · '+config.getScale().toUpperCase();
   ui.siteSize.disabled=campaignMission||config.isReplaying();
  }
+ 
+ let missionActionPorts:MissionActionsHooks|null=null;
+ function executePlay(keyboard=false):void{
+  const port=missionActionPorts;
+  if(!port)return;
+  const state=config.getSession();
+  port.audio.unlock();
+  if(!keyboard)port.audio.uiClickTone(state.phase==='running'?'pause':'go');
+  if(state.phase==='won'||state.phase==='lost'){
+   if(!port.returnAfterCampaignMission()){
+    if(config.getMode()==='quick')port.returnToQuickPlayGenerator();
+    else port.resetMission();
+   }
+  }else{
+   port.resetTargeting();port.captureBeforeExecution();port.toggleExecution();
+   if(!keyboard)config.refreshHud();
+  }
+  if(keyboard)config.refreshHud();
+ }
+ function bindMissionActions(port:MissionActionsHooks):void{
+  if(missionActionPorts)return;
+  missionActionPorts=port;
+  ui.variant.addEventListener('click',async()=>{
+   if(config.isReplaying()||config.getMode()==='mission')return;
+   if(config.getMode()==='quick'){port.returnToQuickPlayGenerator();return;}
+   const state=config.getSession();
+   if((state.started||team(state).some(a=>a.plan.length>0))&&
+     !await confirmFieldworkAction({
+       title:'Generate a new site?',
+       message:'Your current routes and progress will be replaced. Your Quick Play campaign data remains separate.',
+       confirmLabel:'GENERATE NEW SITE',danger:true
+     }))return;
+   port.resetMission(state.variant+1);
+  });
+  ui.retry.addEventListener('click',()=>{
+   if(config.getMode()!=='mission')port.restartMission();
+  });
+  ui.next.addEventListener('click',()=>{
+   if(port.returnAfterCampaignMission())return;
+   if(config.getMode()==='quick')port.returnToQuickPlayGenerator();
+   else port.resetMission(config.getSession().variant+1);
+  });
+  const afterActionMainMenu=document.getElementById('afterActionMainMenu') as HTMLButtonElement|null;
+  afterActionMainMenu?.addEventListener('click',()=>{
+   if(config.isReplaying())return;
+   ui.debrief.hidden=true;config.operationsBoard.hidden=true;
+   closeMissionSettings(false);port.setMode('menu');
+   port.campaignEntry(!!config.getCampaign());
+  });
+  ui.play.addEventListener('click',()=>executePlay(false));
+  ui.restart.addEventListener('click',async()=>{
+   if(config.getMode()==='mission'||config.isReplaying())return;
+   const state=config.getSession();
+   if((state.started||team(state).some(a=>a.plan.length>0))&&
+     !await confirmFieldworkAction({
+       title:'Restart this mission?',
+       message:'All current orders and discoveries will be discarded.',
+       confirmLabel:'RESTART MISSION',danger:true
+     }))return;
+   port.restartMission();closeMissionSettings(false);showMissionBriefing();
+  });
+ }
+
  function bindSitePreferences():void{
 ui.siteLighting.textContent='LIGHTING · '+config.getLighting().toUpperCase();
 ui.siteLighting.addEventListener('click',()=>{
@@ -443,7 +515,7 @@ ui.intelMode.addEventListener('click',()=>{
 
  }
  return {
-  bindSitePreferences,bindMenus,syncMissionPhase,syncNextSiteControls,
+  bindSitePreferences,bindMenus,bindMissionActions,executePlay,syncMissionPhase,syncNextSiteControls,
   syncSheets:()=>tacticalSheetNavigation.sync(),
   closeSettings:closeMissionSettings,showBriefing:showMissionBriefing,
   navigation:tacticalSheetNavigation,collapse:collapseTacticalSheets,

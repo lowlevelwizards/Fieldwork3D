@@ -104,3 +104,14 @@ test('A6 tactical button DOM and command binding has a single existing HUD owner
  assert.match(hud,/port\.ui\.clear\.addEventListener/);
  assert.match(hud,/planMedicalTreatment\(/);
 });
+
+test('A6 mission screen owner owns navigation and keyboard GO lifecycle',()=>{
+ const screens=readFileSync(new URL('../src/ui/breach-mission-screens.ts',import.meta.url),'utf8');
+ assert.match(source,/missionScreens\.bindMissionActions\(/);
+ assert.match(source,/missionScreens\.executePlay\(true\)/);
+ assert.doesNotMatch(source,/ui\.restart\.addEventListener/);
+ assert.doesNotMatch(source,/ui\.play\.addEventListener/);
+ assert.match(screens,/function bindMissionActions\(/);
+ assert.match(screens,/function executePlay\(/);
+ assert.match(screens,/if\(missionActionPorts\)return/);
+});
