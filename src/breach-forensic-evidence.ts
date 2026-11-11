@@ -19,7 +19,8 @@ export type ForensicEvidence={
 export function forensicSlot(region:string|null,side:HitSide):ForensicSlot|null{
  if(region==='head'||region==='torso')return region;
  if((region==='arm'||region==='leg')&&
-   (side==='left'||side==='right'))return region+'-'+side;
+   (side==='left'||side==='right'))
+   return `${region}-${side}` as ForensicSlot;
  return null;
 }
 export function inspectForensicEvidence(contact:ContactAfterAction,
