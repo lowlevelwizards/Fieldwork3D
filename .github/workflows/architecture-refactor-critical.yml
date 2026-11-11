@@ -97,6 +97,10 @@ jobs:
         run: |
           node --test tests/consolidation-inventory.test.mjs
           node scripts/verification/consolidation-inventory.mjs --check --json artifacts/consolidation/inventory.json --markdown artifacts/consolidation/inventory.md
+      - name: Stage A1 legacy removal — modern Session, worldgen and fog safety
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-a1-') }}
+        run: |
+          node --experimental-strip-types --test tests/breach-052.test.mjs tests/consolidation-stage1-removal.test.mjs tests/breach-roadmap2-site-builder.test.mjs tests/fog-interior-occlusion-regression.test.mjs tests/breach-2d-renderer-extraction.test.mjs tests/worldgen-active-bounds.test.mjs
       - name: Preserve consolidation inventory and review candidates
         if: ${{ always() && startsWith(github.head_ref, 'refactor/consolidation-') }}
         uses: actions/upload-artifact@v4
