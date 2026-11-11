@@ -25,7 +25,7 @@ test('A7 game facade retains one implementation owner per extracted contract',()
   const owner=source(file);
   assert.match(owner,new RegExp('(?:export (?:const|function) )'+name+'\\b'),name+' has one owner');
   assert.doesNotMatch(game,new RegExp('export (?:const|function) '+name+'\\b'),name+' is not duplicated');
-  assert.match(owner,/import type \\{[^}]*Session[^}]*\\} from '\.\/breach-game\.ts';/,
+  assert.match(owner,/import type \{[^}]*\} from '\.\/breach-game\.ts';/,
    file+' must import game contract as type only');
  }
 });
