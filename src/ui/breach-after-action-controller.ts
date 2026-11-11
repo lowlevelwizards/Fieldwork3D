@@ -53,6 +53,9 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      selectedHighlight:null,operatorRecordOpen:false,
      scroll:{},showIntel:options.showIntel};
    owners.set(root,state);
+   // A new recording never inherits a previous mission's open report sheet.
+   const oldDetails=root.querySelector<HTMLElement>('#afterActionDetails');
+   if(oldDetails)oldDetails.hidden=true;
    root.querySelector<HTMLElement>('#afterActionIntro')?.removeAttribute('hidden');
    if(!bound.has(root)){
     bound.add(root);
@@ -229,7 +232,7 @@ export type AfterActionReturnContext={
  recorder:MissionRecorder;tab:AfterActionTab;operatorId:string|null;
  contactId:string|null;contactSide:'red'|'blue';shotId:number|null;
  highlightId:string|null;paperBack:boolean;inspectionMode:'paper'|'3d';
- operatorRecordOpen:boolean;detailsOpen:boolean;
+ operatorRecordOpen:boolean;detailsOpen:boolean;detailsScroll:number;
  scroll:Partial<Record<AfterActionTab,number>>;
 };
 export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|null{
@@ -242,6 +245,7 @@ export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|n
    paperBack:s.paperBack,inspectionMode:s.inspectionMode,
    operatorRecordOpen:s.operatorRecordOpen,
    detailsOpen:!root.querySelector<HTMLElement>('#afterActionDetails')?.hidden,
+   detailsScroll:root.querySelector<HTMLElement>('.fw-after-detail-content')?.scrollTop??0,
    scroll:{...s.scroll}};
 }
 export function restoreAfterActionWorkspace(
@@ -258,6 +262,9 @@ export function restoreAfterActionWorkspace(
  if(context.contactId!==null&&!contact)return false;
  if(context.shotId!==null&&(!contact||
    !contact.shots.some(shot=>shot.id===context.shotId)))return false;
+ if(context.highlightId!==null&&
+   !replayHighlightMoments(s.recorder).some(m=>m.id===context.highlightId))
+   return false;
  s.tab=context.tab;s.selectedOperator=context.operatorId;
  s.selectedContact=context.contactId;s.contactSide=context.contactSide;
  s.selectedShotId=context.shotId;s.selectedHighlight=context.highlightId;
@@ -267,6 +274,8 @@ export function restoreAfterActionWorkspace(
  const detail=root.querySelector<HTMLElement>('#afterActionDetails');
  if(detail)detail.hidden=!context.detailsOpen;
  renderers.get(root)?.();
+ const detailsScroll=root.querySelector<HTMLElement>('.fw-after-detail-content');
+ if(detailsScroll)detailsScroll.scrollTop=context.detailsScroll;
  return true;
 }
 /** Rebuild without synthesizing tab clicks or changing the selected context. */
