@@ -1,12 +1,11 @@
 import type {CampaignMode} from './breach-app-mode.ts';
-import {adoptPresentationWorldSession,withDetachedPresentationWorld,
- publishSessionCoverToActiveSite,setPresentationWorldSession} from './breach-world-context.ts';
+import {adoptPresentationWorldSession,setPresentationWorldSession}
+ from './breach-world-context.ts';
 /** One owner for tactical session lifetimes and deployment preparation.
  * Session creation and insertion validity remain in breach-game.ts. This
  * controller sequences snapshots, resources, and transitions; it does NOT
  * implement order validation, enemy logic, or campaign persistence.
  */
-import {activateSite} from './breach-core.ts';
 import {
   newSession,team,availableDeployments,selectDeployment,type Session
 } from './breach-game.ts';
@@ -109,9 +108,9 @@ export class BreachMissionController{
   }
   private applyRequestedCondition(session:Session,condition:number|null):void{
     if(condition===null||!session.site)return;
+    // Only metadata changes. The session's physical wall/cover snapshots
+    // remain valid; presentation adoption occurs at an explicit handoff.
     session.site={...session.site,conditionLevel:condition};
-    activateSite(session.site);
-    publishSessionCoverToActiveSite(session);
   }
   /** Resource release always precedes construction; presenter setup only
    * occurs after the fresh session and recording are fully assigned. */
@@ -171,9 +170,8 @@ export class BreachMissionController{
   /** The replay gets a distinct read-only presentation session. Never
    * mutate this controller's live start snapshot or selected entry. */
   createReplaySession(recorder:MissionRecorder,live:Session):Session{
-   // Historical sessions are built without stealing the live mission's
-   // process-global compatibility geometry or presentation owner.
-   return withDetachedPresentationWorld(()=>{
+   // Construction is now session-local. Only replay entry may adopt
+   // historical geometry for the displayed presentation.
     const manifest=recorder.manifest;
     const site=manifest?.site;
     const session=newSession(manifest?.variant??live.variant,
@@ -190,7 +188,6 @@ export class BreachMissionController{
     this.hooks.applyRoster(session);
     applyReplayActorIdentity(session,manifest);
     return session;
-   });
   }
   /** Refresh the UI from session state, not inferred scene geometry. */
   refreshDeployment(session:Session,replaying:boolean):void{
