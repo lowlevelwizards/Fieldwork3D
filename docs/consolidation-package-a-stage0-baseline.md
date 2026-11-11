@@ -35,6 +35,39 @@ These are source-tree measurements, **not** generated-graph results. The
 repeatable report produced by consolidation-inventory.mjs uses its own explicit
 file-type and root definitions and may report different totals.
 
+## Reproducible A0 inventory results (first successful CI run)
+
+The inventory scanner has now been executed on the complete repository in CI,
+using its documented root definition. It recorded:
+
+- **920** source files analyzed; **877** runtime reachable.
+- **35** test-only source files and **6** type-referenced-only modules.
+- **2** apparently unreferenced source files:
+  src/worldgen/architectural-wings.ts and src/worldgen/expanded-property.ts.
+- **2** strongly connected runtime dependency groups: the multi-module
+  architectural/world-generation group (12 modules), and the
+  campaign-progression.ts / campaign-state.ts pair.
+- **4** unresolved relative URL references, including three directory-style
+  or historical test asset references; they are **not** automatically evidence
+  of missing production imports.
+- **17** root HTML pages, **1,298** test entries, and **46** workflows.
+
+These are different denominators from the GitHub tree counts above:
+the scanner includes eligible CSS/JS/JSON source files and its newly added
+test, and identifies only root-level HTML entrypoints. The report gives
+all 35 test-only candidates and the complete cycle membership.
+
+**Audit interpretation:** Neither unreferenced module may be removed before
+verifying external/deep-link, generated-import, test/tool and asset usage.
+Test-only modules may contain valuable regression instrumentation.
+Type-referenced modules are explicitly retained. The 12-module worldgen
+cycle is a later structural migration risk, not a Stage A0 bug to fix.
+
+The generated JSON and Markdown evidence are uploaded as the
+consolidation-a0-inventory GitHub Actions artifact. The independent
+inventory fixture tests pass after correcting the query-parameter
+member-call matching rule.
+
 The previous release's production Pages deployment succeeded at
 01b683f. Closeout Stage 6's final PR checks included successful architecture,
 main CI, and browser workflows, but its hardware acceptance document explicitly
