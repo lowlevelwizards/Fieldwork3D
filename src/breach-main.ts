@@ -1732,17 +1732,20 @@ replayHudController=createBreachReplayHudController({
     audioSoundEnabled:audioController.replaySoundEnabled
  }),
  onOverlayChoice:choice=>{
-   replayAnalysisUi.replayPreset='custom';
-   if(choice==='names')replayNameTags=!replayNameTags;
-   else if(choice==='contacts')replayContactMarkers=!replayContactMarkers;
-   else if(choice==='plans')replayPlanScope=
-     replayPlanScope==='none'?'selected':'none';
-   else if(choice==='objectives')replayObjectiveMarkers=!replayObjectiveMarkers;
+   const options=replayDisplay.options;
+   replayDisplay.setPreset('custom');
+   if(choice==='names')replayDisplay.patch({replayNameTags:!options.replayNameTags});
+   else if(choice==='contacts')replayDisplay.patch({
+     replayContactMarkers:!options.replayContactMarkers});
+   else if(choice==='plans')replayDisplay.patch({
+     replayPlanScope:options.replayPlanScope==='none'?'selected':'none'});
+   else if(choice==='objectives')replayDisplay.patch({
+     replayObjectiveMarkers:!options.replayObjectiveMarkers});
    else if(choice==='clear')clearReplayPresentation();
-   else if(choice==='show'){
-     replayNameTags=true;replayContactMarkers=true;
-     replayPlanScope='selected';replayObjectiveMarkers=true;
-   }
+   else if(choice==='show')replayDisplay.patch({
+     replayNameTags:true,replayContactMarkers:true,
+     replayPlanScope:'selected',replayObjectiveMarkers:true
+   });
    if(choice==='clear'||choice==='show')replayAnalysisUi.closeReplayChoices();
  }
 });
@@ -1837,13 +1840,14 @@ ui.replayDirectSight.addEventListener('change',()=>{
     changeReplaySight(mode);
 });
 ui.replayDirectTracers.addEventListener('click',()=>{
-  replayAnalysisUi.replayPreset='custom';
-  replayTraceMode=replayTraceMode==='off'?'recent':'off';
+  replayDisplay.setPreset('custom');
+  replayDisplay.patch({replayTraceMode:replayDisplay.options.replayTraceMode==='off'?'recent':'off'});
   updateReplayHud();
 });
 ui.replayDirectXray.addEventListener('click',()=>{
-  replayXrayOn=!replayXrayOn;
-  stage?.setReplayXray(replayXrayOn);
+  const enabled=!replayDisplay.options.replayXrayOn;
+  replayDisplay.patch({replayXrayOn:enabled});
+  stage?.setReplayXray(enabled);
   updateReplayHud();
 });
 ui.replayDirectDirector.addEventListener('click',()=>{
@@ -2112,39 +2116,48 @@ ui.replayDirector.addEventListener('click',()=>{
   replayCamera.follow=false;advanceReplayCamera(0,true);updateReplayHud();
 });
 ui.replayAnalysis.addEventListener('click',()=>{
-  replayAnalysisUi.replayPreset='custom';
-  replayAnalysis=!replayAnalysis;updateReplayHud();
+  replayDisplay.setPreset('custom');
+  replayDisplay.patch({replayAnalysis:!replayDisplay.options.replayAnalysis});
+  updateReplayHud();
 });
 ui.replayPlans.addEventListener('click',()=>{
-  replayAnalysisUi.replayPreset='custom';
-  replayPlanScope=replayPlanScope==='selected'?'all':
-    replayPlanScope==='all'?'none':'selected';
+  replayDisplay.setPreset('custom');
+  const scope=replayDisplay.options.replayPlanScope;
+  replayDisplay.patch({
+    replayPlanScope:scope==='selected'?'all':scope==='all'?'none':'selected'
+  });
   updateReplayHud();
 });
 ui.replayNames.addEventListener('click',()=>{
-  replayNameTags=!replayNameTags;updateReplayHud();
+  // Retain legacy preset-label behavior for the direct NAMES toolbar.
+  replayDisplay.patch({replayNameTags:!replayDisplay.options.replayNameTags});
+  updateReplayHud();
 });
 ui.replayPlanVersion.addEventListener('click',()=>{
-  replayAnalysisUi.replayPreset='custom';
-  replayPlanVersion=replayPlanVersion==='active'?'original':'active';
+  replayDisplay.setPreset('custom');
+  replayDisplay.patch({replayPlanVersion:
+    replayDisplay.options.replayPlanVersion==='active'?'original':'active'});
   updateReplayHud();
 });
 ui.replayTraces.addEventListener('click',()=>{
-  replayAnalysisUi.replayPreset='custom';
-  replayTraceMode=replayTraceMode==='off'?'recent':
-    replayTraceMode==='recent'?'selected':'off';
+  replayDisplay.setPreset('custom');
+  const mode=replayDisplay.options.replayTraceMode;
+  replayDisplay.patch({replayTraceMode:mode==='off'?'recent':
+    mode==='recent'?'selected':'off'});
   updateReplayHud();
 });
 ui.replayGhosts.addEventListener('click',()=>{
-  replayAnalysisUi.replayPreset='custom';
-  replayGhostMode=replayGhostMode==='off'?'selected':
-    replayGhostMode==='selected'?'squad':'off';
+  replayDisplay.setPreset('custom');
+  const mode=replayDisplay.options.replayGhostMode;
+  replayDisplay.patch({replayGhostMode:mode==='off'?'selected':
+    mode==='selected'?'squad':'off'});
   updateReplayHud();
 });
 ui.replayTrails.addEventListener('click',()=>{
-  replayAnalysisUi.replayPreset='custom';
-  replayTrailMode=replayTrailMode==='off'?'recent':
-    replayTrailMode==='recent'?'full':'off';
+  replayDisplay.setPreset('custom');
+  const mode=replayDisplay.options.replayTrailMode;
+  replayDisplay.patch({replayTrailMode:mode==='off'?'recent':
+    mode==='recent'?'full':'off'});
   updateReplayHud();
 });
 ui.replayExportVideo.addEventListener('click',()=>{
@@ -2683,7 +2696,7 @@ function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
  cancelled:boolean,pointerCount:number):void{
  dispatchTacticalPointerRelease({
  get state(){return state;},get replaying(){return replaying;},
- replayBodycam,get replayTraceMode(){return replayTraceMode;},
+ replayBodycam,get replayTraceMode(){return replayDisplay.options.replayTraceMode;},
  get recorder(){return recorder;},replayPlayback,replayAnalysisUi,
  hudController,get selected(){return selected;},
  get selectedNode(){return selectedNode;},set selectedNode(v){selectedNode=v;},
