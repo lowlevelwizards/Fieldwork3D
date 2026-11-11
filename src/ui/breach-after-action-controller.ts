@@ -145,7 +145,10 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    }
  }else{
    state.showIntel=options.showIntel;
-   return; // Never destroy selected tabs and scroll on repeated HUD updates.
+   // A menu exit can release GPU resources while retaining this report.
+   // Reopening the same completed mission remounts its presenter once.
+   if(!models.has(root)&&!root.hidden)renderers.get(root)?.();
+   return; // Never destroy selections or scroll on repeated HUD updates.
  }
  root.classList.add('fw-debrief-v3');
  root.classList.remove('fw-debrief-v2');
