@@ -22,7 +22,6 @@ import type {CoupledLowReadySolution} from './breach-coupled-low-ready.ts';
 import {poseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
 import {interpolateWeaponCarry,lowReadyBlendPhase}
  from './breach-low-ready-transition.ts';
-import {resolvePoseLocomotionFrame} from './breach-pose-locomotion-frame.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
 import {packInertia} from './breach-gear-inertia.ts';
 import {LEG_HIP_HEIGHT,legRestRise} from './breach-leg-geometry.ts';
@@ -36,13 +35,13 @@ import {choreographV3ReloadWeapon} from './breach-pose-v3-reload-weapon.ts';
 import {choreographV4ReloadWeapon,reloadMechanismFor,v4ReloadControlPose}
  from './breach-reload-performance.ts';
 import {choreographV4ReloadHand} from './breach-reload-v4-hand.ts';
-import {directOperatorPose,planUpperBodyStrategy} from './breach-pose-director.ts';
+import {prepareOperatorPoseDecision,resolveOperatorPoseDecision}
+ from './breach-pose-decision.ts';
 import {chooseTorsoAssist} from './breach-pose-v3-body-assist.ts';
 import {cachedCoupledUpperBody,cachedCoordinatedUpperBody,cachedSupportUpperBody,solveUnifiedFallbackArm,continuousElbowPole} from './breach-unified-upper-body.ts';
 import type {solveV3CoordinatedPose} from './breach-pose-v3-coordinated.ts';
 import {ANATOMY,elbowCorridor,equipmentStockPush} from './breach-anatomy.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
-import {blendedHandlingProfile} from './breach-handling-transition.ts';
 import {authoredShortPhase}
  from './breach-authored-m4a1-short-stock.ts';
 import {sampleHandlingTransition,sampleCarryTransition}
@@ -73,8 +72,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
   const buckle=p.down&&!p.surrender?smooth(downProgress/.48):0;
   const kneel=p.surrender?smooth(downProgress/.65):0;
+  // B1: prepare one observational action/handling decision alongside the
+  // existing pure locomotion sample; bash facts never mutate the motor.
+  const bash=contactReaction(p.seconds-(p.lastBashAt??-100),
+    p.bashRole??null,!!p.blocked);
+  const preparedDecision=prepareOperatorPoseDecision(p,{
+    previousPose:r.lastPose,downProgress,
+    pushActive:bash.active&&p.bashRole==='push',
+    receivingBash:bash.active&&p.bashRole==='receive',
+    previousHandling:r.lastHandling??undefined,
+    previousHandlingAt:r.lastHandlingAt
+  });
   const {physicalSpeed,moving,direction,hipTarget,braking,crouch}=
-    resolvePoseLocomotionFrame(p,r.lastPose);
+    preparedDecision.locomotion;
   r.hip.position.y=LEG_HIP_HEIGHT-crouch;
   r.chest.position.y=26-crouch;
   // Low traversal carries a rearward pelvis and counterbalanced thorax.
@@ -87,54 +97,20 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const kickAge=p.seconds-p.lastDoorAt;
   const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
     kickMotion(kickAge):null;
-  const bash=contactReaction(p.seconds-(p.lastBashAt??-100),
-    p.bashRole??null,!!p.blocked);
-  // One pure director owns the visual handling choice and action targets.
-  // Explicit previous-handling inputs preserve existing passive hysteresis.
-  const {handling,action:actionState}=directOperatorPose(p,{
-    moving,downProgress,pushActive:bash.active&&p.bashRole==='push',
-    receivingBash:bash.active&&p.bashRole==='receive',
-    previousHandling:r.lastHandling??undefined,
-    previousHandlingAt:r.lastHandlingAt
-  });
+  const {handling,action:actionState}=preparedDecision;
   const {treatmentActive,reloadActive,reloadProgress,reloadMode,
     throwAge,throwActive,doorAge,doorActive,handOwners}=actionState;
-  // Every equipped weapon uses the same authored, grip-adapted underarm
-  // short-stock system. Never let the old armor/elbow-candidate stack
-  // fight it. Reload, treatment and action handoffs keep their own IK.
-  const manualShort=handling==='short'&&
-    !p.unarmedPreview&&!p.down&&!p.surrender&&!reloadActive&&
-    !treatmentActive&&!throwActive&&!doorActive&&
-    handOwners.left==='weapon'&&handOwners.right==='weapon';
-  // The transition director is the sole owner of handling history and
-  // interpolation; the rig remains only the final pose renderer.
+  // The existing transition sampler remains the ONLY rig-owned historical
+  // writer. B1 assembles its result into one read-only policy decision.
   const sample=sampleHandlingTransition(r,p,handling);
-  // Wall proximity owns the short-stock transition, not a second timed
-  // pose jump. The weapon, shoulders and elbow poles share one progress.
-  const nearingWall=handling==='short'&&
-    p.shortCompression!==undefined;
-  const manualRaw=manualShort?
-    p.shortCompression??(p.handlingOverride==='short'&&
-      sample.active?.to==='short'?sample.active.alpha:1):undefined;
-  // Never blend the same M4A1 from two transition directors. Physical wall
-  // proximity and the Lab stance scrub both use the one authored progress.
-  const activeTransition=nearingWall||manualShort?undefined:sample.active;
-  const authoredLabSwitch=manualShort?false:sample.authoredLabSwitch;
-  const profile=manualShort?
-    blendedHandlingProfile(
-      shortStockSourceHandling(p.aimBlend??(p.aiming?1:0),moving,
-        p.weapon,!!p.friendlyNear),
-      'short',manualRaw!,p.weapon):
-    nearingWall?
-    blendedHandlingProfile(
-      shortStockSourceHandling(p.aimBlend??(p.aiming?1:0),moving,
-        p.weapon,!!p.friendlyNear),
-      'short',p.shortCompression!,p.weapon):sample.profile;
+  const decision=resolveOperatorPoseDecision(p,preparedDecision,sample);
+  const {manual:manualShort,rawProgress:manualRaw}=decision.shortStock;
+  const {active:activeTransition,authoredLabSwitch}=decision.transition;
+  const {profile,upperBody:upperBodyPlan,poseWeight}=decision;
   // Explicit laboratory stances can shift the chest/weight. Live combat
   // retains the authoritative shot-time muzzle/chest transform until the
   // equivalent shot-time balance transform is integrated.
   r.handlingProfile=profile;
-  const poseWeight=p.handlingOverride&&!p.down&&!p.surrender?1:0;
   const familyLow=lowReadyFamilyFit(p.weaponConfiguration);
   // Smoothly retire the relaxed hold when accelerating, aiming, reloading
   // or engaging. All combat-facing muzzle fits retain their original data.
@@ -369,11 +345,6 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // weapon with that fit instead of abruptly switching to legacy IK.
   // Do not use the coupled idle *arm* solution during the active reload:
   // the magazine hand is released and needs independent action IK.
-  const upperBodyPlan=planUpperBodyStrategy(p,{
-    handling,physicalSpeed,hasModularBuild:!!coupledConfig?.build,
-    activeTransition:!!activeTransition,authoredLabSwitch,
-    interactionWindow:actionState.interactionWindow
-  });
   const {previewReloadSeed,coupledEligible:eligible}=upperBodyPlan;
   const poseEnvelope=upperBodyPlan.envelopeRequired?
     poseClearanceEnvelope(clothing.armorStyle,clothing.rigStyle,clothing.top):null;
