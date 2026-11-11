@@ -7,7 +7,7 @@ import type {ReplayPlaybackController} from '../breach-replay-playback-controlle
 import type {ReplayCameraController} from '../breach-replay-camera-controller.ts';
 import type {ReplayKnowledgeController} from '../breach-replay-knowledge-controller.ts';
 import type {ReplayBodycamController} from '../breach-replay-bodycam-controller.ts';
-import type {ReplayPresentationOptions} from '../breach-replay-presentation-options.ts';
+import type {ReplayPresentationOptions,createReplayPresentationOptions} from '../breach-replay-presentation-options.ts';
 import type {ViewMode} from '../breach-3d.ts';
 import type {createBreachReplayAnalysisController} from './breach-replay-analysis-controller.ts';
 import {formatReplayTime} from '../breach-replay-transport.ts';
@@ -91,11 +91,16 @@ export type ReplayHudSnapshot={
 export function createBreachReplayHudController(config:{
  ui:ReplayHudElements;snapshot:()=>ReplayHudSnapshot;
  onOverlayChoice:(choice:string)=>void;
+ presentation:{
+  options:ReturnType<typeof createReplayPresentationOptions>;
+  setXray:(on:boolean)=>void;
+ };
 }){
  let bound=false;
  function bind():void{
   if(bound)return;
   bound=true;
+  const ui=config.ui;
   for(const button of config.ui.replayOverlayChoices
     .querySelectorAll<HTMLButtonElement>('[data-overlay-choice]')){
     button.addEventListener('click',()=>{
@@ -105,6 +110,62 @@ export function createBreachReplayHudController(config:{
       updateReplayHud();
     });
   }
+  ui.replayDirectTracers.addEventListener('click',()=>{
+    config.presentation.options.setPreset('custom');
+    config.presentation.options.patch({replayTraceMode:config.presentation.options.options.replayTraceMode==='off'?'recent':'off'});
+    updateReplayHud();
+  });
+  ui.replayDirectXray.addEventListener('click',()=>{
+    const enabled=!config.presentation.options.options.replayXrayOn;
+    config.presentation.options.patch({replayXrayOn:enabled});
+    config.presentation.setXray(enabled);
+    updateReplayHud();
+  });
+  ui.replayAnalysis.addEventListener('click',()=>{
+    config.presentation.options.setPreset('custom');
+    config.presentation.options.patch({replayAnalysis:!config.presentation.options.options.replayAnalysis});
+    updateReplayHud();
+  });
+  ui.replayPlans.addEventListener('click',()=>{
+    config.presentation.options.setPreset('custom');
+    const scope=config.presentation.options.options.replayPlanScope;
+    config.presentation.options.patch({
+      replayPlanScope:scope==='selected'?'all':scope==='all'?'none':'selected'
+    });
+    updateReplayHud();
+  });
+  ui.replayNames.addEventListener('click',()=>{
+    // Retain legacy preset-label behavior for the direct NAMES toolbar.
+    config.presentation.options.patch({replayNameTags:!config.presentation.options.options.replayNameTags});
+    updateReplayHud();
+  });
+  ui.replayPlanVersion.addEventListener('click',()=>{
+    config.presentation.options.setPreset('custom');
+    config.presentation.options.patch({replayPlanVersion:
+      config.presentation.options.options.replayPlanVersion==='active'?'original':'active'});
+    updateReplayHud();
+  });
+  ui.replayTraces.addEventListener('click',()=>{
+    config.presentation.options.setPreset('custom');
+    const mode=config.presentation.options.options.replayTraceMode;
+    config.presentation.options.patch({replayTraceMode:mode==='off'?'recent':
+      mode==='recent'?'selected':'off'});
+    updateReplayHud();
+  });
+  ui.replayGhosts.addEventListener('click',()=>{
+    config.presentation.options.setPreset('custom');
+    const mode=config.presentation.options.options.replayGhostMode;
+    config.presentation.options.patch({replayGhostMode:mode==='off'?'selected':
+      mode==='selected'?'squad':'off'});
+    updateReplayHud();
+  });
+  ui.replayTrails.addEventListener('click',()=>{
+    config.presentation.options.setPreset('custom');
+    const mode=config.presentation.options.options.replayTrailMode;
+    config.presentation.options.patch({replayTrailMode:mode==='off'?'recent':
+      mode==='recent'?'full':'off'});
+    updateReplayHud();
+  });
  }
 function updateReplayHud():void{
  const ui=config.ui;

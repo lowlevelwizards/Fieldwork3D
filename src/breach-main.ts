@@ -1521,6 +1521,10 @@ replayHudController=createBreachReplayHudController({
    presentationOptions:replayDisplay.options,
     audioSoundEnabled:audioController.replaySoundEnabled
  }),
+ presentation:{
+  options:replayDisplay,
+  setXray:enabled=>stage?.setReplayXray(enabled)
+ },
  onOverlayChoice:choice=>{
    const options=replayDisplay.options;
    replayDisplay.setPreset('custom');
@@ -1629,17 +1633,8 @@ ui.replayDirectSight.addEventListener('change',()=>{
   if(mode==='team'||mode==='full'||mode==='operator')
     changeReplaySight(mode);
 });
-ui.replayDirectTracers.addEventListener('click',()=>{
-  replayDisplay.setPreset('custom');
-  replayDisplay.patch({replayTraceMode:replayDisplay.options.replayTraceMode==='off'?'recent':'off'});
-  updateReplayHud();
-});
-ui.replayDirectXray.addEventListener('click',()=>{
-  const enabled=!replayDisplay.options.replayXrayOn;
-  replayDisplay.patch({replayXrayOn:enabled});
-  stage?.setReplayXray(enabled);
-  updateReplayHud();
-});
+
+
 ui.replayDirectDirector.addEventListener('click',()=>{
   if(replayBodycam.active)stopReplayBodycam();
   if(viewMode!=='iso'&&stage)cameraMode('iso');
@@ -1905,51 +1900,13 @@ ui.replayDirector.addEventListener('click',()=>{
   chooseReplayCamera(replayCamera.mode==='director'?'free':'director');
   replayCamera.follow=false;advanceReplayCamera(0,true);updateReplayHud();
 });
-ui.replayAnalysis.addEventListener('click',()=>{
-  replayDisplay.setPreset('custom');
-  replayDisplay.patch({replayAnalysis:!replayDisplay.options.replayAnalysis});
-  updateReplayHud();
-});
-ui.replayPlans.addEventListener('click',()=>{
-  replayDisplay.setPreset('custom');
-  const scope=replayDisplay.options.replayPlanScope;
-  replayDisplay.patch({
-    replayPlanScope:scope==='selected'?'all':scope==='all'?'none':'selected'
-  });
-  updateReplayHud();
-});
-ui.replayNames.addEventListener('click',()=>{
-  // Retain legacy preset-label behavior for the direct NAMES toolbar.
-  replayDisplay.patch({replayNameTags:!replayDisplay.options.replayNameTags});
-  updateReplayHud();
-});
-ui.replayPlanVersion.addEventListener('click',()=>{
-  replayDisplay.setPreset('custom');
-  replayDisplay.patch({replayPlanVersion:
-    replayDisplay.options.replayPlanVersion==='active'?'original':'active'});
-  updateReplayHud();
-});
-ui.replayTraces.addEventListener('click',()=>{
-  replayDisplay.setPreset('custom');
-  const mode=replayDisplay.options.replayTraceMode;
-  replayDisplay.patch({replayTraceMode:mode==='off'?'recent':
-    mode==='recent'?'selected':'off'});
-  updateReplayHud();
-});
-ui.replayGhosts.addEventListener('click',()=>{
-  replayDisplay.setPreset('custom');
-  const mode=replayDisplay.options.replayGhostMode;
-  replayDisplay.patch({replayGhostMode:mode==='off'?'selected':
-    mode==='selected'?'squad':'off'});
-  updateReplayHud();
-});
-ui.replayTrails.addEventListener('click',()=>{
-  replayDisplay.setPreset('custom');
-  const mode=replayDisplay.options.replayTrailMode;
-  replayDisplay.patch({replayTrailMode:mode==='off'?'recent':
-    mode==='recent'?'full':'off'});
-  updateReplayHud();
-});
+
+
+
+
+
+
+
 ui.replayExportVideo.addEventListener('click',()=>{
   if(replayQuickVideo.active){
     replayQuickVideo.stop();ui.replayExportVideo.textContent='VIDEO 20S';return;
