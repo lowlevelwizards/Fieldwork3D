@@ -86,7 +86,7 @@ try{
       'Content clips '+screen+name+' '+JSON.stringify(metrics));
    };
    await fits('squad');
-   await root.locator('.fw-v3-roster-card').nth(1).click();
+   await root.locator('.fw-v3-roster-card').filter({hasText:'MOSS'}).click();
    check((await root.locator('.fw-v3-squad-name h2').textContent())==='MOSS',
      'Squad selection failed '+name);
    await root.locator('.fw-v3-details-link').click();
