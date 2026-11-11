@@ -401,6 +401,9 @@ export type AfterActionReturnContext={
  contactId:string|null;contactSide:'red'|'blue';shotId:number|null;
  highlightId:string|null;paperBack:boolean;inspectionMode:'paper'|'3d';
  forensicScope?:ForensicScope;
+ timelineFilter?:TimelineFilter;timelineSelectedKey?:string|null;
+ timelineClusterId?:string|null;timelineLedgerOpen?:boolean;
+ timelineLedgerLimit?:number;timelineRailScroll?:number;
  operatorRecordOpen:boolean;detailsOpen:boolean;detailsScroll:number;
  scroll:Partial<Record<AfterActionTab,number>>;
 };
@@ -413,6 +416,11 @@ export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|n
    shotId:s.selectedShotId,highlightId:s.selectedHighlight,
    paperBack:s.paperBack,inspectionMode:s.inspectionMode,
    forensicScope:s.forensicScope,
+   timelineFilter:s.timelineFilter,timelineSelectedKey:s.timelineSelectedKey,
+   timelineClusterId:s.timelineClusterId,
+   timelineLedgerOpen:s.timelineLedgerOpen,
+   timelineLedgerLimit:s.timelineLedgerLimit,
+   timelineRailScroll:s.timelineRailScroll,
    operatorRecordOpen:s.operatorRecordOpen,
    detailsOpen:!root.querySelector<HTMLElement>('#afterActionDetails')?.hidden,
    detailsScroll:root.querySelector<HTMLElement>('.fw-after-detail-content')?.scrollTop??0,
@@ -435,11 +443,23 @@ export function restoreAfterActionWorkspace(
  if(context.highlightId!==null&&
    !replayHighlightMoments(s.recorder).some(m=>m.id===context.highlightId))
    return false;
+ if(context.timelineFilter!==undefined&&
+   !TIMELINE_FILTERS.includes(context.timelineFilter))return false;
+ if(context.timelineSelectedKey!=null&&
+   !s.timelineEvents.some(e=>e.key===context.timelineSelectedKey))
+   return false;
  s.tab=context.tab;s.selectedOperator=context.operatorId;
  s.selectedContact=context.contactId;s.contactSide=context.contactSide;
  s.selectedShotId=context.shotId;s.selectedHighlight=context.highlightId;
  s.paperBack=context.paperBack;s.inspectionMode=context.inspectionMode;
  s.forensicScope=context.forensicScope??'cumulative';
+ s.timelineFilter=context.timelineFilter??'all';
+ s.timelineSelectedKey=context.timelineSelectedKey??null;
+ s.timelineClusterId=context.timelineClusterId??null;
+ s.timelineLedgerOpen=context.timelineLedgerOpen??false;
+ s.timelineLedgerLimit=Math.min(2000,Math.max(30,
+   context.timelineLedgerLimit??30));
+ s.timelineRailScroll=Math.max(0,context.timelineRailScroll??0);
  s.operatorRecordOpen=context.operatorRecordOpen&&!!context.operatorId;
  s.scroll={...context.scroll};
  const detail=root.querySelector<HTMLElement>('#afterActionDetails');
