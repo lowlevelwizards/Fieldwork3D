@@ -14,6 +14,19 @@ const server=spawn(process.execPath,[
 ],{stdio:'ignore',env:{...process.env,CI:'true'}});
 const check=(x,message)=>{if(!x)throw Error(message);};
 const settle=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+async function a8ReplayClickDiagnostics(page){
+ return page.evaluate(()=>({
+  attached:!!document.querySelector('#watchReplay')?.isConnected,
+  disabled:document.querySelector('#watchReplay')?.disabled,
+  detailsHidden:document.querySelector('#afterActionDetails')?.hidden,
+  debriefHidden:document.querySelector('#debrief')?.hidden,
+  ancestorInert:!!document.querySelector('#watchReplay')?.closest('[inert]'),
+  clicked:window.__a8ReplayClicks||0,
+  replayPanelHidden:document.querySelector('#replayPanel')?.hidden,
+  replayPanelVisible:getComputedStyle(document.querySelector('#replayPanel')).display,
+  phase:document.querySelector('#phase')?.textContent
+ }));
+}
 let browser;
 const metrics=page=>page.evaluate(()=>({
  viewport:{width:innerWidth,height:innerHeight},
@@ -94,11 +107,13 @@ async function accept(name,context){
   check(paused.clock!=='00:00','Mission clock did not advance: '+name);
   // Use actual recorded frames; an empty recorder must never fabricate a film.
   let opened=false;
+  await page.evaluate(()=>{window.__a8ReplayClicks=0;document.querySelector('#watchReplay')?.addEventListener('click',()=>{window.__a8ReplayClicks++},{capture:true});});
   for(let i=0;i<8&&!opened;i++){
    await page.evaluate(()=>document.querySelector('#watchReplay')?.click());
    opened=await page.locator('#replayPanel').isVisible();
    if(!opened)await settle(450);
   }
+  if(!opened)console.log('[A8 browser diag] '+JSON.stringify(await a8ReplayClickDiagnostics(page)));
   check(opened,'Recorded replay did not open: '+name);
   const replay=await metrics(page);
   check(replay.scrollWidth<=replay.viewport.width+2,

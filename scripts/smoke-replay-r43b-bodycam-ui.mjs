@@ -55,11 +55,18 @@ try{
       parts[0]*60+parts[1]>=2;
   },null,{timeout:30000});
   let open=false;
+  await page.evaluate(()=>{window.__a8ReplayClicks=0;document.querySelector('#watchReplay')?.addEventListener('click',()=>{window.__a8ReplayClicks++},{capture:true});});
   for(let i=0;i<9&&!open;i++){
     await page.waitForTimeout(600);
     await page.evaluate(()=>document.querySelector('#watchReplay')?.click());
     open=await page.locator('#replayPanel').isVisible();
   }
+  if(!open)console.log('[A8 browser diag]',await page.evaluate(()=>({
+   disabled:document.querySelector('#watchReplay')?.disabled,
+   detailsHidden:document.querySelector('#afterActionDetails')?.hidden,
+   clicks:window.__a8ReplayClicks||0,phase:document.querySelector('#phase')?.textContent,
+   panelHidden:document.querySelector('#replayPanel')?.hidden
+  })));
   check(open,'Cannot enter a Bodycam-eligible historical film');
   await page.locator('#replayMore').click();
   // The current compact replay HUD keeps Bodycam in the DIRECT operator
