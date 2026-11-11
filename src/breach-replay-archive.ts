@@ -7,6 +7,7 @@ import type {ReplayManifest} from './breach-replay-manifest.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import type {ExecutionEvent} from './breach-execution-events.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
+import {validHitAnatomy} from './breach-hit-anatomy.ts';
 import type {ReplayPlanRevision} from './breach-replay-plans.ts';
 import type {ReplayMotionArchiveV1} from './breach-replay-motion.ts';
 import type {ReplayBookmark} from './breach-replay-chapters.ts';
@@ -114,6 +115,19 @@ function validPersonalWindows(input:unknown,maxTime:number):boolean{
   }
   return true;
 }
+/** Optional V4 anatomical claims must have matching regions, bounded proxy
+ * coordinates and valid provenance; legacy V1 films remain unchanged. */
+export function replayArchiveAnatomyIsValid(shots:unknown):boolean{
+ if(!Array.isArray(shots)||shots.length>300000)return false;
+ for(const raw of shots){
+   if(!raw||typeof raw!=='object')return false;
+   const shot=raw as Partial<RecordedShot>;
+   if(shot.hitAnatomy===undefined)continue;
+   if(!shot.hit||!validHitAnatomy(shot.hitAnatomy,shot.hitRegion))
+     return false;
+ }
+ return true;
+}
 export function replayArchiveIsValid(input:unknown):input is ReplayArchiveV1{
   if(!input||typeof input!=='object')return false;
   const a=input as Partial<ReplayArchiveV1>;
@@ -135,7 +149,8 @@ export function replayArchiveIsValid(input:unknown):input is ReplayArchiveV1{
       !Array.isArray(f.doors)||!validObserverEvidence(f))return false;
     previous=f.t;
   }
-  return validPersonalGround(a.personalGround,a.frames.at(-1)!.t)&&
+  return replayArchiveAnatomyIsValid(a.shots)&&
+    validPersonalGround(a.personalGround,a.frames.at(-1)!.t)&&
     validPersonalDoors(a.personalDoors,a.frames.at(-1)!.t)&&
     validPersonalWindows(a.personalWindows,a.frames.at(-1)!.t);
 }

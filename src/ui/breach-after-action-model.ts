@@ -7,14 +7,18 @@ import * as THREE from 'three';
 import {createOperatorRig,poseOperator,type OperatorRig}
  from '../breach-operator-rig.ts';
 import type {ReplayActorIdentity} from '../breach-replay-manifest.ts';
+import type {ForensicEvidence} from '../breach-forensic-evidence.ts';
+import {createForensicModelOverlay,type ForensicModelOverlay}
+ from './breach-after-action-anatomy-overlay.ts';
 
 export type AfterActionModelPresenter={
  show:(host:HTMLElement,operatorId:string|null)=>void;
+ setEvidence:(evidence:ForensicEvidence|null)=>void;
  hide:()=>void;
  dispose:()=>void;
 };
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
-type Model={rig:OperatorRig;holder:THREE.Group};
+type Model={rig:OperatorRig;holder:THREE.Group;overlay:ForensicModelOverlay};
 const pose=(rig:OperatorRig,actor:ReplayActorIdentity)=>{
  poseOperator(rig,{
    x:0,z:0,heading:0,velocity:0,seconds:0,stride:0,
@@ -62,8 +66,9 @@ export function createAfterActionModelPresenter(
    const rig=createOperatorRig(actor.id,actor.side);
    try{pose(rig,actor);}
    catch(error){rig.dispose();throw error;}
+   const overlay=createForensicModelOverlay(rig);
    const holder=new THREE.Group();holder.add(rig.root);scene.add(holder);
-   const entry={rig,holder};models.set(actor.id,entry);return entry;
+   const entry={rig,holder,overlay};models.set(actor.id,entry);return entry;
  };
  try{for(const actor of roster)build(actor);}
  catch{
@@ -72,6 +77,7 @@ export function createAfterActionModelPresenter(
  }
  let disposed=false,lost=false,host:HTMLElement|null=null;
  let selected:string|null=null,dragId:number|null=null,lastX=0,lastY=0;
+ let forensicEvidence:ForensicEvidence|null=null;
  let yaw=0,pitch=.16,zoom=1;
  const lookAt=new THREE.Vector3(0,28,0);
  const focus=()=>{
@@ -88,6 +94,9 @@ export function createAfterActionModelPresenter(
      const i=roster.findIndex(a=>a.id===id);
      model.holder.visible=squad?i>=0:id===selected;
      model.holder.position.set(squad?(i-(n-1)/2)*spacing:0,0,0);
+     // Single source of truth for highlighted anatomical slots.
+     // Group remains neutral for the ordinary Squad identity display.
+     model.overlay.update(!squad&&id===selected?forensicEvidence:null);
    }
    const base=squad?Math.max(166,90+n*18):112;
    lookAt.set(0,28,0);
@@ -169,7 +178,11 @@ export function createAfterActionModelPresenter(
      }
      draw();
    },
+   setEvidence(evidence){
+     forensicEvidence=evidence;
+   },
    hide(){
+     forensicEvidence=null;
      observer?.disconnect();
      canvas.remove();
      host=null;dragId=null;

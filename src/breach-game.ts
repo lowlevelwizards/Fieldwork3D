@@ -236,7 +236,10 @@ export type ShotEvent={
   shotYaw?:number;mode?:FiringMode;spread?:number;
   muzzleHeight?:number;firedAt?:number;
   impactHeight?:number;
-  hitRegion?:WoundRegion;downPose?:FallPose;
+  hitRegion?:WoundRegion;
+  /** Optional, non-authoritative V4 forensic shadow; never drives damage. */
+  hitAnatomy?:import('./breach-hit-anatomy.ts').HitAnatomyV1;
+  downPose?:FallPose;
   surface?:'blood'|'wood'|'stone'|'metal'|'glass'|'dust';
 };
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number;

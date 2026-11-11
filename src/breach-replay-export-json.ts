@@ -3,6 +3,7 @@
  * information is explicitly labelled as full reconstruction.
  */
 import type {MissionRecorder} from './breach-replay.ts';
+import {recordedHitAnatomy} from './breach-hit-anatomy.ts';
 
 export function buildReplayReport(recording:MissionRecorder){
   const final=recording.frames.at(-1);
@@ -43,20 +44,27 @@ export function buildReplayReport(recording:MissionRecorder){
         finalInjuryStage:outcome?.injuryStage??null
       };
     }),
-    shots:shots.map(s=>({
+    shots:shots.map(s=>{
+      const anatomy=recordedHitAnatomy(s);
+      return {
       id:s.id,t:s.recordedAt,shooterId:s.shooterId,
       targetId:s.targetId,side:s.side,
       start:{...s.start,height:s.muzzleHeight??null},
       end:{...s.end,height:s.impactHeight??null},
       hit:s.hit,down:s.down,surface:s.surface??null,
       healthBefore:s.healthBefore,healthAfter:s.healthAfter,
-      hitRegion:s.hitRegion??null,mode:s.mode??null,
+      hitRegion:s.hitRegion??null,
+      anatomy:anatomy?{...anatomy}:null,
+      sideEvidence:anatomy?.side??'unknown',
+      mode:s.mode??null,
       weaponAtFire:s.weaponAtFire??null,
       receiverAtFire:s.receiverAtFire??null,familyAtFire:s.familyAtFire??null,
       nominalCaliberAtFire:s.nominalCaliberAtFire??null,
       caliberEvidence:s.nominalCaliberAtFire?'visual-preset':'unavailable',
-      precision:'region-only' as const
-    })),
+      precision:anatomy?.source==='trajectory-proxy'?
+        'proxy' as const:anatomy?'region-only' as const:'unknown' as const
+      };
+    }),
     planRevisions:recording.plans.revisions,
     events:timeline
   };

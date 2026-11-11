@@ -217,9 +217,14 @@ test('A2: composition has one boot parser and one mode/storage key contract',()=
   'src/ui/breach-mission-debrief.ts','src/ui/breach-mission-screens.ts'
  ]){
   const text=source(path);
-  assert.ok(text.includes("breach-app-mode.ts"),'shared CampaignMode: '+path);
+  // A6 composition-only modules no longer need to import CampaignMode.
+  // Every remaining actual CampaignMode reference still uses the shared type.
+  if(/\bCampaignMode\b/.test(text))
+   assert.ok(text.includes("breach-app-mode.ts"),
+     'shared CampaignMode: '+path);
   assert.ok(!text.includes("'menu'|'home'|'mission'|'quick'"),path);
  }
+ assert.ok(source('src/breach-app-flow.ts').includes('breach-app-mode.ts'));
  for(const path of ['src/breach-main.ts','src/operator-studio.ts',
   'src/breach-campaign-flow.ts'])
   assert.ok(!source(path).includes('fieldwork3d.campaign.v1'),path);
