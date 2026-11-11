@@ -64,6 +64,7 @@ export function renderAfterActionTimeline(input:{
    const b=button(timelineCategoryName(filter)+' '+count,
      ()=>actions.filter(filter),'fw-v5-timeline-filter');
    b.setAttribute('aria-pressed',String(state.filter===filter));
+   b.dataset.timelineFilter=filter;
    chips.append(b);
  }
  root.append(chips);
@@ -147,6 +148,8 @@ export function renderAfterActionTimeline(input:{
  const next=button('NEXT ›',()=>actions.select(
    filtered[Math.min(filtered.length-1,order+1)].key));
  prev.disabled=order<=0;next.disabled=order>=filtered.length-1;
+ prev.dataset.timelineStep='previous';
+ next.dataset.timelineStep='next';
  step.append(prev,make('small','',String(order+1)+' / '+filtered.length),next);
  card.append(step);
  const controls=make('div','fw-v5-timeline-actions');
