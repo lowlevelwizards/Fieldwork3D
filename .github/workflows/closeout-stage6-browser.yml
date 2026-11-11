@@ -7,6 +7,9 @@ on:
       - '.github/workflows/architecture-refactor-critical.yml'
       - 'scripts/smoke-closeout-stage6.mjs'
       - 'tests/breach-closeout-stage6-integration.test.mjs'
+      - 'scripts/verification/consolidation-inventory.mjs'
+      - 'tests/consolidation-inventory.test.mjs'
+      - 'docs/consolidation-package-a-stage0-baseline.md'
       - 'src/**'
   workflow_dispatch:
 permissions:
@@ -16,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   tactical-flow:
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/closeout-stage6-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -39,7 +42,7 @@ jobs:
           retention-days: 14
 
   replay-and-lab:
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/closeout-stage6-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
