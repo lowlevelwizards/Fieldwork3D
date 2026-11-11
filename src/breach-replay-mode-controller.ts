@@ -49,6 +49,8 @@ export type ReplayModeControllerHooks={
 
 export function createReplayModeController(config:ReplayModeControllerHooks){
  function enterReplay():boolean{
+  console.info('[A8 probe] enterReplay called',location.search,
+    'already',config.isReplaying(),'frames',config.getRecorder().frames.length);
   if(config.isReplaying())return false;
   const recorder=config.getRecorder();
   if(location.search.includes('a8probe=1'))console.info('[A8 probe] replay entry',

@@ -254,9 +254,13 @@ export type AfterActionReplayNavigationPorts={
 const replayRequestsBound=new WeakSet<HTMLElement>();
 export function bindAfterActionReplayNavigation(port:AfterActionReplayNavigationPorts):void{
  const ui=port.ui;
+ console.info('[A8 probe] binding replay button',
+   location.search,'alreadyBound',replayRequestsBound.has(ui.debrief),
+   'connected',ui.watchReplay.isConnected);
  if(replayRequestsBound.has(ui.debrief))return;
  replayRequestsBound.add(ui.debrief);
  ui.watchReplay.addEventListener('click',()=>{
+  console.info('[A8 probe] replay button handler',location.search);
   port.markDebriefEntry();port.enterReplay();
   if(port.isReplaying())port.queueHighlights();
  });
