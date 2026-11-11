@@ -82,6 +82,9 @@ test('V4-1: debrief entry, snapshot and cleanup remain with existing owners',()=
  assert.match(main,/afterActionReturn=null;/);
  assert.match(main,/if\(!restoreAfterActionWorkspace\(ui\.debrief,origin\)/);
  assert.match(ui,/operatorRecordOpen:s\.operatorRecordOpen/);
+ assert.match(ui,/detailsScroll:root\.querySelector/);
+ assert.match(ui,/detailsScroll\.scrollTop=context\.detailsScroll/);
+ assert.match(ui,/replayHighlightMoments\(s\.recorder\)\.some/);
  assert.match(ui,/s\.operatorRecordOpen=context\.operatorRecordOpen/);
  assert.match(ui,/port\.setReturn\(origin\)/);
  assert.match(ui,/port\.exitReplay\(\)/);
