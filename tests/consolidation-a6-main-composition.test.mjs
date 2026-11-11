@@ -38,3 +38,11 @@ test('A6 entrypoint delegates session HUD formatting to existing HUD owner',()=>
  assert.match(hud,/function renderSession\(/);
  assert.match(hud,/renderMissionDebrief\(/);
 });
+
+test('A6 main composes a single keyboard shortcut binding',()=>{
+ const hud=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
+ assert.match(source,/hudController\.bindShortcuts\(/);
+ assert.doesNotMatch(source,/window\.addEventListener\('keydown'/);
+ assert.match(hud,/window\.addEventListener\('keydown'/);
+ assert.match(hud,/if\(shortcutsBound\)return/);
+});

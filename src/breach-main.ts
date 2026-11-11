@@ -2046,95 +2046,26 @@ ui.restart.addEventListener('click',async()=>{
   closeMissionSettings(false);
   showMissionBriefing();
 });
-window.addEventListener('keydown',e=>{
-  // Global game shortcuts must never fire while the player edits a name,
-  // operates a dialog, or navigates Campaign / the front menu.
-  if(e.isComposing||e.altKey||appFlow.mode==='menu'||appFlow.mode==='home')return;
-  if(document.querySelector('.fw-confirm-backdrop')||quickPlayController.configuring)return;
-  const target=e.target;
-  // Escape is handled before the usual input guard so a focused replay
-  // range/button can dismiss its panel; native select popups keep Escape.
-  if(replaying&&e.code==='Escape'&&
-     !(target instanceof HTMLSelectElement)&&
-     !(target instanceof HTMLElement&&target.closest(
-       '[role="dialog"],[role="alertdialog"],textarea,[contenteditable="true"]'))){
-    e.preventDefault();
-    if(!ui.replayClusterMenu.hidden)replayAnalysisUi.closeReplayCluster();
-    else if(replayAnalysisUi.replayToolTab!==null)replayAnalysisUi.closeReplaySurface();
-    else exitReplay();
-    return;
+hudController.bindShortcuts({
+ ui,getMode:()=>appFlow.mode,isQuickConfiguring:()=>quickPlayController.configuring,
+ isReplaying:()=>replaying,replayAnalysisUi,replayTimeline,replayPlayback,
+ exitReplay,seekReplay,selectUnit,armFacing,weaponChooser,hideWeaponChooser,
+ operationsBoard,cancelTargeting,
+ onExecute:()=>{
+  audioController.unlock();
+  if(state.phase==='won'||state.phase==='lost'){
+   if(!returnAfterCampaignMission()){
+    if(appFlow.mode==='quick')returnToQuickPlayGenerator();
+    else reset();
+   }
+  }else{
+   targeting.reset();missionController.captureBeforeExecution(state,recorder);
+   toggling(state);
   }
-  if(target instanceof HTMLElement&&
-    (target.isContentEditable||target.closest(
-      'input,textarea,select,[contenteditable="true"],[role="dialog"],[role="alertdialog"]'
-    )))return;
-  if(replaying){
-    if(e.code==='Space'&&!e.repeat&&!(
-      target instanceof HTMLElement&&target.closest('button,[role="button"]'))){
-      e.preventDefault();replayTimeline.togglePlay();
-    }
-    if((e.code==='ArrowLeft'||e.code==='ArrowRight')&&!(
-      target instanceof HTMLElement&&target.closest('button,summary,[role="button"]'))){
-      e.preventDefault();
-      const direction:-1|1=e.code==='ArrowLeft'?-1:1;
-      if(e.ctrlKey||e.metaKey)replayAnalysisUi.jumpEvent(direction>0);
-      else if(e.shiftKey){replayPlayback.pause();seekReplay(replayPlayback.time+direction);}
-      else replayTimeline.step('frame',direction);
-    }
-    return;
-  }
-  if(e.code==='Space'&&!e.repeat){
-    e.preventDefault();audioController.unlock();
-    if(state.phase==='won'||state.phase==='lost'){
-      if(!returnAfterCampaignMission()){
-        if(appFlow.mode==='quick')returnToQuickPlayGenerator();
-        else reset();
-      }
-    }else{
-      targeting.reset();
-      missionController.captureBeforeExecution(state,recorder);
-      toggling(state);
-    }
-    updateHud();
-  }
-  if(e.code==='Digit1')selectUnit('rook');
-  if(e.code==='Digit2')selectUnit('moss');
-  if(e.code==='Digit3')selectUnit('ash');
-  if(e.code==='Digit4')selectUnit('vale');
-  if(e.code==='KeyX'&&!e.repeat){
-    e.preventDefault();
-    // Keyboard and touch must use the exact same guarded clear-plan workflow.
-    ui.clear.click();
-  }
-  if(e.code==='KeyL')armFacing('look');
-  if(e.code==='Backspace'&&!e.repeat){
-    e.preventDefault();ui.back.click();
-  }
-  if(e.code==='Escape'){
-    e.preventDefault();
-    if(!weaponChooser.hidden)hideWeaponChooser();
-    else if(!operationsBoard.hidden)operationsBoard.hidden=true;
-    else if(!ui.briefingPanel.hidden){
-      ui.briefingClose.click();
-    }else if(!ui.siteSettings.hidden){
-      ui.siteSettingsToggle.click();
-    }else cancelTargeting();
-    return;
-  }
-  if(e.code==='KeyW'&&!e.repeat)armFacing('watch');
-  if(e.code==='KeyZ'&&(e.ctrlKey||e.metaKey)){
-    e.preventDefault();
-    if(e.shiftKey)redoPlan(state,selected);
-    else undoPlan(state,selected);updateHud();
-  }
-  if(e.code==='KeyR'&&!e.repeat&&appFlow.mode!=='mission'){
-    e.preventDefault();
-    ui.restart.click();
-  }
-  if(e.code==='KeyV'&&!e.repeat)cameraMode(viewMode==='iso'?'top':'iso');
-  if(e.code==='KeyQ'&&!e.repeat)turnCamera(-Math.PI/8);
-  if(e.code==='KeyE'&&!e.repeat)turnCamera(Math.PI/8);
-  if(e.code==='Digit0'&&!e.repeat)ui.cameraFit.click();
+  updateHud();
+ },
+ onUndoRedo:redo=>{if(redo)redoPlan(state,selected);else undoPlan(state,selected);updateHud();},
+ getViewMode:()=>viewMode,cameraMode,turnCamera
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
 /** Aim can be placed through the rendered silhouette of a door, enemy,

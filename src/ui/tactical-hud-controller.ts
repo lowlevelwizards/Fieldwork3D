@@ -16,6 +16,9 @@ import {lightControlState} from '../equipment-weapon-light-ui.ts';
 import type {ViewMode} from '../breach-3d.ts';
 import type {Pt} from '../breach-core.ts';
 import type {DisplayRouteCache} from '../breach-route-cache.ts';
+import type {createBreachReplayAnalysisController} from './breach-replay-analysis-controller.ts';
+import type {createBreachReplayTimelineController} from './breach-replay-timeline-controller.ts';
+import type {ReplayPlaybackController} from '../breach-replay-playback-controller.ts';
 import {contextActionChoices} from './context-actions.ts';
 import {TacticalFeedback,type FeedbackPoint} from './tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
@@ -50,6 +53,21 @@ export type TacticalSessionPresentation={
  reducedMotion:boolean;weaponChooser:HTMLElement;hideWeaponChooser:()=>void;
  favoriteActive:boolean;recorder:MissionRecorder;campaign:CampaignState|null;
  operationsLogged:number;
+};
+export type TacticalShortcutPorts={
+ ui:ReturnType<typeof createBreachUiElements>;
+ getMode:()=>CampaignMode;isQuickConfiguring:()=>boolean;
+ isReplaying:()=>boolean;
+ replayAnalysisUi:ReturnType<typeof createBreachReplayAnalysisController>;
+ replayTimeline:ReturnType<typeof createBreachReplayTimelineController>;
+ replayPlayback:ReplayPlaybackController;
+ exitReplay:()=>void;seekReplay:(time:number)=>void;
+ selectUnit:(id:string)=>void;armFacing:(mode:'look'|'watch')=>void;
+ weaponChooser:HTMLElement;hideWeaponChooser:()=>void;
+ operationsBoard:HTMLElement;cancelTargeting:()=>void;
+ onExecute:()=>void;onUndoRedo:(redo:boolean)=>void;
+ getViewMode:()=>ViewMode;cameraMode:(mode:ViewMode)=>void;
+ turnCamera:(shift:number)=>void;
 };
 export type TacticalGuidanceInput={
   replaying:boolean;phase:Session['phase'];
@@ -523,8 +541,91 @@ export function createTacticalHudController(
     (visible?' • '+visible+' CONTACT'+(visible===1?'':'S'):'');
 
   }
+  let shortcutsBound=false;
+  function bindShortcuts(config:TacticalShortcutPorts):void{
+   if(shortcutsBound)return;
+   shortcutsBound=true;
+   window.addEventListener('keydown',e=>{
+     // Global game shortcuts must never fire while the player edits a name,
+     // operates a dialog, or navigates Campaign / the front menu.
+     if(e.isComposing||e.altKey||config.getMode()==='menu'||config.getMode()==='home')return;
+     if(document.querySelector('.fw-confirm-backdrop')||config.isQuickConfiguring())return;
+     const target=e.target;
+     // Escape is handled before the usual input guard so a focused replay
+     // range/button can dismiss its panel; native select popups keep Escape.
+     if(config.isReplaying()&&e.code==='Escape'&&
+        !(target instanceof HTMLSelectElement)&&
+        !(target instanceof HTMLElement&&target.closest(
+          '[role="dialog"],[role="alertdialog"],textarea,[contenteditable="true"]'))){
+       e.preventDefault();
+       if(!config.ui.replayClusterMenu.hidden)config.replayAnalysisUi.closeReplayCluster();
+       else if(config.replayAnalysisUi.replayToolTab!==null)config.replayAnalysisUi.closeReplaySurface();
+       else config.exitReplay();
+       return;
+     }
+     if(target instanceof HTMLElement&&
+       (target.isContentEditable||target.closest(
+         'input,textarea,select,[contenteditable="true"],[role="dialog"],[role="alertdialog"]'
+       )))return;
+     if(config.isReplaying()){
+       if(e.code==='Space'&&!e.repeat&&!(
+         target instanceof HTMLElement&&target.closest('button,[role="button"]'))){
+         e.preventDefault();config.replayTimeline.togglePlay();
+       }
+       if((e.code==='ArrowLeft'||e.code==='ArrowRight')&&!(
+         target instanceof HTMLElement&&target.closest('button,summary,[role="button"]'))){
+         e.preventDefault();
+         const direction:-1|1=e.code==='ArrowLeft'?-1:1;
+         if(e.ctrlKey||e.metaKey)config.replayAnalysisUi.jumpEvent(direction>0);
+         else if(e.shiftKey){config.replayPlayback.pause();config.seekReplay(config.replayPlayback.time+direction);}
+         else config.replayTimeline.step('frame',direction);
+       }
+       return;
+     }
+     if(e.code==='Space'&&!e.repeat){
+       e.preventDefault();config.onExecute();
+     }
+     if(e.code==='Digit1')config.selectUnit('rook');
+     if(e.code==='Digit2')config.selectUnit('moss');
+     if(e.code==='Digit3')config.selectUnit('ash');
+     if(e.code==='Digit4')config.selectUnit('vale');
+     if(e.code==='KeyX'&&!e.repeat){
+       e.preventDefault();
+       // Keyboard and touch must use the exact same guarded clear-plan workflow.
+       config.ui.clear.click();
+     }
+     if(e.code==='KeyL')config.armFacing('look');
+     if(e.code==='Backspace'&&!e.repeat){
+       e.preventDefault();config.ui.back.click();
+     }
+     if(e.code==='Escape'){
+       e.preventDefault();
+       if(!config.weaponChooser.hidden)config.hideWeaponChooser();
+       else if(!config.operationsBoard.hidden)config.operationsBoard.hidden=true;
+       else if(!config.ui.briefingPanel.hidden){
+         config.ui.briefingClose.click();
+       }else if(!config.ui.siteSettings.hidden){
+         config.ui.siteSettingsToggle.click();
+       }else config.cancelTargeting();
+       return;
+     }
+     if(e.code==='KeyW'&&!e.repeat)config.armFacing('watch');
+     if(e.code==='KeyZ'&&(e.ctrlKey||e.metaKey)){
+       e.preventDefault();
+       config.onUndoRedo(e.shiftKey);
+     }
+     if(e.code==='KeyR'&&!e.repeat&&config.getMode()!=='mission'){
+       e.preventDefault();
+       config.ui.restart.click();
+     }
+     if(e.code==='KeyV'&&!e.repeat)config.cameraMode(config.getViewMode()==='iso'?'top':'iso');
+     if(e.code==='KeyQ'&&!e.repeat)config.turnCamera(-Math.PI/8);
+     if(e.code==='KeyE'&&!e.repeat)config.turnCamera(Math.PI/8);
+     if(e.code==='Digit0'&&!e.repeat)config.ui.cameraFit.click();
+   });
+  }
   return {feedback,get facing(){return targeting.facing;},
     showHelp,teach,discoverAction,toggleFacing,
     message,renderGuidance,renderQuickStates,rejectAttempt,completeAction,
-    renderTargetMode,renderPhase,renderOperatorCard,renderNotice,renderSession,resetNotices};
+    renderTargetMode,renderPhase,renderOperatorCard,renderNotice,renderSession,bindShortcuts,resetNotices};
 }
