@@ -110,8 +110,8 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    let screen:HTMLElement;
    if(s.tab==='squad'){
      screen=renderSquadView(s.report,s.recorder.manifest,
-       s.selectedOperator,(id)=>choose(id),()=>{
-         if(!s.selectedOperator)return;
+       s.selectedOperator,(id)=>choose(id),(id)=>{
+         s.selectedOperator=id;
          s.operatorRecordOpen=true;draw();
        });
      if(s.operatorRecordOpen){
