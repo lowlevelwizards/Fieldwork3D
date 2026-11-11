@@ -32,7 +32,7 @@ try{
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   try{
    await page.goto(base,{waitUntil:'domcontentloaded'});
-   await page.waitForSelector('#debrief',{timeout:60000});
+   await page.waitForSelector('#debrief',{state:'attached',timeout:60000});
    await page.evaluate(async()=>{
     const module=await import('/src/ui/breach-after-action-controller.ts');
     window.__v3Qa=module;
