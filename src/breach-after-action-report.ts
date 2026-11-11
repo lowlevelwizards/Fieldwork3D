@@ -4,6 +4,7 @@
  */
 import type {MissionRecorder} from './breach-replay.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
+import {recordedHitAnatomy,type HitAnatomyV1} from './breach-hit-anatomy.ts';
 
 export type ForensicPrecision='physical-hitbox'|'proxy'|'region-only'|'unknown';
 export type ContactResolution='incapacitated'|'surrendered'|'unresolved';
@@ -11,6 +12,9 @@ export type ShotOutcome='miss'|'armor-stopped'|'non-damaging'|'damaging'|'hit-un
 export type ReportShot={
   id:number;at:number;shooterId:string;targetId:string|null;
   outcome:ShotOutcome;down:boolean;region:string|null;
+  /** Unknown side remains unknown for legacy records. The optional body-space
+   * proxy is a categorical visualization hint, never a bullet-hole point. */
+  anatomy:HitAnatomyV1|null;
   precision:ForensicPrecision;damage:number|null;
   weapon:string|null;caliber:string|null;receiver:string|null;
 };
@@ -50,10 +54,13 @@ export function shotOutcome(s:Pick<RecordedShot,
 }
 export function viewShot(s:RecordedShot):ReportShot{
   const outcome=shotOutcome(s);
+  const anatomy=recordedHitAnatomy(s);
   return {
     id:s.id,at:s.recordedAt,shooterId:s.shooterId,targetId:s.targetId,
     outcome,down:s.down,region:s.hit?s.hitRegion??null:null,
-    precision:s.hit&&s.hitRegion?'region-only':'unknown',
+    anatomy,
+    precision:anatomy?.source==='trajectory-proxy'?'proxy':
+      anatomy?'region-only':'unknown',
     damage:finite(s.healthBefore)&&finite(s.healthAfter)?
       Math.max(0,s.healthBefore-s.healthAfter):null,
     weapon:s.weaponAtFire??null,caliber:s.nominalCaliberAtFire??null,
@@ -87,8 +94,16 @@ export function buildAfterActionReport(rec:MissionRecorder):AfterActionReport{
   const shots=rec.ballistics.shots.map(viewShot).sort(byTime);
   const hostiles=contactReviews(rec,'red',shots);
   const allFriendly=contactReviews(rec,'blue',shots);
-  const friendlyCasualties=allFriendly.filter(c=>c.resolution==='incapacitated');
   const finalById=new Map((rec.frames.at(-1)?.actors??[]).map(a=>[a.id,a]));
+  // "SQUAD" in the Combat tab includes recoverable wounded survivors,
+  // not only operators who were incapacitated in this recording.
+  const friendlyCasualties=allFriendly.filter(c=>{
+    const status=finalById.get(c.id);
+    return c.resolution==='incapacitated'||
+      (status!==undefined&&
+       (status.health<4||status.injuryStage>0))||
+      c.shots.some(shot=>shot.outcome==='damaging');
+  });
   const operators=(rec.manifest?.actors??[])
     .filter(a=>a.side==='blue').map(a=>{
       const fired=shots.filter(s=>s.shooterId===a.id);
@@ -137,7 +152,7 @@ export function buildAfterActionReport(rec:MissionRecorder):AfterActionReport{
     schemaVersion:2,duration:rec.duration,complete:rec.completeness.complete,
     limitations:[
       'Legacy hit regions are categorical, not physically localized.',
-      'Exact caliber and body-side impact are not available in legacy shots.',
+      'Older recordings do not contain body-side evidence; current lateral estimates use a shadow trajectory proxy, not a physical hitbox.',
       'Door and window successes require structured events for reliable attribution.'
     ],
     shots,operators,hostiles,friendlyCasualties

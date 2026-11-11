@@ -29,6 +29,7 @@ import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {CASING_LIMIT} from './breach-effects.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {chooseFall,hitRegion} from './breach-wounds.ts';
+import {shadowHitAnatomy} from './breach-hit-anatomy.ts';
 import {registerWound} from './breach-medical-wounds.ts';
 
 export type ShotCommitContext={
@@ -239,6 +240,11 @@ export function createShotResolver(ports:ShotResolverPorts){
     shotYaw:yaw,mode,spread:cone,
     muzzleHeight:muzzle.y,firedAt:s.seconds,impactHeight,
     hitRegion:civilianHit?'torso':hit?region:undefined,
+    // Evidence-only shadow observation of the ALREADY resolved hit.
+    // Does not affect RNG, armor, collision, wound severity or damage.
+    hitAnatomy:hit?shadowHitAnatomy({muzzle:muzzlePoint,
+      target:target.p,targetHeading:target.heading,shotYaw:yaw,
+      hitRadius,region}):undefined,
     downPose:hit&&healthAfter<=0?fall.pose:undefined,
     healthBefore,healthAfter,
     down:(hit||!!civilianHit)&&healthAfter<=0,

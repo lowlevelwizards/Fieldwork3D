@@ -12,11 +12,13 @@ test('campaign menu and results settlement remain delegated; Quick Play still op
  const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
  const main=read('src/breach-main.ts');
  const flow=read('src/breach-campaign-flow.ts');
+ const screens=read('src/ui/breach-mission-screens.ts');
  assert.match(main,/createBreachCampaignFlow/);
  assert.match(flow,/new CampaignScreen/);
  assert.match(flow,/resolveOperation\(currentCampaign,result\)/);
  assert.match(main,/reset\(0,job.seed,job.kind,undefined,job.risk\)/);
- assert.match(main,/returnAfterCampaignMission\(\)/);
+ // A6 moved after-mission action binding into its presentation owner.
+ assert.match(screens,/port\.returnAfterCampaignMission\(\)/);
  assert.match(main,/const launchQuickPlay=\(\)=>quickPlayController\.customize\(\)/);
  assert.match(main,/legacyStudy\|\|bootConfig\.quickEntry\?'quick':'menu'/);
 });
