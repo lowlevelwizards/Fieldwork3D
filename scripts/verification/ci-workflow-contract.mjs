@@ -26,6 +26,8 @@ export function validateWorkflowContracts(wf){
  assert.equal(wf.ci.split('audit-pages-release-checkpoint.mjs').length-1,1,
   'Single release checkpoint must not be duplicated in primary CI');
  must('architecture','breach-critical-suite.mjs');
+ must('architecture','package-a-closeout-suite.mjs --run');
+ must('architecture',"startsWith(github.head_ref, 'refactor/consolidation-')");
  must('architecture','breach-architecture-boundaries.mjs');
  must('architecture','ci-workflow-contract.mjs');
  must('architecture','refactor/');
