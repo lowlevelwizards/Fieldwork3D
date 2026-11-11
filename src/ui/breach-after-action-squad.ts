@@ -37,7 +37,7 @@ function contextMetric(op:OperatorAfterAction){
 }
 export function renderSquadView(report:AfterActionReport,
  manifest:ReplayManifest|null,selectedId:string|null,
- choose:(id:string)=>void,more:()=>void):HTMLElement{
+ choose:(id:string)=>void,more:(id:string)=>void):HTMLElement{
  const section=el('section','fw-v3-squad');
  const operators=report.operators;
  const selected=operators.find(o=>o.id===selectedId)??operators[0]??null;
@@ -73,7 +73,7 @@ export function renderSquadView(report:AfterActionReport,
  info.append(name,metrics);
  const earned=achievement(selected);
  if(earned)info.append(el('div','fw-v3-distinction','✦ '+earned));
- info.append(action('FULL OPERATOR RECORD',more,'fw-v3-details-link'));
+ info.append(action('FULL OPERATOR RECORD',()=>more(selected.id),'fw-v3-details-link'));
  main.append(figure,info);section.append(main);
  if(!report.complete)section.append(el('p','fw-after-muted',
    'PARTIAL REPLAY · SOME CONTRIBUTIONS MAY BE UNRECORDED'));
