@@ -145,6 +145,7 @@ export function renderSquadView(report:AfterActionReport,
  const roster=el('nav','fw-v3-roster fw-v4-rank-list');
  roster.setAttribute('aria-label','Squad ranked by recorded contribution');
  const selected=operators.find(op=>op.id===selectedId)??null;
+ if(selected)section.classList.add('fw-v4-has-selection');
  for(const op of operators)
    roster.append(rankRow(op,operators,selected?.id??null,choose));
  const focus=el('div','fw-v3-squad-focus fw-v4-squad-focus');
