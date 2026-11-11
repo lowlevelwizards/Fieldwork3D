@@ -153,6 +153,12 @@ try{
       'Content clips '+screen+name+' '+JSON.stringify(metrics));
    };
    await fits('squad');
+   await root.locator('.fw-v4-rank-row').first().focus();
+   await root.locator('.fw-v4-rank-row').first().press('Enter');
+   check(await page.evaluate(()=>
+     document.activeElement?.getAttribute('data-after-operator-id')==='rook'),
+     'Keyboard selection lost focus after Squad redraw '+name);
+   await root.locator('.fw-v4-overview-back').click();
    await root.locator('.fw-v4-rank-row').filter({hasText:'MOSS'}).click();
    check((await root.locator('.fw-v3-squad-name h2').textContent())==='MOSS',
      'Squad selection failed '+name);
@@ -189,6 +195,8 @@ try{
      'Mission Details unavailable '+name);
    await root.locator('#afterActionDetailsClose').click();
    await root.locator('[data-after-tab="combat"]').click();
+   check(await root.locator('#afterActionSummary').isVisible(),
+     'Switching tabs lost persistent mission result '+name);
    check(await root.locator('.fw-v3-contact-chip').count()===2,
      'Contacts unavailable '+name);
    check(await root.locator('.fw-v3-shot-chip').count()===3,
