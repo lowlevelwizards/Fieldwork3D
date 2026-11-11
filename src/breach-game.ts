@@ -1,4 +1,5 @@
 import {assembleSession} from './breach-session-factory.ts';
+export {operationBriefing,missionText,debrief} from './breach-mission-reporting.ts';
 import {team,enemies,actor,party,canEdit} from './breach-session-selectors.ts';
 export {team,enemies,actor,canEdit};
 export {setWaitDuration,setNodeControl,setStartPace,plannedControl,setMoveSprint,toggleWeaponLight,toggleContactRule,posture} from './breach-tactical-control-commands.ts';
@@ -84,7 +85,7 @@ import {setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
 
 
-import {attributableCivilianHarm,type CivilianHarmEvent} from './breach-civilian-harm.ts';
+import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
 
 import {type CombatAction} from './breach-ai-combat.ts';
 
@@ -109,7 +110,6 @@ import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {kitMedicalSupplies,medicalSupplyCount,type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 
-import {stabilizationSummary} from './breach-casualty-status.ts';
 import {type TransportMode} from './breach-casualty-transport.ts';
 import {civilianTransportEligible} from './breach-civilian-transport.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
@@ -120,7 +120,7 @@ import {type FiringMode} from './breach-ballistics.ts';
 
 import {advanceRescueEscort,type RescueEscort} from './breach-rescue-escort.ts';
 import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployment.ts';
-import {operationBrief,assessOperation,type OperationKind} from './breach-operations.ts';
+import type {OperationKind} from './breach-operations.ts';
 
 import {initialIntel,bindIntelWorld,observeIntel,routeWithIntel,intelPassable,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
 
@@ -1810,84 +1810,6 @@ export type StepPhaseProbe=(phase:string,elapsedMs:number)=>void;
 export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe):void{
  if(s.phase!=='running')return;
  advanceSimulationTick(s,clamp(dt,0,1/30),simulationPhasePort,probe);
-}
-export function operationBriefing(s:Session){
-  const brief=operationBrief(s.missionType);
-  return { ...brief,
-    building:s.site?.archetype?.toUpperCase()??'UNSPECIFIED SITE',
-    layout:s.intel.mode==='floor-plan'&&s.site?
-      s.site.roomCount+' DOCUMENTED ROOMS':'INTERIOR NOT FULLY CHARTED',
-    squad:team(s).length,
-  };
-}
-export function missionText(s:Session){
-  if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
-  if(s.phase==='lost')return 'MISSION FAILED';
-  if(s.mission==='clear')return s.missionType==='capture'?
-    'INCAPACITATE OR FORCE SURRENDER OF TARGET':
-    'CLEAR HOSTILES • SECURE OBJECTIVE';
-  if(s.mission==='secure')return s.missionType==='hold'?
-    'HOLD OBJECTIVE • '+Math.floor(s.holdTime)+'/7 SECONDS':
-    s.missionType==='rescue'?'REACH PERSON IN TARGET ROOM':
-    s.missionType==='intel'?'RECOVER INTELLIGENCE • '+
-      s.holdTime.toFixed(1)+'/1.2s':
-    s.missionType==='capture'?'SECURE NEUTRALIZED TARGET':
-    'SECURE OBJECTIVE';
-  return s.missionType==='intel'?
-    'RETURN TO EXTRACTION · INTEL CARRIER MUST EXIT':
-    s.missionType==='rescue'?
-    'ESCORT OR TRANSPORT PERSON TO EXTRACTION':
-    'RETURN TO EXTRACTION OUTSIDE';
-}
-export function debrief(s:Session){
-  const own=team(s);
-  const casualties=own.filter(a=>a.health<=0).length;
-  const casualtyCare=stabilizationSummary(own);
-  const evacuated=own.filter(a=>a.health<=0&&
-   near(a.p,s.scenario.extract,47)).map(a=>a.id);
-  const shots=own.reduce((t,a)=>t+a.shots,0);
-  const hits=own.reduce((t,a)=>t+a.hits,0);
-  const target=enemies(s).find(e=>e.id===s.captureTarget);
-  const rescuePerson=s.civilians.find(c=>c.rescueTarget);
-  const rescueStatus=!rescuePerson?'none':
-    s.mission!=='done'?'not-extracted':
-    rescuePerson.health<=0?'incapacitated':
-    rescuePerson.injuryStage>0?'injured':'healthy';
-  const civilianInjured=s.civilians.filter(c=>c.health>0&&
-    c.injuryStage>0).length;
-  const civilianDown=s.civilians.filter(c=>c.health<=0).length;
-  const attributable=attributableCivilianHarm(s.civilianHarmEvents);
-  const assessment=assessOperation({
-    outcome:s.phase==='won'?'success':'failure',
-    kind:s.missionType as OperationKind,
-    elapsed:Math.floor(s.seconds),casualties,teamSize:own.length,
-    shots,hits,objective:s.mission==='done',
-    targetSurrendered:target?.surrendered??false,
-    civilianInjured,civilianDown,
-    civilianPlayerInjured:attributable.injured,
-    civilianPlayerDown:attributable.down,
-    extracted:own.filter(a=>a.health>0&&
-      near(a.p,s.scenario.extract,47)).length,
-  });
-  return {result:s.phase,time:Math.floor(s.seconds),casualties,
-    stabilizedCasualties:casualtyCare.stabilized,
-    criticalCasualties:casualtyCare.critical,
-    evacuatedCasualties:evacuated,
-    shots,hits,civilianInjured,civilianDown,rescueStatus,
-    civilianPlayerInjured:attributable.injured,
-    civilianPlayerDown:attributable.down,
-    kills:own.reduce((t,a)=>t+a.kills,0),
-    pauses:s.timesPaused,variant:s.scenario.name,
-    objective:s.mission==='done',
-    type:s.missionType,
-    grade:assessment.grade,score:assessment.score,
-    accuracy:assessment.accuracy,survived:assessment.survived,
-    squad:own.map(a=>({id:a.id,name:a.name,
-      survived:a.health>0,injury:a.injuryStage,
-      fired:a.shots,hits:a.hits})),
-    captureSecured:s.captureSecured,
-    rescueExtracted:!!s.rescue&&s.phase==='won',
-    intelCarrier:s.intelCarrierId};
 }
 export function knownAt(s:Session,x:number,y:number){
   if(s.intel.mode==='full-view')return true;
