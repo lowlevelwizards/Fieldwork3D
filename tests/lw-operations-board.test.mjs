@@ -3,7 +3,9 @@ import {readFileSync} from 'node:fs';
 import {initialRoster,resupplyRoster,equipRoster,readRoster} from '../src/breach-roster.ts';
 test('operations board actions use bounded persistent state and do not force missions',()=>{
  const src=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(src,/operationsBoardToggle/);
+ const elements=readFileSync(new URL('../src/ui/breach-ui-elements.ts',import.meta.url),'utf8');
+ assert.match(src,/mountBreachManagementElements\(ui\)/);
+ assert.match(elements,/operationsToggle\.id='operationsBoardToggle'/);
  assert.match(src,/if\(state\.phase!==['"]planning['"]\|\|replaying\)return/);
  const r=equipRoster(initialRoster(),'moss','rifle');
  const ammo={...r,members:r.members.map(m=>m.id==='moss'?
