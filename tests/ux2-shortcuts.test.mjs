@@ -10,7 +10,7 @@ test('keyboard route clear and restart share guarded UI actions',()=>{
  assert.doesNotMatch(handler,/clearPlan\(state,selected\)/);
 });
 test('shortcuts ignore form editing and active dialogs',()=>{
- assert.match(handler,/campaignMode==='menu'\|\|campaignMode==='home'/);
+ assert.match(handler,/appFlow.mode==='menu'\|\|appFlow.mode==='home'/);
  assert.match(handler,/target\.isContentEditable/);
  assert.match(handler,/\.fw-confirm-backdrop/);
 });
