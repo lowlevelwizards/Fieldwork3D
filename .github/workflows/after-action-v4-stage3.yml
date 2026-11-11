@@ -1,0 +1,59 @@
+name: After Action V4 — Stage 3 Persistent 3D Acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/after-action-v4-stage3.yml'
+      - 'src/ui/breach-after-action-*.ts'
+      - 'src/ui/breach-mission-screens.ts'
+      - 'src/breach-main.ts'
+      - 'src/breach-style.css'
+      - 'scripts/smoke-after-action-v4-stage3.mjs'
+      - 'tests/after-action-v4-stage3-persistent-models.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: after-action-v4-stage3-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  retained-models:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'feature/after-action-v4-stage3-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Compile and typecheck
+        run: npm run check
+      - name: Stage 3, Stage 2, Stage 1 and replay regression suite
+        run: |
+          node --experimental-strip-types --test \
+            tests/after-action-v4-stage3-persistent-models.test.mjs \
+            tests/after-action-v4-stage2-hierarchy.test.mjs \
+            tests/after-action-v4-stage1-navigation.test.mjs \
+            tests/breach-after-action-v2-evidence.test.mjs \
+            tests/breach-after-action-v2-scoped-replay.test.mjs \
+            tests/consolidation-stage3-app-flow.test.mjs \
+            tests/replay-library-controller-step4.test.mjs
+      - name: Production build
+        run: npm run build
+      - name: Install browser driver
+        run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Four viewport authentic WebGL and retained renderer acceptance
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/smoke-after-action-v4-stage3.mjs
+      - name: Capture 3D viewport evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: after-action-v4-stage3-webgl-captures
+          path: artifacts/after-action-v4-stage3/
+          if-no-files-found: warn
+          retention-days: 14

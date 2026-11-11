@@ -3333,3 +3333,75 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v3-combat-info{padding:2px 0;gap:2px}
  .fw-v3-shot-details{gap:1px}
 }
+
+
+/* After Action V4 Stage 3: one authentic, retained WebGL presentation.
+   The 3D pane belongs to the existing compact Squad content hierarchy.
+   It uses one renderer for lineup, selection and opt-in Combat inspection. */
+.fw-debrief-v3 .fw-v4-squad-model{
+ box-sizing:border-box;position:relative;width:100%;height:190px;
+ min-height:100px;overflow:hidden;display:block;
+ background:radial-gradient(ellipse at 50% 44%,#365046,#192b26 72%);
+ border:1px solid #526b5b;border-radius:5px;
+ color:#aebfb0;font:700 11px/1.4 var(--ui-display);
+ text-align:center}
+.fw-debrief-v3 .fw-v4-squad-model .fw-v4-model-canvas{
+ display:block;width:100%;height:100%;max-width:100%;cursor:grab}
+.fw-debrief-v3 .fw-v4-squad-model .fw-v4-model-canvas:active{
+ cursor:grabbing}
+.fw-v4-squad .fw-v4-squad-focus{display:flex;flex-direction:column;gap:9px}
+.fw-v4-squad .fw-v4-operator-record .fw-v4-squad-model{
+ flex:0 0 auto;height:220px}
+.fw-v3-combat-figure .fw-after-model{min-height:0;flex:1;width:100%;
+ height:auto;max-height:100%;overflow:hidden}
+.fw-v3-combat-figure .fw-v4-model-canvas{width:100%;height:100%;
+ max-width:100%;object-fit:contain}
+@media(max-width:700px){
+ .fw-debrief-v3 .fw-v4-squad-model{height:145px}
+ .fw-v4-squad.fw-v4-has-selection .fw-v4-squad-focus{gap:7px}
+ .fw-v4-squad .fw-v4-operator-record .fw-v4-squad-model{height:160px}
+}
+@media(max-height:480px){
+ .fw-debrief-v3 .fw-v4-squad-model{height:110px;min-height:92px}
+ .fw-v4-squad .fw-v4-operator-record .fw-v4-squad-model{height:130px}
+ .fw-v3-combat-figure .fw-after-model{min-height:0}
+}
+@media(prefers-reduced-motion:reduce){
+ .fw-v4-model-canvas{scroll-behavior:auto!important}
+}
+
+/* Stage 3 mobile-first initial squad: show the actual four-model lineup AND
+   all four ranked choices in the first viewport. The detailed point overview
+   follows on scroll; selected inspection remains a separate, readable pane. */
+@media(max-width:700px) and (min-height:481px){
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-content{
+  display:grid;grid-template-columns:minmax(0,1fr);
+  grid-template-rows:108px auto auto;align-content:start;
+  gap:5px;min-width:0}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-focus{
+  display:contents}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-squad-model{
+  grid-column:1;grid-row:1;height:108px;min-height:108px;
+  width:100%;box-sizing:border-box}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-list{
+  grid-column:1;grid-row:2;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:4px;min-width:0}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-row{
+  grid-template-columns:40px minmax(0,1fr) 27px;
+  min-height:44px;gap:3px;padding:3px 4px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-number{
+  font-size:11px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-identity strong{
+  font-size:11px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-identity small{
+  font-size:8px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-points{
+  min-width:26px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-rank-points strong{
+  font-size:16px}
+ .fw-v4-squad:not(.fw-v4-has-selection) .fw-v4-team-overview{
+  grid-column:1;grid-row:3;
+  display:grid;gap:9px;padding:10px;
+  min-width:0;background:#20362c;
+  border:1px solid #567362;border-radius:6px}
+}

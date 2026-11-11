@@ -46,7 +46,8 @@ import {parseBreachBootConfig,BREACH_LIGHTING_MODES} from './breach-boot-config.
 import {loadIntelPreference,loadQuickPlayRoster,saveQuickPlayRoster,
  loadCampaignFromStorage,saveCampaignToStorage} from './breach-persistence.ts';
 import {createReplayModeController} from './breach-replay-mode-controller.ts';
-import {bindAfterActionReplayNavigation} from './ui/breach-after-action-controller.ts';
+import {bindAfterActionReplayNavigation,disposeAfterActionPresentation}
+ from './ui/breach-after-action-controller.ts';
 
 import {highlightCapture} from './breach-highlight-capture.ts';
 import {replayHighlightMoments} from './breach-highlight-frames.ts';
@@ -1045,6 +1046,8 @@ replayHudController.bindLateInteractions();
  * the presentation owners release only their own graphics, UI and sound.
  */
 function releaseMissionPresentation():void{
+  // Historical scene is retained across replay, never across mission resets.
+  disposeAfterActionPresentation(ui.debrief);
   if(replayQuickVideo.active)replayQuickVideo.stop();
   if(replaying){
     stopReplayBodycam();
