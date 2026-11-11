@@ -51,7 +51,7 @@
       <div class="site-settings-row">
         <button id="briefingToggle" type="button" aria-expanded="false">BRIEFING</button>
         <button id="restart" type="button">RESTART MISSION</button>
-        <button id="quickPlaySetup" type="button" hidden>QUICK PLAY GENERATOR</button>
+        <button id="quickPlaySetup" type="button" hidden>MISSION SETUP</button>
       </div>
       <p class="site-settings-hint">BRIEFING reviews the objective. RESTART returns this mission to the beginning.</p>
       <div class="saved-missions" aria-label="Favorite missions">
@@ -227,36 +227,60 @@
 </nav>
 </div>
 <section id="debrief" class="debrief" hidden aria-label="Mission debrief">
-  <strong id="debriefTitle">MISSION COMPLETE</strong>
-  <div class="fw-after-action-stats">
-    <div><span>GRADE</span><strong id="debriefGrade">—</strong></div>
-    <div><span>SURVIVORS</span><strong id="debriefSurvivors">—</strong></div>
-    <div><span>ACCURACY</span><strong id="debriefAccuracy">—</strong></div>
+  <header class="fw-after-top">
+    <strong id="debriefTitle">DEBRIEF</strong>
+    <div class="fw-after-header-actions">
+      <button id="afterActionDetailsToggle" type="button" aria-haspopup="dialog">DETAILS</button>
+      <button id="afterActionMainMenu" type="button">MAIN MENU</button>
+    </div>
+  </header>
+  <div id="afterActionIntro" class="fw-after-intro" hidden>
+    <div class="fw-after-intro-card">
+      <span class="fw-after-caption">MISSION RESULT</span>
+      <strong id="afterActionIntroTitle">MISSION COMPLETE</strong>
+      <div class="fw-after-action-stats">
+        <div><span>GRADE</span><strong id="debriefGrade">—</strong></div>
+        <div><span>SURVIVORS</span><strong id="debriefSurvivors">—</strong></div>
+        <div><span>ACCURACY</span><strong id="debriefAccuracy">—</strong></div>
+      </div>
+      <p class="fw-after-action-objective" id="debriefObjective"></p>
+      <button id="afterActionContinue" type="button">VIEW DEBRIEF</button>
+    </div>
   </div>
-  <p class="fw-after-action-objective" id="debriefObjective"></p>
-  <nav id="afterActionTabs" class="fw-after-tabs" aria-label="After-action report sections">
-    <button type="button" data-after-tab="overview" aria-pressed="true">OVERVIEW</button>
-    <button type="button" data-after-tab="squad" aria-pressed="false">SQUAD</button>
+  <nav id="afterActionTabs" class="fw-after-tabs" aria-label="Debrief sections">
+    <button type="button" data-after-tab="squad" aria-pressed="true">SQUAD</button>
     <button type="button" data-after-tab="combat" aria-pressed="false">COMBAT</button>
     <button type="button" data-after-tab="highlights" aria-pressed="false">HIGHLIGHTS</button>
-    <button type="button" data-after-tab="timeline" aria-pressed="false">TIMELINE</button>
   </nav>
   <div id="afterActionBody" class="fw-after-body" aria-live="polite"></div>
-  <details class="fw-after-action-detail" id="debriefIntelBlock" hidden>
-    <summary>INTELLIGENCE REVIEW / BRIEFED VS. OBSERVED</summary>
-    <p id="debriefIntelText"></p>
-  </details>
-  <details class="fw-after-action-detail">
-    <summary>FULL REPORT / TACTICAL TIMELINE</summary>
-    <p id="debriefStats"></p>
-  </details>
   <footer class="fw-after-footer">
-    <button id="watchReplay" type="button">WATCH REPLAY</button>
-    <button id="saveReplayDebrief" type="button">SAVE REPLAY</button>
-    <button id="favoriteMission" type="button">☆ FAVORITE MISSION</button>
     <button id="retry" type="button">RETRY MISSION</button>
-    <button id="next" type="button">NEXT ARRANGEMENT</button>
+    <button id="next" type="button">NEW MISSION</button>
   </footer>
+  <div id="afterActionDetails" class="fw-after-details" role="dialog"
+       aria-label="Debrief details and additional actions" aria-modal="true" hidden>
+    <div class="fw-after-detail-top">
+      <strong>MISSION DETAILS</strong>
+      <button id="afterActionDetailsClose" type="button">✕ CLOSE</button>
+    </div>
+    <div class="fw-after-detail-content">
+      <div id="afterActionOperatorDetail"></div>
+      <div id="afterActionContactDetail"></div>
+      <details class="fw-after-action-detail" id="debriefIntelBlock" hidden>
+        <summary>INTELLIGENCE REVIEW</summary>
+        <p id="debriefIntelText"></p>
+      </details>
+      <details class="fw-after-action-detail">
+        <summary>FULL REPORT / MISSION TIMELINE</summary>
+        <p id="debriefStats"></p>
+      </details>
+      <div class="fw-after-detail-actions">
+        <button id="watchReplay" type="button">FULL REPLAY</button>
+        <button id="saveReplayDebrief" type="button">SAVE REPLAY</button>
+        <button id="favoriteMission" type="button">☆ FAVORITE MISSION</button>
+      </div>
+    </div>
+  </div>
 </section>
 <div id="replayLibraryBackdrop" class="replay-library-backdrop" hidden></div>
 <section id="replayLibraryDialog" class="replay-library-dialog" hidden

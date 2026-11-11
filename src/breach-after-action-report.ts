@@ -7,7 +7,7 @@ import type {RecordedShot} from './breach-replay-ballistics.ts';
 
 export type ForensicPrecision='physical-hitbox'|'proxy'|'region-only'|'unknown';
 export type ContactResolution='incapacitated'|'surrendered'|'unresolved';
-export type ShotOutcome='miss'|'armor-stopped'|'damaging'|'hit-unknown';
+export type ShotOutcome='miss'|'armor-stopped'|'non-damaging'|'damaging'|'hit-unknown';
 export type ReportShot={
   id:number;at:number;shooterId:string;targetId:string|null;
   outcome:ShotOutcome;down:boolean;region:string|null;
@@ -41,10 +41,12 @@ export const canonicalDistanceMeters=(worldUnits:number):number|null=>
  * Legacy report-only exports may lack a reliable distance metric; show —.
  */
 export function shotOutcome(s:Pick<RecordedShot,
-  'hit'|'healthBefore'|'healthAfter'>):ShotOutcome{
+  'hit'|'healthBefore'|'healthAfter'|'surface'>):ShotOutcome{
   if(!s.hit)return 'miss';
   if(!finite(s.healthBefore)||!finite(s.healthAfter))return 'hit-unknown';
-  return s.healthAfter<s.healthBefore?'damaging':'armor-stopped';
+  if(s.healthAfter<s.healthBefore)return 'damaging';
+  // A zero-health-change result alone does not prove armor protection.
+  return s.surface==='metal'?'armor-stopped':'non-damaging';
 }
 export function viewShot(s:RecordedShot):ReportShot{
   const outcome=shotOutcome(s);
@@ -115,7 +117,9 @@ export function buildAfterActionReport(rec:MissionRecorder):AfterActionReport{
         id:a.id,name:a.name,rank:0,contribution:combat+recon+support+objective,
         status:!status?'unknown':status.health<=0?'incapacitated':
           injury===2?'heavy':injury===1?'wounded':'active',
-        shots:fired.length,hits:fired.filter(s=>s.outcome!=='miss').length,
+        shots:fired.length,hits:fired.filter(s=>
+          s.outcome==='damaging'||s.outcome==='armor-stopped'||
+          s.outcome==='non-damaging').length,
         damagingHits:damaging,armorStops:armor,incapacitations:downed.length,
         contactReports:intel,doorsOpened:rec.events.some(e=>!!e.meta)?doorsOpened:null,
         doorsForced:rec.events.some(e=>!!e.meta)?doorsForced:null,
