@@ -181,6 +181,23 @@ try{
    }));
    check(overflow.full<=overflow.viewport+2,
      'Horizontal page overflow '+label+' '+JSON.stringify(overflow));
+   // Movement and support events lead to the operator's actual Squad
+   // record, not to the hostile/ballistic forensic inspection.
+   await root.locator('.fw-v5-timeline-filter')
+     .filter({hasText:'MOVEMENT'}).click();
+   check(await root.locator('.fw-v5-timeline-actions button')
+     .filter({hasText:'INSPECT OPERATOR'}).count()===1,
+     'Friendly timeline actor has no contextual record link '+label);
+   await root.locator('.fw-v5-timeline-actions button')
+     .filter({hasText:'INSPECT OPERATOR'}).click();
+   check(await root.locator('#afterActionOperatorRecord').count()===1&&
+     (await root.locator('#afterActionOperatorRecord').textContent())
+       .includes('MOSS'),
+     'Friendly movement actor did not open the correct Squad record '+label);
+   await root.locator('#afterActionDetailsToggle').click();
+   check((await root.locator('.fw-v5-timeline-inspect').textContent())
+     .includes('MOSS'),
+     'Operator record return lost timeline context '+label);
    await root.locator('#afterActionDetailsClose').click();
    check(!(await root.locator('#afterActionDetails').isVisible()),
      'Details Close did not dismiss dialog '+label);
