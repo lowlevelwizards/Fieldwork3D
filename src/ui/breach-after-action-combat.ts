@@ -98,12 +98,14 @@ export function renderCombatReport(
  controls.append(scopeBar);
  const content=el('div','fw-v3-combat-focus');
  const figure=el('div','fw-v3-combat-figure');
- const figureToolbar=el('div','fw-v3-switch');
+ const figureToolbar=el('div','fw-v3-switch fw-v4-inspection-switch');
  for(const mode of ['paper','3d'] as const){
   const b=button(mode==='paper'?'2D':'3D',()=>act.chooseMode(mode));
   b.setAttribute('aria-pressed',String(view.inspectionMode===mode));figureToolbar.append(b);
  }
- figure.append(figureToolbar);
+ // View mode remains accessible even when a shallow landscape screen leaves
+ // little vertical room for the figure itself.
+ controls.append(figureToolbar);
  if(view.inspectionMode==='paper'){
   const pose=el('div','fw-v3-switch');
   for(const back of [false,true]){
