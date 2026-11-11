@@ -82,8 +82,10 @@ test('stage 7 moves display and hint logic out of breach main, not order validat
  assert.match(main,/createTacticalHudController\(targeting\)/);
  assert.match(main,/const targeting=createTacticalInteractionState\(\)/);
  assert.match(main,/createTacticalPaletteController\(\{/);
- assert.match(main,/paletteController\.show\(/);
- assert.match(main,/hudController\.renderGuidance\(/);
+ assert.match(main,/paletteController\.showFromAuthorizedState\(/);
+  assert.match(palette,/show\(\{/);
+ assert.match(main,/hudController\.renderSession\(/);
+  assert.match(hud,/renderGuidance\(\{/);
  assert.match(main,/hudController\.renderQuickStates\(/);
  assert.match(main,/hudController\.completeAction\(/);
  assert.doesNotMatch(main,/new PaletteMotion\(/);

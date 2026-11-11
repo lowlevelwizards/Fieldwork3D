@@ -71,7 +71,8 @@ test('integration only renders tips in planning, no extra permanent HUD control'
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const hud=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
  const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
- assert.match(main,/hudController\.renderGuidance\(/);
+ assert.match(main,/hudController\.renderSession\(/);
+  assert.match(hud,/renderGuidance\(\{/);
  assert.match(hud,/resolveHudPresentation\(/);
  assert.match(hud,/teaching\.offer\(/);
  assert.match(hud,/feedback\.emit\('error'/);
