@@ -8,6 +8,9 @@ import {createBriefingCardModel,type BriefingReport,type BriefingTab}
  from '../briefing/briefing-view-model.ts';
 import {createTacticalSheetNavigation} from './tactical-sheet-navigation.ts';
 import {INTEL_MODES,type IntelMode} from '../breach-intel.ts';
+import type {BreachBootConfig} from '../breach-boot-config.ts';
+import {readStoredText,writeStoredText,saveIntelPreference}
+ from '../breach-persistence.ts';
 import type {SiteScale} from '../breach-site.ts';
 import type {LightingMode} from '../equipment-site-lighting.ts';
 import type {ViewMode} from '../breach-3d.ts';
@@ -54,6 +57,7 @@ export type MissionScreensElements={
 };
 export type MissionScreensHooks={
  ui:MissionScreensElements;
+ boot:BreachBootConfig;
  operationsBoard:HTMLElement;operationsToggle:HTMLButtonElement;
  getSession:()=>Session;getCampaign:()=>CampaignState|null;
  getMode:()=> CampaignMode;
@@ -63,7 +67,7 @@ export type MissionScreensHooks={
  getLighting:()=>LightingMode;setLighting:(value:LightingMode)=>void;
  getScale:()=>SiteScale;setScale:(value:SiteScale)=>void;
  getIntel:()=>IntelMode;setIntel:(value:IntelMode)=>void;
- lightingModes:readonly LightingMode[];intelPreferenceKey:string;
+ lightingModes:readonly LightingMode[];
  showHelp:(message:string,duration?:number)=>void;refreshHud:()=>void;
  renderFavorites:()=>void;
  changeCamera:(mode:ViewMode)=>void;fitCamera:()=>void;
@@ -305,13 +309,10 @@ ui.briefingClose.addEventListener('click',()=>{
 // development but are hidden. Only explicit ?focusFx developer URLs opt in.
 const miniatureFocusButtons=Array.from(
  ui.siteSettings.querySelectorAll<HTMLButtonElement>('[data-miniature-focus]'));
-function storedMiniatureFocus():string|null{
- try{return localStorage.getItem(MINIATURE_FOCUS_STORAGE_KEY);}
- catch{return null;}
-}
+const storedMiniatureFocus=()=>readStoredText(MINIATURE_FOCUS_STORAGE_KEY);
 let miniatureFocusSetting:MiniatureFocusMode=config.getFocusMode()??
  initialMiniatureFocusMode(
-   new URLSearchParams(location.search).get('focusFx'),storedMiniatureFocus());
+   config.boot.focusFx,storedMiniatureFocus());
 function syncMiniatureFocusPreference():void{
  for(const button of miniatureFocusButtons){
    const active=button.dataset.miniatureFocus===miniatureFocusSetting;
@@ -323,8 +324,7 @@ for(const button of miniatureFocusButtons)button.addEventListener('click',()=>{
  if(value!=='off'&&value!=='subtle'&&value!=='strong'&&value!=='replay')return;
  miniatureFocusSetting=value;
  config.setFocusMode(value);
- try{localStorage.setItem(MINIATURE_FOCUS_STORAGE_KEY,value);}
- catch{/* Preference remains active for this session without storage. */}
+ writeStoredText(MINIATURE_FOCUS_STORAGE_KEY,value);
  syncMiniatureFocusPreference();
 });
 syncMiniatureFocusPreference();
@@ -426,8 +426,7 @@ ui.intelMode.addEventListener('click',()=>{
  ],config.getIntel(),selected=>{
   if(!INTEL_MODES.includes(selected as IntelMode))return;
   config.setIntel(selected as IntelMode);
-  try{localStorage.setItem(config.intelPreferenceKey,config.getIntel());}
-  catch{/* Preferences are optional in restricted browsing contexts. */}
+  saveIntelPreference(config.getIntel());
   config.showHelp('NEXT SITE INTEL SET · CURRENT KNOWLEDGE UNCHANGED',3000);
   config.refreshHud();
  });
