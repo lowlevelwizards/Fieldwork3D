@@ -3109,3 +3109,151 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-debrief-v3 .fw-v3-highlight-chip{min-height:40px}
  .fw-v3-highlight-chip img{height:35px}
 }
+
+
+/* After Action V4 Stage 2 — persistent result and explicit squad ranking.
+   Compact text now; Stage 3 supplies the actual shared 3D operator views. */
+.fw-debrief-v3 .fw-v4-mission-summary{
+ flex:0 0 auto;min-width:0;display:grid;
+ grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);
+ grid-template-rows:auto auto;gap:4px 14px;
+ background:#263b31;border:1px solid #657b68;border-radius:6px;
+ padding:9px 12px;color:#ede6d3}
+.fw-v4-result-identity{grid-column:1;grid-row:1/3;
+ display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0}
+.fw-v4-result-identity .fw-after-caption{font-size:9px;color:#bac7ba}
+.fw-v4-result-identity strong{font:800 clamp(19px,2.6vw,27px)/1.04 var(--ui-display);
+ letter-spacing:.035em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fw-v4-mission-name{font:600 11px var(--ui-display);color:#b7c6b8;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fw-v4-result-data{grid-column:2;grid-row:1;
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
+.fw-v4-result-stat{min-width:0;display:flex;flex-direction:column;
+ justify-content:center;padding:2px 7px;border-left:1px solid #617a6b}
+.fw-v4-result-stat>span{font:700 9px var(--ui-display);color:#adbdae}
+.fw-v4-result-stat>strong{font:800 clamp(14px,1.9vw,20px)/1.25 var(--ui-display);
+ white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.fw-v4-result-foot{grid-column:2;grid-row:2;display:flex;
+ gap:8px;justify-content:space-between;align-items:center;
+ border-top:1px solid #506959;padding-top:5px;min-width:0}
+.fw-v4-result-foot strong{font:700 10px var(--ui-display);color:#e0d0ad}
+.fw-v4-result-foot>span{flex:0 0 auto;font:700 10px var(--ui-display);
+ color:#b7c9b8}
+.fw-v4-mission-summary[data-outcome="failed"]{
+ border-color:#8a7565;background:#39382f}
+.fw-v4-mission-summary[data-outcome="failed"] .fw-v4-result-identity strong{
+ color:#f0d4b8}
+
+/* The scroll owner remains afterActionBody so Stage 1 return addresses persist. */
+.fw-debrief-v3.fw-v4-squad-active .fw-after-body{
+ overflow-y:auto;overscroll-behavior-y:contain}
+.fw-v4-squad{height:auto;min-height:100%;display:flex;flex-direction:column;
+ gap:7px;padding:0 1px 4px}
+.fw-v4-squad-heading{display:flex;justify-content:space-between;
+ align-items:baseline;gap:8px;padding:3px 2px 1px}
+.fw-v4-squad-heading h2{font:800 15px var(--ui-display);margin:0;
+ color:#e7dec7;white-space:nowrap}
+.fw-v4-squad-heading p{font:700 10px var(--ui-display);
+ letter-spacing:.025em;color:#aabdae;margin:0;text-align:right}
+.fw-v4-squad-content{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+ gap:9px;align-items:start;min-width:0;flex:1}
+.fw-v4-squad .fw-v4-rank-list{
+ display:grid;grid-template-columns:minmax(0,1fr);align-content:start;
+ gap:5px;min-width:0}
+.fw-debrief-v3 .fw-v4-rank-row{
+ display:grid;grid-template-columns:minmax(46px,54px) minmax(0,1fr) auto;
+ align-items:center;justify-items:stretch;gap:7px;
+ padding:5px 8px;min-width:0;min-height:51px;text-align:left;
+ background:#1e3329;border:1px solid #526b58;border-radius:5px;
+ color:#ebe5d6;cursor:pointer}
+.fw-debrief-v3 .fw-v4-rank-row[aria-pressed="true"]{
+ background:#3d5545;border-color:#dcc395;box-shadow:inset 3px 0 #d6c392}
+.fw-v4-rank-number{font:800 16px var(--ui-display);color:#e7d4ae;
+ white-space:nowrap}
+.fw-v4-rank-identity{display:grid;gap:2px;min-width:0}
+.fw-v4-rank-identity strong{font:800 14px var(--ui-display);
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fw-v4-rank-identity small{font:600 9px var(--ui-display);color:#b8c7b8;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fw-v4-rank-points{display:grid;justify-items:end;gap:0;min-width:35px}
+.fw-v4-rank-points strong{font:800 21px/1 var(--ui-display);
+ color:#f0ddba}
+.fw-v4-rank-points small{font:700 9px var(--ui-display);color:#bcccb9}
+.fw-v4-squad .fw-v4-squad-focus,
+.fw-v4-squad .fw-v4-operator-record{display:block;
+ min-width:0;min-height:0;height:auto;padding:10px;
+ background:#20362c;border:1px solid #567362;border-radius:6px}
+.fw-v4-team-overview,.fw-v4-selected-overview{display:grid;gap:9px;min-width:0}
+.fw-v4-overview-heading{display:flex;justify-content:space-between;
+ gap:8px;align-items:baseline}
+.fw-v4-overview-heading>strong{font:800 20px var(--ui-display);
+ white-space:nowrap;color:#ead7af}
+.fw-v4-category-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.fw-v4-category-tile{min-width:0;min-height:42px;
+ background:#30483a;border:1px solid #54705d;border-radius:4px;
+ display:flex;align-items:center;justify-content:space-between;
+ gap:5px;padding:6px 8px}
+.fw-v4-category-tile span{font:700 10px var(--ui-display);
+ color:#b9cab9;min-width:0}
+.fw-v4-category-tile strong{font:800 13px var(--ui-display);
+ color:#e8debc;white-space:nowrap}
+.fw-v4-select-note{font:700 11px/1.4 var(--ui-font);
+ color:#d9decc;margin:0}
+.fw-v4-scoring-note{font:11px/1.45 var(--ui-font);
+ color:#afc2b3;margin:0}
+.fw-v4-selected-top{display:flex;align-items:start;justify-content:space-between;
+ gap:10px;min-width:0}
+.fw-v4-selected-top .fw-v3-squad-name{min-width:0}
+.fw-v4-selected-top .fw-v3-squad-name h2{
+ font-size:clamp(19px,2.9vw,26px)}
+.fw-v4-selected-total{display:grid;justify-items:end;flex:0 0 auto}
+.fw-v4-selected-total strong{font:800 26px/1.1 var(--ui-display);
+ color:#ebd4ab}
+.fw-v4-selected-total small{font:700 9px var(--ui-display);
+ color:#bdccba}
+.fw-v4-selected-counts{display:flex;gap:5px;flex-wrap:wrap}
+.fw-v4-selected-counts span{font:700 10px var(--ui-display);
+ padding:4px 6px;background:#31483b;border-radius:3px}
+.fw-v4-selected-actions{display:flex;flex-wrap:wrap;gap:6px}
+.fw-debrief-v3 .fw-v4-overview-back{border:1px solid #617c69;
+ background:#283f33;color:#e5ddc7;border-radius:4px;margin:0;
+ min-height:44px;padding:7px 9px;font:700 11px var(--ui-display)}
+.fw-debrief-v3 .fw-v4-selected-actions .fw-v3-details-link{margin:0}
+.fw-v4-squad .fw-v4-operator-record{
+ padding:10px;display:grid;gap:10px;align-content:start}
+.fw-v4-squad .fw-v4-operator-record .fw-v3-operator-details{
+ border:0;padding:0}
+.fw-v4-squad .fw-v4-operator-record .fw-after-pair{min-height:30px}
+.fw-v4-partial{padding:2px 4px;margin:0}
+@media(max-width:700px){
+ .fw-debrief-v3 .fw-v4-mission-summary{
+  grid-template-columns:minmax(0,1fr);gap:5px;padding:7px 9px}
+ .fw-v4-result-identity{grid-column:1;grid-row:auto;gap:1px}
+ .fw-v4-result-identity strong{font-size:20px}
+ .fw-v4-result-data{grid-column:1;grid-row:auto;gap:2px}
+ .fw-v4-result-stat{padding:1px 4px}
+ .fw-v4-result-stat>strong{font-size:15px}
+ .fw-v4-result-foot{grid-column:1;grid-row:auto;padding-top:4px}
+ .fw-v4-squad-content{display:grid;grid-template-columns:minmax(0,1fr)}
+ .fw-v4-squad-heading p{font-size:9px}
+ .fw-debrief-v3 .fw-v4-rank-row{min-height:46px}
+ .fw-v4-squad .fw-v4-squad-focus{padding:9px}
+}
+@media(max-width:360px){
+ .fw-v4-squad-heading{display:grid;gap:2px}
+ .fw-v4-squad-heading h2{font-size:14px}
+ .fw-v4-squad-heading p{text-align:left}
+ .fw-v4-rank-row{gap:5px}
+ .fw-v4-rank-identity strong{font-size:12px}
+ .fw-v4-category-tile{padding:5px}
+ .fw-v4-category-tile strong{font-size:12px}
+}
+@media(max-height:480px){
+ .fw-debrief-v3 .fw-v4-mission-summary{padding:5px 9px}
+ .fw-v4-result-identity strong{font-size:18px}
+ .fw-v4-squad-heading{padding:1px}
+ .fw-debrief-v3 .fw-v4-rank-row{min-height:44px}
+}
+@media(prefers-reduced-motion:reduce){
+ .fw-v4-squad *{scroll-behavior:auto!important}
+}
