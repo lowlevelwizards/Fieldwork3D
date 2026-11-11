@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createBreachReplayLibraryController}
   from '../src/ui/breach-replay-library-controller.ts';
+import {createBreachAppFlow} from '../src/breach-app-flow.ts';
 import {readFavoriteMissions} from '../src/breach-mission-favorites.ts';
 import {newSession} from '../src/breach-game.ts';
 import {captureMissionStart} from '../src/breach-mission-restart.ts';
@@ -47,6 +48,7 @@ function setup(){
   const start=captureMissionStart(session,'medium');
   const help=[],events=[],loadedBookmarks=[];
   let playing=false,playAllowed=true;
+  const flow=createBreachAppFlow('menu');
   const controller=createBreachReplayLibraryController({
     ui,
     showUiHelp:(message)=>help.push(message),
@@ -63,10 +65,12 @@ function setup(){
     playFavorite:fav=>events.push('play-'+fav.id),
     canPlayFavorite:()=>playAllowed,
     hideCampaignScreen:()=>events.push('hide-campaign'),
-    returnToCampaignMenu:()=>events.push('return-menu')
+    onLibraryOpen:fromMenu=>{flow.openLibrary(fromMenu);},
+    onLibraryClose:restore=>flow.closeLibrary(restore),
+    returnToCampaignMenu:()=>{flow.setMode('menu');events.push('return-menu');}
   });
   return {
-    ui,controller,help,events,loadedBookmarks,values,
+    ui,controller,flow,help,events,loadedBookmarks,values,
     playing:value=>{playing=value;},
     allowPlaying:value=>{playAllowed=value;},
     cleanup:()=>{
