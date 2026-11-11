@@ -85,7 +85,7 @@ import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse}
  from './breach-combat-cues.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {WALL_VISUAL_HEIGHT} from './breach-door-proportions.ts';
-import {paintFogMask,paintFogMemory,paintFogVisibility,occupiedFogRooms,
+import {paintFogMemory,paintFogVisibility,occupiedFogRooms,
   FOG_WIDTH,FOG_HEIGHT,maskSize,type FogDiagnostic}
   from './breach-fog-mask.ts';
 import {exteriorKnownFogRects,fogUvAt} from './breach-fog-domain.ts';
@@ -161,7 +161,6 @@ export class TacticalScene3D{
   private lastFogSignature='';
   private lastMemoryFogSignature='';
   private lastMemoryFogSession:Session|null=null;
-  private readonly fogLegacy=new URLSearchParams(location.search).has('fogLegacy');
   private readonly fogDiagnostic:FogDiagnostic=
     new URLSearchParams(location.search).get('fogDebug')==='palette'?
       'palette':'normal';
@@ -2207,33 +2206,27 @@ export class TacticalScene3D{
       if(sessionChanged||fogSignature!==this.lastFogSignature){
         this.fogAt=0;this.lastFogSignature=fogSignature;
         this.lastFogSession=s;
-        if(this.fogLegacy){
-          paintFogMask(this.fogContext,s,this.fogDiagnostic);
-          this.fogMemoryPaints++;this.fogSightPaints++;
-        }else{
-          // Static exploration memory is even less volatile than sight.
-          // Avoid building its key unless a visibility redraw is needed.
-          const memorySignature=fogMemoryFingerprint({
-            mode:s.intel.mode,seed:s.site?.seed??null,
-            seenRevision:s.seenGroundRevision,
-            rooms:s.intel.rooms.size,walls:s.intel.walls.size,
-            doors:s.intel.doors.size,cover:s.intel.cover.size
-          });
-          if(this.lastMemoryFogSession!==s||
-             this.lastMemoryFogSignature!==memorySignature){
-            paintFogMemory(this.fogMemoryContext,s,this.fogDiagnostic);
-            this.lastMemoryFogSignature=memorySignature;
-            this.lastMemoryFogSession=s;
-            this.fogMemoryPaints++;
-          }
-          this.fogContext.setTransform(1,0,0,1,0,0);
-          this.fogContext.globalCompositeOperation='source-over';
-          this.fogContext.clearRect(0,0,
-            this.fogCanvas.width,this.fogCanvas.height);
-          this.fogContext.drawImage(this.fogMemoryCanvas,0,0);
-          paintFogVisibility(this.fogContext,s);
-          this.fogSightPaints++;
+        // Static exploration memory changes less often than live sight.
+        const memorySignature=fogMemoryFingerprint({
+          mode:s.intel.mode,seed:s.site?.seed??null,
+          seenRevision:s.seenGroundRevision,
+          rooms:s.intel.rooms.size,walls:s.intel.walls.size,
+          doors:s.intel.doors.size,cover:s.intel.cover.size
+        });
+        if(this.lastMemoryFogSession!==s||
+           this.lastMemoryFogSignature!==memorySignature){
+          paintFogMemory(this.fogMemoryContext,s,this.fogDiagnostic);
+          this.lastMemoryFogSignature=memorySignature;
+          this.lastMemoryFogSession=s;
+          this.fogMemoryPaints++;
         }
+        this.fogContext.setTransform(1,0,0,1,0,0);
+        this.fogContext.globalCompositeOperation='source-over';
+        this.fogContext.clearRect(0,0,
+          this.fogCanvas.width,this.fogCanvas.height);
+        this.fogContext.drawImage(this.fogMemoryCanvas,0,0);
+        paintFogVisibility(this.fogContext,s);
+        this.fogSightPaints++;
         this.fogTexture.needsUpdate=true;
       }
     }else if(omniscient)this.fogAt=-1;
