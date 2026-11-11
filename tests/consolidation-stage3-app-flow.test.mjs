@@ -183,8 +183,8 @@ test('A3: composition uses AppFlow for mode, real visibility, mission and replay
  assert.match(main,/appFlow\.openLibrary\(fromMenu\)/);
  assert.match(main,/appFlow\.closeLibrary\(restore\)/);
  assert.doesNotMatch(main,/let campaignMode:CampaignMode/);
- assert.match(config,/onVisibilityChange\?\(true\)/);
- assert.match(config,/onVisibilityChange\?\(false\)/);
+ assert.match(config,/options\.onVisibilityChange\?\.\(true\)/);
+ assert.match(config,/options\.onVisibilityChange\?\.\(false\)/);
  assert.match(quick,/onVisibilityChange:config\.onConfiguratorVisibilityChange/);
  assert.match(screens,/onPresentationChange/);
  assert.match(library,/hide\(false\)/);
