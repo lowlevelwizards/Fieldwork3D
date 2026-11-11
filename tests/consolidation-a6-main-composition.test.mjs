@@ -64,3 +64,12 @@ test('A6 QA fixture does not occupy main and stays explicitly gated',()=>{
  assert.match(qa,/BODYCAM INDOOR ENTRY \/ QA/);
  assert.match(qa,/__fieldworkBodycamQa/);
 });
+
+test('A6 contextual UI dispatch binds once on HUD while game rules stay in domain module',()=>{
+ const hud=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
+ assert.match(source,/hudController\.bindContextActions\(/);
+ assert.doesNotMatch(source,/const handleContextAction=/);
+ assert.match(hud,/function bindContextActions\(/);
+ assert.match(hud,/if\(contextActionsBound\)return/);
+ assert.match(hud,/dispatchTacticalContextCommand\(/);
+});

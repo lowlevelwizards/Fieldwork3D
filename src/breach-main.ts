@@ -697,75 +697,22 @@ function updateContext(){
 }
 // One shared long-press handler is installed on each actual command button.
 // Duplicating a second timer on the palette caused conflicting 450/540ms holds.
-const handleContextAction=(event:MouseEvent)=>{
-  const button=(event.target as HTMLElement).closest<HTMLButtonElement>(
-    'button[data-action]');
-  if(!button||state.phase!=='planning'||replaying)return;
-  const action=button.dataset.action;
-  if(action)discoverAction(action,button.title);
-  const a=uid(selected);
-  if(!a)return;
-  const beforeErrors=state.events.length;
-  const node=selectedPlanNode();
-  const door=doorFocusId?focusedDoor(a,node):undefined;
-  const result=dispatchTacticalContextCommand({
-    state,selected,actor:a,node,door,action:action??'',
-    selectedActiveWatch,
-    medicalCandidate:at=>medicalCandidate(selected,at)
-  });
-  if(result.handled){
-    if(result.clearSelection){
-      selectedNode=null;selectedActiveWatch=false;
-    }
-    if(result.clearDoorFocus)doorFocusId=null;
-    if(result.dismissDoorId!==undefined)
-      doorMenuDismissedId=result.dismissDoorId;
-    if(result.invalidateFog)fog2D.invalidate();
-    if(result.skipFeedback){updateHud();return;}
-  }else switch(action){
-    case 'ctxSuppress':
-      targeting.armSuppress();
-      tacticalFeedback.emit('armed',node?.p??a.p,'SUPPRESS READY');
-      audioController.uiClickTone('select');updateHud();return;
-    case 'ctxFlash':
-      if(state.flashRemaining>0)targeting.toggleFlash();
-      break;
-    case 'ctxLook':
-      armFacing('look');
-      if(targeting.isFacing)tacticalFeedback.emit('armed',
-        node?.p??a.p,'TAP A DIRECTION');
-      audioController.uiClickTone('select');return;
-    case 'ctxDoor':{
-      const available=focusedDoor(a,node);
-      if(!available){state.events.push('NO KNOWN DOOR IN REACH');break;}
-      doorFocusId=available.id;doorMenuDismissedId=null;
-      audioController.uiClickTone('select');updateHud();return;
-    }
-    case 'ctxWatch':
-      armFacing('watch');
-      if(targeting.isFacing)tacticalFeedback.emit('armed',
-        node?.p??a.p,'TAP WATCH TARGET');
-      audioController.uiClickTone('select');return;
-    case 'ctxPush':
-      targeting.armPush();
-      tacticalFeedback.emit('armed',node?.p??a.p,'PUSH DIRECTION');
-      showUiHelp('TAP OR DRAG AWAY FROM THE OBJECT TO CHOOSE PUSH DIRECTION',3600);
-      audioController.uiClickTone('select');updateHud();return;
-    case 'ctxDoorFlash':
-      if(!door){state.events.push('SELECT A DOOR FIRST');break;}
-      targeting.armDoorFlash(door.id);
-      doorFocusId=null;doorMenuDismissedId=door.id;break;
-  }
-  const failed=state.events.length>beforeErrors;
-  hudController.completeAction(
-    door?doorCenter(door):node?.p??a.p,
-    failed?state.events.at(-1)??'ACTION BLOCKED':null,
-    button.querySelector('.command-label')?.textContent??'',
-    isFailure=>audioController.uiClickTone(isFailure?'warning':'command'));
-  updateHud();
-};
-ui.context.addEventListener('click',handleContextAction);
-ui.quickStates.addEventListener('click',handleContextAction);
+hudController.bindContextActions({
+ ui,
+ get state(){return state;},get selected(){return selected;},
+ get replaying(){return replaying;},get actor(){return uid(selected)??null;},
+ get node(){return selectedPlanNode();},
+ get selectedActiveWatch(){return selectedActiveWatch;},
+ set selectedActiveWatch(v){selectedActiveWatch=v;},
+ get selectedNode(){return selectedNode;},set selectedNode(v){selectedNode=v;},
+ get doorFocusId(){return doorFocusId;},set doorFocusId(v){doorFocusId=v;},
+ get doorMenuDismissedId(){return doorMenuDismissedId;},
+ set doorMenuDismissedId(v){doorMenuDismissedId=v;},
+ focusedDoor:()=>{const a=uid(selected);return a?focusedDoor(a,selectedPlanNode()):undefined;},
+ medicalCandidate:at=>medicalCandidate(selected,at),audio:audioController,
+ invalidateFog:()=>fog2D.invalidate(),updateHud,armFacing,showUiHelp
+});
+
 function updateQuickStates():void{
   const actor=uid(selected)??null;
   hudController.renderQuickStates({

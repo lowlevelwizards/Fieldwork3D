@@ -14,7 +14,9 @@ import type {MissionRecorder} from '../breach-replay.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,rangeTrialLabel,type RangeTrial} from '../equipment-training-diagnostics.ts';
 import {lightControlState} from '../equipment-weapon-light-ui.ts';
 import type {ViewMode} from '../breach-3d.ts';
-import type {Pt} from '../breach-core.ts';
+import {doorCenter,type Door,type Pt} from '../breach-core.ts';
+import {dispatchTacticalContextCommand} from '../breach-tactical-context-command.ts';
+import type {createBreachAudioController} from '../breach-audio-controller.ts';
 import type {DisplayRouteCache} from '../breach-route-cache.ts';
 import type {createBreachReplayAnalysisController} from './breach-replay-analysis-controller.ts';
 import type {createBreachReplayTimelineController} from './breach-replay-timeline-controller.ts';
@@ -53,6 +55,18 @@ export type TacticalSessionPresentation={
  reducedMotion:boolean;weaponChooser:HTMLElement;hideWeaponChooser:()=>void;
  favoriteActive:boolean;recorder:MissionRecorder;campaign:CampaignState|null;
  operationsLogged:number;
+};
+export type TacticalContextActionPorts={
+ ui:ReturnType<typeof createBreachUiElements>;
+ readonly state:Session;readonly selected:string;readonly replaying:boolean;
+ readonly actor:TeamActor|null;readonly node:TeamActor['plan'][number]|undefined;
+ selectedNode:number|null;selectedActiveWatch:boolean;
+ doorFocusId:string|null;doorMenuDismissedId:string|null;
+ focusedDoor:()=>Door|undefined;medicalCandidate:(at:Pt)=>TeamActor|null;
+ audio:ReturnType<typeof createBreachAudioController>;
+ invalidateFog:()=>void;updateHud:()=>void;
+ armFacing:(mode:'look'|'watch')=>void;
+ showUiHelp:(text:string,duration?:number)=>void;
 };
 export type TacticalShortcutPorts={
  ui:ReturnType<typeof createBreachUiElements>;
@@ -541,6 +555,80 @@ export function createTacticalHudController(
     (visible?' • '+visible+' CONTACT'+(visible===1?'':'S'):'');
 
   }
+  let contextActionsBound=false;
+  function bindContextActions(config:TacticalContextActionPorts):void{
+    if(contextActionsBound)return;
+    contextActionsBound=true;
+    const handleContextAction=(event:MouseEvent)=>{
+      const button=(event.target as HTMLElement).closest<HTMLButtonElement>(
+        'button[data-action]');
+      if(!button||config.state.phase!=='planning'||config.replaying)return;
+      const action=button.dataset.action;
+      if(action)discoverAction(action,button.title);
+      const a=config.actor;
+      if(!a)return;
+      const beforeErrors=config.state.events.length;
+      const node=config.node;
+      const door=config.doorFocusId?config.focusedDoor():undefined;
+      const result=dispatchTacticalContextCommand({
+        config.state,config.selected,actor:a,node,door,action:action??'',
+        config.selectedActiveWatch,
+        medicalCandidate:config.medicalCandidate
+      });
+      if(result.handled){
+        if(result.clearSelection){
+          config.selectedNode=null;config.selectedActiveWatch=false;
+        }
+        if(result.clearDoorFocus)config.doorFocusId=null;
+        if(result.dismissDoorId!==undefined)
+          config.doorMenuDismissedId=result.dismissDoorId;
+        if(result.invalidateFog)config.invalidateFog();
+        if(result.skipFeedback){config.updateHud();return;}
+      }else switch(action){
+        case 'ctxSuppress':
+          targeting.armSuppress();
+          feedback.emit('armed',node?.p??a.p,'SUPPRESS READY');
+          config.audio.uiClickTone('select');config.updateHud();return;
+        case 'ctxFlash':
+          if(config.state.flashRemaining>0)targeting.toggleFlash();
+          break;
+        case 'ctxLook':
+          config.armFacing('look');
+          if(targeting.isFacing)feedback.emit('armed',
+            node?.p??a.p,'TAP A DIRECTION');
+          config.audio.uiClickTone('select');return;
+        case 'ctxDoor':{
+          const available=config.focusedDoor();
+          if(!available){config.state.events.push('NO KNOWN DOOR IN REACH');break;}
+          config.doorFocusId=available.id;config.doorMenuDismissedId=null;
+          config.audio.uiClickTone('select');config.updateHud();return;
+        }
+        case 'ctxWatch':
+          config.armFacing('watch');
+          if(targeting.isFacing)feedback.emit('armed',
+            node?.p??a.p,'TAP WATCH TARGET');
+          config.audio.uiClickTone('select');return;
+        case 'ctxPush':
+          targeting.armPush();
+          feedback.emit('armed',node?.p??a.p,'PUSH DIRECTION');
+          config.showUiHelp('TAP OR DRAG AWAY FROM THE OBJECT TO CHOOSE PUSH DIRECTION',3600);
+          config.audio.uiClickTone('select');config.updateHud();return;
+        case 'ctxDoorFlash':
+          if(!door){config.state.events.push('SELECT A DOOR FIRST');break;}
+          targeting.armDoorFlash(door.id);
+          config.doorFocusId=null;config.doorMenuDismissedId=door.id;break;
+      }
+      const failed=config.state.events.length>beforeErrors;
+      completeAction(
+        door?doorCenter(door):node?.p??a.p,
+        failed?config.state.events.at(-1)??'ACTION BLOCKED':null,
+        button.querySelector('.command-label')?.textContent??'',
+        isFailure=>config.audio.uiClickTone(isFailure?'warning':'command'));
+      config.updateHud();
+    };
+    config.ui.context.addEventListener('click',handleContextAction);
+    config.ui.quickStates.addEventListener('click',handleContextAction);
+  }
   let shortcutsBound=false;
   function bindShortcuts(config:TacticalShortcutPorts):void{
    if(shortcutsBound)return;
@@ -627,5 +715,5 @@ export function createTacticalHudController(
   return {feedback,get facing(){return targeting.facing;},
     showHelp,teach,discoverAction,toggleFacing,
     message,renderGuidance,renderQuickStates,rejectAttempt,completeAction,
-    renderTargetMode,renderPhase,renderOperatorCard,renderNotice,renderSession,bindShortcuts,resetNotices};
+    renderTargetMode,renderPhase,renderOperatorCard,renderNotice,renderSession,bindShortcuts,bindContextActions,resetNotices};
 }
