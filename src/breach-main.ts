@@ -5,7 +5,6 @@ import {dispatchTacticalPointerRelease,commitTacticalGroundCommand} from './brea
 import {installTouchCommandHelp as bindTouchCommandHelp}
  from './ui/touch-command-help.ts';
 import {
-  W,H,
   doorCenter,type Pt,} from './breach-core.ts';
 import {
   type Session,
