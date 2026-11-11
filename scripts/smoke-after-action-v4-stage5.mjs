@@ -109,6 +109,15 @@ try{
      'Structured authoritative summary missing '+label);
    check(await root.locator('.fw-v5-timeline-marker').count()>0,
      'No historical markers '+label);
+   const railBox=await root.locator('.fw-v5-timeline-rail').boundingBox();
+   const sheetBox=await root.locator('#afterActionDetails').boundingBox();
+   check(!!railBox&&!!sheetBox&&
+     railBox.y>=sheetBox.y&&
+     railBox.y<sheetBox.y+sheetBox.height,
+     'Timeline markers not on initial Details screen '+label);
+   await root.screenshot({
+     path:'artifacts/after-action-v4-stage5/initial-'+label+'.png'
+   });
    const markers=await root.locator('.fw-v5-timeline-marker').evaluateAll(
      nodes=>nodes.map(node=>({
        w:node.getBoundingClientRect().width,
