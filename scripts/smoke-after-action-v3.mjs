@@ -143,6 +143,14 @@ try{
      'Incorrect operator record '+name);
    check(!(await root.locator('#afterActionDetails').isVisible()),
      'Operator record wrongly opened Mission Details '+name);
+   await root.locator('#afterActionDetailsToggle').click();
+   await root.locator('#watchReplay').click();
+   check((await page.evaluate(()=>window.__v4Mock.state)).origin.operatorRecordOpen,
+     'Full replay discarded expanded operator record '+name);
+   await page.evaluate(()=>window.__v4Mock.exit());
+   check(await root.locator('#afterActionOperatorRecord').count()===1,
+     'Full replay did not restore expanded operator record '+name);
+   await root.locator('#afterActionDetailsClose').click();
    await root.locator('.fw-v4-record-back').click();
    await root.locator('#afterActionDetailsToggle').click();
    check(await root.locator('#afterActionDetails').isVisible(),
