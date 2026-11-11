@@ -137,7 +137,18 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      side:s.contactSide,back:s.paperBack,inspectionMode:s.inspectionMode
    },{
      chooseContact:(id)=>{s.selectedContact=id;s.selectedShotId=null;draw();},
-     chooseShot:(id)=>{s.selectedShotId=id;draw();},
+     chooseShot:(id)=>{
+       // The active default contact must become explicit as soon as a shot
+       // is selected, otherwise the origin snapshot contains an orphan shot.
+       if(id!==null){
+         const contacts=s.contactSide==='red'?
+           s.report.hostiles:s.report.friendlyCasualties;
+         const owner=contacts.find(c=>c.shots.some(shot=>shot.id===id));
+         if(!owner)return;
+         s.selectedContact=owner.id;
+       }
+       s.selectedShotId=id;draw();
+     },
      chooseSide:(side)=>{s.contactSide=side;s.selectedContact=null;
        s.selectedShotId=null;draw();},
      chooseView:(back)=>{s.paperBack=back;draw();},
