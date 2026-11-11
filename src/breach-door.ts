@@ -255,7 +255,7 @@ export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], act
  if(doorWouldStrikeActors(d,next,actors,actorRadius))return true;
  if(d.kind==='sliding')return false;
  // Standalone lab fixtures have no corresponding architectural model.
- const registered=world?(world.site?.doors??initialDoors()):
+ const registered=world?initialDoors(world.site):
    (activeSite()?.doors??initialDoors());
  if(!registered.some(real=>real.id===d.id))return false;
  const current=d.openFraction??(d.open?1:0);

@@ -8,7 +8,7 @@
  */
 import type {Session} from './breach-game.ts';
 import {
- W,H,WALLS,activeGeometryRevision,pointToSegment,segmentsCross,
+ W,H,initialWorldWalls,pointToSegment,segmentsCross,
  doorBlocksRay,route,OPERATOR_RADIUS,type Pt,type Segment,type Obstacle,
  type Door
 } from './breach-core.ts';
@@ -53,7 +53,7 @@ const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function registerSessionWorldGeometry(s:Session):SessionWorldGeometry{
  const existing=contexts.get(s);if(existing)return existing;
  const site=s.site??null;
- const walls=(site?.walls??WALLS).map(w=>({
+ const walls=initialWorldWalls(site).map(w=>({
   a:{...w.a},b:{...w.b}
  }));
  const cover=s.coverState;
@@ -73,7 +73,7 @@ export function registerSessionWorldGeometry(s:Session):SessionWorldGeometry{
  };
  const context:SessionWorldGeometry={
   get site(){return s.site??null;},walls,cover,bounds,
-  initializedAtRevision:activeGeometryRevision(),
+  initializedAtRevision:0, // compatibility diagnostic, never global epoch
   invalidate(){invalidated=true;},
   get revision(){indexed();return epoch;},
   someWallNearPoint(p,r,matches){
