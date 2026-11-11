@@ -102,6 +102,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        String(tabButton.dataset.afterTab===s.tab));
    if(intel)intel.hidden=!s.showIntel;
    if(raw)raw.hidden=false;
+   root.classList.toggle('fw-v4-record-open',s.tab==='squad'&&s.operatorRecordOpen);
    const choose=(id:string|null)=>{
      if(id===s.selectedOperator&&s.tab==='squad')return;
      s.selectedOperator=id;s.operatorRecordOpen=false;s.tab='squad';draw();
