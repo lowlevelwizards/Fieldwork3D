@@ -11,7 +11,8 @@ const modules=[
  'src/breach-ai-visual-evidence.ts',
  'src/breach-shot-ignition.ts',
  'src/breach-locomotion-clearance.ts',
- 'src/breach-order-utility.ts'
+ 'src/breach-order-utility.ts',
+ 'src/breach-tactical-interaction-state.ts'
 ];
 for(const path of modules){
  const text=readFileSync(path,'utf8');

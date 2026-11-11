@@ -79,7 +79,8 @@ test('stage 7 moves display and hint logic out of breach main, not order validat
    import.meta.url),'utf8');
  const hud=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',
    import.meta.url),'utf8');
- assert.match(main,/createTacticalHudController\(\)/);
+ assert.match(main,/createTacticalHudController\(targeting\)/);
+ assert.match(main,/const targeting=createTacticalInteractionState\(\)/);
  assert.match(main,/createTacticalPaletteController\(\{/);
  assert.match(main,/paletteController\.show\(/);
  assert.match(main,/hudController\.renderGuidance\(/);

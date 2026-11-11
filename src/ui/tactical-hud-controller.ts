@@ -14,20 +14,17 @@ import {liveMagazineCapacity,magazineAlert}
 import {executionStatus} from '../breach-execution-state.ts';
 import {compactExecutionStatus} from './tactical-hud-density.ts';
 import {ExecutionNoticeFeed} from './execution-feedback.ts';
+import {createTacticalInteractionState,
+ type TacticalInteractionState} from '../breach-tactical-interaction-state.ts';
 
-export type FacingMode='look'|'watch';
 export type TacticalGuidanceInput={
-  replaying:boolean;phase:Session['phase'];flashMode:boolean;pushMode:boolean;
+  replaying:boolean;phase:Session['phase'];
   selectedNode:number|null;selectedActiveWatch:boolean;
-  firePlacement:boolean;evacMode:boolean;
   feed:HTMLElement;hint:HTMLElement;
 };
-export function createTacticalHudController(){
+export function createTacticalHudController(
+ targeting:TacticalInteractionState=createTacticalInteractionState()){
   const feedback=new TacticalFeedback();
-  const facing={
-    looking:false,lookMode:'look' as FacingMode,
-    armedOrigin:'end' as 'here'|'end'
-  };
   const teaching=new ContextualTeaching(
     key=>{try{return localStorage.getItem('fieldwork3d.ui.teach.v2.'+key)==='1';}
       catch{return false;}},
@@ -48,21 +45,23 @@ export function createTacticalHudController(){
   function discoverAction(action:string,description:string):void{
     teach('action-'+action,description,3600);
   }
-  function toggleFacing(mode:FacingMode,selectedNode:number|null):boolean{
-    facing.looking=!facing.looking||facing.lookMode!==mode;
-    facing.lookMode=mode;
-    facing.armedOrigin=selectedNode===null?'here':'end';
-    return facing.looking;
+  function toggleFacing(mode:'look'|'watch',selectedNode:number|null):boolean{
+    return targeting.toggleFacing(mode,selectedNode);
   }
   function message(input:Pick<TacticalGuidanceInput,
-    'replaying'|'phase'|'flashMode'|'pushMode'|'selectedActiveWatch'|'selectedNode'>){
+    'replaying'|'phase'|'selectedActiveWatch'|'selectedNode'>){
     if(input.replaying)return 'MISSION FILM · ORBIT, PAN, ZOOM AND SCRUB FREELY';
-    if(input.flashMode)return 'FLASH: tap a target, or CANCEL to back out.';
-    if(input.pushMode)return 'PUSH: tap or drag a direction away from the selected object (±80°). CANCEL to exit.';
     if(input.phase==='planning'){
-      if(facing.looking)return facing.lookMode==='watch'?
-        'WATCH ARMED · TAP A POINT · CANCEL/BACK TO EXIT. Replaces prior WATCH; RUN or interactions end tracking.':
-        'LOOK ARMED · TAP ANY DIRECTION · CANCEL/BACK TO EXIT. Replaces prior WATCH.';
+      switch(targeting.mode.kind){
+        case 'flash':return 'FLASH: tap a target, or CANCEL to back out.';
+        case 'push':return 'PUSH: tap or drag a direction away from the selected object (±80°). CANCEL to exit.';
+        case 'suppress':return 'SUPPRESS ARMED · TAP A POINT TO PLACE FIRE POLICY · CANCEL/BACK TO EXIT.';
+        case 'evac':return targeting.mode.transport==='drag'?
+          'DRAG ARMED · TAP A REACHABLE DESTINATION · CANCEL/BACK TO EXIT.':
+          'CARRY ARMED · TAP A REACHABLE DESTINATION · CANCEL/BACK TO EXIT.';
+        case 'watch':return 'WATCH ARMED · TAP A POINT · CANCEL/BACK TO EXIT. Replaces prior WATCH; RUN or interactions end tracking.';
+        case 'look':return 'LOOK ARMED · TAP ANY DIRECTION · CANCEL/BACK TO EXIT. Replaces prior WATCH.';
+      }
       if(input.selectedActiveWatch)
         return 'WATCH TARGET · DRAG THE RING TO RETARGET · DELETE WATCH TO RELEASE.';
       if(input.selectedNode!==null)
@@ -76,21 +75,20 @@ export function createTacticalHudController(){
   function renderGuidance(input:TacticalGuidanceInput):void{
     const now=performance.now(),hasHelp=now<helpUntil;
     const tip=teaching.current(now);
-    const targeting=facing.looking||input.flashMode||
-      input.firePlacement||input.evacMode;
+    const targetArmed=targeting.isArmed;
     const phase:HudPhase=input.replaying?'replay':
-      input.phase==='planning'?(targeting?'targeting':'planning'):
+      input.phase==='planning'?(targetArmed?'targeting':'planning'):
       input.phase==='running'?'execution':'debrief';
     const severity=input.feed.hidden?'normal':input.feed.dataset.severity;
     const urgency:HudUrgency=severity==='warning'||severity==='contact'||
       severity==='danger'?severity:'normal';
     const presentation=resolveHudPresentation({
-      phase,urgency,explicitHelp:hasHelp,coaching:!!tip,targetPrompt:targeting
+      phase,urgency,explicitHelp:hasHelp,coaching:!!tip,targetPrompt:targetArmed
     });
     document.body.dataset.hudPhase=phase;
     document.body.dataset.hudUrgency=urgency;
-    input.hint.dataset.hintKind=hasHelp?'help':targeting?'target':'coach';
-    input.hint.textContent=hasHelp?helpText:targeting?message(input):
+    input.hint.dataset.hintKind=hasHelp?'help':targetArmed?'target':'coach';
+    input.hint.textContent=hasHelp?helpText:targetArmed?message(input):
       presentation.showCoaching?(tip?.text??''):message(input);
     input.hint.hidden=!presentation.showGuidance;
   }
@@ -172,12 +170,9 @@ export function createTacticalHudController(){
   }
   function renderTargetMode(config:{
     cancelTarget:HTMLElement;hint:HTMLElement;
-    phase:Session['phase'];replaying:boolean;flashMode:boolean;
-    firePlacement:string|null;
+    phase:Session['phase'];replaying:boolean;
   }):void{
-    const target=config.phase!=='planning'||config.replaying?'':facing.looking?
-      facing.lookMode.toUpperCase():config.flashMode?'FLASH':
-      config.firePlacement?config.firePlacement.toUpperCase():'';
+    const target=config.phase!=='planning'||config.replaying?'':targeting.label;
     config.cancelTarget.hidden=!target;
     if(target){
       config.cancelTarget.textContent='✕ CANCEL '+target;
@@ -331,7 +326,8 @@ export function createTacticalHudController(){
       '. '+(execution?.label??'IDLE')+'. '+(execution?.detail??''):
       id+', unavailable');
   }
-  return {feedback,facing,showHelp,teach,discoverAction,toggleFacing,
+  return {feedback,get facing(){return targeting.facing;},
+    showHelp,teach,discoverAction,toggleFacing,
     message,renderGuidance,renderQuickStates,rejectAttempt,completeAction,
     renderTargetMode,renderPhase,renderOperatorCard,renderNotice,resetNotices};
 }
