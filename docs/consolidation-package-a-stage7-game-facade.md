@@ -39,3 +39,13 @@ npm run build
 Only expand tests for a specific changed contract. Existing A6/A5 real-WebGL PR browser acceptance must execute, not be skipped. Physical Safari/iPhone and physical desktop GPU validation remain separate manual follow-ups.
 
 **Release protection:** commit each completed A7 substage to this feature branch; do not merge while a previous Pages deployment is pending. Confirm the previous main Pages release is successful and the live stamp matches; verify all critical PR checks and the new Pages release after a single safe batch merge. Failure blocks another release, not continued branch work.
+
+## Rolling implementation log (A7-A through A7-D)
+
+- A7-A inventoried ownership and froze the current game/replay contracts.
+- A7-B isolated fresh actor defaults, fixed scenarios, and deterministic Session assembly; the public constructor still performs the first observation at the same boundary.
+- A7-C isolated session selectors, per-actor control edits, known-only authoring route checks, node insertion, LOOK/WATCH commands, PIE, WAIT, sync and reload planning; public game API remains compatible. Shared motor/execution timing is untouched.
+- A7-D moved readonly mission copy and assessment behind `breach-mission-reporting.ts`.
+- A7-E adds source ownership and authored-command fixture assertions to the curated critical gate. The broad game facade still contains specialized mission, medical, door and combat services; these remain the authoritative owners pending distinct parity evidence, **not** duplicate implementations.
+
+A7 must remain a draft until the **final** head SHA passes type/build, architecture critical suite, 60 Hz snapshots, and actual WebGL browser checks. Earlier browser runs cancelled by subsequent pushes do not count as acceptance. Verify main Pages live stamp before merge, and the release stamp after merge. No hardware Safari/GPU claim.
