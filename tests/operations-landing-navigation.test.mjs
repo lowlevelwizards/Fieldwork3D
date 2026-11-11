@@ -40,8 +40,11 @@ test('replay library retains title-menu provenance through playback',()=>{
  assert.match(main,/replayLibrary\.afterReplayExit\(\)/);
  assert.match(main,/returnToCampaignMenu:\(\)=>\{/);
  assert.match(library,/function openFromMenu\(\):void\{/);
- assert.match(library,/returnToMenu=true;\s*config\.hideCampaignScreen\(\);\s*show\(\);/);
+ assert.match(main,/onLibraryOpen:fromMenu=>\{appFlow\.openLibrary\(fromMenu\);\}/);
+ assert.match(main,/onLibraryClose:restore=>appFlow\.closeLibrary\(restore\)/);
+ assert.match(library,/config\.hideCampaignScreen\(\);\s*show\(true\);/);
  assert.match(library,/hide\(false\);[\s\S]*?entrySource='library';\s*config\.enterReplay\(\);/);
- assert.match(library,/if\(restoreMenu&&returnToMenu\)\{[\s\S]*?config\.returnToCampaignMenu\(\);/);
+ assert.match(library,/config\.onLibraryClose\?\.\(restoreMenu\)/);
  assert.match(library,/if\(entrySource==='library'\)\{[\s\S]*?show\(\);/);
+ assert.doesNotMatch(library,/let returnToMenu=false/);
 });
