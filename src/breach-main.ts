@@ -1468,7 +1468,7 @@ function advanceReplayCamera(dt:number,instant=false):void{
  replayPresentationController?.advanceReplayCamera(dt,instant);
 }
 
-function clearReplayPresentation():void{
+function clearReplayOverlays():void{
   replayDisplay.clearOverlays();
   // These are analysis/knowledge UI effects, never recorded sight edits.
   replayKnowledge.groundLensOn=false;
@@ -1741,7 +1741,7 @@ replayHudController=createBreachReplayHudController({
      replayPlanScope:options.replayPlanScope==='none'?'selected':'none'});
    else if(choice==='objectives')replayDisplay.patch({
      replayObjectiveMarkers:!options.replayObjectiveMarkers});
-   else if(choice==='clear')clearReplayPresentation();
+   else if(choice==='clear')clearReplayOverlays();
    else if(choice==='show')replayDisplay.patch({
      replayNameTags:true,replayContactMarkers:true,
      replayPlanScope:'selected',replayObjectiveMarkers:true
