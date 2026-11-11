@@ -105,7 +105,7 @@ function parseHtml(source,record){
   record.uncertain.push('html-navigation:'+match[1]);
 }
 function analyzeText(path,source,record){
- for(const match of source.matchAll(/\b(?:\.get|\.getAll|\.has)\s*\(\s*['"]([a-zA-Z][\w-]+)['"]\s*\)/g)){
+ for(const match of source.matchAll(/\.(?:get|getAll|has)\s*\(\s*['"]([a-zA-Z][\w-]+)['"]\s*\)/g)){
   if(source.includes('URLSearchParams'))record.flags.push(match[1]);
  }
  for(const match of source.matchAll(/\b(?:localStorage|sessionStorage)\s*\.\s*(?:getItem|setItem|removeItem)\s*\(\s*['"]([^'"]+)['"]/g))
