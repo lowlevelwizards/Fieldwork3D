@@ -35,3 +35,7 @@ Roadmap 2 Stage 12 made authoritative geometry session-owned (`breach-world-cont
 ## Scope boundary / explicit deferrals
 
 Migration of all standalone generators/Labs off the global adapter, or architectural rewriting of core A* and draw caches, is not required for A8: those APIs intentionally have no Session argument. Preserve their existing single-site behavior and document them instead. A9 owns broad CI/obsolete-test consolidation. Hardware iOS/desktop GPU acceptance cannot be inferred from headless Chromium.
+
+## Implementation note
+
+B and C replace Session assembly's global activation with explicit `initialWorldWalls`, `initialWorldCover`, site-selected `initialDoors(site)`, and initial intel from those exact snapshots. `registerSessionWorldGeometry` no longer uses a prior mutable `WALLS` or the global mutation epoch. D removes replay construction's obsolete detached swap and makes condition edits Session-only; live/replay display changes still use `adoptPresentationWorldSession`. E introduces multi-session and legacy compatibility regressions. Any subsequently exposed legacy test relying on `newSession` to activate the global preview must explicitly adopt its display owner instead of reverting this live-session boundary.
