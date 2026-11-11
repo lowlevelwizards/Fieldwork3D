@@ -398,7 +398,6 @@ export function createTacticalHudController(
    medicalButton.setAttribute('aria-label',patient?
     'Plan medical stabilization for '+patient.name:'No treatable wound with available supplies');
   }
-  const casualty=casualty;
   for(const [button,mode] of [
    [dragButton,'DRAG'],[carryButton,'CARRY'],[retrieveButton,'RECOVER']
   ] as const){
@@ -452,7 +451,7 @@ export function createTacticalHudController(
             y:previous.y+(point.y-previous.y)*t};
           const p=worldToScreen(world,4);
           if(p.x<12||p.x>cssW-12||p.y<72||p.y>cssH-120)continue;
-          const clearance=markers.length?Math.min(...markers.map(q=>distance(p,q))):99;
+          const clearance=markers.length?Math.min(...markers.map(q=>Math.hypot(p.x-q.x,p.y-q.y))):99;
           if(clearance>=34)candidates.push({x:p.x,y:p.y,clearance});
         }
         previous=point;

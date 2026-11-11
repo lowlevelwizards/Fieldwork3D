@@ -9,13 +9,12 @@ import {
   doorCenter,type Pt,} from './breach-core.ts';
 import {
   type Session,
-  type TeamActor,team,enemies,isSeen,
-  missionText,operationBriefing,planMove,
+  type TeamActor,team,planMove,
   planNearbyInteraction,planAim,planWatch,retargetActiveWatch,
   setFirePolicy,planWait,plannedControl,planDoorFlash,
   planSync,finalPoint,backOne,
   clearPlan,undoPlan,redoPlan,
-  posture,toggleContactRule,toggling,liveVisibility,
+  posture,toggleContactRule,toggling,
   planReload,reloadNow,planFlash,
   equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,planCasualtyTransport,
   planRecoverMedical
@@ -38,8 +37,7 @@ import {aimTargetFromTap} from './ui/aim-target.ts';
 
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {equipmentTrainingSite} from './equipment-training-range.ts';
-import {activeRangeDiagnostic,rangeDiagnosticLabel,captureRangeTrial,
- rangeTrialLabel,type RangeTrial} from './equipment-training-diagnostics.ts';
+import {captureRangeTrial,type RangeTrial} from './equipment-training-diagnostics.ts';
 import type {Site} from './breach-site.ts';
 import {BreachMissionController,type MissionTransition} from './breach-mission-controller.ts';
 import {createBreachQuickPlayController} from './breach-quickplay-controller.ts';
