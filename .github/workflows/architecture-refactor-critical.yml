@@ -116,7 +116,7 @@ jobs:
       - name: Stage A5 replay display options, disclosure and lifecycle contracts
         if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-a5-') }}
         run: |
-          node --experimental-strip-types --test tests/consolidation-stage5-replay-presentation.test.mjs tests/breach-roadmap2-stage4-replay-hud.test.mjs tests/breach-roadmap2-stage4-replay-presentation.test.mjs tests/replay-lifecycle-controller-20261109.test.mjs tests/replay-knowledge-controller-20261109.test.mjs tests/replay-library-controller-step4.test.mjs tests/breach-after-action-v2-scoped-replay.test.mjs tests/replay-r44-real-session.test.mjs tests/breach-closeout-stage5-world-isolation.test.mjs
+          node --experimental-strip-types --test tests/consolidation-stage5-replay-presentation.test.mjs tests/breach-roadmap2-stage4-replay-hud.test.mjs tests/breach-roadmap2-stage4-replay-presentation.test.mjs tests/replay-lifecycle-controller-20261109.test.mjs tests/replay-knowledge-controller-20261109.test.mjs tests/replay-library-controller-step4.test.mjs tests/breach-after-action-v2-scoped-replay.test.mjs tests/replay-r44-real-session.test.mjs tests/breach-closeout-stage5-world-isolation.test.mjs tests/after-action-v3-terminology.test.mjs tests/breach-after-action-v2-evidence.test.mjs tests/quick-play-generator-navigation.test.mjs tests/breach-roadmap2-debrief-extraction.test.mjs
       - name: Preserve consolidation inventory and review candidates
         if: ${{ always() && startsWith(github.head_ref, 'refactor/consolidation-') }}
         uses: actions/upload-artifact@v4
