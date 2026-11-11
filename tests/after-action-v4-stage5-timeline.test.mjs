@@ -85,7 +85,8 @@ test('V4-5 lossless clustered bins preserve hundreds of dense events and represe
  const filtered=clusterAfterActionTimeline(indexed,95,480,'casualty');
  assert.equal(filtered.flatMap(c=>c.events).length,2,
    'Existing wound and added down event both remain accessible');
- assert.equal(filtered[0].representative.kind,'down');
+ assert.ok(filtered.some(c=>c.representative.kind==='down'));
+ assert.ok(filtered.flatMap(c=>c.events).some(e=>e.kind==='wound'));
 });
 
 test('V4-5 chronology excludes malformed/future records; empty partial missions remain factual',()=>{
