@@ -148,7 +148,17 @@ export function createAfterActionModelPresenter(
  canvas.addEventListener('webglcontextlost',contextLost);
  return {
    show(nextHost,operatorId){
-     if(disposed||lost)return;
+     if(disposed)return;
+     if(lost){
+       nextHost.textContent='3D VIEW UNAVAILABLE · HISTORICAL RECORD REMAINS AVAILABLE';
+       return;
+     }
+     if(operatorId!==null&&!byId.has(operatorId)){
+       observer?.disconnect();
+       canvas.remove();host=null;
+       nextHost.textContent='NO RECORDED MODEL FOR THIS CONTACT';
+       return;
+     }
      if(selected!==operatorId){yaw=0;pitch=.16;zoom=1;}
      selected=operatorId;
      if(host!==nextHost){
