@@ -149,14 +149,28 @@ try{
    check((await root.locator('.fw-v5-timeline-inspect').getAttribute(
      'data-timeline-selected-key'))==='shot:41',
      'Ballistic event selection lost shot ID '+label);
+   // A user may scroll and launch a clip without triggering redraw.
+   // Snapshot must read the live offsets, not the last render's cache.
+   const beforeOffsets=await page.evaluate(()=>{
+     const root=window.__v4stage5.root;
+     const rail=root.querySelector('.fw-v5-timeline-rail');
+     const group=root.querySelector('.fw-v5-timeline-group-items');
+     const ledger=root.querySelector('.fw-v5-timeline-ledger-list');
+     rail.scrollLeft=63;group.scrollTop=37;ledger.scrollTop=59;
+     return {rail:rail.scrollLeft,group:group.scrollTop,
+       ledger:ledger.scrollTop};
+   });
    const stateBefore=await page.evaluate(()=>{
      const {root,nav}=window.__v4stage5;
      return nav.afterActionSnapshot(root);
    });
    check(stateBefore.detailsOpen&&
      stateBefore.timelineSelectedKey==='shot:41'&&
-     stateBefore.timelineLedgerOpen,
-     'Selected incident not persisted '+label);
+     stateBefore.timelineLedgerOpen&&
+     stateBefore.timelineRailScroll===beforeOffsets.rail&&
+     stateBefore.timelineGroupScroll===beforeOffsets.group&&
+     stateBefore.timelineLedgerScroll===beforeOffsets.ledger,
+     'Selected incident and live scroll offsets not persisted '+label);
    await root.locator('.fw-v5-timeline-primary').click();
    const request=await page.evaluate(()=>window.__v4stage5.requests.at(-1));
    check(request.surface==='timeline'&&request.shotId===41&&
@@ -168,6 +182,17 @@ try{
      return nav.restoreAfterActionWorkspace(root,ctx);
    });
    check(restored,'Timeline origin restoration failed '+label);
+   const afterOffsets=await page.evaluate(()=>{
+     const root=window.__v4stage5.root;
+     return {
+       rail:root.querySelector('.fw-v5-timeline-rail').scrollLeft,
+       group:root.querySelector('.fw-v5-timeline-group-items').scrollTop,
+       ledger:root.querySelector('.fw-v5-timeline-ledger-list').scrollTop
+     };
+   });
+   check(JSON.stringify(afterOffsets)===JSON.stringify(beforeOffsets),
+     'Replay return changed live timeline scroll position '+label+
+       ' '+JSON.stringify({beforeOffsets,afterOffsets}));
    check((await root.locator('.fw-v5-timeline-inspect').getAttribute(
      'data-timeline-selected-key'))==='shot:41',
      'Timeline selected event lost on replay return '+label);
