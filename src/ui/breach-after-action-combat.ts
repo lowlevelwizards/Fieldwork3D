@@ -58,6 +58,7 @@ export function renderCombatReport(
  report:AfterActionReport,view:View,act:Actions
 ):HTMLElement{
  const root=el('section','fw-v3-combat');
+ if(view.inspectionMode==='3d')root.classList.add('fw-v4-combat-3d');
  const all=view.side==='red'?report.hostiles:report.friendlyCasualties;
  const active=all.find(c=>c.id===view.selectedContact)??all[0]??null;
  const controls=el('div','fw-v3-combat-top');
