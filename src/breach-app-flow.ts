@@ -105,8 +105,9 @@ export function createBreachAppFlow(initialMode:CampaignMode){
   },
   beginReplay(entry:ReplayEntry):boolean{
    if(surface==='replay')return false;
-   if(entry==='library'&&!inMission()&&!libraryReturnsToMenu&&
-      surface!=='menu'&&surface!=='home')return false;
+   if(entry==='debrief'&&(surface==='menu'||surface==='home'))return false;
+   if(entry==='library'&&(surface==='menu'||surface==='home')&&
+      !libraryReturnsToMenu)return false;
    replayReturn=surface;
    replayEntry=entry;surface='replay';overlay=null;
    return true;
