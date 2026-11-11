@@ -152,3 +152,12 @@ test('A6 briefing dossier construction is owned by mission-screens view',()=>{
  assert.match(screens,/attachCampaignDossierContext\(dossier,campaign\)/);
  assert.match(screens,/Safe static contract fallback/);
 });
+
+test('A6 weapon choice overlay renders and binds only within the existing tactical HUD',()=>{
+ const hud=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
+ assert.match(source,/hudController\.bindWeaponChooser\(/);
+ assert.doesNotMatch(source,/fw-weapon-chooser-title/);
+ assert.match(hud,/function bindWeaponChooser\(/);
+ assert.match(hud,/equipWeaponChoice\(/);
+ assert.match(hud,/chooser\.addEventListener\('keydown'/);
+});

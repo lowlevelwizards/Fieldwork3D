@@ -14,7 +14,6 @@ import {
   plannedControl,
   finalPoint,undoPlan,redoPlan,
   toggling,
-  equipWeaponChoice
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {createBreach2DWorldRenderer,renderBreachTacticalWorldFrame} from './breach-2d-world-renderer.ts';
@@ -87,7 +86,7 @@ import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 
 
 import type {ReplayPresentation} from './breach-replay-motion.ts';
-import {WEAPONS} from './breach-combat.ts';
+
 
 
 
@@ -294,42 +293,13 @@ const {replayDirectorDebugPanel,navPanel}=mountBreachDebugPanels({
  */
 const {operationsToggle,rangeTelemetry,operationsBoard,weaponChooser}=mountBreachManagementElements(ui);
 let lastRangeTrial:RangeTrial|null=null;
-function hideWeaponChooser(){
- weaponChooser.hidden=true;
- ui.loadout.setAttribute('aria-expanded','false');
-}
-function showWeaponChooser(){
- const current=team(state).find(a=>a.id===selected);
- if(!current||appFlow.mode==='mission'||state.phase!=='planning'||replaying)return;
- collapseTacticalSheets('weapon');
- weaponChooser.replaceChildren();
- const label=document.createElement('div');
- label.className='fw-weapon-chooser-title';
- label.textContent='CHOOSE WEAPON · '+current.name;
- weaponChooser.append(label);
- for(const id of ['carbine','smg','rifle','shotgun'] as const){
-  const btn=document.createElement('button');
-  btn.type='button';btn.className='fw-button';
-  btn.textContent=WEAPONS[id].label;
-  btn.setAttribute('aria-pressed',String(id===current.weapon));
-  btn.addEventListener('click',()=>{
-   if(equipWeaponChoice(state,selected,id)){
-    hideWeaponChooser();updateHud();
-   }
-  });
-  weaponChooser.append(btn);
- }
- const cancel=document.createElement('button');
- cancel.type='button';cancel.className='fw-button fw-weapon-dismiss';
- cancel.textContent='CLOSE';
- cancel.addEventListener('click',hideWeaponChooser);
- weaponChooser.append(cancel);
- weaponChooser.hidden=false;
- ui.loadout.setAttribute('aria-expanded','true');
-}
-weaponChooser.addEventListener('keydown',event=>{
- if(event.key==='Escape'){event.preventDefault();hideWeaponChooser();ui.loadout.focus();}
+const weaponChooserUi=hudController.bindWeaponChooser({
+ ui,weaponChooser,getSession:()=>state,getSelected:()=>selected,
+ getMode:()=>appFlow.mode,isReplaying:()=>replaying,
+ collapse:()=>collapseTacticalSheets('weapon'),refreshHud:updateHud
 });
+function hideWeaponChooser(){weaponChooserUi.hide();}
+function showWeaponChooser(){weaponChooserUi.show();}
 /** Full Arsenal editor uses the same pure draft and resolver as the standalone gallery.
  * Quick Play commits remain in the transient roster; weapon/kit progress is not saved.
  */

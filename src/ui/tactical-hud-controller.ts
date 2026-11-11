@@ -21,7 +21,7 @@ import type {DisplayRouteCache} from '../breach-route-cache.ts';
 import type {createBreachReplayAnalysisController} from './breach-replay-analysis-controller.ts';
 import type {createBreachReplayTimelineController} from './breach-replay-timeline-controller.ts';
 import type {ReplayPlaybackController} from '../breach-replay-playback-controller.ts';
-import {backOne,clearPlan,undoPlan,redoPlan,planWait,toggleWeaponLight,
+import {backOne,clearPlan,undoPlan,redoPlan,planWait,toggleWeaponLight,equipWeaponChoice,
   planMedicalTreatment,planRecoverMedical,planReload,reloadNow,planSync,
   posture,toggleContactRule} from '../breach-game.ts';
 import {captureRangeTrial} from '../equipment-training-diagnostics.ts';
@@ -62,6 +62,13 @@ export type TacticalSessionPresentation={
  operationsLogged:number;
 };
 
+/** UI-only weapon choice overlay; legality stays in equipWeaponChoice. */
+export type TacticalWeaponChooserPorts={
+ ui:ReturnType<typeof createBreachUiElements>;
+ weaponChooser:HTMLElement;getSession:()=>Session;getSelected:()=>string;
+ getMode:()=>CampaignMode;isReplaying:()=>boolean;
+ collapse:()=>void;refreshHud:()=>void;
+};
 export type TacticalToolbarPorts={
  ui:ReturnType<typeof createBreachUiElements>;
  readonly state:Session;readonly selected:string;readonly replaying:boolean;
@@ -579,6 +586,52 @@ export function createTacticalHudController(
     (visible?' • '+visible+' CONTACT'+(visible===1?'':'S'):'');
 
   }
+
+let weaponChooserBound=false;
+function bindWeaponChooser(port:TacticalWeaponChooserPorts){
+ if(weaponChooserBound)throw Error('Weapon chooser already bound');
+ weaponChooserBound=true;
+ const chooser=port.weaponChooser;
+ function hide():void{
+  chooser.hidden=true;
+  port.ui.loadout.setAttribute('aria-expanded','false');
+ }
+ function show():void{
+  const state=port.getSession(),selected=port.getSelected();
+  const current=team(state).find(a=>a.id===selected);
+  if(!current||port.getMode()==='mission'||state.phase!=='planning'||port.isReplaying())return;
+  port.collapse();
+  chooser.replaceChildren();
+  const label=document.createElement('div');
+  label.className='fw-weapon-chooser-title';
+  label.textContent='CHOOSE WEAPON · '+current.name;
+  chooser.append(label);
+  for(const id of ['carbine','smg','rifle','shotgun'] as const){
+   const btn=document.createElement('button');
+   btn.type='button';btn.className='fw-button';
+   btn.textContent=WEAPONS[id].label;
+   btn.setAttribute('aria-pressed',String(id===current.weapon));
+   btn.addEventListener('click',()=>{
+    // Apply to the live session only; never use stale capture after restart.
+    if(equipWeaponChoice(port.getSession(),port.getSelected(),id)){
+     hide();port.refreshHud();
+    }
+   });
+   chooser.append(btn);
+  }
+  const cancel=document.createElement('button');
+  cancel.type='button';cancel.className='fw-button fw-weapon-dismiss';
+  cancel.textContent='CLOSE';
+  cancel.addEventListener('click',hide);
+  chooser.append(cancel);
+  chooser.hidden=false;
+  port.ui.loadout.setAttribute('aria-expanded','true');
+ }
+ chooser.addEventListener('keydown',event=>{
+  if(event.key==='Escape'){event.preventDefault();hide();port.ui.loadout.focus();}
+ });
+ return {hide,show};
+}
   let toolbarButtons:TacticalToolbarButtons|null=null;
   function bindToolbar(port:TacticalToolbarPorts):TacticalToolbarButtons{
    if(toolbarButtons)return toolbarButtons;
@@ -875,5 +928,5 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
   return {feedback,get facing(){return targeting.facing;},
     showHelp,teach,discoverAction,toggleFacing,
     message,renderGuidance,renderQuickStates,rejectAttempt,completeAction,
-    renderTargetMode,renderPhase,renderOperatorCard,renderNotice,renderSession,bindShortcuts,bindContextActions,bindToolbar,resetNotices};
+    renderTargetMode,renderPhase,renderOperatorCard,renderNotice,renderSession,bindShortcuts,bindContextActions,bindToolbar,bindWeaponChooser,resetNotices};
 }
