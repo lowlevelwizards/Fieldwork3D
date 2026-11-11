@@ -156,14 +156,16 @@ test('B1: non-short transition and authored Lab switch are never resampled',()=>
   active:ref,authoredLabSwitch:true,
   profile:handlingProfile('ads','carbine')
  };
- const {p,prepared}=prepare({handlingOverride:'ads',poseV3Preview:true});
+ const config=selectWeaponFamilyPreset(initialWeaponConfiguration('carbine'),'ar-m4a1');
+ const {p,prepared}=prepare({handlingOverride:'ads',poseV3Preview:true,
+  weaponConfiguration:config});
  const final=resolveOperatorPoseDecision(p,prepared,sample);
  assert.strictEqual(final.transition.active,ref);
  assert.equal(final.transition.authoredLabSwitch,true);
  assert.strictEqual(final.profile,sample.profile);
  assert.equal(final.upperBody.coupledEligible,false);
- assert.equal(final.upperBody.coordinatedEligible,false===false?true:true,
-  'authored Lab destination is eligible despite active authoring transition');
+ assert.equal(final.upperBody.coordinatedEligible,true,
+  'authored Lab destination remains eligible during an authored switch');
 });
 
 test('B1: upper body uses the existing strategy gates, once and without new owners',()=>{
