@@ -57,8 +57,8 @@ export function createBreachAppFlow(initialMode:CampaignMode){
    */
   observePhase(phase:Session['phase']):void{
    if(!inMission()||surface==='replay')return;
-   if(phase==='won'||phase==='lost'){surface='debrief';overlay=null;}
-   else if(phase==='running'){surface='tactical';if(overlay==='settings')overlay=null;}
+   if(phase==='won'||phase==='lost')surface='debrief';
+   else if(phase==='running')surface='tactical';
    else if(surface==='debrief')surface='tactical';
   },
   briefingVisibility(visible:boolean):boolean{
