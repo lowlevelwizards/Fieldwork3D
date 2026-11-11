@@ -29,6 +29,7 @@ test('A10 retains deterministic 60 Hz, fog, replay and lifecycle parity sentinel
 });
 test('A10 retains live After Action V4 cross-branch regression',()=>{
  assert.ok(integrationCoverage.includes('tests/after-action-v4-stage3-persistent-models.test.mjs'));
+ assert.ok(integrationCoverage.includes('tests/after-action-v4-stage4-forensic.test.mjs'));
 });
 test('A10 includes architecture and workflow integrity as executable checks',()=>{
  assert.ok(followupChecks.includes('scripts/verification/breach-architecture-boundaries.mjs'));
