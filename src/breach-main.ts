@@ -11,13 +11,10 @@ import {
   type Session,
   type TeamActor,team,
   
-  planWait,plannedControl,
-  planSync,finalPoint,backOne,
-  clearPlan,undoPlan,redoPlan,
-  posture,toggleContactRule,toggling,
-  planReload,reloadNow,
-  equipWeaponChoice,toggleWeaponLight,planMedicalTreatment,
-  planRecoverMedical
+  plannedControl,
+  finalPoint,undoPlan,redoPlan,
+  toggling,
+  equipWeaponChoice,planRecoverMedical
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {createBreach2DWorldRenderer} from './breach-2d-world-renderer.ts';
@@ -37,7 +34,7 @@ import {activeWatchTarget} from './ui/active-watch-marker.ts';
 
 
 import {equipmentTrainingSite} from './equipment-training-range.ts';
-import {captureRangeTrial,type RangeTrial} from './equipment-training-diagnostics.ts';
+import type {RangeTrial} from './equipment-training-diagnostics.ts';
 import type {Site} from './breach-site.ts';
 import {BreachMissionController,type MissionTransition} from './breach-mission-controller.ts';
 import {createBreachQuickPlayController} from './breach-quickplay-controller.ts';
@@ -109,7 +106,7 @@ import './breach-style.css';
 import './ui/ux-r1-sheets.css';
 import './ui/ux-r3-hud.css';
 import './ui/fieldwork-action-toast.css';
-import {confirmFieldworkAction} from './ui/fieldwork-controls.ts';
+
 import {createBreachMissionScreens} from './ui/breach-mission-screens.ts';
 
 

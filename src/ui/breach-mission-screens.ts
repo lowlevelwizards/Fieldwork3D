@@ -49,6 +49,10 @@ export type MissionScreensElements={
  siteSize:HTMLButtonElement;
  intelMode:HTMLButtonElement;
  restart:HTMLButtonElement;
+ play:HTMLButtonElement;
+ retry:HTMLButtonElement;
+ next:HTMLButtonElement;
+ debrief:HTMLElement;
  variant:HTMLButtonElement;
  uiHelp:HTMLButtonElement;
  briefingClose:HTMLButtonElement;
