@@ -1,5 +1,7 @@
 import {planAim} from './breach-plan-aim-commands.ts';
+import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
+export {setStrafe,planPieAt,planPie,editPie,insertPlanNode,planWaitAt,planWait,planSync,planHoldClear,planReload,planReloadAt} from './breach-plan-utility-commands.ts';
 import {legalMoveRoute,knownTraversal,knownShoveCrossing} from './breach-known-route-authoring.ts';
 export {plannedWindowRoute} from './breach-known-route-authoring.ts';
 import {addNode,finalPoint} from './breach-plan-node-commands.ts';
@@ -14,9 +16,7 @@ export {OBJECTIVE,EXTRACTION,SCENARIOS};
 import {createCombatFiringPipeline} from './breach-firing-pipeline.ts';
 import {advanceActorSightProgress,observeActorContactEvidence} from './breach-visual-acquisition.ts';
 import {createEnemyDecisionController} from './breach-enemy-decision-controller.ts';
-import {edit,validEditedPlan,validKnownPieArc,knownDoorApproach,
- atomicTeamEdit,sealPlanHistoryForExecution,undoAuthoredPlan,redoAuthoredPlan}
- from './breach-plan-authoring.ts';
+import {edit,validEditedPlan,knownDoorApproach,atomicTeamEdit,sealPlanHistoryForExecution,undoAuthoredPlan,redoAuthoredPlan} from './breach-plan-authoring.ts';
 import {advanceSimulationTick,type SimulationPhasePort} from './breach-simulation-phases.ts';
 import {advanceMedicalDoorPhase} from './breach-simulation-medical-door-phase.ts';
 import {advanceBeliefAgingPhase} from './breach-simulation-belief-phase.ts';
@@ -35,7 +35,7 @@ import type {ActorMotorHooks} from './breach-motor-contract.ts';
  * The core retains the 052 static geometry and starter actors, not its old simulation.
  */
 import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorBlocksRay,doorBlocksSightRay,pointToSegment} from './breach-core.ts';
-import {type PlanNode,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
+import {type PlanNode,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions} from './breach-entry-coordination.ts';
 import type {Site,SiteScale} from './breach-site.ts';
@@ -586,20 +586,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
     }
   }));
 }
-export function setStrafe(s:Session,id:string,nodeId:number):boolean{
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const node=a.plan.find(n=>n.id===nodeId);
-  if(!node||node.kind!=='move')return false;
-  return edit(s,a,()=>{
-    if(node.moveMode==='strafe'){
-      node.moveMode='advance';
-    }else{
-      node.moveMode='strafe';
-      node.facing??=[...a.plan.slice(0,a.plan.indexOf(node))]
-        .reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
-    }
-  });
-}
+
 /** Removal of a coordinated SYNC is itself a team transaction.
  * Other participants never retain a stranded wait when HERE redraw,
  * DELETE, CLEAR or BACK removes the link. */
@@ -627,41 +614,11 @@ export function backOne(s:Session,id:string){
  return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan.pop();}));
 }
 /** The player chooses a world-space pivot; doors are no longer special. */
-export function planPieAt(s:Session,id:string,pivot:Pt,side:PieSide,degrees=54,
-  afterNodeId?:number){
-  const a=party(s,id);
-  if(!a||!canEdit(s))return false;
-  const index=afterNodeId===undefined?a.plan.length:
-    a.plan.findIndex(n=>n.id===afterNodeId)+1;
-  if(index<=0&&afterNodeId!==undefined)return false;
-  const start=index===0?a.p:a.plan[index-1].p;
-  const arc=validKnownPieArc(s,start,pivot,side,degrees);
-  if(!arc.length)return false;
-  if(afterNodeId===undefined)return addNode(s,id,'pie',arc[arc.length-1],{
-    pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
-  const proposed=copyNodes(a.plan);
-  proposed.splice(index,0,{id:s.nextId,kind:'pie',p:clone(arc.at(-1)!),
-    pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
-  if(!validEditedPlan(s,a.p,proposed))return false;
-  return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
-}
+
 /** Retain compatibility with Build 063's doorway shortcut. */
-export function planPie(s:Session,id:string,doorId:string,side:PieSide){
-  const door=s.doors.find(d=>d.id===doorId);
-  return !!door&&planPieAt(s,id,doorCenter(door),side);
-}
+
 /** Move a pivot or adjust the arc sweep, retaining one undoable order. */
-export function editPie(s:Session,id:string,nodeId:number,
-  pivot:Pt,degrees?:number,side?:PieSide){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const proposed=copyNodes(a.plan),index=proposed.findIndex(n=>n.id===nodeId);
-  if(index<0||proposed[index].kind!=='pie')return false;
-  proposed[index].pivot=clone(pivot);
-  if(degrees!==undefined)proposed[index].pieDegrees=clamp(degrees,8,120);
-  if(side)proposed[index].pieSide=side;
-  if(!validEditedPlan(s,a.p,proposed))return false;
-  return edit(s,a,()=>{a.plan=proposed;});
-}
+
 /** Context-aware door action at a selected planned position. */
 export function doorAtNode(s:Session,id:string,doorId:string,method:DoorMethod,nodeId?:number){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
@@ -715,20 +672,7 @@ export function deletePlanNode(s:Session,id:string,nodeId:number){
  const codes=new Set(removed.kind==='sync'&&removed.syncCode?[removed.syncCode]:[]);
  return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan=proposed;}));
 }
-export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const position=clamp(index,0,a.plan.length);
-  const from=position>0?a.plan[position-1].p:a.p;
-  const target=projectReachableGoal(from,p,{
-    canStand:at=>intelPassable(at,s.intel),
-    routeTo:(origin,goal)=>routeWithIntel(s.intel,origin,goal),
-  });
-  if(!target)return false;
-  const proposed=copyNodes(a.plan);
-  proposed.splice(position,0,{id:s.nextId,kind:'move',p:clone(target.point)});
-  if(!validEditedPlan(s,a.p,proposed))return false;
-  return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
-}
+
 /** A paired entrance is one user interaction but two collision leaves. */
 function pairedLeaves(s:Session,door:Door):Door[]{
  const pair=door.pairedWith?s.doors.find(d=>d.id===door.pairedWith):undefined;
@@ -872,20 +816,7 @@ export function planSquadEntry(s:Session,doorId:string){
 /** Tactical WAIT: hold for the minimum interval, and continue only after
  * any visible living contact has been absent for that entire interval.
  * Legacy holdClear nodes execute identically for old plans/replays. */
-export function planWaitAt(s:Session,id:string,seconds=1,
-  origin:'here'|'end'='here',afterNodeId?:number){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const after=afterNodeId===undefined?-1:
-    a.plan.findIndex(n=>n.id===afterNodeId);
-  if(afterNodeId!==undefined&&after<0)return false;
-  if(afterNodeId!==undefined||origin==='here'){
-    const point=afterNodeId!==undefined?a.plan[after].p:a.p;
-    return edit(s,a,()=>a.plan.splice(after+1,0,{
-      id:s.nextId++,kind:'wait',p:clone(point),
-      duration:clamp(seconds,.3,6)}));
-  }
-  return planWait(s,id,seconds);
-}
+
 
 /** Fire policy is persistent until changed. A waypoint can override it
  * without touching navigation or the rest of the authored plan. */
@@ -917,16 +848,7 @@ export function setFirePolicy(s:Session,id:string,policy:FirePolicy,
 
 
 
-export function planHoldClear(s:Session,id:string,origin:'here'|'end'='end',afterNodeId?:number){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const idx=afterNodeId===undefined?-1:a.plan.findIndex(n=>n.id===afterNodeId);
-  if(afterNodeId!==undefined&&idx<0)return false;
-  const p=idx>=0?a.plan[idx].p:origin==='here'?a.p:finalPoint(a);
-  if(idx>=0||origin==='here')return edit(s,a,()=>{
-    a.plan.splice(idx+1,0,{id:s.nextId++,kind:'holdClear',p:clone(p),duration:.5});
-  });
-  return addNode(s,id,'holdClear',p,{duration:.5});
-}
+
 /** A treatment order uses the same planning history and navigation authority. */
 /** One authored order carries a downed teammate to a player-chosen point.
  * Existing tactical route and swept body collision remain authoritative. */
@@ -994,21 +916,8 @@ export function planMedicalTreatment(s:Session,id:string,patientId:string,
   else a.plan.push(...orders);
  });
 }
-export function planWait(s:Session,id:string,seconds=1){
-  const a=party(s,id);return a?addNode(s,id,'wait',finalPoint(a),
-    {duration:clamp(seconds,.3,6)}):false;
-}
-export function planSync(s:Session,participantIds?:readonly string[]){
- if(!canEdit(s))return false;
- const participants=team(s).filter(a=>a.health>0&&
-   (!participantIds||participantIds.includes(a.id)));
- if(!participants.length)return false;
- return atomicTeamEdit(s,participants,()=>{
-  const code='B'+(++s.syncCode);
-  return participants.every(a=>addNode(s,a.id,'sync',finalPoint(a),
-    {syncCode:code}));
- });
-}
+
+
 export function clearPlan(s:Session,id:string){
  const a=party(s,id);if(!a)return false;
  const codes=new Set(a.plan.filter(n=>n.kind==='sync'&&n.syncCode)
@@ -1218,19 +1127,9 @@ export function cycleWeapon(s:Session,id:string):boolean{
   const ids:WeaponId[]=['carbine','smg','rifle','shotgun'];
   return equipWeaponChoice(s,id,ids[(ids.indexOf(a.weapon)+1)%ids.length]);
 }
-export function planReload(s:Session,id:string):boolean{
-  const a=party(s,id);
-  return !!a&&canEdit(s)&&addNode(s,id,'reload',finalPoint(a));
-}
+
 /** Insert reload at the selected HERE/waypoint, without moving the route. */
-export function planReloadAt(s:Session,id:string,afterNodeId?:number){
- const a=party(s,id);if(!a||!canEdit(s))return false;
- const index=afterNodeId===undefined?0:a.plan.findIndex(n=>n.id===afterNodeId)+1;
- if(index<0)return false;
- const p=index===0?a.p:a.plan[index-1].p;
- return edit(s,a,()=>a.plan.splice(index,0,{id:s.nextId++,
-   kind:'reload',p:clone(p)}));
-}
+
 export function reloadNow(s:Session,id:string):boolean{
   const a=party(s,id);
   return !!a&&s.phase==='running'&&beginReload(s,a);
