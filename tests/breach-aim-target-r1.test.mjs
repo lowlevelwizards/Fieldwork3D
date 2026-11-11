@@ -24,7 +24,8 @@ test('armed directions bypass map-bound floor validation without hidden actor pi
  const stage=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  const pointer=readFileSync(new URL('../src/breach-pointer-command-controller.ts',import.meta.url),'utf8');
  assert.match(pointer,/if\(port\.hudController\.facing\.looking\|\|insideTacticalBounds\(pt,sessionWorldGeometry\(port\.state\)\.bounds\)\)/);
- assert.match(main,/pointerAimWorld\(e\)/);
+ assert.match(pointer,/port\.hudController\.facing\.looking\?port\.pointerAimWorld\(e\)/);
+ assert.match(main,/function pointerAimWorld\(e:PointerEvent/);
  assert.match(main,/aimTargetFromTap\(source,pt\)/);
  assert.match(stage,/screenToWorldAtHeight\(sx:number,sy:number,height:number\)/);
  assert.doesNotMatch(main,/if\(pt\.x>=0&&pt\.y>=0&&pt\.x<=W&&pt\.y<=H\)/);
