@@ -372,7 +372,7 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   // Quick Play size and building selection live in the scenario creator.
   // Do not show a competing size control that its worker will not read.
   ui.siteSize.hidden=quickPlay;
-  ui.variant.textContent=quickPlay?'SCENARIO GENERATOR':'NEW SITE';
+  ui.variant.textContent=quickPlay?'MISSION SETUP':'NEW SITE';
   ui.variant.disabled=campaignMission;
   ui.siteSize.disabled=campaignMission;
   ui.intelMode.disabled=campaignMission;

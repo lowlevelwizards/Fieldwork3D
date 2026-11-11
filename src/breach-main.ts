@@ -57,7 +57,7 @@ import {afterActionSnapshot} from './ui/breach-after-action-controller.ts';
 import {makeAfterActionLaunchRequest} from './breach-after-action-replay-navigation.ts';
 import {highlightCapture} from './breach-highlight-capture.ts';
 import {replayHighlightMoments} from './breach-highlight-frames.ts';
-import {refreshAfterActionWorkspace} from './ui/breach-after-action-controller.ts';
+import {restoreAfterActionWorkspace} from './ui/breach-after-action-controller.ts';
 import {createBreachReplayPresentationController} from './breach-replay-presentation-controller.ts';
 import {createReplayPresentationOptions} from './breach-replay-presentation-options.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
@@ -114,6 +114,7 @@ import './ui/fieldwork-action-toast.css';
 import {confirmFieldworkAction} from './ui/fieldwork-controls.ts';
 import {createBreachMissionScreens} from './ui/breach-mission-screens.ts';
 import {renderMissionDebrief} from './ui/breach-mission-debrief.ts';
+import {debriefPrimaryActionLabel} from './ui/fieldwork-vocabulary.ts';
 import {compactSiteTitle} from './ui/site-title.ts';
 import {tacticalIcon,decorateIconButton,tacticalIconForState} from './ui/tactical-icons.ts';
 import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
@@ -1207,12 +1208,13 @@ function updateHud(){
   ui.clear.title='Clear this operator\'s route (Undo restores it)';
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
-  ui.debrief.hidden=replaying||(state.phase!=='won'&&state.phase!=='lost');
+  ui.debrief.hidden=replaying||appFlow.mode==='menu'||appFlow.mode==='home'||
+    (state.phase!=='won'&&state.phase!=='lost');
   replayLibrary.syncSavedButtons();
   ui.favoriteMission.disabled=!state.site;
   ui.favoriteMission.textContent=replayLibrary.activeFavoriteId?
     '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
-  ui.next.textContent=appFlow.mode==='mission'?'RETURN TO BASE':'NEXT ARRANGEMENT';
+  ui.next.textContent=debriefPrimaryActionLabel(appFlow.mode);
   ui.retry.disabled=appFlow.mode==='mission';
   if(!ui.debrief.hidden)renderMissionDebrief({
     ui,state,brief,recorder,campaign,campaignMode:appFlow.mode,
@@ -1559,14 +1561,13 @@ function enterReplay(source:'library'|'debrief'='debrief'){
 }
 let afterActionReturn:ReturnType<typeof afterActionSnapshot>=null;
 function exitReplay(){
- const returning=afterActionReturn!==null;
- replayModeController.exitReplay();
- if(returning){
+ const origin=afterActionReturn;
+ const exited=replayModeController.exitReplay();
+ if(exited&&origin){
    afterActionReturn=null;
    ui.afterActionClipHud.hidden=true;
-   refreshAfterActionWorkspace(ui.debrief);
-   // The after-action workspace remains mounted while replay is active;
-   // returning to the finished session restores its tab, selection and scroll.
+   // Restore directly; no synthetic tab click, no accidental lost shot.
+   restoreAfterActionWorkspace(ui.debrief,origin);
    updateHud();
  }
 }
@@ -1627,11 +1628,22 @@ ui.debrief.addEventListener('fw-after-action-replay',event=>{
  highlightCapture.queue(recorder,replayHighlightMoments(recorder));
  if(stage&&viewMode==='plan2d')cameraMode('iso');
  replayCamera.camMount='chest';replayCamera.lens='cam';
- if(stage&&replayDirector.camEligibleObservers.length){
+ // Prefer the recorded shooter's own bodycam when the recording supports
+ // personal observation. Never select a hostile actor as an observer.
+ const shot=detail.shotId==null?null:
+   recorder.ballistics.shots.find(s=>s.id===detail.shotId)??null;
+ const shooter=shot?.shooterId??null;
+ const candidate=shooter&&replayBodycam.observers.includes(shooter)?shooter:
+   detail.contactId&&replayBodycam.observers.includes(detail.contactId)?
+     detail.contactId:null;
+ if(stage&&candidate){
+   replayKnowledge.observerId=candidate;
+   if(!startReplayBodycam())chooseReplayCamera('director');
+ }else if(stage&&replayDirector.camEligibleObservers.length){
    chooseReplayCamera('director');
  }else{
    replayCamera.lens='ortho';chooseReplayCamera('free');
-   showUiHelp('NO RECORDED BODYCAM · TACTICAL REPLAY',3000);
+   showUiHelp('BODYCAM UNAVAILABLE · TACTICAL REPLAY',3000);
  }
  replayPlayback.startIncident(request.range,recorder.duration,true,true);
  presentReplayAtCurrentTime();audioController.unlock();
@@ -2457,6 +2469,16 @@ ui.next.addEventListener('click',()=>{
   if(appFlow.mode==='quick')returnToQuickPlayGenerator();
   else reset(state.variant+1);
 });
+// Navigation is not a mission reset and may never resolve Campaign twice.
+const afterActionMainMenu=document.getElementById('afterActionMainMenu') as HTMLButtonElement|null;
+afterActionMainMenu?.addEventListener('click',()=>{
+  if(replaying)return;
+  ui.debrief.hidden=true;
+  operationsBoard.hidden=true;
+  closeMissionSettings(false);
+  appFlow.setMode('menu');
+  campaignScreen.entry(!!campaign);
+});
 ui.play.addEventListener('click',()=>{
   audioController.unlock();audioController.uiClickTone(state.phase==='running'?'pause':'go');
   if(state.phase==='won'||state.phase==='lost'){
@@ -2739,8 +2761,11 @@ const runtimeLoop=createBreachRuntimeLoop({
  invalidateFog:()=>fog2D.invalidate(),advanceReplayCamera,
  updateHud,updateReplayHud,updateContext,advanceContextPalette,
  renderFrame:render,drawTacticalFrameFeedback,
- captureHighlightFrame:(scene,overlay,time,perspective)=>
-   highlightCapture.frame(recorder,scene,overlay,time,perspective),
+ captureHighlightFrame:(scene,overlay,time,perspective)=>{
+   // Never save a screenshot of an explicitly omniscient replay view.
+   if(!replayKnowledge.omniscient)
+     highlightCapture.frame(recorder,scene,overlay,time,perspective);
+ },
  worldToScreen,
  canvas,playback:replayPlayback,camera:replayCamera,
  knowledge:replayKnowledge,bodycam:replayBodycam,video:replayQuickVideo,

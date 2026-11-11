@@ -20,13 +20,13 @@ test('primary Quick Play entry opens the creator, not an immediate worker job',(
 });
 
 test('in-mission creator is a reversible overlay; NEXT and NEW SITE use it',()=>{
- assert.match(html,/id="quickPlaySetup"[^>]*>QUICK PLAY GENERATOR/);
+ assert.match(html,/id="quickPlaySetup"[^>]*>MISSION SETUP/);
  assert.match(main,/ui\.quickPlaySetup\.hidden=appFlow.mode!=='quick'\|\|replaying/);
  assert.match(main,/ui\.quickPlaySetup\.addEventListener\('click',returnToQuickPlayGenerator\)/);
  assert.match(main,/function returnToQuickPlayGenerator\(\)\{[\s\S]*?closeMissionSettings\(false\);[\s\S]*?quickPlayController\.customize\(\);/);
  assert.match(main,/if\(appFlow.mode==='quick'\)\{returnToQuickPlayGenerator\(\);return;\}/);
  assert.match(main,/ui\.next\.addEventListener\('click',[\s\S]*?if\(appFlow.mode==='quick'\)returnToQuickPlayGenerator\(\)/);
- assert.match(screens,/ui\.variant\.textContent=quickPlay\?'SCENARIO GENERATOR':'NEW SITE'/);
+ assert.match(screens,/ui\.variant\.textContent=quickPlay\?'MISSION SETUP':'NEW SITE'/);
  assert.match(screens,/ui\.siteSize\.hidden=quickPlay/);
 });
 

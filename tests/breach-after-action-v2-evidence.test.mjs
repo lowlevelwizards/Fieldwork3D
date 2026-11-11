@@ -26,7 +26,7 @@ const rec=()=>{
 };
 test('report preserves shot IDs, side, chronological contact resolution',()=>{
  const r=buildAfterActionReport(rec());
- assert.deepEqual(r.shots.map(s=>s.outcome),['damaging','damaging','armor-stopped','miss']);
+ assert.deepEqual(r.shots.map(s=>s.outcome),['damaging','damaging','non-damaging','miss']);
  assert.deepEqual(r.hostiles.map(c=>c.resolution),['incapacitated','surrendered']);
  assert.equal(r.hostiles[0].finalShotId,2);
  assert.equal(r.hostiles[1].finalShotId,null,'surrender cannot invent a finishing shot');
@@ -38,7 +38,8 @@ test('report preserves shot IDs, side, chronological contact resolution',()=>{
 });
 test('forensic classifications retain absence of evidence and unit scale',()=>{
  assert.equal(shotOutcome({hit:false,healthBefore:4,healthAfter:4}),'miss');
- assert.equal(shotOutcome({hit:true,healthBefore:4,healthAfter:4}),'armor-stopped');
+ assert.equal(shotOutcome({hit:true,healthBefore:4,healthAfter:4}),'non-damaging');
+ assert.equal(shotOutcome({hit:true,healthBefore:4,healthAfter:4,surface:'metal'}),'armor-stopped');
  assert.equal(shotOutcome({hit:true,healthBefore:null,healthAfter:null}),'hit-unknown');
  assert.equal(canonicalDistanceMeters(40),2);
  assert.equal(canonicalDistanceMeters(-1),null);

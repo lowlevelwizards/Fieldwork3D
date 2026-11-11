@@ -141,7 +141,7 @@ async function accept(name,context){
   await page.locator('#siteSettingsToggle').click();
   await page.locator('#siteSettings:visible').waitFor();
   await page.locator('#quickPlaySetup').click();
-  const generator=page.getByRole('dialog',{name:'Quick Play scenario generator'});
+  const generator=page.getByRole('dialog',{name:'Quick Play mission setup'});
   await generator.waitFor({timeout:15000});
   check((await metrics(page)).clock==='00:00',
    'Opening scenario editor changed the mission: '+name);

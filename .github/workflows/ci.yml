@@ -2063,6 +2063,18 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/after-action-v2-') }}
         run: |
           node --experimental-strip-types --test tests/breach-after-action-v2-evidence.test.mjs tests/breach-after-action-v2-scoped-replay.test.mjs tests/replay-r41-incident-playback.test.mjs tests/replay-r2-json-report.test.mjs tests/replay-r3-archive.test.mjs tests/breach-roadmap2-debrief-extraction.test.mjs
+      - name: After Action V3 focused evidence and terminology regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/after-action-v3-') }}
+        run: |
+          node --experimental-strip-types --test tests/after-action-v3-terminology.test.mjs tests/breach-after-action-v2-evidence.test.mjs tests/breach-after-action-v2-scoped-replay.test.mjs tests/quick-play-generator-navigation.test.mjs tests/replay-r2-json-report.test.mjs tests/replay-r3-archive.test.mjs tests/breach-roadmap2-debrief-extraction.test.mjs
+      - name: After Action V3 install Chromium for UI acceptance
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/after-action-v3-') }}
+        run: |
+          npm install --no-save --no-audit --no-fund playwright
+          npx playwright install --with-deps chromium
+      - name: After Action V3 small-phone and desktop UI acceptance
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/after-action-v3-') }}
+        run: node scripts/smoke-after-action-v3.mjs
       - name: Production build and typecheck
         run: npm run build
       - name: Quick Play production release preflight (no deployment)
