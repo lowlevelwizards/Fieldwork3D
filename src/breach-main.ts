@@ -59,6 +59,7 @@ import {highlightCapture} from './breach-highlight-capture.ts';
 import {replayHighlightMoments} from './breach-highlight-frames.ts';
 import {refreshAfterActionWorkspace} from './ui/breach-after-action-controller.ts';
 import {createBreachReplayPresentationController} from './breach-replay-presentation-controller.ts';
+import {createReplayPresentationOptions} from './breach-replay-presentation-options.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import {compileMissionFacts} from './briefing/mission-facts.ts';
@@ -518,12 +519,12 @@ const replayQuickVideo=new ReplayQuickVideo(
 let replayPresentation:ReplayPresentation|null=null;
 let finishedSession:Session|null=null;
 const replayKnowledge=new ReplayKnowledgeController();
+const replayDisplay=createReplayPresentationOptions();
 /** Contact lens filters recorded hostile models/events only; environment is
  * still the shared team map until individual ground/door intel is recorded.
  */
 /** Optional recorded floor-discovery overlay, not a full actor POV. */
 const replayBodycam=new ReplayBodycamController();
-let replayXrayOn=false;
 function stopReplayBodycam():void{
   replayBodycam.stop(stage);
   ui.replayBodycamStatus.hidden=true;
@@ -543,17 +544,8 @@ function startReplayBodycam():boolean{
   applyReplayBodycamMount();
   fog2D.invalidate();return true;
 }
-let replayAnalysis=false;
 const replayCamera=new ReplayCameraController();
 const replayDirector=replayCamera.director;
-let replayPlanScope:'all'|'selected'|'none'='selected';
-let replayPlanVersion:'active'|'original'='active';
-let replayNameTags=true;
-let replayContactMarkers=true;
-let replayObjectiveMarkers=true;
-let replayTraceMode:'off'|'recent'|'selected'='off';
-let replayGhostMode:'off'|'selected'|'squad'='off';
-let replayTrailMode:'off'|'recent'|'full'='off';
 let replayMovementHistory:ReplayMovementHistory|null=null;
 
 let stage:TacticalScene3D|null=null;
@@ -1480,27 +1472,22 @@ function advanceReplayCamera(dt:number,instant=false):void{
 }
 
 function clearReplayPresentation():void{
-  replayNameTags=false;replayContactMarkers=false;
-  replayPlanScope='none';replayObjectiveMarkers=false;
-  replayAnalysis=false;replayTraceMode='off';
-  replayGhostMode='off';replayTrailMode='off';
-  replayKnowledge.groundLensOn=false;replayAnalysisUi.selectedReplayShotId=null;
+  replayDisplay.clearOverlays();
+  // These are analysis/knowledge UI effects, never recorded sight edits.
+  replayKnowledge.groundLensOn=false;
+  replayAnalysisUi.selectedReplayShotId=null;
 }
 
 function applyReplayPreset(next:'clean'|'movement'|'combat'|'visibility'):void{
-  replayAnalysisUi.replayPreset=next;
+  replayDisplay.applyPreset(next);
   if(next==='clean'){
-    clearReplayPresentation();
-  }else if(next==='movement'){
-    replayAnalysis=true;replayPlanScope='selected';replayPlanVersion='active';
-    replayTraceMode='off';replayGhostMode='off';replayTrailMode='recent';
-  }else if(next==='combat'){
-    replayAnalysis=false;replayPlanScope='none';replayTraceMode='recent';replayGhostMode='off';replayTrailMode='off';
-  }else{
-    replayAnalysis=false;replayPlanScope='none';replayTraceMode='off';replayGhostMode='off';replayTrailMode='off';
+    // Preserve Clear's historical UI-side effects without expanding sight.
+    replayKnowledge.groundLensOn=false;
+    replayAnalysisUi.selectedReplayShotId=null;
+  }else if(next==='visibility'){
     const details=ui.replayExtra.querySelector<HTMLDetailsElement>('[data-replay-group="view"]');
     if(details)details.open=true;
-    // A visibility preset must never change the historical disclosure policy.
+    // A visibility preset cannot change historical observer permissions.
   }
   updateReplayHud();
 }
@@ -1549,12 +1536,11 @@ const replayModeController=createReplayModeController({
  ui:{replayPanel:ui.replayPanel,replayTopHud:ui.replayTopHud,
    replayRail:ui.replayRail,replaySeek:ui.replaySeek},
  resetTargeting:()=>{targeting.reset();},
- resetReplayOptions:()=>{
-   replayAnalysis=false;replayPlanScope='none';replayPlanVersion='active';
-   replayNameTags=true;replayContactMarkers=true;replayObjectiveMarkers=true;
-   replayTraceMode='off';replayGhostMode='off';replayTrailMode='off';
+ resetReplayOptions:()=>{replayDisplay.resetForReplay();},
+ setXray:enabled=>{
+   replayDisplay.patch({replayXrayOn:enabled});
+   stage?.setReplayXray(enabled);
  },
- setXray:enabled=>{replayXrayOn=enabled;stage?.setReplayXray(enabled);},
  setMovementHistory:next=>{replayMovementHistory=next;},
  clearReplayPresentation:()=>{replayPresentation=null;},
  beginAudio:film=>{audioController.beginReplay(film);audioController.unlock();},
@@ -2193,12 +2179,13 @@ function releaseMissionPresentation():void{
     replayCamera.reset(stage);
     replayKnowledge.reset();
     audioController.endReplay();
-    replayXrayOn=false;stage?.setReplayXray(false);
+    replayDisplay.patch({replayXrayOn:false});stage?.setReplayXray(false);
   }
   replaying=false;replayPlayback.pause();finishedSession=null;
   replayLibrary.resetSession();
   // Clear old recording indexes and UI selections on every replacement.
   replayAnalysisUi.reset();replayPresentation=null;
+  replayDisplay.resetForMission();stage?.setReplayXray(false);
   replayMovementHistory=null;
   replayDirector.reset();
   replayKnowledge.reset();
