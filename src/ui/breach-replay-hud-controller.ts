@@ -2,7 +2,6 @@
  * No game authority, no listeners created from a render refresh.
  */
 import {team,type Session} from '../breach-game.ts';
-const squadIds=['rook','moss','ash','vale'] as const;
 import type {MissionRecorder} from '../breach-replay.ts';
 import type {ReplayPlaybackController} from '../breach-replay-playback-controller.ts';
 import type {ReplayCameraController} from '../breach-replay-camera-controller.ts';
@@ -92,7 +91,6 @@ export type ReplayHudInteractionPort={
  selected:string;readonly cssW:number;readonly cssH:number;
  replayKnowledge:ReplayKnowledgeController;replayPlayback:ReplayPlaybackController;
  replayCamera:ReplayCameraController;replayBodycam:ReplayBodycamController;
- applyReplayPreset:(preset:'clean'|'movement'|'combat'|'visibility')=>void;
  replayDirector:ReplayCameraController['director'];
  replayAnalysisUi:ReturnType<typeof createBreachReplayAnalysisController>;
  replayQuickVideo:ReplayQuickVideo;audio:ReturnType<typeof createBreachAudioController>;
