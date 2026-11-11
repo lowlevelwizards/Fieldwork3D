@@ -112,7 +112,7 @@ import {createBreachMissionScreens} from './ui/breach-mission-screens.ts';
 
 
 import {tacticalIcon,tacticalIconForState} from './ui/tactical-icons.ts';
-import {createBreachUiElements,requiredBreachElement as el} from './ui/breach-ui-elements.ts';
+import {createBreachUiElements,requiredBreachElement as el,mountBreachDebugPanels,mountBreachManagementElements,mountBreachDeploymentButton} from './ui/breach-ui-elements.ts';
 import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
 import {createTacticalInteractionState} from './breach-tactical-interaction-state.ts';
 import {createBreachTacticalFrameFeedbackController} from './ui/breach-tactical-frame-feedback-controller.ts';
@@ -250,10 +250,7 @@ let state:Session=missionController.create({
   withoutSite:legacyStudy||appFlow.mode==='menu',initial:true
 });
 let recorder=missionController.recordInitial(state);
-const deploymentButton=document.createElement('button');
-deploymentButton.type='button';deploymentButton.id='deploymentChoice';
-deploymentButton.setAttribute('aria-label','Cycle available insertion points');
-ui.briefingEntryControls.append(deploymentButton);
+const deploymentButton=mountBreachDeploymentButton(ui);
 missionController.bindDeployment({
   button:deploymentButton,label:ui.briefingEntryLabel,
   getSession:()=>state,isReplaying:()=>replaying,
@@ -332,65 +329,15 @@ function chooseReplayCamera(mode:Parameters<ReplayCameraController['selectMode']
   replayCamera.selectMode(mode,viewMode as ReplayPerspective,!!stage,replayBodycam.active);
 }
 // Explicit developer opt-in only; no hidden intelligence in normal gameplay.
-const replayDirectorDiagnostics=bootConfig.replayDirectorDiagnostics;
-const replayDirectorDebugPanel=replayDirectorDiagnostics?
-  document.createElement('output'):null;
-if(replayDirectorDebugPanel){
-  replayDirectorDebugPanel.id='replayDirectorDiagnostics';
-  Object.assign(replayDirectorDebugPanel.style,{
-    position:'fixed',left:'8px',top:'134px',zIndex:'69',
-    maxWidth:'210px',whiteSpace:'pre-wrap',pointerEvents:'none',
-    padding:'7px',font:'11px/1.4 monospace',borderRadius:'5px',
-    color:'#f4e7bc',background:'rgba(10,28,24,.87)'
-  });
-  replayDirectorDebugPanel.hidden=true;
-  document.body.append(replayDirectorDebugPanel);
-}
-const navDiagnostics=bootConfig.navDiagnostics;
-const navPanel=navDiagnostics?document.createElement('output'):null;
-if(navPanel){
-  navPanel.id='navDiagnostics';
-  Object.assign(navPanel.style,{
-    position:'fixed',left:'8px',top:'68px',zIndex:'70',
-    pointerEvents:'none',background:'rgba(6,12,11,.83)',
-    color:'#dce3c9',padding:'8px',font:'11px monospace',
-    maxWidth:'210px',whiteSpace:'pre-wrap'
-  });
-  document.body.append(navPanel);
-}
+const {replayDirectorDebugPanel,navPanel}=mountBreachDebugPanels({
+ replayDirectorDiagnostics:bootConfig.replayDirectorDiagnostics,
+ navDiagnostics:bootConfig.navDiagnostics
+});
 /** Optional, compact between-mission operations board.
  * No mandatory management screen blocks immediate mission deployment.
  */
-const operationsToggle=document.createElement('button');
-operationsToggle.id='operationsBoardToggle';operationsToggle.type='button';
-operationsToggle.textContent='SQUAD';
-operationsToggle.setAttribute('aria-label','Open Quick Play squad preparation and equipment');
-operationsToggle.title='Edit squad and equipment before the mission';
-(document.querySelector('.mode')??ui.siteSettings).append(operationsToggle);
+const {operationsToggle,rangeTelemetry,operationsBoard,weaponChooser}=mountBreachManagementElements(ui);
 let lastRangeTrial:RangeTrial|null=null;
-const rangeTelemetry=document.createElement('aside');
-rangeTelemetry.id='equipmentRangeTelemetry';
-rangeTelemetry.hidden=true;
-rangeTelemetry.style.cssText='position:fixed;top:65px;right:10px;z-index:15;'+
- 'max-width:min(80vw,460px);padding:8px 12px;border:1px solid #6e9480;'+
- 'border-radius:8px;background:#152421e8;color:#d9e7d6;'+
- 'font:11px/1.6 Oxanium,sans-serif;pointer-events:none;white-space:pre-line';
-rangeTelemetry.setAttribute('aria-label','Equipment range live metrics');
-document.body.append(rangeTelemetry);
-const operationsBoard=document.createElement('section');
-operationsBoard.id='operationsBoard';
-operationsBoard.hidden=true;
-operationsBoard.setAttribute('aria-label','Squad operations board');
-operationsBoard.className='fw-squad-sheet';
-document.body.append(operationsBoard);
-// Weapon choices are explicit: never change the selected weapon merely by opening a menu.
-const weaponChooser=document.createElement('section');
-weaponChooser.id='quickWeaponChooser';
-weaponChooser.className='fw-weapon-chooser';
-weaponChooser.hidden=true;
-weaponChooser.setAttribute('role','group');
-weaponChooser.setAttribute('aria-label','Choose selected operator weapon');
-document.body.append(weaponChooser);
 function hideWeaponChooser(){
  weaponChooser.hidden=true;
  ui.loadout.setAttribute('aria-expanded','false');

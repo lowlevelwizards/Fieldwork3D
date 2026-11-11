@@ -231,3 +231,80 @@ for(const [key,glyph] of [
 ] as const)ui[key].replaceChildren(tacticalIcon(glyph));
  return ui;
 }
+
+export function mountBreachDeploymentButton(ui:ReturnType<typeof createBreachUiElements>){
+const deploymentButton=document.createElement('button');
+deploymentButton.type='button';deploymentButton.id='deploymentChoice';
+deploymentButton.setAttribute('aria-label','Cycle available insertion points');
+ui.briefingEntryControls.append(deploymentButton);
+
+ return deploymentButton;
+}
+
+export function mountBreachDebugPanels(boot:{
+ replayDirectorDiagnostics:boolean;navDiagnostics:boolean
+}){
+const replayDirectorDiagnostics=boot.replayDirectorDiagnostics;
+const replayDirectorDebugPanel=replayDirectorDiagnostics?
+  document.createElement('output'):null;
+if(replayDirectorDebugPanel){
+  replayDirectorDebugPanel.id='replayDirectorDiagnostics';
+  Object.assign(replayDirectorDebugPanel.style,{
+    position:'fixed',left:'8px',top:'134px',zIndex:'69',
+    maxWidth:'210px',whiteSpace:'pre-wrap',pointerEvents:'none',
+    padding:'7px',font:'11px/1.4 monospace',borderRadius:'5px',
+    color:'#f4e7bc',background:'rgba(10,28,24,.87)'
+  });
+  replayDirectorDebugPanel.hidden=true;
+  document.body.append(replayDirectorDebugPanel);
+}
+const navDiagnostics=boot.navDiagnostics;
+const navPanel=navDiagnostics?document.createElement('output'):null;
+if(navPanel){
+  navPanel.id='navDiagnostics';
+  Object.assign(navPanel.style,{
+    position:'fixed',left:'8px',top:'68px',zIndex:'70',
+    pointerEvents:'none',background:'rgba(6,12,11,.83)',
+    color:'#dce3c9',padding:'8px',font:'11px monospace',
+    maxWidth:'210px',whiteSpace:'pre-wrap'
+  });
+  document.body.append(navPanel);
+}
+
+ return {replayDirectorDebugPanel,navPanel};
+}
+
+export function mountBreachManagementElements(ui:ReturnType<typeof createBreachUiElements>){
+const operationsToggle=document.createElement('button');
+operationsToggle.id='operationsBoardToggle';operationsToggle.type='button';
+operationsToggle.textContent='SQUAD';
+operationsToggle.setAttribute('aria-label','Open Quick Play squad preparation and equipment');
+operationsToggle.title='Edit squad and equipment before the mission';
+(document.querySelector('.mode')??ui.siteSettings).append(operationsToggle);
+
+const rangeTelemetry=document.createElement('aside');
+rangeTelemetry.id='equipmentRangeTelemetry';
+rangeTelemetry.hidden=true;
+rangeTelemetry.style.cssText='position:fixed;top:65px;right:10px;z-index:15;'+
+ 'max-width:min(80vw,460px);padding:8px 12px;border:1px solid #6e9480;'+
+ 'border-radius:8px;background:#152421e8;color:#d9e7d6;'+
+ 'font:11px/1.6 Oxanium,sans-serif;pointer-events:none;white-space:pre-line';
+rangeTelemetry.setAttribute('aria-label','Equipment range live metrics');
+document.body.append(rangeTelemetry);
+const operationsBoard=document.createElement('section');
+operationsBoard.id='operationsBoard';
+operationsBoard.hidden=true;
+operationsBoard.setAttribute('aria-label','Squad operations board');
+operationsBoard.className='fw-squad-sheet';
+document.body.append(operationsBoard);
+// Weapon choices are explicit: never change the selected weapon merely by opening a menu.
+const weaponChooser=document.createElement('section');
+weaponChooser.id='quickWeaponChooser';
+weaponChooser.className='fw-weapon-chooser';
+weaponChooser.hidden=true;
+weaponChooser.setAttribute('role','group');
+weaponChooser.setAttribute('aria-label','Choose selected operator weapon');
+document.body.append(weaponChooser);
+
+ return {operationsToggle,rangeTelemetry,operationsBoard,weaponChooser};
+}

@@ -115,3 +115,14 @@ test('A6 mission screen owner owns navigation and keyboard GO lifecycle',()=>{
  assert.match(screens,/function executePlay\(/);
  assert.match(screens,/if\(missionActionPorts\)return/);
 });
+
+test('A6 one-time dynamic DOM mounts are stateless UI-view work',()=>{
+ const elements=readFileSync(new URL('../src/ui/breach-ui-elements.ts',import.meta.url),'utf8');
+ assert.match(source,/mountBreachDebugPanels\(/);
+ assert.match(source,/mountBreachManagementElements\(/);
+ assert.match(source,/mountBreachDeploymentButton\(/);
+ assert.doesNotMatch(source,/const operationsToggle=document\.createElement/);
+ assert.doesNotMatch(source,/const replayDirectorDebugPanel=replayDirectorDiagnostics/);
+ for(const helper of ['mountBreachDebugPanels','mountBreachManagementElements','mountBreachDeploymentButton'])
+  assert.match(elements,new RegExp('export function '+helper+'\\('));
+});
