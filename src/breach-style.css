@@ -3437,3 +3437,41 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-debrief-v3 .fw-v4-scope-choice{min-height:32px;padding:4px 6px}
  .fw-v4-model-evidence-key{font-size:8px!important}
 }
+
+
+/* 320px portrait cannot fit two tall forensic columns plus an extra mode
+   selector. Prioritize a full-width rotatable model; place the essentials
+   in a compact anchored readout while retaining the shot rail and Clip. */
+@media(max-width:375px) and (max-height:700px){
+ .fw-v3-combat.fw-v4-combat-3d .fw-v3-combat-focus{
+   position:relative;display:block;flex:1;min-height:0;overflow:hidden}
+ .fw-v4-combat-3d .fw-v3-combat-figure{
+   position:absolute;inset:0;width:100%;height:100%;min-height:0;
+   padding:2px;box-sizing:border-box;display:flex;flex-direction:column}
+ .fw-v4-combat-3d .fw-v3-combat-figure .fw-after-model{
+   width:100%;height:100%;min-height:0;flex:1}
+ .fw-v4-combat-3d .fw-v4-model-evidence-key{
+   position:absolute;left:5px;bottom:4px;z-index:1;
+   max-width:53%;padding:3px;background:#162d25b9;
+   border-radius:2px;text-align:left;font-size:8px!important}
+ .fw-v4-combat-3d .fw-v3-combat-info{
+   position:absolute;z-index:2;right:5px;bottom:5px;
+   width:43%;max-height:calc(100% - 10px);
+   min-height:0;padding:4px;box-sizing:border-box;overflow:hidden;
+   background:#192c25ea;border:1px solid #5b7362;
+   border-radius:4px;gap:2px;justify-content:flex-start}
+ .fw-v4-combat-3d .fw-v3-combat-name{gap:0}
+ .fw-v4-combat-3d .fw-v3-combat-name small{display:none}
+ .fw-v4-combat-3d .fw-v3-combat-name h2{font-size:13px}
+ .fw-v4-combat-3d .fw-v3-combat-name span{font-size:9px}
+ .fw-v4-combat-3d .fw-v3-shot-details{gap:1px}
+ .fw-v4-combat-3d .fw-v3-shot-details small{font-size:8px}
+ .fw-v4-combat-3d .fw-v3-shot-details h3{font-size:13px}
+ .fw-v4-combat-3d .fw-v3-shot-details p:not(.fw-v4-forensic-side){
+   display:none}
+ .fw-v4-combat-3d .fw-v4-forensic-side{font-size:8px!important}
+ .fw-v4-combat-3d .fw-debrief-v3 .fw-v3-play,
+ .fw-debrief-v3 .fw-v4-combat-3d .fw-v3-play{
+   min-height:30px;padding:3px 5px;font-size:10px}
+ .fw-v4-combat-3d .fw-v3-shot-damage{display:none}
+}
