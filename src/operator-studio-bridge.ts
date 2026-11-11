@@ -1,12 +1,13 @@
 /** Stage 10c: same-origin embedded Operator Studio bridge.
  * Campaign and Quick Play saves remain in the tactical application.
  */
+import type {CampaignMode} from './breach-app-mode.ts';
 import {validateStudioAppearanceEdits,applyStudioRosterEdits,
   applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import type {RosterState} from './breach-roster.ts';
 import type {CampaignState} from './campaign-state.ts';
 import type {Session} from './breach-game.ts';
-type CampaignMode='menu'|'home'|'mission'|'quick';
+
 export type OperatorStudioBridgeHooks={
  getCampaign:()=>CampaignState|null;setCampaign:(value:CampaignState|null)=>void;
  getRoster:()=>RosterState;setRoster:(value:RosterState)=>void;

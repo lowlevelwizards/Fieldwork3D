@@ -1,6 +1,8 @@
 /** Stage 10a: Quick Play worker, progress, cancellation and staged loading.
  * Session creation, rendering, camera and campaign routing remain delegated.
  */
+import type {BreachBootConfig} from './breach-boot-config.ts';
+import type {CampaignMode} from './breach-app-mode.ts';
 import {team,type Session} from './breach-game.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
@@ -12,8 +14,9 @@ import type {TacticalScene3D,ViewMode} from './breach-3d.ts';
 import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
   from './quick-play-generation.ts';
 
-type CampaignMode='menu'|'home'|'mission'|'quick';
+
 export type QuickPlayControllerHooks={
+  boot:BreachBootConfig;
   randomSeed:()=>number;
   getScale:()=>SiteScale;
   getMode:()=>CampaignMode;
@@ -187,7 +190,7 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
     // Keep an A/B opt-out: ?gpuWarmup=0 allows identical-seed comparisons.
     let shaderPreparationMs=0;
     if(stage&&config.getViewMode()!=='plan2d'&&
-       new URLSearchParams(location.search).get('gpuWarmup')!=='0'){
+       config.boot.gpuWarmupEnabled){
       quickPlayCheckpoint(96,'Preparing GPU programs',
         'Warming visible materials before the first 3D draw');
       await allowQuickPlayPaint();

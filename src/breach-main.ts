@@ -48,6 +48,10 @@ import {createOperatorStudioBridge} from './operator-studio-bridge.ts';
 import {createBreachEquipmentEditorBridge} from './breach-equipment-editor-bridge.ts';
 import {createBreachOperationsBoardController} from './breach-operations-board-controller.ts';
 import {createBreachRuntimeLoop} from './breach-runtime-loop.ts';
+import type {CampaignMode} from './breach-app-mode.ts';
+import {parseBreachBootConfig,BREACH_LIGHTING_MODES} from './breach-boot-config.ts';
+import {loadIntelPreference,loadQuickPlayRoster,saveQuickPlayRoster,
+ loadCampaignFromStorage,saveCampaignToStorage} from './breach-persistence.ts';
 import {createReplayModeController} from './breach-replay-mode-controller.ts';
 import {afterActionSnapshot} from './ui/breach-after-action-controller.ts';
 import {makeAfterActionLaunchRequest} from './breach-after-action-replay-navigation.ts';
@@ -94,13 +98,11 @@ import {fitMagazineInventory}
 import {stageMagazines} from './equipment-magazine-placement.ts';
 import {doorReachable} from './breach-door.ts';
 import {canRelocateCover} from './breach-movable-cover.ts';
-import {INTEL_MODES,doorKnown,
-  intelPassable,type IntelMode} from './breach-intel.ts';
+import {doorKnown,intelPassable,type IntelMode} from './breach-intel.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
-import {readRoster,applyRosterIdentity,freshQuickPlayRoster,
- serializeQuickPlayCosmetics} from './breach-roster.ts';
-import {readCampaign,tacticalSlotOperator,type CampaignState} from './campaign-state.ts';
+import {applyRosterIdentity,freshQuickPlayRoster} from './breach-roster.ts';
+import {tacticalSlotOperator,type CampaignState} from './campaign-state.ts';
 import {loadMovementScale,equippedFlashCharges} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
@@ -359,10 +361,10 @@ const randomSiteSeed=()=>{
   if(typeof crypto!=='undefined'&&crypto.getRandomValues)crypto.getRandomValues(bytes);
   return bytes[0]||((Date.now()^Math.floor(Math.random()*1e9))>>>0);
 };
-const startupParams=new URLSearchParams(location.search);
+const bootConfig=parseBreachBootConfig(location.search);
 // The procedural dossier is the standard briefing; ?briefingV2=0 is an
 // optional troubleshooting escape hatch, never a mission rule change.
-const briefingPreviewEnabled=startupParams.get('briefingV2')!=='0';
+const briefingPreviewEnabled=bootConfig.briefingPreviewEnabled;
 function buildPreviewDossier(session:Session,risk?:1|2|3){
   if(!briefingPreviewEnabled||!session.site)return undefined;
   try{
@@ -379,61 +381,26 @@ function buildPreviewDossier(session:Session,risk?:1|2|3){
 // Live civilian field testing is enabled in ordinary Quick Play/Campaign.
 // ?civilians=0 is a deliberate rollback switch while testing on phones;
 // seeded population limits, rescue compatibility and fog rules are unchanged.
-const civilianPreview=startupParams.get('civilians')!=='0';
-const legacyStudy=startupParams.has('fixedSite');
-const requestedSeed=Number(startupParams.get('seed'));
-const initialSiteSeed=startupParams.has('seed')&&Number.isSafeInteger(requestedSeed)&&
- requestedSeed>0&&requestedSeed<=0xffffffff?requestedSeed:randomSiteSeed();
-const INTEL_PREFERENCE_KEY='fieldwork3d.intel.mode.v1';
-let selectedIntelMode:IntelMode=(()=>{
-  try{
-    const stored=localStorage.getItem(INTEL_PREFERENCE_KEY) as IntelMode|null;
-    return stored&&INTEL_MODES.includes(stored)?stored:'exterior-known';
-  }catch{return 'exterior-known';}
-})();
-const requestedConditionParam=startupParams.get('condition');
-const requestedCondition=requestedConditionParam!==null&&
-  Number.isFinite(Number(requestedConditionParam))?
-  Math.max(0,Math.min(100,Number(requestedConditionParam))):null;
-const LIGHTING_MODES:LightingMode[]=['day','evening','night','blackout','emergency'];
-let selectedLightingMode:LightingMode=
-  LIGHTING_MODES.find(mode=>mode===startupParams.get('lighting'))??'day';
-const requestedScaleParam=startupParams.get('scale');
-let requestedSiteScale:SiteScale=
-  ['standard','expanded','small','medium','large'].includes(requestedScaleParam??'')?
-    requestedScaleParam as SiteScale:'standard';
-const LEGACY_ROSTER_KEY='fieldwork3d.operator-roster.v1';
-const QUICK_COSMETICS_KEY='fieldwork3d.quickplay-cosmetics.v1';
-let persistentRoster=(()=>{
- let saved:string|null=null;
- try{saved=localStorage.getItem(QUICK_COSMETICS_KEY)??
-   localStorage.getItem(LEGACY_ROSTER_KEY);}
- catch{/* Storage is optional. */}
- return freshQuickPlayRoster(readRoster(saved));
-})();
-// One-time migration: discard old Quick Play combat saves, keep appearances.
-try{
- if(localStorage.getItem(LEGACY_ROSTER_KEY)!==null){
-  localStorage.setItem(QUICK_COSMETICS_KEY,
-   serializeQuickPlayCosmetics(persistentRoster));
-  localStorage.removeItem(LEGACY_ROSTER_KEY);
- }
-}catch{/* Private browser storage may be unavailable. */}
+const civilianPreview=bootConfig.civilianPreview;
+const legacyStudy=bootConfig.legacyStudy;
+const initialSiteSeed=bootConfig.requestedSeed??randomSiteSeed();
+let selectedIntelMode:IntelMode=loadIntelPreference();
+const requestedCondition=bootConfig.requestedCondition;
+let selectedLightingMode:LightingMode=bootConfig.lighting;
+let requestedSiteScale:SiteScale=bootConfig.scale;
+// Browser saves are optional; Quick Play migration preserves cosmetics only.
+let persistentRoster=loadQuickPlayRoster();
 function saveRoster():boolean{
- try{localStorage.setItem(QUICK_COSMETICS_KEY,
-   serializeQuickPlayCosmetics(persistentRoster));return true;}
- catch{return false;}
+ return saveQuickPlayRoster(persistentRoster);
 }
-const CAMPAIGN_KEY='fieldwork3d.campaign.v1';
-let campaign:CampaignState|null=(()=>{
- try{return readCampaign(localStorage.getItem(CAMPAIGN_KEY));}catch{return null;}
-})();
-let campaignMode:'menu'|'home'|'mission'|'quick'=
- legacyStudy||startupParams.has('quick')?'quick':'menu';
+let campaign:CampaignState|null=loadCampaignFromStorage();
+let campaignMode:CampaignMode=
+ legacyStudy||bootConfig.quickEntry?'quick':'menu';
 function saveCampaign():boolean{
  if(!campaign)return false;
- try{localStorage.setItem(CAMPAIGN_KEY,JSON.stringify(campaign));return true;}
- catch{console.warn('Campaign save unavailable');return false;}
+ const saved=saveCampaignToStorage(campaign);
+ if(!saved)console.warn('Campaign save unavailable');
+ return saved;
 }
 const studioBridge=createOperatorStudioBridge({
   getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},
@@ -597,7 +564,7 @@ function chooseReplayCamera(mode:Parameters<ReplayCameraController['selectMode']
   replayCamera.selectMode(mode,viewMode as ReplayPerspective,!!stage,replayBodycam.active);
 }
 // Explicit developer opt-in only; no hidden intelligence in normal gameplay.
-const replayDirectorDiagnostics=new URLSearchParams(location.search).has('directorDebug');
+const replayDirectorDiagnostics=bootConfig.replayDirectorDiagnostics;
 const replayDirectorDebugPanel=replayDirectorDiagnostics?
   document.createElement('output'):null;
 if(replayDirectorDebugPanel){
@@ -611,7 +578,7 @@ if(replayDirectorDebugPanel){
   replayDirectorDebugPanel.hidden=true;
   document.body.append(replayDirectorDebugPanel);
 }
-const navDiagnostics=new URLSearchParams(location.search).has('nav');
+const navDiagnostics=bootConfig.navDiagnostics;
 const navPanel=navDiagnostics?document.createElement('output'):null;
 if(navPanel){
   navPanel.id='navDiagnostics';
@@ -728,7 +695,7 @@ const operationsBoardController=createBreachOperationsBoardController({
 const renderOperationsBoard=operationsBoardController.render;
 
 const missionScreens=createBreachMissionScreens({
- ui,operationsBoard,operationsToggle,
+ ui,operationsBoard,operationsToggle,boot:bootConfig,
  getSession:()=>state,getCampaign:()=>campaign,getMode:()=>campaignMode,
  isReplaying:()=>replaying,briefingPreviewEnabled,
  getEntryId:()=>missionController.entryId,
@@ -736,7 +703,7 @@ const missionScreens=createBreachMissionScreens({
  getLighting:()=>selectedLightingMode,setLighting:v=>{selectedLightingMode=v;},
  getScale:()=>requestedSiteScale,setScale:v=>{requestedSiteScale=v;},
  getIntel:()=>selectedIntelMode,setIntel:v=>{selectedIntelMode=v;},
- lightingModes:LIGHTING_MODES,intelPreferenceKey:INTEL_PREFERENCE_KEY,
+ lightingModes:BREACH_LIGHTING_MODES,
  showHelp:showUiHelp,refreshHud:updateHud,
  renderOperationsBoard,updateContext,
  renderFavorites:()=>replayLibrary.renderFavorites(),
@@ -772,7 +739,7 @@ const paletteController=createTacticalPaletteController({
 });
 function hideContextPalette():void{paletteController.hide();}
 function advanceContextPalette(dt:number):void{paletteController.advance(dt);}
-const auditRouteMode=new URLSearchParams(location.search).has('audit');
+const auditRouteMode=bootConfig.auditRouteMode;
 let selectedNode:number|null=null;
 // Executed WATCH has no queued waypoint, but its targeting handle is selectable.
 let selectedActiveWatch=false;
@@ -1344,7 +1311,7 @@ const route2D=createBreach2DRouteOverlays({
 const fog2D=createBreach2DVisibilityRenderer({
  draw,getState:()=>state,isReplaying:()=>replaying,getViewMode:()=>viewMode,
  replayKnowledge,replayPlayback,
- debugPalette:new URLSearchParams(location.search).get('fogDebug')==='palette'
+ debugPalette:bootConfig.fogDebugPalette
 });
 // Blood and bullet decals are part of the floor, not HUD sprites.
 // Render beneath architecture AND fog so marks cannot float over walls
@@ -1941,7 +1908,7 @@ ui.replaySight.addEventListener('click',()=>{
  * Production builds strip it; normal replay has NO Bodycam button yet.
  * Browser smoke uses historical replay disclosure, never simulated LOS.
  */
-if(import.meta.env.DEV&&new URLSearchParams(location.search).has('bodycamqa')){
+if(import.meta.env.DEV&&bootConfig.bodycamQa){
   type BodycamQa={
     activate:(mount:'chest'|'helmet')=>boolean;
     seek:(time:number)=>boolean;
@@ -2281,7 +2248,7 @@ function restartMission():void{
  * completed work, not predicted time; expensive 3D mesh creation remains
  * synchronous, but the status is painted immediately before it begins. */
 const quickPlayController=createBreachQuickPlayController({
-  randomSeed:randomSiteSeed,getScale:()=>requestedSiteScale,
+  boot:bootConfig,randomSeed:randomSiteSeed,getScale:()=>requestedSiteScale,
   getMode:()=>campaignMode,setMode:mode=>{campaignMode=mode;},
   getSession:()=>state,
   startSession:(seed,site,mission)=>reset(state.variant,seed,mission,site,undefined,true),
@@ -2750,6 +2717,7 @@ function drawTacticalFrameFeedback(studioOccludesTactical:boolean):void{
 
 // The runtime owns RAF cadence; the host supplies live state and presentation boundaries.
 const runtimeLoop=createBreachRuntimeLoop({
+ boot:bootConfig,
  getSession:()=>state,getRecorder:()=>recorder,getMode:()=>campaignMode,
  isReplaying:()=>replaying,
  isQuickPlayBusy:()=>quickPlayController.busy||quickPlayController.configuring,
