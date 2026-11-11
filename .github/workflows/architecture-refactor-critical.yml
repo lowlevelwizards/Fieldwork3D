@@ -101,6 +101,18 @@ jobs:
         if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-a1-') }}
         run: |
           node --experimental-strip-types --test tests/breach-052.test.mjs tests/consolidation-stage1-removal.test.mjs tests/breach-roadmap2-site-builder.test.mjs tests/fog-interior-occlusion-regression.test.mjs tests/breach-2d-renderer-extraction.test.mjs tests/worldgen-active-bounds.test.mjs
+      - name: Stage A2 boot, migration, campaign and Quick Play regression contracts
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-a2-') }}
+        run: |
+          node --experimental-strip-types --test tests/consolidation-stage2-config-persistence.test.mjs tests/campaign-01.test.mjs tests/campaign-02.test.mjs tests/quick-play-generator-navigation.test.mjs tests/quick-play-startup-progress.test.mjs tests/miniature-focus-preferences.test.mjs
+      - name: Stage A3 application-flow, mission and replay return contracts
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-a3-') }}
+        run: |
+          node --experimental-strip-types --test tests/consolidation-stage3-app-flow.test.mjs tests/quick-play-generator-navigation.test.mjs tests/quick-play-startup-progress.test.mjs tests/operations-landing-navigation.test.mjs tests/replay-library-controller-step4.test.mjs tests/breach-mission-screens-step11.test.mjs tests/breach-runtime-loop-step12.test.mjs tests/ux2-shortcuts.test.mjs tests/ux2-current-site-identity.test.mjs tests/campaign-02.test.mjs
+      - name: Stage A4 exclusive targeting, WATCH, pointer, Back and HUD contracts
+        if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-a4-') }}
+        run: |
+          node --experimental-strip-types --test tests/consolidation-stage4-targeting.test.mjs tests/tactical-hud-palette-controller-step7.test.mjs tests/ux2-21-look-watch.test.mjs tests/breach-here-watch-continuity.test.mjs tests/breach-canvas-gestures.test.mjs tests/breach-roadmap2-stage4-pointer-feedback.test.mjs tests/breach-closeout-stage1-plan-authoring.test.mjs tests/breach-aim-target-r1.test.mjs tests/equipment-22-08-casualty-extraction.test.mjs
       - name: Preserve consolidation inventory and review candidates
         if: ${{ always() && startsWith(github.head_ref, 'refactor/consolidation-') }}
         uses: actions/upload-artifact@v4

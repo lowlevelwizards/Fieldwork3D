@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runtimeFrameMode,createBreachRuntimeLoop}
  from '../src/breach-runtime-loop.ts';
+import {parseBreachBootConfig} from '../src/breach-boot-config.ts';
 import {fixedStepBudget,FIXED_DT} from '../src/breach-fixed-clock.ts';
 
 const source=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
@@ -53,6 +54,7 @@ test('runtime remains sole RAF owner; suspension skips rendering, replay advance
    globalThis.location={search:''};
    globalThis.requestAnimationFrame=cb=>{frames.push(cb);return frames.length;};
    const runtime=createBreachRuntimeLoop({
+     boot:parseBreachBootConfig(''),
      getSession:()=>state,getRecorder:()=>recorder,getMode:()=>mode,
      isReplaying:()=>replaying,isQuickPlayBusy:()=>quickBusy,
      getSelected:()=> 'rook',getSelectedActor:()=>undefined,

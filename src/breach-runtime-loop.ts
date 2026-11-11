@@ -1,6 +1,8 @@
 /** Breach runtime: fixed-step scheduling and presentation synchronization.
  * The authoritative motor, damage, AI and visibility remain in breach-game.ts.
  */
+import type {BreachBootConfig} from './breach-boot-config.ts';
+import type {CampaignMode} from './breach-app-mode.ts';
 import {stepSession,team,type Session,type TeamActor} from './breach-game.ts';
 import type {Pt} from './breach-core.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
@@ -19,7 +21,7 @@ import type {ReplayBodycamController} from './breach-replay-bodycam-controller.t
 import type {ReplayQuickVideo} from './breach-replay-video.ts';
 import type {createBreachAudioController} from './breach-audio-controller.ts';
 
-type CampaignMode='menu'|'home'|'mission'|'quick';
+
 export type RuntimeFrameMode='suspended'|'live'|'replay'|'idle';
 /** Pure dispatch policy. Never advances a simulation tick. */
 export function runtimeFrameMode(input:{
@@ -32,6 +34,7 @@ export function runtimeFrameMode(input:{
  return input.phase==='running'?'live':'idle';
 }
 export type BreachRuntimeLoopHooks={
+  boot:BreachBootConfig;
  getSession:()=>Session;
  getRecorder:()=>MissionRecorder;
  getMode:()=>CampaignMode;
@@ -71,7 +74,7 @@ export function createBreachRuntimeLoop(config:BreachRuntimeLoopHooks){
  let previousRenderActors:Record<string,RenderActor>|null=null;
  let previousRenderDoors:Record<string,number>|null=null;
 
-const awarenessParam=new URLSearchParams(location.search).get('awareness');
+const awarenessParam=config.boot.awareness;
 const awarenessPanel=awarenessParam!==null?
   document.createElement('output'):null;
 if(awarenessPanel){
@@ -87,7 +90,7 @@ if(awarenessPanel){
 
 // Opt-in developer overlay: add ?perf=1 to measure render and simulation
 // without polling DOM/layout or allocating objects in the normal game loop.
-const perfOverlay=new URLSearchParams(location.search).has('perf')?
+const perfOverlay=config.boot.perfOverlay?
   document.createElement('div'):null;
 if(perfOverlay){
   perfOverlay.style.cssText='position:fixed;top:4px;right:4px;z-index:9999;'+

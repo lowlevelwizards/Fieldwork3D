@@ -38,7 +38,7 @@ test('settings and next-site choices retain their original scope',()=>{
  assert.match(screens,/config\.getMode\(\)==='mission'/);
  assert.match(screens,/config\.setScale\(selected as SiteScale\)/);
  assert.match(screens,/config\.setIntel\(selected as IntelMode\)/);
- assert.match(screens,/config\.intelPreferenceKey/);
+ assert.match(screens,/saveIntelPreference\(config\.getIntel\(\)\)/);
  assert.match(screens,/history\.replaceState/);
  assert.match(screens,/changeCamera\(mode\)/);
  assert.match(screens,/config\.fitCamera\(\)/);
@@ -48,6 +48,6 @@ test('miniature focus stays opt-in and stores only a visual preference',()=>{
  assert.match(screens,/\[data-miniature-focus\]/);
  assert.match(screens,/initialMiniatureFocusMode/);
  assert.match(screens,/config\.setFocusMode\(value\)/);
- assert.match(screens,/localStorage\.setItem\(MINIATURE_FOCUS_STORAGE_KEY,value\)/);
+ assert.match(screens,/writeStoredText\(MINIATURE_FOCUS_STORAGE_KEY,value\)/);
  assert.match(main,/setFocusMode:mode=>stage\?\.setMiniatureFocusMode\(mode\)/);
 });

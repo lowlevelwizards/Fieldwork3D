@@ -3,6 +3,7 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {BREACH_STORAGE_KEYS} from './breach-storage-keys.ts';
 import {applyOperatorHeightLighting} from './operator-height-lighting.ts';
 import {studioLightLabFromQuery,effectiveStudioLightLab,
  studioLightLabLabel,approvedGraphicLighting,
@@ -1881,17 +1882,17 @@ function apply(){
  try{
   if(mode==='quick'){
    const saved=freshQuickPlayRoster(readRoster(
-    localStorage.getItem('fieldwork3d.quickplay-cosmetics.v1')));
+    localStorage.getItem(BREACH_STORAGE_KEYS.quickCosmetics)));
    const next=applyStudioRosterEdits(saved,entries);
    if(!next)throw Error('Missing Quick Play operator');
-   localStorage.setItem('fieldwork3d.quickplay-cosmetics.v1',
+   localStorage.setItem(BREACH_STORAGE_KEYS.quickCosmetics,
     serializeQuickPlayCosmetics(next));
   }else{
-   const campaign=readCampaign(localStorage.getItem('fieldwork3d.campaign.v1'));
+   const campaign=readCampaign(localStorage.getItem(BREACH_STORAGE_KEYS.campaign));
    if(!campaign)throw Error('No saved campaign');
    const updated=applyStudioCampaignEdits(campaign,entries);
    if(!updated)throw Error('Campaign operator or active mission is locked');
-   localStorage.setItem('fieldwork3d.campaign.v1',JSON.stringify(updated));
+   localStorage.setItem(BREACH_STORAGE_KEYS.campaign,JSON.stringify(updated));
   }
   acknowledgeSave(entries.map(e=>e.id));
  }catch{
@@ -1943,7 +1944,7 @@ if(embedded){
 }else{
  try{
   const campaign=mode==='campaign'?
-   readCampaign(localStorage.getItem('fieldwork3d.campaign.v1')):null;
+   readCampaign(localStorage.getItem(BREACH_STORAGE_KEYS.campaign)):null;
   if(mode==='campaign'&&campaign){
    start({mode,selected,readonly:!!campaign.activeContractId,
     members:campaign.operators.filter(x=>x.status!=='retired'&&x.status!=='lost')
@@ -1952,7 +1953,7 @@ if(embedded){
        weapon:x.weapon,weaponConfiguration:x.weaponConfiguration}))});
   }else{
    const roster=freshQuickPlayRoster(readRoster(
-    localStorage.getItem('fieldwork3d.quickplay-cosmetics.v1')));
+    localStorage.getItem(BREACH_STORAGE_KEYS.quickCosmetics)));
    start({mode:'quick',selected,readonly:false,
     members:roster.members.map(x=>({id:x.id,callsign:x.callsign,
      appearanceSeed:x.appearanceSeed,wardrobe:x.wardrobe,loadout:x.loadout,

@@ -2,6 +2,7 @@
  * scoring and replay archive remain in their established gameplay modules.
  * This renderer owns only the after-action panel's DOM.
  */
+import type {CampaignMode} from '../breach-app-mode.ts';
 import {debrief,team,type Session} from '../breach-game.ts';
 import {sessionIntelligenceReview} from '../briefing/briefing-after-action.ts';
 import {formatAfterAction} from '../breach-after-action.ts';
@@ -23,7 +24,7 @@ const rendered=new WeakMap<HTMLElement,{
 export function renderMissionDebrief(input:{
  ui:DebriefUi;state:Session;brief:{name:string};
  recorder:MissionRecorder;campaign:CampaignState|null;
- campaignMode:'menu'|'home'|'mission'|'quick';operationsLogged:number;
+ campaignMode:CampaignMode;operationsLogged:number;
 }):void{
  const {ui,state,brief,recorder,campaign,campaignMode,operationsLogged}=input;
  const root=ui.debriefStats.closest<HTMLElement>('#debrief');

@@ -1,6 +1,7 @@
 /** Stage 10e: Quick Play squad board & equipment presentation.
  * No separate roster/mission persistence is held by this UI controller.
  */
+import type {CampaignMode} from './breach-app-mode.ts';
 import type {Session} from './breach-game.ts';
 import {resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
  configureRosterWeapon,configureRosterWeaponPreset,configureRosterWeaponBodyPart,
@@ -23,7 +24,7 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
 import {confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
 import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
 import type {OperationRecord} from './breach-operations.ts';
-type CampaignMode='menu'|'home'|'mission'|'quick';
+
 export type OperationsBoardHooks={
  board:HTMLElement;toggleButton:HTMLButtonElement;
  getSession:()=>Session;getRoster:()=>RosterState;setRoster:(value:RosterState)=>void;

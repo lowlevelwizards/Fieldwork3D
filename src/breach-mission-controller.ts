@@ -1,3 +1,4 @@
+import type {CampaignMode} from './breach-app-mode.ts';
 import {adoptPresentationWorldSession,withDetachedPresentationWorld,
  publishSessionCoverToActiveSite,setPresentationWorldSession} from './breach-world-context.ts';
 /** One owner for tactical session lifetimes and deployment preparation.
@@ -27,7 +28,7 @@ export type MissionPreferences={
   selectedIntelMode:IntelMode;
   requestedSiteScale:SiteScale;
   selectedLightingMode:LightingMode;
-  mode:'menu'|'home'|'mission'|'quick';
+  mode:CampaignMode;
 };
 export type MissionCreation={
   variant:number;
