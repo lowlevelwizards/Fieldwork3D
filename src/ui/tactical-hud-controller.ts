@@ -571,8 +571,8 @@ export function createTacticalHudController(
       const node=config.node;
       const door=config.doorFocusId?config.focusedDoor():undefined;
       const result=dispatchTacticalContextCommand({
-        config.state,config.selected,actor:a,node,door,action:action??'',
-        config.selectedActiveWatch,
+        state:config.state,selected:config.selected,actor:a,node,door,action:action??'',
+        selectedActiveWatch:config.selectedActiveWatch,
         medicalCandidate:config.medicalCandidate
       });
       if(result.handled){
