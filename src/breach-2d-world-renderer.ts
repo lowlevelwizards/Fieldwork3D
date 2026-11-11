@@ -2,6 +2,12 @@
  * Only reads live or historically disclosed presentation state.
  */
 import {W,H,GRID,doorCenter,doorLeafSegment,type Pt,type Segment} from './breach-core.ts';
+import type {TacticalScene3D,ViewMode} from './breach-3d.ts';
+import type {createBreach2DVisibilityRenderer} from './breach-2d-visibility-renderer.ts';
+import type {createBreach2DActorRenderer} from './breach-2d-actor-renderer.ts';
+import type {createBreach2DRouteOverlays} from './breach-2d-route-overlays.ts';
+import type {createBreach2DReplayOverlays} from './breach-2d-replay-overlays.ts';
+import type {createBreach2DProjectedOverlays} from './breach-2d-projected-overlays.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {type Session,type TeamActor,liveVisibility,isSeen} from './breach-game.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
@@ -356,4 +362,53 @@ function renderGroundMarks(){
  }
  return {terrain,furniture,architecture,renderLightingMood2D,
    renderWeaponLights2D,renderGroundMarks,inspectLightCache};
+}
+
+export type BreachTacticalWorldFrame={
+ stage:TacticalScene3D|null;viewMode:ViewMode;
+ draw:CanvasRenderingContext2D;dpr:number;cssW:number;cssH:number;
+ ox:number;oy:number;viewScale:number;state:Session;replaying:boolean;
+ replayAnalysis:boolean;
+ world2D:ReturnType<typeof createBreach2DWorldRenderer>;
+ fog2D:ReturnType<typeof createBreach2DVisibilityRenderer>;
+ actor2D:ReturnType<typeof createBreach2DActorRenderer>;
+ route2D:ReturnType<typeof createBreach2DRouteOverlays>;
+ replay2D:ReturnType<typeof createBreach2DReplayOverlays>;
+ projected2D:ReturnType<typeof createBreach2DProjectedOverlays>;
+};
+/** Render-only layer order; 3D Bodycam never receives projected world/X-ray HUD. */
+export function renderBreachTacticalWorldFrame(p:BreachTacticalWorldFrame):void{
+ const {stage,viewMode,draw,dpr,cssW,cssH,ox,oy,viewScale,
+   state,replaying,replayAnalysis,world2D,fog2D,actor2D,route2D,replay2D,projected2D}=p;
+
+  if(stage&&viewMode!=='plan2d'){
+    if(stage.isReplayBodycamActive()){
+      // Bodycam footage is a clean perspective, not an X-ray tactical HUD.
+      // Keep accessible replay transport as DOM, clear only projected plans,
+      // floating names, objective circles and selection rings.
+      draw.setTransform(dpr,0,0,dpr,0,0);
+      draw.clearRect(0,0,cssW,cssH);
+      return;
+    }
+    projected2D.renderProjectedPlans();return;
+  }
+  draw.setTransform(dpr,0,0,dpr,0,0);
+  draw.fillStyle='#141e20';draw.fillRect(0,0,cssW,cssH);
+  // Map-space drawing has a single reversible projection.
+  draw.save();
+  draw.translate(ox,oy);draw.scale(viewScale,viewScale);
+  draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
+  world2D.terrain();world2D.furniture();world2D.renderGroundMarks();world2D.renderLightingMood2D();world2D.renderWeaponLights2D();
+  world2D.architecture();fog2D.renderFog();fog2D.renderPersonalGround();actor2D.missionMarkers();
+  route2D.paths();replay2D.renderReplayMovementHistory(false);
+  for(const a of state.civilians)actor2D.civilianSprite(a);
+  for(const a of state.operators)actor2D.sprite(a);
+  if(!replaying||replayAnalysis)
+    for(const a of team(state))actor2D.drawExecutionProblem(a,false);
+  actor2D.contacts();replay2D.renderReplayGhosts(false);replay2D.renderReplayBallistics(false);
+  replay2D.renderReplayFollowMarker(false);actor2D.endMessage();
+  draw.strokeStyle='#d4dac64f';draw.lineWidth=2;
+  draw.strokeRect(0,0,W,H);
+  draw.restore();
+
 }

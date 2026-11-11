@@ -17,7 +17,7 @@ import {
   equipWeaponChoice
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
-import {createBreach2DWorldRenderer} from './breach-2d-world-renderer.ts';
+import {createBreach2DWorldRenderer,renderBreachTacticalWorldFrame} from './breach-2d-world-renderer.ts';
 import {createBreach2DActorRenderer} from './breach-2d-actor-renderer.ts';
 import {createBreach2DVisibilityRenderer} from './breach-2d-visibility-renderer.ts';
 import {createBreach2DReplayOverlays} from './breach-2d-replay-overlays.ts';
@@ -805,36 +805,12 @@ const projected2D=createBreach2DProjectedOverlays({
   draggingNode,draggingWatchTarget,trace,...replayDisplay.options,
    doorFocusId,stage,cssW,cssH,dpr})
 });
-function render(){
-  if(stage&&viewMode!=='plan2d'){
-    if(stage.isReplayBodycamActive()){
-      // Bodycam footage is a clean perspective, not an X-ray tactical HUD.
-      // Keep accessible replay transport as DOM, clear only projected plans,
-      // floating names, objective circles and selection rings.
-      draw.setTransform(dpr,0,0,dpr,0,0);
-      draw.clearRect(0,0,cssW,cssH);
-      return;
-    }
-    projected2D.renderProjectedPlans();return;
-  }
-  draw.setTransform(dpr,0,0,dpr,0,0);
-  draw.fillStyle='#141e20';draw.fillRect(0,0,cssW,cssH);
-  // Map-space drawing has a single reversible projection.
-  draw.save();
-  draw.translate(ox,oy);draw.scale(viewScale,viewScale);
-  draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
-  world2D.terrain();world2D.furniture();world2D.renderGroundMarks();world2D.renderLightingMood2D();world2D.renderWeaponLights2D();
-  world2D.architecture();fog2D.renderFog();fog2D.renderPersonalGround();actor2D.missionMarkers();
-  route2D.paths();replay2D.renderReplayMovementHistory(false);
-  for(const a of state.civilians)actor2D.civilianSprite(a);
-  for(const a of state.operators)actor2D.sprite(a);
-  if(!replaying||replayDisplay.options.replayAnalysis)
-    for(const a of team(state))actor2D.drawExecutionProblem(a,false);
-  actor2D.contacts();replay2D.renderReplayGhosts(false);replay2D.renderReplayBallistics(false);
-  replay2D.renderReplayFollowMarker(false);actor2D.endMessage();
-  draw.strokeStyle='#d4dac64f';draw.lineWidth=2;
-  draw.strokeRect(0,0,W,H);
-  draw.restore();
+function render():void{
+ renderBreachTacticalWorldFrame({
+  stage,viewMode,draw,dpr,cssW,cssH,ox,oy,viewScale,state,replaying,
+  replayAnalysis:replayDisplay.options.replayAnalysis,
+  world2D,fog2D,actor2D,route2D,replay2D,projected2D
+ });
 }
 /** Rejected authoring orders keep the existing plan intact and mark only
  * the attempted world point; no hidden geometry or actors are inspected. */

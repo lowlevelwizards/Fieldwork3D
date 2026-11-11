@@ -126,3 +126,12 @@ test('A6 one-time dynamic DOM mounts are stateless UI-view work',()=>{
  for(const helper of ['mountBreachDebugPanels','mountBreachManagementElements','mountBreachDeploymentButton'])
   assert.match(elements,new RegExp('export function '+helper+'\\('));
 });
+
+test('A6 the existing world renderer owns ordered 2D layers and Bodycam isolation',()=>{
+ const world=readFileSync(new URL('../src/breach-2d-world-renderer.ts',import.meta.url),'utf8');
+ assert.match(source,/renderBreachTacticalWorldFrame\(/);
+ assert.doesNotMatch(source,/world2D\.terrain\(\)/);
+ assert.match(world,/function renderBreachTacticalWorldFrame\(/);
+ assert.match(world,/if\(stage\.isReplayBodycamActive\(\)\)/);
+ assert.match(world,/world2D\.architecture\(\);fog2D\.renderFog\(\)/);
+});
