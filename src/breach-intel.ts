@@ -40,8 +40,11 @@ export function exteriorWall(site:Site|undefined,wall:Segment){
  return insideBuilding(site,{x:m.x+perp.x,y:m.y+perp.y})!==
    insideBuilding(site,{x:m.x-perp.x,y:m.y-perp.y});
 }
+/** Initialization only needs a snapshot of walls and cover; Session world
+ * registration and live-intel binding occur immediately after construction.
+ */
 export function initialIntel(mode:IntelMode,site:Site|undefined,
-  doors:Door[],world?:SessionWorldGeometry):IntelState{
+  doors:Door[],world?:Pick<SessionWorldGeometry,'walls'|'cover'>):IntelState{
  const bound=world;
  const walls=bound?.walls??WALLS,cover=bound?.cover??COVER;
  const intel:IntelState={mode,walls:new Set(),doors:new Set(),
