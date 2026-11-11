@@ -29,7 +29,9 @@ test('UI4-7: optional intel uses explicit tabs and authoritative mission contrac
  assert.match(screens,/ui\.briefingBody\.textContent=brief\.objective/);
  assert.match(screens,/ui\.briefingCondition\.textContent=brief\.condition/);
  assert.match(screens,/ui\.briefingExtraction\.textContent=brief\.extraction/);
- assert.match(main,/ui\.briefingEntryControls\.append\(deploymentButton\)/);
+ const elements=readFileSync(new URL('../src/ui/breach-ui-elements.ts',import.meta.url),'utf8');
+  assert.match(main,/mountBreachDeploymentButton\(ui\)/);
+  assert.match(elements,/ui\.briefingEntryControls\.append\(deploymentButton\)/);
  assert.match(screens,/if\(state===briefingRenderedSession&&dossier===briefingRenderedDossier/);
  assert.match(screens,/tacticalSheetNavigation\.focusFirst\(\)/);
 });
