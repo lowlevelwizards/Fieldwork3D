@@ -9,10 +9,15 @@ permissions:
 concurrency:
   group: breach-architecture-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
+
+# A9: maintain one authoritative architecture/replay regression gate.
+# Older named roadmap-stage suites remain runnable from scripts/verification,
+# individual test files, and npm test. No branch-specific dead gates.
 jobs:
   critical:
     if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/') }}
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,117 +25,41 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Curated authoritative scenario and architecture regressions
+      - name: Authoritative simulation, fog, motor, replay and architecture suite
         run: node scripts/verification/breach-critical-suite.mjs
-      - name: Stage 2 full generated-site physical-integrity matrix (four orientations, eleven archetypes, five scales)
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage2-') }}
-        run: node --experimental-strip-types scripts/audit-roadmap2-physical-integrity.mjs 44 all
-      - name: Stage 3 full visibility, fog and historical disclosure regression sweep
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage3-') }}
-        run: node scripts/verification/breach-stage3-visibility-suite.mjs
-      - name: Stage 4 replay, pointer and feedback composition regression sweep
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage4-') }}
-        run: node scripts/verification/breach-stage4-composition-suite.mjs
-      - name: Stage 5 deeper deterministic, replay retention and hot-path regression sweep
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage5-') }}
-        run: |
-          node --experimental-strip-types --test tests/breach-roadmap2-stage1-soak.test.mjs tests/breach-ground-view-performance.test.mjs tests/breach-fog-ray-broadphase-performance.test.mjs tests/breach-round-lifetime-events.test.mjs tests/breach-p7-replay-sharing.test.mjs tests/doorway-right-of-way-session.test.mjs
-          node scripts/verification/breach-stage4-composition-suite.mjs
-      - name: Stage 5 performance baseline and retention contract
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage5-') }}
-        run: node scripts/verification/breach-stage5-performance-gate.mjs
-      - name: Upload Stage 5 host performance evidence (NOT device FPS)
-        if: ${{ always() && startsWith(github.head_ref, 'refactor/roadmap2-stage5-') }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: breach-roadmap2-stage5-host
-          path: artifacts/performance/roadmap2-stage5-host.json
-          if-no-files-found: warn
-      - name: Stage 6 generated and legacy site construction, registration and resource lifetime
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage6-') }}
-        run: |
-          node --experimental-strip-types --test tests/breach-roadmap2-stage6-site-builder.test.mjs tests/breach-roadmap2-site-builder.test.mjs tests/breach-site-material-lifetime.test.mjs tests/breach-scene-memory-lifecycle-p6.test.mjs tests/map-04-fixture-renderer.test.mjs tests/breach-roadmap3-site-exterior.test.mjs tests/visibility-10-architectural-fog.test.mjs tests/fog-exterior-facade-regression.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/breach-roadmap2-stage2-physical-integrity.test.mjs tests/breach-roadmap2-stage3-integration.test.mjs tests/door-hinge-neighborhood-cache.test.mjs
-      - name: Stage 7 full motor, doorway, collision, squeeze, traversal and recovery sweep
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage7-') }}
-        run: node scripts/verification/breach-stage7-motor-suite.mjs
-      - name: Stage 8 complete tactical orders, medical, civilian, door and replay sweep
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage8-') }}
-        run: node scripts/verification/breach-stage8-order-suite.mjs
-      - name: Stage 10 authoritative firing, projectile, environment and casualty regression sweep
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage10-') }}
-        run: |
-          node --experimental-strip-types --test tests/breach-roadmap2-stage10-combat.test.mjs tests/gameplay-g3-fire-lanes.test.mjs tests/breach-171.test.mjs tests/breach-179.test.mjs tests/breach-muzzle-lane-hotfix.test.mjs tests/breach-two-sided-fire-recovery.test.mjs tests/breach-roadmap2-impact-evidence.test.mjs tests/breach-roadmap3-shot-ignition.test.mjs tests/breach-roadmap4-ballistic-resolution.test.mjs tests/civilian-b5b-ballistics.test.mjs tests/civilian-c3c-harm-attribution.test.mjs tests/civilian-d2-fire-safety.test.mjs tests/phase-a-shot-pressure.test.mjs tests/equipment-09-armor.test.mjs tests/lw-glass-impact.test.mjs tests/lw-penetration.test.mjs tests/replay-r2-ballistics.test.mjs
-      - name: Stage 11 operator frame, rig, IK, replay and handling ownership parity
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage11-') }}
-        run: |
-          node --experimental-strip-types --test tests/breach-roadmap2-stage11-animation.test.mjs tests/breach-unified-pose-stability.test.mjs tests/breach-pose-transition-director.test.mjs tests/breach-pose-v3-coordinated.test.mjs tests/breach-ik-scratch-performance.test.mjs tests/breach-pose-v3-reload-replay.test.mjs tests/breach-coupled-rig-smoke.test.mjs tests/breach-roadmap2-pose-locomotion.test.mjs tests/breach-pose-v3-action-matrix.test.mjs tests/operator-lab-unified-poses.test.mjs tests/breach-171.test.mjs tests/breach-179.test.mjs
-      - name: Stage 12 session-world isolation, replay and physical parity
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/roadmap2-stage12-') }}
-        run: |
-          node --experimental-strip-types --test tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-roadmap3-world-context.test.mjs tests/breach-roadmap4-world-geometry.test.mjs tests/breach-roadmap2-geometry-scope.test.mjs tests/door-hinge-neighborhood-cache.test.mjs tests/breach-roadmap2-stage1-contracts.test.mjs tests/breach-roadmap2-stage2-physical-integrity.test.mjs tests/breach-roadmap2-stage3-knowledge.test.mjs tests/breach-roadmap4-ballistic-resolution.test.mjs tests/breach-171.test.mjs tests/breach-179.test.mjs
-      - name: Closeout Stage 1 — plan transactions, synchronized commands and fog-of-war parity
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage1-') }}
-        run: |
-          node --experimental-strip-types --test tests/breach-closeout-stage1-plan-authoring.test.mjs tests/breach-roadmap4-plan-authoring.test.mjs tests/breach-here-watch-continuity.test.mjs tests/breach-stroke-safe-cutoff.test.mjs tests/breach-063.test.mjs tests/breach-064-073.test.mjs tests/tactical-integration-04-squad-planning.test.mjs tests/breach-roadmap2-stage3-knowledge.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-fog-visibility.test.mjs tests/fog-interior-occlusion-regression.test.mjs tests/breach-roadmap3-context-commands.test.mjs
-      - name: Closeout Stage 2 — ordered 60 Hz phases, event and replay parity
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage2-') }}
-        run: |
-          node --experimental-strip-types --test tests/breach-closeout-stage2-simulation-phases.test.mjs tests/breach-roadmap4-simulation-phases.test.mjs tests/breach-roadmap2-stage1-contracts.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-roadmap2-stage8-orders.test.mjs tests/breach-roadmap2-stage9-enemy-ai.test.mjs tests/breach-roadmap2-stage10-combat.test.mjs tests/breach-roadmap2-stage3-knowledge.test.mjs tests/replay-r2-recording.test.mjs tests/replay-r2-ballistics.test.mjs tests/replay-r3-archive.test.mjs tests/sim-frame-origin-proposal-p9.test.mjs
-      - name: Closeout Stage 3 — same-seed view parity, bounded scene resources and disclosure
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage3-') }}
-        run: |
-          node --experimental-strip-types --test tests/breach-closeout-stage3-presentation.test.mjs tests/breach-roadmap3-3d-disclosure.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-roadmap2-stage3-knowledge.test.mjs tests/breach-roadmap2-stage3-integration.test.mjs tests/breach-fog-visibility.test.mjs tests/breach-fog-ray-broadphase-performance.test.mjs tests/breach-p7-fog-layer-performance.test.mjs tests/breach-roadmap2-visibility-contract.test.mjs tests/fog-exterior-unseen-apertures-regression.test.mjs tests/fog-interior-occlusion-regression.test.mjs tests/breach-scene-memory-lifecycle-p6.test.mjs tests/breach-site-material-lifetime.test.mjs tests/breach-scene-frame-p7.test.mjs tests/replay-r43-personal-visibility.test.mjs tests/replay-r43b-video-disclosure.test.mjs tests/visibility-10-architectural-fog.test.mjs
-      - name: Closeout Stage 4 — unified pose output, live/replay/Lab parity
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage4-') }}
-        run: |
-          node --experimental-strip-types --test tests/breach-closeout-stage4-pose-output.test.mjs tests/breach-roadmap2-stage11-animation.test.mjs tests/breach-roadmap4-pose-finalizer.test.mjs tests/breach-unified-pose-stability.test.mjs tests/breach-pose-v3-action-matrix.test.mjs tests/breach-pose-v3-reload-replay.test.mjs tests/breach-pose-v3-reload-choreography.test.mjs tests/breach-pose-v3-reload-weapon.test.mjs tests/breach-pose-v3-coordinated.test.mjs tests/breach-pose-v3-contact-policy.test.mjs tests/breach-pose-transition-director.test.mjs tests/operator-lab-unified-poses.test.mjs tests/operator-lab-pose-contact.test.mjs tests/breach-roadmap2-pose-locomotion.test.mjs tests/breach-ik-scratch-performance.test.mjs tests/breach-roadmap2-stage1-contracts.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs
-      - name: Closeout Stage 5 — mission, restart, replay and editor world isolation
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage5-') }}
-        run: |
-          node --experimental-strip-types --test tests/breach-closeout-stage5-world-isolation.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-roadmap3-world-context.test.mjs tests/breach-roadmap4-world-geometry.test.mjs tests/breach-roadmap2-geometry-scope.test.mjs tests/breach-roadmap2-stage1-contracts.test.mjs tests/mission-restart-snapshot.test.mjs tests/replay-lifecycle-controller-20261109.test.mjs tests/replay-playback-controller-20261109.test.mjs tests/breach-roadmap2-stage4-pointer-feedback.test.mjs tests/breach-closeout-stage3-presentation.test.mjs tests/replay-r3-archive.test.mjs tests/breach-roadmap2-stage3-knowledge.test.mjs tests/breach-roadmap2-stage6-site-builder.test.mjs
-      - name: Closeout Stage 6 — all five stages and real lifecycle integration
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/closeout-stage6-') }}
-        run: |
-          node --experimental-strip-types --test tests/breach-closeout-stage1-plan-authoring.test.mjs tests/breach-closeout-stage2-simulation-phases.test.mjs tests/breach-closeout-stage3-presentation.test.mjs tests/breach-closeout-stage4-pose-output.test.mjs tests/breach-closeout-stage5-world-isolation.test.mjs tests/breach-closeout-stage6-integration.test.mjs tests/replay-r44-real-session.test.mjs tests/breach-roadmap2-stage12-world-context.test.mjs tests/breach-scene-memory-lifecycle-p6.test.mjs tests/breach-site-material-lifetime.test.mjs tests/mission-restart-snapshot.test.mjs tests/breach-mission-controller-step8.test.mjs tests/replay-lifecycle-controller-20261109.test.mjs tests/quick-play-scenario-generator.test.mjs tests/breach-roadmap3-3d-disclosure.test.mjs tests/visibility-10-architectural-fog.test.mjs tests/breach-roadmap2-stage1-contracts.test.mjs
-      - name: Package A0 inventory fixture and source-root verification
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-') }}
+      - name: Inventory source reachability and protect compatibility candidates
         run: |
           node --test tests/consolidation-inventory.test.mjs
           node scripts/verification/consolidation-inventory.mjs --check --json artifacts/consolidation/inventory.json --markdown artifacts/consolidation/inventory.md
-      - name: Stage A1 legacy removal — modern Session, worldgen and fog safety
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-a1-') }}
+      - name: Explicit architecture and CI ownership boundaries
         run: |
-          node --experimental-strip-types --test tests/breach-052.test.mjs tests/consolidation-stage1-removal.test.mjs tests/breach-roadmap2-site-builder.test.mjs tests/fog-interior-occlusion-regression.test.mjs tests/breach-2d-renderer-extraction.test.mjs tests/worldgen-active-bounds.test.mjs
-      - name: Stage A2 boot, migration, campaign and Quick Play regression contracts
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-a2-') }}
-        run: |
-          node --experimental-strip-types --test tests/consolidation-stage2-config-persistence.test.mjs tests/campaign-01.test.mjs tests/campaign-02.test.mjs tests/quick-play-generator-navigation.test.mjs tests/quick-play-startup-progress.test.mjs tests/miniature-focus-preferences.test.mjs
-      - name: Stage A3 application-flow, mission and replay return contracts
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-a3-') }}
-        run: |
-          node --experimental-strip-types --test tests/consolidation-stage3-app-flow.test.mjs tests/quick-play-generator-navigation.test.mjs tests/quick-play-startup-progress.test.mjs tests/operations-landing-navigation.test.mjs tests/replay-library-controller-step4.test.mjs tests/breach-mission-screens-step11.test.mjs tests/breach-runtime-loop-step12.test.mjs tests/ux2-shortcuts.test.mjs tests/ux2-current-site-identity.test.mjs tests/campaign-02.test.mjs
-      - name: Stage A4 exclusive targeting, WATCH, pointer, Back and HUD contracts
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-a4-') }}
-        run: |
-          node --experimental-strip-types --test tests/consolidation-stage4-targeting.test.mjs tests/tactical-hud-palette-controller-step7.test.mjs tests/ux2-21-look-watch.test.mjs tests/breach-here-watch-continuity.test.mjs tests/breach-canvas-gestures.test.mjs tests/breach-roadmap2-stage4-pointer-feedback.test.mjs tests/breach-closeout-stage1-plan-authoring.test.mjs tests/breach-aim-target-r1.test.mjs tests/equipment-22-08-casualty-extraction.test.mjs
-      - name: Stage A5 replay display options, disclosure and lifecycle contracts
-        if: ${{ success() && startsWith(github.head_ref, 'refactor/consolidation-a5-') }}
-        run: |
-          node --experimental-strip-types --test tests/consolidation-stage5-replay-presentation.test.mjs tests/breach-roadmap2-stage4-replay-hud.test.mjs tests/breach-roadmap2-stage4-replay-presentation.test.mjs tests/replay-lifecycle-controller-20261109.test.mjs tests/replay-knowledge-controller-20261109.test.mjs tests/replay-library-controller-step4.test.mjs tests/breach-after-action-v2-scoped-replay.test.mjs tests/replay-r44-real-session.test.mjs tests/breach-closeout-stage5-world-isolation.test.mjs tests/after-action-v3-terminology.test.mjs tests/breach-after-action-v2-evidence.test.mjs tests/quick-play-generator-navigation.test.mjs tests/breach-roadmap2-debrief-extraction.test.mjs
-      - name: Preserve consolidation inventory and review candidates
-        if: ${{ always() && startsWith(github.head_ref, 'refactor/consolidation-') }}
+          node scripts/verification/breach-architecture-boundaries.mjs
+          node scripts/verification/ci-workflow-contract.mjs
+      - name: Typecheck, production build, and Pages build stamp
+        run: npm run build
+      - name: Retain architecture census evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: consolidation-a0-inventory
+          name: consolidation-architecture-inventory
           path: artifacts/consolidation/
           if-no-files-found: warn
           retention-days: 14
-      - name: Architecture dependency boundary check
-        run: node scripts/verification/breach-architecture-boundaries.mjs
-      - name: Production TypeScript and asset build
-        if: ${{ always() }}
-        run: npm run build
-      - name: Verify previous Pages build is successfully served
+
+  # Independently report release readiness. This must succeed before merging,
+  # but a deployment already in progress must not invalidate code regression
+  # results or enqueue another production run.
+  release-readiness:
+    needs: critical
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify prior production Pages run completed and exact build served
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/audit-pages-release-checkpoint.mjs
