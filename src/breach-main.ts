@@ -1377,43 +1377,43 @@ function rejectAt(pt:Pt,reason:string):void{
 }
 function useSelectedGround(pt:Pt){
   if(state.phase!=='planning'||replaying)return;
-  if(pushMode){
+  if(targeting.pushMode){
     const accepted=planNearbyInteraction(state,selected,'push',
       selectedNode??undefined,pt);
     if(!accepted)rejectAt(pt,'NO PUSHABLE OBJECT IN REACH');
     else{
-      pushMode=false;tacticalFeedback.emit('command',pt,'PUSH');
+      targeting.reset();tacticalFeedback.emit('command',pt,'PUSH');
       audioController.uiClickTone('command');
     }
     updateHud();return;
   }
-  if(evacMode){
-   const mode=evacMode;evacMode=null;
-   if(!planCasualtyTransport(state,selected,mode.patientId,pt,mode.mode))
-    showUiHelp('CASUALTY ROUTE BLOCKED — CHOOSE A REACHABLE DESTINATION');
-   updateHud();return;
+  if(targeting.evacMode){
+    const mode=targeting.evacMode;targeting.reset();
+    if(!planCasualtyTransport(state,selected,mode.patientId,pt,mode.mode))
+      showUiHelp('CASUALTY ROUTE BLOCKED — CHOOSE A REACHABLE DESTINATION');
+    updateHud();return;
   }
-  if(firePlacement){
+  if(targeting.firePlacement){
     const nodeId=selectedNode??undefined;
     const accepted=setFirePolicy(state,selected,'suppress',nodeId,pt);
     if(!accepted)rejectAt(pt,'INVALID SUPPRESSION POINT');
     else{
       tacticalFeedback.emit('command',pt,'SUPPRESS');
-      audioController.uiClickTone('command');firePlacement=null;
+      audioController.uiClickTone('command');targeting.reset();
     }
     updateHud();return;
   }
-  if(flashMode){
-    const id=state.nextId;
-    const accepted=flashDoorId?
-      planDoorFlash(state,selected,flashDoorId,pt):
+  if(targeting.flashMode){
+    const id=state.nextId,doorId=targeting.flashDoorId;
+    const accepted=doorId?
+      planDoorFlash(state,selected,doorId,pt):
       planFlash(state,selected,pt);
     if(!accepted)rejectAt(pt,'FLASH TARGET BLOCKED / OUT OF RANGE');
     else{
       tacticalFeedback.emit('command',pt,'FLASH');
       audioController.uiClickTone('command');
-      selectedNode=flashDoorId?state.nextId-1:id;
-      flashMode=false;flashDoorId=null;
+      selectedNode=doorId?state.nextId-1:id;
+      targeting.reset();
     }
     updateHud();return;
   }
@@ -1446,7 +1446,7 @@ function useSelectedGround(pt:Pt){
           'WATCH stays on that point while moving. Drag its ring to adjust.':
           'LOOK checks that direction briefly, then returns to the route.',4100);
     }
-    if(committed)hudController.facing.looking=false;
+    if(committed)targeting.reset();
     updateHud();return;
   }
   const beforeRoute=uid(selected)?finalPoint(uid(selected)!):pt;
@@ -1546,7 +1546,7 @@ const replayModeController=createReplayModeController({
  getAnalysis:()=>replayAnalysisUi,
  ui:{replayPanel:ui.replayPanel,replayTopHud:ui.replayTopHud,
    replayRail:ui.replayRail,replaySeek:ui.replaySeek},
- resetTargeting:()=>{hudController.facing.looking=false;flashMode=false;},
+ resetTargeting:()=>{targeting.reset();},
  resetReplayOptions:()=>{
    replayAnalysis=false;replayPlanScope='none';replayPlanVersion='active';
    replayNameTags=true;replayContactMarkers=true;replayObjectiveMarkers=true;
@@ -2205,7 +2205,7 @@ function releaseMissionPresentation():void{
   campaignFlow.resetOutcome();
   operationsBoard.hidden=true;
   hideWeaponChooser();
-  flashMode=false;document.body.classList.remove('replaying');
+  targeting.reset();document.body.classList.remove('replaying');
   ui.replayPanel.hidden=true;
   ui.replayTopHud.hidden=true;ui.replayRail.hidden=true;
   replayAnalysisUi.closeReplayChoices();
@@ -2217,9 +2217,9 @@ function releaseMissionPresentation():void{
 function mountMissionSession(transition:MissionTransition):void{
   state=transition.session;
   appFlow.missionMounted();
-  flashDoorId=null;
+  targeting.reset();
   if(!transition.deferScene)stage?.applySite(state.site??null);
-  selected='rook';hudController.facing.looking=false;
+  selected='rook';
   selectedNode=null;selectedActiveWatch=false;
   doorFocusId=null;draggingNode=null;draggingWatchTarget=false;
   tacticalGestures.clear();cursor=null;trace=null;zoom=1;panX=panY=0;
@@ -2319,7 +2319,7 @@ ui.back.addEventListener('click',()=>{
   audioController.uiClickTone('select');
   // BACK must always escape an unfinished targeting gesture first.
   // It cannot accidentally remove an unrelated prior waypoint.
-  if(hudController.facing.looking||flashMode||firePlacement||evacMode){cancelTargeting();return;}
+  if(targeting.isArmed){cancelTargeting();return;}
   if(selectedActiveWatch){
     selectedActiveWatch=false;updateHud();return;
   }
@@ -2404,13 +2404,11 @@ function casualtyActionButton(label:string,action:(target:TeamActor)=>void){
  return button;
 }
 dragButton=casualtyActionButton('DRAG',target=>{
- evacMode={patientId:target.id,mode:'drag'};
- hudController.facing.looking=false;flashMode=false;firePlacement=null;
+ targeting.armEvac(target.id,'drag');
  showUiHelp('TAP DESTINATION FOR CASUALTY DRAG',5500);
 });
 carryButton=casualtyActionButton('CARRY',target=>{
- evacMode={patientId:target.id,mode:'carry'};
- hudController.facing.looking=false;flashMode=false;firePlacement=null;
+ targeting.armEvac(target.id,'carry');
  showUiHelp('TAP DESTINATION FOR CASUALTY CARRY',5500);
 });
 retrieveButton=casualtyActionButton('RECOVER',target=>{
@@ -2430,9 +2428,8 @@ ui.reload.addEventListener('click',()=>{
 });
 ui.cancelTarget.addEventListener('click',cancelTargeting);
 ui.flash.addEventListener('click',()=>{
-  if(state.phase!=='planning')return;
-  flashMode=!flashMode;flashDoorId=null;
-  hudController.facing.looking=false;
+  if(state.phase!=='planning'||replaying)return;
+  targeting.toggleFlash();
   updateHud();
 });
 ui.sync.addEventListener('click',()=>{planSync(state);audioController.playOrderCue('orders.sync');updateHud();});
@@ -2466,9 +2463,9 @@ ui.play.addEventListener('click',()=>{
      else reset();
    }
   }else{
-    hudController.facing.looking=false;pushMode=false;
-    missionController.captureBeforeExecution(state,recorder);
-    toggling(state);updateHud();
+    targeting.reset();      targeting.reset();
+      missionController.captureBeforeExecution(state,recorder);
+      toggling(state);updateHud();
   }
 });
 ui.restart.addEventListener('click',async()=>{
