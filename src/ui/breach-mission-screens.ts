@@ -74,9 +74,13 @@ export type MissionScreensHooks={
  getFocusMode:()=>MiniatureFocusMode|undefined;
  setFocusMode:(mode:MiniatureFocusMode)=>void;
  renderOperationsBoard:()=>void;updateContext:()=>void;
+ onPresentationChange?:(visible:{briefing:boolean;settings:boolean})=>void;
 };
 export function createBreachMissionScreens(config:MissionScreensHooks){
  const ui=config.ui;
+ const notifyPresentation=()=>config.onPresentationChange?.({
+  briefing:!ui.briefingPanel.hidden,settings:!ui.siteSettings.hidden
+ });
 const siteChoicePopup=document.createElement('div');
 siteChoicePopup.className='fw-site-choice';
 let siteChoiceOwner:HTMLButtonElement|null=null;
@@ -126,6 +130,7 @@ function collapseTacticalSheets(except:'squad'|'weapon'|'settings'|'briefing'|nu
   ui.briefingToggle.setAttribute('aria-expanded','false');
  }
  tacticalSheetNavigation.sync();
+ notifyPresentation();
 }
 config.operationsToggle.addEventListener('click',()=>{
  if(config.getSession().phase!=='planning'||config.isReplaying())return;
@@ -248,6 +253,7 @@ function showMissionBriefing(){
   ui.briefingPanel.hidden=false;
   ui.briefingToggle.setAttribute('aria-expanded','true');
   tacticalSheetNavigation.sync();tacticalSheetNavigation.focusFirst();
+  notifyPresentation();
   config.updateContext();
 }
  function bindMenus():void{
@@ -303,6 +309,7 @@ ui.briefingClose.addEventListener('click',()=>{
   ui.briefingPanel.hidden=true;
   ui.briefingToggle.setAttribute('aria-expanded','false');
   tacticalSheetNavigation.sync();
+  notifyPresentation();
   config.updateContext();
 });
 // Shelved graphics experiment: the controls remain in source for future
@@ -343,6 +350,7 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   tacticalSheetNavigation.sync();
   if(opening)tacticalSheetNavigation.focusFirst();
   else ui.siteSettingsToggle.focus();
+  notifyPresentation();
   config.updateContext();
 });
 
@@ -356,6 +364,7 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
     config.getMode()!=='quick'||phase!=='planning'||config.isReplaying();
   config.operationsToggle.disabled=config.operationsToggle.hidden;
   if(config.operationsToggle.hidden)config.operationsBoard.hidden=true;
+  notifyPresentation();
  }
  function syncNextSiteControls():void{
   const campaignMission=config.getMode()==='mission';
