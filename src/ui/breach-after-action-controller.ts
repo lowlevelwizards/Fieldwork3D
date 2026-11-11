@@ -208,6 +208,13 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    if(oldLedger)s.timelineLedgerScroll=oldLedger.scrollTop;
    const hidden=root.querySelector<HTMLElement>('#afterActionDetails')?.hidden;
    if(hidden)return;
+   const focused=document.activeElement instanceof HTMLElement&&
+     host.contains(document.activeElement)?document.activeElement:null;
+   const priorEvent=focused?.dataset.timelineEventKey??null;
+   const priorCluster=focused?.dataset.timelineCluster??null;
+   const priorFilter=focused?.dataset.timelineFilter??null;
+   const priorStep=focused?.dataset.timelineStep??null;
+   const priorClass=focused?.className??'';
    const actorName=(id:string):string=>
      s.recorder.manifest?.actors.find(actor=>actor.id===id)?.name??
        'UNKNOWN RECORDED ACTOR';
@@ -299,6 +306,24 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    if(group)group.scrollTop=s.timelineGroupScroll;
    const ledger=host.querySelector<HTMLElement>('.fw-v5-timeline-ledger-list');
    if(ledger)ledger.scrollTop=s.timelineLedgerScroll;
+   if(focused){
+     const buttons=[...host.querySelectorAll<HTMLButtonElement>('button')];
+     const restored=buttons.find(node=>priorEvent!==null&&
+       node.dataset.timelineEventKey===priorEvent&&
+       (priorClass.includes('ledger-item')?
+         node.className.includes('ledger-item'):true))??
+       buttons.find(node=>priorCluster!==null&&
+         node.dataset.timelineCluster===priorCluster)??
+       buttons.find(node=>priorFilter!==null&&
+         node.dataset.timelineFilter===priorFilter)??
+       buttons.find(node=>priorStep!==null&&
+         node.dataset.timelineStep===priorStep)??
+       buttons.find(node=>priorClass.includes('ledger-toggle')&&
+         node.className.includes('ledger-toggle'))??
+       buttons.find(node=>priorClass.includes('timeline-more')&&
+         node.className.includes('timeline-more'))??null;
+     if(restored&&!restored.disabled)restored.focus({preventScroll:true});
+   }
  };
  timelineRenderers.set(root,drawTimeline);
  function draw():void{
