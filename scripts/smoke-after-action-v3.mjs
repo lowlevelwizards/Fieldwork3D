@@ -119,9 +119,20 @@ try{
    const root=page.locator('#v3-qa');
    check(await root.locator('[data-after-tab]').count()===3,
      'Wrong number of tabs '+name);
-   await root.locator('#afterActionContinue').click();
-   check(await root.locator('.fw-v3-roster-card').count()===4,
-     'Squad roster missing '+name);
+   check(await root.locator('#afterActionSummary').isVisible(),
+     'Mission outcome strip not immediately visible '+name);
+   check(await root.locator('#afterActionIntro').count()===0,
+     'Blocking result overlay still present '+name);
+   check(await root.locator('.fw-v4-rank-row').count()===4,
+     'All four operators not ranked together '+name);
+   check(await root.locator('.fw-v4-rank-row[aria-pressed=true]').count()===0,
+     'Initial Squad silently selects an operator '+name);
+   check(await root.locator('.fw-v3-miniature').count()===0,
+     'Generic 2D operator artwork remained '+name);
+   check((await root.locator('.fw-v4-rank-row').first().textContent()).includes('ROOK'),
+     'Contribution ranking not highest-first '+name);
+   check((await root.locator('.fw-v4-rank-row').nth(1).textContent()).includes('TIED #2'),
+     'Equal-score ranks appear unequal '+name);
    const layout=()=>page.evaluate(()=>{
      const root=document.querySelector('#v3-qa'),body=root.querySelector('#afterActionBody');
      return {scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth,
@@ -132,13 +143,30 @@ try{
     const metrics=await layout();
     check(metrics.scrollWidth<=metrics.viewport+2,
       'Horizontal overflow '+screen+name+' '+JSON.stringify(metrics));
-    check(metrics.contentBottom<=metrics.bodyBottom+3,
+    if(screen==='squad'){
+      const rankBottom=await root.locator('.fw-v4-rank-row').last()
+        .evaluate(node=>node.getBoundingClientRect().bottom);
+      check(rankBottom<=metrics.bodyBottom+3,
+        'Four ranked operators not visible without scrolling '+
+         name+' '+JSON.stringify({rankBottom,...metrics}));
+    }else check(metrics.contentBottom<=metrics.bodyBottom+3,
       'Content clips '+screen+name+' '+JSON.stringify(metrics));
    };
    await fits('squad');
-   await root.locator('.fw-v3-roster-card').filter({hasText:'MOSS'}).click();
+   await root.locator('.fw-v4-rank-row').filter({hasText:'MOSS'}).click();
    check((await root.locator('.fw-v3-squad-name h2').textContent())==='MOSS',
      'Squad selection failed '+name);
+   check(await root.locator('.fw-v4-rank-row[aria-pressed=true]').count()===1,
+     'Selected operator not clearly identified '+name);
+   check((await root.locator('.fw-v4-selected-overview').textContent())
+     .includes('OBJECTIVE'),
+     'Weighted category breakdown missing '+name);
+   await root.locator('.fw-v4-overview-back').click();
+   check(await root.locator('.fw-v4-rank-row[aria-pressed=true]').count()===0,
+     'All Operators did not clear selection '+name);
+   check(await root.locator('.fw-v4-team-overview').count()===1,
+     'Squad overview not restored '+name);
+   await root.locator('.fw-v4-rank-row').filter({hasText:'MOSS'}).click();
    await root.locator('.fw-v3-details-link').click();
    check(await root.locator('#afterActionOperatorRecord').count()===1,
      'Operator record not opened in Squad '+name);
