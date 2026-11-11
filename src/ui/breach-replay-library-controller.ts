@@ -265,7 +265,7 @@ export function createBreachReplayLibraryController(config:ReplayLibraryHooks){
       config.showUiHelp('JSON EXPORT UNAVAILABLE',3500);
     }
   }
-  ui.openReplayLibrary.addEventListener('click',show);
+  ui.openReplayLibrary.addEventListener('click',()=>show());
   ui.closeReplayLibrary.addEventListener('click',()=>hide());
   ui.replayLibraryBackdrop.addEventListener('click',()=>hide());
   ui.saveReplayDebrief.addEventListener('click',()=>{void saveCurrentReplay();});
