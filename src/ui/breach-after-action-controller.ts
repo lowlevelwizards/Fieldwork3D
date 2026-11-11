@@ -106,7 +106,9 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      }
    });
    else if(s.tab==='highlights')screen=renderAfterActionHighlights(
-     replayHighlightMoments(s.recorder),s.recorder,(moment)=>{
+     replayHighlightMoments(s.recorder),s.recorder,s.selectedHighlight,
+     id=>{s.selectedHighlight=id;draw();},(moment)=>{
+       s.selectedHighlight=moment.id;
        root.dispatchEvent(new CustomEvent('fw-after-action-replay',{
          bubbles:true,detail:{surface:'highlights',time:moment.at,
            end:moment.end,highlightId:moment.id}

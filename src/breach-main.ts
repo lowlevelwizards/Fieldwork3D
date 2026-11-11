@@ -2780,8 +2780,11 @@ const runtimeLoop=createBreachRuntimeLoop({
  invalidateFog:()=>fog2D.invalidate(),advanceReplayCamera,
  updateHud,updateReplayHud,updateContext,advanceContextPalette,
  renderFrame:render,drawTacticalFrameFeedback,
- captureHighlightFrame:(scene,overlay,time,perspective)=>
-   highlightCapture.frame(recorder,scene,overlay,time,perspective),
+ captureHighlightFrame:(scene,overlay,time,perspective)=>{
+   // Never save a screenshot of an explicitly omniscient replay view.
+   if(!replayKnowledge.omniscient)
+     highlightCapture.frame(recorder,scene,overlay,time,perspective);
+ },
  worldToScreen,
  canvas,playback:replayPlayback,camera:replayCamera,
  knowledge:replayKnowledge,bodycam:replayBodycam,video:replayQuickVideo,
