@@ -4,6 +4,12 @@
 import {buildAfterActionReport,type AfterActionReport} from '../breach-after-action-report.ts';
 import {renderSquadView,renderSquadDetails} from './breach-after-action-squad.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
+import {makeAfterActionLaunchRequest} from '../breach-after-action-replay-navigation.ts';
+import type {TacticalScene3D,ViewMode} from '../breach-3d.ts';
+import type {ReplayCameraController} from '../breach-replay-camera-controller.ts';
+import type {ReplayBodycamController} from '../breach-replay-bodycam-controller.ts';
+import type {ReplayKnowledgeController} from '../breach-replay-knowledge-controller.ts';
+import type {ReplayPlaybackController} from '../breach-replay-playback-controller.ts';
 import {renderCombatReport} from './breach-after-action-combat.ts';
 import {renderAfterActionHighlights} from './breach-after-action-highlights.ts';
 import {replayHighlightMoments} from '../breach-highlight-frames.ts';
@@ -222,4 +228,85 @@ export function refreshAfterActionWorkspace(root:HTMLElement):void{
  const active=root.querySelector<HTMLElement>('#afterActionBody');
  if(active)s.scroll[s.tab]=active.scrollTop;
  renderers.get(root)?.();
+}
+
+/** Bind replay entry and clip control to the existing after-action UI owner.
+ * This is UI navigation only; recorder, camera, and playback stay authoritative.
+ * Listeners are installed once per persistent debrief root across mission resets. */
+export type AfterActionReplayNavigationPorts={
+ ui:{watchReplay:HTMLButtonElement;debrief:HTMLElement;
+   afterActionClipHud:HTMLElement;afterActionClipLabel:HTMLElement;
+   afterActionClipToggle:HTMLButtonElement};
+ getRecorder:()=>MissionRecorder;isReplaying:()=>boolean;
+ markDebriefEntry:()=>void;enterReplay:()=>void;queueHighlights:()=>void;
+ getStage:()=>TacticalScene3D|null;getViewMode:()=>ViewMode;
+ cameraMode:(mode:ViewMode)=>void;
+ camera:ReplayCameraController;director:ReplayCameraController['director'];
+ bodycam:ReplayBodycamController;knowledge:ReplayKnowledgeController;
+ startBodycam:()=>boolean;
+ chooseCamera:(mode:'free'|'operator'|'squad'|'director')=>void;
+ playback:ReplayPlaybackController;presentReplay:()=>void;
+ unlockAudio:()=>void;updateReplayHud:()=>void;
+ showHelp:(message:string,duration?:number)=>void;
+ setReturn:(ctx:AfterActionReturnContext|null)=>void;
+ getReturn:()=>AfterActionReturnContext|null;
+};
+const replayRequestsBound=new WeakSet<HTMLElement>();
+export function bindAfterActionReplayNavigation(port:AfterActionReplayNavigationPorts):void{
+ const ui=port.ui;
+ if(replayRequestsBound.has(ui.debrief))return;
+ replayRequestsBound.add(ui.debrief);
+ ui.watchReplay.addEventListener('click',()=>{
+  port.markDebriefEntry();port.enterReplay();
+  if(port.isReplaying())port.queueHighlights();
+ });
+ ui.debrief.addEventListener('fw-after-action-replay',event=>{
+  const detail=(event as CustomEvent<{
+    surface:string;contactId?:string;shotId?:number|null;time:number;end?:number
+  }>).detail;
+  if(!detail||port.isReplaying())return;
+  const rec=port.getRecorder(),request=makeAfterActionLaunchRequest(rec,detail);
+  if(!request)return;
+  const origin=afterActionSnapshot(ui.debrief);
+  port.markDebriefEntry();port.enterReplay();
+  if(!port.isReplaying())return;
+  port.setReturn(origin);
+  port.queueHighlights();
+  if(port.getStage()&&port.getViewMode()==='plan2d')port.cameraMode('iso');
+  port.camera.camMount='chest';port.camera.lens='cam';
+  // Only recorded friendly observer evidence can authorize personal Bodycam.
+  const shot=detail.shotId==null?null:
+    rec.ballistics.shots.find(s=>s.id===detail.shotId)??null;
+  const shooter=shot?.shooterId??null;
+  const candidate=shooter&&port.bodycam.observers.includes(shooter)?shooter:
+    detail.contactId&&port.bodycam.observers.includes(detail.contactId)?
+      detail.contactId:null;
+  if(port.getStage()&&candidate){
+    port.knowledge.observerId=candidate;
+    if(!port.startBodycam())port.chooseCamera('director');
+  }else if(port.getStage()&&port.director.camEligibleObservers.length){
+    port.chooseCamera('director');
+  }else{
+    port.camera.lens='ortho';port.chooseCamera('free');
+    port.showHelp('BODYCAM UNAVAILABLE · TACTICAL REPLAY',3000);
+  }
+  port.playback.startIncident(request.range,rec.duration,true,true);
+  port.presentReplay();port.unlockAudio();
+  ui.afterActionClipHud.hidden=false;
+  ui.afterActionClipLabel.textContent=request.label+' · LOOP';
+  ui.afterActionClipToggle.textContent='UNCLIP';
+  port.updateReplayHud();
+ });
+ ui.afterActionClipToggle.addEventListener('click',()=>{
+  if(!port.isReplaying()||!port.getReturn())return;
+  if(port.playback.incident){
+    port.playback.unclipIncident();
+    ui.afterActionClipToggle.textContent='RECLIP';
+    ui.afterActionClipLabel.textContent='FULL REPLAY';
+  }else if(port.playback.reclipIncident()){
+    ui.afterActionClipToggle.textContent='UNCLIP';
+    ui.afterActionClipLabel.textContent='INCIDENT · LOOP';
+  }
+  port.presentReplay();
+ });
 }

@@ -173,7 +173,8 @@ try{
  }
  check(ready,'Stage 6 browser Vite server unavailable');
  await mkdir(root,{recursive:true});
- browser=await chromium.launch({headless:true,args:[
+ browser=await chromium.launch({headless:true,
+  ...(process.env.FIELDWORK_CI_CHROME==='1'?{channel:'chrome'}:{}),args:[
   '--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'
  ]});
  const results=[];

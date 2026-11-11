@@ -27,7 +27,8 @@ try{
   await new Promise(resolve=>setTimeout(resolve,140));
  }
  if(!live)throw Error('Vite operator-lab server unavailable');
- const browser=await chromium.launch({headless:true});
+ const browser=await chromium.launch({headless:true,
+  ...(process.env.FIELDWORK_CI_CHROME==='1'?{channel:'chrome'}:{})});
  try{
   const page=await browser.newPage({viewport:{width:390,height:844},
    deviceScaleFactor:2,isMobile:true,hasTouch:true});

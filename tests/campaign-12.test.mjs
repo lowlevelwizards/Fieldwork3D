@@ -38,7 +38,9 @@ test('long campaign across 16 operations preserves contracts, recruits, resource
 });
 test('campaign overlay avoids running tactical frame work while browsing management',()=>{
  const src=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(src,/appFlow.mode==='menu'\|\|appFlow.mode==='home'/);
+ const runtime=readFileSync(new URL('../src/breach-runtime-loop.ts',import.meta.url),'utf8');
+ assert.match(src,/getMode:\(\)=>appFlow.mode/);
+ assert.match(runtime,/input.mode==='menu'\|\|input.mode==='home'/);
  const screen=readFileSync(new URL('../src/ui/breach-mission-screens.ts',import.meta.url),'utf8');
  assert.match(src,/missionScreens\.syncNextSiteControls\(\)/);
  assert.match(screen,/campaignReturnButton/);

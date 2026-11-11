@@ -26,11 +26,25 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm install --no-save --package-lock=false playwright@1.56.1
-      - run: npx playwright install --with-deps chromium
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      # Ubuntu hosted runners already include Google Chrome. Use it directly:
+      # --with-deps triggers apt downloads, which can fail during DNS outages.
+      - name: Check preinstalled Chrome
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then google-chrome --version
+          elif command -v google-chrome-stable >/dev/null 2>&1; then google-chrome-stable --version
+          elif test -x /opt/google/chrome/chrome; then /opt/google/chrome/chrome --version
+          else echo "Preinstalled Chrome is unavailable" >&2; exit 1
+          fi
       - name: Real WebGL tactical mission, replay, restart and editor navigation on phone and desktop
+        env:
+          FIELDWORK_CI_CHROME: '1'
         run: node scripts/smoke-closeout-stage6.mjs
       - name: A5 integrated After Action V3 phone and desktop acceptance
-        if: ${{ startsWith(github.head_ref, 'refactor/consolidation-a5-') }}
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        if: ${{ startsWith(github.head_ref, 'refactor/consolidation-a5-') || startsWith(github.head_ref, 'refactor/consolidation-a6-') }}
         run: node scripts/smoke-after-action-v3.mjs
       - name: Capture Stage 6 tactical acceptance evidence
         if: always()
@@ -52,10 +66,24 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm install --no-save --package-lock=false playwright@1.56.1
-      - run: npx playwright install --with-deps chromium
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      # Ubuntu hosted runners already include Google Chrome. Use it directly:
+      # --with-deps triggers apt downloads, which can fail during DNS outages.
+      - name: Check preinstalled Chrome
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then google-chrome --version
+          elif command -v google-chrome-stable >/dev/null 2>&1; then google-chrome-stable --version
+          elif test -x /opt/google/chrome/chrome; then /opt/google/chrome/chrome --version
+          else echo "Preinstalled Chrome is unavailable" >&2; exit 1
+          fi
       - name: Replay Bodycam historical viewing and restoration
+        env:
+          FIELDWORK_CI_CHROME: '1'
         run: node scripts/smoke-replay-r43b-bodycam-ui.mjs
       - name: Unified Operator Lab real WebGL pose/weapon equipment inspection
+        env:
+          FIELDWORK_CI_CHROME: '1'
         run: node scripts/smoke-operator-lab-unified.mjs
       - name: Retain replay and pose acceptance captures
         if: always()

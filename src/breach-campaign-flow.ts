@@ -1,6 +1,12 @@
 /** Stage 10b: Campaign screen and transitions; authoritative state stays in host.
  * All Campaign actions continue using campaign-state and campaign-persistence.
  */
+import {issuedWedges} from './equipment-entry-tools.ts';
+import {equippedFlashCharges,loadMovementScale} from './equipment-loadouts.ts';
+import {initialArmorIntegrity} from './equipment-armor.ts';
+import {allocateFlashSupply} from './equipment-supply.ts';
+import {fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
+import {stageMagazines} from './equipment-magazine-placement.ts';
 import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {team,debrief} from './breach-game.ts';
@@ -235,4 +241,41 @@ backButton.addEventListener('click',()=>{
    resetOutcome:()=>{recordedOperation=null;},showHome:showCampaignHome,
    deployContract:deployCampaignContract,
    returnAfterMission:returnAfterCampaignMission};
+}
+
+export function applyCampaignRosterToSession(session:Session,campaign:CampaignState):void{
+ for(const a of team(session)){
+  const m=tacticalSlotOperator(campaign,a.id);
+  if(m){
+   a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
+   a.appearanceSeed=m.appearanceSeed;
+   a.wardrobe=m.wardrobe;
+   a.equipment=m.loadout;
+    a.weaponConfiguration=m.weaponConfiguration;
+    a.medicalSupplies={...m.medicalSupplies};
+    a.wedgeRemaining=issuedWedges(m.loadout);
+    a.weaponLightOn=m.weaponConfiguration.slots.light==='light-compact';
+   a.flashCharges=equippedFlashCharges(m.loadout);
+   const protection=initialArmorIntegrity(m.loadout);
+   a.armorIntegrity=Math.min(protection.torso,m.armorCondition.torso);
+   a.helmetIntegrity=Math.min(protection.head,m.armorCondition.head);
+   a.loadMovementScale=loadMovementScale(m.loadout,m.weaponConfiguration);
+   const fitted=fitMagazineInventory(a.id,a.weapon,m.weaponConfiguration,
+    m.magazine,m.reserve,m.magazines);
+   a.magazine=fitted.magazine;a.reserve=fitted.reserve;
+   a.insertedMagazineId=m.loadedMagazineId;
+   a.spareMagazines=a.weapon==='shotgun'?[]:
+    stageMagazines(fitted.magazines,m.loadout);
+   if(m.recoveryDays>0&&m.injuries>0){
+    a.injuryStage=Math.max(a.injuryStage,Math.min(2,m.injuries));
+    a.health=Math.min(a.health,4-a.injuryStage);
+   }
+  }
+ }
+ if(!session.started){
+  const squad=team(session);
+  const issued=allocateFlashSupply(squad.map(a=>a.flashCharges),campaign.supplies.flash);
+  squad.forEach((a,i)=>{a.flashCharges=issued[i];});
+  session.flashRemaining=issued.reduce((n,qty)=>n+qty,0);
+ }
 }

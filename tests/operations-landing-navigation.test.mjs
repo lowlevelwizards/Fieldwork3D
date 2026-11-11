@@ -28,7 +28,9 @@ test('landing preserves clear play choices, replay and tools without manufacture
 test('restart from Settings dismisses the sheet then reopens the briefing',()=>{
  const main=source('breach-main.ts');
  const screens=source('ui/breach-mission-screens.ts');
- assert.match(main,/ui\.restart\.addEventListener\('click',async\(\)=>\{[\s\S]*?restartMission\(\);\s*closeMissionSettings\(false\);\s*showMissionBriefing\(\);/);
+ assert.match(main,/missionScreens\.bindMissionActions\(/);
+ assert.match(screens,/ui\.restart\.addEventListener\('click',async\(\)=>\{/);
+ assert.match(screens,/port\.restartMission\(\);closeMissionSettings\(false\);showMissionBriefing\(\);/);
  assert.match(main,/const showMissionBriefing=missionScreens\.showBriefing/);
  assert.match(screens,/function showMissionBriefing\(\)\{[\s\S]*?setBriefingView\('brief'\);[\s\S]*?ui\.briefingPanel\.hidden=false;/);
 });

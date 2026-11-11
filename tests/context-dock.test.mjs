@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+const hud=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
 const runtime=readFileSync(new URL('../src/breach-runtime-loop.ts',import.meta.url),'utf8');
 const palette=readFileSync(new URL('../src/ui/tactical-palette-controller.ts',import.meta.url),'utf8');
 const css=readFileSync(new URL('../src/breach-style.css',import.meta.url),'utf8');
@@ -34,7 +35,9 @@ test('both layouts share the real contextual command dispatcher',()=>{
   assert.match(palette,/const paletteChoices=actions\.filter\(choice=>choice\.group!=='state'\)/);
   assert.match(palette,/const destination=placement==='floating'\?/);
   assert.match(palette,/buckets\[choice\.group==='advanced'\?'primary':choice\.group\]:\s*buckets\.primary/);
-  assert.match(main,/ui\.context\.addEventListener\('click',handleContextAction\)/);
+  assert.match(main,/hudController\.bindContextActions\(/);
+  assert.match(hud,/config\.ui\.context\.addEventListener\('click',handleContextAction\)/);
+  assert.match(hud,/config\.ui\.quickStates\.addEventListener\('click',handleContextAction\)/);
   assert.match(main,/function hideContextPalette\(\):void/);
   assert.match(palette,/context\.style\.pointerEvents='auto'/);
 });

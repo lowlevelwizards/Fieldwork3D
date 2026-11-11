@@ -4,13 +4,15 @@ import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(new URL('../src/'+path,import.meta.url),'utf8');
 const main=read('breach-main.ts');
 const world=read('breach-2d-world-renderer.ts');
+import {fitBreach2DView} from '../src/breach-2d-world-renderer.ts';
 const fog=read('breach-2d-visibility-renderer.ts');
 const actors=read('breach-2d-actor-renderer.ts');
 const routes=read('breach-2d-route-overlays.ts');
 const projected=read('breach-2d-projected-overlays.ts');
 const replay=read('breach-2d-replay-overlays.ts');
 test('the 2D composition root retains original depth, intel and world order',()=>{
- const render=main.slice(main.indexOf('function render(){'),main.indexOf('function rejectAt('));
+ const render=world.slice(world.indexOf('export function renderBreachTacticalWorldFrame('));
+ assert.match(main,/renderBreachTacticalWorldFrame\(/);
  const sequence=[
   'world2D.terrain();','world2D.furniture();','world2D.renderGroundMarks();',
   'world2D.renderLightingMood2D();','world2D.renderWeaponLights2D();',
@@ -58,4 +60,20 @@ test('3D tactical overlay preserves historical visibility and route projection',
  assert.match(routes,/displayRouteCache\.get\(/);
  assert.match(replay,/historicalShotVisible\(/);
  assert.match(fog,/replayKnowledge\.personalGround\.at\(/);
+});
+
+test('A6 pure 2D fit preserves scale, pan and non-origin bounds',()=>{
+ const frame=fitBreach2DView({
+  cssW:1000,cssH:750,zoom:1.25,panX:15,panY:-5,
+  bounds:{minX:100,minY:50,maxX:500,maxY:350}
+ });
+ const scale=Math.min(980/400,(750-172)/300)*1.25;
+ assert.ok(Math.abs(frame.viewScale-scale)<1e-8);
+ assert.ok(Math.abs(frame.ox-(500-600*scale/2+15))<1e-8);
+ assert.ok(Math.abs(frame.oy-(375-400*scale/2-11-5))<1e-8);
+ const compact=fitBreach2DView({
+  cssW:390,cssH:440,zoom:1,panX:0,panY:0
+ });
+ assert.ok(Number.isFinite(compact.viewScale)&&compact.viewScale>0);
+ assert.ok(Number.isFinite(compact.ox)&&Number.isFinite(compact.oy));
 });

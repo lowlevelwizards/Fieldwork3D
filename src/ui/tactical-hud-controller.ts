@@ -2,12 +2,36 @@
  * Takes authored orders and player-visible data as input; game modules remain
  * the only authority for command feasibility and execution.
  */
+import {currentSiteIdentity} from './current-site-identity.ts';
+import {compactSiteTitle} from './site-title.ts';
+import {renderMissionDebrief} from './breach-mission-debrief.ts';
+import {debriefPrimaryActionLabel} from './fieldwork-vocabulary.ts';
+import {tacticalIcon} from './tactical-icons.ts';
+import type {createBreachUiElements} from './breach-ui-elements.ts';
+import type {CampaignMode} from '../breach-app-mode.ts';
+import type {CampaignState} from '../campaign-state.ts';
+import type {MissionRecorder} from '../breach-replay.ts';
+import {activeRangeDiagnostic,rangeDiagnosticLabel,rangeTrialLabel,type RangeTrial} from '../equipment-training-diagnostics.ts';
+import {lightControlState} from '../equipment-weapon-light-ui.ts';
+import type {ViewMode} from '../breach-3d.ts';
+import {doorCenter,type Door,type Pt} from '../breach-core.ts';
+import {dispatchTacticalContextCommand} from '../breach-tactical-context-command.ts';
+import type {createBreachAudioController} from '../breach-audio-controller.ts';
+import type {DisplayRouteCache} from '../breach-route-cache.ts';
+import type {createBreachReplayAnalysisController} from './breach-replay-analysis-controller.ts';
+import type {createBreachReplayTimelineController} from './breach-replay-timeline-controller.ts';
+import type {ReplayPlaybackController} from '../breach-replay-playback-controller.ts';
+import {backOne,clearPlan,undoPlan,redoPlan,planWait,toggleWeaponLight,equipWeaponChoice,
+  planMedicalTreatment,planRecoverMedical,planReload,reloadNow,planSync,
+  posture,toggleContactRule} from '../breach-game.ts';
+import {captureRangeTrial} from '../equipment-training-diagnostics.ts';
+import {confirmFieldworkAction} from './fieldwork-controls.ts';
 import {contextActionChoices} from './context-actions.ts';
 import {TacticalFeedback,type FeedbackPoint} from './tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './contextual-teaching.ts';
 import {recoveryAdviceFor} from './recovery-guidance.ts';
-import {team,type Session,type TeamActor} from '../breach-game.ts';
+import {team,enemies,isSeen,missionText,operationBriefing,type Session,type TeamActor} from '../breach-game.ts';
 import {injuryOf,WEAPONS} from '../breach-combat.ts';
 import {liveMagazineCapacity,magazineAlert}
   from '../arsenal/live-magazine-capacity.ts';
@@ -17,6 +41,79 @@ import {ExecutionNoticeFeed} from './execution-feedback.ts';
 import {createTacticalInteractionState,
  type TacticalInteractionState} from '../breach-tactical-interaction-state.ts';
 
+/** A6: read-only HUD presentation snapshot. No command or navigation authority. */
+export type TacticalSessionPresentation={
+ state:Session;mode:CampaignMode;replaying:boolean;selected:string;
+ selectedNode:number|null;selectedActiveWatch:boolean;
+ ui:ReturnType<typeof createBreachUiElements>;
+ siteIdentityOutput:HTMLOutputElement;rangeTelemetry:HTMLElement;
+ lastRangeTrial:RangeTrial|null;
+ medicalCandidate:()=>TeamActor|null;casualty:TeamActor|null;
+ paletteTether:HTMLElement;paintOperatorAccent:(node:HTMLElement,id:string)=>void;
+ colorFor:(id:string)=>string;
+ fieldLightButton:HTMLButtonElement|null;medicalButton:HTMLButtonElement|null;
+ dragButton:HTMLButtonElement|null;carryButton:HTMLButtonElement|null;
+ retrieveButton:HTMLButtonElement|null;navPanel:HTMLOutputElement|null;
+ canvas:HTMLCanvasElement;auditRouteMode:boolean;viewMode:ViewMode;
+ cssW:number;cssH:number;worldToScreen:(p:Pt,height?:number)=>Pt;
+ displayRouteCache:DisplayRouteCache;
+ reducedMotion:boolean;weaponChooser:HTMLElement;hideWeaponChooser:()=>void;
+ favoriteActive:boolean;recorder:MissionRecorder;campaign:CampaignState|null;
+ operationsLogged:number;
+};
+
+/** UI-only weapon choice overlay; legality stays in equipWeaponChoice. */
+export type TacticalWeaponChooserPorts={
+ ui:ReturnType<typeof createBreachUiElements>;
+ weaponChooser:HTMLElement;getSession:()=>Session;getSelected:()=>string;
+ getMode:()=>CampaignMode;isReplaying:()=>boolean;
+ collapse:()=>void;refreshHud:()=>void;
+};
+export type TacticalToolbarPorts={
+ ui:ReturnType<typeof createBreachUiElements>;
+ readonly state:Session;readonly selected:string;readonly replaying:boolean;
+ selectedNode:number|null;selectedActiveWatch:boolean;doorFocusId:string|null;
+ readonly weaponChooser:HTMLElement;
+ audio:ReturnType<typeof createBreachAudioController>;
+ showWeaponChooser:()=>void;hideWeaponChooser:()=>void;
+ selectUnit:(id:string)=>void;cancelTargeting:()=>void;
+ showUiHelp:(text:string,duration?:number)=>void;updateHud:()=>void;
+ medicalCandidate:()=>TeamActor|null;casualtyCandidate:()=>TeamActor|null;
+ invalidateFog:()=>void;
+ setRangeTrial:(trial:RangeTrial|null)=>void;
+ resetMission:()=>void;restartRange:()=>void;
+};
+export type TacticalToolbarButtons={
+ light:HTMLButtonElement;medical:HTMLButtonElement;
+ drag:HTMLButtonElement;carry:HTMLButtonElement;recover:HTMLButtonElement;
+};
+export type TacticalContextActionPorts={
+ ui:ReturnType<typeof createBreachUiElements>;
+ readonly state:Session;readonly selected:string;readonly replaying:boolean;
+ readonly actor:TeamActor|null;readonly node:TeamActor['plan'][number]|undefined;
+ selectedNode:number|null;selectedActiveWatch:boolean;
+ doorFocusId:string|null;doorMenuDismissedId:string|null;
+ focusedDoor:()=>Door|undefined;medicalCandidate:(at:Pt)=>TeamActor|null;
+ audio:ReturnType<typeof createBreachAudioController>;
+ invalidateFog:()=>void;updateHud:()=>void;
+ armFacing:(mode:'look'|'watch')=>void;
+ showUiHelp:(text:string,duration?:number)=>void;
+};
+export type TacticalShortcutPorts={
+ ui:ReturnType<typeof createBreachUiElements>;
+ getMode:()=>CampaignMode;isQuickConfiguring:()=>boolean;
+ isReplaying:()=>boolean;
+ replayAnalysisUi:ReturnType<typeof createBreachReplayAnalysisController>;
+ replayTimeline:ReturnType<typeof createBreachReplayTimelineController>;
+ replayPlayback:ReplayPlaybackController;
+ exitReplay:()=>void;seekReplay:(time:number)=>void;
+ selectUnit:(id:string)=>void;armFacing:(mode:'look'|'watch')=>void;
+ weaponChooser:HTMLElement;hideWeaponChooser:()=>void;
+ operationsBoard:HTMLElement;cancelTargeting:()=>void;
+ onExecute:()=>void;onUndoRedo:(redo:boolean)=>void;
+ getViewMode:()=>ViewMode;cameraMode:(mode:ViewMode)=>void;
+ turnCamera:(shift:number)=>void;
+};
 export type TacticalGuidanceInput={
   replaying:boolean;phase:Session['phase'];
   selectedNode:number|null;selectedActiveWatch:boolean;
@@ -326,8 +423,510 @@ export function createTacticalHudController(
       '. '+(execution?.label??'IDLE')+'. '+(execution?.detail??''):
       id+', unavailable');
   }
+  function renderSession(input:TacticalSessionPresentation):void{
+    const {state,mode,replaying,selected,selectedNode,selectedActiveWatch,ui,
+      siteIdentityOutput,rangeTelemetry,lastRangeTrial,medicalCandidate,casualty,
+      paletteTether,paintOperatorAccent,colorFor,fieldLightButton,
+      medicalButton,dragButton,carryButton,retrieveButton,navPanel,
+      canvas,auditRouteMode,viewMode,cssW,cssH,worldToScreen,displayRouteCache,
+      reducedMotion,weaponChooser,hideWeaponChooser,favoriteActive,
+      recorder,campaign,operationsLogged}=input;
+
+  ui.quickPlaySetup.hidden=mode!=='quick'||replaying;
+  const identity=currentSiteIdentity(state.site,mode==='quick');
+  if(siteIdentityOutput.textContent!==identity.text)
+    siteIdentityOutput.textContent=identity.text;
+  if(identity.seed!==null)siteIdentityOutput.dataset.siteSeed=identity.seed;
+  else delete siteIdentityOutput.dataset.siteSeed;
+  const telemetry=activeRangeDiagnostic(state,selected);
+  rangeTelemetry.hidden=!telemetry;
+  if(telemetry){
+   const line=rangeDiagnosticLabel(telemetry)+
+    (lastRangeTrial?'\n'+rangeTrialLabel(lastRangeTrial):'');
+   if(rangeTelemetry.textContent!==line)rangeTelemetry.textContent=line;
+  }
+  const leaveRange=document.querySelector<HTMLButtonElement>(
+   '[data-equipment-range-exit]');
+  if(leaveRange)leaveRange.hidden=!state.site?.training;
+  const repeat=document.querySelector<HTMLButtonElement>('[data-range-repeat]');
+  if(repeat)repeat.hidden=!state.site?.training;
+  paintOperatorAccent(ui.quickStates,selected);
+  paintOperatorAccent(ui.context,selected);
+  paintOperatorAccent(paletteTether,selected);
+  if(medicalButton){
+   const patient=medicalCandidate();
+   medicalButton.disabled=!patient||state.phase!=='planning'||replaying;
+   medicalButton.textContent=patient?'TREAT · '+patient.name.toUpperCase():
+    'TREAT · NO SUITABLE SUPPLIES';
+   medicalButton.setAttribute('aria-label',patient?
+    'Plan medical stabilization for '+patient.name:'No treatable wound with available supplies');
+  }
+  for(const [button,mode] of [
+   [dragButton,'DRAG'],[carryButton,'CARRY'],[retrieveButton,'RECOVER']
+  ] as const){
+   if(!button)continue;
+   button.hidden=!casualty;
+   button.disabled=!casualty||state.phase!=='planning'||replaying;
+   button.textContent=casualty?mode+' · '+casualty.name.toUpperCase():mode;
+  }
+  if(fieldLightButton){
+   const selectedActor=team(state).find(a=>a.id===selected);
+   const light=lightControlState(selectedActor,state.phase,replaying);
+   if(fieldLightButton.textContent!==light.text)fieldLightButton.textContent=light.text;
+   fieldLightButton.setAttribute('aria-label',light.aria);
+   fieldLightButton.setAttribute('aria-pressed',String(light.pressed));
+   fieldLightButton.disabled=light.disabled;
+   fieldLightButton.style.borderColor=light.pressed?colorFor(selected):'';
+  }
+  const brief=operationBriefing(state);
+  renderPhase({
+    phase:state.phase,started:state.started,replaying,seconds:state.seconds,
+    phaseNode:ui.phase,clock:ui.clock,play:ui.play,
+    reducedMotion:reducedMotion,icon:tacticalIcon
+  });
+  const active=team(state).find(o=>o.id===selected);
+  if(navPanel){
+    navPanel.textContent=team(state).map(a=>a.name+'  '+
+      a.lastBlocker.toUpperCase()+
+      '  blocked '+a.blockedTime.toFixed(2)+'s\n'+
+      'nav '+a.nav.length+'  orders '+a.plan.length+
+      '  ('+a.p.x.toFixed(0)+','+a.p.y.toFixed(0)+')').join('\n');
+  }
+  canvas.dataset.navBlock=active?.lastBlocker??'clear';
+  // Read-only plan status for phone gesture regression tests.
+  canvas.dataset.planNodes=String(active?.plan.length??0);
+  canvas.dataset.selectedNode=selectedNode===null?'':String(selectedNode);
+  // Explicit browser audit mode exposes ONLY already-authored friendly routes.
+  // Use the actual rendered polyline, rather than guessing a touch coordinate
+  // from an old screenshot or hardcoded map bounds.
+  if(auditRouteMode&&active&&viewMode==='plan2d'){
+    const candidates:{x:number;y:number;clearance:number}[]=[];
+    let from=active.p;
+    const markers=[...team(state).map(unit=>worldToScreen(unit.p,8)),
+      ...active.plan.map(n=>worldToScreen(n.p,8))];
+    for(const node of active.plan){
+      if(node.kind!=='move'&&node.kind!=='door')continue;
+      const steps=displayRouteCache.get(from,node.p,state.intel,true).points;
+      let previous=from;
+      for(const point of steps){
+        for(const t of [.2,.35,.5,.65,.8]){
+          const world={x:previous.x+(point.x-previous.x)*t,
+            y:previous.y+(point.y-previous.y)*t};
+          const p=worldToScreen(world,4);
+          if(p.x<12||p.x>cssW-12||p.y<72||p.y>cssH-120)continue;
+          const clearance=markers.length?Math.min(...markers.map(q=>Math.hypot(p.x-q.x,p.y-q.y))):99;
+          if(clearance>=34)candidates.push({x:p.x,y:p.y,clearance});
+        }
+        previous=point;
+      }
+      from=node.p;
+    }
+    candidates.sort((a,b)=>b.clearance-a.clearance);
+    canvas.dataset.auditRoutePoints=JSON.stringify(candidates.slice(0,40));
+  }
+  const stanceLabel=active?.posture==='crouch'?'STAND':'CROUCH';
+  if(ui.stance.textContent!==stanceLabel)
+    ui.stance.replaceChildren(tacticalIcon(stanceLabel==='STAND'?'stand':'crouch'),
+      document.createTextNode(stanceLabel));
+  ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
+  ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
+  const flashLabel='FLASH ×'+state.flashRemaining;
+  if(ui.flash.textContent!==flashLabel)
+    ui.flash.replaceChildren(tacticalIcon('flash'),document.createTextNode(flashLabel));
+  renderTargetMode({
+    cancelTarget:ui.cancelTarget,hint:ui.hint,
+    phase:state.phase,replaying
+  });
+  ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
+  ui.loadout.disabled=mode==='mission'||state.phase!=='planning'||replaying;
+  if(ui.loadout.disabled&&!weaponChooser.hidden)hideWeaponChooser();
+  ui.flash.disabled=state.flashRemaining<=0||replaying;
+  ui.back.disabled=!targeting.isArmed&&!selectedActiveWatch&&!active?.plan.length;
+  ui.clear.disabled=!active?.plan.length||state.phase!=='planning'||replaying;
+  ui.clear.title='Clear this operator\'s route (Undo restores it)';
+  ui.undo.disabled=!(active?.history.undo.length);
+  ui.redo.disabled=!(active?.history.redo.length);
+  ui.debrief.hidden=replaying||mode==='menu'||mode==='home'||
+    (state.phase!=='won'&&state.phase!=='lost');
+  ui.favoriteMission.disabled=!state.site;
+  ui.favoriteMission.textContent=favoriteActive?
+    '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
+  ui.next.textContent=debriefPrimaryActionLabel(mode);
+  ui.retry.disabled=mode==='mission';
+  if(!ui.debrief.hidden)renderMissionDebrief({
+    ui,state,brief,recorder,campaign,campaignMode:mode,
+    operationsLogged:operationsLogged
+  });
+  for(const id of ['rook','moss','ash','vale'] as const){
+    renderOperatorCard({
+      state,replaying,selected,id,actor:team(state).find(o=>o.id===id),
+      button:ui[id],
+      ammo:ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'],
+      hp:ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'],
+      paintAccent:paintOperatorAccent
+    });
+  }
+  // Show the site as a place, not as a raw procedural generation dump.
+  const siteHeader=document.querySelector<HTMLElement>('.ident strong');
+  const siteSubheading=document.querySelector<HTMLElement>('.ident small');
+  if(siteHeader)siteHeader.textContent=compactSiteTitle(state.site);
+  if(siteSubheading)siteSubheading.textContent=state.site?
+    team(state).length+' OPERATORS · '+
+    (state.intel.mode==='floor-plan'?state.site.roomCount:'?')+' KNOWN ROOMS':
+    'TACTICAL TRAINING';
+  if(siteHeader)siteHeader.title=state.site?.name??'Cutwoods';
+  renderNotice(ui.feed,state.events,state.phase,replaying);
+  renderGuidance({
+    replaying,phase:state.phase,selectedNode,selectedActiveWatch,
+    feed:ui.feed,hint:ui.hint
+  });
+  const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
+  ui.mission.textContent=(state.phase==='planning'?
+      brief.code+' • ':'')+missionText(state)+
+    (visible?' • '+visible+' CONTACT'+(visible===1?'':'S'):'');
+
+  }
+
+let weaponChooserBound=false;
+function bindWeaponChooser(port:TacticalWeaponChooserPorts){
+ if(weaponChooserBound)throw Error('Weapon chooser already bound');
+ weaponChooserBound=true;
+ const chooser=port.weaponChooser;
+ function hide():void{
+  chooser.hidden=true;
+  port.ui.loadout.setAttribute('aria-expanded','false');
+ }
+ function show():void{
+  const state=port.getSession(),selected=port.getSelected();
+  const current=team(state).find(a=>a.id===selected);
+  if(!current||port.getMode()==='mission'||state.phase!=='planning'||port.isReplaying())return;
+  port.collapse();
+  chooser.replaceChildren();
+  const label=document.createElement('div');
+  label.className='fw-weapon-chooser-title';
+  label.textContent='CHOOSE WEAPON · '+current.name;
+  chooser.append(label);
+  for(const id of ['carbine','smg','rifle','shotgun'] as const){
+   const btn=document.createElement('button');
+   btn.type='button';btn.className='fw-button';
+   btn.textContent=WEAPONS[id].label;
+   btn.setAttribute('aria-pressed',String(id===current.weapon));
+   btn.addEventListener('click',()=>{
+    // Apply to the live session only; never use stale capture after restart.
+    if(equipWeaponChoice(port.getSession(),port.getSelected(),id)){
+     hide();port.refreshHud();
+    }
+   });
+   chooser.append(btn);
+  }
+  const cancel=document.createElement('button');
+  cancel.type='button';cancel.className='fw-button fw-weapon-dismiss';
+  cancel.textContent='CLOSE';
+  cancel.addEventListener('click',hide);
+  chooser.append(cancel);
+  chooser.hidden=false;
+  port.ui.loadout.setAttribute('aria-expanded','true');
+ }
+ chooser.addEventListener('keydown',event=>{
+  if(event.key==='Escape'){event.preventDefault();hide();port.ui.loadout.focus();}
+ });
+ return {hide,show};
+}
+  let toolbarButtons:TacticalToolbarButtons|null=null;
+  function bindToolbar(port:TacticalToolbarPorts):TacticalToolbarButtons{
+   if(toolbarButtons)return toolbarButtons;
+   let fieldLightButton:HTMLButtonElement|null=null;
+   let medicalButton:HTMLButtonElement|null=null;
+   let dragButton:HTMLButtonElement|null=null;
+   let carryButton:HTMLButtonElement|null=null;
+   let retrieveButton:HTMLButtonElement|null=null;
+port.ui.rook.addEventListener('click',()=>port.selectUnit('rook'));
+port.ui.back.addEventListener('click',()=>{
+  port.audio.uiClickTone('select');
+  // BACK must always escape an unfinished targeting gesture first.
+  // It cannot accidentally remove an unrelated prior waypoint.
+  if(targeting.isArmed){port.cancelTargeting();return;}
+  if(port.selectedActiveWatch){
+    port.selectedActiveWatch=false;port.updateHud();return;
+  }
+  // Build 076 accidentally removed this listener when slimming the HUD.
+  if(backOne(port.state,port.selected)){
+    port.selectedNode=null;port.doorFocusId=null;
+  }
+  port.updateHud();
+});
+port.ui.moss.addEventListener('click',()=>port.selectUnit('moss'));
+port.ui.ash.addEventListener('click',()=>port.selectUnit('ash'));
+port.ui.vale.addEventListener('click',()=>port.selectUnit('vale'));
+port.ui.clear.addEventListener('click',async()=>{
+ if(port.state.phase!=='planning'||port.replaying)return;
+ const session=port.state,targetId=port.selected;
+ const operator=team(session).find(a=>a.id===targetId);
+ const count=operator?.plan.length??0;
+ if(count===0)return;
+ if(count>=3&&!await confirmFieldworkAction({
+   title:'Clear '+(operator?.name??'operator')+' route?',
+   message:count+' queued orders will be cleared. Undo can restore the route.',
+   confirmLabel:'CLEAR ROUTE',danger:true
+ }))return;
+ if(session!==port.state||port.state.phase!=='planning')return;
+ if(clearPlan(port.state,targetId)){
+   port.selectedNode=null;
+   port.showUiHelp('ROUTE CLEARED · UNDO TO RESTORE',3000);
+   port.audio.playOrderCue('ui.cancel');port.updateHud();
+ }
+});
+port.ui.undo.addEventListener('click',()=>{undoPlan(port.state,port.selected);port.selectedNode=null;port.audio.playOrderCue('orders.undo');port.updateHud();});
+port.ui.redo.addEventListener('click',()=>{redoPlan(port.state,port.selected);port.selectedNode=null;port.audio.playOrderCue('orders.redo');port.updateHud();});
+port.ui.wait.addEventListener('click',()=>{planWait(port.state,port.selected,1);port.audio.playOrderCue('orders.wait');port.updateHud();});
+fieldLightButton=document.createElement('button');
+fieldLightButton.type='button';fieldLightButton.textContent='WEAPON LIGHT';
+fieldLightButton.setAttribute('aria-label','Toggle selected operator weapon light');
+fieldLightButton.addEventListener('click',()=>{
+ if(port.replaying)return;
+ toggleWeaponLight(port.state,port.selected);port.audio.playOrderCue('equipment.flashlight_click');port.updateHud();
+});
+port.ui.siteSettings.append(fieldLightButton);
+const leaveRangeButton=document.createElement('button');
+leaveRangeButton.type='button';leaveRangeButton.textContent='LEAVE TEST RANGE';
+leaveRangeButton.dataset.equipmentRangeExit='';
+leaveRangeButton.addEventListener('click',()=>{
+ if(port.state.site?.training){port.setRangeTrial(null);port.resetMission();port.updateHud();}
+});
+port.ui.siteSettings.append(leaveRangeButton);
+const rangeRepeat=document.createElement('button');
+rangeRepeat.type='button';rangeRepeat.textContent='RESTART RANGE TRIAL';
+rangeRepeat.dataset.rangeRepeat='';
+rangeRepeat.addEventListener('click',()=>{
+ if(!port.state.site?.training)return;
+ port.setRangeTrial(captureRangeTrial(port.state,port.selected));
+ port.restartRange();
+ port.updateHud();
+});
+port.ui.siteSettings.append(rangeRepeat);
+medicalButton=document.createElement('button');
+medicalButton.type='button';
+medicalButton.className=port.ui.loadout.className;
+medicalButton.textContent='TREAT';
+medicalButton.setAttribute('aria-label','Plan medical stabilization');
+medicalButton.addEventListener('click',()=>{
+ if(port.replaying||port.state.phase!=='planning')return;
+ const patient=port.medicalCandidate();
+ if(patient)planMedicalTreatment(port.state,port.selected,patient.id);
+ port.updateHud();
+});
+port.ui.loadout.insertAdjacentElement('afterend',medicalButton);
+function casualtyActionButton(label:string,action:(target:TeamActor)=>void){
+ const button=document.createElement('button');button.type='button';
+ button.className=port.ui.loadout.className;button.textContent=label;
+ button.hidden=true;
+ button.addEventListener('click',()=>{
+  if(port.state.phase!=='planning'||port.replaying)return;
+  const patient=port.casualtyCandidate();
+  if(patient)action(patient);
+  port.updateHud();
+ });
+ medicalButton!.insertAdjacentElement('afterend',button);
+ return button;
+}
+dragButton=casualtyActionButton('DRAG',target=>{
+ targeting.armEvac(target.id,'drag');
+ port.showUiHelp('TAP DESTINATION FOR CASUALTY DRAG',5500);
+});
+carryButton=casualtyActionButton('CARRY',target=>{
+ targeting.armEvac(target.id,'carry');
+ port.showUiHelp('TAP DESTINATION FOR CASUALTY CARRY',5500);
+});
+retrieveButton=casualtyActionButton('RECOVER',target=>{
+ if(!planRecoverMedical(port.state,port.selected,target.id))
+  port.showUiHelp('NO ACCESSIBLE MEDICAL SUPPLY OR ROUTE');
+});
+port.ui.loadout.setAttribute('aria-haspopup','true');
+port.ui.loadout.setAttribute('aria-expanded','false');
+port.ui.loadout.addEventListener('click',()=>{
+ if(port.weaponChooser.hidden)port.showWeaponChooser();
+ else port.hideWeaponChooser();
+});
+port.ui.reload.addEventListener('click',()=>{
+  if(port.state.phase==='planning')planReload(port.state,port.selected);
+  else if(port.state.phase==='running')reloadNow(port.state,port.selected);
+  port.updateHud();
+});
+port.ui.cancelTarget.addEventListener('click',port.cancelTargeting);
+port.ui.flash.addEventListener('click',()=>{
+  if(port.state.phase!=='planning'||port.replaying)return;
+  targeting.toggleFlash();
+  port.updateHud();
+});
+port.ui.sync.addEventListener('click',()=>{planSync(port.state);port.audio.playOrderCue('orders.sync');port.updateHud();});
+port.ui.stance.addEventListener('click',()=>{
+  posture(port.state,port.selected);port.audio.playOrderCue('orders.stance');port.invalidateFog();port.updateHud();
+});
+port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.selected);port.updateHud();});
+
+   toolbarButtons={light:fieldLightButton!,medical:medicalButton!,drag:dragButton!,
+     carry:carryButton!,recover:retrieveButton!};
+   return toolbarButtons;
+  }
+  let contextActionsBound=false;
+  function bindContextActions(config:TacticalContextActionPorts):void{
+    if(contextActionsBound)return;
+    contextActionsBound=true;
+    const handleContextAction=(event:MouseEvent)=>{
+      const button=(event.target as HTMLElement).closest<HTMLButtonElement>(
+        'button[data-action]');
+      if(!button||config.state.phase!=='planning'||config.replaying)return;
+      const action=button.dataset.action;
+      if(action)discoverAction(action,button.title);
+      const a=config.actor;
+      if(!a)return;
+      const beforeErrors=config.state.events.length;
+      const node=config.node;
+      const door=config.doorFocusId?config.focusedDoor():undefined;
+      const result=dispatchTacticalContextCommand({
+        state:config.state,selected:config.selected,actor:a,node,door,action:action??'',
+        selectedActiveWatch:config.selectedActiveWatch,
+        medicalCandidate:config.medicalCandidate
+      });
+      if(result.handled){
+        if(result.clearSelection){
+          config.selectedNode=null;config.selectedActiveWatch=false;
+        }
+        if(result.clearDoorFocus)config.doorFocusId=null;
+        if(result.dismissDoorId!==undefined)
+          config.doorMenuDismissedId=result.dismissDoorId;
+        if(result.invalidateFog)config.invalidateFog();
+        if(result.skipFeedback){config.updateHud();return;}
+      }else switch(action){
+        case 'ctxSuppress':
+          targeting.armSuppress();
+          feedback.emit('armed',node?.p??a.p,'SUPPRESS READY');
+          config.audio.uiClickTone('select');config.updateHud();return;
+        case 'ctxFlash':
+          if(config.state.flashRemaining>0)targeting.toggleFlash();
+          break;
+        case 'ctxLook':
+          config.armFacing('look');
+          if(targeting.isFacing)feedback.emit('armed',
+            node?.p??a.p,'TAP A DIRECTION');
+          config.audio.uiClickTone('select');return;
+        case 'ctxDoor':{
+          const available=config.focusedDoor();
+          if(!available){config.state.events.push('NO KNOWN DOOR IN REACH');break;}
+          config.doorFocusId=available.id;config.doorMenuDismissedId=null;
+          config.audio.uiClickTone('select');config.updateHud();return;
+        }
+        case 'ctxWatch':
+          config.armFacing('watch');
+          if(targeting.isFacing)feedback.emit('armed',
+            node?.p??a.p,'TAP WATCH TARGET');
+          config.audio.uiClickTone('select');return;
+        case 'ctxPush':
+          targeting.armPush();
+          feedback.emit('armed',node?.p??a.p,'PUSH DIRECTION');
+          config.showUiHelp('TAP OR DRAG AWAY FROM THE OBJECT TO CHOOSE PUSH DIRECTION',3600);
+          config.audio.uiClickTone('select');config.updateHud();return;
+        case 'ctxDoorFlash':
+          if(!door){config.state.events.push('SELECT A DOOR FIRST');break;}
+          targeting.armDoorFlash(door.id);
+          config.doorFocusId=null;config.doorMenuDismissedId=door.id;break;
+      }
+      const failed=config.state.events.length>beforeErrors;
+      completeAction(
+        door?doorCenter(door):node?.p??a.p,
+        failed?config.state.events.at(-1)??'ACTION BLOCKED':null,
+        button.querySelector('.command-label')?.textContent??'',
+        isFailure=>config.audio.uiClickTone(isFailure?'warning':'command'));
+      config.updateHud();
+    };
+    config.ui.context.addEventListener('click',handleContextAction);
+    config.ui.quickStates.addEventListener('click',handleContextAction);
+  }
+  let shortcutsBound=false;
+  function bindShortcuts(config:TacticalShortcutPorts):void{
+   if(shortcutsBound)return;
+   shortcutsBound=true;
+   window.addEventListener('keydown',e=>{
+     // Global game shortcuts must never fire while the player edits a name,
+     // operates a dialog, or navigates Campaign / the front menu.
+     if(e.isComposing||e.altKey||config.getMode()==='menu'||config.getMode()==='home')return;
+     if(document.querySelector('.fw-confirm-backdrop')||config.isQuickConfiguring())return;
+     const target=e.target;
+     // Escape is handled before the usual input guard so a focused replay
+     // range/button can dismiss its panel; native select popups keep Escape.
+     if(config.isReplaying()&&e.code==='Escape'&&
+        !(target instanceof HTMLSelectElement)&&
+        !(target instanceof HTMLElement&&target.closest(
+          '[role="dialog"],[role="alertdialog"],textarea,[contenteditable="true"]'))){
+       e.preventDefault();
+       if(!config.ui.replayClusterMenu.hidden)config.replayAnalysisUi.closeReplayCluster();
+       else if(config.replayAnalysisUi.replayToolTab!==null)config.replayAnalysisUi.closeReplaySurface();
+       else config.exitReplay();
+       return;
+     }
+     if(target instanceof HTMLElement&&
+       (target.isContentEditable||target.closest(
+         'input,textarea,select,[contenteditable="true"],[role="dialog"],[role="alertdialog"]'
+       )))return;
+     if(config.isReplaying()){
+       if(e.code==='Space'&&!e.repeat&&!(
+         target instanceof HTMLElement&&target.closest('button,[role="button"]'))){
+         e.preventDefault();config.replayTimeline.togglePlay();
+       }
+       if((e.code==='ArrowLeft'||e.code==='ArrowRight')&&!(
+         target instanceof HTMLElement&&target.closest('button,summary,[role="button"]'))){
+         e.preventDefault();
+         const direction:-1|1=e.code==='ArrowLeft'?-1:1;
+         if(e.ctrlKey||e.metaKey)config.replayAnalysisUi.jumpEvent(direction>0);
+         else if(e.shiftKey){config.replayPlayback.pause();config.seekReplay(config.replayPlayback.time+direction);}
+         else config.replayTimeline.step('frame',direction);
+       }
+       return;
+     }
+     if(e.code==='Space'&&!e.repeat){
+       e.preventDefault();config.onExecute();
+     }
+     if(e.code==='Digit1')config.selectUnit('rook');
+     if(e.code==='Digit2')config.selectUnit('moss');
+     if(e.code==='Digit3')config.selectUnit('ash');
+     if(e.code==='Digit4')config.selectUnit('vale');
+     if(e.code==='KeyX'&&!e.repeat){
+       e.preventDefault();
+       // Keyboard and touch must use the exact same guarded clear-plan workflow.
+       config.ui.clear.click();
+     }
+     if(e.code==='KeyL')config.armFacing('look');
+     if(e.code==='Backspace'&&!e.repeat){
+       e.preventDefault();config.ui.back.click();
+     }
+     if(e.code==='Escape'){
+       e.preventDefault();
+       if(!config.weaponChooser.hidden)config.hideWeaponChooser();
+       else if(!config.operationsBoard.hidden)config.operationsBoard.hidden=true;
+       else if(!config.ui.briefingPanel.hidden){
+         config.ui.briefingClose.click();
+       }else if(!config.ui.siteSettings.hidden){
+         config.ui.siteSettingsToggle.click();
+       }else config.cancelTargeting();
+       return;
+     }
+     if(e.code==='KeyW'&&!e.repeat)config.armFacing('watch');
+     if(e.code==='KeyZ'&&(e.ctrlKey||e.metaKey)){
+       e.preventDefault();
+       config.onUndoRedo(e.shiftKey);
+     }
+     if(e.code==='KeyR'&&!e.repeat&&config.getMode()!=='mission'){
+       e.preventDefault();
+       config.ui.restart.click();
+     }
+     if(e.code==='KeyV'&&!e.repeat)config.cameraMode(config.getViewMode()==='iso'?'top':'iso');
+     if(e.code==='KeyQ'&&!e.repeat)config.turnCamera(-Math.PI/8);
+     if(e.code==='KeyE'&&!e.repeat)config.turnCamera(Math.PI/8);
+     if(e.code==='Digit0'&&!e.repeat)config.ui.cameraFit.click();
+   });
+  }
   return {feedback,get facing(){return targeting.facing;},
     showHelp,teach,discoverAction,toggleFacing,
     message,renderGuidance,renderQuickStates,rejectAttempt,completeAction,
-    renderTargetMode,renderPhase,renderOperatorCard,renderNotice,resetNotices};
+    renderTargetMode,renderPhase,renderOperatorCard,renderNotice,renderSession,bindShortcuts,bindContextActions,bindToolbar,bindWeaponChooser,resetNotices};
 }

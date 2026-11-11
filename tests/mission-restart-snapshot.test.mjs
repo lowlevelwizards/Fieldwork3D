@@ -64,9 +64,11 @@ test('RESTART preserves resolved site, enemy setup, rules and deployment',()=>{
 
 test('RESTART and debrief RETRY use the same path; NEW SITE remains random',()=>{
  const source=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(source,/ui\.restart\.addEventListener\('click',[\s\S]*?restartMission\(\);/);
- assert.match(source,/ui\.retry\.addEventListener\('click',[^\n]*restartMission\(\)/);
- assert.match(source,/ui\.variant\.addEventListener\('click',[\s\S]*?reset\(state\.variant\+1\)/);
+ const screens=readFileSync(new URL('../src/ui/breach-mission-screens.ts',import.meta.url),'utf8');
+ assert.match(source,/missionScreens\.bindMissionActions\(/);
+ assert.match(screens,/ui\.restart\.addEventListener\('click',[\s\S]*?port\.restartMission\(\);/);
+ assert.match(screens,/ui\.retry\.addEventListener\('click',[\s\S]*?port\.restartMission\(\)/);
+ assert.match(screens,/ui\.variant\.addEventListener\('click',[\s\S]*?port\.resetMission\(state\.variant\+1\)/);
  assert.match(source,/function restartMission\(\):void\{/);
  const owner=readFileSync(new URL('../src/breach-mission-controller.ts',import.meta.url),'utf8');
  assert.match(source,/missionController\.restartSnapshot\(state\)/);
