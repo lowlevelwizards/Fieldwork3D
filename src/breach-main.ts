@@ -82,13 +82,13 @@ import {installReplayBodycamQa} from './breach-replay-bodycam-qa.ts';
 import {ReplayCameraController} from './breach-replay-camera-controller.ts';
 import {createBreachReplayLibraryController}
   from './ui/breach-replay-library-controller.ts';
-import {resolvedReplayCamera,type ReplayCameraChoice,type ReplayPerspective}
+import {resolvedReplayCamera,type ReplayPerspective}
   from './breach-replay-ui-state.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import {ReplayQuickVideo} from './breach-replay-video.ts';
 import {ReplayMovementHistory} from './breach-replay-movement-history.ts';
 
-import {operatorContactAvailable} from './breach-replay-contact-lens.ts';
+
 import type {ReplayPresentation} from './breach-replay-motion.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {fitMagazineInventory}
@@ -558,7 +558,7 @@ function paintOperatorAccent(element:HTMLElement,id:string){
   if(element.style.getPropertyValue('--operator-accent')!==accent)
     element.style.setProperty('--operator-accent',accent);
 }
-const squadIds=['rook','moss','ash','vale'] as const;
+
 const clamp=(n:number,a:number,b:number)=>Math.max(a,Math.min(b,n));
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 function layout(){
@@ -1184,7 +1184,7 @@ replayHudController=createBreachReplayHudController({
   replayAnalysisUi,replayQuickVideo,audio:audioController,
   stopReplayBodycam,startReplayBodycam,applyReplayBodycamMount,
   chooseReplayCamera,cameraMode,advanceReplayCamera,rebuildReplayEventIndex,
-  seekReplay,exitReplay,showUiHelp,invalidateFog:()=>fog2D.invalidate()
+  seekReplay,exitReplay,showUiHelp,applyReplayPreset,invalidateFog:()=>fog2D.invalidate()
  },
  onOverlayChoice:choice=>{
    const options=replayDisplay.options;

@@ -84,6 +84,7 @@ export type ReplayHudElements={
  replayViewTrigger:HTMLButtonElement;
 };
 
+const squadIds=['rook','moss','ash','vale'] as const;
 export type ReplayHudInteractionPort={
  readonly state:Session;readonly recorder:MissionRecorder;readonly stage:TacticalScene3D|null;
  readonly replaying:boolean;readonly viewMode:ViewMode;
@@ -101,6 +102,7 @@ export type ReplayHudInteractionPort={
  rebuildReplayEventIndex:()=>void;seekReplay:(time:number)=>void;
  exitReplay:()=>void;invalidateFog:()=>void;
  showUiHelp:(message:string,duration?:number)=>void;
+ applyReplayPreset:(next:'clean'|'movement'|'combat'|'visibility')=>void;
 };
 export type ReplayHudSnapshot={
  state:Session;recorder:MissionRecorder;
@@ -262,7 +264,7 @@ config.ui.replayInspectFollow.addEventListener('click',()=>{
 config.ui.replayInspectMovement.addEventListener('click',()=>{
   const id=config.ui.replayInspectActor.value;
   if(!team(port.state).some(a=>a.id===id))return;
-  port.selected=id;applyReplayPreset('movement');
+  port.selected=id;port.applyReplayPreset('movement');
 });
 config.ui.replayQuickCamera.addEventListener('change',()=>{
   if(port.replayBodycam.active)return;
@@ -392,7 +394,7 @@ config.ui.replayGroundLens.addEventListener('click',()=>{
   port.replayKnowledge.groundCacheCount=-1;
   updateReplayHud();
 });
-config.ui.port.replayBodycam.addEventListener('click',()=>{
+config.ui.replayBodycam.addEventListener('click',()=>{
   if(port.replayBodycam.active)port.stopReplayBodycam();
   else if(!port.startReplayBodycam())return;
   port.rebuildReplayEventIndex();
@@ -428,7 +430,7 @@ config.ui.replaySquad.addEventListener('click',()=>{
   port.chooseReplayCamera(port.replayCamera.mode==='squad'?'free':'squad');
   port.replayCamera.follow=false;port.advanceReplayCamera(0,true);updateReplayHud();
 });
-config.ui.port.replayDirector.addEventListener('click',()=>{
+config.ui.replayDirector.addEventListener('click',()=>{
   if(port.replayBodycam.active)port.stopReplayBodycam();
   if(port.replayCamera.lens==='cam'&&port.viewMode!=='iso'&&port.stage)
     port.cameraMode('iso');
