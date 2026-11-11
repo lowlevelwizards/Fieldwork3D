@@ -13,8 +13,10 @@ const colors=['#7f937d','#838a78','#788c96','#a08b6f','#857b85'];
 export function createSquadMiniature(
  identity:ReplayActorIdentity|null,large=false
 ):SVGSVGElement{
- const svg=el('svg',{viewBox:'0 0 140 185',role:'img',
-  'aria-label':'Schematic Fieldwork operator miniature'});
+ const svg=document.createElementNS(ns,'svg');
+ svg.setAttribute('viewBox','0 0 140 185');
+ svg.setAttribute('role','img');
+ svg.setAttribute('aria-label','Schematic Fieldwork operator miniature');
  svg.classList.add('fw-v3-miniature');
  if(large)svg.classList.add('fw-v3-miniature-large');
  const tint=colors[(identity?.appearanceSeed??0)%colors.length]??colors[0];
@@ -26,7 +28,7 @@ export function createSquadMiniature(
  };
  // Headgear is intentionally schematic, never presented as a wardrobe photo.
  box(51,16,38,37,'#bca592',7);
- const hw=identity?.wardrobe?.headwear??'ach';
+ const hw=identity?.wardrobe?.styles.headwear??'ach';
  if(hw!=='bare'){
    if(hw==='boonie')box(45,13,50,14,tint,5);
    else if(hw==='patrol-cap'||hw==='beret'||hw==='beanie'){

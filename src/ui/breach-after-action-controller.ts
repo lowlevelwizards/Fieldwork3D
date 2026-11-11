@@ -29,11 +29,6 @@ const make=(tag:string,cls='',value?:string)=>{
   if(value!==undefined)el.textContent=value;
   return el;
 };
-const button=(text:string,fn:()=>void,cls='fw-after-link')=>{
-  const el=document.createElement('button');
-  el.type='button';el.className=cls;el.textContent=text;
-  el.addEventListener('click',fn);return el;
-};
 export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
   options:{showIntel:boolean}):void{
  const content=root.querySelector<HTMLElement>('#afterActionBody');
