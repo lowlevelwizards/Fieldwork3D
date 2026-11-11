@@ -907,7 +907,7 @@ function selectedPlanNode(){
 /** The actor itself is HERE. Selected plan nodes own subsequent orders;
  * a door tap brings up ONLY door actions. No redundant HERE/END buttons. */
 function updateContext(){
-  if(state.phase!=='planning'||replaying||hudController.facing.looking||flashMode||pushMode||firePlacement||
+  if(state.phase!=='planning'||replaying||targeting.isArmed||
      !ui.briefingPanel.hidden||
      draggingNode||trace||
      !ui.siteSettings.hidden){
@@ -1012,7 +1012,7 @@ const handleContextAction=(event:MouseEvent)=>{
       break;
     case 'ctxLook':
       armFacing('look');
-      if(hudController.facing.looking)tacticalFeedback.emit('armed',
+      if(targeting.isFacing)tacticalFeedback.emit('armed',
         node?.p??a.p,'TAP A DIRECTION');
       audioController.uiClickTone('select');return;
     case 'ctxDoor':{
@@ -1023,7 +1023,7 @@ const handleContextAction=(event:MouseEvent)=>{
     }
     case 'ctxWatch':
       armFacing('watch');
-      if(hudController.facing.looking)tacticalFeedback.emit('armed',
+      if(targeting.isFacing)tacticalFeedback.emit('armed',
         node?.p??a.p,'TAP WATCH TARGET');
       audioController.uiClickTone('select');return;
     case 'ctxPush':
@@ -1061,8 +1061,10 @@ const siteIdentityOutput=el<HTMLOutputElement>('siteIdentity');
 const frameFeedbackController=createBreachTacticalFrameFeedbackController({
  snapshot:()=>({
    state,replaying,selected,feedbackDraw,dpr,cssW,cssH,activePointers,
-   cursor,previewHover,hudController,flashMode,firePlacement,evacMode,
-   pushMode,uid,selectedPlanNode,tacticalFeedback,worldToScreen,
+   cursor,previewHover,hudController,
+   flashMode:targeting.flashMode,firePlacement:targeting.firePlacement,
+   evacMode:targeting.evacMode,pushMode:targeting.pushMode,
+   uid,selectedPlanNode,tacticalFeedback,worldToScreen,
    reducedMotion:reducedMotionMedia.matches
  }),
  warn:()=>audioController.uiClickTone('warning')
@@ -1090,6 +1092,7 @@ function medicalCandidate(id:string,origin?:Pt){
 
 function updateHud(){
   appFlow.observePhase(state.phase);
+  if(state.phase!=='planning')targeting.reset();
   ui.quickPlaySetup.hidden=appFlow.mode!=='quick'||replaying;
   if(!replaying&&state.phase==='planning')recorder.capturePlanning(state);
   const identity=currentSiteIdentity(state.site,appFlow.mode==='quick');
@@ -1201,7 +1204,7 @@ function updateHud(){
     ui.flash.replaceChildren(tacticalIcon('flash'),document.createTextNode(flashLabel));
   hudController.renderTargetMode({
     cancelTarget:ui.cancelTarget,hint:ui.hint,
-    phase:state.phase,replaying,flashMode,firePlacement
+    phase:state.phase,replaying
   });
   ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
   ui.loadout.disabled=appFlow.mode==='mission'||state.phase!=='planning'||replaying;
@@ -1243,9 +1246,7 @@ function updateHud(){
   if(siteHeader)siteHeader.title=state.site?.name??'Cutwoods';
   hudController.renderNotice(ui.feed,state.events,state.phase,replaying);
   hudController.renderGuidance({
-    replaying,phase:state.phase,flashMode,pushMode,
-    selectedNode,selectedActiveWatch,
-    firePlacement:!!firePlacement,evacMode:!!evacMode,
+    replaying,phase:state.phase,selectedNode,selectedActiveWatch,
     feed:ui.feed,hint:ui.hint
   });
   updateContext();
@@ -1302,7 +1303,7 @@ function historicalShotVisible(shot:RecordedShot):boolean{
 const route2D=createBreach2DRouteOverlays({
  draw,line,circle,uid,colorFor,displayRouteCache,
  getFrame:()=>({state,replaying,selected,selectedNode,selectedActiveWatch,
-  draggingNode,draggingWatchTarget,trace,cursor,looking:hudController.facing.looking,replayPlanVersion,
+  draggingNode,draggingWatchTarget,trace,cursor,looking:targeting.isFacing,replayPlanVersion,
   replayPlanScope,recorder})
 });
 /** Gold denotes actual historically observed cells for the selected operator.
@@ -1387,9 +1388,10 @@ function useSelectedGround(pt:Pt){
     }
     updateHud();return;
   }
-  if(targeting.evacMode){
-    const mode=targeting.evacMode;targeting.reset();
-    if(!planCasualtyTransport(state,selected,mode.patientId,pt,mode.mode))
+  const evacuation=targeting.evacMode;
+  if(evacuation){
+    targeting.reset();
+    if(!planCasualtyTransport(state,selected,evacuation.patientId,pt,evacuation.mode))
       showUiHelp('CASUALTY ROUTE BLOCKED — CHOOSE A REACHABLE DESTINATION');
     updateHud();return;
   }
@@ -1417,32 +1419,32 @@ function useSelectedGround(pt:Pt){
     }
     updateHud();return;
   }
-  if(hudController.facing.looking){
+  if(targeting.isFacing){
     const placedId=state.nextId;
-    const retargetingActive=hudController.facing.lookMode==='watch'&&selectedActiveWatch;
+    const retargetingActive=targeting.facing.lookMode==='watch'&&selectedActiveWatch;
     const actor=uid(selected);
     const source=retargetingActive?actor?.p:selectedNode!==null?
       actor?.plan.find(node=>node.id===selectedNode)?.p:
-      actor?(hudController.facing.armedOrigin==='here'?actor.p:finalPoint(actor)):null;
+      actor?(targeting.facing.armedOrigin==='here'?actor.p:finalPoint(actor)):null;
     const target=source?aimTargetFromTap(source,pt):null;
     const committed=!!target&&(retargetingActive?
       retargetActiveWatch(state,selected,target):
-      hudController.facing.lookMode==='watch'?
-        planWatch(state,selected,target,selectedNode??undefined,hudController.facing.armedOrigin):
-        planAim(state,selected,'free',target,selectedNode??undefined,'look',hudController.facing.armedOrigin));
+      targeting.facing.lookMode==='watch'?
+        planWatch(state,selected,target,selectedNode??undefined,targeting.facing.armedOrigin):
+        planAim(state,selected,'free',target,selectedNode??undefined,'look',targeting.facing.armedOrigin));
     if(!committed){
       rejectAt(pt,target?'AIM ORDER UNAVAILABLE':
         'AIM DIRECTION UNAVAILABLE · TAP AWAY FROM THE OPERATOR');
       showUiHelp('CHOOSE A LOOK / WATCH DIRECTION, OR CANCEL',3200);
     }
     else{
-      tacticalFeedback.emit('command',target!,hudController.facing.lookMode==='watch'?'WATCH':'LOOK');
-      audioController.playOrderCue(hudController.facing.lookMode==='watch'?'orders.watch':'orders.look');
+      tacticalFeedback.emit('command',target!,targeting.facing.lookMode==='watch'?'WATCH':'LOOK');
+      audioController.playOrderCue(targeting.facing.lookMode==='watch'?'orders.watch':'orders.look');
       if(!retargetingActive&&selectedNode===null){
         selectedNode=placedId;selectedActiveWatch=false;
       }
-      teach(hudController.facing.lookMode==='watch'?'watch-placed':'look-placed',
-        hudController.facing.lookMode==='watch'?
+      teach(targeting.facing.lookMode==='watch'?'watch-placed':'look-placed',
+        targeting.facing.lookMode==='watch'?
           'WATCH stays on that point while moving. Drag its ring to adjust.':
           'LOOK checks that direction briefly, then returns to the route.',4100);
     }
@@ -2463,9 +2465,9 @@ ui.play.addEventListener('click',()=>{
      else reset();
    }
   }else{
-    targeting.reset();      targeting.reset();
-      missionController.captureBeforeExecution(state,recorder);
-      toggling(state);updateHud();
+    targeting.reset();
+    missionController.captureBeforeExecution(state,recorder);
+    toggling(state);updateHud();
   }
 });
 ui.restart.addEventListener('click',async()=>{
@@ -2525,6 +2527,7 @@ window.addEventListener('keydown',e=>{
         else reset();
       }
     }else{
+      targeting.reset();
       missionController.captureBeforeExecution(state,recorder);
       toggling(state);
     }
@@ -2612,8 +2615,8 @@ function restorePointerSelection(p:{selectionBefore?:{
 tacticalGestures.install({
   is3D:()=>!!stage&&viewMode!=='plan2d',
   isPlanning:()=>state.phase==='planning',
-  isLooking:()=>!!hudController.facing.looking,
-  targetArmed:()=>!!(hudController.facing.looking||flashMode||pushMode||firePlacement||evacMode),
+  isLooking:()=>targeting.isFacing,
+  targetArmed:()=>targeting.isArmed,
   world:pointerWorld,
   aimWorld:pointerAimWorld,
   pick:tacticalPickAt,
@@ -2701,8 +2704,8 @@ function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
  get doorFocusId(){return doorFocusId;},set doorFocusId(v){doorFocusId=v;},
  get doorMenuDismissedId(){return doorMenuDismissedId;},
  set doorMenuDismissedId(v){doorMenuDismissedId=v;},
- get flashMode(){return flashMode;},get pushMode(){return pushMode;},
- get firePlacement(){return firePlacement;},get evacMode(){return evacMode;},
+ get flashMode(){return targeting.flashMode;},get pushMode(){return targeting.pushMode;},
+ get firePlacement(){return targeting.firePlacement;},get evacMode(){return targeting.evacMode;},
  get trace(){return trace;},get viewMode(){return viewMode;},tacticalFeedback,pointerAimWorld,pointerWorld,
  worldToScreen,followReplayOperator,historicalShotVisible,selectUnit,
  useSelectedGround,showUiHelp,adoptPointerOwner,uid,rejectAt,teach,
