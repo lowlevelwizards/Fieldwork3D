@@ -65,8 +65,10 @@ remains the only mode that invokes `planDoorFlash`; normal FLASH remains
 - Palette actions, toolbar FLASH, medical DRAG/CARRY, and keyboard LOOK/WATCH
   use the same arbitration. Block new arming during replay or execution.
 - BACK/Cancel/Escape always cancels active targeting **before** any waypoint
-  deletion or selection clearing, including PUSH; preserve held WATCH
-  selection/deselect behavior when nothing is armed.
+  deletion or selection clearing, including PUSH. Keep the BACK button
+  **enabled for any armed target or selected active WATCH even when no plan
+  node exists**; preserve held WATCH selection/deselect behavior when nothing
+  is armed.
 - Operator changes, mission replacement, replay entry and GO/PAUSE clear
   transient targeting; no action persists accidentally to a different actor,
   session, recording or simulation phase.
