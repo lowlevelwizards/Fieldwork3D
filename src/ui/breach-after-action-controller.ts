@@ -13,10 +13,65 @@ import type {ReplayPlaybackController} from '../breach-replay-playback-controlle
 import {renderCombatReport} from './breach-after-action-combat.ts';
 import {renderAfterActionHighlights} from './breach-after-action-highlights.ts';
 import {replayHighlightMoments} from '../breach-highlight-frames.ts';
-let activeModel:HTMLElement|null=null;
-let stopModel:(()=>void)|null=null;
-let modelRequest=0;
-function disposeModel(){modelRequest++;stopModel?.();stopModel=null;activeModel=null;}
+import type {AfterActionModelPresenter} from './breach-after-action-model.ts';
+
+/** Exactly one historical 3D presentation per debrief root and recording.
+ * A tab/selection redraw moves its canvas, never rebuilding its rigs.
+ */
+type ModelOwner={
+ recorder:MissionRecorder;presenter:AfterActionModelPresenter|null;
+ pending:boolean;version:number;
+};
+const models=new WeakMap<HTMLElement,ModelOwner>();
+export function disposeAfterActionPresentation(root:HTMLElement):void{
+ const owner=models.get(root);
+ if(!owner)return;
+ owner.version++;owner.presenter?.dispose();models.delete(root);
+}
+function presentModel(root:HTMLElement,recorder:MissionRecorder,
+ host:HTMLElement|null,operatorId:string|null):void{
+ let owner=models.get(root);
+ if(owner&&owner.recorder!==recorder){
+   disposeAfterActionPresentation(root);owner=undefined;
+ }
+ if(!owner){
+   owner={recorder,presenter:null,pending:false,version:0};
+   models.set(root,owner);
+ }
+ if(!host){owner.presenter?.hide();return;}
+ if(owner.presenter){owner.presenter.show(host,operatorId);return;}
+ const identities=recorder.manifest?.actors??[];
+ if(!identities.length){
+   host.textContent='NO RECORDED HISTORICAL MODEL';return;
+ }
+ if(owner.pending)return;
+ owner.pending=true;
+ const version=++owner.version;
+ // Dynamic module load never touches live simulation or mission report.
+ void import('./breach-after-action-model.ts').then(module=>{
+   if(models.get(root)!==owner||owner.version!==version)return;
+   owner.pending=false;
+   owner.presenter=module.createAfterActionModelPresenter(identities);
+   const current=root.querySelector<HTMLElement>(
+     '[data-after-squad-model], [data-after-model]');
+   if(!owner.presenter){
+     if(current)current.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
+     return;
+   }
+   if(current){
+     const id=current.hasAttribute('data-after-squad-model')?
+       owners.get(root)?.selectedOperator??null:
+       current.dataset.afterModel??null;
+     owner.presenter.show(current,id);
+   }
+ }).catch(()=>{
+   if(models.get(root)!==owner||owner.version!==version)return;
+   owner.pending=false;
+   const current=root.querySelector<HTMLElement>(
+     '[data-after-squad-model], [data-after-model]');
+   if(current)current.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
+ });
+}
 
 export type AfterActionTab='squad'|'combat'|'highlights';
 type State={
@@ -47,6 +102,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
  const safeContent=content,safeNav=nav;
  let state=owners.get(root);
  if(!state||state.recorder!==rec){
+   disposeAfterActionPresentation(root);
    state={recorder:rec,report:buildAfterActionReport(rec),tab:'squad',
      selectedOperator:null,selectedContact:null,selectedShotId:null,
      contactSide:'red',paperBack:false,inspectionMode:'paper',
@@ -142,7 +198,12 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
            safeContent.querySelector<HTMLButtonElement>(
              '.fw-v3-details-link')?.focus();
          });
-         record.append(back,renderSquadDetails(operator));
+         const modelHost=make('div','fw-v4-squad-model',
+           'LOADING RECORDED 3D OPERATOR');
+         modelHost.setAttribute('data-after-squad-model','');
+         modelHost.setAttribute('aria-label',
+           'Historical 3D model for '+operator.name);
+         record.append(back,modelHost,renderSquadDetails(operator));
          // The complete record replaces the detail pane, not the ranked roster.
          const focus=screen.querySelector('.fw-v3-squad-focus');
          if(focus)focus.replaceWith(record);
@@ -212,29 +273,13 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      }
      forensicDetails.replaceChildren(ledger);
    }
-   // Reparent the existing model when only the selected shot changes.
-   // Rebuilding it on every shot was an expensive V2 regression.
-   let modelHost=screen.querySelector<HTMLElement>('[data-after-model]');
-   const previousHost=safeContent.querySelector<HTMLElement>('[data-after-model]');
-   const reuse=!!(modelHost&&previousHost&&stopModel&&
-     modelHost.dataset.afterModel===previousHost.dataset.afterModel);
-   if(reuse&&modelHost&&previousHost){
-     modelHost.replaceWith(previousHost);modelHost=previousHost;
-   }else disposeModel();
+   // Keep the historical renderer and cached rigs alive through tab changes
+   // and replay return. Only the DOM host is replaced during UI redraws.
    safeContent.replaceChildren(screen);
-   if(modelHost&&!reuse){
-     const chosen=s.recorder.manifest?.actors.find(a=>
-       a.id===s.selectedContact);
-     if(chosen){
-       const token=++modelRequest;
-       activeModel=modelHost;
-       void import('./breach-after-action-model.ts').then(module=>{
-         if(modelRequest!==token||!modelHost.isConnected||activeModel!==modelHost)return;
-         stopModel=module.mountAfterActionModel(modelHost,chosen);
-       }).catch(()=>{if(modelHost.isConnected)
-         modelHost.textContent='3D VIEW UNAVAILABLE ON THIS DEVICE';});
-     }
-   }
+   const squadHost=screen.querySelector<HTMLElement>('[data-after-squad-model]');
+   const combatHost=screen.querySelector<HTMLElement>('[data-after-model]');
+   presentModel(root,s.recorder,squadHost??combatHost,
+     squadHost?s.selectedOperator:combatHost?.dataset.afterModel??null);
    safeContent.scrollTop=s.scroll[s.tab]??0;
  }
  renderers.set(root,draw);
