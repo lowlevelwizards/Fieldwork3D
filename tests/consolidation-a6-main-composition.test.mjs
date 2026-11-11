@@ -93,3 +93,14 @@ test('A6 existing replay HUD owns all quick/direct/late replay button event bind
  assert.match(hud,/if\(directBound\)return/);
  assert.match(hud,/if\(lateBound\)return/);
 });
+
+test('A6 tactical button DOM and command binding has a single existing HUD owner',()=>{
+ const hud=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
+ assert.match(source,/hudController\.bindToolbar\(/);
+ assert.doesNotMatch(source,/ui\.clear\.addEventListener/);
+ assert.doesNotMatch(source,/function casualtyActionButton/);
+ assert.match(hud,/function bindToolbar\(/);
+ assert.match(hud,/if\(toolbarButtons\)return toolbarButtons/);
+ assert.match(hud,/port\.ui\.clear\.addEventListener/);
+ assert.match(hud,/planMedicalTreatment\(/);
+});

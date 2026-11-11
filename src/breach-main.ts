@@ -1357,129 +1357,27 @@ const campaignFlow=createBreachCampaignFlow({
 const campaignScreen=campaignFlow.screen;
 const showCampaignHome=campaignFlow.showHome;
 const returnAfterCampaignMission=campaignFlow.returnAfterMission;
-ui.rook.addEventListener('click',()=>selectUnit('rook'));
-ui.back.addEventListener('click',()=>{
-  audioController.uiClickTone('select');
-  // BACK must always escape an unfinished targeting gesture first.
-  // It cannot accidentally remove an unrelated prior waypoint.
-  if(targeting.isArmed){cancelTargeting();return;}
-  if(selectedActiveWatch){
-    selectedActiveWatch=false;updateHud();return;
-  }
-  // Build 076 accidentally removed this listener when slimming the HUD.
-  if(backOne(state,selected)){
-    selectedNode=null;doorFocusId=null;
-  }
-  updateHud();
+const toolbarButtons=hudController.bindToolbar({
+ ui,get state(){return state;},get selected(){return selected;},
+ get replaying(){return replaying;},
+ get selectedNode(){return selectedNode;},set selectedNode(v){selectedNode=v;},
+ get selectedActiveWatch(){return selectedActiveWatch;},
+ set selectedActiveWatch(v){selectedActiveWatch=v;},
+ get doorFocusId(){return doorFocusId;},set doorFocusId(v){doorFocusId=v;},
+ get weaponChooser(){return weaponChooser;},audio:audioController,
+ showWeaponChooser,hideWeaponChooser,selectUnit,cancelTargeting,
+ showUiHelp,updateHud,medicalCandidate:()=>medicalCandidate(selected),
+ casualtyCandidate:()=>casualtyCandidate(selected),
+ invalidateFog:()=>fog2D.invalidate(),
+ setRangeTrial:value=>{lastRangeTrial=value;},
+ resetMission:()=>reset(),
+ restartRange:()=>reset(state.variant,undefined,undefined,equipmentTrainingSite())
 });
-ui.moss.addEventListener('click',()=>selectUnit('moss'));
-ui.ash.addEventListener('click',()=>selectUnit('ash'));
-ui.vale.addEventListener('click',()=>selectUnit('vale'));
-ui.clear.addEventListener('click',async()=>{
- if(state.phase!=='planning'||replaying)return;
- const session=state,targetId=selected;
- const operator=team(session).find(a=>a.id===targetId);
- const count=operator?.plan.length??0;
- if(count===0)return;
- if(count>=3&&!await confirmFieldworkAction({
-   title:'Clear '+(operator?.name??'operator')+' route?',
-   message:count+' queued orders will be cleared. Undo can restore the route.',
-   confirmLabel:'CLEAR ROUTE',danger:true
- }))return;
- if(session!==state||state.phase!=='planning')return;
- if(clearPlan(state,targetId)){
-   selectedNode=null;
-   showUiHelp('ROUTE CLEARED · UNDO TO RESTORE',3000);
-   audioController.playOrderCue('ui.cancel');updateHud();
- }
-});
-ui.undo.addEventListener('click',()=>{undoPlan(state,selected);selectedNode=null;audioController.playOrderCue('orders.undo');updateHud();});
-ui.redo.addEventListener('click',()=>{redoPlan(state,selected);selectedNode=null;audioController.playOrderCue('orders.redo');updateHud();});
-ui.wait.addEventListener('click',()=>{planWait(state,selected,1);audioController.playOrderCue('orders.wait');updateHud();});
-fieldLightButton=document.createElement('button');
-fieldLightButton.type='button';fieldLightButton.textContent='WEAPON LIGHT';
-fieldLightButton.setAttribute('aria-label','Toggle selected operator weapon light');
-fieldLightButton.addEventListener('click',()=>{
- if(replaying)return;
- toggleWeaponLight(state,selected);audioController.playOrderCue('equipment.flashlight_click');updateHud();
-});
-ui.siteSettings.append(fieldLightButton);
-const leaveRangeButton=document.createElement('button');
-leaveRangeButton.type='button';leaveRangeButton.textContent='LEAVE TEST RANGE';
-leaveRangeButton.dataset.equipmentRangeExit='';
-leaveRangeButton.addEventListener('click',()=>{
- if(state.site?.training){lastRangeTrial=null;reset();updateHud();}
-});
-ui.siteSettings.append(leaveRangeButton);
-const rangeRepeat=document.createElement('button');
-rangeRepeat.type='button';rangeRepeat.textContent='RESTART RANGE TRIAL';
-rangeRepeat.dataset.rangeRepeat='';
-rangeRepeat.addEventListener('click',()=>{
- if(!state.site?.training)return;
- lastRangeTrial=captureRangeTrial(state,selected);
- reset(state.variant,undefined,undefined,equipmentTrainingSite());
- updateHud();
-});
-ui.siteSettings.append(rangeRepeat);
-medicalButton=document.createElement('button');
-medicalButton.type='button';
-medicalButton.className=ui.loadout.className;
-medicalButton.textContent='TREAT';
-medicalButton.setAttribute('aria-label','Plan medical stabilization');
-medicalButton.addEventListener('click',()=>{
- if(replaying||state.phase!=='planning')return;
- const patient=medicalCandidate(selected);
- if(patient)planMedicalTreatment(state,selected,patient.id);
- updateHud();
-});
-ui.loadout.insertAdjacentElement('afterend',medicalButton);
-function casualtyActionButton(label:string,action:(target:TeamActor)=>void){
- const button=document.createElement('button');button.type='button';
- button.className=ui.loadout.className;button.textContent=label;
- button.hidden=true;
- button.addEventListener('click',()=>{
-  if(state.phase!=='planning'||replaying)return;
-  const patient=casualtyCandidate(selected);
-  if(patient)action(patient);
-  updateHud();
- });
- medicalButton!.insertAdjacentElement('afterend',button);
- return button;
-}
-dragButton=casualtyActionButton('DRAG',target=>{
- targeting.armEvac(target.id,'drag');
- showUiHelp('TAP DESTINATION FOR CASUALTY DRAG',5500);
-});
-carryButton=casualtyActionButton('CARRY',target=>{
- targeting.armEvac(target.id,'carry');
- showUiHelp('TAP DESTINATION FOR CASUALTY CARRY',5500);
-});
-retrieveButton=casualtyActionButton('RECOVER',target=>{
- if(!planRecoverMedical(state,selected,target.id))
-  showUiHelp('NO ACCESSIBLE MEDICAL SUPPLY OR ROUTE');
-});
-ui.loadout.setAttribute('aria-haspopup','true');
-ui.loadout.setAttribute('aria-expanded','false');
-ui.loadout.addEventListener('click',()=>{
- if(weaponChooser.hidden)showWeaponChooser();
- else hideWeaponChooser();
-});
-ui.reload.addEventListener('click',()=>{
-  if(state.phase==='planning')planReload(state,selected);
-  else if(state.phase==='running')reloadNow(state,selected);
-  updateHud();
-});
-ui.cancelTarget.addEventListener('click',cancelTargeting);
-ui.flash.addEventListener('click',()=>{
-  if(state.phase!=='planning'||replaying)return;
-  targeting.toggleFlash();
-  updateHud();
-});
-ui.sync.addEventListener('click',()=>{planSync(state);audioController.playOrderCue('orders.sync');updateHud();});
-ui.stance.addEventListener('click',()=>{
-  posture(state,selected);audioController.playOrderCue('orders.stance');fog2D.invalidate();updateHud();
-});
-ui.contact.addEventListener('click',()=>{toggleContactRule(state,selected);updateHud();});
+fieldLightButton=toolbarButtons.light;
+medicalButton=toolbarButtons.medical;
+dragButton=toolbarButtons.drag;
+carryButton=toolbarButtons.carry;
+retrieveButton=toolbarButtons.recover;
 missionScreens.bindSitePreferences();
 ui.variant.addEventListener('click',async()=>{
   if(replaying||appFlow.mode==='mission')return;
