@@ -1,6 +1,7 @@
 /** Stage 10b: Campaign screen and transitions; authoritative state stays in host.
  * All Campaign actions continue using campaign-state and campaign-persistence.
  */
+import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {team,debrief} from './breach-game.ts';
 import {parseOperationHistory,addOperationRecord,type OperationRecord}
@@ -23,7 +24,7 @@ import {confirmFieldworkAction} from './ui/fieldwork-controls.ts';
 import type {IntelMode} from './breach-intel.ts';
 import type {SiteScale} from './breach-site.ts';
 import type {Session} from './breach-game.ts';
-type CampaignMode='menu'|'home'|'mission'|'quick';
+
 export type CampaignFlowHooks={
  getCampaign:()=>CampaignState|null;setCampaign:(value:CampaignState|null)=>void;
  saveCampaign:()=>boolean;
