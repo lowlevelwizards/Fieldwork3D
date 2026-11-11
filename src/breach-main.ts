@@ -57,9 +57,9 @@ import {createBreachReplayPresentationController} from './breach-replay-presenta
 import {createReplayPresentationOptions} from './breach-replay-presentation-options.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
-import {compileMissionFacts} from './briefing/mission-facts.ts';
-import {createOperationDossier} from './briefing/briefing-composer.ts';
-import {attachCampaignDossierContext} from './briefing/campaign-context.ts';
+
+
+
 
 
 import {mostUrgentWound} from './breach-medical-wounds.ts';
@@ -106,7 +106,7 @@ import './ui/ux-r1-sheets.css';
 import './ui/ux-r3-hud.css';
 import './ui/fieldwork-action-toast.css';
 
-import {createBreachMissionScreens} from './ui/breach-mission-screens.ts';
+import {createBreachMissionScreens,buildBriefingDossier} from './ui/breach-mission-screens.ts';
 
 
 
@@ -142,17 +142,7 @@ const bootConfig=parseBreachBootConfig(location.search);
 // optional troubleshooting escape hatch, never a mission rule change.
 const briefingPreviewEnabled=bootConfig.briefingPreviewEnabled;
 function buildPreviewDossier(session:Session,risk?:1|2|3){
-  if(!briefingPreviewEnabled||!session.site)return undefined;
-  try{
-    const dossier=createOperationDossier(compileMissionFacts(session,{contractRisk:risk}));
-    return appFlow.mode==='mission'?
-      attachCampaignDossierContext(dossier,campaign):dossier;
-  }
-  catch(error){
-    // Narrative validation must never prevent a valid tactical mission loading.
-    console.warn('[Briefing] Safe static contract fallback',error);
-    return undefined;
-  }
+ return buildBriefingDossier(session,risk,briefingPreviewEnabled,appFlow.mode,campaign);
 }
 // Live civilian field testing is enabled in ordinary Quick Play/Campaign.
 // ?civilians=0 is a deliberate rollback switch while testing on phones;

@@ -144,3 +144,11 @@ test('A6 Campaign roster hydration belongs to existing Campaign flow',()=>{
  assert.match(campaign,/allocateFlashSupply\(/);
  assert.match(campaign,/stageMagazines\(/);
 });
+
+test('A6 briefing dossier construction is owned by mission-screens view',()=>{
+ const screens=readFileSync(new URL('../src/ui/breach-mission-screens.ts',import.meta.url),'utf8');
+ assert.match(source,/buildBriefingDossier\(session,risk,briefingPreviewEnabled/);
+ assert.match(screens,/export function buildBriefingDossier\(/);
+ assert.match(screens,/attachCampaignDossierContext\(dossier,campaign\)/);
+ assert.match(screens,/Safe static contract fallback/);
+});

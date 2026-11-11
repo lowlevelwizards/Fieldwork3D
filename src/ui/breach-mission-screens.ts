@@ -2,6 +2,9 @@
  * UI ownership only: no tactical orders, campaign persistence or mission rules.
  */
 import type {CampaignMode} from '../breach-app-mode.ts';
+import {compileMissionFacts} from '../briefing/mission-facts.ts';
+import {createOperationDossier} from '../briefing/briefing-composer.ts';
+import {attachCampaignDossierContext} from '../briefing/campaign-context.ts';
 import type {createBreachAudioController} from '../breach-audio-controller.ts';
 import {confirmFieldworkAction} from './fieldwork-controls.ts';
 import {team,operationBriefing,type Session} from '../breach-game.ts';
@@ -525,4 +528,19 @@ ui.intelMode.addEventListener('click',()=>{
   navigation:tacticalSheetNavigation,collapse:collapseTacticalSheets,
   syncBriefingCard,setBriefingIntelTab,setBriefingView
  };
+}
+
+export function buildBriefingDossier(session:Session,risk:1|2|3|undefined,
+ briefingPreviewEnabled:boolean,mode:CampaignMode,campaign:CampaignState|null){
+  if(!briefingPreviewEnabled||!session.site)return undefined;
+  try{
+    const dossier=createOperationDossier(compileMissionFacts(session,{contractRisk:risk}));
+    return mode==='mission'?
+      attachCampaignDossierContext(dossier,campaign):dossier;
+  }
+  catch(error){
+    // Narrative validation must never prevent a valid tactical mission loading.
+    console.warn('[Briefing] Safe static contract fallback',error);
+    return undefined;
+  }
 }
