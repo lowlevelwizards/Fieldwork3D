@@ -1280,8 +1280,7 @@ function executionMarkerPoint(a:TeamActor,projected:boolean):Pt{
 const actor2D=createBreach2DActorRenderer({
  draw,rect,line,circle,colorFor,worldToScreen,
  replayKnowledge,executionProblemStatus,executionMarkerPoint,
- getFrame:()=>({state,replaying,selected,replayPlanScope,replayNameTags,
-  replayContactMarkers,replayObjectiveMarkers,replayAnalysis,viewMode})
+ getFrame:()=>({state,replaying,selected,...replayDisplay.options,viewMode})
 });
 /** Bounded forensic overlay; complete shot evidence stays in recorder. */
 function historicalShotVisible(shot:RecordedShot):boolean{
@@ -1295,8 +1294,8 @@ function historicalShotVisible(shot:RecordedShot):boolean{
 const route2D=createBreach2DRouteOverlays({
  draw,line,circle,uid,colorFor,displayRouteCache,
  getFrame:()=>({state,replaying,selected,selectedNode,selectedActiveWatch,
-  draggingNode,draggingWatchTarget,trace,cursor,looking:targeting.isFacing,replayPlanVersion,
-  replayPlanScope,recorder})
+  draggingNode,draggingWatchTarget,trace,cursor,looking:targeting.isFacing,
+  ...replayDisplay.options,recorder})
 });
 /** Gold denotes actual historically observed cells for the selected operator.
  * Shared geometry/doors/people remain shared and are NEVER claimed as POV.
@@ -1320,17 +1319,15 @@ const replay2D=createBreach2DReplayOverlays({
  replayPlayback,replayCamera,replayBodycam,
  getFrame:()=>({state,replaying,selected,recorder,
    selectedReplayShotId:replayAnalysisUi.selectedReplayShotId,
-  replayTraceMode,replayTrailMode,replayGhostMode,replayNameTags,viewScale,
-  replayMovementHistory})
+   ...replayDisplay.options,viewScale,replayMovementHistory})
 });
 const projected2D=createBreach2DProjectedOverlays({
  draw,line,circle,uid,worldToScreen,colorFor,selectedPlanNode,
  displayRouteCache,projectedRouteCache,drawExecutionProblem:actor2D.drawExecutionProblem,
  replayKnowledge,replayCamera,route2D,replay2D,
  getFrame:()=>({state,replaying,selected,selectedNode,selectedActiveWatch,
-  draggingNode,draggingWatchTarget,trace,replayPlanVersion,replayPlanScope,
-  replayNameTags,replayContactMarkers,replayObjectiveMarkers,replayAnalysis,
-  doorFocusId,stage,cssW,cssH,dpr})
+  draggingNode,draggingWatchTarget,trace,...replayDisplay.options,
+   doorFocusId,stage,cssW,cssH,dpr})
 });
 function render(){
   if(stage&&viewMode!=='plan2d'){
@@ -1355,7 +1352,7 @@ function render(){
   route2D.paths();replay2D.renderReplayMovementHistory(false);
   for(const a of state.civilians)actor2D.civilianSprite(a);
   for(const a of state.operators)actor2D.sprite(a);
-  if(!replaying||replayAnalysis)
+  if(!replaying||replayDisplay.options.replayAnalysis)
     for(const a of team(state))actor2D.drawExecutionProblem(a,false);
   actor2D.contacts();replay2D.renderReplayGhosts(false);replay2D.renderReplayBallistics(false);
   replay2D.renderReplayFollowMarker(false);actor2D.endMessage();
@@ -1679,19 +1676,24 @@ const replayTimeline=createBreachReplayTimelineController({
 
 const replayAnalysisUi=createBreachReplayAnalysisController({
  ui,playback:replayPlayback,camera:replayCamera,knowledge:replayKnowledge,
+ presentationOptions:replayDisplay,
  getRecorder:()=>recorder,getSession:()=>state,shotVisible:historicalShotVisible,
  seek:seekReplay,presentCurrent:presentReplayAtCurrentTime,refreshHud:updateReplayHud,
  selectActor:id=>{selected=id;},
  enableMovementAnalysis:()=>{
-   replayAnalysis=true;replayPlanScope='selected';
-   replayPlanVersion='active';replayTrailMode='recent';
- },
- markRecentTrace:()=>{replayTraceMode='recent';},
+    replayDisplay.patch({
+      replayAnalysis:true,replayPlanScope:'selected',
+      replayPlanVersion:'active',replayTrailMode:'recent'
+    });
+  },
+  markRecentTrace:()=>{replayDisplay.patch({replayTraceMode:'recent'});},
  applyPreset:applyReplayPreset,
  getOverlayState:()=>({
-   names:replayNameTags,contacts:replayContactMarkers,
-   plans:replayPlanScope!=='none',objectives:replayObjectiveMarkers
- }),
+    names:replayDisplay.options.replayNameTags,
+    contacts:replayDisplay.options.replayContactMarkers,
+    plans:replayDisplay.options.replayPlanScope!=='none',
+    objectives:replayDisplay.options.replayObjectiveMarkers
+  }),
  isVideoActive:()=>replayQuickVideo.active,
  persistBookmarks:()=>replayLibrary.persistCurrentBookmarks(),
  unlockAudio:()=>audioController.unlock(),showHelp:showUiHelp,
@@ -1726,9 +1728,8 @@ replayHudController=createBreachReplayHudController({
    videoActive:replayQuickVideo.active,
    library:replayLibrary,analysisUi:replayAnalysisUi,viewMode,
    stageAvailable:!!stage,selected,replaying,
-   replayXrayOn,replayTraceMode,replayGhostMode,replayTrailMode,
-   replayPlanScope,replayPlanVersion,replayNameTags,replayAnalysis,
-   audioSoundEnabled:audioController.replaySoundEnabled
+   presentationOptions:replayDisplay.options,
+    audioSoundEnabled:audioController.replaySoundEnabled
  }),
  onOverlayChoice:choice=>{
    replayAnalysisUi.replayPreset='custom';
