@@ -274,16 +274,17 @@
       <button id="afterActionDetailsClose" type="button">✕ CLOSE</button>
     </div>
     <div class="fw-after-detail-content">
-      <div id="afterActionOperatorDetail"></div>
-      <div id="afterActionContactDetail"></div>
+      <div id="afterActionTimeline" aria-label="Interactive mission event timeline"></div>
+      <div id="afterActionMissionDetails" aria-label="Structured mission report"></div>
       <details class="fw-after-action-detail" id="debriefIntelBlock" hidden>
         <summary>INTELLIGENCE REVIEW</summary>
         <p id="debriefIntelText"></p>
       </details>
-      <details class="fw-after-action-detail">
-        <summary>FULL REPORT / MISSION TIMELINE</summary>
-        <p id="debriefStats"></p>
-      </details>
+      <!-- Legacy bindings retain their IDs but no longer present a second,
+           massive raw-text report or an unrelated operator record. -->
+      <div id="afterActionOperatorDetail" hidden></div>
+      <div id="afterActionContactDetail" hidden></div>
+      <p id="debriefStats" hidden></p>
       <div class="fw-after-detail-actions">
         <button id="watchReplay" type="button">FULL REPLAY</button>
         <button id="saveReplayDebrief" type="button">SAVE REPLAY</button>
