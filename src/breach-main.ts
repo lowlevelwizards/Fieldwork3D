@@ -2193,7 +2193,6 @@ function releaseMissionPresentation():void{
     replayCamera.reset(stage);
     replayKnowledge.reset();
     audioController.endReplay();
-    replayDisplay.patch({replayXrayOn:false});stage?.setReplayXray(false);
   }
   replaying=false;replayPlayback.pause();finishedSession=null;
   replayLibrary.resetSession();
