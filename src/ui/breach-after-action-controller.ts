@@ -214,6 +214,8 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    const contacts=[...s.report.hostiles,...s.report.friendlyCasualties];
    const toContact=(event:AfterActionTimelineEvent)=>
      contacts.find(c=>c.id===event.targetId||c.id===event.actorId)??null;
+   const toOperator=(event:AfterActionTimelineEvent)=>
+     s.report.operators.find(op=>op.id===event.actorId)??null;
    const persist=()=>timelineRenderers.get(root)?.();
    const panel=renderAfterActionTimeline({
      events:s.timelineEvents,duration:s.recorder.duration,
@@ -223,7 +225,8 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        clusterId:s.timelineClusterId,ledgerOpen:s.timelineLedgerOpen,
        ledgerLimit:s.timelineLedgerLimit},
      actorName,
-     canInspect:event=>!!toContact(event),
+     inspectLabel:event=>toContact(event)?'INSPECT COMBAT':
+       toOperator(event)?'INSPECT OPERATOR':null,
      highlightsAvailable:replayHighlightMoments(s.recorder).length>0,
      actions:{
        filter:value=>{
@@ -257,17 +260,26 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          }));
        },
        inspect:event=>{
-         const contact=toContact(event);if(!contact)return;
-         s.contactSide=contact.side;s.selectedContact=contact.id;
-         s.selectedShotId=event.shotId!==null&&
-           contact.shots.some(shot=>shot.id===event.shotId)?
-             event.shotId:null;
-         s.scroll[s.tab]=safeContent.scrollTop;s.tab='combat';
+         const contact=toContact(event),operator=toOperator(event);
+         if(!contact&&!operator)return;
+         s.scroll[s.tab]=safeContent.scrollTop;
+         if(contact){
+           s.contactSide=contact.side;s.selectedContact=contact.id;
+           s.selectedShotId=event.shotId!==null&&
+             contact.shots.some(shot=>shot.id===event.shotId)?
+               event.shotId:null;
+           s.tab='combat';
+         }else if(operator){
+           s.selectedOperator=operator.id;
+           s.operatorRecordOpen=true;s.tab='squad';
+         }
          const details=root.querySelector<HTMLElement>('#afterActionDetails');
          if(details)details.hidden=true;
          renderers.get(root)?.();
-         root.querySelector<HTMLButtonElement>(
-           '[data-after-tab="combat"]')?.focus({preventScroll:true});
+         const focus=contact?
+           root.querySelector<HTMLButtonElement>('[data-after-tab="combat"]'):
+           root.querySelector<HTMLButtonElement>('.fw-v4-record-back');
+         focus?.focus({preventScroll:true});
        },
        highlights:()=>{
          s.scroll[s.tab]=safeContent.scrollTop;s.tab='highlights';
