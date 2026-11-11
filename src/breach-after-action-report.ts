@@ -127,7 +127,12 @@ export function buildAfterActionReport(rec:MissionRecorder):AfterActionReport{
         categories
       } satisfies OperatorAfterAction;
     }).sort((a,b)=>b.contribution-a.contribution||a.id.localeCompare(b.id));
-  operators.forEach((op,i)=>op.rank=i+1);
+  // Competition ranks truthfully reflect equal contribution scores.
+  // Stable ID ordering only determines display order within a tie.
+  operators.forEach((op,i)=>{
+    op.rank=i>0&&op.contribution===operators[i-1].contribution?
+      operators[i-1].rank:i+1;
+  });
   return {
     schemaVersion:2,duration:rec.duration,complete:rec.completeness.complete,
     limitations:[

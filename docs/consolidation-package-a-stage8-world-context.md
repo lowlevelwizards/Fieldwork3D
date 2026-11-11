@@ -43,3 +43,7 @@ B and C replace Session assembly's global activation with explicit `initialWorld
 ## Concurrent After Action V4 integration
 
 Main advanced to `2c44a4e95e7950b3a32570e0d7df5e0c58b2a334` while A8 was on its feature branch. The integrated tree is based on that V4 release and retains the updated replay authorization and debrief-controller contracts. Historical browser smoke scripts now save the recorded in-progress mission to the Replay Library and enter through its approved UI; an old hidden debrief action no longer grants unauthorized playback. No conditional debug probes or console tracing are included in the release tree. The last main Pages artifact was verified as `2c44a4e95e79-mwccrvtb`.
+
+## Stage 2 concurrent-main integration
+
+A8 was additionally integrated onto the verified After Action V4 Stage 2 main release `ed87710bea5b` (Pages stamp `ed87710bea5b-mwce7s7o`). The Stage 2 hierarchy, report, and squad UI changes are retained. A8's only release-smoke edits still use the authorized Replay Library entry introduced in V4 Stage 1; no debrief hierarchy UI is modified by A8.

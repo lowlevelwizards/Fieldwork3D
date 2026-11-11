@@ -56,7 +56,6 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    // A new recording never inherits a previous mission's open report sheet.
    const oldDetails=root.querySelector<HTMLElement>('#afterActionDetails');
    if(oldDetails)oldDetails.hidden=true;
-   root.querySelector<HTMLElement>('#afterActionIntro')?.removeAttribute('hidden');
    if(!bound.has(root)){
     bound.add(root);
    for(const tabButton of safeNav.querySelectorAll<HTMLButtonElement>('[data-after-tab]')){
@@ -67,10 +66,6 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        renderers.get(root)?.();
      });
    }
-   const intro=root.querySelector<HTMLElement>('#afterActionIntro');
-   root.querySelector<HTMLButtonElement>('#afterActionContinue')?.addEventListener('click',()=>{
-     if(intro)intro.hidden=true;
-   });
    const details=root.querySelector<HTMLElement>('#afterActionDetails');
    const open=root.querySelector<HTMLButtonElement>('#afterActionDetailsToggle');
    const close=root.querySelector<HTMLButtonElement>('#afterActionDetailsClose');
@@ -106,9 +101,23 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    if(intel)intel.hidden=!s.showIntel;
    if(raw)raw.hidden=false;
    root.classList.toggle('fw-v4-record-open',s.tab==='squad'&&s.operatorRecordOpen);
+   root.classList.toggle('fw-v4-squad-active',s.tab==='squad');
    const choose=(id:string|null)=>{
-     if(id===s.selectedOperator&&s.tab==='squad')return;
+     if(id===s.selectedOperator&&s.tab==='squad'&&!s.operatorRecordOpen)return;
      s.selectedOperator=id;s.operatorRecordOpen=false;s.tab='squad';draw();
+     // Redraw replaces buttons; keep keyboard/switch access anchored to the
+     // corresponding rank choice, not a destroyed DOM element.
+     const selectedHeading=id===null?null:safeContent.querySelector<HTMLElement>(
+       '.fw-v4-selected-overview .fw-v3-squad-name h2');
+     if(selectedHeading){
+       selectedHeading.tabIndex=-1;
+       selectedHeading.focus({preventScroll:true});
+     }else{
+       const rows=[...safeContent.querySelectorAll<HTMLButtonElement>(
+         '[data-after-operator-id]')];
+       (rows.find(row=>row.getAttribute('data-after-operator-id')===id)??
+         rows[0])?.focus({preventScroll:true});
+     }
    };
    let screen:HTMLElement;
    if(s.tab==='squad'){
@@ -116,22 +125,28 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        s.selectedOperator,(id)=>choose(id),(id)=>{
          s.selectedOperator=id;
          s.operatorRecordOpen=true;draw();
+         safeContent.querySelector<HTMLButtonElement>(
+           '.fw-v4-record-back')?.focus({preventScroll:true});
        });
      if(s.operatorRecordOpen){
        const operator=s.report.operators.find(o=>o.id===s.selectedOperator);
        if(operator){
          screen.classList.add('fw-v4-record-expanded');
-         const record=make('section','fw-v4-operator-record');
+         const record=make('section','fw-v4-operator-record fw-v4-squad-focus');
          record.id='afterActionOperatorRecord';
          record.setAttribute('aria-label','Full operator record for '+operator.name);
          const back=make('button','fw-v4-record-back','‹ BACK TO SQUAD') as HTMLButtonElement;
          back.type='button';
          back.addEventListener('click',()=>{
            s.operatorRecordOpen=false;draw();
+           safeContent.querySelector<HTMLButtonElement>(
+             '.fw-v3-details-link')?.focus();
          });
          record.append(back,renderSquadDetails(operator));
-         screen.insertBefore(record,
-           screen.querySelector('.fw-v3-squad-focus'));
+         // The complete record replaces the detail pane, not the ranked roster.
+         const focus=screen.querySelector('.fw-v3-squad-focus');
+         if(focus)focus.replaceWith(record);
+         else screen.append(record);
        }
      }
    }
