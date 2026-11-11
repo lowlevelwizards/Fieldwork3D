@@ -9,7 +9,7 @@ import type {createBreach2DRouteOverlays} from './breach-2d-route-overlays.ts';
 import type {createBreach2DReplayOverlays} from './breach-2d-replay-overlays.ts';
 import type {createBreach2DProjectedOverlays} from './breach-2d-projected-overlays.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
-import {type Session,type TeamActor,liveVisibility,isSeen} from './breach-game.ts';
+import {team,type Session,type TeamActor,liveVisibility,isSeen} from './breach-game.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 import {previewKnownDoorSwing} from './breach-door-swing-preview.ts';
 import {spatialSurfaceState} from './breach-presentation.ts';

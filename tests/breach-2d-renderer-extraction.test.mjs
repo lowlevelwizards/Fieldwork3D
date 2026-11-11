@@ -10,7 +10,8 @@ const routes=read('breach-2d-route-overlays.ts');
 const projected=read('breach-2d-projected-overlays.ts');
 const replay=read('breach-2d-replay-overlays.ts');
 test('the 2D composition root retains original depth, intel and world order',()=>{
- const render=main.slice(main.indexOf('function render(){'),main.indexOf('function rejectAt('));
+ const render=world.slice(world.indexOf('export function renderBreachTacticalWorldFrame('));
+ assert.match(main,/renderBreachTacticalWorldFrame\(/);
  const sequence=[
   'world2D.terrain();','world2D.furniture();','world2D.renderGroundMarks();',
   'world2D.renderLightingMood2D();','world2D.renderWeaponLights2D();',
