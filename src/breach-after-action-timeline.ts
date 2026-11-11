@@ -52,12 +52,13 @@ export function buildAfterActionTimeline(
  const duration=rec.duration;
  if(!Number.isFinite(duration)||duration<0)return [];
  const replay=new ReplayEventIndex(rec.events,rec.executionEvents);
+ const battleByKey=new Map(rec.events.map(e=>['battle:'+e.id,e] as const));
  const input:AfterActionTimelineEvent[]=[];
  const indexed=new Set(replay.all.map(e=>e.key));
  for(const [i,e] of replay.all.entries()){
    if(!clean(e.t,duration))continue;
    const battle=e.source==='battle'?
-     rec.events.find(x=>'battle:'+x.id===e.key):null;
+     battleByKey.get(e.key):null;
    input.push({key:e.key,source:e.source,t:e.t,kind:e.kind,
      category:category(e.kind),priority:priority(e.kind),
      text:e.text,actorId:e.actor??null,
