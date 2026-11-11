@@ -1,9 +1,22 @@
+import {planAim} from './breach-plan-aim-commands.ts';
+import {planWait,planSync} from './breach-plan-utility-commands.ts';
+import {assembleSession} from './breach-session-factory.ts';
+export {setStrafe,planPieAt,planPie,editPie,insertPlanNode,planWaitAt,planWait,planSync,planHoldClear,planReload,planReloadAt} from './breach-plan-utility-commands.ts';
+import {legalMoveRoute,knownTraversal,knownShoveCrossing} from './breach-known-route-authoring.ts';
+export {plannedWindowRoute} from './breach-known-route-authoring.ts';
+import {addNode,finalPoint} from './breach-plan-node-commands.ts';
+export {addNode,finalPoint} from './breach-plan-node-commands.ts';
+export {planAim,updatePlanFacing,planLook,planWatch,retargetActiveWatch,removeActiveWatch,releaseWatch} from './breach-plan-aim-commands.ts';
+export {operationBriefing,missionText,debrief} from './breach-mission-reporting.ts';
+import {team,enemies,actor,party,canEdit} from './breach-session-selectors.ts';
+export {team,enemies,actor,canEdit};
+export {setWaitDuration,setNodeControl,setStartPace,plannedControl,setMoveSprint,toggleWeaponLight,toggleContactRule,posture} from './breach-tactical-control-commands.ts';
+import {OBJECTIVE,EXTRACTION,SCENARIOS} from './breach-scenario-defaults.ts';
+export {OBJECTIVE,EXTRACTION,SCENARIOS};
 import {createCombatFiringPipeline} from './breach-firing-pipeline.ts';
 import {advanceActorSightProgress,observeActorContactEvidence} from './breach-visual-acquisition.ts';
 import {createEnemyDecisionController} from './breach-enemy-decision-controller.ts';
-import {edit,validEditedPlan,validKnownPieArc,knownDoorApproach,
- atomicTeamEdit,sealPlanHistoryForExecution,undoAuthoredPlan,redoAuthoredPlan}
- from './breach-plan-authoring.ts';
+import {edit,validEditedPlan,knownDoorApproach,atomicTeamEdit,sealPlanHistoryForExecution,undoAuthoredPlan,redoAuthoredPlan} from './breach-plan-authoring.ts';
 import {advanceSimulationTick,type SimulationPhasePort} from './breach-simulation-phases.ts';
 import {advanceMedicalDoorPhase} from './breach-simulation-medical-door-phase.ts';
 import {advanceBeliefAgingPhase} from './breach-simulation-belief-phase.ts';
@@ -21,11 +34,11 @@ import type {ActorMotorHooks} from './breach-motor-contract.ts';
  * Author intent is editable PlanNode[]; motor navigation is transient.
  * The core retains the 052 static geometry and starter actors, not its old simulation.
  */
-import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,} from './breach-core.ts';
-import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
+import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorBlocksRay,doorBlocksSightRay,pointToSegment} from './breach-core.ts';
+import {type PlanNode,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions} from './breach-entry-coordination.ts';
-import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
+import type {Site,SiteScale} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
 
@@ -44,7 +57,7 @@ import {type FireBlock} from './breach-fire-safety.ts';
 
 
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {initDoor,doorReachable} from './breach-door.ts';
+import {doorReachable} from './breach-door.ts';
 
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool} from './equipment-entry-tools.ts';
@@ -55,18 +68,17 @@ import {type AutoSidestep} from './breach-auto-sidestep.ts';
 import {type MotorPause,type ExecutionIssue,type ExecutionStatus} from './breach-execution-state.ts';
 import {type ExecutionEvent} from './breach-execution-events.ts';
 import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
-import {canAutoShove} from './breach-traversal-surfaces.ts';
-import {materialForFixture,MATERIALS} from './breach-materials.ts';
 
 
 
-import {initializeWindows,type WindowState} from './breach-windows.ts';
+
+import type {WindowState} from './breach-windows.ts';
 import {type AIIntent} from './breach-ai-policy.ts';
 
-import {registerSessionWorldGeometry,sessionWorldGeometry,publishSessionCoverToActiveSite,setPresentationWorldSession} from './breach-world-context.ts';
+import {sessionWorldGeometry,publishSessionCoverToActiveSite} from './breach-world-context.ts';
 
 
-import {newSuspicion,type SuspicionMemory} from './breach-ai-suspicion.ts';
+import type {SuspicionMemory} from './breach-ai-suspicion.ts';
 
 import {TacticalRouteCache} from './breach-tactical-route-cache.ts';
 import {PerceptionPairCache} from './breach-perception-cache.ts';
@@ -75,12 +87,11 @@ import {PerceptionPairCache} from './breach-perception-cache.ts';
 
 
 
-import {createCivilian,setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
-import {civilianRefugePoints} from './breach-civilian-refuge.ts';
+import {setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
 
 
-import {attributableCivilianHarm,type CivilianHarmEvent} from './breach-civilian-harm.ts';
+import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
 
 import {type CombatAction} from './breach-ai-combat.ts';
 
@@ -88,7 +99,7 @@ import {type TacticalReport} from './breach-communication.ts';
 import {type GroupRole} from './breach-ai-coordination.ts';
 
 
-import {newAwareness,type ActorAwareness} from './breach-awareness.ts';
+import type {ActorAwareness} from './breach-awareness.ts';
 import {confirmedSight} from './breach-visual-perception.ts';
 
 import type {LightingMode} from './equipment-site-lighting.ts';
@@ -99,26 +110,23 @@ import {projectReachableGoal,type Blocker} from './breach-nav-diagnostics.ts';
 import {sweptBodyClear,SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld} from './breach-squeeze-route.ts';
 import {knownPortalStrokeRoute} from './breach-known-portal-stroke.ts';
-import {probeObstacleCrossing,probeWindowPortalRoute,canOpenWindowForClimb,traversalRouteLength,type TraverseOpportunity} from './breach-mantle.ts';
+import {type TraverseOpportunity} from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
-import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
-import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {kitMedicalSupplies,medicalSupplyCount,type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
 
-import {stabilizationSummary} from './breach-casualty-status.ts';
 import {type TransportMode} from './breach-casualty-transport.ts';
 import {civilianTransportEligible} from './breach-civilian-transport.ts';
 import {changeWeaponPlatform,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 
-import {DEFAULT_SKILLS,type ShootingSkills} from './breach-skills.ts';
+import type {ShootingSkills} from './breach-skills.ts';
 import {type FiringMode} from './breach-ballistics.ts';
 
 
 import {advanceRescueEscort,type RescueEscort} from './breach-rescue-escort.ts';
 import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployment.ts';
-import {operationBrief,assessOperation,type OperationKind} from './breach-operations.ts';
+import type {OperationKind} from './breach-operations.ts';
 
 import {initialIntel,bindIntelWorld,observeIntel,routeWithIntel,intelPassable,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
 
@@ -129,7 +137,7 @@ import {liveMagazineCapacity,freshMagazineIssue} from './arsenal/live-magazine-c
 
 import {type EjectedCasing} from './breach-effects.ts';
 import {type WoundRegion,type FallPose} from './breach-wounds.ts';
-import {newMedicalCondition,mostUrgentWound,type MedicalCondition} from './breach-medical-wounds.ts';
+import {mostUrgentWound,type MedicalCondition} from './breach-medical-wounds.ts';
 
 export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
@@ -311,238 +319,14 @@ const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const angle=(a:Pt,b:Pt)=>targetAngle(a,b);
-export const OBJECTIVE:Pt={x:453,y:319};
-export const EXTRACTION:Pt={x:307,y:669};
-export const SCENARIOS=[
-  {index:0,name:'SENTRY',spots:[{x:242,y:301,h:1.58},{x:523,y:254,h:2.48}]},
-  {index:1,name:'CROSSWATCH',spots:[{x:228,y:442,h:0.6},{x:518,y:258,h:2.3}]},
-  {index:2,name:'REAR GUARD',spots:[{x:262,y:213,h:1.1},{x:476,y:444,h:2.8}]},
-] as const;
-const withActions=(a:Operator):TeamActor=>({
-  ...a,medical:newMedicalCondition(),medicalSupplies:kitMedicalSupplies(),
-  lastTreatmentAt:-100,lastTreatmentTargetId:null,
-  treatmentActive:false,treatmentProgress:0,
-  carryingId:null,carriedById:null,wedgeRemaining:0,
-  awareness:newAwareness(),suspicion:newSuspicion(),lastVisualSuspicionId:null,
-  intent:null,combatChoice:null,lastReportAt:-100,
-  coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],searchPauseUntil:0,plan:[],history:makeHistory(),nav:[],activeNode:-1,
-  posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
-  targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
-  reload:0,hits:0,kills:0,pointShots:0,aimedShots:0,longHits:0,
-  stopped:false,contact:null,heard:null,
-  insertedMagazineId:a.id+'/carbine/loaded',
-  spareMagazines:magazineKit(a.id,'carbine',36,12),
-  reloadMode:null,reloadStartedAt:-100,reloadDuration:0,
-  reloadRemoved:false,reloadInserted:false,reloadFromRounds:0,
-  reloadTargetRounds:0,reloadSelectedMagazineId:null,
-  alertUntil:0,waitRemaining:0,syncReady:null,actionTimer:0,
-  blockedTime:0,lastNavRepairAt:-10,lastNormalLaneProbeAt:-10,
-  priorP:clone(a.p),haltOnContact:false,retreatPoint:null,
-  recoveryAttempts:0,retryRouteAt:0,routeGoalKey:'',
-  lastAutoShoveAt:-100,
-  squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
-   autoSidestep:null,
-  traversalPending:null,traversal:null,traversalElapsed:0,
-  traversalElevation:0,lastTraversalAt:-100,
-  traversalRetreating:false,
-  lastBlocker:'clear',motorPause:null,orderIssue:null,completedOrders:0,
-  passageWaitSeconds:0,passageStallReported:false,
-  executionLastStatus:null,
-  pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,
-  lastHitRegion:'torso',lastHitYaw:0,lastHitSeverity:0,
-  downPose:'forward',downClearance:1,
-  yieldTarget:null,yieldFor:null,yieldUntil:0,
-  personality:'guard',morale:1,lastNoiseAt:-1,
-  lastNoiseExaminedAt:-1,lastNoiseExaminedId:0,flashUntil:-1,
-  lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,
-  lastDoorMethod:'open',stride:0,
-  weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
-  lastBashAt:-100,lastBashRole:null,
-  lastLaneWarnAt:-100,lastFireBlock:'clear',
-  fireRetreatTarget:null,fireRetreatUntil:0,lastFireRetreatAt:-100,
-  fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},appearanceSeed:0,
-  weaponLightOn:false,
-  armorIntegrity:0,helmetIntegrity:0,flashCharges:2,
-  firePolicy:'engage',suppressPoint:null,focusTargetId:null,
-  weapon:'carbine',injuryStage:0,defense:null,watch:null,
-  defenseUntil:0,surrendered:false,lastFireRepositionAt:-100,
-  lastMissionEvadeAt:-100,lastEnemyDoorCloseAt:-100,
-});
-/** Omitted seed keeps 052's historic static study for regression tests.
- * The actual game passes a unique seed on each newly loaded site.
- */
+/** Public tactical Session constructor; creation becomes visible to
+ * knowledge/replay only after its complete world context is registered. */
 export function newSession(index=0,siteSeed?:number,
   intelMode:IntelMode='floor-plan',scale:SiteScale='standard',
   missionOverride?:OperationKind,prebuiltSite?:Site,
   encounterContext:EncounterContext={}):Session{
-  const site=prebuiltSite??(siteSeed===undefined?undefined:
-    generateSite(siteSeed>>>0,scale,undefined,
-      {...encounterContext,mission:missionOverride??encounterContext.mission}));
-  activateSite(site??null);
-  const seed=newTacticalState();
-  const variant=((index%SCENARIOS.length)+SCENARIOS.length)%SCENARIOS.length;
-  const sample=SCENARIOS[variant];
-  const operators=seed.operators.map(withActions);
-  if(site){
-    // Two more independently commanded operators, not cloned simulations.
-    const rook=operators.find(a=>a.id==='rook')!;
-    for(const [id,name] of [['ash','ASH'],['vale','VALE']]){
-      const base={...rook,id,name,p:{...rook.p},path:[],
-        lastSpotted:null,shots:0,fireCd:0,health:2};
-      operators.push(withActions(base));
-    }
-    const friendly=operators.filter(a=>a.side==='blue');
-    friendly.forEach((a,i)=>{
-      const issue=issueWeaponPreset(starterWeaponPreset(a.id));
-       a.weapon=issue.weapon;a.weaponConfiguration=issue.weaponConfiguration;
-      const issueRounds=freshMagazineIssue(a.id,a.weapon,a.weaponConfiguration);
-      a.magazine=issueRounds.magazine;a.reserve=issueRounds.reserve;
-      a.insertedMagazineId=issueRounds.loadedMagazineId;
-      a.spareMagazines=issueRounds.magazines;
-      a.health=4;a.injuryStage=0;
-      a.p={...site.spawn[i]};
-      // Entry teams face the nearest actual interior, not a hard-coded
-      // compass direction that is wrong for rotated/generated buildings.
-      const room=[...site.rooms].sort((u,v)=>
-        d(a.p,{x:u.x+u.w/2,y:u.y+u.h/2})-
-        d(a.p,{x:v.x+v.w/2,y:v.y+v.h/2}))[0];
-      a.heading=room?angle(a.p,{x:room.x+room.w/2,y:room.y+room.h/2}):
-        angle(a.p,site.entrance);
-      a.weaponYaw=a.heading;
-      a.priorP={...a.p};
-    });
-    // Site danger scales gently with room count; guards never spawn outside
-    // their generated rooms, and every corpse uses the actual site geometry.
-    const old=operators.filter(a=>a.side==='red');
-    const enemyRng=seeded(site.seed^0x8bd7812f);
-    for(let i=0;i<site.enemies.length;i++){
-      let a:TeamActor;
-      if(i<old.length)a=old[i];
-      else{
-        const source=old[i%old.length];
-        a=withActions({...source,id:'guard'+i,
-          name:'GUARD '+(i+1),p:{...source.p},path:[],
-          lastSpotted:null,shots:0,fireCd:0,health:2});
-        operators.push(a);
-      }
-      a.p={...site.enemies[i]};a.priorP={...a.p};
-      a.heading=site.encounter?.actors[i]?.heading??
-        site.enemyHeadings?.[i]??enemyRng()*Math.PI*2;
-      a.weaponYaw=a.heading;
-      const spec=site.encounter?.actors[i];
-      if(spec){a.encounterActivity=spec.activity;a.encounterReadiness=spec.readiness;
-        a.encounterRole=spec.role;a.encounterGroupId=spec.groupId;
-        a.encounterRoutine=spec.routine?.map(p=>({...p}));
-        a.routineIndex=0;a.routinePauseUntil=1.5+enemyRng()*3;
-        a.encounterReactionUntil=Number.POSITIVE_INFINITY;}
-      a.health=enemyRng()<.18?3:4;
-      const issued=enemyKitForEncounter(spec,site.seed,i);
-      a.weapon=issued.weapon;
-      a.weaponConfiguration=issued.weaponConfiguration;
-      a.equipment=issued.equipment;a.wardrobe=issued.wardrobe;
-      a.appearanceSeed=issued.appearanceSeed;
-      a.armorIntegrity=issued.armorIntegrity;
-      a.helmetIntegrity=issued.helmetIntegrity;
-      const issueRounds=freshMagazineIssue(a.id,a.weapon,a.weaponConfiguration);
-      a.magazine=issueRounds.magazine;a.reserve=issueRounds.reserve;
-      a.insertedMagazineId=issueRounds.loadedMagazineId;
-      a.spareMagazines=issueRounds.magazines;
-      a.injuryStage=0;
-      a.personality=spec?.role==='investigator'?'aggressor':
-        spec?.role==='reserve'||spec?.role==='target'?'cautious':
-        (['guard','aggressor','cautious'] as const)[Math.floor(enemyRng()*3)];
-      a.morale=.48+enemyRng()*.52;
-    }
-    // Generated sites may legitimately have one or no armed occupants.
-    // Remove unused legacy defenders: no invisible off-map enemies.
-    if(site.enemies.length<old.length){
-      const unused=new Set(old.slice(site.enemies.length));
-      for(let i=operators.length-1;i>=0;i--)
-        if(unused.has(operators[i]))operators.splice(i,1);
-    }
-  }else operators.filter(a=>a.side==='red').forEach((a,i)=>{
-    const pos=sample.spots[i];a.p={x:pos.x,y:pos.y};a.heading=pos.h;
-    const issued=enemyKitForEncounter(undefined,index,i);
-    a.weapon=issued.weapon;a.weaponConfiguration=issued.weaponConfiguration;
-    a.equipment=issued.equipment;a.wardrobe=issued.wardrobe;
-    a.appearanceSeed=issued.appearanceSeed;
-    a.armorIntegrity=issued.armorIntegrity;
-    a.helmetIntegrity=issued.helmetIntegrity;
-    const issueRounds=freshMagazineIssue(a.id,a.weapon,a.weaponConfiguration);
-    a.health=2;a.magazine=issueRounds.magazine;
-    a.reserve=issueRounds.reserve;a.weaponYaw=a.heading;
-    a.insertedMagazineId=issueRounds.loadedMagazineId;
-    a.spareMagazines=issueRounds.magazines;
-  });
-  // The base tactical study carries two legacy defenders. An explicit
-  // training site must remove them rather than spawning hostile AI off-map.
-  if(site?.training){
-    for(let i=operators.length-1;i>=0;i--)
-      if(operators[i].side==='red')operators.splice(i,1);
-  }
-  // Civilian activation is an explicit session policy. The current UI opts
-  // in by default, while old tests/replays and ?civilians=0 stay empty.
-  const civilians=encounterContext.enableCivilians?
-    (site?.encounter?.neutrals??[]).map(createCivilian):[];
-  if(site)for(const person of civilians)
-    person.refugePoints=civilianRefugePoints(site,person);
-  const state:Session={...seed,operators,civilians,
-    civilianHarmEvents:[],objectRevision:0,
-    coverState:COVER.map(o=>({...o,material:materialForFixture(o.fixture),
-      integrity:MATERIALS[materialForFixture(o.fixture)].integrity})),
-    windows:initializeWindows(site?.windows??[]),
-    passageLeases:{},squadEntryUndo:null,squadEntryRedo:null,
-    doors:initialDoors().map((d,i)=>initDoor({
-      ...d,locked:d.locked??!!(site&&i>2&&i%7===0&&
-        d.kind!=='shutter'&&d.id!=='FRONT')},i)),variant,nextId:1,
-    scenario:{index:variant,name:site?.name??sample.name,
-      objective:clone(site?.objective??OBJECTIVE),
-      extract:clone(site?.extract??EXTRACTION)},
-    mission:'clear',noise:[],nextNoiseId:1,reports:[],nextReportId:1,shots:[],casings:[],nextShotId:1,known:new Map(),
-    seenGround:new Set(),seenGroundRevision:0,
-    intel:initialIntel(intelMode,site,initialDoors()),
-    intelObservedAt:-1,timesPaused:0,deaths:0,started:false,
-    syncCode:0,report:[],movementNoiseAt:0,site,lightingMode:'day',
-    dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
-    impactMarks:[],battleEvents:[],nextBattleId:1,
-    executionEvents:[],nextExecutionId:1,
-    missionType:missionOverride??(site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear'),
-    holdTime:0,rescue:null,captureTarget:null,captureSecured:false,
-    intelCarrierId:null};
-  if(state.missionType==='capture'){
-    // Respect the mission-specific target role from the actual encounter.
-    // Fallback to the legacy first defender for older saved/practice maps.
-    const targetIndex=site?.encounter?.actors.findIndex(a=>a.role==='target')??-1;
-    const fighters=operators.filter(a=>a.side==='red');
-    const target=targetIndex>=0?fighters[targetIndex]:fighters[0];
-    state.captureTarget=target?.id??null;
-    if(target)state.scenario.objective=clone(target.p);
-  }
-  if(state.missionType==='rescue'){
-    // The developer-gated migration creates ONE authoritative rescued
-    // person. Ordinary gameplay keeps the legacy escort until N4 release.
-    if(encounterContext.enableCivilians&&site){
-      const point=state.scenario.objective;
-      const room=site.rooms.find(r=>r.kind==='room'&&
-        point.x>=r.x&&point.x<=r.x+r.w&&
-        point.y>=r.y&&point.y<=r.y+r.h);
-      state.civilians.push(createCivilian({
-        id:'civ:rescue:'+site.seed,role:'rescue',persona:'cautious',
-        activity:'waiting',position:clone(point),heading:0,
-        roomId:room?.id??'objective',
-        zoneId:room?.zoneId??room?.id,
-        appearanceSeed:site.seed^0x57eb,
-        isRescueTarget:true
-      }));
-    }
-    state.rescue={p:clone(state.scenario.objective),following:null,trail:[]};
-  }
-  if(state.missionType==='intel'||state.missionType==='rescue'||
-     state.missionType==='hold')state.mission='secure';
-  COVER.splice(0,COVER.length,...state.coverState);
-  registerSessionWorldGeometry(state);
-  setPresentationWorldSession(state);
-  bindIntelWorld(state.intel,sessionWorldGeometry(state));
+  const state=assembleSession(index,siteSeed,intelMode,scale,
+    missionOverride,prebuiltSite,encounterContext);
   observe(state);
   return state;
 }
@@ -574,88 +358,6 @@ export function selectDeployment(s:Session,id:string):boolean{
  notify(s,'DEPLOYMENT SET — '+(choice?.id??'FRONT'));
  return true;
 }
-export const team=(s:Session)=>s.operators.filter(a=>a.side==='blue');
-export const enemies=(s:Session)=>s.operators.filter(a=>a.side==='red');
-export const actor=(s:Session,id:string)=>s.operators.find(a=>a.id===id);
-const party=(s:Session,id:string)=>team(s).find(a=>a.id===id&&a.health>0);
-export const canEdit=(s:Session)=>s.phase==='planning';
-/** Plan authoring can see only briefed/discovered surfaces. World-truth
- * validation runs again at execution; hidden furniture isn't exposed by
- * an unexplained path preview or a shortcut through a closed window.
- */
-function knownWindowWorld(s:Session){
- const cover=s.coverState.filter((_,i)=>s.intel.cover.has(i));
- return {
-  cover,walls:sessionWorldGeometry(s).walls.filter((_,i)=>s.intel.walls.has(i)),
-  doors:s.doors.filter(door=>doorKnown(s.intel,door.id)),
-  windows:s.windows.filter(w=>s.intel.cover.has(s.coverState.findIndex(o=>
-    (o.fixture==='window-sill'||o.fixture==='glass-barrier')&&
-    Math.hypot(o.x-w.x,o.y-w.y)<1))).map(w=>
-      canOpenWindowForClimb(w)?{...w,open:true}:w),
-  canStand:(at:Pt)=>intelPassable(at,s.intel)
- };
-}
-/** Preview only known, reachable window portals; never infer hidden rooms. */
-export function plannedWindowRoute(s:Session,from:Pt,to:Pt,
- ordinary:readonly Pt[]=routeWithSqueezeIntel(s.intel,from,to)):Pt[]|null{
- const world=knownWindowWorld(s);
- if(!world.windows.length)return null;
- const portal=probeWindowPortalRoute(from,to,world,
-   (a,b)=>routeWithSqueezeIntel(s.intel,a,b));
- if(!portal||ordinary.length&&portal.duration+.12>=
-   traversalRouteLength(from,ordinary)/53)return null;
- return [...portal.approachPath,portal.crossing.landing,...portal.exitPath];
-}
-/** An explicit straight gesture through ONE known light object may remain
- * authored. Other blocked samples (walls, unknown cover, doors) still reject.
- * The motor must physically reach and shove the same known object later. */
-function knownShoveCrossing(s:Session,from:Pt,to:Pt):number|null{
- if(!intelPassable(from,s.intel,SQUEEZE_RADIUS)||
-    !intelPassable(to,s.intel,SQUEEZE_RADIUS))return null;
- const span=d(from,to);
- if(span<3)return null;
- // A shove cannot be used to disguise an ordinary known wall or a latched
- // door, even when its sample is inside the expanded furniture envelope.
- const segment={a:from,b:to};
- if(sessionWorldGeometry(s).walls.some((wall,index)=>s.intel.walls.has(index)&&
-    segmentsCross(segment,wall)))return null;
- if(s.doors.some(door=>doorKnown(s.intel,door.id)&&
-    doorBlocksSegment(door,segment)))return null;
- for(let index=0;index<s.coverState.length;index++){
-   const obstacle=s.coverState[index];
-   if(!s.intel.cover.has(index)||!canAutoShove(obstacle)||
-      !canRelocateCover(obstacle)||
-      !segmentHitsBox(from,to,{...obstacle,
-        w:obstacle.w+2,h:obstacle.h+2}))continue;
-   const allowance={...obstacle,
-     w:obstacle.w+SQUEEZE_RADIUS*2+4,
-     h:obstacle.h+SQUEEZE_RADIUS*2+4};
-   let otherObstruction=false;
-   for(let i=1,n=Math.ceil(span/4);i<n;i++){
-     const t=i/n,p={x:from.x+(to.x-from.x)*t,
-       y:from.y+(to.y-from.y)*t};
-     if(!intelPassable(p,s.intel,SQUEEZE_RADIUS)&&
-        !segmentHitsBox(p,p,allowance)){
-       otherObstruction=true;break;
-     }
-   }
-   if(!otherObstruction)return index;
- }
- return null;
-}
-function knownTraversal(s:Session,from:Pt,to:Pt):boolean{
- const world=knownWindowWorld(s);
- return knownShoveCrossing(s,from,to)!==null||
-   !!probeObstacleCrossing(from,to,world)||
-   !!probeWindowPortalRoute(from,to,world,
-     (a,b)=>routeWithSqueezeIntel(s.intel,a,b));
-}
-const legalMoveRoute=(s:Session,from:Pt,to:Pt):Pt[]=>{
- const ordinary=routeWithSqueezeIntel(s.intel,from,to);
- return plannedWindowRoute(s,from,to,ordinary)??(
-   ordinary.length?ordinary:knownTraversal(s,from,to)?[to]:[]);
-};
-
 /** A short, already-routable gesture may use a nearby KNOWN real portal.
  * Serving windows retain their authoritative solid sill collision.
  */
@@ -674,19 +376,6 @@ function knownPortalGesture(s:Session,from:Pt,to:Pt,blocked:Pt):boolean{
  if(!portals.some(portal=>pointToSegment(blocked,portal)<=18))return false;
  return knownPortalStrokeRoute(from,to,blocked,portals,
    legalMoveRoute(s,from,to));
-}
-export const finalPoint=(a:TeamActor)=>lastPoint(a.p,a.plan);
-export function addNode(s:Session,id:string,kind:PlanKind,p:Pt,
-  extra:Partial<PlanNode>={}):boolean{
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  if(kind==='move'&&!intelPassable(p,s.intel,SQUEEZE_RADIUS))return false;
-  if(kind==='move'&&!legalMoveRoute(s,finalPoint(a),p).length)return false;
-  if(kind==='door'&&(!extra.doorId||!doorKnown(s.intel,extra.doorId)||
-    !intelPassable(p,s.intel,SQUEEZE_RADIUS)||
-    !routeWithSqueezeIntel(s.intel,finalPoint(a),p).length))return false;
-  return edit(s,a,()=>{
-    a.plan.push({id:s.nextId++,kind,p:clone(p),...extra});
-  });
 }
 /** Queue a physical fixture interaction at the route end or selected waypoint.
  * Using the selected waypoint's world position avoids context buttons that
@@ -897,20 +586,7 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
     }
   }));
 }
-export function setStrafe(s:Session,id:string,nodeId:number):boolean{
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const node=a.plan.find(n=>n.id===nodeId);
-  if(!node||node.kind!=='move')return false;
-  return edit(s,a,()=>{
-    if(node.moveMode==='strafe'){
-      node.moveMode='advance';
-    }else{
-      node.moveMode='strafe';
-      node.facing??=[...a.plan.slice(0,a.plan.indexOf(node))]
-        .reverse().find(n=>n.facing!==undefined)?.facing??a.heading;
-    }
-  });
-}
+
 /** Removal of a coordinated SYNC is itself a team transaction.
  * Other participants never retain a stranded wait when HERE redraw,
  * DELETE, CLEAR or BACK removes the link. */
@@ -938,41 +614,11 @@ export function backOne(s:Session,id:string){
  return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan.pop();}));
 }
 /** The player chooses a world-space pivot; doors are no longer special. */
-export function planPieAt(s:Session,id:string,pivot:Pt,side:PieSide,degrees=54,
-  afterNodeId?:number){
-  const a=party(s,id);
-  if(!a||!canEdit(s))return false;
-  const index=afterNodeId===undefined?a.plan.length:
-    a.plan.findIndex(n=>n.id===afterNodeId)+1;
-  if(index<=0&&afterNodeId!==undefined)return false;
-  const start=index===0?a.p:a.plan[index-1].p;
-  const arc=validKnownPieArc(s,start,pivot,side,degrees);
-  if(!arc.length)return false;
-  if(afterNodeId===undefined)return addNode(s,id,'pie',arc[arc.length-1],{
-    pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
-  const proposed=copyNodes(a.plan);
-  proposed.splice(index,0,{id:s.nextId,kind:'pie',p:clone(arc.at(-1)!),
-    pivot:clone(pivot),pieSide:side,pieDegrees:degrees,arc:arc.map(clone)});
-  if(!validEditedPlan(s,a.p,proposed))return false;
-  return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
-}
+
 /** Retain compatibility with Build 063's doorway shortcut. */
-export function planPie(s:Session,id:string,doorId:string,side:PieSide){
-  const door=s.doors.find(d=>d.id===doorId);
-  return !!door&&planPieAt(s,id,doorCenter(door),side);
-}
+
 /** Move a pivot or adjust the arc sweep, retaining one undoable order. */
-export function editPie(s:Session,id:string,nodeId:number,
-  pivot:Pt,degrees?:number,side?:PieSide){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const proposed=copyNodes(a.plan),index=proposed.findIndex(n=>n.id===nodeId);
-  if(index<0||proposed[index].kind!=='pie')return false;
-  proposed[index].pivot=clone(pivot);
-  if(degrees!==undefined)proposed[index].pieDegrees=clamp(degrees,8,120);
-  if(side)proposed[index].pieSide=side;
-  if(!validEditedPlan(s,a.p,proposed))return false;
-  return edit(s,a,()=>{a.plan=proposed;});
-}
+
 /** Context-aware door action at a selected planned position. */
 export function doorAtNode(s:Session,id:string,doorId:string,method:DoorMethod,nodeId?:number){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
@@ -1026,94 +672,7 @@ export function deletePlanNode(s:Session,id:string,nodeId:number){
  const codes=new Set(removed.kind==='sync'&&removed.syncCode?[removed.syncCode]:[]);
  return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan=proposed;}));
 }
-export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const position=clamp(index,0,a.plan.length);
-  const from=position>0?a.plan[position-1].p:a.p;
-  const target=projectReachableGoal(from,p,{
-    canStand:at=>intelPassable(at,s.intel),
-    routeTo:(origin,goal)=>routeWithIntel(s.intel,origin,goal),
-  });
-  if(!target)return false;
-  const proposed=copyNodes(a.plan);
-  proposed.splice(position,0,{id:s.nextId,kind:'move',p:clone(target.point)});
-  if(!validEditedPlan(s,a.p,proposed))return false;
-  return edit(s,a,()=>{a.plan=proposed;s.nextId++;});
-}
-/**
- * An aim instruction is an order, not a movement geometry.
- * Fixed holds one world heading; track continuously faces a fixed world point.
- * A selected waypoint applies its instruction on arrival, then all subsequent
- * walking inherits it until another aim instruction explicitly overrides it.
- */
-export function planAim(s:Session,id:string,mode:AimMode,target:Pt,nodeId?:number,
-  label:'look'|'watch'|'strafe'|'pie'=mode==='track'?'watch':'look',
-  origin:'end'|'here'='end'){
-  const a=party(s,id);
-  if(!a||!canEdit(s)||!Number.isFinite(target.x)||!Number.isFinite(target.y))return false;
-  const node=nodeId===undefined?undefined:a.plan.find(n=>n.id===nodeId);
-  if(nodeId!==undefined&&!node)return false;
-  const pos=node?.p??(origin==='here'?a.p:finalPoint(a));
-  if(d(pos,target)<2)return false;
-  const patch:Partial<PlanNode>=mode==='track'?
-    {aimMode:'track',facing:undefined,aimPoint:clone(target),aimLabel:label}:
-    {aimMode:mode,facing:angle(pos,target),aimPoint:undefined,aimLabel:label};
-  if(node)return edit(s,a,()=>{
-    node.aimMode=patch.aimMode;node.facing=patch.facing;
-    node.aimPoint=patch.aimPoint;node.aimLabel=patch.aimLabel;
-  });
-  if(origin==='here')return edit(s,a,()=>{
-    a.plan.unshift({id:s.nextId++,kind:'look',p:clone(a.p),...patch});
-  });
-  return addNode(s,id,'look',pos,patch);
-}
-export function updatePlanFacing(s:Session,id:string,nodeId:number,p:Pt){
-  return planAim(s,id,'fixed',p,nodeId);
-}
-export function planLook(s:Session,id:string,p:Pt,nodeId?:number){
-  const a=party(s,id);if(!a)return false;
-  const node=nodeId!==undefined?a.plan.find(n=>n.id===nodeId):a.plan.at(-1);
-  return planAim(s,id,'free',p,node?.id,'look');
-}
-/** A WATCH target is world-fixed; heading follows it during movement. */
-export function planWatch(s:Session,id:string,p:Pt,nodeId?:number,
-  origin:'here'|'end'='end'){
-  return planAim(s,id,'track',p,nodeId,'watch',origin);
-}
-/** Edit the active, already-executed WATCH while paused. Its original
- * order has left the route, so this changes persistent aim state directly
- * without inventing an extra movement waypoint or changing future orders.
- */
-export function retargetActiveWatch(s:Session,id:string,target:Pt):boolean{
-  const a=party(s,id);
-  if(!a||!canEdit(s)||a.aimInstruction?.mode!=='track'||
-     !Number.isFinite(target.x)||!Number.isFinite(target.y)||
-     d(a.p,target)<2)return false;
-  return edit(s,a,()=>{a.aimInstruction={mode:'track',point:clone(target)};});
-}
-/** DELETE on an active WATCH releases tracking; the path stays untouched. */
-export function removeActiveWatch(s:Session,id:string):boolean{
-  const a=party(s,id);
-  if(!a||!canEdit(s)||a.aimInstruction?.mode!=='track')return false;
-  return edit(s,a,()=>{a.aimInstruction=null;});
-}
-/** Release an existing WATCH using an explicit AUTO transition. */
-export function releaseWatch(s:Session,id:string,nodeId?:number,
-  origin:'here'|'end'='here'):boolean{
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const node=nodeId===undefined?undefined:a.plan.find(n=>n.id===nodeId);
-  if(nodeId!==undefined&&!node)return false;
-  if(node)return edit(s,a,()=>{
-    node.aimMode='free';node.aimPoint=undefined;
-    node.facing=undefined;node.aimLabel=undefined;
-  });
-  const pos=origin==='here'?a.p:finalPoint(a);
-  return edit(s,a,()=>{
-    const entry:PlanNode={id:s.nextId++,kind:'look',p:clone(pos),aimMode:'free'};
-    if(origin==='here')a.plan.unshift(entry);
-    else a.plan.push(entry);
-  });
-}
+
 /** A paired entrance is one user interaction but two collision leaves. */
 function pairedLeaves(s:Session,door:Door):Door[]{
  const pair=door.pairedWith?s.doors.find(d=>d.id===door.pairedWith):undefined;
@@ -1257,27 +816,8 @@ export function planSquadEntry(s:Session,doorId:string){
 /** Tactical WAIT: hold for the minimum interval, and continue only after
  * any visible living contact has been absent for that entire interval.
  * Legacy holdClear nodes execute identically for old plans/replays. */
-export function planWaitAt(s:Session,id:string,seconds=1,
-  origin:'here'|'end'='here',afterNodeId?:number){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const after=afterNodeId===undefined?-1:
-    a.plan.findIndex(n=>n.id===afterNodeId);
-  if(afterNodeId!==undefined&&after<0)return false;
-  if(afterNodeId!==undefined||origin==='here'){
-    const point=afterNodeId!==undefined?a.plan[after].p:a.p;
-    return edit(s,a,()=>a.plan.splice(after+1,0,{
-      id:s.nextId++,kind:'wait',p:clone(point),
-      duration:clamp(seconds,.3,6)}));
-  }
-  return planWait(s,id,seconds);
-}
-export function setWaitDuration(s:Session,id:string,nodeId:number,seconds:number){
-  const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
-  if(!a||!node||node.kind!=='wait'||!canEdit(s))return false;
-  return edit(s,a,()=>{node.duration=clamp(seconds,.3,6);});
-}
-/** Posture and pace authored at an existing waypoint take effect on arrival
- * and remain until a later transition. An operator tap edits base/HERE state. */
+
+
 /** Fire policy is persistent until changed. A waypoint can override it
  * without touching navigation or the rest of the authored plan. */
 export function setFirePolicy(s:Session,id:string,policy:FirePolicy,
@@ -1304,45 +844,11 @@ export function setFirePolicy(s:Session,id:string,policy:FirePolicy,
   };
   return edit(s,a,change);
 }
-export function setNodeControl(s:Session,id:string,nodeId:number,
-  field:'postureState'|'paceState',value:'stand'|'crouch'|'walk'|'run'){
-  const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
-  if(!a||!node||!canEdit(s))return false;
-  return edit(s,a,()=>{Object.assign(node,{[field]:value});});
-}
-export function setStartPace(s:Session,id:string,pace:'walk'|'run'){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  return edit(s,a,()=>{a.pace=pace;});
-}
-export function plannedControl(s:Session,id:string,nodeId?:number){
-  const a=party(s,id);if(!a)return {posture:'stand' as Posture,
-    pace:'walk' as const};
-  let posture=a.posture,pace=a.pace;
-  if(nodeId===undefined)return {posture,pace};
-  for(const node of a.plan){
-    if(node.postureState)posture=node.postureState;
-    if(node.paceState)pace=node.paceState;
-    if(node.id===nodeId)break;
-  }
-  return {posture,pace};
-}
-export function setMoveSprint(s:Session,id:string,nodeId:number){
-  const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
-  if(!a||!node||node.kind!=='move'||!canEdit(s))return false;
-  return edit(s,a,()=>{
-    node.moveMode=node.moveMode==='sprint'?'advance':'sprint';
-  });
-}
-export function planHoldClear(s:Session,id:string,origin:'here'|'end'='end',afterNodeId?:number){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  const idx=afterNodeId===undefined?-1:a.plan.findIndex(n=>n.id===afterNodeId);
-  if(afterNodeId!==undefined&&idx<0)return false;
-  const p=idx>=0?a.plan[idx].p:origin==='here'?a.p:finalPoint(a);
-  if(idx>=0||origin==='here')return edit(s,a,()=>{
-    a.plan.splice(idx+1,0,{id:s.nextId++,kind:'holdClear',p:clone(p),duration:.5});
-  });
-  return addNode(s,id,'holdClear',p,{duration:.5});
-}
+
+
+
+
+
 /** A treatment order uses the same planning history and navigation authority. */
 /** One authored order carries a downed teammate to a player-chosen point.
  * Existing tactical route and swept body collision remain authoritative. */
@@ -1410,21 +916,8 @@ export function planMedicalTreatment(s:Session,id:string,patientId:string,
   else a.plan.push(...orders);
  });
 }
-export function planWait(s:Session,id:string,seconds=1){
-  const a=party(s,id);return a?addNode(s,id,'wait',finalPoint(a),
-    {duration:clamp(seconds,.3,6)}):false;
-}
-export function planSync(s:Session,participantIds?:readonly string[]){
- if(!canEdit(s))return false;
- const participants=team(s).filter(a=>a.health>0&&
-   (!participantIds||participantIds.includes(a.id)));
- if(!participants.length)return false;
- return atomicTeamEdit(s,participants,()=>{
-  const code='B'+(++s.syncCode);
-  return participants.every(a=>addNode(s,a.id,'sync',finalPoint(a),
-    {syncCode:code}));
- });
-}
+
+
 export function clearPlan(s:Session,id:string){
  const a=party(s,id);if(!a)return false;
  const codes=new Set(a.plan.filter(n=>n.kind==='sync'&&n.syncCode)
@@ -1634,40 +1127,16 @@ export function cycleWeapon(s:Session,id:string):boolean{
   const ids:WeaponId[]=['carbine','smg','rifle','shotgun'];
   return equipWeaponChoice(s,id,ids[(ids.indexOf(a.weapon)+1)%ids.length]);
 }
-export function planReload(s:Session,id:string):boolean{
-  const a=party(s,id);
-  return !!a&&canEdit(s)&&addNode(s,id,'reload',finalPoint(a));
-}
+
 /** Insert reload at the selected HERE/waypoint, without moving the route. */
-export function planReloadAt(s:Session,id:string,afterNodeId?:number){
- const a=party(s,id);if(!a||!canEdit(s))return false;
- const index=afterNodeId===undefined?0:a.plan.findIndex(n=>n.id===afterNodeId)+1;
- if(index<0)return false;
- const p=index===0?a.p:a.plan[index-1].p;
- return edit(s,a,()=>a.plan.splice(index,0,{id:s.nextId++,
-   kind:'reload',p:clone(p)}));
-}
+
 export function reloadNow(s:Session,id:string):boolean{
   const a=party(s,id);
   return !!a&&s.phase==='running'&&beginReload(s,a);
 }
-/** Lights are manually operated in the field and are only usable when mounted.
- * The toggle never simulates unauthoritative fog-of-war or changes a shot. */
-export function toggleWeaponLight(s:Session,id:string):boolean{
- const a=party(s,id);
- if(!a||s.phase!=='planning'&&s.phase!=='running'||
-  a.weaponConfiguration?.slots.light!=='light-compact')return false;
- a.weaponLightOn=!a.weaponLightOn;
- return true;
-}
-export function toggleContactRule(s:Session,id:string){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  return edit(s,a,()=>{a.haltOnContact=!a.haltOnContact;});
-}
-export function posture(s:Session,id:string){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  return edit(s,a,()=>{a.posture=a.posture==='stand'?'crouch':'stand';});
-}
+
+
+
 export function toggling(s:Session){
   if(s.phase==='planning'){
     // Calculate ALL participants and their earliest doorway arrivals
@@ -2082,84 +1551,6 @@ export type StepPhaseProbe=(phase:string,elapsedMs:number)=>void;
 export function stepSession(s:Session,dt:number,probe?:StepPhaseProbe):void{
  if(s.phase!=='running')return;
  advanceSimulationTick(s,clamp(dt,0,1/30),simulationPhasePort,probe);
-}
-export function operationBriefing(s:Session){
-  const brief=operationBrief(s.missionType);
-  return { ...brief,
-    building:s.site?.archetype?.toUpperCase()??'UNSPECIFIED SITE',
-    layout:s.intel.mode==='floor-plan'&&s.site?
-      s.site.roomCount+' DOCUMENTED ROOMS':'INTERIOR NOT FULLY CHARTED',
-    squad:team(s).length,
-  };
-}
-export function missionText(s:Session){
-  if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
-  if(s.phase==='lost')return 'MISSION FAILED';
-  if(s.mission==='clear')return s.missionType==='capture'?
-    'INCAPACITATE OR FORCE SURRENDER OF TARGET':
-    'CLEAR HOSTILES • SECURE OBJECTIVE';
-  if(s.mission==='secure')return s.missionType==='hold'?
-    'HOLD OBJECTIVE • '+Math.floor(s.holdTime)+'/7 SECONDS':
-    s.missionType==='rescue'?'REACH PERSON IN TARGET ROOM':
-    s.missionType==='intel'?'RECOVER INTELLIGENCE • '+
-      s.holdTime.toFixed(1)+'/1.2s':
-    s.missionType==='capture'?'SECURE NEUTRALIZED TARGET':
-    'SECURE OBJECTIVE';
-  return s.missionType==='intel'?
-    'RETURN TO EXTRACTION · INTEL CARRIER MUST EXIT':
-    s.missionType==='rescue'?
-    'ESCORT OR TRANSPORT PERSON TO EXTRACTION':
-    'RETURN TO EXTRACTION OUTSIDE';
-}
-export function debrief(s:Session){
-  const own=team(s);
-  const casualties=own.filter(a=>a.health<=0).length;
-  const casualtyCare=stabilizationSummary(own);
-  const evacuated=own.filter(a=>a.health<=0&&
-   near(a.p,s.scenario.extract,47)).map(a=>a.id);
-  const shots=own.reduce((t,a)=>t+a.shots,0);
-  const hits=own.reduce((t,a)=>t+a.hits,0);
-  const target=enemies(s).find(e=>e.id===s.captureTarget);
-  const rescuePerson=s.civilians.find(c=>c.rescueTarget);
-  const rescueStatus=!rescuePerson?'none':
-    s.mission!=='done'?'not-extracted':
-    rescuePerson.health<=0?'incapacitated':
-    rescuePerson.injuryStage>0?'injured':'healthy';
-  const civilianInjured=s.civilians.filter(c=>c.health>0&&
-    c.injuryStage>0).length;
-  const civilianDown=s.civilians.filter(c=>c.health<=0).length;
-  const attributable=attributableCivilianHarm(s.civilianHarmEvents);
-  const assessment=assessOperation({
-    outcome:s.phase==='won'?'success':'failure',
-    kind:s.missionType as OperationKind,
-    elapsed:Math.floor(s.seconds),casualties,teamSize:own.length,
-    shots,hits,objective:s.mission==='done',
-    targetSurrendered:target?.surrendered??false,
-    civilianInjured,civilianDown,
-    civilianPlayerInjured:attributable.injured,
-    civilianPlayerDown:attributable.down,
-    extracted:own.filter(a=>a.health>0&&
-      near(a.p,s.scenario.extract,47)).length,
-  });
-  return {result:s.phase,time:Math.floor(s.seconds),casualties,
-    stabilizedCasualties:casualtyCare.stabilized,
-    criticalCasualties:casualtyCare.critical,
-    evacuatedCasualties:evacuated,
-    shots,hits,civilianInjured,civilianDown,rescueStatus,
-    civilianPlayerInjured:attributable.injured,
-    civilianPlayerDown:attributable.down,
-    kills:own.reduce((t,a)=>t+a.kills,0),
-    pauses:s.timesPaused,variant:s.scenario.name,
-    objective:s.mission==='done',
-    type:s.missionType,
-    grade:assessment.grade,score:assessment.score,
-    accuracy:assessment.accuracy,survived:assessment.survived,
-    squad:own.map(a=>({id:a.id,name:a.name,
-      survived:a.health>0,injury:a.injuryStage,
-      fired:a.shots,hits:a.hits})),
-    captureSecured:s.captureSecured,
-    rescueExtracted:!!s.rescue&&s.phase==='won',
-    intelCarrier:s.intelCarrierId};
 }
 export function knownAt(s:Session,x:number,y:number){
   if(s.intel.mode==='full-view')return true;

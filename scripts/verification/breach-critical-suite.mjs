@@ -5,6 +5,7 @@
 import {spawnSync} from 'node:child_process';
 import {existsSync} from 'node:fs';
 const tests=[
+ 'tests/consolidation-stage7-domain-ownership.test.mjs',
  'tests/breach-roadmap2-stage1-contracts.test.mjs',
  'tests/breach-roadmap2-stage2-physical-integrity.test.mjs',
  'tests/breach-roadmap2-stage3-knowledge.test.mjs',
