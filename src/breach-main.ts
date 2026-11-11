@@ -14,7 +14,7 @@ import {
   plannedControl,
   finalPoint,undoPlan,redoPlan,
   toggling,
-  equipWeaponChoice,planRecoverMedical
+  equipWeaponChoice
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
 import {createBreach2DWorldRenderer} from './breach-2d-world-renderer.ts';
