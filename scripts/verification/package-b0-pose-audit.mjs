@@ -127,6 +127,21 @@ export function inspectB0Architecture(root=process.cwd()){
  ];
  const callsites=files.flatMap(file=>poseCallsites(file,sources.get(file)));
  const hotspot=TRANSFORM_ROOTS.map(name=>transformCandidates('src/'+name,get('src/'+name)));
+ const allTransformCandidates=files.map(file=>transformCandidates(file,sources.get(file)))
+  .filter(record=>record.candidateLines>0)
+  .sort((a,b)=>b.candidateLines-a.candidateLines||a.path.localeCompare(b.path));
+ const poseImplementations=files.filter(file=>
+  /export function poseOperator\s*\(/.test(sources.get(file)));
+ const commitImplementations=files.filter(file=>
+  /export function commitOperatorPoseOutput\s*\(/.test(sources.get(file)));
+ // Discover every final publisher anywhere in src, not just known owners.
+ const externalCommitCallers=files.filter(file=>
+  file!=='src/breach-operator-pose-output.ts'&&
+  /\bcommitOperatorPoseOutput\s*\(/.test(sources.get(file)));
+ const moduleConsumers=Object.fromEntries(Object.keys(REQUIRED_SURFACES).map(target=>
+  [target,files.filter(file=>file!==target&&
+   [...sources.get(file).matchAll(/from\s*['"](\.{1,2}\/[^'"]+)['"]/g)].some(match=>
+    norm(join(dirname(file),match[1]))===target))]));
  const contract={
   inputDeclared:/export type OperatorPose=\{/.test(input),
   publicExport:/export \{poseOperator\} from '.\/breach-operator-animation-controller\.ts'/.test(rig),
@@ -162,6 +177,11 @@ export function inspectB0Architecture(root=process.cwd()){
   contract,
   callsites,
   hotspot,
+  allTransformCandidates,
+  poseImplementations,
+  commitImplementations,
+  externalCommitCallers,
+  moduleConsumers,
   flags:Object.fromEntries(['poseV3Preview','poseV4ReloadPreview','poseV3StrictContact',
    'hybridSupport','handlingOverride','deterministic','replayFeet'].map(flag=>[
     flag,{controller:count(controller,new RegExp('\\b'+flag+'\\b','g')),
@@ -178,6 +198,12 @@ export function verifyB0Architecture(report){
   if(typeof value==='boolean')assert.ok(value,'B0 boundary changed: '+key);
  }
  assert.equal(c.evaluatorCount,1,'Exactly one public evaluator remains in animation controller');
+ assert.deepEqual(report.poseImplementations,['src/breach-operator-animation-controller.ts'],
+  'A second poseOperator implementation is not a safe preview adapter');
+ assert.deepEqual(report.commitImplementations,['src/breach-operator-pose-output.ts'],
+  'One public commit implementation; do not add a mode-local equivalent');
+ assert.deepEqual(report.externalCommitCallers,['src/breach-operator-animation-controller.ts'],
+  'Only the canonical evaluator may commit the final public pose output');
  assert.equal(c.finalCommitDeclaration,1,'Exactly one named output commit implementation');
  assert.equal(c.finalCommitCalls,1,'Exactly one final published pose output per evaluation');
  assert.ok(c.stageIndices.every(i=>i>=0),'All ordered evaluation stages must be present');
@@ -192,6 +218,7 @@ export function verifyB0Architecture(report){
  return {sourceFiles:report.sourceTypeScriptFiles,
   modules:report.keyModules.length,callsiteCandidates:report.callsites.length,
   transformCandidates:report.hotspot.reduce((sum,x)=>sum+x.candidateLines,0),
+  sourceTransformCandidateFiles:report.allTransformCandidates.length,
   checkedBoundaries:Object.keys(c).length};
 }
 export function formatB0Markdown(report){
@@ -222,6 +249,22 @@ export function formatB0Markdown(report){
   '| --- | ---: | --- |',
   ...report.hotspot.map(x=>'| \`'+x.path+'\` | '+x.candidateLines+
    ' | '+x.firstLines.join(', ')+' |'),
+  '',
+  '## Full-source transform candidate inventory (all TypeScript sources)',
+  '',
+  'Syntax-only candidates include camera, effects, wardrobe, and graphics. These do not certify an anatomical writer.',
+  'The JSON artifact retains all candidate paths and line samples; the table shows the top 35.',
+  '',
+  '| Source | Candidate lines |',
+  '| --- | ---: |',
+  ...report.allTransformCandidates.slice(0,35).map(x=>'| '+x.path+' | '+x.candidateLines+' |'),
+  '',
+  '## Direct dependents of the 24 mandatory pose-domain modules',
+  '',
+  '| Module | Direct TypeScript importers |',
+  '| --- | ---: |',
+  ...Object.entries(report.moduleConsumers).map(([name,users])=>
+   '| '+name+' | '+users.length+' |'),
   '',
   '## Current architectural contracts',
   '',
