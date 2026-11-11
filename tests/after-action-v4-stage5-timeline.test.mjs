@@ -83,7 +83,8 @@ test('V4-5 lossless clustered bins preserve hundreds of dense events and represe
  const group=clustered.find(c=>c.events.some(e=>e.kind==='down'));
  assert.equal(group.representative.kind,'down');
  const filtered=clusterAfterActionTimeline(indexed,95,480,'casualty');
- assert.equal(filtered.flatMap(c=>c.events).length,1);
+ assert.equal(filtered.flatMap(c=>c.events).length,2,
+   'Existing wound and added down event both remain accessible');
  assert.equal(filtered[0].representative.kind,'down');
 });
 
@@ -123,7 +124,7 @@ test('V4-5 inspector renders every cluster member, valid filters, active card an
   state:model,actions,complete:false,actorName:id=>id.toUpperCase(),
   canInspect:event=>event.shotId!==null,highlightsAvailable:true});
  assert.match(text(root),/PARTIAL RECORDING/);
- assert.match(text(root),/SHOT/);
+ assert.match(text(root),/BALLISTIC #100/);
  const shown=find(root,e=>e.className==='fw-v5-timeline-ledger-item');
  assert.equal(shown.length,3);
  assert.equal(find(root,e=>e.className==='fw-v5-timeline-more').length,1);
