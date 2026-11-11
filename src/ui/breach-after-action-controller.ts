@@ -107,10 +107,17 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      s.selectedOperator=id;s.operatorRecordOpen=false;s.tab='squad';draw();
      // Redraw replaces buttons; keep keyboard/switch access anchored to the
      // corresponding rank choice, not a destroyed DOM element.
-     const rows=[...safeContent.querySelectorAll<HTMLButtonElement>(
-       '[data-after-operator-id]')];
-     (rows.find(row=>row.getAttribute('data-after-operator-id')===id)??
-       rows[0])?.focus({preventScroll:true});
+     const selectedHeading=id===null?null:safeContent.querySelector<HTMLElement>(
+       '.fw-v4-selected-overview .fw-v3-squad-name h2');
+     if(selectedHeading){
+       selectedHeading.tabIndex=-1;
+       selectedHeading.focus({preventScroll:true});
+     }else{
+       const rows=[...safeContent.querySelectorAll<HTMLButtonElement>(
+         '[data-after-operator-id]')];
+       (rows.find(row=>row.getAttribute('data-after-operator-id')===id)??
+         rows[0])?.focus({preventScroll:true});
+     }
    };
    let screen:HTMLElement;
    if(s.tab==='squad'){
@@ -133,7 +140,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          back.addEventListener('click',()=>{
            s.operatorRecordOpen=false;draw();
            safeContent.querySelector<HTMLButtonElement>(
-             '.fw-v3-details-link')?.focus({preventScroll:true});
+             '.fw-v3-details-link')?.focus();
          });
          record.append(back,renderSquadDetails(operator));
          // The complete record replaces the detail pane, not the ranked roster.
