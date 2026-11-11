@@ -27,14 +27,16 @@ export function renderMissionDebrief(input:{
     ui.debriefIntelText.textContent=state.operationDossier?
       sessionIntelligenceReview(state):'';
     const stats=debrief(state);
-    ui.debriefTitle.textContent=state.phase==='won'?'OPERATION COMPLETE':'MISSION FAILED';
+    ui.debriefTitle.textContent='DEBRIEF';
+    const introTitle=document.getElementById('afterActionIntroTitle');
+    if(introTitle)introTitle.textContent=state.phase==='won'?'MISSION COMPLETE':'MISSION FAILED';
     ui.debriefGrade.textContent=stats.grade+' · '+stats.score;
     ui.debriefSurvivors.textContent=stats.survived+' / '+team(state).length;
     ui.debriefAccuracy.textContent=stats.accuracy+'%';
     ui.debriefObjective.textContent=stats.objective?
      'OBJECTIVE SECURED':'OBJECTIVE NOT COMPLETED';
     ui.debriefStats.textContent=
-      'OPERATION: '+brief.name.toUpperCase()+'\nGRADE: '+stats.grade+
+      'MISSION: '+brief.name.toUpperCase()+'\nGRADE: '+stats.grade+
       ' · SCORE '+stats.score+'\nTIME: '+stats.time+'s'+
       '\nOBJECTIVE: '+(stats.objective?'SECURED':'NOT COMPLETED')+
       '\nSURVIVORS: '+stats.survived+'/'+team(state).length+

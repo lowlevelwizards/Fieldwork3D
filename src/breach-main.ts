@@ -1244,12 +1244,13 @@ function updateHud(){
   ui.clear.title='Clear this operator\'s route (Undo restores it)';
   ui.undo.disabled=!(active?.history.undo.length);
   ui.redo.disabled=!(active?.history.redo.length);
-  ui.debrief.hidden=replaying||(state.phase!=='won'&&state.phase!=='lost');
+  ui.debrief.hidden=replaying||campaignMode==='menu'||campaignMode==='home'||
+    (state.phase!=='won'&&state.phase!=='lost');
   replayLibrary.syncSavedButtons();
   ui.favoriteMission.disabled=!state.site;
   ui.favoriteMission.textContent=replayLibrary.activeFavoriteId?
     '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
-  ui.next.textContent=campaignMode==='mission'?'RETURN TO BASE':'NEXT ARRANGEMENT';
+  ui.next.textContent=campaignMode==='mission'?'RETURN TO BASE':'NEW MISSION';
   ui.retry.disabled=campaignMode==='mission';
   if(!ui.debrief.hidden)renderMissionDebrief({
     ui,state,brief,recorder,campaign,campaignMode,
@@ -2480,6 +2481,14 @@ ui.next.addEventListener('click',()=>{
   if(returnAfterCampaignMission())return;
   if(campaignMode==='quick')returnToQuickPlayGenerator();
   else reset(state.variant+1);
+});
+// Navigation is not a mission reset and may never resolve Campaign twice.
+const afterActionMainMenu=document.getElementById('afterActionMainMenu') as HTMLButtonElement|null;
+afterActionMainMenu?.addEventListener('click',()=>{
+  if(replaying)return;
+  ui.debrief.hidden=true;
+  campaignMode='menu';
+  campaignScreen.entry(!!campaign);
 });
 ui.play.addEventListener('click',()=>{
   audioController.unlock();audioController.uiClickTone(state.phase==='running'?'pause':'go');

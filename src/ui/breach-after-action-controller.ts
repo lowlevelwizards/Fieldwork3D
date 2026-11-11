@@ -12,7 +12,7 @@ let stopModel:(()=>void)|null=null;
 let modelRequest=0;
 function disposeModel(){modelRequest++;stopModel?.();stopModel=null;activeModel=null;}
 
-export type AfterActionTab='overview'|'squad'|'combat'|'highlights'|'timeline';
+export type AfterActionTab='squad'|'combat'|'highlights';
 type State={
   recorder:MissionRecorder;report:AfterActionReport;tab:AfterActionTab;
   selectedOperator:string|null;selectedContact:string|null;
@@ -22,6 +22,7 @@ type State={
   showIntel:boolean;
 };
 const owners=new WeakMap<HTMLElement,State>();
+const bound=new WeakSet<HTMLElement>();
 const make=(tag:string,cls='',value?:string)=>{
   const el=document.createElement(tag);
   if(cls)el.className=cls;
@@ -118,11 +119,14 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
  const safeContent=content,safeNav=nav;
  let state=owners.get(root);
  if(!state||state.recorder!==rec){
-   state={recorder:rec,report:buildAfterActionReport(rec),tab:'overview',
+   state={recorder:rec,report:buildAfterActionReport(rec),tab:'squad',
      selectedOperator:null,selectedContact:null,selectedShotId:null,
      contactSide:'red',paperBack:false,inspectionMode:'paper',
      scroll:{},showIntel:options.showIntel};
    owners.set(root,state);
+   root.querySelector<HTMLElement>('#afterActionIntro')?.removeAttribute('hidden');
+   if(!bound.has(root)){
+    bound.add(root);
    for(const tabButton of safeNav.querySelectorAll<HTMLButtonElement>('[data-after-tab]')){
      tabButton.addEventListener('click',()=>{
        const s=owners.get(root);if(!s)return;
@@ -131,23 +135,37 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        draw();
      });
    }
+   const intro=root.querySelector<HTMLElement>('#afterActionIntro');
+   root.querySelector<HTMLButtonElement>('#afterActionContinue')?.addEventListener('click',()=>{
+     if(intro)intro.hidden=true;
+   });
+   const details=root.querySelector<HTMLElement>('#afterActionDetails');
+   const open=root.querySelector<HTMLButtonElement>('#afterActionDetailsToggle');
+   const close=root.querySelector<HTMLButtonElement>('#afterActionDetailsClose');
+   const dismiss=()=>{if(details){details.hidden=true;open?.focus();}};
+   open?.addEventListener('click',()=>{if(details){details.hidden=false;close?.focus();}});
+   close?.addEventListener('click',dismiss);
+   details?.addEventListener('keydown',e=>{
+     if(e.key==='Escape'){e.preventDefault();dismiss();}
+   });
+   }
  }else{
    state.showIntel=options.showIntel;
    return; // Never destroy selected tabs and scroll on repeated HUD updates.
  }
- root.classList.add('fw-debrief-v2');
+ root.classList.add('fw-debrief-v3');
+ root.classList.remove('fw-debrief-v2');
  function draw():void{
    const s=owners.get(root);if(!s)return;
    for(const tabButton of safeNav.querySelectorAll<HTMLButtonElement>('[data-after-tab]'))
      tabButton.setAttribute('aria-pressed',
        String(tabButton.dataset.afterTab===s.tab));
-   if(intel)intel.hidden=s.tab!=='timeline'||!s.showIntel;
-   if(raw)raw.hidden=s.tab!=='timeline';
+   if(intel)intel.hidden=!s.showIntel;
+   if(raw)raw.hidden=false;
    const change=(tab:AfterActionTab)=>{s.scroll[s.tab]=safeContent.scrollTop;s.tab=tab;draw();};
    const choose=(id:string|null)=>{s.selectedOperator=id;s.tab='squad';draw();};
    let screen:HTMLElement;
-   if(s.tab==='overview')screen=overview(s,change,id=>choose(id));
-   else if(s.tab==='squad')screen=squad(s,choose);
+   if(s.tab==='squad')screen=squad(s,choose);
    else if(s.tab==='combat')screen=renderCombatReport(s.report,{
      selectedContact:s.selectedContact,selectedShotId:s.selectedShotId,
      side:s.contactSide,back:s.paperBack,inspectionMode:s.inspectionMode
@@ -172,11 +190,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
            end:moment.end,highlightId:moment.id}
        }));
      });
-   else if(s.tab==='timeline'){
-     screen=make('section','fw-after-section');
-     screen.append(make('h2','fw-after-heading','TACTICAL RECORD'),
-       make('p','fw-after-muted','Expand intelligence and full report below.'));
-   }else{
+   else{
      screen=make('section','fw-after-section');
      screen.append(make('p','fw-after-empty','REPORT SECTION UNAVAILABLE'));
    }
