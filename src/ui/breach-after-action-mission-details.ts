@@ -2,7 +2,7 @@
  * Scores and mission outcomes come from debrief(Session), never inferred from
  * partial replay film or prose. Recorded pacing is clearly observational.
  */
-import type {debrief} from '../breach-game.ts';
+import type {debrief,Session} from '../breach-game.ts';
 import type {CampaignState} from '../campaign-state.ts';
 import type {CampaignMode} from '../breach-app-mode.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
@@ -29,7 +29,7 @@ const section=(title:string,items:readonly [string,string][])=>{
 export function renderStructuredMissionDetails(input:{
  name:string;stats:Stats;recorder:MissionRecorder;
  campaign:CampaignState|null;campaignMode:CampaignMode;
- operationsLogged:number;phase:'won'|'lost';
+ operationsLogged:number;phase:Session['phase'];
 }):HTMLElement{
  const {name,stats,recorder,campaign,campaignMode,
   operationsLogged,phase}=input;
