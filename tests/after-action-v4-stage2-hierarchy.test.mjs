@@ -9,6 +9,8 @@ const source=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 class MockElement{
  constructor(tag){
   this.tag=tag;this.className='';this.textContent='';
+  this.classList={add:name=>{if(!this.className.split(' ').includes(name))
+    this.className=(this.className+' '+name).trim();}};
   this.attributes=new Map();this.children=[];this.events=new Map();
   this.type=null;
  }
