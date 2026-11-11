@@ -1,8 +1,8 @@
 /** After Action V2: one stateful full-screen presentation owner.
  * Reuses source recorder and mission results; never mutates combat or replay.
  */
-import {buildAfterActionReport,type AfterActionReport,
-  type OperatorAfterAction} from '../breach-after-action-report.ts';
+import {buildAfterActionReport,type AfterActionReport} from '../breach-after-action-report.ts';
+import {renderSquadView,renderSquadDetails} from './breach-after-action-squad.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import {renderCombatReport} from './breach-after-action-combat.ts';
 import {renderAfterActionHighlights} from './breach-after-action-highlights.ts';
@@ -34,58 +34,6 @@ const button=(text:string,fn:()=>void,cls='fw-after-link')=>{
   el.type='button';el.className=cls;el.textContent=text;
   el.addEventListener('click',fn);return el;
 };
-const num=(n:number|null)=>n===null?'NOT RECORDED':String(n);
-const time=(seconds:number)=>Math.floor(seconds/60)+':'+
-  String(Math.floor(seconds%60)).padStart(2,'0');
-function line(label:string,value:string){
- const el=make('div','fw-after-pair');
- el.append(make('span','',label),make('span','',value));
- return el;
-}
-function rankedCard(op:OperatorAfterAction,click:()=>void){
- const b=button('',click,'fw-after-person');
- const first=make('span');
- first.append(make('b','fw-after-rank',String(op.rank).padStart(2,'0')+'  '),
-   make('span','',op.name),
-   make('small','',op.status.toUpperCase()+' · '+
-     op.incapacitations+' INCAPACITATIONS · '+op.hits+'/'+op.shots+' HITS'));
- b.append(first,make('b','fw-after-score',String(op.contribution)));
- return b;
-}
-function squad(state:State,choose:(id:string|null)=>void):HTMLElement{
- const section=make('section','fw-after-section');
- section.append(make('h2','fw-after-heading','SQUAD PERFORMANCE'),
-   make('p','fw-after-muted',
-     'Contribution rank is descriptive, not the mission grade or Campaign XP.'));
- if(!state.selectedOperator){
-   const list=make('div','fw-after-rank-list');
-   for(const op of state.report.operators)list.append(rankedCard(op,()=>choose(op.id)));
-   section.append(list);return section;
- }
- const op=state.report.operators.find(o=>o.id===state.selectedOperator);
- if(!op){choose(null);return section;}
- section.append(button('‹ ALL OPERATORS',()=>choose(null)),
-   make('h2','fw-after-heading',op.name+' / '+op.status.toUpperCase()),
-   line('Contribution rank',String(op.rank)+' / '+state.report.operators.length),
-   line('Contribution score',String(op.contribution)));
- const cats=make('div','fw-after-bars');
- for(const [name,value] of Object.entries(op.categories))
-   cats.append(make('span','',name.toUpperCase()+' '+value));
- section.append(cats);
- const panel=make('div','fw-after-panel');
- panel.append(make('h3','','RECORDED CONTRIBUTIONS'),
-   line('Shots / verified hits',op.shots+' / '+op.hits),
-   line('Damaging hits',String(op.damagingHits)),
-   line('Armor-stopped hits',String(op.armorStops)),
-   line('Incapacitations',String(op.incapacitations)),
-   line('Contact reports',String(op.contactReports)),
-   line('Doors opened',num(op.doorsOpened)),
-   line('Doors forced',num(op.doorsForced)),
-   line('Windows traversed',num(op.windowsTraversed)));
- section.append(panel,make('p','fw-after-muted',
-   'Support actions appear only when the recording contains structured completion evidence.'));
- return section;
-}
 export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
   options:{showIntel:boolean}):void{
  const content=root.querySelector<HTMLElement>('#afterActionBody');
@@ -141,7 +89,9 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    if(raw)raw.hidden=false;
    const choose=(id:string|null)=>{s.selectedOperator=id;s.tab='squad';draw();};
    let screen:HTMLElement;
-   if(s.tab==='squad')screen=squad(s,choose);
+   if(s.tab==='squad')screen=renderSquadView(s.report,s.recorder.manifest,
+     s.selectedOperator,(id)=>choose(id),()=>
+       root.querySelector<HTMLButtonElement>('#afterActionDetailsToggle')?.click());
    else if(s.tab==='combat')screen=renderCombatReport(s.report,{
      selectedContact:s.selectedContact,selectedShotId:s.selectedShotId,
      side:s.contactSide,back:s.paperBack,inspectionMode:s.inspectionMode
@@ -169,6 +119,12 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    else{
      screen=make('section','fw-after-section');
      screen.append(make('p','fw-after-empty','REPORT SECTION UNAVAILABLE'));
+   }
+   const operatorDetails=root.querySelector<HTMLElement>('#afterActionOperatorDetail');
+   if(operatorDetails){
+     const operator=s.report.operators.find(o=>o.id===s.selectedOperator);
+     operatorDetails.replaceChildren(operator?renderSquadDetails(operator):
+       make('p','fw-after-muted','Select an operator to inspect their full record.'));
    }
    disposeModel();
    safeContent.replaceChildren(screen);
