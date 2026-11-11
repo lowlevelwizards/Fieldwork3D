@@ -1,4 +1,7 @@
 import {assembleSession} from './breach-session-factory.ts';
+import {team,enemies,actor,party,canEdit} from './breach-session-selectors.ts';
+export {team,enemies,actor,canEdit};
+export {setWaitDuration,setNodeControl,setStartPace,plannedControl,setMoveSprint,toggleWeaponLight,toggleContactRule,posture} from './breach-tactical-control-commands.ts';
 import {OBJECTIVE,EXTRACTION,SCENARIOS} from './breach-scenario-defaults.ts';
 export {OBJECTIVE,EXTRACTION,SCENARIOS};
 import {createCombatFiringPipeline} from './breach-firing-pipeline.ts';
@@ -349,11 +352,6 @@ export function selectDeployment(s:Session,id:string):boolean{
  notify(s,'DEPLOYMENT SET — '+(choice?.id??'FRONT'));
  return true;
 }
-export const team=(s:Session)=>s.operators.filter(a=>a.side==='blue');
-export const enemies=(s:Session)=>s.operators.filter(a=>a.side==='red');
-export const actor=(s:Session,id:string)=>s.operators.find(a=>a.id===id);
-const party=(s:Session,id:string)=>team(s).find(a=>a.id===id&&a.health>0);
-export const canEdit=(s:Session)=>s.phase==='planning';
 /** Plan authoring can see only briefed/discovered surfaces. World-truth
  * validation runs again at execution; hidden furniture isn't exposed by
  * an unexplained path preview or a shortcut through a closed window.
@@ -1046,13 +1044,7 @@ export function planWaitAt(s:Session,id:string,seconds=1,
   }
   return planWait(s,id,seconds);
 }
-export function setWaitDuration(s:Session,id:string,nodeId:number,seconds:number){
-  const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
-  if(!a||!node||node.kind!=='wait'||!canEdit(s))return false;
-  return edit(s,a,()=>{node.duration=clamp(seconds,.3,6);});
-}
-/** Posture and pace authored at an existing waypoint take effect on arrival
- * and remain until a later transition. An operator tap edits base/HERE state. */
+
 /** Fire policy is persistent until changed. A waypoint can override it
  * without touching navigation or the rest of the authored plan. */
 export function setFirePolicy(s:Session,id:string,policy:FirePolicy,
@@ -1079,35 +1071,10 @@ export function setFirePolicy(s:Session,id:string,policy:FirePolicy,
   };
   return edit(s,a,change);
 }
-export function setNodeControl(s:Session,id:string,nodeId:number,
-  field:'postureState'|'paceState',value:'stand'|'crouch'|'walk'|'run'){
-  const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
-  if(!a||!node||!canEdit(s))return false;
-  return edit(s,a,()=>{Object.assign(node,{[field]:value});});
-}
-export function setStartPace(s:Session,id:string,pace:'walk'|'run'){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  return edit(s,a,()=>{a.pace=pace;});
-}
-export function plannedControl(s:Session,id:string,nodeId?:number){
-  const a=party(s,id);if(!a)return {posture:'stand' as Posture,
-    pace:'walk' as const};
-  let posture=a.posture,pace=a.pace;
-  if(nodeId===undefined)return {posture,pace};
-  for(const node of a.plan){
-    if(node.postureState)posture=node.postureState;
-    if(node.paceState)pace=node.paceState;
-    if(node.id===nodeId)break;
-  }
-  return {posture,pace};
-}
-export function setMoveSprint(s:Session,id:string,nodeId:number){
-  const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
-  if(!a||!node||node.kind!=='move'||!canEdit(s))return false;
-  return edit(s,a,()=>{
-    node.moveMode=node.moveMode==='sprint'?'advance':'sprint';
-  });
-}
+
+
+
+
 export function planHoldClear(s:Session,id:string,origin:'here'|'end'='end',afterNodeId?:number){
   const a=party(s,id);if(!a||!canEdit(s))return false;
   const idx=afterNodeId===undefined?-1:a.plan.findIndex(n=>n.id===afterNodeId);
@@ -1426,23 +1393,9 @@ export function reloadNow(s:Session,id:string):boolean{
   const a=party(s,id);
   return !!a&&s.phase==='running'&&beginReload(s,a);
 }
-/** Lights are manually operated in the field and are only usable when mounted.
- * The toggle never simulates unauthoritative fog-of-war or changes a shot. */
-export function toggleWeaponLight(s:Session,id:string):boolean{
- const a=party(s,id);
- if(!a||s.phase!=='planning'&&s.phase!=='running'||
-  a.weaponConfiguration?.slots.light!=='light-compact')return false;
- a.weaponLightOn=!a.weaponLightOn;
- return true;
-}
-export function toggleContactRule(s:Session,id:string){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  return edit(s,a,()=>{a.haltOnContact=!a.haltOnContact;});
-}
-export function posture(s:Session,id:string){
-  const a=party(s,id);if(!a||!canEdit(s))return false;
-  return edit(s,a,()=>{a.posture=a.posture==='stand'?'crouch':'stand';});
-}
+
+
+
 export function toggling(s:Session){
   if(s.phase==='planning'){
     // Calculate ALL participants and their earliest doorway arrivals
