@@ -236,7 +236,10 @@ export function createBreachReplayLibraryController(config:ReplayLibraryHooks){
     previousRecorder=null;
     activeSavedReplayId=null;activeFavoriteId=null;
     entrySource='debrief';
-    hide();
+    // Mission replacement is not a Back action from the library.
+    // Never let a menu-origin archive turn a newly mounted Quick Play
+    // favorite back into title-menu mode during releasePresentation().
+    hide(false);
   }
   function openFromMenu():void{
     config.hideCampaignScreen();
