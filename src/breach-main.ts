@@ -1210,7 +1210,7 @@ function updateHud(){
   ui.loadout.disabled=appFlow.mode==='mission'||state.phase!=='planning'||replaying;
   if(ui.loadout.disabled&&!weaponChooser.hidden)hideWeaponChooser();
   ui.flash.disabled=state.flashRemaining<=0||replaying;
-  ui.back.disabled=!active?.plan.length;
+  ui.back.disabled=!targeting.isArmed&&!selectedActiveWatch&&!active?.plan.length;
   ui.clear.disabled=!active?.plan.length||state.phase!=='planning'||replaying;
   ui.clear.title='Clear this operator\'s route (Undo restores it)';
   ui.undo.disabled=!(active?.history.undo.length);
