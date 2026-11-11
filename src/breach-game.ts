@@ -1197,7 +1197,8 @@ function observe(s:Session){
   const updateGround=s.intelObservedAt<0||
     s.seconds-s.intelObservedAt>=.14;
   if(updateGround){
-    observeIntel(s.intel,s.site,s.doors,p=>liveVisibility(s,p));
+    observeIntel(s.intel,s.site,s.doors,p=>liveVisibility(s,p),
+      sessionWorldGeometry(s));
     s.intelObservedAt=s.seconds;
   }
   // Site knowledge persists, current knowledge does not. Sight has geometry,

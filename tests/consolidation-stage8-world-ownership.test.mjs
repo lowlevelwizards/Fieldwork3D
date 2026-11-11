@@ -78,6 +78,8 @@ test('A8: explicit site defaults ignore a different globally active generated ma
   assert.deepEqual(training.doors.map(d=>d.id),initialDoors(null).map(d=>d.id));
   assert.deepEqual(newTacticalState(null).doors,initialDoors(null));
   assert.equal(training.intel.walls.size,world.walls.length);
+  assert.ok([...training.intel.walls].every(i=>i>=0&&i<world.walls.length),
+    'first observation cannot import foreign wall indices');
   assert.strictEqual(activeSite(),beforeSite);
   assert.deepEqual(WALLS,beforeWalls);assert.deepEqual(COVER,beforeCover);
   assert.notDeepEqual(world.walls,sessionWorldGeometry(generated).walls);
