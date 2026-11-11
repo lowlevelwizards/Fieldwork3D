@@ -1,4 +1,6 @@
-import {withActions} from './breach-actor-initial-state.ts';
+import {assembleSession} from './breach-session-factory.ts';
+import {OBJECTIVE,EXTRACTION,SCENARIOS} from './breach-scenario-defaults.ts';
+export {OBJECTIVE,EXTRACTION,SCENARIOS};
 import {createCombatFiringPipeline} from './breach-firing-pipeline.ts';
 import {advanceActorSightProgress,observeActorContactEvidence} from './breach-visual-acquisition.ts';
 import {createEnemyDecisionController} from './breach-enemy-decision-controller.ts';
@@ -22,11 +24,11 @@ import type {ActorMotorHooks} from './breach-motor-contract.ts';
  * Author intent is editable PlanNode[]; motor navigation is transient.
  * The core retains the 052 static geometry and starter actors, not its old simulation.
  */
-import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,initialDoors,newTacticalState,activateSite,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,} from './breach-core.ts';
+import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorBlocksSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment,} from './breach-core.ts';
 import {type PlanNode,type PlanHistory,type PlanKind,type DoorMethod,type AimMode,type AimInstruction,makeHistory,copyNodes,modifyNode,lastPoint,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference,type PieSide} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions} from './breach-entry-coordination.ts';
-import {generateSite,type Site,type SiteScale,seeded} from './breach-site.ts';
+import type {Site,SiteScale} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
 
@@ -45,7 +47,7 @@ import {type FireBlock} from './breach-fire-safety.ts';
 
 
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {initDoor,doorReachable} from './breach-door.ts';
+import {doorReachable} from './breach-door.ts';
 
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool} from './equipment-entry-tools.ts';
@@ -57,14 +59,13 @@ import {type MotorPause,type ExecutionIssue,type ExecutionStatus} from './breach
 import {type ExecutionEvent} from './breach-execution-events.ts';
 import {relocateCover,canRelocateCover} from './breach-movable-cover.ts';
 import {canAutoShove} from './breach-traversal-surfaces.ts';
-import {materialForFixture,MATERIALS} from './breach-materials.ts';
 
 
 
-import {initializeWindows,type WindowState} from './breach-windows.ts';
+import type {WindowState} from './breach-windows.ts';
 import {type AIIntent} from './breach-ai-policy.ts';
 
-import {registerSessionWorldGeometry,sessionWorldGeometry,publishSessionCoverToActiveSite,setPresentationWorldSession} from './breach-world-context.ts';
+import {sessionWorldGeometry,publishSessionCoverToActiveSite} from './breach-world-context.ts';
 
 
 import type {SuspicionMemory} from './breach-ai-suspicion.ts';
@@ -76,8 +77,7 @@ import {PerceptionPairCache} from './breach-perception-cache.ts';
 
 
 
-import {createCivilian,setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
-import {civilianRefugePoints} from './breach-civilian-refuge.ts';
+import {setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
 
 
@@ -102,8 +102,6 @@ import {routeWithSqueezeIntel,routeWithSqueezeWorld} from './breach-squeeze-rout
 import {knownPortalStrokeRoute} from './breach-known-portal-stroke.ts';
 import {probeObstacleCrossing,probeWindowPortalRoute,canOpenWindowForClimb,traversalRouteLength,type TraverseOpportunity} from './breach-mantle.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
-import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
-import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {kitMedicalSupplies,medicalSupplyCount,type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
@@ -312,188 +310,14 @@ const clone=(p:Pt):Pt=>({...p});
 const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const angle=(a:Pt,b:Pt)=>targetAngle(a,b);
-export const OBJECTIVE:Pt={x:453,y:319};
-export const EXTRACTION:Pt={x:307,y:669};
-export const SCENARIOS=[
-  {index:0,name:'SENTRY',spots:[{x:242,y:301,h:1.58},{x:523,y:254,h:2.48}]},
-  {index:1,name:'CROSSWATCH',spots:[{x:228,y:442,h:0.6},{x:518,y:258,h:2.3}]},
-  {index:2,name:'REAR GUARD',spots:[{x:262,y:213,h:1.1},{x:476,y:444,h:2.8}]},
-] as const;
-/** Omitted seed keeps 052's historic static study for regression tests.
- * The actual game passes a unique seed on each newly loaded site.
- */
+/** Public tactical Session constructor; creation becomes visible to
+ * knowledge/replay only after its complete world context is registered. */
 export function newSession(index=0,siteSeed?:number,
   intelMode:IntelMode='floor-plan',scale:SiteScale='standard',
   missionOverride?:OperationKind,prebuiltSite?:Site,
   encounterContext:EncounterContext={}):Session{
-  const site=prebuiltSite??(siteSeed===undefined?undefined:
-    generateSite(siteSeed>>>0,scale,undefined,
-      {...encounterContext,mission:missionOverride??encounterContext.mission}));
-  activateSite(site??null);
-  const seed=newTacticalState();
-  const variant=((index%SCENARIOS.length)+SCENARIOS.length)%SCENARIOS.length;
-  const sample=SCENARIOS[variant];
-  const operators=seed.operators.map(withActions);
-  if(site){
-    // Two more independently commanded operators, not cloned simulations.
-    const rook=operators.find(a=>a.id==='rook')!;
-    for(const [id,name] of [['ash','ASH'],['vale','VALE']]){
-      const base={...rook,id,name,p:{...rook.p},path:[],
-        lastSpotted:null,shots:0,fireCd:0,health:2};
-      operators.push(withActions(base));
-    }
-    const friendly=operators.filter(a=>a.side==='blue');
-    friendly.forEach((a,i)=>{
-      const issue=issueWeaponPreset(starterWeaponPreset(a.id));
-       a.weapon=issue.weapon;a.weaponConfiguration=issue.weaponConfiguration;
-      const issueRounds=freshMagazineIssue(a.id,a.weapon,a.weaponConfiguration);
-      a.magazine=issueRounds.magazine;a.reserve=issueRounds.reserve;
-      a.insertedMagazineId=issueRounds.loadedMagazineId;
-      a.spareMagazines=issueRounds.magazines;
-      a.health=4;a.injuryStage=0;
-      a.p={...site.spawn[i]};
-      // Entry teams face the nearest actual interior, not a hard-coded
-      // compass direction that is wrong for rotated/generated buildings.
-      const room=[...site.rooms].sort((u,v)=>
-        d(a.p,{x:u.x+u.w/2,y:u.y+u.h/2})-
-        d(a.p,{x:v.x+v.w/2,y:v.y+v.h/2}))[0];
-      a.heading=room?angle(a.p,{x:room.x+room.w/2,y:room.y+room.h/2}):
-        angle(a.p,site.entrance);
-      a.weaponYaw=a.heading;
-      a.priorP={...a.p};
-    });
-    // Site danger scales gently with room count; guards never spawn outside
-    // their generated rooms, and every corpse uses the actual site geometry.
-    const old=operators.filter(a=>a.side==='red');
-    const enemyRng=seeded(site.seed^0x8bd7812f);
-    for(let i=0;i<site.enemies.length;i++){
-      let a:TeamActor;
-      if(i<old.length)a=old[i];
-      else{
-        const source=old[i%old.length];
-        a=withActions({...source,id:'guard'+i,
-          name:'GUARD '+(i+1),p:{...source.p},path:[],
-          lastSpotted:null,shots:0,fireCd:0,health:2});
-        operators.push(a);
-      }
-      a.p={...site.enemies[i]};a.priorP={...a.p};
-      a.heading=site.encounter?.actors[i]?.heading??
-        site.enemyHeadings?.[i]??enemyRng()*Math.PI*2;
-      a.weaponYaw=a.heading;
-      const spec=site.encounter?.actors[i];
-      if(spec){a.encounterActivity=spec.activity;a.encounterReadiness=spec.readiness;
-        a.encounterRole=spec.role;a.encounterGroupId=spec.groupId;
-        a.encounterRoutine=spec.routine?.map(p=>({...p}));
-        a.routineIndex=0;a.routinePauseUntil=1.5+enemyRng()*3;
-        a.encounterReactionUntil=Number.POSITIVE_INFINITY;}
-      a.health=enemyRng()<.18?3:4;
-      const issued=enemyKitForEncounter(spec,site.seed,i);
-      a.weapon=issued.weapon;
-      a.weaponConfiguration=issued.weaponConfiguration;
-      a.equipment=issued.equipment;a.wardrobe=issued.wardrobe;
-      a.appearanceSeed=issued.appearanceSeed;
-      a.armorIntegrity=issued.armorIntegrity;
-      a.helmetIntegrity=issued.helmetIntegrity;
-      const issueRounds=freshMagazineIssue(a.id,a.weapon,a.weaponConfiguration);
-      a.magazine=issueRounds.magazine;a.reserve=issueRounds.reserve;
-      a.insertedMagazineId=issueRounds.loadedMagazineId;
-      a.spareMagazines=issueRounds.magazines;
-      a.injuryStage=0;
-      a.personality=spec?.role==='investigator'?'aggressor':
-        spec?.role==='reserve'||spec?.role==='target'?'cautious':
-        (['guard','aggressor','cautious'] as const)[Math.floor(enemyRng()*3)];
-      a.morale=.48+enemyRng()*.52;
-    }
-    // Generated sites may legitimately have one or no armed occupants.
-    // Remove unused legacy defenders: no invisible off-map enemies.
-    if(site.enemies.length<old.length){
-      const unused=new Set(old.slice(site.enemies.length));
-      for(let i=operators.length-1;i>=0;i--)
-        if(unused.has(operators[i]))operators.splice(i,1);
-    }
-  }else operators.filter(a=>a.side==='red').forEach((a,i)=>{
-    const pos=sample.spots[i];a.p={x:pos.x,y:pos.y};a.heading=pos.h;
-    const issued=enemyKitForEncounter(undefined,index,i);
-    a.weapon=issued.weapon;a.weaponConfiguration=issued.weaponConfiguration;
-    a.equipment=issued.equipment;a.wardrobe=issued.wardrobe;
-    a.appearanceSeed=issued.appearanceSeed;
-    a.armorIntegrity=issued.armorIntegrity;
-    a.helmetIntegrity=issued.helmetIntegrity;
-    const issueRounds=freshMagazineIssue(a.id,a.weapon,a.weaponConfiguration);
-    a.health=2;a.magazine=issueRounds.magazine;
-    a.reserve=issueRounds.reserve;a.weaponYaw=a.heading;
-    a.insertedMagazineId=issueRounds.loadedMagazineId;
-    a.spareMagazines=issueRounds.magazines;
-  });
-  // The base tactical study carries two legacy defenders. An explicit
-  // training site must remove them rather than spawning hostile AI off-map.
-  if(site?.training){
-    for(let i=operators.length-1;i>=0;i--)
-      if(operators[i].side==='red')operators.splice(i,1);
-  }
-  // Civilian activation is an explicit session policy. The current UI opts
-  // in by default, while old tests/replays and ?civilians=0 stay empty.
-  const civilians=encounterContext.enableCivilians?
-    (site?.encounter?.neutrals??[]).map(createCivilian):[];
-  if(site)for(const person of civilians)
-    person.refugePoints=civilianRefugePoints(site,person);
-  const state:Session={...seed,operators,civilians,
-    civilianHarmEvents:[],objectRevision:0,
-    coverState:COVER.map(o=>({...o,material:materialForFixture(o.fixture),
-      integrity:MATERIALS[materialForFixture(o.fixture)].integrity})),
-    windows:initializeWindows(site?.windows??[]),
-    passageLeases:{},squadEntryUndo:null,squadEntryRedo:null,
-    doors:initialDoors().map((d,i)=>initDoor({
-      ...d,locked:d.locked??!!(site&&i>2&&i%7===0&&
-        d.kind!=='shutter'&&d.id!=='FRONT')},i)),variant,nextId:1,
-    scenario:{index:variant,name:site?.name??sample.name,
-      objective:clone(site?.objective??OBJECTIVE),
-      extract:clone(site?.extract??EXTRACTION)},
-    mission:'clear',noise:[],nextNoiseId:1,reports:[],nextReportId:1,shots:[],casings:[],nextShotId:1,known:new Map(),
-    seenGround:new Set(),seenGroundRevision:0,
-    intel:initialIntel(intelMode,site,initialDoors()),
-    intelObservedAt:-1,timesPaused:0,deaths:0,started:false,
-    syncCode:0,report:[],movementNoiseAt:0,site,lightingMode:'day',
-    dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
-    impactMarks:[],battleEvents:[],nextBattleId:1,
-    executionEvents:[],nextExecutionId:1,
-    missionType:missionOverride??(site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear'),
-    holdTime:0,rescue:null,captureTarget:null,captureSecured:false,
-    intelCarrierId:null};
-  if(state.missionType==='capture'){
-    // Respect the mission-specific target role from the actual encounter.
-    // Fallback to the legacy first defender for older saved/practice maps.
-    const targetIndex=site?.encounter?.actors.findIndex(a=>a.role==='target')??-1;
-    const fighters=operators.filter(a=>a.side==='red');
-    const target=targetIndex>=0?fighters[targetIndex]:fighters[0];
-    state.captureTarget=target?.id??null;
-    if(target)state.scenario.objective=clone(target.p);
-  }
-  if(state.missionType==='rescue'){
-    // The developer-gated migration creates ONE authoritative rescued
-    // person. Ordinary gameplay keeps the legacy escort until N4 release.
-    if(encounterContext.enableCivilians&&site){
-      const point=state.scenario.objective;
-      const room=site.rooms.find(r=>r.kind==='room'&&
-        point.x>=r.x&&point.x<=r.x+r.w&&
-        point.y>=r.y&&point.y<=r.y+r.h);
-      state.civilians.push(createCivilian({
-        id:'civ:rescue:'+site.seed,role:'rescue',persona:'cautious',
-        activity:'waiting',position:clone(point),heading:0,
-        roomId:room?.id??'objective',
-        zoneId:room?.zoneId??room?.id,
-        appearanceSeed:site.seed^0x57eb,
-        isRescueTarget:true
-      }));
-    }
-    state.rescue={p:clone(state.scenario.objective),following:null,trail:[]};
-  }
-  if(state.missionType==='intel'||state.missionType==='rescue'||
-     state.missionType==='hold')state.mission='secure';
-  COVER.splice(0,COVER.length,...state.coverState);
-  registerSessionWorldGeometry(state);
-  setPresentationWorldSession(state);
-  bindIntelWorld(state.intel,sessionWorldGeometry(state));
+  const state=assembleSession(index,siteSeed,intelMode,scale,
+    missionOverride,prebuiltSite,encounterContext);
   observe(state);
   return state;
 }
