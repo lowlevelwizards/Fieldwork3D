@@ -46,3 +46,12 @@ test('A6 main composes a single keyboard shortcut binding',()=>{
  assert.match(hud,/window\.addEventListener\('keydown'/);
  assert.match(hud,/if\(shortcutsBound\)return/);
 });
+
+test('A6 ground authoring is committed by the existing pointer-command owner',()=>{
+ const pointer=readFileSync(new URL('../src/breach-pointer-command-controller.ts',import.meta.url),'utf8');
+ assert.match(source,/commitTacticalGroundCommand\(/);
+ assert.doesNotMatch(source,/const retargetingActive=/);
+ assert.match(pointer,/const retargetingActive=/);
+ assert.match(pointer,/planDoorFlash\(/);
+ assert.match(pointer,/setFirePolicy\(/);
+});

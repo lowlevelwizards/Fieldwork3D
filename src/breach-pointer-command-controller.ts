@@ -1,8 +1,11 @@
 /** Stage 4: release semantics; gesture lifecycle remains in gesture controller.
  * No authoritative planning or camera sight runs from a pointer preview.
  */
-import {team,planWatch,retargetActiveWatch,movePlanNode,moveFlashTarget,planMoveStroke,finalPoint,type Session,type TeamActor} from './breach-game.ts';
+import {team,planWatch,retargetActiveWatch,movePlanNode,moveFlashTarget,planMoveStroke,finalPoint,planNearbyInteraction,planCasualtyTransport,setFirePolicy,planDoorFlash,planFlash,planAim,planMove,type Session,type TeamActor} from './breach-game.ts';
 import {doorCenter,type Pt} from './breach-core.ts';
+import {aimTargetFromTap} from './ui/aim-target.ts';
+import type {TacticalInteractionState} from './breach-tactical-interaction-state.ts';
+import type {createBreachAudioController} from './breach-audio-controller.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {TacticalPointer} from './breach-canvas-gesture-controller.ts';
 import type {TacticalPick} from './ui/tactical-target-resolver.ts';
@@ -218,4 +221,110 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
 
     }
   }
+}
+
+export type GroundCommandPort={
+ state:Session;selected:string;replaying:boolean;
+ selectedNode:number|null;selectedActiveWatch:boolean;
+ targeting:TacticalInteractionState;tacticalFeedback:TacticalFeedback;
+ audio:ReturnType<typeof createBreachAudioController>;
+ updateHud:()=>void;rejectAt:(point:Pt,reason:string)=>void;
+ showUiHelp:(text:string,duration?:number)=>void;
+ teach:(key:string,text:string,duration?:number)=>void;
+ onAuthoring:()=>void;
+};
+/** One ground-placement commit boundary: same plan rules and A4 targeting
+ * transitions as the previous entrypoint handler. Pointer previews stay read-only. */
+export function commitTacticalGroundCommand(port:GroundCommandPort,pt:Pt):void{
+
+  if(port.state.phase!=='planning'||port.replaying)return;
+  if(port.targeting.pushMode){
+    const accepted=planNearbyInteraction(port.state,port.selected,'push',
+      port.selectedNode??undefined,pt);
+    if(!accepted)port.rejectAt(pt,'NO PUSHABLE OBJECT IN REACH');
+    else{
+      port.targeting.reset();port.tacticalFeedback.emit('command',pt,'PUSH');
+      port.audio.uiClickTone('command');
+    }
+    port.updateHud();return;
+  }
+  const evacuation=port.targeting.evacMode;
+  if(evacuation){
+    port.targeting.reset();
+    if(!planCasualtyTransport(port.state,port.selected,evacuation.patientId,pt,evacuation.mode))
+      port.showUiHelp('CASUALTY ROUTE BLOCKED — CHOOSE A REACHABLE DESTINATION');
+    port.updateHud();return;
+  }
+  if(port.targeting.firePlacement){
+    const nodeId=port.selectedNode??undefined;
+    const accepted=setFirePolicy(port.state,port.selected,'suppress',nodeId,pt);
+    if(!accepted)port.rejectAt(pt,'INVALID SUPPRESSION POINT');
+    else{
+      port.tacticalFeedback.emit('command',pt,'SUPPRESS');
+      port.audio.uiClickTone('command');port.targeting.reset();
+    }
+    port.updateHud();return;
+  }
+  if(port.targeting.flashMode){
+    const id=port.state.nextId,doorId=port.targeting.flashDoorId;
+    const accepted=doorId?
+      planDoorFlash(port.state,port.selected,doorId,pt):
+      planFlash(port.state,port.selected,pt);
+    if(!accepted)port.rejectAt(pt,'FLASH TARGET BLOCKED / OUT OF RANGE');
+    else{
+      port.tacticalFeedback.emit('command',pt,'FLASH');
+      port.audio.uiClickTone('command');
+      port.selectedNode=doorId?port.state.nextId-1:id;
+      port.targeting.reset();
+    }
+    port.updateHud();return;
+  }
+  if(port.targeting.isFacing){
+    const placedId=port.state.nextId;
+    const retargetingActive=port.targeting.facing.lookMode==='watch'&&port.selectedActiveWatch;
+    const actor=uid(selected);
+    const source=retargetingActive?actor?.p:port.selectedNode!==null?
+      actor?.plan.find(node=>node.id===port.selectedNode)?.p:
+      actor?(port.targeting.facing.armedOrigin==='here'?actor.p:finalPoint(actor)):null;
+    const target=source?aimTargetFromTap(source,pt):null;
+    const committed=!!target&&(retargetingActive?
+      retargetActiveWatch(port.state,port.selected,target):
+      port.targeting.facing.lookMode==='watch'?
+        planWatch(port.state,port.selected,target,port.selectedNode??undefined,port.targeting.facing.armedOrigin):
+        planAim(port.state,port.selected,'free',target,port.selectedNode??undefined,'look',port.targeting.facing.armedOrigin));
+    if(!committed){
+      port.rejectAt(pt,target?'AIM ORDER UNAVAILABLE':
+        'AIM DIRECTION UNAVAILABLE · TAP AWAY FROM THE OPERATOR');
+      port.showUiHelp('CHOOSE A LOOK / WATCH DIRECTION, OR CANCEL',3200);
+    }
+    else{
+      port.tacticalFeedback.emit('command',target!,port.targeting.facing.lookMode==='watch'?'WATCH':'LOOK');
+      port.audio.playOrderCue(port.targeting.facing.lookMode==='watch'?'orders.watch':'orders.look');
+      if(!retargetingActive&&port.selectedNode===null){
+        port.selectedNode=placedId;port.selectedActiveWatch=false;
+      }
+      port.teach(port.targeting.facing.lookMode==='watch'?'watch-placed':'look-placed',
+        port.targeting.facing.lookMode==='watch'?
+          'WATCH stays on that point while moving. Drag its ring to adjust.':
+          'LOOK checks that direction briefly, then returns to the route.',4100);
+    }
+    if(committed)port.targeting.reset();
+    port.updateHud();return;
+  }
+  const beforeRoute=uid(selected)?finalPoint(uid(selected)!):pt;
+  port.onAuthoring();
+  if(!planMove(port.state,port.selected,pt))
+    port.rejectAt(pt,!intelPassable(pt,port.state.intel)?
+      'DESTINATION BLOCKED · CHOOSE NEARBY FLOOR':
+      'NO WALKABLE ROUTE · CHECK DOOR OR PATH');
+  else{
+    port.selectedActiveWatch=false;
+    port.selectedNode=uid(selected)?.plan.at(-1)?.id??null;
+    port.tacticalFeedback.emit('route',pt,undefined,beforeRoute);
+    port.audio.playOrderCue('orders.waypoint');
+    port.teach('waypoint-created',
+      'Waypoint added. Drag to move it; choose LOOK / WATCH, or DELETE.',4900);
+  }
+  port.updateHud();
+
 }

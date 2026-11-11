@@ -1,7 +1,7 @@
 import {
   createBreachCanvasGestureController,type TacticalPointer}
  from './breach-canvas-gesture-controller.ts';
-import {dispatchTacticalPointerRelease} from './breach-pointer-command-controller.ts';
+import {dispatchTacticalPointerRelease,commitTacticalGroundCommand} from './breach-pointer-command-controller.ts';
 import {installTouchCommandHelp as bindTouchCommandHelp}
  from './ui/touch-command-help.ts';
 import {
@@ -952,96 +952,16 @@ function render(){
 function rejectAt(pt:Pt,reason:string):void{
  frameFeedbackController.rejectAt(pt,reason);
 }
-function useSelectedGround(pt:Pt){
-  if(state.phase!=='planning'||replaying)return;
-  if(targeting.pushMode){
-    const accepted=planNearbyInteraction(state,selected,'push',
-      selectedNode??undefined,pt);
-    if(!accepted)rejectAt(pt,'NO PUSHABLE OBJECT IN REACH');
-    else{
-      targeting.reset();tacticalFeedback.emit('command',pt,'PUSH');
-      audioController.uiClickTone('command');
-    }
-    updateHud();return;
-  }
-  const evacuation=targeting.evacMode;
-  if(evacuation){
-    targeting.reset();
-    if(!planCasualtyTransport(state,selected,evacuation.patientId,pt,evacuation.mode))
-      showUiHelp('CASUALTY ROUTE BLOCKED — CHOOSE A REACHABLE DESTINATION');
-    updateHud();return;
-  }
-  if(targeting.firePlacement){
-    const nodeId=selectedNode??undefined;
-    const accepted=setFirePolicy(state,selected,'suppress',nodeId,pt);
-    if(!accepted)rejectAt(pt,'INVALID SUPPRESSION POINT');
-    else{
-      tacticalFeedback.emit('command',pt,'SUPPRESS');
-      audioController.uiClickTone('command');targeting.reset();
-    }
-    updateHud();return;
-  }
-  if(targeting.flashMode){
-    const id=state.nextId,doorId=targeting.flashDoorId;
-    const accepted=doorId?
-      planDoorFlash(state,selected,doorId,pt):
-      planFlash(state,selected,pt);
-    if(!accepted)rejectAt(pt,'FLASH TARGET BLOCKED / OUT OF RANGE');
-    else{
-      tacticalFeedback.emit('command',pt,'FLASH');
-      audioController.uiClickTone('command');
-      selectedNode=doorId?state.nextId-1:id;
-      targeting.reset();
-    }
-    updateHud();return;
-  }
-  if(targeting.isFacing){
-    const placedId=state.nextId;
-    const retargetingActive=targeting.facing.lookMode==='watch'&&selectedActiveWatch;
-    const actor=uid(selected);
-    const source=retargetingActive?actor?.p:selectedNode!==null?
-      actor?.plan.find(node=>node.id===selectedNode)?.p:
-      actor?(targeting.facing.armedOrigin==='here'?actor.p:finalPoint(actor)):null;
-    const target=source?aimTargetFromTap(source,pt):null;
-    const committed=!!target&&(retargetingActive?
-      retargetActiveWatch(state,selected,target):
-      targeting.facing.lookMode==='watch'?
-        planWatch(state,selected,target,selectedNode??undefined,targeting.facing.armedOrigin):
-        planAim(state,selected,'free',target,selectedNode??undefined,'look',targeting.facing.armedOrigin));
-    if(!committed){
-      rejectAt(pt,target?'AIM ORDER UNAVAILABLE':
-        'AIM DIRECTION UNAVAILABLE · TAP AWAY FROM THE OPERATOR');
-      showUiHelp('CHOOSE A LOOK / WATCH DIRECTION, OR CANCEL',3200);
-    }
-    else{
-      tacticalFeedback.emit('command',target!,targeting.facing.lookMode==='watch'?'WATCH':'LOOK');
-      audioController.playOrderCue(targeting.facing.lookMode==='watch'?'orders.watch':'orders.look');
-      if(!retargetingActive&&selectedNode===null){
-        selectedNode=placedId;selectedActiveWatch=false;
-      }
-      teach(targeting.facing.lookMode==='watch'?'watch-placed':'look-placed',
-        targeting.facing.lookMode==='watch'?
-          'WATCH stays on that point while moving. Drag its ring to adjust.':
-          'LOOK checks that direction briefly, then returns to the route.',4100);
-    }
-    if(committed)targeting.reset();
-    updateHud();return;
-  }
-  const beforeRoute=uid(selected)?finalPoint(uid(selected)!):pt;
-  lastAuthoringAt=performance.now();
-  if(!planMove(state,selected,pt))
-    rejectAt(pt,!intelPassable(pt,state.intel)?
-      'DESTINATION BLOCKED · CHOOSE NEARBY FLOOR':
-      'NO WALKABLE ROUTE · CHECK DOOR OR PATH');
-  else{
-    selectedActiveWatch=false;
-    selectedNode=uid(selected)?.plan.at(-1)?.id??null;
-    tacticalFeedback.emit('route',pt,undefined,beforeRoute);
-    audioController.playOrderCue('orders.waypoint');
-    teach('waypoint-created',
-      'Waypoint added. Drag to move it; choose LOOK / WATCH, or DELETE.',4900);
-  }
-  updateHud();
+function useSelectedGround(pt:Pt):void{
+ commitTacticalGroundCommand({
+  state,selected,replaying,
+  get selectedNode(){return selectedNode;},
+  set selectedNode(value){selectedNode=value;},
+  get selectedActiveWatch(){return selectedActiveWatch;},
+  set selectedActiveWatch(value){selectedActiveWatch=value;},
+  targeting,tacticalFeedback,audio:audioController,updateHud,rejectAt,showUiHelp,teach,
+  onAuthoring:()=>{lastAuthoringAt=performance.now();}
+ },pt);
 }
 function isMissionTerminal(s:Session){return s.phase==='won'||s.phase==='lost';}
 /** Reapply recorded outcomes after timeline navigation, then refresh dependent
