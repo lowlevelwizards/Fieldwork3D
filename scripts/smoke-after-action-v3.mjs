@@ -65,6 +65,7 @@ try{
        shot(4,20,'guard','moss',false,4,4,false,'head','dust'),
        shot(5,51,'rook','sentry',true,4,4,false,'arm','blood')
      ]}};
+    window.__v4Rec=rec;
     module.renderAfterActionWorkspace(root,rec,{showIntel:false});
    });
    const root=page.locator('#v3-qa');
@@ -91,8 +92,17 @@ try{
    check((await root.locator('.fw-v3-squad-name h2').textContent())==='MOSS',
      'Squad selection failed '+name);
    await root.locator('.fw-v3-details-link').click();
+   check(await root.locator('#afterActionOperatorRecord').count()===1,
+     'Operator record not opened in Squad '+name);
+   check((await root.locator('#afterActionOperatorRecord').textContent())
+     .includes('MOSS / RECORDED CONTRIBUTIONS'),
+     'Incorrect operator record '+name);
+   check(!(await root.locator('#afterActionDetails').isVisible()),
+     'Operator record wrongly opened Mission Details '+name);
+   await root.locator('.fw-v4-record-back').click();
+   await root.locator('#afterActionDetailsToggle').click();
    check(await root.locator('#afterActionDetails').isVisible(),
-     'Details unavailable '+name);
+     'Mission Details unavailable '+name);
    await root.locator('#afterActionDetailsClose').click();
    await root.locator('[data-after-tab="combat"]').click();
    check(await root.locator('.fw-v3-contact-chip').count()===2,
