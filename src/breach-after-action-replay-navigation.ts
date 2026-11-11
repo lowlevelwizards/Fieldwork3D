@@ -21,7 +21,7 @@ export function makeAfterActionLaunchRequest(
  const found=anchor.shotId==null?null:
    rec.ballistics.shots.find(s=>s.id===anchor.shotId)??null;
  // Never anchor a clip to a different contact or silently accept an invalid ID.
- if(anchor.shotId!=null&&(!found||!found.hit&&found.targetId!==anchor.contactId||
+ if(anchor.shotId!=null&&(!found||
    anchor.contactId!=null&&found.targetId!==anchor.contactId))return null;
  if(anchor.end!==undefined&&(!finite(anchor.end)||anchor.end<anchor.time))return null;
  const first=found?found.recordedAt:match[0]?.recordedAt??anchor.time;
