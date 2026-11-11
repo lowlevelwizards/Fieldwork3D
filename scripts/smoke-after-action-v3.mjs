@@ -76,7 +76,7 @@ try{
      const root=document.querySelector('#v3-qa'),body=root.querySelector('#afterActionBody');
      return {scrollWidth:document.documentElement.scrollWidth,viewport:innerWidth,
        bodyBottom:body.getBoundingClientRect().bottom,
-       contentBottom:body.firstElementChild?.getBoundingClientRect().bottom};
+       contentBottom:body.firstElementChild?.lastElementChild?.getBoundingClientRect().bottom};
    });
    const fits=async screen=>{
     const metrics=await layout();
@@ -100,17 +100,17 @@ try{
      'Shot chips unavailable '+name);
    await fits('combat');
    await root.locator('.fw-v3-shot-chip').first().click();
-   const context=await page.evaluate(()=>window.__v3Qa.afterActionSnapshot(
-     document.querySelector('#v3-qa')));
+   await page.evaluate(()=>{window.__v3Context=window.__v3Qa.afterActionSnapshot(
+     document.querySelector('#v3-qa'));});
    await root.locator('[data-after-tab="highlights"]').click();
    check(await root.locator('.fw-v3-highlight-chip').count()>0,
      'Highlights unavailable '+name);
    check(await root.locator('.fw-v3-highlight-graphic').count()>0,
      'Schematic fallback missing '+name);
    await fits('highlights');
-   const restored=await page.evaluate(context=>
+   const restored=await page.evaluate(()=>
      window.__v3Qa.restoreAfterActionWorkspace(
-       document.querySelector('#v3-qa'),context),context);
+       document.querySelector('#v3-qa'),window.__v3Context));
    check(restored,'Return context rejected '+name);
    check(await root.locator('.fw-v3-shot-chip[aria-pressed=true]').count()===1,
      'Return lost shot '+name);
