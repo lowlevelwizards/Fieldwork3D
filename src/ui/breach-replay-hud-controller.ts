@@ -7,6 +7,7 @@ import type {ReplayPlaybackController} from '../breach-replay-playback-controlle
 import type {ReplayCameraController} from '../breach-replay-camera-controller.ts';
 import type {ReplayKnowledgeController} from '../breach-replay-knowledge-controller.ts';
 import type {ReplayBodycamController} from '../breach-replay-bodycam-controller.ts';
+import type {ReplayPresentationOptions} from '../breach-replay-presentation-options.ts';
 import type {ViewMode} from '../breach-3d.ts';
 import type {createBreachReplayAnalysisController} from './breach-replay-analysis-controller.ts';
 import {formatReplayTime} from '../breach-replay-transport.ts';
@@ -84,10 +85,8 @@ export type ReplayHudSnapshot={
   isRecorderSaved:(recorder:MissionRecorder)=>boolean};
  analysisUi:ReturnType<typeof createBreachReplayAnalysisController>;
  viewMode:ViewMode;stageAvailable:boolean;selected:string;replaying:boolean;
- replayXrayOn:boolean;replayTraceMode:'off'|'recent'|'selected';
- replayGhostMode:'off'|'selected'|'squad';replayTrailMode:'off'|'recent'|'full';
- replayPlanScope:'all'|'selected'|'none';replayPlanVersion:'active'|'original';
- replayNameTags:boolean;replayAnalysis:boolean;audioSoundEnabled:boolean;
+ presentationOptions:ReplayPresentationOptions;
+ audioSoundEnabled:boolean;
 };
 export function createBreachReplayHudController(config:{
  ui:ReplayHudElements;snapshot:()=>ReplayHudSnapshot;
@@ -111,9 +110,10 @@ function updateReplayHud():void{
  const ui=config.ui;
  const {state,recorder,replayPlayback,replayCamera,replayKnowledge,replayBodycam,
    videoActive,library,analysisUi,viewMode,stageAvailable,selected,
-   replayXrayOn,replayTraceMode,replayGhostMode,replayTrailMode,
+   presentationOptions,replaying,audioSoundEnabled}=config.snapshot();
+  const {replayXrayOn,replayTraceMode,replayGhostMode,replayTrailMode,
    replayPlanScope,replayPlanVersion,replayNameTags,replayAnalysis,
-   replaying,audioSoundEnabled}=config.snapshot();
+   replayPreset}=presentationOptions;
  const replayDirector=replayCamera.director;
   ui.replaySeek.value=String(Math.round(replayPlayback.time*60));
   ui.replayMiniPlay.textContent=replayPlayback.playing?'Ⅱ':'▶';
@@ -317,8 +317,8 @@ for(const b of ui.replaySpeedChoices.querySelectorAll<HTMLButtonElement>('[data-
   ui.replayPlans.setAttribute('aria-pressed',String(replayPlanScope!=='none'));
   ui.replayNames.setAttribute('aria-pressed',String(replayNameTags));
   for(const button of ui.replayPresets.querySelectorAll<HTMLButtonElement>('[data-replay-preset]'))
-    button.setAttribute('aria-pressed',String(button.dataset.replayPreset===analysisUi.replayPreset));
-  ui.replayPresetStatus.textContent=analysisUi.replayPreset==='custom'?'CUSTOM SETTINGS':'';
+    button.setAttribute('aria-pressed',String(button.dataset.replayPreset===replayPreset));
+  ui.replayPresetStatus.textContent=replayPreset==='custom'?'CUSTOM SETTINGS':'';
   ui.replayShareToggle.textContent=videoActive?'■ STOP VIDEO':'SAVE / SHARE';
   const replaySaved=!!(library.activeSavedReplayId||library.isRecorderSaved(recorder));
   ui.replaySaveArchive.disabled=library.busy||replaySaved;
