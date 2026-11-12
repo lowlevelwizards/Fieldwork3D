@@ -22,6 +22,8 @@ import {applyStudioGraphicLighting}
  from './operator-studio-graphic-lighting.ts';
 import {BreachCombatEffectsPresenter} from './rendering/breach-combat-effects-presenter.ts';
 import {PresentationSightMemo} from './rendering/breach-presentation-sight-memo.ts';
+import {presentationSightPolicy,allowPresentationSightReuse}
+ from './rendering/breach-presentation-sight-policy.ts';
 import {presentActor,presentDecor,presentArchitecturalOpening,
   presentUnrecordedRescueMarker,resolveDoorPresentation}
  from './rendering/breach-3d-disclosure-presenter.ts';
@@ -117,6 +119,8 @@ const color=(hex:number)=>new THREE.Color(hex);
 const mat=(hex:number,roughness=.9)=>new THREE.MeshStandardMaterial({
   color:hex,roughness,flatShading:true,
 });
+type StagePhaseName='environment'|'camera'|'disclosure'|'actors'|
+ 'effects'|'fog'|'shadows'|'postCamera'|'gpuSubmit';
 export class TacticalScene3D{
   private readonly hemisphere=new THREE.HemisphereLight(
    STUDIO_INSPECTION_LIGHT.sky,studioShadowPalette('plum-plus').ground,1.20);
@@ -124,8 +128,22 @@ export class TacticalScene3D{
    studioShadowPalette('plum-plus').fill,.60);
   /** Renderer-only; ?presentationSight=legacy bypasses memo for A/B. */
   private readonly presentationSight=new PresentationSightMemo();
-  private readonly presentationSightEnabled=
-   new URLSearchParams(location.search).get('presentationSight')!=='legacy';
+  private readonly profileSceneUpdate=
+   new URLSearchParams(location.search).has('perf');
+  private scenePhaseStart=0;
+  /** CPU-only slices of a single 3D update. GPU time is NOT measured. */
+  private readonly scenePhases:Record<StagePhaseName,number>={
+   environment:0,camera:0,disclosure:0,actors:0,effects:0,
+   fog:0,shadows:0,postCamera:0,gpuSubmit:0
+  };
+  private markScenePhase(key:StagePhaseName):void{
+   if(!this.profileSceneUpdate)return;
+   const now=performance.now();
+   this.scenePhases[key]=now-this.scenePhaseStart;
+   this.scenePhaseStart=now;
+  }
+  private readonly presentationSightPolicy=presentationSightPolicy(
+   new URLSearchParams(location.search).get('presentationSight'));
   /** A/B baseline for perf audits; never changes tactical shadow resolution. */
   private readonly graphicLookEnabled=
    new URLSearchParams(location.search).get('lighting')!=='legacy';
@@ -195,6 +213,8 @@ export class TacticalScene3D{
       fogMemoryPaints:this.fogMemoryPaints,
       fogSightPaints:this.fogSightPaints,
       presentationSight:this.presentationSight.stats(),
+      presentationSightPolicy:this.presentationSightPolicy,
+      scenePhases:this.profileSceneUpdate?this.scenePhases:null,
       graphicWorldMaterialCount:this.graphicWorldMaterialCount,
       graphicOperatorRestyles:this.graphicOperatorRestyles,
       graphicLookEnabled:this.graphicLookEnabled};
@@ -1441,11 +1461,17 @@ export class TacticalScene3D{
     personalGroundEvidence:ReadonlySet<string>|null=null,
     replayWindowHistory:ReplayWindowKnowledgeHistory|null=null){
     if(this.view.mode==='plan2d')return;
+    if(this.profileSceneUpdate){
+      this.scenePhaseStart=performance.now();
+      for(const key of Object.keys(this.scenePhases) as StagePhaseName[])
+       this.scenePhases[key]=0;
+    }
     // Never memoize reconstructed current sight during historical replay.
-    this.presentationSight.begin(s,this.presentationSightEnabled&&
-      !replay&&!replayDisclosurePolicy&&!replayDoorHistory&&
-      !replayWindowHistory&&!this.physicalDirectorActive&&
-      !this.replayBodycam);
+    this.presentationSight.begin(s,allowPresentationSightReuse(
+      this.presentationSightPolicy,s.phase,
+      !!replay||!!replayDisclosurePolicy||!!replayDoorHistory||
+      !!replayWindowHistory||this.physicalDirectorActive||
+      !!this.replayBodycam));
     if(this.miniFocusMode!=='off'){
       this.miniFocusSession=s;
       this.miniFocusDoorId=focusedDoorId;
@@ -1550,7 +1576,9 @@ export class TacticalScene3D{
       this.windowShards.count=shardCount;
     }
     if(shardCount)this.windowShards.instanceMatrix.needsUpdate=true;
+    this.markScenePhase('environment');
     this.updateCamera(dt);
+    this.markScenePhase('camera');
     this.fogAt+=dt;
     // Gameplay may stop on the exact downing tick. Finish visual collapse
     // independently, without advancing combat or modifying the replay film.
@@ -1814,6 +1842,7 @@ export class TacticalScene3D{
         replayDisclosurePolicy);
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
+    this.markScenePhase('disclosure');
     for(const actor of s.operators){
       const visible=presentActor(s,actor,omniscient,replayDisclosurePolicy);
       // Spawn full 3D rigs only when needed. Enemy AI, LOS and simulation
@@ -2086,6 +2115,7 @@ export class TacticalScene3D{
           (object.physical.feet[i].swinging?.74:1)*pulse);
       }
     }
+    this.markScenePhase('actors');
     this.combatEffects.update(s,omniscient,
       personalDisclosure,p=>this.presentationSight.query(
         s,'effect',p.x+','+p.y,p));
@@ -2250,6 +2280,7 @@ export class TacticalScene3D{
     // Fingerprints allocate a per-actor/door signature. Compute them
     // only when the fog repaint cadence permits a change, never on the
     // intervening 60Hz scene frames. Session swaps bypass the cadence.
+    this.markScenePhase('effects');
     const sessionChanged=this.lastFogSession!==s;
     const fogDue=!omniscient&&(sessionChanged||
       this.fogAt>=(this.quality.mode==='quality'?.055:.10)||this.fogAt<0);
@@ -2283,6 +2314,7 @@ export class TacticalScene3D{
         this.fogTexture.needsUpdate=true;
       }
     }else if(omniscient)this.fogAt=-1;
+    this.markScenePhase('fog');
     const dynamicShadows=s.phase==='running'||
       ((s.phase==='won'||s.phase==='lost')&&
         this.terminalPoseSeconds<1.0);
@@ -2306,6 +2338,7 @@ export class TacticalScene3D{
     // Read from the already posed historical rig. No additional animation
     // tick, physics, awareness query or mutable replay state is introduced.
     // The QA bodycam is never active without explicit personal disclosure.
+    this.markScenePhase('shadows');
     let camera:THREE.Camera=this.projectionCamera;
     let cameraOwner:OperatorRig|null=null;
     if(bodycamAudition&&this.replayBodycam){
@@ -2341,6 +2374,7 @@ export class TacticalScene3D{
       for(const child of cameraOwner.chest.children)hide(child);
       cameraOwner.head.traverse(hide);
     }
+    this.markScenePhase('postCamera');
     try{this.renderMiniatureFocus(camera);}
     finally{
       for(const [mesh,visible] of masked)mesh.visible=visible;
@@ -2352,6 +2386,7 @@ export class TacticalScene3D{
         frame:++this.renderFrameSerial,at:s.seconds
       };
     }
+    this.markScenePhase('gpuSubmit');
     // Effects geometry is released before rebuilding the next frame; pooled
     // material instances are reused for every shot to reduce phone GC work.
   }

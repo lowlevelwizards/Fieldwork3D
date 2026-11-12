@@ -18,5 +18,5 @@ test('P1.3 counters reset and source fallback is preserved',()=>{
  assert.equal(m.stats().bypasses,1);
  m.reset();
  assert.equal(m.stats().queries,0);
- assert.match(source('src/breach-3d.ts'),/get\('presentationSight'\)!=='legacy'/);
+ assert.match(source('src/breach-3d.ts'),/presentationSightPolicy\(/);
 });
