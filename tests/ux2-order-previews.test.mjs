@@ -53,3 +53,27 @@ test('mobile drag targets retain gesture, command and preview separation',()=>{
  assert.match(feedback,/const preview:TacticalOrderPreview\|undefined=/);
  assert.match(main,/dispatchTacticalPointerRelease\(/);
 });
+
+test('previews obey the owning Session bounds, not the legacy 640 × 740 board',async()=>{
+ const {insideTacticalBounds}=await import('../src/ui/aim-target.ts');
+ const {sessionWorldGeometry}=await import('../src/breach-world-context.ts');
+ const {newSession}=await import('../src/breach-game.ts');
+ const feedback=readFileSync(new URL('../src/ui/breach-tactical-frame-feedback-controller.ts',import.meta.url),'utf8');
+ assert.match(feedback,/insideTacticalBounds\(cursor,sessionWorldGeometry\(state\)\.bounds\)/);
+ assert.doesNotMatch(feedback,/cursor\.x<=W|cursor\.y<=H/);
+ const site={seed:17,name:'Expanded preview fixture',rooms:[],walls:[],doors:[],
+  cover:[],spawn:[{x:200,y:200}],enemies:[],windows:[],
+  objective:{x:900,y:800},extract:{x:200,y:200},
+  bounds:{minX:-250,minY:-140,maxX:1100,maxY:920}};
+ const session=newSession(17,undefined,'full-view','standard','clear',site);
+ const bounds=sessionWorldGeometry(session).bounds;
+ assert.deepEqual(bounds,site.bounds);
+ for(const mode of ['look','watch','flash','suppress','drag','carry']){
+  for(const point of [{x:1000,y:900},{x:-240,y:-120},{x:1100,y:920},{x:-250,y:-140}]){
+   assert.equal(insideTacticalBounds(point,bounds),true,mode+' '+JSON.stringify(point));
+  }
+ }
+ for(const point of [{x:-251,y:0},{x:1101,y:0},{x:0,y:921},{x:NaN,y:0},{x:0,y:Infinity}]){
+  assert.equal(insideTacticalBounds(point,bounds),false);
+ }
+});
