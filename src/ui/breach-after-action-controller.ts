@@ -390,6 +390,15 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          s.operatorRecordOpen=true;draw();
          safeContent.querySelector<HTMLButtonElement>(
            '.fw-v4-record-back')?.focus({preventScroll:true});
+       },(sourceKey)=>{
+         if(!s.timelineEvents.some(event=>event.key===sourceKey))return;
+         s.timelineFilter='all';s.timelineSelectedKey=sourceKey;
+         s.timelineClusterId=null;
+         const details=root.querySelector<HTMLElement>('#afterActionDetails');
+         if(!details)return;
+         details.hidden=false;drawTimeline();
+         details.querySelector<HTMLElement>('.fw-v5-timeline-inspect')
+           ?.scrollIntoView({block:'nearest'});
        });
      if(s.operatorRecordOpen){
        const operator=s.report.operators.find(o=>o.id===s.selectedOperator);
