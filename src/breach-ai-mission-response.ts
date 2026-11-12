@@ -13,3 +13,20 @@ export function captureTargetMayWithdraw(f:MissionResponseFacts):boolean{
   !f.isAlreadyWithdrawing&&f.secondsSinceAttempt>=6&&
   f.hasEstimate&&(f.confirmedSight||f.heardAlarm);
 }
+
+/** Context changes defense priority, not world knowledge. An assigned
+ * guard who actually hears danger near their post should not abandon it
+ * just because another position is closer to the acoustic estimate. */
+export type ObjectiveDefenseFacts={
+ mission:OperationKind;role:EncounterRole|undefined;
+ distanceToPost:number;distanceOfEvidenceToPost:number;
+ heardActionableEvidence:boolean;directSight:boolean;
+ suppression:number;
+};
+export function shouldProtectObjective(f:ObjectiveDefenseFacts):boolean{
+ return (f.mission==='hold'||f.mission==='intel'||
+         f.mission==='rescue'||f.mission==='capture')&&
+   (f.role==='sentry'||f.role==='reserve'||f.role==='leader')&&
+   f.distanceToPost<=140&&f.distanceOfEvidenceToPost<=240&&
+   f.heardActionableEvidence&&!f.directSight&&f.suppression<.7;
+}
