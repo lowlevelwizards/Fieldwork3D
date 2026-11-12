@@ -137,8 +137,10 @@ const worldCanStand=(doors:Door[],world?:SessionWorldGeometry)=>(p:Pt,r:number)=
     pointToSegment(p,doorLeafSegment(d))<r+1);
 /** For motor recovery: a true full-body detour, never a narrow fallback.
  * Its result is transient navigation, not an authored path change. */
-export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry):Pt[]{
- const canStand=worldCanStand(doors,world);
+export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[],
+ world?:SessionWorldGeometry,
+ sharedCanStand?:(point:Pt,radius:number)=>boolean):Pt[]{
+ const canStand=sharedCanStand??worldCanStand(doors,world);
  if(!canStand(to,OPERATOR_RADIUS))return [];
  const physical=(a:Pt,b:Pt)=>sweptProfileClear(a,b,doors,0,'normal',world);
  const standard=route(from,to,p=>canStand(p,OPERATOR_RADIUS));
@@ -190,7 +192,24 @@ export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[],world?:SessionWo
  * then rejoins a real normal-body route; no waypoint/goal is modified.
  * Bounded to avoid route-search spikes in genuine narrow corridors. */
 export function recoverNormalLane(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry):Pt[]{
- const direct=routeWithNormalWorld(from,to,doors,world);
+ // A single blocked collision can try up to thirteen full-grid A* routes.
+ // Adjacent escape probes repeat many identical geometry/door tests.
+ // Share only exact point+radius answers for THIS synchronous search;
+ // nothing survives a door swing, cover mutation, simulation tick or replay.
+ // This is an exact predicate memo, not a relaxed body/collision shortcut.
+ const actual=worldCanStand(doors,world);
+ const passes=new Map<number,Map<string,boolean>>();
+ const sharedCanStand=(point:Pt,radius:number):boolean=>{
+   let atRadius=passes.get(radius);
+   if(!atRadius){atRadius=new Map();passes.set(radius,atRadius);}
+   const key=point.x+','+point.y;
+   const saved=atRadius.get(key);
+   if(saved!==undefined)return saved;
+   const result=actual(point,radius);
+   atRadius.set(key,result);
+   return result;
+ };
+ const direct=routeWithNormalWorld(from,to,doors,world,sharedCanStand);
  if(direct.length)return direct;
  const dist=Math.hypot(to.x-from.x,to.y-from.y);
  if(dist<12)return [];
@@ -204,7 +223,7 @@ export function recoverNormalLane(from:Pt,to:Pt,doors:Door[],world?:SessionWorld
        const escape={x:from.x+sx*lateral*sign-fx*back,
          y:from.y+sy*lateral*sign-fy*back};
        if(!sweptProfileClear(from,escape,doors,0,'normal',world))continue;
-       const onward=routeWithNormalWorld(escape,to,doors,world);
+       const onward=routeWithNormalWorld(escape,to,doors,world,sharedCanStand);
        if(!onward.length)continue;
        if(Math.hypot(escape.x-from.x,escape.y-from.y)+
           courseLength(escape,onward)>dist*1.75+40)continue;
