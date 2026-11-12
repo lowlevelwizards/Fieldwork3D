@@ -9,6 +9,11 @@ on:
       - 'src/operator-pose-workbench-ui.ts'
       - 'scripts/smoke-pose-workbench.mjs'
       - 'tests/operator-pose-workbench.test.mjs'
+      - 'tests/package-b7-workbench-pose-output.test.mjs'
+      - 'src/breach-operator-animation-frame.ts'
+      - 'src/operator-preview-rig-lifecycle.ts'
+      - 'src/operator-appearance-grid.ts'
+      - 'src/equipment-preview.ts'
       - 'tests/operator-pose-library-transfer.test.mjs'
       - '.github/workflows/operator-pose-workbench-smoke.yml'
   workflow_dispatch:
@@ -24,7 +29,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/operator-pose-workbench.test.mjs tests/operator-pose-library-transfer.test.mjs
+      - run: node --experimental-strip-types --test tests/operator-pose-workbench.test.mjs tests/operator-pose-library-transfer.test.mjs tests/package-b7-workbench-pose-output.test.mjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: npx playwright install --with-deps chromium
       - run: node scripts/smoke-pose-workbench.mjs
