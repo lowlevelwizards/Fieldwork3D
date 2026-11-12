@@ -73,6 +73,8 @@ export type BreachRuntimeLoopHooks={
  bodycam:ReplayBodycamController;
  video:ReplayQuickVideo;
  audio:ReturnType<typeof createBreachAudioController>;
+ /** Read-only notification for the in-match PERF HUD control. */
+ onProfilerChange?:(visible:boolean,recording:boolean)=>void;
 };
 export function createBreachRuntimeLoop(config:BreachRuntimeLoopHooks){
  let last=performance.now(),accum=0,hudAt=0,running=false,frameQueued=false;
@@ -93,18 +95,41 @@ if(awarenessPanel){
  document.body.append(awarenessPanel);
 }
 
-// Opt-in developer overlay: add ?perf=1 to measure render and simulation
-// without polling DOM/layout or allocating objects in the normal game loop.
-const perfPanel=config.boot.perfOverlay?
-  new BreachPerfTimelinePanel():null;
-const perfOverlay=perfPanel?.root??null;
+// The 60s RAF bucket history is always collected at negligible cost during
+// tactical gameplay; expensive attribution and DOM updates remain opt-in.
+// ?perf=1 still opens the legacy detailed overlay immediately.
+let perfPanel:BreachPerfTimelinePanel|null=config.boot.perfOverlay?
+  new BreachPerfTimelinePanel(()=>{setProfilerOpen(false);}):null;
+let perfOverlay=perfPanel?.root??null;
 if(perfOverlay)document.body.append(perfOverlay);
-// Sight instrumentation is opt-in only. Normal mission loops never record
-// counters, and neither gameplay nor replay reads these diagnostics.
 setSightDiagnosticsEnabled(!!perfOverlay);
-const frameMeter=perfOverlay?new FrameMeter():null;
-const perfTimeline=perfOverlay?new PerformanceTimeline():null;
+let frameMeter:FrameMeter|null=perfOverlay?new FrameMeter():null;
+const perfTimeline=new PerformanceTimeline();
 let perfTimelineSession:Session|null=null;
+let previousCoarseJs:number|undefined;
+let previousCoarseMode:RuntimeFrameMode|undefined;
+function setProfilerOpen(open:boolean):boolean{
+ if(open&&!perfPanel){
+  perfPanel=new BreachPerfTimelinePanel(()=>{setProfilerOpen(false);});
+  perfOverlay=perfPanel.root;
+  document.body.append(perfOverlay);
+  frameMeter=new FrameMeter();
+  setSightDiagnosticsEnabled(true);
+  previousPerfJs=previousCoarseJs;
+  previousPerfMode=previousCoarseMode;
+ }
+ if(!perfPanel||!perfOverlay)return false;
+ perfOverlay.hidden=!open;
+ if(open){
+  perfPanel.update('Detailed CPU diagnostics armed. Earlier history includes RAF/JS only.',
+   perfTimeline,'planning',config.getViewMode());
+ }
+ config.onProfilerChange?.(open,true);
+ return open;
+}
+function toggleProfiler():boolean{return setProfilerOpen(!!perfOverlay?.hidden||!perfOverlay);}
+function isProfilerVisible():boolean{return !!perfOverlay&&!perfOverlay.hidden;}
+function isProfilerRecording():boolean{return !!perfOverlay;}
 // Explicit A/B only. At rest, 3D can submit at 30Hz while the RAF,
 // 2D order overlays, HUD, audio and all game simulation remain unchanged.
 const idle3dExperiment=config.boot.idle3dExperiment;
@@ -155,10 +180,12 @@ function tick(now:number){
    previousPerfJs=undefined;previousPerfSim=undefined;
    previousPerfMode=undefined;previousPerfWork=undefined;
    previousHotSim=undefined;
+   previousCoarseJs=undefined;previousCoarseMode=undefined;
    lastSightTotals=null;lastFogPaints=0;lastShadowRefreshes=0;
    for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
     intervalSight[k]=0;
   }
+  const coarseStart=perfOverlay?0:performance.now();
   const perfStart=perfOverlay?performance.now():0;
   const frameGap=Math.max(0,now-last);
   const dt=Math.min(.08,frameGap/1000);last=now;
@@ -166,6 +193,7 @@ function tick(now:number){
    previousPerfJs=undefined;previousPerfSim=undefined;
    previousPerfMode=undefined;previousPerfWork=undefined;
    previousHotSim=undefined;
+   previousCoarseJs=undefined;previousCoarseMode=undefined;
    accum=0;previousRenderActors=null;previousRenderDoors=null;
    physicalActionRings.clear();
    scheduleFrame();return;
@@ -444,7 +472,7 @@ function tick(now:number){
         (simPhaseCosts&&simPhaseCosts.size?'\nHOT SIM '+
           [...simPhaseCosts].sort((a,b)=>b[1]-a[1]).slice(0,2)
             .map(([name,ms])=>name+' '+ms.toFixed(1)+'ms').join(' / '):'');
-      if(perfPanel&&perfTimeline)perfPanel.update(output,perfTimeline,
+      if(perfPanel&&!perfPanel.root.hidden)perfPanel.update(output,perfTimeline,
        stats?.presentationSightPolicy??'planning',
        idle3dExperiment?viewMode+' idle3d30':viewMode);
       for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
@@ -457,7 +485,15 @@ function tick(now:number){
     awarenessPanel.textContent=inspected?awarenessDebugLine(inspected):
       'No selected actor';
   }
-  if(perfTimeline){
+  if(!perfOverlay){
+   // Idle and live RAF history remains available BEFORE opening the graph.
+   // Record only one JS wall-time and bucket maxima; no phase probes or DOM.
+   const js=performance.now()-coarseStart;
+   perfTimeline.addCoarseFrame(now,frameGap,js,frameMode,viewMode,
+    previousCoarseJs,previousCoarseMode);
+   previousCoarseJs=js;previousCoarseMode=frameMode;
+  }
+  if(perfOverlay){
    // Measure at the end, *after* optional 750ms panel reporting. Otherwise
    // diagnostic DOM/canvas work masquerades as unexplained callback wait.
    const afterDiagnostics=performance.now();
@@ -498,5 +534,6 @@ function tick(now:number){
  function stop():void{
   running=false;resetPresentation();
  }
- return {start,stop,resetPresentation};
+ return {start,stop,resetPresentation,toggleProfiler,isProfilerVisible,
+  isProfilerRecording};
 }
