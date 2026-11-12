@@ -121,7 +121,7 @@ export function inspectB0Architecture(root=process.cwd()){
   'beginOperatorAnimationFrame(r,p,dt)',
   'updateOperatorAppearance(r,p)',
   'sampleOperatorFootContacts(r,p,physicalSpeed,moving,travelYaw)',
-  'applyOperatorLegIK(r,p,scratch,targets,kick,headingYaw,smooth)',
+  'applyOperatorLegIK(workingRig,p,scratch,targets,kick,headingYaw,smooth)',
   'finishOperatorPoseFrame(r,p,',
   'commitOperatorPoseOutput(r,p)'
  ];

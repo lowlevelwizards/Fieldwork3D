@@ -122,10 +122,41 @@ function createOperatorEquipmentPoseScratch():OperatorEquipmentPoseScratch{
   slingRear:new THREE.Vector3(),slingFront:new THREE.Vector3(),
   slingPoints:[new THREE.Vector3(),new THREE.Vector3()]};
 }
+/** B6 — the canonical, non-rendered transform hierarchy for one rig.
+ * Parent/world-space solvers operate on these five nodes, not on visible
+ * meshes that are only published by the final B2 frame commit.
+ * No geometry, scene attachment, separate pose clock or render traversal.
+ */
+export type OperatorFramePoseScratch={
+ initialized:boolean;
+ root:THREE.Object3D;
+ legacyFrame:THREE.Object3D;
+ hip:THREE.Object3D;
+ chest:THREE.Object3D;
+ head:THREE.Object3D;
+ rigView:object|null;
+ frameOutputs:LegPoseOutputSlot[];
+ bodyOutputs:LegPoseOutputSlot[];
+};
+function createOperatorFramePoseScratch():OperatorFramePoseScratch{
+ const root=new THREE.Object3D(),legacyFrame=new THREE.Object3D();
+ const hip=new THREE.Object3D(),chest=new THREE.Object3D();
+ const head=new THREE.Object3D();
+ root.add(legacyFrame);
+ legacyFrame.add(hip,chest);
+ chest.add(head);
+ const output=(id:string):LegPoseOutputSlot=>({
+  id,values:[0,0,0,0,0,0,1,1,1,1,1]});
+ return {initialized:false,root,legacyFrame,hip,chest,head,
+  rigView:null,
+  frameOutputs:['root','legacy-frame'].map(output),
+  bodyOutputs:['pelvis','chest','head'].map(output)};
+}
 export type OperatorPoseScratch={
   legOutput:OperatorLegPoseScratch;
   armOutput:OperatorArmPoseScratch;
   equipmentOutput:OperatorEquipmentPoseScratch;
+  frameOutput:OperatorFramePoseScratch;
   bodyEuler:THREE.Euler;
   bodyInverse:THREE.Quaternion;
   legs:[LimbSolution,LimbSolution];
@@ -149,6 +180,7 @@ export function createOperatorPoseScratch():OperatorPoseScratch{
     legOutput:createOperatorLegPoseScratch(),
     armOutput:createOperatorArmPoseScratch(),
     equipmentOutput:createOperatorEquipmentPoseScratch(),
+    frameOutput:createOperatorFramePoseScratch(),
     bodyEuler:new THREE.Euler(),bodyInverse:new THREE.Quaternion(),
     legs:[solution(),solution()],
     arms:[solution(),solution()],

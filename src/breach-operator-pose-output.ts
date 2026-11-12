@@ -203,12 +203,18 @@ function publishOperatorPoseOutput(r:OperatorRig,p:OperatorPose,
   v.set(output.staged[i]);
   if(!apply)continue;
   const n=slot.node;
-  if(n.position.x!==v[0]||n.position.y!==v[1]||n.position.z!==v[2])
+  // B6: Object.is distinguishes +0 from -0. Before frame/body moved
+  // off-scene their working meshes already carried signed zero; a direct
+  // stage may now be the first writer, and strict 11-value published/scene
+  // equality must still hold. Preserve the B2 no-op fast path otherwise.
+  if(!Object.is(n.position.x,v[0])||!Object.is(n.position.y,v[1])||
+     !Object.is(n.position.z,v[2]))
    n.position.set(v[0],v[1],v[2]);
-  if(n.quaternion.x!==v[3]||n.quaternion.y!==v[4]||
-     n.quaternion.z!==v[5]||n.quaternion.w!==v[6])
+  if(!Object.is(n.quaternion.x,v[3])||!Object.is(n.quaternion.y,v[4])||
+     !Object.is(n.quaternion.z,v[5])||!Object.is(n.quaternion.w,v[6]))
    n.quaternion.set(v[3],v[4],v[5],v[6]);
-  if(n.scale.x!==v[7]||n.scale.y!==v[8]||n.scale.z!==v[9])
+  if(!Object.is(n.scale.x,v[7])||!Object.is(n.scale.y,v[8])||
+     !Object.is(n.scale.z,v[9]))
    n.scale.set(v[7],v[8],v[9]);
   const visible=v[10]===1;
   if(n.visible!==visible)n.visible=visible;
