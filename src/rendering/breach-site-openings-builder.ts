@@ -7,6 +7,7 @@ import {initDoor} from '../breach-door.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET,
  WALL_VISUAL_HEIGHT,DOOR_CLEAR_VISUAL_HEIGHT,DOOR_LEAF_VISUAL_HEIGHT}
  from '../breach-door-proportions.ts';
+import {windowApertureSegment} from '../worldgen/window-geometry-contract.ts';
 import {windowVisualHeadHeight,SERVING_COUNTER_VISUAL_HEIGHT}
  from '../breach-opening-proportions.ts';
 import type {Site,WideOpening} from '../breach-site.ts';
@@ -356,12 +357,7 @@ export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
         host.box(group,0,baseTop,-2.3,opening.width,2,5,trim,false);
         host.box(group,0,actualTop,-2.3,opening.width,2,5,trim,false);
       }
-      const half=opening.width/2;
-      const edge=opening.vertical?
-        {a:{x:opening.x,y:opening.y-half},
-         b:{x:opening.x,y:opening.y+half}}:
-        {a:{x:opening.x-half,y:opening.y},
-         b:{x:opening.x+half,y:opening.y}};
+      const edge=windowApertureSegment(opening);
       const publicWindow=!opening.interior&&accessibleExteriorWall(site,edge);
       if(publicWindow){
         host.promoteFacadeDetails(group);
