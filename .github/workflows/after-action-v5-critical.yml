@@ -1,0 +1,54 @@
+name: After Action V5 — Focused Browser Acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/after-action-v5-critical.yml'
+      - 'index.html'
+      - 'src/breach-style.css'
+      - 'src/breach-after-action-*.ts'
+      - 'src/breach-operations.ts'
+      - 'src/breach-mission-reporting.ts'
+      - 'src/ui/breach-after-action-*.ts'
+      - 'scripts/smoke-after-action-v5.mjs'
+      - 'tests/after-action-v5-*.test.mjs'
+permissions:
+  contents: read
+concurrency:
+  group: after-action-v5-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser-smoke:
+    if: ${{ startsWith(github.head_ref, 'feat/after-action-v5-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: V5 and existing essential regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/after-action-v5-*.test.mjs \
+            tests/after-action-v4-stage1-navigation.test.mjs \
+            tests/after-action-v4-stage2-hierarchy.test.mjs \
+            tests/after-action-v4-stage4-forensic.test.mjs \
+            tests/after-action-v4-stage5-timeline.test.mjs
+      - name: Browser driver
+        run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: V5 compact browser journey on three viewports
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/smoke-after-action-v5.mjs
+      - name: Browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: after-action-v5-browser-evidence
+          path: artifacts/after-action-v5/
+          if-no-files-found: warn
+          retention-days: 14

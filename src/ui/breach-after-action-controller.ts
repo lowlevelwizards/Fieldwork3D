@@ -37,6 +37,14 @@ export function disposeAfterActionPresentation(root:HTMLElement):void{
 function presentModel(root:HTMLElement,recorder:MissionRecorder,
  host:HTMLElement|null,operatorId:string|null,
  evidence:ForensicEvidence|null):void{
+ const fallback=()=>{
+   const state=owners.get(root);
+   if(state?.recorder===recorder&&state.tab==='combat'&&
+     state.inspectionMode==='3d'){
+     state.inspectionMode='paper';
+     queueMicrotask(()=>renderers.get(root)?.());
+   }
+ };
  let owner=models.get(root);
  if(owner&&owner.recorder!==recorder){
    disposeAfterActionPresentation(root);owner=undefined;
@@ -52,11 +60,11 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
  }
  const identities=recorder.manifest?.actors??[];
  if(!identities.length){
-   host.textContent='NO RECORDED HISTORICAL MODEL';return;
+   host.textContent='NO RECORDED HISTORICAL MODEL';fallback();return;
  }
  if(owner.unavailable){
    host.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
-   return;
+   fallback();return;
  }
  if(owner.pending)return;
  owner.pending=true;
@@ -65,13 +73,17 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
  void import('./breach-after-action-model.ts').then(module=>{
    if(models.get(root)!==owner||owner.version!==version)return;
    owner.pending=false;
-   owner.presenter=module.createAfterActionModelPresenter(identities);
+   owner.presenter=module.createAfterActionModelPresenter(identities,()=>{
+     owner.unavailable=true;
+     owner.presenter?.dispose();owner.presenter=null;
+     fallback();
+   });
    const current=root.querySelector<HTMLElement>(
      '[data-after-squad-model], [data-after-model]');
    if(!owner.presenter){
      owner.unavailable=true;
      if(current)current.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
-     return;
+     fallback();return;
    }
    if(current){
      const id=current.hasAttribute('data-after-squad-model')?
@@ -86,6 +98,7 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
    const current=root.querySelector<HTMLElement>(
      '[data-after-squad-model], [data-after-model]');
    if(current)current.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
+   fallback();
  });
 }
 
@@ -96,7 +109,7 @@ type State={
   selectedShotId:number|null;contactSide:'red'|'blue';paperBack:boolean;
   inspectionMode:'paper'|'3d';forensicScope:ForensicScope;
   selectedHighlight:string|null;
-  operatorRecordOpen:boolean;
+  operatorRecordOpen:boolean;summaryCompact:boolean;
   scroll:Partial<Record<AfterActionTab,number>>;
   showIntel:boolean;
   timelineEvents:readonly AfterActionTimelineEvent[];
@@ -138,12 +151,12 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    disposeAfterActionPresentation(root);
    state={recorder:rec,report:buildAfterActionReport(rec),tab:'squad',
      selectedOperator:null,selectedContact:null,selectedShotId:null,
-     contactSide:'red',paperBack:false,inspectionMode:'paper',
+     contactSide:'red',paperBack:false,inspectionMode:'3d',
      forensicScope:'cumulative',
-     selectedHighlight:null,operatorRecordOpen:false,
+     selectedHighlight:null,operatorRecordOpen:false,summaryCompact:false,
      scroll:{},showIntel:options.showIntel,
      timelineEvents:buildAfterActionTimeline(rec),
-     timelineFilter:'all',timelineSelectedKey:null,timelineClusterId:null,
+     timelineFilter:'key',timelineSelectedKey:null,timelineClusterId:null,
      timelineLedgerOpen:false,timelineLedgerLimit:30,timelineRailScroll:0,
      timelineGroupScroll:0,timelineLedgerScroll:0};
    owners.set(root,state);
@@ -156,12 +169,35 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      tabButton.addEventListener('click',()=>{
        const s=owners.get(root);if(!s)return;
        s.scroll[s.tab]=safeContent.scrollTop;
-       s.tab=tabButton.dataset.afterTab as AfterActionTab;
+        s.summaryCompact=true;
+        s.tab=tabButton.dataset.afterTab as AfterActionTab;
        renderers.get(root)?.();
      });
    }
-   const details=root.querySelector<HTMLElement>('#afterActionDetails');
-   const open=root.querySelector<HTMLButtonElement>('#afterActionDetailsToggle');
+   const summaryToggle=root.querySelector<HTMLButtonElement>('#afterActionSummaryToggle');
+    const syncSummary=()=>{
+      const current=owners.get(root);if(!current)return;
+      root.classList.toggle('fw-v5-summary-compact',current.summaryCompact);
+      if(summaryToggle){
+        summaryToggle.textContent=current.summaryCompact?'RESULT ▾':'SUMMARY ▴';
+        summaryToggle.setAttribute('aria-expanded',String(!current.summaryCompact));
+        summaryToggle.setAttribute('aria-label',
+          current.summaryCompact?'Expand mission result':'Collapse mission result');
+      }
+    };
+    summaryToggle?.addEventListener('click',()=>{
+      const current=owners.get(root);if(!current)return;
+      current.summaryCompact=!current.summaryCompact;syncSummary();
+    });
+    safeContent.addEventListener('scroll',()=>{
+      const current=owners.get(root);if(!current)return;
+      // Selection redraws replace the section DOM, not the player's reading position.
+      current.scroll[current.tab]=safeContent.scrollTop;
+      if(current.summaryCompact||safeContent.scrollTop<24)return;
+      current.summaryCompact=true;syncSummary();
+    },{passive:true});
+    const details=root.querySelector<HTMLElement>('#afterActionDetails');
+    const open=root.querySelector<HTMLButtonElement>('#afterActionDetailsToggle');
    const close=root.querySelector<HTMLButtonElement>('#afterActionDetailsClose');
    const dismiss=()=>{if(details){details.hidden=true;open?.focus();}};
    open?.addEventListener('click',()=>{
@@ -194,7 +230,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    if(!models.has(root)&&!root.hidden)renderers.get(root)?.();
    return; // Never destroy selections or scroll on repeated HUD updates.
  }
- root.classList.add('fw-debrief-v3');
+ root.classList.add('fw-debrief-v3','fw-v5-workspace');
  root.classList.remove('fw-debrief-v2');
  const drawTimeline=():void=>{
    const s=owners.get(root),host=root.querySelector<HTMLElement>(
@@ -240,9 +276,10 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        filter:value=>{
          s.timelineFilter=value;s.timelineClusterId=null;
          if(value!=='all'&&!s.timelineEvents.some(e=>
-           e.key===s.timelineSelectedKey&&e.category===value)){
-           s.timelineSelectedKey=s.timelineEvents.find(
-             e=>e.category===value)?.key??null;
+           e.key===s.timelineSelectedKey&&
+           (value==='key'?e.priority>=7:e.category===value))){
+           s.timelineSelectedKey=s.timelineEvents.find(e=>
+             value==='key'?e.priority>=7:e.category===value)?.key??null;
          }
          s.timelineGroupScroll=0;s.timelineLedgerScroll=0;
          s.timelineLedgerLimit=30;persist();
@@ -333,11 +370,20 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        String(tabButton.dataset.afterTab===s.tab));
    if(intel)intel.hidden=!s.showIntel;
    if(raw)raw.hidden=false;
-   root.classList.toggle('fw-v4-record-open',s.tab==='squad'&&s.operatorRecordOpen);
+   root.classList.toggle('fw-v5-summary-compact',s.summaryCompact);
+    const summary=root.querySelector<HTMLButtonElement>('#afterActionSummaryToggle');
+    if(summary){
+      summary.textContent=s.summaryCompact?'RESULT ▾':'SUMMARY ▴';
+      summary.setAttribute('aria-expanded',String(!s.summaryCompact));
+      summary.setAttribute('aria-label',
+        s.summaryCompact?'Expand mission result':'Collapse mission result');
+    }
+    root.classList.toggle('fw-v4-record-open',s.tab==='squad'&&s.operatorRecordOpen);
    root.classList.toggle('fw-v4-squad-active',s.tab==='squad');
    const choose=(id:string|null)=>{
      if(id===s.selectedOperator&&s.tab==='squad'&&!s.operatorRecordOpen)return;
-     s.selectedOperator=id;s.operatorRecordOpen=false;s.tab='squad';draw();
+     s.selectedOperator=id;s.operatorRecordOpen=false;s.tab='squad';
+      s.summaryCompact=true;draw();
      // Redraw replaces buttons; keep keyboard/switch access anchored to the
      // corresponding rank choice, not a destroyed DOM element.
      const selectedHeading=id===null?null:safeContent.querySelector<HTMLElement>(
@@ -352,6 +398,16 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          rows[0])?.focus({preventScroll:true});
      }
    };
+   const inspectContribution=(sourceKey:string)=>{
+     if(!s.timelineEvents.some(event=>event.key===sourceKey))return;
+     s.timelineFilter='all';s.timelineSelectedKey=sourceKey;
+     s.timelineClusterId=null;
+     const details=root.querySelector<HTMLElement>('#afterActionDetails');
+     if(!details)return;
+     details.hidden=false;drawTimeline();
+     details.querySelector<HTMLElement>('.fw-v5-timeline-inspect')
+       ?.scrollIntoView({block:'nearest'});
+   };
    let screen:HTMLElement;
    if(s.tab==='squad'){
      screen=renderSquadView(s.report,s.recorder.manifest,
@@ -360,7 +416,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          s.operatorRecordOpen=true;draw();
          safeContent.querySelector<HTMLButtonElement>(
            '.fw-v4-record-back')?.focus({preventScroll:true});
-       });
+       },inspectContribution);
      if(s.operatorRecordOpen){
        const operator=s.report.operators.find(o=>o.id===s.selectedOperator);
        if(operator){
@@ -380,7 +436,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          modelHost.setAttribute('data-after-squad-model','');
          modelHost.setAttribute('aria-label',
            'Historical 3D model for '+operator.name);
-         record.append(back,modelHost,renderSquadDetails(operator));
+         record.append(back,modelHost,renderSquadDetails(operator,inspectContribution));
          // The complete record replaces the detail pane, not the ranked roster.
          const focus=screen.querySelector('.fw-v3-squad-focus');
          if(focus)focus.replaceWith(record);
@@ -464,7 +520,8 @@ export type AfterActionReturnContext={
  timelineClusterId?:string|null;timelineLedgerOpen?:boolean;
  timelineLedgerLimit?:number;timelineRailScroll?:number;
  timelineGroupScroll?:number;timelineLedgerScroll?:number;
- operatorRecordOpen:boolean;detailsOpen:boolean;detailsScroll:number;
+ operatorRecordOpen:boolean;summaryCompact?:boolean;
+  detailsOpen:boolean;detailsScroll:number;
  scroll:Partial<Record<AfterActionTab,number>>;
 };
 export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|null{
@@ -495,7 +552,8 @@ export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|n
    timelineGroupScroll:s.timelineGroupScroll,
    timelineLedgerScroll:s.timelineLedgerScroll,
    operatorRecordOpen:s.operatorRecordOpen,
-   detailsOpen:!root.querySelector<HTMLElement>('#afterActionDetails')?.hidden,
+    summaryCompact:s.summaryCompact,
+    detailsOpen:!root.querySelector<HTMLElement>('#afterActionDetails')?.hidden,
    detailsScroll:root.querySelector<HTMLElement>('.fw-after-detail-content')?.scrollTop??0,
    scroll:{...s.scroll}};
 }
@@ -537,7 +595,8 @@ export function restoreAfterActionWorkspace(
  s.timelineGroupScroll=Math.max(0,context.timelineGroupScroll??0);
  s.timelineLedgerScroll=Math.max(0,context.timelineLedgerScroll??0);
  s.operatorRecordOpen=context.operatorRecordOpen&&!!context.operatorId;
- s.scroll={...context.scroll};
+  s.summaryCompact=context.summaryCompact??true;
+  s.scroll={...context.scroll};
  const detail=root.querySelector<HTMLElement>('#afterActionDetails');
  if(detail)detail.hidden=!context.detailsOpen;
  renderers.get(root)?.();

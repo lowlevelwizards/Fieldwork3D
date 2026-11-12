@@ -32,7 +32,7 @@ const pose=(rig:OperatorRig,actor:ReplayActorIdentity)=>{
  },0);
 };
 export function createAfterActionModelPresenter(
- identities:readonly ReplayActorIdentity[]
+ identities:readonly ReplayActorIdentity[],onUnavailable?:()=>void
 ):AfterActionModelPresenter|null{
  if(!identities.some(actor=>actor.side==='blue'))return null;
  let renderer:THREE.WebGLRenderer;
@@ -52,7 +52,7 @@ export function createAfterActionModelPresenter(
  canvas.className='fw-after-model-canvas fw-v4-model-canvas';
  canvas.style.width='100%';
  canvas.style.height='100%';
- canvas.style.touchAction='none';
+ canvas.style.touchAction='pan-y';
  canvas.setAttribute('role','img');
  canvas.setAttribute('aria-label',
    'Historical 3D operator models. Drag to rotate, scroll to zoom.');
@@ -98,7 +98,7 @@ export function createAfterActionModelPresenter(
      // Group remains neutral for the ordinary Squad identity display.
      model.overlay.update(!squad&&id===selected?forensicEvidence:null);
    }
-   const base=squad?Math.max(166,90+n*18):112;
+   const base=squad?Math.max(158,88+n*17):100;
    lookAt.set(0,28,0);
    const dist=base*zoom;
    camera.position.set(Math.sin(yaw)*Math.cos(pitch)*dist,
@@ -148,6 +148,7 @@ export function createAfterActionModelPresenter(
  const contextLost=(event:Event)=>{
    event.preventDefault();lost=true;
    if(host)host.textContent='3D VIEW UNAVAILABLE · HISTORICAL RECORD REMAINS AVAILABLE';
+   onUnavailable?.();
  };
  canvas.addEventListener('pointerdown',down);
  canvas.addEventListener('pointermove',move);

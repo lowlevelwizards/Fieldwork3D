@@ -11,7 +11,7 @@ import {shotOutcome} from './breach-after-action-report.ts';
 
 export type TimelineCategory='contact'|'combat'|'casualty'|'entry'|
  'objective'|'movement'|'other';
-export type TimelineFilter='all'|TimelineCategory;
+export type TimelineFilter='all'|'key'|TimelineCategory;
 export type AfterActionTimelineEvent={
  key:string;source:'battle'|'execution'|'shot';
  t:number;kind:string;category:TimelineCategory;priority:number;
@@ -24,8 +24,14 @@ export type AfterActionTimelineCluster={
  events:readonly AfterActionTimelineEvent[];
 };
 export const TIMELINE_FILTERS:readonly TimelineFilter[]=[
- 'all','contact','combat','casualty','entry','objective','movement'
+ 'all','contact','combat','casualty','entry','objective','movement',
+ 'other','key'
 ];
+/** Key moments change presentation only; the exhaustive index is untouched. */
+export const matchesTimelineFilter=(event:AfterActionTimelineEvent,
+ filter:TimelineFilter):boolean=>filter==='all'||
+ (filter==='key'?event.priority>=7:event.category===filter);
+
 const category=(kind:string):TimelineCategory=>{
  if(kind==='intel')return 'contact';
  if(kind==='down'||kind==='wound'||kind==='surrender')return 'casualty';
@@ -98,7 +104,7 @@ export function clusterAfterActionTimeline(
  events:readonly AfterActionTimelineEvent[],duration:number,
  trackWidth:number,filter:TimelineFilter='all'
 ):readonly AfterActionTimelineCluster[]{
- const displayed=events.filter(e=>filter==='all'||e.category===filter);
+ const displayed=events.filter(e=>matchesTimelineFilter(e,filter));
  if(!displayed.length||!Number.isFinite(duration)||duration<=0)return [];
  const bins=replayTimelineBins(Math.max(1,trackWidth)*.48);
  const markers=clusterReplayTimeline(displayed,duration,
@@ -114,7 +120,7 @@ export function clusterAfterActionTimeline(
    const members=groups.get(m.index)??[];
    const representative=members.reduce((best,item)=>
      item.priority>best.priority?item:best,members[0]);
-   return {id:'bin:'+m.index,index:m.index,time:m.time,
+   return {id:'bin:'+m.index,index:m.index,time:members[0]?.t??m.time,
      kind:representative.kind,count:members.length,
      representative,events:members};
  });
@@ -125,4 +131,5 @@ export const timelineTime=(seconds:number):string=>{
  return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');
 };
 export const timelineCategoryName=(category:TimelineFilter):string=>
- category==='all'?'ALL EVENTS':category.toUpperCase();
+ category==='all'?'ALL EVENTS':
+ category==='key'?'KEY MOMENTS':category.toUpperCase();

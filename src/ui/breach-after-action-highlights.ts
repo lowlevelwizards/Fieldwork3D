@@ -10,15 +10,17 @@ const el=(tag:string,cls='',text?:string)=>{
 };
 const time=(t:number)=>Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');
 function schematic(moment:HighlightMoment):HTMLElement{
- const graphic=el('div','fw-v3-highlight-graphic');
+ const graphic=el('div','fw-v3-highlight-graphic fw-v5-highlight-fallback');
  graphic.setAttribute('role','img');
- graphic.setAttribute('aria-label','Abstract editorial event graphic, not replay footage');
- const rings=el('div','fw-v3-highlight-rings');
- for(let i=0;i<3;i++)rings.append(el('span',''));
- const horizon=el('div','fw-v3-highlight-horizon');
- horizon.append(el('span','','FIELDWORK / RECORDED MOMENT'),
-   el('strong','',time(moment.at)),el('span','','GRAPHICAL SUMMARY · NOT A SCREENSHOT'));
- graphic.append(rings,horizon);return graphic;
+ graphic.setAttribute('aria-label',
+  'Factual incident summary; no verified replay image is available');
+ const heading=el('div','fw-v5-highlight-fallback-heading');
+ heading.append(el('small','','RECORDED INCIDENT'),
+  el('strong','',time(moment.at)));
+ graphic.append(heading,el('p','',moment.summary),
+  el('small','fw-v5-highlight-fallback-note',
+   'NO VERIFIED FRAME · WATCH CLIP FOR RECORDED PLAYBACK'));
+ return graphic;
 }
 export function renderAfterActionHighlights(
  moments:readonly HighlightMoment[],rec:MissionRecorder,
@@ -59,7 +61,9 @@ export function renderAfterActionHighlights(
   const thumb=highlightCapture.get(rec,m.id);
   if(thumb){const img=document.createElement('img');img.src=thumb.url;img.alt='';
     img.loading='lazy';b.append(img);}
-  else b.append(el('strong','',String(i+1).padStart(2,'0')));
+  b.append(el('small','fw-v5-highlight-chip-time',
+    String(i+1).padStart(2,'0')+' · '+time(m.at)),
+    el('strong','fw-v5-highlight-chip-title',m.label));
   b.addEventListener('click',()=>choose(m.id));
   rail.append(b);
  }
