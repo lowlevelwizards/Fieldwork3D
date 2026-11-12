@@ -8,6 +8,7 @@ import type {TeamActor,Session} from './breach-game.ts';
 import {canAutoOpenEnRoute,autoDoorAtBodyContact,doorApproach,
  doorReachable,doorWouldStrikeActors} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
+import {operatorCrossingDoor} from './breach-door-pressure-arbitration.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
@@ -99,7 +100,21 @@ export function handleMotorDoor(
       hooks.hear(s,doorCenter(doorAhead),125,'door');
       hooks.notify(s,a.name+' OPENED '+doorAhead.id);
     }
-    if((doorAhead.openFraction??0)<.72)return {paused:true,closed:false};
+    if((doorAhead.openFraction??0)<.72){
+      // A partly open outward leaf can physically occupy the approach side.
+      // A MOVING crossing operator may now sidestep or grasp its handle;
+      // holding the entire motor in DOOR OPENING prevented either recovery.
+      // Continue only after a short lawful opening attempt. The following
+      // swept-body motor still treats the leaf as completely SOLID.
+      if(operatorCrossingDoor(a,doorAhead)&&a.actionTimer>=.65){
+        if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5)
+          hooks.notify(s,a.name+
+            ' DOOR SWING OBSTRUCTED · CHECK ENTRY');
+        a.motorPause=null;
+        return {paused:false,closed:false};
+      }
+      return {paused:true,closed:false};
+    }
     a.actionTimer=0;
   }else if(a.side==='red')a.actionTimer=0;
   const closed=!!closedDoor&&!closedDoor.open&&
