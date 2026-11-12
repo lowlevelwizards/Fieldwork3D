@@ -19,12 +19,17 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - name: Exact collision oracle and doorway flow
+      - name: Exact collision oracle and normal-lane regression
         run: >
           node --experimental-strip-types --test
           tests/performance-p2-8-sweep-broadphase.test.mjs
           tests/performance-p2-7-live-routing.test.mjs
           tests/breach-normal-lane-priority.test.mjs
+          tests/release4-squeeze-gate.test.mjs
+      - name: Focused doorway movement regressions
+        run: >
+          node --experimental-strip-types --test
+          --test-name-pattern='retreat belongs|idle doorway occupancy|single furniture-side obstruction'
           tests/breach-navigation-openings-r1.test.mjs
       - name: Typecheck and production bundle
         run: npm run check && npx vite build
