@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {classifyExecutionNotice,ExecutionNoticeFeed} from '../src/ui/execution-feedback.ts';
+import {classifyExecutionNotice,classifyExecutionTransition,ExecutionNoticeFeed} from '../src/ui/execution-feedback.ts';
 
 test('events have a readable priority hierarchy',()=>{
  assert.equal(classifyExecutionNotice('ROOK DOWN — UNCONTROLLED BLEEDING').severity,'danger');
@@ -40,10 +40,43 @@ test('pause/resume cues are short, do not spam, and reset between missions',()=>
  feed.reset();
  assert.equal(feed.update([],'planning',1710),null);
 });
-test('only known event log feeds UI, while paused state is explicit',()=>{
- const source=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(source,/executionNoticeFeed.update\(events,phase,performance\.now\(\)\)/);
- assert.match(source,/executionNoticeFeed.reset\(\)/);
- assert.match(source,/state\.started\?'PAUSED':'PLANNING'/);
+test('HUD reads authoritative typed execution events and preserves presentation',()=>{
+ const source=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
+ assert.match(source,/noticeFeed\.update\(events,phase,performance\.now\(\),executionEvents\)/);
+ assert.match(source,/state\.executionEvents/);
+ assert.match(source,/noticeFeed\.reset\(\)/);
  assert.match(source,/node\.dataset\.severity=notice\.severity/);
+});
+test('structured status classification never parses human-readable text',()=>{
+ const sample=(id,kind,reason,text='not an English status')=>({
+  id,t:id/60,actor:'rook',p:{x:4,y:5},orderId:7,kind,reason,text
+ });
+ assert.equal(classifyExecutionTransition(sample(1,'blocked','door-locked')).severity,'warning');
+ assert.equal(classifyExecutionTransition(sample(2,'holding','contact')).severity,'contact');
+ assert.equal(classifyExecutionTransition(sample(3,'recovering','collision-furniture')).label,'RECOVERING');
+ assert.equal(classifyExecutionTransition(sample(4,'started','moving')),null);
+ const feed=new ExecutionNoticeFeed();
+ assert.equal(feed.update([],'planning',0,[]),null);
+ const blocked=sample(1,'blocked','door-locked');
+ const first=feed.update([],'running',100,[blocked]);
+ assert.equal(first?.label,'OBSTRUCTED');
+ assert.equal(first?.text,'not an English status');
+ assert.match(first?.recovery??'',/door/);
+ assert.equal(feed.update([],'running',3800,[blocked]),null,'same ID cannot be redisplayed');
+ const resumed=sample(2,'resumed','moving');
+ assert.equal(feed.update([],'running',3900,[blocked,resumed])?.label,'RESUMED');
+ const repeat=sample(3,'blocked','traffic-stall');
+ assert.equal(feed.update([],'running',4000,[blocked,resumed,repeat])?.label,'OBSTRUCTED');
+ assert.match(feed.update([],'running',4010,[blocked,resumed,repeat])?.recovery??'',/spacing/);
+ feed.reset();
+ assert.equal(feed.update([],'planning',5000,[]),null);
+});
+test('narrative input does not duplicate identical structured transitions',()=>{
+ const feed=new ExecutionNoticeFeed();
+ feed.update([],'planning',0,[]);
+ const typed={id:1,t:1,actor:'rook',p:{x:0,y:0},orderId:1,
+  kind:'blocked',reason:'order-failed',text:'ROOK BLOCKED'};
+ const one=feed.update(['ROOK BLOCKED'],'running',100,[typed]);
+ assert.equal(one?.label,'OBSTRUCTED');
+ assert.equal(one?.priority,3);
 });
