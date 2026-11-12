@@ -355,7 +355,7 @@ function tick(now:number){
           [...simPhaseCosts].sort((a,b)=>b[1]-a[1]).slice(0,2)
             .map(([name,ms])=>name+' '+ms.toFixed(1)+'ms').join(' / '):'');
       if(perfPanel&&perfTimeline)perfPanel.update(output,perfTimeline,
-       stats?.presentationSightPolicy??'always',viewMode);
+       stats?.presentationSightPolicy??'planning',viewMode);
       for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
        intervalSight[k]=0;
     }
