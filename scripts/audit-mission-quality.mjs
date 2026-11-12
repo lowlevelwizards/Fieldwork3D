@@ -18,7 +18,8 @@ const count=Math.min(48,Math.max(1,
  Number.parseInt(process.argv[2]??'11',10)||11));
 const missions=['clear','intel','rescue','hold','capture'];
 const observations=[],issues=[];
-const behavior=process.argv.includes('--behavior');
+const longBehavior=process.argv.includes('--behavior-long');
+const behavior=process.argv.includes('--behavior')||longBehavior;
 const behaviorRows=[];
 const exposureByPurpose=new Map();
 // Optional extension of the existing mission-quality audit. Never used as
@@ -73,7 +74,7 @@ for(let index=0;index<count;index++){
   const survey=new EncounterBehaviorSurvey(probe);
   probe.phase='running';probe.started=true;
   let stimulusAt=null;
-  for(let tick=0;tick<360&&probe.phase==='running';tick++){
+  for(let tick=0;tick<(longBehavior?1200:360)&&probe.phase==='running';tick++){
    if(tick===90){
     const target=probe.operators.find(a=>a.side==='red')??probe.civilians[0];
     if(target){
@@ -129,7 +130,7 @@ const exposureRoles=[...exposureByPurpose.values()].map(r=>({
 console.log(JSON.stringify({method:'11 archetypes / 5 mission types, passive 2s actual replay',
  seeds:count,summary,exposureByPurpose:exposureRoles,issues,
  ...(living?{livingEncounters:livingSummary}:{}),
- ...(behavior?{encounterBehavior:{mode:'6s fixed-step with one scripted acoustic stimulus at 1.5s',
+ ...(behavior?{encounterBehavior:{mode:(longBehavior?'20s':'6s')+' fixed-step with one scripted acoustic stimulus at 1.5s',
   seeds:behaviorRows.length,rows:behaviorRows}}:{}),
  observations:observations.map(s=>({
  seed:s.seed,mission:s.mission,topology:s.topology,

@@ -29,7 +29,7 @@ import {groupResponse} from './breach-ai-coordination.ts';
 import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
 import {coverMoveDeadline,coverMoveCommitted} from './breach-ai-position-commitment.ts';
 import {searchCandidates} from './breach-ai-search.ts';
-import {investigationTempo} from './breach-ai-investigation.ts';
+import {investigationTempo,stalledInvestigationAction} from './breach-ai-investigation.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
@@ -88,11 +88,16 @@ function firingPosition(a:TeamActor,target:TeamActor,s:Session):Pt|null{
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
  const world=sessionWorldGeometry(s);
   if(a.health<=0||a.surrendered)return;
+  // Sound events expire quickly. The optional muzzle-clearance early return
+  // must not consume away an actionable noise before the guard can react.
+  const strongest=scanEnemySoundEvidence(s,a);
+  const freshAlarm=strongest&&
+    ['investigate','alarm'].includes(soundResponse(strongest.kind,strongest.intensity));
   // The same local clearance motor is available to red and blue, but
   // never outranks a defensive withdrawal or interrupts a timed traversal.
   if(a.fireRetreatTarget){
     const goal=a.fireRetreatTarget;
-    if(a.alert==='retreat'||s.seconds>a.fireRetreatUntil||
+    if(a.alert==='retreat'||freshAlarm||s.seconds>a.fireRetreatUntil||
        d(a.p,goal)<3||!sweptBodyClear(a.p,goal,s.doors,OPERATOR_RADIUS,world)){
       a.fireRetreatTarget=null;a.nav=[];
     }else{
@@ -121,7 +126,6 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
          requestClearFireStep(s,a,target,'muzzle'))return;
     }
   }
-  const strongest=scanEnemySoundEvidence(s,a);
   // A faint noise can turn a head without becoming an indefinitely
   // actionable contact. Do not replace it with a psychic search target.
   if(!visible.length&&!a.contacted&&a.alert==='suspicious'&&a.heard){
@@ -409,6 +413,25 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       approach(a,a.defense,dt,s,a.coordinationRole==='support'?.82:.65);
     else if(a.watch)rotate(a,angle(a.p,a.watch),dt);
     return;
+  }
+  if(a.contact&&a.alert==='investigating'&&!visible.length){
+    // A failed approach is not proof that the disturbance vanished. Move
+    // through remaining uncertain probes or eventually settle back down.
+    if(a.blockedTime>=2.7&&!a.searchOrigin){
+      a.searchOrigin=clone(a.contact);
+      a.searchQueue=searchCandidates(a.searchOrigin,
+        bestBelief(a.awareness)?.uncertainty??65,
+        s.site?.rooms??[],s.doors,world.cover);
+    }
+    const recovery=stalledInvestigationAction(a.blockedTime,a.searchQueue.length);
+    if(recovery==='inspect-next'){
+      a.nav=[];a.contact=clone(a.p);
+      a.searchPauseUntil=s.seconds-.01;
+    }else if(recovery==='stand-down'){
+      a.nav=[];a.contact=null;a.searchOrigin=null;a.alert='cover';
+      exhaustSuspicionSearch(a.suspicion,s.seconds);
+      a.defenseUntil=s.seconds+2;
+    }
   }
   if(a.contact){
     rotate(a,angle(a.p,a.contact),dt);
