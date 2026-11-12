@@ -1,5 +1,7 @@
 import {sampleOperatorFootContacts,applyOperatorLegIK} from './breach-operator-lower-body.ts';
 import {beginOperatorAnimationFrame,sampleOperatorTurnAngles} from './breach-operator-animation-frame.ts';
+import {beginOperatorFramePose,workingOperatorRig,finishOperatorFramePose}
+ from './breach-operator-frame-output.ts';
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 /** Roadmap 2 Stage 11: presentation-only operator pose orchestrator.
  * This is the compatibility-preserving home for the existing pose evaluation;
@@ -14,7 +16,7 @@ import {beginOperatorEquipmentPose,solveOperatorDroppedWeapon,
 import {EQUIPMENT_ATTACHMENT_INDEX as EAI}
  from './breach-operator-pose-scratch.ts';
 import {applyOperatorTraumaPose,finishOperatorPoseFrame} from './breach-pose-frame-finalizer.ts';
-import {beginOperatorPoseOutput,stageOperatorPoseOutput,
+import {beginOperatorPoseOutput,
  stageDirectOperatorPoseOutput,commitOperatorPoseOutput}
  from './breach-operator-pose-output.ts';
 import {canonicalRootOrientation} from './operator-axis-convention.ts';
@@ -77,6 +79,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const diagnosticsEnabled=p.poseDiagnostics!==false;
   const {scratch,discontinuity,dt:frameDt}=beginOperatorAnimationFrame(r,p,dt);
   beginOperatorPoseOutput(r,p);
+  const frame=beginOperatorFramePose(r,scratch);
+  const workingRig=workingOperatorRig(frame);
   const equipment=beginOperatorEquipmentPose(r,scratch);
   const [heldWeapon,droppedWeapon]=equipment.weapons;
   const attachments=equipment.attachments;
@@ -99,11 +103,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   });
   const {physicalSpeed,moving,direction,hipTarget,braking,crouch}=
     preparedDecision.locomotion;
-  r.hip.position.y=LEG_HIP_HEIGHT-crouch;
-  r.chest.position.y=26-crouch;
+  frame.hip.position.y=LEG_HIP_HEIGHT-crouch;
+  frame.chest.position.y=26-crouch;
   // Low traversal carries a rearward pelvis and counterbalanced thorax.
-  r.hip.position.x=p.posture==='crouch'?-0.85:0;
-  r.chest.position.x=p.posture==='crouch'?1.15:0;
+  frame.hip.position.x=p.posture==='crouch'?-0.85:0;
+  frame.chest.position.x=p.posture==='crouch'?1.15:0;
   // Build 119: the footstep scheduler owns world contacts. The IK renderer
   // consumes its targets but must never relocate a planted anchor.
   const travelYaw=p.travelYaw??direction;
@@ -147,11 +151,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const turn=turnHierarchy({pelvisYaw:headingYaw,
     bodyHeading:p.heading,targetHeading:p.shotHeading??p.heading,
     speed:physicalSpeed,aiming:p.aiming});
-  // Never smooth from r.chest.rotation.y. Later body sway, stance and
+  // Never smooth from frame.chest.rotation.y. Later body sway, stance and
   // coordinated IK add offsets to that Euler, which must not persist as
   // the next frame's starting point.
   const turns=sampleOperatorTurnAngles(r,p,turn,dt,discontinuity);
-  r.chest.rotation.y=turns.chest;
+  frame.chest.rotation.y=turns.chest;
   const idleLife=idleLifeAt(p.idleLifeSeconds??p.seconds,
     p.appearanceSeed??0,{speed:physicalSpeed,aiming:p.aiming||
       (p.aimBlend??0)>.16,firing:p.firing,reloading:p.reload>0,
@@ -160,7 +164,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       precontact:p.precontact});
   // Presentation glances are layered on the clean head target, not fed
   // into next frame's approach() state.
-  r.head.rotation.y=turns.head+idleLife.glance;
+  frame.head.rotation.y=turns.head+idleLife.glance;
   const motion=bodyFromContacts({velocity:p.down?0:physicalSpeed,
     heading:p.heading,travelYaw,turning:p.turning,
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
@@ -192,63 +196,63 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const mannequinLift=legRestRise(physicalSpeed,p.posture,
     p.down,p.surrender);
   const stanceHip=neutralHip+motion.pelvisY-bash.brace;
-  r.hip.position.y=Math.max(
+  frame.hip.position.y=Math.max(
     17.35-crouch-buckle*8-kneel*9,
     stanceHip-buckle*8-kneel*9);
-  r.hip.position.y-=poseWeight*profile.stanceCompression;
+  frame.hip.position.y-=poseWeight*profile.stanceCompression;
   // The pelvis lifts WITH the upper body; it never drives its visual
   // shell up into a stationary chest.
-  r.hip.position.y+=mannequinLift;
+  frame.hip.position.y+=mannequinLift;
   // The pelvic shell accepts support rotation but is not a second
   // independent writer of the world/root heading or foot anchors.
-  r.hip.rotation.x=clamp(-motion.support*physicalSpeed/72*.022,-.03,.03);
-  r.hip.position.z=motion.pelvisSide+
+  frame.hip.rotation.x=clamp(-motion.support*physicalSpeed/72*.022,-.03,.03);
+  frame.hip.position.z=motion.pelvisSide+
     poseWeight*profile.pelvisShift;
   // Preserve the actual last displayed pelvis on rapid Lab retargets;
   // knees are re-solved from planted ankles, never independently lerped.
   if(authoredLabSwitch&&activeTransition?.authoredHip){
     const t=lowReadyBlendPhase(activeTransition.alpha);
-    r.hip.position.lerpVectors(
-      activeTransition.authoredHip.position,r.hip.position,t);
+    frame.hip.position.lerpVectors(
+      activeTransition.authoredHip.position,frame.hip.position,t);
     const fromQ=new THREE.Quaternion().setFromEuler(
       activeTransition.authoredHip.rotation);
-    const toQ=new THREE.Quaternion().setFromEuler(r.hip.rotation);
-    r.hip.rotation.setFromQuaternion(fromQ.slerp(toQ,t),'XYZ');
+    const toQ=new THREE.Quaternion().setFromEuler(frame.hip.rotation);
+    frame.hip.rotation.setFromQuaternion(fromQ.slerp(toQ,t),'XYZ');
   }
   const aimLevel=clamp(p.aimBlend??(p.aiming?1:0),0,1);
   // Physical bob fades out before firing: live muzzle geometry remains the
   // same fixed-step weapon solution used by ballistics.
   const freeMotion=p.down||p.surrender||p.firing?0:
     clamp((.32-aimLevel)/.32,0,1);
-  r.chest.position.y=26-crouch+idleLife.breathe+motion.pelvisY*.5+
+  frame.chest.position.y=26-crouch+idleLife.breathe+motion.pelvisY*.5+
     motion.chestLift*freeMotion*1.4-
     bash.brace*.4-buckle*7-kneel*12+mannequinLift-
     poseWeight*profile.stanceCompression;
-  r.chest.position.z=motion.pelvisSide*.75+
+  frame.chest.position.z=motion.pelvisSide*.75+
     poseWeight*profile.pelvisShift*.45;
-  r.chest.rotation.z=motion.torsoForward+idleLife.sway+braking*.018+
+  frame.chest.rotation.z=motion.torsoForward+idleLife.sway+braking*.018+
     (kick?.torsoLean??0)+bash.lean-
     poseWeight*profile.torsoLean-
     (p.posture==='crouch'?.075:0);
-  r.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09)+
+  frame.chest.rotation.x=clamp(p.injury===2?.07:p.injury===1?.025:0,0,.09)+
     motion.torsoSide;
-  r.chest.rotation.y+=motion.torsoYaw+
+  frame.chest.rotation.y+=motion.torsoYaw+
     poseWeight*profile.torsoTurn+
     relaxedLowReady*(familyLow?.torsoTurn??0);
   if(p.unarmedPreview&&physicalSpeed<.5&&p.posture==='stand'&&
     !p.down&&!p.surrender){
     // Stable unarmed modeling reference. These transforms belong to
     // wardrobe presentation only; no replay/weapon/locomotion changes.
-    r.chest.rotation.x=0;
-    r.chest.rotation.z=0;
-    r.hip.rotation.x=0;
+    frame.chest.rotation.x=0;
+    frame.chest.rotation.z=0;
+    frame.hip.rotation.x=0;
   }
   // A smaller head-only response can run in combat without shifting the
   // weapon/stock muzzle from the authoritative shot-time geometry.
   const sightEngagement=p.unarmedPreview?0:p.handlingOverride?1:
     p.down||p.surrender?0:clamp(p.aimBlend??(p.aiming?1:0),0,1);
-  r.head.position.y=10-sightEngagement*profile.headDrop;
-  r.head.rotation.x=p.unarmedPreview&&physicalSpeed<.5&&
+  frame.head.position.y=10-sightEngagement*profile.headDrop;
+  frame.head.rotation.x=p.unarmedPreview&&physicalSpeed<.5&&
     p.posture==='stand'&&!p.down?0:
     motion.headCounter+bash.head+poseWeight*profile.headPitch+
     idleLife.headDip;
@@ -273,13 +277,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       reaction.side;
   // The scene translates the whole miniature to the motor's elevation.
   // Here only tuck the local torso. Avoid a second independent vertical arc.
-  r.root.position.y=p.surrender?-3-3*kneel:p.down?collapse.y:
+  frame.root.position.y=p.surrender?-3-3*kneel:p.down?collapse.y:
     -vaultTuck*2.8;
   // World-space anatomy is IDENTICAL to the old model:
   // canonicalRoot * legacyFrame(+90 Y) = original Euler(pitch,yaw,roll).
-  r.root.quaternion.copy(
+  frame.root.quaternion.copy(
     canonicalRootOrientation(r.legacyPitch,r.legacyYaw,r.legacyRoll));
-  const legPose=applyOperatorLegIK(r,p,scratch,targets,kick,headingYaw,smooth);
+  const legPose=applyOperatorLegIK(workingRig,p,scratch,targets,kick,headingYaw,smooth);
   // B3: all eight lower-body transforms are now computed off-scene.
   // Only the final B2 publication may write those visible leg nodes.
   stageDirectOperatorPoseOutput(r,p,'lower-body',legPose);
@@ -333,7 +337,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     handling,relaxedLowReady);
   const recoil=p.recoil??(p.firing?1.5:0);
   const relativeYaw=-(p.shotHeading??p.heading)-r.legacyYaw-
-    r.chest.rotation.y;
+    frame.chest.rotation.y;
   const shoulderFor=(i:number)=>{
     const sign=i===0?-1:1;
     const base=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
@@ -391,7 +395,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       look.armorStyle==='plate-heavy'?shoulders[1]:undefined);
     coupled=selected?.solution??null;
     const torsoAssistYaw=selected?.yaw??0;
-    if(previewAssist)r.chest.rotation.y+=torsoAssistYaw;
+    if(previewAssist)frame.chest.rotation.y+=torsoAssistYaw;
     r.root.userData.lowReadyPoseReport=diagnosticsEnabled?{
       status:coupled?.status??'unresolved',
       mode:coupled?.mode??'unresolved',weapon:p.weapon,
@@ -546,7 +550,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // authority; the pose renderer only consumes the selected result.
     const solve=cachedCoordinatedUpperBody(r,{
       fit,weapon:p.weapon,configuration:coupledConfig,shoulders,
-      chestRotation:r.chest.rotation,envelope,mode:constraintMode,
+      chestRotation:frame.chest.rotation,envelope,mode:constraintMode,
       releasedSupportTarget:releasedTarget,
       allowReloadOverlap,allowVisualOverlap
     });
@@ -569,13 +573,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       // No per-frame scratch allocation on the main render hot path.
       const offset=new THREE.Vector3(result.leanX,0,0)
         .applyQuaternion(new THREE.Quaternion().setFromEuler(
-          r.chest.rotation));
+          frame.chest.rotation));
       v3LeanParentX=offset.x;
       v3LeanParentY=offset.y;
       v3LeanParentZ=offset.z;
       // Existing body rotation is set afresh from pose time on every call.
       // Apply exactly one deterministic delta, not frame-history easing.
-      r.chest.rotation.y+=result.yaw;
+      frame.chest.rotation.y+=result.yaw;
     }
   }else r.root.userData.poseV3CoordinatedReport=null;
   // For a Lab switch, the destination solver above retains full authority:
@@ -638,13 +642,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   // On ADS, bring the eyes toward the actual sight line, keeping the
   // firearm fixed. Head-only accommodation cannot change shot ballistics.
-  r.head.position.z=0;
+  frame.head.position.z=0;
   if(!p.unarmedPreview&&handling==='ads'&&!p.down&&!p.surrender){
     const strength=p.handlingOverride?1:
       clamp(p.aimBlend??(p.aiming?1:0),0,1);
     // Use the modeled eye anchor rather than a guessed secondary point.
     const eye=P(ANATOMY.eyeRight.x,
-      r.head.position.y+ANATOMY.eyeRight.y-ANATOMY.headRest.y,
+      frame.head.position.y+ANATOMY.eyeRight.y-ANATOMY.headRest.y,
       ANATOMY.eyeRight.z);
     const sight=P(-1*data.lengthScale,
       p.weaponConfiguration?resolveWeaponAssembly(p.weaponConfiguration).sightHeight:2.6,0)
@@ -656,14 +660,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // so the head should not have to crane dramatically toward the rifle.
     const maxHeadVertical=p.handlingOverride?1.65:2.2;
     const maxHeadLateral=p.handlingOverride?1.3:1.6;
-    r.head.position.y+=clamp(nearest.y-eye.y,
+    frame.head.position.y+=clamp(nearest.y-eye.y,
       -maxHeadVertical,maxHeadVertical)*strength;
-    r.head.position.z+=clamp(nearest.z-eye.z,
+    frame.head.position.z+=clamp(nearest.z-eye.z,
       -maxHeadLateral,maxHeadLateral)*strength;
   }
   const eye=P(ANATOMY.eyeRight.x,
-    r.head.position.y+ANATOMY.eyeRight.y-ANATOMY.headRest.y,
-    ANATOMY.eyeRight.z+r.head.position.z);
+    frame.head.position.y+ANATOMY.eyeRight.y-ANATOMY.headRest.y,
+    ANATOMY.eyeRight.z+frame.head.position.z);
   const sight=P(-1*data.lengthScale,
     p.weaponConfiguration?resolveWeaponAssembly(p.weaponConfiguration).sightHeight:2.6,0)
     .applyEuler(fit.rotation).add(fit.origin);
@@ -704,17 +708,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.weapon==='shotgun'?.48:1,p.weapon==='shotgun'?.55:1,1);
   // Body-assisted V3 preview keeps the firearm world-fixed by applying
   // the matching parent-space chest lean after the usual door/bashing reset.
-  r.chest.position.x=bash.reach*.18+v3LeanParentX;
-  r.chest.position.y+=v3LeanParentY;
-  r.chest.position.z+=v3LeanParentZ;
+  frame.chest.position.x=bash.reach*.18+v3LeanParentX;
+  frame.chest.position.y+=v3LeanParentY;
+  frame.chest.position.z+=v3LeanParentZ;
   if(authoredLabSwitch&&activeTransition?.authoredChest){
     const phase=lowReadyBlendPhase(activeTransition.alpha);
     if(phase<1){
       const from=activeTransition.authoredChest;
       const q0=new THREE.Quaternion().setFromEuler(from.rotation);
-      const q1=new THREE.Quaternion().setFromEuler(r.chest.rotation);
-      r.chest.rotation.setFromQuaternion(q0.slerp(q1,phase),'XYZ');
-      r.chest.position.lerpVectors(from.position,r.chest.position,phase);
+      const q1=new THREE.Quaternion().setFromEuler(frame.chest.rotation);
+      frame.chest.rotation.setFromQuaternion(q0.slerp(q1,phase),'XYZ');
+      frame.chest.position.lerpVectors(from.position,frame.chest.position,phase);
     }
   }
   r.reachRequest=null;
@@ -743,9 +747,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     reaching=true;
     const target=p.treatmentPoint??{x:p.x+Math.cos(p.heading)*12,
       y:p.z+Math.sin(p.heading)*12};
-    const local=P(target.x-p.x,12-r.chest.position.y,target.y-p.z);
+    const local=P(target.x-p.x,12-frame.chest.position.y,target.y-p.z);
     local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
-    local.applyAxisAngle(P(0,1,0),-r.chest.rotation.y);
+    local.applyAxisAngle(P(0,1,0),-frame.chest.rotation.y);
     const reach=smooth((p.treatmentProgress??0)/.26);
     const left=fit.support.clone().lerp(local.clone().add(P(-1,3,-2)),reach);
     const right=fit.primary.clone().lerp(local.clone().add(P(1,3,2)),reach);
@@ -803,16 +807,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     leftGrip.set(3+progress*2,-5,-5);
   }else if(doorActive&&p.doorPoint){
     reaching=true;
-    const local=P(p.doorPoint.x-p.x,19-r.chest.position.y,
+    const local=P(p.doorPoint.x-p.x,19-frame.chest.position.y,
       p.doorPoint.y-p.z);
     local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
-    local.applyAxisAngle(P(0,1,0),-r.chest.rotation.y);
+    local.applyAxisAngle(P(0,1,0),-frame.chest.rotation.y);
     // Deliberate hand-off: release weapon, reach physical handle, and
     // return the support hand to its real gun grip after the latch moves.
     const reach=p.lockpickActive?smooth(doorAge/.32):
       smooth(doorAge/.32)*(1-smooth((doorAge-.62)/.48));
-    r.chest.position.x=clamp(local.x-13,0,2.4)*reach;
-    fullDoorContact=local.sub(P(r.chest.position.x,0,0)).clone();
+    frame.chest.position.x=clamp(local.x-13,0,2.4)*reach;
+    fullDoorContact=local.sub(P(frame.chest.position.x,0,0)).clone();
     leftGrip.copy(fit.support).lerp(fullDoorContact,reach);
     if(p.lockpickActive){
       const phase=(p.lockpickProgress??0)*Math.PI*20;
@@ -859,11 +863,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // upper-body recoil/turn authority. This tiny torso adjustment only
     // runs for the explicitly selected stationary Lab stance.
     const angles=manualPose!.torso;
-    r.chest.rotation.x=THREE.MathUtils.lerp(r.chest.rotation.x,
+    frame.chest.rotation.x=THREE.MathUtils.lerp(frame.chest.rotation.x,
       THREE.MathUtils.degToRad(angles[0]),manualPhase);
-    r.chest.rotation.y=THREE.MathUtils.lerp(r.chest.rotation.y,
+    frame.chest.rotation.y=THREE.MathUtils.lerp(frame.chest.rotation.y,
       THREE.MathUtils.degToRad(angles[1]),manualPhase);
-    r.chest.rotation.z=THREE.MathUtils.lerp(r.chest.rotation.z,
+    frame.chest.rotation.z=THREE.MathUtils.lerp(frame.chest.rotation.z,
       THREE.MathUtils.degToRad(angles[2]),manualPhase);
   }
   const manualReport=manualShort?{
@@ -1152,16 +1156,18 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // No arm mesh is mutated before the single B2 frame commit.
   stageDirectOperatorPoseOutput(r,p,'upper-body',
     finishOperatorArmPose(scratch));
-  applyOperatorTraumaPose(r,p,downProgress);
+  applyOperatorTraumaPose(r,p,downProgress,frame);
   // Same-frame held/drop world placement without temporary weapon node writes.
-  solveOperatorDroppedWeapon(r,p,scratch,downProgress,smooth);
-  solveOperatorDirectSlingPose(r,p,scratch,physicalSpeed);
+  solveOperatorDroppedWeapon(workingRig,p,scratch,downProgress,smooth);
+  solveOperatorDirectSlingPose(workingRig,p,scratch,physicalSpeed);
   finishOperatorPoseFrame(r,p,
     scratch.armOutput.transforms[0].quaternion,
     scratch.armOutput.transforms[3].quaternion,equipment);
-  // Frame/body still use transitional rig results until B6.
-  stageOperatorPoseOutput(r,p,'frame');
-  stageOperatorPoseOutput(r,p,'body');
+  // B6: every registered owner now submits direct typed output.
+  // The working frame remains invisible until the single B2 commit.
+  const finalFrame=finishOperatorFramePose(frame);
+  stageDirectOperatorPoseOutput(r,p,'frame',finalFrame.frameOutputs);
+  stageDirectOperatorPoseOutput(r,p,'body',finalFrame.bodyOutputs);
   const finalEquipment=finishOperatorEquipmentPose(scratch);
   stageDirectOperatorPoseOutput(r,p,'weapon',finalEquipment.weaponOutputs);
   stageDirectOperatorPoseOutput(r,p,'attachments',
