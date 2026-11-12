@@ -26,7 +26,9 @@ test('P2.11 cadence pre-gate is equivalent to the actual response admission for 
   assert.equal(c.lastSenseAt!==before,expected,
    'no missed or extra sensing tick at '+i);
  }
- assert.ok(dueTicks>=45&&dueTicks<=52,
+ // 120ms requires eight discrete 60Hz steps, and the first tick starts
+ // at t=0 with a previous observation at t=0. Expect ~44 admissions.
+ assert.ok(dueTicks>=42&&dueTicks<=46,
   'observer responses remain near the established 120ms cadence');
 });
 test('P2.11 inactive and wounded civilians retain their previous observer clocks',()=>{
