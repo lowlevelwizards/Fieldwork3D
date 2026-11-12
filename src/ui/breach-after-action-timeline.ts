@@ -4,7 +4,7 @@
  */
 import type {AfterActionTimelineEvent,TimelineFilter}
  from '../breach-after-action-timeline.ts';
-import {clusterAfterActionTimeline,matchesTimelineFilter,selectTimelineEvents,timelineCategoryName,timelineTime,
+import {clusterAfterActionTimeline,selectTimelineEvents,timelineCategoryName,timelineTime,
  TIMELINE_FILTERS} from '../breach-after-action-timeline.ts';
 
 export type TimelineViewState={
