@@ -10,12 +10,12 @@ test('R6.3 only personally seen recent opponents count for local outnumbering',(
  assert.equal(countRecentlySeenThreats({},8),0);
 });
 test('R6.3 observed isolation and physically stalled retreat influence resolve',()=>{
- const calm=moraleResponse(.51,.40,0,'guard',{nearbyAllies:0});
- const pressured=moraleResponse(.51,.40,0,'guard',{
+ const calm=moraleResponse(.58,.40,0,'guard',{nearbyAllies:0});
+ const pressured=moraleResponse(.58,.40,0,'guard',{
    nearbyAllies:0,recentlySeenThreats:3,retreatBlocked:true});
  assert.equal(calm,'hold','without extra confirmed pressure response is unchanged');
  assert.equal(pressured,'withdraw','experienced threat and trapped retreat matter');
- assert.equal(moraleResponse(.51,.40,0,'guard',{
+ assert.equal(moraleResponse(.58,.40,0,'guard',{
    nearbyAllies:3,recentlySeenThreats:3}),calm,
    'real allies can offset pressure when they are close');
  assert.equal(moraleResponse(.1,.8,1,'cautious'),'surrender',
