@@ -15,9 +15,16 @@ export type PerformanceSightDelta=Readonly<{
 }>;
 /** A RAF gap ends at this callback. Its preceding JS work belongs to the
  * previous callback, not the JS measured *after* this gap. */
+/** CPU slices measured during the *preceding* RAF callback. Stage scene
+ * phases are CPU durations and do not measure GPU execution. */
+export type PreviousFrameWork=Readonly<{
+ beforeUi:number;ui:number;sceneSync:number;render:number;
+ postRender:number;diagnostics:number;scene:PerformanceSceneCosts
+}>;
 export type PerformanceTimelineSample=Readonly<{
  at:number;raf:number;js:number;sync:number;sim:number;recording:number;
  previousJs?:number;previousSim?:number;previousPhase?:string;
+ previousWork?:PreviousFrameWork;
  ui:number;overlay:number;scene:PerformanceSceneCosts;draws:number;
  steps:number;phase:string;camera:string;hotSim:string;
  fogPaints:number;shadowRefreshes:number;sight:PerformanceSightDelta;
@@ -64,6 +71,17 @@ function copy(sample:PerformanceTimelineSample):PerformanceTimelineSample{
   recording:finite(sample.recording),ui:finite(sample.ui),
   previousJs:sample.previousJs===undefined?undefined:finite(sample.previousJs),
   previousSim:sample.previousSim===undefined?undefined:finite(sample.previousSim),
+  previousWork:sample.previousWork?{
+   ...sample.previousWork,
+   beforeUi:finite(sample.previousWork.beforeUi),
+   ui:finite(sample.previousWork.ui),
+   sceneSync:finite(sample.previousWork.sceneSync),
+   render:finite(sample.previousWork.render),
+   postRender:finite(sample.previousWork.postRender),
+   diagnostics:finite(sample.previousWork.diagnostics),
+   scene:Object.fromEntries(PERFORMANCE_SCENE_PHASES.map(k=>
+    [k,finite(sample.previousWork!.scene[k])])) as PerformanceSceneCosts
+  }:undefined,
   overlay:finite(sample.overlay),draws:finite(sample.draws),
   steps:finite(sample.steps),fogPaints:finite(sample.fogPaints),
   shadowRefreshes:finite(sample.shadowRefreshes),sight:{...sample.sight}};
@@ -82,6 +100,27 @@ export function performanceHotspot(sample:PerformanceTimelineSample):string{
  const missed=Math.max(0,sample.raf-sample.js);
  if(missed>22)return 'unattributed frame gap (prior CPU unknown)';
  return 'preceding-frame cost unavailable';
+}
+/** Largest measured preceding callback slice, for diagnostic prioritization.
+ * This reports CPU wall time, without inferring why the work was slow. */
+export function previousFrameHotspot(sample:PerformanceTimelineSample):string{
+ const work=sample.previousWork;
+ if(!work)return 'prior slices unavailable';
+ const items:[string,number][]=[
+  ['before UI',work.beforeUi],['UI / audio',work.ui],
+  ['3D scene',work.sceneSync],['canvas render',work.render],
+  ['post-render',work.postRender],['profiler',work.diagnostics]
+ ];
+ let winner=items[0];
+ for(const item of items)if(item[1]>winner[1])winner=item;
+ if(winner[0]==='3D scene'){
+  let inner:PerformanceScenePhase='environment';
+  for(const name of PERFORMANCE_SCENE_PHASES)
+   if(work.scene[name]>work.scene[inner])inner=name;
+  return '3D '+inner+' '+work.scene[inner].toFixed(0)+
+   'ms / sync '+work.sceneSync.toFixed(0)+'ms';
+ }
+ return winner[0]+' '+winner[1].toFixed(0)+'ms';
 }
 export class PerformanceTimeline{
  private readonly series:PerformanceTimelineBucket[]=[];
@@ -104,7 +143,9 @@ export class PerformanceTimeline{
     modes:newModeCounts()};
    this.series.push(item);
   }
-  const mode=item.modes[historyPhase(sample.phase)];
+  // RAF gap belongs to the callback that started the interval. A mode
+  // transition must not blame live simulation for a prior idle hitch.
+  const mode=item.modes[historyPhase(sample.previousPhase??sample.phase)];
   mode.frames++;
   if(sample.raf>=33.3)mode.slow++;
   if(sample.raf>=66.7)mode.severe++;
@@ -149,7 +190,10 @@ export class PerformanceTimeline{
    'sync_peak_ms,sim_ms,actors_ms,disclosure_ms,effects_ms,fog_ms,'+
    'gpu_submit_cpu_ms,steps,draws,fog_paints,shadow_refreshes,'+
    'sight_hits,sight_misses,phase,camera,'+
-   'previous_js_ms,previous_sim_ms,previous_phase,callback_wait_ms'];
+   'previous_js_ms,previous_sim_ms,previous_phase,callback_wait_ms,'+
+   'prior_before_ui_ms,prior_ui_ms,prior_scene_sync_ms,'+
+   'prior_canvas_ms,prior_post_ms,prior_profiler_ms,'+
+   'prior_scene_actors_ms,prior_scene_fog_ms,prior_scene_submit_cpu_ms'];
   for(const {bucket,peak:p,maxSync} of this.series){
    const fields=[bucket*PERFORMANCE_BUCKET_MS/1000,
     p.raf,p.js,p.sync,maxSync,p.sim,p.scene.actors,p.scene.disclosure,
@@ -157,7 +201,12 @@ export class PerformanceTimeline{
     p.fogPaints,p.shadowRefreshes,p.sight.hits,p.sight.misses,
     p.phase,p.camera,p.previousJs??'',p.previousSim??'',
     p.previousPhase??'',p.previousJs===undefined?'':
-     Math.max(0,p.raf-p.previousJs)];
+     Math.max(0,p.raf-p.previousJs),
+    p.previousWork?.beforeUi??'',p.previousWork?.ui??'',
+    p.previousWork?.sceneSync??'',p.previousWork?.render??'',
+    p.previousWork?.postRender??'',p.previousWork?.diagnostics??'',
+    p.previousWork?.scene.actors??'',p.previousWork?.scene.fog??'',
+    p.previousWork?.scene.gpuSubmit??''];
    lines.push(fields.join(','));
   }
   return lines.join('\n');
@@ -196,7 +245,8 @@ export class PerformanceTimeline{
     ' nowJS '+p.js.toFixed(0)+'/sim'+p.sim.toFixed(0)+
     ' | wait '+(p.previousJs===undefined?'?':
       Math.max(0,p.raf-p.previousJs).toFixed(0))+
-    ' | '+p.phase+'/'+p.camera+' | '+cause
+    ' | '+(p.previousPhase??p.phase)+'/'+p.camera+
+    ' | '+previousFrameHotspot(p)+' | '+cause
    );
   }
   lines.push('wait = RAF - previous JS; not GPU time. Full history: TXT.');
@@ -236,7 +286,8 @@ export class PerformanceTimeline{
     'ms, CURRENT SYNC '+p.sync.toFixed(1)+'ms, CURRENT SIM '+
     p.sim.toFixed(1)+'ms, UI '+p.ui.toFixed(1)+'ms, '+
     p.steps+' ticks, '+p.draws+
-    ' draws; '+p.phase+'/'+p.camera+'; '+performanceHotspot(p)+
+    ' draws; '+p.phase+'/'+p.camera+'; prior hotspot '+
+    previousFrameHotspot(p)+'; '+performanceHotspot(p)+
     '; fog +'+p.fogPaints+', shadow +'+p.shadowRefreshes+
     '; P1 H/M/INV '+p.sight.hits+'/'+p.sight.misses+'/'+p.sight.invalidations+
     '; hot simulation: '+(p.hotSim||'none')+'; scene phases: '+component
