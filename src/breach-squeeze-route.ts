@@ -230,6 +230,10 @@ export function recoverNormalLane(from:Pt,to:Pt,doors:Door[],world?:SessionWorld
    atRadius.set(key,result);
    return result;
  };
+ // Every normal-world route begins with the identical full-radius goal
+ // predicate. When the goal itself is blocked, *all* twelve escape-route
+ // attempts must fail too. Preserve that result without launching A*.
+ if(!sharedCanStand(to,OPERATOR_RADIUS))return [];
  const direct=routeWithNormalWorld(from,to,doors,world,sharedCanStand);
  if(direct.length)return direct;
  const dist=Math.hypot(to.x-from.x,to.y-from.y);
