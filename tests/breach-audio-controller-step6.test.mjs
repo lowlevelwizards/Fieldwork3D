@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createBreachAudioController,LIVE_MIX_PREF,ROOM_AUDIO_PREF,
   UI_SOUND_PREF} from '../src/breach-audio-controller.ts';
-import {liveAudioCuesForEvent}
+import {liveAudioCuesForEvent,unheardLiveAudioEvents}
   from '../src/breach-audio-event-cues.ts';
-import {newSession} from '../src/breach-game.ts';
+import {newSession,notify} from '../src/breach-game.ts';
 import {MissionRecorder} from '../src/breach-replay.ts';
 
 class FakeButton extends EventTarget{
@@ -136,4 +136,31 @@ test('battle audio and replay synchronization are not implemented in main',()=>{
  assert.match(controller,/new ReplaySoundTimeline\(/);
  assert.match(controller,/playPackSound\(/);
  assert.match(controller,/acousticResponseForCue\(/);
+});
+
+test('identical semantic actions receive distinct monotonic IDs while narrative log stays compact',()=>{
+ const s=newSession(0,98);
+ notify(s,'DOOR-1 OPENED');
+ notify(s,'DOOR-1 OPENED');
+ notify(s,'ROOK RELOADED');
+ notify(s,'SUSPECT SURRENDERED');
+ assert.deepEqual(s.semanticAudioEvents.map(e=>e.id),[1,2,3,4]);
+ assert.deepEqual(s.events.slice(-3),['DOOR-1 OPENED','ROOK RELOADED','SUSPECT SURRENDERED']);
+ assert.deepEqual(unheardLiveAudioEvents(s.semanticAudioEvents,1).map(e=>e.id),[2,3,4]);
+ assert.deepEqual(unheardLiveAudioEvents(s.semanticAudioEvents,4),[]);
+});
+test('semantic event buffer is bounded and a fresh Session owns its cursor',()=>{
+ const s=newSession(0,98);
+ for(let i=0;i<110;i++)notify(s,'ROOK RELOADED');
+ assert.equal(s.semanticAudioEvents.length,96);
+ assert.equal(s.semanticAudioEvents[0].id,15);
+ assert.equal(s.semanticAudioEvents.at(-1).id,110);
+ const next=newSession(0,99);
+ notify(next,'ROOK RELOADED');
+ assert.equal(next.semanticAudioEvents[0].id,1);
+ const controller=readFileSync(new URL('../src/breach-audio-controller.ts',import.meta.url),'utf8');
+ assert.match(controller,/unheardLiveAudioEvents\(state\.semanticAudioEvents,lastEventAudioId\)/);
+ assert.match(controller,/lastAudioSession!==state/);
+ assert.match(controller,/audio\?\.state==='running'/);
+ assert.doesNotMatch(controller,/event!==lastEventAudio/);
 });

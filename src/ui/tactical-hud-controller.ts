@@ -324,8 +324,8 @@ export function createTacticalHudController(
   const noticeFeed=new ExecutionNoticeFeed();
   function resetNotices():void{noticeFeed.reset();}
   function renderNotice(node:HTMLElement,events:string[],phase:string,
-    replaying:boolean):void{
-    const notice=noticeFeed.update(events,phase,performance.now());
+    replaying:boolean,executionEvents:readonly import('../breach-execution-events.ts').ExecutionEvent[]):void{
+    const notice=noticeFeed.update(events,phase,performance.now(),executionEvents);
     node.hidden=!notice||replaying;
     if(!notice||replaying){
       node.removeAttribute('data-notice-key');
@@ -587,7 +587,7 @@ export function createTacticalHudController(
     (state.intel.mode==='floor-plan'?state.site.roomCount:'?')+' KNOWN ROOMS':
     'TACTICAL TRAINING';
   if(siteHeader)siteHeader.title=state.site?.name??'Cutwoods';
-  renderNotice(ui.feed,state.events,state.phase,replaying);
+  renderNotice(ui.feed,state.events,state.phase,replaying,state.executionEvents);
   renderGuidance({
     replaying,phase:state.phase,selectedNode,selectedActiveWatch,
     feed:ui.feed,hint:ui.hint

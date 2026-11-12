@@ -18,7 +18,7 @@ import {withFieldworkLiveMix} from './breach-live-sound-pack.ts';
 import {acousticResponseForCue} from './breach-audio-environment.ts';
 import {ReplaySoundTimeline,replayDoorSoundId}
   from './breach-replay-audio.ts';
-import {liveAudioCuesForEvent} from './breach-audio-event-cues.ts';
+import {liveAudioCuesForEvent,unheardLiveAudioEvents} from './breach-audio-event-cues.ts';
 import {replayAudioListener,replayBodycamPan}
   from './breach-replay-bodycam-controls.ts';
 
@@ -79,7 +79,8 @@ export function createBreachAudioController(config:{
   const replaySoundNodes=new Set<OscillatorNode>();
   const replaySoundBuffers=new Set<AudioBufferSourceNode>();
   let replaySoundTimeline:ReplaySoundTimeline|null=null;
-  let lastSoundShotId=0,lastEventAudio='',lastFootstepSoundTime=0;
+  let lastSoundShotId=0,lastEventAudioId=0,lastFootstepSoundTime=0;
+  let lastAudioSession:Session|null=null;
   let variationCounter=0,lastUiCue=0;
 
   function unlock():void{
@@ -97,7 +98,8 @@ export function createBreachAudioController(config:{
     replaySoundBuffers.clear();
   }
   function resetLive():void{
-    lastSoundShotId=0;lastEventAudio='';lastFootstepSoundTime=0;
+    lastSoundShotId=0;lastEventAudioId=0;lastFootstepSoundTime=0;
+    lastAudioSession=null;
   }
   function beginReplay(recorder:MissionRecorder):void{
     stopReplaySounds();
@@ -218,6 +220,10 @@ export function createBreachAudioController(config:{
   /** Live outcomes are consumed after the simulation; this never drives it. */
   function consumeLiveFrame(state:Session,recorder:MissionRecorder,
     selected:string,replaying=false):void{
+    if(lastAudioSession!==state){
+      lastAudioSession=state;
+      lastSoundShotId=0;lastEventAudioId=0;lastFootstepSoundTime=0;
+    }
     const freshShots:typeof state.shots=[];
     let newestShotId=lastSoundShotId;
     for(const shot of state.shots){
@@ -274,16 +280,18 @@ export function createBreachAudioController(config:{
       }
     }
     lastFootstepSoundTime=state.seconds;
-    const event=state.events.at(-1)??'';
-    if(!replaying&&event!==lastEventAudio){
-      const source=liveEventAudioPosition(event,state,selected);
-      for(const cue of liveAudioCuesForEvent(event)){
+    // Always advance the cursor, including on locked/disabled audio and replay;
+    // nothing stale is played in a burst after a user-gesture unlock or seek.
+    const events=unheardLiveAudioEvents(state.semanticAudioEvents,lastEventAudioId);
+    if(events.length)lastEventAudioId=events[events.length-1].id;
+    if(!replaying&&audio?.state==='running')for(const event of events){
+      const source=liveEventAudioPosition(event.text,state,selected);
+      for(const cue of liveAudioCuesForEvent(event.text)){
         if(!playLiveEventCue(cue.id,source,cue.scale)&&cue.fallback)
           playTone(cue.fallback[0],cue.fallback[1],
             cue.fallback[2]??false);
       }
     }
-    lastEventAudio=event;
   }
   /** Continuous historical intervals only. A seek never audits past events. */
   function playReplayBetween(start:number,end:number,recorder:MissionRecorder,

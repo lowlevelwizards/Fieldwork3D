@@ -1,7 +1,9 @@
 /** Roadmap 2 Stage 4: tactical command feedback and preview presentation.
  * The live simulation owns blocking, order feasibility and all mutations.
  */
-import {W,H,type Pt} from '../breach-core.ts';
+import {type Pt} from '../breach-core.ts';
+import {sessionWorldGeometry} from '../breach-world-context.ts';
+import {insideTacticalBounds} from './aim-target.ts';
 import {team,finalPoint,type Session,type TeamActor} from '../breach-game.ts';
 import {canRelocateCover,coverPushDistance} from '../breach-movable-cover.ts';
 import {angleDifference} from '../breach-plan.ts';
@@ -60,8 +62,8 @@ export function createBreachTacticalFrameFeedbackController(config:{
     const canPreview=state.phase==='planning'&&!replaying&&
       !!cursor&&(previewHover||!!authoringPointer)&&
       (!authoringPointer||!['cameraMulti','cameraOrbit','cameraPan'].includes(
-        authoringPointer.mode))&&cursor.x>=0&&cursor.y>=0&&
-      cursor.x<=W&&cursor.y<=H;
+        authoringPointer.mode))&&
+      insideTacticalBounds(cursor,sessionWorldGeometry(state).bounds);
     const orderMode=hudController.facing.looking?hudController.facing.lookMode:flashMode?'flash':
       firePlacement??evacMode?.mode;
     const origin=hudController.facing.looking?

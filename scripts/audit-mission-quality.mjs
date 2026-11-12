@@ -12,11 +12,14 @@ import {assessMissionFilm,summarizeMissionSamples}
 import {activateSite} from '../src/breach-core.ts';
 import {compileMissionFacts} from '../src/briefing/mission-facts.ts';
 import {auditMissionScenario} from '../src/breach-mission-semantics.ts';
+import {EncounterBehaviorSurvey} from '../src/breach-encounter-quality.ts';
 import {createOperationDossier} from '../src/briefing/briefing-composer.ts';
 const count=Math.min(48,Math.max(1,
  Number.parseInt(process.argv[2]??'11',10)||11));
 const missions=['clear','intel','rescue','hold','capture'];
 const observations=[],issues=[];
+const behavior=process.argv.includes('--behavior');
+const behaviorRows=[];
 const exposureByPurpose=new Map();
 // Optional extension of the existing mission-quality audit. Never used as
 // player-visible truth; no new behavior and no extra generator passes.
@@ -63,6 +66,28 @@ for(let index=0;index<count;index++){
   stepSession(session,1/60);recording.capture(session);
  }
  recording.capture(session,true);
+ if(behavior){
+  // Separate actual Session: the original passive replay is not changed.
+  const probe=newSession(0,seed,'floor-plan','small',mission,site,
+    {enableCivilians:true});
+  const survey=new EncounterBehaviorSurvey(probe);
+  probe.phase='running';probe.started=true;
+  let stimulusAt=null;
+  for(let tick=0;tick<360&&probe.phase==='running';tick++){
+   if(tick===90){
+    const target=probe.operators.find(a=>a.side==='red')??probe.civilians[0];
+    if(target){
+     // A real hearing input, near a known fixture actor; not a forced AI state.
+     const sound={id:probe.nextNoiseId++,p:{x:target.p.x+26,y:target.p.y},
+      radius:260,time:probe.seconds,kind:'gunshot'};
+     probe.noise.push(sound);stimulusAt=probe.seconds;
+    }
+   }
+   stepSession(probe,1/60);survey.sample(probe,1/60);
+  }
+  behaviorRows.push({seed,mission,archetype:site.archetype,
+   ...survey.finish(probe,{injected:stimulusAt!==null,at:stimulusAt})});
+ }
  const film=assessMissionFilm(recording.frames,recording.events,
   session.operators.length);
  const topology=describeSiteTopology(site).signature;
@@ -104,6 +129,8 @@ const exposureRoles=[...exposureByPurpose.values()].map(r=>({
 console.log(JSON.stringify({method:'11 archetypes / 5 mission types, passive 2s actual replay',
  seeds:count,summary,exposureByPurpose:exposureRoles,issues,
  ...(living?{livingEncounters:livingSummary}:{}),
+ ...(behavior?{encounterBehavior:{mode:'6s fixed-step with one scripted acoustic stimulus at 1.5s',
+  seeds:behaviorRows.length,rows:behaviorRows}}:{}),
  observations:observations.map(s=>({
  seed:s.seed,mission:s.mission,topology:s.topology,
  verifiedApproaches:s.verifiedApproaches,

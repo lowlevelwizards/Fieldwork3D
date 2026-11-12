@@ -261,6 +261,8 @@ export type SquadPlanTransaction={
  controlsAfter?:Record<string,PlanControlSnapshot>;
  undoDepth?:Record<string,number>;
 };
+/** Audio delivery is not the deduplicated 12-line narrative HUD history. */
+export type LiveSemanticAudioEvent={id:number;t:number;text:string};
 export type Session=Omit<TacticalState,'operators'> & {
   operators:TeamActor[];civilians:CivilianActor[];
   civilianHarmEvents:CivilianHarmEvent[];
@@ -283,6 +285,7 @@ export type Session=Omit<TacticalState,'operators'> & {
   nextEffectId:number;impactMarks:ImpactMark[];
   battleEvents:BattleEvent[];nextBattleId:number;
   executionEvents:ExecutionEvent[];nextExecutionId:number;
+  semanticAudioEvents:LiveSemanticAudioEvent[];nextSemanticAudioId:number;
   missionType:'clear'|'intel'|'rescue'|'hold'|'capture';holdTime:number;
   /** Opt-in narrative artifact, not used by simulation or AI. */
   operationDossier?:OperationDossierV1;
@@ -1152,6 +1155,10 @@ export function toggling(s:Session){
   }else if(s.phase==='running'){s.phase='planning';s.timesPaused++;}
 }
 export function notify(s:Session,event:string){
+  // Each emission is a distinct sound opportunity, even when the display
+  // text is identical to the preceding narrative entry. Keep memory bounded.
+  s.semanticAudioEvents.push({id:s.nextSemanticAudioId++,t:s.seconds,text:event});
+  if(s.semanticAudioEvents.length>96)s.semanticAudioEvents.shift();
   if(s.events.at(-1)===event)return;
   s.events.push(event);if(s.events.length>12)s.events.shift();
 }

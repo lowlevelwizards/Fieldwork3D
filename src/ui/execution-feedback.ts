@@ -1,4 +1,5 @@
 import {recoveryAdviceFor} from './recovery-guidance.ts';
+import type {ExecutionEvent} from '../breach-execution-events.ts';
 /** Priority-based, time-limited HUD notices from the EXISTING player-facing event log.
  * No inspection of enemy state, fog, or world geometry. */
 export type FeedbackSeverity='danger'|'contact'|'warning'|'progress'|'routine'|'state';
@@ -21,15 +22,44 @@ export function classifyExecutionNotice(message:string):Classified{
     return {label:'ACTION',severity:'progress',priority:2,duration:2300};
   return {label:'UPDATE',severity:'routine',priority:1,duration:1750};
 }
+/** Typed order feedback cannot infer hidden world state or inspect narrative text. */
+export function classifyExecutionTransition(event:Pick<ExecutionEvent,'kind'|'reason'>):
+ Classified|null{
+ switch(event.kind){
+  case 'blocked':return {label:'OBSTRUCTED',severity:'warning',priority:3,duration:3500};
+  case 'recovering':return {label:'RECOVERING',severity:'progress',priority:2,duration:1800};
+  case 'resumed':return {label:'RESUMED',severity:'progress',priority:2,duration:1750};
+  case 'completed':return {label:'COMPLETE',severity:'progress',priority:2,duration:2200};
+  case 'holding':return event.reason==='contact'?
+    {label:'CONTACT HOLD',severity:'contact',priority:4,duration:2900}:
+    {label:'HOLDING',severity:'state',priority:1,duration:1500};
+  case 'waiting':return {label:'WAITING',severity:'state',priority:1,duration:1300};
+  case 'started':return null;
+ }
+}
+function executionRecovery(reason:string):string|undefined{
+ if(reason==='door-locked'||reason==='door-obstructed'||reason==='door-held')
+  return 'Check the known door and select another available action.';
+ if(reason==='traffic-stall'||reason==='traffic')
+  return 'Check teammate spacing and the shared passage.';
+ if(reason==='order-failed')
+  return 'Select the affected order to edit or replace it.';
+ if(reason.startsWith('collision-'))
+  return 'Check the visible obstruction and adjust the route if needed.';
+ return undefined;
+}
 export class ExecutionNoticeFeed{
   private priorEvents:string[]|null=null;
   private priorPhase:string|null=null;
+  private lastExecutionId:number|null=null;
   private queue:ExecutionNotice[]=[];
   reset(){
-    this.priorEvents=null;this.priorPhase=null;this.queue=[];
+    this.priorEvents=null;this.priorPhase=null;
+    this.lastExecutionId=null;this.queue=[];
   }
   /** Only the new suffix of a rolling, at-most-12-item game event log is ingested. */
-  update(events:readonly string[],phase:string,now:number):ExecutionNotice|null{
+  update(events:readonly string[],phase:string,now:number,
+    executionEvents:readonly ExecutionEvent[]=[]):ExecutionNotice|null{
     let start=events.length;
     if(this.priorEvents===null){
       // Do not replay an entire old log when the screen first opens.
@@ -45,7 +75,23 @@ export class ExecutionNoticeFeed{
       }
       start=overlap;
     }
-    for(const event of events.slice(start))this.enqueue(event,now);
+    const latestId=executionEvents.at(-1)?.id;
+    const after=this.lastExecutionId??Math.max(0,(latestId??0)-1);
+    const fresh=executionEvents.filter(e=>e.id>after);
+    if(latestId!==undefined)this.lastExecutionId=latestId;
+    const structuredTexts=new Set(fresh.map(e=>e.text));
+    for(const event of events.slice(start))if(!structuredTexts.has(event))
+      this.enqueue(event,now);
+    for(const event of fresh){
+      const classification=classifyExecutionTransition(event);
+      if(!classification)continue;
+      this.queue.push({text:event.text,label:classification.label,
+        severity:classification.severity,priority:classification.priority,
+        born:now,expires:now+classification.duration,
+        recovery:classification.severity==='warning'?
+          executionRecovery(event.reason):undefined});
+      if(this.queue.length>8)this.queue.shift();
+    }
     if(this.priorPhase&&phase!==this.priorPhase){
       if(this.priorPhase==='running'&&phase==='planning')
         this.enqueue('Execution paused · Edit orders or resume',now,true);

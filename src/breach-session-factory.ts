@@ -169,6 +169,7 @@ export function assembleSession(index=0,siteSeed?:number,
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
     impactMarks:[],battleEvents:[],nextBattleId:1,
     executionEvents:[],nextExecutionId:1,
+    semanticAudioEvents:[],nextSemanticAudioId:1,
     missionType:resolveMissionKind(site,missionOverride,encounterContext.mission),
     holdTime:0,rescue:null,captureTarget:null,captureSecured:false,
     intelCarrierId:null};

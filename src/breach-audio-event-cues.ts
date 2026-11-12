@@ -32,3 +32,9 @@ export function liveAudioCuesForEvent(event:string):LiveAudioCue[]{
     cues.push({id:'people.surrender',scale:1,fallback:[210,.22]});
   return cues;
 }
+
+/** Ordered, identity-based live delivery. Message equality is not identity. */
+export function unheardLiveAudioEvents<T extends {id:number;text:string}>(
+ events:readonly T[],lastId:number):T[]{
+ return events.filter(event=>event.id>lastId);
+}
