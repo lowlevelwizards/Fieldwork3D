@@ -13,12 +13,14 @@ import {activateSite} from '../src/breach-core.ts';
 import {compileMissionFacts} from '../src/briefing/mission-facts.ts';
 import {auditMissionScenario} from '../src/breach-mission-semantics.ts';
 import {EncounterBehaviorSurvey} from '../src/breach-encounter-quality.ts';
+import {summarizeEncounterMatrix} from '../src/breach-encounter-matrix.ts';
 import {createOperationDossier} from '../src/briefing/briefing-composer.ts';
 const count=Math.min(48,Math.max(1,
  Number.parseInt(process.argv[2]??'11',10)||11));
 const missions=['clear','intel','rescue','hold','capture'];
 const observations=[],issues=[];
-const longBehavior=process.argv.includes('--behavior-long');
+const doctrineMatrix=process.argv.includes('--doctrine-matrix');
+const longBehavior=process.argv.includes('--behavior-long')||doctrineMatrix;
 const behavior=process.argv.includes('--behavior')||longBehavior;
 const behaviorRows=[];
 const exposureByPurpose=new Map();
@@ -131,7 +133,8 @@ console.log(JSON.stringify({method:'11 archetypes / 5 mission types, passive 2s 
  seeds:count,summary,exposureByPurpose:exposureRoles,issues,
  ...(living?{livingEncounters:livingSummary}:{}),
  ...(behavior?{encounterBehavior:{mode:(longBehavior?'20s':'6s')+' fixed-step with one scripted acoustic stimulus at 1.5s',
-  seeds:behaviorRows.length,rows:behaviorRows}}:{}),
+  seeds:behaviorRows.length,rows:behaviorRows,
+  ...(doctrineMatrix?{matrix:summarizeEncounterMatrix(behaviorRows)}:{})}}:{}),
  observations:observations.map(s=>({
  seed:s.seed,mission:s.mission,topology:s.topology,
  verifiedApproaches:s.verifiedApproaches,

@@ -14,6 +14,7 @@ import {withActions} from './breach-actor-initial-state.ts';
 import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
 import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
 import {enemyKitForEncounter} from './breach-enemy-loadouts.ts';
+import {doctrineForPurpose,doctrinePersonality,doctrineInitialMorale} from './breach-ai-doctrine.ts';
 import {createCivilian} from './breach-civilian-types.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
 import {materialForFixture,MATERIALS} from './breach-materials.ts';
@@ -106,10 +107,15 @@ export function assembleSession(index=0,siteSeed?:number,
       a.insertedMagazineId=issueRounds.loadedMagazineId;
       a.spareMagazines=issueRounds.magazines;
       a.injuryStage=0;
+      // One seeded draw for temperament when applicable, one for resolve:
+      // no extra random draws or coupling between unrelated actors.
+      const purpose=site.encounter?.groups.find(g=>
+        g.id===spec?.groupId)?.purpose;
+      const doctrine=doctrineForPurpose(purpose);
       a.personality=spec?.role==='investigator'?'aggressor':
         spec?.role==='reserve'||spec?.role==='target'?'cautious':
-        (['guard','aggressor','cautious'] as const)[Math.floor(enemyRng()*3)];
-      a.morale=.48+enemyRng()*.52;
+        doctrinePersonality(doctrine,spec?.role,enemyRng());
+      a.morale=doctrineInitialMorale(doctrine,enemyRng());
     }
     // Generated sites may legitimately have one or no armed occupants.
     // Remove unused legacy defenders: no invisible off-map enemies.

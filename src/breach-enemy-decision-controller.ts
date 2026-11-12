@@ -25,17 +25,18 @@ import {reconcileEnemyIntent,reconcileEnemyPosture} from './breach-ai-reconcilia
 import {chooseCombatAction} from './breach-ai-combat.ts';
 import {contactTactic,shouldSeekHoldCover} from './breach-ai-tactical-response.ts';
 import {reportToListener} from './breach-communication.ts';
-import {groupResponse} from './breach-ai-coordination.ts';
+import {missionGroupResponse} from './breach-ai-coordination.ts';
 import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
 import {coverMoveDeadline,coverMoveCommitted} from './breach-ai-position-commitment.ts';
 import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo,stalledInvestigationAction} from './breach-ai-investigation.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
-import {captureTargetMayWithdraw,shouldProtectObjective} from './breach-ai-mission-response.ts';
+import {captureTargetMayWithdraw,missionObjectiveResponse} from './breach-ai-mission-response.ts';
 import {retreatDoorClosureEligible,routineDoorClosureEligible} from './breach-ai-door-response.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {localFixtureObservation} from './breach-ai-contextual-observation.ts';
+import {doctrineForPurpose} from './breach-ai-doctrine.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 
 /** The authoritative simulation owns the motor, shot/geometry, visibility and
@@ -280,7 +281,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.defense=null;
     a.alertUntil=s.seconds+(a.personality==='aggressor'?.5:1.4);
     a.contacted=true;
-    const holdAssignedPost=shouldProtectObjective({
+    const objectiveResponse=missionObjectiveResponse({
       mission:s.missionType,role:a.encounterRole,
       distanceToPost:d(a.p,s.scenario.objective),
       distanceOfEvidenceToPost:d(heard,s.scenario.objective),
@@ -290,12 +291,15 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     });
     const needsCover=a.personality==='cautious'||
       (a.personality==='guard'&&a.morale<.65);
-    if(holdAssignedPost){
-      // Objective location is the actor's own assigned post, not enemy intel.
-      // A stationed defender watches the heard approach from verified cover.
+    if(objectiveResponse==='hold-post'){
+      // Objective position is assigned mission geography, not enemy intel.
       a.defense=defensivePosition(a,heard,s);
       a.alert='cover';a.nav=[];a.retreatPoint=null;
       a.defenseUntil=s.seconds+4;
+    }else if(objectiveResponse==='observe-approach'){
+      // Stay near the assigned person/area, watching the heard approach.
+      a.alert='cover';a.nav=[];a.defense=null;a.retreatPoint=null;
+      a.defenseUntil=s.seconds+3;
     }else if(needsCover){
       a.retreatPoint=defensivePosition(a,heard,s);
       a.alert=a.retreatPoint?'retreat':'cover';a.nav=[];
@@ -583,20 +587,25 @@ function distributeReports(s:Session){
   // the same blind move. Direct-sight reports keep their prior behavior.
   const reporter=report.source==='auditory'?
     enemies(s).find(a=>a.id===report.senderId&&a.health>0):undefined;
-  const participants=reporter?[{id:reporter.id,p:reporter.p},
-       ...listeners.map(a=>({id:a.id,p:a.p}))]:
-       listeners.map(a=>({id:a.id,p:a.p}));
+  const participants=reporter?
+     [{id:reporter.id,p:reporter.p,role:reporter.encounterRole},
+       ...listeners.map(a=>({id:a.id,p:a.p,role:a.encounterRole}))]:
+       listeners.map(a=>({id:a.id,p:a.p,role:a.encounterRole}));
   const committed={...(report.assignedRoles??{}),...prior,
        ...(reporter?{[reporter.id]:'investigate' as const}:{})};
-  const roles=groupResponse(participants,report.estimate,committed);
+  const roles=missionGroupResponse(participants,report.estimate,
+      committed,s.missionType,s.scenario.objective);
   report.assignedRoles=roles;report.coordinated=true;
   for(const a of listeners){
    if(!newlyInformed.includes(a.id))continue;
    a.coordinationRole=roles[a.id];
    const heard=a.awareness.observations.find(observation=>
      observation.id==='report/'+report.id+'/'+a.id);
+   const purpose=s.site?.encounter?.groups.find(g=>
+     g.id===a.encounterGroupId)?.purpose;
    a.coordinationUntil=renewCoordinationUntil(s.seconds,a.coordinationUntil,
-     roles[a.id],heard?.uncertainty??report.uncertainty);
+     roles[a.id],heard?.uncertainty??report.uncertainty,
+     doctrineForPurpose(purpose));
    const covering=roles[a.id]==='watch'||roles[a.id]==='support';
    if(covering&&a.intent?.kind!=='engage'){
      a.watch=clone(report.estimate);
