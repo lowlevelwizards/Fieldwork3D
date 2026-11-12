@@ -87,7 +87,22 @@ The first independent CI probe ran at feature SHA `fe26bad77069a3ef1998b2254444d
 - The B8 numerical golden test compares the previous and new quaternion/torso equations across 128 deterministic angle/phase samples; the lifetime and 2/8/16-registry tests prevent cross-operator mutable state.
 - The B8 benchmark, B0–B8 golden suites, production build and phone/desktop browser acceptance are separate CI gates. **Timing observations never decide pass/fail.**
 
-The post-change CPU observations belong in the final PR evidence, alongside the exact merge/deploy proof. Differences across GitHub-hosted runners should not be labeled causal improvements unless corroborated by more controlled sampling.
+The second probe executed the identical 1,584-pose workload on optimized feature SHA `a28d4aa9656ceeb9ec3a0d307c09d0e576683659` in Package B workflow `43195060948`. Its benchmark step succeeded. The first new closeout test subsequently identified an **overly strict hidden-slot assertion**: invisible magazines intentionally retain the last local transform because it is not rendered. The test was corrected to require deterministic **visibility** for every slot and deterministic **transforms** for every *visible* slot, without modifying gameplay to overwrite invisible pose history.
+
+| Operators | Workload | Pre median ms/operator | Post median ms/operator | Observed change |
+|---:|---|---:|---:|---:|
+| 2 | steady | 3.3044 | 2.8986 | −12.3% |
+| 8 | steady | 2.6061 | 2.4699 | −5.2% |
+| 16 | steady | 2.5066 | 2.3519 | −6.2% |
+| 16 | action transitions | 0.6662 | 0.6158 | −7.6% |
+| 16 | replay seeking | 0.1798 | 0.1547 | −14.0% |
+| 8 | manual Workbench | 0.0199 | 0.0198 | −0.5% |
+
+**Interpretation:** the second CI observation was consistently faster, but also includes normal inter-run JIT/GC/host variability and warmed caches. No single-run delta can be attributed exclusively to these few eliminated allocations; no guaranteed game FPS, battery or GPU improvement is claimed. Both runs validated the 30-slot pipeline. The corrected closeout suite, full cross-mode/browser gates and production release remain mandatory.
+
+**Replay correctness boundary:** a hidden attachment's local position/quaternion is deliberately retained after its last visible action until the next action owns it. Its `visible=0` flag, not invisible coordinates, is the render contract. Reverse seeking must restore every visibility bit and all displayed transforms; forcing hidden objects to reset would change existing presentation state without a gameplay benefit.
+
+
 
 ## B8.5 — Merge and release protocol
 
