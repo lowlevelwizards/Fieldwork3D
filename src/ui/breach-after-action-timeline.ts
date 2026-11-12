@@ -93,7 +93,6 @@ export function renderAfterActionTimeline(input:{
  const track=make('div','fw-v5-timeline-track');
  track.style.width=width+'px';
  track.append(make('div','fw-v5-timeline-axis'));
- const bins=Math.max(8,Math.floor(width*.48/24));
  for(const cluster of clusters){
    const marker=button(cluster.count>1?String(cluster.count):'•',
      ()=>actions.selectCluster(cluster.id,
