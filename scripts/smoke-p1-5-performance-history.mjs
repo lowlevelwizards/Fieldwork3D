@@ -2,7 +2,7 @@
  * Chromium/SwiftShader is a functional test, not an iPhone FPS benchmark.
  */
 import {spawn} from 'node:child_process';
-import {mkdirSync,writeFileSync,existsSync} from 'node:fs';
+import {mkdirSync,writeFileSync,readFileSync,existsSync} from 'node:fs';
 import {chromium} from 'playwright';
 const port=4292,base='http://127.0.0.1:'+port;
 const dir='artifacts/performance-p1-5';
