@@ -6,7 +6,8 @@
 export class ShotVisualPool<T>{
  private readonly free=new Map<string,T[]>();
  private count=0;
- constructor(readonly capacity=20){}
+ readonly capacity:number;
+ constructor(capacity=20){this.capacity=capacity;}
  acquire(style:string,create:()=>T):T{
   const row=this.free.get(style);
   const retained=row?.pop();
