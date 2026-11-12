@@ -34,7 +34,9 @@ export type SiteOpeningsHost={
  registerWallSurface:(obj:THREE.Group,index:number)=>void;
 };
 /** Blueprint-style ground sweep, fixed to the actual hinge and opening side. */
-export function doorSweepArc(door:Door,length:number):THREE.Group{
+export function doorSweepArc(door:Door,length:number,
+  trackMaterial:(material:THREE.Material)=>THREE.Material=material=>material
+):THREE.Group{
   const group=new THREE.Group(),points:THREE.Vector3[]=[];
   const hinge=door.hinge==='b'?length/2:-length/2;
   const sign=door.hinge==='b'?-1:1;
@@ -45,14 +47,15 @@ export function doorSweepArc(door:Door,length:number):THREE.Group{
       hinge+sign*reach*Math.cos(angle),1.7,
       -sign*reach*Math.sin(angle)));
   }
-  const material=new THREE.LineDashedMaterial({
+  const material=trackMaterial(new THREE.LineDashedMaterial({
     color:0xf5d68e,transparent:true,opacity:.9,
-    dashSize:5,gapSize:4,depthTest:true,depthWrite:false});
+    dashSize:5,gapSize:4,depthTest:true,depthWrite:false}));
   const stroke=new THREE.Line(new THREE.BufferGeometry().setFromPoints(points),material);
   stroke.computeLineDistances();group.add(stroke);
   const hingeDot=new THREE.Mesh(
     new THREE.CircleGeometry(3,12),
-    new THREE.MeshBasicMaterial({color:0xffdb8b,side:THREE.DoubleSide,depthWrite:false}));
+    trackMaterial(new THREE.MeshBasicMaterial({
+      color:0xffdb8b,side:THREE.DoubleSide,depthWrite:false})));
   hingeDot.rotation.x=-Math.PI/2;
   hingeDot.position.set(hinge,1.75,0);group.add(hingeDot);
   group.visible=false;
@@ -247,7 +250,7 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
           7+mark.v*(DOOR_LEAF_VISUAL_HEIGHT-14),profile.leafThickness/2+.27,
           door.style==='wood'?'door-wood':'painted-metal');
       }
-      const halo=door.kind==='sliding'?new THREE.Group():doorSweepArc(door,length);
+      const halo=door.kind==='sliding'?new THREE.Group():doorSweepArc(door,length,host.track);
       root.add(halo);
       host.root.add(root);
       const wedge=host.box(frame,0,1.9,6,6,2.7,6,metal,false);
