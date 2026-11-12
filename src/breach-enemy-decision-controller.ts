@@ -25,7 +25,7 @@ import {reconcileEnemyIntent,reconcileEnemyPosture} from './breach-ai-reconcilia
 import {chooseCombatAction} from './breach-ai-combat.ts';
 import {contactTactic,shouldSeekHoldCover} from './breach-ai-tactical-response.ts';
 import {reportToListener} from './breach-communication.ts';
-import {groupResponse} from './breach-ai-coordination.ts';
+import {missionGroupResponse} from './breach-ai-coordination.ts';
 import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
 import {coverMoveDeadline,coverMoveCommitted} from './breach-ai-position-commitment.ts';
 import {searchCandidates} from './breach-ai-search.ts';
@@ -586,12 +586,14 @@ function distributeReports(s:Session){
   // the same blind move. Direct-sight reports keep their prior behavior.
   const reporter=report.source==='auditory'?
     enemies(s).find(a=>a.id===report.senderId&&a.health>0):undefined;
-  const participants=reporter?[{id:reporter.id,p:reporter.p},
-       ...listeners.map(a=>({id:a.id,p:a.p}))]:
-       listeners.map(a=>({id:a.id,p:a.p}));
+  const participants=reporter?
+     [{id:reporter.id,p:reporter.p,role:reporter.encounterRole},
+       ...listeners.map(a=>({id:a.id,p:a.p,role:a.encounterRole}))]:
+       listeners.map(a=>({id:a.id,p:a.p,role:a.encounterRole}));
   const committed={...(report.assignedRoles??{}),...prior,
        ...(reporter?{[reporter.id]:'investigate' as const}:{})};
-  const roles=groupResponse(participants,report.estimate,committed);
+  const roles=missionGroupResponse(participants,report.estimate,
+      committed,s.missionType,s.scenario.objective);
   report.assignedRoles=roles;report.coordinated=true;
   for(const a of listeners){
    if(!newlyInformed.includes(a.id))continue;
