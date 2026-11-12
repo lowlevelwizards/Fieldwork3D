@@ -1267,8 +1267,9 @@ function observe(s:Session){
 const motorHooks:ActorMotorHooks={
  notify,hear,battleEvent,cachedEnemyRoute,knownShoveCrossing,ensurePassageSchedule
 };
-function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1){
- return advanceActorMotor(a,p,dt,s,motorHooks,speedScale);
+function approach(a:TeamActor,p:Pt,dt:number,s:Session,speedScale=1,
+ profile?:((section:string,elapsedMs:number)=>void)){
+ return advanceActorMotor(a,p,dt,s,motorHooks,speedScale,profile);
 }
 /** Authoritative 60 Hz session keeps the clock, gameplay side effects and
  * stable navigation/visibility services; order handlers own execution.

@@ -95,20 +95,37 @@ export function collectCastVolumes(root:THREE.Object3D,
 /** Fixed-key contact ray depth, evaluated only during the outfit bake.
  * Crisp directly beneath attachments; no long black carrier-wide shadows.
  */
-const SHADOW_AXES=['x','y','z'] as const;
-function rayEntryDistance(p:THREE.Vector3,dir:THREE.Vector3,
+/** Allocation-free fixed XYZ slab path for the expensive cold gear bake.
+ * Keep original inclusive parallel-axis tests, thresholds, and operation
+ * ordering; 8-bit shadow/contact output must remain identical.
+ */
+export function rayEntryDistance(p:THREE.Vector3,dir:THREE.Vector3,
  box:THREE.Box3,maxDist=3.25):number|null{
  let near=0,far=maxDist;
- for(const axis of SHADOW_AXES){
-  const d=dir[axis],o=p[axis];
-  if(Math.abs(d)<1e-6){
-   if(o<box.min[axis]||o>box.max[axis])return null;
-  }else{
-   const t0=(box.min[axis]-o)/d,t1=(box.max[axis]-o)/d;
-   near=Math.max(near,Math.min(t0,t1));
-   far=Math.min(far,Math.max(t0,t1));
-   if(near>far)return null;
-  }
+ const min=box.min,max=box.max,dx=dir.x,dy=dir.y,dz=dir.z;
+ if(Math.abs(dx)<1e-6){
+  if(p.x<min.x||p.x>max.x)return null;
+ }else{
+  const t0=(min.x-p.x)/dx,t1=(max.x-p.x)/dx;
+  near=Math.max(near,Math.min(t0,t1));
+  far=Math.min(far,Math.max(t0,t1));
+  if(near>far)return null;
+ }
+ if(Math.abs(dy)<1e-6){
+  if(p.y<min.y||p.y>max.y)return null;
+ }else{
+  const t0=(min.y-p.y)/dy,t1=(max.y-p.y)/dy;
+  near=Math.max(near,Math.min(t0,t1));
+  far=Math.min(far,Math.max(t0,t1));
+  if(near>far)return null;
+ }
+ if(Math.abs(dz)<1e-6){
+  if(p.z<min.z||p.z>max.z)return null;
+ }else{
+  const t0=(min.z-p.z)/dz,t1=(max.z-p.z)/dz;
+  near=Math.max(near,Math.min(t0,t1));
+  far=Math.min(far,Math.max(t0,t1));
+  if(near>far)return null;
  }
  return near>.045&&far>.055&&near<maxDist?near:null;
 }
@@ -173,7 +190,10 @@ export function bakeCastOnGear(
  // No shadow volume collection, world-matrix updates or mask allocation
  // when every eligible receiver already holds this exact appearance bake.
  let pending=false;
- receiver.traverse(object=>{
+ // Traverse the same *visible* descendants that actually render.
+ // Do not pre-bake invisible alternate armor, pocket, and garment cuts;
+ // the first time a cut becomes visible its missing bake key forces work.
+ receiver.traverseVisible(object=>{
   if(pending||!(object instanceof THREE.Mesh)||!object.visible||
     Array.isArray(object.material)||
     object.material.userData.fieldworkBakedEquipmentAO!==true)return;
@@ -190,12 +210,17 @@ export function bakeCastOnGear(
   return collectCastVolumeRecords(source.root,chest)
    .map(volume=>({...volume,rule}));
  });
- chest.updateWorldMatrix(true,true);
- const inverse=chest.matrixWorld.clone().invert();
+ // An outfit without eligible casters needs only a baseline reset.
+ // Do not request scene world matrices when not one ray/contact can hit.
+ if(boxes.length)chest.updateWorldMatrix(true,true);
+ const inverse=boxes.length?chest.matrixWorld.clone().invert():null;
  let changed=0,vertices=0;
  const position=new THREE.Vector3(),normal=new THREE.Vector3(),
   origin=new THREE.Vector3();
- receiver.traverse(object=>{
+ // Traverse the same *visible* descendants that actually render.
+ // Do not pre-bake invisible alternate armor, pocket, and garment cuts;
+ // the first time a cut becomes visible its missing bake key forces work.
+ receiver.traverseVisible(object=>{
   if(!(object instanceof THREE.Mesh)||!object.visible||
     Array.isArray(object.material)||
     object.material.userData.fieldworkBakedEquipmentAO!==true)return;
@@ -221,24 +246,42 @@ export function bakeCastOnGear(
    storedContact.length===coords.count?storedContact:new Uint8Array(coords.count);
   const castMask=storedCast instanceof Uint8Array&&
    storedCast.length===coords.count?storedCast:new Uint8Array(coords.count);
-  object.updateWorldMatrix(true,false);
-  const toChest=inverse.clone().multiply(object.matrixWorld);
-  const normalMatrix=new THREE.Matrix3().getNormalMatrix(toChest);
-  if(!geometry.boundingBox)geometry.computeBoundingBox();
+  // When there is no eligible source, no matrix update, bounds clone,
+  // inverse or normal-matrix construction is required. Hidden alternate
+  // receiver meshes never enter this callback in the first place.
+  if(boxes.length)object.updateWorldMatrix(true,false);
+  const toChest=inverse?inverse.clone().multiply(object.matrixWorld):null;
+  const normalMatrix=toChest?new THREE.Matrix3().getNormalMatrix(toChest):null;
+  if(toChest&&!geometry.boundingBox)geometry.computeBoundingBox();
   // A finite ray can only reach boxes within castReach + normal offset.
   // Compute this once per receiving mesh, never for every vertex/ray.
-  const receiverBounds=geometry.boundingBox!.clone().applyMatrix4(toChest);
-  const relevantBoxes=boxes.filter(volume=>{
+  const receiverBounds=toChest?
+   geometry.boundingBox!.clone().applyMatrix4(toChest):null;
+  const relevantBoxes=receiverBounds?boxes.filter(volume=>{
    const reach=Math.max(volume.rule.castReach,
     volume.rule.contactRadius)+.076;
    const b=volume.box,a=receiverBounds;
    return a.min.x<=b.max.x+reach&&a.max.x>=b.min.x-reach&&
     a.min.y<=b.max.y+reach&&a.max.y>=b.min.y-reach&&
     a.min.z<=b.max.z+reach&&a.max.z>=b.min.z-reach;
-  });
+  }):[];
+  // When no caster's actual contact reach intersects this receiver,
+  // the old directional/contact masks are exactly zero. Restore the
+  // original 8-bit baseline without transforming each vertex or casting
+  // rays. An empty-caster outfit still updates every existing mask.
+  if(relevantBoxes.length===0){
+   for(let i=0;i<coords.count;i++){
+    contactMask[i]=0;castMask[i]=0;
+    const before=baseline[i*3]/255;
+    const value=Math.round(255*Math.max(.60,before));
+    if(value<array[i*3])changed++;
+    array[i*3]=value;array[i*3+1]=value;array[i*3+2]=value;
+    vertices++;
+   }
+  }else{
   for(let i=0;i<coords.count;i++){
-   position.fromBufferAttribute(coords,i).applyMatrix4(toChest);
-   normal.fromBufferAttribute(normals,i).applyMatrix3(normalMatrix).normalize();
+   position.fromBufferAttribute(coords,i).applyMatrix4(toChest!);
+   normal.fromBufferAttribute(normals,i).applyMatrix3(normalMatrix!).normalize();
    const rays=frontRays;
    origin.copy(position).addScaledVector(normal,.075);
    let castTotal=0;
@@ -278,6 +321,7 @@ export function bakeCastOnGear(
    if(value<array[i*3])changed++;
    array[i*3]=value;array[i*3+1]=value;array[i*3+2]=value;
    vertices++;
+  }
   }
   // Reverting stale lightmaps to an unoccluded style must also upload.
   attribute.needsUpdate=true;

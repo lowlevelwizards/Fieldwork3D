@@ -61,6 +61,12 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
   r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
   const previousAppearance=appearanceState.get(r);
   const appearanceChanged=previousAppearance?.key!==appearanceKey;
+  // First-use costume costs are separate from steady-state IK. Opt-in only:
+  // the normal gameplay pose never invokes a timer or allocates a report.
+  const traceAppearance=r.root.userData.fieldworkProfilePose===true;
+  let visualKitMs=0,receiverAtlasMs=0;
+  if(traceAppearance)
+   r.root.userData.fieldworkAppearanceCpu={visualKitMs:0,receiverAtlasMs:0};
   // Resolve once per appearance fingerprint, including in-place Studio edits.
   // No repeated wardrobe normalization in coupled, coordinated or IK paths.
   const clothing=appearanceChanged?
@@ -165,8 +171,10 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
     (gear?.tactical==='tactical-flash'&&
       (p.flashCharges===undefined||p.flashCharges>0));
   for(const glove of r.gloveCovers)glove.visible=gear?.hands==='hands-gloves';
+  const kitStart=traceAppearance?performance.now():0;
   applyOperatorVisualKit(r.visualKit,gear,identity,
     p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration);
+  if(traceAppearance)visualKitMs=performance.now()-kitStart;
   r.colors.set(r.visualKit.carriedMagazineMaterial,
     r.visualKit.carriedMagazineMaterial.color.clone());
   // D2-R4A: accessory swatches are applied by the reusable visual kit.
@@ -412,6 +420,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
     r.colors.set(r.clothMaterial,new THREE.Color(finish.smock));
   // Directional shadows are traced once from the actual hat and jacket
   // volumes into tiny receiver atlases; color changes reuse cached bakes.
+  const receiverAtlasStart=traceAppearance?performance.now():0;
   const headShadow=headwearCastShadowAtlas(clothing.headwear);
   if(r.faceSkinMaterial.map!==headShadow){
    r.faceSkinMaterial.map=headShadow;r.faceSkinMaterial.needsUpdate=true;
@@ -426,6 +435,10 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
    collarGroup?authoredCollarShadowBoxes(collarGroup,r.chest):[]);
   if(r.neckSkinMaterial.map!==collarShadow){
    r.neckSkinMaterial.map=collarShadow;r.neckSkinMaterial.needsUpdate=true;
+  }
+  if(traceAppearance){
+   receiverAtlasMs=performance.now()-receiverAtlasStart;
+   r.root.userData.fieldworkAppearanceCpu={visualKitMs,receiverAtlasMs};
   }
   for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
    const selected=id===clothing.headwear;

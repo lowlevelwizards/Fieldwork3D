@@ -329,8 +329,11 @@ function tick(now:number){
     let hotSim='';
     if(simPhaseCosts){
       let maxMs=0;
+      // A motor/LOS subphase is nested inside an operator's total CPU.
+      // Prefer non-nested phases when naming the hot simulation owner;
+      // otherwise the compact report can lose the actor's true total.
       for(const [name,ms] of simPhaseCosts)
-       if(ms>maxMs){hotSim=name;maxMs=ms;}
+       if(!name.includes('/')&&ms>maxMs){hotSim=name;maxMs=ms;}
       if(maxMs>0){
        const owner=hotSim;
        // Parent operator timing still measures the whole actor. Display

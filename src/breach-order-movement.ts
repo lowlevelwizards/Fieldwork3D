@@ -28,12 +28,14 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   profile?:((section:string,elapsedMs:number)=>void)):boolean{
   // Only opt-in perf probes allocate the wrapper. Normal fixed-step movement
   // continues using the original motor callback without extra timing work.
-  const move=profile?((...args:Parameters<typeof approach>)=>{
-   const start=performance.now();
-   const result=approach(...args);
-   profile('motor',performance.now()-start);
-   return result;
-  }):approach;
+  const move=profile?
+   ((actor:TeamActor,point:Pt,step:number,session:Session,
+     scale?:number)=>{
+     const start=performance.now();
+     const result=approach(actor,point,step,session,scale,profile);
+     profile('motor',performance.now()-start);
+     return result;
+   }):approach;
   if(n.kind==='pie'){
     // Running abandons the cautious corner sweep for ordinary fast travel.
     // The same run override also releases a previously persistent PIE look.

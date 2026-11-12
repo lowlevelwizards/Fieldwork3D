@@ -7,7 +7,8 @@ import type {Pt,Door} from './breach-core.ts';
 import type {BattleEvent} from './breach-combat.ts';
 
 export type OrderExecutionPort={
- approach:(actor:TeamActor,point:Pt,dt:number,session:Session,speedScale?:number)=>boolean;
+ approach:(actor:TeamActor,point:Pt,dt:number,session:Session,
+  speedScale?:number,profile?:((section:string,elapsedMs:number)=>void))=>boolean;
  advanceTraversal:(actor:TeamActor,session:Session,dt:number)=>boolean;
  notify:(session:Session,message:string)=>void;
  hear:(session:Session,point:Pt,radius:number,kind:string)=>void;

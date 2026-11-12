@@ -8,7 +8,11 @@ const source=p=>readFileSync(new URL('../src/'+p,import.meta.url),'utf8');
 test('breach-game delegates all physical approach movement to one motor',()=>{
  const game=source('breach-game.ts');
  const motor=source('breach-actor-motor.ts');
- assert.match(game,/return advanceActorMotor\(a,p,dt,s,motorHooks,speedScale\)/);
+ assert.match(game,/return advanceActorMotor\(a,p,dt,s,motorHooks,speedScale,profile\)/);
+ const cpuProbe=source('breach-motor-cpu-probe.ts');
+ assert.match(cpuProbe,/performance\.now\(\)/);
+ assert.doesNotMatch(motor,/performance\.now\(\)/,
+  'simulation coordinator must never own a real-time or RAF clock');
  assert.match(game,/advanceMotorTraversal\(a,s,dt,motorHooks\)/);
  const motion=source('breach-simulation-motion-phase.ts');
  assert.match(game,/advanceSimulationMotion\(s,h,origins,motionSimulationPhasePort\)/);
