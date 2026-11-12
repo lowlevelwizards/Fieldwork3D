@@ -36,3 +36,29 @@ release checkpoint only after relevant critical tests succeed, existing Pages
 deployment completes and the public expected build is served. Do not queue
 over another production release. Inspect actual visual captures before final
 art-direction signoff.
+
+## F5 acceptance matrix and reproducible references
+
+| Capture | Expected |
+| --- | --- |
+| `breach-graphic.png` | Approved graphic lighting, seeded tactical scene |
+| `breach-legacy.png` | Same tactical seed using legacy A/B |
+| `studio-three-band.png` | Operator and firearm, approved profile |
+| `studio-two-band.png` | Same actor/camera, two-band comparison |
+| `studio-weapon-glint.png` | Lit hard-surface glint only |
+| `studio-weapon-no-glint.png` | Same geometry with glint off |
+| `arsenal-glint.png` | Real weapon, active material lighting |
+| `arsenal-no-glint.png` | Same weapon/camera with rim off |
+
+The F5 PR workflow runs actual mobile-size Chromium WebGL to catch shader,
+first-frame and A/B failures and uploads PNG evidence to the run. Review
+those images manually for palette aesthetics and material/silhouette quality
+before declaring final artistic acceptance. Passing smoke tests certifies the
+technical path, not subjective artistic quality.
+
+Final cross-view invariant: tactical and replay use the same live 3D renderer;
+Studio and Arsenal use the same explicit sRGB/ACES/exposure configuration;
+their shared approved light direction and three-band thresholds are unchanged.
+Artist-approved skin and camo values remain authored source colors, not
+color-corrected to match walls. The Arsenal Original switch compares with
+identical neutral lighting rather than a different background.
