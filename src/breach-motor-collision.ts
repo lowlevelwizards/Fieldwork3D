@@ -20,7 +20,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
 import {recoverNormalLane,routeWithSqueezeWorld,routeWithSqueezeIntel}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement,blockedStepCause} from './breach-nav-diagnostics.ts';
-import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
+import {recoveryAction,routeRetrySeconds,materiallyDifferentRoute} from './breach-movement-recovery.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {discoverContactCover} from './breach-intel.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
@@ -231,22 +231,33 @@ export function resolveMotorCollision(
       pointToSegment(desiredMove,doorLeafSegment(door))<OPERATOR_RADIUS+12);
     const repair=recoveryAction(a.lastBlocker,a.blockedTime,
       s.seconds-a.lastNavRepairAt,a.recoveryAttempts,{doorMoving});
-    if(repair==='replan'||repair==='report'){
+    if((repair==='replan'||repair==='report')&&s.seconds>=a.retryRouteAt){
       a.lastNavRepairAt=s.seconds;
-      a.recoveryAttempts++;
       // Once actual collision is observed, repair against real geometry,
       // not only the incomplete player-intel route that may run through
       // an undiscovered door frame. The authored final goal is unchanged.
       const repaired=a.side==='red'?hooks.cachedEnemyRoute(s,a.p,p,true):
         routeWithSqueezeWorld(a.p,p,s.doors,world);
-      if(repaired.length){a.nav=repaired;a.retryRouteAt=0;}
-      else if(a.side==='blue'){
-        a.nav=routeWithSqueezeIntel(s.intel,a.p,p);
-        if(!a.nav.length)
-          a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
+      // A world-truth path that repeats the stuck steps is not progress.
+      // Known-intel fallback is allowed only if it materially differs;
+      // never replace a route with an empty result while the door moves.
+      let adopted=false;
+      if(materiallyDifferentRoute(a.nav,repaired)){
+        a.nav=repaired;adopted=true;
+      }else if(a.side==='blue'){
+        const known=routeWithSqueezeIntel(s.intel,a.p,p);
+        if(materiallyDifferentRoute(a.nav,known)){
+          a.nav=known;adopted=true;
+        }
       }
-      if(repair==='report'&&a.side==='blue')
-        hooks.notify(s,a.name+' NO SAFE ROUTE · ORDERS RETAINED');
+      if(adopted){
+        a.retryRouteAt=0;a.recoveryAttempts=0;
+      }else{
+        a.recoveryAttempts++;
+        a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
+        if(repair==='report'&&a.side==='blue')
+          hooks.notify(s,a.name+' NO SAFE ROUTE · ORDERS RETAINED');
+      }
     }
     // Do not discard an authored plan just because someone is in the way.
   }

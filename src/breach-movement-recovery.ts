@@ -39,3 +39,16 @@ export function recoveryAction(blocker:Blocker,stalled:number,
  * reset or a subsequent order could inherit a previous blocked cooldown. */
 export const madeProgress=(from:{x:number;y:number},to:{x:number;y:number})=>
  Math.hypot(to.x-from.x,to.y-from.y)>.05;
+
+/** Never churn through a replacement A* path identical to the one currently
+ * blocked. A newly opened portal or actual detour can still be adopted.
+ * Compare sampled route geometry only; no order or intel mutation. */
+export function materiallyDifferentRoute(
+ current:readonly {x:number;y:number}[],
+ proposed:readonly {x:number;y:number}[],tolerance=5):boolean{
+ if(!proposed.length)return false;
+ if(!current.length)return true;
+ if(current.length!==proposed.length)return true;
+ return proposed.some((p,i)=>Math.hypot(
+  p.x-current[i].x,p.y-current[i].y)>tolerance);
+}
