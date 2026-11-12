@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as THREE from 'three';
-import {shouldPrewarmContactRig}
+import {shouldPrewarmContactRig,withPreparedVisibleRoot}
  from '../src/rendering/breach-contact-rig-prewarm.ts';
 import {createOperatorRig,poseOperator}
  from '../src/breach-operator-rig.ts';
@@ -17,6 +17,22 @@ test('P2.6 only unopened, unrevealed enemy presentation can prewarm',()=>{
   {hasRig:true},{historical:true},{phase:'complete'}
  ])assert.equal(shouldPrewarmContactRig({...baseline,...change}),false,
   'live combat, player actors and historical replay never expose hidden truth');
+});
+test('P2.6 shader traversal preps hidden actor and always restores disclosure',()=>{
+ const root=new THREE.Group(),child=new THREE.Mesh(new THREE.BoxGeometry(),
+  new THREE.MeshBasicMaterial());
+ root.add(child);root.visible=false;
+ const visited=[];
+ withPreparedVisibleRoot(root,()=>{
+  root.traverseVisible(o=>visited.push(o));
+  assert.equal(root.visible,true);
+ });
+ assert.ok(visited.includes(child),'shader staging reaches equipped visible meshes');
+ assert.equal(root.visible,false,'hidden actor stays hidden before GO');
+ assert.throws(()=>withPreparedVisibleRoot(root,()=>{throw Error('shader compile');}),
+  /shader compile/);
+ assert.equal(root.visible,false,'even a failed warmup cannot disclose a hostile');
+ child.geometry.dispose();child.material.dispose();
 });
 test('P2.6 hidden enemy initial pose fills appearance before live contact',()=>{
  const a=createOperatorRig('p26-guard','red',true);
