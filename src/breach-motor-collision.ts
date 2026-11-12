@@ -11,7 +11,7 @@ import {entryClearanceForLook} from './breach-entry-coordination.ts';
 import {beginAutoSidestep,autoSidestepFacing,watchClearanceAllowed} from './breach-auto-sidestep.ts';
 import {friendlyPassingStep} from './breach-friendly-traffic.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
-import {incidentalCloseWouldBlockTeammate}
+import {incidentalCloseWouldBlockTeammate,operatorCrossingDoor}
  from './breach-door-pressure-arbitration.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
@@ -54,8 +54,15 @@ export function resolveMotorCollision(
   // when it cannot (wall/actor), existing collision and recovery remain.
   const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
     s.operators.filter(o=>o.health>0).map(o=>o.p),{
-      deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door)
+      deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door),
+      preferOpening:door=>operatorCrossingDoor(a,door)
     },world);
+  // Existing handle reach animation shows a genuine, short support-hand
+  // assist, never an invented door manipulation across the room.
+  if(doorContact?.handAssist&&s.seconds-a.lastDoorAt>.76){
+    a.lastDoorAt=s.seconds;a.lastDoorId=doorContact.doorId;
+    a.lastDoorMethod='open';
+  }
   // The physical transition requires a valid oriented three-point torso
   // sweep; normal clearance remains the preference whenever it fits.
   const normalClear=sweptBodyClear(a.p,desiredMove,s.doors,OPERATOR_RADIUS,world);
