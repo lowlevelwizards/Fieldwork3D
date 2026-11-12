@@ -160,22 +160,26 @@ export function sweptProfileClear(from:Pt,to:Pt,doors:Door[],
   heading:number,profile:BodyProfile='normal',world?:SessionWorldGeometry){
   if(profile==='normal')return sweptBodyClear(from,to,doors,OPERATOR_RADIUS,world);
   const steps=Math.max(1,Math.ceil(distance(from,to)/2.5));
+  // Every oriented shoulder sample is within 3.25 units of the centerline.
+  // Keep the exact narrow-profile test; skip only leaves impossible to hit.
+  const candidates=doorsNearSweep(from,to,doors,SQUEEZE_RADIUS+1+3.25);
+  const start=profileSamples(from,heading,'squeeze');
+  const finalOverlapProgress=Math.min(.04,distance(from,to)*.04);
   for(let i=1;i<=steps;i++){
     const t=i/steps,at={x:from.x+(to.x-from.x)*t,
       y:from.y+(to.y-from.y)*t};
     // When a swinging leaf has already brushed the operator, permit
     // a narrow body to ESCAPE that overlap. Never deepen it, and never
     // relax static wall/furniture clearance.
-    const start=profileSamples(from,heading,'squeeze');
     const current=profileSamples(at,heading,'squeeze');
     for(let j=0;j<current.length;j++){
       const sample=current[j],startSample=start[j];
       if(!(world?world.passable(sample.position,sample.radius):passable(sample.position,sample.radius)))return false;
-      for(const door of doors){
+      for(const door of candidates){
         const gap=leafGap(sample.position,door),before=leafGap(startSample.position,door);
         if(gap<sample.radius+1&&
            (before>=sample.radius+1||gap+1e-5<before||
-            i===steps&&gap<before+Math.min(.04,distance(from,to)*.04)))
+            i===steps&&gap<before+finalOverlapProgress))
           return false;
       }
     }
