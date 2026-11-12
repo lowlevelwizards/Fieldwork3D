@@ -18,7 +18,7 @@ iPhone P1 ON: stationary JS 10ms / RAF P95 18ms / sync 9.6ms; active JS 21-30ms,
 ## Stage C: bounded, persistent diagnostics window
 - `?perf=1` maintains a 60s rolling history with 250ms buckets, storing worst RAF gap in each bucket to avoid losing short spikes. Also retain top spikes with phase/context for diagnosis.
 - Draw an actionable graph for RAF frame cadence and CPU scene update, color-mark >33ms and >66ms, allow tapping the graph to inspect historical spikes.
-- Keep the graph available after the spike; compact/collapsible UI avoids obscuring phone controls. Add Copy Report action with metrics, spike timing, attributed components, and P1 hit/miss intervals; no server upload, no persistence in normal gameplay.
+- Keep the graph available after the spike; compact/collapsible UI avoids obscuring phone controls. COPY sends only a short summary with top five spikes and CPU/context; TXT downloads the full report and 250ms CSV history as a local text file. No server upload or persistence in normal gameplay.
 - All allocations, canvas redraw, additional timing probes and copy actions are only active behind `?perf=1`. Sample aggregation is bounded, redraw <=4 Hz. Avoid sorting per RAF.
 
 ## Stage D: critical release and device validation
