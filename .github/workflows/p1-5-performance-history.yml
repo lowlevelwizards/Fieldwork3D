@@ -1,0 +1,49 @@
+name: P1.5 — Execution and Timeline Mobile Critical
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-runtime-loop.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-performance-timeline.ts'
+      - 'src/ui/breach-perf-timeline-panel.ts'
+      - 'src/rendering/breach-presentation-sight-policy.ts'
+      - 'tests/performance-p1-5-*'
+      - 'scripts/smoke-p1-5-performance-history.mjs'
+      - '.github/workflows/p1-5-performance-history.yml'
+permissions:
+  contents: read
+concurrency:
+  group: p1-5-performance-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  perf-timeline:
+    if: ${{ startsWith(github.head_ref, 'feature/p1-5-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: P1.5 policy, bounded timeline, scene phases, disclosure regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/performance-p1-5-*.test.mjs \
+            tests/performance-p1-*.test.mjs \
+            tests/runtime-perf-diagnostics.test.mjs
+      - name: Three-view mobile history UI and execution policy A/B
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/smoke-p1-5-performance-history.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-5-mobile-performance-evidence
+          path: artifacts/performance-p1-5/
+          if-no-files-found: ignore
+          retention-days: 14
