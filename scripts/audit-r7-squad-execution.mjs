@@ -129,6 +129,7 @@ function run(site,seed,kind){
    crossed,orderIssues,planIntact,
    minSpacing:Number.isFinite(minSpacing)?round(minSpacing):null,
    reversalsNearDoor,maxBlockedSeconds:round(maxBlocked),
+   simulatedSeconds:round(session.seconds),phase:session.phase,
    arrivals:stats.arrivals,incomplete:stats.incomplete,
    stallEpisodes:stats.stallEpisodes,retries:stats.retries,
    passageWaitSeconds:stats.passageWaitSeconds,
@@ -138,6 +139,11 @@ function run(site,seed,kind){
     id:d.actor,arrived:d.arrived,remaining:d.remaining,
     stallEpisodes:d.stallEpisodes,blockedSeconds:d.blockedSeconds,
     waitSeconds:d.passageWaitSeconds,retries:d.retries,
+    longestStillSeconds:d.longestStillSeconds,
+    progressDistance:d.distance,
+    activeOrder:actors.find(a=>a.id===d.actor)?.plan[0]?.kind??null,
+    remainingOrders:actors.find(a=>a.id===d.actor)?.plan.length??0,
+    motorPause:actors.find(a=>a.id===d.actor)?.motorPause??null,
     orderIssue:d.orderIssue
    }))};
  }finally{activateSite(null);}
