@@ -33,11 +33,12 @@ const outcome=(s:ReportShot)=>s.down?'INCAPACITATING HIT':
  s.outcome==='non-damaging'?'NO DAMAGE':
  s.outcome==='damaging'?'WOUND':
  s.outcome==='miss'?'MISS':'UNKNOWN DAMAGE';
-function shotDetails(s:ReportShot){
+function shotDetails(s:ReportShot,shooterName:string){
  const part=el('div','fw-v3-shot-details');
  part.append(el('small','',stamp(s.at)+' · SHOT #'+s.id),
+   el('small','fw-v5-shot-outcome-label','SHOT OUTCOME'),
    el('h3','',outcome(s)),
-   el('p','',s.shooterId.toUpperCase()+
+   el('p','',shooterName.toUpperCase()+
      ' · '+(s.receiver??s.weapon??'UNKNOWN WEAPON')),
    el('p','',s.region?.toUpperCase()??'NO RECORDED REGION'));
  if(s.region==='arm'||s.region==='leg'){
@@ -89,7 +90,7 @@ export function renderCombatReport(
  scopeBar.setAttribute('role','group');
  scopeBar.setAttribute('aria-label','Injury evidence scope');
  for(const [scope,label] of [
-   ['selected','SELECTED SHOT'],['cumulative','THROUGH SHOT']
+   ['selected','THIS SHOT'],['cumulative','UP TO THIS SHOT']
  ] as const){
    const choice=button(label,()=>act.chooseScope(scope),
      'fw-v3-small-button fw-v4-scope-choice');
@@ -133,13 +134,22 @@ export function renderCombatReport(
  const right=el('div','fw-v3-combat-info');
  const heading=el('div','fw-v3-combat-name');
  heading.append(el('small','',view.side==='red'?'HOSTILE CONTACT':'SQUAD CASUALTY'),
-   el('h2','',active.name),el('span','',status(active)));
+   el('h2','',active.name),
+   el('small','fw-v5-outcome-label','FINAL RECORDED OUTCOME'),
+   el('span','',status(active)));
  right.append(heading);
- if(selected)right.append(shotDetails(selected));
+ if(selected){
+   const shooter=[...report.operators,...report.hostiles,...report.friendlyCasualties]
+     .find(a=>a.id===selected.shooterId);
+   right.append(shotDetails(selected,shooter?.name??selected.shooterId));
+ }
  else right.append(el('p','fw-after-muted','NO RECORDED SHOTS'));
  right.append(button('▶ WATCH CLIP',()=>act.viewReplay(active,selected),'fw-v3-play'));
  content.append(figure,right);root.append(content);
  if(active.shots.length){
+   const shotIndex=active.shots.findIndex(s=>s.id===selected?.id);
+   root.append(el('small','fw-v5-shot-position',
+     'SHOT '+(shotIndex+1)+' OF '+active.shots.length));
    const sequence=el('div','fw-v3-shot-sequence');
    const prev=button('‹',()=>{
      const idx=active.shots.findIndex(s=>s.id===selected?.id);
