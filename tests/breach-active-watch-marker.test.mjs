@@ -72,14 +72,22 @@ test('rewinding and scrubbing replay restores the actual active target',()=>{
     'replay must not alias mutable target points');
 });
 
-test('2D and 3D use persistent marker; touch selects, drags and deletes it',()=>{
-  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
-  assert.match(main,/function drawActiveWatchMarker\(/);
-  assert.ok(main.split("if(activeTarget&&(!replaying||replayPlanVersion==='active')){").length>=3,
-    'active marker is drawn in both 2D and 3D outside historical replay');
-  assert.match(main,/kind:'activeWatch'/);
-  assert.match(main,/p\.mode==='activeWatch'/);
-  assert.match(main,/retargetActiveWatch\(state,selected,pt\)/);
-  assert.match(main,/selectedActiveWatch\)removeActiveWatch\(state,selected\)/);
-  assert.match(main,/label:'DELETE WATCH'/);
+test('2D and projected 3D use persistent WATCH marker; pointer retargets and context deletes',()=>{
+  const read=path=>readFileSync(new URL('../src/'+path,import.meta.url),'utf8');
+  const routes=read('breach-2d-route-overlays.ts');
+  const projected=read('breach-2d-projected-overlays.ts');
+  const picking=read('breach-tactical-picking.ts');
+  const pointer=read('breach-pointer-command-controller.ts');
+  const commands=read('breach-tactical-context-command.ts');
+  const palette=read('ui/tactical-palette-controller.ts');
+  assert.match(routes,/function drawActiveWatchMarker\(/);
+  assert.match(routes,/if\(activeTarget&&\(!replaying\|\|replayPlanVersion==='active'\)\)/);
+  assert.match(projected,/if\(activeTarget&&\(!replaying\|\|replayPlanVersion==='active'\)\)/);
+  assert.match(projected,/drawActiveWatchMarker\(worldToScreen/);
+  assert.match(picking,/kind:'activeWatch'/);
+  assert.match(pointer,/p.mode==='activeWatch'/);
+  assert.match(pointer,/retargetActiveWatch\(port.state,port.selected,target\)/);
+  assert.match(commands,/if\(input.selectedActiveWatch\)removeActiveWatch\(state,selected\)/);
+  assert.match(palette,/label:'DELETE WATCH'/);
+
 });
