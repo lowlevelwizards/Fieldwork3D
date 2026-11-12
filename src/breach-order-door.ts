@@ -38,7 +38,11 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
        a.actionTimer===0){
        // The handle may be just beyond a valid authored DOOR waypoint.
        // Only a short physically swept correction is allowed.
-       const point=doorApproach(a.p,door,sessionWorldGeometry(s),
+       const remembered=a.nav.at(-1);
+       const stage=remembered&&d(a.p,remembered)<75&&
+         d(a.p,remembered)>2&&doorReachable(remembered,door)?
+           remembered:null;
+       const point=stage??doorApproach(a.p,door,sessionWorldGeometry(s),
          [...s.operators.filter(other=>other!==a&&other.health>0)
            .map(other=>other.p),
           ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);

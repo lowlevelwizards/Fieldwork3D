@@ -69,3 +69,11 @@ test('TM4: staged approach avoids occupied teammate body positions',()=>{
   assert.match(order,/approach\(a,point,dt,s,\.60\)/);
  }finally{activateSite(null);}
 });
+
+test('TM4: a queued safe stage must yield to physical motor footsteps',()=>{
+ const code=readFileSync(new URL('../src/breach-motor-door.ts',import.meta.url),'utf8');
+ assert.match(code,/const staging=a\.side==='red'\?a\.nav\[0\]:undefined/);
+ assert.match(code,/a\.motorPause=null;\s*return \{paused:false,closed:false\}/);
+ const order=readFileSync(new URL('../src/breach-order-door.ts',import.meta.url),'utf8');
+ assert.match(order,/const stage=remembered&&d\(a\.p,remembered\)<75/);
+});
