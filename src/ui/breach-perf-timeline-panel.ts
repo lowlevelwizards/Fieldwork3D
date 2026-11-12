@@ -2,7 +2,7 @@
  * ?perf=1, and visual painting is capped by the calling 750ms cadence.
  * The game controls and camera are never affected by this panel.
  */
-import {PerformanceTimeline,performanceHotspot,
+import {PerformanceTimeline,performanceHotspot,previousFrameHotspot,
  type PerformanceTimelineBucket,PERFORMANCE_BUCKET_COUNT}
  from '../breach-performance-timeline.ts';
 
@@ -150,7 +150,8 @@ export class BreachPerfTimelinePanel{
    ago+'s ago · RAF '+peak.raf.toFixed(0)+'ms / PREV JS '+
    (peak.previousJs?.toFixed(0)??'?')+'ms / NOW JS '+
    peak.js.toFixed(0)+'ms / SYNC '+peak.sync.toFixed(0)+
-   'ms · '+performanceHotspot(peak)+
+   'ms · '+(peak.previousWork?previousFrameHotspot(peak)+' · ':'')+
+   performanceHotspot(peak)+
    ' · fog +'+peak.fogPaints+' shadow +'+peak.shadowRefreshes+
    ' · '+peak.phase+', '+peak.camera;
  }
