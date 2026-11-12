@@ -40,7 +40,8 @@ test('C3 2D and 3D share the identical living, dead and civilian disclosure poli
  assert.match(actor2d,/const visible=presentActor\(state,a,/);
  assert.match(actor2d,/if\(!presentCivilian\(state,c,/);
  assert.match(scene3d,/const visible=presentActor\(s,actor,omniscient,replayDisclosurePolicy\)/);
- assert.match(scene3d,/presentCivilian\(s,civil,/);
+ assert.match(read('rendering/breach-actor-frame-presenter.ts'),
+  /presentCivilian\(s,civil,omniscient,replayDisclosurePolicy\)/);
  assert.doesNotMatch(actor2d,/civilianPresentationVisible\(/);
  assert.doesNotMatch(actor2d,/replayCivilianDisclosed\(/);
  assert.doesNotMatch(actor2d,/replayActorDisclosed\(/);
