@@ -4,11 +4,11 @@ Status: implementation branch `feature/p1-5-execution-timeline-profiler`; baseli
 ## Evidence
 iPhone P1 ON: stationary JS 10ms / RAF P95 18ms / sync 9.6ms; active JS 21-30ms, RAF P95 112-166ms; P1 OFF active JS 28-32ms, RAF P95 92-121ms. These are unsynchronized frames and cannot support causality. P1 shows 80k+ cumulative lookups: report **recent deltas** instead.
 
-## Stage A: cache policies (A/B, do not guess)
-- `?presentationSight=always` (current shipped default): safe memo in live and planning.
-- `?presentationSight=planning`: reuse during paused/planning, bypass during active execution.
-- `?presentationSight=legacy`: no memo anywhere (existing comparison).
-- All three bypass historical replay and use identical authoritative source sight and disclosure. Default stays `always` until user iPhone data proves otherwise.
+## Stage A: cache policies (iPhone review, 2026-11-12)
+- `?presentationSight=planning` (B, **shipped default** without an override): reuse during paused/planning, bypass during active execution.
+- `?presentationSight=always` (A, explicit comparison/rollback): memo in execution and planning.
+- `?presentationSight=legacy` (C, explicit baseline): no memo anywhere.
+- All three bypass historical replay and preserve identical authoritative source sight and disclosure. User-approved B promotion followed observed steady-state iPhone P50/P95 improvements; the captures were not workload matched, so no claim that stutters are solved.
 
 ## Stage B: calibrated time attribution
 - Measure frame gap, JS, simulation, recording, 3D scene update (including WebGL submit), HUD/interactions, and overlay.
