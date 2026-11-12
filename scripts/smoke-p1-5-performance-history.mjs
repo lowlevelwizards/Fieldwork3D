@@ -26,7 +26,9 @@ try{
   ...(process.env.FIELDWORK_CI_CHROME?{executablePath:binary}:{}),
   args:['--use-gl=angle','--use-angle=swiftshader',
    '--enable-unsafe-swiftshader']});
- for(const policy of ['always','planning']){
+ for(const policy of ['default','always','planning']){
+  const effectivePolicy=policy==='default'?'planning':policy;
+  const policyQuery=policy==='default'?'':'&presentationSight='+policy;
   const page=await browser.newPage({viewport:{width:390,height:844},
    deviceScaleFactor:1,hasTouch:true,isMobile:true});
   const errors=[];
