@@ -184,6 +184,9 @@ export class BreachPerfTimelinePanel{
      peak.raf>=33.3?'#e4aa76':'#b0bd9d';
    ctx.beginPath();ctx.moveTo(px,zero);
    ctx.lineTo(px,y(peak.raf));ctx.stroke();
+   if(peak.raf>max){
+    ctx.fillStyle='#e27475';ctx.fillRect(px-1,2,3,3);
+   }
    ctx.strokeStyle='#76c4bc';ctx.lineWidth=1.3;
    ctx.beginPath();ctx.moveTo(px,y(bucket.maxSync));
    ctx.lineTo(px+1,y(bucket.maxSync));ctx.stroke();
