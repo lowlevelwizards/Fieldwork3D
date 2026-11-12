@@ -37,6 +37,7 @@ import {liveMagazineCapacity,magazineAlert}
   from '../arsenal/live-magazine-capacity.ts';
 import {executionStatus} from '../breach-execution-state.ts';
 import {compactExecutionStatus} from './tactical-hud-density.ts';
+import {tacticalUiActionAvailability} from './tactical-command-affordances.ts';
 import {ExecutionNoticeFeed} from './execution-feedback.ts';
 import {createTacticalInteractionState,
  type TacticalInteractionState} from '../breach-tactical-interaction-state.ts';
@@ -540,12 +541,22 @@ export function createTacticalHudController(
   ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
   ui.loadout.disabled=mode==='mission'||state.phase!=='planning'||replaying;
   if(ui.loadout.disabled&&!weaponChooser.hidden)hideWeaponChooser();
-  ui.flash.disabled=state.flashRemaining<=0||replaying;
-  ui.back.disabled=!targeting.isArmed&&!selectedActiveWatch&&!active?.plan.length;
-  ui.clear.disabled=!active?.plan.length||state.phase!=='planning'||replaying;
+  const availability=tacticalUiActionAvailability({
+    phase:state.phase,replaying,actorHealth:active?.health??null,
+    planCount:active?.plan.length??0,
+    undoCount:active?.history.undo.length??0,
+    redoCount:active?.history.redo.length??0,
+    flashRemaining:state.flashRemaining,
+    targetingArmed:targeting.isArmed,activeWatchSelected:selectedActiveWatch
+  });
+  ui.flash.disabled=!availability.flash;
+  ui.back.disabled=!availability.back;
+  ui.clear.disabled=!availability.clear;
   ui.clear.title='Clear this operator\'s route (Undo restores it)';
-  ui.undo.disabled=!(active?.history.undo.length);
-  ui.redo.disabled=!(active?.history.redo.length);
+  ui.undo.disabled=!availability.undo;
+  ui.redo.disabled=!availability.redo;
+  ui.wait.disabled=!availability.wait;
+  ui.sync.disabled=!availability.sync;
   ui.debrief.hidden=replaying||mode==='menu'||mode==='home'||
     (state.phase!=='won'&&state.phase!=='lost');
   ui.favoriteMission.disabled=!state.site;
@@ -635,6 +646,19 @@ function bindWeaponChooser(port:TacticalWeaponChooserPorts){
   let toolbarButtons:TacticalToolbarButtons|null=null;
   function bindToolbar(port:TacticalToolbarPorts):TacticalToolbarButtons{
    if(toolbarButtons)return toolbarButtons;
+   const available=()=>{
+     const actor=team(port.state).find(a=>a.id===port.selected);
+     return tacticalUiActionAvailability({
+       phase:port.state.phase,replaying:port.replaying,
+       actorHealth:actor?.health??null,
+       planCount:actor?.plan.length??0,
+       undoCount:actor?.history.undo.length??0,
+       redoCount:actor?.history.redo.length??0,
+       flashRemaining:port.state.flashRemaining,
+       targetingArmed:targeting.isArmed,
+       activeWatchSelected:port.selectedActiveWatch
+     });
+   };
    let fieldLightButton:HTMLButtonElement|null=null;
    let medicalButton:HTMLButtonElement|null=null;
    let dragButton:HTMLButtonElement|null=null;
@@ -642,6 +666,7 @@ function bindWeaponChooser(port:TacticalWeaponChooserPorts){
    let retrieveButton:HTMLButtonElement|null=null;
 port.ui.rook.addEventListener('click',()=>port.selectUnit('rook'));
 port.ui.back.addEventListener('click',()=>{
+  if(!available().back)return;
   port.audio.uiClickTone('select');
   // BACK must always escape an unfinished targeting gesture first.
   // It cannot accidentally remove an unrelated prior waypoint.
@@ -659,7 +684,7 @@ port.ui.moss.addEventListener('click',()=>port.selectUnit('moss'));
 port.ui.ash.addEventListener('click',()=>port.selectUnit('ash'));
 port.ui.vale.addEventListener('click',()=>port.selectUnit('vale'));
 port.ui.clear.addEventListener('click',async()=>{
- if(port.state.phase!=='planning'||port.replaying)return;
+ if(!available().clear)return;
  const session=port.state,targetId=port.selected;
  const operator=team(session).find(a=>a.id===targetId);
  const count=operator?.plan.length??0;
@@ -669,16 +694,33 @@ port.ui.clear.addEventListener('click',async()=>{
    message:count+' queued orders will be cleared. Undo can restore the route.',
    confirmLabel:'CLEAR ROUTE',danger:true
  }))return;
- if(session!==port.state||port.state.phase!=='planning')return;
+ if(session!==port.state||targetId!==port.selected||!available().clear)return;
  if(clearPlan(port.state,targetId)){
    port.selectedNode=null;
    port.showUiHelp('ROUTE CLEARED · UNDO TO RESTORE',3000);
    port.audio.playOrderCue('ui.cancel');port.updateHud();
  }
 });
-port.ui.undo.addEventListener('click',()=>{undoPlan(port.state,port.selected);port.selectedNode=null;port.audio.playOrderCue('orders.undo');port.updateHud();});
-port.ui.redo.addEventListener('click',()=>{redoPlan(port.state,port.selected);port.selectedNode=null;port.audio.playOrderCue('orders.redo');port.updateHud();});
-port.ui.wait.addEventListener('click',()=>{planWait(port.state,port.selected,1);port.audio.playOrderCue('orders.wait');port.updateHud();});
+port.ui.undo.addEventListener('click',()=>{
+  if(!available().undo)return;
+  if(undoPlan(port.state,port.selected)){
+    port.selectedNode=null;port.audio.playOrderCue('orders.undo');
+  }
+  port.updateHud();
+});
+port.ui.redo.addEventListener('click',()=>{
+  if(!available().redo)return;
+  if(redoPlan(port.state,port.selected)){
+    port.selectedNode=null;port.audio.playOrderCue('orders.redo');
+  }
+  port.updateHud();
+});
+port.ui.wait.addEventListener('click',()=>{
+  if(!available().wait)return;
+  if(planWait(port.state,port.selected,1))
+    port.audio.playOrderCue('orders.wait');
+  port.updateHud();
+});
 fieldLightButton=document.createElement('button');
 fieldLightButton.type='button';fieldLightButton.textContent='WEAPON LIGHT';
 fieldLightButton.setAttribute('aria-label','Toggle selected operator weapon light');
@@ -754,11 +796,15 @@ port.ui.reload.addEventListener('click',()=>{
 });
 port.ui.cancelTarget.addEventListener('click',port.cancelTargeting);
 port.ui.flash.addEventListener('click',()=>{
-  if(port.state.phase!=='planning'||port.replaying)return;
+  if(!available().flash)return;
   targeting.toggleFlash();
   port.updateHud();
 });
-port.ui.sync.addEventListener('click',()=>{planSync(port.state);port.audio.playOrderCue('orders.sync');port.updateHud();});
+port.ui.sync.addEventListener('click',()=>{
+  if(!available().sync)return;
+  if(planSync(port.state))port.audio.playOrderCue('orders.sync');
+  port.updateHud();
+});
 port.ui.stance.addEventListener('click',()=>{
   posture(port.state,port.selected);port.audio.playOrderCue('orders.stance');port.invalidateFog();port.updateHud();
 });
@@ -775,7 +821,13 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
     const handleContextAction=(event:MouseEvent)=>{
       const button=(event.target as HTMLElement).closest<HTMLButtonElement>(
         'button[data-action]');
-      if(!button||config.state.phase!=='planning'||config.replaying)return;
+      if(!button||button.disabled||config.state.phase!=='planning'||
+         config.replaying||!config.actor||config.actor.health<=0)return;
+      // A delayed click must still belong to the currently displayed actor.
+      const surface=config.ui.context.contains(button)?
+        config.ui.context:config.ui.quickStates.contains(button)?
+          config.ui.quickStates:null;
+      if(!surface||surface.hidden||surface.dataset.owner!==config.selected)return;
       const action=button.dataset.action;
       if(action)discoverAction(action,button.title);
       const a=config.actor;
