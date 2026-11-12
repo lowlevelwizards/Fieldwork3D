@@ -24,13 +24,18 @@ export class ReplayKnowledgeController{
    return this.observerId?{mode:'operator',observerId:this.observerId}:
      this.omniscient?{mode:'full'}:{mode:'squad'};
  }
+ /** Representation-only invalidation; never clears recorded sight history.
+  * New replay archives and ground-lens re-entry call this one owner.
+  */
+ invalidateGroundCache():void{
+   this.groundCacheObserver=null;this.groundCacheEvidence=null;
+   this.groundCacheCount=-1;this.groundCacheSite=null;
+ }
  reset():void{
    this.omniscient=true;this.observerId=null;this.hasContactEvidence=false;
    this.sightIndex=null;this.doorHistory=null;this.windowHistory=null;
    this.personalGround=null;this.groundLensOn=false;
-   this.groundCacheObserver=null;this.groundCacheEvidence=null;
-   this.groundCacheCount=-1;
-   this.groundCacheSite=null;
+   this.invalidateGroundCache();
  }
  prepare(recorder:MissionRecorder):void{
    this.reset();

@@ -65,9 +65,7 @@ export function createReplayModeController(config:ReplayModeControllerHooks){
   config.knowledge.prepare(recorder);
   config.knowledge.omniscient=false;
   config.knowledge.groundLensOn=false;
-  config.knowledge.groundCacheObserver=null;
-  config.knowledge.groundCacheCount=-1;
-  config.knowledge.groundCacheSite=null;
+  // prepare() already invalidates all personal-ground canvas cache keys.
   config.camera.director.indexPlans(recorder.plans.revisions);
   config.getAnalysis().startSession();
   config.resetReplayOptions();
