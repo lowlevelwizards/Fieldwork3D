@@ -55,11 +55,49 @@ const mix=(a:number,b:number,t:number)=>{
  const channel=(shift:number)=>Math.round(((a>>shift)&255)*(1-t)+((b>>shift)&255)*t);
  return (channel(16)<<16)|(channel(8)<<8)|channel(0);
 };
+/** F4.1: Preserve all authored palette families, but prevent nearly
+ * identical large planes from collapsing together in ISO and perspective.
+ * Conservative luminance separation, never universal re-saturation.
+ */
+export const ARCHITECTURAL_COLOR_RELATIONSHIPS=Object.freeze({
+ minimumFloorWall:34,minimumTileWall:28,minimumTrimWall:17,
+ minimumCapWall:87
+});
+export const paletteLuminance=(hex:number):number=>
+ .2126*((hex>>>16)&255)+.7152*((hex>>>8)&255)+.0722*(hex&255);
+/** Move just far enough toward a compatible neutral to separate surfaces.
+ * Never change the palette's identity, switch a warm finish to cold, or
+ * draw another mesh. A bounded step makes small integer roundoff safe.
+ */
+function separateColor(from:number,wall:number,minimum:number,
+  target:number,prefer:'darker'|'lighter'|'existing'):number{
+ const wallL=paletteLuminance(wall),current=paletteLuminance(from);
+ if(Math.abs(current-wallL)>=minimum)return from;
+ const direction=prefer==='existing'?(current>=wallL?'lighter':'darker'):prefer;
+ const targetL=paletteLuminance(target);
+ if(direction==='darker'&&targetL>=current)return from;
+ if(direction==='lighter'&&targetL<=current)return from;
+ for(let step=1;step<=32;step++){
+  const candidate=mix(from,target,step/100);
+  if(Math.abs(paletteLuminance(candidate)-wallL)>=minimum &&
+    (direction==='darker'?paletteLuminance(candidate)<wallL:
+     paletteLuminance(candidate)>wallL))return candidate;
+ }
+ return mix(from,target,.32);
+}
 export function buildingTheme(kind:BuildingArchetype|undefined,seed:number):BuildingTheme{
  const options=schemes[kind??'house'];
  // Same archetype, varied seeds: three stable palettes, not random per room.
  const s=options[(seed>>>0)%options.length];
- return {...s,hall:mix(s.floor,s.wall,.26),grout:mix(s.floor,s.cap,.19)};
+ const c=ARCHITECTURAL_COLOR_RELATIONSHIPS;
+ const floor=separateColor(s.floor,s.wall,c.minimumFloorWall,0x657672,'darker');
+ const tile=separateColor(s.tile,s.wall,c.minimumTileWall,0x899c97,'darker');
+ const trim=separateColor(s.trim,s.wall,c.minimumTrimWall,
+  paletteLuminance(s.trim)>=paletteLuminance(s.wall)?0xf5f0e2:0x45514b,
+  'existing');
+ const cap=separateColor(s.cap,s.wall,c.minimumCapWall,0x303d3c,'darker');
+ return {...s,floor,tile,trim,cap,hall:mix(floor,s.wall,.26),
+  grout:mix(floor,cap,.19)};
 }
 export function roomFloor(theme:BuildingTheme,purpose:string|undefined,tone=0):number{
  const wet=['kitchen','bathroom','restroom','pantry','laundry','exam',
