@@ -25,6 +25,6 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Critical real-motor, queue, and authored-attention regressions
         run: |
-          node --experimental-strip-types --test tests/squad-flow-a1.test.mjs tests/doorway-convoy-flow.test.mjs tests/squad-entry-b-sectors.test.mjs tests/squad-entry-b-continuity.test.mjs tests/breach-149.test.mjs
+          node --experimental-strip-types --test tests/squad-flow-a1.test.mjs tests/doorway-convoy-flow.test.mjs tests/squad-entry-b-sectors.test.mjs tests/squad-entry-b-continuity.test.mjs tests/breach-149.test.mjs tests/breach-navigation-openings-r1.test.mjs
       - name: Generated R7.1 execution smoke (observability only)
         run: node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 3 600
