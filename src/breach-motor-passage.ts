@@ -62,7 +62,13 @@ export function negotiateMotorPassage(
     // operator backs out. One candidate gets the lane; the other receives a
     // real, swept retreat route, not another simultaneous squeeze attempt.
     // Ordinary convoy pauses never qualify. Preserve authored orders.
-    if(!a.traversal&&!a.traversalPending){
+    // A retreat is an escape attempt, never a replacement journey.
+    // Repeated stalls against the same authored destination must NOT keep
+    // inserting new backwards waypoints (the observed infinite reverse).
+    // A genuinely new order/goal may authorize one further physical yield.
+    const retreatKey=(a.plan[0]?.id??'motor')+':'+a.routeGoalKey;
+    if(!a.traversal&&!a.traversalPending&&
+       a.passageRetreatKey!==retreatKey){
       const retreat=passageDeadlockRetreatTarget(
         {...passageActor,waitSeconds:a.passageWaitSeconds},
         s.doors,traffic,(from,to)=>sweptBodyClear(from,to,s.doors)||
@@ -70,6 +76,7 @@ export function negotiateMotorPassage(
              a.squeezeYaw,'squeeze',world)));
       if(retreat){
         a.nav.unshift(retreat);a.passageWaitSeconds=0;
+        a.passageRetreatKey=retreatKey;
         a.retryRouteAt=0;a.recoveryAttempts=0;
         return {paused:true,move};
       }
