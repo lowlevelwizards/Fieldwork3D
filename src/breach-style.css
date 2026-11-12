@@ -3713,3 +3713,62 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v5-workspace .fw-v4-squad .fw-v4-squad-focus .fw-v4-squad-model{
   height:135px;min-height:105px}
 }
+
+/* V5.3: readable combat inspection; no overlay cards or trapped page scroll. */
+.fw-v5-workspace .fw-after-body{overflow-y:auto;overscroll-behavior-y:contain}
+.fw-v5-workspace .fw-v3-combat{
+ height:auto;min-height:100%;overflow:visible;gap:8px}
+.fw-v5-workspace .fw-v3-combat-top{
+ display:flex;align-items:center;justify-content:flex-start;
+ flex-wrap:wrap;gap:7px}
+.fw-v5-workspace .fw-v3-combat-focus,
+.fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-focus{
+ flex:none;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);
+ gap:9px;min-height:310px;overflow:visible;position:static}
+.fw-v5-workspace .fw-v3-combat-figure,
+.fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-figure{
+ position:relative;inset:auto;width:auto;height:310px;min-height:245px;
+ padding:5px;box-sizing:border-box;overflow:hidden}
+.fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-figure .fw-after-model{
+ height:100%;max-height:none;flex:1}
+.fw-v5-workspace .fw-v3-combat-info,
+.fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-info{
+ position:static;display:flex;flex-direction:column;justify-content:flex-start;
+ width:auto;min-height:0;max-height:none;overflow:visible;gap:10px;
+ padding:5px;background:transparent;border:0}
+.fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-name small,
+.fw-v5-workspace .fw-v4-combat-3d .fw-v3-shot-details p,
+.fw-v5-workspace .fw-v4-combat-3d .fw-v3-shot-damage{display:block}
+.fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-name h2{font-size:24px}
+.fw-v5-workspace .fw-v4-combat-3d .fw-v3-shot-details h3{font-size:20px}
+.fw-v5-workspace .fw-v4-combat-3d .fw-v3-shot-details p{font-size:11px}
+.fw-v5-workspace .fw-v4-combat-3d .fw-v4-forensic-side{font-size:11px!important}
+.fw-v5-workspace .fw-v3-combat .fw-v3-small-button,
+.fw-v5-workspace .fw-v3-combat .fw-v3-contact-chip{min-height:44px}
+.fw-v5-workspace .fw-v3-combat-name .fw-v5-outcome-label,
+.fw-v5-workspace .fw-v3-shot-details .fw-v5-shot-outcome-label{
+ color:#a9bca8;font:700 9px var(--ui-display);letter-spacing:.04em}
+.fw-v5-shot-position{font:800 10px var(--ui-display);color:#bdcbb8}
+.fw-v5-workspace .fw-v3-shot-sequence{min-height:44px}
+.fw-v5-workspace .fw-v3-shot-chip{min-height:44px}
+.fw-v5-workspace .fw-v4-model-canvas{touch-action:pan-y}
+@media(max-width:700px){
+ .fw-v5-workspace .fw-v3-combat-focus,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-focus{
+  display:flex;flex-direction:column;gap:7px}
+ .fw-v5-workspace .fw-v3-combat-figure,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-figure{
+  height:300px;min-height:270px;flex:0 0 auto}
+ .fw-v5-workspace .fw-v3-combat-info,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-info{
+  padding:3px 2px;gap:8px}
+ .fw-v5-workspace .fw-v3-combat-name h2{font-size:23px}
+ .fw-v5-workspace .fw-v3-shot-details h3{font-size:20px}
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v4-model-evidence-key{
+  position:static;max-width:100%;padding:5px;font-size:9px!important}
+}
+@media(max-height:480px){
+ .fw-v5-workspace .fw-v3-combat-figure,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-figure{
+  height:210px;min-height:190px}
+}
