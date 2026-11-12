@@ -99,6 +99,20 @@ try{
     check(visible>=70,'Landscape combat model obscured '+name+' ('+visible+' px)');
    }
    await root.screenshot({path:'artifacts/after-action-v5/'+name+'-combat.png'});
+   if(width<=700&&height>=481){
+     await root.locator('.fw-v4-inspection-switch button').first().click();
+     const anatomy=await root.locator('.fw-v3-paper svg').evaluate(svg=>{
+       const r=svg.getBoundingClientRect();
+       const figure=svg.closest('.fw-v3-combat-figure').getBoundingClientRect();
+       return {height:r.height,width:r.width,bottom:r.bottom,
+         figureBottom:figure.bottom};
+     });
+     check(anatomy.height>=200&&anatomy.width>=140&&
+       anatomy.bottom<=anatomy.figureBottom+2,
+       'Portrait anatomy collapsed or clipped '+name+' '+
+       JSON.stringify(anatomy));
+     await root.screenshot({path:'artifacts/after-action-v5/'+name+'-anatomy.png'});
+   }
    await root.locator('#afterActionDetailsToggle').click();
    check(await root.locator('.fw-v5-timeline-filter').count()>=4,
     'Timeline filter controls missing '+name);
@@ -111,6 +125,18 @@ try{
    check(await root.locator('.fw-v6-moments #afterActionTimeline').count()===1,
     'Moments did not retain the shared timeline '+name);
    await root.screenshot({path:'artifacts/after-action-v5/'+name+'-highlights.png'});
+   await root.locator('[data-after-tab="squad"]').click();
+   if(await root.locator('.fw-v4-model-canvas').count()){
+     await root.locator('.fw-v4-model-canvas').evaluate(canvas=>
+       canvas.dispatchEvent(new Event('webglcontextlost',{cancelable:true})));
+     check(await root.locator('.fw-v7-model-retry').count()===1,
+       'Lost WebGL context has no retry action '+name);
+     await root.locator('.fw-v7-model-retry').click();
+     await root.locator('.fw-v4-model-canvas').waitFor({
+       state:'attached',timeout:30000});
+     check(await root.locator('.fw-v7-model-retry').count()===0,
+       'Retry did not restore model canvas '+name);
+   }
    const overflow=await root.evaluate(e=>
     e.scrollWidth>e.clientWidth+5);
    check(!overflow,'Root-level horizontal overflow '+name);
