@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {resolveMovementFrame,sweptPairMayTouch}
  from '../src/breach-movement-authority.ts';
 import {reconcileCivilianTransportFrame}
@@ -173,4 +174,19 @@ test('P2.12 carried civilian rollback and other-actor yield match prior resolver
   reconcileCivilianTransportFrame(proposals,actual,links);
   assert.deepEqual(actual,expected,'carrier rollback round '+round);
  }
+});
+
+test('P2.12 no-op far-pair culling and civilian route profiling are opt-in only',()=>{
+ const far=Array.from({length:48},(_,i)=>p((i%8)*230,Math.floor(i/8)*230));
+ let possible=0;
+ for(let i=0;i<far.length;i++)for(let j=i+1;j<far.length;j++)
+  if(sweptPairMayTouch(far[i],far[i],far[j],far[j],20))possible++;
+ assert.equal(possible,0,'separated stationary pairs must skip expensive crossing math');
+ const phase=readFileSync(new URL('../src/breach-simulation-motion-phase.ts',import.meta.url),'utf8');
+ assert.match(phase,/const withinSquared=/);
+ assert.match(phase,/withinSquared\(a\.p,p,400\)/);
+ assert.match(phase,/withinSquared\(o\.p,p,484\)/);
+ assert.match(phase,/civilian-motion\/route-search/);
+ assert.match(phase,/if\(!profile\)return port\.routeTo\(s,from,to\)/,
+   'no route profiling wall clock should run without ?perf=1');
 });
