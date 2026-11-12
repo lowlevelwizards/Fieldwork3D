@@ -2,6 +2,7 @@
  * No socket dots, duplicated part UI, inventory writes, or continuous animation.
  */
 import * as THREE from 'three';
+import {GRAPHIC_LIGHT_PROFILE as G,configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 import {applyStudioGraphicLighting,disposeStudioGraphicLighting}
  from '../operator-studio-graphic-lighting.ts';
 import {effectiveStudioLightLab,APPROVED_GRAPHIC_LIGHTING,
@@ -73,6 +74,7 @@ export class ArsenalViewport{
   try{
    renderer=new THREE.WebGLRenderer({canvas:this.canvas,antialias:false,
     powerPreference:'low-power'});
+   configureGraphicRendererOutput(renderer);
    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
   }catch{
    host.dataset.webglUnavailable='true';
@@ -150,7 +152,7 @@ export class ArsenalViewport{
    this.hemisphere.intensity=p.hemiIntensity;
    this.fillLight.color.setHex(plum.fill);
    this.fillLight.intensity=p.fillIntensity*
-    (settings.shadow==='plum-plus'?1.35:1);
+    (settings.shadow==='plum-plus'?G.plumFillBoost:1);
    this.keyLight.position.copy(STUDIO_KEY_DIRECTION)
     .applyAxisAngle(new THREE.Vector3(0,1,0),
      THREE.MathUtils.degToRad(settings.lightAzimuth))

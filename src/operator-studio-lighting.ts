@@ -3,6 +3,7 @@
  * operator key casts; camera-only navigation never invalidates the map.
  */
 import * as THREE from 'three';
+import {GRAPHIC_LIGHT_PROFILE as G} from './rendering/graphic-lighting-profile.ts';
 import {requestedStudioRenderQuality}
  from './operator-studio-render-quality.ts';
 
@@ -44,7 +45,7 @@ export function requestedStudioShadowColor(search:string):StudioShadowColor{
 export function studioShadowFill(search:string){
  return STUDIO_SHADOW_PALETTES[requestedStudioShadowColor(search)];
 }
-export const STUDIO_KEY_DIRECTION=new THREE.Vector3(.46,.88,.07).normalize();
+export const STUDIO_KEY_DIRECTION=new THREE.Vector3(...G.keyDirection).normalize();
 export const STUDIO_SHADOW_PAD=3;
 export function studioShadowMode(search:string):StudioShadowMode{
  const value=new URLSearchParams(search).get('operatorLighting');
@@ -163,7 +164,7 @@ export class OperatorStudioLighting{
   const legacy=this.mode==='legacy';
   const p=STUDIO_INSPECTION_LIGHT;
   this.fill.intensity=(legacy?p.legacyFillIntensity:p.fillIntensity)*
-   (color==='plum-plus'?1.35:color==='plum-noir'?1.5:1);
+   (color==='plum-plus'?G.plumFillBoost:color==='plum-noir'?1.5:1);
  }
  /** Lab-only orbit. The approved zero-angle key is restored on A/B compare. */
  setKeyAngle(degrees:number){

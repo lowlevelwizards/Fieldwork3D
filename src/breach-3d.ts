@@ -3,6 +3,7 @@ import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
   from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
+import {GRAPHIC_LIGHT_PROFILE as G,configureGraphicRendererOutput} from './rendering/graphic-lighting-profile.ts';
 import {SiteMaterialLifetime} from './rendering/site-material-lifetime.ts';
 import {buildSiteWorld,finalizeStaticSiteBatches,type SiteSceneBuildPort}
  from './rendering/breach-site-scene-builder.ts';
@@ -707,9 +708,7 @@ export class TacticalScene3D{
     this.canvas=canvas;
     this.renderer=new THREE.WebGLRenderer({canvas,antialias:true,
       alpha:false,powerPreference:'high-performance'});
-    this.renderer.outputColorSpace=THREE.SRGBColorSpace;
-    this.renderer.toneMapping=THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure=1.05;
+    configureGraphicRendererOutput(this.renderer);
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.autoUpdate=false;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -1422,7 +1421,7 @@ export class TacticalScene3D{
       this.sun.intensity=mood.sun;
       if(this.graphicLookEnabled)
        this.graphicFill.intensity=STUDIO_INSPECTION_LIGHT.fillIntensity*
-        1.35*(mood.sun/2.35);
+        G.plumFillBoost*(mood.sun/2.35);
       this.appliedLightingMode=s.lightingMode;
     }
     for(const [index,group] of this.coverGroups){
