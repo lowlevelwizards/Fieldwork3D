@@ -176,7 +176,12 @@ function followReplayOperator(id:string):void{
   port.selected=id;port.replayCamera.followId=id;
   port.chooseReplayCamera('operator');port.replayCamera.follow=true;
   if(port.replayKnowledge.observerId){
-    port.replayKnowledge.observerId=port.replayBodycam.observers.includes(id)?id:null;
+    const observer=port.replayBodycam.observers.includes(id)?id:null;
+    // An inspector opened under the prior personal evidence cannot remain
+    // visible after the viewer changes operators (or falls back to squad).
+    if(observer!==port.replayKnowledge.observerId)
+      port.replayAnalysisUi.closeReplayShotInspector();
+    port.replayKnowledge.observerId=observer;
     refreshHistoricalViews(false);
   }
   port.advanceReplayCamera(0,true);
