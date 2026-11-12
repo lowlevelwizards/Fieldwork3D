@@ -16,7 +16,10 @@ import {beginOperatorPoseOutput,stageOperatorPoseOutput,
 import {canonicalRootOrientation} from './operator-axis-convention.ts';
 import {neutralMannequinWrist,neutralMannequinElbowPole}
  from './operator-mannequin-pose.ts';
-import {alignSegment,solveTwoBone,ARM_LIMITS} from './breach-ik.ts';
+import {solveTwoBone,ARM_LIMITS} from './breach-ik.ts';
+import {beginOperatorArmPose,setOperatorArmSegments,setOperatorHandPose,
+ rotateOperatorSupportHand,operatorHandTransform,operatorHandEuler,
+ finishOperatorArmPose} from './breach-operator-upper-body-output.ts';
 import {idleLifeAt} from './breach-idle-life.ts';
 import {lowReadyFamilyFit,lowReadyElbowPole}
  from './breach-low-ready-family-fit.ts';
@@ -862,6 +865,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.root.userData.authoredM4ShortStock=
     manualReport&&manualPose!.preset==='ar-m4a1'&&
       p.weapon==='carbine'?manualReport:null;
+  beginOperatorArmPose(r,scratch);
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
     if(manualShort&&manualSourceFit){
@@ -889,10 +893,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         sign*(solved.joint.z-shoulder.z));
       arm.bend.copy(solved.bendPlane);
       arm.outOfReach=!solved.reached;
-      alignSegment(arm.upper,shoulder,solved.joint,scratch.sides[i]);
-      alignSegment(arm.lower,solved.joint,solved.effector,scratch.sides[i]);
-      arm.hand.position.copy(solved.effector);
-      arm.hand.rotation.set(0,fit.rotation.y,0);
+      setOperatorArmSegments(scratch,i as 0|1,
+        shoulder,solved.joint,solved.effector,scratch.sides[i]);
+      setOperatorHandPose(scratch,i as 0|1,solved.effector,
+        fit.rotation.y);
       r.gripError=Math.max(r.gripError,
         solved.effector.distanceTo(i===0?fit.support:fit.primary));
       continue;
@@ -923,11 +927,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       r.elbowSpread[i]=Math.max(0,
         sign*(sourceArm.elbow.z-shoulder.z));
       arm.bend.copy(sourceArm.bend);arm.outOfReach=false;
-      alignSegment(arm.upper,shoulder,sourceArm.elbow,scratch.sides[i]);
-      alignSegment(arm.lower,sourceArm.elbow,sourceArm.wrist,
-        scratch.sides[i]);
-      arm.hand.position.copy(sourceArm.wrist);
-      arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
+      setOperatorArmSegments(scratch,i as 0|1,
+        shoulder,sourceArm.elbow,sourceArm.wrist,scratch.sides[i]);
+      setOperatorHandPose(scratch,i as 0|1,sourceArm.wrist,
+        clamp(fit.rotation.y,-1,1));
       continue;
     }
     // One final writer consumes either approved paired-arm source.
@@ -942,10 +945,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       r.elbowSpread[i]=Math.max(0,sign*(limb.joint.z-shoulder.z));
       arm.bend.copy(limb.bendPlane);
       arm.outOfReach=false;
-      alignSegment(arm.upper,shoulder,limb.joint,scratch.sides[i]);
-      alignSegment(arm.lower,limb.joint,limb.effector,scratch.sides[i]);
-      arm.hand.position.copy(limb.effector);
-      arm.hand.rotation.set(0,clamp(fit.rotation.y,-1,1),0);
+      setOperatorArmSegments(scratch,i as 0|1,
+        shoulder,limb.joint,limb.effector,scratch.sides[i]);
+      setOperatorHandPose(scratch,i as 0|1,limb.effector,
+        clamp(fit.rotation.y,-1,1));
       if(!coupled&&coordinatedDynamic?.arms){
         const report=coordinatedDynamic.reports![i];
         v3DynamicReports?.push({
@@ -1087,11 +1090,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       desired.distanceTo(solved.effector));
     if(i===1&&!p.surrender)r.gripError=Math.max(r.gripError,
       desired.distanceTo(solved.effector));
-    alignSegment(arm.upper,shoulder,solved.joint,scratch.sides[i]);
-    alignSegment(arm.lower,solved.joint,solved.effector,scratch.sides[i]);
-    arm.hand.position.copy(solved.effector);
-    arm.hand.rotation.set(0,p.unarmedPreview||p.surrender?0:
-      clamp(fit.rotation.y,-1,1),0);
+    setOperatorArmSegments(scratch,i as 0|1,
+      shoulder,solved.joint,solved.effector,scratch.sides[i]);
+    setOperatorHandPose(scratch,i as 0|1,solved.effector,
+      p.unarmedPreview||p.surrender?0:clamp(fit.rotation.y,-1,1));
   }
   r.root.userData.poseV3DynamicReport=p.poseV3Preview&&diagnosticsEnabled?
     v3DynamicReports:null;
@@ -1101,17 +1103,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     v3MagazineRockAngle(reloadProgress,reloadMode,
       coupledConfig?.build?.family):0;
   if(v3MagazineRock&&r.detachedMagazine.visible)
-    r.arms[0].hand.rotateZ(v3MagazineRock);
+    rotateOperatorSupportHand(scratch,v3MagazineRock);
   if(r.magazineHand.visible){
     // Magazine visual follows the *solved* support wrist. The original
     // magazine is hidden from the gun while it is in hand.
-    r.magazineHand.position.copy(r.arms[0].hand.position);
-    r.magazineHand.rotation.copy(r.arms[0].hand.rotation);
+    r.magazineHand.position.copy(operatorHandTransform(scratch,0).position);
+    r.magazineHand.rotation.copy(operatorHandEuler(scratch,0));
   }
   if(r.detachedMagazine.visible){
     // Meshes are magazine-feed-socket relative; the lips follow the
     // solved support wrist and return to their gun mount at insertion.
-    r.detachedMagazine.position.copy(r.arms[0].hand.position);
+    r.detachedMagazine.position.copy(operatorHandTransform(scratch,0).position);
     r.detachedMagazine.rotation.copy(fit.rotation);
     if(v3MagazineRock)r.detachedMagazine.rotateZ(v3MagazineRock);
     r.detachedMagazine.scale.set(data.lengthScale,1,1);
@@ -1128,8 +1130,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       }
     }
   }
-  // B2: both arm chains and the final magazine-driven hand pose are solved.
-  stageOperatorPoseOutput(r,p,'upper-body');
+  // B4: six arm/hand local transforms are staged directly after every
+  // authored, coupled, coordinated, interaction and reload adjustment.
+  // No arm mesh is mutated before the single B2 frame commit.
+  stageDirectOperatorPoseOutput(r,p,'upper-body',
+    finishOperatorArmPose(scratch));
   applyOperatorTraumaPose(r,p,downProgress);
   if(r.droppedGun.visible){
     // The world-space gun begins exactly in the last held grip and travels
@@ -1155,7 +1160,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }
   updateOperatorSlingPose(r,p,physicalSpeed,
     scratch.vertical,scratch.slingDelta);
-  finishOperatorPoseFrame(r,p);
+  finishOperatorPoseFrame(r,p,
+    scratch.armOutput.transforms[0].quaternion,
+    scratch.armOutput.transforms[3].quaternion);
   // B2: late trauma, weapon drop, sling and unarmed-preview visibility
   // are final before their owners publish. No solver can commit a subset.
   stageOperatorPoseOutput(r,p,'frame');

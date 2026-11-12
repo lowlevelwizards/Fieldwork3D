@@ -1,6 +1,7 @@
 /** Post-IK operator pose finalization. The rig owns presentation,
  * never simulation damage or physical actor movement.
  */
+import type * as THREE from 'three';
 import {canonicalRootOrientation} from './operator-axis-convention.ts';
 import {updateOperatorPoseCavity} from './operator-pose-cavity-lighting.ts';
 import type {OperatorRig} from './breach-operator-rig.ts';
@@ -28,7 +29,8 @@ export function applyOperatorTraumaPose(r:OperatorRig,p:OperatorPose,
     r.head.rotation.x=0;
   }
 }
-export function finishOperatorPoseFrame(r:OperatorRig,p:OperatorPose):void{
+export function finishOperatorPoseFrame(r:OperatorRig,p:OperatorPose,
+ leftUpper?:THREE.Quaternion,rightUpper?:THREE.Quaternion):void{
   if(p.unarmedPreview){
     r.weapon.visible=false;r.droppedGun.visible=false;
     r.magazineHand.visible=false;r.magazineInserted.visible=false;
@@ -38,6 +40,7 @@ export function finishOperatorPoseFrame(r:OperatorRig,p:OperatorPose):void{
   // Shader uniforms follow the existing IK without CPU ray tracing.
   updateOperatorPoseCavity(r.poseCavity,r.arms,r.elbowSpread,
    p.posture,p.stride,p.down,
-   Number(r.root.userData.fieldworkCavityQuality??1));
+   Number(r.root.userData.fieldworkCavityQuality??1),
+   leftUpper,rightUpper);
   r.lastPose={...p};r.lastTime=p.seconds;
 }

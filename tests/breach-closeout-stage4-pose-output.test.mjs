@@ -144,7 +144,7 @@ test('Stage 4: exactly one public output writer after trauma and sling; no new c
   import.meta.url),'utf8');
  const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
  assert.equal((script.match(/commitOperatorPoseOutput\(r,p\)/g)??[]).length,1);
- const final=script.lastIndexOf('finishOperatorPoseFrame(r,p)');
+ const final=script.lastIndexOf('finishOperatorPoseFrame(r,p,');
  const commit=script.lastIndexOf('commitOperatorPoseOutput(r,p)');
  assert.ok(final>=0&&commit>final);
  assert.ok(script.lastIndexOf('applyOperatorTraumaPose(r,p,downProgress)')<final);

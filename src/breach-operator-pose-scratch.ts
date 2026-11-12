@@ -43,8 +43,36 @@ function createOperatorLegPoseScratch():OperatorLegPoseScratch{
  return {initialized:false,transforms,outputs,
   shoeRotation:[new THREE.Euler(),new THREE.Euler()]};
 }
+/** B4 — upper-body direct output, parallel to B3's eight leg slots.
+ * Stable component transforms preserve the previous quaternion in the
+ * degenerate arm-alignment case. No parallel arm IK state or action clock.
+ */
+export type ArmPoseTransform=LegPoseTransform;
+export type ArmPoseOutputSlot=LegPoseOutputSlot;
+export type OperatorArmPoseScratch={
+ initialized:boolean;
+ transforms:ArmPoseTransform[];
+ outputs:ArmPoseOutputSlot[];
+ handEuler:[THREE.Euler,THREE.Euler];
+ rockQuaternion:THREE.Quaternion;
+};
+function createOperatorArmPoseScratch():OperatorArmPoseScratch{
+ const transforms:ArmPoseTransform[]=[],outputs:ArmPoseOutputSlot[]=[];
+ for(let i=0;i<2;i++)
+  for(const name of ['upper','lower','hand']){
+   transforms.push({position:new THREE.Vector3(),
+    quaternion:new THREE.Quaternion(),scale:new THREE.Vector3(1,1,1),
+    visible:true});
+   outputs.push({id:'arm-'+i+'-'+name,
+    values:[0,0,0,0,0,0,1,1,1,1,1]});
+  }
+ return {initialized:false,transforms,outputs,
+  handEuler:[new THREE.Euler(),new THREE.Euler()],
+  rockQuaternion:new THREE.Quaternion()};
+}
 export type OperatorPoseScratch={
   legOutput:OperatorLegPoseScratch;
+  armOutput:OperatorArmPoseScratch;
   bodyEuler:THREE.Euler;
   bodyInverse:THREE.Quaternion;
   legs:[LimbSolution,LimbSolution];
@@ -66,6 +94,7 @@ export type OperatorPoseScratch={
 export function createOperatorPoseScratch():OperatorPoseScratch{
   return {
     legOutput:createOperatorLegPoseScratch(),
+    armOutput:createOperatorArmPoseScratch(),
     bodyEuler:new THREE.Euler(),bodyInverse:new THREE.Quaternion(),
     legs:[solution(),solution()],
     arms:[solution(),solution()],

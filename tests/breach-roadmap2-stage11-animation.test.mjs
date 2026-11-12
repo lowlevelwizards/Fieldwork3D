@@ -40,7 +40,7 @@ test('frame stages execute once in canonical order, leg IK cannot schedule conta
    'updateOperatorAppearance(r,p)',
    'sampleOperatorFootContacts(r,p,physicalSpeed,moving,travelYaw)',
    'applyOperatorLegIK(r,p,scratch,targets,kick,headingYaw,smooth)',
-   'finishOperatorPoseFrame(r,p)'];
+   'finishOperatorPoseFrame(r,p,'];
  const indices=stages.map(v=>controller.indexOf(v));
  assert.ok(indices.every(v=>v>=0),JSON.stringify(indices));
  assert.deepEqual(indices,[...indices].sort((a,b)=>a-b));
