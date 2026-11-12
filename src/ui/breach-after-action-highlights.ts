@@ -42,11 +42,19 @@ export function renderAfterActionHighlights(
    hero.append(img);
    hero.append(el('div','fw-v3-highlight-still-label',
      'RECORDED REPLAY FRAME · '+image.perspective));
- }else hero.append(schematic(active));
+ }else{
+   hero.className+=' fw-v6-highlight-no-frame';
+   hero.append(schematic(active));
+ }
  const info=el('div','fw-v3-highlight-info');
- info.append(el('small','',time(active.at)+' · HIGHLIGHT'),
+ const actorNames=active.actorIds.map(id=>rec.manifest?.actors
+   .find(actor=>actor.id===id)?.name??null).filter((name):
+   name is string=>name!==null);
+ info.append(el('small','',time(active.at)+' · RECORDED MOMENT'),
    el('h2','',active.label),
    el('p','',active.summary));
+ if(actorNames.length)info.append(el('small','fw-v6-moment-participants',
+   'INVOLVED · '+actorNames.slice(0,4).join(' · ')));
  const play=document.createElement('button');play.type='button';
  play.className='fw-v3-highlight-play';play.textContent='▶ WATCH CLIP';
  play.addEventListener('click',()=>watch(active));

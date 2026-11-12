@@ -14,7 +14,7 @@ import {renderCombatReport} from './breach-after-action-combat.ts';
 import {renderAfterActionHighlights} from './breach-after-action-highlights.ts';
 import {replayHighlightMoments} from '../breach-highlight-frames.ts';
 import type {AfterActionModelPresenter} from './breach-after-action-model.ts';
-import {buildAfterActionTimeline,TIMELINE_FILTERS,
+import {buildAfterActionTimeline,selectTimelineEvents,TIMELINE_FILTERS,
  type AfterActionTimelineEvent,type TimelineFilter}
  from '../breach-after-action-timeline.ts';
 import {renderAfterActionTimeline} from './breach-after-action-timeline.ts';
@@ -243,7 +243,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    const oldLedger=host.querySelector<HTMLElement>('.fw-v5-timeline-ledger-list');
    if(oldLedger)s.timelineLedgerScroll=oldLedger.scrollTop;
    const hidden=root.querySelector<HTMLElement>('#afterActionDetails')?.hidden;
-   if(hidden)return;
+   if(hidden&&s.tab!=='highlights')return;
    const focused=document.activeElement instanceof HTMLElement&&
      host.contains(document.activeElement)?document.activeElement:null;
    const priorEvent=focused?.dataset.timelineEventKey??null;
@@ -275,11 +275,10 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      actions:{
        filter:value=>{
          s.timelineFilter=value;s.timelineClusterId=null;
-         if(value!=='all'&&!s.timelineEvents.some(e=>
-           e.key===s.timelineSelectedKey&&
-           (value==='key'?e.priority>=7:e.category===value))){
-           s.timelineSelectedKey=s.timelineEvents.find(e=>
-             value==='key'?e.priority>=7:e.category===value)?.key??null;
+         if(value!=='all'&&!selectTimelineEvents(s.timelineEvents,
+           value,s.recorder.duration).some(e=>e.key===s.timelineSelectedKey)){
+           s.timelineSelectedKey=selectTimelineEvents(s.timelineEvents,
+             value,s.recorder.duration)[0]?.key??null;
          }
          s.timelineGroupScroll=0;s.timelineLedgerScroll=0;
          s.timelineLedgerLimit=30;persist();
@@ -474,15 +473,23 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        }));
      }
    });
-   else if(s.tab==='highlights')screen=renderAfterActionHighlights(
-     replayHighlightMoments(s.recorder),s.recorder,s.selectedHighlight,
-     id=>{s.selectedHighlight=id;draw();},(moment)=>{
-       s.selectedHighlight=moment.id;
-       root.dispatchEvent(new CustomEvent('fw-after-action-replay',{
-         bubbles:true,detail:{surface:'highlights',time:moment.at,
-           end:moment.end,highlightId:moment.id}
-       }));
-     });
+   else if(s.tab==='highlights'){
+     const momentView=renderAfterActionHighlights(
+       replayHighlightMoments(s.recorder),s.recorder,s.selectedHighlight,
+       id=>{s.selectedHighlight=id;draw();},(moment)=>{
+         s.selectedHighlight=moment.id;
+         root.dispatchEvent(new CustomEvent('fw-after-action-replay',{
+           bubbles:true,detail:{surface:'highlights',time:moment.at,
+             end:moment.end,highlightId:moment.id}
+         }));
+       });
+     screen=make('section','fw-v6-moments');
+     screen.append(momentView,
+       make('h3','fw-v6-timeline-label','MISSION TIMELINE'));
+     const mount=make('div','fw-v6-timeline-mount');
+     mount.setAttribute('data-v6-timeline-mount','');
+     screen.append(mount);
+   }
    else{
      screen=make('section','fw-after-section');
      screen.append(make('p','fw-after-empty','REPORT SECTION UNAVAILABLE'));
@@ -494,8 +501,34 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    // Stage 5 retired the redundant read-only shot ledger in Mission Details.
    // Combat's authoritative forensic inspector remains the only shot sheet.
    if(forensicDetails)forensicDetails.replaceChildren();
+   // The one existing timeline moves between its dock and Moments.
+   // A selection redraw must not create duplicate timelines or lose state.
+   const timelineHost=root.querySelector<HTMLElement>('#afterActionTimeline');
+   const timelineMount=screen.querySelector<HTMLElement>(
+     '[data-v6-timeline-mount]');
+   const timelineDock=root.querySelector<HTMLElement>(
+     '#afterActionDetailsTimelineDock');
+   if(timelineHost&&timelineMount)timelineMount.replaceWith(timelineHost);
+   else if(timelineHost&&timelineDock&&timelineHost.parentElement!==timelineDock)
+     timelineDock.append(timelineHost);
    // Keep the historical renderer and cached rigs alive through tab changes
    // and replay return. Only the DOM host is replaced during UI redraws.
+   // Preserve the actual canvas host when only the surrounding records
+   // change. Replacing a selected shot or operator must not remount WebGL.
+   const oldHost=safeContent.querySelector<HTMLElement>(
+     '[data-after-squad-model], [data-after-model]');
+   const nextHost=screen.querySelector<HTMLElement>(
+     '[data-after-squad-model], [data-after-model]');
+   if(oldHost&&nextHost&&
+     oldHost.hasAttribute('data-after-squad-model')===
+       nextHost.hasAttribute('data-after-squad-model')){
+     oldHost.className=nextHost.className;
+     oldHost.setAttribute('aria-label',nextHost.getAttribute('aria-label')??'');
+     if(nextHost.dataset.afterModel!==undefined)
+       oldHost.dataset.afterModel=nextHost.dataset.afterModel;
+     else delete oldHost.dataset.afterModel;
+     nextHost.replaceWith(oldHost);
+   }
    safeContent.replaceChildren(screen);
    const squadHost=screen.querySelector<HTMLElement>('[data-after-squad-model]');
    const combatHost=screen.querySelector<HTMLElement>('[data-after-model]');
@@ -689,11 +722,13 @@ export function bindAfterActionReplayNavigation(port:AfterActionReplayNavigation
      const candidate=shooter&&port.bodycam.observers.includes(shooter)?shooter:
        detail.contactId&&port.bodycam.observers.includes(detail.contactId)?
          detail.contactId:null;
-     if(port.getStage()&&candidate){
-       port.knowledge.observerId=candidate;
-       if(!port.startBodycam())port.chooseCamera('director');
-     }else if(port.getStage()&&port.director.camEligibleObservers.length){
+     // A debrief clip should first frame the action, not place a rifle
+     // in front of it. Personal bodycam remains a replay camera option.
+     if(port.getStage()&&port.director.camEligibleObservers.length){
        port.chooseCamera('director');
+     }else if(port.getStage()&&candidate){
+       port.knowledge.observerId=candidate;
+       if(!port.startBodycam())port.chooseCamera('free');
      }else{
        port.camera.lens='ortho';port.chooseCamera('free');
        port.showHelp('BODYCAM UNAVAILABLE · TACTICAL REPLAY',3000);

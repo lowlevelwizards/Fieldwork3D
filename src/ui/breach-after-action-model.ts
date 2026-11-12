@@ -70,22 +70,75 @@ export function createAfterActionModelPresenter(
    const holder=new THREE.Group();holder.add(rig.root);scene.add(holder);
    const entry={rig,holder,overlay};models.set(actor.id,entry);return entry;
  };
- try{for(const actor of roster)build(actor);}
- catch{
-   for(const model of models.values()){model.rig.dispose();scene.remove(model.holder);}
-   renderer.dispose();renderer.forceContextLoss();return null;
- }
+ // Rigs are expensive to construct and pose on mobile. Never block the
+ // debrief mount by building an entire roster synchronously.
  let disposed=false,lost=false,host:HTMLElement|null=null;
  let selected:string|null=null,dragId:number|null=null,lastX=0,lastY=0;
  let forensicEvidence:ForensicEvidence|null=null;
  let yaw=0,pitch=.16,zoom=1;
  const lookAt=new THREE.Vector3(0,28,0);
- const focus=()=>{
-   const actor=selected?byId.get(selected):null;
-   if(actor&&!models.has(actor.id)){
-     try{build(actor);}
-     catch{return false;}
+ const viewTools=document.createElement('div');
+ viewTools.className='fw-v6-model-tools';
+ viewTools.setAttribute('role','group');
+ viewTools.setAttribute('aria-label','3D model view controls');
+ const modelButton=(label:string,title:string,click:()=>void)=>{
+   const button=document.createElement('button');
+   button.type='button';button.textContent=label;button.title=title;
+   button.setAttribute('aria-label',title);
+   button.addEventListener('click',click);viewTools.append(button);
+ };
+ modelButton('−','Zoom out',()=>{zoom=clamp(zoom+.12,.65,1.7);draw();});
+ modelButton('+','Zoom in',()=>{zoom=clamp(zoom-.12,.65,1.7);draw();});
+ modelButton('↺','Reset model view',()=>{
+   yaw=0;pitch=.16;zoom=1;draw();
+ });
+ const loading=document.createElement('div');
+ loading.className='fw-v6-model-loading';
+ loading.setAttribute('role','status');
+ const pending:string[]=[];
+ let buildTimer:number|null=null,frameRequest:number|null=null;
+ let lastWidth=0,lastHeight=0;
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.25));
+ const syncLoading=()=>{
+   if(!host)return;
+   const remaining=selected?Number(!models.has(selected)):
+     roster.filter(actor=>!models.has(actor.id)).length;
+   if(!remaining){loading.remove();return;}
+   loading.textContent=selected?'PREPARING RECORDED MODEL':
+     'PREPARING SQUAD · '+models.size+' / '+roster.length;
+   if(loading.parentElement!==host)host.append(loading);
+ };
+ const buildQueued=()=>{
+   if(disposed||lost||buildTimer!==null||!host||!pending.length)return;
+   // Yield between rigs. A single rig may be expensive, but an entire
+   // roster must never be built in one event-loop task.
+   buildTimer=window.setTimeout(()=>{
+     buildTimer=null;
+     if(disposed||lost||!host)return;
+     const id=pending.shift(),actor=id?byId.get(id):undefined;
+     if(actor&&!models.has(actor.id)){
+       try{build(actor);}
+       catch{onUnavailable?.();return;}
+     }
+     syncLoading();draw();buildQueued();
+   },24);
+ };
+ const queueModels=(operatorId:string|null)=>{
+   const requested=operatorId?[operatorId]:roster.map(actor=>actor.id);
+   for(const id of requested){
+     if(models.has(id)||pending.includes(id))continue;
+     if(operatorId)pending.unshift(id);
+     else pending.push(id);
    }
+   if(operatorId){
+     const index=pending.indexOf(operatorId);
+     if(index>0){pending.splice(index,1);pending.unshift(operatorId);}
+   }
+   syncLoading();buildQueued();
+ };
+ const focus=()=>{
+   // Drawing cannot synchronously construct a rig: this is a critical
+   // responsiveness boundary on mobile.
    if(selected&&!models.has(selected))return false;
    const squad=!selected;
    const n=roster.length;
@@ -107,17 +160,25 @@ export function createAfterActionModelPresenter(
    camera.lookAt(lookAt);
    return true;
  };
- const draw=()=>{
+ const drawNow=()=>{
    if(disposed||lost||!host||!host.isConnected)return;
    const bounds=host.getBoundingClientRect();
    const width=Math.floor(bounds.width),height=Math.floor(bounds.height);
    if(width<16||height<16)return;
-   const ratio=Math.min(window.devicePixelRatio||1,1.25);
-   renderer.setPixelRatio(ratio);
-   renderer.setSize(width,height,false);
-   camera.aspect=width/height;
-   camera.updateProjectionMatrix();
+   if(width!==lastWidth||height!==lastHeight){
+     renderer.setSize(width,height,false);
+     camera.aspect=width/height;
+     camera.updateProjectionMatrix();
+     lastWidth=width;lastHeight=height;
+   }
    if(focus())renderer.render(scene,camera);
+ };
+ const draw=()=>{
+   if(disposed||lost||!host||frameRequest!==null)return;
+   // Coalesce pointer moves, selection changes and resize notifications.
+   frameRequest=window.requestAnimationFrame(()=>{
+     frameRequest=null;drawNow();
+   });
  };
  const observer=typeof ResizeObserver==='undefined'?null:
    new ResizeObserver(()=>draw());
@@ -175,8 +236,10 @@ export function createAfterActionModelPresenter(
        observer?.disconnect();
        host=nextHost;
        host.replaceChildren(canvas);
+       host.append(viewTools);
        observer?.observe(host);
      }
+     queueModels(operatorId);
      draw();
    },
    setEvidence(evidence){
@@ -191,6 +254,9 @@ export function createAfterActionModelPresenter(
    dispose(){
      if(disposed)return;
      disposed=true;observer?.disconnect();
+     if(buildTimer!==null)window.clearTimeout(buildTimer);
+     if(frameRequest!==null)window.cancelAnimationFrame(frameRequest);
+     pending.length=0;loading.remove();viewTools.remove();
      canvas.removeEventListener('pointerdown',down);
      canvas.removeEventListener('pointermove',move);
      canvas.removeEventListener('pointerup',up);

@@ -24,8 +24,8 @@ export function createForensicModelOverlay(rig:OperatorRig):ForensicModelOverlay
    const geometry=new THREE.EdgesGeometry(
      new THREE.BoxGeometry(...dimensions));
    const material=new THREE.LineBasicMaterial({
-     color:0xe4b568,transparent:true,opacity:.7,
-     depthTest:false,depthWrite:false
+     color:0xe4b568,transparent:true,opacity:.55,
+     depthTest:true,depthWrite:false
    });
    const mesh=new THREE.LineSegments(geometry,material);
    mesh.name='after-action-evidence-'+slot;

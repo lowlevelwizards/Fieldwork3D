@@ -12,6 +12,7 @@ on:
       - 'src/ui/breach-after-action-*.ts'
       - 'scripts/smoke-after-action-v5.mjs'
       - 'tests/after-action-v5-*.test.mjs'
+      - 'tests/after-action-v6-*.test.mjs'
 permissions:
   contents: read
 concurrency:
@@ -19,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   browser-smoke:
-    if: ${{ startsWith(github.head_ref, 'feat/after-action-v5-') }}
+    if: ${{ startsWith(github.head_ref, 'feat/after-action-v5-') || startsWith(github.head_ref, 'feature/after-action-v6-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -32,6 +33,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/after-action-v5-*.test.mjs \
+            tests/after-action-v6-*.test.mjs \
             tests/after-action-v4-stage1-navigation.test.mjs \
             tests/after-action-v4-stage2-hierarchy.test.mjs \
             tests/after-action-v4-stage4-forensic.test.mjs \

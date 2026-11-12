@@ -69,6 +69,21 @@ function contributionBar(points:OperatorAfterAction['categories']):HTMLElement{
    bar.append(el('span','fw-v5-contribution-empty'));
  return bar;
 }
+const evidenceTime=(seconds:number)=>Math.floor(seconds/60)+':'+
+ String(Math.floor(seconds%60)).padStart(2,'0');
+function squadCondition(ops:readonly OperatorAfterAction[]):string{
+ const heavy=ops.filter(op=>op.status==='heavy').length;
+ const wounded=ops.filter(op=>op.status==='wounded').length;
+ const down=ops.filter(op=>op.status==='incapacitated').length;
+ const unknown=ops.filter(op=>op.status==='unknown').length;
+ const parts:string[]=[];
+ if(heavy)parts.push(heavy+' HEAVILY WOUNDED');
+ if(wounded)parts.push(wounded+' WOUNDED');
+ if(down)parts.push(down+' INCAPACITATED');
+ if(unknown)parts.push(unknown+' STATUS UNKNOWN');
+ if(!parts.length)parts.push('NO RECORDED OPERATOR INJURIES');
+ return 'SQUAD CONDITION · '+parts.join(' · ');
+}
 function evidenceList(evidence:readonly ContributionEvidence[]|undefined,
  inspect?:((key:string)=>void),limit=3):HTMLElement|null{
  if(!evidence?.length)return null;
@@ -77,12 +92,20 @@ function evidenceList(evidence:readonly ContributionEvidence[]|undefined,
  const group=el('section','fw-v5-recorded-actions');
  group.append(el('h3','','RECORDED ACTIONS'));
  for(const entry of top){
-   const label=entry.label+' · +'+entry.points+' PTS';
+   const label=entry.label.replaceAll(' / ',' · ');
+   const meta=evidenceTime(entry.at)+' · +'+entry.points+' PTS';
    if(inspect){
-     const item=action(label,()=>inspect(entry.sourceKey),'fw-v5-recorded-action');
-     item.setAttribute('aria-label','Inspect '+label);
+     const item=action('',()=>inspect(entry.sourceKey),'fw-v5-recorded-action');
+     item.append(el('span','fw-v6-record-description',label),
+       el('small','fw-v6-record-meta',meta));
+     item.setAttribute('aria-label','Inspect '+label+' at '+meta);
      group.append(item);
-   }else group.append(el('p','fw-v5-recorded-action-text',label));
+   }else{
+     const item=el('p','fw-v5-recorded-action-text');
+     item.append(el('span','fw-v6-record-description',label),
+       el('small','fw-v6-record-meta',meta));
+     group.append(item);
+   }
  }
  return group;
 }
@@ -103,6 +126,7 @@ function rankRow(op:OperatorAfterAction,operators:OperatorAfterAction[],
  const row=action('',()=>choose(op.id),'fw-v3-roster-card fw-v4-rank-row');
  row.setAttribute('aria-pressed',String(op.id===selectedId));
  row.setAttribute('data-after-operator-id',op.id);
+ row.setAttribute('data-after-condition',op.status);
  row.setAttribute('aria-label',op.name+', '+scoreRank(op,operators)+
    ' in recorded contribution, '+op.contribution+' points, '+statusName(op.status));
  const rank=el('span','fw-v4-rank-number',scoreRank(op,operators));
@@ -182,7 +206,9 @@ export function renderSquadView(report:AfterActionReport,
  const intro=el('header','fw-v4-squad-heading');
  intro.append(el('h2','','SQUAD CONTRIBUTION'),
    el('p','','RANKED BY RECORDED WEIGHTED POINTS'));
- section.append(intro);
+ const condition=el('p','fw-v6-squad-condition',squadCondition(operators));
+ condition.setAttribute('aria-label','Recorded squad condition');
+ section.append(intro,condition);
  const content=el('div','fw-v4-squad-content');
  const roster=el('nav','fw-v3-roster fw-v4-rank-list');
  roster.setAttribute('aria-label','Squad ranked by recorded contribution');

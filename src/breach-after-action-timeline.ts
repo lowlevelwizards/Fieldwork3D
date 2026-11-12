@@ -32,6 +32,35 @@ export const matchesTimelineFilter=(event:AfterActionTimelineEvent,
  filter:TimelineFilter):boolean=>filter==='all'||
  (filter==='key'?event.priority>=7:event.category===filter);
 
+/** Small, deterministic key-event selection for the overview. The complete
+ * source ledger and per-category filters are never modified or discarded. */
+export function selectTimelineEvents(events:readonly AfterActionTimelineEvent[],
+ filter:TimelineFilter,duration=0):AfterActionTimelineEvent[]{
+ const eligible=events.filter(event=>matchesTimelineFilter(event,filter));
+ if(filter!=='key'||eligible.length<=4)return eligible.slice();
+ const extent=duration>0?duration:Math.max(1,...events.map(event=>event.t));
+ const limit=Math.max(4,Math.min(12,Math.ceil(extent/7)+2));
+ const ranked=eligible.slice().sort((a,b)=>b.priority-a.priority||
+   a.t-b.t||a.key.localeCompare(b.key));
+ const chosen:AfterActionTimelineEvent[]=[];
+ const categories=new Set<TimelineCategory>();
+ // First explain the different dimensions of the engagement.
+ for(const event of ranked){
+   if(categories.has(event.category))continue;
+   chosen.push(event);categories.add(event.category);
+   if(chosen.length>=limit)break;
+ }
+ // Then sample additional significant events without consecutive duplicates.
+ for(const event of ranked){
+   if(chosen.length>=limit)break;
+   if(chosen.some(other=>other.key===event.key||
+     (other.category===event.category&&Math.abs(other.t-event.t)<1.5)))
+     continue;
+   chosen.push(event);
+ }
+ return chosen.sort((a,b)=>a.t-b.t||a.order-b.order||
+   a.key.localeCompare(b.key));
+}
 const category=(kind:string):TimelineCategory=>{
  if(kind==='intel')return 'contact';
  if(kind==='down'||kind==='wound'||kind==='surrender')return 'casualty';
@@ -104,7 +133,7 @@ export function clusterAfterActionTimeline(
  events:readonly AfterActionTimelineEvent[],duration:number,
  trackWidth:number,filter:TimelineFilter='all'
 ):readonly AfterActionTimelineCluster[]{
- const displayed=events.filter(e=>matchesTimelineFilter(e,filter));
+ const displayed=selectTimelineEvents(events,filter,duration);
  if(!displayed.length||!Number.isFinite(duration)||duration<=0)return [];
  const bins=replayTimelineBins(Math.max(1,trackWidth)*.48);
  const markers=clusterReplayTimeline(displayed,duration,

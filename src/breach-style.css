@@ -3861,3 +3861,145 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v5-workspace .fw-v3-shot-sequence{
   grid-column:1/-1;grid-row:4}
 }
+
+/* After Action V6.1–2 — progressive historical models and readable condition. */
+.fw-v5-workspace .fw-v4-squad-model,
+.fw-v5-workspace .fw-after-model{position:relative}
+.fw-v6-model-loading{position:absolute;left:10px;right:10px;bottom:10px;
+ padding:6px 9px;background:rgba(20,38,31,.86);border:1px solid #6b806f;
+ border-radius:4px;color:#e4d4b4;text-align:center;pointer-events:none;
+ font:750 11px/1.4 var(--ui-display)}
+.fw-v6-squad-condition{margin:0;padding:7px 10px;
+ background:#324438;border-left:3px solid #d1ac80;border-radius:3px;
+ color:#e7dcc8;font:700 11px/1.4 var(--ui-font)}
+.fw-v4-rank-row[data-after-condition="heavy"] .fw-v4-rank-identity small,
+.fw-v4-rank-row[data-after-condition="wounded"] .fw-v4-rank-identity small{
+ color:#e6bb91}
+.fw-v5-workspace .fw-v5-recorded-action,
+.fw-v5-workspace .fw-v5-recorded-action-text{
+ display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:4px 12px;min-height:44px;
+ background:#293f34;border-color:#516d5b;color:#eee6d2}
+.fw-v6-record-description{flex:1 1 160px;font:750 12px/1.35 var(--ui-display)}
+.fw-v6-record-meta{font:700 11px var(--fw-font-data),var(--ui-display);
+ color:#ecd3ab;white-space:nowrap}
+
+/* V6.3 — forensic contact identity and shot controls stay with the model. */
+.fw-v5-workspace .fw-v6-contact-header{display:flex;align-items:baseline;
+ flex-wrap:wrap;justify-content:space-between;gap:5px 12px;padding:3px 2px;
+ color:#eee6d5}
+.fw-v6-contact-header strong{font:800 18px var(--ui-display)}
+.fw-v6-contact-header span{font:750 11px var(--ui-display);color:#e3bc92}
+.fw-v6-inspection-column{display:flex;flex-direction:column;gap:7px;
+ min-width:0;min-height:0}
+.fw-v6-inspection-tools{display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:5px;min-width:0}
+.fw-v5-workspace .fw-v6-inspection-tools .fw-v4-forensic-scope{
+ display:flex;gap:4px;max-width:100%;min-width:0}
+.fw-v5-workspace .fw-v6-inspection-tools .fw-v4-scope-choice{flex:0 1 auto}
+.fw-v5-workspace .fw-v6-inspection-tools .fw-v4-inspection-switch{
+ display:flex;gap:4px}
+.fw-v5-workspace .fw-v6-inspection-column .fw-v3-combat-figure{
+ flex:0 0 auto;min-height:230px}
+.fw-v5-workspace .fw-v6-inspection-column .fw-v3-shot-sequence{
+ width:100%;box-sizing:border-box}
+.fw-v5-workspace .fw-v6-watch-clip{
+ margin:0;min-height:44px;width:100%}
+.fw-v6-evidence-caveat{font:700 11px/1.5 var(--ui-font);
+ color:#f0cfaa;background:#3c382e;padding:7px;border-radius:3px}
+@media(max-width:700px){
+ .fw-v5-workspace .fw-v6-inspection-column .fw-v3-combat-figure,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v6-inspection-column .fw-v3-combat-figure{
+  height:270px;min-height:240px}
+ .fw-v5-workspace .fw-v6-inspection-tools .fw-v3-small-button{
+  padding:5px 7px;min-height:42px}
+}
+@media(min-width:701px) and (max-height:480px){
+ .fw-v5-workspace .fw-v3-combat .fw-v3-combat-focus{
+  grid-row:3;grid-column:1/-1}
+ .fw-v5-workspace .fw-v6-inspection-column .fw-v3-combat-figure,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v6-inspection-column .fw-v3-combat-figure{
+  height:170px;min-height:145px}
+ .fw-v5-workspace .fw-v6-watch-clip{min-height:36px}
+}
+
+/* After Action V6.4 — featured moments and the single source-linked timeline. */
+.fw-v6-moments{display:flex;flex-direction:column;gap:10px;min-height:100%}
+.fw-v6-timeline-label{margin:5px 2px 0;color:#e9d9b8;
+ font:800 16px var(--ui-display)}
+.fw-v6-moments-timeline{min-width:0}
+.fw-v5-workspace .fw-v6-moments .fw-v5-timeline{
+ margin-bottom:10px;border:1px solid #506a58;border-radius:5px}
+.fw-v5-workspace .fw-v6-highlight-no-frame{height:auto;aspect-ratio:auto;
+ min-height:130px;max-height:190px}
+.fw-v5-workspace .fw-v6-highlight-no-frame .fw-v5-highlight-fallback{
+ min-height:130px;max-height:190px;padding:13px}
+.fw-v6-moment-participants{font:750 10px/1.4 var(--ui-display);
+ color:#c8d5c4}
+.fw-v5-workspace .fw-v6-moments .fw-v5-timeline-filters{
+ scroll-snap-type:x proximity}
+.fw-v5-workspace .fw-v6-moments .fw-v5-timeline-filter{scroll-snap-align:start}
+
+/* After Action V6.5 — mission-first context, single scrolling document, mobile tools. */
+.fw-v6-result-takeaway{grid-column:1/-1;grid-row:3;margin:2px 0 0;
+ padding:7px 0 1px;border-top:1px solid #566e5d;
+ color:#eedbc0;font:650 11px/1.4 var(--ui-font)}
+.fw-v5-summary-compact .fw-v6-result-takeaway{display:none}
+.fw-v6-model-tools{position:absolute;top:7px;right:7px;
+ display:flex;gap:4px;z-index:2}
+.fw-v6-model-tools button{min-height:35px;min-width:35px;
+ border:1px solid #7a8c79;border-radius:4px;
+ background:rgba(26,48,37,.88);color:#ede1c6;
+ font:800 18px var(--ui-display);cursor:pointer}
+.fw-v6-model-tools button:focus-visible{outline:2px solid #edce94;
+ outline-offset:2px}
+.fw-v6-timeline-expand{display:grid;gap:4px;padding:4px 0}
+.fw-v6-timeline-expand summary{cursor:pointer;min-height:38px;
+ font:750 11px/1.4 var(--ui-display);color:#e6d0a9;
+ display:flex;align-items:center}
+.fw-v5-workspace .fw-v5-timeline-group-items,
+.fw-v5-workspace .fw-v5-timeline-ledger-list{
+ max-height:none;overflow:visible}
+.fw-v5-workspace .fw-v5-timeline-hint,
+.fw-v5-workspace .fw-v5-timeline-heading small,
+.fw-v5-workspace .fw-v5-shot-position{font-size:11px}
+.fw-v5-workspace .fw-v5-timeline-cluster-event,
+.fw-v5-workspace .fw-v5-timeline-ledger-item{
+ min-height:42px}
+.fw-v5-workspace .fw-after-body,.fw-v5-workspace .fw-after-detail-content{
+ scrollbar-gutter:stable}
+@media(max-width:600px){
+ .fw-v5-workspace .fw-after-footer{padding:3px 0 0;gap:5px}
+ .fw-v5-workspace .fw-after-footer button{min-height:44px;
+  padding:7px 10px}
+ .fw-v5-workspace .fw-v4-rank-identity small{font-size:10px}
+ .fw-v5-workspace .fw-v4-category-tile span{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){
+ .fw-v5-workspace .fw-v3-paper-pulse{animation:none!important}
+}
+
+/* V6 browser acceptance: compact contact controls must not hide the forensic
+   model below the pinned replay/debrief footer in short landscape. */
+@media(min-width:701px) and (max-height:480px){
+ .fw-v5-workspace .fw-v6-contact-header{display:none}
+ .fw-v5-workspace .fw-v3-combat .fw-v3-combat-focus,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-focus{
+  grid-column:1/-1;grid-row:2;min-height:0}
+ .fw-v5-workspace .fw-v6-inspection-tools .fw-v3-small-button{
+  min-height:34px!important;padding:3px 6px}
+ .fw-v5-workspace .fw-v6-inspection-tools{gap:3px}
+ .fw-v5-workspace .fw-v6-inspection-column .fw-v3-combat-figure,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v6-inspection-column .fw-v3-combat-figure{
+  height:155px;min-height:135px}
+}
+
+/* V6 short-landscape refinement: float the inspection options over the
+   viewer instead of consuming a second toolbar row above the evidence. */
+@media(min-width:701px) and (max-height:480px){
+ .fw-v5-workspace .fw-v6-inspection-column{position:relative;gap:3px}
+ .fw-v5-workspace .fw-v6-inspection-tools{
+  position:absolute;z-index:4;top:4px;right:4px;left:auto;
+  justify-content:flex-end;padding:2px;
+  background:rgba(23,43,34,.93);border-radius:4px}
+}
