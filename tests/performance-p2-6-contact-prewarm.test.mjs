@@ -40,6 +40,7 @@ test('P2.6 hidden enemy initial pose fills appearance before live contact',()=>{
  const pose={x:100,z:120,heading:0,velocity:0,seconds:0,
   stride:0,posture:'stand',injury:0,weapon:'carbine',
   down:false,surrender:false,aiming:false,firing:false,
+  turning:0,downProgress:0,
   reload:0,reloadDuration:1.8,lastThrowAt:-100,lastDoorAt:-100,
   deterministic:true,poseDiagnostics:false};
  try{
