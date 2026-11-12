@@ -28,6 +28,7 @@ test('B0 pose evaluator retains exactly one final public commit after ordered st
  assert.deepEqual(c.stageIndices,[...c.stageIndices].sort((a,b)=>a-b));
  assert.ok(c.stageIndices.every(x=>x>=0));
  assert.ok(c.rigOutputWeakMap&&c.outputBuffer11&&c.duplicateOwnerReject&&c.outputDisposed);
+ assert.ok(c.benchUsesSharedPublisher,'B7 offline authoring must use B2 atomic output');
 });
 
 test('B0 respects fixed contact, replay seek, live v3/v4 and visual-only preview authorities',()=>{
@@ -36,7 +37,7 @@ test('B0 respects fixed contact, replay seek, live v3/v4 and visual-only preview
   'inputDeclared','publicExport','replayFeetFirst','frameSeekAware',
   'livePoseV3V4','replayDeterministic','sceneUsesHistoricalFeet',
   'labUsesCommonPose','studioUsesCommonPose','labCanCompareGaits',
-  'studioHasOwnVisualRate','benchIsSeparateWriter','liveGaitExplicit'
+  'studioHasOwnVisualRate','benchUsesSharedPublisher','liveGaitExplicit'
  ])assert.ok(c[k],'Lost B0 authority: '+k);
 });
 
