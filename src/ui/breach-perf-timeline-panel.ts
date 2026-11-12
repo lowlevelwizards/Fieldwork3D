@@ -31,6 +31,7 @@ export class BreachPerfTimelinePanel{
  private selectedBucket:number|null=null;
  private policy='planning';
  private view='iso';
+ private reportContext='';
  private timeline:PerformanceTimeline|null=null;
  constructor(private readonly onHide:()=>void=()=>{}){
   const root=style(document.createElement('div'),
@@ -92,7 +93,8 @@ export class BreachPerfTimelinePanel{
    this.detailButton.textContent=this.expandedDetails?'LESS':'DETAILS';
   });
   this.copyButton.addEventListener('click',()=>{
-   const report=this.timeline?.compactReport(this.policy,this.view)??'No history';
+   const report=this.reportContext+'\n'+
+    (this.timeline?.compactReport(this.policy,this.view)??'No history');
    if(navigator.clipboard?.writeText){
     void navigator.clipboard.writeText(report).then(()=>{
       this.copyButton.textContent='COPIED';
@@ -102,7 +104,8 @@ export class BreachPerfTimelinePanel{
   this.exportButton.addEventListener('click',()=>{
    const summary=this.timeline?.report(this.policy,this.view)??'No history';
    const csv=this.timeline?.bucketCSV()??'';
-   const report=summary+'\n\nFULL 60s HISTORY (250ms bucket peaks)\n'+csv+'\n';
+   const report=this.reportContext+'\n'+summary+
+    '\n\nFULL 60s HISTORY (250ms bucket peaks)\n'+csv+'\n';
    const blob=new Blob([report],{type:'text/plain;charset=utf-8'});
    const url=URL.createObjectURL(blob);
    const link=document.createElement('a');
@@ -136,8 +139,10 @@ export class BreachPerfTimelinePanel{
   // Visible fallback for iOS browsers without clipboard permission.
   window.prompt('Copy Fieldwork performance report',report);
  }
- update(text:string,timeline:PerformanceTimeline,policy:string,view:string):void{
+ update(text:string,timeline:PerformanceTimeline,policy:string,view:string,
+  context=''):void{
   this.timeline=timeline;this.policy=policy;this.view=view;
+  this.reportContext=context;
   this.metrics.textContent=text;
   this.refreshInsight();if(this.graphVisible)this.draw();
  }
@@ -156,7 +161,8 @@ export class BreachPerfTimelinePanel{
    ago+'s ago · RAF '+peak.raf.toFixed(0)+'ms / PREV JS '+
    (peak.previousJs?.toFixed(0)??'?')+'ms / NOW JS '+
    peak.js.toFixed(0)+'ms / SYNC '+peak.sync.toFixed(0)+
-   'ms · '+(peak.previousWork?previousFrameHotspot(peak)+' · ':'')+
+   'ms · '+(peak.captureLevel==='basic'?'BASIC RAF/JS ONLY · ':'')+
+   (peak.previousWork?previousFrameHotspot(peak)+' · ':'')+
    performanceHotspot(peak)+
    ' · fog +'+peak.fogPaints+' shadow +'+peak.shadowRefreshes+
    ' · '+peak.phase+', '+peak.camera;
