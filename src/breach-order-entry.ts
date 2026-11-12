@@ -17,6 +17,16 @@ import {completeOrder,rotate,clearCurrentOrderIssue,
 import type {OrderExecutionPort} from './breach-order-execution-port.ts';
 const angle=(a:Pt,b:Pt)=>targetAngle(a,b);
 const pop=completeOrder;
+/** A corrective handle step is bounded exactly like manual door approach.
+ * An unreachable lock must fail its active order rather than reissuing
+ * the same correction forever. No authored waypoint is inserted. */
+export function entryCorrectionEligible(
+ actor:Pick<TeamActor,'blockedTime'|'recoveryAttempts'>,
+ from:Pt,to:Pt):boolean{
+ const distance=Math.hypot(from.x-to.x,from.y-to.y);
+ return distance>2&&distance<75&&actor.blockedTime<3.5&&
+  actor.recoveryAttempts<5;
+}
 export function createEntryOrderHandler(port:OrderExecutionPort){
  const {approach,notify,hear,battleEvent}=port;
  const failCurrentOrder=(s:Session,a:TeamActor,n:PlanNode,reason:string)=>
@@ -37,8 +47,10 @@ export function createEntryOrderHandler(port:OrderExecutionPort){
       const world=sessionWorldGeometry(s);
       const approachPoint=method==='pick'?lockpickApproach(a.p,door,world):
         doorApproach(a.p,door,world);
-      if(approachPoint){clearCurrentOrderIssue(a);approach(a,approachPoint,dt,s,.60);}
-      else failCurrentOrder(s,a,n,'ENTRY TOOL CANNOT REACH');
+      if(approachPoint&&entryCorrectionEligible(a,a.p,approachPoint)){
+        clearCurrentOrderIssue(a);
+        approach(a,approachPoint,dt,s,.60);
+      }else failCurrentOrder(s,a,n,'ENTRY TOOL CANNOT REACH');
       return true;
     }
     const verdict=entryToolVerdict(door,method);

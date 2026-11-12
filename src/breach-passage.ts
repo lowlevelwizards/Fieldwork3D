@@ -422,8 +422,14 @@ export function passageDeadlockRetreatTarget(actor:PassageActor,
   const width=distance(door.a,door.b);
   if(width>60||distance(actor.p,doorCenter(door))>40||
     !crossingDoor(actor,door))continue;
+  // Following a teammate into the same doorway is a queue, NOT mutual
+  // counterflow. Even a long convoy pause must never trigger a reverse
+  // escape that can repeat behind the original player-authored route.
+  const direction=travelSign(actor,door);
+  if(!direction)continue;
   const peers=actors.filter(other=>other.id!==actor.id&&
     other.health>0&&other.side===actor.side&&other.goal&&
+    travelSign(other,door)===-direction&&
     distance(other.p,doorCenter(door))<40&&
     (inDoorway(other,door)||crossingDoor(other,door))&&
     ((other.waitSeconds??0)>.75||other.blockedTime>.9));
