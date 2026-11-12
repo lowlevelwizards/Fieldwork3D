@@ -33,6 +33,7 @@ import {windowShardPose,WINDOW_SHARDS_PER_PANE}
 import {type CivilianRig} from './breach-civilian-visuals.ts';
 import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
 import {shouldPrewarmContactRig} from './rendering/breach-contact-rig-prewarm.ts';
+import {ShotVisualPool} from './rendering/breach-shot-visual-pool.ts';
 import {type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
@@ -608,9 +609,12 @@ export class TacticalScene3D{
     wedge:THREE.Mesh;glassPane?:THREE.Mesh}>();
   private observedDoorGlass=new Map<string,boolean>();
   private observedDoorOpen=new Map<string,number>();
-  private effectCache=new Map<number,{root:THREE.Group;line:THREE.Mesh;
-    impact:THREE.Mesh;chips:THREE.Mesh[];material:THREE.MeshBasicMaterial;
-    impactMaterial:THREE.MeshBasicMaterial}>();
+  private effectCache=new Map<number,{style:string;root:THREE.Group;
+    line:THREE.Mesh;impact:THREE.Mesh;chips:THREE.Mesh[];
+    material:THREE.MeshBasicMaterial;impactMaterial:THREE.MeshBasicMaterial}>();
+  private readonly shotEffectPool=new ShotVisualPool<
+    NonNullable<ReturnType<typeof this.effectCache.get>>
+  >(20);
   // One instanced draw for every stain and impact mark, rather than a mesh
   // and transparent material allocation per hit.
   private impactDecalMesh:THREE.InstancedMesh|null=null;
@@ -1022,6 +1026,9 @@ export class TacticalScene3D{
       effect.material.dispose();effect.impactMaterial.dispose();
     }
     this.effectCache.clear();
+    this.shotEffectPool.clear(effect=>{
+      effect.material.dispose();effect.impactMaterial.dispose();
+    });
     // Only the site-dependent fog MESH geometry changes here.
     // Canvas and its disclosure/painting rules remain owned by this scene.
     const fogSize=maskSize(site);
@@ -2196,6 +2203,8 @@ export class TacticalScene3D{
       active.add(shot.id);visibleShots++;
       let effect=this.effectCache.get(shot.id);
       if(!effect){
+        const style=shot.side+'|'+(shot.surface??'dust');
+        effect=this.shotEffectPool.acquire(style,()=>{
         const root=new THREE.Group();
         const material=new THREE.MeshBasicMaterial({
           color:shot.side==='blue'?0xffde9d:0xff9b73,
@@ -2222,8 +2231,12 @@ export class TacticalScene3D{
             root.add(chip);chips.push(chip);
           }
         }
-        this.effects.add(root);
-        effect={root,line,impact,chips,material,impactMaterial};
+        return {style,root,line,impact,chips,material,impactMaterial};
+        });
+        // Inactive entries are detached from the render scene, retaining
+        // only the exact same styled meshes/materials for the next shot.
+        this.effects.add(effect.root);
+        effect.root.visible=true;
         this.effectCache.set(shot.id,effect);
       }
       const start=this.shotStart.set(
@@ -2323,7 +2336,10 @@ export class TacticalScene3D{
     for(const [id,effect] of this.effectCache){
       if(active.has(id))continue;
       this.effects.remove(effect.root);
-      effect.material.dispose();effect.impactMaterial.dispose();
+      effect.root.visible=false;
+      this.shotEffectPool.release(effect.style,effect,discard=>{
+        discard.material.dispose();discard.impactMaterial.dispose();
+      });
       this.effectCache.delete(id);
     }
     // Ground-aligned cone/memory mask: no elevated fog surfaces and no
