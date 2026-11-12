@@ -12,7 +12,8 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {team,type Session,type TeamActor,liveVisibility,isSeen} from './breach-game.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 import {previewKnownDoorSwing} from './breach-door-swing-preview.ts';
-import {spatialSurfaceState} from './breach-presentation.ts';
+import {spatialSurfaceState,windowPresentationKnown} from './breach-presentation.ts';
+import {windowApertureSegment} from './worldgen/window-geometry-contract.ts';
 import {doorKnown} from './breach-intel.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -254,8 +255,25 @@ function architecture(){
     }
     draw.restore();
   }
-  // Narrow window markers (not navigable openings).
-  if(state.site)return;
+  // Generated windows use the same real aperture as physical shots and 3D.
+  // Unknown interior glass must not be outlined through historical fog.
+  if(state.site){
+    for(const opening of state.site.windows??[]){
+      if(!windowPresentationKnown(state,opening,
+          replaying&&replayKnowledge.omniscient))continue;
+      const pane=windowApertureSegment(opening);
+      line(pane.a,pane.b,'#1f4d51',8);
+      line(pane.a,pane.b,'#8bb6af',4);
+      const dx=pane.b.x-pane.a.x,dy=pane.b.y-pane.a.y;
+      const length=Math.hypot(dx,dy)||1;
+      const normal={x:-dy/length*3,y:dx/length*3};
+      for(const p of [pane.a,pane.b])
+        line({x:p.x-normal.x,y:p.y-normal.y},
+             {x:p.x+normal.x,y:p.y+normal.y},'#d4d5bb',1.6);
+    }
+    return;
+  }
+  // Legacy-only map keeps its two authored window markers.
   for(const x of [211,501]){
     line({x,y:97},{x:x+52,y:97},'#8bb6af',4);
     line({x,y:94},{x:x+52,y:94},'#d4d5bb',2);
@@ -400,7 +418,10 @@ export function renderBreachTacticalWorldFrame(p:BreachTacticalWorldFrame):void{
   // Map-space drawing has a single reversible projection.
   draw.save();
   draw.translate(ox,oy);draw.scale(viewScale,viewScale);
-  draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
+  const bounds=state.site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+  draw.fillStyle='#52655b';
+  draw.fillRect(bounds.minX-9,bounds.minY-9,
+    bounds.maxX-bounds.minX+18,bounds.maxY-bounds.minY+18);
   world2D.terrain();world2D.furniture();world2D.renderGroundMarks();world2D.renderLightingMood2D();world2D.renderWeaponLights2D();
   world2D.architecture();fog2D.renderFog();fog2D.renderPersonalGround();actor2D.missionMarkers();
   route2D.paths();replay2D.renderReplayMovementHistory(false);
@@ -411,7 +432,8 @@ export function renderBreachTacticalWorldFrame(p:BreachTacticalWorldFrame):void{
   actor2D.contacts();replay2D.renderReplayGhosts(false);replay2D.renderReplayBallistics(false);
   replay2D.renderReplayFollowMarker(false);actor2D.endMessage();
   draw.strokeStyle='#d4dac64f';draw.lineWidth=2;
-  draw.strokeRect(0,0,W,H);
+  draw.strokeRect(bounds.minX,bounds.minY,
+    bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
   draw.restore();
 
 }
