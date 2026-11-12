@@ -215,6 +215,18 @@ test('C5 Bodycam exit uses one follow/visibility rebuild',()=>{
  assert.equal(f.count('rebuild'),1,'Bodycam exit must not refresh twice');
  assert.equal(f.count('fog'),1);
 });
+test('C5 Bodycam exit still refreshes when recorded follow target is incapacitated',()=>{
+ const f=fixture();f.hud.bindDirectInteractions();
+ f.state.operators.find(a=>a.id==='rook').health=0;
+ f.bodycam.active=true;f.camera.mode='free';f.camera.follow=false;
+ f.ui.replayDirectBodycam.fire('click');
+ assert.equal(f.bodycam.active,false);
+ assert.equal(f.camera.mode,'free','do not follow an incapacitated operator');
+ assert.equal(f.count('rebuild'),1);
+ assert.equal(f.count('fog'),1);
+ assert.equal(f.knowledge.observerId,'rook',
+  'C5 does not invent or erase archived operator sight on exit');
+});
 test('C5 ground cache invalidation is complete and archive evidence untouched',()=>{
  const f=fixture();f.hud.bindLateInteractions();
  const evidence=new Set(['micro:1,1']);
