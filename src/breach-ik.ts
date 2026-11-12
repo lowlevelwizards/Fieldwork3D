@@ -85,18 +85,23 @@ export function twoBoneJoint(start:THREE.Vector3,end:THREE.Vector3,
  * The previous quaternion is used only for truly degenerate reference axes.
  * There is no frame-rate-dependent quaternion easing or arbitrary spin.
  */
-export function alignSegment(mesh:THREE.Object3D,
+/** Shared B3 alignment kernel. Both the historical mesh adapter and the
+ * direct lower-body solver use the exact same orientation mathematics.
+ * Only supplied transform components change; scene nodes are optional.
+ */
+export function alignSegmentComponents(
+  position:THREE.Vector3,quaternion:THREE.Quaternion,scale:THREE.Vector3,
   from:THREE.Vector3,to:THREE.Vector3,
   anatomicalSide:THREE.Vector3=localZ){
   axis.copy(to).sub(from);
   const length=axis.length();
-  mesh.position.copy(from).add(to).multiplyScalar(.5);
+  position.copy(from).add(to).multiplyScalar(.5);
   if(length<EPS)return;
   axis.multiplyScalar(1/length);
   right.copy(anatomicalSide).addScaledVector(axis,
     -anatomicalSide.dot(axis));
   if(right.lengthSq()<EPS){
-    previousRight.copy(localX).applyQuaternion(mesh.quaternion);
+    previousRight.copy(localX).applyQuaternion(quaternion);
     right.copy(previousRight).addScaledVector(axis,
       -previousRight.dot(axis));
   }
@@ -108,8 +113,16 @@ export function alignSegment(mesh:THREE.Object3D,
   right.crossVectors(axis,front).normalize();
   frame.makeBasis(right,axis,front);
   mesh.quaternion.setFromRotationMatrix(frame);
-  mesh.scale.y=length;
+  scale.y=length;
 }
+/** Compatibility adapter for all existing upper-body/Workbench IK callers. */
+export function alignSegment(mesh:THREE.Object3D,
+  from:THREE.Vector3,to:THREE.Vector3,
+  anatomicalSide:THREE.Vector3=localZ){
+ alignSegmentComponents(mesh.position,mesh.quaternion,mesh.scale,
+  from,to,anatomicalSide);
+}
+
 /** A broad torso avoidance volume in chest-local coordinates. */
 export function intersectsTorso(point:THREE.Vector3,
   clearance=0):boolean{
