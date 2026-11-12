@@ -1,6 +1,7 @@
 /** Scenario director: context determines population, functional anchors establish
  * a believable grouping, and the physical solver commits safe spawn points. */
 import type {Site} from '../breach-site.ts';
+import {missionForSeed} from '../breach-operations.ts';
 import type {EncounterContext,EncounterPlan,EncounterPremise,EncounterActorSpec} from './encounter-types.ts';
 import {chooseEncounterPremise} from './encounter-premises.ts';
 import {chooseEncounterProfile} from './encounter-profiles.ts';
@@ -20,8 +21,7 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  const seed=context.seed??site.seed;
  // Default Quick Play and Map Lab use the same seed-selected mission as
  // newSession; explicit Campaign contracts still override that mission.
- const missions=['clear','intel','rescue','hold','capture'] as const;
- const mission=context.mission??missions[(site.seed>>>0)%missions.length];
+ const mission=context.mission??missionForSeed(site.seed);
  const resolved={...context,mission};
  const premise:EncounterPremise=chooseEncounterPremise(site,resolved);
  const profile=chooseEncounterProfile(premise,seed,mission,

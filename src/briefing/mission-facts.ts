@@ -1,22 +1,17 @@
 /** Read-only summary of the RESOLVED gameplay state. Never infer from a wishful narrative. */
 import type {Session} from '../breach-game.ts';
 import {operationBrief} from '../breach-operations.ts';
+import {resolvedMissionPopulation} from '../breach-mission-semantics.ts';
 import type {MissionTruth} from './briefing-types.ts';
 
 export function compileMissionFacts(
   s:Session,opts:{entryId?:string;contractRisk?:1|2|3}={}
 ):MissionTruth{
-  const site=s.site,actors=s.operators.filter(a=>a.side==='red');
+  const site=s.site;
   const encounter=site?.encounter;
-  const weapons={ordinary:0,security:0,prepared:0};
-  for(const spec of encounter?.actors??[]){
-    const profile=spec.weaponProfile??'ordinary';
-    weapons[profile]++;
-  }
+  const population=resolvedMissionPopulation(s);
   const risk=opts.contractRisk??encounter?.risk??1;
-  const hasCapture=!!s.captureTarget&&actors.some(a=>a.id===s.captureTarget);
-  const hasRescue=!!s.rescue||s.civilians.some(a=>a.rescueTarget);
-  return {
+    return {
     schema:1,seed:site?.seed??s.variant,missionKind:s.missionType,
     building:site?.archetype??'unknown',subtype:site?.identity?.subtype??null,
     siteName:site?.name??s.scenario.name,scale:site?.scale??'standard',
@@ -25,9 +20,10 @@ export function compileMissionFacts(
     encounterProfile:encounter?.profile??'unknown',
     risk,riskFromContract:opts.contractRisk!==undefined,
     intelMode:s.intel.mode,roomCount:site?.rooms.length??0,
-    hostileCount:actors.length,armedProfileCount:weapons,
-    activeCivilianCount:s.civilians.filter(a=>!a.rescueTarget).length,
-    rescueTargetPresent:hasRescue,captureTargetPresent:hasCapture,
+    hostileCount:population.hostileCount,armedProfileCount:population.armedProfileCount,
+    activeCivilianCount:population.activeCivilianCount,
+    rescueTargetPresent:population.rescueTargetPresent,
+    captureTargetPresent:population.captureTargetPresent,
     objective:operationBrief(s.missionType),entryId:opts.entryId??'FRONT',
     encounterIncidentId:encounter?.incidentIntentId??null
   };

@@ -12,6 +12,16 @@ on:
       - 'tests/package-c4-tactical-ui-consolidation.test.mjs'
       - 'tests/package-c5-replay-view-ownership.test.mjs'
       - 'tests/package-c6-world-geometry-contract.test.mjs'
+      - 'tests/package-c7-mission-faction-semantics.test.mjs'
+      - 'tests/package-c8-integration-closeout.test.mjs'
+      - 'scripts/verification/package-c8-integration-audit.mjs'
+      - 'src/breach-replay-manifest.ts'
+      - 'scripts/verification/package-c7-mission-semantics-audit.mjs'
+      - 'src/breach-mission-semantics.ts'
+      - 'src/breach-session-factory.ts'
+      - 'src/breach-operations.ts'
+      - 'src/briefing/mission-facts.ts'
+      - 'src/worldgen/encounter-*.ts'
       - 'src/worldgen/window-geometry-contract.ts'
       - 'src/worldgen/window-collider-sync.ts'
       - 'src/breach-windows.ts'
@@ -101,6 +111,25 @@ jobs:
             tests/breach-2d-renderer-extraction.test.mjs \
             tests/breach-roadmap2-geometry-scope.test.mjs \
             tests/facade-geometry-polish-20261112.test.mjs
+      - name: C7 mission selection, faction truth, population and restart contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/package-c7-mission-faction-semantics.test.mjs \
+            tests/mission-restart-snapshot.test.mjs \
+            tests/worldgen-encounter-diagnostics.test.mjs \
+            tests/tactical-integration-16-encounter-a2.test.mjs \
+            tests/faction-reference.test.mjs
+          node --experimental-strip-types scripts/verification/package-c7-mission-semantics-audit.mjs
+      - name: C8 cross-stage physical mission, restart, replay and source closeout
+        run: |
+          node --experimental-strip-types --test \
+            tests/package-c8-integration-closeout.test.mjs \
+            tests/consolidation-stage8-world-ownership.test.mjs \
+            tests/mission-restart-snapshot.test.mjs \
+            tests/replay-r42c-civilian-sight.test.mjs
+          node scripts/verification/package-c8-integration-audit.mjs --check \
+            --json artifacts/package-c8/audit.json \
+            --markdown artifacts/package-c8/audit.md
       - name: Validate C0 read-only scene and presentation ownership contracts
         run: node --test tests/package-c0-presentation-audit.test.mjs
       - name: Generate reproducible C0 evidence
@@ -108,6 +137,14 @@ jobs:
           node scripts/verification/package-c0-presentation-audit.mjs --check \
             --json artifacts/package-c0/audit.json \
             --markdown artifacts/package-c0/audit.md
+      - name: Retain C8 final integration and ownership evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-c8-integration-closeout
+          path: artifacts/package-c8/
+          if-no-files-found: warn
+          retention-days: 30
       - name: Preserve C0 evidence for later C stages
         if: always()
         uses: actions/upload-artifact@v4
