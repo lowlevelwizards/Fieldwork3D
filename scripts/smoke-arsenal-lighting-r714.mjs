@@ -1,6 +1,13 @@
 /** R7.14: actual mobile Chromium WebGL smoke through the shared Arsenal viewer. */
 import {spawn} from 'node:child_process';
+import {mkdirSync,writeFileSync} from 'node:fs';
 import {chromium} from 'playwright';
+/** Opt-in artifact capture for the final F5 checkpoint only. */
+const f5Save=(name,bytes)=>{
+ if(process.env.FW_F5_CAPTURE!=='1')return;
+ mkdirSync('visual-foundation-f5-captures',{recursive:true});
+ writeFileSync('visual-foundation-f5-captures/'+name,bytes);
+};
 const port=4224,origin='http://127.0.0.1:'+port;
 const server=spawn(process.execPath,[
  'node_modules/vite/bin/vite.js','--host','127.0.0.1',
@@ -41,6 +48,8 @@ try{
     throw Error('Blank real weapon WebGL canvas');
    if(on.equals(off))
     throw Error('Arsenal glint did not change real weapon pixels');
+   f5Save('arsenal-glint.png',on);
+   f5Save('arsenal-no-glint.png',off);
    await page.getByLabel('HIGHLIGHT').selectOption('dual');
    await page.locator('input[aria-label="GLINT THICKNESS"]').evaluate(el=>{
     el.value='2';el.dispatchEvent(new Event('input',{bubbles:true}));
