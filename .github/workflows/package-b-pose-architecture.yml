@@ -12,6 +12,8 @@ on:
       - 'tests/package-b1-pose-decision.test.mjs'
       - 'tests/package-b2-pose-output.test.mjs'
       - 'tests/package-b3-lower-body-output.test.mjs'
+      - 'tests/package-b4-upper-body-output.test.mjs'
+      - 'src/operator-pose-cavity-lighting.ts'
       - 'src/breach-ik.ts'
       - '.github/workflows/package-b-pose-architecture.yml'
       - 'src/breach-operator-*.ts'
@@ -60,6 +62,9 @@ jobs:
       - name: B3 direct lower-body golden geometry, contacts and rewind parity
         run: |
           node --experimental-strip-types --test tests/package-b3-lower-body-output.test.mjs
+      - name: B4 direct arm IK, weapon families, magazine contact and replay parity
+        run: |
+          node --experimental-strip-types --test tests/package-b4-upper-body-output.test.mjs
       - name: Posed frame, replay seeks, V3/V4 contacts, motion and Lab parity
         run: |
           node --experimental-strip-types --test --test-concurrency=2 \
