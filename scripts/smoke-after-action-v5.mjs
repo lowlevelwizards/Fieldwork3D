@@ -79,6 +79,16 @@ try{
     'Final condition missing '+name);
    check(await root.locator('.fw-v5-shot-position').count()===1,
     'Shot position missing '+name);
+   if(width>700&&height<=480){
+    const visible=await root.evaluate(node=>{
+     const model=node.querySelector('.fw-v3-combat-figure');
+     const footer=node.querySelector('.fw-after-footer');
+     if(!model||!footer)return 0;
+     const m=model.getBoundingClientRect(),f=footer.getBoundingClientRect();
+     return Math.max(0,Math.min(m.bottom,f.top)-m.top);
+    });
+    check(visible>=70,'Landscape combat model obscured '+name+' ('+visible+' px)');
+   }
    await root.screenshot({path:'artifacts/after-action-v5/'+name+'-combat.png'});
    await root.locator('#afterActionDetailsToggle').click();
    check(await root.locator('.fw-v5-timeline-filter').count()>=4,
