@@ -10,6 +10,7 @@ import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
+import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
 
 export class CampaignKitPreview{
  private readonly host:HTMLElement;
@@ -110,7 +111,7 @@ export class CampaignKitPreview{
   this.host.removeEventListener('pointermove',this.pointerMove);
   this.host.removeEventListener('pointerup',this.pointerUp);
   this.host.removeEventListener('pointercancel',this.pointerUp);
-  if(this.rig){this.scene.remove(this.rig.root);this.rig.dispose();this.rig=null;}
+  if(this.rig){releaseOperatorPreviewRig(this.scene,this.rig);this.rig=null;}
   this.renderer?.dispose();this.renderer?.forceContextLoss();
   this.renderer?.domElement.remove();this.renderer=null;
   this.pointerId=null;
