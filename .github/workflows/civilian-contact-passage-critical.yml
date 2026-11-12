@@ -8,6 +8,10 @@ on:
       - 'src/breach-motor-passage.ts'
       - 'src/breach-passage.ts'
       - 'tests/civilian-*.test.mjs'
+      - 'tests/performance-p2-7-live-routing.test.mjs'
+      - 'tests/breach-closeout-stage2-simulation-phases.test.mjs'
+      - 'src/breach-squeeze-route.ts'
+      - 'src/breach-simulation-motion-phase.ts'
       - 'tests/living-encounters-r2-civilian-pose.test.mjs'
       - '.github/workflows/civilian-contact-passage-critical.yml'
   workflow_dispatch:
@@ -26,6 +30,8 @@ jobs:
       - name: Civilian physics, interaction and pose regressions
         run: >
           node --experimental-strip-types --test
+          tests/performance-p2-7-live-routing.test.mjs
+          tests/breach-closeout-stage2-simulation-phases.test.mjs
           tests/civilian-contact-flow-regression.test.mjs
           tests/civilian-r3-anatomy-proportions.test.mjs
           tests/civilian-c1a-animation-reset.test.mjs
