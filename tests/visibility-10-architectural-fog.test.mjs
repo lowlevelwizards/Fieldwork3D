@@ -37,7 +37,7 @@ test('rendered architectural opening groups are explicitly gated',()=>{
  const policy=readFileSync(new URL(
    '../src/rendering/breach-3d-disclosure-presenter.ts',import.meta.url),'utf8');
  assert.match(policy,/export function presentArchitecturalOpening/);
- assert.match(policy,/architecturalOpeningKnown\(s,opening,omniscient\)/);
+ assert.match(policy,/architecturalOpeningKnown\(s,opening,omniscient,visibleAt\)/);
 });
 test('fog texture is supersampled but capped for mobile',()=>{
  assert.deepEqual(maskSize({bounds:{minX:0,minY:0,maxX:640,maxY:740}}),{width:640,height:740});
