@@ -8,6 +8,9 @@ import type {Pt} from './breach-core.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import {renderSnapshot,type RenderActor} from './breach-frame-interpolation.ts';
 import {FrameMeter} from './breach-perf.ts';
+import {PerformanceTimeline,emptyPerformanceSceneCosts}
+ from './breach-performance-timeline.ts';
+import {BreachPerfTimelinePanel} from './ui/breach-perf-timeline-panel.ts';
 import {drainSightDiagnostics,setSightDiagnosticsEnabled} from './breach-sight-cost-counters.ts';
 import {PhysicalActionRings} from './ui/physical-action-rings.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
@@ -90,18 +93,22 @@ if(awarenessPanel){
 
 // Opt-in developer overlay: add ?perf=1 to measure render and simulation
 // without polling DOM/layout or allocating objects in the normal game loop.
-const perfOverlay=config.boot.perfOverlay?
-  document.createElement('div'):null;
-if(perfOverlay){
-  perfOverlay.style.cssText='position:fixed;top:4px;right:4px;z-index:9999;'+
-    'background:#102021e8;color:#d5ebd8;font:11px monospace;padding:6px;'+
-    'pointer-events:none;white-space:pre;max-width:50vw';
-  document.body.append(perfOverlay);
-}
+const perfPanel=config.boot.perfOverlay?
+  new BreachPerfTimelinePanel():null;
+const perfOverlay=perfPanel?.root??null;
+if(perfOverlay)document.body.append(perfOverlay);
 // Sight instrumentation is opt-in only. Normal mission loops never record
 // counters, and neither gameplay nor replay reads these diagnostics.
 setSightDiagnosticsEnabled(!!perfOverlay);
 const frameMeter=perfOverlay?new FrameMeter():null;
+const perfTimeline=perfOverlay?new PerformanceTimeline():null;
+let perfTimelineSession:Session|null=null;
+type SightTotal={queries:number;hits:number;misses:number;
+ bypasses:number;invalidations:number};
+let lastSightTotals:SightTotal|null=null;
+let lastFogPaints=0,lastShadowRefreshes=0;
+const intervalSight={queries:0,hits:0,misses:0,
+ bypasses:0,invalidations:0};
 const physicalActionRings=new PhysicalActionRings();
 /** Idempotent RAF registration: fast stop/start cannot queue two frames. */
  function scheduleFrame():void{
@@ -122,6 +129,12 @@ function tick(now:number){
     audioController=config.audio,canvas=config.canvas;
   const frameMode=runtimeFrameMode({mode:campaignMode,
     quickPlayBusy:config.isQuickPlayBusy(),replaying,phase:state.phase});
+  if(perfTimeline&&perfTimelineSession!==state){
+   perfTimeline.reset();perfTimelineSession=state;
+   lastSightTotals=null;lastFogPaints=0;lastShadowRefreshes=0;
+   for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
+    intervalSight[k]=0;
+  }
   const perfStart=perfOverlay?performance.now():0;
   const frameGap=Math.max(0,now-last);
   const dt=Math.min(.08,frameGap/1000);last=now;
@@ -131,7 +144,7 @@ function tick(now:number){
    scheduleFrame();return;
   }
   let simSteps=0;
-  let recordingMs=0;
+  let recordingMs=0,simulationMeasuredMs=0;
   const simPhaseCosts=perfOverlay?new Map<string,number>():null;
   if(frameMode==='live'){
     const budget=fixedStepBudget(accum,dt);
@@ -140,9 +153,11 @@ function tick(now:number){
       previousRenderActors=renderSnapshot(state.operators);
       previousRenderDoors=Object.fromEntries(state.doors.map(d=>
         [d.id,d.openFraction??(d.open?1:0)]));
+      const simulationStart=perfOverlay?performance.now():0;
       stepSession(state,1/60,simPhaseCosts?
         (name,ms)=>simPhaseCosts.set(name,
           (simPhaseCosts.get(name)??0)+ms):undefined);
+      if(perfOverlay)simulationMeasuredMs+=performance.now()-simulationStart;
       simSteps++;
       if(perfOverlay){
         const beforeRecording=performance.now();
@@ -172,6 +187,7 @@ function tick(now:number){
       if(playbackStep.finishedIncident)audioController.stopReplaySounds();
     }
   }
+  const runtimeUiStart=perfOverlay?performance.now():0;
   if(replaying)config.advanceReplayCamera(dt);
   audioController.consumeLiveFrame(state,recorder,selected,replaying);
   // Execution's full HUD reconciliation is DOM-heavy; explicit commands
@@ -184,6 +200,7 @@ function tick(now:number){
     frameMode==='live',
     p=>config.worldToScreen(p,viewMode==='plan2d'?14:34));
   const perfRenderStart=perfOverlay?performance.now():0;
+  const runtimeUiMs=perfOverlay?perfRenderStart-runtimeUiStart:0;
   // The Studio is an opaque full-screen view. Skip only hidden rendering,
   // never fixed-step gameplay or authoritative replay/simulation state.
   const studioOccludesTactical=config.isStudioVisible()&&
@@ -236,6 +253,43 @@ function tick(now:number){
   config.updateContext();config.advanceContextPalette(dt);
   if(frameMeter&&perfOverlay){
     const end=performance.now(),stats=stage?.performanceStats();
+    const sightTotal=stats?.presentationSight;
+    const sightDelta={queries:0,hits:0,misses:0,
+     bypasses:0,invalidations:0};
+    if(sightTotal){
+      for(const key of Object.keys(sightDelta) as Array<keyof SightTotal>){
+        const value=sightTotal[key];
+        const previous=lastSightTotals?.[key]??value;
+        sightDelta[key]=value>=previous?value-previous:0;
+        intervalSight[key]+=sightDelta[key];
+      }
+      lastSightTotals={queries:sightTotal.queries,hits:sightTotal.hits,
+       misses:sightTotal.misses,bypasses:sightTotal.bypasses,
+       invalidations:sightTotal.invalidations};
+    }
+    const fogNow=(stats?.fogSightPaints??0)+(stats?.fogMemoryPaints??0);
+    const shadowNow=stats?.shadowRefreshes??0;
+    const fogDelta=Math.max(0,fogNow-lastFogPaints);
+    const shadowDelta=Math.max(0,shadowNow-lastShadowRefreshes);
+    lastFogPaints=fogNow;lastShadowRefreshes=shadowNow;
+    let hotSim='';
+    if(simPhaseCosts){
+      let maxMs=0;
+      for(const [name,ms] of simPhaseCosts)
+       if(ms>maxMs){hotSim=name;maxMs=ms;}
+      if(maxMs>0)hotSim+=' '+maxMs.toFixed(1)+'ms';
+    }
+    if(perfTimeline){
+      perfTimeline.add({at:now,raf:frameGap,js:end-perfStart,
+       sync:sceneUpdateEnd-perfRenderStart,sim:simulationMeasuredMs,
+       recording:recordingMs,ui:runtimeUiMs,overlay:end-overlayBegin,
+       scene:!studioOccludesTactical&&viewMode!=='plan2d'?
+        stats?.scenePhases??emptyPerformanceSceneCosts():
+        emptyPerformanceSceneCosts(),
+       draws:stats?.calls??0,steps:simSteps,phase:frameMode,
+       camera:viewMode,hotSim,fogPaints:fogDelta,
+       shadowRefreshes:shadowDelta,sight:sightDelta});
+    }
     frameMeter.add({frame:end-perfStart,cadence:frameGap,sim:perfRenderStart-perfStart,
       scene:overlayBegin-perfRenderStart,
       sceneUpdate:sceneUpdateEnd-perfRenderStart,
@@ -246,7 +300,8 @@ function tick(now:number){
     if(Math.floor(now/750)!==Math.floor((now-dt*1000)/750)){
       const m=frameMeter.summary();
       const sight=drainSightDiagnostics();
-      perfOverlay.textContent='JS '+m.p50.toFixed(1)+'ms · P95 '+
+      const scenePhases=stats?.scenePhases;
+      const output='JS '+m.p50.toFixed(1)+'ms · P95 '+
         m.p95.toFixed(1)+' · MAX '+m.worst.toFixed(1)+
         '\nRAF GAP P50 '+m.rafP50.toFixed(1)+'ms · P95 '+
         m.rafP95.toFixed(1)+'ms'+
@@ -265,6 +320,10 @@ function tick(now:number){
           (stats?.presentationSight.hits??0)+'/'+
           (stats?.presentationSight.misses??0)+'/'+
           (stats?.presentationSight.bypasses??0)+
+        '\nP1 750ms Q/H/M/B '+intervalSight.queries+'/'+
+          intervalSight.hits+'/'+intervalSight.misses+'/'+
+          intervalSight.bypasses+' · INVALID '+intervalSight.invalidations+
+          ' · POLICY '+(stats?.presentationSightPolicy??'always')+
         ' · INV/EVI '+(stats?.presentationSight.invalidations??0)+'/'+
           (stats?.presentationSight.evictions??0)+
         '\nP1 MISS D/O/DR/I/E '+(stats?.presentationSight.decorMisses??0)+'/'+
@@ -281,11 +340,24 @@ function tick(now:number){
           (stats?.civilianRigCount??0)+
         ' · GEO/TEX '+(stats?.geometryCount??0)+'/'+
           (stats?.textureCount??0)+
+        '\nP1.5 SCENE ENV/CAM/VIS '+(scenePhases?.environment??0).toFixed(1)+'/'+
+          (scenePhases?.camera??0).toFixed(1)+'/'+
+          (scenePhases?.disclosure??0).toFixed(1)+'ms'+
+        '\nP1.5 POSE/FX/FOG '+(scenePhases?.actors??0).toFixed(1)+'/'+
+          (scenePhases?.effects??0).toFixed(1)+'/'+
+          (scenePhases?.fog??0).toFixed(1)+'ms'+
+        '\nP1.5 SHADOW/CAM/GPU-SUBMIT '+(scenePhases?.shadows??0).toFixed(1)+'/'+
+          (scenePhases?.postCamera??0).toFixed(1)+'/'+
+          (scenePhases?.gpuSubmit??0).toFixed(1)+'ms (CPU)'+
         '\nOVERLAY '+m.overlay.toFixed(1)+'ms · DRAWS '+
         m.draws.toFixed(0)+' · TRI '+m.triangles.toFixed(0)+
         (simPhaseCosts&&simPhaseCosts.size?'\nHOT SIM '+
           [...simPhaseCosts].sort((a,b)=>b[1]-a[1]).slice(0,2)
             .map(([name,ms])=>name+' '+ms.toFixed(1)+'ms').join(' / '):'');
+      if(perfPanel&&perfTimeline)perfPanel.update(output,perfTimeline,
+       stats?.presentationSightPolicy??'always',viewMode);
+      for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
+       intervalSight[k]=0;
     }
   }
   if(awarenessPanel&&Math.floor(now/500)!==
