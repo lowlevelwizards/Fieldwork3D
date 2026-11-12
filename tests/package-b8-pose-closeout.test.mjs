@@ -227,9 +227,8 @@ test('B8: no second pose authority, no hot-path transient torso objects, no CPU 
   'node --experimental-strip-types scripts/bench-operator-pose-pipeline.mjs');
  for(const phrase of ['action-transitions','replay-seek','manual-workbench',
   '--quick','2,8,16','medianMsPerPose','p95MsPerPose',
-  'NO timing','NOT a GPU FPS'])
-  assert.ok(bench.includes(phrase)||phrase==='NO timing'&&
-   bench.includes('no absolute timing'),
+  'never an absolute timing','NOT a GPU FPS'])
+  assert.ok(bench.includes(phrase),
     'Benchmark must retain observational '+phrase+' evidence');
  assert.doesNotMatch(bench,/requestAnimationFrame\(/);
  assert.doesNotMatch(bench,/fpsBudget|assert\..*medianMsPerPose/);
