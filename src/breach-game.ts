@@ -185,6 +185,9 @@ export type TeamActor=Operator & {
   /** Execution diagnostics are transient; never rewrite authored PlanNode[]. */
   motorPause:MotorPause;orderIssue:ExecutionIssue|null;
   completedOrders:number;passageWaitSeconds:number;passageStallReported:boolean;
+  /** At most one physical deadlock retreat per authored waypoint and goal.
+   * The motor can still queue/wait afterward, but never stack retreats. */
+  passageRetreatKey?:string;
   executionLastStatus:ExecutionStatus|null;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
