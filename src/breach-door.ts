@@ -118,6 +118,43 @@ export function doorApproach(from:Pt,d:Door,world?:SessionWorldGeometry):Pt|null
     a.straight-b.straight||a.index-b.index);
   return staged[0]?.point??null;
 }
+/** Picking requires proximity to the real handle, not merely the hinge
+ * or the broad door interaction capsule.
+ */
+export const LOCKPICK_HANDLE_REACH=32;
+export function lockpickReachable(p:Pt,d:Door):boolean{
+  return doorReachable(p,d)&&dist(p,handlePoint(d))<=LOCKPICK_HANDLE_REACH;
+}
+/** Staging near the handle uses small, side-preserving corrections and the
+ * same full-body world collision and route gate as normal door approach.
+ * Never move an actor instantly or cross the closed panel.
+ */
+export function lockpickApproach(from:Pt,d:Door,world?:SessionWorldGeometry):Pt|null{
+  const handle=handlePoint(d),center=doorCenter(d);
+  const length=dist(d.a,d.b)||1;
+  const t={x:(d.b.x-d.a.x)/length,y:(d.b.y-d.a.y)/length};
+  const normal={x:-t.y,y:t.x};
+  const side=Math.sign((from.x-center.x)*normal.x+
+    (from.y-center.y)*normal.y)||1;
+  const positions:Pt[]=[];
+  for(const depth of [18,21,25,29])
+    for(const along of [0,-6,6,-12,12])
+      positions.push({x:handle.x+normal.x*depth*side+t.x*along,
+        y:handle.y+normal.y*depth*side+t.y*along});
+  const reachable=positions.flatMap((point,index)=>{
+    if(!lockpickReachable(point,d)||
+       !bodyClear(point,[d],OPERATOR_RADIUS,world))return [];
+    const waypoints=route(from,point,p=>bodyClear(p,[d],OPERATOR_RADIUS,world));
+    if(!waypoints.length)return [];
+    let previous=from,travel=0;
+    for(const waypoint of waypoints){
+      travel+=dist(previous,waypoint);previous=waypoint;
+    }
+    return [{point,index,travel}];
+  });
+  reachable.sort((a,b)=>a.travel-b.travel||a.index-b.index);
+  return reachable[0]?.point??null;
+}
 export function initDoor(d:Door,i:number):Door{
  const prepared:Door={...d,pushTarget:1,hinge:d.hinge??(i%3===0?'b':'a'),
    swing:d.swing??(d.id==='FRONT'?-1:i%2===0?1:-1),openFraction:d.open?1:0,

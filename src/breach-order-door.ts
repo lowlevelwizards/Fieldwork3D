@@ -34,12 +34,6 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
     }
     const interaction=doorInteraction({target:door,actorId:a.id,
       actorPosition:a.p,action:n.method??'open'});
-    // A deliberately exhausted kick sequence is terminal until its order
-    // is edited. Never replay the last kick every fixed update.
-    if(a.orderIssue?.nodeId===n.id&&n.method==='kick'&&
-       /KICK RESISTED|KICK BLOCKED/.test(a.orderIssue.reason)&&!door.open){
-      a.velocity=0;return true;
-    }
     if(!interaction.allowed&&a.actionTimer===0){
       failCurrentOrder(s,a,n,'DOOR BLOCKED · '+
         (interaction.reason??'UNAVAILABLE').toUpperCase());

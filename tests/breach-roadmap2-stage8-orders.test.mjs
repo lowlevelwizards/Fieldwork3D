@@ -29,22 +29,24 @@ test('activation resets only transient execution state, not authored node identi
   assert.equal(a.actionTimer,.25,'same order must not restart each tick');
  }finally{activateSite(null);}
 });
-test('a failed order is preserved and warns only on actual issue transitions',()=>{
+test('terminal failure cancels only the blocked order and preserves the queue',()=>{
  const s=newSession(),a=team(s)[0],messages=[];
  try{
   const order={id:9942,kind:'door',p:{...a.p},doorId:'MISSING',method:'open'};
-  a.plan=[order];a.activeNode=order.id;
+  const next={id:9945,kind:'wait',p:{...a.p},duration:.5};
+  a.plan=[order,next];a.activeNode=order.id;a.completedOrders=0;
+  a.actionTimer=.7;a.nav=[{x:a.p.x+5,y:a.p.y}];
   const notify=(_s,message)=>messages.push(message);
   failCurrentOrder(s,a,order,'DOOR MISSING',notify);
   failCurrentOrder(s,a,order,'DOOR MISSING',notify);
-  assert.equal(messages.length,1);
-  assert.equal(a.plan[0].id,order.id);
-  assert.equal(executionStatus(a).reason,'order-failed');
-  failCurrentOrder(s,a,order,'DOOR HELD',notify);
-  assert.equal(messages.length,2,'new reason should be observable');
-  assert.equal(a.plan.length,1);
-  clearCurrentOrderIssue(a);
+  assert.equal(messages.length,1,'stale failures cannot repeat or skip nodes');
+  assert.match(messages[0],/ORDER CANCELLED/);
+  assert.equal(a.plan[0].id,next.id);
+  assert.equal(a.completedOrders,0,'failed orders are never credited');
+  assert.equal(a.actionTimer,0);
+  assert.equal(a.activeNode,-1);
   assert.equal(a.orderIssue,null);
+  assert.notEqual(executionStatus(a).reason,'order-failed');
  }finally{activateSite(null);}
 });
 test('real completion consumes exactly one order and clears temporary motor state',()=>{

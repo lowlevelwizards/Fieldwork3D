@@ -10,6 +10,7 @@ import {canAutoOpenEnRoute,autoDoorAtBodyContact,doorApproach,
 import {doorInteraction} from './breach-interactions.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
+import {failCurrentOrder} from './breach-order-lifecycle.ts';
 
 export function handleMotorDoor(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
@@ -65,6 +66,15 @@ export function handleMotorDoor(
         opening.reason==='locked'?'door-locked':'door-obstructed';
       a.lastBlocker='door';
       a.velocity=0;a.blockedTime+=dt;
+      // An authored MOVE/OPEN cannot proceed through a known blocked
+      // portal. Drop that one instruction instead of hanging until Undo.
+      // Enemy AI retains its separate re-route/cover behavior below.
+      if(a.side!=='red'&&pendingDoor){
+        failCurrentOrder(s,a,pendingDoor,
+          'PATH BLOCKED · DOOR '+opening.reason.toUpperCase(),hooks.notify);
+        a.blockedTime=0;
+        return {paused:true,closed:false};
+      }
       // A blocked door remains physically closed; no AI magic opening.
       if(a.side==='red'&&a.blockedTime>1.2){
         a.nav=[];a.alert='cover';a.contact=null;

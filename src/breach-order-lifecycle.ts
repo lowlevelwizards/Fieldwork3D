@@ -1,6 +1,6 @@
-/** Stage 8: single source of order activation, completion and failure.
- * Completion consumes exactly one authored node and resets transient motor
- * state; failure keeps the node and deduplicates its warning.
+/** Single source of order activation, completion and cancellation.
+ * Completed orders count as executed; blocked orders are discarded with
+ * feedback so they cannot stall the remaining authored plan.
  */
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
@@ -45,24 +45,26 @@ export function applyAimNode(a:TeamActor,n:PlanNode){
   else if(n.facing!==undefined)
     a.aimInstruction={mode:'fixed',angle:n.facing};
 }
-export function completeOrder(a:TeamActor){
-  if(a.plan.length)a.completedOrders++;
+function retireCurrentOrder(a:TeamActor,completed:boolean){
+  if(!a.plan.length)return;
+  if(completed)a.completedOrders++;
   a.plan.shift();a.activeNode=-1;a.nav=[];a.autoSidestep=null;
   a.waitRemaining=0;
   a.actionTimer=0;a.syncReady=null;a.pieIndex=0;
   a.orderIssue=null;a.motorPause=null;
   a.passageWaitSeconds=0;a.passageStallReported=false;pathFor(a);
 }
-/** Explicitly report failure without silently consuming the player's order.
- * Re-evaluate the precondition each tick; changing world state can clear
- * the issue. Repeated identical failures never flood the event feed.
+export function completeOrder(a:TeamActor){retireCurrentOrder(a,true);}
+/** A terminal failure drops only the matching active order, not the rest
+ * of the plan. The warning remains in the event feed, while the next
+ * order can activate on the following tick without requiring Undo.
+ * Temporary movement delays and hit interruptions do not call this.
  */
 export function failCurrentOrder(s:Session,a:TeamActor,n:PlanNode,reason:string,notify:(s:Session,text:string)=>void){
-  if(a.orderIssue?.nodeId!==n.id||a.orderIssue.reason!==reason){
-    notify(s,a.name+' '+reason);
-    a.orderIssue={nodeId:n.id,reason,since:s.seconds};
-  }
+  if(a.plan[0]?.id!==n.id)return; // A stale callback cannot skip the next order.
+  notify(s,a.name+' '+reason+' · ORDER CANCELLED');
   a.velocity=0;
+  retireCurrentOrder(a,false);
 }
 export function clearCurrentOrderIssue(a:TeamActor){a.orderIssue=null;}
 
