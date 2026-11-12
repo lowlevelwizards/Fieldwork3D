@@ -246,7 +246,7 @@ export class PerformanceTimeline{
     ' | wait '+(p.previousJs===undefined?'?':
       Math.max(0,p.raf-p.previousJs).toFixed(0))+
     ' | '+(p.previousPhase??p.phase)+'/'+p.camera+
-    ' | '+previousFrameHotspot(p)+' | '+cause
+    (p.previousWork?' | '+previousFrameHotspot(p):'')+' | '+cause
    );
   }
   lines.push('wait = RAF - previous JS; not GPU time. Full history: TXT.');
