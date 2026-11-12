@@ -37,11 +37,16 @@ function renderReplayPersonalGround():void{
   const observed=replayKnowledge.personalGround.at(
     replayPlayback.time,replayKnowledge.observerId);
   if(!observed)return;
+  // A historical rewind reconstructs a new evidence Set. Two distinct
+  // timelines may contain the same number of discovered cells; count alone
+  // is not a valid canvas-cache identity.
   if(replayKnowledge.groundCacheObserver!==replayKnowledge.observerId||
+     replayKnowledge.groundCacheEvidence!==observed||
      replayKnowledge.groundCacheCount!==observed.size||
      replayKnowledge.groundCacheSite!==state.site){
     paintReplayPersonalGround(replayGroundContext!,state.site,observed);
     replayKnowledge.groundCacheObserver=replayKnowledge.observerId;
+    replayKnowledge.groundCacheEvidence=observed;
     replayKnowledge.groundCacheCount=observed.size;
     replayKnowledge.groundCacheSite=state.site;
   }
