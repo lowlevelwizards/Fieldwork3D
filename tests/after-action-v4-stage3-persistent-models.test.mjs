@@ -22,7 +22,8 @@ test('V4-3: recorded manifest, identical rigs and neutral deterministic pose are
  assert.match(rig,/down:false,surrender:false,aiming:false/);
  assert.match(controller,/const identities=recorder\.manifest\?\.actors\?\?\[\]/);
  assert.doesNotMatch(rig,/damageDecal|hitMarker|impactPosition/);
- assert.doesNotMatch(rig,/requestAnimationFrame\(|setInterval\(/);
+ assert.match(rig,/requestAnimationFrame\(/);
+ assert.doesNotMatch(rig,/setInterval\(/);
 });
 
 test('V4-3: viewer builds at most one renderer and caches a rig per actor id',()=>{
@@ -30,7 +31,9 @@ test('V4-3: viewer builds at most one renderer and caches a rig per actor id',()
  assert.equal((rig.match(/new THREE\.WebGLRenderer\(/g)||[]).length,1);
  assert.match(rig,/const models=new Map<string,Model>\(\)/);
  assert.match(rig,/const existing=models\.get\(actor\.id\);if\(existing\)return existing/);
- assert.match(rig,/for\(const actor of roster\)build\(actor\)/);
+ assert.doesNotMatch(rig,/for\(const actor of roster\)build\(actor\)/);
+ assert.match(rig,/queueModels\(operatorId\)/);
+ assert.match(rig,/buildTimer=window\.setTimeout/);
  assert.match(rig,/host\.replaceChildren\(canvas\)/);
  assert.match(rig,/selected=operatorId/);
  assert.match(rig,/observer\?\.disconnect\(\)/);

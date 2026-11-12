@@ -496,6 +496,22 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    if(forensicDetails)forensicDetails.replaceChildren();
    // Keep the historical renderer and cached rigs alive through tab changes
    // and replay return. Only the DOM host is replaced during UI redraws.
+   // Preserve the actual canvas host when only the surrounding records
+   // change. Replacing a selected shot or operator must not remount WebGL.
+   const oldHost=safeContent.querySelector<HTMLElement>(
+     '[data-after-squad-model], [data-after-model]');
+   const nextHost=screen.querySelector<HTMLElement>(
+     '[data-after-squad-model], [data-after-model]');
+   if(oldHost&&nextHost&&
+     oldHost.hasAttribute('data-after-squad-model')===
+       nextHost.hasAttribute('data-after-squad-model')){
+     oldHost.className=nextHost.className;
+     oldHost.setAttribute('aria-label',nextHost.getAttribute('aria-label')??'');
+     if(nextHost.dataset.afterModel!==undefined)
+       oldHost.dataset.afterModel=nextHost.dataset.afterModel;
+     else delete oldHost.dataset.afterModel;
+     nextHost.replaceWith(oldHost);
+   }
    safeContent.replaceChildren(screen);
    const squadHost=screen.querySelector<HTMLElement>('[data-after-squad-model]');
    const combatHost=screen.querySelector<HTMLElement>('[data-after-model]');
