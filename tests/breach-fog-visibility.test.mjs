@@ -36,7 +36,11 @@ test('3D fog stays ground-aligned and hides unobserved object details',()=>{
  const code=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  assert.match(code,/this\.smoothFog\.renderOrder=1000;/);
  assert.match(code,/this\.exteriorKnownFog\.visible=clippedExteriorFog;/);
- assert.match(code,/exteriorKnownFogRects\(site\)/);
+ const fogMeshes=readFileSync(new URL(
+  '../src/rendering/breach-fog-mesh-composition.ts',import.meta.url),'utf8');
+ assert.match(code,/replaceTacticalFogGeometry\(this\.smoothFog,this\.exteriorKnownFog,site\)/);
+ assert.match(fogMeshes,/exteriorKnownFogRects\(site\)/);
+ assert.match(fogMeshes,/fogUvAt\(p,bounds\)/);
  assert.match(code,/wallOccludesFriendly/);
  assert.match(code,/transitionWallOpacity/);
  const builder=readFileSync(new URL('../src/rendering/breach-site-scene-builder.ts',import.meta.url),'utf8');
