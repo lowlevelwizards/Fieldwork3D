@@ -27,7 +27,7 @@ export class BreachPerfTimelinePanel{
  private graphVisible=true;
  private expandedDetails=false;
  private selectedBucket:number|null=null;
- private policy='always';
+ private policy='planning';
  private view='iso';
  private timeline:PerformanceTimeline|null=null;
  constructor(){
