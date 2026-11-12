@@ -217,6 +217,7 @@ export function createTacticalHudController(
     const shown=state.phase==='planning'&&!input.replaying&&
       !!actor&&actor.health>0;
     quickStates.hidden=!shown;
+    quickStates.dataset.owner=shown?actor!.id:'';
     const height=Math.ceil(input.tacticalHud.getBoundingClientRect().height);
     const value=height+'px';
     if(document.documentElement.style.getPropertyValue('--tactical-hud-height')!==value)
