@@ -36,8 +36,10 @@ const close=(a:number,b:number,tolerance=.01)=>Math.abs(a-b)<=tolerance;
 const isBarrier=(o:Obstacle)=>
   o.fixture==='window-sill'||o.fixture==='glass-barrier';
 export function windowBarrierMatches(opening:WindowOpening,cover:Obstacle):boolean{
+  // Most cover is furniture, so reject it before materializing a footprint.
+  if(!isBarrier(cover))return false;
   const expected=windowBarrierFootprint(opening);
-  return isBarrier(cover)&&cover.fixture===expected.fixture&&
+  return cover.fixture===expected.fixture&&
     close(cover.x,expected.x)&&close(cover.y,expected.y)&&
     close(cover.w,expected.w)&&close(cover.h,expected.h)&&
     cover.low===expected.low&&
