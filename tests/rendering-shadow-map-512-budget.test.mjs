@@ -36,8 +36,7 @@ test('P2 every direct runtime light uses shared 512 shadow budget',()=>{
  for(const path of files){
   const code=source(path);
   assert.match(code,/DEFAULT_SHADOW_MAP_SIZE/,path);
-  assert.match(code,/shadow\.mapSize\.set\(
-   DEFAULT_SHADOW_MAP_SIZE,\s*DEFAULT_SHADOW_MAP_SIZE\)/,path);
+  assert.match(code,/shadow\.mapSize\.set\(\s*DEFAULT_SHADOW_MAP_SIZE,\s*DEFAULT_SHADOW_MAP_SIZE\)/,path);
   assert.doesNotMatch(code,/shadow\.mapSize\.set\(\s*(?:768|1024|1536|2048)/,
    path+' has an unbudgeted high-resolution live shadow');
  }
