@@ -6,6 +6,8 @@ on:
       - 'docs/consolidation-package-c-*.md'
       - 'scripts/verification/package-c0-presentation-audit.mjs'
       - 'tests/package-c0-presentation-audit.test.mjs'
+      - 'tests/package-c1-scene-lifecycle.test.mjs'
+      - 'src/rendering/site-scene-lifecycle.ts'
       - '.github/workflows/package-c-presentation-baseline.yml'
       - 'src/breach-3d.ts'
       - 'src/breach-main.ts'
@@ -33,6 +35,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Install dependencies for real Three.js lifecycle fixtures
+        run: npm install --no-audit --no-fund
+      - name: C1 site graph, material lifetime, memory and frame regression
+        run: |
+          node --experimental-strip-types --test \
+            tests/package-c1-scene-lifecycle.test.mjs \
+            tests/breach-scene-memory-lifecycle-p6.test.mjs \
+            tests/breach-site-material-lifetime.test.mjs \
+            tests/breach-scene-frame-p7.test.mjs
       - name: Validate C0 read-only scene and presentation ownership contracts
         run: node --test tests/package-c0-presentation-audit.test.mjs
       - name: Generate reproducible C0 evidence
