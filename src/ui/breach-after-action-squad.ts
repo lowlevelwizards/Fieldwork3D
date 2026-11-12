@@ -126,7 +126,7 @@ function rankRow(op:OperatorAfterAction,operators:OperatorAfterAction[],
  const row=action('',()=>choose(op.id),'fw-v3-roster-card fw-v4-rank-row');
  row.setAttribute('aria-pressed',String(op.id===selectedId));
  row.setAttribute('data-after-operator-id',op.id);
- row.dataset.afterCondition=op.status;
+ row.setAttribute('data-after-condition',op.status);
  row.setAttribute('aria-label',op.name+', '+scoreRank(op,operators)+
    ' in recorded contribution, '+op.contribution+' points, '+statusName(op.status));
  const rank=el('span','fw-v4-rank-number',scoreRank(op,operators));
