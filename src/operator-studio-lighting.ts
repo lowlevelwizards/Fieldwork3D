@@ -3,6 +3,7 @@
  * operator key casts; camera-only navigation never invalidates the map.
  */
 import * as THREE from 'three';
+import {DEFAULT_SHADOW_MAP_SIZE} from './rendering/shadow-map-budget.ts';
 import {GRAPHIC_LIGHT_PROFILE as G} from './rendering/graphic-lighting-profile.ts';
 import {requestedStudioRenderQuality}
  from './operator-studio-render-quality.ts';
@@ -54,7 +55,7 @@ export function studioShadowMode(search:string):StudioShadowMode{
 export function studioShadowSize(search:string):512|1024|2048{
  const value=new URLSearchParams(search).get('studioShadowSize')??
   new URLSearchParams(search).get('operatorShadowSize');
- return value==='1024'?1024:value==='512'?512:2048;
+ return value==='2048'?2048:value==='1024'?1024:DEFAULT_SHADOW_MAP_SIZE;
 }
 export function visibleOperatorBounds(root:THREE.Object3D):THREE.Box3|null{
  root.updateWorldMatrix(true,true);
