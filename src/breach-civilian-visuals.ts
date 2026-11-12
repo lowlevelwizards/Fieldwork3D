@@ -88,7 +88,7 @@ export function updateCivilianRig(r:CivilianRig,
   r.root.scale.set(CIVILIAN_VISUAL_SCALE*.88,CIVILIAN_VISUAL_SCALE*.78,CIVILIAN_VISUAL_SCALE*.88);
  }else if(pose==='down'){
   r.root.rotation.z=Math.PI*.48;
-  r.root.position.y=3;r.root.scale.set(.88,.88,.88);
+  r.root.position.y=3;r.root.scale.setScalar(CIVILIAN_VISUAL_SCALE*.88);
  }else if(pose==='injured-walk'){
   const step=Math.sin(now*5+c.appearanceSeed*.01)*.17;
   r.root.scale.y=CIVILIAN_VISUAL_SCALE*.82;
@@ -97,7 +97,7 @@ export function updateCivilianRig(r:CivilianRig,
  }else if(pose==='seated'){
   // Small, blocky and grounded: legs point forward and the upper body
   // is lowered, with no extra joints at phone gameplay scale.
-  r.root.scale.y=.73;
+  r.root.scale.y=CIVILIAN_VISUAL_SCALE*.73;
   r.leftLeg.rotation.x=.85;r.rightLeg.rotation.x=.85;
   r.leftArm.rotation.x=-.18;r.rightArm.rotation.x=-.18;
  }else if(pose==='work'){
