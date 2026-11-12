@@ -75,7 +75,7 @@ function pointShadeFast(px:number,py:number,pz:number,
    if(far>=near&&far>EPS){hits++;break;}
   }
  }
- return Math.max(RECEIVER_SHADOW_MIN,1-.34*hits/lightRays.length);
+ return Math.max(RECEIVER_SHADOW_MIN,1-.34*(hits/lightRays.length));
 }
 export function bakeReceiverShadowAtlas(
  key:string,center:THREE.Vector3,size:THREE.Vector3,
