@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {enableBakedGearAO,bakeGearContactAO}
  from '../src/operator-baked-gear-ao.ts';
-import {bakeCastOnGear} from '../src/operator-baked-gear-cast.ts';
+import {bakeCastOnGear,rayEntryDistance} from '../src/operator-baked-gear-cast.ts';
 import {refineStaticShadowGeometry}
  from '../src/operator-gear-shadow-receivers.ts';
 
@@ -100,6 +100,60 @@ test('R6 cross-assembly caster culling preserves color, directional and contact 
   });
   fixture.m.dispose();
  }
+});
+test('P2.4 cold cast ray fast path matches legacy XYZ slab exactly',()=>{
+ const rayOld=(p,dir,box,maxDist=3.25)=>{
+  let near=0,far=maxDist;
+  for(const axis of ['x','y','z']){
+   const d=dir[axis],o=p[axis];
+   if(Math.abs(d)<1e-6){
+    if(o<box.min[axis]||o>box.max[axis])return null;
+   }else{
+    const t0=(box.min[axis]-o)/d,t1=(box.max[axis]-o)/d;
+    near=Math.max(near,Math.min(t0,t1));
+    far=Math.min(far,Math.max(t0,t1));
+    if(near>far)return null;
+   }
+  }
+  return near>.045&&far>.055&&near<maxDist?near:null;
+ };
+ const boxes=[
+  new THREE.Box3(new THREE.Vector3(-1,-2,-3),new THREE.Vector3(3,4,6)),
+  new THREE.Box3(new THREE.Vector3(-7,1,.5),new THREE.Vector3(-2,6,2)),
+  new THREE.Box3(new THREE.Vector3(0,0,0),new THREE.Vector3(1,1,1))
+ ];
+ const dirs=[
+  new THREE.Vector3(.46,.88,.07).normalize(),
+  new THREE.Vector3(.43,.90,.03).normalize(),
+  new THREE.Vector3(.47,.88,.04).normalize(),
+  new THREE.Vector3(0,1,0),
+  new THREE.Vector3(1e-8,-.77,.11),
+  new THREE.Vector3(-.3,-.6,.1)
+ ];
+ for(let i=0;i<450;i++){
+  const p=new THREE.Vector3(
+   ((i*17)%83-41)*.21,((i*31)%79-39)*.24,((i*13)%91-45)*.23);
+  for(const box of boxes)for(const dir of dirs)for(const reach of [.6,2.55,3.25,5]){
+   assert.equal(rayEntryDistance(p,dir,box,reach),rayOld(p,dir,box,reach),
+    'ray slab #'+i+' must preserve exact first-hit depth');
+  }
+ }
+});
+test('P2.4 empty caster bake preserves original zero-mask and bright baseline',()=>{
+ const m=material(),root=new THREE.Group(),
+  mesh=new THREE.Mesh(new THREE.BoxGeometry(3,8,8,4,10,10),m);
+ root.add(mesh);
+ const initial=bakeCastOnGear(mesh,[],root,'empty-first','uniform');
+ const geo=mesh.geometry,colors=geo.getAttribute('color');
+ assert.ok(initial.vertices>0);
+ assert.ok(geo.userData.fieldworkDirectionalCastMask.every(x=>x===0));
+ assert.ok(geo.userData.fieldworkInterContactMask.every(x=>x===0));
+ const values=Array.from(colors.array);
+ assert.equal(bakeCastOnGear(mesh,[],root,'empty-first','uniform').vertices,0);
+ const again=bakeCastOnGear(mesh,[],root,'empty-next','uniform');
+ assert.equal(again.vertices,initial.vertices);
+ assert.deepEqual(Array.from(colors.array),values);
+ mesh.geometry.dispose();m.dispose();
 });
 test('R6 receiver refinement preserves vertex formats, bounds and UVs',()=>{
  const m=material(),source=new THREE.BoxGeometry(3,9,7,1,2,2);
