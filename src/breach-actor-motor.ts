@@ -17,6 +17,7 @@ import {negotiateMotorPassage} from './breach-motor-passage.ts';
 import {handleMotorDoor} from './breach-motor-door.ts';
 import {resolveMotorCollision} from './breach-motor-collision.ts';
 import {d,angle,type ActorMotorHooks} from './breach-motor-contract.ts';
+import {syncDoorTraversalEpisode} from './breach-door-traversal-episode.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
 
@@ -25,6 +26,9 @@ export function advanceActorMotor(
  speedScale=1,profile?:((section:string,elapsedMs:number)=>void)):boolean{
  // All marks are observational and gated behind the same opt-in simulation
  // profiler as the parent operator total. No additional work in normal play.
+ // One authoritative observation before any route/door/queue early return.
+ // No navigation or hinge force is produced by this D1 foundation.
+ if(a.side==='blue')syncDoorTraversalEpisode(a,s.doors,s.seconds);
  const traversalStart=profile?beginMotorCpuMeasurement():0;
  // Do not interrupt a continuous physical traversal with route search.
  if(advanceMotorTraversal(a,s,dt,hooks)){

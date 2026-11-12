@@ -104,6 +104,7 @@ import {confirmedSight} from './breach-visual-perception.ts';
 
 import type {LightingMode} from './equipment-site-lighting.ts';
 import {type PassageLease} from './breach-passage.ts';
+import type {DoorTraversalEpisode} from './breach-door-traversal-episode.ts';
 
 import {planDoorSchedule,type PassageSchedule} from './breach-passage-plan.ts';
 import {projectReachableGoal,type Blocker} from './breach-nav-diagnostics.ts';
@@ -170,6 +171,8 @@ export type TeamActor=Operator & {
   actionTimer:number;blockedTime:number;lastNavRepairAt:number;priorP:Pt;pieIndex:number;
   /** Independent comfort-probe cooldown; never suppress stuck recovery. */
   lastNormalLaneProbeAt:number;
+  /** D1 non-driving memory of the original player-authored crossing. */
+  doorTraversal:DoorTraversalEpisode|null;doorTraversalLastProbeAt:number;
   recoveryAttempts:number;retryRouteAt:number;routeGoalKey:string;
   /** Rate-limit physical clutter nudges and scene rebuilds. */
   lastAutoShoveAt:number;
