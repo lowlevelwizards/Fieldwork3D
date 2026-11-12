@@ -95,7 +95,7 @@ test('P2.8 exact broadphase preserves body and squeeze decisions at animated hin
 
 test('P2.8 distant swinging leaves are filtered without reusing a stale door snapshot',()=>{
  const from={x:120,y:80},to={x:140,y:83};
- const near=door('near',130,81),far=door('far',900,940);
+ const near=door('near',245,181),far=door('far',900,940);
  let lookups=0;
  let fraction=.45;
  Object.defineProperty(far,'openFraction',{get(){lookups++;return fraction;}});
