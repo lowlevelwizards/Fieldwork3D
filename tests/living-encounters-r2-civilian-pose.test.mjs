@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createCivilian} from '../src/breach-civilian-types.ts';
 import {civilianPose} from '../src/breach-civilian-pose.ts';
-import {createCivilianRig,updateCivilianRig} from '../src/breach-civilian-visuals.ts';
+import {createCivilianRig,updateCivilianRig,CIVILIAN_VISUAL_SCALE} from '../src/breach-civilian-visuals.ts';
 const person=()=>createCivilian({id:'civ:le:r2',role:'guest',persona:'startled',
  activity:'waiting',position:{x:40,y:40},heading:0,
  roomId:'guest-room',appearanceSeed:51});
@@ -27,7 +27,7 @@ test('LE4: a person traveling to a refuge uses gait until truly stationary',()=>
  c.state='hiding';c.goal={x:100,y:40};c.velocity=37;
  assert.equal(civilianPose(c),'walk');
  updateCivilianRig(rig,c,1.2);
- assert.equal(rig.root.scale.y,1,'a moving person is not a shrinking mannequin');
+ assert.equal(rig.root.scale.y,CIVILIAN_VISUAL_SCALE,'a moving person is not a shrinking mannequin');
  assert.notEqual(rig.leftLeg.rotation.x,0);
  c.velocity=0;c.goal=null;
  assert.equal(civilianPose(c),'hide');
