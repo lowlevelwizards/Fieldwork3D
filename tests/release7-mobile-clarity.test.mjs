@@ -10,17 +10,29 @@ const waiting=(actionTimer=0)=>({
  traversalRetreating:false,traversalElapsed:0,motorPause:null,
  orderIssue:null,completedOrders:0
 });
-test('R7.5 mobile gate text distinguishes real locked, braced, jammed doors',()=>{
- for(const [door,fragment] of [
-  [{id:'ENTRY',open:false,locked:true},'LOCKED'],
-  [{id:'ENTRY',open:false,heldBy:'GUARD'},'HELD'],
-  [{id:'ENTRY',open:false,jammed:true},'JAMMED']
+test('R7.5 status never leaks undiscovered lock, brace, or jam world truth',()=>{
+ const baseline=executionStatus(waiting(),{doors:[
+  {id:'ENTRY',open:false}]});
+ for(const door of [
+  {id:'ENTRY',open:false,locked:true},
+  {id:'ENTRY',open:false,heldBy:'GUARD'},
+  {id:'ENTRY',open:false,jammed:true}
  ]){
-  const result=executionStatus(waiting(),{doors:[door]});
-  assert.equal(result.kind,'blocked');
-  assert.equal(result.reason,'entry-gate');
-  assert.ok(result.detail.includes(fragment),result.detail);
+  const status=executionStatus(waiting(),{doors:[door]});
+  assert.deepEqual(status,baseline,
+   'truth about an untested mechanism is not player knowledge');
  }
+});
+test('R7.5 confirmed motor diagnosis still gives actionable details',()=>{
+ for(const reason of ['door-locked','door-held','door-obstructed']){
+  const status=executionStatus({...waiting(),motorPause:reason});
+  assert.equal(status.kind,'blocked');
+  assert.equal(status.reason,reason);
+ }
+ const failed=executionStatus({...waiting(),
+  orderIssue:{nodeId:1,reason:'LOCK BLOCKED',since:1}});
+ assert.equal(failed.detail,'LOCK BLOCKED');
+ assert.equal(failed.kind,'blocked');
 });
 test('R7.5 a normal unopened entry waits briefly, then indicates blockage',()=>{
  const door={id:'ENTRY',open:false,openFraction:0};

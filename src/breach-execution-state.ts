@@ -25,8 +25,7 @@ export type ExecutionActor={
  completedOrders:number;passageWaitSeconds?:number;
 };
 type Peer={health:number;syncReady:string|null;plan:readonly PlanNode[]};
-type DoorView={id:string;open:boolean;openFraction?:number;
- locked?:boolean;heldBy?:string|null;jammed?:boolean};
+type DoorView={id:string;open:boolean;openFraction?:number};
 export type ExecutionContext={
  phase?:'planning'|'running'|'won'|'lost';
  doors?:readonly DoorView[];peers?:readonly Peer[];
@@ -84,12 +83,11 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
        // known lock/brace/jam from a normal temporary swing or lead entry.
        // Derive from the same door state as simulation, with no extra HUD
        // polling, order mutation or undisclosed geometry probes.
-       const hard=!!door?.locked||!!door?.heldBy||!!door?.jammed;
-       const blocked=hard||!door||a.actionTimer>=2.5;
+       // Locked/held/jammed are *not* safe to infer from world-truth
+       // Door data: only the actor's motorPause or orderIssue may report
+       // those conditions after the physical interaction exposes them.
+       const blocked=!door||a.actionTimer>=2.5;
        const detail=!door?'DOOR UNAVAILABLE':
-         door.locked?'LOCKED · UNLOCK OR BREACH':
-         door.heldBy?'DOOR HELD SHUT':
-         door.jammed?'DOOR JAMMED':
          door.open?'DOOR SWING NOT CLEAR':'DOOR NOT CLEAR';
        return result(blocked?'blocked':'waiting',
         blocked?'ENTRY BLOCKED':'WAITING',detail,id,'entry-gate');
