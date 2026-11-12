@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {classifyExecutionNotice,classifyExecutionTransition,ExecutionNoticeFeed} from '../src/ui/execution-feedback.ts';
+import {classifyExecutionNotice,classifyExecutionTransition,ExecutionNoticeFeed,locateNoticeOrder} from '../src/ui/execution-feedback.ts';
 
 test('events have a readable priority hierarchy',()=>{
  assert.equal(classifyExecutionNotice('ROOK DOWN — UNCONTROLLED BLEEDING').severity,'danger');
@@ -79,4 +79,22 @@ test('narrative input does not duplicate identical structured transitions',()=>{
  const one=feed.update(['ROOK BLOCKED'],'running',100,[typed]);
  assert.equal(one?.label,'OBSTRUCTED');
  assert.equal(one?.priority,3);
+});
+
+test('TF3 carries typed actor and order, then validates before locating',()=>{
+ const feed=new ExecutionNoticeFeed();
+ feed.update([],'planning',0,[]);
+ const e={id:1,t:1,actor:'moss',p:{x:23,y:14},orderId:42,
+  kind:'blocked',reason:'door-locked',text:'MOSS STOPPED'};
+ const n=feed.update([],'running',100,[e]);
+ assert.equal(n.actorId,'moss');assert.equal(n.orderId,42);
+ assert.deepEqual(locateNoticeOrder(n,[{id:'moss',plan:[{id:42}]}]),
+  {actorId:'moss',orderId:42});
+ assert.deepEqual(locateNoticeOrder(n,[{id:'moss',plan:[{id:7}]}]),
+  {actorId:'moss',orderId:null});
+ assert.equal(locateNoticeOrder(n,[{id:'rook',plan:[{id:42}]}]),null);
+ const source=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
+ assert.match(source,/data-locate-issue/);
+ assert.match(source,/port\.selectUnit\(located\.actorId\)/);
+ assert.match(source,/port\.selectedNode=located\.orderId/);
 });

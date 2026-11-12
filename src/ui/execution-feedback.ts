@@ -6,6 +6,7 @@ export type FeedbackSeverity='danger'|'contact'|'warning'|'progress'|'routine'|'
 export type ExecutionNotice={
   text:string;label:string;severity:FeedbackSeverity;priority:number;
   born:number;expires:number;recovery?:string;
+  actorId?:string;orderId?:number|null;
 };
 type Classified={label:string;severity:FeedbackSeverity;priority:number;duration:number};
 export function classifyExecutionNotice(message:string):Classified{
@@ -86,6 +87,7 @@ export class ExecutionNoticeFeed{
       const classification=classifyExecutionTransition(event);
       if(!classification)continue;
       this.queue.push({text:event.text,label:classification.label,
+        ...(event.kind==='blocked'?{actorId:event.actor,orderId:event.orderId}:{}),
         severity:classification.severity,priority:classification.priority,
         born:now,expires:now+classification.duration,
         recovery:classification.severity==='warning'?
@@ -115,4 +117,17 @@ export class ExecutionNoticeFeed{
       priority:c.priority,born:now,expires:now+c.duration});
     if(this.queue.length>8)this.queue.splice(0,this.queue.length-8);
   }
+}
+
+/** Match a typed warning only against the currently loaded friendly plan. */
+export function locateNoticeOrder(
+ notice:Pick<ExecutionNotice,'actorId'|'orderId'>|null,
+ operators:readonly {id:string;plan:readonly {id:number}[]}[]):
+ {actorId:string;orderId:number|null}|null{
+ if(!notice?.actorId)return null;
+ const actor=operators.find(a=>a.id===notice.actorId);
+ if(!actor)return null;
+ const id=notice.orderId;
+ return {actorId:actor.id,orderId:id!==null&&id!==undefined&&
+  actor.plan.some(n=>n.id===id)?id:null};
 }
