@@ -5,6 +5,7 @@ import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
 import {GRAPHIC_LIGHT_PROFILE as G,configureGraphicRendererOutput} from './rendering/graphic-lighting-profile.ts';
 import {SiteMaterialLifetime} from './rendering/site-material-lifetime.ts';
+import {releaseSiteSceneObjects} from './rendering/site-scene-lifecycle.ts';
 import {buildSiteWorld,finalizeStaticSiteBatches,type SiteSceneBuildPort}
  from './rendering/breach-site-scene-builder.ts';
 
@@ -947,19 +948,17 @@ export class TacticalScene3D{
     for(const actor of this.actors.values()){
       actor.beam.visible=false;actor.beamLast=null;
     }
-    this.staticBatches.clear();
     this.siteMaterials.reset();
     this.shadowUpdates.invalidate();
     for(const texture of this.sitePatinaTextures)texture.dispose();
     for(const material of this.sitePatinaMaterials)material.dispose();
     this.sitePatinaTextures.length=0;this.sitePatinaMaterials.length=0;
     this.patinaRoomSurfaces.length=0;this.patinaWallSurfaces.length=0;
-    this.root.children.filter(c=>c!==this.fogUnknown&&
-      c!==this.fogExplored).forEach(child=>{
-      child.traverse(o=>{if(o instanceof THREE.Mesh&&
-        !this.sharedBoxGeometries.has(o.geometry))o.geometry.dispose();});
-      this.root.remove(child);
-    });
+    // Site graph disposal includes Lines and InstancedMesh GPU buffers;
+    // retain shared box geometry, fog resources, actors and live renderer.
+    // StaticSceneBatches already released its own instance buffers above.
+    releaseSiteSceneObjects(this.root,
+      new Set([this.fogUnknown,this.fogExplored]),this.sharedBoxGeometries);
     for(const material of this.wallMaterials)material.dispose();
     this.wallMaterials.clear();
     this.walls.length=0;this.wallFade.clear();
