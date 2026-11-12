@@ -3672,3 +3672,44 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v5-summary-compact .fw-v4-result-foot{grid-column:2;grid-row:2}
  .fw-v5-workspace .fw-after-tabs button{font-size:11px}
 }
+
+/* V5.2: source-linked operator awards and a roster-first mobile inspector. */
+.fw-v5-contribution-bar{display:flex;min-height:13px;gap:2px;
+ overflow:hidden;border-radius:3px;background:#526353}
+.fw-v5-contribution-segment{flex-basis:0;min-width:2px}
+.fw-v5-contribution-segment[data-category="combat"]{background:#d2a17b}
+.fw-v5-contribution-segment[data-category="recon"]{background:#89aca0}
+.fw-v5-contribution-segment[data-category="support"]{background:#8f9cb0}
+.fw-v5-contribution-segment[data-category="objective"]{background:#dec488}
+.fw-v5-contribution-empty{background:#66776a;flex:1}
+.fw-v5-methodology{font:650 11px/1.5 var(--ui-font);color:#c2cbbd}
+.fw-v5-methodology summary{cursor:pointer;font:800 11px var(--ui-display);
+ min-height:36px;display:flex;align-items:center}
+.fw-v5-methodology .fw-v4-scoring-note{padding:5px 0 3px}
+.fw-v5-recorded-actions{display:grid;gap:4px;min-width:0}
+.fw-v5-recorded-actions h3{margin:0;color:#c2cabc;
+ font:750 10px var(--ui-display)}
+.fw-v5-recorded-action,.fw-v5-recorded-action-text{
+ margin:0;min-height:38px;padding:7px 9px;text-align:left;
+ color:#e7ddca;background:#304b3d;border:1px solid #577362;
+ border-radius:4px;font:700 11px var(--ui-display)}
+.fw-v5-workspace .fw-v4-squad .fw-v4-squad-model{height:230px}
+@media(max-width:700px){
+ .fw-v5-workspace .fw-v4-squad .fw-v4-squad-content{
+  display:flex;flex-direction:column;gap:7px}
+ .fw-v5-workspace .fw-v4-squad .fw-v4-rank-list{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:5px;order:0;width:100%;box-sizing:border-box}
+ .fw-v5-workspace .fw-v4-squad .fw-v4-squad-focus{
+  order:1;display:flex;flex-direction:column;width:100%;
+  align-self:stretch;box-sizing:border-box;padding:8px}
+ .fw-v5-workspace .fw-v4-squad .fw-v4-squad-focus .fw-v4-squad-model{
+  display:block;height:245px;min-height:175px;width:100%}
+ .fw-v5-workspace .fw-v4-squad .fw-v4-team-overview{
+  display:grid;gap:7px;padding:5px 0;background:transparent;border:0}
+ .fw-v5-workspace .fw-v4-squad .fw-v4-rank-row{min-height:48px}
+}
+@media(max-height:480px){
+ .fw-v5-workspace .fw-v4-squad .fw-v4-squad-focus .fw-v4-squad-model{
+  height:135px;min-height:105px}
+}
