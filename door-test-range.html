@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#172923"><title>FIELDWORK / DOOR TEST RANGE</title>
+<link rel="stylesheet" href="./src/ui/fieldwork-design.css">
+<style>
+*{box-sizing:border-box}body{background:#182a25;color:#ecf1e7;margin:0;font:13px/1.45 "Work Sans",system-ui,sans-serif}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#233c33;padding:13px 18px;border-bottom:1px solid #668873}
+header strong{font-size:15px;letter-spacing:.1em}a{color:#f0cf8a}
+main{max-width:1160px;margin:auto;padding:14px;display:grid;gap:12px}
+section{padding:15px;border:1px solid #496c5e;border-radius:12px;background:#263c33}
+h1{font-size:18px;margin:0 0 7px;font-family:"Saira Condensed",system-ui,sans-serif;letter-spacing:.05em}
+p{color:#bfd4c7;margin:5px 0 12px}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px}
+label{display:grid;gap:5px;font-size:11px;letter-spacing:.06em;font-weight:700}
+button,select{min-height:44px;padding:10px;border-radius:7px;border:1px solid #729a84;background:#3e5a4c;color:#f4f3e6;font:inherit;cursor:pointer}
+button:focus-visible,select:focus-visible{outline:2px solid #f0cf8a;outline-offset:2px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+.actions button{flex:1 1 130px}#go{background:#dfbd7e;color:#172923;font-weight:800}
+details{margin-top:12px;border-top:1px solid #49685b;padding-top:10px}summary{cursor:pointer;min-height:38px;color:#e0cfab}
+canvas{display:block;width:100%;max-width:860px;margin:auto;aspect-ratio:640/500;background:#213c32;border:1px solid #62846e;border-radius:8px;touch-action:manipulation}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.stat{background:#182e28;padding:9px;border-radius:7px;color:#acc9b8;font:11px ui-monospace,monospace}
+.stat strong{display:block;color:#f0d29d;font-size:14px;margin-top:3px;overflow-wrap:anywhere}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 ui-monospace,monospace;color:#d4e7d7;max-height:320px;overflow:auto}
+#message{color:#f2d398;min-height:24px}
+.legend{font-size:11px;color:#a6c5b4}
+@media(max-width:600px){main{padding:8px}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}section{padding:10px}header{padding:10px}canvas{width:100%}}
+</style></head><body>
+<header><strong>FIELDWORK / DOOR TEST RANGE</strong>
+<a href="./physicality-lab.html">PHYSICALITY LAB</a></header>
+<main>
+<section><h1>Doorway muscle memory · D0–D1</h1>
+<p>A dedicated deterministic test map running the <strong>real four-operator game motor</strong>, full door collision and hinge geometry. Select swing and fixture configurations, step frame-by-frame, and inspect an operator's remembered crossing episode.</p>
+<div class="controls">
+<label>PHYSICAL SCENARIO<select id="scenario"></select></label>
+<label>EXECUTION<select id="program"><option value="squad">Coordinated 4-person entry</option>
+<option value="independent">Four independent MOVE plans</option>
+<option value="counterflow">Opposing two-way crossing</option>
+<option value="solo">Solo operator</option></select></label>
+<label>SELECTED OPERATOR<select id="operator"></select></label>
+<label>SIMULATION SPEED<select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+</div>
+<div class="actions"><button id="go">GO</button><button id="step">SINGLE TICK</button>
+<button id="reset">RESET CASE</button><button id="clearSelected">CLEAR SELECTED PLAN</button></div>
+<details><summary>HINGE DEBUG CONTROLS · PHYSICAL FORCE</summary>
+<p>These buttons inject debug door actions into the actual session. They are not simulated operator hand animations. D2–D4 will connect the continuous grab-and-hold choreography.</p>
+<div class="actions"><button id="open">OPEN</button><button id="push">PUSH WIDER</button>
+<button id="close">CLOSE</button><button id="wedge">TOGGLE WEDGE</button></div>
+</details>
+<div class="actions"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="trace" checked> Show transient motor route</label>
+<button id="copy">COPY REPORT</button></div>
+<p id="message" role="status" aria-live="polite"></p></section>
+<section><canvas id="doorStage" width="640" height="500"
+ aria-label="Live top-down door and four-operator physical test map"></canvas>
+<p class="legend">Tap an operator to select; tap the floor to append a MOVE while planning. Amber = selected operator / leaf; teal = authored routes; dashed amber = temporary motor route. No physical collision is disabled.</p></section>
+<section><div class="stats">
+<div class="stat">SIM TIME<strong id="clock">0s</strong></div>
+<div class="stat">DOOR LEAF<strong id="doorInfo">—</strong></div>
+<div class="stat">SQUAD PROGRESS<strong id="outcome">—</strong></div>
+<div class="stat">OPEN/CLOSE FLIPS<strong id="flips">0</strong></div>
+</div><pre id="detail" aria-live="off"></pre></section>
+</main><script type="module" src="./src/door-test-range-main.ts"></script>
+</body></html>
