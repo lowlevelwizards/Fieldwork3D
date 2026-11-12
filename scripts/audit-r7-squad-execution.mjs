@@ -51,7 +51,7 @@ function planEntry(session,actors){
  const initial=actors.map(a=>a.plan.map(n=>n.id));
  const rejectedDoors=[];
  const start=actors[0].p;
- const eligible=[...session.doors].filter(d=>d.kind==='hinged')
+ const eligible=[...session.doors].filter(d=>d.kind!=='sliding'&&d.kind!=='shutter')
   .sort((a,b)=>dist(start,{x:(a.a.x+a.b.x)/2,y:(a.a.y+a.b.y)/2})-
     dist(start,{x:(b.a.x+b.b.x)/2,y:(b.a.y+b.b.y)/2})||
     a.id.localeCompare(b.id));
