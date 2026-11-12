@@ -101,6 +101,55 @@ test('R6 cross-assembly caster culling preserves color, directional and contact 
   fixture.m.dispose();
  }
 });
+test('P2.5 hidden alternatives do not bake until visible, and then match a visible reference',()=>{
+ const m=material(),root=new THREE.Group(),receiver=new THREE.Group(),
+  caster=new THREE.Group(),hidden=new THREE.Group();
+ root.add(receiver,caster);receiver.add(hidden);
+ const visible=new THREE.Mesh(new THREE.BoxGeometry(2,8,8,1,8,8),m);
+ const deferred=new THREE.Mesh(new THREE.BoxGeometry(2,8,8,1,8,8),m);
+ hidden.add(deferred);receiver.add(visible);
+ const flap=new THREE.Mesh(new THREE.BoxGeometry(1,4,4),m);
+ flap.position.set(1.9,1,0);caster.add(flap);
+ hidden.visible=false;
+ const first=bakeCastOnGear(receiver,[caster],root,'same-costume');
+ assert.ok(first.vertices>0);
+ assert.equal(deferred.geometry.getAttribute('color'),undefined,
+  'invisible alternate outfit must not generate per-vertex baked lighting');
+ assert.equal(deferred.geometry.userData.fieldworkCrossLightKey,undefined);
+ const visibleColors=Array.from(visible.geometry.getAttribute('color').array);
+ hidden.visible=true;
+ const second=bakeCastOnGear(receiver,[caster],root,'same-costume');
+ assert.equal(second.vertices,deferred.geometry.getAttribute('position').count,
+  'switching to previously hidden outfit bakes immediately on first visible frame');
+ assert.deepEqual(Array.from(deferred.geometry.getAttribute('color').array),visibleColors,
+  'newly visible identical receiver has exact same color bytes as always-visible');
+ assert.deepEqual(
+  Array.from(deferred.geometry.userData.fieldworkDirectionalCastMask),
+  Array.from(visible.geometry.userData.fieldworkDirectionalCastMask));
+ assert.deepEqual(
+  Array.from(deferred.geometry.userData.fieldworkInterContactMask),
+  Array.from(visible.geometry.userData.fieldworkInterContactMask));
+ assert.equal(bakeCastOnGear(receiver,[caster],root,'same-costume').vertices,0,
+  'repeated same-costume render does not repeat bake');
+ root.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});m.dispose();
+});
+test('P2.5 no-caster receiver skips world matrices but still restores all bytes',()=>{
+ const m=material(),root=new THREE.Group(),receiver=new THREE.Group();
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(2,9,8,2,8,8),m);
+ root.add(receiver);receiver.add(mesh);
+ const first=bakeCastOnGear(receiver,[],root,'blank-a');
+ const baseline=Array.from(mesh.geometry.getAttribute('color').array);
+ assert.ok(first.vertices>0);
+ root.updateWorldMatrix=()=>{throw Error('unneeded root matrix rebuild');};
+ receiver.updateWorldMatrix=()=>{throw Error('unneeded receiver matrix rebuild');};
+ mesh.updateWorldMatrix=()=>{throw Error('unneeded mesh matrix rebuild');};
+ const second=bakeCastOnGear(receiver,[],root,'blank-b');
+ assert.equal(second.vertices,first.vertices);
+ assert.deepEqual(Array.from(mesh.geometry.getAttribute('color').array),baseline);
+ assert.ok(mesh.geometry.userData.fieldworkDirectionalCastMask.every(x=>x===0));
+ assert.ok(mesh.geometry.userData.fieldworkInterContactMask.every(x=>x===0));
+ mesh.geometry.dispose();m.dispose();
+});
 test('P2.4 cold cast ray fast path matches legacy XYZ slab exactly',()=>{
  const rayOld=(p,dir,box,maxDist=3.25)=>{
   let near=0,far=maxDist;
