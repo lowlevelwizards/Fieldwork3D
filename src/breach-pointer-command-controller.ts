@@ -21,7 +21,7 @@ import {orderFailureText} from './breach-nav-diagnostics.ts';
 import {intelPassable,doorKnown} from './breach-intel.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
-import {simplifyStrokePoints} from './ui/touch-hit-targets.ts';
+import {simplifyStrokePoints,spaceStrokeWaypoints} from './ui/touch-hit-targets.ts';
 import {doorReachable} from './breach-door.ts';
 export type PointerCommandPort={
  readonly state:Session;readonly replaying:boolean;
@@ -152,24 +152,28 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       // input sample. Preserve meaningful screen-space bends and reject
       // simplifications that would cut across KNOWN obstacles. Unseen
       // obstacles remain undisclosed to the plan author.
+      const knownShortcutClear=(from:Pt,to:Pt)=>{
+        const span=distance(from,to);
+        const steps=Math.max(1,Math.ceil(span/4));
+        for(let i=1;i<steps;i++){
+          const t=i/steps;
+          if(!intelPassable({x:from.x+(to.x-from.x)*t,
+             y:from.y+(to.y-from.y)*t},port.state.intel,SQUEEZE_RADIUS))
+            return false;
+        }
+        return true;
+      };
+      const projectStroke=(point:Pt)=>port.worldToScreen(point,8);
       const points=simplifyStrokePoints([...port.trace,pt],
-        point=>port.worldToScreen(point,8),15,(from,to)=>{
-          const span=distance(from,to);
-          const steps=Math.max(1,Math.ceil(span/4));
-          for(let i=1;i<steps;i++){
-            const t=i/steps;
-            if(!intelPassable({x:from.x+(to.x-from.x)*t,
-               y:from.y+(to.y-from.y)*t},port.state.intel,SQUEEZE_RADIUS))
-              return false;
-          }
-          return true;
-        });
+        projectStroke,15,knownShortcutClear);
+      const spaced=spaceStrokeWaypoints(points,projectStroke,18,
+        knownShortcutClear);
       // A stroke that starts on the operator's HERE marker REPLACES the
       // queued plan, even when it contains several waypoints. Appending
       // still happens via taps and gestures on the existing route end.
       // planMoveStroke records the entire replacement as one undoable edit.
       const strokeOutcome={clipped:false,endpoint:pt};
-      if(!planMoveStroke(port.state,port.selected,points.slice(1),false,true,strokeOutcome))
+      if(!planMoveStroke(port.state,port.selected,spaced.slice(1),false,true,strokeOutcome))
         port.rejectAt(pt,'NO WALKABLE STROKE · PREVIOUS ROUTE KEPT');
       else{
         port.selectedActiveWatch=false;
