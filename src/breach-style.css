@@ -3922,3 +3922,20 @@ body.replaying .replay-follow-status[data-grade]::after{
   height:170px;min-height:145px}
  .fw-v5-workspace .fw-v6-watch-clip{min-height:36px}
 }
+
+/* After Action V6.4 — featured moments and the single source-linked timeline. */
+.fw-v6-moments{display:flex;flex-direction:column;gap:10px;min-height:100%}
+.fw-v6-timeline-label{margin:5px 2px 0;color:#e9d9b8;
+ font:800 16px var(--ui-display)}
+.fw-v6-moments-timeline{min-width:0}
+.fw-v5-workspace .fw-v6-moments .fw-v5-timeline{
+ margin-bottom:10px;border:1px solid #506a58;border-radius:5px}
+.fw-v5-workspace .fw-v6-highlight-no-frame{height:auto;aspect-ratio:auto;
+ min-height:130px;max-height:190px}
+.fw-v5-workspace .fw-v6-highlight-no-frame .fw-v5-highlight-fallback{
+ min-height:130px;max-height:190px;padding:13px}
+.fw-v6-moment-participants{font:750 10px/1.4 var(--ui-display);
+ color:#c8d5c4}
+.fw-v5-workspace .fw-v6-moments .fw-v5-timeline-filters{
+ scroll-snap-type:x proximity}
+.fw-v5-workspace .fw-v6-moments .fw-v5-timeline-filter{scroll-snap-align:start}

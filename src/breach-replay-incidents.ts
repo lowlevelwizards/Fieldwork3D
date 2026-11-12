@@ -29,11 +29,11 @@ const tags=(events:readonly ReplayIndexedEvent[])=>{
 };
 const count=(m:ReadonlyMap<string,number>,kind:string)=>m.get(kind)??0;
 function nameFor(m:ReadonlyMap<string,number>):{kind:string;label:string}{
-  if(count(m,'objective'))return {kind:'objective',label:'OBJECTIVE REACHED'};
   if(count(m,'down')||count(m,'wound')){
     return {kind:'casualty',label:count(m,'shot')?
       'CASUALTY DURING ENGAGEMENT':'CASUALTY REPORTED'};
   }
+  if(count(m,'objective'))return {kind:'objective',label:'OBJECTIVE REACHED'};
   if(count(m,'intel')&&count(m,'door'))return {kind:'contact',label:'CONTACT AT ENTRY'};
   if(count(m,'intel'))return {kind:'contact',label:'CONTACT REPORTED'};
   if(count(m,'door')&&count(m,'shot'))return {kind:'engagement',label:'ENTRY FIREFIGHT'};
@@ -133,7 +133,8 @@ export function featuredReplayIncidents(
   const chosen:ReplayIncident[]=[];
   for(const incident of ranked){
     if(chosen.length>=Math.floor(limit))break;
-    if(chosen.some(other=>Math.abs(other.start-incident.start)<6))continue;
+    if(chosen.some(other=>Math.abs(other.start-incident.start)<6||
+       (other.kind===incident.kind&&other.label===incident.label)))continue;
     if(chosen.filter(other=>other.kind===incident.kind).length>=2)continue;
     chosen.push(incident);
   }

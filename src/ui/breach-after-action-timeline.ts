@@ -4,7 +4,7 @@
  */
 import type {AfterActionTimelineEvent,TimelineFilter}
  from '../breach-after-action-timeline.ts';
-import {clusterAfterActionTimeline,matchesTimelineFilter,timelineCategoryName,timelineTime,
+import {clusterAfterActionTimeline,matchesTimelineFilter,selectTimelineEvents,timelineCategoryName,timelineTime,
  TIMELINE_FILTERS} from '../breach-after-action-timeline.ts';
 
 export type TimelineViewState={
@@ -46,10 +46,12 @@ export function renderAfterActionTimeline(input:{
   inspectLabel,highlightsAvailable}=input;
  const root=make('section','fw-v5-timeline');
  root.setAttribute('aria-label','Recorded mission timeline');
- const filtered=events.filter(e=>matchesTimelineFilter(e,state.filter));
+ const filtered=selectTimelineEvents(events,state.filter,duration);
  const heading=make('header','fw-v5-timeline-heading');
  heading.append(make('h3','', 'TACTICAL TIMELINE'),
-   make('small','',filtered.length+' OF '+events.length+' RECORDED EVENTS'));
+   make('small','',state.filter==='key'?
+   filtered.length+' KEY MOMENTS · '+events.length+' SOURCE EVENTS':
+   filtered.length+' OF '+events.length+' RECORDED EVENTS'));
  root.append(heading);
  if(!complete)root.append(make('p','fw-v5-timeline-warning',
    'PARTIAL RECORDING · missing events are not reconstructed'));
@@ -57,7 +59,7 @@ export function renderAfterActionTimeline(input:{
  chips.setAttribute('role','group');
  chips.setAttribute('aria-label','Timeline event categories');
  for(const filter of TIMELINE_FILTERS){
-   const count=events.filter(e=>matchesTimelineFilter(e,filter)).length;
+   const count=selectTimelineEvents(events,filter,duration).length;
    if(filter!=='all'&&!count)continue;
    const b=button(timelineCategoryName(filter)+' '+count,
      ()=>actions.filter(filter),'fw-v5-timeline-filter');
@@ -85,7 +87,7 @@ export function renderAfterActionTimeline(input:{
    selectedCluster;
  const nav=make('div','fw-v5-timeline-ruler');
  const railHint=make('p','fw-v5-timeline-hint',
-   state.filter==='key'?'Significant recorded events · all source events remain in the full ledger':
+   state.filter==='key'?'Selected turning points · choose All Events for the full record':
    'Markers show actual recorded times · swipe to explore');
  const rail=make('div','fw-v5-timeline-rail');
  rail.setAttribute('aria-label','Scroll horizontally to inspect timeline clusters');

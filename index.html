@@ -263,7 +263,7 @@
   <nav id="afterActionTabs" class="fw-after-tabs" aria-label="Debrief sections">
     <button type="button" data-after-tab="squad" aria-pressed="true">SQUAD</button>
     <button type="button" data-after-tab="combat" aria-pressed="false">COMBAT</button>
-    <button type="button" data-after-tab="highlights" aria-pressed="false">HIGHLIGHTS</button>
+    <button type="button" data-after-tab="highlights" aria-pressed="false">MOMENTS</button>
   </nav>
   <div id="afterActionBody" class="fw-after-body" aria-live="polite"></div>
   <footer class="fw-after-footer">
@@ -277,7 +277,9 @@
       <button id="afterActionDetailsClose" type="button">✕ CLOSE</button>
     </div>
     <div class="fw-after-detail-content">
-      <div id="afterActionTimeline" aria-label="Interactive mission event timeline"></div>
+      <div id="afterActionDetailsTimelineDock">
+        <div id="afterActionTimeline" aria-label="Interactive mission event timeline"></div>
+      </div>
       <div id="afterActionMissionDetails" aria-label="Structured mission report"></div>
       <details class="fw-after-action-detail" id="debriefIntelBlock" hidden>
         <summary>INTELLIGENCE REVIEW</summary>
