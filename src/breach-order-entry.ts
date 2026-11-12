@@ -23,7 +23,7 @@ const pop=completeOrder;
 export function entryCorrectionEligible(
  actor:Pick<TeamActor,'blockedTime'|'recoveryAttempts'>,
  from:Pt,to:Pt):boolean{
- const distance=d(from,to);
+ const distance=Math.hypot(from.x-to.x,from.y-to.y);
  return distance>2&&distance<75&&actor.blockedTime<3.5&&
   actor.recoveryAttempts<5;
 }
