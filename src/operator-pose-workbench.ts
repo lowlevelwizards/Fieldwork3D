@@ -4,11 +4,22 @@
  * Nothing here touches gameplay firing, locomotion, or replay authority.
  */
 import * as THREE from 'three';
-import {alignSegment,ARM_LIMITS,solveTwoBone} from './breach-ik.ts';
+import {ARM_LIMITS,solveTwoBone} from './breach-ik.ts';
 import {weaponGrips} from './breach-weapon-pose.ts';
 import type {WeaponId} from './breach-combat.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import type {OperatorRig} from './breach-operator-rig.ts';
+import type {OperatorPose} from './breach-operator-animation-contract.ts';
+import {operatorPoseScratchForRig} from './breach-operator-animation-frame.ts';
+import {beginOperatorFramePose,finishOperatorFramePose}
+ from './breach-operator-frame-output.ts';
+import {beginOperatorArmPose,setOperatorArmSegments,setOperatorHandPose,
+ finishOperatorArmPose} from './breach-operator-upper-body-output.ts';
+import {beginOperatorEquipmentPose,finishOperatorEquipmentPose}
+ from './breach-operator-equipment-output.ts';
+import {beginOperatorPoseOutput,stageOperatorPoseOutput,
+ stageDirectOperatorPoseOutput,commitOperatorPoseOutput}
+ from './breach-operator-pose-output.ts';
 
 export const WORKBENCH_TARGETS=[
  'stock','supportShoulder','firingShoulder','supportHand','firingHand',
@@ -94,6 +105,18 @@ export function snapWorkbenchHandsToGun(pose:WorkbenchPose,
  pose.targets.supportHand=coords(c.support);
  pose.targets.firingHand=coords(c.firing);
 }
+/** Offline authoring has no tactical/action clock. This immutable fallback
+ * is used only when an editor is handed an unposed rig; normal Workbench
+ * initialization poses one neutral ready frame first. The B2 publisher
+ * consumes its timestamp, never the motor or the footstep scheduler.
+ */
+const WORKBENCH_OUTPUT_INPUT:OperatorPose={
+ x:0,z:0,heading:0,travelYaw:0,velocity:0,seconds:0,stride:0,
+ posture:'stand',injury:0,weapon:'carbine',
+ reload:0,reloadDuration:1,lastThrowAt:-100,lastDoorAt:-100,
+ down:false,surrender:false,aiming:false,firing:false,
+ turning:0,deterministic:true
+};
 /** At most two forward-kinematic 10+10 arm solves per frame, with no armor
  * re-ranking or multi-candidate IK. Requested elbows are bend POLES:
  * the small solved-elbow marker shows the achievable joint if the target
@@ -102,11 +125,19 @@ export function snapWorkbenchHandsToGun(pose:WorkbenchPose,
 export function applyWorkbenchPose(rig:OperatorRig,pose:WorkbenchPose,
  configuration?:WeaponConfiguration):WorkbenchReport{
  const gun=weaponWorkbenchContacts(pose,configuration);
- rig.chest.rotation.set(rads(pose.torso[0]),
+ // B7: use the SAME rig-local B3-B6 scratch and B2 six-stage publisher as
+ // gameplay, replay, Studio and Operator Lab. Manual targets remain the
+ // only authoring inputs: no tactical action solver or new clock is run.
+ const scratch=operatorPoseScratchForRig(rig);
+ const frame=beginOperatorFramePose(rig,scratch);
+ beginOperatorArmPose(rig,scratch);
+ const equipment=beginOperatorEquipmentPose(rig,scratch);
+ const held=equipment.weapons[0];
+ frame.chest.rotation.set(rads(pose.torso[0]),
   rads(pose.torso[1]),rads(pose.torso[2]),'XYZ');
- rig.weapon.position.copy(gun.origin);
- rig.weapon.rotation.copy(gun.rotation);
- rig.weapon.scale.set(gun.lengthScale,1,1);
+ held.position.copy(gun.origin);
+ held.quaternion.setFromEuler(gun.rotation);
+ held.scale.set(gun.lengthScale,1,1);
  const solve=(index:0|1):WorkbenchArmReport=>{
   const suffix=index===0?'support':'firing';
   const arm=rig.arms[index];
@@ -117,10 +148,9 @@ export function applyWorkbenchPose(rig:OperatorRig,pose:WorkbenchPose,
     .sub(shoulder);
   const solution=solveTwoBone(shoulder,wrist,10,10,pole,ARM_LIMITS);
   const side=new THREE.Vector3(0,0,index===0?-1:1);
-  alignSegment(arm.upper,shoulder,solution.joint,side);
-  alignSegment(arm.lower,solution.joint,solution.effector,side);
-  arm.hand.position.copy(solution.effector);
-  arm.hand.rotation.set(0,gun.rotation.y,0);
+  setOperatorArmSegments(scratch,index,shoulder,solution.joint,
+   solution.effector,side);
+  setOperatorHandPose(scratch,index,solution.effector,gun.rotation.y);
   arm.bend.copy(solution.bendPlane);
   arm.outOfReach=!solution.reached;
   rig.elbowSpread[index]=Math.max(0,(index===0?-1:1)*
@@ -136,6 +166,23 @@ export function applyWorkbenchPose(rig:OperatorRig,pose:WorkbenchPose,
   };
  };
  const support=solve(0),firing=solve(1);
+ const outputInput=rig.lastPose??WORKBENCH_OUTPUT_INPUT;
+ beginOperatorPoseOutput(rig,outputInput);
+ // Unedited real foot targets are only *read* from the rig; Workbench
+ // never schedules steps, moves a foot, or recomputes the tactical gait.
+ stageOperatorPoseOutput(rig,outputInput,'lower-body');
+ stageDirectOperatorPoseOutput(rig,outputInput,'upper-body',
+  finishOperatorArmPose(scratch));
+ const body=finishOperatorFramePose(frame);
+ stageDirectOperatorPoseOutput(rig,outputInput,'frame',body.frameOutputs);
+ stageDirectOperatorPoseOutput(rig,outputInput,'body',body.bodyOutputs);
+ const weapons=finishOperatorEquipmentPose(scratch);
+ stageDirectOperatorPoseOutput(rig,outputInput,'weapon',weapons.weaponOutputs);
+ stageDirectOperatorPoseOutput(rig,outputInput,'attachments',
+  weapons.attachmentOutputs);
+ // The single B2 commit is the FIRST display write to authored bones,
+ // chest and firearm. No partial frame or background preview publisher.
+ commitOperatorPoseOutput(rig,outputInput);
  return {stock:coords(gun.stock),support,firing,
   maxReachError:Math.max(support.wristGap,firing.wristGap),
   maxContactGap:Math.max(support.gripGap,firing.gripGap)};

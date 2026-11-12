@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator,type OperatorRig}
   from './breach-operator-rig.ts';
+import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
 import {weaponGrips,type Handling,type WeaponFit} from './breach-weapon-pose.ts';
 import {PoseTemporalMonitor} from './breach-pose-temporal-diagnostics.ts';
 import {stockPocket,elbowCorridor} from './breach-anatomy.ts';
@@ -864,7 +865,7 @@ const gaitCompareButton=choose<HTMLButtonElement>('compareGaits');
 const gaitCompareStatus=choose<HTMLElement>('gaitCompareStatus');
 function clearGaitCompare(){
   if(gaitCompareRig){
-    scene.remove(gaitCompareRig.root);gaitCompareRig.dispose();
+    releaseOperatorPreviewRig(scene,gaitCompareRig);
     gaitCompareRig=null;
   }
   historicalGait=null;hybridGait=null;
@@ -941,7 +942,7 @@ const comparePinnedButton=choose<HTMLButtonElement>('comparePinned');
 const variantCompareStatus=choose<HTMLOutputElement>('variantCompareStatus');
 function endVariantComparison(){
  while(variantBodies.length){
-  const body=variantBodies.pop()!;scene.remove(body.root);body.dispose();
+  const body=variantBodies.pop()!;releaseOperatorPreviewRig(scene,body);
  }
  variantComparing=false;
  uniformComparing=false;uniformLabels.hidden=true;
@@ -1000,7 +1001,7 @@ uniformCompareButton.addEventListener('click',()=>{
 
 function endKitComparison(){
  while(kitBodies.length){const body=kitBodies.pop()!;
-  scene.remove(body.root);body.dispose();}
+  releaseOperatorPreviewRig(scene,body);}
  kitComparing=false;kitCompareButton.setAttribute('aria-pressed','false');
  kitCompareButton.textContent='COMPARE THREE';
  document.body.classList.remove('kit-compare');
@@ -1107,7 +1108,7 @@ const silhouetteButton=choose<HTMLButtonElement>('silhouetteMode');
 function clearComparison(){
   comparisonKey='';
   for(const operatorRig of comparisonRigs){
-    scene.remove(operatorRig.root);operatorRig.dispose();
+    releaseOperatorPreviewRig(scene,operatorRig);
   }
   comparisonRigs=[];labelLayer.replaceChildren();
 }
@@ -1206,7 +1207,7 @@ const build=()=>{
   if(variantComparing)endVariantComparison();
   labSwitch=null;
   clearComparison();clearGaitCompare();
-  if(rig){scene.remove(rig.root);rig.dispose();}
+  if(rig){releaseOperatorPreviewRig(scene,rig);}
   endKitComparison();
   rig=createOperatorRig(operator.value,operator.value==='hostile'?'red':'blue');
   scene.add(rig.root);

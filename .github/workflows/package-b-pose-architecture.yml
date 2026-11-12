@@ -15,6 +15,10 @@ on:
       - 'tests/package-b4-upper-body-output.test.mjs'
       - 'tests/package-b5-equipment-output.test.mjs'
       - 'tests/package-b6-frame-body-output.test.mjs'
+      - 'tests/package-b7-workbench-pose-output.test.mjs'
+      - 'src/operator-preview-rig-lifecycle.ts'
+      - 'src/operator-appearance-grid.ts'
+      - 'src/equipment-preview.ts'
       - 'src/breach-operator-frame-output.ts'
       - 'src/breach-operator-equipment-output.ts'
       - 'src/breach-operator-sling-pose.ts'
@@ -76,6 +80,9 @@ jobs:
       - name: B6 six direct owners, working body frame, replay and parent-space parity
         run: |
           node --experimental-strip-types --test tests/package-b6-frame-body-output.test.mjs
+      - name: B7 authored Workbench IK, one atomic output and preview lifecycle
+        run: |
+          node --experimental-strip-types --test tests/package-b7-workbench-pose-output.test.mjs
       - name: Posed frame, replay seeks, V3/V4 contacts, motion and Lab parity
         run: |
           node --experimental-strip-types --test --test-concurrency=2 \

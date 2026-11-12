@@ -19,6 +19,7 @@ import {applyStudioGraphicLighting,restoreStudioGraphicLighting,
  disposeStudioGraphicLighting} from './operator-studio-graphic-lighting.ts';
 import {THUMB_LINEAR_TO_SRGB} from './operator-thumbnail-color.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
+import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
 import {appearanceThumbnailContext,appearanceThumbnailKey,
  type AppearanceThumbnailContext} from './operator-appearance-thumbnail-context.ts';
 import {bareLabEquipment} from './operator-lab-baseline.ts';
@@ -296,10 +297,10 @@ export class OperatorAppearanceGrid{
  private thumbnailRigFor(id:string):OperatorRig{
   if(this.thumbnailRig&&this.rigIdentity===id)return this.thumbnailRig;
   if(this.thumbnailRig){
-   this.scene.remove(this.thumbnailRig.root);
-   disposeStudioGraphicLighting(this.thumbnailRig.root);
-   disposeOperatorStudioToon(this.thumbnailRig.root);
-   this.thumbnailRig.dispose();
+   releaseOperatorPreviewRig(this.scene,this.thumbnailRig,()=>{
+    disposeStudioGraphicLighting(this.thumbnailRig!.root);
+    disposeOperatorStudioToon(this.thumbnailRig!.root);
+   });
   }
   this.thumbnailRig=createOperatorRig(id,'blue');
   this.grid.dataset.thumbnailRigBuilds=String(
@@ -441,10 +442,11 @@ export class OperatorAppearanceGrid{
   this.token++;this.queue=[];this.cache.clear();
   this.observer?.disconnect();this.pending.clear();this.cards.clear();
   if(this.thumbnailRig){
-   this.scene.remove(this.thumbnailRig.root);
-   disposeStudioGraphicLighting(this.thumbnailRig.root);
-   disposeOperatorStudioToon(this.thumbnailRig.root);
-   this.thumbnailRig.dispose();this.thumbnailRig=null;
+   releaseOperatorPreviewRig(this.scene,this.thumbnailRig,()=>{
+    disposeStudioGraphicLighting(this.thumbnailRig!.root);
+    disposeOperatorStudioToon(this.thumbnailRig!.root);
+   });
+   this.thumbnailRig=null;
   }
   this.target.dispose();
   this.nav.replaceChildren();this.grid.replaceChildren();

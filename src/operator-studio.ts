@@ -45,6 +45,7 @@ import {studioCameraFocusForWardrobe,studioFocusEasing,clampStudioCameraZoom,
  STUDIO_FULL_FIT,STUDIO_MIN_ZOOM,STUDIO_MAX_ZOOM}
  from './operator-studio-camera-focus.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
+import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import {studioArmedIdleAt} from './operator-studio-armed-idle.ts';
 import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
@@ -739,8 +740,10 @@ function posePreview(){
  const reference=referenceOpen?resolveFactionReference(referenceBrowser.selectedId):null;
  if(!rig||rig.camoIdentity!==p.id){
   if(rig){
-   scene.remove(rig.root);disposeStudioGraphicLighting(rig.root);
-   disposeOperatorStudioToon(rig.root);rig.dispose();
+   releaseOperatorPreviewRig(scene,rig,()=>{
+    disposeStudioGraphicLighting(rig!.root);
+    disposeOperatorStudioToon(rig!.root);
+   });
   }
   rig=createOperatorRig(p.id,'blue');
   scene.add(rig.root);

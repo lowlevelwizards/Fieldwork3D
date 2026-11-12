@@ -28,6 +28,7 @@ test('B0 pose evaluator retains exactly one final public commit after ordered st
  assert.deepEqual(c.stageIndices,[...c.stageIndices].sort((a,b)=>a-b));
  assert.ok(c.stageIndices.every(x=>x>=0));
  assert.ok(c.rigOutputWeakMap&&c.outputBuffer11&&c.duplicateOwnerReject&&c.outputDisposed);
+ assert.ok(c.benchUsesSharedPublisher,'B7 offline authoring must use B2 atomic output');
 });
 
 test('B0 respects fixed contact, replay seek, live v3/v4 and visual-only preview authorities',()=>{
@@ -36,7 +37,7 @@ test('B0 respects fixed contact, replay seek, live v3/v4 and visual-only preview
   'inputDeclared','publicExport','replayFeetFirst','frameSeekAware',
   'livePoseV3V4','replayDeterministic','sceneUsesHistoricalFeet',
   'labUsesCommonPose','studioUsesCommonPose','labCanCompareGaits',
-  'studioHasOwnVisualRate','benchIsSeparateWriter','liveGaitExplicit'
+  'studioHasOwnVisualRate','benchUsesSharedPublisher','liveGaitExplicit'
  ])assert.ok(c[k],'Lost B0 authority: '+k);
 });
 
@@ -108,8 +109,9 @@ test('B0 scans ALL source files for transform candidates and duplicate public po
   ['src/breach-operator-animation-controller.ts']);
  assert.deepEqual(report.commitImplementations,
   ['src/breach-operator-pose-output.ts']);
- assert.deepEqual(report.externalCommitCallers,
-  ['src/breach-operator-animation-controller.ts']);
+ assert.deepEqual(report.externalCommitCallers,[
+  'src/breach-operator-animation-controller.ts','src/operator-pose-workbench.ts'
+ ]);
  assert.ok(report.allTransformCandidates.length>report.hotspot.length,
   'Full-source audit must include more than the ten known hotspots');
  assert.ok(report.allTransformCandidates.some(x=>x.path==='src/operator-pose-workbench.ts'));
@@ -117,5 +119,5 @@ test('B0 scans ALL source files for transform candidates and duplicate public po
  assert.ok(report.moduleConsumers['src/breach-operator-animation-contract.ts'].length>0);
  const invalid={...report,externalCommitCallers:[...report.externalCommitCallers,
   'src/unauthorized-secondary-commit.ts']};
- assert.throws(()=>verifyB0Architecture(invalid),/Only the canonical evaluator/);
+ assert.throws(()=>verifyB0Architecture(invalid),/Only tactical posing and offline Workbench/);
 });
