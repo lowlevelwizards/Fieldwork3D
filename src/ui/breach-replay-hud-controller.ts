@@ -138,6 +138,19 @@ export function createBreachReplayHudController(config:{
    port.replayAnalysisUi.renderReplayEventFeed();
    if(inspector)port.replayAnalysisUi.refreshReplayShotInspector();
  }
+ /** Both Director controls must use the same mode availability and cleanup.
+  * Preserve each button's established easing/instant-frame behavior.
+  */
+ function toggleDirector(from:'direct'|'legacy'):void{
+   if(port.replayBodycam.active)port.stopReplayBodycam();
+   if((from==='direct'||port.replayCamera.lens==='cam')&&
+      port.viewMode!=='iso'&&port.stage)port.cameraMode('iso');
+   port.chooseReplayCamera(port.replayCamera.mode==='director'?'free':'director');
+   port.replayCamera.follow=false;
+   port.replayDirector.target=null;
+   port.advanceReplayCamera(from==='direct'?1/60:0,from!=='direct');
+   updateReplayHud();
+ }
 function changeReplaySight(mode:'team'|'full'|'operator'):void{
   if(mode==='operator'){
     if(!port.replayKnowledge.hasContactEvidence)return;
@@ -295,15 +308,7 @@ config.ui.replayDirectSight.addEventListener('change',()=>{
 });
 
 
-config.ui.replayDirectDirector.addEventListener('click',()=>{
-  if(port.replayBodycam.active)port.stopReplayBodycam();
-  if(port.viewMode!=='iso'&&port.stage)port.cameraMode('iso');
-  port.chooseReplayCamera(port.replayCamera.mode==='director'?'free':'director');
-  port.replayCamera.follow=false;
-  port.replayDirector.target=null;
-  
-  port.advanceReplayCamera(1/60,false);updateReplayHud();
-});
+config.ui.replayDirectDirector.addEventListener('click',()=>toggleDirector('direct'));
 config.ui.replayDirectLens.addEventListener('click',()=>{
   if(!port.replaying||port.replayCamera.mode!=='director')return;
   port.replayCamera.lens=port.replayCamera.lens==='ortho'?'wide':
@@ -406,26 +411,27 @@ config.ui.replayView.addEventListener('click',()=>{
 
 config.ui.replayFollow.addEventListener('click',()=>{
   if(port.replayBodycam.active)port.stopReplayBodycam();
-  if(port.replayCamera.follow){
-    const i=squadIds.indexOf(port.replayCamera.followId as typeof squadIds[number]);
-    if(i===squadIds.length-1)port.replayCamera.follow=false;
-    else port.replayCamera.followId=squadIds[i+1];
-  }else port.replayCamera.follow=true;
-  port.chooseReplayCamera(port.replayCamera.follow?'operator':'free');
-  port.advanceReplayCamera(0,true);updateReplayHud();
+  // Cycle living recorded operators, never updating the camera ID alone
+  // while leaving personal disclosure bound to a different observer.
+  const eligible=squadIds.filter(id=>team(port.state).some(a=>
+    a.id===id&&a.health>0));
+  if(!eligible.length)return;
+  const index=eligible.indexOf(
+    port.replayCamera.followId as typeof eligible[number]);
+  if(port.replayCamera.follow&&index===eligible.length-1){
+    port.chooseReplayCamera('free');port.replayCamera.follow=false;
+    port.advanceReplayCamera(0,true);updateReplayHud();return;
+  }
+  const next=!port.replayCamera.follow?
+    (index>=0?eligible[index]:eligible[0]):eligible[index+1]??eligible[0];
+  followReplayOperator(next);
 });
 config.ui.replaySquad.addEventListener('click',()=>{
   if(port.replayBodycam.active)port.stopReplayBodycam();
   port.chooseReplayCamera(port.replayCamera.mode==='squad'?'free':'squad');
   port.replayCamera.follow=false;port.advanceReplayCamera(0,true);updateReplayHud();
 });
-config.ui.replayDirector.addEventListener('click',()=>{
-  if(port.replayBodycam.active)port.stopReplayBodycam();
-  if(port.replayCamera.lens==='cam'&&port.viewMode!=='iso'&&port.stage)
-    port.cameraMode('iso');
-  port.chooseReplayCamera(port.replayCamera.mode==='director'?'free':'director');
-  port.replayCamera.follow=false;port.advanceReplayCamera(0,true);updateReplayHud();
-});
+config.ui.replayDirector.addEventListener('click',()=>toggleDirector('legacy'));
 
 
 
