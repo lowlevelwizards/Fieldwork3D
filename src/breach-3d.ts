@@ -22,6 +22,8 @@ import {applyStudioGraphicLighting}
  from './operator-studio-graphic-lighting.ts';
 import {BreachCombatEffectsPresenter} from './rendering/breach-combat-effects-presenter.ts';
 import {PresentationSightMemo} from './rendering/breach-presentation-sight-memo.ts';
+import {presentationSightPolicy,allowPresentationSightReuse}
+ from './rendering/breach-presentation-sight-policy.ts';
 import {presentActor,presentDecor,presentArchitecturalOpening,
   presentUnrecordedRescueMarker,resolveDoorPresentation}
  from './rendering/breach-3d-disclosure-presenter.ts';
@@ -124,8 +126,8 @@ export class TacticalScene3D{
    studioShadowPalette('plum-plus').fill,.60);
   /** Renderer-only; ?presentationSight=legacy bypasses memo for A/B. */
   private readonly presentationSight=new PresentationSightMemo();
-  private readonly presentationSightEnabled=
-   new URLSearchParams(location.search).get('presentationSight')!=='legacy';
+  private readonly presentationSightPolicy=presentationSightPolicy(
+   new URLSearchParams(location.search).get('presentationSight'));
   /** A/B baseline for perf audits; never changes tactical shadow resolution. */
   private readonly graphicLookEnabled=
    new URLSearchParams(location.search).get('lighting')!=='legacy';
@@ -195,6 +197,7 @@ export class TacticalScene3D{
       fogMemoryPaints:this.fogMemoryPaints,
       fogSightPaints:this.fogSightPaints,
       presentationSight:this.presentationSight.stats(),
+      presentationSightPolicy:this.presentationSightPolicy,
       graphicWorldMaterialCount:this.graphicWorldMaterialCount,
       graphicOperatorRestyles:this.graphicOperatorRestyles,
       graphicLookEnabled:this.graphicLookEnabled};
@@ -1442,10 +1445,11 @@ export class TacticalScene3D{
     replayWindowHistory:ReplayWindowKnowledgeHistory|null=null){
     if(this.view.mode==='plan2d')return;
     // Never memoize reconstructed current sight during historical replay.
-    this.presentationSight.begin(s,this.presentationSightEnabled&&
-      !replay&&!replayDisclosurePolicy&&!replayDoorHistory&&
-      !replayWindowHistory&&!this.physicalDirectorActive&&
-      !this.replayBodycam);
+    this.presentationSight.begin(s,allowPresentationSightReuse(
+      this.presentationSightPolicy,s.phase,
+      !!replay||!!replayDisclosurePolicy||!!replayDoorHistory||
+      !!replayWindowHistory||this.physicalDirectorActive||
+      !!this.replayBodycam));
     if(this.miniFocusMode!=='off'){
       this.miniFocusSession=s;
       this.miniFocusDoorId=focusedDoorId;
