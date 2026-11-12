@@ -6,7 +6,7 @@ import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {length} from './breach-plan.ts';
 import {proposedCivilianTransportStep,reconcileCivilianTransportFrame}
  from './breach-civilian-transport.ts';
-import {stepCivilianResponse} from './breach-civilian-response.ts';
+import {civilianSenseDue,stepCivilianResponse} from './breach-civilian-response.ts';
 import {stepCivilianMovement} from './breach-civilian-movement.ts';
 import {buildMotionFrameProposals} from './breach-motion-frame-input.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
@@ -59,30 +59,41 @@ export function advanceSimulationMotion(s:Session,h:number,
   // Propose civilian motion before the shared fixed-tick authority pass.
   // Both teams see the same original pre-motion positions for hard bodies.
   if(s.civilians.length){
+    const world=sessionWorldGeometry(s);
     const nearby=[...s.operators.filter(a=>a.health>0),
       ...s.civilians.filter(c=>c.health>0)];
+    // These callbacks do not capture an individual civilian and can be
+    // reused across their fixed-tick movement and observer evaluations.
+    // The underlying geometry and actor positions remain live at call time.
+    const clear=(from:Pt,to:Pt)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+    const routeTo=(from:Pt,to:Pt)=>port.routeTo(s,from,to);
+    const occupied=(p:Pt,id:string)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20);
+    const sensoryCommon={
+      noise:s.noise,people:s.operators,doors:s.doors,walls:world.walls,
+      windows:s.windows,
+      canSee:(from:Pt,to:Pt)=>port.canSee(from,to,s,false),
+      canReach:clear,routeTo
+    };
     let responseTime=0,movementTime=0;
     for(const civil of s.civilians){
       const responseStart=cpuMark();
-      stepCivilianResponse(civil,s.seconds,h,{
-        noise:s.noise,people:s.operators,doors:s.doors,walls:sessionWorldGeometry(s).walls,
-        windows:s.windows,
-        canSee:(from,to)=>port.canSee(from,to,s,false),
-        canReach:(from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),
-        routeTo:(from,to)=>port.routeTo(s,from,to),
-        isCrowded:p=>s.operators.some(o=>o.health>0&&d(o.p,p)<22)||
-          s.civilians.some(c=>c.id!==civil.id&&d(c.p,p)<22)
-      });
+      // Most 60Hz frames fall between 120ms civilian observation ticks.
+      // Do not allocate an actor-specific sensory port just to early-return;
+      // the authoritative stepCivilianResponse still enforces the same gate.
+      if(civilianSenseDue(civil,s.seconds)){
+        stepCivilianResponse(civil,s.seconds,h,{
+          ...sensoryCommon,
+          isCrowded:p=>s.operators.some(o=>o.health>0&&d(o.p,p)<22)||
+            s.civilians.some(c=>c.id!==civil.id&&d(c.p,p)<22)
+        });
+      }
       if(profile){
         const elapsed=performance.now()-responseStart;
         responseTime+=elapsed;
         profile('civilian-motion/response-'+civil.id,elapsed);
       }
       const civilianStepStart=cpuMark();
-      stepCivilianMovement(civil,s.seconds,h,
-        (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),
-        (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20),
-        (from,to)=>port.routeTo(s,from,to));
+      stepCivilianMovement(civil,s.seconds,h,clear,occupied,routeTo);
       if(profile){
         const elapsed=performance.now()-civilianStepStart;
         movementTime+=elapsed;
