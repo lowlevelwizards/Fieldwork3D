@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   browser-smoke:
-    if: ${{ startsWith(github.head_ref, 'feat/after-action-v5-') || startsWith(github.head_ref, 'feature/after-action-v6-') }}
+    if: ${{ startsWith(github.head_ref, 'feat/after-action-v5-') || startsWith(github.head_ref, 'feature/after-action-v6-') || startsWith(github.head_ref, 'fix/after-action-v6-mobile-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:

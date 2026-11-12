@@ -36,10 +36,14 @@ export function createAfterActionModelPresenter(
 ):AfterActionModelPresenter|null{
  if(!identities.some(actor=>actor.side==='blue'))return null;
  let renderer:THREE.WebGLRenderer;
+ const compact=typeof window!=='undefined'&&window.innerWidth<=700;
  try{
-   renderer=new THREE.WebGLRenderer({alpha:false,antialias:true,
+   renderer=new THREE.WebGLRenderer({alpha:false,antialias:!compact,
      powerPreference:'low-power',preserveDrawingBuffer:false});
- }catch{return null;}
+ }catch(error){
+   console.warn('[After Action 3D] WebGL context unavailable',error);
+   return null;
+ }
  const scene=new THREE.Scene();
  scene.background=new THREE.Color('#1b3028');
  scene.add(new THREE.AmbientLight(0xffffff,1.75));
@@ -98,7 +102,8 @@ export function createAfterActionModelPresenter(
  const pending:string[]=[];
  let buildTimer:number|null=null,frameRequest:number|null=null;
  let lastWidth=0,lastHeight=0;
- renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.25));
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,
+   compact?1:1.25));
  const syncLoading=()=>{
    if(!host)return;
    const remaining=selected?Number(!models.has(selected)):
@@ -118,7 +123,11 @@ export function createAfterActionModelPresenter(
      const id=pending.shift(),actor=id?byId.get(id):undefined;
      if(actor&&!models.has(actor.id)){
        try{build(actor);}
-       catch{onUnavailable?.();return;}
+       catch(error){
+         console.warn('[After Action 3D] Historical rig could not build',
+           actor.id,error);
+         onUnavailable?.();return;
+       }
      }
      syncLoading();draw();buildQueued();
    },24);

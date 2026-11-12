@@ -26,9 +26,32 @@ import {inspectForensicEvidence,type ForensicScope,
  */
 type ModelOwner={
  recorder:MissionRecorder;presenter:AfterActionModelPresenter|null;
- pending:boolean;unavailable:boolean;version:number;
+ pending:boolean;unavailable:boolean;failure:'module'|'graphics'|null;
+ version:number;
 };
 const models=new WeakMap<HTMLElement,ModelOwner>();
+/** Failure is per-recording, not a permanent feature shutdown. Import failures
+ * may reflect a cached page requesting a chunk removed by a new deployment. */
+function displayModelFailure(root:HTMLElement,host:HTMLElement,
+ owner:ModelOwner,operatorId:string|null,evidence:ForensicEvidence|null):void{
+ host.replaceChildren();
+ const label=document.createElement('p');
+ label.className='fw-v7-model-error';
+ label.textContent=owner.failure==='module'?
+   '3D MODULE COULD NOT LOAD · AN APP UPDATE MAY BE AVAILABLE':
+   '3D VIEW UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
+ const retry=document.createElement('button');
+ retry.type='button';retry.className='fw-v7-model-retry';
+ retry.textContent='RETRY 3D';
+ retry.addEventListener('click',()=>{
+   if(models.get(root)!==owner)return;
+   owner.unavailable=false;owner.failure=null;
+   owner.version++;owner.pending=false;
+   owner.presenter?.dispose();owner.presenter=null;
+   presentModel(root,owner.recorder,host,operatorId,evidence);
+ });
+ host.append(label,retry);
+}
 export function disposeAfterActionPresentation(root:HTMLElement):void{
  const owner=models.get(root);
  if(!owner)return;
@@ -50,7 +73,8 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
    disposeAfterActionPresentation(root);owner=undefined;
  }
  if(!owner){
-   owner={recorder,presenter:null,pending:false,unavailable:false,version:0};
+   owner={recorder,presenter:null,pending:false,unavailable:false,
+     failure:null,version:0};
    models.set(root,owner);
  }
  if(!host){owner.presenter?.hide();return;}
@@ -63,8 +87,14 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
    host.textContent='NO RECORDED HISTORICAL MODEL';fallback();return;
  }
  if(owner.unavailable){
-   host.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
-   fallback();return;
+   const state=owners.get(root);
+   // Tapping 3D in Combat is an explicit retry; an ordinary redraw is not.
+   if(state?.tab==='combat'&&state.inspectionMode==='3d'){
+     owner.unavailable=false;owner.failure=null;
+   }else{
+     displayModelFailure(root,host,owner,operatorId,evidence);
+     fallback();return;
+   }
  }
  if(owner.pending)return;
  owner.pending=true;
@@ -74,15 +104,21 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
    if(models.get(root)!==owner||owner.version!==version)return;
    owner.pending=false;
    owner.presenter=module.createAfterActionModelPresenter(identities,()=>{
-     owner.unavailable=true;
+     owner.unavailable=true;owner.failure='graphics';
      owner.presenter?.dispose();owner.presenter=null;
+     const current=root.querySelector<HTMLElement>(
+       '[data-after-squad-model], [data-after-model]');
+     if(current)displayModelFailure(root,current,owner,
+       current.hasAttribute('data-after-squad-model')?
+         owners.get(root)?.selectedOperator??null:
+         current.dataset.afterModel??null,currentCombatEvidence(root));
      fallback();
    });
    const current=root.querySelector<HTMLElement>(
      '[data-after-squad-model], [data-after-model]');
    if(!owner.presenter){
-     owner.unavailable=true;
-     if(current)current.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
+     owner.unavailable=true;owner.failure='graphics';
+     if(current)displayModelFailure(root,current,owner,operatorId,evidence);
      fallback();return;
    }
    if(current){
@@ -92,12 +128,13 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
      owner.presenter.setEvidence(currentCombatEvidence(root));
      owner.presenter.show(current,id);
    }
- }).catch(()=>{
+ }).catch(error=>{
    if(models.get(root)!==owner||owner.version!==version)return;
-   owner.pending=false;owner.unavailable=true;
+   console.warn('[After Action 3D] Deferred model module failed to load',error);
+   owner.pending=false;owner.unavailable=true;owner.failure='module';
    const current=root.querySelector<HTMLElement>(
      '[data-after-squad-model], [data-after-model]');
-   if(current)current.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
+   if(current)displayModelFailure(root,current,owner,operatorId,evidence);
    fallback();
  });
 }
