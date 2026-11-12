@@ -13,7 +13,7 @@ import {chooseCivilianRefuge} from './breach-civilian-refuge.ts';
 
 type ArmedPerson={id:string;p:Pt;heading:number;health:number;
  velocity:number;posture:'stand'|'crouch';side:'blue'|'red';
- lastShotAt?:number;};
+ lastShotAt?:number;aim?:number;};
 export type CivilianSensoryWorld={
  noise:readonly AcousticEvent[];
  people:readonly ArmedPerson[];
@@ -33,6 +33,20 @@ export function civilianBehaviorProfile(persona:CivilianActor['persona']){
   persona==='steady'?
   {alert:.14,panic:.56,reaction:.80,recovery:8,decay:.027}:
   {alert:.12,panic:.49,reaction:.60,recovery:10,decay:.020};
+}
+/** Armed presence merits caution; audible or visually confirmed danger,
+ * a muzzle aimed at the person, or a very close armed approach merits fear.
+ * No AI intention or unseen faction target list is consulted. */
+export function witnessedCivilianThreat(person:ArmedPerson,
+ at:Pt,now:number):'none'|'caution'|'alarm'{
+ const range=dist(person.p,at);
+ const shot=person.lastShotAt!==undefined&&person.lastShotAt>=0&&
+   now>=person.lastShotAt&&now-person.lastShotAt<=1.2;
+ const aimed=(person.aim??0)>.62&&range<155&&
+   Math.abs(offAxis(person.heading,
+     Math.atan2(at.y-person.p.y,at.x-person.p.x)))<.75;
+ if(shot||aimed||(person.side==='blue'&&range<55))return 'alarm';
+ return person.side==='blue'?'caution':'none';
 }
 function setState(c:CivilianActor,state:CivilianState,now:number){
  setCivilianState(c,state,now);
@@ -73,16 +87,13 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
     response==='investigate'?'investigate':'orient',
     heard.estimate,false);
  }
- // Being armed alone does not mark a resident guard dangerous. A red
- // actor creates a *visual* alarm only when the observer has line of sight
- // to that actor's RECENT real shot; distant/unseen firing is audio only.
+ // Sight is physically confirmed; an armed person's nonviolent presence
+ // and an actual threat produce distinct evidence classes.
  let sighted:string|null=null;
  for(const person of world.people){
   if(person.health<=0)continue;
-  const recentHostileShot=person.side==='red'&&
-    person.lastShotAt!==undefined&&person.lastShotAt>=0&&
-    now>=person.lastShotAt&&now-person.lastShotAt<=1.2;
-  if(person.side==='red'&&!recentHostileShot){
+  const threat=witnessedCivilianThreat(person,c.p,now);
+  if(threat==='none'){
     c.visualProgress[person.id]=0;continue;
   }
   const range=dist(c.p,person.p);
@@ -95,13 +106,12 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
   c.visualProgress[person.id]=advanceSight(
     c.visualProgress[person.id]??0,elapsed,gain,geometric);
   if(confirmedSight(c.visualProgress[person.id])){
-    sighted=person.id;
-    if(c.lastVisualId!==person.id)
-      addEvidence(c,'visual/'+person.id+'/'+Math.floor(now*60),
-        now,'visual',person.p,true);
-    else {
-      // Sustained REAL sight prevents falsely calming in front of the squad,
-      // without stacking a new event each 60 Hz frame.
+    const key=person.id+'/'+threat;
+    sighted=key;
+    if(c.lastVisualId!==key)
+      addEvidence(c,'visual/'+key+'/'+Math.floor(now*60),
+        now,threat==='alarm'?'visual':'investigate',person.p,true);
+    else if(threat==='alarm'){
       c.fear=Math.max(c.fear,.72);
       c.lastEvidenceAt=now;
       c.threatEstimate={...person.p};
