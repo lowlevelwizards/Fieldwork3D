@@ -1,0 +1,50 @@
+name: Package C — Presentation Ownership Baseline
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/consolidation-package-c-*.md'
+      - 'scripts/verification/package-c0-presentation-audit.mjs'
+      - 'tests/package-c0-presentation-audit.test.mjs'
+      - '.github/workflows/package-c-presentation-baseline.yml'
+      - 'src/breach-3d.ts'
+      - 'src/breach-main.ts'
+      - 'src/breach-2d-*.ts'
+      - 'src/breach-fog-*.ts'
+      - 'src/breach-world-context.ts'
+      - 'src/breach-presentation-world-ownership.ts'
+      - 'src/breach-replay-*.ts'
+      - 'src/operator-studio*.ts'
+      - 'src/breach-operator-lab.ts'
+      - 'src/rendering/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: package-c-presentation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  inventory:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/consolidation-c') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate C0 read-only scene and presentation ownership contracts
+        run: node --test tests/package-c0-presentation-audit.test.mjs
+      - name: Generate reproducible C0 evidence
+        run: |
+          node scripts/verification/package-c0-presentation-audit.mjs --check \
+            --json artifacts/package-c0/audit.json \
+            --markdown artifacts/package-c0/audit.md
+      - name: Preserve C0 evidence for later C stages
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-c0-presentation-ownership
+          path: artifacts/package-c0/
+          if-no-files-found: warn
+          retention-days: 30
