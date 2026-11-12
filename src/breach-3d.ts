@@ -123,6 +123,11 @@ const mat=(hex:number,roughness=.9)=>new THREE.MeshStandardMaterial({
 });
 type StagePhaseName='environment'|'camera'|'disclosure'|'actors'|
  'effects'|'fog'|'shadows'|'postCamera'|'gpuSubmit';
+type ShotEffectVisual={
+ style:string;root:THREE.Group;line:THREE.Mesh;impact:THREE.Mesh;
+ chips:THREE.Mesh[];material:THREE.MeshBasicMaterial;
+ impactMaterial:THREE.MeshBasicMaterial;
+};
 export class TacticalScene3D{
   private readonly hemisphere=new THREE.HemisphereLight(
    STUDIO_INSPECTION_LIGHT.sky,studioShadowPalette('plum-plus').ground,1.20);
@@ -609,12 +614,8 @@ export class TacticalScene3D{
     wedge:THREE.Mesh;glassPane?:THREE.Mesh}>();
   private observedDoorGlass=new Map<string,boolean>();
   private observedDoorOpen=new Map<string,number>();
-  private effectCache=new Map<number,{style:string;root:THREE.Group;
-    line:THREE.Mesh;impact:THREE.Mesh;chips:THREE.Mesh[];
-    material:THREE.MeshBasicMaterial;impactMaterial:THREE.MeshBasicMaterial}>();
-  private readonly shotEffectPool=new ShotVisualPool<
-    NonNullable<ReturnType<typeof this.effectCache.get>>
-  >(20);
+  private effectCache=new Map<number,ShotEffectVisual>();
+  private readonly shotEffectPool=new ShotVisualPool<ShotEffectVisual>(20);
   // One instanced draw for every stain and impact mark, rather than a mesh
   // and transparent material allocation per hit.
   private impactDecalMesh:THREE.InstancedMesh|null=null;
