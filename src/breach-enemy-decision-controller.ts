@@ -254,6 +254,22 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       a.encounterReadiness??'attentive',a.id);
   }
   if(strongest&&!visible.length&&a.alert!=='retreat'){
+    // Only genuinely heard alarms can produce an uncertain local warning.
+    // One reported event per sound; speech is audible, not squad-wide magic.
+    if(noiseDisposition==='alarm'&&a.encounterGroupId&&
+       s.seconds-a.lastReportAt>5&&
+       !s.reports.some(r=>r.source==='auditory'&&r.sourceEventId===strongest.id)&&
+       enemies(s).some(other=>other!==a&&other.health>0&&
+         other.encounterGroupId===a.encounterGroupId&&d(a.p,other.p)<220)){
+      s.reports.push({id:s.nextReportId++,senderId:a.id,at:s.seconds,
+        origin:clone(a.p),estimate:clone(strongest.estimate),
+        uncertainty:strongest.uncertainty+18,deliveredTo:[],
+        source:'auditory',sourceEventId:strongest.id});
+      if(s.reports.length>16)s.reports.shift();
+      a.lastReportAt=s.seconds;
+      hear(s,a.p,190,'warning');
+      battleEvent(s,'intel',a,a.p,a.name+' REPORTED A SUSPICIOUS NOISE');
+    }
     a.lastNoiseAt=strongest.at;
     const heard=strongest.estimate;
     a.heard=heard;a.contact=heard;a.watch=clone(heard);
@@ -535,8 +551,17 @@ function distributeReports(s:Session){
   const listeners=enemies(s).filter(a=>a.health>0&&
     report.deliveredTo.includes(a.id));
   const prior=stableCoordination(listeners,s.seconds);
-  const roles=groupResponse(listeners.map(a=>({id:a.id,p:a.p})),
-    report.estimate,{...(report.assignedRoles??{}),...prior});
+  // For a sound warning, the person who heard and raised it is already
+  // investigating. Recipients can watch/support instead of duplicating
+  // the same blind move. Direct-sight reports keep their prior behavior.
+  const reporter=report.source==='auditory'?
+    enemies(s).find(a=>a.id===report.senderId&&a.health>0):undefined;
+  const participants=reporter?[{id:reporter.id,p:reporter.p},
+       ...listeners.map(a=>({id:a.id,p:a.p}))]:
+       listeners.map(a=>({id:a.id,p:a.p}));
+  const committed={...(report.assignedRoles??{}),...prior,
+       ...(reporter?{[reporter.id]:'investigate' as const}:{})};
+  const roles=groupResponse(participants,report.estimate,committed);
   report.assignedRoles=roles;report.coordinated=true;
   for(const a of listeners){
    if(!newlyInformed.includes(a.id))continue;

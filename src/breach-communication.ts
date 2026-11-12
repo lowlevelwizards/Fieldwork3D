@@ -6,6 +6,7 @@ import type {GroupRole} from './breach-ai-coordination.ts';
 export type TacticalReport={
  id:number;senderId:string;at:number;origin:Pt;estimate:Pt;
  uncertainty:number;deliveredTo:string[];coordinated?:boolean;
+ source?:'visual'|'auditory';sourceEventId?:number;
  assignedRoles?:Record<string,GroupRole>;
 };
 export function reportToListener(report:TacticalReport,listenerId:string,
