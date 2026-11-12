@@ -147,7 +147,8 @@ export class BreachPerfTimelinePanel{
   }
   const ago=Math.max(0,(latest-peak.at)/1000).toFixed(1);
   this.insight.textContent=(selected?'SELECTED':'WORST')+' · '+
-   ago+'s ago · RAF '+peak.raf.toFixed(0)+'ms / JS '+
+   ago+'s ago · RAF '+peak.raf.toFixed(0)+'ms / PREV JS '+
+   (peak.previousJs?.toFixed(0)??'?')+'ms / NOW JS '+
    peak.js.toFixed(0)+'ms / SYNC '+peak.sync.toFixed(0)+
    'ms · '+performanceHotspot(peak)+
    ' · fog +'+peak.fogPaints+' shadow +'+peak.shadowRefreshes+

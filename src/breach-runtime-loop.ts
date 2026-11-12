@@ -103,6 +103,11 @@ setSightDiagnosticsEnabled(!!perfOverlay);
 const frameMeter=perfOverlay?new FrameMeter():null;
 const perfTimeline=perfOverlay?new PerformanceTimeline():null;
 let perfTimelineSession:Session|null=null;
+// The RAF interval includes the *previous* callback, not the JS that
+// runs after the current RAF fires. Include all preceding diagnostic work.
+let previousPerfJs:number|undefined;
+let previousPerfSim:number|undefined;
+let previousPerfMode:RuntimeFrameMode|undefined;
 type SightTotal={queries:number;hits:number;misses:number;
  bypasses:number;invalidations:number};
 let lastSightTotals:SightTotal|null=null;
@@ -131,6 +136,8 @@ function tick(now:number){
     quickPlayBusy:config.isQuickPlayBusy(),replaying,phase:state.phase});
   if(perfTimeline&&perfTimelineSession!==state){
    perfTimeline.reset();perfTimelineSession=state;
+   previousPerfJs=undefined;previousPerfSim=undefined;
+   previousPerfMode=undefined;
    lastSightTotals=null;lastFogPaints=0;lastShadowRefreshes=0;
    for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
     intervalSight[k]=0;
@@ -139,6 +146,8 @@ function tick(now:number){
   const frameGap=Math.max(0,now-last);
   const dt=Math.min(.08,frameGap/1000);last=now;
   if(frameMode==='suspended'){
+   previousPerfJs=undefined;previousPerfSim=undefined;
+   previousPerfMode=undefined;
    accum=0;previousRenderActors=null;previousRenderDoors=null;
    physicalActionRings.clear();
    scheduleFrame();return;
@@ -281,6 +290,8 @@ function tick(now:number){
     }
     if(perfTimeline){
       perfTimeline.add({at:now,raf:frameGap,js:end-perfStart,
+       previousJs:previousPerfJs,previousSim:previousPerfSim,
+       previousPhase:previousPerfMode,
        sync:sceneUpdateEnd-perfRenderStart,sim:simulationMeasuredMs,
        recording:recordingMs,ui:runtimeUiMs,overlay:end-overlayBegin,
        scene:!studioOccludesTactical&&viewMode!=='plan2d'?
@@ -301,7 +312,8 @@ function tick(now:number){
       const m=frameMeter.summary();
       const sight=drainSightDiagnostics();
       const scenePhases=stats?.scenePhases;
-      const output='JS '+m.p50.toFixed(1)+'ms · P95 '+
+      const output='MODE '+frameMode+' (recent 120 frames)'+
+        '\nJS '+m.p50.toFixed(1)+'ms · P95 '+
         m.p95.toFixed(1)+' · MAX '+m.worst.toFixed(1)+
         '\nRAF GAP P50 '+m.rafP50.toFixed(1)+'ms · P95 '+
         m.rafP95.toFixed(1)+'ms'+
@@ -366,11 +378,20 @@ function tick(now:number){
     awarenessPanel.textContent=inspected?awarenessDebugLine(inspected):
       'No selected actor';
   }
+  if(perfTimeline){
+   // Measure at the end, *after* optional 750ms panel reporting. Otherwise
+   // diagnostic DOM/canvas work masquerades as unexplained callback wait.
+   previousPerfJs=performance.now()-perfStart;
+   previousPerfSim=simulationMeasuredMs;
+   previousPerfMode=frameMode;
+  }
   scheduleFrame();
 }
  /** Reset render-only leftovers across mission/replay transitions. */
  function resetPresentation():void{
   accum=0;hudAt=0;
+  previousPerfJs=undefined;previousPerfSim=undefined;
+  previousPerfMode=undefined;
   previousRenderActors=null;previousRenderDoors=null;
   physicalActionRings.clear();
  }
