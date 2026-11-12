@@ -11,6 +11,8 @@ on:
       - 'tests/pages-release-gate.test.mjs'
       - 'tests/package-b1-pose-decision.test.mjs'
       - 'tests/package-b2-pose-output.test.mjs'
+      - 'tests/package-b3-lower-body-output.test.mjs'
+      - 'src/breach-ik.ts'
       - '.github/workflows/package-b-pose-architecture.yml'
       - 'src/breach-operator-*.ts'
       - 'src/breach-pose-*.ts'
@@ -55,6 +57,9 @@ jobs:
       - name: B2 owned output stages, atomic publication and direct solver contract
         run: |
           node --experimental-strip-types --test tests/package-b2-pose-output.test.mjs
+      - name: B3 direct lower-body golden geometry, contacts and rewind parity
+        run: |
+          node --experimental-strip-types --test tests/package-b3-lower-body-output.test.mjs
       - name: Posed frame, replay seeks, V3/V4 contacts, motion and Lab parity
         run: |
           node --experimental-strip-types --test --test-concurrency=2 \
