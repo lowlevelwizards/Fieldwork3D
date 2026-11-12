@@ -6,29 +6,33 @@ import {canonicalRootOrientation} from './operator-axis-convention.ts';
 import {updateOperatorPoseCavity} from './operator-pose-cavity-lighting.ts';
 import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
-import type {OperatorEquipmentPoseScratch} from './breach-operator-pose-scratch.ts';
+import type {OperatorEquipmentPoseScratch,OperatorFramePoseScratch}
+ from './breach-operator-pose-scratch.ts';
 import {EQUIPMENT_ATTACHMENT_INDEX as EAI} from './breach-operator-pose-scratch.ts';
 export function applyOperatorTraumaPose(r:OperatorRig,p:OperatorPose,
- downProgress:number):void{
+ downProgress:number,working?:OperatorFramePoseScratch):void{
+ const root=working?.root??r.root;
+ const chest=working?.chest??r.chest;
+ const head=working?.head??r.head;
   // The pose system is the final writer for actor tilts and reactions.
   // The scene controls XY world placement only, not anatomy or weapon pose.
   if(p.flashActive&&!p.down){
     r.legacyRoll+=.10*Math.sin(p.seconds*24);
-    r.root.quaternion.copy(
+    root.quaternion.copy(
       canonicalRootOrientation(r.legacyPitch,r.legacyYaw,r.legacyRoll));
   }
-  if(p.surrender)r.chest.rotation.x=.15;
+  if(p.surrender)chest.rotation.x=.15;
   else if(p.down){
     // Spine and neck settle independently; the fall isn't a single
     // rigid mannequin tipping around the operator origin.
-    r.chest.rotation.x=-.18*Math.sin(Math.PI*downProgress)-.05;
-    r.head.rotation.z=.13*Math.sin(Math.PI*downProgress);
+    chest.rotation.x=-.18*Math.sin(Math.PI*downProgress)-.05;
+    head.rotation.z=.13*Math.sin(Math.PI*downProgress);
   }
   // Wounds do not leave an incapacitated actor standing in the old
   // locomotion/ready pose. Final angles are deterministic from the hit.
   if(p.down){
-    r.chest.rotation.y=0;
-    r.head.rotation.x=0;
+    chest.rotation.y=0;
+    head.rotation.x=0;
   }
 }
 export function finishOperatorPoseFrame(r:OperatorRig,p:OperatorPose,
