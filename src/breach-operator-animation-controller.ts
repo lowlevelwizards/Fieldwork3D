@@ -749,6 +749,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
     r.droppedLightLens=
       r.droppedAccessories.getObjectByName('weapon-light-lens')??null;
+    // Retain the original off-state even on this freshly constructed frame.
+    if(r.droppedLightLens)r.droppedLightLens.visible=false;
     if(profilePose)weaponBuildMs+=performance.now()-buildStart;
   }
   const leftGrip=P(data.supportX,data.supportY,-1.6);
