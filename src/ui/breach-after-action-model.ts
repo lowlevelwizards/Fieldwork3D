@@ -122,7 +122,6 @@ export function createAfterActionModelPresenter(
    syncLoading();buildQueued();
  };
  const focus=()=>{
-   const actor=selected?byId.get(selected):null;
    // Drawing cannot synchronously construct a rig: this is a critical
    // responsiveness boundary on mobile.
    if(selected&&!models.has(selected))return false;
