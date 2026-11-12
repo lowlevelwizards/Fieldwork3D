@@ -190,7 +190,10 @@ export function bakeCastOnGear(
  // No shadow volume collection, world-matrix updates or mask allocation
  // when every eligible receiver already holds this exact appearance bake.
  let pending=false;
- receiver.traverse(object=>{
+ // Traverse the same *visible* descendants that actually render.
+ // Do not pre-bake invisible alternate armor, pocket, and garment cuts;
+ // the first time a cut becomes visible its missing bake key forces work.
+ receiver.traverseVisible(object=>{
   if(pending||!(object instanceof THREE.Mesh)||!object.visible||
     Array.isArray(object.material)||
     object.material.userData.fieldworkBakedEquipmentAO!==true)return;
@@ -207,12 +210,17 @@ export function bakeCastOnGear(
   return collectCastVolumeRecords(source.root,chest)
    .map(volume=>({...volume,rule}));
  });
- chest.updateWorldMatrix(true,true);
- const inverse=chest.matrixWorld.clone().invert();
+ // An outfit without eligible casters needs only a baseline reset.
+ // Do not request scene world matrices when not one ray/contact can hit.
+ if(boxes.length)chest.updateWorldMatrix(true,true);
+ const inverse=boxes.length?chest.matrixWorld.clone().invert():null;
  let changed=0,vertices=0;
  const position=new THREE.Vector3(),normal=new THREE.Vector3(),
   origin=new THREE.Vector3();
- receiver.traverse(object=>{
+ // Traverse the same *visible* descendants that actually render.
+ // Do not pre-bake invisible alternate armor, pocket, and garment cuts;
+ // the first time a cut becomes visible its missing bake key forces work.
+ receiver.traverseVisible(object=>{
   if(!(object instanceof THREE.Mesh)||!object.visible||
     Array.isArray(object.material)||
     object.material.userData.fieldworkBakedEquipmentAO!==true)return;
@@ -238,21 +246,25 @@ export function bakeCastOnGear(
    storedContact.length===coords.count?storedContact:new Uint8Array(coords.count);
   const castMask=storedCast instanceof Uint8Array&&
    storedCast.length===coords.count?storedCast:new Uint8Array(coords.count);
-  object.updateWorldMatrix(true,false);
-  const toChest=inverse.clone().multiply(object.matrixWorld);
-  const normalMatrix=new THREE.Matrix3().getNormalMatrix(toChest);
-  if(!geometry.boundingBox)geometry.computeBoundingBox();
+  // When there is no eligible source, no matrix update, bounds clone,
+  // inverse or normal-matrix construction is required. Hidden alternate
+  // receiver meshes never enter this callback in the first place.
+  if(boxes.length)object.updateWorldMatrix(true,false);
+  const toChest=inverse?inverse.clone().multiply(object.matrixWorld):null;
+  const normalMatrix=toChest?new THREE.Matrix3().getNormalMatrix(toChest):null;
+  if(toChest&&!geometry.boundingBox)geometry.computeBoundingBox();
   // A finite ray can only reach boxes within castReach + normal offset.
   // Compute this once per receiving mesh, never for every vertex/ray.
-  const receiverBounds=geometry.boundingBox!.clone().applyMatrix4(toChest);
-  const relevantBoxes=boxes.filter(volume=>{
+  const receiverBounds=toChest?
+   geometry.boundingBox!.clone().applyMatrix4(toChest):null;
+  const relevantBoxes=receiverBounds?boxes.filter(volume=>{
    const reach=Math.max(volume.rule.castReach,
     volume.rule.contactRadius)+.076;
    const b=volume.box,a=receiverBounds;
    return a.min.x<=b.max.x+reach&&a.max.x>=b.min.x-reach&&
     a.min.y<=b.max.y+reach&&a.max.y>=b.min.y-reach&&
     a.min.z<=b.max.z+reach&&a.max.z>=b.min.z-reach;
-  });
+  }):[];
   // When no caster's actual contact reach intersects this receiver,
   // the old directional/contact masks are exactly zero. Restore the
   // original 8-bit baseline without transforming each vertex or casting
@@ -268,8 +280,8 @@ export function bakeCastOnGear(
    }
   }else{
   for(let i=0;i<coords.count;i++){
-   position.fromBufferAttribute(coords,i).applyMatrix4(toChest);
-   normal.fromBufferAttribute(normals,i).applyMatrix3(normalMatrix).normalize();
+   position.fromBufferAttribute(coords,i).applyMatrix4(toChest!);
+   normal.fromBufferAttribute(normals,i).applyMatrix3(normalMatrix!).normalize();
    const rays=frontRays;
    origin.copy(position).addScaledVector(normal,.075);
    let castTotal=0;
