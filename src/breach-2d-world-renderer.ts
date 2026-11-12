@@ -42,21 +42,39 @@ function noise(x:number,y:number){const v=Math.sin(x*123.31+y*98.717)*43897.44;r
 function terrain(){
   const state=getState();
   const replaying=isReplaying();
-  rect(0,0,W,H,'#2c3733');
-  // A deterministic, low-contrast base, not another terrain simulation.
-  for(let y=6;y<H;y+=17)for(let x=6;x<W;x+=17){
+  const bounds=state.site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+  const width=bounds.maxX-bounds.minX,height=bounds.maxY-bounds.minY;
+  rect(bounds.minX,bounds.minY,width,height,'#2c3733');
+  // A larger generated property must not cause proportionally more dots
+  // per frame on a phone. Keep the old 17u spacing for legacy maps.
+  const detailStep=Math.max(17,Math.ceil(17*Math.sqrt(width*height/(W*H))));
+  for(let y=bounds.minY+6;y<bounds.maxY;y+=detailStep)
+    for(let x=bounds.minX+6;x<bounds.maxX;x+=detailStep){
     const n=noise(x,y);
     if(n>.56)rect(x+3*n,y+2*n,2+n*3,2,n>.85?'#435348':'#35453d');
   }
   if(state.site){
     const site=state.site;
-    // Exterior access follows this actual generated entrance, not a
-    // decorative road still pointing at the obsolete fixed station.
-    const x=site.entrance.x,y=site.entrance.y;
-    draw.fillStyle='#514e43';draw.beginPath();
-    draw.moveTo(x-52,H);draw.lineTo(x+52,H);
-    draw.lineTo(x+34,y-21);draw.lineTo(x-34,y-21);
-    draw.closePath();draw.fill();
+    // This low-contrast street approach follows the actual entry side.
+    // It is decoration, never navigable geometry or briefing knowledge.
+    const side=site.entrySide??'south',x=site.entrance.x,y=site.entrance.y;
+    const outward=side==='north'?{x:0,y:-1}:
+      side==='east'?{x:1,y:0}:side==='west'?{x:-1,y:0}:
+        {x:0,y:1};
+    const across={x:-outward.y,y:outward.x};
+    const boundary=outward.x>0?bounds.maxX:outward.x<0?bounds.minX:
+      outward.y>0?bounds.maxY:bounds.minY;
+    const distance=outward.x!==0?(boundary-x)*outward.x:
+      (boundary-y)*outward.y;
+    if(distance>12){
+      const edge={x:x+outward.x*distance,y:y+outward.y*distance};
+      draw.fillStyle='#514e43';draw.beginPath();
+      draw.moveTo(x+across.x*34,y+across.y*34);
+      draw.lineTo(edge.x+across.x*52,edge.y+across.y*52);
+      draw.lineTo(edge.x-across.x*52,edge.y-across.y*52);
+      draw.lineTo(x-across.x*34,y-across.y*34);
+      draw.closePath();draw.fill();
+    }
     for(const room of site.rooms){
       if(spatialSurfaceState(state,'room',room.id,replaying&&replayKnowledge.omniscient)==='unknown')continue;
       const palette=['#666558','#526b66','#77705c','#58605a'];
@@ -68,10 +86,12 @@ function terrain(){
           draw.strokeRect(a,b,25,25);
     }
     draw.strokeStyle='rgba(161,192,175,.06)';
-    for(let a=0;a<=W;a+=GRID*2)
-      line({x:a,y:0},{x:a,y:H},'rgba(161,192,175,.045)',.6);
-    for(let b=0;b<=H;b+=GRID*2)
-      line({x:0,y:b},{x:W,y:b},'rgba(161,192,175,.045)',.6);
+    for(let a=bounds.minX;a<=bounds.maxX;a+=GRID*2)
+      line({x:a,y:bounds.minY},{x:a,y:bounds.maxY},
+        'rgba(161,192,175,.045)',.6);
+    for(let b=bounds.minY;b<=bounds.maxY;b+=GRID*2)
+      line({x:bounds.minX,y:b},{x:bounds.maxX,y:b},
+        'rgba(161,192,175,.045)',.6);
     return;
   }
   // Dirt service road leading to the lower door.
