@@ -8,6 +8,7 @@ import type {Pt} from './breach-core.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import {renderSnapshot,type RenderActor} from './breach-frame-interpolation.ts';
 import {FrameMeter} from './breach-perf.ts';
+import {shouldSubmitIdle3D} from './rendering/breach-idle-3d-cadence.ts';
 import {PerformanceTimeline,emptyPerformanceSceneCosts,
  type PreviousFrameWork}
  from './breach-performance-timeline.ts';
@@ -104,6 +105,18 @@ setSightDiagnosticsEnabled(!!perfOverlay);
 const frameMeter=perfOverlay?new FrameMeter():null;
 const perfTimeline=perfOverlay?new PerformanceTimeline():null;
 let perfTimelineSession:Session|null=null;
+// Explicit A/B only. At rest, 3D can submit at 30Hz while the RAF,
+// 2D order overlays, HUD, audio and all game simulation remain unchanged.
+const idle3dExperiment=new URLSearchParams(location.search).get('idle3d')==='30';
+let last3dInputAt=-Infinity,last3dUpdateAt=-Infinity;
+let last3dSession:Session|null=null,last3dMode:RuntimeFrameMode|null=null;
+let idle3dSkipped=0;
+if(idle3dExperiment){
+ const markInput=()=>{last3dInputAt=performance.now();};
+ for(const event of ['pointerdown','pointermove','touchstart',
+   'touchmove','wheel','keydown'])
+  window.addEventListener(event,markInput,{passive:true});
+}
 // The RAF interval includes the *previous* callback, not the JS that
 // runs after the current RAF fires. Include all preceding diagnostic work.
 let previousPerfJs:number|undefined;
@@ -219,10 +232,23 @@ function tick(now:number){
   // never fixed-step gameplay or authoritative replay/simulation state.
   const studioOccludesTactical=config.isStudioVisible()&&
    !replayQuickVideo.active;
-  if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
-    stage.setMiniatureFocusContext(replaying,dt);
-  if(!studioOccludesTactical&&stage&&viewMode!=='plan2d')
-    stage.update(state,selected,dt,doorFocusId,
+  const stageAvailable=!studioOccludesTactical&&!!stage&&viewMode!=='plan2d';
+  const updated3d=stageAvailable&&shouldSubmitIdle3D({
+   enabled:idle3dExperiment,mode:frameMode,viewMode,
+   studioOccludes:studioOccludesTactical,now,
+   lastSceneAt:last3dUpdateAt,lastSceneMode:last3dMode,
+   sameSession:last3dSession===state,lastInputAt:last3dInputAt
+  });
+  if(stageAvailable&&!updated3d)idle3dSkipped++;
+  // The presentation-only idle clock must advance by actual elapsed wall
+  // time since the prior 3D submission, not by one skipped RAF's dt.
+  const sceneDt=idle3dExperiment&&frameMode==='idle'&&
+   last3dSession===state&&last3dMode==='idle'&&
+   Number.isFinite(last3dUpdateAt)?
+    Math.min(.08,Math.max(0,(now-last3dUpdateAt)/1000)):dt;
+  if(updated3d&&stage){
+    stage.setMiniatureFocusContext(replaying,sceneDt);
+    stage.update(state,selected,sceneDt,doorFocusId,
       replaying&&replayKnowledge.omniscient&&
         !replayCamera.directorCamDisclosure(),
       replaying?config.getReplayPresentation():null,
@@ -245,6 +271,8 @@ function tick(now:number){
           replayCamera.directorCamActor??replayKnowledge.observerId!)??null:
         null,
       replaying?replayKnowledge.windowHistory:null);
+    last3dUpdateAt=now;last3dSession=state;last3dMode=frameMode;
+  }
   const overlayBegin=perfOverlay?performance.now():0;
   const sceneUpdateEnd=perfOverlay?performance.now():0;
   if(!studioOccludesTactical)config.renderFrame(dt);
@@ -272,12 +300,12 @@ function tick(now:number){
   if(frameMeter&&perfOverlay){
     const end=performance.now(),stats=stage?.performanceStats();
     currentSceneCosts={
-     ...(!studioOccludesTactical&&viewMode!=='plan2d'?
-      stats?.scenePhases??emptyPerformanceSceneCosts():
+     ...(updated3d?stats?.scenePhases??emptyPerformanceSceneCosts():
       emptyPerformanceSceneCosts())
     };
-    const actorCost=(!studioOccludesTactical&&viewMode!=='plan2d')?
-      stats?.actorPhaseCosts:null;
+    // Skipped 3D frames do not inherit stale phase timings from the last
+    // submitted frame, or profiler samples would falsely claim 3D work.
+    const actorCost=updated3d?stats?.actorPhaseCosts:null;
     currentActorCosts=actorCost?{...actorCost}:undefined;
     const sightTotal=stats?.presentationSight;
     const sightDelta={queries:0,hits:0,misses:0,
@@ -315,7 +343,7 @@ function tick(now:number){
        sync:sceneUpdateEnd-perfRenderStart,sim:simulationMeasuredMs,
        recording:recordingMs,ui:runtimeUiMs,overlay:end-overlayBegin,
        scene:currentSceneCosts,
-       draws:stats?.calls??0,steps:simSteps,phase:frameMode,
+       draws:updated3d?stats?.calls??0:0,steps:simSteps,phase:frameMode,
        camera:viewMode,hotSim,fogPaints:fogDelta,
        shadowRefreshes:shadowDelta,sight:sightDelta});
     }
@@ -323,14 +351,17 @@ function tick(now:number){
       scene:overlayBegin-perfRenderStart,
       sceneUpdate:sceneUpdateEnd-perfRenderStart,
       render:renderEnd-sceneUpdateEnd,overlay:end-overlayBegin,
-      recording:recordingMs,steps:simSteps,draws:stats?.calls??0,triangles:stats?.triangles??0});
+      recording:recordingMs,steps:simSteps,
+      draws:updated3d?stats?.calls??0:0,
+      triangles:updated3d?stats?.triangles??0:0});
     // The optional diagnostics must not sort rolling samples every RAF:
     // that would contaminate the very hitch measurements they report.
     if(Math.floor(now/750)!==Math.floor((now-dt*1000)/750)){
       const m=frameMeter.summary();
       const sight=drainSightDiagnostics();
-      const scenePhases=stats?.scenePhases;
+      const scenePhases=updated3d?stats?.scenePhases:null;
       const output='MODE '+frameMode+' (recent 120 frames)'+
+        (idle3dExperiment?' · IDLE3D 30 · SKIPS '+idle3dSkipped:'')+
         '\nJS '+m.p50.toFixed(1)+'ms · P95 '+
         m.p95.toFixed(1)+' · MAX '+m.worst.toFixed(1)+
         '\nRAF GAP P50 '+m.rafP50.toFixed(1)+'ms · P95 '+
@@ -386,7 +417,8 @@ function tick(now:number){
           [...simPhaseCosts].sort((a,b)=>b[1]-a[1]).slice(0,2)
             .map(([name,ms])=>name+' '+ms.toFixed(1)+'ms').join(' / '):'');
       if(perfPanel&&perfTimeline)perfPanel.update(output,perfTimeline,
-       stats?.presentationSightPolicy??'planning',viewMode);
+       stats?.presentationSightPolicy??'planning',
+       idle3dExperiment?viewMode+' idle3d30':viewMode);
       for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
        intervalSight[k]=0;
     }
@@ -422,6 +454,8 @@ function tick(now:number){
  /** Reset render-only leftovers across mission/replay transitions. */
  function resetPresentation():void{
   accum=0;hudAt=0;
+  last3dUpdateAt=-Infinity;last3dSession=null;last3dMode=null;
+  idle3dSkipped=0;
   previousPerfJs=undefined;previousPerfSim=undefined;
   previousPerfMode=undefined;previousPerfWork=undefined;
   previousHotSim=undefined;
