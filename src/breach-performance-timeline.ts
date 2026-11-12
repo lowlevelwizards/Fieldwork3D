@@ -148,13 +148,16 @@ export class PerformanceTimeline{
   const lines=['t_sec,raf_peak_ms,js_at_peak_ms,sync_at_peak_ms,'+
    'sync_peak_ms,sim_ms,actors_ms,disclosure_ms,effects_ms,fog_ms,'+
    'gpu_submit_cpu_ms,steps,draws,fog_paints,shadow_refreshes,'+
-   'sight_hits,sight_misses,phase,camera'];
+   'sight_hits,sight_misses,phase,camera,'+
+   'previous_js_ms,previous_sim_ms,previous_phase,callback_wait_ms'];
   for(const {bucket,peak:p,maxSync} of this.series){
    const fields=[bucket*PERFORMANCE_BUCKET_MS/1000,
     p.raf,p.js,p.sync,maxSync,p.sim,p.scene.actors,p.scene.disclosure,
     p.scene.effects,p.scene.fog,p.scene.gpuSubmit,p.steps,p.draws,
     p.fogPaints,p.shadowRefreshes,p.sight.hits,p.sight.misses,
-    p.phase,p.camera];
+    p.phase,p.camera,p.previousJs??'',p.previousSim??'',
+    p.previousPhase??'',p.previousJs===undefined?'':
+     Math.max(0,p.raf-p.previousJs)];
    lines.push(fields.join(','));
   }
   return lines.join('\n');
@@ -173,23 +176,30 @@ export class PerformanceTimeline{
   const lines=[
    'FIELDWORK PERF · last 60s | '+policy+' / '+view,
    'RAF worst '+this.maxRaf().toFixed(0)+'ms | spike buckets: '+
-    critical+' >=67ms, '+slow+' 33–66ms',
-   'Top RAF spikes (time ago; ms):'
+    critical+' >=67ms, '+slow+' 33–66ms'
   ];
+  const modes=this.phaseSummary();
+  for(const name of ['live','idle','replay'] as const){
+   const m=modes[name];
+   if(m.frames)lines.push(name.toUpperCase()+' '+m.frames+'f / >=33 '+
+    m.slow+' / >=67 '+m.severe+' / max '+m.worst.toFixed(0)+'ms');
+  }
+  lines.push('Top RAF spikes (time ago; ms):');
   const peaks=this.recentSpikes(5);
   if(!peaks.length)lines.push('None >=33ms');
   for(const {peak:p} of peaks){
    const cause=performanceHotspot(p);
    lines.push(
     '-'+((latest-p.at)/1000).toFixed(1)+'s RAF '+p.raf.toFixed(0)+
-    ' / JS '+p.js.toFixed(0)+' / sync '+p.sync.toFixed(0)+
-    ' / sim '+p.sim.toFixed(0)+' | '+p.phase+'/'+p.camera+
-    ' | '+(cause.startsWith('unattributed')?'unattributed gap':
-     cause.replace(' (largest measured CPU slice)',''))+
-    ' | fog +'+p.fogPaints+' shadow +'+p.shadowRefreshes
+    ' | prevJS '+(p.previousJs?.toFixed(0)??'?')+
+    '/sim'+(p.previousSim?.toFixed(0)??'?')+
+    ' nowJS '+p.js.toFixed(0)+'/sim'+p.sim.toFixed(0)+
+    ' | wait '+(p.previousJs===undefined?'?':
+      Math.max(0,p.raf-p.previousJs).toFixed(0))+
+    ' | '+p.phase+'/'+p.camera+' | '+cause
    );
   }
-  lines.push('RAF gap != GPU time. Full 250ms history: TXT export.');
+  lines.push('wait = RAF - previous JS; not GPU time. Full history: TXT.');
   return lines.join('\n');
  }
  report(policy:string,view:string):string{
@@ -200,9 +210,18 @@ export class PerformanceTimeline{
    'Policy: '+policy+' | View: '+view+
     ' | buckets: '+all.length+' | worst RAF: '+this.maxRaf().toFixed(1)+'ms',
    'RAF = interval between callbacks; CPU timing != GPU execution time.',
+   'PREVIOUS JS can occupy that interval; current JS happens afterward.',
+   'Remaining callback wait includes compositor, scheduling and other tasks.',
    'Spikes record the worst RAF gap in each 250ms bucket.',
    'Correlated work is not proof of the cause of a hitch.'
   ];
+  const modeTotals=this.phaseSummary();
+  for(const mode of ['live','idle','replay'] as const){
+   const stat=modeTotals[mode];
+   if(stat.frames)lines.push(mode.toUpperCase()+' CALLBACKS '+stat.frames+
+    ' | >=33ms '+stat.slow+' | >=67ms '+stat.severe+
+    ' | worst '+stat.worst.toFixed(1)+'ms');
+  }
   const spikes=this.recentSpikes(10);
   if(!spikes.length)lines.push('No RAF gaps >=33.3ms in the recorded window.');
   for(const {peak:p} of spikes){
@@ -210,9 +229,13 @@ export class PerformanceTimeline{
     key+' '+p.scene[key].toFixed(1)).join(', ');
    lines.push(
     '- '+((latest-p.at)/1000).toFixed(1)+'s ago: '+
-    'RAF '+p.raf.toFixed(1)+'ms, JS '+p.js.toFixed(1)+'ms, '+
-    'SYNC '+p.sync.toFixed(1)+'ms, SIM '+p.sim.toFixed(1)+'ms, '+
-    'UI '+p.ui.toFixed(1)+'ms, '+p.steps+' ticks, '+p.draws+
+    'RAF '+p.raf.toFixed(1)+'ms, PREVIOUS JS '+
+    (p.previousJs?.toFixed(1)??'unknown')+'ms, PREVIOUS SIM '+
+    (p.previousSim?.toFixed(1)??'unknown')+'ms ('+
+    (p.previousPhase??'unknown')+'), CURRENT JS '+p.js.toFixed(1)+
+    'ms, CURRENT SYNC '+p.sync.toFixed(1)+'ms, CURRENT SIM '+
+    p.sim.toFixed(1)+'ms, UI '+p.ui.toFixed(1)+'ms, '+
+    p.steps+' ticks, '+p.draws+
     ' draws; '+p.phase+'/'+p.camera+'; '+performanceHotspot(p)+
     '; fog +'+p.fogPaints+', shadow +'+p.shadowRefreshes+
     '; P1 H/M/INV '+p.sight.hits+'/'+p.sight.misses+'/'+p.sight.invalidations+
