@@ -8,6 +8,7 @@ import type {Site} from '../breach-site.ts';
 import {passable,route,pointToSegment,withTemporarySiteGeometry,
   type Pt,type Segment} from '../breach-core.ts';
 import {auditTacticalMobility} from './tactical-mobility-audit.ts';
+import {auditWindowGeometryContract} from './window-geometry-contract.ts';
 import {auditFixtureService} from './fixture-service-clearance.ts';
 import {assessRoomContracts,ROOM_CONTRACTS} from './room-contracts.ts';
 import {isFootstepObstacle} from '../breach-traversal-surfaces.ts';
@@ -105,12 +106,13 @@ export function auditSitePhysicalIntegrity(site:Site):PhysicalIntegrityReport{
    add('blocking','invalid-geometry',opening.id,'invalid opening endpoints');
   else if(portalBlocked(opening,site.walls))
    add('blocking','blocked-portal',opening.id,'a wall occupies the open passage');
- for(const win of site.windows??[]){
-  const fixture=win.sillHeight===0?'glass-barrier':'window-sill';
-  if(!site.cover.some(o=>o.fixture===fixture&&
-    length({x:o.x,y:o.y},{x:win.x,y:win.y})<1))
-   add('blocking','missing-window-collider',win.id,
-     'visible window missing its authoritative '+fixture);
+ // A nearby but wrongly sized, doubled or orphaned window barrier does
+ // not match the aperture used by physics, the map and scene building.
+ for(const finding of auditWindowGeometryContract(site)){
+   const severity=finding.kind==='orphan-barrier'?'warning':'blocking';
+   const code=finding.kind==='missing-barrier'?
+     'missing-window-collider':'invalid-geometry';
+   add(severity,code,finding.id,finding.detail);
  }
  const mobility=auditTacticalMobility(site,site.doors.length);
  for(const issue of mobility.issues){
