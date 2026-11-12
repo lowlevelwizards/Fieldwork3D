@@ -13,15 +13,32 @@ export type PerformanceSceneCosts=Readonly<Record<PerformanceScenePhase,number>>
 export type PerformanceSightDelta=Readonly<{
  queries:number;hits:number;misses:number;bypasses:number;invalidations:number
 }>;
+/** A RAF gap ends at this callback. Its preceding JS work belongs to the
+ * previous callback, not the JS measured *after* this gap. */
 export type PerformanceTimelineSample=Readonly<{
  at:number;raf:number;js:number;sync:number;sim:number;recording:number;
+ previousJs?:number;previousSim?:number;previousPhase?:string;
  ui:number;overlay:number;scene:PerformanceSceneCosts;draws:number;
  steps:number;phase:string;camera:string;hotSim:string;
  fogPaints:number;shadowRefreshes:number;sight:PerformanceSightDelta;
 }>;
+export type PerformancePhase='live'|'idle'|'replay'|'other';
+export type PerformancePhaseCounts={
+ frames:number;slow:number;severe:number;worst:number
+};
+const newPhaseCounts=():PerformancePhaseCounts=>({
+ frames:0,slow:0,severe:0,worst:0
+});
+const newModeCounts=():Record<PerformancePhase,PerformancePhaseCounts>=>({
+ live:newPhaseCounts(),idle:newPhaseCounts(),
+ replay:newPhaseCounts(),other:newPhaseCounts()
+});
+const historyPhase=(phase:string):PerformancePhase=>
+ phase==='live'||phase==='idle'||phase==='replay'?phase:'other';
 export type PerformanceTimelineBucket={
  bucket:number;peak:PerformanceTimelineSample;
- maxSync:number;maxJs:number;frames:number
+ maxSync:number;maxJs:number;frames:number;
+ modes:Record<PerformancePhase,PerformancePhaseCounts>;
 };
 const EMPTY_SCENE:PerformanceSceneCosts=Object.freeze({
  environment:0,camera:0,disclosure:0,actors:0,effects:0,
@@ -45,20 +62,26 @@ function copy(sample:PerformanceTimelineSample):PerformanceTimelineSample{
  return {...sample,scene,at:sample.at,raf:finite(sample.raf),
   js:finite(sample.js),sync:finite(sample.sync),sim:finite(sample.sim),
   recording:finite(sample.recording),ui:finite(sample.ui),
+  previousJs:sample.previousJs===undefined?undefined:finite(sample.previousJs),
+  previousSim:sample.previousSim===undefined?undefined:finite(sample.previousSim),
   overlay:finite(sample.overlay),draws:finite(sample.draws),
   steps:finite(sample.steps),fogPaints:finite(sample.fogPaints),
   shadowRefreshes:finite(sample.shadowRefreshes),sight:{...sample.sight}};
 }
+/** Diagnose the interval ending at this callback without blaming work
+ * performed afterward. Remaining time is unmeasured browser/other-task
+ * scheduling, NOT a GPU execution timer. */
 export function performanceHotspot(sample:PerformanceTimelineSample):string{
- let largest=sample.sim,owner='simulation';
- for(const key of PERFORMANCE_SCENE_PHASES){
-  if(sample.scene[key]>largest){largest=sample.scene[key];owner=key;}
+ if(sample.previousJs!==undefined){
+  if(sample.previousJs>=Math.max(33.3,sample.raf*.65))
+   return 'prior-frame JS occupied RAF interval';
+  if(sample.raf-sample.previousJs>=Math.max(33.3,sample.raf*.5))
+   return 'between-callback wait (cause unconfirmed)';
+  return 'mixed prior-frame CPU and callback wait';
  }
- if(sample.ui>largest){largest=sample.ui;owner='UI / runtime';}
  const missed=Math.max(0,sample.raf-sample.js);
- if(missed>Math.max(22,largest*1.4))
-  return 'unattributed frame gap (GPU/browser scheduling possible)';
- return owner+' (largest measured CPU slice)';
+ if(missed>22)return 'unattributed frame gap (prior CPU unknown)';
+ return 'preceding-frame cost unavailable';
 }
 export class PerformanceTimeline{
  private readonly series:PerformanceTimelineBucket[]=[];
@@ -69,20 +92,43 @@ export class PerformanceTimeline{
    this.series.length=0;
   }
   const current=this.series[this.series.length-1];
+  let item:PerformanceTimelineBucket;
   if(current&&current.bucket===bucket){
-   current.frames++;
-   if(sample.raf>current.peak.raf)current.peak=copy(sample);
-   current.maxSync=Math.max(current.maxSync,sample.sync);
-   current.maxJs=Math.max(current.maxJs,sample.js);
+   item=current;item.frames++;
+   if(sample.raf>item.peak.raf)item.peak=copy(sample);
+   item.maxSync=Math.max(item.maxSync,sample.sync);
+   item.maxJs=Math.max(item.maxJs,sample.js);
   }else{
-   this.series.push({bucket,peak:copy(sample),frames:1,
-    maxSync:finite(sample.sync),maxJs:finite(sample.js)});
+   item={bucket,peak:copy(sample),frames:1,
+    maxSync:finite(sample.sync),maxJs:finite(sample.js),
+    modes:newModeCounts()};
+   this.series.push(item);
   }
+  const mode=item.modes[historyPhase(sample.phase)];
+  mode.frames++;
+  if(sample.raf>=33.3)mode.slow++;
+  if(sample.raf>=66.7)mode.severe++;
+  mode.worst=Math.max(mode.worst,sample.raf);
   while(this.series.length>PERFORMANCE_BUCKET_COUNT||
    (this.series.length&&bucket-this.series[0].bucket>=PERFORMANCE_BUCKET_COUNT))
     this.series.shift();
  }
  get count():number{return this.series.length;}
+ /** Per-callback counts distinguish running from paused frames.
+  * Unlike the graph's peaks, these count every observed RAF callback.
+  * Fixed counters are updated only under opt-in ?perf=1. */
+ phaseSummary():Record<PerformancePhase,PerformancePhaseCounts>{
+  const totals=newModeCounts();
+  for(const bucket of this.series){
+   for(const mode of ['live','idle','replay','other'] as const){
+    const out=totals[mode],inMode=bucket.modes[mode];
+    out.frames+=inMode.frames;
+    out.slow+=inMode.slow;out.severe+=inMode.severe;
+    out.worst=Math.max(out.worst,inMode.worst);
+   }
+  }
+  return totals;
+ }
  /** Only the timeline's own immutable snapshots escape the ring. */
  buckets():readonly PerformanceTimelineBucket[]{return this.series;}
  recentSpikes(limit=6):PerformanceTimelineBucket[]{
