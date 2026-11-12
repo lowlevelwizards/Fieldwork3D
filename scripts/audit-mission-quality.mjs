@@ -11,6 +11,7 @@ import {assessMissionFilm,summarizeMissionSamples}
  from '../src/breach-mission-quality.ts';
 import {activateSite} from '../src/breach-core.ts';
 import {compileMissionFacts} from '../src/briefing/mission-facts.ts';
+import {auditMissionScenario} from '../src/breach-mission-semantics.ts';
 import {createOperationDossier} from '../src/briefing/briefing-composer.ts';
 const count=Math.min(48,Math.max(1,
  Number.parseInt(process.argv[2]??'11',10)||11));
@@ -28,6 +29,7 @@ for(let index=0;index<count;index++){
  const site=generateSite(seed,'small',undefined,{mission,
   ...(living?{enableIncidentIntent:true}: {})});
  const audit=auditSite(site);
+ const semanticIssues=auditMissionScenario(site,{mission}).filter(x=>x.severity==='error');
  const session=newSession(0,seed,'floor-plan','small',mission,site,
   living?{enableCivilians:true}:{});
  if(living){
@@ -77,7 +79,7 @@ for(let index=0;index<count;index++){
   entry.exposureSum+=sample.exposedFraction;
   exposureByPurpose.set(purpose,entry);
  }
- const invalid=audit.errors.length>0||film.issues.length>0;
+ const invalid=audit.errors.length>0||film.issues.length>0||semanticIssues.length>0;
  observations.push({seed,mission,topology,invalid,
   objectiveDistance:entry.objectiveEntryDistance,
   verifiedApproaches:entry.verifiedApproaches,
@@ -89,7 +91,7 @@ for(let index=0;index<count;index++){
   rawOverexposedRooms:audit.sightlineQuality.filter(r=>
     r.warnings.includes('overexposed room')).length,film});
  if(invalid)issues.push({seed,mission,siteErrors:audit.errors,
-  replayErrors:film.issues});
+  semanticIssues,replayErrors:film.issues});
  activateSite(null);
 }
 const summary=summarizeMissionSamples(observations);

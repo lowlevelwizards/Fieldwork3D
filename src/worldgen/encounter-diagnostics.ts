@@ -1,10 +1,12 @@
 /** Bounded generation-time diagnostics for the omniscient Map Lab.
  * Pure geometry calculations; never expose these values in player fog of war. */
 import type {Site} from '../breach-site.ts';
+import {auditMissionScenario,type ScenarioSemanticIssue} from '../breach-mission-semantics.ts';
 export type EncounterSpatialAudit={
   hostiles:number;groups:number;occupiedZones:number;emptyZones:number;
   meanEntryDistance:number;closestPair:number;roles:Record<string,number>;
   nearInsertionCount:number;largestGroup:number;profile:string;
+  semanticIssues:ScenarioSemanticIssue[];
 };
 export function auditEncounter(site:Site):EncounterSpatialAudit{
  const actors=site.encounter?.actors??site.enemies.map((p,i)=>({
@@ -34,5 +36,6 @@ export function auditEncounter(site:Site):EncounterSpatialAudit{
    nearInsertionCount:actors.filter(a=>Math.hypot(
       a.position.x-site.entrance.x,a.position.y-site.entrance.y)<175).length,
    largestGroup:Math.max(0,...Object.values(groupCounts)),
-   profile:site.encounter?.profile??'legacy'};
+   profile:site.encounter?.profile??'legacy',
+   semanticIssues:site.encounter?.version===1?auditMissionScenario(site):[]};
 }

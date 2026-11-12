@@ -12,6 +12,13 @@ on:
       - 'tests/package-c4-tactical-ui-consolidation.test.mjs'
       - 'tests/package-c5-replay-view-ownership.test.mjs'
       - 'tests/package-c6-world-geometry-contract.test.mjs'
+      - 'tests/package-c7-mission-faction-semantics.test.mjs'
+      - 'scripts/verification/package-c7-mission-semantics-audit.mjs'
+      - 'src/breach-mission-semantics.ts'
+      - 'src/breach-session-factory.ts'
+      - 'src/breach-operations.ts'
+      - 'src/briefing/mission-facts.ts'
+      - 'src/worldgen/encounter-*.ts'
       - 'src/worldgen/window-geometry-contract.ts'
       - 'src/worldgen/window-collider-sync.ts'
       - 'src/breach-windows.ts'
@@ -101,6 +108,15 @@ jobs:
             tests/breach-2d-renderer-extraction.test.mjs \
             tests/breach-roadmap2-geometry-scope.test.mjs \
             tests/facade-geometry-polish-20261112.test.mjs
+      - name: C7 mission selection, faction truth, population and restart contracts
+        run: |
+          node --experimental-strip-types --test \\
+            tests/package-c7-mission-faction-semantics.test.mjs \\
+            tests/mission-restart-snapshot.test.mjs \\
+            tests/worldgen-encounter-diagnostics.test.mjs \\
+            tests/tactical-integration-16-encounter-a2.test.mjs \\
+            tests/faction-reference.test.mjs
+          node --experimental-strip-types scripts/verification/package-c7-mission-semantics-audit.mjs
       - name: Validate C0 read-only scene and presentation ownership contracts
         run: node --test tests/package-c0-presentation-audit.test.mjs
       - name: Generate reproducible C0 evidence
