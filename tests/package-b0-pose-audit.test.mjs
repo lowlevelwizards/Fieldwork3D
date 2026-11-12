@@ -109,8 +109,9 @@ test('B0 scans ALL source files for transform candidates and duplicate public po
   ['src/breach-operator-animation-controller.ts']);
  assert.deepEqual(report.commitImplementations,
   ['src/breach-operator-pose-output.ts']);
- assert.deepEqual(report.externalCommitCallers,
-  ['src/breach-operator-animation-controller.ts']);
+ assert.deepEqual(report.externalCommitCallers,[
+  'src/breach-operator-animation-controller.ts','src/operator-pose-workbench.ts'
+ ]);
  assert.ok(report.allTransformCandidates.length>report.hotspot.length,
   'Full-source audit must include more than the ten known hotspots');
  assert.ok(report.allTransformCandidates.some(x=>x.path==='src/operator-pose-workbench.ts'));
@@ -118,5 +119,5 @@ test('B0 scans ALL source files for transform candidates and duplicate public po
  assert.ok(report.moduleConsumers['src/breach-operator-animation-contract.ts'].length>0);
  const invalid={...report,externalCommitCallers:[...report.externalCommitCallers,
   'src/unauthorized-secondary-commit.ts']};
- assert.throws(()=>verifyB0Architecture(invalid),/Only the canonical evaluator/);
+ assert.throws(()=>verifyB0Architecture(invalid),/Only tactical posing and offline Workbench/);
 });
