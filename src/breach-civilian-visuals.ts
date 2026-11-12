@@ -27,6 +27,9 @@ function box(geometry:THREE.BoxGeometry,color:number,
  const mesh=new THREE.Mesh(geometry,mat(color));
  mesh.position.set(x,y,z);parent.add(mesh);return mesh;
 }
+/** Render-only size parity: adult civilians share the operator's ~44-unit
+ * standing silhouette, without changing gameplay radius or movement. */
+export const CIVILIAN_VISUAL_SCALE=1.20;
 export type CivilianRig={
  root:THREE.Group;head:THREE.Mesh;
  leftArm:THREE.Mesh;rightArm:THREE.Mesh;
@@ -54,7 +57,7 @@ export function updateCivilianRig(r:CivilianRig,
  c:CivilianActor,now:number):void{
  r.root.position.set(c.p.x,0,c.p.y);
  r.root.rotation.set(0,-c.heading,0);
- r.root.scale.set(1,1,1);
+ r.root.scale.setScalar(CIVILIAN_VISUAL_SCALE);
  r.leftArm.position.set(-10,19,0);
  r.rightArm.position.set(10,19,0);
  // Reset every animated transform on every sample. In particular a
@@ -75,20 +78,20 @@ export function updateCivilianRig(r:CivilianRig,
  }else if(pose==='startled'){
   r.leftArm.rotation.z=-.25;r.rightArm.rotation.z=.25;
  }else if(pose==='hide'||pose==='injured'){
-  r.root.scale.y=.73;r.leftArm.rotation.z=-.28;
+  r.root.scale.y=CIVILIAN_VISUAL_SCALE*.73;r.leftArm.rotation.z=-.28;
  }else if(pose==='carried'){
   r.root.rotation.z=.72;r.root.position.y=11;
-  r.root.scale.set(.88,.88,.88);
+  r.root.scale.setScalar(CIVILIAN_VISUAL_SCALE*.88);
   r.leftLeg.rotation.x=.50;r.rightLeg.rotation.x=.50;
  }else if(pose==='dragged'){
   r.root.rotation.z=Math.PI*.47;r.root.position.y=3;
-  r.root.scale.set(.88,.78,.88);
+  r.root.scale.set(CIVILIAN_VISUAL_SCALE*.88,CIVILIAN_VISUAL_SCALE*.78,CIVILIAN_VISUAL_SCALE*.88);
  }else if(pose==='down'){
   r.root.rotation.z=Math.PI*.48;
   r.root.position.y=3;r.root.scale.set(.88,.88,.88);
  }else if(pose==='injured-walk'){
   const step=Math.sin(now*5+c.appearanceSeed*.01)*.17;
-  r.root.scale.y=.82;
+  r.root.scale.y=CIVILIAN_VISUAL_SCALE*.82;
   r.leftLeg.rotation.x=step;r.rightLeg.rotation.x=-step;
   r.leftArm.rotation.z=-.20;r.rightArm.rotation.x=step*.45;
  }else if(pose==='seated'){
