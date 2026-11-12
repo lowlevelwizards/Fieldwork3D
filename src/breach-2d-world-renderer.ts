@@ -19,7 +19,7 @@ import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter} from './equipment-weapon-light-beam.ts';
 import {sameWeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
-import {replayActorDisclosed} from './breach-replay-visibility.ts';
+import {presentActor} from './rendering/breach-3d-disclosure-presenter.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 import type {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
 export type World2DDrawing={
@@ -308,8 +308,11 @@ function renderWeaponLights2D(){
  }
  draw.save();draw.fillStyle='rgba(183,240,205,.12)';
  for(const actor of active){
-  if(actor.side==='red'&&!replayActorDisclosed(state,actor,
-      replaying?replayKnowledge.disclosure():{mode:'squad'}))continue;
+  // Live play uses current sight; replay uses only recorded actor evidence.
+  // A squad replay policy must never be substituted for live presentation.
+  if(actor.side==='red'&&!presentActor(state,actor,
+      replaying&&replayKnowledge.omniscient,
+      replaying?replayKnowledge.disclosure():null))continue;
   const previous=cached.history.get(actor.id);
   const yaw=actor.weaponYaw;
   if(!previous||previous.tick!==tick||
