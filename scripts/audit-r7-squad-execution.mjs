@@ -49,13 +49,19 @@ function planFourMoves(session,actors,site){
 }
 function planEntry(session,actors){
  const initial=actors.map(a=>a.plan.map(n=>n.id));
+ const rejectedDoors=[];
  const start=actors[0].p;
  const eligible=[...session.doors].filter(d=>d.kind==='hinged')
   .sort((a,b)=>dist(start,{x:(a.a.x+a.b.x)/2,y:(a.a.y+a.b.y)/2})-
     dist(start,{x:(b.a.x+b.b.x)/2,y:(b.a.y+b.b.y)/2})||
     a.id.localeCompare(b.id));
  for(const door of eligible.slice(0,12)){
-  if(!planSquadEntry(session,door.id))continue;
+  const eventOffset=session.events.length;
+  if(!planSquadEntry(session,door.id)){
+   rejectedDoors.push({door:door.id,
+    reason:session.events.slice(eventOffset).at(-1)??'preflight denied'});
+   continue;
+  }
   const goals=new Map();
   for(const actor of actors){
    const node=actor.plan.find(n=>n.entryDoorId===door.id);
@@ -67,11 +73,12 @@ function planEntry(session,actors){
   a.plan.every((n,j)=>n.id===initial[i][j]));
  if(!preserved)throw Error('rejected entry mutated an authored plan');
  return {accepted:0,goals:new Map(),door:null,
-  rejected:4,reason:'no eligible four-person entry template'};
+  rejected:4,reason:'no eligible four-person entry template',
+  rejectedDoors:rejectedDoors.slice(0,12)};
 }
 function run(site,seed,kind){
  const quiet={...site,training:true,enemies:[],encounter:undefined};
- const session=newSession(0,seed,'full-view','small','intel',quiet,
+ const session=newSession(0,seed,'full-view',site.scale??'small','intel',quiet,
   {enableCivilians:false});
  try{
   const actors=team(session).slice(0,4);
@@ -117,7 +124,8 @@ function run(site,seed,kind){
   const orderIssues=actors.map(a=>a.orderIssue?.reason??null);
   const complete=planned.accepted===4&&actors.every(a=>!a.plan.length);
   return {mode:kind,doorId:planned.door?.id??null,accepted:planned.accepted,
-   rejected:planned.rejected,reason:planned.reason??null,complete,
+   rejected:planned.rejected,reason:planned.reason??null,
+   rejectedDoors:planned.rejectedDoors??[],complete,
    crossed,orderIssues,planIntact,
    minSpacing:Number.isFinite(minSpacing)?round(minSpacing):null,
    reversalsNearDoor,maxBlockedSeconds:round(maxBlocked),
@@ -138,11 +146,12 @@ const rows=[];
 let exceptions=0;
 for(let i=0;i<sites;i++){
  const seed=31045+i*13,archetype=names[i%names.length];
+ const scale=i%2===0?'small':'standard';
  try{
-  const site=generateSite(seed,'small',undefined,{mission:'intel'},
+  const site=generateSite(seed,scale,undefined,{mission:'intel'},
    {archetype});
   const modes=['authored','entry'].map(mode=>run(site,seed,mode));
-  rows.push({seed,archetype,rooms:site.rooms.length,
+  rows.push({seed,scale,archetype,rooms:site.rooms.length,
    doors:site.doors.length,cover:site.cover.length,modes});
  }catch(error){
   exceptions++;
