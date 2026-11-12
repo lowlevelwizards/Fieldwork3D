@@ -37,7 +37,7 @@ export const REQUIRED_SURFACES=Object.freeze({
  'src/breach-replay-motion.ts':'recorded playback motion and foot targets',
  'src/breach-operator-lab.ts':'Lab pose and historical gait comparisons',
  'src/operator-studio.ts':'Studio deterministic and 24 Hz armed preview',
- 'src/operator-pose-workbench.ts':'independent offline edit-rig writer'
+ 'src/operator-pose-workbench.ts':'offline authored editor using the shared atomic B2 publisher'
 });
 export const CONTRACT_TESTS=Object.freeze([
  'tests/breach-roadmap2-stage11-animation.test.mjs',
@@ -49,6 +49,7 @@ export const CONTRACT_TESTS=Object.freeze([
  'tests/breach-motion-22.test.mjs',
  'tests/operator-lab-unified-poses.test.mjs',
  'tests/operator-pose-workbench.test.mjs',
+ 'tests/package-b7-workbench-pose-output.test.mjs',
  'tests/breach-unified-pose-stability.test.mjs'
 ]);
 export const PUBLIC_CALLERS=Object.freeze([
@@ -162,8 +163,12 @@ export function inspectB0Architecture(root=process.cwd()){
   studioUsesCommonPose:/\bposeOperator\(rig,armedPose,0\)/.test(studio),
   labCanCompareGaits:/gaitComparing&&rig\.lastPose/.test(lab),
   studioHasOwnVisualRate:/1000\/24/.test(studio),
-  benchIsSeparateWriter:/export function applyWorkbenchPose\(/.test(bench)&&
-   /rig\.weapon\.position\.copy\(/.test(bench),
+  benchUsesSharedPublisher:/export function applyWorkbenchPose\(/.test(bench)&&
+   /beginOperatorPoseOutput\(rig,outputInput\)/.test(bench)&&
+   /commitOperatorPoseOutput\(rig,outputInput\)/.test(bench)&&
+   /setOperatorArmSegments\(scratch,index,/.test(bench)&&
+   !/rig\.weapon\.position\.copy\(/.test(bench)&&
+   !/rig\.chest\.rotation\.set\(/.test(bench),
   liveGaitExplicit:/LIVE_GAIT_MODE:'hybrid'\|'legacy'='hybrid'/.test(gait)
  };
  return {
@@ -202,8 +207,9 @@ export function verifyB0Architecture(report){
   'A second poseOperator implementation is not a safe preview adapter');
  assert.deepEqual(report.commitImplementations,['src/breach-operator-pose-output.ts'],
   'One public commit implementation; do not add a mode-local equivalent');
- assert.deepEqual(report.externalCommitCallers,['src/breach-operator-animation-controller.ts'],
-  'Only the canonical evaluator may commit the final public pose output');
+ assert.deepEqual(report.externalCommitCallers,[
+  'src/breach-operator-animation-controller.ts','src/operator-pose-workbench.ts'
+ ],'Only tactical posing and offline Workbench may invoke the shared B2 publisher');
  assert.equal(c.finalCommitDeclaration,1,'Exactly one named output commit implementation');
  assert.equal(c.finalCommitCalls,1,'Exactly one final published pose output per evaluation');
  assert.ok(c.stageIndices.every(i=>i>=0),'All ordered evaluation stages must be present');
@@ -212,7 +218,7 @@ export function verifyB0Architecture(report){
  for(const path of PUBLIC_CALLERS)
   assert.ok(report.callsites.some(call=>call.path===path),'Missing public mode caller: '+path);
  assert.ok(report.hotspot.some(row=>row.path==='src/operator-pose-workbench.ts'&&row.candidateLines>0),
-  'Workbench separate transform writer must be explicitly tracked');
+  'Workbench authored transform preparation must remain visible to audit');
  assert.ok(report.hotspot.some(row=>row.path==='src/breach-operator-animation-controller.ts'&&row.candidateLines>0),
   'Legacy working-rig transform hotspot must not be silently reclassified as pure');
  return {sourceFiles:report.sourceTypeScriptFiles,
