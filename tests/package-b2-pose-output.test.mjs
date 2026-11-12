@@ -195,13 +195,13 @@ test('B2: the actual evaluator stages solved limbs and late-finalized equipment 
   import.meta.url),'utf8');
  const points=[
   'beginOperatorPoseOutput(r,p)',
-  'applyOperatorLegIK(r,p,scratch,targets,kick,headingYaw,smooth)',
+  'applyOperatorLegIK(workingRig,p,scratch,targets,kick,headingYaw,smooth)',
   "stageDirectOperatorPoseOutput(r,p,'lower-body',legPose)",
   "stageDirectOperatorPoseOutput(r,p,'upper-body',",
-  'applyOperatorTraumaPose(r,p,downProgress)',
+  'applyOperatorTraumaPose(r,p,downProgress,frame)',
   'finishOperatorPoseFrame(r,p,',
-  "stageOperatorPoseOutput(r,p,'frame')",
-  "stageOperatorPoseOutput(r,p,'body')",
+  "stageDirectOperatorPoseOutput(r,p,'frame',",
+  "stageDirectOperatorPoseOutput(r,p,'body',",
   "stageDirectOperatorPoseOutput(r,p,'weapon',",
   "stageDirectOperatorPoseOutput(r,p,'attachments',",
   'commitOperatorPoseOutput(r,p)'
