@@ -22,6 +22,7 @@ export class BreachPerfTimelinePanel{
  private readonly graphButton:HTMLButtonElement;
  private readonly detailButton:HTMLButtonElement;
  private readonly copyButton:HTMLButtonElement;
+ private readonly exportButton:HTMLButtonElement;
  private readonly insight:HTMLDivElement;
  private graphVisible=true;
  private expandedDetails=false;
