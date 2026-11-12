@@ -32,6 +32,7 @@ test('LE4: a person traveling to a refuge uses gait until truly stationary',()=>
  c.velocity=0;c.goal=null;
  assert.equal(civilianPose(c),'hide');
  updateCivilianRig(rig,c,.5);
- assert.ok(rig.root.scale.y<1);
+ assert.equal(rig.root.scale.y,CIVILIAN_VISUAL_SCALE);
+ assert.ok(rig.upper.position.y<0,'stationary hiding lowers the body');
  assert.equal(rig.leftLeg.rotation.x,0);
 });

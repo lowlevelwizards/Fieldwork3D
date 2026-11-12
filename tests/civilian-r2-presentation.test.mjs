@@ -12,7 +12,8 @@ test('R2-C1 ambulatory injured escort uses gait and stops without stale transfor
  c.health=1;c.injuryStage=1;c.state='escorted';c.velocity=22;
  assert.equal(civilianPose(c),'injured-walk');
  updateCivilianRig(rig,c,.25);
- assert.ok(rig.root.scale.y<1);
+ assert.equal(rig.root.scale.y,1,'injury does not shorten anatomy');
+ assert.ok(rig.upper.rotation.z<0,'injury communicates through body gesture');
  assert.notEqual(rig.leftLeg.rotation.x,0);
  c.velocity=0;updateCivilianRig(rig,c,.7);
  assert.equal(civilianPose(c),'injured');
@@ -34,5 +35,7 @@ test('R2-C1 carry and drag poses are different and restore down after release',(
  assert.equal(rig.root.position.y,3);
 });
 test('R2-C1 employee silhouette adds one low-cost shared cuboid apron',()=>{
- assert.ok(createCivilianRig(person()).root.children.length>=9);
+ const rig=createCivilianRig(person()),meshes=[];
+ rig.root.traverse(part=>{if(part.isMesh)meshes.push(part);});
+ assert.ok(meshes.length>=11,'employee apron builds on complete civilian rig');
 });

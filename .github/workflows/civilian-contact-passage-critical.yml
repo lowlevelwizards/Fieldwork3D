@@ -27,6 +27,7 @@ jobs:
         run: >
           node --experimental-strip-types --test
           tests/civilian-contact-flow-regression.test.mjs
+          tests/civilian-r3-anatomy-proportions.test.mjs
           tests/civilian-c1a-animation-reset.test.mjs
           tests/civilian-c5-unified-pose.test.mjs
           tests/civilian-b6-visuals.test.mjs
