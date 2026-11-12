@@ -6,6 +6,7 @@ on:
   pull_request:
     paths:
       - 'scripts/audit-r7-squad-execution.mjs'
+      - 'scripts/audit-squad-entry-b.mjs'
       - 'src/breach-passage.ts'
       - 'src/breach-game.ts'
       - 'src/breach-entry-lanes.ts'
