@@ -28,6 +28,7 @@ import {shouldAppendStrokePoint}
 import type {TacticalPick} from './ui/tactical-target-resolver.ts';
 import {pickTacticalTarget,insertTacticalRouteWaypoint} from './breach-tactical-picking.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
+import {reconcileTacticalUiSelection} from './ui/tactical-selection-presentation.ts';
 
 
 
@@ -624,6 +625,14 @@ function medicalCandidate(id:string,origin?:Pt){
 function updateHud(){
   appFlow.observePhase(state.phase);
   if(state.phase!=='planning')targeting.reset();
+  // Read-only reconciliation prevents stale waypoint/WATCH UI following
+  // undo, cancelled edits, execution or a mission transition.
+  const actor=uid(selected);
+  const selection=reconcileTacticalUiSelection({
+    selectedNode,selectedActiveWatch
+  },actor?.plan??[],actor?activeWatchTarget(actor):null);
+  selectedNode=selection.selectedNode;
+  selectedActiveWatch=selection.selectedActiveWatch;
   if(!replaying&&state.phase==='planning')recorder.capturePlanning(state);
   recordCompletedOperation();
   refreshDeployment();
