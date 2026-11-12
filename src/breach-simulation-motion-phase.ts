@@ -22,7 +22,15 @@ export type MotionSimulationPhasePort={
  routeTo:(s:Session,from:Pt,to:Pt)=>Pt[];
 };
 export function advanceSimulationMotion(s:Session,h:number,
- motionStart:ReadonlyMap<string,Pt>,port:MotionSimulationPhasePort):void{
+ motionStart:ReadonlyMap<string,Pt>,port:MotionSimulationPhasePort,
+ profile?:((name:string,elapsedMs:number)=>void)):void{
+ // Detail is observational, enabled only by ?perf=1. Parent fixed tick,
+ // iteration order, RNG and authoritative collision outcomes stay intact.
+ const cpuMark=()=>profile?performance.now():0;
+ const cpuEnd=(name:string,start:number)=>{
+   if(profile)profile('civilian-motion/'+name,performance.now()-start);
+ };
+ const carryStart=cpuMark();
   // Authoritative coupled body proposal, before hard-actor resolution.
   const coupledBodyStarts=new Map<string,Pt>();
   for(const carrier of s.operators){
@@ -47,12 +55,16 @@ export function advanceSimulationMotion(s:Session,h:number,
     coupledBodyStarts.set(carrier.id,clone(bodyFrom));
     civil.priorP=clone(bodyFrom);civil.p=next;civil.velocity=0;
   }
+  cpuEnd('carried',carryStart);
   // Propose civilian motion before the shared fixed-tick authority pass.
   // Both teams see the same original pre-motion positions for hard bodies.
   if(s.civilians.length){
     const nearby=[...s.operators.filter(a=>a.health>0),
       ...s.civilians.filter(c=>c.health>0)];
+    const responsesStart=cpuMark();
+    let responseTime=0,movementTime=0;
     for(const civil of s.civilians){
+      const responseStart=cpuMark();
       stepCivilianResponse(civil,s.seconds,h,{
         noise:s.noise,people:s.operators,doors:s.doors,walls:sessionWorldGeometry(s).walls,
         windows:s.windows,
@@ -62,12 +74,29 @@ export function advanceSimulationMotion(s:Session,h:number,
         isCrowded:p=>s.operators.some(o=>o.health>0&&d(o.p,p)<22)||
           s.civilians.some(c=>c.id!==civil.id&&d(c.p,p)<22)
       });
+      if(profile){
+        const elapsed=performance.now()-responseStart;
+        responseTime+=elapsed;
+        profile('civilian-motion/response-'+civil.id,elapsed);
+      }
+      const civilianStepStart=cpuMark();
       stepCivilianMovement(civil,s.seconds,h,
         (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),
         (p,id)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20),
         (from,to)=>port.routeTo(s,from,to));
+      if(profile){
+        const elapsed=performance.now()-civilianStepStart;
+        movementTime+=elapsed;
+        profile('civilian-motion/step-'+civil.id,elapsed);
+      }
     }
+    cpuEnd('response',responsesStart);
+    // 'response' above is an enclosing wall clock, not additive to its
+    // individual per-civilian samples or the separate movement total.
+    if(profile)profile('civilian-motion/step',movementTime);
+    void responseTime;
   }
+  const arbitrationStart=cpuMark();
   const proposals=buildMotionFrameProposals(
     s.operators,s.civilians,motionStart);
   const decisions=resolveMovementFrame(proposals,p=>{
@@ -107,4 +136,5 @@ export function advanceSimulationMotion(s:Session,h:number,
     a.blockedTime+=h;a.lastBlocker=decision.blocked==='actor'?'actor':'route';
   }
   for(const a of s.operators)a.stride+=d(a.p,a.priorP);
+  cpuEnd('authority',arbitrationStart);
 }
