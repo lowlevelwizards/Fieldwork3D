@@ -77,13 +77,13 @@ function separateColor(from:number,wall:number,minimum:number,
  const targetL=paletteLuminance(target);
  if(direction==='darker'&&targetL>=current)return from;
  if(direction==='lighter'&&targetL<=current)return from;
- for(let step=1;step<=32;step++){
+ for(let step=1;step<=75;step++){
   const candidate=mix(from,target,step/100);
   if(Math.abs(paletteLuminance(candidate)-wallL)>=minimum &&
     (direction==='darker'?paletteLuminance(candidate)<wallL:
      paletteLuminance(candidate)>wallL))return candidate;
  }
- return mix(from,target,.32);
+ return mix(from,target,.75);
 }
 export function buildingTheme(kind:BuildingArchetype|undefined,seed:number):BuildingTheme{
  const options=schemes[kind??'house'];
@@ -93,7 +93,7 @@ export function buildingTheme(kind:BuildingArchetype|undefined,seed:number):Buil
  const floor=separateColor(s.floor,s.wall,c.minimumFloorWall,0x657672,'darker');
  const tile=separateColor(s.tile,s.wall,c.minimumTileWall,0x899c97,'darker');
  const trim=separateColor(s.trim,s.wall,c.minimumTrimWall,
-  paletteLuminance(s.trim)>=paletteLuminance(s.wall)?0xf5f0e2:0x45514b,
+  paletteLuminance(s.trim)>=paletteLuminance(s.wall)?0xfffef9:0x45514b,
   'existing');
  const cap=separateColor(s.cap,s.wall,c.minimumCapWall,0x303d3c,'darker');
  return {...s,floor,tile,trim,cap,hall:mix(floor,s.wall,.26),
