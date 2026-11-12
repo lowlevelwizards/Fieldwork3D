@@ -4,7 +4,7 @@
  */
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
-import {witnessShock,countNearbyEnemyAllies,moraleResponse} from './breach-ai-morale.ts';
+import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse} from './breach-ai-morale.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {passageIdleYieldStep,type PassageActor} from './breach-passage.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
@@ -53,8 +53,14 @@ export function advanceSimulationActors(s:Session,h:number,
       // Do not pay an extra ally scan every tick for calm defenders.
       const peerSupport=(a.suppression>.25||a.morale<.65)?
         countNearbyEnemyAllies(a,s.operators):0;
+      const threatened=a.suppression>.25||a.morale<.65||
+        (a.alert==='retreat'&&a.blockedTime>=2.5);
+      const recentThreats=threatened?
+        countRecentlySeenThreats(a.awareness.contacts,s.seconds):0;
       const resolve=moraleResponse(a.morale,a.suppression,
-        a.injuryStage,a.personality,{nearbyAllies:peerSupport});
+        a.injuryStage,a.personality,{nearbyAllies:peerSupport,
+          recentlySeenThreats:recentThreats,
+          retreatBlocked:a.alert==='retreat'&&a.blockedTime>=2.5});
       if(resolve==='withdraw'&&a.alert!=='retreat'){
         const threat=a.contact??a.heard??a.watch;
         if(threat){
