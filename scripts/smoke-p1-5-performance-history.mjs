@@ -40,7 +40,7 @@ try{
   });
   try{
    await page.goto(base+'/breach.html?quick=1&seed=23&perf=1'+
-    '&presentationSight='+policy,{waitUntil:'domcontentloaded'});
+    policyQuery,{waitUntil:'domcontentloaded'});
    await page.locator('#breach3dCanvas').waitFor({state:'visible',timeout:60000});
    await page.waitForFunction(()=>document.querySelector('#phase')?.
     textContent==='PLANNING',null,{timeout:60000});
