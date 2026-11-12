@@ -68,7 +68,7 @@ export function debrief(s:Session){
     civilianPlayerDown:attributable.down,
     extracted:own.filter(a=>a.health>0&&
       near(a.p,s.scenario.extract,47)).length,
-  });
+  },true);
   return {result:s.phase,time:Math.floor(s.seconds),casualties,
     stabilizedCasualties:casualtyCare.stabilized,
     criticalCasualties:casualtyCare.critical,
@@ -81,6 +81,7 @@ export function debrief(s:Session){
     objective:s.mission==='done',
     type:s.missionType,
     grade:assessment.grade,score:assessment.score,
+    scoreComponents:assessment.scoreComponents,
     accuracy:assessment.accuracy,survived:assessment.survived,
     squad:own.map(a=>({id:a.id,name:a.name,
       survived:a.health>0,injury:a.injuryStage,
