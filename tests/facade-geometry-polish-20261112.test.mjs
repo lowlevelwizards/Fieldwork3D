@@ -16,6 +16,12 @@ test('joined wall caps trim ends and have only one named connector per corner',(
  assert.deepEqual(junctions[0].p,{x:80,y:0});
  assert.deepEqual(junctions[1].p,{x:80,y:60});
 });
+test('T-shaped wall joins shorten only the arriving cap',()=>{
+ const walls=[wall(0,0,80,0),wall(40,0,40,60)];
+ const plan=planWallCapJoins(walls);
+ assert.deepEqual(plan.trims,[[0,0],[5.5,0]]);
+ assert.deepEqual(plan.junctions.map(j=>j.p),[{x:40,y:0}]);
+});
 test('long wall weather maps keep physical horizontal pixel density',()=>{
  const fake={seed:126,archetype:'office',condition:'neglected',
    walls:[wall(0,0,210,0)],rooms:[],windows:[],cover:[]};

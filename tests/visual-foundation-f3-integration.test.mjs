@@ -18,6 +18,8 @@ test('F3.4 material previews share cached authored textures and complete mip cha
   assert.equal(one.image.width,32);
   assert.equal(one.image.height,32);
   assert.equal(one.colorSpace,THREE.SRGBColorSpace);
+  assert.equal(one.magFilter,THREE.NearestFilter);
+  assert.equal(one.minFilter,THREE.NearestMipmapLinearFilter);
   assert.deepEqual(one.mipmaps.map(m=>m.width),[32,16,8,4,2,1]);
   assert.ok(MATERIAL_RESPONSES[surfaceVisualRole(kind)],kind);
  }

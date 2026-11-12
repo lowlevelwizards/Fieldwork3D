@@ -17,10 +17,23 @@ export function planWallCapJoins(walls:readonly Segment[]):WallCapJoinPlan{
    }
  }
  const junctions:CapJoint[]=[];
+ const crossesInterior=(p:Pt,wall:Segment)=>{
+   const dx=wall.b.x-wall.a.x,dy=wall.b.y-wall.a.y;
+   const len2=dx*dx+dy*dy;
+   if(len2<1)return false;
+   const t=((p.x-wall.a.x)*dx+(p.y-wall.a.y)*dy)/len2;
+   if(t<.001||t>.999)return false;
+   return Math.hypot(p.x-wall.a.x-t*dx,p.y-wall.a.y-t*dy)<.25;
+ };
  for(const refs of byPosition.values()){
-   if(refs.length<2)continue;
    const first=walls[refs[0].index];
    const p=refs[0].end===0?first.a:first.b;
+   // A branch can terminate against the MIDDLE of another cap as well as
+   // at a shared corner. The long cross member stays intact beneath the
+   // shallow joint cover; only the arriving endpoint is shortened.
+   const tee=walls.some((wall,index)=>
+     !refs.some(ref=>ref.index===index)&&crossesInterior(p,wall));
+   if(refs.length<2&&!tee)continue;
    junctions.push({p:{...p},owner:refs[0].index});
    for(const {index,end} of refs){
      const wall=walls[index],length=Math.hypot(
