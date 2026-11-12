@@ -42,3 +42,12 @@ test('P1.5c archived scene slices are copied and browser stalls are not misattri
  h.add(sample(500,20));
  assert.equal(h.count,1,'clock reset clears earlier history');
 });
+
+test('P1.5d CSV includes every quarter-second bucket and measured causes',()=>{
+ const h=new PerformanceTimeline();
+ h.add(sample(1200,20));h.add(sample(1450,61,{sync:31}));
+ const csv=h.bucketCSV();
+ assert.match(csv,/gpu_submit_cpu_ms/);
+ assert.equal(csv.trim().split('\n').length,3);
+ assert.match(csv,/61,25,31,31/);
+});

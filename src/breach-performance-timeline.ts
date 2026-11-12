@@ -95,6 +95,24 @@ export class PerformanceTimeline{
   return peak;
  }
  reset():void{this.series.length=0;}
+ /** Export every retained 250ms peak, not just the top ten spikes.
+  * Safe for copying from iOS; no remote telemetry or persistent storage.
+  */
+ bucketCSV():string{
+  const lines=['t_sec,raf_peak_ms,js_at_peak_ms,sync_at_peak_ms,'+
+   'sync_peak_ms,sim_ms,actors_ms,disclosure_ms,effects_ms,fog_ms,'+
+   'gpu_submit_cpu_ms,steps,draws,fog_paints,shadow_refreshes,'+
+   'sight_hits,sight_misses,phase,camera'];
+  for(const {bucket,peak:p,maxSync} of this.series){
+   const fields=[bucket*PERFORMANCE_BUCKET_MS/1000,
+    p.raf,p.js,p.sync,maxSync,p.sim,p.scene.actors,p.scene.disclosure,
+    p.scene.effects,p.scene.fog,p.scene.gpuSubmit,p.steps,p.draws,
+    p.fogPaints,p.shadowRefreshes,p.sight.hits,p.sight.misses,
+    p.phase,p.camera];
+   lines.push(fields.join(','));
+  }
+  return lines.join('\\n');
+ }
  report(policy:string,view:string):string{
   const latest=this.series[this.series.length-1]?.peak.at??0;
   const all=this.series;
