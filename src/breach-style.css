@@ -3784,3 +3784,17 @@ body.replaying .replay-follow-status[data-grade]::after{
 .fw-v5-workspace .fw-v5-timeline-marker[data-priority="ordinary"]{
  border-width:1px;background:#9ba78a;border-color:#c3c7ad}
 .fw-v5-workspace .fw-v5-timeline-track{min-height:75px}
+
+/* V5.5: source-derived score breakdown and compact mission statistics. */
+.fw-v5-workspace .fw-v5-mission-section{padding:9px;gap:7px}
+.fw-v5-workspace .fw-v5-mission-grid{gap:5px}
+.fw-v5-workspace .fw-v5-mission-field{padding:4px 7px}
+.fw-v5-score-ledger{margin:0;display:grid;gap:3px}
+.fw-v5-score-line{display:flex;align-items:center;justify-content:space-between;
+ gap:8px;padding:5px 2px;border-bottom:1px solid #476153}
+.fw-v5-score-line dt{font:700 11px var(--ui-display);color:#b9c8b4}
+.fw-v5-score-line dd{font:800 14px var(--fw-font-data),var(--ui-display);
+ margin:0;color:#ead8b4}
+.fw-v5-score-total{border-top:1px solid #8c9a7f;border-bottom:0;
+ margin-top:3px;padding-top:8px}
+.fw-v5-score-total dt,.fw-v5-score-total dd{font-size:16px;color:#f2e5c5}
