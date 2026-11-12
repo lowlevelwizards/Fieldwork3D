@@ -32,3 +32,13 @@ export function nearestPaletteCandidate<T extends {p:Pt}>(
   }
   return closest;
 }
+
+/** Civilian SECURE/FOLLOW and casualty transport currently author from the
+ * route END. Do not offer endpoint-only commands while an earlier waypoint
+ * is selected; supporting mid-route insertion requires a game-rule stage.
+ */
+export function canOfferRouteEndCivilianAction(
+  node:{id:number}|undefined,plan:readonly {id:number}[]
+):boolean{
+  return !node||plan.at(-1)?.id===node.id;
+}
