@@ -3,6 +3,7 @@
  * Idle time without an opportunity is descriptive, not a failed reaction.
  */
 import type {Session} from './breach-game.ts';
+import {doctrineForPurpose} from './breach-ai-doctrine.ts';
 
 export class EncounterBehaviorSurvey{
  private samples=0;
@@ -31,6 +32,11 @@ export class EncounterBehaviorSurvey{
  private finalHostiles=0;
  private finalCivilians=0;
  private surrendered=0;
+ private coordinated=new Set<string>();
+ private retreating=new Set<string>();
+ private defenseSeconds=0;
+ private doctrineActors:Record<string,number>={};
+ private groupPurposes=new Map<string,'occupants'|'security'|'organised'|'response'|'target'>();
  readonly generatedHostiles:number;
  readonly generatedCivilians:number;
  readonly activeHostiles:number;
@@ -42,7 +48,12 @@ export class EncounterBehaviorSurvey{
   this.generatedCivilians=s.site?.encounter?.neutrals?.length??0;
   this.activeHostiles=hostiles.length;
   this.activeCivilians=s.civilians.length;
+  for(const g of s.site?.encounter?.groups??[])
+    this.groupPurposes.set(g.id,g.purpose);
   for(const h of hostiles){
+   const doctrine=doctrineForPurpose(
+      this.groupPurposes.get(h.encounterGroupId??''));
+   this.doctrineActors[doctrine]=(this.doctrineActors[doctrine]??0)+1;
    this.hostileStart.set(h.id,{...h.p});
    this.lastAlert.set(h.id,h.alert);
    this.initialHealth.set(h.id,h.health);
@@ -69,6 +80,15 @@ export class EncounterBehaviorSurvey{
   this.surrendered=hostiles.filter(a=>a.surrendered).length;
   for(const h of hostiles){
    this.alertSamples[h.alert]=(this.alertSamples[h.alert]??0)+1;
+   if(h.coordinationRole&&h.coordinationUntil>s.seconds)
+     this.coordinated.add(h.id);
+   if(h.alert==='retreat')this.retreating.add(h.id);
+   const objective=s.scenario?.objective;
+   if(objective&&s.missionType&&s.missionType!=='clear'&&
+      (h.encounterRole==='sentry'||h.encounterRole==='leader'||
+       h.encounterRole==='reserve')&&h.alert==='cover'&&
+      Math.hypot(h.p.x-objective.x,h.p.y-objective.y)<150)
+     this.defenseSeconds+=dt;
    if(h.health>0&&h.alert==='idle')this.hostileIdleSeconds+=dt;
    const previous=this.lastAlert.get(h.id);
    if(h.alert==='investigating'&&previous!=='investigating'){
@@ -127,7 +147,11 @@ export class EncounterBehaviorSurvey{
     investigationsWithProgress:this.investigationsWithProgress,
     investigationsOpen:this.investigatingSince.size,
     investigationsWithoutProgress:this.investigationsNoProgress,
-    blockedEpisodes:this.blockedEpisodes},
+    blockedEpisodes:this.blockedEpisodes,
+    coordinatedActors:this.coordinated.size,
+    retreatingActors:this.retreating.size,
+    objectiveDefenseActorSeconds:+this.defenseSeconds.toFixed(2),
+    initialDoctrineActors:this.doctrineActors},
    civilians:{stateSamples:this.civilianStates,
     changedStateActors:this.civilianChanged.size,
     movedActors:moved(this.civilianStart,s.civilians),
