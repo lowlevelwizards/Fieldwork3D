@@ -94,5 +94,9 @@ test('3D covers hidden ground without drawing over nearer known geometry',()=>{
  assert.match(code,/this\.exteriorKnownFog\.renderOrder=1000;/);
  assert.match(code,/wall\.mesh\.renderOrder=surfaceTransparent\?1001:0;/);
  assert.match(code,/surfaceTransparent=translucent\|\|knownFacade/);
- assert.match(code,/exteriorKnownFogRects\(site\)/);
+ const meshComposition=readFileSync(new URL(
+  '../src/rendering/breach-fog-mesh-composition.ts',import.meta.url),'utf8');
+ assert.match(code,/replaceTacticalFogGeometry\(this\.smoothFog,this\.exteriorKnownFog,site\)/);
+ assert.match(meshComposition,/exteriorKnownFogRects\(site\)/);
+ assert.match(meshComposition,/fogUvAt\(p,bounds\)/);
 });

@@ -8,6 +8,7 @@ on:
       - 'tests/package-c0-presentation-audit.test.mjs'
       - 'tests/package-c1-scene-lifecycle.test.mjs'
       - 'tests/package-c2-render-composition.test.mjs'
+      - 'tests/package-c3-cross-view-disclosure.test.mjs'
       - 'src/rendering/breach-site-render-composition.ts'
       - 'src/rendering/breach-fog-mesh-composition.ts'
       - 'src/rendering/site-scene-lifecycle.ts'
@@ -54,6 +55,13 @@ jobs:
             tests/breach-roadmap2-stage6-site-builder.test.mjs \
             tests/visual-foundation-f1-lighting.test.mjs \
             tests/rendering-r718-parity.test.mjs
+      - name: C3 live/replay model visibility and personal-ground cache parity
+        run: |
+          node --experimental-strip-types --test \
+            tests/package-c3-cross-view-disclosure.test.mjs \
+            tests/breach-roadmap2-stage3-integration.test.mjs \
+            tests/replay-r42c-civilian-sight.test.mjs \
+            tests/breach-2d-renderer-extraction.test.mjs
       - name: Validate C0 read-only scene and presentation ownership contracts
         run: node --test tests/package-c0-presentation-audit.test.mjs
       - name: Generate reproducible C0 evidence

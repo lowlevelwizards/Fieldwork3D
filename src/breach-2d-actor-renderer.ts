@@ -2,12 +2,10 @@
  * Uses the supplied observation/selection state; never updates game truth.
  */
 import {W,H,type Pt} from './breach-core.ts';
-import {type Session,type TeamActor,enemies,isSeen,lastKnown,liveVisibility} from './breach-game.ts';
+import {type Session,type TeamActor,enemies,lastKnown,liveVisibility} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
-import {replayActorDisclosed,replayCivilianDisclosed} from './breach-replay-visibility.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
-import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
-import {presentUnrecordedRescueMarker}
+import {presentActor,presentCivilian,presentUnrecordedRescueMarker}
  from './rendering/breach-3d-disclosure-presenter.ts';
 import {shotVisibility,contactFade} from './breach-presentation.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
@@ -90,12 +88,10 @@ function missionMarkers(){
 }
 function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
   const {state,replaying}=getFrame();
-  // Personal observation is not shared civilian intel. Old films omit the
-  // observer evidence and must fail closed, not re-evaluate future LOS.
-  if(replaying&&replayKnowledge.observerId){
-    if(!replayCivilianDisclosed(state,c.id,replayKnowledge.disclosure()))return;
-  }else if(!civilianPresentationVisible(c,replaying,replayKnowledge.omniscient,
-       liveVisibility(state,c.p)))return;
+  // Same archived evidence and legacy fallback as 3D/Bodycam; never
+  // promote current LOS into a squad replay with missing recorded samples.
+  if(!presentCivilian(state,c,replaying&&replayKnowledge.omniscient,
+    replaying?replayKnowledge.disclosure():null))return;
   const coats=['#766e62','#637d75','#82726b','#667985'];
   const trousers=['#454c4b','#61574d','#4e5664'];
   const coat=coats[(c.appearanceSeed>>>0)%coats.length];
@@ -128,8 +124,8 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
 function sprite(a:TeamActor){
   const {state,replaying,selected,replayPlanScope,replayNameTags,replayContactMarkers}=getFrame();
   if(a.side==='red'&&!(replaying&&replayKnowledge.omniscient)){
-    const visible=replaying?replayActorDisclosed(state,a,replayKnowledge.disclosure()):
-      a.health>0?isSeen(state,a):liveVisibility(state,a.p);
+    const visible=presentActor(state,a,replaying&&replayKnowledge.omniscient,
+      replaying?replayKnowledge.disclosure():null);
     if(!visible){
       const memory=lastKnown(state,a.id);
       if(!replayKnowledge.observerId&&memory&&a.health>0&&state.seconds-memory.at<25){
