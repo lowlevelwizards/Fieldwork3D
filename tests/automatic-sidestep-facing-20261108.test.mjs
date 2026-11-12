@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {beginAutoSidestep,autoSidestepFacing}
+import {beginAutoSidestep,autoSidestepFacing,watchClearanceAllowed}
   from '../src/breach-auto-sidestep.ts';
 
 const from={x:0,y:0},original={x:40,y:0};
@@ -43,4 +43,21 @@ test('motor applies lateral facing only after verified detour and never changes 
  assert.match(game,/rotate\(a,facing\?\?angle\(a\.p,a\.nav\[0\]\),dt\)/);
  assert.match(game,/a\.autoSidestep=null;\s*a\.routeGoalKey=goalKey/);
  assert.match(rig,/const lateral=Math\.abs\(Math\.sin\(travel-p\.heading\)\)>\.52/);
+});
+
+test('TM3: WATCH allows only bounded real clearance while preserving facing',()=>{
+ const a={x:0,y:0},goal={x:100,y:0};
+ let checked=0;
+ const clear=()=>{checked++;return true;};
+ assert.equal(watchClearanceAllowed(a,{x:12,y:19},goal,true,clear),true);
+ assert.equal(checked,1);
+ assert.equal(watchClearanceAllowed(a,{x:5,y:44},goal,true,clear),false);
+ assert.equal(watchClearanceAllowed(a,{x:-30,y:0},goal,true,clear),false);
+ assert.equal(watchClearanceAllowed(a,{x:12,y:19},goal,true,()=>false),false);
+ assert.equal(watchClearanceAllowed(a,{x:500,y:500},goal,false,()=>false),true,
+  'ordinary route planning retains existing separate clearance checks');
+ const source=readFileSync(new URL('../src/breach-motor-collision.ts',import.meta.url),'utf8');
+ assert.match(source,/if\(!a\.aimInstruction&&!clearedEntryLook&&heldSide===null\)/);
+ assert.match(source,/watchClearanceAllowed\(a\.p,candidate,p,/);
+ assert.match(source,/watchClearanceAllowed\(a\.p,fullLane\[0\],p,/);
 });

@@ -8,7 +8,7 @@ import {OPERATOR_RADIUS,pointToSegment,doorLeafSegment,type Pt}
 import type {Session,TeamActor} from './breach-game.ts';
 import {angleDifference} from './breach-plan.ts';
 import {entryClearanceForLook} from './breach-entry-coordination.ts';
-import {beginAutoSidestep,autoSidestepFacing} from './breach-auto-sidestep.ts';
+import {beginAutoSidestep,autoSidestepFacing,watchClearanceAllowed} from './breach-auto-sidestep.ts';
 import {friendlyPassingStep} from './breach-friendly-traffic.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
 import {incidentalCloseWouldBlockTeammate}
@@ -72,6 +72,9 @@ export function resolveMotorCollision(
     const fullLane=recoverNormalLane(a.p,p,s.doors,world);
     if(fullLane.length&&d(fullLane[0],next)>6&&
        d(fullLane[0],a.p)>3&&
+       watchClearanceAllowed(a.p,fullLane[0],p,
+         !!a.aimInstruction&&a.aimInstruction.mode!=='free',
+         (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&
        sweptBodyClear(a.p,fullLane[0],s.doors,OPERATOR_RADIUS,world)){
       const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
         s.seconds,canAutoSidestep);
@@ -113,8 +116,9 @@ export function resolveMotorCollision(
         entryClearanceForLook(
           s.doors.find(door=>door.id===entry.entryDoorId),
           glide,entry.p);
-      if(a.aimInstruction?.mode!=='track'&&!clearedEntryLook&&
-         heldSide===null)
+      // Both TRACK and authored FIXED gaze take precedence over the
+      // physical glide. Only feet move until the normal aim tick rotates.
+      if(!a.aimInstruction&&!clearedEntryLook&&heldSide===null)
         a.heading=angle(old,glide);
       a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
       a.recoveryAttempts=0;
@@ -183,6 +187,9 @@ export function resolveMotorCollision(
     const candidate=localDetour(a.p,next,s.doors,s.operators
       .filter(o=>o!==a&&o.health>0).map(o=>o.p),8,world);
     if(candidate&&d(candidate,p)<d(a.p,p)+12&&
+      watchClearanceAllowed(a.p,candidate,p,
+        !!a.aimInstruction&&a.aimInstruction.mode!=='free',
+        (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&
       (!a.nav.length||d(candidate,a.nav[0])>12)){
       const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
         s.seconds,canAutoSidestep);

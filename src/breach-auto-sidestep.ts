@@ -41,3 +41,16 @@ export function autoSidestepFacing(
  if(Math.abs(difference(movement,step.facing))<.26)return null;
  return step.facing;
 }
+
+/** The feet can correct a short collision blockage while the upper-body
+ * authored WATCH remains separate. No hidden obstacle, teleport, or
+ * alternative tactical goal: the existing world sweep remains authoritative.
+ */
+export function watchClearanceAllowed(from:Pt,candidate:Pt,goal:Pt,
+ watching:boolean,sweptClear:(a:Pt,b:Pt)=>boolean):boolean{
+ if(!watching)return true;
+ if(!Number.isFinite(candidate.x+candidate.y)||distance(from,candidate)>40||
+    distance(from,candidate)<.5||
+    distance(candidate,goal)>distance(from,goal)+12)return false;
+ return sweptClear(from,candidate);
+}
