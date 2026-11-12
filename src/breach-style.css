@@ -3939,3 +3939,42 @@ body.replaying .replay-follow-status[data-grade]::after{
 .fw-v5-workspace .fw-v6-moments .fw-v5-timeline-filters{
  scroll-snap-type:x proximity}
 .fw-v5-workspace .fw-v6-moments .fw-v5-timeline-filter{scroll-snap-align:start}
+
+/* After Action V6.5 — mission-first context, single scrolling document, mobile tools. */
+.fw-v6-result-takeaway{grid-column:1/-1;grid-row:3;margin:2px 0 0;
+ padding:7px 0 1px;border-top:1px solid #566e5d;
+ color:#eedbc0;font:650 11px/1.4 var(--ui-font)}
+.fw-v5-summary-compact .fw-v6-result-takeaway{display:none}
+.fw-v6-model-tools{position:absolute;top:7px;right:7px;
+ display:flex;gap:4px;z-index:2}
+.fw-v6-model-tools button{min-height:35px;min-width:35px;
+ border:1px solid #7a8c79;border-radius:4px;
+ background:rgba(26,48,37,.88);color:#ede1c6;
+ font:800 18px var(--ui-display);cursor:pointer}
+.fw-v6-model-tools button:focus-visible{outline:2px solid #edce94;
+ outline-offset:2px}
+.fw-v6-timeline-expand{display:grid;gap:4px;padding:4px 0}
+.fw-v6-timeline-expand summary{cursor:pointer;min-height:38px;
+ font:750 11px/1.4 var(--ui-display);color:#e6d0a9;
+ display:flex;align-items:center}
+.fw-v5-workspace .fw-v5-timeline-group-items,
+.fw-v5-workspace .fw-v5-timeline-ledger-list{
+ max-height:none;overflow:visible}
+.fw-v5-workspace .fw-v5-timeline-hint,
+.fw-v5-workspace .fw-v5-timeline-heading small,
+.fw-v5-workspace .fw-v5-shot-position{font-size:11px}
+.fw-v5-workspace .fw-v5-timeline-cluster-event,
+.fw-v5-workspace .fw-v5-timeline-ledger-item{
+ min-height:42px}
+.fw-v5-workspace .fw-after-body,.fw-v5-workspace .fw-after-detail-content{
+ scrollbar-gutter:stable}
+@media(max-width:600px){
+ .fw-v5-workspace .fw-after-footer{padding:3px 0 0;gap:5px}
+ .fw-v5-workspace .fw-after-footer button{min-height:44px;
+  padding:7px 10px}
+ .fw-v5-workspace .fw-v4-rank-identity small{font-size:10px}
+ .fw-v5-workspace .fw-v4-category-tile span{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){
+ .fw-v5-workspace .fw-v3-paper-pulse{animation:none!important}
+}

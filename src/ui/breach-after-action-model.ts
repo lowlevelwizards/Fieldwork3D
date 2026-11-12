@@ -77,6 +77,21 @@ export function createAfterActionModelPresenter(
  let forensicEvidence:ForensicEvidence|null=null;
  let yaw=0,pitch=.16,zoom=1;
  const lookAt=new THREE.Vector3(0,28,0);
+ const viewTools=document.createElement('div');
+ viewTools.className='fw-v6-model-tools';
+ viewTools.setAttribute('role','group');
+ viewTools.setAttribute('aria-label','3D model view controls');
+ const modelButton=(label:string,title:string,click:()=>void)=>{
+   const button=document.createElement('button');
+   button.type='button';button.textContent=label;button.title=title;
+   button.setAttribute('aria-label',title);
+   button.addEventListener('click',click);viewTools.append(button);
+ };
+ modelButton('−','Zoom out',()=>{zoom=clamp(zoom+.12,.65,1.7);draw();});
+ modelButton('+','Zoom in',()=>{zoom=clamp(zoom-.12,.65,1.7);draw();});
+ modelButton('↺','Reset model view',()=>{
+   yaw=0;pitch=.16;zoom=1;draw();
+ });
  const loading=document.createElement('div');
  loading.className='fw-v6-model-loading';
  loading.setAttribute('role','status');
@@ -221,6 +236,7 @@ export function createAfterActionModelPresenter(
        observer?.disconnect();
        host=nextHost;
        host.replaceChildren(canvas);
+       host.append(viewTools);
        observer?.observe(host);
      }
      queueModels(operatorId);
@@ -240,7 +256,7 @@ export function createAfterActionModelPresenter(
      disposed=true;observer?.disconnect();
      if(buildTimer!==null)window.clearTimeout(buildTimer);
      if(frameRequest!==null)window.cancelAnimationFrame(frameRequest);
-     pending.length=0;loading.remove();
+     pending.length=0;loading.remove();viewTools.remove();
      canvas.removeEventListener('pointerdown',down);
      canvas.removeEventListener('pointermove',move);
      canvas.removeEventListener('pointerup',up);

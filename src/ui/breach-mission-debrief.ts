@@ -62,6 +62,19 @@ export function renderMissionDebrief(input:{
     ui.debriefAccuracy.textContent=stats.shots>0?stats.accuracy+'%':'—';
     ui.debriefObjective.textContent=stats.objective?
      'OBJECTIVE SECURED':'OBJECTIVE NOT COMPLETED';
+    const note=root?.querySelector<HTMLElement>('#afterActionTakeaway');
+    if(note){
+      const wounded=stats.squad.filter(op=>op.survived&&op.injury>0).length;
+      const heavy=stats.squad.filter(op=>op.survived&&op.injury>=2).length;
+      const down=stats.squad.filter(op=>!op.survived).length;
+      note.textContent=[
+        stats.objective?'OBJECTIVE SECURED':'OBJECTIVE UNFINISHED',
+        stats.survived+' / '+stats.squad.length+' SURVIVED',
+        wounded?String(wounded)+' WOUNDED'+(heavy?' · '+heavy+' HEAVY':''):
+          'NO SURVIVOR WOUNDS',
+        ...(down?[down+' INCAPACITATED']:[])
+      ].join(' · ');
+    }
     // Keep the historical binding for older tools but retire the enormous
     // text dump; the user-visible report is now structured and interactive.
     ui.debriefStats.textContent=

@@ -123,15 +123,25 @@ export function renderAfterActionTimeline(input:{
    ' EVENT'+(activeCluster.events.length===1?'':'S')+
    ' · '+timelineTime(activeCluster.time)));
  const groupScroll=make('div','fw-v5-timeline-group-items');
- for(const e of activeCluster.events){
+ const clusterItem=(e:AfterActionTimelineEvent)=>{
    const item=button(timelineTime(e.t)+'  '+eventLabel(e),
      ()=>actions.select(e.key),'fw-v5-timeline-cluster-event');
    item.dataset.timelineEventKey=e.key;
    item.dataset.category=e.category;
    item.setAttribute('aria-pressed',String(e.key===selected.key));
-   groupScroll.append(item);
- }
+   return item;
+ };
+ for(const e of activeCluster.events.slice(0,5))groupScroll.append(clusterItem(e));
  group.append(groupScroll);
+ if(activeCluster.events.length>5){
+   const details=make('details','fw-v6-timeline-expand');
+   const label=make('summary','',
+     'SHOW '+(activeCluster.events.length-5)+' MORE EVENTS');
+   details.append(label);
+   for(const e of activeCluster.events.slice(5))
+     details.append(clusterItem(e));
+   group.append(details);
+ }
  root.append(group);
  const card=make('section','fw-v5-timeline-inspect');
  card.setAttribute('aria-label','Selected recorded incident');
