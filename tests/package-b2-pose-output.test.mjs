@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {
- beginOperatorPoseOutput,stageOperatorPoseOutput,commitOperatorPoseOutput,
- inspectOperatorPoseOutput,OPERATOR_POSE_STAGE_ORDER
+ beginOperatorPoseOutput,stageOperatorPoseOutput,stageDirectOperatorPoseOutput,
+ commitOperatorPoseOutput,inspectOperatorPoseOutput,OPERATOR_POSE_STAGE_ORDER
 } from '../src/breach-operator-pose-output.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../src/equipment-weapon-assemblies.ts';
@@ -99,6 +99,34 @@ test('B2: stage values are actually committed, not recaptured from later mutatio
   assert.equal(rig.hip.position.x,4.25,'commit uses staged body value');
   const output=inspectOperatorPoseOutput(rig);
   assert.equal(output.slots.find(x=>x.id==='pelvis').values[0],4.25);
+ }finally{rig.dispose();}
+});
+
+test('B2: direct stage values bypass scene nodes and reject partial ownership',()=>{
+ const rig=createOperatorRig('b2-direct','blue',true);
+ try{
+  poseOperator(rig,base,0);
+  const output=inspectOperatorPoseOutput(rig);
+  const second={...base,seconds:7};
+  const body=output.slots.filter(slot=>slot.owner==='body').map(slot=>({
+   id:slot.id,values:Array.from(slot.values)
+  }));
+  body.find(slot=>slot.id==='pelvis').values[0]=5.75;
+  beginOperatorPoseOutput(rig,second);
+  assert.throws(()=>stageDirectOperatorPoseOutput(rig,second,'body',body.slice(1)),
+   /Incomplete direct pose-output stage/);
+  const mismatched=body.map(x=>({id:x.id,values:x.values}));
+  mismatched[0].id='arm-0-hand';
+  assert.throws(()=>stageDirectOperatorPoseOutput(rig,second,'body',mismatched),
+   /Incorrect direct pose-output slot/);
+  stageDirectOperatorPoseOutput(rig,second,'body',body);
+  for(const owner of OPERATOR_POSE_STAGE_ORDER)
+   if(owner!=='body')stageOperatorPoseOutput(rig,second,owner);
+  assert.notEqual(rig.hip.position.x,5.75,
+   'direct stage does not change the working rig');
+  commitOperatorPoseOutput(rig,second);
+  assert.equal(rig.hip.position.x,5.75);
+  assert.equal(output.slots.find(x=>x.id==='pelvis').values[0],5.75);
  }finally{rig.dispose();}
 });
 
