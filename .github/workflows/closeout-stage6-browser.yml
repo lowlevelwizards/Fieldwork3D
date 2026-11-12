@@ -16,7 +16,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   tactical-flow:
-    if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-') || startsWith(github.head_ref, 'feature/release1-')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-') || (startsWith(github.head_ref, 'feature/release1-') || startsWith(github.head_ref, 'feature/release2-'))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -56,7 +56,7 @@ jobs:
           retention-days: 14
 
   replay-and-lab:
-    if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-') || startsWith(github.head_ref, 'feature/release1-')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (startsWith(github.head_ref, 'refactor/closeout-stage6-') || startsWith(github.head_ref, 'refactor/consolidation-') || (startsWith(github.head_ref, 'feature/release1-') || startsWith(github.head_ref, 'feature/release2-'))) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
