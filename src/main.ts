@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {DEFAULT_SHADOW_MAP_SIZE} from './rendering/shadow-map-budget.ts';
 import { cameraOffset, clampZoom, viewSize } from './camera-model';
 import { CloudField } from './clouds';
 import { cloudCoverAtHour } from './cloud-model';
@@ -161,7 +162,7 @@ sun.position.set(
   initial.sunDirection.z * 25,
 );
 sun.castShadow = true;
-sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.mapSize.set(DEFAULT_SHADOW_MAP_SIZE, DEFAULT_SHADOW_MAP_SIZE);
 sun.shadow.camera.left = -10;
 sun.shadow.camera.right = 10;
 sun.shadow.camera.top = 10;
