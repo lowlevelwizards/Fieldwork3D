@@ -16,7 +16,8 @@ import {PaletteMotion} from './palette-motion.ts';
 import {contextActionChoices,type ContextAction,type ContextOptions}
   from './context-actions.ts';
 import {installPalettePointerGuard} from './palette-pointer-guard.ts';
-import {nearestPaletteCandidate} from './tactical-selection-presentation.ts';
+import {nearestPaletteCandidate,canOfferRouteEndCivilianAction}
+ from './tactical-selection-presentation.ts';
 
 export function availablePaletteActions(watchSelected:boolean,options:ContextOptions):ContextAction[]{
   return watchSelected?[
@@ -356,12 +357,15 @@ export function createTacticalPaletteController(config:{
       watchActive=false;
     if(order.id===node.id)break;
   }
-  // Contextual civilian actions are relative to the chosen waypoint,
-  // not always the operator's last route destination.
-  const civilianAtPlan=nearestPaletteCandidate(state.civilians,at,c=>
-    c.health>0&&liveVisibility(state,c.p));
-  const casualtyAtPlan=nearestPaletteCandidate(state.civilians,at,c=>
-    c.health<=0&&!c.carriedById&&liveVisibility(state,c.p));
+  // SECURE/FOLLOW and civilian transport currently author at finalPoint(a).
+  // Earlier waypoint editing cannot honestly promise these commands.
+  const routeEndCivilianActions=canOfferRouteEndCivilianAction(node,a.plan);
+  const civilianAtPlan=routeEndCivilianActions?
+    nearestPaletteCandidate(state.civilians,at,c=>
+      c.health>0&&liveVisibility(state,c.p)):null;
+  const casualtyAtPlan=routeEndCivilianActions?
+    nearestPaletteCandidate(state.civilians,at,c=>
+      c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
   const choices=availableActions(!!selectedWatch,{
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     nearMovable,nearWindow,treatTargetName:treatTarget?.name,
