@@ -47,7 +47,7 @@ try{
    await page.waitForFunction(()=>[...document.querySelectorAll('div')]
     .some(e=>e.style.zIndex==='9999'&&
      e.textContent?.includes('P1.5 SCENE ENV/CAM/VIS')&&
-     e.textContent?.includes('POLICY '+window.location.search.split('presentationSight=')[1])),
+     e.textContent?.includes('POLICY '+(new URLSearchParams(window.location.search).get('presentationSight')||'planning'))),
     null,{timeout:60000});
    const panel=page.locator('div[aria-label="Fieldwork 60-second performance timeline"]');
    await panel.waitFor({state:'visible'});
@@ -66,17 +66,28 @@ try{
    await panel.getByRole('button',{name:'COPY'}).click();
    await page.waitForFunction(()=>typeof window.__p15Copied==='string');
    const report=await page.evaluate(()=>window.__p15Copied);
-   if(!report.includes('PERFORMANCE HISTORY')||
-      !report.includes('t_sec,raf_peak_ms'))
-    throw Error('P1.5 report missing summary or history CSV');
-   writeFileSync(dir+'/'+policy+'-report.txt',report);
+   if(!report.includes('FIELDWORK PERF')||
+      report.includes('t_sec,raf_peak_ms')||report.length>1200)
+    throw Error('P1.6 clipboard report is not concise');
+   writeFileSync(dir+'/'+policy+'-summary.txt',report);
+   const downloadPromise=page.waitForEvent('download');
+   await panel.getByRole('button',{name:'TXT'}).click();
+   const download=await downloadPromise;
+   if(!download.suggestedFilename().endsWith('.txt'))
+    throw Error('P1.6 TXT export has wrong extension');
+   const reportPath=dir+'/'+policy+'-full-report.txt';
+   await download.saveAs(reportPath);
+   const detailed=readFileSync(reportPath,'utf8');
+   if(!detailed.includes('PERFORMANCE HISTORY')||
+      !detailed.includes('t_sec,raf_peak_ms'))
+    throw Error('P1.6 full report missing detailed history');
    await page.locator('#play').click();
    await page.waitForFunction(()=>document.querySelector('#phase')?.
     textContent==='EXECUTING',null,{timeout:30000});
    await page.waitForFunction(()=>[...document.querySelectorAll('div')]
     .some(e=>e.style.zIndex==='9999'&&
      e.textContent?.includes('P1.5 POSE/FX/FOG')&&
-     e.textContent?.includes('POLICY '+window.location.search.split('presentationSight=')[1])),
+     e.textContent?.includes('POLICY '+(new URLSearchParams(window.location.search).get('presentationSight')||'planning'))),
     null,{timeout:30000});
    await page.waitForTimeout(1800);
    const text=await panel.textContent();
@@ -84,12 +95,12 @@ try{
    if(!match)throw Error('P1.5 missing recent cache interval');
    const detail=match.slice(1).map(Number);
    // An opt-in planning-only strategy must bypass active execution queries.
-   if(policy==='planning'&&!/P1 VISIBLE Q\/H\/M\/B/.test(text))
+   if(effectivePolicy==='planning'&&!/P1 VISIBLE Q\/H\/M\/B/.test(text))
     throw Error('P1.5 no stable total cache counters');
    await panel.screenshot({path:dir+'/'+policy+'-execution.png'});
    if(errors.length)throw Error('P1.5 WebGL error '+policy+': '+errors.join(';'));
    console.log('P1.5 mobile WebGL',JSON.stringify({policy,recent:detail,
-    reportBytes:report.length,active:true}));
+    copyBytes:report.length,fullTxtBytes:detailed.length,active:true}));
   }finally{await page.close();}
  }
 }finally{
