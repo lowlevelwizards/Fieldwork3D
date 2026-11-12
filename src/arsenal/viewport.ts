@@ -64,7 +64,7 @@ export class ArsenalViewport{
   this.canvas.setAttribute('aria-label','3D weapon inspection; drag to orbit, pinch to zoom');
   this.canvas.style.touchAction='none';
   host.append(this.canvas);
-  this.scene.background=new THREE.Color(0x162723);
+  this.scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
   this.keyLight.position.set(30,55,70);
   this.fillLight.position.set(-35,23,30);
   this.scene.add(this.hemisphere,this.keyLight,this.fillLight,this.model);
