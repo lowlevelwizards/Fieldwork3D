@@ -38,8 +38,12 @@ export function conditionFloorPixels(site:Site,room:Room,level=effectiveConditio
    o.y>=room.y&&o.y<=room.y+room.h);
  const wet=['bathroom','restroom','laundry','utility','kitchen'].includes(room.purpose??'');
  const industrial=['bay','workshop','maintenance','loading','equipment'].includes(room.purpose??'');
- const tint=industrial?[58,51,42]:wet?[69,65,52]:
-  surface==='wood'?[75,66,47]:surface==='carpet'?[70,62,49]:[70,66,54];
+ // Industrial and sanitary finishes age cooler than timber. Broad stain
+ // placement still follows real fixtures and room edges, not random dirt.
+ const tint=industrial?[64,68,62]:wet?[72,73,65]:
+  surface==='wood'?[79,67,50]:surface==='carpet'?[72,67,57]:
+  (surface==='concrete'||surface==='sealed-concrete')?[71,73,68]:
+  [72,70,60];
  for(let y=0;y<size;y++)for(let x=0;x<size;x++){
   const u=(x+.5)/size,v=(y+.5)/size;
   const edge=clamp((.22-Math.min(u,1-u,v,1-v))/.22);

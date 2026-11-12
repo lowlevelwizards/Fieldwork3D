@@ -27,7 +27,9 @@ export function conditionWallPixels(site:Site,index:number,
  const t=clamp(level/100),s=(site.seed^Math.imul(index+1,65161))>>>0;
  const masonry=['cinderblock','brick','panel'].includes(wallPixelSurface(site.archetype));
  const industrial=['garage','warehouse','utility'].includes(site.archetype??'');
- const color=masonry?[68,62,50]:industrial?[65,63,53]:[79,70,58];
+ // Wall patina preserves industrial coolness instead of tinting every
+ // painted and mineral building surface the same brown.
+ const color=masonry?[74,75,68]:industrial?[69,73,68]:[79,74,64];
  const crackStart=.27+.16*hash(1,1,s),dripX=.65+.20*hash(2,2,s);
  const wall=site.walls[index],vx=wall.b.x-wall.a.x,vy=wall.b.y-wall.a.y;
  const len2=Math.max(1,vx*vx+vy*vy),mid={x:(wall.a.x+wall.b.x)/2,
