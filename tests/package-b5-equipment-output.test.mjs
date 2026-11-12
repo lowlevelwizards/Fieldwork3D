@@ -237,8 +237,8 @@ test('B5: one stage for each owner, no registered scene transforms written mid-f
   /r\.pack\.rotation\.z\s*=/,/r\.magazineHand\.position\.copy/,
   /r\.detachedMagazine\.position\.copy/,/r\.reloadControlMesh\.scale\.set/
  ])assert.doesNotMatch(controller,illegal);
- assert.match(controller,/solveOperatorDroppedWeapon\(r,p,scratch,/);
- assert.match(controller,/solveOperatorDirectSlingPose\(r,p,scratch,/);
+ assert.match(controller,/solveOperatorDroppedWeapon\(workingRig,p,scratch,/);
+ assert.match(controller,/solveOperatorDirectSlingPose\(workingRig,p,scratch,/);
  assert.match(output,/r\.chest\.getWorldQuaternion/);
  assert.equal((controller.match(/commitOperatorPoseOutput\(r,p\)/g)??[]).length,1);
 });
