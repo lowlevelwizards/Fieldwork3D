@@ -40,11 +40,11 @@ jobs:
       - name: Generated R7.1 execution smoke (observability only)
         run: node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 3 600
       - name: Release checkpoint - genuine four-operator entry fixtures
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, 'R7 acceptance')
         run: node --experimental-strip-types scripts/audit-squad-entry-b.mjs
       - name: Release checkpoint - eleven seeded real building layouts
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, 'R7 acceptance')
         run: node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 900
       - name: Release checkpoint - typecheck and production build
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, 'R7 acceptance')
         run: npm run build
