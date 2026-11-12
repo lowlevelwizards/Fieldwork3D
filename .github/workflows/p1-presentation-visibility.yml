@@ -1,0 +1,51 @@
+name: P1 — Presentation Visibility Critical Browser A/B
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-3d.ts'
+      - 'src/breach-presentation.ts'
+      - 'src/rendering/breach-3d-disclosure-presenter.ts'
+      - 'src/rendering/breach-presentation-sight-memo.ts'
+      - 'src/breach-runtime-loop.ts'
+      - 'tests/performance-p1-*'
+      - 'scripts/smoke-p1-presentation-visibility.mjs'
+      - '.github/workflows/p1-presentation-visibility.yml'
+permissions:
+  contents: read
+concurrency:
+  group: p1-presentation-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  p1-critical:
+    if: ${{ startsWith(github.head_ref, 'feature/p1-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Optical memo, reveal and replay contract tests
+        run: |
+          node --experimental-strip-types --test \
+            tests/performance-p1-*.test.mjs \
+            tests/breach-fog-visibility.test.mjs \
+            tests/breach-closeout-stage3-presentation.test.mjs \
+            tests/visibility-10-architectural-fog.test.mjs \
+            tests/runtime-hotpaths-visibility-door.test.mjs
+      - name: Real mobile viewport WebGL and cache opt-out parity
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/smoke-p1-presentation-visibility.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p1-render-visibility-evidence
+          path: artifacts/performance-p1/
+          if-no-files-found: ignore
+          retention-days: 14

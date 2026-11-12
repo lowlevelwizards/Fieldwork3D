@@ -37,13 +37,15 @@ export function presentCivilian(s:Session,c:CivilianActor,omniscient:boolean,
 export function presentDecor(s:Session,detail:{
  position:Pt;microKey:string;fineKey:string
 },omniscient:boolean,bodycam:boolean,
- evidence:ReadonlySet<string>|null):boolean{
+ evidence:ReadonlySet<string>|null,
+ visibleAt?:(p:Pt)=>boolean):boolean{
  const p=detail.position;
  // Historical personal snapshots must not perform a NEW live LOS query.
  // This also avoids filling the tactical sight cache while replay seeking.
  if(bodycam)return personalDecorVisible(false,true,evidence,p);
  return personalDecorVisible(omniscient||s.seenGround.has(detail.microKey)||
-  s.seenGround.has(detail.fineKey)||liveVisibility(s,p),false,evidence,p);
+  s.seenGround.has(detail.fineKey)||
+   (visibleAt?visibleAt(p):liveVisibility(s,p)),false,evidence,p);
 }
 export type DoorPresentationInput={
  door:Door;personal:boolean;omniscient:boolean;directlyObserved:boolean;
@@ -75,8 +77,9 @@ export function resolveDoorPresentation(x:DoorPresentationInput){
  */
 export function presentArchitecturalOpening(s:Session,opening:WideOpening,
  omniscient:boolean,policy:ReplayDisclosure|null,
- evidence:ReadonlySet<string>|null):boolean{
- if(policy?.mode!=='operator')return architecturalOpeningKnown(s,opening,omniscient);
+ evidence:ReadonlySet<string>|null,
+ visibleAt?:(p:Pt)=>boolean):boolean{
+ if(policy?.mode!=='operator')return architecturalOpeningKnown(s,opening,omniscient,visibleAt);
  if(s.intel.mode==='full-view'||s.intel.mode==='floor-plan')return true;
  if(s.intel.mode==='exterior-known'&&
    accessibleExteriorWall(s.site??undefined,opening))return true;

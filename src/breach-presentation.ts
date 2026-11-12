@@ -74,7 +74,7 @@ export function spatialSurfaceState(s:Session,kind:SpatialSurfaceKind,
  * index or a discovered room. Hide it until it is physically observed,
  * remembered locally, or legitimately included in the briefing. */
 export function architecturalOpeningKnown(s:Session,opening:WideOpening,
- omniscient=false):boolean{
+ omniscient=false,visibleAt?:(p:Pt)=>boolean):boolean{
  if(omniscient||s.intel.mode==='full-view'||s.intel.mode==='floor-plan')
   return true;
  if(s.intel.mode==='exterior-known'&&
@@ -89,15 +89,16 @@ export function architecturalOpeningKnown(s:Session,opening:WideOpening,
  // with a ray/segment boundary and not itself register as visible.
  for(const sign of [-1,1]){
    const p={x:middle.x+nx*8*sign,y:middle.y+ny*8*sign};
-   if(liveVisibility(s,p))return true;
+   if(visibleAt?visibleAt(p):liveVisibility(s,p))return true;
    if(preciseGroundEvidenceAt(s.seenGround,p))return true;
  }
  return false;
 }
 export type ShotVisibility={flash:boolean;trace:boolean;impact:boolean};
-export function shotVisibility(s:Session,shot:ShotEvent):ShotVisibility{
-  const muzzleKnown=shot.side==='blue'||liveVisibility(s,shot.start);
-  const endKnown=liveVisibility(s,shot.end);
+export function shotVisibility(s:Session,shot:ShotEvent,
+ visibleAt?:(p:Pt)=>boolean):ShotVisibility{
+  const muzzleKnown=shot.side==='blue'||(visibleAt?visibleAt(shot.start):liveVisibility(s,shot.start));
+  const endKnown=visibleAt?visibleAt(shot.end):liveVisibility(s,shot.end);
   return {
     flash:muzzleKnown,
     trace:muzzleKnown&&endKnown,
