@@ -64,11 +64,17 @@ function addEvidence(c:CivilianActor,id:string,at:number,
  // This field is never exposed to the player's current-fog display.
  if(kind!=='orient'||estimateReliable)c.threatEstimate={...point};
 }
+/** The exact response admission rule, shared by the 60Hz phase owner.
+ * Skipping construction of a sensory port between 120ms observation ticks
+ * does not skip movement, evidence, or a due observer update. The negated
+ * less-than intentionally preserves legacy behavior for unusual timestamps. */
+export function civilianSenseDue(c:CivilianActor,now:number):boolean{
+ return civilianCondition(c)==='healthy'&&!(now-c.lastSenseAt<.12);
+}
 export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
   world:CivilianSensoryWorld):void{
- if(civilianCondition(c)!=='healthy')return;
  // Use a low-frequency observer tick; actor movement still runs at 60 Hz.
- if(now-c.lastSenseAt<.12)return;
+ if(!civilianSenseDue(c,now))return;
  const elapsed=Math.max(.12,dt,now-c.lastSenseAt);
  c.lastSenseAt=now;
  const profile=civilianBehaviorProfile(c.persona);

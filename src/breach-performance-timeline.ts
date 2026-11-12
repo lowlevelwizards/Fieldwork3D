@@ -20,6 +20,7 @@ export type PerformanceSightDelta=Readonly<{
 export type PreviousFrameWork=Readonly<{
  beforeUi:number;ui:number;sceneSync:number;render:number;
  postRender:number;diagnostics:number;scene:PerformanceSceneCosts;
+ uiDetail?:Readonly<{camera:number;audio:number;hud:number;rings:number}>;
  actor?:Readonly<{rigMs:number;rigBuilds:number;poseMs:number;poseCount:number;
   appearanceMs?:number;weaponBuildMs?:number;otherPoseMs?:number;
   visualKitMs?:number;receiverAtlasMs?:number}>
@@ -79,6 +80,12 @@ function copy(sample:PerformanceTimelineSample):PerformanceTimelineSample{
    ...sample.previousWork,
    beforeUi:finite(sample.previousWork.beforeUi),
    ui:finite(sample.previousWork.ui),
+   uiDetail:sample.previousWork.uiDetail?{
+    camera:finite(sample.previousWork.uiDetail.camera),
+    audio:finite(sample.previousWork.uiDetail.audio),
+    hud:finite(sample.previousWork.uiDetail.hud),
+    rings:finite(sample.previousWork.uiDetail.rings)
+   }:undefined,
    sceneSync:finite(sample.previousWork.sceneSync),
    render:finite(sample.previousWork.render),
    postRender:finite(sample.previousWork.postRender),
@@ -118,6 +125,17 @@ export function previousFrameHotspot(sample:PerformanceTimelineSample):string{
  ];
  let winner=items[0];
  for(const item of items)if(item[1]>winner[1])winner=item;
+ if(winner[0]==='UI / audio'&&work.uiDetail){
+  const d=work.uiDetail;
+  const children:[string,number][]=[
+   ['camera',d.camera],['audio',d.audio],
+   ['HUD',d.hud],['action rings',d.rings]
+  ];
+  let hottest=children[0];
+  for(const child of children)if(child[1]>hottest[1])hottest=child;
+  return 'UI '+hottest[0]+' '+hottest[1].toFixed(0)+
+   'ms / total '+work.ui.toFixed(0)+'ms';
+ }
  if(winner[0]==='3D scene'){
   let inner:PerformanceScenePhase='environment';
   for(const name of PERFORMANCE_SCENE_PHASES)
@@ -210,6 +228,7 @@ export class PerformanceTimeline{
    'sight_hits,sight_misses,phase,camera,'+
    'previous_js_ms,previous_sim_ms,previous_phase,callback_wait_ms,'+
    'prior_before_ui_ms,prior_ui_ms,prior_scene_sync_ms,'+
+   'prior_ui_camera_ms,prior_ui_audio_ms,prior_ui_hud_ms,prior_ui_rings_ms,'+
    'prior_canvas_ms,prior_post_ms,prior_profiler_ms,'+
    'prior_scene_actors_ms,prior_scene_fog_ms,prior_scene_submit_cpu_ms,'+
    'prior_rig_build_ms,prior_rig_build_count,'+
@@ -225,7 +244,10 @@ export class PerformanceTimeline{
     p.previousPhase??'',p.previousJs===undefined?'':
      Math.max(0,p.raf-p.previousJs),
     p.previousWork?.beforeUi??'',p.previousWork?.ui??'',
-    p.previousWork?.sceneSync??'',p.previousWork?.render??'',
+    p.previousWork?.sceneSync??'',
+    p.previousWork?.uiDetail?.camera??'',p.previousWork?.uiDetail?.audio??'',
+    p.previousWork?.uiDetail?.hud??'',p.previousWork?.uiDetail?.rings??'',
+    p.previousWork?.render??'',
     p.previousWork?.postRender??'',p.previousWork?.diagnostics??'',
     p.previousWork?.scene.actors??'',p.previousWork?.scene.fog??'',
     p.previousWork?.scene.gpuSubmit??'',
