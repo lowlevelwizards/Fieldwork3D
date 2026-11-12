@@ -654,8 +654,10 @@ export class TacticalScene3D{
       item.texture.needsUpdate=true;
     }
     for(const item of this.patinaWallSurfaces){
-      const image=item.texture.image as {data:Uint8Array};
-      image.data.set(conditionWallPixels(site,item.index,level));
+      const image=item.texture.image as {
+        data:Uint8Array;width:number;height:number};
+      image.data.set(conditionWallPixels(site,item.index,level,
+        image.width,image.height));
       item.texture.needsUpdate=true;
     }
   }

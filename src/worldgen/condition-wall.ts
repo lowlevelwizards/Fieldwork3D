@@ -18,12 +18,20 @@ function noise(u:number,v:number,scale:number,seed:number){
  const b=hash(ix,iy+1,seed)*(1-tx)+hash(ix+1,iy+1,seed)*tx;
  return a*(1-ty)+b*ty;
 }
-/** A fixed 64px map follows a physical wall segment at any width.
- * Top of the image corresponds to upper wall and lower edge to baseboard.
+/** A bounded, power-of-two wall mask width preserves physical texel density
+ * on long building facades, without increasing every wall's texture budget.
+ */
+export function wallPatinaDimensions(length:number){
+ const width=Math.min(256,Math.max(64,
+   2**Math.ceil(Math.log2(Math.max(64,length)))));
+ return {width,height:64};
+}
+/** Wall scale maps preserve a stable vertical density and a width suited to
+ * the actual segment. Legacy square 64x64 callers remain supported.
  */
 export function conditionWallPixels(site:Site,index:number,
- level=effectiveCondition(site),size=64):Uint8Array{
- const out=new Uint8Array(size*size*4);
+ level=effectiveCondition(site),size=64,height=size):Uint8Array{
+ const out=new Uint8Array(size*height*4);
  const t=clamp(level/100),s=(site.seed^Math.imul(index+1,65161))>>>0;
  const masonry=['cinderblock','brick','panel'].includes(wallPixelSurface(site.archetype));
  const industrial=['garage','warehouse','utility'].includes(site.archetype??'');
@@ -42,8 +50,8 @@ export function conditionWallPixels(site:Site,index:number,
    const px=wall.a.x+u*vx,py=wall.a.y+u*vy;
    return {u,distance:Math.hypot(px-w.x,py-w.y)};
  }).filter(w=>w.distance<36);
- for(let y=0;y<size;y++)for(let x=0;x<size;x++){
-  const u=(x+.5)/size,v=(y+.5)/size; // v=0 top, v=1 floor
+ for(let y=0;y<height;y++)for(let x=0;x<size;x++){
+  const u=(x+.5)/size,v=(y+.5)/height; // v=0 top, v=1 floor
   const a=noise(u,v,3,s),b=noise(u,v,13,s+47);
   const low=clamp((v-.45)/.55),side=clamp((.12-Math.min(u,1-u))/.12);
   const patches=clamp((a-.37)*2.5)*(.35+.65*b);
