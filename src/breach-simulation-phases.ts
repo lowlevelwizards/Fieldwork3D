@@ -69,7 +69,8 @@ export type SimulationPhasePort={
   * and deterministic phase order remain unchanged. */
  actorActions:(s:Session,h:number,
   markActor?:((id:string,section?:string,elapsedMs?:number)=>void))=>void;
- motion:(s:Session,h:number,origins:ReadonlyMap<string,Pt>)=>void;
+ motion:(s:Session,h:number,origins:ReadonlyMap<string,Pt>,
+  profile?:StepPhaseProbe)=>void;
  contacts:(s:Session)=>void;
  reports:(s:Session)=>void;
  observe:(s:Session)=>void;
@@ -101,7 +102,7 @@ export function advanceSimulationTick(s:Session,h:number,
   else mark('operator-'+id);
  }:undefined);
  mark('actor-loop');
- port.motion(s,h,motionStart);
+ port.motion(s,h,motionStart,probe);
  mark('civilian-motion');
  port.contacts(s);
  mark('contacts');

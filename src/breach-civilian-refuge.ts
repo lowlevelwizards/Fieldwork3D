@@ -53,17 +53,19 @@ export function chooseCivilianRefuge(c:CivilianActor,
  const threat=c.threatEstimate;
  if(!threat)return null;
  const current=dist(c.p,threat);
+ // LOS queries involve walls/doors, not a cheap arithmetic score.
+ // The old comparator re-ran them O(n log n) times for the same refuge
+ // point during a single decision. Score each candidate once, then keep
+ // the exact previous rank, tie-breaking and stable candidate ordering.
  const candidates=[...c.refugePoints,...c.routine].filter(p=>
    dist(p,c.p)>20&&dist(p,threat)>=current+15&&
    !world.isCrowded?.(p))
-  .sort((a,b)=>{
-   const grade=(p:Pt)=>
-     Math.min(250,dist(p,threat))-
-     .17*dist(p,c.p)+
-     (world.canSee&&!world.canSee(threat,p)?32:0);
-   return grade(b)-grade(a)||
-     a.x-b.x||a.y-b.y;
-  });
+  .map(p=>({p,grade:Math.min(250,dist(p,threat))-
+    .17*dist(p,c.p)+
+    (world.canSee&&!world.canSee(threat,p)?32:0)}))
+  .sort((a,b)=>b.grade-a.grade||
+    a.p.x-b.p.x||a.p.y-b.p.y)
+  .map(({p})=>p);
  // Bounded route work, once per new startle decision, NOT each tick.
  for(const p of candidates.slice(0,6)){
   if(world.canReach(c.p,p))return {goal:{...p},path:[]};

@@ -1556,7 +1556,7 @@ const simulationPhasePort:SimulationPhasePort={
  visualAwareness:(s,h)=>advanceActorSightProgress(s,h,geometricallyVisible),
  beliefAging:(s,h)=>advanceBeliefAgingPhase(s,h,unobstructed),
  actorActions:(s,h,markActor)=>advanceSimulationActors(s,h,actorSimulationPhasePort,markActor),
- motion:(s,h,origins)=>advanceSimulationMotion(s,h,origins,motionSimulationPhasePort),
+ motion:(s,h,origins,profile)=>advanceSimulationMotion(s,h,origins,motionSimulationPhasePort,profile),
  contacts:resolveCloseContact,
  reports:s=>runEnemyAi.distributeReports(s),
  observe,

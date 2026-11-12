@@ -340,7 +340,8 @@ function tick(now:number){
        // nested diagnostic CPU slices as additional context instead of
        // incorrectly allowing their overlapping costs to sum as work.
        let detail='';
-       if(owner.startsWith('operator-')&&!owner.includes('/')){
+       if((owner.startsWith('operator-')&&!owner.includes('/'))||
+          owner==='civilian-motion'){
         const stages=[...simPhaseCosts].filter(([name])=>
           name.startsWith(owner+'/')).sort((a,b)=>b[1]-a[1]).slice(0,3);
         if(stages.length)detail=' ['+stages.map(([name,ms])=>
