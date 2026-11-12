@@ -121,11 +121,37 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
    const frozen=c.persona==='startled'&&
      (c.appearanceSeed>>>3)%3!==0;
    const safe=frozen?null:chooseCivilianRefuge(c,world);
+   c.lastRefugeRecheckAt=now;
    if(safe){
     c.goal={...safe.goal};c.nav=safe.path.map(p=>({...p}));
     c.dwellUntil=now;setState(c,'fleeing',now);
    }else{
     c.goal=null;c.nav=[];setState(c,'frozen',now);
+   }
+ }
+ // New, ACTUALLY perceived danger can invalidate an older flee/hide/freeze
+ // decision. A bounded cooldown prevents per-tick A* route requests.
+ // No new evidence: preserve the original seeded decision and dwell.
+ const freshThreat=c.lastEvidenceAt>=0&&
+   c.lastEvidenceAt>c.stateSince+.10&&
+   now-c.lastEvidenceAt<2.5&&
+   c.fear>=profile.panic;
+ const canReconsider=now-c.lastRefugeRecheckAt>=1.4;
+ if(freshThreat&&canReconsider&&
+    (c.state==='frozen'||c.state==='hiding'||c.state==='fleeing')){
+   const unsafeGoal=c.state!=='fleeing'||!c.goal||!c.threatEstimate||
+     dist(c.goal,c.threatEstimate)<=dist(c.p,c.threatEstimate)+15;
+   if(unsafeGoal){
+    c.lastRefugeRecheckAt=now;
+    const safe=chooseCivilianRefuge(c,world);
+    if(safe){
+      c.goal={...safe.goal};c.nav=safe.path.map(p=>({...p}));
+      c.dwellUntil=now;setState(c,'fleeing',now);
+    }else if(c.state==='fleeing'){
+      // An obsolete escape route no longer outranks physically known danger.
+      c.goal=null;c.nav=[];setState(c,'frozen',now);
+    }
+    // Hiding and freezing remain legitimate when no safe route is available.
    }
  }
  // Hysteresis and minimum dwell prevent chattering after a stale event.

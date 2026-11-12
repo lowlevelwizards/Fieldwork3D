@@ -8,7 +8,7 @@ test('initial activities face appropriate furniture and sentries remain alert',(
  const occupants=[{id:'o',role:'occupant',position:{x:50,y:50},heading:0,
   activity:'idle',readiness:'attentive'}];
  const result=assignEncounterActivities(site,occupants,'routine',42);
- assert.equal(result[0].activity,'working');
+ assert.equal(result[0].activity,'idle');
  assert.equal(result[0].readiness,'relaxed');
  assert.equal(result[0].heading,0);
  assert.deepEqual(result,assignEncounterActivities(site,occupants,'routine',42));
@@ -56,4 +56,21 @@ test('G4b: remote openings never redirect a sentry in a different wing',()=>{
   heading:.72,activity:'idle',readiness:'prepared'};
  const result=assignEncounterActivities(site,[actor],'guarded',9)[0];
  assert.equal(result.heading,.72);
+});
+
+test('R2.3: armed activity assignment never promises an unimplemented action',()=>{
+ const site={rooms:[{kind:'room',id:'r',x:0,y:0,w:230,h:220}],
+  cover:[{x:110,y:120,w:35,h:30,fixture:'bed'},
+    {x:80,y:50,w:35,h:20,fixture:'workbench'},
+    {x:190,y:60,w:30,h:18,fixture:'shelf'}],
+  doors:[],windows:[]};
+ for(const role of ['occupant','sentry','leader','patrol']){
+  const actor={id:role,role,position:{x:110,y:80},heading:0,
+   activity:'idle',readiness:'relaxed'};
+  for(const seed of [1,2,3,4,5,6]){
+   const out=assignEncounterActivities(site,[actor],'routine',seed)[0];
+   assert.ok(['idle','watching','patrolling'].includes(out.activity));
+   assert.ok(!['talking','working','seated','resting','inspecting'].includes(out.activity));
+  }
+ }
 });
