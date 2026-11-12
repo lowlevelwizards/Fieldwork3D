@@ -21,6 +21,69 @@ test('fixed shadow rays really hit an intervening volume, not nearby side volume
  assert.ok(shadowRayBox(o,dir,block)!==null);
  assert.equal(shadowRayBox(o,new THREE.Vector3(0,1,0),block),null);
 });
+test('optimized cold cast atlas remains pixel-identical to original slab ray bake',()=>{
+ // Six independently sampled low-poly faces; test every pixel rather than
+ // only checking approximate visual examples. The reference intentionally
+ // calls the public legacy Vector3 slab routine for each ray.
+ const key='head:test-parity-20261112';
+ const center=new THREE.Vector3(0,3,0),size=new THREE.Vector3(8,8,8);
+ const boxes=[
+  {min:new THREE.Vector3(-3,4,1),max:new THREE.Vector3(4,6,3)},
+  {min:new THREE.Vector3(3,4,-3),max:new THREE.Vector3(5,8,1)},
+  {min:new THREE.Vector3(-3,4,-4),max:new THREE.Vector3(3,7,-2)}
+ ];
+ const actual=bakeReceiverShadowAtlas(key,center,size,boxes,.012);
+ const rayDirections=[
+  new THREE.Vector3(.46,.88,.07).normalize(),
+  new THREE.Vector3(.43,.90,.03).normalize(),
+  new THREE.Vector3(.47,.88,.04).normalize()
+ ];
+ const width=256,cell=64,got=actual.image.data;
+ const point=new THREE.Vector3(),normal=new THREE.Vector3();
+ for(let face=0;face<6;face++){
+  const col=face%4,row=Math.floor(face/4);
+  for(let v=0;v<cell;v++)for(let u=0;u<cell;u++){
+   const su=(u+.5)/cell,sv=(v+.5)/cell;
+   point.copy(center);
+   if(face===0||face===1){
+    point.x+=(face===0?1:-1)*size.x/2;
+    point.y+=(sv-.5)*size.y;
+    point.z+=(face===0?.5-su:su-.5)*size.z;
+    normal.set(face===0?1:-1,0,0);
+   }else if(face===2||face===3){
+    point.x+=(su-.5)*size.x;
+    point.y+=(face===2?1:-1)*size.y/2;
+    point.z+=(sv-.5)*size.z;
+    normal.set(0,face===2?1:-1,0);
+   }else{
+    point.x+=(su-.5)*size.x;
+    point.y+=(sv-.5)*size.y;
+    point.z+=(face===4?1:-1)*size.z/2;
+    normal.set(0,0,face===4?1:-1);
+   }
+   let hits=0;
+   const origin=point.clone().addScaledVector(normal,.075);
+   for(const dir of rayDirections){
+    if(normal.dot(dir)<-.12)continue;
+    for(const box of boxes){
+     if(shadowRayBox(origin,dir,box,2.55)!==null){hits++;break;}
+    }
+   }
+   const occlusion=hits/rayDirections.length;
+   const contact=Math.max(.64,1-.34*occlusion);
+   const brow=face!==2&&face!==3?
+    THREE.MathUtils.clamp((point.y-2.40)/.42,0,1):1;
+   const shade=1-(1-contact)*brow;
+   const gradient=1-sv;
+   const value=Math.max(.64,shade*(1-.012*gradient)*
+    (face===3?.94:1));
+   const byte=Math.round(value*255);
+   const index=((row*cell+v)*width+col*cell+u)*4;
+   assert.equal(got[index],byte,
+    'face '+face+' texel '+u+','+v+' shadows changed');
+  }
+ }
+});
 test('boonie and helmet brims cast actual shadows ON the front head receiver',()=>{
  const clear=headwearCastShadowAtlas('bare');
  const boonie=headwearCastShadowAtlas('boonie');
