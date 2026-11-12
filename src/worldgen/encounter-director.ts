@@ -6,7 +6,7 @@ import type {EncounterContext,EncounterPlan,EncounterPremise,EncounterActorSpec}
 import {chooseEncounterPremise} from './encounter-premises.ts';
 import {chooseEncounterProfile} from './encounter-profiles.ts';
 import {chooseHostileBudget} from './encounter-population.ts';
-import {planCivilians,civilianBudget} from './encounter-civilians.ts';
+import {planCivilians,civilianBudget,type CivilianPlacementDiagnostics} from './encounter-civilians.ts';
 import {hostileMinimumForContract} from './encounter-population-contract.ts';
 import {composeEncounterGroups} from './encounter-groups.ts';
 import {placeEncounterActors} from './encounter-placement.ts';
@@ -57,8 +57,11 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  // increases the hostileBudget or creates a red actor.
  const neutralBudget=civilianBudget(site,seed,premise,mission,
    context.civilianPolicy);
+ const civilianPlacement: CivilianPlacementDiagnostics={
+   desired:0,placed:0,roomsTried:0,capacityRejected:0,
+   invalidCandidates:0,routeAttempts:0,routeRejected:0,routeLimit:0};
  const neutrals=planCivilians(site,actors,seed,premise,mission,
-   context.civilianPolicy);
+   context.civilianPolicy??'scenario',civilianPlacement);
  const rooms=site.rooms.filter(r=>r.kind==='room');
  const occupiedZones=new Set(actors.map(a=>a.zoneId).filter(Boolean)).size;
  const zones=new Set(rooms.map(r=>r.zoneId??r.id));
@@ -76,8 +79,16 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
    occupiedZones,emptyZones:Math.max(0,zones.size-occupiedZones),
    notes:['encounter profile: '+profile,
      'civilian population: requested '+neutralBudget+', placed '+neutrals.length,
-     ...(neutralBudget>0&&!neutrals.length?
-       ['no civilian placement met physical clearance and route constraints']:[]),
+     ...(neutralBudget>neutrals.length?[
+       'civilian placement shortfall: '+(neutralBudget-neutrals.length)+
+       ' | rooms tried '+civilianPlacement.roomsTried+
+       ' | at capacity '+civilianPlacement.capacityRejected+
+       ' | invalid floor '+civilianPlacement.invalidCandidates+
+       ' | routes '+civilianPlacement.routeAttempts+
+       ' | unreachable '+civilianPlacement.routeRejected,
+       ...(neutrals.length===0?[
+         'no civilian placement met physical clearance and route constraints']:[])
+      ]:[]),
      ...(actors.length<target?['physical capacity reduced hostile count']:[]),
      ...(spatial.rehomed?['repositioned unreachable hostile positions']:[])]}
  };

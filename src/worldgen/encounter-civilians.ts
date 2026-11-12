@@ -82,11 +82,24 @@ function localLegClear(from:Pt,to:Pt,
   }
   return true;
 }
+export type CivilianPlacementDiagnostics={
+ desired:number;placed:number;roomsTried:number;capacityRejected:number;
+ invalidCandidates:number;routeAttempts:number;routeRejected:number;
+ routeLimit:number;
+};
 export function planCivilians(site:Site,
   hostiles:readonly EncounterActorSpec[],seed:number,
   premise:EncounterPremise,mission:OperationKind,
-  policy:'scenario'|'on'|'off'='scenario'):CivilianSpec[]{
+  policy:'scenario'|'on'|'off'='scenario',
+  diagnostics?:CivilianPlacementDiagnostics):CivilianSpec[]{
   const desired=civilianBudget(site,seed,premise,mission,policy);
+  const routeLimit=Math.max(16,desired*8);
+  const metrics: CivilianPlacementDiagnostics=diagnostics??{
+    desired:0,placed:0,roomsTried:0,capacityRejected:0,
+    invalidCandidates:0,routeAttempts:0,routeRejected:0,routeLimit:0};
+  Object.assign(metrics,{desired,placed:0,roomsTried:0,
+    capacityRejected:0,invalidCandidates:0,routeAttempts:0,
+    routeRejected:0,routeLimit});
   if(desired<=0)return [];
   const rng=encounterRng(seed,35);
   const occupied=hostiles.map(a=>a.position);
@@ -103,10 +116,14 @@ export function planCivilians(site:Site,
   withTemporarySiteGeometry(site,()=>{
     let checkedRoutes=0;
     for(const room of rooms){
-      if(neutrals.length>=desired||checkedRoutes>=Math.max(8,desired*4))break;
+      if(neutrals.length>=desired||checkedRoutes>=routeLimit)break;
+      metrics.roomsTried++;
+      let roomRoutes=0;
       const inRoom=hostiles.filter(a=>within(a.position,room)).length;
       const capacity=roomOccupancyCapacity(room,site.cover);
-      if(inRoom+(usedRoom.get(room.id)??0)>=capacity)continue;
+      if(inRoom+(usedRoom.get(room.id)??0)>=capacity){
+        metrics.capacityRejected++;continue;
+      }
       const fixtures=site.cover.filter(c=>fixtureRoles.has(c.fixture??'')&&
         c.x>=room.x&&c.x<=room.x+room.w&&
         c.y>=room.y&&c.y<=room.y+room.h)
@@ -131,7 +148,8 @@ export function planCivilians(site:Site,
       for(const [u,v] of [
         [.5,.5],[.34,.50],[.66,.5],[.5,.34],[.5,.66],
         [.25,.25],[.75,.25],[.25,.75],[.75,.75],
-        [.25,.5],[.75,.5],[.5,.25],[.5,.75]
+        [.25,.5],[.75,.5],[.5,.25],[.5,.75],
+        [.19,.38],[.81,.62],[.38,.19],[.62,.81]
       ]){
         candidates.push({x:room.x+room.w*u,y:room.y+room.h*v});
       }
@@ -149,10 +167,14 @@ export function planCivilians(site:Site,
           neutrals.length<desired;occupant++){
        let placed=false;
        for(const p of candidates){
-        if(checkedRoutes>=Math.max(8,desired*4))break;
-        if(!legal(p))continue;
-        checkedRoutes++;
-        if(site.spawn[0]&&!route(site.spawn[0],p).length)continue;
+        // A blocked room must not exhaust the entire scene budget before
+        // other inhabited rooms receive any attempt. Retain physical A*.
+        if(checkedRoutes>=routeLimit||roomRoutes>=3)break;
+        if(!legal(p)){metrics.invalidCandidates++;continue;}
+        checkedRoutes++;roomRoutes++;metrics.routeAttempts++;
+        if(site.spawn[0]&&!route(site.spawn[0],p).length){
+          metrics.routeRejected++;continue;
+        }
         const adjacent=candidates.filter(q=>dist(p,q)>=35&&
           dist(p,q)<=135&&legal(q)&&localLegClear(p,q,legal))
           .slice(0,2);
@@ -185,5 +207,6 @@ export function planCivilians(site:Site,
       }
     }
   });
+  metrics.placed=neutrals.length;
   return neutrals;
 }

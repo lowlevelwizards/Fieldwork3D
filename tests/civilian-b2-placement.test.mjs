@@ -87,3 +87,24 @@ test('E5 civilian presence: active occupied sites have an encounter floor, not g
  assert.equal(civilianBudget(site,17,'routine','rescue'),0);
  assert.equal(civilianBudget({...site,training:true},17,'routine','clear'),0);
 });
+
+test('R2.1: placement attempts are budgeted across rooms with explicit diagnostics',()=>{
+ const site=generateSite(31,'small',undefined,
+   {seed:31,mission:'intel',premise:'routine',risk:1});
+ const metrics={desired:0,placed:0,roomsTried:0,capacityRejected:0,
+   invalidCandidates:0,routeAttempts:0,routeRejected:0,routeLimit:0};
+ const a=planCivilians(site,site.encounter.actors,31,site.encounter.premise,
+   site.encounter.mission,'scenario',metrics);
+ assert.deepEqual(a,site.encounter.neutrals);
+ assert.equal(metrics.placed,a.length);
+ assert.equal(metrics.desired,civilianBudget(site,31,site.encounter.premise,
+   site.encounter.mission));
+ assert.ok(metrics.routeAttempts<=metrics.routeLimit);
+ assert.ok(metrics.routeLimit>=16);
+ assert.ok(metrics.roomsTried>=0);
+ assert.ok(metrics.routeRejected<=metrics.routeAttempts);
+ const b={...metrics};
+ planCivilians(site,site.encounter.actors,31,site.encounter.premise,
+   site.encounter.mission,'scenario',metrics);
+ assert.deepEqual(metrics,b,'diagnostics do not consume extra random draws');
+});
