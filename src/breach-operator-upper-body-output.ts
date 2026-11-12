@@ -69,20 +69,17 @@ export function rotateOperatorSupportHand(scratch:OperatorPoseScratch,
  output.handEuler[0].setFromQuaternion(hand.quaternion);
 }
 export function operatorHandTransform(scratch:OperatorPoseScratch,
- index:0|1):{
- readonly position:THREE.Vector3;readonly quaternion:THREE.Quaternion;
- readonly rotation:THREE.Euler
-}{
- const output=scratch.armOutput;
- return {position:output.transforms[index*3+2].position,
-  quaternion:output.transforms[index*3+2].quaternion,
-  rotation:output.handEuler[index]};
+ index:0|1){
+ return scratch.armOutput.transforms[index*3+2];
+}
+export function operatorHandEuler(scratch:OperatorPoseScratch,index:0|1){
+ return scratch.armOutput.handEuler[index];
 }
 /** No per-frame return-value array: these six typed tuples belong to the
  * existing rig-local scratch and are consumed by the B2 direct publisher.
  */
 export function finishOperatorArmPose(scratch:OperatorPoseScratch):
- readonly OperatorArmPoseScratch['outputs'][number][]{
+ OperatorArmPoseScratch['outputs']{
  const output=scratch.armOutput;
  if(!output.initialized)
   throw new Error('B4 upper-body pose committed without initialization');
