@@ -47,5 +47,5 @@ test('3D fog stays ground-aligned and hides unobserved object details',()=>{
  assert.match(builder,/host\.observedDetails\.push/);
  assert.match(code,/for\(let i=0;i<this\.observedDetails\.length;i\+\+\)/);
  assert.doesNotMatch(code,/roomFogRoofs|overheadFog/);
- assert.match(code,/if\(!omniscient&&!liveVisibility\(s,mark\.p\)\)continue;/);
+ assert.match(code,/if\(!omniscient&&!this\.presentationSight\.query\(/);
 });
