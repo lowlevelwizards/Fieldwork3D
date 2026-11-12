@@ -161,7 +161,10 @@ export class BreachPerfTimelinePanel{
   const bins=this.timeline?.buckets();
   if(!bins?.length)return;
   const newest=bins[bins.length-1].bucket;
-  const max=Math.max(100,Math.ceil((this.timeline?.maxRaf()??100)/50)*50);
+  // A 1-second browser stall must not make ordinary 33–100ms spikes invisible.
+  // Off-scale bars receive a visible top marker; exact timing stays tappable.
+  const max=Math.min(250,Math.max(100,
+   Math.ceil((this.timeline?.maxRaf()??100)/50)*50));
   const top=h-12,chartHeight=h-25,zero=top;
   const y=(v:number)=>Math.max(4,zero-Math.min(max,v)/max*chartHeight);
   ctx.font='9px monospace';
