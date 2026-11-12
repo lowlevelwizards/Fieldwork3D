@@ -41,8 +41,8 @@ export function doorLeafBypass(from:Pt,goal:Pt,door:Door,
    if(cost>direct*2.7+100)return;
    choices.push({path,score:cost+(complete?0:25),complete});
  };
- for(const depth of [radius+12,radius+22,radius+32]){
-   for(const lateral of [0,-6,6]){
+ for(const depth of [radius+12,radius+26]){
+   for(const lateral of [0,-7,7]){
      const portal={x:center.x+through.x*depth*goalSide+
         acrossFrame.x*lateral,
        y:center.y+through.y*depth*goalSide+
@@ -50,8 +50,8 @@ export function doorLeafBypass(from:Pt,goal:Pt,door:Door,
      // First try a natural shoulder path through the opening. No need to
      // travel around the tip if the current hinge already gives clearance.
      append([portal]);
-     for(const beyond of [radius+6,radius+13,radius+23]){
-       for(const clearance of [radius+6,radius+13,radius+22]){
+     for(const beyond of [radius+6,radius+18]){
+       for(const clearance of [radius+6,radius+18]){
          const tipBeyond={x:leaf.b.x+forward.x*beyond,
            y:leaf.b.y+forward.y*beyond};
          const before={x:tipBeyond.x+acrossLeaf.x*clearance*ownSide,
