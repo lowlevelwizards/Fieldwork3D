@@ -112,7 +112,7 @@ export function alignSegmentComponents(
   right.normalize();front.crossVectors(right,axis).normalize();
   right.crossVectors(axis,front).normalize();
   frame.makeBasis(right,axis,front);
-  mesh.quaternion.setFromRotationMatrix(frame);
+  quaternion.setFromRotationMatrix(frame);
   scale.y=length;
 }
 /** Compatibility adapter for all existing upper-body/Workbench IK callers. */
