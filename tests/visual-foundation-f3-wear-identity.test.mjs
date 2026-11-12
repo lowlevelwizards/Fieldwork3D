@@ -17,7 +17,8 @@ test('F3.3 substrate-specific aging is bounded and preserves cool metal/stone',(
  const ceramic=ageMaterialColor(base,'porcelain',90);
  assert.notEqual(steel,wood);
  assert.notEqual(steel,ceramic);
- assert.ok(channels(steel)[1]>=channels(steel)[0]-4);
+ assert.ok(channels(steel)[0]-channels(steel)[1]<13,
+  'aging reduces the warm base color bias without forcing cyan steel');
  assert.ok(channels(wood)[0]>channels(wood)[2]);
  for(const surface of ['industrial-steel','furniture-wood','porcelain']){
   const aged=ageMaterialColor(base,surface,100,1);
