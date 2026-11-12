@@ -139,6 +139,21 @@ test('P1.9 preceding rig, pose and simulation CPU costs survive frame reuse',()=
  assert.match(h.compactReport('planning','iso'),/SIM civilian-motion 531\.2ms/);
  assert.match(h.report('planning','iso'),/prior simulation phase civilian-motion 531\.2ms/);
 });
+test('P2.1 pose breakdown reports preceding measured source of a cold 3D hitch',()=>{
+ const h=new PerformanceTimeline();
+ const previousWork={beforeUi:1,ui:1,sceneSync:870,render:5,
+  postRender:2,diagnostics:1,
+  scene:{...emptyPerformanceSceneCosts(),actors:844},
+  actor:{rigMs:157,rigBuilds:4,poseMs:664,poseCount:4,
+   appearanceMs:350,weaponBuildMs:200,otherPoseMs:114}};
+ h.add(sample(1000,1313,{previousJs:1282,previousPhase:'idle',
+  phase:'idle',previousSim:0,previousWork}));
+ assert.match(previousFrameHotspot(h.buckets()[0].peak),
+  /3D actors 844ms \(rig 157ms\/4, pose 664ms\/4, app 350 \/ gun 200 \/ IK\+114\)/);
+ const copy=h.compactReport('planning','iso');
+ assert.match(copy,/app 350 \/ gun 200 \/ IK\+114/);
+ assert.match(h.bucketCSV(),/prior_pose_appearance_ms,prior_pose_weapon_build_ms,prior_pose_other_ms/);
+});
 test('P1.5d CSV includes every quarter-second bucket and measured causes',()=>{
  const h=new PerformanceTimeline();
  h.add(sample(1200,20));h.add(sample(1450,61,{sync:31}));
