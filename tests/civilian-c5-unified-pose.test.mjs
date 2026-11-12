@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createCivilian} from '../src/breach-civilian-types.ts';
 import {civilianPose} from '../src/breach-civilian-pose.ts';
-import {createCivilianRig,updateCivilianRig,CIVILIAN_VISUAL_SCALE}
+import {createCivilianRig,updateCivilianRig,CIVILIAN_VISUAL_SCALE,CIVILIAN_ANATOMY}
  from '../src/breach-civilian-visuals.ts';
 const actor=createCivilian({id:'civ:pose:1',role:'customer',
  persona:'steady',activity:'seated',position:{x:30,y:60},
@@ -12,7 +12,8 @@ test('E5-C5 one pose resolver gives seated, moving and compliant identity',()=>{
  assert.equal(civilianPose(actor),'seated');
  const rig=createCivilianRig(actor);
  updateCivilianRig(rig,actor,1);
- assert.ok(rig.root.scale.y<1);
+ assert.ok(rig.upper.position.y<0);
+ assert.equal(rig.root.scale.y,CIVILIAN_VISUAL_SCALE);
  assert.ok(rig.leftLeg.rotation.x>.5);
  actor.state='fleeing';actor.velocity=66;
  assert.equal(civilianPose(actor),'run');
@@ -22,7 +23,8 @@ test('E5-C5 one pose resolver gives seated, moving and compliant identity',()=>{
  assert.equal(civilianPose(actor),'compliant');
  updateCivilianRig(rig,actor,3);
  assert.equal(rig.leftLeg.rotation.x,0);
- assert.equal(rig.leftArm.position.y,30);
+ assert.equal(rig.leftArm.position.y,CIVILIAN_ANATOMY.shoulderY);
+ assert.ok(rig.leftArm.rotation.z< -2);
 });
 test('E5-C5 visible injury overrides idle or seated work animation',()=>{
  actor.activity='seated';actor.state='routine';actor.health=1;
