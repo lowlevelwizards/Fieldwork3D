@@ -32,7 +32,6 @@ const drawLine=(a:Pt,b:Pt,color:string,width=2)=>{
  ctx.strokeStyle=color;ctx.lineWidth=width;
  ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();
 };
-const names=DOOR_RANGE_CASES.map(c=>c.id);
 for(const c of DOOR_RANGE_CASES){
  const option=document.createElement('option');
  option.value=c.id;option.textContent=c.label;scenario.append(option);
@@ -43,7 +42,6 @@ let planned=false,playing=false,flips=0,lastOpen=false;
 let minSpacing=Infinity;
 let passed=new Set<string>();
 let crossedAt=new Map<string,number>();
-let lastFrame=0,accumulator=0;
 let selectedId='';
 function plan(){
  const members=team(s).slice(0,4);
@@ -66,7 +64,7 @@ function plan(){
  return ok;
 }
 function reset(){
- playing=false;accumulator=0;flips=0;minSpacing=Infinity;
+ playing=false;acc=0;flips=0;minSpacing=Infinity;
  passed=new Set();crossedAt=new Map();
  s=newSession(0,undefined,'full-view','small','hold',
   doorRangeSite(scenario.value as DoorRangeCaseId),
