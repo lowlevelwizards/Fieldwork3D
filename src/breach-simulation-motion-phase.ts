@@ -73,7 +73,15 @@ export function advanceSimulationMotion(s:Session,h:number,
     // reused across their fixed-tick movement and observer evaluations.
     // The underlying geometry and actor positions remain live at call time.
     const clear=(from:Pt,to:Pt)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
-    const routeTo=(from:Pt,to:Pt)=>port.routeTo(s,from,to);
+    let routeWorkMs=0;
+    const routeTo=(from:Pt,to:Pt)=>{
+      if(!profile)return port.routeTo(s,from,to);
+      const started=performance.now();
+      // The route itself remains synchronous and authoritative; only the
+      // optional instrumentation reads a wall clock.
+      try{return port.routeTo(s,from,to);}
+      finally{routeWorkMs+=performance.now()-started;}
+    };
     const occupied=(p:Pt,id:string)=>nearby.some(a=>
       a.id!==id&&withinSquared(a.p,p,400));
     const sensoryCommon={
@@ -115,6 +123,8 @@ export function advanceSimulationMotion(s:Session,h:number,
     if(profile){
       profile('civilian-motion/response',responseTime);
       profile('civilian-motion/step',movementTime);
+      // Nested within response/step; do NOT sum it into the parent.
+      profile('civilian-motion/route-search',routeWorkMs);
     }
   }
   const arbitrationStart=cpuMark();
