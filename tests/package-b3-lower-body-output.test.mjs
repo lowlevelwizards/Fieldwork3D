@@ -257,7 +257,7 @@ test('B3: source ownership does not introduce a hidden second contact clock',()=
  assert.doesNotMatch(lower,/alignSegment\(foot/);
  assert.doesNotMatch(lower,/foot\.shoe\.position\./);
  assert.doesNotMatch(lower,/foot\.ankleLink\.visible\s*=/);
- assert.match(controller,/stageDirectOperatorPoseOutput\\(r,p,'lower-body',legPose\\)/);
+ assert.match(controller,/stageDirectOperatorPoseOutput\(r,p,'lower-body',legPose\)/);
  assert.doesNotMatch(controller,/stageOperatorPoseOutput\(r,p,'lower-body'\)/);
  assert.match(scratch,/legOutput:createOperatorLegPoseScratch\(\)/);
  for(const source of [lower,controller]){
