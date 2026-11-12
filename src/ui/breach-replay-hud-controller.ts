@@ -329,8 +329,13 @@ config.ui.replayDirectBodycam.addEventListener('click',()=>{
   if(port.replayBodycam.active){
     const returnId=port.replayCamera.followId;
     port.stopReplayBodycam();
-    // Follow already refreshes historical views; avoid a duplicate rebuild.
-    followReplayOperator(returnId);return;
+    // Follow already refreshes historical views. If the recorded operator
+    // is incapacitated at this frame, it cannot be followed, but the
+    // Bodycam exit must still update the visible HUD and disclosure.
+    if(team(port.state).some(a=>a.id===returnId&&a.health>0))
+      followReplayOperator(returnId);
+    else{refreshHistoricalViews(false);updateReplayHud();}
+    return;
   }
   if(port.replayCamera.mode!=='operator'||
     !port.replayBodycam.observers.includes(port.replayCamera.followId))return;
