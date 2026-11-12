@@ -16,7 +16,7 @@ import {SiteMaterialLifetime} from './site-material-lifetime.ts';
 import {StaticSceneBatches} from './breach-static-batcher.ts';
 import {type PixelSurface} from './pixel-materials.ts';
 import {roomPixelSurface,wallPixelSurface,fixturePixelSurface} from '../worldgen/pixel-surface-selection.ts';
-import {buildingTheme,roomFloor} from '../worldgen/building-palettes.ts';
+import {buildingTheme,roomFloor,roomFixtureFinishes,roomAccessoryColor} from '../worldgen/building-palettes.ts';
 import {effectiveCondition} from '../worldgen/condition-visual.ts';
 import {conditionFloorPixels} from '../worldgen/condition-visual.ts';
 import {conditionWallPixels} from '../worldgen/condition-wall.ts';
@@ -370,12 +370,16 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       // Five deterministic condition tones prevent furniture from looking
       // as though every object aged uniformly at precisely the same rate.
       const variant=((i%5)-2)/2;
+      const fixtureRoom=site.rooms.find(room=>
+        c.x>=room.x&&c.x<=room.x+room.w&&
+        c.y>=room.y&&c.y<=room.y+room.h);
+      const finish=roomFixtureFinishes(theme,fixtureRoom?.purpose,fixtureRoom?.tone);
       const localCtx:FixtureVisualContext={...fixtureCtx,
         solid:(hex,roughness,surface)=>host.solid(age(hex,surface,variant),roughness,surface)};
       renderFixtureVisual(intact,visual,i,localCtx,
-        host.solid(age(theme.wood,'furniture-wood',variant),.9,'furniture-wood'),
-        host.solid(age(0x465958,'metal',variant),.8,'metal'),
-        host.solid(age(0x70715e,'fabric',variant),.9,'fabric'),
+        host.solid(age(finish.wood,'furniture-wood',variant),.9,'furniture-wood'),
+        host.solid(age(finish.metal,'metal',variant),.8,'metal'),
+        host.solid(age(finish.fabric,'fabric',variant),.9,'fabric'),
         host.solid(age(0x586665,'industrial-steel',variant),.78,'industrial-steel'));
       for(const mark of marksOn('fixture',i)){
         const height=visibleSurfaceHeight(c.fixture??'crate');
@@ -512,11 +516,13 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         host.box(prop,0,31,0,13,9,13,smallPaper,false);break;
       case 'rug': case 'bedside-rug': case 'bath-mat':
       case 'welcome-mat': case 'runner':{
-        const palette=detail.kind==='bath-mat'?0x728b83:
+        const baseRugColor=detail.kind==='bath-mat'?0x728b83:
           detail.kind==='runner'?0x8a7c63:
           detail.kind==='welcome-mat'?0x635646:
           detail.kind==='bedside-rug'?0x8a7865:0x93765e;
-        const textile=host.solid(palette,.95,'fabric');
+        const purpose=site.rooms.find(room=>room.id===detail.roomId)?.purpose;
+        const rugColor=roomAccessoryColor(theme,purpose,baseRugColor);
+        const textile=host.solid(rugColor,.95,'fabric');
         const border=host.solid(0xc1b295,.95,'fabric');
         const w=detail.width??42,d=detail.depth??24;
         host.box(prop,0,.11,0,w,.22,d,textile,false);

@@ -2,7 +2,14 @@
  * scene startup, WebGL shaders, quickplay or the legacy A/B toggle.
  */
 import {spawn} from 'node:child_process';
+import {mkdirSync,writeFileSync} from 'node:fs';
 import {chromium} from 'playwright';
+/** Opt-in artifact capture for the final F5 checkpoint only. */
+const f5Save=(name,bytes)=>{
+ if(process.env.FW_F5_CAPTURE!=='1')return;
+ mkdirSync('visual-foundation-f5-captures',{recursive:true});
+ writeFileSync('visual-foundation-f5-captures/'+name,bytes);
+};
 const port=4231,base='http://127.0.0.1:'+port;
 const server=spawn(process.execPath,[
  'node_modules/vite/bin/vite.js','--host','127.0.0.1',
@@ -45,6 +52,7 @@ try{
      throw Error('Blank '+variant+' tactical WebGL frame');
     if(errors.length)throw Error(variant+' GPU errors: '+errors.join(' | '));
     captures.push(screenshot);
+    f5Save('breach-'+variant+'.png',screenshot);
     console.log('R7.18 live tactical '+variant+' WebGL canvas rendered');
    }finally{await page.close();}
   }

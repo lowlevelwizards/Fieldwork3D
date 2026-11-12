@@ -2,7 +2,14 @@
  * no soft/skin controls, original A/B and Arsenal parity.
  */
 import {spawn} from 'node:child_process';
+import {mkdirSync,writeFileSync} from 'node:fs';
 import {chromium} from 'playwright';
+/** Opt-in artifact capture for the final F5 checkpoint only. */
+const f5Save=(name,bytes)=>{
+ if(process.env.FW_F5_CAPTURE!=='1')return;
+ mkdirSync('visual-foundation-f5-captures',{recursive:true});
+ writeFileSync('visual-foundation-f5-captures/'+name,bytes);
+};
 const port=4228,origin='http://127.0.0.1:'+port;
 const server=spawn(process.execPath,[
  'node_modules/vite/bin/vite.js','--host','127.0.0.1',
@@ -57,6 +64,8 @@ try{
    await page.waitForTimeout(260);
    const two=await canvas.screenshot();
    if(three.equals(two))throw Error('3-band renders identically to 2-band');
+   f5Save('studio-three-band.png',three);
+   f5Save('studio-two-band.png',two);
    await cel.selectOption('3');
    await page.locator('#studioLightRim').selectOption('off');
    await page.waitForTimeout(240);
@@ -66,6 +75,8 @@ try{
    await page.waitForTimeout(260);
    const white=await canvas.screenshot();
    if(white.equals(noGlint))throw Error('White weapon glint not visible');
+   f5Save('studio-weapon-glint.png',white);
+   f5Save('studio-weapon-no-glint.png',noGlint);
    if(onCalls>offCalls+1)throw Error('Glint added geometry draw calls');
    await page.locator('#studioLightCompare').click();
    await page.waitForFunction(()=>

@@ -62,6 +62,24 @@ jobs:
           node scripts/smoke-rendering-r718-parity.mjs
           node scripts/smoke-arsenal-lighting-r714.mjs
           node scripts/smoke-rendering-r718-breach.mjs
+      - name: F5 visual foundation — mobile Studio, Arsenal and Breach captures
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/visual-foundation-f4-f5-') }}
+        env:
+          FW_F5_CAPTURE: '1'
+        run: |
+          node scripts/smoke-rendering-r718-parity.mjs
+          node scripts/smoke-arsenal-lighting-r714.mjs
+          node scripts/smoke-rendering-r718-breach.mjs
+          test -s visual-foundation-f5-captures/studio-three-band.png
+          test -s visual-foundation-f5-captures/arsenal-glint.png
+          test -s visual-foundation-f5-captures/breach-graphic.png
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/visual-foundation-f4-f5-') }}
+        with:
+          name: visual-foundation-f5-mobile-reference
+          path: visual-foundation-f5-captures/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: Rendering R7.17 — light-facing cream and skin glints, real mobile WebGL
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/r717-frontlit-') }}
         run: |
