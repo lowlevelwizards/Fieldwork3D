@@ -96,7 +96,7 @@ type State={
   selectedShotId:number|null;contactSide:'red'|'blue';paperBack:boolean;
   inspectionMode:'paper'|'3d';forensicScope:ForensicScope;
   selectedHighlight:string|null;
-  operatorRecordOpen:boolean;
+  operatorRecordOpen:boolean;summaryCompact:boolean;
   scroll:Partial<Record<AfterActionTab,number>>;
   showIntel:boolean;
   timelineEvents:readonly AfterActionTimelineEvent[];
@@ -140,7 +140,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      selectedOperator:null,selectedContact:null,selectedShotId:null,
      contactSide:'red',paperBack:false,inspectionMode:'paper',
      forensicScope:'cumulative',
-     selectedHighlight:null,operatorRecordOpen:false,
+     selectedHighlight:null,operatorRecordOpen:false,summaryCompact:false,
      scroll:{},showIntel:options.showIntel,
      timelineEvents:buildAfterActionTimeline(rec),
      timelineFilter:'all',timelineSelectedKey:null,timelineClusterId:null,
@@ -156,12 +156,33 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      tabButton.addEventListener('click',()=>{
        const s=owners.get(root);if(!s)return;
        s.scroll[s.tab]=safeContent.scrollTop;
-       s.tab=tabButton.dataset.afterTab as AfterActionTab;
+        s.summaryCompact=true;
+        s.tab=tabButton.dataset.afterTab as AfterActionTab;
        renderers.get(root)?.();
      });
    }
-   const details=root.querySelector<HTMLElement>('#afterActionDetails');
-   const open=root.querySelector<HTMLButtonElement>('#afterActionDetailsToggle');
+   const summaryToggle=root.querySelector<HTMLButtonElement>('#afterActionSummaryToggle');
+    const syncSummary=()=>{
+      const current=owners.get(root);if(!current)return;
+      root.classList.toggle('fw-v5-summary-compact',current.summaryCompact);
+      if(summaryToggle){
+        summaryToggle.textContent=current.summaryCompact?'RESULT ▾':'SUMMARY ▴';
+        summaryToggle.setAttribute('aria-expanded',String(!current.summaryCompact));
+        summaryToggle.setAttribute('aria-label',
+          current.summaryCompact?'Expand mission result':'Collapse mission result');
+      }
+    };
+    summaryToggle?.addEventListener('click',()=>{
+      const current=owners.get(root);if(!current)return;
+      current.summaryCompact=!current.summaryCompact;syncSummary();
+    });
+    safeContent.addEventListener('scroll',()=>{
+      const current=owners.get(root);
+      if(!current||current.summaryCompact||safeContent.scrollTop<24)return;
+      current.summaryCompact=true;syncSummary();
+    },{passive:true});
+    const details=root.querySelector<HTMLElement>('#afterActionDetails');
+    const open=root.querySelector<HTMLButtonElement>('#afterActionDetailsToggle');
    const close=root.querySelector<HTMLButtonElement>('#afterActionDetailsClose');
    const dismiss=()=>{if(details){details.hidden=true;open?.focus();}};
    open?.addEventListener('click',()=>{
@@ -194,7 +215,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    if(!models.has(root)&&!root.hidden)renderers.get(root)?.();
    return; // Never destroy selections or scroll on repeated HUD updates.
  }
- root.classList.add('fw-debrief-v3');
+ root.classList.add('fw-debrief-v3','fw-v5-workspace');
  root.classList.remove('fw-debrief-v2');
  const drawTimeline=():void=>{
    const s=owners.get(root),host=root.querySelector<HTMLElement>(
@@ -333,11 +354,20 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        String(tabButton.dataset.afterTab===s.tab));
    if(intel)intel.hidden=!s.showIntel;
    if(raw)raw.hidden=false;
-   root.classList.toggle('fw-v4-record-open',s.tab==='squad'&&s.operatorRecordOpen);
+   root.classList.toggle('fw-v5-summary-compact',s.summaryCompact);
+    const summary=root.querySelector<HTMLButtonElement>('#afterActionSummaryToggle');
+    if(summary){
+      summary.textContent=s.summaryCompact?'RESULT ▾':'SUMMARY ▴';
+      summary.setAttribute('aria-expanded',String(!s.summaryCompact));
+      summary.setAttribute('aria-label',
+        s.summaryCompact?'Expand mission result':'Collapse mission result');
+    }
+    root.classList.toggle('fw-v4-record-open',s.tab==='squad'&&s.operatorRecordOpen);
    root.classList.toggle('fw-v4-squad-active',s.tab==='squad');
    const choose=(id:string|null)=>{
      if(id===s.selectedOperator&&s.tab==='squad'&&!s.operatorRecordOpen)return;
-     s.selectedOperator=id;s.operatorRecordOpen=false;s.tab='squad';draw();
+     s.selectedOperator=id;s.operatorRecordOpen=false;s.tab='squad';
+      s.summaryCompact=true;draw();
      // Redraw replaces buttons; keep keyboard/switch access anchored to the
      // corresponding rank choice, not a destroyed DOM element.
      const selectedHeading=id===null?null:safeContent.querySelector<HTMLElement>(
@@ -464,7 +494,8 @@ export type AfterActionReturnContext={
  timelineClusterId?:string|null;timelineLedgerOpen?:boolean;
  timelineLedgerLimit?:number;timelineRailScroll?:number;
  timelineGroupScroll?:number;timelineLedgerScroll?:number;
- operatorRecordOpen:boolean;detailsOpen:boolean;detailsScroll:number;
+ operatorRecordOpen:boolean;summaryCompact?:boolean;
+  detailsOpen:boolean;detailsScroll:number;
  scroll:Partial<Record<AfterActionTab,number>>;
 };
 export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|null{
@@ -495,7 +526,8 @@ export function afterActionSnapshot(root:HTMLElement):AfterActionReturnContext|n
    timelineGroupScroll:s.timelineGroupScroll,
    timelineLedgerScroll:s.timelineLedgerScroll,
    operatorRecordOpen:s.operatorRecordOpen,
-   detailsOpen:!root.querySelector<HTMLElement>('#afterActionDetails')?.hidden,
+    summaryCompact:s.summaryCompact,
+    detailsOpen:!root.querySelector<HTMLElement>('#afterActionDetails')?.hidden,
    detailsScroll:root.querySelector<HTMLElement>('.fw-after-detail-content')?.scrollTop??0,
    scroll:{...s.scroll}};
 }
@@ -537,7 +569,8 @@ export function restoreAfterActionWorkspace(
  s.timelineGroupScroll=Math.max(0,context.timelineGroupScroll??0);
  s.timelineLedgerScroll=Math.max(0,context.timelineLedgerScroll??0);
  s.operatorRecordOpen=context.operatorRecordOpen&&!!context.operatorId;
- s.scroll={...context.scroll};
+  s.summaryCompact=context.summaryCompact??true;
+  s.scroll={...context.scroll};
  const detail=root.querySelector<HTMLElement>('#afterActionDetails');
  if(detail)detail.hidden=!context.detailsOpen;
  renderers.get(root)?.();
