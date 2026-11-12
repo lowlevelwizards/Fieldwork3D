@@ -7,6 +7,7 @@ import {length,targetAngle} from './breach-plan.ts';
 import {generateSite,seeded,type Site,type SiteScale} from './breach-site.ts';
 import type {EncounterContext} from './worldgen/encounter-types.ts';
 import type {OperationKind} from './breach-operations.ts';
+import {resolveMissionKind,captureTargetIndex} from './breach-mission-semantics.ts';
 import type {IntelMode} from './breach-intel.ts';
 import {initialIntel,bindIntelWorld} from './breach-intel.ts';
 import {withActions} from './breach-actor-initial-state.ts';
@@ -168,15 +169,15 @@ export function assembleSession(index=0,siteSeed?:number,
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
     impactMarks:[],battleEvents:[],nextBattleId:1,
     executionEvents:[],nextExecutionId:1,
-    missionType:missionOverride??(site?(['clear','intel','rescue','hold','capture'] as const)[site.seed%5]:'clear'),
+    missionType:resolveMissionKind(site,missionOverride,encounterContext.mission),
     holdTime:0,rescue:null,captureTarget:null,captureSecured:false,
     intelCarrierId:null};
   if(state.missionType==='capture'){
     // Respect the mission-specific target role from the actual encounter.
     // Fallback to the legacy first defender for older saved/practice maps.
-    const targetIndex=site?.encounter?.actors.findIndex(a=>a.role==='target')??-1;
     const fighters=operators.filter(a=>a.side==='red');
-    const target=targetIndex>=0?fighters[targetIndex]:fighters[0];
+    const targetIndex=captureTargetIndex(site,state.missionType,fighters.length);
+    const target=targetIndex>=0?fighters[targetIndex]:undefined;
     state.captureTarget=target?.id??null;
     if(target)state.scenario.objective=clone(target.p);
   }

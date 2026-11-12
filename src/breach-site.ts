@@ -11,6 +11,7 @@ import {buildingIdentity} from './worldgen/building-identity.ts';
 import {measureSiteCompleteness,shouldTryAnotherLayout,preferCompleteCandidate} from './worldgen/site-completeness.ts';
 import {repairDoorwayClutter} from './worldgen/doorway-clutter-repair.ts';
 import {attachEncounterPlan} from './worldgen/encounter-director.ts';
+import {missionForSeed} from './breach-operations.ts';
 import {chooseGenerationIncidentIntent} from './briefing/incident-intent.ts';
 import {describeSiteTopology,preferTopologyCandidate,
  shouldSampleTopologyAlternative} from './worldgen/topology-diversity.ts';
@@ -88,8 +89,7 @@ export function generateSite(seed:number,scale:SiteScale='standard',
  // massing variants when a furniture arrangement blocks the critical route.
  const subtype=buildingIdentity(kind,seed,scale,0).subtype;
  // An optional intent stays fixed across all geometry retries.
- const mission=encounterContext.mission??
-   (['clear','intel','rescue','hold','capture'] as const)[(seed>>>0)%5];
+ const mission=encounterContext.mission??missionForSeed(seed);
  const contextWithIntent:EncounterContext=encounterContext.enableIncidentIntent?
    {...encounterContext,incidentId:chooseGenerationIncidentIntent(
      seed,kind,mission,encounterContext.incidentId)??undefined}:
@@ -107,8 +107,7 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    onProgress?.('layout',attempt);
    const geometry=partitionMotelGuestUnits(
      compileArchitecturalSite(kind,seed+attempt*9973,scale,subtype,
-       encounterContext.mission??
-         (['clear','intel','rescue','hold','capture'] as const)[(seed>>>0)%5]));
+       mission));
    geometry.seed=seed;
    geometry.identity=buildingIdentity(kind,seed,scale,geometry.roomCount);
    onProgress?.('furnishing',attempt);

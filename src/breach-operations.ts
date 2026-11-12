@@ -3,6 +3,11 @@
  * intent and building intelligence, never undiscovered enemy coordinates.
  */
 export type OperationKind='clear'|'intel'|'rescue'|'hold'|'capture';
+export const OPERATION_KINDS=['clear','intel','rescue','hold','capture'] as const;
+/** The one default five-mission selection order used by site, encounter and Session. */
+export const missionForSeed=(seed:number):OperationKind=>
+ OPERATION_KINDS[(seed>>>0)%OPERATION_KINDS.length];
+
 export type OperationBrief={
   code:string;name:string;objective:string;condition:string;
   extraction:string;notes:string;
@@ -104,7 +109,7 @@ export function parseOperationHistory(text:string|null):OperationRecord[]{
     return data.filter((a):a is OperationRecord=>
       a&&typeof a==='object'&&
       Number.isFinite(a.seed)&&typeof a.kind==='string'&&
-      ['clear','intel','rescue','hold','capture'].includes(a.kind)&&
+      OPERATION_KINDS.includes(a.kind as OperationKind)&&
       (a.outcome==='success'||a.outcome==='failure')&&
       typeof a.grade==='string'&&Number.isFinite(a.elapsed)&&
       Number.isFinite(a.casualties)).slice(-HISTORY_LIMIT);
