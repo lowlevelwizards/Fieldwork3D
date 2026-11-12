@@ -54,8 +54,12 @@ test('both orientations of storefront awning have complete edges, ledgers and br
  assert.ok(beams.length>=2,'cantilever brackets must physically slope');
 });
 test('window header carries matching cap rather than leaving white lintel bridge',()=>{
- const site={windows:[{id:'W',x:90,y:180,width:72,vertical:false,
-   style:'storefront',sillHeight:0,headHeight:50}]};
+ const site={seed:4,archetype:'retail',
+   rooms:[{id:'r',kind:'room',x:20,y:40,w:140,h:140}],
+   walls:[],doors:[],cover:[],
+   bounds:{minX:0,minY:0,maxX:300,maxY:300},
+   windows:[{id:'W',x:90,y:180,width:72,vertical:false,
+     style:'storefront',sillHeight:0,headHeight:50}]};
  const {root,box}=fakeHost(),cap=new THREE.MeshStandardMaterial({color:0x222222});
  const trim=new THREE.MeshStandardMaterial({color:0x777777});
  const host={root,box,solid:()=>trim,age:n=>n,track:m=>m,
