@@ -632,7 +632,8 @@ export function buildSiteWorld(site:Site|null,host:SiteSceneBuildPort):void {
       for(const side of [-1,1])
         host.box(hinge,(door.hinge==='b'?-1:1)*width*.7,18,
           side*(profile.leafThickness/2+1),3,4,2,doorTrim,false);
-      const halo=doorSweepArc(door,width);
+      const halo=doorSweepArc(door,width,
+        material=>host.siteMaterials.track(material));
       group.add(halo);
       host.root.add(group);
       const wedge=host.box(frame,0,1.9,6,6,2.7,6,thresholdMat,false);
