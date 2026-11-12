@@ -97,6 +97,22 @@ test('C6 real generated sites satisfy exact physical glazing contracts',()=>{
  assert.ok(interior>=0&&glass>=0);
 });
 
+test('C6 window discovery cache follows Site identity, not repeated seed or window ID',()=>{
+ const opening={...makeWindow('W0',false),x:90,y:40};
+ const room={id:'R',x:40,y:40,w:100,h:100};
+ const first={rooms:[room],windows:[opening],cover:[
+   windowBarrierFootprint(opening)]};
+ const otherWindow={...opening,x:95};
+ const second={rooms:[room],windows:[otherWindow],cover:[
+   {x:150,y:100,w:20,h:20,fixture:'chair'},
+   windowBarrierFootprint(otherWindow)]};
+ const intel={mode:'true-blind',cover:new Set([0])};
+ assert.equal(windowPresentationKnown({site:first,intel},opening),true);
+ assert.equal(windowPresentationKnown({site:second,intel},otherWindow),false,
+  'same window ID in another mission must not reuse old barrier index');
+ intel.cover.add(1);
+ assert.equal(windowPresentationKnown({site:second,intel},otherWindow),true);
+});
 test('C6 structural windows respect briefing modes and previously seen colliders',()=>{
  const opening={...makeWindow('W0',false),x:90,y:40};
  const inside={...opening,id:'IW',y:88,interior:true};
@@ -187,7 +203,9 @@ test('C6 consumers share pane contract without moving simulation or replay',()=>
  assert.match(sync,/map\(windowBarrierFootprint\)/);
  assert.match(floor,/windowPresentationKnown\(state,opening,/);
  assert.match(floor,/windowApertureSegment\(opening\)/);
- assert.match(presentation,/s\.intel\.cover\.has\(i\)&&windowBarrierMatches/);
+ assert.match(presentation,/const coverIndex=windowCoverIndex\(s\.site,window\.id\)/);
+ assert.match(presentation,/physicalWindowCoverIndices=new WeakMap/);
+ assert.match(presentation,/s\.intel\.cover\.has\(coverIndex\)/);
  assert.match(floor,/const bounds=state\.site\?\.bounds\?\?/);
  assert.doesNotMatch(source('worldgen/window-geometry-contract.ts'),
   /stepSession\(|liveVisibility\(|document\.|window\.location|WebGLRenderer|newSession\(/);
