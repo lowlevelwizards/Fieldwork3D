@@ -11,7 +11,40 @@ const solution=():LimbSolution=>({
   bendPlane:new THREE.Vector3(),
   angle:0,requestedReach:0,reached:false
 });
+/** B3 — lower-body component results are staged without touching leg
+ * scene nodes. Stable values/proxies are owned by the existing pose scratch
+ * (one per rig), not by a second animation or contact-history cache.
+ */
+export type LegPoseValues=[
+ number,number,number,number,number,number,number,
+ number,number,number,number
+];
+export type LegPoseTransform={
+ position:THREE.Vector3;quaternion:THREE.Quaternion;scale:THREE.Vector3;
+ visible:boolean;
+};
+export type LegPoseOutputSlot={id:string;values:LegPoseValues};
+export type OperatorLegPoseScratch={
+ initialized:boolean;
+ transforms:LegPoseTransform[];
+ outputs:LegPoseOutputSlot[];
+ shoeRotation:[THREE.Euler,THREE.Euler];
+};
+function createOperatorLegPoseScratch():OperatorLegPoseScratch{
+ const transforms:LegPoseTransform[]=[],outputs:LegPoseOutputSlot[]=[];
+ for(let i=0;i<2;i++)
+  for(const name of ['upper','lower','shoe','ankle']){
+   const visible=name!=='ankle';
+   transforms.push({position:new THREE.Vector3(),quaternion:new THREE.Quaternion(),
+    scale:new THREE.Vector3(1,1,1),visible});
+   outputs.push({id:'leg-'+i+'-'+name,
+    values:[0,0,0,0,0,0,1,1,1,1,visible?1:0]});
+  }
+ return {initialized:false,transforms,outputs,
+  shoeRotation:[new THREE.Euler(),new THREE.Euler()]};
+}
 export type OperatorPoseScratch={
+  legOutput:OperatorLegPoseScratch;
   bodyEuler:THREE.Euler;
   bodyInverse:THREE.Quaternion;
   legs:[LimbSolution,LimbSolution];
@@ -32,6 +65,7 @@ export type OperatorPoseScratch={
 };
 export function createOperatorPoseScratch():OperatorPoseScratch{
   return {
+    legOutput:createOperatorLegPoseScratch(),
     bodyEuler:new THREE.Euler(),bodyInverse:new THREE.Quaternion(),
     legs:[solution(),solution()],
     arms:[solution(),solution()],
