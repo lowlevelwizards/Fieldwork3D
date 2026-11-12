@@ -46,12 +46,12 @@ test('P1.2 openings and shots retain their original LOS decisions',()=>{
 });
 test('P1.2 scene keeps personal replay bypass and full source fallback',()=>{
  const s=source('src/breach-3d.ts');
- assert.match(s,/presentationSight\.begin\(s,this\.presentationSightEnabled/);
+ assert.match(s,/presentationSight\.begin\(s,allowPresentationSightReuse\(/);
  assert.match(s,/!replay&&!replayDisclosurePolicy/);
  assert.match(s,/presentationSight\.reset\(\)/);
  assert.match(s,/presentationSight\.query\(s,'decor',i,p\)/);
  assert.match(s,/presentationSight\.query\(s,'opening',i,p\)/);
  assert.match(s,/s,'door',door\.id,doorCenter\(door\)/);
  assert.match(s,/s,'impact',markIndex,mark\.p/);
- assert.match(s,/presentationSightEnabled=/);
+ assert.match(s,/presentationSightPolicy=presentationSightPolicy\(/);
 });

@@ -111,7 +111,7 @@ export class PerformanceTimeline{
     p.phase,p.camera];
    lines.push(fields.join(','));
   }
-  return lines.join('\\n');
+  return lines.join('\n');
  }
  report(policy:string,view:string):string{
   const latest=this.series[this.series.length-1]?.peak.at??0;

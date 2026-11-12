@@ -20,7 +20,7 @@ test('P1.5c 250ms buckets retain a 1-frame spike after later quiet frames',()=>{
  assert.equal(history.buckets()[0].frames,3);
  assert.equal(history.recentSpikes()[0].peak.scene.actors,58);
  assert.match(history.report('always','iso'),/RAF 166\.0ms/);
- assert.match(history.report('always','iso'),/actors \(largest measured CPU slice\)/);
+ assert.match(history.report('always','iso'),/unattributed frame gap/);
 });
 test('P1.5c bounded 60s history ages out old spikes and resets cleanly',()=>{
  const history=new PerformanceTimeline();
