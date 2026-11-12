@@ -1,0 +1,17 @@
+name: Release 7 squad baseline door check
+on:
+  push:
+    branches:
+      - 'feature/release7-squad-reliability-mainbaseline-*'
+permissions:
+  contents: read
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types scripts/audit-squad-entry-b.mjs
