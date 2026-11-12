@@ -21,6 +21,8 @@ export type CivilianActor={
   /** Known building options are authored from site geometry, not threats. */
   refugePoints:Pt[];
   goal:Pt|null;nav:Pt[];blockedTime:number;retryAt:number;
+  /** Transient bounded refuge re-evaluation clock, no new nav authority. */
+  lastRefugeRecheckAt:number;
   homeRoomId:string;homeZoneId:string|null;appearanceSeed:number;
   rescueTarget:boolean;following:string|null;
   /** Operator physically carrying/dragging this body; exclusive custody. */
@@ -42,7 +44,8 @@ export function createCivilian(spec:CivilianSpec):CivilianActor{
     visualProgress:{},threatEstimate:null,
     routine:(spec.routine??[]).map(p=>({...p})),
     refugePoints:[],routineIndex:0,dwellUntil:0,goal:null,nav:[],
-    blockedTime:0,retryAt:0,homeRoomId:spec.roomId,
+    blockedTime:0,retryAt:0,lastRefugeRecheckAt:-100,
+    homeRoomId:spec.roomId,
     homeZoneId:spec.zoneId??null,appearanceSeed:spec.appearanceSeed,
     rescueTarget:!!spec.isRescueTarget,following:null,carriedById:null,transportMode:null,
     lastEscortRouteAt:-100
