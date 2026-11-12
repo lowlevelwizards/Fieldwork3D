@@ -8,6 +8,21 @@ import {passable,pointToSegment,doorLeafSegment,WALLS,COVER,segmentsCross,
 import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const leafGap=(p:Pt,d:Door)=>pointToSegment(p,doorLeafSegment(d));
+/** Exact swept collision still decides every contact. This conservative
+ * broadphase skips only leaf segments entirely outside the sweep's expanded
+ * axis-aligned bounds. The leaf is sampled once per query; no persistent door
+ * cache can survive a hinge change or a replay seek. */
+function doorsNearSweep(from:Pt,to:Pt,doors:readonly Door[],reach:number):Door[]{
+ const minX=Math.min(from.x,to.x)-reach,maxX=Math.max(from.x,to.x)+reach;
+ const minY=Math.min(from.y,to.y)-reach,maxY=Math.max(from.y,to.y)+reach;
+ return doors.filter(door=>{
+  const leaf=doorLeafSegment(door);
+  return Math.max(leaf.a.x,leaf.b.x)>=minX&&
+    Math.min(leaf.a.x,leaf.b.x)<=maxX&&
+    Math.max(leaf.a.y,leaf.b.y)>=minY&&
+    Math.min(leaf.a.y,leaf.b.y)<=maxY;
+ });
+}
 /** Open leaves are still solid. The door motor can swing them out of the
  * way, but a body cannot ghost through a panel at an intermediate angle. */
 export function bodyClear(p:Pt,doors:Door[],radius=OPERATOR_RADIUS,world?:SessionWorldGeometry){
@@ -17,13 +32,14 @@ export function bodyClear(p:Pt,doors:Door[],radius=OPERATOR_RADIUS,world?:Sessio
 export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
   radius=OPERATOR_RADIUS,world?:SessionWorldGeometry){
   const steps=Math.max(1,Math.ceil(distance(from,to)/4));
-  const trapped=doors.filter(door=>leafGap(from,door)<radius+1);
+  const candidates=doorsNearSweep(from,to,doors,radius+1);
+  const trapped=candidates.filter(door=>leafGap(from,door)<radius+1);
   for(let i=1;i<=steps;i++){
     const f=i/steps;
     const at={x:from.x+(to.x-from.x)*f,
       y:from.y+(to.y-from.y)*f};
     if(!(world?world.passable(at,radius):passable(at,radius)))return false;
-    for(const door of doors){
+    for(const door of candidates){
       const gap=leafGap(at,door);
       if(gap>=radius+1)continue;
       // A leaf can close into an actor. Permit movement away from it;
