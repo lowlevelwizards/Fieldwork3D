@@ -84,6 +84,8 @@ export type OperatorEquipmentPoseScratch={
  initialized:boolean;
  weapons:[EquipmentPoseTransform,EquipmentPoseTransform];
  attachments:EquipmentPoseTransform[];
+ slingTargets:EquipmentPoseTransform[];
+ dropRest:THREE.Vector3;
  weaponOutputs:EquipmentPoseOutputSlot[];
  attachmentOutputs:EquipmentPoseOutputSlot[];
  weaponEuler:THREE.Euler;
@@ -107,8 +109,9 @@ function createOperatorEquipmentPoseScratch():OperatorEquipmentPoseScratch{
   'sling-0','sling-1','sling-2'];
  const output=(id:string):EquipmentPoseOutputSlot=>({
   id,values:[0,0,0,0,0,0,1,1,1,1,1]});
+ const attachments=attachmentIds.map(()=>make());
  return {initialized:false,weapons:[make(),make()],
-  attachments:attachmentIds.map(()=>make()),
+  attachments,slingTargets:attachments.slice(6),dropRest:new THREE.Vector3(),
   weaponOutputs:weaponIds.map(output),
   attachmentOutputs:attachmentIds.map(output),
   weaponEuler:new THREE.Euler(),packEuler:new THREE.Euler(),
