@@ -6,6 +6,7 @@
  */
 import * as THREE from 'three';
 import {GRAPHIC_LIGHT_PROFILE as G} from './rendering/graphic-lighting-profile.ts';
+import {MATERIAL_RESPONSES,visualMaterialRole,type VisualMaterialRole} from './rendering/material-identity.ts';
 import type {StudioLightLabSettings,StudioCelProfile}
  from './operator-studio-light-lab.ts';
 import {operatorRimRole,injectOperatorRim}
@@ -216,15 +217,16 @@ export function ensureStudioRimBounds(geometry:THREE.BufferGeometry):boolean{
 export function injectStudioGraphicLighting(
  shader:{vertexShader:string;fragmentShader:string},
  opts:{rim:StudioLightLabSettings['rim'];hard:boolean;
- gradient:StudioLightLabSettings['gradient'];litRim?:boolean}
+ gradient:StudioLightLabSettings['gradient'];litRim?:boolean;
+ materialRole?:VisualMaterialRole}
 ):void{
  const begin='#include <begin_vertex>',opaque='#include <opaque_fragment>';
  if(!shader.vertexShader.includes(begin)||!shader.fragmentShader.includes(opaque))
   return;
- const {rim,gradient,litRim=false}=opts;
+ const {rim,gradient,litRim=false,materialRole='neutral'}=opts;
  const piece=gradient==='piece'||gradient==='piece-rose';
  const violet=hasViolet(gradient);
- if(!litRim&&!violet&&!piece){
+ if(!litRim&&!violet&&!piece&&materialRole==='neutral'){
   if(rim==='hard'||rim==='pixel')injectOperatorRim(shader,rim);
   return;
  }
@@ -244,6 +246,19 @@ export function injectStudioGraphicLighting(
    'vFWArtHeight=(modelMatrix*vec4(position,1.0)).y;\n'+
    partBody+rimVertexBody);
  let effect='';
+ // Mild form modulation on existing 3-band output. Toon materials ignore
+ // physical metalness/roughness; this makes semantic finish roles legible
+ // without a second shader pass, glossy Fresnel or painted-on highlight.
+ if(materialRole!=='neutral'){
+  const response=MATERIAL_RESPONSES[materialRole];
+  const n=(v:number)=>v.toFixed(3);
+  effect+=`vec3 fwMaterialKey=normalize((viewMatrix*
+    vec4(${G.keyDirection.map(n).join(',')},0.0)).xyz);
+   float fwMaterialFace=clamp(dot(normalize(normal),fwMaterialKey)*.5+.5,0.0,1.0);
+   float fwMaterialFacing=smoothstep(.52,.91,fwMaterialFace);
+   outgoingLight*=mix(${n(response.shadow)},${n(response.highlight)},fwMaterialFacing);
+  `;
+ }
  if(piece){
   // Reweighted luminance, never a strong violet wash. The dusty variant
   // introduces only a low-saturation gray-rose shift at the lower edge.
@@ -404,7 +419,7 @@ function canToon(m:Source):boolean{
 }
 function makeVariant(source:Source,config:StudioLightLabSettings,
  role:'hard'|'fabric'|'skin'|'matte',useToon:boolean,litRim:boolean,
- diag:StudioGraphicDiagnostics):Variant{
+ materialRole:VisualMaterialRole,diag:StudioGraphicDiagnostics):Variant{
  let variant:Variant;
  if(useToon){
   variant=new THREE.MeshToonMaterial({
@@ -471,13 +486,14 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
    shader.uniforms.fieldworkRimKeyWorld=u.key;
   }
   injectStudioGraphicLighting(shader,{
-   rim:config.rim,hard:role==='hard',gradient:config.gradient,litRim
+   rim:config.rim,hard:role==='hard',gradient:config.gradient,litRim,
+   materialRole
   });
  };
  variant.customProgramCacheKey=()=>[
   'fieldwork-r79',useToon?'toon'+config.toon:'standard',
   litRim?'lit-rim':'no-rim',diag.celAA?'cel-aa':'cel-hard',
-  diag.bakedVertexLighting?'baked-on':'baked-off',role,
+  diag.bakedVertexLighting?'baked-on':'baked-off',role,materialRole,
   (hasViolet(config.gradient)||config.gradient.startsWith('piece'))?
    config.gradient:'normal',
   source.customProgramCacheKey()
@@ -532,6 +548,7 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
    'current':config.gradient;
   const hardSurface=studioContourEligible(node,src);
   const role=hardSurface?'hard':studioArtRole(node,src);
+  const materialRole=visualMaterialRole(src);
   // Every material role uses the same original surface shader and the same
   // authored geometry. No BackSide shell, transparent sprite or extra pass.
   const litRim=rimOn&&hardSurface&&ensureStudioRimBounds(node.geometry);
@@ -541,7 +558,7 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
      !ensureStudioPieceGradient(node.geometry))return;
   active.add(src);
   const useToon=config.toon!==0&&canToon(src);
-  const key=[config.toon,gradient,role,litRim?'rim':'matte',
+  const key=[config.toon,gradient,role,materialRole,litRim?'rim':'matte',
    diag.celAA?'edge-aa':'hard-edge',
    diag.bakedVertexLighting?'baked':'no-bake',
    useToon?'toon':'standard'].join(':');
@@ -550,7 +567,7 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
   let entry=variants.get(key);
   if(!entry){
    entry={signature:key,material:makeVariant(src,{...config,gradient},
-    role,useToon,litRim,diag)};
+    role,useToon,litRim,materialRole,diag)};
    variants.set(key,entry);
   }else if(entry.material instanceof THREE.MeshToonMaterial)
    copyToon(entry.material,src);

@@ -3,6 +3,8 @@ import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
   from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
+import {applyWorldSurfaceResponse} from './rendering/material-identity.ts';
+
 import {GRAPHIC_LIGHT_PROFILE as G,configureGraphicRendererOutput} from './rendering/graphic-lighting-profile.ts';
 import {SiteMaterialLifetime} from './rendering/site-material-lifetime.ts';
 import {releaseSiteSceneObjects} from './rendering/site-scene-lifecycle.ts';
@@ -693,6 +695,7 @@ export class TacticalScene3D{
     if(!material){
       material=mat(hex,roughness);
       if(surface){
+        applyWorldSurfaceResponse(material,surface);
         material.userData.pixelSurface=surface;
         if(this.pixelTexturesEnabled)material.map=this.pixelTextures.get(surface);
       }
