@@ -3883,3 +3883,42 @@ body.replaying .replay-follow-status[data-grade]::after{
 .fw-v6-record-description{flex:1 1 160px;font:750 12px/1.35 var(--ui-display)}
 .fw-v6-record-meta{font:700 11px var(--fw-font-data),var(--ui-display);
  color:#ecd3ab;white-space:nowrap}
+
+/* V6.3 — forensic contact identity and shot controls stay with the model. */
+.fw-v5-workspace .fw-v6-contact-header{display:flex;align-items:baseline;
+ flex-wrap:wrap;justify-content:space-between;gap:5px 12px;padding:3px 2px;
+ color:#eee6d5}
+.fw-v6-contact-header strong{font:800 18px var(--ui-display)}
+.fw-v6-contact-header span{font:750 11px var(--ui-display);color:#e3bc92}
+.fw-v6-inspection-column{display:flex;flex-direction:column;gap:7px;
+ min-width:0;min-height:0}
+.fw-v6-inspection-tools{display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:5px;min-width:0}
+.fw-v5-workspace .fw-v6-inspection-tools .fw-v4-forensic-scope{
+ display:flex;gap:4px;max-width:100%;min-width:0}
+.fw-v5-workspace .fw-v6-inspection-tools .fw-v4-scope-choice{flex:0 1 auto}
+.fw-v5-workspace .fw-v6-inspection-tools .fw-v4-inspection-switch{
+ display:flex;gap:4px}
+.fw-v5-workspace .fw-v6-inspection-column .fw-v3-combat-figure{
+ flex:0 0 auto;min-height:230px}
+.fw-v5-workspace .fw-v6-inspection-column .fw-v3-shot-sequence{
+ width:100%;box-sizing:border-box}
+.fw-v5-workspace .fw-v6-watch-clip{
+ margin:0;min-height:44px;width:100%}
+.fw-v6-evidence-caveat{font:700 11px/1.5 var(--ui-font);
+ color:#f0cfaa;background:#3c382e;padding:7px;border-radius:3px}
+@media(max-width:700px){
+ .fw-v5-workspace .fw-v6-inspection-column .fw-v3-combat-figure,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v6-inspection-column .fw-v3-combat-figure{
+  height:270px;min-height:240px}
+ .fw-v5-workspace .fw-v6-inspection-tools .fw-v3-small-button{
+  padding:5px 7px;min-height:42px}
+}
+@media(min-width:701px) and (max-height:480px){
+ .fw-v5-workspace .fw-v3-combat .fw-v3-combat-focus{
+  grid-row:3;grid-column:1/-1}
+ .fw-v5-workspace .fw-v6-inspection-column .fw-v3-combat-figure,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v6-inspection-column .fw-v3-combat-figure{
+  height:170px;min-height:145px}
+ .fw-v5-workspace .fw-v6-watch-clip{min-height:36px}
+}

@@ -28,7 +28,7 @@ const stamp=(at:number)=>Math.floor(at/60)+':'+
  String(Math.floor(at%60)).padStart(2,'0');
 const status=(c:ContactAfterAction)=>c.resolution==='surrendered'?'SURRENDERED':
  c.resolution==='incapacitated'?'INCAPACITATED':'UNRESOLVED';
-const outcome=(s:ReportShot)=>s.down?'INCAPACITATING HIT':
+const outcome=(s:ReportShot)=>s.down&&s.outcome==='damaging'?'INCAPACITATING HIT':
  s.outcome==='armor-stopped'?'ARMOR STOP':
  s.outcome==='non-damaging'?'NO DAMAGE':
  s.outcome==='damaging'?'WOUND':
@@ -83,6 +83,10 @@ export function renderCombatReport(
      'NO HOSTILE CONTACTS RECORDED':'NO RECORDED SQUAD CASUALTIES'));
    return root;
  }
+ const contactHeader=el('header','fw-v6-contact-header');
+ contactHeader.append(el('strong','',active.name),
+   el('span','',status(active)));
+ root.append(contactHeader);
  const selected=active.shots.find(s=>s.id===view.selectedShotId)??
    active.shots.find(s=>s.id===active.finalShotId)??
    active.shots.at(-1)??null;
@@ -97,8 +101,10 @@ export function renderCombatReport(
    choice.setAttribute('aria-pressed',String(view.scope===scope));
    scopeBar.append(choice);
  }
- controls.append(scopeBar);
+ // Scope selection belongs beside the figure and its shot sequence.
  const content=el('div','fw-v3-combat-focus');
+ const figureColumn=el('div','fw-v6-inspection-column');
+ const figureTools=el('div','fw-v6-inspection-tools');
  const figure=el('div','fw-v3-combat-figure');
  const figureToolbar=el('div','fw-v3-switch fw-v4-inspection-switch');
  for(const mode of ['paper','3d'] as const){
@@ -107,7 +113,8 @@ export function renderCombatReport(
  }
  // View mode remains accessible even when a shallow landscape screen leaves
  // little vertical room for the figure itself.
- controls.append(figureToolbar);
+ figureTools.append(scopeBar,figureToolbar);
+ figureColumn.append(figureTools,figure);
  if(view.inspectionMode==='paper'){
   const pose=el('div','fw-v3-switch');
   for(const back of [false,true]){
@@ -144,12 +151,15 @@ export function renderCombatReport(
    right.append(shotDetails(selected,shooter?.name??selected.shooterId));
  }
  else right.append(el('p','fw-after-muted','NO RECORDED SHOTS'));
- right.append(button('▶ WATCH CLIP',()=>act.viewReplay(active,selected),'fw-v3-play'));
- content.append(figure,right);root.append(content);
+ if(selected?.down&&selected.outcome!=='damaging')
+   right.append(el('p','fw-v6-evidence-caveat',
+     'DOWN STATE RECORDED · SELECTED IMPACT HAS NO VERIFIED TISSUE DAMAGE'));
+ content.append(figureColumn,right);root.append(content);
  if(active.shots.length){
    const shotIndex=active.shots.findIndex(s=>s.id===selected?.id);
-   root.append(el('small','fw-v5-shot-position',
-     'SHOT '+(shotIndex+1)+' OF '+active.shots.length));
+   figureColumn.append(el('small','fw-v5-shot-position',
+     'SHOT '+(shotIndex+1)+' OF '+active.shots.length+
+     ' · '+outcome(selected!)));
    const sequence=el('div','fw-v3-shot-sequence');
    const prev=button('‹',()=>{
      const idx=active.shots.findIndex(s=>s.id===selected?.id);
@@ -174,7 +184,9 @@ export function renderCombatReport(
    },'fw-v3-shot-step');
    next.disabled=selected?.id===active.shots.at(-1)?.id;
    sequence.append(prev,rail,next);
-   root.append(sequence);
+   figureColumn.append(sequence);
  }
+ figureColumn.append(button(selected?'▶ WATCH SHOT CLIP':'▶ WATCH INCIDENT',
+   ()=>act.viewReplay(active,selected),'fw-v3-play fw-v6-watch-clip'));
  return root;
 }
