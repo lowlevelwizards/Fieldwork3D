@@ -25,6 +25,7 @@ import {localDetour} from './breach-cooperation.ts';
 import {discoverContactCover} from './breach-intel.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {d,clone,angle,clamp,type ActorMotorHooks} from './breach-motor-contract.ts';
+import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
 
 export function resolveMotorCollision(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
@@ -128,9 +129,26 @@ export function resolveMotorCollision(
       return true;
     }
   }
-  if(!normalClear&&narrowClear&&!a.squeeze&&
-     (approachingNarrowThreshold(a.p,p,s.doors)||
-      twoSidedSqueezePressure(a.p,desiredMove,s.doors,world))){
+  // Leave a moving leaf to its physical hinge. A passing door can make
+  // narrow-profile collision look legal for a frame even though ordinary
+  // shoulder travel will become available as the panel finishes opening.
+  const possibleSqueeze=!normalClear&&narrowClear&&!a.squeeze;
+  const nearNarrow=possibleSqueeze&&
+    approachingNarrowThreshold(a.p,p,s.doors);
+  const leafMoving=possibleSqueeze&&s.doors.some(door=>
+    door.open&&!door.wedged&&!door.heldBy&&
+    Math.abs(door.angularVelocity??0)>.08&&
+    pointToSegment(desiredMove,doorLeafSegment(door))<OPERATOR_RADIUS+12);
+  if(shouldEnterSqueeze({
+    fullBodyClear:normalClear,narrowBodyClear:narrowClear,
+    alreadySqueezing:a.squeeze,closedDoor:closed,
+    doorAdvancing:!!doorContact?.advanced,leafMoving,
+    traversalPending:!!a.traversalPending,
+    nearNarrowThreshold:nearNarrow,
+    opposingPressure:possibleSqueeze&&!nearNarrow&&
+      !leafMoving&&!closed&&
+      twoSidedSqueezePressure(a.p,desiredMove,s.doors,world)
+  })){
     a.squeeze=true;a.squeezeYaw=sidewaysYaw;a.squeezeTime=0;
     a.velocity=0;
     // Alignment is a real, short stationary transition, not a teleport.
