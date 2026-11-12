@@ -1,0 +1,31 @@
+name: Release 7 squad execution critical
+on:
+  push:
+    branches:
+      - 'feature/release7-squad-reliability-*'
+  pull_request:
+    paths:
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - 'src/breach-passage.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-entry-lanes.ts'
+      - 'tests/squad-entry-b-*.test.mjs'
+      - '.github/workflows/release7-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  squad-execution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Critical real-motor, queue, and authored-attention regressions
+        run: |
+          node --experimental-strip-types --test tests/squad-flow-a1.test.mjs tests/doorway-convoy-flow.test.mjs tests/squad-entry-b-sectors.test.mjs tests/squad-entry-b-continuity.test.mjs tests/breach-149.test.mjs
+      - name: Generated R7.1 execution smoke (observability only)
+        run: node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 3 600
