@@ -3,7 +3,8 @@
  * The fixed-tick simulation owns committing BOTH actor positions together. */
 import type {Pt} from './breach-core.ts';
 import type {CivilianActor} from './breach-civilian-types.ts';
-import type {MotionProposal,MotionDecision} from './breach-movement-authority.ts';
+import {sweptPairMayTouch,type MotionProposal,type MotionDecision}
+ from './breach-movement-authority.ts';
 import {casualtyTrailingPosition,transportIsClear,type TransportMode}
  from './breach-casualty-transport.ts';
 
@@ -88,7 +89,9 @@ export function reconcileCivilianTransportFrame(
     if(other.id===carrierId||other.id===bodyId||
        !other.alive||other.carried)continue;
     const movement=resolved.get(other.id);
-    if(!movement||!crosses(bodyStart.from,body.point,
+    if(!movement||!sweptPairMayTouch(bodyStart.from,body.point,
+      other.from,movement.point,20))continue;
+    if(!crosses(bodyStart.from,body.point,
       other.from,movement.point))continue;
     const otherMoved=distance(other.from,movement.point)>.0001;
     const safeToYield=otherMoved&&
