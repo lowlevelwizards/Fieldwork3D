@@ -14,6 +14,8 @@ on:
       - 'tests/package-b3-lower-body-output.test.mjs'
       - 'tests/package-b4-upper-body-output.test.mjs'
       - 'tests/package-b5-equipment-output.test.mjs'
+      - 'tests/package-b6-frame-body-output.test.mjs'
+      - 'src/breach-operator-frame-output.ts'
       - 'src/breach-operator-equipment-output.ts'
       - 'src/breach-operator-sling-pose.ts'
       - 'src/operator-pose-cavity-lighting.ts'
@@ -71,6 +73,9 @@ jobs:
       - name: B5 weapon, magazine, drop, sling and equipment direct parity
         run: |
           node --experimental-strip-types --test tests/package-b5-equipment-output.test.mjs
+      - name: B6 six direct owners, working body frame, replay and parent-space parity
+        run: |
+          node --experimental-strip-types --test tests/package-b6-frame-body-output.test.mjs
       - name: Posed frame, replay seeks, V3/V4 contacts, motion and Lab parity
         run: |
           node --experimental-strip-types --test --test-concurrency=2 \
