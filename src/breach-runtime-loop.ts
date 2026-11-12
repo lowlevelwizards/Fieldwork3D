@@ -331,7 +331,20 @@ function tick(now:number){
       let maxMs=0;
       for(const [name,ms] of simPhaseCosts)
        if(ms>maxMs){hotSim=name;maxMs=ms;}
-      if(maxMs>0)hotSim+=' '+maxMs.toFixed(1)+'ms';
+      if(maxMs>0){
+       const owner=hotSim;
+       // Parent operator timing still measures the whole actor. Display
+       // nested diagnostic CPU slices as additional context instead of
+       // incorrectly allowing their overlapping costs to sum as work.
+       let detail='';
+       if(owner.startsWith('operator-')&&!owner.includes('/')){
+        const stages=[...simPhaseCosts].filter(([name])=>
+          name.startsWith(owner+'/')).sort((a,b)=>b[1]-a[1]).slice(0,3);
+        if(stages.length)detail=' ['+stages.map(([name,ms])=>
+          name.slice(owner.length+1)+' '+ms.toFixed(0)).join(', ')+']';
+       }
+       hotSim+=' '+maxMs.toFixed(1)+'ms'+detail;
+      }
     }
     currentHotSim=hotSim;
     if(perfTimeline){

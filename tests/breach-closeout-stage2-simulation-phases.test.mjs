@@ -75,6 +75,31 @@ test('Stage 2: optional phase probes cannot modify simulation state or consume R
  assert.deepEqual(a.executionEvents,b.executionEvents);
  assert.deepEqual(a.battleEvents,b.battleEvents);
 }));
+test('P2.3 operator profiling splits threat, order and motor without extra ticks',()=>round(()=>{
+ const site=stage1DoorSite();
+ const a=newSession(0,undefined,'full-view','small','hold',site);
+ const b=newSession(0,undefined,'full-view','small','hold',site);
+ toggling(a);toggling(b);
+ const names=[];
+ stepSession(a,1/60,(phase,ms)=>{
+  names.push(phase);
+  assert.ok(Number.isFinite(ms)&&ms>=0,'all timings are nonnegative CPU wall times');
+ });
+ stepSession(b,1/60);
+ assert.ok(names.includes('operator-rook/threat-scan'),
+  'operator LOS scan is timed separately');
+ assert.ok(names.includes('operator-rook/orders'),
+  'early-returning orders still report CPU cost');
+ assert.ok(names.includes('operator-rook'),
+  'original total per-operator phase remains available');
+ assert.deepEqual(stage1Snapshot(a),stage1Snapshot(b),
+  'optional diagnostic sections never alter authoritative state');
+ const movement=readFileSync(new URL('../src/breach-order-movement.ts',
+  import.meta.url),'utf8');
+ assert.match(movement,/profile\('motor',performance\.now\(\)-start\)/);
+ assert.equal((movement.match(/\bmove\(a,/g)??[]).length,4,
+  'all original movement-order motor entry points are profiled');
+}));
 test('Stage 2: stopped phases neither age effects nor create execution events',()=>round(()=>{
  const s=newSession(0,undefined,'full-view','small','hold',stage1DoorSite());
  const before=stage1Snapshot(s),nextId=s.nextExecutionId;

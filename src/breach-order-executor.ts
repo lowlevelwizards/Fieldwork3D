@@ -34,14 +34,20 @@ export function createOrderExecutor(port:OrderExecutionPort){
    fail:(s,a,n,reason)=>failCurrentOrder(s,a,n,reason,port.notify),
    clearIssue:clearCurrentOrderIssue,rotate,battleEvent:port.battleEvent
  };
- return function runOrders(s:Session,a:TeamActor,dt:number):void{
+ return function runOrders(s:Session,a:TeamActor,dt:number,
+  profile?:((section:string,elapsedMs:number)=>void)):void{
   // Player-authored positions are sacred. Traffic steering only moves the
   // actor who requested movement, never a stationary friend or held stack.
   const n=a.plan[0];
   a.motorPause=null;
   // An airborne crossing must reach a verified landing before combat pause,
   // waypoint completion, or fresh orders can resume.
-  if(a.traversal){port.advanceTraversal(a,s,dt);return;}
+  if(a.traversal){
+   const start=profile?performance.now():0;
+   port.advanceTraversal(a,s,dt);
+   if(profile)profile('traversal',performance.now()-start);
+   return;
+  }
   // A short, validated muzzle-clearance step never edits the player's plan.
   // Complete or expire it before resuming the original waypoint motor.
   if(a.fireRetreatTarget){
@@ -56,8 +62,15 @@ export function createOrderExecutor(port:OrderExecutionPort){
   }
   // A confirmed visible threat can temporarily interrupt authored attention.
   // This is reactive execution only; it never modifies the player's plan.
+  const threatStart=profile?performance.now():0;
   const visibleThreat=s.operators.filter(e=>e.side==='red').filter(e=>e.health>0&&port.inSight(a,e,s))
     .sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
+  if(profile)profile('threat-scan',performance.now()-threatStart);
+  const orderStart=profile?performance.now():0;
+  // One measured scope encloses every early return from authored-order
+  // execution. It reports elapsed order CPU without editing a plan or
+  // interrupting traversal, collision, or door decisions.
+  try{
   if(a.carryingId&&
      (n?.kind!=='evacuate'||n.patientId!==a.carryingId)&&
      (n?.interaction!=='release-civilian'||n.objectId!==a.carryingId)){
@@ -90,11 +103,14 @@ export function createOrderExecutor(port:OrderExecutionPort){
    if(executeEntryOrder(s,a,n,dt))return;
    if(executeMedicalOrder(s,a,n,dt))return;
    if(executeInteractionOrder(s,a,n,dt))return;
-   if(executeMovementOrder(s,a,n,dt,visibleThreat))return;
+   if(executeMovementOrder(s,a,n,dt,visibleThreat,profile))return;
    if(n.kind==='holdClear'||n.kind==='wait'){
      advanceWaitOrder(s,a,n,dt,port.inSight,port.notify,completeOrder);return;
    }
    if(executeTacticalUtilityOrder(s,a,n,dt,utilityHooks))return;
    executeDoorOrder(s,a,n,dt);
+  }finally{
+   if(profile)profile('orders',performance.now()-orderStart);
+  }
  };
 }

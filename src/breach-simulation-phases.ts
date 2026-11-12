@@ -64,7 +64,11 @@ export type SimulationPhasePort={
  flashbangs:(s:Session,h:number)=>void;
  visualAwareness:(s:Session,h:number)=>void;
  beliefAging:(s:Session,h:number)=>void;
- actorActions:(s:Session,h:number,markActor?:((id:string)=>void))=>void;
+ /** Optional observational callback. Detailed CPU slices are emitted to the
+  * probe without advancing the sequential phase clock, so parent actor timing
+  * and deterministic phase order remain unchanged. */
+ actorActions:(s:Session,h:number,
+  markActor?:((id:string,section?:string,elapsedMs?:number)=>void))=>void;
  motion:(s:Session,h:number,origins:ReadonlyMap<string,Pt>)=>void;
  contacts:(s:Session)=>void;
  reports:(s:Session)=>void;
@@ -91,7 +95,11 @@ export function advanceSimulationTick(s:Session,h:number,
  port.beliefAging(s,h);
  mark('belief-aging');
  const motionStart=captureMotionFrameOrigins(s.operators,s.civilians);
- port.actorActions(s,h,probe?id=>mark('operator-'+id):undefined);
+ port.actorActions(s,h,probe?(id,section,elapsedMs)=>{
+  if(section!==undefined&&elapsedMs!==undefined)
+   probe('operator-'+id+'/'+section,elapsedMs);
+  else mark('operator-'+id);
+ }:undefined);
  mark('actor-loop');
  port.motion(s,h,motionStart);
  mark('civilian-motion');
