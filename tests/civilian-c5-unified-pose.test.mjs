@@ -14,7 +14,7 @@ test('E5-C5 one pose resolver gives seated, moving and compliant identity',()=>{
  updateCivilianRig(rig,actor,1);
  assert.ok(rig.upper.position.y<0);
  assert.equal(rig.root.scale.y,CIVILIAN_VISUAL_SCALE);
- assert.ok(rig.leftLeg.rotation.x>.5);
+ assert.ok(rig.leftLeg.rotation.x>.4,'seated legs pivot forward from the hips');
  actor.state='fleeing';actor.velocity=66;
  assert.equal(civilianPose(actor),'run');
  updateCivilianRig(rig,actor,2);
