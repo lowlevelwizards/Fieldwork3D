@@ -52,6 +52,7 @@ export class EncounterBehaviorSurvey{
    this.initialHealth.set(c.id,c.health);
   }
   for(const actor of s.site?.encounter?.actors??[]){
+   if(!actor.roomId)continue;
    this.roomOccupancy[actor.roomId]=(this.roomOccupancy[actor.roomId]??0)+1;
   }
   for(const c of s.civilians){
@@ -60,8 +61,7 @@ export class EncounterBehaviorSurvey{
  }
  sample(s:Session,dt:number){
   this.samples++;
-  this.shots=Math.max(this.shots,s.shots.length+
-   (s.nextShotId-s.shots.length-1)); // monotonic shot IDs survive capped buffers
+  this.shots=Math.max(this.shots,s.nextShotId-1); // monotonic IDs survive capped buffers
   const hostiles=s.operators.filter(a=>a.side==='red');
   this.finalHostiles=hostiles.filter(a=>a.health>0).length;
   this.finalCivilians=s.civilians.filter(c=>c.health>0).length;
