@@ -22,6 +22,7 @@ test('operator recenter is correct in 2D and preserves zoom and site bounds',()=
 test('3D selection centers once and never adds a per-frame camera follow',()=>{
  const stage=read('breach-3d.ts'),main=read('breach-main.ts');
  assert.match(stage,/focusOn\(point:Pt\):void/);
+ assert.match(stage,/fitEntryMap\(\):void/);
  assert.match(main,/if\(center&&!replaying\)centerOperatorInView\(actor.p\)/);
  assert.match(main,/selectUnit\(owner,false\)/);
  assert.match(main,/selectUnit\(prior.owner,false\)/);

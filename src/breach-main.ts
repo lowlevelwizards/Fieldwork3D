@@ -510,7 +510,7 @@ function openEntryMapPicker():void{
   hideContextPalette();
   // A north-aligned map fit shows all VERIFIED external entry markers.
   if(stage){
-    cameraMode('top');stage.resetCamera();stage.setYaw(0);
+    cameraMode('top');stage.fitEntryMap();
   }else{
     zoom=1;panX=panY=0;layout();
   }
