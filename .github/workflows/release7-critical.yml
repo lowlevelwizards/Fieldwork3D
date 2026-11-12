@@ -8,6 +8,13 @@ on:
       - 'scripts/audit-r7-squad-execution.mjs'
       - 'scripts/audit-squad-entry-b.mjs'
       - 'src/breach-passage.ts'
+      - 'src/breach-door.ts'
+      - 'src/breach-door-leaf-bypass.ts'
+      - 'src/breach-door-pressure-arbitration.ts'
+      - 'src/breach-motor-door.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-motor-route.ts'
+      - 'tests/release7-*.test.mjs'
       - 'src/breach-game.ts'
       - 'src/breach-entry-lanes.ts'
       - 'tests/squad-entry-b-*.test.mjs'
@@ -29,15 +36,15 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Critical real-motor, queue, and authored-attention regressions
         run: |
-          node --experimental-strip-types --test tests/squad-flow-a1.test.mjs tests/doorway-convoy-flow.test.mjs tests/squad-entry-b-sectors.test.mjs tests/squad-entry-b-continuity.test.mjs tests/breach-149.test.mjs tests/release7-squad-queue.test.mjs tests/release7-order-recovery.test.mjs tests/release7-entry-watch.test.mjs tests/release7-mobile-clarity.test.mjs tests/release7-obstructed-entry-gate.test.mjs
+          node --experimental-strip-types --test tests/squad-flow-a1.test.mjs tests/doorway-convoy-flow.test.mjs tests/squad-entry-b-sectors.test.mjs tests/squad-entry-b-continuity.test.mjs tests/breach-149.test.mjs tests/release7-squad-queue.test.mjs tests/release7-order-recovery.test.mjs tests/release7-entry-watch.test.mjs tests/release7-mobile-clarity.test.mjs tests/release7-door-intent.test.mjs tests/release7-door-leaf-bypass.test.mjs tests/release7-outward-four.test.mjs tests/release7-obstructed-entry-gate.test.mjs
       - name: Generated R7.1 execution smoke (observability only)
         run: node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 3 600
       - name: Release checkpoint - genuine four-operator entry fixtures
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, 'R7 acceptance')
         run: node --experimental-strip-types scripts/audit-squad-entry-b.mjs
       - name: Release checkpoint - eleven seeded real building layouts
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, 'R7 acceptance')
         run: node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 900
       - name: Release checkpoint - typecheck and production build
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, 'R7 acceptance')
         run: npm run build

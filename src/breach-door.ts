@@ -13,7 +13,7 @@ export const DOOR_REACH=39;
 // Fraction * 1.54 radians: a normal OPEN is about 88 degrees,
 // while sustained body pressure may extend it to about 118 degrees.
 // A door should never fold back almost 180 degrees through the room.
-export const PUSHED_OPEN_LIMIT=1.34;
+export const PUSHED_OPEN_LIMIT=1.55;
 /** The actor must approach the leaf or already be in sustained contact. */
 export function approachingDoorLeaf(from:Pt,next:Pt,d:Door):boolean{
  if(!d.open||d.kind==='shutter'||d.kind==='sliding'||d.wedged||d.heldBy)return false;
@@ -352,11 +352,13 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[],
  * operator's own clearance test, so it can yield instead of deadlocking with
  * the operator. A blocked hinge never enables ghosting through the leaf.
  */
-export type BodyDoorContact={doorId:string;advanced:boolean};
+export type BodyDoorContact={doorId:string;advanced:boolean;handAssist?:boolean};
 /** A traffic controller may veto ONLY incidental body-driven closing.
  * Explicit CLOSE orders and opening/hinge swing collision remain unchanged. */
 export type BodyDoorPressurePolicy={
  deferClosing?:(door:Door)=>boolean;
+ /** A physical crossing may pull a reachable door instead of slamming it. */
+ preferOpening?:(door:Door)=>boolean;
 };
 export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   dt:number,actors:readonly Pt[],
@@ -364,7 +366,7 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   const length=dist(from,to);
   if(length<.0001)return null;
   const steps=Math.max(1,Math.ceil(length/2));
-  const nearby:{door:Door;distance:number;closing:boolean}[]=[];
+  const nearby:{door:Door;distance:number;closing:boolean;assist:boolean}[]=[];
   for(const door of doors){
     if(door.kind==='shutter'||door.kind==='sliding'||
        door.wedged||door.heldBy||
@@ -380,7 +382,14 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
     const openingY=-(door.swing??-1)*lx/leafLength;
     const pressure=vx*openingX+vy*openingY;
     if(Math.abs(pressure)<Math.hypot(vx,vy)*.12)continue;
-    const closing=pressure<0;
+    // Crossing intent wins over incidental closing, but never grants
+    // collision bypass. A genuine reachable panel can be pulled by hand;
+    // otherwise the operator must move around the free edge.
+    const crossing=policy.preferOpening?.(door)??false;
+    const assist=crossing&&pressure<0&&
+      dist(from,handlePoint(door))<=DOOR_REACH;
+    const closing=pressure<0&&!assist;
+    if(crossing&&closing)continue;
     // Two friendlies can press opposite faces on consecutive motor ticks.
     // Refuse a *body-driven* CLOSE while another squad member is actively
     // using the aperture; their opening pressure then wins naturally.
@@ -399,7 +408,7 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
     }
     if(minimum>OPERATOR_RADIUS+1.5||
        minimum>before-.015&&before>OPERATOR_RADIUS+1)continue;
-    nearby.push({door,distance:minimum,closing});
+    nearby.push({door,distance:minimum,closing,assist});
   }
   nearby.sort((a,b)=>a.distance-b.distance||
     a.door.id.localeCompare(b.door.id));
@@ -433,7 +442,8 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   // global motor subsequently handles normal animation and swept obstacles.
   advanceDoor(door,Math.min(Math.max(0,dt),1/60),actors,world);
   return {doorId:door.id,
-    advanced:Math.abs((door.openFraction??0)-initial)>.0001};
+    advanced:Math.abs((door.openFraction??0)-initial)>.0001,
+    ...(contact.assist?{handAssist:true}:{})};
 }
 /** An entry gate is clear only when an actual full-size operator capsule
  * can traverse the threshold. Angle percentages are not aperture widths:

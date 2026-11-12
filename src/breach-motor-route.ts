@@ -5,7 +5,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
-import {incidentalCloseWouldBlockTeammate}
+import {incidentalCloseWouldBlockTeammate,operatorCrossingDoor}
  from './breach-door-pressure-arbitration.ts';
 import {escapeOpenDoorOverlap} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
@@ -46,7 +46,8 @@ export function prepareMotorRoute(
         y:a.p.y+(p.y-a.p.y)/goalDistance*probeLength};
       pressDoorOnBodyAttempt(a.p,probe,s.doors,dt,
         s.operators.filter(o=>o.health>0).map(o=>o.p),{
-          deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door)
+          deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door),
+          preferOpening:door=>operatorCrossingDoor(a,door)
         },sessionWorldGeometry(s));
     }
     // When two chairs interlock there may be no navigable path, so the

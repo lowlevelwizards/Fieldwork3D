@@ -11,7 +11,8 @@ import {entryClearanceForLook} from './breach-entry-coordination.ts';
 import {beginAutoSidestep,autoSidestepFacing,watchClearanceAllowed} from './breach-auto-sidestep.ts';
 import {friendlyPassingStep} from './breach-friendly-traffic.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
-import {incidentalCloseWouldBlockTeammate}
+import {doorLeafBypass} from './breach-door-leaf-bypass.ts';
+import {incidentalCloseWouldBlockTeammate,operatorCrossingDoor}
  from './breach-door-pressure-arbitration.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
@@ -54,8 +55,15 @@ export function resolveMotorCollision(
   // when it cannot (wall/actor), existing collision and recovery remain.
   const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
     s.operators.filter(o=>o.health>0).map(o=>o.p),{
-      deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door)
+      deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door),
+      preferOpening:door=>operatorCrossingDoor(a,door)
     },world);
+  // Existing handle reach animation shows a genuine, short support-hand
+  // assist, never an invented door manipulation across the room.
+  if(doorContact?.handAssist&&s.seconds-a.lastDoorAt>.76){
+    a.lastDoorAt=s.seconds;a.lastDoorId=doorContact.doorId;
+    a.lastDoorMethod='open';
+  }
   // The physical transition requires a valid oriented three-point torso
   // sweep; normal clearance remains the preference whenever it fits.
   const normalClear=sweptBodyClear(a.p,desiredMove,s.doors,OPERATOR_RADIUS,world);
@@ -77,6 +85,18 @@ export function resolveMotorCollision(
     // Failed comfort searches must not restart the world-truth recovery
     // clock; it needs uninterrupted stall time to escalate blocked moves.
     a.lastNormalLaneProbeAt=s.seconds;
+    // Prefer actual free-tip footwork to an expensive generic A* recovery.
+    // This temporary leg route never rewrites an authored MOVE or WATCH.
+    const leaf=s.doors.find(door=>a.side==='blue'&&
+      operatorCrossingDoor(a,door)&&door.open&&
+      pointToSegment(desiredMove,doorLeafSegment(door))<OPERATOR_RADIUS+56);
+    const bypass=leaf?doorLeafBypass(a.p,p,leaf,
+      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world)):[];
+    if(bypass.length){
+      a.nav=bypass;a.retryRouteAt=0;a.recoveryAttempts=0;
+      a.squeeze=false;a.squeezeTime=0;
+      return true;
+    }
     const laneAt=profile?beginMotorCpuMeasurement():0;
     const fullLane=recoverNormalLane(a.p,p,s.doors,world);
     if(profile)profile('motor-collision-lane',finishMotorCpuMeasurement(laneAt));
