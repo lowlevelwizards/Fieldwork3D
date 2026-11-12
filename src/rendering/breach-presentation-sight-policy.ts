@@ -6,7 +6,7 @@
 import type {Session} from '../breach-game.ts';
 export type PresentationSightPolicy='always'|'planning'|'legacy';
 export function presentationSightPolicy(query:string|null):PresentationSightPolicy{
- return query==='planning'?'planning':query==='legacy'?'legacy':'always';
+ return query==='always'?'always':query==='legacy'?'legacy':'planning';
 }
 export function allowPresentationSightReuse(
  policy:PresentationSightPolicy,phase:Session['phase'],historical:boolean):boolean{
