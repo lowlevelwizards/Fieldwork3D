@@ -54,11 +54,18 @@ export function assignEncounterActivities(site:Site,actors:EncounterActorSpec[],
    const post=observation(false);
    if(post)heading=facing(p,post,heading);
   }else{
-   // Idle + occasional physically verified routine is the honest interim
-   // state until fixture interactions / conversations genuinely exist.
+   // Only real observation of a nearby fixture is represented. No
+   // fictitious working tools, seating, or conversations are generated.
    activity='idle';
-   if(near)heading=facing(p,near,heading);
    if(premise==='hideout')readiness=rng()<.25?'relaxed':'attentive';
+   if(near){
+    heading=facing(p,near,heading);
+    if(readiness==='relaxed'&&
+      ['shelf','rack','gondola-shelf','bookcase','filing-cabinet',
+       'storage-shelf','display-rack','control-panel','workbench',
+       'packing-station','tool-chest'].includes(near.fixture??'')&&
+      rng()<.55)activity='inspecting';
+   }
   }
   return {...a,activity,readiness,heading};
  });

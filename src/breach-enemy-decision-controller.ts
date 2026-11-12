@@ -35,6 +35,7 @@ import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
 import {captureTargetMayWithdraw,shouldProtectObjective} from './breach-ai-mission-response.ts';
 import {retreatDoorClosureEligible,routineDoorClosureEligible} from './breach-ai-door-response.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
+import {localFixtureObservation} from './breach-ai-contextual-observation.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 
 /** The authoritative simulation owns the motor, shot/geometry, visibility and
@@ -105,7 +106,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       return;
     }
   }
-  if(!a.watch)a.watch=watchPoint(a.p,s.doors,world);
+  if(!a.watch)a.watch=(a.encounterActivity==='inspecting'?
+    localFixtureObservation(a.p,world.cover,s.site?.rooms??[]):null)??
+    watchPoint(a.p,s.doors,world);
   const visible=scanEnemyVisualEvidence(s,a,dt,inSight);
   // A guard on the other side of a window can have confirmed sight but
   // an unusable short-stock muzzle. Try the same small backstep available
@@ -338,7 +341,12 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // Quiet functional activities use bounded, collision-checked local journeys.
   // Combat reports, seen contacts, or sounds immediately interrupt the routine.
   if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.encounterRoutine?.length){
-    if(s.seconds<(a.routinePauseUntil??0)){a.velocity=0;return;}
+    if(s.seconds<(a.routinePauseUntil??0)){
+      a.velocity=0;
+      if(a.encounterActivity==='inspecting'&&a.watch)
+        rotate(a,angle(a.p,a.watch),dt);
+      return;
+    }
     const visit=a.routineIndex??0;
     const index=visit%a.encounterRoutine.length;
     const target=a.encounterRoutine[index];
@@ -360,6 +368,11 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
           battleEvent(s,'door',a,doorCenter(door),
             a.name+' CLOSED '+door.id+' AFTER ROUTINE');
         }
+      }
+      if(a.encounterActivity==='inspecting'){
+        const fixture=localFixtureObservation(a.p,world.cover,s.site?.rooms??[]);
+        if(fixture)a.watch=fixture;
+        if(a.watch)rotate(a,angle(a.p,a.watch),dt);
       }
       a.routineIndex=visit+1;
       a.routinePauseUntil=s.seconds+routineDwellSeconds(a.id,
