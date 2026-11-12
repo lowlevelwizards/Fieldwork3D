@@ -148,7 +148,7 @@ test('Stage 4: exactly one public output writer after trauma and sling; no new c
  const commit=script.lastIndexOf('commitOperatorPoseOutput(r,p)');
  assert.ok(final>=0&&commit>final);
  assert.ok(script.lastIndexOf('applyOperatorTraumaPose(r,p,downProgress)')<final);
- assert.ok(script.lastIndexOf('updateOperatorSlingPose(r,p,physicalSpeed,')<final);
+ assert.ok(script.lastIndexOf('solveOperatorDirectSlingPose(r,p,scratch,physicalSpeed)')<final);
  assert.match(rig,/resetOperatorPoseOutput\(rig\)/);
  assert.match(rig,/export \{poseOperator\} from '.\/breach-operator-animation-controller.ts'/);
  for(const source of [out,script]){

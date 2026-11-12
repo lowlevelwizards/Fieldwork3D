@@ -202,8 +202,8 @@ test('B2: the actual evaluator stages solved limbs and late-finalized equipment 
   'finishOperatorPoseFrame(r,p,',
   "stageOperatorPoseOutput(r,p,'frame')",
   "stageOperatorPoseOutput(r,p,'body')",
-  "stageOperatorPoseOutput(r,p,'weapon')",
-  "stageOperatorPoseOutput(r,p,'attachments')",
+  "stageDirectOperatorPoseOutput(r,p,'weapon',",
+  "stageDirectOperatorPoseOutput(r,p,'attachments',",
   'commitOperatorPoseOutput(r,p)'
  ];
  const found=points.map(point=>src.indexOf(point));

@@ -70,9 +70,62 @@ function createOperatorArmPoseScratch():OperatorArmPoseScratch{
   handEuler:[new THREE.Euler(),new THREE.Euler()],
   rockQuaternion:new THREE.Quaternion()};
 }
+/** B5 — one rig-local output for two firearm transforms and nine
+ * attachment/sling transforms. No new scene nodes or render clocks.
+ * These use the same 11-value B2/B3/B4 format.
+ */
+export type EquipmentPoseTransform=LegPoseTransform;
+export type EquipmentPoseOutputSlot=LegPoseOutputSlot;
+export const EQUIPMENT_ATTACHMENT_INDEX={
+ inserted:0,hand:1,detached:2,control:3,medical:4,pack:5,
+ sling0:6,sling1:7,sling2:8
+} as const;
+export type OperatorEquipmentPoseScratch={
+ initialized:boolean;
+ weapons:[EquipmentPoseTransform,EquipmentPoseTransform];
+ attachments:EquipmentPoseTransform[];
+ slingTargets:EquipmentPoseTransform[];
+ dropRest:THREE.Vector3;
+ weaponOutputs:EquipmentPoseOutputSlot[];
+ attachmentOutputs:EquipmentPoseOutputSlot[];
+ weaponEuler:THREE.Euler;
+ packEuler:THREE.Euler;
+ magHandEuler:THREE.Euler;
+ detachedEuler:THREE.Euler;
+ rotationZ:THREE.Quaternion;
+ dropWorldMatrix:THREE.Matrix4;
+ chestWorldInverse:THREE.Matrix4;
+ slingRear:THREE.Vector3;
+ slingFront:THREE.Vector3;
+ slingPoints:[THREE.Vector3,THREE.Vector3];
+};
+function createOperatorEquipmentPoseScratch():OperatorEquipmentPoseScratch{
+ const make=():EquipmentPoseTransform=>({
+  position:new THREE.Vector3(),quaternion:new THREE.Quaternion(),
+  scale:new THREE.Vector3(1,1,1),visible:true});
+ const weaponIds=['held-weapon','dropped-weapon'];
+ const attachmentIds=['inserted-magazine','hand-magazine',
+  'detached-magazine','reload-control','medical-item','backpack',
+  'sling-0','sling-1','sling-2'];
+ const output=(id:string):EquipmentPoseOutputSlot=>({
+  id,values:[0,0,0,0,0,0,1,1,1,1,1]});
+ const attachments=attachmentIds.map(()=>make());
+ return {initialized:false,weapons:[make(),make()],
+  attachments,slingTargets:attachments.slice(6),dropRest:new THREE.Vector3(),
+  weaponOutputs:weaponIds.map(output),
+  attachmentOutputs:attachmentIds.map(output),
+  weaponEuler:new THREE.Euler(),packEuler:new THREE.Euler(),
+  magHandEuler:new THREE.Euler(),detachedEuler:new THREE.Euler(),
+  rotationZ:new THREE.Quaternion(),
+  dropWorldMatrix:new THREE.Matrix4(),
+  chestWorldInverse:new THREE.Matrix4(),
+  slingRear:new THREE.Vector3(),slingFront:new THREE.Vector3(),
+  slingPoints:[new THREE.Vector3(),new THREE.Vector3()]};
+}
 export type OperatorPoseScratch={
   legOutput:OperatorLegPoseScratch;
   armOutput:OperatorArmPoseScratch;
+  equipmentOutput:OperatorEquipmentPoseScratch;
   bodyEuler:THREE.Euler;
   bodyInverse:THREE.Quaternion;
   legs:[LimbSolution,LimbSolution];
@@ -95,6 +148,7 @@ export function createOperatorPoseScratch():OperatorPoseScratch{
   return {
     legOutput:createOperatorLegPoseScratch(),
     armOutput:createOperatorArmPoseScratch(),
+    equipmentOutput:createOperatorEquipmentPoseScratch(),
     bodyEuler:new THREE.Euler(),bodyInverse:new THREE.Quaternion(),
     legs:[solution(),solution()],
     arms:[solution(),solution()],
