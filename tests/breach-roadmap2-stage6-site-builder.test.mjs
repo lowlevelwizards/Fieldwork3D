@@ -140,8 +140,13 @@ test('legacy fallback remains available with its real doors and walls',()=>{
 test('construction and runtime have explicit ownership and site lifecycle',()=>{
  const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  const builder=readFileSync(new URL('../src/rendering/breach-site-scene-builder.ts',import.meta.url),'utf8');
- assert.match(scene,/buildSiteWorld\(site,this\.siteBuildPort\(\)\)/);
- assert.match(scene,/if\(site\)finalizeStaticSiteBatches\(this\.siteBuildPort\(\)\)/);
+ const composition=readFileSync(new URL(
+  '../src/rendering/breach-site-render-composition.ts',import.meta.url),'utf8');
+ assert.match(scene,/this\.composeSiteWorld\(this\.displayedSite\)/);
+ assert.match(scene,/this\.composeSiteWorld\(site\)/);
+ assert.match(scene,/composeBreachSiteRender\(\s*site,this\.siteBuildPort\(\),this\.graphicLookEnabled\)/);
+ assert.match(composition,/buildSiteWorld\(site,host\)/);
+ assert.match(composition,/if\(site\)finalizeStaticSiteBatches\(host\)/);
  assert.match(scene,/this\.siteMaterials\.reset\(\)/);
  assert.match(scene,/this\.staticBatches\.clear\(\)/);
  assert.match(builder,/export function buildGeneratedSite/);

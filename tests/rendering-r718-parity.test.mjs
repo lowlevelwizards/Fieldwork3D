@@ -51,8 +51,10 @@ test('R7.18 architectural shader patches existing standard material once',()=>{
  assert.match(shader.vertexShader,/vFWGraphicHeight/);
  assert.match(shader.fragmentShader,/fwWorldBand/);
  assert.match(shader.fragmentShader,/fwWorldRose/);
- assert.match(shader.fragmentShader,/fwWorldFace<.60/);
- assert.match(shader.fragmentShader,/fwWorldFace<.86/);
+ // F1 replaced the old hard thresholds with AA-smoothed material bands.
+ assert.match(shader.fragmentShader,/fwWorldLow=smoothstep\(/);
+ assert.match(shader.fragmentShader,/fwWorldHigh=smoothstep\(/);
+ assert.match(shader.fragmentShader,/fwidth\(fwWorldFace\)/);
  assert.equal(surface.transparent,false);
  const glass=new THREE.MeshStandardMaterial({transparent:true});
  assert.equal(enableWorldGraphicMaterial(glass),false);
@@ -105,7 +107,9 @@ test('R7.18 tactical render quality remains independent of Studio shadow size',(
  const scene=read('src/breach-3d.ts');
  const material=read('src/operator-studio-graphic-lighting.ts');
  assert.match(scene,/shadow\.mapSize\.set\(this\.quality\.shadowSize/);
- assert.match(scene,/applyWorldGraphicLighting/);
+ assert.match(scene,/composeBreachSiteRender/);
+ const composition=read('src/rendering/breach-site-render-composition.ts');
+ assert.match(composition,/applyWorldGraphicLighting/);
  assert.match(scene,/graphicOperatorRestyles/);
  assert.doesNotMatch(scene,/studioShadowSize\(/);
  assert.doesNotMatch(material,/fwSoftBand|fwSkinTint/);

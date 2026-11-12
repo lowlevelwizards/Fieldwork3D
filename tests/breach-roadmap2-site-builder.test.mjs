@@ -12,7 +12,9 @@ test('site material policy remains a complete color catalog',()=>{
 test('scene delegates deterministic micro-debris geometry instead of duplicating it',()=>{
  const scene=source('breach-3d.ts'),siteBuilder=source('rendering/breach-site-scene-builder.ts'),
   builder=source('rendering/breach-site-micro-debris.ts');
- assert.match(scene,/buildSiteWorld\(site,this\.siteBuildPort\(\)\)/);
+ const composition=source('rendering/breach-site-render-composition.ts');
+ assert.match(scene,/composeBreachSiteRender\(/);
+ assert.match(composition,/buildSiteWorld\(site,host\)/);
  assert.match(siteBuilder,/buildSiteMicroDebrisMeshes\(site/);
  assert.doesNotMatch(scene,/planMicroDebris\(site\)/);
  assert.match(builder,/planMicroDebris\(site\)/);

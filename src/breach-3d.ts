@@ -6,8 +6,9 @@ import * as THREE from 'three';
 import {GRAPHIC_LIGHT_PROFILE as G,configureGraphicRendererOutput} from './rendering/graphic-lighting-profile.ts';
 import {SiteMaterialLifetime} from './rendering/site-material-lifetime.ts';
 import {releaseSiteSceneObjects} from './rendering/site-scene-lifecycle.ts';
-import {buildSiteWorld,finalizeStaticSiteBatches,type SiteSceneBuildPort}
- from './rendering/breach-site-scene-builder.ts';
+import type {SiteSceneBuildPort} from './rendering/breach-site-scene-builder.ts';
+import {composeBreachSiteRender} from './rendering/breach-site-render-composition.ts';
+import {replaceTacticalFogGeometry} from './rendering/breach-fog-mesh-composition.ts';
 
 import {APPROVED_GRAPHIC_LIGHTING}
  from './operator-studio-light-lab.ts';
@@ -15,7 +16,6 @@ import {STUDIO_INSPECTION_LIGHT,STUDIO_KEY_DIRECTION,studioShadowPalette}
  from './operator-studio-lighting.ts';
 import {applyStudioGraphicLighting}
  from './operator-studio-graphic-lighting.ts';
-import {applyWorldGraphicLighting} from './breach-graphic-world-lighting.ts';
 import {BreachCombatEffectsPresenter} from './rendering/breach-combat-effects-presenter.ts';
 import {presentActor,presentDecor,presentArchitecturalOpening,
   presentUnrecordedRescueMarker,resolveDoorPresentation}
@@ -90,7 +90,7 @@ import {WALL_VISUAL_HEIGHT} from './breach-door-proportions.ts';
 import {paintFogMemory,paintFogVisibility,occupiedFogRooms,
   FOG_WIDTH,FOG_HEIGHT,maskSize,type FogDiagnostic}
   from './breach-fog-mask.ts';
-import {exteriorKnownFogRects,fogUvAt} from './breach-fog-domain.ts';
+
 import {fogSessionFingerprint,fogMemoryFingerprint} from './breach-fog-cache.ts';
 import {wallOccludesFriendly,transitionWallOpacity} from './breach-camera-occlusion.ts';
 import type {ReplayPresentation} from './breach-replay-motion.ts';
@@ -742,10 +742,8 @@ export class TacticalScene3D{
     this.sun.shadow.bias=-.00012;this.sun.shadow.normalBias=.16;
     this.scene.add(this.sun,this.sun.target);
     this.scene.add(this.root,this.effects);
-    this.buildWorld();
-    if(this.graphicLookEnabled)
-     this.graphicWorldMaterialCount=
-      applyWorldGraphicLighting(this.root).materials;
+    // First paint and mission reload now use the same build/batch/grade path.
+    this.composeSiteWorld(this.displayedSite);
     if(this.displayedSite)this.view.zoom=1.48;
     // Architectural silhouettes remain visible (as in the 2D map), but
     // unknown cells are strongly darkened. Unseen soldiers and door states
@@ -980,8 +978,8 @@ export class TacticalScene3D{
       effect.material.dispose();effect.impactMaterial.dispose();
     }
     this.effectCache.clear();
-    // Resize fog in the same authoritative coordinates used by nav/camera.
-    const bounds=site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+    // Only the site-dependent fog MESH geometry changes here.
+    // Canvas and its disclosure/painting rules remain owned by this scene.
     const fogSize=maskSize(site);
     if(this.fogCanvas.width!==fogSize.width)this.fogCanvas.width=fogSize.width;
     if(this.fogCanvas.height!==fogSize.height)this.fogCanvas.height=fogSize.height;
@@ -989,42 +987,9 @@ export class TacticalScene3D{
       this.fogMemoryCanvas.width=fogSize.width;
     if(this.fogMemoryCanvas.height!==fogSize.height)
       this.fogMemoryCanvas.height=fogSize.height;
-    this.smoothFog.geometry.dispose();
-    this.smoothFog.geometry=new THREE.PlaneGeometry(
-      bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
-    this.smoothFog.position.set((bounds.minX+bounds.maxX)/2,
-      1.05,(bounds.minY+bounds.maxY)/2);
-    // One batched, nonoverlapping union of all actual room footprints.
-    // No elevated parallax planes and no N separate draw calls per room.
-    this.exteriorKnownFog.geometry.dispose();
-    const positions:number[]=[],uvs:number[]=[],indices:number[]=[];
-    for(const rect of site?exteriorKnownFogRects(site):[]){
-      const corners=[
-        {x:rect.x,y:rect.y},
-        {x:rect.x,y:rect.y+rect.h},
-        {x:rect.x+rect.w,y:rect.y+rect.h},
-        {x:rect.x+rect.w,y:rect.y}
-      ];
-      const offset=positions.length/3;
-      for(const p of corners){
-        positions.push(p.x,1.05,p.y);
-        const uv=fogUvAt(p,bounds);
-        uvs.push(uv.u,uv.v);
-      }
-      indices.push(offset,offset+1,offset+2,offset,offset+2,offset+3);
-    }
-    const geometry=new THREE.BufferGeometry();
-    geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
-    geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
-    geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-    this.exteriorKnownFog.geometry=geometry;
+    replaceTacticalFogGeometry(this.smoothFog,this.exteriorKnownFog,site);
     this.fogTexture.needsUpdate=true;
-    this.buildWorld(site);
-    if(site)finalizeStaticSiteBatches(this.siteBuildPort());
-    if(this.graphicLookEnabled)
-     this.graphicWorldMaterialCount=
-      applyWorldGraphicLighting(this.root).materials;
+    this.composeSiteWorld(site);
     this.root.add(this.fogUnknown,this.fogExplored);
     this.fogAt=-1;this.lastFogSignature='';this.lastFogSession=null;
     this.lastMemoryFogSignature='';this.lastMemoryFogSession=null;
@@ -1075,8 +1040,11 @@ export class TacticalScene3D{
       coverVisualStates:scene.coverVisualStates
     };
   }
-  private buildWorld(site=this.displayedSite){
-    buildSiteWorld(site,this.siteBuildPort());
+  private composeSiteWorld(site:Site|null):void{
+    // One build port, one ordered composition for initial and swapped sites.
+    const result=composeBreachSiteRender(
+      site,this.siteBuildPort(),this.graphicLookEnabled);
+    this.graphicWorldMaterialCount=result.graphicMaterials;
   }
   resize(w:number,h:number){
     this.width=Math.max(1,w);this.height=Math.max(1,h);
