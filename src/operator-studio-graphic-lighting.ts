@@ -5,6 +5,7 @@
  * values without recompiling a distinct program for every slider position.
  */
 import * as THREE from 'three';
+import {GRAPHIC_LIGHT_PROFILE as G} from './rendering/graphic-lighting-profile.ts';
 import type {StudioLightLabSettings,StudioCelProfile}
  from './operator-studio-light-lab.ts';
 import {operatorRimRole,injectOperatorRim}
@@ -23,7 +24,7 @@ const brightness:Record<StudioCelProfile,
  classic:{shadow:.68,mid:.86,light:1.04},
  soft:{shadow:.77,mid:.92,light:1.04},
  hard:{shadow:.53,mid:.80,light:1.10},
- graphic:{shadow:.43,mid:.72,light:1.14}
+ graphic:{...G.levels}
 };
 export function updateStudioCelRamp(
  bands:2|3,style:StudioCelProfile,low:number,high:number
@@ -429,7 +430,7 @@ function makeVariant(source:Source,config:StudioLightLabSettings,
    coverage:{value:config.rimCoverage},
    angle:{value:config.rimAngleLooseness},
    debug:{value:config.rimDebugMask?1:0},
-   key:{value:new THREE.Vector3(.46,.88,.07).normalize()
+   key:{value:new THREE.Vector3(...G.keyDirection).normalize()
     .applyAxisAngle(new THREE.Vector3(0,1,0),
      THREE.MathUtils.degToRad(config.lightAzimuth))}
   };
@@ -566,7 +567,7 @@ export function applyStudioGraphicLighting(root:THREE.Object3D,
     u.coverage.value=config.rimCoverage;
     u.angle.value=config.rimAngleLooseness;
     u.debug.value=config.rimDebugMask?1:0;
-    u.key.value.set(.46,.88,.07).normalize()
+    u.key.value.set(...G.keyDirection).normalize()
      .applyAxisAngle(new THREE.Vector3(0,1,0),
       THREE.MathUtils.degToRad(config.lightAzimuth));
    }

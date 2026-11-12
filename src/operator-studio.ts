@@ -3,6 +3,7 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {configureGraphicRendererOutput} from './rendering/graphic-lighting-profile.ts';
 import {BREACH_STORAGE_KEYS} from './breach-storage-keys.ts';
 import {applyOperatorHeightLighting} from './operator-height-lighting.ts';
 import {studioLightLabFromQuery,effectiveStudioLightLab,
@@ -164,6 +165,7 @@ const renderer=new THREE.WebGLRenderer({
  canvas,antialias:studioRenderQuality.canvasAA,
  powerPreference:'low-power'
 });
+configureGraphicRendererOutput(renderer);
 renderer.setPixelRatio(studioRenderQuality.pixelRatio);
 renderer.setClearColor(STUDIO_INSPECTION_BACKGROUND);
 const scene=new THREE.Scene();

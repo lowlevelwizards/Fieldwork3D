@@ -4,6 +4,7 @@
  * to operator wardrobe, campaign inventory, combat simulation or replay.
  * Retain the original R7 URL flags as initial presets.
  */
+import {GRAPHIC_LIGHT_PROFILE as G} from './rendering/graphic-lighting-profile.ts';
 import {requestedOperatorToonBands,requestedOperatorRimMode,
  type OperatorToonBands,type OperatorRimMode} from './operator-studio-toon-lighting.ts';
 import {requestedOperatorGradient,type OperatorHeightProfile}
@@ -55,7 +56,7 @@ export const DEFAULT_STUDIO_LIGHT_LAB:Readonly<StudioLightLabSettings>={
 export const APPROVED_GRAPHIC_LIGHTING:Readonly<StudioLightLabSettings>={
  ...DEFAULT_STUDIO_LIGHT_LAB,
  toon:3,rim:'dual',gradient:'piece-rose',shadow:'plum-plus',
- celProfile:'graphic',celLow:.60,celHigh:.86,
+ celProfile:'graphic',celLow:G.lowCutoff,celHigh:G.highCutoff,
  rimAmount:.42,rimWidth:2.0,rimCoverage:.40,
  rimFabricOpacity:0,rimSkinOpacity:0
 };

@@ -7,27 +7,33 @@
  * use the richer shared Studio graphic shader and independent white glints.
  */
 import * as THREE from 'three';
+import {GRAPHIC_LIGHT_PROFILE as G} from './rendering/graphic-lighting-profile.ts';
 
 const FLAG='fieldworkR718WorldGraphic';
 const vertexHeader='varying float vFWGraphicHeight;\n';
 const vertexHeight='vFWGraphicHeight=(modelMatrix*vec4(position,1.0)).y;\n';
+const glsl=(x:number)=>x.toFixed(3);
 export const WORLD_GRAPHIC_FRAGMENT=`
- // R7.18: sun orientation matches the Studio key and its three cel tiers.
- // Quantizing the diffuse contribution rather than replacing materials keeps
- // room darkness, authored paint, lightmaps and atmospheric shadow control.
- vec3 fwWorldKey=normalize((viewMatrix*
-  vec4(.462,.884,.070,0.0)).xyz);
+ // F1: one key and band scale with Studio, but preserve Standard materials.
+ vec3 fwWorldKey=normalize((viewMatrix*vec4(${G.keyDirection.map(glsl).join(',')},0.0)).xyz);
  float fwWorldFace=clamp(dot(normalize(normal),fwWorldKey)*.5+.5,0.0,1.0);
- float fwWorldBand=fwWorldFace<.60?.43:fwWorldFace<.86?.72:1.14;
+ // Screen-pixel antialiasing removes hard shimmering without blurring textures.
+ float fwWorldAA=max(fwidth(fwWorldFace)*.70,.0005);
+ float fwWorldLow=smoothstep(${glsl(G.lowCutoff)}-fwWorldAA,
+   ${glsl(G.lowCutoff)}+fwWorldAA,fwWorldFace);
+ float fwWorldHigh=smoothstep(${glsl(G.highCutoff)}-fwWorldAA,
+   ${glsl(G.highCutoff)}+fwWorldAA,fwWorldFace);
+ float fwWorldBand=mix(mix(${glsl(G.levels.shadow)},
+   ${glsl(G.levels.mid)},fwWorldLow),${glsl(G.levels.light)},fwWorldHigh);
  reflectedLight.directDiffuse*=fwWorldBand/max(.36,fwWorldFace);
- reflectedLight.indirectDiffuse*=mix(.80,1.07,
-  step(.86,fwWorldFace));
- // Slightly stronger dusty-rose height tint; no saturated pink wash.
+ // Indirect light is restrained to keep the graphic shadow band sculptural.
+ reflectedLight.indirectDiffuse*=mix(${glsl(G.indirectShadow)},
+   ${glsl(G.indirectLight)},fwWorldHigh);
  float fwWorldLower=1.0-smoothstep(.05,39.0,vFWGraphicHeight);
  vec3 fwWorldRose=mix(vec3(1.0),vec3(.975,.926,.941),
-  fwWorldLower*.50);
- reflectedLight.directDiffuse*=fwWorldRose*(1.0-.205*fwWorldLower);
- reflectedLight.indirectDiffuse*=fwWorldRose*(1.0-.205*fwWorldLower);
+   fwWorldLower*.50);
+ reflectedLight.directDiffuse*=fwWorldRose*(1.0-${glsl(G.lowerWorldShade)}*fwWorldLower);
+ reflectedLight.indirectDiffuse*=fwWorldRose*(1.0-${glsl(G.lowerWorldShade)}*fwWorldLower);
 `;
 /** Mutate shader hooks only once per unique existing Standard material.
  * This also includes instanced meshes, preserving their batching. */
@@ -49,7 +55,7 @@ export function enableWorldGraphicMaterial(material:THREE.Material):boolean{
   shader.fragmentShader='varying float vFWGraphicHeight;\n'+
    shader.fragmentShader.replace(lights,lights+'\n'+WORLD_GRAPHIC_FRAGMENT);
  };
- material.customProgramCacheKey=()=>previousKey()+':r718-world-3-band-rose';
+ material.customProgramCacheKey=()=>previousKey()+':f1-world-3-band-edge-aa';
  material.userData[FLAG]=true;
  material.needsUpdate=true;
  return true;
