@@ -18,6 +18,10 @@ export type ReportShot={
   precision:ForensicPrecision;damage:number|null;
   weapon:string|null;caliber:string|null;receiver:string|null;
 };
+export type ContributionEvidence={
+ sourceKey:string;category:'combat'|'recon'|'support'|'objective';
+ points:number;at:number;label:string;
+};
 export type OperatorAfterAction={
   id:string;name:string;rank:number;contribution:number;
   status:'active'|'wounded'|'heavy'|'incapacitated'|'unknown';
@@ -25,6 +29,7 @@ export type OperatorAfterAction={
   incapacitations:number;contactReports:number;
   doorsOpened:number|null;doorsForced:number|null;windowsTraversed:number|null;
   categories:{combat:number;recon:number;support:number;objective:number};
+  contributions?:readonly ContributionEvidence[];
 };
 export type ContactAfterAction={
   id:string;name:string;side:'red'|'blue';
@@ -127,6 +132,45 @@ export function buildAfterActionReport(rec:MissionRecorder):AfterActionReport{
       const support=doorsOpened*2+doorsForced*4+windowsTraversed*3;
       const objective=count('objective-secure')*8;
       const categories={combat,recon,support,objective};
+      // Source awards use the same objects and weights as category totals.
+      const awards=new Map<string,ContributionEvidence>();
+      const award=(category:ContributionEvidence['category'],
+        sourceKey:string,at:number,points:number,label:string)=>{
+        if(!Number.isFinite(at)||points<=0)return;
+        const key=category+':'+sourceKey,old=awards.get(key);
+        awards.set(key,{sourceKey,category,points:(old?.points??0)+points,
+          at,label:old?old.label+' / '+label:label});
+      };
+      for(const shot of downed)
+        award('combat','shot:'+shot.id,shot.at,12,'HOSTILE INCAPACITATED');
+      for(const shot of fired){
+        if(shot.outcome==='damaging')
+          award('combat','shot:'+shot.id,shot.at,2,'DAMAGING HIT');
+        if(shot.outcome==='armor-stopped')
+          award('combat','shot:'+shot.id,shot.at,1,'ARMOR STOP');
+      }
+      const seen=new Set<string>();
+      for(const event of notices){
+        const targetId=event.meta?.targetId;
+        if(targetId){
+          if(event.meta?.action!=='spot'||seen.has(targetId))continue;
+          seen.add(targetId);
+        }
+        award('recon','battle:'+event.id,event.t,2,
+          targetId?'DISTINCT CONTACT SPOTTED':'INTELLIGENCE REPORTED');
+      }
+      const supported:Record<string,[ContributionEvidence['category'],number,string]>={
+        'door-open':['support',2,'DOOR OPENED'],
+        'door-forced':['support',4,'DOOR FORCED'],
+        'window-traverse':['support',3,'WINDOW TRAVERSED'],
+        'objective-secure':['objective',8,'OBJECTIVE SECURED']
+      };
+      for(const event of actions){
+        const action=event.meta?.action,entry=action?supported[action]:undefined;
+        if(entry)award(entry[0],'battle:'+event.id,event.t,entry[1],entry[2]);
+      }
+      const contributions=[...awards.values()].sort((a,b)=>
+        a.at-b.at||a.sourceKey.localeCompare(b.sourceKey));
       const injury=status?.injuryStage;
       return {
         id:a.id,name:a.name,rank:0,contribution:combat+recon+support+objective,
@@ -139,7 +183,7 @@ export function buildAfterActionReport(rec:MissionRecorder):AfterActionReport{
         contactReports:intel,doorsOpened:rec.events.some(e=>!!e.meta)?doorsOpened:null,
         doorsForced:rec.events.some(e=>!!e.meta)?doorsForced:null,
         windowsTraversed:rec.events.some(e=>!!e.meta)?windowsTraversed:null,
-        categories
+        categories,contributions
       } satisfies OperatorAfterAction;
     }).sort((a,b)=>b.contribution-a.contribution||a.id.localeCompare(b.id));
   // Competition ranks truthfully reflect equal contribution scores.
