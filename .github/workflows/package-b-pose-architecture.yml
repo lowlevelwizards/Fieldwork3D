@@ -5,7 +5,10 @@ on:
     paths:
       - 'docs/consolidation-package-b-*.md'
       - 'scripts/verification/package-b0-pose-audit.mjs'
+      - 'scripts/verification/pages-queued-run-classification.mjs'
+      - 'scripts/audit-pages-release-checkpoint.mjs'
       - 'tests/package-b0-pose-audit.test.mjs'
+      - 'tests/pages-release-gate.test.mjs'
       - '.github/workflows/package-b-pose-architecture.yml'
       - 'src/breach-operator-*.ts'
       - 'src/breach-pose-*.ts'
@@ -38,7 +41,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: B0 audit fixtures and authoritative ownership census
         run: |
-          node --test tests/package-b0-pose-audit.test.mjs
+          node --test tests/package-b0-pose-audit.test.mjs tests/pages-release-gate.test.mjs
           node scripts/verification/package-b0-pose-audit.mjs --check --json artifacts/package-b0/audit.json --markdown artifacts/package-b0/audit.md
       - name: Posed frame, replay seeks, V3/V4 contacts, motion and Lab parity
         run: |
