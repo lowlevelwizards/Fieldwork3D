@@ -86,14 +86,27 @@ export class BreachPerfTimelinePanel{
    this.detailButton.textContent=this.expandedDetails?'LESS':'DETAILS';
   });
   this.copyButton.addEventListener('click',()=>{
-   const text=this.timeline?.report(this.policy,this.view)??'No history';
-   const detailed=this.timeline?.bucketCSV()??'';
-   const report=text+'\n\n'+detailed;
+   const report=this.timeline?.compactReport(this.policy,this.view)??'No history';
    if(navigator.clipboard?.writeText){
     void navigator.clipboard.writeText(report).then(()=>{
       this.copyButton.textContent='COPIED';
     }).catch(()=>this.selectReport(report));
    }else this.selectReport(report);
+  });
+  this.exportButton.addEventListener('click',()=>{
+   const summary=this.timeline?.report(this.policy,this.view)??'No history';
+   const csv=this.timeline?.bucketCSV()??'';
+   const report=summary+'\n\nFULL 60s HISTORY (250ms bucket peaks)\n'+csv+'\n';
+   const blob=new Blob([report],{type:'text/plain;charset=utf-8'});
+   const url=URL.createObjectURL(blob);
+   const link=document.createElement('a');
+   link.href=url;
+   link.download='fieldwork-perf-'+
+    new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.txt';
+   document.body.appendChild(link);
+   link.click();
+   link.remove();
+   window.setTimeout(()=>URL.revokeObjectURL(url),30000);
   });
   this.canvas.addEventListener('pointerdown',event=>{
    const history=this.timeline?.buckets();
