@@ -28,6 +28,7 @@ export type BreachBootConfig=Readonly<{
  fogDebugPalette:boolean;
  bodycamQa:boolean;
  perfOverlay:boolean;
+ idle3dExperiment:boolean;
  awareness:string|null;
  gpuWarmupEnabled:boolean;
  focusFx:string|null;
@@ -62,6 +63,7 @@ export function parseBreachBootConfig(query:string|URLSearchParams):BreachBootCo
   fogDebugPalette:params.get('fogDebug')==='palette',
   bodycamQa:params.has('bodycamqa'),
   perfOverlay:params.has('perf'),
+  idle3dExperiment:params.get('idle3d')==='30',
   awareness:params.get('awareness'),
   gpuWarmupEnabled:params.get('gpuWarmup')!=='0',
   focusFx:params.get('focusFx')

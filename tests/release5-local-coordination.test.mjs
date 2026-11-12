@@ -22,8 +22,8 @@ test('R5.2 an alarm reporter investigates while new listeners cover',()=>{
   {id:'recipient2',p:p(115,0)}];
  const roles=groupResponse(actors,estimate,{reporter:'investigate'});
  assert.equal(roles.reporter,'investigate');
- assert.equal(roles.recipient1,'watch');
- assert.equal(roles.recipient2,'support');
+ assert.equal(roles.recipient2,'watch','nearest receives watch duty');
+ assert.equal(roles.recipient1,'support','remaining provides support');
  assert.deepEqual(groupResponse([...actors].reverse(),estimate,roles),roles);
 });
 test('R5.2 runtime warnings originate in fresh local evidence and deduplicate',()=>{

@@ -44,10 +44,13 @@ test('A2: default boot values reproduce the existing tactical entry',()=>{
  assert.equal(x.fogDebugPalette,false);
  assert.equal(x.bodycamQa,false);
  assert.equal(x.perfOverlay,false);
+ assert.equal(x.idle3dExperiment,false);
  assert.equal(x.awareness,null);
  assert.equal(x.gpuWarmupEnabled,true);
  assert.equal(x.focusFx,null);
  assert.ok(Object.isFrozen(x),'startup query must not become live mission state');
+ assert.equal(parseBreachBootConfig('?idle3d=30').idle3dExperiment,true);
+ assert.equal(parseBreachBootConfig('?idle3d=anything').idle3dExperiment,false);
  assert.deepEqual(BREACH_LIGHTING_MODES,['day','evening','night','blackout','emergency']);
  assert.deepEqual(BREACH_SITE_SCALES,['standard','expanded','small','medium','large']);
 });
