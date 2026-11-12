@@ -1,6 +1,8 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {type Pt,doorCenter,type Door} from './breach-core.ts';
-import type {WideOpening} from './breach-site.ts';
+import type {WideOpening,WindowOpening} from './breach-site.ts';
+import {windowApertureSegment,windowBarrierMatches}
+ from './worldgen/window-geometry-contract.ts';
 import {preciseGroundEvidenceAt} from './breach-ground-knowledge.ts';
 import {accessibleExteriorWall} from './breach-site-footprint.ts';
 import {type Session,type ShotEvent,liveVisibility,knownAt} from './breach-game.ts';
@@ -69,6 +71,24 @@ export function spatialSurfaceState(s:Session,kind:SpatialSurfaceKind,
  const door=s.doors.find(d=>d.id===key);
  if(door&&liveVisibility(s,doorCenter(door)))return 'visible';
  return s.intel.doorMemory.has(String(key))?'remembered':'briefed';
+}
+/** A generated window is real architecture, but its visual marker must
+ * not expose an undiscovered interior aperture in true-blind replay.
+ * Briefing modes use the existing physical façade contract. Otherwise only
+ * a previously observed, authoritative sill/glass collider grants display.
+ * Personal replay still uses squad architectural knowledge (C3), never
+ * future live LOS to reconstruct past window states.
+ */
+export function windowPresentationKnown(
+  s:Session,window:WindowOpening,omniscient=false
+):boolean{
+ if(!s.site)return false;
+ if(omniscient||s.intel.mode==='full-view'||s.intel.mode==='floor-plan')
+   return true;
+ if(s.intel.mode==='exterior-known'&&!window.interior&&
+   accessibleExteriorWall(s.site,windowApertureSegment(window)))return true;
+ return s.site.cover.some((o,i)=>
+   s.intel.cover.has(i)&&windowBarrierMatches(window,o));
 }
 /** A wide arch or service counter is architecture, but is NOT a wall
  * index or a discovered room. Hide it until it is physically observed,
