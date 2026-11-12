@@ -30,3 +30,24 @@ export function shouldProtectObjective(f:ObjectiveDefenseFacts):boolean{
    f.distanceToPost<=140&&f.distanceOfEvidenceToPost<=240&&
    f.heardActionableEvidence&&!f.directSight&&f.suppression<.7;
 }
+
+/** Mission goal is assigned geography, never knowledge of hostile location.
+ * The same personally heard cue can justify different defensive intentions.
+ * World-safe cover and physical movement remain owned by the motor.
+ */
+export type ObjectiveResponse='hold-post'|'observe-approach'|'investigate';
+export function missionObjectiveResponse(f:ObjectiveDefenseFacts):ObjectiveResponse{
+ if(!f.heardActionableEvidence||f.directSight||f.suppression>=.7)
+  return 'investigate';
+ const assigned=f.role==='sentry'||f.role==='reserve'||f.role==='leader';
+ if(!assigned)return 'investigate';
+ if(f.mission==='hold'&&f.distanceToPost<=175&&
+    f.distanceOfEvidenceToPost<=260)return 'hold-post';
+ if(f.mission==='intel'&&f.distanceToPost<=135&&
+    f.distanceOfEvidenceToPost<=190)return 'hold-post';
+ if(f.mission==='rescue'&&f.distanceToPost<=120&&
+    f.distanceOfEvidenceToPost<=190)return 'observe-approach';
+ if(f.mission==='capture'&&f.distanceToPost<=140&&
+    f.distanceOfEvidenceToPost<=220)return 'observe-approach';
+ return 'investigate';
+}

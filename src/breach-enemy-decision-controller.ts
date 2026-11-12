@@ -32,7 +32,7 @@ import {searchCandidates} from './breach-ai-search.ts';
 import {investigationTempo,stalledInvestigationAction} from './breach-ai-investigation.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
-import {captureTargetMayWithdraw,shouldProtectObjective} from './breach-ai-mission-response.ts';
+import {captureTargetMayWithdraw,missionObjectiveResponse} from './breach-ai-mission-response.ts';
 import {retreatDoorClosureEligible,routineDoorClosureEligible} from './breach-ai-door-response.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {localFixtureObservation} from './breach-ai-contextual-observation.ts';
@@ -280,7 +280,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.defense=null;
     a.alertUntil=s.seconds+(a.personality==='aggressor'?.5:1.4);
     a.contacted=true;
-    const holdAssignedPost=shouldProtectObjective({
+    const objectiveResponse=missionObjectiveResponse({
       mission:s.missionType,role:a.encounterRole,
       distanceToPost:d(a.p,s.scenario.objective),
       distanceOfEvidenceToPost:d(heard,s.scenario.objective),
@@ -290,12 +290,15 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     });
     const needsCover=a.personality==='cautious'||
       (a.personality==='guard'&&a.morale<.65);
-    if(holdAssignedPost){
-      // Objective location is the actor's own assigned post, not enemy intel.
-      // A stationed defender watches the heard approach from verified cover.
+    if(objectiveResponse==='hold-post'){
+      // Objective position is assigned mission geography, not enemy intel.
       a.defense=defensivePosition(a,heard,s);
       a.alert='cover';a.nav=[];a.retreatPoint=null;
       a.defenseUntil=s.seconds+4;
+    }else if(objectiveResponse==='observe-approach'){
+      // Stay near the assigned person/area, watching the heard approach.
+      a.alert='cover';a.nav=[];a.defense=null;a.retreatPoint=null;
+      a.defenseUntil=s.seconds+3;
     }else if(needsCover){
       a.retreatPoint=defensivePosition(a,heard,s);
       a.alert=a.retreatPoint?'retreat':'cover';a.nav=[];
