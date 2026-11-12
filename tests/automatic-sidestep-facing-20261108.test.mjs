@@ -38,13 +38,13 @@ test('motor keeps sidestep facing transient and does not change authored orders'
  const collision=readFileSync(new URL('../src/breach-motor-collision.ts',import.meta.url),'utf8');
  const movement=readFileSync(new URL('../src/breach-order-movement.ts',import.meta.url),'utf8');
  const route=readFileSync(new URL('../src/breach-motor-route.ts',import.meta.url),'utf8');
- const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
+ const locomotion=readFileSync(new URL('../src/breach-pose-locomotion-frame.ts',import.meta.url),'utf8');
  assert.match(collision,/beginAutoSidestep\(a\.p,next,candidate,a\.heading,p,/);
  assert.match(collision,/beginAutoSidestep\(a\.p,next,fullLane\[0\],a\.heading,p,/);
  assert.match(collision,/const heldSide=autoSidestepFacing\(/);
  assert.match(movement,/rotate\(a,facing\?\?angle\(a\.p,a\.nav\[0\]\),dt\)/);
  assert.match(route,/a\.autoSidestep=null;\s*a\.routeGoalKey=goalKey/);
- assert.match(rig,/const lateral=Math\.abs\(Math\.sin\(travel-p\.heading\)\)>\.52/);
+ assert.match(locomotion,/const lateral=Math\.abs\(Math\.sin\(travel-p\.heading\)\)>\.52/);
 });
 
 
