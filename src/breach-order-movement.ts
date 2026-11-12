@@ -24,14 +24,23 @@ const pop=completeOrder;
 export function createMovementOrderHandler(port:OrderExecutionPort){
  const {approach}=port;
  return function executeMovementOrder(s:Session,a:TeamActor,n:PlanNode,dt:number,
-  visibleThreat:TeamActor|undefined):boolean{
+  visibleThreat:TeamActor|undefined,
+  profile?:((section:string,elapsedMs:number)=>void)):boolean{
+  // Only opt-in perf probes allocate the wrapper. Normal fixed-step movement
+  // continues using the original motor callback without extra timing work.
+  const move=profile?((...args:Parameters<typeof approach>)=>{
+   const start=performance.now();
+   const result=approach(...args);
+   profile('motor',performance.now()-start);
+   return result;
+  }):approach;
   if(n.kind==='pie'){
     // Running abandons the cautious corner sweep for ordinary fast travel.
     // The same run override also releases a previously persistent PIE look.
     if(a.pace==='run'){
       a.aimInstruction=null;
       if(near(a.p,n.p,5)){pop(a);return true;}
-      approach(a,n.p,dt,s,1.40);
+      move(a,n.p,dt,s,1.40);
       if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
       return true;
     }
@@ -44,7 +53,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     }else{
       // Pieing advances along the physical arc, gun always oriented
       // toward the doorway pivot rather than tangential travel.
-      approach(a,point,dt,s,.44);
+      move(a,point,dt,s,.44);
     }
     if(n.pivot&&!a.squeeze)rotate(a,angle(a.p,n.pivot),dt);
     return true;
@@ -60,7 +69,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
       sessionWorldGeometry(s).passable(to,OPERATOR_RADIUS)&&
       sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))):null;
   if(settle){
-    approach(a,settle,dt,s,.72);
+    move(a,settle,dt,s,.72);
     return true;
   }
   const at=near(a.p,n.p,5)||(
@@ -76,7 +85,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
       n.aimMode==='track');
     const cautious=!running&&(n.moveMode==='strafe'||tracking);
     // Running temporarily suspends tracking but never deletes WATCH.
-    approach(a,n.p,dt,s,running?1.40:cautious?.70:1);
+    move(a,n.p,dt,s,running?1.40:cautious?.70:1);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     // While wedged sideways, the physical shoulder axis has priority
