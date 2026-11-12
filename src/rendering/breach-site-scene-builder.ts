@@ -19,7 +19,8 @@ import {roomPixelSurface,wallPixelSurface,fixturePixelSurface} from '../worldgen
 import {buildingTheme,roomFloor,roomFixtureFinishes,roomAccessoryColor} from '../worldgen/building-palettes.ts';
 import {effectiveCondition} from '../worldgen/condition-visual.ts';
 import {conditionFloorPixels} from '../worldgen/condition-visual.ts';
-import {conditionWallPixels} from '../worldgen/condition-wall.ts';
+import {conditionWallPixels,wallPatinaDimensions} from '../worldgen/condition-wall.ts';
+import {planWallCapJoins} from './wall-cap-joins.ts';
 import {ageMaterialColor} from './condition-materials.ts';
 import {doubleSidedWallWear} from './wear-wall-geometry.ts';
 import {wearPixels} from './pixel-decals.ts';
@@ -272,8 +273,11 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         node.renderOrder=1002;
       });
     };
+    const capJoins=planWallCapJoins(site.walls);
+    const wallGroups:THREE.Group[]=[];
     for(const [index,wall] of site.walls.entries()){
       const group=new THREE.Group();host.root.add(group);
+      wallGroups[index]=group;
       host.intelSurfaces.push({obj:group,kind:'wall',index});
       const {a,b}=wall,len=Math.hypot(b.x-a.x,b.y-a.y);
       if(len<5)continue;
@@ -289,10 +293,16 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       // Both faces share one deterministic texture, while a single instance
       // controls opacity during close-camera cutaways.
       if(effectiveCondition(site)>0){
-        const texture=new THREE.DataTexture(conditionWallPixels(site,index),64,64,THREE.RGBAFormat);
+        // Keep approximately one weathering texel per world unit along
+        // long walls, rather than stretching the same 64 pixels over
+        // entire retail facades. Height stays a bounded 64 pixels.
+        const {width,height}=wallPatinaDimensions(len);
+        const texture=new THREE.DataTexture(
+          conditionWallPixels(site,index,effectiveCondition(site),width,height),
+          width,height,THREE.RGBAFormat);
         texture.colorSpace=THREE.SRGBColorSpace;
         texture.magFilter=THREE.NearestFilter;
-        texture.minFilter=THREE.LinearMipmapLinearFilter;
+        texture.minFilter=THREE.NearestMipmapNearestFilter;
         texture.generateMipmaps=true;texture.needsUpdate=true;
         const material=new THREE.MeshBasicMaterial({map:texture,transparent:true,
           depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1,
@@ -322,9 +332,24 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
        host.walls.push({mesh:foot,mid:{x,y:z},segment:wall,index,exterior});
       const individualCap=capMat.clone();
       host.wallMaterials.add(individualCap);
-      const cap=host.box(group,x,WALL_VISUAL_HEIGHT+.3,z,len,2,11,
-         individualCap,false);
-      cap.rotation.y=angle;host.walls.push({mesh:cap,mid:{x,y:z},segment:wall,index,exterior});
+      // End-trim joined wall crowns. A distinct, slightly raised joint
+      // covers each seam without coplanar top faces fighting for depth.
+      const [startTrim,endTrim]=capJoins.trims[index];
+      const capLength=Math.max(1,len-startTrim-endTrim);
+      const shift=(startTrim-endTrim)/2;
+      const capX=x+(b.x-a.x)/len*shift;
+      const capZ=z+(b.y-a.y)/len*shift;
+      const cap=host.box(group,capX,WALL_VISUAL_HEIGHT+.3,capZ,
+        capLength,2,11,individualCap,false);
+      cap.rotation.y=angle;
+      host.walls.push({mesh:cap,mid:{x,y:z},segment:wall,index,exterior});
+    }
+    for(const joint of capJoins.junctions){
+      const parent=wallGroups[joint.owner];
+      if(!parent)continue;
+      const connector=host.box(parent,joint.p.x,WALL_VISUAL_HEIGHT+.35,
+        joint.p.y,11,2.12,11,capMat,false);
+      connector.castShadow=false;
     }
     const openingHost:SiteOpeningsHost={
       root:host.root,
@@ -414,7 +439,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       host.mats.push(host.windowPaneMaterial);
     }
     const paneMat=host.windowPaneMaterial;
-    buildSiteWindows(site,openingHost,{paneMat,wallMat,doorTrim,metal});
+    buildSiteWindows(site,openingHost,{paneMat,wallMat,capMat,doorTrim,metal});
     // Wall-mounted art and electrical hardware inherit room visibility.
     // They do not add collision, cover or new sightline blockers.
     const wallPaper=host.solid(0xb8ad8e,.97,'paper'),wallFrame=host.solid(0x615246,.9,'wood');

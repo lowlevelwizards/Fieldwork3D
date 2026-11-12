@@ -269,8 +269,8 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
 }
 export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
  materials:{paneMat:THREE.Material;wallMat:THREE.Material;
- doorTrim:THREE.Material;metal:THREE.Material}):void{
- const {paneMat,wallMat,doorTrim,metal}=materials;
+ capMat:THREE.Material;doorTrim:THREE.Material;metal:THREE.Material}):void{
+ const {paneMat,wallMat,capMat,doorTrim,metal}=materials;
     for(const opening of site.windows??[]){
       const group=new THREE.Group();
       group.position.set(opening.x,0,opening.y);
@@ -289,6 +289,11 @@ export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
       if(actualTop<WALL_VISUAL_HEIGHT)host.box(group,0,
         (actualTop+WALL_VISUAL_HEIGHT)/2,0,opening.width,
         WALL_VISUAL_HEIGHT-actualTop,9,wallMat);
+      // Glazed openings still need the SAME continuous dark crown as the
+      // adjoining walls. Without it the exposed lintel becomes a bright
+      // bridge with abruptly terminated dark wall caps.
+      host.box(group,0,WALL_VISUAL_HEIGHT+.3,0,
+        Math.max(1,opening.width-.4),2,11,capMat,false);
       // Place the trim BELOW the pane's bottom edge and in front of its
       // surface. Overlapping transparent glass/mullion faces used to shimmer.
       if(baseTop>0)host.box(group,0,baseTop-1.05,6,

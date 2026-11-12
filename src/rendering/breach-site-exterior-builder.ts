@@ -113,13 +113,44 @@ export function buildSiteExterior(site:Site,host:SiteExteriorBuildHost):void{
         awning.w,1.5,awning.h,awningRoof,false);
       roof.castShadow=false;roof.receiveShadow=false;
       const vertical=awning.w<awning.h;
-      const edgeOffset=vertical?awning.w/2:awning.h/2;
+      const depth=vertical?awning.w:awning.h;
+      const span=vertical?awning.h:awning.w;
+      const window=site.windows?.find(w=>w.id===awning.hostWindowId);
+      if(!window)continue;
+      const attachment=vertical?window.x:window.y;
+      const outward=Math.sign((vertical?awning.x:awning.y)-attachment)||1;
+      const front=attachment+outward*depth;
+      const underside=DOOR_CLEAR_VISUAL_HEIGHT+1.8;
+      // Four connected perimeter members, not two free-floating bars.
+      // The rear member and ledger overlap the solid lintel at the wall.
       if(vertical){
-        for(const x of [awning.x-edgeOffset,awning.x+edgeOffset])
-          host.box(host.root,x,DOOR_CLEAR_VISUAL_HEIGHT+1.8,awning.y,2,2.2,awning.h,awningEdge,false);
+        for(const x of [attachment,front])
+          host.box(host.root,x,underside,awning.y,2,2.2,span,awningEdge,false);
+        for(const y of [awning.y-span/2,awning.y+span/2])
+          host.box(host.root,awning.x,underside,y,depth,2.2,2,awningEdge,false);
+        host.box(host.root,attachment,DOOR_CLEAR_VISUAL_HEIGHT-.2,awning.y,
+          3.4,2.2,span-5,awningEdge,false);
       }else{
-        for(const y of [awning.y-edgeOffset,awning.y+edgeOffset])
-          host.box(host.root,awning.x,DOOR_CLEAR_VISUAL_HEIGHT+1.8,y,awning.w,2.2,2,awningEdge,false);
+        for(const y of [attachment,front])
+          host.box(host.root,awning.x,underside,y,span,2.2,2,awningEdge,false);
+        for(const x of [awning.x-span/2,awning.x+span/2])
+          host.box(host.root,x,underside,awning.y,2,2.2,depth,awningEdge,false);
+        host.box(host.root,awning.x,DOOR_CLEAR_VISUAL_HEIGHT-.2,attachment,
+          span-5,2.2,3.4,awningEdge,false);
+      }
+      // Two short, non-colliding angled arms visibly transfer the canopy
+      // to the wall, above the glazing; never invent sidewalk posts.
+      const run=depth-4,rise=2.4;
+      const length=Math.hypot(run,rise);
+      const at=attachment+outward*(depth/2-1);
+      for(const offset of [-span/2+6,span/2-6]){
+        const beam=vertical?
+          host.box(host.root,at,DOOR_CLEAR_VISUAL_HEIGHT+.05,
+            awning.y+offset,length,1.5,1.6,awningEdge,false):
+          host.box(host.root,awning.x+offset,DOOR_CLEAR_VISUAL_HEIGHT+.05,
+            at,1.6,1.5,length,awningEdge,false);
+        if(vertical)beam.rotation.z=Math.atan2(rise,outward*run);
+        else beam.rotation.x=-Math.atan2(rise,outward*run);
       }
     }
     const surfaceColor=SITE_PROPERTY_SURFACE_COLORS;

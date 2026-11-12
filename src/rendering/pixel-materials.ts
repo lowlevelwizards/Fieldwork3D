@@ -22,8 +22,10 @@ export class PixelTextureLibrary {
   texture.colorSpace=THREE.SRGBColorSpace;
   texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
   texture.magFilter=THREE.NearestFilter;
-  // Mips reduce distant-camera shimmering; source pixels stay integer and crisp.
-  texture.minFilter=THREE.LinearMipmapLinearFilter;
+  // Blend BETWEEN authored mip levels, not between source pixels. This
+  // keeps pavers, wall panels and trim crisp at mobile zoom without the
+  // distant shimmer of using a single unfiltered level.
+  texture.minFilter=THREE.NearestMipmapLinearFilter;
   // The chain is authored, not driver-averaged into a dark blur.
   texture.generateMipmaps=false;
   texture.needsUpdate=true;
