@@ -49,12 +49,44 @@ test('P1.6 compact report retains five worst peaks without 240-row CSV',()=>{
  const short=h.compactReport('planning','iso'),full=h.report('planning','iso');
  assert.match(short,/planning \/ iso/);
  assert.match(short,/spike buckets: 3 >=67ms, 27 33–66ms/);
- assert.match(short,/RAF 69 \/ JS 10/);
+ assert.match(short,/RAF 69 \\| prevJS \\?\\/sim\\? nowJS 10/);
  assert.match(short,/unattributed gap/);
  assert.doesNotMatch(short,/t_sec,raf_peak_ms/);
  assert.ok(short.length<1100,'short report should fit in a phone chat');
  assert.ok(full.length>short.length,'retain longer detailed report for TXT');
  assert.equal(short.split('\n').filter(x=>x.startsWith('-')).length,5);
+});
+test('P1.7 RAF gap attributes preceding callback CPU, not current JS',()=>{
+ const h=new PerformanceTimeline();
+ h.add(sample(1000,160,{phase:'live',previousJs:145,
+  previousSim:81,previousPhase:'live',js:12,sim:2}));
+ h.add(sample(1250,160,{phase:'live',previousJs:10,
+  previousSim:1,previousPhase:'live',js:145,sim:80}));
+ const previous=h.buckets()[0].peak,current=h.buckets()[1].peak;
+ assert.match(performanceHotspot(previous),/prior-frame JS/);
+ assert.match(performanceHotspot(current),/between-callback wait/);
+ const compact=h.compactReport('planning','iso');
+ assert.match(compact,/prevJS 145\/sim81 nowJS 12\/sim2/);
+ assert.match(compact,/wait 15/);
+ assert.match(h.report('planning','iso'),/PREVIOUS JS 145\.0ms/);
+ assert.match(h.bucketCSV(),/previous_js_ms,previous_sim_ms,previous_phase,callback_wait_ms/);
+});
+test('P1.7 phase summary counts callbacks separately from bucket peaks',()=>{
+ const h=new PerformanceTimeline();
+ h.add(sample(1000,16,{phase:'idle'}));
+ h.add(sample(1010,95,{phase:'live'}));
+ h.add(sample(1020,42,{phase:'live'}));
+ h.add(sample(1250,34,{phase:'idle'}));
+ const modes=h.phaseSummary();
+ assert.deepEqual({frames:modes.live.frames,slow:modes.live.slow,
+  severe:modes.live.severe,worst:modes.live.worst},
+  {frames:2,slow:2,severe:1,worst:95});
+ assert.equal(modes.idle.frames,2);
+ assert.equal(modes.idle.slow,1);
+ assert.match(h.compactReport('planning','iso'),/LIVE 2f \/ >=33 2 \/ >=67 1/);
+ assert.match(h.compactReport('planning','iso'),/IDLE 2f \/ >=33 1 \/ >=67 0/);
+ h.reset();
+ assert.equal(h.phaseSummary().live.frames,0);
 });
 test('P1.5d CSV includes every quarter-second bucket and measured causes',()=>{
  const h=new PerformanceTimeline();
