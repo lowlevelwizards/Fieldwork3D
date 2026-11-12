@@ -15,7 +15,7 @@ No alternate command router, controller hierarchy, DOM rewrite or new input gest
 1. Several controls (FLASH, BACK, UNDO, REDO) derived disabled status independently, and omitted the planning/replay/selected-operator lifecycle gate. WAIT/SYNC had no consistent derived disabled state. Their event handlers sometimes invoked game APIs despite the display making the command unavailable, yielding misleading click tone and feedback.
 2. CLEAR ROUTE revalidated the Session after asynchronous confirmation but did not ensure the selected operator was still the one named in the confirmation. An unrelated selection change could apply the delayed action to the original operator without being obvious to the player.
 3. The current single-target `TacticalInteractionState` is already authoritative for arming LOOK/WATCH/FLASH/PUSH/etc. However the separate HUD selection (`selectedNode`, `selectedActiveWatch`) could outlive the authored node or currently active WATCH after undo, release, team changes or mission transition.
-4. The contextual palette computes `at=node?.p??finalPoint(a)` for most actions but searched for nearby civilians and civilian casualties only at `finalPoint(a)`. Thus selecting an earlier waypoint could offer controls for a civilian at the last waypoint, or omit the correct civilian next to the selected one.
+4. The contextual palette computes `at=node?.p??finalPoint(a)` for most actions but searched for civilians only at `finalPoint(a)`, even while editing an earlier waypoint. The authoritative civilian SECURE/FOLLOW and casualty transport commands currently start from `finalPoint(a)`; showing those endpoint-only controls on intermediate waypoints is misleading. C4 suppresses these actions when the selected node is not the last authored node, without changing gameplay insertion semantics.
 5. Context buttons are reused and animated between operator/door selections. A click dispatched after the operator changes must not silently apply the previously displayed action to a new owner; disabled buttons must not enter the dispatcher. The palette already has one DOM action handler, which should remain the single event owner.
 
 ## Implementation specification
@@ -34,7 +34,7 @@ It returns independent booleans for BACK, CLEAR, UNDO, REDO, WAIT, FLASH and SYN
 
 Add `ui/tactical-selection-presentation.ts`:
 - `reconcileTacticalUiSelection` removes a selected node that no longer exists in the current actor's plan; clears an active-watch selection after the watch has expired or been released; preserves valid nodes and a valid active WATCH.
-- `nearestPaletteCandidate` chooses the closest eligible/disclosed civilian to the selected editing point. It preserves existing 34-world-unit distance and first-array-order tie break, without sorting every frame.
+- `canOfferRouteEndCivilianAction` gates endpoint-only civilian commands to HERE or the final authored node. `nearestPaletteCandidate` then selects the closest eligible/disclosed civilian using the existing 34-world-unit distance and first-array-order tie break, without sorting every frame. Middle-waypoint civilian insertion is explicitly deferred to a separate game-rule stage.
 
 This helper cannot alter actor plans, simulation, tactical authority, or committed target mode.
 
@@ -49,7 +49,7 @@ CLEAR ROUTE confirms only if the **same selected actor and Session** are current
 - `breach-main.updateHud` reconciles selected node/active WATCH with the real actor before drawing the HUD and contextual palette.
 - The palette's main and quick-state roots receive the selected actor ID while visible and are cleared when hidden.
 - The existing contextual click handler ignores stale-owner clicks, hidden surfaces and disabled buttons.
-- Civilian actions now inspect `at` (selected waypoint or route end) instead of unconditionally inspecting the route end.
+- Civilian actions are visible only when the selected editing context is the route endpoint, where the existing game authoring APIs actually accept them. A selected intermediate waypoint cannot show an action which would fail against the unchanged endpoint-only command API.
 - Keep one gesture controller, one command router and the existing float/dock preference. Preserve iOS pointer recovery, active WATCH dragging, one-tap plan authoring and non-intrusive HUD visuals.
 
 ### C4-E — Verification
@@ -58,7 +58,7 @@ Add `tests/package-c4-tactical-ui-consolidation.test.mjs`:
 - Planning, execution, replay, win/loss and incapacitated actor eligibility.
 - BACK cancel for active tools/WATCH even with an empty plan.
 - Deleted-node and expired-watch reconciliation.
-- Nearest eligible/disclosed civilian relative to the edited waypoint, stable ties.
+- Endpoint-only civilian command gating and nearest disclosed target selection, stable ties, no misleading intermediate-waypoint offer.
 - HUD/palette source ownership, stale contextual button rejection and no extra command authority.
 
 ### C4-F — Integration and release
