@@ -156,7 +156,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      selectedHighlight:null,operatorRecordOpen:false,summaryCompact:false,
      scroll:{},showIntel:options.showIntel,
      timelineEvents:buildAfterActionTimeline(rec),
-     timelineFilter:'all',timelineSelectedKey:null,timelineClusterId:null,
+     timelineFilter:'key',timelineSelectedKey:null,timelineClusterId:null,
      timelineLedgerOpen:false,timelineLedgerLimit:30,timelineRailScroll:0,
      timelineGroupScroll:0,timelineLedgerScroll:0};
    owners.set(root,state);
@@ -274,9 +274,10 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
        filter:value=>{
          s.timelineFilter=value;s.timelineClusterId=null;
          if(value!=='all'&&!s.timelineEvents.some(e=>
-           e.key===s.timelineSelectedKey&&e.category===value)){
-           s.timelineSelectedKey=s.timelineEvents.find(
-             e=>e.category===value)?.key??null;
+           e.key===s.timelineSelectedKey&&
+           (value==='key'?e.priority>=7:e.category===value))){
+           s.timelineSelectedKey=s.timelineEvents.find(e=>
+             value==='key'?e.priority>=7:e.category===value)?.key??null;
          }
          s.timelineGroupScroll=0;s.timelineLedgerScroll=0;
          s.timelineLedgerLimit=30;persist();

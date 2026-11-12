@@ -3772,3 +3772,15 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-figure{
   height:210px;min-height:190px}
 }
+
+/* V5.4: chronological key moments over a complete, separately available ledger. */
+.fw-v5-workspace .fw-v5-timeline-filters{
+ flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;
+ scrollbar-width:thin;padding-bottom:4px}
+.fw-v5-workspace .fw-v5-timeline-filter{flex:0 0 auto;white-space:nowrap}
+.fw-v5-workspace .fw-v5-timeline-filter[data-timeline-filter="key"]{order:-1}
+.fw-v5-workspace .fw-v5-timeline-hint{
+ margin:0;font:650 10px/1.4 var(--ui-font);color:#b9c6b5}
+.fw-v5-workspace .fw-v5-timeline-marker[data-priority="ordinary"]{
+ border-width:1px;background:#9ba78a;border-color:#c3c7ad}
+.fw-v5-workspace .fw-v5-timeline-track{min-height:75px}
