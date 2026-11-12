@@ -7,7 +7,7 @@ import {OPERATOR_RADIUS,doorCenter,doorLeafSegment,type Pt}
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {doorInteraction} from './breach-interactions.ts';
-import {kickDoor,doorWouldStrikeActors} from './breach-door.ts';
+import {kickDoor,doorWouldStrikeActors,doorApproach} from './breach-door.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {completeOrder,clearCurrentOrderIssue,
@@ -17,7 +17,7 @@ const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clone=(p:Pt):Pt=>({...p});
 const pop=completeOrder;
 export function createDoorOrderHandler(port:OrderExecutionPort){
- const {pairedLeaves,notify,hear,battleEvent}=port;
+ const {pairedLeaves,notify,hear,battleEvent,approach}=port;
  const failCurrentOrder=(s:Session,a:TeamActor,n:PlanNode,reason:string)=>
   failOrder(s,a,n,reason,port.notify);
  return function executeDoorOrder(s:Session,a:TeamActor,n:PlanNode,dt:number):boolean{
@@ -34,7 +34,21 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
     }
     const interaction=doorInteraction({target:door,actorId:a.id,
       actorPosition:a.p,action:n.method??'open'});
-    if(!interaction.allowed&&a.actionTimer===0){
+    if(!interaction.allowed&&interaction.reason==='out-of-reach'&&
+       a.actionTimer===0){
+       // The handle may be just beyond a valid authored DOOR waypoint.
+       // Only a short physically swept correction is allowed.
+       const point=doorApproach(a.p,door,sessionWorldGeometry(s),
+         [...s.operators.filter(other=>other!==a&&other.health>0)
+           .map(other=>other.p),
+          ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
+       if(point&&d(a.p,point)>2&&d(a.p,point)<75&&
+          a.blockedTime<3.5&&a.recoveryAttempts<5){
+         clearCurrentOrderIssue(a);
+         approach(a,point,dt,s,.60);return true;
+       }
+     }
+     if(!interaction.allowed&&a.actionTimer===0){
       failCurrentOrder(s,a,n,'DOOR BLOCKED · '+
         (interaction.reason??'UNAVAILABLE').toUpperCase());
       return true;

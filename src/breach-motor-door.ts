@@ -50,7 +50,9 @@ export function handleMotorDoor(
     if(a.side==='red'&&!doorAhead.open&&a.actionTimer===0&&
        doorWouldStrikeActors({...doorAhead,openFraction:0},.46,
          [a.p],OPERATOR_RADIUS+1)){
-      const staged=doorApproach(a.p,doorAhead,sessionWorldGeometry(s));
+      const staged=doorApproach(a.p,doorAhead,sessionWorldGeometry(s),
+        [...s.operators.filter(other=>other!==a&&other.health>0).map(other=>other.p),
+         ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
       if(staged&&d(staged,a.p)>5&&d(staged,a.p)<50&&
          sweptBodyClear(a.p,staged,s.doors,8,sessionWorldGeometry(s))){
         a.nav.unshift(staged);a.velocity=0;
