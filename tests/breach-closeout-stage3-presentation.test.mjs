@@ -109,7 +109,7 @@ test('Stage 3: personal replay gates cover and decor independent of Bodycam mode
     readFileSync(new URL('../src/rendering/breach-3d-disclosure-presenter.ts',
       import.meta.url),'utf8').indexOf('if(bodycam)return personalDecorVisible')),
    /if\(bodycam\)liveVisibility/);
- assert.match(scene,/personalDisclosure,personalGroundEvidence\)/);
+ assert.match(scene,/personalDisclosure,personalGroundEvidence,/);
  assert.match(scene,/presentArchitecturalOpening\(s,opening\.opening/);
  assert.match(scene,/const personalDisclosure=replayDisclosurePolicy\?\.mode==='operator'/);
 });
