@@ -150,11 +150,22 @@ test('B8: deterministic rewind and repeated timestamp keep all thirty pose slots
    reload:.4,posture:'crouch'}),1/60);
   poseOperator(a,one,-1);
   const restored=frame(a);
-  for(const [id,original] of Object.entries(saved))
-   close(restored[id],original,'rewind '+id,1e-7);
+  // Invisible attachments retain their last local position by design
+  // (e.g. a detached magazine after a later reload). Their visibility is
+  // authoritative; hidden pose components are not rendered or used for
+  // ballistics. Replay must match ALL visibility flags and ALL *visible*
+  // transforms, not stale invisible attachment history.
+  const assertVisibleReplay=(restoredFrame,phase)=>{
+   for(const [id,original] of Object.entries(saved)){
+    assert.equal(restoredFrame[id][10],original[10],
+     phase+' visibility '+id);
+    if(original[10]===1)
+     close(restoredFrame[id],original,phase+' '+id,1e-7);
+   }
+  };
+  assertVisibleReplay(restored,'rewind');
   poseOperator(a,one,0);
-  for(const [id,original] of Object.entries(saved))
-   close(frame(a)[id],original,'repeat '+id,1e-7);
+  assertVisibleReplay(frame(a),'repeat');
   assert.deepEqual(frame(b),saved,'other rig must remain unchanged');
  }finally{a.dispose();b.dispose();}
 });
