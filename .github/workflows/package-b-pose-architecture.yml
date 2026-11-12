@@ -13,6 +13,9 @@ on:
       - 'tests/package-b2-pose-output.test.mjs'
       - 'tests/package-b3-lower-body-output.test.mjs'
       - 'tests/package-b4-upper-body-output.test.mjs'
+      - 'tests/package-b5-equipment-output.test.mjs'
+      - 'src/breach-operator-equipment-output.ts'
+      - 'src/breach-operator-sling-pose.ts'
       - 'src/operator-pose-cavity-lighting.ts'
       - 'src/breach-ik.ts'
       - '.github/workflows/package-b-pose-architecture.yml'
@@ -65,6 +68,9 @@ jobs:
       - name: B4 direct arm IK, weapon families, magazine contact and replay parity
         run: |
           node --experimental-strip-types --test tests/package-b4-upper-body-output.test.mjs
+      - name: B5 weapon, magazine, drop, sling and equipment direct parity
+        run: |
+          node --experimental-strip-types --test tests/package-b5-equipment-output.test.mjs
       - name: Posed frame, replay seeks, V3/V4 contacts, motion and Lab parity
         run: |
           node --experimental-strip-types --test --test-concurrency=2 \
