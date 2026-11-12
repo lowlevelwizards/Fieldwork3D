@@ -341,6 +341,7 @@ function tick(now:number){
         '\nCUM FOG M/S '+(stats?.fogMemoryPaints??0)+'/'+
           (stats?.fogSightPaints??0)+' · SHADOW REF/REUSE '+
           (stats?.shadowRefreshes??0)+'/'+(stats?.shadowReuses??0)+
+          ' · MAP '+(stats?.shadowMapSize??0)+'px'+
         '\nSIGHT (750ms) '+sight.liveQueries+' Q / '+
           sight.liveOcclusionProbes+' LOS / '+sight.liveHits+
           ' HIT · FULL '+sight.fullViewQueries+

@@ -15,6 +15,7 @@ test('R7 inspection lighting has one neutral background and coherent key profile
  assert.equal(studioShadowMode(''),'hybrid');
  assert.equal(studioShadowMode('?operatorLighting=legacy'),'legacy');
  assert.equal(studioShadowSize('?operatorShadowSize=512'),512);
+ assert.equal(studioShadowSize(''),512);
  assert.ok(Math.abs(STUDIO_KEY_DIRECTION.length()-1)<1e-8);
  const root=new THREE.Group();
  const mesh=new THREE.Mesh(new THREE.BoxGeometry(5,10,5),
@@ -43,14 +44,17 @@ test('R7 appearance thumbnails inherit Studio key/fill, shadow and backdrop',()=
 });
 
 test('R7 hidden Studio suspends optional GPU work without stopping simulation',()=>{
- const main=source('src/breach-main.ts');
+ // Consolidation moved lifecycle into the Studio bridge and frame
+ // suppression into the runtime scheduler; do not assert obsolete hosts.
+ const bridge=source('src/operator-studio-bridge.ts');
+ const runtime=source('src/breach-runtime-loop.ts');
  const studio=source('src/operator-studio.ts');
  const grid=source('src/operator-appearance-grid.ts');
- assert.match(main,/STUDIO_WARM_RETAIN_MS=60_000/);
- assert.match(main,/studioFrame\.src='about:blank'/);
- assert.match(main,/studioOccludesTactical/);
- assert.match(main,/if\(!studioOccludesTactical&&stage/);
- assert.match(main,/if\(!studioOccludesTactical\)render\(\)/);
+ assert.match(bridge,/STUDIO_WARM_RETAIN_MS=60_000/);
+ assert.match(bridge,/studioFrame\.src='about:blank'/);
+ assert.match(runtime,/studioOccludesTactical/);
+ assert.match(runtime,/if\(!studioOccludesTactical&&stage/);
+ assert.match(runtime,/if\(!studioOccludesTactical\)config\.renderFrame\(dt\)/);
  assert.match(studio,/studioSuspended=true/);
  assert.match(studio,/thumbBrowser\.setSuspended\(true\)/);
  assert.match(grid,/if\(this\.suspended\)return/);
@@ -58,11 +62,13 @@ test('R7 hidden Studio suspends optional GPU work without stopping simulation',(
 });
 
 test('R7 first-frame shader warmup preserves an ordinary-render fallback',()=>{
- const main=source('src/breach-main.ts');
- assert.match(main,/renderer\.compileAsync\(stage\.scene,stage\.camera\)/);
- assert.match(main,/get\('gpuWarmup'\)!=='0'/);
- assert.match(main,/Quick Play shader preparation fallback/);
- assert.match(main,/shaderPreparationMs/);
- assert.ok(main.indexOf('renderer.compileAsync(stage.scene,stage.camera)')<
-  main.indexOf("quickPlayCheckpoint(97,'Rendering first 3D frame'"));
+ const quick=source('src/breach-quickplay-controller.ts');
+ const boot=source('src/breach-boot-config.ts');
+ assert.match(quick,/renderer\.compileAsync\(stage\.scene,stage\.camera\)/);
+ assert.match(quick,/config\.boot\.gpuWarmupEnabled/);
+ assert.match(boot,/get\('gpuWarmup'\)!=='0'/);
+ assert.match(quick,/Quick Play shader preparation fallback/);
+ assert.match(quick,/shaderPreparationMs/);
+ assert.ok(quick.indexOf('renderer.compileAsync(stage.scene,stage.camera)')<
+  quick.indexOf("quickPlayCheckpoint(97,'Rendering first 3D frame'"));
 });

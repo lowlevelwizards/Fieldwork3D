@@ -7,5 +7,8 @@ test('mobile presets constrain GPU pixel/shadow budgets',()=>{
  assert.equal(low.shadowSize,512);
  assert.ok(low.pixelRatio<medium.pixelRatio);
  assert.ok(medium.pixelRatio<=high.pixelRatio);
- assert.equal(high.shadowSize,1024);
+ assert.equal(medium.shadowSize,512);
+ assert.equal(high.shadowSize,512);
+ assert.equal(graphicsBudget(null,false).shadowSize,512);
+ assert.equal(graphicsBudget('quality',false).shadowSize,512);
 });
