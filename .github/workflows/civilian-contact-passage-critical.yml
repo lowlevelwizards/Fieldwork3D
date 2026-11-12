@@ -1,0 +1,39 @@
+name: Civilian contact and doorway flow critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-civilian-*.ts'
+      - 'src/breach-movement-authority.ts'
+      - 'src/breach-order-interactions.ts'
+      - 'src/breach-motor-passage.ts'
+      - 'src/breach-passage.ts'
+      - 'tests/civilian-*.test.mjs'
+      - 'tests/living-encounters-r2-civilian-pose.test.mjs'
+      - '.github/workflows/civilian-contact-passage-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Civilian physics, interaction and pose regressions
+        run: >
+          node --experimental-strip-types --test
+          tests/civilian-contact-flow-regression.test.mjs
+          tests/civilian-c1a-animation-reset.test.mjs
+          tests/civilian-c5-unified-pose.test.mjs
+          tests/civilian-b6-visuals.test.mjs
+          tests/civilian-c4-contextual-contact.test.mjs
+          tests/civilian-d1-rescue-lifecycle.test.mjs
+          tests/civilian-r2-presentation.test.mjs
+          tests/living-encounters-r2-civilian-pose.test.mjs
+          tests/breach-navigation-openings-r1.test.mjs
+      - name: Four-operator live-session doorway passage audit
+        run: node --experimental-strip-types scripts/audit-squad-flow-a.mjs
