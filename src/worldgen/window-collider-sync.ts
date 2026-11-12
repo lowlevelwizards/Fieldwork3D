@@ -4,19 +4,10 @@
  */
 import type {Site} from '../breach-site.ts';
 import type {Obstacle} from '../breach-core.ts';
-import {windowVisualHeadHeight} from '../breach-opening-proportions.ts';
+import {windowBarrierFootprint} from './window-geometry-contract.ts';
 export function synchronizeWindowBarriers<T extends Pick<Site,'windows'|'cover'>>(site:T):T{
  const staticCover=site.cover.filter(o=>o.fixture!=='window-sill'&&
   o.fixture!=='glass-barrier');
- const barriers:Obstacle[]=(site.windows??[]).map(window=>({
-  x:window.x,y:window.y,
-  w:window.vertical?10:window.width,
-  h:window.vertical?window.width:10,
-  low:(window.sillHeight??14)<25,
-  fixture:window.sillHeight===0?'glass-barrier':'window-sill',
-  topHeight:window.sillHeight===0?
-    (window.headHeight??windowVisualHeadHeight(window.style)):
-    (window.sillHeight??14)
- }));
+ const barriers:Obstacle[]=(site.windows??[]).map(windowBarrierFootprint);
  return {...site,cover:[...staticCover,...barriers]};
 }
