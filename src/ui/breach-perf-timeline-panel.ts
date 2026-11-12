@@ -1,6 +1,7 @@
-/** Opt-in mobile-first developer telemetry. All DOM/canvas work is behind
- * ?perf=1, and visual painting is capped by the calling 750ms cadence.
- * The game controls and camera are never affected by this panel.
+/** Mobile live-match performance window. Detailed DOM/canvas work starts
+ * only after the user taps PERF (or explicitly opens with ?perf=1).
+ * Frame history prior to that is RAF/JS only, without CPU attribution.
+ * The runtime controls the 750ms graph/metrics paint cadence.
  */
 import {PerformanceTimeline,performanceHotspot,previousFrameHotspot,
  type PerformanceTimelineBucket,PERFORMANCE_BUCKET_COUNT}
@@ -20,6 +21,7 @@ export class BreachPerfTimelinePanel{
  readonly metrics:HTMLPreElement;
  private readonly canvas:HTMLCanvasElement;
  private readonly graphButton:HTMLButtonElement;
+ private readonly hideButton:HTMLButtonElement;
  private readonly detailButton:HTMLButtonElement;
  private readonly copyButton:HTMLButtonElement;
  private readonly exportButton:HTMLButtonElement;
@@ -30,9 +32,9 @@ export class BreachPerfTimelinePanel{
  private policy='planning';
  private view='iso';
  private timeline:PerformanceTimeline|null=null;
- constructor(){
+ constructor(private readonly onHide:()=>void=()=>{}){
   const root=style(document.createElement('div'),
-   'position:fixed;top:4px;right:4px;z-index:9999;'+
+   'position:fixed;top:calc(4px + env(safe-area-inset-top));right:4px;z-index:9999;'+
    'background:#102021eb;color:#d5ebd8;font:11px/1.25 monospace;'+
    'padding:6px;max-width:min(90vw,416px);width: min(90vw,416px);'+
    'max-height:62vh;overflow:auto;box-sizing:border-box;'+
@@ -50,10 +52,13 @@ export class BreachPerfTimelinePanel{
   this.detailButton=button('DETAILS');
   this.copyButton=button('COPY');
   this.exportButton=button('TXT');
+  this.hideButton=button('HIDE');
+  this.hideButton.title='Hide panel; keep recording detailed performance history';
+  this.hideButton.setAttribute('aria-label','Hide performance graph and continue recording');
   this.copyButton.title='Copy short chat summary';
   this.exportButton.title='Download complete 60-second TXT report';
   controls.append(this.graphButton,this.detailButton,this.copyButton,
-   this.exportButton);
+   this.exportButton,this.hideButton);
   bar.append(controls);root.append(bar);
   this.canvas=document.createElement('canvas');
   this.canvas.width=370;this.canvas.height=108;
@@ -73,6 +78,7 @@ export class BreachPerfTimelinePanel{
    'color:#d5ebd8;pointer-events:none;');
   root.append(this.metrics);
   this.root=root;
+  this.hideButton.addEventListener('click',()=>this.onHide());
   this.graphButton.addEventListener('click',()=>{
    this.graphVisible=!this.graphVisible;
    this.canvas.style.display=this.graphVisible?'block':'none';
