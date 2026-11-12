@@ -11,7 +11,9 @@ export class MovementQualitySurvey{
    passageWaitSeconds:number;squeezeSeconds:number;blockedSeconds:number;
    longestStillSeconds:number;stillSeconds:number;invalidPositions:number;
  }>();
- constructor(actors:readonly TeamActor[],private goals:ReadonlyMap<string,Pt>){
+ private goals:ReadonlyMap<string,Pt>;
+ constructor(actors:readonly TeamActor[],goals:ReadonlyMap<string,Pt>){
+  this.goals=goals;
   for(const a of actors)this.tracks.set(a.id,{
    last:{...a.p},lastAttempts:a.recoveryAttempts,
    blocked:false,waiting:false,squeezing:false,
