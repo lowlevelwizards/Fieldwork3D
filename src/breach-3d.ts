@@ -32,6 +32,7 @@ import {windowShardPose,WINDOW_SHARDS_PER_PANE}
  from './rendering/window-shatter-presentation.ts';
 import {type CivilianRig} from './breach-civilian-visuals.ts';
 import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
+import {shouldPrewarmContactRig} from './rendering/breach-contact-rig-prewarm.ts';
 import {type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
@@ -1867,9 +1868,17 @@ export class TacticalScene3D{
     this.markScenePhase('disclosure');
     for(const actor of s.operators){
       const visible=presentActor(s,actor,omniscient,replayDisclosurePolicy);
-      // Spawn full 3D rigs only when needed. Enemy AI, LOS and simulation
-      // always exist; hidden actors incur no model construction on mobile.
-      if(!visible&&!this.actors.has(actor.id))continue;
+      // Hostile first-contact should not trigger a full rig, costume/lightmap,
+      // and weapon build on the active combat frame. Before the first GO,
+      // prepare each unseen hostile once while it remains undisclosed.
+      // Historical replay never prewarms from present-day hidden truth.
+      const prewarmHostile=shouldPrewarmContactRig({
+        phase:s.phase,started:s.started,side:actor.side,visible,
+        hasRig:this.actors.has(actor.id),
+        historical:!!replay||!!replayDisclosurePolicy||!!replayDoorHistory||
+          !!replayWindowHistory
+      });
+      if(!visible&&!this.actors.has(actor.id)&&!prewarmHostile)continue;
       if(!this.actors.has(actor.id)){
        const rigStart=this.profileSceneUpdate?performance.now():0;
        this.soldier(actor);
@@ -1892,7 +1901,13 @@ export class TacticalScene3D{
         statusMat.opacity=down ? .85 :Math.max(0,1-hitTime/.28);
         statusMat.color.setHex(down?0xd99e83:0xf4c7aa);
       }
-      if(!object.root.visible)continue;
+      if(!object.root.visible&&!prewarmHostile){
+        // Beam and contact-shadows are independent scene roots, unlike the
+        // actor body. Never leak their position after an enemy leaves sight.
+        object.beam.visible=false;
+        for(const shadow of object.contactShadows)shadow.visible=false;
+        continue;
+      }
       // Presentation samples do not alter authoritative collision or shot state.
       const drawActor=interpolatedActor(actor,renderFrame);
       // Airborne body is a fixed-tick simulation outcome. Keep the 3D
@@ -2124,7 +2139,9 @@ export class TacticalScene3D{
         this.actorPhaseCosts.receiverAtlasMs+=breakdown.receiverAtlasMs??0;
        }
       }
-      if(this.graphicLookEnabled&&object.root.visible){
+      if(this.graphicLookEnabled&&(object.root.visible||prewarmHostile)){
+       // Warm visual material composition before first contact too. Never
+       // display a hidden hostile's textures, pose, beam or foot shadows.
        // Do not traverse hundreds of meshes every 60Hz frame. Recompose
        // only after costume/weapon source materials actually changed.
        const appearance=String(
