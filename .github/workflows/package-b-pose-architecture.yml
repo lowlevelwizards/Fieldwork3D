@@ -1,0 +1,68 @@
+name: Package B — Pose Architecture Baseline
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'docs/consolidation-package-b-*.md'
+      - 'scripts/verification/package-b0-pose-audit.mjs'
+      - 'scripts/verification/pages-queued-run-classification.mjs'
+      - 'scripts/audit-pages-release-checkpoint.mjs'
+      - 'tests/package-b0-pose-audit.test.mjs'
+      - 'tests/pages-release-gate.test.mjs'
+      - '.github/workflows/package-b-pose-architecture.yml'
+      - 'src/breach-operator-*.ts'
+      - 'src/breach-pose-*.ts'
+      - 'src/breach-unified-upper-body.ts'
+      - 'src/breach-weapon-pose.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-live-gait.ts'
+      - 'src/operator-pose-workbench.ts'
+      - 'src/operator-studio.ts'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: package-b-pose-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The B0 inventory remains available for future B stages without introducing
+# a new pose controller. Branch-filtered to avoid retesting unrelated PRs.
+jobs:
+  baseline:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/consolidation-b') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: B0 audit fixtures and authoritative ownership census
+        run: |
+          node --test tests/package-b0-pose-audit.test.mjs tests/pages-release-gate.test.mjs
+          node scripts/verification/package-b0-pose-audit.mjs --check --json artifacts/package-b0/audit.json --markdown artifacts/package-b0/audit.md
+      - name: Posed frame, replay seeks, V3/V4 contacts, motion and Lab parity
+        run: |
+          node --experimental-strip-types --test --test-concurrency=2 \
+            tests/breach-roadmap2-stage11-animation.test.mjs \
+            tests/breach-closeout-stage4-pose-output.test.mjs \
+            tests/breach-pose-director.test.mjs \
+            tests/breach-pose-transition-director.test.mjs \
+            tests/breach-pose-v3-baseline.test.mjs \
+            tests/breach-reload-v4-rig.test.mjs \
+            tests/breach-motion-22.test.mjs \
+            tests/operator-lab-unified-poses.test.mjs \
+            tests/operator-pose-workbench.test.mjs \
+            tests/breach-unified-pose-stability.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run build
+      - name: Preserve read-only pose architecture evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-b0-pose-baseline
+          path: artifacts/package-b0/
+          if-no-files-found: warn
+          retention-days: 30

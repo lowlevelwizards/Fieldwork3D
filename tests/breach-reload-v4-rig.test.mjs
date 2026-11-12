@@ -163,7 +163,10 @@ test('B30 live renderer and replay use authored V4 without a debug query',()=>{
  const args=game.slice(start,game.indexOf('},dt);',start)+7);
  assert.match(args,/poseV3Preview:true,poseV4ReloadPreview:true/);
  assert.match(args,/reloadSelectedMagazineId:actor\.reloadSelectedMagazineId/);
- assert.match(args,/magazineCarryItems:carried\.filter/);
+ // A6 extracted one magazine-only bank shared by pouch display and V4 handoffs.
+ assert.match(game,/const carriedMagazines=carried\.filter\(p=>p\.kind==='magazine'\)/);
+ assert.match(args,/magazineCarryLocations:carriedMagazines\.map\(p=>p\.location\)/);
+ assert.match(args,/magazineCarryItems:carriedMagazines/);
  assert.match(args,/reloadRemoved:actor\.reloadRemoved/);
  assert.match(args,/reloadInserted:actor\.reloadInserted/);
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
