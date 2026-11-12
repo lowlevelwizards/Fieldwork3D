@@ -12,16 +12,19 @@ const leafGap=(p:Pt,d:Door)=>pointToSegment(p,doorLeafSegment(d));
  * broadphase skips only leaf segments entirely outside the sweep's expanded
  * axis-aligned bounds. The leaf is sampled once per query; no persistent door
  * cache can survive a hinge change or a replay seek. */
-function doorsNearSweep(from:Pt,to:Pt,doors:readonly Door[],reach:number):Door[]{
+type SweptLeaf={door:Door;leaf:ReturnType<typeof doorLeafSegment>};
+function doorsNearSweep(from:Pt,to:Pt,doors:readonly Door[],reach:number):SweptLeaf[]{
  const minX=Math.min(from.x,to.x)-reach,maxX=Math.max(from.x,to.x)+reach;
  const minY=Math.min(from.y,to.y)-reach,maxY=Math.max(from.y,to.y)+reach;
- return doors.filter(door=>{
+ const candidates:SweptLeaf[]=[];
+ for(const door of doors){
   const leaf=doorLeafSegment(door);
-  return Math.max(leaf.a.x,leaf.b.x)>=minX&&
-    Math.min(leaf.a.x,leaf.b.x)<=maxX&&
-    Math.max(leaf.a.y,leaf.b.y)>=minY&&
-    Math.min(leaf.a.y,leaf.b.y)<=maxY;
- });
+  if(Math.max(leaf.a.x,leaf.b.x)>=minX&&
+     Math.min(leaf.a.x,leaf.b.x)<=maxX&&
+     Math.max(leaf.a.y,leaf.b.y)>=minY&&
+     Math.min(leaf.a.y,leaf.b.y)<=maxY)candidates.push({door,leaf});
+ }
+ return candidates;
 }
 /** Open leaves are still solid. The door motor can swing them out of the
  * way, but a body cannot ghost through a panel at an intermediate angle. */
@@ -33,19 +36,19 @@ export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
   radius=OPERATOR_RADIUS,world?:SessionWorldGeometry){
   const steps=Math.max(1,Math.ceil(distance(from,to)/4));
   const candidates=doorsNearSweep(from,to,doors,radius+1);
-  const trapped=candidates.filter(door=>leafGap(from,door)<radius+1);
+  const trapped=candidates.filter(item=>pointToSegment(from,item.leaf)<radius+1);
   for(let i=1;i<=steps;i++){
     const f=i/steps;
     const at={x:from.x+(to.x-from.x)*f,
       y:from.y+(to.y-from.y)*f};
     if(!(world?world.passable(at,radius):passable(at,radius)))return false;
-    for(const door of candidates){
-      const gap=leafGap(at,door);
+    for(const item of candidates){
+      const gap=pointToSegment(at,item.leaf);
       if(gap>=radius+1)continue;
       // A leaf can close into an actor. Permit movement away from it;
       // never allow a new intrusion or movement deeper into overlap.
-      const initial=leafGap(from,door);
-      if(!trapped.includes(door)||gap+1e-5<initial)return false;
+      const initial=pointToSegment(from,item.leaf);
+      if(!trapped.includes(item)||gap+1e-5<initial)return false;
       // An embedded body must actually move OUT of the leaf, not travel
       // parallel through its interior at the same penetration depth.
       if(i===steps&&gap<radius+1&&
@@ -175,8 +178,9 @@ export function sweptProfileClear(from:Pt,to:Pt,doors:Door[],
     for(let j=0;j<current.length;j++){
       const sample=current[j],startSample=start[j];
       if(!(world?world.passable(sample.position,sample.radius):passable(sample.position,sample.radius)))return false;
-      for(const door of candidates){
-        const gap=leafGap(sample.position,door),before=leafGap(startSample.position,door);
+      for(const item of candidates){
+        const gap=pointToSegment(sample.position,item.leaf),
+          before=pointToSegment(startSample.position,item.leaf);
         if(gap<sample.radius+1&&
            (before>=sample.radius+1||gap+1e-5<before||
             i===steps&&gap<before+finalOverlapProgress))
