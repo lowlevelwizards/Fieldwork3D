@@ -40,7 +40,7 @@ export class BreachPerfTimelinePanel{
   root.setAttribute('aria-label','Fieldwork 60-second performance timeline');
   const bar=style(document.createElement('div'),
    'display:flex;gap:5px;align-items:center;justify-content:space-between;'+
-   'margin-bottom:4px;pointer-events:none;');
+   'margin-bottom:4px;flex-wrap:wrap;pointer-events:none;');
   const label=document.createElement('strong');
   label.textContent='PERF HISTORY · 60s';label.style.fontSize='11px';
   bar.append(label);
