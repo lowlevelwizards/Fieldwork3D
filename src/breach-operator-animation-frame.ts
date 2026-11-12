@@ -15,6 +15,19 @@ const diff=(a:number,b:number)=>Math.atan2(Math.sin(b-a),Math.cos(b-a));
 const approach=(v:number,target:number,rate:number,dt:number)=>
  v+clamp(diff(v,target),-rate*dt,rate*dt);
 
+/** B7: one rig-scoped pose scratch for tactical, Lab and manual Workbench
+ * authoring. This accessor does not advance a frame, action clock, replay
+ * time or gameplay contact scheduler. Sharing the scratch avoids a second
+ * set of arm/weapon fallback quaternions after a Workbench handoff.
+ */
+export function operatorPoseScratchForRig(r:OperatorRig):OperatorPoseScratch{
+ let scratch=scratchByRig.get(r);
+ if(!scratch){
+  scratch=createOperatorPoseScratch();
+  scratchByRig.set(r,scratch);
+ }
+ return scratch;
+}
 /** Restores handoff visibility for replay seeks and gathers reusable scratch. */
 export function beginOperatorAnimationFrame(
  r:OperatorRig,p:OperatorPose,dt:number){
@@ -22,11 +35,7 @@ export function beginOperatorAnimationFrame(
     THREE.Mesh|undefined;
  if(previouslyHiddenV4)previouslyHiddenV4.visible=true;
  r.root.userData.reloadV4HiddenSource=null;
- let scratch=scratchByRig.get(r);
- if(!scratch){
-  scratch=createOperatorPoseScratch();
-  scratchByRig.set(r,scratch);
- }
+ const scratch=operatorPoseScratchForRig(r);
  const discontinuity=dt<0||r.lastTime>p.seconds+.03||
   p.seconds-r.lastTime>1.2;
  if(discontinuity)r.lastTime=p.seconds;
