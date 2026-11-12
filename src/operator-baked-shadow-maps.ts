@@ -49,22 +49,33 @@ export function shadowRayBox(origin:THREE.Vector3,direction:THREE.Vector3,
  }
  return far>EPS?near:null;
 }
-function pointShade(point:THREE.Vector3,normal:THREE.Vector3,
- boxes:readonly ShadowBox[]):number{
+/** Hot atlas bake: directional vectors are fixed with positive XYZ, so
+ * their slab intersections can be evaluated on numeric box bounds without
+ * allocating a Vector3 or indexing x/y/z strings for every face texel.
+ * This is mathematically the same test as shadowRayBox above (inclusive
+ * grazing contacts, same EPS and max reach). Keep that exported function for
+ * general callers and for reference-equivalence tests. */
+type FastShadowBox=readonly [number,number,number,number,number,number];
+const inverseRays=lightRays.map(r=>
+ [1/r.x,1/r.y,1/r.z] as const);
+function pointShadeFast(px:number,py:number,pz:number,
+ nx:number,ny:number,nz:number,boxes:readonly FastShadowBox[]):number{
+ if(!boxes.length)return 1;
+ const ox=px+nx*.075,oy=py+ny*.075,oz=pz+nz*.075;
  let hits=0;
- const origin=point.clone().addScaledVector(normal,.075);
- for(const ray of lightRays){
-  if(normal.dot(ray)<-.12)continue;
+ for(let i=0;i<lightRays.length;i++){
+  const ray=lightRays[i];
+  if(nx*ray.x+ny*ray.y+nz*ray.z<-.12)continue;
+  const inv=inverseRays[i];
   for(const box of boxes){
-   // Occluders more than 2.55 local units away are NOT contact shadows.
-   // That explicitly prevents helmet brims from washing the entire face.
-   if(shadowRayBox(origin,ray,box,RECEIVER_SHADOW_REACH)!==null){
-    hits++;break;
-   }
+   const near=Math.max(0,
+    (box[0]-ox)*inv[0],(box[1]-oy)*inv[1],(box[2]-oz)*inv[2]);
+   const far=Math.min(RECEIVER_SHADOW_REACH,
+    (box[3]-ox)*inv[0],(box[4]-oy)*inv[1],(box[5]-oz)*inv[2]);
+   if(far>=near&&far>EPS){hits++;break;}
   }
  }
- const occlusion=hits/lightRays.length;
- return Math.max(RECEIVER_SHADOW_MIN,1-.34*occlusion);
+ return Math.max(RECEIVER_SHADOW_MIN,1-.34*hits/lightRays.length);
 }
 export function bakeReceiverShadowAtlas(
  key:string,center:THREE.Vector3,size:THREE.Vector3,
@@ -72,6 +83,12 @@ export function bakeReceiverShadowAtlas(
  const existing=cache.get(key);if(existing)return existing;
  const width=COLS*CELL,height=ROWS*CELL;
  const pixels=new Uint8Array(width*height*4);
+ // Shadow baker is invoked on first wardrobe/headwear appearance. Cast
+ // boxes are immutable for this call, so flatten once rather than performing
+ // ~74k Vector3-based intersections per new visual variant.
+ const fastBoxes:FastShadowBox[]=boxes.map(b=>[
+  b.min.x,b.min.y,b.min.z,b.max.x,b.max.y,b.max.z
+ ] as const);
  const p=new THREE.Vector3(),n=new THREE.Vector3();
  for(let f=0;f<6;f++){
   const col=f%COLS,row=Math.floor(f/COLS);
@@ -100,7 +117,8 @@ export function bakeReceiverShadowAtlas(
    // geometry-local brow band (roughly three atlas pixels of transition).
    const browBand=key.startsWith('head:')&&f!==2&&f!==3?
     THREE.MathUtils.clamp((p.y-2.40)/.42,0,1):1;
-   const shade=1-(1-pointShade(p,n,boxes))*browBand;
+   const shade=1-(1-pointShadeFast(p.x,p.y,p.z,n.x,n.y,n.z,
+    fastBoxes))*browBand;
    const low=1-sv; // restrained top-to-bottom support only.
    const value=Math.max(RECEIVER_SHADOW_MIN,
     shade*(1-bodyGradient*low)*(f===3?.94:1));
