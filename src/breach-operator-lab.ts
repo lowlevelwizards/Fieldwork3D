@@ -2,6 +2,7 @@
  * Identical Build 119/120 rig and footstep scheduler as gameplay/replay.
  */
 import * as THREE from 'three';
+import {DEFAULT_SHADOW_MAP_SIZE} from './rendering/shadow-map-budget.ts';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator,type OperatorRig}
   from './breach-operator-rig.ts';
@@ -682,7 +683,7 @@ control.target.set(0,16,0);control.minZoom=.18;control.maxZoom=7;
 scene.add(new THREE.HemisphereLight(0xffffff,0x8f9188,2.2));
 const lamp=new THREE.DirectionalLight(0xffffff,2.3);
 lamp.position.set(-40,90,45);lamp.castShadow=true;
-lamp.shadow.mapSize.set(compact?512:1024,compact?512:1024);lamp.shadow.camera.left=-90;
+lamp.shadow.mapSize.set(DEFAULT_SHADOW_MAP_SIZE,DEFAULT_SHADOW_MAP_SIZE);lamp.shadow.camera.left=-90;
 lamp.shadow.camera.right=90;lamp.shadow.camera.top=90;
 lamp.shadow.camera.bottom=-90;scene.add(lamp);
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500),
