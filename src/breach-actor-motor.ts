@@ -20,16 +20,32 @@ import {d,angle,type ActorMotorHooks} from './breach-motor-contract.ts';
 
 export function advanceActorMotor(
  a:TeamActor,p:Pt,dt:number,s:Session,hooks:ActorMotorHooks,
- speedScale=1):boolean{
+ speedScale=1,profile?:((section:string,elapsedMs:number)=>void)):boolean{
+ // All marks are observational and gated behind the same opt-in simulation
+ // profiler as the parent operator total. No additional work in normal play.
+ const traversalStart=profile?performance.now():0;
  // Do not interrupt a continuous physical traversal with route search.
- if(advanceMotorTraversal(a,s,dt,hooks))return true;
- if(releaseEmbeddedMotorActor(a,p,s.doors,dt,sessionWorldGeometry(s)))return true;
- if(prepareMotorTraversal(a,p,dt,s,hooks))return true;
+ if(advanceMotorTraversal(a,s,dt,hooks)){
+  if(profile)profile('motor-traversal',performance.now()-traversalStart);
+  return true;
+ }
+ if(releaseEmbeddedMotorActor(a,p,s.doors,dt,sessionWorldGeometry(s))){
+  if(profile)profile('motor-traversal',performance.now()-traversalStart);
+  return true;
+ }
+ if(prepareMotorTraversal(a,p,dt,s,hooks)){
+  if(profile)profile('motor-traversal',performance.now()-traversalStart);
+  return true;
+ }
+ if(profile)profile('motor-traversal',performance.now()-traversalStart);
 
+ const routeStart=profile?performance.now():0;
  const readiness=prepareMotorRoute(a,p,dt,s,hooks);
+ if(profile)profile('motor-route',performance.now()-routeStart);
  if(readiness==='handled')return true;
  if(readiness==='unavailable')return false;
 
+ const strideStart=profile?performance.now():0;
  // Tiny grid bends may be redundant once the full shoulder can take a
  // lawful chord. Only transient motor nodes may be skipped. The next
  // position still comes from the ordinary velocity/physical motor.
@@ -42,17 +58,29 @@ export function advanceActorMotor(
    (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,
      sessionWorldGeometry(s))))a.nav.shift();
  const next=a.nav[0],gap=d(a.p,next);
- if(gap<3){a.nav.shift();return false;}
+ if(gap<3){
+  a.nav.shift();
+  if(profile)profile('motor-stride',performance.now()-strideStart);
+  return false;
+ }
  const direction=angle(a.p,next);
  const {canAutoSidestep,move:initialMove}=sampleActorMotorStride(
    a,s,p,direction,dt,gap,speedScale);
+ if(profile)profile('motor-stride',performance.now()-strideStart);
 
+ const passageStart=profile?performance.now():0;
  const passage=negotiateMotorPassage(a,p,initialMove,dt,s,hooks);
+ if(profile)profile('motor-passage',performance.now()-passageStart);
  if(passage.paused)return true;
 
+ const doorStart=profile?performance.now():0;
  const door=handleMotorDoor(a,p,next,passage.move,dt,s,hooks);
+ if(profile)profile('motor-door',performance.now()-doorStart);
  if(door.paused)return true;
 
- return resolveMotorCollision(a,p,next,passage.move,dt,s,
+ const collisionStart=profile?performance.now():0;
+ const resolved=resolveMotorCollision(a,p,next,passage.move,dt,s,
    canAutoSidestep,door.closed,hooks);
+ if(profile)profile('motor-collision',performance.now()-collisionStart);
+ return resolved;
 }
