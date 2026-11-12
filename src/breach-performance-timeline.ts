@@ -113,6 +113,39 @@ export class PerformanceTimeline{
   }
   return lines.join('\n');
  }
+ /** Short enough to paste into a phone chat. The full history is exported
+  * separately as a text file so we do not discard diagnostic detail.
+  * Peak counts are 250ms buckets, NOT a number of individual frames.
+  */
+ compactReport(policy:string,view:string):string{
+  const all=this.series,latest=all[all.length-1]?.peak.at??0;
+  let critical=0,slow=0;
+  for(const b of all){
+   if(b.peak.raf>=66.7)critical++;
+   else if(b.peak.raf>=33.3)slow++;
+  }
+  const lines=[
+   'FIELDWORK PERF · last 60s | '+policy+' / '+view,
+   'RAF worst '+this.maxRaf().toFixed(0)+'ms | spike buckets: '+
+    critical+' >=67ms, '+slow+' 33–66ms',
+   'Top RAF spikes (time ago; ms):'
+  ];
+  const peaks=this.recentSpikes(5);
+  if(!peaks.length)lines.push('None >=33ms');
+  for(const {peak:p} of peaks){
+   const cause=performanceHotspot(p);
+   lines.push(
+    '-'+((latest-p.at)/1000).toFixed(1)+'s RAF '+p.raf.toFixed(0)+
+    ' / JS '+p.js.toFixed(0)+' / sync '+p.sync.toFixed(0)+
+    ' / sim '+p.sim.toFixed(0)+' | '+p.phase+'/'+p.camera+
+    ' | '+(cause.startsWith('unattributed')?'unattributed gap':
+     cause.replace(' (largest measured CPU slice)',''))+
+    ' | fog +'+p.fogPaints+' shadow +'+p.shadowRefreshes
+   );
+  }
+  lines.push('RAF gap != GPU time. Full 250ms history: TXT export.');
+  return lines.join('\n');
+ }
  report(policy:string,view:string):string{
   const latest=this.series[this.series.length-1]?.peak.at??0;
   const all=this.series;
