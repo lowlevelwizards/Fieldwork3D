@@ -216,18 +216,29 @@ function tick(now:number){
   }
   const runtimeUiStart=perfOverlay?performance.now():0;
   if(replaying)config.advanceReplayCamera(dt);
+  const uiCameraEnd=perfOverlay?performance.now():0;
   audioController.consumeLiveFrame(state,recorder,selected,replaying);
+  const uiAudioEnd=perfOverlay?performance.now():0;
   // Execution's full HUD reconciliation is DOM-heavy; explicit commands
   // still call updateHud() immediately, while live status refreshes ~5.5Hz.
   if(now-hudAt>(state.phase==='running'?180:120)){
     config.updateHud();if(replaying)config.updateReplayHud();hudAt=now;
   }
+  const uiHudEnd=perfOverlay?performance.now():0;
   // The manager owns its DOM nodes for the lifetime of this view.
   physicalActionRings.update(team(state),state.doors,
     frameMode==='live',
     p=>config.worldToScreen(p,viewMode==='plan2d'?14:34));
   const perfRenderStart=perfOverlay?performance.now():0;
   const runtimeUiMs=perfOverlay?perfRenderStart-runtimeUiStart:0;
+  // Opt-in child timings. Each is part of UI / audio, never additive to
+  // previous JS or the parent UI slice. No normal-frame performance probes.
+  const runtimeUiDetail=perfOverlay?{
+    camera:uiCameraEnd-runtimeUiStart,
+    audio:uiAudioEnd-uiCameraEnd,
+    hud:uiHudEnd-uiAudioEnd,
+    rings:perfRenderStart-uiHudEnd
+  }:undefined;
   // The Studio is an opaque full-screen view. Skip only hidden rendering,
   // never fixed-step gameplay or authoritative replay/simulation state.
   const studioOccludesTactical=config.isStudioVisible()&&
@@ -458,6 +469,7 @@ function tick(now:number){
     beforeUi:Math.max(0,runtimeUiStart-perfStart-
      simulationMeasuredMs-recordingMs),
     ui:runtimeUiMs,
+    uiDetail:runtimeUiDetail,
     sceneSync:sceneUpdateEnd-perfRenderStart,
     render:renderEnd-sceneUpdateEnd,
     postRender:diagnosticsStart-renderEnd,

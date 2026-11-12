@@ -82,7 +82,7 @@ export function advanceActorMotor(
 
  const collisionStart=profile?beginMotorCpuMeasurement():0;
  const resolved=resolveMotorCollision(a,p,next,passage.move,dt,s,
-   canAutoSidestep,door.closed,hooks);
+   canAutoSidestep,door.closed,hooks,profile);
  if(profile)profile('motor-collision',finishMotorCpuMeasurement(collisionStart));
  return resolved;
 }

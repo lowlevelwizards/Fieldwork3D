@@ -1,0 +1,40 @@
+name: Performance P2.8 exact collision gate
+on:
+  pull_request:
+    paths:
+      - 'src/breach-navigation.ts'
+      - 'src/breach-world-context.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-actor-motor.ts'
+      - 'tests/performance-p2-8-sweep-broadphase.test.mjs'
+      - 'tests/performance-p2-8-cover-los.test.mjs'
+      - '.github/workflows/performance-p2-8-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  physicality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Exact collision oracle and normal-lane regression
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-p2-8-sweep-broadphase.test.mjs
+          tests/performance-p2-8-cover-los.test.mjs
+          tests/performance-p2-7-live-routing.test.mjs
+          tests/breach-normal-lane-priority.test.mjs
+          tests/release4-squeeze-gate.test.mjs
+          tests/breach-closeout-stage2-simulation-phases.test.mjs
+      - name: Focused doorway movement regressions
+        run: >
+          node --experimental-strip-types --test
+          --test-name-pattern='retreat belongs|idle doorway occupancy|single furniture-side obstruction'
+          tests/breach-navigation-openings-r1.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run check && npx vite build

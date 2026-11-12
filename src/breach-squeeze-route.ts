@@ -132,9 +132,30 @@ export function routeWithSqueezeIntel(intel:IntelState,from:Pt,to:Pt):Pt[]{
 }
 /** Collision-truth replan after contact or a known obstruction.
  * Open door leaves use the same rule as the ordinary motor. */
-const worldCanStand=(doors:Door[],world?:SessionWorldGeometry)=>(p:Pt,r:number)=>
-  (world?world.passable(p,r):passable(p,r))&&!doors.some(d=>d.open&&(d.openFraction??0)>=.72&&
-    pointToSegment(p,doorLeafSegment(d))<r+1);
+/** Precompute the *current* physical leaf segments for one synchronous
+ * world-route search. A route never advances a hinge or simulation tick;
+ * the next route constructs a fresh snapshot. Broadphase rejection is only
+ * AABB: every possible contact still gets exact pointToSegment clearance. */
+const worldCanStand=(doors:Door[],world?:SessionWorldGeometry)=>{
+  const leaves=doors.filter(d=>d.open&&(d.openFraction??0)>=.72)
+    .map(d=>{
+      const leaf=doorLeafSegment(d);
+      return {leaf,minX:Math.min(leaf.a.x,leaf.b.x),
+        maxX:Math.max(leaf.a.x,leaf.b.x),
+        minY:Math.min(leaf.a.y,leaf.b.y),
+        maxY:Math.max(leaf.a.y,leaf.b.y)};
+    });
+  return (p:Pt,r:number):boolean=>{
+    if(!(world?world.passable(p,r):passable(p,r)))return false;
+    const reach=r+1;
+    for(const {leaf,minX,maxX,minY,maxY} of leaves){
+      if(p.x<minX-reach||p.x>maxX+reach||
+         p.y<minY-reach||p.y>maxY+reach)continue;
+      if(pointToSegment(p,leaf)<reach)return false;
+    }
+    return true;
+  };
+};
 /** For motor recovery: a true full-body detour, never a narrow fallback.
  * Its result is transient navigation, not an authored path change. */
 export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[],
@@ -209,6 +230,10 @@ export function recoverNormalLane(from:Pt,to:Pt,doors:Door[],world?:SessionWorld
    atRadius.set(key,result);
    return result;
  };
+ // Every normal-world route begins with the identical full-radius goal
+ // predicate. When the goal itself is blocked, *all* twelve escape-route
+ // attempts must fail too. Preserve that result without launching A*.
+ if(!sharedCanStand(to,OPERATOR_RADIUS))return [];
  const direct=routeWithNormalWorld(from,to,doors,world,sharedCanStand);
  if(direct.length)return direct;
  const dist=Math.hypot(to.x-from.x,to.y-from.y);
