@@ -68,8 +68,21 @@ function poseOutputNodes(r:OperatorRig):Array<{
   nodes.push({id:'sling-'+i,owner:'attachments',node:r.slingStraps[i]});
  return nodes;
 }
+/** B2: Explicit final-stage schedule. This is a presentation output grouping,
+ * not a second gait, action or animation clock. It also names the ownership
+ * contract that B3–B6 solvers will populate directly.
+ */
+export const OPERATOR_POSE_STAGE_ORDER:readonly PoseOutputOwner[]=[
+ 'lower-body','upper-body','frame','body','weapon','attachments'
+] as const;
+const COMPLETE_STAGE_MASK=(1<<OPERATOR_POSE_STAGE_ORDER.length)-1;
 type MutableOutput={
  slots:PoseOutputSlot[];slotCount:number;time:number;generation:number;valid:boolean;
+ /** Separate reusable pending values; published inspection never observes
+  * a partially staged frame or values from another rig. */
+ staged:Float64Array[];
+ indicesByStage:number[][];
+ stageMask:number;pendingTime:number;pending:boolean;
 };
 const outputs=new WeakMap<OperatorRig,MutableOutput>();
 function outputFor(r:OperatorRig):MutableOutput{
@@ -82,43 +95,114 @@ function outputFor(r:OperatorRig):MutableOutput{
    throw new Error('Duplicate pose-output owner: '+node.id);
   ids.add(node.id);objects.add(node.node);
  }
+ const indicesByStage=OPERATOR_POSE_STAGE_ORDER.map(()=>[] as number[]);
+ for(let i=0;i<declared.length;i++){
+  const index=OPERATOR_POSE_STAGE_ORDER.indexOf(declared[i].owner);
+  if(index<0)throw new Error('Unregistered pose-output owner '+declared[i].id);
+  indicesByStage[index].push(i);
+ }
+ if(indicesByStage.some(indices=>indices.length===0))
+  throw new Error('Pose-output stage missing registered slots');
  output={slots:declared.map(node=>({...node,values:new Float64Array(11)})),
-  slotCount:declared.length,time:0,generation:0,valid:false};
+  slotCount:declared.length,time:0,generation:0,valid:false,
+  staged:declared.map(()=>new Float64Array(11)),indicesByStage,
+  stageMask:0,pendingTime:0,pending:false};
  outputs.set(r,output);
  return output;
 }
-/** A positional, quaternion and scale solution lives in one bounded rig-local
- * output buffer. No node objects, arrays or Vector3 instances per render.
- * Input remains read-only; golden pose values are not normalized or tuned.
+/** Begin a new, rig-local frame. No published values, bone transforms, or
+ * authoritative simulation state are modified by staging.
  */
-export function captureOperatorPoseOutput(r:OperatorRig,p:OperatorPose):
- OperatorPoseOutput{
+export function beginOperatorPoseOutput(r:OperatorRig,p:OperatorPose):void{
  const output=outputFor(r);
- for(const slot of output.slots){
-  const n=slot.node,v=slot.values;
-  v[0]=n.position.x;v[1]=n.position.y;v[2]=n.position.z;
-  v[3]=n.quaternion.x;v[4]=n.quaternion.y;
-  v[5]=n.quaternion.z;v[6]=n.quaternion.w;
-  v[7]=n.scale.x;v[8]=n.scale.y;v[9]=n.scale.z;
-  v[10]=n.visible?1:0;
-  for(let i=0;i<10;i++)
-   if(!Number.isFinite(v[i]))
-    throw new Error('Non-finite pose output '+slot.id+'['+i+']');
- }
- output.time=p.seconds;
- output.generation++;
- output.valid=true;
- return output;
+ if(!Number.isFinite(p.seconds))throw new Error('Non-finite pose frame time');
+ output.stageMask=0;
+ output.pendingTime=p.seconds;
+ output.pending=true;
 }
-/** This is the ONLY published frame commit. Solvers may mutate their
- * existing working hierarchy during evaluation, but neither the scene nor
- * a future replacement solver receives another transform-commit entry.
- * Equality guards avoid extra matrix dirties in the compatibility path.
+/** Ready for B3–B6 solvers: an explicit local transform without a scene
+ * object reference. Direct stage writers supply exactly the registered IDs
+ * in that owner's stable slot order, with no fallback to a working rig.
  */
-export function commitOperatorPoseOutput(r:OperatorRig,p:OperatorPose):void{
- const frame=captureOperatorPoseOutput(r,p);
- for(const slot of frame.slots){
-  const n=slot.node,v=slot.values;
+export type PoseTransformValues=readonly [
+ number,number,number,number,number,number,number,
+ number,number,number,number
+];
+export type DirectPoseOutputValue={
+ readonly id:string;
+ readonly values:PoseTransformValues;
+};
+function assertStageAvailable(output:MutableOutput,p:OperatorPose,
+ owner:PoseOutputOwner):number{
+ if(!output.pending||output.pendingTime!==p.seconds)
+  throw new Error('Pose-output stage without matching frame: '+owner);
+ const index=OPERATOR_POSE_STAGE_ORDER.indexOf(owner);
+ if(index<0)throw new Error('Unknown pose-output stage: '+owner);
+ if(output.stageMask&(1<<index))
+  throw new Error('Duplicate pose-output stage: '+owner);
+ return index;
+}
+/** Direct producer entrypoint: never reads or writes scene transforms.
+ * An incomplete or mismatched owner set cannot publish. Callers may reuse
+ * their own typed value arrays; staging buffers themselves are per-rig.
+ */
+export function stageDirectOperatorPoseOutput(r:OperatorRig,p:OperatorPose,
+ owner:PoseOutputOwner,values:readonly DirectPoseOutputValue[]):void{
+ const output=outputFor(r),index=assertStageAvailable(output,p,owner);
+ const indices=output.indicesByStage[index];
+ if(values.length!==indices.length)
+  throw new Error('Incomplete direct pose-output stage: '+owner);
+ for(let j=0;j<indices.length;j++){
+  const i=indices[j],slot=output.slots[i],entry=values[j];
+  if(!entry||entry.id!==slot.id||entry.values.length!==11)
+   throw new Error('Incorrect direct pose-output slot: '+slot.id);
+  for(let k=0;k<11;k++){
+   const value=entry.values[k];
+   if(!Number.isFinite(value)||
+      k===10&&value!==0&&value!==1)
+    throw new Error('Invalid direct pose-output '+slot.id+'['+k+']');
+   output.staged[i][k]=value;
+  }
+ }
+ output.stageMask|=1<<index;
+}
+/** Capture one named producer's FINAL local transforms. Working rig writers
+ * remain transitional until B6; the stage contract allows their eventual
+ * replacement by direct typed values without changing output consumers.
+ * Staging is atomic per owner: an invalid value cannot mark it complete.
+ */
+export function stageOperatorPoseOutput(r:OperatorRig,p:OperatorPose,
+ owner:PoseOutputOwner):void{
+ const output=outputFor(r);
+ const index=assertStageAvailable(output,p,owner);
+ for(const i of output.indicesByStage[index]){
+  const node=output.slots[i].node,v=output.staged[i];
+  v[0]=node.position.x;v[1]=node.position.y;v[2]=node.position.z;
+  v[3]=node.quaternion.x;v[4]=node.quaternion.y;
+  v[5]=node.quaternion.z;v[6]=node.quaternion.w;
+  v[7]=node.scale.x;v[8]=node.scale.y;v[9]=node.scale.z;
+  v[10]=node.visible?1:0;
+  for(let j=0;j<10;j++)
+   if(!Number.isFinite(v[j]))
+    throw new Error('Non-finite pose output '+output.slots[i].id+'['+j+']');
+ }
+ output.stageMask|=1<<index;
+}
+/** Single internal publication path. A failed or partial frame cannot
+ * publish, increase generation or overwrite the previous final snapshot.
+ * Equality guards avoid unnecessary matrix dirties during the B2 bridge.
+ */
+function publishOperatorPoseOutput(r:OperatorRig,p:OperatorPose,
+ apply:boolean):OperatorPoseOutput{
+ const output=outputFor(r);
+ if(!output.pending||output.pendingTime!==p.seconds||
+   output.stageMask!==COMPLETE_STAGE_MASK)
+  throw new Error('Incomplete pose-output stages; refusing partial commit');
+ for(let i=0;i<output.slots.length;i++){
+  const slot=output.slots[i],v=slot.values;
+  v.set(output.staged[i]);
+  if(!apply)continue;
+  const n=slot.node;
   if(n.position.x!==v[0]||n.position.y!==v[1]||n.position.z!==v[2])
    n.position.set(v[0],v[1],v[2]);
   if(n.quaternion.x!==v[3]||n.quaternion.y!==v[4]||
@@ -129,9 +213,32 @@ export function commitOperatorPoseOutput(r:OperatorRig,p:OperatorPose):void{
   const visible=v[10]===1;
   if(n.visible!==visible)n.visible=visible;
  }
+ output.time=p.seconds;
+ output.generation++;
+ output.valid=true;
+ output.pending=false;
+ output.stageMask=0;
+ return output;
 }
-/** Introspection for Lab and diagnostics only. Mutating the returned typed
- * slot values is unsupported; no simulation or renderer uses this accessor.
+/** Compatibility capture, for existing external diagnostics only.
+ * No production animator uses this wrapper. It shares the same owner masks
+ * and publication path, and never changes the visual rig.
+ */
+export function captureOperatorPoseOutput(r:OperatorRig,p:OperatorPose):
+ OperatorPoseOutput{
+ beginOperatorPoseOutput(r,p);
+ for(const owner of OPERATOR_POSE_STAGE_ORDER)
+  stageOperatorPoseOutput(r,p,owner);
+ return publishOperatorPoseOutput(r,p,false);
+}
+/** The ONLY production pose commit. It publishes exactly one complete,
+ * validated stage set after all procedural solutions and finalizers.
+ */
+export function commitOperatorPoseOutput(r:OperatorRig,p:OperatorPose):void{
+ publishOperatorPoseOutput(r,p,true);
+}
+/** Introspection for Lab and diagnostics only. Published buffers remain
+ * stable while another frame is staged. Mutating typed values is unsupported.
  */
 export function inspectOperatorPoseOutput(r:OperatorRig):
  OperatorPoseOutput|null{

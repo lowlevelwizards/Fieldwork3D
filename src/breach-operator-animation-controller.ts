@@ -10,7 +10,8 @@ import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import * as THREE from 'three';
 import {updateOperatorSlingPose} from './breach-operator-sling-pose.ts';
 import {applyOperatorTraumaPose,finishOperatorPoseFrame} from './breach-pose-frame-finalizer.ts';
-import {commitOperatorPoseOutput} from './breach-operator-pose-output.ts';
+import {beginOperatorPoseOutput,stageOperatorPoseOutput,
+ commitOperatorPoseOutput} from './breach-operator-pose-output.ts';
 import {canonicalRootOrientation} from './operator-axis-convention.ts';
 import {neutralMannequinWrist,neutralMannequinElbowPole}
  from './operator-mannequin-pose.ts';
@@ -66,6 +67,7 @@ const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const diagnosticsEnabled=p.poseDiagnostics!==false;
   const {scratch,discontinuity,dt:frameDt}=beginOperatorAnimationFrame(r,p,dt);
+  beginOperatorPoseOutput(r,p);
   dt=frameDt;
   const clothing=updateOperatorAppearance(r,p);
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
@@ -265,6 +267,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.root.quaternion.copy(
     canonicalRootOrientation(r.legacyPitch,r.legacyYaw,r.legacyRoll));
   applyOperatorLegIK(r,p,scratch,targets,kick,headingYaw,smooth);
+  // B2: the scheduled feet and solved legs have their final local output.
+  stageOperatorPoseOutput(r,p,'lower-body');
   // Build 120: stock, both grips and forearm targets share a single rigid
   // firearm transform. The fit searches reachable posture before limb IK.
   const config=p.weaponConfiguration?.weapon===p.weapon?
@@ -1122,6 +1126,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       }
     }
   }
+  // B2: both arm chains and the final magazine-driven hand pose are solved.
+  stageOperatorPoseOutput(r,p,'upper-body');
   applyOperatorTraumaPose(r,p,downProgress);
   if(r.droppedGun.visible){
     // The world-space gun begins exactly in the last held grip and travels
@@ -1148,7 +1154,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   updateOperatorSlingPose(r,p,physicalSpeed,
     scratch.vertical,scratch.slingDelta);
   finishOperatorPoseFrame(r,p);
-  // One final pose commit, after all anatomy, weapon, trauma and sling stages.
+  // B2: late trauma, weapon drop, sling and unarmed-preview visibility
+  // are final before their owners publish. No solver can commit a subset.
+  stageOperatorPoseOutput(r,p,'frame');
+  stageOperatorPoseOutput(r,p,'body');
+  stageOperatorPoseOutput(r,p,'weapon');
+  stageOperatorPoseOutput(r,p,'attachments');
+  // Exactly one commit of the six validated, rig-local output stages.
   commitOperatorPoseOutput(r,p);
 
 }

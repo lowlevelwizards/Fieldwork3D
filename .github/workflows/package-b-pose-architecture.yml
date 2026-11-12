@@ -10,6 +10,7 @@ on:
       - 'tests/package-b0-pose-audit.test.mjs'
       - 'tests/pages-release-gate.test.mjs'
       - 'tests/package-b1-pose-decision.test.mjs'
+      - 'tests/package-b2-pose-output.test.mjs'
       - '.github/workflows/package-b-pose-architecture.yml'
       - 'src/breach-operator-*.ts'
       - 'src/breach-pose-*.ts'
@@ -51,6 +52,9 @@ jobs:
             tests/breach-pose-action-state.test.mjs \
             tests/breach-pose-strategy.test.mjs \
             tests/breach-motion-short-stock-all-weapons.test.mjs
+      - name: B2 owned output stages, atomic publication and direct solver contract
+        run: |
+          node --experimental-strip-types --test tests/package-b2-pose-output.test.mjs
       - name: Posed frame, replay seeks, V3/V4 contacts, motion and Lab parity
         run: |
           node --experimental-strip-types --test --test-concurrency=2 \
