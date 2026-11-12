@@ -8,7 +8,8 @@ import type {Pt} from './breach-core.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import {renderSnapshot,type RenderActor} from './breach-frame-interpolation.ts';
 import {FrameMeter} from './breach-perf.ts';
-import {PerformanceTimeline,emptyPerformanceSceneCosts}
+import {PerformanceTimeline,emptyPerformanceSceneCosts,
+ type PreviousFrameWork}
  from './breach-performance-timeline.ts';
 import {BreachPerfTimelinePanel} from './ui/breach-perf-timeline-panel.ts';
 import {drainSightDiagnostics,setSightDiagnosticsEnabled} from './breach-sight-cost-counters.ts';
@@ -108,6 +109,7 @@ let perfTimelineSession:Session|null=null;
 let previousPerfJs:number|undefined;
 let previousPerfSim:number|undefined;
 let previousPerfMode:RuntimeFrameMode|undefined;
+let previousPerfWork:PreviousFrameWork|undefined;
 type SightTotal={queries:number;hits:number;misses:number;
  bypasses:number;invalidations:number};
 let lastSightTotals:SightTotal|null=null;
@@ -137,7 +139,7 @@ function tick(now:number){
   if(perfTimeline&&perfTimelineSession!==state){
    perfTimeline.reset();perfTimelineSession=state;
    previousPerfJs=undefined;previousPerfSim=undefined;
-   previousPerfMode=undefined;
+   previousPerfMode=undefined;previousPerfWork=undefined;
    lastSightTotals=null;lastFogPaints=0;lastShadowRefreshes=0;
    for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
     intervalSight[k]=0;
@@ -147,7 +149,7 @@ function tick(now:number){
   const dt=Math.min(.08,frameGap/1000);last=now;
   if(frameMode==='suspended'){
    previousPerfJs=undefined;previousPerfSim=undefined;
-   previousPerfMode=undefined;
+   previousPerfMode=undefined;previousPerfWork=undefined;
    accum=0;previousRenderActors=null;previousRenderDoors=null;
    physicalActionRings.clear();
    scheduleFrame();return;
@@ -260,8 +262,15 @@ function tick(now:number){
   }
   config.drawTacticalFrameFeedback(studioOccludesTactical);
   config.updateContext();config.advanceContextPalette(dt);
+  const diagnosticsStart=perfOverlay?performance.now():0;
+  let currentSceneCosts=emptyPerformanceSceneCosts();
   if(frameMeter&&perfOverlay){
     const end=performance.now(),stats=stage?.performanceStats();
+    currentSceneCosts={
+     ...(!studioOccludesTactical&&viewMode!=='plan2d'?
+      stats?.scenePhases??emptyPerformanceSceneCosts():
+      emptyPerformanceSceneCosts())
+    };
     const sightTotal=stats?.presentationSight;
     const sightDelta={queries:0,hits:0,misses:0,
      bypasses:0,invalidations:0};
@@ -292,11 +301,10 @@ function tick(now:number){
       perfTimeline.add({at:now,raf:frameGap,js:end-perfStart,
        previousJs:previousPerfJs,previousSim:previousPerfSim,
        previousPhase:previousPerfMode,
+       previousWork:previousPerfWork,
        sync:sceneUpdateEnd-perfRenderStart,sim:simulationMeasuredMs,
        recording:recordingMs,ui:runtimeUiMs,overlay:end-overlayBegin,
-       scene:!studioOccludesTactical&&viewMode!=='plan2d'?
-        stats?.scenePhases??emptyPerformanceSceneCosts():
-        emptyPerformanceSceneCosts(),
+       scene:currentSceneCosts,
        draws:stats?.calls??0,steps:simSteps,phase:frameMode,
        camera:viewMode,hotSim,fogPaints:fogDelta,
        shadowRefreshes:shadowDelta,sight:sightDelta});
@@ -381,9 +389,20 @@ function tick(now:number){
   if(perfTimeline){
    // Measure at the end, *after* optional 750ms panel reporting. Otherwise
    // diagnostic DOM/canvas work masquerades as unexplained callback wait.
-   previousPerfJs=performance.now()-perfStart;
+   const afterDiagnostics=performance.now();
+   previousPerfJs=afterDiagnostics-perfStart;
    previousPerfSim=simulationMeasuredMs;
    previousPerfMode=frameMode;
+   previousPerfWork={
+    beforeUi:Math.max(0,runtimeUiStart-perfStart-
+     simulationMeasuredMs-recordingMs),
+    ui:runtimeUiMs,
+    sceneSync:sceneUpdateEnd-perfRenderStart,
+    render:renderEnd-sceneUpdateEnd,
+    postRender:diagnosticsStart-renderEnd,
+    diagnostics:afterDiagnostics-diagnosticsStart,
+    scene:currentSceneCosts
+   };
   }
   scheduleFrame();
 }
@@ -391,7 +410,7 @@ function tick(now:number){
  function resetPresentation():void{
   accum=0;hudAt=0;
   previousPerfJs=undefined;previousPerfSim=undefined;
-  previousPerfMode=undefined;
+  previousPerfMode=undefined;previousPerfWork=undefined;
   previousRenderActors=null;previousRenderDoors=null;
   physicalActionRings.clear();
  }
