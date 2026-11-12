@@ -83,7 +83,8 @@ test('a single game-owned dispatcher delegates every order family without a seco
  assert.match(exec,/if\(executeEntryOrder\(s,a,n,dt\)\)return;/);
  assert.match(exec,/if\(executeMedicalOrder\(s,a,n,dt\)\)return;/);
  assert.match(exec,/if\(executeInteractionOrder\(s,a,n,dt\)\)return;/);
- assert.match(exec,/if\(executeMovementOrder\(s,a,n,dt,visibleThreat\)\)return;/);
+ assert.match(exec,/if\(executeMovementOrder\(s,a,n,dt,visibleThreat,profile\)\)return;/);
+ assert.match(exec,/if\(profile\)profile\('orders',performance\.now\(\)-orderStart\)/);
  assert.doesNotMatch(game,/function runOrders\(/);
  assert.doesNotMatch(game,/function failCurrentOrder\(/);
  assert.doesNotMatch(game,/function pop\(/);
