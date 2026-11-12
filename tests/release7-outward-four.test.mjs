@@ -10,7 +10,7 @@ const fixture=hinge=>({
  walls:[{a:pt(90,260),b:pt(290,260)},
   {a:pt(332,260),b:pt(550,260)}],
  doors:[{id:'ENTRY',a:pt(290,260),b:pt(332,260),kind:'hinged',
-  hinge,swing:1,openedAt:-1,open:false}],
+  hinge,swing:hinge==='a'?1:-1,openedAt:-1,open:false}],
  entrance:pt(311,260),
  spawn:[pt(300,200),pt(308,173),pt(316,146),pt(325,119)],
  enemies:[],objective:pt(520,450),extract:pt(520,460),
