@@ -39,7 +39,7 @@ function displayModelFailure(root:HTMLElement,host:HTMLElement,
  label.className='fw-v7-model-error';
  label.textContent=owner.failure==='module'?
    '3D MODULE COULD NOT LOAD · AN APP UPDATE MAY BE AVAILABLE':
-   '3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
+   '3D VIEW UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
  const retry=document.createElement('button');
  retry.type='button';retry.className='fw-v7-model-retry';
  retry.textContent='RETRY 3D';
