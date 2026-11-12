@@ -5,10 +5,11 @@ import {readFileSync} from 'node:fs';
 const runtime=readFileSync(new URL('../src/breach-runtime-loop.ts',import.meta.url),'utf8');
 test('opt-in ?perf only activates sight counters after overlay setup',()=>{
  assert.match(runtime,/setSightDiagnosticsEnabled\(!!perfOverlay\)/);
- const begin=runtime.indexOf('const perfOverlay=');
+ const begin=runtime.indexOf('let perfOverlay=');
  const enabled=runtime.indexOf('setSightDiagnosticsEnabled(!!perfOverlay)');
  const raf=runtime.indexOf('function tick(now:number)');
  assert.ok(begin<enabled&&enabled<raf);
+ assert.match(runtime,/setSightDiagnosticsEnabled\(true\)/);
  assert.match(runtime,/const sight=drainSightDiagnostics\(\)/);
  assert.match(runtime,/SIGHT \(750ms\)/);
  assert.match(runtime,/sight\.liveQueries/);
