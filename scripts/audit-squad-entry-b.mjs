@@ -92,9 +92,11 @@ function audit(c){
   const world=sessionWorldGeometry(s);
   const occupants=[...s.operators.filter(a=>a.health>0).map(a=>a.p),
    ...s.civilians.filter(c=>c.health>0).map(c=>c.p)];
-  const physicallyBlocked=!!actualDoor&&doorSwingBlocked(actualDoor,probe,[]);
-  const staticWorldBlocked=!!actualDoor&&doorSwingBlocked(actualDoor,probe,
+  // The motor uses session-scoped world geometry. Global geometry can
+  // belong to a different lab/session and must not classify this door.
+  const physicallyBlocked=!!actualDoor&&doorSwingBlocked(actualDoor,probe,
    [],OPERATOR_RADIUS,world);
+  const staticWorldBlocked=physicallyBlocked;
   const actorSweepBlocked=!!actualDoor&&
    doorWouldStrikeActors(actualDoor,probe,occupants);
   return {name:c.name,expectBlocked:!!c.expectBlocked,

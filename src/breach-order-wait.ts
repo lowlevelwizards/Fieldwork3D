@@ -6,6 +6,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {entryDoorState} from './breach-entry-coordination.ts';
 import {doorSwingBlocked} from './breach-door.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
 
 export function advanceWaitOrder(
  s:Session,a:TeamActor,n:PlanNode,dt:number,
@@ -23,7 +24,8 @@ export function advanceWaitOrder(
     const stalledSwing=!!doorway&&doorway.open&&
      (doorway.openFraction??0)<.98&&
      doorSwingBlocked(doorway,
-      Math.min(1,(doorway.openFraction??0)+.07),[]);
+      Math.min(1,(doorway.openFraction??0)+.07),[],
+      undefined,sessionWorldGeometry(s));
     notify(s,a.name+' ENTRY WAIT · '+
      (gate==='missing'?'DOOR MISSING':
       stalledSwing?'DOOR SWING OBSTRUCTED · CHECK ENTRY':
