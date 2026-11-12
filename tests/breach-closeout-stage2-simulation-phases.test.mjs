@@ -6,7 +6,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {activateSite} from '../src/breach-core.ts';
-import {newSession,team,toggling,stepSession,planWaitAt} from '../src/breach-game.ts';
+import {newSession,team,toggling,stepSession,planWaitAt,planMove} from '../src/breach-game.ts';
 import {advanceSimulationTick,SIMULATION_PHASE_SEQUENCE}
  from '../src/breach-simulation-phases.ts';
 import {MissionRecorder,applyReplayFrame} from '../src/breach-replay.ts';
@@ -99,6 +99,32 @@ test('P2.3 operator profiling splits threat, order and motor without extra ticks
  assert.match(movement,/profile\('motor',performance\.now\(\)-start\)/);
  assert.equal((movement.match(/\bmove\(a,/g)??[]).length,4,
   'all original movement-order motor entry points are profiled');
+}));
+test('P2.4 motor subphase profile is observational and retains fixed-tick state',()=>round(()=>{
+ const setup=()=>{
+  const s=newSession(0,undefined,'full-view','small','hold',stage1DoorSite());
+  const rook=team(s)[0];
+  assert.ok(planMove(s,rook.id,{x:rook.p.x+16,y:rook.p.y+23}));
+  toggling(s);
+  return s;
+ };
+ const a=setup(),b=setup(),labels=[];
+ for(let i=0;i<8;i++){
+  stepSession(a,1/60,(name,ms)=>{
+   assert.ok(Number.isFinite(ms)&&ms>=0,'invalid motor wall-time measurement');
+   labels.push(name);
+  });
+  stepSession(b,1/60);
+ }
+ for(const expected of ['operator-rook','operator-rook/orders',
+  'operator-rook/motor','operator-rook/motor-traversal',
+  'operator-rook/motor-route'])
+  assert.ok(labels.includes(expected),'missing '+expected);
+ assert.ok(labels.some(x=>x.startsWith('operator-rook/motor-')),
+  'the actual 60Hz authoritative motor has separate CPU slices');
+ assert.deepEqual(stage1Snapshot(a),stage1Snapshot(b),
+  'profiling adds no movement authority, RNG draws or changed outcomes');
+ assert.equal(a.seconds,b.seconds);
 }));
 test('Stage 2: stopped phases neither age effects nor create execution events',()=>round(()=>{
  const s=newSession(0,undefined,'full-view','small','hold',stage1DoorSite());

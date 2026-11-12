@@ -95,20 +95,37 @@ export function collectCastVolumes(root:THREE.Object3D,
 /** Fixed-key contact ray depth, evaluated only during the outfit bake.
  * Crisp directly beneath attachments; no long black carrier-wide shadows.
  */
-const SHADOW_AXES=['x','y','z'] as const;
-function rayEntryDistance(p:THREE.Vector3,dir:THREE.Vector3,
+/** Allocation-free fixed XYZ slab path for the expensive cold gear bake.
+ * Keep original inclusive parallel-axis tests, thresholds, and operation
+ * ordering; 8-bit shadow/contact output must remain identical.
+ */
+export function rayEntryDistance(p:THREE.Vector3,dir:THREE.Vector3,
  box:THREE.Box3,maxDist=3.25):number|null{
  let near=0,far=maxDist;
- for(const axis of SHADOW_AXES){
-  const d=dir[axis],o=p[axis];
-  if(Math.abs(d)<1e-6){
-   if(o<box.min[axis]||o>box.max[axis])return null;
-  }else{
-   const t0=(box.min[axis]-o)/d,t1=(box.max[axis]-o)/d;
-   near=Math.max(near,Math.min(t0,t1));
-   far=Math.min(far,Math.max(t0,t1));
-   if(near>far)return null;
-  }
+ const min=box.min,max=box.max,dx=dir.x,dy=dir.y,dz=dir.z;
+ if(Math.abs(dx)<1e-6){
+  if(p.x<min.x||p.x>max.x)return null;
+ }else{
+  const t0=(min.x-p.x)/dx,t1=(max.x-p.x)/dx;
+  near=Math.max(near,Math.min(t0,t1));
+  far=Math.min(far,Math.max(t0,t1));
+  if(near>far)return null;
+ }
+ if(Math.abs(dy)<1e-6){
+  if(p.y<min.y||p.y>max.y)return null;
+ }else{
+  const t0=(min.y-p.y)/dy,t1=(max.y-p.y)/dy;
+  near=Math.max(near,Math.min(t0,t1));
+  far=Math.min(far,Math.max(t0,t1));
+  if(near>far)return null;
+ }
+ if(Math.abs(dz)<1e-6){
+  if(p.z<min.z||p.z>max.z)return null;
+ }else{
+  const t0=(min.z-p.z)/dz,t1=(max.z-p.z)/dz;
+  near=Math.max(near,Math.min(t0,t1));
+  far=Math.min(far,Math.max(t0,t1));
+  if(near>far)return null;
  }
  return near>.045&&far>.055&&near<maxDist?near:null;
 }
@@ -236,6 +253,20 @@ export function bakeCastOnGear(
     a.min.y<=b.max.y+reach&&a.max.y>=b.min.y-reach&&
     a.min.z<=b.max.z+reach&&a.max.z>=b.min.z-reach;
   });
+  // When no caster's actual contact reach intersects this receiver,
+  // the old directional/contact masks are exactly zero. Restore the
+  // original 8-bit baseline without transforming each vertex or casting
+  // rays. An empty-caster outfit still updates every existing mask.
+  if(relevantBoxes.length===0){
+   for(let i=0;i<coords.count;i++){
+    contactMask[i]=0;castMask[i]=0;
+    const before=baseline[i*3]/255;
+    const value=Math.round(255*Math.max(.60,before));
+    if(value<array[i*3])changed++;
+    array[i*3]=value;array[i*3+1]=value;array[i*3+2]=value;
+    vertices++;
+   }
+  }else{
   for(let i=0;i<coords.count;i++){
    position.fromBufferAttribute(coords,i).applyMatrix4(toChest);
    normal.fromBufferAttribute(normals,i).applyMatrix3(normalMatrix).normalize();
@@ -278,6 +309,7 @@ export function bakeCastOnGear(
    if(value<array[i*3])changed++;
    array[i*3]=value;array[i*3+1]=value;array[i*3+2]=value;
    vertices++;
+  }
   }
   // Reverting stale lightmaps to an unoccluded style must also upload.
   attribute.needsUpdate=true;
