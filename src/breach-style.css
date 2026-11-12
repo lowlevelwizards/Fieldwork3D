@@ -4028,7 +4028,12 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v5-workspace .fw-v4-forensic-uncertain,
  .fw-v5-workspace .fw-v4-forensic-armor{flex:0 0 auto}
 }
-/* The deferred-update reminder belongs outside the active mission report;
-   its full offer remains available when the player leaves the debrief. */
+/* Keep the update reminder available without covering the mission result
+   or tab controls. Use the empty left side of the debrief footer. */
 body:has(#debrief:not([hidden])) #fieldwork-update-compact{
+ top:auto;right:auto;left:calc(env(safe-area-inset-left,0px) + 16px);
+ bottom:calc(env(safe-area-inset-bottom,0px) + 16px);
+ min-height:30px;max-width:110px;padding:5px 7px;
+ font-size:10px;opacity:.92}
+body:has(#afterActionDetails:not([hidden])) #fieldwork-update-compact{
  display:none!important}
