@@ -1131,6 +1131,37 @@ export class TacticalScene3D{
       this.view.pitch-dy*.004,35*Math.PI/180,Math.PI/2);
     this.setYaw(this.view.yaw-dx*.007);
   }
+  /** One-time tactical framing after explicit unit selection. Do not follow
+   * the actor continuously or interrupt future manual camera gestures.
+   */
+  focusOn(point:Pt):void{
+    if(!Number.isFinite(point.x)||!Number.isFinite(point.y))return;
+    this.view.focus={x:point.x,y:point.y};
+    this.updateCamera(1);
+  }
+  /** Briefing-only north-aligned fit. Reserve space for the top and bottom
+   * selector bars so entry markers stay readable on landscape phones too.
+   * This intentionally permits a wider temporary zoom than normal gameplay.
+   */
+  fitEntryMap():void{
+    const bounds=this.displayedBounds;
+    const width=bounds.maxX-bounds.minX;
+    const height=bounds.maxY-bounds.minY;
+    const aspect=this.width/this.height;
+    const diagonal=Math.hypot(width,height);
+    const baseSpan=Math.max(820,(diagonal+66)/aspect);
+    const usableFraction=Math.max(.38,Math.min(.78,
+      (this.height-160)/this.height));
+    const needed=Math.max(height*1.09/usableFraction,
+      width*1.09/aspect);
+    this.view.mode='top';
+    this.view.pitch=Math.PI/2;this.view.yaw=0;
+    this.view.focus={x:(bounds.minX+bounds.maxX)/2,
+      y:(bounds.minY+bounds.maxY)/2};
+    this.view.zoom=THREE.MathUtils.clamp(baseSpan/Math.max(1,needed),
+      .2,this.maxZoom);
+    this.updateCamera(1);
+  }
   /** A reset is a predictable full-board fit, independent of unit selection. */
   resetCamera(){
     const bounds=this.displayedBounds;

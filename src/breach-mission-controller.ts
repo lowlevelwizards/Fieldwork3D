@@ -49,7 +49,7 @@ export type MissionTransition={
 type DeploymentControls={
   button:HTMLButtonElement;label:HTMLElement;
   getSession:()=>Session;isReplaying:()=>boolean;
-  onSelected:()=>void;
+  onBrowse:()=>void;
   reducedMotion:()=>boolean;
 };
 
@@ -212,41 +212,50 @@ export class BreachMissionController{
     controls.button.hidden=!session.site||session.started||
       this.deploymentOptions.length===0;
     controls.button.disabled=!editable;
-    controls.button.textContent='CHANGE ENTRY';
+    controls.button.textContent='CHANGE ENTRY · MAP';
     controls.label.textContent=this.selectedInsertion==='FRONT'?
       'FRONT ENTRANCE':this.selectedInsertion.toUpperCase().replaceAll('-', ' ');
     controls.button.title=editable?
-      'Cycle physically verified exterior entry points':
+      'View the map and choose a verified exterior entry point':
       'Select the insertion before plotting routes or starting GO';
   }
-  /** Select only against breach-game's authoritative deployment rules. */
-  selectNextDeployment(session:Session,replaying:boolean):boolean{
+  /** Map markers come from the SAME authoritative verified deployment set
+   * as the actual insertion mutation; no guessed or hidden entrances.
+   */
+  deploymentChoices(session:Session,replaying:boolean){
+    this.refreshDeployment(session,replaying);
+    return replaying?[]:[...this.deploymentOptions];
+  }
+  /** Select exactly one player-picked entry; never silently rotate the list. */
+  selectDeploymentById(session:Session,replaying:boolean,id:string):boolean{
     this.refreshDeployment(session,replaying);
     if(session.phase!=='planning'||session.started||replaying||
-      team(session).some(actor=>actor.plan.length>0))return false;
-    const ids=['FRONT',...this.deploymentOptions.map(choice=>choice.id)];
-    const next=ids[(ids.indexOf(this.selectedInsertion)+1)%ids.length];
-    if(!selectDeployment(session,next))return false;
-    this.selectedInsertion=next;
-    if(session.operationDossier)session.operationDossier.identity.entryId=next;
+      team(session).some(actor=>actor.plan.length>0)||
+      (id!=='FRONT'&&!this.deploymentOptions.some(choice=>choice.id===id)))
+      return false;
+    if(id===this.selectedInsertion)return true;
+    if(!selectDeployment(session,id))return false;
+    this.selectedInsertion=id;
+    if(session.operationDossier)session.operationDossier.identity.entryId=id;
     this.currentStart=captureMissionStart(
-      session,this.hooks.preferences().requestedSiteScale,next);
+      session,this.hooks.preferences().requestedSiteScale,id);
     this.refreshDeployment(session,replaying);
     return true;
+  }
+  /** Retained for existing scripted/testing callers. UI uses the picker. */
+  selectNextDeployment(session:Session,replaying:boolean):boolean{
+    this.refreshDeployment(session,replaying);
+    const ids=['FRONT',...this.deploymentOptions.map(choice=>choice.id)];
+    const next=ids[(ids.indexOf(this.selectedInsertion)+1)%ids.length];
+    return this.selectDeploymentById(session,replaying,next);
   }
   bindDeployment(controls:DeploymentControls):void{
     this.controls=controls;
     controls.button.addEventListener('click',()=>{
       const session=controls.getSession(),replaying=controls.isReplaying();
       this.refreshDeployment(session,replaying);
-      if(controls.button.disabled||
-        !this.selectNextDeployment(session,replaying))return;
-      controls.onSelected();
-      if(!controls.reducedMotion())
-        controls.label.animate([
-          {opacity:.5,transform:'translateY(2px)'},
-          {opacity:1,transform:'translateY(0)'}
-        ],{duration:180,easing:'ease-out'});
+      if(controls.button.disabled)return;
+      controls.onBrowse();
     });
   }
   /** Leaving a replay restores the original site's authoritative core
