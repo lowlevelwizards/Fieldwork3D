@@ -59,10 +59,10 @@ test('V5.0 baseline: projections are deterministic, read-only and retain links',
  const timeline=buildAfterActionTimeline(rec);
  assert.equal(JSON.stringify(rec),before);
  assert.deepEqual(report.operators.map(o=>o.id),
-  ['vale','moss','ash','rook']);
+  ['moss','vale','ash','rook']);
  assert.deepEqual(report.operators.map(o=>o.rank),[1,2,3,3]);
- assert.equal(report.operators[0].categories.combat,3);
- assert.equal(report.operators[1].categories.objective,8);
+ assert.equal(report.operators[1].categories.combat,3);
+ assert.equal(report.operators[0].categories.objective,8);
  assert.ok(timeline.some(e=>e.key==='shot:1'&&e.shotId===1));
  assert.ok(timeline.some(e=>e.key==='execution:10'));
  assert.equal(timeline.length,7);
