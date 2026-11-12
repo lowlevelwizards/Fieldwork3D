@@ -6,7 +6,7 @@ import {PerformanceTimeline,performanceHotspot,
  type PerformanceTimelineBucket,PERFORMANCE_BUCKET_COUNT}
  from '../breach-performance-timeline.ts';
 
-const style=(e:HTMLElement,s:string)=>{e.style.cssText=s;return e;};
+const style=<T extends HTMLElement>(e:T,s:string):T=>{e.style.cssText=s;return e;};
 const button=(title:string)=>{
  const e=document.createElement('button');
  e.type='button';e.textContent=title;
