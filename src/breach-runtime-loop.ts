@@ -108,6 +108,11 @@ const perfTimeline=new PerformanceTimeline();
 let perfTimelineSession:Session|null=null;
 let previousCoarseJs:number|undefined;
 let previousCoarseMode:RuntimeFrameMode|undefined;
+function performanceMatchContext(state:Session,mode:RuntimeFrameMode):string{
+ const seed=state.site?.seed??'unknown';
+ return 'FIELDWORK MATCH · seed '+seed+' · phase '+state.phase+
+  ' · capture '+mode+' · detailed profiling '+(perfOverlay?'ON':'OFF');
+}
 function setProfilerOpen(open:boolean):boolean{
  if(open&&!perfPanel){
   perfPanel=new BreachPerfTimelinePanel(()=>{setProfilerOpen(false);});
@@ -122,7 +127,8 @@ function setProfilerOpen(open:boolean):boolean{
  perfOverlay.hidden=!open;
  if(open){
   perfPanel.update('Detailed CPU diagnostics armed. Earlier history includes RAF/JS only.',
-   perfTimeline,'planning',config.getViewMode());
+   perfTimeline,'planning',config.getViewMode(),
+   performanceMatchContext(config.getSession(),config.getSession().phase==='running'?'live':'idle'));
  }
  config.onProfilerChange?.(open,true);
  return open;
@@ -474,7 +480,8 @@ function tick(now:number){
             .map(([name,ms])=>name+' '+ms.toFixed(1)+'ms').join(' / '):'');
       if(perfPanel&&!perfPanel.root.hidden)perfPanel.update(output,perfTimeline,
        stats?.presentationSightPolicy??'planning',
-       idle3dExperiment?viewMode+' idle3d30':viewMode);
+       idle3dExperiment?viewMode+' idle3d30':viewMode,
+       performanceMatchContext(state,frameMode));
       for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
        intervalSight[k]=0;
     }
