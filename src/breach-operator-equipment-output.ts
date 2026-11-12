@@ -76,7 +76,7 @@ export function solveOperatorDroppedWeapon(r:OperatorRig,p:OperatorPose,
  const side=p.downPose==='left'?-1:1;
  const sling=p.weaponConfiguration?.slots.sling==='sling-two-point'&&
   !p.surrender;
- const rest=new THREE.Vector3(origin.x+(sling?4:9),sling?6:1.8,
+ const rest=e.dropRest.set(origin.x+(sling?4:9),sling?6:1.8,
   origin.z+side*(sling?5:11));
  const t=smooth((downProgress-.30)/.70);
  const location=worldHeld.lerp(rest,t);
