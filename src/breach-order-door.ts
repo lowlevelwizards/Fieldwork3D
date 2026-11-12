@@ -7,7 +7,7 @@ import {OPERATOR_RADIUS,doorCenter,doorLeafSegment,type Pt}
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {doorInteraction} from './breach-interactions.ts';
-import {kickDoor,doorWouldStrikeActors,doorApproach} from './breach-door.ts';
+import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable} from './breach-door.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {completeOrder,clearCurrentOrderIssue,
