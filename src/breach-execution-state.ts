@@ -78,9 +78,20 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
    if(n.doorId){
      const door=ctx.doors?.find(d=>d.id===n.doorId);
      const ready=!!door?.open&&(door.openFraction??1)>=.72;
-     if(!ready)return result(a.actionTimer>=2.5?'blocked':'waiting',
-       a.actionTimer>=2.5?'ENTRY BLOCKED':'WAITING',
-       door?'DOOR NOT CLEAR':'DOOR UNAVAILABLE',id,'entry-gate');
+     if(!ready){
+       // A generated gate has no right to invent clearance. Distinguish
+       // known lock/brace/jam from a normal temporary swing or lead entry.
+       // Derive from the same door state as simulation, with no extra HUD
+       // polling, order mutation or undisclosed geometry probes.
+       // Locked/held/jammed are *not* safe to infer from world-truth
+       // Door data: only the actor's motorPause or orderIssue may report
+       // those conditions after the physical interaction exposes them.
+       const blocked=!door||a.actionTimer>=2.5;
+       const detail=!door?'DOOR UNAVAILABLE':
+         door.open?'DOOR SWING NOT CLEAR':'DOOR NOT CLEAR';
+       return result(blocked?'blocked':'waiting',
+        blocked?'ENTRY BLOCKED':'WAITING',detail,id,'entry-gate');
+     }
    }
    const duration=n.duration??(n.kind==='wait'?1:.5);
    return result('waiting','WAIT',a.waitRemaining===0&&a.actionTimer>0?

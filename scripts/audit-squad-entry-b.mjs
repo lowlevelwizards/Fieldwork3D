@@ -7,7 +7,9 @@
 import {newSession,team,planSquadEntry,stepSession,toggling}
  from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
-import {doorSwingBlocked,doorClear} from '../src/breach-door.ts';
+import {doorSwingBlocked,doorClear,doorWouldStrikeActors} from '../src/breach-door.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {OPERATOR_RADIUS} from '../src/breach-core.ts';
 import {angleDifference} from '../src/breach-plan.ts';
 import {entryClearanceForLook} from '../src/breach-entry-coordination.ts';
 
@@ -86,12 +88,27 @@ function audit(c){
    remaining:a.plan.length,aim:a.aimInstruction?.mode
   }));
   const actualDoor=s.doors.find(d=>d.id==='ENTRY');
-  const physicallyBlocked=!!actualDoor&&doorSwingBlocked(actualDoor,
-   Math.min(1,(actualDoor.openFraction??0)+.07),[]);
+  const probe=Math.min(1,(actualDoor?.openFraction??0)+.07);
+  const world=sessionWorldGeometry(s);
+  const occupants=[...s.operators.filter(a=>a.health>0).map(a=>a.p),
+   ...s.civilians.filter(c=>c.health>0).map(c=>c.p)];
+  // The motor uses session-scoped world geometry. Global geometry can
+  // belong to a different lab/session and must not classify this door.
+  const physicallyBlocked=!!actualDoor&&doorSwingBlocked(actualDoor,probe,
+   [],OPERATOR_RADIUS,world);
+  const staticWorldBlocked=physicallyBlocked;
+  const actorSweepBlocked=!!actualDoor&&
+   doorWouldStrikeActors(actualDoor,probe,occupants);
   return {name:c.name,expectBlocked:!!c.expectBlocked,
    reportedObstruction:s.events.some(e=>e.includes('DOOR SWING OBSTRUCTED')),
    door:{open:actualDoor?.open,fraction:actualDoor?.openFraction,
-    physicallyBlocked,passable:actualDoor?doorClear(actualDoor):false},
+    physicallyBlocked,staticWorldBlocked,actorSweepBlocked,
+    passable:actualDoor?doorClear(actualDoor):false,
+    swing:actualDoor?.swing,hinge:actualDoor?.hinge,
+    target:actualDoor?.pushTarget,angularVelocity:actualDoor?.angularVelocity},
+   obstructionEvents:s.events.filter(e=>e.includes('ENTRY WAIT')||
+    e.includes('DOOR')).slice(-10),
+   coverCount:world.cover.length,
    legalGoalGap:Math.round(legalGap*100)/100,
    crossed,finished,firstLook,proximity,
    minActorGap:Math.round(minActorGap*100)/100,
