@@ -2,6 +2,7 @@
  * No socket dots, duplicated part UI, inventory writes, or continuous animation.
  */
 import * as THREE from 'three';
+import {tagVisualMaterial} from '../rendering/material-identity.ts';
 import {GRAPHIC_LIGHT_PROFILE as G,configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 import {applyStudioGraphicLighting,disposeStudioGraphicLighting}
  from '../operator-studio-graphic-lighting.ts';
@@ -32,8 +33,8 @@ export class ArsenalViewport{
  private readonly hemisphere=new THREE.HemisphereLight(0xe2e9d9,0x253c36,2.3);
  private lighting:StudioLightLabSettings={...APPROVED_GRAPHIC_LIGHTING};
  private compareOriginal=false;
- private readonly steel=new THREE.MeshStandardMaterial({color:0x707875,roughness:.78,flatShading:true});
- private readonly dark=new THREE.MeshStandardMaterial({color:0x303a38,roughness:.84,flatShading:true});
+ private readonly steel=tagVisualMaterial(new THREE.MeshStandardMaterial({color:0x707875,roughness:.78,flatShading:true}),'steel');
+ private readonly dark=tagVisualMaterial(new THREE.MeshStandardMaterial({color:0x303a38,roughness:.84,flatShading:true}),'polymer');
  private readonly resizeObserver:ResizeObserver;
  private readonly pointers=new Map<number,{x:number;y:number}>();
  private readonly origins=new Map<number,{x:number;y:number}>();
@@ -141,32 +142,24 @@ export class ArsenalViewport{
    (this.lighting.toon!==0||this.lighting.rim!=='off'||
     this.lighting.gradient!=='current');
   const settings=active?this.lighting:effectiveStudioLightLab(this.lighting,true);
-  if(active){
-   const p=STUDIO_INSPECTION_LIGHT;
-   const plum=studioShadowPalette(settings.shadow);
-   this.scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
-   this.keyLight.color.setHex(p.key);
-   this.keyLight.intensity=p.keyIntensity;
-   this.hemisphere.color.setHex(p.sky);
-   this.hemisphere.groundColor.setHex(plum.ground);
-   this.hemisphere.intensity=p.hemiIntensity;
-   this.fillLight.color.setHex(plum.fill);
-   this.fillLight.intensity=p.fillIntensity*
-    (settings.shadow==='plum-plus'?G.plumFillBoost:1);
-   this.keyLight.position.copy(STUDIO_KEY_DIRECTION)
-    .applyAxisAngle(new THREE.Vector3(0,1,0),
-     THREE.MathUtils.degToRad(settings.lightAzimuth))
-    .multiplyScalar(90);
-  }else{
-   this.scene.background=new THREE.Color(0x162723);
-   this.fillLight.intensity=0;
-   this.keyLight.color.setHex(0xf8d8a8);
-   this.keyLight.intensity=2.6;
-   this.keyLight.position.set(30,55,70);
-   this.hemisphere.color.setHex(0xe2e9d9);
-   this.hemisphere.groundColor.setHex(0x253c36);
-   this.hemisphere.intensity=2.3;
-  }
+  // F5.1: A/B compares MATERIALS, not two unrelated studios.
+  // Preserve the currently selected key/fill, neutral background and color
+  // output even when source materials are restored for Original inspection.
+  const p=STUDIO_INSPECTION_LIGHT;
+  const plum=studioShadowPalette(this.lighting.shadow);
+  this.scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
+  this.keyLight.color.setHex(p.key);
+  this.keyLight.intensity=p.keyIntensity;
+  this.hemisphere.color.setHex(p.sky);
+  this.hemisphere.groundColor.setHex(plum.ground);
+  this.hemisphere.intensity=p.hemiIntensity;
+  this.fillLight.color.setHex(plum.fill);
+  this.fillLight.intensity=p.fillIntensity*
+   (this.lighting.shadow==='plum-plus'?G.plumFillBoost:1);
+  this.keyLight.position.copy(STUDIO_KEY_DIRECTION)
+   .applyAxisAngle(new THREE.Vector3(0,1,0),
+    THREE.MathUtils.degToRad(this.lighting.lightAzimuth))
+   .multiplyScalar(90);
   applyStudioGraphicLighting(this.model,settings);
  }
  setSelectedSlot(slot:ArsenalSlot){
