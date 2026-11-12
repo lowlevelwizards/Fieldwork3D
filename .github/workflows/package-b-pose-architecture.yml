@@ -5,12 +5,14 @@ on:
     paths:
       - 'docs/consolidation-package-b-*.md'
       - 'scripts/verification/package-b0-pose-audit.mjs'
+      - 'scripts/verification/pages-queued-run-classification.mjs'
+      - 'scripts/audit-pages-release-checkpoint.mjs'
       - 'tests/package-b0-pose-audit.test.mjs'
+      - 'tests/pages-release-gate.test.mjs'
       - 'tests/package-b1-pose-decision.test.mjs'
       - '.github/workflows/package-b-pose-architecture.yml'
       - 'src/breach-operator-*.ts'
       - 'src/breach-pose-*.ts'
-      - 'src/breach-pose-decision.ts'
       - 'src/breach-unified-upper-body.ts'
       - 'src/breach-weapon-pose.ts'
       - 'src/breach-3d.ts'
@@ -40,7 +42,7 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: B0 audit fixtures and authoritative ownership census
         run: |
-          node --test tests/package-b0-pose-audit.test.mjs
+          node --test tests/package-b0-pose-audit.test.mjs tests/pages-release-gate.test.mjs
           node scripts/verification/package-b0-pose-audit.mjs --check --json artifacts/package-b0/audit.json --markdown artifacts/package-b0/audit.md
       - name: B1 pure pose decision, action and eligibility policy parity
         run: |
