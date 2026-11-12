@@ -32,7 +32,8 @@ import {windowShardPose,WINDOW_SHARDS_PER_PANE}
  from './rendering/window-shatter-presentation.ts';
 import {type CivilianRig} from './breach-civilian-visuals.ts';
 import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
-import {shouldPrewarmContactRig} from './rendering/breach-contact-rig-prewarm.ts';
+import {shouldPrewarmContactRig,withPreparedVisibleRoot}
+ from './rendering/breach-contact-rig-prewarm.ts';
 import {ShotVisualPool} from './rendering/breach-shot-visual-pool.ts';
 import {type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
@@ -2156,7 +2157,10 @@ export class TacticalScene3D{
         object.physical.root.userData.fieldworkLightingAppearanceKey??'');
        const stamp=appearance+'|'+actor.weapon;
        if(object.root.userData.fieldworkProductionGraphicStamp!==stamp){
-        applyStudioGraphicLighting(object.root,APPROVED_GRAPHIC_LIGHTING);
+        if(prewarmHostile)
+         withPreparedVisibleRoot(object.root,()=>
+          applyStudioGraphicLighting(object.root,APPROVED_GRAPHIC_LIGHTING));
+        else applyStudioGraphicLighting(object.root,APPROVED_GRAPHIC_LIGHTING);
         object.root.userData.fieldworkProductionGraphicStamp=stamp;
         this.graphicOperatorRestyles++;
        }
