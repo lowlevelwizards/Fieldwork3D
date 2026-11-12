@@ -190,8 +190,10 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
       current.summaryCompact=!current.summaryCompact;syncSummary();
     });
     safeContent.addEventListener('scroll',()=>{
-      const current=owners.get(root);
-      if(!current||current.summaryCompact||safeContent.scrollTop<24)return;
+      const current=owners.get(root);if(!current)return;
+      // Selection redraws replace the section DOM, not the player's reading position.
+      current.scroll[current.tab]=safeContent.scrollTop;
+      if(current.summaryCompact||safeContent.scrollTop<24)return;
       current.summaryCompact=true;syncSummary();
     },{passive:true});
     const details=root.querySelector<HTMLElement>('#afterActionDetails');
