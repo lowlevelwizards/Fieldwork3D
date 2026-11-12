@@ -246,7 +246,7 @@ export class ArsenalViewport{
   if(start&&Math.hypot(e.clientX-start.x,e.clientY-start.y)>7)
    this.gestureMoved=true;
   if(this.pointers.size===1){
-   this.yaw+=dx*.009;this.pitch=THREE.MathUtils.clamp(this.pitch+dy*.007,-.65,.85);
+   this.yaw-=dx*.009;this.pitch=THREE.MathUtils.clamp(this.pitch+dy*.007,-.65,.85);
   }else if(this.pointers.size===2){
    const points=[...this.pointers.values()];
    const span=Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y);

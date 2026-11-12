@@ -5,7 +5,8 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {doorCenter,type Pt} from './breach-core.ts';
-import {doorReachable,doorApproach} from './breach-door.ts';
+import {doorReachable,doorApproach,lockpickReachable,lockpickApproach}
+ from './breach-door.ts';
 import {entryToolVerdict} from './breach-entry-tools.ts';
 import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
 import {equipmentRetrievalSeconds} from './equipment-carry-placement.ts';
@@ -28,9 +29,15 @@ export function createEntryOrderHandler(port:OrderExecutionPort){
        (method==='wedge'&&a.wedgeRemaining<1)){
       failCurrentOrder(s,a,n,'ENTRY TOOL UNAVAILABLE');return true;
     }
-    if(!doorReachable(a.p,door)){
-      const approachPoint=doorApproach(a.p,door,sessionWorldGeometry(s));
-      if(approachPoint){clearCurrentOrderIssue(a);approach(a,approachPoint,dt,s,.66);}
+    // Pick the actual handle from a reachable stance; a position near
+    // the hinge can reach the panel but not the lock. Make a short,
+    // fully collision-checked correction without changing authored nodes.
+    if(!doorReachable(a.p,door)||
+       (method==='pick'&&!lockpickReachable(a.p,door))){
+      const world=sessionWorldGeometry(s);
+      const approachPoint=method==='pick'?lockpickApproach(a.p,door,world):
+        doorApproach(a.p,door,world);
+      if(approachPoint){clearCurrentOrderIssue(a);approach(a,approachPoint,dt,s,.60);}
       else failCurrentOrder(s,a,n,'ENTRY TOOL CANNOT REACH');
       return true;
     }
@@ -63,9 +70,9 @@ export function createEntryOrderHandler(port:OrderExecutionPort){
       door.wedgeOwnerId=undefined;
     }
     else if(method==='pick'){
-      // Picking operates the lock rather than destroying the frame.
-      door.locked=false;door.open=true;door.openedAt=s.seconds;
-      door.pushTarget=1;
+      // Picking releases only the mechanical lock. OPEN is a separate
+      // deliberate action; never animate the leaf or bypass its sweep.
+      door.locked=false;
     }else{
       door.latchIntegrity=Math.max(-1,(door.latchIntegrity??1)-verdict.damage);
       if((door.latchIntegrity??0)<=0){
