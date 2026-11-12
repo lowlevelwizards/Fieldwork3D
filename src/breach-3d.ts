@@ -3,6 +3,8 @@ import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
   from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import * as THREE from 'three';
+import {stepCameraFocusGlide,type CameraFocusGlide}
+  from './breach-camera-focus-glide.ts';
 import {applyWorldSurfaceResponse} from './rendering/material-identity.ts';
 
 import {GRAPHIC_LIGHT_PROFILE as G,configureGraphicRendererOutput} from './rendering/graphic-lighting-profile.ts';
@@ -1101,7 +1103,19 @@ export class TacticalScene3D{
       sceneChildren:this.scene.children.length
     };
   }
+  private cameraFocusGlide:CameraFocusGlide|null=null;
+  cancelFocusGlide():void{this.cameraFocusGlide=null;}
+  /** Only explicit operator selection creates an animation. */
+  glideFocusOn(point:Pt,instant=false):void{
+    if(!Number.isFinite(point.x)||!Number.isFinite(point.y))return;
+    if(instant){this.focusOn(point);return;}
+    this.cameraFocusGlide={
+      target:{...point},
+      velocity:this.cameraFocusGlide?.velocity??{x:0,y:0}
+    };
+  }
   setMode(mode:ViewMode){
+    this.cancelFocusGlide();
     if(mode==='plan2d'){
       this.replayBodycam=null;
       this.miniFocusPass?.dispose();
@@ -1117,6 +1131,7 @@ export class TacticalScene3D{
   }
   /** Yaw is always around the current map focus, never the selected unit. */
   setYaw(angle:number){
+    this.cancelFocusGlide();
     this.view.yaw=((angle%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
     this.updateCamera(1);
   }
@@ -1136,6 +1151,7 @@ export class TacticalScene3D{
    */
   focusOn(point:Pt):void{
     if(!Number.isFinite(point.x)||!Number.isFinite(point.y))return;
+    this.cancelFocusGlide();
     this.view.focus={x:point.x,y:point.y};
     this.updateCamera(1);
   }
@@ -1144,6 +1160,7 @@ export class TacticalScene3D{
    * This intentionally permits a wider temporary zoom than normal gameplay.
    */
   fitEntryMap():void{
+    this.cancelFocusGlide();
     const bounds=this.displayedBounds;
     const width=bounds.maxX-bounds.minX;
     const height=bounds.maxY-bounds.minY;
@@ -1164,6 +1181,7 @@ export class TacticalScene3D{
   }
   /** A reset is a predictable full-board fit, independent of unit selection. */
   resetCamera(){
+    this.cancelFocusGlide();
     const bounds=this.displayedBounds;
     this.view.focus={x:(bounds.minX+bounds.maxX)/2,
       y:(bounds.minY+bounds.maxY)/2};this.view.yaw=Math.PI/4;
@@ -1176,6 +1194,7 @@ export class TacticalScene3D{
    * vectors. Works at any pitch/yaw including near-vertical overhead.
    */
   panBetween(prevX:number,prevY:number,nextX:number,nextY:number){
+    this.cancelFocusGlide();
     this.updateCamera(0);
     const original=this.screenToWorld(prevX,prevY);
     const destination=this.screenToWorld(nextX,nextY);
@@ -1202,6 +1221,7 @@ export class TacticalScene3D{
    */
   zoomAt(factor:number,x:number,y:number){
     if(!Number.isFinite(factor)||factor<=0)return;
+    this.cancelFocusGlide();
     this.updateCamera(0);
     const before=this.screenToWorld(x,y);
     this.view.zoom=THREE.MathUtils.clamp(this.view.zoom*factor,
@@ -1220,6 +1240,14 @@ export class TacticalScene3D{
     return Math.max(820,(diagonal+66)/(this.width/Math.max(1,this.height)));
   }
   updateCamera(dt:number){
+    if(this.cameraFocusGlide&&dt>0){
+      const next=stepCameraFocusGlide(
+        this.view.focus,this.cameraFocusGlide.target,
+        this.cameraFocusGlide.velocity,dt);
+      this.view.focus=next.point;
+      if(next.finished)this.cancelFocusGlide();
+      else this.cameraFocusGlide.velocity=next.velocity;
+    }
     const targetElev=this.view.pitch;
     const blend=1-Math.exp(-Math.max(0,dt)*13);
     this.currentElev=THREE.MathUtils.lerp(this.currentElev,targetElev,blend);

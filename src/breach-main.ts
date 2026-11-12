@@ -108,6 +108,8 @@ import './ui/fieldwork-action-toast.css';
 
 import {createBreachMissionScreens,buildBriefingDossier} from './ui/breach-mission-screens.ts';
 import {createBreachEntryMapPicker} from './ui/breach-entry-map-picker.ts';
+import {stepCameraFocusGlide,type CameraFocusGlide}
+  from './breach-camera-focus-glide.ts';
 
 
 
@@ -361,6 +363,7 @@ const missionScreens=createBreachMissionScreens({
  renderFavorites:()=>replayLibrary.renderFavorites(),
  changeCamera:cameraMode,
  fitCamera:()=>{
+   cancel2DCameraGlide();
    if(stage&&viewMode!=='plan2d')stage.resetCamera();
    else{zoom=1;panX=0;panY=0;layout();}
  },
@@ -417,6 +420,26 @@ const displayRouteCache=new DisplayRouteCache();
 const projectedRouteCache=new ProjectedRouteCache();
 let cssW=innerWidth,cssH=innerHeight,dpr=1;
 let viewScale=1,ox=0,oy=0,zoom=1,panX=0,panY=0;
+let cameraFocus2D:CameraFocusGlide|null=null;
+function cancel2DCameraGlide():void{cameraFocus2D=null;}
+/** Move only the 2D projection while gliding; layout() resizes the GPU and
+ * canvases, so it must not run every animation frame on mobile.
+ */
+function advance2DCameraGlide(dt:number):void{
+ if(viewMode!=='plan2d'||!cameraFocus2D||dt<=0)return;
+ const desired=centerBreach2DView({
+   cssW,cssH,zoom,bounds:state.site?.bounds,point:cameraFocus2D.target
+ });
+ const next=stepCameraFocusGlide({x:panX,y:panY},desired,
+   cameraFocus2D.velocity,dt);
+ panX=next.point.x;panY=next.point.y;
+ cameraFocus2D=next.finished?null:{
+   target:cameraFocus2D.target,velocity:next.velocity
+ };
+ ({viewScale,ox,oy}=fitBreach2DView({
+   cssW,cssH,zoom,panX,panY,bounds:state.site?.bounds
+ }));
+}
 let cursor:Pt|null=null;
 let previewHover=false;
 let trace:Pt[]|null=null;
@@ -463,6 +486,7 @@ const worldToScreen=(p:Pt,height=4):Pt=>
   stage&&viewMode!=='plan2d'?stage.project(p,height):
     {x:ox+p.x*viewScale,y:oy+p.y*viewScale};
 function fitZoom(next:number,x=cssW/2,y=cssH/2){
+  cancel2DCameraGlide();
   if(stage&&viewMode!=='plan2d'){
     stage.zoomAt(clamp(next,.65,6)/stage.view.zoom,x,y);
   }else{
@@ -471,6 +495,7 @@ function fitZoom(next:number,x=cssW/2,y=cssH/2){
   updateContext();
 }
 function cameraMode(mode:ViewMode){
+  cancel2DCameraGlide();
   if(replaying&&replayBodycam.active&&mode!=='iso')stopReplayBodycam();
   viewMode=stage?mode:'plan2d';
   if(replaying){
@@ -499,6 +524,8 @@ function turnCamera(shift:number){
 function openEntryMapPicker():void{
   if(!state.site||replaying||state.started||state.phase!=='planning'||
      team(state).some(actor=>actor.plan.length>0)||!entryMapPicker)return;
+  cancel2DCameraGlide();
+  stage?.cancelFocusGlide();
   priorEntryCamera={
     mode:viewMode,focus:stage?{...stage.view.focus}:null,
     yaw:stage?.view.yaw??0,stageZoom:stage?.view.zoom??1,
@@ -537,13 +564,21 @@ function closeEntryMapPicker(confirmed:boolean):void{
 const uid=(id:string)=>team(state).find(o=>o.id===id);
 function centerOperatorInView(point:Pt):void{
   if(stage&&viewMode!=='plan2d'){
-    stage.focusOn(point);return;
+    stage.glideFocusOn(point,reducedMotionMedia.matches);return;
   }
   const offset=centerBreach2DView({
     cssW,cssH,zoom,bounds:state.site?.bounds,point
   });
-  panX=offset.panX;panY=offset.panY;
-  layout();
+  if(reducedMotionMedia.matches){
+    cancel2DCameraGlide();
+    panX=offset.panX;panY=offset.panY;layout();
+  }else{
+    // Re-aim an in-flight glide instead of starting a queued transition.
+    cameraFocus2D={
+      target:{...point},
+      velocity:cameraFocus2D?.velocity??{x:0,y:0}
+    };
+  }
 }
 function selectUnit(id:string,center=true){
   const actor=uid(id);if(!actor||actor.health<=0)return;
@@ -554,6 +589,7 @@ function selectUnit(id:string,center=true){
   // Only explicit selection recenters. A route handle drag may temporarily
   // adopt another actor without moving the map beneath the finger.
   if(center&&!replaying)centerOperatorInView(actor.p);
+  else{cancel2DCameraGlide();stage?.cancelFocusGlide();}
   updateHud();
 }
 // InteractionState owns temporary command arming; HUD owns guidance only.
@@ -797,7 +833,8 @@ const projected2D=createBreach2DProjectedOverlays({
   draggingNode,draggingWatchTarget,trace,...replayDisplay.options,
    doorFocusId,stage,cssW,cssH,dpr})
 });
-function render():void{
+function render(dt=0):void{
+ advance2DCameraGlide(dt);
  renderBreachTacticalWorldFrame({
   stage,viewMode,draw,dpr,cssW,cssH,ox,oy,viewScale,state,replaying,
   replayAnalysis:replayDisplay.options.replayAnalysis,
@@ -1027,10 +1064,12 @@ const replayAnalysisUi=createBreachReplayAnalysisController({
  focusShot:shot=>{
    chooseReplayCamera('free');replayCamera.follow=false;replayPlayback.pause();
    if(stage&&viewMode!=='plan2d'){
+     stage.cancelFocusGlide();
      stage.view.focus={...shot.end};
      stage.view.zoom=Math.max(stage.view.zoom,1.7);
      stage.updateCamera(1);
    }else{
+     cancel2DCameraGlide();
      const projected=worldToScreen(shot.end);
      panX+=cssW/2-projected.x;panY+=cssH/2-projected.y;
      layout();
@@ -1116,6 +1155,7 @@ replayHudController.bindLateInteractions();
  * the presentation owners release only their own graphics, UI and sound.
  */
 function releaseMissionPresentation():void{
+  cancel2DCameraGlide();stage?.cancelFocusGlide();
   entryMapPicker?.dismiss();priorEntryCamera=null;
   // Historical scene is retained across replay, never across mission resets.
   disposeAfterActionPresentation(ui.debrief);
@@ -1160,7 +1200,9 @@ function mountMissionSession(transition:MissionTransition):void{
   selected='rook';
   selectedNode=null;selectedActiveWatch=false;
   doorFocusId=null;draggingNode=null;draggingWatchTarget=false;
-  tacticalGestures.clear();cursor=null;trace=null;zoom=1;panX=panY=0;
+  tacticalGestures.clear();cursor=null;trace=null;
+  cancel2DCameraGlide();stage?.cancelFocusGlide();
+  zoom=1;panX=panY=0;
   fog2D.invalidate();audioController.resetLive();
   recorder=transition.recorder;
   tacticalFeedback.clear();
@@ -1364,6 +1406,7 @@ tacticalGestures.install({
       button.setAttribute('aria-pressed',String(mode===stage?.view.mode));
   },
   pan:(dx,dy)=>{
+    cancel2DCameraGlide();
     if(replaying&&replayCamera.mode!=='free'){
       chooseReplayCamera('free');replayCamera.follow=false;updateReplayHud();
     }
@@ -1371,6 +1414,7 @@ tacticalGestures.install({
     else{panX+=dx;panY+=dy;layout();}
   },
   pinch:(previous,current,ratio)=>{
+    cancel2DCameraGlide();
     if(stage&&viewMode!=='plan2d'){
       if(replaying&&replayCamera.mode!=='free'){
         chooseReplayCamera('free');replayCamera.follow=false;updateReplayHud();
