@@ -45,7 +45,7 @@ test('P2.2 tactical RAF, UI and camera responsiveness survive skipped idle 3D',(
   globalThis.window={addEventListener:(event,callback)=>inputs.set(event,callback)};
   globalThis.requestAnimationFrame=cb=>{frames.push(cb);return frames.length;};
   runtime=createBreachRuntimeLoop({
-   boot:parseBreachBootConfig(''),
+   boot:parseBreachBootConfig('?idle3d=30'),
    getSession:()=>session,getRecorder:()=>recorder,getMode:()=> 'quick',
    isReplaying:()=>false,isQuickPlayBusy:()=>false,
    getSelected:()=> 'rook',getSelectedActor:()=>undefined,
