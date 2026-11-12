@@ -1,0 +1,31 @@
+name: Performance P2.12 movement authority critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-movement-authority.ts'
+      - 'src/breach-civilian-transport.ts'
+      - 'src/breach-simulation-motion-phase.ts'
+      - 'tests/performance-p2-12-movement-authority.test.mjs'
+      - '.github/workflows/performance-p2-12-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  authority:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Exact movement authority and civilian custody parity
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-p2-12-movement-authority.test.mjs
+          tests/civilian-contact-flow-regression.test.mjs
+          tests/breach-closeout-stage2-simulation-phases.test.mjs
+          tests/performance-p2-11-civilian-cadence.test.mjs
+      - name: Typecheck and bundle
+        run: npm run check && npx vite build
