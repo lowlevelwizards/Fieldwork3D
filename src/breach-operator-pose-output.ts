@@ -120,6 +120,52 @@ export function beginOperatorPoseOutput(r:OperatorRig,p:OperatorPose):void{
  output.pendingTime=p.seconds;
  output.pending=true;
 }
+/** Ready for B3–B6 solvers: an explicit local transform without a scene
+ * object reference. Direct stage writers supply exactly the registered IDs
+ * in that owner's stable slot order, with no fallback to a working rig.
+ */
+export type PoseTransformValues=readonly [
+ number,number,number,number,number,number,number,
+ number,number,number,number
+];
+export type DirectPoseOutputValue={
+ readonly id:string;
+ readonly values:PoseTransformValues;
+};
+function assertStageAvailable(output:MutableOutput,p:OperatorPose,
+ owner:PoseOutputOwner):number{
+ if(!output.pending||output.pendingTime!==p.seconds)
+  throw new Error('Pose-output stage without matching frame: '+owner);
+ const index=OPERATOR_POSE_STAGE_ORDER.indexOf(owner);
+ if(index<0)throw new Error('Unknown pose-output stage: '+owner);
+ if(output.stageMask&(1<<index))
+  throw new Error('Duplicate pose-output stage: '+owner);
+ return index;
+}
+/** Direct producer entrypoint: never reads or writes scene transforms.
+ * An incomplete or mismatched owner set cannot publish. Callers may reuse
+ * their own typed value arrays; staging buffers themselves are per-rig.
+ */
+export function stageDirectOperatorPoseOutput(r:OperatorRig,p:OperatorPose,
+ owner:PoseOutputOwner,values:readonly DirectPoseOutputValue[]):void{
+ const output=outputFor(r),index=assertStageAvailable(output,p,owner);
+ const indices=output.indicesByStage[index];
+ if(values.length!==indices.length)
+  throw new Error('Incomplete direct pose-output stage: '+owner);
+ for(let j=0;j<indices.length;j++){
+  const i=indices[j],slot=output.slots[i],entry=values[j];
+  if(!entry||entry.id!==slot.id||entry.values.length!==11)
+   throw new Error('Incorrect direct pose-output slot: '+slot.id);
+  for(let k=0;k<11;k++){
+   const value=entry.values[k];
+   if(!Number.isFinite(value)||
+      k===10&&value!==0&&value!==1)
+    throw new Error('Invalid direct pose-output '+slot.id+'['+k+']');
+   output.staged[i][k]=value;
+  }
+ }
+ output.stageMask|=1<<index;
+}
 /** Capture one named producer's FINAL local transforms. Working rig writers
  * remain transitional until B6; the stage contract allows their eventual
  * replacement by direct typed values without changing output consumers.
@@ -128,13 +174,7 @@ export function beginOperatorPoseOutput(r:OperatorRig,p:OperatorPose):void{
 export function stageOperatorPoseOutput(r:OperatorRig,p:OperatorPose,
  owner:PoseOutputOwner):void{
  const output=outputFor(r);
- if(!output.pending||output.pendingTime!==p.seconds)
-  throw new Error('Pose-output stage without matching frame: '+owner);
- const index=OPERATOR_POSE_STAGE_ORDER.indexOf(owner);
- if(index<0)throw new Error('Unknown pose-output stage: '+owner);
- const bit=1<<index;
- if(output.stageMask&bit)
-  throw new Error('Duplicate pose-output stage: '+owner);
+ const index=assertStageAvailable(output,p,owner);
  for(const i of output.indicesByStage[index]){
   const node=output.slots[i].node,v=output.staged[i];
   v[0]=node.position.x;v[1]=node.position.y;v[2]=node.position.z;
@@ -146,7 +186,7 @@ export function stageOperatorPoseOutput(r:OperatorRig,p:OperatorPose,
    if(!Number.isFinite(v[j]))
     throw new Error('Non-finite pose output '+output.slots[i].id+'['+j+']');
  }
- output.stageMask|=bit;
+ output.stageMask|=1<<index;
 }
 /** Single internal publication path. A failed or partial frame cannot
  * publish, increase generation or overwrite the previous final snapshot.
