@@ -91,7 +91,7 @@ export function buildingTheme(kind:BuildingArchetype|undefined,seed:number):Buil
  const s=options[(seed>>>0)%options.length];
  const c=ARCHITECTURAL_COLOR_RELATIONSHIPS;
  const floor=separateColor(s.floor,s.wall,c.minimumFloorWall,0x657672,'darker');
- const tile=separateColor(s.tile,s.wall,c.minimumTileWall,0x899c97,'darker');
+ const tile=separateColor(s.tile,s.wall,c.minimumTileWall,0x64726c,'darker');
  const trim=separateColor(s.trim,s.wall,c.minimumTrimWall,
   paletteLuminance(s.trim)>=paletteLuminance(s.wall)?0xfffef9:0x45514b,
   'existing');
