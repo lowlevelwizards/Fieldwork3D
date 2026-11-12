@@ -7,25 +7,25 @@ const finish=(color:number,roughness=.84,metalness=.05,role:VisualMaterialRole='
  tagVisualMaterial(new THREE.MeshStandardMaterial({
   color,roughness,metalness,flatShading:true
  }),role);
-export const AR_BLACK_METAL=finish(0x414a44,.76,'steel');
-export const AR_BLACK_POLYMER=finish(0x343e37,.9,'polymer');
+export const AR_BLACK_METAL=finish(0x414a44,.76,undefined,'steel');
+export const AR_BLACK_POLYMER=finish(0x343e37,.9,undefined,'polymer');
 /** Matte, very low relief molded ribs, not high-contrast glowing decals. */
-export const AR_POLYMER_RIB=finish(0x2c3630,.98,'polymer');
+export const AR_POLYMER_RIB=finish(0x2c3630,.98,undefined,'polymer');
 /** Slightly lightened stamped steel STANAG; PMAG remains black polymer. */
-export const AR_STANAG_METAL=finish(0x687369,.87,'steel');
+export const AR_STANAG_METAL=finish(0x687369,.87,undefined,'steel');
 /** Muted contour rib, light enough to avoid black jagged barcode marks. */
-export const AR_STANAG_RIB=finish(0x526054,.96,'steel');
-export const AR_MUTED_FDE=finish(0x95836b,.94,'paint');
-export const AK_BLACK_METAL=finish(0x454b43,.8,'steel');
-export const AK_BLACK_POLYMER=finish(0x354038,.89,'polymer');
-export const AK_DARK_WOOD=finish(0x79553b,.94,'wood');
-export const AK_WARM_RESIN=finish(0x8d5939,.92,'polymer');
+export const AR_STANAG_RIB=finish(0x526054,.96,undefined,'steel');
+export const AR_MUTED_FDE=finish(0x95836b,.94,undefined,'paint');
+export const AK_BLACK_METAL=finish(0x454b43,.8,undefined,'steel');
+export const AK_BLACK_POLYMER=finish(0x354038,.89,undefined,'polymer');
+export const AK_DARK_WOOD=finish(0x79553b,.94,undefined,'wood');
+export const AK_WARM_RESIN=finish(0x8d5939,.92,undefined,'polymer');
 /** Honey birch laminate, oxblood lacquer and late Soviet dark plum polyamide. */
-export const AK_WOOD_AMBER=finish(0xa07842,.88,'wood');
-export const AK_WOOD_RED=finish(0x915038,.88,'wood');
-export const AK_PLUM_POLYMER=finish(0x4e3b4c,.92,'polymer');
+export const AK_WOOD_AMBER=finish(0xa07842,.88,undefined,'wood');
+export const AK_WOOD_RED=finish(0x915038,.88,undefined,'wood');
+export const AK_PLUM_POLYMER=finish(0x4e3b4c,.92,undefined,'polymer');
 /** Low-contrast curved stamped ribs on classic steel 7.62 magazines. */
-export const AK_MAG_RIB=finish(0x364238,.93,'steel');
+export const AK_MAG_RIB=finish(0x364238,.93,undefined,'steel');
 
 /** HK blackened steel and molded plastic are related, not the same finish.
  * These colors are appearance targets, not manufacturer paint codes.
