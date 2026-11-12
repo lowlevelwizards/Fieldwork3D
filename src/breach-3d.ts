@@ -215,6 +215,7 @@ export class TacticalScene3D{
       shadowRefreshes:this.shadowUpdates.refreshes,
       shadowReuses:this.shadowUpdates.reuses,
       shadowLodTransitions:this.shadowLodTransitions,
+      shadowMapSize:this.sun.shadow.mapSize.x,
       fogMemoryPaints:this.fogMemoryPaints,
       fogSightPaints:this.fogSightPaints,
       presentationSight:this.presentationSight.stats(),
