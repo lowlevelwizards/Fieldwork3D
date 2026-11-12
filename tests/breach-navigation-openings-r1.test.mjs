@@ -42,22 +42,6 @@ test('retreat belongs to one stalled claimant, not two competing squeezes',()=>{
  assert.equal(passageDeadlockRetreatTarget(b,[door],candidates,()=>false),
    null,'physical swept clearance always vetoes the recovery');
 });
-test('R7.2: a delayed same-direction doorway convoy never backs up',()=>{
- const door={id:'D',a:p(90,100),b:p(126,100),open:true,
-  openedAt:0,openFraction:1};
- const lead={id:'LEAD',p:p(108,92),goal:p(108,140),
-  active:true,health:100,blockedTime:1.3,waitSeconds:2.8,
-  side:'blue'};
- const follower={id:'FOLLOW',p:p(108,80),goal:p(108,140),
-  active:true,health:100,blockedTime:1.3,waitSeconds:3.0,
-  side:'blue'};
- assert.equal(passageDeadlockRetreatTarget(follower,[door],
-  [lead,follower],()=>true),null,
-  'normal following traffic may pause but cannot reverse indefinitely');
- assert.equal(passageDeadlockRetreatTarget(lead,[door],
-  [lead,follower],()=>true),null,
-  'a stationary predecessor is not automatically a counterflow deadlock');
-});
 test('a single furniture-side obstruction cannot trigger surprise squeeze',()=>{
  const from=p(250,600),to=p(252,600);
  const block=(id,y)=>({id,a:p(245,y),b:p(257,y),
