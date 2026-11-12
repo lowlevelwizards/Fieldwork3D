@@ -154,6 +154,22 @@ test('P2.1 pose breakdown reports preceding measured source of a cold 3D hitch',
  assert.match(copy,/app 350 \/ gun 200 \/ IK\+114/);
  assert.match(h.bucketCSV(),/prior_pose_appearance_ms,prior_pose_weapon_build_ms,prior_pose_other_ms/);
 });
+test('P2.4 first-use costume timings show kit and atlas without changing totals',()=>{
+ const h=new PerformanceTimeline();
+ const previousWork={beforeUi:0,ui:1,sceneSync:620,render:1,
+  postRender:0,diagnostics:0,
+  scene:{...emptyPerformanceSceneCosts(),actors:619},
+  actor:{rigMs:118,rigBuilds:4,poseMs:486,poseCount:4,
+   appearanceMs:456,weaponBuildMs:8,otherPoseMs:21,
+   visualKitMs:401,receiverAtlasMs:38}};
+ h.add(sample(1000,1011,{previousJs:978,previousPhase:'idle',
+  phase:'idle',previousSim:0,previousWork}));
+ const breakdown=previousFrameHotspot(h.buckets()[0].peak);
+ assert.match(breakdown,/kit 401 \/ atlas 38/);
+ assert.match(h.compactReport('planning','iso'),/kit 401 \/ atlas 38/);
+ assert.match(h.bucketCSV(),/prior_visual_kit_ms,prior_receiver_atlas_ms/);
+ assert.match(h.bucketCSV(),/,401,38/);
+});
 test('P1.5d CSV includes every quarter-second bucket and measured causes',()=>{
  const h=new PerformanceTimeline();
  h.add(sample(1200,20));h.add(sample(1450,61,{sync:31}));
