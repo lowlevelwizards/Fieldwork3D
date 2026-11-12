@@ -4003,3 +4003,32 @@ body.replaying .replay-follow-status[data-grade]::after{
   justify-content:flex-end;padding:2px;
   background:rgba(23,43,34,.93);border-radius:4px}
 }
+
+/* After Action V6 mobile recovery: preserve readable evidence if WebGL or
+   a deferred build chunk is unavailable; retry never discards the report. */
+.fw-v7-model-error{max-width:30ch;margin:auto;text-align:center;
+ font:750 12px/1.55 var(--ui-font);color:#e3d5b9;padding:8px}
+.fw-v7-model-retry{position:absolute;left:50%;top:58%;
+ transform:translate(-50%,-50%);z-index:3;min-height:44px;
+ border:1px solid #e1c995;border-radius:5px;padding:8px 12px;
+ background:#9d906d;color:#162d24;font:800 12px var(--ui-display)}
+/* In portrait the paper evidence can include several limb-uncertainty rows.
+   Don't shrink the actual diagram to a postage stamp to fit the labels. */
+@media(max-width:700px) and (min-height:481px){
+ .fw-v5-workspace .fw-v6-inspection-column .fw-v3-combat-figure:has(.fw-v3-paper){
+  height:auto;min-height:0;max-height:none;overflow:visible;
+  display:flex;flex-direction:column;padding:12px 8px;gap:10px}
+ .fw-v5-workspace .fw-v3-combat-figure .fw-v3-paper{
+  min-height:0;flex:0 0 auto;overflow:visible;gap:8px;
+  justify-content:flex-start}
+ .fw-v5-workspace .fw-v3-paper svg{
+  flex:0 0 auto;width:min(50vw,210px);height:auto;
+  max-height:none;max-width:100%;aspect-ratio:166 / 235}
+ .fw-v5-workspace .fw-v3-paper-key,
+ .fw-v5-workspace .fw-v4-forensic-uncertain,
+ .fw-v5-workspace .fw-v4-forensic-armor{flex:0 0 auto}
+}
+/* The deferred-update reminder belongs outside the active mission report;
+   its full offer remains available when the player leaves the debrief. */
+body:has(#debrief:not([hidden])) #fieldwork-update-compact{
+ display:none!important}
