@@ -72,6 +72,15 @@ try{
    check(await root.evaluate(e=>e.classList.contains('fw-v5-summary-compact')),
     'Result cannot collapse '+name);
    await root.screenshot({path:'artifacts/after-action-v5/'+name+'-squad.png'});
+   // Where WebGL is available, model selection must keep the original canvas.
+   if(await root.locator('[data-after-squad-model] canvas').count()){
+     await root.locator('[data-after-squad-model] canvas').evaluate(
+       canvas=>canvas.setAttribute('data-v6-retained','yes'));
+     await root.locator('.fw-v4-rank-row').first().click();
+     await root.locator('.fw-v4-rank-row').nth(1).click();
+     check(await root.locator('canvas[data-v6-retained="yes"]').count()===1,
+       'Selection remounted WebGL canvas '+name);
+   }
    await root.locator('[data-after-tab="combat"]').click();
    check(await root.locator('.fw-v3-contact-chip').count()===1,
     'Recorded hostile unavailable '+name);
@@ -99,6 +108,8 @@ try{
    await root.locator('[data-after-tab="highlights"]').click();
    check(await root.locator('.fw-v3-highlights').count()===1,
     'Highlights page missing '+name);
+   check(await root.locator('.fw-v6-moments #afterActionTimeline').count()===1,
+    'Moments did not retain the shared timeline '+name);
    await root.screenshot({path:'artifacts/after-action-v5/'+name+'-highlights.png'});
    const overflow=await root.evaluate(e=>
     e.scrollWidth>e.clientWidth+5);
