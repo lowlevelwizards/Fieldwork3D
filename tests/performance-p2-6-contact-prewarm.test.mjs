@@ -49,7 +49,7 @@ test('P2.6 hidden enemy initial pose fills appearance before live contact',()=>{
   const key=a.root.userData.fieldworkLightingAppearanceKey;
   assert.ok(key!==undefined,'unseen actor receives wardrobe/lightmap pose');
   assert.equal(a.root.visible,false,'posing never discloses actor');
-  assert.equal(a.weaponBody.children.length>0,
+  assert.ok(a.weaponBody.children.length>0,
    'equipped weapon geometry is ready before visual contact');
   // First disclosure must reuse prepared silhouette and wardrobe output.
   const weaponPart=a.weaponBody.children[0];
