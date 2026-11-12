@@ -37,6 +37,14 @@ export function disposeAfterActionPresentation(root:HTMLElement):void{
 function presentModel(root:HTMLElement,recorder:MissionRecorder,
  host:HTMLElement|null,operatorId:string|null,
  evidence:ForensicEvidence|null):void{
+ const fallback=()=>{
+   const state=owners.get(root);
+   if(state?.recorder===recorder&&state.tab==='combat'&&
+     state.inspectionMode==='3d'){
+     state.inspectionMode='paper';
+     queueMicrotask(()=>renderers.get(root)?.());
+   }
+ };
  let owner=models.get(root);
  if(owner&&owner.recorder!==recorder){
    disposeAfterActionPresentation(root);owner=undefined;
@@ -52,11 +60,11 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
  }
  const identities=recorder.manifest?.actors??[];
  if(!identities.length){
-   host.textContent='NO RECORDED HISTORICAL MODEL';return;
+   host.textContent='NO RECORDED HISTORICAL MODEL';fallback();return;
  }
  if(owner.unavailable){
    host.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
-   return;
+   fallback();return;
  }
  if(owner.pending)return;
  owner.pending=true;
@@ -65,13 +73,17 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
  void import('./breach-after-action-model.ts').then(module=>{
    if(models.get(root)!==owner||owner.version!==version)return;
    owner.pending=false;
-   owner.presenter=module.createAfterActionModelPresenter(identities);
+   owner.presenter=module.createAfterActionModelPresenter(identities,()=>{
+     owner.unavailable=true;
+     owner.presenter?.dispose();owner.presenter=null;
+     fallback();
+   });
    const current=root.querySelector<HTMLElement>(
      '[data-after-squad-model], [data-after-model]');
    if(!owner.presenter){
      owner.unavailable=true;
      if(current)current.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
-     return;
+     fallback();return;
    }
    if(current){
      const id=current.hasAttribute('data-after-squad-model')?
@@ -86,6 +98,7 @@ function presentModel(root:HTMLElement,recorder:MissionRecorder,
    const current=root.querySelector<HTMLElement>(
      '[data-after-squad-model], [data-after-model]');
    if(current)current.textContent='3D UNAVAILABLE · RECORDED DETAILS STILL AVAILABLE';
+   fallback();
  });
 }
 
@@ -138,7 +151,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    disposeAfterActionPresentation(root);
    state={recorder:rec,report:buildAfterActionReport(rec),tab:'squad',
      selectedOperator:null,selectedContact:null,selectedShotId:null,
-     contactSide:'red',paperBack:false,inspectionMode:'paper',
+     contactSide:'red',paperBack:false,inspectionMode:'3d',
      forensicScope:'cumulative',
      selectedHighlight:null,operatorRecordOpen:false,summaryCompact:false,
      scroll:{},showIntel:options.showIntel,
