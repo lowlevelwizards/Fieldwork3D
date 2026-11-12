@@ -8,7 +8,11 @@ import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import * as THREE from 'three';
-import {updateOperatorSlingPose} from './breach-operator-sling-pose.ts';
+import {solveOperatorDirectSlingPose} from './breach-operator-sling-pose.ts';
+import {beginOperatorEquipmentPose,solveOperatorDroppedWeapon,
+ finishOperatorEquipmentPose} from './breach-operator-equipment-output.ts';
+import {EQUIPMENT_ATTACHMENT_INDEX as EAI}
+ from './breach-operator-pose-scratch.ts';
 import {applyOperatorTraumaPose,finishOperatorPoseFrame} from './breach-pose-frame-finalizer.ts';
 import {beginOperatorPoseOutput,stageOperatorPoseOutput,
  stageDirectOperatorPoseOutput,commitOperatorPoseOutput}
@@ -68,10 +72,14 @@ function approach(v:number,target:number,rate:number,dt:number){
   return v+clamp(diff(v,target),-rate*dt,rate*dt);
 }
 const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
+const EQUIPMENT_LOCAL_Z=new THREE.Vector3(0,0,1);
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const diagnosticsEnabled=p.poseDiagnostics!==false;
   const {scratch,discontinuity,dt:frameDt}=beginOperatorAnimationFrame(r,p,dt);
   beginOperatorPoseOutput(r,p);
+  const equipment=beginOperatorEquipmentPose(r,scratch);
+  const [heldWeapon,droppedWeapon]=equipment.weapons;
+  const attachments=equipment.attachments;
   dt=frameDt;
   const clothing=updateOperatorAppearance(r,p);
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
@@ -168,9 +176,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     position:{x:p.x,y:p.z}});
   // Pack follows the torso with restrained inertia, not separate timing.
   const packMotion=packInertia(p.acceleration??0,motion.torsoSide);
-  r.pack.position.set(-8.2,0,
+  attachments[EAI.pack].position.set(-8.2,0,
     packMotion.side*r.personality.packScale);
-  r.pack.rotation.z=packMotion.lean*r.personality.packScale;
+  equipment.packEuler.z=packMotion.lean*r.personality.packScale;
+  attachments[EAI.pack].quaternion.setFromEuler(equipment.packEuler);
   // Wide side-steps need a physical lowering of the center of mass,
   // not a longer limb or a shoe teleported away from its world anchor.
   // Build 184: the balance solver already accounts for reachable hip
@@ -596,10 +605,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.gripError=fit.contactError;
   r.stockError=fit.stockError;
   // Contact coordinates and visible weapon use one rigid transform.
-  r.weapon.scale.set(data.lengthScale,1,1);
-  r.droppedGun.scale.set(data.lengthScale,1,1);
-  r.weapon.rotation.copy(fit.rotation);
-  r.weapon.position.copy(fit.origin);
+  heldWeapon.scale.set(data.lengthScale,1,1);
+  droppedWeapon.scale.set(data.lengthScale,1,1);
+  equipment.weaponEuler.copy(fit.rotation);
+  heldWeapon.quaternion.setFromEuler(equipment.weaponEuler);
+  heldWeapon.position.copy(fit.origin);
   if(p.poseV3Preview&&diagnosticsEnabled){
     // Snapshot the actual rendered rigid weapon, including any active
     // partially blended stance. The next Lab tap can retarget from here.
@@ -615,15 +625,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const v4Control=p.poseV4ReloadPreview&&reloadActive?
     v4ReloadControlPose(reloadMechanismFor(p.weapon,coupledConfig),
       reloadMode,reloadProgress):null;
-  r.reloadControlMesh.visible=!!v4Control?.visible&&
-    !p.down&&!p.surrender;
-  if(r.reloadControlMesh.visible&&v4Control){
+  const reloadControl=attachments[EAI.control];
+  reloadControl.visible=!!v4Control?.visible&&!p.down&&!p.surrender;
+  if(reloadControl.visible&&v4Control){
     const sock=weaponPresentationSockets(p.weapon,p.weaponConfiguration)
       .reloadControl;
-    r.reloadControlMesh.position.set(sock.x+v4Control.travel,sock.y,
+    reloadControl.position.set(sock.x+v4Control.travel,sock.y,
       sock.z+v4Control.press);
     const mech=reloadMechanismFor(p.weapon,coupledConfig);
-    r.reloadControlMesh.scale.set(mech==='ar-bolt-catch'?.73:1,
+    reloadControl.scale.set(mech==='ar-bolt-catch'?.73:1,
       mech==='hk-roller'?1.15:1,mech==='ak-rocking'?.80:1);
   }
   // On ADS, bring the eyes toward the actual sight line, keeping the
@@ -668,13 +678,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const mountedMagazine=!(p.reloadRemoved&&!p.reloadInserted)&&
     (!reloadActive||reloadProgress<.29||reloadProgress>=.82);
   // The authored family magazine and old fallback are mutually exclusive.
-  r.magazineInserted.visible=!authoredMagazine&&p.weapon!=='shotgun'&&
-    mountedMagazine;
+  attachments[EAI.inserted].visible=!authoredMagazine&&
+    p.weapon!=='shotgun'&&mountedMagazine;
   for(const mesh of r.weaponBody.children)
     if(mesh.name.startsWith('family-magazine-'))mesh.visible=mountedMagazine;
-  r.magazineHand.visible=!authoredMagazine&&reloadActive&&
+  attachments[EAI.hand].visible=!authoredMagazine&&reloadActive&&
     magazinePhase!=='reach'&&magazinePhase!=='settle';
-  r.detachedMagazine.visible=authoredMagazine&&reloadActive&&
+  attachments[EAI.detached].visible=authoredMagazine&&reloadActive&&
     !mountedMagazine&&magazinePhase!=='settle'&&!p.down&&!p.surrender;
   if(p.poseV4ReloadPreview&&reloadActive&&v4Magazine&&
     v4PouchAnchor){
@@ -682,15 +692,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // During the rendezvous the wrist is empty; only after extraction
     // does the new magazine become hand-owned. No duplicated magazine.
     if(!v4MagazineInHand(reloadProgress)){
-      r.magazineHand.visible=false;
-      r.detachedMagazine.visible=false;
+      attachments[EAI.hand].visible=false;
+      attachments[EAI.detached].visible=false;
     }
     if(!v4SelectedPouchVisible(reloadProgress)){
       v4Magazine.visible=false;
       r.root.userData.reloadV4HiddenSource=v4Magazine;
     }
   }
-  r.magazineHand.scale.set(
+  attachments[EAI.hand].scale.set(
     p.weapon==='shotgun'?.48:1,p.weapon==='shotgun'?.55:1,1);
   // Body-assisted V3 preview keeps the firearm world-fixed by applying
   // the matching parent-space chest lean after the usual door/bashing reset.
@@ -708,15 +718,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
   }
   r.reachRequest=null;
-  r.weapon.visible=(!p.down&&!p.surrender)||downProgress<.30;
-  r.droppedGun.visible=(p.down||p.surrender)&&downProgress>=.30;
+  heldWeapon.visible=(!p.down&&!p.surrender)||downProgress<.30;
+  droppedWeapon.visible=(p.down||p.surrender)&&downProgress>=.30;
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
   const releaseLeft=handOwners.left!=='weapon';
   const releaseRight=handOwners.right!=='weapon';
   let reaching=false;
   let reloadHandChest:THREE.Vector3|null=null;
-  r.medicalItem.visible=treatmentActive;
+  attachments[EAI.medical].visible=treatmentActive;
   let fullDoorContact:THREE.Vector3|null=null;
   if(p.surrender){
     // Deliberate visible surrender: discard the gun, kneel and raise both
@@ -740,7 +750,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const left=fit.support.clone().lerp(local.clone().add(P(-1,3,-2)),reach);
     const right=fit.primary.clone().lerp(local.clone().add(P(1,3,2)),reach);
     leftGrip.copy(left);rightGrip.copy(right);
-    r.medicalItem.position.copy(left);
+    attachments[EAI.medical].position.copy(left);
   }else if(reloadActive){
     
     const sockets=weaponPresentationSockets(p.weapon,p.weaponConfiguration);
@@ -1102,21 +1112,28 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const v3MagazineRock=p.poseV3Preview&&reloadActive?
     v3MagazineRockAngle(reloadProgress,reloadMode,
       coupledConfig?.build?.family):0;
-  if(v3MagazineRock&&r.detachedMagazine.visible)
+  if(v3MagazineRock&&attachments[EAI.detached].visible)
     rotateOperatorSupportHand(scratch,v3MagazineRock);
-  if(r.magazineHand.visible){
+  if(attachments[EAI.hand].visible){
     // Magazine visual follows the *solved* support wrist. The original
     // magazine is hidden from the gun while it is in hand.
-    r.magazineHand.position.copy(operatorHandTransform(scratch,0).position);
-    r.magazineHand.rotation.copy(operatorHandEuler(scratch,0));
+    const handMagazine=attachments[EAI.hand];
+    handMagazine.position.copy(operatorHandTransform(scratch,0).position);
+    equipment.magHandEuler.copy(operatorHandEuler(scratch,0));
+    handMagazine.quaternion.setFromEuler(equipment.magHandEuler);
   }
-  if(r.detachedMagazine.visible){
+  if(attachments[EAI.detached].visible){
     // Meshes are magazine-feed-socket relative; the lips follow the
     // solved support wrist and return to their gun mount at insertion.
-    r.detachedMagazine.position.copy(operatorHandTransform(scratch,0).position);
-    r.detachedMagazine.rotation.copy(fit.rotation);
-    if(v3MagazineRock)r.detachedMagazine.rotateZ(v3MagazineRock);
-    r.detachedMagazine.scale.set(data.lengthScale,1,1);
+    const magazine=attachments[EAI.detached];
+    magazine.position.copy(operatorHandTransform(scratch,0).position);
+    equipment.detachedEuler.copy(fit.rotation);
+    magazine.quaternion.setFromEuler(equipment.detachedEuler);
+    if(v3MagazineRock){
+      equipment.rotationZ.setFromAxisAngle(EQUIPMENT_LOCAL_Z,v3MagazineRock);
+      magazine.quaternion.multiply(equipment.rotationZ);
+    }
+    magazine.scale.set(data.lengthScale,1,1);
     // Detached magazine meshes are authored relative to FEED LIPS.
     // The palm may now wrap the magazine BODY, several units below the
     // lips. Keep the feed-lip origin rigidly offset from that real palm.
@@ -1125,8 +1142,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         v3MagazinePalm);
       if(palm){
         palm.x*=data.lengthScale;
-        palm.applyQuaternion(r.detachedMagazine.quaternion);
-        r.detachedMagazine.position.sub(palm);
+        palm.applyQuaternion(magazine.quaternion);
+        magazine.position.sub(palm);
       }
     }
   }
@@ -1136,39 +1153,19 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   stageDirectOperatorPoseOutput(r,p,'upper-body',
     finishOperatorArmPose(scratch));
   applyOperatorTraumaPose(r,p,downProgress);
-  if(r.droppedGun.visible){
-    // The world-space gun begins exactly in the last held grip and travels
-    // continuously to the ground, horizontal beside the operator.
-    r.root.updateMatrixWorld(true);
-    const held=r.weapon.getWorldPosition(scratch.held);
-    const orientation=r.weapon.getWorldQuaternion(scratch.orientation);
-    const origin=r.root.getWorldPosition(scratch.origin);
-    const side=p.downPose==='left'?-1:1;
-    const sling=p.weaponConfiguration?.slots.sling==='sling-two-point'&&
-     !p.surrender;
-    // Attached guns stay near the hip instead of dropping far onto the floor.
-    const rest=P(origin.x+(sling?4:9),sling?6:1.8,
-     origin.z+side*(sling?5:11));
-    const t=smooth((downProgress-.30)/.70);
-    const location=held.lerp(rest,t);
-    r.droppedGun.position.copy(r.legacyFrame.worldToLocal(location));
-    const flat=scratch.flat.setFromAxisAngle(scratch.vertical,
-      -p.heading+side*.18);
-    orientation.slerp(flat,t);
-    const inverse=r.legacyFrame.getWorldQuaternion(scratch.inverse).invert();
-    r.droppedGun.quaternion.copy(inverse.multiply(orientation));
-  }
-  updateOperatorSlingPose(r,p,physicalSpeed,
-    scratch.vertical,scratch.slingDelta);
+  // Same-frame held/drop world placement without temporary weapon node writes.
+  solveOperatorDroppedWeapon(r,p,scratch,downProgress,smooth);
+  solveOperatorDirectSlingPose(r,p,scratch,physicalSpeed);
   finishOperatorPoseFrame(r,p,
     scratch.armOutput.transforms[0].quaternion,
-    scratch.armOutput.transforms[3].quaternion);
-  // B2: late trauma, weapon drop, sling and unarmed-preview visibility
-  // are final before their owners publish. No solver can commit a subset.
+    scratch.armOutput.transforms[3].quaternion,equipment);
+  // Frame/body still use transitional rig results until B6.
   stageOperatorPoseOutput(r,p,'frame');
   stageOperatorPoseOutput(r,p,'body');
-  stageOperatorPoseOutput(r,p,'weapon');
-  stageOperatorPoseOutput(r,p,'attachments');
+  const finalEquipment=finishOperatorEquipmentPose(scratch);
+  stageDirectOperatorPoseOutput(r,p,'weapon',finalEquipment.weaponOutputs);
+  stageDirectOperatorPoseOutput(r,p,'attachments',
+    finalEquipment.attachmentOutputs);
   // Exactly one commit of the six validated, rig-local output stages.
   commitOperatorPoseOutput(r,p);
 
