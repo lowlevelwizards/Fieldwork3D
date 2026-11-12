@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {activateSite} from '../src/breach-core.ts';
 import {newSession,team,toggling,stepSession,planWaitAt,planMove} from '../src/breach-game.ts';
+import {createCivilian} from '../src/breach-civilian-types.ts';
 import {advanceSimulationTick,SIMULATION_PHASE_SEQUENCE}
  from '../src/breach-simulation-phases.ts';
 import {MissionRecorder,applyReplayFrame} from '../src/breach-replay.ts';
@@ -125,6 +126,36 @@ test('P2.4 motor subphase profile is observational and retains fixed-tick state'
  assert.deepEqual(stage1Snapshot(a),stage1Snapshot(b),
   'profiling adds no movement authority, RNG draws or changed outcomes');
  assert.equal(a.seconds,b.seconds);
+}));
+test('P2.7 civilian per-phase CPU probes preserve physical and perception state',()=>round(()=>{
+ const setup=()=>{
+  const s=newSession(0,undefined,'full-view','small','hold',stage1DoorSite());
+  const point={...s.site.spawn[0]};
+  const c=createCivilian({id:'civ:p27',role:'resident',
+   persona:'steady',activity:'idle',position:point,heading:0,
+   roomId:'refuge',routine:[{x:point.x+12,y:point.y+18},
+    {x:point.x+20,y:point.y+24}],appearanceSeed:12});
+  s.civilians.push(c);toggling(s);return s;
+ };
+ const a=setup(),b=setup(),names=[];
+ for(let i=0;i<18;i++){
+  stepSession(a,1/60,(name,ms)=>{
+   assert.ok(Number.isFinite(ms)&&ms>=0,'nonnegative CPU measurement');
+   names.push(name);
+  });
+  stepSession(b,1/60);
+ }
+ for(const expected of ['civilian-motion','civilian-motion/response',
+  'civilian-motion/step','civilian-motion/authority',
+  'civilian-motion/response-civ:p27',
+  'civilian-motion/step-civ:p27'])
+  assert.ok(names.includes(expected),'missing '+expected);
+ assert.deepEqual(a.civilians,b.civilians,
+  'civilian state, visual evidence, route and physical coordinates identical');
+ assert.deepEqual(stage1Snapshot(a),stage1Snapshot(b),
+  'operator actions and fixed clock unaffected by observational subphases');
+ assert.deepEqual(a.executionEvents,b.executionEvents);
+ assert.deepEqual(a.noise,b.noise);
 }));
 test('Stage 2: stopped phases neither age effects nor create execution events',()=>round(()=>{
  const s=newSession(0,undefined,'full-view','small','hold',stage1DoorSite());
