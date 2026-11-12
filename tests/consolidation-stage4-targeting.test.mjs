@@ -80,7 +80,10 @@ test('A4 PUSH Back always cancels before deleting selected waypoint',()=>{
  assert.ok(back.indexOf('targeting.isArmed')<back.indexOf('backOne(port.state,port.selected)'),
   'target cancellation must precede waypoint deletion');
  assert.match(back,/if\(port\.selectedActiveWatch\)/);
- assert.match(hud,/ui\.back\.disabled=!targeting\.isArmed&&!selectedActiveWatch&&!active\?\.plan\.length/);
+ assert.match(hud,/ui\.back\.disabled=!availability\.back/);
+ const eligibility=source('src/ui/tactical-command-affordances.ts');
+ assert.match(eligibility,/back:canAuthor&&\(input\.targetingArmed\|\|input\.activeWatchSelected\|\|/);
+ assert.match(back,/if\(!available\(\)\.back\)return/);
 });
 test('A4 rejection leaves push/suppress/flash/look armed; evacuation is one-shot',()=>{
  // A6 relocated the single ground-authoring boundary into the existing

@@ -16,6 +16,8 @@ import {PaletteMotion} from './palette-motion.ts';
 import {contextActionChoices,type ContextAction,type ContextOptions}
   from './context-actions.ts';
 import {installPalettePointerGuard} from './palette-pointer-guard.ts';
+import {nearestPaletteCandidate,canOfferRouteEndCivilianAction}
+ from './tactical-selection-presentation.ts';
 
 export function availablePaletteActions(watchSelected:boolean,options:ContextOptions):ContextAction[]{
   return watchSelected?[
@@ -103,6 +105,8 @@ export function createTacticalPaletteController(config:{
   }
   function hide(){
     lastPlacementKey='';
+    // An exiting floating palette must not accept late clicks.
+    context.dataset.owner='';
     const exclusive=!config.siteSettings.hidden||!config.briefingPanel.hidden;
     if(placement!=='floating'||!motion.active){
       exiting?.cancel();exiting=null;motion.hide();tether.hidden=true;
@@ -151,6 +155,7 @@ export function createTacticalPaletteController(config:{
   }:PaletteContext){
     const paletteChoices=actions.filter(choice=>choice.group!=='state');
     setPresentation(placement);
+    context.dataset.owner=selected;
     const identity=(door?'door:'+door.id:node?'node:'+node.id:
       selectedWatch?'active-watch':'here')+'/'+selected;
     const changed=contextSignature!==identity;
@@ -352,16 +357,15 @@ export function createTacticalPaletteController(config:{
       watchActive=false;
     if(order.id===node.id)break;
   }
-  const civilianAtPlan=state.civilians.filter(c=>
-    c.health>0&&liveVisibility(state,c.p)&&
-    paletteDistance(finalPoint(a),c.p)<34)
-    .sort((x,y)=>paletteDistance(finalPoint(a),x.p)-
-      paletteDistance(finalPoint(a),y.p))[0]??null;
-  const casualtyAtPlan=state.civilians.filter(c=>c.health<=0&&
-      !c.carriedById&&
-      liveVisibility(state,c.p)&&paletteDistance(finalPoint(a),c.p)<34)
-    .sort((x,y)=>paletteDistance(finalPoint(a),x.p)-
-      paletteDistance(finalPoint(a),y.p))[0]??null;
+  // SECURE/FOLLOW and civilian transport currently author at finalPoint(a).
+  // Earlier waypoint editing cannot honestly promise these commands.
+  const routeEndCivilianActions=canOfferRouteEndCivilianAction(node,a.plan);
+  const civilianAtPlan=routeEndCivilianActions?
+    nearestPaletteCandidate(state.civilians,at,c=>
+      c.health>0&&liveVisibility(state,c.p)):null;
+  const casualtyAtPlan=routeEndCivilianActions?
+    nearestPaletteCandidate(state.civilians,at,c=>
+      c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
   const choices=availableActions(!!selectedWatch,{
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     nearMovable,nearWindow,treatTargetName:treatTarget?.name,

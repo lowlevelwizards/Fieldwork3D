@@ -9,6 +9,11 @@ on:
       - 'tests/package-c1-scene-lifecycle.test.mjs'
       - 'tests/package-c2-render-composition.test.mjs'
       - 'tests/package-c3-cross-view-disclosure.test.mjs'
+      - 'tests/package-c4-tactical-ui-consolidation.test.mjs'
+      - 'src/ui/tactical-command-affordances.ts'
+      - 'src/ui/tactical-selection-presentation.ts'
+      - 'src/ui/tactical-hud-controller.ts'
+      - 'src/ui/tactical-palette-controller.ts'
       - 'src/rendering/breach-site-render-composition.ts'
       - 'src/rendering/breach-fog-mesh-composition.ts'
       - 'src/rendering/site-scene-lifecycle.ts'
@@ -62,6 +67,14 @@ jobs:
             tests/breach-roadmap2-stage3-integration.test.mjs \
             tests/replay-r42c-civilian-sight.test.mjs \
             tests/breach-2d-renderer-extraction.test.mjs
+      - name: C4 HUD/palette eligibility, selection and mobile interaction boundaries
+        run: |
+          node --experimental-strip-types --test \
+            tests/package-c4-tactical-ui-consolidation.test.mjs \
+            tests/tactical-hud-palette-controller-step7.test.mjs \
+            tests/consolidation-a6-main-composition.test.mjs \
+            tests/breach-active-watch-marker.test.mjs \
+            tests/breach-canvas-gestures.test.mjs
       - name: Validate C0 read-only scene and presentation ownership contracts
         run: node --test tests/package-c0-presentation-audit.test.mjs
       - name: Generate reproducible C0 evidence
