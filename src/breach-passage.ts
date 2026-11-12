@@ -55,7 +55,23 @@ export function passageOwner(d:Door,actors:readonly PassageActor[]){
 /** A real threshold is occupied until its owner clears, not until the
  * opposite actor happens to become one step closer. Author orders are intact.
  */
-export type PassageLease={actorId:string;until:number};
+export type PassageLease={
+ actorId:string;until:number;
+ /** Optional for legacy Sessions: progress is measured in actual world space. */
+ at?:Pt;progressAt?:number;
+};
+/** Progress, rather than repeated polling, renews a transient claimant.
+ * The next claimant still follows the original GO-time rank ordering.
+ */
+export function passageLeaseProgress(previous:PassageLease|undefined,
+ actor:PassageActor,now:number):PassageLease{
+ const advancing=previous?.actorId!==actor.id||!previous.at||
+   distance(actor.p,previous.at)>.65;
+ const progressAt=advancing?now:previous.progressAt??now;
+ return {actorId:actor.id,until:now+.38,
+   at:advancing?{...actor.p}:{...previous!.at!},progressAt};
+}
+
 /** Identify short aligned two-door passages, not unrelated nearby rooms.
  * One reservation covers the space between leaves as well as both entries. */
 function passageCluster(door:Door,all:readonly Door[]):Door[]{
@@ -128,7 +144,10 @@ export function passageScheduledStep(a:PassageActor,doors:readonly Door[],
  const advance=before-side(step,door)*slot!.fromSide;
  if(advance<=.025||before< -15)return step;
  const earlier=actors.filter(b=>b.id!==a.id&&b.health>0&&
-   scheduledBefore(b,a,door)&&b.blockedTime<2.2&&
+   scheduledBefore(b,a,door)&&
+   // A paused predecessor physically at the door still owns its sequence,
+   // even when its temporary blocked timer exceeds a generic threshold.
+   (b.blockedTime<2.2||distance(b.p,doorCenter(door))<46)&&
    side(b.p,door)*slot!.fromSide>=-18);
  if(!earlier.length)return step;
  earlier.sort((x,y)=>y.plannedPassage!.rank-x.plannedPassage!.rank);
@@ -342,8 +361,14 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
       Math.min(...cluster.map(d=>distance(b.p,doorCenter(d))))||
       a.id.localeCompare(b.id))[0];
   const current=leases?.[key];
-  const leased=current&&now<current.until&&
-    relevant.some(a=>a.id===current.actorId);
+  const currentActor=relevant.find(a=>a.id===current?.actorId);
+  const ownerInside=currentActor&&(
+    insidePassage(currentActor,cluster)||cluster.some(d=>inDoorway(currentActor,d)));
+  const leased=current&&now<current.until&&!!currentActor&&
+    // A stationary claimant outside the throat does not renew forever.
+    // Its GO-time rank is still used when ownership is recomputed.
+    (ownerInside||current.progressAt===undefined||
+      now-current.progressAt<1.8);
   const nearest=[...relevant].sort((a,b)=>{
     if(a.plannedPassage&&b.plannedPassage&&
        a.plannedPassage.doorId===b.plannedPassage.doorId&&
@@ -361,7 +386,10 @@ export function passageWait(actor:PassageActor,doors:readonly Door[],
     relevant.find(a=>insidePassage(a,cluster)):undefined;
   const owner=insideVestibule?.id??
     (leased?current!.actorId:occupant?.id??nearest.id);
-  if(leases)leases[key]={actorId:owner,until:now+.38};
+  if(leases){
+    const unit=relevant.find(a=>a.id===owner)!;
+    leases[key]=passageLeaseProgress(current,unit,now);
+  }
   // Same-direction squad members form a moving queue. The second operator
   // advances immediately behind the first, and the third behind the second.
   // No one waits for a teammate to reach a distant interior waypoint.

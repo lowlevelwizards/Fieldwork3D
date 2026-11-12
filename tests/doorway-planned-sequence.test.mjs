@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {planDoorSchedule,pendingPassageSlot}
  from '../src/breach-passage-plan.ts';
-import {passageScheduledStep,passageWait}
+import {passageScheduledStep,passageWait,passageLeaseProgress}
  from '../src/breach-passage.ts';
 import {newSession,team,planMove,planWaitAt,planWait,stepSession,toggling}
  from '../src/breach-game.ts';
@@ -147,4 +147,31 @@ test('four live operators obey GO-time ETA order and all clear the doorway',()=>
   assert.ok(members.every(a=>a.plan.length===0),
    'ordered entry must still complete the original plans');
  }finally{activateSite(null);}
+});
+
+test('TM1: lease renewal observes actual claimant progress, not render frames',()=>{
+ const a={id:'leader',side:'blue',p:pt(311,224),goal:pt(311,351),
+  health:4,active:true,blockedTime:0};
+ let lease=passageLeaseProgress(undefined,a,1);
+ assert.equal(lease.progressAt,1);
+ lease=passageLeaseProgress(lease,a,2);
+ assert.equal(lease.progressAt,1,'stationary polling cannot imply progress');
+ a.p=pt(311,229);
+ lease=passageLeaseProgress(lease,a,2.25);
+ assert.equal(lease.progressAt,2.25,'verified movement renews claimant');
+ assert.deepEqual(lease.at,a.p);
+ const b={...a,id:'follower'};
+ assert.equal(passageLeaseProgress(lease,b,3).progressAt,3);
+});
+test('TM1: stalled predecessor at throat retains GO-time order',()=>{
+ const d={...door,a:pt(40,100),b:pt(88,100)};
+ const lead={id:'lead',p:pt(64,88),side:'blue',goal:pt(64,160),
+  health:4,active:true,blockedTime:3,
+  plannedPassage:{actorId:'lead',doorId:'MAIN',fromSide:-1,rank:0,eta:1}};
+ const later={id:'later',p:pt(66,72),side:'blue',goal:pt(66,160),
+  health:4,active:true,blockedTime:0,
+  plannedPassage:{actorId:'later',doorId:'MAIN',fromSide:-1,rank:1,eta:2}};
+ const proposed=pt(66,78);
+ const step=passageScheduledStep(later,[d],[later,lead],proposed,()=>false);
+ assert.deepEqual(step,later.p,'blocked prior entrant is not overtaken in throat');
 });
