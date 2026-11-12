@@ -66,3 +66,13 @@ test('G4b: no accessible door post falls back to local safe patrol path',()=>{
  const end=out.routine[1];
  assert.ok(end.x>20&&end.x<200&&end.y>20&&end.y<200);
 });
+
+test('R2.3: an impossible patrol is presented as guarding instead of a fake journey',()=>{
+ const site={rooms:[{id:'r',kind:'room',x:0,y:0,w:48,h:48}],
+  walls:[],cover:[],doors:[]};
+ const actor={id:'patrol',role:'patrol',activity:'patrolling',
+  readiness:'attentive',position:{x:24,y:24},heading:0};
+ const [out]=assignEncounterRoutines(site,[actor],42);
+ assert.equal(out.routine,undefined);
+ assert.equal(out.activity,'watching');
+});

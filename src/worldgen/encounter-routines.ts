@@ -120,6 +120,8 @@ export function assignEncounterRoutines(site:Site,actors:EncounterActorSpec[],
    if(valid(p)&&swept(p))
     return {...a,routine:[{...a.position},p]};
   }
-  return a;
+  // No safe observation point means no patrol, not an invisible patrol
+  // label attached to a static armed body.
+  return patrol?{...a,activity:'watching'}:a;
  });
 }

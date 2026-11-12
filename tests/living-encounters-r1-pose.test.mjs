@@ -2,13 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {armedPrecontactStyle,idleLifeAt}
  from '../src/breach-idle-life.ts';
-const actor={side:'red',activity:'working',alert:'idle',velocity:0,
+const actor={side:'red',activity:'idle',alert:'idle',velocity:0,
  aim:0,health:4};
 test('LE1: only a stationary unalarmed armed actor receives ambient pose nuance',()=>{
- assert.equal(armedPrecontactStyle(actor),'observe');
+ assert.equal(armedPrecontactStyle(actor),'relaxed');
  assert.equal(armedPrecontactStyle({...actor,activity:'watching'}),'watch');
- assert.equal(armedPrecontactStyle({...actor,activity:'resting'}),'relaxed');
- assert.equal(armedPrecontactStyle({...actor,activity:'seated'}),'relaxed');
+ for(const unsupported of ['resting','seated','working','inspecting','talking'])
+  assert.equal(armedPrecontactStyle({...actor,activity:unsupported}),undefined);
  assert.equal(armedPrecontactStyle({...actor,activity:'patrolling'}),undefined);
  for(const changes of [{side:'blue'},{alert:'investigating'},
   {alert:'cover'},{alert:'engage'},{velocity:15},{aim:.5},

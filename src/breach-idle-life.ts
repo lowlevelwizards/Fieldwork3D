@@ -24,9 +24,7 @@ export function armedPrecontactStyle(input:{
     input.health<=0||input.surrendered||input.velocity>2||
     input.aim>.16||input.reloading||input.interacting)return undefined;
  if(input.activity==='watching')return 'watch';
- if(input.activity==='working'||input.activity==='inspecting')return 'observe';
- if(input.activity==='resting'||input.activity==='seated'||
-    input.activity==='talking')return 'relaxed';
+ if(input.activity==='idle')return 'relaxed';
  return undefined;
 }
 const clamp01=(n:number)=>Math.max(0,Math.min(1,n));

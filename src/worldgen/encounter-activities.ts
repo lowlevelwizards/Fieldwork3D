@@ -5,10 +5,8 @@ import {encounterRng} from './encounter-rng.ts';
 const dist=(a:{x:number;y:number},b:{x:number;y:number})=>Math.hypot(a.x-b.x,a.y-b.y);
 const facing=(from:{x:number;y:number},to:{x:number;y:number},fallback:number)=>
  dist(from,to)>8?Math.atan2(to.y-from.y,to.x-from.x):fallback;
-const desk=new Set(['desk','reception-desk','transaction-counter','checkout','control-panel']);
-const rest=new Set(['chair','office-chair','bar-stool','sofa','armchair','bed','bench','patio-chair']);
-const work=new Set(['workbench','vehicle-lift','commercial-range','prep-table','packing-station',
- 'counter','stove','generator','tool-chest']);
+/** Only activities with actual armed runtime behavior are generated here.
+ * Unsupported work/talk/seat/rest labels remain a future contextual system. */
 export function assignEncounterActivities(site:Site,actors:EncounterActorSpec[],
  premise:EncounterPremise,seed:number):EncounterActorSpec[]{
  const rng=encounterRng(seed,6);
@@ -22,7 +20,8 @@ export function assignEncounterActivities(site:Site,actors:EncounterActorSpec[],
     c.x>=room.x&&c.x<=room.x+room.w&&c.y>=room.y&&c.y<=room.y+room.h)
    .sort((b,c)=>dist(p,b)-dist(p,c));
   const near=furniture.find(x=>dist(p,x)<90);
-  const fixture=near?.fixture??'';
+  // A nearby object may orient a neutral idle pose, but is not evidence
+  // that the armed actor can physically work, sit or operate the fixture.
   // An observation post faces a real nearby opening, never the nearest
   // unrelated facade/door across an unseen wing of the generated building.
   const local=(q:{x:number;y:number})=>!!room&&
@@ -55,11 +54,9 @@ export function assignEncounterActivities(site:Site,actors:EncounterActorSpec[],
    const post=observation(false);
    if(post)heading=facing(p,post,heading);
   }else{
-   if(desk.has(fixture)||work.has(fixture))activity='working';
-   else if(rest.has(fixture))activity=fixture==='bed'?'resting':'seated';
-   else if(['rack','shelf','gondola-shelf','bookcase','filing-cabinet'].includes(fixture))
-    activity='inspecting';
-   else if(rng()<.22)activity='talking';
+   // Idle + occasional physically verified routine is the honest interim
+   // state until fixture interactions / conversations genuinely exist.
+   activity='idle';
    if(near)heading=facing(p,near,heading);
    if(premise==='hideout')readiness=rng()<.25?'relaxed':'attentive';
   }
