@@ -2,7 +2,7 @@
  * The record is evidence-derived; never feed presentation points to gameplay.
  * Actual shared 3D operator models are a separate Stage 3 presentation owner.
  */
-import type {AfterActionReport,OperatorAfterAction}
+import type {AfterActionReport,OperatorAfterAction,ContributionEvidence}
  from '../breach-after-action-report.ts';
 import type {ReplayManifest} from '../breach-replay-manifest.ts';
 
@@ -47,6 +47,45 @@ function breakdown(points:{combat:number;recon:number;support:number;objective:n
    grid.append(categoryTile(categoryName[category],points[category]));
  return grid;
 }
+function methodology():HTMLElement{
+ const wrapper=el('details','fw-v5-methodology');
+ wrapper.append(el('summary','','HOW CONTRIBUTIONS ARE CALCULATED'),
+   pointExplanation());
+ return wrapper;
+}
+function contributionBar(points:OperatorAfterAction['categories']):HTMLElement{
+ const bar=el('div','fw-v5-contribution-bar');
+ bar.setAttribute('role','img');
+ bar.setAttribute('aria-label',categories.map(c=>
+   categoryName[c]+' '+points[c]+' points').join(', '));
+ for(const category of categories){
+   if(points[category]<=0)continue;
+   const segment=el('span','fw-v5-contribution-segment');
+   segment.setAttribute('data-category',category);
+   segment.setAttribute('style','flex-grow:'+points[category]);
+   bar.append(segment);
+ }
+ if(!categories.some(c=>points[c]>0))
+   bar.append(el('span','fw-v5-contribution-empty'));
+ return bar;
+}
+function evidenceList(evidence:readonly ContributionEvidence[]|undefined,
+ inspect?:((key:string)=>void)):HTMLElement|null{
+ if(!evidence?.length)return null;
+ const top=evidence.slice().sort((a,b)=>b.points-a.points||a.at-b.at)
+   .slice(0,3);
+ const group=el('section','fw-v5-recorded-actions');
+ group.append(el('h3','','RECORDED ACTIONS'));
+ for(const entry of top){
+   const label=entry.label+' · +'+entry.points+' PTS';
+   if(inspect){
+     const item=action(label,()=>inspect(entry.sourceKey),'fw-v5-recorded-action');
+     item.setAttribute('aria-label','Inspect '+label);
+     group.append(item);
+   }else group.append(el('p','fw-v5-recorded-action-text',label));
+ }
+ return group;
+}
 function pointExplanation():HTMLElement{
  return el('p','fw-v4-scoring-note',
    'Contribution is a weighted summary of recorded actions, not the mission grade or Campaign XP. '+
@@ -87,15 +126,15 @@ function initialOverview(report:AfterActionReport){
  for(const op of report.operators)
    for(const category of categories)
      totals[category]+=op.categories[category];
- root.append(breakdown(totals));
+ root.append(contributionBar(totals),breakdown(totals));
  root.append(el('p','fw-v4-select-note',
    'Select any ranked operator to inspect their actions and condition.'));
- root.append(pointExplanation());
+ root.append(methodology());
  return root;
 }
 function selectedOverview(op:OperatorAfterAction,
  operators:OperatorAfterAction[],choose:(id:string|null)=>void,
- more:(id:string)=>void){
+ more:(id:string)=>void,inspect?:((key:string)=>void)){
  const root=el('div','fw-v4-selected-overview');
  const top=el('div','fw-v4-selected-top');
  const name=el('div','fw-v3-squad-name');
@@ -107,7 +146,9 @@ function selectedOverview(op:OperatorAfterAction,
  points.append(el('strong','',String(op.contribution)),
    el('small','','TOTAL PTS'));
  top.append(name,points);
- root.append(top,breakdown(op.categories));
+ root.append(top,contributionBar(op.categories),breakdown(op.categories));
+ const linked=evidenceList(op.contributions,inspect);
+ if(linked)root.append(linked);
  const counts=el('div','fw-v4-selected-counts');
  counts.append(
    el('span','',op.shots?op.hits+' / '+op.shots+' HITS / SHOTS':'NO SHOTS RECORDED'),
@@ -130,7 +171,8 @@ function selectedOverview(op:OperatorAfterAction,
 }
 export function renderSquadView(report:AfterActionReport,
  _manifest:ReplayManifest|null,selectedId:string|null,
- choose:(id:string|null)=>void,more:(id:string)=>void):HTMLElement{
+ choose:(id:string|null)=>void,more:(id:string)=>void,
+ inspect?:((key:string)=>void)):HTMLElement{
  const section=el('section','fw-v3-squad fw-v4-squad');
  const operators=report.operators;
  if(!operators.length){
@@ -154,7 +196,7 @@ export function renderSquadView(report:AfterActionReport,
  viewer.setAttribute('aria-label',selected?
    'Historical 3D model for '+selected.name:
    'Historical 3D models of the complete squad');
- focus.append(viewer,selected?selectedOverview(selected,operators,choose,more):
+ focus.append(viewer,selected?selectedOverview(selected,operators,choose,more,inspect):
    initialOverview(report));
  content.append(roster,focus);section.append(content);
  if(!report.complete)section.append(el('p','fw-after-muted fw-v4-partial',
@@ -187,6 +229,6 @@ export function renderSquadDetails(op:OperatorAfterAction):HTMLElement{
  }
  const earned=distinction(op);
  if(earned)root.append(el('p','fw-v3-distinction','✦ '+earned));
- root.append(pointExplanation());
+ root.append(methodology());
  return root;
 }
