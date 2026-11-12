@@ -1,5 +1,6 @@
 /** Standalone Operator Lab pose-authoring UI. Never imported by battle. */
 import * as THREE from 'three';
+import {DEFAULT_SHADOW_MAP_SIZE} from './rendering/shadow-map-budget.ts';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator} from './breach-operator-rig.ts';
 import type {OperatorRig} from './breach-operator-rig.ts';
@@ -155,7 +156,7 @@ const hemi=new THREE.HemisphereLight(0xffffff,0x8a968b,2);
 scene.add(hemi);
 const key=new THREE.DirectionalLight(0xffffff,2.2);
 key.position.set(-40,90,50);key.castShadow=true;
-key.shadow.mapSize.set(compact?512:1024,compact?512:1024);
+key.shadow.mapSize.set(DEFAULT_SHADOW_MAP_SIZE,DEFAULT_SHADOW_MAP_SIZE);
 key.shadow.camera.left=-70;key.shadow.camera.right=70;
 key.shadow.camera.top=80;key.shadow.camera.bottom=-80;
 scene.add(key);

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {DEFAULT_SHADOW_MAP_SIZE} from './rendering/shadow-map-budget.ts';
 import {StudyWorld,groundHeight,roadX,walkable} from './study-world.ts';
 import {StudySoldier} from './study-soldier.ts';
 
@@ -32,7 +33,7 @@ scene.add(new THREE.HemisphereLight(0xd9ddc9,0x464c3f,1.75));
 const sun=new THREE.DirectionalLight(0xf0dcac,2.45);
 sun.position.set(-15,36,19);
 sun.castShadow=true;
-sun.shadow.mapSize.set(1536,1536);
+sun.shadow.mapSize.set(DEFAULT_SHADOW_MAP_SIZE,DEFAULT_SHADOW_MAP_SIZE);
 sun.shadow.camera.left=-37;sun.shadow.camera.right=37;
 sun.shadow.camera.top=40;sun.shadow.camera.bottom=-40;
 sun.shadow.camera.near=1;sun.shadow.camera.far=125;

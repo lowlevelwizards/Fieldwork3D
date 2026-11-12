@@ -10,7 +10,10 @@ test('R5 studio shadow modes retain reversible R4 baseline',()=>{
  assert.equal(studioShadowMode('?operatorLighting=live'),'hybrid',
   'live-only requires disabling independent bake masks, not implemented');
  assert.equal(studioShadowSize('?operatorShadowSize=512'),512);
- assert.equal(studioShadowSize('?operatorShadowSize=invalid'),1024);
+ assert.equal(studioShadowSize(''),512);
+ assert.equal(studioShadowSize('?operatorShadowSize=invalid'),512);
+ assert.equal(studioShadowSize('?studioShadowSize=1024'),1024);
+ assert.equal(studioShadowSize('?studioShadowSize=2048'),2048);
  assert.ok(STUDIO_KEY_DIRECTION.y>.85);
 });
 test('R5 tight frustum ignores hidden alternate wardrobe pieces',()=>{
