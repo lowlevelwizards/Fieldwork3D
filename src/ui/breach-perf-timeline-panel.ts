@@ -49,7 +49,11 @@ export class BreachPerfTimelinePanel{
   this.graphButton=button('GRAPH ▾');
   this.detailButton=button('DETAILS');
   this.copyButton=button('COPY');
-  controls.append(this.graphButton,this.detailButton,this.copyButton);
+  this.exportButton=button('TXT');
+  this.copyButton.title='Copy short chat summary';
+  this.exportButton.title='Download complete 60-second TXT report';
+  controls.append(this.graphButton,this.detailButton,this.copyButton,
+   this.exportButton);
   bar.append(controls);root.append(bar);
   this.canvas=document.createElement('canvas');
   this.canvas.width=370;this.canvas.height=108;
