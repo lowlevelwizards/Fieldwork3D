@@ -50,6 +50,7 @@ export const CONTRACT_TESTS=Object.freeze([
  'tests/operator-lab-unified-poses.test.mjs',
  'tests/operator-pose-workbench.test.mjs',
  'tests/package-b7-workbench-pose-output.test.mjs',
+ 'tests/package-b8-pose-closeout.test.mjs',
  'tests/breach-unified-pose-stability.test.mjs'
 ]);
 export const PUBLIC_CALLERS=Object.freeze([
