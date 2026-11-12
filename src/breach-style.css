@@ -3993,3 +3993,13 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v5-workspace .fw-v4-combat-3d .fw-v6-inspection-column .fw-v3-combat-figure{
   height:155px;min-height:135px}
 }
+
+/* V6 short-landscape refinement: float the inspection options over the
+   viewer instead of consuming a second toolbar row above the evidence. */
+@media(min-width:701px) and (max-height:480px){
+ .fw-v5-workspace .fw-v6-inspection-column{position:relative;gap:3px}
+ .fw-v5-workspace .fw-v6-inspection-tools{
+  position:absolute;z-index:4;top:4px;right:4px;left:auto;
+  justify-content:flex-end;padding:2px;
+  background:rgba(23,43,34,.93);border-radius:4px}
+}
