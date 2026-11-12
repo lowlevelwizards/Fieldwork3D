@@ -15,7 +15,7 @@ test('breach-game delegates all physical approach movement to one motor',()=>{
   'simulation coordinator must never own a real-time or RAF clock');
  assert.match(game,/advanceMotorTraversal\(a,s,dt,motorHooks\)/);
  const motion=source('breach-simulation-motion-phase.ts');
- assert.match(game,/advanceSimulationMotion\(s,h,origins,motionSimulationPhasePort\)/);
+ assert.match(game,/advanceSimulationMotion\(s,h,origins,motionSimulationPhasePort,profile\)/);
  assert.match(motion,/motorTraversalWorld\(s,a\)/);
  assert.doesNotMatch(game,/function tickTraversal\(/);
  assert.doesNotMatch(game,/function tryAutoClearClutter\(/);
