@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {ShotVisualPool} from '../src/rendering/breach-shot-visual-pool.ts';
 
 test('P2.6 combat impact pool reuses only matching material/surface styles',()=>{
@@ -31,8 +32,7 @@ test('P2.6 bounded shot pool retires excess meshes and resets sites',()=>{
  assert.deepEqual(disposed.sort(),[1,2,3]);
 });
 test('P2.6 scene recycles rendered shot meshes without authoring impacts',()=>{
- const fs=await import('node:fs');
- const source=fs.readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
+ const source=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  assert.match(source,/this\.shotEffectPool\.acquire\(style,\(\)=>\{/);
  assert.match(source,/this\.shotEffectPool\.release\(effect\.style,effect/);
  assert.match(source,/this\.shotEffectPool\.clear\(effect=>\{/);
