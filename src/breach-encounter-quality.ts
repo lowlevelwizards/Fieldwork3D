@@ -16,6 +16,7 @@ export class EncounterBehaviorSurvey{
  private civilianChanged=new Set<string>();
  private investigationsStarted=0;
  private investigationsEnded=0;
+ private investigationsWithProgress=0;
  private investigationsNoProgress=0;
  private blockedEpisodes=0;
  private currentlyBlocked=new Set<string>();
@@ -75,12 +76,16 @@ export class EncounterBehaviorSurvey{
     this.investigatingSince.set(h.id,{time:s.seconds,x:h.p.x,y:h.p.y});
    }
    if(h.alert!=='investigating'&&previous==='investigating'){
-    this.investigationsEnded++;this.investigatingSince.delete(h.id);
+    this.investigationsEnded++;
+    const prior=this.investigatingSince.get(h.id);
+    if(prior&&Math.hypot(h.p.x-prior.x,h.p.y-prior.y)>12)
+      this.investigationsWithProgress++;
+    this.investigatingSince.delete(h.id);
     this.stalled.delete(h.id);
    }
    const start=this.investigatingSince.get(h.id);
-   if(start&&!this.stalled.has(h.id)&&s.seconds-start.time>=2&&
-      Math.hypot(h.p.x-start.x,h.p.y-start.y)<3){
+   if(start&&!this.stalled.has(h.id)&&s.seconds-start.time>=4&&
+      Math.hypot(h.p.x-start.x,h.p.y-start.y)<7){
     this.investigationsNoProgress++;this.stalled.add(h.id);
    }
    this.lastAlert.set(h.id,h.alert);
@@ -119,6 +124,7 @@ export class EncounterBehaviorSurvey{
     idleActorSeconds:Math.round(this.hostileIdleSeconds*100)/100,
     investigationsStarted:this.investigationsStarted,
     investigationsEnded:this.investigationsEnded,
+    investigationsWithProgress:this.investigationsWithProgress,
     investigationsOpen:this.investigatingSince.size,
     investigationsWithoutProgress:this.investigationsNoProgress,
     blockedEpisodes:this.blockedEpisodes},

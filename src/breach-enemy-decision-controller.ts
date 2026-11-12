@@ -29,12 +29,13 @@ import {groupResponse} from './breach-ai-coordination.ts';
 import {stableCoordination,renewCoordinationUntil} from './breach-ai-team-commitment.ts';
 import {coverMoveDeadline,coverMoveCommitted} from './breach-ai-position-commitment.ts';
 import {searchCandidates} from './breach-ai-search.ts';
-import {investigationTempo} from './breach-ai-investigation.ts';
+import {investigationTempo,stalledInvestigationAction} from './breach-ai-investigation.ts';
 import {routineDwellSeconds} from './breach-ai-routine-dwell.ts';
 import {pressureAdvanceOpportunity} from './breach-ai-initiative.ts';
-import {captureTargetMayWithdraw} from './breach-ai-mission-response.ts';
+import {captureTargetMayWithdraw,shouldProtectObjective} from './breach-ai-mission-response.ts';
 import {retreatDoorClosureEligible,routineDoorClosureEligible} from './breach-ai-door-response.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
+import {localFixtureObservation} from './breach-ai-contextual-observation.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 
 /** The authoritative simulation owns the motor, shot/geometry, visibility and
@@ -88,11 +89,16 @@ function firingPosition(a:TeamActor,target:TeamActor,s:Session):Pt|null{
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
  const world=sessionWorldGeometry(s);
   if(a.health<=0||a.surrendered)return;
+  // Sound events expire quickly. The optional muzzle-clearance early return
+  // must not consume away an actionable noise before the guard can react.
+  const strongest=scanEnemySoundEvidence(s,a);
+  const freshAlarm=strongest&&
+    ['investigate','alarm'].includes(soundResponse(strongest.kind,strongest.intensity));
   // The same local clearance motor is available to red and blue, but
   // never outranks a defensive withdrawal or interrupts a timed traversal.
   if(a.fireRetreatTarget){
     const goal=a.fireRetreatTarget;
-    if(a.alert==='retreat'||s.seconds>a.fireRetreatUntil||
+    if(a.alert==='retreat'||freshAlarm||s.seconds>a.fireRetreatUntil||
        d(a.p,goal)<3||!sweptBodyClear(a.p,goal,s.doors,OPERATOR_RADIUS,world)){
       a.fireRetreatTarget=null;a.nav=[];
     }else{
@@ -100,7 +106,9 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       return;
     }
   }
-  if(!a.watch)a.watch=watchPoint(a.p,s.doors,world);
+  if(!a.watch)a.watch=(a.encounterActivity==='inspecting'?
+    localFixtureObservation(a.p,world.cover,s.site?.rooms??[]):null)??
+    watchPoint(a.p,s.doors,world);
   const visible=scanEnemyVisualEvidence(s,a,dt,inSight);
   // A guard on the other side of a window can have confirmed sight but
   // an unusable short-stock muzzle. Try the same small backstep available
@@ -121,7 +129,6 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
          requestClearFireStep(s,a,target,'muzzle'))return;
     }
   }
-  const strongest=scanEnemySoundEvidence(s,a);
   // A faint noise can turn a head without becoming an indefinitely
   // actionable contact. Do not replace it with a psychic search target.
   if(!visible.length&&!a.contacted&&a.alert==='suspicious'&&a.heard){
@@ -250,6 +257,22 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       a.encounterReadiness??'attentive',a.id);
   }
   if(strongest&&!visible.length&&a.alert!=='retreat'){
+    // Only genuinely heard alarms can produce an uncertain local warning.
+    // One reported event per sound; speech is audible, not squad-wide magic.
+    if(noiseDisposition==='alarm'&&a.encounterGroupId&&
+       s.seconds-a.lastReportAt>5&&
+       !s.reports.some(r=>r.source==='auditory'&&r.sourceEventId===strongest.id)&&
+       enemies(s).some(other=>other!==a&&other.health>0&&
+         other.encounterGroupId===a.encounterGroupId&&d(a.p,other.p)<220)){
+      s.reports.push({id:s.nextReportId++,senderId:a.id,at:s.seconds,
+        origin:clone(a.p),estimate:clone(strongest.estimate),
+        uncertainty:strongest.uncertainty+18,deliveredTo:[],
+        source:'auditory',sourceEventId:strongest.id});
+      if(s.reports.length>16)s.reports.shift();
+      a.lastReportAt=s.seconds;
+      hear(s,a.p,190,'warning');
+      battleEvent(s,'intel',a,a.p,a.name+' REPORTED A SUSPICIOUS NOISE');
+    }
     a.lastNoiseAt=strongest.at;
     const heard=strongest.estimate;
     a.heard=heard;a.contact=heard;a.watch=clone(heard);
@@ -257,9 +280,23 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.defense=null;
     a.alertUntil=s.seconds+(a.personality==='aggressor'?.5:1.4);
     a.contacted=true;
+    const holdAssignedPost=shouldProtectObjective({
+      mission:s.missionType,role:a.encounterRole,
+      distanceToPost:d(a.p,s.scenario.objective),
+      distanceOfEvidenceToPost:d(heard,s.scenario.objective),
+      heardActionableEvidence:noiseDisposition==='alarm'||
+        noiseDisposition==='investigate',
+      directSight:visible.length>0,suppression:a.suppression
+    });
     const needsCover=a.personality==='cautious'||
       (a.personality==='guard'&&a.morale<.65);
-    if(needsCover){
+    if(holdAssignedPost){
+      // Objective location is the actor's own assigned post, not enemy intel.
+      // A stationed defender watches the heard approach from verified cover.
+      a.defense=defensivePosition(a,heard,s);
+      a.alert='cover';a.nav=[];a.retreatPoint=null;
+      a.defenseUntil=s.seconds+4;
+    }else if(needsCover){
       a.retreatPoint=defensivePosition(a,heard,s);
       a.alert=a.retreatPoint?'retreat':'cover';a.nav=[];
     }else a.alert='investigating';
@@ -304,7 +341,12 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // Quiet functional activities use bounded, collision-checked local journeys.
   // Combat reports, seen contacts, or sounds immediately interrupt the routine.
   if(!a.contacted&&!a.contact&&a.alert==='idle'&&a.encounterRoutine?.length){
-    if(s.seconds<(a.routinePauseUntil??0)){a.velocity=0;return;}
+    if(s.seconds<(a.routinePauseUntil??0)){
+      a.velocity=0;
+      if(a.encounterActivity==='inspecting'&&a.watch)
+        rotate(a,angle(a.p,a.watch),dt);
+      return;
+    }
     const visit=a.routineIndex??0;
     const index=visit%a.encounterRoutine.length;
     const target=a.encounterRoutine[index];
@@ -326,6 +368,11 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
           battleEvent(s,'door',a,doorCenter(door),
             a.name+' CLOSED '+door.id+' AFTER ROUTINE');
         }
+      }
+      if(a.encounterActivity==='inspecting'){
+        const fixture=localFixtureObservation(a.p,world.cover,s.site?.rooms??[]);
+        if(fixture)a.watch=fixture;
+        if(a.watch)rotate(a,angle(a.p,a.watch),dt);
       }
       a.routineIndex=visit+1;
       a.routinePauseUntil=s.seconds+routineDwellSeconds(a.id,
@@ -409,6 +456,25 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       approach(a,a.defense,dt,s,a.coordinationRole==='support'?.82:.65);
     else if(a.watch)rotate(a,angle(a.p,a.watch),dt);
     return;
+  }
+  if(a.contact&&a.alert==='investigating'&&!visible.length){
+    // A failed approach is not proof that the disturbance vanished. Move
+    // through remaining uncertain probes or eventually settle back down.
+    if(a.blockedTime>=2.7&&!a.searchOrigin){
+      a.searchOrigin=clone(a.contact);
+      a.searchQueue=searchCandidates(a.searchOrigin,
+        bestBelief(a.awareness)?.uncertainty??65,
+        s.site?.rooms??[],s.doors,world.cover);
+    }
+    const recovery=stalledInvestigationAction(a.blockedTime,a.searchQueue.length);
+    if(recovery==='inspect-next'){
+      a.nav=[];a.contact=clone(a.p);
+      a.searchPauseUntil=s.seconds-.01;
+    }else if(recovery==='stand-down'){
+      a.nav=[];a.contact=null;a.searchOrigin=null;a.alert='cover';
+      exhaustSuspicionSearch(a.suspicion,s.seconds);
+      a.defenseUntil=s.seconds+2;
+    }
   }
   if(a.contact){
     rotate(a,angle(a.p,a.contact),dt);
@@ -512,8 +578,17 @@ function distributeReports(s:Session){
   const listeners=enemies(s).filter(a=>a.health>0&&
     report.deliveredTo.includes(a.id));
   const prior=stableCoordination(listeners,s.seconds);
-  const roles=groupResponse(listeners.map(a=>({id:a.id,p:a.p})),
-    report.estimate,{...(report.assignedRoles??{}),...prior});
+  // For a sound warning, the person who heard and raised it is already
+  // investigating. Recipients can watch/support instead of duplicating
+  // the same blind move. Direct-sight reports keep their prior behavior.
+  const reporter=report.source==='auditory'?
+    enemies(s).find(a=>a.id===report.senderId&&a.health>0):undefined;
+  const participants=reporter?[{id:reporter.id,p:reporter.p},
+       ...listeners.map(a=>({id:a.id,p:a.p}))]:
+       listeners.map(a=>({id:a.id,p:a.p}));
+  const committed={...(report.assignedRoles??{}),...prior,
+       ...(reporter?{[reporter.id]:'investigate' as const}:{})};
+  const roles=groupResponse(participants,report.estimate,committed);
   report.assignedRoles=roles;report.coordinated=true;
   for(const a of listeners){
    if(!newlyInformed.includes(a.id))continue;

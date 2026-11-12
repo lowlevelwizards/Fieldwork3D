@@ -17,3 +17,12 @@ export function investigationTempo(personality:InvestigationPersonality,
  return {orientSeconds:.43+uncertaintyDelay*.7,
    inspectSeconds:.46,approachScale:.82};
 }
+
+/** Investigations cannot cling forever to a physically blocked candidate.
+ * This only controls where to search next; the motor still validates travel. */
+export function stalledInvestigationAction(
+ blockedSeconds:number,remainingCandidates:number):
+ 'continue'|'inspect-next'|'stand-down'{
+ if(blockedSeconds<2.7)return 'continue';
+ return remainingCandidates>0?'inspect-next':'stand-down';
+}

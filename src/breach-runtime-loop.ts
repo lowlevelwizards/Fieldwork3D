@@ -107,7 +107,7 @@ const perfTimeline=perfOverlay?new PerformanceTimeline():null;
 let perfTimelineSession:Session|null=null;
 // Explicit A/B only. At rest, 3D can submit at 30Hz while the RAF,
 // 2D order overlays, HUD, audio and all game simulation remain unchanged.
-const idle3dExperiment=new URLSearchParams(location.search).get('idle3d')==='30';
+const idle3dExperiment=config.boot.idle3dExperiment;
 let last3dInputAt=-Infinity,last3dUpdateAt=-Infinity;
 let last3dSession:Session|null=null,last3dMode:RuntimeFrameMode|null=null;
 let idle3dSkipped=0;

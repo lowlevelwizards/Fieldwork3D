@@ -24,6 +24,7 @@ export function armedPrecontactStyle(input:{
     input.health<=0||input.surrendered||input.velocity>2||
     input.aim>.16||input.reloading||input.interacting)return undefined;
  if(input.activity==='watching')return 'watch';
+ if(input.activity==='inspecting')return 'observe';
  if(input.activity==='idle')return 'relaxed';
  return undefined;
 }
