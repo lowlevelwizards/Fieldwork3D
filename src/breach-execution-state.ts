@@ -25,7 +25,8 @@ export type ExecutionActor={
  completedOrders:number;passageWaitSeconds?:number;
 };
 type Peer={health:number;syncReady:string|null;plan:readonly PlanNode[]};
-type DoorView={id:string;open:boolean;openFraction?:number};
+type DoorView={id:string;open:boolean;openFraction?:number;
+ locked?:boolean;heldBy?:string|null;jammed?:boolean};
 export type ExecutionContext={
  phase?:'planning'|'running'|'won'|'lost';
  doors?:readonly DoorView[];peers?:readonly Peer[];
@@ -78,9 +79,21 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
    if(n.doorId){
      const door=ctx.doors?.find(d=>d.id===n.doorId);
      const ready=!!door?.open&&(door.openFraction??1)>=.72;
-     if(!ready)return result(a.actionTimer>=2.5?'blocked':'waiting',
-       a.actionTimer>=2.5?'ENTRY BLOCKED':'WAITING',
-       door?'DOOR NOT CLEAR':'DOOR UNAVAILABLE',id,'entry-gate');
+     if(!ready){
+       // A generated gate has no right to invent clearance. Distinguish
+       // known lock/brace/jam from a normal temporary swing or lead entry.
+       // Derive from the same door state as simulation, with no extra HUD
+       // polling, order mutation or undisclosed geometry probes.
+       const hard=!!door?.locked||!!door?.heldBy||!!door?.jammed;
+       const blocked=hard||!door||a.actionTimer>=2.5;
+       const detail=!door?'DOOR UNAVAILABLE':
+         door.locked?'LOCKED · UNLOCK OR BREACH':
+         door.heldBy?'DOOR HELD SHUT':
+         door.jammed?'DOOR JAMMED':
+         door.open?'DOOR SWING NOT CLEAR':'DOOR NOT CLEAR';
+       return result(blocked?'blocked':'waiting',
+        blocked?'ENTRY BLOCKED':'WAITING',detail,id,'entry-gate');
+     }
    }
    const duration=n.duration??(n.kind==='wait'?1:.5);
    return result('waiting','WAIT',a.waitRemaining===0&&a.actionTimer>0?
