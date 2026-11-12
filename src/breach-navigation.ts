@@ -4,10 +4,27 @@ import type {SessionWorldGeometry} from './breach-world-context.ts';
  * still blocks entry, but an actor already inside its capsule may escape.
  * Static walls and cover remain unconditionally solid. */
 import {passable,pointToSegment,doorLeafSegment,WALLS,COVER,segmentsCross,
-  OPERATOR_RADIUS,type Door,type Pt} from './breach-core.ts';
+  OPERATOR_RADIUS,type Door,type Pt,type Segment} from './breach-core.ts';
 import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const leafGap=(p:Pt,d:Door)=>pointToSegment(p,doorLeafSegment(d));
+/** Exact static-wall candidate enumeration for collision recovery.
+ * The existing session spatial index culls only impossible wall AABBs.
+ * Sorting original indices preserves legacy wall iteration/tie order.
+ * Legacy or test worlds without an index retain the full exact scan. */
+function recoveryWallCandidates(from:Pt,to:Pt,reach:number,
+ world?:SessionWorldGeometry):readonly Segment[]{
+ if(!world?.someWallNearPoint)return world?.walls??WALLS;
+ const mid={x:(from.x+to.x)/2,y:(from.y+to.y)/2};
+ const envelope=reach+distance(from,to)/2+.001;
+ const candidates:{wall:Segment;index:number}[]=[];
+ world.someWallNearPoint(mid,envelope,(wall,index)=>{
+  candidates.push({wall,index});
+  return false;
+ });
+ candidates.sort((a,b)=>a.index-b.index);
+ return candidates.map(({wall})=>wall);
+}
 /** Exact swept collision still decides every contact. This conservative
  * broadphase skips only leaf segments entirely outside the sweep's expanded
  * axis-aligned bounds. The leaf is sampled once per query; no persistent door
@@ -233,7 +250,7 @@ export function glideAlongStaticWall(from:Pt,intended:Pt,
  const step=Math.hypot(dx,dy);
  if(step<.04)return null;
  let best:Pt|null=null,bestMovement=-Infinity;
- for(const wall of (world?.walls??WALLS)){
+ for(const wall of recoveryWallCandidates(from,intended,OPERATOR_RADIUS+6,world)){
    const vx=wall.b.x-wall.a.x,vy=wall.b.y-wall.a.y;
    const len=Math.hypot(vx,vy);
    if(len<.001)continue;
@@ -299,7 +316,8 @@ export function glideAlongStaticWall(from:Pt,intended:Pt,
 export function releaseStaticWallOverlap(from:Pt,goal:Pt,
  doors:Door[],maxStep=1.3,world?:SessionWorldGeometry):Pt|null{
  const r=OPERATOR_RADIUS+1;
- const overlaps=(world?.walls??WALLS).filter(w=>pointToSegment(from,w)<r-.01);
+ const overlaps=recoveryWallCandidates(from,from,r,world)
+  .filter(w=>pointToSegment(from,w)<r-.01);
  if(!overlaps.length)return null;
  const step=Math.max(.15,Math.min(1.4,maxStep));
  const aim=Math.atan2(goal.y-from.y,goal.x-from.x);
