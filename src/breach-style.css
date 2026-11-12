@@ -3861,3 +3861,25 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v5-workspace .fw-v3-shot-sequence{
   grid-column:1/-1;grid-row:4}
 }
+
+/* After Action V6.1–2 — progressive historical models and readable condition. */
+.fw-v5-workspace .fw-v4-squad-model,
+.fw-v5-workspace .fw-after-model{position:relative}
+.fw-v6-model-loading{position:absolute;left:10px;right:10px;bottom:10px;
+ padding:6px 9px;background:rgba(20,38,31,.86);border:1px solid #6b806f;
+ border-radius:4px;color:#e4d4b4;text-align:center;pointer-events:none;
+ font:750 11px/1.4 var(--ui-display)}
+.fw-v6-squad-condition{margin:0;padding:7px 10px;
+ background:#324438;border-left:3px solid #d1ac80;border-radius:3px;
+ color:#e7dcc8;font:700 11px/1.4 var(--ui-font)}
+.fw-v4-rank-row[data-after-condition="heavy"] .fw-v4-rank-identity small,
+.fw-v4-rank-row[data-after-condition="wounded"] .fw-v4-rank-identity small{
+ color:#e6bb91}
+.fw-v5-workspace .fw-v5-recorded-action,
+.fw-v5-workspace .fw-v5-recorded-action-text{
+ display:flex;align-items:center;justify-content:space-between;
+ flex-wrap:wrap;gap:4px 12px;min-height:44px;
+ background:#293f34;border-color:#516d5b;color:#eee6d2}
+.fw-v6-record-description{flex:1 1 160px;font:750 12px/1.35 var(--ui-display)}
+.fw-v6-record-meta{font:700 11px var(--fw-font-data),var(--ui-display);
+ color:#ecd3ab;white-space:nowrap}

@@ -50,8 +50,11 @@ export function renderStructuredMissionDetails(input:{
   const ledger=make('dl','fw-v5-score-ledger');
   for(const component of stats.scoreComponents){
    const row=make('div','fw-v5-score-line');
-   row.append(make('dt','',component.label),
-     make('dd','',(component.amount>0?'+':'')+component.amount));
+   const capped=component.label==='SCORE LIMIT'&&component.amount<0;
+   row.append(make('dt','',capped?'SCORE CAPPED AT 100':component.label),
+     make('dd','',capped?
+       String(stats.score-component.amount)+' → '+stats.score:
+       (component.amount>0?'+':'')+component.amount));
    ledger.append(row);
   }
   const total=make('div','fw-v5-score-line fw-v5-score-total');
@@ -86,7 +89,8 @@ export function renderStructuredMissionDetails(input:{
  ]));
  root.append(section('OPERATOR OUTCOMES',
    stats.squad.map(a=>[a.name.toUpperCase(),
-     a.survived?(a.injury?'WOUNDED':'ACTIVE'):'INCAPACITATED'])));
+     a.survived?(a.injury>=2?'HEAVILY WOUNDED':
+       a.injury>0?'WOUNDED':'ACTIVE'):'INCAPACITATED'])));
  if(campaignMode==='mission'){
    const history=campaign?.history??[];
    const recent=history.at(-1);
