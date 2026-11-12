@@ -12,14 +12,15 @@ const spec={id:'civ:regression',role:'visitor',persona:'steady',
 
 test('adult civilians retain operator-comparable height in every animated state',()=>{
  const c=createCivilian(spec),r=createCivilianRig(c);
- assert.equal(CIVILIAN_VISUAL_SCALE,1.20);
+ assert.equal(CIVILIAN_VISUAL_SCALE,1,'anatomy replaces old blanket enlargement');
  updateCivilianRig(r,c,0);
  assert.equal(r.root.scale.y,CIVILIAN_VISUAL_SCALE);
  for(const state of ['compliant','frozen','fleeing','hiding']){
   c.state=state;
   updateCivilianRig(r,c,1);
-  assert.ok(r.root.scale.y<=CIVILIAN_VISUAL_SCALE);
-  assert.ok(r.root.scale.y>=CIVILIAN_VISUAL_SCALE*.7);
+  assert.equal(r.root.scale.y,CIVILIAN_VISUAL_SCALE,
+    'poses cannot shorten full anatomical geometry');
+  if(state==='hiding')assert.ok(r.upper.position.y<0);
  }
  c.state='routine';updateCivilianRig(r,c,2);
  assert.equal(r.root.scale.y,CIVILIAN_VISUAL_SCALE,
