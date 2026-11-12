@@ -154,7 +154,7 @@ test('C2 exterior-known fog mesh preserves existing union rectangles, index wind
   for(let i=0;i<4;i++){
    const n=k*4+i,p=points[i],mapped=fogUvAt(p,bounds);
    assert.ok(Math.abs(pos.getX(n)-p.x)<1e-5);
-   assert.equal(pos.getY(n),1.05);
+   assert.ok(Math.abs(pos.getY(n)-1.05)<1e-5);
    assert.ok(Math.abs(pos.getZ(n)-p.y)<1e-5);
    assert.ok(Math.abs(uv.getX(n)-mapped.u)<1e-5);
    assert.ok(Math.abs(uv.getY(n)-mapped.v)<1e-5);
@@ -201,8 +201,10 @@ test('C2 fog geometry swaps release old buffers but preserve material, nodes and
 test('C2 fog helper is geometry-only, not a second disclosure or simulation owner',()=>{
  const helper=readFileSync(new URL(
   '../src/rendering/breach-fog-mesh-composition.ts',import.meta.url),'utf8');
- assert.doesNotMatch(helper,/\bSession\b|\bliveVisibility\b|\bisSeen\b|\bposeOperator\b/);
- assert.doesNotMatch(helper,/\bWebGLRenderer\b|\bpaintFogVisibility\b|\brequestAnimationFrame\b/);
+ // The documentation can name excluded owners. Scan executable source.
+ const code=helper.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\/\/[^\n]*/g,'');
+ assert.doesNotMatch(code,/\bSession\b|\bliveVisibility\b|\bisSeen\b|\bposeOperator\b/);
+ assert.doesNotMatch(code,/\bWebGLRenderer\b|\bpaintFogVisibility\b|\brequestAnimationFrame\b/);
  assert.match(scene,/paintFogMemory\(this\.fogMemoryContext,s,this\.fogDiagnostic\)/);
  assert.match(scene,/paintFogVisibility\(this\.fogContext,s\)/);
  assert.match(scene,/this\.fogTexture\.needsUpdate=true/);
