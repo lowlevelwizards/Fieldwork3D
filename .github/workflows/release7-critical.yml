@@ -29,7 +29,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Critical real-motor, queue, and authored-attention regressions
         run: |
-          node --experimental-strip-types --test tests/squad-flow-a1.test.mjs tests/doorway-convoy-flow.test.mjs tests/squad-entry-b-sectors.test.mjs tests/squad-entry-b-continuity.test.mjs tests/breach-149.test.mjs tests/release7-squad-queue.test.mjs tests/release7-order-recovery.test.mjs tests/release7-entry-watch.test.mjs tests/release7-mobile-clarity.test.mjs tests/release7-door-intent.test.mjs tests/release7-door-leaf-bypass.test.mjs tests/release7-obstructed-entry-gate.test.mjs
+          node --experimental-strip-types --test tests/squad-flow-a1.test.mjs tests/doorway-convoy-flow.test.mjs tests/squad-entry-b-sectors.test.mjs tests/squad-entry-b-continuity.test.mjs tests/breach-149.test.mjs tests/release7-squad-queue.test.mjs tests/release7-order-recovery.test.mjs tests/release7-entry-watch.test.mjs tests/release7-mobile-clarity.test.mjs tests/release7-door-intent.test.mjs tests/release7-door-leaf-bypass.test.mjs tests/release7-outward-four.test.mjs tests/release7-obstructed-entry-gate.test.mjs
       - name: Generated R7.1 execution smoke (observability only)
         run: node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 3 600
       - name: Release checkpoint - genuine four-operator entry fixtures
