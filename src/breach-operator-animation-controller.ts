@@ -1207,9 +1207,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
    const total=performance.now()-poseStart;
    // 'other' includes gait, arm constraints, IK and transform publication;
    // this breakdown is CPU wall time, not GPU time or simulation physics.
+   const kitBreakdown=r.root.userData.fieldworkAppearanceCpu as
+    {visualKitMs:number;receiverAtlasMs:number}|undefined;
    r.root.userData.fieldworkPoseCpu={
     appearanceMs,weaponBuildMs,
-    otherMs:Math.max(0,total-appearanceMs-weaponBuildMs)
+    otherMs:Math.max(0,total-appearanceMs-weaponBuildMs),
+    visualKitMs:kitBreakdown?.visualKitMs??0,
+    receiverAtlasMs:kitBreakdown?.receiverAtlasMs??0
    };
   }
 }
