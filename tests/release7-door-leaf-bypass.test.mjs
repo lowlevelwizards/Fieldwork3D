@@ -8,7 +8,8 @@ const base=()=>({id:'OUT',a:pt(0,0),b:pt(40,0),
  openFraction:1});
 test('R7.2b outside leaf chooses three physically swept waypoints around free tip',()=>{
  const door=base(),from=pt(-13,-20),goal=pt(18,25);
- const clear=(a,b)=>sweptBodyClear(a,b,[door]);
+ // Test-only limitless floor: default runtime world has bounded coordinates.
+ const clear=(a,b)=>sweptBodyClear(a,b,[door],8,{passable:()=>true});
  assert.equal(clear(from,goal),false,'direct route intersects real panel');
  const authored={id:41,kind:'move',p:{...goal},aimMode:'fixed',facing:1.4};
  const unchanged=structuredClone(authored);
