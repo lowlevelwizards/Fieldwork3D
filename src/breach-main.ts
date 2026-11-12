@@ -430,8 +430,8 @@ function advance2DCameraGlide(dt:number):void{
  const desired=centerBreach2DView({
    cssW,cssH,zoom,bounds:state.site?.bounds,point:cameraFocus2D.target
  });
- const next=stepCameraFocusGlide({x:panX,y:panY},desired,
-   cameraFocus2D.velocity,dt);
+ const next=stepCameraFocusGlide({x:panX,y:panY},
+   {x:desired.panX,y:desired.panY},cameraFocus2D.velocity,dt);
  panX=next.point.x;panY=next.point.y;
  cameraFocus2D=next.finished?null:{
    target:cameraFocus2D.target,velocity:next.velocity
