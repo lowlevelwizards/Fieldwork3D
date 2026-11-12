@@ -19,6 +19,7 @@ import {STUDIO_INSPECTION_LIGHT,STUDIO_KEY_DIRECTION,studioShadowPalette}
 import {applyStudioGraphicLighting}
  from './operator-studio-graphic-lighting.ts';
 import {BreachCombatEffectsPresenter} from './rendering/breach-combat-effects-presenter.ts';
+import {PresentationSightMemo} from './rendering/breach-presentation-sight-memo.ts';
 import {presentActor,presentDecor,presentArchitecturalOpening,
   presentUnrecordedRescueMarker,resolveDoorPresentation}
  from './rendering/breach-3d-disclosure-presenter.ts';
@@ -119,6 +120,10 @@ export class TacticalScene3D{
    STUDIO_INSPECTION_LIGHT.sky,studioShadowPalette('plum-plus').ground,1.20);
   private readonly graphicFill=new THREE.DirectionalLight(
    studioShadowPalette('plum-plus').fill,.60);
+  /** Renderer-only; ?presentationSight=legacy bypasses memo for A/B. */
+  private readonly presentationSight=new PresentationSightMemo();
+  private readonly presentationSightEnabled=
+   new URLSearchParams(location.search).get('presentationSight')!=='legacy';
   /** A/B baseline for perf audits; never changes tactical shadow resolution. */
   private readonly graphicLookEnabled=
    new URLSearchParams(location.search).get('lighting')!=='legacy';
@@ -931,6 +936,7 @@ export class TacticalScene3D{
   applySite(site:Site|null){
     this.displayedSite=site;
     this.staticBatches.clear();
+    this.presentationSight.reset();
     // Friendly rigs survive map changes for responsive load-in. Hostile
     // models belong to the outgoing encounter and otherwise accumulate
     // indefinitely as procedural sites create new hostile actor IDs.
@@ -1406,6 +1412,11 @@ export class TacticalScene3D{
     personalGroundEvidence:ReadonlySet<string>|null=null,
     replayWindowHistory:ReplayWindowKnowledgeHistory|null=null){
     if(this.view.mode==='plan2d')return;
+    // Never memoize reconstructed current sight during historical replay.
+    this.presentationSight.begin(s,this.presentationSightEnabled&&
+      !replay&&!replayDisclosurePolicy&&!replayDoorHistory&&
+      !replayWindowHistory&&!this.physicalDirectorActive&&
+      !this.replayBodycam);
     if(this.miniFocusMode!=='off'){
       this.miniFocusSession=s;
       this.miniFocusDoorId=focusedDoorId;
@@ -1587,13 +1598,18 @@ export class TacticalScene3D{
     }
     // Unlike the room's floor, decorative props must be individually
     // seen (or remembered at their own position) before they are rendered.
-    for(const opening of this.architecturalOpenings)
+    for(let i=0;i<this.architecturalOpenings.length;i++){
+      const opening=this.architecturalOpenings[i];
       opening.obj.visible=presentArchitecturalOpening(s,opening.opening,
-        omniscient,replayDisclosurePolicy,personalGroundEvidence);
-    for(const detail of this.observedDetails){
-      // Object positions are site-static: precompute tile keys at build time.
+        omniscient,replayDisclosurePolicy,personalGroundEvidence,
+        p=>this.presentationSight.query(s,'opening',i,p));
+    }
+    for(let i=0;i<this.observedDetails.length;i++){
+      const detail=this.observedDetails[i];
+      // Exact site-stable points; same visibility rule, fewer repeated rays.
       detail.obj.visible=presentDecor(s,detail,omniscient,
-        personalDisclosure,personalGroundEvidence);
+        personalDisclosure,personalGroundEvidence,
+        p=>this.presentationSight.query(s,'decor',i,p));
       this.staticBatches.setVisible(detail.obj,detail.obj.visible);
     }
     // Director cuts walls around its actual historical friendly focal group,
@@ -1655,7 +1671,8 @@ export class TacticalScene3D{
       const observed=personal&&replayDoorHistory?
         replayDoorHistory.at(s.seconds,replayDisclosurePolicy.observerId,door.id):
         null;
-      const directlyObserved=!personal&&liveVisibility(s,doorCenter(door));
+      const directlyObserved=!personal&&this.presentationSight.query(
+        s,'door',door.id,doorCenter(door));
       const visual=resolveDoorPresentation({
         door,personal,observed,omniscient,directlyObserved,
         rememberedOpen:s.intel.doorMemory.get(door.id)??0,
@@ -2041,7 +2058,8 @@ export class TacticalScene3D{
       }
     }
     this.combatEffects.update(s,omniscient,
-      personalDisclosure,p=>liveVisibility(s,p));
+      personalDisclosure,p=>this.presentationSight.query(
+        s,'effect',p.x+','+p.y,p));
     // 079: One persistent, ID-keyed effect per actual simulation shot.
     // Shared geometry and bounded per-shot materials avoid frame-by-frame GC.
     const active=this.frameShotIds;active.clear();
@@ -2052,7 +2070,8 @@ export class TacticalScene3D{
       const shot=s.shots[index];
       if(replayDisclosurePolicy?.mode==='operator')continue;
       const visibility=omniscient?
-        {flash:true,trace:true,impact:true}:shotVisibility(s,shot);
+        {flash:true,trace:true,impact:true}:shotVisibility(s,shot,
+          p=>this.presentationSight.query(s,'effect',shot.id,p));
       if(!visibility.flash&&!visibility.trace&&!visibility.impact)continue;
       active.add(shot.id);visibleShots++;
       let effect=this.effectCache.get(shot.id);
@@ -2115,7 +2134,8 @@ export class TacticalScene3D{
           end.z+Math.sin(theta)*radius);
         chip.rotation.set(i*.73,theta,Math.PI*.5+progress*1.8);
         chip.visible=visibility.impact&&shot.age<profile.lifetime&&
-          (omniscient||liveVisibility(s,{x:chip.position.x,y:chip.position.z}));
+          (omniscient||this.presentationSight.query(s,'effect',
+            shot.id+':chip:'+i,{x:chip.position.x,y:chip.position.z}));
       }
     }
     // Stable cap, one render call and no individual decal meshes/materials.
@@ -2140,9 +2160,11 @@ export class TacticalScene3D{
     const visibleBloodBlockers=s.operators.filter(a=>
       this.actors.get(a.id)?.root.visible).map(a=>a.p);
     let markCount=0;
-    for(const mark of s.impactMarks){
+    for(let markIndex=0;markIndex<s.impactMarks.length;markIndex++){
+      const mark=s.impactMarks[markIndex];
       if(replayDisclosurePolicy?.mode==='operator')continue;
-      if(!omniscient&&!liveVisibility(s,mark.p))continue;
+      if(!omniscient&&!this.presentationSight.query(
+        s,'impact',markIndex,mark.p))continue;
       // Unlike a screen-space overlay, the decal is always ON the floor.
       // Transparent architecture may not write depth, so a blood stain
       // must also be culled when any part lies behind a cutaway wall or
