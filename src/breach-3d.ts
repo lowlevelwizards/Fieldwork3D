@@ -131,6 +131,11 @@ export class TacticalScene3D{
   private readonly profileSceneUpdate=
    new URLSearchParams(location.search).has('perf');
   private scenePhaseStart=0;
+  /** Opt-in cold-rig vs pose timing. The actor phase can contain first-use
+   * wardrobe material/shadow generation as well as steady-state posing. */
+  private readonly actorPhaseCosts={
+   rigMs:0,rigBuilds:0,poseMs:0,poseCount:0
+  };
   /** CPU-only slices of a single 3D update. GPU time is NOT measured. */
   private readonly scenePhases:Record<StagePhaseName,number>={
    environment:0,camera:0,disclosure:0,actors:0,effects:0,
@@ -215,6 +220,7 @@ export class TacticalScene3D{
       presentationSight:this.presentationSight.stats(),
       presentationSightPolicy:this.presentationSightPolicy,
       scenePhases:this.profileSceneUpdate?this.scenePhases:null,
+      actorPhaseCosts:this.profileSceneUpdate?this.actorPhaseCosts:null,
       graphicWorldMaterialCount:this.graphicWorldMaterialCount,
       graphicOperatorRestyles:this.graphicOperatorRestyles,
       graphicLookEnabled:this.graphicLookEnabled};
@@ -1465,6 +1471,10 @@ export class TacticalScene3D{
       this.scenePhaseStart=performance.now();
       for(const key of Object.keys(this.scenePhases) as StagePhaseName[])
        this.scenePhases[key]=0;
+      this.actorPhaseCosts.rigMs=0;
+      this.actorPhaseCosts.rigBuilds=0;
+      this.actorPhaseCosts.poseMs=0;
+      this.actorPhaseCosts.poseCount=0;
     }
     // Never memoize reconstructed current sight during historical replay.
     this.presentationSight.begin(s,allowPresentationSightReuse(
@@ -1848,7 +1858,14 @@ export class TacticalScene3D{
       // Spawn full 3D rigs only when needed. Enemy AI, LOS and simulation
       // always exist; hidden actors incur no model construction on mobile.
       if(!visible&&!this.actors.has(actor.id))continue;
-      if(!this.actors.has(actor.id))this.soldier(actor);
+      if(!this.actors.has(actor.id)){
+       const rigStart=this.profileSceneUpdate?performance.now():0;
+       this.soldier(actor);
+       if(this.profileSceneUpdate){
+        this.actorPhaseCosts.rigMs+=performance.now()-rigStart;
+        this.actorPhaseCosts.rigBuilds++;
+       }
+      }
       const object=this.actors.get(actor.id)!;
       object.root.visible=visible;
       const hitTime=s.seconds-actor.lastHitAt;
@@ -1992,6 +2009,7 @@ export class TacticalScene3D{
         reloading:actor.reload>0,interacting:!!actor.treatmentActive||
           !!actor.traversal||actor.plan[0]?.kind==='door'
       });
+      const poseStart=this.profileSceneUpdate?performance.now():0;
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.traversal?0:actor.velocity,
@@ -2080,6 +2098,10 @@ export class TacticalScene3D{
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
         friendlyNear:friendlyAhead
       },dt);
+      if(this.profileSceneUpdate){
+       this.actorPhaseCosts.poseMs+=performance.now()-poseStart;
+       this.actorPhaseCosts.poseCount++;
+      }
       if(this.graphicLookEnabled&&object.root.visible){
        // Do not traverse hundreds of meshes every 60Hz frame. Recompose
        // only after costume/weapon source materials actually changed.

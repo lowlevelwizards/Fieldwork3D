@@ -110,6 +110,7 @@ let previousPerfJs:number|undefined;
 let previousPerfSim:number|undefined;
 let previousPerfMode:RuntimeFrameMode|undefined;
 let previousPerfWork:PreviousFrameWork|undefined;
+let previousHotSim:string|undefined;
 type SightTotal={queries:number;hits:number;misses:number;
  bypasses:number;invalidations:number};
 let lastSightTotals:SightTotal|null=null;
@@ -140,6 +141,7 @@ function tick(now:number){
    perfTimeline.reset();perfTimelineSession=state;
    previousPerfJs=undefined;previousPerfSim=undefined;
    previousPerfMode=undefined;previousPerfWork=undefined;
+   previousHotSim=undefined;
    lastSightTotals=null;lastFogPaints=0;lastShadowRefreshes=0;
    for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
     intervalSight[k]=0;
@@ -150,6 +152,7 @@ function tick(now:number){
   if(frameMode==='suspended'){
    previousPerfJs=undefined;previousPerfSim=undefined;
    previousPerfMode=undefined;previousPerfWork=undefined;
+   previousHotSim=undefined;
    accum=0;previousRenderActors=null;previousRenderDoors=null;
    physicalActionRings.clear();
    scheduleFrame();return;
@@ -264,6 +267,8 @@ function tick(now:number){
   config.updateContext();config.advanceContextPalette(dt);
   const diagnosticsStart=perfOverlay?performance.now():0;
   let currentSceneCosts=emptyPerformanceSceneCosts();
+  let currentActorCosts:PreviousFrameWork['actor'];
+  let currentHotSim='';
   if(frameMeter&&perfOverlay){
     const end=performance.now(),stats=stage?.performanceStats();
     currentSceneCosts={
@@ -271,6 +276,9 @@ function tick(now:number){
       stats?.scenePhases??emptyPerformanceSceneCosts():
       emptyPerformanceSceneCosts())
     };
+    const actorCost=(!studioOccludesTactical&&viewMode!=='plan2d')?
+      stats?.actorPhaseCosts:null;
+    currentActorCosts=actorCost?{...actorCost}:undefined;
     const sightTotal=stats?.presentationSight;
     const sightDelta={queries:0,hits:0,misses:0,
      bypasses:0,invalidations:0};
@@ -297,10 +305,12 @@ function tick(now:number){
        if(ms>maxMs){hotSim=name;maxMs=ms;}
       if(maxMs>0)hotSim+=' '+maxMs.toFixed(1)+'ms';
     }
+    currentHotSim=hotSim;
     if(perfTimeline){
       perfTimeline.add({at:now,raf:frameGap,js:end-perfStart,
        previousJs:previousPerfJs,previousSim:previousPerfSim,
        previousPhase:previousPerfMode,
+       previousHotSim,
        previousWork:previousPerfWork,
        sync:sceneUpdateEnd-perfRenderStart,sim:simulationMeasuredMs,
        recording:recordingMs,ui:runtimeUiMs,overlay:end-overlayBegin,
@@ -393,6 +403,7 @@ function tick(now:number){
    previousPerfJs=afterDiagnostics-perfStart;
    previousPerfSim=simulationMeasuredMs;
    previousPerfMode=frameMode;
+   previousHotSim=currentHotSim;
    previousPerfWork={
     beforeUi:Math.max(0,runtimeUiStart-perfStart-
      simulationMeasuredMs-recordingMs),
@@ -401,7 +412,8 @@ function tick(now:number){
     render:renderEnd-sceneUpdateEnd,
     postRender:diagnosticsStart-renderEnd,
     diagnostics:afterDiagnostics-diagnosticsStart,
-    scene:currentSceneCosts
+    scene:currentSceneCosts,
+    actor:currentActorCosts
    };
   }
   scheduleFrame();
@@ -411,6 +423,7 @@ function tick(now:number){
   accum=0;hudAt=0;
   previousPerfJs=undefined;previousPerfSim=undefined;
   previousPerfMode=undefined;previousPerfWork=undefined;
+  previousHotSim=undefined;
   previousRenderActors=null;previousRenderDoors=null;
   physicalActionRings.clear();
  }

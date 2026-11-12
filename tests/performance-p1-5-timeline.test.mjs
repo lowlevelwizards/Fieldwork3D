@@ -118,6 +118,27 @@ test('P1.8 blame transition gap on preceding phase, not new phase',()=>{
  h.add(sample(1250,90,{phase:'live',previousPhase:'live',previousJs:85}));
  assert.equal(h.phaseSummary().live.severe,1);
 });
+test('P1.9 preceding rig, pose and simulation CPU costs survive frame reuse',()=>{
+ const h=new PerformanceTimeline();
+ const actor={rigMs:520,rigBuilds:1,poseMs:35,poseCount:8};
+ const scene={...emptyPerformanceSceneCosts(),actors:600};
+ const work={beforeUi:2,ui:2,sceneSync:610,render:3,
+  postRender:2,diagnostics:1,scene,actor};
+ h.add(sample(500,911,{phase:'idle',previousPhase:'idle',
+  previousJs:878,previousSim:0,previousWork:work}));
+ actor.rigMs=0;scene.actors=0;
+ const peak=h.buckets()[0].peak;
+ assert.equal(peak.previousWork.actor.rigMs,520);
+ assert.match(previousFrameHotspot(peak),/3D actors 600ms.*rig 520ms\/1.*pose 35ms\/8/);
+ assert.match(h.compactReport('planning','iso'),/rig 520ms\/1/);
+ assert.match(h.bucketCSV(),/prior_rig_build_ms,prior_rig_build_count,prior_pose_ms/);
+ h.add(sample(750,575,{phase:'live',previousPhase:'live',
+  previousJs:570,previousSim:554,previousHotSim:'civilian-motion 531.2ms',
+  previousWork:{...work,scene:emptyPerformanceSceneCosts(),
+   actor:{rigMs:0,rigBuilds:0,poseMs:6,poseCount:8}}}));
+ assert.match(h.compactReport('planning','iso'),/SIM civilian-motion 531\.2ms/);
+ assert.match(h.report('planning','iso'),/prior simulation phase civilian-motion 531\.2ms/);
+});
 test('P1.5d CSV includes every quarter-second bucket and measured causes',()=>{
  const h=new PerformanceTimeline();
  h.add(sample(1200,20));h.add(sample(1450,61,{sync:31}));
