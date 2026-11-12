@@ -33,7 +33,12 @@ export type WorkbenchReport={stock:Vec3;
 const vec=(a:readonly number[])=>new THREE.Vector3(a[0],a[1],a[2]);
 const coords=(v:THREE.Vector3):Vec3=>[v.x,v.y,v.z];
 const rads=(n:number)=>THREE.MathUtils.degToRad(n);
-const degrees=(n:number)=>THREE.MathUtils.radToDeg(n);
+// JSON stores -0 as 0. A captured, shareable recipe must canonicalize
+// signed zero, including after B5's direct quaternion pose publication.
+const degrees=(n:number)=>{
+ const result=THREE.MathUtils.radToDeg(n);
+ return result===0?0:result;
+};
 const clamp=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
 
 /** Read the REAL displayed mesh, never derive a new pose from defaults. */
