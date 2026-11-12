@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {tacticalUiActionAvailability}
  from '../src/ui/tactical-command-affordances.ts';
-import {reconcileTacticalUiSelection,nearestPaletteCandidate}
+import {reconcileTacticalUiSelection,nearestPaletteCandidate,
+ canOfferRouteEndCivilianAction}
  from '../src/ui/tactical-selection-presentation.ts';
 import {activeWatchTarget} from '../src/ui/active-watch-marker.ts';
 
@@ -78,11 +79,28 @@ test('C4 palette chooses disclosed civilians at selected waypoint, not final rou
  assert.equal(nearestPaletteCandidate(tied,{x:11,y:11},()=>true).id,'stable-1');
  assert.equal(state.length,3,'no sort or mutation');
 });
-test('C4 actual palette owner reads waypoint position before nearest target discovery',()=>{
+test('C4 palette only offers endpoint-authorized civilian actions',()=>{
+ assert.equal(canOfferRouteEndCivilianAction(undefined,[]),true);
+ assert.equal(canOfferRouteEndCivilianAction({id:4},[{id:4}]),true);
+ assert.equal(canOfferRouteEndCivilianAction({id:2},[{id:2},{id:4}]),false);
+ assert.equal(canOfferRouteEndCivilianAction({id:999},[{id:2},{id:4}]),false);
+ const origin=source('breach-tactical-context-command.ts');
+ assert.match(origin,/distance\(finalPoint\(a\),c\.p\)<34/,
+  'authoritative civilian orders still start at the route endpoint');
  const palette=source('ui/tactical-palette-controller.ts');
  assert.match(palette,/const at=node\?\.p\?\?finalPoint\(a\)/);
- assert.match(palette,/const civilianAtPlan=nearestPaletteCandidate\(state\.civilians,at/);
- assert.match(palette,/const casualtyAtPlan=nearestPaletteCandidate\(state\.civilians,at/);
+ assert.match(palette,/const routeEndCivilianActions=canOfferRouteEndCivilianAction\(node,a\.plan\)/);
+ assert.match(palette,/const civilianAtPlan=routeEndCivilianActions\?/);
+ assert.match(palette,/const casualtyAtPlan=routeEndCivilianActions\?/);
+ assert.match(palette,/nearestPaletteCandidate\(state\.civilians,at/);
+ assert.match(palette,/liveVisibility\(state,c\.p\)/);
+});
+test('C4 actual palette preserves location-specific nearest-target ordering',()=>{
+ const palette=source('ui/tactical-palette-controller.ts');
+ assert.match(palette,/const at=node\?\.p\?\?finalPoint\(a\)/);
+ assert.match(palette,/const civilianAtPlan=routeEndCivilianActions\?/);
+ assert.match(palette,/const casualtyAtPlan=routeEndCivilianActions\?/);
+ assert.match(palette,/nearestPaletteCandidate\(state\.civilians,at/);
  assert.match(palette,/liveVisibility\(state,c\.p\)/);
  assert.doesNotMatch(palette,/paletteDistance\(finalPoint\(a\),c\.p\)<34/);
 });
