@@ -3978,3 +3978,18 @@ body.replaying .replay-follow-status[data-grade]::after{
 @media(prefers-reduced-motion:reduce){
  .fw-v5-workspace .fw-v3-paper-pulse{animation:none!important}
 }
+
+/* V6 browser acceptance: compact contact controls must not hide the forensic
+   model below the pinned replay/debrief footer in short landscape. */
+@media(min-width:701px) and (max-height:480px){
+ .fw-v5-workspace .fw-v6-contact-header{display:none}
+ .fw-v5-workspace .fw-v3-combat .fw-v3-combat-focus,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-focus{
+  grid-column:1/-1;grid-row:2;min-height:0}
+ .fw-v5-workspace .fw-v6-inspection-tools .fw-v3-small-button{
+  min-height:34px!important;padding:3px 6px}
+ .fw-v5-workspace .fw-v6-inspection-tools{gap:3px}
+ .fw-v5-workspace .fw-v6-inspection-column .fw-v3-combat-figure,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v6-inspection-column .fw-v3-combat-figure{
+  height:155px;min-height:135px}
+}

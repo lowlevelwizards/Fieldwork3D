@@ -722,11 +722,13 @@ export function bindAfterActionReplayNavigation(port:AfterActionReplayNavigation
      const candidate=shooter&&port.bodycam.observers.includes(shooter)?shooter:
        detail.contactId&&port.bodycam.observers.includes(detail.contactId)?
          detail.contactId:null;
-     if(port.getStage()&&candidate){
-       port.knowledge.observerId=candidate;
-       if(!port.startBodycam())port.chooseCamera('director');
-     }else if(port.getStage()&&port.director.camEligibleObservers.length){
+     // A debrief clip should first frame the action, not place a rifle
+     // in front of it. Personal bodycam remains a replay camera option.
+     if(port.getStage()&&port.director.camEligibleObservers.length){
        port.chooseCamera('director');
+     }else if(port.getStage()&&candidate){
+       port.knowledge.observerId=candidate;
+       if(!port.startBodycam())port.chooseCamera('free');
      }else{
        port.camera.lens='ortho';port.chooseCamera('free');
        port.showHelp('BODYCAM UNAVAILABLE · TACTICAL REPLAY',3000);

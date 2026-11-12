@@ -36,3 +36,12 @@ test('V6.4 one timeline follows the Moments tab without replacing event state',(
  assert.match(ctrl,/s\.tab!=='highlights'/);
  assert.match(ctrl,/timelineSelectedKey:s\.timelineSelectedKey/);
 });
+
+test('V6 clip navigation prefers eligible director view, keeping bodycam optional',()=>{
+ const controller=source('src/ui/breach-after-action-controller.ts');
+ const start=controller.indexOf('const shot=detail.shotId==null?null:');
+ const end=controller.indexOf('if(!port.playback.startIncident',start);
+ const segment=controller.slice(start,end);
+ assert.ok(segment.indexOf("port.chooseCamera('director')")<
+   segment.indexOf('if(!port.startBodycam())'));
+});
