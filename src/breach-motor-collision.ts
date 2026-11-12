@@ -89,7 +89,7 @@ export function resolveMotorCollision(
     // This temporary leg route never rewrites an authored MOVE or WATCH.
     const leaf=s.doors.find(door=>a.side==='blue'&&
       operatorCrossingDoor(a,door)&&door.open&&
-      pointToSegment(desiredMove,doorLeafSegment(door))<OPERATOR_RADIUS+23);
+      pointToSegment(desiredMove,doorLeafSegment(door))<OPERATOR_RADIUS+56);
     const bypass=leaf?doorLeafBypass(a.p,p,leaf,
       (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world)):[];
     if(bypass.length){
