@@ -4037,3 +4037,51 @@ body:has(#debrief:not([hidden])) #fieldwork-update-compact{
  font-size:10px;opacity:.92}
 body:has(#afterActionDetails:not([hidden])) #fieldwork-update-compact{
  display:none!important}
+
+/* Insertion map picker: full-viewport, but transparent over live tactical
+   architecture. The layer intercepts taps so browsing cannot author orders. */
+.fw-entry-map{position:fixed;inset:0;z-index:98;display:flex;
+ flex-direction:column;justify-content:space-between;pointer-events:auto;
+ background:linear-gradient(#0a1418a6,#0a141800 27%,#0a141800 60%,#0a1418b8);
+ color:#f0e8d4;font-family:var(--fw-font-narrative,system-ui,sans-serif)}
+.fw-entry-map[hidden]{display:none!important}
+.fw-entry-map-header,.fw-entry-map-footer{position:relative;z-index:2;
+ display:flex;gap:12px;padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
+ align-items:center;background:#15221ce6;backdrop-filter:blur(8px)}
+.fw-entry-map-header{justify-content:space-between}
+.fw-entry-map-heading{display:grid;gap:2px}
+.fw-entry-map-heading strong{font:750 22px/1.1 var(--fw-font-display,system-ui)}
+.fw-entry-map-heading span{font-size:11px;color:#b7c5b8}
+.fw-entry-map button{font:700 13px var(--fw-font-display,system-ui);
+ letter-spacing:.025em;cursor:pointer}
+.fw-entry-map-back,.fw-entry-map-confirm,.fw-entry-map-choice{
+ min-height:42px;padding:8px 13px;border:1px solid #87978b;
+ background:#2a3e37;color:#f0e8d4;border-radius:7px}
+.fw-entry-map-pins{position:absolute;inset:0;z-index:1;pointer-events:none}
+.fw-entry-map-pin{position:absolute;transform:translate(-50%,-50%);
+ width:46px;height:46px;min-width:46px;min-height:46px;pointer-events:auto;
+ border:3px solid #ecdfb0;border-radius:50%;background:#263931ed;
+ box-shadow:0 0 0 5px #08160e80,0 3px 12px #05130d88;color:#fff6d6}
+.fw-entry-map-pin[aria-pressed="true"]{background:#eddb9b;color:#182721;
+ box-shadow:0 0 0 7px #e8d89b70,0 3px 12px #05130d88}
+.fw-entry-map-footer{display:grid;gap:9px;
+ padding:10px 14px calc(12px + env(safe-area-inset-bottom))}
+.fw-entry-map-choices{display:flex;gap:7px;overflow-x:auto;padding:3px 0}
+.fw-entry-map-choice{white-space:nowrap;min-height:38px;flex-shrink:0}
+.fw-entry-map-choice[aria-pressed="true"]{background:#e5d29b;color:#20302a}
+.fw-entry-map-actions{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.fw-entry-map-status{font:750 14px var(--fw-font-display,system-ui);
+ min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fw-entry-map-confirm{background:#d8cc9a;color:#192a23;min-width:132px}
+.fw-entry-map button:focus-visible{outline:2px solid #fff2c5;outline-offset:3px}
+body:has(.fw-entry-map:not([hidden])) .tactical-hud,
+body:has(.fw-entry-map:not([hidden])) .guidance,
+body:has(.fw-entry-map:not([hidden])) .feed,
+body:has(.fw-entry-map:not([hidden])) .top{visibility:hidden}
+@media(max-width:600px){
+ .fw-entry-map-heading strong{font-size:18px}
+ .fw-entry-map-heading span{font-size:10px}
+ .fw-entry-map-header{padding-left:10px;padding-right:10px}
+ .fw-entry-map-footer{padding-left:8px;padding-right:8px}
+ .fw-entry-map-back{padding:6px 9px}
+}

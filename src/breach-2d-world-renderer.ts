@@ -433,3 +433,23 @@ export function fitBreach2DView(input:{
   oy:cssH/2-(bounds.minY+bounds.maxY)*viewScale/2-11+panY
  };
 }
+
+/** Exact inverse of the 2D board fit: center an operator without changing
+ * its zoom, camera mode, or the site's intel disclosure.
+ */
+export function centerBreach2DView(input:{
+ cssW:number;cssH:number;zoom:number;point:Pt;
+ bounds?:{minX:number;minY:number;maxX:number;maxY:number}|null;
+}):{panX:number;panY:number}{
+ const {point,cssW,cssH,zoom}=input;
+ const bounds=input.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+ const {viewScale}=fitBreach2DView({
+   cssW,cssH,zoom,panX:0,panY:0,bounds
+ });
+ const midX=(bounds.minX+bounds.maxX)/2;
+ const midY=(bounds.minY+bounds.maxY)/2;
+ return {
+   panX:(midX-point.x)*viewScale,
+   panY:(midY-point.y)*viewScale+11
+ };
+}

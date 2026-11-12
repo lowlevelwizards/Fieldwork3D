@@ -1131,6 +1131,14 @@ export class TacticalScene3D{
       this.view.pitch-dy*.004,35*Math.PI/180,Math.PI/2);
     this.setYaw(this.view.yaw-dx*.007);
   }
+  /** One-time tactical framing after explicit unit selection. Do not follow
+   * the actor continuously or interrupt future manual camera gestures.
+   */
+  focusOn(point:Pt):void{
+    if(!Number.isFinite(point.x)||!Number.isFinite(point.y))return;
+    this.view.focus={x:point.x,y:point.y};
+    this.updateCamera(1);
+  }
   /** A reset is a predictable full-board fit, independent of unit selection. */
   resetCamera(){
     const bounds=this.displayedBounds;

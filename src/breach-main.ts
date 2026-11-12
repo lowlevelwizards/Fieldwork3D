@@ -15,7 +15,7 @@ import {
   toggling,
 } from './breach-game.ts';
 import {TacticalScene3D,type ViewMode} from './breach-3d.ts';
-import {createBreach2DWorldRenderer,renderBreachTacticalWorldFrame,fitBreach2DView} from './breach-2d-world-renderer.ts';
+import {createBreach2DWorldRenderer,renderBreachTacticalWorldFrame,fitBreach2DView,centerBreach2DView} from './breach-2d-world-renderer.ts';
 import {createBreach2DActorRenderer} from './breach-2d-actor-renderer.ts';
 import {createBreach2DVisibilityRenderer} from './breach-2d-visibility-renderer.ts';
 import {createBreach2DReplayOverlays} from './breach-2d-replay-overlays.ts';
@@ -107,6 +107,7 @@ import './ui/ux-r3-hud.css';
 import './ui/fieldwork-action-toast.css';
 
 import {createBreachMissionScreens,buildBriefingDossier} from './ui/breach-mission-screens.ts';
+import {createBreachEntryMapPicker} from './ui/breach-entry-map-picker.ts';
 
 
 
@@ -206,11 +207,16 @@ let state:Session=missionController.create({
   withoutSite:legacyStudy||appFlow.mode==='menu',initial:true
 });
 let recorder=missionController.recordInitial(state);
+let entryMapPicker:ReturnType<typeof createBreachEntryMapPicker>|null=null;
+let priorEntryCamera:{
+  mode:ViewMode;focus:Pt|null;yaw:number;stageZoom:number;
+  panX:number;panY:number;zoom:number
+}|null=null;
 const deploymentButton=mountBreachDeploymentButton(ui);
 missionController.bindDeployment({
   button:deploymentButton,label:ui.briefingEntryLabel,
   getSession:()=>state,isReplaying:()=>replaying,
-  onSelected:()=>{recorder=missionController.recordInitial(state);},
+  onBrowse:openEntryMapPicker,
   reducedMotion:()=>reducedMotionMedia.matches
 });
 const restoreFavoriteMission=(saved:FavoriteMission):void=>
@@ -487,13 +493,68 @@ function turnCamera(shift:number){
     stage.rotate(shift);updateContext();
   }
 }
+/** Entry selection is a reversible map preview, not an immediate cycle.
+ * Only CONFIRM changes the mission start and recorder snapshot.
+ */
+function openEntryMapPicker():void{
+  if(!state.site||replaying||state.started||state.phase!=='planning'||
+     team(state).some(actor=>actor.plan.length>0)||!entryMapPicker)return;
+  priorEntryCamera={
+    mode:viewMode,focus:stage?{...stage.view.focus}:null,
+    yaw:stage?.view.yaw??0,stageZoom:stage?.view.zoom??1,
+    panX,panY,zoom
+  };
+  ui.briefingPanel.hidden=true;
+  ui.briefingToggle.setAttribute('aria-expanded','false');
+  appFlow.briefingVisibility(false);
+  hideContextPalette();
+  // A north-aligned map fit shows all VERIFIED external entry markers.
+  if(stage){
+    cameraMode('top');stage.resetCamera();stage.setYaw(0);
+  }else{
+    zoom=1;panX=panY=0;layout();
+  }
+  entryMapPicker.open();
+}
+function closeEntryMapPicker(confirmed:boolean):void{
+  const saved=priorEntryCamera;priorEntryCamera=null;
+  if(saved){
+    cameraMode(saved.mode);
+    if(stage){
+      stage.view.zoom=saved.stageZoom;
+      stage.setYaw(saved.yaw);
+      if(saved.focus)stage.focusOn(saved.focus);
+    }
+    zoom=saved.zoom;panX=saved.panX;panY=saved.panY;layout();
+    if(confirmed){
+      const actor=uid(selected);
+      if(actor)centerOperatorInView(actor.p);
+    }
+  }
+  showMissionBriefing();
+  updateHud();
+}
 const uid=(id:string)=>team(state).find(o=>o.id===id);
-function selectUnit(id:string){
+function centerOperatorInView(point:Pt):void{
+  if(stage&&viewMode!=='plan2d'){
+    stage.focusOn(point);return;
+  }
+  const offset=centerBreach2DView({
+    cssW,cssH,zoom,bounds:state.site?.bounds,point
+  });
+  panX=offset.panX;panY=offset.panY;
+  layout();
+}
+function selectUnit(id:string,center=true){
   const actor=uid(id);if(!actor||actor.health<=0)return;
   hideWeaponChooser();
   audioController.uiClickTone('select');selected=id;targeting.reset();
   selectedNode=null;selectedActiveWatch=false;doorFocusId=null;
-  doorMenuDismissedId=null;updateHud();
+  doorMenuDismissedId=null;
+  // Only explicit selection recenters. A route handle drag may temporarily
+  // adopt another actor without moving the map beneath the finger.
+  if(center&&!replaying)centerOperatorInView(actor.p);
+  updateHud();
 }
 // InteractionState owns temporary command arming; HUD owns guidance only.
 // Only plan authoring APIs can commit an order.
@@ -1055,6 +1116,7 @@ replayHudController.bindLateInteractions();
  * the presentation owners release only their own graphics, UI and sound.
  */
 function releaseMissionPresentation():void{
+  entryMapPicker?.dismiss();priorEntryCamera=null;
   // Historical scene is retained across replay, never across mission resets.
   disposeAfterActionPresentation(ui.debrief);
   if(replayQuickVideo.active)replayQuickVideo.stop();
@@ -1249,7 +1311,7 @@ function tacticalPickAt(screen:Pt,pointerKind:string):TacticalPick|null{
 }
 function adoptPointerOwner(p:{pick?:TacticalPick|null}):void{
   const owner=p.pick?.owner;
-  if(owner&&owner!==selected)selectUnit(owner);
+  if(owner&&owner!==selected)selectUnit(owner,false);
 }
 function activatePointerEdit(p:{pick?:TacticalPick|null}):void{
   adoptPointerOwner(p);
@@ -1264,7 +1326,7 @@ function restorePointerSelection(p:{selectionBefore?:{
 }}):void{
   const prior=p.selectionBefore;
   if(!prior)return;
-  if(selected!==prior.owner)selectUnit(prior.owner);
+  if(selected!==prior.owner)selectUnit(prior.owner,false);
   selectedNode=prior.node;selectedActiveWatch=prior.watch;
   doorFocusId=prior.door;
 }
@@ -1370,7 +1432,23 @@ function commitPointerRelease(e:PointerEvent,p:TacticalPointer,
  insertAtRouteLine,selectedPlanNode
 },e,p,cancelled,pointerCount);
 }
-window.addEventListener('resize',layout);
+entryMapPicker=createBreachEntryMapPicker({
+  getSite:()=>state.site??null,
+  getChoices:()=>missionController.deploymentChoices(state,replaying),
+  getSelected:()=>missionController.entryId,
+  project:point=>worldToScreen(point,10),
+  select:id=>{
+    if(!missionController.selectDeploymentById(state,replaying,id))return false;
+    recorder=missionController.recordInitial(state);
+    fog2D.invalidate();
+    return true;
+  },
+  onExit:closeEntryMapPicker
+});
+window.addEventListener('resize',()=>{
+  layout();
+  entryMapPicker?.reposition();
+});
 missionScreens.bindMenus();
 audioController.bindSettings({
   liveMix:el<HTMLButtonElement>('liveMixToggle'),
