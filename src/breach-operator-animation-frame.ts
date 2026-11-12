@@ -28,6 +28,15 @@ export function operatorPoseScratchForRig(r:OperatorRig):OperatorPoseScratch{
  }
  return scratch;
 }
+/** B8: explicitly discard the reusable pose/turn scratch at rig disposal.
+ * WeakMap would eventually release it when the rig is GC'd, but Studio,
+ * replay and thumbnail owner caches may retain disposed rig references.
+ * Deleting both entries bounds the lifetime of hidden IK/body scratch.
+ */
+export function releaseOperatorAnimationFrame(r:OperatorRig):void{
+ scratchByRig.delete(r);
+ turnByRig.delete(r);
+}
 /** Restores handoff visibility for replay seeks and gathers reusable scratch. */
 export function beginOperatorAnimationFrame(
  r:OperatorRig,p:OperatorPose,dt:number){

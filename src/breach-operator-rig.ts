@@ -3,6 +3,7 @@ import type {OperatorPose} from './breach-operator-animation-contract.ts';
  * The battle motor remains authoritative. IK is presentation-only. */
 import * as THREE from 'three';
 import {resetOperatorPoseOutput} from './breach-operator-pose-output.ts';
+import {releaseOperatorAnimationFrame} from './breach-operator-animation-frame.ts';
 import {CORE_TORSO_CONTACT} from './operator-garment-contact-surface.ts';
 import {operatorPixelTextures,type PixelSurface} from './rendering/pixel-materials.ts';
 import {canonicalRootOrientation,LEGACY_FRAME_YAW,createCanonicalAttachment} from './operator-axis-convention.ts';
@@ -365,6 +366,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     elbowSpread:[0,0],legGap:[0,0],
     dispose:()=>{
       resetOperatorPoseOutput(rig);
+      releaseOperatorAnimationFrame(rig);
       // All shortened variants must be released, even if not selected at
       // the moment of disposal. They are not scene children themselves.
       const geometries=new Set<THREE.BufferGeometry>();

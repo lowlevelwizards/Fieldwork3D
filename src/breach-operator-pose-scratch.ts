@@ -159,6 +159,12 @@ export type OperatorPoseScratch={
   frameOutput:OperatorFramePoseScratch;
   bodyEuler:THREE.Euler;
   bodyInverse:THREE.Quaternion;
+  /** B8: same-frame V3 torso assist, reused per rig. */
+  v3LeanOffset:THREE.Vector3;
+  v3LeanRotation:THREE.Quaternion;
+  /** B8: reused XYZ quaternion interpolation for Lab hip and chest. */
+  poseBlendFrom:THREE.Quaternion;
+  poseBlendTo:THREE.Quaternion;
   legs:[LimbSolution,LimbSolution];
   arms:[LimbSolution,LimbSolution];
   armRetry:[LimbSolution,LimbSolution];
@@ -182,6 +188,10 @@ export function createOperatorPoseScratch():OperatorPoseScratch{
     equipmentOutput:createOperatorEquipmentPoseScratch(),
     frameOutput:createOperatorFramePoseScratch(),
     bodyEuler:new THREE.Euler(),bodyInverse:new THREE.Quaternion(),
+    v3LeanOffset:new THREE.Vector3(),
+    v3LeanRotation:new THREE.Quaternion(),
+    poseBlendFrom:new THREE.Quaternion(),
+    poseBlendTo:new THREE.Quaternion(),
     legs:[solution(),solution()],
     arms:[solution(),solution()],
     armRetry:[solution(),solution()],

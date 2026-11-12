@@ -214,9 +214,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const t=lowReadyBlendPhase(activeTransition.alpha);
     frame.hip.position.lerpVectors(
       activeTransition.authoredHip.position,frame.hip.position,t);
-    const fromQ=new THREE.Quaternion().setFromEuler(
+    const fromQ=scratch.poseBlendFrom.setFromEuler(
       activeTransition.authoredHip.rotation);
-    const toQ=new THREE.Quaternion().setFromEuler(frame.hip.rotation);
+    const toQ=scratch.poseBlendTo.setFromEuler(frame.hip.rotation);
     frame.hip.rotation.setFromQuaternion(fromQ.slerp(toQ,t),'XYZ');
   }
   const aimLevel=clamp(p.aimBlend??(p.aiming?1:0),0,1);
@@ -570,9 +570,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     if(result.status==='clear'&&result.arms){
       coordinatedDynamic=result;
       fit=result.fit;
-      // No per-frame scratch allocation on the main render hot path.
-      const offset=new THREE.Vector3(result.leanX,0,0)
-        .applyQuaternion(new THREE.Quaternion().setFromEuler(
+      // B8: identical math, reusable per-rig vector and quaternion.
+      const offset=scratch.v3LeanOffset.set(result.leanX,0,0)
+        .applyQuaternion(scratch.v3LeanRotation.setFromEuler(
           frame.chest.rotation));
       v3LeanParentX=offset.x;
       v3LeanParentY=offset.y;
@@ -715,8 +715,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const phase=lowReadyBlendPhase(activeTransition.alpha);
     if(phase<1){
       const from=activeTransition.authoredChest;
-      const q0=new THREE.Quaternion().setFromEuler(from.rotation);
-      const q1=new THREE.Quaternion().setFromEuler(frame.chest.rotation);
+      const q0=scratch.poseBlendFrom.setFromEuler(from.rotation);
+      const q1=scratch.poseBlendTo.setFromEuler(frame.chest.rotation);
       frame.chest.rotation.setFromQuaternion(q0.slerp(q1,phase),'XYZ');
       frame.chest.position.lerpVectors(from.position,frame.chest.position,phase);
     }
