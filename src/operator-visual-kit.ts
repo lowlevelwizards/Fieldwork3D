@@ -3,6 +3,7 @@
  * low-poly silhouettes for the isometric camera.
  */
 import * as THREE from 'three';
+import {tagVisualMaterial} from './rendering/material-identity.ts';
 import {createIdentityVisuals,updateIdentityVisuals,type IdentityVisuals}
  from './operator-identity-marking-visuals.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
@@ -94,6 +95,13 @@ export function createOperatorVisualKit(
  canonicalHead?:THREE.Group,lazyAccessories=false):OperatorVisualKit{
  const {cloth,vest,trousers,packFabric,gearFabric,headCloth,
   headArmor,dark,skin,steel}=m;
+ // The existing wardrobe shaders and baked occlusion retain ownership.
+ // Metadata only: no changes to saved colors, print UVs or geometry.
+ for(const fabricMaterial of [cloth,trousers,packFabric,gearFabric,headCloth])
+  tagVisualMaterial(fabricMaterial,'fabric');
+ for(const hardMaterial of [vest,headArmor])
+  tagVisualMaterial(hardMaterial,'armor');
+ tagVisualMaterial(steel,'steel');
  // Cloth and uniforms RECEIVE baked armor/strap shadows, not just the kit.
  enableBakedGearAO(cloth);enableBakedGearAO(trousers);
  const trim=new THREE.MeshStandardMaterial({color:0x777d6d,roughness:.94,flatShading:true});
