@@ -99,11 +99,37 @@ export function buildingTheme(kind:BuildingArchetype|undefined,seed:number):Buil
  return {...s,floor,tile,trim,cap,hall:mix(floor,s.wall,.26),
   grout:mix(floor,cap,.19)};
 }
+/** F4.2: Room-purpose accents derive from the SAME building palette.
+ * Only affects existing props; no new props, seeded entropy or game geometry.
+ * The role-level selection is bounded so material caching remains stable.
+ */
+export type RoomFixtureFinishes={wood:number;metal:number;fabric:number;accent:number};
+export function roomFixtureFinishes(theme:BuildingTheme,
+ purpose:string|undefined,tone=0):RoomFixtureFinishes{
+ const p=purpose??'';
+ const publicRoom=['waiting','reception','lobby','lounge','dining',
+  'meeting','office','guest'].includes(p);
+ const serviceRoom=['bay','workshop','loading','storage','equipment',
+  'maintenance','aisle','parking','packing','utility'].includes(p);
+ const wetRoom=['bathroom','restroom','laundry','kitchen','exam',
+  'treatment','pantry'].includes(p);
+ // Integer tone groups avoid a new unique material for each room.
+ const neutralVariant=((Math.abs(Math.trunc(tone))%2)===0)?0:.02;
+ const wood=mix(theme.wood,theme.door,
+  (publicRoom?.17:serviceRoom?.045:.09)+neutralVariant);
+ const metal=mix(0x465958,theme.cap,serviceRoom?.22:.14);
+ const fabric=mix(0x70715e,publicRoom?theme.door:theme.tile,
+  (publicRoom?.15:wetRoom?.07:.065)+neutralVariant);
+ const accent=mix(theme.door,theme.trim,
+  publicRoom?.11:wetRoom?.23:.08);
+ return {wood,metal,fabric,accent};
+}
 export function roomFloor(theme:BuildingTheme,purpose:string|undefined,tone=0):number{
  const wet=['kitchen','bathroom','restroom','pantry','laundry','exam',
    'treatment','waiting','reception','checkout','service'].includes(purpose??'');
  const industrial=['bay','workshop','loading','storage','equipment','maintenance',
    'aisle','parking','packing'].includes(purpose??'');
  const base=wet?theme.tile:industrial?mix(theme.floor,0x6b706d,.21):theme.floor;
- return mix(base,tone%2===0?theme.wall:theme.cap,.045);
+ // Smaller toward-wall drift retains F4's architectural floor contrast.
+ return mix(base,tone%2===0?theme.wall:theme.cap,tone%2===0?.035:.065);
 }
