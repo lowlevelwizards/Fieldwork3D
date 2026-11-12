@@ -40,7 +40,7 @@ function fakeHost(){
  }};
 }
 test('both orientations of storefront awning have complete edges, ledgers and bracing',()=>{
- const site={seed:4,archetype:'retail',
+ const site={seed:4,archetype:'retail',entrance:{x:166,y:220},
    rooms:[{id:'r0',kind:'room',x:90,y:90,w:180,h:130}],
    windows:[
     {id:'H',x:166,y:220,width:72,vertical:false,style:'storefront'},
