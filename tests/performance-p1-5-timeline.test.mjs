@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {PerformanceTimeline,performanceHotspot,
+import {PerformanceTimeline,performanceHotspot,previousFrameHotspot,
  PERFORMANCE_BUCKET_COUNT,emptyPerformanceSceneCosts}
  from '../src/breach-performance-timeline.ts';
 const sample=(at,raf,patch={})=>({
@@ -87,6 +87,36 @@ test('P1.7 phase summary counts callbacks separately from bucket peaks',()=>{
  assert.match(h.compactReport('planning','iso'),/IDLE 2f \/ >=33 1 \/ >=67 0/);
  h.reset();
  assert.equal(h.phaseSummary().live.frames,0);
+});
+test('P1.8 preceding CPU slices explain stalls without blaming current work',()=>{
+ const h=new PerformanceTimeline();
+ const scene={...emptyPerformanceSceneCosts(),gpuSubmit:825};
+ const previousWork={beforeUi:5,ui:2,sceneSync:850,render:10,
+  postRender:4,diagnostics:2,scene};
+ h.add(sample(1000,928,{
+  phase:'idle',previousPhase:'idle',previousJs:903,
+  previousSim:0,previousWork,js:17,sim:0
+ }));
+ scene.gpuSubmit=0;
+ const peak=h.buckets()[0].peak;
+ assert.equal(peak.previousWork.scene.gpuSubmit,825,
+  'prior scene snapshot remains immutable after later frames');
+ assert.match(previousFrameHotspot(peak),/3D gpuSubmit 825ms \/ sync 850ms/);
+ assert.match(performanceHotspot(peak),/prior-frame JS/);
+ assert.match(h.compactReport('planning','iso'),/3D gpuSubmit 825ms/);
+ assert.match(h.report('planning','iso'),/prior hotspot 3D gpuSubmit 825ms/);
+ assert.match(h.bucketCSV(),/prior_scene_submit_cpu_ms/);
+});
+test('P1.8 blame transition gap on preceding phase, not new phase',()=>{
+ const h=new PerformanceTimeline();
+ h.add(sample(1000,100,{
+  phase:'live',previousPhase:'idle',previousJs:90
+ }));
+ const modes=h.phaseSummary();
+ assert.equal(modes.idle.severe,1);
+ assert.equal(modes.live.severe,0);
+ h.add(sample(1250,90,{phase:'live',previousPhase:'live',previousJs:85}));
+ assert.equal(h.phaseSummary().live.severe,1);
 });
 test('P1.5d CSV includes every quarter-second bucket and measured causes',()=>{
  const h=new PerformanceTimeline();
