@@ -58,8 +58,12 @@ export function resolveMotorCollision(
   const normalClear=sweptBodyClear(a.p,desiredMove,s.doors,OPERATOR_RADIUS,world);
   const travelHeading=angle(a.p,desiredMove);
   const sidewaysYaw=squeezeFacing(travelHeading);
-  const narrowClear=sweptProfileClear(a.p,desiredMove,s.doors,
-    sidewaysYaw,'squeeze',world);
+  // Ordinary full-body steps cannot request a squeeze. Skip three oriented
+  // profile sweeps unless normal clearance failed or a squeeze is active.
+  // This is exactly equivalent for gate/traversal decisions, but avoids
+  // unnecessary door and world-geometry queries on the common walk path.
+  const narrowClear=(!normalClear||a.squeeze)&&
+    sweptProfileClear(a.p,desiredMove,s.doors,sidewaysYaw,'squeeze',world);
   // An incidental near-miss with a prop or wall is NOT an order to
   // rotate the entire body into a squeeze. First look for a genuine
   // full-shoulder route around it (often just a short sidestep). This is
