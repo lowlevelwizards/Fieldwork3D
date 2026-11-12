@@ -8,6 +8,9 @@ import {addCoveredEntries} from './worldgen/entry-shelters.ts';
 import {addSecurityPerimeter} from './worldgen/security-perimeter.ts';
 import {addInteriorGlazing} from './worldgen/interior-glazing.ts';
 import {windowVisualHeadHeight} from './breach-opening-proportions.ts';
+import {windowApertureSegment,windowBarrierFootprint}
+ from './worldgen/window-geometry-contract.ts';
+import {synchronizeWindowBarriers} from './worldgen/window-collider-sync.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const windowStyles:Record<BuildingArchetype,readonly WindowStyle[]>={
  house:['standard','tall','bay','awning'],
@@ -121,40 +124,15 @@ export function buildArchetypeEnvironment(site:Site,seed:number):Site{
       y:opening.y+uy*opening.width/2};
     walls.push({a:wall.a,b:near},{a:far,b:wall.b});
   });
-  const cover:Obstacle[]=site.cover.slice();
-  for(const opening of windows)cover.push({
-    x:opening.x,y:opening.y,
-    w:opening.vertical?10:opening.width,
-    h:opening.vertical?opening.width:10,
-    low:(opening.sillHeight??14)<25,
-    fixture:opening.sillHeight===0?'glass-barrier':'window-sill',
-    topHeight:opening.sillHeight===0?
-      (opening.headHeight??windowVisualHeadHeight(opening.style)):
-      (opening.sillHeight??14)});
+  const cover:Obstacle[]=[...site.cover,...windows.map(windowBarrierFootprint)];
   // Exterior furnishing belongs exclusively to addExteriorProperty.
   // The old second frontage pass spawned a generic 'vehicle' for most
   // archetypes and an unattached 'bench' for clinics, independently of
   // sidewalks, road masks, parking, pedestrian lanes and amenity context.
   // Do not restore it as a substitute for future purpose-built assets.
   const glazed=addInteriorGlazing({...site,walls,cover,windows},seed);
-  // The public window list is authoritative: each opening gets exactly one
-  // matching sill collider, even when interior glazing inserts apertures.
-  // Do not stack duplicate sills at the same window or leave orphan cover.
-  const sills=(glazed.windows??[]).map(opening=>({
-    x:opening.x,y:opening.y,
-    w:opening.vertical?10:opening.width,
-    h:opening.vertical?opening.width:10,
-    low:(opening.sillHeight??14)<25,
-    fixture:opening.sillHeight===0?'glass-barrier':'window-sill',
-    topHeight:opening.sillHeight===0?
-      (opening.headHeight??windowVisualHeadHeight(opening.style)):
-      (opening.sillHeight??14)
-  }));
-  const physical={...glazed,cover:[
-    ...glazed.cover.filter(obstacle=>
-      obstacle.fixture!=='window-sill'&&obstacle.fixture!=='glass-barrier'),
-    ...sills
-  ]};
+  // The physical and visual window list share one idempotent collider owner.
+  const physical=synchronizeWindowBarriers(glazed);
   return addSecurityPerimeter(addCoveredEntries(
     addExteriorProperty(physical,seed),seed),seed);
 }
@@ -189,7 +167,5 @@ export function damageWindow(w:WindowState,energy:number):boolean{
  * frame remain their original authoritative geometry when glass breaks.
  */
 export function windowPaneSegment(w:WindowState):Segment{
- const half=w.width/2;
- return w.vertical?{a:{x:w.x,y:w.y-half},b:{x:w.x,y:w.y+half}}:
-   {a:{x:w.x-half,y:w.y},b:{x:w.x+half,y:w.y}};
+  return windowApertureSegment(w);
 }

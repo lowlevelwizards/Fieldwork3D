@@ -12,7 +12,8 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {team,type Session,type TeamActor,liveVisibility,isSeen} from './breach-game.ts';
 import {civilianPresentationVisible} from './breach-civilian-visibility.ts';
 import {previewKnownDoorSwing} from './breach-door-swing-preview.ts';
-import {spatialSurfaceState} from './breach-presentation.ts';
+import {spatialSurfaceState,windowPresentationKnown} from './breach-presentation.ts';
+import {windowApertureSegment} from './worldgen/window-geometry-contract.ts';
 import {doorKnown} from './breach-intel.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
@@ -41,21 +42,39 @@ function noise(x:number,y:number){const v=Math.sin(x*123.31+y*98.717)*43897.44;r
 function terrain(){
   const state=getState();
   const replaying=isReplaying();
-  rect(0,0,W,H,'#2c3733');
-  // A deterministic, low-contrast base, not another terrain simulation.
-  for(let y=6;y<H;y+=17)for(let x=6;x<W;x+=17){
+  const bounds=state.site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+  const width=bounds.maxX-bounds.minX,height=bounds.maxY-bounds.minY;
+  rect(bounds.minX,bounds.minY,width,height,'#2c3733');
+  // A larger generated property must not cause proportionally more dots
+  // per frame on a phone. Keep the old 17u spacing for legacy maps.
+  const detailStep=Math.max(17,Math.ceil(17*Math.sqrt(width*height/(W*H))));
+  for(let y=bounds.minY+6;y<bounds.maxY;y+=detailStep)
+    for(let x=bounds.minX+6;x<bounds.maxX;x+=detailStep){
     const n=noise(x,y);
     if(n>.56)rect(x+3*n,y+2*n,2+n*3,2,n>.85?'#435348':'#35453d');
   }
   if(state.site){
     const site=state.site;
-    // Exterior access follows this actual generated entrance, not a
-    // decorative road still pointing at the obsolete fixed station.
-    const x=site.entrance.x,y=site.entrance.y;
-    draw.fillStyle='#514e43';draw.beginPath();
-    draw.moveTo(x-52,H);draw.lineTo(x+52,H);
-    draw.lineTo(x+34,y-21);draw.lineTo(x-34,y-21);
-    draw.closePath();draw.fill();
+    // This low-contrast street approach follows the actual entry side.
+    // It is decoration, never navigable geometry or briefing knowledge.
+    const side=site.entrySide??'south',x=site.entrance.x,y=site.entrance.y;
+    const outward=side==='north'?{x:0,y:-1}:
+      side==='east'?{x:1,y:0}:side==='west'?{x:-1,y:0}:
+        {x:0,y:1};
+    const across={x:-outward.y,y:outward.x};
+    const boundary=outward.x>0?bounds.maxX:outward.x<0?bounds.minX:
+      outward.y>0?bounds.maxY:bounds.minY;
+    const distance=outward.x!==0?(boundary-x)*outward.x:
+      (boundary-y)*outward.y;
+    if(distance>12){
+      const edge={x:x+outward.x*distance,y:y+outward.y*distance};
+      draw.fillStyle='#514e43';draw.beginPath();
+      draw.moveTo(x+across.x*34,y+across.y*34);
+      draw.lineTo(edge.x+across.x*52,edge.y+across.y*52);
+      draw.lineTo(edge.x-across.x*52,edge.y-across.y*52);
+      draw.lineTo(x-across.x*34,y-across.y*34);
+      draw.closePath();draw.fill();
+    }
     for(const room of site.rooms){
       if(spatialSurfaceState(state,'room',room.id,replaying&&replayKnowledge.omniscient)==='unknown')continue;
       const palette=['#666558','#526b66','#77705c','#58605a'];
@@ -67,10 +86,12 @@ function terrain(){
           draw.strokeRect(a,b,25,25);
     }
     draw.strokeStyle='rgba(161,192,175,.06)';
-    for(let a=0;a<=W;a+=GRID*2)
-      line({x:a,y:0},{x:a,y:H},'rgba(161,192,175,.045)',.6);
-    for(let b=0;b<=H;b+=GRID*2)
-      line({x:0,y:b},{x:W,y:b},'rgba(161,192,175,.045)',.6);
+    for(let a=bounds.minX;a<=bounds.maxX;a+=GRID*2)
+      line({x:a,y:bounds.minY},{x:a,y:bounds.maxY},
+        'rgba(161,192,175,.045)',.6);
+    for(let b=bounds.minY;b<=bounds.maxY;b+=GRID*2)
+      line({x:bounds.minX,y:b},{x:bounds.maxX,y:b},
+        'rgba(161,192,175,.045)',.6);
     return;
   }
   // Dirt service road leading to the lower door.
@@ -254,8 +275,25 @@ function architecture(){
     }
     draw.restore();
   }
-  // Narrow window markers (not navigable openings).
-  if(state.site)return;
+  // Generated windows use the same real aperture as physical shots and 3D.
+  // Unknown interior glass must not be outlined through historical fog.
+  if(state.site){
+    for(const opening of state.site.windows??[]){
+      if(!windowPresentationKnown(state,opening,
+          replaying&&replayKnowledge.omniscient))continue;
+      const pane=windowApertureSegment(opening);
+      line(pane.a,pane.b,'#1f4d51',8);
+      line(pane.a,pane.b,'#8bb6af',4);
+      const dx=pane.b.x-pane.a.x,dy=pane.b.y-pane.a.y;
+      const length=Math.hypot(dx,dy)||1;
+      const normal={x:-dy/length*3,y:dx/length*3};
+      for(const p of [pane.a,pane.b])
+        line({x:p.x-normal.x,y:p.y-normal.y},
+             {x:p.x+normal.x,y:p.y+normal.y},'#d4d5bb',1.6);
+    }
+    return;
+  }
+  // Legacy-only map keeps its two authored window markers.
   for(const x of [211,501]){
     line({x,y:97},{x:x+52,y:97},'#8bb6af',4);
     line({x,y:94},{x:x+52,y:94},'#d4d5bb',2);
@@ -400,7 +438,10 @@ export function renderBreachTacticalWorldFrame(p:BreachTacticalWorldFrame):void{
   // Map-space drawing has a single reversible projection.
   draw.save();
   draw.translate(ox,oy);draw.scale(viewScale,viewScale);
-  draw.fillStyle='#52655b';draw.fillRect(-9,-9,W+18,H+18);
+  const bounds=state.site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+  draw.fillStyle='#52655b';
+  draw.fillRect(bounds.minX-9,bounds.minY-9,
+    bounds.maxX-bounds.minX+18,bounds.maxY-bounds.minY+18);
   world2D.terrain();world2D.furniture();world2D.renderGroundMarks();world2D.renderLightingMood2D();world2D.renderWeaponLights2D();
   world2D.architecture();fog2D.renderFog();fog2D.renderPersonalGround();actor2D.missionMarkers();
   route2D.paths();replay2D.renderReplayMovementHistory(false);
@@ -411,7 +452,8 @@ export function renderBreachTacticalWorldFrame(p:BreachTacticalWorldFrame):void{
   actor2D.contacts();replay2D.renderReplayGhosts(false);replay2D.renderReplayBallistics(false);
   replay2D.renderReplayFollowMarker(false);actor2D.endMessage();
   draw.strokeStyle='#d4dac64f';draw.lineWidth=2;
-  draw.strokeRect(0,0,W,H);
+  draw.strokeRect(bounds.minX,bounds.minY,
+    bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
   draw.restore();
 
 }

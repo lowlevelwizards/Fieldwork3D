@@ -1,6 +1,8 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {type Pt,doorCenter,type Door} from './breach-core.ts';
-import type {WideOpening} from './breach-site.ts';
+import type {WideOpening,WindowOpening,Site} from './breach-site.ts';
+import {windowApertureSegment,windowBarrierMatches}
+ from './worldgen/window-geometry-contract.ts';
 import {preciseGroundEvidenceAt} from './breach-ground-knowledge.ts';
 import {accessibleExteriorWall} from './breach-site-footprint.ts';
 import {type Session,type ShotEvent,liveVisibility,knownAt} from './breach-game.ts';
@@ -69,6 +71,41 @@ export function spatialSurfaceState(s:Session,kind:SpatialSurfaceKind,
  const door=s.doors.find(d=>d.id===key);
  if(door&&liveVisibility(s,doorCenter(door)))return 'visible';
  return s.intel.doorMemory.has(String(key))?'remembered':'briefed';
+}
+/** Site geometry is stable across a mission and replay. Scan physical
+ * barriers only once per Site, rather than once per window per frame on
+ * mobile Floor Plan. A WeakMap prevents retired missions staying alive.
+ */
+const physicalWindowCoverIndices=new WeakMap<Site,Map<string,number>>();
+function windowCoverIndex(site:Site,windowId:string):number{
+ let indices=physicalWindowCoverIndices.get(site);
+ if(!indices){
+   indices=new Map();
+   for(const window of site.windows??[]){
+     const index=site.cover.findIndex(o=>windowBarrierMatches(window,o));
+     if(index>=0)indices.set(window.id,index);
+   }
+   physicalWindowCoverIndices.set(site,indices);
+ }
+ return indices.get(windowId)??-1;
+}
+/** A generated window is real architecture, but its visual marker must
+ * not expose an undiscovered interior aperture in true-blind replay.
+ * Briefing modes use the existing physical facade contract. Otherwise
+ * only a previously observed authoritative sill/collider grants display.
+ * Historical operator replay still uses squad architectural knowledge,
+ * never present-day LOS to reconstruct past pane states.
+ */
+export function windowPresentationKnown(
+ s:Session,window:WindowOpening,omniscient=false
+):boolean{
+ if(!s.site)return false;
+ if(omniscient||s.intel.mode==='full-view'||s.intel.mode==='floor-plan')
+   return true;
+ if(s.intel.mode==='exterior-known'&&!window.interior&&
+   accessibleExteriorWall(s.site,windowApertureSegment(window)))return true;
+ const coverIndex=windowCoverIndex(s.site,window.id);
+ return coverIndex>=0&&s.intel.cover.has(coverIndex);
 }
 /** A wide arch or service counter is architecture, but is NOT a wall
  * index or a discovered room. Hide it until it is physically observed,
