@@ -33,7 +33,9 @@ export class BreachPerfTimelinePanel{
  private view='iso';
  private reportContext='';
  private timeline:PerformanceTimeline|null=null;
- constructor(private readonly onHide:()=>void=()=>{}){
+ private readonly onHide:()=>void;
+ constructor(onHide:()=>void=()=>{}){
+  this.onHide=onHide;
   const root=style(document.createElement('div'),
    'position:fixed;top:calc(4px + env(safe-area-inset-top));right:4px;z-index:9999;'+
    'background:#102021eb;color:#d5ebd8;font:11px/1.25 monospace;'+
