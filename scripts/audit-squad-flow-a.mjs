@@ -6,6 +6,7 @@
 import {newSession,team,planMove,stepSession,toggling}
  from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
+import {createCivilian} from '../src/breach-civilian-types.ts';
 
 const point=(x,y)=>({x,y});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -16,7 +17,8 @@ const scenarios=[
  {name:'narrow-open',left:292,right:330,open:true},
  {name:'paired-open',left:282,right:340,open:true,paired:true},
  {name:'near-jamb-cover',left:290,right:332,open:true,
-  cover:[{x:322,y:295,w:18,h:22}]}
+  cover:[{x:322,y:295,w:18,h:22}]},
+ {name:'civilian-threshold',left:290,right:332,open:true,civilian:true}
 ];
 function makeSite(c){
  const middle=(c.left+c.right)/2;
@@ -46,6 +48,13 @@ function makeSite(c){
 function audit(c){
  const s=newSession(0,undefined,'full-view','standard','hold',makeSite(c));
  try{
+  if(c.civilian){
+    const person=createCivilian({id:'civ:flow:threshold',role:'visitor',
+      persona:'steady',activity:'waiting',
+      position:point((c.left+c.right)/2,260),heading:0,
+      roomId:'hall',appearanceSeed:3});
+    person.state='compliant';s.civilians.push(person);
+  }
   const actors=team(s).slice(0,4);
   if(actors.length!==4)throw Error('expected four operator slots');
   const goals=actors.map((_,i)=>point(296+i*10,371+i*3));
