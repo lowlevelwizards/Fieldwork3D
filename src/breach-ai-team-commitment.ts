@@ -1,4 +1,5 @@
 import type {GroupRole} from './breach-ai-coordination.ts';
+import type {EncounterDoctrine} from './breach-ai-doctrine.ts';
 
 export type CoordinationMember={
   id:string;
@@ -19,15 +20,19 @@ export function stableCoordination(
 }
 
 export function coordinationLeaseSeconds(
-  role:GroupRole,uncertainty:number
+  role:GroupRole,uncertainty:number,
+  doctrine:EncounterDoctrine='irregular'
 ):number{
   const base=role==='investigate'?5.5:role==='watch'?7.5:8;
   const ambiguity=Math.max(0,Math.min(240,uncertainty));
-  return Math.min(11.5,Math.max(5,base+ambiguity*.017));
+  const discipline=doctrine==='organised'?1.5:
+    doctrine==='security'?.75:0;
+  return Math.min(12.5,Math.max(5,base+ambiguity*.017+discipline));
 }
 
 export function renewCoordinationUntil(
-  now:number,existing:number,role:GroupRole,uncertainty:number
+  now:number,existing:number,role:GroupRole,uncertainty:number,
+  doctrine:EncounterDoctrine='irregular'
 ):number{
-  return Math.max(existing,now+coordinationLeaseSeconds(role,uncertainty));
+  return Math.max(existing,now+coordinationLeaseSeconds(role,uncertainty,doctrine));
 }

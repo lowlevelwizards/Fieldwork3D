@@ -36,6 +36,7 @@ import {captureTargetMayWithdraw,missionObjectiveResponse} from './breach-ai-mis
 import {retreatDoorClosureEligible,routineDoorClosureEligible} from './breach-ai-door-response.ts';
 import {AiWorkScheduler} from './breach-ai-work-scheduler.ts';
 import {localFixtureObservation} from './breach-ai-contextual-observation.ts';
+import {doctrineForPurpose} from './breach-ai-doctrine.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 
 /** The authoritative simulation owns the motor, shot/geometry, visibility and
@@ -600,8 +601,11 @@ function distributeReports(s:Session){
    a.coordinationRole=roles[a.id];
    const heard=a.awareness.observations.find(observation=>
      observation.id==='report/'+report.id+'/'+a.id);
+   const purpose=s.site?.encounter?.groups.find(g=>
+     g.id===a.encounterGroupId)?.purpose;
    a.coordinationUntil=renewCoordinationUntil(s.seconds,a.coordinationUntil,
-     roles[a.id],heard?.uncertainty??report.uncertainty);
+     roles[a.id],heard?.uncertainty??report.uncertainty,
+     doctrineForPurpose(purpose));
    const covering=roles[a.id]==='watch'||roles[a.id]==='support';
    if(covering&&a.intent?.kind!=='engage'){
      a.watch=clone(report.estimate);
