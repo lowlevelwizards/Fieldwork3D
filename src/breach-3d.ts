@@ -135,7 +135,8 @@ export class TacticalScene3D{
    * wardrobe material/shadow generation as well as steady-state posing. */
   private readonly actorPhaseCosts={
    rigMs:0,rigBuilds:0,poseMs:0,poseCount:0,
-   appearanceMs:0,weaponBuildMs:0,otherPoseMs:0
+   appearanceMs:0,weaponBuildMs:0,otherPoseMs:0,
+   visualKitMs:0,receiverAtlasMs:0
   };
   /** CPU-only slices of a single 3D update. GPU time is NOT measured. */
   private readonly scenePhases:Record<StagePhaseName,number>={
@@ -1484,6 +1485,8 @@ export class TacticalScene3D{
       this.actorPhaseCosts.appearanceMs=0;
       this.actorPhaseCosts.weaponBuildMs=0;
       this.actorPhaseCosts.otherPoseMs=0;
+      this.actorPhaseCosts.visualKitMs=0;
+      this.actorPhaseCosts.receiverAtlasMs=0;
     }
     // Never memoize reconstructed current sight during historical replay.
     this.presentationSight.begin(s,allowPresentationSightReuse(
@@ -2111,11 +2114,14 @@ export class TacticalScene3D{
        this.actorPhaseCosts.poseMs+=performance.now()-poseStart;
        this.actorPhaseCosts.poseCount++;
        const breakdown=object.physical.root.userData.fieldworkPoseCpu as
-        {appearanceMs:number;weaponBuildMs:number;otherMs:number}|undefined;
+        {appearanceMs:number;weaponBuildMs:number;otherMs:number;
+         visualKitMs?:number;receiverAtlasMs?:number}|undefined;
        if(breakdown){
         this.actorPhaseCosts.appearanceMs+=breakdown.appearanceMs;
         this.actorPhaseCosts.weaponBuildMs+=breakdown.weaponBuildMs;
         this.actorPhaseCosts.otherPoseMs+=breakdown.otherMs;
+        this.actorPhaseCosts.visualKitMs+=breakdown.visualKitMs??0;
+        this.actorPhaseCosts.receiverAtlasMs+=breakdown.receiverAtlasMs??0;
        }
       }
       if(this.graphicLookEnabled&&object.root.visible){
