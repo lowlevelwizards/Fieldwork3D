@@ -34,6 +34,10 @@ jobs:
           tests/civilian-d1-rescue-lifecycle.test.mjs
           tests/civilian-r2-presentation.test.mjs
           tests/living-encounters-r2-civilian-pose.test.mjs
+      - name: Targeted real doorway retreat and idle yield regressions
+        run: >
+          node --experimental-strip-types --test
+          --test-name-pattern='retreat belongs|idle doorway occupancy'
           tests/breach-navigation-openings-r1.test.mjs
       - name: Four-operator live-session doorway passage audit
         run: node --experimental-strip-types scripts/audit-squad-flow-a.mjs
