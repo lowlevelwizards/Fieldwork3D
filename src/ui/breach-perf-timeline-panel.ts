@@ -197,6 +197,8 @@ export class BreachPerfTimelinePanel{
   }
   ctx.fillStyle='#d5ebd8';ctx.font='9px monospace';
   ctx.fillText('RAF bars / SYNC dots',7,h-2);
+  if(this.timeline?.maxRaf()&&this.timeline.maxRaf()>max)
+   ctx.fillText(max+'ms cap',w-55,10);
   ctx.fillText('← 60s',w-88,h-2);
   ctx.fillText('now →',w-41,h-2);
  }
