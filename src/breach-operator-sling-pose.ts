@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
-import type {OperatorPoseScratch,EquipmentPoseTransform}
+import type {OperatorPoseScratch}
  from './breach-operator-pose-scratch.ts';
 const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 type SlingNode=Pick<THREE.Object3D,
@@ -23,9 +23,9 @@ function positionSlingStraps(straps:readonly SlingNode[],
  const sway=Math.sin(p.stride*Math.PI*2)*Math.min(1,physicalSpeed/80)*.6;
  middle1.set(-2.5,4.5,10.1);
  middle2.set(1.5+sway,-5.8,11.5);
- const points=[rear,middle1,middle2,front];
  for(let i=0;i<straps.length;i++){
-  const start=points[i],end=points[i+1];
+  const start=i===0?rear:i===1?middle1:middle2;
+  const end=i===0?middle1:i===1?middle2:front;
   const delta=slingDelta.copy(end).sub(start),length=delta.length();
   const mesh=straps[i];
   mesh.position.copy(start).addScaledVector(delta,.5);
@@ -65,7 +65,7 @@ export function updateOperatorSlingPose(
 export function solveOperatorDirectSlingPose(r:OperatorRig,p:SlingPoseSource,
  scratch:OperatorPoseScratch,physicalSpeed:number):void{
  const e=scratch.equipmentOutput;
- const straps=e.attachments.slice(6) as EquipmentPoseTransform[];
+ const straps=e.slingTargets;
  const on=equipped(p);
  for(const strap of straps)strap.visible=!!on;
  if(!on)return;
