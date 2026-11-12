@@ -61,11 +61,10 @@ test('previews obey the owning Session bounds, not the legacy 640 × 740 board',
  const feedback=readFileSync(new URL('../src/ui/breach-tactical-frame-feedback-controller.ts',import.meta.url),'utf8');
  assert.match(feedback,/insideTacticalBounds\(cursor,sessionWorldGeometry\(state\)\.bounds\)/);
  assert.doesNotMatch(feedback,/cursor\.x<=W|cursor\.y<=H/);
- const site={seed:17,name:'Expanded preview fixture',rooms:[],walls:[],doors:[],
-  cover:[],spawn:[{x:200,y:200}],enemies:[],windows:[],
-  objective:{x:900,y:800},extract:{x:200,y:200},
-  bounds:{minX:-250,minY:-140,maxX:1100,maxY:920}};
- const session=newSession(17,undefined,'full-view','standard','clear',site);
+ const {generateSite}=await import('../src/breach-site.ts');
+ const base=generateSite(17,'small');
+ const site={...base,bounds:{minX:-250,minY:-140,maxX:1100,maxY:920}};
+ const session=newSession(0,17,'full-view','small',undefined,site);
  const bounds=sessionWorldGeometry(session).bounds;
  assert.deepEqual(bounds,site.bounds);
  for(const mode of ['look','watch','flash','suppress','drag','carry']){
