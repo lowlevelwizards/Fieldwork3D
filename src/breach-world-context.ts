@@ -109,8 +109,12 @@ export function registerSessionWorldGeometry(s:Session):SessionWorldGeometry{
    const n=Math.max(1,Math.ceil(distance(from,to)/8));
    for(let i=1;i<n;i++){
     const t=i/n,p={x:from.x+(to.x-from.x)*t,y:from.y+(to.y-from.y)*t};
-    if(cover.some(o=>!['chain-link-fence','iron-fence'].includes(o.fixture??'')&&
-       pointInCover(p,o,0)))return false;
+    // Candidate cover comes from the existing revision-scoped spatial index.
+    // Keep the identical exact overlap and fence exemptions; no persistent
+    // optical memo may outlive an opening or changed furniture piece.
+    if(context.someCoverNearPoint(p,0,o=>
+      !['chain-link-fence','iron-fence'].includes(o.fixture??'')&&
+      pointInCover(p,o,0)))return false;
    }
    return true;
   }
