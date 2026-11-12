@@ -11,6 +11,7 @@ import {entryClearanceForLook} from './breach-entry-coordination.ts';
 import {beginAutoSidestep,autoSidestepFacing,watchClearanceAllowed} from './breach-auto-sidestep.ts';
 import {friendlyPassingStep} from './breach-friendly-traffic.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
+import {doorLeafBypass} from './breach-door-leaf-bypass.ts';
 import {incidentalCloseWouldBlockTeammate,operatorCrossingDoor}
  from './breach-door-pressure-arbitration.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
@@ -84,6 +85,18 @@ export function resolveMotorCollision(
     // Failed comfort searches must not restart the world-truth recovery
     // clock; it needs uninterrupted stall time to escalate blocked moves.
     a.lastNormalLaneProbeAt=s.seconds;
+    // Prefer actual free-tip footwork to an expensive generic A* recovery.
+    // This temporary leg route never rewrites an authored MOVE or WATCH.
+    const leaf=s.doors.find(door=>a.side==='blue'&&
+      operatorCrossingDoor(a,door)&&door.open&&
+      pointToSegment(desiredMove,doorLeafSegment(door))<OPERATOR_RADIUS+23);
+    const bypass=leaf?doorLeafBypass(a.p,p,leaf,
+      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world)):[];
+    if(bypass.length){
+      a.nav=bypass;a.retryRouteAt=0;a.recoveryAttempts=0;
+      a.squeeze=false;a.squeezeTime=0;
+      return true;
+    }
     const laneAt=profile?beginMotorCpuMeasurement():0;
     const fullLane=recoverNormalLane(a.p,p,s.doors,world);
     if(profile)profile('motor-collision-lane',finishMotorCpuMeasurement(laneAt));
