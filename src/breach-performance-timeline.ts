@@ -26,6 +26,8 @@ export type PreviousFrameWork=Readonly<{
   visualKitMs?:number;receiverAtlasMs?:number}>
 }>;
 export type PerformanceTimelineSample=Readonly<{
+ /** Only RAF/JS, collected before the player enables detailed profiling. */
+ captureLevel?:'basic';
  at:number;raf:number;js:number;sync:number;sim:number;recording:number;
  previousJs?:number;previousSim?:number;previousPhase?:string;
  previousHotSim?:string;
@@ -160,6 +162,44 @@ export function previousFrameHotspot(sample:PerformanceTimelineSample):string{
 }
 export class PerformanceTimeline{
  private readonly series:PerformanceTimelineBucket[]=[];
+ /** Always-on, minimal RAF history before the player opens diagnostics.
+  * Keeps the SAME bounded 250ms buckets and exact per-mode callback counts,
+  * but does not create a detailed sample/copy for every RAF. Scene and
+  * simulation attribution prior to arming the profiler is unavailable.
+  * This has no gameplay, GPU, DOM, or simulation instrumentation cost. */
+ addCoarseFrame(at:number,raf:number,js:number,phase:string,camera:string,
+   previousJs?:number,previousPhase?:string):void{
+  const stamp=Math.max(0,at),bucket=Math.floor(stamp/PERFORMANCE_BUCKET_MS);
+  const previous=this.series[this.series.length-1];
+  if(previous&&bucket<previous.bucket)this.series.length=0;
+  const current=this.series[this.series.length-1];
+  const makePeak=():PerformanceTimelineSample=>({
+   captureLevel:'basic',at:stamp,raf:finite(raf),js:finite(js),sync:0,sim:0,recording:0,
+   previousJs,previousPhase,ui:0,overlay:0,scene:EMPTY_SCENE,
+   draws:0,steps:0,phase,camera,hotSim:'',
+   fogPaints:0,shadowRefreshes:0,sight:{
+    queries:0,hits:0,misses:0,bypasses:0,invalidations:0
+   }
+  });
+  let item:PerformanceTimelineBucket;
+  if(current&&current.bucket===bucket){
+   item=current;item.frames++;
+   if(raf>item.peak.raf)item.peak=makePeak();
+   item.maxJs=Math.max(item.maxJs,finite(js));
+  }else{
+   item={bucket,peak:makePeak(),frames:1,maxSync:0,
+    maxJs:finite(js),modes:newModeCounts()};
+   this.series.push(item);
+  }
+  const m=item.modes[historyPhase(previousPhase??phase)];
+  m.frames++;
+  if(raf>=33.3)m.slow++;
+  if(raf>=66.7)m.severe++;
+  m.worst=Math.max(m.worst,raf);
+  while(this.series.length>PERFORMANCE_BUCKET_COUNT||
+    (this.series.length&&bucket-this.series[0].bucket>=PERFORMANCE_BUCKET_COUNT))
+   this.series.shift();
+ }
  add(sample:PerformanceTimelineSample):void{
   const at=Math.max(0,sample.at),bucket=Math.floor(at/PERFORMANCE_BUCKET_MS);
   const last=this.series[this.series.length-1];
@@ -225,7 +265,7 @@ export class PerformanceTimeline{
   const lines=['t_sec,raf_peak_ms,js_at_peak_ms,sync_at_peak_ms,'+
    'sync_peak_ms,sim_ms,actors_ms,disclosure_ms,effects_ms,fog_ms,'+
    'gpu_submit_cpu_ms,steps,draws,fog_paints,shadow_refreshes,'+
-   'sight_hits,sight_misses,phase,camera,'+
+   'sight_hits,sight_misses,phase,camera,capture_level,'+
    'previous_js_ms,previous_sim_ms,previous_phase,callback_wait_ms,'+
    'prior_before_ui_ms,prior_ui_ms,prior_scene_sync_ms,'+
    'prior_ui_camera_ms,prior_ui_audio_ms,prior_ui_hud_ms,prior_ui_rings_ms,'+
@@ -240,7 +280,7 @@ export class PerformanceTimeline{
     p.raf,p.js,p.sync,maxSync,p.sim,p.scene.actors,p.scene.disclosure,
     p.scene.effects,p.scene.fog,p.scene.gpuSubmit,p.steps,p.draws,
     p.fogPaints,p.shadowRefreshes,p.sight.hits,p.sight.misses,
-    p.phase,p.camera,p.previousJs??'',p.previousSim??'',
+    p.phase,p.camera,p.captureLevel??'detailed',p.previousJs??'',p.previousSim??'',
     p.previousPhase??'',p.previousJs===undefined?'':
      Math.max(0,p.raf-p.previousJs),
     p.previousWork?.beforeUi??'',p.previousWork?.ui??'',
@@ -319,6 +359,8 @@ export class PerformanceTimeline{
    'PREVIOUS JS can occupy that interval; current JS happens afterward.',
    'Remaining callback wait includes compositor, scheduling and other tasks.',
    'Spikes record the worst RAF gap in each 250ms bucket.',
+   'BASIC samples before the PERF panel is activated contain RAF/JS only;', 
+   'zero scene/CPU phase values in BASIC rows are NOT measured zeros.',
    'Correlated work is not proof of the cause of a hitch.'
   ];
   const modeTotals=this.phaseSummary();
@@ -342,7 +384,9 @@ export class PerformanceTimeline{
     'ms, CURRENT SYNC '+p.sync.toFixed(1)+'ms, CURRENT SIM '+
     p.sim.toFixed(1)+'ms, UI '+p.ui.toFixed(1)+'ms, '+
     p.steps+' ticks, '+p.draws+
-    ' draws; '+p.phase+'/'+p.camera+'; prior hotspot '+
+    ' draws; '+p.phase+'/'+p.camera+
+    (p.captureLevel==='basic'?' [BASIC RAF/JS]':'')+
+    '; prior hotspot '+
     previousFrameHotspot(p)+'; prior simulation phase '+
     (p.previousHotSim||'none')+'; '+performanceHotspot(p)+
     '; fog +'+p.fogPaints+', shadow +'+p.shadowRefreshes+

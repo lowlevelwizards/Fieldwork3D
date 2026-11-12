@@ -1505,6 +1505,24 @@ function drawTacticalFrameFeedback(studioOccludesTactical:boolean):void{
  frameFeedbackController.draw(studioOccludesTactical);
 }
 
+// Performance capture is available in *every* tactical match, without a
+// query parameter. The compact control lives with the tactical HUD (so home,
+// menu and entry-map overlays hide it along with normal game commands).
+let liveProfilerButton:HTMLButtonElement|null=null;
+function syncLiveProfilerControl(open:boolean,recording:boolean):void{
+ if(!liveProfilerButton)return;
+ liveProfilerButton.textContent=recording?'PERF ●':'PERF';
+ liveProfilerButton.title=recording?
+  'Performance recording active. Tap to '+(open?'hide':'open')+' graph.':
+  'Open performance graph; previous 60 seconds of basic frame history are available.';
+ liveProfilerButton.setAttribute('aria-expanded',String(open));
+ liveProfilerButton.setAttribute('aria-pressed',String(open));
+ liveProfilerButton.setAttribute('aria-label',open?
+  'Hide performance graph; recording continues':
+  recording?'Open performance graph; recording is active':
+  'Start detailed performance recording and open graph');
+ liveProfilerButton.dataset.recording=String(recording);
+}
 // The runtime owns RAF cadence; the host supplies live state and presentation boundaries.
 const runtimeLoop=createBreachRuntimeLoop({
  boot:bootConfig,
@@ -1527,8 +1545,30 @@ const runtimeLoop=createBreachRuntimeLoop({
  worldToScreen,
  canvas,playback:replayPlayback,camera:replayCamera,
  knowledge:replayKnowledge,bodycam:replayBodycam,video:replayQuickVideo,
- audio:audioController
+ audio:audioController,
+ onProfilerChange:syncLiveProfilerControl
 });
+// Keep the control small and touch-accessible without reducing the space
+// available for operator cards or inserting a new HUD row.
+liveProfilerButton=document.createElement('button');
+liveProfilerButton.type='button';
+liveProfilerButton.id='liveMatchPerf';
+liveProfilerButton.style.cssText=
+ 'position:absolute;right:2px;top:-37px;z-index:15;'+
+ 'min-width:66px;min-height:33px;padding:6px 9px;'+
+ 'border:1px solid #6e918a;border-radius:6px;'+
+ 'background:rgba(18,38,39,.94);color:#c4e4d5;'+
+ 'font:700 11px Saira Condensed,monospace;letter-spacing:.07em;'+
+ 'touch-action:manipulation;pointer-events:auto;';
+liveProfilerButton.addEventListener('pointerdown',event=>event.stopPropagation());
+liveProfilerButton.addEventListener('click',event=>{
+ event.stopPropagation();
+ const open=runtimeLoop.toggleProfiler();
+ syncLiveProfilerControl(open,runtimeLoop.isProfilerRecording());
+});
+ui.tacticalHud.append(liveProfilerButton);
+syncLiveProfilerControl(runtimeLoop.isProfilerVisible(),
+ runtimeLoop.isProfilerRecording());
 layout();cameraMode(viewMode);updateHud();
 if(appFlow.mode==='menu')campaignScreen.entry(!!campaign);
 runtimeLoop.start();
