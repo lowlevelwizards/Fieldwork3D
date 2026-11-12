@@ -17,7 +17,7 @@ export function advanceWaitOrder(
  if(n.kind!=='holdClear'&&n.kind!=='wait')return;
  if(n.kind==='wait'&&n.doorId){
   const doorway=s.doors.find(d=>d.id===n.doorId);
-  const gate=entryDoorState(doorway);
+  const gate=entryDoorState(doorway,sessionWorldGeometry(s));
   if(gate!=='ready'){
    a.velocity=0;a.waitRemaining=0;a.actionTimer+=dt;
    if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5){
