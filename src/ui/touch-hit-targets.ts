@@ -72,3 +72,27 @@ export function simplifyStrokePoints<T extends {x:number;y:number}>(
  visit(0,points.length-1);
  return [...keep].sort((a,b)=>a-b).map(index=>points[index]);
 }
+
+/** Post-simplification cleanup for near-collinear finger jitter.
+ * Preserve the first/last points, recognizable corners and every waypoint
+ * required by the same known-intel shortcut clearance as the authoring tool.
+ * Pixel-space length, not world units, determines tiny duplicate steps. */
+export function spaceStrokeWaypoints<T extends {x:number;y:number}>(
+ points:readonly T[],project:(p:T)=>{x:number;y:number},
+ minStepPx=18,shortcutSafe?:(a:T,b:T)=>boolean):T[]{
+ if(points.length<3)return [...points];
+ const result:T[]=[points[0]];
+ for(let i=1;i<points.length-1;i++){
+  const prior=result[result.length-1],current=points[i],next=points[i+1];
+  const a=project(prior),b=project(current),c=project(next);
+  const dx=b.x-a.x,dy=b.y-a.y,ex=c.x-b.x,ey=c.y-b.y;
+  const incoming=Math.hypot(dx,dy),outgoing=Math.hypot(ex,ey);
+  const alignment=incoming>.001&&outgoing>.001?
+    (dx*ex+dy*ey)/(incoming*outgoing):1;
+  // A genuine corner or rejected known-map shortcut always survives.
+  if(incoming>=minStepPx||alignment<.94||
+     (shortcutSafe&&!shortcutSafe(prior,next)))result.push(current);
+ }
+ result.push(points[points.length-1]);
+ return result;
+}

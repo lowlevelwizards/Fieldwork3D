@@ -10,6 +10,7 @@ import {angleDifference} from '../breach-plan.ts';
 import type {TacticalPointer} from '../breach-canvas-gesture-controller.ts';
 import type {createTacticalHudController} from './tactical-hud-controller.ts';
 import type {TacticalFeedback,TacticalOrderPreview} from './tactical-feedback.ts';
+import {KnownRoutePreviewSampler} from './known-route-preview.ts';
 export type FrameFeedbackState={
  state:Session;replaying:boolean;selected:string;
  feedbackDraw:CanvasRenderingContext2D|null;
@@ -31,6 +32,7 @@ export function createBreachTacticalFrameFeedbackController(config:{
  warn:()=>void;
 }){
  const blockedEpisode=new Map<string,string>();
+ const routePreview=new KnownRoutePreviewSampler();
  function rejectAt(pt:Pt,reason:string):void{
   const {state,hudController}=config.snapshot();
   state.events.push(reason);
@@ -72,6 +74,45 @@ export function createBreachTacticalFrameFeedbackController(config:{
       actor?finalPoint(actor):undefined;
     const preview:TacticalOrderPreview|undefined=canPreview&&actor&&origin&&
       orderMode?{origin,direction:cursor!,mode:orderMode}:undefined;
+    // Only briefing intel participates: preview is not a promise of a
+    // traversable physical route once undiscovered obstacles are revealed.
+    const showingMove=canPreview&&actor&&!orderMode&&!pushMode&&
+      (!authoringPointer||
+       authoringPointer.mode==='route'||authoringPointer.mode==='undecided');
+    const proposal=showingMove?
+      routePreview.sample(finalPoint(actor),cursor!,state.intel,
+        performance.now(),state.objectRevision):null;
+    if(proposal){
+      const target=worldToScreen(proposal.to,7);
+      feedbackDraw.save();
+      const reachable=proposal.kind!=='unavailable';
+      feedbackDraw.strokeStyle=proposal.kind==='narrow'?'#e8b97c':
+        reachable?'#a6d4c4':'#d68e83';
+      feedbackDraw.fillStyle=feedbackDraw.strokeStyle;
+      feedbackDraw.lineWidth=2;
+      feedbackDraw.globalAlpha=.75;
+      feedbackDraw.setLineDash(reachable?[5,5]:[2,5]);
+      if(reachable){
+        const start=worldToScreen(proposal.from,7);
+        feedbackDraw.beginPath();feedbackDraw.moveTo(start.x,start.y);
+        for(const step of proposal.points){
+          const point=worldToScreen(step,7);
+          feedbackDraw.lineTo(point.x,point.y);
+        }
+        feedbackDraw.stroke();
+      }
+      feedbackDraw.setLineDash([]);
+      feedbackDraw.beginPath();
+      feedbackDraw.arc(target.x,target.y,reachable?8:11,0,Math.PI*2);
+      feedbackDraw.stroke();
+      feedbackDraw.globalAlpha=.91;
+      feedbackDraw.font='600 10px "Work Sans",sans-serif';
+      feedbackDraw.textAlign='center';
+      feedbackDraw.fillText(proposal.kind==='normal'?'KNOWN PATH':
+        proposal.kind==='narrow'?'NARROW PASSAGE':'NO KNOWN ROUTE',
+        target.x,target.y-19);
+      feedbackDraw.restore();
+    }
     tacticalFeedback.draw(feedbackDraw,p=>worldToScreen(p,7),
       performance.now(),preview,reducedMotion);
     // Direction-only preview of an authored furniture push. The authoritative
@@ -125,5 +166,5 @@ export function createBreachTacticalFrameFeedbackController(config:{
 
 
 
- return {draw,rejectAt,reset:()=>blockedEpisode.clear()};
+ return {draw,rejectAt,reset:()=>{blockedEpisode.clear();routePreview.reset();}};
 }
