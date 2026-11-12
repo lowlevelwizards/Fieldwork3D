@@ -122,7 +122,7 @@ test('runtime owns only scheduling; recorded film and interpolation retain autho
  assert.match(runtime,/alpha:Math\.min\(1,accum\*60\)/);
  assert.match(runtime,/replayPlayback\.advanceAndApply\(dt,recorder,state/);
  assert.match(runtime,/replayQuickVideo\.drawFrame\(/);
- assert.match(runtime,/stage\.setMiniatureFocusContext\(replaying,dt\)/);
+ assert.match(runtime,/stage\.setMiniatureFocusContext\(replaying,sceneDt\)/);
  assert.match(runtime,/config\.drawTacticalFrameFeedback\(studioOccludesTactical\)/);
  assert.match(main,/function drawTacticalFrameFeedback\(/);
  assert.match(main,/runtimeLoop\.resetPresentation\(\)/);
