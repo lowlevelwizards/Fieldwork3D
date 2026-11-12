@@ -22,11 +22,12 @@ export class BreachPerfTimelinePanel{
  private readonly graphButton:HTMLButtonElement;
  private readonly detailButton:HTMLButtonElement;
  private readonly copyButton:HTMLButtonElement;
+ private readonly exportButton:HTMLButtonElement;
  private readonly insight:HTMLDivElement;
  private graphVisible=true;
  private expandedDetails=false;
  private selectedBucket:number|null=null;
- private policy='always';
+ private policy='planning';
  private view='iso';
  private timeline:PerformanceTimeline|null=null;
  constructor(){
@@ -39,7 +40,7 @@ export class BreachPerfTimelinePanel{
   root.setAttribute('aria-label','Fieldwork 60-second performance timeline');
   const bar=style(document.createElement('div'),
    'display:flex;gap:5px;align-items:center;justify-content:space-between;'+
-   'margin-bottom:4px;pointer-events:none;');
+   'margin-bottom:4px;flex-wrap:wrap;pointer-events:none;');
   const label=document.createElement('strong');
   label.textContent='PERF HISTORY · 60s';label.style.fontSize='11px';
   bar.append(label);
@@ -48,7 +49,11 @@ export class BreachPerfTimelinePanel{
   this.graphButton=button('GRAPH ▾');
   this.detailButton=button('DETAILS');
   this.copyButton=button('COPY');
-  controls.append(this.graphButton,this.detailButton,this.copyButton);
+  this.exportButton=button('TXT');
+  this.copyButton.title='Copy short chat summary';
+  this.exportButton.title='Download complete 60-second TXT report';
+  controls.append(this.graphButton,this.detailButton,this.copyButton,
+   this.exportButton);
   bar.append(controls);root.append(bar);
   this.canvas=document.createElement('canvas');
   this.canvas.width=370;this.canvas.height=108;
@@ -81,14 +86,27 @@ export class BreachPerfTimelinePanel{
    this.detailButton.textContent=this.expandedDetails?'LESS':'DETAILS';
   });
   this.copyButton.addEventListener('click',()=>{
-   const text=this.timeline?.report(this.policy,this.view)??'No history';
-   const detailed=this.timeline?.bucketCSV()??'';
-   const report=text+'\n\n'+detailed;
+   const report=this.timeline?.compactReport(this.policy,this.view)??'No history';
    if(navigator.clipboard?.writeText){
     void navigator.clipboard.writeText(report).then(()=>{
       this.copyButton.textContent='COPIED';
     }).catch(()=>this.selectReport(report));
    }else this.selectReport(report);
+  });
+  this.exportButton.addEventListener('click',()=>{
+   const summary=this.timeline?.report(this.policy,this.view)??'No history';
+   const csv=this.timeline?.bucketCSV()??'';
+   const report=summary+'\n\nFULL 60s HISTORY (250ms bucket peaks)\n'+csv+'\n';
+   const blob=new Blob([report],{type:'text/plain;charset=utf-8'});
+   const url=URL.createObjectURL(blob);
+   const link=document.createElement('a');
+   link.href=url;
+   link.download='fieldwork-perf-'+
+    new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.txt';
+   document.body.appendChild(link);
+   link.click();
+   link.remove();
+   window.setTimeout(()=>URL.revokeObjectURL(url),30000);
   });
   this.canvas.addEventListener('pointerdown',event=>{
    const history=this.timeline?.buckets();
@@ -143,7 +161,10 @@ export class BreachPerfTimelinePanel{
   const bins=this.timeline?.buckets();
   if(!bins?.length)return;
   const newest=bins[bins.length-1].bucket;
-  const max=Math.max(100,Math.ceil((this.timeline?.maxRaf()??100)/50)*50);
+  // A 1-second browser stall must not make ordinary 33–100ms spikes invisible.
+  // Off-scale bars receive a visible top marker; exact timing stays tappable.
+  const max=Math.min(250,Math.max(100,
+   Math.ceil((this.timeline?.maxRaf()??100)/50)*50));
   const top=h-12,chartHeight=h-25,zero=top;
   const y=(v:number)=>Math.max(4,zero-Math.min(max,v)/max*chartHeight);
   ctx.font='9px monospace';
@@ -163,6 +184,9 @@ export class BreachPerfTimelinePanel{
      peak.raf>=33.3?'#e4aa76':'#b0bd9d';
    ctx.beginPath();ctx.moveTo(px,zero);
    ctx.lineTo(px,y(peak.raf));ctx.stroke();
+   if(peak.raf>max){
+    ctx.fillStyle='#e27475';ctx.fillRect(px-1,2,3,3);
+   }
    ctx.strokeStyle='#76c4bc';ctx.lineWidth=1.3;
    ctx.beginPath();ctx.moveTo(px,y(bucket.maxSync));
    ctx.lineTo(px+1,y(bucket.maxSync));ctx.stroke();
@@ -173,6 +197,8 @@ export class BreachPerfTimelinePanel{
   }
   ctx.fillStyle='#d5ebd8';ctx.font='9px monospace';
   ctx.fillText('RAF bars / SYNC dots',7,h-2);
+  if(this.timeline?.maxRaf()&&this.timeline.maxRaf()>max)
+   ctx.fillText(max+'ms cap',w-55,10);
   ctx.fillText('← 60s',w-88,h-2);
   ctx.fillText('now →',w-41,h-2);
  }

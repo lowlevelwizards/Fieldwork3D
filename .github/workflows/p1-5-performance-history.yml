@@ -18,7 +18,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   perf-timeline:
-    if: ${{ startsWith(github.head_ref, 'feature/p1-5-') }}
+    # Paths above own this regression; do not skip a relevant PR by its branch name.
     runs-on: ubuntu-24.04
     timeout-minutes: 18
     steps:

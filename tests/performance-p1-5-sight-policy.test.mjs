@@ -3,7 +3,9 @@ import assert from 'node:assert/strict';
 import {presentationSightPolicy,allowPresentationSightReuse}
  from '../src/rendering/breach-presentation-sight-policy.ts';
 test('P1.5a policy controls live execution but never historical replay',()=>{
- assert.equal(presentationSightPolicy(null),'always');
+ assert.equal(presentationSightPolicy(null),'planning');
+ assert.equal(presentationSightPolicy('invalid'),'planning');
+ assert.equal(presentationSightPolicy(''),'planning');
  assert.equal(presentationSightPolicy('always'),'always');
  assert.equal(presentationSightPolicy('planning'),'planning');
  assert.equal(presentationSightPolicy('legacy'),'legacy');

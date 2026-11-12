@@ -323,7 +323,7 @@ function tick(now:number){
         '\nP1 750ms Q/H/M/B '+intervalSight.queries+'/'+
           intervalSight.hits+'/'+intervalSight.misses+'/'+
           intervalSight.bypasses+' · INVALID '+intervalSight.invalidations+
-          ' · POLICY '+(stats?.presentationSightPolicy??'always')+
+          ' · POLICY '+(stats?.presentationSightPolicy??'planning')+
         ' · INV/EVI '+(stats?.presentationSight.invalidations??0)+'/'+
           (stats?.presentationSight.evictions??0)+
         '\nP1 MISS D/O/DR/I/E '+(stats?.presentationSight.decorMisses??0)+'/'+
@@ -355,7 +355,7 @@ function tick(now:number){
           [...simPhaseCosts].sort((a,b)=>b[1]-a[1]).slice(0,2)
             .map(([name,ms])=>name+' '+ms.toFixed(1)+'ms').join(' / '):'');
       if(perfPanel&&perfTimeline)perfPanel.update(output,perfTimeline,
-       stats?.presentationSightPolicy??'always',viewMode);
+       stats?.presentationSightPolicy??'planning',viewMode);
       for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
        intervalSight[k]=0;
     }

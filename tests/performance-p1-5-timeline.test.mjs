@@ -43,6 +43,19 @@ test('P1.5c archived scene slices are copied and browser stalls are not misattri
  assert.equal(h.count,1,'clock reset clears earlier history');
 });
 
+test('P1.6 compact report retains five worst peaks without 240-row CSV',()=>{
+ const h=new PerformanceTimeline();
+ for(let i=0;i<30;i++)h.add(sample(i*250,40+i,{js:10,sync:8}));
+ const short=h.compactReport('planning','iso'),full=h.report('planning','iso');
+ assert.match(short,/planning \/ iso/);
+ assert.match(short,/spike buckets: 3 >=67ms, 27 33–66ms/);
+ assert.match(short,/RAF 69 \/ JS 10/);
+ assert.match(short,/unattributed gap/);
+ assert.doesNotMatch(short,/t_sec,raf_peak_ms/);
+ assert.ok(short.length<1100,'short report should fit in a phone chat');
+ assert.ok(full.length>short.length,'retain longer detailed report for TXT');
+ assert.equal(short.split('\n').filter(x=>x.startsWith('-')).length,5);
+});
 test('P1.5d CSV includes every quarter-second bucket and measured causes',()=>{
  const h=new PerformanceTimeline();
  h.add(sample(1200,20));h.add(sample(1450,61,{sync:31}));

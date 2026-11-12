@@ -4,11 +4,11 @@ Status: implementation branch `feature/p1-5-execution-timeline-profiler`; baseli
 ## Evidence
 iPhone P1 ON: stationary JS 10ms / RAF P95 18ms / sync 9.6ms; active JS 21-30ms, RAF P95 112-166ms; P1 OFF active JS 28-32ms, RAF P95 92-121ms. These are unsynchronized frames and cannot support causality. P1 shows 80k+ cumulative lookups: report **recent deltas** instead.
 
-## Stage A: cache policies (A/B, do not guess)
-- `?presentationSight=always` (current shipped default): safe memo in live and planning.
-- `?presentationSight=planning`: reuse during paused/planning, bypass during active execution.
-- `?presentationSight=legacy`: no memo anywhere (existing comparison).
-- All three bypass historical replay and use identical authoritative source sight and disclosure. Default stays `always` until user iPhone data proves otherwise.
+## Stage A: cache policies (iPhone review, 2026-11-12)
+- `?presentationSight=planning` (B, **shipped default** without an override): reuse during paused/planning, bypass during active execution.
+- `?presentationSight=always` (A, explicit comparison/rollback): memo in execution and planning.
+- `?presentationSight=legacy` (C, explicit baseline): no memo anywhere.
+- All three bypass historical replay and preserve identical authoritative source sight and disclosure. User-approved B promotion followed observed steady-state iPhone P50/P95 improvements; the captures were not workload matched, so no claim that stutters are solved.
 
 ## Stage B: calibrated time attribution
 - Measure frame gap, JS, simulation, recording, 3D scene update (including WebGL submit), HUD/interactions, and overlay.
@@ -18,7 +18,7 @@ iPhone P1 ON: stationary JS 10ms / RAF P95 18ms / sync 9.6ms; active JS 21-30ms,
 ## Stage C: bounded, persistent diagnostics window
 - `?perf=1` maintains a 60s rolling history with 250ms buckets, storing worst RAF gap in each bucket to avoid losing short spikes. Also retain top spikes with phase/context for diagnosis.
 - Draw an actionable graph for RAF frame cadence and CPU scene update, color-mark >33ms and >66ms, allow tapping the graph to inspect historical spikes.
-- Keep the graph available after the spike; compact/collapsible UI avoids obscuring phone controls. Add Copy Report action with metrics, spike timing, attributed components, and P1 hit/miss intervals; no server upload, no persistence in normal gameplay.
+- Keep the graph available after the spike; compact/collapsible UI avoids obscuring phone controls. COPY sends only a short summary with top five spikes and CPU/context; TXT downloads the full report and 250ms CSV history as a local text file. No server upload or persistence in normal gameplay.
 - All allocations, canvas redraw, additional timing probes and copy actions are only active behind `?perf=1`. Sample aggregation is bounded, redraw <=4 Hz. Avoid sorting per RAF.
 
 ## Stage D: critical release and device validation
