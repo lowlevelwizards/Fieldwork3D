@@ -17,6 +17,7 @@ export class ReplayKnowledgeController{
  personalGround:PersonalGroundHistory|null=null;
  groundLensOn=false;
  groundCacheObserver:string|null=null;
+ groundCacheEvidence:ReadonlySet<string>|null=null;
  groundCacheCount=-1;
  groundCacheSite:Session['site']|null=null;
  disclosure():ReplayDisclosure{
@@ -27,7 +28,8 @@ export class ReplayKnowledgeController{
    this.omniscient=true;this.observerId=null;this.hasContactEvidence=false;
    this.sightIndex=null;this.doorHistory=null;this.windowHistory=null;
    this.personalGround=null;this.groundLensOn=false;
-   this.groundCacheObserver=null;this.groundCacheCount=-1;
+   this.groundCacheObserver=null;this.groundCacheEvidence=null;
+   this.groundCacheCount=-1;
    this.groundCacheSite=null;
  }
  prepare(recorder:MissionRecorder):void{
