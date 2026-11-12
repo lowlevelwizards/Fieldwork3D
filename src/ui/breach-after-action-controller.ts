@@ -396,6 +396,16 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          rows[0])?.focus({preventScroll:true});
      }
    };
+   const inspectContribution=(sourceKey:string)=>{
+     if(!s.timelineEvents.some(event=>event.key===sourceKey))return;
+     s.timelineFilter='all';s.timelineSelectedKey=sourceKey;
+     s.timelineClusterId=null;
+     const details=root.querySelector<HTMLElement>('#afterActionDetails');
+     if(!details)return;
+     details.hidden=false;drawTimeline();
+     details.querySelector<HTMLElement>('.fw-v5-timeline-inspect')
+       ?.scrollIntoView({block:'nearest'});
+   };
    let screen:HTMLElement;
    if(s.tab==='squad'){
      screen=renderSquadView(s.report,s.recorder.manifest,
@@ -404,16 +414,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          s.operatorRecordOpen=true;draw();
          safeContent.querySelector<HTMLButtonElement>(
            '.fw-v4-record-back')?.focus({preventScroll:true});
-       },(sourceKey)=>{
-         if(!s.timelineEvents.some(event=>event.key===sourceKey))return;
-         s.timelineFilter='all';s.timelineSelectedKey=sourceKey;
-         s.timelineClusterId=null;
-         const details=root.querySelector<HTMLElement>('#afterActionDetails');
-         if(!details)return;
-         details.hidden=false;drawTimeline();
-         details.querySelector<HTMLElement>('.fw-v5-timeline-inspect')
-           ?.scrollIntoView({block:'nearest'});
-       });
+       },inspectContribution);
      if(s.operatorRecordOpen){
        const operator=s.report.operators.find(o=>o.id===s.selectedOperator);
        if(operator){
@@ -433,7 +434,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          modelHost.setAttribute('data-after-squad-model','');
          modelHost.setAttribute('aria-label',
            'Historical 3D model for '+operator.name);
-         record.append(back,modelHost,renderSquadDetails(operator));
+         record.append(back,modelHost,renderSquadDetails(operator,inspectContribution));
          // The complete record replaces the detail pane, not the ranked roster.
          const focus=screen.querySelector('.fw-v3-squad-focus');
          if(focus)focus.replaceWith(record);
