@@ -1,0 +1,38 @@
+name: Live match performance profiler critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-main.ts'
+      - 'src/breach-runtime-loop.ts'
+      - 'src/breach-performance-timeline.ts'
+      - 'src/ui/breach-perf-timeline-panel.ts'
+      - 'tests/performance-live-profiler.test.mjs'
+      - 'tests/performance-p1-5-runtime-integration.test.mjs'
+      - 'tests/runtime-perf-diagnostics.test.mjs'
+      - 'tests/sight-cost-overlay-p10.test.mjs'
+      - '.github/workflows/live-match-performance-profiler-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  profiler:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Mobile RAF history and runtime profiler regression
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-live-profiler.test.mjs
+          tests/performance-p1-5-runtime-integration.test.mjs
+          tests/performance-p1-5-timeline.test.mjs
+          tests/performance-p2-9-ui-attribution.test.mjs
+          tests/runtime-perf-diagnostics.test.mjs
+          tests/sight-cost-overlay-p10.test.mjs
+          tests/breach-runtime-loop-step12.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run check && npx vite build
