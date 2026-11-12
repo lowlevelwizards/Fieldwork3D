@@ -44,6 +44,24 @@ export function renderStructuredMissionDetails(input:{
    ['SURVIVORS',String(stats.survived)+' / '+stats.squad.length],
    ['CASUALTIES',String(stats.casualties)]
  ]));
+ if(stats.scoreComponents?.length){
+  const breakdown=make('section','fw-v5-mission-section fw-v5-score-breakdown');
+  breakdown.append(make('h3','','SCORE EXPLANATION'));
+  const ledger=make('dl','fw-v5-score-ledger');
+  for(const component of stats.scoreComponents){
+   const row=make('div','fw-v5-score-line');
+   row.append(make('dt','',component.label),
+     make('dd','',(component.amount>0?'+':'')+component.amount));
+   ledger.append(row);
+  }
+  const total=make('div','fw-v5-score-line fw-v5-score-total');
+  total.append(make('dt','','FINAL SCORE'),
+    make('dd','',String(stats.score)+' · '+stats.grade));
+  ledger.append(total);breakdown.append(ledger);
+  breakdown.append(make('p','fw-v5-mission-note',
+    'Accuracy and pauses are recorded statistics, not scoring modifiers.'));
+  root.append(breakdown);
+ }
  root.append(section('FIRE & TEMPO',[
    ['SHOTS',String(stats.shots)],['HITS',String(stats.hits)],
    ['ACCURACY',stats.shots>0?stats.accuracy+'%':'—'],
