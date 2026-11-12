@@ -89,6 +89,9 @@ jobs:
         run: |
           node --experimental-strip-types scripts/bench-operator-pose-pipeline.mjs \
             --quick --out artifacts/package-b8/pose-performance.json
+      - name: B8 final math parity, 30-slot stress, replay and scratch release
+        run: |
+          node --experimental-strip-types --test tests/package-b8-pose-closeout.test.mjs
       - name: Posed frame, replay seeks, V3/V4 contacts, motion and Lab parity
         run: |
           node --experimental-strip-types --test --test-concurrency=2 \
