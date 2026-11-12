@@ -74,10 +74,14 @@ export function updateOperatorPoseCavity(
  state:OperatorPoseCavity,
  arms:readonly {upper:THREE.Mesh}[],
  elbowSpread:readonly number[],
- posture:'stand'|'crouch',stride:number,down:boolean,quality=1
+ posture:'stand'|'crouch',stride:number,down:boolean,quality=1,
+ leftUpper?:THREE.Quaternion,rightUpper?:THREE.Quaternion
 ):void{
  for(let i=0;i<2;i++){
-  const y=up.set(0,1,0).applyQuaternion(arms[i].upper.quaternion).y;
+  // B4: use the direct solved limb before the visible frame commit. The
+  // original mesh path remains the compatibility default for other callers.
+  const q=(i===0?leftUpper:rightUpper)??arms[i].upper.quaternion;
+  const y=up.set(0,1,0).applyQuaternion(q).y;
   state.torso.value.setComponent(i,
    quality*armCavityStrength(y,elbowSpread[i]??0,down));
  }
