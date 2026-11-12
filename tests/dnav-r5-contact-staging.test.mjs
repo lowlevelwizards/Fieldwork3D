@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {activateSite,doorLeafSegment,pointToSegment,route,OPERATOR_RADIUS}
@@ -53,4 +54,26 @@ test('R5: controlled body pressure still responds to legitimate leaf contact',()
   assert.equal(contact?.doorId,d.id,'contact at '+fraction+' lever');
   assert.equal(contact?.advanced,true,'door must yield to bounded pressure');
  }
+});
+
+test('TM4: staged approach avoids occupied teammate body positions',()=>{
+ const d=door();activateSite(siteFor(d));
+ try{
+  const from={x:308,y:211};
+  const first=doorApproach(from,d);
+  assert.ok(first);
+  const second=doorApproach(from,d,undefined,[first]);
+  if(second)assert.ok(Math.hypot(second.x-first.x,second.y-first.y)>=27);
+  const order=readFileSync(new URL('../src/breach-order-door.ts',import.meta.url),'utf8');
+  assert.match(order,/interaction\.reason==='out-of-reach'/);
+  assert.match(order,/approach\(a,point,dt,s,\.60\)/);
+ }finally{activateSite(null);}
+});
+
+test('TM4: a queued safe stage must yield to physical motor footsteps',()=>{
+ const code=readFileSync(new URL('../src/breach-motor-door.ts',import.meta.url),'utf8');
+ assert.match(code,/const staging=a\.side==='red'\?a\.nav\[0\]:undefined/);
+ assert.match(code,/a\.motorPause=null;\s*return \{paused:false,closed:false\}/);
+ const order=readFileSync(new URL('../src/breach-order-door.ts',import.meta.url),'utf8');
+ assert.match(order,/const stage=remembered&&d\(a\.p,remembered\)<75/);
 });

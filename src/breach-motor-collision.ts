@@ -8,7 +8,7 @@ import {OPERATOR_RADIUS,pointToSegment,doorLeafSegment,type Pt}
 import type {Session,TeamActor} from './breach-game.ts';
 import {angleDifference} from './breach-plan.ts';
 import {entryClearanceForLook} from './breach-entry-coordination.ts';
-import {beginAutoSidestep,autoSidestepFacing} from './breach-auto-sidestep.ts';
+import {beginAutoSidestep,autoSidestepFacing,watchClearanceAllowed} from './breach-auto-sidestep.ts';
 import {friendlyPassingStep} from './breach-friendly-traffic.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
 import {incidentalCloseWouldBlockTeammate}
@@ -20,7 +20,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
 import {recoverNormalLane,routeWithSqueezeWorld,routeWithSqueezeIntel}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement,blockedStepCause} from './breach-nav-diagnostics.ts';
-import {recoveryAction,routeRetrySeconds} from './breach-movement-recovery.ts';
+import {recoveryAction,routeRetrySeconds,materiallyDifferentRoute} from './breach-movement-recovery.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {discoverContactCover} from './breach-intel.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
@@ -72,6 +72,9 @@ export function resolveMotorCollision(
     const fullLane=recoverNormalLane(a.p,p,s.doors,world);
     if(fullLane.length&&d(fullLane[0],next)>6&&
        d(fullLane[0],a.p)>3&&
+       watchClearanceAllowed(a.p,fullLane[0],p,
+         !!a.aimInstruction&&a.aimInstruction.mode!=='free',
+         (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&
        sweptBodyClear(a.p,fullLane[0],s.doors,OPERATOR_RADIUS,world)){
       const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
         s.seconds,canAutoSidestep);
@@ -113,8 +116,9 @@ export function resolveMotorCollision(
         entryClearanceForLook(
           s.doors.find(door=>door.id===entry.entryDoorId),
           glide,entry.p);
-      if(a.aimInstruction?.mode!=='track'&&!clearedEntryLook&&
-         heldSide===null)
+      // Both TRACK and authored FIXED gaze take precedence over the
+      // physical glide. Only feet move until the normal aim tick rotates.
+      if(!a.aimInstruction&&!clearedEntryLook&&heldSide===null)
         a.heading=angle(old,glide);
       a.blockedTime=0;a.lastBlocker='clear';a.retryRouteAt=0;
       a.recoveryAttempts=0;
@@ -183,6 +187,9 @@ export function resolveMotorCollision(
     const candidate=localDetour(a.p,next,s.doors,s.operators
       .filter(o=>o!==a&&o.health>0).map(o=>o.p),8,world);
     if(candidate&&d(candidate,p)<d(a.p,p)+12&&
+      watchClearanceAllowed(a.p,candidate,p,
+        !!a.aimInstruction&&a.aimInstruction.mode!=='free',
+        (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&
       (!a.nav.length||d(candidate,a.nav[0])>12)){
       const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
         s.seconds,canAutoSidestep);
@@ -231,22 +238,33 @@ export function resolveMotorCollision(
       pointToSegment(desiredMove,doorLeafSegment(door))<OPERATOR_RADIUS+12);
     const repair=recoveryAction(a.lastBlocker,a.blockedTime,
       s.seconds-a.lastNavRepairAt,a.recoveryAttempts,{doorMoving});
-    if(repair==='replan'||repair==='report'){
+    if((repair==='replan'||repair==='report')&&s.seconds>=a.retryRouteAt){
       a.lastNavRepairAt=s.seconds;
-      a.recoveryAttempts++;
       // Once actual collision is observed, repair against real geometry,
       // not only the incomplete player-intel route that may run through
       // an undiscovered door frame. The authored final goal is unchanged.
       const repaired=a.side==='red'?hooks.cachedEnemyRoute(s,a.p,p,true):
         routeWithSqueezeWorld(a.p,p,s.doors,world);
-      if(repaired.length){a.nav=repaired;a.retryRouteAt=0;}
-      else if(a.side==='blue'){
-        a.nav=routeWithSqueezeIntel(s.intel,a.p,p);
-        if(!a.nav.length)
-          a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
+      // A world-truth path that repeats the stuck steps is not progress.
+      // Known-intel fallback is allowed only if it materially differs;
+      // never replace a route with an empty result while the door moves.
+      let adopted=false;
+      if(materiallyDifferentRoute(a.nav,repaired)){
+        a.nav=repaired;adopted=true;
+      }else if(a.side==='blue'){
+        const known=routeWithSqueezeIntel(s.intel,a.p,p);
+        if(materiallyDifferentRoute(a.nav,known)){
+          a.nav=known;adopted=true;
+        }
       }
-      if(repair==='report'&&a.side==='blue')
-        hooks.notify(s,a.name+' NO SAFE ROUTE · ORDERS RETAINED');
+      if(adopted){
+        a.retryRouteAt=0;a.recoveryAttempts=0;
+      }else{
+        a.recoveryAttempts++;
+        a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
+        if(repair==='report'&&a.side==='blue')
+          hooks.notify(s,a.name+' NO SAFE ROUTE · ORDERS RETAINED');
+      }
     }
     // Do not discard an authored plan just because someone is in the way.
   }

@@ -45,16 +45,28 @@ export function handleMotorDoor(
       doorBlocksSegment(door,{a:a.p,b:p});
   })??autoDoorAtBodyContact(a.p,move,automaticCandidates,sessionWorldGeometry(s));
   if(doorAhead){
+    // When an earlier frame queued a short handle-side correction, let the
+    // normal swept motor EXECUTE those footsteps before opening the hinge.
+    // Otherwise every frame requeues the same stage while paused forever.
+    const staging=a.side==='red'?a.nav[0]:undefined;
+    if(staging&&d(a.p,staging)>5&&d(a.p,staging)<55&&
+       doorReachable(staging,doorAhead)&&
+       sweptBodyClear(a.p,staging,s.doors,8,sessionWorldGeometry(s))){
+      a.motorPause=null;
+      return {paused:false,closed:false};
+    }
     // A cautious defender should operate a door from a real clear stance,
     // not repeatedly crowd its swing while touching the handle.
     if(a.side==='red'&&!doorAhead.open&&a.actionTimer===0&&
        doorWouldStrikeActors({...doorAhead,openFraction:0},.46,
          [a.p],OPERATOR_RADIUS+1)){
-      const staged=doorApproach(a.p,doorAhead,sessionWorldGeometry(s));
+      const staged=doorApproach(a.p,doorAhead,sessionWorldGeometry(s),
+        [...s.operators.filter(other=>other!==a&&other.health>0).map(other=>other.p),
+         ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
       if(staged&&d(staged,a.p)>5&&d(staged,a.p)<50&&
          sweptBodyClear(a.p,staged,s.doors,8,sessionWorldGeometry(s))){
         a.nav.unshift(staged);a.velocity=0;
-        a.motorPause='door-opening';return {paused:true,closed:false};
+        a.motorPause=null;return {paused:true,closed:false};
       }
     }
     a.motorPause='door-opening';

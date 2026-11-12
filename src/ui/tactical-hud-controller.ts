@@ -38,7 +38,7 @@ import {liveMagazineCapacity,magazineAlert}
 import {executionStatus} from '../breach-execution-state.ts';
 import {compactExecutionStatus} from './tactical-hud-density.ts';
 import {tacticalUiActionAvailability} from './tactical-command-affordances.ts';
-import {ExecutionNoticeFeed} from './execution-feedback.ts';
+import {ExecutionNoticeFeed,locateNoticeOrder} from './execution-feedback.ts';
 import {createTacticalInteractionState,
  type TacticalInteractionState} from '../breach-tactical-interaction-state.ts';
 
@@ -329,7 +329,19 @@ export function createTacticalHudController(
     node.hidden=!notice||replaying;
     if(!notice||replaying){
       node.removeAttribute('data-notice-key');
+      node.removeAttribute('data-issue-actor');
+      node.removeAttribute('data-issue-order');
+      node.style.pointerEvents='';
       return;
+    }
+    if(notice.actorId&&notice.severity==='warning'){
+      node.dataset.issueActor=notice.actorId;
+      node.dataset.issueOrder=String(notice.orderId??'');
+      node.style.pointerEvents='auto';
+    }else{
+      node.removeAttribute('data-issue-actor');
+      node.removeAttribute('data-issue-order');
+      node.style.pointerEvents='';
     }
     const key=notice.born+'|'+notice.label+'|'+notice.text;
     if(node.dataset.noticeKey!==key){
@@ -344,6 +356,17 @@ export function createTacticalHudController(
         const next=document.createElement('span');
         next.className='fw-notice-recovery';next.textContent=notice.recovery;
         body.append(next);
+      }
+      if(notice.actorId&&notice.severity==='warning'){
+        const locate=document.createElement('button');
+        locate.type='button';locate.dataset.locateIssue='';
+        locate.className='fw-notice-locate';
+        locate.textContent='LOCATE ORDER';
+        locate.setAttribute('aria-label','Locate blocked operator and order');
+        locate.style.cssText='display:block;min-height:36px;margin-top:5px;'+
+          'padding:5px 10px;border:1px solid currentColor;border-radius:5px;'+
+          'background:transparent;color:inherit;font:inherit;cursor:pointer';
+        body.append(locate);
       }
       node.replaceChildren(label,body);
       node.dataset.noticeKey=key;
@@ -665,6 +688,24 @@ function bindWeaponChooser(port:TacticalWeaponChooserPorts){
    let dragButton:HTMLButtonElement|null=null;
    let carryButton:HTMLButtonElement|null=null;
    let retrieveButton:HTMLButtonElement|null=null;
+// Locate a blocked order without changing its authored content.
+port.ui.feed.addEventListener('click',event=>{
+ const button=(event.target as HTMLElement).closest<HTMLButtonElement>(
+  'button[data-locate-issue]');
+ if(!button||port.replaying||port.ui.feed.hidden)return;
+ const actorId=port.ui.feed.dataset.issueActor;
+ const raw=port.ui.feed.dataset.issueOrder;
+ const located=locateNoticeOrder({
+  actorId,orderId:raw?Number(raw):null
+ },team(port.state));
+ if(!located)return;
+ port.selectUnit(located.actorId);
+ port.selectedNode=located.orderId;
+ port.showUiHelp(located.orderId!==null?
+  'BLOCKED ORDER SELECTED · EDIT OR REPLACE WAYPOINT':
+  'OPERATOR LOCATED · FAILED ORDER MAY ALREADY BE CANCELLED',3200);
+ port.updateHud();
+});
 port.ui.rook.addEventListener('click',()=>port.selectUnit('rook'));
 port.ui.back.addEventListener('click',()=>{
   if(!available().back)return;
