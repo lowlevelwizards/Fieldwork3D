@@ -128,6 +128,16 @@ export function createBreachReplayHudController(config:{
  const port=config.interactions;
  let bound=false;
  let quickBound=false,directBound=false,lateBound=false;
+ /** Shared invalidation of historical UI presentation. Never acquires sight,
+  * mutates the recording, advances transport or selects Director shots.
+  */
+ function refreshHistoricalViews(inspector=true,invalidateFog=true):void{
+   if(invalidateFog)port.invalidateFog();
+   port.rebuildReplayEventIndex();
+   port.replayAnalysisUi.renderReplayEventMarkers();
+   port.replayAnalysisUi.renderReplayEventFeed();
+   if(inspector)port.replayAnalysisUi.refreshReplayShotInspector();
+ }
 function changeReplaySight(mode:'team'|'full'|'operator'):void{
   if(mode==='operator'){
     if(!port.replayKnowledge.hasContactEvidence)return;
@@ -144,10 +154,7 @@ function changeReplaySight(mode:'team'|'full'|'operator'):void{
     port.replayKnowledge.groundLensOn=false;port.replayKnowledge.observerId=null;
     port.replayKnowledge.omniscient=mode==='full';
   }
-  port.invalidateFog();
-  port.rebuildReplayEventIndex();
-  port.replayAnalysisUi.renderReplayEventMarkers();port.replayAnalysisUi.renderReplayEventFeed();
-  port.replayAnalysisUi.refreshReplayShotInspector();updateReplayHud();
+  refreshHistoricalViews();updateReplayHud();
 }
 function followReplayOperator(id:string):void{
   if(!port.replaying||!team(port.state).some(a=>a.id===id&&a.health>0))return;
@@ -157,8 +164,7 @@ function followReplayOperator(id:string):void{
   port.chooseReplayCamera('operator');port.replayCamera.follow=true;
   if(port.replayKnowledge.observerId){
     port.replayKnowledge.observerId=port.replayBodycam.observers.includes(id)?id:null;
-    port.invalidateFog();port.rebuildReplayEventIndex();
-    port.replayAnalysisUi.renderReplayEventMarkers();port.replayAnalysisUi.renderReplayEventFeed();
+    refreshHistoricalViews(false);
   }
   port.advanceReplayCamera(0,true);
   updateReplayHud();
@@ -240,26 +246,22 @@ config.ui.replayQuickView.addEventListener('change',()=>{
   if(port.replayBodycam.active)return;
   const next=config.ui.replayQuickView.value as ReplayPerspective;
   if(!['iso','top','plan2d'].includes(next))return;
+  // The app's cameraMode resolves replay camera availability exactly once.
   port.cameraMode(next);
-  port.chooseReplayCamera(resolvedReplayCamera(port.replayCamera.mode,next,!!port.stage,port.replayBodycam.active));
-  
   updateReplayHud();
 });
 config.ui.replayInspectActor.addEventListener('change',()=>{
   const id=config.ui.replayInspectActor.value;
   if(!team(port.state).some(a=>a.id===id))return;
-  port.selected=id;
+  // Selecting while following also changes personal recorded disclosure.
   if(port.replayCamera.mode==='operator'){
-    port.replayCamera.followId=id;port.advanceReplayCamera(0,true);
+    followReplayOperator(id);return;
   }
-  updateReplayHud();
+  port.selected=id;updateReplayHud();
 });
 config.ui.replayInspectFollow.addEventListener('click',()=>{
-  const id=config.ui.replayInspectActor.value;
-  if(!team(port.state).some(a=>a.id===id)||port.replayBodycam.active)return;
-  if(port.viewMode==='plan2d')port.cameraMode('iso');
-  port.selected=id;port.replayCamera.followId=id;port.chooseReplayCamera('operator');port.replayCamera.follow=true;
-  port.advanceReplayCamera(0,true);updateReplayHud();
+  if(port.replayBodycam.active)return;
+  followReplayOperator(config.ui.replayInspectActor.value);
 });
 config.ui.replayInspectMovement.addEventListener('click',()=>{
   const id=config.ui.replayInspectActor.value;
@@ -275,11 +277,10 @@ config.ui.replayQuickCamera.addEventListener('change',()=>{
       resolvedReplayCamera(mode,port.viewMode as ReplayPerspective,!!port.stage,port.replayBodycam.active)!==mode)
     return;
   if(mode==='operator'){
-    const id=choice.slice('operator:'.length);
-    if(!team(port.state).some(a=>a.id===id))return;
-    port.replayCamera.followId=id;
+    // The same camera+observer transition used by the inspector and taps.
+    followReplayOperator(choice.slice('operator:'.length));return;
   }
-  port.chooseReplayCamera(mode);port.replayCamera.follow=mode==='operator';
+  port.chooseReplayCamera(mode);port.replayCamera.follow=false;
   port.advanceReplayCamera(0,true);updateReplayHud();
 });
 
@@ -318,16 +319,14 @@ config.ui.replayDirectBodycam.addEventListener('click',()=>{
   if(port.replayBodycam.active){
     const returnId=port.replayCamera.followId;
     port.stopReplayBodycam();
-    followReplayOperator(returnId);
-  }else{
-    if(port.replayCamera.mode!=='operator'||
-      !port.replayBodycam.observers.includes(port.replayCamera.followId))return;
-    port.replayKnowledge.observerId=port.replayCamera.followId;
-    if(!port.startReplayBodycam())return;
+    // Follow already refreshes historical views; avoid a duplicate rebuild.
+    followReplayOperator(returnId);return;
   }
-  port.invalidateFog();port.rebuildReplayEventIndex();
-  port.replayAnalysisUi.renderReplayEventMarkers();port.replayAnalysisUi.renderReplayEventFeed();
-  updateReplayHud();
+  if(port.replayCamera.mode!=='operator'||
+    !port.replayBodycam.observers.includes(port.replayCamera.followId))return;
+  port.replayKnowledge.observerId=port.replayCamera.followId;
+  if(!port.startReplayBodycam())return;
+  refreshHistoricalViews(false);updateReplayHud();
 });
 config.ui.replayDirectMount.addEventListener('click',()=>{
   if(port.replayCamera.mode==='director'&&port.replayCamera.lens==='cam'){
@@ -344,10 +343,8 @@ config.ui.replaySight.addEventListener('click',()=>{
   port.stopReplayBodycam();
   port.replayKnowledge.groundLensOn=false;
   port.replayKnowledge.observerId=null;
-  port.replayKnowledge.omniscient=!port.replayKnowledge.omniscient;port.invalidateFog();
-  port.rebuildReplayEventIndex();
-  port.replayAnalysisUi.renderReplayEventMarkers();port.replayAnalysisUi.renderReplayEventFeed();
-  port.replayAnalysisUi.refreshReplayShotInspector();updateReplayHud();
+  port.replayKnowledge.omniscient=!port.replayKnowledge.omniscient;
+  refreshHistoricalViews();updateReplayHud();
 });
 /** Only Vite DEVELOPMENT + explicit QA query can access this hook.
  * Production builds strip it; normal replay has NO Bodycam button yet.
@@ -380,26 +377,20 @@ config.ui.replayContactLens.addEventListener('click',()=>{
     port.replayCamera.followId=port.replayKnowledge.observerId;
     port.replayAnalysisUi.closeReplayShotInspector();
   }
-  port.invalidateFog();
-  port.rebuildReplayEventIndex();
-  port.replayAnalysisUi.renderReplayEventMarkers();port.replayAnalysisUi.renderReplayEventFeed();
-  port.replayAnalysisUi.refreshReplayShotInspector();updateReplayHud();
+  refreshHistoricalViews();updateReplayHud();
 });
 config.ui.replayGroundLens.addEventListener('click',()=>{
   if(port.replayBodycam.active)port.stopReplayBodycam();
   if(!port.replayKnowledge.observerId||!port.replayKnowledge.personalGround)return;
   port.replayKnowledge.groundLensOn=!port.replayKnowledge.groundLensOn;
   if(port.replayKnowledge.groundLensOn&&port.viewMode!=='plan2d')port.cameraMode('plan2d');
-  port.replayKnowledge.groundCacheObserver=null;
-  port.replayKnowledge.groundCacheCount=-1;
+  port.replayKnowledge.invalidateGroundCache();
   updateReplayHud();
 });
 config.ui.replayBodycam.addEventListener('click',()=>{
   if(port.replayBodycam.active)port.stopReplayBodycam();
   else if(!port.startReplayBodycam())return;
-  port.rebuildReplayEventIndex();
-  port.replayAnalysisUi.renderReplayEventMarkers();port.replayAnalysisUi.renderReplayEventFeed();
-  port.replayAnalysisUi.refreshReplayShotInspector();updateReplayHud();
+  refreshHistoricalViews(true,false);updateReplayHud();
 });
 config.ui.replayBodycamMount.addEventListener('click',()=>{
   if(!port.replayBodycam.active)return;
@@ -408,10 +399,8 @@ config.ui.replayBodycamMount.addEventListener('click',()=>{
 });
 config.ui.replayView.addEventListener('click',()=>{
   if(port.replayBodycam.active)port.stopReplayBodycam();
+  // Perspective selection is owned by breach-main.cameraMode, once.
   port.cameraMode(port.viewMode==='iso'?'top':port.viewMode==='top'?'plan2d':'iso');
-  port.chooseReplayCamera(resolvedReplayCamera(port.replayCamera.mode,
-    port.viewMode as ReplayPerspective,!!port.stage,port.replayBodycam.active));
-  
   updateReplayHud();
 });
 
