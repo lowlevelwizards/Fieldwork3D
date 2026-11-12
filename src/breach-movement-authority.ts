@@ -19,13 +19,11 @@ const moved=(a:MotionProposal)=>dist(a.from,a.to)>.0001;
  * of one body stay more than the collision envelope away from the other,
  * the expensive exact relative-trajectory test cannot register a contact.
  * No collision decision is made here; near pairs retain crosses unchanged. */
-const pairMayTouch=(a:MotionProposal,at:Pt,b:MotionProposal,bt:Pt)=>{
- const envelope=a.side==='neutral'||b.side==='neutral'?20:11;
- return Math.max(a.from.x,at.x)+envelope>Math.min(b.from.x,bt.x)&&
-   Math.max(b.from.x,bt.x)+envelope>Math.min(a.from.x,at.x)&&
-   Math.max(a.from.y,at.y)+envelope>Math.min(b.from.y,bt.y)&&
-   Math.max(b.from.y,bt.y)+envelope>Math.min(a.from.y,at.y);
-};
+export const sweptPairMayTouch=(af:Pt,at:Pt,bf:Pt,bt:Pt,envelope:number)=>
+ Math.max(af.x,at.x)+envelope>Math.min(bf.x,bt.x)&&
+ Math.max(bf.x,bt.x)+envelope>Math.min(af.x,at.x)&&
+ Math.max(af.y,at.y)+envelope>Math.min(bf.y,bt.y)&&
+ Math.max(bf.y,bt.y)+envelope>Math.min(af.y,at.y);
 const crosses=(a:MotionProposal,b:MotionProposal)=>{
  // A collision is meaningful only when the proposed final positions
  // converge. Fixed ticks bound travel; retain clearance during swaps.
@@ -71,7 +69,8 @@ export function resolveMovementFrame(
   const pa=draft.get(a.id)!,pb=draft.get(b.id)!;
   // Most 16v16v16 actor pairs are spatially distant. Reject them with
   // arithmetic before allocating temporary proposals or calculating sqrt.
-  if(!pairMayTouch(a,pa.point,b,pb.point))continue;
+  if(!sweptPairMayTouch(a.from,pa.point,b.from,pb.point,
+    a.side==='neutral'||b.side==='neutral'?20:11))continue;
   const da={...a,to:pa.point},db={...b,to:pb.point};
   if(!crosses(da,db))continue;
   const movingA=dist(a.from,pa.point)>.0001;
