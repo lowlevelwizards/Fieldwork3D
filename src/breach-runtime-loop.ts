@@ -261,6 +261,17 @@ function tick(now:number){
           ' HIT · FULL '+sight.fullViewQueries+
         '\nPERSONAL '+sight.personalQueries+' Q / '+
           sight.personalOcclusionProbes+' LOS'+
+        '\nP1 VISIBLE Q/H/M/B '+(stats?.presentationSight.queries??0)+'/'+
+          (stats?.presentationSight.hits??0)+'/'+
+          (stats?.presentationSight.misses??0)+'/'+
+          (stats?.presentationSight.bypasses??0)+
+        ' · INV/EVI '+(stats?.presentationSight.invalidations??0)+'/'+
+          (stats?.presentationSight.evictions??0)+
+        '\nP1 MISS D/O/DR/I/E '+(stats?.presentationSight.decorMisses??0)+'/'+
+          (stats?.presentationSight.openingMisses??0)+'/'+
+          (stats?.presentationSight.doorMisses??0)+'/'+
+          (stats?.presentationSight.impactMisses??0)+'/'+
+          (stats?.presentationSight.effectMisses??0)+
         '\nFILM '+recorder.frames.length+' frames · '+
         recorder.motion.stepEventCount+' step events'+
         '\nDOM '+document.getElementsByTagName('*').length+

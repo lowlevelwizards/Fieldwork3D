@@ -192,6 +192,7 @@ export class TacticalScene3D{
       shadowLodTransitions:this.shadowLodTransitions,
       fogMemoryPaints:this.fogMemoryPaints,
       fogSightPaints:this.fogSightPaints,
+      presentationSight:this.presentationSight.stats(),
       graphicWorldMaterialCount:this.graphicWorldMaterialCount,
       graphicOperatorRestyles:this.graphicOperatorRestyles,
       graphicLookEnabled:this.graphicLookEnabled};

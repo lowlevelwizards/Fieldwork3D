@@ -8,5 +8,5 @@ test('P1.0 protects authoritative vision and pins a conservative renderer-only s
  assert.match(sourceGame,/export function observerPointVisible/);
  assert.match(sourceGame,/unobstructed\(a\.p,p,s,a\.posture==='crouch'\)/);
  assert.match(source('src/rendering/breach-3d-disclosure-presenter.ts'),/recordedReplayKnowledge/);
- assert.match(source('src/breach-3d.ts'),/const directlyObserved=!personal&&liveVisibility/);
+ assert.match(source('src/breach-3d.ts'),/const directlyObserved=!personal&&this\.presentationSight\.query/);
 });
