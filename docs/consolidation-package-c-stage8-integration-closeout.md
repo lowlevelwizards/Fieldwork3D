@@ -1,7 +1,7 @@
 # Consolidation Package C — C8 Integration, Regression Verification & Closeout
 
-**Feature branch:** \`refactor/consolidation-c8-integration-closeout\`, stacked on validated C7 at \`600eb9695243826fee368c9781ab5d1a76d59c15\`.
-**Release baseline:** C6 merge \`dced6648\` plus non-overlapping P1.5 on \`main\` at \`04b90827\`.
+**Feature branch:** `refactor/consolidation-c8-integration-closeout`, stacked on validated C7 at `600eb9695243826fee368c9781ab5d1a76d59c15`.
+**Release baseline:** C6 merge `dced6648` plus non-overlapping P1.5 on `main` at `04b90827`.
 **Release policy:** One combined C7+C8 checkpoint when prior Pages serves its exact build stamp; no concurrent deployments and no new source extraction without evidence.
 
 ## Goals
@@ -11,13 +11,13 @@ Prove that C0–C7 contracts coexist for physical mission Sessions, 3D scene own
 ## C8-A: Final ownership and subtraction audit
 
 - Reuse C0's 19-owner census; add no new runtime owner.
-- Read the nine C0–C8 stage docs and tests, inspect cross-owner source anchors, and produce deterministic JSON/Markdown SHA-256 evidence via \`package-c8-integration-audit.mjs\`.
+- Read the nine C0–C8 stage docs and tests, inspect cross-owner source anchors, and produce deterministic JSON/Markdown SHA-256 evidence via `package-c8-integration-audit.mjs`.
 - Protect existing scene lifecycle, 3D/2D actor disclosure, physical pane geometry, replay manifest, encounter mission selection and actual briefing population truth.
 - Preserve scoped Studio and Operator Lab renderers. Do not delete any compat path based solely on call-site text counts.
 
 ## C8-B: Real cross-contract scenarios
 
-Add \`package-c8-integration-closeout.test.mjs\`:
+Add `package-c8-integration-closeout.test.mjs`:
 - Generated seeded CAPTURE, INTEL and RESCUE missions: exact window geometry, hostile group contract, initialized armed/civilian forces, actual briefing counts, mission identities and recorded replay manifest.
 - Build background replay Session while live Session owns presentation; it cannot steal live map/cover and changing visual identity cannot alter health or side.
 - Restart reconstructs a separate world with the same physical site, target and selected contract.
