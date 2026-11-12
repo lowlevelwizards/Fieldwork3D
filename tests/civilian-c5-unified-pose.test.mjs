@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createCivilian} from '../src/breach-civilian-types.ts';
 import {civilianPose} from '../src/breach-civilian-pose.ts';
-import {createCivilianRig,updateCivilianRig}
+import {createCivilianRig,updateCivilianRig,CIVILIAN_VISUAL_SCALE}
  from '../src/breach-civilian-visuals.ts';
 const actor=createCivilian({id:'civ:pose:1',role:'customer',
  persona:'steady',activity:'seated',position:{x:30,y:60},
@@ -17,7 +17,7 @@ test('E5-C5 one pose resolver gives seated, moving and compliant identity',()=>{
  actor.state='fleeing';actor.velocity=66;
  assert.equal(civilianPose(actor),'run');
  updateCivilianRig(rig,actor,2);
- assert.equal(rig.root.scale.y,1);
+ assert.equal(rig.root.scale.y,CIVILIAN_VISUAL_SCALE);
  actor.state='compliant';actor.velocity=0;
  assert.equal(civilianPose(actor),'compliant');
  updateCivilianRig(rig,actor,3);

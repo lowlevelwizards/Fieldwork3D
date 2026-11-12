@@ -6,6 +6,7 @@
 import {newSession,team,planMove,stepSession,toggling}
  from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
+import {createCivilian} from '../src/breach-civilian-types.ts';
 
 const point=(x,y)=>({x,y});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -16,7 +17,8 @@ const scenarios=[
  {name:'narrow-open',left:292,right:330,open:true},
  {name:'paired-open',left:282,right:340,open:true,paired:true},
  {name:'near-jamb-cover',left:290,right:332,open:true,
-  cover:[{x:322,y:295,w:18,h:22}]}
+  cover:[{x:322,y:295,w:18,h:22}]},
+ {name:'civilian-threshold',left:290,right:332,open:true,civilian:true}
 ];
 function makeSite(c){
  const middle=(c.left+c.right)/2;
@@ -46,6 +48,13 @@ function makeSite(c){
 function audit(c){
  const s=newSession(0,undefined,'full-view','standard','hold',makeSite(c));
  try{
+  if(c.civilian){
+    const person=createCivilian({id:'civ:flow:threshold',role:'visitor',
+      persona:'steady',activity:'waiting',
+      position:point((c.left+c.right)/2,260),heading:0,
+      roomId:'hall',appearanceSeed:3});
+    person.state='compliant';s.civilians.push(person);
+  }
   const actors=team(s).slice(0,4);
   if(actors.length!==4)throw Error('expected four operator slots');
   const goals=actors.map((_,i)=>point(296+i*10,371+i*3));
@@ -53,7 +62,7 @@ function audit(c){
    if(!planMove(s,a.id,goals[i]))throw Error('MOVE rejected: '+a.id);
    return a.plan.map(n=>n.id);
   });
-  const crossings=Array(4).fill(null),arrivals=Array(4).fill(null);
+  const crossings=Array(4).fill(null),arrivals=Array(4).fill(null),completions=Array(4).fill(null);
   const passageWaitTicks=Array(4).fill(0);
   const movementTicks=Array(4).fill(0);
   const maxBlocked=Array(4).fill(0);
@@ -73,6 +82,8 @@ function audit(c){
     if(crossings[i]===null&&a.p.y>278)crossings[i]=s.seconds;
     if(arrivals[i]===null&&distance(a.p,goals[i])<16)
      arrivals[i]=s.seconds;
+    if(completions[i]===null&&a.plan.length===0)
+     completions[i]=s.seconds;
     for(let j=i+1;j<4;j++){
      const separation=distance(a.p,actors[j].p);
      if(separation<minFriendlyGap){
@@ -94,14 +105,15 @@ function audit(c){
      }
     }
    }
-   if(arrivals.every(t=>t!==null))break;
+   if(completions.every(t=>t!==null))break;
   }
   const sorted=crossings.filter(t=>t!==null).sort((a,b)=>a-b);
   return {
    case:c.name,finite,
    crossed:crossings.every(t=>t!==null),
    arrived:arrivals.every(t=>t!==null),
-   crossings,arrivals,
+   completed:completions.every(t=>t!==null),
+   crossings,arrivals,completions,
    consecutiveCrossingGaps:sorted.slice(1).map((t,i)=>+(t-sorted[i]).toFixed(3)),
    passageWaitSeconds:passageWaitTicks.map(t=>+(t/30).toFixed(3)),
    movementTicks,maxBlockedSeconds:maxBlocked.map(t=>+t.toFixed(3)),
@@ -119,6 +131,7 @@ console.log(JSON.stringify({kind:'four-person real-motor diagnostic',
 // Required authoring and physical traversal contracts; visual closeness
 // near clutter remains diagnostic pending a real-phone acceptance review.
 const problems=results.filter(r=>!r.finite||!r.crossed||!r.arrived||
+ !r.completed||
  !r.authoredOrderIdsPreserved||
  r.maxBlockedSeconds.some(seconds=>seconds>8)||
  // This batch specifically fixes early approach compression. Guard that

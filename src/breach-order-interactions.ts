@@ -27,7 +27,10 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     if(!n.objectId||!n.interaction){
       failCurrentOrder(s,a,n,'INTERACTION TARGET UNAVAILABLE');return true;
     }
-    if(!near(a.p,n.p,7)){
+    const contactCommand=n.objectId.startsWith('civ:')&&
+      (n.interaction==='secure-civilian'||
+       n.interaction==='follow-civilian');
+    if(!contactCommand&&!near(a.p,n.p,7)){
       approach(a,n.p,dt,s,.65);return true;
     }
     if(n.interaction==='release-civilian'){
@@ -45,6 +48,14 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
        (n.interaction==='secure-civilian'||
         n.interaction==='follow-civilian')){
       const person=s.civilians.find(c=>c.id===n.objectId);
+      // This is a physically authored contact, not a remote command.
+      // A person who shuffles a little while the squad approaches must
+      // not make SECURE appear inert; close the remaining gap under the
+      // usual motor/door/traffic authority, with a bounded pursuit range.
+      if(person&&person.health>0&&d(a.p,person.p)>28&&
+         d(person.p,n.p)<=45&&liveVisibility(s,person.p)){
+        approach(a,person.p,dt,s,.65);return true;
+      }
       if(!person||person.health<=0||
          d(a.p,person.p)>32||
          !sweptBodyClear(a.p,person.p,s.doors,5.5,sessionWorldGeometry(s))||

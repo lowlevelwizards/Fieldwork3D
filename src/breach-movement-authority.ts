@@ -51,6 +51,12 @@ export function resolveMovementFrame(
  for(let i=0;i<ordered.length;i++)for(let j=i+1;j<ordered.length;j++){
   const a=ordered[i],b=ordered[j];
   if(a.side===b.side&&a.side!=='neutral')continue;
+  // An unarmed, ambulatory civilian is soft traffic to the friendly squad.
+  // Normal civilian navigation still avoids occupied space, and armed
+  // opponents plus neutral-vs-neutral encounters retain hard collision.
+  // Carried bodies are reconciled separately as physical custody.
+  if((a.side==='blue'&&b.side==='neutral')||
+     (b.side==='blue'&&a.side==='neutral'))continue;
   const pa=draft.get(a.id)!,pb=draft.get(b.id)!;
   const da={...a,to:pa.point},db={...b,to:pb.point};
   if(!crosses(da,db))continue;

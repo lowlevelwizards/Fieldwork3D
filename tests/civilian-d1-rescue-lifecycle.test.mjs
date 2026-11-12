@@ -56,6 +56,10 @@ test('E5-D1 injured followers remain mobile but slow; no position snapping',()=>
  applyCivilianBulletHit(civil,1);
  assert.equal(civil.health,1);
  assert.equal(civil.state,'escorted');
+ // Re-entering the escorted state deliberately clears stale navigation.
+ // The mission escort planner reauthors its short follow route next tick.
+ assert.equal(civil.goal,null);
+ civil.goal={x:60,y:0};
  stepCivilianMovement(civil,1.1,.5,()=>true,()=>false);
  assert.ok(civil.p.x>0&&civil.p.x<=11.001,
    'injured walker uses 22 world units per second');

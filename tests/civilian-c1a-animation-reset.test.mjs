@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createCivilian} from '../src/breach-civilian-types.ts';
-import {createCivilianRig,updateCivilianRig}
+import {createCivilianRig,updateCivilianRig,CIVILIAN_VISUAL_SCALE}
  from '../src/breach-civilian-visuals.ts';
 const make=()=>createCivilian({id:'civ:pose',role:'employee',
  persona:'steady',activity:'working',position:{x:44,y:60},
@@ -24,7 +24,7 @@ test('E5-C1a reverse replay and compliance reset all pose transforms',()=>{
  updateCivilianRig(rig,actor,.1);
  assert.equal(rig.root.rotation.z,0);
  assert.equal(rig.root.position.y,0);
- assert.equal(rig.root.scale.y,1);
+ assert.equal(rig.root.scale.y,CIVILIAN_VISUAL_SCALE);
  assert.equal(rig.leftArm.position.y,19);
  assert.equal(rig.rightArm.position.y,19);
  assert.equal(rig.leftArm.rotation.z,0);
@@ -41,6 +41,6 @@ test('E5-C1a hiding to startled clears previously animated gait',()=>{
  assert.ok(rig.root.scale.y<1);
  actor.state='startled';
  updateCivilianRig(rig,actor,.30);
- assert.equal(rig.root.scale.y,1);
+ assert.equal(rig.root.scale.y,CIVILIAN_VISUAL_SCALE);
  assert.equal(rig.rightArm.rotation.x,0);
 });

@@ -185,6 +185,9 @@ export type TeamActor=Operator & {
   /** Execution diagnostics are transient; never rewrite authored PlanNode[]. */
   motorPause:MotorPause;orderIssue:ExecutionIssue|null;
   completedOrders:number;passageWaitSeconds:number;passageStallReported:boolean;
+  /** At most one physical deadlock retreat per authored waypoint and goal.
+   * The motor can still queue/wait afterward, but never stack retreats. */
+  passageRetreatKey?:string;
   executionLastStatus:ExecutionStatus|null;
   /** Last executed facing command; survives across movement waypoints. */
   aimInstruction:AimInstruction|null;
@@ -434,10 +437,13 @@ export function planCivilianInteraction(s:Session,id:string,
     !sweptBodyClear(from,civil.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
  if(action==='follow'&&(!civil.rescueTarget||s.mission!=='extract'))
    return false;
- return addNode(s,id,'interact',from,{
+ const queued=addNode(s,id,'interact',from,{
    objectId:civil.id,interaction:action==='secure'?
      'secure-civilian':'follow-civilian'
  });
+ if(queued)notify(s,(action==='secure'?'SECURE':'FOLLOW')+
+   ' QUEUED — EXECUTES ON GO');
+ return queued;
 }
 export function planMove(s:Session,id:string,p:Pt,strafe=false){
   const a=party(s,id);
