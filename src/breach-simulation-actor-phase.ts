@@ -22,10 +22,12 @@ export type ActorSimulationPhasePort={
  unobstructed:(from:Pt,to:Pt,s:Session,lowBlocks:boolean)=>boolean;
  defensivePosition:(a:TeamActor,threat:Pt,s:Session)=>Pt|null;
  decideEnemy:(s:Session,a:TeamActor,h:number)=>void;
- runFriendly:(s:Session,a:TeamActor,h:number)=>void;
+ runFriendly:(s:Session,a:TeamActor,h:number,
+  profile?:((section:string,elapsedMs:number)=>void))=>void;
 };
 export function advanceSimulationActors(s:Session,h:number,
- port:ActorSimulationPhasePort,markActor?:(id:string)=>void):void{
+ port:ActorSimulationPhasePort,
+ markActor?:(id:string,section?:string,elapsedMs?:number)=>void):void{
  const {notify,battleEvent,unobstructed}=port;
   for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
@@ -80,7 +82,9 @@ export function advanceSimulationActors(s:Session,h:number,
       continue;
     }
     if(a.side==='blue'){
-      port.runFriendly(s,a,h);
+      port.runFriendly(s,a,h,markActor?
+       (section,ms)=>markActor(a.id,section,ms):undefined);
+      const yieldStart=markActor?performance.now():0;
       // A teammate with NO authored orders shouldn't permanently plug an
       // otherwise usable threshold. Give the idle soldier a genuine small,
       // collision-checked step away from an approaching friendly. Keep
@@ -109,6 +113,8 @@ export function advanceSimulationActors(s:Session,h:number,
           }
         }
       }
+      if(markActor)markActor(a.id,'idle-passage',
+       performance.now()-yieldStart);
       // Incoming *actual hits* provide coarse directional evidence even
       // before the flanking shooter enters the operator's vision cone.
       // A brief gaze override never removes a WATCH or changes a MOVE.
@@ -122,7 +128,12 @@ export function advanceSimulationActors(s:Session,h:number,
       // Reaction uses a stronger one-second turn so opposing turn rates
       // cannot cancel each other and leave the operator facing away.
       if(hitDirection!==null)rotate(a,hitDirection,h*1.85);
-    }else port.decideEnemy(s,a,h);
+    }else{
+      const enemyStart=markActor?performance.now():0;
+      port.decideEnemy(s,a,h);
+      if(markActor)markActor(a.id,'enemy-policy',
+       performance.now()-enemyStart);
+    }
     if(markActor)markActor(a.id);
   }
 }
