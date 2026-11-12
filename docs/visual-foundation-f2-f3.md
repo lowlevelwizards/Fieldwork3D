@@ -26,3 +26,28 @@ No simulation, pathfinding, fog-of-war, replay disclosure, ballistics, saved app
 - Matched visual comparison for AK/AR/HK, operator, motel, and warehouse still requires actual screenshots; passing code tests alone is not aesthetic approval.
 
 Deploy only when previous Pages release is serving its expected build and current deploy queue is clear.
+
+## F3.4 cross-view release QA
+
+### Fixed comparison shots (record seed, build ID, camera, equipment preset)
+1. Arsenal: AKM wood versus polymer versus steel (receiver, handguard, magazine).
+2. Arsenal: AR M4A1 and HK G3 (metal/polymer separation, magazine, muzzle).
+3. Operator Studio: helmet, armor, fabric, webbing and weapon; front and three-quarter.
+4. Breezeway Motel ISO and director: painted trim, furniture timber and carpet/tile.
+5. Shipping Court Warehouse ISO and director: corrugated metal, industrial steel, mineral floor.
+6. Clean site versus neglected condition; day, evening, night, blackout, emergency.
+
+### Specific visual sign-off
+- Metal and plastic differ without glowing silhouettes, and wood stays warm.
+- Cloth, webbing and skin have no artificial rim glint; baked camo shadows remain legible.
+- Fine textile and wood grain decay before structural seams at tactical scale.
+- Clean walls stay quiet; wear and patina remain dependent on material and condition.
+- No change in tactical knowledge, room reveal, enemy vision or replay observer.
+- Capture actual before/after images on a representative mobile device. Concept-art mockups
+  are not evidence of final renderer appearance.
+
+### Release protocol
+Feature-branch commits are individual stage checkpoints. Only merge F2+F3 as a
+coherent batch after focused CI and screenshot review, while confirming Pages
+is idle and the previous expected build is publicly served. A failed deploy
+must be fixed rather than stacking another merge.
