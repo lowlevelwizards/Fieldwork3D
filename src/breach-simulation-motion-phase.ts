@@ -61,7 +61,6 @@ export function advanceSimulationMotion(s:Session,h:number,
   if(s.civilians.length){
     const nearby=[...s.operators.filter(a=>a.health>0),
       ...s.civilians.filter(c=>c.health>0)];
-    const responsesStart=cpuMark();
     let responseTime=0,movementTime=0;
     for(const civil of s.civilians){
       const responseStart=cpuMark();
@@ -90,11 +89,12 @@ export function advanceSimulationMotion(s:Session,h:number,
         profile('civilian-motion/step-'+civil.id,elapsed);
       }
     }
-    cpuEnd('response',responsesStart);
-    // 'response' above is an enclosing wall clock, not additive to its
-    // individual per-civilian samples or the separate movement total.
-    if(profile)profile('civilian-motion/step',movementTime);
-    void responseTime;
+    // Child actor costs sum to these category totals. Neither total adds
+    // to the enclosing 'civilian-motion' parent measured by the phase probe.
+    if(profile){
+      profile('civilian-motion/response',responseTime);
+      profile('civilian-motion/step',movementTime);
+    }
   }
   const arbitrationStart=cpuMark();
   const proposals=buildMotionFrameProposals(
