@@ -11,8 +11,9 @@ test('P1.5d mobile chart provides spike inspection and one-tap report copying',(
  assert.match(s,/max-height:62vh/);
  assert.match(s,/navigator\.clipboard\?\.writeText/);
 });
-test('P1.5d only explicitly instantiated diagnostics construct a canvas',()=>{
- assert.match(s,/constructor\(\)\{/);
+test('P1.5d only instantiated in-game or URL diagnostics construct a canvas',()=>{
+ assert.match(s,/constructor\(onHide:\(\)=>void=\(\)=>\{\}\)\{/);
+ assert.match(s,/this\.hideButton\.addEventListener/);
  assert.match(s,/document\.createElement\('canvas'\)/);
  assert.doesNotMatch(s,/setInterval\(/);
  assert.doesNotMatch(s,/requestAnimationFrame\(/);
