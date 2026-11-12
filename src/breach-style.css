@@ -3834,3 +3834,30 @@ body.replaying .replay-follow-status[data-grade]::after{
  .fw-v5-workspace .fw-v3-highlight-info{min-height:100px}
  .fw-v5-workspace .fw-v3-highlight-chip{flex-basis:130px;max-width:130px}
 }
+
+/* V5.7 landscape audit: one compact control rail gives the character screen space. */
+@media(min-width:701px) and (max-height:480px){
+ .fw-v5-workspace .fw-v3-combat{
+  display:grid;grid-template-columns:max-content minmax(0,1fr);
+  grid-template-rows:auto auto auto auto;align-content:start;
+  column-gap:8px;row-gap:4px}
+ .fw-v5-workspace .fw-v3-combat-top{
+  grid-column:1;grid-row:1;display:flex;flex-wrap:nowrap;
+  gap:4px;align-items:center}
+ .fw-v5-workspace .fw-v3-contact-rail{
+  grid-column:2;grid-row:1;min-height:44px;align-self:center;
+  padding-bottom:0;overflow-x:auto}
+ .fw-v5-workspace .fw-v3-combat-focus,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-focus{
+  grid-column:1/-1;grid-row:2;min-height:0;
+  height:auto;align-items:start;gap:8px}
+ .fw-v5-workspace .fw-v3-combat-figure,
+ .fw-v5-workspace .fw-v4-combat-3d .fw-v3-combat-figure{
+  height:170px;min-height:150px}
+ .fw-v5-workspace .fw-v3-combat-info{
+  padding:0;gap:4px}
+ .fw-v5-workspace .fw-v5-shot-position{
+  grid-column:1/-1;grid-row:3}
+ .fw-v5-workspace .fw-v3-shot-sequence{
+  grid-column:1/-1;grid-row:4}
+}
