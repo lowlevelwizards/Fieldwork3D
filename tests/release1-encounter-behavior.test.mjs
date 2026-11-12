@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {EncounterBehaviorSurvey} from '../src/breach-encounter-quality.ts';
 
 function fixture(){
@@ -48,4 +50,23 @@ test('empty eligible populations remain valid and cannot cause invented outcomes
  assert.match(source,/behavior=process\.argv\.includes\('--behavior'\)/);
  assert.match(source,/if\(behavior\)\{/);
  assert.match(source,/stepSession\(probe,1\/60\);survey\.sample/);
+});
+
+test('one real seeded scripted encounter completes without touching player runtime',()=>{
+ const result=spawnSync(process.execPath,[
+  '--experimental-strip-types','scripts/audit-mission-quality.mjs','1','--behavior'
+ ],{cwd:fileURLToPath(new URL('../',import.meta.url)),encoding:'utf8',
+    timeout:120000,maxBuffer:8*1024*1024});
+ assert.equal(result.signal,null,result.stderr);
+ assert.ok(result.stdout.trim(),result.stderr||'No survey output');
+ const report=JSON.parse(result.stdout);
+ assert.equal(report.encounterBehavior.seeds,1);
+ const row=report.encounterBehavior.rows[0];
+ assert.equal(row.seed,11);
+ assert.equal(row.population.activeHostiles>=0,true);
+ assert.equal(row.hostiles.investigationsStarted>=0,true);
+ assert.equal(row.civilians.changedStateActors>=0,true);
+ assert.equal(row.combat.shots>=0,true);
+ assert.equal(row.stimulus.injected,
+  row.population.activeHostiles>0||row.population.activeCivilians>0);
 });
