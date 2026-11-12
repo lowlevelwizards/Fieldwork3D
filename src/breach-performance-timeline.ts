@@ -20,7 +20,8 @@ export type PerformanceSightDelta=Readonly<{
 export type PreviousFrameWork=Readonly<{
  beforeUi:number;ui:number;sceneSync:number;render:number;
  postRender:number;diagnostics:number;scene:PerformanceSceneCosts;
- actor?:Readonly<{rigMs:number;rigBuilds:number;poseMs:number;poseCount:number}>
+ actor?:Readonly<{rigMs:number;rigBuilds:number;poseMs:number;poseCount:number;
+  appearanceMs?:number;weaponBuildMs?:number;otherPoseMs?:number}>
 }>;
 export type PerformanceTimelineSample=Readonly<{
  at:number;raf:number;js:number;sync:number;sim:number;recording:number;
@@ -124,7 +125,11 @@ export function previousFrameHotspot(sample:PerformanceTimelineSample):string{
    const a=work.actor;
    return '3D actors '+work.scene.actors.toFixed(0)+'ms'+
     ' (rig '+a.rigMs.toFixed(0)+'ms/'+a.rigBuilds+
-    ', pose '+a.poseMs.toFixed(0)+'ms/'+a.poseCount+')';
+    ', pose '+a.poseMs.toFixed(0)+'ms/'+a.poseCount+
+    (a.appearanceMs!==undefined?
+     ', app '+a.appearanceMs.toFixed(0)+
+     ' / gun '+(a.weaponBuildMs??0).toFixed(0)+
+     ' / IK+'+(a.otherPoseMs??0).toFixed(0):'')+')';
   }
   return '3D '+inner+' '+work.scene[inner].toFixed(0)+
    'ms / sync '+work.sceneSync.toFixed(0)+'ms';
@@ -204,7 +209,8 @@ export class PerformanceTimeline{
    'prior_canvas_ms,prior_post_ms,prior_profiler_ms,'+
    'prior_scene_actors_ms,prior_scene_fog_ms,prior_scene_submit_cpu_ms,'+
    'prior_rig_build_ms,prior_rig_build_count,'+
-   'prior_pose_ms,prior_pose_count,prior_hot_sim_phase'];
+   'prior_pose_ms,prior_pose_count,prior_hot_sim_phase,'+
+   'prior_pose_appearance_ms,prior_pose_weapon_build_ms,prior_pose_other_ms'];
   for(const {bucket,peak:p,maxSync} of this.series){
    const fields=[bucket*PERFORMANCE_BUCKET_MS/1000,
     p.raf,p.js,p.sync,maxSync,p.sim,p.scene.actors,p.scene.disclosure,
@@ -222,7 +228,10 @@ export class PerformanceTimeline{
     p.previousWork?.actor?.rigBuilds??'',
     p.previousWork?.actor?.poseMs??'',
     p.previousWork?.actor?.poseCount??'',
-    p.previousHotSim??''];
+    p.previousHotSim??'',
+    p.previousWork?.actor?.appearanceMs??'',
+    p.previousWork?.actor?.weaponBuildMs??'',
+    p.previousWork?.actor?.otherPoseMs??''];
    lines.push(fields.join(','));
   }
   return lines.join('\n');

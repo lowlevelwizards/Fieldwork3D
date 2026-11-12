@@ -134,7 +134,8 @@ export class TacticalScene3D{
   /** Opt-in cold-rig vs pose timing. The actor phase can contain first-use
    * wardrobe material/shadow generation as well as steady-state posing. */
   private readonly actorPhaseCosts={
-   rigMs:0,rigBuilds:0,poseMs:0,poseCount:0
+   rigMs:0,rigBuilds:0,poseMs:0,poseCount:0,
+   appearanceMs:0,weaponBuildMs:0,otherPoseMs:0
   };
   /** CPU-only slices of a single 3D update. GPU time is NOT measured. */
   private readonly scenePhases:Record<StagePhaseName,number>={
@@ -1423,6 +1424,10 @@ export class TacticalScene3D{
   }
   private soldier(a:TeamActor){
     const physical=createOperatorRig(a.id,a.side,true);
+    // Purely opt-in CPU phase marks inside poseOperator; no normal-play
+    // instrumentation or changes to rig construction/animation decisions.
+    if(this.profileSceneUpdate)
+     physical.root.userData.fieldworkProfilePose=true;
     const {root,weapon,pack}=physical;
     if(this.graphicLookEnabled)
      weapon.userData.fieldworkWeaponPresentation=true;
@@ -1476,6 +1481,9 @@ export class TacticalScene3D{
       this.actorPhaseCosts.rigBuilds=0;
       this.actorPhaseCosts.poseMs=0;
       this.actorPhaseCosts.poseCount=0;
+      this.actorPhaseCosts.appearanceMs=0;
+      this.actorPhaseCosts.weaponBuildMs=0;
+      this.actorPhaseCosts.otherPoseMs=0;
     }
     // Never memoize reconstructed current sight during historical replay.
     this.presentationSight.begin(s,allowPresentationSightReuse(
@@ -2102,6 +2110,13 @@ export class TacticalScene3D{
       if(this.profileSceneUpdate){
        this.actorPhaseCosts.poseMs+=performance.now()-poseStart;
        this.actorPhaseCosts.poseCount++;
+       const breakdown=object.physical.root.userData.fieldworkPoseCpu as
+        {appearanceMs:number;weaponBuildMs:number;otherMs:number}|undefined;
+       if(breakdown){
+        this.actorPhaseCosts.appearanceMs+=breakdown.appearanceMs;
+        this.actorPhaseCosts.weaponBuildMs+=breakdown.weaponBuildMs;
+        this.actorPhaseCosts.otherPoseMs+=breakdown.otherMs;
+       }
       }
       if(this.graphicLookEnabled&&object.root.visible){
        // Do not traverse hundreds of meshes every 60Hz frame. Recompose

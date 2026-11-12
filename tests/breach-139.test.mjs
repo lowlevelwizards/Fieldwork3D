@@ -28,8 +28,12 @@ test('139: falling operator releases grip and a separate gun settles to ground',
  r.dispose();
 });
 test('139: 3D shot effects are not redrawn through foreground UI overlay',()=>{
- const c=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- const start=c.indexOf('function renderProjectedPlans()'),end=c.indexOf('function fog()',start);
+ // C5 renderer extraction moved this overlay from the gameplay host
+ // to its actual owner; test the live projected overlay, not stale main.
+ const c=readFileSync(new URL('../src/breach-2d-projected-overlays.ts',
+  import.meta.url),'utf8');
+ const start=c.indexOf('function renderProjectedPlans()');
+ const end=c.indexOf('return {renderProjectedPlans}',start);
  assert.ok(start>0&&end>start);
  assert.ok(!c.slice(start,end).includes('for(const shot of state.shots)'));
 });

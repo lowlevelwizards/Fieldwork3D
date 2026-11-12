@@ -76,6 +76,11 @@ function approach(v:number,target:number,rate:number,dt:number){
 const P=(x:number,y:number,z:number)=>new THREE.Vector3(x,y,z);
 const EQUIPMENT_LOCAL_Z=new THREE.Vector3(0,0,1);
 export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
+  // Timing only for opt-in ?perf=1 tactical rigs. Lab, replay and normal
+  // gameplay never pay for these marks or store diagnostic objects.
+  const profilePose=r.root.userData.fieldworkProfilePose===true;
+  const poseStart=profilePose?performance.now():0;
+  let appearanceMs=0,weaponBuildMs=0;
   const diagnosticsEnabled=p.poseDiagnostics!==false;
   const {scratch,discontinuity,dt:frameDt}=beginOperatorAnimationFrame(r,p,dt);
   beginOperatorPoseOutput(r,p);
@@ -85,7 +90,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const [heldWeapon,droppedWeapon]=equipment.weapons;
   const attachments=equipment.attachments;
   dt=frameDt;
+  const appearanceStart=profilePose?performance.now():0;
   const clothing=updateOperatorAppearance(r,p);
+  if(profilePose)appearanceMs=performance.now()-appearanceStart;
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
   const buckle=p.down&&!p.surrender?smooth(downProgress/.48):0;
@@ -293,22 +300,21 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.weaponConfiguration:undefined;
   if(r.visualWeapon!==p.weapon||
      !sameWeaponConfiguration(r.visualWeaponConfiguration,config)){
+    const buildStart=profilePose?performance.now():0;
     // A weapon/platform or immutable attachment configuration changed.
-    // Keep the live and dropped silhouette exactly in sync.
+    // Clear stale dropped geometry too, but do not rebuild an invisible
+    // *second weapon* for every healthy actor on their first pose.
+    // Dropped meshes are populated synchronously when the real pose first
+    // shows them, so downing/surrender never produces an empty frame.
     for(const group of [r.weaponBody,r.droppedWeaponBody,
       r.weaponAccessories,r.droppedAccessories,r.detachedMagazine])
       clearWeaponSilhouette(group);
-    const models=[
-      [r.weaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config)],
-      [r.droppedWeaponBody,buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config)]
-    ] as const;
-    for(const [dest,model] of models){
-      // Preserve the read-only visible buttplate descriptor when transferring
-      // the prebuilt mesh children into the reusable weapon rig.
-      dest.userData.visibleStockContact=
-        model.userData.visibleStockContact??null;
-      while(model.children.length)dest.add(model.children[0]);
-    }
+    const model=buildWeaponSilhouette(p.weapon,r.weaponSteel,r.weaponDark,config);
+    // Preserve the read-only stock descriptor for the live fitted weapon.
+    r.weaponBody.userData.visibleStockContact=
+      model.userData.visibleStockContact??null;
+    while(model.children.length)r.weaponBody.add(model.children[0]);
+    r.droppedWeaponBody.userData.visibleStockContact=null;
     // Detachable geometry is copied from precisely the same named AR/AK
     // magazine slot. No extra placeholder or alternate silhouette exists.
     const magazineSocket=weaponPresentationSockets(p.weapon,config).magazine;
@@ -320,15 +326,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       r.detachedMagazine.add(copy);
     }
     if(config){
-      for(const dest of [r.weaponAccessories,r.droppedAccessories]){
-        const model=buildWeaponAccessories(config,r.weaponSteel,r.weaponDark,
-         r.weaponLensMaterial);
-        while(model.children.length)dest.add(model.children[0]);
-      }
+      const accessories=buildWeaponAccessories(config,r.weaponSteel,r.weaponDark,
+       r.weaponLensMaterial);
+      while(accessories.children.length)
+       r.weaponAccessories.add(accessories.children[0]);
     }
     r.weaponLightLens=r.weaponAccessories.getObjectByName('weapon-light-lens')??null;
-    r.droppedLightLens=r.droppedAccessories.getObjectByName('weapon-light-lens')??null;
+    r.droppedLightLens=null;
     r.visualWeapon=p.weapon;r.visualWeaponConfiguration=config;
+    if(profilePose)weaponBuildMs+=performance.now()-buildStart;
   }
   if(r.weaponLightLens)r.weaponLightLens.visible=!!p.weaponLightOn&&
     !p.down&&!p.surrender;
@@ -724,6 +730,29 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.reachRequest=null;
   heldWeapon.visible=(!p.down&&!p.surrender)||downProgress<.30;
   droppedWeapon.visible=(p.down||p.surrender)&&downProgress>=.30;
+  if(droppedWeapon.visible&&r.droppedWeaponBody.children.length===0){
+    const buildStart=profilePose?performance.now():0;
+    // Build the same real silhouette (including accessories) at the exact
+    // first visible dropped frame. No delayed appearance, proxy geometry,
+    // added shadow casters, or changed weapon sockets.
+    const dropped=buildWeaponSilhouette(p.weapon,
+      r.weaponSteel,r.weaponDark,config);
+    r.droppedWeaponBody.userData.visibleStockContact=
+      dropped.userData.visibleStockContact??null;
+    while(dropped.children.length)
+      r.droppedWeaponBody.add(dropped.children[0]);
+    if(config){
+      const accessories=buildWeaponAccessories(config,r.weaponSteel,
+        r.weaponDark,r.weaponLensMaterial);
+      while(accessories.children.length)
+        r.droppedAccessories.add(accessories.children[0]);
+    }
+    r.droppedLightLens=
+      r.droppedAccessories.getObjectByName('weapon-light-lens')??null;
+    // Retain the original off-state even on this freshly constructed frame.
+    if(r.droppedLightLens)r.droppedLightLens.visible=false;
+    if(profilePose)weaponBuildMs+=performance.now()-buildStart;
+  }
   const leftGrip=P(data.supportX,data.supportY,-1.6);
   const rightGrip=P(data.primaryX,data.primaryY,1.8);
   const releaseLeft=handOwners.left!=='weapon';
@@ -1174,5 +1203,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     finalEquipment.attachmentOutputs);
   // Exactly one commit of the six validated, rig-local output stages.
   commitOperatorPoseOutput(r,p);
-
+  if(profilePose){
+   const total=performance.now()-poseStart;
+   // 'other' includes gait, arm constraints, IK and transform publication;
+   // this breakdown is CPU wall time, not GPU time or simulation physics.
+   r.root.userData.fieldworkPoseCpu={
+    appearanceMs,weaponBuildMs,
+    otherMs:Math.max(0,total-appearanceMs-weaponBuildMs)
+   };
+  }
 }
