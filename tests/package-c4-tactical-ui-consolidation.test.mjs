@@ -89,9 +89,9 @@ test('C4 actual palette owner reads waypoint position before nearest target disc
 test('C4 HUD and click handlers consume the same gate and reject delayed context actions',()=>{
  const hud=source('ui/tactical-hud-controller.ts');
  for(const property of ['flash','back','clear','undo','redo','wait','sync'])
-  assert.match(hud,new RegExp('ui\\\\.'+property+'\\\\.disabled=!availability\\\\.'+property));
+  assert.match(hud,new RegExp('ui\\.'+property+'\\.disabled=!availability\\.'+property));
  for(const property of ['back','clear','undo','redo','wait','flash','sync'])
-  assert.match(hud,new RegExp('if\\\\(!available\\\\(\\\\)\\\\.'+property+'\\\\)return'));
+  assert.match(hud,new RegExp('if\\(!available\\(\\)\\.'+property+'\\)return'));
  assert.match(hud,/button\.disabled/);
  assert.match(hud,/surface\.dataset\.owner!==config\.selected/);
  assert.match(hud,/surface\.hidden/);
