@@ -1155,10 +1155,10 @@ replayHudController.bindLateInteractions();
  * the presentation owners release only their own graphics, UI and sound.
  */
 function releaseMissionPresentation():void{
-  cancel2DCameraGlide();stage?.cancelFocusGlide();
   entryMapPicker?.dismiss();priorEntryCamera=null;
   // Historical scene is retained across replay, never across mission resets.
   disposeAfterActionPresentation(ui.debrief);
+  cancel2DCameraGlide();stage?.cancelFocusGlide();
   if(replayQuickVideo.active)replayQuickVideo.stop();
   if(replaying){
     stopReplayBodycam();
