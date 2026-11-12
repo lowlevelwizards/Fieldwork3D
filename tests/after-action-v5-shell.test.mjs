@@ -8,6 +8,7 @@ test('V5.1: mission summary is reversible and saved on replay return',()=>{
  assert.match(ui,/summaryCompact:s.summaryCompact/);
  assert.match(ui,/s.summaryCompact=context.summaryCompact/);
  assert.match(ui,/current.summaryCompact=!current.summaryCompact/);
+ assert.match(ui,/current.scroll\[current.tab\]=safeContent.scrollTop/);
  assert.match(html,/id="debriefGrade"/);
 });
 test('V5.1: segmented tabs and one preexisting body scroll owner survive',()=>{
