@@ -116,9 +116,24 @@ function paths(){
         const node=plan[i];
         if(node.kind==='move'||node.kind==='door'){
           // A longer, amber dash reads as RUN without needing another label.
+          const previewCourse=displayRouteCache.get(previous,node.p,state.intel,
+            state.phase==='planning');
+          if(previewCourse.narrowOnly){
+            // Same route knowledge as 3D. An amber fine dash warns of a
+            // likely narrow passage, without promising an actual squeeze.
+            draw.save();draw.strokeStyle='#e7b980';draw.globalAlpha=.88;
+            draw.lineWidth=2.7;draw.setLineDash([2,4]);draw.beginPath();
+            draw.moveTo(previous.x,previous.y);
+            for(const point of previewCourse.points)draw.lineTo(point.x,point.y);
+            draw.stroke();draw.restore();
+            draw.save();draw.fillStyle='#e7b980';
+            draw.font='700 11px "Saira Condensed",sans-serif';
+            draw.textAlign='left';
+            draw.fillText('NARROW',node.p.x+12,node.p.y+20);
+            draw.restore();
+          }
           if(visual[i].before.pace==='run'){
-            const steps=displayRouteCache.get(previous,node.p,state.intel,
-              state.phase==='planning').points;
+            const steps=previewCourse.points;
             draw.save();draw.strokeStyle='#f0ce8e';draw.globalAlpha=.68;
             draw.lineWidth=2.2;draw.setLineDash([11,3]);draw.beginPath();
             draw.moveTo(previous.x,previous.y);
@@ -208,6 +223,17 @@ function paths(){
         circle(landing.x,landing.y,selectedNow?11:9,'#dca053');
         draw.fillStyle='#1d2624';draw.font='600 12px "Work Sans",sans-serif';
         draw.textAlign='center';draw.fillText('F',landing.x,landing.y+4);
+      }
+      // Per-node state persists into subsequent legs, not the leg arriving
+      // at this node. This matches the shared orderVisualScopes contract.
+      if(a.id===selected&&(n.postureState||n.paceState||n.firePolicyState)){
+        draw.save();draw.fillStyle='#a2d7c9';
+        draw.font='600 11px "Work Sans",sans-serif';
+        draw.textAlign='left';
+        draw.fillText([n.postureState?.toUpperCase(),
+          n.paceState?.toUpperCase(),n.firePolicyState?.toUpperCase()]
+          .filter(Boolean).join(' · '),point.x+12,point.y+26);
+        draw.restore();
       }
       if(n.kind==='move'&&n.moveMode==='strafe'){
         draw.textAlign='left';draw.font='700 12px "Saira Condensed",sans-serif';

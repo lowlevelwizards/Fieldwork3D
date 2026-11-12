@@ -95,11 +95,11 @@ function renderProjectedPlans(){
           steps.map(p=>worldToScreen(p,4));
         for(const projected of projectedSteps)
           draw.lineTo(projected.x,projected.y);
-        draw.strokeStyle=color;
+        const narrowOnly=n.kind==='move'&&!!cachedRoute?.narrowOnly;
+        draw.strokeStyle=narrowOnly&&a.id===selected?'#e7b980':color;
         draw.globalAlpha=a.id===selected?.96:muted?.18:.50;
         draw.lineWidth=n.kind==='pie'?3:
           semantics.before.watch&&a.id===selected?3.6:2.4;
-        const narrowOnly=n.kind==='move'&&!!cachedRoute?.narrowOnly;
         // Narrow routes use a finer dash without another overlay.
         draw.setLineDash(n.kind==='pie'?[3,3]:
           semantics.before.watch&&a.id===selected?[3,5]:
@@ -119,6 +119,12 @@ function renderProjectedPlans(){
       draw.fillStyle='#142829';draw.font='700 12px "Saira Condensed",sans-serif';
       draw.textAlign='center';draw.fillText(String(plan.indexOf(n)+1),
         point.x,point.y+3);
+      if(a.id===selected&&cachedRoute?.narrowOnly&&n.kind==='move'){
+        draw.save();draw.fillStyle='#e7b980';
+        draw.font='700 11px "Saira Condensed",sans-serif';
+        draw.textAlign='left';draw.fillText('NARROW',point.x+12,point.y+27);
+        draw.restore();
+      }
       if(n.facing!==undefined){
         const aim=worldToScreen({x:n.p.x+Math.cos(n.facing)*38,
           y:n.p.y+Math.sin(n.facing)*38},8);
