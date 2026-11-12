@@ -11,7 +11,8 @@ import * as THREE from 'three';
 import {updateOperatorSlingPose} from './breach-operator-sling-pose.ts';
 import {applyOperatorTraumaPose,finishOperatorPoseFrame} from './breach-pose-frame-finalizer.ts';
 import {beginOperatorPoseOutput,stageOperatorPoseOutput,
- commitOperatorPoseOutput} from './breach-operator-pose-output.ts';
+ stageDirectOperatorPoseOutput,commitOperatorPoseOutput}
+ from './breach-operator-pose-output.ts';
 import {canonicalRootOrientation} from './operator-axis-convention.ts';
 import {neutralMannequinWrist,neutralMannequinElbowPole}
  from './operator-mannequin-pose.ts';
@@ -266,9 +267,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // canonicalRoot * legacyFrame(+90 Y) = original Euler(pitch,yaw,roll).
   r.root.quaternion.copy(
     canonicalRootOrientation(r.legacyPitch,r.legacyYaw,r.legacyRoll));
-  applyOperatorLegIK(r,p,scratch,targets,kick,headingYaw,smooth);
-  // B2: the scheduled feet and solved legs have their final local output.
-  stageOperatorPoseOutput(r,p,'lower-body');
+  const legPose=applyOperatorLegIK(r,p,scratch,targets,kick,headingYaw,smooth);
+  // B3: all eight lower-body transforms are now computed off-scene.
+  // Only the final B2 publication may write those visible leg nodes.
+  stageDirectOperatorPoseOutput(r,p,'lower-body',legPose);
   // Build 120: stock, both grips and forearm targets share a single rigid
   // firearm transform. The fit searches reachable posture before limb IK.
   const config=p.weaponConfiguration?.weapon===p.weapon?

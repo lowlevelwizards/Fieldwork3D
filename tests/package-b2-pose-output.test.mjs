@@ -196,7 +196,7 @@ test('B2: the actual evaluator stages solved limbs and late-finalized equipment 
  const points=[
   'beginOperatorPoseOutput(r,p)',
   'applyOperatorLegIK(r,p,scratch,targets,kick,headingYaw,smooth)',
-  "stageOperatorPoseOutput(r,p,'lower-body')",
+  "stageDirectOperatorPoseOutput(r,p,'lower-body',legPose)",
   "stageOperatorPoseOutput(r,p,'upper-body')",
   'applyOperatorTraumaPose(r,p,downProgress)',
   'finishOperatorPoseFrame(r,p)',
