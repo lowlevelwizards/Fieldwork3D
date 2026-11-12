@@ -66,7 +66,8 @@ export function applyOperatorLegIK(r:OperatorRig,p:OperatorPose,
   scratch.bodyEuler.set(r.legacyPitch,r.legacyYaw,r.legacyRoll,'XYZ')).invert();
  for(let i=0;i<2;i++){
   const foot=r.feet[i],sign=i===0?-1:1,target=targets[i];
-  const [upper,lower,shoe,ankle]=output.transforms.slice(i*4,i*4+4);
+  const upper=output.transforms[i*4],lower=output.transforms[i*4+1];
+  const shoe=output.transforms[i*4+2],ankle=output.transforms[i*4+3];
   const hipLocal=scratch.hips[i].set(0,r.hip.position.y,
     r.hip.position.z+sign*LEG_HIP_SIDE);
   const anchor=target.position;
