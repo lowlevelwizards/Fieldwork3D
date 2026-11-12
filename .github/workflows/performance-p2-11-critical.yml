@@ -1,0 +1,31 @@
+name: Performance P2.11 civilian sensing critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-civilian-response.ts'
+      - 'src/breach-simulation-motion-phase.ts'
+      - 'tests/performance-p2-11-civilian-cadence.test.mjs'
+      - '.github/workflows/performance-p2-11-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  civilian:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Civilian cadence and integrated physical contacts
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-p2-11-civilian-cadence.test.mjs
+          tests/civilian-r2-behavior.test.mjs
+          tests/civilian-contact-flow-regression.test.mjs
+          tests/breach-closeout-stage2-simulation-phases.test.mjs
+          tests/performance-p2-7-live-routing.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run check && npx vite build

@@ -1,0 +1,29 @@
+name: Performance P2.9 UI attribution critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-runtime-loop.ts'
+      - 'src/breach-performance-timeline.ts'
+      - 'tests/performance-p2-9-ui-attribution.test.mjs'
+      - '.github/workflows/performance-p2-9-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  timeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: UI attribution and preceding-frame compatibility
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-p2-9-ui-attribution.test.mjs
+          tests/performance-p1-5-timeline.test.mjs
+          tests/performance-p1-5-scene-phases.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run check && npx vite build

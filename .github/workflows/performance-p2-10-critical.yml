@@ -1,0 +1,28 @@
+name: Performance P2.10 recovery-route critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-squeeze-route.ts'
+      - 'tests/performance-p2-10-route-recovery.test.mjs'
+      - '.github/workflows/performance-p2-10-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  routing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Recovery route equivalence and physical safety
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-p2-10-route-recovery.test.mjs
+          tests/performance-p2-7-live-routing.test.mjs
+          tests/breach-normal-lane-priority.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run check && npx vite build
