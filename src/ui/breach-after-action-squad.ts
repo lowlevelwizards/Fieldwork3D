@@ -70,10 +70,10 @@ function contributionBar(points:OperatorAfterAction['categories']):HTMLElement{
  return bar;
 }
 function evidenceList(evidence:readonly ContributionEvidence[]|undefined,
- inspect?:((key:string)=>void)):HTMLElement|null{
+ inspect?:((key:string)=>void),limit=3):HTMLElement|null{
  if(!evidence?.length)return null;
  const top=evidence.slice().sort((a,b)=>b.points-a.points||a.at-b.at)
-   .slice(0,3);
+   .slice(0,limit);
  const group=el('section','fw-v5-recorded-actions');
  group.append(el('h3','','RECORDED ACTIONS'));
  for(const entry of top){
@@ -203,7 +203,8 @@ export function renderSquadView(report:AfterActionReport,
    'PARTIAL REPLAY · RANKING MAY OMIT UNRECORDED ACTIONS'));
  return section;
 }
-export function renderSquadDetails(op:OperatorAfterAction):HTMLElement{
+export function renderSquadDetails(op:OperatorAfterAction,
+ inspect?:((key:string)=>void)):HTMLElement{
  const root=el('section','fw-v3-operator-details');
  root.append(el('h3','',op.name+' / RECORDED CONTRIBUTIONS'));
  const pairs:[string,string][]=[
@@ -229,6 +230,8 @@ export function renderSquadDetails(op:OperatorAfterAction):HTMLElement{
  }
  const earned=distinction(op);
  if(earned)root.append(el('p','fw-v3-distinction','✦ '+earned));
+ const fullHistory=evidenceList(op.contributions,inspect,Infinity);
+ if(fullHistory)root.append(fullHistory);
  root.append(methodology());
  return root;
 }
