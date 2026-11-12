@@ -32,6 +32,9 @@ import {windowShardPose,WINDOW_SHARDS_PER_PANE}
  from './rendering/window-shatter-presentation.ts';
 import {type CivilianRig} from './breach-civilian-visuals.ts';
 import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
+import {shouldPrewarmContactRig,withPreparedVisibleRoot}
+ from './rendering/breach-contact-rig-prewarm.ts';
+import {ShotVisualPool} from './rendering/breach-shot-visual-pool.ts';
 import {type ReplayDisclosure} from './breach-replay-visibility.ts';
 import {graphicsBudget} from './breach-graphics-budget.ts';
 import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
@@ -121,6 +124,11 @@ const mat=(hex:number,roughness=.9)=>new THREE.MeshStandardMaterial({
 });
 type StagePhaseName='environment'|'camera'|'disclosure'|'actors'|
  'effects'|'fog'|'shadows'|'postCamera'|'gpuSubmit';
+type ShotEffectVisual={
+ style:string;root:THREE.Group;line:THREE.Mesh;impact:THREE.Mesh;
+ chips:THREE.Mesh[];material:THREE.MeshBasicMaterial;
+ impactMaterial:THREE.MeshBasicMaterial;
+};
 export class TacticalScene3D{
   private readonly hemisphere=new THREE.HemisphereLight(
    STUDIO_INSPECTION_LIGHT.sky,studioShadowPalette('plum-plus').ground,1.20);
@@ -607,9 +615,8 @@ export class TacticalScene3D{
     wedge:THREE.Mesh;glassPane?:THREE.Mesh}>();
   private observedDoorGlass=new Map<string,boolean>();
   private observedDoorOpen=new Map<string,number>();
-  private effectCache=new Map<number,{root:THREE.Group;line:THREE.Mesh;
-    impact:THREE.Mesh;chips:THREE.Mesh[];material:THREE.MeshBasicMaterial;
-    impactMaterial:THREE.MeshBasicMaterial}>();
+  private effectCache=new Map<number,ShotEffectVisual>();
+  private readonly shotEffectPool=new ShotVisualPool<ShotEffectVisual>(20);
   // One instanced draw for every stain and impact mark, rather than a mesh
   // and transparent material allocation per hit.
   private impactDecalMesh:THREE.InstancedMesh|null=null;
@@ -1021,6 +1028,9 @@ export class TacticalScene3D{
       effect.material.dispose();effect.impactMaterial.dispose();
     }
     this.effectCache.clear();
+    this.shotEffectPool.clear(effect=>{
+      effect.material.dispose();effect.impactMaterial.dispose();
+    });
     // Only the site-dependent fog MESH geometry changes here.
     // Canvas and its disclosure/painting rules remain owned by this scene.
     const fogSize=maskSize(site);
@@ -1867,9 +1877,17 @@ export class TacticalScene3D{
     this.markScenePhase('disclosure');
     for(const actor of s.operators){
       const visible=presentActor(s,actor,omniscient,replayDisclosurePolicy);
-      // Spawn full 3D rigs only when needed. Enemy AI, LOS and simulation
-      // always exist; hidden actors incur no model construction on mobile.
-      if(!visible&&!this.actors.has(actor.id))continue;
+      // Hostile first-contact should not trigger a full rig, costume/lightmap,
+      // and weapon build on the active combat frame. Before the first GO,
+      // prepare each unseen hostile once while it remains undisclosed.
+      // Historical replay never prewarms from present-day hidden truth.
+      const prewarmHostile=shouldPrewarmContactRig({
+        phase:s.phase,started:s.started,side:actor.side,visible,
+        hasRig:this.actors.has(actor.id),
+        historical:!!replay||!!replayDisclosurePolicy||!!replayDoorHistory||
+          !!replayWindowHistory
+      });
+      if(!visible&&!this.actors.has(actor.id)&&!prewarmHostile)continue;
       if(!this.actors.has(actor.id)){
        const rigStart=this.profileSceneUpdate?performance.now():0;
        this.soldier(actor);
@@ -1892,7 +1910,13 @@ export class TacticalScene3D{
         statusMat.opacity=down ? .85 :Math.max(0,1-hitTime/.28);
         statusMat.color.setHex(down?0xd99e83:0xf4c7aa);
       }
-      if(!object.root.visible)continue;
+      if(!object.root.visible&&!prewarmHostile){
+        // Beam and contact-shadows are independent scene roots, unlike the
+        // actor body. Never leak their position after an enemy leaves sight.
+        object.beam.visible=false;
+        for(const shadow of object.contactShadows)shadow.visible=false;
+        continue;
+      }
       // Presentation samples do not alter authoritative collision or shot state.
       const drawActor=interpolatedActor(actor,renderFrame);
       // Airborne body is a fixed-tick simulation outcome. Keep the 3D
@@ -2124,14 +2148,19 @@ export class TacticalScene3D{
         this.actorPhaseCosts.receiverAtlasMs+=breakdown.receiverAtlasMs??0;
        }
       }
-      if(this.graphicLookEnabled&&object.root.visible){
+      if(this.graphicLookEnabled&&(object.root.visible||prewarmHostile)){
+       // Warm visual material composition before first contact too. Never
+       // display a hidden hostile's textures, pose, beam or foot shadows.
        // Do not traverse hundreds of meshes every 60Hz frame. Recompose
        // only after costume/weapon source materials actually changed.
        const appearance=String(
         object.physical.root.userData.fieldworkLightingAppearanceKey??'');
        const stamp=appearance+'|'+actor.weapon;
        if(object.root.userData.fieldworkProductionGraphicStamp!==stamp){
-        applyStudioGraphicLighting(object.root,APPROVED_GRAPHIC_LIGHTING);
+        if(prewarmHostile)
+         withPreparedVisibleRoot(object.root,()=>
+          applyStudioGraphicLighting(object.root,APPROVED_GRAPHIC_LIGHTING));
+        else applyStudioGraphicLighting(object.root,APPROVED_GRAPHIC_LIGHTING);
         object.root.userData.fieldworkProductionGraphicStamp=stamp;
         this.graphicOperatorRestyles++;
        }
@@ -2179,6 +2208,8 @@ export class TacticalScene3D{
       active.add(shot.id);visibleShots++;
       let effect=this.effectCache.get(shot.id);
       if(!effect){
+        const style=shot.side+'|'+(shot.surface??'dust');
+        effect=this.shotEffectPool.acquire(style,()=>{
         const root=new THREE.Group();
         const material=new THREE.MeshBasicMaterial({
           color:shot.side==='blue'?0xffde9d:0xff9b73,
@@ -2205,8 +2236,12 @@ export class TacticalScene3D{
             root.add(chip);chips.push(chip);
           }
         }
-        this.effects.add(root);
-        effect={root,line,impact,chips,material,impactMaterial};
+        return {style,root,line,impact,chips,material,impactMaterial};
+        });
+        // Inactive entries are detached from the render scene, retaining
+        // only the exact same styled meshes/materials for the next shot.
+        this.effects.add(effect.root);
+        effect.root.visible=true;
         this.effectCache.set(shot.id,effect);
       }
       const start=this.shotStart.set(
@@ -2306,7 +2341,10 @@ export class TacticalScene3D{
     for(const [id,effect] of this.effectCache){
       if(active.has(id))continue;
       this.effects.remove(effect.root);
-      effect.material.dispose();effect.impactMaterial.dispose();
+      effect.root.visible=false;
+      this.shotEffectPool.release(effect.style,effect,discard=>{
+        discard.material.dispose();discard.impactMaterial.dispose();
+      });
       this.effectCache.delete(id);
     }
     // Ground-aligned cone/memory mask: no elevated fog surfaces and no
