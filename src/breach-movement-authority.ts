@@ -15,6 +15,15 @@ export type MotionProposal={
 export type MotionDecision={id:string;point:Pt;blocked:'geometry'|'actor'|null};
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const moved=(a:MotionProposal)=>dist(a.from,a.to)>.0001;
+/** Conservative swept-body AABB reject. When *all* possible positions
+ * of one body stay more than the collision envelope away from the other,
+ * the expensive exact relative-trajectory test cannot register a contact.
+ * No collision decision is made here; near pairs retain crosses unchanged. */
+export const sweptPairMayTouch=(af:Pt,at:Pt,bf:Pt,bt:Pt,envelope:number)=>
+ Math.max(af.x,at.x)+envelope>Math.min(bf.x,bt.x)&&
+ Math.max(bf.x,bt.x)+envelope>Math.min(af.x,at.x)&&
+ Math.max(af.y,at.y)+envelope>Math.min(bf.y,bt.y)&&
+ Math.max(bf.y,bt.y)+envelope>Math.min(af.y,at.y);
 const crosses=(a:MotionProposal,b:MotionProposal)=>{
  // A collision is meaningful only when the proposed final positions
  // converge. Fixed ticks bound travel; retain clearance during swaps.
@@ -58,6 +67,10 @@ export function resolveMovementFrame(
   if((a.side==='blue'&&b.side==='neutral')||
      (b.side==='blue'&&a.side==='neutral'))continue;
   const pa=draft.get(a.id)!,pb=draft.get(b.id)!;
+  // Most 16v16v16 actor pairs are spatially distant. Reject them with
+  // arithmetic before allocating temporary proposals or calculating sqrt.
+  if(!sweptPairMayTouch(a.from,pa.point,b.from,pb.point,
+    a.side==='neutral'||b.side==='neutral'?20:11))continue;
   const da={...a,to:pa.point},db={...b,to:pb.point};
   if(!crosses(da,db))continue;
   const movingA=dist(a.from,pa.point)>.0001;

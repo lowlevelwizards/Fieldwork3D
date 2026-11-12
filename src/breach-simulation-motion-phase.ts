@@ -17,6 +17,13 @@ import {traversalStepClear,sampleTraversal} from './breach-mantle.ts';
 import type {Session} from './breach-game.ts';
 const d=length;
 const clone=(p:Pt):Pt=>({...p});
+/** Civilian crowd/occupancy uses fixed positive radii and a strict
+ * inequality. Compare squared distance to avoid sqrt for each live body
+ * on every 60Hz candidate; retain live sequential actor positions. */
+const withinSquared=(a:Pt,b:Pt,radiusSq:number)=>{
+ const dx=a.x-b.x,dy=a.y-b.y;
+ return dx*dx+dy*dy<radiusSq;
+};
 export type MotionSimulationPhasePort={
  canSee:(from:Pt,to:Pt,s:Session,lowBlocks:boolean)=>boolean;
  routeTo:(s:Session,from:Pt,to:Pt)=>Pt[];
@@ -66,8 +73,17 @@ export function advanceSimulationMotion(s:Session,h:number,
     // reused across their fixed-tick movement and observer evaluations.
     // The underlying geometry and actor positions remain live at call time.
     const clear=(from:Pt,to:Pt)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
-    const routeTo=(from:Pt,to:Pt)=>port.routeTo(s,from,to);
-    const occupied=(p:Pt,id:string)=>nearby.some(a=>a.id!==id&&d(a.p,p)<20);
+    let routeWorkMs=0;
+    const routeTo=(from:Pt,to:Pt)=>{
+      if(!profile)return port.routeTo(s,from,to);
+      const started=performance.now();
+      // The route itself remains synchronous and authoritative; only the
+      // optional instrumentation reads a wall clock.
+      try{return port.routeTo(s,from,to);}
+      finally{routeWorkMs+=performance.now()-started;}
+    };
+    const occupied=(p:Pt,id:string)=>nearby.some(a=>
+      a.id!==id&&withinSquared(a.p,p,400));
     const sensoryCommon={
       noise:s.noise,people:s.operators,doors:s.doors,walls:world.walls,
       windows:s.windows,
@@ -83,8 +99,10 @@ export function advanceSimulationMotion(s:Session,h:number,
       if(civilianSenseDue(civil,s.seconds)){
         stepCivilianResponse(civil,s.seconds,h,{
           ...sensoryCommon,
-          isCrowded:p=>s.operators.some(o=>o.health>0&&d(o.p,p)<22)||
-            s.civilians.some(c=>c.id!==civil.id&&d(c.p,p)<22)
+          isCrowded:p=>s.operators.some(o=>o.health>0&&
+            withinSquared(o.p,p,484))||
+            s.civilians.some(c=>c.id!==civil.id&&
+            withinSquared(c.p,p,484))
         });
       }
       if(profile){
@@ -105,6 +123,8 @@ export function advanceSimulationMotion(s:Session,h:number,
     if(profile){
       profile('civilian-motion/response',responseTime);
       profile('civilian-motion/step',movementTime);
+      // Nested within response/step; do NOT sum it into the parent.
+      profile('civilian-motion/route-search',routeWorkMs);
     }
   }
   const arbitrationStart=cpuMark();
