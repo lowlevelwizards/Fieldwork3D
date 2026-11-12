@@ -26,10 +26,13 @@ import {discoverContactCover} from './breach-intel.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {d,clone,angle,clamp,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
+import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
+ from './breach-motor-cpu-probe.ts';
 
 export function resolveMotorCollision(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
- canAutoSidestep:boolean,closed:boolean,hooks:ActorMotorHooks):boolean{
+ canAutoSidestep:boolean,closed:boolean,hooks:ActorMotorHooks,
+ profile?:((section:string,elapsedMs:number)=>void)):boolean{
  const world=sessionWorldGeometry(s);
   // Allies may brush and pass one another: their bodies never hard-block
   // authored routes. Only an opposing actor is a physical traffic barrier.
@@ -74,7 +77,9 @@ export function resolveMotorCollision(
     // Failed comfort searches must not restart the world-truth recovery
     // clock; it needs uninterrupted stall time to escalate blocked moves.
     a.lastNormalLaneProbeAt=s.seconds;
+    const laneAt=profile?beginMotorCpuMeasurement():0;
     const fullLane=recoverNormalLane(a.p,p,s.doors,world);
+    if(profile)profile('motor-collision-lane',finishMotorCpuMeasurement(laneAt));
     if(fullLane.length&&d(fullLane[0],next)>6&&
        d(fullLane[0],a.p)>3&&
        watchClearanceAllowed(a.p,fullLane[0],p,
@@ -96,7 +101,9 @@ export function resolveMotorCollision(
   // slightly INTO the wall. Avoid rotating into a squeeze facing while
   // simply walking parallel to a solid wall or reversing alongside it.
   if(!normalClear&&!blocking&&!closed){
+    const glideAt=profile?beginMotorCpuMeasurement():0;
     const glide=glideAlongStaticWall(a.p,desiredMove,s.doors,world);
+    if(profile)profile('motor-collision-glide',finishMotorCpuMeasurement(glideAt));
     if(glide){
       const old=clone(a.p);
       a.priorP=old;a.p=glide;
@@ -265,8 +272,10 @@ export function resolveMotorCollision(
       // Once actual collision is observed, repair against real geometry,
       // not only the incomplete player-intel route that may run through
       // an undiscovered door frame. The authored final goal is unchanged.
+      const replanAt=profile?beginMotorCpuMeasurement():0;
       const repaired=a.side==='red'?hooks.cachedEnemyRoute(s,a.p,p,true):
         routeWithSqueezeWorld(a.p,p,s.doors,world);
+      if(profile)profile('motor-collision-replan',finishMotorCpuMeasurement(replanAt));
       // A world-truth path that repeats the stuck steps is not progress.
       // Known-intel fallback is allowed only if it materially differs;
       // never replace a route with an empty result while the door moves.
