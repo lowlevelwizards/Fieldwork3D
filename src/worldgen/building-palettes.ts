@@ -124,6 +124,15 @@ export function roomFixtureFinishes(theme:BuildingTheme,
   publicRoom?.11:wetRoom?.23:.08);
  return {wood,metal,fabric,accent};
 }
+/** Existing decorative fabrics may inherit a little paint color without
+ * turning all rooms into colorful accents; no new prop geometry.
+ */
+export function roomAccessoryColor(theme:BuildingTheme,purpose:string|undefined,
+ base:number):number{
+ const c=roomFixtureFinishes(theme,purpose).accent;
+ const publicRoom=['waiting','reception','lobby','lounge','dining'].includes(purpose??'');
+ return mix(base,c,publicRoom?.20:.10);
+}
 export function roomFloor(theme:BuildingTheme,purpose:string|undefined,tone=0):number{
  const wet=['kitchen','bathroom','restroom','pantry','laundry','exam',
    'treatment','waiting','reception','checkout','service'].includes(purpose??'');

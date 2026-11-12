@@ -16,7 +16,7 @@ import {SiteMaterialLifetime} from './site-material-lifetime.ts';
 import {StaticSceneBatches} from './breach-static-batcher.ts';
 import {type PixelSurface} from './pixel-materials.ts';
 import {roomPixelSurface,wallPixelSurface,fixturePixelSurface} from '../worldgen/pixel-surface-selection.ts';
-import {buildingTheme,roomFloor,roomFixtureFinishes} from '../worldgen/building-palettes.ts';
+import {buildingTheme,roomFloor,roomFixtureFinishes,roomAccessoryColor} from '../worldgen/building-palettes.ts';
 import {effectiveCondition} from '../worldgen/condition-visual.ts';
 import {conditionFloorPixels} from '../worldgen/condition-visual.ts';
 import {conditionWallPixels} from '../worldgen/condition-wall.ts';
@@ -516,11 +516,13 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         host.box(prop,0,31,0,13,9,13,smallPaper,false);break;
       case 'rug': case 'bedside-rug': case 'bath-mat':
       case 'welcome-mat': case 'runner':{
-        const palette=detail.kind==='bath-mat'?0x728b83:
+        const baseRugColor=detail.kind==='bath-mat'?0x728b83:
           detail.kind==='runner'?0x8a7c63:
           detail.kind==='welcome-mat'?0x635646:
           detail.kind==='bedside-rug'?0x8a7865:0x93765e;
-        const textile=host.solid(palette,.95,'fabric');
+        const purpose=site.rooms.find(room=>room.id===detail.roomId)?.purpose;
+        const rugColor=roomAccessoryColor(theme,purpose,baseRugColor);
+        const textile=host.solid(rugColor,.95,'fabric');
         const border=host.solid(0xc1b295,.95,'fabric');
         const w=detail.width??42,d=detail.depth??24;
         host.box(prop,0,.11,0,w,.22,d,textile,false);
