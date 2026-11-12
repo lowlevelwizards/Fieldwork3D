@@ -69,8 +69,9 @@ test('D1 live Session activates persistent episodes for four-person entry',()=>{
   assert.equal(planSquadEntry(s,'ENTRY'),true);
   toggling(s);
   let seen=0,retained=0;const last=new Map();
-  for(let i=0;i<1200;i++){
-   stepSession(s,1/60);
+  // Match the existing full four-person outward-door acceptance horizon.
+  for(let i=0;i<1800;i++){
+   stepSession(s,1/30);
    for(const a of members)if(a.doorTraversal){
     seen++;
     const old=last.get(a.id);
