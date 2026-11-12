@@ -160,6 +160,44 @@ export function previousFrameHotspot(sample:PerformanceTimelineSample):string{
 }
 export class PerformanceTimeline{
  private readonly series:PerformanceTimelineBucket[]=[];
+ /** Always-on, minimal RAF history before the player opens diagnostics.
+  * Keeps the SAME bounded 250ms buckets and exact per-mode callback counts,
+  * but does not create a detailed sample/copy for every RAF. Scene and
+  * simulation attribution prior to arming the profiler is unavailable.
+  * This has no gameplay, GPU, DOM, or simulation instrumentation cost. */
+ addCoarseFrame(at:number,raf:number,js:number,phase:string,camera:string,
+   previousJs?:number,previousPhase?:string):void{
+  const stamp=Math.max(0,at),bucket=Math.floor(stamp/PERFORMANCE_BUCKET_MS);
+  const previous=this.series[this.series.length-1];
+  if(previous&&bucket<previous.bucket)this.series.length=0;
+  const current=this.series[this.series.length-1];
+  const makePeak=():PerformanceTimelineSample=>({
+   at:stamp,raf:finite(raf),js:finite(js),sync:0,sim:0,recording:0,
+   previousJs,previousPhase,ui:0,overlay:0,scene:EMPTY_SCENE,
+   draws:0,steps:0,phase,camera,hotSim:'',
+   fogPaints:0,shadowRefreshes:0,sight:{
+    queries:0,hits:0,misses:0,bypasses:0,invalidations:0
+   }
+  });
+  let item:PerformanceTimelineBucket;
+  if(current&&current.bucket===bucket){
+   item=current;item.frames++;
+   if(raf>item.peak.raf)item.peak=makePeak();
+   item.maxJs=Math.max(item.maxJs,finite(js));
+  }else{
+   item={bucket,peak:makePeak(),frames:1,maxSync:0,
+    maxJs:finite(js),modes:newModeCounts()};
+   this.series.push(item);
+  }
+  const m=item.modes[historyPhase(previousPhase??phase)];
+  m.frames++;
+  if(raf>=33.3)m.slow++;
+  if(raf>=66.7)m.severe++;
+  m.worst=Math.max(m.worst,raf);
+  while(this.series.length>PERFORMANCE_BUCKET_COUNT||
+    (this.series.length&&bucket-this.series[0].bucket>=PERFORMANCE_BUCKET_COUNT))
+   this.series.shift();
+ }
  add(sample:PerformanceTimelineSample):void{
   const at=Math.max(0,sample.at),bucket=Math.floor(at/PERFORMANCE_BUCKET_MS);
   const last=this.series[this.series.length-1];
