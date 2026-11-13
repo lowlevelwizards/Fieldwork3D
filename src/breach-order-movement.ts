@@ -47,7 +47,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
       a.aimInstruction=null;
       if(near(a.p,n.p,5)){pop(a);return true;}
       move(a,n.p,dt,s,1.40);
-      if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt);
+      if(a.nav.length)rotate(a,angle(a.p,a.nav[0]),dt,s);
       return true;
     }
     const arc=n.arc??[];
@@ -61,7 +61,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
       // toward the doorway pivot rather than tangential travel.
       move(a,point,dt,s,.44);
     }
-    if(n.pivot&&!a.squeeze)rotate(a,angle(a.p,n.pivot),dt);
+    if(n.pivot&&!a.squeeze)rotate(a,angle(a.p,n.pivot),dt,s);
     return true;
   }
   const friendlyPeers=n.kind==='move'?
@@ -137,10 +137,10 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
       running&&a.aimInstruction?.mode==='track'?null:aimHeading(a);
     if(held!==null){
       a.autoSidestep=null;
-      rotate(a,held,dt);
+      rotate(a,held,dt,s);
     }else if(n.kind==='move'&&n.moveMode==='strafe'){
       a.autoSidestep=null;
-      rotate(a,n.facing??a.heading,dt);
+      rotate(a,n.facing??a.heading,dt,s);
     }else if(a.nav.length){
       // Clearance glides may move laterally even while the original
       // nav point remains straight ahead. Test the actual resolved motor
@@ -156,7 +156,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
         !a.aimInstruction&&
         !approachingNarrowThreshold(a.p,n.p,s.doors));
       if(facing===null)a.autoSidestep=null;
-      rotate(a,facing??angle(a.p,a.nav[0]),dt);
+      rotate(a,facing??angle(a.p,a.nav[0]),dt,s);
     }
     return true;
   }
@@ -181,21 +181,21 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     if(n.aimMode==='free'&&n.facing!==undefined){
       // LOOK deliberately orients at this node, then releases any tracking
       // or fixed strafe constraint. The next move faces the travel direction.
-      if(!rotate(a,n.facing,dt))return true;
+      if(!rotate(a,n.facing,dt,s))return true;
       // Briefly settle the sightline, allowing normal time-based acquisition.
       if(!visibleThreat&&a.waitRemaining<.22){
         a.waitRemaining+=dt;return true;
       }
     }else{
       const held=visibleThreat?angle(a.p,visibleThreat.p):aimHeading(a);
-      if(held!==null)rotate(a,held,dt);
+      if(held!==null)rotate(a,held,dt,s);
     }
     pop(a);return true;
   }
-  if(n.facing!==undefined&&!rotate(a,n.facing,dt))return true;
+  if(n.facing!==undefined&&!rotate(a,n.facing,dt,s))return true;
   // Door/wait/sync orders should not cancel a persistent look/track intent.
   const held=aimHeading(a);
-  if(held!==null)rotate(a,held,dt);
+  if(held!==null)rotate(a,held,dt,s);
 
  return false;
  };
