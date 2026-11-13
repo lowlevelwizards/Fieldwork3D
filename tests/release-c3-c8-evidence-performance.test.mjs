@@ -34,7 +34,7 @@ test('C8: urgent response is never deferred; ordinary search is budgeted',()=>{
 test('C8: no recurring sort or global frame search added to contact decisions',()=>{
  const source=src('breach-enemy-decision-controller.ts');
  assert.doesNotMatch(source,/visible\.sort\(/);
- assert.match(source,/const friends:ReturnType<typeof safetyBodyFor>\\[\\]=\\[\\]/);
- assert.doesNotMatch(source,/const friends=enemies\\(s\\)\\.filter\\(/);
+ assert.ok(source.includes('const friends:ReturnType<typeof safetyBodyFor>[]=[]'));
+ assert.ok(!source.includes('const friends=enemies(s).filter('));
  assert.match(source,/AiWorkScheduler\(2,/);
 });
