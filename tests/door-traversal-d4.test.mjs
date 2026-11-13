@@ -23,6 +23,8 @@ test('D4 support hand starts only after contact on a truly reachable hinge',()=>
  assert.equal(beginDoorGrip(a,d,2),true);
  assert.equal(a.doorTraversal.handContact,true);
  assert.equal(a.doorTraversal.handContactSince,2);
+ assert.equal(a.doorTraversal.maneuver,'outside-leaf',
+  'a hand grasp cannot overwrite the current footwork corridor');
  assert.equal(updateDoorGrip(a,d,2.5),true);
  const old=handlePoint(d);
  d.openFraction=1.16;

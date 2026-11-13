@@ -41,7 +41,10 @@ export function beginDoorGrip(actor:TeamActor,door:Door,
     !withinHandle(actor.p,door))return false;
  if(!e.handContact)e.handContactSince=seconds;
  e.handContact=true;
- e.maneuver='grab-and-hold';
+ // A support-hand reach is independent of the feet's rehearsed route.
+ // Do not erase an active outside-leaf corridor and invite A* churn.
+ if(e.maneuver==='direct'||e.maneuver==='push-through')
+  e.maneuver='grab-and-hold';
  return true;
 }
 export function updateDoorGrip(actor:TeamActor,door:Door,
