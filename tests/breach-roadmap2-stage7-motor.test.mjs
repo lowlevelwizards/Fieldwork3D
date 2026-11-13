@@ -57,7 +57,9 @@ test('passage, door, squeeze and recovery are separated without hidden owners',(
  const route=source('breach-motor-route.ts');
  const traversal=source('breach-motor-traversal.ts');
  assert.match(passage,/passageDeadlockRetreatTarget/);
- assert.match(passage,/passageWait\(/);
+ assert.match(passage,/coordinatePassage\(/);
+ assert.doesNotMatch(passage,/passageWait\(/,
+  'Q2 has one cached coordinator, not an independent passage lease arbitration');
  assert.match(door,/canAutoOpenEnRoute/);
  assert.match(door,/doorWouldStrikeActors/);
  assert.match(collision,/sweptProfileClear/);
