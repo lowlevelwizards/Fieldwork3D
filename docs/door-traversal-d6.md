@@ -55,3 +55,39 @@ per-frame global door scan, or gameplay movement semantics are introduced.
 D6 source code and deterministic CI can be complete independently of handset
 measurement. The latter is explicitly a physical acceptance task: **do not
 invent measured mobile performance or mark device-signoff green from CI**.
+
+## Observed generated-building baseline (CI checkpoint)
+
+The Release 7 generated audit on D6 PR #1298 ran **11 real seeded sites,
+22 actual four-operator plans, 900 fixed 60-Hz ticks per attempt**
+(15 simulated seconds), with no altered physics or extra route authority.
+
+| Metric | Observed |
+| --- | ---: |
+| Four-person plans accepted | 22/22 |
+| Full four-person completions within 15 simulated seconds | 3/22 |
+| Incomplete operator journeys | 59 |
+| Recorded stall episodes | 7 |
+| Retries | 34 |
+| Near-door movement reversals | 437 |
+| Passage-wait seconds, summed across runs | 191.99 |
+| Invalid actor positions | 0 |
+| >50-unit fixed-tick displacements | 0 |
+| >4 maneuver selections per episode | 0 |
+| Authored-plan corruptions | 0 |
+
+**Interpretation:** Structural and physical regression gates are green, but
+generated-map squad throughput is **not** validated as universally good.
+Incompletions can mean a long legitimate route, a preflight-accepted but
+operationally blocked doorway, or poor recovery/traffic pacing; the
+15-second cutoff does not distinguish these automatically. Reversals count
+small direction changes near doors too, not just true backward walks.
+Do not change this quality outcome to PASS by weakening solid collision,
+auto-moving actors, shortening routes, or suppressing the counter.
+A subsequent longer-horizon per-seed audit and direct handset replay should
+classify these before changing recovery doctrine.
+
+For live-device comparison, record the same phone and scenario in D5 and D6
+where possible. D6's Door Test Range avoids extra paints in multi-tick
+frames, but a faster RAF trace on the lab is not a general 3D-performance
+result. Real handset measurements remain pending until physically captured.
