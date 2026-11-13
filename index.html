@@ -638,6 +638,83 @@
   </div>
  </div>
 </section>
+<script>
+/* This intentionally runs without the Vite bundle: a stale module URL or
+   top-level JavaScript exception must never leave the static HUD unexplained.
+   Recovery is user-initiated, so an active mission is never silently reloaded. */
+(function(){
+ var issue=null,problem='',ready=false;
+ function bootReady(){return ready||document.documentElement.dataset.fieldworkAppReady==='1';}
+ function displayProblem(reason){
+  if(bootReady())return;
+  problem=String(reason||'Unknown startup failure').slice(0,900);
+  if(issue){issue.querySelector('pre').textContent=problem;return;}
+  issue=document.createElement('section');
+  issue.id='fieldwork-startup-issue';
+  issue.setAttribute('role','alert');
+  issue.setAttribute('aria-label','Fieldwork startup problem');
+  issue.style.cssText='position:fixed;z-index:99999;top:calc(env(safe-area-inset-top,0px) + 92px);left:12px;right:12px;max-width:480px;margin:auto;padding:16px;border:1px solid #d7ad77;border-radius:8px;background:#192b2a;color:#f0e6d3;box-shadow:0 10px 40px #000a;font:13px/1.5 system-ui,sans-serif;user-select:text;-webkit-user-select:text';
+  var title=document.createElement('strong');
+  title.style.cssText='display:block;font-size:16px;letter-spacing:.03em';
+  title.textContent='FIELDWORK COULD NOT START';
+  var explanation=document.createElement('p');
+  explanation.textContent='The interface loaded, but the game did not finish starting. This can happen when an older page references a JavaScript file from a previous release.';
+  var detail=document.createElement('pre');
+  detail.style.cssText='overflow-wrap:anywhere;white-space:pre-wrap;font:11px/1.4 ui-monospace,monospace;color:#d5cbb7;max-height:96px;overflow:auto';
+  detail.textContent=problem;
+  var controls=document.createElement('div');
+  controls.style.cssText='display:flex;flex-wrap:wrap;gap:8px';
+  function control(label){
+   var b=document.createElement('button');
+   b.type='button';b.textContent=label;
+   b.style.cssText='min-height:44px;padding:9px 12px;border-radius:5px;border:1px solid #a9bfb4;background:#314743;color:#fff2dc;font:600 12px system-ui,sans-serif;touch-action:manipulation';
+   controls.appendChild(b);return b;
+  }
+  var reload=control('LOAD LATEST BUILD');
+  reload.addEventListener('click',async function(){
+   reload.disabled=true;reload.textContent='CHECKING BUILD…';
+   var url=new URL(window.location.href);
+   try{
+    var manifest=new URL('./fieldwork-build.json',document.baseURI);
+    manifest.searchParams.set('_',String(Date.now()));
+    var response=await fetch(manifest.href,{cache:'no-store'});
+    var latest=response.ok?await response.json():null;
+    url.searchParams.set('build',typeof latest?.id==='string'?latest.id:String(Date.now()));
+   }catch(error){url.searchParams.set('build',String(Date.now()));}
+   window.location.replace(url.href);
+  });
+  var copy=control('COPY ERROR');
+  copy.addEventListener('click',function(){
+   var report='FIELDWORK STARTUP · '+location.pathname+
+    '\n'+problem+'\nBuild: '+(document.querySelector('meta[name="fieldwork-build"]')?.content||'not stamped');
+   if(navigator.clipboard?.writeText)
+    navigator.clipboard.writeText(report).then(function(){copy.textContent='COPIED';},
+      function(){detail.textContent=report;});
+   else detail.textContent=report;
+  });
+  issue.append(title,explanation,detail,controls);
+  (document.body||document.documentElement).appendChild(issue);
+ }
+ window.addEventListener('error',function(event){
+  if(bootReady())return;
+  var target=event.target;
+  if(target?.tagName==='SCRIPT'){
+   displayProblem('Could not load JavaScript module: '+(target.src||'unknown URL'));
+  }else if(event.message){
+   displayProblem(event.message+(event.filename?' · '+event.filename:''));
+  }
+ },true);
+ window.addEventListener('unhandledrejection',function(event){
+  if(!bootReady())displayProblem(event.reason?.message||String(event.reason));
+ });
+ window.addEventListener('fieldwork:boot-ready',function(){
+  ready=true;issue?.remove();issue=null;
+ });
+ window.setTimeout(function(){
+  if(!bootReady())displayProblem('The game startup did not complete within 15 seconds. The JavaScript bundle may be missing or blocked.');
+ },15000);
+})();
+</script>
 <script type="module" src="./src/breach-main.ts"></script>
 </body>
 </html>
