@@ -57,9 +57,9 @@ const railBody=(frames:HelmetSurfaceFrame[]):THREE.BufferGeometry=>{
  const data:number[]=[];
  for(let i=1;i<frames.length;i++){
   const a=frames[i-1],b=frames[i];
-  const hA=i===1?.44:.48,hB=i===frames.length-1?.57:.48;
-  const aTop=at(a,hA,.31),aBot=at(a,-hA,.31),
-   bTop=at(b,hB,.31),bBot=at(b,-hB,.31);
+  const hA=i===1?.55:.61,hB=i===frames.length-1?.77:.61;
+  const aTop=at(a,hA,.43),aBot=at(a,-hA,.43),
+   bTop=at(b,hB,.43),bBot=at(b,-hB,.43);
   quad(aTop,aBot,bBot,bTop,data);
   quad(at(a,hA,.13),aTop,bTop,at(b,hB,.13),data);
   quad(aBot,at(a,-hA,.13),at(b,-hB,.13),bBot,data);
@@ -86,13 +86,13 @@ const bolt=(parent:THREE.Group,frame:HelmetSurfaceFrame,
  dark:THREE.Material,light:THREE.Material)=>{
  const mount=new THREE.Group();
  mount.name='arc-rail-chinstrap-sharing-bolt';
- mount.position.copy(frame.position).addScaledVector(frame.normal,.36);
+ mount.position.copy(frame.position).addScaledVector(frame.normal,.49);
  mount.quaternion.setFromRotationMatrix(new THREE.Matrix4()
   .makeBasis(frame.right,frame.up,frame.normal));
  parent.add(mount);
  for(const [name,radius,depth,material,z] of [
-  ['arc-recessed-washer',.27,.055,dark,.025],
-  ['arc-visible-bolt-head',.18,.070,light,.075]
+  ['arc-recessed-washer',.33,.055,dark,.025],
+  ['arc-visible-bolt-head',.23,.070,light,.075]
  ] as const){
   const m=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,depth,8),
    material);
@@ -112,9 +112,10 @@ export function addAchMichArcRails(
   m.castShadow=false;m.receiveShadow=false;g.add(m);
   for(const u of [-.56,-.35,-.14,.08,.30,.51]){
    const f=railFrame(shell,side,u,u>.25?(u-.25)*.75:0);
-   const slot=new THREE.Mesh(new THREE.PlaneGeometry(.22,.47),dark);
+   // ACH-ARC retention slots run along the rail, not vertically.
+   const slot=new THREE.Mesh(new THREE.PlaneGeometry(.53,.23),dark);
    slot.name='large-arc-accessory-slot';
-   attach(g,f,slot,0,.35);
+   attach(g,f,slot,0,.46);
   }
   for(const s of [stations[0],stations[stations.length-1]])
    bolt(g,railFrame(shell,side,s.u,s.rise),dark,fastener);

@@ -17,7 +17,7 @@ import {StaticSceneBatches}
 import {tacticalFogBounds,buildExteriorKnownFogGeometry,
  replaceTacticalFogGeometry}
  from '../src/rendering/breach-fog-mesh-composition.ts';
-import {exteriorKnownFogRects,fogUvAt}
+import {fogUvAt}
  from '../src/breach-fog-domain.ts';
 
 const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
@@ -133,38 +133,60 @@ test('C2 tactical scene uses one rendering assembly for initial and replacement 
  assert.match(scene,/applyStudioGraphicLighting\(object\.root,APPROVED_GRAPHIC_LIGHTING\)/);
 });
 
-test('C2 exterior-known fog mesh preserves existing union rectangles, index winding and UV',()=>{
+test('C2 exterior-known 3D fog spans the full 2D mask domain without rectangular holes',()=>{
  const site=generateSite(31,'small');
  const bounds=tacticalFogBounds(site);
- const rects=exteriorKnownFogRects(site);
  const geom=buildExteriorKnownFogGeometry(site,bounds);
  const pos=geom.getAttribute('position'),uv=geom.getAttribute('uv');
  const indices=geom.getIndex();
- assert.equal(pos.count,rects.length*4);
- assert.equal(uv.count,rects.length*4);
- assert.equal(indices.count,rects.length*6);
- assert.deepEqual(Array.from(indices.array).slice(0,6),
-  rects.length?[0,1,2,0,2,3]:[]);
- for(let k=0;k<rects.length;k++){
-  const r=rects[k];
-  const points=[
-   {x:r.x,y:r.y},{x:r.x,y:r.y+r.h},
-   {x:r.x+r.w,y:r.y+r.h},{x:r.x+r.w,y:r.y}
-  ];
-  for(let i=0;i<4;i++){
-   const n=k*4+i,p=points[i],mapped=fogUvAt(p,bounds);
-   assert.ok(Math.abs(pos.getX(n)-p.x)<1e-5);
-   assert.ok(Math.abs(pos.getY(n)-1.05)<1e-5);
-   assert.ok(Math.abs(pos.getZ(n)-p.y)<1e-5);
-   assert.ok(Math.abs(uv.getX(n)-mapped.u)<1e-5);
-   assert.ok(Math.abs(uv.getY(n)-mapped.v)<1e-5);
-  }
+ // Disclosed exterior is transparent in the SHARED canvas mask. The GPU
+ // geometry must not additionally clip out room gaps or U-shaped courts.
+ assert.equal(pos.count,4);
+ assert.equal(uv.count,4);
+ assert.equal(indices.count,6);
+ assert.deepEqual(Array.from(indices.array),[0,1,2,0,2,3]);
+ const points=[
+  {x:bounds.minX,y:bounds.minY},
+  {x:bounds.minX,y:bounds.maxY},
+  {x:bounds.maxX,y:bounds.maxY},
+  {x:bounds.maxX,y:bounds.minY}
+ ];
+ for(let i=0;i<4;i++){
+  const p=points[i],mapped=fogUvAt(p,bounds);
+  assert.ok(Math.abs(pos.getX(i)-p.x)<1e-5);
+  assert.ok(Math.abs(pos.getY(i)-1.05)<1e-5);
+  assert.ok(Math.abs(pos.getZ(i)-p.y)<1e-5);
+  assert.ok(Math.abs(uv.getX(i)-mapped.u)<1e-5);
+  assert.ok(Math.abs(uv.getY(i)-mapped.v)<1e-5);
  }
  geom.dispose();
  const empty=buildExteriorKnownFogGeometry(null);
  assert.equal(empty.getAttribute('position').count,0);
  assert.equal(empty.getIndex().count,0);
  empty.dispose();
+});
+
+test('C2 U-shaped shipping court has continuous physical fog coverage but retains exterior mask control',()=>{
+ // An open U-shaped court is visibly exterior (clear in the paint mask).
+ // The 3D drawing mesh still covers it; display alpha decides the pixels.
+ const site={
+  rooms:[
+   {id:'N',x:100,y:100,w:240,h:40,kind:'room',tone:0},
+   {id:'W',x:100,y:140,w:40,h:180,kind:'room',tone:0},
+   {id:'E',x:300,y:140,w:40,h:180,kind:'room',tone:0}
+  ],
+  bounds:{minX:0,minY:0,maxX:450,maxY:450}
+ };
+ const geom=buildExteriorKnownFogGeometry(site,site.bounds);
+ const pos=geom.getAttribute('position');
+ const minX=Math.min(...Array.from({length:pos.count},(_,i)=>pos.getX(i)));
+ const maxX=Math.max(...Array.from({length:pos.count},(_,i)=>pos.getX(i)));
+ const minZ=Math.min(...Array.from({length:pos.count},(_,i)=>pos.getZ(i)));
+ const maxZ=Math.max(...Array.from({length:pos.count},(_,i)=>pos.getZ(i)));
+ assert.ok(minX<220&&maxX>220&&minZ<230&&maxZ>230,
+  'no 3D cut-out at the U-shaped shipping court');
+ assert.equal(pos.count,4,'one quad for the shared display mask');
+ geom.dispose();
 });
 
 test('C2 fog geometry swaps release old buffers but preserve material, nodes and render order',()=>{

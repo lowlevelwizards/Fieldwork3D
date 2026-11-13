@@ -8,6 +8,7 @@ import {isFieldHelmet,resolveHelmetField,resolveHelmetFieldColor,
  type FieldHelmet} from './operator-helmet-field-policy.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {addAchMichConcealment} from './operator-helmet-field-concealment.ts';
+import {createAchMichSurfaceBandGeometry} from './operator-helmet-field-fit.ts';
 import {createAchMichFieldNetGeometry} from './operator-helmet-field-net.ts';
 import {addAchMichThreeHoleShroud} from './operator-helmet-field-shroud.ts';
 import {addAchMichArcRails} from './operator-helmet-field-rails.ts';
@@ -66,12 +67,14 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
  const bandMaterial=mat(0x586548),webbingMaterial=mat(0x586548);
  const front=p.front-.09,rear=p.rear+.08,side=p.side+.15;
  const band=addGroup('band');
- // PASGT uses its approved band geometry; ACH/MICH gets a fitted ribbon.
- const x=p.side+.18,y=p.top-2.39,f=front-.12,b=rear+.12;
- ribbon(band,bandMaterial,'shell-fitted-elastic',[
-  [-x,y,f+.60],[-x*.8,y,f],[0,y,f],[x*.8,y,f],
-  [x,y,f+.60],[x,y,b-.60],[x*.8,y,b],[0,y,b],
-  [-x*.8,y,b],[-x,y,b-.60],[-x,y,f+.60]],.52);
+ // H10.0: fit an actual closed, outward-offset band to the cloth.
+ // Never use straight front/side chords through a covered shell.
+ if(id!=='pasgt'){
+  const mesh=new THREE.Mesh(createAchMichSurfaceBandGeometry(id),bandMaterial);
+  mesh.name='surface-wrapped-elastic-band';
+  mesh.castShadow=false;mesh.receiveShadow=false;band.add(mesh);
+  band.userData.h10RealCoverRing=true;
+ }
  const loops=addGroup('loops'),scrim=addGroup('scrim'),
   leaves=addGroup('leaves');
  // H9.2: populate from the ACTUAL fitted cloth surface. The PASGT
@@ -173,7 +176,8 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  const bandHex=resolveHelmetFieldColor(s.bandColor,shellHex,v.shell==='pasgt');
  const webHex=resolveHelmetFieldColor(s.webbingColor,shellHex,v.shell==='pasgt');
  v.bandMaterial.color.setHex(bandHex);v.webbingMaterial.color.setHex(webHex);
- m.band.visible=s.band&&v.shell!=='pasgt';
+ // The net cannot be tied off if its retaining elastic is absent.
+ m.band.visible=(s.band||(covered&&s.concealment==='net'))&&v.shell!=='pasgt';
  m.loops.visible=covered&&v.shell!=='pasgt'&&s.concealment!=='none';
  m.scrim.visible=covered&&v.shell!=='pasgt'&&s.concealment==='scrim';
  m.net.visible=covered&&v.shell!=='pasgt'&&s.concealment==='net';
@@ -186,6 +190,11 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  for(const key of ['shroud','rails','bungees','velcro','strobe',
   'counterweight','battery','light','camera','chemlight','patches'] as const)
   m[key].visible=s[key];
+ // Mirror complete prebuilt surface-mounted models rather than rebuilding
+ // meshes, evaluating rays, or adding per-frame visual work.
+ m.camera.scale.x=s.cameraSide==='right'?1:-1;
+ m.light.scale.x=s.lightSide==='left'?1:-1;
+ m.chemlight.scale.x=s.chemlightSide==='right'?1:-1;
  for(const key of ['goggles-front','goggles-rear','goggles-eyes']){
   const where=key.substring('goggles-'.length);
   m[key].visible=s.goggles===where&&

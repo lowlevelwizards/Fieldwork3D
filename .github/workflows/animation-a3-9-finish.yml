@@ -1,0 +1,56 @@
+name: A3.9 continuous cover stance and kick finish
+on:
+  pull_request:
+    paths:
+      - 'src/breach-cover-stance.ts'
+      - 'src/breach-cover-height.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-replay.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-muzzle.ts'
+      - 'src/breach-combat.ts'
+      - 'src/breach-shot-resolution.ts'
+      - 'src/breach-firing-pipeline.ts'
+      - 'src/breach-friendly-safety-volume.ts'
+      - 'src/breach-contextual-support-contact.ts'
+      - 'src/a3-physicality-probe.ts'
+      - 'src/a3-physicality-lab-main.ts'
+      - 'a3-physicality-lab.html'
+      - 'src/breach-operator-animation-controller.ts'
+      - 'src/breach-door-actions.ts'
+      - 'tests/animation-a3-9-*'
+      - '.github/workflows/animation-a3-9-finish.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Fixed cover stance, head and muzzle parity
+        run: node --experimental-strip-types --test tests/animation-a3-9-continuous-cover-stance.test.mjs tests/animation-a3-9-cover-height-source.test.mjs tests/animation-a3-9-lab-observability.test.mjs
+      - name: Door kick weight and historical contact continuity
+        run: node --experimental-strip-types --test tests/animation-a3-9-kick-weight-transfer.test.mjs tests/animation-a3-9-kick-leg-choice.test.mjs tests/breach-135.test.mjs tests/door-traversal-d4-live-grip.test.mjs
+      - name: Existing body safety, physical hand and pose regressions
+        run: node --experimental-strip-types --test tests/animation-a3-1-friendly-volume.test.mjs tests/animation-a3-6-7-support-contacts.test.mjs tests/package-b3-lower-body-output.test.mjs tests/breach-143b.test.mjs
+      - name: TypeScript and production build
+        run: npm run build
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Real Physicality Lab phone and desktop
+        run: node scripts/smoke-animation-a3-0.mjs

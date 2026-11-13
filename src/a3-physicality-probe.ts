@@ -11,7 +11,7 @@ import {teammateAheadForHandling,handlingIntentForMovement}
 import {chooseCarry} from './breach-carry-policy.ts';
 import {chooseFriendlyLaneStep} from './breach-combat-reactions.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
-import {aimHeight} from './breach-cover-height.ts';
+import {effectiveAimHeight} from './breach-cover-height.ts';
 import {team,enemies,type Session} from './breach-game.ts';
 import {doorLeafSegment,type Pt} from './breach-core.ts';
 import {doorGripPhysicalContact} from './breach-physical-contact-anchor.ts';
@@ -42,7 +42,8 @@ export function probeA3(s:Session,config:A3Config){
   shoulderOffset:shooter.aimSideOffset??0,
   weapon:shooter.weapon,weaponConfiguration:shooter.weaponConfiguration,
   equipment:shooter.equipment,aim:shooter.aim,
-  posture:shooter.posture,velocity:shooter.velocity,recoil:shooter.recoil,
+  posture:shooter.posture,coverStanceDrop:shooter.coverStanceDrop??0,
+  velocity:shooter.velocity,recoil:shooter.recoil,
   threatRange:range} as const;
  // Gameplay's actual shot-time check intentionally does NOT let nearby
  // allies change rigid gun geometry. Projectiles still get independent
@@ -54,7 +55,7 @@ export function probeA3(s:Session,config:A3Config){
   ...request,friendlyAhead,friendlyNear:friendlyAhead,handlingIntent:intent
  },s.doors,world.cover,world.walls,friends);
  const from={x:shotClearance.muzzle.x,y:shotClearance.muzzle.z};
- const targetHeight=aimHeight(target.posture==='crouch');
+ const targetHeight=effectiveAimHeight(target);
  const lane=assessFireLane(from,shotClearance.muzzle.y,target.p,
   targetHeight,world.cover,world.walls,s.doors,friends);
  const legacyLane=assessFireLane(from,shotClearance.muzzle.y,target.p,
@@ -112,7 +113,10 @@ export function probeA3(s:Session,config:A3Config){
   seconds:round(s.seconds),phase:s.phase,
   shooter:{id:shooter.id,position:at(shooter.p),
    heading:round(shooter.heading),weaponYaw:round(shooter.weaponYaw),
-   posture:shooter.posture,velocity:round(shooter.velocity),
+   posture:shooter.posture,
+   coverStanceDrop:round(shooter.coverStanceDrop??0),
+   coverStanceSource:shooter.coverStanceSource??null,
+   velocity:round(shooter.velocity),
    weapon:shooter.weapon,aim:round(shooter.aim),
    firePolicy:shooter.firePolicy,lastFireBlock:shooter.lastFireBlock,
    recovery:shooter.fireRetreatTarget?at(shooter.fireRetreatTarget):null,
@@ -125,12 +129,14 @@ export function probeA3(s:Session,config:A3Config){
    health:target.health},
   allies:active.filter(a=>a!==shooter).map(a=>({
    id:a.id,position:at(a.p),posture:a.posture,
+   coverStanceDrop:round(a.coverStanceDrop??0),
    heading:round(a.heading),velocity:round(a.velocity),
    blockedTime:round(a.blockedTime),
    shoulderOffset:round(a.aimSideOffset??0),
    autoCrouchUntil:round(a.autoCrouchUntil??0),
    protectedTop:a.posture==='crouch'?
-    FRIENDLY_CROUCH_VOLUMES[1].top:FRIENDLY_STAND_VOLUMES[1].top
+    FRIENDLY_CROUCH_VOLUMES[1].top-(a.coverStanceDrop??0):
+    FRIENDLY_STAND_VOLUMES[1].top-(a.coverStanceDrop??0)
   })), 
   carry:{handling:carry.handling,reason:carry.reason,intent,
    friendlyAhead},

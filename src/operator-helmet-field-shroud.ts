@@ -48,7 +48,7 @@ export function addAchMichThreeHoleShroud(
  if(!f)throw Error('H9.4 missing front shroud face on '+shell);
  const anchor=new THREE.Group();
  anchor.name='h9-three-hole-shroud-surface-anchor';
- anchor.position.copy(f.position);
+ anchor.position.copy(f.position).addScaledVector(f.normal,.11);
  anchor.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(
   f.right,f.up,f.normal));
  anchor.userData.h9SurfaceNormal=f.normal.toArray();
@@ -93,6 +93,8 @@ export function addAchMichThreeHoleShroud(
  // Three real hole positions: top center and one each on the side wings.
  for(const [x,y] of [[0,.91],[-1.47,-.32],[1.47,-.32]])
   screw(anchor,x,y,.23,light,dark);
+ anchor.scale.set(1.29,1.22,1.10);
+ anchor.userData.h10GraphicScale=1.29;
  anchor.userData.h9ShroudScrews=3;
  anchor.userData.h9ShroudProfile='three-hole-winged-nvg';
 }

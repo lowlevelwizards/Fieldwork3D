@@ -9,6 +9,7 @@ export const HELMET_FIELD_COLORS=['auto','match','olive','tan','black'] as const
 export const HELMET_FIELD_CONCEALMENT=['none','foliage-loops','scrim','net','foliage-sparse','foliage-medium','foliage-heavy'] as const;
 export const HELMET_FIELD_TILTS=['level','forward','rear'] as const;
 export const HELMET_FIELD_GOGGLES=['none','eyes','front','rear'] as const;
+export const HELMET_FIELD_SIDES=['left','right'] as const;
 export type HelmetFieldOptions={
  band:boolean;bandColor:typeof HELMET_FIELD_COLORS[number];
  webbingColor:typeof HELMET_FIELD_COLORS[number];
@@ -18,13 +19,17 @@ export type HelmetFieldOptions={
  goggles:typeof HELMET_FIELD_GOGGLES[number];goggleSleeve:boolean;
  strobe:boolean;counterweight:boolean;battery:boolean;light:boolean;
  camera:boolean;chemlight:boolean;patches:boolean;
+ cameraSide:typeof HELMET_FIELD_SIDES[number];
+ lightSide:typeof HELMET_FIELD_SIDES[number];
+ chemlightSide:typeof HELMET_FIELD_SIDES[number];
 };
 export const HELMET_FIELD_DEFAULTS:Readonly<HelmetFieldOptions>=Object.freeze({
  band:false,bandColor:'auto',webbingColor:'auto',concealment:'none',
  fastened:true,tilt:'level',shroud:false,rails:false,bungees:false,
  velcro:false,goggles:'none',goggleSleeve:false,
  strobe:false,counterweight:false,battery:false,light:false,camera:false,
- chemlight:false,patches:false
+ chemlight:false,patches:false,
+ cameraSide:'right',lightSide:'left',chemlightSide:'right'
 });
 const choose=<T extends string>(v:unknown,values:readonly T[],fallback:T):T=>
  typeof v==='string'&&values.includes(v as T)?v as T:fallback;
@@ -42,7 +47,10 @@ export function readHelmetField(value:unknown):HelmetFieldOptions{
   velcro:b('velcro'),goggles:choose(v.goggles,HELMET_FIELD_GOGGLES,d.goggles),
   goggleSleeve:b('goggleSleeve'),strobe:b('strobe'),
   counterweight:b('counterweight'),battery:b('battery'),
-  light:b('light'),camera:b('camera'),chemlight:b('chemlight'),patches:b('patches')
+  light:b('light'),camera:b('camera'),chemlight:b('chemlight'),patches:b('patches'),
+  cameraSide:choose(v.cameraSide,HELMET_FIELD_SIDES,d.cameraSide),
+  lightSide:choose(v.lightSide,HELMET_FIELD_SIDES,d.lightSide),
+  chemlightSide:choose(v.chemlightSide,HELMET_FIELD_SIDES,d.chemlightSide)
  };
 }
 export const isFieldHelmet=(id:string):id is FieldHelmet=>

@@ -6,10 +6,15 @@ export function kickMotion(age:number){
  const chamber=smooth((t-.11)/.22);
  const extend=smooth((t-.33)/.22);
  const retract=smooth((t-.58)/.32);
+ // The opposite foot bears weight before lift-off and stays planted
+ // through impact; weight returns only when the leg has come back.
+ const brace=smooth((t-.06)/.25)*(1-smooth((t-.72)/.21));
+ const recover=smooth((t-.64)/.32);
  const extension=Math.max(0,chamber*.35+extend*.65-retract);
  return {progress:t,extension,contact:t>=.53&&t<.65,
   lift:8.8*extension,reach:11.7*extension,
-  torsoLean:extension*.13,complete:t>=1};
+  torsoLean:extension*.13,brace:brace*1.25,recover,
+  complete:t>=1};
 }
 export const doorActionLabel=(method:'open'|'close'|'kick'|'hold',swing:-1|1)=>
  method==='kick'?'KICK':method==='hold'?'HOLD':method==='close'?'CLOSE':

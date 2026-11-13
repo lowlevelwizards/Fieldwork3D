@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import {ACH_MICH_SHELLS} from './operator-headwear-silhouettes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 export type AchMichDetailLayers={
- bare:THREE.Group;hardware:THREE.Group;strap:THREE.Group;
+ bare:THREE.Group;coveredLiner:THREE.Group;hardware:THREE.Group;strap:THREE.Group;
  webbingMaterial:THREE.MeshStandardMaterial;
  bindingMaterial:THREE.MeshBasicMaterial;
 };
@@ -152,6 +152,17 @@ export function createAchMichRetentionGeometry(
    new THREE.Vector3(sign*.68,0,-.74);
   appendStrap(data,paths[i],normal,i%3===2?.44:.39);
  }
+ // Overlapping junction patches cover the three sewn legs where their
+ // differing face normals would otherwise leave a narrow triangular hole.
+ // Deliberately use the same webbing/material batch, not a floating clasp.
+ for(const sign of [-1,1] as const){
+  const hub:Point=[sign*4.47,1.22,-3.88];
+  const upper:Point=[sign*4.48,1.61,-3.99];
+  const outer:Point=[sign*4.71,1.17,-4.07];
+  const lower:Point=[sign*4.38,.91,-4.02];
+  for(const v of [upper,outer,hub,outer,lower,hub,lower,upper,hub])
+   data.push(...v);
+ }
  const pt=(x:number,y:number,z:number):Point=>[x,y,z];
  const topLeft=pt(-2.28,-.12,-4.67),topMiddle=pt(0,-.10,-4.74),
   topRight=pt(2.28,-.12,-4.67);
@@ -174,6 +185,7 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
  const shell=id as typeof ACH_MICH_SHELLS[number];
  const p=PROFILES[shell];
  const bare=hidden(parent,id+'-integrated-rubber-edge-binding'),
+  coveredLiner=hidden(parent,id+'-covered-inward-molded-shell-lip'),
   hardware=hidden(parent,id+'-uncovered-retention-anchors'),
   strap=hidden(parent,id+'-broad-four-point-retention');
  // Solid color, no normal-dependent brightness bands or faceted color steps.
@@ -185,6 +197,22 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
  const edge=new THREE.Mesh(createAchMichBindingGeometry(shell),bindingMaterial);
  edge.name='ach-mich-rubber-shell-edge';edge.castShadow=false;
  edge.receiveShadow=false;bare.add(edge);
+ // H10.0: a cover is textile over a protective shell, NOT an empty open
+ // cardboard box. Only the inward, recessed dark lower shell is exposed
+ // below the folded cover; its outward-painted binding remains hidden.
+ const inside=createAchMichBindingGeometry(shell);
+ const positions=inside.getAttribute('position') as THREE.BufferAttribute;
+ for(let i=0;i<positions.count;i++){
+  positions.setXYZ(i,positions.getX(i)*.925,
+   positions.getY(i)-.22,positions.getZ(i)*.93);
+ }
+ inside.computeVertexNormals();inside.computeBoundingBox();
+ const innerLip=new THREE.Mesh(inside,new THREE.MeshBasicMaterial({
+  color:0x353b34,side:THREE.DoubleSide
+ }));
+ innerLip.name='inward-covered-helmet-protective-lip';
+ innerLip.castShadow=false;innerLip.receiveShadow=false;
+ coveredLiner.add(innerLip);coveredLiner.userData.h10SolidUnderCover=true;
  const metal=material(0x636d61);
  const studGeometry=new THREE.BoxGeometry(.24,.52,.52);
  for(const sign of [-1,1] as const)
@@ -203,13 +231,14 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
  consolidateVisualGroup(strap);
  hardware.userData.achMichRetentionScrews=4;
  strap.userData.achMichFourPoint=true;
- return {bare,hardware,strap,bindingMaterial,webbingMaterial:webbing};
+ return {bare,coveredLiner,hardware,strap,bindingMaterial,webbingMaterial:webbing};
 }
 export function updateAchMichDetails(layers:AchMichDetailLayers,
  covered:boolean,allowStrap:boolean):void{
  // The covered helmet displays its fitted cloth hem, not the bare-shell
  // molded rim that formerly bled through as a wide solid-colored stripe.
  layers.bare.visible=!covered;
+ layers.coveredLiner.visible=covered;
  layers.hardware.visible=!covered;
  layers.strap.visible=allowStrap;
 }
