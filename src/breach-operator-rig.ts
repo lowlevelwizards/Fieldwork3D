@@ -63,7 +63,8 @@ export type OperatorRig={
   rigPouches:THREE.Mesh[];beltPouch:THREE.Mesh;
   medicalPouch:THREE.Mesh;radioUnit:THREE.Mesh;
   flashCanister:THREE.Mesh;utilityTool:THREE.Mesh;
-  gloveCovers:THREE.Mesh[];visualKit:OperatorVisualKit;
+  gloveCovers:THREE.Mesh[];gloveMaterial:THREE.MeshStandardMaterial;
+  visualKit:OperatorVisualKit;
   poseCavity:OperatorPoseCavity;
   /** No-render/zero-collider attachment references for future garments. */
   garmentFitAnchors:GarmentFitAnchors;
@@ -160,6 +161,10 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     skin=mat(0xb29b83),steel=mat(0x414846,'metal');
   // Studio-only style classifier; no tactical material or physics change.
   steel.userData.fieldworkSpecRim=true;
+  const gloveMaterial=vest.clone();
+  gloveMaterial.color.setHex(0x556556);
+  gloveMaterial.name='Independent field glove textile';
+  gloveMaterial.userData.fieldworkFabric=true;
   const packFabric=vest.clone(),gearFabric=vest.clone(),
     headCloth=cloth.clone(),headArmor=vest.clone();
    // Only textiles are unfolded across adjacent faces; leave rubber, steel,
@@ -247,7 +252,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     const armUpper=bone(chest,3.9,4.0,cloth,10);
     const armLower=bone(chest,3.4,3.5,cloth,10);
     const hand=block(chest,0,0,0,3.6,3.2,3.9,skin);
-    const glove=block(hand,.12,0,0,3.9,3.5,4.1,vest);
+    const glove=block(hand,.12,0,0,3.9,3.5,4.1,gloveMaterial);
     glove.visible=false;gloveCovers.push(glove);
     arms.push({upper:armUpper,lower:armLower,hand,
       bend:new THREE.Vector3(5,-2,sideSign*7),outOfReach:false});
@@ -345,7 +350,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     bodycamChest,bodycamHelmet,
     reloadControlMesh,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
-    medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,
+    medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,gloveMaterial,
     visualKit,equipmentDetails,colors,garmentFitAnchors,poseCavity,
     clothMaterial:cloth,vestMaterial:vest,trouserMaterial:trousers,
     packMaterial:packFabric,gearMaterial:gearFabric,
