@@ -5,6 +5,7 @@
 import {activateSite,doorLeafSegment,doorCenter,
  type Pt} from './breach-core.ts';
 import {DOOR_RANGE_FORMATIONS,doorRangeFormationDescription,
+ doorRangeIndependentGoal,
  type DoorRangeFormationId,type DoorRangeApproachFace}
  from './breach-door-range-formations.ts';
 import {runDoorRangeTrial,summarizeDoorRangeTrials,
@@ -95,7 +96,8 @@ function plan(){
   const north=approachFace.value==='north';
   const goal=program.value==='counterflow'&&i>=2?
    p(300+(i-2)*18,north?174:346):
-   p(293+i*12,north?346+i*6:174-i*6);
+   doorRangeIndependentGoal(i,
+     approachFace.value as DoorRangeApproachFace);
   ok=planMove(s,a.id,goal)&&ok;
  }
  return ok;

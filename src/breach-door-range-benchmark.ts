@@ -8,7 +8,8 @@ import {doorClear} from './breach-door.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {DOOR_RANGE_CASES,doorRangeSite,prepareDoorRangeCase,
  type DoorRangeCaseId} from './breach-door-test-cases.ts';
-import type {DoorRangeFormationId,DoorRangeApproachFace}
+import {doorRangeIndependentGoal,
+ type DoorRangeFormationId,type DoorRangeApproachFace}
  from './breach-door-range-formations.ts';
 export type DoorRangeProtocol='squad'|'independent';
 export type DoorRangeTrial={
@@ -47,9 +48,8 @@ export function runDoorRangeTrial(id:DoorRangeCaseId,
   prepareDoorRangeCase(s,id);
   oldOpen=s.doors[0]?.open;
   if(protocol==='squad')accepted=planSquadEntry(s,'ENTRY');
-  else accepted=actors.every((a,i)=>planMove(s,a.id,{
-   x:293+i*12,y:face==='north'?346+i*6:174-i*6
-  }));
+  else accepted=actors.every((a,i)=>
+   planMove(s,a.id,doorRangeIndependentGoal(i,face)));
   const authoredIds=actors.map(a=>new Set(a.plan.map(n=>n.id)));
   if(accepted)toggling(s);
   const side=face==='north'?1:-1;

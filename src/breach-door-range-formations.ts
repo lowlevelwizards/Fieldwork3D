@@ -35,3 +35,11 @@ export function doorRangeFormationDescription(id:DoorRangeFormationId,
  const preset=DOOR_RANGE_FORMATIONS.find(x=>x.id===id);
  return (preset?.label??id)+' · '+(face==='north'?'N → S':'S → N');
 }
+/** Lab + audit share physically separated final MOVE goals.
+ * Friendly bodies can pass through one another but may not settle together.
+ */
+export function doorRangeIndependentGoal(index:number,
+ face:DoorRangeApproachFace):Pt{
+ if(index<0||index>=4)throw Error('Independent Door Range index 0..3');
+ return p(293+index*18,face==='north'?346+index*16:174-index*16);
+}

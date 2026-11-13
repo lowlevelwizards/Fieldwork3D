@@ -81,3 +81,14 @@ test('Q5 south-side near-frame starts do not embed any operator in the shelf',()
        'initial point inside shelf: '+f.id+' '+JSON.stringify(point));
  }
 });
+
+test('Q5 lab and benchmark share disjoint independent MOVE destinations',async()=>{
+ const {doorRangeIndependentGoal}=await import('../src/breach-door-range-formations.ts');
+ for(const face of ['north','south']){
+  const goals=[0,1,2,3].map(i=>doorRangeIndependentGoal(i,face));
+  assert.ok(goals.every(g=>face==='north'?g.y>278:g.y<242));
+  for(let i=0;i<4;i++)for(let j=i+1;j<4;j++)
+   assert.ok(d(goals[i],goals[j])>=23,
+    'no two operators may settle within one inch');
+ }
+});
