@@ -8,7 +8,7 @@ import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 export type AchMichDetailLayers={bare:THREE.Group;strap:THREE.Group};
 const profiles={
  ach:{side:5.075,frontSide:4.40,ear:2.68,nape:2.68,
-  forward:-5.51,rear:5.60,frontBoltY:5.22,rearBoltY:4.68},
+  forward:-5.535,rear:5.60,frontBoltY:5.22,rearBoltY:4.68},
  'mich-2002':{side:5.03,frontSide:4.55,ear:4.05,nape:3.37,
   forward:-5.70,rear:5.75,frontBoltY:5.75,rearBoltY:5.13},
  'mich-2001':{side:5.015,frontSide:4.55,ear:5.95,nape:3.33,

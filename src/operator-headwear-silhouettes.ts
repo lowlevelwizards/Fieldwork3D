@@ -37,7 +37,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
   top:8.78,earEdge:1.71,foreheadEdge:4.055,billLength:0},
  'soviet-steel':{id:'soviet-steel',frontExtent:-5.53,rearExtent:5.53,
   top:8.605,earEdge:3.70,foreheadEdge:4.05,billLength:0},
- 'ach':{id:'ach',frontExtent:-5.51,rearExtent:5.60,
+ 'ach':{id:'ach',frontExtent:-5.535,rearExtent:5.60,
   top:8.84,earEdge:2.68,foreheadEdge:4.40,billLength:0},
  'high-cut':{id:'high-cut',frontExtent:-5.485,rearExtent:5.35,
   top:8.70,earEdge:5.95,foreheadEdge:4.50,billLength:0},
@@ -337,8 +337,8 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
   width:10.15,height:3.04,depth:10.25},
  // One broad brow line; side volumes share its lower edge and overlap
  // by a visible margin, rather than merely touching at float-precision seams.
- {name:'ach-protective-brow',x:0,y:5.25,z:-4.94,
-  width:10.15,height:1.70,depth:1.14},
+ {name:'ach-protective-brow',x:0,y:5.25,z:-4.91,
+  width:10.15,height:1.70,depth:1.25},
  // Deep nape and ear coverage share ONE lower line (Y2.68). We deliberately
  // sacrifice the old Y2.70->Y2.45->Y2.23 micro-staircase.
  {name:'ach-continuous-nape',x:0,y:4.49,z:4.97,
