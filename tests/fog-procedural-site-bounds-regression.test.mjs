@@ -21,7 +21,8 @@ function context(canvas,draws=[]){
  return {
   canvas,filter:'none',fillStyle:'#000',
   globalCompositeOperation:'source-over',
-  save(){},restore(){},setTransform(){},clearRect(){},
+  save(){},restore(){},setTransform(){},
+  clearRect(...args){draws.push({op:'clear',args});},
   fillRect(...args){draws.push({op:this.globalCompositeOperation,
     color:this.fillStyle,args});},
   drawImage(){},beginPath(){},rect(){},fill(){},clip(){},
@@ -40,16 +41,18 @@ test('procedural exterior-known mask re-covers only physical modules',()=>{
  assert.equal(exteriorKnownFogRects(site),shape,
   'footprint should be memoized by site identity');
  const covered=draws.filter(d=>d.op==='source-over'&&d.args[2]!==undefined);
- // One initial mask fill plus the exact shared concealed rects.
- assert.equal(covered.length,shape.length+1);
+ // Direct exterior-known paint contains only the shared concealed rects.
+ assert.equal(covered.length,shape.length);
  for(const r of shape){
   assert.ok(covered.some(d=>d.args[0]===r.x&&d.args[1]===r.y&&
    d.args[2]===r.w&&d.args[3]===r.h));
  }
  // Exterior is erased once at site bounds, not via a grid of tiny patches.
- const clears=draws.filter(d=>d.op==='destination-out');
+ const clears=draws.filter(d=>d.op==='clear');
  assert.equal(clears.length,1);
  assert.deepEqual(clears[0].args,[-90,-80,920,1040]);
+ assert.equal(draws.filter(d=>d.op==='destination-out').length,0,
+  'known exterior must not need an additional grid/fullscreen erase');
 });
 test('procedural exterior-known mesh has no quad above open outside court',()=>{
  const geometry=buildExteriorKnownFogGeometry(site);
