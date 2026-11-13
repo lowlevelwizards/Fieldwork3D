@@ -4,6 +4,9 @@ on:
     paths:
       - 'src/breach-pivot-episode.ts'
       - 'src/breach-lockpick-contact.ts'
+      - 'src/breach-kick-foot-choice.ts'
+      - 'src/breach-operator-lower-body.ts'
+      - 'src/breach-replay.ts'
       - 'src/breach-order-lifecycle.ts'
       - 'src/breach-order-movement.ts'
       - 'src/breach-order-executor.ts'
@@ -32,6 +35,8 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Stable world-aware 180-degree pivot and true lock contacts
         run: node --experimental-strip-types --test tests/animation-a3-8-turn-episodes.test.mjs tests/animation-a3-8-lockpick-contact.test.mjs
+      - name: A3.9 unified physical cover top and kick support-foot selection
+        run: node --experimental-strip-types --test tests/animation-a3-9-cover-height-source.test.mjs tests/animation-a3-9-kick-leg-choice.test.mjs
       - name: Existing A3 foot contact, action ownership and D4 door guarantees
         run: node --experimental-strip-types --test tests/animation-a3-5-contact-anchors.test.mjs tests/animation-a3-6-7-support-contacts.test.mjs tests/animation-a2-3-directional.test.mjs tests/door-traversal-d4-live-grip.test.mjs
       - name: Typecheck and production bundle
