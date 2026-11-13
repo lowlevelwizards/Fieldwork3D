@@ -23,8 +23,10 @@ for(const c of DOOR_RANGE_CASES.slice(0,count)){
   const actors=team(s).slice(0,4);
   const accepted=planSquadEntry(s,'ENTRY');
   const initial=actors.map(a=>a.plan.map(n=>n.id));
-  const crossed=new Set(),finished=new Set();
+  const crossed=new Set(),finished=new Set(),maneuverActors=new Set();
+  const maneuverStarts=new Set();
   let flips=0,open=s.doors[0].open,invalid=0,maxBlock=0;
+  let passageWait=0,selectedManeuverFrames=0,peakRetries=0;
   if(accepted)toggling(s);
   for(let t=0;t<ticks&&accepted;t++){
    stepSession(s,1/60);
@@ -34,6 +36,16 @@ for(const c of DOOR_RANGE_CASES.slice(0,count)){
     if(a.p.y>278)crossed.add(a.id);
     if(!a.plan.length)finished.add(a.id);
     maxBlock=Math.max(maxBlock,a.blockedTime);
+    passageWait+=a.motorPause==='passage'?1/60:0;
+    if(a.doorTraversal){
+     const ep=a.doorTraversal;
+     peakRetries=Math.max(peakRetries,ep.maneuverAttempts);
+     if(ep.maneuver!=='direct'){
+      maneuverActors.add(a.id);
+      maneuverStarts.add(a.id+':'+ep.authoredOrderId);
+      selectedManeuverFrames++;
+     }
+    }
    }
    if(finished.size===4)break;
   }
@@ -46,7 +58,15 @@ for(const c of DOOR_RANGE_CASES.slice(0,count)){
    finished:finished.size,flips,obstruction,
    openFraction:Math.round((d.openFraction??0)*1000)/1000,
    worldClear:doorClear(d,world),maxBlock:+maxBlock.toFixed(2),
+   passageWaitSeconds:+passageWait.toFixed(2),
+   maneuverActors:[...maneuverActors],maneuverStarts:maneuverStarts.size,
+   maneuverFrames:selectedManeuverFrames,peakManeuverAttempts:peakRetries,
    invalid,authoredPlanIntact:intact,
+   operators:actors.map(a=>({id:a.id,position:a.p,
+     orders:a.plan.length,pause:a.motorPause,
+     blocked:a.blockedTime,navCount:a.nav.length,
+     phase:a.doorTraversal?.phase??null,
+     maneuver:a.doorTraversal?.maneuver??null})),
    notices:s.events.filter(e=>/DOOR|ENTRY|BLOCKED/.test(e)).slice(-5)});
  }catch(error){
   hardFailures++;

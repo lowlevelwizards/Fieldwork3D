@@ -113,7 +113,9 @@ function stats(){
   (door.locked?' · LOCKED':'')+(door.wedged?' · WEDGED':'');
  detail.textContent=members.map(a=>{
   const episode=a.doorTraversal;
-  return a.name+' · '+(episode?episode.phase.toUpperCase():'NO EPISODE')+
+  return a.name+' · '+(episode?episode.phase.toUpperCase()+
+    ' / '+episode.maneuver.toUpperCase()+' · attempts '+episode.maneuverAttempts:
+    'NO EPISODE')+
    ' · '+(a.motorPause??a.lastBlocker??'CLEAR')+
    ' · blocked '+a.blockedTime.toFixed(1)+'s'+
    ' · orders '+a.plan.length;
