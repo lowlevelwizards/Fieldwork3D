@@ -28,10 +28,14 @@ test('VIS-05: intersecting building room modules remain dark in Exterior Known',
  };
  paintFogMask(ctx,s);
  const cover=calls.filter(c=>c[1]==='source-over'&&
-  c[2]===UNKNOWN_FOG_COLOR&&c[5]===55);
- assert.ok(cover.some(c=>c[3]===0&&c[4]===0));
- assert.ok(cover.some(c=>c[3]===35&&c[4]===35));
- assert.ok(calls.some(c=>c[1]==='destination-out'&&c[3]<0));
+  c[2]===UNKNOWN_FOG_COLOR);
+ const covered=(x,y)=>cover.some(c=>
+  x>c[3]&&x<c[3]+c[5]&&y>c[4]&&y<c[4]+c[6]);
+ assert.equal(covered(20,20),true);
+ assert.equal(covered(80,80),true);
+ assert.equal(covered(-10,-10),false,'lawn is never re-covered');
+ assert.ok(calls.some(c=>c[1]==='destination-out'&&
+  c[3]===-30&&c[4]===-30&&c[5]===140&&c[6]===140));
 });
 test('VIS-05 ground-space mask cannot project over exterior terrain',()=>{
  const source=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
