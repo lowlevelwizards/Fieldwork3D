@@ -785,8 +785,9 @@ function posePreview(){
  poseOperator(rig,armedPose,0);
  // H8 rendering diagnostics: prove the live rig, not just the selector,
  // received the chosen band dye and visible attachment geometry.
- const selectedHelmet=armedPose.wardrobe.styles.headwear;
- const helmetField=rig.visualKit.wardrobeHead.helmetField[selectedHelmet];
+ const selectedHelmet=armedPose.wardrobe?.styles.headwear;
+ const helmetField=selectedHelmet?
+  rig.visualKit.wardrobeHead.helmetField[selectedHelmet]:undefined;
  if(helmetField){
   canvas.dataset.helmetBandHex=helmetField.bandMaterial.color.getHexString();
   canvas.dataset.helmetBandVisible=String(helmetField.modules.band.visible);
