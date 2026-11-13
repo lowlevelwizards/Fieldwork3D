@@ -105,7 +105,7 @@ export function createQuickPlayConfigurator(options:{
  ],v=>{
    settings.mission=v as QuickPlayMission;
    const current=quickPlayIncidentDefinition(settings.incident);
-   if(current&&v!=='random'&&!current.missions.includes(settings.mission))
+   if(current&&v!=='random'&&!current.missions.some(kind=>kind===v))
      settings.incident='random';
    render();
  });
