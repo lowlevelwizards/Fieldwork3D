@@ -1,4 +1,5 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {kickShoveLooseCover,kickReachableImpactFraction} from './breach-door-kick-cover.ts';
 /** Stage 8: explicit authoritative door OPEN/CLOSE/KICK/HOLD order,
  * including real sweep impact and repeated bounded kick attempts.
  */
@@ -8,7 +9,8 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {doorClosingContested} from './breach-door-pressure-frame.ts';
-import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable} from './breach-door.ts';
+import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable,
+ PUSHED_OPEN_LIMIT} from './breach-door.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {completeOrder,clearCurrentOrderIssue,
@@ -68,17 +70,34 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
     a.actionTimer+=dt;
     if(n.method==='kick'&&a.actionTimer>=required*.53&&
        a.actionTimer-dt<required*.53){
-      if(!door.open){
+      {
+        const wasOpen=door.open;
+        const impactStart=door.openFraction??(wasOpen?1:0);
+        const impactFinish=Math.min(PUSHED_OPEN_LIMIT,
+          Math.max(.60,impactStart+.42));
         const outcome=kickDoor(door,a.p);
         door.lastKickAt=s.seconds;
         if(outcome.opened){
           door.openedAt=s.seconds;
+          // One bounded, real-footprint shove of loose furniture touched
+          // by the kick arc. Fixed cabinets, barricades and walls stay solid.
+          const furniture=kickShoveLooseCover(s,door,impactStart,impactFinish);
+          if(furniture!==null){
+            const prop=s.coverState[furniture];
+            hear(s,prop,prop.toppled?95:65,'furniture');
+            battleEvent(s,'interaction',a,prop,
+              a.name+' KICKED '+(prop.fixture??'CLUTTER').toUpperCase());
+          }
+          // Static fixtures can stop a kicked panel before it reaches a
+          // person. Resolve that real maximum before the character impact.
+          const physicalImpact=kickReachableImpactFraction(s,door,
+            impactStart,impactFinish);
           // Kicks into an occupied sweep impact the actual body. A validated
           // displacement clears room for the hinge; pinned actors remain solid.
-          const impactLeaf=doorLeafSegment({...door,openFraction:.60});
+          const impactLeaf=doorLeafSegment({...door,openFraction:physicalImpact});
           for(const struck of s.operators){
             if(struck===a||struck.health<=0||
-               !doorWouldStrikeActors({...door,openFraction:0},.60,
+               !doorWouldStrikeActors({...door,openFraction:impactStart},physicalImpact,
                  [struck.p],OPERATOR_RADIUS+1))continue;
             const along=Math.max(0,Math.min(1,(
               (struck.p.x-impactLeaf.a.x)*(impactLeaf.b.x-impactLeaf.a.x)+
@@ -128,11 +147,12 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         }
         hear(s,doorCenter(door),340,'kick');
         const result=!outcome.pushSide?'WRONG SIDE · CANNOT KICK INWARD':
-          outcome.opened?'FORCED OPEN':'KICK RESISTED';
+          outcome.opened?(wasOpen?(impactStart>=PUSHED_OPEN_LIMIT-.03?
+            'KICKED · FULL SWING':'KICKED WIDER'):'FORCED OPEN'):'KICK RESISTED';
         notify(s,door.id+' '+result);
         battleEvent(s,'door',a,doorCenter(door),door.id+' '+result,
           {action:!outcome.pushSide?'door-blocked':outcome.opened?
-            'door-forced':'door-resisted',objectId:door.id});
+            (wasOpen?'door-impact':'door-forced'):'door-resisted',objectId:door.id});
         if(!outcome.pushSide){
           failCurrentOrder(s,a,n,'KICK BLOCKED · WRONG SIDE');return true;
         }

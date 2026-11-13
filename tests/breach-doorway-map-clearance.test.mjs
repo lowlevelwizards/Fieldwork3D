@@ -44,6 +44,14 @@ test('loose incidental chair moves away from a door without changing the archite
    original.blockedFlow+original.tightApproaches,
    'clearance pass must improve normal doorway traversal');
 });
+test('compact cabinet in an ordinary generated doorway is repositioned, not ignored',()=>{
+ const site=blocked('cabinet');
+ const repaired=repairDoorwayClutter(site);
+ assert.ok(repaired.moved>=1);
+ assert.equal(repaired.site.cover.length,1);
+ assert.notDeepEqual(repaired.site.cover,site.cover);
+ assert.deepEqual(repaired.site.doors,site.doors);
+});
 test('large fixed furniture is never erased to make a doorway look passable',()=>{
  const site=blocked('fridge');
  const before=auditTacticalMobility(site);

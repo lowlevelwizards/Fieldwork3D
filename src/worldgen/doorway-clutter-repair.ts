@@ -7,13 +7,16 @@
  * It edits only the seeded site before deployment, deterministically.
  */
 import type {Site} from '../breach-site.ts';
-import {pointToSegment,type Pt,type Obstacle,type Door} from '../breach-core.ts';
+import {pointToSegment,doorLeafSegment,type Pt,type Obstacle,type Door} from '../breach-core.ts';
 import {isFootstepObstacle} from '../breach-traversal-surfaces.ts';
 
 const INCIDENTAL=new Set([
  'chair','office-chair','patio-chair','stool','small-table','side-table',
  'storage-tote','tipped-trash-bin','trash-bag','mop-bucket',
- 'box','product-box'
+ 'box','product-box',
+ // Ordinary compact furnishings are not authored door barricades. Keep
+ // architectural/service fixtures and larger wardrobes stationary.
+ 'cabinet','shelf','bookcase','filing-cabinet','desk'
 ]);
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const middle=(door:Door):Pt=>({x:(door.a.x+door.b.x)/2,
@@ -40,6 +43,22 @@ function crowdsDoor(o:Obstacle,door:Door):boolean{
  const normalExtent=Math.abs(nx)*o.w/2+Math.abs(ny)*o.h/2;
  return lateral<tangentExtent+10&&depth<normalExtent+42;
 }
+/** Real hinge arcs can catch a cabinet beyond the straight door-mouth strip.
+ * Sample the same leaf transform used by the runtime, but only once during
+ * deterministic site furnishing, never on the movement hot path. */
+function crowdsLeafSweep(o:Obstacle,door:Door):boolean{
+ if(!isFootstepObstacle(o)||door.kind==='sliding'||door.kind==='shutter')return false;
+ for(let step=1;step<=18;step++){
+  const leaf=doorLeafSegment({...door,open:true,openFraction:step*1.55/18});
+  for(const t of [.25,.50,.75,.95]){
+   const x=leaf.a.x+(leaf.b.x-leaf.a.x)*t;
+   const y=leaf.a.y+(leaf.b.y-leaf.a.y)*t;
+   if(Math.abs(o.x-x)<o.w/2+2&&Math.abs(o.y-y)<o.h/2+2)
+    return true;
+  }
+ }
+ return false;
+}
 function mayPlace(site:Site,all:readonly Obstacle[],index:number,
  candidate:Obstacle,room:ReturnType<typeof roomFor>):boolean{
  if(room&&(candidate.x-candidate.w/2<room.x+5||
@@ -55,11 +74,11 @@ function mayPlace(site:Site,all:readonly Obstacle[],index:number,
  if(site.walls.some(w=>pointToSegment(candidate,w)<radius))return false;
  if(all.some((other,i)=>i!==index&&overlaps(candidate,other)))return false;
  if(site.doors.some(door=>pointToSegment(candidate,door)<radius+4||
-    crowdsDoor(candidate,door)))return false;
+    crowdsDoor(candidate,door)||crowdsLeafSweep(candidate,door)))return false;
  return true;
 }
 export type ClearanceRepair={site:Site;moved:number;unresolved:number};
-/** Attempts at most two relocations per doorway. Leave a blocked,
+/** Attempts at most four relocations per doorway. Leave a blocked,
  * structural approach for candidate selection to reject instead of silently
  * removing walls or essential room features.
  */
@@ -73,11 +92,11 @@ export function repairDoorwayClutter(site:Site):ClearanceRepair{
     y:(door.b.y-door.a.y)/width};
   const blockers=cover.map((o,i)=>({o,i,d:dist(o,center)}))
     .filter(({o})=>INCIDENTAL.has(o.fixture??'')&&
-      o.w<=46&&o.h<=46&&crowdsDoor(o,door))
+      o.w<=46&&o.h<=46&&(crowdsDoor(o,door)||crowdsLeafSweep(o,door)))
     .sort((a,b)=>a.d-b.d||a.i-b.i);
   let handled=0;
   for(const {i} of blockers){
-   if(handled++>=2)break;
+   if(handled++>=4)break;
    const o=cover[i],room=roomFor(site,o);
    const lateral=(o.x-center.x)*tangent.x+(o.y-center.y)*tangent.y;
    // Try the closer side of the room, then the opposite side. A controlled
@@ -85,7 +104,7 @@ export function repairDoorwayClutter(site:Site):ClearanceRepair{
    const preferred=Math.sign(lateral)||(i%2===0?1:-1);
    let relocated=false;
    for(const side of [preferred,-preferred]){
-    for(const amount of [18,26,34,44,54]){
+    for(const amount of [18,26,34,44,54,68,84]){
      const target={...o,x:o.x+tangent.x*amount*side,
        y:o.y+tangent.y*amount*side};
      if(!mayPlace(stable,cover,i,target,room))continue;

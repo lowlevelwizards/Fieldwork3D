@@ -15,6 +15,12 @@ test('R4.4 true narrow traversal requires physical clearance evidence',()=>{
   assert.equal(shouldEnterSqueeze({...base,[blocker]:true}),false,blocker);
  }
  assert.equal(shouldEnterSqueeze({...base,narrowBodyClear:false}),false);
+ assert.equal(shouldEnterSqueeze({...base,traversalPending:true,
+  settledPhysicalBlockage:true}),true,
+  'settled physically passable jam may permit a real sideways profile');
+ assert.equal(shouldEnterSqueeze({...base,traversalPending:true,
+  settledPhysicalBlockage:true,doorAdvancing:true}),false,
+  'never squeeze while the panel is actively yielding');
 });
 test('R4.4 live motor keeps existing squeeze physics and hinge authority',()=>{
  const source=readFileSync(new URL('../src/breach-motor-collision.ts',import.meta.url),'utf8');

@@ -180,6 +180,11 @@ export function resolveMotorCollision(
     alreadySqueezing:a.squeeze,closedDoor:closed,
     doorAdvancing:!!doorContact?.advanced,leafMoving,
     traversalPending:!!a.traversalPending,
+    // Give an actively opening leaf the full-width crossing first. If it
+    // stops for long enough, a physically clear sideways torso may pass.
+    // This does not waive the swept-profile collision or queue priority.
+    settledPhysicalBlockage:!!a.traversalPending&&a.blockedTime>=.65&&
+      !doorContact?.advanced&&!leafMoving,
     nearNarrowThreshold:nearNarrow,
     opposingPressure:possibleSqueeze&&!nearNarrow&&
       !leafMoving&&!closed&&

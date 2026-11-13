@@ -72,8 +72,10 @@ export function thresholdRankMarkers(
    if(width<=0)continue;
    const tx=dx/width,ty=dy/width,nx=-ty,ny=tx;
    const mid={x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2};
-   const longitudinal=19+slot.rank*18;
-   const lateral=(slot.rank%2===0?-1:1)*8;
+   // One small numbered column immediately beyond the NON-hinge jamb,
+   // instead of spreading four circles across the doorway/actor routes.
+   const longitudinal=16+slot.rank*16;
+   const lateral=(door.hinge==='b'?-1:1)*(width/2+15);
    markers.push({actorId,doorId:slot.doorId,rank:slot.rank,
     fromSide:slot.fromSide,door,
     point:{x:mid.x+nx*slot.fromSide*longitudinal+tx*lateral,
