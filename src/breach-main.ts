@@ -1289,6 +1289,7 @@ const campaignFlow=createBreachCampaignFlow({
   resetContract:job=>reset(0,job.seed,job.kind,undefined,job.risk),
   launchQuickPlay,
   openReplayLibrary:()=>replayLibrary.openFromMenu(),
+  openMenuStudio:()=>openOperatorStudio(persistentRoster.members[0]?.id,'quick'),
   openStudio:id=>openOperatorStudio(id,'campaign'),
   openArsenal:id=>{void openCampaignArsenal(id);},
   showBriefing:showMissionBriefing
