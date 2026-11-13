@@ -11,7 +11,7 @@ test('H5.5: never delete legacy data while suppressing impossible gear',()=>{
  const bare=resolveHelmetField('ach',raw,{covered:false});
  assert.equal(bare.bungees,false);
  assert.equal(bare.light,false);assert.equal(bare.camera,false);
- assert.equal(bare.chemlight,false);
+ assert.equal(bare.chemlight,true,'top-rear clip no longer needs side rails');
  assert.equal(bare.concealment,'none');assert.equal(bare.patches,false);
  assert.equal(bare.counterweight,false);assert.equal(bare.battery,false);
  assert.equal(raw.concealment,'scrim');assert.equal(raw.counterweight,true);

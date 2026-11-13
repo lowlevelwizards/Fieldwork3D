@@ -83,7 +83,7 @@ try{
    await webbing.selectOption('tan');
    const conceal=page.locator('.material-group')
     .filter({hasText:'One option at a time.'}).locator('select');
-   await conceal.selectOption('foliage-medium');
+   await conceal.selectOption('foliage');
    await capture(id+'-medium-foliage-front','front');
    await capture(id+'-medium-foliage-side','side');
    await conceal.selectOption('net');

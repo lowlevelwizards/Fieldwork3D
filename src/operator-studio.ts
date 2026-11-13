@@ -1500,8 +1500,10 @@ function renderMaterials(){
    if(state.setup.cover!=='none'){
     const concealRow=row('PASGT CONCEALMENT',
      'Foliage and scrim require slits; net automatically secures under the elastic band.');
-    addSelect(concealRow,PASGT_CONCEALMENTS.map(id=>[id,id.toUpperCase()] as const),
-     details.concealment,id=>changeWardrobe({...current(),pasgtDetails:{
+    addSelect(concealRow,PASGT_CONCEALMENTS.filter(id=>
+     ['none','scrim','net','foliage'].includes(id)).map(id=>
+     [id,id.toUpperCase()] as const),
+     details.concealment.startsWith('foliage')?'foliage':details.concealment,id=>changeWardrobe({...current(),pasgtDetails:{
       ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
       concealment:id as typeof details.concealment}}));
    }
@@ -1571,7 +1573,7 @@ function renderMaterials(){
     picker('BAND COLOR','bandColor',
      'Auto uses period-appropriate webbing; Match follows shell paint; override stays saved.');
    const foliage=rowOf('FIELD CONCEALMENT',
-    'One option at a time. Slits/loops, scrim, netting, and graded foliage are physical additions, not texture changes.');
+    'Choose scrim, net, or full-density foliage; cover-dependent options hide without fabric.');
    addSelect(foliage,(historical||fieldCovered?HELMET_FIELD_CONCEALMENT:
     HELMET_FIELD_CONCEALMENT.filter(c=>c==='none'||c==='net')).map(c=>[c,
     c.replaceAll('-',' ').toUpperCase()] as const),
@@ -1607,8 +1609,8 @@ function renderMaterials(){
    toggle(addons,'battery','BATTERY PACK','▥',!historical);
    toggle(addons,'light','HELMET LIGHT','◉',!historical&&currentField.rails);
    toggle(addons,'camera','CAMERA','◈',!historical&&currentField.rails);
-   toggle(addons,'chemlight','CHEMLIGHT','│',
-    historical||currentField.band||currentField.rails);
+   toggle(addons,'chemlight','CHEMLIGHT · TOP REAR','│',
+    historical||!effective.strobe);
    toggle(addons,'patches','PATCH / IDENTIFIER','▤',
     historical||fieldCovered||currentField.velcro);
    const sidePicker=(title:string,key:'cameraSide'|'lightSide'|'chemlightSide',
@@ -1624,9 +1626,7 @@ function renderMaterials(){
    if(!historical&&currentField.light)
     sidePicker('HELMET LIGHT MOUNT','lightSide',
      'Clip the forward-facing task light to the left or right rail.');
-   if(!historical&&currentField.chemlight)
-    sidePicker('CHEMLIGHT MOUNT','chemlightSide',
-     'Secure the enlarged capped chemlight along either helmet side.');
+   // No side picker: the modern chemlight is retained at the crown-rear.
   }
   if(item==='police-helmet'){
    const pos=row('POLICE PROTECTIVE VISOR',

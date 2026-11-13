@@ -9,7 +9,7 @@ test('H7 field helmet choices roundtrip through wardrobe without granting equipm
   scrim:'garbage',concealment:'foliage-medium',tilt:'forward',patches:true});
  const read=readWardrobe({...initialWardrobe(),helmetField:v});
  assert.deepEqual(read.helmetField,v);
- assert.equal(v.concealment,'foliage-medium');
+ assert.equal(v.concealment,'foliage');
  assert.equal(readHelmetField({goggles:'fake',webbingColor:'pink'}).goggles,'none');
 });
 test('H7 saved options do not vanish when changing between historical and modern shells',()=>{

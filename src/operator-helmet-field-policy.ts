@@ -6,7 +6,7 @@
 export const FIELD_HELMETS=['ach','mich-2001','mich-2002','pasgt'] as const;
 export type FieldHelmet=typeof FIELD_HELMETS[number];
 export const HELMET_FIELD_COLORS=['auto','match','olive','tan','black'] as const;
-export const HELMET_FIELD_CONCEALMENT=['none','foliage-loops','scrim','net','foliage-sparse','foliage-medium','foliage-heavy'] as const;
+export const HELMET_FIELD_CONCEALMENT=['none','scrim','net','foliage'] as const;
 export const HELMET_FIELD_TILTS=['level','forward','rear'] as const;
 export const HELMET_FIELD_GOGGLES=['none','eyes','front','rear'] as const;
 export const HELMET_FIELD_SIDES=['left','right'] as const;
@@ -41,7 +41,9 @@ export function readHelmetField(value:unknown):HelmetFieldOptions{
  return {
   band:b('band'),bandColor:choose(v.bandColor,HELMET_FIELD_COLORS,d.bandColor),
   webbingColor:choose(v.webbingColor,HELMET_FIELD_COLORS,d.webbingColor),
-  concealment:choose(v.concealment,HELMET_FIELD_CONCEALMENT,d.concealment),
+  // Every historic foliage selection becomes the previous heavy-density look.
+  concealment:typeof v.concealment==='string'&&v.concealment.startsWith('foliage-')?
+   'foliage':choose(v.concealment,HELMET_FIELD_CONCEALMENT,d.concealment),
   fastened:b('fastened'),tilt:choose(v.tilt,HELMET_FIELD_TILTS,d.tilt),
   shroud:b('shroud'),rails:b('rails'),bungees:b('bungees'),
   velcro:b('velcro'),goggles:choose(v.goggles,HELMET_FIELD_GOGGLES,d.goggles),
@@ -72,7 +74,9 @@ export function resolveHelmetField(id:string,raw:unknown,
  if(context.covered===false&&r.concealment!=='net')r.concealment='none';
  if(!r.rails){r.light=false;r.camera=false;}
  if(!r.rails||!r.shroud)r.bungees=false;
- if(!r.rails&&!r.band)r.chemlight=false;
+ // A top-rear chemlight is clipped to its own carrier and needs neither
+ // rail nor elastic band; the crown strobe claims the same physical zone.
+ if(r.strobe)r.chemlight=false;
  // Camera and light cannot occupy the same side-rail slot.
  if(r.camera&&r.light&&r.cameraSide===r.lightSide)r.light=false;
  // One centered rear carrier slot; rear goggles occupy the same zone.

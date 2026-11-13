@@ -19,14 +19,32 @@ const makeShape=(contour:readonly (readonly number[])[]):THREE.Shape=>{
 const strip=(root:THREE.Group,points:THREE.Vector3[],width:number,
  material:THREE.Material,name:string):THREE.Mesh=>{
  const a:number[]=[];
+ const quad=(p:THREE.Vector3,q:THREE.Vector3)=>{
+  const along=q.clone().sub(p).normalize();
+  const normal=new THREE.Vector3(p.x+q.x,.1,p.z+q.z).normalize();
+  // Webbing width lies tangent to the helmet, never fixed world-Y where
+  // sloped panels turn a broad strap edge into a shell-intersecting chord.
+  const across=new THREE.Vector3().crossVectors(normal,along)
+   .normalize().multiplyScalar(width*.5);
+  const outward=normal.multiplyScalar(.14);
+  const p0=p.clone().add(outward).sub(across),
+   p1=p.clone().add(outward).add(across),
+   q0=q.clone().add(outward).sub(across),
+   q1=q.clone().add(outward).add(across);
+  for(const x of [p0,q0,q1,p0,q1,p1])a.push(x.x,x.y,x.z);
+ };
  for(let i=1;i<points.length;i++){
-  const p=points[i-1],q=points[i],h=width*.5;
-  a.push(p.x,p.y-h,p.z,q.x,q.y-h,q.z,q.x,q.y+h,q.z,
-   p.x,p.y-h,p.z,q.x,q.y+h,q.z,p.x,p.y+h,p.z);
+  const p=points[i-1],q=points[i];
+  const mid=p.clone().lerp(q,.5);
+  // Turn the strap around corners, not through the shell between anchors.
+  if(i>1&&i<points.length-1)
+   mid.addScaledVector(new THREE.Vector3(mid.x,0,mid.z).normalize(),.18);
+  quad(p,mid);quad(mid,q);
  }
  const geo=new THREE.BufferGeometry();
  geo.setAttribute('position',new THREE.Float32BufferAttribute(a,3));
  geo.computeVertexNormals();geo.computeBoundingBox();
+ geo.userData.h62ContourRibbon=true;
  const mesh=new THREE.Mesh(geo,material);
  mesh.name=name;mesh.castShadow=false;mesh.receiveShadow=false;
  root.add(mesh);return mesh;
@@ -41,8 +59,8 @@ const sample=(shell:AchMichCoverShell,region:'left'|'right'|'front'|'back',
  for(const uu of [u,u*.94,u*.84])
   for(const v of [-.65,-.48,-.30,-.12,.06,.22,.38,.55,.72]){
    // Bare and covered strap routes must follow distinct actual surfaces.
-   const f=covered?sampleHelmetCover(shell,region,uu,v,.39):
-    sampleHelmetShell(shell,region,uu,v,.33);
+   const f=covered?sampleHelmetCover(shell,region,uu,v,.58):
+    sampleHelmetShell(shell,region,uu,v,.52);
    if(!f)continue;
    const d=Math.abs(f.position.y-targetY)+Math.abs(u-uu)*.32;
    if(d<score){score=d;best=f.position;}
@@ -78,8 +96,8 @@ function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
   strip(retention,path,1.02,elastic,
    covered?'continuous-helmet-goggle-strap':'bare-shell-goggle-strap');
   for(const region of ['left','right'] as const){
-   const f=covered?sampleHelmetCover(shell,region,front?-.06:.08,.19,.34):
-    sampleHelmetShell(shell,region,front?-.06:.08,.19,.33);
+   const f=covered?sampleHelmetCover(shell,region,front?-.06:.08,.19,.48):
+    sampleHelmetShell(shell,region,front?-.06:.08,.19,.43);
    if(!f)continue;
    const buckle=new THREE.Mesh(new THREE.BoxGeometry(.32,1.23,.13),metal);
    buckle.position.copy(f.position);
@@ -97,6 +115,7 @@ function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
  g.userData.h9StrapWraps=opposite;
  g.userData.h5AdaptiveStrapPaths=paths;
  g.userData.h5StrapOutsideElastic=true;
+ g.userData.h62MidpointCornerClearance=true;
 }
 /** Fitted fabric cover drawn on the goggles' actual D2 silhouette.
  * It uses a shallow solid lip plus one broad stitched face, never an

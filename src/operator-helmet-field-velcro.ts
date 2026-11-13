@@ -43,7 +43,7 @@ export function addAchMichVelcro(
  // Cross-shell shape is large, but remains flush with the textile.
  panel(shell,'crown',0,-.10,.45,.34,g,olive,dark,'crown-velcro');
  for(const region of ['left','right'] as const)
-  panel(shell,region,.27,.32,.39,.24,g,olive,dark,region+'-velcro');
+  panel(shell,region,.27,.58,.38,.20,g,olive,dark,region+'-velcro');
  panel(shell,'back',0,.23,.43,.24,g,olive,dark,'rear-velcro');
  g.userData.h10GraphicPanelsEnlarged=true;
  g.userData.h9ConformingPanels=4;

@@ -141,7 +141,8 @@ function camera(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  a.userData.h9Distinctive='large-lens-action-camera';
 }
 function chemlight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
- const a=mount(shell,g,'right',.47,.47);
+ const a=mount(shell,g,'crown',0,.88);
+ // Crown-rear mounting pocket, not a bare cylinder on a side rail.
  // Secured carrier: bare plastic cylinders cannot hang from painted shell.
  block(a,'chemlight-elastic-holder-base',p.dark,0,0,.07,2.62,.55,.16);
  cylinder(a,'round-contained-chemlight',p.reflect,0,0,.33,.24,2.55,'x');
@@ -151,6 +152,7 @@ function chemlight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  }
  a.userData.h9Distinctive='capped-secured-lightstick';
  a.userData.h5ChemlightRetained=true;
+ a.userData.h63ChemlightMount='crown-rear';
 }
 export function addAchMichFieldAddon(
  shell:AchMichCoverShell,type:HelmetFieldAddon,g:THREE.Group,
