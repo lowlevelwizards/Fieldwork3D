@@ -109,6 +109,9 @@ const perfTimeline=new PerformanceTimeline();
 let perfTimelineSession:Session|null=null;
 let previousCoarseJs:number|undefined;
 let previousCoarseMode:RuntimeFrameMode|undefined;
+// Low-cost, always-on parent CPU slices (no actor/scene instrumentation).
+let previousCoarseWork:PreviousFrameWork|undefined;
+let previousCoarseSim:number|undefined;
 function performanceMatchContext(state:Session,mode:RuntimeFrameMode):string{
  const seed=state.site?.seed??'unknown';
  return 'FIELDWORK MATCH · seed '+seed+' · phase '+state.phase+
@@ -125,6 +128,8 @@ function setProfilerOpen(open:boolean):boolean{
   config.getStage()?.setPerformanceProfilingEnabled?.(true);
   previousPerfJs=previousCoarseJs;
   previousPerfMode=previousCoarseMode;
+  previousPerfWork=previousCoarseWork;
+  previousPerfSim=previousCoarseSim;
  }
  if(!perfPanel||!perfOverlay)return false;
  perfOverlay.hidden=!open;
@@ -196,6 +201,7 @@ function tick(now:number){
    previousPerfMode=undefined;previousPerfWork=undefined;
    previousHotSim=undefined;
    previousCoarseJs=undefined;previousCoarseMode=undefined;
+   previousCoarseWork=undefined;previousCoarseSim=undefined;
    lastSightTotals=null;lastFogPaints=0;lastShadowRefreshes=0;
    // Don't carry a previous map's door IDs into the next session.
    previousRenderActors=null;previousRenderDoors=null;
@@ -211,6 +217,7 @@ function tick(now:number){
    previousPerfMode=undefined;previousPerfWork=undefined;
    previousHotSim=undefined;
    previousCoarseJs=undefined;previousCoarseMode=undefined;
+   previousCoarseWork=undefined;previousCoarseSim=undefined;
    accum=0;previousRenderActors=null;previousRenderDoors=null;
    physicalActionRings.clear();
    scheduleFrame();return;
@@ -229,17 +236,15 @@ function tick(now:number){
       if(!previousRenderDoors)previousRenderDoors={};
       for(const door of state.doors)
        previousRenderDoors[door.id]=door.openFraction??(door.open?1:0);
-      const simulationStart=perfOverlay?performance.now():0;
+      const simulationStart=performance.now();
       stepSession(state,1/60,simPhaseCosts?
         (name,ms)=>simPhaseCosts.set(name,
           (simPhaseCosts.get(name)??0)+ms):undefined);
-      if(perfOverlay)simulationMeasuredMs+=performance.now()-simulationStart;
+      simulationMeasuredMs+=performance.now()-simulationStart;
       simSteps++;
-      if(perfOverlay){
-        const beforeRecording=performance.now();
-        recorder.capture(state,config.isMissionTerminal(state));
-        recordingMs+=performance.now()-beforeRecording;
-      }else recorder.capture(state,config.isMissionTerminal(state));
+      const beforeRecording=performance.now();
+      recorder.capture(state,config.isMissionTerminal(state));
+      recordingMs+=performance.now()-beforeRecording;
     }
   }else{accum=0;previousRenderActors=null;previousRenderDoors=null;}
   if(frameMode==='replay'&&replayPlayback.playing){
@@ -263,7 +268,7 @@ function tick(now:number){
       if(playbackStep.finishedIncident)audioController.stopReplaySounds();
     }
   }
-  const runtimeUiStart=perfOverlay?performance.now():0;
+  const runtimeUiStart=performance.now();
   if(replaying)config.advanceReplayCamera(dt);
   const uiCameraEnd=perfOverlay?performance.now():0;
   audioController.consumeLiveFrame(state,recorder,selected,replaying);
@@ -287,8 +292,8 @@ function tick(now:number){
   physicalActionRings.update(team(state),state.doors,
     frameMode==='live',
     p=>config.worldToScreen(p,viewMode==='plan2d'?14:34));
-  const perfRenderStart=perfOverlay?performance.now():0;
-  const runtimeUiMs=perfOverlay?perfRenderStart-runtimeUiStart:0;
+  const perfRenderStart=performance.now();
+  const runtimeUiMs=perfRenderStart-runtimeUiStart;
   // Opt-in child timings. Each is part of UI / audio, never additive to
   // previous JS or the parent UI slice. No normal-frame performance probes.
   const runtimeUiDetail=perfOverlay?{
@@ -343,9 +348,9 @@ function tick(now:number){
     last3dUpdateAt=now;last3dSession=state;last3dMode=frameMode;
   }
   const overlayBegin=perfOverlay?performance.now():0;
-  const sceneUpdateEnd=perfOverlay?performance.now():0;
+  const sceneUpdateEnd=performance.now();
   if(!studioOccludesTactical)config.renderFrame(dt);
-  const renderEnd=perfOverlay?performance.now():0;
+  const renderEnd=performance.now();
   if(replaying&&!studioOccludesTactical&&config.captureHighlightFrame)
     config.captureHighlightFrame(stage&&viewMode!=='plan2d'?stage.canvas:null,
       canvas,replayPlayback.time,
@@ -362,7 +367,7 @@ function tick(now:number){
   }
   config.drawTacticalFrameFeedback(studioOccludesTactical);
   config.updateContext();config.advanceContextPalette(dt);
-  const diagnosticsStart=perfOverlay?performance.now():0;
+  const diagnosticsStart=performance.now();
   let currentSceneCosts=emptyPerformanceSceneCosts();
   let currentActorCosts:PreviousFrameWork['actor'];
   let currentHotSim='';
@@ -521,8 +526,19 @@ function tick(now:number){
    // Record only one JS wall-time and bucket maxima; no phase probes or DOM.
    const js=performance.now()-coarseStart;
    perfTimeline.addCoarseFrame(now,frameGap,js,frameMode,viewMode,
-    previousCoarseJs,previousCoarseMode);
+    previousCoarseJs,previousCoarseMode,previousCoarseWork,previousCoarseSim);
    previousCoarseJs=js;previousCoarseMode=frameMode;
+   // Archive one previous-callback breakdown only at the 250ms peak.
+   // No detailed scene/pose tracing or diagnostic DOM work is activated.
+   previousCoarseWork={
+    beforeUi:runtimeUiStart-coarseStart,
+    ui:runtimeUiMs,
+    sceneSync:sceneUpdateEnd-perfRenderStart,
+    render:renderEnd-sceneUpdateEnd,
+    postRender:diagnosticsStart-renderEnd,
+    diagnostics:0,scene:emptyPerformanceSceneCosts()
+   };
+   previousCoarseSim=simulationMeasuredMs;
   }
   if(perfOverlay){
    // Measure at the end, *after* optional 750ms panel reporting. Otherwise
@@ -556,6 +572,8 @@ function tick(now:number){
   previousPerfMode=undefined;previousPerfWork=undefined;
   previousHotSim=undefined;
   previousRenderActors=null;previousRenderDoors=null;
+  previousCoarseWork=undefined;previousCoarseSim=undefined;
+  previousCoarseJs=undefined;previousCoarseMode=undefined;
   physicalActionRings.clear();
  }
  function start():void{
