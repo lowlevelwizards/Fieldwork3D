@@ -81,10 +81,10 @@ test('casual short sleeves expose arm skin; tank top has no sleeve overlays',()=
  }
  r.dispose();
 });
-test('four authentic muted flannel colorways are deterministic button-up only',()=>{
- assert.equal(BUTTON_UP_FLANNEL_IDS.length,4);
+test('five authentic muted flannel colorways are deterministic button-up only',()=>{
+ assert.equal(BUTTON_UP_FLANNEL_IDS.length,5);
  const labels=topColorwayChoices('button-up-shirt').map(x=>x[1]);
- for(const name of ['Rust red','Forest green','Dusty blue','Burnt orange'])
+ for(const name of ['Rust red','Forest green','Dusty blue','Burnt orange','Slate gray'])
   assert.ok(labels.some(label=>label.includes(name)),name);
  const firstPixels=[];
  for(const id of BUTTON_UP_FLANNEL_IDS){
@@ -94,9 +94,16 @@ test('four authentic muted flannel colorways are deterministic button-up only',(
   assert.equal(tex.image.data.length,64*64*4);
   firstPixels.push([...tex.image.data.slice(0,4)]);
  }
- assert.equal(new Set(firstPixels.map(x=>x.join(','))).size,4);
+ assert.equal(new Set(firstPixels.map(x=>x.join(','))).size,5);
  assert.equal(buttonUpFlannelTexture('standard'),null);
  assert.deepEqual(topColorwayChoices('tank-top'),[]);
+ const gray=readWardrobe({...outfit('button-up-shirt'),topColorway:'flannel-gray'});
+ assert.equal(gray.topColorway,'flannel-gray');
+ const operator=createOperatorRig('rook','blue');
+ poseOperator(operator,frame(gray),0);
+ assert.strictEqual(operator.clothMaterial.map,buttonUpFlannelTexture('flannel-gray'));
+ assert.notStrictEqual(operator.clothMaterial.map,operator.trouserMaterial.map);
+ operator.dispose();
 });
 test('flannel persists through wardrobe storage, switches back to fabric, and does not tint trousers',()=>{
  const r=createOperatorRig('rook','blue');
@@ -129,6 +136,12 @@ test('plaid is a legible checked textile at torso scale, not a flat tint',()=>{
   assert.notEqual(sample(5,5),sample(5,12),'crossed bands must differ from stripes');
   assert.notEqual(sample(5,12),sample(12,12),'horizontal and vertical bands');
   assert.notEqual(sample(12,12),sample(13,12),'fine woven ticking');
+  const rgb=(x,y)=>[...pixels.slice((y*64+x)*4,(y*64+x)*4+3)];
+  const brightness=c=>c[0]*.2126+c[1]*.7152+c[2]*.0722;
+  assert.ok(brightness(rgb(13,12))-brightness(rgb(12,12))<22,
+   id+' pale plaid threads must be subdued rather than white');
+  assert.equal(pixels[(12*64+13)*4+3],255,
+   'plaid stays opaque; muted highlights never reveal underlying skin');
  }
 });
 test('all casual tops recolor the ONE actual torso, without duplicate jacket shells',()=>{
@@ -231,19 +244,26 @@ test('short sleeves are slightly larger, with the distinctive polo hem restored'
  }
  r.dispose();
 });
-test('cuffed button-up covers skin from elbow to raised forearm band',()=>{
+test('cuffed button-up has ONE lower wrist band and continuous elbow-to-cuff sleeve',()=>{
  const r=createOperatorRig('rook','blue');
  const model=r.visualKit.casualShirts.cuts['button-up-shirt'];
  for(const cuff of model.cuffedLower){
-  const sleeve=partBounds(cuff,'button-up:proximal-cuffed-sleeve');
-  const join=partBounds(cuff,'button-up:elbow-join');
-  const hem=partBounds(cuff,'button-up:raised-forearm-cuff');
-  assert.ok(sleeve.min.y<-.5,'forearm fabric reaches elbow joint');
-  assert.ok(join.min.y<-.55,'small overlap conceals bent elbow seam');
-  assert.ok(hem.max.y<-.08&&hem.min.y>-.27,
-   'raised cuff is on mid forearm, not wrist');
+  const sleeve=partBounds(cuff,'button-up:cuffed-forearm-sleeve');
+  const hem=partBounds(cuff,'button-up:wrist-cuff');
+  assert.ok(sleeve.min.y<=-.49,'fabric starts at the elbow');
+  assert.ok(sleeve.max.y>=.33,'cloth extends toward wrist');
+  assert.ok(hem.min.y>=.25&&hem.max.y<=.37,
+   'only cuff ring sits near wrist, not up by elbow');
   assert.ok(sleeve.max.y>=hem.min.y,
-   'cloth sleeve and cuff overlap instead of exposing a skin gap');
+   'single cuff and sleeve overlap without a skin gap');
+  const authoredNames=cuff.children.flatMap(mesh=>
+   (mesh.geometry?.userData.fieldworkLightingPartSpans??
+    [{partId:mesh.name}]).map(p=>p.partId));
+  assert.equal(authoredNames.filter(n=>n==='button-up:wrist-cuff').length,1,
+   'only one wrist cuff per arm');
+  assert.ok(!authoredNames.includes('button-up:elbow-join')&&
+   !authoredNames.includes('button-up:raised-forearm-cuff'),
+   'old duplicate rings must be removed');
  }
  for(const posture of ['stand','crouch']){
   poseOperator(r,frame(outfit('button-up-shirt',{sleeveState:'cuffed'}),
