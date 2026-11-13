@@ -61,14 +61,20 @@ export function assessPivotFootClearance(
   let good=0;
   // First one, then the other boot replants. Sample the first half-turn
   // when the turning direction matters most beside a wall or shelf.
+  // The support (trailing) boot stays planted during the first half.
+  // Favor a clear lead-foot swing before the later follow-foot replant.
+  // Sampling both feet at every angle makes left/right appear equivalent
+  // in symmetric stance even beside an asymmetric wall.
   for(const delta of [.24,.55,1.00]){
    const yaw=heading+side*delta;
-   for(const foot of [-1,1]){
-    const pt={x:position.x-Math.sin(yaw)*foot*5.6,
-      y:position.y+Math.cos(yaw)*foot*5.6};
-    if(canPlant(pt))good++;
-   }
+   const lead={x:position.x-Math.sin(yaw)*5.6,
+     y:position.y+Math.cos(yaw)*5.6};
+   if(canPlant(lead))good+=2;
   }
+  const followYaw=heading+side*1.00;
+  if(canPlant({x:position.x+Math.sin(followYaw)*5.6,
+    y:position.y-Math.cos(followYaw)*5.6}))good++;
+
   return good;
  };
  return {left:score(1),right:score(-1)};
