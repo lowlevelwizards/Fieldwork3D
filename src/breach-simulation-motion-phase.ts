@@ -37,6 +37,10 @@ export function advanceSimulationMotion(s:Session,h:number,
  const cpuEnd=(name:string,start:number)=>{
    if(profile)profile('civilian-motion/'+name,performance.now()-start);
  };
+ // One snapshot of session geometry for this authoritative motion phase.
+ // The civilian motor and body arbitration read the same real world,
+ // rather than looking up the already-validated context for each proposal.
+ const world=sessionWorldGeometry(s);
  const carryStart=cpuMark();
   // Authoritative coupled body proposal, before hard-actor resolution.
   const coupledBodyStarts=new Map<string,Pt>();
@@ -53,7 +57,7 @@ export function advanceSimulationMotion(s:Session,h:number,
     ];
     const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
       carrier.heading,civil.transportMode??carrier.plan[0]?.transportMode??'drag',
-      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),others,h*36);
+      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),others,h*36);
     if(!next){
       carrier.p=clone(from);carrier.velocity=0;carrier.nav=[];
       civil.p=clone(bodyFrom);civil.velocity=0;
@@ -66,7 +70,6 @@ export function advanceSimulationMotion(s:Session,h:number,
   // Propose civilian motion before the shared fixed-tick authority pass.
   // Both teams see the same original pre-motion positions for hard bodies.
   if(s.civilians.length){
-    const world=sessionWorldGeometry(s);
     // One ordered live-body collection for all civilian occupancy queries.
     // No chained filter/spread arrays per authoritative 60Hz tick. Read
     // positions live, so earlier civilians moving this tick still matter.
@@ -136,32 +139,45 @@ export function advanceSimulationMotion(s:Session,h:number,
   const arbitrationStart=cpuMark();
   const proposals=buildMotionFrameProposals(
     s.operators,s.civilians,motionStart);
+  // Repeated identifier searches inside each moving proposal and blocked
+  // resolution become one linear index. We use live actor references: the
+  // collision resolver still processes the original ordered proposals.
+  const actorById=new Map<string,TeamActor>();
+  for(const actor of s.operators)actorById.set(actor.id,actor);
+  const civilianById=new Map<string,(typeof s.civilians)[number]>();
+  const transportLinks:{carrierId:string;bodyId:string}[]=[];
+  for(const civil of s.civilians){
+    civilianById.set(civil.id,civil);
+    if(civil.carriedById)transportLinks.push({
+      carrierId:civil.carriedById,bodyId:civil.id
+    });
+  }
   const decisions=resolveMovementFrame(proposals,p=>{
-    if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s));
-    const a=s.operators.find(unit=>unit.id===p.id)!;
+    if(p.side==='neutral')return sweptBodyClear(p.from,p.to,s.doors,OPERATOR_RADIUS,world);
+    const a=actorById.get(p.id)!;
     return a.traversal?
       traversalStepClear(p.from,p.to,a.traversal,motorTraversalWorld(s,a)):
-      a.squeeze?sweptProfileClear(p.from,p.to,s.doors,a.squeezeYaw,'squeeze',sessionWorldGeometry(s)):sweptBodyClear(p.from,p.to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s));
+      a.squeeze?sweptProfileClear(p.from,p.to,s.doors,a.squeezeYaw,'squeeze',world):
+        sweptBodyClear(p.from,p.to,s.doors,OPERATOR_RADIUS,world);
   });
-  reconcileCivilianTransportFrame(proposals,decisions,
-    s.civilians.filter(c=>!!c.carriedById).map(c=>({
-      carrierId:c.carriedById!,bodyId:c.id
-    })));
+  // No transport arbitration or sorted link copies on the common path.
+  if(transportLinks.length)
+    reconcileCivilianTransportFrame(proposals,decisions,transportLinks);
   for(const decision of decisions){
     if(!decision.blocked)continue;
-    const civil=s.civilians.find(unit=>unit.id===decision.id);
+    const civil=civilianById.get(decision.id);
     if(civil){
       civil.p=clone(decision.point);civil.priorP=clone(decision.point);
       civil.velocity=0;civil.blockedTime+=h;
       continue;
     }
-    const a=s.operators.find(unit=>unit.id===decision.id)!;
+    const a=actorById.get(decision.id)!;
     a.p=clone(decision.point);
     const start=coupledBodyStarts.get(a.id);
     if(start&&a.carryingId){
-      const body=s.civilians.find(c=>c.id===a.carryingId&&
-        c.carriedById===a.id);
-      if(body){body.p=clone(start);body.priorP=clone(start);}
+      const body=civilianById.get(a.carryingId);
+      if(body?.carriedById!==a.id)continue;
+      body.p=clone(start);body.priorP=clone(start);
     }
     a.priorP=clone(decision.point);a.velocity=0;
     if(a.traversal){
