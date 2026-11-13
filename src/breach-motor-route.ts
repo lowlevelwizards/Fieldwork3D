@@ -55,7 +55,7 @@ export function prepareMotorRoute(
       const contact=pressDoorOnBodyAttempt(a.p,probe,s.doors,dt,
         s.operators.filter(o=>o.health>0).map(o=>o.p),
         sessionDoorPressurePolicy(s,a),sessionWorldGeometry(s));
-      recordDoorManeuverContact(a,contact);
+      recordDoorManeuverContact(a,s,contact);
     }
     // When two chairs interlock there may be no navigable path, so the
     // ordinary collision branch cannot run. Probe only a real, short
