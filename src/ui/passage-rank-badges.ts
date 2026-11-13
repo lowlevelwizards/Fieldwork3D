@@ -1,10 +1,10 @@
 /** Q3: shared muted entry-order badges in Floor Plan and projected 3D.
  * No player input, plan mutation, visibility disclosure or motor authority.
  */
-import type {Pt} from './breach-core.ts';
-import type {Session} from './breach-game.ts';
+import type {Pt} from '../breach-core.ts';
+import type {Session} from '../breach-game.ts';
 import {thresholdRankMarkers,nextThresholdRank,visiblePassageSchedule}
- from './breach-passage-visual-ranks.ts';
+ from '../breach-passage-visual-ranks.ts';
 
 export function paintPassageRanks(s:Session,
  draw:CanvasRenderingContext2D,project:(p:Pt)=>Pt,
