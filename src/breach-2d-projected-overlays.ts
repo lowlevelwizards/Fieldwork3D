@@ -3,7 +3,7 @@
  */
 import {doorCenter,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,team,enemies,isSeen,lastKnown,
- liveVisibility,plannedWindowRoute,flashTrajectory} from './breach-game.ts';
+ plannedWindowRoute,flashTrajectory} from './breach-game.ts';
 import type {TacticalScene3D} from './breach-3d.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
