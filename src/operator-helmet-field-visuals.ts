@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
+import {achMichHemY} from './operator-ach-mich-details.ts';
 import {isFieldHelmet,resolveHelmetField,resolveHelmetFieldColor,
  type FieldHelmet} from './operator-helmet-field-policy.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
@@ -32,16 +33,24 @@ const box=(g:THREE.Group,m:THREE.Material,name:string,
  g.add(o);return o;
 };
 // The H8 accessories use thin surface-fitting strips instead of deep blocks.
-const ribbon=(g:THREE.Group,m:THREE.Material,name:string,points:number[][],h:number)=>{
+const ribbon=(g:THREE.Group,m:THREE.Material,name:string,points:number[][],width:number)=>{
  const a:number[]=[];
+ const outward=new THREE.Vector3(Math.sign(points[0][0])||1,.02,-.27).normalize();
  for(let i=1;i<points.length;i++){
-  const [x,y,z]=points[i-1],[u,v,w]=points[i];
-  a.push(x,y-h/2,z,u,v-h/2,w,u,v+h/2,w,
-   x,y-h/2,z,u,v+h/2,w,x,y+h/2,z);
+  const p=new THREE.Vector3(...points[i-1]);
+  const q=new THREE.Vector3(...points[i]);
+  // H5.1: perpendicular to the strap's direction! The previous
+  // y-axis width became almost zero on a vertically hanging strap.
+  const side=q.clone().sub(p).normalize().cross(outward).normalize()
+   .multiplyScalar(width*.5);
+  const v=[p.clone().sub(side),p.clone().add(side),
+   q.clone().add(side),q.clone().sub(side)];
+  for(const t of [v[0],v[1],v[2],v[0],v[2],v[3]])
+   a.push(t.x,t.y,t.z);
  }
  const geo=new THREE.BufferGeometry();
  geo.setAttribute('position',new THREE.Float32BufferAttribute(a,3));
- geo.computeVertexNormals();
+ geo.computeVertexNormals();geo.computeBoundingBox();
  const mesh=new THREE.Mesh(geo,m);mesh.name=name;
  mesh.castShadow=false;mesh.receiveShadow=false;g.add(mesh);return mesh;
 };
@@ -74,6 +83,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   mesh.name='surface-wrapped-elastic-band';
   mesh.castShadow=false;mesh.receiveShadow=false;band.add(mesh);
   band.userData.h10RealCoverRing=true;
+  band.userData.h5CoverAdaptive=true;
  }
  const loops=addGroup('loops'),scrim=addGroup('scrim'),
   leaves=addGroup('leaves');
@@ -97,11 +107,23 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
     [sign*4.15,.75,-3.72]],.78);
    box(dangling,dark,'chin-buckle',sign*4.15,.74,-3.74,.32,.31,.27);
   }else{
-   for(const z of [-3.10,2.35])
-    ribbon(dangling,webbingMaterial,'released-four-point-strap',[
-     [sign*4.49,p.ear+.14,z],[sign*4.45,1.50,z-.30],
-     [sign*4.32,.84,z-.61]],.78);
-   box(dangling,dark,'chin-buckle',sign*4.32,.81,-3.71,.33,.30,.26);
+   // A true four-point suspension: both shell anchors converge into
+   // one sewn junction, with one broad free strap and a dangling buckle.
+   const frontAnchor:[number,number,number]=[
+    sign*4.49,achMichHemY(id,-3.10)-.16,-3.10];
+   const rearAnchor:[number,number,number]=[
+    sign*4.49,achMichHemY(id,2.35)-.16,2.35];
+   const junction=[sign*4.04,1.75,-2.08];
+   ribbon(dangling,webbingMaterial,'released-four-point-front-leg',
+    [frontAnchor,junction],.92);
+   ribbon(dangling,webbingMaterial,'released-four-point-rear-leg',
+    [rearAnchor,junction],.92);
+   ribbon(dangling,webbingMaterial,'released-four-point-hanging-tail',[
+    junction,[sign*3.70,.40,-2.82],[sign*3.26,-.74,-3.35]
+   ],.92);
+   box(dangling,dark,'chin-buckle',sign*3.26,-.73,-3.36,
+    .53,.44,.31);
+   
   }
  }
  const shroud=addGroup('shroud');
@@ -173,6 +195,15 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
 export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  shellHex:number,covered:boolean,headEyewear='eyes-none'):void{
  const s=resolveHelmetField(v.shell,raw),m=v.modules;
+ // Swap between cached, pre-authored cloth and shell ring profiles only
+ // when the cover state changes; never raycast every animation frame.
+ if(v.shell!=='pasgt'){
+  const band=v.modules.band.getObjectByName('surface-wrapped-elastic-band');
+  if(band instanceof THREE.Mesh&&band.userData.h5Covered!==covered){
+   band.geometry=createAchMichSurfaceBandGeometry(v.shell,covered);
+   band.userData.h5Covered=covered;
+  }
+ }
  const bandHex=resolveHelmetFieldColor(s.bandColor,shellHex,v.shell==='pasgt');
  const webHex=resolveHelmetFieldColor(s.webbingColor,shellHex,v.shell==='pasgt');
  v.bandMaterial.color.setHex(bandHex);v.webbingMaterial.color.setHex(webHex);

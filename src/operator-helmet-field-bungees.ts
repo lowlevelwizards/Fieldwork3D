@@ -34,11 +34,13 @@ const orient=(mesh:THREE.Mesh,f:HelmetSurfaceFrame)=>{
 function tether(shell:AchMichCoverShell,side:'left'|'right',g:THREE.Group,
  webbing:THREE.Material,metal:THREE.Material,dark:THREE.Material){
  const sign=side==='left'?-1:1;
- const rail=point(shell,side,-.63,.30,.76);
- const shoulder=point(shell,side,-.79,.40,.88);
- const corner=point(shell,'front',sign*.84,.31,.91);
- const front=point(shell,'front',sign*.52,.29,.82);
- const shroud=point(shell,'front',sign*.29,.24,.73);
+ // Keep the cord just proud of the textile and rail rather than
+ // suspended nearly a full unit away from the helmet surface.
+ const rail=point(shell,side,-.63,.30,.31);
+ const shoulder=point(shell,side,-.79,.40,.37);
+ const corner=point(shell,'front',sign*.84,.37,.38);
+ const front=point(shell,'front',sign*.52,.37,.34);
+ const shroud=point(shell,'front',sign*.29,.34,.31);
  // A polyline along the shell's exterior, NOT a chord through the
  // front/side corner. A short soft curve removes sharp wire knees.
  const path=[rail.position,shoulder.position,corner.position,
@@ -89,5 +91,6 @@ export function addAchMichRetainingBungees(
  g.userData.h10BungeeThickness=.145;
  g.userData.h9BungeeCordCount=2;
  g.userData.h9BungeeHooks=4;
+ g.userData.h5CloserSurfaceFit=true;
  g.userData.h9BungeeRoutes=routes;
 }
