@@ -18,7 +18,9 @@ test('Q4 actual outward door session: one swept-safe stage, then a stable hold',
   door.open=true;door.openFraction=0;
   const [lead,follower,...rest]=team(s);
   for(const unit of rest)unit.health=0;
-  lead.p=p(311,251);
+  // Keep the leader physically farther along the same doorway lane,
+  // but not so far that the follower has its full 20u clearance already.
+  lead.p=p(326,241);
   lead.plan=[{id:1,kind:'move',p:p(311,340)}];
   follower.plan=[{id:2,kind:'move',p:p(311,340)}];
   const world=sessionWorldGeometry(s);
