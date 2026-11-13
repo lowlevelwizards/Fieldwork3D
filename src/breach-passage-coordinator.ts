@@ -7,19 +7,22 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PassageSchedule,PassageSlot} from './breach-passage-plan.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {chooseLeafStage,leafStageStride,threatenedByOpeningLeaf}
+ from './breach-passage-leaf-stage.ts';
 
 export const QUEUE_CENTER_GAP=20;
 export const QUEUE_WAIT_DEPTH=OPERATOR_RADIUS+11;
 export const QUEUE_ENTRY_RADIUS=142;
 export type QueueDecision={move:Pt;hold:boolean;
- reason:'free'|'sequence'|'spacing'|'opposing'|'occupied';
+ reason:'free'|'sequence'|'spacing'|'opposing'|'occupied'|'stage';
  doorId:string|null;rank:number|null};
 type Member={actor:TeamActor;slot:PassageSlot};
 type Lane={door:Door;side:-1|1;members:Member[]};
 type Owner={id:string;side:-1|1;lastAt:Pt;lastProgress:number};
 type Context={schedule:PassageSchedule;byDoor:Map<string,Door>;
  lanes:Map<string,Lane>;owners:Map<string,Owner>;
- promotions:Map<string,string>;nextPromotionProbe:Map<string,number>};
+ promotions:Map<string,string>;nextPromotionProbe:Map<string,number>;
+ leafStages:Map<string,Pt|null>};
 const contexts=new WeakMap<Session,Context>();
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const normalDepth=(p:Pt,d:Door)=>{
@@ -54,7 +57,7 @@ function context(s:Session,schedule:PassageSchedule):Context{
  for(const lane of lanes.values())lane.members.sort((a,b)=>
   a.slot.rank-b.slot.rank||a.actor.id.localeCompare(b.actor.id));
  const value:Context={schedule,byDoor,lanes,owners:new Map(),
-  promotions:new Map(),nextPromotionProbe:new Map()};
+  promotions:new Map(),nextPromotionProbe:new Map(),leafStages:new Map()};
  contexts.set(s,value);
  return value;
 }
@@ -171,6 +174,31 @@ export function inspectPassageLane(s:Session,doorId:string,side:-1|1){
    currentSlot:pending(m.actor,ctx!.schedule,ctx!.byDoor)?.doorId??null
   }))??[]};
 }
+/** Cached, one-shot correction for a genuinely held follower under the
+ * physical leaf sweep. No new route, GO rank, or external movement actor.
+ */
+function stagedHold(ctx:Context,s:Session,a:TeamActor,slot:PassageSlot,
+ door:Door,normalStep:Pt,hold:QueueDecision):QueueDecision{
+ if(!hold.hold||!threatenedByOpeningLeaf(door,a.p,slot.fromSide))
+  return hold;
+ const key=slot.doorId+'|'+slot.fromSide+'|'+a.id;
+ let stage=ctx.leafStages.get(key);
+ if(stage===undefined&&!ctx.leafStages.has(key)){
+  const world=sessionWorldGeometry(s);
+  stage=chooseLeafStage(door,a.p,slot.fromSide,
+   (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
+   s.operators.filter(b=>b!==a&&b.health>0).map(b=>b.p));
+  ctx.leafStages.set(key,stage);
+ }
+ if(!stage)return hold;
+ const next=leafStageStride(a.p,stage,dist(a.p,normalStep));
+ if(dist(next,a.p)<.03)return hold;
+ const world=sessionWorldGeometry(s);
+ if(!sweptBodyClear(a.p,next,s.doors,OPERATOR_RADIUS,world)||
+    s.operators.some(b=>b!==a&&b.health>0&&
+      dist(b.p,next)<OPERATOR_RADIUS*2+1))return hold;
+ return {move:next,hold:false,reason:'stage',doorId:door.id,rank:slot.rank};
+}
 /** Single Q2 entry point. Does not change positions or order authority.
  * Motor-passage applies a full stop or the returned bounded stride.
  */
@@ -256,7 +284,8 @@ export function coordinatePassage(s:Session,a:TeamActor,
  // throat, not just projected depth. Two operators may have staggered
  // sideways paths at the same depth; longitudinal spacing alone permits a
  // brief body-sized "accordion" when the lead changes lane.
- if(longitudinal.hold)return longitudinal;
+ if(longitudinal.hold)
+  return stagedHold(ctx,s,a,slot,door,move,longitudinal);
  let fraction=1;
  const proposed=longitudinal.move;
  for(let j=0;j<index;j++){
@@ -279,8 +308,8 @@ export function coordinatePassage(s:Session,a:TeamActor,
   fraction=Math.min(fraction,lo);
  }
  if(fraction>=.999)return longitudinal;
- if(fraction<.04)return {move:a.p,hold:true,reason:'spacing',
-  doorId:door.id,rank:slot.rank};
+ if(fraction<.04)return stagedHold(ctx,s,a,slot,door,move,
+   {move:a.p,hold:true,reason:'spacing',doorId:door.id,rank:slot.rank});
  return {move:{x:a.p.x+(proposed.x-a.p.x)*fraction,
   y:a.p.y+(proposed.y-a.p.y)*fraction},hold:false,
   reason:'spacing',doorId:door.id,rank:slot.rank};
