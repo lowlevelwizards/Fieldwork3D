@@ -33,14 +33,18 @@ export function chooseEncounterPremise(site:Site,context:EncounterContext={}):En
  if(mission==='intel'){w.hideout+=2;w['after-hours']+=1;}
  if(context.enableIncidentIntent&&context.incidentId){
    const intent=INCIDENTS.find(i=>i.id===context.incidentId);
-   if(intent?.premises?.length)
+   if(intent?.premises?.length&&intent.missions.includes(mission)&&
+      (!intent.buildings||intent.buildings.includes(site.archetype??'house')))
      for(const key of options)
-       w[key]*=intent.premises.includes(key)?3:.2;
+       // The selected incident is a real scenario restriction, not only a
+       // hint: an unsupported premise would later cause the briefing to
+       // silently swap case families. Never sample that incompatible world.
+       w[key]=intent.premises.includes(key)?w[key]*3:0;
  }
  if(risk===2){w.guarded+=1.5;w.hideout+=1;}
  if(risk===3){w.defensive+=5;w.guarded+=4;w.hideout+=2;w.routine*=.65;}
- const total=options.reduce((sum,key)=>sum+Math.max(.01,w[key]),0);
+ const total=options.reduce((sum,key)=>sum+w[key],0);
  let roll=encounterRng(context.seed??site.seed,1)()*total;
- for(const key of options){roll-=Math.max(.01,w[key]);if(roll<=0)return key;}
+ for(const key of options){roll-=w[key];if(roll<=0&&w[key]>0)return key;}
  return options[options.length-1];
 }

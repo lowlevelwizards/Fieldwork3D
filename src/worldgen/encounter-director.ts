@@ -2,6 +2,7 @@
  * a believable grouping, and the physical solver commits safe spawn points. */
 import type {Site} from '../breach-site.ts';
 import {missionForSeed} from '../breach-operations.ts';
+import {resolveGenerationIncidentIntent} from '../briefing/incident-intent.ts';
 import type {EncounterContext,EncounterPlan,EncounterPremise,EncounterActorSpec} from './encounter-types.ts';
 import {chooseEncounterPremise} from './encounter-premises.ts';
 import {chooseEncounterProfile} from './encounter-profiles.ts';
@@ -12,6 +13,7 @@ import {composeEncounterGroups} from './encounter-groups.ts';
 import {placeEncounterActors} from './encounter-placement.ts';
 import {assignEncounterActivities} from './encounter-activities.ts';
 import {assignEncounterRoutines} from './encounter-routines.ts';
+import {applyIncidentActorDoctrine} from './encounter-incident-doctrine.ts';
 import {assignEncounterRoles,assignObjectiveSecurity}
  from './encounter-roles.ts';
 import {assignExteriorOccupants} from './encounter-exteriors.ts';
@@ -24,8 +26,11 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  const mission=context.mission??missionForSeed(site.seed);
  const resolved={...context,mission};
  const premise:EncounterPremise=chooseEncounterPremise(site,resolved);
+ const incidentIntentId=context.enableIncidentIntent?
+   resolveGenerationIncidentIntent(seed,site.archetype??'house',mission,
+     premise,context.incidentId):null;
  const profile=chooseEncounterProfile(premise,seed,mission,
-   context.enableIncidentIntent?context.incidentId:undefined);
+   incidentIntentId??undefined);
  const target=chooseHostileBudget(site,resolved,premise);
  const anchors=site.enemies;
  // All anchors were checked by the architectural circulation audit.
@@ -50,9 +55,10 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
    })||
    (mission==='capture'&&!spatial.actors.some(a=>a.role==='target')))
   throw new Error('no safe, mission-complete encounter population');
+ const initialActivities=assignEncounterActivities(site,
+   assignObjectiveSecurity(site,spatial.actors,mission),premise,seed);
  const actors=assignEncounterRoutines(site,
-   assignEncounterActivities(site,
-     assignObjectiveSecurity(site,spatial.actors,mission),premise,seed),seed);
+   applyIncidentActorDoctrine(site,initialActivities,mission,incidentIntentId),seed);
  // Neutral placement is separate from armed encounter groups and never
  // increases the hostileBudget or creates a red actor.
  const neutralBudget=civilianBudget(site,seed,premise,mission,
@@ -68,7 +74,7 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  const plan:EncounterPlan={
   version:1,seed,building:site.archetype??'house',
   scale:site.scale??'standard',premise,profile,mission,
-  incidentIntentId:context.enableIncidentIntent?context.incidentId:undefined,
+  incidentIntentId:incidentIntentId??undefined,
   risk:context.risk??1,
   expectedOccupancy:site.identity?.capacity??actors.length,hostileBudget:target,
   groups:placement.groups.map(g=>({...g,

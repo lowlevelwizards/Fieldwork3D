@@ -2,7 +2,8 @@
  * Opening the overlay never replaces the live tactical session.
  */
 import {defaultQuickPlaySettings,QUICK_PLAY_BUILDINGS,
- QUICK_PLAY_MISSIONS,type QuickPlaySettings,
+ QUICK_PLAY_MISSIONS,QUICK_PLAY_INCIDENTS,quickPlayIncidentDefinition,
+ type QuickPlaySettings,type QuickPlayIncident,
  type QuickPlaySize,type QuickPlayMission,type QuickPlayPresence,
  type QuickPlayCivilians} from '../quick-play-settings.ts';
 import type {BuildingArchetype} from '../breach-site.ts';
@@ -26,6 +27,8 @@ function readSettings():QuickPlaySettings{
     buildings,
     mission:(['random',...QUICK_PLAY_MISSIONS] as string[]).includes(saved.mission??'')?
       saved.mission!:fallback.mission,
+    incident:(['random',...QUICK_PLAY_INCIDENTS] as string[]).includes(saved.incident??'')?
+      saved.incident!:fallback.incident,
     presence:['random','light','typical','heavy'].includes(saved.presence??'')?
       saved.presence!:fallback.presence,
     civilians:['scenario','on','off'].includes(saved.civilians??'')?
@@ -99,7 +102,24 @@ export function createQuickPlayConfigurator(options:{
  const mission=picker('MISSION OBJECTIVE',[
   ['random','Random'],['clear','Clear'],['intel','Gather intel'],
   ['rescue','Rescue'],['hold','Hold'],['capture','Capture']
- ],v=>{settings.mission=v as QuickPlayMission;update();});
+ ],v=>{
+   settings.mission=v as QuickPlayMission;
+   const current=quickPlayIncidentDefinition(settings.incident);
+   if(current&&v!=='random'&&!current.missions.some(kind=>kind===v))
+     settings.incident='random';
+   render();
+ });
+ const incident=picker('INCIDENT',[
+  ['random','Random case'],
+  ['warrant-service','High-Risk Warrant · Capture'],
+  ['missing-person','Missing Person · Rescue'],
+  ['evidence-seizure','Evidence Seizure · Intel']
+ ],v=>{
+  settings.incident=v as QuickPlayIncident;
+  const selected=quickPlayIncidentDefinition(settings.incident);
+  if(selected)settings.mission=selected.missions[0];
+  render();
+ });
  const presence=picker('ARMED PRESENCE',[
   ['random','Random'],['light','Light'],['typical','Typical'],
   ['heavy','Heavy']
@@ -109,7 +129,8 @@ export function createQuickPlayConfigurator(options:{
   ['off','Off (rescue targets remain)']
  ],v=>{settings.civilians=v as QuickPlayCivilians;update();});
  const fieldGrid=node('div','fw-quick-config-grid');
- fieldGrid.append(size.group,mission.group,presence.group,civilians.group);
+ fieldGrid.append(size.group,mission.group,incident.group,
+  presence.group,civilians.group);
  const buildingSection=node('section','fw-quick-config-buildings');
  const buildingHeader=node('div','fw-quick-config-building-header');
  const buildingHeading=node('strong','','ALLOWED BUILDINGS');
@@ -173,15 +194,25 @@ export function createQuickPlayConfigurator(options:{
  function update(){
   error.textContent='';
   const count=settings.buildings.length;
+  const selectedIncident=quickPlayIncidentDefinition(settings.incident);
+  const incidentBuildings=!selectedIncident?.buildings||
+   settings.buildings.some(b=>selectedIncident.buildings!.includes(b));
+  const incidentMission=!selectedIncident||settings.mission==='random'||
+   selectedIncident.missions.includes(settings.mission);
   const validSeed=settings.seed===null||
    (Number.isInteger(settings.seed)&&settings.seed>=1&&settings.seed<=0xffffffff);
   summary.textContent=count+' building types enabled · '+
    (settings.size==='random'?'Random size':settings.size)+
    ' · '+(settings.mission==='random'?'Random objective':settings.mission)+
+   ' · '+(selectedIncident?selectedIncident.name:'Random incident')+
    ' · '+(settings.seed===null?'Fresh seed each launch':'Seed '+settings.seed);
-  start.disabled=count===0||!validSeed;
+  start.disabled=count===0||!validSeed||!incidentBuildings||!incidentMission;
   if(!count)error.textContent='Enable at least one building type.';
   else if(!validSeed)error.textContent='Seed must be a whole number from 1 to 4294967295.';
+  else if(!incidentBuildings)error.textContent=
+   'This incident needs a compatible building type. Adjust allowed buildings.';
+  else if(!incidentMission)error.textContent=
+   'This incident requires a different mission objective.';
   for(const [kind,input] of checkInputs)
    input.checked=settings.buildings.includes(kind);
   saveSettings(settings);
@@ -189,6 +220,7 @@ export function createQuickPlayConfigurator(options:{
  function render(){
   seedInput.value=settings.seed===null?'':String(settings.seed);
   size.select.value=settings.size;mission.select.value=settings.mission;
+  incident.select.value=settings.incident;
   presence.select.value=settings.presence;
   civilians.select.value=settings.civilians;update();
  }

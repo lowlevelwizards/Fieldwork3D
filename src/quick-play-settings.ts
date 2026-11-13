@@ -5,21 +5,31 @@
 import type {BuildingArchetype,SiteScale} from './breach-site.ts';
 import type {OperationKind} from './breach-operations.ts';
 import {BUILDING_ARCHETYPES} from './breach-archetypes.ts';
+import {INCIDENTS} from './briefing/incident-catalog.ts';
 
 export type QuickPlaySize='random'|'small'|'medium'|'large';
 export type QuickPlayMission='random'|OperationKind;
 export type QuickPlayPresence='random'|'light'|'typical'|'heavy';
 export type QuickPlayCivilians='scenario'|'on'|'off';
+/** Three curated, physically distinct operations; other cases stay random. */
+export const QUICK_PLAY_INCIDENTS=[
+ 'warrant-service','missing-person','evidence-seizure'] as const;
+export type QuickPlayIncident='random'|typeof QUICK_PLAY_INCIDENTS[number];
+export function quickPlayIncidentDefinition(id:QuickPlayIncident){
+ return id==='random'?undefined:INCIDENTS.find(x=>x.id===id);
+}
 export type QuickPlaySettings={
  seed:number|null;size:QuickPlaySize;
  buildings:BuildingArchetype[];
  mission:QuickPlayMission;
+ incident:QuickPlayIncident;
  presence:QuickPlayPresence;
  civilians:QuickPlayCivilians;
 };
 export type ResolvedQuickPlay={
  seed:number;scale:SiteScale;archetype:BuildingArchetype;
- mission:OperationKind;presence:Exclude<QuickPlayPresence,'random'>;
+ mission:OperationKind;incidentId?:string;
+ presence:Exclude<QuickPlayPresence,'random'>;
  civilians:QuickPlayCivilians;
 };
 export const QUICK_PLAY_BUILDINGS:readonly BuildingArchetype[]=BUILDING_ARCHETYPES;
@@ -27,7 +37,7 @@ export const QUICK_PLAY_MISSIONS:readonly OperationKind[]=
  ['clear','intel','rescue','hold','capture'];
 export function defaultQuickPlaySettings():QuickPlaySettings{
  return {seed:null,size:'random',buildings:[...QUICK_PLAY_BUILDINGS],
-   mission:'random',presence:'random',civilians:'scenario'};
+   mission:'random',incident:'random',presence:'random',civilians:'scenario'};
 }
 function pick(seed:number,salt:number,count:number):number{
  let x=(seed^salt)>>>0;
@@ -43,15 +53,24 @@ export function resolveQuickPlaySettings(
    throw new Error('Seed must be an integer from 1 to 4294967295');
  const enabled=QUICK_PLAY_BUILDINGS.filter(b=>settings.buildings.includes(b));
  if(!enabled.length)throw new Error('Select at least one building type');
+ const incident=quickPlayIncidentDefinition(settings.incident??'random');
+ const compatible=incident?.buildings?
+  enabled.filter(building=>incident.buildings!.includes(building)):
+  enabled;
+ if(!compatible.length)throw new Error(
+   'Selected incident is not possible in the enabled building types');
+ if(incident&&settings.mission!=='random'&&
+    !incident.missions.includes(settings.mission))
+   throw new Error('Selected incident requires a different mission objective');
  const size=settings.size==='random'?
   (['small','medium','large'] as const)[pick(seed,0x17c2,3)]:settings.size;
- const mission=settings.mission==='random'?
+ const mission=incident?incident.missions[0]:settings.mission==='random'?
   QUICK_PLAY_MISSIONS[pick(seed,0xa001,QUICK_PLAY_MISSIONS.length)]:
   settings.mission;
  const presence=settings.presence==='random'?
   (['light','typical','heavy'] as const)[pick(seed,0x9f57,3)]:
   settings.presence;
  return {seed,scale:size,
-   archetype:enabled[pick(seed,0x30e3,enabled.length)],
-   mission,presence,civilians:settings.civilians};
+   archetype:compatible[pick(seed,0x30e3,compatible.length)],
+   mission,incidentId:incident?.id,presence,civilians:settings.civilians};
 }

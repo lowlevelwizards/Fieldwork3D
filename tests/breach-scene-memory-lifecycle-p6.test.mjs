@@ -18,7 +18,9 @@ test('site teardown retires hostile rigs but retains preloaded friendlies',()=>{
   assert.match(siteSwap,/this\.retireHostileActor\(id\)/);
   assert.match(scene,/private retireHostileActor\(id:string\):void\{/);
   assert.match(scene,/actor\.physical\.dispose\(\)/);
-  assert.match(scene,/this\.scene\.remove\(actor\.root,actor\.status,actor\.beam,/);
+  assert.match(scene,/this\.scene\.remove\(actor\.root,actor\.status,actor\.beam\)/);
+  assert.match(scene,/this\.contactShadowBatch\.unregister\(id\)/);
+  assert.doesNotMatch(scene,/actor\.contactShadows\.forEach\(shadow=>shadow\.geometry\.dispose\(\)\)/);
   assert.match(scene,/this\.actors\.delete\(id\)/);
   assert.match(scene,/this\.actors\.set\(a\.id,\{side:a\.side,/);
 });

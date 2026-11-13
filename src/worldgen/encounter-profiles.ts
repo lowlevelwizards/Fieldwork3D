@@ -9,6 +9,17 @@ const profiles:readonly EncounterProfile[]=[
  'quiet-approach','scattered','clustered','active','prepared'];
 export function chooseEncounterProfile(premise:EncounterPremise,
  seed:number,mission?:OperationKind,incidentId?:string):EncounterProfile{
+ // Three showcase operations use real, existing physical placement shapes.
+ // Profile affects route-validated room selection, never scripted spawns.
+ // A seed chooses a second credible variant to avoid identical missions.
+ const featured:Record<string,readonly [EncounterProfile,EncounterProfile,number]>={
+   'warrant-service':['prepared','clustered',.72],
+   'missing-person':['active','scattered',.67],
+   'evidence-seizure':['quiet-approach','scattered',.73]
+ };
+ const playbook=incidentId?featured[incidentId]:undefined;
+ if(playbook)return encounterRng(seed,19)()<playbook[2]?
+   playbook[0]:playbook[1];
  const weights:Record<EncounterProfile,number>={
   'quiet-approach':2.3,scattered:4,clustered:1.8,active:2.1,prepared:1.3
  };
