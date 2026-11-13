@@ -6,6 +6,9 @@ on:
       - 'src/breach-quickplay-controller.ts'
       - 'src/breach-campaign-flow.ts'
       - 'src/operator-studio-bridge.ts'
+      - 'tests/release-a-fog-mesh-lifecycle.test.mjs'
+      - 'tests/release-a-studio-resource-lifetime.test.mjs'
+      - 'tests/performance-p8-replay-memory.test.mjs'
       - 'src/breach-equipment-editor-bridge.ts'
       - 'src/breach-operations-board-controller.ts'
       - 'tests/quick-play-startup-progress.test.mjs'
@@ -39,5 +42,16 @@ jobs:
             tests/arsenal-v2-campaign-adapter.test.mjs \
             tests/campaign-12.test.mjs \
             tests/breach-mission-controller-step8.test.mjs
+      - name: Release A fog, Studio, firing and optimized renderer regressions
+        if: ${{ startsWith(github.head_ref, 'release-a/') }}
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-a-fog-mesh-lifecycle.test.mjs \
+            tests/release-a-studio-resource-lifetime.test.mjs \
+            tests/animation-a3-10-close-stack-fire.test.mjs \
+            tests/animation-a3-11-progressive-urgency.test.mjs \
+            tests/performance-p6-furniture-batching.test.mjs \
+            tests/performance-p7-saved-operator.test.mjs \
+            tests/performance-p8-replay-memory.test.mjs
       - name: Production typecheck and build
         run: npm run build

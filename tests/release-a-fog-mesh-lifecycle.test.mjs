@@ -19,7 +19,7 @@ const vec=attribute=>Array.from(attribute.array);
 test('Release A4: Exterior Known fog geometry covers the exact site bounds',()=>{
  const world=site(-85,-40,265,405);
  const geometry=buildExteriorKnownFogGeometry(world);
- const positions=vec(geometry.getAttribute('position'));
+ const positions=vec(geometry.getAttribute('position')).map(v=>+v.toFixed(3));
  assert.equal(geometry.getAttribute('position').count,4);
  assert.deepEqual(positions,[
   -85,1.05,-40,-85,1.05,405,265,1.05,405,265,1.05,-40]);
