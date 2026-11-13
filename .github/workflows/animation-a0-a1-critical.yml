@@ -1,0 +1,37 @@
+name: Animation A0-A1 critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-animation-quality.ts'
+      - 'src/breach-animation-choreography.ts'
+      - 'src/operator-workbench-choreography.ts'
+      - 'src/breach-operator-animation-controller.ts'
+      - 'src/operator-pose-workbench-ui.ts'
+      - 'pose-workbench.html'
+      - 'tests/animation-a0-baseline.test.mjs'
+      - 'tests/animation-a1-choreography.test.mjs'
+      - 'scripts/audit-animation-a0.mjs'
+      - '.github/workflows/animation-a0-a1-critical.yml'
+  workflow_dispatch:
+jobs:
+  animation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Animation baseline and choreography tests
+        run: node --experimental-strip-types --test tests/animation-a0-baseline.test.mjs tests/animation-a1-choreography.test.mjs tests/breach-roadmap2-stage11-animation.test.mjs tests/breach-unified-pose-stability.test.mjs tests/operator-pose-workbench.test.mjs tests/door-traversal-d4-pose.test.mjs
+      - name: Capture A0 deterministic scenario report
+        run: node --experimental-strip-types scripts/audit-animation-a0.mjs --out artifacts/animation-a0/report.json
+      - name: Upload reproducible A0 report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: animation-a0-scenario-report
+          path: artifacts/animation-a0/report.json
+          if-no-files-found: ignore
+      - name: Production typecheck and Vite build
+        run: npm run build
