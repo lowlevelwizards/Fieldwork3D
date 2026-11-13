@@ -3,7 +3,7 @@
  */
 import type {BreachBootConfig} from './breach-boot-config.ts';
 import type {CampaignMode} from './breach-app-mode.ts';
-import {stepSession,team,type Session,type TeamActor} from './breach-game.ts';
+import {stepSession,type Session,type TeamActor} from './breach-game.ts';
 import type {Pt} from './breach-core.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import {renderSnapshot,type RenderActor} from './breach-frame-interpolation.ts';
@@ -236,13 +236,17 @@ function tick(now:number){
     const budget=fixedStepBudget(accum,dt);
     accum=budget.remaining;
     for(let i=0;i<budget.steps;i++){
-      previousRenderActors=renderSnapshot(state.operators);
-      // A previous-frame door sample is consumed synchronously by this
-      // RAF's scene update. Reuse the same bounded object during the round
-      // instead of allocating a map and tuples on every 60Hz tick.
-      if(!previousRenderDoors)previousRenderDoors={};
-      for(const door of state.doors)
-       previousRenderDoors[door.id]=door.openFraction??(door.open?1:0);
+      // When the browser must catch up by two/three fixed ticks, the
+      // presenter only consumes the snapshot immediately before the LAST
+      // simulated tick. Earlier snapshots were discarded in the same RAF.
+      // Avoid rebuilding actor maps and sampling every door unnecessarily;
+      // every authoritative tick and every replay event still executes.
+      if(i===budget.steps-1){
+        previousRenderActors=renderSnapshot(state.operators);
+        if(!previousRenderDoors)previousRenderDoors={};
+        for(const door of state.doors)
+          previousRenderDoors[door.id]=door.openFraction??(door.open?1:0);
+      }
       const simulationStart=performance.now();
       stepSession(state,1/60,simPhaseCosts?
         (name,ms)=>simPhaseCosts.set(name,
@@ -296,7 +300,7 @@ function tick(now:number){
   }
   const uiHudEnd=perfOverlay?performance.now():0;
   // The manager owns its DOM nodes for the lifetime of this view.
-  physicalActionRings.update(team(state),state.doors,
+  physicalActionRings.update(state.operators,state.doors,
     frameMode==='live',
     p=>config.worldToScreen(p,viewMode==='plan2d'?14:34));
   const perfRenderStart=performance.now();

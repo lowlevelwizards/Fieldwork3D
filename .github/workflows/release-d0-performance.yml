@@ -1,0 +1,70 @@
+name: Release D0 — fixed-tick performance and deterministic parity
+on:
+  pull_request:
+    paths:
+      - 'src/breach-runtime-loop.ts'
+      - 'src/breach-simulation-motion-phase.ts'
+      - 'scripts/audit-release-d0-workloads.mjs'
+      - 'scripts/compare-release-d0-workloads.mjs'
+      - 'tests/release-d0-*'
+      - '.github/workflows/release-d0-performance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-d0-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  fixed-tick-perf:
+    name: D0 CPU workload, frozen physics and mission-parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Critical fixed-step, motion, civilian, contact and replay regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d0-performance-acceptance.test.mjs \
+            tests/breach-runtime-loop-step12.test.mjs \
+            tests/breach-closeout-stage2-simulation-phases.test.mjs \
+            tests/breach-roadmap4-simulation-phases.test.mjs \
+            tests/performance-p2-12-movement-authority.test.mjs \
+            tests/performance-p2-13-stationary-motion.test.mjs \
+            tests/performance-p2-13-traversal-hotpaths.test.mjs \
+            tests/performance-p2-11-civilian-cadence.test.mjs \
+            tests/civilian-r2-rescue-transport.test.mjs \
+            tests/civilian-r2-transport-replay.test.mjs \
+            tests/breach-ai-work-scheduler-performance.test.mjs \
+            tests/breach-perception-cache-performance.test.mjs \
+            tests/performance-live-profiler.test.mjs \
+            tests/performance-p1-5-runtime-integration.test.mjs \
+            tests/lw-replay-world.test.mjs \
+            tests/performance-normal-play-20261113.test.mjs
+      - name: Candidate seed-fixed mission workloads
+        run: node --experimental-strip-types scripts/audit-release-d0-workloads.mjs d0-after.json
+      - uses: actions/checkout@v4
+        with:
+          ref: 6b3715a0e9b25017e9aeca26ba0ddcc64c7aa764
+          path: d0-baseline
+      - name: Exact previous-main same workload inputs and script
+        run: |
+          npm install --prefix d0-baseline --no-audit --no-fund
+          cp scripts/audit-release-d0-workloads.mjs d0-baseline/scripts/audit-release-d0-workloads.mjs
+          (cd d0-baseline && node --experimental-strip-types scripts/audit-release-d0-workloads.mjs ../d0-before.json)
+      - name: Reject any actor, shot, event, mission, door, civilian or replay difference
+        run: node scripts/compare-release-d0-workloads.mjs d0-before.json d0-after.json d0-parity.json
+      - name: TypeScript and production Vite build
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-d0-cpu-and-physical-parity
+          if-no-files-found: ignore
+          path: |
+            d0-before.json
+            d0-after.json
+            d0-parity.json

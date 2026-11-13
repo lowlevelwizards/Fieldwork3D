@@ -52,5 +52,6 @@ test('P2.11 phase reuses movement ports and skips allocations only when observer
  assert.match(code,/if\(civilianSenseDue\(civil,s\.seconds\)\)\{/);
  assert.match(code,/stepCivilianResponse\(civil,s\.seconds,h,\{/);
  assert.match(code,/stepCivilianMovement\(civil,s\.seconds,h,clear,occupied,routeTo\)/);
- assert.match(code,/const world=sessionWorldGeometry\(s\);/);
+ assert.match(code,/const geometry=\(\)=>world\?\?\(world=sessionWorldGeometry\(s\)\)/);
+ assert.match(code,/const currentWorld=geometry\(\);/);
 });
