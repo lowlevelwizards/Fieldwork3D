@@ -19,8 +19,9 @@ import {headwearCastShadowAtlas,collarCastShadowAtlas,authoredCollarShadowBoxes}
 import {resolveAutomaticGearColors} from './operator-gear-color-policy.ts';
 import {rigSignature,armorSignature,rigColorAssembly,validRigSolid,validArmorSolid}
  from './operator-rig-authenticity-policy.ts';
-import {garmentColorValues,gorkaSpecialtyTexture} from './operator-upper-colorways.ts';
-import {garmentSolidHex,isGarmentSolidId,resolvedCuffSolid,resolvedCombatKnitSolid}
+import {garmentColorValues,gorkaSpecialtyTexture,buttonUpFlannelTexture} from './operator-upper-colorways.ts';
+import {isCasualShirtCut} from './operator-casual-shirts.ts';
+import {garmentSolidHex,isGarmentSolidId,solidChoicesFor,resolvedCuffSolid,resolvedCombatKnitSolid}
  from './operator-garment-color-policy.ts';
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
@@ -188,7 +189,9 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
   // Clothing coverage changes materials on existing articulated limbs only.
   // The bones, solved knee/elbow positions and planted feet stay identical.
   const sleeveState=p.wardrobe?.sleeveState??'unrolled';
-  const bareForearm=clothing.top==='base-layer'||
+  const casualBareArms=clothing.top==='t-shirt'||clothing.top==='polo-shirt'||
+    clothing.top==='tank-top';
+  const bareForearm=clothing.top==='base-layer'||casualBareArms||
     (sleeveState==='rolled'||sleeveState==='cuffed');
   for(const arm of r.arms){
    // Rolled sleeves retain the FULL shoulder-to-elbow cuboid. Only the
@@ -198,7 +201,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
    const sleeveMaterial=clothing.top==='gorka-jacket'?
     r.visualKit.newUpper.mountainCanvas:r.clothMaterial;
    arm.lower.material=bareForearm?r.skinMaterial:sleeveMaterial;
-   arm.upper.material=clothing.top==='base-layer'?
+   arm.upper.material=clothing.top==='base-layer'||casualBareArms?
     r.skinMaterial:sleeveMaterial;
   }
   for(const leg of r.feet){
@@ -259,7 +262,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
    const validManualSolid=isGarmentSolidId(storedSolid)&&(
     channel==='gear'?(clothing.rigStyle==='no-rig'||
      validRigSolid(clothing.rigStyle,storedSolid)):
-    channel==='armor'?validArmorSolid(clothing.armorStyle,storedSolid):true
+    channel==='armor'?validArmorSolid(clothing.armorStyle,storedSolid):
+    channel==='top'?solidChoicesFor('top',clothing).includes(storedSolid):true
    )?storedSolid:null;
    // A model's iconic textile applies only while the specific channel
    // has no *valid* manual color or print. Stale, incompatible saved
@@ -281,6 +285,13 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
    else if(channel!=='head'){
     if(validManualSolid)
      r.colors.set(material,new THREE.Color(garmentSolidHex(validManualSolid)));
+    else if(channel==='top'&&isCasualShirtCut(clothing.top)){
+     const defaults={
+      't-shirt':'charcoal','button-up-shirt':'khaki',
+      'polo-shirt':'navy','tank-top':'olive-drab'
+     } as const;
+     r.colors.set(material,new THREE.Color(garmentSolidHex(defaults[clothing.top])));
+    }
     else if(p.wardrobe&&(
       channel==='armor'||channel==='gear'||channel==='pack')){
      // Each named rig and armor shell gets its own iconic visual fabric;
@@ -292,6 +303,16 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
      r.colors.set(material,new THREE.Color(garmentSolidHex(id)));
     }
    }
+  }
+  // Plaid is a separate woven shirt fabric, never a military camouflage ID.
+  // Shared cloth UVs cover the torso and articulated button-up sleeves.
+  const plaid=clothing.top==='button-up-shirt'?
+    buttonUpFlannelTexture(p.wardrobe?.topColorway??'standard'):null;
+  if(plaid){
+   if(r.clothMaterial.map!==plaid){
+    r.clothMaterial.map=plaid;r.clothMaterial.needsUpdate=true;
+   }
+   r.colors.set(r.clothMaterial,new THREE.Color(0xffffff));
   }
   // A rig's empty pouch geometry is its own textile. By default it
   // inherits the rig's entire chosen solid/print and deterministic camo cut.
@@ -429,7 +450,9 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
    r.visualKit.fieldBlouses[clothing.top].torso:
    (clothing.top==='combat-shirt'||clothing.top==='smock-jacket'||
     clothing.top==='gorka-jacket')?
-    r.visualKit.newUpper.cuts[clothing.top].torso:null;
+    r.visualKit.newUpper.cuts[clothing.top].torso:
+    isCasualShirtCut(clothing.top)?
+    r.visualKit.casualShirts.cuts[clothing.top].torso:null;
   const collarShadow=collarCastShadowAtlas(
    clothing.top+'|'+clothing.armorStyle,
    collarGroup?authoredCollarShadowBoxes(collarGroup,r.chest):[]);
