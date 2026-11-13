@@ -404,3 +404,15 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
  #studioMaterials .helmet-field-section .helmet-option-card{
   font-size:11px;padding:6px}
 }
+
+/* Accessory explanations are opt-in, leaving the helmet and active controls
+ * visible at phone height. Native hidden must win over grid child styling. */
+#studioMaterials .helmet-field-section>small[hidden]{display:none!important}
+#studioMaterials .helmet-field-help{
+ min-height:30px;min-width:30px;width:30px;
+ padding:0;border-radius:50%;font:700 13px "Work Sans",sans-serif;
+ background:#30493e;color:#e3e9d8;border:1px solid #789486;
+}
+#studioMaterials .helmet-field-help[aria-expanded="true"]{
+ background:#cbb285;color:#20342b;border-color:#ead7a8;
+}
