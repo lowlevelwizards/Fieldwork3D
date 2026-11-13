@@ -2,6 +2,7 @@
  * Pure deterministic presentation; phase/velocity/facing are authoritative.
  */
 import type {FootTarget} from './breach-footsteps.ts';
+import {contactBalance} from './breach-contact-balance.ts';
 import {legMaximumLength,LEG_HIP_SIDE,LEG_ANKLE_HEIGHT,
   LEG_HIP_HEIGHT,legRestRise} from './breach-leg-geometry.ts';
 export type BalanceInput={velocity:number;heading:number;travelYaw:number;
@@ -19,21 +20,11 @@ export type BodyMotion={pelvisY:number;pelvisSide:number;
   support:number;chestLift:number;weaponYaw:number;weaponPitch:number;
   breath:number;};
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
-const smooth=(t:number)=>{const a=clamp(t,0,1);return a*a*(3-2*a);};
-const phaseWeight=(foot:FootTarget)=>{
-  const p=foot.progress??0;
-  switch(foot.phase){
-    case 'unloading':return 1-smooth(p);
-    case 'swinging':return 0;
-    case 'landing':return smooth(p);
-    case 'recovering':return 1;
-    default:return 1;
-  }
-};
+// All stance load and contact support are calculated by the pure A2.1
+// kernel. This file remains the single writer of body presentation.
 export function bodyFromContacts(input:BalanceInput):BodyMotion{
-  const [left,right]=input.feet;
-  const a=phaseWeight(left),b=phaseWeight(right);
-  const support=a+b>1e-6?(b-a)/(a+b):0;
+  const load=contactBalance(input.feet,input.position,input.heading);
+  const {support}=load;
   const moving=clamp(input.velocity/62,0,1);
   const direction=input.travelYaw-input.heading;
   const forward=Math.cos(direction),side=Math.sin(direction);
@@ -46,30 +37,24 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   const weaponAmp=(input.gait==='run'?1.65:
     input.gait==='squeeze'?.25:input.gait==='pie'?.38:1)*
     (1-.48*tension);
-  const envelope=(foot:FootTarget,phase:FootTarget['phase'])=>
-    foot.phase===phase?Math.sin(Math.PI*clamp(foot.progress??0,0,1)):0;
-  const swinging=Math.max(envelope(left,'swinging'),
-    envelope(right,'swinging'));
-  const receiving=Math.max(envelope(left,'landing'),
-    envelope(right,'landing'));
-  const unloading=Math.max(envelope(left,'unloading'),
-    envelope(right,'unloading'));
+  const {swinging,receiving,unloading}=load;
   // All envelopes reach zero at their phase boundaries. Lateral shuffles
   // change support legs often, so binary phase offsets visibly pop the hip.
-  let pelvisY=(-.76*receiving+.28*unloading+.42*swinging)*
+  // A2.1: continuous load transfer. The pelvis follows the world-space
+  // *bearing shoe*, not a free-running sway oscillator. The slight
+  // phase-specific compression is bounded and vanishes exactly at
+  // phase boundaries so gait transitions do not pop.
+  let pelvisY=(-.87*receiving+.33*unloading+.43*swinging)*
     moving*crouch*wound*gaitAmp;
-  // Experimental contact support follows the actual bearing shoe, not a
-  // disconnected lateral oscillator. Retain legacy output by default.
-  let pelvisSide=support*clamp(1.15*speed*gaitAmp,0,1.65)*crouch;
-  if(input.hybridSupport&&input.position){
-    const axis={x:-Math.sin(input.heading),y:Math.cos(input.heading)};
-    const leftSide=(left.position.x-input.position.x)*axis.x+
-      (left.position.y-input.position.y)*axis.y;
-    const rightSide=(right.position.x-input.position.x)*axis.x+
-      (right.position.y-input.position.y)*axis.y;
-    const weight=a+b>1e-6?(leftSide*a+rightSide*b)/(a+b):0;
-    pelvisSide=clamp(weight*.24,-1.65,1.65)*moving*crouch;
-  }
+  const bearing=input.position?load.bearingSide*.225+
+    support*.10:support*1.15;
+  const lateralGain=input.hybridSupport?1.055:1;
+  const pelvisSide=clamp(bearing*lateralGain,-1.65,1.65)*
+    moving*crouch*clamp(.9+gaitAmp*.1,.92,1.12);
+  // Only receiving weight can compress the pelvis; airborne frames must
+  // not invent an additional grounded contact.
+  pelvisY-=receiving*load.singleSupport*.14*
+    moving*crouch*wound;
   // Physical pelvis compression comes from the support-foot reach budget,
   // not from a separate stance-radius correction in the renderer.
   if(input.position){
@@ -98,9 +83,13 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   // without an independent time-based bob oscillator.
   const accel=clamp((input.acceleration??0)/180,-1,1);
   const torsoForward=clamp(-forward*speed*.09-accel*.04+
-    (.028*unloading-.014*receiving)*moving,-.13,.09)*crouch;
-  const torsoSide=clamp(side*speed*.078+support*speed*.021,
-    -.11,.11)*crouch*(1-.20*tension);
+    (.038*unloading-.022*receiving)*moving-
+    load.bearingForward*.002*speed,-.13,.09)*crouch;
+  // Counterbalance travels with the same bearing foot as the pelvis.
+  // Aiming/pie tension keeps the chest quieter without moving the feet.
+  const torsoSide=clamp(side*speed*.072+
+    support*speed*.014+pelvisSide*.014,-.11,.11)*
+    crouch*(1-.20*tension);
   // Follow the same contact/weight envelopes, rather than layering
   // unrelated sine-wave bob and sway over the animation.
   pelvisY-=Math.max(0,-accel)*.17*moving*crouch;
@@ -121,6 +110,6 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   return {pelvisY,pelvisSide,torsoForward,torsoSide,
     torsoYaw:clamp(-support*speed*.032*
       (input.personalLooseness??1),-.038,.038),
-    headCounter:-torsoSide*.52,support,chestLift,
+    headCounter:-torsoSide*.62,support,chestLift,
     weaponYaw,weaponPitch,breath};
 }
