@@ -62,6 +62,7 @@ function sample(){
   reload:actor.reload,reloadDuration:1.8,
   lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
   doorMethod:actor.lastDoorMethod,doorPoint:undefined,
+  physicalContact:actor.physicalContact,
   down:actor.health<=0,surrender:actor.surrendered,
   aiming:actor.aim>=.82,firing:false,turning:actor.turning,
   recoil:actor.recoil,aimBlend:actor.aim,poseV3Preview:true,
