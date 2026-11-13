@@ -222,6 +222,7 @@ export class TacticalScene3D{
       'palette':'normal';
   /** Scratch list for occluding operators; avoids two arrays per RAF. */
   private readonly bloodBlockerScratch:Pt[]=[];
+  private readonly nearbyAllyScratch:Pt[]=[];
   private fogMemoryPaints=0;
   private fogSightPaints=0;
   private lastFogSession:Session|null=null;
@@ -1900,6 +1901,10 @@ export class TacticalScene3D{
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
     this.markScenePhase('disclosure');
+    // Quality tier is camera-wide, not per-person. Calculate it once even
+    // when twenty operators are animating this frame.
+    const frameShadowDetail=operatorShadowDetail(
+      projectedOperatorHeightPx(this.camera,this.height),this.quality.mode);
     for(const actor of s.operators){
       const visible=presentActor(s,actor,omniscient,replayDisclosurePolicy);
       // Hostile first-contact should not trigger a full rig, costume/lightmap,
@@ -2038,7 +2043,8 @@ export class TacticalScene3D{
       const friendlyAhead=stackCrowded||actuallyAhead;
       // One allocation only for an actual nearby ally, avoiding global
       // all-actor geometry work. Same sampled actor facts in live/replay.
-      const nearbyAllies:Pt[]=[];
+      const nearbyAllies=this.nearbyAllyScratch;
+      nearbyAllies.length=0;
       for(const peer of s.operators){
         if(peer===actor||peer.side!==actor.side||peer.health<=0)continue;
         if(Math.hypot(peer.p.x-drawActor.x,peer.p.y-drawActor.z)<90)
@@ -2088,8 +2094,7 @@ export class TacticalScene3D{
       }
       // The quality tier is selected from screen pixels, not absolute world
       // distance. No new directional light or actor-specific shadow map.
-      const px=projectedOperatorHeightPx(this.camera,this.height);
-      const shadowDetail=operatorShadowDetail(px,this.quality.mode);
+      const shadowDetail=frameShadowDetail;
       object.physical.root.userData.fieldworkCavityQuality=
         cavityQualityForDetail(shadowDetail);
       // Shared, bounded inventory projection for both visible containers.
