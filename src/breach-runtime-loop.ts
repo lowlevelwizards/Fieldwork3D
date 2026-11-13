@@ -149,7 +149,8 @@ function isProfilerRecording():boolean{return !!perfOverlay;}
 // immediately restores full-rate 3D. RAF, UI, audio and 60Hz gameplay never
 // change cadence. Desktop stays full rate unless explicitly opted in.
 const idle3dAuto=!config.boot.idle3dExperiment&&
- !config.boot.idle3dDisabled&&typeof window.matchMedia==='function'&&
+ !config.boot.idle3dDisabled&&typeof window!=='undefined'&&
+ typeof window.matchMedia==='function'&&
  window.matchMedia('(pointer:coarse)').matches;
 const idle3dExperiment=config.boot.idle3dExperiment||idle3dAuto;
 let last3dInputAt=idle3dAuto?performance.now():-Infinity;
