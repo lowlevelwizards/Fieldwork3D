@@ -126,7 +126,12 @@ try{
    await capture(id+'-net-three-quarter','front');
    await capture(id+'-net-side','side');
    await capture(id+'-net-rear','back');
+   // H9.4a: isolate the modeled shroud before overlays and rail furniture.
+   await conceal.selectOption('none');
    await toggle('NVG SHROUD');
+   await capture(id+'-shroud-isolated-front','front');
+   await capture(id+'-shroud-isolated-side','side');
+   await conceal.selectOption('net');
    if(id!=='pasgt'){
     for(const name of ['SIDE RAILS','BUNGEES','VELCRO PANELS'])
      await toggle(name);
