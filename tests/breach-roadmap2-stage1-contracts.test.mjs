@@ -28,7 +28,9 @@ const GOLDENS=Object.freeze({
  // under the single passage coordinator after V3 vision integration.
  door:'ed0190cf41e1bf1218a18ad9045c5354182948ad4a050f6d92aeb658aac556a8',
  medical:'0166aaa68900f3a0150b3edab263e5c17573c368a2249e85debd6a9f389f6261',
- combat:'ac9b9366ff5dfb6f3e142187e3dff401f0fdc3fd737834abaf2971e483194a87',
+ // A3.11 approved rebaseline: earlier visible-contact point fire changes
+ // the genuine deterministic hit timeline; all event/AI invariants below pass.
+ combat:'ab6df1900ca466aa92c59815bc1b8ab0f6bbbe43976ee06488b178d069dcb71f',
  civilian:'32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136'
 });
 function authorDoorEntry(s){
