@@ -5,6 +5,7 @@
 import {doorCenter,doorLeafSegment,pointToSegment,OPERATOR_RADIUS,
  type Door,type Pt} from './breach-core.ts';
 import {crossingDoor} from './breach-passage.ts';
+import {updateDoorGrip} from './breach-door-grip.ts';
 import type {TeamActor} from './breach-game.ts';
 
 export type DoorManeuver='direct'|'push-through'|'outside-leaf'|'grab-and-hold';
@@ -27,6 +28,8 @@ export type DoorTraversalEpisode={
  waypoints:Pt[];
  waypointIndex:number;
  handContact:boolean;
+ /** Authoritative start time of a genuine sustained support-hand grasp. */
+ handContactSince:number|null;
  /** D2 bounded maneuver attempts; no fresh route search every motor tick. */
  maneuverAttempts:number;nextManeuverAt:number;
  selectedLeafFraction:number;driftRecoveries:number;
@@ -73,6 +76,7 @@ export function syncDoorTraversalEpisode(
   let door:Door|undefined;
   for(const d of doors)if(d.id===episode.doorId){door=d;break;}
   if(!door){actor.doorTraversal=null;return null;}
+  if(episode.handContact)updateDoorGrip(actor,door,seconds);
   if(squared(actor.p,episode.lastPosition)>2.25){
    episode.lastPosition={...actor.p};
    episode.lastProgressAt=seconds;
@@ -108,6 +112,7 @@ export function syncDoorTraversalEpisode(
   maneuver:'direct',lastProgressAt:seconds,lastPosition:{...actor.p},
   lastTransitionAt:seconds,obstructionReason:null,
   waypoints:[],waypointIndex:0,handContact:false,
+  handContactSince:null,
   maneuverAttempts:0,nextManeuverAt:seconds,
   selectedLeafFraction:fraction,driftRecoveries:0
  };
