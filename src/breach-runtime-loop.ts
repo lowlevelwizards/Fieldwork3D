@@ -197,6 +197,8 @@ function tick(now:number){
    previousHotSim=undefined;
    previousCoarseJs=undefined;previousCoarseMode=undefined;
    lastSightTotals=null;lastFogPaints=0;lastShadowRefreshes=0;
+   // Don't carry a previous map's door IDs into the next session.
+   previousRenderActors=null;previousRenderDoors=null;
    for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
     intervalSight[k]=0;
   }
@@ -221,8 +223,12 @@ function tick(now:number){
     accum=budget.remaining;
     for(let i=0;i<budget.steps;i++){
       previousRenderActors=renderSnapshot(state.operators);
-      previousRenderDoors=Object.fromEntries(state.doors.map(d=>
-        [d.id,d.openFraction??(d.open?1:0)]));
+      // A previous-frame door sample is consumed synchronously by this
+      // RAF's scene update. Reuse the same bounded object during the round
+      // instead of allocating a map and tuples on every 60Hz tick.
+      if(!previousRenderDoors)previousRenderDoors={};
+      for(const door of state.doors)
+       previousRenderDoors[door.id]=door.openFraction??(door.open?1:0);
       const simulationStart=perfOverlay?performance.now():0;
       stepSession(state,1/60,simPhaseCosts?
         (name,ms)=>simPhaseCosts.set(name,
