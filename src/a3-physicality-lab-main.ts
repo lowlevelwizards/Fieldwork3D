@@ -55,6 +55,7 @@ function sample(){
  const poseStart=timestamp();
  poseOperator(rig,{
   x:actor.p.x,z:actor.p.y,heading:actor.heading,
+  shoulderOffset:actor.aimSideOffset??0,shotHeading:actor.weaponYaw,
   travelYaw:actor.heading,velocity:actor.velocity,
   seconds:s.seconds,stride:actor.stride,posture:actor.posture,
   injury:actor.injuryStage,weapon:actor.weapon,
