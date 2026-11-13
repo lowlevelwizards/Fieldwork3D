@@ -7,6 +7,8 @@ import type {Session,TeamActor} from './breach-game.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
 import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
+import {recordDoorManeuverContact}
+ from './breach-door-traversal-maneuver.ts';
 import {escapeOpenDoorOverlap} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
  from './breach-squeeze-route.ts';
@@ -50,9 +52,10 @@ export function prepareMotorRoute(
       const probeLength=Math.min(4,goalDistance);
       const probe={x:a.p.x+(p.x-a.p.x)/goalDistance*probeLength,
         y:a.p.y+(p.y-a.p.y)/goalDistance*probeLength};
-      pressDoorOnBodyAttempt(a.p,probe,s.doors,dt,
+      const contact=pressDoorOnBodyAttempt(a.p,probe,s.doors,dt,
         s.operators.filter(o=>o.health>0).map(o=>o.p),
         sessionDoorPressurePolicy(s,a),sessionWorldGeometry(s));
+      recordDoorManeuverContact(a,contact);
     }
     // When two chairs interlock there may be no navigable path, so the
     // ordinary collision branch cannot run. Probe only a real, short

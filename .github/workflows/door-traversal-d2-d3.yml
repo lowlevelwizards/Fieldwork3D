@@ -31,7 +31,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: D2-D3 exact tests and four-person physical acceptance
         run: |
-          node --experimental-strip-types --test tests/door-traversal-d2.test.mjs tests/door-traversal-d3.test.mjs tests/door-traversal-episode.test.mjs tests/release7-outward-four.test.mjs tests/release7-door-intent.test.mjs tests/release7-door-leaf-bypass.test.mjs tests/door-traversal-d0-d1.test.mjs tests/squad-entry-b-continuity.test.mjs tests/doorway-planned-sequence.test.mjs tests/release7-squad-queue.test.mjs tests/doorway-right-of-way-session.test.mjs
+          node --experimental-strip-types --test tests/door-traversal-d2.test.mjs tests/door-traversal-d3.test.mjs tests/door-traversal-d2d3-four-operator.test.mjs tests/door-traversal-episode.test.mjs tests/release7-outward-four.test.mjs tests/release7-door-intent.test.mjs tests/release7-door-leaf-bypass.test.mjs tests/door-traversal-d0-d1.test.mjs tests/squad-entry-b-continuity.test.mjs tests/doorway-planned-sequence.test.mjs tests/release7-squad-queue.test.mjs tests/doorway-right-of-way-session.test.mjs
       - name: Real physical door baseline diagnostics
         run: |
           node --experimental-strip-types scripts/audit-door-traversal-baseline.mjs 4 900

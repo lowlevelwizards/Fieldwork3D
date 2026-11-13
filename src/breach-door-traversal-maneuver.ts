@@ -11,6 +11,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {beginAutoSidestep} from './breach-auto-sidestep.ts';
 import {signedDoorSide} from './breach-door-traversal-episode.ts';
+import type {BodyDoorContact} from './breach-door.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clone=(p:Pt):Pt=>({x:p.x,y:p.y});
 /** Return the first full-body-legal route in an intentionally tiny fixed
@@ -159,6 +160,23 @@ export function recoverDoorApproachDrift(a:TeamActor,s:Session):boolean{
  a.retryRouteAt=0;a.recoveryAttempts=0;
  a.squeeze=false;a.squeezeTime=0;
  return true;
+}
+/** Record a REAL contact accepted by the hinge motor. A support-hand
+ * marker is valid only if the actual panel/handle was within reach;
+ * D4 will extend this transient cue into sustained hand IK/retention.
+ * Never switch away from an actively owned outside-leaf footpath merely
+ * because it also brushed the panel during the same crossing.
+ */
+export function recordDoorManeuverContact(
+ actor:TeamActor,contact:BodyDoorContact|null):void{
+ const episode=actor.doorTraversal;
+ if(!episode||!contact||contact.doorId!==episode.doorId)return;
+ if(contact.handAssist){
+  episode.handContact=true;
+  if(episode.maneuver==='direct'||episode.maneuver==='push-through')
+   episode.maneuver='grab-and-hold';
+ }else if(contact.advanced&&episode.maneuver==='direct')
+  episode.maneuver='push-through';
 }
 /** When the current motor route is the saved maneuver, its chosen
  * clearance corridor owns navigation until finished or truly stalled.
