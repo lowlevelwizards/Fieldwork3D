@@ -9,7 +9,7 @@ import {initialWardrobe,readWardrobe,resolvedWardrobe,
 import {CASUAL_SHIRT_CUTS} from '../src/operator-casual-shirts.ts';
 import {topColorwayChoices,BUTTON_UP_FLANNEL_IDS,
  buttonUpFlannelTexture} from '../src/operator-upper-colorways.ts';
-import {CASUAL_SHIRT_SOLIDS,solidChoicesFor,garmentSolidHex}
+import {CASUAL_SHIRT_SOLIDS,GLOVE_SOLIDS,solidChoicesFor,garmentSolidHex}
  from '../src/operator-garment-color-policy.ts';
 import {fabricCamoChoices} from '../src/operator-fabric-camo-policy.ts';
 
@@ -117,5 +117,64 @@ test('flannel persists through wardrobe storage, switches back to fabric, and do
  assert.match(r.clothMaterial.map.name,/m81-woodland/);
  poseOperator(r,frame(outfit('t-shirt')),0);
  assert.notStrictEqual(r.clothMaterial.map,buttonUpFlannelTexture('flannel-rust-red'));
+ r.dispose();
+});
+
+test('plaid is a legible checked textile at torso scale, not a flat tint',()=>{
+ for(const id of BUTTON_UP_FLANNEL_IDS){
+  const tex=buttonUpFlannelTexture(id),pixels=tex.image.data;
+  assert.ok(tex.repeat.x>=2,'plaid repeats on an operator torso');
+  assert.ok(tex.repeat.y>=2,'plaid repeats vertically');
+  const sample=(x,y)=>[...pixels.slice((y*64+x)*4,(y*64+x)*4+3)].join(',');
+  assert.notEqual(sample(5,5),sample(5,12),'crossed bands must differ from stripes');
+  assert.notEqual(sample(5,12),sample(12,12),'horizontal and vertical bands');
+  assert.notEqual(sample(12,12),sample(13,12),'fine woven ticking');
+ }
+});
+test('tee, polo and tank have true open necks, and button cuff sits mid-forearm',()=>{
+ const r=createOperatorRig('rook','blue');
+ for(const top of ['t-shirt','polo-shirt','tank-top']){
+  poseOperator(r,frame(outfit(top)),0);
+  const model=r.visualKit.casualShirts.cuts[top];
+  const contact=model.torso.children.find(mesh=>mesh.userData.armorContactShell);
+  assert.ok(contact,'retained armor contact metric');
+  assert.equal(contact.visible,false,'contact should not render as closed neck slab');
+  assert.ok(model.torso.children.some(mesh=>mesh.material===r.skinMaterial),
+   'visible skin inset at open throat');
+ }
+ poseOperator(r,frame(outfit('button-up-shirt',{sleeveState:'cuffed'})),0);
+ for(const cuff of r.visualKit.casualShirts.cuts['button-up-shirt'].cuffedLower){
+  const geo=cuff.children.find(child=>child.isMesh).geometry;
+  geo.computeBoundingBox();
+  assert.ok(geo.boundingBox.max.y<.1,'cuffed band is above wrist');
+  assert.ok(geo.boundingBox.min.y>-.5,'cuff remains on forearm');
+ }
+ r.dispose();
+});
+test('gloves are independent from shirts, can be hidden and retain their own color',()=>{
+ assert.ok(GLOVE_SOLIDS.length>=8);
+ const r=createOperatorRig('rook','blue');
+ const saved=outfit('button-up-shirt',{
+  gloveSolid:'coyote',styles:{top:'button-up-shirt',gloves:'gloves-field'},
+  fabricSolids:{top:'rust'}});
+ const roundtrip=readWardrobe(JSON.parse(JSON.stringify(saved)));
+ assert.equal(roundtrip.gloveSolid,'coyote');
+ poseOperator(r,frame(roundtrip),0);
+ assert.ok(r.gloveCovers.every(x=>x.visible));
+ assert.notStrictEqual(r.gloveCovers[0].material,r.clothMaterial);
+ assert.notStrictEqual(r.gloveCovers[0].material,r.vestMaterial);
+ assert.equal(r.colors.get(r.gloveMaterial).getHex(),garmentSolidHex('coyote'));
+ const newShirt={...roundtrip,fabricSolids:{top:'navy'}};
+ poseOperator(r,frame(newShirt),0);
+ assert.equal(r.colors.get(r.gloveMaterial).getHex(),garmentSolidHex('coyote'));
+ poseOperator(r,frame({...newShirt,styles:{top:'tank-top',gloves:'gloves-none'}}),0);
+ assert.ok(r.gloveCovers.every(x=>!x.visible));
+ const manual={...roundtrip,gloveSolid:'black'};
+ poseOperator(r,frame(manual),0);
+ assert.equal(r.colors.get(r.gloveMaterial).getHex(),garmentSolidHex('black'));
+ const withoutHands={...kit,slots:{...kit.slots,hands:'hands-none'}};
+ assert.equal(resolvedWardrobe(manual,withoutHands).gloves,'gloves-field',
+  'explicit glove appearance is independent of equipment truth');
+ assert.equal(readWardrobe({...manual,gloveSolid:'invalid'}).gloveSolid,undefined);
  r.dispose();
 });
