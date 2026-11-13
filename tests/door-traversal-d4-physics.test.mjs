@@ -5,6 +5,7 @@ import {acquireDoorHandContact,maintainDoorHandContact,releaseDoorHandContact,
  from '../src/breach-door-hand-contact.ts';
 import {initDoor,handlePoint,PUSHED_OPEN_LIMIT} from '../src/breach-door.ts';
 import {doorLeafSegment} from '../src/breach-core.ts';
+import {doorRangeSite} from '../src/breach-door-test-cases.ts';
 const p=(x,y)=>({x,y});
 const door=()=>{const d=initDoor({id:'ENTRY',a:p(290,260),
  b:p(332,260),kind:'hinged',hinge:'a',swing:1,
@@ -21,7 +22,7 @@ function setup(){
   doorHandContact:null,lastDoorAt:-100,lastDoorId:null,
   lastDoorMethod:'open'};
  const s={seconds:2,doors:[d],operators:[a],
-  site:{walls:[],cover:[]}};
+  site:doorRangeSite('ajar-outward'),coverState:[],objectRevision:0};
  return {s,a,d};
 }
 test('D4 grip attaches at real moving-leaf position and follows hinge',()=>{
