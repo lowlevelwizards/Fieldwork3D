@@ -23,8 +23,8 @@ function bandFrame(shell:AchMichCoverShell,region:Section['region'],
  for(const uu of [u,u*.94,u*.85])
   for(let i=0;i<=20;i++){
    const v=-.78+i*.078;
-   const frame=covered?sampleHelmetCover(shell,region,uu,v,.20):
-    sampleHelmetShell(shell,region,uu,v,.11);
+   const frame=covered?sampleHelmetCover(shell,region,uu,v,.37):
+    sampleHelmetShell(shell,region,uu,v,.29);
    if(!frame)continue;
    const distance=Math.abs(frame.position.y-target)+Math.abs(uu-u)*.35;
    if(distance<score){score=distance;selected=frame;}
@@ -43,12 +43,24 @@ export function createAchMichSurfaceBandGeometry(
   for(const u of section.us)
    frames.push(bandFrame(shell,section.region,u,target,covered));
  const verts:number[]=[];
- const edge=(f:HelmetSurfaceFrame,sign:number)=>f.position.clone()
-  .addScaledVector(f.up,sign*.37);
+ // Ribbon edges must clear the shell too. Offsetting only the centerline
+ // put the top and bottom halves back inside sloped facets.
+ const edge=(f:HelmetSurfaceFrame,sign:number,corner:boolean)=>{
+  const p=f.position.clone().addScaledVector(f.up,sign*.35)
+   .addScaledVector(f.normal,.16);
+  if(corner){
+   // A straight chord between orthogonal panels cuts into the corner.
+   // Pull the elbow outward so front/side/rear transitions remain proud.
+   const radial=new THREE.Vector3(p.x,0,p.z).normalize();
+   p.addScaledVector(radial,.34);
+  }
+  return p;
+ };
  const put=(v:THREE.Vector3)=>verts.push(v.x,v.y,v.z);
  for(let i=0;i<frames.length;i++){
   const a=frames[i],b=frames[(i+1)%frames.length];
-  const lo=edge(a,-1),hi=edge(a,1),nextLo=edge(b,-1),nextHi=edge(b,1);
+  const lo=edge(a,-1,i%8===7),hi=edge(a,1,i%8===7),
+   nextLo=edge(b,-1,i%8===7),nextHi=edge(b,1,i%8===7);
   for(const p of [lo,hi,nextHi,lo,nextHi,nextLo])put(p);
  }
  const geometry=new THREE.BufferGeometry();
@@ -59,6 +71,8 @@ export function createAchMichSurfaceBandGeometry(
  geometry.userData.h10BandStations=frames.length;
  geometry.userData.h10BandTargetY=target;
  geometry.userData.h5SurfaceMode=covered?'cover':'shell';
+ geometry.userData.h58EdgeClearance=.16;
+ geometry.userData.h58CornerClearance=.34;
  bandGeometryByShell.set(key,geometry);
  return geometry;
 }
