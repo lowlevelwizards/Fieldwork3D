@@ -7,11 +7,11 @@ import {createAchMichFieldNetGeometry} from '../src/operator-helmet-field-net.ts
 test('H10.1: foliage slits use PASGT-style matte buttonhole without luminous outline',()=>{
  for(const shell of ['ach','mich-2001','mich-2002']){
   const layers=createHelmetFieldLayers(new THREE.Group(),shell);
-  const marks:THREE.Mesh[]=[];
+  const marks=[];
   layers.modules.loops.traverse(o=>{if(o instanceof THREE.Mesh)marks.push(o)});
   assert.ok(marks.length>=1);
   for(const m of marks){
-   const material=m.material as THREE.MeshStandardMaterial;
+   const material=m.material;
    assert.ok(material.isMeshStandardMaterial,'slit should be lit textile');
    assert.equal(material.emissive.getHex(),0);
    assert.equal(material.roughness,1);
