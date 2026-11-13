@@ -20,8 +20,7 @@ export function consolidateStaticFixtureParts(root:THREE.Group):FixtureBatchStat
       !(child.geometry instanceof THREE.BufferGeometry)||
       !(child.material instanceof THREE.MeshStandardMaterial)||
       child.material.transparent||child.children.length||!child.visible||
-      child.renderOrder!==0||child.userData.keepSeparate||
-      child.onBeforeRender!==THREE.Object3D.prototype.onBeforeRender)continue;
+      child.renderOrder!==0||Object.keys(child.userData).length>0)continue;
    const flags=[child.castShadow,child.receiveShadow,
     child.layers.mask,child.frustumCulled].join('/');
    let keyed=groups.get(child.material);
