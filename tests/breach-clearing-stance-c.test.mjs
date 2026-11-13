@@ -81,7 +81,8 @@ test('C14: teammate ahead is directional and includes near-body threshold crowdi
 
 test('C15: passive hysteresis smooths look/stack flicker, urgent aim and obstruction bypass it',()=>{
  assert.equal(stance('entry',{moving:.65,previous:'ready',heldFor:.08,
-  friendlyNear:true}),'ready');
+  friendlyNear:true}),'high',
+  'explicit threshold-stack courtesy is urgent and bypasses passive hysteresis');
  assert.equal(stance('entry',{moving:.65,previous:'ready',heldFor:.18,
   friendlyNear:true}),'high');
  assert.equal(stance('engage',{aim:.65,threatRange:25,
