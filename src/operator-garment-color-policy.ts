@@ -38,6 +38,15 @@ const kit:readonly GarmentSolidId[]=[
 export const FABRIC_SOLID_CHOICES:Readonly<Record<FabricCamoChannel,readonly GarmentSolidId[]>>={
  top:all,trousers:all,armor:kit,gear:kit,pack:kit
 };
+/** Independent glove dye palette: never reads shirt print, top solid or
+ * auto-matched equipment colors. Existing gloves default to ranger green. */
+export const GLOVE_SOLIDS=[
+ 'black','charcoal','ranger-green','olive-drab','coyote',
+ 'tan','khaki','brown','navy','slate'
+] as const satisfies readonly GarmentSolidId[];
+export type GloveSolidId=typeof GLOVE_SOLIDS[number];
+export const isGloveSolid=(value:unknown):value is GloveSolidId=>
+ typeof value==='string'&&(GLOVE_SOLIDS as readonly string[]).includes(value);
 export function isGarmentSolidId(value:unknown):value is GarmentSolidId{
  return typeof value==='string'&&Object.prototype.hasOwnProperty.call(GARMENT_SOLID_COLORS,value);
 }
