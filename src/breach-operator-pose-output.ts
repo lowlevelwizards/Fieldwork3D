@@ -12,6 +12,8 @@
 import * as THREE from 'three';
 import type {OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
+import {poseContinuityAlpha,blendPoseTransform,
+ type PoseContinuityGroup} from './breach-pose-continuity.ts';
 
 export type PoseOutputOwner='frame'|'body'|'lower-body'|'upper-body'|
  'weapon'|'attachments';
@@ -237,10 +239,46 @@ export function captureOperatorPoseOutput(r:OperatorRig,p:OperatorPose):
   stageOperatorPoseOutput(r,p,owner);
  return publishOperatorPoseOutput(r,p,false);
 }
+/** A2.5: integrate continuity at the one atomic output boundary, AFTER all
+ * IK, action and weapon solvers and BEFORE publication. All local transforms
+ * of the weapon + both arms share a single alpha, so an interrupted pose
+ * retargets from the last actually displayed joints. A separate body/head
+ * response preserves a visible neck/shoulder connection. Never filter the
+ * world root or planted feet: those belong to motor/footstep authority.
+ * Visibility and equipment changes remain discrete. Replay and seeks do
+ * not consume any render history.
+ */
+function blendCompletePoseOutput(output:MutableOutput,p:OperatorPose):void{
+ if(!output.valid||p.deterministic||p.replayFeet||p.down||p.surrender)
+  return;
+ const elapsed=p.seconds-output.time;
+ if(elapsed<0||elapsed>.35)return;
+ const body=poseContinuityAlpha(elapsed,'body');
+ const head=poseContinuityAlpha(elapsed,'head');
+ const carry=poseContinuityAlpha(elapsed,'carry');
+ for(let i=0;i<output.slotCount;i++){
+  const slot=output.slots[i],id=slot.id;
+  let group:PoseContinuityGroup|null=null;
+  if(id==='pelvis'||id==='chest')group='body';
+  else if(id==='head')group='head';
+  else if(id==='held-weapon'||slot.owner==='upper-body'||
+    id.startsWith('sling-'))group='carry';
+  if(!group)continue;
+  // Imminent hard collisions require a physically safe immediate tuck;
+  // the upstream distance bands make normal short-stocking progressive.
+  if(group==='carry'&&p.clearanceBlocked)continue;
+  const alpha=group==='body'?body:group==='head'?head:carry;
+  blendPoseTransform(slot.values,output.staged[i],alpha);
+ }
+}
 /** The ONLY production pose commit. It publishes exactly one complete,
  * validated stage set after all procedural solutions and finalizers.
  */
 export function commitOperatorPoseOutput(r:OperatorRig,p:OperatorPose):void{
+ const output=outputFor(r);
+ if(output.pending&&output.pendingTime===p.seconds&&
+    output.stageMask===COMPLETE_STAGE_MASK)
+  blendCompletePoseOutput(output,p);
  publishOperatorPoseOutput(r,p,true);
 }
 /** Introspection for Lab and diagnostics only. Published buffers remain
