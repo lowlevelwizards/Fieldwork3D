@@ -118,9 +118,9 @@ window.addEventListener('message',event=>{
   if(next){
    const previous=config.getRoster();config.setRoster(next);
    ok=config.saveRoster();
-   if(ok&&config.getMode()==='quick'){
+   if(!ok)config.setRoster(previous);
+   else if(config.getMode()==='quick'){
     config.applyQuickRoster();config.onQuickSaved();}
-   else config.setRoster(previous);
   }
  }else if(edits&&studioMode==='campaign'&&currentCampaign&&!currentCampaign.activeContractId){
   const next=applyStudioCampaignEdits(currentCampaign,edits);
