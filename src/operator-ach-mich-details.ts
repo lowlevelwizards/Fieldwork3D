@@ -125,13 +125,16 @@ export function achMichRetentionPaths(
   // the protective rubber binding. Front and rear both descend from behind.
   const f:Point=[sign*4.49,achMichHemY(shell,p.frontStud[2])-.16,p.frontStud[2]];
   const b:Point=[sign*4.49,achMichHemY(shell,p.rearStud[2])-.16,p.rearStud[2]];
-  // Two direct legs form a quiet V beneath each ear. The old extra rear
-  // guide created a dangling horizontal projection in the side view.
+  // Retain the two ACH/MICH shell suspension legs. The *direct* junction
+  // to chin diagonal crossed the 8x8 head cube: midway it had |x|<4 AND
+  // z>-4. PASGT avoids this with an outboard cheek station before it
+  // turns inward on the front side of the face.
   const junction:Point=[sign*4.56,1.37,-2.91];
-  // PASGT-proportioned jaw offset: support the chin without projecting
-  // an extra ribbon-length beyond the face silhouette in profile.
-  const chin:Point=[sign*2.34,-.16,-4.45];
-  result.push([f,junction],[b,junction],[junction,chin]);
+  const cheekDrop:Point=[sign*4.63,.65,-4.62];
+  // Turn toward the chin only after crossing in front of the face, keeping
+  // the whole width of the webbing outside the square jaw silhouette.
+  const chin:Point=[sign*2.34,-1.08,-4.65];
+  result.push([f,junction],[b,junction],[junction,cheekDrop,chin]);
  }
  return result;
 }
@@ -149,10 +152,14 @@ export function createAchMichRetentionGeometry(
   const sign=i<3?-1:1;
   appendStrap(data,paths[i],new THREE.Vector3(sign*.68,0,-.74),.39);
  }
- // A single shallow chin-cup panel joins the actual lower strap endpoints.
- // Keep it outside the jaw and at PASGT-scale rather than below the neck.
- const pad:Point[]=[[-2.34,-.47,-4.45],[2.34,-.47,-4.45],
-  [2.34,.15,-4.45],[-2.34,.15,-4.45]];
+ // Join at the exact two chin endpoints, without a second overlapping
+ // junction. The cup's top edge is just below the known -1 skull bottom.
+ const leftChin=paths[2][2],rightChin=paths[5][2];
+ const pad:Point[]=[
+  [leftChin[0],leftChin[1]-.51,leftChin[2]],
+  [rightChin[0],rightChin[1]-.51,rightChin[2]],
+  rightChin,leftChin
+ ];
  for(const i of [0,1,2,0,2,3])data.push(...pad[i]);
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
