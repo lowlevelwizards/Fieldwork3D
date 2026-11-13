@@ -117,13 +117,15 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
    // Two entirely independent released suspensions sit OUTBOARD of the
    // head, rather than joining beneath the jaw when the buckle is undone.
    const junction=[sign*5.06,1.43,-1.58];
+   // One quad per suspension leg plus one free-hanging side panel.
+   // No duplicate corner faces, bridging triangles or neck-crossing tails.
    ribbon(dangling,webbingMaterial,'released-four-point-front-leg',
-    [frontAnchor,[sign*5.03,2.70,-2.93],junction],.90);
+    [frontAnchor,junction],.83);
    ribbon(dangling,webbingMaterial,'released-four-point-rear-leg',
-    [rearAnchor,[sign*5.04,2.56,2.04],junction],.90);
+    [rearAnchor,junction],.83);
    ribbon(dangling,webbingMaterial,'released-four-point-hanging-tail',[
-    junction,[sign*5.23,.40,-1.70],[sign*5.26,-1.17,-1.82]
-   ],.94);
+    junction,[sign*5.26,-1.17,-1.82]
+   ],.88);
    box(dangling,dark,'chin-buckle',sign*5.26,-1.19,-1.83,
     .56,.46,.34);
    

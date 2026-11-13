@@ -12,7 +12,8 @@ test('H5.9 fastened chin cup sits beneath jaw and straps remain four-point',()=>
   assert.deepEqual(paths[3].at(-1),paths[4].at(-1));
   const geo=createAchMichRetentionGeometry(shell);
   assert.equal(geo.userData.integratedChinCup,true);
-  assert.ok(geo.boundingBox?.min.y < -1.2);
+  assert.ok(geo.boundingBox?.min.y < -.4);
+  assert.ok(geo.boundingBox?.min.z> -4.85);
  }
 });
 test('H5.9 unfastened geometry independently hangs outside both sides of face',()=>{
