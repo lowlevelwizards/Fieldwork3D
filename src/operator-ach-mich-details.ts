@@ -127,7 +127,9 @@ export function achMichRetentionPaths(
   // Two direct legs form a quiet V beneath each ear. The old extra rear
   // guide created a dangling horizontal projection in the side view.
   const junction:Point=[sign*4.47,1.22,-3.88];
-  const chin:Point=[sign*2.28,-.12,-4.88];
+  // PASGT-proportioned jaw offset: support the chin without projecting
+  // an extra ribbon-length beyond the face silhouette in profile.
+  const chin:Point=[sign*2.28,-.12,-4.47];
   result.push([f,junction],[b,junction],[junction,chin]);
  }
  return result;
@@ -149,10 +151,10 @@ export function createAchMichRetentionGeometry(
   appendStrap(data,paths[i],normal,i%3===2?.44:.39);
  }
  const pt=(x:number,y:number,z:number):Point=>[x,y,z];
- const topLeft=pt(-2.28,-.12,-4.88),topMiddle=pt(0,-.10,-4.98),
-  topRight=pt(2.28,-.12,-4.88);
- const lowLeft=pt(-2.28,-.51,-4.88),lowMiddle=pt(0,-.55,-4.98),
-  lowRight=pt(2.28,-.51,-4.88);
+ const topLeft=pt(-2.28,-.12,-4.47),topMiddle=pt(0,-.10,-4.52),
+  topRight=pt(2.28,-.12,-4.47);
+ const lowLeft=pt(-2.28,-.51,-4.47),lowMiddle=pt(0,-.55,-4.52),
+  lowRight=pt(2.28,-.51,-4.47);
  for(const v of [topLeft,lowMiddle,lowLeft,topLeft,topMiddle,lowMiddle,
   topMiddle,lowRight,lowMiddle,topMiddle,topRight,lowRight])data.push(...v);
  const g=new THREE.BufferGeometry();
