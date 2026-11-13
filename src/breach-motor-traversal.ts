@@ -45,10 +45,10 @@ export function plausibleMotorTraversal(from:Pt,goal:Pt,
     return true;
   }
  }
- for(const window of windows){
-  if(!canClimbWindow(window)&&!canOpenWindowForClimb(window))continue;
-  const fromSide=window.vertical?from.x-window.x:from.y-window.y;
-  const toSide=window.vertical?goal.x-window.x:goal.y-window.y;
+ for(const pane of windows){
+  if(!canClimbWindow(pane)&&!canOpenWindowForClimb(pane))continue;
+  const fromSide=pane.vertical?from.x-pane.x:from.y-pane.y;
+  const toSide=pane.vertical?goal.x-pane.x:goal.y-pane.y;
   if(fromSide*toSide<0&&Math.abs(fromSide)>=1&&
      Math.abs(toSide)>=1)return true;
  }
