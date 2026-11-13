@@ -8,6 +8,14 @@ import {dispersion,handlingInstability} from './breach-ballistics.ts';
 import {skillMultiplier} from './breach-skills.ts';
 import {sightSpreadScale,type WeaponHandlingModifiers}
  from './equipment-weapon-handling.ts';
+/** Long-range fire retains physical angular spread, with modest added
+ * aiming uncertainty beyond each actual weapon's effective sweet spot.
+ * No separate hit dice, invisible aim snapping or projectile cutoff.
+ */
+export function rangeSpreadScale(range:number,optimalRange:number):number{
+ const excess=Math.max(0,range/Math.max(1,optimalRange)-1);
+ return 1+Math.min(.75,excess*.18);
+}
 export function shotDispersionCone(a:Pick<TeamActor,
  'weapon'|'stability'|'suppression'|'injuryStage'|'recoil'|'turning'|
  'velocity'|'skills'>,mode:FiringMode,range:number,moving:boolean,
@@ -17,5 +25,6 @@ export function shotDispersionCone(a:Pick<TeamActor,
   handlingInstability(a.turning,a.velocity,a.recoil,a.stability))*
   (2-skillMultiplier(mode==='point'?a.skills.pointShooting:
     range>optimalRange?a.skills.longRange:a.skills.precision,.28))*
-  sightSpreadScale(mods,mode,range);
+  sightSpreadScale(mods,mode,range)*
+  rangeSpreadScale(range,optimalRange);
 }
