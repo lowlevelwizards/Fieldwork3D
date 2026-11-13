@@ -23,7 +23,8 @@ scope.onmessage=({data:req})=>{
         'Layout candidate '+(attempt+1)+' / 6');
     },{
       enableIncidentIntent:true,mission:req.mission,
-      presence:req.presence,civilianPolicy:req.civilians
+      presence:req.presence,civilianPolicy:req.civilians,
+      incidentId:req.incidentId
     },{archetype:req.archetype});
     progress(70,'Finalizing site and encounter',
       site.rooms.length+' rooms · '+site.doors.length+
