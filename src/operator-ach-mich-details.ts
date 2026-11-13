@@ -7,6 +7,7 @@ import {ACH_MICH_SHELLS} from './operator-headwear-silhouettes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 export type AchMichDetailLayers={
  bare:THREE.Group;hardware:THREE.Group;strap:THREE.Group;
+ webbingMaterial:THREE.MeshStandardMaterial;
  bindingMaterial:THREE.MeshBasicMaterial;
 };
 type Point=readonly [number,number,number];
@@ -202,7 +203,7 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
  consolidateVisualGroup(strap);
  hardware.userData.achMichRetentionScrews=4;
  strap.userData.achMichFourPoint=true;
- return {bare,hardware,strap,bindingMaterial};
+ return {bare,hardware,strap,bindingMaterial,webbingMaterial:webbing};
 }
 export function updateAchMichDetails(layers:AchMichDetailLayers,
  covered:boolean,allowStrap:boolean):void{

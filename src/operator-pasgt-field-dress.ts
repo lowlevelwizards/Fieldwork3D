@@ -435,6 +435,7 @@ export function createPasgtCatEyesGeometry(covered:boolean):THREE.BufferGeometry
 }
 export type PasgtFieldDressLayers={
  slits:THREE.Group;band:THREE.Group;retention:THREE.Group;
+ bandMaterial:THREE.MeshStandardMaterial;webbingMaterial:THREE.MeshStandardMaterial;
  foliage:THREE.Group;scrim:THREE.Group;net:THREE.Group;
  leafMaterials:readonly THREE.MeshStandardMaterial[];
  scrimMaterials:readonly THREE.MeshStandardMaterial[];
@@ -481,8 +482,8 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
    createPasgtScrimRibbonGeometry(i),
    'pasgt-broad-folded-cloth-strip',-.09);
  }
- const strap=new THREE.Mesh(createPasgtRetentionGeometry(),
-  material(0x58644e,THREE.DoubleSide));
+ const webbingMaterial=material(0x58644e,THREE.DoubleSide);
+ const strap=new THREE.Mesh(createPasgtRetentionGeometry(),webbingMaterial);
  strap.name='pasgt-chunky-two-point-retention';
  strap.castShadow=true;strap.receiveShadow=false;
  retention.add(strap);
@@ -495,8 +496,8 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  const netMesh=new THREE.Mesh(createPasgtNetGeometry(),netMat);
  netMesh.name='pasgt-front-crown-side-rear-net';netMesh.castShadow=true;
  netMesh.receiveShadow=false;net.add(netMesh);
- return {slits,band,retention,foliage,scrim,net,
-  leafMaterials,scrimMaterials,palette:null,slitPrint:null};
+ return {slits,band,retention,foliage,scrim,net,bandMaterial:bandMat,
+  webbingMaterial,leafMaterials,scrimMaterials,palette:null,slitPrint:null};
 }
 /** Each flat buttonhole matches the RGB of its exact printed cover atlas.
  * The geometry is fully opaque; recolor at print-change time only.
@@ -532,7 +533,12 @@ export function updatePasgtFieldDress(v:PasgtFieldDressLayers,
  // band between hard shell and cloth cover.
  for(const mesh of v.band.children)mesh.visible=
   mesh.name===(covered?'pasgt-covered-fit-elastic':'pasgt-bare-fit-elastic');
- v.foliage.visible=covered&&effective.concealment==='foliage';
+ v.foliage.visible=covered&&['foliage','foliage-sparse','foliage-medium',
+  'foliage-heavy'].includes(effective.concealment);
+ const foliageCount=effective.concealment==='foliage-sparse'?3:
+  effective.concealment==='foliage-medium'?6:v.foliage.children.length;
+ for(let i=0;i<v.foliage.children.length;i++)
+  v.foliage.children[i].visible=i<foliageCount;
  v.scrim.visible=covered&&effective.concealment==='scrim';
  v.net.visible=covered&&effective.concealment==='net';
  v.retention.visible=allowRetention;
