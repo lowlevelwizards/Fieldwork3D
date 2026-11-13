@@ -4,8 +4,8 @@
  * These are shot/weapon safety volumes, never movement collision shapes.
  */
 import type {Pt} from './breach-core.ts';
-export type FriendlySafetyBody=Pt&{posture?:'stand'|'crouch'};
-export type FriendlyBodyActor={p:Pt;posture?:'stand'|'crouch'};
+export type FriendlySafetyBody=Pt&{posture?:'stand'|'crouch';coverStanceDrop?:number};
+export type FriendlyBodyActor={p:Pt;posture?:'stand'|'crouch';coverStanceDrop?:number};
 export const LEGACY_FRIENDLY_RADIUS=10.5;
 /** Fixed protective cylinders include skin, equipment/helmet and margin.
  * Torso and head overlap vertically; no gap appears at neck height.
@@ -22,7 +22,8 @@ export const FRIENDLY_CROUCH_VOLUMES=[
 /** The posture is committed fixed-step tactical state, not the render blend.
  * Do NOT infer tactical clearance from interpolated visual 3D joints. */
 export function safetyBodyFor(a:FriendlyBodyActor):FriendlySafetyBody{
- return {x:a.p.x,y:a.p.y,posture:a.posture};
+ return {x:a.p.x,y:a.p.y,posture:a.posture,
+  coverStanceDrop:a.coverStanceDrop??0};
 }
 /** Segment versus a finite vertical cylinder. Compute the ENTIRE horizontal
  * intersection interval before testing ray height; center-only checks let
@@ -71,6 +72,9 @@ export function friendIntersectsTrajectory(from:Pt,fromHeight:number,to:Pt,
  }
  const volumes=friend.posture==='crouch'?
   FRIENDLY_CROUCH_VOLUMES:FRIENDLY_STAND_VOLUMES;
+ const drop=friend.coverStanceDrop??0;
+ // Boots remain on the ground; torso/helmet protection moves with chest.
+ // Preserve the original conservative center overlap and gear margin.
  return volumes.some(v=>segmentIntersectsCylinder(from,to,fromHeight,
-  toHeight,friend,v.radius,v.bottom,v.top));
+  toHeight,friend,v.radius,v.bottom,Math.max(v.bottom+1,v.top-drop)));
 }
