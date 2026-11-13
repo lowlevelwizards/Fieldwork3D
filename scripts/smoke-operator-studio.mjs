@@ -83,7 +83,7 @@ try{
    document.querySelector('#studioMaterials .solid-swatches button')!==null,
    null,{timeout:15000});
   // Item choices deliberately keep the ITEM tab active.
-  await page.locator('[data-studio-step="materials"]').click();
+  await page.locator('#studioWorkflow button[data-studio-step="materials"]').click();
   await page.locator('#studioMaterials .solid-swatches button').first().click();
   if(!await page.locator('#studioApply').isEnabled())
    throw Error('Solid color change did not mark wardrobe dirty');
@@ -104,7 +104,7 @@ try{
   await page.locator('#studioOperator').selectOption({index:1});
   await page.locator('[data-appearance-item="combat-shirt"]').click();
   // Item choices deliberately keep the ITEM tab active.
-  await page.locator('[data-studio-step="materials"]').click();
+  await page.locator('#studioWorkflow button[data-studio-step="materials"]').click();
   await page.locator('#studioMaterials .solid-swatches button').first().click();
   if((await page.locator('#studioApply').textContent())?.trim()!=='SAVE 2 LOOKS')
    throw Error('Save All did not count multiple operator drafts');
