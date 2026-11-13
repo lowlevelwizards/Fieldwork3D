@@ -12,9 +12,9 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {noteQueueMotion} from './breach-queue-trace.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 export function negotiateMotorPassage(
- a:TeamActor,p:Pt,initialMove:Pt,dt:number,s:Session,
+ a:TeamActor,_p:Pt,initialMove:Pt,dt:number,s:Session,
  hooks:ActorMotorHooks):{paused:boolean;move:Pt}{
- const decision=coordinatePassage(s,a,p,initialMove,
+ const decision=coordinatePassage(s,a,initialMove,
   hooks.ensurePassageSchedule(s));
  if(decision.hold){
   a.motorPause='passage';a.velocity=0;a.blockedTime=0;

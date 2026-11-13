@@ -15,7 +15,7 @@ function game(actors,doors=[door]){
  return {operators:actors,doors,seconds:0,events:[],coverState:[],
   objectRevision:0,site:null,passageLeases:{}};
 }
-const movement=(s,a,to,schedule)=>coordinatePassage(s,a,a.plan[0]?.p??p(100,40),to,schedule);
+const movement=(s,a,to,schedule)=>coordinatePassage(s,a,to,schedule);
 test('Q2 zero drift during thirty-second ordinary convoy wait',()=>{
  const lead=actor('one',125),follow=actor('two',145);
  const s=game([lead,follow]),schedules=new Map([

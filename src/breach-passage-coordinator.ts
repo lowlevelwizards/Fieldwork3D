@@ -160,7 +160,7 @@ function maybePromote(ctx:Context,s:Session,lane:Lane,
 /** Single Q2 entry point. Does not change positions or order authority.
  * Motor-passage applies a full stop or the returned bounded stride.
  */
-export function coordinatePassage(s:Session,a:TeamActor,authored:Pt,
+export function coordinatePassage(s:Session,a:TeamActor,
  move:Pt,schedule:PassageSchedule):QueueDecision{
  const free:QueueDecision={move,hold:false,reason:'free',
   doorId:null,rank:null};

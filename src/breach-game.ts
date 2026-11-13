@@ -37,7 +37,7 @@ import type {ActorMotorHooks} from './breach-motor-contract.ts';
 import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorBlocksRay,doorBlocksSightRay,pointToSegment} from './breach-core.ts';
 import {type PlanNode,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
-import {stackApproachPositions} from './breach-entry-coordination.ts';
+import {stackApproachPositions,doorOpensTowardApproach} from './breach-entry-coordination.ts';
 import type {Site,SiteScale} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
@@ -57,7 +57,7 @@ import {type FireBlock} from './breach-fire-safety.ts';
 
 
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {doorReachable} from './breach-door.ts';
+import {doorReachable,doorWouldStrikeActors} from './breach-door.ts';
 
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool} from './equipment-entry-tools.ts';
@@ -735,15 +735,18 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
     .map(b=>b.plan.find(n=>n.stackDoorId===doorId))
     .filter((n):n is PlanNode=>!!n);
   const occupied=assigned.map(n=>n.p);
-  // All four slots must remain within the 43-unit door-use radius.
-  // The first two take opposite sides of the frame; the next two fill in
-  // behind the opening. This prevents two-person legacy stack regressions.
+  // Outward-opening leaves need the rear members staged OUTSIDE the leaf
+  // swing (not compacted into the 43-unit near-frame interaction circle).
+  // The opener still approaches the handle as a separate authored action.
+  const outward=doorOpensTowardApproach(door,from);
   const preferred=team(s).findIndex(b=>b.id===id);
   const candidates=stackApproachPositions(door,from);
   // Smaller entrance frames retain valid nearby choices; never pick a
   // physical stack slot too far away to use the door.
   const legal=candidates.filter(p=>
-    d(p,center)<43&&intelPassable(p,s.intel)&&
+    d(p,center)<(outward?68:43)&&
+    (!outward||!doorWouldStrikeActors({...door,openFraction:0},1.03,
+      [p],OPERATOR_RADIUS+1))&&intelPassable(p,s.intel)&&
     !!routeWithIntel(s.intel,from,p).length&&
     occupied.every(other=>d(p,other)>23));
   legal.sort((u,v)=>{
