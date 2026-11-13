@@ -13,7 +13,7 @@ import {addAchMichThreeHoleShroud} from './operator-helmet-field-shroud.ts';
 import {addAchMichArcRails} from './operator-helmet-field-rails.ts';
 import {addAchMichRetainingBungees} from './operator-helmet-field-bungees.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
-import {createHelmetFieldGoggleModule} from './operator-helmet-field-goggles.ts';
+import {createHelmetFieldGoggleModule,createFittedGoggleSleeve} from './operator-helmet-field-goggles.ts';
 import {addAchMichVelcro,addAchMichIdentifierPatch} from './operator-helmet-field-velcro.ts';
 import {addAchMichFieldAddon} from './operator-helmet-field-addons.ts';
 export type HelmetFieldLayers={
@@ -137,12 +137,9 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
    o.castShadow=false;o.receiveShadow=false;
   }});
   g.add(pose);
-  const sleeve=new THREE.Group();sleeve.name='goggle-fabric-sleeve';
-  sleeve.visible=false;
-  plate(sleeve,tan,'legacy-goggle-cloth-sleeve',
-   [[-3.45,-.66],[3.45,-.66],[3.45,.66],[-3.45,.66]],
-   0,p.top-2.9,back?rear+.49:front-.66,back?Math.PI:0);
-  g.add(sleeve);
+  // The original D2/PASGT retention remains period appropriate, but its
+  // fabric sleeve now follows the actual goggle housing as well.
+  g.add(createFittedGoggleSleeve(pose,tan,dark));
  }
  // H9.7: every modern helmet add-on now has its own designed silhouette.
  // PASGT keeps a conservative reference-limited kit.
