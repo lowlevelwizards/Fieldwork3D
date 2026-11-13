@@ -783,6 +783,18 @@ function posePreview(){
   appearanceSeed:p.appearanceSeed
  };
  poseOperator(rig,armedPose,0);
+ // H8 rendering diagnostics: prove the live rig, not just the selector,
+ // received the chosen band dye and visible attachment geometry.
+ const selectedHelmet=armedPose.wardrobe?.styles.headwear;
+ const helmetField=selectedHelmet?
+  rig.visualKit.wardrobeHead.helmetField[selectedHelmet]:undefined;
+ if(helmetField){
+  canvas.dataset.helmetBandHex=helmetField.bandMaterial.color.getHexString();
+  canvas.dataset.helmetBandVisible=String(helmetField.modules.band.visible);
+  canvas.dataset.helmetBandMeshCount=String(helmetField.modules.band.children.length);
+  canvas.dataset.helmetWebbingHex=helmetField.webbingMaterial.color.getHexString();
+ }
+
  // Changing only a lighting option does not invalidate the appearance
  // fingerprint. Explicitly rebake from the neutral baseline in that case.
  if(!String(rig.root.userData.fieldworkHeightRootKey??'')
@@ -1523,7 +1535,27 @@ function renderMaterials(){
     icon.textContent=glyph;icon.setAttribute('aria-hidden','true');
     b.prepend(icon);section.append(b);
    };
-   const rowOf=(title:string,help:string)=>row(title,help);
+   const rowOf=(title:string,help:string)=>{
+     const group=row(title,help);
+     group.classList.add('helmet-field-section');
+     // Phone-sized editor: show one-line titles; reveal the long guidance
+     // only when requested. Preserve the help text for accessible controls.
+     const heading=group.querySelector<HTMLElement>('.material-heading');
+     const guidance=group.querySelector<HTMLElement>('small');
+     if(heading&&guidance){
+      const info=document.createElement('button');
+      info.type='button';info.className='helmet-field-help';
+      info.textContent='?';info.setAttribute('aria-label','About '+title);
+      info.setAttribute('aria-expanded','false');
+      info.addEventListener('click',()=>{
+       const open=info.getAttribute('aria-expanded')!=='true';
+       info.setAttribute('aria-expanded',String(open));
+       guidance.hidden=!open;
+      });
+      guidance.hidden=true;heading.append(info);
+     }
+     return group;
+    };
    const band=rowOf('FIELD RETAINING BAND',
     historical?'Period elastic band, including rear cat-eye markers.':
     'One low-profile elastic band over the helmet cover or painted shell.');

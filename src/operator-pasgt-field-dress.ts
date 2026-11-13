@@ -466,7 +466,9 @@ export function createPasgtFieldDress(parent:THREE.Group):PasgtFieldDressLayers{
  for(const covered of [true,false]){
   const bandMesh=new THREE.Mesh(createPasgtBandGeometry(covered),bandMat);
   bandMesh.name=covered?'pasgt-covered-fit-elastic':'pasgt-bare-fit-elastic';
-  bandMesh.castShadow=true;bandMesh.receiveShadow=false;
+  // The close fitted elastic is a cosmetic surface; its former cast
+  // shadow projected a wide dark bar across the forehead on mobile.
+  bandMesh.castShadow=false;bandMesh.receiveShadow=false;
   bandMesh.visible=covered;
   const marks=new THREE.Mesh(createPasgtCatEyesGeometry(covered),
    material(0xbfb28e,THREE.DoubleSide));

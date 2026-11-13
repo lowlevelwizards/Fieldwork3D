@@ -373,3 +373,46 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .material-group .helmet-option-card[aria-pressed="true"] .helmet-option-glyph{
  opacity:1;
 }
+
+/* H8: Field customization is a compact set of equipment controls, not a
+ * sequence of phone-width cards. Maintain 44px targets on touch screens. */
+#studioMaterials .helmet-field-section{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ column-gap:7px;row-gap:6px;min-width:0;
+ padding:7px 0;border-bottom:1px solid #557064;
+}
+#studioMaterials .helmet-field-section>.material-heading,
+#studioMaterials .helmet-field-section>small,
+#studioMaterials .helmet-field-section>select{grid-column:1/-1}
+#studioMaterials .helmet-field-section>small{
+ font:500 11px/1.35 "Work Sans",sans-serif;
+ overflow-wrap:anywhere;margin:0 0 2px;
+}
+#studioMaterials .helmet-field-section .helmet-option-card{
+ display:flex;justify-content:flex-start;text-align:left;
+ width:100%;min-width:0;max-width:none;min-height:44px;
+ margin:0;padding:7px 9px;border-radius:7px;
+ font-size:12px;line-height:1.12;
+}
+#studioMaterials .helmet-option-glyph{
+ width:1.28rem;height:1.28rem;font-size:.85rem;border-radius:3px;
+}
+/* Selectors span both columns rather than competing with boolean toggles. */
+#studioMaterials .helmet-field-section select{grid-column:1/-1}
+@media(max-width:365px){
+ #studioMaterials .helmet-field-section{column-gap:4px}
+ #studioMaterials .helmet-field-section .helmet-option-card{
+  font-size:11px;padding:6px}
+}
+
+/* Accessory explanations are opt-in, leaving the helmet and active controls
+ * visible at phone height. Native hidden must win over grid child styling. */
+#studioMaterials .helmet-field-section>small[hidden]{display:none!important}
+#studioMaterials .helmet-field-help{
+ min-height:30px;min-width:30px;width:30px;
+ padding:0;border-radius:50%;font:700 13px "Work Sans",sans-serif;
+ background:#30493e;color:#e3e9d8;border:1px solid #789486;
+}
+#studioMaterials .helmet-field-help[aria-expanded="true"]{
+ background:#cbb285;color:#20342b;border-color:#ead7a8;
+}

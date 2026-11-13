@@ -182,3 +182,13 @@ export function createD2Goggles(
  }
  return root;
 }
+
+/** H8: construct only the worn visual pose for helmet-mounted field stowage.
+ * Reuses the approved D2 goggle geometry without allocating four unused
+ * pose variants for each helmet accessory slot.
+ */
+export function createD2GoggleFieldPose(
+ frame:THREE.Material,lens:THREE.Material,elastic:THREE.Material
+):THREE.Group{
+ return createOne('goggles-field',frame,lens,elastic);
+}

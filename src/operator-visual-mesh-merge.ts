@@ -74,7 +74,10 @@ export function consolidateVisualGroup(group:THREE.Group):void{
  // flaps are merged. One-time CPU work only; no per-frame AO traversal.
  bakeGearContactAO(group);
  rememberUnmergedShadowVolumes(group);
- const buckets=new Map<THREE.Material,THREE.Mesh[]>();
+ // Preserve the authored shadow contract when batching cosmetic pieces.
+ // In particular the lightweight helmet bands must never become large
+ // shadow casters merely because another piece shares their material.
+ const buckets=new Map<THREE.Material,Map<string,THREE.Mesh[]>>();
  for(const item of group.children){
   // Preserve per-mesh attribute parity in the existing iOS draw-call merge.
   if(item instanceof THREE.Mesh&&!Array.isArray(item.material))
@@ -82,10 +85,14 @@ export function consolidateVisualGroup(group:THREE.Group):void{
   if(!(item instanceof THREE.Mesh)||item.children.length||
     Array.isArray(item.material)||item.userData.armorCompressible||
     item.userData.armorContactShell||item.userData.keepSeparate)continue;
-  const bucket=buckets.get(item.material)??[];
-  bucket.push(item);buckets.set(item.material,bucket);
+  const byShadow=buckets.get(item.material)??new Map<string,THREE.Mesh[]>();
+  const flags=String(Number(item.castShadow))+String(Number(item.receiveShadow));
+  const bucket=byShadow.get(flags)??[];
+  bucket.push(item);byShadow.set(flags,bucket);
+  buckets.set(item.material,byShadow);
  }
- for(const [material,meshes] of buckets){
+ for(const [material,byShadow] of buckets)
+ for(const [flags,meshes] of byShadow){
   if(meshes.length<2)continue;
   // Armor uses both extruded (non-indexed) and box (indexed) faces.
   // Normalize that *one-time* mismatch instead of silently forfeiting
@@ -109,7 +116,7 @@ export function consolidateVisualGroup(group:THREE.Group):void{
    part.geometry.dispose();
   }
   const mesh=new THREE.Mesh(combined,material);
-  mesh.castShadow=true;mesh.receiveShadow=true;
+  mesh.castShadow=flags[0]==='1';mesh.receiveShadow=flags[1]==='1';
   group.add(mesh);
  }
 }
