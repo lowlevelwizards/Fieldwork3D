@@ -453,7 +453,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
      }).setup.cover!=='none';
    // A PASGT never prints camouflage directly on the Kevlar shell.
    // With its cloth cover removed, the independent hard-shell solid shows.
-   const camo=modelId==='pasgt'||fabricOnShell?null:requestedCamo;
+   const camo=modelId==='pasgt'||['ach','mich-2001','mich-2002'].includes(modelId)||
+    fabricOnShell?null:requestedCamo;
    const map=camo?headwearCamoTexture(modelId,camo,
      headwearCamoPlacement(r.camoIdentity,'headwear:'+modelId,camo,
       p.wardrobe?.headwearCamoRoll??0)):headwearDetailTexture(modelId);

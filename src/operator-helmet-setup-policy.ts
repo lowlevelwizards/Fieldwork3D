@@ -77,6 +77,15 @@ export function resolveHelmetSetup(shell:string,raw:unknown,context:{
  if(raw===undefined&&context.hasLegacyPrint)s.cover='fitted';
  // PASGT is a period full-coverage shell, not a modern tactical hardware
  // platform. Sanitize old H1 setup values while retaining stored preferences.
+ // ACH/MICH A1 is intentionally only a painted shell, one fitted cover and
+ // its permanent four-point chinstrap. Legacy modular presets are inert here.
+ if(shell==='ach'||shell==='mich-2001'||shell==='mich-2002'){
+  s.cover=s.cover==='none'?'none':'fitted';
+  s.band='none';s.scrim='none';s.retention='four-point';
+  s.shroud='none';s.rails='none';s.nvg='none';s.headsetMount='auto';
+  s.rearModule='none';s.light='none';s.rearStrobe=false;
+  return {setup:s,suppressed};
+ }
  if(shell==='pasgt'){
   if(s.cover==='loose')s.cover='fitted';
   s.rails='none';s.shroud='none';s.nvg='none';

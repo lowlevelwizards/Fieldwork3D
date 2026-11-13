@@ -3,7 +3,7 @@
  * Everything is authored in canonical head space (-Z forward).
  */
 import * as THREE from 'three';
-import {HEAD_SILHOUETTE_METRICS,ACH_MICH_SHELLS} from './operator-headwear-silhouettes.ts';
+import {ACH_MICH_SHELLS} from './operator-headwear-silhouettes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 export type AchMichDetailLayers={bare:THREE.Group;strap:THREE.Group};
 const profiles={
