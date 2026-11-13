@@ -18,7 +18,9 @@ function geometryEqual(a:THREE.BufferGeometry,b:THREE.BufferGeometry):boolean{
  for(const name of names){
   const x=a.getAttribute(name),y=b.getAttribute(name);
   if(!y||x.itemSize!==y.itemSize||x.count!==y.count||
-    x.normalized!==y.normalized)return false;
+    x.normalized!==y.normalized||
+    !(x instanceof THREE.BufferAttribute)||
+    !(y instanceof THREE.BufferAttribute))return false;
   for(let i=0,n=x.count*x.itemSize;i<n;i++)
    if(x.array[i]!==y.array[i])return false;
  }
@@ -52,7 +54,8 @@ export class RepeatedFixtureBatches{
     material:child.material,geometry:child.geometry});
   }
  }
- flush(root:THREE.Group):void{
+ flush(root:THREE.Group,
+  shared:ReadonlySet<THREE.BufferGeometry>=new Set()):void{
   root.updateWorldMatrix(true,true);
   const buckets=new Map<string,Candidate[]>();
   for(const c of this.candidates){
@@ -99,8 +102,11 @@ export class RepeatedFixtureBatches{
    }
   }
   this.candidates.length=0;
-  // A site builder may have used shared box geometries. Do NOT dispose
-  // duplicates here: the scene's site-lifetime manager owns that memory.
+  // Only unique duplicate geometries detached from their owner may be
+  // disposed; reusable box geometries belong to the site's shared cache.
+  for(const duplicate of this.discarded)if(!shared.has(duplicate))
+   duplicate.dispose();
+  this.discarded.clear();
  }
  /** Only called when an object's transform changes or visibility flips.
   * Fog may change every frame; unchanged instances incur zero GPU uploads.
