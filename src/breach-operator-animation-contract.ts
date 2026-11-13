@@ -41,6 +41,8 @@ export type OperatorPose={
   poseV3MagazinePalm?:V3MagazinePalm;
   x:number;z:number;heading:number;velocity:number;seconds:number;
   stride:number;posture:'stand'|'crouch';injury:number;weapon:WeaponId;
+  /** Fixed-step cover-fitted drop; negative means a higher crouch. */
+  coverStanceDrop?:number;
   /** Authoritative travel direction; optional until motion sampling is wired. */
   travelYaw?:number;
   /** Presentation-only clock advances during tactical pause, never the motor. */
