@@ -8,12 +8,12 @@ test('H6.2 stowed goggles use contoured double-split ribbons in bare and cover s
   for(const where of ['front','rear']){
    const parent=kit.modules['goggles-'+where];
    const assembly=parent.children.find(c=>c.userData.h9HelmetGoggles);
-   assert.equal(assembly.userData.h62MidpointCornerClearance,true);
+   assert.equal(assembly.userData.h69ThreePanelRetention,true);
    for(const name of ['continuous-helmet-goggle-strap','bare-shell-goggle-strap']){
     const strap=parent.getObjectByName(name);
     assert.ok(strap instanceof THREE.Mesh);
-    assert.equal(strap.geometry.userData.h62ContourRibbon,true);
-    assert.ok(strap.geometry.getAttribute('position').count>90);
+    assert.equal(strap.geometry.userData.h69OneBroadPlane,true);
+    assert.equal(strap.geometry.getAttribute('position').count,6);
    }
   }
  }

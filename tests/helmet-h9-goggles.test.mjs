@@ -12,7 +12,7 @@ test('H9.5: fitted full-wrap straps exist on front/rear modern stowage',()=>{
    assert.ok(assembly,shell+' '+where+' lacks model');
    assert.equal(assembly.userData.h9Position,where);
    assert.equal(assembly.userData.h9FittedStrap,true);
-   assert.ok(assembly.userData.h9StrapSegments>=14);
+   assert.equal(assembly.userData.h9StrapSegments,3);
    const path=assembly.userData.h9StrapPath;
    assert.ok(path.every(v=>v.length===3&&v.every(Number.isFinite)));
    assert.ok(path.some(v=>v[2]<-3));
