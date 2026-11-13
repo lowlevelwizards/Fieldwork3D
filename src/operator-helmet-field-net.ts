@@ -41,11 +41,25 @@ function sideRegion(edge:Edge):{region:Exclude<CoverRegion,'crown'>;u:number}{
   return {region:edge.x<0?'left':'right',u:edge.z/4.4};
  return {region:edge.z<0?'front':'back',u:edge.x/4.3};
 }
+/** The MICH ear cuts are deliberate openings; move a net attachment
+ * toward the nearest valid point ON THAT SAME PANEL instead of trying
+ * to cross empty cloth or bouncing to the far side of the helmet.
+ */
 const side=(shell:AchMichCoverShell,edge:Edge,v:number,offset=.16):Pt=>{
  const {region,u}=sideRegion(edge);
- const sample=sampleHelmetCover(shell,region,u,v,offset);
- if(!sample)throw Error('H9.3 missing '+region+' drape point '+shell);
- return mat(sample);
+ for(const uu of [u,u*.92,u*.78,u*.62])
+  for(const vv of [v,v+.12,v-.12,v+.24,v-.24,.48,.22,.06]){
+   const clamped=Math.max(-.75,Math.min(.86,vv));
+   const hit=sampleHelmetCover(shell,region,uu,clamped,offset);
+   if(!hit)continue;
+   if((region==='left'&&hit.position.x>0)||
+      (region==='right'&&hit.position.x<0)||
+      (region==='front'&&hit.position.z>0)||
+      (region==='back'&&hit.position.z<0))continue;
+   return mat(hit);
+  }
+ throw Error('H9.3 no valid '+region+' cloth for '+shell+
+  ' u='+u.toFixed(2)+' v='+v.toFixed(2));
 };
 /** Find the retaining-band height from actual hem/profile dimensions.
  * Avoid probing above or below the cloth: a ray at an unsupported height
