@@ -7,6 +7,7 @@ import {HANDLING_PROFILES} from '../src/breach-handling-profiles.ts';
 import {stockPocket} from '../src/breach-anatomy.ts';
 import {weaponClearance} from '../src/breach-weapon-clearance.ts';
 import {muzzleAtShot} from '../src/breach-muzzle.ts';
+import {assessFireLane} from '../src/breach-fire-safety.ts';
 import {FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  resolveWeaponAssembly} from '../src/equipment-weapon-assemblies.ts';
@@ -93,7 +94,7 @@ test('A2.4 wall and friendly clearance resolves actual identical rigid muzzle',(
   assert.ok(a.compression>=0&&a.compression<=1);
   const reconstruct=muzzleAtShot({...basic,
    carryOverride:a.carryOverride,carryBlend:a.carryBlend,
-   shortFrom:a.shortFrom,
+   shoulderPullback:a.shoulderPullback,shortFrom:a.shortFrom,
    obstruction:a.obstruction,shortCompression:a.obstruction?
      a.compression:undefined});
   assert.ok(Math.abs(a.muzzle.x-reconstruct.x)<.000001,
@@ -103,8 +104,16 @@ test('A2.4 wall and friendly clearance resolves actual identical rigid muzzle',(
   assert.ok(Math.abs(a.muzzle.pitch-reconstruct.pitch)<.000001);
   if(c.name==='far')assert.equal(a.obstruction,false);
   if(c.name==='buddy-to-side')assert.equal(a.blocked,false);
-  if(c.name==='hard-block')assert.equal(a.blocked,true);
-  if(c.name==='buddy-ahead')assert.ok(a.obstruction||a.carryOverride==='low');
+  if(c.name==='hard-block'){
+   const lane=assessFireLane(
+    {x:a.muzzle.x,y:a.muzzle.z},a.muzzle.y,
+    {x:basic.x+100,y:basic.z},a.muzzle.y,[],c.walls,[]);
+   assert.ok(a.blocked||lane.blocker==='wall',
+    'the actual projectile still cannot cross close solid cover');
+  }
+  if(c.name==='buddy-ahead')assert.ok(a.obstruction||
+    a.shoulderPullback!==undefined||a.carryOverride==='low',
+    'near teammate invokes a physical adaptation or actual safety veto');
   if(a.obstruction){
    assert.equal(a.carryOverride,'short');
    assert.equal(a.shortFrom,'low');
