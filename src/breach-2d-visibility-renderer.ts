@@ -2,7 +2,6 @@
  * Mask generation uses authoritative intel from the current session.
  * Does not discover ground, query historic actor LOS, or alter sim state.
  */
-import {W,H} from './breach-core.ts';
 import type {Session} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
 import {fogSessionFingerprint} from './breach-fog-cache.ts';
@@ -77,7 +76,12 @@ function fog(){
     fogMode=state.intel.mode;fogSeenRevision=state.seenGroundRevision;
     paintFogMask(fogContext!,state,debugPalette?'palette':'normal');
   }
-  draw.drawImage(fogCanvas,0,0,W,H);
+  // Site-specific mask resolution and envelope must map back to the same
+  // site-space coordinates as floors, doors and the 3D texture. Generated
+  // maps are not restricted to the historical 640 x 740 practice bounds.
+  const b=maskBounds(state.site);
+  draw.drawImage(fogCanvas,b.minX,b.minY,
+    b.maxX-b.minX,b.maxY-b.minY);
 }
 
  return {renderPersonalGround:renderReplayPersonalGround,renderFog:fog,

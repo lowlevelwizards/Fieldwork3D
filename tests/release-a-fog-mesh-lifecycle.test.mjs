@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {buildExteriorKnownFogGeometry,replaceTacticalFogGeometry}
  from '../src/rendering/breach-fog-mesh-composition.ts';
-import {fogUvAt} from '../src/breach-fog-domain.ts';
+import {fogUvAt,exteriorKnownFogRects} from '../src/breach-fog-domain.ts';
 
 const site=(minX,minY,maxX,maxY)=>({
  bounds:{minX,minY,maxX,maxY},seed:13,
@@ -16,17 +16,34 @@ const site=(minX,minY,maxX,maxY)=>({
  ]
 });
 const vec=attribute=>Array.from(attribute.array);
-test('Release A4: Exterior Known fog geometry covers the exact site bounds',()=>{
+test('Release A4: Exterior Known fog geometry follows concealed rooms, not all bounds',()=>{
  const world=site(-85,-40,265,405);
+ const rects=exteriorKnownFogRects(world);
  const geometry=buildExteriorKnownFogGeometry(world);
- const positions=vec(geometry.getAttribute('position')).map(v=>+v.toFixed(3));
- assert.equal(geometry.getAttribute('position').count,4);
- assert.deepEqual(positions,[
-  -85,1.05,-40,-85,1.05,405,265,1.05,405,265,1.05,-40]);
- const uv=vec(geometry.getAttribute('uv'));
- assert.deepEqual(uv,[0,1,0,0,1,0,1,1]);
+ const positions=geometry.getAttribute('position');
+ const uv=geometry.getAttribute('uv');
+ assert.equal(positions.count,rects.length*4);
+ assert.equal(geometry.getIndex().count,rects.length*6);
+ for(let i=0;i<rects.length;i++){
+  const r=rects[i];
+  const corners=[{x:r.x,y:r.y},{x:r.x,y:r.y+r.h},
+   {x:r.x+r.w,y:r.y+r.h},{x:r.x+r.w,y:r.y}];
+  for(let j=0;j<4;j++){
+   const n=i*4+j,p=corners[j],coords=fogUvAt(p,world.bounds);
+   assert.equal(positions.getX(n),p.x);
+   assert.ok(Math.abs(positions.getY(n)-1.05)<1e-5);
+   assert.equal(positions.getZ(n),p.y);
+   assert.ok(Math.abs(uv.getX(n)-coords.u)<1e-6);
+   assert.ok(Math.abs(uv.getY(n)-coords.v)<1e-6);
+  }
+ }
+ // Neither negative-origin site boundaries nor open exterior can acquire
+ // a projected rectangular dark slab from a mesh spanning world.bounds.
+ const covered=(x,y)=>rects.some(r=>x>r.x&&x<r.x+r.w&&y>r.y&&y<r.y+r.h);
+ assert.equal(covered(world.bounds.minX+1,world.bounds.minY+1),false);
+ assert.equal(covered(world.bounds.maxX-1,world.bounds.maxY-1),false);
+ assert.equal(covered(world.rooms[0].x+5,world.rooms[0].y+5),true);
  assert.deepEqual(fogUvAt({x:90,y:182.5},world.bounds),{u:.5,v:.5});
- assert.deepEqual(Array.from(geometry.getIndex().array),[0,1,2,0,2,3]);
  geometry.dispose();
 });
 test('Release A4: repeated fog site switches dispose old geometry exactly once',()=>{
@@ -43,7 +60,8 @@ test('Release A4: repeated fog site switches dispose old geometry exactly once',
  assert.equal(disposedExterior,1);
  assert.equal(ground.geometry.parameters.width,590);
  assert.equal(ground.geometry.parameters.height,760);
- assert.equal(exterior.geometry.getAttribute('position').count,4);
+ assert.equal(exterior.geometry.getAttribute('position').count,
+  exteriorKnownFogRects(site(-70,-30,520,730)).length*4);
  const previous=exterior.geometry;
  let siteDisposed=0;
  previous.addEventListener('dispose',()=>siteDisposed++);

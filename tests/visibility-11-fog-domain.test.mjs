@@ -38,6 +38,10 @@ test('VIS-11: completely enclosed court remains undiscovered',()=>{
   room(260,140,40,120),room(100,260,200,40)];
  const a=exteriorKnownFogRects(site(rooms));
  assert.equal(covers(a,{x:205,y:205}),true);
+ assert.equal(covers(a,{x:145,y:145}),true,
+  'first interior court tile next to a wall cannot leak');
+ assert.equal(covers(a,{x:145,y:205}),true,
+  'concealment must reach the wall at court edges');
  assert.equal(covers(a,{x:320,y:200}),false);
 });
 test('VIS-11: mask UV corners align with authoritative site coordinates',()=>{
