@@ -109,6 +109,11 @@ export function createShotResolver(ports:ShotResolverPorts){
     sightMuzzle.y,aimHeight(target.posture==='crouch'),
     weapon.penetration);
   if(!fireLaneReachable(lane,laneTrace,target.p)){
+    // Clear sight is not a usable muzzle lane. When the shortened weapon
+    // cannot shoot through nearby cover, let the feet seek a real position
+    // instead of remaining permanently at low/short ready.
+    if(lane.blocker==='wall'||lane.blocker==='door'||lane.blocker==='cover')
+      requestClearFireStep(s,a,target,'muzzle');
     if(a.side==='blue'&&s.seconds-a.lastLaneWarnAt>2){
       notify(s,a.name+' FIRE BLOCKED · '+lane.blocker.toUpperCase());
       a.lastLaneWarnAt=s.seconds;
