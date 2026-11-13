@@ -3,12 +3,16 @@
  * It is sustained across fixed ticks while the crossing, reach and hand
  * availability are valid; no remote force, collision bypass or second hinge.
  */
-import {doorLeafSegment,pointToSegment,segmentsCross,
+import {doorLeafSegment,pointToSegment,
  type Door,type Pt} from './breach-core.ts';
 import {handlePoint,PUSHED_OPEN_LIMIT} from './breach-door.ts';
 import {signedDoorSide} from './breach-door-traversal-episode.ts';
 import type {TeamActor,Session} from './breach-game.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {DOOR_HAND_ACQUIRE_REACH,DOOR_HAND_RELEASE_REACH,
+ DOOR_HAND_RELEASE_DURATION} from './breach-door-hand-constants.ts';
+export {DOOR_HAND_ACQUIRE_REACH,DOOR_HAND_RELEASE_REACH,
+ DOOR_HAND_RELEASE_DURATION} from './breach-door-hand-constants.ts';
 
 export type DoorHandContact={
  doorId:string;
@@ -20,9 +24,6 @@ export type DoorHandContact={
  releasedAt:number|null;
  point:Pt;
 };
-export const DOOR_HAND_ACQUIRE_REACH=27;
-export const DOOR_HAND_RELEASE_REACH=31;
-export const DOOR_HAND_RELEASE_DURATION=.24;
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clamp=(x:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,x));
 export const doorHandPoint=(door:Door,fraction:number):Pt=>{
@@ -46,9 +47,7 @@ function handFreeAt(a:TeamActor,now:number):boolean{
  * ON a physical leaf. The arm ray is narrow, unlike the full body capsule.
  */
 function rayClear(s:Session,from:Pt,to:Pt):boolean{
- for(const wall of sessionWorldGeometry(s).walls)
-  if(segmentsCross({a:from,b:to},wall))return false;
- return true;
+ return !sessionWorldGeometry(s).staticWallBlocksRay({a:from,b:to});
 }
 function validCrossing(a:TeamActor,door:Door):boolean{
  const e=a.doorTraversal,n=a.plan[0];
