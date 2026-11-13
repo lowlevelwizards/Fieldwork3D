@@ -12,7 +12,7 @@
  */
 import type {Session,TeamActor} from './breach-game.ts';
 import type {Door} from './breach-core.ts';
-import {crossingDoor} from './breach-passage.ts';
+import {activeDoorCrossingIntent} from './breach-door-pressure-arbitration.ts';
 import type {BodyDoorPressurePolicy} from './breach-door.ts';
 import {canDoorHandAssist} from './breach-door-hand-contact.ts';
 
@@ -59,12 +59,7 @@ function inspectDoor(s:Session,tick:TickClaims,door:Door):void{
   const n=actor.plan[0];
   if(!['move','pie','door','sync'].includes(n.kind)||
      n.kind==='door'&&n.method==='close')continue;
-  const episode=actor.doorTraversal;
-  const goal=episode?.authoredOrderId===n.id?
-    episode.destination:actor.nav.at(-1)??n.p;
-  if(!crossingDoor({id:actor.id,p:actor.p,goal,
-    side:actor.side,health:actor.health,active:true,
-    blockedTime:actor.blockedTime},door)&&
+  if(!activeDoorCrossingIntent(actor,door,true)&&
      !(n.kind==='move'&&n.entryDoorId===door.id))continue;
   tick.protectedBySide.add(sideKey(door.id,actor.side));
   tick.occupiedDoors.add(door.id);

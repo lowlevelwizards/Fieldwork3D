@@ -1,0 +1,40 @@
+name: D1 coherent doorway crossing — physical acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-passage-coordinator.ts'
+      - 'src/breach-door-pressure-arbitration.ts'
+      - 'src/breach-door-pressure-frame.ts'
+      - 'src/breach-order-movement.ts'
+      - 'tests/release-d1-coherent-crossing.test.mjs'
+      - '.github/workflows/release-d1-coherent-entry.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-d1-coherent-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  physical-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Focused rank, WAIT, corridor and hinge-claim invariants
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d1-coherent-crossing.test.mjs \
+            tests/release-d1-threshold-commitment.test.mjs \
+            tests/passage-q2-coordinator.test.mjs \
+            tests/passage-q4-swing.test.mjs \
+            tests/door-pressure-counterflow-r1.test.mjs
+      - name: Real physical four-person entry and swung-leaf fixtures
+        run: node --experimental-strip-types --test tests/door-traversal-d2d3-four-operator.test.mjs tests/door-traversal-d4-live-grip.test.mjs
+      - name: Strict 70-case passage matrix and speed regression gate
+        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict
+      - name: Production typecheck and bundle
+        run: npm run build
