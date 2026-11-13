@@ -10,6 +10,7 @@ import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {addAchMichConcealment} from './operator-helmet-field-concealment.ts';
 import {createAchMichFieldNetGeometry} from './operator-helmet-field-net.ts';
 import {addAchMichThreeHoleShroud} from './operator-helmet-field-shroud.ts';
+import {addAchMichArcRails} from './operator-helmet-field-rails.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
@@ -114,16 +115,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
    0,p.top-1.86,front-.43);
  }else addAchMichThreeHoleShroud(id,shroud,metal,dark,reflect);
  const rails=addGroup('rails');
- for(const sign of [-1,1]){
-  plate(rails,metal,'tapered-side-rail',
-   [[-1.84,-.27],[-1.48,.38],[1.50,.38],[1.91,-.24],
-    [1.50,-.47],[-1.48,-.47]],
-   sign*(side+.15),p.top-2.33,.05,sign*Math.PI/2);
-  for(const z of [-.96,0,.96])
-   plate(rails,dark,'rail-receiver-slot',
-    [[-.16,-.15],[.16,-.15],[.16,.14],[-.16,.14]],
-    sign*(side+.18),p.top-2.25,z,sign*Math.PI/2);
- }
+ if(id!=='pasgt')addAchMichArcRails(id,rails,metal,dark,reflect);
  const bungees=addGroup('bungees');
  for(const sign of [-1,1]){
   const route:[[number,number,number],...[number,number,number][]]=[
