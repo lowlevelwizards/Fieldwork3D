@@ -19,6 +19,12 @@ export const coverHeight=(c:Obstacle):number=>{
 };
 export const eyeHeight=(crouched:boolean)=>crouched?15:32;
 export const aimHeight=(crouched:boolean)=>crouched?11:32;
+/** Height committed by fixed-step cover stance, shared by shot and sight. */
+export type TacticalStance={posture:'stand'|'crouch';coverStanceDrop?:number};
+export const effectiveAimHeight=(a:TacticalStance)=>
+  aimHeight(a.posture==='crouch')-(a.coverStanceDrop??0);
+export const effectiveEyeHeight=(a:TacticalStance)=>
+  eyeHeight(a.posture==='crouch')-(a.coverStanceDrop??0);
 export function coverImpactFraction(from:Pt,to:Pt,fromZ:number,toZ:number,
   c:Obstacle):number|null{
   let lo=0,hi=1;
