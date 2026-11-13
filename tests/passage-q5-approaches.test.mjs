@@ -95,3 +95,13 @@ test('Release A: mirrored starts never embed actors in the south shelf',()=>{
      Math.abs(point.y-shelf.y)>shelf.h/2+8,id);
  }
 });
+
+test('Release A: Door Lab exposes both entry faces and the 168-case physical audit',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const html=readFileSync(new URL('../door-test-range.html',import.meta.url),'utf8');
+ const src=readFileSync(new URL('../src/door-test-range-main.ts',import.meta.url),'utf8');
+ assert.match(html,/id="approachFace"/);
+ assert.match(html,/RUN CORE 48/);
+ assert.match(html,/RUN EXTENDED 168/);
+ assert.match(src,/runDoorRangeQ5\(door,formation,execution,30,face\)/);
+});
