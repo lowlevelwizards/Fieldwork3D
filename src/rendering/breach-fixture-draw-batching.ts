@@ -8,12 +8,14 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 
 export type FixtureBatchStats={original:number;batched:number;avoided:number};
 
-export function consolidateStaticFixtureParts(root:THREE.Group):FixtureBatchStats{
+export function consolidateStaticFixtureParts(root:THREE.Group,
+ options:{recursive?:boolean;cellSize?:number}={}):FixtureBatchStats{
  const stats:FixtureBatchStats={original:0,batched:0,avoided:0};
  function visit(parent:THREE.Object3D):void{
   // Recursion respects the existing transforms and visibility boundaries.
-  for(const child of [...parent.children])
-   if(child instanceof THREE.Group)visit(child);
+  if(options.recursive!==false)
+   for(const child of [...parent.children])
+    if(child instanceof THREE.Group)visit(child);
   const groups=new Map<THREE.Material,Map<string,THREE.Mesh[]>>();
   for(const child of parent.children){
    if(!(child instanceof THREE.Mesh)||child instanceof THREE.InstancedMesh||
@@ -21,8 +23,13 @@ export function consolidateStaticFixtureParts(root:THREE.Group):FixtureBatchStat
       !(child.material instanceof THREE.MeshStandardMaterial)||
       child.material.transparent||child.children.length||!child.visible||
       child.renderOrder!==0||Object.keys(child.userData).length>0)continue;
+   // Partition large site exteriors into local cells so batching doesn't
+   // force the entire neighborhood to render outside the camera frustum.
+   const cell=options.cellSize&&options.cellSize>0?
+    [Math.floor(child.position.x/options.cellSize),
+     Math.floor(child.position.z/options.cellSize)].join(','):'';
    const flags=[child.castShadow,child.receiveShadow,
-    child.layers.mask,child.frustumCulled].join('/');
+    child.layers.mask,child.frustumCulled,cell].join('/');
    let keyed=groups.get(child.material);
    if(!keyed){keyed=new Map();groups.set(child.material,keyed);}
    const list=keyed.get(flags)??[];
