@@ -434,11 +434,18 @@ main[data-lab-active="poses"] #weapon{display:none}
 These are display positions of actual carried items, not extra inventory.</p>
 </details>
 <div class="kit-grid" id="garmentFinishControls">
+<label>GLOVES · INDEPENDENT
+<select id="wardrobeGloveState" aria-label="Gloves on or off independently of shirt">
+<option value="gloves-none">OFF · BARE HANDS</option>
+<option value="gloves-field">ON · FIELD GLOVES</option>
+</select></label>
+<label>GLOVE COLOR
+<select id="wardrobeGloveColor" aria-label="Independent glove color"></select></label>
 <label id="wardrobeColorwayRow" hidden>GARMENT MATERIAL
 <select id="wardrobeTopColorway" aria-label="Contextual top garment material and mountain-pattern inserts"></select></label>
 <label>SLEEVE FINISH<select id="wardrobeSleeveState" aria-label="Sleeve construction and position">
 <option value="unrolled">UNROLLED · FULL LENGTH</option>
-<option value="cuffed">CUFFED · HIGH WRIST / SKIN GAP</option>
+<option value="cuffed">CUFFED · MID-FOREARM / SKIN GAP</option>
 <option value="rolled">ROLLED · ABOVE ELBOW</option>
 </select></label>
 <label>TROUSER HEM<select id="wardrobeTrouserHem" aria-label="Bloused or unbloused trouser hem">
