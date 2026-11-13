@@ -17,7 +17,7 @@ import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts'
 import {length} from './breach-plan.ts';
 import {injuryOf,woundSeverity,nearCover} from './breach-combat.ts';
 import {aimHeight} from './breach-cover-height.ts';
-import {assessFireLane,fireLaneReachable} from './breach-fire-safety.ts';
+import {assessFireLane,assessFriendlyLane,fireLaneReachable} from './breach-fire-safety.ts';
 import {windowPaneSegment} from './breach-windows.ts';
 import {firstCivilianAlongRay,applyCivilianBulletHit} from './breach-civilian-ballistics.ts';
 import {recordCivilianHarm} from './breach-civilian-harm.ts';
@@ -89,6 +89,12 @@ export function createShotResolver(ports:ShotResolverPorts){
      target.p,aimHeight(target.posture==='crouch'))){
     civilianShotWithheld(s,a);return;
   }
+  // A penetrable cover result must never mask an ally occupying that ray.
+  if(assessFriendlyLane({x:sightMuzzle.x,y:sightMuzzle.z},
+    sightMuzzle.y,target.p,aimHeight(target.posture==='crouch'),
+    friends).blocker==='friendly'){
+    a.lastFireBlock='friendly';requestClearFireStep(s,a,target,'friendly');return;
+  }
   const lane=assessFireLane({x:sightMuzzle.x,y:sightMuzzle.z},
     sightMuzzle.y,target.p,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
@@ -129,6 +135,10 @@ export function createShotResolver(ports:ShotResolverPorts){
      shotTarget,aimHeight(target.posture==='crouch'))){
     civilianShotWithheld(s,a);return;
   }
+  if(assessFriendlyLane(muzzlePoint,muzzle.y,shotTarget,
+    aimHeight(target.posture==='crouch'),friends).blocker==='friendly'){
+    a.lastFireBlock='friendly';return;
+  }
   const shotLane=assessFireLane(muzzlePoint,muzzle.y,
     shotTarget,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
@@ -143,8 +153,8 @@ export function createShotResolver(ports:ShotResolverPorts){
   const far=muzzleEndpoint(muzzlePoint,yaw,Math.max(muzzleRange+38,170));
   const strikeHeight=muzzle.y+(aimHeight(target.posture==='crouch')-
     muzzle.y)*d(muzzlePoint,far)/Math.max(1,muzzleRange);
-  if(assessFireLane(muzzlePoint,muzzle.y,far,strikeHeight,
-    [],[],[],friends).blocker==='friendly'){
+  if(assessFriendlyLane(muzzlePoint,muzzle.y,far,strikeHeight,
+    friends).blocker==='friendly'){
     a.lastFireBlock='friendly';return;
   }
   const muzzleReach=strikeSurface(a.p,muzzlePoint,s,
