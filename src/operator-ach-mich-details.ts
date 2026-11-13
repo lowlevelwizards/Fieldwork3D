@@ -21,9 +21,9 @@ const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
  ach:{
   side:5.075,front:-5.535,rear:5.60,brow:4.40,nape:2.68,
   frontStud:[5.075,4.95,-3.12],rearStud:[5.075,3.91,1.86],
-  hem:[[5.075,4.40,-5.535],[5.075,4.40,-2.20],
-   [5.075,3.36,-1.50],[5.075,3.36,2.70],
-   [5.075,2.68,3.55],[5.075,2.68,5.60]]
+  hem:[[5.075,4.40,-5.535],[5.075,4.40,-1.96],
+   [5.075,3.36,-1.49],[5.075,3.36,2.72],
+   [5.075,2.68,3.30],[5.075,2.68,5.60]]
  },
  'mich-2002':{
   side:5.03,front:-5.70,rear:5.75,brow:4.55,nape:3.365,
@@ -124,12 +124,11 @@ export function achMichRetentionPaths(
   // the protective rubber binding. Front and rear both descend from behind.
   const f:Point=[sign*4.49,achMichHemY(shell,p.frontStud[2])-.16,p.frontStud[2]];
   const b:Point=[sign*4.49,achMichHemY(shell,p.rearStud[2])-.16,p.rearStud[2]];
-  // One quiet V immediately beneath the edge, then a broad under-jaw
-  // return. No independent green spike or outside-shell diagonal.
+  // Two direct legs form a quiet V beneath each ear. The old extra rear
+  // guide created a dangling horizontal projection in the side view.
   const junction:Point=[sign*4.47,1.22,-3.88];
   const chin:Point=[sign*2.28,-.12,-4.88];
-  result.push([f,junction],[b,[sign*4.51,2.24,-.28],junction],
-   [junction,chin]);
+  result.push([f,junction],[b,junction],[junction,chin]);
  }
  return result;
 }
