@@ -6,9 +6,11 @@
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import {resolvePoseContactOwners} from './breach-pose-contacts.ts';
 import {doorGripWeight} from './breach-pose-door-hand.ts';
+import {physicalContactWeight,resolvePhysicalContactPose}
+ from './breach-physical-contact-anchor.ts';
 
 export type PoseActionSource=Pick<OperatorPose,
- 'seconds'|'lastThrowAt'|'lastDoorAt'|'doorPoint'|'doorMethod'|'doorGrip'|
+ 'seconds'|'lastThrowAt'|'lastDoorAt'|'doorPoint'|'doorMethod'|'doorGrip'|'physicalContact'|
  'reload'|'reloadDuration'|'reloadMode'|'weapon'|'treatmentActive'|
  'down'|'surrender'|'injury'|'hitRegion'|'aiming'|'firing'|'hitAge'|
  'lockpickActive'>;
@@ -23,20 +25,34 @@ export function resolveOperatorActionState(
  const throwAge=p.seconds-p.lastThrowAt;
  const throwActive=throwAge>=0&&throwAge<.70;
  const doorAge=p.seconds-p.lastDoorAt;
- const gripWeight=doorGripWeight(p.doorGrip,p.seconds);
+ const anchorWeight=p.physicalContact?.intent==='door'?
+   physicalContactWeight(p.physicalContact,p.seconds):0;
+ const gripWeight=anchorWeight>0?anchorWeight:
+   doorGripWeight(p.doorGrip,p.seconds);
  const doorActive=gripWeight>0||
    (doorAge>=0&&doorAge<1.12&&!!p.doorPoint&&
    p.doorMethod!=='kick')||!!p.lockpickActive&&!!p.doorPoint;
  const woundedGuard=!p.down&&p.injury>0&&p.hitRegion!=='leg'&&
    !p.aiming&&!p.firing&&p.hitAge!==undefined&&
    p.hitAge>=0&&p.hitAge<1.1;
- const handOwners=resolvePoseContactOwners({
+ const originalOwners=resolvePoseContactOwners({
    surrender:p.surrender,down:p.down,downProgress,
    treatmentActive,reloadActive,reloadProgress,reloadMode,
    throwActive,pushActive,woundedGuard,doorActive
  });
+ const physicalContact=resolvePhysicalContactPose(
+   p.physicalContact,originalOwners,p.seconds);
+ // Existing authored/medical/weapon actions outrank new surface contacts.
+ // Only a valid, action-free support contact can borrow the support hand.
+ const handOwners=physicalContact&&originalOwners.action==='hold'&&
+   physicalContact.contact.limb==='support-hand'?
+   {...originalOwners,left:physicalContact.contact.intent==='brace'?
+     'brace' as const:'teammate' as const}:originalOwners;
  return {treatmentActive,reloadActive,reloadProgress,reloadMode,
-   throwAge,throwActive,doorAge,doorActive,gripWeight,woundedGuard,handOwners,
-   // This is an audition exclusion, not a second hand-owner authority.
-   interactionWindow:!!p.treatmentActive||throwActive||doorActive};
+   throwAge,throwActive,doorAge,doorActive,gripWeight,woundedGuard,
+   handOwners,physicalContact,
+   // Surface/teammate contacts are future A3.6/A3.7 actions. No new
+   // action or world contact can be inferred from presentation alone.
+   interactionWindow:!!p.treatmentActive||throwActive||doorActive||
+     !!physicalContact};
 }
