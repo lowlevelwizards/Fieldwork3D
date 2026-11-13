@@ -27,6 +27,7 @@ import {shareUnchangedReplayFrame,reuseFrozenReplayValue,
   REPLAY_FULL_KEYFRAME_INTERVAL,type ReplaySharingStats}
   from './breach-replay-sharing.ts';
 import type {TraverseOpportunity} from './breach-mantle.ts';
+import type {DoorHandContact} from './breach-door-hand-contact.ts';
 import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
 import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
 
@@ -47,6 +48,8 @@ export type ActorFrame=Pick<TeamActor,
   'traversal'|'traversalElapsed'|'traversalElevation'|
   'traversalRetreating'>;
 export type ReplayActorFrame=ActorFrame & {
+ /** Optional for archived films recorded before D4. */
+ doorHandContact?:DoorHandContact|null;
  travelYaw?:number;intentKind?:string;awarenessCount?:number;
  /** Authored remaining orders at this historical sample. */
  plan?:PlanNode[];
@@ -153,6 +156,9 @@ export function snapshot(s:Session,seenGround?:string[],
       morale:a.morale,
       lastThrowAt:a.lastThrowAt,lastDoorAt:a.lastDoorAt,
       lastDoorId:a.lastDoorId,lastDoorMethod:a.lastDoorMethod,
+      doorHandContact:a.doorHandContact?{
+        ...a.doorHandContact,point:{...a.doorHandContact.point}
+      }:null,
       stride:a.stride,
       weaponYaw:a.weaponYaw,stability:a.stability,recoil:a.recoil,
       lastShotAt:a.lastShotAt,fireMode:a.fireMode,burstCount:a.burstCount,
