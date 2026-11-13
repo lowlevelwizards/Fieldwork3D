@@ -18,7 +18,7 @@ import {wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {validArmorSolid,validRigSolid}
  from './operator-rig-authenticity-policy.ts';
 import {isGarmentColorway} from './operator-upper-colorways.ts';
-import {isGarmentSolidId,FABRIC_SOLID_CHOICES,solidChoicesFor,type GarmentSolidId}
+import {isGarmentSolidId,isGloveSolid,FABRIC_SOLID_CHOICES,solidChoicesFor,type GloveSolidId,type GarmentSolidId}
  from './operator-garment-color-policy.ts';
 import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
@@ -209,6 +209,8 @@ export type WardrobeOptions=HelmetCoverConfig&{
  knitSolid?:GarmentSolidId;
  /** Advanced pouch-only solid override; absent means inherit rig textile. */
  pouchSolid?:GarmentSolidId;
+ /** Independent visual glove dye. No relation to the selected shirt fabric. */
+ gloveSolid?:GloveSolidId;
  /** Replaceable harness material; ignored on sewn/integrated rigs. */
  strapSolid?:GarmentSolidId;
  sleeveState:SleeveState;trouserHem:TrouserHem;
@@ -307,6 +309,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(isGarmentSolidId(v.cuffSolid))result.cuffSolid=v.cuffSolid;
  if(isGarmentSolidId(v.knitSolid))result.knitSolid=v.knitSolid;
  if(isGarmentSolidId(v.pouchSolid))result.pouchSolid=v.pouchSolid;
+ if(isGloveSolid(v.gloveSolid))result.gloveSolid=v.gloveSolid;
  if(isHeadwearSolidColorId(v.headwearColor))result.headwearColor=v.headwearColor;
  if(v.beretDrape==='left'||v.beretDrape==='right')result.beretDrape=v.beretDrape;
  if(isM56Details(v.m56Details))result.m56Details=v.m56Details;
@@ -464,9 +467,8 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   'bdu-trousers');
  choose('footwear',slots.feet==='feet-none'?['bare-feet']:['field-boots'],
   slots.feet==='feet-none'?'bare-feet':'field-boots');
- choose('gloves',slots.hands==='hands-none'?
-  ['gloves-none']:['gloves-field'],
-  slots.hands==='hands-none'?'gloves-none':'gloves-field');
+ // Gloves are a cosmetic layer: explicit on/off stays independent of
+ // the combat kit's hands slot, with the loadout used only as default.
  return desired;
 }
 export function wardrobeConflicts(w:WardrobeOptions,kit:EquipmentLoadout){
