@@ -112,9 +112,16 @@ try{
    await webbing.selectOption('tan');
    const conceal=page.locator('.material-group')
     .filter({hasText:'One option at a time.'}).locator('select');
+   await conceal.selectOption('foliage-sparse');
+   await capture(id+'-sparse-foliage-side','side');
    await conceal.selectOption('foliage-medium');
    await capture(id+'-medium-foliage-front','front');
    await capture(id+'-medium-foliage-side','side');
+   await conceal.selectOption('foliage-heavy');
+   await capture(id+'-heavy-foliage-side','side');
+   await conceal.selectOption('scrim');
+   await capture(id+'-scrim-front','front');
+   await capture(id+'-scrim-side','side');
    await conceal.selectOption('net');
    await capture(id+'-net-three-quarter','front');
    await toggle('NVG SHROUD');
