@@ -525,8 +525,12 @@ function fire(s:Session,a:TeamActor,dt:number){
   // feasibility test; shot-time still rechecks the true settled weapon yaw.
   const world=sessionWorldGeometry(s);
   const friends:ReturnType<typeof safetyBodyFor>[]=[];
-  for(const other of s.operators)if(other!==a&&other.health>0&&
-      other.side===a.side)friends.push(safetyBodyFor(other));
+  // With zero confirmed contacts target selection never tests a fire lane.
+  // Avoid rebuilding allied safety volumes on every quiet/passive tick;
+  // do not relax them for any actual engagement or shot.
+  if(visible.length)for(const other of s.operators)
+   if(other!==a&&other.health>0&&other.side===a.side)
+    friends.push(safetyBodyFor(other));
   const target=selectFireableContact(a.p,visible,a.targetId,candidate=>{
     const clearance=weaponClearance({x:a.p.x,z:a.p.y,
       heading:a.heading,weaponYaw:angle(a.p,candidate.p),
