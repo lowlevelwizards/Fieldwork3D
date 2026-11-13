@@ -14,6 +14,12 @@ export function assessFireLane(from:Pt,muzzleHeight:number,to:Pt,
   targetHeight:number,cover:readonly Obstacle[],walls:readonly Segment[],
   doors:readonly Door[],friends:readonly FriendlySafetyBody[]=[],
   purpose:'projectile'|'weapon'='projectile'):FireLane{
+  // Friendly bodies are a HARD veto, including through penetrable cover.
+  // Do this before material classification: otherwise a cover-hit result
+  // could be penetrated even when a teammate occupies the same ray.
+  for(const body of friends)
+    if(friendIntersectsTrajectory(from,muzzleHeight,to,targetHeight,body))
+      return {blocker:'friendly',point:body};
   const ray={a:from,b:to};
   if(walls.some(w=>segmentsCross(ray,w)))return {blocker:'wall'};
   if(doors.some(d=>
@@ -23,12 +29,6 @@ export function assessFireLane(from:Pt,muzzleHeight:number,to:Pt,
   if(cover.some(c=>(purpose==='weapon'||c.fixture!=='glass-barrier')&&
     coverImpactFraction(from,to,muzzleHeight,targetHeight,c)!==null))
     return {blocker:'cover'};
-  // Both visual weapon occupancy and real bullet permission read this
-  // shared torso/head representation. Unknown posture remains blocked
-  // with the legacy flat disk; no render-frame pose authorizes shots.
-  for(const body of friends)
-    if(friendIntersectsTrajectory(from,muzzleHeight,to,targetHeight,body))
-      return {blocker:'friendly',point:body};
   return {blocker:'clear'};
 }
 
