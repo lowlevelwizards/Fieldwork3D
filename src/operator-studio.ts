@@ -1472,6 +1472,22 @@ function renderMaterials(){
    const rowOf=(title:string,help:string)=>{
      const group=row(title,help);
      group.classList.add('helmet-field-section');
+     // Phone-sized editor: show one-line titles; reveal the long guidance
+     // only when requested. Preserve the help text for accessible controls.
+     const heading=group.querySelector<HTMLElement>('.material-heading');
+     const guidance=group.querySelector<HTMLElement>('small');
+     if(heading&&guidance){
+      const info=document.createElement('button');
+      info.type='button';info.className='helmet-field-help';
+      info.textContent='?';info.setAttribute('aria-label','About '+title);
+      info.setAttribute('aria-expanded','false');
+      info.addEventListener('click',()=>{
+       const open=info.getAttribute('aria-expanded')!=='true';
+       info.setAttribute('aria-expanded',String(open));
+       guidance.hidden=!open;
+      });
+      guidance.hidden=true;heading.append(info);
+     }
      return group;
     };
    const band=rowOf('FIELD RETAINING BAND',
