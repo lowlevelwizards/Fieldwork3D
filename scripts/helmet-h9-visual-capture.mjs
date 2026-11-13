@@ -124,6 +124,8 @@ try{
    await capture(id+'-scrim-side','side');
    await conceal.selectOption('net');
    await capture(id+'-net-three-quarter','front');
+   await capture(id+'-net-side','side');
+   await capture(id+'-net-rear','back');
    await toggle('NVG SHROUD');
    if(id!=='pasgt'){
     for(const name of ['SIDE RAILS','BUNGEES','VELCRO PANELS'])
