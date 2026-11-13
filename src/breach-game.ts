@@ -1683,7 +1683,8 @@ export function observerPointVisible(
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.personalQueries++;
   if(!friendlyGroundSightCandidate(s,observer,p))return false;
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.personalOcclusionProbes++;
-  return unobstructed(observer.p,p,s,observer.posture==='crouch');
+  return unobstructed(observer.p,p,s,observer.posture==='crouch'||
+    effectiveEyeHeight(observer)<25);
 }
 export function liveVisibility(s:Session,p:Pt){
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveQueries++;
@@ -1697,7 +1698,8 @@ export function liveVisibility(s:Session,p:Pt){
   for(const a of s.operators){
     if(!friendlyGroundSightCandidate(s,a,p))continue;
     if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveOcclusionProbes++;
-    if(unobstructed(a.p,p,s,a.posture==='crouch')){
+    if(unobstructed(a.p,p,s,a.posture==='crouch'||
+      effectiveEyeHeight(a)<25)){
       if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveHits++;
       return true;
     }
