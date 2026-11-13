@@ -22,7 +22,8 @@ export function canMaintainDoorGrip(actor:TeamActor,door:Door,
     (order.kind!=='move'&&order.kind!=='pie')||
     actor.reload>0||actor.treatmentActive||
     actor.traversal||actor.traversalPending||
-    actor.pace==='run'||seconds-actor.lastShotAt<.4)
+    actor.pace==='run'||seconds-actor.lastShotAt<.4||
+    seconds-actor.lastThrowAt<.7)
    return false;
  return withinHandle(actor.p,door);
 }
@@ -36,6 +37,7 @@ export function beginDoorGrip(actor:TeamActor,door:Door,
     door.kind==='shutter'||actor.health<=0||
     actor.reload>0||actor.treatmentActive||
     actor.pace==='run'||seconds-actor.lastShotAt<.4||
+    seconds-actor.lastThrowAt<.7||
     !withinHandle(actor.p,door))return false;
  if(!e.handContact)e.handContactSince=seconds;
  e.handContact=true;
