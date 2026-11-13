@@ -80,6 +80,15 @@ try{
    await capture(id+'-covered-clean-front','front');
    await capture(id+'-covered-clean-side','side');
    await capture(id+'-covered-clean-back','back');
+   if(id!=='pasgt'){
+    await toggle('VELCRO PANELS');
+    await capture(id+'-velcro-isolated-side','side');
+    await capture(id+'-velcro-isolated-back','back');
+    await setToggleState('VELCRO PANELS',false);
+    await toggle('PATCH / IDENTIFIER');
+    await capture(id+'-patch-isolated-side','side');
+    await setToggleState('PATCH / IDENTIFIER',false);
+   }
    await matTab.click();
    await cover.selectOption('none');
    await capture(id+'-bare-shell-front','front');
@@ -158,6 +167,8 @@ try{
    await capture(id+'-rear-goggle-sleeve','back');
    await goggles.selectOption('front');
    await capture(id+'-front-goggles','front');
+   await capture(id+'-front-goggles-side','side');
+   await capture(id+'-front-goggle-sleeve','front');
    await goggles.selectOption('eyes');
    await capture(id+'-goggles-eyes','front');
    const fastener=page.getByRole('button',{name:'FASTENED',exact:true});
