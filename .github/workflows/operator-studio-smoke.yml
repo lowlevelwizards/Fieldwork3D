@@ -42,6 +42,8 @@ on:
       - 'src/operator-helmet-field-shroud.ts'
       - 'src/operator-helmet-field-rails.ts'
       - 'src/operator-helmet-field-bungees.ts'
+      - 'src/operator-helmet-field-goggles.ts'
+      - 'tests/helmet-h9-goggles.test.mjs'
       - 'tests/helmet-h9-bungees.test.mjs'
       - 'tests/helmet-h9-rails.test.mjs'
       - 'tests/helmet-h9-shroud.test.mjs'
@@ -127,7 +129,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h9-') }}
         run: |
           npm run check
-          node --experimental-strip-types --test tests/ach-mich-h5-cover-strap.test.mjs tests/helmet-h8-recovery.test.mjs tests/helmet-h9-foundation.test.mjs tests/helmet-h9-concealment.test.mjs tests/helmet-h9-net.test.mjs tests/helmet-h9-shroud.test.mjs tests/helmet-h9-rails.test.mjs tests/helmet-h9-bungees.test.mjs
+          node --experimental-strip-types --test tests/ach-mich-h5-cover-strap.test.mjs tests/helmet-h8-recovery.test.mjs tests/helmet-h9-foundation.test.mjs tests/helmet-h9-concealment.test.mjs tests/helmet-h9-net.test.mjs tests/helmet-h9-shroud.test.mjs tests/helmet-h9-rails.test.mjs tests/helmet-h9-bungees.test.mjs tests/helmet-h9-goggles.test.mjs
       - name: H9 mobile WebGL cover and equipment regression capture
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h9-') }}
         run: node scripts/helmet-h9-visual-capture.mjs
