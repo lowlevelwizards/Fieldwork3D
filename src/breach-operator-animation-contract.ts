@@ -7,6 +7,7 @@
  * can consume this contract without importing visual rig construction.
  */
 import type {PrecontactStyle} from './breach-idle-life.ts';
+import type {DoorGripPose} from './breach-pose-door-hand.ts';
 import type {V3ReloadCorridorProfile,V3MagazinePalm} from './breach-pose-v3-reload-choreography.ts';
 import type {V3ReloadHold} from './breach-pose-v3-reload-weapon.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -49,6 +50,8 @@ export type OperatorPose={
   reload:number;reloadDuration:number;reloadMode?:ReloadMode|null;
   reloadRemoved?:boolean;reloadInserted?:boolean;lastThrowAt:number;
   lastDoorAt:number;doorPoint?:{x:number;y:number};
+  /** D4 motor-owned active/releasing support hand attachment. */
+  doorGrip?:DoorGripPose|null;
   doorMethod?:'open'|'close'|'kick'|'hold';down:boolean;
   lastBashAt?:number;bashRole?:BashRole;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
