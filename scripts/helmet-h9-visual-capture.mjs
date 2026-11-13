@@ -126,9 +126,22 @@ try{
    await capture(id+'-net-three-quarter','front');
    await capture(id+'-net-side','side');
    await capture(id+'-net-rear','back');
+   // H9.4a: isolate the modeled shroud before overlays and rail furniture.
+   await conceal.selectOption('none');
    await toggle('NVG SHROUD');
+   await capture(id+'-shroud-isolated-front','front');
+   await capture(id+'-shroud-isolated-side','side');
+   await conceal.selectOption('net');
    if(id!=='pasgt'){
-    for(const name of ['SIDE RAILS','BUNGEES','VELCRO PANELS'])
+    // H9.4b isolated full-length ACH rail, shroud/net hidden for fit review.
+    await setToggleState('NVG SHROUD',false);
+    await conceal.selectOption('none');
+    await toggle('SIDE RAILS');
+    await capture(id+'-arc-rail-isolated-side','side');
+    await capture(id+'-arc-rail-isolated-back','back');
+    await setToggleState('NVG SHROUD',true);
+    await conceal.selectOption('net');
+    for(const name of ['BUNGEES','VELCRO PANELS'])
      await toggle(name);
    }else if(await page.getByRole('button',{name:'SIDE RAILS'}).count())
     throw Error('PASGT exposed modern rail controls');

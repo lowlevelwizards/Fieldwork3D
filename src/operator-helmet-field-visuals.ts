@@ -9,6 +9,9 @@ import {isFieldHelmet,resolveHelmetField,resolveHelmetFieldColor,
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {addAchMichConcealment} from './operator-helmet-field-concealment.ts';
 import {createAchMichFieldNetGeometry} from './operator-helmet-field-net.ts';
+import {addAchMichThreeHoleShroud} from './operator-helmet-field-shroud.ts';
+import {addAchMichArcRails} from './operator-helmet-field-rails.ts';
+import {addAchMichRetainingBungees} from './operator-helmet-field-bungees.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
@@ -23,13 +26,6 @@ const box=(g:THREE.Group,m:THREE.Material,name:string,
  const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);o.name=name;
  o.position.set(x,y,z);o.rotation.z=rz;o.castShadow=false;o.receiveShadow=false;
  g.add(o);return o;
-};
-const segment=(g:THREE.Group,m:THREE.Material,name:string,
- from:readonly [number,number,number],to:readonly [number,number,number],width:number)=>{
- const a=new THREE.Vector3(...from),b=new THREE.Vector3(...to);
- const d=b.clone().sub(a),mid=a.clone().add(b).multiplyScalar(.5);
- const o=box(g,m,name,mid.x,mid.y,mid.z,width,.16,d.length());
- o.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),d.normalize());return o;
 };
 // The H8 accessories use thin surface-fitting strips instead of deep blocks.
 const ribbon=(g:THREE.Group,m:THREE.Material,name:string,points:number[][],h:number)=>{
@@ -103,33 +99,19 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   }
  }
  const shroud=addGroup('shroud');
- // Sculpted shallow shield with inset receiver; never a free-standing block.
- plate(shroud,metal,id==='pasgt'?'period-bracket':'tapered-nvg-shroud',
-  [[-1.04,.70],[1.04,.70],[1.14,.16],[.78,-.71],
-   [-.78,-.71],[-1.14,.16]],0,p.top-1.79,front-.39);
- plate(shroud,dark,'nvg-interface',
-  [[-.43,.16],[.43,.16],[.39,-.32],[-.39,-.32]],
-  0,p.top-1.86,front-.43);
+ if(id==='pasgt'){
+  // Retain the historical bracket instead of modernizing baseline PASGT.
+  plate(shroud,metal,'pasgt-period-bracket',
+   [[-1.04,.70],[1.04,.70],[1.14,.16],[.78,-.71],
+    [-.78,-.71],[-1.14,.16]],0,p.top-1.79,front-.39);
+  plate(shroud,dark,'pasgt-bracket-socket',
+   [[-.43,.16],[.43,.16],[.39,-.32],[-.39,-.32]],
+   0,p.top-1.86,front-.43);
+ }else addAchMichThreeHoleShroud(id,shroud,metal,dark,reflect);
  const rails=addGroup('rails');
- for(const sign of [-1,1]){
-  plate(rails,metal,'tapered-side-rail',
-   [[-1.84,-.27],[-1.48,.38],[1.50,.38],[1.91,-.24],
-    [1.50,-.47],[-1.48,-.47]],
-   sign*(side+.15),p.top-2.33,.05,sign*Math.PI/2);
-  for(const z of [-.96,0,.96])
-   plate(rails,dark,'rail-receiver-slot',
-    [[-.16,-.15],[.16,-.15],[.16,.14],[-.16,.14]],
-    sign*(side+.18),p.top-2.25,z,sign*Math.PI/2);
- }
+ if(id!=='pasgt')addAchMichArcRails(id,rails,metal,dark,reflect);
  const bungees=addGroup('bungees');
- for(const sign of [-1,1]){
-  const route:[[number,number,number],...[number,number,number][]]=[
-   [sign*.85,p.top-1.37,front-.31],
-   [sign*2.40,p.top-.05,front+.44],
-   [sign*(side+.1),p.top-.89,-.55]];
-  for(let i=1;i<route.length;i++)
-   segment(bungees,olive,'tensioned-bungee',route[i-1],route[i],.13);
- }
+ if(id!=='pasgt')addAchMichRetainingBungees(id,bungees,olive,metal,dark);
  const velcroGroup=addGroup('velcro');
  plate(velcroGroup,velcro,'thin-crown-velcro',
   [[-1.14,-.68],[1.14,-.68],[1.14,.68],[-1.14,.68]],
