@@ -54,7 +54,7 @@ export function createOrderExecutor(port:OrderExecutionPort){
     const goal=a.fireRetreatTarget;
     if(s.seconds>a.fireRetreatUntil||d(a.p,goal)<.9||
        !sweptBodyClear(a.p,goal,s.doors,8,sessionWorldGeometry(s))){
-      a.fireRetreatTarget=null;a.nav=[];
+      a.fireRetreatTarget=null;a.fireRetreatReason=null;a.nav=[];
     }else{
       port.approach(a,goal,dt,s,.64);
       return;
