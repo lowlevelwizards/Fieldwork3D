@@ -64,20 +64,24 @@ export function canAutoOpenEnRoute(plan:{
 }
 export function autoDoorAtBodyContact(from:Pt,to:Pt,
  doors:readonly Door[],world?:SessionWorldGeometry):Door|undefined{
- const touching=doors.filter(d=>{
+ let nearest:Door|undefined;
+ let nearestDistance=Infinity;
+ for(const d of doors){
    if((d.open&&doorClear(d,world))||!doorReachable(from,d))
-     return false;
+     continue;
    const leaf=doorLeafSegment(d);
-   const before=pointToSegment(from,leaf),after=pointToSegment(to,leaf);
-   // A full-body motor stops at radius+1, BEFORE the center crosses
-   // the leaf. Engage within a bounded shoulder envelope instead of
-   // waiting until a planned step penetrates the solid door.
-   return before<OPERATOR_RADIUS+7&&after<OPERATOR_RADIUS+7&&
-     after<before-.015;
- });
- return touching.sort((a,b)=>
-   pointToSegment(to,doorLeafSegment(a))-
-   pointToSegment(to,doorLeafSegment(b))||a.id.localeCompare(b.id))[0];
+   const before=pointToSegment(from,leaf);
+   const after=pointToSegment(to,leaf);
+   // Body contact must approach the leaf within the normal shoulder
+   // envelope; only selection order/allocations have changed.
+   if(before>=OPERATOR_RADIUS+7||after>=OPERATOR_RADIUS+7||
+      after>=before-.015)continue;
+   if(after<nearestDistance||
+      after===nearestDistance&&nearest&&d.id<nearest.id){
+     nearest=d;nearestDistance=after;
+   }
+ }
+ return nearest;
 }
 export function doorApproach(from:Pt,d:Door,world?:SessionWorldGeometry,
  occupied:readonly Pt[]=[]):Pt|null{

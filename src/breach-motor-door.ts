@@ -19,11 +19,18 @@ export function handleMotorDoor(
   // Identify the leaf for closed-door authored handling; open hinged
   // leaves are pushed by the coupled swept-body solver below, not by
   // standing nearby or crossing a broad radius trigger.
-  const closedDoor=s.doors.filter(door=>
-    pointToSegment(move,doorLeafSegment(door))<24||
-    doorBlocksSegment(door,{a:a.p,b:move}))
-    .sort((u,v)=>pointToSegment(move,doorLeafSegment(u))-
-      pointToSegment(move,doorLeafSegment(v)))[0];
+  // Stable single pass replaces the hot-path filter and full sort.
+  let closedDoor:typeof s.doors[number]|undefined;
+  let closedDistance=Infinity;
+  for(const door of s.doors){
+    const distance=pointToSegment(move,doorLeafSegment(door));
+    if(distance>=24&&!doorBlocksSegment(door,{a:a.p,b:move}))
+      continue;
+    // Strict < preserves original array order at equal distances.
+    if(distance<closedDistance){
+      closedDoor=door;closedDistance=distance;
+    }
+  }
   // Look ahead to the route's next node, stopping to open a door before
   // the actor's capsule contacts the physical leaf.
   // Crossing a physical closed door during a move implicitly attempts to
@@ -34,17 +41,26 @@ export function handleMotorDoor(
   // A route toward an authored door may cross OTHER doors. Do not let
   // the destination DOOR node disable ordinary collision-aware opening
   // of an intervening closed leaf; this was the G4d seeded deadlock.
-  const automaticCandidates=s.doors.filter(door=>
-    canAutoOpenEnRoute(pendingDoor,door.id,a.side==='red')).sort((left,right)=>
-      pointToSegment(a.p,doorLeafSegment(left))-
-      pointToSegment(a.p,doorLeafSegment(right))||
-      left.id.localeCompare(right.id));
-  const doorAhead=automaticCandidates.find(door=>{
-    if(door.open&&(door.openFraction??0)>=.72)return false;
-    if(!doorReachable(a.p,door))return false;
-    return doorBlocksSegment(door,{a:a.p,b:next})||
-      doorBlocksSegment(door,{a:a.p,b:p});
-  })??autoDoorAtBodyContact(a.p,move,automaticCandidates,sessionWorldGeometry(s));
+  const automaticCandidates:typeof s.doors=[];
+  let doorAhead:typeof s.doors[number]|undefined;
+  let closest=Infinity;
+  for(const door of s.doors){
+    if(!canAutoOpenEnRoute(pendingDoor,door.id,a.side==='red'))
+      continue;
+    automaticCandidates.push(door);
+    if(door.open&&(door.openFraction??0)>=.72)continue;
+    if(!doorReachable(a.p,door))continue;
+    if(!doorBlocksSegment(door,{a:a.p,b:next})&&
+       !doorBlocksSegment(door,{a:a.p,b:p}))continue;
+    const distance=pointToSegment(a.p,doorLeafSegment(door));
+    if(distance<closest||
+       distance===closest&&doorAhead&&door.id<doorAhead.id){
+      doorAhead=door;closest=distance;
+    }
+  }
+  // Physical near-contact is the only fallback, not a sorted search.
+  doorAhead??=autoDoorAtBodyContact(a.p,move,
+    automaticCandidates,sessionWorldGeometry(s));
   if(doorAhead){
     // When an earlier frame queued a short handle-side correction, let the
     // normal swept motor EXECUTE those footsteps before opening the hinge.
