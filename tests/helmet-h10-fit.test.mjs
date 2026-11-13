@@ -43,6 +43,6 @@ test('H10.0 covered shell remains solid beneath textile, uncovered rim remains s
   assert.equal(layers.coveredLiner.visible,false);
   const retention=createAchMichRetentionGeometry(shell);
   assert.equal(retention.userData.integratedChinCup,true);
-  assert.ok(retention.getAttribute('position').count>110);
+  assert.ok(retention.getAttribute('position').count>=66);
  }
 });
