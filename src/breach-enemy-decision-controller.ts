@@ -77,14 +77,14 @@ function electiveAiWork(s:Session,a:TeamActor,kind:string):boolean{
 
 function defensivePosition(a:TeamActor,from:Pt,s:Session):Pt|null{
   const others=enemies(s).map(other=>({id:other.id,p:other.p,
-    health:other.health,defense:other.defense}));
+    health:other.health,defense:other.defense,posture:other.posture}));
   return chooseDefense(a.p,from,s.doors,others,a.id,{},sessionWorldGeometry(s));
 }
 /** Firing reposition differs from a safe withdrawal. It must actually
  * expose a legal muzzle lane to the confirmed visible opponent. */
 function firingPosition(a:TeamActor,target:TeamActor,s:Session):Pt|null{
   const others=enemies(s).map(other=>({id:other.id,p:other.p,
-    health:other.health,defense:other.defense}));
+    health:other.health,defense:other.defense,posture:other.posture}));
   return chooseFiringDefense(a.p,target.p,s.doors,others,a.id,
     aimHeight(target.posture==='crouch'),sessionWorldGeometry(s));
 }
