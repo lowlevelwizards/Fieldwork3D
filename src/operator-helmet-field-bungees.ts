@@ -5,7 +5,7 @@
  */
 import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
-import {sampleHelmetCover,type CoverRegion,type HelmetSurfaceFrame}
+import {sampleHelmetCover,type HelmetSurfaceFrame}
  from './operator-helmet-surface.ts';
 
 type R='front'|'left'|'right';
