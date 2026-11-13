@@ -148,5 +148,25 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
   marks.push({id:mark.zoneId+':'+mark.kind+':'+marks.length,...mark});
  for(const mark of planServiceBoundaryMarks(site))
   marks.push({id:mark.zoneId+':'+mark.kind+':'+marks.length,...mark});
- return marks;
+ // Render-only ground marks are clipped to their OWN authored exterior
+ // substrate once, when a site loads. A long street sidewalk or service
+ // decal must not visually extend through another lot zone or building.
+ // This does not create physical geometry, path checks or simulation work.
+ const zones=new Map((site.exteriorZones??[]).map(z=>[z.id,z]));
+ const clipped:PropertySurface[]=[];
+ for(const mark of marks){
+  const zone=zones.get(mark.zoneId);if(!zone)continue;
+  const minX=Math.max(mark.x-mark.width/2,zone.x-zone.w/2);
+  const maxX=Math.min(mark.x+mark.width/2,zone.x+zone.w/2);
+  const minY=Math.max(mark.y-mark.depth/2,zone.y-zone.h/2);
+  const maxY=Math.min(mark.y+mark.depth/2,zone.y+zone.h/2);
+  if(maxX-minX<.75||maxY-minY<.75)continue;
+  if(minX===mark.x-mark.width/2&&maxX===mark.x+mark.width/2&&
+     minY===mark.y-mark.depth/2&&maxY===mark.y+mark.depth/2){
+    clipped.push(mark);continue;
+  }
+  clipped.push({...mark,x:(minX+maxX)/2,y:(minY+maxY)/2,
+    width:maxX-minX,depth:maxY-minY});
+ }
+ return clipped;
 }

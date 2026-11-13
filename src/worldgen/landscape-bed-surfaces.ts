@@ -74,11 +74,11 @@ export function planLandscapeBedMarks(site:Site):LandscapeBedMark[]{
    if((zone.kind!=='garden'&&zone.kind!=='yard')||
       zone.w<70||zone.h<45)continue;
    const broad=zone.w>=zone.h;
-   const plants=site.cover.filter(c=>
+   const plants=(site.cover??[]).filter(c=>
      greenery.has(c.fixture??'')&&
      Math.abs(c.x-zone.x)<zone.w/2-5&&
      Math.abs(c.y-zone.y)<zone.h/2-5&&
-     !site.rooms.some(r=>c.x>=r.x&&c.x<=r.x+r.w&&
+     !(site.rooms??[]).some(r=>c.x>=r.x&&c.x<=r.x+r.w&&
        c.y>=r.y&&c.y<=r.y+r.h));
    if(!plants.length)continue;
    for(const sign of [-1,1] as const){
