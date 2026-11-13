@@ -13,6 +13,9 @@ on:
       - 'src/breach-firing-pipeline.ts'
       - 'src/breach-friendly-safety-volume.ts'
       - 'src/breach-contextual-support-contact.ts'
+      - 'src/a3-physicality-probe.ts'
+      - 'src/a3-physicality-lab-main.ts'
+      - 'a3-physicality-lab.html'
       - 'src/breach-operator-animation-controller.ts'
       - 'src/breach-door-actions.ts'
       - 'tests/animation-a3-9-*'
@@ -31,7 +34,7 @@ jobs:
           node-version: '24'
       - run: npm install --no-audit --no-fund
       - name: Fixed cover stance, head and muzzle parity
-        run: node --experimental-strip-types --test tests/animation-a3-9-continuous-cover-stance.test.mjs tests/animation-a3-9-cover-height-source.test.mjs
+        run: node --experimental-strip-types --test tests/animation-a3-9-continuous-cover-stance.test.mjs tests/animation-a3-9-cover-height-source.test.mjs tests/animation-a3-9-lab-observability.test.mjs
       - name: Door kick weight and historical contact continuity
         run: node --experimental-strip-types --test tests/animation-a3-9-kick-weight-transfer.test.mjs tests/animation-a3-9-kick-leg-choice.test.mjs tests/breach-135.test.mjs tests/door-traversal-d4-live-grip.test.mjs
       - name: Existing body safety, physical hand and pose regressions
