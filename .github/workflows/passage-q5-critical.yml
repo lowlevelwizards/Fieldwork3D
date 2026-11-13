@@ -31,6 +31,8 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run build
       - name: Formation + Q0-Q4 integrity
-        run: node --experimental-strip-types --test tests/passage-q5-formations.test.mjs tests/passage-q2-coordinator.test.mjs tests/passage-q3-flow.test.mjs tests/passage-q4-swing.test.mjs tests/door-test-range-page.test.mjs
+        run: node --experimental-strip-types --test tests/passage-q5-formations.test.mjs tests/passage-q5-opener-stance.test.mjs tests/passage-q2-coordinator.test.mjs tests/passage-q3-flow.test.mjs tests/passage-q4-swing.test.mjs tests/door-test-range-page.test.mjs
+      - name: Q5 capture two previously stalled oblique approaches
+        run: node --experimental-strip-types scripts/audit-q5-two-stalls.mjs
       - name: Physical matrix · hinged cardinal fixtures
         run: node --experimental-strip-types scripts/audit-passage-q5.mjs core squad 1800
