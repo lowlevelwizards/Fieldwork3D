@@ -67,6 +67,7 @@ for(const preset of DOOR_RANGE_FORMATIONS){
 }
 formation.value='center';
 let s:Session;
+let lastAudit:DoorRangeTrial[]=[];
 let planned=false,playing=false,flips=0,lastOpen=false;
 let minSpacing=Infinity;
 let passed=new Set<string>();
@@ -275,6 +276,9 @@ function report(){
  const door=s.doors[0];
  return {scenario:scenario.value,formation:formation.value,
   approachFace:approachFace.value,protocol:program.value,
+  formationAudit:lastAudit,
+  formationAuditSummary:lastAudit.length?
+    summarizeDoorRangeTrials(lastAudit):null,
   phase:s.phase,time:s.seconds,planned,flips,
   minOperatorSpacing:Number.isFinite(minSpacing)?minSpacing:null,
   crossed:[...crossedAt.entries()],
@@ -334,7 +338,11 @@ stage.addEventListener('pointerdown',event=>{
 selected.addEventListener('change',()=>{selectedId=selected.value;paint();});
 trace.addEventListener('change',paint);
 for(const input of [scenario,formation,approachFace,program])
- input.addEventListener('change',reset);
+ input.addEventListener('change',()=>{
+  lastAudit=[];formationResults.textContent=
+   'Run the six-formation audit to see physical outcomes and completion times.';
+  reset();
+ });
 let auditInProgress=false;
 runSix.addEventListener('click',async()=>{
  if(auditInProgress)return;
@@ -345,10 +353,12 @@ runSix.addEventListener('click',async()=>{
  const protocol:DoorRangeProtocol=program.value==='independent'?
   'independent':'squad';
  const trials:DoorRangeTrial[]=[];
+ let verdict='';
  try{
   for(const preset of DOOR_RANGE_FORMATIONS){
    const result=runDoorRangeTrial(id,preset.id,face,protocol,1800);
    trials.push(result);
+   lastAudit=[...trials];
    const rows=trials.map(t=>
     (t.ok?'PASS':'FAIL')+' · '+t.formation+
     ' · crossed '+t.crossed+'/4 · finished '+t.finished+
@@ -365,13 +375,14 @@ runSix.addEventListener('click',async()=>{
    's · p90 '+(summary.fourthCross.p90?.toFixed(2)??'—')+
    's · worst '+(summary.fourthCross.worst?.toFixed(2)??'—')+
    's\n\n'+formationResults.textContent;
-  message.textContent=summary.failed?
+  verdict=summary.failed?
    summary.failed+' failures; inspect the exact rows and reproduce individually.':
    'All six formations passed their physical expected outcome.';
  }catch(error){
   formationResults.textContent+='\nERROR · '+String(error);
  }finally{
   auditInProgress=false;runSix.disabled=false;reset();
+  if(verdict)message.textContent=verdict;
  }
 });
 function drawMobileProfile(now:number){
