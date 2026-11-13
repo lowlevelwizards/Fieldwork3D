@@ -5,18 +5,21 @@
  */
 import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
-import {sampleHelmetCover,type HelmetSurfaceFrame}
+import {sampleHelmetCover,sampleHelmetShell,type HelmetSurfaceFrame}
  from './operator-helmet-surface.ts';
 
 type R='front'|'left'|'right';
 const finite=(v:THREE.Vector3)=>Number.isFinite(v.x+v.y+v.z);
-function point(shell:AchMichCoverShell,region:R,u:number,v:number,offset:number){
+function point(shell:AchMichCoverShell,region:R,u:number,v:number,offset:number,
+ covered:boolean){
  // Retention is on the actual cloth, not inside the helmet. Keep
  // anchors near their authored location rather than teleporting
  // through the MICH-2002 ear window to the opposite side.
  for(const uv of [u,u*.90,u*.80])
   for(const vv of [v,v+.11,v-.11,v+.20,v-.20,.40]){
-   const f=sampleHelmetCover(shell,region,uv,Math.min(.78,Math.max(-.62,vv)),offset);
+   const f=covered?
+    sampleHelmetCover(shell,region,uv,Math.min(.78,Math.max(-.62,vv)),offset):
+    sampleHelmetShell(shell,region,uv,Math.min(.78,Math.max(-.62,vv)),offset);
    if(f)return f;
   }
  throw Error('H9.4c cannot place '+shell+' '+region+' elastic');
@@ -32,15 +35,16 @@ const orient=(mesh:THREE.Mesh,f:HelmetSurfaceFrame)=>{
   .makeBasis(f.right,f.up,f.normal));
 };
 function tether(shell:AchMichCoverShell,side:'left'|'right',g:THREE.Group,
- webbing:THREE.Material,metal:THREE.Material,dark:THREE.Material){
+ webbing:THREE.Material,metal:THREE.Material,dark:THREE.Material,
+ covered:boolean){
  const sign=side==='left'?-1:1;
  // Keep the cord just proud of the textile and rail rather than
  // suspended nearly a full unit away from the helmet surface.
- const rail=point(shell,side,-.63,.30,.31);
- const shoulder=point(shell,side,-.79,.40,.37);
- const corner=point(shell,'front',sign*.84,.37,.38);
- const front=point(shell,'front',sign*.52,.37,.34);
- const shroud=point(shell,'front',sign*.29,.34,.31);
+ const rail=point(shell,side,-.51,.40,.46,covered);
+ const shoulder=point(shell,side,-.74,.46,.55,covered);
+ const corner=point(shell,'front',sign*.84,.47,.62,covered);
+ const front=point(shell,'front',sign*.52,.44,.49,covered);
+ const shroud=point(shell,'front',sign*.29,.40,.48,covered);
  // A polyline along the shell's exterior, NOT a chord through the
  // front/side corner. A short soft curve removes sharp wire knees.
  const path=[rail.position,shoulder.position,corner.position,
@@ -85,12 +89,19 @@ export function addAchMichRetainingBungees(
  shell:AchMichCoverShell,g:THREE.Group,
  elastic:THREE.Material,metal:THREE.Material,dark:THREE.Material
 ):void{
- const routes=[];for(const side of ['left','right'] as const)
-  routes.push(tether(shell,side,g,elastic,metal,dark));
+ const cover=new THREE.Group(),bare=new THREE.Group();
+ cover.name='bungee-cover-route';bare.name='bungee-bare-route';
+ cover.visible=true;bare.visible=false;g.add(cover,bare);
+ const routes=[];
+ for(const side of ['left','right'] as const){
+  routes.push(tether(shell,side,cover,elastic,metal,dark,true));
+  tether(shell,side,bare,elastic,metal,dark,false);
+ }
  g.userData.h9SurfaceMounted=true;
  g.userData.h10BungeeThickness=.145;
  g.userData.h9BungeeCordCount=2;
  g.userData.h9BungeeHooks=4;
  g.userData.h5CloserSurfaceFit=true;
+ g.userData.h61CoverAwareTethers=true;
  g.userData.h9BungeeRoutes=routes;
 }

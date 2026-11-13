@@ -228,6 +228,10 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
   s.concealment==='foliage-medium'?6:10;
  let i=0;for(const leaf of v.leaves.children)leaf.visible=i++<count;
  m.unfastened.visible=!s.fastened;
+ const coveredBungees=m.bungees.getObjectByName('bungee-cover-route');
+ const bareBungees=m.bungees.getObjectByName('bungee-bare-route');
+ if(coveredBungees)coveredBungees.visible=covered;
+ if(bareBungees)bareBungees.visible=!covered;
  for(const key of ['shroud','rails','bungees','velcro','strobe',
   'counterweight','battery','light','camera','chemlight','patches'] as const)
   m[key].visible=s[key];
