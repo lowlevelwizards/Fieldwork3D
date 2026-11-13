@@ -58,7 +58,7 @@ details{margin-top:9px}summary{cursor:pointer;padding:6px;color:#dfcba9}
 <span><b style="background:#ef9d8e"></b>Friendly blocker</span>
 <span><b style="background:#8fcfc2"></b>Friendly</span>
 <span><b style="background:#dfbb82"></b>Door / cover</span></div>
-<div class="note">A3.1: standing and crouched teammates use physical torso + helmet height bands for the actual weapon and projectile path. The original flat 10.5-unit radius remains visible as an A3.0 comparison. An orange dashed correction is the existing legacy motor candidate, not new micro-lean behavior. Automatic crouching and micro-aiming are NOT implemented yet.</div>
+<div class="note">A3.2–A3.4: actual physical shoulder offset, controlled crouch, and smallest-first swept foot corrections build on A3.1 torso and helmet volumes. The original flat 10.5-unit radius remains visible as an A3.0 comparison. An orange dashed correction is the existing legacy motor candidate, not new micro-lean behavior. Automatic crouching and micro-aiming are NOT implemented yet.</div>
 </section>
 <section><h2>LIVE DIAGNOSTICS</h2>
 <div class="readouts">
@@ -66,9 +66,11 @@ details{margin-top:9px}summary{cursor:pointer;padding:6px;color:#dfcba9}
 <div class="metric"><small>LEGACY FLAT LANE</small><strong id="legacyLane">—</strong></div>
 <div class="metric"><small>HEIGHT MODEL DELTA</small><strong id="heightDelta">—</strong></div>
 <div class="metric"><small>WEAPON BLOCK</small><strong id="block">—</strong></div>
+<div class="metric"><small>SHOULDER / TARGET</small><strong id="shoulder">0 / 0</strong></div>
+<div class="metric"><small>AUTO STANCE</small><strong id="autoStance">MANUAL</strong></div>
 <div class="metric"><small>HANDLING</small><strong id="handling">—</strong></div>
 <div class="metric"><small>SIMULATION</small><strong id="clock">0.000s</strong></div>
-<div class="metric"><small>LEGACY STEP</small><strong id="candidate">—</strong></div>
+<div class="metric"><small>MINIMUM MOTOR STEP</small><strong id="candidate">—</strong></div>
 <div class="metric"><small>PROBE CHECKS</small><strong id="checks">0</strong></div>
 </div>
 <details open><summary>AUTHORITATIVE STATE & CONTACTS</summary><pre id="details"></pre></details>
