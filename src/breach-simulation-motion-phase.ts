@@ -14,7 +14,7 @@ import {sweptBodyClear,sweptProfileClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {motorTraversalWorld} from './breach-motor-traversal.ts';
 import {traversalStepClear,sampleTraversal} from './breach-mantle.ts';
-import type {Session} from './breach-game.ts';
+import type {Session,TeamActor} from './breach-game.ts';
 const d=length;
 const clone=(p:Pt):Pt=>({...p});
 /** Civilian crowd/occupancy uses fixed positive radii and a strict
@@ -176,8 +176,9 @@ export function advanceSimulationMotion(s:Session,h:number,
     const start=coupledBodyStarts.get(a.id);
     if(start&&a.carryingId){
       const body=civilianById.get(a.carryingId);
-      if(body?.carriedById!==a.id)continue;
-      body.p=clone(start);body.priorP=clone(start);
+      if(body&&body.carriedById===a.id){
+        body.p=clone(start);body.priorP=clone(start);
+      }
     }
     a.priorP=clone(decision.point);a.velocity=0;
     if(a.traversal){
