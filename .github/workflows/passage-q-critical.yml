@@ -32,6 +32,8 @@ jobs:
         run: npm run build
       - name: Q0/Q1/Q2 pure invariants
         run: node --experimental-strip-types --test tests/passage-q0-trace.test.mjs tests/passage-q1-yield.test.mjs tests/passage-q2-coordinator.test.mjs
+      - name: Four independent MOVE schedule diagnostics
+        run: node --experimental-strip-types scripts/audit-q-coordination.mjs
       - name: Four-hinge full-session diagnostics
         run: node --experimental-strip-types scripts/audit-passage-q.mjs
       - name: Four-hinge critical acceptance
