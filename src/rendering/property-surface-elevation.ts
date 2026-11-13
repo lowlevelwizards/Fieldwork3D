@@ -16,13 +16,12 @@ const layers:Record<SurfaceKind,number>={
  'waste-bay-line':1,'utility-bay-line':1,'loading-bay-line':1,
 };
 /** Finishes which intentionally overlap a base use a fixed precedence.
- * The base palette stays at its historical height; decals rise only where
+ * Baseline site finishes keep their historical heights; details rise where
  * independently authored rectangles would otherwise occupy the same plane.
  * These are static presentation offsets, never navigation elevations.
  */
 const finishLift:Partial<Record<SurfaceKind,number>>={
  path:.035,
- 'patio-paver':.025,
  'loading-zone':.07,'maintenance-bay':.07,'waste-collection':.07,
  'reserved-parking':.10,
 };
