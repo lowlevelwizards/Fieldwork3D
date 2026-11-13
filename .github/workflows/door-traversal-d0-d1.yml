@@ -30,7 +30,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: D0 and D1 focused regression
         run: |
-          node --experimental-strip-types --test tests/door-traversal-d0-d1.test.mjs tests/door-traversal-episode.test.mjs tests/door-test-range-page.test.mjs tests/release7-outward-four.test.mjs tests/release7-obstructed-entry-gate.test.mjs tests/squad-entry-b-continuity.test.mjs tests/doorway-planned-sequence.test.mjs
+          node --experimental-strip-types --test tests/door-traversal-d0-d1.test.mjs tests/door-traversal-episode.test.mjs tests/breach-roadmap2-order-wait.test.mjs tests/door-test-range-page.test.mjs tests/release7-outward-four.test.mjs tests/release7-obstructed-entry-gate.test.mjs tests/squad-entry-b-continuity.test.mjs tests/doorway-planned-sequence.test.mjs
       - name: D0 real-world diagnostic (no artificial completion claims)
         run: node --experimental-strip-types scripts/audit-door-traversal-baseline.mjs 4 600
       - name: TypeScript + Vite production build
