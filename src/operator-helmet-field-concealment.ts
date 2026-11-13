@@ -70,27 +70,32 @@ export function addAchMichConcealment(
     x,0,.027);
   return f;
  });
+ // Slightly lit two-sided fabric prevents edge-on back faces from
+ // falling to near black in the Studio's strongly directional lighting.
+ const oliveScrim=olive.clone(),tanScrim=tan.clone();
+ oliveScrim.emissive.setHex(0x34402b);oliveScrim.emissiveIntensity=.24;
+ tanScrim.emissive.setHex(0x53402d);tanScrim.emissiveIntensity=.20;
  for(let i=0;i<SCRIM_SLOTS.length;i++){
   const slot=SCRIM_SLOTS[i],f=frames[slot];
   // The free end extends along negative Y: orient positive Y inward and
   // upward so the fabric hangs OUTWARD and DOWN from its actual slit.
-  const up=f.up.clone().multiplyScalar(.90)
-   .addScaledVector(f.normal,-.43).normalize();
+  const shortEdge=slot<4;
+  const up=f.up.clone().multiplyScalar(shortEdge?.98:.87)
+   .addScaledVector(f.normal,-(shortEdge?.18:.49)).normalize();
   const right=f.right.clone(),normal=right.clone().cross(up).normalize();
   const fabric=new THREE.Mesh(createPasgtScrimRibbonGeometry(i),
-   i%3===0?tan:olive);
+   i%3===0?tanScrim:oliveScrim);
   fabric.name='pasgt-derived-folded-scrim';
   fabric.position.copy(f.position);
   fabric.quaternion.copy(basis(right,up,normal));
   // Brow/nape strips should hang shorter and twist enough that their
   // folded cloth remains visible obliquely rather than a black needle.
-  fabric.rotateZ(LEAN[i]*(slot<4?.55:.95));
-  fabric.rotateY(slot<4?(i%2?.83:-.87):(i%2?.14:-.16));
+  fabric.rotateZ(LEAN[i]*(shortEdge?.85:1.9));
+  fabric.rotateY(shortEdge?(i%2?.58:-.60):(i%2?.18:-.21));
   // Broad folded textile should hang visibly down the shell and just
   // past the brim. Shorter brow/nape pieces cannot become long spears.
-  const shortEdge=slot<4;
-  fabric.scale.set(1.13+(i%3)*.12,
-   (shortEdge?.54:.89)+(i%3)*.052,shortEdge?.94:.87);
+  fabric.scale.set(shortEdge?.66+(i%3)*.07:.72+(i%3)*.13,
+   (shortEdge?.43:.76)+(i%4)*.065,shortEdge?.62:.70);
   fabric.userData.h9ScrimDownOut=true;fabric.userData.h9SourceSlot=slot;
   fabric.castShadow=false;fabric.receiveShadow=false;scrim.add(fabric);
  }
