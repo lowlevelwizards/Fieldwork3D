@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import {isFieldHelmet,resolveHelmetField,resolveHelmetFieldColor,
- type FieldHelmet,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
+ type FieldHelmet} from './operator-helmet-field-policy.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
@@ -24,7 +24,8 @@ const box=(g:THREE.Group,m:THREE.Material,name:string,
 const segment=(g:THREE.Group,m:THREE.Material,name:string,
  from:readonly [number,number,number],to:readonly [number,number,number],width:number)=>{
  const a=new THREE.Vector3(...from),b=new THREE.Vector3(...to);
- const d=b.clone().sub(a);const o=box(g,m,name,...a.clone().add(b).multiplyScalar(.5).toArray() as [number,number,number],width,.16,d.length());
+ const d=b.clone().sub(a),mid=a.clone().add(b).multiplyScalar(.5);
+ const o=box(g,m,name,mid.x,mid.y,mid.z,width,.16,d.length());
  o.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),d.normalize());return o;
 };
 export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFieldLayers{

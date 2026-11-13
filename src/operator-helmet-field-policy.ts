@@ -68,5 +68,6 @@ export function resolveHelmetFieldColor(
  if(periodPasgt)return HELMET_FIELD_HEX.olive;
  if(shellHex===0x000000||shellHex<0x303b43)return HELMET_FIELD_HEX.black;
  const r=(shellHex>>16)&255,g=(shellHex>>8)&255,b=shellHex&255;
+ if(b>=r&&r<95&&g<95)return HELMET_FIELD_HEX.black;
  return r>g*1.13&&r>b*1.22?HELMET_FIELD_HEX.tan:HELMET_FIELD_HEX.olive;
 }
