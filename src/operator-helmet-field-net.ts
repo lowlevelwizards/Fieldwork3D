@@ -45,8 +45,10 @@ function sideRegion(edge:Edge):{region:Exclude<CoverRegion,'crown'>;u:number}{
  * toward the nearest valid point ON THAT SAME PANEL instead of trying
  * to cross empty cloth or bouncing to the far side of the helmet.
  */
-const side=(shell:AchMichCoverShell,edge:Edge,v:number,offset=.16):Pt=>{
- const {region,u}=sideRegion(edge);
+const side=(shell:AchMichCoverShell,edge:Edge,v:number,
+ offset=.16,drift=0):Pt=>{
+ const {region,u:rawU}=sideRegion(edge);
+ const u=Math.max(-.84,Math.min(.84,rawU+drift));
  for(const uu of [u,u*.92,u*.78,u*.62])
   for(const vv of [v,v+.12,v-.12,v+.24,v-.24,.48,.22,.06]){
    const clamped=Math.max(-.75,Math.min(.86,vv));
@@ -83,11 +85,16 @@ function route(shell:AchMichCoverShell,slope:number,shift:number){
   crown.push(roof(shell,a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t));
  }
  const aTie=bandV(shell,a),bTie=bandV(shell,b);
+ // Drift along each shell panel as the net descends; straight vertical
+ // ladders at front/side were the last visible H8-like net artifact.
+ const direction=Math.sign(slope);
  const points:Pt[]=[
-  side(shell,a,aTie,.048),side(shell,a,(aTie+.72)*.5),
-  side(shell,a,.72),...crown,
-  side(shell,b,.72),side(shell,b,(bTie+.72)*.5),
-  side(shell,b,bTie,.048)
+  side(shell,a,aTie,.048,direction*.23),
+  side(shell,a,(aTie+.72)*.5,.16,direction*.13),
+  side(shell,a,.72,.16,direction*.04),...crown,
+  side(shell,b,.72,.16,-direction*.04),
+  side(shell,b,(bTie+.72)*.5,.16,-direction*.13),
+  side(shell,b,bTie,.048,-direction*.23)
  ];
  return {points,ends:[a,b],tieY:[
   points[0].position.y,points[points.length-1].position.y
