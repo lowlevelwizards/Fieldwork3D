@@ -75,7 +75,7 @@ function strobe(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  a.userData.h9Distinctive='manta-wide-emitter';
 }
 function counterweight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
- const a=mount(shell,g,'back',-.17,.12);
+ const a=mount(shell,g,'back',-.47,.12);
  const bag=[[-1.58,.59],[1.58,.59],[1.76,.30],
   [1.64,-.73],[1.26,-.92],[-1.26,-.92],[-1.64,-.73],[-1.76,.30]];
  silhouette(a,'rear-counterweight-textile-pouch',p.cloth,bag,.38);
@@ -89,7 +89,7 @@ function counterweight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette
  a.userData.h9Distinctive='segmented-weight-pouch';
 }
 function battery(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
- const a=mount(shell,g,'back',.59,.23);
+ const a=mount(shell,g,'back',.62,.23);
  silhouette(a,'facet-backed-helmet-battery',p.dark,[
   [-.87,.62],[.69,.62],[.94,.40],[.94,-.53],
   [.68,-.71],[-.87,-.71],[-1.03,-.45],[-1.03,.39]
@@ -103,14 +103,14 @@ function battery(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  a.userData.h9Distinctive='rear-power-hardcase';
 }
 function light(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
- const a=mount(shell,g,'left',-.45,.38);
+ const a=mount(shell,g,'left',-.66,.38);
  block(a,'mlps-rail-mount',p.dark,0,0,.22,.84,.57,.34);
  // Three short faceted neck links make the bend readable at small scale.
- const neck=[[.16,.18,.52],[.34,.36,.73],[.58,.50,.89]];
+ const neck=[[-.16,.18,.52],[-.34,.36,.73],[-.58,.50,.89]];
  for(const [i,[x,y,z]] of neck.entries())
   block(a,'lamp-flex-neck-'+i,p.cloth,x,y,z,.22,.19,.45);
  const lamp=new THREE.Group();lamp.name='articulated-task-lamp';
- lamp.position.set(.78,.53,1.02);lamp.rotation.y=-.25;
+ lamp.position.set(-.78,.53,1.02);lamp.rotation.y=-Math.PI/2;
  a.add(lamp);
  cylinder(lamp,'faceted-lamp-barrel',p.dark,0,0,.04,.37,.82,'z');
  cylinder(lamp,'forward-white-lens',p.reflect,0,0,.50,.29,.12,'z');
@@ -119,22 +119,26 @@ function light(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
 }
 function camera(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  const a=mount(shell,g,'right',-.35,.46);
- block(a,'rail-camera-adapter',p.metal,0,0,.25,.56,.67,.46);
- block(a,'camera-off-axis-articulation',p.dark,.27,.02,.53,.58,.43,.41);
- silhouette(a,'action-camera-faceted-housing',p.dark,[
+ // Right-side bracket looks forward, not out through the operator's ear.
+ const body=new THREE.Group();
+ body.name='forward-facing-action-camera-mount';
+ body.rotation.y=Math.PI/2;body.position.z=.18;a.add(body);
+ block(body,'rail-camera-adapter',p.metal,0,0,.25,.56,.67,.46);
+ block(body,'camera-off-axis-articulation',p.dark,.27,.02,.53,.58,.43,.41);
+ silhouette(body,'action-camera-faceted-housing',p.dark,[
   [-.86,.52],[.79,.52],[.94,.31],[.94,-.45],
   [.63,-.64],[-.70,-.64],[-.94,-.36],[-.94,.31]
  ],.63,.67);
- cylinder(a,'camera-large-round-optic',p.metal,.33,.02,1.35,.37,.19);
- cylinder(a,'camera-dark-lens-glass',p.dark,.33,.02,1.47,.27,.11);
- block(a,'camera-large-status-window',p.reflect,-.47,.21,1.33,.35,.22,.07);
+ cylinder(body,'camera-large-round-optic',p.metal,.33,.02,1.35,.37,.19);
+ cylinder(body,'camera-dark-lens-glass',p.dark,.33,.02,1.47,.27,.11);
+ block(body,'camera-large-status-window',p.reflect,-.47,.21,1.33,.35,.22,.07);
  a.userData.h9Distinctive='large-lens-action-camera';
 }
 function chemlight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
- const a=mount(shell,g,'crown',-.53,.48);
- cylinder(a,'round-contained-chemlight',p.reflect,0,0,.33,.17,1.95,'x');
- for(const x of [-.77,.77]){
-  cylinder(a,'chemlight-molded-end-cap',p.dark,x,0,.34,.23,.19,'x');
+ const a=mount(shell,g,'right',.47,.47);
+ cylinder(a,'round-contained-chemlight',p.reflect,0,0,.33,.24,2.55,'x');
+ for(const x of [-1.05,1.05]){
+  cylinder(a,'chemlight-molded-end-cap',p.dark,x,0,.34,.30,.24,'x');
   block(a,'chemlight-elastic-retainer',p.cloth,x*.70,0,.20,.22,.44,.18);
  }
  a.userData.h9Distinctive='capped-secured-lightstick';
@@ -154,8 +158,8 @@ export function addAchMichFieldAddon(
  // silhouettes while preserving their authored attachment point and
  // outward surface orientation (never scale the helmet itself).
  const sizes:Record<HelmetFieldAddon,number>={
-  strobe:1.48,counterweight:1.32,battery:1.43,
-  light:1.43,camera:1.31,chemlight:1.42
+  strobe:1.77,counterweight:1.48,battery:1.60,
+  light:1.76,camera:1.67,chemlight:1.82
  };
  const anchor=g.children.find(o=>o.name==='helmet-addon-fitted-socket');
  if(anchor)anchor.scale.setScalar(sizes[type]);
