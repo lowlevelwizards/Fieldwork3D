@@ -205,8 +205,24 @@ export function coordinatePassage(s:Session,a:TeamActor,
  const leader=candidates[index-1];
  if(maybePromote(ctx,s,lane,{actor:a,slot},leader,move))
   return {...free,doorId:door.id,rank:slot.rank};
- const leaderDepth=normalDepth(leader.actor.p,door)*slot.fromSide;
- const safeDepth=Math.max(QUEUE_WAIT_DEPTH,leaderDepth+QUEUE_CENTER_GAP);
+ const leadDepth=normalDepth(leader.actor.p,door)*slot.fromSide;
+ let safeDepth=Math.max(QUEUE_WAIT_DEPTH,leadDepth+QUEUE_CENTER_GAP);
+ // Q2: retain spacing to *all* higher-priority ready bodies in this
+ // lane, even as they move through the threshold. A nearer same-rank
+ // member is not removed merely because another leader moved into the
+ // room. For two different sides of a frame, leave naturally separated
+ // flanks alone: only bodies in the same physical corridor limit advance.
+ const ownLateral=alongDoor(a.p,door);
+ const ownDepth=normalDepth(a.p,door)*slot.fromSide;
+ for(let j=0;j<index;j++){
+  const peer=candidates[j].actor;
+  if(peer===a||peer.health<=0)continue;
+  const peerDepth=normalDepth(peer.p,door)*slot.fromSide;
+  if(peerDepth>=ownDepth-.01||peerDepth< -OPERATOR_RADIUS-10)continue;
+  const peerLateral=alongDoor(peer.p,door);
+  if(Math.abs(peerLateral-ownLateral)>OPERATOR_RADIUS*2+7)continue;
+  safeDepth=Math.max(safeDepth,peerDepth+QUEUE_CENTER_GAP);
+ }
  return capStep(a.p,move,door,slot.fromSide,
   safeDepth,'spacing',slot.rank);
 }
