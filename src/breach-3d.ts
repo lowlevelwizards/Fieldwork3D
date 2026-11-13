@@ -1976,7 +1976,8 @@ export class TacticalScene3D{
       // typed world anchor. No new motor or weapon authority is created.
       const physicalContact=physicalGrip&&gripDoor&&doorGrip?
         doorGripPhysicalContact(physicalGrip.doorId,doorGrip,
-          doorLeafSegment(gripDoor),actor.p):undefined;
+          doorLeafSegment(gripDoor),actor.p):
+        actor.physicalContact??undefined;
       const threat=actor.targetId?
         s.operators.find(o=>o.id===actor.targetId):null;
       const threatRange=threat?Math.hypot(threat.p.x-actor.p.x,
