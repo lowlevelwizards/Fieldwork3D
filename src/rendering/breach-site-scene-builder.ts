@@ -36,6 +36,7 @@ import {planThresholdTrafficWear} from '../worldgen/threshold-traffic-wear.ts';
 import {planInteriorFragments,type InteriorFragment} from '../worldgen/interior-fragments.ts';
 import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
+import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
 import {isArchitecturalSillCover} from '../worldgen/architectural-cover-visuals.ts';
 import {accessibleExteriorWall} from '../breach-site-footprint.ts';
 
@@ -420,6 +421,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         .93,'furniture-wood');
       const slag=host.solid(age(0x4c5955,'industrial-steel',variant),
         .85,'industrial-steel');
+      // Batch only opaque, rigid, site-lifetime fixture pieces.
+      consolidateStaticFixtureParts(intact);
       for(let j=0;j<3;j++){
         const sx=(j%3-1)*visual.w*.105,sz=(Math.floor(j/3)-.5)*visual.h*.15;
         const width=Math.max(3.2,visual.w*(j%2?.16:.20));
@@ -430,6 +433,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         fragment.rotation.y=(j%2?-.22:.27);
         fragment.castShadow=false;
       }
+      consolidateStaticFixtureParts(debris);
     });
     // Glass does not impede sight; the low sill does impede traversal.
     if(!host.windowPaneMaterial){
