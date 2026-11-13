@@ -15,13 +15,13 @@ export type HandlingProfile={
   shoulderInward:number;
 };
 export const HANDLING_PROFILES:Record<Handling,HandlingProfile>={
-  low:{pitch:-.66,stockY:3.0,preferredBack:1.6,
+  low:{pitch:-.4537856055,stockY:4.45,preferredBack:1.6,
     torsoLean:0,torsoTurn:-.012,headPitch:0,headDrop:0,
     shoulderLift:-.42,pelvisShift:0,elbowTuck:.42,stanceCompression:0,
     supportElbowFlare:.47,firingElbowFlare:.65,
     supportShoulderForward:.14,firingShoulderForward:.04,
     shoulderInward:.08},
-  high:{pitch:.84,stockY:1.0,preferredBack:2.65,
+  high:{pitch:.837758041,stockY:-2.3,preferredBack:2.65,
     torsoLean:-.025,torsoTurn:.045,headPitch:0,headDrop:0,
     shoulderLift:.05,pelvisShift:.10,elbowTuck:.69,stanceCompression:.12,
     supportElbowFlare:.36,firingElbowFlare:.49,

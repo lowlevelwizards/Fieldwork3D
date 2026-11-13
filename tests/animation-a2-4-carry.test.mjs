@@ -52,8 +52,8 @@ test('A2.4 named pose reason/trigger table is ordered and replay-pure',()=>{
 });
 
 test('A2.4 low/high reference profiles are genuinely different carries',()=>{
- assert.ok(HANDLING_PROFILES.low.pitch<-Math.PI/6);
- assert.ok(HANDLING_PROFILES.low.pitch>-Math.PI/4-.02);
+ assert.ok(Math.abs(HANDLING_PROFILES.low.pitch-
+   (-26*Math.PI/180))<.003);
  assert.ok(HANDLING_PROFILES.high.pitch>Math.PI/4);
  assert.ok(stockPocket('high').y<stockPocket('ready').y-2,
    'high buttstock sits in armpit, not behind cheek');

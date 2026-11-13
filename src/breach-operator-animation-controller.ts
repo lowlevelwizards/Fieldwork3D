@@ -66,7 +66,7 @@ import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geome
 import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
 import {weaponPresentationSockets} from './breach-weapon-presentation.ts';
 import {resolveWeaponAssembly,sameWeaponConfiguration} from './equipment-weapon-assemblies.ts';
-import {weaponGrips,clampReach,shortStockSourceHandling,fitWeaponPose,liveShortStockPose,type WeaponFit}
+import {weaponGrips,clampReach,shortStockSourceHandling,fitWeaponPose,liveShortStockPose,liveReadyCarryPose,type WeaponFit}
   from './breach-weapon-pose.ts';
 
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
@@ -424,19 +424,25 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       reloadSeed=coupled;coupled=null;
     }
   }else r.root.userData.lowReadyPoseReport=null;
+  // Explicit stationary high/low Workbench poses are authoring references:
+  // no independent tactical torso-turn or breathing sway may rotate the
+  // displayed rifle away from the exported XYZ weapon transform.
+  const authoringCarry=(p.handlingOverride==='high'||
+    p.handlingOverride==='low')&&physicalSpeed<.2;
   let fit=reloadSeed?.fit??coupled?.fit??fitWeaponPose({weapon:p.weapon,handling,
     configuration:p.weaponConfiguration,
     // Explicit Lab short-stock is the exact XYZ pose exported from the
     // Workbench, without the automatic director's small facing offset.
     // Live actor-relative yaw remains the shared shot/render authority.
-    yaw:manualShort&&p.handlingOverride==='short'?0:relativeYaw,
+    yaw:manualShort&&p.handlingOverride==='short'||authoringCarry?
+      0:relativeYaw,
     recoil,clearanceRetraction:p.clearanceRetraction,
     shortCompression:manualRaw??p.shortCompression,
     shortFrom:p.clearanceShortFrom??shortStockSourceHandling(
       p.aimBlend??(p.aiming?1:0),moving,p.weapon,!!p.friendlyNear),
     relaxedLowReady,
-    swayYaw:motion.weaponYaw*freeMotion,
-    swayPitch:motion.weaponPitch*freeMotion,
+    swayYaw:authoringCarry?0:motion.weaponYaw*freeMotion,
+    swayPitch:authoringCarry?0:motion.weaponPitch*freeMotion,
     armorPush:equipmentStockPush(p.equipment),
     // Non-firing movement and manipulation cannot retain stale visual ADS.
     // This affects only carry presentation, never shot-time muzzle authority.
@@ -614,12 +620,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     fit=interpolateWeaponCarry(activeTransition!.authoredFrom!,fit,
       activeTransition!.alpha);
   const carryTransition=manualShort?
-    {fit,active:false,alpha:1,bends:null}:
+    {fit,active:false,alpha:1,bends:null,hands:null}:
     sampleCarryTransition(r,p,fit,!!coupled);
   fit=carryTransition.fit;
   const carryTransitionActive=carryTransition.active;
   const carryTransitionAlpha=carryTransition.alpha;
   const carryTransitionBends=carryTransition.bends;
+  const carryTransitionHands=carryTransition.hands;
   r.gripError=fit.contactError;
   r.stockError=fit.stockError;
   // Contact coordinates and visible weapon use one rigid transform.
@@ -885,13 +892,24 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }>|null=diagnosticsEnabled?[]:null;
   // The base hold is calculated from the very same ready/aim source used
   // by shot-time geometry. No previous-frame elbow memory; replay is pure.
-  const manualPhase=manualShort?authoredShortPhase(manualRaw):0;
+  const manualCarry=(handling==='high'||handling==='low')&&
+    !p.unarmedPreview&&!p.down&&!p.surrender&&!reloadActive&&
+    !treatmentActive&&!throwActive&&!doorActive&&
+    !p.traversalProgress&&!p.firing&&
+    p.handlingIntent!=='run'&&p.handlingIntent!=='traverse'&&
+    handOwners.left==='weapon'&&handOwners.right==='weapon';
+  const manualPhase=manualShort?authoredShortPhase(manualRaw):
+    manualCarry&&carryTransitionActive?carryTransitionAlpha:
+    manualCarry&&activeTransition?
+      lowReadyBlendPhase(activeTransition.alpha):1;
   const manualPose=manualShort?
-    liveShortStockPose(p.weapon,p.weaponConfiguration):null;
+    liveShortStockPose(p.weapon,p.weaponConfiguration):
+    manualCarry?liveReadyCarryPose(handling as 'high'|'low',
+      p.weapon,p.weaponConfiguration):null;
   const manualSource=manualShort?
     shortStockSourceHandling(p.aimBlend??(p.aiming?1:0),moving,
       p.weapon,!!p.friendlyNear):'ready';
-  const manualSourceFit=manualShort?fitWeaponPose({
+  const manualSourceFit=manualPose?fitWeaponPose({
     weapon:p.weapon,configuration:p.weaponConfiguration,
     handling:manualSource,
     yaw:p.handlingOverride==='short'?0:relativeYaw,recoil,
@@ -906,9 +924,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const start=new THREE.Vector3(...manualPose!.targets.stock);
     return new THREE.Vector3(...manualPose!.targets[key])
       .sub(start).applyAxisAngle(P(0,1,0),
-        p.handlingOverride==='short'?0:relativeYaw).add(start);
+        p.handlingOverride==='short'||authoringCarry?
+          0:relativeYaw).add(manualCarry?fit.stock:start);
   };
-  if(manualShort&&p.handlingOverride==='short'&&physicalSpeed<.2){
+  if((manualShort&&p.handlingOverride==='short'||manualCarry&&
+      !!p.handlingOverride)&&physicalSpeed<.2){
     // Match the static workbench silhouette without altering the battle's
     // upper-body recoil/turn authority. This tiny torso adjustment only
     // runs for the explicitly selected stationary Lab stance.
@@ -925,6 +945,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     handTargets:'manual',solver:'single-two-bone',
     stock:fit.stock.toArray()}:null;
   r.root.userData.authoredShortStock=manualReport;
+  r.root.userData.authoredReadyCarry=manualCarry?{
+    mode:handling,source:manualPose!.preset,progress:manualPhase,
+    stock:fit.stock.toArray(),contactGap:fit.contactError,
+    solver:'user-workbench-two-bone'
+  }:null;
   // Preserve the old M4-specific diagnostic only for exact M4A1 poses.
   r.root.userData.authoredM4ShortStock=
     manualReport&&manualPose!.preset==='ar-m4a1'&&
@@ -932,14 +957,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   beginOperatorArmPose(r,scratch);
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
-    if(manualShort&&manualSourceFit){
+    if((manualShort||manualCarry)&&manualSourceFit){
       const startShoulder=shoulderFor(i);
       const targetShoulder=new THREE.Vector3(
         ...manualPose!.targets[
           i===0?'supportShoulder':'firingShoulder']);
       const shoulder=startShoulder.clone().lerp(targetShoulder,manualPhase);
-      const oldWrist=i===0?manualSourceFit.support:
-        manualSourceFit.primary;
+      const oldWrist=carryTransitionActive&&carryTransitionHands?
+        carryTransitionHands[i]:
+        i===0?manualSourceFit.support:manualSourceFit.primary;
       const requested=authoredPoint(i===0?'supportHand':'firingHand');
       const wrist=oldWrist.clone().lerp(requested,manualPhase);
       const normalProfile=handlingProfile(manualSource,p.weapon);
@@ -985,6 +1011,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         .applyEuler(fit.rotation).add(fit.origin);
       if(i===0&&reloadHandChest)desired.copy(reloadHandChest);
     }
+    if(carryTransitionActive&&carryTransitionHands)
+      desired.copy(carryTransitionHands[i]).lerp(
+        desired,carryTransitionAlpha);
     // At phase zero reproduce the *exact* displayed source anatomy.
     // Subsequent frames are resolved from a continuous source elbow pole.
     if(sourceArm&&activeTransition!.alpha<=0){

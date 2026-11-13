@@ -10,12 +10,10 @@ test('177: ordinary shoulder seat and separate underarm waist tuck',()=>{
   const p=stockPocket(mode);
   if(mode==='short'){
    assert.ok(p.x<0&&p.y<-4&&p.z>7.7);
-  }else if(mode==='high'){
-   // A2.4: a distinct armpit high-ready seat, not normal shoulder ADS.
-   const shoulder=stockPocket('ready');
-   assert.ok(p.x>2.8&&p.x<shoulder.x-1);
-   assert.ok(p.y<shoulder.y-2&&p.y>-.5);
-   assert.ok(p.z>4.9&&p.z<5.6);
+  }else if(mode==='high'||mode==='low'){
+   // User's latest exported Workbench carries, no generic shoulder guess.
+   const exact=mode==='high'?[3.9,-2.3,6.6]:[3.45,4.45,4.8];
+   assert.ok(Math.hypot(p.x-exact[0],p.y-exact[1],p.z-exact[2])<.001);
   }else{
    assert.ok(p.x>4.2&&p.x<5.2);
    assert.ok(p.z>4.9&&p.z<5.6);
@@ -28,7 +26,7 @@ test('177: ordinary shoulder seat and separate underarm waist tuck',()=>{
    const target=liveShortStockPose('carbine');
    assert.ok(fit.stock.distanceTo(
      new THREE.Vector3(...target.targets.stock))<1e-6);
-  }else assert.ok(fit.stock.z<6.5);
+  }else if(mode!=='high')assert.ok(fit.stock.z<6.5);
   assert.ok(fit.stockError<3);
  }
  const src=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');

@@ -296,7 +296,8 @@ test('B1: V3/V4, strict contact, unarmed and emergency reload eligibility remain
  const common={weaponConfiguration:config,handlingOverride:'low'};
  const preview=finish({...common,poseV3Preview:true,poseV4ReloadPreview:true,reload:.8});
  assert.equal(preview.decision.upperBody.previewReloadSeed,true);
- assert.equal(preview.decision.upperBody.coupledEligible,true);
+ assert.equal(preview.decision.upperBody.coupledEligible,false,
+  'custom high/low poses must not be replaced by the old coupled solver');
  assert.equal(preview.decision.upperBody.supportEligible,false,
   'reload must release support arm');
  const legacy=finish({...common,poseV3Preview:false,reload:.8});

@@ -25,6 +25,10 @@ test('169: stock sits forward and on firing side with correct buttplate length',
   if(mode==='short'){
    assert.ok(p.x<-1&&p.y<-4&&p.z>7.7,
      'short-stock must tuck beside the waist');
+  }else if(mode==='high'||mode==='low'){
+   const target=mode==='high'?[3.9,-2.3,6.6]:[3.45,4.45,4.8];
+   for(let i=0;i<3;i++)assert.ok(Math.abs([p.x,p.y,p.z][i]-target[i])<.001,
+     mode+' exact user-authored stock pocket');
   }else{
    assert.ok(p.z>=4.9&&p.z<=5.6,'stock left front chest '+mode);
    assert.ok(p.x>2.5,'armor needs forward seat '+mode);
@@ -88,7 +92,7 @@ test('169: shoulder girdle and eye alignment contribute without moving gameplay 
 test('169: Lab diagnostics and version label use the same elbow profile',()=>{
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
- const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
+ const rig=readFileSync(new URL('../src/breach-operator-animation-controller.ts',import.meta.url),'utf8');
  assert.match(html,/id="poseAnimation"/,
    'Pose Lab still exposes authored stance selection');
  assert.match(lab,/rig\.handlingProfile\?\?undefined/);
