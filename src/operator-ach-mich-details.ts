@@ -7,6 +7,7 @@ import {ACH_MICH_SHELLS} from './operator-headwear-silhouettes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 export type AchMichDetailLayers={
  bare:THREE.Group;hardware:THREE.Group;strap:THREE.Group;
+ bindingMaterial:THREE.MeshStandardMaterial;
 };
 type Point=readonly [number,number,number];
 type Profile={
@@ -19,13 +20,14 @@ type Profile={
 const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
  ach:{
   side:5.075,front:-5.535,rear:5.60,brow:4.40,nape:2.68,
-  frontStud:[5.075,5.18,-2.85],rearStud:[5.075,4.64,2.72],
+  frontStud:[5.075,5.81,-3.12],rearStud:[5.075,5.10,1.86],
   hem:[[5.075,4.40,-5.535],[5.075,4.40,-2.20],
-   [5.075,2.68,-1.45],[5.075,2.68,5.60]]
+   [5.075,3.12,-1.50],[5.075,3.12,2.91],
+   [5.075,2.68,3.58],[5.075,2.68,5.60]]
  },
  'mich-2002':{
   side:5.03,front:-5.70,rear:5.75,brow:4.55,nape:3.365,
-  frontStud:[5.11,5.66,-3.0],rearStud:[5.115,5.08,3.77],
+  frontStud:[5.11,6.13,-3.10],rearStud:[5.115,5.42,3.05],
   hem:[[5.03,4.55,-5.70],[5.11,4.715,-4.48],
    [5.11,4.715,-1.90],[5.03,6.05,-1.25],
    [5.03,6.05,1.65],[5.115,3.97,2.30],
@@ -33,15 +35,15 @@ const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
  },
  'mich-2001':{
   side:5.015,front:-5.71,rear:5.66,brow:4.55,nape:3.33,
-  frontStud:[5.065,6.57,-3.13],rearStud:[5.015,5.02,4.30],
+  frontStud:[5.065,6.96,-3.16],rearStud:[5.015,5.32,3.79],
   hem:[[5.015,4.55,-5.71],[5.065,5.945,-4.60],
    [5.065,5.945,-1.96],[5.015,6.155,-1.45],
    [5.015,6.155,2.95],[5.015,3.33,3.80],
    [5.015,3.33,5.66]]
  }
 };
-export const ACH_MICH_BINDING_HEIGHT=.39;
-export const ACH_MICH_CHIN_STRAP_HALF_WIDTH=.43;
+export const ACH_MICH_BINDING_HEIGHT=.58;
+export const ACH_MICH_CHIN_STRAP_HALF_WIDTH=.44;
 export const achMichProfile=(shell:typeof ACH_MICH_SHELLS[number]):Profile=>
  PROFILES[shell];
 const material=(hex:number)=>new THREE.MeshStandardMaterial({
@@ -51,7 +53,7 @@ const material=(hex:number)=>new THREE.MeshStandardMaterial({
 const hidden=(parent:THREE.Group,name:string):THREE.Group=>{
  const g=new THREE.Group();g.name=name;parent.add(g);return g;
 };
-/** A real 0.39-high shell-edge facing, not a line hovering under the brim.
+/** A 0.58-high molded shell-color binding, broad enough to read at gameplay zoom.
  * Front / sides / rear share endpoints. Segment center-line follows the
  * actual bottom perimeter, including the real high-cut gaps. */
 export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number]){
@@ -60,7 +62,7 @@ export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number
   data.push(...a,...b,...c);
  };
  const strip=(a:Point,b:Point,axis:'x'|'z')=>{
-  const ext=.075;
+  const ext=.13;
   const start:Point=axis==='x'?[a[0]+Math.sign(a[0])*ext,a[1],a[2]]:
    [a[0],a[1],a[2]+(a[2]<0?-ext:ext)];
   const end:Point=axis==='x'?[b[0]+Math.sign(b[0])*ext,b[1],b[2]]:
@@ -105,16 +107,20 @@ export function createAchMichRetentionGeometry(
  shell:typeof ACH_MICH_SHELLS[number]):THREE.BufferGeometry{
  const profile=PROFILES[shell],data:number[]=[];
  for(const sign of [-1,1] as const){
-  const front:Point=[sign*(profile.frontStud[0]+.02),
-   profile.frontStud[1]-.10,profile.frontStud[2]];
-  const back:Point=[sign*(profile.rearStud[0]+.02),
-   profile.rearStud[1]-.10,profile.rearStud[2]];
-  const join:Point=[sign*4.19,1.26,-3.88];
-  const chin:Point=[sign*2.20,-.12,-4.33];
+  const front:Point=[sign*(profile.frontStud[0]+.20),
+   profile.frontStud[1]-.08,profile.frontStud[2]];
+  const back:Point=[sign*(profile.rearStud[0]+.22),
+   profile.rearStud[1]-.08,profile.rearStud[2]];
+  // Keep both retention runs outside the 8-unit-wide skull, and converge
+  // near the side of the jaw rather than intersecting the face block.
+  const sideJoin:Point=[sign*5.52,1.64,-3.18];
+  const rearGuide:Point=[sign*5.58,3.38,.53];
+  const jawGuide:Point=[sign*4.85,.67,-4.48];
+  const chin:Point=[sign*2.23,-.20,-5.04];
   const normal=new THREE.Vector3(sign*.68,0,-.74);
-  appendStrap(data,[front,join],normal,.46);
-  appendStrap(data,[back,[sign*4.45,2.95,.80],join],normal,.43);
-  appendStrap(data,[join,chin],normal,.48);
+  appendStrap(data,[front,sideJoin],normal,.45);
+  appendStrap(data,[back,rearGuide,sideJoin],normal,.44);
+  appendStrap(data,[sideJoin,jawGuide,chin],normal,.47);
  }
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
@@ -125,10 +131,10 @@ export function createAchMichRetentionGeometry(
 }
 function chinCupGeometry():THREE.BufferGeometry{
  const data:number[]=[];
- const l:Point=[-2.08,-.36,-4.38],m:Point=[0,-.44,-4.48],
-  r:Point=[2.08,-.36,-4.38];
- const ul:Point=[-2.08,.19,-4.38],um:Point=[0,.23,-4.48],
-  ur:Point=[2.08,.19,-4.38];
+ const l:Point=[-2.14,-.44,-5.07],m:Point=[0,-.49,-5.13],
+  r:Point=[2.14,-.44,-5.07];
+ const ul:Point=[-2.14,.18,-5.07],um:Point=[0,.19,-5.13],
+  ur:Point=[2.14,.18,-5.07];
  for(const v of [l,m,um,l,um,ul,m,r,ur,m,ur,um])data.push(...v);
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
@@ -143,7 +149,9 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
  const bare=hidden(parent,id+'-integrated-rubber-edge-binding'),
   hardware=hidden(parent,id+'-uncovered-retention-anchors'),
   strap=hidden(parent,id+'-broad-four-point-retention');
- const edge=new THREE.Mesh(createAchMichBindingGeometry(shell),material(0x333a35));
+ const bindingMaterial=material(0x67705f);
+ bindingMaterial.name='ach-mich-color-related-shell-binding';
+ const edge=new THREE.Mesh(createAchMichBindingGeometry(shell),bindingMaterial);
  edge.name='ach-mich-rubber-shell-edge';edge.castShadow=false;
  edge.receiveShadow=false;bare.add(edge);
  const metal=material(0x636d61);
@@ -167,7 +175,7 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
  consolidateVisualGroup(strap);
  hardware.userData.achMichRetentionScrews=4;
  strap.userData.achMichFourPoint=true;
- return {bare,hardware,strap};
+ return {bare,hardware,strap,bindingMaterial};
 }
 export function updateAchMichDetails(layers:AchMichDetailLayers,
  covered:boolean,allowStrap:boolean):void{
