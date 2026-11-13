@@ -42,7 +42,7 @@ export function a3Fixture(config:A3Config):Site{
   openedAt:-1,kind:'hinged',hinge:'a',swing:1,style:'wood'
  }]:[];
  const cover:Obstacle[]=scene==='furniture'?
-  [{x:259,y:224,w:29,h:47,fixture:'counter',low:false}]:[];
+  [{x:259,y:224,w:29,h:47,fixture:'shelf',low:false}]:[];
  return {
   seed:config.seed,name:'A3 PHYSICALITY '+scene,layout:'courtyard',
   training:false,rooms:[],roomCount:0,walls,doors,cover,windows:[],
