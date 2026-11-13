@@ -138,7 +138,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     // actually heard NEW event interrupts this head-turn, not distant
     // hidden gunfire or a globally visible noise event.
     if(s.seconds<a.alertUntil&&!strongest){
-      a.velocity=0;rotate(a,angle(a.p,a.heard),dt);return;
+      a.velocity=0;rotate(a,angle(a.p,a.heard),dt,s);return;
     }
     if(s.seconds>=a.alertUntil){a.alert='idle';a.heard=null;}
   }
@@ -153,7 +153,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         a.encounterReactionUntil)==='orient'){
       a.contact=clone(b.p);a.watch=clone(b.p);
       a.contacted=true;a.alert='suspicious';a.velocity=0;
-      rotate(a,angle(a.p,b.p),dt);return;
+      rotate(a,angle(a.p,b.p),dt,s);return;
     }
     a.contact=clone(b.p);a.alertUntil=s.seconds+3;a.contacted=true;
     if(s.seconds-a.lastReportAt>5){
@@ -249,7 +249,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
      !a.contacted&&a.alert!=='retreat'){
     a.heard=clone(strongest.estimate);a.alert='suspicious';
     a.alertUntil=s.seconds+1.15;a.velocity=0;
-    rotate(a,angle(a.p,a.heard),dt);
+    rotate(a,angle(a.p,a.heard),dt,s);
     return;
   }
   if(strongest&&noiseDisposition!=='orient'&&
@@ -305,7 +305,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       a.retreatPoint=defensivePosition(a,heard,s);
       a.alert=a.retreatPoint?'retreat':'cover';a.nav=[];
     }else a.alert='investigating';
-    rotate(a,angle(a.p,heard),dt);
+    rotate(a,angle(a.p,heard),dt,s);
   }
   // The designated capture target has a different *purpose*, not secret
   // knowledge. Only real direct sight or its own recent audible warning
@@ -340,7 +340,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     const tempo=investigationTempo(a.personality,
       bestBelief(a.awareness)?.uncertainty??65);
     if(s.seconds-a.lastNoiseAt<tempo.orientSeconds){
-      a.velocity=0;rotate(a,angle(a.p,a.contact),dt);return;
+      a.velocity=0;rotate(a,angle(a.p,a.contact),dt,s);return;
     }
   }
   // Quiet functional activities use bounded, collision-checked local journeys.
@@ -349,7 +349,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     if(s.seconds<(a.routinePauseUntil??0)){
       a.velocity=0;
       if(a.encounterActivity==='inspecting'&&a.watch)
-        rotate(a,angle(a.p,a.watch),dt);
+        rotate(a,angle(a.p,a.watch),dt,s);
       return;
     }
     const visit=a.routineIndex??0;
@@ -377,7 +377,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       if(a.encounterActivity==='inspecting'){
         const fixture=localFixtureObservation(a.p,world.cover,s.site?.rooms??[]);
         if(fixture)a.watch=fixture;
-        if(a.watch)rotate(a,angle(a.p,a.watch),dt);
+        if(a.watch)rotate(a,angle(a.p,a.watch),dt,s);
       }
       a.routineIndex=visit+1;
       a.routinePauseUntil=s.seconds+routineDwellSeconds(a.id,
@@ -412,7 +412,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     if(a.defense&&d(a.p,a.defense)>11){
       if(!a.nav.length){
         if(!electiveAiWork(s,a,'idle-route')){
-          a.velocity=0;rotate(a,angle(a.p,a.watch),dt);return;
+          a.velocity=0;rotate(a,angle(a.p,a.watch),dt,s);return;
         }
         a.nav=cachedEnemyRoute(s,a.p,a.defense);
       }
@@ -420,16 +420,16 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
         a.defense=null;a.defenseUntil=s.seconds+.7;
       }else{
         approach(a,a.defense,dt,s,.62);
-        if(a.nav.length&&!a.squeeze)rotate(a,angle(a.p,a.nav[0]),dt);
+        if(a.nav.length&&!a.squeeze)rotate(a,angle(a.p,a.nav[0]),dt,s);
         return;
       }
     }
-    rotate(a,angle(a.p,a.watch),dt);
+    rotate(a,angle(a.p,a.watch),dt,s);
   }
   if(a.alert==='retreat'&&a.retreatPoint){
     if(d(a.p,a.retreatPoint)>9){
       approach(a,a.retreatPoint,dt,s);
-      if(a.nav.length&&!a.squeeze)rotate(a,angle(a.p,a.nav[0]),dt);
+      if(a.nav.length&&!a.squeeze)rotate(a,angle(a.p,a.nav[0]),dt,s);
     }else{
       a.alert='cover';a.retreatPoint=null;a.nav=[];
       notify(s,a.name+' TOOK COVER');
@@ -459,7 +459,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     a.alert='cover';
     if(a.defense&&d(a.p,a.defense)>10)
       approach(a,a.defense,dt,s,a.coordinationRole==='support'?.82:.65);
-    else if(a.watch)rotate(a,angle(a.p,a.watch),dt);
+    else if(a.watch)rotate(a,angle(a.p,a.watch),dt,s);
     return;
   }
   if(a.contact&&a.alert==='investigating'&&!visible.length){
@@ -482,7 +482,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
   }
   if(a.contact){
-    rotate(a,angle(a.p,a.contact),dt);
+    rotate(a,angle(a.p,a.contact),dt,s);
     if(a.alert==='investigating'&&d(a.p,a.contact)>40){
       // Noise gives a region to investigate, never a magic target.
       if(!a.nav.length){
@@ -512,7 +512,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       // Examine this location before selecting another. Strictly bound
       // reachability checks to avoid a pathfinding spike on contact.
       if(s.seconds<a.searchPauseUntil){
-        a.velocity=0;rotate(a,angle(a.p,a.contact),dt);return;
+        a.velocity=0;rotate(a,angle(a.p,a.contact),dt,s);return;
       }
       if(!electiveAiWork(s,a,'search-expand')){
         a.velocity=0;return;
@@ -547,7 +547,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     if(a.nav.length)approach(a,a.defense,dt,s,.7);
     else{a.defense=null;a.defenseUntil=s.seconds+.8;}
   }
-  if(!a.contact&&a.watch)rotate(a,angle(a.p,a.watch),dt);
+  if(!a.contact&&a.watch)rotate(a,angle(a.p,a.watch),dt,s);
 }
 /** A verbal warning only reaches physically audible allies; no team hive mind. */
 function distributeReports(s:Session){
