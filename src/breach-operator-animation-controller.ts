@@ -850,8 +850,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const reach=gripWeight>0?gripWeight:
       p.lockpickActive?smooth(doorAge/.32):
       smooth(doorAge/.32)*(1-smooth((doorAge-.62)/.48));
-    frame.chest.position.x=clamp(local.x-13,0,2.4)*reach;
-    fullDoorContact=local.sub(P(frame.chest.position.x,0,0)).clone();
+    // Sustained D4 contact is an independent support arm, NOT a new
+    // chest/weapon transform. The authoritative firing hand and muzzle
+    // stay fixed while the left hand tracks a moving leaf. Retain the
+    // legacy one-shot lean only for explicit non-grip interactions.
+    const lean=gripWeight>0?0:clamp(local.x-13,0,2.4)*reach;
+    if(gripWeight<=0)frame.chest.position.x=lean;
+    fullDoorContact=local.sub(P(lean,0,0)).clone();
     leftGrip.copy(fit.support).lerp(fullDoorContact,reach);
     if(p.lockpickActive){
       const phase=(p.lockpickProgress??0)*Math.PI*20;
