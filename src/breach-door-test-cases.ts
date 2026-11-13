@@ -48,9 +48,9 @@ export function doorRangeSite(id:DoorRangeCaseId,
   scale:'small',roomCount:0,rooms:[],windows:[],
   walls:[wall(90,260,290,260),wall(332,260,550,260)],
   doors:[door],cover:c.cover?.map(o=>({...o}))??[],
-  entrance:p(311,260),spawn:[
-   p(300,200),p(308,173),p(316,146),p(325,119)
-  ],enemies:[],objective:p(516,430),extract:p(516,445),
+  entrance:p(311,260),
+  spawn:doorRangeFormationSpawns(formation,face),
+  enemies:[],objective:p(516,430),extract:p(516,445),
   bounds:{minX:0,minY:0,maxX:640,maxY:500}
  };
 }
