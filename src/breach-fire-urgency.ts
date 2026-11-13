@@ -51,6 +51,7 @@ export function urgentFireMode(normal:FiringMode|null,aim:number,
  if(clearance.blocked)return null;
  if(clearance.carryOverride!=='short')return normal;
  if(aim<.34||Math.abs(angleDelta(clearance.muzzle.yaw,targetYaw))>
-   SHORT_STOCK_FIRE_YAW_LIMIT)return null;
+   SHORT_STOCK_FIRE_YAW_LIMIT||
+   Math.abs(clearance.muzzle.pitch)>.46)return null;
  return 'point';
 }
