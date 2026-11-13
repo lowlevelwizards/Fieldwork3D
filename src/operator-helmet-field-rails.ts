@@ -14,9 +14,9 @@ import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 type Side='left'|'right';
 type RailStation={u:number;rise:number};
 const stations:readonly RailStation[]=[
- {u:-.78,rise:.22},{u:-.51,rise:.19},
- {u:-.24,rise:.14},{u:.02,rise:.08},
- {u:.29,rise:-.02},{u:.54,rise:-.27},{u:.78,rise:-.57}
+ {u:-.65,rise:.22},{u:-.39,rise:.19},
+ {u:-.12,rise:.14},{u:.14,rise:.08},
+ {u:.40,rise:-.02},{u:.65,rise:-.27},{u:.86,rise:-.57}
 ];
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 const railFrame=(shell:AchMichCoverShell,side:Side,u:number,rise=0):
@@ -113,16 +113,18 @@ export function addAchMichArcRails(
   const m=new THREE.Mesh(railBody(frames),metal);
   m.name='curved-full-length-ach-arc-track';
   m.castShadow=false;m.receiveShadow=false;g.add(m);
-  for(const u of [-.56,-.35,-.14,.08,.30,.51]){
+  for(const u of [-.43,-.22,.00,.21,.43,.64]){
    const f=railFrame(shell,side,u,u>.25?-(u-.25)*1.15:.17);
-   // ACH-ARC retention slots run along the rail, not vertically.
-   const slot=new THREE.Mesh(new THREE.PlaneGeometry(.53,.23),dark);
+   // H6.0: tall vertical grip/accessory slots read perpendicular to rail.
+   const slot=new THREE.Mesh(new THREE.PlaneGeometry(.22,.52),dark);
    slot.name='large-arc-accessory-slot';
    attach(g,f,slot,0,.30);
   }
   for(const s of [stations[0],stations[stations.length-1]])
    bolt(g,railFrame(shell,side,s.u,s.rise),dark,fastener);
   g.userData.h9ArcFamily='ACH-ARC';
+  g.userData.h60SlotsVertical=true;
+  g.userData.h60RailsRearward=true;
   g.userData.h5RearContour='descending-ear-clearance';
   g.userData.h5HardMount=true;
   g.userData.h9ArcScrews=2;
