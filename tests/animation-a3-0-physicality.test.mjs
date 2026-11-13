@@ -91,11 +91,12 @@ test('A3.0 the doorway and tall fixture genuinely obstruct current shooting geom
 });
 test('A3.0 seeded options, actor count and baseline lack of contact solver are explicit',()=>{
  const one=run('clear',0,{operators:1,posture:'crouch',weapon:'smg',
-  intent:'hold',seed:173});
+  intent:'hold',seed:173,bearingDeg:25});
  assert.equal(one.allies.length,0);
  assert.equal(one.shooter.posture,'crouch');
  assert.equal(one.shooter.weapon,'smg');
  assert.equal(one.config.seed,173);
+ assert.ok(Math.abs(one.shooter.heading-25*Math.PI/180)<.002);
  assert.ok(one.limitations.includes('no-micro-aim-solver'));
  assert.ok(one.limitations.includes('planar-friendly-guard'));
 });
@@ -105,7 +106,7 @@ test('A3.0 is built and linked without touching production fire/motor authority'
  assert.match(vite,/a3PhysicalityLab:\s*'a3-physicality-lab.html'/);
  assert.match(home,/a3-physicality-lab.html/);
  for(const id of ['scenario','operators','posture','intent','weapon','seed',
-  'run','step','reset','copy','download','stage','details','pose','perf'])
+  'bearingDeg','run','step','reset','copy','download','stage','details','pose','perf'])
   assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(main,/stepSession\(s,1\/60\)/);
  assert.match(main,/probeA3\(s,config\)/);
