@@ -175,3 +175,25 @@ test('A2.5 every directed named transition preserves entry weapon and both hands
   assert.equal(count,30);
  }finally{rig.dispose();}
 });
+
+test('A2.5 paused planning uses only render clock for interrupted carry',()=>{
+ const rig=createOperatorRig('a25-pause','blue');
+ const fixedSeconds=6;
+ try{
+  pose(rig,{seconds:fixedSeconds,idleLifeSeconds:6,
+   handlingIntent:'hold',friendlyNear:true});
+  const ready=snapshot(rig,'held-weapon');
+  pose(rig,{seconds:fixedSeconds,idleLifeSeconds:6.016,
+   handlingIntent:'stack',friendlyNear:true});
+  const entry=snapshot(rig,'held-weapon');
+  assert.ok(vecDiff(entry,ready)<1e-5,
+   'first paused retarget frame must preserve visible gun');
+  pose(rig,{seconds:fixedSeconds,idleLifeSeconds:6.116,
+   handlingIntent:'stack',friendlyNear:true});
+  assert.ok(vecDiff(snapshot(rig,'held-weapon'),ready)>.005,
+   'the visual pose must progress while simulation seconds remain frozen');
+  assert.equal(inspectOperatorPoseOutput(rig).time,fixedSeconds,
+   'render-only animation must not advance authoritative pose time');
+  finite(rig);
+ }finally{rig.dispose();}
+});
