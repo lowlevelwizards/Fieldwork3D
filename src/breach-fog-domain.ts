@@ -54,11 +54,12 @@ export function exteriorKnownFogRects(site:Site):FogRect[]{
   }};
   for(let x=Math.floor(minX/step)*step;x<maxX;x+=step){
    const p={x:x+step/2,y:y+step/2};
-   const corners=[{x,y},{x:x+step,y},{x,y:y+step},
-     {x:x+step,y:y+step}];
-   const outside=corners.every(c=>!insideSiteFootprint(site,c))&&
-    !insideSiteFootprint(site,p);
-   const unknown=outside&&!exteriorBriefedAt(site,p);
+   // Match the original 10-unit exterior mask's CENTER classification.
+   // Requiring all four corners to be outside misses the first row beside
+   // enclosed-court walls and leaks unobserved ground there. The room union
+   // below preserves the exact physical boundary around every indoor floor.
+   const unknown=!insideSiteFootprint(site,p)&&
+     !exteriorBriefedAt(site,p);
    if(unknown){if(start===null)start=x;}
    else emit(x);
   }
