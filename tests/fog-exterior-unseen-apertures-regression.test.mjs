@@ -41,8 +41,12 @@ test('exterior briefing keeps indoor floor concealed with no operator sight',()=
  paintFogMemory(ctx,s);
  paintFogVisibility(ctx,s);
  // The known exterior is still erased; every room is then re-covered.
- assert.ok(calls.some(c=>c[0]==='fillRect'&&
-   c[1]==='destination-out'));
+ assert.ok(calls.some(c=>c[0]==='clear'&&
+   c[1]===0&&c[2]===0&&c[3]===450&&c[4]===450));
+ assert.ok(!calls.some(c=>c[0]==='fillRect'&&
+   c[1]==='source-over'&&c[3]===0&&c[4]===0&&
+   c[5]===450&&c[6]===450),
+   'outdoor terrain must never receive a full-world unknown fog fill');
  assert.ok(calls.some(c=>c[0]==='fillRect'&&c[1]==='source-over'&&
    c[2]===UNKNOWN_FOG_COLOR&&c[3]===100&&c[4]===100&&
    c[5]===240&&c[6]===200));
