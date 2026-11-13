@@ -33,5 +33,7 @@ jobs:
         run: node --experimental-strip-types --test tests/passage-q5-approaches.test.mjs tests/passage-q3-flow.test.mjs tests/passage-q3-ranks.test.mjs tests/passage-q4-swing.test.mjs
       - name: Real motor 20-case hinge and approach matrix
         run: node --experimental-strip-types scripts/audit-passage-q5.mjs
+      - name: Pre-opened hinge staging diagnostics
+        run: node --experimental-strip-types scripts/q5-diagnose-preopen.mjs
       - name: Diagnose expanded 70-case real-world matrix
         run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended
