@@ -298,7 +298,7 @@ function updateContextualCrouch(s:Session,a:TeamActor):void{
  }
  if(!canContextuallyCrouch({
   stationary:true,busy:false,authoredPosture:!!a.postureWasAuthored,
-  posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,originallyAutomatic:automatic
+  posture:a.posture,originallyAutomatic:automatic
  }))return;
  // Existing lease prevents permanent polling and frequent stance toggles.
  if(s.seconds-(a.lastAutoCrouchProbeAt??-100)<.18)return;
