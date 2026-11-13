@@ -430,7 +430,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const authoringCarry=(p.handlingOverride==='high'||
     p.handlingOverride==='low')&&physicalSpeed<.2;
   let fit=reloadSeed?.fit??coupled?.fit??fitWeaponPose({weapon:p.weapon,handling,
-    configuration:p.weaponConfiguration,
+    configuration:p.weaponConfiguration,shoulderOffset:p.shoulderOffset,
     // Explicit Lab short-stock is the exact XYZ pose exported from the
     // Workbench, without the automatic director's small facing offset.
     // Live actor-relative yaw remains the shared shot/render authority.
