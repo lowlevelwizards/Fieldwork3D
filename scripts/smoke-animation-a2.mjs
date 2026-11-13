@@ -17,7 +17,9 @@ const tracks=[
  {name:'back',time:1250},{name:'turn-180',time:1800},
  {name:'pivot-reverse',time:2200},
  {name:'pie',time:1500},{name:'crouch-walk',time:1200},
- {name:'active-aim',time:1100},{name:'short-stock',time:900}
+ {name:'active-aim',time:1100},{name:'short-stock',time:900},
+ {name:'low-ready',time:650},{name:'high-ready',time:650},
+ {name:'ready',time:650},{name:'point-shoot',time:650}
 ];
 try{
  let ready=false;
@@ -50,7 +52,9 @@ try{
    await page.screenshot({path:out+'/iphone-'+item.name+'.png'});
   }
   await page.setViewportSize({width:1120,height:820});
-  for(const item of [tracks[0],tracks[1],tracks[4],tracks[7],tracks[9]]){
+  for(const item of [tracks[0],tracks[1],tracks[4],tracks[9],
+   ...tracks.filter(t=>['low-ready','high-ready','ready','point-shoot',
+      'active-aim','short-stock'].includes(t.name))]){
    await page.locator('#poseAnimation').selectOption(item.name);
    await page.locator('#timeline').evaluate((node,time)=>{
     node.value=String(time);node.dispatchEvent(new Event('input',{bubbles:true}));
