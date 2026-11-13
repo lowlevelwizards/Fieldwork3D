@@ -12,6 +12,8 @@ export type ClearanceResult={
   obstruction:boolean;blocked:boolean;retraction:number;
   /** 0..1 wall-proximity-driven rifle fold: same as visible short-stock. */
   compression:number;
+  /** True receiver/shoulder accommodation, shared with rendered grip fit. */
+  shoulderPullback?:number;
   blocker:FireBlock;muzzle:MuzzleSample;
   /** Carry and underarm source shared with the exact visual fit. */
   carryOverride?:Handling;shortFrom?:Handling;
@@ -70,62 +72,88 @@ export function weaponClearance(input:MuzzleInput,
   if(proximity<=.001)
     return {obstruction:false,blocked:false,compression:0,
       retraction:0,blocker:'clear',muzzle:ready};
-  // The first deterministic clearance stage is real shoulder-seated LOW.
-  // Only if that actual rigid muzzle is still unsafe do we fold into
-  // the authored underarm SHORT. Aim/shot permission stays independent.
+  // Preserve an actually aimed weapon first. Nearby geometry asks the
+  // shooter to bring the whole gun back a couple of units before lowering
+  // the muzzle or folding fully underarm. This is the SAME rigid transform
+  // used by the rendered stock, both hands and the shot-time barrel.
+  const engaged=input.threatRange!=null&&input.aim>=.20;
+  const retracted=(mode:Handling|undefined,pullback:number)=>{
+    const muzzle=muzzleAtShot({...input,
+      obstruction:false,carryOverride:mode,shortCompression:undefined,
+      clearanceRetraction:0,shoulderPullback:pullback});
+    return {muzzle,blocker:check({x:muzzle.x,y:muzzle.z},muzzle.y)};
+  };
+  const pullbackSteps=[0,.8,1.6,2.4,3.2];
+  const shoulderOptions:readonly (Handling|undefined)[]=engaged?
+    [undefined,'point','ready']:[undefined];
+  for(const carry of shoulderOptions){
+    for(const back of pullbackSteps){
+      const attempt=retracted(carry,back);
+      if(attempt.blocker!=='clear')continue;
+      // The leading horizon motivates a *small* anticipatory adjustment
+      // rather than a full short-stock even before physical collision.
+      const desired=Math.min(3.2,Math.max(back,proximity*2.2));
+      const settled=retracted(carry,desired);
+      const chosen=settled.blocker==='clear'?
+        {muzzle:settled.muzzle,back:desired}:
+        {muzzle:attempt.muzzle,back};
+      return {obstruction:false,blocked:false,compression:0,
+        retraction:0,blocker:'clear',muzzle:chosen.muzzle,
+        shoulderPullback:chosen.back,carryOverride:carry};
+    }
+  }
+  // With a confirmed threat, retain a forward-pointing source all the
+  // way into underarm short-stock. Passive movement instead progressively
+  // lowers the shoulder-seated rifle before tucking it.
   const carryBlend=clamp(proximity/.30);
-  const lowCarry=muzzleAtShot({...input,carryOverride:'low',
-    carryBlend,obstruction:false,shortCompression:undefined,
-    clearanceRetraction:0});
-  const lowBlock=check({x:lowCarry.x,y:lowCarry.z},lowCarry.y);
-  if(proximity<.30&&lowBlock==='clear')
-    return {obstruction:false,blocked:false,compression:0,
-      retraction:0,blocker:'clear',muzzle:lowCarry,
-      carryOverride:'low',carryBlend};
-  const startFold=proximity<.30?0:(proximity-.30)/.70;
-  const folded=(compression:number)=>{
+  if(!engaged){
+    const lowCarry=muzzleAtShot({...input,carryOverride:'low',
+      carryBlend,obstruction:false,shortCompression:undefined,
+      clearanceRetraction:0});
+    const lowBlock=check({x:lowCarry.x,y:lowCarry.z},lowCarry.y);
+    if(proximity<.30&&lowBlock==='clear')
+      return {obstruction:false,blocked:false,compression:0,
+        retraction:0,blocker:'clear',muzzle:lowCarry,
+        carryOverride:'low',carryBlend};
+  }
+  const startFold=engaged?clamp(proximity*.52):
+    proximity<.30?0:(proximity-.30)/.70;
+  const shortFrom:Handling=engaged?'point':'low';
+  const folded=(compression:number,pullback=0)=>{
     const muzzle=muzzleAtShot({...input,obstruction:true,
-      carryOverride:'short',shortFrom:'low',
+      carryOverride:'short',shortFrom,shoulderPullback:pullback,
       shortCompression:compression,clearanceRetraction:0});
     return {muzzle,blocker:check({x:muzzle.x,y:muzzle.z},muzzle.y)};
   };
-  // Even a fully tucked barrel must never be allowed to ignite when a
-  // solid obstruction is immediately in front of the operator's body.
-  // Without this floor, deeply tucked guns can sit behind a near wall and
-  // their muzzle-only probe incorrectly reports an unrestricted shot.
-  const MIN_OPERATOR_FIRE_CLEARANCE=18;
-  if(distanceToObstacle<=MIN_OPERATOR_FIRE_CLEARANCE){
-    const full=folded(1);
-    return {obstruction:true,blocked:true,compression:1,
-      retraction:MAX_LEGACY_RETRACTION,blocker:
-        full.blocker==='clear'?horizonHit:full.blocker,
-      muzzle:full.muzzle,carryOverride:'short',shortFrom:'low'};
+  // Prefer the smallest true fold, then a small additional shoulder tuck.
+  // Never claim a free muzzle because the gun is folded: the entire real
+  // muzzle/body sweep must remain on the near side of solid geometry.
+  for(const back of pullbackSteps){
+    const comfortable=folded(startFold,back);
+    if(comfortable.blocker==='clear')
+      return {obstruction:true,blocked:false,compression:startFold,
+        shoulderPullback:back,
+        retraction:startFold*MAX_LEGACY_RETRACTION,
+        blocker:'clear',muzzle:comfortable.muzzle,
+        carryOverride:'short',shortFrom};
   }
-  const comfortable=folded(startFold);
-  if(comfortable.blocker==='clear')
-    return {obstruction:true,blocked:false,compression:startFold,
-      retraction:startFold*MAX_LEGACY_RETRACTION,
-      blocker:'clear',muzzle:comfortable.muzzle,
-      carryOverride:'short',shortFrom:'low'};
-  // If the comfortable pose still hits the wall, find the *least* extra
-  // compression that clears it. Stepped .12/.28/.48 jumps caused another
-  // visible short-stock pop, even though the initial approach was smooth.
   const full=folded(1);
-  if(full.blocker!=='clear')
+  if(full.blocker!=='clear'){
+    // Even a fully shortened weapon cannot occupy this physical position:
+    // only the collision-swept corrective footstep can restore this shot.
     return {obstruction:true,blocked:true,compression:1,
       retraction:MAX_LEGACY_RETRACTION,
       blocker:full.blocker,muzzle:full.muzzle,
-      carryOverride:'short',shortFrom:'low'};
-  let min=startFold,max=1;
-  let best=full.muzzle;
+      carryOverride:'short',shortFrom};
+  }
+  let min=startFold,max=1,best=full.muzzle;
   for(let i=0;i<5;i++){
-    const middle=(min+max)*.5;
-    const attempt=folded(middle);
+    const middle=(min+max)*.5,attempt=folded(middle);
     if(attempt.blocker==='clear'){max=middle;best=attempt.muzzle;}
     else min=middle;
   }
   return {obstruction:true,blocked:false,compression:max,
     retraction:max*MAX_LEGACY_RETRACTION,
     blocker:'clear',muzzle:best,
-    carryOverride:'short',shortFrom:'low'};
+    carryOverride:'short',shortFrom};
 }

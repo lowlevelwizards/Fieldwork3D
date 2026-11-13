@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {weaponClearance} from '../src/breach-weapon-clearance.ts';
 import {muzzleAtShot} from '../src/breach-muzzle.ts';
+import {assessFireLane} from '../src/breach-fire-safety.ts';
 import {fitWeaponPose} from '../src/breach-weapon-pose.ts';
 
 const base={x:0,z:0,heading:0,weaponYaw:0,
@@ -24,11 +25,12 @@ test('179: wall approach folds gun before impact without jumping sockets',()=>{
  assert.ok(short.x<normal.x-1);
  const geometry=wall((normal.x+short.x)/2);
  const result=weaponClearance(base,[],[],[geometry]);
- assert.equal(result.obstruction,true);
  assert.equal(result.blocked,false);
  assert.ok(result.muzzle.x<normal.x);
  assert.ok(result.muzzle.x<geometry.a.x);
- assert.ok(result.compression>0&&result.compression<=1);
+ assert.ok(result.obstruction||result.shoulderPullback!==undefined,
+  'first retract within reach; only then use underarm compression');
+ assert.ok(result.compression>=0&&result.compression<=1);
  // The authorized retraction is now ONE continuous progress channel.
  // Legacy clearanceRetraction must never perform a second stock teleport.
  const ready=fitWeaponPose({weapon:'carbine',handling:'short',yaw:0,
@@ -41,12 +43,20 @@ test('179: wall approach folds gun before impact without jumping sockets',()=>{
  assert.ok(tucked.stock.x<ready.stock.x-2);
  assert.deepEqual(tucked.stock.toArray(),legacy.stock.toArray());
 });
-test('179: an impossible blocked corridor suppresses shots, never moves actor',()=>{
+test('179: a nearby wall still vetoes the physical projectile path, without moving actor',()=>{
  const before=JSON.stringify(base);
- const result=weaponClearance(base,[],[],[wall(17)]);
- assert.equal(result.obstruction,true);
- assert.equal(result.blocked,true);
- assert.ok(result.retraction>0);
+ const obstacle=wall(17);
+ const result=weaponClearance(base,[],[],[obstacle]);
+ assert.ok(result.obstruction||result.shoulderPullback!==undefined,
+  'close wall must be respected by either pullback or short stock');
+ // A tucked muzzle may clear the wall, unlike the old arbitrary 18-unit
+ // exclusion; a real shot from that muzzle must still hit the wall.
+ const origin={x:result.muzzle.x,y:result.muzzle.z};
+ const lane=assessFireLane(origin,result.muzzle.y,
+  {x:100,y:0},result.muzzle.y,[],[obstacle],[]);
+ assert.ok(result.blocked||lane.blocker==='wall',
+  'either the rigid gun or the full projectile path must veto the wall');
+ assert.ok(result.retraction>0||result.shoulderPullback!==undefined);
  assert.equal(JSON.stringify(base),before);
 });
 test('179: door leaf and height-aware cover use the actual muzzle sweep',()=>{

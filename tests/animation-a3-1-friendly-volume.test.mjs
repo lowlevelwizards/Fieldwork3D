@@ -24,10 +24,10 @@ test('A3.1 upright friendly fully protects torso and helmet while crouch opens o
   'tangent to highest helmet and its margin is not a clear lane');
  assert.equal(shot(18,18,[F('crouch')]),'friendly');
  assert.equal(shot(11,11,[F('crouch')]),'friendly');
- assert.equal(shot(32,32,[F('stand',48,8)]),'friendly',
-  'grazing helmet and shoulder region are protected');
- assert.equal(shot(32,32,[F('stand',48,9)]),'clear',
-  'valid sufficiently lateral head-height path can clear');
+ assert.equal(shot(32,32,[F('stand',48,6)]),'friendly',
+  'actual helmet and narrow margin remain protected');
+ assert.equal(shot(32,32,[F('stand',48,7)]),'clear',
+  'close head-height path beside the helmet is legal');
  assert.equal(FRIENDLY_CROUCH_VOLUMES[1].top,26);
  assert.ok(FRIENDLY_STAND_VOLUMES[1].top>FRIENDLY_CROUCH_VOLUMES[1].top);
 });
@@ -46,8 +46,10 @@ test('A3.1 diagonal trajectories and segment-overlap stay protected, not a cente
  assert.equal(shot(32,32,[F('stand',110,0)]),'clear',
   'teammate past segment end not falsely blocking');
  assert.equal(shot(29,29,[F('crouch',50,10.5)]),'clear');
- assert.equal(shot(12,12,[F('crouch',50,10.5)]),'friendly',
-  'torso horizontal grazing blocked at torso height');
+ assert.equal(shot(12,12,[F('crouch',50,7.9)]),'friendly',
+  'physical torso grazing stays blocked at torso height');
+ assert.equal(shot(12,12,[F('crouch',50,8.1)]),'clear',
+  'no extra invisible comfort disk beyond the actual torso');
 });
 test('A3.1 unknown posture and legacy 2D point callers remain conservative',()=>{
  for(const legacy of [p(48,0),{...p(48,0),posture:'invalid'}]){

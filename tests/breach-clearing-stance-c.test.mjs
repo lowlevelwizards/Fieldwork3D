@@ -69,7 +69,9 @@ test('C13: four-person stack and threshold favor high-ready; interior sector cle
 test('C14: teammate ahead is directional and includes near-body threshold crowding',()=>{
  const p={x:0,y:0};
  assert.equal(teammateAheadForHandling(p,0,[{x:5,y:0}]),true);
- assert.equal(teammateAheadForHandling(p,0,[{x:24,y:15}]),true);
+ assert.equal(teammateAheadForHandling(p,0,[{x:24,y:8}]),true);
+ assert.equal(teammateAheadForHandling(p,0,[{x:24,y:15}]),false,
+  'lateral teammates outside body width do not force high-ready');
  assert.equal(teammateAheadForHandling(p,0,[{x:-5,y:0}]),false);
  assert.equal(teammateAheadForHandling(p,0,[{x:3,y:0}]),false);
  assert.equal(teammateAheadForHandling(p,0,[{x:25,y:21}]),false);
@@ -79,7 +81,8 @@ test('C14: teammate ahead is directional and includes near-body threshold crowdi
 
 test('C15: passive hysteresis smooths look/stack flicker, urgent aim and obstruction bypass it',()=>{
  assert.equal(stance('entry',{moving:.65,previous:'ready',heldFor:.08,
-  friendlyNear:true}),'ready');
+  friendlyNear:true}),'high',
+  'explicit threshold-stack courtesy is urgent and bypasses passive hysteresis');
  assert.equal(stance('entry',{moving:.65,previous:'ready',heldFor:.18,
   friendlyNear:true}),'high');
  assert.equal(stance('engage',{aim:.65,threatRange:25,

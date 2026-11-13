@@ -25,6 +25,7 @@ import {skillMultiplier} from './breach-skills.ts';
 import {shotYaw,rayHitsActor,muzzleEndpoint} from './breach-ballistics.ts';
 import {shotDispersionCone} from './breach-shot-ignition.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
+import {urgentFireMode} from './breach-fire-urgency.ts';
 import {resolveArmorImpact} from './equipment-armor.ts';
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {CASING_LIMIT} from './breach-effects.ts';
@@ -72,19 +73,26 @@ export function createShotResolver(ports:ShotResolverPorts){
   // The eyes may have a contact even when the muzzle cannot safely fire.
   // Hold the shot rather than dumping ammunition into adjacent cover or
   // risking a friendly operator standing in the near firing corridor.
+  const friends=s.operators.filter(o=>o!==a&&o.health>0&&
+    o.side===a.side).map(safetyBodyFor);
   const sightClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:a.weaponYaw,shoulderOffset:a.aimSideOffset??0,
     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
-    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
+    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,
+    friends);
   if(sightClearance.blocked){
     a.lastFireBlock=sightClearance.blocker;
-    if(sightClearance.blocker==='wall'||sightClearance.blocker==='cover')
+    if(sightClearance.blocker==='friendly')
+      requestClearFireStep(s,a,target,'friendly');
+    else if(sightClearance.blocker==='wall'||sightClearance.blocker==='cover'||
+      sightClearance.blocker==='door')
       requestClearFireStep(s,a,target,'muzzle');
     return;
   }
   const sightMuzzle=sightClearance.muzzle;
-  const friends=s.operators.filter(o=>o!==a&&o.health>0&&
-    o.side===a.side).map(safetyBodyFor);
+  const threatYaw=Math.atan2(target.p.y-a.p.y,target.p.x-a.p.x);
+  if(sightClearance.carryOverride==='short'&&
+    urgentFireMode(mode,a.aim,sightClearance,threatYaw)!=='point')return;
   if(observedCivilianFireLane(s,a,
      {x:sightMuzzle.x,y:sightMuzzle.z},sightMuzzle.y,
      target.p,effectiveAimHeight(target))){
@@ -109,6 +117,8 @@ export function createShotResolver(ports:ShotResolverPorts){
     sightMuzzle.y,effectiveAimHeight(target),
     weapon.penetration);
   if(!fireLaneReachable(lane,laneTrace,target.p)){
+    if(lane.blocker==='wall'||lane.blocker==='door'||lane.blocker==='cover')
+      requestClearFireStep(s,a,target,'muzzle');
     if(a.side==='blue'&&s.seconds-a.lastLaneWarnAt>2){
       notify(s,a.name+' FIRE BLOCKED · '+lane.blocker.toUpperCase());
       a.lastLaneWarnAt=s.seconds;
@@ -118,13 +128,20 @@ export function createShotResolver(ports:ShotResolverPorts){
   const priorBurst=s.seconds-a.lastShotAt<.48;
   const proposedBurst=priorBurst?a.burstCount+1:1;
   // Roll ordering is authoritative. The pure ignition policy never calls RNG.
-  const cone=shotDispersionCone(a,mode,range,moving,mods,weapon.optimalRange);
+  const cone=shotDispersionCone(a,mode,range,moving,mods,weapon.optimalRange)*
+    (sightClearance.carryOverride==='short'?
+      1.30+Math.max(0,sightClearance.compression)*.38:1);
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,
     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
-    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
+    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,
+    friends);
   if(shotClearance.blocked){
+    a.lastFireBlock=shotClearance.blocker;return;
+  }
+  if(shotClearance.carryOverride==='short'&&
+    urgentFireMode(mode,a.aim,shotClearance,threatYaw)!=='point'){
     a.lastFireBlock=shotClearance.blocker;return;
   }
   const muzzle=shotClearance.muzzle;

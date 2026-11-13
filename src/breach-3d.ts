@@ -2166,6 +2166,7 @@ export class TacticalScene3D{
         turning:actor.turning,firing:!!firing&&!actor.traversal,
         aimBlend:actor.aim,recoil:actor.recoil*6,
         shotHeading:drawActor.weaponYaw,shoulderOffset:actor.aimSideOffset??0,
+        shoulderPullback:clearance.shoulderPullback,
         hitAge,hitFade,downProgress,
         handlingIntent,
         threatRange,

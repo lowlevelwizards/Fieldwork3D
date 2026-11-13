@@ -38,6 +38,9 @@ import {skillMultiplier} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,muzzleEndpoint,recoverWeapon} from './breach-ballistics.ts';
 
 import {weaponClearance} from './breach-weapon-clearance.ts';
+import {fireUrgency,passiveAimReadiness,contactAimOnAcquisition,
+ contactAcquisitionScale,contactTurnScale,urgentFireMode}
+ from './breach-fire-urgency.ts';
 
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {CASING_LIMIT} from './breach-effects.ts';
@@ -116,7 +119,7 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  if(kind==='friendly'&&Math.abs((a.aimSideOffset??0)-
    (a.aimSideTarget??0))>.3)return false;
  if(!inSight(a,target,s)||a.health<=0||a.velocity>=10||
-   a.fireRetreatTarget||s.seconds-a.lastFireRetreatAt<1.9||
+   a.fireRetreatTarget||s.seconds-a.lastFireRetreatAt<1.05||
    a.traversal||a.traversalPending||a.squeeze||a.carryingId||
    a.treatmentActive||a.reload>0||a.flashUntil>s.seconds||
    a.pace==='run'||a.plan[0]?.moveMode==='sprint'||
@@ -138,7 +141,7 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
    ...s.operators.filter(other=>other!==a&&other.health>0).map(o=>o.p),
    ...s.civilians.filter(c=>c.health>0).map(c=>c.p)
  ];
- const aimYaw=angle(a.p,target.p),range=d(a.p,target.p);
+ const aimYaw=angle(a.p,target.p);
  const clearBody=(candidate:Pt)=>
    sweptBodyClear(a.p,candidate,s.doors,8,sessionWorldGeometry(s))&&
    people.every(p=>{
@@ -151,12 +154,15 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
     return pointToSegment(p,{a:a.p,b:candidate})>=20;
    });
  const legalShot=(candidate:Pt)=>{
+   const candidateYaw=angle(candidate,target.p);
+   const candidateRange=d(candidate,target.p);
    const clearance=weaponClearance({
-     x:candidate.x,z:candidate.y,heading:a.heading,weaponYaw:aimYaw,
+     x:candidate.x,z:candidate.y,heading:a.heading,weaponYaw:candidateYaw,
      shoulderOffset:a.aimSideOffset??0,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
      aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,velocity:0,recoil:a.recoil,
-     threatRange:range
-   },s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
+     threatRange:candidateRange
+   },s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,
+     friends);
    if(clearance.blocked)return false;
    const from={x:clearance.muzzle.x,y:clearance.muzzle.z};
    const height=effectiveAimHeight(target);
@@ -407,6 +413,24 @@ function updatePassiveWatchMicroAim(s:Session,a:TeamActor):void{
  a.aimSideTarget=clear(0)?0:
    chooseMicroAimOffset(a.aimSideOffset??0,clear).offset;
 }
+/** Passive readiness remains useful under HOLD/RETURN orders; shot policy
+ * stays authoritative and never grants a target or actual fire permission. */
+function settlePassiveAim(a:TeamActor,dt:number):void{
+ const watch=a.aimInstruction;
+ const urgency=fireUrgency({
+  confirmed:false,
+  suspicious:a.suspicion.stage==='curious'||
+    a.suspicion.stage==='suspicious'||
+    a.suspicion.stage==='alerted'||
+    a.alert==='investigating'&&!!a.contact,
+  authored:!!watch&&watch.source!=='stack',
+  lookOrder:a.plan[0]?.kind==='look',
+  aimMode:watch?.mode
+ });
+ const ready=passiveAimReadiness(urgency),step=dt*
+   (urgency==='suspect'?1.8:urgency==='watch'?1.2:.90);
+ a.aim+=Math.max(-step,Math.min(step,ready-a.aim));
+}
 function fire(s:Session,a:TeamActor,dt:number){
  updateContextualCrouch(s,a);
  // A3.2: only simulation time moves the tactical rifle accommodation.
@@ -471,11 +495,11 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(a.side==='blue'){
     if(a.firePolicy==='hold'){
-      a.aim=Math.max(0,a.aim-dt*.35);return;
+      settlePassiveAim(a,dt);return;
     }
     if(a.firePolicy==='return'&&a.suppression<.10&&
       s.seconds-a.lastHitAt>3){
-      a.aim=Math.max(0,a.aim-dt*.35);return;
+      settlePassiveAim(a,dt);return;
     }
     if(a.firePolicy==='suppress'){
       fireSuppression(s,a,dt);return;
@@ -517,7 +541,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   });
   if(!target){
     a.aimSideTarget=0;
-    a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
+    a.targetId=null;
+    // LOOK/WATCH/suspicion prepare the actual rifle even if no enemy can
+    // currently be seen. They never fabricate or authorize a shot.
+    settlePassiveAim(a,dt);
     const canPreferClearLook=a.velocity<6&&!a.aimInstruction&&
       a.side==='blue'&&!a.traversal&&!a.squeeze&&
       !['look','door','tool','treat','reload','flash'].includes(
@@ -606,8 +633,11 @@ function fire(s:Session,a:TeamActor,dt:number){
       weapon:a.weapon,
       weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
       aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,velocity:a.velocity,recoil:a.recoil,
-      threatRange:d(a.p,target.p)},s.doors,world.cover,world.walls);
-    if(!preflight.blocked){
+      threatRange:d(a.p,target.p)},s.doors,world.cover,world.walls,
+      friends);
+    if(preflight.blocked&&preflight.blocker==='friendly'){
+      if(requestClearFireStep(s,a,target,'friendly'))return;
+    }else if(!preflight.blocked){
       const from={x:preflight.muzzle.x,y:preflight.muzzle.z};
       const targetHeight=effectiveAimHeight(target);
       const lane=assessFireLane(from,preflight.muzzle.y,
@@ -618,8 +648,13 @@ function fire(s:Session,a:TeamActor,dt:number){
       }
     }
   }
-  if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;
-    a.stability=Math.min(a.stability,.65);}
+  if(a.targetId!==target.id){
+    a.targetId=target.id;
+    // Real visual confirmation upgrades an existing LOOK/WATCH posture
+    // without discarding its prior readiness. No hidden-intel head start.
+    a.aim=contactAimOnAcquisition(a.aim);
+    a.stability=Math.min(a.stability,.65);
+  }
   // After a real flank hit, orient toward the attack before reacquiring an
   // unrelated old contact. A now-visible hostile in that sector still wins
   // through the normal target selector on the following ticks.
@@ -639,12 +674,29 @@ function fire(s:Session,a:TeamActor,dt:number){
     enemy:a.side==='red',range,attachmentFactor:sightAcquisitionScale(mods,range),
     cautious:a.personality==='cautious'
   });
-  a.aim=Math.min(1,a.aim+dt/acquisition);
+  const urgency=fireUrgency({confirmed:true,suspicious:false});
+  a.aim=Math.min(1,a.aim+dt/
+    (acquisition*contactAcquisitionScale(urgency)));
   const desiredYaw=angle(a.p,target.p);
   a.weaponYaw=approachAngle(a.weaponYaw,desiredYaw,dt*profile.turnSpeed*mods.turn*
-    (a.suppression>.6?.75:1));
-  const mode=readyMode(range,a.aim,a.weapon);
-  if(!mode||a.fireCd>0)return;
+    (a.suppression>.6?.75:1)*contactTurnScale(urgency));
+  if(a.fireCd>0)return;
+  // A short-stock remains an *actual* shooting pose when its muzzle points
+  // toward a confirmed threat, not just a blocked animation state.
+  const muzzle=weaponClearance({
+    x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:a.weaponYaw,
+    shoulderOffset:a.aimSideOffset??0,
+    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+    equipment:a.equipment,aim:a.aim,posture:a.posture,velocity:a.velocity,
+    recoil:a.recoil,threatRange:range
+  },s.doors,world.cover,world.walls,friends);
+  const mode=urgentFireMode(readyMode(range,a.aim,a.weapon),
+    a.aim,muzzle,desiredYaw);
+  if(!mode){
+    if(muzzle.blocked)requestClearFireStep(s,a,target,
+      muzzle.blocker==='friendly'?'friendly':'muzzle');
+    return;
+  }
   if(Math.abs(angleDifference(a.heading,a.weaponYaw))>.87){
     rotate(a,a.weaponYaw,dt,s);return;
   }

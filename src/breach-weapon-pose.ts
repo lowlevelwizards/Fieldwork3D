@@ -161,6 +161,9 @@ export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
  configuration?:WeaponConfiguration;
   /** A3.2 fixed-step, shooter-owned lateral weapon/shoulder accommodation. */
   shoulderOffset?:number;
+  /** A few units of inboard shoulder/receiver clearance, shared by
+   * renderer, grips and shot-time muzzle (not a ghost gun translation). */
+  shoulderPullback?:number;
   /** Fire direction in chest-local space. */
   yaw:number;recoil:number;aimBlend?:number;
   swayYaw?:number;swayPitch?:number;
@@ -185,13 +188,18 @@ export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
  */
 export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
  const fit=fitWeaponPoseBase(input);
- const offset=Math.max(-3.2,Math.min(3.2,input.shoulderOffset??0));
- if(Math.abs(offset)<.0001)return fit;
+ const lateral=Math.max(-3.2,Math.min(3.2,input.shoulderOffset??0));
+ const back=Math.max(0,Math.min(3.2,input.shoulderPullback??0));
+ if(Math.abs(lateral)<.0001&&back<.0001)return fit;
+ // Move the entire rigid gun, stock and BOTH actual hand-contact sockets
+ // together. This is in torso coordinates; fore/aft pullback is not an
+ // invisible shot-only muzzle hack or extra motor displacement.
+ const shift=new THREE.Vector3(-back,0,lateral);
  return {...fit,
-  origin:fit.origin.clone().add(new THREE.Vector3(0,0,offset)),
-  stock:fit.stock.clone().add(new THREE.Vector3(0,0,offset)),
-  primary:fit.primary.clone().add(new THREE.Vector3(0,0,offset)),
-  support:fit.support.clone().add(new THREE.Vector3(0,0,offset))
+  origin:fit.origin.clone().add(shift),
+  stock:fit.stock.clone().add(shift),
+  primary:fit.primary.clone().add(shift),
+  support:fit.support.clone().add(shift)
  };
 }
 function fitWeaponPoseBase(input:WeaponPoseInput):WeaponFit{

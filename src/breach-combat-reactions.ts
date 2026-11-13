@@ -26,23 +26,27 @@ export function choosePhysicalCorrection(p:Pt,aimYaw:number,
  let tests=0;
  const lateral={x:-Math.sin(aimYaw),y:Math.cos(aimYaw)};
  const lengths=reason==='friendly'?[4,7,10,12,20,28]:
-   [4,7,10,14,22,30];
+   [2,3,4,7,10,14,22,30];
+ const forward={x:Math.cos(aimYaw),y:Math.sin(aimYaw)};
+ // Rank by minimal displacement; either blockage can benefit from lateral
+ // or rear-oblique footwork. Each actual lane and swept move remains checked.
+ // Fixed ordering keeps outcomes stable under deterministic replay.
  for(const length of lengths){
-  const candidates:{dx:number;dy:number;kind:PhysicalCorrectionKind}[]=
-   reason==='friendly'?[
-    {dx:-lateral.x*length,dy:-lateral.y*length,kind:'lateral-left'},
-    {dx:lateral.x*length,dy:lateral.y*length,kind:'lateral-right'}
-   ]:[
-    {dx:-Math.cos(aimYaw)*length,dy:-Math.sin(aimYaw)*length,kind:'back'},
-    {dx:Math.cos(aimYaw+Math.PI-.30)*length,
-     dy:Math.sin(aimYaw+Math.PI-.30)*length,kind:'back-left'},
-    {dx:Math.cos(aimYaw+Math.PI+.30)*length,
-     dy:Math.sin(aimYaw+Math.PI+.30)*length,kind:'back-right'},
-    {dx:Math.cos(aimYaw+Math.PI-.55)*length,
-     dy:Math.sin(aimYaw+Math.PI-.55)*length,kind:'back-left'},
-    {dx:Math.cos(aimYaw+Math.PI+.55)*length,
-     dy:Math.sin(aimYaw+Math.PI+.55)*length,kind:'back-right'}
-   ];
+  const offset=(side:number,back:number,kind:PhysicalCorrectionKind)=>{
+   const norm=Math.hypot(side,back);
+   return {dx:(lateral.x*side-forward.x*back)*length/norm,
+    dy:(lateral.y*side-forward.y*back)*length/norm,kind};
+  };
+  const candidates=reason==='friendly'?[
+   offset(-1,0,'lateral-left'),offset(1,0,'lateral-right'),
+   offset(-1,1,'back-left'),offset(1,1,'back-right'),
+   offset(0,1,'back')
+  ]:[
+   offset(0,1,'back'),
+   offset(-.5,1,'back-left'),offset(.5,1,'back-right'),
+   offset(-1,1,'back-left'),offset(1,1,'back-right'),
+   offset(-1,0,'lateral-left'),offset(1,0,'lateral-right')
+  ];
   for(const candidate of candidates){
    const next={x:p.x+candidate.dx,y:p.y+candidate.dy};
    tests++;

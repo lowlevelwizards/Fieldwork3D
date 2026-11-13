@@ -44,7 +44,7 @@ jobs:
       - name: Stage 3 — Physical contextual stance and authored policy
         run: node --experimental-strip-types --test tests/animation-a3-3-contextual-crouch.test.mjs
       - name: Stage 4 — Minimal physical motor corrections
-        run: node --experimental-strip-types --test tests/animation-a3-4-micro-footwork.test.mjs
+        run: node --experimental-strip-types --test tests/animation-a3-4-micro-footwork.test.mjs tests/animation-a3-10-close-stack-fire.test.mjs tests/animation-a3-11-progressive-urgency.test.mjs
       - name: Physical player-side recovery preserves planned orders at A3.4 step sizes
         run: node --experimental-strip-types --test --test-name-pattern='short step-back|ally in lane|real player operator' tests/breach-two-sided-fire-recovery.test.mjs
       - name: Critical actual gameplay and replay regressions
