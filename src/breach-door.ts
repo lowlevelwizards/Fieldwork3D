@@ -370,7 +370,7 @@ export type BodyDoorPressurePolicy={
  claimContact?:(door:Door)=>boolean;
 };
 export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
-  dt:number,actors:readonly Pt[],
+  dt:number,actors:readonly Pt[]|(()=>readonly Pt[]),
   policy:BodyDoorPressurePolicy={},world?:SessionWorldGeometry):BodyDoorContact|null{
   const length=dist(from,to);
   if(length<.0001)return null;
@@ -452,7 +452,10 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   else door.pushTarget=PUSHED_OPEN_LIMIT;
   // Door motion gets a small share of this very simulation tick. The main
   // global motor subsequently handles normal animation and swept obstacles.
-  advanceDoor(door,Math.min(Math.max(0,dt),1/60),actors,world);
+  // Sample live occupant positions only when a real panel contact won.
+  // Never cache moving actor coordinates across fixed ticks.
+  const occupied=typeof actors==='function'?actors():actors;
+  advanceDoor(door,Math.min(Math.max(0,dt),1/60),occupied,world);
   return {doorId:door.id,
     advanced:Math.abs((door.openFraction??0)-initial)>.0001,
     ...(contact.assist?{handAssist:true}:{})};

@@ -56,7 +56,7 @@ export function resolveMotorCollision(
   // BEFORE evaluating movement clearance. The hinge may yield right now;
   // when it cannot (wall/actor), existing collision and recovery remain.
   const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
-    s.operators.filter(o=>o.health>0).map(o=>o.p),
+    ()=>s.operators.filter(o=>o.health>0).map(o=>o.p),
     sessionDoorPressurePolicy(s,a),world);
   recordDoorManeuverContact(a,s,doorContact);
   // Existing handle reach animation shows a genuine, short support-hand
