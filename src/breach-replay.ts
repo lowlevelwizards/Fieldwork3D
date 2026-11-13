@@ -3,7 +3,7 @@ import {sessionWorldGeometry,invalidateSessionWorldGeometry,publishSessionCoverT
  * We capture authoritative simulation outcomes at 20 Hz and never re-simulate
  * past actions. Rewind, scrubbing and speed changes cannot alter an outcome.
  */
-import {liveVisibility,type Session,type TeamActor,type ShotEvent,type DroppedMagazine,type FlashGrenade,type FlashBurst,type ImpactMark} from './breach-game.ts';
+import {type Session,type TeamActor,type ShotEvent,type DroppedMagazine,type FlashGrenade,type FlashBurst,type ImpactMark} from './breach-game.ts';
 import {type Door,type Pt} from './breach-core.ts';
 import {intelSnapshot,intelRestore,bindIntelWorld} from './breach-intel.ts';
 import type {BattleEvent} from './breach-combat.ts';
@@ -115,6 +115,10 @@ export function snapshot(s:Session,seenGround?:string[],
   previousActors?:readonly ReplayActorFrame[]):ReplayFrame{
   const actorBefore=previousActors?
     new Map(previousActors.map(a=>[a.id,a])):null;
+  // The immutable observer journal already computes exact current civilian
+  // visibility. Reuse it for the 20 Hz frame instead of tracing LOS twice.
+  const knowledge=captureReplayKnowledge(s,previouslyDiscovered,observerBodies);
+  const visibleCivilianIds=new Set(knowledge.visibleCivilianIds);
   return {
     t:s.seconds,phase:s.phase,mission:s.mission,
     actors:s.operators.map(a=>{
@@ -196,7 +200,7 @@ export function snapshot(s:Session,seenGround?:string[],
       rescueTarget:c.rescueTarget,appearanceSeed:c.appearanceSeed,
       role:c.role,persona:c.persona,activity:c.activity,
       homeRoomId:c.homeRoomId,
-      visibleAtCapture:liveVisibility(s,c.p)
+      visibleAtCapture:visibleCivilianIds.has(c.id)
     })),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
     objectRevision:s.objectRevision,
@@ -218,7 +222,7 @@ export function snapshot(s:Session,seenGround?:string[],
     seenGround:seenGround??[...s.seenGround],intel:intelSnapshot(s.intel),
     known:[...s.known].map(([id,c])=>[id,
       {p:position(c.p),at:c.at,status:c.status}]),
-    knowledge:captureReplayKnowledge(s,previouslyDiscovered,observerBodies),
+    knowledge,
   };
 }
 export class MissionRecorder{
