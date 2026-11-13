@@ -89,7 +89,10 @@ try{
    await capture(id+'-front-goggles','front');
    await goggles.selectOption('eyes');
    await capture(id+'-goggles-eyes','front');
-   await page.getByRole('button',{name:'FASTENED',exact:true}).click();
+   const fastener=page.getByRole('button',{name:'FASTENED',exact:true});
+   if(await fastener.getAttribute('aria-pressed')==='true')await fastener.click();
+   if(await fastener.getAttribute('aria-pressed')!=='false')
+    throw Error('Unfastened state did not persist on '+id);
    await capture(id+'-unfastened-side','side');
    await page.locator('.material-group').filter({hasText:'Unfastened uses two short dangling straps'})
     .locator('select').selectOption('forward');
