@@ -135,6 +135,18 @@ export function createShotResolver(ports:ShotResolverPorts){
   if(shotLane.blocker==='friendly'){
     a.lastFireBlock='friendly';return;
   }
+  // A miss travels beyond the selected target. Verify the *complete*
+  // outgoing tracer trajectory against allies BEFORE consuming ammunition.
+  // A near-target check alone could approve a spread shot that intersects
+  // another teammate farther downrange.
+  const muzzleRange=d(muzzlePoint,target.p);
+  const far=muzzleEndpoint(muzzlePoint,yaw,Math.max(muzzleRange+38,170));
+  const strikeHeight=muzzle.y+(aimHeight(target.posture==='crouch')-
+    muzzle.y)*d(muzzlePoint,far)/Math.max(1,muzzleRange);
+  if(assessFireLane(muzzlePoint,muzzle.y,far,strikeHeight,
+    [],[],[],friends).blocker==='friendly'){
+    a.lastFireBlock='friendly';return;
+  }
   const muzzleReach=strikeSurface(a.p,muzzlePoint,s,
     muzzle.y,muzzle.y);
   if(d(a.p,muzzleReach.end)+.7<d(a.p,muzzlePoint)){
@@ -149,12 +161,8 @@ export function createShotResolver(ports:ShotResolverPorts){
     (target.posture==='crouch'?1.7:0)-
     (nearCover(target.p,a.p,COVER)?2:0));
   const candidateHit=rayHitsActor(muzzlePoint,yaw,target.p,hitRadius);
-  const muzzleRange=d(muzzlePoint,target.p);
-  const far=muzzleEndpoint(muzzlePoint,yaw,Math.max(muzzleRange+38,170));
-  // Aim for the target's visible upper body, not an imaginary ground-level
-  // hitpoint. At close range this clears waist-high cover naturally.
-  const strikeHeight=muzzle.y+(aimHeight(target.posture==='crouch')-
-    muzzle.y)*d(muzzlePoint,far)/Math.max(1,muzzleRange);
+  // Full bullet travel was already height-checked against friendlies
+  // before ignition. Reuse the same far endpoint and height for ballistics.
   const strike=strikeSurface(muzzlePoint,far,s,muzzle.y,strikeHeight,
     weapon.penetration);
   const targetTrace=strikeSurface(muzzlePoint,target.p,s,muzzle.y,
