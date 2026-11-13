@@ -1,4 +1,5 @@
 import type {SessionWorldGeometry} from './breach-world-context.ts';
+import {DOOR_HAND_ACQUIRE_REACH} from './breach-door-hand-constants.ts';
 /** Physical hinges, handles, and deterministic door clearance. */
 import {sweptBodyClear,bodyClear} from './breach-navigation.ts';
 import {doorCenter,route,pointToSegment,
@@ -359,6 +360,8 @@ export type BodyDoorPressurePolicy={
  deferClosing?:(door:Door)=>boolean;
  /** A physical crossing may pull a reachable door instead of slamming it. */
  preferOpening?:(door:Door)=>boolean;
+ /** D4: no force from an imaginary hand busy with another action. */
+ canHandAssist?:(door:Door)=>boolean;
  /** Fixed-tick session policy: one body-generated hinge impulse per door. */
  claimContact?:(door:Door)=>boolean;
 };
@@ -393,7 +396,8 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
     // otherwise the operator must move around the free edge.
     const crossing=policy.preferOpening?.(door)??false;
     const assist=crossing&&pressure<0&&
-      dist(from,handlePoint(door))<=DOOR_REACH;
+      dist(from,handlePoint(door))<=DOOR_HAND_ACQUIRE_REACH&&
+      (policy.canHandAssist?.(door)??true);
     const closing=pressure<0&&!assist;
     if(crossing&&closing)continue;
     // Two friendlies can press opposite faces on consecutive motor ticks.
