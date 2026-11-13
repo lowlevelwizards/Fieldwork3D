@@ -9,6 +9,7 @@ import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
 
 type Section={region:Exclude<CoverRegion,'crown'>;us:number[]};
+const bandGeometryByShell=new Map<AchMichCoverShell,THREE.BufferGeometry>();
 const sections:Section[]=[
  {region:'front',us:[-.96,-.70,-.42,-.14,.14,.42,.70,.96]},
  {region:'right',us:[-.96,-.70,-.42,-.14,.14,.42,.70,.96]},
@@ -32,6 +33,8 @@ function bandFrame(shell:AchMichCoverShell,region:Section['region'],
 }
 export function createAchMichSurfaceBandGeometry(
  shell:AchMichCoverShell):THREE.BufferGeometry{
+ const reused=bandGeometryByShell.get(shell);
+ if(reused)return reused;
  const frames:HelmetSurfaceFrame[]=[];
  const target=HELMET_MOUNT_PROFILES[shell].top-2.39;
  for(const section of sections)
@@ -53,5 +56,6 @@ export function createAchMichSurfaceBandGeometry(
  geometry.userData.h10BandClosed=true;
  geometry.userData.h10BandStations=frames.length;
  geometry.userData.h10BandTargetY=target;
+ bandGeometryByShell.set(shell,geometry);
  return geometry;
 }
