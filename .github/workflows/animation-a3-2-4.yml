@@ -5,6 +5,7 @@ on:
       - 'src/breach-physical-micro-aim.ts'
       - 'src/breach-contextual-crouch.ts'
       - 'src/breach-combat-reactions.ts'
+      - 'src/breach-motor-route.ts'
       - 'src/breach-firing-pipeline.ts'
       - 'src/breach-shot-resolution.ts'
       - 'src/breach-muzzle.ts'
