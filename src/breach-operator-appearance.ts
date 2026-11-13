@@ -186,6 +186,20 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
     headLayers.faceFabric,headLayers.maskRubber,
     headLayers.eyewearFrame,headLayers.eyewearLens
   ])r.colors.set(material,material.color.clone());
+  // H8: the same reversible appearance ledger must own helmet field dyes.
+  // The wardrobe updater correctly changes these materials, but without
+  // refreshing their ledger entries the final pose restore paints them
+  // back to their construction defaults (black/tan appeared identical).
+  for(const field of Object.values(headLayers.helmetField))
+   for(const material of [field.bandMaterial,field.webbingMaterial])
+    r.colors.set(material,material.color.clone());
+  for(const details of Object.values(headLayers.achMich))
+   r.colors.set(details.webbingMaterial,details.webbingMaterial.color.clone());
+  if(headLayers.pasgtCover){
+   const field=headLayers.pasgtCover.field;
+   for(const material of [field.bandMaterial,field.webbingMaterial])
+    r.colors.set(material,material.color.clone());
+  }
   // Clothing coverage changes materials on existing articulated limbs only.
   // The bones, solved knee/elbow positions and planted feet stay identical.
   const sleeveState=p.wardrobe?.sleeveState??'unrolled';
