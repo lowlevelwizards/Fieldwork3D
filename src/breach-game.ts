@@ -101,7 +101,7 @@ import {type GroupRole} from './breach-ai-coordination.ts';
 
 
 import type {ActorAwareness} from './breach-awareness.ts';
-import {confirmedSight} from './breach-visual-perception.ts';
+import {detectedSight,confirmedSight} from './breach-visual-perception.ts';
 
 import type {LightingMode} from './equipment-site-lighting.ts';
 import {type PassageLease} from './breach-passage.ts';
@@ -1214,6 +1214,13 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
  return geometricallyVisible(a,b,s)&&confirmedSight(a.awareness.visualProgress[b.id]??0);
 }
+/** One individual's physically detected silhouette, still unidentified. */
+export function personDetected(a:TeamActor,b:TeamActor,s:Session):boolean{
+ return geometricallyVisible(a,b,s)&&
+   detectedSight(a.awareness.visualProgress[b.id]??0);
+}
+export const isDetected=(s:Session,target:TeamActor)=>
+  s.intel.mode==='full-view'||team(s).some(a=>personDetected(a,target,s));
 export const isSeen=(s:Session,target:TeamActor)=>
   s.intel.mode==='full-view'||team(s).some(a=>inSight(a,target,s));
 export function lastKnown(s:Session,id:string){
