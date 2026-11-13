@@ -130,7 +130,9 @@ export function achMichRetentionPaths(
   // z>-4. PASGT avoids this with an outboard cheek station before it
   // turns inward on the front side of the face.
   const junction:Point=[sign*4.56,1.37,-2.91];
-  const cheekDrop:Point=[sign*4.63,.65,-4.62];
+  // Seat both front cheek turns 0.18 closer to the front face while
+  // leaving the cheek's lateral clearance and the chin cup intact.
+  const cheekDrop:Point=[sign*4.63,.65,-4.44];
   // Turn toward the chin only after clearing the cheek. Bring the front
   // cup back to PASGT's proven -4.34 face depth: close to the -4.0 cube
   // surface, but still forward of it; keep the outside cheek-drop unchanged.
