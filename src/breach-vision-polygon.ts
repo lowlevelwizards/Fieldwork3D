@@ -30,7 +30,9 @@ export function visionPolygon(origin:Pt,heading:number,range=240,
   const angles:number[]=[];
   for(let i=0;i<=64;i++)
     angles.push(-VISION_HALF_ANGLE+2*VISION_HALF_ANGLE*i/64);
-  for(const line of blockers)for(const point of [line.a,line.b]){
+  // Only angles of nearby blockers can affect the finite view polygon.
+  // The full blocker list remains authoritative for the ray intersection test.
+  for(const line of rayBlockers)for(const point of [line.a,line.b]){
     const absolute=Math.atan2(point.y-origin.y,point.x-origin.x);
     const delta=Math.atan2(Math.sin(absolute-heading),
       Math.cos(absolute-heading));
