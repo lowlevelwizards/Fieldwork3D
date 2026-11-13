@@ -48,6 +48,8 @@ export function applyAimNode(a:TeamActor,n:PlanNode){
 function retireCurrentOrder(a:TeamActor,completed:boolean){
   if(!a.plan.length)return;
   if(completed)a.completedOrders++;
+  if(a.doorTraversal?.authoredOrderId===a.plan[0]?.id)
+    a.doorTraversal=null;
   a.plan.shift();a.activeNode=-1;a.nav=[];a.autoSidestep=null;
   a.waitRemaining=0;
   a.actionTimer=0;a.syncReady=null;a.pieIndex=0;

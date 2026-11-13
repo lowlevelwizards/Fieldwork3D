@@ -63,7 +63,8 @@ export function syncDoorTraversalEpisode(
   order&&(order.kind==='move'||order.kind==='pie');
  const episode=actor.doorTraversal;
  if(episode){
-  if(!eligible||order.id!==episode.authoredOrderId){
+  if(!eligible||order.id!==episode.authoredOrderId||
+     order.p.x!==episode.destination.x||order.p.y!==episode.destination.y){
    actor.doorTraversal=null;return null;
   }
   let door:Door|undefined;

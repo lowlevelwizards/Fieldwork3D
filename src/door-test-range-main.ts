@@ -42,6 +42,8 @@ let planned=false,playing=false,flips=0,lastOpen=false;
 let minSpacing=Infinity;
 let passed=new Set<string>();
 let crossedAt=new Map<string,number>();
+let sourceSide=new Map<string,number>();
+let activeIds=new Set<string>();
 let selectedId='';
 function plan(){
  const members=team(s).slice(0,4);
@@ -79,6 +81,8 @@ function reset(){
  }
  selected.value=selectedId;
  planned=plan();
+ sourceSide=new Map(members.map(a=>[a.id,Math.sign(a.p.y-260)]));
+ activeIds=new Set(members.filter(a=>a.plan.length>0).map(a=>a.id));
  lastOpen=s.doors[0]?.open??false;
  message.textContent=planned?
   'Plan accepted. Start, step, or tap the map to append a selected operator waypoint.':
@@ -89,17 +93,20 @@ function stats(){
  const members=team(s).slice(0,4),door=s.doors[0];
  let completed=0;
  for(const a of members){
-  if(a.p.y>278&&!crossedAt.has(a.id))
-   crossedAt.set(a.id,s.seconds);
+  const original=sourceSide.get(a.id)??-1;
+  const now=Math.sign(a.p.y-260);
+  if(activeIds.has(a.id)&&now!==original&&Math.abs(a.p.y-260)>18&&
+     !crossedAt.has(a.id))crossedAt.set(a.id,s.seconds);
   if(crossedAt.has(a.id))passed.add(a.id);
-  if(!a.plan.length)completed++;
+  if(activeIds.has(a.id)&&!a.plan.length)completed++;
  }
  if(door&&door.open!==lastOpen){flips++;lastOpen=door.open;}
  for(let i=0;i<members.length;i++)
   for(let j=i+1;j<members.length;j++)
    minSpacing=Math.min(minSpacing,distance(members[i].p,members[j].p));
  clock.textContent=s.seconds.toFixed(2)+'s';
- outcome.textContent=passed.size+' / 4 crossed · '+completed+' finished';
+ outcome.textContent=passed.size+' / '+activeIds.size+' crossed · '+
+  completed+' finished';
  flipsView.textContent=String(flips);
  const deg=((door.openFraction??0)*1.54*180/Math.PI).toFixed(0);
  doorInfo.textContent=deg+'° · '+(door.open?'OPEN':'CLOSED')+
@@ -181,7 +188,8 @@ function tick(){
  if(s.phase==='planning')return;
  stepSession(s,1/60);
  paint();
- if(team(s).slice(0,4).every(a=>!a.plan.length)){
+ if(team(s).slice(0,4).filter(a=>activeIds.has(a.id))
+  .every(a=>!a.plan.length)){
   playing=false;go.textContent='GO';
  }
 }

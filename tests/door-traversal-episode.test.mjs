@@ -47,6 +47,9 @@ test('D1 does not acquire a far or same-side door; cancels on order replacement'
  assert.equal(syncDoorTraversalEpisode(a,[door],1.3),null);
  a.p=p(311,220);
  assert.ok(syncDoorTraversalEpisode(a,[door],1.6));
+ a.plan[0].p=p(310,350);
+ assert.equal(syncDoorTraversalEpisode(a,[door],1.61),null,
+  'editing the same waypoint invalidates its old fixed destination');
  a.plan[0]={id:999,kind:'move',p:p(311,355)};
  assert.equal(syncDoorTraversalEpisode(a,[door],1.62),null);
  assert.equal(a.doorTraversal,null);

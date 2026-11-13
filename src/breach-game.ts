@@ -937,7 +937,9 @@ export function clearPlan(s:Session,id:string){
  const a=party(s,id);if(!a)return false;
  const codes=new Set(a.plan.filter(n=>n.kind==='sync'&&n.syncCode)
    .map(n=>n.syncCode!));
- return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{a.plan=[];}));
+ return editRemovingSync(s,a,codes,()=>edit(s,a,()=>{
+  a.plan=[];a.doorTraversal=null;
+ }));
 }
 export function undoPlan(s:Session,id:string){
  return undoAuthoredPlan(s,id,party);
