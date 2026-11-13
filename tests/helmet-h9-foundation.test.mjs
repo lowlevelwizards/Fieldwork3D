@@ -16,6 +16,7 @@ test('H9.1: cover attachment frames use actual drape, outward normals and orthog
     assert.ok(Math.abs(sample.normal.length()-1)<1e-4);
     assert.ok(Math.abs(sample.up.dot(sample.normal))<1e-4);
     assert.ok(Math.abs(sample.right.dot(sample.normal))<1e-4);
+    assert.ok(sample.right.clone().cross(sample.up).dot(sample.normal)>.99);
     if(region==='front')assert.ok(sample.normal.z<-.1);
     if(region==='back')assert.ok(sample.normal.z>.1);
     if(region==='left')assert.ok(sample.normal.x<-.1);
