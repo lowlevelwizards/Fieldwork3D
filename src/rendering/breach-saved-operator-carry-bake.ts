@@ -6,6 +6,7 @@
 import type {TeamActor} from '../breach-game.ts';
 import {carryPlacementLedger,type CarryPlacement} from '../equipment-carry-placement.ts';
 const EMPTY:readonly CarryPlacement[]=Object.freeze([]);
+const EMPTY_LOCATIONS:readonly CarryPlacement['location'][]=Object.freeze([]);
 type Snapshot={
  signature:string;all:readonly CarryPlacement[];
  magazines:readonly CarryPlacement[];
@@ -14,7 +15,7 @@ type Snapshot={
 };
 const cached=new WeakMap<TeamActor,Snapshot>();
 const empty:Snapshot={signature:'',all:EMPTY,magazines:EMPTY,
- locations:EMPTY};
+ locations:EMPTY_LOCATIONS};
 function visualSignature(a:TeamActor):string{
  const kit=a.equipment;
  if(!kit)return '';
