@@ -186,6 +186,7 @@ test('P2.12 no-op far-pair culling and civilian route profiling are opt-in only'
  assert.match(phase,/const withinSquared=/);
  assert.match(phase,/withinSquared\(a\.p,p,400\)/);
  assert.match(phase,/withinSquared\(o\.p,p,484\)/);
+ assert.match(phase,/withinSquared\(c\.p,p,484\)/);
  assert.match(phase,/civilian-motion\/route-search/);
  assert.match(phase,/if\(!profile\)return port\.routeTo\(s,from,to\)/,
    'no route profiling wall clock should run without ?perf=1');
