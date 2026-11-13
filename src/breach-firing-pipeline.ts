@@ -159,7 +159,8 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
      shoulderOffset:a.aimSideOffset??0,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
      aim:a.aim,posture:a.posture,velocity:0,recoil:a.recoil,
      threatRange:candidateRange
-   },s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
+   },s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,
+     friends);
    if(clearance.blocked)return false;
    const from={x:clearance.muzzle.x,y:clearance.muzzle.z};
    const height=aimHeight(target.posture==='crouch');
@@ -609,8 +610,11 @@ function fire(s:Session,a:TeamActor,dt:number){
       weapon:a.weapon,
       weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
       aim:a.aim,posture:a.posture,velocity:a.velocity,recoil:a.recoil,
-      threatRange:d(a.p,target.p)},s.doors,world.cover,world.walls);
-    if(!preflight.blocked){
+      threatRange:d(a.p,target.p)},s.doors,world.cover,world.walls,
+      friends);
+    if(preflight.blocked&&preflight.blocker==='friendly'){
+      if(requestClearFireStep(s,a,target,'friendly'))return;
+    }else if(!preflight.blocked){
       const from={x:preflight.muzzle.x,y:preflight.muzzle.z};
       const targetHeight=aimHeight(target.posture==='crouch');
       const lane=assessFireLane(from,preflight.muzzle.y,
