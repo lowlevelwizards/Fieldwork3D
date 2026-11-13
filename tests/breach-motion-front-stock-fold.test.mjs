@@ -36,14 +36,14 @@ const armShoulder=(arm,joint)=>arm.upper.position.clone()
 test('normal stocks shoulder at the front; SHORT tucks beside the waist',()=>{
  for(const mode of ['low','high','ready','point','ads']){
   const pocket=stockPocket(mode);
-  if(mode==='high'){
-   const shouldered=stockPocket('ready');
-   assert.ok(pocket.x>2.8&&pocket.x<shouldered.x-1,
-     'high-ready butt seats in firing-side armpit, not cheek pocket');
-   assert.ok(pocket.y<shouldered.y-2,'high-ready underarm contact');
-  }else assert.ok(pocket.x>=4.3&&pocket.x<=5.2,
-    mode+' front seat X');
-  assert.ok(pocket.z>=5.0&&pocket.z<5.5,mode+' close to chest edge');
+  if(mode==='high'||mode==='low'){
+   const user=mode==='high'?[3.9,-2.3,6.6]:[3.45,4.45,4.8];
+   assert.ok(Math.hypot(pocket.x-user[0],pocket.y-user[1],
+     pocket.z-user[2])<.001,'authored '+mode+' stock');
+  }else{
+   assert.ok(pocket.x>=4.3&&pocket.x<=5.2,mode+' front seat X');
+   assert.ok(pocket.z>=5.0&&pocket.z<5.5,mode+' close to chest edge');
+  }
   const fit=fitWeaponPose({weapon:carbine,configuration,
    handling:mode,yaw:0,recoil:0});
   assert.ok(fit.stockError<3,mode+' contact stays seated');

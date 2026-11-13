@@ -59,15 +59,10 @@ export function planUpperBodyStrategy(p:OperatorPose,
  c:UpperBodyStrategyContext):UpperBodyStrategy{
  const previewReloadSeed=p.poseV3Preview===true&&
    p.reload>0&&p.reloadDuration>0;
- const coupledEligible=false&&c.hasModularBuild&&c.handling==='low'&&
-   p.posture==='stand'&&c.physicalSpeed<.45&&
-   Math.abs(p.turning)<.28&&!p.down&&!p.surrender&&!p.firing&&
-   !p.aiming&&(p.aimBlend??0)<.02&&
-   (p.reload<=0||previewReloadSeed)&&
-   !p.treatmentActive&&(!c.activeTransition||c.authoredLabSwitch)&&
-   !c.interactionWindow&&p.seconds-p.lastDoorAt>1.2&&
-   p.seconds-p.lastThrowAt>.85&&
-   (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
+ // User-authored high/low silhouettes now own the full firearm and arms.
+ // Keep the old coupled solver available as a Lab diagnostic, not the
+ // live/shot-time pose authority that would silently overwrite the export.
+ const coupledEligible=false;
  const supportEligible=!!p.poseV3Preview&&c.hasModularBuild&&
    c.handling!=='low'&&c.handling!=='high'&&
    !p.firing&&!p.down&&!p.surrender&&p.reload<=0;
