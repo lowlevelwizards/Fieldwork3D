@@ -77,7 +77,7 @@ export function autoDoorAtBodyContact(from:Pt,to:Pt,
    if(before>=OPERATOR_RADIUS+7||after>=OPERATOR_RADIUS+7||
       after>=before-.015)continue;
    if(after<nearestDistance||
-      after===nearestDistance&&nearest&&d.id<nearest.id){
+      after===nearestDistance&&nearest&&d.id.localeCompare(nearest.id)<0){
      nearest=d;nearestDistance=after;
    }
  }

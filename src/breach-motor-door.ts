@@ -54,7 +54,7 @@ export function handleMotorDoor(
        !doorBlocksSegment(door,{a:a.p,b:p}))continue;
     const distance=pointToSegment(a.p,doorLeafSegment(door));
     if(distance<closest||
-       distance===closest&&doorAhead&&door.id<doorAhead.id){
+       distance===closest&&doorAhead&&door.id.localeCompare(doorAhead.id)<0){
       doorAhead=door;closest=distance;
     }
   }

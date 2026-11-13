@@ -50,6 +50,10 @@ test('D5 deterministic nearest contact breaks exact ties by door ID',()=>{
  assert.equal(autoDoorAtBodyContact(from,toward,[b,a]),a);
  assert.equal(autoDoorAtBodyContact(from,toward,[a,b]),a);
  assert.equal(autoDoorAtBodyContact(toward,from,[a,b]),undefined);
+ const mixed=[door('B'),door('a')];
+ assert.equal(autoDoorAtBodyContact(from,toward,mixed),
+  mixed.slice().sort((x,y)=>x.id.localeCompare(y.id))[0],
+  'locale-aware tie order must match historical stable sorting');
 });
 test('D5 preserves authored KICK, CLOSE, HOLD and intervening-leaf priority',()=>{
  for(const method of ['kick','close','hold']){
