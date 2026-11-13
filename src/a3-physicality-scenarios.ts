@@ -44,7 +44,7 @@ export function a3Fixture(config:A3Config):Site{
  const cover:Obstacle[]=scene==='furniture'?
   [{x:259,y:224,w:29,h:47,fixture:'counter',low:false}]:[];
  return {
-  seed:config.seed,name:'A3 PHYSICALITY '+scene,layout:'open',
+  seed:config.seed,name:'A3 PHYSICALITY '+scene,layout:'courtyard',
   training:false,rooms:[],roomCount:0,walls,doors,cover,windows:[],
   entrance:p(90,223),spawn:positions,enemies:[p(390,223)],
   enemyHeadings:[Math.PI],objective:p(425,223),extract:p(80,350),
