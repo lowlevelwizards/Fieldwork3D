@@ -22,6 +22,13 @@ test('H9.4b: ACH-ARC rails span both cover sides with real shape and two mounts'
     assert.equal(Math.sign(p[0]),side==='left'?-1:1);
     assert.ok(p.every(Number.isFinite));
    }
+   // MICH high-cut fabric has abrupt hem transitions, but manufactured
+   // ACH-ARC connectors must not dive into that cut as a zigzag.
+   for(let i=1;i<positions.length;i++)
+    assert.ok(Math.abs(positions[i][1]-positions[i-1][1])<.75,
+     id+' '+side+' rail changes height abruptly at station '+i);
+   assert.ok(positions.at(-1)[1]>positions[2][1]+.30,
+    id+' '+side+' missing distinctive raised rear return');
    const box=new THREE.Box3().setFromObject(g),size=new THREE.Vector3();
    box.getSize(size);
    assert.ok(size.z>5.5,id+' '+side+' rail too short to read');
