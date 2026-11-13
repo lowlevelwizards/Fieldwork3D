@@ -18,6 +18,8 @@ test('H9.7: every modern add-on has its own recognizable mounted silhouette',()=
    const g=kit.modules[name];
    assert.equal(g.userData.h9SpecificAddon,name);
    assert.equal(g.userData.h9SurfaceFitted,true);
+   assert.ok(g.userData.h9AddonGraphicScale>=1.3,
+    shell+' '+name+' still undersized at game zoom');
    const anchors=g.children.filter(x=>x.userData.h9RealCoverNormal);
    assert.equal(anchors.length,1,shell+' '+name+' must mount to real fabric');
    const n=new THREE.Vector3(...anchors[0].userData.h9RealCoverNormal);
@@ -27,6 +29,13 @@ test('H9.7: every modern add-on has its own recognizable mounted silhouette',()=
    updateHelmetFieldLayers(kit,{[name]:true},0x62705d,true);
    assert.equal(g.visible,true);
   }
+  const counter=kit.modules.counterweight.children.find(x=>
+   x.name==='helmet-addon-fitted-socket');
+  const battery=kit.modules.battery.children.find(x=>
+   x.name==='helmet-addon-fitted-socket');
+  assert.ok(counter&&battery);
+  assert.ok(battery.position.x-counter.position.x>2,
+   shell+' rear mounted modules must occupy separate positions');
  }
 });
 test('H9.7: historical PASGT excludes modern unsupported modules',()=>{
