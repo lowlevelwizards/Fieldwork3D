@@ -35,6 +35,8 @@ on:
       - 'scripts/ach-mich-h5-visual-capture.mjs'
       - 'scripts/ach-mich-h6-visual-capture.mjs'
       - 'scripts/helmet-h7-visual-capture.mjs'
+      - 'src/operator-helmet-surface.ts'
+      - 'tests/helmet-h9-foundation.test.mjs'
       - 'src/operator-helmet-field-visuals.ts'
       - 'src/operator-helmet-field-policy.ts'
       - 'src/operator-ach-mich-cover-drape.ts'
@@ -110,6 +112,21 @@ jobs:
       - name: Rendering R7.14 — actual Arsenal weapon 3D shader mobile smoke
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/lighting-r714-') }}
         run: node scripts/smoke-arsenal-lighting-r714.mjs
+      - name: H9 staged helmet foundation types and focused geometry
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h9-') }}
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/ach-mich-h5-cover-strap.test.mjs tests/helmet-h8-recovery.test.mjs tests/helmet-h9-foundation.test.mjs
+      - name: H9 mobile WebGL cover and equipment regression capture
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h9-') }}
+        run: node scripts/helmet-h7-visual-capture.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h9-') }}
+        with:
+          name: helmet-h9-review
+          path: helmet-h7-captures/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: H8 helmet recovery TypeScript and concentrated geometry tests
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h8-') }}
         run: |
