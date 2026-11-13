@@ -37,6 +37,7 @@ export const withActions=(a:Operator):TeamActor=>({
   recoveryAttempts:0,retryRouteAt:0,routeGoalKey:'',
   lastAutoShoveAt:-100,doorTraversal:null,doorTraversalLastProbeAt:-10,
   doorHandContact:null,physicalContact:null,pivotEpisode:null,
+  kickFoot:null,
   squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
    autoSidestep:null,
   traversalPending:null,traversal:null,traversalElapsed:0,
