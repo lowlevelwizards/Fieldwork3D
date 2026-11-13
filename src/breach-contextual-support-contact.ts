@@ -43,6 +43,13 @@ export type SupportSurface={
  readonly id:string;readonly point:Pt;readonly normal:Pt;
  readonly height:number;readonly kind:'wall'|'cover'|'doorframe';
 };
+/** Streaming equivalent of the previous score-sorted choice list. Same
+ * distance and locale tie break; only the lowest and retained candidates
+ * need to survive. Contact geometry is still reevaluated each fixed tick. */
+type ScoredSupport={claim:ContactClaim;score:number};
+const nearerSupport=(a:ScoredSupport,b:ScoredSupport)=>
+ a.score-b.score||a.claim.contact.anchor.id.localeCompare(
+  b.claim.contact.anchor.id);
 const nearestPoint=(p:Pt,segment:Segment):Pt=>{
  const dx=segment.b.x-segment.a.x,dy=segment.b.y-segment.a.y;
  const t=clamp(((p.x-segment.a.x)*dx+(p.y-segment.a.y)*dy)/
@@ -117,16 +124,20 @@ export function chooseEnvironmentSupport(
  previous:PhysicalContact|null
 ):ContactClaim|null{
  const origin=handOrigin(a),p=sourcePoint(origin);
- const options:{claim:ContactClaim;score:number}[]=[];
+ const picks:{best:ScoredSupport|null;retained:ScoredSupport|null}={
+  best:null,retained:null};
  function push(surface:SupportSurface|null){
   if(!surface)return;
   const retained=!!previous&&previous.releasedAt===null&&
     previous.anchor.id===surface.id;
   const claim=contactForSurface(s,a,surface,world,retained);
   if(!claim)return;
-  options.push({claim,score:Math.hypot(
+  const option={claim,score:Math.hypot(
     surface.point.x-origin.x,surface.height-origin.y,
-    surface.point.y-origin.z)});
+    surface.point.y-origin.z)};
+  if(!picks.best||nearerSupport(option,picks.best)<0)picks.best=option;
+  if(retained&&(!picks.retained||
+     nearerSupport(option,picks.retained)<0))picks.retained=option;
  }
  world.someWallNearPoint(a.p,30,(wall,index)=>{
   if(pointToSegment(a.p,wall)>29)return false;
@@ -147,12 +158,8 @@ export function chooseEnvironmentSupport(
     height:19,kind:'doorframe'});
   }
  }
- options.sort((a,b)=>a.score-b.score||
-  a.claim.contact.anchor.id.localeCompare(b.claim.contact.anchor.id));
- const retained=previous&&previous.releasedAt===null?
-  options.find(x=>sameContact(x.claim.contact,previous)):null;
  // A planted support hand is stable until reach/occlusion truly breaks.
- return (retained??options[0])?.claim??null;
+ return (picks.retained??picks.best)?.claim??null;
 }
 export function teammateShoulderPoint(
  leader:Pick<TeamActor,'p'|'heading'|'posture'>
@@ -172,7 +179,8 @@ export function chooseTeammateSupport(
  if(a.side!=='blue')return null;
  const f=forward(a.heading),l=left(a.heading);
  const from=handOrigin(a);
- const options:{claim:ContactClaim;score:number}[]=[];
+ let best:ScoredSupport|null=null;
+ let retained:ScoredSupport|null=null;
  for(const lead of s.operators){
   if(lead===a||lead.side!==a.side||lead.health<=0||
      lead.surrendered||lead.traversal||lead.squeeze||
@@ -196,15 +204,14 @@ export function chooseTeammateSupport(
    lineClear:world.isClear(sourcePoint(from),target,s.doors)};
   if(!contactWithinReach(contact,e,!!previous&&
     previous.releasedAt===null&&sameContact(contact,previous)))continue;
-  options.push({claim:{contact,reach:e},
+  const candidate={claim:{contact,reach:e},
    score:Math.hypot(shoulder.x-from.x,shoulder.y-from.y,
-     shoulder.z-from.z)});
+     shoulder.z-from.z)};
+  if(!best||nearerSupport(candidate,best)<0)best=candidate;
+  if(previous?.releasedAt===null&&sameContact(contact,previous)&&
+     (!retained||nearerSupport(candidate,retained)<0))retained=candidate;
  }
- options.sort((a,b)=>a.score-b.score||
-    a.claim.contact.anchor.id.localeCompare(b.claim.contact.anchor.id));
- const retained=previous&&previous.releasedAt===null?
-   options.find(o=>sameContact(o.claim.contact,previous)):null;
- return (retained??options[0])?.claim??null;
+ return (retained??best)?.claim??null;
 }
 function contactOwnersForActor(s:Session,a:TeamActor):ContactOwners{
  const now=s.seconds;
