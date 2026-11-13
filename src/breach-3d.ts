@@ -62,6 +62,7 @@ import {wearFinish} from './rendering/wear-finish.ts';
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
 import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
+import {RepeatedFixtureBatches} from './rendering/breach-repeated-fixture-batches.ts';
 import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
   from './rendering/breach-shadow-controller.ts';
 
@@ -85,7 +86,9 @@ import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter,LIGHT_BEAM_SAMPLES}
  from './equipment-weapon-light-beam.ts';
 import {type Site,type Room,type WideOpening} from './breach-site.ts';
-import {carryPlacementLedger} from './equipment-carry-placement.ts';
+import {bakedOperatorCarry,prewarmSavedOperatorCarry}
+ from './rendering/breach-saved-operator-carry-bake.ts';
+import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
@@ -141,8 +144,13 @@ export class TacticalScene3D{
    studioShadowPalette('plum-plus').fill,.60);
   /** Renderer-only; ?presentationSight=legacy bypasses memo for A/B. */
   private readonly presentationSight=new PresentationSightMemo();
-  private readonly profileSceneUpdate=
+  private profileSceneUpdate=
    new URLSearchParams(location.search).has('perf');
+  /** In-game PERF arms all scene timings even without ?perf=1 at launch.
+   * Hidden PERF continues recording, without changing render behavior. */
+  setPerformanceProfilingEnabled(enabled:boolean):void{
+   this.profileSceneUpdate=enabled;
+  }
   private scenePhaseStart=0;
   /** Opt-in cold-rig vs pose timing. The actor phase can contain first-use
    * wardrobe material/shadow generation as well as steady-state posing. */
@@ -213,6 +221,9 @@ export class TacticalScene3D{
   private readonly fogDiagnostic:FogDiagnostic=
     new URLSearchParams(location.search).get('fogDebug')==='palette'?
       'palette':'normal';
+  /** Scratch list for occluding operators; avoids two arrays per RAF. */
+  private readonly bloodBlockerScratch:Pt[]=[];
+  private readonly nearbyAllyScratch:Pt[]=[];
   private fogMemoryPaints=0;
   private fogSightPaints=0;
   private lastFogSession:Session|null=null;
@@ -224,6 +235,7 @@ export class TacticalScene3D{
     return {calls:info.calls,triangles:info.triangles,
       geometryCount:memory.geometries,textureCount:memory.textures,
       staticBatch:this.staticBatches.stats(),
+      repeatedFixtureBatch:this.repeatedFixtures.stats,
       siteMaterialCount:this.siteMaterials.size,
       actorRigCount:this.actors.size,
       civilianRigCount:this.civilianRigs.size,
@@ -597,6 +609,7 @@ export class TacticalScene3D{
   readonly canvas:HTMLCanvasElement;
   private root=new THREE.Group();
   private readonly staticBatches=new StaticSceneBatches();
+  private readonly repeatedFixtures=new RepeatedFixtureBatches();
   private readonly shadowUpdates=new ShadowUpdateController();
   private shadowLodTransitions=0;
   private fogUnknown:THREE.InstancedMesh;
@@ -980,6 +993,7 @@ export class TacticalScene3D{
   applySite(site:Site|null){
     this.displayedSite=site;
     this.staticBatches.clear();
+    this.repeatedFixtures.clear();
     this.presentationSight.reset();
     // Friendly rigs survive map changes for responsive load-in. Hostile
     // models belong to the outgoing encounter and otherwise accumulate
@@ -1066,6 +1080,7 @@ export class TacticalScene3D{
       signMaterial:(...args)=>scene.signMaterial(...args),
       addSurfaceWear:(...args)=>scene.addSurfaceWear(...args),
       staticBatches:scene.staticBatches,
+      repeatedFixtures:scene.repeatedFixtures,
       sharedBoxGeometries:scene.sharedBoxGeometries,
       siteMaterials:scene.siteMaterials,
       mats:scene.mats,
@@ -1439,7 +1454,22 @@ export class TacticalScene3D{
     return true;
   }
   private soldier(a:TeamActor){
+    // Saved operator kit pouch/mag placement is ready before first combat.
+    prewarmSavedOperatorCarry(a);
     const physical=createOperatorRig(a.id,a.side,true);
+    // Bake saved colors, field-gear geometry selection, shadow receivers,
+    // and reusable texture atlases at rig preparation, not first contact.
+    // Studio previews remain fully editable and animated bones unmerged.
+    const precomputed=bakedOperatorCarry(a);
+    updateOperatorAppearance(physical,{
+      appearanceSeed:a.appearanceSeed,equipment:a.equipment,
+      wardrobe:a.wardrobe,weaponConfiguration:a.weaponConfiguration,
+      magazineCarryLocations:precomputed.locations,
+      medicalCarryLocation:precomputed.medical,
+      utilityCarryLocation:precomputed.utility,
+      flashCharges:a.flashCharges,treatmentActive:a.treatmentActive,
+      down:a.health<=0,surrender:a.surrendered
+    });
     // Purely opt-in CPU phase marks inside poseOperator; no normal-play
     // instrumentation or changes to rig construction/animation decisions.
     if(this.profileSceneUpdate)
@@ -1561,6 +1591,8 @@ export class TacticalScene3D{
         x:current.x,y:current.y,w:current.w,h:current.h,
         destroyed:!!current.destroyed,toppled:!!current.toppled
       });
+      // Instanced repeated furniture follows the same physical transform.
+      this.repeatedFixtures.sync(index,true);
     }
     // Personal replay (including non-bodycam operator views) reads only
     // historically observed panes. The global replay reads its exact frame.
@@ -1689,6 +1721,7 @@ export class TacticalScene3D{
         item.kind==='cover'?
           personalCoverVisible(squadKnown,personalDisclosure,personalGroundEvidence,
             cover??null):squadKnown;
+      if(item.kind==='cover')this.repeatedFixtures.sync(item.index);
     }
     // Unlike the room's floor, decorative props must be individually
     // seen (or remembered at their own position) before they are rendered.
@@ -1701,10 +1734,12 @@ export class TacticalScene3D{
     for(let i=0;i<this.observedDetails.length;i++){
       const detail=this.observedDetails[i];
       // Exact site-stable points; same visibility rule, fewer repeated rays.
+      const previousVisibility=detail.obj.visible;
       detail.obj.visible=presentDecor(s,detail,omniscient,
         personalDisclosure,personalGroundEvidence,
         p=>this.presentationSight.query(s,'decor',i,p));
-      this.staticBatches.setVisible(detail.obj,detail.obj.visible);
+      if(detail.obj.visible!==previousVisibility)
+       this.staticBatches.setVisible(detail.obj,detail.obj.visible);
     }
     // Director cuts walls around its actual historical friendly focal group,
     // rather than a potentially unrelated manually selected soldier.
@@ -1765,8 +1800,9 @@ export class TacticalScene3D{
       const observed=personal&&replayDoorHistory?
         replayDoorHistory.at(s.seconds,replayDisclosurePolicy.observerId,door.id):
         null;
-      const directlyObserved=!personal&&this.presentationSight.query(
-        s,'door',door.id,doorCenter(door));
+      // FULL-view already discloses this door; avoid a redundant LOS ray.
+      const directlyObserved=!personal&&(omniscient||this.presentationSight.query(
+        s,'door',door.id,doorCenter(door)));
       const visual=resolveDoorPresentation({
         door,personal,observed,omniscient,directlyObserved,
         rememberedOpen:s.intel.doorMemory.get(door.id)??0,
@@ -1880,6 +1916,10 @@ export class TacticalScene3D{
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
     this.markScenePhase('disclosure');
+    // Quality tier is camera-wide, not per-person. Calculate it once even
+    // when twenty operators are animating this frame.
+    const frameShadowDetail=operatorShadowDetail(
+      projectedOperatorHeightPx(this.camera,this.height),this.quality.mode);
     for(const actor of s.operators){
       const visible=presentActor(s,actor,omniscient,replayDisclosurePolicy);
       // Hostile first-contact should not trigger a full rig, costume/lightmap,
@@ -2018,7 +2058,8 @@ export class TacticalScene3D{
       const friendlyAhead=stackCrowded||actuallyAhead;
       // One allocation only for an actual nearby ally, avoiding global
       // all-actor geometry work. Same sampled actor facts in live/replay.
-      const nearbyAllies:Pt[]=[];
+      const nearbyAllies=this.nearbyAllyScratch;
+      nearbyAllies.length=0;
       for(const peer of s.operators){
         if(peer===actor||peer.side!==actor.side||peer.health<=0)continue;
         if(Math.hypot(peer.p.x-drawActor.x,peer.p.y-drawActor.z)<90)
@@ -2068,14 +2109,12 @@ export class TacticalScene3D{
       }
       // The quality tier is selected from screen pixels, not absolute world
       // distance. No new directional light or actor-specific shadow map.
-      const px=projectedOperatorHeightPx(this.camera,this.height);
-      const shadowDetail=operatorShadowDetail(px,this.quality.mode);
+      const shadowDetail=frameShadowDetail;
       object.physical.root.userData.fieldworkCavityQuality=
         cavityQualityForDetail(shadowDetail);
       // Shared, bounded inventory projection for both visible containers.
-      const carried=actor.equipment?
-       carryPlacementLedger(actor.equipment,actor.spareMagazines):[];
-      const carriedMagazines=carried.filter(p=>p.kind==='magazine');
+      const carried=bakedOperatorCarry(actor);
+      const carriedMagazines=carried.magazines;
       // Actors generated as hostile 'occupants' are still ARMED. Visual
       // activity only adjusts existing idle head/breath, never stows rifles
       // or overrides the simulation. The resolved site is recorded with
@@ -2107,11 +2146,11 @@ export class TacticalScene3D{
         // This changes rendered anatomy only, not fixed-step ammo/shot.
         poseV3Preview:true,poseV4ReloadPreview:true,
         poseDiagnostics:false,
-        magazineCarryLocations:carriedMagazines.map(p=>p.location),
+        magazineCarryLocations:carried.locations,
         magazineCarryItems:carriedMagazines,
         reloadSelectedMagazineId:actor.reloadSelectedMagazineId,
-        medicalCarryLocation:carried.find(p=>p.kind==='medical')?.location,
-        utilityCarryLocation:carried.find(p=>p.kind==='utility')?.location,
+        medicalCarryLocation:carried.medical,
+        utilityCarryLocation:carried.utility,
          weaponConfiguration:actor.weaponConfiguration,
          weaponLightOn:actor.weaponLightOn,
         treatmentActive:actor.treatmentActive,
@@ -2345,8 +2384,12 @@ export class TacticalScene3D{
     const bloodCamera=opticalCamera.position;
     const orthoBlood=opticalCamera instanceof THREE.OrthographicCamera;
     opticalCamera.getWorldDirection(this.bloodCameraDirection).negate();
-    const visibleBloodBlockers=s.operators.filter(a=>
-      this.actors.get(a.id)?.root.visible).map(a=>a.p);
+    const visibleBloodBlockers=this.bloodBlockerScratch;
+    visibleBloodBlockers.length=0;
+    if(s.impactMarks.length&&replayDisclosurePolicy?.mode!=='operator')
+     for(const actor of s.operators)
+      if(this.actors.get(actor.id)?.root.visible)
+       visibleBloodBlockers.push(actor.p);
     let markCount=0;
     for(let markIndex=0;markIndex<s.impactMarks.length;markIndex++){
       const mark=s.impactMarks[markIndex];

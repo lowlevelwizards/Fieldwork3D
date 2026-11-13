@@ -31,8 +31,10 @@ export function presentCivilian(s:Session,c:CivilianActor,omniscient:boolean,
    return recordedReplayKnowledge(s)?
      replayCivilianDisclosed(s,c.id,policy):c.replayVisible===true;
  }
- return civilianPresentationVisible(c,false,
-   omniscient,liveVisibility(s,c.p));
+ // An omniscient tactical view already grants model disclosure. Avoid
+ // calculating a sight ray that civilianPresentationVisible would discard.
+ return omniscient||civilianPresentationVisible(c,false,
+   false,liveVisibility(s,c.p));
 }
 export function presentDecor(s:Session,detail:{
  position:Pt;microKey:string;fineKey:string

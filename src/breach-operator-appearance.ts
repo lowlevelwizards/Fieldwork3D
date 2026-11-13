@@ -48,7 +48,13 @@ const appearanceState=new WeakMap<OperatorRig,{
  key:string;downed:boolean;outfit:ReturnType<typeof resolvedWardrobe>
 }>();
 
-export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
+/** Static appearance inputs can be baked from saved Studio/roster data
+ * before the first live animation pose. No motion/IK fields are required. */
+export type OperatorAppearanceInputs=Pick<OperatorPose,
+ 'appearanceSeed'|'equipment'|'wardrobe'|'magazineCarryLocations'|
+ 'medicalCarryLocation'|'utilityCarryLocation'|'faceStyle'|
+ 'flashCharges'|'treatmentActive'|'weaponConfiguration'|'down'|'surrender'>;
+export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInputs){
   // Fingerprint only presentation inputs; movement, time and dynamic posing
   // are purposefully excluded. JSON captures in-place Studio edits and
   // magazine / medical inventory changes without depending on object identity.

@@ -80,6 +80,7 @@ export function createBreachRuntimeLoop(config:BreachRuntimeLoopHooks){
  let last=performance.now(),accum=0,hudAt=0,running=false,frameQueued=false;
  let previousRenderActors:Record<string,RenderActor>|null=null;
  let previousRenderDoors:Record<string,number>|null=null;
+ let profiledStage:TacticalScene3D|null=null;
 
 const awarenessParam=config.boot.awareness;
 const awarenessPanel=awarenessParam!==null?
@@ -120,6 +121,8 @@ function setProfilerOpen(open:boolean):boolean{
   document.body.append(perfOverlay);
   frameMeter=new FrameMeter();
   setSightDiagnosticsEnabled(true);
+  // Activate full scene phase attribution immediately, even in a normal URL.
+  config.getStage()?.setPerformanceProfilingEnabled?.(true);
   previousPerfJs=previousCoarseJs;
   previousPerfMode=previousCoarseMode;
  }
@@ -179,6 +182,12 @@ function tick(now:number){
     replayDirector=replayCamera.director,replayKnowledge=config.knowledge,
     replayBodycam=config.bodycam,replayQuickVideo=config.video,
     audioController=config.audio,canvas=config.canvas;
+  // A new map can install its own scene after PERF was armed. Configure
+  // that scene once; never re-arm or allocate during each steady RAF.
+  if(stage!==profiledStage){
+   stage?.setPerformanceProfilingEnabled?.(!!perfOverlay);
+   profiledStage=stage;
+  }
   const frameMode=runtimeFrameMode({mode:campaignMode,
     quickPlayBusy:config.isQuickPlayBusy(),replaying,phase:state.phase});
   if(perfTimeline&&perfTimelineSession!==state){
@@ -188,6 +197,8 @@ function tick(now:number){
    previousHotSim=undefined;
    previousCoarseJs=undefined;previousCoarseMode=undefined;
    lastSightTotals=null;lastFogPaints=0;lastShadowRefreshes=0;
+   // Don't carry a previous map's door IDs into the next session.
+   previousRenderActors=null;previousRenderDoors=null;
    for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
     intervalSight[k]=0;
   }
@@ -212,8 +223,12 @@ function tick(now:number){
     accum=budget.remaining;
     for(let i=0;i<budget.steps;i++){
       previousRenderActors=renderSnapshot(state.operators);
-      previousRenderDoors=Object.fromEntries(state.doors.map(d=>
-        [d.id,d.openFraction??(d.open?1:0)]));
+      // A previous-frame door sample is consumed synchronously by this
+      // RAF's scene update. Reuse the same bounded object during the round
+      // instead of allocating a map and tuples on every 60Hz tick.
+      if(!previousRenderDoors)previousRenderDoors={};
+      for(const door of state.doors)
+       previousRenderDoors[door.id]=door.openFraction??(door.open?1:0);
       const simulationStart=perfOverlay?performance.now():0;
       stepSession(state,1/60,simPhaseCosts?
         (name,ms)=>simPhaseCosts.set(name,
@@ -255,7 +270,16 @@ function tick(now:number){
   const uiAudioEnd=perfOverlay?performance.now():0;
   // Execution's full HUD reconciliation is DOM-heavy; explicit commands
   // still call updateHud() immediately, while live status refreshes ~5.5Hz.
-  if(now-hudAt>(state.phase==='running'?180:120)){
+  // Completed missions have no live status clock to reconcile at 8 Hz.
+  // Explicit selection/commands still update the HUD immediately. Keep
+  // planning at 120ms and active execution at 180ms as before.
+  const terminalHud=(state.phase==='won'||state.phase==='lost')&&!replaying;
+  const hudPeriod=state.phase==='running'?180:terminalHud?750:120;
+  // After an OS/browser suspension the completed HUD is already static.
+  // Do not combine its costly DOM reconciliation with the first 3D resume
+  // frame. Ordinary live/planning/replay resume paths remain untouched.
+  if(terminalHud&&frameGap>1000)hudAt=now;
+  if(now-hudAt>hudPeriod){
     config.updateHud();if(replaying)config.updateReplayHud();hudAt=now;
   }
   const uiHudEnd=perfOverlay?performance.now():0;
