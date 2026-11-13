@@ -60,7 +60,7 @@ function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
  path.push(right);
  strip(g,path,1.06,elastic,'continuous-helmet-goggle-strap');
  // Broad external adjusters, one on each side, not independent blocks.
- for(const [side,region] of [[-1,'left'],[1,'right']] as const){
+ for(const region of ['left','right'] as const){
   const f=sampleHelmetCover(shell,region,front?-.06:.08,.19,.45);
   if(!f)continue;
   const buckle=new THREE.Mesh(new THREE.BoxGeometry(.32,1.23,.13),metal);
