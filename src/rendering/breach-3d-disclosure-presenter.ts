@@ -1,7 +1,7 @@
 /** Unified presentation disclosure. Never modifies simulation knowledge.
  * In particular, physical camera cutaways cannot reveal unseen objects.
  */
-import {liveVisibility,isSeen,type Session,type TeamActor} from '../breach-game.ts';
+import {liveVisibility,isDetected,type Session,type TeamActor} from '../breach-game.ts';
 import type {Door,Pt} from '../breach-core.ts';
 import type {CivilianActor} from '../breach-civilian-types.ts';
 import {replayActorDisclosed,replayCivilianDisclosed,recordedReplayKnowledge,
@@ -18,7 +18,7 @@ export function presentActor(s:Session,a:TeamActor,omniscient:boolean,
  // A live game has no historical sample. Keep its authoritative current
  // actor sight separate from replay's intentionally fail-closed evidence.
  return omniscient||a.side==='blue'||(a.health>0?
-   isSeen(s,a):liveVisibility(s,a.p));
+   isDetected(s,a):liveVisibility(s,a.p));
 }
 export function presentCivilian(s:Session,c:CivilianActor,omniscient:boolean,
  policy:ReplayDisclosure|null):boolean{
