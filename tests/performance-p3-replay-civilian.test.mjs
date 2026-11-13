@@ -28,7 +28,7 @@ test('20Hz replay civilian frame inherits exactly the observer-knowledge truth',
 });
 
 test('omniscient civilian disclosure does not evaluate live sight',()=>{
- const s=newSession(0,3411);
+ const s=newSession(0,3411,'true-blind','small');
  const sentinel={id:'no-los',get p(){
   throw Error('omniscient disclosure evaluated an unnecessary LOS point');
  }};
