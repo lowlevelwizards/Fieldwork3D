@@ -64,9 +64,18 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     if(n.pivot&&!a.squeeze)rotate(a,angle(a.p,n.pivot),dt,s);
     return true;
   }
-  const friendlyPeers=n.kind==='move'?
-    s.operators.filter(b=>b!==a&&b.health>0&&b.side===a.side)
-      .map(b=>b.p):[];
+  // Friendly settling is only consulted within 15.5 units of the
+  // authored goal (or <=18.5 around a saved settle point). Don't build
+  // a roster on every ordinary MOVE tick across the map. A teammate
+  // >40 units from the goal cannot affect either settle or arrival gap.
+  const friendlyPeers:Pt[]=[];
+  if(n.kind==='move'&&
+     (a.p.x-n.p.x)**2+(a.p.y-n.p.y)**2<=20*20)
+   for(const peer of s.operators){
+    if(peer===a||peer.health<=0||peer.side!==a.side)continue;
+    if((peer.p.x-n.p.x)**2+(peer.p.y-n.p.y)**2<=40*40)
+     friendlyPeers.push(peer.p);
+   }
   // Avoid finishing two authored MOVE destinations inside one friendly
   // body diameter. Make the *last moving operator* take a small, legal
   // settle step; never push or move someone whose own order is complete.
