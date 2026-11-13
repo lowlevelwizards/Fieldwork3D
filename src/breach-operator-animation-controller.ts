@@ -109,8 +109,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     previousHandling:r.lastHandling??undefined,
     previousHandlingAt:r.lastHandlingAt
   });
-  const {physicalSpeed,moving,direction,hipTarget,crouch}=
+  const {physicalSpeed,moving,direction,hipTarget,crouch:postureCrouch}=
     preparedDecision.locomotion;
+  const crouch=postureCrouch+(p.coverStanceDrop??0);
   frame.hip.position.y=LEG_HIP_HEIGHT-crouch;
   frame.chest.position.y=26-crouch;
   // Low traversal carries a rearward pelvis and counterbalanced thorax.
