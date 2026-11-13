@@ -13,6 +13,9 @@ const tracks=[
  {name:'accelerate',time:950},{name:'stop',time:1300},
  {name:'restart',time:1800},
  {name:'strafe-reverse',time:1550},{name:'turn-90',time:1250},
+ {name:'strafe-left',time:750},{name:'strafe-right',time:750},
+ {name:'back',time:1250},{name:'turn-180',time:1800},
+ {name:'pivot-reverse',time:2200},
  {name:'pie',time:1500},{name:'crouch-walk',time:1200},
  {name:'active-aim',time:1100},{name:'short-stock',time:900}
 ];

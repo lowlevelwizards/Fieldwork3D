@@ -4,6 +4,10 @@ on:
     paths:
       - 'src/breach-contact-balance.ts'
       - 'src/breach-motion-transitions.ts'
+      - 'src/breach-directional-gait.ts'
+      - 'src/breach-hybrid-landing.ts'
+      - 'src/breach-distance-gait.ts'
+      - 'src/breach-hybrid-step-planner.ts'
       - 'src/breach-replay-motion.ts'
       - 'src/breach-lab-tracks.ts'
       - 'src/breach-operator-lab.ts'
@@ -16,6 +20,7 @@ on:
       - 'scripts/smoke-animation-a2.mjs'
       - 'docs/animation-a2-0-a2-1-scope.md'
       - 'docs/animation-a2-2-scope.md'
+      - 'docs/animation-a2-3-scope.md'
       - '.github/workflows/animation-a2-motion.yml'
   workflow_dispatch:
 permissions:

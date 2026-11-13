@@ -3,6 +3,7 @@
  */
 import type {FootTarget} from './breach-footsteps.ts';
 import {contactBalance} from './breach-contact-balance.ts';
+import {directionalBodyCue} from './breach-directional-gait.ts';
 import {motionFromTransitions,type MomentumEnvelope} from './breach-motion-transitions.ts';
 import {legMaximumLength,LEG_HIP_SIDE,LEG_ANKLE_HEIGHT,
   LEG_HIP_HEIGHT,legRestRise} from './breach-leg-geometry.ts';
@@ -40,6 +41,8 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
     input.gait==='squeeze'?.25:input.gait==='pie'?.38:1)*
     (1-.48*tension);
   const {swinging,receiving,unloading}=load;
+  const directional=directionalBodyCue(speed,forward,side,crouch,
+    tension,input.gait);
   const transient=motionFromTransitions({
     velocity:input.velocity,acceleration:input.acceleration,
     travelYaw:input.travelYaw,heading:input.heading,feet:input.feet,
@@ -64,7 +67,7 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   // not invent an additional grounded contact.
   pelvisY-=receiving*load.singleSupport*.14*
     moving*crouch*wound;
-  pelvisY+=transient.pelvisY;
+  pelvisY+=transient.pelvisY-directional.stanceDrop;
   // Physical pelvis compression comes from the support-foot reach budget,
   // not from a separate stance-radius correction in the renderer.
   if(input.position){
@@ -121,7 +124,7 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
     -.046,.046);
   return {pelvisY,pelvisSide,torsoForward,torsoSide,
     torsoYaw:clamp(-support*speed*.032*
-      (input.personalLooseness??1),-.038,.038),
+      (input.personalLooseness??1)+directional.torsoYaw,-.038,.038),
     headCounter:-torsoSide*.62,support,chestLift,
     weaponYaw,weaponPitch,breath,
     headPitchCounter:transient.headPitchCounter};
