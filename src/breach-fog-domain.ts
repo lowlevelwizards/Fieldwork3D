@@ -32,9 +32,15 @@ export function unionRoomRects(rooms:readonly Pick<Room,'x'|'y'|'w'|'h'>[]):FogR
  * All perimeter-connected outside terrain is NEVER given a black fog slab
  * in Exterior Known, regardless of the site's rectangular world bounds.
  */
+// A Site's room modules are immutable once generated. Reuse one exact
+// concealment footprint for the 2D mask and the 3D mesh; neither needs to
+// flood-fill the world again while a squad moves or a camera rotates.
+const exteriorFogFootprints=new WeakMap<Site,FogRect[]>();
 export function exteriorKnownFogRects(site:Site):FogRect[]{
+ const cached=exteriorFogFootprints.get(site);
+ if(cached)return cached;
  const regions=unionRoomRects(site.rooms);
- if(!site.rooms.length)return regions;
+ if(!site.rooms.length){exteriorFogFootprints.set(site,regions);return regions;}
  const minX=Math.min(...site.rooms.map(r=>r.x));
  const minY=Math.min(...site.rooms.map(r=>r.y));
  const maxX=Math.max(...site.rooms.map(r=>r.x+r.w));
@@ -58,7 +64,11 @@ export function exteriorKnownFogRects(site:Site):FogRect[]{
   }
   emit(Math.ceil(maxX/step)*step);
  }
- return regions.concat(extra);
+ // Merge rooms and sealed courts once, avoiding overlapping translucent
+ // triangles and ensuring that the mesh and paint pass have identical edges.
+ const footprint=unionRoomRects([...regions,...extra]);
+ exteriorFogFootprints.set(site,footprint);
+ return footprint;
 }
 /** Canvas top rows correspond to site-space minimum Y.
  * CanvasTexture.flipY defaults to true, so uv.v=1 is the top row.
