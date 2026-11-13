@@ -57,6 +57,7 @@ export const withActions=(a:Operator):TeamActor=>({
   lastBashAt:-100,lastBashRole:null,
   lastLaneWarnAt:-100,lastFireBlock:'clear',
   fireRetreatTarget:null,fireRetreatUntil:0,lastFireRetreatAt:-100,
+  fireRetreatReason:null,
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},appearanceSeed:0,
   weaponLightOn:false,
   armorIntegrity:0,helmetIntegrity:0,flashCharges:2,
