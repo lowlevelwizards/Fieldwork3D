@@ -427,6 +427,12 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   for(const copy of f.actors){
     const a=s.operators.find(actor=>actor.id===copy.id);
     if(a)Object.assign(a,copy,{p:position(copy.p),
+      // Pre-A3.6 films have no anchor: do not leak one from a later seek.
+      physicalContact:copy.physicalContact?{
+        ...copy.physicalContact,anchor:{...copy.physicalContact.anchor,
+          point:{...copy.physicalContact.anchor.point},
+          normal:{...copy.physicalContact.anchor.normal}}
+      }:null,
       traversal:traversalCopy(copy.traversal),traversalPending:null,
       aimInstruction:copy.aimInstruction?{...copy.aimInstruction,
         point:copy.aimInstruction.point?position(copy.aimInstruction.point):undefined}:null,
