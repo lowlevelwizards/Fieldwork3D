@@ -62,6 +62,7 @@ import {wearFinish} from './rendering/wear-finish.ts';
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
 import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
+import {RepeatedFixtureBatches} from './rendering/breach-repeated-fixture-batches.ts';
 import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
   from './rendering/breach-shadow-controller.ts';
 
@@ -604,6 +605,7 @@ export class TacticalScene3D{
   readonly canvas:HTMLCanvasElement;
   private root=new THREE.Group();
   private readonly staticBatches=new StaticSceneBatches();
+  private readonly repeatedFixtures=new RepeatedFixtureBatches();
   private readonly shadowUpdates=new ShadowUpdateController();
   private shadowLodTransitions=0;
   private fogUnknown:THREE.InstancedMesh;
@@ -987,6 +989,7 @@ export class TacticalScene3D{
   applySite(site:Site|null){
     this.displayedSite=site;
     this.staticBatches.clear();
+    this.repeatedFixtures.clear();
     this.presentationSight.reset();
     // Friendly rigs survive map changes for responsive load-in. Hostile
     // models belong to the outgoing encounter and otherwise accumulate
@@ -1073,6 +1076,7 @@ export class TacticalScene3D{
       signMaterial:(...args)=>scene.signMaterial(...args),
       addSurfaceWear:(...args)=>scene.addSurfaceWear(...args),
       staticBatches:scene.staticBatches,
+      repeatedFixtures:scene.repeatedFixtures,
       sharedBoxGeometries:scene.sharedBoxGeometries,
       siteMaterials:scene.siteMaterials,
       mats:scene.mats,
@@ -1568,6 +1572,8 @@ export class TacticalScene3D{
         x:current.x,y:current.y,w:current.w,h:current.h,
         destroyed:!!current.destroyed,toppled:!!current.toppled
       });
+      // Instanced repeated furniture follows the same physical transform.
+      this.repeatedFixtures.sync(index,true);
     }
     // Personal replay (including non-bodycam operator views) reads only
     // historically observed panes. The global replay reads its exact frame.
@@ -1696,6 +1702,7 @@ export class TacticalScene3D{
         item.kind==='cover'?
           personalCoverVisible(squadKnown,personalDisclosure,personalGroundEvidence,
             cover??null):squadKnown;
+      if(item.kind==='cover')this.repeatedFixtures.sync(item.index);
     }
     // Unlike the room's floor, decorative props must be individually
     // seen (or remembered at their own position) before they are rendered.
