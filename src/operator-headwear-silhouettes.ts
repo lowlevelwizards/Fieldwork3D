@@ -390,6 +390,9 @@ export function chamferAchMichCrown(geometry:THREE.BufferGeometry,
  for(const [name,attr,size] of names)if(name!=='position'&&attr)
   geometry.setAttribute(name,new THREE.Float32BufferAttribute(output[name],size));
  geometry.setIndex(Array.from({length:output.position.length/3},(_,i)=>i));
+ // The old union normal buffer has fewer vertices than the split facets.
+ // Three.js reuses it unless removed, leaving half the bevel unshaded.
+ geometry.deleteAttribute('normal');
  geometry.computeVertexNormals();geometry.computeBoundingBox();
  geometry.userData.achMichCrownInset=ACH_MICH_UPPER_INSET;
  geometry.userData.achMichBevelHeight=ACH_MICH_BEVEL_HEIGHT;
