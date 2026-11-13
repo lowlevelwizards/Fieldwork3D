@@ -4,8 +4,8 @@
  * Same 512×256 three-cut print atlas and 7 px/world-unit as PASGT.
  */
 import * as THREE from 'three';
-import {headwearCuboidVolumes,ACH_MICH_SHELLS,ACH_MICH_UPPER_INSET,
- ACH_MICH_BEVEL_HEIGHT} from './operator-headwear-silhouettes.ts';
+import {headwearCuboidVolumes,ACH_MICH_SHELLS,ACH_MICH_UPPER_INSET}
+ from './operator-headwear-silhouettes.ts';
 import {achMichProfile,ACH_MICH_BINDING_HEIGHT} from './operator-ach-mich-details.ts';
 import {pasgtAtlasUv,PASGT_TOP_SEAM_OFFSETS,PASGT_FABRIC_PANELS,
  PASGT_UV_TEXELS_PER_UNIT} from './operator-pasgt-drape-geometry.ts';
