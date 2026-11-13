@@ -59,6 +59,8 @@ export type OperatorPose={
   /** Lab preview only: choose an exact stock/weapon readiness posture. */
   handlingOverride?:Handling;
   handlingIntent?:HandlingIntent;threatRange?:number|null;
+  /** A3.2 fixed-step physical stock/grip/muzzle lateral accommodation. */
+  shoulderOffset?:number;
   handlingTransition?:HandlingTransition;
   obstruction?:boolean;friendlyNear?:boolean;friendlyAhead?:boolean;
   clearanceRetraction?:number;clearanceBlocked?:boolean;
