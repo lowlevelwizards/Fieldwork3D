@@ -35,6 +35,7 @@ on:
       - 'scripts/ach-mich-h5-visual-capture.mjs'
       - 'scripts/ach-mich-h6-visual-capture.mjs'
       - 'scripts/helmet-h7-visual-capture.mjs'
+      - 'scripts/helmet-h9-visual-capture.mjs'
       - 'src/operator-helmet-surface.ts'
       - 'tests/helmet-h9-foundation.test.mjs'
       - 'src/operator-helmet-field-visuals.ts'
@@ -119,12 +120,12 @@ jobs:
           node --experimental-strip-types --test tests/ach-mich-h5-cover-strap.test.mjs tests/helmet-h8-recovery.test.mjs tests/helmet-h9-foundation.test.mjs
       - name: H9 mobile WebGL cover and equipment regression capture
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h9-') }}
-        run: node scripts/helmet-h7-visual-capture.mjs
+        run: node scripts/helmet-h9-visual-capture.mjs
       - uses: actions/upload-artifact@v4
         if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h9-') }}
         with:
           name: helmet-h9-review
-          path: helmet-h7-captures/
+          path: helmet-h9-captures/
           if-no-files-found: ignore
           retention-days: 14
       - name: H8 helmet recovery TypeScript and concentrated geometry tests
