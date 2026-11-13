@@ -39,3 +39,6 @@ Main: `docs/passage-q5-approach-matrix.md`: 70/70 defined outcomes, including 55
 
 ## Verification evidence rule
 Every stage must record tested head and exact command/run URL. A green workflow on an older PR does not qualify a different integrated head. Node simulated seconds are not hardware mobile FPS. Retired code must have a verified zero-consumer audit; old saved data/replays and working Labs are protected.
+
+## A2 Q5 work in progress
+A2.1 adds six north/south formation fixtures to the current main-owned real Session benchmark without swapping the motor. A2.2 exposes the mirrored approach selector and 48/168-case Door Lab. A2.3 wires a Release A-only 168-case hard gate in the existing Q5 workflow, preserving the 70-case historical performance oracle. **No success assertion** until the exact-head CI completes; novel south-side cases are expected to expose real issues to diagnose.
