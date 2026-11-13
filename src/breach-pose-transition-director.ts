@@ -58,52 +58,69 @@ export function sampleHandlingTransition(
 
 type CarryBlendState={
  lastCoupled:boolean;lastFit:WeaponFit|null;lastWeapon:string|null;
+ lastExplicitHandling:Handling|null;
  from:WeaponFit|null;fromBends:[THREE.Vector3,THREE.Vector3]|null;
+ fromHands:[THREE.Vector3,THREE.Vector3]|null;
  started:number;duration:number;lastSeconds:number;
 };
 const carryStates=new WeakMap<OperatorRig,CarryBlendState>();
 export type CarryTransitionSample={
  fit:WeaponFit;active:boolean;alpha:number;
- bends:[THREE.Vector3,THREE.Vector3]|null
+ bends:[THREE.Vector3,THREE.Vector3]|null;
+ hands:[THREE.Vector3,THREE.Vector3]|null;
 };
 export function sampleCarryTransition(r:OperatorRig,p:OperatorPose,
  fit:WeaponFit,coupled:boolean):CarryTransitionSample{
  let active=false,alpha=1;
  let bends:[THREE.Vector3,THREE.Vector3]|null=null;
+ let hands:[THREE.Vector3,THREE.Vector3]|null=null;
  if(!p.deterministic&&!p.down&&!p.surrender){
    let bridge=carryStates.get(r);
    if(!bridge){
      bridge={lastCoupled:coupled,lastFit:null,lastWeapon:null,
-       from:null,fromBends:null,started:p.seconds,duration:.25,
-       lastSeconds:p.seconds};
+       lastExplicitHandling:p.handlingOverride??null,
+       from:null,fromBends:null,fromHands:null,
+       started:p.seconds,duration:.25,lastSeconds:p.seconds};
      carryStates.set(r,bridge);
    }
    if(p.seconds<bridge.lastSeconds-.01||
       p.seconds-bridge.lastSeconds>1.2||
       bridge.lastWeapon!==null&&bridge.lastWeapon!==p.weapon){
-     bridge.from=null;bridge.fromBends=null;
+     bridge.from=null;bridge.fromBends=null;bridge.fromHands=null;
      bridge.lastFit=null;bridge.lastCoupled=coupled;
+     bridge.lastExplicitHandling=p.handlingOverride??null;
    }
-   if(bridge.lastFit&&bridge.lastCoupled!==coupled){
+   // Preserve the actual last presented weapon and both hands when the
+   // Lab directly changes its named mode. Live automatic selection uses
+   // its existing single transition director; do not double-blend it.
+   const directSwitch=!!p.handlingOverride&&!p.handlingTransition&&
+     bridge.lastExplicitHandling!==null&&
+     bridge.lastExplicitHandling!==p.handlingOverride;
+   if(bridge.lastFit&&(bridge.lastCoupled!==coupled||directSwitch)){
      bridge.from=bridge.lastFit;
      bridge.fromBends=[r.arms[0].bend.clone(),r.arms[1].bend.clone()];
+     bridge.fromHands=[r.arms[0].hand.position.clone(),
+       r.arms[1].hand.position.clone()];
      bridge.started=p.seconds;
-     bridge.duration=coupled?.34:.22;
+     bridge.duration=coupled?.34:.24;
    }
    bridge.lastCoupled=coupled;
+   bridge.lastExplicitHandling=p.handlingOverride??null;
    bridge.lastWeapon=p.weapon;
    bridge.lastSeconds=p.seconds;
    if(bridge.from){
      const t=(p.seconds-bridge.started)/bridge.duration;
-     if(t>=1){bridge.from=null;bridge.fromBends=null;}
-     else{
+     if(t>=1){
+       bridge.from=null;bridge.fromBends=null;bridge.fromHands=null;
+     }else{
        active=true;
        alpha=lowReadyBlendPhase(t);
        bends=bridge.fromBends;
+       hands=bridge.fromHands;
        fit=interpolateWeaponCarry(bridge.from,fit,t);
      }
    }
    bridge.lastFit=fit;
  }
- return {fit,active,alpha,bends};
+ return {fit,active,alpha,bends,hands};
 }

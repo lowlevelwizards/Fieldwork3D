@@ -626,6 +626,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const carryTransitionActive=carryTransition.active;
   const carryTransitionAlpha=carryTransition.alpha;
   const carryTransitionBends=carryTransition.bends;
+  const carryTransitionHands=carryTransition.hands;
   r.gripError=fit.contactError;
   r.stockError=fit.stockError;
   // Contact coordinates and visible weapon use one rigid transform.
@@ -898,6 +899,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.handlingIntent!=='run'&&p.handlingIntent!=='traverse'&&
     handOwners.left==='weapon'&&handOwners.right==='weapon';
   const manualPhase=manualShort?authoredShortPhase(manualRaw):
+    manualCarry&&carryTransitionActive?carryTransitionAlpha:
     manualCarry&&activeTransition?
       lowReadyBlendPhase(activeTransition.alpha):1;
   const manualPose=manualShort?
@@ -961,8 +963,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         ...manualPose!.targets[
           i===0?'supportShoulder':'firingShoulder']);
       const shoulder=startShoulder.clone().lerp(targetShoulder,manualPhase);
-      const oldWrist=i===0?manualSourceFit.support:
-        manualSourceFit.primary;
+      const oldWrist=carryTransitionActive&&carryTransitionHands?
+        carryTransitionHands[i]:
+        i===0?manualSourceFit.support:manualSourceFit.primary;
       const requested=authoredPoint(i===0?'supportHand':'firingHand');
       const wrist=oldWrist.clone().lerp(requested,manualPhase);
       const normalProfile=handlingProfile(manualSource,p.weapon);
@@ -1008,6 +1011,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         .applyEuler(fit.rotation).add(fit.origin);
       if(i===0&&reloadHandChest)desired.copy(reloadHandChest);
     }
+    if(carryTransitionActive&&carryTransitionHands)
+      desired.copy(carryTransitionHands[i]).lerp(
+        desired,carryTransitionAlpha);
     // At phase zero reproduce the *exact* displayed source anatomy.
     // Subsequent frames are resolved from a continuous source elbow pole.
     if(sourceArm&&activeTransition!.alpha<=0){
