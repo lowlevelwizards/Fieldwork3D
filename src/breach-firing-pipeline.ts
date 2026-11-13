@@ -542,7 +542,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     fireAllowed:a.firePolicy==='engage'||
       a.firePolicy==='return'&&(a.suppression>=.10||
         s.seconds-a.lastHitAt<=3),
-    aiming:a.aim>.12,activeTarget:target.health>0
+    aiming:target.health>0,activeTarget:target.health>0
   });
   if(!microAllowed)a.aimSideTarget=0;
   else if(s.seconds-(a.lastAimSideProbeAt??-100)>=.16){
