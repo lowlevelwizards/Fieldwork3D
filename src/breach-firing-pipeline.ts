@@ -317,24 +317,32 @@ function fire(s:Session,a:TeamActor,dt:number){
   const visible=enemiesOf.filter(e=>inSight(a,e,s));
   // Legacy FOCUS saves use ordinary acquisition rather than an
   // inaccessible exclusive lock after FOCUS is removed from the interface.
+  // Acquisition tests the SAME actual muzzle origin, height and friendly
+  // body trajectory as ignition. The candidate-facing preview is only a
+  // feasibility test; shot-time still rechecks the true settled weapon yaw.
+  const world=sessionWorldGeometry(s);
+  const friends=s.operators.filter(other=>other!==a&&other.health>0&&
+    other.side===a.side).map(safetyBodyFor);
   const target=selectFireableContact(a.p,visible,a.targetId,candidate=>{
-    if(observedCivilianFireLane(s,a,a.p,a.posture==='crouch'?18:26,
-       candidate.p,aimHeight(candidate.posture==='crouch'))){
+    const clearance=weaponClearance({x:a.p.x,z:a.p.y,
+      heading:a.heading,weaponYaw:angle(a.p,candidate.p),
+      weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+      equipment:a.equipment,aim:a.aim,posture:a.posture,
+      velocity:a.velocity,recoil:a.recoil,threatRange:d(a.p,candidate.p)},
+      s.doors,world.cover,world.walls);
+    if(clearance.blocked)return false;
+    const from={x:clearance.muzzle.x,y:clearance.muzzle.z};
+    const h=aimHeight(candidate.posture==='crouch');
+    if(observedCivilianFireLane(s,a,from,clearance.muzzle.y,
+       candidate.p,h)){
       civilianShotWithheld(s,a);return false;
     }
-    const friends=s.operators.filter(other=>other!==a&&other.health>0&&
-      other.side===a.side).map(safetyBodyFor);
-    const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
-      candidate.p,aimHeight(candidate.posture==='crouch'),
-      sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,s.doors,friends);
+    const lane=assessFireLane(from,clearance.muzzle.y,candidate.p,h,
+      world.cover,world.walls,s.doors,friends);
     if(lane.blocker==='clear')return true;
     if(lane.blocker!=='cover')return false;
-    // Candidate selection uses the SAME physical penetration model as
-    // ignition, instead of rejecting every covered contact regardless of
-    // caliber. A confirmed contact is still required for acquisition.
-    const preview=strikeSurface(a.p,candidate.p,s,
-      a.posture==='crouch'?18:26,aimHeight(candidate.posture==='crouch'),
-      WEAPONS[a.weapon].penetration);
+    const preview=strikeSurface(from,candidate.p,s,
+      clearance.muzzle.y,h,WEAPONS[a.weapon].penetration);
     return fireLaneReachable(lane,preview,candidate.p);
   });
   if(!target){
@@ -376,15 +384,21 @@ function fire(s:Session,a:TeamActor,dt:number){
   // even if their current firing lane is obstructed. That is correct
   // targeting behavior, but friendly sidestep must run *after* selection,
   // rather than only in the (often unreachable) no-target branch.
-  if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget){
-    const friends=team(s).filter(o=>o!==a&&o.health>0).map(safetyBodyFor);
-    const muzzleHeight=a.posture==='crouch'?18:26;
-    const targetHeight=aimHeight(target.posture==='crouch');
-    const lane=assessFireLane(a.p,muzzleHeight,target.p,targetHeight,
-      sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,s.doors,friends);
-    if(lane.blocker==='friendly'&&!observedCivilianFireLane(
-       s,a,a.p,muzzleHeight,target.p,targetHeight)){
-      if(requestClearFireStep(s,a,target,'friendly'))return;
+  if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget&&friends.length){
+    const preflight=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
+      weaponYaw:angle(a.p,target.p),weapon:a.weapon,
+      weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
+      aim:a.aim,posture:a.posture,velocity:a.velocity,recoil:a.recoil,
+      threatRange:d(a.p,target.p)},s.doors,world.cover,world.walls);
+    if(!preflight.blocked){
+      const from={x:preflight.muzzle.x,y:preflight.muzzle.z};
+      const targetHeight=aimHeight(target.posture==='crouch');
+      const lane=assessFireLane(from,preflight.muzzle.y,
+        target.p,targetHeight,world.cover,world.walls,s.doors,friends);
+      if(lane.blocker==='friendly'&&!observedCivilianFireLane(
+         s,a,from,preflight.muzzle.y,target.p,targetHeight)){
+        if(requestClearFireStep(s,a,target,'friendly'))return;
+      }
     }
   }
   if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;
