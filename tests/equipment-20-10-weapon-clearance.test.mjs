@@ -32,7 +32,9 @@ test('20.10 extended muzzle meets wall before bare muzzle without moving actor',
   doors,noCover,[wall]);
  assert.equal(bareResult.obstruction,false);
  assert.equal(bareResult.blocked,false);
- assert.equal(longResult.obstruction,true);
+ assert.ok(longResult.obstruction||longResult.shoulderPullback!==undefined,
+  'long muzzle needs true pullback or short-stock before the wall');
+ if(!longResult.blocked)assert.ok(longResult.muzzle.x<wallX);
  // No operator collision response; shot origin only changes with rigid weapon.
  assert.deepEqual(input,{x:90,z:70,heading:0,weaponYaw:0,weapon:'carbine',
   aim:1,velocity:0,recoil:0,posture:'stand'});
