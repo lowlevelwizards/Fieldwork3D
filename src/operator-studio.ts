@@ -75,7 +75,7 @@ import {D2_FACE_SOLIDS,D2_FACE_SOLID_COLORS,isD2Facewear,
  D2_MASK_SOLIDS,D2_MASK_COLORS,isD2Eyewear} from './operator-head-accessory-catalog.ts';
 import {RIG_VISUAL_TEXTILES,ARMOR_VISUAL_TEXTILES,rigSignature,armorSignature,rigColorAssembly}
  from './operator-rig-authenticity-policy.ts';
-import {GARMENT_SOLID_COLORS,solidChoicesFor,resolvedCuffSolid,
+import {GARMENT_SOLID_COLORS,GLOVE_SOLIDS,solidChoicesFor,resolvedCuffSolid,
  resolvedCombatKnitSolid,type GarmentSolidId} from './operator-garment-color-policy.ts';
 import {headwearColorChoices,HEADWEAR_SOLID_COLORS} from './operator-headwear-colors.ts';
 import {SKIN_TONES,SKIN_TONE_IDS,HAIR_STYLES,HAIR_STYLE_IDS,
@@ -83,7 +83,7 @@ import {SKIN_TONES,SKIN_TONE_IDS,HAIR_STYLES,HAIR_STYLE_IDS,
  type HairStyleId} from './operator-identity-palette.ts';
 import {headwearCamoChoices,HEADWEAR_CAMO_RECIPES,
  nextHeadwearCamoRoll,type HeadwearCamoId} from './operator-headwear-camo.ts';
-import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
+import {topColorwayChoices,resolvedTopColorway,buttonUpFlannelTexture} from './operator-upper-colorways.ts';
 import {coordinateOutfit,suggestOutfitEquipmentSolids}
  from './operator-material-coordination.ts';
 import {browseCamos,camoBrowseSection,sortGarmentSolids,sortHeadwearSolids,
@@ -863,7 +863,7 @@ function undo(){
  say('RESTORED PREVIOUS APPEARANCE');refresh();
 }
 undoButton.addEventListener('click',undo);
-const MATERIAL_LABELS=/^(SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|PASGT SHELL COLOR|PASGT CLOTH COVER|PASGT COVER PATTERN|ACH \/ MICH COVER|ACH \/ MICH SHELL COLOR|FOLIAGE SLITS|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
+const MATERIAL_LABELS=/^(GLOVES · INDEPENDENT|GLOVE COLOR|SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|PASGT SHELL COLOR|PASGT CLOTH COVER|PASGT COVER PATTERN|ACH \/ MICH COVER|ACH \/ MICH SHELL COLOR|FOLIAGE SLITS|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
 function studioSectionKind(node:HTMLElement):'materials'|'details'{
  return node.dataset.studioStep==='materials'?'materials':'details';
 }
@@ -1164,6 +1164,22 @@ function renderMaterials(){
   addSelect(lens,D2_LENS_TINTS.map(id=>[id,D2_LENS_MATERIALS[id].label] as const),
    selected.eyeTint??'clear',eyeTint=>save({eyeTint:eyeTint as NonNullable<NonNullable<WardrobeOptions['d2Accessories']>['eyeTint']>}));
  }
+ if(activeCategory==='gloves'){
+  const glovesOn=item!=='gloves-none';
+  const mode=row('GLOVES · INDEPENDENT',
+   'On/off and textile color are cosmetic. Gloves do not inherit shirts, camouflage, or rig colors.');
+  const buttons=document.createElement('div');buttons.className='material-tabs';
+  buttons.append(makeButton('OFF · BARE HANDS',!glovesOn,
+   ()=>changeWardrobe(setWardrobeStyle(current(),'gloves','gloves-none'))));
+  buttons.append(makeButton('ON · FIELD GLOVES',glovesOn,
+   ()=>changeWardrobe(setWardrobeStyle(current(),'gloves','gloves-field'))));
+  mode.append(buttons);
+  if(glovesOn){
+   const dyes=row('GLOVE COLOR','Separate glove fabric. Changes will not recolor tops, sleeves or trousers.');
+   addSolidSwatches(dyes,GLOVE_SOLIDS,w.gloveSolid??'ranger-green',
+    id=>changeWardrobe({...current(),gloveSolid:id as WardrobeOptions['gloveSolid']}));
+  }
+ }
  if(activeCategory==='armorStyle'||activeCategory==='rigStyle'){
   const category=activeCategory==='armorStyle'?'ARMOR SHELL':'LOAD-BEARING RIG';
   row(category+' · APPEARANCE',
@@ -1205,7 +1221,12 @@ function renderMaterials(){
    rigSignature(outfit.rigStyle):
    channel==='armor'&&outfit.armorStyle!=='armor-bare'?
     armorSignature(outfit.armorStyle):null;
-  const group=row('FABRIC MATERIAL','Select a solid or an approved print. Printed material never changes its original artwork.');
+  const flannelActive=channel==='top'&&outfit.top==='button-up-shirt'&&
+   w.topColorway.startsWith('flannel-');
+  const group=row('FABRIC MATERIAL',
+   outfit.top==='button-up-shirt'&&channel==='top'?
+    'Choose solid, camouflage or woven plaid flannel. Plaid is available only on button-up shirts.':
+    'Select a solid or an approved print. Printed material never changes its original artwork.');
   if(channel==='armor'||channel==='gear'||channel==='pack'){
    const automatic=resolveAutomaticGearColors({print:w.fabricCamo?.top,
     solid:w.fabricSolids?.top})[channel];
@@ -1230,7 +1251,7 @@ function renderMaterials(){
   }
   const tabs=document.createElement('div');tabs.className='material-tabs';
   const iconic=!!iconicSignature&&!pattern&&!manualSolid;
-  const solidSelected=!pattern&&!iconic;
+  const solidSelected=!pattern&&!iconic&&!flannelActive;
   if(iconicSignature)
    tabs.append(makeButton('ICONIC DEFAULT',iconic,()=>{
     const now=current();
@@ -1250,8 +1271,41 @@ function renderMaterials(){
     changeWardrobe(setWardrobeFabricCamo(current(),channel,restored,outfit));
    }
   }));
+  if(channel==='top'&&outfit.top==='button-up-shirt'){
+   tabs.append(makeButton('FLANNEL',flannelActive,()=>{
+    const now=current();
+    changeWardrobe({...now,topColorway:flannelActive?now.topColorway:'flannel-rust-red',
+     fabricCamo:{...now.fabricCamo,top:undefined},
+     fabricSolids:{...now.fabricSolids,top:undefined}});
+   }));
+  }
   group.append(tabs);
-  if(pattern&&choices.length){
+  if(flannelActive){
+   const grid=document.createElement('div');grid.className='solid-swatches';
+   for(const [id,label] of topColorwayChoices('button-up-shirt')){
+    if(!id.startsWith('flannel-'))continue;
+    const button=makeButton(label,w.topColorway===id,()=>{
+     const now=current();
+     changeWardrobe({...now,topColorway:id,
+      fabricCamo:{...now.fabricCamo,top:undefined},
+      fabricSolids:{...now.fabricSolids,top:undefined}});
+    });
+    button.className='swatch';button.title=label;
+    const chip=document.createElement('span');chip.className='swatch-chip';
+    const tex=buttonUpFlannelTexture(id);
+    if(tex){
+     const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;
+     const context=canvas.getContext('2d');
+     if(context){
+      context.putImageData(new ImageData(new Uint8ClampedArray(tex.image.data),64,64),0,0);
+      chip.style.backgroundImage='url('+canvas.toDataURL()+')';
+      chip.style.backgroundSize='32px 32px';chip.style.imageRendering='pixelated';
+     }
+    }
+    button.prepend(chip);grid.append(button);
+   }
+   group.append(grid);
+  }else if(pattern&&choices.length){
    addCamoSwatches(group,choices,pattern,id=>
     changeWardrobe(setWardrobeFabricCamo(current(),channel,id,outfit)),
     channel,w.fabricCamo?.top??null);
@@ -1681,8 +1735,9 @@ function renderMaterials(){
   // Combat knit and smock solids are controlled by their actual material
   // swatches above, never a second competing color dropdown. Keep the
   // Gorka's purpose-built TWO-TONE family options as its one exception.
-  const special=item==='gorka-jacket'||item==='button-up-shirt'?
-   topColorwayChoices(item):[];
+  // Flannel is a first-class material tab above, not a second dropdown
+  // buried under advanced color and sleeve controls.
+  const special=item==='gorka-jacket'?topColorwayChoices(item):[];
   if(special.length){
    const section=row(item==='button-up-shirt'?'BUTTON-UP FLANNEL / PLAID':
     'GORKA TWO-TONE / REINFORCEMENTS');
