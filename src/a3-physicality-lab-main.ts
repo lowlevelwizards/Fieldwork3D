@@ -13,7 +13,7 @@ import {inspectOperatorPoseOutput} from './breach-operator-pose-output.ts';
 
 const el=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const canvas=el<HTMLCanvasElement>('stage'),ctx=canvas.getContext('2d')!;
-const configInputs=['scenario','operators','posture','intent','weapon','seed'] as const;
+const configInputs=['scenario','operators','posture','intent','weapon','bearingDeg','seed'] as const;
 const select=el<HTMLSelectElement>('scenario');
 for(const scene of A3_SCENES){
  const option=document.createElement('option');option.value=scene.id;
@@ -32,7 +32,8 @@ function currentConfig():A3Config{
   operators:Number(el<HTMLSelectElement>('operators').value) as 1|2|3|4,
   posture:el<HTMLSelectElement>('posture').value as 'stand'|'crouch',
   intent:el<HTMLSelectElement>('intent').value as A3Intent,
-  weapon:el<HTMLSelectElement>('weapon').value as A3Weapon
+  weapon:el<HTMLSelectElement>('weapon').value as A3Weapon,
+  bearingDeg:Number(el<HTMLSelectElement>('bearingDeg').value)
  };
 }
 function status(t:string){el<HTMLElement>('message').textContent=t;}
