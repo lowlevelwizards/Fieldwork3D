@@ -19,6 +19,7 @@ import {createCivilian} from './breach-civilian-types.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
 import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {initializeWindows} from './breach-windows.ts';
+import {withSitePropIds} from './worldgen/site-object-identity.ts';
 import {initDoor} from './breach-door.ts';
 import {registerSessionWorldGeometry,sessionWorldGeometry} from './breach-world-context.ts';
 import {OBJECTIVE,EXTRACTION,SCENARIOS} from './breach-scenario-defaults.ts';
@@ -35,9 +36,12 @@ export function assembleSession(index=0,siteSeed?:number,
   intelMode:IntelMode='floor-plan',scale:SiteScale='standard',
   missionOverride?:OperationKind,prebuiltSite?:Site,
   encounterContext:EncounterContext={}):Session{
-  const site=prebuiltSite??(siteSeed===undefined?undefined:
+  const loadedSite=prebuiltSite??(siteSeed===undefined?undefined:
     generateSite(siteSeed>>>0,scale,undefined,
       {...encounterContext,mission:missionOverride??encounterContext.mission}));
+  // Normalize archived or authored sites once at session creation. No
+  // extra work in collision, rendering or the 60 Hz simulation loop.
+  const site=loadedSite?withSitePropIds(loadedSite):undefined;
   const seed=newTacticalState(site??null);
   const variant=((index%SCENARIOS.length)+SCENARIOS.length)%SCENARIOS.length;
   const sample=SCENARIOS[variant];

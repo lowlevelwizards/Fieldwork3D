@@ -9,6 +9,7 @@ import {setCivilianState} from './breach-civilian-types.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {canSecureRescuePerson} from './breach-civilian-mission.ts';
 import {canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
+import {coverTargetIndex} from './worldgen/site-object-identity.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {manipulateWindow} from './breach-windows.ts';
 import {completeOrder,clearCurrentOrderIssue,
@@ -87,7 +88,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     }
     const [kind,id]=n.objectId.split(':');
     if(kind==='prop'&&n.interaction==='push'){
-      const index=Number(id),o=s.coverState[index];
+      const index=coverTargetIndex(s.coverState,id),o=s.coverState[index];
       if(!o||!canRelocateCover(o)||d(a.p,{x:o.x,y:o.y})>
         Math.max(o.w,o.h)/2+43){
         failCurrentOrder(s,a,n,'OBJECT UNAVAILABLE');return true;

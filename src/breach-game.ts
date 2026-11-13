@@ -1,6 +1,7 @@
 import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
+import {coverTargetToken} from './worldgen/site-object-identity.ts';
 export {setStrafe,planPieAt,planPie,editPie,insertPlanNode,planWaitAt,planWait,planSync,planHoldClear,planReload,planReloadAt} from './breach-plan-utility-commands.ts';
 import {legalMoveRoute,knownTraversal,knownShoveCrossing} from './breach-known-route-authoring.ts';
 export {plannedWindowRoute} from './breach-known-route-authoring.ts';
@@ -448,7 +449,8 @@ export function planNearbyInteraction(s:Session,id:string,
      Math.atan2(pushPoint.y-item.o.y,pushPoint.x-item.o.x):base;
    const delta=angleDifference(base,chosen);
    const yaw=base+clamp(delta,-Math.PI*4/9,Math.PI*4/9);
-   return queue('prop:'+item.index,{x:Math.cos(yaw),y:Math.sin(yaw)});
+   return queue('prop:'+coverTargetToken(item.o,item.index),
+      {x:Math.cos(yaw),y:Math.sin(yaw)});
  }
  const target=s.windows.filter(w=>w.operable&&!w.shattered&&
    d(at,{x:w.x,y:w.y})<54&&w.open===(action==='close-window'))
