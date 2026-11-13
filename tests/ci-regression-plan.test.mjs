@@ -110,3 +110,30 @@ test('A10: unknown runtime source remains fail-closed',()=>{
  assert.deepEqual(p.unknown,['src/brand-new-unclassified-component.ts']);
  assert.equal(p.runBroadCritical,true);
 });
+
+test('Release A: passage and stack modules cannot evade physical doorway checks',()=>{
+ for(const file of ['src/breach-passage.ts','src/breach-passage-coordinator.ts',
+  'src/breach-stack-staging.ts','src/breach-weapon-clearance.ts']){
+  const p=selectCiTests([file]);
+  assert.ok(p.domains.includes('movement-and-doors'),file);
+  assert.ok(p.tests.includes('tests/passage-q5-live-blockers.test.mjs'),file);
+ }
+});
+test('Release A: combat readiness changes get actual urgent-fire coverage',()=>{
+ for(const file of ['src/breach-fire-urgency.ts','src/breach-friendly-safety-volume.ts']){
+  const p=selectCiTests([file]);
+  assert.ok(p.domains.includes('simulation'),file);
+  assert.ok(p.tests.includes('tests/animation-a3-10-close-stack-fire.test.mjs'),file);
+ }
+});
+test('Release A: fog changes get occlusion and unseen aperture regressions',()=>{
+ const p=selectCiTests(['src/breach-fog-mask.ts']);
+ assert.ok(p.tests.includes('tests/fog-interior-occlusion-regression.test.mjs'));
+ assert.ok(p.tests.includes('tests/fog-exterior-unseen-apertures-regression.test.mjs'));
+});
+test('Release A: menu and studio changes get no-mission editing smoke',()=>{
+ for(const file of ['src/operator-studio.ts','src/operator-studio-bridge.ts','src/breach-main.ts']){
+  const p=selectCiTests([file]);
+  assert.ok(p.tests.includes('tests/operator-studio-main-menu.test.mjs'),file);
+ }
+});
