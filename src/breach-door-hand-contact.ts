@@ -56,15 +56,15 @@ function validCrossing(a:TeamActor,door:Door):boolean{
   return false;
  return signedDoorSide(a.p,door)*e.approachSide>-(8+8);
 }
-/** Mark an actual physical grab. A decorative door reach cannot acquire. */
-export function acquireDoorHandContact(
- s:Session,a:TeamActor,door:Door,assisted:boolean
-):boolean{
- if(!assisted||!door.open||door.wedged||door.locked||door.jammed||
+/** Shared physical reach gate for D3 pressure and D4 attachment.
+ * No phantom pull when the hand is occupied, across a wall or too far.
+ */
+function handCandidate(s:Session,a:TeamActor,door:Door):{
+ fraction:number;mode:'handle'|'panel';point:Pt
+}|null{
+ if(!door.open||door.wedged||door.locked||door.jammed||
     door.heldBy||door.kind==='sliding'||door.kind==='shutter'||
-    !validCrossing(a,door)||!handFreeAt(a,s.seconds))return false;
- const current=a.doorHandContact;
- if(current?.releasedAt===null&&current.doorId===door.id)return true;
+    !validCrossing(a,door)||!handFreeAt(a,s.seconds))return null;
  const handle=handlePoint(door);
  const leaf=doorLeafSegment(door);
  const dx=leaf.b.x-leaf.a.x,dy=leaf.b.y-leaf.a.y;
@@ -76,10 +76,25 @@ export function acquireDoorHandContact(
  const point=doorHandPoint(door,fraction);
  if(distance(a.p,point)>DOOR_HAND_ACQUIRE_REACH||
     pointToSegment(a.p,leaf)>DOOR_HAND_ACQUIRE_REACH||
-    !rayClear(s,a.p,point))return false;
+    !rayClear(s,a.p,point))return null;
+ return {fraction,mode:atHandle?'handle':'panel',point};
+}
+export function canDoorHandAssist(
+ s:Session,a:TeamActor,door:Door):boolean{
+ return handCandidate(s,a,door)!==null;
+}
+/** Mark an actual physical grab. A decorative reach cannot acquire. */
+export function acquireDoorHandContact(
+ s:Session,a:TeamActor,door:Door,assisted:boolean
+):boolean{
+ if(!assisted)return false;
+ const current=a.doorHandContact;
+ if(current?.releasedAt===null&&current.doorId===door.id)return true;
+ const candidate=handCandidate(s,a,door);
+ if(!candidate)return false;
+ const {fraction,mode,point}=candidate;
  a.doorHandContact={doorId:door.id,fraction,
-  mode:atHandle?'handle':'panel',
-  startedAt:s.seconds,releasedAt:null,point};
+  mode,startedAt:s.seconds,releasedAt:null,point};
  if(a.doorTraversal){
   a.doorTraversal.handContact=true;
   // Preserve a selected outside-leaf footpath while the same hand
