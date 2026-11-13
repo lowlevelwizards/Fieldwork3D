@@ -29,6 +29,7 @@ export type DoorTraversalEpisode={
  handContact:boolean;
  /** D2 bounded maneuver attempts; no fresh route search every motor tick. */
  maneuverAttempts:number;nextManeuverAt:number;
+ selectedLeafFraction:number;driftRecoveries:number;
 };
 const squared=(a:Pt,b:Pt)=>{
  const x=a.x-b.x,y=a.y-b.y;return x*x+y*y;
@@ -107,7 +108,8 @@ export function syncDoorTraversalEpisode(
   maneuver:'direct',lastProgressAt:seconds,lastPosition:{...actor.p},
   lastTransitionAt:seconds,obstructionReason:null,
   waypoints:[],waypointIndex:0,handContact:false,
-  maneuverAttempts:0,nextManeuverAt:seconds
+  maneuverAttempts:0,nextManeuverAt:seconds,
+  selectedLeafFraction:fraction,driftRecoveries:0
  };
  actor.doorTraversal=created;
  return created;

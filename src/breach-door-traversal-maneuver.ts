@@ -57,6 +57,15 @@ export function rehearseDoorLeafBypass(
  // A directly passable opening is no reason to route around an open leaf.
  const straight=candidate([portal(0)]);
  if(straight.length)return straight;
+ // If already outside the open leaf but trapped against its jamb,
+ // return to the REHEARSED same-side approach before crossing. This
+ // prevents long wall-following routes from treating the jamb as a maze.
+ const approach={x:center.x-normal.x*targetSide*(radius+18),
+   y:center.y-normal.y*targetSide*(radius+18)};
+ if(distance(from,approach)>4){
+   const staged=candidate([approach,portal(0)]);
+   if(staged.length)return staged;
+ }
  // Rehearsed shoulder breadths: tight, normal, generous.
  // No per-frame sorting, path search, or map-relative assumptions.
  for(const [advance,clearance,lateral] of [
@@ -84,13 +93,21 @@ export function rehearseDoorLeafBypass(
 export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  next:Pt,canAutoSidestep:boolean):boolean{
  const episode=a.doorTraversal;
- if(!episode||episode.phase==='release'||episode.maneuverAttempts>=2||
+ if(!episode||episode.phase==='release'||
     s.seconds<episode.nextManeuverAt)return false;
- let door=s.doors.find(d=>d.id===episode.doorId);
+ const door=s.doors.find(d=>d.id===episode.doorId);
  if(!door||!door.open)return false;
+ // Plan from the leaf's stable physical angle. Otherwise a previously
+ // valid correction becomes obsolete as another operator shoves it wide.
+ if(Math.abs(door.angularVelocity??0)>.16)return false;
+ const leafChanged=Math.abs((door.openFraction??0)-
+    episode.selectedLeafFraction)>.14;
+ if(episode.maneuverAttempts>=2&&!leafChanged)return false;
+ if(episode.maneuverAttempts>=4)return false;
  if(episode.maneuver!=='direct'&&
    s.seconds-episode.lastProgressAt<1.8)return false;
  episode.maneuverAttempts++;
+ episode.selectedLeafFraction=door.openFraction??0;
  episode.nextManeuverAt=s.seconds+1.5;
  const world=sessionWorldGeometry(s);
  const path=rehearseDoorLeafBypass(a.p,episode.destination,door,
@@ -104,6 +121,41 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  a.nav=path.map(clone);
  a.autoSidestep=beginAutoSidestep(a.p,next,path[0],
   a.heading,episode.destination,s.seconds,canAutoSidestep);
+ a.retryRouteAt=0;a.recoveryAttempts=0;
+ a.squeeze=false;a.squeezeTime=0;
+ return true;
+}
+/** A truly wayward approach can be recovered by one deterministic move
+ * back to the safe side of the SAME doorway, not a new broad A* expedition.
+ * No ghosting: reject the correction unless the whole shoulder sweep fits.
+ * One correction per episode avoids oscillation between staging and door.
+ */
+export function recoverDoorApproachDrift(a:TeamActor,s:Session):boolean{
+ const e=a.doorTraversal;
+ if(!e||e.phase==='release'||e.driftRecoveries>=1||
+    s.seconds<e.nextManeuverAt)return false;
+ const door=s.doors.find(d=>d.id===e.doorId);
+ if(!door||!door.open||signedDoorSide(a.p,door)*e.approachSide<=0)
+   return false;
+ const center=doorCenter(door);
+ const dx=a.p.x-center.x,dy=a.p.y-center.y;
+ if(dx*dx+dy*dy<110*110)return false;
+ const width=distance(door.a,door.b)||1;
+ const normal={x:-(door.b.y-door.a.y)/width,
+   y:(door.b.x-door.a.x)/width};
+ const staging={
+  x:center.x+normal.x*e.approachSide*(OPERATOR_RADIUS+19),
+  y:center.y+normal.y*e.approachSide*(OPERATOR_RADIUS+19)
+ };
+ const world=sessionWorldGeometry(s);
+ if(!sweptBodyClear(a.p,staging,s.doors,OPERATOR_RADIUS,world))
+  return false;
+ e.driftRecoveries++;
+ e.nextManeuverAt=s.seconds+1.5;
+ e.maneuver='outside-leaf';
+ e.waypoints=[clone(staging)];
+ e.waypointIndex=0;
+ a.nav=[clone(staging)];
  a.retryRouteAt=0;a.recoveryAttempts=0;
  a.squeeze=false;a.squeezeTime=0;
  return true;
