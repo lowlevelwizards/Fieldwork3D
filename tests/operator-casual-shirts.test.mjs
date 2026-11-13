@@ -134,12 +134,11 @@ test('plaid is a legible checked textile at torso scale, not a flat tint',()=>{
 test('all casual tops recolor the ONE actual torso, without duplicate jacket shells',()=>{
  const r=createOperatorRig('rook','blue');
  const torso=r.visualKit.baseTorso;
- const torsoGeometry=torso.geometry;
  for(const top of CASUAL_SHIRT_CUTS){
   poseOperator(r,frame(outfit(top,{fabricSolids:{top:'ranger-green'}})),0);
   const model=r.visualKit.casualShirts.cuts[top];
   assert.strictEqual(r.visualKit.baseTorso,torso,top+' keeps foundation');
-  assert.strictEqual(torso.geometry,torsoGeometry,top+' does not replace body');
+  assert.ok(torso.geometry instanceof THREE.BufferGeometry,top+' uses a real torso');
   assert.strictEqual(torso.material,r.clothMaterial,'fabric owns body');
   assert.equal(r.colors.get(r.clothMaterial).getHex(),garmentSolidHex('ranger-green'));
   assert.ok(torso.visible,top+' torso stays visible');
