@@ -122,8 +122,18 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       age:(hex,surface)=>age(hex,surface)
     });
     host.objectWear=[...planObjectWear(site),...planExposureWear(site)];
+    // O(wear + actual marks) rather than rescanning every mark for every
+    // wall and fixture. Built once during site/3D scene construction; none
+    // of this touches a frame, tactical collider, or replay authority.
+    const wearByOwner=new Map<string,ObjectWear[]>();
+    for(const mark of host.objectWear){
+      const key=mark.owner+':'+mark.index;
+      let marks=wearByOwner.get(key);
+      if(!marks){marks=[];wearByOwner.set(key,marks);}
+      marks.push(mark);
+    }
     const marksOn=(owner:ObjectWear['owner'],index:number)=>
-      host.objectWear.filter(m=>m.owner===owner&&m.index===index);
+      wearByOwner.get(owner+':'+index)??[];
     buildSiteMicroDebris(site,host);
     const decorativeRoomGroups=new Map<string,THREE.Group>();
     for(const room of site.rooms){
@@ -172,22 +182,25 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       const group=fragmentsByRoom.get(fragment.roomId)??[];
       group.push(fragment);fragmentsByRoom.set(fragment.roomId,group);
     }
+    // A fixed color palette instead of a THREE.Color allocation for each
+    // fragment instance. Instancing, batches and fog groups are unchanged.
+    const fragmentColors:Record<InteriorFragment['kind'],THREE.Color>={
+      flake:new THREE.Color(0xb6a893),dust:new THREE.Color(0x8b816d),
+      plaster:new THREE.Color(0xc9bbaa),leaf:new THREE.Color(0x647257),
+      paper:new THREE.Color(0xe3dccc),glass:new THREE.Color(0x8fbac0)
+    };
     for(const room of site.rooms){
       const entries=fragmentsByRoom.get(room.id)??[];
       if(!entries.length)continue;
       const group=decorativeRoomGroups.get(room.id);if(!group)continue;
       const batch=new THREE.InstancedMesh(fragmentGeometry,fragmentMaterial,entries.length);
-      const fragmentColors:Record<InteriorFragment['kind'],number>={
-        flake:0xb6a893,dust:0x8b816d,plaster:0xc9bbaa,
-        leaf:0x647257,paper:0xe3dccc,glass:0x8fbac0,
-      };
       batch.frustumCulled=false;batch.castShadow=false;batch.receiveShadow=false;
       for(const [i,f] of entries.entries()){
         transform.position.set(f.x,.65,f.y);
         transform.rotation.set(0,f.angle,0);
         transform.scale.set(f.size,.5,f.size*.6);
         transform.updateMatrix();batch.setMatrixAt(i,transform.matrix);
-        batch.setColorAt(i,new THREE.Color(fragmentColors[f.kind]));
+        batch.setColorAt(i,fragmentColors[f.kind]);
       }
       batch.instanceMatrix.needsUpdate=true;
       if(batch.instanceColor)batch.instanceColor.needsUpdate=true;
