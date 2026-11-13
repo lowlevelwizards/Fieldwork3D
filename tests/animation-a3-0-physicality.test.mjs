@@ -32,7 +32,7 @@ test('A3.0 contains all fixture families and one isolated actual Breach session'
   assert.equal(enemies(s).length>=1,true);
   assert.equal(s.phase,'running');
   const snapshot=probeA3(s,cfg);
-  assert.equal(snapshot.version,1);
+  assert.equal(snapshot.version,2);
   assert.equal(snapshot.allies.length,3);
   assert.ok(Number.isFinite(snapshot.shot.muzzle.x));
   assert.ok(Number.isFinite(snapshot.shot.muzzle.y));
@@ -63,7 +63,8 @@ test('A3.0 diagnostics use the same actual shot-time muzzle and baseline lane',(
   const lane=assessFireLane(
    {x:actual.muzzle.x,y:actual.muzzle.z},actual.muzzle.y,
    target.p,target.posture==='crouch'?11:32,
-   world.cover,world.walls,s.doors,[team(s)[1].p]);
+   world.cover,world.walls,s.doors,
+   [{...team(s)[1].p,posture:team(s)[1].posture}]);
   const reading=probeA3(s,cfg);
   assert.equal(reading.shot.lane,lane.blocker);
   assert.equal(reading.shot.lane,'friendly');
@@ -75,13 +76,15 @@ test('A3.0 diagnostics use the same actual shot-time muzzle and baseline lane',(
    'read-only probe cannot physically move the operator');
  }finally{activateSite(null);}
 });
-test('A3.0 crouch is correctly reported as baseline, not falsely permitted through friendly',()=>{
+test('A3.1 reports current crouch body volume and preserves flat-disk comparison',()=>{
  const stand=run('rear-stack',0,{operators:2});
  const crouch=run('mixed-crouch',0,{operators:2});
  assert.equal(stand.shot.lane,'friendly');
  assert.equal(crouch.allies[0].posture,'crouch');
- assert.equal(crouch.shot.lane,'friendly',
-  'future A3.1 vertical body protection is not implemented in A3.0');
+ assert.equal(crouch.shot.legacyPlanarLane,'friendly');
+ assert.equal(crouch.allies[0].protectedTop,26);
+ assert.ok(['friendly','clear'].includes(crouch.shot.lane),
+  'height model must evaluate complete actual muzzle trajectory');
 });
 test('A3.0 the doorway and tall fixture genuinely obstruct current shooting geometry',()=>{
  const doorway=run('doorway',0,{operators:1});
@@ -98,7 +101,7 @@ test('A3.0 seeded options, actor count and baseline lack of contact solver are e
  assert.equal(one.config.seed,173);
  assert.ok(Math.abs(one.shooter.heading-25*Math.PI/180)<.002);
  assert.ok(one.limitations.includes('no-micro-aim-solver'));
- assert.ok(one.limitations.includes('planar-friendly-guard'));
+ assert.ok(one.limitations.includes('no-auto-crouch'));
 });
 test('A3.0 is built and linked without touching production fire/motor authority',()=>{
  const vite=source('vite.config.ts'),home=source('index.html');
