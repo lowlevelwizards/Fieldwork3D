@@ -91,6 +91,7 @@ import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
 import {doorHandPoint} from './breach-door-hand-contact.ts';
+import {doorGripPhysicalContact} from './breach-physical-contact-anchor.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {armedPrecontactStyle} from './breach-idle-life.ts';
@@ -1963,14 +1964,19 @@ export class TacticalScene3D{
       // D4: a moving leaf's current position owns the wrist target.
       // Only actors actually attached to a door resolve its geometry.
       const physicalGrip=actor.doorHandContact;
-      const gripDoor=physicalGrip?.releasedAt===null?
+      const gripDoor=physicalGrip?
         s.doors.find(d=>d.id===physicalGrip.doorId):undefined;
       const doorGrip=physicalGrip?{
-        point:gripDoor?doorHandPoint(gripDoor,physicalGrip.fraction):
-          physicalGrip.point,
+        point:gripDoor&&physicalGrip.releasedAt===null?
+          doorHandPoint(gripDoor,physicalGrip.fraction):physicalGrip.point,
         mode:physicalGrip.mode,startedAt:physicalGrip.startedAt,
         releasedAt:physicalGrip.releasedAt
       }:undefined;
+      // A3.5 maps the existing D4 fixed-step attachment to a shared
+      // typed world anchor. No new motor or weapon authority is created.
+      const physicalContact=physicalGrip&&gripDoor&&doorGrip?
+        doorGripPhysicalContact(physicalGrip.doorId,doorGrip,
+          doorLeafSegment(gripDoor),actor.p):undefined;
       const threat=actor.targetId?
         s.operators.find(o=>o.id===actor.targetId):null;
       const threatRange=threat?Math.hypot(threat.p.x-actor.p.x,
@@ -2143,7 +2149,7 @@ export class TacticalScene3D{
         lastBashAt:actor.lastBashAt,bashRole:actor.lastBashRole,
         doorMethod:actor.lastDoorMethod,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
-         doorGrip,
+         doorGrip,physicalContact,
         down:actor.health<=0,surrender:actor.surrendered,
         aiming:!actor.traversal&&actor.aim>.20,
         turning:actor.turning,firing:!!firing&&!actor.traversal,

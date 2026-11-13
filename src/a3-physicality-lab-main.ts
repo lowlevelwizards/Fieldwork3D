@@ -158,6 +158,7 @@ function draw(){
   bodyVolumes:probe.friendlyVolumes,
   visualMuzzle:probe.presentation,carry:probe.carry,
   recovery:probe.legacyRecovery,doorContacts:probe.doorContacts,
+  contactAnchors:probe.contactAnchors,
   operator:probe.shooter,allies:probe.allies
  },null,2);
  el<HTMLElement>('pose').textContent=JSON.stringify({

@@ -1,6 +1,6 @@
 /** Canonical operator contact ownership. Presentation-only, deterministic. */
 import {reloadPhase,type ReloadMode} from './breach-magazines.ts';
-export type HandOwner='weapon'|'magazine'|'ammunition'|'door'|
+export type HandOwner='weapon'|'magazine'|'ammunition'|'door'|'brace'|'teammate'|
  'throw'|'medical'|'guard'|'free';
 export type ContactAction='hold'|'surrender'|'down'|'treatment'|
  'reload'|'throw'|'push'|'injury'|'door';
