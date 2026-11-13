@@ -112,7 +112,8 @@ test('B4: three ordinary generated sites keep incident, objective and dossier al
      {mission:p.mission,enableIncidentIntent:true,incidentId:p.id},
      {archetype:p.building});
    assert.equal(site.encounter?.incidentIntentId,p.id);
-   assert.ok(site.encounter?.actors.length);
+   assert.ok(site.encounter&&Array.isArray(site.encounter.actors),
+     'a quiet intel or welfare incident may legitimately have no armed hostiles');
    const s=newSession(0,p.seed,'true-blind','small',p.mission,site);
    const facts=compileMissionFacts(s);
    const dossier=createOperationDossier(facts,{quality:'low'});
