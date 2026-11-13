@@ -819,7 +819,10 @@ export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly
   'scorpion-w2','woodland-marpat','desert-marpat','flecktarn',
   'desert-tropentarn','woodland-dpm','british-mtp',
   'cadpat-tw','french-cce','australian-dpcu','italian-vegetato',
-  'finnish-m05','aor1','aor2'],
+  'finnish-m05','aor1','aor2',
+  // Restrained modern foreign-shell proxies already used by dated reference kits.
+  'russian-emr','pla-xingkong','ukrainian-mm14','jgsdf-type2',
+  'south-korean-granite-b'],
  'high-cut':['m81-woodland','ucp','multicam','flecktarn','swedish-m90',
   'woodland-marpat','desert-marpat','finnish-m05','polish-pantera','desert-tropentarn',
   'scorpion-w2','russian-emr','pla-xingkong','cadpat-tw','british-mtp','indian-digital-2022',
