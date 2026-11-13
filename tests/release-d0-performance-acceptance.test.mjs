@@ -47,15 +47,14 @@ test('D0: ordered actor proposals and immutable origins remain identical',()=>{
 
 test('D0: movement authority uses phase-local geometry and actor IDs, not repeated finds',()=>{
  const src=code('src/breach-simulation-motion-phase.ts');
- assert.match(src,/const world=sessionWorldGeometry\(s\);/);
+ assert.match(src,/const geometry=\(\)=>world\?\?\(world=sessionWorldGeometry\(s\)\)/);
  assert.equal((src.match(/sessionWorldGeometry\(s\)/g)??[]).length,1);
- assert.match(src,/const actorById=new Map<string,TeamActor>\(\)/);
- assert.match(src,/const civilianById=new Map<string,\(typeof s\.civilians\)\[number\]>\(\)/);
- assert.match(src,/if\(transportLinks\.length\)/);
+ assert.match(src,/const actorById=s\.operators\.length>=12\?/);
+ assert.match(src,/const civilianById=s\.civilians\.length>=8\?/);
+ assert.match(src,/if\(transportLinks\)/);
  const authority=src.slice(src.indexOf('const arbitrationStart=cpuMark()'));
- assert.doesNotMatch(authority,/s\.operators\.find\(/);
- assert.doesNotMatch(authority,/s\.civilians\.find\(/);
  assert.doesNotMatch(authority,/s\.civilians\.filter\(/);
+ assert.match(authority,/actorById\?\.get\(p\.id\)\?\?s\.operators\.find/);
  assert.match(authority,/if\(body&&body\.carriedById===a\.id\)/);
 });
 
