@@ -28,6 +28,7 @@ import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeViso
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
 import {readHelmetField,resolveHelmetField,HELMET_FIELD_COLORS,
  HELMET_FIELD_CONCEALMENT,HELMET_FIELD_TILTS,HELMET_FIELD_GOGGLES,
+ HELMET_FIELD_SIDES,
  type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
 import {readPasgtDetails,resolvePasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
  pasgtConcealmentRequiresSlits} from './operator-pasgt-cover-policy.ts';
@@ -1560,7 +1561,9 @@ function renderMaterials(){
     historical?'Period elastic band, including rear cat-eye markers.':
     'One low-profile elastic band over the helmet cover or painted shell.');
    toggle(band,'band','ELASTIC BAND','▰');
-   picker('BAND COLOR','bandColor','Auto uses period-appropriate webbing; Match follows shell paint; override stays saved.');
+   if(currentField.band||(!historical&&currentField.concealment==='net'))
+    picker('BAND COLOR','bandColor',
+     'Auto uses period-appropriate webbing; Match follows shell paint; override stays saved.');
    const foliage=rowOf('FIELD CONCEALMENT',
     'One option at a time. Slits/loops, scrim, netting, and graded foliage are physical additions, not texture changes.');
    addSelect(foliage,HELMET_FIELD_CONCEALMENT.map(c=>[c,
@@ -1598,6 +1601,22 @@ function renderMaterials(){
    toggle(addons,'camera','CAMERA','◈',!historical);
    toggle(addons,'chemlight','CHEMLIGHT','│');
    toggle(addons,'patches','PATCH / IDENTIFIER','▤');
+   const sidePicker=(title:string,key:'cameraSide'|'lightSide'|'chemlightSide',
+    help:string)=>{
+    const section=rowOf(title,help);
+    addSelect(section,HELMET_FIELD_SIDES.map(c=>
+     [c,c==='left'?'LEFT SIDE':'RIGHT SIDE'] as const),
+     currentField[key],v=>changeField({[key]:v}));
+   };
+   if(!historical&&currentField.camera)
+    sidePicker('CAMERA MOUNT','cameraSide',
+     'Forward-facing camera on the left or right helmet side.');
+   if(!historical&&currentField.light)
+    sidePicker('HELMET LIGHT MOUNT','lightSide',
+     'Clip the forward-facing task light to the left or right rail.');
+   if(!historical&&currentField.chemlight)
+    sidePicker('CHEMLIGHT MOUNT','chemlightSide',
+     'Secure the enlarged capped chemlight along either helmet side.');
   }
   if(item==='police-helmet'){
    const pos=row('POLICE PROTECTIVE VISOR',

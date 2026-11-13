@@ -176,7 +176,8 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  const bandHex=resolveHelmetFieldColor(s.bandColor,shellHex,v.shell==='pasgt');
  const webHex=resolveHelmetFieldColor(s.webbingColor,shellHex,v.shell==='pasgt');
  v.bandMaterial.color.setHex(bandHex);v.webbingMaterial.color.setHex(webHex);
- m.band.visible=s.band&&v.shell!=='pasgt';
+ // The net cannot be tied off if its retaining elastic is absent.
+ m.band.visible=(s.band||(covered&&s.concealment==='net'))&&v.shell!=='pasgt';
  m.loops.visible=covered&&v.shell!=='pasgt'&&s.concealment!=='none';
  m.scrim.visible=covered&&v.shell!=='pasgt'&&s.concealment==='scrim';
  m.net.visible=covered&&v.shell!=='pasgt'&&s.concealment==='net';
@@ -189,6 +190,11 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  for(const key of ['shroud','rails','bungees','velcro','strobe',
   'counterweight','battery','light','camera','chemlight','patches'] as const)
   m[key].visible=s[key];
+ // Mirror complete prebuilt surface-mounted models rather than rebuilding
+ // meshes, evaluating rays, or adding per-frame visual work.
+ m.camera.scale.x=s.cameraSide==='right'?1:-1;
+ m.light.scale.x=s.lightSide==='left'?1:-1;
+ m.chemlight.scale.x=s.chemlightSide==='right'?1:-1;
  for(const key of ['goggles-front','goggles-rear','goggles-eyes']){
   const where=key.substring('goggles-'.length);
   m[key].visible=s.goggles===where&&
