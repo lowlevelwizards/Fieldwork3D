@@ -16,9 +16,9 @@ test('normal in-match PERF arms 3D breakdown for current and future scenes',()=>
  const scene=source('src/breach-3d.ts');
  const loop=source('src/breach-runtime-loop.ts');
  assert.match(scene,/setPerformanceProfilingEnabled\(enabled:boolean\)/);
- assert.match(loop,/config\.getStage\(\)\?\.setPerformanceProfilingEnabled\(true\)/);
+ assert.match(loop,/config\.getStage\(\)\?\.setPerformanceProfilingEnabled\?\.\(true\)/);
  assert.match(loop,/if\(stage!==profiledStage\)/);
- assert.match(loop,/stage\?\.setPerformanceProfilingEnabled\(!!perfOverlay\)/);
+ assert.match(loop,/stage\?\.setPerformanceProfilingEnabled\?\.\(!!perfOverlay\)/);
  assert.match(scene,/scenePhases:this\.profileSceneUpdate\?this\.scenePhases:null/);
 });
 test('opaque static fixture pieces merge without losing positions/shadow parity',()=>{
