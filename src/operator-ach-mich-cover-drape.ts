@@ -74,12 +74,17 @@ function samples(style:Style):readonly (readonly Sample[])[]{
  const anchors=[style.topFront,...style.hem.slice(1,-1).map(p=>p[2]),
   style.topRear].sort((a,b)=>a-b);
  const stations=[...new Set(anchors)];
+ // Stitch the skirt ends to the front brow and rear nape exactly.
+ // Interior stations keep the actual high/mid-cut side hem contour.
+ const bottomAtJoin=(z:number)=>Math.abs(z-style.topFront)<1e-5?
+  style.brow:Math.abs(z-style.topRear)<1e-5?
+  style.nape:sideBottom(style,z);
  const right=stations.map(z=>({side:'right' as const,x:style.topX,z,
-  bottom:sideBottom(style,z)}));
+  bottom:bottomAtJoin(z)}));
  const rear=[...xs].reverse().map(x=>({side:'rear' as const,x,
   z:style.topRear,bottom:style.nape}));
  const left=[...stations].reverse().map(z=>({side:'left' as const,
-  x:-style.topX,z,bottom:sideBottom(style,z)}));
+  x:-style.topX,z,bottom:bottomAtJoin(z)}));
  return [front,right,rear,left];
 }
 /** Three contours: flat top, one broad diagonal shoulder, and hem.
