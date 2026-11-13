@@ -119,6 +119,18 @@ function draw(){
   ctx.fillStyle='#e7bb91';ctx.fillText(ally.posture==='crouch'?'C':'S',
    ally.position.x+10,ally.position.y+13);
  }
+ // True world-space hand anchor and normal from the fixed-step session.
+ // Drawing these never grants a new gameplay contact.
+ for(const anchor of probe.contactAnchors){
+  const pt=anchor.point;
+  const c=anchor.kind==='teammate'?'#7adbc3':
+    anchor.kind==='brace'?'#e6bc80':'#dcb9ee';
+  circle(pt.x,pt.z,4,c,'#24352c');
+  line(pt.x,pt.z,pt.x+anchor.normal.x*8,
+   pt.z+anchor.normal.z*8,c,1.4);
+  ctx.fillStyle=c;ctx.font='9px ui-monospace,monospace';
+  ctx.fillText(anchor.kind.toUpperCase(),pt.x+6,pt.z-7);
+ }
  const a=probe.shooter,t=probe.target,shot=probe.shot;
  line(shot.origin.x,shot.origin.y,shot.destination.x,shot.destination.y,
   shot.lane==='clear'?'#bce6c5':'#f3a494',2.5,true);
@@ -148,6 +160,10 @@ function draw(){
  el<HTMLElement>('candidate').textContent=step?
   (step.x-a.position.x).toFixed(0)+','+(step.y-a.position.y).toFixed(0):'NONE';
  el<HTMLElement>('checks').textContent=String(probe.legacyRecovery.checks);
+ el<HTMLElement>('contact').textContent=probe.contactAnchors.length?
+  probe.contactAnchors.map(c=>c.kind.toUpperCase()+
+   ' '+c.operatorId+'→'+c.targetId+
+   (c.attached?' ACTIVE':' RELEASE')).join(' / '):'NO ANCHOR';
  const poseOut=inspectOperatorPoseOutput(rig);
  const feet=rig.footsteps.feet.map((f,i)=>({
   foot:i,phase:f.phase,contact:f.contact,
