@@ -366,7 +366,6 @@ function updatePassiveWatchMicroAim(s:Session,a:TeamActor):void{
  const yaw=watch.mode==='fixed'&&watch.angle!==undefined?
     watch.angle:watch.point?
     angle(a.p,watch.point):a.weaponYaw;
- const far={x:a.p.x+Math.cos(yaw)*155,y:a.p.y+Math.sin(yaw)*155};
  const friends=team(s).filter(other=>other!==a&&other.health>0)
    .map(safetyBodyFor);
  if(!friends.length){a.aimSideTarget=0;return;}
@@ -380,6 +379,7 @@ function updatePassiveWatchMicroAim(s:Session,a:TeamActor):void{
    s.doors,world.cover,world.walls,friends);
   if(candidate.blocked)return false;
   const from={x:candidate.muzzle.x,y:candidate.muzzle.z};
+  const far=muzzleEndpoint(from,candidate.muzzle.yaw,155);
   return assessFriendlyLane(from,candidate.muzzle.y,far,candidate.muzzle.y,
     friends).blocker==='clear'&&
    assessFireLane(from,candidate.muzzle.y,far,candidate.muzzle.y,
@@ -559,9 +559,15 @@ function fire(s:Session,a:TeamActor,dt:number){
        },s.doors,world.cover,world.walls,friends);
       if(probe.blocked)return false;
       const origin={x:probe.muzzle.x,y:probe.muzzle.z};
+      const far=muzzleEndpoint(origin,probe.muzzle.yaw,
+        Math.max(170,d(origin,target.p)+38));
+      const farHeight=probe.muzzle.y+(height-probe.muzzle.y)*
+        d(origin,far)/Math.max(1,d(origin,target.p));
+      // A candidate must clear the actual outgoing barrel direction,
+      // including a miss that continues beyond the intended target.
       if(observedCivilianFireLane(s,a,origin,probe.muzzle.y,
-        target.p,height))return false;
-      if(assessFriendlyLane(origin,probe.muzzle.y,target.p,height,
+        far,farHeight))return false;
+      if(assessFriendlyLane(origin,probe.muzzle.y,far,farHeight,
         friends).blocker==='friendly')return false;
       return assessFireLane(origin,probe.muzzle.y,target.p,height,
         world.cover,world.walls,s.doors,friends).blocker==='clear';
