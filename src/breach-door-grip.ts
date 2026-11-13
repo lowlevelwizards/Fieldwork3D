@@ -8,9 +8,10 @@ import {doorLeafSegment,pointToSegment,type Door,type Pt}
 import {handlePoint,PUSHED_OPEN_LIMIT} from './breach-door.ts';
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 import type {TeamActor} from './breach-game.ts';
-export const DOOR_HAND_ACQUIRE_REACH=27;
-export const DOOR_HAND_RELEASE_REACH=31;
-export const DOOR_HAND_RELEASE_DURATION=.24;
+import {DOOR_HAND_ACQUIRE_REACH,DOOR_HAND_RELEASE_REACH,
+ DOOR_HAND_RELEASE_DURATION} from './breach-door-grip-constants.ts';
+export {DOOR_HAND_ACQUIRE_REACH,DOOR_HAND_RELEASE_REACH,
+ DOOR_HAND_RELEASE_DURATION} from './breach-door-grip-constants.ts';
 export type DoorGripRecord={
  doorId:string;fraction:number;mode:'handle'|'panel';
  startedAt:number;releasedAt:number|null;point:Pt;
