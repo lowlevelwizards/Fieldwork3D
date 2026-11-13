@@ -17,7 +17,7 @@ import {wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {validArmorSolid,validRigSolid}
  from './operator-rig-authenticity-policy.ts';
 import {isGarmentColorway} from './operator-upper-colorways.ts';
-import {isGarmentSolidId,FABRIC_SOLID_CHOICES,type GarmentSolidId}
+import {isGarmentSolidId,FABRIC_SOLID_CHOICES,solidChoicesFor,type GarmentSolidId}
  from './operator-garment-color-policy.ts';
 import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
@@ -354,6 +354,7 @@ export function setWardrobeFabricSolid(wardrobe:WardrobeOptions,
  if(outfit&&channel==='gear'&&outfit.rigStyle!=='no-rig'&&
   !validRigSolid(outfit.rigStyle,id))return wardrobe;
  return {...wardrobe,
+  topColorway:channel==='top'&&outfit?.top==='button-up-shirt'?'standard':wardrobe.topColorway,
   fabricSolids:{...wardrobe.fabricSolids,[channel]:id},
   lastFabricCamo:{...wardrobe.lastFabricCamo,
    [channel]:wardrobe.fabricCamo?.[channel]??wardrobe.lastFabricCamo?.[channel]},
@@ -369,6 +370,7 @@ export function setWardrobeFabricCamo(wardrobe:WardrobeOptions,
  if(!isHeadwearCamoId(id)||!fabricCamoCompatible(id,channel,outfit))
   return wardrobe;
  return {...wardrobe,
+  topColorway:channel==='top'&&outfit.top==='button-up-shirt'?'standard':wardrobe.topColorway,
   lastFabricCamo:{...wardrobe.lastFabricCamo,[channel]:id},
   fabricCamo:{...wardrobe.fabricCamo,[channel]:id},
   fabricCamoRoll:{...wardrobe.fabricCamoRoll,
