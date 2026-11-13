@@ -21,7 +21,7 @@ type Profile={
 const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
  ach:{
   side:5.075,front:-5.535,rear:5.60,brow:4.40,nape:2.68,
-  frontStud:[5.075,4.95,-3.12],rearStud:[5.075,3.91,1.86],
+  frontStud:[5.075,4.95,-3.12],rearStud:[5.075,3.47,1.86],
   hem:[[5.075,4.40,-5.535],[5.075,4.40,-1.96],
    [5.075,2.92,-1.49],[5.075,2.92,2.72],
    [5.075,2.68,3.30],[5.075,2.68,5.60]]
