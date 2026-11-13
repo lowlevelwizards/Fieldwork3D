@@ -59,7 +59,7 @@ export function planUpperBodyStrategy(p:OperatorPose,
  c:UpperBodyStrategyContext):UpperBodyStrategy{
  const previewReloadSeed=p.poseV3Preview===true&&
    p.reload>0&&p.reloadDuration>0;
- const coupledEligible=c.hasModularBuild&&c.handling==='low'&&
+ const coupledEligible=false&&c.hasModularBuild&&c.handling==='low'&&
    p.posture==='stand'&&c.physicalSpeed<.45&&
    Math.abs(p.turning)<.28&&!p.down&&!p.surrender&&!p.firing&&
    !p.aiming&&(p.aimBlend??0)<.02&&
@@ -69,12 +69,14 @@ export function planUpperBodyStrategy(p:OperatorPose,
    p.seconds-p.lastThrowAt>.85&&
    (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
  const supportEligible=!!p.poseV3Preview&&c.hasModularBuild&&
+   c.handling!=='low'&&c.handling!=='high'&&
    !p.firing&&!p.down&&!p.surrender&&p.reload<=0;
  // Short-stock has a deliberately OUTBOARD firing elbow. The generic
  // paired coordinated aim search favors medial carry elbows and can undo
  // that intent. Use the same equipment-aware direct arm fit instead.
  const coordinatedEligible=!!p.poseV3Preview&&c.hasModularBuild&&
-   c.handling!=='short'&&!p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
+   c.handling!=='short'&&c.handling!=='low'&&
+   c.handling!=='high'&&!p.firing&&!p.down&&!p.surrender&&!p.unarmedPreview&&
    !c.interactionWindow&&(!c.activeTransition||c.authoredLabSwitch);
  return {previewReloadSeed,coupledEligible,supportEligible,
    coordinatedEligible,envelopeRequired:coupledEligible||!!p.poseV3Preview};

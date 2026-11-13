@@ -10,6 +10,8 @@ import {authoredShortPhase}
 import {shortStockReference,sameAuthoredReferenceBuild,
  transferShortStockPose} from './breach-authored-short-stock.ts';
 import type {WorkbenchPose} from './operator-pose-workbench.ts';
+import {AUTHORED_READY_CARRIES,type ReadyCarry}
+ from './breach-authored-ready-carries.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
 import {chooseCarry,type CarryFacts} from './breach-carry-policy.ts';
 import {lowReadyFamilyFit,lowReadyPocket} from './breach-low-ready-family-fit.ts';
@@ -90,6 +92,29 @@ export function liveShortStockPose(weapon:WeaponId,
   weapon,valid?.build?.family??weapon);
  if(valid)authoredPoseCache.set(valid,pose);
  else classicPoseCache.set(weapon,pose);
+ return pose;
+}
+// Do not mix the author-approved M4A1 high/low endpoint with the legacy
+// coupled low-ready search. This exact grip-aware transfer is cached for
+// every immutable build and every classic weapon class.
+const carryModularCache=new WeakMap<WeaponConfiguration,
+  Partial<Record<ReadyCarry,Readonly<WorkbenchPose>>>>();
+const carryClassicCache=new Map<WeaponId,
+  Partial<Record<ReadyCarry,Readonly<WorkbenchPose>>>>();
+export function liveReadyCarryPose(mode:ReadyCarry,weapon:WeaponId,
+ configuration?:WeaponConfiguration):Readonly<WorkbenchPose>{
+ const valid=configuration?.weapon===weapon?configuration:undefined;
+ const cache=valid?carryModularCache.get(valid):carryClassicCache.get(weapon);
+ if(cache?.[mode])return cache[mode]!;
+ const source=AUTHORED_READY_CARRIES[mode];
+ const exact=valid&&sameAuthoredReferenceBuild(source,valid);
+ const pose=exact?source:transferShortStockPose(source,
+   weaponGrips('carbine',M4_REFERENCE_CONFIG,'ready'),
+   weaponGrips(weapon,valid,'ready'),weapon,
+   valid?.build?.family??weapon);
+ const record={...cache,[mode]:pose};
+ if(valid)carryModularCache.set(valid,record);
+ else carryClassicCache.set(weapon,record);
  return pose;
 }
 export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage'|'squeeze'|'entry'|'stack'|'reload'|'treat'|'traverse';
@@ -230,6 +255,40 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       contactError:Math.max(0,right-LIMIT)+Math.max(0,left-LIMIT),
       stockError:stocklessMP5K(input.configuration)?0:
         anchorGap(stock,stockPocket(input.handling,input.armorPush))};
+  }
+  // HIGH/LOW: the user's exported pose owns the entire rigid weapon.
+  // A shared chest-local fit means the rendering and shot-time muzzle
+  // always see the SAME XYZ firearm, including proximity transitions.
+  if(input.handling==='high'||input.handling==='low'){
+    const pose=liveReadyCarryPose(input.handling,input.weapon,
+      input.configuration);
+    const grip=weaponGrips(input.weapon,input.configuration,'ready');
+    const d=THREE.MathUtils.degToRad,angles=pose.weaponRotation;
+    const rotation=new THREE.Euler(d(angles[0]),
+      input.yaw+d(angles[1])+(input.swayYaw??0),
+      d(angles[2])+(input.swayPitch??0),'XYZ');
+    const authoredStock=new THREE.Vector3(...pose.targets.stock);
+    const stock=authoredStock.clone();
+    stock.x+=clamp(input.armorPush??0,0,1.25);
+    stock.x-=clamp(input.recoil,0,5);
+    const origin=stock.clone().sub(new THREE.Vector3(
+      grip.stockX*grip.lengthScale,0,0).applyEuler(rotation));
+    const point=(x:number,y:number,z:number)=>new THREE.Vector3(
+      x*grip.lengthScale,y,z).applyEuler(rotation).add(origin);
+    const primary=point(grip.primaryX,grip.primaryY,1.8),
+      support=point(grip.supportX,grip.supportY,-1.6);
+    const rightReach=primary.distanceTo(new THREE.Vector3(1,4,7)),
+      leftReach=support.distanceTo(new THREE.Vector3(1,4,-7));
+    const stockError=stock.distanceTo(authoredStock);
+    // The export can place authored wrists off the real sockets.
+    // Diagnose the separation; never fake a second independent firearm.
+    const contactError=primary.distanceTo(
+      new THREE.Vector3(...pose.targets.firingHand))+
+      support.distanceTo(new THREE.Vector3(...pose.targets.supportHand));
+    return {origin,rotation,stock,primary,support,handling:input.handling,
+      twoHanded:rightReach<=LIMIT&&leftReach<=LIMIT,
+      primaryReachable:rightReach<=LIMIT,
+      contactError,stockError};
   }
   const data=weaponGrips(input.weapon,input.configuration,
      input.handling,input.relaxedLowReady),scale=data.lengthScale;

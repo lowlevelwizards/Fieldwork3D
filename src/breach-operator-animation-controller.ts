@@ -66,7 +66,7 @@ import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geome
 import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
 import {weaponPresentationSockets} from './breach-weapon-presentation.ts';
 import {resolveWeaponAssembly,sameWeaponConfiguration} from './equipment-weapon-assemblies.ts';
-import {weaponGrips,clampReach,shortStockSourceHandling,fitWeaponPose,liveShortStockPose,type WeaponFit}
+import {weaponGrips,clampReach,shortStockSourceHandling,fitWeaponPose,liveShortStockPose,liveReadyCarryPose,type WeaponFit}
   from './breach-weapon-pose.ts';
 
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
@@ -885,13 +885,23 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   }>|null=diagnosticsEnabled?[]:null;
   // The base hold is calculated from the very same ready/aim source used
   // by shot-time geometry. No previous-frame elbow memory; replay is pure.
-  const manualPhase=manualShort?authoredShortPhase(manualRaw):0;
+  const manualCarry=(handling==='high'||handling==='low')&&
+    !p.unarmedPreview&&!p.down&&!p.surrender&&!reloadActive&&
+    !treatmentActive&&!throwActive&&!doorActive&&
+    !p.traversalProgress&&!p.firing&&
+    p.handlingIntent!=='run'&&p.handlingIntent!=='traverse'&&
+    handOwners.left==='weapon'&&handOwners.right==='weapon';
+  const manualPhase=manualShort?authoredShortPhase(manualRaw):
+    manualCarry&&activeTransition?
+      lowReadyBlendPhase(activeTransition.alpha):1;
   const manualPose=manualShort?
-    liveShortStockPose(p.weapon,p.weaponConfiguration):null;
+    liveShortStockPose(p.weapon,p.weaponConfiguration):
+    manualCarry?liveReadyCarryPose(handling as 'high'|'low',
+      p.weapon,p.weaponConfiguration):null;
   const manualSource=manualShort?
     shortStockSourceHandling(p.aimBlend??(p.aiming?1:0),moving,
       p.weapon,!!p.friendlyNear):'ready';
-  const manualSourceFit=manualShort?fitWeaponPose({
+  const manualSourceFit=manualPose?fitWeaponPose({
     weapon:p.weapon,configuration:p.weaponConfiguration,
     handling:manualSource,
     yaw:p.handlingOverride==='short'?0:relativeYaw,recoil,
@@ -906,9 +916,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const start=new THREE.Vector3(...manualPose!.targets.stock);
     return new THREE.Vector3(...manualPose!.targets[key])
       .sub(start).applyAxisAngle(P(0,1,0),
-        p.handlingOverride==='short'?0:relativeYaw).add(start);
+        p.handlingOverride==='short'?0:relativeYaw).add(
+          manualCarry?fit.stock:start);
   };
-  if(manualShort&&p.handlingOverride==='short'&&physicalSpeed<.2){
+  if((manualShort&&p.handlingOverride==='short'||manualCarry&&
+      !!p.handlingOverride)&&physicalSpeed<.2){
     // Match the static workbench silhouette without altering the battle's
     // upper-body recoil/turn authority. This tiny torso adjustment only
     // runs for the explicitly selected stationary Lab stance.
@@ -932,7 +944,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   beginOperatorArmPose(r,scratch);
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
-    if(manualShort&&manualSourceFit){
+    if((manualShort||manualCarry)&&manualSourceFit){
       const startShoulder=shoulderFor(i);
       const targetShoulder=new THREE.Vector3(
         ...manualPose!.targets[
