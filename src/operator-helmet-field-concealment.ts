@@ -82,13 +82,15 @@ export function addAchMichConcealment(
   fabric.name='pasgt-derived-folded-scrim';
   fabric.position.copy(f.position);
   fabric.quaternion.copy(basis(right,up,normal));
-  fabric.rotateZ(LEAN[i]*1.12);
-  fabric.rotateY(i%2?.16:-.19);
+  // Brow/nape strips should hang shorter and twist enough that their
+  // folded cloth remains visible obliquely rather than a black needle.
+  fabric.rotateZ(LEAN[i]*(slot<4?.55:.95));
+  fabric.rotateY(slot<4?(i%2?.38:-.42):(i%2?.14:-.16));
   // Broad folded textile should hang visibly down the shell and just
   // past the brim. Shorter brow/nape pieces cannot become long spears.
   const shortEdge=slot<4;
-  fabric.scale.set(1.10+(i%3)*.13,
-   (shortEdge?.79:.94)+(i%3)*.065,.87);
+  fabric.scale.set(1.13+(i%3)*.12,
+   (shortEdge?.60:.89)+(i%3)*.052,shortEdge?.94:.87);
   fabric.userData.h9ScrimDownOut=true;fabric.userData.h9SourceSlot=slot;
   fabric.castShadow=false;fabric.receiveShadow=false;scrim.add(fabric);
  }
