@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import {createAchMichDrapedGeometry,type AchMichCoverShell}
  from './operator-ach-mich-cover-drape.ts';
+import {ACH_MICH_COVER_OFFSET} from './operator-ach-mich-cover-drape.ts';
 import {achMichProfile,achMichHemY} from './operator-ach-mich-details.ts';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 export type CoverRegion='front'|'back'|'left'|'right'|'crown';
@@ -73,4 +74,18 @@ export function sampleHelmetCover(
   position:hit.point.clone().addScaledVector(normal,clearance),
   normal,right,up,region
  };
+}
+
+/** H5.0: hard-mounted hardware references the painted protective shell,
+ * while elastic/cloth references the exterior textile. A fitted cover is
+ * only ${ACH_MICH_COVER_OFFSET} units outward; it must never move rail
+ * screws, shroud anchors, or rigid accessory sockets into midair.
+ */
+export function sampleHelmetShell(
+ shell:AchMichCoverShell,region:CoverRegion,u:number,v:number,
+ clearance=.10
+):HelmetSurfaceFrame|null{
+ const frame=sampleHelmetCover(shell,region,u,v,clearance);
+ if(frame)frame.position.addScaledVector(frame.normal,-ACH_MICH_COVER_OFFSET);
+ return frame;
 }

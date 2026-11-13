@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
-import {sampleHelmetCover,type CoverRegion} from './operator-helmet-surface.ts';
+import {sampleHelmetShell,type CoverRegion} from './operator-helmet-surface.ts';
 
 export type HelmetFieldAddon='strobe'|'counterweight'|'battery'|
  'light'|'camera'|'chemlight';
@@ -43,7 +43,7 @@ const mount=(shell:AchMichCoverShell,g:THREE.Group,
  region:CoverRegion,u:number,v:number)=>{
  for(const uu of [u,u*.86,u*.7])
   for(const vv of [v,v+.12,v-.12,.24]){
-   const f=sampleHelmetCover(shell,region,uu,vv,.19);
+   const f=sampleHelmetShell(shell,region,uu,vv,.13);
    if(!f)continue;
    const anchor=new THREE.Group();
    anchor.name='helmet-addon-fitted-socket';
@@ -52,6 +52,7 @@ const mount=(shell:AchMichCoverShell,g:THREE.Group,
     .makeBasis(f.right,f.up,f.normal));
    g.add(anchor);
    anchor.userData.h9RealCoverNormal=f.normal.toArray();
+   anchor.userData.h5HardMountedToShell=true;
    anchor.userData.h9Shell= shell;
    return anchor;
   }

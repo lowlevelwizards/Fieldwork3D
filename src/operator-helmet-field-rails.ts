@@ -1,11 +1,11 @@
 /** H9.4b — ACH-ARC inspired full-length curved two-screw rail.
  * Fitted to real ACH/MICH cover panels at construction, never animation time.
- * One continuous shallow raised track follows the shell and kicks upward at
- * the rear; large slots and shared retention bolts remain gameplay-readable.
+ * One continuous low-profile track follows the hard shell and sweeps DOWN
+ * behind the ear region; visible bolts stay above the protective edge.
  */
 import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
-import {sampleHelmetCover,type HelmetSurfaceFrame}
+import {sampleHelmetShell,type HelmetSurfaceFrame}
  from './operator-helmet-surface.ts';
 import {achMichHemY,achMichProfile} from './operator-ach-mich-details.ts';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
@@ -14,9 +14,9 @@ import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 type Side='left'|'right';
 type RailStation={u:number;rise:number};
 const stations:readonly RailStation[]=[
- {u:-.78,rise:-.14},{u:-.51,rise:-.11},
- {u:-.24,rise:-.07},{u:.02,rise:0},
- {u:.29,rise:.12},{u:.54,rise:.31},{u:.78,rise:.72}
+ {u:-.78,rise:.22},{u:-.51,rise:.19},
+ {u:-.24,rise:.14},{u:.02,rise:.08},
+ {u:.29,rise:-.02},{u:.54,rise:-.27},{u:.78,rise:-.57}
 ];
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 const railFrame=(shell:AchMichCoverShell,side:Side,u:number,rise=0):
@@ -30,19 +30,22 @@ const railFrame=(shell:AchMichCoverShell,side:Side,u:number,rise=0):
  const baseY=Math.max(p.top-2.43,highestCut+.51);
  const y=clamp(baseY+rise,low+.52,p.top-.68);
  const v=clamp(2*(y-low-.38)/(p.top-low-.45)-1,-.58,.69);
+ let selected:HelmetSurfaceFrame|null=null,score=Infinity;
  for(const uu of [u,u*.94,u*.84])
   for(const vv of [v,v+.11,v-.10,v+.23,v-.20,.25,.40]){
-   const f=sampleHelmetCover(shell,side,uu,clamp(vv,-.64,.79),.18);
-   if(f&&((side==='left'&&f.position.x<0)||
-          (side==='right'&&f.position.x>0))){
-    // A molded ARC rail has a single continuous centerline even where
-    // MICH-2002 cloth is interrupted by the high ear cut. The sampled
-    // X/Z surface and normal still determine contact and orientation.
-    f.position.y=y;
-    return f;
-   }
+   const f=sampleHelmetShell(shell,side,uu,clamp(vv,-.64,.79),.12);
+   if(!f||((side==='left'&&f.position.x>=0)||
+    (side==='right'&&f.position.x<=0)))continue;
+   const distance=Math.abs(f.position.y-y)+Math.abs(uu-u)*.25;
+   if(distance<score){score=distance;selected=f;}
   }
- throw Error('H9.4b no '+shell+' '+side+' rail frame at u='+u);
+ if(selected){
+  // Smooth the manufactured centerline across cutout jumps, retaining
+  // the nearest genuine shell-facing normal rather than a cloth chord.
+  selected.position.y=y;
+  return selected;
+ }
+ throw Error('H5.2 no '+shell+' '+side+' shell rail frame at u='+u);
 };
 const quad=(a:THREE.Vector3,b:THREE.Vector3,c:THREE.Vector3,
  d:THREE.Vector3,out:number[])=>{
@@ -58,14 +61,14 @@ const railBody=(frames:HelmetSurfaceFrame[]):THREE.BufferGeometry=>{
  for(let i=1;i<frames.length;i++){
   const a=frames[i-1],b=frames[i];
   const hA=i===1?.55:.61,hB=i===frames.length-1?.77:.61;
-  const aTop=at(a,hA,.43),aBot=at(a,-hA,.43),
-   bTop=at(b,hB,.43),bBot=at(b,-hB,.43);
+  const aTop=at(a,hA,.27),aBot=at(a,-hA,.27),
+   bTop=at(b,hB,.27),bBot=at(b,-hB,.27);
   quad(aTop,aBot,bBot,bTop,data);
-  quad(at(a,hA,.13),aTop,bTop,at(b,hB,.13),data);
-  quad(aBot,at(a,-hA,.13),at(b,-hB,.13),bBot,data);
-  if(i===1)quad(at(a,hA,.13),at(a,-hA,.13),aBot,aTop,data);
+  quad(at(a,hA,.07),aTop,bTop,at(b,hB,.07),data);
+  quad(aBot,at(a,-hA,.07),at(b,-hB,.07),bBot,data);
+  if(i===1)quad(at(a,hA,.07),at(a,-hA,.07),aBot,aTop,data);
   if(i===frames.length-1)
-   quad(bTop,bBot,at(b,-hB,.13),at(b,hB,.13),data);
+   quad(bTop,bBot,at(b,-hB,.07),at(b,hB,.07),data);
  }
  const geometry=new THREE.BufferGeometry();
  geometry.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
@@ -86,7 +89,7 @@ const bolt=(parent:THREE.Group,frame:HelmetSurfaceFrame,
  dark:THREE.Material,light:THREE.Material)=>{
  const mount=new THREE.Group();
  mount.name='arc-rail-chinstrap-sharing-bolt';
- mount.position.copy(frame.position).addScaledVector(frame.normal,.49);
+ mount.position.copy(frame.position).addScaledVector(frame.normal,.34);
  mount.quaternion.setFromRotationMatrix(new THREE.Matrix4()
   .makeBasis(frame.right,frame.up,frame.normal));
  parent.add(mount);
@@ -111,15 +114,17 @@ export function addAchMichArcRails(
   m.name='curved-full-length-ach-arc-track';
   m.castShadow=false;m.receiveShadow=false;g.add(m);
   for(const u of [-.56,-.35,-.14,.08,.30,.51]){
-   const f=railFrame(shell,side,u,u>.25?(u-.25)*.75:0);
+   const f=railFrame(shell,side,u,u>.25?-(u-.25)*1.15:.17);
    // ACH-ARC retention slots run along the rail, not vertically.
    const slot=new THREE.Mesh(new THREE.PlaneGeometry(.53,.23),dark);
    slot.name='large-arc-accessory-slot';
-   attach(g,f,slot,0,.46);
+   attach(g,f,slot,0,.30);
   }
   for(const s of [stations[0],stations[stations.length-1]])
    bolt(g,railFrame(shell,side,s.u,s.rise),dark,fastener);
   g.userData.h9ArcFamily='ACH-ARC';
+  g.userData.h5RearContour='descending-ear-clearance';
+  g.userData.h5HardMount=true;
   g.userData.h9ArcScrews=2;
   g.userData.h9ArcSlots=6;
   g.userData.h9SurfaceFitted=true;
