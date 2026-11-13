@@ -3,7 +3,7 @@
  * no renderer-owned traversal permission and no replay knowledge disclosure.
  */
 import {doorCenter,type Door,type Pt} from './breach-core.ts';
-import type {PassageSchedule,PassageSlot} from './breach-passage-plan.ts';
+import type {PassageSchedule} from './breach-passage-plan.ts';
 export type PassageBadge={actorId:string;doorId:string;side:-1|1;
  rank:number;point:Pt};
 const signed=(p:Pt,d:Door)=>{

@@ -75,6 +75,7 @@ function replayPlanFor(a:TeamActor){
 }
 function paths(){
   const {state,replaying,selected,selectedNode,selectedActiveWatch,draggingNode,draggingWatchTarget,trace,cursor,looking,replayPlanVersion,replayPlanScope}=getFrame();
+  const crossingSchedule=!replaying?passageScheduleForDisplay(state):null;
   for(const a of team(state)){
     if(a.health<=0&&(!replaying||replayPlanVersion!=='original'))continue;
     if(replaying&&(replayPlanScope==='none'||
@@ -266,12 +267,10 @@ function paths(){
     draw.restore();
     // Q3: labels belong only to real CROSSINGS, never to non-crossing MOVE
     // nodes, helmets, or actors. Different doors can show different ranks.
-    if(!replaying){
-      const ranks=passageScheduleForDisplay(state);
-      for(const mark of badgesForActor(a.id,a.p,state.doors,ranks,
+    if(crossingSchedule)
+      for(const mark of badgesForActor(a.id,a.p,state.doors,crossingSchedule,
         state.phase==='planning',false))
         paintPassageBadge(draw,mark.point,mark.rank,a.id===selected);
-    }
     // A suppression order issued HERE belongs to the operator, not a node.
     if(a.id===selected&&a.firePolicy==='suppress'&&a.suppressPoint){
       draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
