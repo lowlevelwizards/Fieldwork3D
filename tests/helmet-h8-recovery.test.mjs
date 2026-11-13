@@ -29,7 +29,8 @@ test('H8 approved PASGT detail geometry is reused for ACH/MICH foliage and scrim
    c instanceof THREE.Mesh&&c.geometry.getAttribute('position').count>24));
   assert.ok(kit.modules.band.children.some(c=>c.name==='shell-fitted-elastic'));
   assert.ok(kit.modules['goggles-front'].children.some(c=>c.name==='approved-d2-goggle-pose'));
-  assert.ok(kit.modules.unfastened.children.some(c=>c.name==='released-four-point-strap'));
+  assert.ok(kit.modules.unfastened.children.some(c=>
+   c instanceof THREE.Mesh&&c.material===kit.webbingMaterial));
  }
 });
 
