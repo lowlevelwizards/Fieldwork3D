@@ -202,9 +202,19 @@ export function createWardrobeHeadLayers(head:THREE.Group,
    if(rail)cube(model,dark,2.0,8.52,0,1.4,.4,2.0);
   });
  };
+ const addInwardBacking=(shell:THREE.Group)=>{
+  const painted=shell.children.find((v):v is THREE.Mesh=>v instanceof THREE.Mesh);
+  if(!painted)return;
+  const liner=new THREE.Mesh(painted.geometry,new THREE.MeshBasicMaterial({
+   color:0x343c35,side:THREE.BackSide
+  }));
+  liner.name='ach-mich-covered-interior';liner.userData.achMichInterior=true;
+  liner.castShadow=false;liner.receiveShadow=false;liner.visible=false;
+  shell.add(liner);
+ };
  headModel('ach',true,model=>{
   const shell=createHeadwearSilhouette('ach',detail('ach'));
-  shell.userData.achMichBareShell=true;model.add(shell);
+  shell.userData.achMichBareShell=true;addInwardBacking(shell);model.add(shell);
   addModernCover(model,'ach','ach');
   achMich.ach=createAchMichDetails(model,'ach');
   helmetField.ach=createHelmetFieldLayers(model,'ach');
@@ -222,7 +232,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   headModel(id,true,model=>{
    const shell=createHeadwearSilhouette(id,detail(id));
    if((ACH_MICH_SHELLS as readonly string[]).includes(id))
-    shell.userData.achMichBareShell=true;
+    {shell.userData.achMichBareShell=true;addInwardBacking(shell);}
    model.add(shell);
    addModernCover(model,id,id);
    if((ACH_MICH_SHELLS as readonly string[]).includes(id))
@@ -375,12 +385,17 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
    helmetCover?.headwearCamo,camoIdentity,coverRoll);
   const details=layers.achMich[assembly.headwear];
   if(details){
-   // The shell is the immutable solid backing; the .13-unit fitted
-   // textile offset hides its exterior, but an underside view must never
-   // expose an empty hollow character head if the thin drape is culled.
+   // Hide painted exterior under the fitted textile. The inward-facing
+   // liner retains the underside without bleeding through the cover.
    const hardShell=layers.headwear[assembly.headwear]?.children.find(
     child=>child.userData.achMichBareShell);
-   if(hardShell)hardShell.visible=true;
+   if(hardShell){
+    for(const child of hardShell.children){
+     if(child instanceof THREE.Mesh)
+      child.visible=child.userData.achMichInterior===true?
+       shellCovered:!shellCovered;
+    }
+   }
    updateAchMichDetails(details,shellCovered,
     (!fieldActive||fieldState.fastened)&&
     !['half-mask','respirator-half','gas-gp5','gas-m17','gas-m40',
