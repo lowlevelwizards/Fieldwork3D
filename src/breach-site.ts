@@ -14,8 +14,8 @@ import {repairDoorwayClutter} from './worldgen/doorway-clutter-repair.ts';
 import {attachEncounterPlan} from './worldgen/encounter-director.ts';
 import {missionForSeed} from './breach-operations.ts';
 import {chooseGenerationIncidentIntent} from './briefing/incident-intent.ts';
-import {describeSiteTopology,preferTopologyCandidate,
- shouldSampleTopologyAlternative} from './worldgen/topology-diversity.ts';
+import {shouldSampleTopologyAlternative} from './worldgen/topology-diversity.ts';
+import {preferTacticalLayoutCandidate} from './worldgen/tactical-layout-selection.ts';
 import type {EncounterContext,EncounterPlan} from './worldgen/encounter-types.ts';
 export type Room={id:string;zoneId?:string;unitId?:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
@@ -121,9 +121,8 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    onProgress?.('scoring',attempt);
    const grade=measureSiteCompleteness(candidate);
    if(!bestGrade||preferCompleteCandidate(grade,bestGrade)||
-     (sampleDiversity&&best&&preferTopologyCandidate(
-       describeSiteTopology(candidate),describeSiteTopology(best),
-       grade.score,bestGrade.score,seed))){
+     (sampleDiversity&&best&&grade.score===bestGrade.score&&
+       preferTacticalLayoutCandidate(candidate,best,seed,mission))){
     best=candidate;bestGrade=grade;
    }
    if(firstSuccess<0){
