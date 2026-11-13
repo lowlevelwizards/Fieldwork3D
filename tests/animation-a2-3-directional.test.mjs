@@ -103,11 +103,13 @@ test('A2.3: a live lateral reversal never cancels or teleports airborne boots',(
    time:t,position:{x:0,y},speed:34});
   if(prior)for(let index=0;index<2;index++){
    const a=prior[index],b=feet[index];
-   if(a.contact&&a.phase!=='swinging'&&
-      b.phase!=='landing'&&b.phase!=='recovering'&&b.phase!=='planted'){
-    assert.deepEqual(b.position,a.position,
-     'unloading foot must not drift from planted anchor');
-   }
+   // Stable contact phases may never move the boot; phase boundaries
+   // that include a legitimate touchdown/replant may change its anchor.
+   const steady=a.phase==='unloading'&&b.phase==='unloading'||
+     a.phase==='planted'&&b.phase==='planted'||
+     a.phase==='recovering'&&b.phase==='planted';
+   if(steady)assert.deepEqual(b.position,a.position,
+    'grounded shoe slid within a stationary contact phase');
   }
   assert.ok(feet.some(f=>f.contact));
   assert.ok(s.feet.filter(f=>f.phase==='swinging').length<=1);

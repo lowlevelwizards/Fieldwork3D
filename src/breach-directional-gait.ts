@@ -35,13 +35,14 @@ export function directionalFootPlan(input:FootstepInput,
 }
 export function supportedPivotYaw(current:number,requested:number,
  left:number,right:number,turning:boolean):number{
- if(!turning)return current+clamp(angleDifference(current,requested),-.18,.18);
- // The hips have limited independent rotation over the two shoes.
- // Each completed corrective boot replant moves the supported stance.
+ // Even a moving turn must not rotate the pelvis several radians ahead of
+ // the boots. Following a moving-to-stationary transition, the same bounded
+ // supported heading remains valid instead of suddenly correcting backwards.
  const bearing=current+
    (angleDifference(current,left)+angleDifference(current,right))*.5;
  const supported=bearing+clamp(angleDifference(bearing,requested),-.48,.48);
- return current+clamp(angleDifference(current,supported),-.10,.10);
+ const rate=turning?.10:.18;
+ return current+clamp(angleDifference(current,supported),-rate,rate);
 }
 export function directionalBodyCue(speed:number,forward:number,
  side:number,crouch:number,tension:number,gait?:FootstepInput['gait']){
