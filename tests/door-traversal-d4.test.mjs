@@ -74,3 +74,13 @@ test('D4 release retires old reach cue instead of grabbing remotely',()=>{
  assert.ok(a.lastDoorAt<=3.08-1.12,
    'the old timed reach may not extend toward a now-distant handle');
 });
+
+test('D4 transient hinge-contact marker does not fabricate a sustained grip',async()=>{
+ const {recordDoorManeuverContact}=await import('../src/breach-door-traversal-maneuver.ts');
+ const d=door(),a=actor(d);
+ recordDoorManeuverContact(a,{doorId:d.id,advanced:true,handAssist:true});
+ assert.equal(a.doorTraversal.handContact,false);
+ a.lastShotAt=5.8;
+ assert.equal(beginDoorGrip(a,d,6),false);
+ assert.equal(a.doorTraversal.handContact,false);
+});

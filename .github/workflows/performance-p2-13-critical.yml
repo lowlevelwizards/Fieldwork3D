@@ -1,0 +1,37 @@
+name: Performance P2.13 traversal critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-motor-traversal.ts'
+      - 'src/breach-mantle.ts'
+      - 'src/breach-navigation.ts'
+      - 'tests/performance-p2-13-traversal-hotpaths.test.mjs'
+      - '.github/workflows/performance-p2-13-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  traversal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Traversal parity, physical escape and door integration
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-p2-13-traversal-hotpaths.test.mjs
+          tests/breach-mantle-contract.test.mjs
+          tests/breach-mantle-session.test.mjs
+          tests/breach-roadmap2-stage7-motor.test.mjs
+          tests/performance-p2-8-sweep-broadphase.test.mjs
+      - name: Focused wall overlap and window traversal regressions
+        run: >
+          node --experimental-strip-types --test
+          --test-name-pattern='walking both directions|nearby wall|motor reports resolved|tiny static-wall overlap|window classification|closed standard window|angled destination'
+          tests/breach-wall-glide-here-window.test.mjs
+      - name: Typecheck and production build
+        run: npm run check && npx vite build

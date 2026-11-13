@@ -87,14 +87,31 @@ function sweptApartFromTarget(from:Pt,to:Pt,target:number,
  doors:readonly Door[],r=OPERATOR_RADIUS){
  const length=distance(from,to);
  const steps=Math.max(1,Math.ceil(length/2.5));
+ // The exact old samples still decide every contact. Only reject whole
+ // walls, moving leaves and furniture whose expanded AABBs cannot overlap
+ // ANY point on this short sweep. Hinge geometry is refreshed for every
+ // synchronous query, never kept across a 60Hz simulation tick.
+ const minX=Math.min(from.x,to.x),maxX=Math.max(from.x,to.x);
+ const minY=Math.min(from.y,to.y),maxY=Math.max(from.y,to.y);
+ const reaches=(a:Pt,b:Pt,clearance:number)=>
+  Math.max(a.x,b.x)+clearance>=minX&&
+  Math.min(a.x,b.x)-clearance<=maxX&&
+  Math.max(a.y,b.y)+clearance>=minY&&
+  Math.min(a.y,b.y)-clearance<=maxY;
+ const nearWalls=walls.filter(w=>reaches(w.a,w.b,r+1));
+ const nearLeaves=doors.map(doorLeafSegment).filter(leaf=>
+  reaches(leaf.a,leaf.b,r+1));
+ const nearCover=cover.filter((o,index)=>index!==target&&
+  isFootstepObstacle(o)&&
+  o.x+o.w/2+r>minX&&o.x-o.w/2-r<maxX&&
+  o.y+o.h/2+r>minY&&o.y-o.h/2-r<maxY);
  for(let i=0;i<=steps;i++){
   const p=pointBetween(from,to,i/steps);
-  if(walls.some(w=>pointToSegment(p,w)<r+1))return false;
-  if(doors.some(d=>pointToSegment(p,doorLeafSegment(d))<r+1))
+  if(nearWalls.some(w=>pointToSegment(p,w)<r+1))return false;
+  if(nearLeaves.some(leaf=>pointToSegment(p,leaf)<r+1))
    return false;
-  if(cover.some((o,index)=>index!==target&&isFootstepObstacle(o)&&
-   Math.abs(p.x-o.x)<o.w/2+r&&Math.abs(p.y-o.y)<o.h/2+r))
-   return false;
+  if(nearCover.some(o=>Math.abs(p.x-o.x)<o.w/2+r&&
+   Math.abs(p.y-o.y)<o.h/2+r))return false;
  }
  return true;
 }

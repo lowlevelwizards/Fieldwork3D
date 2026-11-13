@@ -28,7 +28,6 @@ export type DoorTraversalEpisode={
  waypoints:Pt[];
  waypointIndex:number;
  handContact:boolean;
- /** Authoritative start time of a genuine sustained support-hand grasp. */
  handContactSince:number|null;
  /** D2 bounded maneuver attempts; no fresh route search every motor tick. */
  maneuverAttempts:number;nextManeuverAt:number;
@@ -76,6 +75,8 @@ export function syncDoorTraversalEpisode(
   let door:Door|undefined;
   for(const d of doors)if(d.id===episode.doorId){door=d;break;}
   if(!door){actor.doorTraversal=null;return null;}
+  // D4 retains a genuine reachable grasp across motor ticks, and
+  // immediately releases when the leaf, hand, or authored order changes.
   if(episode.handContact)updateDoorGrip(actor,door,seconds);
   if(squared(actor.p,episode.lastPosition)>2.25){
    episode.lastPosition={...actor.p};
