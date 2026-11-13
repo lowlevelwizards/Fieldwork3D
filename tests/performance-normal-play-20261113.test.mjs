@@ -77,3 +77,11 @@ test('round-lifetime render scratch and fixed-tick door history are bounded',()=
  assert.match(builder,/consolidateStaticFixtureParts\(intact\)/);
  assert.match(builder,/consolidateStaticFixtureParts\(debris\)/);
 });
+
+test('completed HUD polling is lower frequency without slowing planning, live or replay',()=>{
+ const loop=source('src/breach-runtime-loop.ts');
+ assert.match(loop,/const hudPeriod=state\.phase==='running'\?180:/);
+ assert.match(loop,/\(state\.phase==='won'\|\|state\.phase==='lost'\)\&\&!replaying\?750:120/);
+ assert.match(loop,/if\(now-hudAt>hudPeriod\)/);
+ assert.match(loop,/config\.updateHud\(\);if\(replaying\)config\.updateReplayHud\(\)/);
+});
