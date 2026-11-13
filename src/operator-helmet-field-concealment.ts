@@ -29,15 +29,12 @@ const LEAF_SLOTS=[4,9,2,0,7,10,5,1,8,11] as const;
 const SCRIM_SLOTS=[0,8,5,11,1,4,9,7,3] as const;
 const LEAN=[-.18,.11,-.24,.17,.08,-.13,.21,-.12,.16,-.08] as const;
 const SCALE=[1.18,1.31,1.16,1.36,1.21,1.28,1.43,1.17,1.35,1.26] as const;
-const slitMaterial=new THREE.MeshBasicMaterial({
- color:0x394638,side:THREE.DoubleSide,depthWrite:true
+// H10.1: like the approved PASGT, a slit is a single matte, nearly
+// coplanar dark buttonhole. Raised bright outlines read as neon at 2x zoom.
+const slitMaterial=new THREE.MeshStandardMaterial({
+ color:0x414a3c,roughness:1,metalness:0,side:THREE.DoubleSide
 });
-const stitchMaterial=new THREE.MeshBasicMaterial({
- color:0x859274,side:THREE.DoubleSide,depthWrite:true
-});
-const slitCut=new THREE.PlaneGeometry(1.36,.115);
-const slitStitch=new THREE.PlaneGeometry(1.54,.040);
-const endStitch=new THREE.PlaneGeometry(.07,.25);
+const slitCut=new THREE.PlaneGeometry(1.52,.215);
 const basis=(right:THREE.Vector3,up:THREE.Vector3,normal:THREE.Vector3)=>
  new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4()
   .makeBasis(right,up,normal));
@@ -61,20 +58,14 @@ export function addAchMichConcealment(
  const frames=SLOTS.map((slot,i)=>{
   const f=sampleHelmetCover(shell,slot.region,slot.u,slot.v,.105);
   if(!f)throw Error('H9.2 no cover at buttonhole '+shell+' #'+i);
-  mark(loops,f,slitCut,slitMaterial,'horizontal-fabric-buttonhole',0,0,.018);
-  for(const y of [-.11,.11])
-   mark(loops,f,slitStitch,stitchMaterial,'buttonhole-reinforcement',
-    0,y,.023);
-  for(const x of [-.75,.75])
-   mark(loops,f,endStitch,stitchMaterial,'buttonhole-end-stitch',
-    x,0,.027);
+  mark(loops,f,slitCut,slitMaterial,'horizontal-fabric-buttonhole',0,0,.011);
   return f;
  });
  // Slightly lit two-sided fabric prevents edge-on back faces from
  // falling to near black in the Studio's strongly directional lighting.
  const oliveScrim=olive.clone(),tanScrim=tan.clone();
- oliveScrim.emissive.setHex(0x34402b);oliveScrim.emissiveIntensity=.24;
- tanScrim.emissive.setHex(0x53402d);tanScrim.emissiveIntensity=.20;
+ oliveScrim.emissive.setHex(0x34402b);oliveScrim.emissiveIntensity=.12;
+ tanScrim.emissive.setHex(0x53402d);tanScrim.emissiveIntensity=.10;
  for(let i=0;i<SCRIM_SLOTS.length;i++){
   const slot=SCRIM_SLOTS[i],f=frames[slot];
   // The free end extends along negative Y: orient positive Y inward and
@@ -90,12 +81,16 @@ export function addAchMichConcealment(
   fabric.quaternion.copy(basis(right,up,normal));
   // Brow/nape strips should hang shorter and twist enough that their
   // folded cloth remains visible obliquely rather than a black needle.
-  fabric.rotateZ(LEAN[i]*(shortEdge?.85:1.9));
-  fabric.rotateY(shortEdge?(i%2?.58:-.60):(i%2?.18:-.21));
-  // Broad folded textile should hang visibly down the shell and just
-  // past the brim. Shorter brow/nape pieces cannot become long spears.
-  fabric.scale.set(shortEdge?.66+(i%3)*.07:.72+(i%3)*.13,
-   (shortEdge?.43:.76)+(i%4)*.065,shortEdge?.62:.70);
+  // Front and nape fabric need broad readable faces, not tiny twisted
+  // needles. Side bands vary in length, width and lean by authored slot.
+  const sideWidths=[.82,1.18,.73,1.04,.88,.68,1.16,.79,.98];
+  const sideLengths=[.74,.88,.63,.91,.70,.82,.95,.67,.86];
+  fabric.rotateZ(LEAN[i]*(shortEdge?.68:2.20));
+  fabric.rotateY(shortEdge?(i%2?.12:-.16):
+   [0.09,-.21,.26,-.08,.20,-.28,.06,.32,-.16][i]);
+  fabric.scale.set(shortEdge?1.12+(i%2)*.12:sideWidths[i],
+   shortEdge?.77+(i%3)*.07:sideLengths[i],
+   shortEdge?.94:.79);
   fabric.userData.h9ScrimDownOut=true;fabric.userData.h9SourceSlot=slot;
   fabric.castShadow=false;fabric.receiveShadow=false;scrim.add(fabric);
  }
