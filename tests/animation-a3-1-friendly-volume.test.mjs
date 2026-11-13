@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {friendIntersectsTrajectory,safetyBodyFor,
  FRIENDLY_CROUCH_VOLUMES,FRIENDLY_STAND_VOLUMES}
  from '../src/breach-friendly-safety-volume.ts';
-import {assessFireLane,fireLaneReachable}
+import {assessFireLane,assessFriendlyLane,fireLaneReachable}
  from '../src/breach-fire-safety.ts';
 import {weaponClearance} from '../src/breach-weapon-clearance.ts';
 import {createA3Session,DEFAULT_A3_CONFIG}
@@ -80,8 +80,11 @@ test('A3.1 allied body is a hard veto even when penetrable cover is also in the 
  const cover=[{x:45,y:0,w:20,h:20,fixture:'shelf'}];
  const teammate=F('stand',70,0);
  assert.equal(assessFireLane(p(0,0),32,p(100,0),32,
-  cover,[],[],[teammate]).blocker,'friendly',
-  'cover must never hide a teammate from shot authorization');
+  cover,[],[],[teammate]).blocker,'cover',
+  'world/material priorities remain unchanged for diagnostics');
+ assert.equal(assessFriendlyLane(p(0,0),32,p(100,0),32,
+  [teammate]).blocker,'friendly',
+  'independent veto blocks any penetrable-cover approval');
  assert.equal(assessFireLane(p(0,0),32,p(100,0),32,
   cover,[],[],[]).blocker,'cover');
 });
