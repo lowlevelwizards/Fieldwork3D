@@ -108,7 +108,15 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     const distantTemplateStack=n.kind==='move'&&!!n.stackDoorId&&
       n.aimLabel==='pie'&&d(a.p,n.p)>36&&
       (!a.aimInstruction||a.aimInstruction.source==='stack');
-    move(a,n.p,dt,s,running?1.40:distantTemplateStack?1:cautious?.70:1);
+    // The untouched four-person entry template transitions into a flowing
+    // controlled walk after the squad's GO, rather than applying a perpetual
+    // 30% slow-down from the earlier stack WATCH. An explicit player-authored
+    // WATCH still has its own cautious speed and facing priority.
+    const templateEntry=n.kind==='move'&&!!n.entryDoorId&&
+      n.aimMode==='fixed'&&
+      (!a.aimInstruction||a.aimInstruction.source==='stack');
+    move(a,n.p,dt,s,running?1.40:distantTemplateStack?1:
+      templateEntry?.90:cautious?.70:1);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     // While wedged sideways, the physical shoulder axis has priority
