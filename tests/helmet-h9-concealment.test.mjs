@@ -5,11 +5,11 @@ import {createHelmetFieldLayers,updateHelmetFieldLayers}
  from '../src/operator-helmet-field-visuals.ts';
 import {sampleHelmetCover} from '../src/operator-helmet-surface.ts';
 
-test('H9.2: each ACH/MICH cover gets twelve true sewn slits, eight folded strips and ten curated bunches',()=>{
+test('H9.2: each ACH/MICH cover gets twelve true sewn slits, nine varied folded strips and ten curated bunches',()=>{
  for(const shell of ['ach','mich-2001','mich-2002']){
   const kit=createHelmetFieldLayers(new THREE.Group(),shell);
   assert.equal(kit.modules.loops.userData.h9SewnSlitCount,12);
-  assert.equal(kit.modules.scrim.userData.h9FoldedStrips,8);
+  assert.equal(kit.modules.scrim.userData.h9FoldedStrips,9);
   assert.equal(kit.modules.leaves.userData.h9FoliageAnchors,10);
   assert.equal(kit.modules.leaves.children.length,10);
   const directions=[];
