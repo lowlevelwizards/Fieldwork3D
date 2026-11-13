@@ -27,7 +27,12 @@ test('VIS-05: intersecting building room modules remain dark in Exterior Known',
    ]}
  };
  paintFogMask(ctx,s);
- const cover=calls.filter(c=>c[1]==='source-over'&&
+ const clearIndex=calls.findIndex(c=>c[1]==='destination-out'&&
+  c[3]===-30&&c[4]===-30);
+ assert.ok(clearIndex>=0);
+ // The initial full-canvas unknown fill is erased before the cached physical
+ // footprint is drawn. Only rectangles AFTER the erase can cover the lawn.
+ const cover=calls.slice(clearIndex+1).filter(c=>c[1]==='source-over'&&
   c[2]===UNKNOWN_FOG_COLOR);
  const covered=(x,y)=>cover.some(c=>
   x>c[3]&&x<c[3]+c[5]&&y>c[4]&&y<c[4]+c[6]);
