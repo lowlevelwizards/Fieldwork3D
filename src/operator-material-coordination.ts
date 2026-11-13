@@ -31,13 +31,13 @@ const allowedColor=(channel:OutfitCoordinationSuggestion['channel'],
  outfit:CamoOutfit,id:GarmentSolidId)=>{
  if(channel==='armor')return validArmorSolid(outfit.armorStyle,id);
  if(channel==='gear')return validRigSolid(outfit.rigStyle,id);
- return solidChoicesFor(channel).includes(id);
+ return solidChoicesFor(channel,outfit).includes(id);
 };
 const candidates=(channel:OutfitCoordinationSuggestion['channel'],
  outfit:CamoOutfit):readonly GarmentSolidId[]=>{
  if(channel==='armor')return ARMOR_VISUAL_TEXTILES[outfit.armorStyle]?.solids??[];
  if(channel==='gear')return RIG_VISUAL_TEXTILES[outfit.rigStyle]?.solids??[];
- return solidChoicesFor(channel);
+ return solidChoicesFor(channel,outfit);
 };
 export function suggestOutfitEquipmentSolids(w:WardrobeOptions,outfit:CamoOutfit,
  profile:OutfitCoordinationProfile):OutfitCoordinationSuggestion[]{
