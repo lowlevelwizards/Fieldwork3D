@@ -396,8 +396,8 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
     // otherwise the operator must move around the free edge.
     const crossing=policy.preferOpening?.(door)??false;
     const assist=crossing&&pressure<0&&
-      dist(from,handlePoint(door))<=DOOR_HAND_ACQUIRE_REACH&&
-      (policy.canHandAssist?.(door)??true);
+      (policy.canHandAssist?.(door)??
+       dist(from,handlePoint(door))<=DOOR_HAND_ACQUIRE_REACH);
     const closing=pressure<0&&!assist;
     if(crossing&&closing)continue;
     // Two friendlies can press opposite faces on consecutive motor ticks.
