@@ -144,10 +144,12 @@ test('tee, polo and tank have true open necks, and button cuff sits mid-forearm'
  }
  poseOperator(r,frame(outfit('button-up-shirt',{sleeveState:'cuffed'})),0);
  for(const cuff of r.visualKit.casualShirts.cuts['button-up-shirt'].cuffedLower){
-  const geo=cuff.children.find(child=>child.isMesh).geometry;
+  const mesh=cuff.children.find(child=>child.isMesh),geo=mesh.geometry;
   geo.computeBoundingBox();
-  assert.ok(geo.boundingBox.max.y<.1,'cuffed band is above wrist');
-  assert.ok(geo.boundingBox.min.y>-.5,'cuff remains on forearm');
+  assert.ok(geo.boundingBox.max.y+mesh.position.y<.1,
+   'cuffed band is above wrist');
+  assert.ok(geo.boundingBox.min.y+mesh.position.y>-.5,
+   'cuff remains on forearm');
  }
  r.dispose();
 });
