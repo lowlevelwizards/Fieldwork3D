@@ -9,14 +9,14 @@ export type A3Weapon='carbine'|'rifle'|'smg'|'shotgun';
 export type A3Config={scenario:A3Scene;seed:number;operators:1|2|3|4;
  posture:'stand'|'crouch';intent:A3Intent;weapon:A3Weapon};
 export const A3_SCENES:readonly {id:A3Scene;label:string;note:string}[]=[
- {id:'clear',label:'Unobstructed sight','One clear front lane'},
- {id:'rear-stack',label:'Centered rear stack','Friendly between muzzle and target'},
- {id:'offset-left',label:'Staggered left','Friendly slightly above the firing ray'},
- {id:'offset-right',label:'Staggered right','Friendly slightly below the firing ray'},
- {id:'mixed-crouch',label:'Mixed-height stack','Current planar guard despite teammate crouching'},
- {id:'crossing',label:'Moving teammate','Actual session tick and motor movement'},
- {id:'doorway',label:'Doorframe obstruction','Real hinged leaf and wall clearance'},
- {id:'furniture',label:'Furniture obstruction','Height-aware actual cover test'}
+ {id:'clear',label:'Unobstructed sight',note:'One clear front lane'},
+ {id:'rear-stack',label:'Centered rear stack',note:'Friendly between muzzle and target'},
+ {id:'offset-left',label:'Staggered left',note:'Friendly slightly above the firing ray'},
+ {id:'offset-right',label:'Staggered right',note:'Friendly slightly below the firing ray'},
+ {id:'mixed-crouch',label:'Mixed-height stack',note:'Current planar guard despite teammate crouching'},
+ {id:'crossing',label:'Moving teammate',note:'Actual session tick and motor movement'},
+ {id:'doorway',label:'Doorframe obstruction',note:'Real hinged leaf and wall clearance'},
+ {id:'furniture',label:'Furniture obstruction',note:'Height-aware actual cover test'}
 ];
 export const DEFAULT_A3_CONFIG:A3Config={
  scenario:'rear-stack',seed:31063,operators:4,posture:'stand',
