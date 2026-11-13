@@ -61,13 +61,13 @@ test('Q5 already-pushed-wide door has four legal known stack pockets',async()=>{
  }
 });
 
-test('Q5 lab has all five approach and both opt-in matrix controls',async()=>{
+test('Q5 lab has six approaches and both opt-in matrix controls',async()=>{
  const {readFileSync}=await import('node:fs');
  const html=readFileSync(new URL('../door-test-range.html',import.meta.url),'utf8');
  const js=readFileSync(new URL('../src/door-test-range-main.ts',import.meta.url),'utf8');
  for(const id of ['approach','runMatrix','runExtended','cancelMatrix',
   'matrixReport','copyMatrix'])assert.ok(html.includes('id="'+id+'"'));
- assert.match(js,/runDoorRangeQ5\(door,formation,execution\)/);
+ assert.match(js,/runDoorRangeQ5\(door,formation,execution,30,face\)/);
  assert.match(js,/requestAnimationFrame\(\(\)=>resolve\(\)\)/);
 });
 
