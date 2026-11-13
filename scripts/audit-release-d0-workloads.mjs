@@ -12,6 +12,10 @@ import {MissionRecorder} from '../src/breach-replay.ts';
 import {activateSite} from '../src/breach-core.ts';
 
 const missions=['clear','hold','intel','rescue','capture'];
+// Extended opt-in: two minutes of fixed 60Hz execution per selected
+// workload; never invoked by the app's main thread or normal CI.
+const sustained=process.argv.includes('--sustained');
+const outputPath=process.argv.slice(2).find(arg=>arg!=='--sustained');
 const round=n=>Number.isFinite(n)?Math.round(n*10000)/10000:null;
 const quantile=(sorted,p)=>sorted.length?
  round(sorted[Math.min(sorted.length-1,Math.floor((sorted.length-1)*p))]):0;
@@ -79,6 +83,7 @@ function run({label,seed,mission,scale='small',ticks=180,
   toggling(s);
   const times=[],recordTimes=[];
   const phaseTotal=new Map(),slowTicks=[];
+  const heapSamples=[beforeMemory];
   let steps=0;
   for(let tick=0;tick<ticks&&s.phase==='running';tick++){
    const started=performance.now();
@@ -93,6 +98,9 @@ function run({label,seed,mission,scale='small',ticks=180,
    film.capture(s,s.phase!=='running');
    recordTimes.push(performance.now()-recordAt);
    steps++;
+   // Low-frequency Node-only heap observations, not browser allocations
+   // or evidence of retained memory without a controlled GC experiment.
+   if(steps%60===0)heapSamples.push(process.memoryUsage().heapUsed);
   }
   film.capture(s,true);
   const truth=stateTruth(s,film,accepted);
@@ -115,6 +123,9 @@ function run({label,seed,mission,scale='small',ticks=180,
     recording:stats(recordTimes),replaySeek:stats(replayTimes),
     phaseCpuTotalMs:combined,
     heapDeltaBytes:process.memoryUsage().heapUsed-beforeMemory,
+    heapSamplesEvery60Ticks:{first:heapSamples[0],
+      last:heapSamples.at(-1),peak:Math.max(...heapSamples),
+      observations:heapSamples.length},
     slowTickIndices:slowTicks},
    fingerprint:digest(truth),
    truth};
@@ -129,8 +140,15 @@ const specs=[
  // Explicitly exercise every operation with its real encounter/objective.
  ...missions.map((mission,i)=>({label:'mission-'+mission,seed:31+i,mission,ticks:120}))
 ];
-const workloads=specs.map(run);
-const summary={version:1,workloads:workloads.length,
+// The normal CI suite compares all ten short deterministic workloads.
+// Sustained runs are local/manual and intentionally keep the smaller three
+// hot cases, to capture allocation drift without ten repeated map builds.
+const chosen=sustained?specs.filter(s=>[
+ 'planning-to-live-quiet','active-contact-firefight',
+ 'populated-civilian-response'].includes(s.label))
+ .map(s=>({...s,ticks:7200})):specs;
+const workloads=chosen.map(run);
+const summary={version:1,sustained,workloads:workloads.length,
  modes:[...new Set(workloads.map(w=>w.label))],
  missionKinds:missions,
  totalTicks:workloads.reduce((n,w)=>n+w.ticks,0),
@@ -143,6 +161,7 @@ for(const row of workloads)console.log('D0 WORKLOAD',
  JSON.stringify({label:row.label,ticks:row.ticks,fingerprint:row.fingerprint,
   sim:row.timing.simulation,record:row.timing.recording,
   seeks:row.timing.replaySeek,hot:row.timing.phaseCpuTotalMs}));
-if(process.argv[2])writeFileSync(process.argv[2],
+if(outputPath)writeFileSync(outputPath,
  JSON.stringify(result,null,2)+'\n');
-if(workloads.length!==10||summary.totalTicks<900)process.exitCode=1;
+if((!sustained&&(workloads.length!==10||summary.totalTicks<900))||
+   (sustained&&workloads.length!==3))process.exitCode=1;
