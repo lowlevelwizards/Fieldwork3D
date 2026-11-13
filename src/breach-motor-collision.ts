@@ -39,16 +39,22 @@ export function resolveMotorCollision(
  const world=sessionWorldGeometry(s);
   // Allies may brush and pass one another: their bodies never hard-block
   // authored routes. Only an opposing actor is a physical traffic barrier.
-  const blocking=s.operators.find(b=>b!==a&&b.health>0&&
-    b.side!==a.side&&d(b.p,move)<11);
-  const friendlyPositions=s.operators.filter(b=>b!==a&&b.health>0&&
-    b.side===a.side).map(b=>b.p);
+  // Preserve roster order and live positions in one scan.
+  const narrowApproach=approachingNarrowThreshold(a.p,p,s.doors);
+  let blocking:TeamActor|undefined;
+  const friendlyPositions:Pt[]=[];
+  for(const b of s.operators){
+    if(b===a||b.health<=0)continue;
+    if(b.side!==a.side){
+      if(!blocking&&d(b.p,move)<11)blocking=b;
+    }else if(!narrowApproach)friendlyPositions.push(b.p);
+  }
   // Teammates are soft traffic, not rigid obstacles: preserve movement when
   // there is no safe sidestep, and never force the stationary teammate away.
   // Passage reservations supply queue spacing near narrow doors.
   // Additional friendly steering here can put the last soldier against a
   // jamb, causing false progress and a costly squeeze into the opening.
-  const desiredMove=approachingNarrowThreshold(a.p,p,s.doors)?move:
+  const desiredMove=narrowApproach?move:
     friendlyPassingStep(a.p,move,next,friendlyPositions,
       (from,to)=>a.squeeze?sweptProfileClear(from,to,s.doors,
         a.squeezeYaw,'squeeze',world):sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
@@ -56,7 +62,7 @@ export function resolveMotorCollision(
   // BEFORE evaluating movement clearance. The hinge may yield right now;
   // when it cannot (wall/actor), existing collision and recovery remain.
   const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
-    s.operators.filter(o=>o.health>0).map(o=>o.p),
+    ()=>s.operators.filter(o=>o.health>0).map(o=>o.p),
     sessionDoorPressurePolicy(s,a),world);
   recordDoorManeuverContact(a,s,doorContact);
   // Existing handle reach animation shows a genuine, short support-hand

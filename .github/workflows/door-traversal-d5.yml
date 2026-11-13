@@ -1,0 +1,35 @@
+name: D5 consolidated motor critical acceptance
+on:
+  push:
+    branches: ['feature/door-traversal-d5-*']
+  pull_request:
+    paths:
+      - 'src/breach-door.ts'
+      - 'src/breach-motor-door.ts'
+      - 'src/breach-motor-route.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-door-pressure-frame.ts'
+      - 'tests/door-traversal-d5-motor.test.mjs'
+      - '.github/workflows/door-traversal-d5.yml'
+  workflow_dispatch:
+concurrency:
+  group: door-d5-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Single pass equivalence, D3/D4 physical contact and real squad crossings
+        run: |
+          node --experimental-strip-types --test tests/door-traversal-d5-motor.test.mjs tests/gameplay-g4d-auto-door-contact.test.mjs tests/door-traversal-d3.test.mjs tests/door-traversal-d4-physics.test.mjs tests/door-traversal-d4-live-grip.test.mjs tests/door-traversal-d2d3-four-operator.test.mjs tests/release7-door-intent.test.mjs tests/release7-outward-four.test.mjs tests/physicality-08-door-contact.test.mjs tests/performance-p2-10-route-recovery.test.mjs
+      - name: Real four-operator maneuver diagnostic
+        run: node --experimental-strip-types scripts/audit-door-traversal-baseline.mjs 4 1800
+      - name: TypeScript and production Pages build
+        run: npm run build

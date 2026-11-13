@@ -53,7 +53,7 @@ export function prepareMotorRoute(
       const probe={x:a.p.x+(p.x-a.p.x)/goalDistance*probeLength,
         y:a.p.y+(p.y-a.p.y)/goalDistance*probeLength};
       const contact=pressDoorOnBodyAttempt(a.p,probe,s.doors,dt,
-        s.operators.filter(o=>o.health>0).map(o=>o.p),
+        ()=>s.operators.filter(o=>o.health>0).map(o=>o.p),
         sessionDoorPressurePolicy(s,a),sessionWorldGeometry(s));
       recordDoorManeuverContact(a,s,contact);
     }

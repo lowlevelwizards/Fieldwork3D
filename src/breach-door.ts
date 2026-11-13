@@ -64,20 +64,24 @@ export function canAutoOpenEnRoute(plan:{
 }
 export function autoDoorAtBodyContact(from:Pt,to:Pt,
  doors:readonly Door[],world?:SessionWorldGeometry):Door|undefined{
- const touching=doors.filter(d=>{
+ let nearest:Door|undefined;
+ let nearestDistance=Infinity;
+ for(const d of doors){
    if((d.open&&doorClear(d,world))||!doorReachable(from,d))
-     return false;
+     continue;
    const leaf=doorLeafSegment(d);
-   const before=pointToSegment(from,leaf),after=pointToSegment(to,leaf);
-   // A full-body motor stops at radius+1, BEFORE the center crosses
-   // the leaf. Engage within a bounded shoulder envelope instead of
-   // waiting until a planned step penetrates the solid door.
-   return before<OPERATOR_RADIUS+7&&after<OPERATOR_RADIUS+7&&
-     after<before-.015;
- });
- return touching.sort((a,b)=>
-   pointToSegment(to,doorLeafSegment(a))-
-   pointToSegment(to,doorLeafSegment(b))||a.id.localeCompare(b.id))[0];
+   const before=pointToSegment(from,leaf);
+   const after=pointToSegment(to,leaf);
+   // Body contact must approach the leaf within the normal shoulder
+   // envelope; only selection order/allocations have changed.
+   if(before>=OPERATOR_RADIUS+7||after>=OPERATOR_RADIUS+7||
+      after>=before-.015)continue;
+   if(after<nearestDistance||
+      after===nearestDistance&&nearest&&d.id.localeCompare(nearest.id)<0){
+     nearest=d;nearestDistance=after;
+   }
+ }
+ return nearest;
 }
 export function doorApproach(from:Pt,d:Door,world?:SessionWorldGeometry,
  occupied:readonly Pt[]=[]):Pt|null{
@@ -366,7 +370,7 @@ export type BodyDoorPressurePolicy={
  claimContact?:(door:Door)=>boolean;
 };
 export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
-  dt:number,actors:readonly Pt[],
+  dt:number,actors:readonly Pt[]|(()=>readonly Pt[]),
   policy:BodyDoorPressurePolicy={},world?:SessionWorldGeometry):BodyDoorContact|null{
   const length=dist(from,to);
   if(length<.0001)return null;
@@ -448,7 +452,10 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   else door.pushTarget=PUSHED_OPEN_LIMIT;
   // Door motion gets a small share of this very simulation tick. The main
   // global motor subsequently handles normal animation and swept obstacles.
-  advanceDoor(door,Math.min(Math.max(0,dt),1/60),actors,world);
+  // Sample live occupant positions only when a real panel contact won.
+  // Never cache moving actor coordinates across fixed ticks.
+  const occupied=typeof actors==='function'?actors():actors;
+  advanceDoor(door,Math.min(Math.max(0,dt),1/60),occupied,world);
   return {doorId:door.id,
     advanced:Math.abs((door.openFraction??0)-initial)>.0001,
     ...(contact.assist?{handAssist:true}:{})};
