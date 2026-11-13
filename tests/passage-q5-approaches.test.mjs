@@ -15,7 +15,7 @@ test('Q5 five distinct formations stay outside door and never spawn overlapping'
     'full-radius operators must not be placed within one another');
   signature.add(JSON.stringify(spawn));
  }
- assert.equal(signature.size,5);
+ assert.equal(signature.size,6);
 });
 test('Q5 all four hinges use the SAME approach preset geometry',()=>{
  for(const {id} of DOOR_RANGE_APPROACHES){
@@ -69,4 +69,29 @@ test('Q5 lab has all five approach and both opt-in matrix controls',async()=>{
   'matrixReport','copyMatrix'])assert.ok(html.includes('id="'+id+'"'));
  assert.match(js,/runDoorRangeQ5\(door,formation,execution\)/);
  assert.match(js,/requestAnimationFrame\(\(\)=>resolve\(\)\)/);
+});
+
+test('Release A: six formations mirror onto both door approach faces',()=>{
+ assert.equal(DOOR_RANGE_APPROACHES.length,6);
+ for(const {id} of DOOR_RANGE_APPROACHES){
+  const north=doorRangeApproachSpawn(id,'north');
+  const south=doorRangeApproachSpawn(id,'south');
+  for(let i=0;i<4;i++){
+   assert.equal(north[i].x,south[i].x);
+   assert.equal(north[i].y+south[i].y,520);
+   assert.ok(north[i].y<242&&south[i].y>278);
+   for(let j=i+1;j<4;j++)assert.ok(distance(north[i],north[j])>=23);
+  }
+  for(const door of Q5_HINGE_CASES)
+   assert.deepEqual(doorRangeSite(door,id,'south').spawn,south);
+ }
+});
+test('Release A: mirrored starts never embed actors in the south shelf',()=>{
+ for(const {id} of DOOR_RANGE_APPROACHES){
+  const site=doorRangeSite('near-frame',id,'south');
+  const shelf=site.cover[0];
+  for(const point of site.spawn)
+   assert.ok(Math.abs(point.x-shelf.x)>shelf.w/2+8||
+     Math.abs(point.y-shelf.y)>shelf.h/2+8,id);
+ }
 });
