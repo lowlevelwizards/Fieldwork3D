@@ -62,6 +62,7 @@ import {wearFinish} from './rendering/wear-finish.ts';
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
 import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
+import {BreachContactShadowBatch} from './rendering/breach-contact-shadow-batch.ts';
 import {RepeatedFixtureBatches} from './rendering/breach-repeated-fixture-batches.ts';
 import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
   from './rendering/breach-shadow-controller.ts';
@@ -235,6 +236,7 @@ export class TacticalScene3D{
     return {calls:info.calls,triangles:info.triangles,
       geometryCount:memory.geometries,textureCount:memory.textures,
       staticBatch:this.staticBatches.stats(),
+      contactShadowBatch:this.contactShadowBatch.stats,
       repeatedFixtureBatch:this.repeatedFixtures.stats,
       siteMaterialCount:this.siteMaterials.size,
       actorRigCount:this.actors.size,
@@ -610,6 +612,8 @@ export class TacticalScene3D{
   private root=new THREE.Group();
   private readonly staticBatches=new StaticSceneBatches();
   private readonly repeatedFixtures=new RepeatedFixtureBatches();
+  // One shared cosmetic draw rather than two transparent WebGL passes per rig.
+  private readonly contactShadowBatch=new BreachContactShadowBatch(this.scene);
   private readonly shadowUpdates=new ShadowUpdateController();
   private shadowLodTransitions=0;
   private fogUnknown:THREE.InstancedMesh;
@@ -979,9 +983,12 @@ export class TacticalScene3D{
   private retireHostileActor(id:string):void{
     const actor=this.actors.get(id);
     if(!actor||actor.side==='blue')return;
-    this.scene.remove(actor.root,actor.status,actor.beam,...actor.contactShadows);
+    this.scene.remove(actor.root,actor.status,actor.beam);
+    this.contactShadowBatch.unregister(id);
     actor.physical.dispose();
-    for(const mesh of [actor.status,actor.beam,...actor.contactShadows]){
+    // Contact shadow proxies share geometry and material with the persistent
+    // instanced batch. Only these per-actor meshes own disposable resources.
+    for(const mesh of [actor.status,actor.beam]){
       mesh.geometry.dispose();
       (mesh.material as THREE.Material).dispose();
     }
@@ -1499,13 +1506,7 @@ export class TacticalScene3D{
     this.scene.add(root,status);
     // Subtle cheap foot-contact shadows complement the real shadow map on
     // small mobile screens, where the filtered shadow can otherwise vanish.
-    const contactShadows=[0,1].map(()=>{
-      const shadow=new THREE.Mesh(new THREE.CircleGeometry(7,14),
-        new THREE.MeshBasicMaterial({color:0x0b1515,transparent:true,
-          opacity:.20,depthWrite:false}));
-      shadow.rotation.x=-Math.PI/2;shadow.position.y=.15;
-      this.scene.add(shadow);return shadow;
-    });
+    const contactShadows=this.contactShadowBatch.register(a.id);
     this.actors.set(a.id,{side:a.side,root,flash,pack,weapon,status,
       beam,beamLast:null,physical,contactShadows});
   }
@@ -2277,6 +2278,9 @@ export class TacticalScene3D{
           (object.physical.feet[i].swinging?.74:1)*pulse);
       }
     }
+    // Submit every independently revealed foot decal in one WebGL draw.
+    // Hidden and removed operators never leak an undisclosed position.
+    this.contactShadowBatch.sync();
     this.markScenePhase('actors');
     this.combatEffects.update(s,omniscient,
       personalDisclosure,p=>this.presentationSight.query(
