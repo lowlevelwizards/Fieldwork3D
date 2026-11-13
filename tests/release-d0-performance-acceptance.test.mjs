@@ -88,6 +88,9 @@ test('D0: workload measurements include all key phases and never gate on CI timi
   'expanded-world-and-replay'])assert.ok(bench.includes(phase));
  assert.match(bench,/\.\.\.missions\.map/);
  assert.match(bench,/sha256/);
+ assert.match(bench,/process\.argv\.includes\('--sustained'\)/);
+ assert.match(bench,/ticks:7200/);
+ assert.match(bench,/heapSamplesEvery60Ticks/);
  assert.match(compare,/before\.fingerprint!==after\.fingerprint/);
  assert.match(compare,/CPU\/heap comparisons vary/);
  assert.doesNotMatch(compare,/p95Ratio[^\n]*process\.exitCode/);

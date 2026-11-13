@@ -22,3 +22,11 @@ Base: `6b3715a0e9b25017e9aeca26ba0ddcc64c7aa764`. D0 is a **performance observab
 
 ## Player-side acceptance protocol
 Use the existing in-match PERF overlay to capture 60 seconds each in idle planning, four-operator movement and door entries, active firefight/contact, civilians, and replay. Compare device, resolution, thermal/battery/Low Power Mode and full-history CSV. Check RAF 33/67ms rates, culprit CPU/scene phase, draw calls, memory growth and input latency. The remote Node runner is **not** an iPhone simulator, so actual iOS GPU/memory/thermal numbers are not asserted by CI.
+
+## Repeatable diagnostic commands
+- Normal exact-reference CPU suite: `node --experimental-strip-types scripts/audit-release-d0-workloads.mjs d0-output.json`.
+- **Optional sustained CPU/heap survey:** `node --experimental-strip-types scripts/audit-release-d0-workloads.mjs d0-sustained.json --sustained`. Runs 7,200 requested fixed ticks (120 simulated seconds) each for quiet, contact and civilian workloads, unless the game phase terminates legitimately. It records sampled heap estimates once every 60 fixed ticks; a single Node heap delta is **not** a validated memory leak.
+- Compare identical code-input corpus before/after: `node scripts/compare-release-d0-workloads.mjs d0-before.json d0-after.json d0-parity.json`.
+
+## Human/device release acceptance checklist
+For a real phone, open the existing **PERF** overlay in a normal in-match URL. With low-power mode disabled, stable brightness, identical site/seed, same 3D view, and a consistent thermal/battery state, collect and export at least 60s each of idle planning, four-operator path/doorway entry, active contact, civilian activity, and replay playback. Repeat after 3–5 minutes on the same device to look for worsening p95/67ms RAF gaps, increasing GPU draw counts or memory pressure. Note device model, browser, FPS display refresh rate, whether the phone is throttled and whether the stage is in two-monitor desktop or mobile mode. Existing RAF timing includes OS background stalls; distinguish those from simulation/renderer work using previous-frame CPU attribution. The repository CI cannot impersonate a user's actual iPhone GPU; claiming on-device FPS improvement without that capture is out of scope.
