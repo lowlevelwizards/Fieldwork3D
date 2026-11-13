@@ -375,11 +375,12 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
    helmetCover?.headwearCamo,camoIdentity,coverRoll);
   const details=layers.achMich[assembly.headwear];
   if(details){
-   // Cover is the complete fitted exterior: never render a conflicting
-   // hard-shell brow/nape underneath its slanted front/rear.
+   // The shell is the immutable solid backing; the .13-unit fitted
+   // textile offset hides its exterior, but an underside view must never
+   // expose an empty hollow character head if the thin drape is culled.
    const hardShell=layers.headwear[assembly.headwear]?.children.find(
     child=>child.userData.achMichBareShell);
-   if(hardShell)hardShell.visible=!shellCovered;
+   if(hardShell)hardShell.visible=true;
    updateAchMichDetails(details,shellCovered,
     (!fieldActive||fieldState.fastened)&&
     !['half-mask','respirator-half','gas-gp5','gas-m17','gas-m40',
