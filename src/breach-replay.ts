@@ -28,6 +28,7 @@ import {shareUnchangedReplayFrame,reuseFrozenReplayValue,
   from './breach-replay-sharing.ts';
 import type {TraverseOpportunity} from './breach-mantle.ts';
 import type {DoorHandContact} from './breach-door-hand-contact.ts';
+import type {PhysicalContact} from './breach-physical-contact-anchor.ts';
 import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
 import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
 
@@ -50,6 +51,8 @@ export type ActorFrame=Pick<TeamActor,
 export type ReplayActorFrame=ActorFrame & {
  /** Optional for archived films recorded before D4. */
  doorHandContact?:DoorHandContact|null;
+ /** A3.6–7 optional for backwards-compatible historical films. */
+ physicalContact?:PhysicalContact|null;
  travelYaw?:number;intentKind?:string;awarenessCount?:number;
  /** Optional on historical films: A3.2 physical lateral weapon accommodation. */
  aimSideOffset?:number;
@@ -160,6 +163,11 @@ export function snapshot(s:Session,seenGround?:string[],
       lastDoorId:a.lastDoorId,lastDoorMethod:a.lastDoorMethod,
       doorHandContact:a.doorHandContact?{
         ...a.doorHandContact,point:{...a.doorHandContact.point}
+      }:null,
+      physicalContact:a.physicalContact?{
+        ...a.physicalContact,anchor:{...a.physicalContact.anchor,
+          point:{...a.physicalContact.anchor.point},
+          normal:{...a.physicalContact.anchor.normal}}
       }:null,
       stride:a.stride,
       weaponYaw:a.weaponYaw,aimSideOffset:a.aimSideOffset??0,
