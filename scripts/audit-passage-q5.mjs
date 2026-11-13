@@ -46,6 +46,11 @@ console.log('Q5_SUMMARY '+JSON.stringify(summary));
 if(strict){
  if(summary.failed||summary.expectationsMet!==summary.cases)
   process.exitCode=1;
+ if(extended&&(summary.cases!==70||summary.pass!==55||
+    summary.expectedBlocked!==10||summary.expectedObstructed!==5)){
+  console.error('Q5_INCOMPLETE_COVERAGE '+JSON.stringify(summary));
+  process.exitCode=1;
+ }
  // Q5 pinned baseline before travel-aware allocation:
  // fourth-cross P90 15.53s / worst 17.73s, finish worst 20.35s.
  // These gates require measurable improvement without timing shortcuts.

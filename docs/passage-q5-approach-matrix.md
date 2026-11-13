@@ -18,3 +18,42 @@ Q5.4 — **lab and CI**: interactive Door Range approach selector, visual spawn 
 - A locked or wedged door never reports a successful traversal.
 - Timing regression threshold is introduced only after an actual measured baseline: no speculative target or unverified 100% claim.
 - Critical D0–D6, Q0–Q4, renderer, simulation performance and build checks green. Merge/release checkpoint only when latest Pages deployment is completed and serving the expected SHA.
+
+## Completion evidence — Q5
+
+All metrics below come from the same actual 60-Hz game motor in GitHub Actions. These are simulated seconds, NOT a measurement of iPhone rendering performance. Mobile frame histories remain separately opt-in.
+
+| Case cohort | Cases | Required physical outcome | Result |
+| --- | ---: | --- | --- |
+| Straight, Left, Right, Split, 45° × four inward/outward hinge variants | 20 | Four full-body crossings, all authored orders done | 20/20 |
+| Same approaches × independent four-MOVE plans | 20 | Four full-body crossings and separated final positions | 20/20 |
+| Ajar, pushed-wide, near-frame furniture × five approaches | 15 | Four full-body crossings, all orders done | 15/15 |
+| Locked and wedged × five approaches | 10 | No forced locked/wedged crossing | 10/10 |
+| Cabinet occupying real hinged leaf sweep × five approaches | 5 | Blocked physical opening, no forced full-squad clearance | 5/5 |
+| **Total expectations** | **70** | **55 successful traversals and 15 correct obstruction negatives** | **70/70** |
+
+The intentionally obstructed cabinet stops the hinged door at approximately 0.387 of its opening; the physical collision report confirms its swing is blocked and the aperture fails full-radius door clearance. One scenario permits a narrow legal single-person crossing but cannot complete the four-person entry. This is correctly an expected obstruction, NOT a successful full-squad passage.
+
+### Baseline and measured Q5 travel-aware stack improvement
+
+| Timing, simulated seconds (lower better) | Initial 20-case baseline | Q5 optimized |
+| --- | ---: | ---: |
+| Four-person completion rate | 100% | 100% |
+| Fourth-crossing median | 10.18 | 10.42 |
+| Fourth-crossing p90 | 15.53 | 14.42 |
+| Fourth-crossing worst | 17.73 | 15.88 |
+| All-orders completion worst | 20.35 | 18.48 |
+
+The middle case is slightly slower, but the long tail improved. CI now pins fourth-crossing p90 at no more than 14.5 seconds, slowest fourth crossing at no more than 16.0 seconds, and worst full completion at no more than 19.5 seconds. Any case failing full-body clearance, settlement separation or successful planned execution fails the actual traversable-case gate.
+
+### Root causes corrected
+
+1. Wide-open leaf already occupied an otherwise valid closed-door stack goal. Current leaf occupancy filtering now excludes those pockets.
+2. A partly opened door could be body-pushed farther while the team forms, causing the swept leaf to enter a planned stack position. Pre-opened door planning now checks the full physically possible pushed-open arc and adds fixed legal outside candidates.
+3. The Door Lab's independent final MOVE goals were separated by less than two full operator radii. New distinct end stations eliminate sustained overlap.
+4. Rigid team-index stack assignment caused needless crossover traffic. A small stable role bias now competes with known-route physical approach distance. No plan authoring, solid collision or real hinge force is bypassed.
+5. Genuine fixture obstruction is reported as an expected physical jam only when the door cannot physically finish opening and the aperture is not passable; it is never counted as a successful four-operator traversal.
+
+### Door Lab and release gate
+
+The Door Lab has five selectable approach footprints, real four-operator live behavior, per-case fourth crossing and convoy span, and both opt-in 20-case and full 70-case batch controls with cancellation and copyable reports. The core validation includes real R7 squad execution, D0-D6 and Q0-Q4 physical regression, build, renderer and simulation performance checks. A public iPhone FPS value is not inferred from Node timing.

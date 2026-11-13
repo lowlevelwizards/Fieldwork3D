@@ -143,7 +143,8 @@ function stats(){
  const times=[...crossedAt.values()].sort((a,b)=>a-b);
  outcome.textContent=passed.size+' / '+activeIds.size+' crossed · '+
   completed+' finished'+(times.length===4?
-  ' · 4th '+times[3].toFixed(2)+'s':'');
+  ' · 4th '+times[3].toFixed(2)+'s · convoy '+
+  (times[3]-times[0]).toFixed(2)+'s':'');
  flipsView.textContent=String(flips);
  const deg=((door.openFraction??0)*1.54*180/Math.PI).toFixed(0);
  doorInfo.textContent=deg+'° · '+(door.open?'OPEN':'CLOSED')+
@@ -342,7 +343,9 @@ function q5FormatRow(r:Q5BenchmarkResult){
   r.outcome==='expected-obstructed';
  const label=expected?'OBSTRUCTED (EXPECTED)':r.success?'PASS':'FAIL';
  return label+' · '+r.door+' / '+r.approach+' / '+r.program+
-  ' · fourth '+time+' · finish '+finish+
+  ' · fourth '+time+' · convoy '+
+  (r.crossingSpan===null?'—':r.crossingSpan.toFixed(2)+'s')+
+  ' · finish '+finish+
   (r.success?'':' · '+r.outcome+' · '+r.crossed+'/4 crossed; '+
    r.operators.map(a=>a.id+':'+a.orders+' orders/'+(a.blocker??'clear')).join(' | '));
 }
