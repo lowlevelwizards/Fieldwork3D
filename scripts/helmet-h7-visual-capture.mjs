@@ -57,7 +57,20 @@ try{
      'One fitted fabric cover or an exposed painted shell.'}).locator('select');
    await cover.waitFor();await cover.selectOption('fitted');
    await detailTab.click();
-   await toggle('ELASTIC BAND');
+    const bandToggle=page.getByRole('button',{name:'ELASTIC BAND',exact:true});
+    if(await bandToggle.getAttribute('aria-pressed')==='true')await bandToggle.click();
+    await capture(id+'-cover-only-front','front');
+    await toggle('ELASTIC BAND');
+    const bandColor=page.locator('.material-group')
+     .filter({hasText:'Auto uses period-appropriate webbing;'}).locator('select');
+    await bandColor.selectOption('black');
+    await capture(id+'-band-black-side','side');
+    const bandBlack=await stage.screenshot();
+    await bandColor.selectOption('tan');
+    await capture(id+'-band-tan-side','side');
+    const bandTan=await stage.screenshot();
+    if(bandBlack.equals(bandTan))
+     throw Error('Band color did not change any rendered pixels for '+id);
    const webbing=page.locator('.material-group')
     .filter({hasText:'Auto matches period/shell family.'}).locator('select');
    await webbing.selectOption('tan');
