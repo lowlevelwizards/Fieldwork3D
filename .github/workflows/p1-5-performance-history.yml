@@ -9,6 +9,9 @@ on:
       - 'src/ui/breach-perf-timeline-panel.ts'
       - 'src/rendering/breach-presentation-sight-policy.ts'
       - 'tests/performance-p1-5-*'
+      - 'tests/performance-normal-play-20261113.test.mjs'
+      - 'src/rendering/breach-fixture-draw-batching.ts'
+      - 'src/rendering/breach-site-scene-builder.ts'
       - 'tests/performance-p2-2-idle-3d-cadence.test.mjs'
       - 'src/rendering/breach-idle-3d-cadence.ts'
       - 'scripts/smoke-p1-5-performance-history.mjs'
@@ -38,6 +41,7 @@ jobs:
             tests/performance-p1-5-*.test.mjs \
             tests/performance-p1-*.test.mjs \
             tests/performance-p2-2-idle-3d-cadence.test.mjs \
+            tests/performance-normal-play-20261113.test.mjs \
             tests/breach-runtime-loop-step12.test.mjs \
             tests/runtime-perf-diagnostics.test.mjs
       - name: Three-view mobile history UI and execution policy A/B
