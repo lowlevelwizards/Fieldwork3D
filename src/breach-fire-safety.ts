@@ -14,12 +14,6 @@ export function assessFireLane(from:Pt,muzzleHeight:number,to:Pt,
   targetHeight:number,cover:readonly Obstacle[],walls:readonly Segment[],
   doors:readonly Door[],friends:readonly FriendlySafetyBody[]=[],
   purpose:'projectile'|'weapon'='projectile'):FireLane{
-  // Friendly bodies are a HARD veto, including through penetrable cover.
-  // Do this before material classification: otherwise a cover-hit result
-  // could be penetrated even when a teammate occupies the same ray.
-  for(const body of friends)
-    if(friendIntersectsTrajectory(from,muzzleHeight,to,targetHeight,body))
-      return {blocker:'friendly',point:body};
   const ray={a:from,b:to};
   if(walls.some(w=>segmentsCross(ray,w)))return {blocker:'wall'};
   if(doors.some(d=>
@@ -29,7 +23,19 @@ export function assessFireLane(from:Pt,muzzleHeight:number,to:Pt,
   if(cover.some(c=>(purpose==='weapon'||c.fixture!=='glass-barrier')&&
     coverImpactFraction(from,to,muzzleHeight,targetHeight,c)!==null))
     return {blocker:'cover'};
-  return {blocker:'clear'};
+  return assessFriendlyLane(from,muzzleHeight,to,targetHeight,friends);
+}
+/** Used BEFORE any penetrable-material preview or ammunition expenditure.
+ * Main assessFireLane keeps established wall/door/cover priority for display
+ * and AI diagnostics, but a material result is never sufficient to grant
+ * permission when this independent teammate veto reports a hit.
+ */
+export function assessFriendlyLane(from:Pt,muzzleHeight:number,to:Pt,
+ targetHeight:number,friends:readonly FriendlySafetyBody[]):FireLane{
+ for(const body of friends)
+  if(friendIntersectsTrajectory(from,muzzleHeight,to,targetHeight,body))
+   return {blocker:'friendly',point:body};
+ return {blocker:'clear'};
 }
 
 /** Acquisition and ignition must agree on whether actual cover can be
