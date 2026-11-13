@@ -35,6 +35,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 ui-monospace,mono
 <p>A dedicated deterministic test map running the <strong>real four-operator game motor</strong>, full door collision and hinge geometry. Select swing and fixture configurations, step frame-by-frame, and inspect an operator's remembered crossing episode.</p>
 <div class="controls">
 <label>PHYSICAL SCENARIO<select id="scenario"></select></label>
+<label>APPROACH FORMATION<select id="formation"></select></label>
+<label>DOOR APPROACH FACE<select id="approachFace"><option value="north">North → South</option><option value="south">South → North</option></select></label>
 <label>EXECUTION<select id="program"><option value="squad">Coordinated 4-person entry</option>
 <option value="independent">Four independent MOVE plans</option>
 <option value="counterflow">Opposing two-way crossing</option>
@@ -43,7 +45,8 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 ui-monospace,mono
 <label>SIMULATION SPEED<select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
 </div>
 <div class="actions"><button id="go">GO</button><button id="step">SINGLE TICK</button>
-<button id="reset">RESET CASE</button><button id="clearSelected">CLEAR SELECTED PLAN</button></div>
+<button id="reset">RESET CASE</button><button id="clearSelected">CLEAR SELECTED PLAN</button>
+<button id="runSix">AUDIT ALL 6 FORMATIONS</button></div>
 <details><summary>HINGE DEBUG CONTROLS · PHYSICAL FORCE</summary>
 <p>These buttons inject debug door actions into the actual session. They are not simulated operator hand animations. D4 hand grip is live during actual operator crossings; manual debug force is separately labeled.</p>
 <div class="actions"><button id="open">OPEN</button><button id="push">PUSH WIDER</button>
@@ -51,10 +54,14 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 ui-monospace,mono
 </details>
 <div class="actions"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" id="trace" checked> Show transient motor route</label>
 <button id="copy">COPY REPORT</button></div>
-<p id="message" role="status" aria-live="polite"></p></section>
+<p id="message" role="status" aria-live="polite"></p>
+<details open><summary>Q5 · FORMATION BENCHMARK</summary>
+<p>Test the selected door and approach face in all six starting formations using the real four-person motor. See time to the fourth full-body crossing separately from final order completion. Blocked/locked/wedged entries must remain physically blocked.</p>
+<pre id="formationResults" aria-live="polite">Run the six-formation audit to see physical outcomes and completion times.</pre>
+</details></section>
 <section><canvas id="doorStage" width="640" height="500"
  aria-label="Live top-down door and four-operator physical test map"></canvas>
-<p class="legend">Tap an operator to select; tap the floor to append a MOVE while planning. Amber = selected operator / leaf; teal = authored routes; dashed amber = temporary motor route. No physical collision is disabled.</p></section>
+<p class="legend">Try center, left, right, split 2+2, and left/right 45° approaches from either face. Tap an operator to select; tap the floor to append a MOVE while planning. Amber = selected operator / leaf; teal = authored routes; dashed amber = temporary motor route. No physical collision is disabled.</p></section>
 <section><h1>Q0 · PASSAGE MOTION ATTRIBUTION</h1>
 <p>Opt-in 10Hz samples of threshold-relative movement, GO-time rank, holds and actual leaf/idle/retreat corrections. The COPY REPORT includes bounded 60-second history.</p>
 <label style="display:flex;align-items:center;gap:9px;font-size:12px"><input type="checkbox" id="queueTrace"> RECORD QUEUE TRACE</label>

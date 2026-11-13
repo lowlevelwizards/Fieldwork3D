@@ -4,6 +4,12 @@
  */
 import {activateSite,doorLeafSegment,doorCenter,
  type Pt} from './breach-core.ts';
+import {DOOR_RANGE_FORMATIONS,doorRangeFormationDescription,
+ type DoorRangeFormationId,type DoorRangeApproachFace}
+ from './breach-door-range-formations.ts';
+import {runDoorRangeTrial,summarizeDoorRangeTrials,
+ type DoorRangeProtocol,type DoorRangeTrial}
+ from './breach-door-range-benchmark.ts';
 import {pushDoor} from './breach-door.ts';
 import {DoorRangeMobileProfile} from './door-range-mobile-profile.ts';
 import {QueueMotionAudit,listenQueueMotion} from './breach-queue-trace.ts';
@@ -20,6 +26,10 @@ const get=<T extends HTMLElement>(id:string)=>
 const stage=get<HTMLCanvasElement>('doorStage');
 const ctx=stage.getContext('2d')!;
 const scenario=get<HTMLSelectElement>('scenario');
+const formation=get<HTMLSelectElement>('formation');
+const approachFace=get<HTMLSelectElement>('approachFace');
+const runSix=get<HTMLButtonElement>('runSix');
+const formationResults=get<HTMLElement>('formationResults');
 const program=get<HTMLSelectElement>('program');
 const speed=get<HTMLSelectElement>('speed');
 const selected=get<HTMLSelectElement>('operator');
@@ -51,6 +61,11 @@ for(const c of DOOR_RANGE_CASES){
  option.value=c.id;option.textContent=c.label;scenario.append(option);
 }
 scenario.value='outward-left';
+for(const preset of DOOR_RANGE_FORMATIONS){
+ const option=document.createElement('option');
+ option.value=preset.id;option.textContent=preset.label;formation.append(option);
+}
+formation.value='center';
 let s:Session;
 let planned=false,playing=false,flips=0,lastOpen=false;
 let minSpacing=Infinity;
@@ -67,14 +82,19 @@ function plan(){
  const active=program.value==='solo'?members.slice(0,1):members;
  if(program.value==='counterflow'){
   // Two real teammates on each side, retaining ordinary plan authority.
-  members[2].p=p(300,340);members[2].priorP={...members[2].p};
-  members[3].p=p(326,370);members[3].priorP={...members[3].p};
+  const north=approachFace.value==='north';
+  members[2].p=north?p(300,340):p(300,180);
+  members[2].priorP={...members[2].p};
+  members[3].p=north?p(326,370):p(326,150);
+  members[3].priorP={...members[3].p};
  }
  let ok=true;
  for(let i=0;i<active.length;i++){
   const a=active[i];
+  const north=approachFace.value==='north';
   const goal=program.value==='counterflow'&&i>=2?
-   p(300+(i-2)*18,174):p(293+i*12,346+i*6);
+   p(300+(i-2)*18,north?174:346):
+   p(293+i*12,north?346+i*6:174-i*6);
   ok=planMove(s,a.id,goal)&&ok;
  }
  return ok;
@@ -86,7 +106,9 @@ function reset(){
  playing=false;acc=0;flips=0;minSpacing=Infinity;
  passed=new Set();crossedAt=new Map();
  s=newSession(0,undefined,'full-view','small','hold',
-  doorRangeSite(scenario.value as DoorRangeCaseId),
+  doorRangeSite(scenario.value as DoorRangeCaseId,
+    formation.value as DoorRangeFormationId,
+    approachFace.value as DoorRangeApproachFace),
   {enableCivilians:false});
  prepareDoorRangeCase(s,scenario.value as DoorRangeCaseId);
  selectedId=team(s)[0]?.id??'';
@@ -103,7 +125,10 @@ function reset(){
  activeIds=new Set(members.filter(a=>a.plan.length>0).map(a=>a.id));
  lastOpen=s.doors[0]?.open??false;
  message.textContent=planned?
-  'Plan accepted. Start, step, or tap the map to append a selected operator waypoint.':
+  'Ready · '+doorRangeFormationDescription(
+    formation.value as DoorRangeFormationId,
+    approachFace.value as DoorRangeApproachFace)+
+   '. Start, step, or tap the map to add a waypoint.':
   'Plan rejected by the actual rules. Try individual MOVE or change the scenario.';
  go.textContent='GO';paint();
 }
@@ -153,8 +178,12 @@ function paint(){
  for(let x=50;x<=590;x+=20)drawLine(p(x,46),p(x,458),'#486055',.5);
  for(let y=46;y<=458;y+=20)drawLine(p(50,y),p(590,y),'#486055',.5);
  ctx.font='bold 12px system-ui';
- ctx.fillStyle='#8cac99';ctx.fillText('APPROACH',57,68);
- ctx.fillText('INTERIOR',57,445);
+ ctx.fillStyle='#8cac99';ctx.fillText(approachFace.value==='north'?'APPROACH':'INTERIOR',57,68);
+ ctx.fillText(approachFace.value==='south'?'APPROACH':'INTERIOR',57,445);
+ ctx.fillStyle='#d6b78b';ctx.font='bold 11px system-ui';
+ ctx.fillText(doorRangeFormationDescription(
+  formation.value as DoorRangeFormationId,
+  approachFace.value as DoorRangeApproachFace),57,88);
  for(const cover of s.site?.cover??[]){
   ctx.fillStyle='#967d62';
   ctx.fillRect(cover.x-cover.w/2,cover.y-cover.h/2,cover.w,cover.h);
@@ -244,7 +273,8 @@ function toggle(){
 }
 function report(){
  const door=s.doors[0];
- return {scenario:scenario.value,protocol:program.value,
+ return {scenario:scenario.value,formation:formation.value,
+  approachFace:approachFace.value,protocol:program.value,
   phase:s.phase,time:s.seconds,planned,flips,
   minOperatorSpacing:Number.isFinite(minSpacing)?minSpacing:null,
   crossed:[...crossedAt.entries()],
@@ -303,7 +333,47 @@ stage.addEventListener('pointerdown',event=>{
 });
 selected.addEventListener('change',()=>{selectedId=selected.value;paint();});
 trace.addEventListener('change',paint);
-for(const input of [scenario,program])input.addEventListener('change',reset);
+for(const input of [scenario,formation,approachFace,program])
+ input.addEventListener('change',reset);
+let auditInProgress=false;
+runSix.addEventListener('click',async()=>{
+ if(auditInProgress)return;
+ auditInProgress=true;runSix.disabled=true;playing=false;
+ go.textContent='GO';
+ const id=scenario.value as DoorRangeCaseId;
+ const face=approachFace.value as DoorRangeApproachFace;
+ const protocol:DoorRangeProtocol=program.value==='independent'?
+  'independent':'squad';
+ const trials:DoorRangeTrial[]=[];
+ try{
+  for(const preset of DOOR_RANGE_FORMATIONS){
+   const result=runDoorRangeTrial(id,preset.id,face,protocol,1800);
+   trials.push(result);
+   const rows=trials.map(t=>
+    (t.ok?'PASS':'FAIL')+' · '+t.formation+
+    ' · crossed '+t.crossed+'/4 · finished '+t.finished+
+    '/4 · 4th '+(t.fourthCrossSeconds?.toFixed(2)??'—')+
+    's · '+t.reason).join('\n');
+   formationResults.textContent=rows;
+   // The benchmark is opt-in; normal gameplay never runs extra sessions.
+   await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
+  }
+  const summary=summarizeDoorRangeTrials(trials);
+  formationResults.textContent='Q5 · '+id+' · '+face+' · '+protocol+
+   '\n'+summary.passed+'/'+summary.count+' correct · median 4th '+
+   (summary.fourthCross.median?.toFixed(2)??'—')+
+   's · p90 '+(summary.fourthCross.p90?.toFixed(2)??'—')+
+   's · worst '+(summary.fourthCross.worst?.toFixed(2)??'—')+
+   's\n\n'+formationResults.textContent;
+  message.textContent=summary.failed?
+   summary.failed+' failures; inspect the exact rows and reproduce individually.':
+   'All six formations passed their physical expected outcome.';
+ }catch(error){
+  formationResults.textContent+='\nERROR · '+String(error);
+ }finally{
+  auditInProgress=false;runSix.disabled=false;reset();
+ }
+});
 function drawMobileProfile(now:number){
  if(!profile)return;
  const s=profile.snapshot(now);
