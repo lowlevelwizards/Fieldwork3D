@@ -5,6 +5,13 @@
 import * as THREE from 'three';
 import {OPERATOR_SOLID_FAMILIES,tonedOperatorSolid} from './operator-solid-color-families.ts';
 export const TOP_COLORWAYS={
+ 'button-up-shirt':[
+  ['standard','Solid / camouflage'],
+  ['flannel-rust-red','Rust red flannel'],
+  ['flannel-green','Forest green flannel'],
+  ['flannel-blue','Dusty blue flannel'],
+  ['flannel-burnt-orange','Burnt orange flannel']
+ ],
  'combat-shirt':[
   ['standard','Sand knit'],['olive','Olive knit'],['ranger','Ranger green knit'],
   ['coyote','Coyote knit'],['black','Black knit']
@@ -133,4 +140,51 @@ export function gorkaSpecialtyTexture(id:'ss-leto'|'ss-autumn'):
  t.repeat.set(32/64,32/64);
  t.name='Fieldwork Gorka-only '+id;
  t.needsUpdate=true;cache.set(id,t);return t;
+}
+
+/** A deliberately restrained woven plaid tile. Unlike military camo,
+ * this shirt-only repeat is not registered as a fabric-camouflage master. */
+export const BUTTON_UP_FLANNEL_IDS=[
+ 'flannel-rust-red','flannel-green','flannel-blue','flannel-burnt-orange'
+] as const;
+export type ButtonUpFlannelId=typeof BUTTON_UP_FLANNEL_IDS[number];
+export function isButtonUpFlannel(id:string):id is ButtonUpFlannelId{
+ return (BUTTON_UP_FLANNEL_IDS as readonly string[]).includes(id);
+}
+const flannelPalettes:Readonly<Record<ButtonUpFlannelId,
+ readonly [number,number,number,number]>>={
+ 'flannel-rust-red':[0x865047,0x433b3b,0xb9a18b,0x674338],
+ 'flannel-green':[0x63755a,0x354839,0xa7aa87,0x50644d],
+ 'flannel-blue':[0x607c8d,0x38485c,0xb4afa2,0x4d6476],
+ 'flannel-burnt-orange':[0xa2734c,0x60483b,0xc3ad8d,0x815a44]
+};
+const flannelCache=new Map<ButtonUpFlannelId,THREE.DataTexture>();
+export function buttonUpFlannelTexture(id:string):THREE.DataTexture|null{
+ if(!isButtonUpFlannel(id))return null;
+ const existing=flannelCache.get(id);if(existing)return existing;
+ const colors=flannelPalettes[id],pixels=new Uint8Array(64*64*4);
+ for(let y=0;y<64;y++)for(let x=0;x<64;x++){
+  const a=x%32,b=y%32;
+  const broad=(p:number)=>p<5||(p>=17&&p<21);
+  const thin=(p:number)=>p===10||p===26;
+  const crossing=broad(a)&&broad(b);
+  const contrast=broad(a)||broad(b);
+  const bright=thin(a)||thin(b);
+  const rgb=colors[crossing?1:bright?2:contrast?3:0];
+  const offset=(y*64+x)*4;
+  pixels[offset]=(rgb>>16)&255;
+  pixels[offset+1]=(rgb>>8)&255;
+  pixels[offset+2]=rgb&255;pixels[offset+3]=255;
+ }
+ const tex=new THREE.DataTexture(pixels,64,64,
+  THREE.RGBAFormat,THREE.UnsignedByteType);
+ tex.wrapS=tex.wrapT=THREE.RepeatWrapping;
+ tex.colorSpace=THREE.SRGBColorSpace;
+ tex.magFilter=THREE.NearestFilter;
+ tex.minFilter=THREE.NearestMipmapNearestFilter;
+ tex.generateMipmaps=true;
+ tex.repeat.set(32/64,32/64);
+ tex.name='Fieldwork button-up '+id;
+ tex.needsUpdate=true;flannelCache.set(id,tex);
+ return tex;
 }

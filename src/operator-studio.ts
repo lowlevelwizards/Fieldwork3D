@@ -1189,17 +1189,17 @@ function renderMaterials(){
   // but display the active cut's iconic color instead of a stale choice.
   const rawPattern=w.fabricCamo?.[channel]??null;
   const pattern=rawPattern&&
-   (channel!=='armor'&&channel!=='gear'||choices.includes(rawPattern))?
+   choices.includes(rawPattern)?
     rawPattern:null;
   const eligibleSolids=channel==='gear'?
    (outfit.rigStyle==='no-rig'?solidChoicesFor('gear'):
     RIG_VISUAL_TEXTILES[outfit.rigStyle]?.solids??[]):
    channel==='armor'?
    (ARMOR_VISUAL_TEXTILES[outfit.armorStyle]?.solids??[]):
-   solidChoicesFor(channel);
+   solidChoicesFor(channel,outfit);
   const rawSolid=w.fabricSolids?.[channel];
   const manualSolid=rawSolid&&
-   (channel!=='armor'&&channel!=='gear'||eligibleSolids.includes(rawSolid))?
+   eligibleSolids.includes(rawSolid)?
     rawSolid:null;
   const iconicSignature=channel==='gear'&&outfit.rigStyle!=='no-rig'?
    rigSignature(outfit.rigStyle):
@@ -1273,7 +1273,7 @@ function renderMaterials(){
    const canCopyPrint=!!sourcePrint&&choices.includes(sourcePrint)&&
     pattern!==sourcePrint;
    const canCopySolid=!sourcePrint&&!!sourceSolid&&
-    solidChoicesFor(channel).includes(sourceSolid)&&
+    solidChoicesFor(channel,outfit).includes(sourceSolid)&&
     (pattern!==null||w.fabricSolids?.[channel]!==sourceSolid);
    if(canCopyPrint||canCopySolid){
     const match=document.createElement('div');match.className='material-row';
@@ -1282,7 +1282,7 @@ function renderMaterials(){
      if(canCopyPrint&&sourcePrint)
       changeWardrobe(setWardrobeFabricCamo(current(),channel,sourcePrint,outfit));
      else if(canCopySolid&&sourceSolid)
-      changeWardrobe(setWardrobeFabricSolid(current(),channel,sourceSolid));
+      changeWardrobe(setWardrobeFabricSolid(current(),channel,sourceSolid,outfit));
     }));
     group.append(match);
    }
@@ -1681,13 +1681,19 @@ function renderMaterials(){
   // Combat knit and smock solids are controlled by their actual material
   // swatches above, never a second competing color dropdown. Keep the
   // Gorka's purpose-built TWO-TONE family options as its one exception.
-  const special=item==='gorka-jacket'?topColorwayChoices(item):[];
+  const special=item==='gorka-jacket'||item==='button-up-shirt'?
+   topColorwayChoices(item):[];
   if(special.length){
-   const section=row('GORKA TWO-TONE / REINFORCEMENTS');
+   const section=row(item==='button-up-shirt'?'BUTTON-UP FLANNEL / PLAID':
+    'GORKA TWO-TONE / REINFORCEMENTS');
    addSelect(section,special,resolvedTopColorway(item,w.topColorway),
-    value=>changeWardrobe({...current(),topColorway:value}));
+    value=>changeWardrobe({...current(),topColorway:value,
+     ...(item==='button-up-shirt'&&value.startsWith('flannel-')?{
+      fabricCamo:{...current().fabricCamo,top:undefined},
+      fabricSolids:{...current().fabricSolids,top:undefined}
+     }:{})}));
   }
-  const editableUpper=['bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket'].includes(item);
+  const editableUpper=['bdu-shirt','acu-shirt','combat-shirt','smock-jacket','gorka-jacket','button-up-shirt'].includes(item);
   if(editableUpper){
    const autoFold=resolvedCuffSolid({print:w.fabricCamo?.top,
     solid:w.fabricSolids?.top,override:w.cuffSolid,fallback:'olive-drab'});

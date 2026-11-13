@@ -18,7 +18,7 @@ import {wardrobeMount} from './operator-wardrobe-mounts.ts';
 import {validArmorSolid,validRigSolid}
  from './operator-rig-authenticity-policy.ts';
 import {isGarmentColorway} from './operator-upper-colorways.ts';
-import {isGarmentSolidId,FABRIC_SOLID_CHOICES,type GarmentSolidId}
+import {isGarmentSolidId,FABRIC_SOLID_CHOICES,solidChoicesFor,type GarmentSolidId}
  from './operator-garment-color-policy.ts';
 import {initialWardrobeAccessories,readWardrobeAccessories,
  type WardrobeAccessoryConfiguration} from './operator-wardrobe-accessories.ts';
@@ -87,7 +87,9 @@ add('headset','headset',[
 add('top','uniform',[
  ['bdu-shirt','Classic Field Blouse'],['acu-shirt','Modern Utility Blouse'],
  ['combat-shirt','Combat Shirt'],['smock-jacket','Windproof Field Smock'],
- ['gorka-jacket','Mountain / Gorka Jacket']
+ ['gorka-jacket','Mountain / Gorka Jacket'],
+ ['t-shirt','T-shirt'],['button-up-shirt','Button-up Shirt'],
+ ['polo-shirt','Polo Shirt'],['tank-top','Tank Top']
 ]);
 // Bare-short placeholders are no longer visible wardrobe options.
 // Unremodeled lower-body pieces are represented by one honest foundation.
@@ -163,7 +165,7 @@ export const SLEEVE_STATES=['unrolled','cuffed','rolled'] as const;
 export type SleeveState=typeof SLEEVE_STATES[number];
 export const TROUSER_HEMS=['unbloused','bloused','cuffed'] as const;
 export type TrouserHem=typeof TROUSER_HEMS[number];
-export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shirt'||top==='combat-shirt'?
+export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shirt'||top==='combat-shirt'||top==='button-up-shirt'?
  SLEEVE_STATES:['unrolled'] as const;
 export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
  trousers==='acu-trousers'||trousers==='gorka-trousers'?TROUSER_HEMS:['unbloused'] as const;
@@ -351,12 +353,13 @@ export const setWardrobeStyle=(wardrobe:WardrobeOptions,slot:WardrobeSlot,id:str
 export function setWardrobeFabricSolid(wardrobe:WardrobeOptions,
  channel:FabricCamoChannel,id:GarmentSolidId,
  outfit?:CamoOutfit):WardrobeOptions{
- if(!FABRIC_SOLID_CHOICES[channel].includes(id))return wardrobe;
+ if(!solidChoicesFor(channel,outfit).includes(id))return wardrobe;
  if(outfit&&channel==='armor'&&!validArmorSolid(outfit.armorStyle,id))
   return wardrobe;
  if(outfit&&channel==='gear'&&outfit.rigStyle!=='no-rig'&&
   !validRigSolid(outfit.rigStyle,id))return wardrobe;
  return {...wardrobe,
+  topColorway:channel==='top'&&outfit?.top==='button-up-shirt'?'standard':wardrobe.topColorway,
   fabricSolids:{...wardrobe.fabricSolids,[channel]:id},
   lastFabricCamo:{...wardrobe.lastFabricCamo,
    [channel]:wardrobe.fabricCamo?.[channel]??wardrobe.lastFabricCamo?.[channel]},
@@ -372,6 +375,7 @@ export function setWardrobeFabricCamo(wardrobe:WardrobeOptions,
  if(!isHeadwearCamoId(id)||!fabricCamoCompatible(id,channel,outfit))
   return wardrobe;
  return {...wardrobe,
+  topColorway:channel==='top'&&outfit.top==='button-up-shirt'?'standard':wardrobe.topColorway,
   lastFabricCamo:{...wardrobe.lastFabricCamo,[channel]:id},
   fabricCamo:{...wardrobe.fabricCamo,[channel]:id},
   fabricCamoRoll:{...wardrobe.fabricCamoRoll,

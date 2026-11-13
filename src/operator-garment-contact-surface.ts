@@ -12,6 +12,10 @@ export const CORE_TORSO_CONTACT:GarmentContactBox={
 };
 export const VISIBLE_UPPER_CONTACT:Readonly<Record<string,
  readonly GarmentContactBox[]>>={
+ 't-shirt':[{x:0,y:0,z:0,width:10.30,height:12.18,depth:14.36}],
+ 'button-up-shirt':[{x:0,y:0,z:0,width:10.42,height:12.40,depth:14.48}],
+ 'polo-shirt':[{x:0,y:0,z:0,width:10.28,height:12.18,depth:14.30}],
+ 'tank-top':[{x:0,y:0,z:0,width:10.24,height:12.16,depth:14.26}],
  'combat-shirt':[{x:0,y:0,z:0,width:10.22,height:12.22,depth:14.22}],
  'smock-jacket':[
   {x:0,y:0,z:0,width:11.18,height:12.52,depth:15.05},
