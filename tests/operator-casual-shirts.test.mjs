@@ -139,7 +139,11 @@ test('all casual tops recolor the ONE actual torso, without duplicate jacket she
   const model=r.visualKit.casualShirts.cuts[top];
   assert.strictEqual(r.visualKit.baseTorso,torso,top+' keeps foundation');
   assert.ok(torso.geometry instanceof THREE.BufferGeometry,top+' uses a real torso');
-  assert.strictEqual(torso.material,r.clothMaterial,'fabric owns body');
+  assert.strictEqual(r.poseCavity.torso.source,r.clothMaterial,
+   'torso shadow receiver follows the one cloth color');
+  assert.strictEqual(torso.material,r.poseCavity.torso.material);
+  assert.equal(torso.material.color.getHex(),garmentSolidHex('ranger-green'),
+   'visible torso uses selected shirt color');
   assert.equal(r.colors.get(r.clothMaterial).getHex(),garmentSolidHex('ranger-green'));
   assert.ok(torso.visible,top+' torso stays visible');
   assert.ok(model.torso.visible,top+' small details active');
