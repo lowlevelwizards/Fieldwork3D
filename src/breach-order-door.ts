@@ -7,6 +7,7 @@ import {OPERATOR_RADIUS,doorCenter,doorLeafSegment,type Pt}
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {doorInteraction} from './breach-interactions.ts';
+import {doorClosingContested} from './breach-door-pressure-frame.ts';
 import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable} from './breach-door.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
@@ -138,6 +139,18 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
       }
     }
     if(a.actionTimer>=required){
+      // A deliberate CLOSE remains queued but may not close against an
+      // actively occupied threshold. Retry at the next fixed tick once
+      // the body has cleared, never reverse the panel into the entrant.
+      if(n.method==='close'&&doorClosingContested(s,door)){
+        if(s.seconds-a.lastLaneWarnAt>3){
+          a.lastLaneWarnAt=s.seconds;
+          notify(s,a.name+' CLOSE WAIT · PASSAGE IN USE');
+        }
+        a.actionTimer=Math.max(0,required-dt*.5);
+        a.velocity=0;
+        return true;
+      }
       if(n.method==='kick'){
         // Keep kicking automatically until the latch yields, but avoid
         // an endless loop for a held or physically impossible opening.

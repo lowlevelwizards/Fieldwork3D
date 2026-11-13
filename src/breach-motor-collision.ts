@@ -13,8 +13,8 @@ import {friendlyPassingStep} from './breach-friendly-traffic.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
 import {tryRehearsedDoorManeuver,ownsDoorManeuverRoute}
  from './breach-door-traversal-maneuver.ts';
-import {incidentalCloseWouldBlockTeammate,operatorCrossingDoor}
- from './breach-door-pressure-arbitration.ts';
+import {sessionDoorPressurePolicy}
+ from './breach-door-pressure-frame.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
  twoSidedSqueezePressure,sweptProfileClear,escapeOpenDoorOverlap,
@@ -55,10 +55,8 @@ export function resolveMotorCollision(
   // BEFORE evaluating movement clearance. The hinge may yield right now;
   // when it cannot (wall/actor), existing collision and recovery remain.
   const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
-    s.operators.filter(o=>o.health>0).map(o=>o.p),{
-      deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door),
-      preferOpening:door=>operatorCrossingDoor(a,door)
-    },world);
+    s.operators.filter(o=>o.health>0).map(o=>o.p),
+    sessionDoorPressurePolicy(s,a),world);
   // Existing handle reach animation shows a genuine, short support-hand
   // assist, never an invented door manipulation across the room.
   if(doorContact?.handAssist&&s.seconds-a.lastDoorAt>.76){
