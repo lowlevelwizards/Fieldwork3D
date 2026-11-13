@@ -34,14 +34,26 @@ test('A0 independent rigs, action seek and return do not corrupt pose output',()
  const a=createOperatorRig('a0-replay-a','blue',true);
  const b=createOperatorRig('a0-replay-b','red',true);
  try{
-  poseOperator(a,base,0);
+  // Deterministic replay consumes the recorded contact targets. Without
+  // these, the fallback live step scheduler legitimately keeps history and
+  // is not a valid seek-parity fixture.
+  const replayFeet=[
+   {position:{x:0,y:-5.6},worldYaw:0,height:0,
+    contact:true,phase:'planted',progress:1,pitch:0},
+   {position:{x:0,y:5.6},worldYaw:0,height:0,
+    contact:true,phase:'planted',progress:1,pitch:0}
+  ];
+  const recorded={...base,replayFeet};
+  poseOperator(a,recorded,0);
   const expected=captureAnimationQuality(a,4);
   poseOperator(b,{...base,weapon:'rifle',posture:'crouch'},0);
-  poseOperator(a,{...base,seconds:6,reload:.6,
+  poseOperator(a,{...recorded,seconds:6,reload:.6,
    reloadMode:'emergency'},0);
-  poseOperator(a,base,-1);
-  assert.equal(compareAnimationFrames(expected,
-   captureAnimationQuality(a,4)).frozenDrift,false);
+  poseOperator(a,recorded,-1);
+  const after=captureAnimationQuality(a,4);
+  const continuity=compareAnimationFrames(expected,after);
+  assert.equal(continuity.frozenDrift,false,
+   'Recorded-contact seek drift: '+JSON.stringify(continuity));
   assert.equal(captureAnimationQuality(b,4).slotCount,30);
  }finally{a.dispose();b.dispose();}
 });
