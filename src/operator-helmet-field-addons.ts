@@ -75,7 +75,7 @@ function strobe(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  a.userData.h9Distinctive='manta-wide-emitter';
 }
 function counterweight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
- const a=mount(shell,g,'back',0,.12);
+ const a=mount(shell,g,'back',-.17,.12);
  const bag=[[-1.58,.59],[1.58,.59],[1.76,.30],
   [1.64,-.73],[1.26,-.92],[-1.26,-.92],[-1.64,-.73],[-1.76,.30]];
  silhouette(a,'rear-counterweight-textile-pouch',p.cloth,bag,.38);
@@ -149,6 +149,17 @@ export function addAchMichFieldAddon(
  else if(type==='light')light(shell,g,palette);
  else if(type==='camera')camera(shell,g,palette);
  else chemlight(shell,g,palette);
+ // H9 close-up acceptance: at ordinary Studio zoom the original
+ // reference geometry was too small to identify. Enlarge the distinct
+ // silhouettes while preserving their authored attachment point and
+ // outward surface orientation (never scale the helmet itself).
+ const sizes:Record<HelmetFieldAddon,number>={
+  strobe:1.48,counterweight:1.32,battery:1.43,
+  light:1.43,camera:1.31,chemlight:1.42
+ };
+ const anchor=g.children.find(o=>o.name==='helmet-addon-fitted-socket');
+ if(anchor)anchor.scale.setScalar(sizes[type]);
+ g.userData.h9AddonGraphicScale=sizes[type];
  g.userData.h9SpecificAddon=type;
  g.userData.h9SurfaceFitted=true;
 }
