@@ -50,6 +50,8 @@ export type OperatorPose={
   reloadRemoved?:boolean;reloadInserted?:boolean;lastThrowAt:number;
   lastDoorAt:number;doorPoint?:{x:number;y:number};
   doorMethod?:'open'|'close'|'kick'|'hold';down:boolean;
+  /** D4 contact from the actual hinge, not a timed reach fiction. */
+  doorHandHold?:boolean;doorHandHoldSince?:number;
   lastBashAt?:number;bashRole?:BashRole;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   /** Lab preview only: choose an exact stock/weapon readiness posture. */

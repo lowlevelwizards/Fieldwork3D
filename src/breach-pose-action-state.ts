@@ -8,6 +8,7 @@ import {resolvePoseContactOwners} from './breach-pose-contacts.ts';
 
 export type PoseActionSource=Pick<OperatorPose,
  'seconds'|'lastThrowAt'|'lastDoorAt'|'doorPoint'|'doorMethod'|
+ 'doorHandHold'|'doorHandHoldSince'|
  'reload'|'reloadDuration'|'reloadMode'|'weapon'|'treatmentActive'|
  'down'|'surrender'|'injury'|'hitRegion'|'aiming'|'firing'|'hitAge'|
  'lockpickActive'>;
@@ -22,8 +23,9 @@ export function resolveOperatorActionState(
  const throwAge=p.seconds-p.lastThrowAt;
  const throwActive=throwAge>=0&&throwAge<.70;
  const doorAge=p.seconds-p.lastDoorAt;
- const doorActive=(doorAge>=0&&doorAge<1.12&&!!p.doorPoint&&
-   p.doorMethod!=='kick')||!!p.lockpickActive&&!!p.doorPoint;
+ const doorActive=!!p.doorPoint&&(
+   (doorAge>=0&&doorAge<1.12&&p.doorMethod!=='kick')||
+   !!p.lockpickActive||!!p.doorHandHold);
  const woundedGuard=!p.down&&p.injury>0&&p.hitRegion!=='leg'&&
    !p.aiming&&!p.firing&&p.hitAge!==undefined&&
    p.hitAge>=0&&p.hitAge<1.1;

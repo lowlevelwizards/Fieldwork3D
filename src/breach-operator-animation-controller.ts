@@ -843,7 +843,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Deliberate hand-off: release weapon, reach physical handle, and
     // return the support hand to its real gun grip after the latch moves.
     const reach=p.lockpickActive?smooth(doorAge/.32):
-      smooth(doorAge/.32)*(1-smooth((doorAge-.62)/.48));
+      p.doorHandHold?
+        smooth((p.seconds-(p.doorHandHoldSince??p.lastDoorAt))/.18):
+        smooth(doorAge/.32)*(1-smooth((doorAge-.62)/.48));
     frame.chest.position.x=clamp(local.x-13,0,2.4)*reach;
     fullDoorContact=local.sub(P(frame.chest.position.x,0,0)).clone();
     leftGrip.copy(fit.support).lerp(fullDoorContact,reach);

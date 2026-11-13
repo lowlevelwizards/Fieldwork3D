@@ -115,7 +115,7 @@ function stats(){
   const episode=a.doorTraversal;
   return a.name+' · '+(episode?episode.phase.toUpperCase()+
     ' / '+episode.maneuver.toUpperCase()+
-    (episode.handContact?' · HAND CONTACT':'')+
+    (episode.handContact?' · HAND ON HANDLE':'')+
     ' · attempts '+episode.maneuverAttempts:
     'NO EPISODE')+
    ' · '+(a.motorPause??a.lastBlocker??'CLEAR')+

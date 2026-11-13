@@ -1949,7 +1949,9 @@ export class TacticalScene3D{
       if(flashCue.active)object.flash.scale.setScalar(flashCue.scale);
       const plannedDoor=actor.plan[0]?.kind==='door'?
         s.doors.find(d=>d.id===actor.plan[0].doorId):undefined;
-      const activeDoor=plannedDoor??(actor.lastDoorId?
+      const grippedDoor=actor.doorTraversal?.handContact?
+        s.doors.find(d=>d.id===actor.doorTraversal?.doorId):undefined;
+      const activeDoor=grippedDoor??plannedDoor??(actor.lastDoorId?
         s.doors.find(d=>d.id===actor.lastDoorId):undefined);
       const handle=activeDoor?
         actor.lastDoorMethod==='kick'?
@@ -2115,6 +2117,9 @@ export class TacticalScene3D{
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
         lastBashAt:actor.lastBashAt,bashRole:actor.lastBashRole,
         doorMethod:actor.lastDoorMethod,
+        doorHandHold:!!grippedDoor,
+        doorHandHoldSince:grippedDoor?
+          actor.doorTraversal?.handContactSince??undefined:undefined,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
         down:actor.health<=0,surrender:actor.surrendered,
         aiming:!actor.traversal&&actor.aim>.20,

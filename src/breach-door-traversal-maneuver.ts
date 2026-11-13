@@ -171,11 +171,10 @@ export function recordDoorManeuverContact(
  actor:TeamActor,contact:BodyDoorContact|null):void{
  const episode=actor.doorTraversal;
  if(!episode||!contact||contact.doorId!==episode.doorId)return;
- if(contact.handAssist){
-  episode.handContact=true;
-  if(episode.maneuver==='direct'||episode.maneuver==='push-through')
-   episode.maneuver='grab-and-hold';
- }else if(contact.advanced&&episode.maneuver==='direct')
+ // D4 alone authorizes a sustained grip after actual body contact AND
+ // reachable handle validation. A transient marker is never enough.
+ if(contact.handAssist)return;
+ if(contact.advanced&&episode.maneuver==='direct')
   episode.maneuver='push-through';
 }
 /** When the current motor route is the saved maneuver, its chosen
