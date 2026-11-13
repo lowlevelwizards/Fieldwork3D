@@ -103,8 +103,12 @@ export function advanceSimulationMotion(s:Session,h:number,
       if(civilianSenseDue(civil,s.seconds)){
         stepCivilianResponse(civil,s.seconds,h,{
           ...sensoryCommon,
-          isCrowded:p=>nearby.some(body=>body!==civil&&
-            withinSquared(body.p,p,484))
+          // Crowd awareness also includes incapacitated bodies, unlike
+          // physical occupancy. Keep these independent exact contracts.
+          isCrowded:p=>s.operators.some(o=>o.health>0&&
+            withinSquared(o.p,p,484))||
+            s.civilians.some(c=>c.id!==civil.id&&
+            withinSquared(c.p,p,484))
         });
       }
       if(profile){
