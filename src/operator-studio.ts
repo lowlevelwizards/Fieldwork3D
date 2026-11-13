@@ -1469,7 +1469,11 @@ function renderMaterials(){
     icon.textContent=glyph;icon.setAttribute('aria-hidden','true');
     b.prepend(icon);section.append(b);
    };
-   const rowOf=(title:string,help:string)=>row(title,help);
+   const rowOf=(title:string,help:string)=>{
+     const group=row(title,help);
+     group.classList.add('helmet-field-section');
+     return group;
+    };
    const band=rowOf('FIELD RETAINING BAND',
     historical?'Period elastic band, including rear cat-eye markers.':
     'One low-profile elastic band over the helmet cover or painted shell.');
