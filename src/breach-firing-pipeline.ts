@@ -160,8 +160,14 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
    if(clearance.blocked)return false;
    const from={x:clearance.muzzle.x,y:clearance.muzzle.z};
    const height=aimHeight(target.posture==='crouch');
+   const far=muzzleEndpoint(from,clearance.muzzle.yaw,
+     Math.max(170,d(from,target.p)+38));
+   const farHeight=clearance.muzzle.y+(height-clearance.muzzle.y)*
+      d(from,far)/Math.max(1,d(from,target.p));
    if(observedCivilianFireLane(s,a,from,clearance.muzzle.y,
-     target.p,height))return false;
+     far,farHeight))return false;
+   if(assessFriendlyLane(from,clearance.muzzle.y,far,farHeight,
+     friends).blocker==='friendly')return false;
    return assessFireLane(from,clearance.muzzle.y,target.p,height,
       sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,s.doors,friends).blocker==='clear';
  };
@@ -325,10 +331,23 @@ function updateContextualCrouch(s:Session,a:TeamActor):void{
      assessFriendlyLane(origin,clearance.muzzle.y,
        target.p,targetHeight,[crouchedBody]).blocker!=='clear')
     continue;
+  // Confirm the same benefit on the REAL outgoing barrel line. The
+  // near-target line alone may point slightly away from a shifted muzzle.
+  const outgoing=muzzleEndpoint(origin,clearance.muzzle.yaw,
+    Math.max(170,d(origin,target.p)+38));
+  const farHeight=clearance.muzzle.y+(targetHeight-clearance.muzzle.y)*
+    d(origin,outgoing)/Math.max(1,d(origin,target.p));
+  if(assessFriendlyLane(origin,clearance.muzzle.y,outgoing,farHeight,
+       [frontBody]).blocker!=='friendly'||
+     assessFriendlyLane(origin,clearance.muzzle.y,outgoing,farHeight,
+       [crouchedBody]).blocker!=='clear')
+    continue;
   const remaining=team(s).filter(o=>o!==a&&o!==rear&&o.health>0)
     .map(safetyBodyFor);
   if(assessFriendlyLane(origin,clearance.muzzle.y,target.p,
       targetHeight,remaining).blocker==='friendly')continue;
+  if(assessFriendlyLane(origin,clearance.muzzle.y,outgoing,farHeight,
+      remaining).blocker==='friendly')continue;
   if(assessFireLane(origin,clearance.muzzle.y,target.p,targetHeight,
       world.cover,world.walls,s.doors,remaining).blocker!=='clear')
     continue;
