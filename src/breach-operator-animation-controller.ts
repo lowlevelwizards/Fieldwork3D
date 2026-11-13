@@ -424,19 +424,25 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       reloadSeed=coupled;coupled=null;
     }
   }else r.root.userData.lowReadyPoseReport=null;
+  // Explicit stationary high/low Workbench poses are authoring references:
+  // no independent tactical torso-turn or breathing sway may rotate the
+  // displayed rifle away from the exported XYZ weapon transform.
+  const authoringCarry=(p.handlingOverride==='high'||
+    p.handlingOverride==='low')&&physicalSpeed<.2;
   let fit=reloadSeed?.fit??coupled?.fit??fitWeaponPose({weapon:p.weapon,handling,
     configuration:p.weaponConfiguration,
     // Explicit Lab short-stock is the exact XYZ pose exported from the
     // Workbench, without the automatic director's small facing offset.
     // Live actor-relative yaw remains the shared shot/render authority.
-    yaw:manualShort&&p.handlingOverride==='short'?0:relativeYaw,
+    yaw:manualShort&&p.handlingOverride==='short'||authoringCarry?
+      0:relativeYaw,
     recoil,clearanceRetraction:p.clearanceRetraction,
     shortCompression:manualRaw??p.shortCompression,
     shortFrom:p.clearanceShortFrom??shortStockSourceHandling(
       p.aimBlend??(p.aiming?1:0),moving,p.weapon,!!p.friendlyNear),
     relaxedLowReady,
-    swayYaw:motion.weaponYaw*freeMotion,
-    swayPitch:motion.weaponPitch*freeMotion,
+    swayYaw:authoringCarry?0:motion.weaponYaw*freeMotion,
+    swayPitch:authoringCarry?0:motion.weaponPitch*freeMotion,
     armorPush:equipmentStockPush(p.equipment),
     // Non-firing movement and manipulation cannot retain stale visual ADS.
     // This affects only carry presentation, never shot-time muzzle authority.
@@ -916,8 +922,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const start=new THREE.Vector3(...manualPose!.targets.stock);
     return new THREE.Vector3(...manualPose!.targets[key])
       .sub(start).applyAxisAngle(P(0,1,0),
-        p.handlingOverride==='short'?0:relativeYaw).add(
-          manualCarry?fit.stock:start);
+        p.handlingOverride==='short'||authoringCarry?
+          0:relativeYaw).add(manualCarry?fit.stock:start);
   };
   if((manualShort&&p.handlingOverride==='short'||manualCarry&&
       !!p.handlingOverride)&&physicalSpeed<.2){
