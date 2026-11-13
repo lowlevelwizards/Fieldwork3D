@@ -78,7 +78,7 @@ test('H4 ACH ear scallop remains distinct from nape and PASGT-style protective r
 test('H4 PASGT and ACH covers share uniform WORLD density, not an arbitrary rescale',()=>{
  assert.equal(HEADWEAR_DETAIL_PIXEL_WORLD_SIZE,PIXEL_WORLD_SIZE);
  for(const id of ['m81-woodland','three-color-desert','multicam',
-  'ucp','woodland-marpat','flecktarn'] as const){
+  'ucp','woodland-marpat','flecktarn']){
   assert.ok(FABRIC_CAMO_DENSITY[id]>0);
   assert.equal(pasgtCamoWorldPeriod(id),fabricCamoWorldPeriod(id));
  }
