@@ -1,32 +1,35 @@
-/** Q1: one bounded physical yield per observed opening/idle encounter.
- * A valid WAIT or queue HOLD never causes a new global escape search.
- * Keep memory scoped to Session; no renderer or global scene authority.
+/** Q1 bounded physical yield episodes, scoped to Session and opening cycle.
+ * A door still needs several 1.25-unit physical steps to clear a real
+ * shoulder. Store a finite travel budget instead of stopping after one
+ * step or permitting unlimited slow backwards drift.
  */
 import type {Session} from './breach-game.ts';
-import type {Door} from './breach-core.ts';
-type YieldLedger={leaf:Map<string,Set<string>>;idle:Set<string>};
+import type {Door,Pt} from './breach-core.ts';
+export const MAX_OPENING_YIELD_TRAVEL=32;
+type YieldLedger={leaf:Map<string,Map<string,number>>;idle:Set<string>};
 const ledgers=new WeakMap<Session,YieldLedger>();
 const ledger=(s:Session):YieldLedger=>{
  let l=ledgers.get(s);
  if(!l){l={leaf:new Map(),idle:new Set()};ledgers.set(s,l);}
  return l;
 };
-/** Reset only after the leaf actually returns to a fully shut state.
- * Reseeking opening angles should not create a fresh permission each tick.
- */
-export function openingYieldAllowed(s:Session,door:Door,actorId:string):boolean{
+export function openingYieldBudget(s:Session,door:Door,actorId:string):number{
  const l=ledger(s),key=door.id;
+ // Reset when the panel has actually shut, never merely on a blocked tick.
  if(!door.open&&(door.openFraction??0)<.03)l.leaf.delete(key);
- return !l.leaf.get(key)?.has(actorId);
+ return Math.max(0,MAX_OPENING_YIELD_TRAVEL-
+  (l.leaf.get(key)?.get(actorId)??0));
 }
-export function commitOpeningYield(s:Session,door:Door,actorId:string):void{
- const l=ledger(s),key=door.id;
- let used=l.leaf.get(key);
- if(!used){used=new Set();l.leaf.set(key,used);}
- used.add(actorId);
+export function commitOpeningYield(s:Session,door:Door,actorId:string,
+ from:Pt,to:Pt):void{
+ const l=ledger(s);
+ let records=l.leaf.get(door.id);
+ if(!records){records=new Map();l.leaf.set(door.id,records);}
+ records.set(actorId,(records.get(actorId)??0)+Math.hypot(
+  to.x-from.x,to.y-from.y));
 }
-/** An idle person may make ONE physical nudge for a given approaching
- * teammate. The key remains until the approaching teammate goes away.
+/** Idle yielding cannot repeat for the same approaching actor while they
+ * remain in the local passage region; a new person can request a new yield.
  */
 export function idleYieldAllowed(s:Session,idleId:string,nearbyIds:readonly string[]):boolean{
  const l=ledger(s),prefix=idleId+'|';

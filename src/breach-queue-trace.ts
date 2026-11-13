@@ -44,8 +44,8 @@ export class QueueMotionAudit {
    const door=slot&&s.doors.find(d=>d.id===slot.doorId);
    const depth=door?signed(a.p,door)*slot!.fromSide:null;
    const previous=this.last.get(a.id);
-   const backward=depth!==null&&previous?.depth!==null&&
-     previous?.door===door?.id?Math.max(0,depth-previous.depth):0;
+   const backward=depth!==null&&previous!==undefined&&previous.depth!==null&&
+     previous.door===door?.id?Math.max(0,depth-previous.depth):0;
    const sample:QueueAuditSample={time:s.seconds,actor:a.id,
     door:door?.id??null,rank:slot?.rank??null,depth,
     pause:a.motorPause,blocker:a.lastBlocker,speed:a.velocity,

@@ -42,7 +42,8 @@ export function negotiateMotorPassage(
          a.squeezeYaw,'squeeze',sessionWorldGeometry(s))));
      if(target){
       noteQueueMotion(s,a,'deadlock-retreat-request',a.p,target);
-      a.nav.unshift(target);a.passageRetreatKey=retreatKey;
+      const retreat=target;
+      a.nav.unshift(retreat);a.passageRetreatKey=retreatKey;
       a.retryRouteAt=0;a.recoveryAttempts=0;
       a.passageWaitSeconds=0;
      }
