@@ -23,7 +23,8 @@ test('menu appearance saving does not inherit a completed mission phase',()=>{
  assert.match(bridge,/config\.getMode\(\)==='menu'/);
  assert.match(bridge,/config\.getSession\(\)\.phase==='planning'/);
  assert.match(bridge,/studioMode==='quick'&&canEditQuickAppearance\(\)/);
- assert.match(bridge,/ok&&config\.getMode\(\)==='quick'/);
+ assert.match(bridge,/if\(!ok\)config\.setRoster\(previous\)/);
+ assert.match(bridge,/else if\(config\.getMode\(\)==='quick'\)/);
 });
 
 test('selecting a style stays in ITEM until user explicitly chooses MATERIAL',()=>{
