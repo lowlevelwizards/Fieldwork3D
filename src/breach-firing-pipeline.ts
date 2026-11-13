@@ -1,4 +1,8 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
+import {chooseMicroAimOffset,approachMicroAimOffset,allowMicroAim}
+ from './breach-physical-micro-aim.ts';
+import {canContextuallyCrouch,validRearStack,contextualCrouchRecovery}
+ from './breach-contextual-crouch.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {createShotResolver} from './breach-shot-resolution.ts';
 import {createShotEnvironmentCommitter} from './breach-shot-environment.ts';
@@ -10,7 +14,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import {rotate} from './breach-order-lifecycle.ts';
 import {segmentImpact,strikeSurface} from './breach-ballistic-resolution.ts';
-import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep} from './breach-combat-reactions.ts';
+import {incomingHitFacing,choosePhysicalCorrection} from './breach-combat-reactions.ts';
 
 import {type Pt,segmentsCross,pointToSegment} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
@@ -107,6 +111,10 @@ function civilianShotWithheld(s:Session,a:TeamActor):void{
  */
 function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  kind:'muzzle'|'friendly'):boolean{
+ // The stock/arms are still traveling toward a verified smaller solution:
+ // allow that real movement to finish before asking the feet to sidestep.
+ if(kind==='friendly'&&Math.abs((a.aimSideOffset??0)-
+   (a.aimSideTarget??0))>.3)return false;
  if(!inSight(a,target,s)||a.health<=0||a.velocity>=10||
    a.fireRetreatTarget||s.seconds-a.lastFireRetreatAt<1.9||
    a.traversal||a.traversalPending||a.squeeze||a.carryingId||
@@ -133,28 +141,47 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  const aimYaw=angle(a.p,target.p),range=d(a.p,target.p);
  const clearBody=(candidate:Pt)=>
    sweptBodyClear(a.p,candidate,s.doors,8,sessionWorldGeometry(s))&&
-   people.every(p=>pointToSegment(p,{a:a.p,b:candidate})>=20);
+   people.every(p=>{
+    const start=d(a.p,p),end=d(candidate,p);
+    // A stack may ALREADY be closer than normal comfortable spacing.
+    // Permit a tiny step only when it increases separation throughout
+    // the move; the unchanged physical motor remains the final authority.
+    if(start<20)return end>=start+1&&
+      pointToSegment(p,{a:a.p,b:candidate})>=start-.15;
+    return pointToSegment(p,{a:a.p,b:candidate})>=20;
+   });
  const legalShot=(candidate:Pt)=>{
    const clearance=weaponClearance({
      x:candidate.x,z:candidate.y,heading:a.heading,weaponYaw:aimYaw,
-     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
+     shoulderOffset:a.aimSideOffset??0,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
      aim:a.aim,posture:a.posture,velocity:0,recoil:a.recoil,
      threatRange:range
    },s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
    if(clearance.blocked)return false;
    const from={x:clearance.muzzle.x,y:clearance.muzzle.z};
    const height=aimHeight(target.posture==='crouch');
+   const far=muzzleEndpoint(from,clearance.muzzle.yaw,
+     Math.max(170,d(from,target.p)+38));
+   const farHeight=clearance.muzzle.y+(height-clearance.muzzle.y)*
+      d(from,far)/Math.max(1,d(from,target.p));
    if(observedCivilianFireLane(s,a,from,clearance.muzzle.y,
-     target.p,height))return false;
+     far,farHeight))return false;
+   if(assessFriendlyLane(from,clearance.muzzle.y,far,farHeight,
+     friends).blocker==='friendly')return false;
    return assessFireLane(from,clearance.muzzle.y,target.p,height,
       sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,s.doors,friends).blocker==='clear';
  };
- const next=kind==='friendly'?
-   chooseFriendlyLaneStep(a.p,aimYaw,clearBody,legalShot):
-   chooseMuzzleRecoveryStep(a.p,aimYaw,clearBody,legalShot);
- if(!next)return false;
+ const correction=choosePhysicalCorrection(a.p,aimYaw,kind,
+   clearBody,legalShot);
+ if(!correction)return false;
+ const next=correction.point;
  a.fireRetreatTarget=next;
- a.fireRetreatUntil=s.seconds+1.25;
+ a.fireRetreatReason=correction.kind;
+ // A few units of foot correction must not inherit the full duration
+ // of an emergency 28-unit sidestep; preserve a deterministic upper bound.
+ const correctionLength=d(a.p,next);
+ a.fireRetreatUntil=s.seconds+Math.max(.55,Math.min(1.25,
+   correctionLength/30+.50));
  a.lastFireRetreatAt=s.seconds;
  a.nav=[];a.retryRouteAt=0;
  return true;
@@ -178,7 +205,8 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     sightSpreadScale(mods,'ads',d(a.p,point));
   const proposedYaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
   const clearance=weaponClearance({x:a.p.x,z:a.p.y,
-    heading:a.heading,weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
+    heading:a.heading,weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,
+    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
   if(clearance.blocked)return;
   const muzzle=clearance.muzzle;
@@ -250,7 +278,148 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     e.morale=Math.max(0,e.morale-.025);
   }
 }
+/** A3.3 shared-height team fire: the lead voluntarily crouches only if
+ * an already-acquired rear contact has a safe *actual muzzle* over their
+ * crouched helmet. Never changes the teammate or authored orders.
+ * The motor/footstep system still owns every physical stance transition.
+ */
+function updateContextualCrouch(s:Session,a:TeamActor):void{
+ if(a.side!=='blue')return;
+ const busy=a.health<=0||a.surrendered||a.velocity>3||
+   a.traversal!==null||a.squeeze||a.reload>0||
+   !!a.treatmentActive||!!a.carryingId||
+   a.plan.some(n=>n.kind==='move'||n.kind==='door'||n.kind==='tool'||
+     n.kind==='treat'||n.kind==='flash'||n.entryDoorId!==undefined)||
+   a.aim>.26||a.pace==='run';
+ const automatic=a.autoCrouchOriginal==='stand';
+ if(a.postureWasAuthored||busy){
+  if(automatic){a.posture='stand';a.autoCrouchOriginal=null;}
+  a.autoCrouchUntil=0;return;
+ }
+ if(!canContextuallyCrouch({
+  stationary:true,busy:false,authoredPosture:!!a.postureWasAuthored,
+  posture:a.posture,originallyAutomatic:automatic
+ }))return;
+ // Existing lease prevents permanent polling and frequent stance toggles.
+ if(s.seconds-(a.lastAutoCrouchProbeAt??-100)<.18)return;
+ a.lastAutoCrouchProbeAt=s.seconds;
+ let helpful=false;
+ const world=sessionWorldGeometry(s);
+ for(const rear of team(s)){
+  if(rear===a||rear.health<=0||rear.aim<.16||
+     rear.velocity>10||rear.firePolicy==='hold'||!rear.targetId)
+   continue;
+  const target=s.operators.find(o=>o.id===rear.targetId&&
+    o.side!==a.side&&o.health>0);
+  if(!target||!inSight(rear,target,s)||
+    !validRearStack({...rear.p,heading:rear.heading},a.p,target.p))
+   continue;
+  const clearance=weaponClearance({x:rear.p.x,z:rear.p.y,
+    heading:rear.heading,weaponYaw:rear.weaponYaw,
+    shoulderOffset:rear.aimSideOffset??0,
+    weapon:rear.weapon,weaponConfiguration:rear.weaponConfiguration,
+    equipment:rear.equipment,aim:rear.aim,posture:rear.posture,
+    velocity:rear.velocity,recoil:rear.recoil,
+    threatRange:d(rear.p,target.p)},s.doors,world.cover,world.walls);
+  if(clearance.blocked)continue;
+  const origin={x:clearance.muzzle.x,y:clearance.muzzle.z},
+    targetHeight=aimHeight(target.posture==='crouch');
+  const frontBody={...a.p,posture:'stand' as const},
+    crouchedBody={...a.p,posture:'crouch' as const};
+  if(assessFriendlyLane(origin,clearance.muzzle.y,
+       target.p,targetHeight,[frontBody]).blocker!=='friendly'||
+     assessFriendlyLane(origin,clearance.muzzle.y,
+       target.p,targetHeight,[crouchedBody]).blocker!=='clear')
+    continue;
+  // Confirm the same benefit on the REAL outgoing barrel line. The
+  // near-target line alone may point slightly away from a shifted muzzle.
+  const outgoing=muzzleEndpoint(origin,clearance.muzzle.yaw,
+    Math.max(170,d(origin,target.p)+38));
+  const farHeight=clearance.muzzle.y+(targetHeight-clearance.muzzle.y)*
+    d(origin,outgoing)/Math.max(1,d(origin,target.p));
+  if(assessFriendlyLane(origin,clearance.muzzle.y,outgoing,farHeight,
+       [frontBody]).blocker!=='friendly'||
+     assessFriendlyLane(origin,clearance.muzzle.y,outgoing,farHeight,
+       [crouchedBody]).blocker!=='clear')
+    continue;
+  const remaining=team(s).filter(o=>o!==a&&o!==rear&&o.health>0)
+    .map(safetyBodyFor);
+  if(assessFriendlyLane(origin,clearance.muzzle.y,target.p,
+      targetHeight,remaining).blocker==='friendly')continue;
+  if(assessFriendlyLane(origin,clearance.muzzle.y,outgoing,farHeight,
+      remaining).blocker==='friendly')continue;
+  if(assessFireLane(origin,clearance.muzzle.y,target.p,targetHeight,
+      world.cover,world.walls,s.doors,remaining).blocker!=='clear')
+    continue;
+  if(observedCivilianFireLane(s,rear,origin,clearance.muzzle.y,
+      target.p,targetHeight))continue;
+  helpful=true;break;
+ }
+ const lease=contextualCrouchRecovery({
+  autoUntil:a.autoCrouchUntil??0,now:s.seconds,
+  authored:!!a.postureWasAuthored,busy,advantage:helpful
+ });
+ a.autoCrouchUntil=lease.until;
+ if(lease.crouch){
+  if(!automatic)a.autoCrouchOriginal='stand';
+  a.posture='crouch';
+ }else if(automatic){
+  a.posture='stand';a.autoCrouchOriginal=null;
+ }
+}
+/** A3.2: an authored LOOK/WATCH can physically sight down an empty
+ * sector without inventing a hostile contact or granting shot permission.
+ * The same shoulder candidate limits and real environment are used as
+ * combat; this is only a passive ready posture until a target is acquired.
+ */
+function updatePassiveWatchMicroAim(s:Session,a:TeamActor):void{
+ const watch=a.aimInstruction;
+ if(a.side!=='blue'||a.health<=0||!watch||watch.source==='stack'||
+    a.targetId!==null&&a.aim>.20||a.velocity>=10||
+    a.reload>0||!!a.traversal||a.squeeze||a.pace==='run'||
+    a.treatmentActive||a.carryingId!==null||
+    ['door','tool','treat','reload','flash'].includes(a.plan[0]?.kind??''))
+   return;
+ if(s.seconds-(a.lastAimSideProbeAt??-100)<.16)return;
+ a.lastAimSideProbeAt=s.seconds;
+ const yaw=watch.mode==='fixed'&&watch.angle!==undefined?
+    watch.angle:watch.point?
+    angle(a.p,watch.point):a.weaponYaw;
+ const friends=team(s).filter(other=>other!==a&&other.health>0)
+   .map(safetyBodyFor);
+ if(!friends.length){a.aimSideTarget=0;return;}
+ const world=sessionWorldGeometry(s);
+ const clear=(offset:number)=>{
+  const candidate=weaponClearance({x:a.p.x,z:a.p.y,
+    heading:a.heading,weaponYaw:yaw,shoulderOffset:offset,
+    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+    equipment:a.equipment,aim:a.aim,posture:a.posture,
+    velocity:a.velocity,recoil:a.recoil},
+   s.doors,world.cover,world.walls,friends);
+  if(candidate.blocked)return false;
+  const from={x:candidate.muzzle.x,y:candidate.muzzle.z};
+  const far=muzzleEndpoint(from,candidate.muzzle.yaw,155);
+  return assessFriendlyLane(from,candidate.muzzle.y,far,candidate.muzzle.y,
+    friends).blocker==='clear'&&
+   assessFireLane(from,candidate.muzzle.y,far,candidate.muzzle.y,
+    world.cover,world.walls,s.doors,friends).blocker==='clear';
+ };
+ a.aimSideTarget=clear(0)?0:
+   chooseMicroAimOffset(a.aimSideOffset??0,clear).offset;
+}
 function fire(s:Session,a:TeamActor,dt:number){
+ updateContextualCrouch(s,a);
+ // A3.2: only simulation time moves the tactical rifle accommodation.
+ // Renderer/replay cannot initiate an offset or authorize a shot.
+ if(a.health<=0||a.reload>0||a.traversal||a.squeeze||
+    (a.firePolicy==='hold'||a.firePolicy==='suppress')&&
+       (!a.aimInstruction||a.aimInstruction.source==='stack')||
+    a.pace==='run'||a.plan[0]?.kind==='tool'||
+    a.plan[0]?.kind==='treat'||a.plan[0]?.kind==='door')
+   a.aimSideTarget=0;
+ a.aimSideOffset=approachMicroAimOffset(
+   a.aimSideOffset??0,a.aimSideTarget??0,dt);
+ updatePassiveWatchMicroAim(s,a);
   if(a.health<=0){
     a.reload=0;a.reloadMode=null;return;
   }
@@ -325,7 +494,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   const target=selectFireableContact(a.p,visible,a.targetId,candidate=>{
     const clearance=weaponClearance({x:a.p.x,z:a.p.y,
       heading:a.heading,weaponYaw:angle(a.p,candidate.p),
-      weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+      shoulderOffset:a.aimSideOffset??0,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
       equipment:a.equipment,aim:a.aim,posture:a.posture,
       velocity:a.velocity,recoil:a.recoil,threatRange:d(a.p,candidate.p)},
       s.doors,world.cover,world.walls);
@@ -347,6 +516,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     return fireLaneReachable(lane,preview,candidate.p);
   });
   if(!target){
+    a.aimSideTarget=0;
     a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
     const canPreferClearLook=a.velocity<6&&!a.aimInstruction&&
       a.side==='blue'&&!a.traversal&&!a.squeeze&&
@@ -381,13 +551,59 @@ function fire(s:Session,a:TeamActor,dt:number){
       dt*profile.turnSpeed*mods.turn);
     return;
   }
+  // A3.2: only a confirmed visible contact may trigger a bounded physical
+  // shoulder shift. Candidate shot lines use the SAME muzzle+IK fit as live
+  // ignition and preserve the independent civilian and teammate vetoes.
+  const microAllowed=a.side==='blue'&&allowMicroAim({
+    moving:a.velocity,busy:!!a.traversal||a.squeeze||a.reload>0||
+      !!a.treatmentActive||a.carryingId!==null||
+      ['door','tool','treat','reload','flash']
+       .includes(a.plan[0]?.kind??''),
+    fireAllowed:a.firePolicy==='engage'||
+      a.firePolicy==='return'&&(a.suppression>=.10||
+        s.seconds-a.lastHitAt<=3),
+    aiming:target.health>0,activeTarget:target.health>0
+  });
+  if(!microAllowed)a.aimSideTarget=0;
+  else if(s.seconds-(a.lastAimSideProbeAt??-100)>=.16){
+    a.lastAimSideProbeAt=s.seconds;
+    const aimYaw=angle(a.p,target.p);
+    const height=aimHeight(target.posture==='crouch');
+    const canFireOffset=(offset:number)=>{
+      const probe=weaponClearance({x:a.p.x,z:a.p.y,
+        heading:a.heading,weaponYaw:aimYaw,shoulderOffset:offset,
+        weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+        equipment:a.equipment,aim:a.aim,posture:a.posture,
+        velocity:a.velocity,recoil:a.recoil,threatRange:d(a.p,target.p)
+       },s.doors,world.cover,world.walls,friends);
+      if(probe.blocked)return false;
+      const origin={x:probe.muzzle.x,y:probe.muzzle.z};
+      const far=muzzleEndpoint(origin,probe.muzzle.yaw,
+        Math.max(170,d(origin,target.p)+38));
+      const farHeight=probe.muzzle.y+(height-probe.muzzle.y)*
+        d(origin,far)/Math.max(1,d(origin,target.p));
+      // A candidate must clear the actual outgoing barrel direction,
+      // including a miss that continues beyond the intended target.
+      if(observedCivilianFireLane(s,a,origin,probe.muzzle.y,
+        far,farHeight))return false;
+      if(assessFriendlyLane(origin,probe.muzzle.y,far,farHeight,
+        friends).blocker==='friendly')return false;
+      return assessFireLane(origin,probe.muzzle.y,target.p,height,
+        world.cover,world.walls,s.doors,friends).blocker==='clear';
+    };
+    // A centered clear shot needs no contact correction. Otherwise keep
+    // an already clear prior accommodation to prevent left-right flutter.
+    a.aimSideTarget=canFireOffset(0)?0:
+      chooseMicroAimOffset(a.aimSideOffset??0,canFireOffset).offset;
+  }
   // The target selector deliberately keeps tracking a lone visible target
   // even if their current firing lane is obstructed. That is correct
   // targeting behavior, but friendly sidestep must run *after* selection,
   // rather than only in the (often unreachable) no-target branch.
   if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget&&friends.length){
     const preflight=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
-      weaponYaw:angle(a.p,target.p),weapon:a.weapon,
+      weaponYaw:angle(a.p,target.p),shoulderOffset:a.aimSideOffset??0,
+      weapon:a.weapon,
       weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
       aim:a.aim,posture:a.posture,velocity:a.velocity,recoil:a.recoil,
       threatRange:d(a.p,target.p)},s.doors,world.cover,world.walls);

@@ -55,6 +55,7 @@ function sample(){
  const poseStart=timestamp();
  poseOperator(rig,{
   x:actor.p.x,z:actor.p.y,heading:actor.heading,
+  shoulderOffset:actor.aimSideOffset??0,shotHeading:actor.weaponYaw,
   travelYaw:actor.heading,velocity:actor.velocity,
   seconds:s.seconds,stride:actor.stride,posture:actor.posture,
   injury:actor.injuryStage,weapon:actor.weapon,
@@ -139,6 +140,10 @@ function draw(){
  el<HTMLElement>('block').textContent=shot.hardBlocked?
   shot.weaponBlocker.toUpperCase():'CLEAR';
  el<HTMLElement>('handling').textContent=probe.carry.handling.toUpperCase();
+ el<HTMLElement>('shoulder').textContent=probe.shooter.shoulderOffset.toFixed(1)+
+  ' / '+probe.shooter.shoulderTarget.toFixed(1);
+ el<HTMLElement>('autoStance').textContent=probe.shooter.autoCrouchUntil>s.seconds?
+  'AUTO CROUCH':'ORDINARY';
  el<HTMLElement>('clock').textContent=s.seconds.toFixed(3)+'s';
  el<HTMLElement>('candidate').textContent=step?
   (step.x-a.position.x).toFixed(0)+','+(step.y-a.position.y).toFixed(0):'NONE';

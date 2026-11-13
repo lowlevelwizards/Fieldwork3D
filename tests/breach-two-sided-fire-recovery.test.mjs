@@ -78,15 +78,24 @@ test('real player operator can request friendly-fire sidestep with orders intact
      ally:ally.p,await:lead.aimInstruction,plan:lead.plan
    }));
   assert.ok(Math.abs(lead.fireRetreatTarget.x-initial.x)<6);
-  assert.ok(Math.abs(lead.fireRetreatTarget.y-initial.y)>=12);
+  // A3.4 deliberately finds the smallest VALID real step, potentially
+  // 4 or 7 units instead of the former mandatory 12+ unit detour.
+  const requested=Math.abs(lead.fireRetreatTarget.y-initial.y);
+  assert.ok(requested>=3.9&&requested<=28,
+    'micro-step must be real, bounded and lateral');
   assert.deepEqual(ally.p,p(185,110),'recovery must not shove teammate');
   let moved=false;
   for(let tick=0;tick<24&&s.phase==='running';tick++){
     stepSession(s,1/30);
-    moved ||=Math.abs(lead.p.y-initial.y)>6;
+    moved ||=Math.abs(lead.p.y-initial.y)>1.5;
     if(moved)break;
   }
-  assert.ok(moved,'the sidestep must execute through the live movement motor');
+  assert.ok(moved,'the sidestep must execute through the live movement motor: '+
+    JSON.stringify({from:initial,now:lead.p,goal:lead.fireRetreatTarget,
+      reason:lead.fireRetreatReason,nav:lead.nav,velocity:lead.velocity,
+      motorPause:lead.motorPause,lastBlocker:lead.lastBlocker,
+      blockedTime:lead.blockedTime,retryRouteAt:lead.retryRouteAt,
+      routeGoalKey:lead.routeGoalKey,phase:s.phase,seconds:s.seconds}));
   assert.deepEqual(ally.p,p(185,110),
     'teammate must remain stationary during a real sidestep');
  }finally{activateSite(null);}

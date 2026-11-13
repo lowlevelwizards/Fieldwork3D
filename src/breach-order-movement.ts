@@ -162,7 +162,10 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   }
   a.velocity=Math.max(0,a.velocity-dt*180);
   if(at){
-    if(n.postureState)a.posture=n.postureState;
+    if(n.postureState){
+      a.posture=n.postureState;a.postureWasAuthored=true;
+      a.autoCrouchOriginal=null;a.autoCrouchUntil=0;
+    }
     if(n.paceState)a.pace=n.paceState;
     if(interruptsWatch(n,a.pace))a.aimInstruction=null;
     if(n.firePolicyState){
