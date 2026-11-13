@@ -5,10 +5,10 @@
  */
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import {resolvePoseContactOwners} from './breach-pose-contacts.ts';
+import {doorGripWeight} from './breach-pose-door-hand.ts';
 
 export type PoseActionSource=Pick<OperatorPose,
- 'seconds'|'lastThrowAt'|'lastDoorAt'|'doorPoint'|'doorMethod'|
- 'doorHandHold'|'doorHandHoldSince'|
+ 'seconds'|'lastThrowAt'|'lastDoorAt'|'doorPoint'|'doorMethod'|'doorGrip'|
  'reload'|'reloadDuration'|'reloadMode'|'weapon'|'treatmentActive'|
  'down'|'surrender'|'injury'|'hitRegion'|'aiming'|'firing'|'hitAge'|
  'lockpickActive'>;
@@ -23,9 +23,10 @@ export function resolveOperatorActionState(
  const throwAge=p.seconds-p.lastThrowAt;
  const throwActive=throwAge>=0&&throwAge<.70;
  const doorAge=p.seconds-p.lastDoorAt;
- const doorActive=!!p.doorPoint&&(
-   (doorAge>=0&&doorAge<1.12&&p.doorMethod!=='kick')||
-   !!p.lockpickActive||!!p.doorHandHold);
+ const gripWeight=doorGripWeight(p.doorGrip,p.seconds);
+ const doorActive=gripWeight>0||
+   (doorAge>=0&&doorAge<1.12&&!!p.doorPoint&&
+   p.doorMethod!=='kick')||!!p.lockpickActive&&!!p.doorPoint;
  const woundedGuard=!p.down&&p.injury>0&&p.hitRegion!=='leg'&&
    !p.aiming&&!p.firing&&p.hitAge!==undefined&&
    p.hitAge>=0&&p.hitAge<1.1;
@@ -35,7 +36,7 @@ export function resolveOperatorActionState(
    throwActive,pushActive,woundedGuard,doorActive
  });
  return {treatmentActive,reloadActive,reloadProgress,reloadMode,
-   throwAge,throwActive,doorAge,doorActive,woundedGuard,handOwners,
+   throwAge,throwActive,doorAge,doorActive,gripWeight,woundedGuard,handOwners,
    // This is an audition exclusion, not a second hand-owner authority.
    interactionWindow:!!p.treatmentActive||throwActive||doorActive};
 }

@@ -16,7 +16,6 @@ import {tryRehearsedDoorManeuver,ownsDoorManeuverRoute,
  from './breach-door-traversal-maneuver.ts';
 import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
-import {beginDoorGrip} from './breach-door-grip.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
  twoSidedSqueezePressure,sweptProfileClear,escapeOpenDoorOverlap,
@@ -59,18 +58,13 @@ export function resolveMotorCollision(
   const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
     s.operators.filter(o=>o.health>0).map(o=>o.p),
     sessionDoorPressurePolicy(s,a),world);
-  recordDoorManeuverContact(a,doorContact);
+  recordDoorManeuverContact(a,s,doorContact);
   // Existing handle reach animation shows a genuine, short support-hand
   // assist, never an invented door manipulation across the room.
-  if(doorContact?.handAssist){
-    const contacted=s.doors.find(door=>door.id===doorContact.doorId);
-    if(contacted&&beginDoorGrip(a,contacted,s.seconds)){
-      a.lastDoorAt=s.seconds;a.lastDoorId=contacted.id;
-      a.lastDoorMethod='open';
-    }else if(s.seconds-a.lastDoorAt>.76){
-      a.lastDoorAt=s.seconds;a.lastDoorId=doorContact.doorId;
-      a.lastDoorMethod='open';
-    }
+  if(doorContact?.handAssist&&!a.doorHandContact&&
+     s.seconds-a.lastDoorAt>.76){
+    a.lastDoorAt=s.seconds;a.lastDoorId=doorContact.doorId;
+    a.lastDoorMethod='open';
   }
   // The physical transition requires a valid oriented three-point torso
   // sweep; normal clearance remains the preference whenever it fits.

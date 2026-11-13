@@ -27,6 +27,8 @@ for(const c of DOOR_RANGE_CASES.slice(0,count)){
   const maneuverStarts=new Set();
   let flips=0,open=s.doors[0].open,invalid=0,maxBlock=0;
   let passageWait=0,selectedManeuverFrames=0,peakRetries=0;
+  let liveHandFrames=0,handAcquisitions=0,peakGripSeconds=0;
+  const observedGripStarts=new Set();
   if(accepted)toggling(s);
   for(let t=0;t<ticks&&accepted;t++){
    stepSession(s,1/60);
@@ -37,6 +39,12 @@ for(const c of DOOR_RANGE_CASES.slice(0,count)){
     if(!a.plan.length)finished.add(a.id);
     maxBlock=Math.max(maxBlock,a.blockedTime);
     passageWait+=a.motorPause==='passage'?1/60:0;
+    const grip=a.doorHandContact;
+    if(grip?.releasedAt===null){
+     liveHandFrames++;
+     observedGripStarts.add(a.id+':'+grip.startedAt.toFixed(4));
+     peakGripSeconds=Math.max(peakGripSeconds,s.seconds-grip.startedAt);
+    }
     if(a.doorTraversal){
      const ep=a.doorTraversal;
      peakRetries=Math.max(peakRetries,ep.maneuverAttempts);
@@ -49,6 +57,7 @@ for(const c of DOOR_RANGE_CASES.slice(0,count)){
    }
    if(finished.size===4)break;
   }
+  handAcquisitions=observedGripStarts.size;
   const d=s.doors[0],world=sessionWorldGeometry(s);
   const obstruction=d.open&&doorSwingBlocked(d,
    Math.min(1.55,(d.openFraction??0)+.07),[],undefined,world);
@@ -61,12 +70,19 @@ for(const c of DOOR_RANGE_CASES.slice(0,count)){
    passageWaitSeconds:+passageWait.toFixed(2),
    maneuverActors:[...maneuverActors],maneuverStarts:maneuverStarts.size,
    maneuverFrames:selectedManeuverFrames,peakManeuverAttempts:peakRetries,
+   handAcquisitions,liveHandFrames,
+   longestGripSeconds:+peakGripSeconds.toFixed(3),
    invalid,authoredPlanIntact:intact,
    operators:actors.map(a=>({id:a.id,position:a.p,
      orders:a.plan.length,pause:a.motorPause,
      blocked:a.blockedTime,navCount:a.nav.length,
      phase:a.doorTraversal?.phase??null,
-     maneuver:a.doorTraversal?.maneuver??null})),
+     maneuver:a.doorTraversal?.maneuver??null,
+     grip:a.doorHandContact?{
+      mode:a.doorHandContact.mode,
+      attached:a.doorHandContact.releasedAt===null,
+      point:a.doorHandContact.point
+     }:null})),
    notices:s.events.filter(e=>/DOOR|ENTRY|BLOCKED/.test(e)).slice(-5)});
  }catch(error){
   hardFailures++;

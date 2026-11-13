@@ -129,7 +129,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const decision=resolveOperatorPoseDecision(p,preparedDecision,sample);
   const {action:actionState}=decision;
   const {treatmentActive,reloadActive,reloadProgress,reloadMode,
-    throwAge,throwActive,doorAge,doorActive,handOwners}=actionState;
+    throwAge,throwActive,doorAge,doorActive,gripWeight,handOwners}=actionState;
   const {manual:manualShort,rawProgress:manualRaw}=decision.shortStock;
   const {active:activeTransition,authoredLabSwitch}=decision.transition;
   const {profile,upperBody:upperBodyPlan,poseWeight}=decision;
@@ -834,20 +834,29 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     
     const progress=Math.sin(Math.PI*clamp(p.hitAge/1.1,0,1));
     leftGrip.set(3+progress*2,-5,-5);
-  }else if(doorActive&&p.doorPoint){
+  }else if(doorActive&&(p.doorGrip||p.doorPoint)){
     reaching=true;
-    const local=P(p.doorPoint.x-p.x,19-frame.chest.position.y,
-      p.doorPoint.y-p.z);
+    const doorTarget=gripWeight>0&&p.doorGrip?
+      p.doorGrip.point:p.doorPoint!;
+    const local=P(doorTarget.x-p.x,19-frame.chest.position.y,
+      doorTarget.y-p.z);
     local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
     local.applyAxisAngle(P(0,1,0),-frame.chest.rotation.y);
     // Deliberate hand-off: release weapon, reach physical handle, and
     // return the support hand to its real gun grip after the latch moves.
-    const reach=p.lockpickActive?smooth(doorAge/.32):
-      p.doorHandHold?
-        smooth((p.seconds-(p.doorHandHoldSince??p.lastDoorAt))/.18):
-        smooth(doorAge/.32)*(1-smooth((doorAge-.62)/.48));
-    frame.chest.position.x=clamp(local.x-13,0,2.4)*reach;
-    fullDoorContact=local.sub(P(frame.chest.position.x,0,0)).clone();
+    // D4: the real support hand follows the moving panel for the whole
+    // physically retained interval. The same IK solver, not a second arm
+    // controller, performs the reach and blended return to the weapon.
+    const reach=gripWeight>0?gripWeight:
+      p.lockpickActive?smooth(doorAge/.32):
+      smooth(doorAge/.32)*(1-smooth((doorAge-.62)/.48));
+    // Sustained D4 contact is an independent support arm, NOT a new
+    // chest/weapon transform. The authoritative firing hand and muzzle
+    // stay fixed while the left hand tracks a moving leaf. Retain the
+    // legacy one-shot lean only for explicit non-grip interactions.
+    const lean=gripWeight>0?0:clamp(local.x-13,0,2.4)*reach;
+    if(gripWeight<=0)frame.chest.position.x=lean;
+    fullDoorContact=local.sub(P(lean,0,0)).clone();
     leftGrip.copy(fit.support).lerp(fullDoorContact,reach);
     if(p.lockpickActive){
       const phase=(p.lockpickProgress??0)*Math.PI*20;
