@@ -8,7 +8,10 @@ test('P1.5e telemetry is opt-in, records each real frame but paints <=750ms',()=
  assert.match(source,/perfTimeline\.add\(\{at:now,raf:frameGap/);
  assert.match(source,/if\(Math\.floor\(now\/750\)/);
  assert.match(source,/perfPanel\.update\(output,perfTimeline/);
- assert.match(source,/const simulationStart=perfOverlay\?performance\.now\(\):0/);
+ // Lightweight parent timing runs normally; detailed scene probes remain opt-in.
+ assert.match(source,/const simulationStart=performance\.now\(\)/);
+ assert.match(source,/const simPhaseCosts=perfOverlay\?new Map/);
+ assert.match(source,/previousCoarseWork,previousCoarseSim/);
  assert.match(source,/P1 750ms Q\/H\/M\/B/);
 });
 test('P1.5e timing and counters reset across mission session changes',()=>{

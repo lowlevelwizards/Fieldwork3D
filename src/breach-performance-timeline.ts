@@ -27,7 +27,7 @@ export type PreviousFrameWork=Readonly<{
 }>;
 export type PerformanceTimelineSample=Readonly<{
  /** Only RAF/JS, collected before the player enables detailed profiling. */
- captureLevel?:'basic';
+ captureLevel?:'basic'|'light';
  at:number;raf:number;js:number;sync:number;sim:number;recording:number;
  previousJs?:number;previousSim?:number;previousPhase?:string;
  previousHotSim?:string;
@@ -168,14 +168,17 @@ export class PerformanceTimeline{
   * simulation attribution prior to arming the profiler is unavailable.
   * This has no gameplay, GPU, DOM, or simulation instrumentation cost. */
  addCoarseFrame(at:number,raf:number,js:number,phase:string,camera:string,
-   previousJs?:number,previousPhase?:string):void{
+   previousJs?:number,previousPhase?:string,
+   previousWork?:PreviousFrameWork,previousSim?:number):void{
   const stamp=Math.max(0,at),bucket=Math.floor(stamp/PERFORMANCE_BUCKET_MS);
   const previous=this.series[this.series.length-1];
   if(previous&&bucket<previous.bucket)this.series.length=0;
   const current=this.series[this.series.length-1];
   const makePeak=():PerformanceTimelineSample=>({
-   captureLevel:'basic',at:stamp,raf:finite(raf),js:finite(js),sync:0,sim:0,recording:0,
-   previousJs,previousPhase,ui:0,overlay:0,scene:EMPTY_SCENE,
+   captureLevel:previousWork?'light':'basic',
+   at:stamp,raf:finite(raf),js:finite(js),sync:0,sim:0,recording:0,
+   previousJs,previousPhase,previousWork,previousSim,
+   ui:0,overlay:0,scene:EMPTY_SCENE,
    draws:0,steps:0,phase,camera,hotSim:'',
    fogPaints:0,shadowRefreshes:0,sight:{
     queries:0,hits:0,misses:0,bypasses:0,invalidations:0
@@ -359,8 +362,9 @@ export class PerformanceTimeline{
    'PREVIOUS JS can occupy that interval; current JS happens afterward.',
    'Remaining callback wait includes compositor, scheduling and other tasks.',
    'Spikes record the worst RAF gap in each 250ms bucket.',
-   'BASIC samples before the PERF panel is activated contain RAF/JS only;', 
-   'zero scene/CPU phase values in BASIC rows are NOT measured zeros.',
+   'BASIC samples contain RAF/JS only; LIGHT samples include previous',
+   'callback CPU slices without detailed scene or simulation subphases.',
+   'Zero detailed phase values in BASIC/LIGHT rows are NOT measured zeros.',
    'Correlated work is not proof of the cause of a hitch.'
   ];
   const modeTotals=this.phaseSummary();
@@ -385,7 +389,8 @@ export class PerformanceTimeline{
     p.sim.toFixed(1)+'ms, UI '+p.ui.toFixed(1)+'ms, '+
     p.steps+' ticks, '+p.draws+
     ' draws; '+p.phase+'/'+p.camera+
-    (p.captureLevel==='basic'?' [BASIC RAF/JS]':'')+
+    (p.captureLevel==='basic'?' [BASIC RAF/JS]':
+     p.captureLevel==='light'?' [LIGHT CPU SLICES]':'')+
     '; prior hotspot '+
     previousFrameHotspot(p)+'; prior simulation phase '+
     (p.previousHotSim||'none')+'; '+performanceHotspot(p)+
