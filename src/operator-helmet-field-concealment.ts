@@ -74,17 +74,21 @@ export function addAchMichConcealment(
   const slot=SCRIM_SLOTS[i],f=frames[slot];
   // The free end extends along negative Y: orient positive Y inward and
   // upward so the fabric hangs OUTWARD and DOWN from its actual slit.
-  const up=f.up.clone().multiplyScalar(.77)
-   .addScaledVector(f.normal,-.64).normalize();
+  const up=f.up.clone().multiplyScalar(.90)
+   .addScaledVector(f.normal,-.43).normalize();
   const right=f.right.clone(),normal=right.clone().cross(up).normalize();
   const fabric=new THREE.Mesh(createPasgtScrimRibbonGeometry(i),
    i%3===0?tan:olive);
   fabric.name='pasgt-derived-folded-scrim';
   fabric.position.copy(f.position);
   fabric.quaternion.copy(basis(right,up,normal));
-  fabric.rotateZ(LEAN[i]*.7);
-  fabric.rotateY(i%2?.31:-.34);
-  fabric.scale.setScalar(.87+(i%4)*.075);
+  fabric.rotateZ(LEAN[i]*1.12);
+  fabric.rotateY(i%2?.16:-.19);
+  // Broad folded textile should hang visibly down the shell and just
+  // past the brim. Shorter brow/nape pieces cannot become long spears.
+  const shortEdge=slot<4;
+  fabric.scale.set(1.10+(i%3)*.13,
+   (shortEdge?.79:.94)+(i%3)*.065,.87);
   fabric.userData.h9ScrimDownOut=true;fabric.userData.h9SourceSlot=slot;
   fabric.castShadow=false;fabric.receiveShadow=false;scrim.add(fabric);
  }
