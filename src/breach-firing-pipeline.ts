@@ -348,6 +348,7 @@ function updateContextualCrouch(s:Session,a:TeamActor):void{
  }
 }
 function fire(s:Session,a:TeamActor,dt:number){
+ updateContextualCrouch(s,a);
  // A3.2: only simulation time moves the tactical rifle accommodation.
  // Renderer/replay cannot initiate an offset or authorize a shot.
  if(a.health<=0||a.reload>0||a.traversal||a.squeeze||
@@ -494,7 +495,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   const microAllowed=a.side==='blue'&&allowMicroAim({
     moving:a.velocity,busy:!!a.traversal||a.squeeze||a.reload>0||
       !!a.treatmentActive||a.carryingId!==null||
-      a.pace==='run'||['door','tool','treat','reload','flash']
+      ['door','tool','treat','reload','flash']
        .includes(a.plan[0]?.kind??''),
     fireAllowed:a.firePolicy==='engage'||
       a.firePolicy==='return'&&(a.suppression>=.10||
