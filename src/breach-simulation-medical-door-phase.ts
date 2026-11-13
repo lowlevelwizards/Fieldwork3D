@@ -8,6 +8,7 @@ import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {advanceDoor,doorReachable,initialOpeningYieldCandidate} from './breach-door.ts';
 import {maintainDoorHandContact} from './breach-door-hand-contact.ts';
+import {noteQueueMotion} from './breach-queue-trace.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {BattleEvent} from './breach-combat.ts';
@@ -95,6 +96,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
                return after<16&&after<before-.01;
              return after<11;
            }))continue;
+        noteQueueMotion(s,actor,'opening-leaf-yield',actor.p,candidate);
         actor.priorP=clone(actor.p);
         actor.p=candidate;
         yielded=true;

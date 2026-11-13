@@ -55,6 +55,10 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 ui-monospace,mono
 <section><canvas id="doorStage" width="640" height="500"
  aria-label="Live top-down door and four-operator physical test map"></canvas>
 <p class="legend">Tap an operator to select; tap the floor to append a MOVE while planning. Amber = selected operator / leaf; teal = authored routes; dashed amber = temporary motor route. No physical collision is disabled.</p></section>
+<section><h1>Q0 · PASSAGE MOTION ATTRIBUTION</h1>
+<p>Opt-in 10Hz samples of threshold-relative movement, GO-time rank, holds and actual leaf/idle/retreat corrections. The COPY REPORT includes bounded 60-second history.</p>
+<label style="display:flex;align-items:center;gap:9px;font-size:12px"><input type="checkbox" id="queueTrace"> RECORD QUEUE TRACE</label>
+<pre id="queueTraceInfo">OFF</pre></section>
 <section><h1>D6 · MOBILE 60-SECOND FRAME HISTORY</h1>
 <p>Optional real-device capture: amber = RAF interval worst in each 250-ms bucket; teal = simulation JS; rose = canvas drawing JS. RAF delays include browser scheduling, not measured GPU time. Capture is reset for each scenario.</p>
 <label style="display:flex;align-items:center;gap:9px;font-size:12px"><input type="checkbox" id="mobileProfile"> RECORD 60-SECOND PROFILE</label>

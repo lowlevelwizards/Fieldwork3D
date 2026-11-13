@@ -8,6 +8,7 @@ import {passageWait,passageFollowerStep,passageScheduledStep,
  passageDeadlockRetreatTarget,type PassageActor}
  from './breach-passage.ts';
 import {pendingPassageSlot} from './breach-passage-plan.ts';
+import {noteQueueMotion} from './breach-queue-trace.ts';
 import {sweptBodyClear,sweptProfileClear} from './breach-navigation.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 
@@ -75,6 +76,7 @@ export function negotiateMotorPassage(
           (a.squeeze&&sweptProfileClear(from,to,s.doors,
              a.squeezeYaw,'squeeze',world)));
       if(retreat){
+        noteQueueMotion(s,a,'deadlock-retreat-request',a.p,retreat);
         a.nav.unshift(retreat);a.passageWaitSeconds=0;
         a.passageRetreatKey=retreatKey;
         a.retryRouteAt=0;a.recoveryAttempts=0;

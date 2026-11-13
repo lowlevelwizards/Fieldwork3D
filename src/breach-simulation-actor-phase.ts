@@ -7,6 +7,7 @@ import {length,targetAngle,angleDifference} from './breach-plan.ts';
 import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse} from './breach-ai-morale.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {passageIdleYieldStep,type PassageActor} from './breach-passage.ts';
+import {noteQueueMotion} from './breach-queue-trace.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {incomingHitFacing} from './breach-combat-reactions.ts';
@@ -114,6 +115,7 @@ export function advanceSimulationActors(s:Session,h:number,
             (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),h*45);
           if(yieldStep&&!s.operators.some(b=>b!==a&&b.health>0&&
               d(b.p,yieldStep)<13&&d(b.p,yieldStep)<d(b.p,a.p)-.01)){
+            noteQueueMotion(s,a,'idle-yield',a.p,yieldStep);
             a.p=yieldStep;a.velocity=d(a.priorP,a.p)/Math.max(h,.0001);
             a.motorPause='passage';
           }
