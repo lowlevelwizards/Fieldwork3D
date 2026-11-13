@@ -51,7 +51,8 @@ export function reuseFrozenReplayValue<T>(
 
 const shareableFields=[
   'doors','shots','casings','dropped','impactMarks','grenades',
-  'flashBursts','intel','known','rescue','objective','knowledge'
+  'flashBursts','intel','known','rescue','objective','knowledge',
+  'civilians','civilianHarmEvents'
 ] as const satisfies readonly (keyof ReplayFrame)[];
 
 /** Actor state changes every step, but loadout, route and treatment facts
