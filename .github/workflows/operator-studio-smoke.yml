@@ -38,6 +38,8 @@ on:
       - 'scripts/helmet-h9-visual-capture.mjs'
       - 'src/operator-helmet-surface.ts'
       - 'src/operator-helmet-field-fit.ts'
+      - 'scripts/helmet-h10-ui-smoke.mjs'
+      - 'tests/helmet-h10-addons-ui.test.mjs'
       - 'tests/helmet-h10-fit.test.mjs'
       - 'src/operator-helmet-field-concealment.ts'
       - 'src/operator-helmet-field-net.ts'
@@ -137,6 +139,9 @@ jobs:
         run: |
           npm run check
           node --experimental-strip-types --test tests/helmet-h10-*.test.mjs tests/ach-mich-h5-cover-strap.test.mjs tests/helmet-h9-foundation.test.mjs tests/helmet-h9-concealment.test.mjs tests/helmet-h9-net.test.mjs tests/helmet-h9-shroud.test.mjs tests/helmet-h9-rails.test.mjs tests/helmet-h9-bungees.test.mjs tests/helmet-h9-goggles.test.mjs tests/helmet-h9-velcro.test.mjs tests/helmet-h9-addons.test.mjs tests/helmet-h9-final.test.mjs
+      - name: H10.5 smart mounting controls on real mobile Studio
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/helmet-h10-addons-ui-') || startsWith(github.head_ref, 'feature/helmet-h10-c-integrated-')) }}
+        run: node scripts/helmet-h10-ui-smoke.mjs
       - name: H10 covered-shell and textile phone WebGL capture
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h10-') }}
         run: node scripts/helmet-h9-visual-capture.mjs
