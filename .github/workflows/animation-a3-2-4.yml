@@ -19,6 +19,7 @@ on:
       - 'src/a3-physicality-*'
       - 'a3-physicality-lab.html'
       - 'tests/animation-a3-*'
+      - 'tests/breach-two-sided-fire-recovery.test.mjs'
       - 'docs/animation-a3-*'
       - '.github/workflows/animation-a3-2-4.yml'
   workflow_dispatch:
@@ -40,6 +41,8 @@ jobs:
         run: node --experimental-strip-types --test tests/animation-a3-3-contextual-crouch.test.mjs
       - name: Stage 4 — Minimal physical motor corrections
         run: node --experimental-strip-types --test tests/animation-a3-4-micro-footwork.test.mjs
+      - name: Physical player-side recovery preserves planned orders at A3.4 step sizes
+        run: node --experimental-strip-types --test --test-name-pattern='short step-back|ally in lane|real player operator' tests/breach-two-sided-fire-recovery.test.mjs
       - name: Critical actual gameplay and replay regressions
         run: node --experimental-strip-types --test tests/animation-a3-0-physicality.test.mjs tests/breach-muzzle-lane-hotfix.test.mjs tests/gameplay-g3-fire-lanes.test.mjs tests/breach-179.test.mjs tests/animation-a2-5-continuity.test.mjs
       - name: Production typecheck and build
