@@ -5,11 +5,18 @@ import type {Pt,Obstacle} from './breach-core.ts';
 import {propDefinition} from './worldgen/asset-catalog.ts';
 /** Glass panes are physically full height, not knee-high furniture.
  * Raised masonry sills remain low cover and still stop crouched fire. */
-export const coverHeight=(c:Obstacle)=>
-  c.toppled?7:
-  c.fixture==='glass-barrier'?(c.topHeight??39):
-  c.fixture==='window-sill'?(c.topHeight??14):
-  (c.fixture&&propDefinition(c.fixture)?.height)||(c.low?12:27);
+/** A3.9-H0: one effective physical top for cover, ballistics and bracing.
+ * A mission-authored topHeight must win over a generic fixture catalog.
+ * A toppled prop loses its standing cover height on every consumer.
+ */
+export const coverHeight=(c:Obstacle):number=>{
+ if(c.toppled)return 7;
+ if(Number.isFinite(c.topHeight)&&c.topHeight!>=0)
+  return c.topHeight!;
+ if(c.fixture==='glass-barrier')return 39;
+ if(c.fixture==='window-sill')return 14;
+ return (c.fixture&&propDefinition(c.fixture)?.height)||(c.low?12:27);
+};
 export const eyeHeight=(crouched:boolean)=>crouched?15:32;
 export const aimHeight=(crouched:boolean)=>crouched?11:32;
 export function coverImpactFraction(from:Pt,to:Pt,fromZ:number,toZ:number,
