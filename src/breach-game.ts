@@ -108,6 +108,9 @@ import type {LightingMode} from './equipment-site-lighting.ts';
 import {type PassageLease} from './breach-passage.ts';
 import type {DoorTraversalEpisode} from './breach-door-traversal-episode.ts';
 import type {DoorHandContact} from './breach-door-hand-contact.ts';
+import type {PhysicalContact} from './breach-physical-contact-anchor.ts';
+import {advanceContextualSupportContacts}
+ from './breach-contextual-support-contact.ts';
 
 import {planDoorSchedule,type PassageSchedule} from './breach-passage-plan.ts';
 import {projectReachableGoal,type Blocker} from './breach-nav-diagnostics.ts';
@@ -178,6 +181,8 @@ export type TeamActor=Operator & {
   doorTraversal:DoorTraversalEpisode|null;doorTraversalLastProbeAt:number;
   /** D4 motor-authoritative moving leaf hand contact. */
   doorHandContact:DoorHandContact|null;
+  /** A3.6–7 fixed-step physical brace or teammate shoulder attachment. */
+  physicalContact:PhysicalContact|null;
   recoveryAttempts:number;retryRouteAt:number;routeGoalKey:string;
   /** Rate-limit physical clutter nudges and scene rebuilds. */
   lastAutoShoveAt:number;
@@ -1631,7 +1636,10 @@ const simulationPhasePort:SimulationPhasePort={
  beliefAging:(s,h)=>advanceBeliefAgingPhase(s,h,unobstructed),
  actorActions:(s,h,markActor)=>advanceSimulationActors(s,h,actorSimulationPhasePort,markActor),
  motion:(s,h,origins,profile)=>advanceSimulationMotion(s,h,origins,motionSimulationPhasePort,profile),
- contacts:resolveCloseContact,
+ contacts:s=>{
+  resolveCloseContact(s);
+  advanceContextualSupportContacts(s);
+ },
  reports:s=>runEnemyAi.distributeReports(s),
  observe,
  fire:(s,h)=>{for(const a of s.operators)runCombat.fire(s,a,h);},
