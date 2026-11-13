@@ -20,6 +20,7 @@ export type Q5BenchmarkResult={
  planned:boolean;success:boolean;seconds:number;firstCross:number|null;
  lastCross:number|null;crossingSpan:number|null;finishTime:number|null;
  crossed:number;completed:number;minSeparation:number;
+ settledMinSeparation:number;closeFrames:number;
  operators:{id:string;x:number;y:number;orders:number;
   blocker:string|null;pause:string|null;phase:string|null;
   maneuver:string|null;blockedSeconds:number}[];
@@ -40,7 +41,8 @@ export function runDoorRangeQ5(
   const planned=program==='squad'?planSquadEntry(s,'ENTRY'):
     actors.every((a,i)=>planMove(s,a.id,goals[i]));
   const crossed=new Map<string,number>();
-  let minSeparation=Infinity,invalidMotion=false,finishedAt:number|null=null;
+  let minSeparation=Infinity,settledMin=Infinity,closeFrames=0,
+   invalidMotion=false,finishedAt:number|null=null;
   if(planned){
    toggling(s);
    const maxTicks=Math.ceil(Math.max(0,maxSeconds)*60);
@@ -53,8 +55,13 @@ export function runDoorRangeQ5(
      // Full torso must be past the plane, not just on the threshold.
      if(a.p.y>278&&!crossed.has(a.id))
       crossed.set(a.id,s.seconds);
-     for(let j=i+1;j<actors.length;j++)
-      minSeparation=Math.min(minSeparation,range(a.p,actors[j].p));
+     for(let j=i+1;j<actors.length;j++){
+      const peer=actors[j],gap=range(a.p,peer.p);
+      minSeparation=Math.min(minSeparation,gap);
+      if(gap<16)closeFrames++;
+      if(!a.plan.length&&!peer.plan.length)
+       settledMin=Math.min(settledMin,gap);
+     }
     }
     if(invalidMotion)break;
     if(actors.every(a=>!a.plan.length)){
@@ -78,6 +85,9 @@ export function runDoorRangeQ5(
    crossed:crossed.size,completed:complete,
    minSeparation:Number.isFinite(minSeparation)?
     +minSeparation.toFixed(3):0,
+   settledMinSeparation:Number.isFinite(settledMin)?
+    +settledMin.toFixed(3):0,
+   closeFrames,
    operators:actors.map(a=>({id:a.id,x:+a.p.x.toFixed(2),
     y:+a.p.y.toFixed(2),orders:a.plan.length,
     blocker:a.lastBlocker??null,pause:a.motorPause??null,
