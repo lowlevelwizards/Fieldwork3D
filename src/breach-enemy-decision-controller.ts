@@ -145,7 +145,16 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   reconcileEnemyIntent(s,a,visible.length);
   if(visible.length){
     a.searchOrigin=null;a.searchQueue=[];a.searchPauseUntil=0;
-    const b=visible.sort((x,y)=>d(x.p,a.p)-d(y.p,a.p))[0];
+    // Only the closest confirmed visible threat is consumed downstream.
+    // Preserve first-in-order tie behavior without sorting every contact.
+    let nearest=0,bestDistance=Infinity;
+    for(let i=0;i<visible.length;i++){
+      const dx=visible[i].p.x-a.p.x,dy=visible[i].p.y-a.p.y;
+      const distanceSq=dx*dx+dy*dy;
+      if(distanceSq<bestDistance){bestDistance=distanceSq;nearest=i;}
+    }
+    if(nearest!==0)[visible[0],visible[nearest]]=[visible[nearest],visible[0]];
+    const b=visible[0];
     // A fresh surprise first makes the defender orient. The observed target
     // may update WATCH, but no cover sprint or radio report happens before
     // they register contact. Firing remains gated through READY.
@@ -171,7 +180,11 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     // An eye-level contact may be behind solid cover at muzzle height.
     // Reposition to an actual firing lane instead of staring at it while
     // repeatedly attempting blocked shots. Reposition has a cooldown.
-    const friends=enemies(s).filter(o=>o!==a&&o.health>0).map(safetyBodyFor);
+    // Contact-only evidence. Keep the identical friendly safety volumes,
+    // but avoid a filter array plus a second map allocation.
+    const friends:ReturnType<typeof safetyBodyFor>[]=[];
+    for(const ally of enemies(s))
+      if(ally!==a&&ally.health>0)friends.push(safetyBodyFor(ally));
     const lane=assessFireLane(a.p,effectiveEyeHeight(a),
       b.p,effectiveAimHeight(b),world.cover,world.walls,s.doors,friends);
     a.combatChoice=chooseCombatAction({visible:true,remembered:true,
@@ -207,13 +220,19 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     }
     const committed=coverMoveCommitted(a.alert==='cover'&&!!a.defense,
       a.defense?d(a.p,a.defense):0,s.seconds,a.defenseUntil);
+    let nearbyAllies=0;
+    if(a.combatChoice==='engage')
+      for(const ally of enemies(s))
+        if(ally!==a&&ally.health>0&&
+           ally.encounterGroupId===a.encounterGroupId&&
+           (ally.p.x-a.p.x)**2+(ally.p.y-a.p.y)**2<150*150)
+          nearbyAllies++;
     const initiative=a.combatChoice==='engage'&&
       pressureAdvanceOpportunity({
         personality:a.personality,directSight:true,
         clearFireLane:lane.blocker==='clear',range:d(a.p,b.p),
         suppression:a.suppression,morale:a.morale,
-        nearbyAllies:enemies(s).filter(o=>o!==a&&o.health>0&&
-          o.encounterGroupId===a.encounterGroupId&&d(o.p,a.p)<150).length,
+        nearbyAllies,
         secondsSinceLastMove:s.seconds-a.lastFireRepositionAt
       });
     if((a.combatChoice==='reposition'||initiative)&&

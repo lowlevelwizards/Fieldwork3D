@@ -12,13 +12,13 @@ export function localFixtureObservation(from:Pt,
  const room=rooms.find(r=>from.x>=r.x&&from.x<=r.x+r.w&&
    from.y>=r.y&&from.y<=r.y+r.h);
  if(!room)return null;
- let best:Fixture|null=null,bestDist=105;
+ let best:Fixture|null=null,bestDist=105*105;
  for(const f of fixtures){
   if(!inspectable.has(f.fixture??'')||
      f.x<room.x||f.y<room.y||f.x>room.x+room.w||f.y>room.y+room.h)continue;
-  const range=Math.hypot(f.x-from.x,f.y-from.y);
-  if(range<18||range>=bestDist)continue;
-  best=f;bestDist=range;
+  const distanceSq=(f.x-from.x)**2+(f.y-from.y)**2;
+  if(distanceSq<18*18||distanceSq>=bestDist)continue;
+  best=f;bestDist=distanceSq;
  }
  return best?{x:best.x,y:best.y}:null;
 }

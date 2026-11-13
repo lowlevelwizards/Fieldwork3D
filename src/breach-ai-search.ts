@@ -26,7 +26,8 @@ export function searchCandidates(estimate:Pt,uncertainty:number,
  }).slice(0,14);
  // Inspect real thresholds from a stand-off position INSIDE the known room,
  // not at the door-leaf center or across an invisible wall.
- for(const door of doors.slice(0,24)){
+ for(let di=0;di<doors.length&&di<24;di++){
+  const door=doors[di];
   const threshold={x:(door.a.x+door.b.x)/2,
     y:(door.a.y+door.b.y)/2};
   if(dist(threshold,estimate)>radius+45)continue;
@@ -43,7 +44,8 @@ export function searchCandidates(estimate:Pt,uncertainty:number,
  }
  // Observe around plausible furniture silhouettes within the search area.
  // A cover corner is a *viewing* approach, never a claim the target is there.
- for(const fixture of cover.slice(0,40)){
+ for(let ci=0;ci<cover.length&&ci<40;ci++){
+  const fixture=cover[ci];
   const center={x:fixture.x,y:fixture.y};
   if(dist(center,estimate)>radius+35)continue;
   for(const point of [
