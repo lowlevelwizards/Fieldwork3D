@@ -136,12 +136,12 @@ test('all casual tops recolor the ONE actual torso, without duplicate jacket she
  const torso=r.visualKit.baseTorso;
  const torsoGeometry=torso.geometry;
  for(const top of CASUAL_SHIRT_CUTS){
-  poseOperator(r,frame(outfit(top,{fabricSolids:{top:'rust'}})),0);
+  poseOperator(r,frame(outfit(top,{fabricSolids:{top:'ranger-green'}})),0);
   const model=r.visualKit.casualShirts.cuts[top];
   assert.strictEqual(r.visualKit.baseTorso,torso,top+' keeps foundation');
   assert.strictEqual(torso.geometry,torsoGeometry,top+' does not replace body');
   assert.strictEqual(torso.material,r.clothMaterial,'fabric owns body');
-  assert.equal(r.colors.get(r.clothMaterial).getHex(),garmentSolidHex('rust'));
+  assert.equal(r.colors.get(r.clothMaterial).getHex(),garmentSolidHex('ranger-green'));
   assert.ok(torso.visible,top+' torso stays visible');
   assert.ok(model.torso.visible,top+' small details active');
   for(const part of model.torso.children){
