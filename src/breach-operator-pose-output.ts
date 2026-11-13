@@ -85,7 +85,7 @@ type MutableOutput={
  staged:Float64Array[];
  indicesByStage:number[][];
  stageMask:number;pendingTime:number;pending:boolean;
- lastRenderedHandling:string|null;
+ lastRenderedHandling:string|null;lastVisualSeconds:number|null;
 };
 const outputs=new WeakMap<OperatorRig,MutableOutput>();
 function outputFor(r:OperatorRig):MutableOutput{
@@ -109,7 +109,8 @@ function outputFor(r:OperatorRig):MutableOutput{
  output={slots:declared.map(node=>({...node,values:new Float64Array(11)})),
   slotCount:declared.length,time:0,generation:0,valid:false,
   staged:declared.map(()=>new Float64Array(11)),indicesByStage,
-  stageMask:0,pendingTime:0,pending:false,lastRenderedHandling:null};
+  stageMask:0,pendingTime:0,pending:false,lastRenderedHandling:null,
+  lastVisualSeconds:null};
  outputs.set(r,output);
  return output;
 }
@@ -253,7 +254,9 @@ function blendCompletePoseOutput(output:MutableOutput,p:OperatorPose,
  renderedHandling:string|null):void{
  if(!output.valid||p.deterministic||p.replayFeet||p.down||p.surrender)
   return;
- const elapsed=p.seconds-output.time;
+ const visualSeconds=p.idleLifeSeconds??p.seconds;
+ const elapsed=output.lastVisualSeconds===null?0:
+   visualSeconds-output.lastVisualSeconds;
  if(elapsed<0||elapsed>.35)return;
  const body=poseContinuityAlpha(elapsed,'body');
  const head=poseContinuityAlpha(elapsed,'head');
@@ -290,6 +293,7 @@ export function commitOperatorPoseOutput(r:OperatorRig,p:OperatorPose):void{
   blendCompletePoseOutput(output,p,renderedHandling);
  publishOperatorPoseOutput(r,p,true);
  output.lastRenderedHandling=renderedHandling;
+ output.lastVisualSeconds=p.idleLifeSeconds??p.seconds;
 }
 /** Introspection for Lab and diagnostics only. Published buffers remain
  * stable while another frame is staged. Mutating typed values is unsupported.
