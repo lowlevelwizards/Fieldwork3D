@@ -15,6 +15,7 @@ import {addAchMichRetainingBungees} from './operator-helmet-field-bungees.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 import {createHelmetFieldGoggleModule} from './operator-helmet-field-goggles.ts';
 import {addAchMichVelcro,addAchMichIdentifierPatch} from './operator-helmet-field-velcro.ts';
+import {addAchMichFieldAddon} from './operator-helmet-field-addons.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
  bandMaterial:THREE.MeshStandardMaterial;webbingMaterial:THREE.MeshStandardMaterial;
@@ -143,22 +144,21 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
    0,p.top-2.9,back?rear+.49:front-.66,back?Math.PI:0);
   g.add(sleeve);
  }
- const strobe=addGroup('strobe');
- box(strobe,dark,'strobe-low-mount',0,p.top+.16,rear-1.06,1.02,.24,.79);
- box(strobe,reflect,'strobe-shielded-cap',0,p.top+.32,rear-1.06,.73,.13,.55);
- const counterweight=addGroup('counterweight');
- box(counterweight,dark,'nape-counterweight-pouch',0,p.top-2.44,rear+.32,2.65,1.15,.49);
- const battery=addGroup('battery');
- box(battery,dark,'compact-battery',2.25,p.top-2.26,rear+.27,1.32,.92,.50);
- box(battery,metal,'battery-latch',2.25,p.top-1.81,rear+.53,.75,.15,.14);
- const light=addGroup('light');
- box(light,metal,'compact-task-light',side+.19,p.top-2.13,front+1.35,.67,.70,1.11);
- box(light,reflect,'task-light-lens',side+.19,p.top-2.13,front+.76,.42,.43,.12);
- const camera=addGroup('camera');
- box(camera,dark,'mini-helmet-camera',side+.18,p.top-1.82,-.65,.64,.73,1.07);
- box(camera,glass,'forward-camera-lens',side+.18,p.top-1.82,-1.25,.43,.43,.12);
- const chemlight=addGroup('chemlight');
- box(chemlight,reflect,'secured-chemlight',-2.10,p.top+.16,rear-.69,.28,.28,1.48);
+ // H9.7: every modern helmet add-on now has its own designed silhouette.
+ // PASGT keeps a conservative reference-limited kit.
+ for(const key of ['strobe','counterweight','battery','light','camera',
+  'chemlight'] as const){
+  const g=addGroup(key);
+  if(id!=='pasgt')
+   addAchMichFieldAddon(id,key,g,{dark,metal,cloth:tan,reflect});
+  else if(key==='strobe'){
+   box(g,dark,'pasgt-low-profile-marker-base',0,p.top+.16,rear-1.06,
+    1.02,.24,.79);
+   box(g,reflect,'pasgt-marker-lens',0,p.top+.32,rear-1.06,.73,.13,.55);
+  }else if(key==='chemlight')
+   box(g,reflect,'period-secured-chemlight',-2.10,p.top+.16,rear-.69,
+    .28,.28,1.48);
+ }
  const patches=addGroup('patches');
  if(id!=='pasgt')addAchMichIdentifierPatch(id,patches,velcro,dark,reflect);
  else{
