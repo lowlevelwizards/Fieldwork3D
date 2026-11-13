@@ -151,8 +151,8 @@ export class ReplayMotionRecorder{
         acceleration)>2){
         acc.push({at:time,acceleration});
         const strength=clamp(acceleration/230,-1,1);
-        if(strength>.34)track.driveEvents.push({at:time,strength});
-        else if(strength<-.34)
+        if(strength>.14)track.driveEvents.push({at:time,strength});
+        else if(strength<-.14)
           track.brakeEvents.push({at:time,strength:-strength});
       }
       track.lastVelocity=actor.velocity;

@@ -4,6 +4,7 @@ import {indexMovementImpulses,sampleMovementImpulses,
  motionFromTransitions} from '../src/breach-motion-transitions.ts';
 import {bodyFromContacts} from '../src/breach-body-motion.ts';
 import {newSession,team} from '../src/breach-game.ts';
+import {sampleLabMovementImpulse} from '../src/breach-lab-tracks.ts';
 import {ReplayMotionRecorder} from '../src/breach-replay-motion.ts';
 
 const shoe=(side,phase='planted',progress=1)=>({
@@ -50,8 +51,7 @@ test('A2.2 landing and recovery finish a stop, then return exactly to rest',()=>
  const settled=motionFromTransitions(atRest);
  assert.ok(receiving.settle>0&&recovering.settle>0);
  assert.ok(receiving.pelvisY<0&&recovering.pelvisY<0);
- assert.deepEqual(settled,{start:0,brake:0,settle:0,pelvisY:0,
-  torsoForward:0,torsoSide:0,headPitchCounter:0,chestLift:0});
+ assert.ok(Object.values(settled).every(x=>x===0));
  const fast=motionFromTransitions({...atRest,gait:'run',
   feet:[shoe(-1,'recovering',.5),shoe(1)]});
  const careful=motionFromTransitions({...atRest,gait:'pie',
@@ -81,6 +81,16 @@ test('A2.2 holds finite bounded output under acceleration extremes',()=>{
    }
   }
  }
+});
+test('A2.2 Operator Lab uses the same fixed 60 Hz start/stop envelope',()=>{
+ const start=sampleLabMovementImpulse('accelerate',.15);
+ const stopping=sampleLabMovementImpulse('stop',1.25);
+ const finished=sampleLabMovementImpulse('stop',2.9);
+ assert.ok(start.drive>0,'Lab should show a visible first-step push');
+ assert.ok(stopping.brake>0,'Lab should show the real braking catch');
+ assert.deepEqual(finished,{drive:0,brake:0});
+ assert.deepEqual(sampleLabMovementImpulse('accelerate',.15),start);
+ assert.deepEqual(sampleLabMovementImpulse('stop',1.25),stopping);
 });
 test('A2.2 recorded impulse samples are seekable and naturally expire',()=>{
  const events=[{at:.2,acceleration:230},

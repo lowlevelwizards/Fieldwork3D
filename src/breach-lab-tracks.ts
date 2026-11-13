@@ -2,6 +2,9 @@
  * No separate animation engine: the same Build 119 scheduler is sampled
  * at a fixed simulation rate and the Build 120 rig renders the results.
  */
+import {indexMovementImpulses,sampleMovementImpulses,
+  type MomentumEnvelope,type MotionEvent}
+  from './breach-motion-transitions.ts';
 import {advanceFootsteps,createFootstepScheduler,
   type FootstepInput,type FootstepScheduler,type FootTarget}
   from './breach-footsteps.ts';
@@ -96,6 +99,34 @@ export function sampleLabTrack(kind:LabTrack,time:number):LabMotion{
     kind==='door'?Math.floor(t/1.3)*1.3:-100;
   return {...p,travelYaw,speed,turning,injury,posture,aim,
     reload,throwAt,doorAt,down:kind.startsWith('down')&&t>=.45};
+}
+
+/** A2.2: replay-identical fixed-tick impulse preview for the actual Lab.
+ * Cache indices once per authored movement track, never per render frame.
+ * Sampling depends on the requested clock, not the order of scrubbing.
+ */
+const labImpulses=new Map<LabTrack,{
+  drive:MotionEvent[];brake:MotionEvent[]
+}>();
+export function sampleLabMovementImpulse(
+ kind:LabTrack,time:number):MomentumEnvelope{
+ let index=labImpulses.get(kind);
+ if(!index){
+  const events:{at:number;acceleration:number}[]=[];
+  let previous=sampleLabTrack(kind,0).speed;
+  for(let tick=1;tick<=TRACK_DURATION*60;tick++){
+   const at=tick/60,velocity=sampleLabTrack(kind,at).speed;
+   const acceleration=Math.max(-230,Math.min(230,
+     (velocity-previous)*60));
+   if(!events.length||Math.abs(events[events.length-1].acceleration-
+     acceleration)>2)events.push({at,acceleration});
+   previous=velocity;
+  }
+  index=indexMovementImpulses(events);
+  labImpulses.set(kind,index);
+ }
+ return sampleMovementImpulses(index.drive,index.brake,
+   Math.max(0,Math.min(TRACK_DURATION,time)));
 }
 
 /** Sample a recorded 60Hz timeline without advancing any gait scheduler.

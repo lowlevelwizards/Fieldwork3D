@@ -5,6 +5,8 @@ on:
       - 'src/breach-contact-balance.ts'
       - 'src/breach-motion-transitions.ts'
       - 'src/breach-replay-motion.ts'
+      - 'src/breach-lab-tracks.ts'
+      - 'src/breach-operator-lab.ts'
       - 'src/breach-3d.ts'
       - 'src/breach-body-motion.ts'
       - 'src/breach-operator-animation-controller.ts'

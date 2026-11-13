@@ -15,8 +15,8 @@ export function indexMovementImpulses(
  const drive:MotionEvent[]=[],brake:MotionEvent[]=[];
  for(const sample of samples){
   const magnitude=clamp(sample.acceleration/230,-1,1);
-  if(magnitude>.34)drive.push({at:sample.at,strength:magnitude});
-  else if(magnitude<-.34)brake.push({at:sample.at,strength:-magnitude});
+  if(magnitude>.14)drive.push({at:sample.at,strength:magnitude});
+  else if(magnitude<-.14)brake.push({at:sample.at,strength:-magnitude});
  }
  return {drive,brake};
 }
