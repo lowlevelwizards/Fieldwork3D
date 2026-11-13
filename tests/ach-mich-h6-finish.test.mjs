@@ -44,6 +44,8 @@ test('H6 no dangling rear detours: each of two suspensions joins a single jaw po
   assert.ok(geometry.getAttribute('position').count>=40);
   assert.ok(geometry.getAttribute('position').count<80);
   assert.ok(geometry.boundingBox.min.z<-4.8);
+  assert.ok(geometry.boundingBox.max.x<4.95&&geometry.boundingBox.min.x>-4.95,
+   'retention webbing stays inside the actual side shell, no dangling flare');
  }
 });
 test('H6 one unlit tintable band and a single unified strap mesh, no duplicate chin cup',()=>{

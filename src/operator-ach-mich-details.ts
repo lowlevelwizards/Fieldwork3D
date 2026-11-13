@@ -142,8 +142,11 @@ export function createAchMichRetentionGeometry(
  const paths=achMichRetentionPaths(shell);
  for(let i=0;i<paths.length;i++){
   const sign=i<3?-1:1;
-  const normal=new THREE.Vector3(sign*.68,0,-.74);
-  appendStrap(data,paths[i],normal,i%3===2?.44:.41);
+  // Side straps live on side-facing planes: do not fan outward around
+  // the skull. Only the final under-jaw leg changes normal toward front.
+  const normal=i%3===2?new THREE.Vector3(sign*.68,0,-.74):
+   new THREE.Vector3(sign,0,0);
+  appendStrap(data,paths[i],normal,i%3===2?.44:.39);
  }
  const pt=(x:number,y:number,z:number):Point=>[x,y,z];
  const topLeft=pt(-2.28,-.12,-4.88),topMiddle=pt(0,-.10,-4.98),
