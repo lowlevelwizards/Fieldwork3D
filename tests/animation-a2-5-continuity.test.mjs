@@ -34,11 +34,14 @@ test('A2.5 rear-stack high, deliberate WATCH freedom, running priority',()=>{
  assert.equal(chooseCarry({...f,intent:'run',aim:1}).handling,'low');
  assert.equal(chooseCarry({...f,obstruction:true,aim:1}).handling,'short');
  const self={x:0,y:0};
- assert.equal(teammateAheadForHandling(self,0,[{x:20,y:12}]),true);
+ assert.equal(teammateAheadForHandling(self,0,[{x:20,y:8}]),true);
+ assert.equal(teammateAheadForHandling(self,0,[{x:20,y:12}]),false,
+  'passive courtesy no longer uses a wide angular cone');
  assert.equal(teammateAheadForHandling(self,0,[{x:20,y:16}]),false,
   'lateral open weapon sector must not count as centered ally');
- assert.equal(teammateAheadForHandling(self,Math.PI/2,[{x:12,y:20}]),
+ assert.equal(teammateAheadForHandling(self,Math.PI/2,[{x:8,y:20}]),
   true,'heading-rotated check must be symmetric');
+ assert.equal(teammateAheadForHandling(self,Math.PI/2,[{x:12,y:20}]),false);
 });
 
 test('A2.5 pose presentation blending is bounded, shortest arc, interruptible',()=>{
