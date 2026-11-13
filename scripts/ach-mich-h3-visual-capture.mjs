@@ -46,6 +46,9 @@ try{
    await stage.screenshot({path:'ach-mich-h3-captures/'+label+'.png'});
   };
   for(const id of ['ach','mich-2001','mich-2002']){
+   // The previous shell's gameplay-fit capture zooms all the way out.
+   // Refocus to HEAD before photographing the next shell's details.
+   await page.getByRole('button',{name:'Customize head'}).click();
    await itemTab.click();
    const selection=page.locator('[data-appearance-item="'+id+'"]');
    await selection.scrollIntoViewIfNeeded();
