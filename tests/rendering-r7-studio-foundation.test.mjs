@@ -53,7 +53,7 @@ test('R7 hidden Studio suspends optional GPU work without stopping simulation',(
  assert.match(bridge,/STUDIO_WARM_RETAIN_MS=60_000/);
  assert.match(bridge,/studioFrame\.src='about:blank'/);
  assert.match(runtime,/studioOccludesTactical/);
- assert.match(runtime,/if\(!studioOccludesTactical&&stage/);
+ assert.match(runtime,/const stageAvailable=!studioOccludesTactical&&!!stage/);
  assert.match(runtime,/if\(!studioOccludesTactical\)config\.renderFrame\(dt\)/);
  assert.match(studio,/studioSuspended=true/);
  assert.match(studio,/thumbBrowser\.setSuspended\(true\)/);
