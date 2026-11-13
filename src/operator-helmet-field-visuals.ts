@@ -13,6 +13,9 @@ import {addAchMichThreeHoleShroud} from './operator-helmet-field-shroud.ts';
 import {addAchMichArcRails} from './operator-helmet-field-rails.ts';
 import {addAchMichRetainingBungees} from './operator-helmet-field-bungees.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
+import {createHelmetFieldGoggleModule} from './operator-helmet-field-goggles.ts';
+import {addAchMichVelcro,addAchMichIdentifierPatch} from './operator-helmet-field-velcro.ts';
+import {addAchMichFieldAddon} from './operator-helmet-field-addons.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
  bandMaterial:THREE.MeshStandardMaterial;webbingMaterial:THREE.MeshStandardMaterial;
@@ -113,19 +116,18 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
  const bungees=addGroup('bungees');
  if(id!=='pasgt')addAchMichRetainingBungees(id,bungees,olive,metal,dark);
  const velcroGroup=addGroup('velcro');
- plate(velcroGroup,velcro,'thin-crown-velcro',
-  [[-1.14,-.68],[1.14,-.68],[1.14,.68],[-1.14,.68]],
-  0,p.top+.17,-.85,-Math.PI/2);
- for(const sign of [-1,1])
-  plate(velcroGroup,velcro,'thin-side-velcro',
-   [[-.79,-.46],[.79,-.46],[.79,.46],[-.79,.46]],
-   sign*(side+.15),p.top-1.97,1.60,sign*Math.PI/2);
- plate(velcroGroup,velcro,'thin-rear-velcro',
-  [[-1.24,-.46],[1.24,-.46],[1.24,.46],[-1.24,.46]],
-  0,p.top-1.92,rear+.17);
+ if(id!=='pasgt')addAchMichVelcro(id,velcroGroup,velcro,dark);
  for(const key of ['goggles-front','goggles-rear','goggles-eyes']){
   const g=addGroup(key),back=key==='goggles-rear',eyes=key==='goggles-eyes';
-  // The approved D2 goggle silhouette, not two independent dark cubes.
+  if(id!=='pasgt'){
+   // H9.5 D2 housing is preserved. Retention is now a separate,
+   // cover-fitting band and sleeve is sculpted to the housing itself.
+   createHelmetFieldGoggleModule(id,eyes?'eyes':back?'rear':'front',
+    g,dark,glass,webbingMaterial,tan);
+   continue;
+  }
+  // Period PASGT keeps the existing approved legacy housing until
+  // a separate historical goggle fit is authored and inspected.
   const pose=createD2GoggleFieldPose(dark,glass,webbingMaterial);
   pose.name='approved-d2-goggle-pose';
   if(back){pose.rotation.y=Math.PI;pose.position.set(0,p.top-6.78,rear-5.74);}
@@ -137,34 +139,33 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   g.add(pose);
   const sleeve=new THREE.Group();sleeve.name='goggle-fabric-sleeve';
   sleeve.visible=false;
-  plate(sleeve,tan,'flat-goggle-cloth-sleeve',
+  plate(sleeve,tan,'legacy-goggle-cloth-sleeve',
    [[-3.45,-.66],[3.45,-.66],[3.45,.66],[-3.45,.66]],
    0,p.top-2.9,back?rear+.49:front-.66,back?Math.PI:0);
   g.add(sleeve);
  }
- const strobe=addGroup('strobe');
- box(strobe,dark,'strobe-low-mount',0,p.top+.16,rear-1.06,1.02,.24,.79);
- box(strobe,reflect,'strobe-shielded-cap',0,p.top+.32,rear-1.06,.73,.13,.55);
- const counterweight=addGroup('counterweight');
- box(counterweight,dark,'nape-counterweight-pouch',0,p.top-2.44,rear+.32,2.65,1.15,.49);
- const battery=addGroup('battery');
- box(battery,dark,'compact-battery',2.25,p.top-2.26,rear+.27,1.32,.92,.50);
- box(battery,metal,'battery-latch',2.25,p.top-1.81,rear+.53,.75,.15,.14);
- const light=addGroup('light');
- box(light,metal,'compact-task-light',side+.19,p.top-2.13,front+1.35,.67,.70,1.11);
- box(light,reflect,'task-light-lens',side+.19,p.top-2.13,front+.76,.42,.43,.12);
- const camera=addGroup('camera');
- box(camera,dark,'mini-helmet-camera',side+.18,p.top-1.82,-.65,.64,.73,1.07);
- box(camera,glass,'forward-camera-lens',side+.18,p.top-1.82,-1.25,.43,.43,.12);
- const chemlight=addGroup('chemlight');
- box(chemlight,reflect,'secured-chemlight',-2.10,p.top+.16,rear-.69,.28,.28,1.48);
+ // H9.7: every modern helmet add-on now has its own designed silhouette.
+ // PASGT keeps a conservative reference-limited kit.
+ for(const key of ['strobe','counterweight','battery','light','camera',
+  'chemlight'] as const){
+  const g=addGroup(key);
+  if(id!=='pasgt')
+   addAchMichFieldAddon(id,key,g,{dark,metal,cloth:tan,reflect});
+  else if(key==='strobe'){
+   box(g,dark,'pasgt-low-profile-marker-base',0,p.top+.16,rear-1.06,
+    1.02,.24,.79);
+   box(g,reflect,'pasgt-marker-lens',0,p.top+.32,rear-1.06,.73,.13,.55);
+  }else if(key==='chemlight')
+   box(g,reflect,'period-secured-chemlight',-2.10,p.top+.16,rear-.69,
+    .28,.28,1.48);
+ }
  const patches=addGroup('patches');
- plate(patches,velcro,'flat-identifier-panel',
-  [[-.88,-.45],[.88,-.45],[.88,.45],[-.88,.45]],
-  -side-.16,p.top-2.40,1.69,-Math.PI/2);
- plate(patches,reflect,'short-identifier-mark',
-  [[-.42,-.15],[.42,-.15],[.42,.15],[-.42,.15]],
-  -side-.19,p.top-2.40,1.69,-Math.PI/2);
+ if(id!=='pasgt')addAchMichIdentifierPatch(id,patches,velcro,dark,reflect);
+ else{
+  plate(patches,velcro,'pasgt-period-identifier',
+   [[-.88,-.45],[.88,-.45],[.88,.45],[-.88,.45]],
+   -side-.16,p.top-2.40,1.69,-Math.PI/2);
+ }
  // Pre-merge only static groups; invisible groups cost no render work.
  for(const g of Object.values(modules))consolidateVisualGroup(g);
  return {root,shell:id,modules,bandMaterial,webbingMaterial,leaves};
@@ -192,7 +193,11 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
   const where=key.substring('goggles-'.length);
   m[key].visible=s.goggles===where&&
    (where!=='eyes'||!headEyewear.startsWith('goggles-'));
-  const sleeve=m[key].children.find(x=>x.name==='goggle-fabric-sleeve');
+  // A front-stowed goggle must sit below the modeled NVG shroud,
+  // not cross the central locking interface at brow height.
+  if(key==='goggles-front'&&v.shell!=='pasgt')
+   m[key].position.y=s.shroud?-.84:0;
+  const sleeve=m[key].getObjectByName('goggle-fabric-sleeve');
   if(sleeve)sleeve.visible=s.goggleSleeve&&where!=='eyes';
  }
 }
