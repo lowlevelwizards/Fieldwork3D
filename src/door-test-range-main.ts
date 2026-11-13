@@ -10,8 +10,12 @@ import {QueueMotionAudit,listenQueueMotion} from './breach-queue-trace.ts';
 import {planDoorSchedule} from './breach-passage-plan.ts';
 import {legalMoveRoute} from './breach-known-route-authoring.ts';
 import {doorHandPoint} from './breach-door-hand-contact.ts';
-import {DOOR_RANGE_CASES,doorRangeSite,prepareDoorRangeCase,
- type DoorRangeCaseId} from './breach-door-test-cases.ts';
+import {DOOR_RANGE_CASES,DOOR_RANGE_APPROACHES,doorRangeSite,
+ doorRangeApproachSpawn,prepareDoorRangeCase,
+ type DoorRangeCaseId,type DoorRangeApproachId}
+ from './breach-door-test-cases.ts';
+import {Q5_HINGE_CASES,runDoorRangeQ5,summarizeQ5,
+ type Q5BenchmarkResult} from './door-range-q5-benchmark.ts';
 import {newSession,team,planSquadEntry,planMove,clearPlan,
  toggling,stepSession,type Session} from './breach-game.ts';
 
@@ -21,6 +25,11 @@ const stage=get<HTMLCanvasElement>('doorStage');
 const ctx=stage.getContext('2d')!;
 const scenario=get<HTMLSelectElement>('scenario');
 const program=get<HTMLSelectElement>('program');
+const approach=get<HTMLSelectElement>('approach');
+const matrixReport=get<HTMLElement>('matrixReport');
+const matrixButton=get<HTMLButtonElement>('runMatrix');
+let matrixRows:Q5BenchmarkResult[]=[];
+let matrixRunning=false;
 const speed=get<HTMLSelectElement>('speed');
 const selected=get<HTMLSelectElement>('operator');
 const message=get<HTMLElement>('message');
@@ -51,6 +60,11 @@ for(const c of DOOR_RANGE_CASES){
  option.value=c.id;option.textContent=c.label;scenario.append(option);
 }
 scenario.value='outward-left';
+for(const entry of DOOR_RANGE_APPROACHES){
+ const option=document.createElement('option');
+ option.value=entry.id;option.textContent=entry.label;approach.append(option);
+}
+approach.value='straight';
 let s:Session;
 let planned=false,playing=false,flips=0,lastOpen=false;
 let minSpacing=Infinity;
@@ -86,7 +100,8 @@ function reset(){
  playing=false;acc=0;flips=0;minSpacing=Infinity;
  passed=new Set();crossedAt=new Map();
  s=newSession(0,undefined,'full-view','small','hold',
-  doorRangeSite(scenario.value as DoorRangeCaseId),
+  doorRangeSite(scenario.value as DoorRangeCaseId,
+   approach.value as DoorRangeApproachId),
   {enableCivilians:false});
  prepareDoorRangeCase(s,scenario.value as DoorRangeCaseId);
  selectedId=team(s)[0]?.id??'';
@@ -123,8 +138,10 @@ function stats(){
   for(let j=i+1;j<members.length;j++)
    minSpacing=Math.min(minSpacing,distance(members[i].p,members[j].p));
  clock.textContent=s.seconds.toFixed(2)+'s';
+ const times=[...crossedAt.values()].sort((a,b)=>a-b);
  outcome.textContent=passed.size+' / '+activeIds.size+' crossed · '+
-  completed+' finished';
+  completed+' finished'+(times.length===4?
+  ' · 4th '+times[3].toFixed(2)+'s':'');
  flipsView.textContent=String(flips);
  const deg=((door.openFraction??0)*1.54*180/Math.PI).toFixed(0);
  doorInfo.textContent=deg+'° · '+(door.open?'OPEN':'CLOSED')+
@@ -155,6 +172,15 @@ function paint(){
  ctx.font='bold 12px system-ui';
  ctx.fillStyle='#8cac99';ctx.fillText('APPROACH',57,68);
  ctx.fillText('INTERIOR',57,445);
+ // Q5: faint real deployment footprint for the chosen approach, including
+ // where the members came from after the formation starts moving.
+ ctx.save();ctx.strokeStyle='#9cbd9e';ctx.globalAlpha=.48;
+ for(const start of doorRangeApproachSpawn(
+   approach.value as DoorRangeApproachId)){
+  ctx.beginPath();ctx.arc(start.x,start.y,10,0,2*Math.PI);
+  ctx.stroke();
+ }
+ ctx.restore();
  for(const cover of s.site?.cover??[]){
   ctx.fillStyle='#967d62';
   ctx.fillRect(cover.x-cover.w/2,cover.y-cover.h/2,cover.w,cover.h);
@@ -244,7 +270,8 @@ function toggle(){
 }
 function report(){
  const door=s.doors[0];
- return {scenario:scenario.value,protocol:program.value,
+ return {scenario:scenario.value,approach:approach.value,
+  protocol:program.value,
   phase:s.phase,time:s.seconds,planned,flips,
   minOperatorSpacing:Number.isFinite(minSpacing)?minSpacing:null,
   crossed:[...crossedAt.entries()],
@@ -257,7 +284,8 @@ function report(){
    episode:a.doorTraversal,grip:a.doorHandContact,
    nav:a.nav.slice(0,8)
   })),events:[...s.events],queueAudit:queueAudit?.report()??null,
-  mobileProfile:profile?.snapshot(performance.now())??null};
+  mobileProfile:profile?.snapshot(performance.now())??null,
+  q5Matrix:matrixRows.length?{summary:summarizeQ5(matrixRows),rows:matrixRows}:null};
 }
 get<HTMLButtonElement>('reset').addEventListener('click',reset);
 go.addEventListener('click',toggle);
@@ -303,7 +331,51 @@ stage.addEventListener('pointerdown',event=>{
 });
 selected.addEventListener('change',()=>{selectedId=selected.value;paint();});
 trace.addEventListener('change',paint);
-for(const input of [scenario,program])input.addEventListener('change',reset);
+for(const input of [scenario,program,approach])
+ input.addEventListener('change',()=>{if(!matrixRunning)reset();});
+function q5FormatRow(r:Q5BenchmarkResult){
+ const time=r.lastCross===null?'—':r.lastCross.toFixed(2)+'s';
+ const finish=r.finishTime===null?'—':r.finishTime.toFixed(2)+'s';
+ return (r.success?'PASS':'FAIL')+' · '+r.door+' / '+r.approach+
+  ' · fourth '+time+' · finish '+finish+
+  (r.success?'':' · '+r.outcome+' · '+r.crossed+'/4 crossed; '+
+   r.operators.map(a=>a.id+':'+a.orders+' orders/'+(a.blocker??'no blocker')).join(' | '));
+}
+matrixButton.addEventListener('click',async()=>{
+ if(matrixRunning)return;
+ matrixRunning=true;matrixButton.disabled=true;
+ matrixRows=[];
+ const combos=Q5_HINGE_CASES.flatMap(door=>
+  DOOR_RANGE_APPROACHES.map(a=>({door,approach:a.id})));
+ try{
+  for(const [i,{door,approach:formation}] of combos.entries()){
+   // An actual 60Hz fixed game, not an approximate lab simulator.
+   const result=runDoorRangeQ5(door,formation);
+   matrixRows.push(result);
+   matrixReport.textContent=
+    'MATRIX '+(i+1)+' / '+combos.length+' · '+
+     summarizeQ5(matrixRows).pass+' passed\n'+
+    matrixRows.map(q5FormatRow).join('\n');
+   // Yield between cases so the browser can draw progress and stay alive.
+   await new Promise<void>(resolve=>setTimeout(resolve,0));
+  }
+  const summary=summarizeQ5(matrixRows);
+  matrixReport.textContent=JSON.stringify(summary,null,2)+'\n\n'+
+    matrixRows.map(q5FormatRow).join('\n');
+ }finally{
+  matrixRunning=false;matrixButton.disabled=false;
+  // The benchmark owns isolated global site registration; restore the
+  // visible lab's original live Session after it finishes.
+  reset();
+ }
+});
+get<HTMLButtonElement>('copyMatrix').addEventListener('click',()=>{
+ if(!matrixRows.length){message.textContent='Run Q5 matrix first';return;}
+ void navigator.clipboard.writeText(JSON.stringify({
+   summary:summarizeQ5(matrixRows),rows:matrixRows},null,2))
+  .then(()=>{message.textContent='Copied Q5 full matrix and failures';})
+  .catch(()=>{message.textContent='Clipboard unavailable';});
+});
 function drawMobileProfile(now:number){
  if(!profile)return;
  const s=profile.snapshot(now);
