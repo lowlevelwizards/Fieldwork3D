@@ -3,6 +3,7 @@
  * this module never modifies locomotion, inventory, weapon, shots or peers.
  */
 import {pointToSegment,type Pt,type Segment,type Obstacle} from './breach-core.ts';
+import {coverHeight} from './breach-cover-height.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
@@ -64,7 +65,7 @@ export function coverSupportSurface(
  actor:Pt,cover:Obstacle,id:string):SupportSurface|null{
  if(cover.destroyed||cover.toppled||
     /fence|foliage|bush|tree|cloth/i.test(cover.fixture??''))return null;
- const height=cover.topHeight??(cover.low?17:29);
+ const height=coverHeight(cover);
  if(!Number.isFinite(height)||height<15)return null;
  const hx=Math.abs(cover.w)/2,hy=Math.abs(cover.h)/2;
  if(!(hx>2&&hy>2))return null;
