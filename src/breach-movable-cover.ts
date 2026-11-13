@@ -26,13 +26,13 @@ export const canRelocateCover=(o:Obstacle)=>coverMass(o)!=='fixed'&&!o.destroyed
 const overlaps=(a:Obstacle,b:Obstacle,padding=5)=>
  Math.abs(a.x-b.x)<(a.w+b.w)/2+padding&&
  Math.abs(a.y-b.y)<(a.h+b.h)/2+padding;
-function collisionAt(target:Obstacle,index:number,cover:readonly Obstacle[],
- walls:readonly Segment[],doors:readonly Door[],actors:readonly Pt[],
+function collisionAt(target:Obstacle,cover:readonly Obstacle[],
+ walls:readonly Segment[],leaves:readonly Segment[],actors:readonly Pt[],
  initial?:Obstacle):boolean{
  const p={x:target.x,y:target.y};
  const expanded={...target,w:target.w+4,h:target.h+4};
  if(walls.some(w=>segmentHitsBox(w.a,w.b,expanded)))return true;
- if(cover.some((o,i)=>i!==index&&overlaps(target,o)))return true;
+ if(cover.some(o=>overlaps(target,o)))return true;
  if(actors.some(a=>{
    if(Math.abs(a.x-p.x)>=target.w/2+9||
       Math.abs(a.y-p.y)>=target.h/2+9)return false;
@@ -47,10 +47,8 @@ function collisionAt(target:Obstacle,index:number,cover:readonly Obstacle[],
    return true;
  }))return true;
  const hingeClear={...target,w:target.w+18,h:target.h+18};
- if(doors.some(d=>{
-   const leaf=doorLeafSegment(d);
-   return segmentHitsBox(leaf.a,leaf.b,hingeClear);
- }))return true;
+ if(leaves.some(leaf=>segmentHitsBox(leaf.a,leaf.b,hingeClear)))
+   return true;
  return false;
 }
 export function relocateCover(cover:Obstacle[],index:number,to:Pt,
@@ -58,13 +56,35 @@ export function relocateCover(cover:Obstacle[],index:number,to:Pt,
  const old=cover[index];if(!old||!canRelocateCover(old))return false;
  const displacement=Math.hypot(to.x-old.x,to.y-old.y);
  if(displacement<=0||displacement>coverPushDistance(old)+.01)return false;
- // A swept footprint prevents passing through walls, closed doorways,
- // operators, or other real furniture by moving only the end position.
+ // One conservative broadphase per EXPLICIT displacement (not per frame).
+ // Every narrowphase step remains exact; broadphase includes the complete
+ // swept AABB plus a > hinge/actor clearance margin. This cannot permit a
+ // crossing which the old full list would reject.
+ const reach={
+  minX:Math.min(old.x,to.x)-old.w/2-24,
+  maxX:Math.max(old.x,to.x)+old.w/2+24,
+  minY:Math.min(old.y,to.y)-old.h/2-24,
+  maxY:Math.max(old.y,to.y)+old.h/2+24
+ };
+ const segmentNear=(seg:Segment)=>
+  Math.max(seg.a.x,seg.b.x)>=reach.minX&&
+  Math.min(seg.a.x,seg.b.x)<=reach.maxX&&
+  Math.max(seg.a.y,seg.b.y)>=reach.minY&&
+  Math.min(seg.a.y,seg.b.y)<=reach.maxY;
+ const nearWalls=walls.filter(segmentNear);
+ const nearLeaves=doors.map(doorLeafSegment).filter(segmentNear);
+ const nearCover=cover.filter((o,i)=>i!==index&&
+   o.x+o.w/2+5>=reach.minX&&o.x-o.w/2-5<=reach.maxX&&
+   o.y+o.h/2+5>=reach.minY&&o.y-o.h/2-5<=reach.maxY);
+ const nearActors=actors.filter(a=>
+   a.x>=reach.minX-9&&a.x<=reach.maxX+9&&
+   a.y>=reach.minY-9&&a.y<=reach.maxY+9);
  const steps=Math.max(1,Math.ceil(displacement/3));
  for(let i=1;i<=steps;i++){
   const t=i/steps,target={...old,
    x:old.x+(to.x-old.x)*t,y:old.y+(to.y-old.y)*t};
-  if(collisionAt(target,index,cover,walls,doors,actors,old))return false;
+  if(collisionAt(target,nearCover,nearWalls,nearLeaves,nearActors,old))
+   return false;
  }
  cover[index]={...old,x:to.x,y:to.y};
  return true;
@@ -82,12 +102,18 @@ export function autoShoveLightCover(cover:Obstacle[],from:Pt,to:Pt,
  const step=Math.hypot(delta.x,delta.y);
  if(step<.001)return null;
  const dir={x:delta.x/step,y:delta.y/step};
- const candidates=cover.map((o,i)=>({o,i,
-   distance:Math.hypot(from.x-o.x,from.y-o.y)}))
-  .filter(({o})=>canAutoShove(o)&&canRelocateCover(o)&&
-     Math.abs(to.x-o.x)<o.w/2+9&&Math.abs(to.y-o.y)<o.h/2+9&&
-     (o.x-from.x)*dir.x+(o.y-from.y)*dir.y>0)
-  .sort((a,b)=>a.distance-b.distance);
+ // Contact-only scan. Filter by cheap box/forward gates BEFORE
+ // classifying, measuring distance or sorting. Never map the whole scene.
+ const candidates:{o:Obstacle;i:number;distance:number}[]=[];
+ for(let i=0;i<cover.length;i++){
+  const o=cover[i];
+  if(Math.abs(to.x-o.x)>=o.w/2+9||
+     Math.abs(to.y-o.y)>=o.h/2+9||
+     (o.x-from.x)*dir.x+(o.y-from.y)*dir.y<=0||
+     !canAutoShove(o)||!canRelocateCover(o))continue;
+  candidates.push({o,i,distance:(from.x-o.x)**2+(from.y-o.y)**2});
+ }
+ candidates.sort((a,b)=>a.distance-b.distance||a.i-b.i);
  for(const {o,i} of candidates){
    const amount=coverPushDistance(o);
    // Prefer a small forward nudge; try glancing shoulder deflections only

@@ -37,7 +37,7 @@ export function planServiceBoundaryMarks(site:Site):ServiceBoundaryMark[]{
  for(const zone of site.exteriorZones??[]){
   if(zone.kind!=='service')continue;
   const lane=planRearServiceMarks([zone]).find(m=>m.kind==='clear-route');
-  const occupants=site.cover.filter(c=>
+  const occupants=(site.cover??[]).filter(c=>
     toKind(c.fixture)!==null&&
     Math.abs(c.x-zone.x)<zone.w/2-2&&
     Math.abs(c.y-zone.y)<zone.h/2-2).slice(0,3);

@@ -50,7 +50,8 @@ export function outdoorFixtureAllowed(site:Pick<Site,'archetype'>,
 export function frontageEdgeCandidates(
  site:Pick<Site,'entrySide'> & Partial<Pick<Site,
    'bounds'|'rooms'|'entrance'|'doors'|'exteriorZones'>>,zone:ExteriorZone,
- fixture:string,w:number,h:number):Pt[]|null{
+ fixture:string,w:number,h:number,
+ streetPlan?:ReturnType<typeof planPublicStreet>):Pt[]|null{
  if(!frontageFixtures.has(fixture)||zone.id!=='arrival-forecourt')
    return null;
  const entry=site.entrySide??'south';
@@ -107,11 +108,11 @@ export function frontageEdgeCandidates(
  // boundary, not on the road itself. Respect forecourts that don't reach
  // all the way to the curb on deeper lots.
  if(site.rooms?.length&&site.entrance){
-   const street=planPublicStreet({
+   const street=streetPlan===undefined?planPublicStreet({
      entrySide:site.entrySide,rooms:site.rooms,
      entrance:site.entrance,doors:site.doors,
      bounds:site.bounds,exteriorZones:site.exteriorZones
-   });
+   }):streetPlan;
    if(street){
      const strip=street.sidewalk??street.road;
      const near=across==='x'?strip.x:strip.y;

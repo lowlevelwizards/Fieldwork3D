@@ -11,15 +11,21 @@ import {probeWindowPortalRoute,canOpenWindowForClimb,canClimbWindow,
 import {manipulateWindow,type WindowState} from './breach-windows.ts';
 import {d,clone,angle,type ActorMotorHooks} from './breach-motor-contract.ts';
 
-export const motorTraversalWorld=(s:Session,a:TeamActor)=>({
- cover:s.coverState,walls:sessionWorldGeometry(s).walls,doors:s.doors,windows:s.windows,
- // A teammate in the air already owns their landing. The next member of
- // the stack may approach, but must not launch into that reserved spot.
- actors:s.operators.filter(other=>other!==a&&other.health>0)
-   .flatMap(o=>[o.p,...(o.traversal?[o.traversal.landing]:
-     o.traversalPending?[o.traversalPending.landing]:[])]),
- canStand:(p:Pt)=>sessionWorldGeometry(s).passable(p)
-});
+export function motorTraversalWorld(s:Session,a:TeamActor){
+ // Only materialize this small occupancy list for an ACTIVE or contemplated
+ // crossing, never as a background 60 Hz environment simulation.
+ const actors:Pt[]=[];
+ for(const other of s.operators){
+  if(other===a||other.health<=0)continue;
+  actors.push(other.p);
+  if(other.traversal)actors.push(other.traversal.landing);
+  else if(other.traversalPending)
+   actors.push(other.traversalPending.landing);
+ }
+ const geometry=sessionWorldGeometry(s);
+ return {cover:s.coverState,walls:geometry.walls,
+   doors:s.doors,windows:s.windows,actors,canStand:geometry.passable};
+}
 const traversalFitness=(a:TeamActor)=>({
  pace:a.pace,injury:Math.min(3,Math.max(0,a.injuryStage)) as 0|1|2|3,
  loadFactor:1/Math.max(.55,a.loadMovementScale??1)
@@ -37,9 +43,18 @@ export function plausibleMotorTraversal(from:Pt,goal:Pt,
  if(span>=20){
   const probe=span>170?{x:from.x+(goal.x-from.x)*170/span,
    y:from.y+(goal.y-from.y)*170/span}:goal;
+  const minX=Math.min(from.x,probe.x),maxX=Math.max(from.x,probe.x);
+  const minY=Math.min(from.y,probe.y),maxY=Math.max(from.y,probe.y);
   for(const index of knownCover){
    const obstacle=cover[index];
-   if(!obstacle)continue;
+   if(!obstacle||
+      obstacle.x-obstacle.w/2>maxX||
+      obstacle.x+obstacle.w/2<minX||
+      obstacle.y-obstacle.h/2>maxY||
+      obstacle.y+obstacle.h/2<minY)continue;
+   // Exact-safe AABB rejection before the material/geometry classifier;
+   // full crossingInterval still validates every potentially intersecting
+   // candidate, including all locally visible cover.
    const kind=traversalKind(obstacle);
    if(kind&&kind!=='step'&&crossingInterval(from,probe,obstacle))
     return true;
@@ -65,11 +80,13 @@ function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
  const world=motorTraversalWorld(s,a);
  const fit=traversalFitness(a);
  const ordinary=routeWithSqueezeIntel(s.intel,a.p,goal);
- const portal=probeWindowPortalRoute(a.p,goal,{
+ // Maps without a real pane must never pay for a portal-route probe.
+ // The ordinary motor and obstacle crossing remain exactly authoritative.
+ const portal=world.windows.length?probeWindowPortalRoute(a.p,goal,{
    ...world,
    windows:world.windows.map(w=>
      canOpenWindowForClimb(w)?{...w,open:true}:w)
- },(from,to)=>routeWithSqueezeWorld(from,to,s.doors,sessionWorldGeometry(s)),fit);
+ },(from,to)=>routeWithSqueezeWorld(from,to,s.doors,sessionWorldGeometry(s)),fit):null;
  if(portal&&s.intel.cover.has(portal.crossing.obstacleIndex)&&
      (!ordinary.length||portal.duration+.12<
       traversalRouteLength(a.p,ordinary)/53))

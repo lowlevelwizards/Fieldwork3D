@@ -437,12 +437,30 @@ export function planNearbyInteraction(s:Session,id:string,
    else a.plan.push(order);
  });
  if(action==='push'){
-   const candidates=s.coverState.map((o,index)=>({o,index,
-     distance:d(at,{x:o.x,y:o.y})})).filter(c=>
-       s.intel.cover.has(c.index)&&canRelocateCover(c.o)&&
-       c.distance<Math.max(c.o.w,c.o.h)/2+43)
-     .sort((x,y)=>x.distance-y.distance||x.index-y.index);
-   const item=candidates[0];if(!item)return false;
+   // Authoring-only scan. No map/filter/sort array and no new 60 Hz work.
+   // A tap ON a known, reachable prop targets that precise prop; a tap
+   // further away retains the prior directional PUSH behavior.
+   let item:{o:typeof s.coverState[number];index:number}|undefined;
+   let best=Infinity,bestDirect=Infinity;
+   for(let index=0;index<s.coverState.length;index++){
+     if(!s.intel.cover.has(index))continue;
+     const o=s.coverState[index];
+     if(!canRelocateCover(o))continue;
+     const dx=o.x-at.x,dy=o.y-at.y;
+     const distanceSq=dx*dx+dy*dy;
+     const reach=Math.max(o.w,o.h)/2+43;
+     if(distanceSq>=reach*reach)continue;
+     const direct=pushPoint&&
+       Math.abs(pushPoint.x-o.x)<=o.w/2+9&&
+       Math.abs(pushPoint.y-o.y)<=o.h/2+9;
+     const tapDist=direct?((pushPoint!.x-o.x)**2+(pushPoint!.y-o.y)**2):Infinity;
+     if(direct&&bestDirect===Infinity||direct&&tapDist<bestDirect){
+       item={o,index};bestDirect=tapDist;best=distanceSq;
+     }else if(bestDirect===Infinity&&distanceSq<best){
+       item={o,index};best=distanceSq;
+     }
+   }
+   if(!item)return false;
    const toward={x:item.o.x-at.x,y:item.o.y-at.y};
    const base=Math.atan2(toward.y,toward.x);
    const chosen=pushPoint&&d(pushPoint,{x:item.o.x,y:item.o.y})>4?
@@ -452,10 +470,13 @@ export function planNearbyInteraction(s:Session,id:string,
    return queue('prop:'+coverTargetToken(item.o,item.index),
       {x:Math.cos(yaw),y:Math.sin(yaw)});
  }
- const target=s.windows.filter(w=>w.operable&&!w.shattered&&
-   d(at,{x:w.x,y:w.y})<54&&w.open===(action==='close-window'))
-   .sort((x,y)=>d(at,{x:x.x,y:x.y})-
-     d(at,{x:y.x,y:y.y}))[0];
+ let target:typeof s.windows[number]|undefined,bestWindow=54*54;
+ for(const w of s.windows){
+   if(!w.operable||w.shattered||w.open!==(action==='close-window'))
+     continue;
+   const dx=w.x-at.x,dy=w.y-at.y,dist=dx*dx+dy*dy;
+   if(dist<bestWindow){bestWindow=dist;target=w;}
+ }
  if(!target)return false;
  return queue('window:'+target.id);
 }
@@ -1617,9 +1638,13 @@ function resolveCloseContact(s:Session){
 /** Shared gameplay action; physical object selection is based on its ID. */
 export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  if(s.phase==='won'||s.phase==='lost')return false;
- const moved=relocateCover(s.coverState,index,to,sessionWorldGeometry(s).walls,s.doors,
-   [...s.operators.filter(a=>a.health>0).map(a=>a.p),
-    ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
+ // One local occupancy array; avoid three intermediate filter/map arrays
+ // on every short push increment.
+ const occupants:Pt[]=[];
+ for(const actor of s.operators)if(actor.health>0)occupants.push(actor.p);
+ for(const civil of s.civilians)if(civil.health>0)occupants.push(civil.p);
+ const moved=relocateCover(s.coverState,index,to,
+   sessionWorldGeometry(s).walls,s.doors,occupants);
  if(!moved)return false;
  s.objectRevision++;
  publishSessionCoverToActiveSite(s);

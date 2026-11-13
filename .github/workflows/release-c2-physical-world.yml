@@ -1,0 +1,71 @@
+name: Release C C4-C7 — Physical Environment Performance Gate
+on:
+  pull_request:
+    paths:
+      - 'src/breach-movable-cover.ts'
+      - 'src/breach-motor-traversal.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-order-interactions.ts'
+      - 'src/breach-tactical-context-command.ts'
+      - 'src/worldgen/exterior-sites.ts'
+      - 'src/worldgen/outdoor-fixture-policy.ts'
+      - 'src/worldgen/public-street-layout.ts'
+      - 'tests/release-c2-*'
+      - '.github/workflows/release-c2-physical-world.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-c2-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  physical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: C4-C7 exact swept-contact and physical authority gates
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-c2-c4-exterior-ground.test.mjs \
+            tests/release-c2-c5-interactions.test.mjs \
+            tests/release-c2-c6-movable-parity.test.mjs \
+            tests/release-c2-c7-traversal.test.mjs \
+            tests/performance-p2-13-traversal-hotpaths.test.mjs \
+            tests/lw-movable-cover.test.mjs \
+            tests/lw-reactive-cover.test.mjs \
+            tests/lw-interaction-orders.test.mjs \
+            tests/lw-replay-world.test.mjs \
+            tests/contextual-actions-medical-window-20261108.test.mjs \
+            tests/performance-p2-8-sweep-broadphase.test.mjs \
+            tests/architecture-18a-property-access.test.mjs \
+            tests/map-16-property-surfaces.test.mjs \
+            tests/breach-roadmap2-stage7-motor.test.mjs \
+            tests/breach-roadmap2-stage10-combat.test.mjs
+      - name: C4-C7 complete 33-site generated map audit
+        run: node --experimental-strip-types scripts/audit-release-c0.mjs c4-c7-after.json
+      - uses: actions/checkout@v4
+        with:
+          ref: c9eecb89e28a28739fce6e41d328c27021106a8a
+          path: c4-c7-before-main
+      - name: Measure the same map corpus before C4-C7
+        run: |
+          npm install --prefix c4-c7-before-main --no-audit --no-fund
+          (cd c4-c7-before-main && node --experimental-strip-types scripts/audit-release-c0.mjs ../c4-c7-before.json)
+      - name: Reject physical site quality or blocked access regression
+        run: node scripts/compare-release-c0.mjs c4-c7-before.json c4-c7-after.json c4-c7-delta.json
+      - name: Production typecheck + Vite build
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: c4-c7-physical-world-baseline
+          path: |
+            c4-c7-before.json
+            c4-c7-after.json
+            c4-c7-delta.json
+          if-no-files-found: ignore
