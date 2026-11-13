@@ -194,7 +194,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
 }
 export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  shellHex:number,covered:boolean,headEyewear='eyes-none'):void{
- const s=resolveHelmetField(v.shell,raw),m=v.modules;
+ const s=resolveHelmetField(v.shell,raw,{covered}),m=v.modules;
  // Swap between cached, pre-authored cloth and shell ring profiles only
  // when the cover state changes; never raycast every animation frame.
  if(v.shell!=='pasgt'){
@@ -208,10 +208,10 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  const webHex=resolveHelmetFieldColor(s.webbingColor,shellHex,v.shell==='pasgt');
  v.bandMaterial.color.setHex(bandHex);v.webbingMaterial.color.setHex(webHex);
  // The net cannot be tied off if its retaining elastic is absent.
- m.band.visible=(s.band||(covered&&s.concealment==='net'))&&v.shell!=='pasgt';
+ m.band.visible=(s.band||s.concealment==='net')&&v.shell!=='pasgt';
  m.loops.visible=covered&&v.shell!=='pasgt'&&s.concealment!=='none';
  m.scrim.visible=covered&&v.shell!=='pasgt'&&s.concealment==='scrim';
- m.net.visible=covered&&v.shell!=='pasgt'&&s.concealment==='net';
+ m.net.visible=v.shell!=='pasgt'&&s.concealment==='net';
  m.leaves.visible=covered&&v.shell!=='pasgt'&&s.concealment.startsWith('foliage-')&&
   s.concealment!=='foliage-loops';
  const count=s.concealment==='foliage-sparse'?3:

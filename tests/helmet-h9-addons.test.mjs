@@ -26,7 +26,9 @@ test('H9.7: every modern add-on has its own recognizable mounted silhouette',()=
    assert.ok(Math.abs(n.length()-1)<1e-3);
    for(const id of expected)assert.ok(g.getObjectByName(id),shell+' missing '+id);
    assert.ok(new THREE.Box3().setFromObject(g).getSize(new THREE.Vector3()).length()>1);
-   updateHelmetFieldLayers(kit,{[name]:true},0x62705d,true);
+   updateHelmetFieldLayers(kit,{[name]:true,
+    ...(['light','camera'].includes(name)?{rails:true}:{}),
+    ...(name==='chemlight'?{band:true}:{})},0x62705d,true);
    assert.equal(g.visible,true);
   }
   const counter=kit.modules.counterweight.children.find(x=>

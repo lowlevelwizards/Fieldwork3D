@@ -25,7 +25,7 @@ test('H9.4c: cords and hooks are paired and anchored to the intended surface',()
    assert.ok(Math.abs(r.last[0])<3,'shroud end must approach front center');
    assert.ok(r.first[2]>r.last[2],'cord should connect rail to front shroud');
   }
-  updateHelmetFieldLayers(kit,{bungees:true},0x586548,true);
+  updateHelmetFieldLayers(kit,{bungees:true,rails:true,shroud:true},0x586548,true);
   assert.equal(g.visible,true);
   updateHelmetFieldLayers(kit,{bungees:false},0x586548,true);
   assert.equal(g.visible,false);
