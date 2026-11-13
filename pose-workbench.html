@@ -60,6 +60,10 @@ textarea{width:100%;height:125px;min-height:85px;resize:vertical;padding:9px;fon
 #wbLibraryDetails select{min-width:100px}
 #wbLibraryDetails .checkline{min-height:35px}
 #wbBulkStatus{font-size:12px;color:var(--muted);line-height:1.35}
+#wbTimelineTime{width:100%;accent-color:var(--gold);touch-action:pan-y}
+#wbTimelineKeys{font:11px/1.5 ui-monospace,monospace;color:var(--muted);white-space:pre-wrap}
+#wbCueName{width:145px;max-width:100%;min-height:39px;padding:7px;background:#304a42;color:var(--ink);border:1px solid var(--line);border-radius:6px}
+#wbCueKind{max-width:160px}
 
 noscript{position:absolute;top:15%;left:8%;right:8%;background:#1c312a;padding:15px;color:white}
 @media(min-width:800px){#editor{height:340px;max-height:52dvh;padding:16px max(20px,calc((100vw - 980px)/2))}.xyz{grid-template-columns:60px 1fr 90px}header{padding-left:24px;padding-right:24px}}
@@ -114,6 +118,15 @@ noscript{position:absolute;top:15%;left:8%;right:8%;background:#1c312a;padding:1
 <p>Scrub from the original ready pose into your authored pose. Both hands, both elbow guides, shoulders, stock, weapon orientation and torso interpolate together. This is a preview only.</p>
 <div class="row"><label for="blend">BLEND</label><input id="blend" type="range" min="0" max="100" step="1" value="100"><output id="blendValue">100%</output></div>
 <div class="actions"><button type="button" id="wbAnimate">PLAY TRANSITION</button><button type="button" id="wbEnd">EDIT FINAL POSE</button></div>
+</div></details>
+<details id="wbChoreographyDetails"><summary>A1 · CHOREOGRAPHY TIMELINE / KEYFRAMES</summary>
+<div class="detailsBody">
+<p>Author a sequence of IK poses. Scrub and play the real operator rig; use LOAD FRAME TO EDIT to edit a sampled pose, then CAPTURE EDITED POSE to place it at the selected time. Markers are visual metadata, never inventory or ballistic events. Sequences are saved per weapon, do not automatically change battle animations.</p>
+<div class="row"><label for="wbTimelineTime">TIME</label><input id="wbTimelineTime" type="range" min="0" max="1200" step="10" value="1200" aria-label="Choreography timeline time"><output id="wbTimelineValue">1.20s</output></div>
+<output id="wbTimelineKeys">0.00s · 1.20s</output>
+<div class="actions"><button id="wbTimelinePlay" type="button">PLAY TIMELINE</button><button id="wbTimelineEdit" type="button">LOAD FRAME TO EDIT</button><button id="wbTimelineCapture" type="button" class="primary">CAPTURE EDITED POSE</button><button id="wbTimelineRemove" type="button">REMOVE INTERIOR KEY</button></div>
+<div class="row"><label for="wbCueName">MARKER</label><input id="wbCueName" type="text" maxlength="80" placeholder="e.g. hand release" value="support release"><select id="wbCueKind" aria-label="Marker type"><option value="cue">VISUAL CUE</option><option value="contact">CONTACT NOTE</option></select><button id="wbCueAdd" type="button">ADD MARKER</button></div>
+<div class="actions"><button id="wbTimelineSave" type="button">SAVE SEQUENCE</button><button id="wbTimelineExport" type="button">SHOW SEQUENCE JSON</button><button id="wbTimelineImport" type="button">IMPORT SEQUENCE JSON</button><button id="wbTimelineReset" type="button">RESET TWO-KEY SEQUENCE</button></div>
 </div></details>
 <details open><summary>EXPORT / IMPORT / SAVE</summary><div class="detailsBody">
 <p>Export this weapon's exact authored XYZ positions as version 1 JSON. The entire library uses version 2 JSON, preserving separate poses and edits per weapon. Paste either format back here to import. These drafts do not affect gameplay.</p>

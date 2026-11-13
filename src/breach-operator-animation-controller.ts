@@ -1,4 +1,5 @@
 import {sampleOperatorFootContacts,applyOperatorLegIK} from './breach-operator-lower-body.ts';
+import {throwSupportGesture} from './breach-animation-choreography.ts';
 import {beginOperatorAnimationFrame,sampleOperatorTurnAngles} from './breach-operator-animation-frame.ts';
 import {beginOperatorFramePose,workingOperatorRig,finishOperatorFramePose}
  from './breach-operator-frame-output.ts';
@@ -814,8 +815,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       });
   }else if(throwActive){
     
-    const t=Math.sin(Math.PI*clamp(throwAge/.7,0,1));
-    leftGrip.set(data.supportX+8*t,4+7*t,-7);
+    // A1: timeline-sampled visual gesture only. Hand ownership, simulated
+    // throw/release, world trajectory and actor intent remain untouched.
+    const gesture=throwSupportGesture(throwAge);
+    leftGrip.set(data.supportX+gesture.forward,4+gesture.lift,-7);
   }else if(p.surrender){
     
     const raised=smooth(downProgress/.60);

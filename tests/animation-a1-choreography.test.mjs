@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {THROW_SUPPORT_GESTURE,throwSupportGesture,
  sampleChoreography,validateChoreography,
@@ -88,4 +89,19 @@ test('A1 production throw remains deterministic and separate from physical aim',
   assert.equal(compareAnimationFrames(first,repeat).frozenDrift,false);
   assert.equal(repeat.slotCount,30);
  }finally{rig.dispose();}
+});
+
+test('A1 Workbench DOM and live pose integration remain within existing output',()=>{
+ const html=readFileSync(new URL('../pose-workbench.html',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../src/operator-pose-workbench-ui.ts',import.meta.url),'utf8');
+ const controller=readFileSync(new URL('../src/breach-operator-animation-controller.ts',import.meta.url),'utf8');
+ for(const id of ['wbTimelineTime','wbTimelinePlay','wbTimelineEdit',
+  'wbTimelineCapture','wbTimelineRemove','wbTimelineImport',
+  'wbTimelineExport','wbCueAdd','wbTimelineReset']){
+  assert.ok(html.includes('id="'+id+'"'));
+  assert.ok(ui.includes("'"+id+"'"));
+ }
+ assert.match(controller,/throwSupportGesture\(throwAge\)/);
+ assert.match(controller,/commitOperatorPoseOutput\(r,p\)/);
+ assert.equal((controller.match(/commitOperatorPoseOutput\(r,p\)/g)??[]).length,1);
 });
