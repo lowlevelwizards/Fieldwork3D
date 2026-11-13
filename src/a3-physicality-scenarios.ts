@@ -1,7 +1,7 @@
 /** A3.0 isolated fixtures. No Breach production module imports this file. */
 import type {Site} from './breach-site.ts';
 import type {Pt,Door,Segment,Obstacle} from './breach-core.ts';
-import {newSession,team,enemies,type Session} from './breach-game.ts';
+import {newSession,team,enemies,planMove,type Session} from './breach-game.ts';
 export type A3Scene='clear'|'rear-stack'|'offset-left'|'offset-right'|
  'mixed-crouch'|'crossing'|'doorway'|'furniture';
 export type A3Intent='hold'|'look'|'watch'|'engage';
@@ -79,7 +79,7 @@ export function createA3Session(config:A3Config):Session{
  // No automatic AI-generated plan is needed to reconstruct a static stack.
  if(config.scenario==='crossing'&&config.operators>=2){
   const mover=blues[1];
-  mover.plan=[{id:'a3-crossing',kind:'move',p:p(187,178),moveMode:'walk'}];
+  planMove(session,mover.id,p(187,178));
  }
  session.phase='running';session.started=true;
  return session;
