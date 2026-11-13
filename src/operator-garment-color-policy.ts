@@ -147,7 +147,8 @@ export const SOLID_COMBAT_KNIT_DEFAULTS:Readonly<Record<GarmentSolidId,GarmentSo
  'forest-green':'ranger-green','field-green':'olive-drab',
  sage:'foliage',foliage:'foliage',khaki:'khaki',sand:'sand',tan:'khaki',
  coyote:'coyote',brown:'coyote','nutria-brown':'khaki',slate:'slate',
- charcoal:'charcoal',black:'black','off-white':'off-white'
+ charcoal:'charcoal',black:'black','off-white':'off-white',
+ navy:'navy','muted-blue':'slate',rust:'brown','burnt-orange':'brown'
 };
 export function resolvedCombatKnitSolid(options:{
  print?:HeadwearCamoId|null;solid?:GarmentSolidId|null;
