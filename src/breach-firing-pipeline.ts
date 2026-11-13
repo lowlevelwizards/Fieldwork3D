@@ -425,6 +425,7 @@ function settlePassiveAim(a:TeamActor,dt:number):void{
     a.suspicion.stage==='alerted'||
     a.alert==='investigating'&&!!a.contact,
   authored:!!watch&&watch.source!=='stack',
+  lookOrder:a.plan[0]?.kind==='look',
   aimMode:watch?.mode
  });
  const ready=passiveAimReadiness(urgency),step=dt*
