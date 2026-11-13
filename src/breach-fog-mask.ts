@@ -49,30 +49,22 @@ export function paintFogMemory(ctx:CanvasRenderingContext2D,s:Session,
   ctx.globalCompositeOperation='source-over';
   ctx.clearRect(bounds.minX,bounds.minY,
     bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
-  // Fully unknown: visually distinct from missing level geometry, but
-  // opaque, so no floor or undiscovered furnishings leak through.
+  ctx.filter='none';
   ctx.fillStyle=diagnostic==='palette'?'#b2226f':UNKNOWN_FOG_COLOR;
-  ctx.fillRect(bounds.minX,bounds.minY,
-    bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
-  ctx.globalCompositeOperation='destination-out';
-  // Exterior Known is the complement of one precomputed physical concealment
-  // footprint, NOT a rectangular unknown field with many 10-unit exterior
-  // cutouts. The same immutable union is used by the 3D mesh: outside
-  // grass/courts cannot pick up giant black slabs on regenerated maps.
-  // This is site-only work cached across camera updates and visibility paints.
+  // Paint ONLY the precomputed indoor/enclosed-court footprint in Exterior
+  // Known. Outside stays transparent from clearRect; there is no giant full-
+  // world temporary fog fill, no outdoor grid scan and no erase/re-cover pass.
+  // The same cached site footprint builds the static 3D fog mesh.
   if(s.intel.mode==='exterior-known'&&s.site){
-    ctx.filter='none';
-    ctx.fillStyle='#fff';
-    ctx.fillRect(bounds.minX,bounds.minY,
-      bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
-    ctx.globalCompositeOperation='source-over';
-    ctx.fillStyle=diagnostic==='palette'?'#b2226f':UNKNOWN_FOG_COLOR;
     for(const rect of exteriorKnownFogRects(s.site))
       ctx.fillRect(rect.x,rect.y,rect.w,rect.h);
-    ctx.globalCompositeOperation='destination-out';
-    // Public façades/windows do not reveal indoor floors. Only later
-    // remembered knowledge and genuine live LOS can erase indoor opacity.
+  }else{
+    ctx.fillRect(bounds.minX,bounds.minY,
+      bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
   }
+  ctx.globalCompositeOperation='destination-out';
+  // Public façades/windows do not reveal indoor floors. Only remembered
+  // knowledge and genuine live LOS can erase indoor opacity.
   // Full View must clear the map outright, not leave a translucent tint
   // in 2D while 3D hides its fog mesh. It grants no new gameplay knowledge.
   if(s.intel.mode==='full-view'){
