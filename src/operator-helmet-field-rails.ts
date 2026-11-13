@@ -34,7 +34,13 @@ const railFrame=(shell:AchMichCoverShell,side:Side,u:number,rise=0):
   for(const vv of [v,v+.11,v-.10,v+.23,v-.20,.25,.40]){
    const f=sampleHelmetCover(shell,side,uu,clamp(vv,-.64,.79),.18);
    if(f&&((side==='left'&&f.position.x<0)||
-          (side==='right'&&f.position.x>0)))return f;
+          (side==='right'&&f.position.x>0))){
+    // A molded ARC rail has a single continuous centerline even where
+    // MICH-2002 cloth is interrupted by the high ear cut. The sampled
+    // X/Z surface and normal still determine contact and orientation.
+    f.position.y=y;
+    return f;
+   }
   }
  throw Error('H9.4b no '+shell+' '+side+' rail frame at u='+u);
 };
