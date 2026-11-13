@@ -70,7 +70,11 @@ export function planPublicStreet(site:StreetSite):PublicStreet|null{
  const sidewalkPieces:StreetRect[]=[];
  let curbRamp:StreetRect|null=null;
  if(sidewalk){
-   const boundary=border-sign*(roadWidth+1.2);
+   // Curb top is flush with the sidewalk top. Butt their edges instead
+   // of overlapping two opaque coplanar strips by 0.5 world units.
+   // With a 2.6-wide curb and sidewalk edge at roadWidth+2,
+   // its center must be roadWidth+(2-2.6/2)=roadWidth+0.7.
+   const boundary=border-sign*(roadWidth+0.7);
    // A curb is continuous at domestic street fronts; a private vehicular
    // apron / parking entrance gets a single real break, not a crosswalk
    // leading into traffic for no reason.
