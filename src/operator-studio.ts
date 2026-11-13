@@ -864,7 +864,7 @@ function chooseStyle(slot:WardrobeSlot,id:string){
    slot==='rigStyle'?'THIS RIG LOOK NEEDS A MATCHING EQUIPPED LOAD-BEARING CLASS':
    'This item requires a different equipped kit');return;
  }
- activeStep='materials';
+ // Preserve ITEM while auditioning different styles; MATERIAL stays optional.
  changeWardrobe(setWardrobeStyle(current(),slot,id));
  applyStudioStep();
 }
@@ -907,7 +907,7 @@ function applyStudioStep(){
   button.setAttribute('aria-pressed',String(pressed));
  }
  workflowHint.textContent=activeStep==='items'?
-  'Choose a 3D item to edit · select an equipped card to inspect its material':
+  'Try different items here · open MATERIAL when ready to customize':
   activeStep==='materials'?'Choose a fabric, finish or color · changes preview immediately':
   'Optional fit, wear, and equipment coordination settings';
 }
