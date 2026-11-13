@@ -37,7 +37,9 @@ export function runDoorRangeQ5(
  try{
   prepareDoorRangeCase(s,door);
   const actors=team(s).slice(0,4);
-  const goals=actors.map((_,i)=>({x:293+i*12,y:346+i*6}));
+  // Distinct adult-size end positions; the old Door Lab's 12×6 spacing
+  // could make independent actors finish on top of one another.
+  const goals=actors.map((_,i)=>({x:282+i*23,y:346+(i%2)*18}));
   const planned=program==='squad'?planSquadEntry(s,'ENTRY'):
     actors.every((a,i)=>planMove(s,a.id,goals[i]));
   const crossed=new Map<string,number>();

@@ -34,7 +34,7 @@ import type {ActorMotorHooks} from './breach-motor-contract.ts';
  * Author intent is editable PlanNode[]; motor navigation is transient.
  * The core retains the 052 static geometry and starter actors, not its old simulation.
  */
-import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorBlocksRay,doorBlocksSightRay,pointToSegment} from './breach-core.ts';
+import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment} from './breach-core.ts';
 import {type PlanNode,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions,doorOpensTowardApproach} from './breach-entry-coordination.ts';
@@ -745,10 +745,15 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
   const outward=doorOpensTowardApproach(door,from);
   const preferred=team(s).findIndex(b=>b.id===id);
   const candidates=stackApproachPositions(door,from);
+  // Q5: a pre-opened panel can ALREADY be occupying the otherwise legal
+  // closed-door staging pocket. Use its current visible physical leaf,
+  // not the imaginary closed position; no hidden geometry is disclosed.
+  const currentLeaf=doorLeafSegment(door);
   // Smaller entrance frames retain valid nearby choices; never pick a
   // physical stack slot too far away to use the door.
   const legal=candidates.filter(p=>
     d(p,center)<(outward?68:43)&&
+    pointToSegment(p,currentLeaf)>=OPERATOR_RADIUS+2.5&&
     (!outward||!doorWouldStrikeActors({...door,openFraction:0},1.03,
       [p],OPERATOR_RADIUS+1))&&intelPassable(p,s.intel)&&
     !!routeWithIntel(s.intel,from,p).length&&

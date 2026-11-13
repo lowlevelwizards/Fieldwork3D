@@ -88,7 +88,7 @@ function plan(){
  for(let i=0;i<active.length;i++){
   const a=active[i];
   const goal=program.value==='counterflow'&&i>=2?
-   p(300+(i-2)*18,174):p(293+i*12,346+i*6);
+   p(300+(i-2)*18,174):p(282+i*23,346+(i%2)*18);
   ok=planMove(s,a.id,goal)&&ok;
  }
  return ok;
