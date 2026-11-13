@@ -110,8 +110,13 @@ jobs:
       - name: Rendering R7.14 — actual Arsenal weapon 3D shader mobile smoke
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/lighting-r714-') }}
         run: node scripts/smoke-arsenal-lighting-r714.mjs
+      - name: H8 helmet recovery TypeScript and concentrated geometry tests
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h8-') }}
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/helmet-h7-*.test.mjs tests/helmet-h8-*.test.mjs
       - name: H7 helmet field dress and equipment actual phone WebGL coverage
-        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-customization-h7-') }}
+        if: ${{ github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/helmet-customization-h7-') || startsWith(github.head_ref, 'feature/helmet-h8-')) }}
         run: node scripts/helmet-h7-visual-capture.mjs
       - uses: actions/upload-artifact@v4
         if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-customization-h7-') }}
