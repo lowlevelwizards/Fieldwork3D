@@ -70,18 +70,21 @@ function inspectDoor(s:Session,tick:TickClaims,door:Door):void{
 export function sessionDoorPressurePolicy(
  s:Session,actor:TeamActor
 ):BodyDoorPressurePolicy{
- const frame=doorPressureTick(s);
+ // Construct arbitration sets only when a touched leaf requests them.
  return {
   canHandAssist:door=>canDoorHandAssist(s,actor,door),
   preferOpening:door=>{
+   const frame=doorPressureTick(s);
    inspectDoor(s,frame,door);
    return frame.actorsOpening.has(actorKey(actor.id,door.id));
   },
   deferClosing:door=>{
+   const frame=doorPressureTick(s);
    inspectDoor(s,frame,door);
    return frame.protectedBySide.has(sideKey(door.id,actor.side));
   },
   claimContact:door=>{
+   const frame=doorPressureTick(s);
    if(frame.claimedImpulses.has(door.id))return false;
    frame.claimedImpulses.add(door.id);
    return true;
