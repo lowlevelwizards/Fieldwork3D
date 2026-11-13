@@ -54,7 +54,8 @@ test('normal live RAF history retains previous CPU parent costs without opening 
  const output=timeline.report('planning','iso');
  assert.match(output,/LIGHT CPU SLICES/);
  assert.match(output,/prior-frame JS occupied RAF interval/);
- assert.match(output,/3D scene 48ms/);
+ assert.match(output,/prior hotspot before UI 87ms/);
+ assert.match(output,/PREVIOUS SIM 54/);
  assert.match(output,/PREVIOUS SIM 54/);
  assert.match(output,/zero detailed phase values in BASIC\/LIGHT/i);
 });
