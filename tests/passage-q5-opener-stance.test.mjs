@@ -28,3 +28,29 @@ test('Q5 no eager sidestep on already safe/locked/active leaf',()=>{
  assert.equal(selectOpeningStance(door,p(260,230),()=>true,[]),null);
  assert.equal(openerThreatensLeaf({...door,open:true},p(297,291)),false);
 });
+
+test('Q5 out-of-reach handle correction exceeds motor arrival tolerance',async()=>{
+ const {doorApproach,doorReachable}=await import('../src/breach-door.ts');
+ const {newSession}=await import('../src/breach-game.ts');
+ const {activateSite}=await import('../src/breach-core.ts');
+ const {sessionWorldGeometry}=await import('../src/breach-world-context.ts');
+ for(const sample of [
+  {id:'inward-left',face:'south',at:p(297.735,291.324),
+   peers:[p(331.796,323.622),p(270.746,282.812),p(345.528,281.926)]},
+  {id:'outward-left',face:'north',at:p(297.735,228.676),
+   peers:[p(331.796,196.378),p(270.648,237.281),p(344.528,239.602)]}
+ ]){
+  const s=newSession(0,undefined,'full-view','small','hold',
+   doorRangeSite(sample.id,'diagonal-left',sample.face),
+   {enableCivilians:false});
+  try{
+   const door=s.doors[0];
+   assert.equal(doorReachable(sample.at,door),false);
+   const correction=doorApproach(sample.at,door,
+    sessionWorldGeometry(s),sample.peers,4.25);
+   assert.ok(correction,'must find reachable micro-position');
+   assert.equal(doorReachable(correction,door),true);
+   assert.ok(d(sample.at,correction)>4.2);
+  }finally{activateSite(null);}
+ }
+});

@@ -84,7 +84,7 @@ export function autoDoorAtBodyContact(from:Pt,to:Pt,
  return nearest;
 }
 export function doorApproach(from:Pt,d:Door,world?:SessionWorldGeometry,
- occupied:readonly Pt[]=[]):Pt|null{
+ occupied:readonly Pt[]=[],minimumTravel=0):Pt|null{
   const m=doorCenter(d),len=dist(d.a,d.b)||1;
   const t={x:(d.b.x-d.a.x)/len,y:(d.b.y-d.a.y)/len};
   const n={x:-t.y,y:t.x};
@@ -111,7 +111,8 @@ export function doorApproach(from:Pt,d:Door,world?:SessionWorldGeometry,
   // can choose a reachable handle position on the far side of the swung
   // leaf, forcing a silly detour or wall scrape just to approach a door.
   const staged=candidates.flatMap((point,index)=>{
-    if(!bodyClear(point,[d],OPERATOR_RADIUS,world)||!doorReachable(point,d)||
+    if(dist(from,point)<minimumTravel||
+        !bodyClear(point,[d],OPERATOR_RADIUS,world)||!doorReachable(point,d)||
         occupied.some(other=>dist(other,point)<27))return [];
     const waypoints=route(from,point,p=>bodyClear(p,[d],OPERATOR_RADIUS,world));
     if(!waypoints.length)return [];

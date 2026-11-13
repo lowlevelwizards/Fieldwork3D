@@ -47,13 +47,15 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
        // Only a short physically swept correction is allowed.
        const remembered=a.nav.at(-1);
        const stage=remembered&&d(a.p,remembered)<75&&
-         d(a.p,remembered)>2&&doorReachable(remembered,door)?
+         d(a.p,remembered)>3.5&&doorReachable(remembered,door)?
            remembered:null;
        const point=stage??doorApproach(a.p,door,sessionWorldGeometry(s),
          [...s.operators.filter(other=>other!==a&&other.health>0)
            .map(other=>other.p),
-          ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
-       if(point&&d(a.p,point)>2&&d(a.p,point)<75&&
+          ...s.civilians.filter(c=>c.health>0).map(c=>c.p)],4.25);
+       // Motor navigation consumes waypoints within 3 units as arrived.
+       // A near-reach correction MUST exceed that existing tolerance.
+       if(point&&d(a.p,point)>3.5&&d(a.p,point)<75&&
           a.blockedTime<3.5&&a.recoveryAttempts<5){
          clearCurrentOrderIssue(a);
          approach(a,point,dt,s,.60);return true;
