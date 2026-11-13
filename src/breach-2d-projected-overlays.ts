@@ -7,6 +7,7 @@ import {type Session,type TeamActor,team,enemies,isSeen,lastKnown,
 import type {TacticalScene3D} from './breach-3d.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
+import {paintPassageRanks} from './ui/passage-rank-badges.ts';
 import {intelPassable} from './breach-intel.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {doorReachable} from './breach-door.ts';
@@ -251,6 +252,10 @@ function renderProjectedPlans(){
       draw.arc(target.x,target.y,20,0,Math.PI*2);draw.stroke();draw.restore();
     }
   }
+  // Reuse the exact Q3 ranked crossings in the projected iso view.
+  // A marker is a screen-space annotation, never 3D world geometry.
+  paintPassageRanks(state,draw,p=>worldToScreen(p,12),
+   colorFor,selected,replaying);
   // Recorded operator labels are independent of route visibility.
   if(replaying&&replayNameTags)for(const member of team(state)){
     const pawn=worldToScreen(member.p,32);
