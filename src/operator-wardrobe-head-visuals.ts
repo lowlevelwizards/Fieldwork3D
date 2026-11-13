@@ -22,7 +22,9 @@ import {createHelmetHardware,updateHelmetHardware,type HelmetHardwareLayers}
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
-import {createHeadwearSilhouette} from './operator-headwear-silhouettes.ts';
+import {createHeadwearSilhouette,ACH_MICH_SHELLS} from './operator-headwear-silhouettes.ts';
+import {createAchMichDetails,updateAchMichDetails,type AchMichDetailLayers}
+ from './operator-ach-mich-details.ts';
 import {createD2Balaclava} from './operator-d2-fabric-visuals.ts';
 import {createD2FabricWrap} from './operator-d2-fabric-wraps.ts';
 import {createD2Glasses} from './operator-d2-eyewear-visuals.ts';
@@ -55,6 +57,7 @@ export type WardrobeHeadLayers={
  policeVisor?:PoliceVisorLayers;
  modernCovers:Record<string,ModernHelmetCoverLayers>;
  modernHardware:Record<string,HelmetHardwareLayers>;
+ achMich:Record<string,AchMichDetailLayers>;
  pasgtCover?:PasgtCoverLayers;
 };
 const cube=(g:THREE.Group,m:THREE.Material,
@@ -81,9 +84,11 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  let pasgtCover:PasgtCoverLayers|undefined;
  const modernCovers:Record<string,ModernHelmetCoverLayers>={};
  const modernHardware:Record<string,HelmetHardwareLayers>={};
+ const achMich:Record<string,AchMichDetailLayers>={};
  const addModernCover=(model:THREE.Group,id:string,shell:string)=>{
   modernCovers[id]=createModernHelmetCoverLayers(model,shell);
-  modernHardware[id]=createHelmetHardware(model,shell);
+  if(!(ACH_MICH_SHELLS as readonly string[]).includes(shell))
+   modernHardware[id]=createHelmetHardware(model,shell);
  };
  // A dedicated face textile material ensures color edits never recolor helmets,
  // uniform sleeves, straps or unrelated body pieces.
@@ -194,6 +199,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  headModel('ach',true,model=>{
   model.add(createHeadwearSilhouette('ach',detail('ach')));
   addModernCover(model,'ach','ach');
+  achMich.ach=createAchMichDetails(model,'ach');
  });
  headModel('high-cut',true,model=>{
   model.add(createHeadwearSilhouette('high-cut',detail('high-cut')));
@@ -208,6 +214,8 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   headModel(id,true,model=>{
    model.add(createHeadwearSilhouette(id,detail(id)));
    addModernCover(model,id,id);
+   if((ACH_MICH_SHELLS as readonly string[]).includes(id))
+    achMich[id]=createAchMichDetails(model,id);
   });
  helmet('skate-helmet',9.65,2,false);
  helmet('bump-helmet',9.1,2,true);
@@ -278,7 +286,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
   eyewearStrap,maskRubber,deferredEyewear,deferredHeadwear,
   deferredFacewear,deferredHeadset,twoHoleMouthCover,m1Cover,m56Extras,policeVisor,
-  modernCovers,modernHardware,pasgtCover};
+  modernCovers,modernHardware,achMich,pasgtCover};
  layersRef=layers;return layers;
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
@@ -333,6 +341,10 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
   shellCovered=effective.setup.cover!=='none';
   updateModernHelmetCoverLayers(modern,shell,effective.setup,
    helmetCover?.headwearCamo,camoIdentity,coverRoll);
+  const details=layers.achMich[assembly.headwear];
+  if(details)updateAchMichDetails(details,shellCovered,
+   !['half-mask','respirator-half','gas-gp5','gas-m17','gas-m40',
+     'gas-m50','shemagh','bandana'].includes(assembly.facewear));
   const hardware=layers.modernHardware[assembly.headwear];
   if(hardware)updateHelmetHardware(hardware,effective.setup,assembly.headset);
   railMountedHeadset=effective.setup.headsetMount==='rail'&&
