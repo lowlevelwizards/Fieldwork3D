@@ -88,3 +88,21 @@ test('D3 deliberate CLOSE waits for passage but no distant idle claim',()=>{
  assert.equal(doorClosingContested(s,d),false);
  assert.equal(sessionDoorPressurePolicy(s,closer).preferOpening(d),false);
 });
+
+test('D3 never scans unrelated doors or repeats same-leaf claims within one tick',()=>{
+ const first=createDoor(),second={...createDoor(),id:'OTHER',
+  a:p(490,260),b:p(532,260)};
+ const lead=actor('lead',p(309,224),p(310,350));
+ const s={seconds:17,operators:[lead],doors:[first,second]};
+ const frame=doorPressureTick(s);
+ assert.equal(frame.inspected.size,0,'lazy: no checks before contact');
+ const policy=sessionDoorPressurePolicy(s,lead);
+ assert.equal(policy.preferOpening(first),true);
+ assert.equal(frame.inspected.size,1);
+ assert.equal(policy.deferClosing(first),true);
+ assert.equal(frame.inspected.size,1,'no duplicate near-actor scan');
+ assert.equal(policy.deferClosing(second),false);
+ assert.equal(frame.inspected.size,2);
+ assert.equal(policy.claimContact(first),true);
+ assert.equal(policy.claimContact(first),false);
+});
