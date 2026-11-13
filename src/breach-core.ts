@@ -26,6 +26,8 @@ export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   glassShattered?:boolean;
   wedged?:boolean;wedgeOwnerId?:string;}
 export type Obstacle={x:number;y:number;w:number;h:number;low?:boolean;
+  /** Stable seed-authored identity; old replay/site records may omit it. */
+  id?:string;
   fixture?:string;material?:import('./breach-materials.ts').MaterialId;
   /** Authoritative cover top in world units (e.g. a service counter or sill). */
   topHeight?:number;

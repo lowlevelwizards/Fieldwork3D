@@ -4,6 +4,7 @@
  */
 import {type Pt,type Segment,type Door,type Obstacle} from './breach-core.ts';
 import {applyArchetype} from './breach-archetypes.ts';
+import {withSitePropIds} from './worldgen/site-object-identity.ts';
 import {compileArchitecturalSite} from './worldgen/architectural-compiler.ts';
 import {partitionMotelGuestUnits} from './worldgen/motel-suites.ts';
 import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientation.ts';
@@ -13,8 +14,8 @@ import {repairDoorwayClutter} from './worldgen/doorway-clutter-repair.ts';
 import {attachEncounterPlan} from './worldgen/encounter-director.ts';
 import {missionForSeed} from './breach-operations.ts';
 import {chooseGenerationIncidentIntent} from './briefing/incident-intent.ts';
-import {describeSiteTopology,preferTopologyCandidate,
- shouldSampleTopologyAlternative} from './worldgen/topology-diversity.ts';
+import {shouldSampleTopologyAlternative} from './worldgen/topology-diversity.ts';
+import {preferTacticalLayoutCandidate} from './worldgen/tactical-layout-selection.ts';
 import type {EncounterContext,EncounterPlan} from './worldgen/encounter-types.ts';
 export type Room={id:string;zoneId?:string;unitId?:string;x:number;y:number;w:number;h:number;
   kind:'room'|'hall';tone:number;purpose?:string};
@@ -120,28 +121,27 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    onProgress?.('scoring',attempt);
    const grade=measureSiteCompleteness(candidate);
    if(!bestGrade||preferCompleteCandidate(grade,bestGrade)||
-     (sampleDiversity&&best&&preferTopologyCandidate(
-       describeSiteTopology(candidate),describeSiteTopology(best),
-       grade.score,bestGrade.score,seed))){
+     (sampleDiversity&&best&&grade.score===bestGrade.score&&
+       preferTacticalLayoutCandidate(candidate,best,seed,mission))){
     best=candidate;bestGrade=grade;
    }
    if(firstSuccess<0){
     firstSuccess=attempt;
     if(!sampleDiversity&&!shouldTryAnotherLayout(grade,scale))
-      return candidate;
+      return withSitePropIds(candidate);
    }
    // Only the first eligible complete site earns ONE extra comparison.
    // Once selected, never run an unbounded search for a desired shape.
-   if(grade.score===0&&!sampleDiversity)return candidate;
+   if(grade.score===0&&!sampleDiversity)return withSitePropIds(candidate);
    if(sampleDiversity&&firstSuccess>=0&&attempt===firstSuccess+1)
-     return best!;
+     return withSitePropIds(best!);
   }catch(error){
    // Preserve useful failure evidence for offline diagnosis. Retry decisions
    // remain unchanged; do not silently hide why all variants failed.
    failures.push(error instanceof Error?error.message:String(error));
   }
  }
- if(best)return best;
+ if(best)return withSitePropIds(best);
  throw new Error('Cannot generate connected '+kind+' site for seed '+seed+
   (failures.length?' (last: '+failures.at(-1)+')':''));
 }

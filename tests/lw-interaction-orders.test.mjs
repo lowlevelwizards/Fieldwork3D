@@ -16,8 +16,9 @@ test('interaction executor belongs to simulation, not plan validation',()=>{
  const source=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
  const validator=source.slice(source.indexOf('function validEditedPlan('),
   source.indexOf('export function movePlanNode('));
- const motor=source.slice(source.indexOf('function runOrders('),
-  source.indexOf('function defensivePosition('));
+ // The Stage 8 executor now lives in its own simulation-owned module.
+ const motor=readFileSync(new URL('../src/breach-order-interactions.ts',
+  import.meta.url),'utf8');
  assert.doesNotMatch(validator,/movePhysicalProp\(s,index,pushed\)/);
  assert.match(motor,/movePhysicalProp\(s,index,pushed\)/);
 });

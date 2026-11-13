@@ -14,6 +14,7 @@ import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-moti
 import {ReplayPlanRecorder} from './breach-replay-plans.ts';
 import {ReplayBallisticsRecorder} from './breach-replay-ballistics.ts';
 import {captureReplayManifest,type ReplayManifest} from './breach-replay-manifest.ts';
+import {withCoverPropIds} from './worldgen/site-object-identity.ts';
 import {copyNodes,type PlanNode} from './breach-plan.ts';
 import {captureReplayKnowledge,applyReplayKnowledge,type ReplayKnowledge}
   from './breach-replay-visibility.ts';
@@ -483,7 +484,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   s.windows=(f.windows??[]).map(w=>({...w}));
   if(f.coverState){
     s.coverState.splice(0,s.coverState.length,
-      ...f.coverState.map(c=>({...c})));
+      ...withCoverPropIds(f.coverState).map(c=>({...c})));
     invalidateSessionWorldGeometry(s);
     publishSessionCoverToActiveSite(s);
   }

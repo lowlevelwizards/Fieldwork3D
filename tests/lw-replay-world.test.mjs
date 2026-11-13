@@ -5,6 +5,7 @@ import {COVER} from '../src/breach-core.ts';
 import {manipulateWindow} from '../src/breach-windows.ts';
 test('mutable physical object states are reconstructed at replay timestamps',()=>{
  const s=newSession(),initial=snapshot(s);
+ const unownedPresentationCover=structuredClone(COVER);
  if(s.windows.length){
   assert.equal(manipulateWindow(s.windows[0],'break'),true);
   s.objectRevision++;
@@ -15,7 +16,8 @@ test('mutable physical object states are reconstructed at replay timestamps',()=
  applyReplayFrame(s,initial);
  assert.deepEqual(s.windows,initial.windows);
  assert.deepEqual(s.coverState,initial.coverState);
- assert.deepEqual(COVER,s.coverState);
+ assert.deepEqual(COVER,unownedPresentationCover,
+   'replay must not replace the shared presentation world without ownership');
  applyReplayFrame(s,changed);
  assert.deepEqual(s.windows,changed.windows);
  assert.deepEqual(s.coverState,changed.coverState);
