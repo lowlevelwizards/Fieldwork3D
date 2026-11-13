@@ -43,11 +43,9 @@ export function rehearseDoorLeafBypass(
   x:center.x+normal.x*targetSide*(radius+14)+tangent.x*offset,
   y:center.y+normal.y*targetSide*(radius+14)+tangent.y*offset
  });
- let probes=0;
  const candidate=(points:Pt[]):Pt[]=>{
   let at=from;
   for(const point of points){
-   probes++;
    if(!clear(at,point))return [];
    at=point;
   }
