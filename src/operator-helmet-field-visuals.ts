@@ -9,6 +9,7 @@ import {isFieldHelmet,resolveHelmetField,resolveHelmetFieldColor,
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {addAchMichConcealment} from './operator-helmet-field-concealment.ts';
 import {createAchMichFieldNetGeometry} from './operator-helmet-field-net.ts';
+import {addAchMichThreeHoleShroud} from './operator-helmet-field-shroud.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
@@ -103,13 +104,15 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   }
  }
  const shroud=addGroup('shroud');
- // Sculpted shallow shield with inset receiver; never a free-standing block.
- plate(shroud,metal,id==='pasgt'?'period-bracket':'tapered-nvg-shroud',
-  [[-1.04,.70],[1.04,.70],[1.14,.16],[.78,-.71],
-   [-.78,-.71],[-1.14,.16]],0,p.top-1.79,front-.39);
- plate(shroud,dark,'nvg-interface',
-  [[-.43,.16],[.43,.16],[.39,-.32],[-.39,-.32]],
-  0,p.top-1.86,front-.43);
+ if(id==='pasgt'){
+  // Retain the historical bracket instead of modernizing baseline PASGT.
+  plate(shroud,metal,'pasgt-period-bracket',
+   [[-1.04,.70],[1.04,.70],[1.14,.16],[.78,-.71],
+    [-.78,-.71],[-1.14,.16]],0,p.top-1.79,front-.39);
+  plate(shroud,dark,'pasgt-bracket-socket',
+   [[-.43,.16],[.43,.16],[.39,-.32],[-.39,-.32]],
+   0,p.top-1.86,front-.43);
+ }else addAchMichThreeHoleShroud(id,shroud,metal,dark,reflect);
  const rails=addGroup('rails');
  for(const sign of [-1,1]){
   plate(rails,metal,'tapered-side-rail',
