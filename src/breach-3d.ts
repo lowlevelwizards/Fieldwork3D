@@ -2007,7 +2007,8 @@ export class TacticalScene3D{
       // never from a long ray projected along the feet/body heading.
       const clearance=weaponClearance({
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
-        weaponYaw:drawActor.weaponYaw,weapon:actor.weapon,
+        weaponYaw:drawActor.weaponYaw,shoulderOffset:actor.aimSideOffset??0,
+        weapon:actor.weapon,
          weaponConfiguration:actor.weaponConfiguration,
         equipment:actor.equipment,aim:actor.aim,velocity:actor.velocity,recoil:actor.recoil,
         posture:actor.posture,threatRange,friendlyNear:friendlyAhead,
@@ -2147,7 +2148,8 @@ export class TacticalScene3D{
         aiming:!actor.traversal&&actor.aim>.20,
         turning:actor.turning,firing:!!firing&&!actor.traversal,
         aimBlend:actor.aim,recoil:actor.recoil*6,
-        shotHeading:drawActor.weaponYaw,hitAge,hitFade,downProgress,
+        shotHeading:drawActor.weaponYaw,shoulderOffset:actor.aimSideOffset??0,
+        hitAge,hitFade,downProgress,
         handlingIntent,
         threatRange,
         obstruction:clearance.obstruction,
