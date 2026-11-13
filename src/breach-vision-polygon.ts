@@ -3,6 +3,7 @@
  * in breach-game. Endpoints and cone edges are included for crisp corners. */
 import {WALLS,COVER,type Pt,type Segment,type Door} from './breach-core.ts';
 import {opticalBlockerSegments} from './breach-optical-occlusion.ts';
+import {angularRayBuckets} from './breach-ray-angle-buckets.ts';
 export const VISION_HALF_ANGLE=1.15;
 const cross=(ax:number,ay:number,bx:number,by:number)=>ax*by-ay*bx;
 function rayHit(p:Pt,dx:number,dy:number,s:Segment,range:number){
@@ -30,9 +31,10 @@ export function visionPolygon(origin:Pt,heading:number,range=240,
   const angles:number[]=[];
   for(let i=0;i<=64;i++)
     angles.push(-VISION_HALF_ANGLE+2*VISION_HALF_ANGLE*i/64);
-  // Only angles of nearby blockers can affect the finite view polygon.
-  // The full blocker list remains authoritative for the ray intersection test.
-  for(const line of rayBlockers)for(const point of [line.a,line.b]){
+  // Legacy 240-unit polygons retain their exact prior angle count for
+  // saved tests. Long-range polygons can omit out-of-range endpoint angles.
+  const angleBlockers=range>240?rayBlockers:blockers;
+  for(const line of angleBlockers)for(const point of [line.a,line.b]){
     const absolute=Math.atan2(point.y-origin.y,point.x-origin.x);
     const delta=Math.atan2(Math.sin(absolute-heading),
       Math.cos(absolute-heading));
@@ -42,6 +44,8 @@ export function visionPolygon(origin:Pt,heading:number,range=240,
         Math.min(VISION_HALF_ANGLE,delta+eps)));
   }
   angles.sort((a,b)=>a-b);
+  const buckets=range>240?
+    angularRayBuckets(origin,heading,rayBlockers,VISION_HALF_ANGLE):null;
   const polygon:Pt[]=[{...origin}];
   let last=-Infinity;
   for(const delta of angles){
@@ -49,7 +53,9 @@ export function visionPolygon(origin:Pt,heading:number,range=240,
     last=delta;
     const angle=heading+delta,dx=Math.cos(angle),dy=Math.sin(angle);
     let hit=range;
-    for(const edge of rayBlockers){
+    // Exact intersection: the buckets only reject segments which cannot
+    // occupy this direction, never replace depth/occlusion geometry.
+    for(const edge of buckets?buckets.candidates(delta):rayBlockers){
       hit=Math.min(hit,rayHit(origin,dx,dy,edge,hit));
       if(hit<=.05)break;
     }
