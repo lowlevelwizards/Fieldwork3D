@@ -65,7 +65,8 @@ export function planUpperBodyStrategy(p:OperatorPose,
    !p.aiming&&(p.aimBlend??0)<.02&&
    (p.reload<=0||previewReloadSeed)&&
    !p.treatmentActive&&(!c.activeTransition||c.authoredLabSwitch)&&
-   p.seconds-p.lastDoorAt>1.2&&p.seconds-p.lastThrowAt>.85&&
+   !c.interactionWindow&&p.seconds-p.lastDoorAt>1.2&&
+   p.seconds-p.lastThrowAt>.85&&
    (p.hitAge===undefined||p.hitAge<0||p.hitAge>1.1);
  const supportEligible=!!p.poseV3Preview&&c.hasModularBuild&&
    !p.firing&&!p.down&&!p.surrender&&p.reload<=0;
