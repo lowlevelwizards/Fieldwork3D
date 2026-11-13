@@ -38,6 +38,9 @@ import {skillMultiplier} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,muzzleEndpoint,recoverWeapon} from './breach-ballistics.ts';
 
 import {weaponClearance} from './breach-weapon-clearance.ts';
+import {fireUrgency,passiveAimReadiness,contactAimOnAcquisition,
+ contactAcquisitionScale,contactTurnScale,urgentFireMode}
+ from './breach-fire-urgency.ts';
 
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {CASING_LIMIT} from './breach-effects.ts';
@@ -521,7 +524,22 @@ function fire(s:Session,a:TeamActor,dt:number){
   });
   if(!target){
     a.aimSideTarget=0;
-    a.targetId=null;a.aim=Math.max(0,a.aim-dt*.6);
+    a.targetId=null;
+    const watch=a.aimInstruction;
+    const urgency=fireUrgency({
+      confirmed:false,
+      suspicious:a.suspicion.stage==='curious'||
+        a.suspicion.stage==='suspicious'||
+        a.suspicion.stage==='alerted'||
+        a.alert==='investigating'&&!!a.contact,
+      authored:!!watch&&watch.source!=='stack',
+      aimMode:watch?.mode
+    });
+    // LOOK/WATCH prepare the gun; suspicious cues bring it closer to
+    // point-ready. None of these states creates a contact or fires a shot.
+    const ready=passiveAimReadiness(urgency),step=dt*
+      (urgency==='suspect'?1.8:urgency==='watch'?1.2:.90);
+    a.aim+=Math.max(-step,Math.min(step,ready-a.aim));
     const canPreferClearLook=a.velocity<6&&!a.aimInstruction&&
       a.side==='blue'&&!a.traversal&&!a.squeeze&&
       !['look','door','tool','treat','reload','flash'].includes(
@@ -625,8 +643,13 @@ function fire(s:Session,a:TeamActor,dt:number){
       }
     }
   }
-  if(a.targetId!==target.id){a.targetId=target.id;a.aim=0;
-    a.stability=Math.min(a.stability,.65);}
+  if(a.targetId!==target.id){
+    a.targetId=target.id;
+    // Real visual confirmation upgrades an existing LOOK/WATCH posture
+    // without discarding its prior readiness. No hidden-intel head start.
+    a.aim=contactAimOnAcquisition(a.aim);
+    a.stability=Math.min(a.stability,.65);
+  }
   // After a real flank hit, orient toward the attack before reacquiring an
   // unrelated old contact. A now-visible hostile in that sector still wins
   // through the normal target selector on the following ticks.
@@ -646,12 +669,29 @@ function fire(s:Session,a:TeamActor,dt:number){
     enemy:a.side==='red',range,attachmentFactor:sightAcquisitionScale(mods,range),
     cautious:a.personality==='cautious'
   });
-  a.aim=Math.min(1,a.aim+dt/acquisition);
+  const urgency=fireUrgency({confirmed:true,suspicious:false});
+  a.aim=Math.min(1,a.aim+dt/
+    (acquisition*contactAcquisitionScale(urgency)));
   const desiredYaw=angle(a.p,target.p);
   a.weaponYaw=approachAngle(a.weaponYaw,desiredYaw,dt*profile.turnSpeed*mods.turn*
-    (a.suppression>.6?.75:1));
-  const mode=readyMode(range,a.aim,a.weapon);
-  if(!mode||a.fireCd>0)return;
+    (a.suppression>.6?.75:1)*contactTurnScale(urgency));
+  if(a.fireCd>0)return;
+  // A short-stock remains an *actual* shooting pose when its muzzle points
+  // toward a confirmed threat, not just a blocked animation state.
+  const muzzle=weaponClearance({
+    x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:a.weaponYaw,
+    shoulderOffset:a.aimSideOffset??0,
+    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+    equipment:a.equipment,aim:a.aim,posture:a.posture,velocity:a.velocity,
+    recoil:a.recoil,threatRange:range
+  },s.doors,world.cover,world.walls,friends);
+  const mode=urgentFireMode(readyMode(range,a.aim,a.weapon),
+    a.aim,muzzle,desiredYaw);
+  if(!mode){
+    if(muzzle.blocked)requestClearFireStep(s,a,target,
+      muzzle.blocker==='friendly'?'friendly':'muzzle');
+    return;
+  }
   if(Math.abs(angleDifference(a.heading,a.weaponYaw))>.87){
     rotate(a,a.weaponYaw,dt,s);return;
   }
