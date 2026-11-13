@@ -4,6 +4,7 @@ import {chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
  from '../src/breach-combat-reactions.ts';
 import {assessFireLane} from '../src/breach-fire-safety.ts';
 import {weaponClearance} from '../src/breach-weapon-clearance.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {newSession,team,enemies,stepSession,inSight}
  from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
@@ -120,7 +121,7 @@ test('real enemy facing a shattered glass barrier seeks its own rearward muzzle 
     heading:guard.heading,weaponYaw:yaw,weapon:guard.weapon,
     weaponConfiguration:guard.weaponConfiguration,aim:guard.aim,
     posture:guard.posture,velocity:0,recoil:0,threatRange:near(guard.p,lead.p)},
-    s.doors);
+    s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
   assert.ok(muzzle.blocked,
     'test must recreate a real unusable short-stock muzzle before recovery');
   stepSession(s,1/30);
