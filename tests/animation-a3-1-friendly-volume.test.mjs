@@ -46,8 +46,8 @@ test('A3.1 diagonal trajectories and segment-overlap stay protected, not a cente
  assert.equal(shot(32,32,[F('stand',110,0)]),'clear',
   'teammate past segment end not falsely blocking');
  assert.equal(shot(29,29,[F('crouch',50,10.5)]),'clear');
- assert.equal(shot(18,18,[F('crouch',50,10.5)]),'friendly',
-  'torso horizontal grazing blocked');
+ assert.equal(shot(12,12,[F('crouch',50,10.5)]),'friendly',
+  'torso horizontal grazing blocked at torso height');
 });
 test('A3.1 unknown posture and legacy 2D point callers remain conservative',()=>{
  for(const legacy of [p(48,0),{...p(48,0),posture:'invalid'}]){
