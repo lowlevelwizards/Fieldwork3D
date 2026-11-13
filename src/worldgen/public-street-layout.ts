@@ -116,8 +116,10 @@ export function planPublicStreet(site:StreetSite):PublicStreet|null{
  * existing replay maps this is not applied retroactively.
  */
 export function overlapsPublicStreetRoad(
- site:StreetSite,obstacle:Pick<Obstacle,'x'|'y'|'w'|'h'>):boolean{
- const plan=planPublicStreet(site);
+ site:StreetSite,obstacle:Pick<Obstacle,'x'|'y'|'w'|'h'>,
+ // Only the OFFLINE exterior placement pass supplies this precomputed plan.
+ planned?:PublicStreet|null):boolean{
+ const plan=planned===undefined?planPublicStreet(site):planned;
  return !!plan&&overlap(plan.road,{x:obstacle.x,y:obstacle.y,
    width:obstacle.w,depth:obstacle.h},1);
 }

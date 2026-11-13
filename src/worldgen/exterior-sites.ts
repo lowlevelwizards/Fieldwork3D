@@ -12,7 +12,7 @@ import {SERVICED_FACING_FIXTURES,serviceEnvelope,
  from './service-clear-route.ts';
 import {landscapeEdgeCandidates} from './landscape-edge-program.ts';
 import {serviceFixtureInRoad} from './road-service-fixtures.ts';
-import {overlapsPublicStreetRoad} from './public-street-layout.ts';
+import {planPublicStreet,overlapsPublicStreetRoad} from './public-street-layout.ts';
 import {landscapePhysicalFootprint,TREE_FIXTURES} from './landscape-footprint.ts';
 import {outdoorFixtureAllowed,frontageEdgeCandidates}
  from './outdoor-fixture-policy.ts';
@@ -97,6 +97,12 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    zones.push({id:'court-'+courts++,kind:industrial?'service':
      residential?'garden':'patio',x:cx,y:cy,w,h});
   }
+ // Author the property frontage ONCE from the final exterior zones.
+ // A single geometric road/curb plan drives BOTH placement and presentation.
+ // Never introduce extra runtime geometry or a second motor collider.
+ const streetPlan=planPublicStreet({...site,exteriorZones:zones});
+ const doorCenters=site.doors.map(d=>({
+   x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2}));
  const available=industrial?
   ['barrel','crate','tire-stack','pallet','bollard','utility-cabinet']:
   residential?
@@ -127,6 +133,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
  };
  const cover=site.cover.slice();
  const protectedPoints=[...site.spawn,...site.enemies,site.objective,site.extract,site.entrance];
+ const worldBounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
  for(const zone of zones){
   const count=zone.id.startsWith('court-')?0:
     zone.kind==='garden'?3:
@@ -169,7 +176,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
    const envelope=serviceEnvelope(zone,item,footprint.w,footprint.h);
    const w=quarterTurn?envelope.h:envelope.w;
    const h=quarterTurn?envelope.w:envelope.h;
-   const streetSpots=frontageEdgeCandidates(site,zone,item,w,h);
+   const streetSpots=frontageEdgeCandidates(site,zone,item,w,h,streetPlan);
    const serviceEdge=zone.kind==='service'&&SERVICE_EDGE_FIXTURES.has(item);
    const edgeSpots=serviceEdge?serviceYardEdgeCandidates(zone,w,h,item):[];
    if(zone.w<w+22||zone.h<h+22)continue;
@@ -191,13 +198,12 @@ export function addExteriorProperty(site:Site,seed:number):Site{
     const candidate:Obstacle={x,y,w,h,fixture:item,low:asset.cover==='low',
       ...(facesStreet?{orientation}:facesService?
         {orientation:serviceOrientation}:{})};
-    const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
-    if(x-w/2<bounds.minX+17||x+w/2>bounds.maxX-17||
-      y-h/2<bounds.minY+23||y+h/2>bounds.maxY-22)continue;
+    if(x-w/2<worldBounds.minX+17||x+w/2>worldBounds.maxX-17||
+      y-h/2<worldBounds.minY+23||y+h/2>worldBounds.maxY-22)continue;
     if(site.rooms.some(r=>x+w/2>r.x&&x-w/2<r.x+r.w&&
       y+h/2>r.y&&y-h/2<r.y+r.h))continue;
     if(serviceFixtureInRoad(site,item,candidate)||
-       overlapsPublicStreetRoad(site,candidate)||
+       overlapsPublicStreetRoad(site,candidate,streetPlan)||
        intersectsServiceAccess(zone,candidate))continue;
     // A tree's leaf crown can hang over a planting bed, but must not
     // intersect a room wall or the actual accessible entry walkway.
@@ -210,7 +216,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
       if(overlapsArrivalLane(site,zone,canopy))continue;
     }
     if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+32&&Math.abs(p.y-y)<h/2+32))continue;
-    if(site.doors.some(d=>distance({x,y},{x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<68))continue;
+    if(doorCenters.some(d=>(d.x-x)**2+(d.y-y)**2<68*68))continue;
     if(overlapsArrivalLane(site,zone,candidate))continue;
     if(cover.some(o=>overlaps(o,candidate)))continue;
     cover.push(candidate);accepted=true;break;
@@ -243,7 +249,7 @@ export function addExteriorProperty(site:Site,seed:number):Site{
        candidate.y+h/2>zone.y+zone.h/2-3)continue;
      if(lane&&Math.abs(candidate.x-lane.x)<(w+lane.w)/2+10&&
        Math.abs(candidate.y-lane.y)<(h+lane.h)/2+10)continue;
-     if(overlapsPublicStreetRoad(site,candidate))continue;
+     if(overlapsPublicStreetRoad(site,candidate,streetPlan))continue;
      if(protectedPoints.some(p=>Math.abs(p.x-candidate.x)<w/2+23&&
        Math.abs(p.y-candidate.y)<h/2+23))continue;
      if(cover.some(other=>overlaps(other,candidate)))continue;
@@ -270,13 +276,12 @@ export function addExteriorProperty(site:Site,seed:number):Site{
        y-h/2<zone.y-zone.h/2+9||y+h/2>zone.y+zone.h/2-9)continue;
      if(x-w/2<bounds.minX+17||x+w/2>bounds.maxX-17||
        y-h/2<bounds.minY+22||y+h/2>bounds.maxY-22)continue;
-     if(overlapsPublicStreetRoad(site,candidate))continue;
+     if(overlapsPublicStreetRoad(site,candidate,streetPlan))continue;
      if(site.rooms.some(room=>x+w/2>room.x&&x-w/2<room.x+room.w&&
        y+h/2>room.y&&y-h/2<room.y+room.h))continue;
      if(protectedPoints.some(p=>Math.abs(p.x-x)<w/2+31&&
        Math.abs(p.y-y)<h/2+31))continue;
-     if(site.doors.some(d=>distance({x,y},{
-       x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})<66))continue;
+     if(doorCenters.some(d=>(d.x-x)**2+(d.y-y)**2<66*66))continue;
      if(overlapsArrivalLane(site,zone,candidate))continue;
      if(TREE_FIXTURES.has(point.fixture)){
        const canopy={...candidate,w:asset.width,h:asset.depth};
