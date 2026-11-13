@@ -8,6 +8,7 @@ import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleRespo
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {passageIdleYieldStep,type PassageActor} from './breach-passage.ts';
 import {noteQueueMotion} from './breach-queue-trace.ts';
+import {idleYieldAllowed,commitIdleYield} from './breach-passage-yield.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {incomingHitFacing} from './breach-combat-reactions.ts';
@@ -101,7 +102,7 @@ export function advanceSimulationActors(s:Session,h:number,
         const nearby=s.operators.filter(b=>b!==a&&b.side==='blue'&&
           b.health>0&&b.plan[0]?.kind==='move'&&
           d(a.p,b.p)<75);
-        if(nearby.length){
+        if(nearby.length&&idleYieldAllowed(s,a.id,nearby.map(b=>b.id))){
           const idle:PassageActor={
             id:a.id,side:a.side,p:a.p,goal:null,
             health:a.health,blockedTime:a.blockedTime,active:false
@@ -115,6 +116,7 @@ export function advanceSimulationActors(s:Session,h:number,
             (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),h*45);
           if(yieldStep&&!s.operators.some(b=>b!==a&&b.health>0&&
               d(b.p,yieldStep)<13&&d(b.p,yieldStep)<d(b.p,a.p)-.01)){
+            commitIdleYield(s,a.id,nearby.map(b=>b.id));
             noteQueueMotion(s,a,'idle-yield',a.p,yieldStep);
             a.p=yieldStep;a.velocity=d(a.priorP,a.p)/Math.max(h,.0001);
             a.motorPause='passage';
