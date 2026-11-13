@@ -131,9 +131,10 @@ export function achMichRetentionPaths(
   // turns inward on the front side of the face.
   const junction:Point=[sign*4.56,1.37,-2.91];
   const cheekDrop:Point=[sign*4.63,.65,-4.62];
-  // Turn toward the chin only after crossing in front of the face, keeping
-  // the whole width of the webbing outside the square jaw silhouette.
-  const chin:Point=[sign*2.34,-1.08,-4.65];
+  // Turn toward the chin only after clearing the cheek. Bring the front
+  // cup back to PASGT's proven -4.34 face depth: close to the -4.0 cube
+  // surface, but still forward of it; keep the outside cheek-drop unchanged.
+  const chin:Point=[sign*2.34,-1.08,-4.34];
   result.push([f,junction],[b,junction],[junction,cheekDrop,chin]);
  }
  return result;

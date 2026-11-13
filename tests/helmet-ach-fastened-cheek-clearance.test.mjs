@@ -37,11 +37,20 @@ test('PASGT reference and ACH/MICH fastened webbing clear cube head',()=>{
    const cheek=paths[side+2][1],chin=paths[side+2][2];
    assert.ok(Math.abs(cheek[0])>CUBE_HEAD_ANATOMY.rightX+.5);
    assert.ok(cheek[2]<CUBE_HEAD_ANATOMY.frontZ-.5);
-   assert.ok(chin[2]<CUBE_HEAD_ANATOMY.frontZ-.5);
+   // PASGT's chin cup sits near -4.34, ahead of the -4 face.
+   // Reject both the former .65-unit hover and any face penetration.
+   const chinGap=CUBE_HEAD_ANATOMY.frontZ-chin[2];
+   assert.ok(chinGap>=.25&&chinGap<=.40,
+    shell+' chin cup should rest close to the front face');
    assert.ok(chin[1]<CUBE_HEAD_ANATOMY.skullBottom);
   }
   const geometry=createAchMichRetentionGeometry(shell);
-  assert.equal(geometry.getAttribute('position').count,54);
+  const positions=geometry.getAttribute('position');
+  const padStart=positions.count-6;
+  for(let i=padStart;i<positions.count;i++)
+   assert.ok(Math.abs(positions.getZ(i)+4.34)<1e-5,
+    shell+' cup should follow the strap endpoints at PASGT face depth');
+  assert.equal(positions.count,54);
   assert.equal(penetratesHead(geometry),false,shell+' fastened strap clips face');
   assert.ok(geometry.boundingBox.max.y>2,'shell anchors remain at upper rim');
   assert.ok(geometry.boundingBox.min.y<-1.5,'chin cup clears jaw bottom');
