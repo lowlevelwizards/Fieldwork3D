@@ -14,6 +14,7 @@ import {addAchMichArcRails} from './operator-helmet-field-rails.ts';
 import {addAchMichRetainingBungees} from './operator-helmet-field-bungees.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 import {createHelmetFieldGoggleModule} from './operator-helmet-field-goggles.ts';
+import {addAchMichVelcro,addAchMichIdentifierPatch} from './operator-helmet-field-velcro.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
  bandMaterial:THREE.MeshStandardMaterial;webbingMaterial:THREE.MeshStandardMaterial;
@@ -114,16 +115,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
  const bungees=addGroup('bungees');
  if(id!=='pasgt')addAchMichRetainingBungees(id,bungees,olive,metal,dark);
  const velcroGroup=addGroup('velcro');
- plate(velcroGroup,velcro,'thin-crown-velcro',
-  [[-1.14,-.68],[1.14,-.68],[1.14,.68],[-1.14,.68]],
-  0,p.top+.17,-.85,-Math.PI/2);
- for(const sign of [-1,1])
-  plate(velcroGroup,velcro,'thin-side-velcro',
-   [[-.79,-.46],[.79,-.46],[.79,.46],[-.79,.46]],
-   sign*(side+.15),p.top-1.97,1.60,sign*Math.PI/2);
- plate(velcroGroup,velcro,'thin-rear-velcro',
-  [[-1.24,-.46],[1.24,-.46],[1.24,.46],[-1.24,.46]],
-  0,p.top-1.92,rear+.17);
+ if(id!=='pasgt')addAchMichVelcro(id,velcroGroup,velcro,dark);
  for(const key of ['goggles-front','goggles-rear','goggles-eyes']){
   const g=addGroup(key),back=key==='goggles-rear',eyes=key==='goggles-eyes';
   if(id!=='pasgt'){
@@ -168,12 +160,12 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
  const chemlight=addGroup('chemlight');
  box(chemlight,reflect,'secured-chemlight',-2.10,p.top+.16,rear-.69,.28,.28,1.48);
  const patches=addGroup('patches');
- plate(patches,velcro,'flat-identifier-panel',
-  [[-.88,-.45],[.88,-.45],[.88,.45],[-.88,.45]],
-  -side-.16,p.top-2.40,1.69,-Math.PI/2);
- plate(patches,reflect,'short-identifier-mark',
-  [[-.42,-.15],[.42,-.15],[.42,.15],[-.42,.15]],
-  -side-.19,p.top-2.40,1.69,-Math.PI/2);
+ if(id!=='pasgt')addAchMichIdentifierPatch(id,patches,velcro,dark,reflect);
+ else{
+  plate(patches,velcro,'pasgt-period-identifier',
+   [[-.88,-.45],[.88,-.45],[.88,.45],[-.88,.45]],
+   -side-.16,p.top-2.40,1.69,-Math.PI/2);
+ }
  // Pre-merge only static groups; invisible groups cost no render work.
  for(const g of Object.values(modules))consolidateVisualGroup(g);
  return {root,shell:id,modules,bandMaterial,webbingMaterial,leaves};
