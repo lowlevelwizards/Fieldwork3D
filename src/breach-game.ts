@@ -768,7 +768,7 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
   const cost=(spot:Pt)=>{
     const index=candidates.findIndex(candidate=>d(candidate,spot)<1);
     const roleBias=Math.min(3,(index-preferred+candidates.length)%
-      candidates.length)*3;
+      candidates.length)*7;
     return d(from,spot)+roleBias;
   };
   legal.sort((u,v)=>cost(u)-cost(v)||d(from,u)-d(from,v));
