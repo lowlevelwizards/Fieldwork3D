@@ -38,7 +38,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'soviet-steel':{id:'soviet-steel',frontExtent:-5.53,rearExtent:5.53,
   top:8.605,earEdge:3.70,foreheadEdge:4.05,billLength:0},
  'ach':{id:'ach',frontExtent:-5.535,rearExtent:5.60,
-  top:8.84,earEdge:3.36,foreheadEdge:4.40,billLength:0},
+  top:8.84,earEdge:2.92,foreheadEdge:4.40,billLength:0},
  'high-cut':{id:'high-cut',frontExtent:-5.485,rearExtent:5.35,
   top:8.70,earEdge:5.95,foreheadEdge:4.50,billLength:0},
  'mich-2002':{id:'mich-2002',frontExtent:-5.70,rearExtent:5.75,
@@ -406,8 +406,8 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
  // by a visible margin, rather than merely touching at float-precision seams.
  {name:'ach-protective-brow',x:0,y:5.25,z:-4.91,
   width:10.15,height:1.70,depth:1.25},
- // One broad ear scallop at Y3.36 and a clearly deeper rear skirt at
- // Y2.68. Both sections overlap substantially, without narrow steps.
+ // One full ear-protection drop to Y2.92, with only the shallow rear nape
+ // return to Y2.68. No mid-ear stair or high-cut-looking scallop.
  // No narrow side trim, decorative micro-stairs or floating panel.
  {name:'ach-continuous-nape',x:0,y:4.49,z:4.97,
   width:10.15,height:3.62,depth:1.26},
@@ -416,8 +416,8 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
    x:sign*4.55,y:5.25,z:-3.31,
    width:1.05,height:1.70,depth:2.78},
   {name:sign===-1?'ach-left-ear-wrap':'ach-right-ear-wrap',
-   x:sign*4.55,y:4.84,z:.55,
-   width:1.05,height:2.96,depth:5.50},
+   x:sign*4.55,y:4.65,z:.55,
+   width:1.05,height:3.46,depth:5.50},
   {name:sign===-1?'ach-left-nape-return':'ach-right-nape-return',
    x:sign*4.55,y:4.50,z:4.18,
    width:1.05,height:3.64,depth:2.91}
