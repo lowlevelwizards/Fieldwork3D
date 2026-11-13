@@ -85,8 +85,11 @@ export function consolidateVisualGroup(group:THREE.Group):void{
   if(!(item instanceof THREE.Mesh)||item.children.length||
     Array.isArray(item.material)||item.userData.armorCompressible||
     item.userData.armorContactShell||item.userData.keepSeparate)continue;
-  const bucket=buckets.get(item.material)??[];
-  bucket.push(item);buckets.set(item.material,bucket);
+  const byShadow=buckets.get(item.material)??new Map<string,THREE.Mesh[]>();
+  const flags=String(Number(item.castShadow))+String(Number(item.receiveShadow));
+  const bucket=byShadow.get(flags)??[];
+  bucket.push(item);byShadow.set(flags,bucket);
+  buckets.set(item.material,byShadow);
  }
  for(const [material,byShadow] of buckets)
  for(const [flags,meshes] of byShadow){
@@ -113,7 +116,7 @@ export function consolidateVisualGroup(group:THREE.Group):void{
    part.geometry.dispose();
   }
   const mesh=new THREE.Mesh(combined,material);
-  mesh.castShadow=true;mesh.receiveShadow=true;
+  mesh.castShadow=flags[0]==='1';mesh.receiveShadow=flags[1]==='1';
   group.add(mesh);
  }
 }
