@@ -67,8 +67,12 @@ export function advanceSimulationMotion(s:Session,h:number,
   // Both teams see the same original pre-motion positions for hard bodies.
   if(s.civilians.length){
     const world=sessionWorldGeometry(s);
-    const nearby=[...s.operators.filter(a=>a.health>0),
-      ...s.civilians.filter(c=>c.health>0)];
+    // One ordered live-body collection for all civilian occupancy queries.
+    // No chained filter/spread arrays per authoritative 60Hz tick. Read
+    // positions live, so earlier civilians moving this tick still matter.
+    const nearby:Array<{id:string;p:Pt}>=[];
+    for(const a of s.operators)if(a.health>0)nearby.push(a);
+    for(const c of s.civilians)if(c.health>0)nearby.push(c);
     // These callbacks do not capture an individual civilian and can be
     // reused across their fixed-tick movement and observer evaluations.
     // The underlying geometry and actor positions remain live at call time.
@@ -99,10 +103,8 @@ export function advanceSimulationMotion(s:Session,h:number,
       if(civilianSenseDue(civil,s.seconds)){
         stepCivilianResponse(civil,s.seconds,h,{
           ...sensoryCommon,
-          isCrowded:p=>s.operators.some(o=>o.health>0&&
-            withinSquared(o.p,p,484))||
-            s.civilians.some(c=>c.id!==civil.id&&
-            withinSquared(c.p,p,484))
+          isCrowded:p=>nearby.some(body=>body!==civil&&
+            withinSquared(body.p,p,484))
         });
       }
       if(profile){
