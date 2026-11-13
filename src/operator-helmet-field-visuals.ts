@@ -234,6 +234,10 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
   // not cross the central locking interface at brow height.
   if(key==='goggles-front'&&v.shell!=='pasgt')
    m[key].position.y=s.shroud?-.84:0;
+  const coverStrap=m[key].getObjectByName('goggle-retention-covered');
+  const bareStrap=m[key].getObjectByName('goggle-retention-bare');
+  if(coverStrap)coverStrap.visible=covered;
+  if(bareStrap)bareStrap.visible=!covered;
   const sleeve=m[key].getObjectByName('goggle-fabric-sleeve');
   if(sleeve)sleeve.visible=s.goggleSleeve&&where!=='eyes';
  }

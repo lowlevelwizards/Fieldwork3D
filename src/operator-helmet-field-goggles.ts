@@ -5,7 +5,7 @@
  */
 import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
-import {sampleHelmetCover} from './operator-helmet-surface.ts';
+import {sampleHelmetCover,sampleHelmetShell} from './operator-helmet-surface.ts';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 
@@ -36,53 +36,67 @@ const strip=(root:THREE.Group,points:THREE.Vector3[],width:number,
  * All probes happen once when the cosmetic model is constructed.
  */
 const sample=(shell:AchMichCoverShell,region:'left'|'right'|'front'|'back',
- u:number,targetY:number):THREE.Vector3=>{
+ u:number,targetY:number,covered:boolean):THREE.Vector3=>{
  let best:THREE.Vector3|null=null,score=Infinity;
  for(const uu of [u,u*.94,u*.84])
   for(const v of [-.65,-.48,-.30,-.12,.06,.22,.38,.55,.72]){
-   const f=sampleHelmetCover(shell,region,uu,v,.63);
+   // Bare and covered strap routes must follow distinct actual surfaces.
+   const f=covered?sampleHelmetCover(shell,region,uu,v,.39):
+    sampleHelmetShell(shell,region,uu,v,.33);
    if(!f)continue;
    const d=Math.abs(f.position.y-targetY)+Math.abs(u-uu)*.32;
    if(d<score){score=d;best=f.position;}
   }
- if(!best)throw Error('H9.5 no '+region+' fitted goggle strap on '+shell);
+ if(!best)throw Error('H5.3 no '+region+' fitted goggle strap on '+shell);
  return best;
 };
 function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
  placement:'front'|'rear',elastic:THREE.Material,metal:THREE.Material){
  const p=HELMET_MOUNT_PROFILES[shell];
- const y=p.top-2.95;
+ // Shift retention below the narrow elastic band while respecting the
+ // MICH ear cutout; the outboard layer stays above rather than clipping it.
+ const y=p.top-3.24;
  const front=placement==='front';
  const nearZ=front?p.front-1.08:p.rear+1.08;
- const left=new THREE.Vector3(-4.25,y,nearZ);
- const right=new THREE.Vector3(4.25,y,nearZ);
- const begin=front?-0.73:0.74,finish=-begin;
+ const begin=front?-.73:.74,finish=-begin;
  const opposite=front?'back':'front';
- const path:THREE.Vector3[]=[left];
- for(const u of [begin,begin*.46,0,finish*.46,finish])
-  path.push(sample(shell,'left',u,y));
- for(const u of [-.68,-.35,0,.35,.68])
-  path.push(sample(shell,opposite,u,y));
- for(const u of [finish,finish*.46,0,begin*.46,begin])
-  path.push(sample(shell,'right',u,y));
- path.push(right);
- strip(g,path,1.02,elastic,'continuous-helmet-goggle-strap');
- // Broad external adjusters, one on each side, not independent blocks.
- for(const region of ['left','right'] as const){
-  const f=sampleHelmetCover(shell,region,front?-.06:.08,.19,.45);
-  if(!f)continue;
-  const buckle=new THREE.Mesh(new THREE.BoxGeometry(.32,1.23,.13),metal);
-  buckle.position.copy(f.position);
-  buckle.quaternion.setFromRotationMatrix(new THREE.Matrix4()
-   .makeBasis(f.right,f.up,f.normal));
-  buckle.name='helmet-strap-slider-'+region;
-  buckle.castShadow=false;buckle.receiveShadow=false;g.add(buckle);
+ const paths:Record<string,number[][]>={};
+ for(const covered of [true,false]){
+  const retention=new THREE.Group();
+  retention.name=covered?'goggle-retention-covered':'goggle-retention-bare';
+  retention.visible=covered;g.add(retention);
+  const left=new THREE.Vector3(-4.25,y,nearZ);
+  const right=new THREE.Vector3(4.25,y,nearZ);
+  const path:THREE.Vector3[]=[left];
+  for(const u of [begin,begin*.46,0,finish*.46,finish])
+   path.push(sample(shell,'left',u,y,covered));
+  for(const u of [-.68,-.35,0,.35,.68])
+   path.push(sample(shell,opposite,u,y,covered));
+  for(const u of [finish,finish*.46,0,begin*.46,begin])
+   path.push(sample(shell,'right',u,y,covered));
+  path.push(right);
+  strip(retention,path,1.02,elastic,
+   covered?'continuous-helmet-goggle-strap':'bare-shell-goggle-strap');
+  for(const region of ['left','right'] as const){
+   const f=covered?sampleHelmetCover(shell,region,front?-.06:.08,.19,.34):
+    sampleHelmetShell(shell,region,front?-.06:.08,.19,.33);
+   if(!f)continue;
+   const buckle=new THREE.Mesh(new THREE.BoxGeometry(.32,1.23,.13),metal);
+   buckle.position.copy(f.position);
+   buckle.quaternion.setFromRotationMatrix(new THREE.Matrix4()
+    .makeBasis(f.right,f.up,f.normal));
+   buckle.name='helmet-strap-slider-'+region;
+   buckle.castShadow=false;buckle.receiveShadow=false;retention.add(buckle);
+  }
+  paths[covered?'covered':'bare']=path.map(v=>v.toArray());
  }
  g.userData.h10OverShellStrap=true;
  g.userData.h9FittedStrap=true;
- g.userData.h9StrapPath=path.map(v=>v.toArray());
- g.userData.h9StrapSegments=path.length-1;
+ g.userData.h9StrapPath=paths.covered;
+ g.userData.h9StrapSegments=paths.covered.length-1;
  g.userData.h9StrapWraps=opposite;
+ g.userData.h5AdaptiveStrapPaths=paths;
+ g.userData.h5StrapOutsideElastic=true;
 }
 /** Fitted fabric cover drawn on the goggles' actual D2 silhouette.
  * It uses a shallow solid lip plus one broad stitched face, never an
