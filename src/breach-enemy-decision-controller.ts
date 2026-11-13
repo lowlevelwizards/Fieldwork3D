@@ -14,7 +14,7 @@ import {encounterReactionDelay,encounterReactionPhase} from './breach-encounter-
 import {doorWouldStrikeActors} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
-import {aimHeight} from './breach-cover-height.ts';
+import {effectiveAimHeight,effectiveEyeHeight} from './breach-cover-height.ts';
 import {assessFireLane} from './breach-fire-safety.ts';
 import {chooseDefense,chooseFiringDefense,watchPoint,reachableInvestigation} from './breach-defense.ts';
 import {scanEnemyVisualEvidence} from './breach-ai-visual-evidence.ts';
@@ -86,7 +86,7 @@ function firingPosition(a:TeamActor,target:TeamActor,s:Session):Pt|null{
   const others=enemies(s).map(other=>({id:other.id,p:other.p,
     health:other.health,defense:other.defense,posture:other.posture}));
   return chooseFiringDefense(a.p,target.p,s.doors,others,a.id,
-    aimHeight(target.posture==='crouch'),sessionWorldGeometry(s));
+    effectiveAimHeight(target),sessionWorldGeometry(s));
 }
 function enemyDecisions(s:Session,a:TeamActor,dt:number){
  const world=sessionWorldGeometry(s);
@@ -123,7 +123,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
       const check=weaponClearance({
         x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:yaw,
         weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
-        aim:a.aim,posture:a.posture,velocity:0,recoil:a.recoil,
+        aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,velocity:0,recoil:a.recoil,
         threatRange:d(a.p,target.p)
       },s.doors,world.cover,world.walls);
       if(check.blocked&&
@@ -172,8 +172,8 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     // Reposition to an actual firing lane instead of staring at it while
     // repeatedly attempting blocked shots. Reposition has a cooldown.
     const friends=enemies(s).filter(o=>o!==a&&o.health>0).map(safetyBodyFor);
-    const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
-      b.p,aimHeight(b.posture==='crouch'),world.cover,world.walls,s.doors,friends);
+    const lane=assessFireLane(a.p,effectiveEyeHeight(a),
+      b.p,effectiveAimHeight(b),world.cover,world.walls,s.doors,friends);
     a.combatChoice=chooseCombatAction({visible:true,remembered:true,
       laneClear:lane.blocker==='clear',ammunition:a.magazine,
       suppression:a.suppression,morale:a.morale,temperament:a.personality});

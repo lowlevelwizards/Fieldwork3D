@@ -109,6 +109,8 @@ import {type PassageLease} from './breach-passage.ts';
 import type {DoorTraversalEpisode} from './breach-door-traversal-episode.ts';
 import type {DoorHandContact} from './breach-door-hand-contact.ts';
 import type {PhysicalContact} from './breach-physical-contact-anchor.ts';
+import {advanceCoverStances} from './breach-cover-stance.ts';
+import {effectiveEyeHeight,effectiveAimHeight} from './breach-cover-height.ts';
 import {advanceContextualSupportContacts}
  from './breach-contextual-support-contact.ts';
 
@@ -187,6 +189,8 @@ export type TeamActor=Operator & {
   pivotEpisode?:import('./breach-pivot-episode.ts').PivotEpisode|null;
   /** A3.9-K: real-sweep kick-leg choice, visual footstep IK only. */
   kickFoot?:0|1|null;
+  /** A3.9: fixed-step cover-matched height relative to authored posture. */
+  coverStanceDrop?:number;coverStanceSource?:string|null;
   recoveryAttempts:number;retryRouteAt:number;routeGoalKey:string;
   /** Rate-limit physical clutter nudges and scene rebuilds. */
   lastAutoShoveAt:number;
@@ -1246,7 +1250,8 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
     s.objectRevision+'/'+sessionWorldGeometry(s).revision,s.doors,()=>
       !exposure(a.p,b.p,s.doors,
         b.posture==='crouch',a.posture==='crouch',true,
-        sessionWorldGeometry(s).walls,sessionWorldGeometry(s).cover).blocked);
+        sessionWorldGeometry(s).walls,sessionWorldGeometry(s).cover,
+        effectiveEyeHeight(a),effectiveAimHeight(b)).blocked);
 }
 /** Confirmed vision is acquired over simulated time; rendering never grants sight. */
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
@@ -1642,6 +1647,7 @@ const simulationPhasePort:SimulationPhasePort={
  motion:(s,h,origins,profile)=>advanceSimulationMotion(s,h,origins,motionSimulationPhasePort,profile),
  contacts:s=>{
   resolveCloseContact(s);
+  advanceCoverStances(s);
   advanceContextualSupportContacts(s);
  },
  reports:s=>runEnemyAi.distributeReports(s),
@@ -1677,7 +1683,8 @@ export function observerPointVisible(
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.personalQueries++;
   if(!friendlyGroundSightCandidate(s,observer,p))return false;
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.personalOcclusionProbes++;
-  return unobstructed(observer.p,p,s,observer.posture==='crouch');
+  return unobstructed(observer.p,p,s,observer.posture==='crouch'||
+    effectiveEyeHeight(observer)<25);
 }
 export function liveVisibility(s:Session,p:Pt){
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveQueries++;
@@ -1691,7 +1698,8 @@ export function liveVisibility(s:Session,p:Pt){
   for(const a of s.operators){
     if(!friendlyGroundSightCandidate(s,a,p))continue;
     if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveOcclusionProbes++;
-    if(unobstructed(a.p,p,s,a.posture==='crouch')){
+    if(unobstructed(a.p,p,s,a.posture==='crouch'||
+      effectiveEyeHeight(a)<25)){
       if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveHits++;
       return true;
     }

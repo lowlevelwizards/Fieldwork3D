@@ -58,6 +58,7 @@ function sample(){
   shoulderOffset:actor.aimSideOffset??0,shotHeading:actor.weaponYaw,
   travelYaw:actor.heading,velocity:actor.velocity,
   seconds:s.seconds,stride:actor.stride,posture:actor.posture,
+  coverStanceDrop:actor.coverStanceDrop??0,
   injury:actor.injuryStage,weapon:actor.weapon,
   reload:actor.reload,reloadDuration:1.8,
   lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
@@ -157,6 +158,11 @@ function draw(){
   ' / '+probe.shooter.shoulderTarget.toFixed(1);
  el<HTMLElement>('autoStance').textContent=probe.shooter.autoCrouchUntil>s.seconds?
   'AUTO CROUCH':'ORDINARY';
+ el<HTMLElement>('coverStance').textContent=
+  (probe.shooter.coverStanceDrop>=0?'-':'+')+
+  Math.abs(probe.shooter.coverStanceDrop).toFixed(2)+' units'+
+  (probe.shooter.coverStanceSource?
+    ' · '+probe.shooter.coverStanceSource:' · FREE');
  el<HTMLElement>('clock').textContent=s.seconds.toFixed(3)+'s';
  el<HTMLElement>('candidate').textContent=step?
   (step.x-a.position.x).toFixed(0)+','+(step.y-a.position.y).toFixed(0):'NONE';

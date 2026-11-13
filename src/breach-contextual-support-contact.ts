@@ -27,7 +27,8 @@ const unit=(v:Pt):Pt=>{
 };
 const handOrigin=(a:TeamActor):ContactPoint3=>{
  const f=forward(a.heading),l=left(a.heading);
- return {x:a.p.x+f.x*4+l.x*4,y:a.posture==='crouch'?13:20,
+ return {x:a.p.x+f.x*4+l.x*4,
+   y:(a.posture==='crouch'?13:20)-(a.coverStanceDrop??0),
    z:a.p.y+f.y*4+l.y*4};
 };
 const sourcePoint=(p:ContactPoint3):Pt=>({x:p.x,y:p.z});
@@ -77,7 +78,7 @@ export function coverSupportSurface(
   const sign=Math.sign(dx);
   return {id,point:{x:cover.x+sign*hx,
     y:clamp(actor.y,cover.y-hy,cover.y+hy)},
-   normal:{x:sign,y:0},height:Math.min(21,height),
+   normal:{x:sign,y:0},height,
    kind:'cover'};
  }
  const sign=Math.sign(dy);

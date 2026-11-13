@@ -52,6 +52,7 @@ export type ReplayActorFrame=ActorFrame & {
  /** Optional for archived films recorded before D4. */
  doorHandContact?:DoorHandContact|null;
  kickFoot?:0|1|null;
+ coverStanceDrop?:number;
  /** A3.6–7 optional for backwards-compatible historical films. */
  physicalContact?:PhysicalContact|null;
  travelYaw?:number;intentKind?:string;awarenessCount?:number;
@@ -163,6 +164,7 @@ export function snapshot(s:Session,seenGround?:string[],
       lastThrowAt:a.lastThrowAt,lastDoorAt:a.lastDoorAt,
       lastDoorId:a.lastDoorId,lastDoorMethod:a.lastDoorMethod,
       kickFoot:a.kickFoot??null,
+      coverStanceDrop:a.coverStanceDrop??0,
       doorHandContact:a.doorHandContact?{
         ...a.doorHandContact,point:{...a.doorHandContact.point}
       }:null,
@@ -371,6 +373,8 @@ export class MissionRecorder{
         velocity:mix(a.velocity,b.velocity,alpha),
         turning:mix(a.turning,b.turning,alpha),
         aim:mix(a.aim,b.aim,alpha),
+        coverStanceDrop:mix(a.coverStanceDrop??0,
+          b.coverStanceDrop??0,alpha),
         reload:mix(a.reload,b.reload,alpha),
         recoil:mix(a.recoil,b.recoil,alpha),
         stability:mix(a.stability,b.stability,alpha),
@@ -431,6 +435,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
     if(a)Object.assign(a,copy,{p:position(copy.p),
       // Pre-A3.6 films have no anchor: do not leak one from a later seek.
       kickFoot:copy.kickFoot??null,
+      coverStanceDrop:copy.coverStanceDrop??0,
+      coverStanceSource:null,
       pivotEpisode:null,
       physicalContact:copy.physicalContact?{
         ...copy.physicalContact,anchor:{...copy.physicalContact.anchor,

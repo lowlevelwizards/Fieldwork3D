@@ -19,7 +19,7 @@ import {incomingHitFacing,choosePhysicalCorrection} from './breach-combat-reacti
 import {type Pt,segmentsCross,pointToSegment} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
 import {WEAPONS} from './breach-combat.ts';
-import {aimHeight} from './breach-cover-height.ts';
+import {aimHeight,effectiveAimHeight} from './breach-cover-height.ts';
 import {assessFireLane,assessFriendlyLane,fireLaneReachable} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
@@ -154,12 +154,12 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
    const clearance=weaponClearance({
      x:candidate.x,z:candidate.y,heading:a.heading,weaponYaw:aimYaw,
      shoulderOffset:a.aimSideOffset??0,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
-     aim:a.aim,posture:a.posture,velocity:0,recoil:a.recoil,
+     aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,velocity:0,recoil:a.recoil,
      threatRange:range
    },s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
    if(clearance.blocked)return false;
    const from={x:clearance.muzzle.x,y:clearance.muzzle.z};
-   const height=aimHeight(target.posture==='crouch');
+   const height=effectiveAimHeight(target);
    const far=muzzleEndpoint(from,clearance.muzzle.yaw,
      Math.max(170,d(from,target.p)+38));
    const farHeight=clearance.muzzle.y+(height-clearance.muzzle.y)*
@@ -206,7 +206,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const proposedYaw=shotYaw(a.weaponYaw,spread,random(s),random(s));
   const clearance=weaponClearance({x:a.p.x,z:a.p.y,
     heading:a.heading,weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,
-    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
+    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
     velocity:a.velocity,recoil:a.recoil},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
   if(clearance.blocked)return;
   const muzzle=clearance.muzzle;
@@ -323,7 +323,7 @@ function updateContextualCrouch(s:Session,a:TeamActor):void{
     threatRange:d(rear.p,target.p)},s.doors,world.cover,world.walls);
   if(clearance.blocked)continue;
   const origin={x:clearance.muzzle.x,y:clearance.muzzle.z},
-    targetHeight=aimHeight(target.posture==='crouch');
+    targetHeight=effectiveAimHeight(target);
   const frontBody={...a.p,posture:'stand' as const},
     crouchedBody={...a.p,posture:'crouch' as const};
   if(assessFriendlyLane(origin,clearance.muzzle.y,
@@ -393,7 +393,7 @@ function updatePassiveWatchMicroAim(s:Session,a:TeamActor):void{
   const candidate=weaponClearance({x:a.p.x,z:a.p.y,
     heading:a.heading,weaponYaw:yaw,shoulderOffset:offset,
     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
-    equipment:a.equipment,aim:a.aim,posture:a.posture,
+    equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
     velocity:a.velocity,recoil:a.recoil},
    s.doors,world.cover,world.walls,friends);
   if(candidate.blocked)return false;
@@ -495,7 +495,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     const clearance=weaponClearance({x:a.p.x,z:a.p.y,
       heading:a.heading,weaponYaw:angle(a.p,candidate.p),
       shoulderOffset:a.aimSideOffset??0,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
-      equipment:a.equipment,aim:a.aim,posture:a.posture,
+      equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
       velocity:a.velocity,recoil:a.recoil,threatRange:d(a.p,candidate.p)},
       s.doors,world.cover,world.walls);
     if(clearance.blocked)return false;
@@ -527,7 +527,7 @@ function fire(s:Session,a:TeamActor,dt:number){
       const probe=(yaw:number)=>weaponClearance({
         x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:yaw,
         weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
-        equipment:a.equipment,aim:0,posture:a.posture,
+        equipment:a.equipment,aim:0,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
         velocity:0,recoil:0
       },s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
       const blocked=probe(a.heading).obstruction;
@@ -568,12 +568,12 @@ function fire(s:Session,a:TeamActor,dt:number){
   else if(s.seconds-(a.lastAimSideProbeAt??-100)>=.16){
     a.lastAimSideProbeAt=s.seconds;
     const aimYaw=angle(a.p,target.p);
-    const height=aimHeight(target.posture==='crouch');
+    const height=effectiveAimHeight(target);
     const canFireOffset=(offset:number)=>{
       const probe=weaponClearance({x:a.p.x,z:a.p.y,
         heading:a.heading,weaponYaw:aimYaw,shoulderOffset:offset,
         weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
-        equipment:a.equipment,aim:a.aim,posture:a.posture,
+        equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
         velocity:a.velocity,recoil:a.recoil,threatRange:d(a.p,target.p)
        },s.doors,world.cover,world.walls,friends);
       if(probe.blocked)return false;
@@ -605,11 +605,11 @@ function fire(s:Session,a:TeamActor,dt:number){
       weaponYaw:angle(a.p,target.p),shoulderOffset:a.aimSideOffset??0,
       weapon:a.weapon,
       weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
-      aim:a.aim,posture:a.posture,velocity:a.velocity,recoil:a.recoil,
+      aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,velocity:a.velocity,recoil:a.recoil,
       threatRange:d(a.p,target.p)},s.doors,world.cover,world.walls);
     if(!preflight.blocked){
       const from={x:preflight.muzzle.x,y:preflight.muzzle.z};
-      const targetHeight=aimHeight(target.posture==='crouch');
+      const targetHeight=effectiveAimHeight(target);
       const lane=assessFireLane(from,preflight.muzzle.y,
         target.p,targetHeight,world.cover,world.walls,s.doors,friends);
       if(lane.blocker==='friendly'&&!observedCivilianFireLane(

@@ -32,7 +32,8 @@ export type Exposure={blocked:boolean;soft:boolean;hard:boolean;penalty:number;
   material:'stone'|'wood'|'metal'|'dust'};
 export function exposure(from:Pt,to:Pt,doors:Door[],
   targetCrouched=false,shooterCrouched=false,visionOnly=false,
-  walls:readonly Segment[]=WALLS,coverObjects:readonly Obstacle[]=COVER):Exposure{
+  walls:readonly Segment[]=WALLS,coverObjects:readonly Obstacle[]=COVER,
+  shooterEyeHeight?:number,targetAimHeight?:number):Exposure{
   const ray={a:from,b:to};
   if(walls.some(w=>segmentsCross(ray,w))||doorBlocksSightRay(doors,ray))
     return {blocked:true,soft:false,hard:true,penalty:1,material:'stone'};
@@ -42,8 +43,8 @@ export function exposure(from:Pt,to:Pt,doors:Door[],
     if(['chain-link-fence','iron-fence'].includes(cover.fixture??'')||
       (visionOnly&&cover.fixture==='glass-barrier'))continue;
     if(!segmentBox(from,to,cover))continue;
-    if(coverImpactFraction(from,to,eyeHeight(shooterCrouched),
-      aimHeight(targetCrouched),cover)!==null){
+    if(coverImpactFraction(from,to,shooterEyeHeight??eyeHeight(shooterCrouched),
+      targetAimHeight??aimHeight(targetCrouched),cover)!==null){
       hard=true;material=cover.low?'wood':'metal';
     }else soft=true;
   }
