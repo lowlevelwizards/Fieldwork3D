@@ -76,6 +76,22 @@ test('A3.1 projectile and rigid weapon use same crouch volumes, but independent 
  assert.equal(fireLaneReachable({blocker:'friendly'},
   {end:p(70,0),remaining:1},p(70,0)),false);
 });
+test('A3.1 allied body is a hard veto even when penetrable cover is also in the lane',()=>{
+ const cover=[{x:45,y:0,w:20,h:20,fixture:'shelf'}];
+ const teammate=F('stand',70,0);
+ assert.equal(assessFireLane(p(0,0),32,p(100,0),32,
+  cover,[],[],[teammate]).blocker,'friendly',
+  'cover must never hide a teammate from shot authorization');
+ assert.equal(assessFireLane(p(0,0),32,p(100,0),32,
+  cover,[],[],[]).blocker,'cover');
+});
+test('A3.1 long spread/missed projectile path guards teammates behind target',()=>{
+ const intended=p(90,0),far=p(190,0),behind=F('stand',135,0);
+ assert.equal(shot(32,32,[behind],p(0,0),intended),'clear',
+  'near target lane can be open');
+ assert.equal(shot(32,32,[behind],p(0,0),far),'friendly',
+  'full outgoing tracer needs the additional downstream veto');
+});
 test('A3.1 all bodies are considered independently and shooter is excluded by caller',()=>{
  const first=F('crouch',24,0),second=F('stand',70,0);
  assert.equal(shot(32,32,[first,second]),'friendly');
