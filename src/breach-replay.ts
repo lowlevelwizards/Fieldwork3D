@@ -118,7 +118,6 @@ export function snapshot(s:Session,seenGround?:string[],
   // The immutable observer journal already computes exact current civilian
   // visibility. Reuse it for the 20 Hz frame instead of tracing LOS twice.
   const knowledge=captureReplayKnowledge(s,previouslyDiscovered,observerBodies);
-  const visibleCivilianIds=new Set(knowledge.visibleCivilianIds);
   return {
     t:s.seconds,phase:s.phase,mission:s.mission,
     actors:s.operators.map(a=>{
@@ -200,7 +199,7 @@ export function snapshot(s:Session,seenGround?:string[],
       rescueTarget:c.rescueTarget,appearanceSeed:c.appearanceSeed,
       role:c.role,persona:c.persona,activity:c.activity,
       homeRoomId:c.homeRoomId,
-      visibleAtCapture:visibleCivilianIds.has(c.id)
+      visibleAtCapture:knowledge.visibleCivilianIds.includes(c.id)
     })),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
     objectRevision:s.objectRevision,
