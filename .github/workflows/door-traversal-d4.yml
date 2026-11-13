@@ -31,7 +31,7 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: D4 grip, pose, replay, and live 4-operator regression
         run: |
-          node --experimental-strip-types --test tests/door-traversal-d4-physics.test.mjs tests/door-traversal-d4-pose.test.mjs tests/door-traversal-d4-visual.test.mjs tests/door-traversal-d2d3-four-operator.test.mjs tests/release7-door-intent.test.mjs tests/release7-outward-four.test.mjs tests/door-traversal-episode.test.mjs tests/breach-pose-contacts.test.mjs
+          node --experimental-strip-types --test tests/door-traversal-d4-physics.test.mjs tests/door-traversal-d4-pose.test.mjs tests/door-traversal-d4-visual.test.mjs tests/door-traversal-d4-live-grip.test.mjs tests/door-traversal-d2d3-four-operator.test.mjs tests/release7-door-intent.test.mjs tests/release7-outward-four.test.mjs tests/door-traversal-episode.test.mjs tests/breach-pose-contacts.test.mjs
       - name: Physical doorway diagnostics
         run: node --experimental-strip-types scripts/audit-door-traversal-baseline.mjs 4 1800
       - name: Production TypeScript and Vite build
