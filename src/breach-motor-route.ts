@@ -25,6 +25,12 @@ export function prepareMotorRoute(
     a.lastNormalLaneProbeAt=-10;
   }
   if(!a.nav.length){
+    // Completed D2 temporary doorway footwork returns to the original
+    // authored destination, not another arbitrary temporary node.
+    if(a.doorTraversal?.maneuver==='outside-leaf'){
+      a.doorTraversal.waypoints=[];
+      a.doorTraversal.waypointIndex=0;
+    }
     // A hinge from an earlier state can leave the operator embedded in its
     // collision capsule. Take a bounded real swept step out before route
     // backoff; do not demand a new waypoint or let the route fail forever.

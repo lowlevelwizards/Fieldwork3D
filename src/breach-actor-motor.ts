@@ -60,6 +60,7 @@ export function advanceActorMotor(
    !a.plan[0]?.entryDoorId&&a.blockedTime<.2&&
    !a.squeeze&&!a.traversal&&!a.traversalPending&&
    !a.autoSidestep&&!a.aimInstruction&&
+   a.doorTraversal?.maneuver!=='outside-leaf'&&
    !approachingNarrowThreshold(a.p,p,s.doors),
    (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,
      sessionWorldGeometry(s))))a.nav.shift();

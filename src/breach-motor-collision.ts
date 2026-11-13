@@ -11,7 +11,8 @@ import {entryClearanceForLook} from './breach-entry-coordination.ts';
 import {beginAutoSidestep,autoSidestepFacing,watchClearanceAllowed} from './breach-auto-sidestep.ts';
 import {friendlyPassingStep} from './breach-friendly-traffic.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
-import {doorLeafBypass} from './breach-door-leaf-bypass.ts';
+import {tryRehearsedDoorManeuver,ownsDoorManeuverRoute}
+ from './breach-door-traversal-maneuver.ts';
 import {incidentalCloseWouldBlockTeammate,operatorCrossingDoor}
  from './breach-door-pressure-arbitration.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
@@ -85,18 +86,15 @@ export function resolveMotorCollision(
     // Failed comfort searches must not restart the world-truth recovery
     // clock; it needs uninterrupted stall time to escalate blocked moves.
     a.lastNormalLaneProbeAt=s.seconds;
-    // Prefer actual free-tip footwork to an expensive generic A* recovery.
-    // This temporary leg route never rewrites an authored MOVE or WATCH.
-    const leaf=s.doors.find(door=>a.side==='blue'&&
-      operatorCrossingDoor(a,door)&&door.open&&
-      pointToSegment(desiredMove,doorLeafSegment(door))<OPERATOR_RADIUS+56);
-    const bypass=leaf?doorLeafBypass(a.p,p,leaf,
-      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world)):[];
-    if(bypass.length){
-      a.nav=bypass;a.retryRouteAt=0;a.recoveryAttempts=0;
-      a.squeeze=false;a.squeezeTime=0;
-      return true;
-    }
+    // A real, remembered doorway owns its repeatable local footwork.
+    // Only a meaningful collision can select a bounded full-body maneuver;
+    // no per-tick 30-candidate search or surprise authored route edits.
+    if(a.doorTraversal&&tryRehearsedDoorManeuver(
+       a,s,next,canAutoSidestep))return true;
+    // The routine is still being physically executed. Do not let generic
+    // route recovery repeatedly discard its chosen shoulder-clear path.
+    if(ownsDoorManeuverRoute(a)&&
+       s.seconds-a.doorTraversal!.lastProgressAt<1.8)return true;
     const laneAt=profile?beginMotorCpuMeasurement():0;
     const fullLane=recoverNormalLane(a.p,p,s.doors,world);
     if(profile)profile('motor-collision-lane',finishMotorCpuMeasurement(laneAt));
@@ -230,7 +228,7 @@ export function resolveMotorCollision(
     }
   }
   // Try nearby route repair for actor jams, furniture, and door leaves.
-  if((!traversable||blocking)&&
+  if((!traversable||blocking)&&!ownsDoorManeuverRoute(a)&&
     recoveryAction(blocking?'actor':a.lastBlocker,a.blockedTime,
       s.seconds-a.lastNavRepairAt,a.recoveryAttempts)==='detour'){
     const candidate=localDetour(a.p,next,s.doors,s.operators
@@ -287,7 +285,8 @@ export function resolveMotorCollision(
       pointToSegment(desiredMove,doorLeafSegment(door))<OPERATOR_RADIUS+12);
     const repair=recoveryAction(a.lastBlocker,a.blockedTime,
       s.seconds-a.lastNavRepairAt,a.recoveryAttempts,{doorMoving});
-    if((repair==='replan'||repair==='report')&&s.seconds>=a.retryRouteAt){
+    if((repair==='replan'||repair==='report')&&s.seconds>=a.retryRouteAt&&
+       !ownsDoorManeuverRoute(a)){
       a.lastNavRepairAt=s.seconds;
       // Once actual collision is observed, repair against real geometry,
       // not only the incomplete player-intel route that may run through
