@@ -28,7 +28,8 @@ test('live low-ready/ADS switch does not teleport weapon or wrists',()=>{
  const position=()=>rig.weapon.position.clone();
  const hands=()=>rig.arms.map(a=>a.hand.position.clone());
  poseOperator(rig,base,0);
- assert.equal(rig.root.userData.lowReadyPoseReport?.status,'clear');
+ assert.equal(rig.root.userData.authoredReadyCarry?.mode,'low',
+  'user-authored low must own the pose rather than the old coupled solver');
  const low=position(),lowHands=hands();
  poseOperator(rig,{...base,seconds:1.01,aiming:true,aimBlend:1,
   handlingOverride:'ads'},.01);
@@ -47,7 +48,7 @@ test('live low-ready/ADS switch does not teleport weapon or wrists',()=>{
  assert.ok(position().distanceTo(ads)<.001,
   'return to low-ready begins at the last rendered ADS transform');
  poseOperator(rig,{...base,seconds:1.85},.08);
- assert.equal(rig.root.userData.lowReadyPoseReport?.status,'clear');
+ assert.equal(rig.root.userData.authoredReadyCarry?.mode,'low');
  assert.ok(position().distanceTo(low)<.03);
  rig.dispose();
 });

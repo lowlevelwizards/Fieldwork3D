@@ -47,7 +47,7 @@ jobs:
           node-version: '24'
       - run: npm install --no-audit --no-fund
       - name: A2 contact/body, replay, published-pose regressions
-        run: node --experimental-strip-types --test tests/animation-a2-*.test.mjs tests/animation-a0-baseline.test.mjs tests/animation-a1-choreography.test.mjs tests/breach-motion-*.test.mjs tests/breach-126.test.mjs tests/breach-127.test.mjs tests/breach-gait-acceptance.test.mjs tests/breach-unified-pose-stability.test.mjs
+        run: node --experimental-strip-types --test tests/animation-a2-*.test.mjs tests/animation-a0-baseline.test.mjs tests/animation-a1-choreography.test.mjs tests/breach-motion-*.test.mjs tests/breach-126.test.mjs tests/breach-127.test.mjs tests/breach-gait-acceptance.test.mjs tests/breach-unified-pose-stability.test.mjs tests/breach-low-ready-transition-rig-v2.test.mjs
       - name: A2 reproducible motion report
         run: node --experimental-strip-types scripts/audit-animation-a2.mjs --out artifacts/animation-a2/report.json
       - name: A2.2 deterministic movement transitions and replay report
