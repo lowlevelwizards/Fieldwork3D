@@ -293,7 +293,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   const data=weaponGrips(input.weapon,input.configuration,
      input.handling,input.relaxedLowReady),scale=data.lengthScale;
   const stockless=stocklessMP5K(input.configuration);
-   const relaxed=input.handling==='low'?
+   const relaxed=input.handling==='ready'?
      lowReadyFamilyFit(input.configuration):null;
    const relaxedWeight=clamp(input.relaxedLowReady??0,0,1);
   // Preserve the physical barrel's requested yaw even if the pelvis/chest
@@ -404,8 +404,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   // independent hand or stock teleportation occurs.
   // Compare the physical buttstock against a stable operator anatomy point,
   // not a reference synthesized from the stock itself (always zero).
-  const pocket=input.aimBlend===undefined||
-    input.handling==='low'||input.handling==='high'?
+  const pocket=input.aimBlend===undefined?
     lowReadyPocket(stockPocket(input.handling,input.armorPush),relaxed,relaxedWeight):{
       x:stockPocket('ready',input.armorPush).x+
         (stockPocket('ads',input.armorPush).x-stockPocket('ready',input.armorPush).x)*
