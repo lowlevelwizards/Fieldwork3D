@@ -93,16 +93,16 @@ test('D4 replay snapshots copy grip position (old films may omit it)',()=>{
   const actor=team(s)[0];
   const c={doorId:'ENTRY',fraction:.82,mode:'handle',
    startedAt:3.2,releasedAt:null,point:{x:307,y:242}};
-  actor.doorHandContact=c;
+  actor.doorGrip=c;
   const frame=snapshot(s);
   const recorded=frame.actors.find(a=>a.id===actor.id);
-  assert.deepEqual(recorded.doorHandContact,c);
+  assert.deepEqual(recorded.doorGrip,c);
   c.point.x=999;
-  assert.equal(recorded.doorHandContact.point.x,307,
+  assert.equal(recorded.doorGrip.point.x,307,
    'a replay seek cannot see a later mutable door contact');
-  assert.equal(recorded.doorHandContact.releasedAt,null);
+  assert.equal(recorded.doorGrip.releasedAt,null);
   const oldFilm={...recorded};
-  delete oldFilm.doorHandContact;
-  assert.equal(oldFilm.doorHandContact,undefined);
+  delete oldFilm.doorGrip;
+  assert.equal(oldFilm.doorGrip,undefined);
  }finally{activateSite(null);}
 });
