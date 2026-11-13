@@ -32,6 +32,8 @@ test('A3.11 readiness strictly escalates without creating a fire permission',()=
  assert.equal(contactAcquisitionScale('watch'),1);
  assert.equal(fireUrgency({confirmed:false,suspicious:false,
   authored:true,aimMode:'free'}),'routine');
+ assert.equal(fireUrgency({confirmed:false,suspicious:false,
+  authored:false,aimMode:'free',lookOrder:true}),'look');
 });
 
 test('A3.11 short-stock permits only downrange emergency point fire',()=>{
