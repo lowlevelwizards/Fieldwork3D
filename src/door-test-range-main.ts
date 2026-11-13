@@ -5,6 +5,7 @@
 import {activateSite,doorLeafSegment,doorCenter,
  type Pt} from './breach-core.ts';
 import {pushDoor} from './breach-door.ts';
+import {doorHandPoint} from './breach-door-hand-contact.ts';
 import {DOOR_RANGE_CASES,doorRangeSite,prepareDoorRangeCase,
  type DoorRangeCaseId} from './breach-door-test-cases.ts';
 import {newSession,team,planSquadEntry,planMove,clearPlan,
@@ -118,6 +119,9 @@ function stats(){
     (episode.handContact?' · HAND CONTACT':'')+
     ' · attempts '+episode.maneuverAttempts:
     'NO EPISODE')+
+   ' · '+(a.doorHandContact?.releasedAt===null?
+      'SUPPORT HAND '+a.doorHandContact.mode.toUpperCase():
+      a.doorHandContact?'HAND RELEASING':'TWO-HAND WEAPON')+
    ' · '+(a.motorPause??a.lastBlocker??'CLEAR')+
    ' · blocked '+a.blockedTime.toFixed(1)+'s'+
    ' · orders '+a.plan.length;
@@ -173,6 +177,17 @@ function paint(){
    }
   }
   ctx.setLineDash([]);
+  // D4: show exactly the motor-authorized physical support-hand contact.
+  // Unattached operators have no per-frame door geometry work.
+  const grip=a.doorHandContact;
+  if(grip){
+   const tracked=grip.releasedAt===null?
+     s.doors.find(d=>d.id===grip.doorId):undefined;
+   const target=tracked?doorHandPoint(tracked,grip.fraction):grip.point;
+   drawLine(a.p,target,tracked?'#ffd694':'#9b8b70',2);
+   ctx.fillStyle=tracked?'#ffe0a2':'#9b8b70';
+   ctx.beginPath();ctx.arc(target.x,target.y,3.5,0,Math.PI*2);ctx.fill();
+  }
   ctx.fillStyle=a.id===selectedId?'#f0cf8a':'#91d1bd';
   ctx.beginPath();ctx.arc(a.p.x,a.p.y,9,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle='#172923';ctx.lineWidth=2;ctx.stroke();
@@ -216,7 +231,8 @@ function report(){
   operators:team(s).slice(0,4).map(a=>({
    id:a.id,p:a.p,remainingOrders:a.plan.length,
    blockedTime:a.blockedTime,pause:a.motorPause,
-   episode:a.doorTraversal,nav:a.nav.slice(0,8)
+   episode:a.doorTraversal,grip:a.doorHandContact,
+   nav:a.nav.slice(0,8)
   })),events:[...s.events]};
 }
 get<HTMLButtonElement>('reset').addEventListener('click',reset);
