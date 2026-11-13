@@ -191,7 +191,7 @@ export function createOperatorVisualKit(
   cloth,trousers,trim,dark);
  const fieldBlouses=createFieldBlousePrototypes(chest,arms,cloth,trim);
  const newUpper=createNewUpperGarments(chest,arms,cloth,trim);
- const casualShirts=createCasualShirts(chest,arms,cloth,trim,skin);
+ const casualShirts=createCasualShirts(chest,arms,cloth,trim);
  const fieldTrousers=createFieldTrouserPrototypes(legs,trousers,trim,
   newUpper.mountainLegCanvas,newUpper.mountainLegPanel,chest);
  // Retire the old shared cuboid jacket and light-shirt meshes altogether.
@@ -404,8 +404,6 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  else if(looks.top==='combat-shirt'||looks.top==='smock-jacket'||
   looks.top==='gorka-jacket')
   fitRigCoveredPockets(v.newUpper.cuts[looks.top].torso,pressRig);
- else if(isCasualShirtCut(looks.top))
-  fitRigCoveredPockets(v.casualShirts.cuts[looks.top].torso,pressRig);
  updateFieldTrouserPrototypes(v.fieldTrousers,looks.trousers,
   wardrobe?.trouserHem??'bloused',looks.footwear==='bare-feet',looks.top);
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
@@ -424,7 +422,7 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
     looks.top==='combat-shirt'||looks.top==='smock-jacket'||
       looks.top==='gorka-jacket'?
       v.newUpper.cuts[looks.top].torso:
-      isCasualShirtCut(looks.top)?v.casualShirts.cuts[looks.top].torso:v.baseTorso;
+      v.baseTorso;
   const sources:ShoulderContactSource[]=[
     {id:'garment:'+looks.top,layer:'garment',material:'soft',
       object:garment}
