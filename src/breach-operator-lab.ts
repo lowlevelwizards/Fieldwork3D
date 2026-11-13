@@ -600,7 +600,11 @@ document.getElementById('wardrobeTopColorway')?.addEventListener('change',e=>{
  checkpointAppearance();
  const top=resolvedWardrobe(wardrobeOptions,labKit).top;
  const selected=resolvedTopColorway(top,(e.target as HTMLSelectElement).value);
- wardrobeOptions={...wardrobeOptions,topColorway:selected};
+ wardrobeOptions={...wardrobeOptions,topColorway:selected,
+  ...(top==='button-up-shirt'&&selected.startsWith('flannel-')?{
+   fabricCamo:{...wardrobeOptions.fabricCamo,top:undefined},
+   fabricSolids:{...wardrobeOptions.fabricSolids,top:undefined}
+  }:{})};
  syncWardrobe();
 });
 for(const [id,field] of [
@@ -1046,6 +1050,8 @@ function isolateKit(body:OperatorRig){
   ...Object.values(v.fieldBlouses).flatMap(b=>[
     b.torso,...b.upper,...b.lower,...b.cuffed,...b.cuffedLower,...b.rolledUpper]),
    ...Object.values(v.newUpper.cuts).flatMap(u=>[
+    u.torso,...u.upper,...u.lower,...u.cuffedLower,...u.rolledUpper]),
+   ...Object.values(v.casualShirts.cuts).flatMap(u=>[
     u.torso,...u.upper,...u.lower,...u.cuffedLower,...u.rolledUpper]),
    ...Object.values(v.fieldTrousers).flatMap(t=>[
     ...t.thigh,...t.bloused,...t.unbloused,...t.cuffed]),
