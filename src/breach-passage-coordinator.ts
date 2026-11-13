@@ -18,9 +18,11 @@ export type QueueDecision={move:Pt;hold:boolean;
  doorId:string|null;rank:number|null};
 type Member={actor:TeamActor;slot:PassageSlot};
 type Lane={door:Door;side:-1|1;members:Member[];
- swingDepth:number};
+ // Reuse one small live-read buffer for sequential fixed-clock motor ticks.
+ readyMembers:Member[];swingDepth:number};
 type Owner={id:string;side:-1|1;lastAt:Pt;lastProgress:number};
 type Context={schedule:PassageSchedule;byDoor:Map<string,Door>;
+ actors:Map<string,TeamActor>;centers:Map<string,Pt>;
  lanes:Map<string,Lane>;owners:Map<string,Owner>;
  promotions:Map<string,string>;nextPromotionProbe:Map<string,number>};
 const contexts=new WeakMap<Session,Context>();
@@ -41,6 +43,9 @@ function context(s:Session,schedule:PassageSchedule):Context{
  if(cached?.schedule===schedule)return cached;
  const byDoor=new Map(s.doors.map(d=>[d.id,d]));
  const actors=new Map(s.operators.map(a=>[a.id,a]));
+ // Door endpoints are fixed for a GO schedule; avoid recomputing centers.
+ const centers=new Map<string,Pt>();
+ for(const door of s.doors)centers.set(door.id,doorCenter(door));
  const lanes=new Map<string,Lane>();
  for(const [actorId,slots] of schedule){
   const actor=actors.get(actorId);
@@ -50,7 +55,7 @@ function context(s:Session,schedule:PassageSchedule):Context{
    if(!door||dist(door.a,door.b)>60)continue;
    const key=laneKey(slot.doorId,slot.fromSide);
    let lane=lanes.get(key);
-   if(!lane){lane={door,side:slot.fromSide,members:[],
+   if(!lane){lane={door,side:slot.fromSide,members:[],readyMembers:[],
     swingDepth:outwardSwingStagingDepth(door,slot.fromSide)};
     lanes.set(key,lane);}
    lane.members.push({actor,slot});
@@ -58,7 +63,7 @@ function context(s:Session,schedule:PassageSchedule):Context{
  }
  for(const lane of lanes.values())lane.members.sort((a,b)=>
   a.slot.rank-b.slot.rank||a.actor.id.localeCompare(b.actor.id));
- const value:Context={schedule,byDoor,lanes,owners:new Map(),
+ const value:Context={schedule,byDoor,actors,centers,lanes,owners:new Map(),
   promotions:new Map(),nextPromotionProbe:new Map()};
  contexts.set(s,value);
  return value;
@@ -107,30 +112,38 @@ function capStep(from:Pt,to:Pt,door:Door,side:-1|1,
 }
 function ownerFor(ctx:Context,s:Session,door:Door):Owner|null{
  const old=ctx.owners.get(door.id);
+ let stalledId:string|null=null;
  if(old){
-  const actor=s.operators.find(a=>a.id===old.id);
+  const actor=ctx.actors.get(old.id);
   const slot=actor&&pending(actor,ctx.schedule,ctx.byDoor);
   const active=!!actor&&!!slot&&slot.doorId===door.id&&
     ready({actor,slot},ctx);
   if(active){
-   if(dist(old.lastAt,actor.p)>.7){
+   // Lateral shuffling and backward drift cannot renew the crossing
+   // lease. A body already in the throat retains it until clearance.
+   if(forwardTravel(old.lastAt,actor.p,door,old.side)>.7){
     old.lastAt={...actor.p};old.lastProgress=s.seconds;
    }
    if(throat(actor.p,door)||s.seconds-old.lastProgress<1.8)
     return old;
+   stalledId=old.id;
   }
   ctx.owners.delete(door.id);
  }
- // Choose once from ready crossing approachers, not each actor tick.
- let best:Member|null=null;
+ // Prefer a different ready crossing after the prior claimant stalled;
+ // fall back to the same actor only when no alternative can proceed.
+ let best:Member|null=null,stalledFallback:Member|null=null;
+ const center=ctx.centers.get(door.id)!;
  for(const side of [-1,1] as const){
   for(const m of ctx.lanes.get(laneKey(door.id,side))?.members??[]){
-   if(!ready(m,ctx)||dist(m.actor.p,doorCenter(door))>80)continue;
+   if(!ready(m,ctx)||dist(m.actor.p,center)>80)continue;
+   if(m.actor.id===stalledId){stalledFallback=m;continue;}
    if(!best||m.slot.eta<best.slot.eta-.001||
       Math.abs(m.slot.eta-best.slot.eta)<=.001&&
        m.actor.id.localeCompare(best.actor.id)<0)best=m;
   }
  }
+ best??=stalledFallback;
  if(!best)return null;
  const result:Owner={id:best.actor.id,side:best.slot.fromSide,
   lastAt:{...best.actor.p},lastProgress:s.seconds};
@@ -189,7 +202,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
  if(!slot)return free;
  const door=ctx.byDoor.get(slot.doorId);
  if(!door||dist(door.a,door.b)>60||
-    dist(a.p,doorCenter(door))>QUEUE_ENTRY_RADIUS||
+    dist(a.p,ctx.centers.get(door.id)!)>QUEUE_ENTRY_RADIUS||
     !ready({actor:a,slot},ctx))return free;
  const forward=forwardTravel(a.p,move,door,slot.fromSide);
  // Lateral corrective steps must still preserve real teammate body
@@ -223,32 +236,38 @@ export function coordinatePassage(s:Session,a:TeamActor,
   capStep(a.p,move,door,slot.fromSide,
    QUEUE_WAIT_DEPTH,barrier,slot.rank):
   {...free,doorId:door.id,rank:slot.rank};
- const candidates=lane.members.filter(m=>ready(m,ctx));
+ // Read live order/position each motor tick, reusing bounded storage.
+ const candidates=lane.readyMembers;
+ candidates.length=0;
+ for(const member of lane.members)if(ready(member,ctx))candidates.push(member);
  const promoted=ctx.promotions.get(laneKey(door.id,lane.side));
  if(promoted){
   const i=candidates.findIndex(m=>m.actor.id===promoted);
-  if(i>0)candidates.unshift(candidates.splice(i,1)[0]);
+  if(i>0){
+   const member=candidates[i];
+   for(let j=i;j>0;j--)candidates[j]=candidates[j-1];
+   candidates[0]=member;
+  }
  }
  const index=candidates.findIndex(m=>m.actor.id===a.id);
  if(index<1)return barrier?
   capStep(a.p,move,door,slot.fromSide,
    QUEUE_WAIT_DEPTH,barrier,slot.rank):
   {...free,doorId:door.id,rank:slot.rank};
- const leader=candidates[index-1];
- if(forward>.025&&maybePromote(ctx,s,lane,{actor:a,slot},leader,move))
-  return {...free,doorId:door.id,rank:slot.rank};
- const leadDepth=normalDepth(leader.actor.p,door)*slot.fromSide;
- let safeDepth=Math.max(QUEUE_WAIT_DEPTH,leadDepth+QUEUE_CENTER_GAP);
- // Q4: the moving outward leaf has a known sweep. Keep followers outside
- // the precomputed arc while it opens; never drive them backwards to
- // reconstruct a perfect stack. The opener/lead still uses real contact.
+  // A rank is a preferred crossing order, NOT a reservation for the
+ // full width of a doorway. Only an actual higher-rank body sharing this
+ // narrow longitudinal corridor can impose queue-depth spacing. Operators
+ // alongside one another may keep moving where their real 2-D body gap
+ // and the authoritative swept motor allow it.
+ //
+ // Q4's moving outward leaf is different: its real swept arc still needs
+ // staging before the follower advances. No new collision exemption.
+ let safeDepth=-OPERATOR_RADIUS-10;
  if(lane.swingDepth>0&&leafSweepNeedsStaging(door))
   safeDepth=Math.max(safeDepth,lane.swingDepth);
- // Q2: retain spacing to *all* higher-priority ready bodies in this
- // lane, even as they move through the threshold. A nearer same-rank
- // member is not removed merely because another leader moved into the
- // room. For two different sides of a frame, leave naturally separated
- // flanks alone: only bodies in the same physical corridor limit advance.
+ // Consider ALL higher-ranked live entrants; the immediate predecessor
+ // might already be laterally clear while a different teammate is ahead.
+ // No extra A*, actor movement or per-frame physics is introduced.
  const ownLateral=alongDoor(a.p,door);
  const ownDepth=normalDepth(a.p,door)*slot.fromSide;
  for(let j=0;j<index;j++){
@@ -264,6 +283,12 @@ export function coordinatePassage(s:Session,a:TeamActor,
   capStep(a.p,move,door,slot.fromSide,
    safeDepth,barrier??'spacing',slot.rank):
   {move,hold:false,reason:'free' as const,doorId:door.id,rank:slot.rank};
+ // An uncommitted lead may be promoted ONLY after a true projected hold,
+ // never because someone nearby is slow while another lane is freely
+ // passable. This avoids rank churn and rare unnecessary world sweeps.
+ if(longitudinal.hold&&forward>.025&&
+    maybePromote(ctx,s,lane,{actor:a,slot},candidates[index-1],move))
+  return {...free,doorId:door.id,rank:slot.rank};
  // Q2: independently maintain actual center-to-center spacing through the
  // throat, not just projected depth. Two operators may have staggered
  // sideways paths at the same depth; longitudinal spacing alone permits a
@@ -273,7 +298,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
  const proposed=longitudinal.move;
  for(let j=0;j<index;j++){
   const peer=candidates[j].actor;
-  if(peer.health<=0||!ready(candidates[j],ctx))continue;
+  // Ready members were scanned once above; nothing mutates their orders here.
   const fromGap=dist(a.p,peer.p);
   const toGap=dist(proposed,peer.p);
   if(toGap>=QUEUE_CENTER_GAP-.25||
@@ -283,9 +308,9 @@ export function coordinatePassage(s:Session,a:TeamActor,
   let lo=0,hi=fraction;
   for(let n=0;n<8;n++){
    const mid=(lo+hi)/2;
-   const p={x:a.p.x+(proposed.x-a.p.x)*mid,
-    y:a.p.y+(proposed.y-a.p.y)*mid};
-   if(dist(p,peer.p)>=QUEUE_CENTER_GAP-.25)lo=mid;
+   const dx=a.p.x+(proposed.x-a.p.x)*mid-peer.p.x;
+   const dy=a.p.y+(proposed.y-a.p.y)*mid-peer.p.y;
+   if(dx*dx+dy*dy>=(QUEUE_CENTER_GAP-.25)**2)lo=mid;
    else hi=mid;
   }
   fraction=Math.min(fraction,lo);
