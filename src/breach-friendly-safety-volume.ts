@@ -22,8 +22,12 @@ export const FRIENDLY_CROUCH_VOLUMES=[
 /** The posture is committed fixed-step tactical state, not the render blend.
  * Do NOT infer tactical clearance from interpolated visual 3D joints. */
 export function safetyBodyFor(a:FriendlyBodyActor):FriendlySafetyBody{
- return {x:a.p.x,y:a.p.y,posture:a.posture,
-  coverStanceDrop:a.coverStanceDrop??0};
+ // Preserve the old structural safety contract for historical/fixture
+ // actors without a committed cover height. Never add a synthetic field.
+ return a.coverStanceDrop===undefined?
+  {x:a.p.x,y:a.p.y,posture:a.posture}:
+  {x:a.p.x,y:a.p.y,posture:a.posture,
+   coverStanceDrop:a.coverStanceDrop};
 }
 /** Segment versus a finite vertical cylinder. Compute the ENTIRE horizontal
  * intersection interval before testing ray height; center-only checks let
