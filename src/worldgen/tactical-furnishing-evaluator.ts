@@ -13,7 +13,10 @@ export function createTacticalFurnishingEvaluator(site:Site,room:Room){
    beforeSight.thresholds>0&&beforeSight.exposedSamples>=2;
  return (candidate:Obstacle):number=>{
   // Tall optional pieces cannot take away the room's last good entry line.
-  const afterSight=assessRoomSightlines(site,room,[candidate]);
+  // Low furniture is valid cover, but cannot erase high-standing sightlines.
+  // Preserve R7's rule that low candidates do not incur sightline penalties.
+  const afterSight=candidate.low?beforeSight:
+    assessRoomSightlines(site,room,[candidate]);
   if(sightActive&&afterSight.exposedSamples<2)return -Infinity;
   if(beforeSight.thresholds&&beforeSight.samples>=3&&
      (afterSight.samples<Math.max(3,beforeSight.samples-2)||
