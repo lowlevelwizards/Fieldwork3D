@@ -5,6 +5,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
+import {beginDoorGrip} from './breach-door-grip.ts';
 import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
 import {recordDoorManeuverContact}
@@ -56,6 +57,13 @@ export function prepareMotorRoute(
         s.operators.filter(o=>o.health>0).map(o=>o.p),
         sessionDoorPressurePolicy(s,a),sessionWorldGeometry(s));
       recordDoorManeuverContact(a,contact);
+      if(contact?.handAssist){
+       const d=s.doors.find(d=>d.id===contact.doorId);
+       if(d&&beginDoorGrip(a,d,s.seconds,sessionWorldGeometry(s))){
+        a.lastDoorAt=s.seconds;a.lastDoorId=d.id;
+        a.lastDoorMethod='open';
+       }
+      }
     }
     // When two chairs interlock there may be no navigable path, so the
     // ordinary collision branch cannot run. Probe only a real, short
