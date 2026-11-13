@@ -1,0 +1,25 @@
+name: Q6 doorway timeline diagnosis
+on:
+  push:
+    branches: ['feature/passage-q6-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Exact four-operator phase timeline
+        run: node --experimental-strip-types scripts/diagnose-passage-q6.mjs
+      - name: Strict Q5 real-motor baseline and speed guard
+        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict
+      - name: Critical convoy and physical motor contracts
+        run: node --experimental-strip-types --test tests/passage-q3-flow.test.mjs tests/passage-q4-swing.test.mjs tests/passage-q5-live-blockers.test.mjs tests/passage-q6-opener.test.mjs
+      - name: Production build
+        run: npm run build

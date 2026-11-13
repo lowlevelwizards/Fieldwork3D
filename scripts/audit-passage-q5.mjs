@@ -46,6 +46,15 @@ console.log('Q5_SUMMARY '+JSON.stringify(summary));
 if(strict){
  if(summary.failed||summary.expectationsMet!==summary.cases)
   process.exitCode=1;
+ // All 55 traversable cases matter, including pre-opened doors. Q5's
+ // original speed gate guarded only the 20 hinge/approach core cases.
+ // Compare the extended physical tail against Q5's verified production
+ // 15.883s fourth-cross and 18.483s full-finish baseline.
+ if(extended&&((summary.lastCrossWorst??Infinity)>15.9||
+    (summary.finishWorst??Infinity)>18.5)){
+  console.error('Q6_EXTENDED_TAIL_REGRESSION '+JSON.stringify(summary));
+  process.exitCode=1;
+ }
  if(extended&&(summary.cases!==70||summary.pass!==55||
     summary.expectedBlocked!==10||summary.expectedObstructed!==5)){
   console.error('Q5_INCOMPLETE_COVERAGE '+JSON.stringify(summary));
