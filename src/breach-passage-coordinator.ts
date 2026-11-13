@@ -7,6 +7,8 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PassageSchedule,PassageSlot} from './breach-passage-plan.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {outwardSwingStagingDepth,leafSweepNeedsStaging}
+ from './breach-door-swing-staging.ts';
 
 export const QUEUE_CENTER_GAP=20;
 export const QUEUE_WAIT_DEPTH=OPERATOR_RADIUS+11;
@@ -15,7 +17,8 @@ export type QueueDecision={move:Pt;hold:boolean;
  reason:'free'|'sequence'|'spacing'|'opposing'|'occupied';
  doorId:string|null;rank:number|null};
 type Member={actor:TeamActor;slot:PassageSlot};
-type Lane={door:Door;side:-1|1;members:Member[]};
+type Lane={door:Door;side:-1|1;members:Member[];
+ swingDepth:number};
 type Owner={id:string;side:-1|1;lastAt:Pt;lastProgress:number};
 type Context={schedule:PassageSchedule;byDoor:Map<string,Door>;
  lanes:Map<string,Lane>;owners:Map<string,Owner>;
@@ -47,7 +50,9 @@ function context(s:Session,schedule:PassageSchedule):Context{
    if(!door||dist(door.a,door.b)>60)continue;
    const key=laneKey(slot.doorId,slot.fromSide);
    let lane=lanes.get(key);
-   if(!lane){lane={door,side:slot.fromSide,members:[]};lanes.set(key,lane);}
+   if(!lane){lane={door,side:slot.fromSide,members:[],
+    swingDepth:outwardSwingStagingDepth(door,slot.fromSide)};
+    lanes.set(key,lane);}
    lane.members.push({actor,slot});
   }
  }
@@ -196,14 +201,16 @@ export function coordinatePassage(s:Session,a:TeamActor,
  if(normalDepth(a.p,door)*slot.fromSide< -OPERATOR_RADIUS-10)
   return {...free,doorId:door.id,rank:slot.rank};
  const lane=ctx.lanes.get(laneKey(door.id,slot.fromSide));
- const occupants=s.operators.filter(other=>other!==a&&other.health>0&&
-  throat(other.p,door));
- // Real occupants from either side outrank an approach reservation.
- const hostileThroat=occupants.some(other=>{
-  const own=normalDepth(a.p,door)*slot.fromSide;
-  const otherDepth=normalDepth(other.p,door)*slot.fromSide;
-  return own>=0&&otherDepth<0;
- });
+ // Live occupant coordinates are never cached: short scalar scan,
+ // no repeated per-operator temporary roster allocations.
+ let hostileThroat=false;
+ if(normalDepth(a.p,door)*slot.fromSide>=0)
+  for(const other of s.operators){
+   if(other===a||other.health<=0||!throat(other.p,door))continue;
+   if(normalDepth(other.p,door)*slot.fromSide<0){
+    hostileThroat=true;break;
+   }
+  }
  // A real occupant sets a threshold barrier, but it must NEVER short
  // circuit the queue's stricter follower gap. Previously follower #4 saw
  // man #2 already inside, used only the loose 19-unit threshold barrier
@@ -232,6 +239,11 @@ export function coordinatePassage(s:Session,a:TeamActor,
   return {...free,doorId:door.id,rank:slot.rank};
  const leadDepth=normalDepth(leader.actor.p,door)*slot.fromSide;
  let safeDepth=Math.max(QUEUE_WAIT_DEPTH,leadDepth+QUEUE_CENTER_GAP);
+ // Q4: the moving outward leaf has a known sweep. Keep followers outside
+ // the precomputed arc while it opens; never drive them backwards to
+ // reconstruct a perfect stack. The opener/lead still uses real contact.
+ if(lane.swingDepth>0&&leafSweepNeedsStaging(door))
+  safeDepth=Math.max(safeDepth,lane.swingDepth);
  // Q2: retain spacing to *all* higher-priority ready bodies in this
  // lane, even as they move through the threshold. A nearer same-rank
  // member is not removed merely because another leader moved into the
