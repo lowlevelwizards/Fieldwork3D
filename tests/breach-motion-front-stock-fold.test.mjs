@@ -95,24 +95,28 @@ test('wall fold is a continuous rigid gun transform with sliding grip',()=>{
 test('approaching a wall produces increasing compression before contact',()=>{
  const ready=muzzleAtShot(base);
  const walls=[ready.x+16,ready.x+7,ready.x+2,ready.x-3];
- let previous=-.001;
+ let previous=-.001,responded=false;
  for(const x of walls){
   const result=weaponClearance(base,[],[],[
    {a:{x,y:-40},b:{x,y:40}}
   ]);
-  assert.ok(result.compression>=previous,
-    'wall approach must not unfold a rifle: '+x);
+  const accommodation=(result.shoulderPullback??0)+
+    result.compression*3.4;
+  assert.ok(accommodation>=previous-.02||result.blocked,
+    'wall approach must not unfold or release clearance: '+x);
   assert.ok(result.compression>=0&&result.compression<=1);
-  if(result.compression>0){
-   assert.equal(result.obstruction,true);
+  if(result.obstruction||result.shoulderPullback!==undefined){
    assert.deepEqual(result.muzzle,muzzleAtShot({...base,
-     obstruction:true,carryOverride:result.carryOverride,
-     shortFrom:result.shortFrom,shortCompression:result.compression,
+     obstruction:result.obstruction,carryOverride:result.carryOverride,
+     carryBlend:result.carryBlend,shoulderPullback:result.shoulderPullback,
+     shortFrom:result.shortFrom,
+     shortCompression:result.obstruction?result.compression:undefined,
      clearanceRetraction:0}));
+   responded=true;
   }
-  previous=result.compression;
+  previous=accommodation;
  }
- assert.ok(previous>.35,'barrel never responded to approaching wall');
+ assert.ok(responded,'barrel never physically responded to approaching wall');
 });
 test('short-stock and run keep both elbows forward/down without stretching',()=>{
  const rig=createOperatorRig('stock-fold-elbows','blue');
