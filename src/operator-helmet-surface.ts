@@ -67,7 +67,8 @@ export function sampleHelmetCover(
   .addScaledVector(normal,-normal.y);
  if(up.lengthSq()<.001)up.set(0,0,-1);
  up.normalize();
- const right=normal.clone().cross(up).normalize();
+ // Right-handed local attachment basis: right × up must equal outward normal.
+ const right=up.clone().cross(normal).normalize();
  return {
   position:hit.point.clone().addScaledVector(normal,clearance),
   normal,right,up,region
