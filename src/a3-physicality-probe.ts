@@ -95,13 +95,18 @@ export function probeA3(s:Session,config:A3Config){
    weapon:shooter.weapon,aim:round(shooter.aim),
    firePolicy:shooter.firePolicy,lastFireBlock:shooter.lastFireBlock,
    recovery:shooter.fireRetreatTarget?at(shooter.fireRetreatTarget):null,
-   blockedTime:round(shooter.blockedTime),planCount:shooter.plan.length},
+   blockedTime:round(shooter.blockedTime),planCount:shooter.plan.length,
+   shoulderOffset:round(shooter.aimSideOffset??0),
+   shoulderTarget:round(shooter.aimSideTarget??0),
+   autoCrouchUntil:round(shooter.autoCrouchUntil??0)},
   target:{id:target.id,position:at(target.p),posture:target.posture,
    health:target.health},
   allies:active.filter(a=>a!==shooter).map(a=>({
    id:a.id,position:at(a.p),posture:a.posture,
    heading:round(a.heading),velocity:round(a.velocity),
    blockedTime:round(a.blockedTime),
+   shoulderOffset:round(a.aimSideOffset??0),
+   autoCrouchUntil:round(a.autoCrouchUntil??0),
    protectedTop:a.posture==='crouch'?
     FRIENDLY_CROUCH_VOLUMES[1].top:FRIENDLY_STAND_VOLUMES[1].top
   })), 
