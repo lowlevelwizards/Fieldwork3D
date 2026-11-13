@@ -10,6 +10,12 @@ test('177: ordinary shoulder seat and separate underarm waist tuck',()=>{
   const p=stockPocket(mode);
   if(mode==='short'){
    assert.ok(p.x<0&&p.y<-4&&p.z>7.7);
+  }else if(mode==='high'){
+   // A2.4: a distinct armpit high-ready seat, not normal shoulder ADS.
+   const shoulder=stockPocket('ready');
+   assert.ok(p.x>2.8&&p.x<shoulder.x-1);
+   assert.ok(p.y<shoulder.y-2&&p.y>-.5);
+   assert.ok(p.z>4.9&&p.z<5.6);
   }else{
    assert.ok(p.x>4.2&&p.x<5.2);
    assert.ok(p.z>4.9&&p.z<5.6);

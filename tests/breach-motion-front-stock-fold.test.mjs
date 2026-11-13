@@ -36,7 +36,13 @@ const armShoulder=(arm,joint)=>arm.upper.position.clone()
 test('normal stocks shoulder at the front; SHORT tucks beside the waist',()=>{
  for(const mode of ['low','high','ready','point','ads']){
   const pocket=stockPocket(mode);
-  assert.ok(pocket.x>=4.3&&pocket.x<=5.2,mode+' front seat X');
+  if(mode==='high'){
+   const shouldered=stockPocket('ready');
+   assert.ok(pocket.x>2.8&&pocket.x<shouldered.x-1,
+     'high-ready butt seats in firing-side armpit, not cheek pocket');
+   assert.ok(pocket.y<shouldered.y-2,'high-ready underarm contact');
+  }else assert.ok(pocket.x>=4.3&&pocket.x<=5.2,
+    mode+' front seat X');
   assert.ok(pocket.z>=5.0&&pocket.z<5.5,mode+' close to chest edge');
   const fit=fitWeaponPose({weapon:carbine,configuration,
    handling:mode,yaw:0,recoil:0});
@@ -100,7 +106,8 @@ test('approaching a wall produces increasing compression before contact',()=>{
   if(result.compression>0){
    assert.equal(result.obstruction,true);
    assert.deepEqual(result.muzzle,muzzleAtShot({...base,
-     obstruction:true,shortCompression:result.compression,
+     obstruction:true,carryOverride:result.carryOverride,
+     shortFrom:result.shortFrom,shortCompression:result.compression,
      clearanceRetraction:0}));
   }
   previous=result.compression;
