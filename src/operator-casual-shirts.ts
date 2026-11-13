@@ -10,6 +10,8 @@ import type {SleeveState} from './operator-wardrobe-data.ts';
 
 export const CASUAL_SHIRT_CUTS=['t-shirt','button-up-shirt','polo-shirt','tank-top'] as const;
 export type CasualShirtCut=typeof CASUAL_SHIRT_CUTS[number];
+export const isCasualShirtCut=(id:string):id is CasualShirtCut=>
+ (CASUAL_SHIRT_CUTS as readonly string[]).includes(id);
 type Arm={upper:THREE.Mesh;lower:THREE.Mesh};
 type Prototype={torso:THREE.Group;upper:THREE.Group[];lower:THREE.Group[];
  cuffedLower:THREE.Group[];rolledUpper:THREE.Group[]};
