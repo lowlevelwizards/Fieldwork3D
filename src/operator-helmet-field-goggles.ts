@@ -31,14 +31,22 @@ const strip=(root:THREE.Group,points:THREE.Vector3[],width:number,
  mesh.name=name;mesh.castShadow=false;mesh.receiveShadow=false;
  root.add(mesh);return mesh;
 };
+/** Match a consistent real-world strap height across the helmet rather
+ * than sampling the same normalized V on panels with different hem heights.
+ * All probes happen once when the cosmetic model is constructed.
+ */
 const sample=(shell:AchMichCoverShell,region:'left'|'right'|'front'|'back',
- u:number,v:number):THREE.Vector3=>{
- for(const vv of [v,v+.1,v-.1,.32,.1])
-  for(const uu of [u,u*.9,u*.8]){
-   const f=sampleHelmetCover(shell,region,uu,vv,.37);
-   if(f)return f.position;
+ u:number,targetY:number):THREE.Vector3=>{
+ let best:THREE.Vector3|null=null,score=Infinity;
+ for(const uu of [u,u*.94,u*.84])
+  for(const v of [-.65,-.48,-.30,-.12,.06,.22,.38,.55,.72]){
+   const f=sampleHelmetCover(shell,region,uu,v,.38);
+   if(!f)continue;
+   const d=Math.abs(f.position.y-targetY)+Math.abs(u-uu)*.32;
+   if(d<score){score=d;best=f.position;}
   }
- throw Error('H9.5 no '+region+' fitted goggle strap on '+shell);
+ if(!best)throw Error('H9.5 no '+region+' fitted goggle strap on '+shell);
+ return best;
 };
 function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
  placement:'front'|'rear',elastic:THREE.Material,metal:THREE.Material){
@@ -52,13 +60,13 @@ function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
  const opposite=front?'back':'front';
  const path:THREE.Vector3[]=[left];
  for(const u of [begin,begin*.46,0,finish*.46,finish])
-  path.push(sample(shell,'left',u,.19));
+  path.push(sample(shell,'left',u,y));
  for(const u of [-.68,-.35,0,.35,.68])
-  path.push(sample(shell,opposite,u,.21));
+  path.push(sample(shell,opposite,u,y));
  for(const u of [finish,finish*.46,0,begin*.46,begin])
-  path.push(sample(shell,'right',u,.19));
+  path.push(sample(shell,'right',u,y));
  path.push(right);
- strip(g,path,1.06,elastic,'continuous-helmet-goggle-strap');
+ strip(g,path,.78,elastic,'continuous-helmet-goggle-strap');
  // Broad external adjusters, one on each side, not independent blocks.
  for(const region of ['left','right'] as const){
   const f=sampleHelmetCover(shell,region,front?-.06:.08,.19,.45);
