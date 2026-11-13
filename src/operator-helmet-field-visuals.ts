@@ -73,6 +73,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   const blade=box(leaves,i%3?olive:tan,'large-field-leaf',
    x,y,z,.30,1.1,.72,sign*((i%3)-1)*.22);
   blade.userData.foliageOrdinal=i;
+  blade.userData.keepSeparate=true;
  }
  const dangling=addGroup('unfastened');
  for(const sign of [-1,1]){
@@ -146,10 +147,10 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  const webHex=resolveHelmetFieldColor(s.webbingColor,shellHex,v.shell==='pasgt');
  v.bandMaterial.color.setHex(bandHex);v.webbingMaterial.color.setHex(webHex);
  m.band.visible=s.band&&v.shell!=='pasgt';
- m.loops.visible=covered&&s.concealment!=='none';
- m.scrim.visible=covered&&s.concealment==='scrim';
- m.net.visible=covered&&s.concealment==='net';
- m.leaves.visible=covered&&s.concealment.startsWith('foliage-')&&
+ m.loops.visible=covered&&v.shell!=='pasgt'&&s.concealment!=='none';
+ m.scrim.visible=covered&&v.shell!=='pasgt'&&s.concealment==='scrim';
+ m.net.visible=covered&&v.shell!=='pasgt'&&s.concealment==='net';
+ m.leaves.visible=covered&&v.shell!=='pasgt'&&s.concealment.startsWith('foliage-')&&
   s.concealment!=='foliage-loops';
  const count=s.concealment==='foliage-sparse'?3:
   s.concealment==='foliage-medium'?6:10;
