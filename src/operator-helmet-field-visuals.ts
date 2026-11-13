@@ -11,6 +11,7 @@ import {addAchMichConcealment} from './operator-helmet-field-concealment.ts';
 import {createAchMichFieldNetGeometry} from './operator-helmet-field-net.ts';
 import {addAchMichThreeHoleShroud} from './operator-helmet-field-shroud.ts';
 import {addAchMichArcRails} from './operator-helmet-field-rails.ts';
+import {addAchMichRetainingBungees} from './operator-helmet-field-bungees.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
@@ -117,14 +118,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
  const rails=addGroup('rails');
  if(id!=='pasgt')addAchMichArcRails(id,rails,metal,dark,reflect);
  const bungees=addGroup('bungees');
- for(const sign of [-1,1]){
-  const route:[[number,number,number],...[number,number,number][]]=[
-   [sign*.85,p.top-1.37,front-.31],
-   [sign*2.40,p.top-.05,front+.44],
-   [sign*(side+.1),p.top-.89,-.55]];
-  for(let i=1;i<route.length;i++)
-   segment(bungees,olive,'tensioned-bungee',route[i-1],route[i],.13);
- }
+ if(id!=='pasgt')addAchMichRetainingBungees(id,bungees,olive,metal,dark);
  const velcroGroup=addGroup('velcro');
  plate(velcroGroup,velcro,'thin-crown-velcro',
   [[-1.14,-.68],[1.14,-.68],[1.14,.68],[-1.14,.68]],
