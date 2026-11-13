@@ -80,5 +80,8 @@ test('street utility collision still rejects fixed service equipment',()=>{
  assert.doesNotMatch(code,/parking:\['sedan'/);
  assert.doesNotMatch(code,/driveway:residential\?\['sedan'/);
  assert.match(code,/outdoorFixtureAllowed\(site,zone,item\)/);
- assert.match(code,/frontageEdgeCandidates\(site,zone,item,w,h\)/);
+ // C4 passes the precomputed public-street plan, rather than solving the
+ // same road a second time for each prop candidate.
+ assert.match(code,/const streetPlan=planPublicStreet\(\{\.\.\.site,exteriorZones:zones\}\)/);
+ assert.match(code,/frontageEdgeCandidates\(site,zone,item,w,h,streetPlan\)/);
 });
