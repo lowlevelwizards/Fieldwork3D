@@ -129,7 +129,7 @@ export function achMichRetentionPaths(
   const junction:Point=[sign*4.47,1.22,-3.88];
   // PASGT-proportioned jaw offset: support the chin without projecting
   // an extra ribbon-length beyond the face silhouette in profile.
-  const chin:Point=[sign*2.28,-.12,-4.47];
+  const chin:Point=[sign*2.28,-.12,-4.67];
   result.push([f,junction],[b,junction],[junction,chin]);
  }
  return result;
@@ -144,17 +144,18 @@ export function createAchMichRetentionGeometry(
  const paths=achMichRetentionPaths(shell);
  for(let i=0;i<paths.length;i++){
   const sign=i<3?-1:1;
-  // Side straps live on side-facing planes: do not fan outward around
-  // the skull. Only the final under-jaw leg changes normal toward front.
-  const normal=i%3===2?new THREE.Vector3(sign*.68,0,-.74):
-   new THREE.Vector3(sign,0,0);
+  // Rear leg stays flush to the side of the head. Front and under-jaw
+  // legs turn toward camera so they remain substantial in front view,
+  // instead of disappearing as an edge-on thread behind the face.
+  const normal=i%3===1?new THREE.Vector3(sign,0,0):
+   new THREE.Vector3(sign*.68,0,-.74);
   appendStrap(data,paths[i],normal,i%3===2?.44:.39);
  }
  const pt=(x:number,y:number,z:number):Point=>[x,y,z];
- const topLeft=pt(-2.28,-.12,-4.47),topMiddle=pt(0,-.10,-4.52),
-  topRight=pt(2.28,-.12,-4.47);
- const lowLeft=pt(-2.28,-.51,-4.47),lowMiddle=pt(0,-.55,-4.52),
-  lowRight=pt(2.28,-.51,-4.47);
+ const topLeft=pt(-2.28,-.12,-4.67),topMiddle=pt(0,-.10,-4.74),
+  topRight=pt(2.28,-.12,-4.67);
+ const lowLeft=pt(-2.28,-.51,-4.67),lowMiddle=pt(0,-.55,-4.74),
+  lowRight=pt(2.28,-.51,-4.67);
  for(const v of [topLeft,lowMiddle,lowLeft,topLeft,topMiddle,lowMiddle,
   topMiddle,lowRight,lowMiddle,topMiddle,topRight,lowRight])data.push(...v);
  const g=new THREE.BufferGeometry();
