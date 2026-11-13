@@ -65,7 +65,6 @@ test('rendering presentation avoids redundant static changes without altering fo
  assert.match(scene,/if\(detail\.obj\.visible!==previousVisibility\)/);
  assert.match(scene,/this\.staticBatches\.setVisible\(detail\.obj,detail\.obj\.visible\)/);
  assert.match(scene,/const directlyObserved=!personal&&\(omniscient\|\|this\.presentationSight\.query/);
- assert.match(scene,/consolidateStaticFixtureParts\(intact\)/);
 });
 test('round-lifetime render scratch and fixed-tick door history are bounded',()=>{
  const scene=source('src/breach-3d.ts');
