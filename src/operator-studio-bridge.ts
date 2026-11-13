@@ -16,6 +16,13 @@ export type OperatorStudioBridgeHooks={
  saveRoster:()=>boolean;saveCampaign:()=>boolean;
  applyQuickRoster:()=>void;onQuickSaved:()=>void;onCampaignSaved:()=>void;
 };
+/** Keep a warm Studio only on menu/home surfaces. During tactical use a
+ * hidden iframe retains a second WebGL context and unnecessary GPU memory.
+ * Zero delay still gives synchronous reopen a chance to cancel disposal.
+ */
+export function studioHiddenRetainMs(mode:CampaignMode):number{
+ return mode==='menu'||mode==='home'?60_000:0;
+}
 export function createOperatorStudioBridge(config:OperatorStudioBridgeHooks){
 /** Embedded Studio keeps the live mission mounted. The game remains the
  * sole authority for config.getCampaign()/Quick Play writes; the iframe edits a draft. */
@@ -26,7 +33,6 @@ let studioFrame:HTMLIFrameElement|null=null;
 /** Keep one warm Studio context for short returns; release it after a bounded
  * hidden interval to avoid retaining two WebGL contexts indefinitely on iOS.
  * The iframe never owns tactical simulation or authoritative roster state. */
-const STUDIO_WARM_RETAIN_MS=60_000;
 let studioReady=false,studioOpenEpoch=0,studioInitSentEpoch=-1;
 // The menu has no site; editing cannot inherit the last mission's phase.
 // A live Quick Play mission remains planning-only for appearance changes.
@@ -63,7 +69,7 @@ function closeOperatorStudio(){
   if(!studioOverlay?.hidden||!studioFrame)return;
   studioFrame.src='about:blank';
   studioReady=false;studioInitSentEpoch=-1;
- },STUDIO_WARM_RETAIN_MS);
+ },studioHiddenRetainMs(config.getMode()));
 }
 function openOperatorStudio(id?:string,requestedMode?:'quick'|'campaign'){
  studioMode=requestedMode??(config.getMode()==='home'||config.getMode()==='mission'?
