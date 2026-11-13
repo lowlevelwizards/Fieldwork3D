@@ -753,12 +753,25 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
       [p],OPERATOR_RADIUS+1))&&intelPassable(p,s.intel)&&
     !!routeWithIntel(s.intel,from,p).length&&
     occupied.every(other=>d(p,other)>23));
+  // Q5: an actual left/right approach should first use its OWN flank.
+  // Without this, the split 2+2 plan makes each pair cross through the
+  // opposite side to reach a roster-index stack slot.
+  // This runs at authoring time only; the GO rank/motor remain unchanged.
+  const width=d(door.a,door.b)||1;
+  const tangent={x:(door.b.x-door.a.x)/width,
+    y:(door.b.y-door.a.y)/width};
+  const lateral=(p:Pt)=>
+    (p.x-center.x)*tangent.x+(p.y-center.y)*tangent.y;
+  const originSide=lateral(from);
+  const hasFlank=Math.abs(originSide)>20;
   legal.sort((u,v)=>{
+    const flank=(p:Pt)=>hasFlank&&lateral(p)*originSide<-.01?1:0;
     const rank=(p:Pt)=>{
       const i=candidates.findIndex(candidate=>d(candidate,p)<1);
       return (i-preferred+4)%4;
     };
-    return rank(u)-rank(v)||d(from,u)-d(from,v);
+    return flank(u)-flank(v)||rank(u)-rank(v)||
+      d(from,u)-d(from,v);
   });
   if(!legal.length)return false;
   const point=legal[0],proposed=copyNodes(a.plan);

@@ -34,3 +34,20 @@ test('Q5 mirrored right and left are flanking, split holds two each',()=>{
  assert.equal(split.filter(p=>p.x<290).length,2);
  assert.equal(split.filter(p=>p.x>332).length,2);
 });
+
+test('Q5 split pairs retain their approach flanks in the actual stack plans',async()=>{
+ const {newSession,team,planSquadEntry}=await import('../src/breach-game.ts');
+ const {activateSite}=await import('../src/breach-core.ts');
+ const s=newSession(0,undefined,'full-view','small','hold',
+  doorRangeSite('inward-left','split','north'),{enableCivilians:false});
+ try{
+  assert.equal(planSquadEntry(s,'ENTRY'),true);
+  const stacks=team(s).slice(0,4).map(a=>
+   a.plan.find(n=>n.stackDoorId==='ENTRY')?.p);
+  assert.ok(stacks.every(Boolean));
+  assert.ok(stacks[0].x<311&&stacks[1].x<311,
+   'left pair stages on left side');
+  assert.ok(stacks[2].x>311&&stacks[3].x>311,
+   'right pair stages on right side');
+ }finally{activateSite(null);}
+});
