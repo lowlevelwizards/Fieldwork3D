@@ -7,6 +7,7 @@ import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
 import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
+import {sightRangeForSite} from './breach-visibility-range-policy.ts';
 import {forEachRememberedMicroCell} from './breach-fog-memory.ts';
 import {traceFogCellContours,appendSmoothFogContours,type FogCell}
   from './breach-fog-contours.ts';
@@ -193,7 +194,7 @@ export function paintFogVisibility(ctx:CanvasRenderingContext2D,s:Session){
   let polygonCount=0;
   for(const a of team(s)){
     if(a.health<=0)continue;
-    const poly=visionPolygon(a.p,a.heading,240,walls,s.doors,
+    const poly=visionPolygon(a.p,a.heading,sightRangeForSite(s.site),walls,s.doors,
       a.posture==='crouch',cover);
     if(poly.length<3)continue;
     ctx.moveTo(poly[0].x,poly[0].y);
