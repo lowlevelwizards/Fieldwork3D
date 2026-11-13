@@ -8,8 +8,9 @@ test('H5.8 covered and bare bands have independent clearance-aware edge geometry
   const covered=createAchMichSurfaceBandGeometry(shell,true);
   assert.notEqual(bare,covered);
   for(const geo of [bare,covered]){
-   assert.equal(geo.userData.h58EdgeClearance,.16);
-   assert.ok(geo.userData.h58CornerClearance>0);
+   assert.equal(geo.userData.h58EdgeClearance,.028);
+   assert.ok(geo.userData.h58CornerClearance>.06);
+   assert.equal(geo.userData.h67CloseFit,true);
    const pos=geo.getAttribute('position');
    for(let i=0;i<pos.count;i++)
     assert.ok(Number.isFinite(pos.getX(i)+pos.getY(i)+pos.getZ(i)));

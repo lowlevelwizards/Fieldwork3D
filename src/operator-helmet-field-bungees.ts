@@ -40,16 +40,18 @@ function tether(shell:AchMichCoverShell,side:'left'|'right',g:THREE.Group,
  const sign=side==='left'?-1:1;
  // Keep the cord just proud of the textile and rail rather than
  // suspended nearly a full unit away from the helmet surface.
- const rail=point(shell,side,-.51,.40,.46,covered);
- const shoulder=point(shell,side,-.74,.46,.55,covered);
- const corner=point(shell,'front',sign*.84,.47,.62,covered);
- const front=point(shell,'front',sign*.52,.44,.49,covered);
- const shroud=point(shell,'front',sign*.29,.40,.48,covered);
+ const rail=point(shell,side,-.51,.40,.34,covered);
+ const shoulder=point(shell,side,-.74,.46,.36,covered);
+ const corner=point(shell,'front',sign*.84,.47,.45,covered);
+ const front=point(shell,'front',sign*.52,.44,.32,covered);
+ const shroud=point(shell,'front',sign*.29,.40,.30,covered);
  // A polyline along the shell's exterior, NOT a chord through the
  // front/side corner. A short soft curve removes sharp wire knees.
  const path=[rail.position,shoulder.position,corner.position,
   front.position,shroud.position];
- const curve=new THREE.CatmullRomCurve3(path,false,'centripetal',.22);
+ // Keep the authored five-station route; centripetal interpolation and a
+ // proud corner anchor avoid a straight chord through the cover bevel.
+ const curve=new THREE.CatmullRomCurve3(path,false,'centripetal',.12);
  const coords=curve.getPoints(30);
  // The round low-poly cord stays outside the cloth at every sampled
  // attachment point and floats above the face just enough to avoid
@@ -103,5 +105,6 @@ export function addAchMichRetainingBungees(
  g.userData.h9BungeeHooks=4;
  g.userData.h5CloserSurfaceFit=true;
  g.userData.h61CoverAwareTethers=true;
+ g.userData.h67LowClearanceRoute=true;
  g.userData.h9BungeeRoutes=routes;
 }
