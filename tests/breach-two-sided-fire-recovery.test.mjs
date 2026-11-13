@@ -69,19 +69,29 @@ test('real player operator can request friendly-fire sidestep with orders intact
   assert.equal(assessFireLane(lead.p,26,guard.p,26,
    [],[],[],[ally.p]).blocker,'friendly');
   const initial={...lead.p};
-  stepSession(s,1/30);
-  assert.ok(lead.fireRetreatTarget,
-   'a safe lateral target should be selected: '+JSON.stringify({
+  // The actor acquires a target with an actual point/ADS transition.
+  // Evaluate a bounded fixed-tick window rather than asserting an
+  // instantaneous footstep before the first aim frame is settled.
+  let selected=null;
+  for(let tick=0;tick<36&&s.phase==='running';tick++){
+    stepSession(s,1/30);
+    if(lead.fireRetreatTarget){
+      selected={...lead.fireRetreatTarget};
+      break;
+    }
+  }
+  assert.ok(selected,
+   'a safe lateral target should be selected once weapon handling settles: '+JSON.stringify({
      phase:s.phase,visible:inSight(lead,guard,s),target:lead.targetId,
      firePolicy:lead.firePolicy,velocity:lead.velocity,aim:lead.aim,
      lastFireBlock:lead.lastFireBlock,lastFireRetreatAt:lead.lastFireRetreatAt,
      guard:{p:guard.p,health:guard.health},blue:{p:lead.p,health:lead.health},
      ally:ally.p,await:lead.aimInstruction,plan:lead.plan
    }));
-  assert.ok(Math.abs(lead.fireRetreatTarget.x-initial.x)<6);
+  assert.ok(Math.abs(selected.x-initial.x)<6);
   // A3.4 deliberately finds the smallest VALID real step, potentially
   // 4 or 7 units instead of the former mandatory 12+ unit detour.
-  const requested=Math.abs(lead.fireRetreatTarget.y-initial.y);
+  const requested=Math.abs(selected.y-initial.y);
   assert.ok(requested>=3.9&&requested<=28,
     'micro-step must be real, bounded and lateral');
   assert.deepEqual(ally.p,p(185,110),'recovery must not shove teammate');
