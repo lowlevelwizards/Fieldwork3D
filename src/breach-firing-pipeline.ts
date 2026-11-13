@@ -404,7 +404,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   const acquisition=acquisitionSeconds({
     base:weapon.acquisition,moving,
     skillFactor:2-skillMultiplier(a.skills.handling,.4),
-    enemy:a.side==='red',attachmentFactor:sightAcquisitionScale(mods,range),
+    enemy:a.side==='red',range,attachmentFactor:sightAcquisitionScale(mods,range),
     cautious:a.personality==='cautious'
   });
   a.aim=Math.min(1,a.aim+dt/acquisition);

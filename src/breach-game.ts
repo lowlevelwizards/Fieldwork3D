@@ -50,6 +50,7 @@ import {microKeyAt} from './breach-fog-memory.ts';
 import {forEachGroundSightCandidate} from './breach-ground-discovery.ts';
 import {coarseGroundEvidenceAt} from './breach-ground-knowledge.ts';
 import {groundView,groundViewCandidate} from './breach-ground-view.ts';
+import {sightRangeForSite,NEAR_FINE_SIGHT_RANGE} from './breach-visibility-range-policy.ts';
 import {sightDiagnosticsEnabled,sightDiagnosticCounts} from './breach-sight-cost-counters.ts';
 import {cachedActorGroundView} from './breach-live-visual-candidates.ts';
 import {notePersonalGround} from './breach-replay-personal-ground.ts';
@@ -100,7 +101,7 @@ import {type GroupRole} from './breach-ai-coordination.ts';
 
 
 import type {ActorAwareness} from './breach-awareness.ts';
-import {confirmedSight} from './breach-visual-perception.ts';
+import {detectedSight,confirmedSight} from './breach-visual-perception.ts';
 
 import type {LightingMode} from './equipment-site-lighting.ts';
 import {type PassageLease} from './breach-passage.ts';
@@ -735,9 +736,7 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
     .map(b=>b.plan.find(n=>n.stackDoorId===doorId))
     .filter((n):n is PlanNode=>!!n);
   const occupied=assigned.map(n=>n.p);
-  // Outward-opening leaves need the rear members staged OUTSIDE the leaf
-  // swing (not compacted into the 43-unit near-frame interaction circle).
-  // The opener still approaches the handle as a separate authored action.
+  // Outward-opening leaves need the rear slots outside the physical sweep.
   const outward=doorOpensTowardApproach(door,from);
   const preferred=team(s).findIndex(b=>b.id===id);
   const candidates=stackApproachPositions(door,from);
@@ -1192,12 +1191,14 @@ function unobstructed(a:Pt,b:Pt,s:Session,lowBlocks:boolean){
   return !sessionWorldGeometry(s).someCoverAlongRay(a,b,o=>coverBlocksOpticalSight(o,lowBlocks)&&
     segmentHitsBox(a,b,o));
 }
+/** Far-ground sight history remains observer-owned and session-bounded. */
+const farGroundSeen=new WeakMap<Session,Map<string,Set<string>>>();
 /** Physical geometry visibility, independently of acquisition time. */
 export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
   // Most pairs are outside acquisition distance or facing. Reject them
   // BEFORE touching the cache or checking any doors. Only genuinely
   // possible LOS rays are expensive enough to merit memoization.
-  if(a.health<=0||b.health<=0||d(a.p,b.p)>240)return false;
+  if(a.health<=0||b.health<=0||d(a.p,b.p)>sightRangeForSite(s.site))return false;
   const delta=angleDifference(a.heading,angle(a.p,b.p));
   if(Math.abs(delta)>.94)return false;
   let cache=perceptionBySession.get(s);
@@ -1214,6 +1215,13 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
  return geometricallyVisible(a,b,s)&&confirmedSight(a.awareness.visualProgress[b.id]??0);
 }
+/** One individual's physically detected silhouette, still unidentified. */
+export function personDetected(a:TeamActor,b:TeamActor,s:Session):boolean{
+ return geometricallyVisible(a,b,s)&&
+   detectedSight(a.awareness.visualProgress[b.id]??0);
+}
+export const isDetected=(s:Session,target:TeamActor)=>
+  s.intel.mode==='full-view'||team(s).some(a=>personDetected(a,target,s));
 export const isSeen=(s:Session,target:TeamActor)=>
   s.intel.mode==='full-view'||team(s).some(a=>inSight(a,target,s));
 export function lastKnown(s:Session,id:string){
@@ -1256,6 +1264,33 @@ function observe(s:Session){
         s.seenGround.add(micro);
         notePersonalGround(s,blue.id,s.seconds,micro);
       });
+      // Distant terrain is observed at the same 20-unit spatial accuracy,
+      // but only 1/16 of far cells receive a physical LOS query per
+      // simulation observation. The buckets rotate deterministically;
+      // 10-unit micro scanning remains confined to the original near ring.
+      // Actor-specific journals never borrow the first teammate's memory.
+      const farReach=sightRangeForSite(s.site);
+      if(farReach>NEAR_FINE_SIGHT_RANGE){
+        let personal=farGroundSeen.get(s);
+        if(!personal){personal=new Map();farGroundSeen.set(s,personal);}
+        let viewed=personal.get(blue.id);
+        if(!viewed){viewed=new Set();personal.set(blue.id,viewed);}
+        const farView=groundView(blue.p.x,blue.p.y,blue.heading,farReach);
+        const bucket=Math.floor(s.seconds*7)&15;
+        forEachGroundSightCandidate(farView,bounds,20,(col,row,p)=>{
+          if(((col+row*3)&15)!==bucket)return;
+          const dx=p.x-blue.p.x,dy=p.y-blue.p.y;
+          if(dx*dx+dy*dy<=NEAR_FINE_SIGHT_RANGE**2)return;
+          const fine='fine:'+col+','+row;
+          if(viewed.has(fine))return;
+          if(!unobstructed(blue.p,p,s,blue.posture==='crouch'))return;
+          viewed.add(fine);s.seenGround.add(fine);
+          notePersonalGround(s,blue.id,s.seconds,fine);
+          const coarse=Math.floor(p.x/40)+','+Math.floor(p.y/40);
+          s.seenGround.add(coarse);
+          notePersonalGround(s,blue.id,s.seconds,coarse);
+        });
+      }
       if(s.seenGround.size!==beforeGroundSize)s.seenGroundRevision++;
     }
     for(const e of enemies(s)){
@@ -1592,15 +1627,15 @@ export function knownAt(s:Session,x:number,y:number){
  */
 /** Shared friendly ground-FOV precheck. Geometry/LOS and acquired actor
  * awareness remain separate authoritative decisions, not renderer hints. */
-function friendlyGroundSightCandidate(observer:TeamActor,p:Pt):boolean{
+function friendlyGroundSightCandidate(s:Session,observer:TeamActor,p:Pt):boolean{
   return observer.side==='blue'&&observer.health>0&&
-    groundViewCandidate(cachedActorGroundView(observer),p.x,p.y);
+    groundViewCandidate(cachedActorGroundView(observer,sightRangeForSite(s.site)),p.x,p.y);
 }
 export function observerPointVisible(
   s:Session,observer:TeamActor,p:Pt
 ):boolean{
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.personalQueries++;
-  if(!friendlyGroundSightCandidate(observer,p))return false;
+  if(!friendlyGroundSightCandidate(s,observer,p))return false;
   if(sightDiagnosticsEnabled)sightDiagnosticCounts.personalOcclusionProbes++;
   return unobstructed(observer.p,p,s,observer.posture==='crouch');
 }
@@ -1614,7 +1649,7 @@ export function liveVisibility(s:Session,p:Pt){
   // occlusion query remains authoritative; these are not sight caches.
   // The normal path pays only the disabled Boolean checks.
   for(const a of s.operators){
-    if(!friendlyGroundSightCandidate(a,p))continue;
+    if(!friendlyGroundSightCandidate(s,a,p))continue;
     if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveOcclusionProbes++;
     if(unobstructed(a.p,p,s,a.posture==='crouch')){
       if(sightDiagnosticsEnabled)sightDiagnosticCounts.liveHits++;

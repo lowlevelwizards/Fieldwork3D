@@ -103,7 +103,8 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
     c.visualProgress[person.id]=0;continue;
   }
   const range=dist(c.p,person.p);
-  if(range>175) {c.visualProgress[person.id]=0;continue;}
+  // Physical LOS and progressive recognition, not an 8.75 m blind horizon.
+  // No target truth is used unless world.canSee confirms the sight line.
   const yaw=Math.atan2(person.p.y-c.p.y,person.p.x-c.p.x);
   const delta=offAxis(c.heading,yaw);
   const geometric=Math.abs(delta)<.96&&world.canSee(c.p,person.p);

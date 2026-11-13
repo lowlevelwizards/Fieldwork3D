@@ -11,6 +11,7 @@ import {activateSite} from '../src/breach-core.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {paintFogVisibility} from '../src/breach-fog-mask.ts';
 import {visionPolygon} from '../src/breach-vision-polygon.ts';
+import {sightRangeForSite} from '../src/breach-visibility-range-policy.ts';
 import {spatialSurfaceKnown} from '../src/breach-presentation.ts';
 import {personalCoverVisible} from '../src/breach-replay-personal-visibility.ts';
 import {presentArchitecturalOpening,presentTransientEvidence,
@@ -42,7 +43,7 @@ test('Stage 3: 2D fog polygons use this session, even when another map is active
   activateSite(a.site);paintFogVisibility(first.ctx,a);
   const original=first.points.map(p=>[...p]);
   const world=sessionWorldGeometry(a),actor=team(a)[0];
-  const expected=visionPolygon(actor.p,actor.heading,240,
+  const expected=visionPolygon(actor.p,actor.heading,sightRangeForSite(a.site),
     world.walls,a.doors,actor.posture==='crouch',world.cover);
   assert.deepEqual(original.slice(0,expected.length),expected.map(p=>[p.x,p.y]));
   const other=recordingContext();

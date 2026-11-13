@@ -2,7 +2,7 @@
  * Uses the supplied observation/selection state; never updates game truth.
  */
 import {W,H,type Pt} from './breach-core.ts';
-import {type Session,type TeamActor,enemies,lastKnown,liveVisibility} from './breach-game.ts';
+import {type Session,type TeamActor,enemies,lastKnown,liveVisibility,isSeen} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
 import {presentActor,presentCivilian,presentUnrecordedRescueMarker}
@@ -140,7 +140,9 @@ function sprite(a:TeamActor){
       return;
     }
   }
-  const friendly=a.side==='blue',c=friendly?colorFor(a.id):'#d3917b';
+  const friendly=a.side==='blue';
+  const unidentified=!replaying&&!friendly&&!isSeen(state,a);
+  const c=friendly?colorFor(a.id):unidentified?'#8b9088':'#d3917b';
   if(a.health<=0){
     draw.save();draw.translate(a.p.x,a.p.y);
     draw.rotate(a.heading);
@@ -210,7 +212,7 @@ function sprite(a:TeamActor){
   }else{
     // The enemy is still drawn; only the optional red tactical outline
     // disappears when replay contact markers are disabled.
-    if(!replaying||replayContactMarkers){
+    if((replaying&&replayContactMarkers)||(!replaying&&!unidentified)){
       draw.strokeStyle='#f0c5a4';draw.lineWidth=1.4;
       draw.strokeRect(a.p.x-12,a.p.y-12,24,24);
     }
