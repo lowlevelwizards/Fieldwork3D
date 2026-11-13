@@ -51,6 +51,7 @@ export type ActorFrame=Pick<TeamActor,
 export type ReplayActorFrame=ActorFrame & {
  /** Optional for archived films recorded before D4. */
  doorHandContact?:DoorHandContact|null;
+ kickFoot?:0|1|null;
  /** A3.6–7 optional for backwards-compatible historical films. */
  physicalContact?:PhysicalContact|null;
  travelYaw?:number;intentKind?:string;awarenessCount?:number;
@@ -161,6 +162,7 @@ export function snapshot(s:Session,seenGround?:string[],
       morale:a.morale,
       lastThrowAt:a.lastThrowAt,lastDoorAt:a.lastDoorAt,
       lastDoorId:a.lastDoorId,lastDoorMethod:a.lastDoorMethod,
+      kickFoot:a.kickFoot??null,
       doorHandContact:a.doorHandContact?{
         ...a.doorHandContact,point:{...a.doorHandContact.point}
       }:null,
@@ -428,6 +430,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
     const a=s.operators.find(actor=>actor.id===copy.id);
     if(a)Object.assign(a,copy,{p:position(copy.p),
       // Pre-A3.6 films have no anchor: do not leak one from a later seek.
+      kickFoot:copy.kickFoot??null,
+      pivotEpisode:null,
       physicalContact:copy.physicalContact?{
         ...copy.physicalContact,anchor:{...copy.physicalContact.anchor,
           point:{...copy.physicalContact.anchor.point},
