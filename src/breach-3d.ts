@@ -2018,7 +2018,8 @@ export class TacticalScene3D{
         weapon:actor.weapon,
          weaponConfiguration:actor.weaponConfiguration,
         equipment:actor.equipment,aim:actor.aim,velocity:actor.velocity,recoil:actor.recoil,
-        posture:actor.posture,threatRange,friendlyNear:friendlyAhead,
+        posture:actor.posture,coverStanceDrop:actor.coverStanceDrop??0,
+        threatRange,friendlyNear:friendlyAhead,
         friendlyAhead:actuallyAhead,handlingIntent
       },s.doors,undefined,undefined,nearbyAllies);
       const lightOn=!!actor.weaponLightOn&&actor.health>0&&
