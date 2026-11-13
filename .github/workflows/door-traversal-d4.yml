@@ -1,0 +1,38 @@
+name: D4 physical door hand + pose acceptance
+on:
+  push:
+    branches:
+      - 'feature/door-traversal-d4-*'
+  pull_request:
+    paths:
+      - 'src/breach-door-hand-contact.ts'
+      - 'src/breach-pose-door-hand.ts'
+      - 'src/breach-operator-animation-controller.ts'
+      - 'src/breach-operator-animation-contract.ts'
+      - 'src/breach-pose-action-state.ts'
+      - 'src/breach-pose-director.ts'
+      - 'src/breach-replay.ts'
+      - 'tests/door-traversal-d4-*.test.mjs'
+      - '.github/workflows/door-traversal-d4.yml'
+  workflow_dispatch:
+concurrency:
+  group: door-d4-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: D4 grip, pose, replay, and live 4-operator regression
+        run: |
+          node --experimental-strip-types --test tests/door-traversal-d4-physics.test.mjs tests/door-traversal-d2d3-four-operator.test.mjs tests/release7-door-intent.test.mjs tests/release7-outward-four.test.mjs tests/door-traversal-episode.test.mjs tests/breach-pose-contacts.test.mjs
+      - name: Physical doorway diagnostics
+        run: node --experimental-strip-types scripts/audit-door-traversal-baseline.mjs 4 1800
+      - name: Production TypeScript and Vite build
+        run: npm run build
