@@ -13,6 +13,7 @@ import {composeEncounterGroups} from './encounter-groups.ts';
 import {placeEncounterActors} from './encounter-placement.ts';
 import {assignEncounterActivities} from './encounter-activities.ts';
 import {assignEncounterRoutines} from './encounter-routines.ts';
+import {applyIncidentActorDoctrine} from './encounter-incident-doctrine.ts';
 import {assignEncounterRoles,assignObjectiveSecurity}
  from './encounter-roles.ts';
 import {assignExteriorOccupants} from './encounter-exteriors.ts';
@@ -54,9 +55,10 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
    })||
    (mission==='capture'&&!spatial.actors.some(a=>a.role==='target')))
   throw new Error('no safe, mission-complete encounter population');
+ const initialActivities=assignEncounterActivities(site,
+   assignObjectiveSecurity(site,spatial.actors,mission),premise,seed);
  const actors=assignEncounterRoutines(site,
-   assignEncounterActivities(site,
-     assignObjectiveSecurity(site,spatial.actors,mission),premise,seed),seed);
+   applyIncidentActorDoctrine(site,initialActivities,mission,incidentIntentId),seed);
  // Neutral placement is separate from armed encounter groups and never
  // increases the hostileBudget or creates a red actor.
  const neutralBudget=civilianBudget(site,seed,premise,mission,
