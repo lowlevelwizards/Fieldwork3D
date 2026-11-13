@@ -48,6 +48,11 @@ export function updateDoorGrip(actor:TeamActor,door:Door,
  if(!e?.handContact)return false;
  if(!canMaintainDoorGrip(actor,door,seconds)){
   e.handContact=false;e.handContactSince=null;
+  // The old short OPEN animation is timestamp-driven. Once an actual
+  // grasp is released, retire that cue instead of leaving the support
+  // hand visually attached to a handle that has moved out of reach.
+  if(actor.lastDoorId===door.id)
+   actor.lastDoorAt=Math.min(actor.lastDoorAt,seconds-1.13);
   if(e.maneuver==='grab-and-hold')e.maneuver='direct';
   return false;
  }
