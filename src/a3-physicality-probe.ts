@@ -13,7 +13,8 @@ import {chooseFriendlyLaneStep} from './breach-combat-reactions.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {aimHeight} from './breach-cover-height.ts';
 import {team,enemies,type Session} from './breach-game.ts';
-import type {Pt} from './breach-core.ts';
+import {doorLeafSegment,type Pt} from './breach-core.ts';
+import {doorGripPhysicalContact} from './breach-physical-contact-anchor.ts';
 import type {A3Config} from './a3-physicality-scenarios.ts';
 export const A3_BASELINE_VERSION=2;
 const round=(v:number)=>Number(v.toFixed(3));
@@ -87,6 +88,25 @@ export function probeA3(s:Session,config:A3Config){
   point:at(a.doorHandContact!.point),
   attached:a.doorHandContact!.releasedAt===null
  }));
+ // A3.5 reports only fixed-tick motor-owned D4 contacts; the probe never
+ // produces an unearned new surface/teammate attachment.
+ const contactAnchors=active.flatMap(a=>{
+  const grip=a.doorHandContact;
+  if(!grip)return [];
+  const door=s.doors.find(d=>d.id===grip.doorId);
+  if(!door)return [];
+  const contact=doorGripPhysicalContact(grip.doorId,grip,
+    doorLeafSegment(door),a.p);
+  if(!contact)return [];
+  return [{operatorId:a.id,kind:contact.intent,
+   limb:contact.limb,target:contact.anchor.target,
+   targetId:contact.anchor.id,
+   point:{x:round(contact.anchor.point.x),
+     y:round(contact.anchor.point.y),z:round(contact.anchor.point.z)},
+   normal:{x:round(contact.anchor.normal.x),
+     y:round(contact.anchor.normal.y),z:round(contact.anchor.normal.z)},
+   attached:grip.releasedAt===null}];
+ });
  return {
   version:A3_BASELINE_VERSION,config:{...config},
   seconds:round(s.seconds),phase:s.phase,
@@ -130,7 +150,7 @@ export function probeA3(s:Session,config:A3Config){
    compression:round(visualClearance.compression)},
   legacyRecovery:{candidate:legacy?at(legacy):null,
    checks:candidateChecks,appliedByMotor:!!shooter.fireRetreatTarget},
-  doorContacts,
+  doorContacts,contactAnchors,
   doors:s.doors.map(d=>({id:d.id,open:!!d.open,
    fraction:round(d.openFraction??0)})),
   // Legacy comparator remains exactly 10.5 units at every height.
