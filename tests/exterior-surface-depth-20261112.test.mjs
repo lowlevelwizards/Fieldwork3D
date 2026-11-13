@@ -27,7 +27,7 @@ test('each exterior zone overlay has depth clearance on both sides',()=>{
  const source=readFileSync(new URL('../src/rendering/breach-site-exterior-builder.ts',
   import.meta.url),'utf8');
  // Guard the real builder, not just a duplicated local constant.
- assert.match(source,/zone\\.x,zone\\.y,zone\\.w,zone\\.h,-1\\.435\\+lift/);
+ assert.ok(source.includes('zone.x,zone.y,zone.w,zone.h,-1.435+lift'));
  const lifts=['rear-property','side-passage','court-0','arrival-forecourt']
   .map(exteriorZoneRenderLift);
  for(let i=0;i<lifts.length-1;i++){
@@ -40,7 +40,7 @@ test('each exterior zone overlay has depth clearance on both sides',()=>{
 
 test('curb joins sidewalk without opaque coplanar overlap on all four streets',()=>{
  for(const entrySide of ['north','south','east','west']){
-  const site={entrySide,
+  const site={entrySide,entrance:{x:350,y:330},
    rooms:[{id:'R',x:225,y:230,w:250,h:200}],
    bounds:{minX:0,minY:0,maxX:700,maxY:700},
    exteriorZones:[{id:'arrival-forecourt',kind:'yard',x:350,y:500,w:250,h:85}]
