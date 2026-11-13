@@ -119,7 +119,7 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  if(kind==='friendly'&&Math.abs((a.aimSideOffset??0)-
    (a.aimSideTarget??0))>.3)return false;
  if(!inSight(a,target,s)||a.health<=0||a.velocity>=10||
-   a.fireRetreatTarget||s.seconds-a.lastFireRetreatAt<1.9||
+   a.fireRetreatTarget||s.seconds-a.lastFireRetreatAt<1.05||
    a.traversal||a.traversalPending||a.squeeze||a.carryingId||
    a.treatmentActive||a.reload>0||a.flashUntil>s.seconds||
    a.pace==='run'||a.plan[0]?.moveMode==='sprint'||
