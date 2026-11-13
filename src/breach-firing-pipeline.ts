@@ -1,6 +1,8 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {chooseMicroAimOffset,approachMicroAimOffset,allowMicroAim}
  from './breach-physical-micro-aim.ts';
+import {canContextuallyCrouch,validRearStack,contextualCrouchRecovery}
+ from './breach-contextual-crouch.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {createShotResolver} from './breach-shot-resolution.ts';
 import {createShotEnvironmentCommitter} from './breach-shot-environment.ts';
@@ -256,6 +258,82 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
     e.suppression=Math.min(1,e.suppression+.16);
     e.morale=Math.max(0,e.morale-.025);
   }
+}
+/** A3.3 shared-height team fire: the lead voluntarily crouches only if
+ * an already-acquired rear contact has a safe *actual muzzle* over their
+ * crouched helmet. Never changes the teammate or authored orders.
+ * The motor/footstep system still owns every physical stance transition.
+ */
+function updateContextualCrouch(s:Session,a:TeamActor):void{
+ if(a.side!=='blue')return;
+ const busy=a.health<=0||a.surrendered||a.velocity>3||
+   a.traversal!==null||a.squeeze||a.reload>0||
+   !!a.treatmentActive||!!a.carryingId||
+   a.plan.some(n=>n.kind==='move'||n.kind==='door'||n.kind==='tool'||
+     n.kind==='treat'||n.kind==='flash'||n.kind==='entry')||
+   a.aim>.26||a.pace==='run';
+ const automatic=a.autoCrouchOriginal==='stand';
+ if(a.postureWasAuthored||busy){
+  if(automatic){a.posture='stand';a.autoCrouchOriginal=null;}
+  a.autoCrouchUntil=0;return;
+ }
+ if(!canContextuallyCrouch({
+  stationary:true,busy:false,authoredPosture:!!a.postureWasAuthored,
+  posture:a.posture,originallyAutomatic:automatic
+ }))return;
+ // Existing lease prevents permanent polling and frequent stance toggles.
+ if(s.seconds-(a.lastAutoCrouchProbeAt??-100)<.18)return;
+ a.lastAutoCrouchProbeAt=s.seconds;
+ let helpful=false;
+ const world=sessionWorldGeometry(s);
+ for(const rear of team(s)){
+  if(rear===a||rear.health<=0||rear.aim<.16||
+     rear.velocity>10||rear.firePolicy==='hold'||!rear.targetId)
+   continue;
+  const target=s.operators.find(o=>o.id===rear.targetId&&
+    o.side!==a.side&&o.health>0);
+  if(!target||!inSight(rear,target,s)||
+    !validRearStack({...rear.p,heading:rear.heading},a.p,target.p))
+   continue;
+  const clearance=weaponClearance({x:rear.p.x,z:rear.p.y,
+    heading:rear.heading,weaponYaw:rear.weaponYaw,
+    shoulderOffset:rear.aimSideOffset??0,
+    weapon:rear.weapon,weaponConfiguration:rear.weaponConfiguration,
+    equipment:rear.equipment,aim:rear.aim,posture:rear.posture,
+    velocity:rear.velocity,recoil:rear.recoil,
+    threatRange:d(rear.p,target.p)},s.doors,world.cover,world.walls);
+  if(clearance.blocked)continue;
+  const origin={x:clearance.muzzle.x,y:clearance.muzzle.z},
+    targetHeight=aimHeight(target.posture==='crouch');
+  const frontBody={...a.p,posture:'stand' as const},
+    crouchedBody={...a.p,posture:'crouch' as const};
+  if(assessFriendlyLane(origin,clearance.muzzle.y,
+       target.p,targetHeight,[frontBody]).blocker!=='friendly'||
+     assessFriendlyLane(origin,clearance.muzzle.y,
+       target.p,targetHeight,[crouchedBody]).blocker!=='clear')
+    continue;
+  const remaining=team(s).filter(o=>o!==a&&o!==rear&&o.health>0)
+    .map(safetyBodyFor);
+  if(assessFriendlyLane(origin,clearance.muzzle.y,target.p,
+      targetHeight,remaining).blocker==='friendly')continue;
+  if(assessFireLane(origin,clearance.muzzle.y,target.p,targetHeight,
+      world.cover,world.walls,s.doors,remaining).blocker!=='clear')
+    continue;
+  if(observedCivilianFireLane(s,rear,origin,clearance.muzzle.y,
+      target.p,targetHeight))continue;
+  helpful=true;break;
+ }
+ const lease=contextualCrouchRecovery({
+  autoUntil:a.autoCrouchUntil??0,now:s.seconds,
+  authored:!!a.postureWasAuthored,busy,advantage:helpful
+ });
+ a.autoCrouchUntil=lease.until;
+ if(lease.crouch){
+  if(!automatic)a.autoCrouchOriginal='stand';
+  a.posture='crouch';
+ }else if(automatic){
+  a.posture='stand';a.autoCrouchOriginal=null;
+ }
 }
 function fire(s:Session,a:TeamActor,dt:number){
  // A3.2: only simulation time moves the tactical rifle accommodation.
