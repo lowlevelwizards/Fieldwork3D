@@ -4,6 +4,8 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {assessFireLane} from './breach-fire-safety.ts';
+import {safetyBodyFor,FRIENDLY_CROUCH_VOLUMES,
+ FRIENDLY_STAND_VOLUMES} from './breach-friendly-safety-volume.ts';
 import {teammateAheadForHandling,handlingIntentForMovement}
  from './breach-handling-context.ts';
 import {chooseCarry} from './breach-carry-policy.ts';
@@ -13,7 +15,7 @@ import {aimHeight} from './breach-cover-height.ts';
 import {team,enemies,type Session} from './breach-game.ts';
 import type {Pt} from './breach-core.ts';
 import type {A3Config} from './a3-physicality-scenarios.ts';
-export const A3_BASELINE_VERSION=1;
+export const A3_BASELINE_VERSION=2;
 const round=(v:number)=>Number(v.toFixed(3));
 const at=(p:Pt)=>({x:round(p.x),y:round(p.y)});
 export type A3Probe=ReturnType<typeof probeA3>;
@@ -21,7 +23,8 @@ export function probeA3(s:Session,config:A3Config){
  const shooter=team(s)[0],target=enemies(s)[0];
  const world=sessionWorldGeometry(s);
  const active=team(s).filter(a=>a.health>0).slice(0,config.operators);
- const friends=active.filter(a=>a!==shooter).map(a=>a.p);
+ const friends=active.filter(a=>a!==shooter).map(safetyBodyFor);
+ const legacyFriends=active.filter(a=>a!==shooter).map(a=>a.p);
  const intent=handlingIntentForMovement({
   order:shooter.plan[0]??null,running:shooter.pace==='run',
   squeezing:!!shooter.squeeze,traversing:!!shooter.traversal,
@@ -52,6 +55,8 @@ export function probeA3(s:Session,config:A3Config){
  const targetHeight=aimHeight(target.posture==='crouch');
  const lane=assessFireLane(from,shotClearance.muzzle.y,target.p,
   targetHeight,world.cover,world.walls,s.doors,friends);
+ const legacyLane=assessFireLane(from,shotClearance.muzzle.y,target.p,
+  targetHeight,world.cover,world.walls,s.doors,legacyFriends);
  let candidateChecks=0;
  const canMove=(next:Pt)=>{
   candidateChecks++;
@@ -96,8 +101,10 @@ export function probeA3(s:Session,config:A3Config){
   allies:active.filter(a=>a!==shooter).map(a=>({
    id:a.id,position:at(a.p),posture:a.posture,
    heading:round(a.heading),velocity:round(a.velocity),
-   blockedTime:round(a.blockedTime)
-  })),
+   blockedTime:round(a.blockedTime),
+   protectedTop:a.posture==='crouch'?
+    FRIENDLY_CROUCH_VOLUMES[1].top:FRIENDLY_STAND_VOLUMES[1].top
+  })), 
   carry:{handling:carry.handling,reason:carry.reason,intent,
    friendlyAhead},
   shot:{muzzle:{x:round(shotClearance.muzzle.x),
@@ -105,6 +112,8 @@ export function probeA3(s:Session,config:A3Config){
     yaw:round(shotClearance.muzzle.yaw)},
    hardBlocked:shotClearance.blocked,weaponBlocker:shotClearance.blocker,
    lane:lane.blocker,
+   legacyPlanarLane:legacyLane.blocker,
+   changedByHeight:lane.blocker!==legacyLane.blocker,
    authorizedByGeometry:!shotClearance.blocked&&lane.blocker==='clear',
    // Diagnostic only; engine also requires policy/target/fire cadence.
    origin:at(from),destination:at(target.p)},
@@ -117,9 +126,11 @@ export function probeA3(s:Session,config:A3Config){
   doorContacts,
   doors:s.doors.map(d=>({id:d.id,open:!!d.open,
    fraction:round(d.openFraction??0)})),
-  // This is the existing baseline disk, NOT the future A3.1 body capsule.
+  // Legacy comparator remains exactly 10.5 units at every height.
   friendlyPlanarRadius:10.5,
-  limitations:['planar-friendly-guard','no-micro-aim-solver',
+  friendlyVolumes:{standing:FRIENDLY_STAND_VOLUMES,
+   crouched:FRIENDLY_CROUCH_VOLUMES},
+  limitations:['no-micro-aim-solver','no-auto-crouch',
    'pose-not-shot-authority']
  };
 }
