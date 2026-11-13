@@ -50,8 +50,10 @@ test('D1 lease: backward or sideways drift cannot refresh a stalled approacher',
  assert.equal(released.hold,false,
   'opposing READY entrant should take over after the non-throat stall');
  assert.deepEqual(released.move,p(100,87));
- const held=coordinatePassage(s,lead,p(104,143),schedule);
- assert.equal(held.hold,true,'previous stalled claimant cannot immediately steal it back');
+ const held=coordinatePassage(s,lead,p(104,110),schedule);
+ assert.equal(held.reason,'opposing',
+  'stalled claimant must not steal the new owner on its next request');
+ assert.ok(held.move.y>=119,'previous claimant must stage outside the other side');
 });
 
 test('D1 lease: actual throat occupancy remains authoritative during a stall',()=>{
