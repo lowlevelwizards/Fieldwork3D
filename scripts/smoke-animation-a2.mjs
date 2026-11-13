@@ -11,6 +11,7 @@ await mkdir(out,{recursive:true});
 const tracks=[
  {name:'walk',time:900},{name:'run',time:850},
  {name:'accelerate',time:950},{name:'stop',time:1300},
+ {name:'restart',time:1800},
  {name:'strafe-reverse',time:1550},{name:'turn-90',time:1250},
  {name:'pie',time:1500},{name:'crouch-walk',time:1200},
  {name:'active-aim',time:1100},{name:'short-stock',time:900}

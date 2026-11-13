@@ -3,6 +3,7 @@
  */
 import type {FootTarget} from './breach-footsteps.ts';
 import {contactBalance} from './breach-contact-balance.ts';
+import {motionFromTransitions,type MomentumEnvelope} from './breach-motion-transitions.ts';
 import {legMaximumLength,LEG_HIP_SIDE,LEG_ANKLE_HEIGHT,
   LEG_HIP_HEIGHT,legRestRise} from './breach-leg-geometry.ts';
 export type BalanceInput={velocity:number;heading:number;travelYaw:number;
@@ -12,13 +13,14 @@ export type BalanceInput={velocity:number;heading:number;travelYaw:number;
   gait?:'run'|'walk'|'pie'|'squeeze';
   /** Lab candidate: use actual weighted shoe positions for load transfer. */
   hybridSupport?:boolean;acceleration?:number;weaponWeight?:number;
+  motionImpulse?:MomentumEnvelope;blocked?:boolean;
   tacticalTension?:number;seconds?:number;
   personalPhase?:number;personalLooseness?:number;
   down?:boolean;surrender?:boolean;};
 export type BodyMotion={pelvisY:number;pelvisSide:number;
   torsoForward:number;torsoSide:number;torsoYaw:number;headCounter:number;
   support:number;chestLift:number;weaponYaw:number;weaponPitch:number;
-  breath:number;};
+  breath:number;headPitchCounter:number;};
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 // All stance load and contact support are calculated by the pure A2.1
 // kernel. This file remains the single writer of body presentation.
@@ -38,6 +40,13 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
     input.gait==='squeeze'?.25:input.gait==='pie'?.38:1)*
     (1-.48*tension);
   const {swinging,receiving,unloading}=load;
+  const transient=motionFromTransitions({
+    velocity:input.velocity,acceleration:input.acceleration,
+    travelYaw:input.travelYaw,heading:input.heading,feet:input.feet,
+    impulse:input.motionImpulse,gait:input.gait,posture:input.posture,
+    injury:input.injury,blocked:input.blocked,down:input.down,
+    surrender:input.surrender,tacticalTension:tension
+  });
   // All envelopes reach zero at their phase boundaries. Lateral shuffles
   // change support legs often, so binary phase offsets visibly pop the hip.
   // A2.1: continuous load transfer. The pelvis follows the world-space
@@ -55,6 +64,7 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   // not invent an additional grounded contact.
   pelvisY-=receiving*load.singleSupport*.14*
     moving*crouch*wound;
+  pelvisY+=transient.pelvisY;
   // Physical pelvis compression comes from the support-foot reach budget,
   // not from a separate stance-radius correction in the renderer.
   if(input.position){
@@ -82,19 +92,21 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
   // Heel propulsion and accepting support transmit through the torso,
   // without an independent time-based bob oscillator.
   const accel=clamp((input.acceleration??0)/180,-1,1);
-  const torsoForward=clamp(-forward*speed*.09-accel*.04+
+  const torsoForward=clamp(-forward*speed*.09+
     (.038*unloading-.022*receiving)*moving-
-    load.bearingForward*.002*speed,-.13,.09)*crouch;
+    load.bearingForward*.002*speed+transient.torsoForward,
+    -.13,.09)*crouch;
   // Counterbalance travels with the same bearing foot as the pelvis.
   // Aiming/pie tension keeps the chest quieter without moving the feet.
   const torsoSide=clamp(side*speed*.072+
-    support*speed*.014+pelvisSide*.014,-.11,.11)*
+    support*speed*.014+pelvisSide*.014+
+    transient.torsoSide,-.11,.11)*
     crouch*(1-.20*tension);
   // Follow the same contact/weight envelopes, rather than layering
   // unrelated sine-wave bob and sway over the animation.
   pelvisY-=Math.max(0,-accel)*.17*moving*crouch;
   const chestLift=(-.35*receiving+.18*swinging+.16*unloading)*
-    moving*gaitAmp*crouch*wound;
+    moving*gaitAmp*crouch*wound+transient.chestLift;
   // Small contact/acceleration response is a *requested* weapon fit sway;
   // actual stock, hands and barrel remain one authoritative rigid transform.
   const weaponMass=clamp(input.weaponWeight??1,.7,1.4);
@@ -111,5 +123,6 @@ export function bodyFromContacts(input:BalanceInput):BodyMotion{
     torsoYaw:clamp(-support*speed*.032*
       (input.personalLooseness??1),-.038,.038),
     headCounter:-torsoSide*.62,support,chestLift,
-    weaponYaw,weaponPitch,breath};
+    weaponYaw,weaponPitch,breath,
+    headPitchCounter:transient.headPitchCounter};
 }

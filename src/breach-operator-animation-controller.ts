@@ -109,7 +109,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     previousHandling:r.lastHandling??undefined,
     previousHandlingAt:r.lastHandlingAt
   });
-  const {physicalSpeed,moving,direction,hipTarget,braking,crouch}=
+  const {physicalSpeed,moving,direction,hipTarget,crouch}=
     preparedDecision.locomotion;
   frame.hip.position.y=LEG_HIP_HEIGHT-crouch;
   frame.chest.position.y=26-crouch;
@@ -178,6 +178,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     injury:p.injury,posture:p.posture,feet:targets,gait:p.gait,
     down:p.down,surrender:p.surrender,
     hybridSupport:p.hybridSupport,acceleration:p.acceleration,
+    motionImpulse:p.motionImpulse,blocked:p.blocked,
     seconds:p.seconds,personalPhase:r.personality.phase,
     personalLooseness:r.personality.looseness,
     tacticalTension:p.aiming||p.handlingIntent==='engage'||
@@ -238,7 +239,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     poseWeight*profile.stanceCompression;
   frame.chest.position.z=motion.pelvisSide*.75+
     poseWeight*profile.pelvisShift*.45;
-  frame.chest.rotation.z=motion.torsoForward+idleLife.sway+braking*.018+
+  frame.chest.rotation.z=motion.torsoForward+idleLife.sway+
     (kick?.torsoLean??0)+bash.lean-
     poseWeight*profile.torsoLean-
     (p.posture==='crouch'?.075:0);
@@ -264,6 +265,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     p.posture==='stand'&&!p.down?0:
     motion.headCounter+bash.head+poseWeight*profile.headPitch+
     idleLife.headDip;
+  frame.head.rotation.z=motion.headPitchCounter;
   // Apply the collapsing root transform before solving the legs.
   // Inverse full-body rotation holds each shoe in world-space contact
   // instead of sweeping planted boots through the floor during a fall.

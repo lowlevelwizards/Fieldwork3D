@@ -12,6 +12,7 @@ import type {V3ReloadCorridorProfile,V3MagazinePalm} from './breach-pose-v3-relo
 import type {V3ReloadHold} from './breach-pose-v3-reload-weapon.ts';
 import type {WeaponId} from './breach-combat.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
+import type {MomentumEnvelope} from './breach-motion-transitions.ts';
 import type {ReloadMode} from './breach-magazines.ts';
 import type {BashRole} from './breach-contact-reactions.ts';
 import type {Handling,HandlingIntent} from './breach-weapon-pose.ts';
@@ -81,6 +82,8 @@ export type OperatorPose={
   /** Opt-in to contact-position weight transfer for lab candidate only. */
   hybridSupport?:boolean;
   acceleration?:number;
+  /** Simulation-recorded time-decaying start/brake envelopes, presentation-only. */
+  motionImpulse?:MomentumEnvelope;
   aimBlend?:number;recoil?:number;shotHeading?:number;
   hitFade?:number;hitAge?:number;downProgress?:number;flashActive?:boolean;
   hitRegion?:WoundRegion;hitYaw?:number;hitSeverity?:number;

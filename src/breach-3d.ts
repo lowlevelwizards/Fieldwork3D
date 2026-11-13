@@ -2113,6 +2113,8 @@ export class TacticalScene3D{
         hybridSupport:true,
         acceleration:replay?.acceleration[actor.id]??
           liveMotion?.acceleration[actor.id]??0,
+        motionImpulse:replay?.momentum[actor.id]??
+          liveMotion?.momentum[actor.id],
         pelvisYaw:replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id]??
           liveMotion?.travelYaw[actor.id],
