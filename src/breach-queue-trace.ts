@@ -3,7 +3,7 @@
  */
 import type {Pt,Door} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
-import {pendingPassageSlot} from './breach-passage-plan.ts';
+import {pendingPassageSlot,type PassageSchedule} from './breach-passage-plan.ts';
 export type QueueMotionSource='opening-leaf-yield'|'idle-yield'|'deadlock-retreat-request';
 export type QueueMotionEvent={time:number;actor:string;source:QueueMotionSource;
  from:Pt;to:Pt;distance:number};
@@ -36,7 +36,7 @@ export class QueueMotionAudit {
  event(e:QueueMotionEvent){
   this.events.push(e);if(this.events.length>300)this.events.shift();
  }
- sample(s:Session,slots:ReadonlyMap<string,readonly {doorId:string;rank:number;fromSide:-1|1}[]>){
+ sample(s:Session,slots:PassageSchedule){
   // Every sixth 60-Hz tick: 10Hz and <=600 samples per member in 60s.
   if(++this.tick%6!==0)return;
   for(const a of s.operators.filter(u=>u.side==='blue'&&u.health>0)){
