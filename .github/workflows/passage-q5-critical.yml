@@ -1,0 +1,36 @@
+name: Q5 Door Range formation corpus
+on:
+  push:
+    branches: ['feature/passage-q5-*']
+  pull_request:
+    paths:
+      - 'src/breach-door-range-formations.ts'
+      - 'src/breach-door-range-benchmark.ts'
+      - 'src/breach-door-test-cases.ts'
+      - 'src/door-test-range-main.ts'
+      - 'door-test-range.html'
+      - 'src/breach-passage-coordinator.ts'
+      - 'tests/passage-q5-*.test.mjs'
+      - 'scripts/audit-passage-q5.mjs'
+      - '.github/workflows/passage-q5-critical.yml'
+  workflow_dispatch:
+concurrency:
+  group: q5-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm run build
+      - name: Formation + Q0-Q4 integrity
+        run: node --experimental-strip-types --test tests/passage-q5-formations.test.mjs tests/passage-q2-coordinator.test.mjs tests/passage-q3-flow.test.mjs tests/passage-q4-swing.test.mjs tests/door-test-range-page.test.mjs
+      - name: Physical matrix · hinged cardinal fixtures
+        run: node --experimental-strip-types scripts/audit-passage-q5.mjs core squad 1800
