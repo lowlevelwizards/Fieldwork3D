@@ -114,16 +114,18 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
     sign*4.49,achMichHemY(id,-3.10)-.16,-3.10];
    const rearAnchor:[number,number,number]=[
     sign*4.49,achMichHemY(id,2.35)-.16,2.35];
-   const junction=[sign*4.04,1.75,-2.08];
+   // Two entirely independent released suspensions sit OUTBOARD of the
+   // head, rather than joining beneath the jaw when the buckle is undone.
+   const junction=[sign*5.06,1.43,-1.58];
    ribbon(dangling,webbingMaterial,'released-four-point-front-leg',
-    [frontAnchor,junction],.92);
+    [frontAnchor,[sign*5.03,2.70,-2.93],junction],.90);
    ribbon(dangling,webbingMaterial,'released-four-point-rear-leg',
-    [rearAnchor,junction],.92);
+    [rearAnchor,[sign*5.04,2.56,2.04],junction],.90);
    ribbon(dangling,webbingMaterial,'released-four-point-hanging-tail',[
-    junction,[sign*3.70,.40,-2.82],[sign*3.26,-.74,-3.35]
-   ],.92);
-   box(dangling,dark,'chin-buckle',sign*3.26,-.73,-3.36,
-    .53,.44,.31);
+    junction,[sign*5.23,.40,-1.70],[sign*5.26,-1.17,-1.82]
+   ],.94);
+   box(dangling,dark,'chin-buckle',sign*5.26,-1.19,-1.83,
+    .56,.46,.34);
    
   }
  }

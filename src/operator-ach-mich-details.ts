@@ -127,10 +127,10 @@ export function achMichRetentionPaths(
   const b:Point=[sign*4.49,achMichHemY(shell,p.rearStud[2])-.16,p.rearStud[2]];
   // Two direct legs form a quiet V beneath each ear. The old extra rear
   // guide created a dangling horizontal projection in the side view.
-  const junction:Point=[sign*3.92,1.22,-3.13];
+  const junction:Point=[sign*4.88,1.05,-2.96];
   // PASGT-proportioned jaw offset: support the chin without projecting
   // an extra ribbon-length beyond the face silhouette in profile.
-  const chin:Point=[sign*1.91,-.30,-4.48];
+  const chin:Point=[sign*2.12,-.84,-4.91];
   result.push([f,junction],[b,junction],[junction,chin]);
  }
  return result;
@@ -156,18 +156,18 @@ export function createAchMichRetentionGeometry(
  // differing face normals would otherwise leave a narrow triangular hole.
  // Deliberately use the same webbing/material batch, not a floating clasp.
  for(const sign of [-1,1] as const){
-  const hub:Point=[sign*3.92,1.22,-3.13];
-  const upper:Point=[sign*3.96,1.69,-3.12];
-  const outer:Point=[sign*4.18,1.26,-3.28];
-  const lower:Point=[sign*3.83,.83,-3.30];
+  const hub:Point=[sign*4.88,1.05,-2.96];
+  const upper:Point=[sign*4.91,1.49,-2.95];
+  const outer:Point=[sign*5.10,1.04,-3.13];
+  const lower:Point=[sign*4.72,.61,-3.20];
   for(const v of [upper,outer,hub,outer,lower,hub,lower,upper,hub])
    data.push(...v);
  }
  const pt=(x:number,y:number,z:number):Point=>[x,y,z];
- const topLeft=pt(-1.91,-.30,-4.48),topMiddle=pt(0,-.26,-4.54),
-  topRight=pt(1.91,-.30,-4.48);
- const lowLeft=pt(-1.91,-.78,-4.48),lowMiddle=pt(0,-.84,-4.54),
-  lowRight=pt(1.91,-.78,-4.48);
+ const topLeft=pt(-2.12,-.84,-4.91),topMiddle=pt(0,-.81,-5.00),
+  topRight=pt(2.12,-.84,-4.91);
+ const lowLeft=pt(-2.12,-1.30,-4.91),lowMiddle=pt(0,-1.37,-5.00),
+  lowRight=pt(2.12,-1.30,-4.91);
  for(const v of [topLeft,lowMiddle,lowLeft,topLeft,topMiddle,lowMiddle,
   topMiddle,lowRight,lowMiddle,topMiddle,topRight,lowRight])data.push(...v);
  const g=new THREE.BufferGeometry();
@@ -235,7 +235,7 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
   const clasp=new THREE.Mesh(new THREE.BoxGeometry(.46,.42,.20),metal);
   clasp.name='fastened-four-point-adjustment-buckle';
   clasp.userData.keepSeparate=true;
-  clasp.position.set(sign*3.52,.83,-3.56);
+  clasp.position.set(sign*4.48,.67,-3.32);
   clasp.rotation.y=sign*.30;
   clasp.castShadow=false;clasp.receiveShadow=false;strap.add(clasp);
  }
