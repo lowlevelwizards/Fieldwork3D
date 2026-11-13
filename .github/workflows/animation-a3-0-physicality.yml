@@ -1,0 +1,56 @@
+name: Animation A3.0 actual-session physicality baseline
+on:
+  pull_request:
+    paths:
+      - 'a3-physicality-lab.html'
+      - 'src/a3-physicality-*'
+      - 'tests/animation-a3-0-*'
+      - 'scripts/audit-animation-a3-0.mjs'
+      - 'scripts/smoke-animation-a3-0.mjs'
+      - 'docs/animation-a3-0-*'
+      - 'vite.config.ts'
+      - '.github/workflows/animation-a3-0-physicality.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: A3.0 real-session fixtures, deterministic replay and muzzle authority
+        run: node --experimental-strip-types --test tests/animation-a3-0-physicality.test.mjs tests/breach-two-sided-fire-recovery.test.mjs tests/physicality-11-lab.test.mjs
+      - name: A3.0 reproducible baseline performance and simulation report
+        run: node --experimental-strip-types scripts/audit-animation-a3-0.mjs --out artifacts/animation-a3-0/baseline.json
+      - name: Typecheck and production build
+        run: npm run build
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a3-0-actual-session-baseline
+          path: artifacts/animation-a3-0/
+          if-no-files-found: ignore
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: A3.0 mobile and desktop interactive inspector
+        run: node scripts/smoke-animation-a3-0.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a3-0-physicality-mobile-desktop
+          path: artifacts/animation-a3-0/gallery/
+          if-no-files-found: ignore
