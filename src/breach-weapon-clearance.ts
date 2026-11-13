@@ -20,10 +20,9 @@ export type ClearanceResult={
 };
 /** Lead distance gives the elbows room to fold before contact; the rear
  * margin finishes compression when the free muzzle would penetrate. */
-// A2.5: one-unit doorway/side-angle tolerance versus the old early
-// 14-unit warning band. Hard muzzle intersections and the near-body
-// fire-clearance floor remain exactly as strict as before.
-export const SHORT_STOCK_APPROACH_LEAD=13;
+// Physical hard-block timing must not be relaxed just for visual doorway
+// grace: too-short anticipation can allow an impossible tight corridor.
+export const SHORT_STOCK_APPROACH_LEAD=14;
 export const SHORT_STOCK_REAR_MARGIN=7;
 const MAX_LEGACY_RETRACTION=3.4;
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));
