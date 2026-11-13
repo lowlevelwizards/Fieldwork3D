@@ -23,7 +23,10 @@ test('H8 approved PASGT detail geometry is reused for ACH/MICH foliage and scrim
   const kit=createHelmetFieldLayers(new THREE.Group(),id);
   assert.equal(kit.modules.leaves.children.length,10);
   assert.ok(kit.modules.leaves.children.every(c=>c.name==='pasgt-derived-foliage'));
-  assert.ok(kit.modules.scrim.children.some(c=>c.name==='pasgt-derived-folded-scrim'));
+  // Identical-material folded pieces are deliberately consolidated into
+  // a single batch, which replaces their individual object names.
+  assert.ok(kit.modules.scrim.children.some(c=>
+   c instanceof THREE.Mesh&&c.geometry.getAttribute('position').count>24));
   assert.ok(kit.modules.band.children.some(c=>c.name==='shell-fitted-elastic'));
   assert.ok(kit.modules['goggles-front'].children.some(c=>c.name==='approved-d2-goggle-pose'));
   assert.ok(kit.modules.unfastened.children.some(c=>c.name==='released-four-point-strap'));
