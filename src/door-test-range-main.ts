@@ -114,7 +114,9 @@ function stats(){
  detail.textContent=members.map(a=>{
   const episode=a.doorTraversal;
   return a.name+' · '+(episode?episode.phase.toUpperCase()+
-    ' / '+episode.maneuver.toUpperCase()+' · attempts '+episode.maneuverAttempts:
+    ' / '+episode.maneuver.toUpperCase()+
+    (episode.handContact?' · HAND CONTACT':'')+
+    ' · attempts '+episode.maneuverAttempts:
     'NO EPISODE')+
    ' · '+(a.motorPause??a.lastBlocker??'CLEAR')+
    ' · blocked '+a.blockedTime.toFixed(1)+'s'+

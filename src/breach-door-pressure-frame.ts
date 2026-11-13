@@ -1,5 +1,7 @@
 /** D3 fixed-tick, session-scoped door-pressure arbitration.
- * Read crossing claims ONCE for each session/physics tick. Both the
+ * Read crossing claims ONCE per touched DOOR per session/physics tick.
+ * Untouched leaves incur no actor checks or per-tick door geometry.
+ * Both the
  * no-route motor and swept collision use the same intent snapshot.
  * Each door accepts at most one incidental BODY impulse per tick.
  * Explicit author-issued OPEN/CLOSE and the main hinge phase remain
@@ -19,6 +21,7 @@ type TickClaims={
  occupiedDoors:Set<string>;
  actorsOpening:Set<string>;
  claimedImpulses:Set<string>;
+ inspected:Set<string>;
 };
 const cache=new WeakMap<Session,TickClaims>();
 const sideKey=(doorId:string,side:string)=>doorId+'|'+side;
@@ -28,8 +31,18 @@ export function doorPressureTick(s:Session):TickClaims{
  if(prior&&prior.at===s.seconds)return prior;
  const tick:TickClaims={
   at:s.seconds,protectedBySide:new Set(),occupiedDoors:new Set(),
-  actorsOpening:new Set(),claimedImpulses:new Set()
+  actorsOpening:new Set(),claimedImpulses:new Set(),
+  inspected:new Set()
  };
+ cache.set(s,tick);
+ return tick;
+}
+/** Lazy per-door claim snapshot: O(live actors near THIS leaf), once per
+ * tick. Unrelated map doors are never scanned on each contact attempt. */
+function inspectDoor(s:Session,tick:TickClaims,door:Door):void{
+ if(tick.inspected.has(door.id))return;
+ tick.inspected.add(door.id);
+ const center={x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2};
  for(const actor of s.operators){
   if(actor.health<=0||!actor.plan.length)continue;
   const n=actor.plan[0];
@@ -38,18 +51,16 @@ export function doorPressureTick(s:Session):TickClaims{
   const episode=actor.doorTraversal;
   const goal=episode?.authoredOrderId===n.id?
     episode.destination:actor.nav.at(-1)??n.p;
-  for(const door of s.doors){
-   // No claiming a remote door or a next order after WAIT/RELOAD.
-   if(!crossingDoor({id:actor.id,p:actor.p,goal,
-     side:actor.side,health:actor.health,active:true,
-     blockedTime:actor.blockedTime},door))continue;
-   tick.protectedBySide.add(sideKey(door.id,actor.side));
-   tick.occupiedDoors.add(door.id);
-   tick.actorsOpening.add(actorKey(actor.id,door.id));
-  }
+  // 66-unit physical claim radius before running exact crossing geometry.
+  const dx=actor.p.x-center.x,dy=actor.p.y-center.y;
+  if(dx*dx+dy*dy>66*66)continue;
+  if(!crossingDoor({id:actor.id,p:actor.p,goal,
+    side:actor.side,health:actor.health,active:true,
+    blockedTime:actor.blockedTime},door))continue;
+  tick.protectedBySide.add(sideKey(door.id,actor.side));
+  tick.occupiedDoors.add(door.id);
+  tick.actorsOpening.add(actorKey(actor.id,door.id));
  }
- cache.set(s,tick);
- return tick;
 }
 /** The current actor may pull a physically reachable panel; no remote
  * manipulation is authorized here. Actual contact is validated by
@@ -60,9 +71,14 @@ export function sessionDoorPressurePolicy(
 ):BodyDoorPressurePolicy{
  const frame=doorPressureTick(s);
  return {
-  preferOpening:door=>frame.actorsOpening.has(actorKey(actor.id,door.id)),
-  deferClosing:door=>frame.protectedBySide.has(
-    sideKey(door.id,actor.side)),
+  preferOpening:door=>{
+   inspectDoor(s,frame,door);
+   return frame.actorsOpening.has(actorKey(actor.id,door.id));
+  },
+  deferClosing:door=>{
+   inspectDoor(s,frame,door);
+   return frame.protectedBySide.has(sideKey(door.id,actor.side));
+  },
   claimContact:door=>{
    if(frame.claimedImpulses.has(door.id))return false;
    frame.claimedImpulses.add(door.id);
@@ -76,5 +92,7 @@ export function sessionDoorPressurePolicy(
 export function doorClosingContested(
  s:Session,door:Door
 ):boolean{
- return doorPressureTick(s).occupiedDoors.has(door.id);
+ const frame=doorPressureTick(s);
+ inspectDoor(s,frame,door);
+ return frame.occupiedDoors.has(door.id);
 }
