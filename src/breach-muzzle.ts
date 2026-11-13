@@ -20,7 +20,7 @@ export type MuzzleInput={x:number;z:number;heading:number;
   shortCompression?:number;shortFrom?:Handling;
   handlingIntent?:HandlingIntent;friendlyAhead?:boolean;
   /** Explicit clearance carry selected by same shared policy. */
-  carryOverride?:Handling;
+  carryOverride?:Handling;carryBlend?:number;
   posture?:'stand'|'crouch';
   equipment?:EquipmentLoadout};
 export const MUZZLE_TIP=19.5;
@@ -37,7 +37,10 @@ export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
     shortCompression:p.shortCompression,
     shortFrom:p.shortFrom??shortStockSourceHandling(p.aim,
       Math.min(1,p.velocity/72),p.weapon,!!p.friendlyNear),
-    armorPush:equipmentStockPush(p.equipment)});
+    armorPush:equipmentStockPush(p.equipment),
+    blendFrom:p.carryOverride==='low'&&p.carryBlend!==undefined?
+      'ready':undefined,
+    blendAlpha:p.carryOverride==='low'?p.carryBlend:undefined});
   const grip=weaponGrips(p.weapon,configuration);
   const assembly=configuration?resolveWeaponAssembly(configuration):null;
   const tip=assembly?.muzzleX??MUZZLE_TIP;

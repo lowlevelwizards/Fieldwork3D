@@ -15,6 +15,8 @@ export type ClearanceResult={
   blocker:FireBlock;muzzle:MuzzleSample;
   /** Carry and underarm source shared with the exact visual fit. */
   carryOverride?:Handling;shortFrom?:Handling;
+  /** Deterministic distance fraction through ready→low shoulder carry. */
+  carryBlend?:number;
 };
 /** Lead distance gives the elbows room to fold before contact; the rear
  * margin finishes compression when the free muzzle would penetrate. */
@@ -69,14 +71,15 @@ export function weaponClearance(input:MuzzleInput,
   // The first deterministic clearance stage is real shoulder-seated LOW.
   // Only if that actual rigid muzzle is still unsafe do we fold into
   // the authored underarm SHORT. Aim/shot permission stays independent.
+  const carryBlend=clamp(proximity/.30);
   const lowCarry=muzzleAtShot({...input,carryOverride:'low',
-    obstruction:false,shortCompression:undefined,
+    carryBlend,obstruction:false,shortCompression:undefined,
     clearanceRetraction:0});
   const lowBlock=check({x:lowCarry.x,y:lowCarry.z},lowCarry.y);
   if(proximity<.30&&lowBlock==='clear')
     return {obstruction:false,blocked:false,compression:0,
       retraction:0,blocker:'clear',muzzle:lowCarry,
-      carryOverride:'low'};
+      carryOverride:'low',carryBlend};
   const startFold=proximity<.30?0:(proximity-.30)/.70;
   const folded=(compression:number)=>{
     const muzzle=muzzleAtShot({...input,obstruction:true,

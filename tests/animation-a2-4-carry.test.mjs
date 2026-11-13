@@ -92,7 +92,8 @@ test('A2.4 wall and friendly clearance resolves actual identical rigid muzzle',(
    c.name+' non-deterministic');
   assert.ok(a.compression>=0&&a.compression<=1);
   const reconstruct=muzzleAtShot({...basic,
-   carryOverride:a.carryOverride,shortFrom:a.shortFrom,
+   carryOverride:a.carryOverride,carryBlend:a.carryBlend,
+   shortFrom:a.shortFrom,
    obstruction:a.obstruction,shortCompression:a.obstruction?
      a.compression:undefined});
   assert.ok(Math.abs(a.muzzle.x-reconstruct.x)<.000001,

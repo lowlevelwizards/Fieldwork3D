@@ -2152,6 +2152,7 @@ export class TacticalScene3D{
         obstruction:clearance.obstruction,
         clearanceCarry:clearance.carryOverride,
         clearanceShortFrom:clearance.shortFrom,
+        clearanceBlend:clearance.carryBlend,
         clearanceRetraction:clearance.retraction,
         shortCompression:handlingIntent==='squeeze'?1:
           clearance.obstruction?clearance.compression:undefined,
