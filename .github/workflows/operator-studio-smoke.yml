@@ -37,6 +37,8 @@ on:
       - 'scripts/helmet-h7-visual-capture.mjs'
       - 'scripts/helmet-h9-visual-capture.mjs'
       - 'src/operator-helmet-surface.ts'
+      - 'src/operator-helmet-field-concealment.ts'
+      - 'tests/helmet-h9-concealment.test.mjs'
       - 'tests/helmet-h9-foundation.test.mjs'
       - 'src/operator-helmet-field-visuals.ts'
       - 'src/operator-helmet-field-policy.ts'
@@ -117,7 +119,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h9-') }}
         run: |
           npm run check
-          node --experimental-strip-types --test tests/ach-mich-h5-cover-strap.test.mjs tests/helmet-h8-recovery.test.mjs tests/helmet-h9-foundation.test.mjs
+          node --experimental-strip-types --test tests/ach-mich-h5-cover-strap.test.mjs tests/helmet-h8-recovery.test.mjs tests/helmet-h9-foundation.test.mjs tests/helmet-h9-concealment.test.mjs
       - name: H9 mobile WebGL cover and equipment regression capture
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h9-') }}
         run: node scripts/helmet-h9-visual-capture.mjs
