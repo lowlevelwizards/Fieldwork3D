@@ -89,8 +89,8 @@ test('D5 touched-door claim remains one impulse per door per fixed tick',()=>{
  assert.equal(policy.claimContact(d),true);
  assert.equal(policy.claimContact(d),false);
  session.seconds+=1/60;
- assert.equal(policy.claimContact(d),false,
-  'policy closure belongs to session tick? actual arbitration is global');
+ assert.equal(policy.claimContact(d),true,
+  'a new fixed tick grants exactly one new physical contact');
 });
 test('D5 hot motor avoids per-stride filter/sort and preserves exact sweeps',()=>{
  const root=new URL('../',import.meta.url);
