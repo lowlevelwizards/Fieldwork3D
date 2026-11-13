@@ -37,6 +37,7 @@ import {planInteriorFragments,type InteriorFragment} from '../worldgen/interior-
 import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
 import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
+import type {RepeatedFixtureBatches} from './breach-repeated-fixture-batches.ts';
 import {isArchitecturalSillCover} from '../worldgen/architectural-cover-visuals.ts';
 import {accessibleExteriorWall} from '../breach-site-footprint.ts';
 
@@ -52,6 +53,7 @@ export type SiteSceneBuildPort={
  addSurfaceWear:(parent:THREE.Object3D,mark:ObjectWear,
    x:number,y:number,z:number,surface:PixelSurface)=>void;
  staticBatches:StaticSceneBatches;
+ repeatedFixtures?:RepeatedFixtureBatches;
  sharedBoxGeometries:Set<THREE.BufferGeometry>;
  siteMaterials:SiteMaterialLifetime<THREE.Material>;
  mats:THREE.Material[];
@@ -94,6 +96,7 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
     // Bake immobile exterior/ground fixtures per spatial cell. Keep owner-
     // scoped doors, cover and fog groups independent; never touch descendants.
     consolidateStaticFixtureParts(host.root,{recursive:false,cellSize:220});
+    host.repeatedFixtures?.flush(host.root);
 }
 
 /** Own no resources; renderer's material/scene lifetime remains authoritative. */
@@ -437,6 +440,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         fragment.castShadow=false;
       }
       consolidateStaticFixtureParts(debris);
+      host.repeatedFixtures?.collect(i,group,intact);
+      host.repeatedFixtures?.collect(i,group,debris);
     });
     // Glass does not impede sight; the low sill does impede traversal.
     if(!host.windowPaneMaterial){
