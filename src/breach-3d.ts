@@ -86,7 +86,8 @@ import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter,LIGHT_BEAM_SAMPLES}
  from './equipment-weapon-light-beam.ts';
 import {type Site,type Room,type WideOpening} from './breach-site.ts';
-import {carryPlacementLedger} from './equipment-carry-placement.ts';
+import {bakedOperatorCarry,prewarmSavedOperatorCarry}
+ from './rendering/breach-saved-operator-carry-bake.ts';
 import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
@@ -1450,6 +1451,8 @@ export class TacticalScene3D{
     return true;
   }
   private soldier(a:TeamActor){
+    // Saved operator kit pouch/mag placement is ready before first combat.
+    prewarmSavedOperatorCarry(a);
     const physical=createOperatorRig(a.id,a.side,true);
     // Purely opt-in CPU phase marks inside poseOperator; no normal-play
     // instrumentation or changes to rig construction/animation decisions.
@@ -2090,9 +2093,8 @@ export class TacticalScene3D{
       object.physical.root.userData.fieldworkCavityQuality=
         cavityQualityForDetail(shadowDetail);
       // Shared, bounded inventory projection for both visible containers.
-      const carried=actor.equipment?
-       carryPlacementLedger(actor.equipment,actor.spareMagazines):[];
-      const carriedMagazines=carried.filter(p=>p.kind==='magazine');
+      const carried=bakedOperatorCarry(actor);
+      const carriedMagazines=carried.magazines;
       // Actors generated as hostile 'occupants' are still ARMED. Visual
       // activity only adjusts existing idle head/breath, never stows rifles
       // or overrides the simulation. The resolved site is recorded with
@@ -2124,11 +2126,11 @@ export class TacticalScene3D{
         // This changes rendered anatomy only, not fixed-step ammo/shot.
         poseV3Preview:true,poseV4ReloadPreview:true,
         poseDiagnostics:false,
-        magazineCarryLocations:carriedMagazines.map(p=>p.location),
+        magazineCarryLocations:carried.locations,
         magazineCarryItems:carriedMagazines,
         reloadSelectedMagazineId:actor.reloadSelectedMagazineId,
-        medicalCarryLocation:carried.find(p=>p.kind==='medical')?.location,
-        utilityCarryLocation:carried.find(p=>p.kind==='utility')?.location,
+        medicalCarryLocation:carried.medical,
+        utilityCarryLocation:carried.utility,
          weaponConfiguration:actor.weaponConfiguration,
          weaponLightOn:actor.weaponLightOn,
         treatmentActive:actor.treatmentActive,
