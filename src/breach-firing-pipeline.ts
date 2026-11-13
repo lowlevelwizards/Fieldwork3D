@@ -1,3 +1,4 @@
+import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {createShotResolver} from './breach-shot-resolution.ts';
 import {createShotEnvironmentCommitter} from './breach-shot-environment.ts';
@@ -123,7 +124,7 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  if(a.side==='blue'&&n&&n.kind!=='move'&&n.kind!=='look'&&
    n.kind!=='wait')return false;
  const friends=s.operators.filter(other=>other!==a&&other.health>0&&
-   other.side===a.side).map(other=>other.p);
+   other.side===a.side).map(safetyBodyFor);
  // Recovery must never rely on moving another body to open the lane.
  const people=[
    ...s.operators.filter(other=>other!==a&&other.health>0).map(o=>o.p),
@@ -184,7 +185,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   const yaw=muzzle.yaw;
   const from={x:muzzle.x,y:muzzle.z};
   const far=muzzleEndpoint(from,yaw,Math.max(40,d(from,point)));
-  const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
+  const friends=team(s).filter(o=>o!==a&&o.health>0).map(safetyBodyFor);
   if(observedCivilianFireLane(s,a,from,muzzle.y,far,14)){
     civilianShotWithheld(s,a);return;
   }
@@ -322,7 +323,7 @@ function fire(s:Session,a:TeamActor,dt:number){
       civilianShotWithheld(s,a);return false;
     }
     const friends=s.operators.filter(other=>other!==a&&other.health>0&&
-      other.side===a.side).map(other=>other.p);
+      other.side===a.side).map(safetyBodyFor);
     const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
       candidate.p,aimHeight(candidate.posture==='crouch'),
       sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,s.doors,friends);
@@ -376,7 +377,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // targeting behavior, but friendly sidestep must run *after* selection,
   // rather than only in the (often unreachable) no-target branch.
   if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget){
-    const friends=team(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
+    const friends=team(s).filter(o=>o!==a&&o.health>0).map(safetyBodyFor);
     const muzzleHeight=a.posture==='crouch'?18:26;
     const targetHeight=aimHeight(target.posture==='crouch');
     const lane=assessFireLane(a.p,muzzleHeight,target.p,targetHeight,
