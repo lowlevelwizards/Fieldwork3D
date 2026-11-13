@@ -16,7 +16,7 @@ export const baseline=[
 ];
 export const domains=[
  {name:'simulation',match:/^src\/.*(?:session|simulation|sim-|combat|ballistic|projectile|shot|damage|wound|ai-|awareness|enemy|civilian|actor|morale|tactical-state|fire|firing|friendly-safety|muzzle|aim-target)/i,
-  tests:['tests/breach-roadmap2-stage10-combat.test.mjs','tests/breach-roadmap4-simulation-phases.test.mjs','tests/breach-roadmap2-deterministic.test.mjs','tests/animation-a3-10-close-stack-fire.test.mjs']},
+  tests:['tests/breach-roadmap2-stage10-combat.test.mjs','tests/breach-roadmap4-simulation-phases.test.mjs','tests/breach-roadmap2-deterministic.test.mjs','tests/animation-a3-10-close-stack-fire.test.mjs','tests/animation-a3-11-progressive-urgency.test.mjs','tests/tactical-integration-09-firing-lanes.test.mjs']},
  {name:'movement-and-doors',match:/^src\/.*(?:movement|motor|locomotion|door|traversal|physical|collision|path|plan|order|waypoint|interaction|passage|stack|squeeze|clearance)/i,
   tests:['tests/breach-roadmap2-stage7-motor.test.mjs','tests/breach-roadmap2-stage8-orders.test.mjs','tests/doorway-right-of-way-session.test.mjs','tests/breach-physical-interactions-nov8.test.mjs','tests/passage-q5-approaches.test.mjs','tests/passage-q5-live-blockers.test.mjs']},
  {name:'world-and-sites',match:/^src\/.*(?:world|site|geometry|generator|worldgen|scene|map-|floor|architecture|cover|furniture)/i,
