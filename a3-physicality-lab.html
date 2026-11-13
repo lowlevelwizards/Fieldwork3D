@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#152a27">
+<title>FIELDWORK — A3 PHYSICALITY LAB</title>
+<link rel="stylesheet" href="./src/ui/fieldwork-design.css">
+<style>
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#132621;color:#ede9df;font:13px/1.45 system-ui,sans-serif}
+a{color:#dcc59e}a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #e5c18d;outline-offset:2px}
+header{background:#1d3933;border-bottom:1px solid #6d8572;padding:13px max(16px,calc((100vw - 1130px)/2));display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}
+header strong{font-size:15px;letter-spacing:.1em}header nav{display:flex;gap:14px;flex-wrap:wrap;font-size:12px}
+main{max-width:1130px;margin:auto;padding:16px;display:grid;gap:14px}
+section{border:1px solid #59776a;background:#233b34;border-radius:9px;padding:13px}
+h1,h2{margin:0 0 10px;font-size:16px;letter-spacing:.055em}
+p{margin:7px 0 0;color:#d0ded2}
+label{display:grid;gap:5px;color:#d7e5d4;font-size:11px;font-weight:700;letter-spacing:.055em}
+select,input,button{width:100%;background:#38574c;border:1px solid #81998b;color:#f3ede3;border-radius:6px;padding:10px;min-height:43px;font:inherit}
+input{font-variant-numeric:tabular-nums}button{cursor:pointer;font-weight:700}button:active{background:#b89e72;color:#182820}
+.controls{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0 3px}.actions button{width:auto;min-width:88px}.actions button.primary{background:#c4ad7e;color:#192c25}
+.workspace{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(290px,.8fr);gap:13px}
+canvas{display:block;width:100%;aspect-ratio:500/440;background:#31493e;border-radius:6px;border:1px solid #8ea292}
+.legend{display:flex;gap:12px;flex-wrap:wrap;color:#d1dfd3;font-size:11px;margin:9px 0}.legend b{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:3px}
+.readouts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.metric{background:#152e28;border:1px solid #405f54;border-radius:7px;padding:10px;overflow-wrap:anywhere}.metric small{display:block;color:#a6bdaf;letter-spacing:.08em;font-size:10px}.metric strong{font:700 16px ui-monospace,monospace;color:#eac896}
+pre{background:#132822;padding:10px;border-radius:6px;max-height:240px;overflow:auto;font:11px/1.6 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.muted{color:#abc4b4}.note{background:#1c322b;border-left:3px solid #c7a872;padding:10px;line-height:1.5}
+details{margin-top:9px}summary{cursor:pointer;padding:6px;color:#dfcba9}
+@media(max-width:800px){.controls{grid-template-columns:repeat(3,minmax(0,1fr))}.workspace{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:500px){.controls{grid-template-columns:repeat(2,minmax(0,1fr))}main{padding:9px}.actions button{flex:1 1 28%}header{padding:12px} }
+</style></head><body>
+<header><strong>FIELDWORK / A3.0 PHYSICALITY LAB</strong><nav>
+<a href="./index.html">GAME</a><a href="./physicality-lab.html">PASSAGE LAB</a>
+<a href="./door-test-range.html">DOOR RANGE</a><a href="./operator-lab.html">OPERATOR LAB</a>
+</nav></header>
+<main>
+<section><h1>ACTUAL BREACH / FIRING & CONTACT BASELINE</h1>
+<p>This lab evaluates the current production muzzle, firing-lane guard and motor inside an isolated real game session. It adds no new aiming, crouching or bracing abilities.</p>
+<div class="controls" style="margin-top:12px">
+<label>SCENARIO<select id="scenario"></select></label>
+<label>OPERATORS<select id="operators"><option>1</option><option>2</option><option>3</option><option selected>4</option></select></label>
+<label>STANCE<select id="posture"><option value="stand">STAND</option><option value="crouch">CROUCH</option></select></label>
+<label>INTENT<select id="intent"><option value="watch">WATCH</option><option value="look">LOOK</option><option value="engage">ENGAGE</option><option value="hold">HOLD</option></select></label>
+<label>WEAPON<select id="weapon"><option value="carbine">CARBINE</option><option value="rifle">RIFLE</option><option value="smg">SMG</option><option value="shotgun">SHOTGUN</option></select></label>
+<label>SEED<input type="number" step="1" id="seed" value="31063" inputmode="numeric"/></label>
+</div>
+<div class="actions">
+<button class="primary" id="run">RUN</button><button id="step">ONE TICK</button>
+<button id="reset">RESET</button><button id="copy">COPY REPORT</button>
+<button id="download">SAVE JSON</button>
+</div>
+<p id="message" role="status" aria-live="polite">Initialized. Simulation paused at tick zero.</p>
+</section>
+<div class="workspace">
+<section><h2>PHYSICAL TOP-DOWN INSPECTOR</h2>
+<canvas id="stage" width="500" height="440" role="img" aria-label="Top-down actual Breach muzzle and friendly lane diagnostic"></canvas>
+<div class="legend"><span><b style="background:#d4d2bb"></b>Shot-time muzzle</span>
+<span><b style="background:#ef9d8e"></b>Friendly blocker</span>
+<span><b style="background:#8fcfc2"></b>Friendly</span>
+<span><b style="background:#dfbb82"></b>Door / cover</span></div>
+<div class="note">BASELINE: the current friendly safety check is a flat 10.5-unit disk, regardless of standing or crouching. Orange dashed lines illustrate the existing candidate sidestep only. A3.1–A3.4 will improve these rules later.</div>
+</section>
+<section><h2>LIVE DIAGNOSTICS</h2>
+<div class="readouts">
+<div class="metric"><small>ACTUAL SHOT LANE</small><strong id="lane">—</strong></div>
+<div class="metric"><small>WEAPON BLOCK</small><strong id="block">—</strong></div>
+<div class="metric"><small>HANDLING</small><strong id="handling">—</strong></div>
+<div class="metric"><small>SIMULATION</small><strong id="clock">0.000s</strong></div>
+<div class="metric"><small>LEGACY STEP</small><strong id="candidate">—</strong></div>
+<div class="metric"><small>PROBE CHECKS</small><strong id="checks">0</strong></div>
+</div>
+<details open><summary>AUTHORITATIVE STATE & CONTACTS</summary><pre id="details"></pre></details>
+<details><summary>POSE / FOOTSTEP PREVIEW (rig-owned)</summary>
+<p class="muted">These are separate, read-only rig diagnostics. Foot contacts belong to the rendering footstep scheduler, not the projectile safety authority.</p><pre id="pose"></pre></details>
+<details><summary>MEASURED COSTS (not deterministic)</summary><pre id="perf"></pre></details>
+</section>
+</div>
+</main>
+<script type="module" src="./src/a3-physicality-lab-main.ts"></script>
+</body></html>
