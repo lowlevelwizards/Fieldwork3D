@@ -51,6 +51,7 @@ export const withActions=(a:Operator):TeamActor=>({
   lastThrowAt:-100,lastDoorAt:-100,lastDoorId:null,
   lastDoorMethod:'open',stride:0,
   weaponYaw:a.heading,stability:.55,recoil:0,lastShotAt:-100,
+  aimSideOffset:0,aimSideTarget:0,lastAimSideProbeAt:-100,
   lastBashAt:-100,lastBashRole:null,
   lastLaneWarnAt:-100,lastFireBlock:'clear',
   fireRetreatTarget:null,fireRetreatUntil:0,lastFireRetreatAt:-100,
