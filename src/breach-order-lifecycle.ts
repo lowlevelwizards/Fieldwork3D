@@ -6,16 +6,41 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {angleDifference,targetAngle,interruptsWatch} from './breach-plan.ts';
 import {bodyClear} from './breach-navigation.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
+import {pointToSegment,doorLeafSegment} from './breach-core.ts';
+import {assessPivotFootClearance,selectPivotEpisode,committedPivotDelta}
+ from './breach-pivot-episode.ts';
 import {pathFor} from './breach-plan-authoring.ts';
 import type {Door,Pt} from './breach-core.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const angle=(a:Pt,b:Pt)=>targetAngle(a,b);
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 const clone=(p:Pt):Pt=>({...p});
-export function rotate(a:TeamActor,goal:number,dt:number){
+export function rotate(a:TeamActor,goal:number,dt:number,s?:Session){
   const delta=angleDifference(a.heading,goal);
-  const turn=clamp(delta,-dt*6,dt*6);
-  a.heading+=turn;a.turning=Math.abs(delta);
+  // The near-180 decision is made once, on a REAL fixed simulation tick.
+  // Every ordinary sub-180 turn still follows the shortest arc.
+  let clearance={left:0,right:0};
+  if(s&&a.velocity<8&&Math.abs(delta)>Math.PI-.22&&
+     !a.pivotEpisode){
+    const world=sessionWorldGeometry(s);
+    clearance=assessPivotFootClearance(a.p,a.heading,p=>{
+      if(!world.passable(p,2.4))return false;
+      if(s.doors.some(d=>pointToSegment(p,doorLeafSegment(d))<2.7))
+       return false;
+      return !s.operators.some(other=>other!==a&&other.health>0&&
+        Math.hypot(p.x-other.p.x,p.y-other.p.y)<7) &&
+        !s.civilians.some(other=>other.health>0&&
+        Math.hypot(p.x-other.p.x,p.y-other.p.y)<7);
+    });
+  }
+  a.pivotEpisode=selectPivotEpisode(a.heading,goal,
+    clearance,a.pivotEpisode??null);
+  const chosen=committedPivotDelta(a.heading,goal,a.pivotEpisode);
+  const turn=clamp(chosen,-dt*6,dt*6);
+  a.heading+=turn;a.turning=Math.abs(chosen);
+  if(Math.abs(angleDifference(a.heading,goal))<.075)
+    a.pivotEpisode=null;
   return Math.abs(delta)<.075;
 }
 /** Aim targets are recomputed after EVERY movement tick, not on waypoint entry. */
